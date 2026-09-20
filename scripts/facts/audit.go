@@ -111,6 +111,11 @@ var (
 	// 数字绑定实测结果：直接替换会**伪造测量**（如"632 用例实测 103.6s"改成 671
 	// 就变成假记录）。此类应标 as-of，而不是改数字。
 	reMeasure = regexp.MustCompile(`实测|耗时|冷启动|加速比|吞吐|性能|基准`)
+	// HTML 嵌入标签行（<img ... width="900">）：行内数字是**布局参数**（显示
+	// 宽度）而非文档陈述——图览批实测："影子"alt + width=900 被 shadow_c_cases
+	// 规则当 900 用例判漂移（README.md:44 / 影子验证框架.md:13，区间恰含 900/880）。
+	// 嵌入图内的真数字由 SVG data-fact 通道对账（tspan 锚），标签行整体跳过。
+	reHTMLTagLine = regexp.MustCompile(`<img\b|width="`)
 	// 数字带分解式：只换总数会让算式不成立（如 "636 个用例（617 + vitro_better 16 + 3）"）。
 	// 两个数字之间有加号即算分解式（中间允许夹少量说明词）；"C++" 因加号旁无数字不会误触发。
 	reBreakdown = regexp.MustCompile(`\d[^+＋\n]{0,24}[+＋][^+＋\n]{0,24}\d`)
@@ -403,6 +408,10 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 		for i, raw := range lines {
 			line := strings.TrimSuffix(raw, "\r")
 			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			// HTML 嵌入标签行：width 等布局参数不参与数字对账（见 reHTMLTagLine 注释）。
+			if reHTMLTagLine.MatchString(line) {
 				continue
 			}
 			frozen := classifyLine(line) || tier == "AS-OF"

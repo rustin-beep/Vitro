@@ -29,9 +29,39 @@ vitro 引擎核心（Rust workspace，禁止平台 API 耦合）
      headless 交互：编译 / 运行 / 单步 / 时间旅行 / 断点 的脚本化消费
 ```
 
-> 架构图（SVG）：[`docs/current/01-定位与路线/vitro-architecture-three-exits.svg`](docs/current/01-定位与路线/vitro-architecture-three-exits.svg)——由 `go run ./scripts/gen_svg` 生成，内容与上图对账。
-
 **架构纪律**：新能力一律先落语言中立的 Rust 层，三个出口只做薄包装且共用同一套入口语义（`native/src/session_api.rs`）；复杂结构过边界统一走 JSON 字符串；capi 是公共 API，承诺即契约。
+
+## 项目图览
+
+<p align="center">
+  <img src="docs/current/01-定位与路线/vitro-architecture-three-exits.svg" alt="vitro 三出口一核心架构" width="900">
+</p>
+
+**三出口一核心架构** —— 引擎核心（编译管线 + VitroVM + 统一模式 + 诊断）经 C ABI、wasm32、`vitro_cli serve` 三个薄出口对外，共用 `session_api` 会话语义中立层。
+详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
+
+<p align="center">
+  <img src="docs/current/04-标准库与防线/shadow-verification-flow.svg" alt="影子验证门禁流水线" width="900">
+</p>
+
+**影子验证门禁** —— 同一份 C/C++ 语料喂给 Clang 与 Vitro 逐字节对拍，"通过 / 非预期差异"分流驱动扩展优先级；CI 硬门禁，图内规模数字由 facts 台账机判防漂移。
+机制与判定表：[影子验证框架.md](docs/current/04-标准库与防线/影子验证框架.md)
+
+<p align="center">
+  <img src="docs/current/05-教学体验/unified-triple-cache.svg" alt="统一模式三态缓存" width="900">
+</p>
+
+**统一模式三态缓存** —— 时间旅行教学交互的三层缓存：Frame Cache 承接动画与面板的零延迟浏览，Checkpoint 支撑状态恢复，Active VM 保持唯一可执行现场。
+设计与落地口径：[统一模式设计.md](docs/current/05-教学体验/统一模式设计.md)
+
+<p align="center">
+  <img src="docs/current/05-教学体验/cognitive-knowledge-graph.svg" alt="P2 知识图谱概念三域" width="900">
+</p>
+
+**认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图。
+节点分类树与已实现范围：[认知推理系统设计.md](docs/current/05-教学体验/认知推理系统设计.md)
+
+> 四张插图均由 `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改。
 
 ## 技术栈
 

@@ -227,9 +227,9 @@ fn Parser::parse_var_decl_stmt(
     let args = self.parse_arg_list(depth)
     ignore(self.consume(RParen, "构造函数初始化预期 ')'"))
     let ctor_name = if args.is_empty() {
-      "__ctor__\{base_type.name()}"
+      @names.ctor_def_name(base_type.name())
     } else {
-      "__ctor__\{base_type.name()}__\{args.length()}"
+      @names.ctor_call_name(base_type.name(), args.length())
     }
     (
       base_type,
@@ -266,9 +266,9 @@ fn Parser::parse_var_decl_stmt(
       let args = self.parse_arg_list(depth)
       ignore(self.consume(RParen, "构造函数初始化预期 ')'"))
       let ctor_name = if args.is_empty() {
-        "__ctor__\{base_type.name()}"
+        @names.ctor_def_name(base_type.name())
       } else {
-        "__ctor__\{base_type.name()}__\{args.length()}"
+        @names.ctor_call_name(base_type.name(), args.length())
       }
       extra_vars.push({
         var_type: base_type,

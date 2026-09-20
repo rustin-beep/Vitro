@@ -100,13 +100,15 @@ A2 实测关闭（有条件）；A3 实测关闭（方向有利）；A7 实测�
 | S1 | `vitro/engine/{source,diag,opcode,ast}` | E1 AST dump（B）+ error_catalog JSON（B）+ 码表生成幂等 | `vitro/engine/diag` 首发 |
 | S2 | ✅ `vitro/engine/lexer`（独立 pass+LineMap+宿主 IO；2026-09-19 收官——[执行记录](../07-质量与裁定/20260919_S2词法器执行记录.md)） | ✅ L1/L2 token TSV + 随机差分 2400 例（4800 TSV）+ 真实语料 444 例逐字节一致 | ✅ `vitro/engine/lexer`（0.2.0 首发 + 0.3.0 审阅修复批——real_line 归属通道 + 打包卫生） |
 | S3 | ✅ `vitro/engine/parser`（深度统一入口；J1 语义不复刻；2026-09-19 收官——[执行记录](../07-质量与裁定/20260919_S3解析器执行记录.md)） | ✅ E1–E4 全绿：597 真实语料 AST+诊断序列归一逐字节一致 + 病态 12 样本同等拒绝 + 活性 stall=0 + E4 反向锚（1200 层声明符两侧存活且一致） | —（随 0.4.0 发布） |
-| S4 | `vitro/engine/{names,typeck,containers,libc}` | E1–E4 + mangled 名集合相等 | `vitro/engine/names` |
+| S4 | 🚧 `vitro/engine/{names,libc,typeck}`（2026-09-20 开工——结构就位批 + 审阅修复批；**containers 延后 S9**：内置容器全是 C++ 模板路径，C only 零活跃路径，F-2 推论） | E1–E4；**改形登记（2026-09-20 审阅 F4）**：E2 符号表/E3 mangled 名集合不独立出口，由 E4 typed_ast 投影派生（typeck 内部 Map 状态不外溢产物——C 输入下投影≈快照可辩护：classes 恒空、static_func_sigs/templates 合并差异均以诊断形式落在 E1 面）；**mangled 名集合在 C 子集无对象**（C 侧零模板/方法 mangling——names 的 type_mangle_suffix/method_mangled_name 消费面全在 C++ 路径，S9 后才有差分锚）；勘察 §5 架构优化 M1（单态化两阶段）C only 无对象、M3（诊断结构化）协议层不动照搬旧 TypeError、M4（尺寸单一表达式）/M9（声明定型统一）随 init/decl_types 批、M7（诊断顺序显式化）以 Vec push 序照搬达成隐式确定——均未按『目标架构』形态落地，等价优先 | names——**C 子集零差分覆盖**（8 消费点全在 C++ 语法路径，5 测试为白盒自证；发布形态待 S4 收官时裁定：推迟至 S9 后或以白盒锚为发布锚） |
 | S5 | `vitro/engine/{codegen,bytecode}` | A 级产物 code 段 + libc 自举 + LIFO 八条事故回归 + r1 7 道 + `--dump-compile-output` 工具 + codegen 自建单测 | — |
 | S6 | `vitro/engine/{memory,host,vm}` | D 级 30 例三联 diff + 门 3 集成版 + 条件 A 性能锚 | `vitro/engine/vm` |
 | S7 | `vitro/engine/{session,protocol,gateway}` + Node 宿主 | 协议帧双宿主对拍 + replay/serve_smoke 重建 | `vitro/engine/protocol` + wasm-gc 产物 |
 | S8 | `vitro/engine/{time_travel,teaching,analysis,diagnostics}` + 差异台账 | seek 往返五类相等 + 标注 golden 311 三方 diff + 台账 CI | 认知链切片 |
 | S9 | 裁定批：JIT 复核 / C++ 搬或砍（与 CS2 合并）/ libc 机制形态 / Wasmtime 形态 | 各自判定书 | — |
 | 全量切换 | 758 用例 + golden 733 全绿 + facts 双轨收口 | shadow 逐项一致（match/known_issue/gap 三口径） | 1.0 |
+
+S4 期坑登记（2026-09-20 审阅，S9 裁定批输入）：① parser/decl.mbt 的类外方法定义名 `"{Class}__{method}"` 散拼（names 包『唯一产出口』声明的孪生漏网——照搬 Rust decl.rs:671 现状，收口随 C++ 片）；② libc 放行并集 175 名与 host_func_id/bytecode_libc_index 的单源关系（S4 以 MoonBit 侧 Set 照搬起步，S5/S6 发射/执行侧入库时**以 vitro/engine/libc 为单源回填**，消第四套真相源）。
 
 节奏纪律：锚点未全绿不发版；每片回填 facts（新键空间独立）；任一时刻可停。
 

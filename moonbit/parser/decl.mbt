@@ -664,7 +664,7 @@ fn Parser::parse_func_decl(
       let method_tok = self.consume(Identifier, "预期方法名")
       if method_tok.text == func_name {
         // 构造函数类外定义: Counter::Counter() { ... }
-        func_name = "__ctor__\{func_name}"
+        func_name = @names.ctor_def_name(func_name)
         ret_type = @ast.Type::void_type()
       } else {
         func_name = "\{func_name}__\{method_tok.text}"

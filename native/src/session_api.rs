@@ -190,6 +190,104 @@ pub fn symbols_dump(session: &mut Session, params: &Value) -> Value {
     })
 }
 
+/// S4（2026-09-20）：typeck 产物 dump 出口——S4 片 E1–E4 B 级锚的 Rust 侧
+/// 唯一出口。直跑 lexer→parser→typeck，**不进 codegen**（与 symbols.dump
+/// 的 codegen 后 VM 符号表是两个语义层）。对拍四面：
+/// - E1 诊断序列：type_errors/type_warnings/type_hints 三段，每条
+///   {code,line,column,message}，**push 序保序**；
+/// - E4 类型化 AST：`typed_ast` = lowering 后 ProgramNode（插入的 Cast /
+///   dims 推断 / ty 定型均在内）。emitter 纪律同 ast_dump：本侧 serde
+///   派生为唯一 emitter，MoonBit 侧须显式 emitter 同构（禁 ToJson 直拼），
+///   两侧同经 scripts/canonicalize 归一后逐字节比对。
+/// - E2 符号表 / E3 名集合：**不独立出口**——由驱动侧从 E4 typed_ast 投影
+///   派生（funcs/structs/unions/globals 的名字与签名汇总）。typeck 内部
+///   Map 状态不外溢到产物（除诊断与 AST），从产物反推是行为等价，强于
+///   状态等价。
+/// 管线语义对齐（compile_pipeline）：parse_errors 非空 → typeck 不跑
+/// （ok:false；parse_errors 明细仍带，与 ast.dump 的 E2 面同构）。
+/// TypeChecker::new(false) 与单文件管线口径一致。
+pub fn typeck_dump(session: &mut Session, params: &Value) -> Value {
+    use crate::compiler::typeck::TypeChecker;
+
+    let Some(source) = params.get("source").and_then(|v| v.as_str()) else {
+        return error_json("typeck.dump 需要 params.source");
+    };
+    let mut lexer = vitro_lexer::Lexer::new(source);
+    let (tokens, lex_errors) = lexer.tokenize();
+    if !lex_errors.is_empty() {
+        // 与 ast.dump 同构：词法错误路径 ok:false，typeck 无从谈起。
+        let units = vec![crate::session::CompileUnit {
+            filename: params.get("filename").and_then(|v| v.as_str()).unwrap_or("main.c").to_string(),
+            source: source.to_string(),
+        }];
+        let _ = run_multi_file_pipeline(session, units, false);
+        return json!({
+            "ok": false,
+            "lex_error_count": lex_errors.len(),
+            "typed_ast": Value::Null,
+            "parse_errors": [],
+            "type_errors": [],
+            "type_warnings": [],
+            "type_hints": [],
+        });
+    }
+    let (program, parse_errors) = vitro_parser::Parser::new(tokens).parse();
+    let pe_json: Vec<Value> = parse_errors
+        .iter()
+        .map(|e| {
+            json!({
+                "code": e.code,
+                "line": e.line,
+                "column": e.column,
+                "message": e.message,
+            })
+        })
+        .collect();
+    // 管线语义：parse 错误非空即止（上层丢弃占位 AST），typeck 不跑。
+    let Some(mut p) = program.filter(|_| parse_errors.is_empty()) else {
+        let units = vec![crate::session::CompileUnit {
+            filename: params.get("filename").and_then(|v| v.as_str()).unwrap_or("main.c").to_string(),
+            source: source.to_string(),
+        }];
+        let _ = run_multi_file_pipeline(session, units, false);
+        return json!({
+            "ok": false,
+            "parse_error_count": parse_errors.len(),
+            "typed_ast": Value::Null,
+            "parse_errors": pe_json,
+            "type_errors": [],
+            "type_warnings": [],
+            "type_hints": [],
+        });
+    };
+    let checker = TypeChecker::new(false);
+    let (type_errors, type_warnings, type_hints) = checker.check(&mut p);
+    let te_json = |v: &Vec<crate::compiler::typeck::TypeError>| -> Vec<Value> {
+        v.iter()
+            .map(|e| {
+                json!({
+                    "code": e.code,
+                    "line": e.line,
+                    "column": e.column,
+                    "message": e.message,
+                })
+            })
+            .collect()
+    };
+    match serde_json::to_value(&p) {
+        Ok(typed) => json!({
+            "ok": true,
+            "parse_error_count": 0,
+            "typed_ast": typed,
+            "parse_errors": pe_json,
+            "type_errors": te_json(&type_errors),
+            "type_warnings": te_json(&type_warnings),
+            "type_hints": te_json(&type_hints),
+        }),
+        Err(e) => error_json(format!("类型化 AST 序列化失败: {e}")),
+    }
+}
+
 /// U1（2026-09-19）：认知链最小导出。knowledge_graph / misconception /
 /// learning_path / completion / intent / auto_fix 六个分析器此前外部生产
 /// 调用全为 0（serve/capi/CLI 零出口）——"趁 Rust 版仍在做差分扫描"的

@@ -600,6 +600,9 @@ fn serve_handle(session: &mut Session, line: &str) -> (serde_json::Value, bool) 
         // emitter 同构（禁 ToJson 直拼）；两侧同经 scripts/canonicalize 归一。
         "ast.dump" => (serve_ok(id, session_api::ast_dump(session, &params)), false),
         "symbols.dump" => (serve_ok(id, session_api::symbols_dump(session, &params)), false),
+        // S4（2026-09-20）：typeck 产物 dump——E1（诊断序列）/E4（类型化
+        // AST）面；E2/E3 由驱动从 typed_ast 投影派生。emitter 纪律同上。
+        "typeck.dump" => (serve_ok(id, session_api::typeck_dump(session, &params)), false),
         // 错误码表机器可读导出（下游需求清单 B1）：静态元数据，无状态。
         "error_catalog" => {
             let raw = session_api::error_catalog_json();

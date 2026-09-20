@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/names"
+
+import {
+  "vitro/engine/ast",
+}
+
+// Values
+pub const CTOR_PREFIX : String = "__ctor__"
+
+pub const DTOR_PREFIX : String = "__dtor__"
+
+pub fn ctor_call_name(String, Int) -> String
+
+pub fn ctor_copy_name(String) -> String
+
+pub fn ctor_def_name(String) -> String
+
+pub fn dtor_name(String) -> String
+
+pub fn is_ctor_name(String) -> Bool
+
+pub fn is_dtor_name(String) -> Bool
+
+pub fn method_mangled_name(String, String, Array[@ast.Type], Bool) -> String
+
+pub fn type_mangle_suffix(@ast.Type) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,0 +1,85 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/typeck"
+
+import {
+  "vitro/engine/ast",
+  "vitro/engine/diag",
+  "vitro/engine/source",
+}
+
+// Values
+pub fn apply_default_argument_promotions(@ast.Expr) -> @ast.Expr
+
+pub fn implicit_cast_target(@ast.Type, @ast.Type) -> @ast.Type?
+
+pub fn insert_implicit_cast(@ast.Expr, @ast.Type) -> @ast.Expr
+
+pub fn is_char_safe_initializer(@ast.Expr) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct FuncSymbol {
+  return_type : @ast.Type
+  param_types : Array[@ast.Type]
+  is_variadic : Bool
+  param_defaults : Array[@ast.Expr?]
+}
+
+pub(all) struct StructSymbol {
+  fields : Array[(@ast.Type, String)]
+}
+
+pub struct TypeChecker {
+  funcs : Map[String, FuncSymbol]
+  static_func_sigs : Map[String, FuncSymbol]
+  static_func_files : Map[String, Array[String]]
+  static_global_files : Map[String, Array[String]]
+  structs : Map[String, StructSymbol]
+  unions : Map[String, StructSymbol]
+  scopes : Array[Map[String, VarSymbol]]
+  current_func_return : @ast.Type?
+  current_file : String
+  loop_depth : Int
+  switch_depth : Int
+  char_narrow_suppress : Bool
+  errors : Array[TypeError]
+  warnings : Array[TypeError]
+  hints : Array[TypeError]
+}
+pub fn TypeChecker::check(Self, @ast.ProgramNode) -> (@ast.ProgramNode, Array[TypeError], Array[TypeError], Array[TypeError])
+pub fn TypeChecker::check_array_dims_legality(Self, @ast.Type, Bool, @source.SourceLoc) -> Unit
+pub fn TypeChecker::check_assignable(Self, @ast.Type, @ast.Type, @source.SourceLoc) -> Bool
+pub fn TypeChecker::compute_type_size(Self, @ast.Type) -> Int
+pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool) -> Unit
+pub fn TypeChecker::enter_scope(Self) -> Unit
+pub fn TypeChecker::exit_scope(Self) -> Unit
+pub fn TypeChecker::get_struct_field_type(Self, String, String) -> @ast.Type?
+pub fn TypeChecker::get_union_field_type(Self, String, String) -> @ast.Type?
+pub fn TypeChecker::is_comparable(Self, @ast.Type, @ast.Type) -> Bool
+pub fn TypeChecker::is_int(Self, @ast.Type) -> Bool
+pub fn TypeChecker::is_scalar(Self, @ast.Type) -> Bool
+pub fn TypeChecker::lookup_var(Self, String) -> VarSymbol?
+pub fn TypeChecker::new() -> Self
+pub fn TypeChecker::report_error(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
+pub fn TypeChecker::report_hint(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
+pub fn TypeChecker::report_warning(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
+pub fn TypeChecker::update_var_type(Self, String, @ast.Type) -> Unit
+
+pub(all) struct TypeError {
+  message : String
+  line : Int
+  column : Int
+  code : Int
+}
+
+pub(all) struct VarSymbol {
+  ty : @ast.Type
+  _is_global : Bool
+  is_extern : Bool
+  is_static : Bool
+}
+
+// Type aliases
+
+// Traits

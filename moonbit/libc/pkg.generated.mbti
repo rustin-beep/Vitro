@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/libc"
+
+import {
+  "vitro/engine/ast",
+}
+
+// Values
+pub fn is_libc_func(String) -> Bool
+
+pub fn lookup(String) -> LibcSig?
+
+// Errors
+
+// Types and methods
+pub(all) struct LibcSig {
+  name : String
+  return_type : @ast.Type
+  min_args : Int
+  max_args : Int
+}
+
+// Type aliases
+
+// Traits

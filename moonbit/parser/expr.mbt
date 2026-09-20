@@ -980,7 +980,7 @@ fn Parser::parse_new_expr(self : Parser, depth : Int) -> @ast.Expr {
       // Empty parens: treat as default constructor call
       init = Some(
         @ast.Expr::Call(
-          "__ctor__\{elem_type.name()}",
+          @names.ctor_def_name(elem_type.name()),
           [],
           loc,
           @ast.Type::void_type(),
@@ -995,7 +995,7 @@ fn Parser::parse_new_expr(self : Parser, depth : Int) -> @ast.Expr {
         let ctor_args = self.parse_arg_list(depth)
         init = Some(
           @ast.Expr::Call(
-            "__ctor__\{elem_type.name()}__\{ctor_args.length()}",
+            @names.ctor_call_name(elem_type.name(), ctor_args.length()),
             ctor_args,
             loc,
             @ast.Type::void_type(),

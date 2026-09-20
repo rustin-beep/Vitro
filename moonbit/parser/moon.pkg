@@ -2,6 +2,7 @@ import {
   "vitro/engine/ast",
   "vitro/engine/diag",
   "vitro/engine/lexer/token",
+  "vitro/engine/names",
   "vitro/engine/source",
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",

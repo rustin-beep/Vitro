@@ -61,7 +61,7 @@ fn Parser::try_parse_cpp_ctor_out_of_line(
   program.funcs.push({
     loc: @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     return_type: @ast.Type::void_type(),
-    name: "__ctor__\{name_tok.text}",
+    name: @names.ctor_def_name(name_tok.text),
     params: pl.0,
     body,
     is_static,

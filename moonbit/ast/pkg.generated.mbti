@@ -271,7 +271,9 @@ pub fn Type::function_pointer(Self, Array[Self]) -> Self
 pub fn Type::int() -> Self
 pub fn Type::is_array(Self) -> Bool
 pub fn Type::is_const(Self) -> Bool
+pub fn Type::is_unsigned(Self) -> Bool
 pub fn Type::is_vla(Self) -> Bool
+pub fn Type::kind(Self) -> TypeKind
 pub fn Type::long_long() -> Self
 pub fn Type::mangle_name(Self) -> String
 pub fn Type::mangle_name_into(Self, StringBuilder) -> Unit
@@ -285,6 +287,25 @@ pub fn Type::total_elements(Self) -> Int
 pub fn Type::union_type(String) -> Self
 pub fn Type::unsigned_int() -> Self
 pub fn Type::void_type() -> Self
+
+pub enum TypeKind {
+  TK_Void
+  TK_Int
+  TK_Char
+  TK_Float
+  TK_Double
+  TK_LongLong
+  TK_Pointer
+  TK_Array
+  TK_Struct
+  TK_Union
+  TK_Function
+  TK_Class
+  TK_Reference
+  TK_RValueRef
+  TK_Auto
+  TK_TemplateId
+} derive(Compare, Eq, Hash)
 
 pub(all) enum UnaryOp {
   Neg

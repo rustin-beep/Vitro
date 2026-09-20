@@ -945,6 +945,17 @@ fn Parser::parse_double_or_report(
 ) -> Double {
   let v = @string.parse_double(text) catch {
     _ => {
+      // Rust `str::parse::<f64>` 对超范围浮点返回 Ok(±inf)（1e309 → inf），
+      // MoonBit `parse_double` 超范围抛 Err——语言层差异。lexer 的
+      // FloatLiteral token 已保证拼写形态合法（[0-9]+.?[0-9]*e[+-]?[0-9]+），
+      // 此处 parse 失败只可能是**上溢**（含指数字段超 int），按 C/clang
+      // 语义（文档《标准库支持矩阵》推荐 `1e309` 作 INFINITY 替代）产
+      // +inf（负号由一元运算符承担，字面量本身无符号）；下溢（1e-400）
+      // MoonBit 不抛错、直接返 0.0（实测，与 Rust 一致）。非合法拼写
+      // （理论不可达——防御）保留原格式错误。
+      if is_float_literal_shape(text) {
+        return 1.0 / 0.0
+      }
       self.errors.push({
         message: "浮点常量 '\{tok.text}' 格式无效",
         line: tok.loc.line,
@@ -955,6 +966,45 @@ fn Parser::parse_double_or_report(
     }
   }
   v
+}
+
+///|
+/// 浮点字面量拼写形态判定（parse_double 失败分流用）：十进制位数 +
+/// 至多一个小数点 + 至多一个指数段。与 lexer 的 FloatLiteral 扫描
+/// 形态一致（f/F 后缀已由调用方剥离）。
+fn is_float_literal_shape(text : String) -> Bool {
+  let mut i = 0
+  let n = text.length()
+  let mut digits = 0
+  while i < n && text[i] >= '0' && text[i] <= '9' {
+    i += 1
+    digits += 1
+  }
+  if i < n && text[i] == '.' {
+    i += 1
+    while i < n && text[i] >= '0' && text[i] <= '9' {
+      i += 1
+      digits += 1
+    }
+  }
+  if digits == 0 {
+    return false
+  }
+  if i < n && (text[i] == 'e' || text[i] == 'E') {
+    i += 1
+    if i < n && (text[i] == '+' || text[i] == '-') {
+      i += 1
+    }
+    let mut exp_digits = 0
+    while i < n && text[i] >= '0' && text[i] <= '9' {
+      i += 1
+      exp_digits += 1
+    }
+    if exp_digits == 0 {
+      return false
+    }
+  }
+  i == n
 }
 
 // =========================================================================

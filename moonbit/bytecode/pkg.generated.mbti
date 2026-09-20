@@ -1,0 +1,96 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/bytecode"
+
+import {
+  "moonbitlang/core/debug",
+  "vitro/engine/ast",
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+}
+
+// Values
+pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
+
+pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
+
+pub const BYTECODE_LIBC_CODE_LEN : Int = 3485
+
+pub const BYTECODE_LIBC_FUNC_COUNT : Int = 88
+
+pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt = 1024
+
+pub const GLOBAL_REGION_LIMIT : UInt = 65536
+
+pub const GLOBAL_START : UInt = 0x1000
+
+pub const HEAP_START : UInt = 0x5000
+
+pub const MEM_SIZE : UInt = 1048576
+
+pub const NULL_TRAP_SIZE : UInt = 0x1000
+
+pub const STACK_START : UInt = 1048576
+
+pub fn align4(UInt) -> UInt
+
+pub fn argv_region_footprint(Int, Array[String]) -> UInt
+
+pub let bytecode_libc_all_funcs : Array[String]
+
+pub fn bytecode_libc_index(String) -> Int?
+
+pub fn compile_output_dump_json(CompileOutput) -> String
+
+pub fn compute_heap_base(UInt, Int, Array[String]) -> UInt
+
+pub fn is_bytecode_libc(String) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct CompileOutput {
+  code : Array[@opcode.Instruction]
+  globals_init_32 : Array[(UInt, Int)]
+  globals_init_64 : Array[(UInt, UInt64)]
+  func_table : Map[String, FuncMeta]
+  func_index : Map[String, Int]
+  string_data : Array[(UInt, String)]
+  source_map : Array[(UInt, @source.SourceLoc)]
+  symbols : Array[Symbol]
+  struct_defs : Map[String, Array[@ast.StructField]]
+  union_defs : Map[String, Array[@ast.StructField]]
+  f64_constants : Array[Double]
+  i64_constants : Array[Int64]
+  global_data_end : UInt
+} derive(@debug.Debug)
+
+pub(all) struct FuncMeta {
+  mut ip : Int
+  mut arg_count : Int
+  mut param_count : Int
+  mut local_count : Int
+  mut param_sizes : Array[Int]
+  return_type : @ast.Type
+  mut is_variadic : Bool
+  local_buffers : Array[LocalBuffer]
+} derive(@debug.Debug)
+
+pub(all) struct LocalBuffer {
+  offset : Int
+  size : Int
+  name : String
+} derive(@debug.Debug)
+
+pub(all) struct Symbol {
+  name : String
+  addr : UInt
+  is_local : Bool
+  ty : @ast.Type
+  scope_depth : Int
+  func_name : String
+  decl_line : Int
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

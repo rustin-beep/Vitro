@@ -15,6 +15,8 @@ pub fn double_to_json_text(Double) -> String
 
 pub fn expr_depth(Expr) -> Int
 
+pub fn json_escape_string(String) -> String
+
 pub fn stmt_depth(Stmt) -> Int
 
 pub fn stmt_type_depth(Stmt) -> Int
@@ -24,6 +26,8 @@ pub fn template_arg_eq(TemplateArg, TemplateArg) -> Bool
 pub fn type_depth(Type) -> Int
 
 pub fn type_eq(Type, Type) -> Bool
+
+pub fn type_json(Type) -> String
 
 // Errors
 

@@ -1,0 +1,14 @@
+import {
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+  "vitro/engine/codegen",
+  "vitro/engine/lexer",
+  "vitro/engine/parser",
+  "vitro/engine/typeck",
+  "moonbitlang/x/fs",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

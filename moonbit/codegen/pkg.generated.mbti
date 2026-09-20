@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/codegen"
+
+import {
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+}
+
+// Values
+pub const SLOT_STRATEGY_VERSION : Int = 1
+
+pub fn compile(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[String])
+
+// Errors
+
+// Types and methods
+type BytecodeGen
+
+type LitNum
+
+type ScopeFrame
+
+type ShadowEntry
+
+// Type aliases
+
+// Traits

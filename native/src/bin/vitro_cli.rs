@@ -25,6 +25,7 @@ fn print_usage() {
     eprintln!("  vitro_cli export <file1.c> [file2.c ...] -o <out.json> [--builtin-libc]  预编译为字节码产物");
     eprintln!("  vitro_cli serve                      JSON-lines 会话模式（stdin 读请求 / stdout 写响应）");
     eprintln!("  vitro_cli dump-tokens <file.c|dir> --out <dir> [--raw] [--pp]  L1/L2 token TSV 差分出口（S2 防线）");
+    eprintln!("  vitro_cli dump-compile <file.c> -o <out.json>  CompileOutput 13 字段全量差分出口（S5 防线）");
     eprintln!();
     eprintln!("特殊文件名:");
     eprintln!("  -          从标准输入读取源代码（如 echo '...' | vitro_cli run -）");
@@ -395,6 +396,117 @@ fn cmd_export(source_paths: &[String], output_path: &str, is_builtin_libc: bool)
     println!("  代码长度: {} 条指令", export.code_len);
     println!("  函数数量: {}", export.func_index.len());
     println!("  全局变量大小: {} bytes", export.globals_size);
+}
+
+// ---------- dump-compile（S5 差分出口，防线维护） ----------
+//
+// CompileOutput 13 字段全量 JSON——含 export 不导出的 5 项（source_map /
+// symbols / struct_defs / union_defs / global_data_end），A 级产物对拍的
+// Rust 侧真值源。单文件直调管线前段（Lexer → Parser → TypeChecker →
+// BytecodeGen），不过 session（session 不保留 struct_defs 原始形态），
+// 与 run_compile_pipeline 的 codegen 段同语义（is_library_mode = false）。
+//
+// serde derive 是 Rust 侧唯一 emitter（B 级锚纪律）；func_table/func_index/
+// struct_defs/union_defs 为 HashMap，键序随进程种子随机——对拍前双方产物
+// 都必须过 Go canonicalize（scripts/canonicalize）归一键序后再 diff。
+// struct_defs/union_defs 的字段以 Vec<StructField>（含完整 Type）序列化，
+// 与 session.compile.struct_fields（name+offset 摘要）是两个语义层。
+
+fn cmd_dump_compile(file_path: &str, output_path: &str) {
+    use vitro_codegen::BytecodeGen;
+    use vitro_parser::Parser;
+    use vitro_typeck::TypeChecker;
+
+    let source = read_source(file_path);
+
+    let mut lexer = Lexer::new(&source);
+    let (tokens, lex_errors) = lexer.tokenize();
+    if !lex_errors.is_empty() {
+        eprintln!("词法错误: {:?}", lex_errors);
+        std::process::exit(1);
+    }
+
+    let (maybe_program, parse_errors) = Parser::new(tokens).parse();
+    if !parse_errors.is_empty() {
+        eprintln!("语法错误: {:?}", parse_errors);
+        std::process::exit(1);
+    }
+    let mut program = match maybe_program {
+        Some(p) => p,
+        None => {
+            eprintln!("解析失败：无法生成 AST");
+            std::process::exit(1);
+        }
+    };
+
+    let type_checker = TypeChecker::new(false);
+    let (type_errors, _warnings, _hints) = type_checker.check(&mut program);
+    if !type_errors.is_empty() {
+        eprintln!("类型错误: {:?}", type_errors);
+        std::process::exit(1);
+    }
+
+    let gen = BytecodeGen::new();
+    let output = match gen.generate(&mut program) {
+        Ok(o) => o,
+        Err(errors) => {
+            eprintln!("生成错误: {:?}", errors);
+            std::process::exit(1);
+        }
+    };
+
+    #[derive(serde::Serialize)]
+    struct CompileDump<'a> {
+        version: u32,
+        code: &'a [vitro_runtime::instruction::Instruction],
+        globals_init_32: &'a [(u32, i32)],
+        globals_init_64: &'a [(u32, u64)],
+        func_table: &'a std::collections::HashMap<String, vitro_native::session::FuncMeta>,
+        func_index: &'a std::collections::HashMap<String, i32>,
+        string_data: &'a [(u32, String)],
+        source_map: &'a [(u32, vitro_shared::SourceLoc)],
+        symbols: &'a [vitro_runtime::Symbol],
+        struct_defs: &'a std::collections::HashMap<String, Vec<vitro_ast::StructField>>,
+        union_defs: &'a std::collections::HashMap<String, Vec<vitro_ast::StructField>>,
+        f64_constants: &'a [f64],
+        i64_constants: &'a [i64],
+        global_data_end: u32,
+    }
+
+    let dump = CompileDump {
+        version: 1,
+        code: &output.code,
+        globals_init_32: &output.globals_init_32,
+        globals_init_64: &output.globals_init_64,
+        func_table: &output.func_table,
+        func_index: &output.func_index,
+        string_data: &output.string_data,
+        source_map: &output.source_map,
+        symbols: &output.symbols,
+        struct_defs: &output.struct_defs,
+        union_defs: &output.union_defs,
+        f64_constants: &output.f64_constants,
+        i64_constants: &output.i64_constants,
+        global_data_end: output.global_data_end,
+    };
+
+    let json = serde_json::to_string_pretty(&dump).unwrap_or_else(|e| {
+        eprintln!("序列化失败: {}", e);
+        std::process::exit(1);
+    });
+
+    fs::write(output_path, json).unwrap_or_else(|e| {
+        eprintln!("写入输出文件失败 '{}': {}", output_path, e);
+        std::process::exit(1);
+    });
+
+    println!(
+        "dump-compile 完成: {}（{} 条指令 / {} 函数 / global_data_end=0x{:X}）",
+        output_path,
+        output.code.len(),
+        output.func_table.len(),
+        output.global_data_end
+    );
 }
 
 fn cmd_unified(path: &str, input_lines: Vec<String>, max_steps: i32) {
@@ -933,6 +1045,29 @@ fn main() {
                 std::process::exit(1);
             }
             cmd_export(&source_paths, &output_path, is_builtin_libc);
+        }
+        "dump-compile" => {
+            // S5 差分出口（防线维护）：单文件 CompileOutput 13 字段全量 JSON。
+            // 与 export 的区别：不剥入口 wrapper、不过滤 main、无 stub、
+            // 含 export 不导出的 5 字段（source_map/symbols/struct_defs/
+            // union_defs/global_data_end）——A 级产物对拍的 Rust 侧真值源。
+            let mut output_path = String::new();
+            let mut i = 3;
+            while i < args.len() {
+                if args[i] == "-o" && i + 1 < args.len() {
+                    output_path = args[i + 1].clone();
+                    i += 2;
+                } else {
+                    eprintln!("错误: dump-compile 未知选项 {}", args[i]);
+                    std::process::exit(1);
+                }
+            }
+            if output_path.is_empty() {
+                eprintln!("错误: dump-compile 命令需要 -o <输出文件> 选项");
+                print_usage();
+                std::process::exit(1);
+            }
+            cmd_dump_compile(file_path, &output_path);
         }
         "dump-tokens" => {
             // S2 差分出口（防线维护）：对单文件或目录批量产出 L1（raw）/L2（pp）

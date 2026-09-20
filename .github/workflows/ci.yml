@@ -200,6 +200,17 @@ jobs:
             go run ./scripts/typeck_diff native/tests/cases/$d
           done
 
+      - name: MoonBit codegen differential (A-grade, skeleton corpus)
+        # 2026-09-21 S5 审阅批接线：codegen_diff（A 级产物 14 键对拍）。
+        # **只接骨架可通面**（codegen_skeleton 13 例：SAME 12 + AGREE 1）
+        # ——baseline 353 例的语句/表达式族未接线（one-sided 能力缺口）
+        # 属红面基线期，随扩展批逐族收敛后再放开全量（--baseline 语义
+        # 已实测：CONTENT-DIFF 永不豁免、one-sided 显式豁免）。
+        # 判定确定性修复（P1-1）先行：临时文件不预创建 + error 5 重试 +
+        # 基础设施错误 fail loud——三连跑稳定后才接 CI。依赖同上。
+        shell: bash
+        run: go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton
+
       # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
       # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器
       # 真值漂移、跨文档 ABI 版本漂移均无门禁可拦。置于 replay 之后：shadow

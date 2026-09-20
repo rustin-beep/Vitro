@@ -1,0 +1,9 @@
+// L6 产物层：字节码产物 schema（CompileOutput 13 字段）+ Bytecode Libc 固定索引
+// + R1 内存布局纯函数。依赖严格单向：opcode（Instruction）/ ast（Type,
+// StructField）/ source（SourceLoc）；被 codegen / vm 消费，不反向依赖。
+import {
+  "moonbitlang/core/encoding/utf8",
+  "vitro/engine/ast",
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+}

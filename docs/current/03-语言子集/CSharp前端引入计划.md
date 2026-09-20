@@ -56,7 +56,7 @@
 | D1 | 语言标识单源化 | `SourceLang` 二元 enum 替代布尔穿透（砍 C++ 后无第三元）；MoonBit 侧 lang 与 ErrorCode 同包，由码的构造方式直接携带 |
 | D2 | 对象模型 | 引用类型 = 堆分配 + 引用即 u32 指针 + **ARC 确定性回收**（见 §3）——**原生设计不借道 C++**（C++ 栈对象 RAII 与 C# 引用类型是两个语义世界，砍 C++ 后无"照搬多 Pass"包袱：类注册 → 字段布局（引用字段标 ARC）→ 方法签名（无 C++ 重载 mangling 全族，`vitro/engine/names` 产名族机制复用、规则简一档）→ this 即引用） |
 | D3 | 子集边界 | 以 SharpTutor ch01–04 课程裁剪（§5），第一版明确不做 LINQ/委托/属性/异常以外的高级特性 |
-| D4 | 错误码 | **E5xxx 新段**维持原裁；**E4xxx 冻结不重映射**（砍 C++ 后 tempted 把 E4001~E4038 让给 C#——不做：码表 versioned 只增不改 + MoonBit diag 137 臂照搬自 Rust（实测 38 个 E4 码位在 `error_code_gen.mbt`），重语义化破坏照搬对拍。E4xxx 保哑臂（C 语料永不触发、对拍无害），语义冻结登记进 S8 差异台账 |
+| D4 | 错误码 | **E5xxx 新段**维持原裁；**E4xxx 冻结不重映射**（砍 C++ 后 tempted 把 E4 段让给 C#——不做：码表 versioned 只增不改 + MoonBit diag 137 臂照搬自 Rust（实测 38 个 E4 码位在 `error_code_gen.mbt`，分布两段：E4001–E4031 + E4100–E4106——2026-09-21 审阅勘误，原文"E4001~E4038"连续段写法失真，E4032–E4038 不存在），重语义化破坏照搬对拍。E4xxx 保哑臂（C 语料永不触发、对拍无害），语义冻结登记进 S8 差异台账 |
 | D5 | 诊断管线 | **机制复用、数据表分语言**：TraceAnalyzer/误区模式/概念图/学习路径的机制（滑窗计数、图激活、路径组装）语言无关，C# 换错误码表 + 模式表 + 第二张概念图 |
 | D6 | StepCollector 参数化 | C 硬编码两处（`collect_pointer_snapshots` 的线性内存假设、`infer_semantic_label` 的 C 库函数文本启发）按 `SourceLang` 分派；C# 模式下指针快照语义变为**引用快照**（schema 只增） |
 

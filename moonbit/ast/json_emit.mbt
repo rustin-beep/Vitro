@@ -19,6 +19,16 @@ pub fn ast_dump_json(program : ProgramNode) -> String {
 }
 
 ///|
+/// 单个 `Type` 的 JSON 出口（S5 起 bytecode/codegen 产物 emitter 复用——
+/// FuncMeta.return_type / Symbol.ty / StructField.ty 的序列化形态必须与
+/// 本包 E1 emitter 单源，禁止下游另写一份 externally-tagged 形态）。
+pub fn type_json(t : Type) -> String {
+  let buf = StringBuilder()
+  emit_type(t, buf)
+  buf.to_string()
+}
+
+///|
 fn emit_program(p : ProgramNode, buf : StringBuilder) -> Unit {
   buf.write_string("{\"structs\":")
   emit_array(p.structs, buf, (d, b) => emit_struct_decl(d, b))
@@ -58,6 +68,16 @@ fn emit_loc(loc : @source.SourceLoc, buf : StringBuilder) -> Unit {
   buf.write_string(
     "{\"line\":\{loc.line},\"column\":\{loc.column},\"file_id\":\{loc.file_id}}",
   )
+}
+
+///|
+/// JSON 字符串转义单源（S5 起跨包复用）：serde_json 口径——`" \` + \n \r \t
+/// + 其余 < 0x20 控制字符 `\u00XX`；其余字符原样。bytecode/codegen 的产物
+/// emitter（string_data 等）一律经此，禁下游再写一份转义实现。
+pub fn json_escape_string(s : String) -> String {
+  let buf = StringBuilder()
+  emit_json_str(s, buf)
+  buf.to_string()
 }
 
 ///|

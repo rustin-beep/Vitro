@@ -2,7 +2,12 @@
 /// 无符号 64 位累积解析（radix ∈ {2,8,10,16}；分隔符 `'` 已由调用方滤除）。
 /// 溢出返回 None——对应 Rust `u64::from_str_radix` 的 `Err`。
 /// MoonBit `UInt64` 四则静默回绕（F1），溢出判定显式前置：
-/// `val > UMAX/radix` 即溢出（UMAX ≡ -1 mod radix，d ≤ radix-1 时充要）。
+/// 乘法溢出 `val > UMAX/radix` **不充分**——radix 不整除 2^64 时
+/// （十进制：UMAX mod 10 = 5 ≠ 9），`val = floor(UMAX/radix)` 的乘积
+/// 落在 [UMAX-4, UMAX] 区间，尾数 d ≥ UMAX mod radix + 1 即加法溢出
+/// （P0 实证：18446744073709551616 = 2^64 尾位 6 命中，环绕成 0 后
+/// `Some(0)` 放行——globals 静默产 0，Rust 侧 E1006 拒绝）。故加法后
+/// 以单调性检测回绕：`next < val` 即溢出。
 fn parse_u64(text : String, radix : UInt64) -> UInt64? {
   let limit : UInt64 = 18446744073709551615UL / radix
   let mut val : UInt64 = 0UL
@@ -23,7 +28,11 @@ fn parse_u64(text : String, radix : UInt64) -> UInt64? {
     if val > limit {
       return None
     }
-    val = val * radix + d.to_uint64()
+    let next = val * radix + d.to_uint64()
+    if next < val {
+      return None // 加法回绕（radix ∤ 2^64 时的 UMAX 邻域缺口）
+    }
+    val = next
   }
   Some(val)
 }

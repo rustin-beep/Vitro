@@ -167,6 +167,13 @@ jobs:
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
+      - name: Refresh MoonBit registry index
+        # 2026-09-20 CI 实锤：全新安装的 moon 无 registry 索引，解析
+        # moonbitlang/x 报 "module was not found in the registry"；
+        # moon update 只刷索引不动 moon.mod 固定版本（本地验证零回归）
+        shell: bash
+        run: cd moonbit && moon update
+
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash
         run: |

@@ -4,7 +4,7 @@
 > **全域纪律**（中文输出 / 禁擅自 git 提交 / 实测大于脑测 / 诚实记录 / 红→绿 / J9 / archive 规则 / 提交署名规则）以根 AGENTS.md 为准，同样约束本区。
 > **上位文档**：[MoonBit迁移总计划](../docs/current/01-定位与路线/MoonBit迁移总计划.md)（包切分 L0–L9 / 锚点体系 / F1–F9 语言事实）+ [第一阶段计划](../docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)。本手册只沉淀**工程操作层**（命令 / 陷阱 / 纪律 / 发布），不重复上位文档内容。
 
-## 包清单与状态（S4 主体收官——typeck 4 Pass 全接线，597 对拍全绿）
+## 包清单与状态（S4 主体收官——typeck 4 Pass 全接线，598 对拍全绿）
 
 | 包 | 层 | 职责 | 状态 |
 |---|---|---|---|
@@ -16,7 +16,7 @@
 | `vitro/engine/parser` | L3 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；**depth 参数化防护**；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ S3 完成（未发布——随下一 minor 一起） |
 | `vitro/engine/names` | L3 | 名字单源：`__ctor__`/`__dtor__` 产名族唯一出口（parser 8 处散拼已收口）+ `type_mangle_suffix` 17 变体 + `method_mangled_name`（D1 单源照搬）；InstKey→InstId 派生随 S9 C++ 裁定 | ✅ S4 建包（5 测试） |
 | `vitro/engine/libc` | L5 | builtin 签名单表 57 条（visit_call 58 臂去 std__move；照搬现状口径，printf/putchar void 的 N3 漂移登记）；host_func_id 并集判据随 S5/S6 回填 | ✅ S4 建包（3 测试） |
-| `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ S4 主体收官（T5-b/c/d，2026-09-20）：4 Pass 全量接线——call/init/builtin/decl 四文件（visit_call 58 臂 + check_user_func 四级回退（bytecode_libc_sig 表入 libc 包）+ dispatch_stmt 语句族 + VarDecl 巨臂（auto/typeof 推导）+ 数组/struct 初始化器尺寸推断）；13 白盒锚（183 测试）；**597 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap（vfs 偶然对齐监测）；遗留：decl_types 独立批并入本批、E1 全量对拍管道 CI 化待 S5 片后统一 |
+| `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ S4 主体收官（T5-b/c/d，2026-09-20）：4 Pass 全量接线——call/init/builtin/decl 四文件（visit_call 58 臂 + check_user_func 四级回退（bytecode_libc_sig 表入 libc 包）+ dispatch_stmt 语句族 + VarDecl 巨臂（auto/typeof 推导）+ 数组/struct 初始化器尺寸推断）；13 白盒锚（183 测试）；**598 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap（vfs 偶然对齐监测，语料 597→598）；遗留：decl_types 独立批并入本批；E1 全量对拍管道 CI 化已接线（2026-09-20 审阅批补，typeck_diff 四目录入 CI） |
 
 命名规则：module = `vitro/engine`（mooncakes owner `vitro`），包全名 `vitro/engine/<pkg>` 一律全名，代码与配置禁用简称。
 
@@ -39,7 +39,7 @@ go run ./scripts/parser_diff --threshold     # E3+ 阈值样本（A/B 族两侧�
 go run ./scripts/typeck_diff <corpus>        # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；红面基线期大面积 DIFF 属预期——typeck 实现推进中收敛）
 ```
 
-测试计数已入 facts 机判（`moonbit_test_passed` 键）：moonbit/README*.md 的测试数漂移会被 `go run ./scripts/facts check` 抓红——改测试数必须同步 README。
+测试计数真值入 facts 台账（`moonbit_test_passed` 键，`--run` 采集 / CI 每轮刷新）。**注意（2026-09-20 审阅实测）**：moonbit/README*.md 的测试数为**分解式**写法（逐包拆解 + `分解和 179 + doc test 4`），facts 规则将分解式归"人工维护"不机判——**机判抓红不覆盖该处**，改测试数同步 README 是人工义务；裸总数以 facts.json 真值为准。
 
 ## MoonBit 语言与工具链陷阱（全部一手实证，2026-09-19）
 

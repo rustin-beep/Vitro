@@ -17,7 +17,7 @@
 /// （函数签名两轨）/ Pass 2.5（全局 auto/typeof 先定型 + 数组/struct
 /// 初始化器 + 尺寸推断回写）/ Pass 3（函数体 visitor：语句族 + VarDecl
 /// 巨臂 + goto/label 闭合）；表达式定型全变体（运算符/Call/CallPtr/
-/// CompoundLiteral）。597 语料 E1–E4 归一逐字节一致（2 条 F3-v2 白
+/// CompoundLiteral）。598 语料 E1–E4 归一逐字节一致（2 条 F3-v2 白
 /// 名单 FORK(known)，见 scripts/typeck_diff）。E2/E3 面不独立出口
 /// （驱动从 typed_ast 投影派生——改形登记见总计划 §10 S4 行）。
 ///

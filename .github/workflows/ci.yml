@@ -158,7 +158,7 @@ jobs:
       # S3 审阅补线（2026-09-20，F5/G3）：MoonBit 工具链 + 解析差分锚。
       # 此前 parser_diff 不在 CI——offsetof 深链崩溃（F1）/enum 常量链
       # 崩溃（F2）/指针多维错值（F3）三项缺陷与"防线不在 CI"互为因果。
-      # 三模式均为分钟级（canonicalize 预构建后）；597 全量经下方 facts
+      # 三模式均为分钟级（canonicalize 预构建后）；598 全量经下方 facts
       # --run 采集。依赖上方 Release 构建的 vitro_cli。
       - name: Install MoonBit toolchain (parser anchors / facts --run)
         shell: pwsh
@@ -174,12 +174,31 @@ jobs:
         shell: bash
         run: cd moonbit && moon update
 
+      - name: MoonBit unit tests (moon test)
+        # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
+        # --run 间接跑（采集失败只记 unavailable 不红），且 README 测试
+        # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
+        # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
+        shell: bash
+        run: cd moonbit && moon test
+
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash
         run: |
           go run ./scripts/parser_diff --pathological
           go run ./scripts/parser_diff --legal-deep
           go run ./scripts/parser_diff --threshold
+
+      - name: MoonBit typeck differential (E1-E4 full corpus)
+        # 2026-09-20 审阅补线：typeck_diff（S4 对拍防线）此前零 CI 接线
+        # （原排期"E1 全量对拍管道 CI 化待 S5 片后统一"，防线空窗期由
+        # 本步骤关闭）。四目录全量（598 语料）本地实测分钟级；依赖上方
+        # Release 构建的 vitro_cli（serve 出口）+ MoonBit 工具链。
+        shell: bash
+        run: |
+          for d in baseline knr leetcode gap; do
+            go run ./scripts/typeck_diff native/tests/cases/$d
+          done
 
       # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
       # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器

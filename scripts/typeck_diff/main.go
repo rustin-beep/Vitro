@@ -57,6 +57,18 @@ func main() {
 // 语料对拍（E1/E4 全响应 + E2/E3 投影）
 // ---------------------------------------------------------------------------
 
+// knownForkFiles：parser 层已知有意分叉（S3 F3-v2 累加器裁定 b 白名单，
+// 见 scripts/parser_diff/main.go 同名表——根因在 parser：局部函数指针/
+// 函数原型声明符 oracle 双层 Pointer(Pointer(Function)) 不符 C，MoonBit
+// 按 C 语义单层）在 **typeck 消费面**的放大——类型定型分叉连带 E1 诊断
+//（如 fp(42) 通用指针调用 W3055 只在 oracle 双层形态下触发）。与 parser
+// 侧同规则：命中降级 FORK(known) 报告不计失败（白名单吞 DIFF 属危险面，
+// 依赖 FORK 行诚实可见）；S8 差异台账收编时一并裁定。
+var knownForkFiles = map[string]string{
+	"function_pointer_return_ptr.c": "局部函数指针双层→C 单层（F3-v2）——typeck 消费面放大（W3055 分叉）",
+	"kr_5_11.c":                     "局部函数原型双层→C 单层（F3-v2）——typeck 消费面放大",
+}
+
 func runCorpus(corpus string, selftest bool) int {
 	files := listCFiles(corpus)
 	if len(files) == 0 {
@@ -108,6 +120,12 @@ func runCorpus(corpus string, selftest bool) int {
 	diffMarked := make([]bool, len(files))
 	for i, f := range files {
 		if !bytes.Equal(rustNorms[i], moonNorms[i]) {
+			// parser 层已知分叉在 typeck 消费面的放大（白名单条目与
+			// parser_diff 同源）——降级 FORK 报告不计失败，防静默吞
+			if reason, ok := knownForkFiles[filepath.Base(f)]; ok {
+				fmt.Printf("FORK(known) %s——%s\n", filepath.Base(f), reason)
+				continue
+			}
 			failures++
 			diffMarked[i] = true
 			fmt.Printf("DIFF %s（E1/E4 全响应）\n  rust: %s\n  moon: %s\n", filepath.Base(f),

@@ -3,14 +3,12 @@
 /// 的 C 部分；**函数式重建**：visitor 值进值出 `resolve_expr_type(Expr)
 /// -> (Type, Expr)`——返回定型类型与改写后子树，父节点重建携带）。
 ///
-/// 本批接线面：Offsetof 前置 lowering（改写为 Literal(offset)）/
-/// Identifier（含 static 可见性 E3059 + 函数名→函数指针 + __func__）/
-/// Index / Member / Literal 族（含 string 的 P4 字节长度）/ InitList /
-/// Sizeof（含数组退化 W3052）/ Alignof / Cast（W3064）。
-/// 未接线变体直通登记（typed_ast 原样、不检查）：Binary/Ternary/Unary/
-/// Assign（ops.rs 随下批——promote_type 判据已备）、Call/CallPtr（call.rs
-/// 下批）、Generic（ops.rs）、CompoundLiteral（依赖 init.rs 检查器，T5-c）、
-/// C++ 五变体（This/MemberCall/New/Delete/Move/Lambda，S9）。
+/// 接线状态（T5-b/c/d 后）：Offsetof 前置 lowering / Identifier / Index /
+/// Member / Literal 族 / InitList / Sizeof / Alignof / Cast / 运算符族
+///（Binary/Ternary/Unary/Assign/_Generic）/ **Call/CallPtr**（call.mbt）
+/// 与 **CompoundLiteral**（init.mbt）已全量。
+/// 未接线变体直通（typed_ast 原样、不检查）：C++ 五变体（This/
+/// MemberCall/New/Delete/Move/Lambda，S9）。
 /// 剔除登记（C++ 分支，C AST 不产即等价）：identifier 的隐式 this->field
 /// 改写、Reference/RValueRef 脱糖、member 的 class 字段与访问控制。
 
@@ -104,7 +102,7 @@ pub fn TypeChecker::resolve_expr_type(
       let ty = @ast.Type::int()
       (ty, Literal(offset, loc, ty))
     }
-    Identifier(name, loc, _) => self.resolve_identifier(name, loc)
+    Identifier(name, loc, id_ty) => self.resolve_identifier(name, loc, id_ty)
     Index(array, index, loc, _) => self.resolve_index(array, index, loc)
     Member(object, member_name, loc, _) =>
       self.resolve_member(object, member_name, loc)
@@ -126,18 +124,33 @@ pub fn TypeChecker::resolve_expr_type(
     Assign(op, left, right, loc, _) => self.resolve_assign(op, left, right, loc)
     Generic(control, associations, default, loc, _) =>
       self.resolve_generic(control, associations, default, loc)
-    // —— 未接线变体直通（登记见文件头；红面覆盖，call 批收敛）——
+    Call(name, args, loc, _) => {
+      let ty = self.resolve_call(name, args, loc)
+      (ty, Call(name, args, loc, ty))
+    }
+    CallPtr(callee, args, loc, _) => {
+      let (ty, new_callee) = self.resolve_call_ptr(callee, args, loc)
+      (ty, CallPtr(new_callee, args, loc, ty))
+    }
+    CompoundLiteral(target_type, init, loc, _) =>
+      self.resolve_compound_literal(target_type, init, loc)
+    // —— 未接线变体直通（C++ 五变体 This/MemberCall/New/Delete/Move/
+    // Lambda，S9 裁定批）——
     _ => (expr.ty(), expr)
   }
 }
 
 ///|
 /// 标识符解析（变量查表 + static 跨文件可见性 + 函数名→函数指针 +
-/// __func__ 预定义标识符 + 未声明 E3023）。ty 写入重建节点。
+/// __func__ 预定义标识符 + 未声明 E3023）。ty 写入重建节点——**除
+/// __func__**：Rust var.rs:58-67 该分支提前 return 跳过末尾的 `*ty =
+/// result` 写回（节点 ty 保持 parser 占位，E4 面照搬现状；返回值类型
+/// 仍供父节点定型）。
 fn TypeChecker::resolve_identifier(
   self : TypeChecker,
   name : String,
   loc : @source.SourceLoc,
+  orig_ty : @ast.Type,
 ) -> (@ast.Type, @ast.Expr) {
   let result : @ast.Type = match self.lookup_var(name) {
     Some(sym) => {
@@ -167,9 +180,18 @@ fn TypeChecker::resolve_identifier(
           if name == "__func__" {
             // C99 __func__（E1 B 档）：按 const char 数组定型（退化语义
             // 同字符串字面量）；值由 codegen 发射当前函数名。名字长度
-            // 运行期才定，占位即可
+            // 运行期才定，占位即可。**ty 不写回**（提前 return 照搬——
+            // E4 dump 节点保持占位 Void）
             let n = name.length()
-            @ast.Type::Array(Char(false, false), n, [n], true, false, [])
+            let arr = @ast.Type::Array(
+              Char(false, false),
+              n,
+              [n],
+              true,
+              false,
+              [],
+            )
+            return (arr, Identifier(name, loc, orig_ty))
           } else {
             self.report_error(
               "未声明的变量 '\{name}'",

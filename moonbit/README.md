@@ -40,7 +40,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 170 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 17；分解和 166 + 根 README doc test 4）——S4 起 names/libc/typeck 入列；分解数以 moon test -p 逐包为准
+moon check && moon test    # 183 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30；分解和 179 + 根 README doc test 4）——S4 起 names/libc/typeck 入列；分解数以 moon test -p 逐包为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

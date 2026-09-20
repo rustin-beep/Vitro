@@ -12,19 +12,22 @@
 ///    "parse_errors":[...],
 ///    "type_errors":[...],"type_warnings":[...],"type_hints":[...]}
 ///
-/// **当前形态**：typeck C 子集 4 Pass 部分接线——Pass 1（struct/union
-/// 注册 + T-P0-8 环检测）/ Pass 2（函数签名）/ Pass 2.5（全局登记 +
-/// U1#12 数组尺寸三形状）已落地；表达式定型 / 初始化器检查 / Pass 3
-/// 函数体 visitor 随 expr/decl/init 批接线（当前直通不检查——typed_ast
-/// 的 ty 保持 parser 占位）。红面 = 未接线面，实现推进逐步收敛。
-/// E2/E3 面不独立出口（驱动从 typed_ast 投影派生——改形登记见总计划
-/// §10 S4 行）。
+/// **当前形态**：typeck C 子集 4 Pass **全量接线**（T5-b/c/d 批收官，
+/// 2026-09-20）——Pass 1（struct/union 注册 + T-P0-8 环检测）/ Pass 2
+/// （函数签名两轨）/ Pass 2.5（全局 auto/typeof 先定型 + 数组/struct
+/// 初始化器 + 尺寸推断回写）/ Pass 3（函数体 visitor：语句族 + VarDecl
+/// 巨臂 + goto/label 闭合）；表达式定型全变体（运算符/Call/CallPtr/
+/// CompoundLiteral）。597 语料 E1–E4 归一逐字节一致（2 条 F3-v2 白
+/// 名单 FORK(known)，见 scripts/typeck_diff）。E2/E3 面不独立出口
+/// （驱动从 typed_ast 投影派生——改形登记见总计划 §10 S4 行）。
 ///
 /// **载体观察（2026-09-20 审阅）**：目录模式注入 dir-wide vfs，但
 /// `tokenize_with_vfs` 的 base_dir 默认 "."，quote-include 候选键
 /// `./x.h` 与 vfs 绝对路径键结构性不命中——注入实际无效，两侧同无
-/// 自定义 include 解析（与 S3 dump_ast 同款既有模式，597 SAME 属
-/// "两侧同失败"的一致——偶然对齐，哨兵用例随 expr 批两出口统一补）。
+/// 自定义 include 解析（与 S3 dump_ast 同款既有模式，"两侧同失败"
+/// 的一致属偶然对齐）。**哨兵已补**（T5-c）：gap/include_quote_
+/// sentinel.c 入语料，两驱动常驻监测该面——任一侧 vfs 行为独立变化
+/// 即红。
 fn main raise {
   let args = @env.args()
   if args.length() < 3 {

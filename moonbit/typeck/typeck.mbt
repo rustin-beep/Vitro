@@ -52,15 +52,18 @@ pub struct TypeChecker {
   unions : Map[String, StructSymbol]
   // 作用域栈
   scopes : Array[Map[String, VarSymbol]]
-  // 上下文标量（Rust 同名照搬）
-  current_func_return : @ast.Type?
-  current_file : String
-  loop_depth : Int
-  switch_depth : Int
+  // 上下文标量（Rust 同名照搬——visitor 期间可变）
+  mut current_func_return : @ast.Type?
+  mut current_file : String
+  mut loop_depth : Int
+  mut switch_depth : Int
   // 当前函数形参名集合（sizeof 的数组形参退化 W3052 判据；visit_func_decl
   // 填充/清空——Rust lib.rs:45，骨架批漏项本批补）
   current_func_params : Set[String]
-  char_narrow_suppress : Bool
+  mut char_narrow_suppress : Bool
+  // goto/label 闭合检查（visit_func_decl 填充/清空；Rust lib.rs:46-47）
+  func_labels : Map[String, @source.SourceLoc]
+  pending_gotos : Array[(String, @source.SourceLoc)]
   // 诊断三段（push 序 = E1 对拍面）
   errors : Array[TypeError]
   warnings : Array[TypeError]
@@ -83,6 +86,8 @@ pub fn TypeChecker::new() -> TypeChecker {
     switch_depth: 0,
     current_func_params: Set([]),
     char_narrow_suppress: false,
+    func_labels: Map([]),
+    pending_gotos: [],
     errors: [],
     warnings: [],
     hints: [],
@@ -198,10 +203,33 @@ pub fn TypeChecker::check(
       }
     }
   }
-  // Pass 2.5: 全局变量登记 + 数组尺寸合法性。
-  // 【下一批接线】auto/typeof 先定型、初始化器检查（依赖 resolve_expr_type）
+  // Pass 2.5: Register globals and check initializers（Rust lib.rs
+  // 273-349 全量——call/init 批接线完成，直通守卫全部移除）。
+  // 条目 2（2026-09-11 照搬）：全局 auto/typeof 变量必须**先用初始化器
+  // 定型再登记**；初始化器只解析一次，结果缓存给下面的检查循环复用
+  // ——重复解析 = 诊断双份。
   self.enter_scope()
-  for g in program.globals {
+  let precomputed_init_types : Map[String, @ast.Type] = Map([])
+  for i in 0..<program.globals.length() {
+    let g = program.globals[i]
+    if g.init is Some(init) {
+      if type_has_auto(g.ty) || type_has_typeof(g.ty) {
+        let (init_ty, new_init) = self.resolve_expr_type(init)
+        let mut new_ty = g.ty
+        if type_has_auto(new_ty) {
+          new_ty = replace_auto_in_type(new_ty, init_ty)
+        }
+        // auto 替换后再判 typeof（Rust 顺序——两个判定都作用于替换后 ty）
+        if type_has_typeof(new_ty) {
+          new_ty = resolve_typeof_in_type(new_ty, init_ty)
+        }
+        precomputed_init_types.set(g.name, init_ty)
+        program.globals[i] = { ..g, ty: new_ty, init: Some(new_init), }
+      }
+    }
+  }
+  for i in 0..<program.globals.length() {
+    let g = program.globals[i]
     self.declare_var(
       g.name,
       g.ty,
@@ -216,43 +244,65 @@ pub fn TypeChecker::check(
       }
     }
   }
-  for g in program.globals {
-    // U1#12：全局数组尺寸合法性——extern 不完整声明合法跳过；无初始化器
-    // 的 `int a[];` 全局定义必须报错
+  for i in 0..<program.globals.length() {
+    let g = program.globals[i]
+    // U1#12：全局数组尺寸合法性——extern 不完整声明（extern int g[];）
+    // 是合法的，跳过；无初始化器的 `int a[];` 全局定义必须报错
     if g.ty.is_array() && !g.is_extern {
       let has_init_list = g.init is Some(InitList(_, _, _)) ||
         g.init is Some(StringLiteral(_, _, _))
       self.check_array_dims_legality(g.ty, has_init_list, g.loc)
     }
-  }
-  // Pass 2.5 初始化器检查（Rust else 分支的 C 面，函数式重建：元素整体
-  // 换新）。【接线恢复 + 守卫】ops 批（Binary/Ternary/Unary/Assign/
-  // Generic）已真解析，Void 占位假 E3004 教训消除；**Call/CallPtr 仍
-  // 直通**（call 批未迁——`int g = f();` 的 init 走守卫跳过，call 批
-  // 放开）。auto/typeof 先定型（decl_types 批）与数组/结构体初始化器
-  // 形状检查（init.rs 批）同此登记。
-  for i in 0..<program.globals.length() {
-    let g = program.globals[i]
     if g.init is Some(init) {
-      let skip = g.ty.is_array() ||
-        (g.ty.kind() is TK_Struct && init is InitList(_, _, _)) ||
-        g.ty.kind() is TK_Auto ||
-        init is Call(_, _, _, _) ||
-        init is CallPtr(_, _, _, _)
-      if !skip {
-        let (init_type, new_init) = self.resolve_expr_type(init)
-        if !self.check_assignable(g.ty, init_type, g.loc) {
+      if g.ty.is_array() {
+        let (new_ty, new_init) = self.check_array_initializer(g.ty, init, g.loc)
+        // P4：`char g[] = "str"` 的尺寸推断发生在 declare_var 之后——
+        // 回写符号表，否则 sizeof(g) 用推断前快照恒 1
+        self.update_var_type(g.name, new_ty)
+        program.globals[i] = { ..g, ty: new_ty, init: Some(new_init), }
+      } else if g.ty.kind() is TK_Struct && init is InitList(_, _, _) {
+        let new_init = self.check_struct_initializer(g.ty, init, g.loc)
+        program.globals[i] = { ..g, init: Some(new_init), }
+      } else {
+        // precomputed 命中者取缓存类型（init 已在首段解析改写）；未命中
+        // 现场解析（改写存回）——Rust `resolve_expr_type(&mut init)` 的
+        // 就地改写语义
+        let init_type : @ast.Type = match precomputed_init_types.get(g.name) {
+          Some(t) => t
+          None => {
+            let (t, new_init) = self.resolve_expr_type(init)
+            program.globals[i] = { ..g, init: Some(new_init), }
+            t
+          }
+        }
+        let g_now = program.globals[i]
+        let mut new_ty = g_now.ty
+        if type_has_auto(new_ty) {
+          new_ty = replace_auto_in_type(new_ty, init_type)
+        }
+        if type_has_typeof(new_ty) {
+          new_ty = resolve_typeof_in_type(new_ty, init_type)
+        }
+        if !@ast.type_eq(new_ty, g_now.ty) {
+          program.globals[i] = { ..g_now, ty: new_ty, }
+        }
+        if !self.check_assignable(new_ty, init_type, g.loc) {
           self.report_error(
-            "类型不匹配：无法将 '\{init_type.to_c_string()}' 赋值给 '\{g.ty.to_c_string()}'",
+            "类型不匹配：无法将 '\{init_type.to_c_string()}' 赋值给 '\{new_ty.to_c_string()}'",
             g.loc,
             E3004_TypeMismatch,
           )
         }
-        program.globals[i] = { ..g, init: Some(new_init), }
       }
     }
   }
-  // 【下一批接线】Pass 3 函数体 visitor（visit_func_decl——decl.rs 批）。
+  // Pass 3: Check function bodies（decl.mbt visit_func_decl——body 为
+  // None 的存根声明跳过：include 存根注入与 extern 声明同此轨）
+  for i in 0..<program.funcs.length() {
+    if program.funcs[i].body is Some(_) {
+      program.funcs[i] = self.visit_func_decl(program.funcs[i])
+    }
+  }
   self.exit_scope()
   (program, self.errors, self.warnings, self.hints)
 }

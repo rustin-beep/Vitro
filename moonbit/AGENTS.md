@@ -4,7 +4,7 @@
 > **全域纪律**（中文输出 / 禁擅自 git 提交 / 实测大于脑测 / 诚实记录 / 红→绿 / J9 / archive 规则 / 提交署名规则）以根 AGENTS.md 为准，同样约束本区。
 > **上位文档**：[MoonBit迁移总计划](../docs/current/01-定位与路线/MoonBit迁移总计划.md)（包切分 L0–L9 / 锚点体系 / F1–F9 语言事实）+ [第一阶段计划](../docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)。本手册只沉淀**工程操作层**（命令 / 陷阱 / 纪律 / 发布），不重复上位文档内容。
 
-## 包清单与状态（S4 进行中）
+## 包清单与状态（S4 主体收官——typeck 4 Pass 全接线，597 对拍全绿）
 
 | 包 | 层 | 职责 | 状态 |
 |---|---|---|---|
@@ -16,7 +16,7 @@
 | `vitro/engine/parser` | L3 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；**depth 参数化防护**；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ S3 完成（未发布——随下一 minor 一起） |
 | `vitro/engine/names` | L3 | 名字单源：`__ctor__`/`__dtor__` 产名族唯一出口（parser 8 处散拼已收口）+ `type_mangle_suffix` 17 变体 + `method_mangled_name`（D1 单源照搬）；InstKey→InstId 派生随 S9 C++ 裁定 | ✅ S4 建包（5 测试） |
 | `vitro/engine/libc` | L5 | builtin 签名单表 57 条（visit_call 58 臂去 std__move；照搬现状口径，printf/putchar void 的 N3 漂移登记）；host_func_id 并集判据随 S5/S6 回填 | ✅ S4 建包（3 测试） |
-| `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | 🚧 S4 骨架批落地：Pass 1/2/2.5-dims 面 + convert 判据表 + 6 白盒锚（B6 十例/环检测/U1#12/declare_var 四层/W0-4）；dump_typeck 已接真 typeck（E1 增量探针两侧逐字节一致）；gap 红面 10/15（差异全在表达式定型面）；**下批：expr/decl/init 族 + Pass 2.5 初始化器 + Pass 3 函数体** |
+| `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ S4 主体收官（T5-b/c/d，2026-09-20）：4 Pass 全量接线——call/init/builtin/decl 四文件（visit_call 58 臂 + check_user_func 四级回退（bytecode_libc_sig 表入 libc 包）+ dispatch_stmt 语句族 + VarDecl 巨臂（auto/typeof 推导）+ 数组/struct 初始化器尺寸推断）；13 白盒锚（183 测试）；**597 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap（vfs 偶然对齐监测）；遗留：decl_types 独立批并入本批、E1 全量对拍管道 CI 化待 S5 片后统一 |
 
 命名规则：module = `vitro/engine`（mooncakes owner `vitro`），包全名 `vitro/engine/<pkg>` 一律全名，代码与配置禁用简称。
 

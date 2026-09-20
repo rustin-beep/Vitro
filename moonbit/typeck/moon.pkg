@@ -1,5 +1,6 @@
 import {
   "vitro/engine/ast",
   "vitro/engine/diag",
+  "vitro/engine/libc",
   "vitro/engine/source",
 }

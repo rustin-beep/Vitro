@@ -9,6 +9,10 @@
 >
 > **命名约定**：`current/` 下文档自 2026-09-13 起使用中文文件名（专有名词如 C++/CLI/VM/schema 保留英文）；
 > 旧英文名在其他分支或本地检出中可能仍被引用，对照关系见各文档自身头部。
+>
+> **插图（SVG）约定**：`current/` 下的 4 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱）由
+> `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成——影子验证图内的跑批快照数字带 `data-fact`
+> 锚，由 `go run ./scripts/facts check` 机判漂移；**勿手改**入库 SVG（下次生成即回退）。
 
 ## 文档目录
 

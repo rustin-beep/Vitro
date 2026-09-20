@@ -29,6 +29,8 @@ vitro 引擎核心（Rust workspace，禁止平台 API 耦合）
      headless 交互：编译 / 运行 / 单步 / 时间旅行 / 断点 的脚本化消费
 ```
 
+> 架构图（SVG）：[`docs/current/01-定位与路线/vitro-architecture-three-exits.svg`](docs/current/01-定位与路线/vitro-architecture-three-exits.svg)——由 `go run ./scripts/gen_svg` 生成，内容与上图对账。
+
 **架构纪律**：新能力一律先落语言中立的 Rust 层，三个出口只做薄包装且共用同一套入口语义（`native/src/session_api.rs`）；复杂结构过边界统一走 JSON 字符串；capi 是公共 API，承诺即契约。
 
 ## 技术栈

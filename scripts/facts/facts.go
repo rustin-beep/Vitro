@@ -122,6 +122,9 @@ func collectShadowC(root string, facts map[string]Fact) {
 	var d struct {
 		Timestamp string         `json:"timestamp"`
 		Summary   map[string]int `json:"summary"`
+		Details   []struct {
+			DiffType string `json:"diff_type"`
+		} `json:"details"`
 	}
 	var asOf string
 	found := false
@@ -138,8 +141,10 @@ func collectShadowC(root string, facts map[string]Fact) {
 		}
 	}
 	if !found {
-		facts["shadow_c_cases"] = unavail("用例", rel, how, "产物缺失或格式不符")
-		facts["shadow_c_match"] = unavail("用例", rel, how, "产物缺失或格式不符")
+		for _, k := range []string{"shadow_c_cases", "shadow_c_match",
+			"shadow_c_known_issue", "shadow_c_gap_extension", "shadow_c_gaps"} {
+			facts[k] = unavail("用例", rel, how, "产物缺失或格式不符")
+		}
 		return
 	}
 	total, hasTotal := d.Summary["total"]
@@ -152,6 +157,21 @@ func collectShadowC(root string, facts map[string]Fact) {
 	if hasMatch {
 		facts["shadow_c_match"] = okFact(match, "用例", rel, "read_report", asOf)
 	}
+	// 分类明细与缺口数从 details / summary 机数（2026-09-20，为 SVG data-fact
+	// 对账补的真值——影子验证框架.md 头部与 docs SVG 的分解式数字不再人肉同步）。
+	knownN, gapExtN := 0, 0
+	for _, it := range d.Details {
+		switch it.DiffType {
+		case "known_issue":
+			knownN++
+		case "gap_extension":
+			gapExtN++
+		}
+	}
+	facts["shadow_c_known_issue"] = okFact(knownN, "用例", rel, "read_report", asOf)
+	facts["shadow_c_gap_extension"] = okFact(gapExtN, "用例", rel, "read_report", asOf)
+	gaps := d.Summary["compile_gap"] + d.Summary["runtime_gap"] + d.Summary["output_gap"]
+	facts["shadow_c_gaps"] = okFact(gaps, "处", rel, "read_report", asOf)
 }
 
 func collectShadowCpp(root string, facts map[string]Fact) {
@@ -165,17 +185,22 @@ func collectShadowCpp(root string, facts map[string]Fact) {
 	if err := readJSON(p, &arr); err != nil || len(arr) == 0 {
 		facts["shadow_cpp_cases"] = unavail("用例", rel, how, "产物缺失或不是数组")
 		facts["shadow_cpp_match"] = unavail("用例", rel, how, "产物缺失或不是数组")
+		facts["shadow_cpp_clang_fail"] = unavail("用例", rel, how, "产物缺失或不是数组")
 		return
 	}
-	matched := 0
+	matched, clangFail := 0, 0
 	for _, c := range arr {
-		if c.DiffType == "match" {
+		switch c.DiffType {
+		case "match":
 			matched++
+		case "clang_compile_fail":
+			clangFail++
 		}
 	}
 	asOf := mtimeISO(p)
 	facts["shadow_cpp_cases"] = okFact(len(arr), "用例", rel, "read_report", asOf)
 	facts["shadow_cpp_match"] = okFact(matched, "用例", rel, "read_report", asOf)
+	facts["shadow_cpp_clang_fail"] = okFact(clangFail, "用例", rel, "read_report", asOf)
 }
 
 // ─── 采集器：失败台账活跃条目（解析 md，零副作用）──────────────────────────

@@ -6,3 +6,6 @@ moonbit/** text eol=lf
 *.mbtx text eol=lf
 moon.mod text eol=lf
 moon.pkg text eol=lf
+# 文档插图 SVG：生成器（scripts/gen_svg）写 LF、facts check 按字节比对锚文本，
+# checkout 行尾翻转会让 diff 判整行改动（2026-09-20 入库批）
+*.svg text eol=lf

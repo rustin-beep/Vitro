@@ -67,6 +67,39 @@ func rules() []Rule {
 	}
 }
 
+// ─── SVG data-fact 对账（2026-09-20）────────────────────────────────────────
+//
+// docs/ 下入库 SVG 由 scripts/gen_svg 从 facts 台账生成（探针转正 Go 重写，
+// 与本工具同源读 reports/facts.json），跑批快照数字以 data-fact="key" 显式
+// 绑定真值。与 md 通道的差异：
+//   - 显式属性锚定，天然免除语境正则的歧义——不需要 Context/Lo/Hi；
+//   - 判定看 <text> 文本段的全部数字（含一位数——known_issue 3 这类小计数；
+//     md 通道的 reNum=\d{2,6} 在这里会漏）；
+//   - 漂移**不进自动 sync**（interactiveSync 跳过 .svg 命中）：SVG 的修复
+//     动作是重跑 go run ./scripts/gen_svg，手改数字会破坏模板一致性、下次
+//     再生成即回退。
+var svgFactMeta = map[string]struct {
+	label string
+	unit  string
+}{
+	"shadow_c_cases":         {"C 影子用例总数（SVG 锚）", "用例"},
+	"shadow_c_match":         {"C match 数（SVG 锚）", "用例"},
+	"shadow_c_known_issue":   {"C known_issue 数（SVG 锚）", "用例"},
+	"shadow_c_gap_extension": {"C gap_extension 数（SVG 锚）", "用例"},
+	"shadow_c_gaps":          {"C 非预期差异数（SVG 锚）", "处"},
+	"shadow_cpp_cases":       {"C++ 影子用例总数（SVG 锚）", "用例"},
+	"shadow_cpp_match":       {"C++ 一致数（SVG 锚）", "用例"},
+	"shadow_cpp_clang_fail":  {"C++ clang_compile_fail 数（SVG 锚）", "用例"},
+}
+
+var (
+	reDataFact = regexp.MustCompile(`data-fact="([a-z0-9_]+)"`)
+	// 锚后最近的文本节点：gen_svg 以 <tspan data-fact=…>n</tspan> 逐数字锚定
+	// （一行多锚零歧义），兜底匹配 </text>（整行单锚的历史形态）。
+	reSVGTextTail = regexp.MustCompile(`^[^>]*>([^<]*)</(?:tspan|text)>`)
+	reSVGNum      = regexp.MustCompile(`\d+`)
+)
+
 // ─── 文档分级 ────────────────────────────────────────────────────────────────
 
 var (
@@ -106,7 +139,7 @@ func scanFiles(root string) []string {
 			}
 			return nil
 		}
-		if strings.HasSuffix(p, ".md") {
+		if strings.HasSuffix(p, ".md") || strings.HasSuffix(p, ".svg") {
 			out = append(out, rel)
 		}
 		return nil
@@ -353,6 +386,12 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 
 	files := scanFiles(root)
 	for _, rel := range files {
+		// .svg 走下方 data-fact 显式锚通道：标签行文本剥掉属性后的语境歧义
+		// 大（坐标/字号数字混在行内），且生成物的修复动作是重跑生成器而非
+		// 文本替换——不参与 md 规则命中与自动 sync。
+		if strings.HasSuffix(rel, ".svg") {
+			continue
+		}
 		tier := classifyFile(rel)
 		if tier == "ARCHIVE" {
 			continue
@@ -485,6 +524,68 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 					// 分解式/实测行：子项与总数无法机判区分、自动替换有破坏面
 					//（见 FactAudit.Manual 注释）——人工维护，不判 drift。
 					a.Manual = append(a.Manual, h)
+				} else {
+					a.Drift = append(a.Drift, h)
+				}
+			}
+		}
+	}
+
+	// ── SVG data-fact 通道：docs/ 下生成 SVG 的显式数字锚 ──────────────────
+	// 判据：锚所在 <text> 文本段的数字集合必须含真值（分解式行总数在行内即绿）。
+	// SVG 专属 key（md 通道无规则）在此按需建 audit，与 md 通道同表呈现。
+	ensureSVGAudit := func(key string) *FactAudit {
+		if a, ok := byKey[key]; ok {
+			return a
+		}
+		meta := svgFactMeta[key]
+		a := &FactAudit{Rule: Rule{Key: key, Label: meta.label,
+			Context: reDataFact, Unit: meta.unit}, Truth: doc.Facts[key].Value}
+		byKey[key] = a
+		order = append(order, key)
+		return a
+	}
+	for _, rel := range files {
+		if !strings.HasSuffix(rel, ".svg") {
+			continue
+		}
+		lines, err := splitLinesKeep(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		for i, raw := range lines {
+			line := strings.TrimSuffix(raw, "\r")
+			for _, m := range reDataFact.FindAllStringSubmatch(line, -1) {
+				key := m[1]
+				if _, ok := svgFactMeta[key]; !ok {
+					continue // 未登记 key：gen_svg 只输出登记锚，防御性跳过
+				}
+				a := ensureSVGAudit(key)
+				h := Hit{Key: key, File: rel, LineNo: i + 1,
+					Text: strings.TrimSpace(line),
+					Warn: "SVG 为生成物——重跑 go run ./scripts/gen_svg 后再 check（勿手改数字）"}
+				if pos := strings.Index(line, m[0]); pos >= 0 {
+					if tr := reSVGTextTail.FindStringSubmatch(line[pos+len(m[0]):]); tr != nil {
+						for _, ns := range reSVGNum.FindAllString(tr[1], -1) {
+							if v, err := strconv.Atoi(ns); err == nil {
+								h.Spans = append(h.Spans, numSpan{value: v})
+							}
+						}
+					}
+				}
+				if a.Truth == nil {
+					a.Pending = append(a.Pending, h) // 无真值：待采集，不判漂移
+					continue
+				}
+				found := false
+				for _, s := range h.Spans {
+					if s.value == *a.Truth {
+						found = true
+						break
+					}
+				}
+				if found {
+					a.Matched++
 				} else {
 					a.Drift = append(a.Drift, h)
 				}

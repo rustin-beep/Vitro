@@ -220,7 +220,17 @@ func needsHumanReview(h Hit) bool { return h.Warn != "" || len(h.Cooccur) > 0 }
 // interactiveSync 逐条弹出，输入字母确认后改写文件。
 // autoYes：无警告条目自动应用；forceYes：连同警告条目也自动应用。
 func interactiveSync(root string, res AuditResult, autoYes, forceYes bool) {
-	hits := res.allDrift()
+	// SVG 命中不进文本替换清单：SVG 由 scripts/gen_svg 生成，修复动作是
+	// 重跑生成器（手改数字下次再生成即回退，见 audit.go SVG 通道注释）。
+	var hits []Hit
+	svgDrift := 0
+	for _, h := range res.allDrift() {
+		if strings.HasSuffix(h.File, ".svg") {
+			svgDrift++
+			continue
+		}
+		hits = append(hits, h)
+	}
 	reader := bufio.NewReader(os.Stdin)
 	// 启动即自动（--yes/--force）；交互中按 a 只把"无警告条目"转为自动，
 	// 带警告的仍逐条询问（保留人工否决权）。
@@ -316,6 +326,9 @@ func interactiveSync(root string, res AuditResult, autoYes, forceYes bool) {
 	}
 
 	fmt.Printf("\n同步结束：已改 %d / 跳过 %d / 失败 %d\n", applied, skipped, failed)
+	if svgDrift > 0 {
+		fmt.Printf("另有 SVG data-fact 漂移 %d 处未入列——重跑 go run ./scripts/gen_svg 再 check\n", svgDrift)
+	}
 	if applied > 0 {
 		fmt.Println("建议复查: git diff --stat  （数字改动应只落在被确认的行）")
 	}

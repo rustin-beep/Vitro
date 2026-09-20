@@ -289,7 +289,7 @@ fn Parser::parse_var_declarator(
 }
 
 ///|
-enum DeclPrefix {
+priv enum DeclPrefix {
   PtrPrefix
   RefPrefix(Bool) // is_const
   RValPrefix
@@ -573,167 +573,88 @@ fn Parser::interpret_declarator_node(
   depth : Int,
 ) -> @ast.Type {
   ignore(depth)
-  match node {
-    Base => base_type
-    Reference(inner, is_const) => {
-      let inner_ty = self.interpret_declarator_node(inner, base_type, depth)
-      @ast.Type::Reference(inner_ty, is_const)
-    }
-    RValueRef(inner) => {
-      let inner_ty = self.interpret_declarator_node(inner, base_type, depth)
-      @ast.Type::RValueRef(inner_ty)
-    }
-    Pointer(inner) =>
-      match inner {
-        Array(array_inner, size_expr) => {
-          // int (*a[N])[] 形态：Pointer(Array) → 元素为指针的数组
-          let elem_ty = self.interpret_declarator_node(
-            array_inner, base_type, depth,
-          )
-          let info = array_dim_info(size_expr)
-          let size = info.0
-          let is_vla = info.1
-          let vla_dim = info.2
-          let vla_dims : Array[@ast.Expr] = match vla_dim {
-            Some(e) => [e]
-            None => []
-          }
-          @ast.Type::Array(
-            @ast.Type::pointer_to(elem_ty),
-            size,
-            [size],
-            false,
-            is_vla,
-            vla_dims,
-          )
-        }
-        _ => {
-          let inner_ty = self.interpret_declarator_node(inner, base_type, depth)
-          @ast.Type::pointer_to(inner_ty)
-        }
+  // F3-v2 修复（复审处方）：自顶向下累加器——外层节点先消费类型 T，T
+  // 沿链下钻逐层变形，Base 时返回。维度归属在下降路径上天然确定（C
+  // 声明符的递归定义本身），一次取代此前三个自底向上特判分支
+  //（Pointer(Array) 指针数组 / Array(Pointer) 数组指针 / 尾 Pointer
+  // 整包——自底向上折叠无法表达"哪几维属于谁"，c02/c03/c04/f01/f02
+  // 族错值即其表达力边界）。
+  // 函数约定（照搬原实现的 decay 表示）：Function 节点的值语义 =
+  // 函数指针（Vitro Type 系表示层 decay），紧邻内层 Pointer 被该
+  // decay 层吸收——`int (*fp)(void)` → Pointer(Function) 单层，
+  // `int (*fp[2])(void)` → Array(Pointer(Function))，与 oracle 的
+  // 函数声明符形状一致。
+  // size 状态机：Array 维度乘积的折叠方向语义与 Rust 由内向外折叠
+  // 等价（最外维为 0 则恒 0；否则从最外维起向内连乘正数、遇 0 停，
+  // 停后更内层不再参与——`int a[n][3]` 的 size=3 而非 0，VLA 语料
+  // 对拍锚 vla_2d/vla_sizeof_type）。连续 Array 层才相乘——链中间隔
+  // Pointer/Function 时维度分属不同数组对象，状态机在该处重置
+  //（`int (*p[2])[3][4]` 外层 size=2 而非 24）。
+  // 迭代（J14）：DeclaratorNode 链是线性结构，while 下钻无递归——
+  // 纯数组/指针深链（1250 收集期预算内）在任何后端栈预算下安全
+  //（E4 锚复跑验证）。
+  let mut cur = node
+  let mut t = base_type
+  let mut size_prod : Int = 0
+  let mut size_state : Int = 0 // 0=未启（无 Array 层）1=连乘中 2=遇 0 停 3=恒 0
+  while true {
+    match cur {
+      Base => break
+      Pointer(inner) => {
+        t = @ast.Type::pointer_to(t)
+        size_state = 0 // 维度链打断：跨指针的维度分属不同数组对象
+        cur = inner
       }
-    Array(inner, size_expr) => {
-      let info = array_dim_info(size_expr)
-      let size = info.0
-      let is_vla = info.1
-      let vla_dim = info.2
-      match inner {
-        Pointer(ptr_inner) => {
-          // int (*a)[N] 形态：Array(Pointer) → 指向数组的指针
-          let elem_ty = self.interpret_declarator_node(
-            ptr_inner, base_type, depth,
-          )
-          let vla_dims : Array[@ast.Expr] = match vla_dim {
-            Some(e) => [e]
-            None => []
+      Reference(inner, is_const) => {
+        t = @ast.Type::Reference(t, is_const)
+        size_state = 0
+        cur = inner
+      }
+      RValueRef(inner) => {
+        t = @ast.Type::RValueRef(t)
+        size_state = 0
+        cur = inner
+      }
+      Array(inner, size_expr) => {
+        let info = array_dim_info(size_expr)
+        let d = info.0
+        match size_state {
+          0 => {
+            size_prod = d
+            size_state = if d == 0 { 3 } else { 1 }
+            // 最外维为 0（VLA/未知）→ 恒 0；正数起算
           }
-          @ast.Type::Pointer(
-            @ast.Type::Array(elem_ty, size, [size], false, is_vla, vla_dims),
-            false,
-          )
-        }
-        _ => {
-          // 多维数组：合并内层 dims（int a[2][3] → dims=[2,3]）。
-          // 纯 Array 链迭代下钻 + 由内向外折叠（J1 教训的 MoonBit 复现
-          // 实测：1200 层后缀在 wasm 测试栈预算内递归解释即溢出——收集
-          // 期 1250 预算内的合法深链必须存活）。折叠语义与 Rust 逐层
-          // 递归的 `_` 合并分支同构：每层消费下层结果的 dims/size/vla。
-          // （Rust 在 Pointer 分支前对 inner_ty 的先算后弃调用不照搬——
-          // interpret 纯构造无副作用，省略等价）
-          let layers : Array[(Int, Bool, @ast.Expr?)] = [
-            (size, is_vla, vla_dim),
-          ]
-          let mut tail = inner
-          while true {
-            match tail {
-              Array(next, se2) => {
-                layers.push(array_dim_info(se2))
-                tail = next
-              }
-              _ => break
+          1 =>
+            if d > 0 {
+              size_prod = size_prod * d
+            } else {
+              size_state = 2 // 0 打断，锁定当前积
             }
-          }
-          // 尾节点（首个非 Array；深度受 paren/cross 限制，浅解释安全）
-          let mut inner_ty = self.interpret_declarator_node(
-            tail, base_type, depth,
-          )
-          // 由内向外折叠（Rust 递归返回路径的同一合并序）
-          let mut k = layers.length() - 1
-          while k >= 0 {
-            let l = layers[k]
-            inner_ty = merge_array_wrap(inner_ty, l.0, l.1, l.2)
-            k -= 1
-          }
-          inner_ty
+          _ => () // 恒 0 / 已停：更内层维度不参与 size
         }
+        t = array_prepend_dim(t, d, size_prod, info.1, info.2)
+        cur = inner
       }
-    }
-    Function(inner, params, is_variadic) => {
-      // 每个构造点独立收集 param_types（Rust 各分支独立 Vec——避免
-      // Array 引用共享）
-      fn collect(params : Array[@ast.Param]) -> Array[@ast.Type] {
+      Function(inner, params, is_variadic) => {
+        // 每个构造点独立收集 param_types（Rust 各分支独立 Vec——避免
+        // Array 引用共享）
         let ts : Array[@ast.Type] = []
         for p in params {
           ts.push(p.ty)
         }
-        ts
-      }
-      match inner {
-        Pointer(ptr_inner) =>
-          match ptr_inner {
-            Array(array_inner, size_expr) => {
-              // (*fp[N])(params) → function pointer array
-              let elem_ty = self.interpret_declarator_node(
-                array_inner, base_type, depth,
-              )
-              let info = array_dim_info(size_expr)
-              let size = info.0
-              let is_vla = info.1
-              let vla_dim = info.2
-              let vla_dims : Array[@ast.Expr] = match vla_dim {
-                Some(e) => [e]
-                None => []
-              }
-              @ast.Type::Array(
-                @ast.Type::Pointer(
-                  @ast.Type::Function(
-                    elem_ty,
-                    collect(params),
-                    false,
-                    is_variadic,
-                  ),
-                  false,
-                ),
-                size,
-                [size],
-                false,
-                is_vla,
-                vla_dims,
-              )
-            }
-            _ => {
-              let func_ptr_type = @ast.Type::Pointer(
-                @ast.Type::Function(
-                  base_type,
-                  collect(params),
-                  false,
-                  is_variadic,
-                ),
-                false,
-              )
-              self.interpret_declarator_node(ptr_inner, func_ptr_type, depth)
-            }
-          }
-        _ => {
-          let inner_ty = self.interpret_declarator_node(inner, base_type, depth)
-          @ast.Type::Pointer(
-            @ast.Type::Function(inner_ty, collect(params), false, is_variadic),
-            false,
-          )
+        t = @ast.Type::pointer_to(
+          @ast.Type::Function(t, ts, false, is_variadic),
+        )
+        size_state = 0
+        match inner {
+          // 函数指针的 `*` 即 decay 层本身——吸收，不再额外包指针
+          Pointer(rest) => cur = rest
+          _ => cur = inner
         }
       }
     }
   }
+  t
 }
 
 ///|
@@ -893,47 +814,42 @@ fn merge_ctor_init_into_body(
 }
 
 ///|
-/// 多维合并的单层包装（Rust interpret `Array._` 分支的合并体抽函数）：
-/// inner_ty 为 Array 时合并 dims（拷贝 + push size）、传播 vla、
-/// size×inner_size（正值）；否则以 inner_ty 为元素建单层数组。
-fn merge_array_wrap(
-  inner_ty : @ast.Type,
-  size : Int,
+/// array_prepend_dim：外层数组维度并入累积类型（F3-v2 累加器的 Array
+/// 消费）。T 为 Array 时 dims/vla_dims **头部**插入本维 d、总 size
+/// （由调用方的方向语义状态机算好传入）覆写、vla 传播——与旧
+/// merge_array_wrap 由内向外折叠的产出同序同值；否则以 T 为元素建
+/// 单层数组（此层即最外维，size=总积）。vla_dims 拷贝写入（引用别名
+/// 会把头插漏进已累积类型）。
+fn array_prepend_dim(
+  t : @ast.Type,
+  d : Int,
+  total_size : Int,
   is_vla : Bool,
   vla_dim : @ast.Expr?,
 ) -> @ast.Type {
-  match inner_ty {
+  match t {
     Array(element, _, dims, _, vla, vd) => {
-      // dims/vla_dims 拷贝（Rust clone；引用别名会把 push 写进内层）
-      let inner_dims : Array[Int] = []
-      for d in dims {
-        inner_dims.push(d)
+      let new_dims : Array[Int] = [d]
+      for dd in dims {
+        new_dims.push(dd)
       }
-      let inner_array_size = inner_ty.array_size()
-      let inner_is_vla = vla
-      let inner_vla_dims : Array[@ast.Expr] = []
-      for e in vd {
-        inner_vla_dims.push(e)
-      }
-      inner_dims.push(size)
+      let new_vla : Array[@ast.Expr] = []
       if is_vla {
         match vla_dim {
-          Some(e) => inner_vla_dims.push(e)
+          Some(e) => new_vla.push(e)
           None => ()
         }
       }
-      let array_size = if size > 0 && inner_array_size > 0 {
-        size * inner_array_size
-      } else {
-        size
+      for e in vd {
+        new_vla.push(e)
       }
       @ast.Type::Array(
         element,
-        array_size,
-        inner_dims,
+        total_size,
+        new_dims,
         false,
-        inner_is_vla || is_vla,
-        inner_vla_dims,
+        vla || is_vla,
+        new_vla,
       )
     }
     _ => {
@@ -941,7 +857,7 @@ fn merge_array_wrap(
         Some(e) => [e]
         None => []
       }
-      @ast.Type::Array(inner_ty, size, [size], false, is_vla, vla_dims)
+      @ast.Type::Array(t, total_size, [d], false, is_vla, vla_dims)
     }
   }
 }

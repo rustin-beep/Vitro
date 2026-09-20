@@ -160,11 +160,8 @@ fn Parser::parse_cpp_template_decl(
             // name.split_once("__")：首个 "__" 前为类名
             match find_first_dbl_underscore(f.name) {
               Some(i) => {
-                let class_name = f.name.substring(start=0, end=i)
-                let method_name = f.name.substring(
-                  start=i + 2,
-                  end=f.name.length(),
-                )
+                let class_name = f.name[0:i].to_owned()
+                let method_name = f.name[i + 2:f.name.length()].to_owned()
                 for k, t in program.templates {
                   match t.decl {
                     TClass(c) =>

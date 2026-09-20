@@ -79,7 +79,7 @@ priv struct LogicalLine {
 }
 
 ///|
-fn[P : @token.SourceProvider] Pp::err(
+fn[P] Pp::err(
   self : Pp[P],
   message : String,
   line : Int,
@@ -127,7 +127,7 @@ pub fn[P : @token.SourceProvider] Pp::run_pp(
     }
     if trimmed[0].to_int() == '#' {
       self.handle_directive(
-        trimmed.substring(start=1),
+        trimmed[1:].to_owned(),
         line.head_line + main_line_base - 1,
         tokens,
       )
@@ -219,7 +219,7 @@ pub fn[P : @token.SourceProvider] Pp::run_pp(
 
 ///|
 /// 主文件管线收尾（E1013 按开启行报告——⑥-23 修复）+ 宏展开。
-pub fn[P : @token.SourceProvider] Pp::finish_pp(
+pub fn[P] Pp::finish_pp(
   self : Pp[P],
   tokens : Array[@token.Token],
 ) -> @token.LexResult {
@@ -377,7 +377,7 @@ fn leading_trim(s : String) -> String {
   if i == 0 {
     s
   } else {
-    s.substring(start=i)
+    s[i:].to_owned()
   }
 }
 

@@ -776,88 +776,142 @@ fn Parser::parse_enum_decl(
 /// 实测），与 Rust debug panic / release UB 同危险——溢出显式返回 None
 /// 走"非常量表达式"诊断。除零为 MoonBit 运行时 trap，常量求值器显式
 /// 零检查。
-fn eval_enum_const(expr : @ast.Expr) -> Int64? {
-  match expr {
-    Literal(value, _, _) => Some(value.to_int64())
-    LongLiteral(value, _, _) => Some(value)
-    // E3：static_assert 的 sizeof（教学最高频用法）
-    Sizeof(Some(t), _, _, _) => {
-      let empty_structs : Map[String, Array[@ast.StructField]] = Map([])
-      let empty_unions : Map[String, Array[@ast.StructField]] = Map([])
-      let empty_cls : Map[String, Int] = Map([])
-      let sz = @ast.compute_type_size(t, empty_structs, empty_unions, empty_cls)
-      if sz > 0 {
-        Some(sz.to_int64())
-      } else {
-        None
-      }
-    }
-    Unary(op, operand, _, _) => {
-      // Option 解包（MoonBit 的 `?` 只配 raise/Result——这里显式 match）
-      let v = match eval_enum_const(operand) {
-        Some(v) => v
-        None => return None
-      }
-      match op {
-        // U1#9：取负 checked——Int64::MIN 取负回绕成自身，溢出 None
-        @ast.UnaryOp::Neg => if v == I64_MIN { None } else { Some(-v) }
-        @ast.UnaryOp::BitNot => Some(v.lnot())
-        @ast.UnaryOp::Not => if v == 0 { Some(1) } else { Some(0) }
-        _ => None
-      }
-    }
-    Binary(op, left, right, _, _) => {
-      let a = match eval_enum_const(left) {
-        Some(v) => v
-        None => return None
-      }
-      let b = match eval_enum_const(right) {
-        Some(v) => v
-        None => return None
-      }
-      match op {
-        @ast.BinaryOp::Add => checked_add64(a, b)
-        @ast.BinaryOp::Sub => checked_sub64(a, b)
-        @ast.BinaryOp::Mul => checked_mul64(a, b)
-        @ast.BinaryOp::Div =>
-          if b == 0 || (a == I64_MIN && b == -1) {
-            None
-          } else {
-            Some(a / b)
-          }
-        @ast.BinaryOp::Mod =>
-          if b == 0 || (a == I64_MIN && b == -1) {
-            None
-          } else {
-            Some(a % b)
-          }
-        // U1#9：移位 checked——仅查移位量（Rust checked_shl 语义：b ≥ 64
-        // 或负移位非法 None；左移丢位不算溢出）
-        @ast.BinaryOp::Shl =>
-          if b < 0 || b >= 64 {
-            None
-          } else {
-            Some(a << b.to_int())
-          }
-        @ast.BinaryOp::Shr =>
-          if b < 0 || b >= 64 {
-            None
-          } else {
-            Some(a >> b.to_int())
-          }
-        @ast.BinaryOp::BitAnd => Some(a & b)
-        @ast.BinaryOp::BitOr => Some(a | b)
-        @ast.BinaryOp::BitXor => Some(a ^ b)
-        @ast.BinaryOp::Eq => if a == b { Some(1) } else { Some(0) }
-        @ast.BinaryOp::Ne => if a != b { Some(1) } else { Some(0) }
-        @ast.BinaryOp::Lt => if a < b { Some(1) } else { Some(0) }
-        @ast.BinaryOp::Le => if a <= b { Some(1) } else { Some(0) }
-        @ast.BinaryOp::Gt => if a > b { Some(1) } else { Some(0) }
-        @ast.BinaryOp::Ge => if a >= b { Some(1) } else { Some(0) }
-        _ => None
-      }
-    }
+///
+/// F2 修复（显式栈迭代化，J14 纪律）：此前对 Expr 树递归求值且无护栏，
+/// ≥1200 项常量链在 parse 期折叠时栈溢出崩溃（Rust 同款递归约 5000 项
+/// 才崩——oracle 侧同族缺陷已入差异台账）。迭代版求值序与递归版等价：
+/// Binary 先左后右、任一子表达式非常量即整体 None（strict 短路）。
+priv enum EnumEvalFrame {
+  E(@ast.Expr)
+  AppU(@ast.UnaryOp)
+  AppB(@ast.BinaryOp)
+}
+
+///|
+fn apply_unary_const(op : @ast.UnaryOp, v : Int64) -> Int64? {
+  match op {
+    // U1#9：取负 checked——Int64::MIN 取负回绕成自身，溢出 None
+    @ast.UnaryOp::Neg => if v == I64_MIN { None } else { Some(-v) }
+    @ast.UnaryOp::BitNot => Some(v.lnot())
+    @ast.UnaryOp::Not => if v == 0 { Some(1) } else { Some(0) }
     _ => None
+  }
+}
+
+///|
+fn apply_binary_const(op : @ast.BinaryOp, a : Int64, b : Int64) -> Int64? {
+  match op {
+    @ast.BinaryOp::Add => checked_add64(a, b)
+    @ast.BinaryOp::Sub => checked_sub64(a, b)
+    @ast.BinaryOp::Mul => checked_mul64(a, b)
+    @ast.BinaryOp::Div =>
+      if b == 0 || (a == I64_MIN && b == -1) {
+        None
+      } else {
+        Some(a / b)
+      }
+    @ast.BinaryOp::Mod =>
+      if b == 0 || (a == I64_MIN && b == -1) {
+        None
+      } else {
+        Some(a % b)
+      }
+    // U1#9：移位 checked——仅查移位量（Rust checked_shl 语义：b ≥ 64
+    // 或负移位非法 None；左移丢位不算溢出）
+    @ast.BinaryOp::Shl =>
+      if b < 0 || b >= 64 {
+        None
+      } else {
+        Some(a << b.to_int())
+      }
+    @ast.BinaryOp::Shr =>
+      if b < 0 || b >= 64 {
+        None
+      } else {
+        Some(a >> b.to_int())
+      }
+    @ast.BinaryOp::BitAnd => Some(a & b)
+    @ast.BinaryOp::BitOr => Some(a | b)
+    @ast.BinaryOp::BitXor => Some(a ^ b)
+    @ast.BinaryOp::Eq => if a == b { Some(1) } else { Some(0) }
+    @ast.BinaryOp::Ne => if a != b { Some(1) } else { Some(0) }
+    @ast.BinaryOp::Lt => if a < b { Some(1) } else { Some(0) }
+    @ast.BinaryOp::Le => if a <= b { Some(1) } else { Some(0) }
+    @ast.BinaryOp::Gt => if a > b { Some(1) } else { Some(0) }
+    @ast.BinaryOp::Ge => if a >= b { Some(1) } else { Some(0) }
+    _ => None
+  }
+}
+
+///|
+fn eval_enum_const(expr : @ast.Expr) -> Int64? {
+  // 显式栈后序求值：E(表达式) 展开、App*(算子) 消费值栈；叶子直接
+  // 产值入 vals。压栈逆序保证弹序 = 左操作数、右操作数、算子（Rust
+  // 递归版 a?/b? 序）。
+  let st : Array[EnumEvalFrame] = [E(expr)]
+  let vals : Array[Int64] = []
+  while st.length() > 0 {
+    match st.pop() {
+      None => break
+      Some(AppU(op)) => {
+        let v = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        match apply_unary_const(op, v) {
+          Some(r) => vals.push(r)
+          None => return None
+        }
+      }
+      Some(AppB(op)) => {
+        let b = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        let a = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        match apply_binary_const(op, a, b) {
+          Some(r) => vals.push(r)
+          None => return None
+        }
+      }
+      Some(E(e)) =>
+        match e {
+          Literal(value, _, _) => vals.push(value.to_int64())
+          LongLiteral(value, _, _) => vals.push(value)
+          // E3：static_assert 的 sizeof（教学最高频用法）
+          Sizeof(Some(t), _, _, _) => {
+            let empty_structs : Map[String, Array[@ast.StructField]] = Map([])
+            let empty_unions : Map[String, Array[@ast.StructField]] = Map([])
+            let empty_cls : Map[String, Int] = Map([])
+            let sz = @ast.compute_type_size(
+              t, empty_structs, empty_unions, empty_cls,
+            )
+            if sz > 0 {
+              vals.push(sz.to_int64())
+            } else {
+              return None
+            }
+          }
+          Unary(op, operand, _, _) => {
+            st.push(AppU(op))
+            st.push(E(operand))
+          }
+          Binary(op, left, right, _, _) => {
+            st.push(AppB(op))
+            st.push(E(right))
+            st.push(E(left))
+          }
+          _ => return None
+        }
+    }
+  }
+  // 栈空时值栈应恰余一个结果（帧/值配对失衡即内部错误——保守 None）
+  match vals.pop() {
+    Some(v) => if vals.length() == 0 { Some(v) } else { None }
+    None => None
   }
 }
 

@@ -69,7 +69,7 @@ fn normalize_path(p : String) -> String {
     match seg {
       "" | "." => ()
       ".." => if parts.length() > 0 { ignore(parts.pop()) }
-      _ => parts.push(seg.to_string())
+      _ => parts.push(seg.to_owned())
     }
   }
   parts.join("/")
@@ -156,20 +156,20 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
 fn custom_includes_of(text : String) -> Array[String] {
   let out : Array[String] = []
   for line_raw in text.split("\n") {
-    let t = leading_trim(line_raw.to_string())
+    let t = leading_trim(line_raw.to_owned())
     if t.length() == 0 || t[0].to_int() != '#' {
       continue
     }
-    let rest = leading_trim(t.substring(start=1))
+    let rest = leading_trim(t[1:].to_owned())
     if !rest_starts_with_include(rest) {
       continue
     }
-    let inc_after = leading_trim(rest.substring(start=7))
+    let inc_after = leading_trim(rest[7:].to_owned())
     if inc_after.length() > 0 && inc_after[0].to_int() == '"' {
       let mut i = 1
       while i < inc_after.length() {
         if inc_after[i].to_int() == '"' {
-          out.push(inc_after.substring(start=1, end=i))
+          out.push(inc_after[1:i].to_owned())
           break
         }
         i += 1
@@ -181,5 +181,5 @@ fn custom_includes_of(text : String) -> Array[String] {
 
 ///|
 fn rest_starts_with_include(rest : String) -> Bool {
-  rest.length() >= 7 && rest.substring(start=0, end=7) == "include"
+  rest.length() >= 7 && rest[0:7] == "include"
 }

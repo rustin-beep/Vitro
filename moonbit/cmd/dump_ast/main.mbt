@@ -34,7 +34,7 @@ fn main raise {
   }
   if target_is_dir {
     for name in @fs.read_dir(target) {
-      if name.length() > 2 && name.substring(start=name.length() - 2) == ".c" {
+      if name.length() > 2 && name[name.length() - 2:] == ".c" {
         files.push("\{target}/\{name}")
       }
     }
@@ -60,11 +60,13 @@ fn main raise {
 /// 单输入 dump：词法错误 → ok:false 同构（AST 无从谈起）；解析层带
 /// 完整 parse_errors（E2 面——Rust 侧同批补齐，见防线维护提交）。
 fn dump_one(lexed : @lexer.LexResult) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   if !lexed.errors.is_empty() {
     buf.write_string("{\"ok\": false, \"lex_error_count\": ")
     buf.write_string(lexed.errors.length().to_string())
-    buf.write_string(", \"ast\": null, \"parse_errors\": [], \"stall_count\": 0}")
+    buf.write_string(
+      ", \"ast\": null, \"parse_errors\": [], \"stall_count\": 0}",
+    )
     return buf.to_string()
   }
   let r = @parser.parse(lexed.tokens)
@@ -74,9 +76,7 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
   buf.write_string(r.errors.length().to_string())
   buf.write_string(", \"ast\": ")
   match r.program {
-    Some(p) => {
-      buf.write_string(@ast.ast_dump_json(p))
-    }
+    Some(p) => buf.write_string(@ast.ast_dump_json(p))
     None => buf.write_string("null")
   }
   buf.write_string(", \"parse_errors\": [")
@@ -93,10 +93,10 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
 }
 
 ///|
-/// JSON 字符串字面量转义（诊断 message 单列——E2 只比 code/line/column，
-/// message 为人工确认面）。
+/// JSON 字符串字面量转义（E2 面注意：parser_diff 比较整串 canonicalize
+/// 结果，message 已在逐字节比较面内——两侧文案照搬同源，漂移即红）。
 fn json_escape(s : String) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   buf.write_char('\"')
   for c in s {
     match c {
@@ -112,8 +112,8 @@ fn json_escape(s : String) -> String {
         if code < 32 {
           buf.write_string("\\u00")
           let hex = "0123456789abcdef"
-          buf.write_string(hex.substring(start=code / 16, end=code / 16 + 1))
-          buf.write_string(hex.substring(start=code % 16, end=code % 16 + 1))
+          buf.write_string(hex[code / 16:code / 16 + 1].to_owned())
+          buf.write_string(hex[code % 16:code % 16 + 1].to_owned())
         } else {
           buf.write_char(c)
         }
@@ -124,19 +124,20 @@ fn json_escape(s : String) -> String {
   buf.to_string()
 }
 
+///|
 fn basename_no_ext(path : String) -> String {
   let mut name = path
   let mut i = path.length() - 1
   while i >= 0 {
-    let slash = '/' .to_int()
+    let slash = '/'.to_int()
     let bslash = 92 // '\'
-    let dot = '.' .to_int()
+    let dot = '.'.to_int()
     match path[i].to_int() {
       c if c == slash || c == bslash => {
-        name = path.substring(start=i + 1)
+        name = path[i + 1:].to_owned()
         break
       }
-      c if c == dot => if name == path { name = path.substring(start=0, end=i) }
+      c if c == dot => if name == path { name = path[0:i].to_owned() }
       _ => ()
     }
     i -= 1
@@ -144,6 +145,7 @@ fn basename_no_ext(path : String) -> String {
   name
 }
 
+///|
 fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
   for name in @fs.read_dir(dir) {
     let full = "\{dir}/\{name}"

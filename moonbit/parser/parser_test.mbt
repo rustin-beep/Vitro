@@ -248,9 +248,9 @@ test "vla propagation through chain" {
   let r = parse_src("int main() { int n = 3; int a[n][4]; return 0; }")
   let p = r.program.unwrap()
   match p.funcs[0].body {
-    Some(Block(stmts, _)) => {
+    Some(Block(stmts, _)) =>
       match stmts[1] {
-        VarDecl(ty, _, _, _, _, _) => {
+        VarDecl(ty, _, _, _, _, _) =>
           match ty {
             Array(_, _, dims, _, is_vla, vla_dims) => {
               inspect(is_vla, content="true")
@@ -259,10 +259,8 @@ test "vla propagation through chain" {
             }
             _ => fail("应为 VLA 数组")
           }
-        }
         _ => fail("第二句应为声明")
       }
-    }
     _ => fail("应有函数体")
   }
 }
@@ -271,9 +269,7 @@ test "vla propagation through chain" {
 /// 复合字面量 + 匿名 struct 回滚（U1#10 场景：试探失败不二次 push 匿名
 /// struct——全量快照面）。
 test "compound literal anonymous struct" {
-  let r = parse_src(
-    "int main() { return (struct { int a; }) { 7 } . a; }",
-  )
+  let r = parse_src("int main() { return (struct { int a; }) { 7 } . a; }")
   assert_true(r.errors.is_empty())
   let p = r.program.unwrap()
   // 匿名 struct 进入 structs（parse() 尾部 append）

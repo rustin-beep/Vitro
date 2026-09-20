@@ -19,8 +19,8 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
       break
     }
   }
-  let directive = rest.substring(start=0, end=n)
-  let after = rest.substring(start=n)
+  let directive = rest[0:n].to_owned()
+  let after = rest[n:].to_owned()
   // `#if` / `#elif` 需要整行原始文本（__has_include 的路径无法从 token 还原）
   if directive == "if" || directive == "elif" {
     if directive == "if" {
@@ -125,7 +125,7 @@ fn read_ident(s : String) -> String {
       break
     }
   }
-  s.substring(start=0, end=n)
+  s[0:n].to_owned()
 }
 
 ///|
@@ -178,7 +178,7 @@ fn[P : @token.SourceProvider] Pp::handle_elif(
 
 ///|
 /// `#elifdef` / `#elifndef`（C23；clang 22 支持——语义 = defined 判定版 #elif）。
-fn[P : @token.SourceProvider] Pp::handle_elifdef(
+fn[P] Pp::handle_elifdef(
   self : Pp[P],
   after : String,
   line : Int,
@@ -214,7 +214,7 @@ fn[P : @token.SourceProvider] Pp::handle_elifdef(
 }
 
 ///|
-fn[P : @token.SourceProvider] Pp::handle_else(self : Pp[P], line : Int) -> Unit {
+fn[P] Pp::handle_else(self : Pp[P], line : Int) -> Unit {
   let parent_skipping = self.parent_skipping()
   let n = self.cond_stack.length()
   if n == 0 {
@@ -236,10 +236,7 @@ fn[P : @token.SourceProvider] Pp::handle_else(self : Pp[P], line : Int) -> Unit 
 }
 
 ///|
-fn[P : @token.SourceProvider] Pp::handle_endif(
-  self : Pp[P],
-  line : Int,
-) -> Unit {
+fn[P] Pp::handle_endif(self : Pp[P], line : Int) -> Unit {
   // U1#11：include 边界记账——头文件内多余的 #endif 不得弹掉包含者的条件组
   if self.include_stack.length() > 0 {
     let boundary = self.include_stack[self.include_stack.length() - 1].cond_boundary
@@ -282,12 +279,12 @@ fn parse_include_path(after : String) -> (String, Bool)? {
   let mut i = 1
   while i < s.length() {
     if s[i].to_int() == end_char {
-      return Some((s.substring(start=1, end=i), delimiter == '<'))
+      return Some((s[1:i].to_owned(), delimiter == '<'))
     }
     i += 1
   }
   // 未闭合：路径截到行尾（不再消费余下全文——Rust E1021 消息内嵌多行源码）
-  Some((s.substring(start=1), delimiter == '<'))
+  Some((s[1:].to_owned(), delimiter == '<'))
 }
 
 ///|
@@ -423,9 +420,7 @@ fn[P : @token.SourceProvider] Pp::handle_include(
 ///|
 /// 弹出 include 帧并校验条件栈边界（U1#11 文案照搬）。
 /// 返回弹出的帧（供调用方读 dir）。
-fn[P : @token.SourceProvider] Pp::pop_include_frame(
-  self : Pp[P],
-) -> IncludeFrame? {
+fn[P] Pp::pop_include_frame(self : Pp[P]) -> IncludeFrame? {
   if self.include_stack.length() == 0 {
     return None
   }
@@ -451,11 +446,7 @@ fn[P : @token.SourceProvider] Pp::pop_include_frame(
 ///|
 // ---------- define ----------
 
-fn[P : @token.SourceProvider] Pp::parse_define(
-  self : Pp[P],
-  after : String,
-  line : Int,
-) -> Unit {
+fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int) -> Unit {
   let after = leading_trim(after)
   if after.length() == 0 {
     self.err("#define 后预期宏名称", line, code=E1005_InvalidDefine)
@@ -467,7 +458,7 @@ fn[P : @token.SourceProvider] Pp::parse_define(
     return
   }
   let name = read_ident(after)
-  let rest = after.substring(start=name.length())
+  let rest = after[name.length():].to_owned()
   // 参数列表：宏名后**紧跟** '('（中间无空白——C 标准）
   let params : Array[String] = []
   let mut body_text = rest
@@ -492,7 +483,7 @@ fn[P : @token.SourceProvider] Pp::parse_define(
       while i < rest.length() && is_ident_char(rest[i].to_int()) {
         i += 1
       }
-      params.push(rest.substring(start=pstart, end=i))
+      params.push(rest[pstart:i].to_owned())
       // skip 空白
       while i < rest.length() && (rest[i] == ' ' || rest[i] == '\t') {
         i += 1
@@ -511,7 +502,7 @@ fn[P : @token.SourceProvider] Pp::parse_define(
     if !ok {
       return
     }
-    body_text = rest.substring(start=i)
+    body_text = rest[i:].to_owned()
   }
   // 宏名与 body 之间的空白（不吞下一行）
   let body_text = leading_trim(body_text)
@@ -569,7 +560,7 @@ fn dirname_of(path : String) -> String {
     }
   }
   match last {
-    Some(i) => path.substring(start=0, end=i)
+    Some(i) => path[0:i].to_owned()
     None => ""
   }
 }

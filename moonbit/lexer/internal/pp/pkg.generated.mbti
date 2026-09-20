@@ -11,7 +11,7 @@ import {
 
 // Types and methods
 type Pp[P]
-pub fn[P : @token.SourceProvider] Pp::finish_pp(Self[P], Array[@token.Token]) -> @token.LexResult
+pub fn[P] Pp::finish_pp(Self[P], Array[@token.Token]) -> @token.LexResult
 pub fn[P] Pp::new(provider~ : P, cpp_mode~ : Bool, base_dir? : String) -> Self[P]
 pub fn[P : @token.SourceProvider] Pp::run_pp(Self[P], String, main_line_base? : Int, main_byte_base? : Int, main_file_id? : Int, span_main_first? : Int?, span_file_line? : Int, emit_eof? : Bool) -> Array[@token.Token]
 

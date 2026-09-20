@@ -34,7 +34,7 @@ fn main raise {
   }
   if target_is_dir {
     for name in @fs.read_dir(target) {
-      if name.length() > 2 && name.substring(start=name.length() - 2) == ".c" {
+      if name.length() > 2 && name[name.length() - 2:] == ".c" {
         files.push("\{target}/\{name}")
       }
     }
@@ -84,7 +84,7 @@ fn dirname_of(path : String) -> String {
   while i >= 0 {
     let c = path[i].to_int()
     if c == '/' || c == '\\' {
-      return path.substring(start=0, end=i)
+      return path[0:i].to_owned()
     }
     i -= 1
   }
@@ -98,10 +98,10 @@ fn basename_no_ext(path : String) -> String {
   while i >= 0 {
     match path[i].to_int() {
       c if c == '/' || c == '\\' => {
-        name = path.substring(start=i + 1)
+        name = path[i + 1:].to_owned()
         break
       }
-      c if c == '.' => if name == path { name = path.substring(start=0, end=i) }
+      c if c == '.' => if name == path { name = path[0:i].to_owned() }
       _ => ()
     }
     i -= 1
@@ -116,7 +116,7 @@ fn basename_no_ext(path : String) -> String {
     k -= 1
   }
   match dot {
-    Some(d) if d > 0 => name.substring(start=0, end=d)
+    Some(d) if d > 0 => name[0:d].to_owned()
     _ => name
   }
 }

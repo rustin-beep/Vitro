@@ -78,8 +78,8 @@ fn emit_json_str(s : String, buf : StringBuilder) -> Unit {
         if code < 32 {
           buf.write_string("\\u00")
           let hex = "0123456789abcdef"
-          buf.write_string(hex.substring(start=code / 16, end=code / 16 + 1))
-          buf.write_string(hex.substring(start=code % 16, end=code % 16 + 1))
+          buf.write_string(hex[code / 16:code / 16 + 1].to_owned())
+          buf.write_string(hex[code % 16:code % 16 + 1].to_owned())
         } else {
           buf.write_char(c)
         }

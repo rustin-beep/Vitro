@@ -7,17 +7,22 @@
 /// 1. **深度统一入口**：Rust 的共享计数器字段 + 8 处壳挂点
 ///    （statement/assign/ternary/unary/primary/init_list/abstract_declarator/
 ///    param_list）改为显式 `depth` 参数沿调用链传递——计数语义与 Rust
-///    **完全同构**（壳函数检查 `depth >= MAX_PARSE_DEPTH` 对应 Rust 先检
-///    后增；body 与下层传 `depth+1`），但新增递归点必须声明 depth（编译
-///    器强制），不再依赖人工枚举挂点（J1 的方法论根因）。
+///    **同构**（壳函数检查 `depth >= MAX_PARSE_DEPTH` 对应 Rust 先检
+///    后增；body 与下层传 `depth+1`；offsetof/sizeof/alignof 等类型
+///    通道透传 body depth——F1 教训：类型系统只强制"传了 depth"，
+///    不强制"取值正确"，形参硬编码 0 会静默失效，故同构性以阈值锚
+///    `parser_diff --threshold` 机判，不靠声明形态保证）。
 /// 2. **回滚快照全量**：Rust 三元快照（pos/errors/anonymous_structs）+
 ///    三处手工补 typedef_names——本实现单一 Rollback 含全部七类解析期
 ///    副作用（typedef_names/template_names 不可变结构共享快照 + pos/
 ///    errors/anon/current_class 长度 + next_lambda_id），A5 回滚面缺口
 ///    结构性消除。可观测等价：手工补的三处含在 restore 内；sizeof 处
 ///    的差异按 A5 分析不可观测（污染值与首次写入同值 + 合法 C 不可达）。
-/// 3. **活性内部断言**：主循环零推进记账（`stall_count`），不改变恢复
-///    控制流（照搬 Rust 三层活性约定），防线侧经 dump 出口观测。
+/// 3. **活性内部断言**：主循环零推进记账（`stall_count`），常规路径
+///    不改变恢复控制流（照搬 Rust 三层活性约定）+ G1 熔断下界（
+///    `MAX_STALL_ROUNDS` 超限出 E1006 并强推一个 token——synchronize
+///    在同步 token 上可零推进的 Y5 病灶由此有终止性保证），防线侧经
+///    dump 出口观测。
 ///
 /// 病态深度预算四常量照搬（P1 后 Rust 现值）：MAX_PARSE_DEPTH=256 /
 /// MAX_AST_DEPTH=512 / MAX_DECLARATOR_SUFFIX=1250 / MAX_TYPE_DEPTH=1250。
@@ -52,7 +57,7 @@ pub(all) enum DeclaratorNode {
 } derive(@debug.Debug)
 
 ///|
-enum DeclaratorSuffix {
+priv enum DeclaratorSuffix {
   ArrSuffix(@ast.Expr?) // size_expr
   FuncSuffix(Array[@ast.Param], Bool) // is_variadic
 }
@@ -60,7 +65,7 @@ enum DeclaratorSuffix {
 ///|
 /// 声明符复杂度保险丝组（照搬 Rust：paren_depth/ptr_count/suffix_count/
 /// cross_count——P1 后 suffix_count 已接上比较，非死字段）。
-struct DeclaratorGuard {
+priv struct DeclaratorGuard {
   mut paren_depth : Int
   mut ptr_count : Int
   mut suffix_count : Int
@@ -91,7 +96,7 @@ fn node_cross_count(node : DeclaratorNode) -> Int {
 /// 统一回滚点——**七字段全量快照**（形态改造，见包注释 2）。
 /// typedef_names / template_names 为可变哈希结构，快照 = 整表拷贝
 ///（教学程序的符号表小，O(n) 拷贝可接受；回滚即换引用）。
-struct Rollback {
+priv struct Rollback {
   pos : Int
   errors_len : Int
   anon_len : Int
@@ -127,6 +132,33 @@ const MAX_TYPE_DEPTH : Int = 1250
 const MAX_DECLARATOR_PTR : Int = 32
 
 ///|
+/// 零推进熔断轮数（G1 守卫，MoonBit 新增——Rust 无）：零进度保护三层
+/// 约定（分支推进 / pos==checkpoint 检查 / 顶层兜底 advance）照搬自
+/// Rust 且勘察 J5 实测收敛，但 `synchronize` 在同步 token 上可零推进
+/// （Y5 病灶），理论死循环窗口仍在——熔断保证终止性下界：超限即出
+/// E1006 诊断并强推一个 token（真死循环可观测，不挂死）。597 真实
+/// 语料 stall=0 恒不触发。
+const MAX_STALL_ROUNDS : Int = 1000
+
+///|
+/// G1 熔断：零推进超限——出诊断 + 强推一个 token，保证解析必然前进。
+/// 返回 true 表示本轮已强制推进（调用方跳过常规同步）。
+fn Parser::stall_breaker(self : Parser) -> Bool {
+  if self.stall_count <= MAX_STALL_ROUNDS || self.is_at_end() {
+    return false
+  }
+  let cur = self.current()
+  self.errors.push({
+    message: "解析零推进停滞（\{self.stall_count} 轮同步未前进）——强制跳过 token 保证终止",
+    line: cur.loc.line,
+    column: cur.loc.column,
+    code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
+  })
+  ignore(self.advance())
+  true
+}
+
+///|
 /// 深度超限中性占位（照搬 Rust `Expr::default()`：Literal 0 + 默认坐标 +
 /// Void）。
 fn default_expr() -> @ast.Expr {
@@ -134,7 +166,7 @@ fn default_expr() -> @ast.Expr {
 }
 
 ///|
-struct Parser {
+priv struct Parser {
   tokens : Array[@token.Token]
   errors : Array[ParseError]
   mut typedef_names : Map[String, @ast.Type]
@@ -582,8 +614,216 @@ fn Parser::is_static_token(self : Parser) -> Bool {
 }
 
 // =========================================================================
-// Program（顶层分发照搬 lib.rs parse_program）
+// Program（顶层分发：M9/G2 前瞻判定函数 + 穷尽分发——原 9 条 else-if +
+// 内联 save/advance/restore 前瞻收口于此。判定只读不推进（索引扫描），
+// 分发分支保持原消费行为，行为与 Rust lib.rs parse_program 逐字节一致）
 // =========================================================================
+
+///|
+/// 顶层构造判定结果（穷尽分发面——新增顶层构造漏分支即编译红）。
+priv enum TopLevelKind {
+  StaticAssertDecl
+  AttributePrefix
+  TypedefPlain
+  TypedefStructDecl
+  TypedefEnumDecl
+  EnumDecl
+  EnumVarOrFunc
+  StructVarOrFunc
+  StructClassLike
+  StructDecl
+  UnionDecl
+  CppClassDecl
+  CppTemplateDecl
+  ExternDecl
+  StaticVarOrFunc
+  TypeVarOrFunc
+  UnexpectedTop
+}
+
+///|
+/// 顶层前瞻判定（M9：集中全部"这是什么顶层构造"的扫描；只读，不动
+/// pos——替代原各分支内联的 save/advance/restore 试探，病灶形态
+/// （前瞻逻辑分散）就此收口）。优先序与原 else-if 链一致。
+fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
+  let len = self.tokens.length()
+  let ty_at = fn(i : Int) -> @token.TokenType {
+    if i < len {
+      self.tokens[i].ty
+    } else {
+      Eof
+    }
+  }
+  if self.check(Identifier) &&
+    (
+      self.peek(0).text == "_Static_assert" ||
+      self.peek(0).text == "static_assert"
+    ) {
+    return StaticAssertDecl
+  }
+  // E3：顶层 [[属性]] 前缀
+  if self.check(LBracket) && ty_at(self.pos + 1) == LBracket {
+    return AttributePrefix
+  }
+  if self.check(Typedef) {
+    // typedef struct [名] { → struct 定义别名；否则掉回普通 typedef
+    let mut la = self.pos + 1
+    if ty_at(la) == Struct {
+      la += 1
+      if ty_at(la) == Identifier {
+        la += 1
+      }
+      if ty_at(la) == LBrace {
+        return TypedefStructDecl
+      }
+    }
+    // typedef enum [名] [: 底层类型] { → enum 定义别名
+    la = self.pos + 1
+    if ty_at(la) == Enum {
+      la += 1
+      if ty_at(la) == Identifier {
+        la += 1
+      }
+      // C23 enum : T：底层类型子句不改变"是否 enum 定义"的判定
+      if ty_at(la) == Colon {
+        while la < len && ty_at(la) != LBrace && ty_at(la) != Semicolon {
+          la += 1
+        }
+      }
+      if ty_at(la) == LBrace {
+        return TypedefEnumDecl
+      }
+    }
+    return TypedefPlain
+  }
+  if self.check(Enum) {
+    let mut la = self.pos + 1
+    if ty_at(la) == Identifier {
+      la += 1
+    }
+    if ty_at(la) == Colon {
+      while la < len && ty_at(la) != LBrace && ty_at(la) != Semicolon {
+        la += 1
+      }
+    }
+    if ty_at(la) == LBrace {
+      return EnumDecl
+    }
+    return EnumVarOrFunc
+  }
+  if self.check(Struct) {
+    let mut la = self.pos + 1
+    let has_name = ty_at(la) == Identifier
+    if has_name {
+      la += 1
+    }
+    if ty_at(la) != LBrace {
+      // struct X（无体）——前向声明/变量声明当普通全局处理
+      return StructVarOrFunc
+    }
+    // 花括号配对扫描（原病灶：手写匹配内联在分发分支；此处只读索引版）
+    let mut depth = 0
+    while la < len {
+      match ty_at(la) {
+        LBrace => {
+          depth += 1
+          la += 1
+        }
+        RBrace => {
+          depth -= 1
+          la += 1
+          if depth == 0 {
+            break
+          }
+        }
+        _ => la += 1
+      }
+    }
+    // 体后 token：Identifier/Star → 变量声明；Semicolon → 纯定义
+    let after = ty_at(la)
+    let is_var_decl = after == Identifier || after == Star || after == Semicolon
+    let is_pure_decl = after == Semicolon
+    if is_var_decl && !is_pure_decl {
+      return StructVarOrFunc
+    }
+    if self.is_cpp_mode && has_name {
+      return StructClassLike
+    }
+    return StructDecl
+  }
+  if self.check(Union) {
+    return UnionDecl
+  }
+  if self.is_cpp_mode && self.check(Class) {
+    return CppClassDecl
+  }
+  if self.is_cpp_mode && self.check(Template) {
+    return CppTemplateDecl
+  }
+  if self.check(Extern) {
+    return ExternDecl
+  }
+  if self.is_type_token() {
+    return TypeVarOrFunc
+  }
+  if self.is_static_token() {
+    return StaticVarOrFunc
+  }
+  UnexpectedTop
+}
+
+///|
+/// 顶层穷尽分发（消费行为与原 else-if 链各分支逐字节一致——判定函数
+/// 已只读化，各分支从构造头开始解析，不再需要 save/restore 试探）。
+fn Parser::dispatch_top_level(
+  self : Parser,
+  program : @ast.ProgramNode,
+  kind : TopLevelKind,
+) -> Unit {
+  match kind {
+    StaticAssertDecl => self.parse_static_assert(0)
+    AttributePrefix => self.skip_attributes()
+    TypedefStructDecl => self.parse_typedef_struct_decl(program, 0)
+    TypedefEnumDecl => self.parse_typedef_enum_decl(program, 0)
+    TypedefPlain => self.parse_typedef(0)
+    EnumDecl => self.parse_enum_decl(program, 0)
+    EnumVarOrFunc => self.parse_global_var_or_func(program, false, false)
+    StructVarOrFunc => self.parse_global_var_or_func(program, false, false)
+    StructClassLike => self.parse_cpp_class_like_struct_decl(program)
+    StructDecl => {
+      let struct_decl = self.parse_struct_decl(0)
+      if self.is_cpp_mode {
+        self.typedef_names.set(
+          struct_decl.name,
+          @ast.Type::struct_type(struct_decl.name),
+        )
+      }
+      program.structs.push(struct_decl)
+    }
+    UnionDecl => program.unions.push(self.parse_union_decl(0))
+    CppClassDecl => self.parse_cpp_class_decl(program)
+    CppTemplateDecl => self.parse_cpp_template_decl(program)
+    ExternDecl => {
+      ignore(self.advance()) // consume 'extern'
+      self.parse_global_var_or_func(program, false, true)
+    }
+    StaticVarOrFunc => {
+      ignore(self.advance()) // consume 'static'
+      self.parse_global_var_or_func(program, true, false)
+    }
+    TypeVarOrFunc => self.parse_global_var_or_func(program, false, false)
+    UnexpectedTop => {
+      let cur = self.current()
+      self.errors.push({
+        message: "预期 struct、函数或全局变量声明，找到: \{cur.text}",
+        line: cur.loc.line,
+        column: cur.loc.column,
+        code: @diag.ErrorCode::E2005_ExpectedSemicolon.code(),
+      })
+      ignore(self.advance())
+    }
+  }
+}
 
 ///|
 fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
@@ -594,156 +834,19 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
     while self.check(Inline) {
       ignore(self.advance())
     }
-    if self.check(Identifier) &&
-      (
-        self.peek(0).text == "_Static_assert" ||
-        self.peek(0).text == "static_assert"
-      ) {
-      self.parse_static_assert(0)
-      continue
-    }
-    // E3：顶层 [[属性]] 前缀——解析并忽略
-    if self.check(LBracket) && self.peek(1).ty == LBracket {
-      self.skip_attributes()
-      continue
-    }
-    if self.check(Typedef) {
-      let checkpoint_rb = self.save()
-      ignore(self.advance())
-      if self.check(Struct) {
-        let s_rb = self.save()
-        ignore(self.advance())
-        if self.check(Identifier) {
-          ignore(self.advance())
-        }
-        if self.check(LBrace) {
-          self.restore(checkpoint_rb)
-          self.parse_typedef_struct_decl(program, 0)
-          continue
-        }
-        self.restore(s_rb)
-      }
-      if self.check(Enum) {
-        let e_rb = self.save()
-        ignore(self.advance())
-        if self.check(Identifier) {
-          ignore(self.advance())
-        }
-        // C23 enum : T：底层类型子句不改变"是否 enum 定义"的判定
-        if self.check(Colon) {
-          while !self.is_at_end() &&
-                !self.check(LBrace) &&
-                !self.check(Semicolon) {
-            ignore(self.advance())
-          }
-        }
-        if self.check(LBrace) {
-          self.restore(checkpoint_rb)
-          self.parse_typedef_enum_decl(program, 0)
-          continue
-        }
-        self.restore(e_rb)
-      }
-      self.restore(checkpoint_rb)
-      self.parse_typedef(0)
-    } else if self.check(Enum) {
-      let checkpoint_rb = self.save()
-      ignore(self.advance())
-      if self.check(Identifier) {
-        ignore(self.advance())
-      }
-      // C23 enum : T：底层类型子句不改变"是否 enum 定义"的判定
-      if self.check(Colon) {
-        while !self.is_at_end() && !self.check(LBrace) && !self.check(Semicolon) {
-          ignore(self.advance())
-        }
-      }
-      let is_enum_decl = self.check(LBrace)
-      self.restore(checkpoint_rb)
-      if is_enum_decl {
-        self.parse_enum_decl(program, 0)
-      } else {
-        self.parse_global_var_or_func(program, false, false)
-      }
-    } else if self.check(Struct) {
-      let checkpoint_rb = self.save()
-      ignore(self.advance())
-      let has_name = self.check(Identifier)
-      if has_name {
-        ignore(self.advance())
-      }
-      if self.check(LBrace) {
-        // 向前跳过结构体体，判断后面是变量声明还是纯类型定义
-        let mut brace_depth = 0
-        while !self.is_at_end() {
-          if self.check(LBrace) {
-            brace_depth += 1
-          } else if self.check(RBrace) {
-            brace_depth -= 1
-            ignore(self.advance())
-            if brace_depth == 0 {
-              break
-            }
-            continue
-          }
-          ignore(self.advance())
-        }
-        let is_var_decl = self.check(Identifier) ||
-          self.check(Star) ||
-          self.check(Semicolon)
-        // 纯 struct { ... };（无变量名）仍视为结构体定义
-        let is_pure_decl = self.check(Semicolon)
-        self.restore(checkpoint_rb)
-        if is_var_decl && !is_pure_decl {
-          self.parse_global_var_or_func(program, false, false)
-        } else if self.is_cpp_mode && has_name {
-          self.parse_cpp_class_like_struct_decl(program)
-        } else {
-          let struct_decl = self.parse_struct_decl(0)
-          if self.is_cpp_mode {
-            self.typedef_names.set(
-              struct_decl.name,
-              @ast.Type::struct_type(struct_decl.name),
-            )
-          }
-          program.structs.push(struct_decl)
-        }
-      } else {
-        self.restore(checkpoint_rb)
-        self.parse_global_var_or_func(program, false, false)
-      }
-    } else if self.check(Union) {
-      program.unions.push(self.parse_union_decl(0))
-    } else if self.is_cpp_mode && self.check(Class) {
-      self.parse_cpp_class_decl(program)
-    } else if self.is_cpp_mode && self.check(Template) {
-      self.parse_cpp_template_decl(program)
-    } else if self.check(Extern) {
-      ignore(self.advance()) // consume 'extern'
-      self.parse_global_var_or_func(program, false, true)
-    } else if self.is_type_token() || self.is_static_token() {
-      let is_static = self.is_static_token()
-      if is_static {
-        ignore(self.advance()) // consume 'static'
-      }
-      self.parse_global_var_or_func(program, is_static, false)
-    } else {
-      let cur = self.current()
-      self.errors.push({
-        message: "预期 struct、函数或全局变量声明，找到: \{cur.text}",
-        line: cur.loc.line,
-        column: cur.loc.column,
-        code: @diag.ErrorCode::E2005_ExpectedSemicolon.code(),
-      })
-      ignore(self.advance())
-    }
+    let kind = self.classify_top_level()
+    self.dispatch_top_level(program, kind)
     // 活性内部断言（观测面，不改变控制流——照搬的推进逻辑本身三层兜底）
     if self.pos == round_start {
       self.stall_count += 1
+      // G1 熔断：主循环零推进仅计数（照搬 Rust），超限强推出下界
+      ignore(self.stall_breaker())
     }
   }
   Some(program)
 }
+
+///|
 
 ///|
 /// 从当前位置前瞻，跳过连续的 `*` 指针前缀（C++ 模式含 &/&&），返回跳过

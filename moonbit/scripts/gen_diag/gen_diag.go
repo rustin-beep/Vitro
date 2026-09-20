@@ -73,8 +73,11 @@ func main() {
 		fatalf("读源失败 %s: %v", *codesPath, err)
 	}
 	// 行尾规范化后取 sha：工作区 LF/CRLF 形态（git autocrlf、checkout 差异）
-	// 不得影响产物落款——否则换行尾即 -check 假红。
-	srcHash := fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))))[:8]
+	// 不得影响产物落款——否则换行尾即 -check 假红。归一同时回写 src：
+	// 解析层（parseArms 的转义处理）不接受 \r，CRLF 工作树下曾 fail loud
+	// "未处理的 Rust 转义 0x0d"（2026-09-20 收尾批实测修复）。
+	src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))
+	srcHash := fmt.Sprintf("%x", sha256.Sum256(src))[:8]
 
 	arms := parseArms(string(src))
 	if len(arms) != expectedArms {
@@ -257,6 +260,7 @@ func parseCatalog(dir string) []entry {
 		if err != nil {
 			fatalf("读卡片源失败 %s: %v", path, err)
 		}
+		src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n")) // 解析层同归一（见 codesPath 处注释）
 		for _, e := range parseEntryBlocks(string(src), f) {
 			if seen[e.code] {
 				fatalf("卡片码 %d 重复（%s）", e.code, f)

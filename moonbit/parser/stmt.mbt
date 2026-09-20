@@ -149,9 +149,14 @@ fn Parser::parse_statement_inner(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-/// stmt.rs 零进度保护的同步集（26 项语句起始 token）。
+/// stmt.rs 零进度保护的同步集（19 项语句起始 token，与 Rust stmt.rs 的
+/// synchronize 集逐项相同）。
 fn Parser::stall_synchronize(self : Parser) -> Unit {
   self.stall_count += 1
+  // G1 熔断：synchronize 在同步 token 上可零推进（Y5 病灶），超限强推
+  if self.stall_breaker() {
+    return
+  }
   self.synchronize([
     Semicolon,
     RBrace,

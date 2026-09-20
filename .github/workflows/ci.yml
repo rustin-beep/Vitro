@@ -155,6 +155,25 @@ jobs:
         run: go run ./scripts/replay
         shell: bash
 
+      # S3 审阅补线（2026-09-20，F5/G3）：MoonBit 工具链 + 解析差分锚。
+      # 此前 parser_diff 不在 CI——offsetof 深链崩溃（F1）/enum 常量链
+      # 崩溃（F2）/指针多维错值（F3）三项缺陷与"防线不在 CI"互为因果。
+      # 三模式均为分钟级（canonicalize 预构建后）；597 全量经下方 facts
+      # --run 采集。依赖上方 Release 构建的 vitro_cli。
+      - name: Install MoonBit toolchain (parser anchors / facts --run)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
+        shell: bash
+        run: |
+          go run ./scripts/parser_diff --pathological
+          go run ./scripts/parser_diff --legal-deep
+          go run ./scripts/parser_diff --threshold
+
       # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
       # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器
       # 真值漂移、跨文档 ABI 版本漂移均无门禁可拦。置于 replay 之后：shadow

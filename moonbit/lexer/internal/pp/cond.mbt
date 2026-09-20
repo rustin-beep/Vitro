@@ -718,9 +718,9 @@ fn parse_c_int(s : String) -> Int64? {
       break
     }
   }
-  let mut t = s.substring(start=0, end=end_)
+  let mut t = s[0:end_].to_owned()
   let neg = if t.length() > 0 && t[0] == '-' {
-    t = t.substring(start=1)
+    t = t[1:].to_owned()
     true
   } else {
     false
@@ -731,11 +731,11 @@ fn parse_c_int(s : String) -> Int64? {
   let (body, radix) : (String, Int) = if t.length() >= 2 &&
     t[0] == '0' &&
     (t[1] == 'x' || t[1] == 'X') {
-    (t.substring(start=2), 16)
+    (t[2:].to_owned(), 16)
   } else if t.length() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B') {
-    (t.substring(start=2), 2)
+    (t[2:].to_owned(), 2)
   } else if t.length() > 1 && t[0] == '0' {
-    (t.substring(start=1), 8)
+    (t[1:].to_owned(), 8)
   } else {
     (t, 10)
   }

@@ -504,7 +504,7 @@ func parseLexerDiffPass(out string) (int, bool) {
 // （病态 12 样本同等拒绝）+ E4（合法深嵌套反向锚）。任一路 FAIL 即
 // unavailable（fail loud）。
 func collectMoonbitParserDiff(root string, facts map[string]Fact) {
-	how := "go run ./scripts/parser_diff <corpus> ×4 + --pathological + --legal-deep"
+	how := "go run ./scripts/parser_diff <corpus> ×4 + --pathological + --legal-deep + --threshold"
 	total := 0
 	for _, corpus := range []string{
 		filepath.Join("native", "tests", "cases", "baseline"),
@@ -512,7 +512,9 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 		filepath.Join("native", "tests", "cases", "leetcode"),
 		filepath.Join("native", "tests", "cases", "gap"),
 	} {
-		out, code, ok := runCmd(root, 10*time.Minute, "go", "run", "./scripts/parser_diff", corpus)
+		// F5：超时 10→20min——canonicalize 已预构建（单样本 ~0.3s），
+		// 597 全量 ~分钟级，20min 为慢机余量（此前 10min 必超时退化 unavailable）
+		out, code, ok := runCmd(root, 20*time.Minute, "go", "run", "./scripts/parser_diff", corpus)
 		if !ok || code != 0 {
 			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
 				fmt.Sprintf("E1/E2 差分失败（%s，exit=%d）：%s", corpus, code, firstLine(out)))
@@ -540,8 +542,16 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 			fmt.Sprintf("E4 反向锚失败（exit=%d）：%s", code, firstLine(out)))
 		return
 	}
+	// E3+：阈值样本（勘察 §8-E3"新语言重标定后的阈值样本"——S3 审阅
+	// 补齐：offsetof 深链 / enum 常量链两侧一致 + 指针多维数组 C 语义）
+	out, code, ok = runCmd(root, 5*time.Minute, "go", "run", "./scripts/parser_diff", "--threshold")
+	if !ok || code != 0 {
+		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+			fmt.Sprintf("E3+ 阈值锚失败（exit=%d）：%s", code, firstLine(out)))
+		return
+	}
 	f := okFact(total, "个", "scripts/parser_diff（Rust oracle ↔ MoonBit parser）", "run", nowISO())
-	f.Note = "baseline 363 + K&R 81 + leetcode 138 + gap 15 的 AST dump + 诊断序列归一逐字节一致（含活性 stall=0）；E3 病态 12 样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致"
+	f.Note = "baseline 363 + K&R 81 + leetcode 138 + gap 15 的 AST dump + 诊断序列归一逐字节一致（含活性 stall=0）；E3 病态 12 样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致；E3+ 阈值样本（offsetof 深链/常量链两侧一致 + 指针多维数组 C 语义折叠）"
 	facts["moonbit_parser_diff_samples"] = f
 }
 

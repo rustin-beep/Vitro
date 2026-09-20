@@ -406,7 +406,7 @@ fn Parser::parse_unary_body(self : Parser, depth : Int) -> @ast.Expr {
     return self.parse_alignof(depth)
   }
   if self.match_token(Offsetof) {
-    return self.parse_offsetof()
+    return self.parse_offsetof(depth)
   }
   if self.is_cpp_mode && self.match_token(New) {
     return self.parse_new_expr(depth)
@@ -537,10 +537,13 @@ fn Parser::parse_alignof(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_offsetof(self : Parser) -> @ast.Expr {
+/// offsetof(type, member)：目标类型解析透传 depth（与 parse_sizeof/
+/// parse_alignof 同构——F1 修复：此前硬编码 0，嵌套 offsetof 链每层把
+/// 深度计数归零，护栏失效且深链栈溢出）。
+fn Parser::parse_offsetof(self : Parser, depth : Int) -> @ast.Expr {
   let loc = self.prev_loc()
   ignore(self.consume(LParen, "offsetof 后预期 '('"))
-  let target_type = self.parse_base_type(0)
+  let target_type = self.parse_base_type(depth)
   ignore(self.consume(Comma, "offsetof 参数之间预期 ','"))
   let field_tok = self.consume(Identifier, "offsetof 预期字段名")
   ignore(self.consume(RParen, "offsetof 后预期 ')'"))
@@ -733,7 +736,7 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int) -> @ast.Expr {
     let has_f_suffix = prev.text.has_suffix("f") || prev.text.has_suffix("F")
     let mut text = prev.text
     while text.has_suffix("f") || text.has_suffix("F") {
-      text = text.substring(start=0, end=text.length() - 1)
+      text = text[0:text.length() - 1].to_owned()
     }
     let value = self.parse_double_or_report(prev, text)
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)

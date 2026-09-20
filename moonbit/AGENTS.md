@@ -23,7 +23,7 @@
 cd moonbit
 moon check                # 快速类型检查（日常常跑）
 moon check --target all   # 全后端检查（发布前）
-moon test                 # 136 测试（白盒 _wbtest.mbt + 黑盒 _test.mbt + doc 测试）
+moon test                 # 144 测试（白盒 _wbtest.mbt + 黑盒 _test.mbt + doc 测试）
 moon test --update        # 快照更新（inspect content= 变更时；核对 diff 再提交）
 moon fmt                  # 格式化（生成物也参与——见 gen_diag 内置 fmt）
 moon info                 # 生成 .mbti 接口面（API 变更信号；pkg.generated.mbti 入版本控制）
@@ -67,7 +67,7 @@ go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚
 25. **数值位模式重解释**：`UInt64::to_int64` = `%u64.to_i64_reinterpret`（bitcast，正是 Rust `as i64`）；`Int64::to_int` 语义未文档化——i64→i32 截断自己写（低 32 位符号解释，见 parser/decl.mbt `i64_to_i32_bits`）；`Int::to_int64` 是符号扩展（= Rust `as i64`）。
 26. **wbtest 不携带 `for "test"` import**（黑盒专用配置）——白盒测试要跨包输入就手工构造（如 token 数组），或把用例放黑盒。
 27. **JSON 字符串输出必须转义 < 0x20 控制字符**（`\u00XX`，serde_json 口径）——C 转义序列（`\x4`）解析出的真字节原样写出即非法 JSON（S3 由 baseline 的 string_escape_octal_hex.c 差分抓出）。
-28. **wasm 测试运行时的栈预算比 moonrun 更紧**（S3 实测：声明符链递归解释 900 层过 / 1200 层溢出）——深结构处理一律迭代化（显式栈/下钻折叠），不能依赖"Rust 侧能过的深递归这里也能过"。
+28. **wasm 测试运行时的栈预算比 moonrun 更紧**（S3 实测：`interpret_declarator_node` **递归解释**形态 900 层过 / 1200 层溢出——目标 wasm；同函数迭代化后 1250 层全存活；`node_cross_count` 的纯计数递归在 wasm-gc/native 三后端 1250 层存活（S3 审阅实测）——旧区间只适用于"递归解释"形态，勿外推到计数函数）——深结构处理一律迭代化（显式栈/下钻折叠），不能依赖"Rust 侧能过的深递归这里也能过"。
 
 ## 编码与架构纪律（S1 已定型）
 
@@ -81,7 +81,10 @@ go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚
 ## 发布流程（T5 定型）
 
 ```bash
-# 前置：moon check --target all 干净 + moon test 全绿 + moon info 无意外 diff + gen_diag -check 绿
+# 前置：moon check --target all 干净（豁免：Show→Debug 迁移期噪音 10 条，
+#       全系 inspect 系测试 API 依赖 core 旧 trait，无本仓侧干净替代——
+#       见 S3 执行记录 §7-9/§8-6；core 稳定后清零）+ moon test 全绿 +
+#       moon info 无意外 diff + gen_diag -check 绿
 cd moonbit && moon publish        # Server 200 OK 后：
 # 验收：moon search vitro 可查 → 全新项目 moon add vitro/engine@<ver> →
 #       安装后跑一段示例；包 zip（~/.moon/registry/cache）核对根级四件：

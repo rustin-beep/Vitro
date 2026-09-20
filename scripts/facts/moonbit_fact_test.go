@@ -58,3 +58,26 @@ func TestLexerDiffParseFailLoud(t *testing.T) {
 		t.Fatalf("FAIL 输出必须不可采：n=%d ok=%v", n, ok)
 	}
 }
+
+// S3 审阅补线（2026-09-20，F7）：解析差分真值解析器——绿路径 + J9 埋雷。
+// 此前 facts.go:548 注释声称"（J9 埋雷覆盖假输出）"但无任何测试。
+
+func TestParserDiffParseGreen(t *testing.T) {
+	n, ok := parseParserDiffPass("parser_diff: PASS——597 个样本 AST+诊断序列归一后逐字节一致（语料 x）")
+	if !ok || n != 597 {
+		t.Fatalf("绿路径解析失败: n=%d ok=%v", n, ok)
+	}
+}
+
+func TestParserDiffParseFailLoud(t *testing.T) {
+	// J9 埋雷：FAIL 输出（无 PASS 行）必须判 false，禁止把失败当 0 个采集；
+	// 崩溃输出（moon run 失败信息）同样不可采
+	for _, out := range []string{
+		"parser_diff: FAIL——3 处差异（语料 x）",
+		"parser_diff: moon run cmd/dump_ast 失败: exit status 0xc00000fd",
+	} {
+		if n, ok := parseParserDiffPass(out); ok || n != 0 {
+			t.Fatalf("假输出必须不可采（%q）: n=%d ok=%v", out, n, ok)
+		}
+	}
+}

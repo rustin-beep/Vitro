@@ -57,6 +57,9 @@ pub struct TypeChecker {
   current_file : String
   loop_depth : Int
   switch_depth : Int
+  // 当前函数形参名集合（sizeof 的数组形参退化 W3052 判据；visit_func_decl
+  // 填充/清空——Rust lib.rs:45，骨架批漏项本批补）
+  current_func_params : Set[String]
   char_narrow_suppress : Bool
   // 诊断三段（push 序 = E1 对拍面）
   errors : Array[TypeError]
@@ -78,6 +81,7 @@ pub fn TypeChecker::new() -> TypeChecker {
     current_file: "",
     loop_depth: 0,
     switch_depth: 0,
+    current_func_params: Set([]),
     char_narrow_suppress: false,
     errors: [],
     warnings: [],
@@ -221,9 +225,13 @@ pub fn TypeChecker::check(
       self.check_array_dims_legality(g.ty, has_init_list, g.loc)
     }
   }
-  // 【下一批接线】初始化器类型检查（check_array_initializer /
-  // check_struct_initializer / resolve+check_assignable）与 Pass 3 函数体
-  // visitor（visit_func_decl）——当前直通（typed_ast 原样保留）。
+  // Pass 2.5 初始化器检查【接线撤回——探针实测教训】：直通臂（未接线
+  // 表达式变体）返回 parser 占位 ty=Void，check_assignable 会制造 Rust
+  // 没有的假 E3004（`int g = 1+2;` 实测误报"无法将 'void' 赋值给
+  // 'int'"）。**ops/call 批迁完（Binary/Ternary/Unary/Assign/Call 全接
+  // 线）后恢复此段**——Rust else 分支：resolve_expr_type(init) +
+  // check_assignable + E3004；auto/typeof 先定型与数组/struct 初始化器
+  // 形状检查随 decl_types/init 批。
   self.exit_scope()
   (program, self.errors, self.warnings, self.hints)
 }

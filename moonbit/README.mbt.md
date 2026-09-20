@@ -28,7 +28,7 @@ go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 产物被�
 ## 验证
 
 ```bash
-moon check && moon test    # 160 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 7；分解和 156 + 根 README doc test 4）——S4 起 names/libc/typeck 入列；分解数以 moon test -p 逐包为准
+moon check && moon test    # 165 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 12；分解和 161 + 根 README doc test 4）——S4 起 names/libc/typeck 入列；分解数以 moon test -p 逐包为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

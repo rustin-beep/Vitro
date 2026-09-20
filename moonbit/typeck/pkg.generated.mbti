@@ -2,6 +2,7 @@
 package "vitro/engine/typeck"
 
 import {
+  "moonbitlang/core/set",
   "vitro/engine/ast",
   "vitro/engine/diag",
   "vitro/engine/source",
@@ -15,6 +16,8 @@ pub fn implicit_cast_target(@ast.Type, @ast.Type) -> @ast.Type?
 pub fn insert_implicit_cast(@ast.Expr, @ast.Type) -> @ast.Expr
 
 pub fn is_char_safe_initializer(@ast.Expr) -> Bool
+
+pub fn promote_type(@ast.Type, @ast.Type) -> @ast.Type
 
 // Errors
 
@@ -42,6 +45,7 @@ pub struct TypeChecker {
   current_file : String
   loop_depth : Int
   switch_depth : Int
+  current_func_params : @set.Set[String]
   char_narrow_suppress : Bool
   errors : Array[TypeError]
   warnings : Array[TypeError]
@@ -64,6 +68,7 @@ pub fn TypeChecker::new() -> Self
 pub fn TypeChecker::report_error(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
 pub fn TypeChecker::report_hint(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
 pub fn TypeChecker::report_warning(Self, String, @source.SourceLoc, @diag.ErrorCode) -> Unit
+pub fn TypeChecker::resolve_expr_type(Self, @ast.Expr) -> (@ast.Type, @ast.Expr)
 pub fn TypeChecker::update_var_type(Self, String, @ast.Type) -> Unit
 
 pub(all) struct TypeError {

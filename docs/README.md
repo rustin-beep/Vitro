@@ -43,9 +43,9 @@
 | 文档 | 说明 |
 |------|------|
 | [`current/03-语言子集/C语言子集规范.md`](current/03-语言子集/C语言子集规范.md) | C 教学子集规范（支持语法 / C23 锚定 §2.10~2.12 / 排除清单 / 与 Clang 的已记录差异）（原 `C_SUBSET_SPEC.md`） |
-| [`current/03-语言子集/C++子集规范.md`](current/03-语言子集/C++子集规范.md) | C++14 教学子集规范（面向学生/教师，含 Honest Subset 边界与模板活约束）（原 `CPP_SUBSET_SPEC.md`） |
-| [`current/03-语言子集/C++拓展实施计划.md`](current/03-语言子集/C++拓展实施计划.md) | C++ 子集拓展实施计划（Stage 0~6 已完成；Phase 42 进行中的活进度载体）（原 `CPLUSPLUS_EXTENSION_PLAN.md`） |
-| [`current/03-语言子集/CSharp前端引入计划.md`](current/03-语言子集/CSharp前端引入计划.md) | **C# 教学子集前端引入计划**（v3 定稿：ARC 降解 / 异常与栈展开 / CS0~CS6 批次；排期以 U 系列路线图为准，SharpTutor 锚定）（原 `CSHARP_EXTENSION_PLAN.md`） |
+| [`current/03-语言子集/CSharp前端引入计划.md`](current/03-语言子集/CSharp前端引入计划.md) | **C# 教学子集前端引入计划**（v4：砍 C++ 裁定后 MoonBit 四包重设计——原生类模型 / ARC / 异常栈展开 / 插值 host func 语义核 / 双 oracle 语料格局；CS 批排 S6 后，SharpTutor 锚定）（原 `CSHARP_EXTENSION_PLAN.md`） |
+| [`current/03-语言子集/C++子集规范.md`](current/03-语言子集/C++子集规范.md) | C++14 教学子集规范（**砍 C++ 裁定 2026-09-20 后待归档**——Rust oracle 冻结区语义参考保留，MoonBit 侧零迁移）（原 `CPP_SUBSET_SPEC.md`） |
+| [`current/03-语言子集/C++拓展实施计划.md`](current/03-语言子集/C++拓展实施计划.md) | C++ 子集拓展实施计划（**砍 C++ 裁定 2026-09-20 后待归档**——Phase 31~42 历史记录，语义参考价值保留在 git 历史）（原 `CPLUSPLUS_EXTENSION_PLAN.md`） |
 
 #### 标准库与测试防线
 

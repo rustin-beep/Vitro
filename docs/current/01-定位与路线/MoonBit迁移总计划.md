@@ -11,7 +11,7 @@
 | # | 裁定 | 依据摘要 |
 |---|---|---|
 | F-1 | **同仓绞杀者渐进迁移**：Rust 版冻结不删、降级为差分对照 oracle；MoonBit workspace 与 `native/` 并列。冻结纪律：Rust 侧只收安全修复，新特性一律 MoonBit 侧 | 项目所有者拍板；"每搬一包趁 Rust 版仍在做差分扫描"是唯一不重踩坑路径 |
-| F-2 | **v1 范围 = C only**：C++ 子集（≈6,514 行 / 8.5%）延后 S9 单独裁定；包边界第一天预留（cpp 5 包草案）；砍 C++ 与 CS2 复用策略冲突须合并裁定；空输入短路可取得"砍"的主要收益 | VM 零 C++ 感知（实测 3 处偶然命中）；is_cpp_mode 全在 lexer+parser 最前两层 |
+| F-2 | **v1 范围 = C only**：C++ 子集（≈6,514 行 / 8.5%）延后 S9 单独裁定；包边界第一天预留；砍 C++ 与 CS2 复用策略冲突须合并裁定；空输入短路可取得"砍"的主要收益。**裁定已出（2026-09-20）：砍**——C++ 零迁移（寄生面由"从不落块"天然完成 U3#6/#9 手术）；CS2 复用冲突合并裁定：Rust oracle 冻结区保留为 C# 类机制**语义参考**（Phase 32/33 实现思路可查），"先在 C++ 上趟平"的垫脚石损失可接受（C++ 栈对象 RAII 与 C# 引用类型+ARC 语义本大异，直接可复用面仅 AST 形态与 vtable 布局思路）；C++ 防线（shadow_cpp 99 / E2E 83 / CI 三 tier）随砍退役归档 | VM 零 C++ 感知（实测 3 处偶然命中）；is_cpp_mode 全在 lexer+parser 最前两层 |
 | F-3 | **JIT 倾向不搬**（S9 复核）：宿主 V8 自带 JIT 边际缩水；JIT 与解释器溢出语义分歧现存未修；统一模式下 JIT 录制纯浪费。`jit_path_parity` 八形状外置 JSON 作"复活必全绿"遗产 | 门 1 实测：放弃 JIT 代价收敛为热循环 ~2.8× 且仍快于现役解释器 |
 | F-4 | **驱动层 v1 保留 Go**（10,767 行清白资产）；Node 宿主为新增薄层（engine-host 接口：spawn/stdin 字节/stdout 逐行/stderr/超时 kill/退出码/RSS 采样）；golden 生成器由 Node 宿主驱动承担 | D5 刚收官；绞杀者策略新语言只承担引擎本体 |
 | F-5 | **wasm-gc 单出口、多宿主**：浏览器（主交付）/ Node 22+（CI 主力）/ Wasmtime（需 `-W gc`，部署文档写明）；宿主接口 4 函数（invoke/reset/protocol_version/engine_version）+ 21 方法表；`memory.regions` 字段当场定型；砍 capi 45 导出 | 门 2 实测 2.34s 真实运行；45 导出中 28 无消费者（亲证） |
@@ -49,12 +49,14 @@ L1 诊断契约  vitro/engine/diag(ErrorCode 137+Severity+SourceLang+Diagnostic+
 L2 抽象语法  vitro/engine/ast(Type 17/Expr 26/Stmt 16+depth+判等渲染单源；不含 compute_type_size)
 L3 名字单源  vitro/engine/names(InstKey→InstId→mangled Name 唯一产出口；parser/typeck 共依赖)
 L4 前端     vitro/engine/lexer(facade tokenize→LexResult；internal/{source,pp,host})  vitro/engine/parser
-            〔预留〕vitro/engine/parser/cpp
+            〔CS 批·S6 后〕vitro/engine/csharp/lexer + csharp/parser（C# 前端；插值字符串 hole 级 span）
 L5 语义     vitro/engine/typeck ─ vitro/engine/containers(JSON 数据驱动) ─ vitro/engine/libc(单表签名)
-            〔预留〕vitro/engine/typeck/cpp
-L6 发射     vitro/engine/codegen(internal/{Layout Planner, frame LIFO 池, c, cpp})  vitro/engine/bytecode(产物 schema+libc 固定索引)
+            〔CS 批〕vitro/engine/csharp/typeck（引用语义/类系统/异常类型链/ARC 插桩点判定；表达式定型内核消费 vitro/engine/typeck——共享切线=表达式/语句层，声明层分叉；原 typeck/cpp 预留位随砍 C++ 裁定撤销）
+L6 发射     vitro/engine/codegen(internal/{Layout Planner, frame LIFO 池, c})  vitro/engine/bytecode(产物 schema+libc 固定索引)
+            〔CS 批〕vitro/engine/csharp/codegen（ARC 插桩/异常映射 trap→Throw/顶层语句入口合成；原 internal/cpp 子目录规划随砍 C++ 裁定撤销）
 L7 执行     vitro/engine/memory(载体+MemoryMap+checked_access 单入口+bump/隔离堆+freed_logs 有序结构)
             vitro/engine/host(110 路由表单源+vfs 入快照)  vitro/engine/vm(executor 穷尽 match+snapshot 不可变派生)
+            〔CS 批·v1 设计输入非事后补丁〕vm 三执行状态：handler 栈/异常寄存器/UNWINDING + memory region 表 refcount 字段——opcode TryBegin=44/TryEnd=45/Throw=46 进历史空号（对 Rust 对拍面零扰动，双侧皆空号）；VMSnapshot 一等含三状态（时间旅行免费安全）
             〔S9 裁定〕vitro/engine/jit(必须可整体移除)
 L8 会话/协议  vitro/engine/session(SessionConfig 值对象)  vitro/engine/protocol(帧+schema 版本+StepPayload/词汇/契约)
             vitro/engine/gateway(wasm-gc 4 函数导出+NDJSON)
@@ -102,10 +104,10 @@ A2 实测关闭（有条件）；A3 实测关闭（方向有利）；A7 实测�
 | S3 | ✅ `vitro/engine/parser`（深度统一入口；J1 语义不复刻；2026-09-19 收官——[执行记录](../07-质量与裁定/20260919_S3解析器执行记录.md)） | ✅ E1–E4 全绿：597 真实语料 AST+诊断序列归一逐字节一致 + 病态 12 样本同等拒绝 + 活性 stall=0 + E4 反向锚（1200 层声明符两侧存活且一致） | —（随 0.4.0 发布） |
 | S4 | ✅ `vitro/engine/{names,libc,typeck}` 主体收官（2026-09-20 T5-b/c/d + T6：typeck 4 Pass 全接线——call/init/builtin/decl 四文件 + bytecode_libc_sig 表入 libc；**598 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap；183 测试；**containers 延后 S9**：内置容器全是 C++ 模板路径，C only 零活跃路径，F-2 推论） | E1–E4；**改形登记（2026-09-20 审阅 F4）**：E2 符号表/E3 mangled 名集合不独立出口，由 E4 typed_ast 投影派生（typeck 内部 Map 状态不外溢产物——C 输入下投影≈快照可辩护：classes 恒空、static_func_sigs/templates 合并差异均以诊断形式落在 E1 面）；**mangled 名集合在 C 子集无对象**（C 侧零模板/方法 mangling——names 的 type_mangle_suffix/method_mangled_name 消费面全在 C++ 路径，S9 后才有差分锚）；勘察 §5 架构优化 M1（单态化两阶段）C only 无对象、M3（诊断结构化）协议层不动照搬旧 TypeError、M4（尺寸单一表达式）/M9（声明定型统一）随 init/decl_types 批、M7（诊断顺序显式化）以 Vec push 序照搬达成隐式确定——均未按『目标架构』形态落地，等价优先 | names——**C 子集零差分覆盖**（8 消费点全在 C++ 语法路径，5 测试为白盒自证；发布形态待 S4 收官时裁定：推迟至 S9 后或以白盒锚为发布锚） |
 | S5 | `vitro/engine/{codegen,bytecode}` | A 级产物 code 段 + libc 自举 + LIFO 八条事故回归 + r1 7 道 + `--dump-compile-output` 工具 + codegen 自建单测 | — |
-| S6 | `vitro/engine/{memory,host,vm}` | D 级 30 例三联 diff + 门 3 集成版 + 条件 A 性能锚 | `vitro/engine/vm` |
+| S6 | `vitro/engine/{memory,host,vm}` | D 级 30 例三联 diff + 门 3 集成版 + 条件 A 性能锚；**vm 设计输入（C# 前置，砍 C++ 后新增）**：handler 栈/异常寄存器/UNWINDING 三执行状态 + region refcount 字段进 v1 状态机（见包图 L7）——C# 异常与 ARC 不走 Rust 侧"事后打补丁"路线 | `vitro/engine/vm` |
 | S7 | `vitro/engine/{session,protocol,gateway}` + Node 宿主 | 协议帧双宿主对拍 + replay/serve_smoke 重建 | `vitro/engine/protocol` + wasm-gc 产物 |
 | S8 | `vitro/engine/{time_travel,teaching,analysis,diagnostics}` + 差异台账 | seek 往返五类相等 + 标注 golden 311 三方 diff + 台账 CI | 认知链切片 |
-| S9 | 裁定批：JIT 复核 / C++ 搬或砍（与 CS2 合并）/ libc 机制形态 / Wasmtime 形态 | 各自判定书 | — |
+| S9 | 裁定批：JIT 复核 / ~~C++ 搬或砍~~（**2026-09-20 已裁：砍**，与 CS2 合并裁定落 C# 计划 §11 v4——寄生收口 U3#6/#9 由零迁移天然完成、容器 containers 包改判 C# 走 BCL 数据驱动）/ libc 机制形态 / Wasmtime 形态 | 各自判定书 | — |
 | 全量切换 | 758 用例 + golden 733 全绿 + facts 双轨收口 | shadow 逐项一致（match/known_issue/gap 三口径） | 1.0 |
 
 S4 期坑登记（2026-09-20 审阅，S9 裁定批输入）：① parser/decl.mbt 的类外方法定义名 `"{Class}__{method}"` 散拼（names 包『唯一产出口』声明的孪生漏网——照搬 Rust decl.rs:671 现状，收口随 C++ 片）；② libc 放行并集 175 名与 host_func_id/bytecode_libc_index 的单源关系（S4 以 MoonBit 侧 Set 照搬起步，S5/S6 发射/执行侧入库时**以 vitro/engine/libc 为单源回填**，消第四套真相源）。

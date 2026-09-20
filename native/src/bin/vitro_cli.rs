@@ -1011,10 +1011,11 @@ fn dump_one(path: &std::path::Path, out_dir: &str, want_raw: bool, want_pp: bool
         let (tokens, errors) = lexer.tokenize_raw();
         let mut tsv = String::new();
         for (i, (t, off)) in tokens.iter().enumerate() {
+            let ty_debug = format!("{:?}", t.ty);
             tsv.push_str(&format!(
                 "{}\t{}\t{}\t{}\t{}\t{}\n",
                 i,
-                format!("{:?}", t.ty),
+                ty_debug,
                 escape_tsv_text(&t.text),
                 t.line,
                 t.column,
@@ -1038,10 +1039,11 @@ fn dump_one(path: &std::path::Path, out_dir: &str, want_raw: bool, want_pp: bool
         let warnings = lexer.into_warnings().len();
         let mut tsv = String::new();
         for (i, t) in tokens.iter().enumerate() {
+            let ty_debug = format!("{:?}", t.ty);
             tsv.push_str(&format!(
                 "{}\t{}\t{}\t{}\t{}\n",
                 i,
-                format!("{:?}", t.ty),
+                ty_debug,
                 escape_tsv_text(&t.text),
                 t.line,
                 t.column

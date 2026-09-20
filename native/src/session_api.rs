@@ -203,6 +203,7 @@ pub fn symbols_dump(session: &mut Session, params: &Value) -> Value {
 ///   派生（funcs/structs/unions/globals 的名字与签名汇总）。typeck 内部
 ///   Map 状态不外溢到产物（除诊断与 AST），从产物反推是行为等价，强于
 ///   状态等价。
+///
 /// 管线语义对齐（compile_pipeline）：parse_errors 非空 → typeck 不跑
 /// （ok:false；parse_errors 明细仍带，与 ast.dump 的 E2 面同构）。
 /// TypeChecker::new(false) 与单文件管线口径一致。

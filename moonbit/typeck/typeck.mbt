@@ -225,13 +225,34 @@ pub fn TypeChecker::check(
       self.check_array_dims_legality(g.ty, has_init_list, g.loc)
     }
   }
-  // Pass 2.5 初始化器检查【接线撤回——探针实测教训】：直通臂（未接线
-  // 表达式变体）返回 parser 占位 ty=Void，check_assignable 会制造 Rust
-  // 没有的假 E3004（`int g = 1+2;` 实测误报"无法将 'void' 赋值给
-  // 'int'"）。**ops/call 批迁完（Binary/Ternary/Unary/Assign/Call 全接
-  // 线）后恢复此段**——Rust else 分支：resolve_expr_type(init) +
-  // check_assignable + E3004；auto/typeof 先定型与数组/struct 初始化器
-  // 形状检查随 decl_types/init 批。
+  // Pass 2.5 初始化器检查（Rust else 分支的 C 面，函数式重建：元素整体
+  // 换新）。【接线恢复 + 守卫】ops 批（Binary/Ternary/Unary/Assign/
+  // Generic）已真解析，Void 占位假 E3004 教训消除；**Call/CallPtr 仍
+  // 直通**（call 批未迁——`int g = f();` 的 init 走守卫跳过，call 批
+  // 放开）。auto/typeof 先定型（decl_types 批）与数组/结构体初始化器
+  // 形状检查（init.rs 批）同此登记。
+  for i in 0..<program.globals.length() {
+    let g = program.globals[i]
+    if g.init is Some(init) {
+      let skip = g.ty.is_array() ||
+        (g.ty.kind() is TK_Struct && init is InitList(_, _, _)) ||
+        g.ty.kind() is TK_Auto ||
+        init is Call(_, _, _, _) ||
+        init is CallPtr(_, _, _, _)
+      if !skip {
+        let (init_type, new_init) = self.resolve_expr_type(init)
+        if !self.check_assignable(g.ty, init_type, g.loc) {
+          self.report_error(
+            "类型不匹配：无法将 '\{init_type.to_c_string()}' 赋值给 '\{g.ty.to_c_string()}'",
+            g.loc,
+            E3004_TypeMismatch,
+          )
+        }
+        program.globals[i] = { ..g, init: Some(new_init), }
+      }
+    }
+  }
+  // 【下一批接线】Pass 3 函数体 visitor（visit_func_decl——decl.rs 批）。
   self.exit_scope()
   (program, self.errors, self.warnings, self.hints)
 }

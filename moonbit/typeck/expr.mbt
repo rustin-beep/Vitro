@@ -119,7 +119,14 @@ pub fn TypeChecker::resolve_expr_type(
       self.resolve_alignof(target_type, operand, loc)
     Cast(inner, target_type, loc, _) =>
       self.resolve_cast(inner, target_type, loc)
-    // —— 未接线变体直通（登记见文件头；红面覆盖，下批收敛）——
+    Binary(op, left, right, loc, _) => self.resolve_binary(op, left, right, loc)
+    Ternary(cond, then_branch, else_branch, loc, _) =>
+      self.resolve_ternary(cond, then_branch, else_branch, loc)
+    Unary(op, operand, loc, _) => self.resolve_unary(op, operand, loc)
+    Assign(op, left, right, loc, _) => self.resolve_assign(op, left, right, loc)
+    Generic(control, associations, default, loc, _) =>
+      self.resolve_generic(control, associations, default, loc)
+    // —— 未接线变体直通（登记见文件头；红面覆盖，call 批收敛）——
     _ => (expr.ty(), expr)
   }
 }

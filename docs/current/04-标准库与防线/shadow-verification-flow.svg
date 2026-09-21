@@ -33,7 +33,7 @@
 <line class="line" x1="600" y1="226" x2="600" y2="260"/>
 <rect class="card" x="240" y="260" width="720" height="96" rx="14"/>
 <text class="t" x="600" y="300" text-anchor="middle">跑影子验证 Clang vs Vitro</text>
-<text class="tc" x="600" y="332" text-anchor="middle">Go 驱动 · <tspan data-fact="shadow_c_cases">680</tspan>用例冷启动 ~26s（16 并发）/ 缓存热跑 ~5s · stdin 同字节注入</text>
+<text class="tc" x="600" y="332" text-anchor="middle">Go 驱动 · <tspan data-fact="shadow_c_cases">682</tspan>用例冷启动 ~26s（16 并发）/ 缓存热跑 ~5s · stdin 同字节注入</text>
 <line class="line" x1="600" y1="356" x2="600" y2="390"/>
 <rect class="card" x="240" y="390" width="720" height="96" rx="14"/>
 <text class="t" x="600" y="430" text-anchor="middle">五分类判定（逐字节比对 stdout）</text>
@@ -52,7 +52,7 @@
 <text class="tm" x="900" y="638" text-anchor="middle">compile_gap / runtime_gap / output_gap</text>
 <text class="tc" x="900" y="670" text-anchor="middle">缺失特性频率排序 → 确定 Top 3</text>
 <text class="tc" x="900" y="694" text-anchor="middle">→ 驱动扩展优先级，进入开发实现</text>
-<text class="tc" x="600" y="756" text-anchor="middle">当前规模：C <tspan data-fact="shadow_c_cases">680</tspan>（<tspan data-fact="shadow_c_match">676</tspan> match + <tspan data-fact="shadow_c_known_issue">3</tspan> known_issue + <tspan data-fact="shadow_c_gap_extension">1</tspan> gap_extension，<tspan data-fact="shadow_c_gaps">0</tspan> 非预期差异）</text>
+<text class="tc" x="600" y="756" text-anchor="middle">当前规模：C <tspan data-fact="shadow_c_cases">682</tspan>（<tspan data-fact="shadow_c_match">678</tspan> match + <tspan data-fact="shadow_c_known_issue">3</tspan> known_issue + <tspan data-fact="shadow_c_gap_extension">1</tspan> gap_extension，<tspan data-fact="shadow_c_gaps">0</tspan> 非预期差异）</text>
 <text class="tc" x="600" y="784" text-anchor="middle">C++ <tspan data-fact="shadow_cpp_cases">99</tspan>（<tspan data-fact="shadow_cpp_match">95</tspan> 一致 + <tspan data-fact="shadow_cpp_clang_fail">4</tspan> 已记录 clang_compile_fail）· Clang 预检缺失即 fail fast(exit 2)</text>
-<text class="tc" x="600" y="810" text-anchor="middle">数据 as_of 2026-09-20 22:09:18 · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）</text>
+<text class="tc" x="600" y="810" text-anchor="middle">数据 as_of 2026-09-22 00:36:04 · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）</text>
 </svg>

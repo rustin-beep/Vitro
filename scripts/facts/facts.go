@@ -436,6 +436,14 @@ func collectCargoTestFromOutput(out string, code int, source, provenance string,
 	}
 	if n := len(regexp.MustCompile(`Running .*target[\\/]debug[\\/]deps[\\/]`).FindAllString(out, -1)); n > 0 {
 		facts["cargo_test_suites"] = okFact(n, "个", source, provenance, nowISO())
+	} else {
+		// 必须与 passed 对称地写 unavailable：沿用逻辑（collectAll）只接
+		// "键存在且 unavailable"的条目——解析失败时若整个不写键，CI 形态
+		// （--cargo-log）采到的套件数会在下一次日常运行落盘时被无声丢弃，
+		// 本地永远"待采集"、无法预演 CI 的漂移判定（2026-09-22 实测踩坑，
+		// J9 锚 cargo_fact_test.go）。
+		facts["cargo_test_suites"] = unavail("个", source, "cargo test --workspace --all-features",
+			"未解析到 Running tests 行")
 	}
 }
 
@@ -642,6 +650,12 @@ func collectAll(root string, run, runSlow bool, cargoLog string, prev *FactsDoc)
 		collectCargoTest(root, facts)
 	default:
 		facts["cargo_test_passed"] = unavail("用例", "cargo test", "--run-slow 或 --cargo-log",
+			"需 --run-slow 才执行（很慢）；CI 传 --cargo-log 解析已落盘日志")
+		// suites 必须与 passed 对称地占位 unavailable：沿用逻辑只接"键存在且
+		// unavailable"的条目——缺键会让 CI 形态采到的套件数在日常运行落盘时
+		// 被无声丢弃，本地永远"待采集"、无法预演 CI 判定（2026-09-22 实测踩坑，
+		// J9 锚 cargo_fact_test.go）。
+		facts["cargo_test_suites"] = unavail("个", "cargo test", "--run-slow 或 --cargo-log",
 			"需 --run-slow 才执行（很慢）；CI 传 --cargo-log 解析已落盘日志")
 	}
 

@@ -117,7 +117,7 @@ native/                    Rust workspace（编译器 + VM + 三出口）
 ├── benches/               性能基线
 └── tests/                 五层测试防线与用例（baseline / knr / leetcode / cpp / shadow）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
-scripts/                   Python 工具（Shadow 驱动、serve 冒烟、CI 一致性检查）
+scripts/                   Go 防线驱动与工具脚本（Shadow 驱动、差分对拍、facts 对账、CI 一致性检查；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
 docs/                      设计文档、规范与事故报告
   ├── current/             当前有效文档
   ├── spec/                语言中立协议 schema

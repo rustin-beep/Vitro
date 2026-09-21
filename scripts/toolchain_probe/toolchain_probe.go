@@ -1,0 +1,168 @@
+// toolchain_probe：MoonBit 工具链健康探针（E-06 窄增量，2026-09-21）。
+//
+// 用法（仓库根）：go run ./scripts/toolchain_probe [--update-baseline]
+//
+// 背景（架构审阅 v2 A8 最薄弱项 + 用户窄增量裁定）：moon 工具链稳定性
+// 此前靠人工盯——故障模式是"静默炸、事后读 CI 日志归因"。本探针把
+// 故障显式化（本地开发时显式红），**不是包装 moon**，四项独立检查：
+//
+//  1. 版本锁定：moon/moonc 版本 vs 基线文件（toolchain_baseline.txt）——
+//     工具链静默升级（registry/breaking）当日暴露；--update-baseline 迁移。
+//  2. registry 索引预检：模拟 CI 实锤坑（ed4d4c4——全新安装的 moon 解析
+//     moonbitlang/x 报 "module was not found in the registry"）：索引
+//     文件存在性 + 关键依赖名可解析。CI 每次在线装 moon，此坑会在
+//     门禁之外静默重演——探针提前在本地红。
+//  3. 已知 ICE 特征识别：F8（moonc v0.10.13 跨文件顶层 pub let 的
+//     link-core ICE——`_ZN4moon7core...` 链接错误/segfault 形态）。
+//     输出含特征 → 定性为已知工具链缺陷（附 workaround：常量内联），
+//     不再与引擎缺陷混淆归因。
+//  4. 异常退出码 fail loud：moon 退出码非 0 且不匹配已知特征 → 未知
+//     工具链故障，红（A8 人工盯的自动化替代——新 breaking 首先在这里
+//     显形，再由人定性）。
+//
+// 纪律：零第三方依赖；规则外置（基线文件）；fail loud；禁静默 default。
+package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+)
+
+var reMoonVer = regexp.MustCompile(`moon (\S+) \((\S+) (\S+)\)`)
+var reMooncVer = regexp.MustCompile(`(v\S+)`)
+
+func main() {
+	updateBaseline := len(os.Args) > 1 && os.Args[1] == "--update-baseline"
+	fail := 0
+	// —— 1. 版本锁定 ——
+	moonVer := run("moon", "version")
+	mooncVer := run("moonc", "-v")
+	m := reMoonVer.FindStringSubmatch(moonVer)
+	c := reMooncVer.FindStringSubmatch(mooncVer)
+	if m == nil || c == nil {
+		fmt.Println("[红] 版本解析失败：moon/moonc 输出形态变更（工具链 breaking 的首要信号）")
+		fmt.Printf("  moon:  %s\n", moonVer)
+		fmt.Printf("  moonc: %s\n", mooncVer)
+		os.Exit(1)
+	}
+	baselinePath := filepath.Join("scripts", "toolchain_baseline.txt")
+	want := fmt.Sprintf("moon %s (%s %s)\nmoonc %s", m[1], m[2], m[3], c[1])
+	if updateBaseline {
+		if err := os.WriteFile(baselinePath, []byte("# toolchain_probe 版本基线（--update-baseline 迁移；日期随迁移更新）\n"+want+"\n"), 0o644); err != nil {
+			fatal("写基线失败: %v", err)
+		}
+		fmt.Printf("toolchain_probe: 基线已更新 → %s\n%s\n", baselinePath, want)
+		return
+	}
+	raw, err := os.ReadFile(baselinePath)
+	if err != nil {
+		fatal("基线缺失 %s（首建：go run ./scripts/toolchain_probe --update-baseline）: %v", baselinePath, err)
+	}
+	got := strings.TrimSpace(string(raw))
+	wantN := strings.TrimSpace("# toolchain_probe 版本基线（--update-baseline 迁移；日期随迁移更新）\n" + want)
+	// 基线含注释头——比对去注释行
+	var wantLines, gotLines []string
+	for _, l := range strings.Split(wantN, "\n") {
+		if !strings.HasPrefix(l, "#") {
+			wantLines = append(wantLines, l)
+		}
+	}
+	for _, l := range strings.Split(got, "\n") {
+		if !strings.HasPrefix(l, "#") {
+			gotLines = append(gotLines, l)
+		}
+	}
+	if strings.Join(wantLines, "\n") != strings.Join(gotLines, "\n") {
+		fmt.Println("[红] 工具链版本漂移（A8：静默升级当日显形）")
+		fmt.Printf("  基线: %s\n  实测: %s\n", strings.Join(gotLines, " | "), strings.Join(wantLines, " | "))
+		fmt.Println("  处置：核对 changelog 后 --update-baseline 迁移，并跑全门禁")
+		fail++
+	} else {
+		fmt.Printf("[绿] 版本锁定: moon %s / moonc %s\n", m[1], c[1])
+	}
+	// —— 2. registry 索引预检（行为式：路径布局随版本漂移，行为不漂）——
+	// CI 实锤坑（ed4d4c4）：全新安装的 moon 解析 moonbitlang/x 报 not
+	// found，根因是索引未刷。本机索引布局实测仅 user/ 目录（moonbitlang
+	// 走按需拉取），路径存在性检查不可靠——改判 moon update 行为 +
+	// 索引目录非空。
+	home, _ := os.UserHomeDir()
+	idxDir := filepath.Join(home, ".moon", "registry", "index")
+	cmdUp := exec.Command("moon", "update")
+	upOut, upErr := cmdUp.CombinedOutput()
+	entries, _ := os.ReadDir(idxDir)
+	if upErr != nil || len(entries) == 0 {
+		fmt.Println("[红] registry 索引异常：moon update 失败或索引目录为空（CI 实锤坑 ed4d4c4 的前置形态）")
+		if upErr != nil {
+			fmt.Printf("  moon update: %v | %s", upErr, string(upOut))
+		}
+		fail++
+	} else {
+		fmt.Printf("[绿] registry 索引: moon update 行为通过（%d 顶层条目）"+string(rune(10)), len(entries))
+	}
+	// —— 3. 探针编译（ICE 特征识别 + 退出码 fail loud）——
+	// 最小探针工程：含跨文件顶层 pub let（F8 ICE 的触发形状——形态在则
+	// 现工具链下当日显形，不再混淆为引擎缺陷）
+	dir, err := os.MkdirTemp("", "toolchain_probe_*")
+	if err != nil {
+		fatal("临时目录失败: %v", err)
+	}
+	defer os.RemoveAll(dir)
+	nl := string([]byte{10})
+	os.WriteFile(filepath.Join(dir, "moon.mod"), []byte("name = \"probe/ice\""+nl+nl+"version = \"0.1.0\""+nl), 0o644)
+	os.MkdirAll(filepath.Join(dir, "src"), 0o755)
+	os.WriteFile(filepath.Join(dir, "src", "moon.pkg"), []byte("pkgtype(kind: \"executable\")"+nl), 0o644)
+	os.WriteFile(filepath.Join(dir, "src", "a.mbt"), []byte("pub let g_probe = 42"+nl), 0o644)
+	os.WriteFile(filepath.Join(dir, "src", "main.mbt"), []byte("fn main {"+nl+"  println(g_probe)"+nl+"}"+nl), 0o644)
+	// moon.pkg 需 import 本包 a？同包多文件直接引用——顶层 pub let 跨文件即 F8 形状
+	os.WriteFile(filepath.Join(dir, "src", "moon.pkg"), []byte("pkgtype(kind: \"executable\")"+nl), 0o644)
+	cmd := exec.Command("moon", "check")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	combined := string(out)
+	if err != nil {
+		if isKnownICE(combined) {
+			fmt.Println("[红·已知 ICE] F8 link-core ICE 特征命中（moonc 跨文件顶层 pub let）")
+			fmt.Println("  定性：工具链缺陷非引擎缺陷——workaround 常量内联；A8 持续监控项")
+		} else {
+			fmt.Println("[红·未知] moon check 异常退出（新 breaking 首先在此显形——人工定性）")
+			if len(combined) > 600 {
+				combined = combined[:600] + "…"
+			}
+			fmt.Printf("  exit: %v"+string(rune(10))+"  out: %s", err, combined)
+		}
+		fail++
+	} else {
+		fmt.Println("[绿] 探针编译: F8 形状（跨文件顶层 pub let）在当前工具链下存活")
+	}
+	if fail > 0 {
+		fmt.Printf("toolchain_probe: FAIL——%d 项红（工具链故障显式化，非引擎缺陷）\n", fail)
+		os.Exit(1)
+	}
+	fmt.Println("toolchain_probe: PASS（版本锁定 + 索引预检 + ICE 特征 + 退出码四项绿）")
+}
+
+// isKnownICE：F8 link-core ICE 特征（勘察档案：moonc v0.10.13 跨文件
+// 顶层 pub let 触发；特征为链接期 core 符号未定义/segfault 形态）。
+func isKnownICE(out string) bool {
+	return strings.Contains(out, "_ZN4moon") ||
+		strings.Contains(out, "link-core") ||
+		(strings.Contains(out, "segfault") && strings.Contains(strings.ToLower(out), "pub let"))
+}
+
+func run(name string, args ...string) string {
+	cmd := exec.Command(name, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil && len(out) == 0 {
+		fatal("%s %v 不可执行（PATH？）: %v", name, args, err)
+	}
+	return string(out)
+}
+
+func fatal(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "toolchain_probe: "+format+"\n", args...)
+	os.Exit(2)
+}

@@ -214,6 +214,13 @@ jobs:
             go run ./scripts/codegen_diff native/tests/cases/$d
           done
 
+      - name: MoonBit toolchain health probe (A8 automation)
+        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
+        # F8 ICE 特征/退出码 fail loud）——A8"人工盯 breaking"的自动化
+        # 替代；版本漂移即红，迁移须 --update-baseline + 全门禁。
+        shell: bash
+        run: go run ./scripts/toolchain_probe
+
       - name: MoonBit API surface audit (unpublished pkgs contracted)
         # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会
         # 自动再长，先立闸再加 priv"）。moonbit_surface -check 对账白名单

@@ -1,0 +1,3 @@
+# toolchain_probe 版本基线（--update-baseline 迁移；日期随迁移更新）
+moon 0.1.20260915 (2e1a46d 2026-09-15)
+moonc v0.10.13+cbb11c36f

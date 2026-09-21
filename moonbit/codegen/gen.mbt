@@ -19,6 +19,7 @@
 /// 切换时八条槽位事故回归必挂，diff 锚按本常量分档）。
 pub const SLOT_STRATEGY_VERSION : Int = 1
 
+///|
 struct BytecodeGen {
   code : Array[@opcode.Instruction]
   errors : Array[String]
@@ -169,6 +170,7 @@ fn BytecodeGen::new() -> BytecodeGen {
 ///|
 /// 错误形态照搬 Rust：文本 `Vec<String>`（`第 N 行：文本`）——结构化
 /// 诊断改造是 S8 台账项，迁移期两侧文本一致优先。
+
 ///|
 fn BytecodeGen::generate(
   self : BytecodeGen,
@@ -205,11 +207,7 @@ fn BytecodeGen::generate(
       if self.global_indices.contains(g.name) {
         continue
       }
-      let sz = if self.type_size(g.ty) > 4 {
-        self.type_size(g.ty)
-      } else {
-        4
-      }
+      let sz = if self.type_size(g.ty) > 4 { self.type_size(g.ty) } else { 4 }
       match self.bump_global_offset(sz, "extern 声明 '\{g.name}'", g.loc) {
         Some(offset) => {
           self.global_indices.set(g.name, offset)
@@ -227,8 +225,14 @@ fn BytecodeGen::generate(
   self.pending_string_inits = []
   for entry in pending {
     let (base_offset, value) = entry
-    let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) & @bytecode.ALIGN4_MASK
-    match self.bump_global_offset(aligned.to_int(), "全局初始化字符串", default_loc()) {
+    let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+      @bytecode.ALIGN4_MASK
+    match
+      self.bump_global_offset(
+        aligned.to_int(),
+        "全局初始化字符串",
+        default_loc(),
+      ) {
       Some(str_offset) => {
         let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
         self.string_data.push((str_addr, value))
@@ -243,19 +247,16 @@ fn BytecodeGen::generate(
       continue
     }
     let param_sizes = f.params.map(p => self.type_size(p.ty))
-    self.func_table.set(
-      f.name,
-      {
-        ip: 0,
-        arg_count: 0,
-        param_count: 0,
-        local_count: 0,
-        param_sizes,
-        return_type: f.return_type,
-        is_variadic: false,
-        local_buffers: [],
-      },
-    )
+    self.func_table.set(f.name, {
+      ip: 0,
+      arg_count: 0,
+      param_count: 0,
+      local_count: 0,
+      param_sizes,
+      return_type: f.return_type,
+      is_variadic: false,
+      local_buffers: [],
+    })
   }
   // Pass 3：函数体（S5 骨架：最小语句集——Block/Expr/Return；其余语句
   // 族 report_error fail loud，扩展批逐族接线）。
@@ -303,11 +304,7 @@ fn BytecodeGen::generate(
         main_idx,
         @source.SourceLoc::with_file(0, 0, 0),
       )
-      self.emit(
-        @opcode.OpCode::Ret,
-        0,
-        @source.SourceLoc::with_file(0, 0, 0),
-      )
+      self.emit(@opcode.OpCode::Ret, 0, @source.SourceLoc::with_file(0, 0, 0))
       self.code[0] = @opcode.Instruction::new(
         @opcode.OpCode::Jump,
         wrapper_ip,
@@ -322,23 +319,21 @@ fn BytecodeGen::generate(
   let end = @bytecode.GLOBAL_START +
     @bytecode.align4(self.next_global_offset_clamped().reinterpret_as_uint())
   (
-    Some(
-      {
-        code: self.code,
-        globals_init_32: self.globals_init_32,
-        globals_init_64: self.globals_init_64,
-        func_table: self.func_table,
-        func_index: self.func_index,
-        string_data: self.string_data,
-        source_map: self.source_map,
-        symbols: self.symbols,
-        struct_defs: self.struct_defs,
-        union_defs: self.union_defs,
-        f64_constants: self.f64_constants,
-        i64_constants: self.i64_constants,
-        global_data_end: end,
-      },
-    ),
+    Some({
+      code: self.code,
+      globals_init_32: self.globals_init_32,
+      globals_init_64: self.globals_init_64,
+      func_table: self.func_table,
+      func_index: self.func_index,
+      string_data: self.string_data,
+      source_map: self.source_map,
+      symbols: self.symbols,
+      struct_defs: self.struct_defs,
+      union_defs: self.union_defs,
+      f64_constants: self.f64_constants,
+      i64_constants: self.i64_constants,
+      global_data_end: end,
+    }),
     [],
   )
 }
@@ -358,17 +353,17 @@ fn BytecodeGen::next_global_offset_clamped(self : BytecodeGen) -> Int {
 /// 照搬：VLA 拒绝 / 尺寸 bump / InitList 分派（char 数组 / struct·嵌套
 /// 数组 / 字符串元素数组 / 标量数组 8 字节位模式）/ StringLiteral（char
 /// 数组直写 vs pending 取址）/ 标量字面量（含负）/ 函数指针。
-fn BytecodeGen::pass1_register_global(self : BytecodeGen, g : @ast.GlobalDecl) -> Unit {
+fn BytecodeGen::pass1_register_global(
+  self : BytecodeGen,
+  g : @ast.GlobalDecl,
+) -> Unit {
   if g.ty.is_vla() {
     self.errors.push("全局作用域不支持变长数组(VLA) '\{g.name}'")
     return
   }
   let sz = self.type_size(g.ty)
-  let offset = match self.bump_global_offset(
-      sz,
-      "全局变量 '\{g.name}'",
-      g.loc,
-    ) {
+  let offset = match
+    self.bump_global_offset(sz, "全局变量 '\{g.name}'", g.loc) {
     Some(o) => o
     None => return
   }
@@ -378,32 +373,37 @@ fn BytecodeGen::pass1_register_global(self : BytecodeGen, g : @ast.GlobalDecl) -
     Some(init) =>
       match init {
         InitList(elements, _, _) => {
-          let has_designators = elements.exists(
-              e => e.designators.length() > 0,
-            )
+          let has_designators = elements.exists(e => e.designators.length() > 0)
           if has_designators {
-            self.report_error("全局变量的 designated initializer 暂不支持", g.loc)
+            self.report_error(
+              "全局变量的 designated initializer 暂不支持",
+              g.loc,
+            )
             return
           }
           let is_char_array = match g.ty {
-            Array(element, _, _, _, _, _) =>
-              element.kind() is TK_Char
+            Array(element, _, _, _, _, _) => element.kind() is TK_Char
             _ => false
           }
           if is_char_array {
             let values = flatten_init_list(elements, self.errors)
             for i in 0..<sz {
               let v = if i < values.length() { values[i] } else { 0 }
-              self.globals_init_32.push((offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v))
+              self.globals_init_32.push(
+                (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
+              )
             }
           } else if g.ty.kind() is TK_Struct ||
-
-            (g.ty.is_array() &&
-              elements.exists(e => e.value is InitList(_, _, _))) ||
+            (
+              g.ty.is_array() &&
+              elements.exists(e => e.value is InitList(_, _, _))
+            ) ||
             // P2：含字符串字面量元素的数组（`char *arr[2] = {"a","b"}`）
             // 同走递归展开——元素级路径对字面量取不到值（NULL 指针静默）。
-            (g.ty.is_array() &&
-              elements.exists(e => e.value is StringLiteral(_, _, _))) {
+            (
+              g.ty.is_array() &&
+              elements.exists(e => e.value is StringLiteral(_, _, _))
+            ) {
             // struct / 嵌套数组 / 字符串元素数组：递归展开
             self.flatten_global_init(g.ty, init, offset.reinterpret_as_uint())
           } else {
@@ -414,7 +414,8 @@ fn BytecodeGen::pass1_register_global(self : BytecodeGen, g : @ast.GlobalDecl) -
               // T-P0-2：8 字节元素按元素类型编码位模式
               let elem_ty = g.ty.base_element_type()
               for i in 0..<count {
-                let addr = offset.reinterpret_as_uint() + i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+                let addr = offset.reinterpret_as_uint() +
+                  i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
                 let val64 = match elements.get(i) {
                   Some(elem) =>
                     match literal_init_bits(elem.value, elem_ty.kind()) {
@@ -428,7 +429,8 @@ fn BytecodeGen::pass1_register_global(self : BytecodeGen, g : @ast.GlobalDecl) -
             } else {
               let values = flatten_init_list(elements, self.errors)
               for i in 0..<count {
-                let addr = offset.reinterpret_as_uint() + i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+                let addr = offset.reinterpret_as_uint() +
+                  i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
                 let v = if i < values.length() { values[i] } else { 0 }
                 self.globals_init_32.push((addr, v))
               }
@@ -446,38 +448,45 @@ fn BytecodeGen::pass1_register_global(self : BytecodeGen, g : @ast.GlobalDecl) -
           if is_char_array {
             let bytes = cstring_bytes(value)
             for i in 0..<sz {
-              let byte = if i < bytes.length() {
-                bytes[i].to_int()
-              } else {
-                0
-              }
-              self.globals_init_32.push((offset.reinterpret_as_uint() + i.reinterpret_as_uint(), byte))
+              let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
+              self.globals_init_32.push(
+                (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), byte),
+              )
             }
           } else {
-            self.pending_string_inits.push((offset.reinterpret_as_uint(), value))
+            self.pending_string_inits.push(
+              (offset.reinterpret_as_uint(), value),
+            )
           }
         }
         Literal(_, _, _) | LongLiteral(_, _, _) | FloatLiteral(_, _, _) => {
           // T-P0-1：全局标量初始化按目标类型编码位模式
-          let _ = self.push_literal_init(offset.reinterpret_as_uint(), init, g.ty)
+          let _ = self.push_literal_init(
+            offset.reinterpret_as_uint(),
+            init,
+            g.ty,
+          )
         }
-        Unary(@ast.UnaryOp::Neg, operand, _, _) => {
+        Unary(@ast.UnaryOp::Neg, operand, _, _) =>
           // 负数字面量（如 double g = -2;）此前落入 _ 分支被静默丢弃。
           // （guard 须与模式同行——手册 #23；跨行条件改 arm 内 if，非字面量
           // 落空等价 Rust guard 不匹配走 _ => ()）
           if operand is Literal(_, _, _) ||
             operand is LongLiteral(_, _, _) ||
             operand is FloatLiteral(_, _, _) {
-            let _ = self.push_literal_init(offset.reinterpret_as_uint(), init, g.ty)
+            let _ = self.push_literal_init(
+              offset.reinterpret_as_uint(),
+              init,
+              g.ty,
+            )
           }
-        }
-        Identifier(name, _, _) => {
+        Identifier(name, _, _) =>
           // 全局函数指针初始化：int (*fp)(int) = myFunc;
           match self.func_index.get(name) {
-            Some(idx) => self.globals_init_32.push((offset.reinterpret_as_uint(), idx))
+            Some(idx) =>
+              self.globals_init_32.push((offset.reinterpret_as_uint(), idx))
             None => ()
           }
-        }
         _ => ()
       }
     None => ()
@@ -494,17 +503,15 @@ fn BytecodeGen::push_symbol(
   decl_line : Int,
 ) -> Unit {
   self.sym_index.set(name, self.symbols.length())
-  self.symbols.push(
-    {
-      name,
-      addr: offset.reinterpret_as_uint(),
-      is_local: false,
-      ty,
-      scope_depth: 0,
-      func_name: "",
-      decl_line,
-    },
-  )
+  self.symbols.push({
+    name,
+    addr: offset.reinterpret_as_uint(),
+    is_local: false,
+    ty,
+    scope_depth: 0,
+    func_name: "",
+    decl_line,
+  })
 }
 
 ///|
@@ -577,7 +584,7 @@ fn BytecodeGen::bump_global_offset(
 
 ///|
 fn BytecodeGen::enter_scope(self : BytecodeGen) -> Unit {
-  self.local_scope_stack.push({ shadows: [] })
+  self.local_scope_stack.push({ shadows: [], })
 }
 
 ///|
@@ -608,14 +615,12 @@ fn BytecodeGen::exit_scope(self : BytecodeGen) -> Unit {
 fn BytecodeGen::record_scope_var(self : BytecodeGen, name : String) -> Unit {
   if self.local_scope_stack.length() > 0 {
     let frame = self.local_scope_stack[self.local_scope_stack.length() - 1]
-    frame.shadows.push(
-      {
-        name,
-        old_offset: self.local_indices.get(name),
-        old_type: self.local_types.get(name),
-        old_sym_idx: self.sym_index.get(name),
-      },
-    )
+    frame.shadows.push({
+      name,
+      old_offset: self.local_indices.get(name),
+      old_type: self.local_types.get(name),
+      old_sym_idx: self.sym_index.get(name),
+    })
   }
 }
 

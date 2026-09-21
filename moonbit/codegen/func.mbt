@@ -2,7 +2,6 @@
 /// 函数进出与帧原语（Rust `vitro_codegen/src/func.rs` + lib.rs:710-759
 /// 槽位段照搬；C only 剔除 class 判定中的 is_class 伴生分支——is_struct
 /// 判定保留，C 的 struct 返回值同走 __ret_ptr）。
-
 fn BytecodeGen::enter_function(
   self : BytecodeGen,
   name : String,
@@ -29,10 +28,7 @@ fn BytecodeGen::enter_function(
   if returns_struct {
     param_sizes.push(1)
     self.local_indices.set("__ret_ptr", offset)
-    self.local_types.set(
-      "__ret_ptr",
-      @ast.Type::pointer_to(@ast.Type::int()),
-    )
+    self.local_types.set("__ret_ptr", @ast.Type::pointer_to(@ast.Type::int()))
     offset += 4
   }
   for p in params {
@@ -43,17 +39,15 @@ fn BytecodeGen::enter_function(
     self.local_indices.set(p.name, offset)
     self.local_types.set(p.name, p.ty)
     self.sym_index.set(p.name, self.symbols.length())
-    self.symbols.push(
-      {
-        name: p.name,
-        addr: offset.reinterpret_as_uint(),
-        is_local: true,
-        ty: p.ty,
-        scope_depth: 1,
-        func_name: self.current_func,
-        decl_line: p.loc.line,
-      },
-    )
+    self.symbols.push({
+      name: p.name,
+      addr: offset.reinterpret_as_uint(),
+      is_local: true,
+      ty: p.ty,
+      scope_depth: 1,
+      func_name: self.current_func,
+      decl_line: p.loc.line,
+    })
     offset += aligned_sz
   }
   // 变参函数预留变参区域（最多 16 个 int / 64 字节）——U3#7 未修形态
@@ -243,17 +237,16 @@ fn BytecodeGen::elem_type_size(self : BytecodeGen, arr_type : @ast.Type) -> Int 
         }
         None => 4
       }
-    TK_Class =>
-      // class 布局表已随砍 C++ 裁定退役（F-2）——此臂理论不可达（C 输入
-      // 下 typeck 不产 Class 类型），可达即上游分叉，fail loud 优于静默
-      // 4 兜底（禁静默 default 纪律）
-      {
-        self.report_error(
-          "内部错误：class 类型 '\{elem_type.name()}' 进入 C only codegen（砍 C++ 裁定后不可达）",
-          default_loc(),
-        )
-        4
-      }
+    // class 布局表已随砍 C++ 裁定退役（F-2）——此臂理论不可达（C 输入
+    // 下 typeck 不产 Class 类型），可达即上游分叉，fail loud 优于静默
+    // 4 兜底（禁静默 default 纪律）
+    TK_Class => {
+      self.report_error(
+        "内部错误：class 类型 '\{elem_type.name()}' 进入 C only codegen（砍 C++ 裁定后不可达）",
+        default_loc(),
+      )
+      4
+    }
     TK_Union =>
       match self.union_defs.get(elem_type.name()) {
         Some(fields) => {
@@ -264,7 +257,11 @@ fn BytecodeGen::elem_type_size(self : BytecodeGen, arr_type : @ast.Type) -> Int 
               max = sz
             }
           }
-          if max == 0 { 4 } else { max }
+          if max == 0 {
+            4
+          } else {
+            max
+          }
         }
         None => 4
       }

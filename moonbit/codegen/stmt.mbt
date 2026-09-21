@@ -5,7 +5,6 @@
 /// 端到端通路：全局变量 + main{return 常量/空}），其余语句族
 /// report_error fail loud（S5 后续扩展批逐族接线，接线前差分面表现为
 /// MoonBit 侧错误——诚实优先，禁静默跳过产半截产物）。
-
 fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
   let loc = stmt_loc(stmt)
   if loc.line > 0 {
@@ -15,11 +14,24 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
     Block(stmts, _) => self.gen_block(stmts)
     Expr(expr, _) => self.gen_expr_stmt(expr, loc)
     Return(value, ret_loc) => self.gen_return(value, ret_loc)
-    VarDecl(_, _, _, _, _, _) => self.report_error("局部变量声明的字节码生成未实现（S5 在途）", loc)
-    If(_, _, _, _) => self.report_error("if 语句的字节码生成未实现（S5 在途）", loc)
-    While(_, _, _) => self.report_error("while 语句的字节码生成未实现（S5 在途）", loc)
-    DoWhile(_, _, _) => self.report_error("do-while 语句的字节码生成未实现（S5 在途）", loc)
-    For(_, _, _, _, _) => self.report_error("for 语句的字节码生成未实现（S5 在途）", loc)
+    VarDecl(var_type, name, init, extra_vars, is_static, _) =>
+      self.gen_var_decl(var_type, name, init, extra_vars, is_static, loc)
+    If(_, _, _, _) =>
+      self.report_error(
+        "if 语句的字节码生成未实现（S5 在途）", loc,
+      )
+    While(_, _, _) =>
+      self.report_error(
+        "while 语句的字节码生成未实现（S5 在途）", loc,
+      )
+    DoWhile(_, _, _) =>
+      self.report_error(
+        "do-while 语句的字节码生成未实现（S5 在途）", loc,
+      )
+    For(_, _, _, _, _) =>
+      self.report_error(
+        "for 语句的字节码生成未实现（S5 在途）", loc,
+      )
     Break(b_loc) => {
       // Rust gen_break：无 RAII 析构（C only）时即占位 Jump 入 break_patches
       let ip = self.current_ip()
@@ -31,13 +43,15 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
       self.emit(@opcode.OpCode::Jump, 0, c_loc)
       self.continue_patches.push(ip)
     }
-    Switch(_, _, _) => self.report_error("switch 语句的字节码生成未实现（S5 在途）", loc)
+    Switch(_, _, _) =>
+      self.report_error(
+        "switch 语句的字节码生成未实现（S5 在途）", loc,
+      )
     Case(_, _, _) => ()
-    Goto(label, g_loc) => {
+    Goto(label, g_loc) =>
       // Rust gen_goto 照搬（C only 无 RAII 携带语义）
       match self.label_ips.get(label) {
-        Some(target_ip) =>
-          self.emit(@opcode.OpCode::Jump, target_ip, g_loc)
+        Some(target_ip) => self.emit(@opcode.OpCode::Jump, target_ip, g_loc)
         None => {
           let ip = self.current_ip()
           self.emit(@opcode.OpCode::Jump, 0, g_loc)
@@ -47,7 +61,6 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
           }
         }
       }
-    }
     Label(label, inner, _) => {
       let ip = self.current_ip()
       self.label_ips.set(label, ip)
@@ -62,8 +75,14 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
       }
       self.gen_stmt(inner)
     }
-    RangeFor(_, _, _, _, _) => self.report_error("range-for 是 C++ 路径（已随砍 C++ 裁定退役）", loc)
-    Try(_, _, _) => self.report_error("try 语句保留给 C# 批（reserved-for-csharp）", loc)
+    RangeFor(_, _, _, _, _) =>
+      self.report_error(
+        "range-for 是 C++ 路径（已随砍 C++ 裁定退役）", loc,
+      )
+    Try(_, _, _) =>
+      self.report_error(
+        "try 语句保留给 C# 批（reserved-for-csharp）", loc,
+      )
   }
 }
 
@@ -114,14 +133,17 @@ fn BytecodeGen::gen_return(
           // struct 返回值经 __ret_ptr 逐字拷贝（Rust 的 C 子集路径：
           // GetFrameBase+PushConst(ret_ptr)+Add → 元素循环 Load/Store。
           // 本骨架批未接线 gen_addr/copy 循环——fail loud，扩展批补）
-          self.report_error("struct 返回值的拷贝生成未实现（S5 在途）", loc)
+          self.report_error(
+            "struct 返回值的拷贝生成未实现（S5 在途）", loc,
+          )
         }
         self.emit(@opcode.OpCode::RetVoid, 0, loc)
       } else {
         self.gen_expr(v)
         let ret_is_float = match self.func_table.get(self.current_func) {
           Some(m) =>
-            m.return_type.kind() is TK_Float || m.return_type.kind() is TK_Double
+            m.return_type.kind() is TK_Float ||
+            m.return_type.kind() is TK_Double
           None => false
         }
         if ret_is_float &&
@@ -149,7 +171,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
   let loc = expr.loc()
   match expr {
     Literal(value, _, _) => self.emit(@opcode.OpCode::PushConst, value, loc)
-    FloatLiteral(value, _, ty) => {
+    FloatLiteral(value, _, ty) =>
       if ty.kind() is TK_Double {
         let idx = self.push_f64_constant(value)
         self.emit(@opcode.OpCode::PushConstD, idx, loc)
@@ -157,7 +179,6 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
         let bits = Float::from_double(value) |> f32_bits_i32
         self.emit(@opcode.OpCode::PushConstF, bits, loc)
       }
-    }
     LongLiteral(value, _, _) => {
       let idx = self.push_i64_constant(value)
       self.emit(@opcode.OpCode::PushConstQ, idx, loc)
@@ -166,8 +187,10 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       // 字符串字面量：全局区 bump 分配 + 地址入栈（Rust literal.rs:22-31）
       let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
         @bytecode.ALIGN4_MASK
-      let addr = @bytecode.GLOBAL_START + self.next_global_offset.reinterpret_as_uint()
-      match self.bump_global_offset(aligned.to_int(), "字符串字面量", loc) {
+      let addr = @bytecode.GLOBAL_START +
+        self.next_global_offset.reinterpret_as_uint()
+      match
+        self.bump_global_offset(aligned.to_int(), "字符串字面量", loc) {
         Some(_) => self.string_data.push((addr, value))
         None => ()
       }
@@ -213,8 +236,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
               } else {
                 self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
               }
-            None =>
-              self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
+            None => self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
           }
           return
         }
@@ -244,8 +266,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
             } else {
               self.emit(@opcode.OpCode::LoadLocal, local_offset, loc)
             }
-          None =>
-            self.emit(@opcode.OpCode::LoadLocal, local_offset, loc)
+          None => self.emit(@opcode.OpCode::LoadLocal, local_offset, loc)
         }
       } else {
         let global_offset = self.resolve_global(name)
@@ -265,8 +286,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
               } else {
                 self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
               }
-            None =>
-              self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
+            None => self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
         } else {
           self.report_error("未声明的标识符 '\{name}'", loc)
@@ -277,23 +297,62 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     // —— 以下未接线族显式分派（穷尽 26 变体无兜底臂——编码纪律 #1；
     //    新增 Expr 变体必须让本 match 编译红）——
     // C 子集待接线（14 族，扩展批逐族收敛）：
-    Binary(_, _, _, _, _) => self.report_error("二元运算的字节码生成未实现（S5 在途）", loc)
-    Unary(_, _, _, _) => self.report_error("一元运算的字节码生成未实现（S5 在途）", loc)
-    Call(_, _, _, _) => self.report_error("内部错误：Expr::Call 仅 C++ ctor 路径构造（parser 后缀位统一产 CallPtr——两侧同构，MoonBit expr.mbt 与 Rust postfix.rs 同臂），砍 C++ 后 C 输入不可达；用户侧函数调用见 CallPtr 臂", loc)
-    // **扩展批真目标**（2026-09-21 baseline 363 例归因：首要阻塞第 2 位，
-    // 71 例）——C 的直接调用与函数指针调用都在本臂（printf("hi") 与 g()
-    // 同走 CallPtr）。勿去接 Call（0 例）。
-    CallPtr(_, _, _, _) => self.report_error("函数调用的字节码生成未实现（S5 在途——C 直接调用/函数指针调用统一在本臂发射）", loc)
-    Index(_, _, _, _) => self.report_error("数组索引的字节码生成未实现（S5 在途）", loc)
-    Member(_, _, _, _) => self.report_error("成员访问的字节码生成未实现（S5 在途）", loc)
-    Ternary(_, _, _, _, _) => self.report_error("三目运算的字节码生成未实现（S5 在途）", loc)
-    Assign(_, _, _, _, _) => self.report_error("赋值表达式的字节码生成未实现（S5 在途）", loc)
-    Sizeof(_, _, _, _) => self.report_error("sizeof 的字节码生成未实现（S5 在途）", loc)
-    Alignof(_, _, _, _) => self.report_error("alignof 的字节码生成未实现（S5 在途）", loc)
-    Cast(_, _, _, _) => self.report_error("类型转换的字节码生成未实现（S5 在途）", loc)
-    Offsetof(_, _, _, _) => self.report_error("offsetof 的字节码生成未实现（S5 在途）", loc)
-    Generic(_, _, _, _, _) => self.report_error("_Generic 的字节码生成未实现（S5 在途）", loc)
-    CompoundLiteral(_, _, _, _) => self.report_error("复合字面量的字节码生成未实现（S5 在途）", loc)
+    Binary(_, _, _, _, _) =>
+      self.report_error(
+        "二元运算的字节码生成未实现（S5 在途）", loc,
+      )
+    Unary(_, _, _, _) =>
+      self.report_error(
+        "一元运算的字节码生成未实现（S5 在途）", loc,
+      )
+    Call(_, _, _, _) =>
+      self.report_error(
+        "内部错误：Expr::Call 仅 C++ ctor 路径构造（parser 后缀位统一产 CallPtr——两侧同构，MoonBit expr.mbt 与 Rust postfix.rs 同臂），砍 C++ 后 C 输入不可达；用户侧函数调用见 CallPtr 臂",
+        loc,
+      )
+    // C 的直接调用与函数指针调用统一在本臂发射（2026-09-21 扩展批接线）
+    CallPtr(callee, args, _, ret_ty) =>
+      self.gen_call_ptr(callee, args, ret_ty, loc)
+    Index(_, _, _, _) =>
+      self.report_error(
+        "数组索引的字节码生成未实现（S5 在途）", loc,
+      )
+    Member(_, _, _, _) =>
+      self.report_error(
+        "成员访问的字节码生成未实现（S5 在途）", loc,
+      )
+    Ternary(_, _, _, _, _) =>
+      self.report_error(
+        "三目运算的字节码生成未实现（S5 在途）", loc,
+      )
+    Assign(_, _, _, _, _) =>
+      self.report_error(
+        "赋值表达式的字节码生成未实现（S5 在途）", loc,
+      )
+    Sizeof(_, _, _, _) =>
+      self.report_error(
+        "sizeof 的字节码生成未实现（S5 在途）", loc,
+      )
+    Alignof(_, _, _, _) =>
+      self.report_error(
+        "alignof 的字节码生成未实现（S5 在途）", loc,
+      )
+    Cast(_, _, _, _) =>
+      self.report_error(
+        "类型转换的字节码生成未实现（S5 在途）", loc,
+      )
+    Offsetof(_, _, _, _) =>
+      self.report_error(
+        "offsetof 的字节码生成未实现（S5 在途）", loc,
+      )
+    Generic(_, _, _, _, _) =>
+      self.report_error(
+        "_Generic 的字节码生成未实现（S5 在途）", loc,
+      )
+    CompoundLiteral(_, _, _, _) =>
+      self.report_error(
+        "复合字面量的字节码生成未实现（S5 在途）", loc,
+      )
     // 既定错误文案照搬（Rust expr.rs:160）——非"未实现"：
     InitList(_, _, _) => {
       self.report_error("初始化列表只能在变量声明中使用", loc)
@@ -301,12 +360,30 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     }
     // C++ 专有（6 族）：已随砍 C++ 裁定退役（F-2），永不接线——
     // 文案不得写"未实现"（对后来者是假承诺）：
-    This(_, _) => self.report_error("'this' 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
-    MemberCall(_, _, _, _, _, _, _) => self.report_error("成员调用是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
-    New(_, _, _, _, _) => self.report_error("new 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
-    Delete(_, _, _, _) => self.report_error("delete 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
-    Move(_, _, _) => self.report_error("std::move 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
-    Lambda(_, _, _, _, _, _) => self.report_error("lambda 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc)
+    This(_, _) =>
+      self.report_error(
+        "'this' 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
+    MemberCall(_, _, _, _, _, _, _) =>
+      self.report_error(
+        "成员调用是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
+    New(_, _, _, _, _) =>
+      self.report_error(
+        "new 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
+    Delete(_, _, _, _) =>
+      self.report_error(
+        "delete 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
+    Move(_, _, _) =>
+      self.report_error(
+        "std::move 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
+    Lambda(_, _, _, _, _, _) =>
+      self.report_error(
+        "lambda 是 C++ 专有表达式（已随砍 C++ 裁定退役）", loc,
+      )
   }
 }
 

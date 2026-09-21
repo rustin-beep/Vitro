@@ -82,10 +82,12 @@ fn literal_init_bits(
   Some(
     match (num, target_kind) {
       (LN_I(v), TK_Double) => (v.to_double().reinterpret_as_uint64(), true)
-      (LN_I(v), TK_Float) => (f32_bits_u64(Float::from_double(v.to_double())), false)
+      (LN_I(v), TK_Float) =>
+        (f32_bits_u64(Float::from_double(v.to_double())), false)
       // T-P0-2 根因：long long 目标必须写 i64 位模式，而非 f64 位模式
       (LN_I(v), TK_LongLong) => (v.reinterpret_as_uint64(), true)
-      (LN_I(v), _) => (v.to_int32_bits().reinterpret_as_uint().to_uint64(), false)
+      (LN_I(v), _) =>
+        (v.to_int32_bits().reinterpret_as_uint().to_uint64(), false)
       (LN_F(v), TK_Double) => (v.reinterpret_as_uint64(), true)
       (LN_F(v), TK_Float) => (f32_bits_u64(Float::from_double(v)), false)
       (LN_F(v), TK_LongLong) => (v.to_int64().reinterpret_as_uint64(), true)
@@ -148,7 +150,7 @@ fn BytecodeGen::flatten_global_init(
   base_offset : UInt,
 ) -> Unit {
   match init {
-    InitList(elements, _, _) => {
+    InitList(elements, _, _) =>
       if target_ty.kind() is TK_Struct {
         let fields = match self.struct_defs.get(target_ty.name()) {
           Some(f) => f
@@ -181,8 +183,7 @@ fn BytecodeGen::flatten_global_init(
       } else if elements.length() > 0 {
         self.flatten_global_init(target_ty, elements[0].value, base_offset)
       }
-    }
-    _ => {
+    _ =>
       // T-P0-1/T-P0-2：标量字面量（含负字面量）统一按目标类型编码位模式
       if !self.push_literal_init(base_offset, init, target_ty) {
         match init {
@@ -191,14 +192,12 @@ fn BytecodeGen::flatten_global_init(
               Some(idx) => self.globals_init_32.push((base_offset, idx))
               None => ()
             }
-          StringLiteral(value, _, _) => {
+          StringLiteral(value, _, _) =>
             // 延迟到 Pass 1 结束后分配地址，确保字符串区位于全局变量区之后
             self.pending_string_inits.push((base_offset, value))
-          }
           _ => ()
         }
       }
-    }
   }
 }
 
@@ -217,7 +216,7 @@ fn flatten_init_list(
     }
     match elem.value {
       Literal(value, _, _) => result.push(value)
-      LongLiteral(value, _, _) => {
+      LongLiteral(value, _, _) =>
         if value < -2147483648L || value > 2147483647L {
           errors.push(
             "初始化列表中的 long long 常量 \{value} 超出 int 范围，无法用于此上下文",
@@ -226,10 +225,12 @@ fn flatten_init_list(
         } else {
           result.push(value.to_int())
         }
-      }
-      FloatLiteral(value, _, _) => result.push(
-        Float::from_double(value) |> Float::reinterpret_as_uint |> UInt::to_int,
-      )
+      FloatLiteral(value, _, _) =>
+        result.push(
+          Float::from_double(value)
+          |> Float::reinterpret_as_uint
+          |> UInt::to_int,
+        )
       InitList(inner, _, _) => {
         let sub = flatten_init_list(inner, errors)
         for v in sub {
@@ -239,7 +240,7 @@ fn flatten_init_list(
       Unary(@ast.UnaryOp::Neg, operand, _, _) =>
         match operand {
           Literal(value, _, _) => result.push(-value)
-          LongLiteral(value, _, _) => {
+          LongLiteral(value, _, _) =>
             if value < -2147483648L || value > 2147483647L {
               errors.push(
                 "初始化列表中的 long long 常量 \{value} 超出 int 范围，无法用于此上下文",
@@ -248,7 +249,6 @@ fn flatten_init_list(
             } else {
               result.push((-value).to_int())
             }
-          }
           _ => result.push(0)
         }
       _ => result.push(0)

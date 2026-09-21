@@ -4,7 +4,6 @@
 /// Pass 1 全局布局（libc 预留段起点 / 标量位模式 / 字符串回填）、
 /// Pass 2/3 函数元数据回填、入口 wrapper 形态、global_data_end 口径。
 /// 语句/表达式族扩展批接线后逐批补对应锚（红→绿纪律）。
-
 fn loc(line : Int) -> @source.SourceLoc {
   @source.SourceLoc::new(line, 1)
 }
@@ -34,7 +33,12 @@ fn minimal_program() -> @ast.ProgramNode {
         params: [],
         body: Some(
           @ast.Stmt::Block(
-            [@ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())), loc(2))],
+            [
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())),
+                loc(2),
+              ),
+            ],
             loc(2),
           ),
         ),
@@ -140,7 +144,12 @@ test "skeleton: global char* string init deferred allocation" {
         params: [],
         body: Some(
           @ast.Stmt::Block(
-            [@ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())), loc(2))],
+            [
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())),
+                loc(2),
+              ),
+            ],
             loc(2),
           ),
         ),
@@ -189,9 +198,7 @@ test "skeleton: double global bit pattern by target type (T-P0-1)" {
         return_type: @ast.Type::int(),
         name: "main",
         params: [],
-        body: Some(
-          @ast.Stmt::Block([], loc(2)),
-        ),
+        body: Some(@ast.Stmt::Block([], loc(2))),
         is_static: false,
         is_extern: false,
         source_file: "",
@@ -208,10 +215,7 @@ test "skeleton: double global bit pattern by target type (T-P0-1)" {
   let o = output.unwrap()
   // 1.0 的 f64 位模式 0x3FF0000000000000，8 字节槽
   assert_eq(o.globals_init_32.length(), 0)
-  assert_eq(
-    o.globals_init_64,
-    [(1024U, 4607182418800017408UL)],
-  )
+  assert_eq(o.globals_init_64, [(1024U, 4607182418800017408UL)])
 }
 
 ///|
@@ -265,8 +269,11 @@ test "skeleton: compile_output_dump_json wiring" {
   assert_eq(errors.length(), 0)
   let json = @bytecode.compile_output_dump_json(output.unwrap())
   // 14 键齐全（与 Rust dump-compile 同契约面）
-  for key in [
-      "version", "code", "globals_init_32", "globals_init_64", "func_table", "func_index", "string_data", "source_map", "symbols", "struct_defs", "union_defs", "f64_constants", "i64_constants", "global_data_end",
+  for
+    key in [
+      "version", "code", "globals_init_32", "globals_init_64", "func_table", "func_index",
+      "string_data", "source_map", "symbols", "struct_defs", "union_defs", "f64_constants",
+      "i64_constants", "global_data_end",
     ] {
     guard json.contains("\"\{key}\":") else { fail("缺键 \{key}") }
   }
@@ -335,7 +342,7 @@ test "skeleton: __func__ resolves to current function name literal" {
   assert_eq(o.string_data[0].1, "f")
   // 无"未声明的标识符"错误（P1-3 修复前正是此诊断）
   for e in errors {
-    assert_true(!(e.contains("未声明的标识符")))
+    assert_true(!e.contains("未声明的标识符"))
   }
 }
 
@@ -347,4 +354,264 @@ test "skeleton: __func__ resolves to current function name literal" {
 /// slot_strategy 字段分档（产物出口携带版本——见 cmd/dump_compile）。
 test "skeleton: slot strategy version is v1 (bit-compatible)" {
   assert_eq(SLOT_STRATEGY_VERSION, 1)
+}
+
+///|
+/// VarDecl 接线锚（S5 扩展批·归因首要阻塞 245 例）：局部 int 初始化的
+/// 指令序（StepEvent×2 + GetFrameBase/PushConst/Add/StoreLocal 基址 +
+/// PushConst 值 + StoreLocal）与 local_buffers 登记（int 非数组不登记）。
+test "vardecl: scalar int init instruction sequence" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::VarDecl(
+                @ast.Type::int(),
+                "a",
+                Some(@ast.Expr::Literal(3, loc(2), @ast.Type::int())),
+                [],
+                false,
+                loc(2),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(3), @ast.Type::int())),
+                loc(3),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // 符号表：a 局部（offset 0，scope_depth 1）
+  let a_sym = o.symbols[0]
+  assert_eq(a_sym.name, "a")
+  assert_true(a_sym.is_local)
+  assert_eq(a_sym.addr, 0)
+  // 指令序（main 体起点）：StepEvent(Block) + StepEvent(VarDecl) +
+  // PushConst 3 + StoreLocal 0
+  let ip = o.func_table.get("main").unwrap().ip
+  assert_true(o.code[ip].op is @opcode.OpCode::StepEvent)
+  assert_true(o.code[ip + 1].op is @opcode.OpCode::StepEvent)
+  assert_true(o.code[ip + 2].op is @opcode.OpCode::PushConst)
+  assert_eq(o.code[ip + 2].operand, 3)
+  assert_true(o.code[ip + 3].op is @opcode.OpCode::StoreLocal)
+  assert_eq(o.code[ip + 3].operand, 0)
+  // local_count：a 槽 4 字节 + return PushConst 无槽 → ≥ 4
+  assert_true(o.func_table.get("main").unwrap().local_count >= 4)
+}
+
+///|
+/// CallPtr 接线锚（S5 扩展批·归因第 2 位 174 例）：printf 走 host 路由
+/// CallHost（PRINTF_N=15），字符串字面量实参经全局区取址。
+test "callptr: printf host route + string arg" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::Expr(
+                @ast.Expr::CallPtr(
+                  @ast.Expr::Identifier(
+                    "printf",
+                    loc(2),
+                    @ast.Type::function(@ast.Type::int(), []),
+                  ),
+                  [
+                    @ast.Expr::StringLiteral(
+                      "hi\n",
+                      loc(2),
+                      @ast.Type::pointer_to(@ast.Type::char()),
+                    ),
+                  ],
+                  loc(2),
+                  @ast.Type::int(),
+                ),
+                loc(2),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(3), @ast.Type::int())),
+                loc(3),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // printf 是 host 函数：CallHost PRINTF_N=15
+  let mut found_callhost = false
+  for ins in o.code {
+    if ins.op is @opcode.OpCode::CallHost {
+      assert_eq(ins.operand, 15)
+      found_callhost = true
+    }
+  }
+  assert_true(found_callhost)
+  // "hi\n" 字面量入 string_data
+  assert_true(o.string_data.length() == 1)
+  assert_eq(o.string_data[0].1, "hi\n")
+}
+
+///|
+/// P1（2026-09-21 审阅修复）锚：struct 按值传参的第 4 子路径——实参为
+/// 调用返回的临时对象（`use(make())`）时，从返回地址 temp_slot0 逐字
+/// LoadMem 展开（Rust call.rs:324-353 同构）。此前误落"零填充"分支
+/// （latent：struct-return 生成被二元/赋值挡住时不可达，接线即静默错值）。
+test "callptr: struct arg from call return loads via temp (P1)" {
+  let struct_ty = @ast.Type::struct_type("S")
+  let program : @ast.ProgramNode = {
+    structs: [
+      {
+        loc: loc(1),
+        name: "S",
+        fields: [
+          { ty: @ast.Type::int(), name: "a", },
+          { ty: @ast.Type::int(), name: "b", },
+        ],
+      },
+    ],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(2),
+        return_type: struct_ty,
+        name: "make",
+        params: [],
+        body: Some(@ast.Stmt::Block([], loc(2))),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+      {
+        loc: loc(3),
+        return_type: @ast.Type::int(),
+        name: "use",
+        params: [{ ty: struct_ty, name: "s", loc: loc(3), default: None, }],
+        body: Some(@ast.Stmt::Block([], loc(3))),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+      {
+        loc: loc(4),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::Expr(
+                // use(make())：外层 CallPtr(use)，实参 = CallPtr(make)
+                @ast.Expr::CallPtr(
+                  @ast.Expr::Identifier(
+                    "use",
+                    loc(5),
+                    @ast.Type::function(@ast.Type::int(), [struct_ty]),
+                  ),
+                  [
+                    @ast.Expr::CallPtr(
+                      @ast.Expr::Identifier(
+                        "make",
+                        loc(5),
+                        @ast.Type::function(struct_ty, []),
+                      ),
+                      [],
+                      loc(5),
+                      struct_ty,
+                    ),
+                  ],
+                  loc(5),
+                  @ast.Type::int(),
+                ),
+                loc(5),
+              ),
+            ],
+            loc(4),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // S 两 int = 8 字节 = 2 words：第 4 子路径的指令序特征——
+  // 内层 Call(use 前近端)之后应出现 StoreLocal(temp0) → LoadLocal(temp0)
+  // → LoadMem → LoadLocal(temp0) → PushConst 4 → Add → LoadMem（words=2，
+  // 第二字带 +4 偏移；零填充分支的形态是 PushConst 0）
+  let ip = o.func_table.get("main").unwrap().ip
+  // 找内层 make 的 Call 指令
+  let mut call_ip = -1
+  for i in ip..<o.code.length() {
+    if o.code[i].op is @opcode.OpCode::Call &&
+      o.code[i].operand == o.func_index.get("make").unwrap() {
+      call_ip = i
+      break
+    }
+  }
+  assert_true(call_ip >= 0)
+  // Call 后：返回地址 GetFrameBase+PushConst+Add（ret_temp）→ StoreLocal temp
+  // → 两轮 LoadLocal+LoadMem（第二轮 +4）
+  let seq = o.code
+  assert_true(seq[call_ip + 4].op is @opcode.OpCode::StoreLocal)
+  assert_true(seq[call_ip + 5].op is @opcode.OpCode::LoadLocal)
+  assert_true(seq[call_ip + 6].op is @opcode.OpCode::LoadMem)
+  assert_true(seq[call_ip + 7].op is @opcode.OpCode::LoadLocal)
+  assert_true(seq[call_ip + 8].op is @opcode.OpCode::PushConst)
+  assert_eq(seq[call_ip + 8].operand, 4)
+  assert_true(seq[call_ip + 9].op is @opcode.OpCode::Add)
+  assert_true(seq[call_ip + 10].op is @opcode.OpCode::LoadMem)
 }

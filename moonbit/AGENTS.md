@@ -18,7 +18,7 @@
 | `vitro/engine/libc` | L5 | builtin 签名单表 57 条（visit_call 58 臂去 std__move；照搬现状口径，printf/putchar void 的 N3 漂移登记）；host_func_id 并集判据随 S5/S6 回填 | ✅ S4 建包（3 测试） |
 | `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ S4 主体收官（T5-b/c/d，2026-09-20）：4 Pass 全量接线——call/init/builtin/decl 四文件（visit_call 58 臂 + check_user_func 四级回退（bytecode_libc_sig 表入 libc 包）+ dispatch_stmt 语句族 + VarDecl 巨臂（auto/typeof 推导）+ 数组/struct 初始化器尺寸推断）；13 白盒锚（183 测试）；**598 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap（vfs 偶然对齐监测，语料 597→598）；遗留：decl_types 独立批并入本批；E1 全量对拍管道 CI 化已接线（2026-09-20 审阅批补，typeck_diff 四目录入 CI） |
 | `vitro/engine/bytecode` | L6 | 产物 schema（CompileOutput 13 字段 + FuncMeta/LocalBuffer/Symbol）+ Bytecode Libc 固定索引（88 函数数组单源，索引=1000+下标派生+断言锚）+ R1 布局纯函数（align4/compute_heap_base/argv_region_footprint）+ canonical dump emitter（Map 键码元字典序——**内置 String compare 非字典序**见陷阱 #29） | ✅ S5 开工批建包（2026-09-20，8 测试：Rust 源 88 对硬编码对账锚 +1——2026-09-21 审阅补）：emitter 与 Rust `dump-compile` 14 键逐字段同构（Type/浮点文本化/转义经 ast 单源）；r1 第 7 道布局断言全量搬 |
-| `vitro/engine/codegen` | L6 | BytecodeGen 状态机（C only 裁剪——47 字段剔 C++ 专属 7 项：顶层 6 + ScopeFrame.class_vars 嵌套 1）+ Pass 1 全量（全局注册/初始化位模式 T-P0-1/2/字符串延迟回填 P2）+ Pass 2/3 骨架（Block/Expr(stmt)/Return + 四字面量/Identifier）+ 入口 wrapper + libc 预注册（strcpy/strcat Host 分发例外）；**槽位策略 v1 逐位兼容**（LIFO 池 v2 随八条事故回归批） | ✅ S5 开工批骨架（2026-09-20，7 测试：__func__ 锚 +1——2026-09-21 审阅补）：未接线语句/表达式族 report_error fail loud；**A 级对拍**——13 条骨架语料（native/tests/cases/codegen_skeleton/，2026-09-21 审阅批 +3：2^64 溢出/浮点 inf/`__func__`）Rust dump-compile vs cmd/dump_compile 归一逐字节一致（codegen_diff 管道，含 code 段逐指令）；**baseline 363 例归因（2026-09-21 审阅，扩展批优先级）**：剩余面 354 例全在 gen 层——VarDecl 245（另有 22 处"未声明标识符"级联噪声随其消失）> CallPtr 71 > 二元 13 > for 8 > 赋值 6 > if 6 > while 3 > 三目 1；**勿接 Call**（Expr::Call 仅 C++ ctor 路径构造、C 输入不可达，直接/指针调用统一在 CallPtr 臂——两侧 parser 同构） |
+| `vitro/engine/codegen` | L6 | BytecodeGen 状态机（C only 裁剪——47 字段剔 C++ 专属 7 项：顶层 6 + ScopeFrame.class_vars 嵌套 1）+ Pass 1 全量（全局注册/初始化位模式 T-P0-1/2/字符串延迟回填 P2）+ Pass 2/3 骨架（Block/Expr(stmt)/Return + 四字面量/Identifier）+ 入口 wrapper + libc 预注册（strcpy/strcat Host 分发例外）；**槽位策略 v1 逐位兼容**（LIFO 池 v2 随八条事故回归批） | ✅ S5 开工批 + 扩展批一号（2026-09-21：VarDecl 全量接线（emit_single/static/VLA/数组 init/struct init/designator/zero-init Memset）+ CallPtr（host 路由 110 对脚本生成 + SplitD/Q 变参 + CallVar + struct 传参 words）+ gen_addr 最小集 + gen_nested_init/struct_copy_to_local——**baseline SAME 0→56**（ONE-SIDED 354→298，CONTENT-DIFF=0）；11 测试）：未接线语句/表达式族 report_error fail loud；**A 级对拍**——13 条骨架语料（native/tests/cases/codegen_skeleton/，2026-09-21 审阅批 +3：2^64 溢出/浮点 inf/`__func__`）Rust dump-compile vs cmd/dump_compile 归一逐字节一致（codegen_diff 管道，含 code 段逐指令）；**baseline 363 例归因（2026-09-21 审阅，扩展批优先级；数字为 VarDecl/CallPtr 接线前基线）**：剩余面 354 例全在 gen 层——VarDecl 245（另有 22 处"未声明标识符"级联噪声随其消失）> CallPtr 71 > 二元 13 > for 8 > 赋值 6 > if 6 > while 3 > 三目 1；**勿接 Call**（Expr::Call 仅 C++ ctor 路径构造、C 输入不可达，直接/指针调用统一在 CallPtr 臂——两侧 parser 同构） |
 
 命名规则：module = `vitro/engine`（mooncakes owner `vitro`），包全名 `vitro/engine/<pkg>` 一律全名，代码与配置禁用简称。
 
@@ -28,12 +28,14 @@
 cd moonbit
 moon check                # 快速类型检查（日常常跑）
 moon check --target all   # 全后端检查（发布前）
-moon test                 # 201 测试（白盒 _wbtest.mbt + 黑盒 _test.mbt + doc 测试；数字为 2026-09-21 快照，真值以 facts `moonbit_test_passed` 为准）
+moon test                 # 205 测试（白盒 _wbtest.mbt + 黑盒 _test.mbt + doc 测试；数字为 2026-09-21 快照，真值以 facts `moonbit_test_passed` 为准）
 moon test --update        # 快照更新（inspect content= 变更时；核对 diff 再提交）
 moon fmt                  # 格式化（生成物也参与——见 gen_diag 内置 fmt）
 moon info                 # 生成 .mbti 接口面（API 变更信号；pkg.generated.mbti 入版本控制）
 go run ./scripts/gen_diag          # diag 码表再生成（内置 moon fmt）
 go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 篡改即红）
+go run ./scripts/gen_host_route       # host 路由 110 对再生成（codegen 包，源 host_func_id.rs）
+go run ./scripts/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
 go run ./scripts/parser_diff <corpus>        # S3 解析差分（E1/E2/活性；仓库根跑）
 go run ./scripts/parser_diff --pathological  # E3 病态 12 样本同等拒绝
 go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚

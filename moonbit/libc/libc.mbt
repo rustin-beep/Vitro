@@ -21,39 +21,9 @@
 /// 隐式转换插入、逐函数诊断文案属 typeck 包的检查逻辑（照搬自同名
 /// check_builtin_*），不入数据表。
 
-///|
-/// libc 函数签名（typeck 消费面）。不 derive Eq/Show——`return_type` 的
-/// @ast.Type 走显式 `type_eq`（ast 包 S1 设计），结构体只做数据载体。
-struct LibcSig {
-  name : String
-  return_type : @ast.Type
-  min_args : Int
-  max_args : Int // -1 = 变参
-}
 
-///|
-/// void* 便捷构造（表内多处使用）。
-fn void_ptr() -> @ast.Type {
-  @ast.Type::Pointer(Void(false), false)
-}
 
-///|
-/// char* 便捷构造。
-fn char_ptr() -> @ast.Type {
-  @ast.Type::Pointer(Char(false, false), false)
-}
 
-///|
-/// int 便捷构造。
-fn int_ty() -> @ast.Type {
-  Int(false, false)
-}
-
-///|
-/// double 便捷构造。
-fn double_ty() -> @ast.Type {
-  Double(false)
-}
 
 ///|
 /// void 便捷构造。
@@ -61,95 +31,7 @@ fn void_ty() -> @ast.Type {
   Void(false)
 }
 
-///|
-/// long long 便捷构造。
-fn long_long_ty() -> @ast.Type {
-  LongLong(false, false)
-}
 
-///|
-/// 签名单表（57 条 = visit_call 58 臂去 `std__move`——C++ 语义臂不入表，
-/// S9 C++ 片裁定；print_int/__vitro_output/__vitro_step 三名共享一臂）。
-let libc_table : Array[LibcSig] = [
-  // —— io（io.rs 提取；printf/putchar/fprintf 的 N3 漂移登记于包注释）——
-  { name: "printf", return_type: void_ty(), min_args: 1, max_args: -1, },
-  { name: "scanf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "getchar", return_type: int_ty(), min_args: 0, max_args: 0, },
-  { name: "putchar", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "ungetc", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fprintf", return_type: void_ty(), min_args: 2, max_args: -1, },
-  { name: "puts", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "sprintf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "snprintf", return_type: int_ty(), min_args: 3, max_args: -1, },
-  { name: "sscanf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "print_int", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "__vitro_output", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "__vitro_step", return_type: void_ty(), min_args: 1, max_args: 1, },
-  // —— string（string.rs 提取）——
-  { name: "strlen", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "strcpy", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strdup", return_type: char_ptr(), min_args: 1, max_args: 1, },
-  { name: "strcmp", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "strcat", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "atoi", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "strncat", return_type: char_ptr(), min_args: 3, max_args: 3, },
-  { name: "strncmp", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "memcmp", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "strchr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strrchr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strstr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "memchr", return_type: void_ptr(), min_args: 3, max_args: 3, },
-  { name: "atof", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "atol", return_type: long_long_ty(), min_args: 1, max_args: 1, },
-  // —— math（math.rs 提取；math.h 其余函数经头文件存根进 funcs 表，
-  //    不走 builtin 分派——visit_call 兜底臂 check_user_func）——
-  { name: "rand", return_type: int_ty(), min_args: 0, max_args: 0, },
-  { name: "srand", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "tan", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "log10", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "fabs", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "ceil", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "floor", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "round", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "fmod", return_type: double_ty(), min_args: 2, max_args: 2, },
-  // —— memory（memory.rs 提取）——
-  { name: "malloc", return_type: void_ptr(), min_args: 1, max_args: 1, },
-  { name: "free", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "memset", return_type: void_ptr(), min_args: 3, max_args: 3, },
-  { name: "exit", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "realloc", return_type: void_ptr(), min_args: 2, max_args: 2, },
-  { name: "calloc", return_type: void_ptr(), min_args: 2, max_args: 2, },
-  // —— file（file.rs 提取；FILE* 表示层 = void*）——
-  { name: "fopen", return_type: void_ptr(), min_args: 2, max_args: 2, },
-  { name: "fread", return_type: int_ty(), min_args: 4, max_args: 4, },
-  { name: "fwrite", return_type: int_ty(), min_args: 4, max_args: 4, },
-  { name: "fclose", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "feof", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "fgets", return_type: char_ptr(), min_args: 3, max_args: 3, },
-  { name: "fputs", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fgetc", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "fputc", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fseek", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "ftell", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "rewind", return_type: void_ty(), min_args: 1, max_args: 1, },
-  // —— 特殊臂（visit_call 内联；qsort 用户重定义优先——检查逻辑在
-  //    typeck 包，签名数据在此）——
-  { name: "qsort", return_type: void_ty(), min_args: 4, max_args: 4, },
-  { name: "bsearch", return_type: void_ptr(), min_args: 5, max_args: 5, },
-]
-
-///|
-/// 按名查签名（typeck builtin 分派的数据入口）。
-fn lookup(name : String) -> LibcSig? {
-  for sig in libc_table {
-    if sig.name == name {
-      return Some(sig)
-    }
-  }
-  None
-}
-
-///|
 /// builtin 放行名全集（175 名 = Rust `is_builtin_func` 判据逐名照搬：
 /// host_func_id 109 路由名 ∪ BYTECODE_LIBC_ALL_FUNCS 88 名，重叠 22）。
 /// 含 C++ 容器 mangled 名（vitro_*__* / __ctor__vitro_* 等 ~64 名）——

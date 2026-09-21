@@ -14,7 +14,7 @@
 ///|
 /// ++/-- 的类型分派键（本包私有——跨包 TypeKind 构造器只读，int 兜底
 /// 无法在包外构造 TK_Int；从 @ast.Type 提取为本地枚举）。
-enum IncDecKind {
+priv enum IncDecKind {
   IDD_Int
   IDD_Float
   IDD_Double

@@ -295,9 +295,18 @@ fn BytecodeGen::gen_assign_inner(
     Member(object, mname, _, _) => {
       self.gen_member_addr(object, mname, loc)
       // lambda by-ref 捕获指针解引用段不迁移（C only）
-      let elem_kind = self.member_elem_kind(object, mname)
+      // P1-1：left.ty() 即成员类型（typeck 后 Member 携带结果类型），
+      // 与 Rust assign.rs 的 left_ty 同构——此前反查 struct_defs 只覆盖
+      // struct，union 成员恒落 4 字节（u.d 截断/u.c 越界，审阅实证）
       self.assign_mem_op(
-        op, right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, loc, elem_kind,
+        op,
+        right,
+        left_ty,
+        left_is_ptr,
+        is_ptr_compound,
+        ptr_step,
+        loc,
+        left_ty.kind(),
       )
       return
     }
@@ -545,34 +554,4 @@ fn BytecodeGen::assign_mem_op(
       self.emit(@opcode.OpCode::LoadMem, 0, loc)
     }
   }
-}
-
-///|
-/// Member 左值的元素宽度键：经 struct_defs 查成员字段类型。
-fn BytecodeGen::member_elem_kind(
-  self : BytecodeGen,
-  object : @ast.Expr,
-  mname : String,
-) -> @ast.TypeKind {
-  let obj_ty = object.ty()
-  let base = if obj_ty.kind() is TK_Pointer {
-    match obj_ty {
-      Pointer(pointee, _) => pointee
-      _ => obj_ty
-    }
-  } else {
-    obj_ty
-  }
-  if base.kind() is TK_Struct {
-    match self.struct_defs.get(base.name()) {
-      Some(fields) =>
-        for f in fields {
-          if f.name == mname {
-            return f.ty.kind()
-          }
-        }
-      None => ()
-    }
-  }
-  base.kind()
 }

@@ -266,12 +266,12 @@ func rustFailStage(stderrRaw []byte, f string) string {
 			return p[1]
 		}
 	}
-	// P1-1：基础设施错误（拒绝访问/找不到二进制等）不是语料属性——
-	// fail loud 拒绝给判定，禁参与 DIFF-STAGE 计数（此前落 unknown 会被
-	// 计成 content 级红且 --baseline 豁免不掉，判定随批次抖动）
-	fail("Rust 侧失败层无法归类（非四层 stderr 前缀，疑似基础设施错误）：%s\nstderr: %s",
-		f, s)
-	return "unreachable"
+	// P1-1：基础设施错误（拒绝访问/找不到二进制等）不是语料属性。
+	// 〔2026-09-21 审阅降级〕fail 会把单文件异常升级成整轮 abort——批量
+	// 判定可用性缺陷。改返回哨兵 stage "infra"：该文件计 DIFF-STAGE 红
+	// （与 MoonBit stage 永不相等）、其余文件继续判定，不再吞整轮证据；
+	// 真基础设施故障由多数文件齐红 + 人工看 stderr 暴露。
+	return "infra"
 }
 
 // parseMoonDoc：解析 MoonBit 侧输出——ok 与 .dump 原始字节与失败 stage。

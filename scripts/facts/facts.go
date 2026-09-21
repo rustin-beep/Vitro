@@ -700,6 +700,13 @@ func demoteStale(doc FactsDoc, maxAge time.Duration) int {
 		if err != nil {
 			continue
 		}
+		// 超龄只对"须重跑才保真"的 provenance 生效：read_const /
+		// parse_markdown / count_dir 的 as_of 是**源文件 mtime**——源未变
+		// 即真值有效，按采集动作超龄判会永久假红（2026-09-21 实证：
+		// abi_version 常量 09-14 后未改、每轮 check 必红）。
+		if v.Provenance == "read_const" || v.Provenance == "parse_markdown" || v.Provenance == "count_dir" {
+			continue
+		}
 		if now.Sub(t) > maxAge {
 			n++
 			v.Status = "stale"

@@ -20,7 +20,7 @@
 pub const SLOT_STRATEGY_VERSION : Int = 1
 
 ///|
-struct BytecodeGen {
+priv struct BytecodeGen {
   code : Array[@opcode.Instruction]
   errors : Array[String]
   func_table : Map[String, @bytecode.FuncMeta]
@@ -75,12 +75,12 @@ struct BytecodeGen {
 ///|
 /// 作用域帧：退出作用域时恢复被 shadow 的外部变量（事故 #19——此前
 /// 只恢复 local_indices 一张表，遮蔽全局数组出作用域后假边界陷阱）。
-struct ScopeFrame {
+priv struct ScopeFrame {
   shadows : Array[ShadowEntry]
 }
 
 ///|
-struct ShadowEntry {
+priv struct ShadowEntry {
   name : String
   old_offset : Int?
   old_type : @ast.Type?

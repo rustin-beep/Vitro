@@ -28,7 +28,7 @@ go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 产物被�
 ## 验证
 
 ```bash
-moon check && moon test    # 209 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 8 / codegen 16；分解和 203 + 根 README doc test 等）——S5 起 bytecode/codegen 入列；收面后对外面以 scripts/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 205 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 8 / codegen 16；分解和 203 + 根 README doc test 等）——S5 起 bytecode/codegen 入列；收面后对外面以 scripts/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

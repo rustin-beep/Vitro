@@ -8,7 +8,9 @@
 /// 口径；MoonBit `String::length()` 是 UTF-16 码元数，禁止参与本文件的任何
 /// 字节数计算（非 ASCII argv 下会静默少算）。
 
-/// 总内存空间（1MB）。
+/// 总内存空间（1MB）。（MEM_SIZE/NULL_TRAP_SIZE/STACK_START/argv_region_footprint
+/// 等本包内暂无消费的常量/函数是 **S6 前置**——memory/host/vm 建包时消费，
+/// moon 的 unused 警告不溯 wbtest 消费（工具行为），保留勿删）
 const MEM_SIZE : UInt = 1024 * 1024
 
 /// NULL 陷阱区大小。

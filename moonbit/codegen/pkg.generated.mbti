@@ -14,17 +14,6 @@ pub fn compile(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[String])
 // Errors
 
 // Types and methods
-type BytecodeGen
-
-type CaseCollector
-
-type IncDecKind
-
-type LitNum
-
-type ScopeFrame
-
-type ShadowEntry
 
 // Type aliases
 

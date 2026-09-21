@@ -103,7 +103,7 @@ var (
 // ─── 文档分级 ────────────────────────────────────────────────────────────────
 
 var (
-	reHistFile = regexp.MustCompile(`(?i)裁定|决议|评估报告|工作记录|维护方案|追踪|审计计划|回执|登记|埋雷|事故|整备|CHANGELOG|ARCHIVE`)
+	reHistFile = regexp.MustCompile(`(?i)裁定|决议|评估报告|工作记录|维护方案|追踪|审计计划|回执|登记|埋雷|事故|整备|审阅报告|执行记录|复审|CHANGELOG|ARCHIVE`)
 	reDate     = regexp.MustCompile(`\d{4}-\d{2}-\d{2}|\d{4}/\d{1,2}/\d{1,2}|\d{8}`)
 	reAsofWord = regexp.MustCompile(`(?i)as[- ]?of|截至|原记|彼时|当时|历史|已废弃|旧口径|陈旧口径|归档|已过时|已被.*取代|口径已`)
 	rePhase    = regexp.MustCompile(`(?i)(Phase|Stage|阶段|第)\s*\d+`)

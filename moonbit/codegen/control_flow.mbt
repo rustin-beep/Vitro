@@ -143,7 +143,7 @@ fn BytecodeGen::patch_loop_patches(
 ///|
 /// case 收集器（Rust collect_cases 嵌套 fn 的可变参数形态——MoonBit 闭包
 /// 不能捕获可变外层，改经 struct 字段携带）。
-struct CaseCollector {
+priv struct CaseCollector {
   cases : Array[(@ast.Expr?, @ast.Stmt)]
   mut default_case : @ast.Stmt?
 }

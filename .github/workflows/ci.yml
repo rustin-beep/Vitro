@@ -200,16 +200,19 @@ jobs:
             go run ./scripts/typeck_diff native/tests/cases/$d
           done
 
-      - name: MoonBit codegen differential (A-grade, skeleton corpus)
-        # 2026-09-21 S5 审阅批接线：codegen_diff（A 级产物 14 键对拍）。
-        # **只接骨架可通面**（codegen_skeleton 13 例：SAME 12 + AGREE 1）
-        # ——baseline 353 例的语句/表达式族未接线（one-sided 能力缺口）
-        # 属红面基线期，随扩展批逐族收敛后再放开全量（--baseline 语义
-        # 已实测：CONTENT-DIFF 永不豁免、one-sided 显式豁免）。
-        # 判定确定性修复（P1-1）先行：临时文件不预创建 + error 5 重试 +
-        # 基础设施错误 fail loud——三连跑稳定后才接 CI。依赖同上。
+      - name: MoonBit codegen differential (A-grade, full corpus)
+        # 2026-09-21 S5 审阅批接线；同日扩展批四号后**放开四语料**——
+        # 原"只接 skeleton"的理由（one-sided 能力缺口）已不成立：四语料
+        # ONE-SIDED=0 / CONTENT-DIFF=0（SAME 585/600 含 2 例 union/指针
+        # 成员宽度形状锚）。骨架面保留（快失败冒烟）；本批 P1-1（union
+        # 成员赋值宽度）正是四语料外接前的探针漏网——门禁全覆盖后再无
+        # 形状盲区豁免。
         shell: bash
-        run: go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton
+        run: |
+          go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton
+          for d in baseline knr leetcode gap; do
+            go run ./scripts/codegen_diff native/tests/cases/$d
+          done
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
         # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会

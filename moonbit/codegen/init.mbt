@@ -39,7 +39,7 @@ fn cstring_len(s : String) -> Int {
 
 ///|
 /// 字面量的数值形态：整数走 Int64（f64 只有 53 位尾数丢精度），浮点走 Double。
-enum LitNum {
+priv enum LitNum {
   LN_I(Int64)
   LN_F(Double)
 }

@@ -18,7 +18,8 @@
 /// codegen 侧的分发例外（回 Host 路径带 E3070 栈缓冲区检测）见
 /// `codegen` 包 `with_mode`。
 
-/// 预编译产物指令条数（`bytecode_libc_data.json` code 段长度）。
+/// 预编译产物指令条数（`bytecode_libc_data.json` code 段长度）——S6 libc
+/// 自举消费（加载产物校验 code 段长度），当前包内无读点属预期。
 const BYTECODE_LIBC_CODE_LEN : Int = 3485
 
 /// 固定索引段基址。

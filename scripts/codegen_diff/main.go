@@ -72,6 +72,18 @@ func main() {
 	os.Exit(runCorpus(corpus, baseline, selftest))
 }
 
+// knownForkFiles：parser 层已知有意分叉（S3 F3-v2 累加器裁定 b 白名单，
+// 见 scripts/parser_diff / scripts/typeck_diff 同名表——根因在 parser：
+// 局部函数指针/函数原型声明符 oracle 双层 Pointer(Pointer(Function)) 不符
+// C 语义，MoonBit 按 C 单层）在 **codegen 消费面**的放大（symbols 的 ty
+// 定型分叉连带 dump 产物）。与 typeck 侧同规则：命中降级 FORK(known)
+// 报告不计失败；S8 差异台账收编时一并裁定。2026-09-21 扩展批三号首条
+// CONTENT-DIFF 即此根因（code 段两侧一致，纯类型定型面分叉）。
+var knownForkFiles = map[string]string{
+	"function_pointer_return_ptr.c": "局部函数指针双层→C 单层（F3-v2）——codegen 消费面放大（symbols.ty）",
+	"kr_5_11.c":                     "局部函数原型双层→C 单层（F3-v2）——codegen 消费面放大",
+}
+
 func runCorpus(corpus string, baseline bool, selftest bool) int {
 	files := listCFiles(corpus)
 	if len(files) == 0 {
@@ -132,6 +144,12 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 			if bytes.Equal(r.dump, m.dump) {
 				nSame++
 			} else {
+				// parser 层已知分叉在 codegen 消费面的放大（白名单与
+				// typeck_diff 同源）——降级 FORK 报告不计失败
+				if reason, ok := knownForkFiles[filepath.Base(f)]; ok {
+					fmt.Printf("FORK(known) %s——%s\n", filepath.Base(f), reason)
+					continue
+				}
 				nContent++
 				fmt.Printf("DIFF-CONTENT %s\n  rust: %s\n  moon: %s\n", filepath.Base(f),
 					preview(r.dump), preview(m.dump))

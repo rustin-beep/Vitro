@@ -16,22 +16,11 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
     Return(value, ret_loc) => self.gen_return(value, ret_loc)
     VarDecl(var_type, name, init, extra_vars, is_static, _) =>
       self.gen_var_decl(var_type, name, init, extra_vars, is_static, loc)
-    If(_, _, _, _) =>
-      self.report_error(
-        "if 语句的字节码生成未实现（S5 在途）", loc,
-      )
-    While(_, _, _) =>
-      self.report_error(
-        "while 语句的字节码生成未实现（S5 在途）", loc,
-      )
-    DoWhile(_, _, _) =>
-      self.report_error(
-        "do-while 语句的字节码生成未实现（S5 在途）", loc,
-      )
-    For(_, _, _, _, _) =>
-      self.report_error(
-        "for 语句的字节码生成未实现（S5 在途）", loc,
-      )
+    If(cond, then_stmt, else_stmt, _) =>
+      self.gen_if(cond, then_stmt, else_stmt, loc)
+    While(cond, body, _) => self.gen_while(cond, body, loc)
+    DoWhile(body, cond, _) => self.gen_do_while(body, cond, loc)
+    For(init, cond, step, body, _) => self.gen_for(init, cond, step, body, loc)
     Break(b_loc) => {
       // Rust gen_break：无 RAII 析构（C only）时即占位 Jump 入 break_patches
       let ip = self.current_ip()
@@ -43,10 +32,7 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
       self.emit(@opcode.OpCode::Jump, 0, c_loc)
       self.continue_patches.push(ip)
     }
-    Switch(_, _, _) =>
-      self.report_error(
-        "switch 语句的字节码生成未实现（S5 在途）", loc,
-      )
+    Switch(cond, body, _) => self.gen_switch(cond, body, loc)
     Case(_, _, _) => ()
     Goto(label, g_loc) =>
       // Rust gen_goto 照搬（C only 无 RAII 携带语义）
@@ -297,14 +283,8 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     // —— 以下未接线族显式分派（穷尽 26 变体无兜底臂——编码纪律 #1；
     //    新增 Expr 变体必须让本 match 编译红）——
     // C 子集待接线（14 族，扩展批逐族收敛）：
-    Binary(_, _, _, _, _) =>
-      self.report_error(
-        "二元运算的字节码生成未实现（S5 在途）", loc,
-      )
-    Unary(_, _, _, _) =>
-      self.report_error(
-        "一元运算的字节码生成未实现（S5 在途）", loc,
-      )
+    Binary(op, left, right, _, ty) => self.gen_binary(op, left, right, ty, loc)
+    Unary(op, operand, _, _) => self.gen_unary(op, operand, loc)
     Call(_, _, _, _) =>
       self.report_error(
         "内部错误：Expr::Call 仅 C++ ctor 路径构造（parser 后缀位统一产 CallPtr——两侧同构，MoonBit expr.mbt 与 Rust postfix.rs 同臂），砍 C++ 后 C 输入不可达；用户侧函数调用见 CallPtr 臂",
@@ -321,30 +301,17 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       self.report_error(
         "成员访问的字节码生成未实现（S5 在途）", loc,
       )
-    Ternary(_, _, _, _, _) =>
-      self.report_error(
-        "三目运算的字节码生成未实现（S5 在途）", loc,
-      )
-    Assign(_, _, _, _, _) =>
-      self.report_error(
-        "赋值表达式的字节码生成未实现（S5 在途）", loc,
-      )
-    Sizeof(_, _, _, _) =>
-      self.report_error(
-        "sizeof 的字节码生成未实现（S5 在途）", loc,
-      )
-    Alignof(_, _, _, _) =>
-      self.report_error(
-        "alignof 的字节码生成未实现（S5 在途）", loc,
-      )
-    Cast(_, _, _, _) =>
-      self.report_error(
-        "类型转换的字节码生成未实现（S5 在途）", loc,
-      )
-    Offsetof(_, _, _, _) =>
-      self.report_error(
-        "offsetof 的字节码生成未实现（S5 在途）", loc,
-      )
+    Ternary(cond, then_branch, else_branch, _, _) =>
+      self.gen_ternary_expr(cond, then_branch, else_branch, loc)
+    Assign(op, left, right, _, _) => self.gen_assign(op, left, right, loc)
+    Sizeof(target_type, operand, _, _) =>
+      self.gen_sizeof_expr(target_type, operand, loc)
+    Alignof(target_type, operand, _, _) =>
+      self.gen_alignof_expr(target_type, operand, loc)
+    Cast(inner, target_type, _, _) =>
+      self.gen_cast_expr(inner, target_type, loc)
+    Offsetof(target_type, field, _, _) =>
+      self.gen_offsetof_expr(target_type, field, loc)
     Generic(_, _, _, _, _) =>
       self.report_error(
         "_Generic 的字节码生成未实现（S5 在途）", loc,

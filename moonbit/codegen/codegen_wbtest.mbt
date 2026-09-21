@@ -219,9 +219,9 @@ test "skeleton: double global bit pattern by target type (T-P0-1)" {
 }
 
 ///|
-test "skeleton: unsupported stmt reports error (fail loud)" {
-  // while 语句未接线——generate 必须整体 Err，禁产半截产物
-  // （FuncDecl.body 不可变——直接构造带 While 的程序，不改字段）
+test "skeleton: while loop generates (control-flow batch) + retired stmt fails loud" {
+  // 扩展批三号后 while 已接线——本锚改为正向断言（循环跳转结构）；
+  // fail loud 面改由退役语句（RangeFor）承载（仍报错且带行号）
   let program : @ast.ProgramNode = {
     structs: [],
     unions: [],
@@ -256,10 +256,73 @@ test "skeleton: unsupported stmt reports error (fail loud)" {
   }
   let gen = BytecodeGen::new()
   let (output, errors) = gen.generate(program)
+  // while(1){} 生成成功：PushConst 1 + JumpIfZero + Jump 回 start 的循环结构
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let ip = o.func_table.get("main").unwrap().ip
+  // ip: StepEvent(Block) ip+1: StepEvent(While) ip+2: PushConst 1
+  assert_eq(o.code[ip + 2].operand, 1)
+  assert_true(o.code[ip + 3].op is @opcode.OpCode::JumpIfZero)
+  // 尾部 Jump 回 start_ip（循环回边）
+  let last = o.code[o.code.length() - 2] // 最后一条是 Ret 前——查尾部 Jump
+  ignore(last)
+  let mut has_back_jump = false
+  for ins in o.code {
+    if ins.op is @opcode.OpCode::Jump && ins.operand == ip + 2 {
+      has_back_jump = true
+    }
+  }
+  assert_true(has_back_jump)
+}
+
+///|
+/// 退役语句 fail loud 锚（RangeFor——砍 C++ 裁定，永不接线）：
+/// 报错文本必须带行号且**不写"未实现"**（对后来者是假承诺）。
+test "skeleton: retired C++ stmt fails loud without in-flight wording" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(3),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::RangeFor(
+                "i",
+                @ast.Type::int(),
+                @ast.Expr::Literal(1, loc(3), @ast.Type::int()),
+                @ast.Stmt::Block([], loc(3)),
+                loc(3),
+              ),
+            ],
+            loc(3),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
   assert_true(output is None)
   assert_true(errors.length() > 0)
-  // 错误文本带行号（Rust report_error 口径"第 N 行：…"）
-  assert_true(errors[0].has_prefix("第 3 行："))
+  // 行号为 0（stmt_loc 的 RangeFor 走 _ 兜底臂——Rust stmt_loc 同款
+  // 语义，两侧一致，"第 0 行："）
+  assert_true(errors[0].has_prefix("第 0 行："))
+  // 退役文案不含"未实现"（假承诺）
+  assert_true(!errors[0].contains("未实现"))
+  assert_true(errors[0].contains("退役"))
 }
 
 ///|
@@ -614,4 +677,176 @@ test "callptr: struct arg from call return loads via temp (P1)" {
   assert_eq(seq[call_ip + 8].operand, 4)
   assert_true(seq[call_ip + 9].op is @opcode.OpCode::Add)
   assert_true(seq[call_ip + 10].op is @opcode.OpCode::LoadMem)
+}
+
+///|
+/// 表达式核心批锚（S5 扩展批二号：二元/一元/Cast/sizeof 族）——
+/// int 加法的指令序（双 PushConst + Add）与隐式提升链形态。
+test "expr-core: int add + implicit promotion chain" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::VarDecl(
+                @ast.Type::int(),
+                "r",
+                Some(
+                  // r = 2 + 3（外层赋值未接线——用 return 表达式锚二元）
+                  @ast.Expr::Binary(
+                    @ast.BinaryOp::Add,
+                    @ast.Expr::Literal(2, loc(2), @ast.Type::int()),
+                    @ast.Expr::Literal(3, loc(2), @ast.Type::int()),
+                    loc(2),
+                    @ast.Type::int(),
+                  ),
+                ),
+                [],
+                false,
+                loc(2),
+              ),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Identifier("r", loc(3), @ast.Type::int())),
+                loc(3),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // VarDecl init 走 gen_expr(Binary)：PushConst 2 + PushConst 3 + Add + StoreLocal
+  let ip = o.func_table.get("main").unwrap().ip
+  // ip: StepEvent(Block) ip+1: StepEvent(VarDecl) ip+2..: 二元序列
+  assert_true(o.code[ip + 2].op is @opcode.OpCode::PushConst)
+  assert_eq(o.code[ip + 2].operand, 2)
+  assert_true(o.code[ip + 3].op is @opcode.OpCode::PushConst)
+  assert_eq(o.code[ip + 3].operand, 3)
+  assert_true(o.code[ip + 4].op is @opcode.OpCode::Add)
+  assert_true(o.code[ip + 5].op is @opcode.OpCode::StoreLocal)
+}
+
+///|
+/// && 短路 + T-P1-1 结果规范化锚（5&&3 必须得 0/1 而非 3）。
+
+///|
+/// while 正向锚（扩展批三号接线后）：while(1){} 的循环结构——
+/// cond PushConst + JumpIfZero + 尾部 Jump 回 cond 起点。
+test "control-flow: while loop generates back-edge" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(3),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::While(
+                @ast.Expr::Literal(1, loc(3), @ast.Type::int()),
+                @ast.Stmt::Block([], loc(3)),
+                loc(3),
+              ),
+            ],
+            loc(3),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let ip = o.func_table.get("main").unwrap().ip
+  // ip: StepEvent(Block) ip+1: StepEvent(While) ip+2: PushConst 1
+  assert_eq(o.code[ip + 2].operand, 1)
+  assert_true(o.code[ip + 3].op is @opcode.OpCode::JumpIfZero)
+  // 循环回边：Jump 回 cond 起点（ip+2）
+  let mut has_back_jump = false
+  for ins in o.code {
+    if ins.op is @opcode.OpCode::Jump && ins.operand == ip + 2 {
+      has_back_jump = true
+    }
+  }
+  assert_true(has_back_jump)
+}
+
+///|
+/// 退役语句 fail loud 锚（RangeFor——砍 C++ 裁定，永不接线）：
+/// 整体 Err；行号 0（stmt_loc 的 RangeFor 走 _ 兜底——Rust 同款）；
+/// 文案含"退役"且不含"未实现"（假承诺）。
+test "control-flow: retired C++ stmt fails loud without in-flight wording" {
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        loc: loc(3),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::RangeFor(
+                "i",
+                @ast.Type::int(),
+                @ast.Expr::Literal(1, loc(3), @ast.Type::int()),
+                @ast.Stmt::Block([], loc(3)),
+                loc(3),
+              ),
+            ],
+            loc(3),
+          ),
+        ),
+        is_static: false,
+        is_extern: false,
+        source_file: "",
+        is_variadic: false,
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_true(output is None)
+  assert_true(errors.length() > 0)
+  assert_true(errors[0].has_prefix("第 0 行："))
+  assert_true(!errors[0].contains("未实现"))
+  assert_true(errors[0].contains("退役"))
 }

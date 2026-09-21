@@ -48,8 +48,7 @@ struct BytecodeGen {
   /// 此槽，初始化列表元素的 gen_expr 不会覆盖它。
   mut init_base_slot : Int
   /// 赋值目标地址槽的嵌套深度计数（gen_assign 入口递增；T-P0-6）。
-  /// （mut 随 gen_assign 扩展批回加——本骨架批无写入点，unused_mut 即 error）
-  assign_nest_depth : Int
+  mut assign_nest_depth : Int
   /// 按嵌套深度缓存分配的地址槽（下标 = 深度-1），同层顺序复用。
   mut assign_addr_slots : Array[Int]
   globals_init_32 : Array[(UInt, Int)]

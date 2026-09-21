@@ -5,7 +5,7 @@
 //   - 禁手抄：产物唯一来源 = native/runtime_libc/include/*.h（冻结区资产）；
 //   - 幂等：双次运行字节一致；行尾规范化（LF）后取源 sha256 落款；
 //   - --check：产物与源不一致即 exit 1（fail loud）；
-//   - 用法：go run ./moonbit/scripts/gen_stubs [--check]（仓库根运行）
+//   - 用法：go run ./scripts/moonbit/gen_stubs [--check]（仓库根运行）
 package main
 
 import (
@@ -53,6 +53,9 @@ func moonEscape(s string) string {
 }
 
 func main() {
+	// （迁址自 moonbit/scripts/ 但**不 chdir**——本脚本原设计即仓库根
+	// 运行：sourceRoot=native/... 无 ../ 前缀、go.mod 自检查仓库根）
+
 	if _, err := os.Stat("go.mod"); err != nil {
 		fmt.Fprintln(os.Stderr, "gen_stubs: 必须在仓库根目录运行（找不到 go.mod）")
 		os.Exit(1)

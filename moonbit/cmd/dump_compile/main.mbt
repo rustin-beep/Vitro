@@ -30,7 +30,9 @@ fn main raise {
     // 防御（2026-09-21 实踩：两语料目录连传时 out_dir 落成语料目录，
     // 81 个 dump 产物污染 native/tests/cases——本工具契约单语料 + 单
     // 输出目录，多余参数直接 fail loud）
-    fail("参数过多：期望 <corpus_dir|file.c> <out_dir> 两个参数（实测 \{args.length() - 1} 个）")
+    fail(
+      "参数过多：期望 <corpus_dir|file.c> <out_dir> 两个参数（实测 \{args.length() - 1} 个）",
+    )
   }
   let target = args[1]
   let out_dir = args[2]
@@ -80,7 +82,10 @@ fn main raise {
 /// 单输入 dump：管线逐层 fail loud——stage 标注失败层。
 fn dump_one(lexed : @lexer.LexResult) -> String {
   if !lexed.errors.is_empty() {
-    return fail_json("lex", lexed.errors.length().to_string() + " 个词法错误")
+    return fail_json(
+      "lex",
+      lexed.errors.length().to_string() + " 个词法错误",
+    )
   }
   let r = @parser.parse(lexed.tokens)
   if !r.errors.is_empty() || r.program is None {
@@ -98,14 +103,18 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
   let tc = @typeck.TypeChecker::new()
   let (typed, type_errors, _w, _h) = tc.check(p)
   if type_errors.length() > 0 {
-    return fail_json("type", type_errors.length().to_string() + " 个类型错误")
+    return fail_json(
+      "type",
+      type_errors.length().to_string() + " 个类型错误",
+    )
   }
   let (output, gen_errors) = @codegen.compile(typed)
   match output {
     // 包装层携带 slot_strategy（槽位策略版本进产物出口——§6"版本化"
     // 的消费点；对拍面只取 .dump，本字段不参与 14 键比对，v2 切换时
     // codegen_diff 可按此分档）
-    Some(o) => "{\"ok\":true,\"slot_strategy\":\{@codegen.SLOT_STRATEGY_VERSION},\"dump\":\{@bytecode.compile_output_dump_json(o)}}"
+    Some(o) =>
+      "{\"ok\":true,\"slot_strategy\":\{@codegen.SLOT_STRATEGY_VERSION},\"dump\":\{@bytecode.compile_output_dump_json(o)}}"
     None => fail_json("gen", gen_errors.join("\n"))
   }
 }

@@ -13,6 +13,8 @@ diag Severity
 diag SourceLang
 diag codes_without_catalog
 source Pos
-# --- ② 类型闭包保留 ---
+# （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
+#  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
+#  曾于 176fbdf 误判死码删除、审阅批四恢复。）# --- ② 类型闭包保留 ---
 parser ParseError
 bytecode LocalBuffer

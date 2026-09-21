@@ -8,20 +8,25 @@
 /// 口径；MoonBit `String::length()` 是 UTF-16 码元数，禁止参与本文件的任何
 /// 字节数计算（非 ASCII argv 下会静默少算）。
 
+///|
 /// 总内存空间（1MB）。（MEM_SIZE/NULL_TRAP_SIZE/STACK_START/argv_region_footprint
 /// 等本包内暂无消费的常量/函数是 **S6 前置**——memory/host/vm 建包时消费，
 /// moon 的 unused 警告不溯 wbtest 消费（工具行为），保留勿删）
 const MEM_SIZE : UInt = 1024 * 1024
 
+///|
 /// NULL 陷阱区大小。
 const NULL_TRAP_SIZE : UInt = 0x1000
 
+///|
 /// 全局区起始地址。
 pub const GLOBAL_START : UInt = 0x1000
 
+///|
 /// 堆区默认起始地址（全局数据未越过时的堆起点下限）。
 const HEAP_START : UInt = 0x5000
 
+///|
 /// 全局数据区（全局变量/静态变量/vtable/字符串字面量）的编译期硬上限，
 /// 绝对地址。
 ///
@@ -30,17 +35,21 @@ const HEAP_START : UInt = 0x5000
 /// （MEM_SIZE / 16 = 64KB）一致，不收紧存量行为。
 pub const GLOBAL_REGION_LIMIT : UInt = MEM_SIZE / 16
 
+///|
 /// 栈区起始地址（从高地址向低地址增长）。
 const STACK_START : UInt = MEM_SIZE
 
+///|
 /// 4 字节对齐掩码（= !3 的 UInt 形态）。
 pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
 
+///|
 /// 4 字节向上对齐。
 pub fn align4(x : UInt) -> UInt {
   (x + 3) & ALIGN4_MASK
 }
 
+///|
 /// argv 区域占用字节数（指针数组 + 字符串数据，4 字节对齐）。
 ///
 /// R1 ③：argv 自 `GLOBAL_REGION_LIMIT` 向下分配，本函数是占用的唯一计算
@@ -59,6 +68,7 @@ fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
   align4((argc.to_uint64() * 4 + strings).to_uint())
 }
 
+///|
 /// R1 ① 动态堆起点：`max(HEAP_START, align4(global_data_end))`；存在 argv
 /// 时还必须越过 argv 顶界（`GLOBAL_REGION_LIMIT`），否则堆 bump 会覆盖
 /// 参数区。

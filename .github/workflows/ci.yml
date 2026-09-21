@@ -220,7 +220,21 @@ jobs:
         # （scripts/surface_allowlist.txt）：无跨包消费的 pub 符号必须收面
         # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
         shell: bash
-        run: cd moonbit && go run ./scripts/moonbit_surface -check
+        run: go run ./scripts/moonbit/moonbit_surface -check
+
+      - name: MoonBit format check (moon fmt --check)
+        # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
+        # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式
+        # 差异会在再生成路径持续产生噪声。
+        shell: bash
+        run: |
+          cd moonbit
+          moon fmt
+          if ! git diff --exit-code -- .; then
+            echo "::error::moon fmt 漂移——本地 cd moonbit && moon fmt 后提交"
+            git diff --stat -- .
+            exit 1
+          fi
 
       # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
       # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器

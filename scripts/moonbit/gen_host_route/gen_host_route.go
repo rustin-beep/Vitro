@@ -45,6 +45,11 @@ var nameRe = regexp.MustCompile(`"([a-zA-Z_][a-zA-Z0-9_]*)"`)
 var pureBlockRe = regexp.MustCompile(`BYTECODE_LIBC_PURE_FUNCS[^=]*=\s*&\[([^]]+)\]`)
 
 func main() {
+	if err := os.Chdir("moonbit"); err != nil {
+		fmt.Fprintf(os.Stderr, "chdir moonbit failed: %v", err)
+		os.Exit(2)
+	}
+
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
 	srcPath := flag.String("src", "../native/crates/vitro_runtime/src/host_func_id.rs", "host_func_id.rs 路径")
 	outDir := flag.String("out", "codegen", "输出目录")

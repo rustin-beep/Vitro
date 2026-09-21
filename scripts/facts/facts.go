@@ -464,7 +464,7 @@ func collectMoonbitFromOutput(out string, code int, facts map[string]Fact) {
 	passed, _ := strconv.Atoi(m[2])
 	failed, _ := strconv.Atoi(m[3])
 	f := okFact(passed, "用例", "moonbit/（moon test）", "run", nowISO())
-	f.Note = fmt.Sprintf("total=%d failed=%d exit=%d（S1 四包 + S2 lexer + S3 parser：source/opcode/diag/ast/lexer/parser）", total, failed, code)
+	f.Note = fmt.Sprintf("total=%d failed=%d exit=%d（S1 source/opcode/diag/ast + S2 lexer + S3 parser + S4 names/libc/typeck + S5 bytecode/codegen 全 11 包）", total, failed, code)
 	facts["moonbit_test_passed"] = f
 }
 

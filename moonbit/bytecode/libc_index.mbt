@@ -18,113 +18,53 @@
 /// codegen 侧的分发例外（回 Host 路径带 E3070 栈缓冲区检测）见
 /// `codegen` 包 `with_mode`。
 
+///|
 /// 预编译产物指令条数（`bytecode_libc_data.json` code 段长度）——S6 libc
 /// 自举消费（加载产物校验 code 段长度），当前包内无读点属预期。
 const BYTECODE_LIBC_CODE_LEN : Int = 3485
 
+///|
 /// 固定索引段基址。
 pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
 
+///|
 /// 用户侧全局区预留（用户全局变量自此之后分配；library mode 自 0 起算）。
 pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt = 1024
 
+///|
 /// 函数总数。
 pub const BYTECODE_LIBC_FUNC_COUNT : Int = 88
 
+///|
 /// Bytecode Libc 全部函数名（序 = 固定索引序）。并非所有函数都默认走
 /// Bytecode 路径（strcpy/strcat 分发回 Host——E3070 检测），实际路径由
 /// 执行侧控制。
 pub let bytecode_libc_all_funcs : Array[String] = [
-  "isdigit",
-  "isalpha",
-  "islower",
-  "isupper",
-  "tolower",
-  "toupper",
-  "isspace",
-  "isalnum",
-  "isprint",
-  "iscntrl",
-  "isxdigit",
-  "abs",
-  "atoi",
-  "srand",
-  "rand",
-  "strlen",
-  "strcmp",
-  "strcpy",
-  "strcat",
-  "strncpy",
-  "memcpy",
-  "memmove",
-  "__vitro_force_instantiate_vitro_sort_int",
-  "__ctor__vitro_list_int",
-  "vitro_list_int__push_back",
-  "vitro_list_int__push_front",
-  "vitro_list_int__pop_back",
-  "vitro_list_int__size",
-  "vitro_list_int__front",
-  "vitro_list_int__back",
-  "vitro_list_int__pop_front",
-  "vitro_list_int__get",
-  "vitro_list_int__clear",
-  "__dtor__vitro_list_int",
-  "__ctor__vitro_string",
-  "vitro_string__push_back",
-  "vitro_string__pop_back",
-  "vitro_string__size",
-  "vitro_string__capacity",
-  "vitro_string__get",
-  "vitro_string__c_str",
-  "vitro_string__front",
-  "vitro_string__back",
-  "vitro_string__pop_front",
-  "vitro_string__clear",
-  "__dtor__vitro_string",
-  "__ctor__vitro_vec_int",
-  "vitro_vec_int__push_back",
-  "vitro_vec_int__pop_back",
-  "vitro_vec_int__size",
-  "vitro_vec_int__capacity",
-  "vitro_vec_int__front",
-  "vitro_vec_int__back",
-  "vitro_vec_int__pop_front",
-  "vitro_vec_int__get",
-  "vitro_vec_int__clear",
-  "__dtor__vitro_vec_int",
-  "__ctor__vitro_vec_float",
-  "vitro_vec_float__push_back",
-  "vitro_vec_float__pop_back",
-  "vitro_vec_float__size",
-  "vitro_vec_float__capacity",
-  "vitro_vec_float__front",
-  "vitro_vec_float__back",
-  "vitro_vec_float__pop_front",
-  "vitro_vec_float__get",
-  "vitro_vec_float__clear",
-  "__dtor__vitro_vec_float",
-  "__ctor__vitro_vec_char",
-  "vitro_vec_char__push_back",
-  "vitro_vec_char__pop_back",
-  "vitro_vec_char__size",
-  "vitro_vec_char__capacity",
-  "vitro_vec_char__front",
-  "vitro_vec_char__back",
-  "vitro_vec_char__pop_front",
-  "vitro_vec_char__get",
-  "vitro_vec_char__clear",
-  "__dtor__vitro_vec_char",
-  "__ctor__vitro_list_int__move",
-  "__ctor__vitro_list_node__int__move",
-  "__ctor__vitro_string__move",
-  "__ctor__vitro_vec_char__move",
-  "__ctor__vitro_vec_float__move",
-  "__ctor__vitro_vec_int__move",
-  "vitro_sort_int__int",
-  "vitro_sort_int_qsort__int",
-  "vitro_sort_int_swap__int",
+  "isdigit", "isalpha", "islower", "isupper", "tolower", "toupper", "isspace", "isalnum",
+  "isprint", "iscntrl", "isxdigit", "abs", "atoi", "srand", "rand", "strlen", "strcmp",
+  "strcpy", "strcat", "strncpy", "memcpy", "memmove", "__vitro_force_instantiate_vitro_sort_int",
+  "__ctor__vitro_list_int", "vitro_list_int__push_back", "vitro_list_int__push_front",
+  "vitro_list_int__pop_back", "vitro_list_int__size", "vitro_list_int__front", "vitro_list_int__back",
+  "vitro_list_int__pop_front", "vitro_list_int__get", "vitro_list_int__clear", "__dtor__vitro_list_int",
+  "__ctor__vitro_string", "vitro_string__push_back", "vitro_string__pop_back", "vitro_string__size",
+  "vitro_string__capacity", "vitro_string__get", "vitro_string__c_str", "vitro_string__front",
+  "vitro_string__back", "vitro_string__pop_front", "vitro_string__clear", "__dtor__vitro_string",
+  "__ctor__vitro_vec_int", "vitro_vec_int__push_back", "vitro_vec_int__pop_back",
+  "vitro_vec_int__size", "vitro_vec_int__capacity", "vitro_vec_int__front", "vitro_vec_int__back",
+  "vitro_vec_int__pop_front", "vitro_vec_int__get", "vitro_vec_int__clear", "__dtor__vitro_vec_int",
+  "__ctor__vitro_vec_float", "vitro_vec_float__push_back", "vitro_vec_float__pop_back",
+  "vitro_vec_float__size", "vitro_vec_float__capacity", "vitro_vec_float__front",
+  "vitro_vec_float__back", "vitro_vec_float__pop_front", "vitro_vec_float__get",
+  "vitro_vec_float__clear", "__dtor__vitro_vec_float", "__ctor__vitro_vec_char",
+  "vitro_vec_char__push_back", "vitro_vec_char__pop_back", "vitro_vec_char__size",
+  "vitro_vec_char__capacity", "vitro_vec_char__front", "vitro_vec_char__back", "vitro_vec_char__pop_front",
+  "vitro_vec_char__get", "vitro_vec_char__clear", "__dtor__vitro_vec_char", "__ctor__vitro_list_int__move",
+  "__ctor__vitro_list_node__int__move", "__ctor__vitro_string__move", "__ctor__vitro_vec_char__move",
+  "__ctor__vitro_vec_float__move", "__ctor__vitro_vec_int__move", "vitro_sort_int__int",
+  "vitro_sort_int_qsort__int", "vitro_sort_int_swap__int",
 ]
 
+///|
 /// 函数名 → 固定索引（不在表中返回 None）。穷尽查表无兜底值。
 pub fn bytecode_libc_index(name : String) -> Int? {
   for i, n in bytecode_libc_all_funcs {
@@ -135,6 +75,7 @@ pub fn bytecode_libc_index(name : String) -> Int? {
   None
 }
 
+///|
 /// 判断函数是否在 Bytecode Libc 预编译产物中存在。
 fn is_bytecode_libc(name : String) -> Bool {
   bytecode_libc_index(name) is Some(_)

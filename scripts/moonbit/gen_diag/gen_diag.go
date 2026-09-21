@@ -62,6 +62,14 @@ func fatalf(format string, args ...any) {
 }
 
 func main() {
+	// 迁址自 moonbit/scripts/（2026-09-21 审阅批四：包内容白名单清零——
+	// Go 工具与内部清单不入 mooncakes 包）。脚本可从任意 cwd 调用，
+	// 此处统一 chdir 到 moonbit/ 使既有相对路径（../native、moon fmt、
+	// 产物目录）零改动。
+	if err := os.Chdir("moonbit"); err != nil {
+		fmt.Fprintf(os.Stderr, "须在仓库根运行（找不到 moonbit/）: %v\n", err)
+		os.Exit(2)
+	}
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
 	codesPath := flag.String("codes", "../native/crates/vitro_shared/src/error_codes.rs", "error_codes.rs 路径")
 	catalogDir := flag.String("catalog", "../native/src/diagnostics/error_catalog", "catalog 目录")

@@ -14,7 +14,11 @@ test "p0 ull 2^64 decimal overflow reports E1006" {
     errors=errs,
   )
   assert_eq(errs.length(), 1)
-  assert_true(errs[0].message.has_prefix("整数常量 18446744073709551616 超出可表示范围"))
+  assert_true(
+    errs[0].message.has_prefix(
+      "整数常量 18446744073709551616 超出可表示范围",
+    ),
+  )
   assert_true(errs[0].code is E1006_UnsupportedFeature)
   // 溢出 token 兜底值 0（继续收后续诊断——Rust 同款）
   assert_eq(toks.length(), 7)
@@ -40,7 +44,8 @@ test "p0 UMAX neighborhood decimal boundary" {
     assert_eq(errs.length(), 0)
   }
   // UMAX+1 ..= UMAX+4 拒绝（2^64=…616 至 …619）
-  for tail in [
+  for
+    tail in [
       "18446744073709551616", "18446744073709551617", "18446744073709551618", "18446744073709551619",
     ] {
     let errs : Array[@token.LexError] = []

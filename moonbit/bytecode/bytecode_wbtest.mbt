@@ -2,7 +2,6 @@
 /// bytecode 白盒测试（S5）——libc 固定索引锚 / R1 布局纯函数（r1 第 7 道
 /// `test_compute_heap_base_layout_rules` 等价断言全量照搬）/ dump emitter
 /// 形态锚。私有常量（BYTECODE_LIBC_* / GLOBAL_*）可直接访问。
-
 test "libc_index: full table contiguous, unique, head/tail anchors" {
   // 数组序 = 索引序（BASE_INDEX + 下标）——与 Rust 88 条显式臂的对应关系锚
   for i, n in bytecode_libc_all_funcs {
@@ -13,7 +12,7 @@ test "libc_index: full table contiguous, unique, head/tail anchors" {
   // 名字唯一（重复名会使"数组序=索引序"派生失真）
   let seen : Map[String, Bool] = {}
   for n in bytecode_libc_all_funcs {
-    guard !(seen.contains(n)) else { fail("重复函数名: \{n}") }
+    guard !seen.contains(n) else { fail("重复函数名: \{n}") }
     seen.set(n, true)
   }
   // 首尾定点锚（照搬 Rust bytecode_libc_index.rs 显式臂）
@@ -26,13 +25,14 @@ test "libc_index: full table contiguous, unique, head/tail anchors" {
   assert_true(bytecode_libc_index("printf") is None)
   assert_true(bytecode_libc_index("") is None)
   assert_true(is_bytecode_libc("strlen"))
-  assert_true(!(is_bytecode_libc("fprintf")))
+  assert_true(!is_bytecode_libc("fprintf"))
   // 常量照搬锚
   assert_eq(BYTECODE_LIBC_CODE_LEN, 3485)
   assert_eq(BYTECODE_LIBC_BASE_INDEX, 1000)
   assert_eq(BYTECODE_LIBC_GLOBALS_RESERVED, 1024U)
 }
 
+///|
 test "R1 layout constants and align4 (r1 #7)" {
   // 上限常量：与旧字符串判据 MEM_SIZE/16 一致，不收紧存量行为
   assert_eq(GLOBAL_REGION_LIMIT, MEM_SIZE / 16)
@@ -47,6 +47,7 @@ test "R1 layout constants and align4 (r1 #7)" {
   assert_eq(align4(65533U), 65536)
 }
 
+///|
 test "compute_heap_base rules (r1 #7)" {
   // 无全局数据 / 无 argv → 静态 HEAP_START（行为不变锚）
   assert_eq(compute_heap_base(0, 0, []), HEAP_START)
@@ -65,6 +66,7 @@ test "compute_heap_base rules (r1 #7)" {
   )
 }
 
+///|
 test "argv_region_footprint (r1 #7 + F2 byte-unit anchor)" {
   // argc*4 指针槽 + Σ(len+1)，4 字节对齐（2*4 + 2 + 3 = 13 → 16）
   assert_eq(argv_region_footprint(2, ["a", "bb"]), 16)
@@ -75,6 +77,7 @@ test "argv_region_footprint (r1 #7 + F2 byte-unit anchor)" {
   assert_eq(argv_region_footprint(1, ["中文"]), align4(11U))
 }
 
+///|
 test "sorted_keys ascending (emitter determinism)" {
   let m : Map[String, Int] = {}
   m.set("delta", 4)
@@ -84,6 +87,7 @@ test "sorted_keys ascending (emitter determinism)" {
   assert_eq(sorted_keys(m), ["alpha", "bravo", "charlie", "delta"])
 }
 
+///|
 test "compile_output_dump_json empty shape (14 keys)" {
   let empty_out : CompileOutput = {
     code: [],
@@ -102,11 +106,11 @@ test "compile_output_dump_json empty shape (14 keys)" {
   }
   let json = compile_output_dump_json(empty_out)
   assert_eq(
-    json,
-    "{\"version\":1,\"code\":[],\"globals_init_32\":[],\"globals_init_64\":[],\"func_table\":{},\"func_index\":{},\"string_data\":[],\"source_map\":[],\"symbols\":[],\"struct_defs\":{},\"union_defs\":{},\"f64_constants\":[],\"i64_constants\":[],\"global_data_end\":0}",
+    json, "{\"version\":1,\"code\":[],\"globals_init_32\":[],\"globals_init_64\":[],\"func_table\":{},\"func_index\":{},\"string_data\":[],\"source_map\":[],\"symbols\":[],\"struct_defs\":{},\"union_defs\":{},\"f64_constants\":[],\"i64_constants\":[],\"global_data_end\":0}",
   )
 }
 
+///|
 test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
   let out : CompileOutput = {
     code: [
@@ -117,7 +121,7 @@ test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
       ),
     ],
     globals_init_32: [(16U, 65)],
-    globals_init_64: [(24U, (4294967296L).reinterpret_as_uint64())],
+    globals_init_64: [(24U, 4294967296L.reinterpret_as_uint64())],
     func_table: {
       "main": {
         ip: 3,
@@ -144,9 +148,7 @@ test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
         decl_line: 2,
       },
     ],
-    struct_defs: {
-      "S": [{ ty: @ast.Type::Int(false, false), name: "x" }],
-    },
+    struct_defs: { "S": [{ ty: @ast.Type::Int(false, false), name: "x", }] },
     union_defs: Map([]),
     f64_constants: [1.0, -0.0],
     i64_constants: [9223372036854775807L],

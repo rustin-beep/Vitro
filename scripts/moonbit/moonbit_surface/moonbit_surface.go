@@ -58,6 +58,11 @@ type symbol struct {
 }
 
 func main() {
+	if err := os.Chdir("moonbit"); err != nil {
+		fmt.Fprintf(os.Stderr, "chdir moonbit failed: %v", err)
+		os.Exit(2)
+	}
+
 	check := false
 	for _, a := range os.Args[1:] {
 		if a == "-check" {
@@ -168,7 +173,7 @@ func main() {
 	}
 	// -check：与白名单双向对账
 	allow := map[string]bool{}
-	if af, err := os.Open("scripts/surface_allowlist.txt"); err == nil {
+	if af, err := os.Open("../scripts/moonbit/surface_allowlist.txt"); err == nil {
 		sc := bufio.NewScanner(af)
 		for sc.Scan() {
 			line := strings.TrimSpace(sc.Text())
@@ -178,7 +183,7 @@ func main() {
 		}
 		af.Close()
 	} else {
-		fatal("白名单缺失（scripts/surface_allowlist.txt）——先建白名单再 -check")
+		fatal("白名单缺失（../scripts/moonbit/surface_allowlist.txt）——先建白名单再 -check")
 	}
 	bad := 0
 	for _, pkg := range sortedKeys(collectable) {
@@ -209,13 +214,13 @@ func main() {
 	fmt.Println("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致）")
 }
 
-// checkEdges：实际边集 ↔ scripts/surface_edges.txt 双向对账。
+// checkEdges：实际边集 ↔ ../scripts/moonbit/surface_edges.txt 双向对账。
 // 实际边集以 "consumer provider sym" 记（consumer 取文件所在包目录名；
 // cmd/ 工具按其子包名计——dump_ast 等）。
 func checkEdges(actual map[string]bool) int {
-	ef, err := os.Open("scripts/surface_edges.txt")
+	ef, err := os.Open("../scripts/moonbit/surface_edges.txt")
 	if err != nil {
-		fatal("边清单缺失（scripts/surface_edges.txt）——先生成基准")
+		fatal("边清单缺失（../scripts/moonbit/surface_edges.txt）——先生成基准")
 	}
 	defer ef.Close()
 	allowed := map[string]bool{}

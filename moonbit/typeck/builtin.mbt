@@ -89,7 +89,7 @@ pub fn TypeChecker::visit_call(
 ///|
 /// 解析 printf/scanf 格式字符串，返回非 %% 的格式说明符列表
 ///（元素 (spec_char, length_mod)，如 ('d', "") / ('f', "l")）。
-pub fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
+fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
   let specs : Array[(Char, String)] = []
   let chars : Array[Char] = []
   for c in fmt {

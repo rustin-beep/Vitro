@@ -1,0 +1,18 @@
+# moonbit_surface 白名单：允许保持 pub 的"当前无跨包消费"符号。
+# 两类：① 已发布 5 包（source/opcode/diag/ast/lexer 0.1~0.3.0 在架）——
+#        收面须走版本化弃期，本批不动；② 类型闭包——pub(all) 字段/签名
+#        引用的类型必须 pub（ParseError 是 ParseResult.errors 字段类型、
+#        LocalBuffer 是 FuncMeta.local_buffers 字段类型）。
+# 其余"无跨包消费 pub"必须收（去 pub）——S5 收尾批收面（架构报告待办①）。
+# --- ① 已发布包不收 ---
+ast CatchClause
+ast VTable
+ast template_arg_eq
+diag CatalogEntry
+diag Severity
+diag SourceLang
+diag codes_without_catalog
+source Pos
+# --- ② 类型闭包保留 ---
+parser ParseError
+bytecode LocalBuffer

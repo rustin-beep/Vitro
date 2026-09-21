@@ -14,7 +14,7 @@
 /// (from, to) 类型对 → 是否允许隐式转换及转换后目标类型（12 臂判据表，
 /// B6 白盒锚的来源——Rust `implicit_cast_target` 同构；引用类型不参与
 /// 隐式标量转换）。
-pub fn implicit_cast_target(from : @ast.Type, to : @ast.Type) -> @ast.Type? {
+fn implicit_cast_target(from : @ast.Type, to : @ast.Type) -> @ast.Type? {
   let fk = from.kind()
   let tk = to.kind()
   if fk is TK_Reference ||
@@ -48,7 +48,7 @@ pub fn implicit_cast_target(from : @ast.Type, to : @ast.Type) -> @ast.Type? {
 ///|
 /// 插入隐式转换（函数式重建）：FloatLiteral→double 特例不插 Cast 只
 /// 重定型字面量类型；其余命中转换表的包 Cast 节点。
-pub fn insert_implicit_cast(expr : @ast.Expr, target : @ast.Type) -> @ast.Expr {
+fn insert_implicit_cast(expr : @ast.Expr, target : @ast.Type) -> @ast.Expr {
   let current_ty = expr.ty()
   if target.kind() is TK_Double {
     match expr {
@@ -64,7 +64,7 @@ pub fn insert_implicit_cast(expr : @ast.Expr, target : @ast.Type) -> @ast.Expr {
 
 ///|
 /// 可变参数实参默认提升（C 标准：float→double、char→int）。
-pub fn apply_default_argument_promotions(expr : @ast.Expr) -> @ast.Expr {
+fn apply_default_argument_promotions(expr : @ast.Expr) -> @ast.Expr {
   let tk = expr.ty().kind()
   if tk is TK_Float {
     insert_implicit_cast(expr, Double(false))

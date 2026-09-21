@@ -24,7 +24,7 @@
 ///|
 /// libc 函数签名（typeck 消费面）。不 derive Eq/Show——`return_type` 的
 /// @ast.Type 走显式 `type_eq`（ast 包 S1 设计），结构体只做数据载体。
-pub(all) struct LibcSig {
+struct LibcSig {
   name : String
   return_type : @ast.Type
   min_args : Int
@@ -140,7 +140,7 @@ let libc_table : Array[LibcSig] = [
 
 ///|
 /// 按名查签名（typeck builtin 分派的数据入口）。
-pub fn lookup(name : String) -> LibcSig? {
+fn lookup(name : String) -> LibcSig? {
   for sig in libc_table {
     if sig.name == name {
       return Some(sig)

@@ -13,8 +13,6 @@ pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
 
 pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
 
-pub const BYTECODE_LIBC_CODE_LEN : Int = 3485
-
 pub const BYTECODE_LIBC_FUNC_COUNT : Int = 88
 
 pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt = 1024
@@ -23,27 +21,13 @@ pub const GLOBAL_REGION_LIMIT : UInt = 65536
 
 pub const GLOBAL_START : UInt = 0x1000
 
-pub const HEAP_START : UInt = 0x5000
-
-pub const MEM_SIZE : UInt = 1048576
-
-pub const NULL_TRAP_SIZE : UInt = 0x1000
-
-pub const STACK_START : UInt = 1048576
-
 pub fn align4(UInt) -> UInt
-
-pub fn argv_region_footprint(Int, Array[String]) -> UInt
 
 pub let bytecode_libc_all_funcs : Array[String]
 
 pub fn bytecode_libc_index(String) -> Int?
 
 pub fn compile_output_dump_json(CompileOutput) -> String
-
-pub fn compute_heap_base(UInt, Int, Array[String]) -> UInt
-
-pub fn is_bytecode_libc(String) -> Bool
 
 // Errors
 

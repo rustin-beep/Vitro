@@ -9,31 +9,13 @@ import {
 }
 
 // Values
-pub fn apply_default_argument_promotions(@ast.Expr) -> @ast.Expr
-
-pub fn implicit_cast_target(@ast.Type, @ast.Type) -> @ast.Type?
-
-pub fn insert_implicit_cast(@ast.Expr, @ast.Type) -> @ast.Expr
-
-pub fn is_char_safe_initializer(@ast.Expr) -> Bool
-
-pub fn parse_format_specs(String) -> Array[(Char, String)]
-
-pub fn promote_type(@ast.Type, @ast.Type) -> @ast.Type
 
 // Errors
 
 // Types and methods
-pub(all) struct FuncSymbol {
-  return_type : @ast.Type
-  param_types : Array[@ast.Type]
-  is_variadic : Bool
-  param_defaults : Array[@ast.Expr?]
-}
+type FuncSymbol
 
-pub(all) struct StructSymbol {
-  fields : Array[(@ast.Type, String)]
-}
+type StructSymbol
 
 pub struct TypeChecker {
   funcs : Map[String, FuncSymbol]
@@ -87,12 +69,7 @@ pub(all) struct TypeError {
   code : Int
 }
 
-pub(all) struct VarSymbol {
-  ty : @ast.Type
-  _is_global : Bool
-  is_extern : Bool
-  is_static : Bool
-}
+type VarSymbol
 
 // Type aliases
 

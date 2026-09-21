@@ -16,7 +16,7 @@
 /// C usual arithmetic conversions：两个标量提升到公共类型（rank：
 /// double 4 / float 3 / long long 2 / int 1 / char 0；unsigned 传播；
 /// char 提升为 int——Rust `promote_type` 同构）。
-pub fn promote_type(a : @ast.Type, b : @ast.Type) -> @ast.Type {
+fn promote_type(a : @ast.Type, b : @ast.Type) -> @ast.Type {
   fn rank(t : @ast.Type) -> Int {
     match t.kind() {
       TK_Double => 4

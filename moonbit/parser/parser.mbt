@@ -47,7 +47,7 @@ pub(all) struct ParseResult {
 
 ///|
 /// 声明符节点树（C 螺旋规则中间表示；照搬 Rust `DeclaratorNode`）。
-pub(all) enum DeclaratorNode {
+enum DeclaratorNode {
   Base
   Pointer(DeclaratorNode)
   Reference(DeclaratorNode, Bool) // is_const
@@ -254,11 +254,11 @@ fn Parser::depth_exceeded(self : Parser, what : String) -> Unit {
 /// 解析入口（对应 Rust `Parser::parse`）：token 流 → (ProgramNode?, errors)。
 /// 后置双预算（AST 深度 512 / 类型深度 1250）超限返回 None + E1006（照搬；
 /// Rust 的 `mem::forget` 防 Drop 溢出在 GC 下不需要——勘察 7-S7）。
-pub fn parse(
-  tokens : Array[@token.Token],
-  cpp_mode? : Bool = false,
-) -> ParseResult {
-  let p = Parser::with_mode(tokens, cpp_mode)
+/// （F-2 终局：cpp_mode 参数已剔除——砍 C++ 后 C 输入是唯一形态；
+/// C++ 分支代码保留为死路径等 S9 裁定，2026-09-21 收尾批，架构报告
+/// 待办①"parser 未发布是最后的免费时机"）
+pub fn parse(tokens : Array[@token.Token]) -> ParseResult {
+  let p = Parser::with_mode(tokens, false)
   let prog = match p.parse_program() {
     Some(pr) => {
       for d in p.anonymous_structs {

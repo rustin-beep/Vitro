@@ -40,6 +40,8 @@ fn BytecodeGen::gen_addr(
           }
       }
     Unary(@ast.UnaryOp::Deref, operand, _, _) => self.gen_expr(operand)
+    Index(array, index, _, ty) => self.gen_index(array, index, ty, loc, true)
+    Member(object, member, _, _) => self.gen_member_addr(object, member, loc)
     // 函数按值返回结构体 / 复合字面量：gen_expr 已在栈顶留下地址
     CallPtr(_, _, _, ty) =>
       if ty.kind() is TK_Struct {

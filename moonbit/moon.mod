@@ -1,10 +1,10 @@
 name = "vitro/engine"
 
-version = "0.3.0"
+version = "0.4.0"
 
 readme = "README.md"
 
-repository = "https://github.com/jingwei108/vitro"
+repository = "https://github.com/rustin-beep/Vitro"
 
 license = "MIT"
 

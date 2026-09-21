@@ -14,11 +14,11 @@
 ///|
 /// 构造名前缀（判据与产名同源——前缀分派是移植期最易漏判据，勘察
 /// §③-2 S8）。
-pub const CTOR_PREFIX : String = "__ctor__"
+const CTOR_PREFIX : String = "__ctor__"
 
 ///|
 /// 析构名前缀（与 CTOR_PREFIX 对称——dtor 族同单源）。
-pub const DTOR_PREFIX : String = "__dtor__"
+const DTOR_PREFIX : String = "__dtor__"
 
 ///|
 /// 构造函数名（无实参形态）：`__ctor__{Class}`。
@@ -40,25 +40,25 @@ pub fn ctor_call_name(class : String, argc : Int) -> String {
 ///|
 /// 拷贝构造名：`__ctor__{Class}__copy`（typeck cpp_overload.rs 现状——
 /// copy 特判优先于 arity 编码）。
-pub fn ctor_copy_name(class : String) -> String {
+fn ctor_copy_name(class : String) -> String {
   "\{CTOR_PREFIX}\{class}__copy"
 }
 
 ///|
 /// 析构函数名：`__dtor__{Class}`。
-pub fn dtor_name(class : String) -> String {
+fn dtor_name(class : String) -> String {
   DTOR_PREFIX + class
 }
 
 ///|
 /// 是否构造族名（前缀判据收口——typeck `__ctor__` 分派点迁入时改调
 /// 本谓词，禁散写 has_prefix 字面量）。
-pub fn is_ctor_name(name : String) -> Bool {
+fn is_ctor_name(name : String) -> Bool {
   name.has_prefix(CTOR_PREFIX)
 }
 
 ///|
 /// 是否析构族名。
-pub fn is_dtor_name(name : String) -> Bool {
+fn is_dtor_name(name : String) -> Bool {
   name.has_prefix(DTOR_PREFIX)
 }

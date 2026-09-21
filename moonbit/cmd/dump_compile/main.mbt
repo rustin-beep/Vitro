@@ -26,8 +26,17 @@ fn main raise {
     println("用法: dump_compile <corpus_dir|file.c> <out_dir>")
     fail("参数不足")
   }
+  if args.length() > 3 {
+    // 防御（2026-09-21 实踩：两语料目录连传时 out_dir 落成语料目录，
+    // 81 个 dump 产物污染 native/tests/cases——本工具契约单语料 + 单
+    // 输出目录，多余参数直接 fail loud）
+    fail("参数过多：期望 <corpus_dir|file.c> <out_dir> 两个参数（实测 \{args.length() - 1} 个）")
+  }
   let target = args[1]
   let out_dir = args[2]
+  if target == out_dir {
+    fail("输出目录与语料目录相同——拒绝写入门禁")
+  }
   if !@fs.path_exists(out_dir) {
     @fs.create_dir(out_dir)
   }

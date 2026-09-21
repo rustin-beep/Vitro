@@ -19,7 +19,7 @@
 /// `codegen` 包 `with_mode`。
 
 /// 预编译产物指令条数（`bytecode_libc_data.json` code 段长度）。
-pub const BYTECODE_LIBC_CODE_LEN : Int = 3485
+const BYTECODE_LIBC_CODE_LEN : Int = 3485
 
 /// 固定索引段基址。
 pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
@@ -135,6 +135,6 @@ pub fn bytecode_libc_index(name : String) -> Int? {
 }
 
 /// 判断函数是否在 Bytecode Libc 预编译产物中存在。
-pub fn is_bytecode_libc(name : String) -> Bool {
+fn is_bytecode_libc(name : String) -> Bool {
   bytecode_libc_index(name) is Some(_)
 }

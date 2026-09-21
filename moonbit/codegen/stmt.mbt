@@ -116,12 +116,25 @@ fn BytecodeGen::gen_return(
         let ret_ptr_offset = self.resolve_local("__ret_ptr")
         let size = self.type_size(v.ty())
         if size > 0 {
-          // struct 返回值经 __ret_ptr 逐字拷贝（Rust 的 C 子集路径：
-          // GetFrameBase+PushConst(ret_ptr)+Add → 元素循环 Load/Store。
-          // 本骨架批未接线 gen_addr/copy 循环——fail loud，扩展批补）
-          self.report_error(
-            "struct 返回值的拷贝生成未实现（S5 在途）", loc,
-          )
+          // struct 返回值经 __ret_ptr 逐字拷贝（Rust C 子集路径照搬；
+          // 拷贝构造分支是 C++ 专属不迁移）
+          let src_temp = self.get_temp_slot(0)
+          self.gen_addr(v, loc)
+          self.emit(@opcode.OpCode::StoreLocal, src_temp, loc)
+          for i in 0..<(size / 4) {
+            self.emit(@opcode.OpCode::LoadLocal, ret_ptr_offset, loc)
+            if i > 0 {
+              self.emit(@opcode.OpCode::PushConst, i * 4, loc)
+              self.emit(@opcode.OpCode::Add, 0, loc)
+            }
+            self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+            if i > 0 {
+              self.emit(@opcode.OpCode::PushConst, i * 4, loc)
+              self.emit(@opcode.OpCode::Add, 0, loc)
+            }
+            self.emit(@opcode.OpCode::LoadMem, 0, loc)
+            self.emit(@opcode.OpCode::StoreMem, 0, loc)
+          }
         }
         self.emit(@opcode.OpCode::RetVoid, 0, loc)
       } else {
@@ -293,14 +306,9 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     // C 的直接调用与函数指针调用统一在本臂发射（2026-09-21 扩展批接线）
     CallPtr(callee, args, _, ret_ty) =>
       self.gen_call_ptr(callee, args, ret_ty, loc)
-    Index(_, _, _, _) =>
-      self.report_error(
-        "数组索引的字节码生成未实现（S5 在途）", loc,
-      )
-    Member(_, _, _, _) =>
-      self.report_error(
-        "成员访问的字节码生成未实现（S5 在途）", loc,
-      )
+    Index(array, index, _, ty) => self.gen_index(array, index, ty, loc, false)
+    Member(object, member, _, ty) =>
+      self.gen_member_expr(object, member, ty, loc)
     Ternary(cond, then_branch, else_branch, _, _) =>
       self.gen_ternary_expr(cond, then_branch, else_branch, loc)
     Assign(op, left, right, _, _) => self.gen_assign(op, left, right, loc)
@@ -312,14 +320,73 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       self.gen_cast_expr(inner, target_type, loc)
     Offsetof(target_type, field, _, _) =>
       self.gen_offsetof_expr(target_type, field, loc)
-    Generic(_, _, _, _, _) =>
-      self.report_error(
-        "_Generic 的字节码生成未实现（S5 在途）", loc,
-      )
-    CompoundLiteral(_, _, _, _) =>
-      self.report_error(
-        "复合字面量的字节码生成未实现（S5 在途）", loc,
-      )
+    Generic(control, associations, default_expr, _, _) => {
+      // C11 _Generic（Rust generic.rs 照搬）：控制表达式类型匹配分支
+      // （数组退化为指针——与 typeck 阶段一致）
+      let control_ty = control.ty()
+      let control_decayed = match control_ty {
+        Array(element, _, _, _, _, _) => @ast.Type::pointer_to(element)
+        _ => control_ty
+      }
+      let mut selected : @ast.Expr? = None
+      for assoc in associations {
+        if @ast.type_eq(assoc.0, control_decayed) {
+          selected = Some(assoc.1)
+          break
+        }
+      }
+      match selected {
+        Some(sel) => self.gen_expr(sel)
+        None =>
+          match default_expr {
+            Some(d) => self.gen_expr(d)
+            None => {
+              self.report_error("_Generic 无匹配分支", loc)
+              self.emit(@opcode.OpCode::PushConst, 0, loc)
+            }
+          }
+      }
+    }
+    CompoundLiteral(target_type, init, _, _) => {
+      // C99 复合字面量（Rust compound_literal.rs 照搬）：临时槽物化 +
+      // 按目标形态初始化 + 栈顶留地址（lvalue）
+      let sz = self.type_size(target_type)
+      let aligned_sz = if sz % 4 == 0 { sz } else { sz + 4 - sz % 4 }
+      let local_offset = self.next_local_offset
+      self.next_local_offset += aligned_sz
+      match target_type.kind() {
+        TK_Array =>
+          self.emit_local_array_init(target_type, init, local_offset, loc)
+        TK_Struct =>
+          self.emit_local_struct_init(target_type, init, local_offset, loc)
+        TK_Int | TK_Char | TK_Float | TK_Double | TK_LongLong | TK_Pointer =>
+          match init {
+            InitList(elements, _, _) =>
+              if elements.length() > 0 {
+                self.gen_expr(elements[0].value)
+                self.emit_scalar_cast_store(
+                  target_type,
+                  elements[0].value,
+                  local_offset,
+                  loc,
+                )
+              }
+            _ =>
+              self.report_error(
+                "标量复合字面量必须使用初始化列表", loc,
+              )
+          }
+        _ =>
+          self.report_error(
+            "复合字面量暂不支持类型 '\{target_type.to_c_string()}'",
+            loc,
+          )
+      }
+      // lvalue：栈顶留临时对象地址
+      self.emit(@opcode.OpCode::GetFrameBase, 0, loc)
+      self.emit(@opcode.OpCode::PushConst, local_offset, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
     // 既定错误文案照搬（Rust expr.rs:160）——非"未实现"：
     InitList(_, _, _) => {
       self.report_error("初始化列表只能在变量声明中使用", loc)

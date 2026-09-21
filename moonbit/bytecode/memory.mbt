@@ -9,16 +9,16 @@
 /// 字节数计算（非 ASCII argv 下会静默少算）。
 
 /// 总内存空间（1MB）。
-pub const MEM_SIZE : UInt = 1024 * 1024
+const MEM_SIZE : UInt = 1024 * 1024
 
 /// NULL 陷阱区大小。
-pub const NULL_TRAP_SIZE : UInt = 0x1000
+const NULL_TRAP_SIZE : UInt = 0x1000
 
 /// 全局区起始地址。
 pub const GLOBAL_START : UInt = 0x1000
 
 /// 堆区默认起始地址（全局数据未越过时的堆起点下限）。
-pub const HEAP_START : UInt = 0x5000
+const HEAP_START : UInt = 0x5000
 
 /// 全局数据区（全局变量/静态变量/vtable/字符串字面量）的编译期硬上限，
 /// 绝对地址。
@@ -29,7 +29,7 @@ pub const HEAP_START : UInt = 0x5000
 pub const GLOBAL_REGION_LIMIT : UInt = MEM_SIZE / 16
 
 /// 栈区起始地址（从高地址向低地址增长）。
-pub const STACK_START : UInt = MEM_SIZE
+const STACK_START : UInt = MEM_SIZE
 
 /// 4 字节对齐掩码（= !3 的 UInt 形态）。
 pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
@@ -43,7 +43,7 @@ pub fn align4(x : UInt) -> UInt {
 ///
 /// R1 ③：argv 自 `GLOBAL_REGION_LIMIT` 向下分配，本函数是占用的唯一计算
 /// 口径（VM `setup_argv` 的编址与 `compute_heap_base` 的堆起点都从它推导）。
-pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
+fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
   if argc <= 0 {
     return 0
   }
@@ -63,7 +63,7 @@ pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
 ///
 /// `global_data_end` 为全局数据区末端的**绝对地址**（codegen 导出，含
 /// Bytecode Libc 预留段），未编译时传 0 即退化为静态 `HEAP_START`。
-pub fn compute_heap_base(
+fn compute_heap_base(
   global_data_end : UInt,
   argc : Int,
   argv : Array[String],

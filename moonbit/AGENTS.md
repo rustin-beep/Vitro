@@ -36,6 +36,7 @@ go run ./scripts/gen_diag          # diag 码表再生成（内置 moon fmt）
 go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 篡改即红）
 go run ./scripts/gen_host_route       # host 路由 110 对再生成（codegen 包，源 host_func_id.rs）
 go run ./scripts/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
+go run ./scripts/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；J9 注入双红留痕）
 go run ./scripts/parser_diff <corpus>        # S3 解析差分（E1/E2/活性；仓库根跑）
 go run ./scripts/parser_diff --pathological  # E3 病态 12 样本同等拒绝
 go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚

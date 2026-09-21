@@ -8,19 +8,12 @@ import {
 }
 
 // Values
-pub fn parse(Array[@token.Token], cpp_mode? : Bool) -> ParseResult
+pub fn parse(Array[@token.Token]) -> ParseResult
 
 // Errors
 
 // Types and methods
-pub(all) enum DeclaratorNode {
-  Base
-  Pointer(DeclaratorNode)
-  Reference(DeclaratorNode, Bool)
-  RValueRef(DeclaratorNode)
-  Array(DeclaratorNode, @ast.Expr?)
-  Function(DeclaratorNode, Array[@ast.Param], Bool)
-} derive(@debug.Debug)
+type DeclaratorNode derive(@debug.Debug)
 
 pub(all) struct ParseError {
   message : String

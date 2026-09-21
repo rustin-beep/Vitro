@@ -121,14 +121,9 @@ fn BytecodeGen::gen_unary(
                   }
               }
           }
-        Index(_, _, _, _) =>
-          self.report_error(
-            "数组元素取地址的生成未实现（Index 批接线）", loc,
-          )
-        Member(_, _, _, _) =>
-          self.report_error(
-            "成员取地址的生成未实现（Member 批接线）", loc,
-          )
+        Index(array, index, _, ty) =>
+          self.gen_index(array, index, ty, loc, true)
+        Member(object, mname, _, _) => self.gen_member_addr(object, mname, loc)
         Unary(@ast.UnaryOp::Deref, inner, _, _) =>
           // &*p === p
           self.gen_expr(inner)
@@ -252,14 +247,16 @@ fn BytecodeGen::gen_unary(
             }
           }
         }
-        Index(_, _, _, _) =>
-          self.report_error(
-            "数组元素自增/自减未实现（Index 批接线）", loc,
-          )
-        Member(_, _, _, _) =>
-          self.report_error(
-            "成员自增/自减未实现（Member 批接线）", loc,
-          )
+        Index(array, index, _, ty) => {
+          let step = self.ptr_step_size(ty)
+          self.gen_index(array, index, ty, loc, true)
+          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), loc)
+        }
+        Member(object, mname, _, ty) => {
+          let step = self.ptr_step_size(ty)
+          self.gen_member_addr(object, mname, loc)
+          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), loc)
+        }
         Unary(@ast.UnaryOp::Deref, inner, _, _) => {
           // (*p)++ 是对 pointee 标量自增，步长恒 1（指针自身的 p++ 走
           // Identifier 分支才按 pointee 大小缩放；此前误传 ptr_step_size

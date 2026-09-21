@@ -202,9 +202,17 @@ fn BytecodeGen::gen_assign_inner(
         return
       }
     }
-    Index(_, _, _, _) => {
-      self.report_error(
-        "数组元素赋值的生成未实现（Index 批接线）", loc,
+    Index(array, index, _, result_ty) => {
+      self.gen_index(array, index, result_ty, loc, true)
+      self.assign_mem_op(
+        op,
+        right,
+        left_ty,
+        left_is_ptr,
+        is_ptr_compound,
+        ptr_step,
+        loc,
+        result_ty.kind(),
       )
       return
     }
@@ -284,9 +292,12 @@ fn BytecodeGen::gen_assign_inner(
       }
       return
     }
-    Member(_, _, _, _) => {
-      self.report_error(
-        "成员赋值的生成未实现（Member 批接线）", loc,
+    Member(object, mname, _, _) => {
+      self.gen_member_addr(object, mname, loc)
+      // lambda by-ref 捕获指针解引用段不迁移（C only）
+      let elem_kind = self.member_elem_kind(object, mname)
+      self.assign_mem_op(
+        op, right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, loc, elem_kind,
       )
       return
     }
@@ -440,4 +451,128 @@ fn BytecodeGen::gen_struct_copy(
     self.emit(@opcode.OpCode::LoadMem, 0, loc)
     self.emit(@opcode.OpCode::StoreMem, 0, loc)
   }
+}
+
+///|
+/// 内存位置赋值公共体（Index/Member 左值共用——Rust assign.rs 两臂的
+/// 同构指令序）：Dup →(复合) load → Swap → addr_temp → right →
+/// (复合) compound → 回写 → 回读。elem_kind 决定 load/store 宽度。
+fn BytecodeGen::assign_mem_op(
+  self : BytecodeGen,
+  op : @ast.AssignOp,
+  right : @ast.Expr,
+  left_ty : @ast.Type,
+  left_is_ptr : Bool,
+  is_ptr_compound : Bool,
+  ptr_step : Int,
+  loc : @source.SourceLoc,
+  elem_kind : @ast.TypeKind,
+) -> Unit {
+  let is_char = elem_kind is TK_Char
+  let is_double = elem_kind is TK_Double
+  let is_long_long = elem_kind is TK_LongLong
+  let left_is_double = left_ty.kind() is TK_Double
+  let left_is_long_long = left_ty.kind() is TK_LongLong
+  let left_is_unsigned = left_ty.is_unsigned()
+  if !(op is Assign) {
+    self.emit(@opcode.OpCode::Dup, 0, loc)
+    if is_char {
+      self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    } else if is_double {
+      self.emit(@opcode.OpCode::LoadMemD, 0, loc)
+    } else if is_long_long {
+      self.emit(@opcode.OpCode::LoadMemQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::LoadMem, 0, loc)
+    }
+    self.emit(@opcode.OpCode::Swap, 0, loc)
+    let addr_temp = self.get_assign_addr_slot()
+    self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
+    self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+    self.emit_compound(
+      op,
+      left_is_double,
+      left_ty.kind() is TK_Float,
+      left_is_long_long,
+      left_is_unsigned,
+      ptr_step,
+      left_is_ptr,
+      loc,
+    )
+    self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
+    self.emit(@opcode.OpCode::Swap, 0, loc)
+    if is_char {
+      self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+    } else if is_double {
+      self.emit(@opcode.OpCode::StoreMemD, 0, loc)
+    } else if is_long_long {
+      self.emit(@opcode.OpCode::StoreMemQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::StoreMem, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
+    if is_char {
+      self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    } else if is_double {
+      self.emit(@opcode.OpCode::LoadMemD, 0, loc)
+    } else if is_long_long {
+      self.emit(@opcode.OpCode::LoadMemQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::LoadMem, 0, loc)
+    }
+  } else {
+    self.emit(@opcode.OpCode::Dup, 0, loc)
+    let addr_temp = self.get_assign_addr_slot()
+    self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
+    self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+    if is_char {
+      self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+    } else if is_double {
+      self.emit(@opcode.OpCode::StoreMemD, 0, loc)
+    } else if is_long_long {
+      self.emit(@opcode.OpCode::StoreMemQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::StoreMem, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
+    if is_char {
+      self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    } else if is_double {
+      self.emit(@opcode.OpCode::LoadMemD, 0, loc)
+    } else if is_long_long {
+      self.emit(@opcode.OpCode::LoadMemQ, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::LoadMem, 0, loc)
+    }
+  }
+}
+
+///|
+/// Member 左值的元素宽度键：经 struct_defs 查成员字段类型。
+fn BytecodeGen::member_elem_kind(
+  self : BytecodeGen,
+  object : @ast.Expr,
+  mname : String,
+) -> @ast.TypeKind {
+  let obj_ty = object.ty()
+  let base = if obj_ty.kind() is TK_Pointer {
+    match obj_ty {
+      Pointer(pointee, _) => pointee
+      _ => obj_ty
+    }
+  } else {
+    obj_ty
+  }
+  if base.kind() is TK_Struct {
+    match self.struct_defs.get(base.name()) {
+      Some(fields) =>
+        for f in fields {
+          if f.name == mname {
+            return f.ty.kind()
+          }
+        }
+      None => ()
+    }
+  }
+  base.kind()
 }

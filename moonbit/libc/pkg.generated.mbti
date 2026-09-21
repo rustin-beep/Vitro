@@ -10,17 +10,10 @@ pub fn bytecode_libc_sig(String) -> (@ast.Type, Array[@ast.Type])?
 
 pub fn is_libc_func(String) -> Bool
 
-pub fn lookup(String) -> LibcSig?
-
 // Errors
 
 // Types and methods
-pub(all) struct LibcSig {
-  name : String
-  return_type : @ast.Type
-  min_args : Int
-  max_args : Int
-}
+type LibcSig
 
 // Type aliases
 

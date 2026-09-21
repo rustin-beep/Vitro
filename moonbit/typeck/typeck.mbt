@@ -472,7 +472,7 @@ pub fn TypeChecker::check_array_dims_legality(
 
 ///|
 /// W0-4：int→char 初始化器是否确定无损（字符常量 / char 值域内整常量）。
-pub fn is_char_safe_initializer(expr : @ast.Expr) -> Bool {
+fn is_char_safe_initializer(expr : @ast.Expr) -> Bool {
   match expr {
     Literal(value, _, ty) =>
       ty.kind() is TK_Char || (value >= -128 && value <= 127)

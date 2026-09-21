@@ -7,7 +7,7 @@
 ///|
 /// 变量符号。`is_global` 在 Rust 侧 `#[allow(dead_code)]`（R8 死字段债）
 /// ——照搬保留字段（MoonBit 侧未消费字段的警告以 `_` 前缀消音）。
-pub(all) struct VarSymbol {
+struct VarSymbol {
   ty : @ast.Type
   _is_global : Bool
   is_extern : Bool
@@ -17,7 +17,7 @@ pub(all) struct VarSymbol {
 ///|
 /// 函数符号（param_defaults：用户参数的默认表达式，C 子集恒空数组——
 /// 照搬字段形态）。
-pub(all) struct FuncSymbol {
+struct FuncSymbol {
   return_type : @ast.Type
   param_types : Array[@ast.Type]
   is_variadic : Bool
@@ -27,6 +27,6 @@ pub(all) struct FuncSymbol {
 ///|
 /// struct/union 共用符号（只有 fields，无 size/offset——布局在
 /// compute_type_size 查表路径）。
-pub(all) struct StructSymbol {
+struct StructSymbol {
   fields : Array[(@ast.Type, String)]
 }

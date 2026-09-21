@@ -63,7 +63,7 @@ pub fn type_mangle_suffix(ty : @ast.Type) -> String {
 /// 后缀——单签名短名兼容已落库字节码/回放基线；**沿革风险登记**：
 /// 名字依赖"是否有重载"这一上下文，加重载会改全类方法名——Rust 现状
 /// 口径照搬，内容派生（永远带后缀）的改造随 S9 C++ 裁定，勘察 §⑤-5）。
-pub fn method_mangled_name(
+fn method_mangled_name(
   class_name : String,
   method_name : String,
   param_types : Array[@ast.Type],

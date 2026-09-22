@@ -7,6 +7,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (协议 TS 类型生成链 + 首个消费者：A 组 #9/#10，2026-09-22)
+
+- **`scripts/gen_protocol_ts`**：从**权威 Rust 源**生成 `@vitro/protocol` 的 TS
+  类型（`protocol/index.d.ts`）与字段元数据（`protocol/fields.mjs`），并与 schema
+  文档**双向对账**（架构审阅 v2 §7.5 / §8.4）。
+  **权威源的选择是个设计决定**：读 `native/src/unified/{types,root_cause}.rs` +
+  `native/src/session.rs` 的 Rust 结构体，而**不是** schema 文档——前者是**编译期
+  受字段冻结测试守护**（`native/tests/step_payload_schema_v0_1_test.rs`）的真实源，
+  后者是人工维护的表述层。故取「从实现生成 + 与文档双向对账」，任一方向不同步都红：
+  这顺带把「**文档与实现是否一致**」这个此前无人守的问题变成了机器判据。
+  覆盖 schema §1（`StepPayload`）+ §2（8 个子结构）+ §3.1（`PointerStatus`），
+  实测 **10 类型 / 49 字段**，Rust ↔ 文档字段集双向一致（零差异）。
+  - **踩坑（生成器自身的 bug，由闸门自己抓出）**：字段正则原要求逗号后直抵行尾，
+    于是 `pub access_type: String, // "Read" | "Write"` 这类**带行尾注释**的字段
+    被整行漏掉——闸门随即把它误报为「文档多列了字段」。教训与 J9 同源：
+    **判据的假红/假绿都可能来自判据自身**；行尾注释这一条已写进正则注释。
+  - 判据：① `-check` 幂等（磁盘产物 == 现场生成）② 字段集**双向**对账
+    ③ 空集不得绿（0 字段 / 0 类型一律 fail loud）。`--selftest` 三路内存注入
+    证红（Rust 新字段 / 文档缺字段 / 文档多字段）。
+- **`protocol/`——`@vitro/protocol` 包（第一个消费者落地）**：
+  `index.d.ts` + `fields.mjs` 为生成物（禁手改），`package.json` / `README.md` /
+  `consumer.mjs` 手写。**`consumer.mjs` 就是报告 §8.5 说的「第一个消费者」**：
+  它用**生成的**协议面去消费**真实的**引擎输出（`vitro_cli serve` 的 step 流），
+  做逐字段校验（未知字段 / 缺字段 / 枚举越界 / 嵌套结构递归）与最小内容层渲染。
+  实测 **399 步真实 payload 字段级校验零错**，渲染输出含变量表、数组快照、指针状态
+  与教学语义标签；`--selftest` 四路（三类非法 payload + 真实 payload 正向）全活。
+  - **踩坑（协议行为）**：`payload.get(start,end)` **不推进执行**——它只返回已收集
+    窗口内的快照（只 `step.begin` 后调用得到 0 个 payload）。消费者必须靠
+    `step.next` 逐步行进；请求一次性写入 NDJSON，故预设上限步数。这条已写进
+    `consumer.mjs` 头注（文档 §4.1 的「懒重算」措辞容易读成「会自动跑」）。
+- **边界诚实登记（两条，都写进 `protocol/README.md`）**：
+  ① **§5 差分层（`StepStreamBatch` / `StepPayloadDelta`）未纳入生成范围**——该节
+     表格是**压缩式**（多字段合并一行，如 `step_index / code_line / func_name_idx /
+     semantic_label_idx`），无法逐字段机判；且它们是编码细节，非内容消费者的必需面。
+     待 v0.2 轨道决定。
+  ② **编译期收益未验证**——本环境有 node（v22.22.2）但**无 npm / npx / tsc**，
+     故只能验「生成物描述得了真实输出」；**验不了**「字段名写错在 tsc 编译期即红」，
+     而后者才是 TS 类型的核心收益。消费者取**降级形态**（运行时字段校验），
+     待 tsc 环境就绪后补编译期验证。
+- **发布动作不在本批**：`npm publish` 属仓库持有者（贡献者无 npm 账号）。本批只把
+  包内容与门禁准备到可直接发布的状态。
+
+### Fixed (C ABI 声明：错误码缺口补全 + 权威源勘误 + 对账闸，2026-09-22)
+
+- **`vitro_capi.h` 错误码补全 25 项（73 → 98）**：C 头 `VitroErrorCode` 与
+  Rust 权威源的实测差异是「**值全对、码缺一批**」——同名同值 **73/73 全对**
+  （抄得准，无伪造码），但缺 64 项，其中 **25 项是 C 侧/预处理器码**：
+  预处理器 12 项（`E1011_UnmatchedConditional` … `E1022_TemplateInstantiationLimit`
+  + `W1018/W1019`）、C 侧语义 13 项（`E3060_UseAfterFree`、`E3061_DoubleFree`、
+  `E3062_PrintfFormatMismatch`、`W3064_DoublePointerCast`、`E3065_ConstViolation`、
+  `E3070_BufferOverflow`、`E3071_UndefinedLabel`、`E3072_StructSelfContain` …）。
+  这些是 **C 程序最常遇到的运行时错误**，缺了它们下游 C 消费方拿不到符号名
+  （只能按裸数值判型）。已按权威源的值补入，**不改任何既有项的值与顺序**
+  （纯增量）；剩余 39 项缺口属**正当豁免**：`Unknown = 0` 哨兵 + 38 项
+  `E4xxx` C++ 专属码（C++ 已裁定砍除，总计划 §9）。
+- **权威源勘误（指错了源）**：C 头原注释写 "Keep in sync with
+  `native/src/diagnostics/error_codes.rs`"——该文件实际是
+  `pub use vitro_shared::error_codes::*;` 的**一行 re-export**，真实枚举在
+  `native/crates/vitro_shared/src/error_codes.rs`（137 项）。已改指真实源，
+  并把**裁剪策略**（哪些码有意不暴露、为什么）写进注释——此前它**根本没被
+  登记**，这才是"25 项缺失既发现不了也判断不了"的根因。
+- **新闸 `scripts/gen_capi_bindings`（CI 接线，check-only 模式）**：三类判据
+  ——① **伪造码**（C 头有而源无即红）② **值不一致**（同名必须同值；这是最
+  危险的一类，下游按数值判错型）③ **未登记缺口**（源有而 C 头无的项必须匹配
+  `excluded_patterns` 的豁免规则，未登记即红——逼「裁剪」成为显式决定）；
+  外加一条 **Go 绑定的 DLL 符号名必须都有 C 头声明**（运行时 `Find` 失败是
+  只在跑起来才暴露的隐患，实测 15/15 已对齐）。规则外置 `rules.json`；解析出
+  0 项 fail loud；`--selftest` **四路内存注入**证红（值不一致 / 伪造码 /
+  未登记缺口 / 绑定符号缺声明，各判红 1 处），不动磁盘故无需恢复。
+  命名与报告 A 组 #3 一致，**生成模式待裁剪策略定型后接入**（届时按
+  `gen_diag` / `gen_host_route` 的三件套：落款源 sha256 + 内置格式化 + `-check` 幂等）。
+- **影响面说明**：改的是 `native/include/vitro_capi.h`——**纯声明文件**，
+  不参与 Rust 编译（实测确认 `native/build.rs` 只注入 git hash、不读 C 头；
+  `capi_string_ownership_contract_test.rs` 仅注释引用），且改动为增量枚举常量，
+  不改既有 ABI。
+
+### Added (S6 前置收尾 2：接口面同步闸 + O2 债裁决 + 性能预算闸，2026-09-22)
+
+- **接口面同步闸 `scripts/moonbit/mbti_sync`（CI 接线）**：`.mbt`（实现）与
+  `pkg.generated.mbti`（接口面）的一致性此前**纯靠人工跑 `moon info`**——
+  本仓已漏过一次（`libc/pkg.generated.mbti` 缺 `type LibcSig`，直到下一轮
+  有人顺手跑 `moon info` 才补登）。`moon info` **无 `--check` 子命令**（实测
+  moon 0.1.20260920），故取**跑前后快照 sha256 不变量**形态：快照 → 跑
+  `moon info` → 再快照 → 比对，不等即红并列出全部变化文件（新增 / 消失 /
+  内容脱节三类）；**0 个 `.mbti` 亦红**（拒绝空转判绿）。J9 两路证红：
+  `--selftest` 注入脱节内容必红（判红 1 个文件）+ **真实场景**已验证（往
+  `moonbit/opcode/opcode.mbt` 注入一个 pub fn 而不跑 moon info → 闸门指出
+  `opcode/pkg.generated.mbti` 脱节，exit 1）。**自愈特性**：闸判红时会顺手把
+  `.mbti` 同步到当前实现，故本地红完直接提交即可、再跑即绿（已在头注说明，
+  避免误读为漏判）。与 `moonbit_surface` 的分工：本闸判「接口面是否跟上实现」，
+  surface 判「接口面是否该收窄」，互补不可互替。
+- **typeck O2 债裁决：已量测，保留每次重建，不做缓存化**（登记而非改码）：
+  `TypeChecker::compute_type_size` 每次调用重建 struct/union 定义表。实测
+  613 个 `.c` 语料中 **struct/union 定义最多 2 个**（多文件并列：
+  `baseline/e1_c23_alignof.c`、`linked_queue.c`、`knr/kr_6_3.c`）、**单文件
+  成员访问最多 37 次**（`leetcode/lc_2.c`，即调用频率上界——`expr.mbt:64`
+  每条成员访问一次）⇒ 每次重建至多 ~10 次 map 插入、全文件 ~4×10² 次操作，
+  **不可测**。四条裁决依据：① 上述规模上界；② Rust 侧
+  `vitro_typeck/src/context.rs:8` **同构**（同样每次重建 + `class_size_map`），
+  保持「照搬」以免制造两侧行为分叉；③ **两侧不对称是有意的、非遗漏**——
+  typeck 阶段 `self.structs` 在增长（Pass 1 登记，`typeck.mbt:114/125`），
+  缓存须带失效逻辑；codegen 侧能用 `self.struct_defs` 恰因那时表已固定
+  （typeck 之后才跑）；④ MoonBit `self` 为**值语义**，加缓存字段会让每次
+  调用复制更大的 struct 头（27+ 字段），**净收益方向不确定**（可能为负）。
+  裁决理由与复评触发已写入该函数头注。
+- **性能假设预算闸 `scripts/perf_budget`（CI 接线）**：把「某项优化为什么
+  不做」所依赖的**规模前提**变成机判红线——裁决可以写在注释里，但裁决的
+  **前提必须有人守**（否则随语料扩展静默过期）。首条 counter = O2 债的
+  struct 规模预算（`struct_or_union_defs ≤ 8`、`member_accesses ≤ 200`，
+  现状 2 / 37，留 4–5× 余量）；超阈即红并输出 `on_exceed` 指回裁决所在，
+  迫使重估。规则外置 `rules.json`；0 语料文件 fail loud；J9 证红：全部
+  counter 预算压 0 → 2/2 判红。与 `facts` 分工：facts 管「文档数字 ↔ 机器
+  真值」对账，本闸管「性能裁决的规模前提是否仍成立」（阈值断言）。
+- **手册补登**：`moonbit/AGENTS.md` 的命令清单此前漏登记
+  `scripts/moonbit/single_source -check`（上轮只登记了同批的
+  `pkg_deps` / `libc_boot_diff`），本批一并补上。
+
 ### Added (S5 收尾批：libc 三表单源对账闸——S6 前置，2026-09-22)
 
 - **`scripts/moonbit/libc_single_source` 新门禁（CI 接线）**：Rust 侧

@@ -45,6 +45,9 @@ go run ./scripts/moonbit/moonbit_surface -check # 对外面双面闸（①无主
 go run ./scripts/moonbit/libc_single_source -check # libc 三表单源对账闸（builtin_all == host ∪ bytecode - excluded；交集计数 + PURE 子集 + 空集不得绿；J9 三路证红 ✅）
 go run ./scripts/moonbit/pkg_deps -check  # 包依赖方向断言（按总计划 §4 L0–L9：依赖只能向下或同层 + 无环；新包未登记分层即红；cmd/* 豁免方向；J9 证红 ✅）
 go run ./scripts/moonbit/libc_boot_diff   # libc 自举对拍（MoonBit library mode ↔ Rust export；stub + wrapper 截断口径 + 9 交集字段；J9 证红 ✅）
+go run ./scripts/moonbit/single_source -check # 单一真相源清单校验（判据 C-04 跨语言孪生层：8 条；enforced 判定义点文件集唯一、registered 验路径存在；J9 证红 ✅）
+go run ./scripts/moonbit/mbti_sync -check # 接口面同步闸（.mbt ↔ pkg.generated.mbti；moon info 无 --check 故取跑前后快照不变量；判红时顺手自愈同步 .mbti；J9 证红 ✅）
+go run ./scripts/perf_budget -check     # 性能假设预算闸（语料规模前提守护：typeck O2 债裁决依据 struct 定义 ≤2 / 成员访问 ≤37；超预算即红迫使重估；J9 证红 ✅）
 go run ./scripts/toolchain_probe        # 工具链健康探针（版本锁定/索引预检/ICE 特征；升 moon 后必跑，漂移须 --update-baseline + 全门禁）
 go run ./scripts/parser_diff <corpus>        # S3 解析差分（E1/E2/活性；仓库根跑）
 go run ./scripts/parser_diff --pathological  # E3 病态 12 样本同等拒绝

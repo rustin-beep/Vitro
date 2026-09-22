@@ -289,6 +289,57 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/single_source -check
 
+      - name: MoonBit interface-surface sync (moon info no-drift)
+        # 2026-09-22 S5 收尾批接线：.mbt（实现）与 pkg.generated.mbti（接口
+        # 面）的一致性此前纯靠人工跑 moon info——本仓已漏过一次（libc 的
+        # .mbti 缺 type LibcSig，下轮才补登）。moon info 无 --check 子命令
+        # （实测 moon 0.1.20260920），故取「跑前后快照 sha256 不变量」形态：
+        # 不等即有 .mbti 与实现脱节（pub 面改了没同步 / 新包未生成 / 改坏）。
+        # 0 个 .mbti 亦红（空集不得绿）。J9 证红：注入脱节内容必红。
+        shell: bash
+        run: go run ./scripts/moonbit/mbti_sync -check
+
+      - name: Performance-assumption budget (corpus scale premises)
+        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
+        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
+        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
+        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
+        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
+        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
+        shell: bash
+        run: go run ./scripts/perf_budget -check
+
+      - name: C ABI declaration parity (error codes + binding symbols)
+        # 2026-09-22 接线（架构审阅 v2 A 组 #3 / §2.9）：vitro_capi.h 的
+        # VitroErrorCode 枚举手抄自 Rust 源且注释只写「Keep in sync with ...」
+        # ——没说权威源、也没说裁剪策略，故「缺 25 个 C 侧码」既发现不了也
+        # 判断不了。本步三类判据：① C 头项必须存在于权威源（伪造码即红）
+        # ② 同名必须同值（值抄错最危险——下游按数值判错型）③ 源有而 C 头无
+        # 必须匹配豁免规则（哨兵 / E4xxx C++ 已砍）。另判 Go 绑定的 DLL
+        # 符号名均有 C 头声明。规则外置 rules.json；J9 四路注入证红。
+        shell: bash
+        run: go run ./scripts/gen_capi_bindings -check
+
+      - name: Protocol TS types freshness + schema doc parity
+        # 2026-09-22 接线（架构审阅 v2 A 组 #9 / §7.5）：@vitro/protocol 的 TS
+        # 类型从权威 Rust 源（native/src/unified/*.rs，受字段冻结测试守护）
+        # 生成，并与 docs/spec 的 schema 表格**双向对账**——任一方向不同步都红。
+        # 这同时把「文档与实现是否一致」变成机器判据（此前无人守）。
+        # 注意 §5 差分层（StepStreamBatch/StepPayloadDelta）未纳入：该节表格是
+        # 压缩式，无法逐字段机判（已在 rules.json 登记）。
+        shell: bash
+        run: go run ./scripts/gen_protocol_ts -check
+
+      - name: Protocol first consumer (fields-level validation on real engine output)
+        # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
+        # 用**生成的**协议面（protocol/fields.mjs）消费**真实的**引擎输出
+        # （vitro_cli serve 的 step 流），逐字段校验 + 最小内容层渲染。
+        # 依赖上方 Release 构建的 vitro_cli（与 codegen_diff / libc_boot_diff 同前提）。
+        # **限制（诚实登记）**：本环境无 npm/tsc，故只能验「生成物描述得了真实输出」，
+        # 验不了「字段名写错在 tsc 编译期即红」——后者是 TS 的核心收益，待 tsc 就绪。
+        shell: bash
+        run: node protocol/consumer.mjs
+
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
         # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式

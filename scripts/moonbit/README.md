@@ -46,6 +46,17 @@
   案例：`vitro_typeck/src/context.rs` 有个与单源**同名**的方法
   `pub fn compute_type_size(&self, ty)`（语义上是委托，但同名会造成"看起来有
   两份实现"的误读，已作为命名债登记在 rules.json 的 `_exclude_note`）。
+- `mbti_sync/`（Go）：**接口面同步闸**——断言 `moonbit/**/pkg.generated.mbti`
+  与 `.mbt` 实现一致。moon info 无 `--check` 子命令（实测 moon 0.1.20260920），
+  故取**跑前后快照 sha256 不变量**形态：快照 → 跑 `moon info` → 再快照 → 比对，
+  不等即红并列出全部变化文件（新增 / 消失 / 内容脱节三类）。0 个 `.mbti` 亦红。
+  背景：一致性此前纯靠人工跑 moon info，本仓已漏过一次（`libc/pkg.generated.mbti`
+  缺 `type LibcSig`，下一轮才补登）。用法（**仓库根**）：
+  `go run ./scripts/moonbit/mbti_sync -check`；CI 已接线；`--selftest` J9 证红
+  （注入脱节内容必红）+ 真实场景已验（改 `.mbt` 的 pub 面不跑 moon info 必红）。
+  **自愈特性**：闸判红时会顺手把 `.mbti` 同步到当前实现——本地红完直接提交即可；
+  再跑即绿。与 `moonbit_surface` 的分工：本闸判「接口面是否跟上实现」，
+  surface 判「接口面是否该收窄」，互补不可互替。
 
 > **调用约定（2026-09-22 勘误）**：本目录下所有脚本均须**从仓库根**调用
 > （`./scripts/moonbit/<name>`）——`moonbit/` 下既无 `go.mod` 也无 `scripts/`；

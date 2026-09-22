@@ -2,6 +2,37 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+## English
+
+**Vitro Engine** is the MoonBit implementation of the [Vitro C teaching engine](https://github.com/jingwei108/vitro) — a compiler front-end and bytecode codegen for a teaching subset of C, kept in byte-for-byte parity with the original [Rust oracle](https://github.com/jingwei108/vitro) (diagnostic catalog, AST dumps, canonical bytecode output).
+
+| Package | Layer | What you get |
+|---|---|---|
+| `vitro/engine/source` | L0 | `SourceLoc` + column contract (UTF-8 byte offset + 1) + dual-coordinate `Pos` |
+| `vitro/engine/opcode` | L0 | 132 opcodes with stable numbering (44–49 reserved) + `Instruction` |
+| `vitro/engine/diag` | L1 | 137-arm `ErrorCode` + severity/lang + teaching catalog (77 cards), byte-exact export |
+| `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 family + depth metrics + `type_eq` + C rendering & mangle + JSON dump |
+| `vitro/engine/names` | L3 | Naming single source: `__ctor__`/`__dtor__` family + 17-variant type-mangle suffix |
+| `vitro/engine/lexer` | L4 | Standalone preprocessor pass + `LineMap` + host IO; token contract in `lexer/token` |
+| `vitro/engine/parser` | L4 | token → AST: expression cascade / declarator spiral / stmt & decl families; depth-guarded with stall fuse |
+| `vitro/engine/libc` | L5 | Builtin signature table (57) + libc call allowlist (175) |
+| `vitro/engine/typeck` | L5 | C-subset type checking + lowering (4 passes); auto/typeof deduction; array/struct init sizing |
+| `vitro/engine/bytecode` | L6 | Output schema + R1 layout pure functions + canonical dump emitter |
+| `vitro/engine/codegen` | L6 | `BytecodeGen` state machine with dual entry: `compile` / `compile_library`; slot strategy v1 |
+
+Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
+
+```moonbit
+let code = @diag.ErrorCode::from_code(3053).unwrap()
+code.display_code()          // "W3053"
+code.severity().to_str()     // "warning"
+code.catalog()               // Some(teaching card: title / explanation / common causes)
+```
+
+The rest of this README is in Chinese.
+
+---
+
 C 教学引擎的 MoonBit 实现——137 个诊断错误码、132 条字节码操作码、Type/Expr/Stmt 全族 AST 与 C 渲染/mangle，码表与 [Vitro Rust oracle](https://github.com/jingwei108/vitro) 逐字节对拍对齐。
 
 ## 安装
@@ -18,6 +49,13 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 | `vitro/engine/opcode` | L0 | 132 条 opcode（编号照搬不重排，空号 44–49）+ 双向映射 + Instruction |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂 + Severity/SourceLang + 教学卡片 77 条 + 目录导出（对拍逐字节一致） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth + type_eq + to_c_string + mangle + JSON dump |
+| `vitro/engine/names` | L3 | 产名族唯一出口（`__ctor__`/`__dtor__`）+ type_mangle_suffix 17 变体 + method_mangled_name |
+| `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） |
+| `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族；depth 参数化防护 + 零推进熔断 |
+| `vitro/engine/libc` | L5 | builtin 签名单表 57 条 + 放行名全集 175 |
+| `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering 4 Pass（auto/typeof 推导、数组/struct 初始化器尺寸推断） |
+| `vitro/engine/bytecode` | L6 | 产物 schema + R1 布局纯函数 + canonical dump emitter |
+| `vitro/engine/codegen` | L6 | BytecodeGen 状态机双入口（`compile` / `compile_library`）+ 槽位策略 v1 逐位兼容 |
 
 各包 API 概览见对应目录的 `pkg.generated.mbti`；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）。
 
@@ -40,7 +78,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 209 测试（source 14 / opcode 10 / diag 21 / ast 13 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 8 / codegen 16；分解和 203 + 根 README doc test 6）——S5 起 bytecode/codegen 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 210 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 8 / codegen 16；分解和 204 + 根 README doc test 6）——S5 起 bytecode/codegen 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 发布（mooncakes）：vitro/engine 0.5.0（2026-09-23）
+
+- **版本语义裁定：0.4.0 → 0.5.0（非 patch）**——0.4.0（`2bf3b29`）以来 moonbit/
+  接口面有三处实变：codegen 新增 `pub fn compile_library`（library mode 出口）、
+  libc 新增 `LibcSig`（签名结构体）、ast 收面移除 `template_arg_eq`（唯一消费者
+  同包）。按手册「新增公共 API → minor」取宽；0.x minor 可带 breaking，明示。
+- **README 英文化**：顶部新增 English 节（定位一段 + 11 包全量英文表 + 稳定性
+  承诺 + 示例）——mooncakes 模块页国际可读；中文包清单表同步补全 4 → 11 包；
+  测试数对齐实测 210（ast 13 → 14，B#12 哨兵测试入列）。`description` 升级为
+  完整英文句，`keywords` 增 `moonbit`。
+- **验收三件**：`moon search` 可查（新 description 上墙）/ 临时项目
+  `moon add vitro/engine@0.5.0` 编译运行全对（诊断码 / 教学卡片 / to_c_string /
+  depth）/ 包 zip 根级四件齐全。发布前置全绿：moon check 0 错、210/210、九闸 +
+  toolchain_probe 全 PASS。
+- **外部用户证实**：下载数 25 > 自产上限 ~18（两人三倍验证）——此后对外面变更
+  须带兼容负担意识（版本化弃期 / CHANGELOG 记载）。
+- **parser「随下一 minor」承诺兑现**：随本 minor 进架，AGENTS.md 包清单状态已
+  对齐。
+
+### Fixed (防线)：gen_protocol_ts `-check` 的 CRLF 假红（toolchain_probe 同款第三例，2026-09-23）
+
+- **归因**：`protocol/index.d.ts` / `fields.mjs` 以 LF 入库，本机
+  `core.autocrlf` checkout 翻成 CRLF，`-check` 逐字节比较即判红——内容零漂移
+  （`git status` 标 M 而 `git diff` 为空即指纹）。P2-1（gen_diag）与
+  toolchain_probe（2026-09-22）之后本仓第三例行尾假红。
+- **修复双保险**：① 比较前 CRLF→LF 归一化（`-check` 与 `--selftest` 基线两处）；
+  ② `.gitattributes` 锁 `protocol/** text eol=lf`（同 `moonbit/**` 先例）。
+- **红→绿闭环**：产物翻转 CRLF 复现红 → 修复后同一份文件 PASS；
+  `--selftest` 三路注入证红完好（判据自身修复不损判定力）。
+
+## [Unreleased]
+
 ### Added (协议 TS 类型生成链 + 首个消费者：A 组 #9/#10，2026-09-22)
 
 - **`scripts/gen_protocol_ts`**：从**权威 Rust 源**生成 `@vitro/protocol` 的 TS

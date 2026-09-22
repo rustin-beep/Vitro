@@ -1,0 +1,20 @@
+// 本文件由 `scripts/gen_protocol_ts` 生成，**请勿手改**。
+// 字段集元数据：无 TypeScript 工具链的消费方（或运行时自检）可据此校验字段名。
+
+export const SCHEMA_VERSION = "0.1";
+
+export const ENUMS = {
+  PointerStatus: ["Valid", "Freed", "Null", "Dangling"],
+};
+
+export const FIELDS = {
+  AlgorithmStepSnapshot: ["algorithm_name", "display_name", "phase", "description"],
+  ApiVariableSnapshot: ["name", "addr", "is_local", "ty_name", "value"],
+  ApiFrameInfo: ["func_name", "return_line"],
+  AccessedVar: ["name", "access_type"],
+  ArraySnapshot: ["name", "element_ty", "elements", "truncated"],
+  PointerSnapshot: ["name", "addr", "ty_name", "target_addr", "target_name", "status"],
+  VisEvent: ["ty", "line", "extra0", "extra1", "extra2", "context"],
+  RootCauseHint: ["category", "one_liner", "related_lines", "suggested_fix_kind", "suggested_fix_line", "suggested_fix_desc"],
+  StepPayload: ["step_index", "code_line", "func_name", "semantic_label", "algorithm_step", "local_vars", "call_stack", "vis_events", "heatmap_line", "heatmap_count", "accessed_vars", "array_snapshots", "pointer_snapshots", "root_cause_hint"],
+};

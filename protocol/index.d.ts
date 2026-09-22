@@ -1,0 +1,105 @@
+// 本文件由 `scripts/gen_protocol_ts` 生成，**请勿手改**。
+//
+// 权威源（Rust 结构体，受 native/tests/step_payload_schema_v0_1_test.rs 字段冻结测试守护）：
+//   - native/src/unified/types.rs
+//   - native/src/unified/root_cause.rs
+//   - native/src/session.rs
+// schema：docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md（v0.1，冻结锚 `10591ad`）
+// 再生成：`go run ./scripts/gen_protocol_ts`；幂等校验：`-check`
+
+/// StepPayload schema 版本（与 docs/spec 冻结版本一致）。
+export const SCHEMA_VERSION = "0.1";
+
+/// `AlgorithmStepSnapshot`（源：native/src/unified/types.rs）
+export interface AlgorithmStepSnapshot {
+  algorithm_name: string;
+  display_name: string;
+  phase: string;
+  description: string;
+}
+
+/// `ApiVariableSnapshot`（源：native/src/unified/types.rs）
+export interface ApiVariableSnapshot {
+  name: string;
+  addr: number;
+  is_local: boolean;
+  ty_name: string;
+  value: string;
+}
+
+/// `ApiFrameInfo`（源：native/src/unified/types.rs）
+export interface ApiFrameInfo {
+  func_name: string;
+  return_line: number;
+}
+
+/// `AccessedVar`（源：native/src/unified/types.rs）
+export interface AccessedVar {
+  name: string;
+  access_type: string;
+}
+
+/// `ArraySnapshot`（源：native/src/unified/types.rs）
+export interface ArraySnapshot {
+  name: string;
+  element_ty: string;
+  elements: string[];
+  truncated: boolean;
+}
+
+/// `PointerSnapshot`（源：native/src/unified/types.rs）
+export interface PointerSnapshot {
+  name: string;
+  addr: number;
+  ty_name: string;
+  target_addr: number;
+  target_name: string;
+  status: PointerStatus;
+}
+
+/// `VisEvent`（源：native/src/session.rs）
+export interface VisEvent {
+  ty: number;
+  line: number;
+  extra0: number;
+  extra1: number;
+  extra2: number;
+  context: string;
+}
+
+/// `RootCauseHint`（源：native/src/unified/root_cause.rs）
+export interface RootCauseHint {
+  category: string;
+  one_liner: string;
+  related_lines: number[];
+  suggested_fix_kind: string;
+  suggested_fix_line: number | null;
+  suggested_fix_desc: string | null;
+}
+
+/// `StepPayload`（源：native/src/unified/types.rs）
+export interface StepPayload {
+  step_index: number;
+  code_line: number;
+  func_name: string;
+  semantic_label: string;
+  algorithm_step: AlgorithmStepSnapshot | null;
+  local_vars: ApiVariableSnapshot[];
+  call_stack: ApiFrameInfo[];
+  vis_events: VisEvent[];
+  heatmap_line: number;
+  heatmap_count: number;
+  accessed_vars: AccessedVar[];
+  array_snapshots: ArraySnapshot[];
+  pointer_snapshots: PointerSnapshot[];
+  root_cause_hint: RootCauseHint | null;
+}
+
+/// `PointerStatus`（源：native/src/unified/types.rs）——字符串字面量联合（与 Rust serde 序列化一致）
+export const PointerStatus = {
+  Valid: "Valid",
+  Freed: "Freed",
+  Null: "Null",
+  Dangling: "Dangling",
+} as const;
+export type PointerStatus = (typeof PointerStatus)[keyof typeof PointerStatus];

@@ -1,0 +1,28 @@
+{
+  "name": "@vitro/protocol",
+  "version": "0.1.0",
+  "description": "Vitro StepPayload 协议类型定义（schema v0.1）——从权威 Rust 源生成，非手抄",
+  "keywords": ["vitro", "step-payload", "protocol", "types"],
+  "license": "MIT",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    },
+    "./fields": {
+      "import": "./fields.mjs"
+    }
+  },
+  "files": [
+    "index.d.ts",
+    "fields.mjs",
+    "consumer.mjs",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "_generated": [
+    "index.d.ts 与 fields.mjs 是 `go run ./scripts/gen_protocol_ts` 的生成物，禁手改。",
+    "包版本（0.1.0）跟 schema 版本（v0.1）走：schema 冻结后字段只增不改语义，",
+    "新增字段 = minor（消费方必须忽略未知字段），破坏性变更不被允许。"
+  ]
+}

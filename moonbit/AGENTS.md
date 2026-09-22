@@ -85,7 +85,7 @@ go run ./scripts/codegen_diff <corpus> [--baseline] # S5 codegen 差分（A 级 
 ## 编码与架构纪律（S1 已定型）
 
 1. **穷尽 match 无兜底臂**——枚举增删变体必须让全仓编译红（gen_diag 生成的 137 臂 / opcode 全表 / emitter 均如此）；`from_code` / `from_u8` 这类 Int→枚举允许 `_ => None`（值域无限，数学必然）。
-2. **显式 emitter 纪律**（B 级锚前提）：结构化导出（JSON）两侧手写序列化，禁一侧 serde 一侧 ToJson 派生——字段序、转义、浮点文本化在 emitter 单点对齐 Rust oracle。对拍管道：Rust serve 出口 → Go canonicalize 归一 → diff（`go run ./scripts/canonicalize`，stdin 进 stdout 出）。
+2. **显式 emitter 纪律**（B 级锚前提）：结构化导出（JSON）两侧手写序列化，禁一侧 serde 一侧 ToJson 派生——字段序、转义、浮点文本化在 emitter 单点对齐 Rust oracle。对拍管道：Rust serve 出口 → Go 归一器归一 → diff。归一单源 = `scripts/internal/canonicalize`（各 diff 驱动**进程内调用**，2026-09-22 抽库）；`go run ./scripts/canonicalize` 仍是**可执行的 CLI 壳**（stdin 进 stdout 出 / `--check`），**不可删**——冻结区 `native/tests/ast_dump_test.rs` 以子进程方式依赖它。
 3. **生成物纪律**：`diag/error_code_gen.mbt`、`diag/catalog_gen.mbt` 禁手改（文件头源 sha256 落款）；源（native 侧）变更后必须再生成并提交，`-check` 在 CI/审阅中防漂移；行尾归一双保险（.gitattributes 锁 moonbit/** LF + `-check` 比较前归一）。
 4. **照搬不私改**：从 Rust oracle 迁移的定义（opcode 编号、判等语义、Display 渲染口径、mangle）逐字照搬；发现 oracle 现状可疑（如 Display 丢 unsigned）**登记不修正**——差分对拍期两侧一致优先，裁定走差异台账。
 5. **坐标契约**（vitro/engine/source）：`column` = 行内 UTF-8 字节偏移 + 1；双坐标消费方用 `Pos`；禁字节/字符量纲混算；词法 +1 现状不复刻。输入档案：`docs/current/07-质量与裁定/列号口径冻结.md`。

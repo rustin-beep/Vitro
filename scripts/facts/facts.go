@@ -545,8 +545,11 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 		filepath.Join("native", "tests", "cases", "leetcode"),
 		filepath.Join("native", "tests", "cases", "gap"),
 	} {
-		// F5：超时 10→20min——canonicalize 已预构建（单样本 ~0.3s），
-		// 597 全量 ~分钟级，20min 为慢机余量（此前 10min 必超时退化 unavailable）
+		// 超时 20min 的原始依据（F5：10→20min，"canonicalize 已预构建、单
+		// 样本 ~0.3s、597 全量 ~分钟级"）**已随 2026-09-22 canonicalize 抽库
+		// 失效**：逐样本起进程成本消除（旧 CLI 224.6ms/次 → 进程内 4.6ms/次），
+		// 实测本调用已是秒级/模式。20min 现为纯慢机余量——调整阈值前请按新
+		// 成本模型复核，勿沿用旧依据。
 		out, code, ok := runCmd(root, 20*time.Minute, "go", "run", "./scripts/parser_diff", corpus)
 		if !ok || code != 0 {
 			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,

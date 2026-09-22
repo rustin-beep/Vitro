@@ -1,16 +1,14 @@
-// canonicalize：差分锚的 JSON 归一器（P7，2026-09-19）。
+// canonicalize：差分锚的 JSON 归一器 CLI（P7，2026-09-19）。
 //
-// 用途：E1/E4 等 B 级锚的对拍——Rust 侧（serde_json）与 MoonBit 侧（显式
-// emitter）的 JSON 输出**同经本工具归一**后逐字节比对。归一规则：
+// 归一规则与实现**单源**在 scripts/internal/canonicalize——本文件只是 CLI
+// 壳：stdin 进 stdout 出，--check 为锚定模式（输入已是规范形则 exit 0）。
 //
-//   1. 对象键按字典序排序（数组顺序保持——数组是有序结构，排序会销毁信息）；
-//   2. 数字形态保持（json.Number 直通——1、1.0、1e2 不互相改写；两侧若对
-//      同一数值写出不同形态，属于 emitter 侧要修的差异，不是本工具的归一职责）；
-//   3. 字符串转义统一（解码后按 Go 标准编码重转义，HTML 转义关闭）；
-//   4. 缩进固定 2 空格 + 尾随换行。
-//
-// 形态约定（scripts 通行纪律）：零第三方依赖 / fail loud（非法 JSON 拒绝
-// 输出，exit 1，禁止静默 default）/ J9 埋雷见 canonicalize_test.go。
+// ⚠️ **本壳不可删**——它不是"驱动都进程内化了、没人用"的遗留物，存在一条硬
+// 约束：冻结区 `native/tests/ast_dump_test.rs` 的 `canonicalize()` 以
+// `go run ../scripts/canonicalize` 子进程调用本 CLI（stdin→stdout 契约：写
+// stdin、读满 stdout、**非 0 退出即 panic**）。删壳或改 CLI 契约会直接打断
+// 冻结区测试。其余用途：管道、人工核对、--check 锚定模式。
+// 归一器进程内化的动因与代价见 scripts/internal/canonicalize 包注释。
 //
 // 用法：
 //
@@ -21,65 +19,60 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+
+	"vitro/scripts/internal/canonicalize"
 )
 
-func fatal(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, "canonicalize: "+format+"\n", args...)
-	os.Exit(1)
-}
-
-func main() {
-	check := flag.Bool("check", false, "锚定模式：输入已是规范形则 exit 0，否则 exit 1")
-	flag.Parse()
-
-	raw, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fatal("读 stdin 失败: %v", err)
+// run：CLI 主体。显式出入参、不碰 os.Stdin / os.Exit——使 --check 分支与退出码
+// 可在包内直测（2026-09-22 补锚：此前该分支无仓内锚，TestCheckBytes 名不副实，
+// 只做幂等断言，从未调 CLI、未断言退出码）。返回进程退出码。
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("canonicalize", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	check := fs.Bool("check", false, "锚定模式：输入已是规范形则 exit 0，否则 exit 1")
+	if err := fs.Parse(args); err != nil {
+		// 与原全局 flag.ExitOnError 口径对齐：-h/--help 退出 0，其余解析错退出 2。
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
 	}
 
-	canonical, err := canonicalize(raw)
+	raw, err := io.ReadAll(stdin)
 	if err != nil {
-		fatal("JSON 归一失败（拒绝输出，不猜不兜底）: %v", err)
+		fmt.Fprintf(stderr, "canonicalize: 读 stdin 失败: %v\n", err)
+		return 1
+	}
+
+	canonical, err := canonicalize.Bytes(raw)
+	if err != nil {
+		fmt.Fprintf(stderr, "canonicalize: JSON 归一失败（拒绝输出，不猜不兜底）: %v\n", err)
+		return 1
 	}
 
 	if *check {
+		// 口径按实况写：比较前双侧 TrimSpace——**首尾空白（含尾随换行）容忍**，
+		// 判定面只有键序 / 缩进 / 转义三项（2026-09-22 实测：缺尾随换行、前导
+		// 换行、前后空格均 exit 0；原文案宣称"尾随换行不匹配"与实况不符，已改）。
+		// 容忍是既定语义，锚在 main_test.go。
 		if !bytes.Equal(bytes.TrimSpace(raw), bytes.TrimSpace(canonical)) {
-			fmt.Fprintln(os.Stderr, "输入不是规范形（键序/缩进/转义/尾随换行之一不匹配）")
-			os.Exit(1)
+			fmt.Fprintln(stderr, "输入不是规范形（键序/缩进/转义之一不匹配；首尾空白容忍）")
+			return 1
 		}
-		return
+		return 0
 	}
-	os.Stdout.Write(canonical)
+	// 与原实现同：写出错不判定（契约由消费方读齐 stdout 保证——冻结区
+	// ast_dump_test.rs 读满 stdout 后才校验退出码）。保持逐字节行为对齐，
+	// 不在抽库批里改 CLI 契约。
+	_, _ = stdout.Write(canonical)
+	return 0
 }
 
-// canonicalize：原始 JSON 字节 → 规范形字节（尾随换行含）。
-func canonicalize(raw []byte) ([]byte, error) {
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.UseNumber() // 数字保形：1 / 1.0 / 1e2 直通，不改写
-	var v interface{}
-	if err := dec.Decode(&v); err != nil {
-		return nil, fmt.Errorf("非法 JSON: %w", err)
-	}
-	// 尾随内容拒绝（两份 JSON 拼接是锚数据错误，不是可猜的输入）。
-	// 审阅处置（2026-09-19）：区分"多个 JSON 值"与"尾随非 JSON 垃圾"——
-	// 同为拒绝、判定无损，仅消息精确化。
-	if err := dec.Decode(new(json.RawMessage)); err != io.EOF {
-		if err == nil {
-			return nil, fmt.Errorf("输入含多个 JSON 值（锚数据必须是单值）")
-		}
-		return nil, fmt.Errorf("首个 JSON 值后存在尾随内容（%v）；锚数据必须是单值", err)
-	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false) // HTML 转义差异（&<>）属 emitter 差异，归一层关闭
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
-		return nil, fmt.Errorf("重编码失败: %w", err)
-	}
-	return buf.Bytes(), nil
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

@@ -10,14 +10,16 @@
 //
 // 对拍面：
 //   - E1：AST dump JSON——Rust serve `ast.dump` 响应 vs MoonBit
-//     `cmd/dump_ast` 输出，双侧经 scripts/canonicalize 归一后逐字节 diff
+//     `cmd/dump_ast` 输出，双侧经归一器（scripts/internal/canonicalize，
+//     进程内调用；2026-09-22 抽库前为逐样本起进程）归一后逐字节 diff
 //   - E2：parse_errors 序列（code/line/column 保序；message 在 JSON 内
 //     一并逐字节比——文案两侧照搬自同一源，漂移即红）
 //   - 活性：MoonBit 侧 stall_count 必须为 0（勘察 6-3 的 GC 语言观测义务；
 //     Rust 侧恒 0）
 //
-// fail loud：自检（serve 可用 / 两侧文件数一致 / canonicalize 可用）不过
-// 直接拒绝给判定；差异全量列出后 exit 1。
+// fail loud：自检（serve 可用 / 两侧文件数一致）不过直接拒绝给判定；归一器
+// 已进程内链接（2026-09-22 抽库，scripts/internal/canonicalize），其可用性由
+// 编译期保证，不再需要预构建自检；差异全量列出后 exit 1。
 package main
 
 import (
@@ -29,10 +31,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
-	"sync"
+
+	canon "vitro/scripts/internal/canonicalize"
 )
 
 func main() {
@@ -736,39 +738,21 @@ func moonDump(corpus string) string {
 // 工具
 // ---------------------------------------------------------------------------
 
-// canonicalizeBin：预构建一次、全程复用（F5：`go run` 冷启动实测 ~1.9s/
-// 次 × 每样本 2 次 × 597 样本 ≈ 34min；预构建二进制 ~0.3s/次，全量压到
-// 分钟级）。构建失败 fail loud——归一器不可用则拒绝给判定。
-var (
-	canonicalizeOnce sync.Once
-	canonicalizePath string
-)
-
-func canonicalizeBinary() string {
-	canonicalizeOnce.Do(func() {
-		exe := filepath.Join(os.TempDir(), "parser_diff_canonicalize")
-		if runtime.GOOS == "windows" {
-			exe += ".exe"
-		}
-		cmd := exec.Command("go", "build", "-o", exe, "./scripts/canonicalize")
-		var buf bytes.Buffer
-		cmd.Stderr = &buf
-		if err := cmd.Run(); err != nil {
-			fail("canonicalize 预构建失败: %v\n%s", err, buf.String())
-		}
-		canonicalizePath = exe
-	})
-	return canonicalizePath
-}
-
+// canonicalize：本地包装（fail loud 口径与抽库前一致——归一器不可用则拒绝
+// 给判定）。归一逻辑单源在 scripts/internal/canonicalize。
+//
+// 2026-09-22 抽库改造：此前为 `go run` 冷启动（F5 实测 ~1.9s/次），F5 已优化为
+// 预构建二进制（~0.3s/次），但**逐样本起进程**本身仍在——本驱动四处对拍循环
+// （runCorpus / runPathological / runLegalDeep / runThreshold）均每样本调 2 次。
+// 单位成本：旧 CLI 单次实测 **224.6ms**（基本即进程创建成本），进程内单次实测
+// **4.6ms / 225KB 载荷**。
+//
+// 口径：改造省下的是逐样本的**进程创建**，不是"归零"——进程内仍有 ~4.6ms/次。
+// 判定语义不变（锚逐字节，四模式 PASS 结论均未变）。
 func canonicalize(raw []byte) []byte {
-	cmd := exec.Command(canonicalizeBinary())
-	cmd.Stdin = bytes.NewReader(raw)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
+	out, err := canon.Bytes(raw)
 	if err != nil {
-		fail("canonicalize 失败: %v\nstderr: %s\ninput: %s", err, stderr.String(), preview(raw))
+		fail("canonicalize 失败: %v\ninput: %s", err, preview(raw))
 	}
 	return out
 }

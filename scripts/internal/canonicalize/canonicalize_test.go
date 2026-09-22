@@ -1,21 +1,23 @@
-package main
+package canonicalize
 
-// canonicalize 的 J9 证红锚（判定面上线前先证明它会红）与归一性质测试。
+// 归一器的 J9 证红锚（判定面上线前先证明它会红）与归一性质测试。
 //
-// J9 义务：--check 的锚定语义（乱序键 / 非规范缩进 / 多 JSON 值 / 非法
-// JSON）必须注入必然违反的输入并断言变红——判定函数坏了的"全绿"比没有
-// 门禁更坏。归一性质（键排序 / 数字保形 / 转义统一 / 幂等）是 E1 锚
-// 逐字节比对的可信前提。
+// J9 义务：归一性质（键排序 / 数字保形 / 转义统一 / 幂等 / 非法与双值拒绝）
+// 是 E1 锚逐字节比对的可信前提——判定函数坏了的"全绿"比没有门禁更坏。
+//
+// 位置说明（2026-09-22）：本文件随归一器抽库自 scripts/canonicalize 迁入**被测
+// 单源所在包**（此前的形态是"测试在 CLI 包、被测包零测试文件、go test 显示
+// no test files"）。CLI 壳自身的 --check 分支与退出码锚见
+// scripts/canonicalize/main_test.go；归一性质与 CLI 参数解析分离，两边互不代偿。
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 )
 
 func canon(t *testing.T, in string) string {
 	t.Helper()
-	out, err := canonicalize([]byte(in))
+	out, err := Bytes([]byte(in))
 	if err != nil {
 		t.Fatalf("归一失败: %v", err)
 	}
@@ -66,7 +68,7 @@ func TestIdempotent(t *testing.T) {
 // J9：非法 JSON 必须拒绝（fail loud，禁止静默输出空/原样）。
 func TestInvalidRejected(t *testing.T) {
 	for _, bad := range []string{`{`, `{"a":}`, `not json`, ``, `[1,2,`} {
-		if out, err := canonicalize([]byte(bad)); err == nil {
+		if out, err := Bytes([]byte(bad)); err == nil {
 			t.Fatalf("非法输入 %q 必须报错，却产出 %q", bad, out)
 		}
 	}
@@ -74,7 +76,7 @@ func TestInvalidRejected(t *testing.T) {
 
 // J9：多 JSON 值拼接必须拒绝（锚数据错误不猜）。
 func TestMultipleValuesRejected(t *testing.T) {
-	if _, err := canonicalize([]byte(`{"a":1}{"b":2}`)); err == nil {
+	if _, err := Bytes([]byte(`{"a":1}{"b":2}`)); err == nil {
 		t.Fatal("双 JSON 值必须拒绝")
 	}
 }
@@ -84,13 +86,5 @@ func TestArrayOrderPreserved(t *testing.T) {
 	got := canon(t, `[3,1,2]`)
 	if got != "[\n  3,\n  1,\n  2\n]\n" {
 		t.Fatalf("数组顺序必须保持：得 %q", got)
-	}
-}
-
-// check 路径的字节级判定（--check 锚定语义 = 与规范形逐字节等）。
-func TestCheckBytes(t *testing.T) {
-	canonical := canon(t, `{"b":1,"a":2}`)
-	if !bytes.Equal([]byte(canonical), []byte(canon(t, canonical))) {
-		t.Fatal("规范形自反失败")
 	}
 }

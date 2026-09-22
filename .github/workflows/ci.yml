@@ -81,6 +81,17 @@ jobs:
       - name: Go vet (scripts)
         run: go vet ./scripts/...
 
+      # 2026-09-22 闸缺口补齐：go test ./scripts/... 此前**不在 CI**——
+      # scripts 侧已有 5 包 / 10 文件 / 58 个 J9·性质测试（CLI 契约锚 10、
+      # 归一性质锚 7、docs_preview 7、facts 30、toolchain_probe 基线判定锚 4），
+      # 全部只在本地可跑、CI 一直抓不到。"判定函数坏了的『全绿』比没有门禁
+      # 更坏"（J9 义务原话）——本步骤退非 0 即红。测试面全为纯函数 /
+      # t.TempDir() 夹具，不依赖 moon 工具链、cargo 产物或 reports/（后者被
+      # gitignore，CI 上不存在）；故接线在 go vet 旁而非 MoonBit 步骤之后，
+      # 可先行失败。
+      - name: Go test (scripts)
+        run: go test ./scripts/...
+
       # Clang Golden 缓存（方案 A）：结果是确定性的（同一源码 + 同一 clang 版本
       # ⇒ 同一结果），跨 CI 运行复用可把 Shadow 从分钟级降到秒级。
       # key 含 clang 版本 —— 版本一变缓存自动失效，这就是"防版本漂移"的第一道闸；
@@ -158,8 +169,9 @@ jobs:
       # S3 审阅补线（2026-09-20，F5/G3）：MoonBit 工具链 + 解析差分锚。
       # 此前 parser_diff 不在 CI——offsetof 深链崩溃（F1）/enum 常量链
       # 崩溃（F2）/指针多维错值（F3）三项缺陷与"防线不在 CI"互为因果。
-      # 三模式均为分钟级（canonicalize 预构建后）；598 全量经下方 facts
-      # --run 采集。依赖上方 Release 构建的 vitro_cli。
+      # 三模式均已降到秒级（2026-09-22 canonicalize 抽库：逐样本起进程成本
+      # 消除，旧口径"分钟级（预构建后）"失效）；全量经下方 facts --run 采集。
+      # 依赖上方 Release 构建的 vitro_cli。
       - name: Install MoonBit toolchain (parser anchors / facts --run)
         shell: pwsh
         run: |

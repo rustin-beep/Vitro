@@ -10,7 +10,8 @@
 //   - Rust `vitro_cli dump-compile`（CompileDump 14 键：version + CompileOutput
 //     13 字段，含 export 不导出的 source_map/symbols/struct_defs/union_defs/
 //     global_data_end 五项）vs MoonBit `cmd/dump_compile`（{"ok":true,"dump":
-//     <同 14 键>}），双侧经 scripts/canonicalize 归一后逐字节 diff。
+//     <同 14 键>}），双侧经归一器（scripts/internal/canonicalize，进程内调用
+//     ——2026-09-22 抽库前为逐样本起进程）归一后逐字节 diff。
 //   - 三条冻结（勘察 §8.2）：槽位策略 v1 逐位兼容 / 绝对 IP 跳转编码 /
 //     libc 固定索引（1000/1024/1089 按名→索引比对）——本管道对 code 段
 //     逐指令 diff 即三者共同的行为锚。
@@ -42,10 +43,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
+
+	canon "vitro/scripts/internal/canonicalize"
 )
 
 func main() {
@@ -340,37 +342,26 @@ func selftestInject(raw []byte) []byte {
 // ---------------------------------------------------------------------------
 
 var (
-	canonicalizeOnce sync.Once
-	canonicalizePath string
-	rustCliOnce      sync.Once
-	rustCliPath      string
+	rustCliOnce sync.Once
+	rustCliPath string
 )
 
-func canonicalizeBinary() string {
-	canonicalizeOnce.Do(func() {
-		exe := filepath.Join(os.TempDir(), "codegen_diff_canonicalize")
-		if runtime.GOOS == "windows" {
-			exe += ".exe"
-		}
-		cmd := exec.Command("go", "build", "-o", exe, "./scripts/canonicalize")
-		var buf bytes.Buffer
-		cmd.Stderr = &buf
-		if err := cmd.Run(); err != nil {
-			fail("canonicalize 预构建失败: %v\n%s", err, buf.String())
-		}
-		canonicalizePath = exe
-	})
-	return canonicalizePath
-}
-
+// canonicalize：本地包装（fail loud 口径与抽库前一致——归一失败即拒绝给
+// 判定）。归一逻辑单源在 scripts/internal/canonicalize。
+//
+// 2026-09-22 抽库改造：原实现每次调用都 exec.Command 起一个新进程，旧 CLI
+// 单次实测 **224.6ms**（那基本就是进程创建成本）；进程内单次实测
+// **4.6ms / 225KB 载荷**。本驱动**每文件调 2 次**（Rust 侧 + MoonBit 侧，见
+// sides 装配处）；CI 五条调用合起来 = 四语料 600（baseline 365 + knr 81 +
+// leetcode 138 + gap 16）+ 骨架 13 = **613 文件 → 1226 次进程创建**。
+//
+// 口径：改造省下的是这 1226 次**进程创建**，不是"归零"——进程内仍有
+// ~4.6ms/次。判定语义不变（锚逐字节，SAME/AGREE-ERROR/ONE-SIDED/CONTENT-DIFF
+// 四类计数均未变）。
 func canonicalize(raw []byte) []byte {
-	cmd := exec.Command(canonicalizeBinary())
-	cmd.Stdin = bytes.NewReader(raw)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
+	out, err := canon.Bytes(raw)
 	if err != nil {
-		fail("canonicalize 失败: %v\nstderr: %s\ninput: %s", err, stderr.String(), preview(raw))
+		fail("canonicalize 失败: %v\ninput: %s", err, preview(raw))
 	}
 	return out
 }

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "error_codes": {
+    "authority": "native/crates/vitro_shared/src/error_codes.rs",
+    "authority_note": "C 头原注释写 `Keep in sync with native/src/diagnostics/error_codes.rs`——该路径只是 `pub use vitro_shared::error_codes::*;` 的一行 re-export，真实枚举在 vitro_shared（2026-09-22 勘误）。",
+    "c_header": "native/include/vitro_capi.h",
+    "enum_start": "typedef enum {",
+    "enum_end": "} VitroErrorCode;",
+    "c_prefix": "VITRO_",
+    "excluded_patterns": [
+      {
+        "pattern": "^Unknown$",
+        "reason": "哨兵值 0（Rust 内部默认）——无对应 C 场景，C 头不暴露"
+      },
+      {
+        "pattern": "^E4[0-9]{3}_",
+        "reason": "E4xxx C++ 专属码（*NotSupported 族 + C++ 内存错误）——C++ 已裁定砍除（总计划 §9），C 头不暴露"
+      }
+    ],
+    "_judgement": [
+      "三类判据：① C 头项必须存在于权威源（伪造码即红）；② 同名必须同值（值抄错即红，最危险的一类——下游按数值判错型）；",
+      "③ 源有而 C 头无的项必须匹配豁免规则（未登记缺口即红）。空集不得绿。",
+      "2026-09-22 实测：值一致性 73/73 全对（零漂移），缺口 64 项中 39 项属豁免（1 哨兵 + 38 C++），",
+      "其余 25 项（E1011-E1022 预处理器 + E3058-E3072 C 侧语义，含 UseAfterFree/DoubleFree/BufferOverflow）",
+      "为无正当理由的缺失，已补入 C 头（73 → 98 项）。"
+    ]
+  },
+  "bindings": {
+    "go_binding": "scripts/internal/capi/capi.go",
+    "c_header": "native/include/vitro_capi.h",
+    "symbol_pattern": "\"(vitro_[a-z0-9_]+)\"",
+    "c_header_func_pattern": "VITRO_API\\s+[^;\\n]*?(vitro_[a-z0-9_]+)\\s*\\(",
+    "_judgement": [
+      "判据：Go 侧以字符串字面量引用的每个 DLL 符号（bind/NewProc/requiredSymbols）都必须在 C 头有 VITRO_API 声明。",
+      "只判单向 ⊆：C 头声明的函数多于 Go 绑定当前用到的是正常的（绑定按需引入）。",
+      "反向（Go 用了 C 头没声明的符号）即红——那是运行时 Find 失败的隐患，只在跑起来才暴露。"
+    ]
+  }
+}

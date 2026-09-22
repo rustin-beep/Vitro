@@ -71,7 +71,17 @@ VITRO_API VitroSession* vitro_session_create();
 VITRO_API void vitro_session_destroy(VitroSession* s);
 
 // ========== 错误码 ==========
-/// C-compatible error code enumeration. Keep in sync with native/src/diagnostics/error_codes.rs.
+//
+// C-compatible error code enumeration.
+//
+// 权威源：`native/crates/vitro_shared/src/error_codes.rs`（原注释指向
+// `native/src/diagnostics/error_codes.rs`——该文件只是
+// `pub use vitro_shared::error_codes::*;` 的一行 re-export，属勘误，
+// 2026-09-22 修正）。
+// C 头**有意不暴露**两类：① `Unknown = 0` 哨兵（Rust 内部默认值，无 C 场景）；
+// ② `E4xxx` C++ 专属码（C++ 已裁定砍除，总计划 §9）。
+// 其余必须与源**同名同值**——一致性由 `go run ./scripts/gen_capi_bindings -check`
+// 机判（2026-09-22 接线；该闸同时校验 Go 绑定的 DLL 符号名均在此有声明）。
 
 typedef enum {
     VITRO_E1001_UnknownChar        = 1001,
@@ -82,6 +92,19 @@ typedef enum {
     VITRO_E1006_UnsupportedFeature = 1006,
     VITRO_E1007_ComplexDeclarator = 1007,
     VITRO_E1010_UnterminatedComment = 1010,
+    VITRO_E1011_UnmatchedConditional = 1011,
+    VITRO_E1012_DuplicateElse      = 1012,
+    VITRO_E1013_UnclosedConditional = 1013,
+    // E2（模块化预处理器）
+    VITRO_E1014_CondExprError      = 1014,
+    VITRO_E1015_IncludeCycle       = 1015,
+    VITRO_E1016_TokenPasteInvalid  = 1016,
+    VITRO_E1017_ExpandDepthExceeded = 1017,
+    VITRO_W1018_MacroShadowing     = 1018,
+    VITRO_W1019_MacroArgSideEffect = 1019,
+    VITRO_E1020_StaticAssertFailed = 1020,
+    VITRO_E1021_IncludeNotFound    = 1021,
+    VITRO_E1022_TemplateInstantiationLimit = 1022,
 
     VITRO_E2001_ExpectedType       = 2001,
     VITRO_E2002_ExpectedArraySize  = 2002,
@@ -150,6 +173,20 @@ typedef enum {
     VITRO_W3055_VoidPointerCast    = 3055,
     VITRO_W3056_UnsignedToInt      = 3056,
     VITRO_H3057_ImplicitConversionHint = 3057,
+
+    VITRO_E3058_StaticFuncAccess   = 3058,
+    VITRO_E3059_StaticGlobalAccess = 3059,
+    VITRO_E3060_UseAfterFree       = 3060,
+    VITRO_E3061_DoubleFree         = 3061,
+    VITRO_E3062_PrintfFormatMismatch = 3062,
+    VITRO_E3063_ScanfFormatMismatch = 3063,
+    VITRO_W3064_DoublePointerCast  = 3064,
+    VITRO_E3065_ConstViolation     = 3065,
+    VITRO_E3066_CallNonFunction    = 3066,
+    VITRO_W3067_PointerTypeMismatch = 3067,
+    VITRO_E3070_BufferOverflow     = 3070,
+    VITRO_E3071_UndefinedLabel     = 3071,
+    VITRO_E3072_StructSelfContain  = 3072,
 } VitroErrorCode;
 
 // ========== 错误码表导出（下游需求清单 B1）==========

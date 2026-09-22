@@ -62,23 +62,11 @@ func main() {
 	if err != nil {
 		fatal("基线缺失 %s（首建：go run ./scripts/toolchain_probe --update-baseline）: %v", baselinePath, err)
 	}
-	got := strings.TrimSpace(string(raw))
-	wantN := strings.TrimSpace("# toolchain_probe 版本基线（--update-baseline 迁移；日期随迁移更新）\n" + want)
-	// 基线含注释头——比对去注释行
-	var wantLines, gotLines []string
-	for _, l := range strings.Split(wantN, "\n") {
-		if !strings.HasPrefix(l, "#") {
-			wantLines = append(wantLines, l)
-		}
-	}
-	for _, l := range strings.Split(got, "\n") {
-		if !strings.HasPrefix(l, "#") {
-			gotLines = append(gotLines, l)
-		}
-	}
-	if strings.Join(wantLines, "\n") != strings.Join(gotLines, "\n") {
+	got := string(raw)
+	wantN := "# toolchain_probe 版本基线（--update-baseline 迁移；日期随迁移更新）\n" + want
+	if !baselineMatches(got, wantN) {
 		fmt.Println("[红] 工具链版本漂移（A8：静默升级当日显形）")
-		fmt.Printf("  基线: %s\n  实测: %s\n", strings.Join(gotLines, " | "), strings.Join(wantLines, " | "))
+		fmt.Printf("  基线: %s\n  实测: %s\n", strings.Join(baselineLines(got), " | "), strings.Join(baselineLines(wantN), " | "))
 		fmt.Println("  处置：核对 changelog 后 --update-baseline 迁移，并跑全门禁")
 		fail++
 	} else {
@@ -143,6 +131,28 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("toolchain_probe: PASS（版本锁定 + 索引预检 + ICE 特征 + 退出码四项绿）")
+}
+
+// baselineLines 解析基线文本为参与比较的行列表：CRLF 规范化（windows
+// runner 的 git autocrlf 在 checkout 时会把 LF 基线检出为 CRLF——行尾
+// \r 残留曾致版本一致也假红，2026-09-22 CI 实测，锚 toolchain_probe_test.go）
+// + 剔除注释行与空行。
+func baselineLines(raw string) []string {
+	raw = strings.ReplaceAll(raw, "\r\n", "\n")
+	var lines []string
+	for _, l := range strings.Split(strings.TrimSpace(raw), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") {
+			continue
+		}
+		lines = append(lines, l)
+	}
+	return lines
+}
+
+// baselineMatches 判定基线文件内容与运行时实测串是否一致。
+func baselineMatches(baselineRaw, actual string) bool {
+	return strings.Join(baselineLines(baselineRaw), "\n") == strings.Join(baselineLines(actual), "\n")
 }
 
 // isKnownICE：F8 link-core ICE 特征（勘察档案：moonc v0.10.13 跨文件

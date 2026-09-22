@@ -11,6 +11,8 @@ pub const SLOT_STRATEGY_VERSION : Int = 1
 
 pub fn compile(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[String])
 
+pub fn compile_library(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[String])
+
 // Errors
 
 // Types and methods

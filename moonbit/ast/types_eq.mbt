@@ -69,7 +69,10 @@ fn type_array_eq(a : Array[Type], b : Array[Type]) -> Bool {
 /// 模板实参判等（照搬 Rust `impl PartialEq for TemplateArg`：Type/Type
 /// 递归 type_eq、Int/Int 数值比、**Expr 形态恒 false**——未求值表达式
 /// 不参与判等）。
-pub fn template_arg_eq(a : TemplateArg, b : TemplateArg) -> Bool {
+/// **priv（2026-09-22 收面）**：唯一消费者是同包的 `template_arg_array_eq`，
+/// 包外零消费（`moonbit_surface` 判定）——已发布包的破坏性面收缩（0.x 阶段
+/// minor 可带 breaking）。白盒测试同包，不受影响。
+fn template_arg_eq(a : TemplateArg, b : TemplateArg) -> Bool {
   match (a, b) {
     (TArg(at), TArg(bt)) => type_eq(at, bt)
     (TInt(av), TInt(bv)) => av == bv

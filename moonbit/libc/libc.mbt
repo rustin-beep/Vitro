@@ -14,8 +14,16 @@
 ///
 /// 边界登记：本表只承载 **typeck 消费面**（visit_call 62-arm + 特殊臂
 /// 的名与签名）；host_func_id 110 路由表 / BYTECODE_LIBC_ALL_FUNCS 88
-/// 函数索引（Rust `is_builtin_func` 的并集判据另一半）随 S5/S6 发射与
-/// 执行侧片入库——届时以本表为单源回填，消除第四套真相源。
+/// 函数索引（Rust `is_builtin_func` 的并集判据另一半）在 S5 发射侧各自
+/// 照搬成表，S6 执行侧再消费。
+/// **「以本表为单源回填」的落地偏差登记（2026-09-22 实测）**：计划原意是
+/// 让下游两表从本表派生以消第四套真相源，但 libc 在 L5、codegen/bytecode
+/// 在 L6——后者可 import 前者、反之不可，故本表**无法派生**下游两表。
+/// 单源只能实现为**对账**：三表一致性由
+/// `go run ./scripts/moonbit/libc_single_source -check` 机判（CI 接线，
+/// 2026-09-22）。真正的派生待 S6 建 host 包时重排归属（host 路由表上提为
+/// L7 `vitro/engine/host` 独立包，届时两表可在同层收敛）。
+/// 现状诚实表述：**第四套真相源已由闸门约束，但未消除**。
 ///
 /// `max_args = -1` 表示变参（无上限）；实参**类型**期望与格式串解析、
 /// 隐式转换插入、逐函数诊断文案属 typeck 包的检查逻辑（照搬自同名
@@ -151,11 +159,20 @@ fn lookup(name : String) -> LibcSig? {
 
 ///|
 /// builtin 放行名全集（175 名 = Rust `is_builtin_func` 判据逐名照搬：
-/// host_func_id 109 路由名 ∪ BYTECODE_LIBC_ALL_FUNCS 88 名，重叠 22）。
+/// host_func_id 路由名 ∪ BYTECODE_LIBC_ALL_FUNCS 88 名）。
+/// **计数口径（2026-09-22 三表闸实测勘误）**：host 侧是 109 臂 / **110 名**
+/// ——Rust `by_user_name` 有一个别名臂 `"print_int" | "__vitro_output" =>
+/// Some(OUTPUT)`，生成物展开为两臂；故 110 + 88 - 重叠 22 = 176，再剔
+/// `print_int` = **175**。
+/// `print_int` 不在本集：Rust `by_user_name` **确有**该别名（旧注释称
+/// "Rust host_func_id 无此名"**为误**，2026-09-22 实测）——但它不属于
+/// `is_builtin_func` 的放行判据（调用放行靠 funcs 表等其他判据）。
 /// 含 C++ 容器 mangled 名（vitro_*__* / __ctor__vitro_* 等 ~64 名）——
 /// **判据语义照搬**（C 模式下不活跃，收录不引入 C++ 依赖；剔除反而
-/// 会在 S9 C++ 片补漏）。`print_int` 不在此集（Rust host_func_id 无此
-/// 名——它只在 visit_call 检查臂；调用放行靠 funcs 表等其他判据）。
+/// 会在 S9 C++ 片补漏）。
+/// **本表与 host/bytecode 两表的一致性不再是注释里的承诺**：由
+/// `go run ./scripts/moonbit/libc_single_source -check` 机判（CI 接线，
+/// 2026-09-22；等式 + 交集计数 + PURE 子集 + 空集不得绿，J9 三路证红）。
 let builtin_all : Set[String] = Set([
   "__ctor__vitro_list_int", "__ctor__vitro_list_int__move", "__ctor__vitro_list_node__int__move",
   "__ctor__vitro_string", "__ctor__vitro_string__move", "__ctor__vitro_vec_char",

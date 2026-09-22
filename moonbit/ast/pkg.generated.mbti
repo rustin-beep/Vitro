@@ -21,8 +21,6 @@ pub fn stmt_depth(Stmt) -> Int
 
 pub fn stmt_type_depth(Stmt) -> Int
 
-pub fn template_arg_eq(TemplateArg, TemplateArg) -> Bool
-
 pub fn type_depth(Type) -> Int
 
 pub fn type_eq(Type, Type) -> Bool

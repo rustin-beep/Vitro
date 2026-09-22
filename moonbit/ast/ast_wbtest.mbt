@@ -187,3 +187,12 @@ test "expr_accessors" {
   let s = StringLiteral("hi", loc, Type::pointer_to(Type::char()))
   assert_true(type_eq(s.ty(), Type::pointer_to(Type::char())))
 }
+
+///|
+/// **B#12 哨兵证红（2026-09-22，架构审阅 v2 §2.6）**：空 `class_size_map` +
+/// 类类型 → 必须 abort。C-only 阶段无类，此路径**不应到达**——本用例的作用是
+/// 证明哨兵**真的会响**（护栏可触发性义务 / J9），而非覆盖日常路径。
+/// 对照：Rust 侧此处静默返回 0（本处**有意分叉**，理由见 types_predicates.mbt）。
+test "panic class size with empty map" {
+  ignore(compute_type_size(Class("Foo", false), Map([]), Map([]), Map([])))
+}

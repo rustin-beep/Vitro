@@ -286,11 +286,26 @@ fn compute_type_size_impl(
     Class(name, _) =>
       match class_size_map.get(name) {
         Some(s) => s
-        None => 0
+        // **B#12 哨兵（2026-09-22，架构审阅 v2 §2.6）**：C-only 阶段无类，
+        // `class_size_map` 恒空——两处调用点均传空表（`codegen/func.mbt` 传
+        // `{}`、`typeck/context.mbt` 传 `Map([])`）。Rust 侧此处**静默返回 0**，
+        // 本处**有意分叉**：C# 批引入类后若忘接 class_size_map，静默 0 会给出
+        // 错误尺寸，且 C-only 语料**永远测不出**。故此处 fail loud（预留位
+        // tripwire 制度，总计划 §12）——"非空场景到此即红"。
+        None =>
+          abort(
+            "compute_type_size：类「\{name}」无尺寸登记且 class_size_map 为空——C-only 阶段不应出现类类型；C# 批须接入真实 class_size_map（B#12 哨兵）",
+          )
       }
     Reference(_, _) | RValueRef(_) => 4 // 引用底层是指针
     Auto => 0 // typeck 替换前不应出现在 codegen
-    TemplateId(_, _, _) => 0 // 应先单态化为 Class
+    // **B#12 哨兵（同批）**：TemplateId 应先单态化为 Class；C-only 阶段模板
+    // 零迁移（F-2 砍 C++），走到这里即流程错误——静默 0 会把它掩盖。
+    // （Rust 侧同静默，本处有意分叉。）
+    TemplateId(_, _, _) =>
+      abort(
+        "compute_type_size：TemplateId 未单态化（应先转为 Class）——C-only 阶段不应出现（B#12 哨兵）",
+      )
     Typeof(_, _, _) => 0 // 推导类型布局在 typeck 后——parser 空表场景不可达
   }
 }

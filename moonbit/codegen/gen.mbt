@@ -657,3 +657,22 @@ pub fn compile(
   let gen = BytecodeGen::new()
   gen.generate(program)
 }
+
+///|
+/// library mode 编译入口（预编译 Bytecode Libc 自身用）——与 `compile` 的
+/// 唯一差别是初始化按 library mode 走：不预注册 `BYTECODE_LIBC_ALL_FUNCS`
+/// 固定索引段（`next_func_idx` 自 0 起）、全局偏移自 0 起（不预留
+/// `BYTECODE_LIBC_GLOBALS_RESERVED`）。语义与 Rust `BytecodeGen::with_mode(true)`
+/// 逐项同构（Rust 侧该标志也**只改这两个初值**）。
+///
+/// **main 检查不豁免**（有意与 Rust 同构）：Rust 侧 `generate` 的「缺少 main
+/// 函数入口」检查同样无 library 分支——`vitro_cli export` 是靠**注入 stub
+/// main 再过滤**（`__export_main_stub.c` + code 截断 + func_table/func_index
+/// 删 main）绕过的，而非在 codegen 内放行。故本入口也要求调用方自带 main
+/// （libc 自举的 stub 口径见 `scripts/libc_boot_diff`）。
+pub fn compile_library(
+  program : @ast.ProgramNode,
+) -> (@bytecode.CompileOutput?, Array[String]) {
+  let gen = BytecodeGen::with_mode(true)
+  gen.generate(program)
+}

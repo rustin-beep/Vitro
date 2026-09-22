@@ -22,20 +22,34 @@
 /// 属预期红面基线期（同 S4 typeck_diff 模式），扩展批逐族收敛。
 fn main raise {
   let args = @env.args()
-  if args.length() < 3 {
-    println("用法: dump_compile <corpus_dir|file.c> <out_dir>")
+  // --library：library mode（预编译 Bytecode Libc 自身——不预注册固定索引段、
+  // 全局偏移自 0 起；见 @codegen.compile_library）。**main 检查不豁免**，与
+  // Rust `vitro_cli export` 的 stub 口径同构（那边也要求自带 main）。
+  let mut library = false
+  let positional : Array[String] = []
+  let mut idx = 1
+  while idx < args.length() {
+    if args[idx] == "--library" {
+      library = true
+    } else {
+      positional.push(args[idx])
+    }
+    idx = idx + 1
+  }
+  if positional.length() < 2 {
+    println("用法: dump_compile <corpus_dir|file.c> <out_dir> [--library]")
     fail("参数不足")
   }
-  if args.length() > 3 {
+  if positional.length() > 2 {
     // 防御（2026-09-21 实踩：两语料目录连传时 out_dir 落成语料目录，
     // 81 个 dump 产物污染 native/tests/cases——本工具契约单语料 + 单
     // 输出目录，多余参数直接 fail loud）
     fail(
-      "参数过多：期望 <corpus_dir|file.c> <out_dir> 两个参数（实测 \{args.length() - 1} 个）",
+      "参数过多：期望 <corpus_dir|file.c> <out_dir> [--library]（实测 \{positional.length()} 个位置参数）",
     )
   }
-  let target = args[1]
-  let out_dir = args[2]
+  let target = positional[0]
+  let out_dir = positional[1]
   if target == out_dir {
     fail("输出目录与语料目录相同——拒绝写入门禁")
   }
@@ -71,7 +85,7 @@ fn main raise {
     } else {
       @lexer.tokenize(src)
     }
-    let out = dump_one(lexed)
+    let out = dump_one(lexed, library)
     // stem 含 .c（F11 规格：与 parser_diff/typeck_diff 既有对拍约定同源）
     @fs.write_string_to_file("\{out_dir}/\{stem}.compile.json", out)
   }
@@ -80,7 +94,9 @@ fn main raise {
 
 ///|
 /// 单输入 dump：管线逐层 fail loud——stage 标注失败层。
-fn dump_one(lexed : @lexer.LexResult) -> String {
+/// `library`：以 library mode 生成（见 @codegen.compile_library——预编译
+/// Bytecode Libc 自身用；不预注册固定索引段、全局偏移自 0 起）。
+fn dump_one(lexed : @lexer.LexResult, library : Bool) -> String {
   if !lexed.errors.is_empty() {
     return fail_json(
       "lex",
@@ -108,7 +124,11 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
       type_errors.length().to_string() + " 个类型错误",
     )
   }
-  let (output, gen_errors) = @codegen.compile(typed)
+  let (output, gen_errors) = if library {
+    @codegen.compile_library(typed)
+  } else {
+    @codegen.compile(typed)
+  }
   match output {
     // 包装层携带 slot_strategy（槽位策略版本进产物出口——§6"版本化"
     // 的消费点；对拍面只取 .dump，本字段不参与 14 键比对，v2 切换时

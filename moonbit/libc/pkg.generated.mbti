@@ -13,6 +13,7 @@ pub fn is_libc_func(String) -> Bool
 // Errors
 
 // Types and methods
+type LibcSig
 
 // Type aliases
 

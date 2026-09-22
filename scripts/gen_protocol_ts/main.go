@@ -439,7 +439,9 @@ func writeOrCheck(root string, rd rulesDoc, rel, content string, checkOnly bool)
 			fmt.Printf("  !! %s 不存在或不可读（%v）——请跑 `go run ./scripts/gen_protocol_ts`\n", rel, err)
 			return false
 		}
-		if string(old) != content {
+		// 行尾归一化：core.autocrlf=true 的 checkout 会把 LF 产物翻成 CRLF，
+		// 逐字节比较即假红（与 toolchain_probe 2026-09-22 假红同款）。
+		if strings.ReplaceAll(string(old), "\r\n", "\n") != content {
 			fmt.Printf("  !! %s 与现场生成不一致（产物陈旧 / 手工改过）——请跑 `go run ./scripts/gen_protocol_ts`\n", rel)
 			return false
 		}
@@ -461,11 +463,11 @@ func selftest(root string, rd rulesDoc) int {
 	ts := genTS(rd, types)
 	meta := genMeta(rd, types)
 	baseOK := true
-	if old, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rd.OutTS))); err != nil || string(old) != ts {
+	if old, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rd.OutTS))); err != nil || strings.ReplaceAll(string(old), "\r\n", "\n") != ts {
 		fmt.Println("gen_protocol_ts: selftest ABORT——基线产物与现场生成不一致，先跑生成再自证")
 		baseOK = false
 	}
-	if old, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rd.OutMeta))); err != nil || string(old) != meta {
+	if old, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rd.OutMeta))); err != nil || strings.ReplaceAll(string(old), "\r\n", "\n") != meta {
 		fmt.Println("gen_protocol_ts: selftest ABORT——基线 meta 产物不一致，先跑生成再自证")
 		baseOK = false
 	}

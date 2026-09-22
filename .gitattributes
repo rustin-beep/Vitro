@@ -9,3 +9,7 @@ moon.pkg text eol=lf
 # 文档插图 SVG：生成器（scripts/gen_svg）写 LF、facts check 按字节比对锚文本，
 # checkout 行尾翻转会让 diff 判整行改动（2026-09-20 入库批）
 *.svg text eol=lf
+# protocol TS 生成链：gen_protocol_ts 写 LF、-check 比较前归一化（生成器内已修）
+# + 此处锁 LF 双保险——core.autocrlf checkout 曾致 -check CRLF 假红
+# （2026-09-23，toolchain_probe 假红同款）
+protocol/** text eol=lf

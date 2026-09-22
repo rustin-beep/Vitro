@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "expected": 1,
+  "_note": "MoonBit cmd/dump_compile 包装层 slot_strategy 的期望值（= codegen 包 SLOT_STRATEGY_VERSION 常量）。本值由人工维护：槽位策略变更（v1→v2）时必须同步改本文件，否则 codegen_diff 判红——这正是「分档」的闸门。",
+  "_rust_side_gap": "Rust vitro_cli dump-compile 产物平铺 14 键、**无**该字段（native/ 下 slot_strategy 零命中），故两侧无法直接断言等值；本表以人工期望值代表 Rust 侧隐含的 v1。补 Rust 侧字段后（架构审阅 v2 A 组 #2 的剩余半），本表可退化为「两侧等值」的强断言。",
+  "_whitelist_crosspoint": "global_data_end 是 v1/v2 的已知交叉点（堆起点 = max(HEAP_START, align4(global_data_end))，布局随槽位策略变化）——v2 切换时 A 级对拍白名单须显式列出该项豁免，当前 v1 下无需。",
+  "_v2_plan": "v2 = 作用域化 LIFO 池（勘察 §⑤-2 / U3#1），八条槽位事故回归随其落地；切换前提是 Rust oracle 退役（v2 必红 A 级 code 段逐位对拍），故迁移期恒为 1。"
+}

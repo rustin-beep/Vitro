@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "_comment": "libc 自举对拍规则（S5 尾项『libc 自举』· 2026-09-22）。改源目录/stub 文本/比对字段只改本文件。",
+  "src_dir": "native/runtime_libc/src",
+  "stub_source": "int main() { return 0; }\n",
+  "_stub_note": "Rust `vitro_cli export` 的口径（vitro_cli.rs:285-289）：BytecodeGen 要求 main，故注入 stub unit `__export_main_stub.c` 后再过滤。**拼接方式须与 Rust 一致**：主源末尾换行之后直接接 stub（不前插空行）——否则 stub 区指令的 loc.line 差 1（实测踩过，是本驱动唯一的注入口径坑）。",
+  "compare_fields": [
+    "version",
+    "code",
+    "func_table",
+    "func_index",
+    "globals_init_32",
+    "globals_init_64",
+    "string_data",
+    "f64_constants",
+    "i64_constants"
+  ],
+  "_compare_note": "两侧产物形态不同（Rust export 11 键 / MoonBit dump 14 键），本表是**交集字段**。Rust 侧多 code_len、globals_size（可由 code/data 推导）；MoonBit 侧多 source_map、symbols、struct_defs、union_defs、global_data_end（dump-compile 专有，export 不导出）。",
+  "_filter_note": "MoonBit 侧需按 Rust export 口径过滤：① code[0] 若为 Jump（入口 wrapper）→ 记 operand 为 wrapper_ip，截断 code 到 wrapper_ip；② code[0] 置 Nop；③ func_table / func_index 删 main。Rust 侧产物已完成同等过滤，直接用。",
+  "_libmode_note": "MoonBit 侧以 `dump_compile --library`（library mode：不预注册 BYTECODE_LIBC_ALL_FUNCS 固定索引段、全局偏移自 0 起）编译——这正是 `--builtin-libc` 在 Rust 侧靠删除预注册项达成的同一语义。main 检查两侧都不豁免（靠 stub 绕过）。",
+  "_scope_note": "对拍面 = native/runtime_libc/**src**（C 侧 3 源）。vitro/ 子目录是 C++ 容器（list/sort_int/string/vector），随砍 C++ 裁定零迁移（F-2），不在本驱动范围。"
+}

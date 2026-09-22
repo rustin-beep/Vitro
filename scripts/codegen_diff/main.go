@@ -34,6 +34,15 @@
 // selftest（J9 埋雷）：选一条"当前 SAME 且 Rust ok"的样本，Rust 侧
 // code[1].operand 注入 +1 → 必须 DIFF-CONTENT 红（由绿转红的干净证红，
 // 注入本就 DIFF 的样本无法归因——F3 复盘）。
+//
+// 槽位策略版本对账（2026-09-22 S5 收尾批 · 架构审阅 v2 A 组 #2）：
+// MoonBit 侧包装层的 slot_strategy 与
+// scripts/codegen_diff/slot_strategy.json 的期望值对账，不符即红
+// （**空集亦红**）。**此前该字段被本驱动完全丢弃**——dump_compile 注释
+// 承诺的「v2 切换时 codegen_diff 可按此分档」实测为零，属"注释声明的
+// 机制未落地"。Rust 侧产物无该字段（平铺 14 键），故当前是单向对账；
+// 补 Rust 字段后升级为两侧等值断言。J9 证红：把 JSON 的 expected 改为
+// 非当前值 → 必红（exit 1），恢复即绿（已留痕）。
 package main
 
 import (
@@ -101,6 +110,7 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 		aggr string // ok=false 时的失败层（lex/parse/type/gen）
 	}
 	sides := make([][2]side, len(files))
+	moonSlots := map[int]int{} // 槽位策略版本 → 成功样本数（-1 = 字段缺失）
 	for i, f := range files {
 		stem := stemOf(f)
 		moonRaw, err := os.ReadFile(filepath.Join(moonDir, stem+".c.compile.json"))
@@ -111,7 +121,10 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 			}
 		}
 		rustOK := len(rustOuts[i]) > 0
-		moonOK, moonDumpRaw, moonStage := parseMoonDoc(moonRaw)
+		moonOK, moonDumpRaw, moonStage, moonSlot := parseMoonDoc(moonRaw)
+		if moonOK {
+			moonSlots[moonSlot]++
+		}
 		sides[i][0] = side{rustOK, nil, ""}
 		if rustOK {
 			sides[i][0].dump = canonicalize(rustOuts[i])
@@ -182,6 +195,7 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 	if selftest && !injectRed {
 		fail("selftest 未证红——注入样本 %s 未判 DIFF-CONTENT，锚失效", filepath.Base(files[injectIdx]))
 	}
+	slotOK := checkSlotStrategy(moonSlots)
 	fmt.Printf("codegen_diff: SAME=%d AGREE-ERROR=%d ONE-SIDED=%d CONTENT-DIFF=%d（语料 %s, %d 文件）\n",
 		nSame, nAgree, nOneSided, nContent, corpus, len(files))
 	if nContent > 0 {
@@ -190,6 +204,10 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 	}
 	if nOneSided > 0 && !baseline {
 		fmt.Println("codegen_diff: FAIL——能力缺口（one-sided）未豁免；基线期可显式 --baseline")
+		return 1
+	}
+	if !slotOK {
+		fmt.Println("codegen_diff: FAIL——槽位策略版本未过闸（见上方 slot_strategy 行）")
 		return 1
 	}
 	fmt.Println("codegen_diff: PASS")
@@ -280,19 +298,24 @@ func rustFailStage(stderrRaw []byte, f string) string {
 // **必须走 json.RawMessage**：map[string]any 往返会把 u64 位模式
 // （globals_init_64 第二元，> 2^53）重编为 float64 最短十进制（末位漂移，
 // 实测 4609434218613702656 → 4609434218613702700）——产物字节失真。
-func parseMoonDoc(raw []byte) (bool, []byte, string) {
+func parseMoonDoc(raw []byte) (bool, []byte, string, int) {
 	var doc struct {
-		OK    bool            `json:"ok"`
-		Stage string          `json:"stage"`
-		Dump  json.RawMessage `json:"dump"`
+		OK           bool            `json:"ok"`
+		Stage        string          `json:"stage"`
+		SlotStrategy *int            `json:"slot_strategy"`
+		Dump         json.RawMessage `json:"dump"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		fail("MoonBit 输出解析失败: %v (%s)", err, preview(raw))
 	}
 	if !doc.OK {
-		return false, nil, doc.Stage
+		return false, nil, doc.Stage, -1
 	}
-	return true, doc.Dump, ""
+	slot := -1
+	if doc.SlotStrategy != nil {
+		slot = *doc.SlotStrategy
+	}
+	return true, doc.Dump, "", slot
 }
 
 // selftestInject：Rust 侧产物 code[1].operand +1。RawMessage 分段重组——
@@ -335,6 +358,74 @@ func selftestInject(raw []byte) []byte {
 		fail("selftest 注入顶层重序列化失败: %v", err)
 	}
 	return re
+}
+
+// ---------------------------------------------------------------------------
+// 槽位策略版本对账（S5 收尾批 · 架构审阅 v2 A 组 #2）
+// ---------------------------------------------------------------------------
+
+// slotRulesPath：期望值外置（规则与代码分离——本仓判定型脚本纪律）。
+const slotRulesPath = "scripts/codegen_diff/slot_strategy.json"
+
+type slotRules struct {
+	Schema   int `json:"schema"`
+	Expected int `json:"expected"`
+}
+
+func loadSlotExpect() slotRules {
+	raw, err := os.ReadFile(slotRulesPath)
+	if err != nil {
+		fail("读槽位策略期望失败（须在仓库根运行）: %v", err)
+	}
+	var r slotRules
+	if err := json.Unmarshal(raw, &r); err != nil {
+		fail("槽位策略期望解析失败: %v", err)
+	}
+	if r.Schema != 1 {
+		fail("槽位策略期望 schema 不支持: %d（期望 1）", r.Schema)
+	}
+	return r
+}
+
+// checkSlotStrategy：MoonBit 侧产物包装层 slot_strategy 与期望值对账。
+//
+// 为什么需要它：cmd/dump_compile 自 S5 开工批起就在包装层携带该字段，其
+// 注释承诺「对拍面只取 .dump，本字段不参与 14 键比对，v2 切换时
+// codegen_diff 可按此分档」——但本驱动此前把外层整个丢弃，**该承诺实测
+// 为零**（S5 收尾批复核，2026-09-22）。本检查把「槽位策略版本」变成机判
+// 事件：策略变更（v1→v2）必须显式改 slot_strategy.json 过闸，否则红。
+//
+// 诚实边界：Rust 侧产物无该字段（平铺 14 键），故只能单向对账期望值，
+// 不能断言两侧等值——补 Rust 字段后本检查可升级（见 slot_strategy.json
+// 的 _rust_side_gap）。**空集不得绿**：所有成功样本都缺该字段即判红
+// （出口协议变更不得静默通过）。
+func checkSlotStrategy(seen map[int]int) bool {
+	expect := loadSlotExpect().Expected
+	nTotal := 0
+	for _, c := range seen {
+		nTotal += c
+	}
+	if nTotal == 0 {
+		fmt.Println("codegen_diff: slot_strategy=FAIL——无任何成功样本携带外层字段可供对账")
+		return false
+	}
+	var parts []string
+	ok := true
+	for v, c := range seen {
+		tag := fmt.Sprintf("%d×%d", v, c)
+		if v != expect {
+			tag += "(≠期望)"
+			ok = false
+		}
+		parts = append(parts, tag)
+	}
+	sort.Strings(parts)
+	fmt.Printf("codegen_diff: slot_strategy=%s（期望 %d；Rust 侧无该字段，见 slot_strategy.json）\n",
+		strings.Join(parts, ", "), expect)
+	if !ok {
+		fmt.Println("codegen_diff:   槽位策略已变更——须同步 codegen 包 SLOT_STRATEGY_VERSION、本 JSON，并重跑全量 A 级对拍（v2 前提见 JSON 的 _v2_plan）")
+	}
+	return ok
 }
 
 // ---------------------------------------------------------------------------

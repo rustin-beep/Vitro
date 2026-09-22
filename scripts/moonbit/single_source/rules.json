@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "_comment": "单一真相源清单（架构审阅 v2 A 组 #7 / 判据 C-04）。每条记：概念 × 两侧单源位置 × 同步方式 × 检测锚点。C-04 的裁决要点：项目 L1 判据『同一概念多真相来源』只覆盖**仓内同语言重复**，不覆盖『两侧各一份、靠人工同步』的跨语言孪生——本清单补这一层。",
+  "search_roots": ["native", "moonbit"],
+  "search_exclude_dirs": ["target", "_build", ".mooncakes", ".git", "node_modules"],
+  "entries": [
+    {
+      "id": "compute_type_size",
+      "concept": "类型尺寸/布局计算",
+      "kind": "enforced",
+      "def_pattern": "fn compute_type_size\\b",
+      "exclude_line_pattern": "&?self",
+      "allowed_def_files": [
+        "native/crates/vitro_ast/src/lib.rs",
+        "moonbit/ast/types_predicates.mbt"
+      ],
+      "_pattern_note": "\\b 使 compute_type_size_impl（两侧的递归实现）不匹配——它属于同一单源的内部实现，不是第二份真相。",
+      "_exclude_note": "exclude_line_pattern 排掉**方法**定义行（含 self 者）。实测案例：`native/crates/vitro_typeck/src/context.rs:8` 有 `pub fn compute_type_size(&self, ty) -> i32`——语义上确是**委托**（方法体收集三张表后调 `vitro_ast::compute_type_size`，报告 §2.3 判定正确），但它与单源**同名**（报告未点出这一细节）。同名方法 vs 自由函数是真实的**可读性债**：读者/工具易误认为存在两份实现。本闸按『自由函数定义唯一』判定，该方法不计入；命名碰撞另行登记，待 S6/S9 重排时可考虑改名（如 `TypeChecker::type_size`）。",
+      "rust_source": "native/crates/vitro_ast/src/lib.rs",
+      "moonbit_source": "moonbit/ast/types_predicates.mbt",
+      "sync": "照搬不私改（人工同步；Rust 侧为冻结 oracle）",
+      "consumers": [
+        "native/crates/vitro_codegen/src/lib.rs",
+        "native/crates/vitro_typeck/src/context.rs",
+        "moonbit/codegen/func.mbt",
+        "moonbit/typeck/context.mbt",
+        "moonbit/parser/decl.mbt"
+      ],
+      "_consumers_note": "moonbit/parser/decl.mbt 是报告〔补遗 b〕点名的**第三消费点**（static_assert 的 sizeof 折叠）；其『查不到即回退 None』不属 §2.6 哨兵缺失对象，但单源清单必须收录，否则 C# 改尺寸语义时此处是盲点。",
+      "anchor": "本闸（定义点文件集 == allowed_def_files）+ 报告 §2.3 实测",
+      "upstream_ref": "docs/current/07-质量与裁定/Vitro架构审阅报告v2.md §2.3 / C-03"
+    },
+    {
+      "id": "opcode_table",
+      "concept": "字节码编号表（132 条 + 空号 44–49）",
+      "kind": "registered",
+      "rust_source": "native/crates/vitro_runtime/src/opcode.rs",
+      "moonbit_source": "moonbit/opcode/opcode.mbt",
+      "sync": "照搬不重排（编号即契约，错一位即全线错）",
+      "anchor": "opcode 包白盒定点锚（Nop=0 … LShrQ=137；0..255 全空间互逆）+ 空号实测入档"
+    },
+    {
+      "id": "error_code_table",
+      "concept": "错误码表（137 臂）",
+      "kind": "registered",
+      "rust_source": "native/src/diagnostics/error_catalog.rs",
+      "moonbit_source": "moonbit/diag/error_code_gen.mbt",
+      "sync": "**生成**（非人工）：moonbit 侧为 gen_diag 生成物，文件头带源 sha256 落款，禁手改",
+      "anchor": "`go run ./scripts/moonbit/gen_diag -check`（源变产物变 / 篡改即红）"
+    },
+    {
+      "id": "catalog_cards",
+      "concept": "教学卡片目录（77 条）",
+      "kind": "registered",
+      "rust_source": "native/src/diagnostics/error_catalog.rs",
+      "moonbit_source": "moonbit/diag/catalog_gen.mbt",
+      "sync": "**生成**（moonbit 侧 gen_diag 产物，禁手改）",
+      "anchor": "gen_diag -check + E4 全量对拍（Rust serve error_catalog ↔ MoonBit export_catalog_json，77 条逐字节 diff 为空）"
+    },
+    {
+      "id": "host_route",
+      "concept": "Host 函数路由（110 常量 + PURE 短路表）",
+      "kind": "registered",
+      "rust_source": "native/crates/vitro_runtime/src/host_func_id.rs",
+      "moonbit_source": "moonbit/codegen/host_func_id_gen.mbt",
+      "sync": "**生成**（moonbit 侧 gen_host_route 产物，落款 sha + 内置 fmt，禁手改）",
+      "anchor": "`go run ./scripts/moonbit/gen_host_route -check`（三件套：落款 sha / fmt 内置 / 漂移红）",
+      "_move_note": "S6 建 vitro/engine/host 包时本表整体上提为 L7 单源，codegen 改 import（总计划 S5/S6 行已登记）。"
+    },
+    {
+      "id": "bytecode_libc_index",
+      "concept": "Bytecode Libc 固定索引（88 函数，索引自 1000 连续）",
+      "kind": "registered",
+      "rust_source": "native/crates/vitro_runtime/src/bytecode_libc_index.rs",
+      "moonbit_source": "moonbit/bytecode/libc_index.mbt",
+      "sync": "**生成**（Rust 侧为 scripts/precompile_bytecode_libc 产物，源 = native/runtime_libc 的 C 源；moonbit 侧照搬为数组单源 + 索引派生）",
+      "anchor": "bytecode 白盒锚（Rust 源 88 对硬编码对账，数组/派生规则漂移即红）+ `go run ./scripts/precompile_bytecode_libc --check`（source_digest）",
+      "_index_note": "索引值**不是稳定 ABI**（勘察 §8.2 三冻第三条：目录更名曾致整体 +1 漂移）——比对按『名字→索引』映射而非裸数值。"
+    },
+    {
+      "id": "libc_release_set",
+      "concept": "libc 放行名全集 + builtin 签名单表",
+      "kind": "registered",
+      "rust_source": "native/crates/vitro_typeck/src/builtin/",
+      "moonbit_source": "moonbit/libc/libc.mbt",
+      "sync": "照搬不私改（人工；三表关系见 anchor）",
+      "anchor": "`go run ./scripts/moonbit/libc_single_source -check`（builtin_all == host ∪ bytecode − excluded；交集计数 + PURE 子集 + 空集不得绿）",
+      "_gap_note": "计划原意『以 libc 表为单源**回填**下游两表』在分层约束下不可实现为派生（libc 在 L5、codegen/bytecode 在 L6，反向 import 非法）——只能实现为**对账**。派生待 S6 建 host 包时两表同层收敛。"
+    },
+    {
+      "id": "slot_strategy_version",
+      "concept": "槽位分配策略版本",
+      "kind": "registered",
+      "rust_source": "",
+      "moonbit_source": "moonbit/codegen/gen.mbt",
+      "sync": "**无 Rust 对应物**（Rust 产物平铺 14 键、无该字段）——本条的『单源』目前只在 MoonBit 侧",
+      "anchor": "codegen_diff 的 slot_strategy 对账（读产物包装层 ↔ scripts/codegen_diff/slot_strategy.json）+ codegen 白盒断言",
+      "_asymmetry": "诚实登记：这是**单向对账**而非两侧等值——Rust 侧补字段后（架构审阅 A 组 #2 剩余半）可升级。当前迁移期内 Rust 冻结、不会漂移，故风险低（故该剩余半建议降级为『Rust 退役前不做』）。"
+    }
+  ]
+}

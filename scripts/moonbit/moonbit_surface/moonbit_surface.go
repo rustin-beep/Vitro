@@ -27,8 +27,14 @@
 // 实际可收集合多出白名单 → 漏收（红）；白名单条目不在实际集合 → 过期
 // （红，须清理）。
 //
-// 已发布 5 包（source/opcode/diag/ast/lexer——0.1~0.3.0 在架）不在收面
-// 范围（弃期成本）；脚本默认全包审计（信息面），收面动作只针对未发布包。
+// **发布状态（2026-09-22 核实，原注释已过时）**：`vitro/engine` 已发布
+// 0.1.0–0.4.0（本机 registry 实测）。因 MoonBit 的 `moon publish` 是
+// **module 级**发布，**0.4.0（2026-09-21 15:49）起 module 下全部对外包
+// （16 个）已在架**——"未发布包零成本收面"的窗口正是赶在该发布之前用掉的
+// （S5 收尾批收面 27 符号 + 本闸 + `surface_edges.txt` 边清单，2026-09-21）。
+// 此后任何收面都是**对已发布包的破坏性变更**，须走版本化弃期；本闸的角色
+// 从"收面工具"转为"**防扩散闸**"——新 pub + 新消费边一律拦下要人工裁定。
+// 脚本默认全包审计（信息面）。
 package main
 
 import (
@@ -117,18 +123,43 @@ func main() {
 			}
 		}
 	}
-	// 各包符号 → 可收判定
+	// 各包符号 → 可收判定；closureSig = 因 pub 签名引用而必须保持 pub 的类型
 	collectable := map[string][]string{} // pkg → []sym
+	closureSig := map[string][]string{}  // pkg → []type（签名闭包，非收面对象）
 	for _, mbti := range pkgs {
 		pkg := strings.Split(filepath.Dir(mbti), string(filepath.Separator))[0]
-		f, err := os.Open(mbti)
+		data, err := os.ReadFile(mbti)
 		if err != nil {
 			fatal("读 %s: %v", mbti, err)
 		}
-		sc := bufio.NewScanner(f)
-		defer f.Close()
-		for sc.Scan() {
-			line := sc.Text()
+		lines := strings.Split(string(data), "\n")
+
+		// 第一遍：本包 pub 类型名。
+		pubTypes := map[string]bool{}
+		for _, line := range lines {
+			if m := reType.FindStringSubmatch(line); m != nil {
+				pubTypes[m[1]] = true
+			}
+		}
+		// 第二遍：**引用计数**——一个 pub 类型若在本包 mbti 里除自身定义行
+		// 之外还有出现（被 pub fn/const 签名、pub(all) struct 字段、enum
+		// 变体载荷引用），则它是**闭包**：私有化会让那处引用非法。
+		//
+		// 这是本闸的判定补全（2026-09-22）：原实现只覆盖"字段类型"闭包且
+		// 靠人工白名单登记（ParseError / LocalBuffer），**漏了函数签名与
+		// 枚举变体两类**——实测导致 `diag.CatalogEntry`/`Severity`/
+		// `SourceLang` 与 `source.Pos` 被误报成"可收"（照清单去收会直接
+		// 编译错：pub 函数不能返回私有类型）。
+		occur := map[string]int{}
+		for _, line := range lines {
+			for t := range pubTypes {
+				if hasWord(line, t) {
+					occur[t]++
+				}
+			}
+		}
+		// 第三遍：逐符号判定
+		for _, line := range lines {
 			var name, kind string
 			if m := reMethod.FindStringSubmatch(line); m != nil {
 				name, kind = m[1], "type" // 方法归属类型判定
@@ -141,8 +172,11 @@ func main() {
 			} else {
 				continue
 			}
-			_ = kind // 类型/方法/函数统一按名判定（类型有消费则成员跟随）
-			if used[pkg] != nil && (used[pkg][name]) {
+			if used[pkg] != nil && used[pkg][name] {
+				continue
+			}
+			if kind == "type" && occur[name] > 1 {
+				closureSig[pkg] = append(closureSig[pkg], name)
 				continue
 			}
 			collectable[pkg] = append(collectable[pkg], name)
@@ -158,6 +192,16 @@ func main() {
 			}
 		}
 		collectable[pkg] = dedup
+		sort.Strings(closureSig[pkg])
+		csDedup := closureSig[pkg][:0]
+		prev = ""
+		for _, s := range closureSig[pkg] {
+			if s != prev {
+				csDedup = append(csDedup, s)
+				prev = s
+			}
+		}
+		closureSig[pkg] = csDedup
 	}
 	if !check {
 		total := 0
@@ -169,6 +213,18 @@ func main() {
 			total += len(collectable[pkg])
 		}
 		fmt.Printf("moonbit_surface: %d 个无跨包消费 pub 符号（收面对象；-check 对账 surface_allowlist.txt）\n", total)
+		// 签名闭包（自动识别）——**不是收面对象**：私有化会让引用它的
+		// pub 函数/常量签名非法。列出供人工核对（此前靠白名单手工登记，
+		// 易漏且曾误报 4 个符号为"可收"）。
+		var csTotal int
+		for _, pkg := range sortedKeys(closureSig) {
+			if len(closureSig[pkg]) == 0 {
+				continue
+			}
+			fmt.Printf("[签名闭包·非收面] %s: %s\n", pkg, strings.Join(closureSig[pkg], ", "))
+			csTotal += len(closureSig[pkg])
+		}
+		fmt.Printf("moonbit_surface: 另 %d 个 pub 类型为签名闭包（保持 pub，不计入收面）\n", csTotal)
 		return
 	}
 	// -check：与白名单双向对账
@@ -212,6 +268,27 @@ func main() {
 		fatal("moonbit_surface: 对账不符（无主 %d + 边 %d）", bad, edgeBad)
 	}
 	fmt.Println("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致）")
+}
+
+// hasWord：词边界匹配（避免 `Severity` 命中 `SeverityX`）。
+func hasWord(s, w string) bool {
+	for idx := 0; ; {
+		i := strings.Index(s[idx:], w)
+		if i < 0 {
+			return false
+		}
+		pos := idx + i
+		beforeOK := pos == 0 || !isIdentByte(s[pos-1])
+		afterOK := pos+len(w) >= len(s) || !isIdentByte(s[pos+len(w)])
+		if beforeOK && afterOK {
+			return true
+		}
+		idx = pos + 1
+	}
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }
 
 // checkEdges：实际边集 ↔ ../scripts/moonbit/surface_edges.txt 双向对账。

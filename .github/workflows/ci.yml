@@ -204,7 +204,9 @@ jobs:
       - name: MoonBit typeck differential (E1-E4 full corpus)
         # 2026-09-20 审阅补线：typeck_diff（S4 对拍防线）此前零 CI 接线
         # （原排期"E1 全量对拍管道 CI 化待 S5 片后统一"，防线空窗期由
-        # 本步骤关闭）。四目录全量（598 语料）本地实测分钟级；依赖上方
+        # 本步骤关闭）。四目录全量（**600 语料**，2026-09-22 实测；早期文档
+        # 的 597/598 为各片收官时的 as-of 快照，非当前真值）本地实测分钟级；
+        # 依赖上方
         # Release 构建的 vitro_cli（serve 出口）+ MoonBit 工具链。
         shell: bash
         run: |
@@ -219,6 +221,8 @@ jobs:
         # 成员宽度形状锚）。骨架面保留（快失败冒烟）；本批 P1-1（union
         # 成员赋值宽度）正是四语料外接前的探针漏网——门禁全覆盖后再无
         # 形状盲区豁免。
+        # **依赖上方 Release 构建的 vitro_cli**（Rust 侧产物真值源）——与
+        # typeck_diff / libc_boot_diff 同一前提；缺 release 产物会 fail loud。
         shell: bash
         run: |
           go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton
@@ -240,6 +244,50 @@ jobs:
         # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
         shell: bash
         run: go run ./scripts/moonbit/moonbit_surface -check
+
+      - name: libc single-source reconciliation (3 name tables)
+        # 2026-09-22 S5 收尾批接线（S6 前置）：libc 放行判据在 Rust 侧是
+        # host_func_id 路由名 ∪ BYTECODE_LIBC_ALL_FUNCS 索引名的并集，
+        # MoonBit 侧照搬时手抄成 libc 包 builtin_all（175 名）——第四套
+        # 真相源且零对账。实测已因此失真：libc.mbt 包注释断言「print_int
+        # 不在此集（Rust host_func_id 无此名）」，而 Rust 侧 by_user_name
+        # 明确有 `"print_int" | "__vitro_output" => Some(OUTPUT)` 别名臂。
+        # 本步把「三表一致」变成机判红线（等式 + 交集计数 + PURE 子集 +
+        # 空集不得绿）；规则外置 rules.json，J9 三路证红已留痕。
+        shell: bash
+        run: go run ./scripts/moonbit/libc_single_source -check
+
+      - name: MoonBit package dependency direction (L0-L9 layering + acyclic)
+        # 2026-09-22 S5 收尾批接线（架构审阅 v2 A 组 #6）：总计划 §4 的硬
+        # 约束「依赖严格单向无环」此前**零 CI 校验**——越层或成环的依赖可
+        # 静默进来（口头纪律）。本步按外置分层表（rules.json，源 = 总计划
+        # §4 L0–L9）断言每个模块内依赖 go 向低层或同层，并 DFS 查环；
+        # 新包未登记分层即红，解析出 0 包/0 依赖亦红（空集不得绿）。
+        # cmd/* 为工具层豁免方向检查。J9 证红已留痕（注入 opcode→bytecode
+        # 同时触发越层与成环两条判据）。
+        shell: bash
+        run: go run ./scripts/moonbit/pkg_deps -check
+
+      - name: libc bootstrap parity (MoonBit library mode vs Rust export)
+        # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
+        # 自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」。两侧形态不
+        # 同（Rust export 11 键 / MoonBit dump 14 键），故以 stub main +
+        # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
+        # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
+        # 依赖 Rust release 二进制（与 codegen_diff 同）。
+        shell: bash
+        run: go run ./scripts/moonbit/libc_boot_diff
+
+      - name: Single-source-of-truth registry check
+        # 2026-09-22 S5 收尾批接线（架构审阅 v2 A 组 #7 / 判据 C-04）：项目 L1
+        # 判据「同一概念多真相来源」只覆盖**仓内同语言重复**，不覆盖跨语言
+        # 孪生——迁移期每个单源在 MoonBit 侧都有一份孪生，同步义务纯人工
+        # （"照搬不私改"）。本步把清单入版本控制并机判：enforced 条目的定义点
+        # **文件集**必须等于 allowed_def_files（**多一份实现 = 红**，少一份 =
+        # 单源被删/改名亦红）；registered 条目校验两侧声明路径存在。
+        # 清单：scripts/moonbit/single_source/rules.json；J9 证红已留痕。
+        shell: bash
+        run: go run ./scripts/moonbit/single_source -check
 
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前

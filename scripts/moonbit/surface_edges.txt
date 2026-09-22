@@ -62,6 +62,7 @@ dump_compile ast json_escape_string
 dump_compile bytecode compile_output_dump_json
 dump_compile codegen SLOT_STRATEGY_VERSION
 dump_compile codegen compile
+dump_compile codegen compile_library
 dump_compile env args
 dump_compile fs create_dir
 dump_compile fs is_dir

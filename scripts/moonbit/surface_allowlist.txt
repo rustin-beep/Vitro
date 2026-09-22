@@ -1,20 +1,24 @@
-# moonbit_surface 白名单：允许保持 pub 的"当前无跨包消费"符号。
-# 两类：① 已发布 5 包（source/opcode/diag/ast/lexer 0.1~0.3.0 在架）——
-#        收面须走版本化弃期，本批不动；② 类型闭包——pub(all) 字段/签名
-#        引用的类型必须 pub（ParseError 是 ParseResult.errors 字段类型、
-#        LocalBuffer 是 FuncMeta.local_buffers 字段类型）。
-# 其余"无跨包消费 pub"必须收（去 pub）——S5 收尾批收面（架构报告待办①）。
-# --- ① 已发布包不收 ---
-ast CatchClause
-ast VTable
-ast template_arg_eq
-diag CatalogEntry
-diag Severity
-diag SourceLang
+# moonbit_surface 白名单：**允许保持 pub 但当前无跨包消费**的符号（格式 `pkg sym`）。
+# -check 双向对账：实际可收清单多出白名单 → 漏收（红）；白名单条目不在
+# 可收清单 → 过期（红，须清理）。
+#
+# **2026-09-22 重构**：闸门新增**类型闭包自动识别**（见 moonbit_surface.go
+# 第二遍：pub 类型若被 pub fn/const 签名、pub(all) struct 字段、enum 变体载荷
+# 引用 → 自动归入「签名闭包·非收面」，**不再需要手工登记**）。故本表现在只
+# 承载「**技术上可收、但有意保留**」的符号——纯人工裁定项。
+# 此前手工登记的 parser ParseError / bytecode LocalBuffer / diag 三类型 /
+# source Pos / ast CatchClause / ast VTable 已全部由脚本自动识别并移出。
+#
+# 发布状态（2026-09-22 核实）：0.4.0（2026-09-21）起本 module 全部对外包已
+# 进架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更；0.x 阶段
+# minor 可带 breaking，须在 CHANGELOG 明示。
+#
+# --- 有意保留（人工裁定项）---
+# diag codes_without_catalog：教学卡片（catalog）的**覆盖率断言清单**（T2 口径
+#   ——"哪些码无卡片"是登记在案的缺口而非异常）。语义属对外可核对的教学契约，
+#   故保留 pub；本仓内当前无跨包消费者。
 diag codes_without_catalog
-source Pos
+#
 # （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
 #  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
-#  曾于 176fbdf 误判死码删除、审阅批四恢复。）# --- ② 类型闭包保留 ---
-parser ParseError
-bytecode LocalBuffer
+#  曾于 176fbdf 误判死码删除、审阅批四恢复。）

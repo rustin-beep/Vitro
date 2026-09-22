@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "_comment": "libc 三名单单源对账规则（S5 收尾批·S6 前置）。改名/搬移锚点或期望值时改本文件，不改判定代码。",
+  "sources": {
+    "builtin_all": {
+      "file": "moonbit/libc/libc.mbt",
+      "anchor_start": "let builtin_all : Set[String] = Set([",
+      "anchor_end": "])",
+      "kind": "string_list"
+    },
+    "host_names": {
+      "file": "moonbit/codegen/host_func_id_gen.mbt",
+      "anchor_start": "fn host_func_id_by_user_name",
+      "kind": "match_arms",
+      "_note": "取函数体内所有 `\"name\" => Some(HOST_X)` 臂的用户名；Rust 源的一个臂可含多个名字（如 `\"print_int\" | \"__vitro_output\"`），生成物展开为多臂，故本表是『名字集』口径。"
+    },
+    "bytecode_names": {
+      "file": "moonbit/bytecode/libc_index.mbt",
+      "anchor_start": "pub let bytecode_libc_all_funcs : Array[String] = [",
+      "anchor_end": "]",
+      "kind": "string_list"
+    },
+    "pure_names": {
+      "file": "moonbit/codegen/host_func_id_gen.mbt",
+      "anchor_start": "let bytecode_libc_pure_funcs : Array[String] = [",
+      "anchor_end": "]",
+      "kind": "string_list"
+    }
+  },
+  "excluded_from_union": ["print_int"],
+  "_excluded_note": "libc.builtin_all 的语义是 Rust `is_builtin_func` 的调用放行判据；`print_int` 只在 visit_call 检查臂、不在放行集（Rust by_user_name 有该别名，故 host 名集含它，需从并集中剔除才能与 builtin_all 相等）。",
+  "expect": {
+    "host_intersect_bytecode": 22
+  }
+}

@@ -7,6 +7,162 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (S5 收尾批：libc 三表单源对账闸——S6 前置，2026-09-22)
+
+- **`scripts/moonbit/libc_single_source` 新门禁（CI 接线）**：Rust 侧
+  「这个名字是不是 builtin」的判据是 `host_func_id::by_user_name` 路由名
+  ∪ `BYTECODE_LIBC_ALL_FUNCS` 索引名的并集；MoonBit 侧照搬时把并集手抄成
+  libc 包 `builtin_all`，三份表之间零对账——第四套真相源。本闸把「三表
+  一致」从注释承诺变成机判红线：等式（`builtin_all == host ∪ bytecode −
+  excluded`）+ 交集计数 + PURE 子集 + **空集不得绿**（防「解析失败→
+  空集→全绿」的假绿）；规则外置 `rules.json`，J9 三路证红留痕（主判据
+  抽名注入 / 交集期望值注入 / 锚点缺失走 fail loud 非静默绿）。
+- **勘误（被实测证伪的包注释）**：`moonbit/libc/libc.mbt` 原称「`print_int`
+  不在此集（Rust host_func_id 无此名）」——实测 Rust `by_user_name` **明确
+  有** `"print_int" | "__vitro_output" => Some(OUTPUT)` 别名臂；host 侧正确
+  口径是「109 臂 / **110 名**」（生成物把别名臂展开）。行为未变（集合内容
+  经闸门验证与 Rust 并集完全一致），仅修正事实陈述——这正是「无对账的
+  手抄副本会让注释先腐烂」的实证。
+- **落地偏差登记**：计划原意「以 libc 表为单源**回填**下游两表」在分层
+  约束下**不可实现为派生**（libc 在 L5、codegen/bytecode 在 L6，反向
+  import 非法）——只能实现为**对账**；真正的派生待 S6 建 host 包时把路由表
+  上提为 L7 独立包。现状诚实表述：第四套真相源**已约束，未消除**。
+- **槽位策略分档机制闭环（架构审阅 v2 A 组 #2 的 Go 侧半）**：
+  `codegen_diff` 新增 `slot_strategy` 对账——读 MoonBit 产物包装层字段并与
+  外置 `scripts/codegen_diff/slot_strategy.json` 的期望值比对，不符或
+  **无任一成功样本携带该字段**均判红。此前该字段被驱动整个丢弃：
+  `cmd/dump_compile` 注释承诺「对拍面只取 .dump，本字段不参与 14 键比对，
+  **v2 切换时 codegen_diff 可按此分档**」，实测**为零**——又一处「注释
+  声明的机制未落地」。J9 证红留痕（`expected` 改 0 → exit 1 并给出同步
+  指引；恢复即绿）；骨架面实测 `slot_strategy=1×12` 绿、SAME=12 +
+  AGREE-ERROR=1 不变。同时把 `global_data_end` 交叉点与 v2 前提（v2 必红
+  A 级 code 段逐位对拍，须等 Rust 退役）登记进该 JSON。
+  **剩余半**：Rust `dump-compile` 产物仍无该字段（平铺 14 键），故当前是
+  **单向对账**而非两侧等值；补字段属冻结区产物形态变更（连带「14 键」
+  → 15 键口径、MoonBit dump 内层同步、598 语料全量重跑），留独立小批。
+- **包依赖方向断言（架构审阅 v2 A 组 #6）**：新闸门
+  `scripts/moonbit/pkg_deps`（CI 接线）——总计划 §4 的硬约束「依赖严格单向
+  无环」此前**零 CI 校验**，越层/成环的依赖可静默进来。按外置分层表
+  （`rules.json`，源 = 总计划 §4 的 L0–L9 包图）断言每个模块内依赖指向低层
+  或同层 + DFS 查环；**新包未登记分层即红**、解析出 0 包 / 0 依赖亦红（空集
+  不得绿）；`cmd/*` 为工具层豁免方向检查（仍参与环检测）。实测 19 包全绿
+  ——现依赖本来就合法，本闸的价值在于它此后不再只是口头纪律。J9 证红：
+  注入 `opcode(L0)→bytecode(L6)` **同时触发越层与成环两条判据**。
+- **手册分层标注勘误**：`moonbit/AGENTS.md` 包清单把 `lexer` 标 L2、
+  `parser` 标 L3，与总计划 §4 的 L4 相差 1–2 档——已按总计划修正为 L4
+  （新闸门的分层表以总计划 §4 为准）。
+- **libc 自举（S5 尾项）——等价性锚建立，实测成立**：新驱动
+  `scripts/moonbit/libc_boot_diff`（CI 接线）。命题是「MoonBit 引擎能否编译
+  自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」——`native/runtime_libc/src`
+  三源（ctype 282 / stdlib 147 / string 423 条指令）在 **9 个交集字段**上
+  逐字节一致（含 code 段逐指令）。
+  实现要点与踩坑：
+  ① **Rust `export` 不是 library mode，是 workaround**：注入 stub unit
+     `int main() { return 0; }` 后编译，再「code[0] Jump→Nop + code 截断到
+     wrapper_ip + func_table/func_index 删 main」；`--builtin-libc` 另删
+     func_index 里「在 BYTECODE_LIBC_ALL_FUNCS 但不在 func_table」的预注册项。
+  ② 两侧 `with_mode(is_library_mode)` 都**只改两个初值**（`next_func_idx`
+     起点 0、`next_global_offset` 起点 0），且 **main 检查两侧都不豁免**——
+     故 MoonBit 侧无需改 codegen 语义，只差把开关接出来。
+  ③ 新增 `codegen.compile_library` + `cmd/dump_compile --library`
+     （`.mbti` 已同步；新消费边已登记 `surface_edges.txt`）。
+  ④ **唯一注入口径坑**：stub 必须直接接在主源末尾换行之后（不前插空行），
+     否则 stub 区 `loc.line` 差 1。本轮首跑即因此判 DIFF——定位到「仅 stub 区
+     行号差 1、前面几百条逐字节全等」才排除引擎嫌疑。
+  J9 证红：注入 `code[1].operand +1` → 必红；恢复即绿。
+
+### Fixed (收面闸判定盲区修复 + 已发布包面收缩，2026-09-22)
+
+- **`moonbit_surface` 的类型闭包判定盲区修复（本轮核心产出）**：原实现只把
+  "字段类型"当闭包、且靠人工白名单登记（`parser ParseError` /
+  `bytecode LocalBuffer`），**漏了"pub 函数/常量签名引用"与"enum 变体载荷
+  引用"两类**。实测后果：`diag CatalogEntry` / `Severity` / `SourceLang` 与
+  `source Pos` 被误报成"可收"——**照清单去收会直接编译错**（pub 函数不能返回
+  私有类型）。修复为统一判定：pub 类型若在本包 mbti 内除定义行外还有出现
+  （被签名/字段/变体引用）→ 自动归入「签名闭包·非收面」。
+  报告面随之精确：**收面清单 10 → 1**，闭包 8 个改由脚本自动识别。
+- **已发布包的面收缩（1 符号）**：`ast template_arg_eq` → `priv`——唯一消费者
+  是同包的 `template_arg_array_eq`，包外零消费。`ast` 自 0.1.0 起已发布，故这是
+  **破坏性面收缩**；按 0.x 语义 minor 可带 breaking，在此**明示**。
+- **白名单重构**：`scripts/moonbit/surface_allowlist.txt` 从 10 条 → **1 条**
+  （`diag codes_without_catalog`：教学卡片覆盖率断言清单，属对外可核对的
+  教学契约，有意保留）。8 个引用闭包全部移出（改由脚本自动识别）——白名单
+  语义收敛为「技术上可收、但**有意保留**」的纯人工裁定项。
+- `ast/pkg.generated.mbti` 随之同步（`moon info`，少 2 行）。
+
+### Added (S6 前置收尾：B#12 空表哨兵 + A#7 单一真相源清单，2026-09-22)
+
+- **B#12 空表哨兵（架构审阅 v2 §2.6）**：`moonbit/ast/types_predicates.mbt` 的
+  `compute_type_size` 在 `Class` / `TemplateId` 分支由**静默返回 0** 改为
+  **fail loud**（`abort`）。病灶：C-only 阶段 `class_size_map` 恒空（两处调用点
+  `codegen/func.mbt` 传 `{}`、`typeck/context.mbt` 传 `Map([])`），Rust 侧同位置
+  静默返 0——**C# 批引入类后若忘接表，会静默给出错尺寸，而 C-only 语料永远
+  测不出**。本处为**有意分叉**（预留位 tripwire，总计划 §12），已在代码注释与
+  本文件明示。红→绿留痕：新增 `test "panic class size with empty map"`（护栏
+  可触发性义务），`moon test` 209 → **210 全绿**；不误触发验证：
+  `codegen_diff` 骨架 13（SAME 12 + AGREE 1）与 baseline 365（SAME 355 +
+  AGREE 9 + FORK 1）双绿、`libc_boot_diff` 三源自举全 SAME。
+- **A#7 单一真相源清单 + `scripts/moonbit/single_source` 校验器（判据 C-04）**：
+  C-04 的裁决要点是 L1 判据「同一概念多真相来源」**只覆盖仓内同语言重复**
+  （R3 审计已收口），**不覆盖跨语言孪生**——迁移期每个单源在 MoonBit 侧都有
+  孪生，同步义务纯人工。本批把清单入版本控制并机判，**8 条**：`compute_type_size`
+  为 `enforced`（定义点**文件集**必须 == `allowed_def_files`），其余 7 条
+  `registered`（生成物/另有专用闸门，校验两侧路径存在 + 登记检测锚点）：
+  opcode 编号表 / 错误码表 137 / catalog 77 / host 路由 110 / bytecode libc 索引
+  88 / libc 放行集 / slot 策略版本。
+  清单含报告〔补遗 b〕点名的 **`parser/decl.mbt:889` 第三消费点**。
+- **闸门撞出的命名债（报告未点出）**：`native/crates/vitro_typeck/src/context.rs`
+  有一个与单源**同名**的方法 `pub fn compute_type_size(&self, ty) -> i32`——语义上
+  确是委托（方法体收集三张表后调 `vitro_ast::compute_type_size`，报告 §2.3 判定
+  正确），但**同名**会让读者/工具误以为存在两份实现。故闸门引入
+  `exclude_line_pattern`（排掉含 `self` 的方法定义行），并把该命名碰撞登记在
+  `rules.json` 的 `_exclude_note`，待 S6/S9 重排时可改名（如 `TypeChecker::type_size`）。
+- J9 证红：注入"第二份实现"文件 → 必红；基线绿时注入 → 捕获（已留痕）。
+
+### Docs (发布状态勘误与排期权威澄清，2026-09-22)
+
+- **`vitro/engine` 发布状态勘误**：`MoonBit迁移总计划.md` 的 S5 行记「moon.mod
+  0.4.0 待发」已过时——本机 registry 实测 0.4.0 **已于 2026-09-21 15:49 发布**
+  （0.1.0 → 0.1.1 → 0.2.0 → 0.3.0 → 0.4.0；mooncakes 模块页显示 **16 个包在架**）。
+  一并澄清一条**容易被误读的策略前提**：MoonBit 的 `moon publish` 是 **module 级**
+  发布，故「未发布包零成本收面」的窗口**已在 0.4.0 用尽**——S5 收尾批的收面
+  （27 符号）与 `moonbit_surface` / `surface_edges.txt` 双闸正是**赶在该发布之前**
+  落地的，不是"窗口还开着"。
+- **闸门角色重述**：`scripts/moonbit/moonbit_surface/moonbit_surface.go` 与
+  `scripts/moonbit/surface_allowlist.txt` 头部原写「已发布 5 包（source/opcode/
+  diag/ast/lexer，0.1~0.3.0 在架）不在收面范围」——该判定写于 0.3.0 时代，
+  0.4.0 起全部对外包已进架。注释已改写为「类别① = **历史留白**」，并把本闸的
+  角色从"收面工具"明确为「**防扩散闸**」（新 pub + 新消费边一律拦下要人工裁定）。
+- **排期权威双头澄清**：`docs/README.md` 原把《统一整备路线图》（U0~U7）标为
+  「排期权威」，但 2026-09-18 起实际排期载体已是 MoonBit 迁移总计划的 S 系列
+  ——已在索引行标注让位关系，U 表降为历史口径与未闭环项索引。
+- **语料真值口径定案**（此前 597 / 598 / 600 三口径并存，且**均未标 as_of**）：
+  四语料真值 = **600**（实测 baseline 365 + gap 16 + knr 81 + leetcode 138），
+  `codegen_skeleton` 另计 13。已在《脚本总清单与必跑防线》新增 **§1.3** 规定：
+  引用语料数前**先数目录**；597（S3 收官）/ 598（S4–S5 收官）是各片收官的
+  **as-of 快照**（历史记录不改）；该量随扩展增长，故**不做机器对账**（facts 的
+  「解析差分样本数」键长期"待采集"即因此项非稳定量）。`moonbit/AGENTS.md`
+  状态栏与 `ci.yml` 的**当前口径**已改 600。
+- **CI 隐式前提写明**：`codegen_diff` / `libc_boot_diff` 等步骤**隐式依赖上方
+  Release 构建的 `vitro_cli`**（Rust 侧产物真值源）——此前只有 `typeck_diff`
+  步骤写了这句。已在 codegen_diff 步骤补注（缺 release 产物会 fail loud，
+  不静默降级）。
+
+### Removed (S5 收尾批：孤儿文件清理，2026-09-22)
+
+- **删除 `native/src/compiler/ast.rs`**（架构审阅 v1/v2 §2.2 登记项）：
+  `compiler/mod.rs` 只有 `pub use vitro_ast as ast;`、**无 `mod ast;`**，
+  该文件不在模块树中。**死文件证法（J9 形态，两路独立）**：① 向其注入
+  必然语法错误 `@@@ THIS IS NOT VALID RUST @@@` 后 `cargo check` 仍
+  rc=0；② `cargo check --emit=dep-info` 产出的全部 `vitro_native-*.d`
+  依赖列表均无该文件。删除后 `cargo check --workspace` 绿。
+- **附带登记（环境现象，非本次改动引入）**：本轮首次 check 遭遇
+  `os error 5`（拒绝访问）写 incremental 目录，致增量缓存损坏、之后
+  check 稳定 panic（`rustc_metadata/rmeta/encoder.rs:2447 no entry found
+  for key`）——曾误判为删除所致；`cargo clean -p vitro_native` 后恢复。
+  与 `codegen_diff` 头注记载的 Windows 句柄/杀软瞬时锁同类，排查「构建
+  失败」时须先排除它。
+
 ### Fixed (CI 红处置：28 个 golden 从未入库 + cargo 用例数平台差异，2026-09-19)
 
 - **28 个 baseline golden 补入库（P5"缺 golden 必红"的 CI 首秀战果）**：CI

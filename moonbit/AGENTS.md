@@ -4,7 +4,7 @@
 > **全域纪律**（中文输出 / 禁擅自 git 提交 / 实测大于脑测 / 诚实记录 / 红→绿 / J9 / archive 规则 / 提交署名规则）以根 AGENTS.md 为准，同样约束本区。
 > **上位文档**：[MoonBit迁移总计划](../docs/current/01-定位与路线/MoonBit迁移总计划.md)（包切分 L0–L9 / 锚点体系 / F1–F9 语言事实）+ [第一阶段计划](../docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)。本手册只沉淀**工程操作层**（命令 / 陷阱 / 纪律 / 发布），不重复上位文档内容。
 
-## 包清单与状态（S4 主体收官——typeck 4 Pass 全接线，598 对拍全绿）
+## 包清单与状态（S5 收官——codegen A 级对拍四语料全绿；语料真值 **600**，2026-09-22 实测）
 
 | 包 | 层 | 职责 | 状态 |
 |---|---|---|---|
@@ -12,19 +12,20 @@
 | `vitro/engine/opcode` | L0 | 132 条 opcode（空号 44–49）+ Instruction | ✅ 已发布 |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂（gen_diag 生成）+ catalog 77 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size（S3 消费驱动补齐） | ✅ 已发布 |
-| `vitro/engine/lexer` | L2 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
-| `vitro/engine/parser` | L3 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；**depth 参数化防护**；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ S3 完成（未发布——随下一 minor 一起） |
+| `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
+| `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；**depth 参数化防护**；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ S3 完成（未发布——随下一 minor 一起） |
 | `vitro/engine/names` | L3 | 名字单源：`__ctor__`/`__dtor__` 产名族唯一出口（parser 8 处散拼已收口）+ `type_mangle_suffix` 17 变体 + `method_mangled_name`（D1 单源照搬）；InstKey→InstId 派生随 S9 C++ 裁定 | ✅ S4 建包（5 测试） |
-| `vitro/engine/libc` | L5 | builtin 签名单表 57 条（visit_call 58 臂去 std__move；照搬现状口径，printf/putchar void 的 N3 漂移登记）；host_func_id 并集判据随 S5/S6 回填 | ✅ S4 建包（3 测试） |
+| `vitro/engine/libc` | L5 | builtin 签名单表 57 条（visit_call 58 臂去 std__move；照搬现状口径，printf/putchar void 的 N3 漂移登记）+ 放行名全集 175（= host 110 名 ∪ bytecode 88 名 − print_int）；**三表一致性由 `scripts/moonbit/libc_single_source -check` 机判（2026-09-22 接线）**——「以本表为单源回填」在 L5/L6 依赖方向下不可派生，已诚实登记为对账 | ✅ S4 建包（3 测试） |
 | `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast——TK_ 前缀；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ S4 主体收官（T5-b/c/d，2026-09-20）：4 Pass 全量接线——call/init/builtin/decl 四文件（visit_call 58 臂 + check_user_func 四级回退（bytecode_libc_sig 表入 libc 包）+ dispatch_stmt 语句族 + VarDecl 巨臂（auto/typeof 推导）+ 数组/struct 初始化器尺寸推断）；13 白盒锚（183 测试）；**598 语料 E1–E4 归一逐字节一致**（2 条 F3-v2 白名单 FORK(known)——parser 层分叉的 typeck 消费面放大，S8 台账）；quote-include 哨兵入 gap（vfs 偶然对齐监测，语料 597→598）；遗留：decl_types 独立批并入本批；E1 全量对拍管道 CI 化已接线（2026-09-20 审阅批补，typeck_diff 四目录入 CI） |
 | `vitro/engine/bytecode` | L6 | 产物 schema（CompileOutput 13 字段 + FuncMeta/LocalBuffer/Symbol）+ Bytecode Libc 固定索引（88 函数数组单源，索引=1000+下标派生+断言锚）+ R1 布局纯函数（align4/compute_heap_base/argv_region_footprint）+ canonical dump emitter（Map 键码元字典序——**内置 String compare 非字典序**见陷阱 #29） | ✅ S5 开工批建包（2026-09-20，8 测试：Rust 源 88 对硬编码对账锚 +1——2026-09-21 审阅补）：emitter 与 Rust `dump-compile` 14 键逐字段同构（Type/浮点文本化/转义经 ast 单源）；r1 第 7 道布局断言全量搬 |
-| `vitro/engine/codegen` | L6 | BytecodeGen 状态机（C only 裁剪——47 字段剔 C++ 专属 7 项：顶层 6 + ScopeFrame.class_vars 嵌套 1）+ Pass 1 全量（全局注册/初始化位模式 T-P0-1/2/字符串延迟回填 P2）+ Pass 2/3 骨架（Block/Expr(stmt)/Return + 四字面量/Identifier）+ 入口 wrapper + libc 预注册（strcpy/strcat Host 分发例外）；**槽位策略 v1 逐位兼容**（LIFO 池 v2 随八条事故回归批） | ✅ S5 开工批 + 扩展批一/二/三号（三号 2026-09-21：赋值全量（Identifier 三路+Deref+struct 拷贝+11 复合运算符含 float 分支——kr_1_15 对拍实锤修漏）+ 三目 + 控制流五件（if/while/do-while/for/switch——跳转补丁 base 截断语义）——**全语料 SAME 325/598（54%）**：baseline 262 + knr 35 + leetcode 18 + gap 10，CONTENT-DIFF 全 0；**F3-v2 白名单入 codegen_diff**（function_pointer_return_ptr/kr_5_11——parser 层分叉的 codegen 消费面放大）；二号：二元 19 运算符穷尽（隐式提升链/指针算术/U 族/短路+T-P1-1 规范化）+ 一元（Neg/Not/BitNot/Deref 的 immediate_base_kind/Addr 含 static/++-- 全分派）+ Cast 10 向 + sizeof/alignof/offsetof + type_align 纯函数随迁——**baseline SAME 56→174**（180 剩余，CONTENT-DIFF=0）；一号：VarDecl 全量接线（emit_single/static/VLA/数组 init/struct init/designator/zero-init Memset）+ CallPtr（host 路由 110 对脚本生成 + SplitD/Q 变参 + CallVar + struct 传参 words）+ gen_addr 最小集 + gen_nested_init/struct_copy_to_local——SAME 0→56；二号后累计 174/363，knr 7 + leetcode 2 + gap 7；16 测试）：未接线语句/表达式族 report_error fail loud；**A 级对拍**——13 条骨架语料（native/tests/cases/codegen_skeleton/，2026-09-21 审阅批 +3：2^64 溢出/浮点 inf/`__func__`）Rust dump-compile vs cmd/dump_compile 归一逐字节一致（codegen_diff 管道，含 code 段逐指令）；**baseline 363 例归因（2026-09-21 审阅，扩展批优先级；数字为 VarDecl/CallPtr 接线前基线）**：剩余面 354 例全在 gen 层——VarDecl 245（另有 22 处"未声明标识符"级联噪声随其消失）> CallPtr 71 > 二元 13 > for 8 > 赋值 6 > if 6 > while 3 > 三目 1；**勿接 Call**（Expr::Call 仅 C++ ctor 路径构造、C 输入不可达，直接/指针调用统一在 CallPtr 臂——两侧 parser 同构） |
+| `vitro/engine/codegen` | L6 | BytecodeGen 状态机（**双入口**：`compile` 常规 / `compile_library` library mode——预编译 Bytecode Libc 自身，不预注册固定索引段 + 全局偏移自 0 起；library 入口已由 `scripts/moonbit/libc_boot_diff` 对拍 3 源全 SAME）；C only 裁剪——47 字段剔 C++ 专属 7 项：顶层 6 + ScopeFrame.class_vars 嵌套 1）+ Pass 1 全量（全局注册/初始化位模式 T-P0-1/2/字符串延迟回填 P2）+ Pass 2/3 骨架（Block/Expr(stmt)/Return + 四字面量/Identifier）+ 入口 wrapper + libc 预注册（strcpy/strcat Host 分发例外）；**槽位策略 v1 逐位兼容**（LIFO 池 v2 随八条事故回归批） | ✅ S5 开工批 + 扩展批一/二/三号（三号 2026-09-21：赋值全量（Identifier 三路+Deref+struct 拷贝+11 复合运算符含 float 分支——kr_1_15 对拍实锤修漏）+ 三目 + 控制流五件（if/while/do-while/for/switch——跳转补丁 base 截断语义）——**全语料 SAME 325/598（54%）**：baseline 262 + knr 35 + leetcode 18 + gap 10，CONTENT-DIFF 全 0；**F3-v2 白名单入 codegen_diff**（function_pointer_return_ptr/kr_5_11——parser 层分叉的 codegen 消费面放大）；二号：二元 19 运算符穷尽（隐式提升链/指针算术/U 族/短路+T-P1-1 规范化）+ 一元（Neg/Not/BitNot/Deref 的 immediate_base_kind/Addr 含 static/++-- 全分派）+ Cast 10 向 + sizeof/alignof/offsetof + type_align 纯函数随迁——**baseline SAME 56→174**（180 剩余，CONTENT-DIFF=0）；一号：VarDecl 全量接线（emit_single/static/VLA/数组 init/struct init/designator/zero-init Memset）+ CallPtr（host 路由 110 对脚本生成 + SplitD/Q 变参 + CallVar + struct 传参 words）+ gen_addr 最小集 + gen_nested_init/struct_copy_to_local——SAME 0→56；二号后累计 174/363，knr 7 + leetcode 2 + gap 7；16 测试）：未接线语句/表达式族 report_error fail loud；**A 级对拍**——13 条骨架语料（native/tests/cases/codegen_skeleton/，2026-09-21 审阅批 +3：2^64 溢出/浮点 inf/`__func__`）Rust dump-compile vs cmd/dump_compile 归一逐字节一致（codegen_diff 管道，含 code 段逐指令）；**baseline 363 例归因（2026-09-21 审阅，扩展批优先级；数字为 VarDecl/CallPtr 接线前基线）**：剩余面 354 例全在 gen 层——VarDecl 245（另有 22 处"未声明标识符"级联噪声随其消失）> CallPtr 71 > 二元 13 > for 8 > 赋值 6 > if 6 > while 3 > 三目 1；**勿接 Call**（Expr::Call 仅 C++ ctor 路径构造、C 输入不可达，直接/指针调用统一在 CallPtr 臂——两侧 parser 同构） |
 
 命名规则：module = `vitro/engine`（mooncakes owner `vitro`），包全名 `vitro/engine/<pkg>` 一律全名，代码与配置禁用简称。
 
 ## 构建与验证命令
 
 ```bash
+# —— moon 命令：cwd = moonbit/ ——
 cd moonbit
 moon check                # 快速类型检查（日常常跑）
 moon check --target all   # 全后端检查（发布前）
@@ -32,18 +33,25 @@ moon test                 # 209 测试（白盒 _wbtest.mbt + 黑盒 _test.mbt +
 moon test --update        # 快照更新（inspect content= 变更时；核对 diff 再提交）
 moon fmt                  # 格式化（生成物也参与——见 gen_diag 内置 fmt）
 moon info                 # 生成 .mbti 接口面（API 变更信号；pkg.generated.mbti 入版本控制）
-go run ./scripts/gen_diag          # diag 码表再生成（内置 moon fmt）
-go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 篡改即红）
-go run ./scripts/gen_host_route       # host 路由 110 对再生成（codegen 包，源 host_func_id.rs）
-go run ./scripts/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
-go run ./scripts/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；J9 注入双红留痕）
+# —— 以下 go 驱动命令：cwd = 仓库根（不是 moonbit/）——
+# 2026-09-22 勘误：此前本清单写作 `./scripts/gen_diag` 等（少了 `moonbit/` 段），
+# 在 moonbit/ 与仓库根两处均无法运行（moonbit/ 下无 go.mod 也无 scripts/）；
+# moonbit_surface.go 内部自带 os.Chdir("moonbit")，故必须从仓库根调用。
+go run ./scripts/moonbit/gen_diag          # diag 码表再生成（内置 moon fmt）
+go run ./scripts/moonbit/gen_diag -check   # 幂等校验（源变产物变 / 篡改即红）
+go run ./scripts/moonbit/gen_host_route       # host 路由 110 对再生成（codegen 包，源 host_func_id.rs）
+go run ./scripts/moonbit/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
+go run ./scripts/moonbit/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；J9 注入双红留痕）
+go run ./scripts/moonbit/libc_single_source -check # libc 三表单源对账闸（builtin_all == host ∪ bytecode - excluded；交集计数 + PURE 子集 + 空集不得绿；J9 三路证红 ✅）
+go run ./scripts/moonbit/pkg_deps -check  # 包依赖方向断言（按总计划 §4 L0–L9：依赖只能向下或同层 + 无环；新包未登记分层即红；cmd/* 豁免方向；J9 证红 ✅）
+go run ./scripts/moonbit/libc_boot_diff   # libc 自举对拍（MoonBit library mode ↔ Rust export；stub + wrapper 截断口径 + 9 交集字段；J9 证红 ✅）
 go run ./scripts/toolchain_probe        # 工具链健康探针（版本锁定/索引预检/ICE 特征；升 moon 后必跑，漂移须 --update-baseline + 全门禁）
 go run ./scripts/parser_diff <corpus>        # S3 解析差分（E1/E2/活性；仓库根跑）
 go run ./scripts/parser_diff --pathological  # E3 病态 12 样本同等拒绝
 go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚
 go run ./scripts/parser_diff --threshold     # E3+ 阈值样本（A/B 族两侧一致 + C 族形状）
 go run ./scripts/typeck_diff <corpus>        # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；红面基线期大面积 DIFF 属预期——typeck 实现推进中收敛）
-go run ./scripts/codegen_diff <corpus> [--baseline] # S5 codegen 差分（A 级 14 键全量；--baseline 豁免 one-sided 能力缺口，CONTENT-DIFF 永不计豁免；仓库根跑，语料 native/tests/cases/codegen_skeleton 为骨架可通面）
+go run ./scripts/codegen_diff <corpus> [--baseline] # S5 codegen 差分（A 级 14 键全量 + **槽位策略版本对账**〔读产物外层 slot_strategy ↔ scripts/codegen_diff/slot_strategy.json，不符或空集即红〕；--baseline 豁免 one-sided 能力缺口，CONTENT-DIFF 永不计豁免；仓库根跑，语料 native/tests/cases/codegen_skeleton 为骨架可通面）
 ```
 
 测试计数真值入 facts 台账（`moonbit_test_passed` 键，`--run` 采集 / CI 每轮刷新）。**注意（2026-09-20 审阅实测）**：moonbit/README*.md 的测试数为**分解式**写法（逐包拆解 + `分解和 179 + doc test 4`），facts 规则将分解式归"人工维护"不机判——**机判抓红不覆盖该处**，改测试数同步 README 是人工义务；裸总数以 facts.json 真值为准。

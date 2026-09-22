@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "module_dir": "moonbit",
+  "mbti_filename": "pkg.generated.mbti",
+  "moon_info_args": ["moon", "info"],
+  "skip_dirs": ["_build", ".mooncakes", "target", ".git"],
+  "_note": [
+    "moon info 无 --check 子命令（实测 moon 0.1.20260920），本闸取「跑前后快照不变量」形态。",
+    "mbti_filename 用完整文件名而非 glob，避免误收其它 *.mbti（收面用的 surface_allowlist.txt 不在此列）。",
+    "skip_dirs 只排构建产物目录；moonbit/lexer/internal/* 三个私有包的 .mbti 同样纳入（它们也曾漂移）。"
+  ]
+}

@@ -98,8 +98,22 @@ pub fn TypeChecker::update_var_type(
 }
 
 ///|
-/// 类型字节尺寸（照搬 Rust 包装器——O2 债照搬：每次调用重建 struct/union
-/// 定义表；教学符号表小，等价优先，缓存化属优化不改语义）。
+/// 类型字节尺寸（照搬 Rust 包装器——每次调用重建 struct/union 定义表）。
+///
+/// **O2 债裁决（2026-09-22 S5 收尾批：已量测，保留重建，不做缓存化）**：
+/// ① 语料规模实测上界——613 个 .c 中 struct/union 定义最多 **2** 个（多文件
+///    并列：baseline/e1_c23_alignof.c、baseline/linked_queue.c、knr/kr_6_3.c），
+///    单文件成员访问最多 **37** 次（leetcode/lc_2.c）⇒ 每次重建至多 ~10 次
+///    map 插入，全文件总成本 ~4×10² 次操作，**不可测**；
+/// ② Rust 侧 `vitro_typeck/src/context.rs:8` 同构（同样每次重建 + `class_size_map`），
+///    本处保持"照搬"以免制造两侧行为分叉；
+/// ③ 两侧不对称是有意的、非遗漏——typeck 阶段 `self.structs` **在增长**
+///    （Pass 1 登记，typeck.mbt:114/125），缓存须带失效逻辑；codegen 侧能
+///    安全用 `self.struct_defs` 恰因那时表已固定（typeck 之后才跑）；
+/// ④ MoonBit `self` 为值语义，加缓存字段会让每次调用复制更大的 struct 头，
+///    **净收益方向不确定**（可能为负）。
+/// 复评触发：`scripts/perf_budget` 红（语料规模超预算），或 S6 后性能批给出
+/// 可测证据。详见 CHANGELOG「O2 债裁决」。
 pub fn TypeChecker::compute_type_size(
   self : TypeChecker,
   ty : @ast.Type,

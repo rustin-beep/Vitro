@@ -14,9 +14,19 @@ on:
 # 前端切割（2026-09-11）：CideFlutter / FRB / flutter-android-ios jobs 已随前端
 # 迁出（标签 before-frontend-split 保留完整历史）。本仓库现为纯后端仓，
 # CI 验证 Rust 引擎 + 三出口防线 + wasm 出口冒烟（G2）。
+#
+# ── core / hygiene 两 job 拆分（2026-09-23，用户裁定）────────────────────────
+# 此前单 job 全部步骤一个红灯，"CI 老是红"的信噪比问题来自两类检查混灯：
+#   core  = 准入型（代码/契约坏了）——红了立即处置，当天清；
+#   hygiene = 记账型（文档/环境/产物与真值的账没跟上）——白天推进时是预期债，
+#           夜间批量复绿，不阻塞推进。
+# 分类判据一句话：红了是否意味着「这一批提交不能要」——否则归 hygiene。
+# 工具链追新是既定策略（MoonBit 未到 1.0，breaking 只能跟着走），故
+# toolchain_probe 红属 hygiene：含义是「该走 moon-toolchain-upgrade-playbook
+# 迁移流程了」，不是「代码坏了」。
 jobs:
-  rust:
-    name: Rust Build & Test
+  core:
+    name: Core gates (code & contract)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,21 +47,22 @@ jobs:
         run: cargo build --release
         working-directory: native
 
-      - name: Check Bytecode Libc precompiled artifacts are up-to-date
-        # D5 后续批次第二站（2026-09-18）：precompile_bytecode_libc.py → Go。
-        # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
-        # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
-        run: go run ./scripts/precompile_bytecode_libc --check
-        shell: bash
-
       - name: Run Rust tests
         # M15（2026-09-18）：tee 日志落盘——facts 对账从日志解析 passed/套件真值，
         # CI 内无需为文档对账重跑 30 分钟测试。pipefail 保证 tee 不吞失败退出码。
+        # 日志随 artifact 供 hygiene 的 facts 全键真值（2026-09-23 拆分）。
         shell: bash
         run: |
           set -o pipefail
           cargo test --workspace --all-features 2>&1 | tee cargo_test_ci.log
         working-directory: native
+
+      - name: Upload cargo test log (for hygiene facts)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-test-log
+          path: native/cargo_test_ci.log
 
       # cargo test 已覆盖全部单元/集成测试（含 Phase A/B/C/E/Dogfooding），
       # 无需再单独运行各防线测试套件。
@@ -133,6 +144,7 @@ jobs:
           path: |
             native/tests/shadow_verification/reports/shadow_report.md
             native/tests/shadow_verification/reports/kr_leetcode_report.json
+            native/tests/shadow_verification/reports/shadow_data.json
 
       - name: C++ Shadow Verification
         # D5 语言迁移第一站（2026-09-12）：Go 版与 Python 版双轨对账一致后切换。
@@ -170,9 +182,9 @@ jobs:
       # 此前 parser_diff 不在 CI——offsetof 深链崩溃（F1）/enum 常量链
       # 崩溃（F2）/指针多维错值（F3）三项缺陷与"防线不在 CI"互为因果。
       # 三模式均已降到秒级（2026-09-22 canonicalize 抽库：逐样本起进程成本
-      # 消除，旧口径"分钟级（预构建后）"失效）；全量经下方 facts --run 采集。
+      # 消除，旧口径"分钟级（预构建后）"失效）；全量经 hygiene 的 facts 采集。
       # 依赖上方 Release 构建的 vitro_cli。
-      - name: Install MoonBit toolchain (parser anchors / facts --run)
+      - name: Install MoonBit toolchain (parser anchors)
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -229,13 +241,6 @@ jobs:
           for d in baseline knr leetcode gap; do
             go run ./scripts/codegen_diff native/tests/cases/$d
           done
-
-      - name: MoonBit toolchain health probe (A8 automation)
-        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
-        # F8 ICE 特征/退出码 fail loud）——A8"人工盯 breaking"的自动化
-        # 替代；版本漂移即红，迁移须 --update-baseline + 全门禁。
-        shell: bash
-        run: go run ./scripts/toolchain_probe
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
         # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会
@@ -299,16 +304,6 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/mbti_sync -check
 
-      - name: Performance-assumption budget (corpus scale premises)
-        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
-        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
-        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
-        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
-        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
-        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
-        shell: bash
-        run: go run ./scripts/perf_budget -check
-
       - name: C ABI declaration parity (error codes + binding symbols)
         # 2026-09-22 接线（架构审阅 v2 A 组 #3 / §2.9）：vitro_capi.h 的
         # VitroErrorCode 枚举手抄自 Rust 源且注释只写「Keep in sync with ...」
@@ -340,10 +335,97 @@ jobs:
         shell: bash
         run: node protocol/consumer.mjs
 
+      # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
+      # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
+      - name: wasm32 build & smoke (Exit 2 guard)
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo build --target wasm32-unknown-unknown --release
+          node ../scripts/wasm_smoke/wasm_smoke.js
+        working-directory: native
+        shell: bash
+
+  # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────
+  # 红的含义是「账没跟上」而非「代码坏了」：文档漂移 / 工具链版本迁移 /
+  # 产物新鲜度 / 格式 / 性能裁决的规模前提 / 构建卫生。白天推进时属预期债，
+  # 夜间批量复绿（用户工作流裁定：白天不断推进、夜里花时间复绿）。
+  # needs core：facts 全键真值依赖 core 的 cargo 日志与 shadow 产物 artifact，
+  # 且真值重放（replay/serve_smoke 秒级）需要 Debug 构建——口径与拆分前
+  # 完全一致（不降级为缓存沿用）。
+  hygiene:
+    name: Hygiene checks (bookkeeping)
+    needs: core
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+
+      # facts --run 的真值重放（replay / serve_smoke 秒级）需要 Debug 的
+      # vitro_cli；rust-cache 命中后此步为增量，分钟内。
+      - name: Build native (Debug)
+        run: cargo build
+        working-directory: native
+
+      - name: Download core artifacts (cargo log + shadow truth)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "{cargo-test-log,shadow-verification-report,cpp-shadow-verification-report}"
+          merge-multiple: true
+          path: .
+
+      - name: Install MoonBit toolchain (probe / fmt / facts --run)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      - name: Refresh MoonBit registry index
+        # toolchain_probe 的索引预检需要 registry 索引在位（fresh 环境同 core）
+        shell: bash
+        run: cd moonbit && moon update
+
+      - name: Check Bytecode Libc precompiled artifacts are up-to-date
+        # D5 后续批次第二站（2026-09-18）：precompile_bytecode_libc.py → Go。
+        # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
+        # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
+        # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
+        # 补 `go run ./scripts/precompile_bytecode_libc` + git add 即绿。
+        run: go run ./scripts/precompile_bytecode_libc --check
+        shell: bash
+
+      - name: MoonBit toolchain health probe (A8 automation)
+        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
+        # F8 ICE 特征/退出码 fail loud）。归 hygiene（2026-09-23 用户裁定）：
+        # 工具链追新是既定策略（MoonBit 未到 1.0，breaking 跟着走），版本
+        # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
+        # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
+        shell: bash
+        run: go run ./scripts/toolchain_probe
+
+      - name: Performance-assumption budget (corpus scale premises)
+        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
+        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
+        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
+        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
+        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
+        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
+        # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
+        # 不指当下提交有问题。
+        shell: bash
+        run: go run ./scripts/perf_budget -check
+
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
         # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式
-        # 差异会在再生成路径持续产生噪声。
+        # 差异会在再生成路径持续产生噪声。归 hygiene（2026-09-23）：格式账。
         shell: bash
         run: |
           cd moonbit
@@ -356,23 +438,15 @@ jobs:
 
       # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
       # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器
-      # 真值漂移、跨文档 ABI 版本漂移均无门禁可拦。置于 replay 之后：shadow
-      # 产物（shadow_data.json / cpp_shadow_report.json）与本 workflow 当轮新鲜；
-      # --run 重放 replay/serve_smoke 秒级刷新其真值；cargo 真值从上方 tee 的
-      # 日志解析，不重跑。真值超龄即红（无 --allow-stale），坏引用同红。
+      # 真值漂移、跨文档 ABI 版本漂移均无门禁可拦。本步是 hygiene 的主体：
+      # 白天改代码文档滞后的时序差在此显形，夜间批量复绿（用户工作流裁定）。
+      # --run 重放 replay/serve_smoke 秒级刷新真值（Debug 构建在上方）；
+      # cargo 真值从 core artifact 日志解析，不重跑 30 分钟测试；
+      # shadow 产物真值来自 core artifact（当轮新鲜）。真值超龄即红
+      #（无 --allow-stale），坏引用同红。
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
         shell: bash
         run: go run ./scripts/facts --run --cargo-log native/cargo_test_ci.log check
-
-      # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
-      # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
-      - name: wasm32 build & smoke (Exit 2 guard)
-        run: |
-          rustup target add wasm32-unknown-unknown
-          cargo build --target wasm32-unknown-unknown --release
-          node ../scripts/wasm_smoke/wasm_smoke.js
-        working-directory: native
-        shell: bash
 
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用

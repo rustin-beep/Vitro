@@ -7,6 +7,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (S6 开工批二：`vitro/engine/host` 建包 + 路由表单源 + 输出通道 Bytes 化，2026-09-23)
+
+- **范围**：S6 三包（memory / host / vm）的第二片。执行输入仍是勘察报告（任务书），
+  落地的是 §5.5「三实现合一 + 输出通道字节累积」与 §9.2 约束 #1/#4，外加 §2.1 的
+  host 语义资产。**memory 片已完成**（前一条目）；**vm 片未开工**；host 的其余
+  ~106 个 handler 与 VFS 留待下批。
+- **① 调用形态单一路由表**（§5.5「把隐式覆盖变成显式声明」）：
+  - 现版同一函数最多三条实现路径，且路由分叉**不可见**——`func_index` 预注册的
+    88 名会静默遮蔽同名 host handler，**110 个 handler 里有 20 个按名调用到不了，
+    而全仓无一处能列出这 20 个名字**。新增 `bytecode/route.mbt`：`CallRoute`
+    （`BytecodeLibc(idx)` / `Host(id)`）+ `call_route` 单一派生规则 +
+    `shadowed_host_names()` 让遮蔽集成为**可断言事实** + `is_host_rerouted`
+    把 strcpy/strcat 的 E3070 例外收成单点。
+  - `gen_host_route` 产物自 `codegen/` **上提到 `bytecode/`**（同一 L6 层内换包），
+    并补出 `host_func_pairs` 全名表——`host_func_id_by_user_name` 照搬 Rust
+    `by_user_name` 语义对 14 个 PURE 名**短路返回 None**，**不能**当成员判定用。
+  - **落点裁定（登记为任务书内部不一致）**：总计划 L7 行写"host(110 路由表单源)"，
+    但 §4 硬约束"依赖严格单向"禁止 codegen(L6) → host(L7)，而 codegen 在编译期就必须
+    选 `Call <固定索引>` 还是 `CallHost <id>`；又因派生需 88 名单源（在 L6），libc(L5)
+    也无法反向 import L6。⇒ 定义点只能 ≤ L6，落 `bytecode`（与固定索引同层同域）。
+    生成器头注 / `route.mbt` 模块头 / 总计划 L7 块三处已写清。
+- **② 输出通道 Bytes 化**（§5.5「输出通道改为字节累积」+ §9.2 约束 #4）：
+  `OutputKind`（stdout/stderr/note 三通道）/ `OutputChunk` / `OutputLog`。
+  片段的承载从 `String` 改 `Bytes` ⇒ **非 UTF-8 字节保真**（`putchar(200)` 落
+  1 字节 `0xC8`；String 化会成 2 字节 `C3 88`——现版预期 FAIL 的正是这条）。
+  语义照搬 Rust：16MB 预算、环形丢最旧保最新、单块超预算截头保尾、截断注记只补一次、
+  note 不占预算不丢弃不入合并、64B 小段合并、O(1) 长度。**三处结构性适配**：
+  （a）`Bytes` 不可变故小段合并会退化 O(n²)，故未封口尾块用可变累加缓冲、封口时一次物化；
+  （b）**读取走只读视图、不封口**——Rust 的 `chunks` 是稳定结构，读 `len()` 不影响
+  后续合并；若读取顺手封口，则"读一次再写小段"会另起一块（实测块数 1→2），与 Rust 分叉；
+  （c）部分截除**不做 UTF-8 边界对齐**（Bytes 无"非法 UTF-8"；刻意差异）。
+- **③ 内存族 handlers**：`host_malloc` / `host_calloc` / `host_realloc` / `host_free`
+  + E3061 / E3027 三分支文案 + 堆耗尽附注。与 Rust 的**结构性差异**：handler 返回
+  `HostMemReply{value?, note?, trap?}` **三件结构化事实，不碰值栈**——压栈与发 trap
+  归执行器。收益是内存语义可**脱离 VM** 锚定（Rust 同族用例必须先 `setup_vm` +
+  手工 push/pop），且"同一语义 host 与 core 两处各写一遍"的病灶只剩一处。
+  受检访问一律经 memory 包单入口：`calloc` 置零走段级 `fill`、`realloc` 搬运走段级
+  `copy`（Rust 是逐字节 `store_i8` 循环，每条字节重跑一次 NULL/上界/UAF 判定）。
+- **新发现两条 oracle 存量缺陷（照搬不私改 + 登记 + 红锚固化）**：
+  ① **`calloc` 的置零发生在清理 freed_logs 之前** ⇒ `allocate_raw` 从 `free_list`
+  复用驱逐块时，置零会撞上该块自己的检验窗口 → **Use-After-Free 误报**（该块刚被
+  合法重分配）。触发条件：此前分配使隔离区超预算。修复形态是一行换位；
+  ② **`calloc` 尺寸链饱和后仍回绕** ⇒ `align4(0xFFFFFFFF)` 在 32 位加法下等于 0，
+  `allocate_raw(0)` 按零尺寸短路成功，于是"超大尺寸"**不失败**，反而返回 NULL 并登记
+  一条 `addr=0 / size=-1` 的**垃圾区域**。这是独立于坑 9（`qsort` 那条已被 `checked_mul`
+  修掉）的第二条路径——`calloc` 用的是 `saturating_mul`。已给 `MemoryMap::verify`
+  增补"区域条目有效性"检查，把这条静默损坏变成**可断言事实**。
+- **memory 包补三处 host 必需的查询面**：`FreedLogs::get` /
+  `MemoryMap::freed_logs_get`（E3061 文案要 `freed_line`/`alloc_line`）/
+  `MemoryMap::find_live_region_containing`（E3027「内部地址」判定）+
+  `verify` 的区域有效性检查。
+- **锚点**：host 27 测试（白盒 24 + 黑盒 3）、bytecode 新增 6（路由表黑盒契约）。
+  三条跨包对账锚：遮蔽名单逐字对齐勘察 §1.7；路由并集（176）与 `vitro/engine/libc`
+  放行名全集逐名对齐（差 `print_int` 别名——S4 坑②「以 libc 为单源回填」在此接续）；
+  每个表内名恒有唯一形态。
+- **J9 证红留痕（三路，注入后字节级还原）**：① 路由表 `is_host_rerouted` 改恒假
+  ⇒ 遮蔽清单与路由锚变红；② `OutputLog::push` 去掉合并分支 ⇒ 小段合并锚变红；
+  ③ `host_free` 的 Double-Free 前置判定改后置 ⇒ E3061 锚变红。
+- **门禁全绿**：`moon check --target all` 0 错、`moon test` **270/270**、十闸 PASS。
+  工具侧同步：`single_source` / `libc_single_source` 的规则 JSON 更新产物路径；
+  `surface_edges.txt` +12 条边（含 `codegen bytecode host_func_id_by_user_name`）。
+- **闸门盲区登记（新发现）**：`moonbit_surface` 的 consumer 侧按**目录末段**取名，
+  而 L4 `lexer/internal/host` 与 L7 `vitro/engine/host` 末段同为 `host` ⇒ 两者的
+  `@host.` 引用会互相被当作"已消费"（本批符号名与
+  `{stub_lookup,stubs_provider,vfs_provider,StubsProvider,VfsProvider}` 无交集，
+  故未触发；已在边清单注释登记）。
+
+### Added (S6 开工批：`vitro/engine/memory` 建包——1MB 载体 + 堆状态机 + `checked_access` 单入口，2026-09-23)
+
+- **范围与依据**：S6（`vitro/engine/{memory,host,vm}`）开工批，只做 `memory`
+  一片（纯算法、零下游依赖、可独立红锚验收，符合"分片可停可续"）。执行输入是
+  勘察报告（任务书）`MoonBit迁移_vitro_vm与vitro_runtime模块勘察报告20260918`
+  （提交 `917251e` 内，仅存于 git 历史）。落地的是该报告的**资产 R + M 建议**，
+  不是"Rust 现状直译"：`§5.1`（载体/元数据分离 + 单入口 + 脏页移位 + 批量快路径）、
+  `§5.5`（freed_logs 有序数组 + 二分 + 内存不变量自检）、`§9.2` 约束 #1/#5。
+- **五文件结构**：`layout.mbt`（常量面板）/ `types.mbt`（数据壳 + `MemFault`）/
+  `freed_logs.mbt`（有序数组 + 二分 + 精确裁剪）/ `memory_map.mbt`（`MemoryMap`：
+  regions / free_list / quarantine / 堆游标 / 判定入口）/ `carrier.mbt`（`Memory`：
+  字节载体 + 脏页 + 受检读写 + 批量）。
+- **常量单源不双写**：地址布局常量沿 S5 的 `bytecode/memory.mbt` 定义点，本包一律
+  `@bytecode.` 前缀引用（只消费 `MEM_SIZE` / `NULL_TRAP_SIZE` / `HEAP_START` /
+  `align4` 四个）；本包自有页几何（`PAGE_SHIFT/SIZE/COUNT`、`DIRTY_WORD_COUNT`）
+  与隔离预算（`DEFAULT_QUARANTINE_BUDGET`），并用**硬编码对账锚**锁
+  `PAGE_SIZE × PAGE_COUNT == MEM_SIZE`、`DEFAULT_QUARANTINE_BUDGET × 4 == MEM_SIZE`。
+- **面扩张（minor，0.6.0 候选）**：`bytecode` 的 `MEM_SIZE` / `NULL_TRAP_SIZE` /
+  `HEAP_START` / `STACK_START` / `argv_region_footprint` / `compute_heap_base`
+  由 `const`/`fn` 升为 `pub`（S5 已留"S6 前置"注释）。后三者的消费者是 vm 片
+  （同批后续），已登记 `surface_allowlist.txt` 待 vm 接线后清理。
+- **三处结构性收紧（相对 Rust 现状，均出自勘察建议）**：
+  1. **取消平行索引**（坑 6 的根因）：`regions` 改为 **addr 键的插入序 `Map`**
+     （core `Map` 即 LinkedHashMap，既有键 `set` 保插入位）——"同 addr 两条目"与
+     "索引与 regions 失配"在类型层面不可表达，`rebuild_region_index()` 的恢复
+     义务整个消失。地址也不在 `MemoryRegionData` 里（键即地址），失配面归零。
+  2. **释放路径单一出口**（堆有界隔离决议 §3）：`MemoryMap::release` 原子完成
+     "置 `is_freed` + 登记 freed_logs + 进 FIFO 隔离区"三步。Rust 现版同一语义
+     在 `host_free` / `realloc(p,0)` / `free_memory` 三处各写一遍。
+  3. **受检访问单入口**（§9.2 约束 #1）：`Memory.bytes` 是 **priv 字段**，
+     包外拿不到裸字节；判定只经 `MemoryMap::check_access`（NULL 区 → 上界 → UAF），
+     写路径再补脏页记账。"host 层绕过检测"从纪律要求变成结构不可能。
+     顺带关闭 Rust 的存量漏网：`read_memory_to` 只查 NULL/上界不查 UAF。
+- **已知代价（诚实登记）**：freed_logs 用有序数组，`remove`/`insert` 是 O(n) 尾部
+  搬移。稳态条目数有界（隔离预算 ÷ 最小块 ≈ 16,387），命中路径平均只动 0–2 条；
+  **旧块复用**（first-fit 命中低地址驱逐块）时被删下标近 0、搬移接近全长——这是
+  本容器相对 `BTreeMap` 的唯一劣化点。实测 10 万次 churn 用例全程 **1.6s**（含
+  编译与其余 26 个用例），暂不构成问题；若门 1 基准显示其成为热点，换
+  `@sorted_map`（AVL）即可，**区间算法与全部红锚不变**。
+- **锚点（27 测试：白盒 21 + 黑盒 6）**：照搬 Rust 红锚——坑 10 部分重叠精确裁剪
+  （`test_u213_freed_logs_partial_overlap_trimmed`）、坑 6 复用不双条目
+  （`test_u22_realloc_reuse_no_duplicate_entries`）、坑 7 隔离区三语义（窗口内必
+  检出 / 窗口外复用 / 预算 0 立即复用 + 稳态窗口存活）、churn 超预算不撞墙、1MB
+  墙返回 NULL、复用复位 + 清窗口、统计口径；另加 freed_logs 四类裁剪分支、二分
+  边界（相邻不重叠不得误判）、饱和算术、脏页移位、批量 memmove 语义等。
+  黑盒文件同时承担**对外面消费面**（喂 `moonbit_surface -check`：本包全部 pub
+  符号均有消费，无"无主 pub"）。
+- **J9 证红留痕（两路注入，注入后字节级还原）**：
+  ① `remove_overlapping` 退化为"重叠即整条删除"（坑 10 修复前行为）→ **4 个用例
+  变红**，含坑 10 锚本体与黑盒 `freed_logs_surface`；
+  ② `find_overlapping` 二分下界差一（少减 1）→ **13/27 用例变红**。
+  另有 `verify_catches_quarantine_bytes_drift` 作为不变量自检的常驻证红。
+- **门禁全绿**：`moon check --target all` 0 错（本包零非 derive 告警）、
+  `moon test` **237/237**、`pkg_deps`（20 包）/ `moonbit_surface`（可收清单 + 消费
+  边）/ `mbti_sync`（16 接口面）/ `single_source` / `libc_single_source` /
+  `gen_diag` / `gen_host_route` / `perf_budget` 八闸 PASS。
+- **登记未落地项**（不静默）：快照批量装载（`load_*`，形状由 vm 的
+  `VMSnapshot`/`MemoryImage` 决定）、`MemoryFragmentData`（L8 导出 DTO）、
+  cstring 通道（`write_cstring`/`read_cbytes`：`\xHH ≥ 0x80 → Latin-1` 的口径
+  单源当前长在 L6 `codegen/init.mbt` 且为 priv，跨层复用需先上提为独立单源）。
+
 ### 发布（mooncakes）：vitro/engine 0.5.0（2026-09-23）
 
 - **版本语义裁定：0.4.0 → 0.5.0（非 patch）**——0.4.0（`2bf3b29`）以来 moonbit/

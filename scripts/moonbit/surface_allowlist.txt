@@ -21,4 +21,17 @@ diag codes_without_catalog
 #
 # （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
 #  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
-#  曾于 176fbdf 误判死码删除、审阅批四恢复。）
+#  曾于 176fbdf 误判死码删除，审阅批四恢复。）
+#
+# --- S6 前置 pub 化（memory 建包批，2026-09-23）---
+# memory 包**不复制** L6 的地址布局常量（`@bytecode.` 前缀引用，单源不双写），
+# 但它只消费其中 4 个：MEM_SIZE / NULL_TRAP_SIZE / HEAP_START / align4。
+# 余下 3 个是 vm 片的消费面（S6 同批后续片，包尚未建）：
+#   STACK_START            → vm 的 mem_stack_top 初值
+#   argv_region_footprint  → vm 的 setup_argv 编址
+#   compute_heap_base      → vm 的 setup 动态堆起点（再喂 MemoryMap::set_heap_base）
+# 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
+# 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
+bytecode STACK_START
+bytecode argv_region_footprint
+bytecode compute_heap_base

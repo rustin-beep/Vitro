@@ -7,3 +7,7 @@ import {
   "vitro/engine/opcode",
   "vitro/engine/source",
 }
+
+import {
+  "vitro/engine/libc",
+} for "test"

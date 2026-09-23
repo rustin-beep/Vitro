@@ -100,6 +100,24 @@ dump_typeck lexer tokenize_with_vfs
 dump_typeck parser parse
 dump_typeck typeck TypeChecker
 dump_typeck typeck TypeError
+# —— S6 host 建包批（2026-09-23）：host(L7) → bytecode(L6)/memory(L7)；
+#    路由表自 codegen 上提到 bytecode 后，codegen 的消费改指 bytecode。
+#    注：consumer 侧 "host" 与 L4 `lexer/internal/host` 同名（见下 host token * 两条）——
+#    面闸按目录末段取 consumer、按 `@别名` 取 provider，同名称符号会被
+#    相互误判为"已消费"。已登记为闸门盲区；本包符号名与
+#    {stub_lookup,stubs_provider,vfs_provider,StubsProvider,VfsProvider} 无交集。
+bytecode libc is_libc_func
+codegen bytecode host_func_id_by_user_name
+host bytecode CallRoute
+host bytecode MEM_SIZE
+host bytecode align4
+host bytecode call_route
+host memory DEFAULT_QUARANTINE_BUDGET
+host memory FreedRegionInfo
+host memory MemFault
+host memory Memory
+host memory MemoryMap
+host utf8 encode
 host token SourceError
 host token SourceProvider
 lexer diag ErrorCode
@@ -115,6 +133,11 @@ lexer token SourceError
 lexer token SourceProvider
 lexer utf8 encode
 libc ast Type
+memory bytecode HEAP_START
+memory bytecode MEM_SIZE
+memory bytecode NULL_TRAP_SIZE
+memory bytecode align4
+memory deque Deque
 names ast Expr
 names ast TemplateArg
 names ast Type

@@ -62,7 +62,7 @@
       "concept": "Host 函数路由（110 常量 + PURE 短路表）",
       "kind": "registered",
       "rust_source": "native/crates/vitro_runtime/src/host_func_id.rs",
-      "moonbit_source": "moonbit/codegen/host_func_id_gen.mbt",
+      "moonbit_source": "moonbit/bytecode/host_func_id_gen.mbt",
       "sync": "**生成**（moonbit 侧 gen_host_route 产物，落款 sha + 内置 fmt，禁手改）",
       "anchor": "`go run ./scripts/moonbit/gen_host_route -check`（三件套：落款 sha / fmt 内置 / 漂移红）",
       "_move_note": "S6 建 vitro/engine/host 包时本表整体上提为 L7 单源，codegen 改 import（总计划 S5/S6 行已登记）。"

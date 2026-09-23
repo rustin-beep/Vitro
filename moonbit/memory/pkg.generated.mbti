@@ -1,0 +1,160 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/memory"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/deque",
+}
+
+// Values
+pub const DEFAULT_QUARANTINE_BUDGET : Int = 262144
+
+pub const DIRTY_WORD_COUNT : Int = 4
+
+pub const PAGE_COUNT : Int = 256
+
+pub const PAGE_SHIFT : Int = 12
+
+pub const PAGE_SIZE : Int = 4096
+
+pub fn sat_u32_add(UInt, UInt) -> UInt
+
+pub fn sat_u32_sub(UInt, UInt) -> UInt
+
+// Errors
+
+// Types and methods
+pub(all) enum AccessKind {
+  Read
+  Write
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FreeBlock {
+  mut addr : UInt
+  mut size : Int
+} derive(Eq, @debug.Debug)
+
+pub struct FreedLogs {
+  entries : Array[FreedRegionInfo]
+}
+pub fn FreedLogs::at(Self, Int) -> FreedRegionInfo
+pub fn FreedLogs::clear(Self) -> Unit
+pub fn FreedLogs::contains(Self, UInt) -> Bool
+pub fn FreedLogs::find_overlapping(Self, UInt, UInt) -> FreedRegionInfo?
+pub fn FreedLogs::get(Self, UInt) -> FreedRegionInfo?
+pub fn FreedLogs::insert(Self, FreedRegionInfo) -> Unit
+pub fn FreedLogs::is_empty(Self) -> Bool
+pub fn FreedLogs::length(Self) -> Int
+pub fn FreedLogs::new() -> Self
+pub fn FreedLogs::remove_overlapping(Self, UInt, UInt) -> Unit
+pub fn FreedLogs::to_array(Self) -> Array[FreedRegionInfo]
+
+pub(all) struct FreedRegionInfo {
+  addr : UInt
+  mut size : Int
+  alloc_line : Int
+  freed_line : Int
+  alloc_step : Int
+  freed_step : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct HeapStatsData {
+  heap_base : Int
+  total_heap : Int
+  allocated : Int
+  fragmented : Int
+  fragmentation_rate : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum MemFault {
+  NullDeref(UInt, AccessKind)
+  OutOfBounds(UInt, UInt)
+  UseAfterFree(FreedRegionInfo, AccessKind)
+} derive(Eq, @debug.Debug)
+
+pub struct Memory {
+  bytes : FixedArray[Byte]
+  dirty : FixedArray[UInt64]
+}
+pub fn Memory::clear_dirty(Self) -> Unit
+pub fn Memory::clone_raw(Self) -> FixedArray[Byte]
+pub fn Memory::copy(Self, MemoryMap, UInt, UInt, Int) -> Result[Unit, MemFault]
+pub fn Memory::dirty_pages(Self) -> Array[Int]
+pub fn Memory::dirty_word(Self, Int) -> UInt64
+pub fn Memory::dirty_word_count(Self) -> Int
+pub fn Memory::fill(Self, MemoryMap, UInt, Int, Byte) -> Result[Unit, MemFault]
+pub fn Memory::length(Self) -> Int
+pub fn Memory::load_i8(Self, MemoryMap, UInt) -> Result[Int, MemFault]
+pub fn Memory::load_u32(Self, MemoryMap, UInt) -> Result[UInt, MemFault]
+pub fn Memory::load_u64(Self, MemoryMap, UInt) -> Result[UInt64, MemFault]
+pub fn Memory::mark_dirty(Self, UInt, UInt) -> Unit
+pub fn Memory::new() -> Self
+pub fn Memory::page(Self, Int) -> FixedArray[Byte]
+pub fn Memory::reset(Self) -> Unit
+pub fn Memory::restore_raw(Self, FixedArray[Byte]) -> Unit
+pub fn Memory::store_i8(Self, MemoryMap, UInt, Int) -> Result[Unit, MemFault]
+pub fn Memory::store_u32(Self, MemoryMap, UInt, UInt) -> Result[Unit, MemFault]
+pub fn Memory::store_u64(Self, MemoryMap, UInt, UInt64) -> Result[Unit, MemFault]
+pub fn Memory::write_bytes(Self, MemoryMap, UInt, Bytes) -> Result[Unit, MemFault]
+pub fn Memory::write_page(Self, Int, FixedArray[Byte]) -> Unit
+
+pub struct MemoryMap {
+  regions : Map[UInt, MemoryRegionData]
+  free_list : Array[FreeBlock]
+  quarantine : @deque.Deque[FreeBlock]
+  mut quarantine_bytes : Int
+  mut quarantine_budget : Int
+  mut heap_base : UInt
+  mut heap_offset : UInt
+  mut alloc_counter : Int
+  freed_logs : FreedLogs
+}
+pub fn MemoryMap::alloc_counter(Self) -> Int
+pub fn MemoryMap::allocate_raw(Self, UInt, UInt) -> UInt?
+pub fn MemoryMap::build_heap_stats(Self) -> HeapStatsData
+pub fn MemoryMap::check_access(Self, UInt, UInt, AccessKind) -> Result[Unit, MemFault]
+pub fn MemoryMap::find_live_region_containing(Self, UInt) -> (UInt, MemoryRegionData)?
+pub fn MemoryMap::fragmentation_rate(Self) -> Int
+pub fn MemoryMap::free_list_at(Self, Int) -> FreeBlock
+pub fn MemoryMap::free_list_len(Self) -> Int
+pub fn MemoryMap::freed_logs_at(Self, Int) -> FreedRegionInfo
+pub fn MemoryMap::freed_logs_contains(Self, UInt) -> Bool
+pub fn MemoryMap::freed_logs_find_overlapping(Self, UInt, UInt) -> FreedRegionInfo?
+pub fn MemoryMap::freed_logs_get(Self, UInt) -> FreedRegionInfo?
+pub fn MemoryMap::freed_logs_len(Self) -> Int
+pub fn MemoryMap::freed_logs_remove_overlapping(Self, UInt, UInt) -> Unit
+pub fn MemoryMap::has_region(Self, UInt) -> Bool
+pub fn MemoryMap::heap_base(Self) -> UInt
+pub fn MemoryMap::heap_offset(Self) -> UInt
+pub fn MemoryMap::new() -> Self
+pub fn MemoryMap::quarantine_at(Self, Int) -> FreeBlock
+pub fn MemoryMap::quarantine_budget(Self) -> Int
+pub fn MemoryMap::quarantine_bytes(Self) -> Int
+pub fn MemoryMap::quarantine_len(Self) -> Int
+pub fn MemoryMap::region(Self, UInt) -> MemoryRegionData?
+pub fn MemoryMap::regions_len(Self) -> Int
+pub fn MemoryMap::regions_to_array(Self) -> Array[(UInt, MemoryRegionData)]
+pub fn MemoryMap::register_alloc(Self, UInt, Int, Int, String, Bool) -> Unit
+pub fn MemoryMap::release(Self, UInt, Int, Int) -> Int?
+pub fn MemoryMap::set_heap_base(Self, UInt) -> Unit
+pub fn MemoryMap::set_quarantine_budget(Self, Int) -> Unit
+pub fn MemoryMap::set_region(Self, UInt, MemoryRegionData) -> Unit
+pub fn MemoryMap::total_allocated(Self) -> Int
+pub fn MemoryMap::total_fragmented(Self) -> Int
+pub fn MemoryMap::verify(Self) -> Result[Unit, String]
+
+pub(all) struct MemoryRegionData {
+  mut size : Int
+  mut name : String
+  mut ty : String
+  is_heap : Bool
+  mut is_freed : Bool
+  mut alloc_line : Int
+  mut alloc_by : String
+  mut kind : String
+} derive(@debug.Debug)
+pub fn MemoryRegionData::heap_block(Int, String, String, Int, String) -> Self
+
+// Type aliases
+
+// Traits

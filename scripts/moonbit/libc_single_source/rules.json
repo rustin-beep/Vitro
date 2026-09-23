@@ -9,7 +9,7 @@
       "kind": "string_list"
     },
     "host_names": {
-      "file": "moonbit/codegen/host_func_id_gen.mbt",
+      "file": "moonbit/bytecode/host_func_id_gen.mbt",
       "anchor_start": "fn host_func_id_by_user_name",
       "kind": "match_arms",
       "_note": "取函数体内所有 `\"name\" => Some(HOST_X)` 臂的用户名；Rust 源的一个臂可含多个名字（如 `\"print_int\" | \"__vitro_output\"`），生成物展开为多臂，故本表是『名字集』口径。"
@@ -21,7 +21,7 @@
       "kind": "string_list"
     },
     "pure_names": {
-      "file": "moonbit/codegen/host_func_id_gen.mbt",
+      "file": "moonbit/bytecode/host_func_id_gen.mbt",
       "anchor_start": "let bytecode_libc_pure_funcs : Array[String] = [",
       "anchor_end": "]",
       "kind": "string_list"

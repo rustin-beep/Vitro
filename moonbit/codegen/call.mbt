@@ -35,7 +35,8 @@ fn BytecodeGen::gen_call_ptr(
   // 调用（64 位值直传）
   let is_user_call = match callee {
     Identifier(name, _, _) =>
-      self.func_index.contains(name) || host_func_id_by_user_name(name) is None
+      self.func_index.contains(name) ||
+      @bytecode.host_func_id_by_user_name(name) is None
     _ => true // 间接调用恒为用户调用
   }
   let is_variadic_callee = match callee {
@@ -220,7 +221,7 @@ fn BytecodeGen::gen_call_ptr(
       }
       // Host 函数：直接 CallHost（bytecode libc 纯函数已在预注册段走
       // func_index，到不了这里）
-      match host_func_id_by_user_name(name) {
+      match @bytecode.host_func_id_by_user_name(name) {
         Some(host_id) => {
           self.emit(@opcode.OpCode::CallHost, host_id, loc)
           match ret_temp_offset {

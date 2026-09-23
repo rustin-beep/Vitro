@@ -19,6 +19,8 @@
 | `vitro/engine/typeck` | L5 | C-subset type checking + lowering (4 passes); auto/typeof deduction; array/struct init sizing |
 | `vitro/engine/bytecode` | L6 | Output schema + R1 layout pure functions + canonical dump emitter |
 | `vitro/engine/codegen` | L6 | `BytecodeGen` state machine with dual entry: `compile` / `compile_library`; slot strategy v1 |
+| `vitro/engine/memory` | L7 | 1 MiB linear-memory carrier + `MemoryMap` heap state machine (bump + bounded quarantine + first-fit) + single checked-access entry + ordered `freed_logs` |
+| `vitro/engine/host` | L7 | Host-function domain: call-route consumption side, byte-faithful output channels (`Bytes`), memory-family handlers with structured replies |
 
 Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
 
@@ -56,6 +58,8 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 | `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering 4 Pass（auto/typeof 推导、数组/struct 初始化器尺寸推断） |
 | `vitro/engine/bytecode` | L6 | 产物 schema + R1 布局纯函数 + canonical dump emitter |
 | `vitro/engine/codegen` | L6 | BytecodeGen 状态机双入口（`compile` / `compile_library`）+ 槽位策略 v1 逐位兼容 |
+| `vitro/engine/memory` | L7 | 1MB 载体（`Memory`）+ 堆状态机（`MemoryMap`：bump + 有界隔离 + first-fit）+ `checked_access` 单入口 + freed_logs 有序数组（S6 开工批） |
+| `vitro/engine/host` | L7 | 宿主函数域：路由表消费侧 + 输出通道（`Bytes` 字节保真）+ 内存族 handlers（结构化回复）+ E3061/E3027 文案（S6 开工批二） |
 
 各包 API 概览见对应目录的 `pkg.generated.mbti`；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）。
 
@@ -78,7 +82,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 210 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 8 / codegen 16；分解和 204 + 根 README doc test 6）——S5 起 bytecode/codegen 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 270 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 14 / codegen 16 / memory 27 / host 27；分解和 264 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；memory 27 = 白盒 21 + 黑盒 6；host 27 = 白盒 24 + 黑盒 3（两包的黑盒同时承担对外面消费面）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

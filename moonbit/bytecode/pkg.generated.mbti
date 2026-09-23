@@ -21,17 +21,50 @@ pub const GLOBAL_REGION_LIMIT : UInt = 65536
 
 pub const GLOBAL_START : UInt = 0x1000
 
+pub const HEAP_START : UInt = 0x5000
+
+pub const HOST_FUNC_NAME_COUNT : Int = 110
+
+pub const MEM_SIZE : UInt = 1048576
+
+pub const NULL_TRAP_SIZE : UInt = 0x1000
+
+pub const SHADOWED_HOST_NAME_COUNT : Int = 20
+
+pub const STACK_START : UInt = 1048576
+
 pub fn align4(UInt) -> UInt
+
+pub fn argv_region_footprint(Int, Array[String]) -> UInt
+
+pub fn builtin_name_union() -> Array[String]
 
 pub let bytecode_libc_all_funcs : Array[String]
 
 pub fn bytecode_libc_index(String) -> Int?
 
+pub fn call_route(String) -> CallRoute?
+
 pub fn compile_output_dump_json(CompileOutput) -> String
+
+pub fn compute_heap_base(UInt, Int, Array[String]) -> UInt
+
+pub fn host_func_id_by_user_name(String) -> Int?
+
+pub fn is_host_func_name(String) -> Bool
+
+pub fn is_host_rerouted(String) -> Bool
+
+pub fn shadowed_host_names() -> Array[String]
 
 // Errors
 
 // Types and methods
+pub(all) enum CallRoute {
+  BytecodeLibc(Int)
+  Host(Int)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
   globals_init_32 : Array[(UInt, Int)]

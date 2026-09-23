@@ -1,0 +1,87 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/host"
+
+import {
+  "moonbitlang/core/debug",
+  "vitro/engine/memory",
+}
+
+// Values
+pub const MERGE_LIMIT : Int = 4096
+
+pub const MERGE_THRESHOLD : Int = 64
+
+pub const OUTPUT_LOG_BUDGET : Int = 16777216
+
+pub fn double_free_message(@memory.FreedRegionInfo) -> String
+
+pub fn heap_exhausted_note() -> String
+
+pub fn host_calloc(@memory.MemoryMap, @memory.Memory, Int, Int, Int) -> HostMemReply
+
+pub fn host_free(@memory.MemoryMap, UInt, Int, Int) -> HostMemReply
+
+pub fn host_malloc(@memory.MemoryMap, Int, Int) -> HostMemReply
+
+pub fn host_realloc(@memory.MemoryMap, @memory.Memory, UInt, Int, Int, Int, Int) -> HostMemReply
+
+pub fn invalid_free_message(@memory.MemoryMap, UInt) -> String
+
+pub fn malloc_zero_note() -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct HostMemReply {
+  value : UInt?
+  note : String?
+  trap : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct OutputChunk {
+  kind : OutputKind
+  bytes : Bytes
+} derive(Eq, @debug.Debug)
+
+pub(all) enum OutputKind {
+  Stdout
+  Stderr
+  Note
+} derive(Eq, @debug.Debug)
+pub fn OutputKind::as_str(Self) -> String
+pub fn OutputKind::parse(String) -> Self?
+
+pub struct OutputLog {
+  chunks : Array[OutputChunk]
+  mut total_bytes : Int
+  kind_bytes : FixedArray[Int]
+  mut dropped_bytes : Int
+  mut truncation_noted : Bool
+  mut budget : Int
+  pending : Array[Byte]
+  mut pending_kind : OutputKind
+  mut has_pending : Bool
+}
+pub fn OutputLog::budget(Self) -> Int
+pub fn OutputLog::chunk_list(Self) -> Array[OutputChunk]
+pub fn OutputLog::chunks_of(Self, OutputKind) -> Array[Bytes]
+pub fn OutputLog::clear(Self) -> Unit
+pub fn OutputLog::dropped_bytes(Self) -> Int
+pub fn OutputLog::has_note(Self, Bytes) -> Bool
+pub fn OutputLog::is_empty(Self) -> Bool
+pub fn OutputLog::join(Self, OutputKind) -> Bytes
+pub fn OutputLog::join_all(Self) -> Bytes
+pub fn OutputLog::len(Self) -> Int
+pub fn OutputLog::len_of(Self, OutputKind) -> Int
+pub fn OutputLog::new() -> Self
+pub fn OutputLog::push(Self, OutputKind, Bytes) -> Unit
+pub fn OutputLog::push_note(Self, Bytes) -> Unit
+pub fn OutputLog::push_note_str(Self, String) -> Unit
+pub fn OutputLog::push_stderr(Self, Bytes) -> Unit
+pub fn OutputLog::push_stdout(Self, Bytes) -> Unit
+pub fn OutputLog::set_budget(Self, Int) -> Unit
+pub fn OutputLog::total_bytes(Self) -> Int
+
+// Type aliases
+
+// Traits

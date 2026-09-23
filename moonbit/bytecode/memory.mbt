@@ -9,14 +9,14 @@
 /// 字节数计算（非 ASCII argv 下会静默少算）。
 
 ///|
-/// 总内存空间（1MB）。（MEM_SIZE/NULL_TRAP_SIZE/STACK_START/argv_region_footprint
-/// 等本包内暂无消费的常量/函数是 **S6 前置**——memory/host/vm 建包时消费，
-/// moon 的 unused 警告不溯 wbtest 消费（工具行为），保留勿删）
-const MEM_SIZE : UInt = 1024 * 1024
+/// 总内存空间（1MB）。S6 起由 `vitro/engine/memory` 消费（载体尺寸/上界检查）；
+/// `STACK_START` 由 vm（栈顶初值）、`compute_heap_base`/`argv_region_footprint`
+/// 由 vm setup（动态堆起点）消费——0.6.0 起面扩张为 pub（minor）。
+pub const MEM_SIZE : UInt = 1024 * 1024
 
 ///|
 /// NULL 陷阱区大小。
-const NULL_TRAP_SIZE : UInt = 0x1000
+pub const NULL_TRAP_SIZE : UInt = 0x1000
 
 ///|
 /// 全局区起始地址。
@@ -24,7 +24,7 @@ pub const GLOBAL_START : UInt = 0x1000
 
 ///|
 /// 堆区默认起始地址（全局数据未越过时的堆起点下限）。
-const HEAP_START : UInt = 0x5000
+pub const HEAP_START : UInt = 0x5000
 
 ///|
 /// 全局数据区（全局变量/静态变量/vtable/字符串字面量）的编译期硬上限，
@@ -36,8 +36,8 @@ const HEAP_START : UInt = 0x5000
 pub const GLOBAL_REGION_LIMIT : UInt = MEM_SIZE / 16
 
 ///|
-/// 栈区起始地址（从高地址向低地址增长）。
-const STACK_START : UInt = MEM_SIZE
+/// 栈区起始地址（从高地址向低地址增长）。vm 的 `mem_stack_top` 初值。
+pub const STACK_START : UInt = MEM_SIZE
 
 ///|
 /// 4 字节对齐掩码（= !3 的 UInt 形态）。
@@ -54,7 +54,7 @@ pub fn align4(x : UInt) -> UInt {
 ///
 /// R1 ③：argv 自 `GLOBAL_REGION_LIMIT` 向下分配，本函数是占用的唯一计算
 /// 口径（VM `setup_argv` 的编址与 `compute_heap_base` 的堆起点都从它推导）。
-fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
+pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
   if argc <= 0 {
     return 0
   }
@@ -75,7 +75,7 @@ fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
 ///
 /// `global_data_end` 为全局数据区末端的**绝对地址**（codegen 导出，含
 /// Bytecode Libc 预留段），未编译时传 0 即退化为静态 `HEAP_START`。
-fn compute_heap_base(
+pub fn compute_heap_base(
   global_data_end : UInt,
   argc : Int,
   argv : Array[String],

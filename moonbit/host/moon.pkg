@@ -1,0 +1,15 @@
+// L7 执行层·宿主函数域（S6 开工批）：输出通道（三通道 + Bytes 承载）
+// + 内存族 handlers（malloc/free/realloc/calloc 的结构化形态）。
+//
+// 依赖严格单向：bytecode（L6：路由单源表 + 固定索引 88 名单源——host 按名
+// 分发查它）+ memory（L7 同层：1MB 载体与堆状态机）。被 vm 消费，不反向依赖。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
+import {
+  "moonbitlang/core/encoding/utf8",
+  "vitro/engine/bytecode",
+  "vitro/engine/memory",
+}
+
+import {
+  "vitro/engine/libc",
+} for "test"

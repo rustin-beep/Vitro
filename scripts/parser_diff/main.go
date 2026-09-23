@@ -67,7 +67,7 @@ func main() {
 // knownForkFiles：E1/E2 已知有意分叉（2026-09-20 F3-v2 累加器裁定 b：
 // 向 C 语义修正，oracle 侧自身不符 C 的形态族；逐条登记于 S3 执行
 // 记录 §7-4/§8）。新增条目必须先登记后加名；J9：selftest 不覆盖此面
-//（白名单吞 DIFF 属危险面，依赖 FORK(known) 行诚实可见）。
+// （白名单吞 DIFF 属危险面，依赖 FORK(known) 行诚实可见）。
 var knownForkFiles = map[string]string{
 	// 局部函数指针声明 int*(*fp)(int)：oracle 产出双层
 	// Pointer(Pointer(Function)) 不符 C（Clang 22.1.4 判据：单层
@@ -196,7 +196,10 @@ func runPathological(selftest bool) int {
 		moonNorm := canonicalize(moonRaw)
 		// E3 断言 1：两侧同等拒绝（Rust P1 修复后同样诊断拒绝——若
 		// 某侧 ok=true 且 parse_errors 空，即"同等拒绝"被破坏）
-		for _, side := range []struct{ tag string; norm []byte }{{"rust", rustNorm}, {"moon", moonNorm}} {
+		for _, side := range []struct {
+			tag  string
+			norm []byte
+		}{{"rust", rustNorm}, {"moon", moonNorm}} {
 			if bytes.Contains(side.norm, []byte(`"ok": true`)) &&
 				bytes.Contains(side.norm, []byte(`"parse_error_count": 0`)) {
 				failures++
@@ -259,7 +262,10 @@ func runLegalDeep(selftest bool) int {
 			fail("MoonBit 侧输出缺失: %s (%v)", name, err)
 		}
 		moonNorm := canonicalize(moonRaw)
-		for _, side := range []struct{ tag string; norm []byte }{{"rust", rustNorm}, {"moon", moonNorm}} {
+		for _, side := range []struct {
+			tag  string
+			norm []byte
+		}{{"rust", rustNorm}, {"moon", moonNorm}} {
 			if !bytes.Contains(side.norm, []byte(`"ok": true`)) {
 				failures++
 				fmt.Printf("E4-MUST-SUCCEED %s（%s 侧意外拒绝）: %s\n", name, side.tag, preview(side.norm))
@@ -501,7 +507,7 @@ func thresholdShapeSampleOf(name string) *shapeSample {
 // ---------------------------------------------------------------------------
 
 type mtype struct {
-	Array   *struct {
+	Array *struct {
 		ArraySize int    `json:"array_size"`
 		Dims      []int  `json:"dims"`
 		Element   *mtype `json:"element"`
@@ -550,8 +556,8 @@ type dumpDoc struct {
 		Structs []struct {
 			Name   string `json:"name"`
 			Fields []struct {
-				Name string  `json:"name"`
-				Ty   *mtype  `json:"ty"`
+				Name string `json:"name"`
+				Ty   *mtype `json:"ty"`
 			} `json:"fields"`
 		} `json:"structs"`
 		Globals []struct {

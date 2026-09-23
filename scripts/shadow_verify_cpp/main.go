@@ -79,7 +79,7 @@ type shadowDiff struct {
 	CaseName         string    `json:"case_name"`
 	ExpectedCategory string    `json:"expected_category"`
 	ClangResult      runResult `json:"clang_result"`
-	VitroResult       runResult `json:"vitro_result"`
+	VitroResult      runResult `json:"vitro_result"`
 	DiffType         string    `json:"diff_type"`
 }
 
@@ -396,7 +396,7 @@ func selfCheck() {
 	checks := []struct {
 		name  string
 		clang runResult
-		vitro  runResult
+		vitro runResult
 		want  string
 	}{
 		{"两侧一致 → match", clangOK, vitroOK, "match"},
@@ -664,7 +664,7 @@ func main() {
 				CaseName:         c.name,
 				ExpectedCategory: c.category,
 				ClangResult:      clangRes,
-				VitroResult:       vitroRes,
+				VitroResult:      vitroRes,
 				DiffType:         diffType,
 			}
 			printMu.Lock()

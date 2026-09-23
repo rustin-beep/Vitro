@@ -184,7 +184,7 @@ func verdict(b, h, bc, p table, rd rulesDoc) bool {
 			want = append(want, n)
 		}
 	}
-	missing := diff(want, b.set)  // 应在 builtin_all 却缺失
+	missing := diff(want, b.set)                  // 应在 builtin_all 却缺失
 	extra := diff(sortedKeys(b.set), toSet(want)) // builtin_all 多出的
 	if len(missing) > 0 || len(extra) > 0 {
 		ok = false

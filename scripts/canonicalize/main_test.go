@@ -52,7 +52,7 @@ func TestCheckCanonicalExitsZero(t *testing.T) {
 // 键序 / 缩进 / 转义三项。原文案宣称"尾随换行不匹配"，与实况不符，已随本批修正。
 func TestCheckToleratesSurroundingWhitespace(t *testing.T) {
 	for _, in := range []string{
-		"{\n  \"a\": 2\n}",   // 缺尾随换行
+		"{\n  \"a\": 2\n}",     // 缺尾随换行
 		"\n{\n  \"a\": 2\n}\n", // 前导换行
 		"  {\n  \"a\": 2\n}  ", // 前后空格
 	} {

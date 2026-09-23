@@ -783,10 +783,10 @@ type diffRecord struct {
 	Verdict      string `json:"verdict"`
 	Expected     string `json:"expected"`
 	Clang        string `json:"clang"`
-	Vitro         string `json:"vitro"`
+	Vitro        string `json:"vitro"`
 	ClangCompile bool   `json:"clang_compile"`
-	VitroCompile  bool   `json:"vitro_compile"`
-	VitroErr      string `json:"vitro_err"`
+	VitroCompile bool   `json:"vitro_compile"`
+	VitroErr     string `json:"vitro_err"`
 	Saved        string `json:"saved,omitempty"`
 }
 

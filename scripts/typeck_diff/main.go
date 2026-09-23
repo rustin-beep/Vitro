@@ -63,7 +63,7 @@ func main() {
 // 见 scripts/parser_diff/main.go 同名表——根因在 parser：局部函数指针/
 // 函数原型声明符 oracle 双层 Pointer(Pointer(Function)) 不符 C，MoonBit
 // 按 C 语义单层）在 **typeck 消费面**的放大——类型定型分叉连带 E1 诊断
-//（如 fp(42) 通用指针调用 W3055 只在 oracle 双层形态下触发）。与 parser
+// （如 fp(42) 通用指针调用 W3055 只在 oracle 双层形态下触发）。与 parser
 // 侧同规则：命中降级 FORK(known) 报告不计失败（白名单吞 DIFF 属危险面，
 // 依赖 FORK 行诚实可见）；S8 差异台账收编时一并裁定。
 var knownForkFiles = map[string]string{
@@ -267,14 +267,14 @@ func project(raw []byte) projection {
 	}
 	var names []string
 	type fsig struct {
-		Name    string   `json:"name"`
-		Ret     string   `json:"ret"`
-		Params  []string `json:"params"`
-		Vari    bool     `json:"variadic"`
-		Static  bool     `json:"static"`
+		Name   string   `json:"name"`
+		Ret    string   `json:"ret"`
+		Params []string `json:"params"`
+		Vari   bool     `json:"variadic"`
+		Static bool     `json:"static"`
 	}
 	type sagg struct {
-		Name   string     `json:"name"`
+		Name   string      `json:"name"`
 		Fields [][2]string `json:"fields"`
 	}
 	var funcs []fsig
@@ -351,7 +351,7 @@ type mtype struct {
 		Pointee *mtype `json:"pointee"`
 	} `json:"Pointer"`
 	Function *struct {
-		ReturnType *mtype           `json:"return_type"`
+		ReturnType *mtype            `json:"return_type"`
 		ParamTypes []json.RawMessage `json:"param_types"`
 	} `json:"Function"`
 	Int    json.RawMessage `json:"Int"`

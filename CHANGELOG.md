@@ -7,6 +7,207 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (S6 审阅修复批：P1/P2/P3 全销项，2026-09-23)
+
+用户 blob 级审阅（五阶段复核）+ 本轮逐条亲验后修复；每条红→绿留痕。
+
+- **P1 `powi10` 重写（数值，`format_g` 的 10^e 路径）**：oracle 用
+  `10f64.powi(e)`（= 精确 10^e 的最近舍入，633 个指数中仅 e=126 偏 1 ulp），
+  旧实现逐乘链从 e≥23 起分叉（实测 `%.17g` 6/6 特选值分叉、默认 `%g`
+  抽样 2/100），次正规区 `powi10(-320)=0` 导致 `8.88e-320` 输出 `infe-320`。
+  新实现 = `@bigint` 精确有理数 + 最近舍入（`2r ≥ d` 进位 = 平局向上）+
+  **e=126 显式锁定**；**633 指数（-324..308）与本机 Rust 1.95（oracle 同
+  工具链）位模式全表对拍**。红→绿锚：`format_g_powi_oracle_alignment`
+  （12 值 oracle release 真机锚，含 `1e23→0.9999999999999998e+23`、
+  DBL_MAX、次正规、**DBL_TRUE_MIN→`infe-324`**——oracle 自身 `powi(-324)=0`
+  的泄漏形状照搬同形）/ `powi10_bit_alignment`（10 点抽查）。
+- **P2 `memchr` 补实现**：110 路由中**唯一未登记缺口**（oracle
+  `string.rs:426-442` 有 handler、月球侧整批漏实现；既有对账锚只校验
+  「常量↔名字」不校验「路由↔实现」）。红锚 `memchr_scan_unsigned_and_bounds`
+  → 实现 → 绿；登记分叉（越界从静默 break 转受检 trap，读侧同族）。
+- **新闸 `host_route_coverage`**：路由名 ↔ host 实现覆盖对账（规则外置
+  `host_route_rules.json`：别名 / vm 白名单；**白名单双向对账**——出现实现
+  即红逼清理）。J9 双路证红（删别名 → 未实现红；白名单塞已有实现 → 过期红）。
+- **P3 `%%` 语义锚**：全批零 `%%` 用例（M4 突变实证：`parse_format_specs`
+  不跳 `%%` 时 100/100 仍绿）。补 `printf_percent_percent_semantics`
+  （**全部 oracle release 真机可验形状**：`"100%%"→"100%%"`、
+  `"%d%%"→"42%%"`、`"a%%b%dc"→"a%b7c"`、`"%d%%|%d"→"7%|9"`）——
+  锚定过程反查出 **oracle 既有偏差**：`%%` 展开带 `used < args.len()`
+  守卫，**实参耗尽后原样输出**（C 语义会展开）；同批登记 typeck 层
+  尾 `%` 计入说明符计数的形状（`printf("x%")` 被 E3032 拒）。M4 突变
+  复验新锚会红后恢复。
+- **P3 弃用 API 清零（host 包）**：`Char::from_int`→`Int::unsafe_to_char`
+  7 处、`not()`→`!` 18 处、`try?`→`try/catch` 9 处（含 5 个
+  `parse_*_or_zero` wrapper 重写）、`Map::new()`→`Map([])` 2 处、
+  `FmtScan`/`ScanfItem` 加 `priv`、未用变量/self 清理 —— host 包
+  警告数归零（全局 232→191，余下为其他包既有 Show→Debug/implicit-impl 噪声）。
+- **P2 真 NUL 修复 + 新闸 `source_hygiene`**：`host_test.mbt` 7 处真 NUL
+  （`b"hello\x00"` 落真字节）致 `git ls-files --eol = w/-text`、
+  `git diff --stat = Bin 4802→15346`——**15KB 黑盒测试在 diff/PR 中完全
+  不可见**；修复为转义写法（diff 恢复文本：273+/3-）。新闸扫描
+  **git tracked 全部文件**的真 NUL（fail-safe 无扩展名白名单；
+  allowlist 空集），J9 证红留痕。**连带深挖出冻结区潜例**：
+  `native/crates/vitro_lexer/src/string.rs` 的 `'<真NUL>'` 字面量使该文件
+  **索引侧 `i/-text` 长期潜伏**（diff 不可见）——改等价转义 `'\0'`，
+  `cargo test --workspace` 75 套件 1029 测试复跑全绿。
+- **P3-3 `scripts/**` 行尾治理**：`.gitattributes` 补
+  `scripts/** text eol=lf`（此前 autocrlf=true 下工作区恒 CRLF、本地
+  `gofmt -l` 恒 24 项红——含 **15 项真格式漂移**，非全部行尾假阳性，
+  对审阅结论的修正）；33 个 tracked 文件工作区归一（内容零变更，纯 stat
+  刷新）+ `gofmt -w` 清 13 处存量漂移（含本批新文件）；**gofmt 入 CI
+  hygiene**（scripts/ 必须 gofmt 干净）。
+- **CI 接线**：core job +2 步（`source_hygiene` / `host_route_coverage`），
+  hygiene job +1 步（`gofmt -l scripts/`）。
+- **验证**：moon test 347/347（host 104）；moon check 0 错；十一闸全绿；
+  `gofmt -l scripts/` = 0；`go build/vet/test ./scripts/...` 全过；
+  cargo test --workspace 1029/1029；README×2 连坐。
+
+### Added (S6 host 余量批三号：VFS 17 handler + 虚拟文件系统本体，2026-09-23)
+
+- **`VirtualFileSystem`**（Rust `vfs.rs:1-771` 照搬）：文件表/描述符表/fd
+  计数；**数据存 VM 堆**（区域名 `vfs:<name>`、FILE\* 名 `FILE:<path>`，
+  前端内存 Canvas 可直接可视）；文本模式 **CRLF 伸缩三件**
+  （`logical_to_physical`/`physical_to_logical`/`read_text_byte`——读压
+  `\r\n`→`\n`、写展开）；容量扩容 `max(2×容, 需求)` 对齐 4；`fseek` 负目标
+  统一 -1 不动游标（U2#13）；`ftell` 返物理游标（Windows CRT 口径）；
+  文本模式 SET/CUR 走逻辑↔物理、END 基于物理末尾（照搬）。
+- **坑 13 修复（登记分叉）**：oracle `fopen(path,"a")` 的建文件分支嵌在
+  `Write` 块内**恒不可达**（追加写对新文件静默丢弃）；本实现按 `VfsMode`
+  穷尽分支、Append 独立建文件路径——oracle 侧修复列两侧同修候选。
+- **17 handler**（`host_file.mbt`）：FILE\* 协议 = 堆上 4 字节存 fd
+  （`fopen` 分配 + 清 freed_logs + 登记 + 命名）；**哨兵流 0/1/2** 前置分支
+  给 fd 0（oracle 裸读 NULL 区零值的等价形态，避免 NULL trap）；`fputs`
+  的 stdout/stderr 通道分流（E-P1-5）；`perror` → stderr（空前缀 `"Error\n"`）；
+  `fread`/`fwrite` 尺寸链防护（乘法溢出/超 MEM_SIZE → 0）。
+- **登记分叉续列**：VFS 内部访问一律走 memory 受检单入口——① FILE\* 释放
+  走 `release` 单出口（进 UAF 窗口）：二次 `fclose` 受检读 trap，oracle
+  裸读得陈旧 fd 返 -1（`free_region` 不写 freed_logs——缺口②），已设分叉锚；
+  ② 文件数据读写受检化（oracle `read_memory_to` 不查 UAF）；③ `fgets`
+  二进制模式也压 `\r\n`（oracle 现状照搬，C 语义二进制不该压）。
+- **验证**：moon test 343/343（host 88→100：白盒 93 + 黑盒 7）；
+  moon check 0 错；九闸全绿（面闸无主清零）；README×2 连坐。
+- **登记未落地**：fd 元数据进 `VMSnapshot`（随 vm 片落形——VFS 数据结构
+  本身即克隆态；oracle `snapshot_files`/`restore_files` 是死代码不搬）；
+  `fprintf` 到自定义 FILE\* 不落盘（oracle 既有偏差，落盘裁定随 VFS 增强批）。
+
+### Added (S6 host 余量批二号：printf/scanf/字符 IO 族 10 handler，2026-09-23)
+
+- **范围**：`host_printf_n` / `host_fprintf_n` / `host_sprintf` / `host_snprintf` /
+  `host_scanf_n` / `host_sscanf` / `host_getchar` / `host_ungetc` / `host_puts` /
+  `host_putchar`。host 的 110 路由表现余仅 VFS 17（批三号）与控制流/回调
+  族 9（随 vm 片）。
+- **`format_fixed`——Rust `{:.*}` 的等价实现（本批核心新件）**：MoonBit 无
+  定点格式化 API；用 `@bigint` 做**精确十进制展开**（`e ≥ 0` 整数路径 /
+  `e = -k` 时 `m × 5^k` 即 `|val| × 10^k` 的精确整数）+ **half-even 舍入**
+  （比较 `2r` 与除数、平局取偶）。**值锚全部来自 oracle release 二进制
+  实测**：`%.2f` 0.125→`0.12`、`%.0f` 3.5→`4`、999999.5→`1000000`、
+  `%.0f` -0.0→`-0`、2.675→`2.67`、0.05→`0.1`。
+- **printf 引擎照搬要点**：`%g` 边界（exp=-4 定点 / exp≥prec 科学计数）
+  与指数段 `{:+#03}`（实测 `1e-05`/`1.23457e+06`）；`powi10` 用逐乘实现
+  （`@math.pow` 是 exp/log 语义，位级不同）；U2#9 宽度/精度 1MB 预算闸；
+  **oracle 既有偏差照搬（差异台账域）**：`%+`/`% `/`%#` 旗标无效
+  （`apply_width` 只实现 `-`/`0`）、`%.1s` 忽略精度（'s' 分支不取
+  precision）、未知说明符原样输出且**消耗实参**、`%c` 高位字节经 char
+  通道变 UTF-8 两字节（`putchar(200)` 实测落 `C3 88`——DIFF-LIB-PRINTF
+  族）。
+- **`InputState` 输入状态机**：oracle `RuntimeState` 输入域整块搬来
+  （`lines/index/char_offset/stdin_eof` 粘滞/ungetc/Batch-Interactive）；
+  `InputOutcome{Value/Waiting/Trap}` 三值承载 `waiting_input` 语义
+  （vm 接线：置位 + ip 回退 + 参数回推）。
+- **scanf V-P1-13 流式游标照搬**：虚拟字节流 + 映射表（行间补 `\n`）
+  按实际消费量推进——五连锚实证（"1 2"/"3 4" 依次读 1,2,3,4 后 EOF）；
+  A1 EOF 粘滞（Batch 耗尽返 -1；字面量不匹配流不动**不**置 EOF）；`%c`
+  经补位读到行分隔；`%s` 栈缓冲容量校验（V-P1-6）；`%f` 写 f32 位模式 /
+  `%lf` 写 f64。
+- **坑 17 族内不一致照搬**：printf/fprintf/scanf 有参数计数守卫（教学
+  trap），sprintf/snprintf/sscanf 没有（实参耗尽即字面透传）。
+- **登记分叉（批一号口径延续）**：fmt 串与 `%s` 实参受检读（oracle 裸读
+  不 trap）；sscanf 源串按字节扫描（oracle 经 lossy char——非 ASCII 的
+  `%c` 落点/空白判定不同，A-10 族）；scanf fmt 层非 ASCII 空白指令忽略
+  （oracle unicode 空白入指令）。
+- **面变更**：新增 pub 13 符号（10 handler + `InputState`/`new` +
+  `InputOutcome`），黑盒点名消费；新消费边 8 条（bigint/double 常量/
+  string parse 族）登记边表；`PRINTF_FIELD_BUDGET` 收私有。
+- **验证**：moon test 331/331（host 68→88：白盒 81 + 黑盒 7）；moon check
+  0 错；九闸全绿；README×2 连坐。
+
+### Added (S6 host 余量批一号：70 个 VM 无耦合 handler，2026-09-23)
+
+- **范围**：110 路由表的 VM 无耦合子集一次建齐——ctype 14 + math 22 + 字符串/
+  内存 19 + 转数值 6 + 杂项 9（rand/srand/time/clock/unreachable/va_*4）。
+  留给后续：printf/scanf/IO 族 10（批二号）、VFS 17（批三号）、控制流/回调
+  族 9（随 vm 片——`set_finished`/`call_user_function` 是 VM 状态）。
+- **读侧口径（既定接纳方案落地）**：oracle 字符串读路径是裸读
+  （`read_cbytes` 只查下界——`strlen(NULL)=0` 静默〔坑 16〕、UAF 静默读
+  内容、越界当 0 软夹紧〔坑 18〕）；MoonBit 侧一律走 memory 包受检单入口
+  （NULL→UAF→上界），**该 trap 的现在会 trap**——合法输入逐字节一致，
+  分叉只出现在 oracle 绕检形状（3 条登记分叉锚：`strlen_null_traps_
+  divergence` / `uaf_read_traps_divergence` / `memset_freed_region_traps_
+  uaf_divergence`）。界内软夹紧照搬（memset 超长截断到内存尾、strncpy
+  负 n 补零到尾——U5#3 形状）；`memset/memcpy/memmove` 写已释放块与
+  oracle U5#1 无检的分叉登记两侧同修候选。
+- **`strpbrk/strspn/strcspn` 字节语义**：oracle 经 `from_utf8_lossy` 走
+  char 语义（非 ASCII 下偏移与原内存错位——坑 8 同族静默错值形状）；
+  MoonBit 按 C 字节语义实现——ASCII 域与 oracle 逐位一致，非 ASCII
+  oracle 侧缺陷登记两侧同修候选。
+- **strcpy/strcat E3070 双重校验照搬**：堆块容量（第一个包含 dest 的存活
+  块，`>=` 起始口径）+ V-P1-6 栈缓冲容量——栈缓冲以 `StackBufferSpan`
+  显式参数传入（vm 接线时展平 call_stack，逆序=内层优先，命中即停），
+  文案逐字照搬 oracle。
+- **转数值族**：strtol/strtod 纯字节扫描已证与 oracle lossy 管道逐位
+  等价（lossy 串的 ASCII 空白/数字判定与原始字节同构）；`base=0→10` 且
+  **不剥 `0x` 前缀**（oracle 现状照搬）；`errno` 以 `errno_addr : UInt?`
+  参数化解耦符号表（写入失败照搬 oracle 静默忽略）；`atof` 整串 parse
+  失败→0.0（与 C 取前缀的偏差是 oracle 既有行为）；`strerror` 消息
+  **含内嵌 NUL 计入 size**（勘察 §3.2-9 口径），区域 `ty` 落 `"int"`
+  与 oracle `"char"` 的元数据微差登记。
+- **math 族位级对位**：`@math`（`log→ln`）+ `Double::sqrt/abs/mod`（IEEE
+  fmod——`fmod(x,0)=NaN` 探针实测与 libm 同）；位模式经
+  `reinterpret_as_uint64/reinterpret_as_double` 零损耗往返（3.14 ↔
+  4614253070214989087 锚）；**登记**：oracle 弹参序不一致（pow 先弹 x、
+  atan2 先弹 y）为 vm 接线义务；@math 与 libm 的 ULP 级差异是 D 级对拍
+  风险（差异台账 S8 收口）。
+- **杂项**：`RandState` LCG（seed=42 首值 3611 硬锚 + u32 回绕关系锚）；
+  time/clock deterministic 恒 0（Phase 1 判分确定性口径）；`va_*` 四件
+  为纯内存操作（游标 u32 读写）。
+- **面变更（0.6.0）**：`HostMemReply.value : UInt? → UInt64?`（strtol/
+  strtod/llabs 等压 64 位值——vm 值栈本就是 u64 位模式）；新增 pub 面
+  约 72 符号（70 handler + `StackBufferSpan` + `RandState`），黑盒点名
+  消费（新消费边 20 条已登记 `surface_edges.txt`）。
+- **验证**：moon test 311/311（host 28→68：白盒 62 + 黑盒 6）；moon check
+  0 错；九闸全绿（moonbit_surface / mbti_sync / pkg_deps /
+  libc_single_source / single_source / gen_diag / gen_host_route /
+  gen_stubs / perf_budget）；README×2 测试数连坐更新。
+
+### Fixed (S6 批一段：moonbit_surface 面闸口径修复，2026-09-23)
+
+- **三处口径不一致之①③修复**（消费侧取目录末段 / provider 按 `@别名` 末段归账 /
+  边表两侧末段形式——同名条目只能靠注释区分）：闸门重写为**包全名口径**
+  （`vitro/engine/<pkg>`）。`@别名.` 依据**消费文件所属包的 moon.pkg import
+  块**解析：普通源码/wbtest = main 块（+ 自引用——注释里的 `@pkg.` 自称按
+  自消费归账，保持旧口径）；`*_test.mbt` 与包内 README*（黑盒/doc 测试）=
+  main ∪ `for "test"` ∪ 自引用（被测包按末段别名隐式 import）；模块根
+  README*（发布面文档承诺）按全仓包末段解析，**歧义即红**（当前 `@host.`
+  即末段撞车：L7 与 `lexer/internal/host`）。`as` 显式别名 / 非 `for "test"`
+  scope / 块内别名冲突 / 未知别名一律 fail loud。
+- **危害与动机**：旧口径下 `lexer` 对 `lexer/internal/host` 的消费（别名
+  `host`）会假性救活 L7 `host` 的同名符号——该收的 pub 收不掉（「少收」，
+  安全侧）；S6 余量批 ~106 handler 与 VFS 的名域（`vfs_provider` 等）恰与
+  L4 存根域撞名，触发线已到。
+- **J9 留痕**：注入 `host::vfs_provider` 同名对——旧闸静默放行（可收清单
+  4 个纹丝不动、`-check` 绿）；新闸正确分离报「漏收 vitro/engine/host
+  vfs_provider」；撤探针后复绿。未知别名注入红（指明文件/consumer/处置）；
+  根 README `@host.` 歧义注入红（不静默择一）。
+- **边表/白名单全名化重刷**：边 225 条 **1:1 纯改名零漂移**（根 README
+  consumer 记 `.`、core/第三方库 provider 记完整路径如
+  `moonbitlang/core/string`）；白名单 4 键同步全名化。
+- **验证**：moon test 271/271；moon check 0 错；moonbit_surface / mbti_sync /
+  pkg_deps / libc_single_source / single_source / gen_diag / gen_host_route /
+  gen_stubs 八闸全绿。
+- **未做（批二段，挂 0.6.0 发布前）**：提供侧 `Glob("*/pkg.generated.mbti")`
+  仍只扫一层——4 个子包（`lexer/token`、`lexer/internal/{host,pp,scanner}`）
+  pub 面未入「无主判定」；全递归属行为扩张，与既有收面义务合批。
+
 ### Fixed (S6 开工批二审阅批：P1–P6 + oracle 存量缺陷①②两侧同修，2026-09-23)
 
 - **oracle 存量缺陷①（`calloc` 置零先于清理 ⇒ UAF 误报）两侧同修**：

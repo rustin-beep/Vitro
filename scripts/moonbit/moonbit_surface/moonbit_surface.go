@@ -1,4 +1,4 @@
-// moonbit_surface：MoonBit 对外面审计（S5 收尾批·收面前置）。
+// moonbit_surface：MoonBit 对外面审计（S5 收尾批·收面前置；S6 批一段·口径修复 2026-09-23）。
 //
 // 用法（cd moonbit）：
 //
@@ -10,31 +10,46 @@
 // 类型符号有消费则其方法/字段面跟随保留（类型可见即可调用其 pub 成员）；
 // 类型无消费 → 类型本身进可收清单（成员随之隐没）。
 //
-// 消费扫描范围：moonbit/**/*.mbt + README*.md（doc 测试是已发布包的
-// 文档承诺，计入消费）。排除各包自身源码（`@pkg.` 在包内不出现，无需
-// 排除；mbti 文件本身排除）。
+// **口径（S6 批一段修复，2026-09-23）**：consumer 与 provider 一律**包全名**
+// （moon.mod 模块名 + 包目录，如 `vitro/engine/lexer/internal/host`）。
+// `@别名.` 依据**消费文件所属包的 moon.pkg import 块**解析（别名 = import
+// 路径末段；全仓 moon.pkg 零显式别名，遇 `as` 等未知形态 fail loud）：
+//   - 普通源码与 *_wbtest.mbt：main import 块（wbtest 不携带 for-test，陷阱 #26）；
+//   - *_test.mbt 与包内 README*（doc 测试是黑盒）：main ∪ for "test" ∪ 自引用
+//     （被测包按末段别名隐式 import——`host/host_test.mbt` 的 `@host.` 即此；
+//     `@self.` 同义，当前语料未用但语义存在，一并映射）；
+//   - 模块根 README*（无 moon.pkg；发布面 README.md 的 nocheck 示例是文档
+//     承诺，计入消费）：别名按**全仓工作区包末段**解析，命中多个（如 `host`
+//     同时是 L7 与 lexer/internal/host）或零个均 fail loud。
 //
-// **判据盲区登记（2026-09-21 审阅，三条——文本 grep 的已知边界，变更
-// 形态时可静默漏检；收面以此闸为主、mbti diff（moon info）为辅）**：
-// ① import 别名（as y）——按路径末段猜包名，别名导入的 @y.sym 会算错
+// 修复动机（旧口径三处不一致）：consumer 取目录末段、provider 取 `@别名`
+// 末段——`lexer` 对 `lexer/internal/host` 的消费（别名 host）会假性救活 L7
+// `host` 的同名符号（该收的收不掉，J9 注入实证）；边表同名条目只能靠注释
+// 区分。验收锚：注入 `host::vfs_provider` 同名对，旧闸静默、新闸红。
 //
-//	provider；② 注释/字符串内的 @pkg.sym 计为消费（过宽方向，不漏收
-//	只可能挡收）；③ 点调用方法（obj.method()）不带前缀——类型经变量
-//	流动时方法消费不计（类型符号消费已按类型名覆盖大部分场景）。
+// **判据盲区登记（文本 grep 的已知边界，变更形态时可静默漏检）**：
+// ① 注释/字符串内的 @pkg.sym 计为消费（过宽方向，不漏收只可能挡收）；
+// ② 点调用方法（obj.method()）不带前缀——类型经变量流动时方法消费不计
+// （类型符号消费已按类型名覆盖大部分场景）。
+// （原盲区③ import 别名已随本批修复：moon.pkg 零别名假设 + 未知形态红。）
 //
-// 白名单 surface_allowlist.txt：一行一符号（格式 `pkg sym`）= **允许保持
+// **provider 侧仍只扫一层**（Glob `*/pkg.generated.mbti`，13 包）：4 个子包
+// （lexer/token、lexer/internal/{host,pp,scanner}）的 pub 面未入「无主判定」
+// ——批二段（Glob 全递归）排在 0.6.0 发布前：属行为扩张，会暴露一批待收
+// 符号，须与既有收面义务合批。
+//
+// 白名单 surface_allowlist.txt：一行一符号（格式 `包全名 sym`）= **允许保持
 // pub 但当前无消费**的集合（如管线预留/发包面）。-check 双向对账：
 // 实际可收集合多出白名单 → 漏收（红）；白名单条目不在实际集合 → 过期
-// （红，须清理）。
+// （红，须清理）。边清单 surface_edges.txt：一行一边（格式
+// `consumer全名 provider全名 sym`；根 README 的 consumer 记 `.`；core 库
+// provider 记完整路径如 `moonbitlang/core/string`）。新增边 = 对外面扩张，
+// 必须人工审阅登记。
 //
-// **发布状态（2026-09-22 核实，原注释已过时）**：`vitro/engine` 已发布
-// 0.1.0–0.4.0（本机 registry 实测）。因 MoonBit 的 `moon publish` 是
-// **module 级**发布，**0.4.0（2026-09-21 15:49）起 module 下全部对外包
-// （16 个）已在架**——"未发布包零成本收面"的窗口正是赶在该发布之前用掉的
-// （S5 收尾批收面 27 符号 + 本闸 + `surface_edges.txt` 边清单，2026-09-21）。
-// 此后任何收面都是**对已发布包的破坏性变更**，须走版本化弃期；本闸的角色
-// 从"收面工具"转为"**防扩散闸**"——新 pub + 新消费边一律拦下要人工裁定。
-// 脚本默认全包审计（信息面）。
+// **发布状态（2026-09-22 核实）**：0.4.0（2026-09-21）起 module 下全部对外
+// 包已在架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更，
+// 须走版本化弃期；本闸角色 = **防扩散闸**（新 pub + 新消费边一律拦下要人工
+// 裁定）。脚本默认全包审计（信息面）。
 package main
 
 import (
@@ -63,9 +78,17 @@ type symbol struct {
 	kind string // fn / const / type / method(归属)
 }
 
+// pkgInfo：工作区一个包的 moon.pkg 解析结果。
+type pkgInfo struct {
+	relDir      string            // 工作区相对目录，如 lexer/internal/host
+	fullName    string            // 包全名，如 vitro/engine/lexer/internal/host
+	mainAliases map[string]string // 别名 → provider 全名（main import 块）
+	testAliases map[string]string // 别名 → provider 全名（for "test" 块）
+}
+
 func main() {
 	if err := os.Chdir("moonbit"); err != nil {
-		fmt.Fprintf(os.Stderr, "chdir moonbit failed: %v", err)
+		fmt.Fprintf(os.Stderr, "chdir moonbit failed: %v\n", err)
 		os.Exit(2)
 	}
 
@@ -75,8 +98,11 @@ func main() {
 			check = true
 		}
 	}
-	pkgs, err := filepath.Glob("*/pkg.generated.mbti")
-	if err != nil || len(pkgs) == 0 {
+	moduleName := readModuleName()
+	pkgs := discoverPackages(moduleName)
+
+	pkgsMbti, err := filepath.Glob("*/pkg.generated.mbti")
+	if err != nil || len(pkgsMbti) == 0 {
 		fatal("未找到包接口面（须在 moonbit/ 下运行）")
 	}
 	// 消费语料：所有 .mbt + README*.md（含 cmd/ 工具与 doc 测试）
@@ -91,7 +117,7 @@ func main() {
 		if !info.IsDir() {
 			base := info.Name()
 			if strings.HasSuffix(base, ".mbt") || strings.HasPrefix(base, "README") {
-				corpus = append(corpus, path)
+				corpus = append(corpus, filepath.ToSlash(path))
 			}
 		}
 		return nil
@@ -99,7 +125,7 @@ func main() {
 	if len(corpus) == 0 {
 		fatal("消费语料为空")
 	}
-	// 消费索引：pkg → set(sym-path)；边集 consumer provider sym（第二面闸）
+	// 消费索引：provider 全名 → set(sym-path)；边集 consumer provider sym（第二面闸）
 	used := map[string]map[string]bool{}
 	usedEdges := map[string]bool{}
 	for _, f := range corpus {
@@ -107,27 +133,33 @@ func main() {
 		if err != nil {
 			fatal("读 %s: %v", f, err)
 		}
+		vis, ambiguous, consumer := visibilityFor(f, pkgs)
 		for _, m := range reUse.FindAllStringSubmatch(string(data), -1) {
 			// m[1] 形如 sym 或 Type::member——类型消费记 `T`，成员消费记 `T::m`
 			parts := strings.SplitN(m[1], "::", 2)
-			// pkg 名从匹配原文取（@xxx. 的 xxx）
-			pkgAlias := pkgOf(string(data), m[0], f)
-			consumerPkg := filepath.Base(filepath.Dir(f))
-			if used[pkgAlias] == nil {
-				used[pkgAlias] = map[string]bool{}
+			alias := m[0][1:strings.Index(m[0], ".")]
+			if ambiguous != nil && ambiguous[alias] {
+				fatal("歧义别名 @%s.（%s）——末段撞车的工作区包不止一个（如 L7 host 与 lexer/internal/host）；根 README 引用须消歧后过闸", alias, f)
 			}
-			used[pkgAlias][parts[0]] = true
-			used[pkgAlias][m[1]] = true
-			if consumerPkg != pkgAlias {
-				usedEdges[consumerPkg+" "+pkgAlias+" "+parts[0]] = true
+			provider, ok := vis[alias]
+			if !ok {
+				fatal("未知别名 @%s.（%s，consumer=%s）——不在所属包 moon.pkg 的可见 import 集；若属新形态（显式别名/新 scope）须先扩本闸", alias, f, consumer)
+			}
+			if used[provider] == nil {
+				used[provider] = map[string]bool{}
+			}
+			used[provider][parts[0]] = true
+			used[provider][m[1]] = true
+			if consumer != provider {
+				usedEdges[consumer+" "+provider+" "+parts[0]] = true
 			}
 		}
 	}
 	// 各包符号 → 可收判定；closureSig = 因 pub 签名引用而必须保持 pub 的类型
-	collectable := map[string][]string{} // pkg → []sym
-	closureSig := map[string][]string{}  // pkg → []type（签名闭包，非收面对象）
-	for _, mbti := range pkgs {
-		pkg := strings.Split(filepath.Dir(mbti), string(filepath.Separator))[0]
+	collectable := map[string][]string{} // pkg 全名 → []sym
+	closureSig := map[string][]string{}  // pkg 全名 → []type（签名闭包，非收面对象）
+	for _, mbti := range pkgsMbti {
+		pkg := moduleName + "/" + filepath.ToSlash(filepath.Dir(mbti))
 		data, err := os.ReadFile(mbti)
 		if err != nil {
 			fatal("读 %s: %v", mbti, err)
@@ -270,30 +302,206 @@ func main() {
 	fmt.Println("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致）")
 }
 
-// hasWord：词边界匹配（避免 `Severity` 命中 `SeverityX`）。
-func hasWord(s, w string) bool {
-	for idx := 0; ; {
-		i := strings.Index(s[idx:], w)
-		if i < 0 {
-			return false
-		}
-		pos := idx + i
-		beforeOK := pos == 0 || !isIdentByte(s[pos-1])
-		afterOK := pos+len(w) >= len(s) || !isIdentByte(s[pos+len(w)])
-		if beforeOK && afterOK {
-			return true
-		}
-		idx = pos + 1
+// readModuleName：moon.mod 的 name 字段（包全名前缀的唯一真相源）。
+func readModuleName() string {
+	data, err := os.ReadFile("moon.mod")
+	if err != nil {
+		fatal("读 moon.mod 失败：%v", err)
 	}
+	for _, line := range strings.Split(string(data), "\n") {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "name") {
+			q0 := strings.Index(t, `"`)
+			q1 := strings.LastIndex(t, `"`)
+			if q0 < 0 || q1 <= q0 {
+				fatal("moon.mod name 行形态未知：%s", t)
+			}
+			return t[q0+1 : q1]
+		}
+	}
+	fatal("moon.mod 无 name 字段")
+	return ""
 }
 
-func isIdentByte(c byte) bool {
-	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+// discoverPackages：全仓 moon.pkg → 包全名 + 两级 import 别名表。
+// moon.pkg 语法面（本仓实测形态，超出即红——fail loud 未知形态）：
+//
+//	import {
+//	  "vitro/engine/lexer/token",
+//	}
+//	import {
+//	  "vitro/engine/diag",
+//	} for "test"
+//
+// 别名 = import 路径末段（全仓零显式别名）；块内重名、main/for-test 同别名
+// 不同 provider、非 "test" scope、as 显式别名 → 一律红。
+func discoverPackages(moduleName string) map[string]*pkgInfo {
+	pkgs := map[string]*pkgInfo{}
+	var mp []string
+	_ = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() && (info.Name() == "_build" || info.Name() == ".mooncakes" || info.Name() == "scripts") {
+			return filepath.SkipDir
+		}
+		if !info.IsDir() && info.Name() == "moon.pkg" {
+			mp = append(mp, filepath.ToSlash(path))
+		}
+		return nil
+	})
+	if len(mp) == 0 {
+		fatal("未发现任何 moon.pkg（须在 moonbit/ 下运行）")
+	}
+	for _, p := range mp {
+		relDir := filepath.ToSlash(filepath.Dir(p))
+		pi := &pkgInfo{
+			relDir:      relDir,
+			fullName:    moduleName + "/" + relDir,
+			mainAliases: map[string]string{},
+			testAliases: map[string]string{},
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			fatal("读 %s: %v", p, err)
+		}
+		scope := ""
+		inImport := false
+		for _, raw := range strings.Split(string(data), "\n") {
+			line := strings.TrimSpace(raw)
+			if i := strings.Index(line, "//"); i >= 0 {
+				line = strings.TrimSpace(line[:i])
+			}
+			if line == "" {
+				continue
+			}
+			if !inImport {
+				if line == "import {" {
+					inImport = true
+					scope = ""
+					continue
+				}
+				// 非 import 行（supported_targets / pkgtype / warnings 等）忽略
+				if strings.HasPrefix(line, "import") {
+					fatal("%s: 未知 import 形态（本闸只认 `import {` 块）：%s", p, line)
+				}
+				continue
+			}
+			// import 块内
+			if strings.HasPrefix(line, "}") {
+				inImport = false
+				if rest := strings.TrimSpace(line[1:]); rest != "" {
+					if !strings.HasPrefix(rest, `for "test"`) {
+						fatal("%s: 未知 import scope（本闸只认 for \"test\"）：%s", p, rest)
+					}
+					scope = "test"
+				}
+				continue
+			}
+			entry := strings.TrimSuffix(line, ",")
+			entry = strings.TrimSpace(entry)
+			if len(entry) < 2 || entry[0] != '"' || entry[len(entry)-1] != '"' {
+				fatal("%s: import 条目形态未知（显式别名 as / 多行等须先扩闸）：%s", p, entry)
+			}
+			path := entry[1 : len(entry)-1]
+			alias := path[strings.LastIndex(path, "/")+1:]
+			target := pi.mainAliases
+			if scope == "test" {
+				target = pi.testAliases
+			}
+			if prev, dup := target[alias]; dup && prev != path {
+				fatal("%s: 块内别名冲突 @%s. → %s 与 %s", p, alias, prev, path)
+			}
+			target[alias] = path
+		}
+		if inImport {
+			fatal("%s: import 块未闭合", p)
+		}
+		// main 与 for-test 同别名不同 provider：黑盒/doc 测试可见集是两者并集，
+		// 冲突即歧义（MoonBit 编译亦不允许，此处前置红）。
+		for a, tp := range pi.testAliases {
+			if mp2, ok := pi.mainAliases[a]; ok && mp2 != tp {
+				fatal("%s: main 与 for \"test\" 别名冲突 @%s. → %s 与 %s", p, a, mp2, tp)
+			}
+		}
+		if _, dup := pkgs[relDir]; dup {
+			fatal("包目录重复登记：%s", relDir)
+		}
+		pkgs[relDir] = pi
+	}
+	return pkgs
+}
+
+// visibilityFor：语料文件 → (别名→provider 全名 可见集, 歧义别名集, consumer 全名)。
+// 模块根 README* 的 consumer 记 "."（无包上下文；发布面文档承诺按全仓
+// 工作区包末段解析）——末段撞车的别名（当前 @host.：L7 与 lexer/internal/host）
+// 入歧义集，引用即红，不静默择一。
+func visibilityFor(f string, pkgs map[string]*pkgInfo) (map[string]string, map[string]bool, string) {
+	// 就近向上找所属包
+	d := filepath.ToSlash(filepath.Dir(f))
+	for {
+		if pi, ok := pkgs[d]; ok {
+			base := filepath.Base(f)
+			if strings.HasSuffix(base, "_test.mbt") || strings.HasPrefix(base, "README") {
+				// 黑盒测试 / doc 测试：main ∪ for-test ∪ 自引用
+				vis := map[string]string{}
+				for a, p := range pi.mainAliases {
+					vis[a] = p
+				}
+				for a, p := range pi.testAliases {
+					vis[a] = p
+				}
+				self := pi.fullName[strings.LastIndex(pi.fullName, "/")+1:]
+				vis[self] = pi.fullName
+				vis["self"] = pi.fullName
+				return vis, nil, pi.fullName
+			}
+			// 普通源码 / wbtest：main import 块 + 自引用（MoonBit 包不自 import，
+			// 正常代码不可能出现 @自身末段.——出现即注释/字符串（既知盲区①，
+			// 过宽方向），按自消费归账保持旧口径；与 main import 撞名则红）
+			vis := map[string]string{}
+			for a, p := range pi.mainAliases {
+				vis[a] = p
+			}
+			self := pi.fullName[strings.LastIndex(pi.fullName, "/")+1:]
+			if prev, dup := vis[self]; dup && prev != pi.fullName {
+				fatal("包 %s 的 main import 含与自身末段撞名的别名 @%s. → %s（MoonBit 亦不允许）", pi.fullName, self, prev)
+			}
+			vis[self] = pi.fullName
+			vis["self"] = pi.fullName
+			return vis, nil, pi.fullName
+		}
+		if d == "." || d == "/" {
+			break
+		}
+		d = filepath.ToSlash(filepath.Dir(d))
+	}
+	// 模块根（无 moon.pkg）：只允许 README*（doc/发布面）；散置 .mbt 须先入包
+	base := filepath.Base(f)
+	if !strings.HasPrefix(base, "README") {
+		fatal("语料文件 %s 不属于任何包（模块根只认 README*）——散置 .mbt 须入包后过闸", f)
+	}
+	// 根 README 的别名空间 = 全仓工作区包末段；撞车的入歧义集
+	vis := map[string]string{}
+	ambiguous := map[string]bool{}
+	byAlias := map[string][]string{}
+	for _, pi := range pkgs {
+		last := pi.fullName[strings.LastIndex(pi.fullName, "/")+1:]
+		byAlias[last] = append(byAlias[last], pi.fullName)
+	}
+	for a, cands := range byAlias {
+		if len(cands) == 1 {
+			vis[a] = cands[0]
+		} else {
+			ambiguous[a] = true
+		}
+	}
+	return vis, ambiguous, "."
 }
 
 // checkEdges：实际边集 ↔ ../scripts/moonbit/surface_edges.txt 双向对账。
-// 实际边集以 "consumer provider sym" 记（consumer 取文件所在包目录名；
-// cmd/ 工具按其子包名计——dump_ast 等）。
+// 实际边集以 "consumer provider sym" 记（两侧均包全名；根 README 的
+// consumer 为 "."；core 库 provider 为完整路径）。
 func checkEdges(actual map[string]bool) int {
 	ef, err := os.Open("../scripts/moonbit/surface_edges.txt")
 	if err != nil {
@@ -324,10 +532,25 @@ func checkEdges(actual map[string]bool) int {
 	return bad
 }
 
-// pkgOf：从匹配串 @pkg.sym 反查 pkg 别名（m[0] 的 @ 后段）。
-func pkgOf(_, match, _ string) string {
-	i := strings.Index(match, ".")
-	return match[1:i]
+// hasWord：词边界匹配（避免 `Severity` 命中 `SeverityX`）。
+func hasWord(s, w string) bool {
+	for idx := 0; ; {
+		i := strings.Index(s[idx:], w)
+		if i < 0 {
+			return false
+		}
+		pos := idx + i
+		beforeOK := pos == 0 || !isIdentByte(s[pos-1])
+		afterOK := pos+len(w) >= len(s) || !isIdentByte(s[pos+len(w)])
+		if beforeOK && afterOK {
+			return true
+		}
+		idx = pos + 1
+	}
+}
+
+func isIdentByte(c byte) bool {
+	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }
 
 func contains(arr []string, s string) bool {

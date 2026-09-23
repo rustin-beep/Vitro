@@ -6,20 +6,23 @@
 // TS 侧有**从权威源生成**的类型，而不是手抄。手抄就是又一处分叉温床。
 //
 // 权威源选谁（关键设计决定）：
-//   `native/src/unified/{types,root_cause}.rs` + `native/src/session.rs` 的 Rust
-//   结构体——它们是**编译期受字段冻结测试守护**的真实源
-//   （`native/tests/step_payload_schema_v0_1_test.rs`）。
-//   `docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` 是**表述层**（人工维护的 markdown 表格）。
-//   故取「**从实现生成 + 与文档双向对账**」：任一方向不同步都判红——这同时把
-//   「文档与实现是否一致」这个此前无人守的问题变成了机器判据。
+//
+//	`native/src/unified/{types,root_cause}.rs` + `native/src/session.rs` 的 Rust
+//	结构体——它们是**编译期受字段冻结测试守护**的真实源
+//	（`native/tests/step_payload_schema_v0_1_test.rs`）。
+//	`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` 是**表述层**（人工维护的 markdown 表格）。
+//	故取「**从实现生成 + 与文档双向对账**」：任一方向不同步都判红——这同时把
+//	「文档与实现是否一致」这个此前无人守的问题变成了机器判据。
 //
 // 合规（E-06 / E-07）：生成器保持 Go，属**构建期多语言工具**，不进产物。
 //
 // 判据：
-//   ① `-check` 幂等：磁盘产物 == 现场生成（否则红，提示重跑生成）；
-//   ② 字段集双向对账：每个类型的 Rust 字段集 == schema 文档表格的字段集
-//      （文档漏列字段 / 实现新增字段未入文档，两向都红）；
-//   ③ 空集不得绿：解析出 0 字段、0 类型一律 fail loud。
+//
+//	① `-check` 幂等：磁盘产物 == 现场生成（否则红，提示重跑生成）；
+//	② 字段集双向对账：每个类型的 Rust 字段集 == schema 文档表格的字段集
+//	   （文档漏列字段 / 实现新增字段未入文档，两向都红）；
+//	③ 空集不得绿：解析出 0 字段、0 类型一律 fail loud。
+//
 // 规则外置 rules.json；`--selftest` 三路内存注入证红。
 package main
 

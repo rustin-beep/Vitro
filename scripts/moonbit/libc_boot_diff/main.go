@@ -16,7 +16,7 @@
 //     ③ code[0] 置 Nop
 //     ④ func_table / func_index 删 "main"
 //     ⑤ --builtin-libc：删 func_index 中「在 BYTECODE_LIBC_ALL_FUNCS 但不在
-//        func_table」的预注册项
+//     func_table」的预注册项
 //   - MoonBit 侧以 `dump_compile --library` 编译同样的 <源 + stub>：
 //     library mode 不预注册固定索引段、全局偏移自 0 起 —— 这正是 ⑤ 在
 //     Rust 侧靠"删预注册项"达成的同一语义（两侧 `with_mode` 都只改这两个初值）。

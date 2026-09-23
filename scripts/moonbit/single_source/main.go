@@ -41,12 +41,12 @@ type entry struct {
 	DefPattern         string   `json:"def_pattern"`
 	ExcludeLinePattern string   `json:"exclude_line_pattern"`
 	AllowedDefFiles    []string `json:"allowed_def_files"`
-	RustSource      string   `json:"rust_source"`
-	MoonbitSource   string   `json:"moonbit_source"`
-	Sync            string   `json:"sync"`
-	Consumers       []string `json:"consumers"`
-	Anchor          string   `json:"anchor"`
-	UpstreamRef     string   `json:"upstream_ref"`
+	RustSource         string   `json:"rust_source"`
+	MoonbitSource      string   `json:"moonbit_source"`
+	Sync               string   `json:"sync"`
+	Consumers          []string `json:"consumers"`
+	Anchor             string   `json:"anchor"`
+	UpstreamRef        string   `json:"upstream_ref"`
 }
 
 type rulesDoc struct {

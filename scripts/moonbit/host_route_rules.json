@@ -1,0 +1,28 @@
+{
+  "_comment": "host_route_coverage 规则（外置，fail loud）。aliases = 路由名 → host 包实现名（去 host_ 前缀）；vm_whitelist = 随 vm 片落地的控制流/回调族（当前未实现，建包后清理本节）",
+  "aliases": {
+    "print_int": "output",
+    "__vitro_output": "output",
+    "__vitro_assert_fail": "assert_fail",
+    "__vitro_step": "step",
+    "__vitro_va_start": "va_start",
+    "__vitro_va_arg": "va_arg",
+    "__vitro_va_end": "va_end",
+    "__vitro_va_copy": "va_copy",
+    "printf": "printf_n",
+    "scanf": "scanf_n",
+    "fprintf": "fprintf_n",
+    "labs": "abs"
+  },
+  "vm_whitelist": [
+    "exit",
+    "abort",
+    "assert_fail",
+    "set_array_guard",
+    "clear_array_guard",
+    "step",
+    "output",
+    "qsort",
+    "bsearch"
+  ]
+}

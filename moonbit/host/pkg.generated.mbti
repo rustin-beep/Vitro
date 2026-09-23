@@ -17,13 +17,207 @@ pub fn double_free_message(@memory.FreedRegionInfo) -> String
 
 pub fn heap_exhausted_note() -> String
 
+pub fn host_abs(Int) -> UInt64
+
+pub fn host_acos(UInt64) -> UInt64
+
+pub fn host_asin(UInt64) -> UInt64
+
+pub fn host_atan(UInt64) -> UInt64
+
+pub fn host_atan2(UInt64, UInt64) -> UInt64
+
+pub fn host_atof(@memory.Memory, @memory.MemoryMap, UInt) -> HostMemReply
+
+pub fn host_atoi(@memory.Memory, @memory.MemoryMap, UInt) -> HostMemReply
+
+pub fn host_atol(@memory.Memory, @memory.MemoryMap, UInt) -> HostMemReply
+
 pub fn host_calloc(@memory.MemoryMap, @memory.Memory, Int, Int, Int) -> HostMemReply
+
+pub fn host_ceil(UInt64) -> UInt64
+
+pub fn host_clearerr(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_clock(Bool, UInt64) -> UInt64
+
+pub fn host_cos(UInt64) -> UInt64
+
+pub fn host_cosh(UInt64) -> UInt64
+
+pub fn host_exp(UInt64) -> UInt64
+
+pub fn host_fabs(UInt64) -> UInt64
+
+pub fn host_fclose(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, Int, Int) -> HostMemReply
+
+pub fn host_feof(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_fflush(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_fgetc(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_fgets(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, Int, UInt) -> HostMemReply
+
+pub fn host_floor(UInt64) -> UInt64
+
+pub fn host_fmod(UInt64, UInt64) -> UInt64
+
+pub fn host_fopen(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, UInt, Int) -> HostMemReply
+
+pub fn host_fprintf_n(@memory.MemoryMap, @memory.Memory, OutputLog, UInt64, UInt, Array[UInt64]) -> HostMemReply
+
+pub fn host_fputc(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, Int, UInt) -> HostMemReply
+
+pub fn host_fputs(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, OutputLog, UInt, UInt) -> HostMemReply
+
+pub fn host_fread(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, Int, Int, UInt) -> HostMemReply
 
 pub fn host_free(@memory.MemoryMap, UInt, Int, Int) -> HostMemReply
 
+pub fn host_fseek(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, Int, Int) -> HostMemReply
+
+pub fn host_ftell(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_fwrite(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, Int, Int, UInt) -> HostMemReply
+
+pub fn host_getchar(InputState) -> InputOutcome
+
+pub fn host_isalnum(Int) -> Int
+
+pub fn host_isalpha(Int) -> Int
+
+pub fn host_isblank(Int) -> Int
+
+pub fn host_iscntrl(Int) -> Int
+
+pub fn host_isdigit(Int) -> Int
+
+pub fn host_isgraph(Int) -> Int
+
+pub fn host_islower(Int) -> Int
+
+pub fn host_isprint(Int) -> Int
+
+pub fn host_ispunct(Int) -> Int
+
+pub fn host_isspace(Int) -> Int
+
+pub fn host_isupper(Int) -> Int
+
+pub fn host_isxdigit(Int) -> Int
+
+pub fn host_llabs(Int64) -> UInt64
+
+pub fn host_log(UInt64) -> UInt64
+
+pub fn host_log10(UInt64) -> UInt64
+
 pub fn host_malloc(@memory.MemoryMap, Int, Int) -> HostMemReply
 
+pub fn host_memchr(@memory.Memory, @memory.MemoryMap, UInt, Int, UInt64) -> HostMemReply
+
+pub fn host_memcmp(@memory.Memory, @memory.MemoryMap, UInt, UInt, UInt64) -> HostMemReply
+
+pub fn host_memcpy(@memory.MemoryMap, @memory.Memory, UInt, UInt, Int) -> HostMemReply
+
+pub fn host_memmove(@memory.MemoryMap, @memory.Memory, UInt, UInt, Int) -> HostMemReply
+
+pub fn host_memset(@memory.MemoryMap, @memory.Memory, UInt, UInt64, UInt64) -> HostMemReply
+
+pub fn host_perror(@memory.MemoryMap, @memory.Memory, OutputLog, UInt) -> HostMemReply
+
+pub fn host_pow(UInt64, UInt64) -> UInt64
+
+pub fn host_printf_n(@memory.MemoryMap, @memory.Memory, OutputLog, UInt, Array[UInt64]) -> HostMemReply
+
+pub fn host_putchar(OutputLog, UInt64) -> Unit
+
+pub fn host_puts(@memory.MemoryMap, @memory.Memory, OutputLog, UInt) -> HostMemReply
+
+pub fn host_rand(RandState) -> Int
+
 pub fn host_realloc(@memory.MemoryMap, @memory.Memory, UInt, Int, Int, Int, Int) -> HostMemReply
+
+pub fn host_remove(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_rename(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, UInt) -> HostMemReply
+
+pub fn host_rewind(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt) -> HostMemReply
+
+pub fn host_round(UInt64) -> UInt64
+
+pub fn host_scanf_n(@memory.MemoryMap, @memory.Memory, InputState, Array[StackBufferSpan], UInt, Array[UInt]) -> InputOutcome
+
+pub fn host_sin(UInt64) -> UInt64
+
+pub fn host_sinh(UInt64) -> UInt64
+
+pub fn host_snprintf(@memory.MemoryMap, @memory.Memory, UInt, Int, UInt, Array[UInt64]) -> HostMemReply
+
+pub fn host_sprintf(@memory.MemoryMap, @memory.Memory, UInt, UInt, Array[UInt64]) -> HostMemReply
+
+pub fn host_sqrt(UInt64) -> UInt64
+
+pub fn host_srand(RandState, UInt) -> Unit
+
+pub fn host_sscanf(@memory.MemoryMap, @memory.Memory, UInt, UInt, Array[UInt]) -> HostMemReply
+
+pub fn host_strcat(@memory.MemoryMap, @memory.Memory, UInt, UInt, Array[StackBufferSpan]) -> HostMemReply
+
+pub fn host_strchr(@memory.Memory, @memory.MemoryMap, UInt, Int) -> HostMemReply
+
+pub fn host_strcmp(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_strcpy(@memory.MemoryMap, @memory.Memory, UInt, UInt, Array[StackBufferSpan]) -> HostMemReply
+
+pub fn host_strcspn(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_strdup(@memory.MemoryMap, @memory.Memory, UInt, Int) -> HostMemReply
+
+pub fn host_strerror(@memory.MemoryMap, @memory.Memory, Int, Int) -> HostMemReply
+
+pub fn host_strlen(@memory.Memory, @memory.MemoryMap, UInt) -> HostMemReply
+
+pub fn host_strncat(@memory.MemoryMap, @memory.Memory, UInt, UInt, UInt64) -> HostMemReply
+
+pub fn host_strncmp(@memory.Memory, @memory.MemoryMap, UInt, UInt, UInt64) -> HostMemReply
+
+pub fn host_strncpy(@memory.MemoryMap, @memory.Memory, UInt, UInt, Int) -> HostMemReply
+
+pub fn host_strpbrk(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_strrchr(@memory.Memory, @memory.MemoryMap, UInt, Int) -> HostMemReply
+
+pub fn host_strspn(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_strstr(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_strtod(@memory.Memory, @memory.MemoryMap, UInt, UInt, UInt?) -> HostMemReply
+
+pub fn host_strtol(@memory.Memory, @memory.MemoryMap, UInt, UInt, Int, UInt?) -> HostMemReply
+
+pub fn host_tan(UInt64) -> UInt64
+
+pub fn host_tanh(UInt64) -> UInt64
+
+pub fn host_time(Bool, UInt64) -> UInt64
+
+pub fn host_tolower(Int) -> Int
+
+pub fn host_toupper(Int) -> Int
+
+pub fn host_ungetc(InputState, Int) -> UInt64
+
+pub fn host_unreachable() -> String
+
+pub fn host_va_arg(@memory.Memory, @memory.MemoryMap, UInt, Int) -> HostMemReply
+
+pub fn host_va_copy(@memory.Memory, @memory.MemoryMap, UInt, UInt) -> HostMemReply
+
+pub fn host_va_end(UInt) -> HostMemReply
+
+pub fn host_va_start(@memory.Memory, @memory.MemoryMap, UInt, Int, Int) -> HostMemReply
 
 pub fn invalid_free_message(@memory.MemoryMap, UInt) -> String
 
@@ -33,10 +227,26 @@ pub fn malloc_zero_note() -> String
 
 // Types and methods
 pub(all) struct HostMemReply {
-  value : UInt?
+  value : UInt64?
   note : String?
   trap : String?
 } derive(Eq, @debug.Debug)
+
+pub(all) enum InputOutcome {
+  Value(UInt64)
+  Waiting
+  Trap(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct InputState {
+  lines : Array[Bytes]
+  mut index : Int
+  mut char_offset : Int
+  mut eof : Bool
+  mut ungetc : Int?
+  batch : Bool
+}
+pub fn InputState::new(Array[Bytes], Bool) -> Self
 
 pub(all) struct OutputChunk {
   kind : OutputKind
@@ -81,6 +291,48 @@ pub fn OutputLog::push_stderr(Self, Bytes) -> Unit
 pub fn OutputLog::push_stdout(Self, Bytes) -> Unit
 pub fn OutputLog::set_budget(Self, Int) -> Unit
 pub fn OutputLog::total_bytes(Self) -> Int
+
+pub(all) struct RandState {
+  mut seed : UInt
+} derive(Eq, @debug.Debug)
+pub fn RandState::new(UInt) -> Self
+
+pub(all) struct StackBufferSpan {
+  base : UInt
+  size : Int
+  name : String
+} derive(Eq, @debug.Debug)
+
+type VfsDesc derive(@debug.Debug)
+
+type VfsFileMeta derive(@debug.Debug)
+
+type VfsMode derive(Eq, @debug.Debug)
+
+pub struct VirtualFileSystem {
+  files : Map[String, VfsFileMeta]
+  descriptors : Map[UInt, VfsDesc]
+  mut next_fd : UInt
+}
+pub fn VirtualFileSystem::clearerr(Self, UInt) -> Unit
+pub fn VirtualFileSystem::fclose(Self, UInt) -> Int
+pub fn VirtualFileSystem::feof(Self, UInt) -> Int
+pub fn VirtualFileSystem::fflush(Self, UInt) -> Int
+pub fn VirtualFileSystem::fgetc(Self, @memory.Memory, @memory.MemoryMap, UInt) -> Int
+pub fn VirtualFileSystem::fgets(Self, @memory.Memory, @memory.MemoryMap, UInt, UInt, Int) -> UInt
+pub fn VirtualFileSystem::fopen(Self, @memory.MemoryMap, String, String) -> UInt
+pub fn VirtualFileSystem::fputc(Self, @memory.Memory, @memory.MemoryMap, UInt, Int) -> Int
+pub fn VirtualFileSystem::fputs(Self, @memory.Memory, @memory.MemoryMap, UInt, UInt) -> Int
+pub fn VirtualFileSystem::fread(Self, @memory.Memory, @memory.MemoryMap, UInt, UInt, Int, Int) -> Int
+pub fn VirtualFileSystem::fseek(Self, @memory.Memory, @memory.MemoryMap, UInt, Int, Int) -> Int
+pub fn VirtualFileSystem::ftell(Self, UInt) -> Int
+pub fn VirtualFileSystem::fwrite(Self, @memory.Memory, @memory.MemoryMap, UInt, UInt, Int, Int) -> Int
+pub fn VirtualFileSystem::get_file_name(Self, UInt) -> String?
+pub fn VirtualFileSystem::inject_preset_file(Self, @memory.MemoryMap, @memory.Memory, String, Bytes) -> Bool
+pub fn VirtualFileSystem::new() -> Self
+pub fn VirtualFileSystem::remove(Self, @memory.MemoryMap, String) -> Int
+pub fn VirtualFileSystem::rename(Self, String, String) -> Int
+pub fn VirtualFileSystem::rewind(Self, UInt) -> Unit
 
 // Type aliases
 

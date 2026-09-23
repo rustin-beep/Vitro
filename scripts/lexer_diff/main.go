@@ -1,9 +1,11 @@
 // lexer_diff：S2 词法差分对拍驱动（Go，零第三方依赖，fail loud）。
 //
 // 管线：语料目录（.c 文件）→
-//   ① Rust oracle 批量 dump：native/target/release/vitro_cli dump-tokens <dir> --out A --raw --pp
-//   ② MoonBit 侧批量 dump：moon -C moonbit run --target native cmd/dump_tokens -- <dir> B both
-//   ③ 逐文件逐字节 diff（A/*.l1.tsv ↔ B/*.l1.tsv、A/*.l2.tsv ↔ B/*.l2.tsv）
+//
+//	① Rust oracle 批量 dump：native/target/release/vitro_cli dump-tokens <dir> --out A --raw --pp
+//	② MoonBit 侧批量 dump：moon -C moonbit run --target native cmd/dump_tokens -- <dir> B both
+//	③ 逐文件逐字节 diff（A/*.l1.tsv ↔ B/*.l1.tsv、A/*.l2.tsv ↔ B/*.l2.tsv）
+//
 // 任一文件缺失或内容差异即 exit 1 并打印首差异上下文——不静默跳过。
 //
 // J9 埋雷（--selftest）：对一侧 TSV 注入单字节差异，驱动必须报红（护栏可触发性）。

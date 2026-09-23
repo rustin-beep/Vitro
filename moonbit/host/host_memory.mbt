@@ -26,16 +26,18 @@
 /// `calloc_oversize_reports_heap_exhausted`（翻转自原固化锚）。
 
 ///|
-/// 宿主内存族调用的**统一结构化结果**。
+/// 宿主 handler 的**统一结构化结果**（内存族首建，S6 余量批一号起扩为
+/// 全 host 族共用——`value` 同时是 `UInt64`：vm 值栈是 u64 位模式，
+/// `strtol`/`strtod`/`llabs` 等要压 64 位值；0.6.0 面变更，登记 CHANGELOG）。
 ///
 /// 三个字段对应 handler 在 Rust 侧的三种副作用，顺序无关（压栈与 trap 是两条
 /// 独立通道）：
-/// - `value`：要压栈的值（`free` 无返回值时为 `None`）；
+/// - `value`：要压栈的值（`free` 等无返回值时为 `None`）；
 /// - `note`：教学附注文本（调用方负责去重后写入 note 通道——去重口径是
 ///   `OutputLog::has_note`）；
 /// - `trap`：要发的 trap 文本（`Some` 时调用方按 vm 的 trap 路径处理）。
 pub(all) struct HostMemReply {
-  value : UInt?
+  value : UInt64?
   note : String?
   trap : String?
 } derive(Debug, Eq)
@@ -48,20 +50,20 @@ fn no_reply() -> HostMemReply {
 
 ///|
 /// 只压一个值。
-fn value_only(v : UInt) -> HostMemReply {
+fn value_only(v : UInt64) -> HostMemReply {
   HostMemReply::{ value: Some(v), note: None, trap: None, }
 }
 
 ///|
 /// 压 NULL 并附教学附注。
 fn null_with_note(note : String) -> HostMemReply {
-  HostMemReply::{ value: Some(0U), note: Some(note), trap: None, }
+  HostMemReply::{ value: Some(0UL), note: Some(note), trap: None, }
 }
 
 ///|
 /// 压 NULL，无附注。
 fn null_silent() -> HostMemReply {
-  HostMemReply::{ value: Some(0U), note: None, trap: None, }
+  HostMemReply::{ value: Some(0UL), note: None, trap: None, }
 }
 
 ///|
@@ -144,7 +146,7 @@ pub fn host_malloc(
   // 会误报 UAF——Rust `host/memory.rs:229-232` 明文）
   map.freed_logs_remove_overlapping(addr, addr + aligned)
   map.register_alloc(addr, size, alloc_line, "malloc", true)
-  value_only(addr)
+  value_only(addr.to_uint64())
 }
 
 ///|
@@ -210,8 +212,13 @@ pub fn host_calloc(
   // Rust 的 `trap()` **不中断 handler**（首错优先，`core/trap.rs:145-156`），
   // 故 trap 之后仍照常清理、登记、压地址——本实现保持同序，只把文案交给调用方。
   match fault {
-    Some(t) => HostMemReply::{ value: Some(addr), note: None, trap: Some(t), }
-    None => value_only(addr)
+    Some(t) =>
+      HostMemReply::{
+        value: Some(addr.to_uint64()),
+        note: None,
+        trap: Some(t),
+      }
+    None => value_only(addr.to_uint64())
   }
 }
 
@@ -261,7 +268,7 @@ pub fn host_realloc(
       Some(_) => no_reply()
       None => trap_only(invalid_free_message(map, ptr))
     }
-    return HostMemReply::{ value: Some(0U), note: None, trap: r.trap, }
+    return HostMemReply::{ value: Some(0UL), note: None, trap: r.trap, }
   }
   if ptr == 0U {
     // 等价 malloc
@@ -316,8 +323,12 @@ pub fn host_realloc(
     map.register_alloc(new_addr, new_size, alloc_line, "realloc", false)
     match fault {
       Some(t) =>
-        HostMemReply::{ value: Some(new_addr), note: None, trap: Some(t), }
-      None => value_only(new_addr)
+        HostMemReply::{
+          value: Some(new_addr.to_uint64()),
+          note: None,
+          trap: Some(t),
+        }
+      None => value_only(new_addr.to_uint64())
     }
   }
 }

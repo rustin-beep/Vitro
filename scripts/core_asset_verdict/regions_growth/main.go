@@ -11,7 +11,8 @@
 // `session.memory.regions.len()`，条目数第一手采样，不经任何推导）。
 //
 // 用法：go run ./scripts/core_asset_verdict/regions_growth
-//      [--points 1000,10000,100000,1000000] [--cli PATH] [--timeout 45m]
+//
+//	[--points 1000,10000,100000,1000000] [--cli PATH] [--timeout 45m]
 //
 // 输出：每点一行（N / 步数 / heap 条目 / free_list 长度 / 墙钟 / 条目÷N 比），
 // 结尾给增长率判读（比值 ≈1 → 无界确认；显著 <1 → 既有结论需修正）。

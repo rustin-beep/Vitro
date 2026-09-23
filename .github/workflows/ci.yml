@@ -242,6 +242,22 @@ jobs:
             go run ./scripts/codegen_diff native/tests/cases/$d
           done
 
+      - name: Source hygiene (tracked files must be NUL-free)
+        # P2-NUL 事故族（2026-09-23 修复批）：真 NUL 让 git 判二进制
+        # （w/-text）——.gitattributes 行尾转换失效、diff/PR 审阅不可见
+        # （先例：docs/** 148 行事故族；host_test.mbt 15KB 整文件不可见；
+        # 冻结区 vitro_lexer/src/string.rs 索引侧潜伏 i/-text）。J9 证红留痕。
+        shell: bash
+        run: go run ./scripts/moonbit/source_hygiene
+
+      - name: Host route coverage (110 routes vs host impls)
+        # P2-memchr 事故族（2026-09-23 修复批）：110 路由表中 memchr 整批
+        # 漏实现——既有对账锚只校验「常量 ↔ 名字」双表一致，不校验
+        # 「路由名 ↔ 有实现」。规则外置 host_route_rules.json（别名 /
+        # vm 白名单，白名单双向对账防腐化）；J9 双路证红留痕。
+        shell: bash
+        run: go run ./scripts/moonbit/host_route_coverage
+
       - name: MoonBit API surface audit (unpublished pkgs contracted)
         # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会
         # 自动再长，先立闸再加 priv"）。moonbit_surface -check 对账白名单
@@ -437,6 +453,20 @@ jobs:
         # 不指当下提交有问题。
         shell: bash
         run: go run ./scripts/perf_budget -check
+
+      - name: Go format check (gofmt -l scripts)
+        # P3-3 修复批（2026-09-23）：scripts/** 此前无 eol 约定 + core.autocrlf
+        # 让工作区 CRLF——gofmt -l 本地恒红（24 项假阳性含真格式漂移 15 项），
+        # 无法作为自检；.gitattributes 补 scripts/** text eol=lf + 全量
+        # gofmt -w 后本步入 CI（格式账，归 hygiene）。
+        shell: bash
+        run: |
+          out=$(gofmt -l scripts/)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt 漂移——本地 gofmt -w scripts/ 后提交"
+            echo "$out"
+            exit 1
+          fi
 
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前

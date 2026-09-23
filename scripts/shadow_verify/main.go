@@ -154,7 +154,7 @@ func selfCheck() {
 		name  string
 		cs    shadowCase
 		clang runResult
-		vitro  runResult
+		vitro runResult
 		want  string
 	}{
 		{"两侧一致 → match", c("x", "baseline"), clangOK, vitroOK, "match"},
@@ -699,7 +699,7 @@ type caseOutcome struct {
 	index int
 	cs    shadowCase
 	clang runResult
-	vitro  runResult
+	vitro runResult
 }
 
 // executeCases 执行全部用例，返回按用例序重排的结果（并行下同样确定性）。
@@ -884,9 +884,9 @@ func rebuildReleaseDLL() {
 // ---------------------------------------------------------------- 报告
 
 type detailEntry struct {
-	Case             string `json:"case"`
-	Expected         string `json:"expected"`
-	DiffType         string `json:"diff_type"`
+	Case              string `json:"case"`
+	Expected          string `json:"expected"`
+	DiffType          string `json:"diff_type"`
 	VitroCompileError string `json:"vitro_compile_error"`
 }
 
@@ -902,7 +902,7 @@ type diffInfo struct {
 	cs    shadowCase
 	diff  string
 	clang runResult
-	vitro  runResult
+	vitro runResult
 }
 
 type runConfig struct {
@@ -1109,9 +1109,9 @@ func detailsOf(diffs []diffInfo) []detailEntry {
 			errText = capi.TruncateRunes(d.vitro.CompileError, 500)
 		}
 		out = append(out, detailEntry{
-			Case:             d.cs.name,
-			Expected:         d.cs.category,
-			DiffType:         d.diff,
+			Case:              d.cs.name,
+			Expected:          d.cs.category,
+			DiffType:          d.diff,
 			VitroCompileError: errText,
 		})
 	}
@@ -1170,12 +1170,12 @@ func writeKrLeetCodeReport(diffs []diffInfo, outputPath string) {
 			errText = capi.TruncateRunes(d.vitro.CompileError, 500)
 		}
 		gaps = append(gaps, map[string]any{
-			"case":               d.cs.name,
-			"src_dir":            d.cs.srcDir,
-			"diff_type":          d.diff,
-			"expected_category":  d.cs.category,
+			"case":                d.cs.name,
+			"src_dir":             d.cs.srcDir,
+			"diff_type":           d.diff,
+			"expected_category":   d.cs.category,
 			"vitro_compile_error": errText,
-			"clang_stdout":       capi.TruncateRunes(strings.TrimSpace(d.clang.Stdout), 200),
+			"clang_stdout":        capi.TruncateRunes(strings.TrimSpace(d.clang.Stdout), 200),
 			"vitro_stdout":        capi.TruncateRunes(strings.TrimSpace(d.vitro.Stdout), 200),
 		})
 	}

@@ -22,7 +22,7 @@ test "malloc_success_registers_region" {
   let (map, _mem) = fresh()
   let r = host_malloc(map, 100, 7)
   let addr = match r.value {
-    Some(a) => a
+    Some(a) => a.to_uint()
     None => fail("malloc 必须返回值")
   }
   assert_true(addr != 0U)
@@ -49,13 +49,13 @@ test "malloc_success_registers_region" {
 test "malloc_zero_and_negative_paths" {
   let (map, _mem) = fresh()
   let z = host_malloc(map, 0, 1)
-  assert_eq(z.value, Some(0U))
+  assert_eq(z.value, Some(0UL))
   guard z.note is Some(n) else { fail("malloc(0) 必须有教学提示") }
   assert_true(n.contains("malloc(0)"))
   assert_eq(z.trap, None)
   assert_eq(map.regions_len(), 0, msg="malloc(0) 不得登记条目")
   let neg = host_malloc(map, -4, 1)
-  assert_eq(neg.value, Some(0U))
+  assert_eq(neg.value, Some(0UL))
   assert_eq(neg.note, None, msg="负 size 静默返回 NULL（Rust 同）")
   assert_eq(map.regions_len(), 0)
 }
@@ -71,13 +71,13 @@ test "malloc_heap_exhausted_note" {
     match r.note {
       Some(t) => {
         note = Some(t)
-        assert_eq(r.value, Some(0U))
+        assert_eq(r.value, Some(0UL))
         assert_eq(r.trap, None, msg="堆耗尽不 trap")
         break
       }
       None => {
         guard r.value is Some(a) else { fail("未耗尽前必须分配成功") }
-        assert_true(a != 0U)
+        assert_true(a != 0UL)
         n = n + 1
       }
     }
@@ -114,7 +114,7 @@ test "free_null_is_noop" {
 /// Double-Free（E3061）：文案须含两个行号；且**不执行隔离区释放**（二次释放不改状态）。
 test "double_free_trap_text" {
   let (map, _mem) = fresh()
-  let a = host_malloc(map, 64, 11).value.unwrap()
+  let a = host_malloc(map, 64, 11).value.unwrap().to_uint()
   assert_eq(host_free(map, a, 42, 100).trap, None)
   assert_true(
     map.freed_logs_get(a) is Some(_),
@@ -139,7 +139,7 @@ test "double_free_trap_text" {
 test "invalid_free_three_branches" {
   let (map, _mem) = fresh()
   // ① 落在存活块内部的地址
-  let a = host_malloc(map, 64, 5).value.unwrap()
+  let a = host_malloc(map, 64, 5).value.unwrap().to_uint()
   let r1 = host_free(map, a + 8U, 20, 20)
   guard r1.trap is Some(t1) else { fail("块内部地址必须诊断") }
   assert_true(t1.contains("E3027"))
@@ -174,14 +174,14 @@ test "invalid_free_three_branches" {
 test "calloc_zeroing_and_shape" {
   let (map, mem) = fresh()
   // 先写脏一块区域，再 calloc 必须得到全零
-  let seed = host_malloc(map, 32, 1).value.unwrap()
+  let seed = host_malloc(map, 32, 1).value.unwrap().to_uint()
   guard mem.fill(map, seed, 32, b'\xFF') is Ok(_) else {
     fail("预写必须成功")
   }
   guard host_free(map, seed, 2, 2).trap is None else { fail("预释放") }
   let r = host_calloc(map, mem, 2, 16, 3)
   let addr = match r.value {
-    Some(a) => a
+    Some(a) => a.to_uint()
     None => fail("calloc 必须返回值")
   }
   assert_eq(r.trap, None)
@@ -199,7 +199,7 @@ test "calloc_zeroing_and_shape" {
   assert_eq(rec.alloc_by, "calloc")
   // 零参数静默 NULL
   let z = host_calloc(map, mem, 0, 16, 4)
-  assert_eq(z.value, Some(0U))
+  assert_eq(z.value, Some(0UL))
   assert_eq(z.note, None)
   assert_eq(z.trap, None)
 }
@@ -216,10 +216,10 @@ test "calloc_zeroing_and_shape" {
 test "calloc_reuse_after_eviction_no_uaf" {
   let (map, mem) = fresh()
   map.set_quarantine_budget(0)
-  let a = host_malloc(map, 64, 1).value.unwrap()
+  let a = host_malloc(map, 64, 1).value.unwrap().to_uint()
   assert_eq(host_free(map, a, 2, 2).trap, None)
   let r = host_calloc(map, mem, 1, 64, 3)
-  assert_eq(r.value, Some(a), msg="预算 0 → 必复用同址")
+  assert_eq(r.value, Some(a.to_uint64()), msg="预算 0 → 必复用同址")
   assert_eq(
     r.trap,
     None,
@@ -234,7 +234,7 @@ test "calloc_reuse_after_eviction_no_uaf" {
 /// `realloc` 恒搬移 + 保留数据 + 尾部置零（oracle 行为，C 标准不要求清零）。
 test "realloc_moves_preserves_and_zeroes_tail" {
   let (map, mem) = fresh()
-  let p = host_malloc(map, 8, 1).value.unwrap()
+  let p = host_malloc(map, 8, 1).value.unwrap().to_uint()
   for i = 0; i < 8; i = i + 1 {
     guard mem.store_i8(map, p + i.reinterpret_as_uint(), 65 + i) is Ok(_) else {
       fail("种子写必须成功")
@@ -242,7 +242,7 @@ test "realloc_moves_preserves_and_zeroes_tail" {
   }
   let r = host_realloc(map, mem, p, 32, 2, 2, 2)
   let q = match r.value {
-    Some(a) => a
+    Some(a) => a.to_uint()
     None => fail("realloc 必须返回值")
   }
   assert_true(
@@ -275,9 +275,9 @@ test "realloc_moves_preserves_and_zeroes_tail" {
 /// `realloc(p, 0)` 等价 free：结果为 NULL，旧块进隔离区并登记窗口。
 test "realloc_zero_size_equivalent_free" {
   let (map, mem) = fresh()
-  let p = host_malloc(map, 32, 1).value.unwrap()
+  let p = host_malloc(map, 32, 1).value.unwrap().to_uint()
   let r = host_realloc(map, mem, p, 0, 2, 33, 55)
-  assert_eq(r.value, Some(0U), msg="等价 free 分支结果恒为 NULL")
+  assert_eq(r.value, Some(0UL), msg="等价 free 分支结果恒为 NULL")
   assert_eq(r.trap, None)
   guard map.region(p) is Some(rec) else { fail("旧块条目仍在") }
   assert_true(rec.is_freed)
@@ -293,7 +293,7 @@ test "realloc_zero_size_equivalent_free" {
 test "realloc_zero_size_invalid_ptr_diagnosed" {
   let (map, mem) = fresh()
   let r = host_realloc(map, mem, 0x8800U, 0, 1, 2, 3)
-  assert_eq(r.value, Some(0U))
+  assert_eq(r.value, Some(0UL))
   guard r.trap is Some(t) else { fail("无效指针必须诊断") }
   assert_true(t.contains("E3027"))
 }
@@ -311,10 +311,10 @@ test "realloc_zero_size_invalid_ptr_diagnosed" {
 /// `0x8800U`，恰好绕开这条路径。
 test "realloc_zero_size_on_freed_ptr_matches_oracle" {
   let (map, mem) = fresh()
-  let p = host_malloc(map, 32, 1).value.unwrap()
+  let p = host_malloc(map, 32, 1).value.unwrap().to_uint()
   assert_eq(host_free(map, p, 2, 7).trap, None)
   let r = host_realloc(map, mem, p, 0, 3, 9, 11)
-  assert_eq(r.value, Some(0U))
+  assert_eq(r.value, Some(0UL))
   guard r.trap is Some(t) else { fail("必须 trap") }
   assert_true(
     t.contains("E3027"),
@@ -332,7 +332,7 @@ test "realloc_null_ptr_equivalent_malloc" {
   let (map, mem) = fresh()
   let r = host_realloc(map, mem, 0U, 16, 9, 9, 9)
   let a = match r.value {
-    Some(v) => v
+    Some(v) => v.to_uint()
     None => fail("必须返回值")
   }
   assert_true(a != 0U)
@@ -349,10 +349,10 @@ test "realloc_null_ptr_equivalent_malloc" {
 /// `realloc` 遇非活跃块：静默 NULL（Rust `:212-215` 不 trap）。
 test "realloc_not_live_silent_null" {
   let (map, mem) = fresh()
-  let p = host_malloc(map, 16, 1).value.unwrap()
+  let p = host_malloc(map, 16, 1).value.unwrap().to_uint()
   assert_eq(host_free(map, p, 2, 2).trap, None)
   let r = host_realloc(map, mem, p, 32, 3, 3, 3)
-  assert_eq(r.value, Some(0U))
+  assert_eq(r.value, Some(0UL))
   assert_eq(r.note, None)
   assert_eq(
     r.trap,
@@ -368,12 +368,16 @@ test "realloc_not_live_silent_null" {
 test "realloc_reuse_no_duplicate_entries" {
   let (map, mem) = fresh()
   map.set_quarantine_budget(0)
-  let a = host_malloc(map, 256, 1).value.unwrap()
-  let b = host_malloc(map, 64, 2).value.unwrap()
+  let a = host_malloc(map, 256, 1).value.unwrap().to_uint()
+  let b = host_malloc(map, 64, 2).value.unwrap().to_uint()
   assert_true(a != b)
   assert_eq(host_free(map, a, 3, 3).trap, None)
   let r = host_realloc(map, mem, b, 128, 4, 4, 4)
-  assert_eq(r.value, Some(a), msg="free_list first-fit 必须复用驱逐块 a")
+  assert_eq(
+    r.value,
+    Some(a.to_uint64()),
+    msg="free_list first-fit 必须复用驱逐块 a",
+  )
   assert_eq(
     r.trap,
     None,
@@ -421,7 +425,7 @@ test "calloc_size_chain_saturates" {
 test "calloc_oversize_reports_heap_exhausted" {
   let (map, mem) = fresh()
   let r = host_calloc(map, mem, 65536 * 1024, 65536 * 1024, 1)
-  assert_eq(r.value, Some(0U), msg="超大尺寸返回 NULL")
+  assert_eq(r.value, Some(0UL), msg="超大尺寸返回 NULL")
   assert_eq(r.trap, None)
   guard r.note is Some(n) else { fail("必须附堆耗尽教学附注") }
   assert_true(n.contains("内存耗尽"))

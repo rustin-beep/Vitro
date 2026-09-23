@@ -54,5 +54,5 @@
 <text class="tc" x="900" y="694" text-anchor="middle">→ 驱动扩展优先级，进入开发实现</text>
 <text class="tc" x="600" y="756" text-anchor="middle">当前规模：C <tspan data-fact="shadow_c_cases">683</tspan>（<tspan data-fact="shadow_c_match">679</tspan> match + <tspan data-fact="shadow_c_known_issue">3</tspan> known_issue + <tspan data-fact="shadow_c_gap_extension">1</tspan> gap_extension，<tspan data-fact="shadow_c_gaps">0</tspan> 非预期差异）</text>
 <text class="tc" x="600" y="784" text-anchor="middle">C++ <tspan data-fact="shadow_cpp_cases">99</tspan>（<tspan data-fact="shadow_cpp_match">95</tspan> 一致 + <tspan data-fact="shadow_cpp_clang_fail">4</tspan> 已记录 clang_compile_fail）· Clang 预检缺失即 fail fast(exit 2)</text>
-<text class="tc" x="600" y="810" text-anchor="middle">数据 as_of 2026-09-23 13:15:32 · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）</text>
+<text class="tc" x="600" y="810" text-anchor="middle">数据 as_of 2026-09-23 13:51:19 · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）</text>
 </svg>

@@ -198,6 +198,18 @@ type numSpan struct {
 	value      int
 }
 
+// hitContainsTruth：整行候选数字中是否有任一个等于真值。
+// 用于 Manual 桶兜底（FactAudit.Suspect）：已正确维护的分解式行（子项或总数）
+// 必含真值；整行无一个对上 ⇒ 几乎必然是漏连坐。
+func hitContainsTruth(cands []numSpan, truth int) bool {
+	for _, c := range cands {
+		if c.value == truth {
+			return true
+		}
+	}
+	return false
+}
+
 // numberSpans 提取候选数字：先抹掉日期与阶段序号，再按 16 进制安全的边界检查过滤。
 func numberSpans(line string) []numSpan {
 	masked := blankOut(blankOut(line, rePhase), reDate)
@@ -245,6 +257,19 @@ type FactAudit struct {
 	// 漂移），自动替换又会改断算式/伪造测量——归入人工维护，不判 drift
 	// 不自动 sync，报告常显提醒。
 	Manual []Hit
+	// Suspect：Manual 的子集——**行内所有候选数字都不等于真值**的那些。
+	// 语义 = "整行没有任何一个数字能对上真值" ⇒ 该分解式行几乎必然漏了连坐
+	// （实测：README.md:81 写 `682 个用例（完全匹配 678 + 3 + 1）` 而真值 683，
+	// 行内 {682,678,3,1} 不含 683；`facts check` 因 Manual 桶豁免而恒绿）。
+	// 反向：已正确维护的分解式行（如 cpp `99（95 + 4）`，真值 99）行内必含真值。
+	//
+	// **不判红，只提醒**（与 Manual 同一哲学：子项与总数无法机判区分，机器
+	// 没有依据替人断定哪一处该改）。但它在默认 check 里显式列出，且
+	// `check --strict` 时判红（CI 可选用）——因为"整行无一个数字对上真值"是
+	// 证据充分的漏网信号，而非模糊判断。已知误报面：未来值/里程碑目标行
+	// （如总计划「全量切换 758 用例 + golden 733」是 1.0 目标，非当期现值），
+	// 故不强推 CI 判红，--strict 由使用方按误报面自行评估后启用。
+	Suspect []Hit
 }
 
 // ─── 常量对账（M13 细化，2026-09-18）─────────────────────────────────────────
@@ -310,6 +335,9 @@ type AuditResult struct {
 	FrozenN  int
 	PendingN int
 	ManualN  int
+	// SuspectN：Manual 桶中整行无数字对上真值的处数（兜底提醒；仅 --strict 判红，
+	// 见 FactAudit.Suspect 注释）。
+	SuspectN int
 	ScanN    int
 	// 坏引用：文档指向不存在的脚本文件（CURRENT 层才算；as-of/归档里的
 	// 旧路径是有意的历史叙述）。数字冻住不等于路径永远有效——退役驱动
@@ -533,6 +561,12 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 					// 分解式/实测行：子项与总数无法机判区分、自动替换有破坏面
 					//（见 FactAudit.Manual 注释）——人工维护，不判 drift。
 					a.Manual = append(a.Manual, h)
+					// 兜底：整行若无一个候选数字等于真值，则几乎必然漏了连坐
+					//（见 FactAudit.Suspect 注释）。子项与总数机判不区分，但
+					//"整行 vs 真值"这块是机判得动的。
+					if !hitContainsTruth(cands, *a.Truth) {
+						a.Suspect = append(a.Suspect, h)
+					}
 				} else {
 					a.Drift = append(a.Drift, h)
 				}
@@ -608,6 +642,7 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 		res.Audits = append(res.Audits, *a)
 		res.DriftN += len(a.Drift)
 		res.ManualN += len(a.Manual)
+		res.SuspectN += len(a.Suspect)
 		res.FrozenN += len(a.Frozen)
 		res.PendingN += len(a.Pending)
 		if a.Truth != nil {
@@ -903,14 +938,28 @@ func renderReport(root string, doc FactsDoc, res AuditResult, verbose bool) stri
 		b.WriteString("## 人工维护（分解式 / 实测数字行）\n\n")
 		b.WriteString("子项落在判定区间内时与总数无法机判区分，自动替换会改断算式或伪造测量——\n")
 		b.WriteString("这些行不参与漂移判定与自动 sync，真值变化时请人工核对整行。\n\n")
+		if res.SuspectN > 0 {
+			b.WriteString(fmt.Sprintf("⚠️ 其中 **%d 处整行无任何数字等于真值**（标 ❗）：\n",
+				res.SuspectN))
+			b.WriteString("已正确维护的分解式行至少会有一个数字（子项或总数）对上真值；\n")
+			b.WriteString("整行都对不上，几乎必然是漏连坐（但未来值/里程碑目标行会是误报，请人工判别）。\n\n")
+		}
 		for _, a := range res.Audits {
 			if len(a.Manual) == 0 {
 				continue
 			}
 			b.WriteString(fmt.Sprintf("### %s — 真值 **%d** %s（%d 处）\n\n",
 				a.Rule.Label, *a.Truth, a.Rule.Unit, len(a.Manual)))
+			suspect := map[string]bool{}
+			for _, h := range a.Suspect {
+				suspect[fmt.Sprintf("%s:%d", h.File, h.LineNo)] = true
+			}
 			for _, h := range a.Manual {
-				b.WriteString(fmt.Sprintf("- `%s:%d`（首数 %d）\n", h.File, h.LineNo, h.Value()))
+				mark := ""
+				if suspect[fmt.Sprintf("%s:%d", h.File, h.LineNo)] {
+					mark = " ❗整行无数字等于真值"
+				}
+				b.WriteString(fmt.Sprintf("- `%s:%d`（首数 %d）%s\n", h.File, h.LineNo, h.Value(), mark))
 				b.WriteString("  > " + h.Text + "\n")
 			}
 			b.WriteString("\n")

@@ -41,6 +41,8 @@ func main() {
 	autoYes := fs.Bool("yes", false, "自动应用无警告条目（带警告的跳过，--force 才覆盖）")
 	forceYes := fs.Bool("force", false, "连同带警告条目也自动应用（慎用：会改断分解式/伪造测量）")
 	allowStale := fs.Bool("allow-stale", false, "check 容忍真值超龄（本地调试逃生门，CI 不得使用）")
+	strict := fs.Bool("strict", false,
+		"check 把「分解式行整行无数字等于真值」判红（Manual 兜底；见 FactAudit.Suspect）")
 	maxAge := fs.Duration("max-age", 168*time.Hour, "真值新鲜度预算（超龄降级为待采集且 check 变红）")
 	cargoLog := fs.String("cargo-log", "", "从已落盘的 cargo test 日志解析真值（CI 接线：不重跑 30 分钟测试）")
 	_ = fs.Parse(os.Args[1:])
@@ -124,7 +126,12 @@ func main() {
 		// 文档漂移一个没修 CI 照样绿——降级保护了 sync 却给 check 开了后门）。
 		// --allow-stale 是本地调试逃生门，CI 不得使用。坏引用同理：文档指向
 		// 不存在的脚本 = 文档已失效，必须红。
-		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) {
+		//
+		// --strict：再叠一层 Manual 兜底（分解式行整行无数字等于真值）。默认
+		// 不判红——未来值/里程碑目标行（如总计划「全量切换 758 用例 + golden
+		// 733」）同样"整行不含真值"却是合法写法，误报面须人工评估后再固化。
+		suspectRed := *strict && res.SuspectN > 0
+		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) || suspectRed {
 			os.Exit(1)
 		}
 	case "report":
@@ -160,8 +167,8 @@ func fatal(msg string) {
 }
 
 func summarize(res AuditResult, doc FactsDoc) {
-	fmt.Printf("\n扫描 %d 份文档：漂移 %d 处 / 冻结 %d 处 / 人工维护 %d 处 / 待采集 %d 处 / 坏引用 %d 处\n",
-		res.ScanN, res.DriftN, res.FrozenN, res.ManualN, res.PendingN, len(res.Broken))
+	fmt.Printf("\n扫描 %d 份文档：漂移 %d 处 / 冻结 %d 处 / 人工维护 %d 处（其中疑似未连坐 %d 处）/ 待采集 %d 处 / 坏引用 %d 处\n",
+		res.ScanN, res.DriftN, res.FrozenN, res.ManualN, res.SuspectN, res.PendingN, len(res.Broken))
 	for _, a := range res.Audits {
 		if len(a.Drift) > 0 {
 			first := a.Drift[0]
@@ -182,6 +189,15 @@ func summarize(res AuditResult, doc FactsDoc) {
 			first := a.Manual[0]
 			fmt.Printf("  [人工维护] %s: %d 处（分解式/实测行，子项与总数机判不区分）如 %s:%d\n",
 				a.Rule.Label, len(a.Manual), first.File, first.LineNo)
+		}
+	}
+	// Manual 兜底：整行无数字对上真值（见 FactAudit.Suspect）。默认只提醒；
+	// --strict 时判红。首条连同文件行号列出，便于直接定位。
+	for _, a := range res.Audits {
+		if len(a.Suspect) > 0 {
+			first := a.Suspect[0]
+			fmt.Printf("  ❗[疑似未连坐] %s: %d 处整行无数字等于真值 %d（manual 兜底；--strict 判红）如 %s:%d = %d\n",
+				a.Rule.Label, len(a.Suspect), *a.Truth, first.File, first.LineNo, first.Value())
 		}
 	}
 	for _, r := range res.Broken {

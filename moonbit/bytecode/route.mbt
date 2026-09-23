@@ -46,8 +46,10 @@ pub const SHADOWED_HOST_NAME_COUNT : Int = 20
 ///
 /// 唯一两条，理由在 Rust 侧有明文：Host 版 `strcpy`/`strcat` 带 **E3070 栈缓冲区
 /// 校验**（`vitro_codegen/src/lib.rs:136-143` 只跳过这两个名字的预注册）。
-/// 本函数把该例外从"两处代码各自记得"变成可断言的单点——新增例外必须改这里，
-/// 且锚会红。
+/// 本函数是该例外的**单点定义**（2026-09-23 审阅批 P3 接线后真正收口）：
+/// codegen 的消费点是 `with_mode` 预注册跳过（`gen.mbt` 调本函数），新增例外
+/// 只改这里——预注册自动跳过、`call.mbt` 的 func_index 判定自动落 CallHost、
+/// `shadowed_host_names()` 清单与锚随之变红逼登记。
 pub fn is_host_rerouted(name : String) -> Bool {
   name == "strcpy" || name == "strcat"
 }

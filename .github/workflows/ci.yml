@@ -304,6 +304,22 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/mbti_sync -check
 
+      - name: MoonBit generated-artifact freshness (gen_diag / gen_host_route / gen_stubs)
+        # 2026-09-23 审阅批接线（S6 审阅 P5）：三个生成器（diag 码表 /
+        # host 路由 110 对 / 标准库存根表）此前均无 CI 步骤——产物被手改或
+        # 源变更后未再生成，只能靠人跑 -check 才发现（S6 批的 host_func_id_gen
+        # 自 codegen 上提 bytecode 即高风险期）。三脚本均内置 moon fmt 且
+        # -check 无写副作用；J9 证红：gen_host_route 注入 HOST_ACOS 110→999
+        # 必红（本批实测）、gen_stubs 注入篡改注释必红（本批实测）、gen_diag
+        # 四雷证红已在先例留痕。前置修复：gen_stubs 原手工只认 --check 且
+        # 生成输出未过 fmt（干净仓库上 --check 必红）——本批改为 flag 包 +
+        # 内置 fmt 后方可入闸。
+        shell: bash
+        run: |
+          go run ./scripts/moonbit/gen_diag -check
+          go run ./scripts/moonbit/gen_host_route -check
+          go run ./scripts/moonbit/gen_stubs -check
+
       - name: C ABI declaration parity (error codes + binding symbols)
         # 2026-09-22 接线（架构审阅 v2 A 组 #3 / §2.9）：vitro_capi.h 的
         # VitroErrorCode 枚举手抄自 Rust 源且注释只写「Keep in sync with ...」

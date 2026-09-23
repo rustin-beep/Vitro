@@ -98,8 +98,12 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     // 栈缓冲区容量检测（教学 IDE 的核心安全检测），Bytecode Libc 版
     // 逐字节 StoreMem 无法在拷贝边界做整体容量校验。libc 索引表与预编译
     // 产物保持不变，仅用户侧调用分发回 Host。
+    // 例外清单单源 = `@bytecode.is_host_rerouted`（2026-09-23 审阅批 P3 接线，
+    // 此前此处硬编码两名字）：新增改判名只改 route.mbt 一处，本跳过自动生效；
+    // call.mbt 不需要例外知识——例外经 func_index（此处跳过）流入，其
+    // "func_index ∪ 非 host 名"判定自动落 CallHost。
     for name in @bytecode.bytecode_libc_all_funcs {
-      if name == "strcpy" || name == "strcat" {
+      if @bytecode.is_host_rerouted(name) {
         continue
       }
       match @bytecode.bytecode_libc_index(name) {

@@ -82,7 +82,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 270 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 14 / codegen 16 / memory 27 / host 27；分解和 264 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；memory 27 = 白盒 21 + 黑盒 6；host 27 = 白盒 24 + 黑盒 3（两包的黑盒同时承担对外面消费面）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 271 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 15 / codegen 15 / memory 27 / host 28；分解和 265 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；memory 27 = 白盒 21 + 黑盒 6；host 28 = 白盒 25 + 黑盒 3（含审阅批 P1 对齐锚；两包的黑盒同时承担对外面消费面）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

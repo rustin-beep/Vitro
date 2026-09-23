@@ -2,7 +2,9 @@
 ///
 /// **锚点来源**：Rust 冻结区的 host 契约测试逐条照搬（`host_contract_tests.rs`
 /// 的 UAF/隔离窗口族、`u213_libc_boundary_test.rs` 的无效 free 族、坑 6/7/10），
-/// 加上一条**新发现的 oracle 存量缺陷固化锚**（`calloc` 的置零/清理次序）。
+/// 加上 oracle 存量缺陷①②的**修复锚**（2026-09-23 审阅批翻转：
+/// `calloc_reuse_after_eviction_no_uaf` / `calloc_oversize_reports_heap_exhausted`）
+/// 与 P1 对齐锚（`realloc_zero_size_on_freed_ptr_matches_oracle`）。
 ///
 /// 全部用例**不起 VM**：这是本批的结构收益——handler 只产出
 /// [`HostMemReply`]（`value?` / `note?` / `trap?`），内存语义可以纯函数式锚定。
@@ -203,29 +205,27 @@ test "calloc_zeroing_and_shape" {
 }
 
 ///|
-/// **已发现的 oracle 存量缺陷固化锚**：`calloc` 的置零发生在清理 freed_logs 之前，
-/// 于是复用驱逐块时置零会撞上该块自己的检验窗口 → **Use-After-Free 误报**。
+/// **oracle 存量缺陷①修复锚（2026-09-23 翻转）**：`calloc` 复用隔离驱逐块时
+/// **不得**误报 UAF——清理 freed_logs 已提前到置零之前（原固化锚
+/// `calloc_reuse_triggers_uaf_false_positive` 锁住"照搬误报"行为，两侧同修后
+/// 由本锚锁住正确行为；Rust 侧 e2e 锚 = baseline/calloc_reuse_after_eviction.c）。
 ///
 /// 触发链路：`free` 入隔离区 → `calloc` 的 `allocate_raw` 因超预算驱逐该块到
-/// `free_list` 并 first-fit 取回（同址）→ 此时 freed_logs 里该地址的窗口还在
-/// → 置零（受检写）判 UAF。该块**刚刚被合法重分配**，不是 UAF。
-///
-/// **本锚固化"照搬"后的行为**（Rust 顺序：置零 → 清理 → 登记 → 压地址；且
-/// `trap()` 不中断 handler，故 trap 之后状态照常推进）。修复形态是一行换位
-/// （先 `freed_logs_remove_overlapping` 再置零），届时本锚由红转绿。
-test "calloc_reuse_triggers_uaf_false_positive" {
+/// `free_list` 并 first-fit 取回（同址）→ **先清窗口再置零** → 受检查写不再
+/// 撞自己的检验窗口。该块**刚刚被合法重分配**，不是 UAF。
+test "calloc_reuse_after_eviction_no_uaf" {
   let (map, mem) = fresh()
   map.set_quarantine_budget(0)
   let a = host_malloc(map, 64, 1).value.unwrap()
   assert_eq(host_free(map, a, 2, 2).trap, None)
   let r = host_calloc(map, mem, 1, 64, 3)
   assert_eq(r.value, Some(a), msg="预算 0 → 必复用同址")
-  guard r.trap is Some(t) else {
-    fail("当前实现（照搬 oracle）必触发误报")
-  }
-  assert_true(t.contains("E3060"), msg="误报以 UAF 形态出现")
-  // trap 不中断：登记仍照常完成（与 Rust 逐字节循环的观察一致）
-  guard map.region(a) is Some(rec) else { fail("trap 后登记仍应完成") }
+  assert_eq(
+    r.trap,
+    None,
+    msg="复用块不得误报 UAF（先清窗口再置零）",
+  )
+  guard map.region(a) is Some(rec) else { fail("登记必须照常完成") }
   assert_eq(rec.alloc_by, "calloc")
   guard map.verify() is Ok(_) else { fail("元数据自检仍须通过") }
 }
@@ -296,6 +296,34 @@ test "realloc_zero_size_invalid_ptr_diagnosed" {
   assert_eq(r.value, Some(0U))
   guard r.trap is Some(t) else { fail("无效指针必须诊断") }
   assert_true(t.contains("E3027"))
+}
+
+///|
+/// `realloc(p, 0)` 遇**已释放**指针：oracle 报 E3027 而非 E3061（红→绿锚，
+/// 2026-09-23 审阅批）。
+///
+/// oracle 的 `realloc(p,0)` 分支是**内联**释放且**不查 Double-Free**
+/// （`host/memory.rs:166-192`）：对已释放指针，`trap_invalid_free` 的存活块
+/// 分支因 `is_freed` 不命中、freed_logs 分支被 `log.addr != addr` 滤掉，
+/// 落**兜底 E3027**（真机实测 `vitro_cli run`，2026-09-23）。而走
+/// `host_free` 会先撞其 Double-Free 前置 → E3061——与 oracle 不符。
+/// 既有锚 `realloc_zero_size_invalid_ptr_diagnosed` 用从未分配的
+/// `0x8800U`，恰好绕开这条路径。
+test "realloc_zero_size_on_freed_ptr_matches_oracle" {
+  let (map, mem) = fresh()
+  let p = host_malloc(map, 32, 1).value.unwrap()
+  assert_eq(host_free(map, p, 2, 7).trap, None)
+  let r = host_realloc(map, mem, p, 0, 3, 9, 11)
+  assert_eq(r.value, Some(0U))
+  guard r.trap is Some(t) else { fail("必须 trap") }
+  assert_true(
+    t.contains("E3027"),
+    msg="oracle 对已释放指针报 E3027（兜底）",
+  )
+  assert_false(
+    t.contains("Double-Free"),
+    msg="不得报 Double-Free（E3061）",
+  )
 }
 
 ///|
@@ -382,36 +410,21 @@ test "calloc_size_chain_saturates" {
 }
 
 ///|
-/// **已发现的第二个 oracle 存量缺陷固化锚**：尺寸链饱和之后仍会**回绕**——
-/// `align4(0xFFFFFFFF)` 在 32 位加法回绕下等于 **0**，`allocate_raw(0)` 按"零尺寸
-/// 分配"短路返回 `Some(0)`。于是"超大尺寸"这条路径**不失败**，反而返回 NULL
-/// 并登记一条 `addr = 0`、`size = -1` 的垃圾区域。
-///
+/// **oracle 存量缺陷②修复锚（2026-09-23 翻转）**：尺寸链饱和后**必须**走堆耗尽
+/// 分支——`total` 对齐前先与 `MEM_SIZE` 比较。原固化锚
+/// `calloc_oversize_size_chain_registers_garbage_region` 锁住的是回绕行为：
+/// `align4(0xFFFFFFFF)` 在 32 位加法回绕下等于 **0**，`allocate_raw(0)` 按
+/// "零尺寸分配"短路成功，超大尺寸不失败反登记 `addr=0`/`size=-1` 垃圾区域。
 /// 这是**独立于**坑 9（`qsort` 那条已被 `checked_mul` 修掉）的第二条路径：
-/// `calloc` 用的是 `saturating_mul`。本锚同时锁住三件事：① 当前不失败；
-/// ② 不产生 trap（跳过 0 长度置零，与 Rust 的 0 次循环同）；③ **元数据被写坏
-/// 是可被 `verify()` 抓到的**（把静默损坏变成可断言事实）。
-/// 修复形态：`total` 先与 `MEM_SIZE` 比，超限直接走堆耗尽分支。
-test "calloc_oversize_size_chain_registers_garbage_region" {
+/// `calloc` 用的是 `saturating_mul`。本锚锁三件事：① 返回 NULL；② 附堆耗尽
+/// 教学附注（note 通道）；③ **垃圾条目不得登记**，元数据自检通过。
+test "calloc_oversize_reports_heap_exhausted" {
   let (map, mem) = fresh()
   let r = host_calloc(map, mem, 65536 * 1024, 65536 * 1024, 1)
-  assert_eq(r.value, Some(0U), msg="当前实现返回 NULL（不失败）")
-  assert_eq(
-    r.trap,
-    None,
-    msg="0 长度置零被跳过 ⇒ 无 NULL trap（与 Rust 0 次循环同）",
-  )
-  assert_true(
-    r.note is None,
-    msg="不走堆耗尽分支（allocate_raw(0) 短路成功）",
-  )
-  // 垃圾区域确实被登记：addr=0、size=total as i32 = -1
-  guard map.region(0U) is Some(rec) else { fail("必须登记到 addr = 0") }
-  assert_eq(rec.size, -1, msg="0xFFFFFFFF as i32 = -1")
-  assert_eq(rec.alloc_by, "calloc")
-  // 元数据自检吃这条 ⇒ 静默损坏变成可断言事实
-  match map.verify() {
-    Err(_) => ()
-    Ok(_) => fail("垃圾区域必须被自检抓到")
-  }
+  assert_eq(r.value, Some(0U), msg="超大尺寸返回 NULL")
+  assert_eq(r.trap, None)
+  guard r.note is Some(n) else { fail("必须附堆耗尽教学附注") }
+  assert_true(n.contains("内存耗尽"))
+  assert_true(map.region(0U) is None, msg="不得登记 addr=0 垃圾条目")
+  guard map.verify() is Ok(_) else { fail("元数据自检必须通过") }
 }

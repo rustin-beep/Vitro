@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (S6 开工批二审阅批：P1–P6 + oracle 存量缺陷①②两侧同修，2026-09-23)
+
+- **oracle 存量缺陷①（`calloc` 置零先于清理 ⇒ UAF 误报）两侧同修**：
+  `host_calloc` 把 `freed_logs_remove_overlapping` 提前到置零之前（一行换位，
+  与 malloc/realloc 次序对齐）。修复前 `allocate_raw` 复用隔离驱逐块时，该块
+  检验窗口未清，置零的受检写撞自己的窗口 → 对刚被合法重分配的块误报
+  Use-After-Free（E3060）。红→绿锚：`native/tests/cases/baseline/
+  calloc_reuse_after_eviction.c`（600×512B churn 触发隔离驱逐 + first-fit
+  复用，修复前 vitro 侧 UAF trap / Clang 正常输出 `0`、`7`；修复后 match）；
+  MoonBit 侧锚翻转为 `calloc_reuse_after_eviction_no_uaf`。
+- **oracle 存量缺陷②（`calloc` 尺寸链饱和后回绕 ⇒ 静默元数据损坏）两侧同修**：
+  `total` 在 `align4` 之前先与 `MEM_SIZE` 比较，超限直接走堆耗尽分支。修复前
+  `saturating_mul` 饱和到 `0xFFFFFFFF`，`align4` 的 32 位加法回绕成 0，
+  `allocate_raw(0)` 按"零尺寸分配"短路成功——超大 `calloc` 不失败，反登记
+  `addr=0 / size=-1` 的垃圾区域（debug 构建下 `(total + 3)` 直接加法溢出
+  panic——红锚实测）。红→绿锚：
+  `host_contract_tests::test_calloc_oversize_size_chain_reports_heap_exhausted`
+  （修复前 panic FAILED / 修复后断言 NULL + note 附注 + 无垃圾条目）；MoonBit
+  侧锚翻转为 `calloc_oversize_reports_heap_exhausted`。两条缺陷的 MoonBit
+  侧原固化锚（照搬期锁行为）在修复落地时均先实测转红再翻转。
+- **P1（未登记语义偏差）**：`realloc(p, 0)` 遇**已释放**指针，oracle 报
+  E3027（内联释放不查 Double-Free，`trap_invalid_free` 的 freed_logs 分支被
+  `log.addr != addr` 滤掉落兜底），MoonBit 侧误走 `host_free` 的 Double-Free
+  前置报 E3061。修复：`host_realloc` 零尺寸分支直走 `MemoryMap::release`
+  单出口 + `invalid_free_message`（oracle 真机实测对齐）。红→绿锚：
+  `realloc_zero_size_on_freed_ptr_matches_oracle`（既有锚用的是从未分配的
+  `0x8800U`，恰好绕开此路径）。
+- **P2（未登记文案偏差）**：E3060 UAF 文案丢动作词（`写入`/`读取`——
+  `AccessKind` 就在 `MemFault` 载荷里却被 `_` 丢弃）与时间轴行的"释放
+  （第 N 步）"段。`access_fault_text` 补渲染动作词；时间轴整行（含当前步，
+  VM 状态）与 `NullDeref` 写侧变体、`OutOfBounds` 符号表增强文案登记为
+  vm 接线义务（oracle `core/memory.rs:199-205` + `trap.rs:6-61` 口径）。
+- **P3（声明 > 现状）**：`is_host_rerouted` 自称"单点收口"但 codegen 仍两处
+  硬编码。修复：`codegen/gen.mbt` 预注册跳过改调 `@bytecode.is_host_rerouted`
+  （语义恒等）——新增改判名只改 `route.mbt` 一处即全链生效（`call.mbt` 经
+  `func_index` 间接消费，无独立例外知识，保持现状是有意为之）。
+- **P4（文档数字错）**：`README.md` / `README.mbt.md` 的 `bytecode 14 /
+  codegen 16` 真值均 15（上批移动路由锚后漏改）；连同本批 host +1 锚，总数
+  270 → **271**（分解和 265 + 根 README doc test 6）。
+- **P5（闸门空窗）**：`gen_diag` / `gen_host_route` / `gen_stubs` 三个生成器
+  的 `-check` 均不在 CI——产物漂移只能靠人跑。ci.yml 补"generated-artifact
+  freshness"步骤（core job，mbti_sync 之后）。**前置修复（gen_stubs 自身两处
+  缺陷，J9 证红留痕）**：此前手工只认 `--check` 双横线（`-check` 静默落入
+  生成路径直接改写产物）且生成输出未过 `moon fmt`（干净仓库上 `--check`
+  必红，无法入 CI）——重构为 flag 包 + 内置 fmt + check 无写副作用。
+- **P6（多余依赖）**：`moonbit/host/moon.pkg` 的 `for "test"` 块声明
+  `vitro/engine/libc` 全包零使用（`moon check` unused_package warning）——删除。
+- **验证**：`vitro_cli run` 真机实测两侧（realloc(p,0)/E3027、UAF 读写文案、
+  calloc churn 用例修复前后）；MoonBit `moon test` 271/271；Rust
+  `host_contract_tests` calloc 族 4/4。
+- **登记（审阅发现，未修）**：oracle 输出通道在 `putchar(>= 128)` 上与 Clang
+  **必然不等**——`runtime.stdout() -> String` 把 `0xC8` 重新编码成 UTF-8 两字节
+  `C3 88`，Clang 输出单字节（实测 `putchar(200); putchar(201)` → Clang `c8 c9`，
+  oracle `c3 88 c3 89`）。MoonBit 侧输出通道 Bytes 化已对齐 Clang（`0xC8` 落
+  1 字节）；shadow 语料**零覆盖**该形状（`putchar(1xx/2xx)` 在 templates/ 与
+  native/tests/cases/ 零命中），故该差异从未被防线暴露。补语料的时机在
+  MoonBit 引擎接线 shadow 时（届时 MoonBit 侧应为 green、oracle 为 red，且需
+  与 `KNOWN_FAILURE_CASES` / `KNOWN_TEMPLATE_FAILURES` 双向监控机制同步登记）。
+
 ### Added (S6 开工批二：`vitro/engine/host` 建包 + 路由表单源 + 输出通道 Bytes 化，2026-09-23)
 
 - **范围**：S6 三包（memory / host / vm）的第二片。执行输入仍是勘察报告（任务书），

@@ -318,6 +318,16 @@ pub fn host_calloc(vm: &mut VitroVM, session: &mut VmContext<'_>) {
         return;
     }
     let total = (nmemb as u32).saturating_mul(size as u32);
+    // 存量缺陷②修复（2026-09-23 审阅批）：饱和值 0xFFFFFFFF 在 align4 的
+    // 32 位加法下回绕成 0 → allocate_raw(0) 按"零尺寸分配"短路成功，超大
+    // 尺寸不失败，反登记 addr=0/size=-1 的垃圾区域（静默元数据损坏）。
+    // 对齐之前先与堆上限比较（与 misc.rs 坑 9 checked_mul 的判定目的对齐）。
+    // 红→绿锚：host_contract_tests::test_calloc_oversize_size_chain_reports_heap_exhausted。
+    if total > MEM_SIZE {
+        report_heap_exhausted(session);
+        vm.push(0);
+        return;
+    }
     let aligned_size = (total + 3) & !3;
     let addr = match session.memory.allocate_raw(aligned_size, vm.get_memory_size()) {
         Some(a) => a,
@@ -327,13 +337,17 @@ pub fn host_calloc(vm: &mut VitroVM, session: &mut VmContext<'_>) {
             return;
         }
     };
+    // clean freed_logs（存量缺陷①修复，2026-09-23 审阅批）：**必须在置零
+    // 之前**——allocate_raw 复用隔离驱逐块时其检验窗口未清，置零的受检写
+    // （store_i8）会撞自己的窗口 → UAF 误报。与 malloc/realloc 的次序对齐。
+    // 红→绿锚：baseline/calloc_reuse_after_eviction.c（600×512B churn 触发
+    // 隔离驱逐 + first-fit 复用）+ MoonBit 侧 calloc_reuse_after_eviction_no_uaf。
+    let new_end = addr.saturating_add(aligned_size);
+    vm.freed_logs_remove_overlapping(addr, new_end);
     // zero-initialize
     for i in 0..aligned_size {
         vm.store_i8(addr + i, 0, &SourceLoc::default());
     }
-    // clean freed_logs
-    let new_end = addr.saturating_add(aligned_size);
-    vm.freed_logs_remove_overlapping(addr, new_end);
     // U2#2：新地址可能来自 free_list 复用驱逐块——"复位 or push"（同 malloc，
     // 防同 addr 双条目）
     match session.memory.find_region_mut(addr) {

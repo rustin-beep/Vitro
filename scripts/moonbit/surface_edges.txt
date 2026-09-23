@@ -108,10 +108,12 @@ dump_typeck typeck TypeError
 #    {stub_lookup,stubs_provider,vfs_provider,StubsProvider,VfsProvider} 无交集。
 bytecode libc is_libc_func
 codegen bytecode host_func_id_by_user_name
+codegen bytecode is_host_rerouted
 host bytecode CallRoute
 host bytecode MEM_SIZE
 host bytecode align4
 host bytecode call_route
+host memory AccessKind
 host memory DEFAULT_QUARANTINE_BUDGET
 host memory FreedRegionInfo
 host memory MemFault

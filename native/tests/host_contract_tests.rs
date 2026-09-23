@@ -738,6 +738,34 @@ fn test_calloc_zero_nmemb_returns_null() {
     assert_eq!(addr, 0, "calloc(0, size) 应返回 NULL");
 }
 
+#[test]
+fn test_calloc_oversize_size_chain_reports_heap_exhausted() {
+    // 存量缺陷②红→绿锚（2026-09-23 审阅批）：saturating_mul 饱和到
+    // 0xFFFFFFFF 后 align4 的 32 位加法回绕成 0，allocate_raw(0) 按"零尺寸
+    // 分配"短路成功，超大尺寸不失败，反登记 addr=0/size=-1 的垃圾区域条目
+    // （静默元数据损坏，独立于 misc.rs 坑 9 已修的 qsort 路径）。修复后必须
+    // 走堆耗尽分支：返回 NULL + note 通道教学附注，且不登记 addr=0 条目。
+    // 输入取 65536*1024（i32 正数）：乘积 2^52 饱和到 0xFFFFFFFF > MEM_SIZE。
+    let (mut vm, mut session) = fresh_session();
+    vm.push(65536 * 1024); // size
+    vm.push(65536 * 1024); // nmemb
+    host_calloc(&mut vm, &mut session.as_vm_context());
+    let addr = vm.pop() as u32;
+    assert_eq!(addr, 0, "超大 calloc 必须返回 NULL");
+    assert!(
+        session
+            .runtime
+            .note_chunks()
+            .iter()
+            .any(|n| n.contains("内存耗尽")),
+        "必须附堆耗尽教学附注（note 通道）"
+    );
+    assert!(
+        !session.memory.regions.iter().any(|r| r.addr == 0),
+        "不得登记 addr=0 的垃圾区域条目"
+    );
+}
+
 // ─── bsearch 契约 ────────────────────────────────────────────────────────────
 
 #[test]

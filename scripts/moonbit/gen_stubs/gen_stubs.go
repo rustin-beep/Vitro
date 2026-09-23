@@ -1,18 +1,25 @@
 // gen_stubs：从 Rust oracle 的 14 个标准库存根（native/runtime_libc/include/*.h）
 // 生成 MoonBit 数据表 moonbit/lexer/internal/host/stubs_gen.mbt。
 //
-// 纪律（沿 moonbit/scripts/gen_diag 先例）：
+// 纪律（沿 scripts/moonbit/gen_diag 先例）：
 //   - 禁手抄：产物唯一来源 = native/runtime_libc/include/*.h（冻结区资产）；
 //   - 幂等：双次运行字节一致；行尾规范化（LF）后取源 sha256 落款；
-//   - --check：产物与源不一致即 exit 1（fail loud）；
-//   - 用法：go run ./scripts/moonbit/gen_stubs [--check]（仓库根运行）
+//   - **生成流程内置 moon fmt**（陷阱 #15：产物形态以 fmt 为准，gen 原始输出
+//     只是中间态）。2026-09-23 审阅批修复：此前无 fmt 且手工比对只认 --check——
+//     仓库产物（fmt 形态）与生成输出（未 fmt）恒不等，--check 在干净仓库上
+//     **必红**（无法入 CI），而 -check 单横线静默落入生成路径直接改写产物；
+//   - -check / --check 经 flag 包解析（与 gen_diag / gen_host_route 口径统一）：
+//     产物与源不一致即 exit 1（fail loud），check 不留副作用（漂移即还原原内容）；
+//   - 用法：go run ./scripts/moonbit/gen_stubs [-check]（仓库根运行）
 package main
 
 import (
 	"bytes"
 	"crypto/sha256"
+	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -23,8 +30,13 @@ var stubNames = []string{
 	"assert.h", "errno.h", "float.h",
 }
 
-const sourceRoot = "native/runtime_libc/include"
-const outFile = "moonbit/lexer/internal/host/stubs_gen.mbt"
+// chdir moonbit/ 后的相对路径（moon fmt 是 workspace 命令，须自 workspace 根调用）
+const sourceRoot = "../native/runtime_libc/include"
+const outFile = "lexer/internal/host/stubs_gen.mbt"
+
+func toLF(b []byte) []byte {
+	return bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n"))
+}
 
 func moonEscape(s string) string {
 	var b bytes.Buffer
@@ -52,23 +64,29 @@ func moonEscape(s string) string {
 	return b.String()
 }
 
-func main() {
-	// （迁址自 moonbit/scripts/ 但**不 chdir**——本脚本原设计即仓库根
-	// 运行：sourceRoot=native/... 无 ../ 前缀、go.mod 自检查仓库根）
+func fatalf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "gen_stubs: "+format+"\n", args...)
+	os.Exit(1)
+}
 
-	if _, err := os.Stat("go.mod"); err != nil {
-		fmt.Fprintln(os.Stderr, "gen_stubs: 必须在仓库根目录运行（找不到 go.mod）")
-		os.Exit(1)
+func main() {
+	// 统一 chdir 到 moonbit/（沿 gen_diag 先例）：moon fmt 须自 workspace 根
+	// 调用；sourceRoot / outFile 均为 chdir 后的相对路径。
+	if err := os.Chdir("moonbit"); err != nil {
+		fmt.Fprintf(os.Stderr, "gen_stubs: 须在仓库根运行（找不到 moonbit/）: %v\n", err)
+		os.Exit(2)
 	}
+	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
+	flag.Parse()
+
 	var digestInput bytes.Buffer
 	var matchArms bytes.Buffer
 	for _, name := range stubNames {
 		raw, err := os.ReadFile(filepath.Join(sourceRoot, name))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "gen_stubs: 读取存根失败 %s: %v\n", name, err)
-			os.Exit(1)
+			fatalf("读取存根失败 %s: %v", name, err)
 		}
-		normalized := bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
+		normalized := toLF(raw)
 		digestInput.Write(normalized)
 		// 已转义文本禁用 %q（会二次转义：`\n` 两字符被 %q 变成 "\\n"——
 		// MoonBit 源里即字面反斜杠+n，曾致存根全部挤成一行 + 30 条 E1001）
@@ -87,18 +105,36 @@ func main() {
 	out.WriteString("  }\n")
 	out.WriteString("}\n")
 
-	existing, readErr := os.ReadFile(outFile)
-	if readErr == nil && bytes.Equal(bytes.ReplaceAll(existing, []byte("\r\n"), []byte("\n")), out.Bytes()) {
-		fmt.Printf("gen_stubs: 产物与源一致（sha256 %x）\n", sum)
+	// check 的还原基准（写前内容；文件不存在则记 nil）
+	orig, origErr := os.ReadFile(outFile)
+
+	// 产物形态以 moon fmt 为准：写入 gen 原始输出 → fmt → 以 fmt 后字节为准
+	if err := os.WriteFile(outFile, out.Bytes(), 0o644); err != nil {
+		fatalf("写入失败: %v", err)
+	}
+	if fmtOut, err := exec.Command("moon", "fmt", outFile).CombinedOutput(); err != nil {
+		if origErr == nil {
+			_ = os.WriteFile(outFile, orig, 0o644)
+		}
+		fatalf("moon fmt 失败（moon 须在 PATH）: %v\n%s", err, fmtOut)
+	}
+
+	if !*check {
+		fmt.Printf("gen_stubs: 已生成 %s（sha256 %x）\n", outFile, sum)
 		return
 	}
-	if len(os.Args) > 1 && os.Args[1] == "--check" {
-		fmt.Fprintln(os.Stderr, "gen_stubs: --check 失败——产物与 native 存根不一致，请重新生成（go run ./moonbit/scripts/gen_stubs）")
-		os.Exit(1)
+	// -check：fmt 后回读与写前内容比对（行尾归一——autocrlf checkout 的
+	// CRLF 不得造成假红，与 gen_diag 同口径）。漂移即还原原内容再红，
+	// check 不留副作用。
+	now, err := os.ReadFile(outFile)
+	if err != nil {
+		fatalf("-check: 回读产物失败 %s: %v", outFile, err)
 	}
-	if err := os.WriteFile(outFile, out.Bytes(), 0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "gen_stubs: 写入失败: %v\n", err)
-		os.Exit(1)
+	if origErr != nil || !bytes.Equal(toLF(now), toLF(orig)) {
+		if origErr == nil {
+			_ = os.WriteFile(outFile, orig, 0o644)
+		}
+		fatalf("-check: 产物漂移 %s——源已变更未再生成（go run ./scripts/moonbit/gen_stubs）", outFile)
 	}
-	fmt.Printf("gen_stubs: 已生成 %s（sha256 %x）\n", outFile, sum)
+	fmt.Printf("gen_stubs: check OK（产物与源一致，未漂移；sha256 %x）\n", sum)
 }

@@ -14,14 +14,16 @@
 /// "无检查快路径 + 一次前置检查"。Rust 现版在这两处是**逐字节 `store_i8` 循环**
 /// （`host/memory.rs:240-247`、`:331-333`），每条字节重跑一次 NULL/上界/UAF 判定。
 ///
-/// **已发现的 oracle 存量缺陷（照搬 + 登记，未修）**：`calloc` 的**置零发生在
-/// 清理 freed_logs 之前**（Rust `host/memory.rs:331-336` 的顺序）。于是当
-/// `allocate_raw` 从 `free_list` 复用了一个刚被驱逐的块时，该块在 freed_logs 里
-/// 仍有窗口 → 置零触发 **Use-After-Free 误报**（该块刚刚被合法重分配，不是 UAF）。
-/// 触发条件：`calloc` 之前的分配使隔离区超预算（默认 256KB）。按项目纪律
-/// 「照搬不私改」本实现保留同序（差分对拍期两侧一致优先），并在此显式登记；
-/// 修复形态是"先 `freed_logs_remove_overlapping` 再置零"，一行换位。
-/// 红锚 `calloc_reuse_triggers_uaf_false_positive` 固化当前行为。
+/// **两条 oracle 存量缺陷（S6 建包时发现并照搬固化，2026-09-23 审阅批两侧同修）**：
+/// ① `calloc` 的置零原发生在清理 freed_logs 之前（Rust `host/memory.rs:330-336`
+/// 的顺序）——`allocate_raw` 从 `free_list` 复用刚驱逐的块时，其窗口未清，置零的
+/// 受检写撞自己的 UAF 检测 → **误报**（触发条件：隔离区超预算，默认 256KB）。
+/// 修复 = 清理提前到置零之前（一行换位），与 malloc/realloc 次序对齐；
+/// ② `calloc` 尺寸链 `saturating_mul` 后 `align4` 仍会 32 位回绕（饱和值
+/// 0xFFFFFFFF + 3 → 0）→ `allocate_raw(0)` 短路成功，超大尺寸不失败，反登记
+/// `addr=0`/`size=-1` 垃圾区域。修复 = 对齐前 `total > MEM_SIZE` 预检走堆耗尽
+/// 分支。两条的红→绿锚：`calloc_reuse_after_eviction_no_uaf` /
+/// `calloc_oversize_reports_heap_exhausted`（翻转自原固化锚）。
 
 ///|
 /// 宿主内存族调用的**统一结构化结果**。
@@ -168,17 +170,29 @@ pub fn host_calloc(
     size.reinterpret_as_uint(),
     nmemb.reinterpret_as_uint(),
   )
+  // 尺寸链防回绕（oracle 存量缺陷②修复，2026-09-23）：饱和值 0xFFFFFFFF 在
+  // `align4` 的 32 位加法下回绕成 0，`allocate_raw(0)` 按"零尺寸分配"短路成功，
+  // 于是超大尺寸不失败，反登记 `addr=0`/`size=-1` 的垃圾区域（静默元数据损坏，
+  // 原 Rust `host/memory.rs:320-321`）。对齐**之前**先与堆上限比较，超限直接走
+  // 堆耗尽分支——与 `host/misc.rs` 坑 9 的 `checked_mul` 判定目的对齐。
+  if total > @bytecode.MEM_SIZE {
+    return null_with_note(heap_exhausted_note())
+  }
   let aligned = @bytecode.align4(total)
   let addr = match map.allocate_raw(aligned, @bytecode.MEM_SIZE) {
     Some(a) => a
     None => return null_with_note(heap_exhausted_note())
   }
+  // 清理被新分配重用的 freed_logs（**必须在置零之前**——oracle 存量缺陷①修复，
+  // 2026-09-23：复用驱逐块时其窗口未清，置零的受检写会撞自己的 UAF 检测 → 误报。
+  // Rust 侧原顺序是置零在前（`host/memory.rs:330-336`），本批两侧同修换位，
+  // 与 malloc/realloc 的次序对齐）
+  map.freed_logs_remove_overlapping(addr, addr + aligned)
   // 置零（段级一次判定 + 载体原生填充；Rust 侧是逐字节 store_i8）
   //
-  // `aligned == 0` 时**跳过**：Rust 的置零是 `for i in 0..aligned_size`，
-  // 0 次迭代即**一次检查都不做**；而 `Memory::fill` 即便 len=0 也会走
-  // `check_access`（addr=0 落在 NULL 陷阱区 → 报 NullDeref）。不跳过就会在
-  // "尺寸链回绕成 0"这条路径上凭空多出一次 NULL trap（见下一条缺陷）。
+  // `aligned == 0` 的跳过是**防御性**保留：尺寸链已在前置 `total > MEM_SIZE`
+  // 拦截（total ≥ 1 时 aligned ≥ 4），理论不可达；保留是为防未来路径变化时
+  // `Memory::fill` 即便 len=0 也走 `check_access`（addr=0 落 NULL 陷阱区）。
   let mut fault : String? = None
   if aligned != 0U {
     match mem.fill(map, addr, aligned.reinterpret_as_int(), b'\x00') {
@@ -186,7 +200,6 @@ pub fn host_calloc(
       Err(f) => fault = Some(access_fault_text(f))
     }
   }
-  map.freed_logs_remove_overlapping(addr, addr + aligned)
   map.register_alloc(
     addr,
     total.reinterpret_as_int(),
@@ -203,16 +216,12 @@ pub fn host_calloc(
 }
 
 ///|
-/// **第二个已发现的 oracle 存量缺陷（照搬 + 登记）**：`calloc` 的尺寸链饱和后
-/// 仍会**回绕**。`saturating_mul` 把溢出钳到 `0xFFFFFFFF`，而 `align4(0xFFFFFFFF)`
+/// **oracle 存量缺陷②（已修，2026-09-23）**：`calloc` 的尺寸链饱和后曾会
+/// **回绕**——`saturating_mul` 把溢出钳到 `0xFFFFFFFF`，而 `align4(0xFFFFFFFF)`
 /// = `(0xFFFFFFFF + 3) & 0xFFFFFFFC` 在 32 位加法的回绕下得 **0**；`allocate_raw(0)`
-/// 又按"零尺寸分配"短路返回 `Some(0)`。于是"超大尺寸"这条路径**不会失败**，
-/// 反而返回 NULL 并登记一条 `addr = 0`、`size = -1`（`total as i32`）的垃圾区域。
-/// 触发条件：`nmemb * size ≥ 0xFFFFFFFD`（如勘察坑 9 的 `qsort(base,2^32,2^32,cmp)`）
-/// ——注意这**不是** `host/misc.rs` 那条已被 `checked_mul` 修掉的路径，`calloc`
-/// 用的是 `saturating_mul`（`host/memory.rs:320`），修不修得住要靠这条锚。
-/// 修复形态：`total` 先与 `MEM_SIZE` 比较（超限直接走堆耗尽分支），再对齐。
-/// 红锚 `calloc_oversize_size_chain_registers_garbage_region` 固化当前行为。
+/// 又按"零尺寸分配"短路返回 `Some(0)`。修复（见 `host_calloc` 内预检）：
+/// `total` 先与 `MEM_SIZE` 比较，超限直接走堆耗尽分支。锚
+/// `calloc_oversize_reports_heap_exhausted`（翻转自原固化锚）。
 ///
 /// `realloc(ptr, new_size)` 的宿主侧实现（Rust `host_realloc`，`host/memory.rs:158-311`）。
 ///
@@ -242,9 +251,16 @@ pub fn host_realloc(
     if ptr == 0U {
       return null_silent()
     }
-    // 等价 free：**结果恒为 NULL**（Rust `:163-194` 在 free 之后无条件 push(0)），
-    // trap 沿用 free 的判定（无效指针 → E3027/E3061）
-    let r = host_free(map, ptr, freed_line, freed_step)
+    // 等价 free：**结果恒为 NULL**（Rust `:163-194` 在 free 之后无条件 push(0)）。
+    // oracle 此分支是**内联**释放且不查 Double-Free（`host/memory.rs:166-192`）：
+    // 对已释放指针，`trap_invalid_free` 的 freed_logs 分支被 `log.addr != addr`
+    // 滤掉，落兜底 E3027（真机实测 2026-09-23）。故不走 `host_free`——它的
+    // Double-Free 前置会把这条路径改报 E3061，与 oracle 不符（P1 修复，
+    // 红→绿锚 `realloc_zero_size_on_freed_ptr_matches_oracle`）。
+    let r = match map.release(ptr, freed_line, freed_step) {
+      Some(_) => no_reply()
+      None => trap_only(invalid_free_message(map, ptr))
+    }
     return HostMemReply::{ value: Some(0U), note: None, trap: r.trap, }
   }
   if ptr == 0U {
@@ -366,7 +382,9 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
           if log.addr != addr {
             "🔁 无效 free (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。free 只能释放 malloc 返回的原始指针。"
           } else {
-            // 不可能：精确命中已由 host_free 的 Double-Free 分支拦下
+            // 已释放块的**精确起点**：host_free 走不进这里（Double-Free 前置
+            // 拦下）；但 `realloc(p, 0)` 走 release 单出口（无前置），oracle 的
+            // `trap_invalid_free` 恰把精确命中滤掉 → 兜底 E3027（P1 修复路径）
             unknown_free_message(addr)
           }
         None => unknown_free_message(addr)
@@ -383,19 +401,33 @@ fn unknown_free_message(addr : UInt) -> String {
 ///|
 /// 受检访问失败（[`@memory.MemFault`]）的 trap 文本。
 ///
-/// **E3060（Use-After-Free）文案在本包渲染不完整**：原文要"继续访问（第 M 步）"
-/// 里的当前步数，那是 access 时刻的 VM 状态，host 拿不到。故此处只渲染
-/// `alloc_line` / `freed_line` / `freed_step` 三段（它们都在 `FreedRegionInfo`
-/// 里），当前步数由 vm 侧补齐——即"文案归 vm"的口径在此是**分工**而非省略。
-/// 本函数只用于 host 自身发起的受检访问（`calloc` 置零 / `realloc` 搬运），
-/// 那些点的"当前步"就是调用点自身。
+/// **与 oracle 完整文案（`core/memory.rs:199-205` `format_uaf_message`）的
+/// 已登记差距**，按"host 能否自渲染"分两档：
+/// - **已渲染**：动作词（`写入`/`读取`——`AccessKind` 就在 `MemFault` 载荷里，
+///   2026-09-23 审阅批 P2 补上，此前被 `_` 丢弃写成中性「访问」）与
+///   `alloc_line` / `freed_line` / `freed_step` 行号步号段；
+/// - **vm 接线义务**：时间轴行 `⏱️ 分配 → 释放（第 N 步）→ 继续访问（第 M 步）`
+///   里的**当前步 M** 是 access 时刻的 VM 状态（oracle 取 `step_count`），host
+///   拿不到，故整行不在此渲染——vm 消费 `HostMemReply.trap` 接线时须按
+///   oracle 逐字口径补齐。同理 `NullDeref` 的写侧变体（「向 NULL 指针区域写入」，
+///   `check_mem_access` 的 `is_write` 分支）与 `OutOfBounds` 的符号表增强文案
+///   （`trap.rs:6-61` 找最近数组名）也超出 host 能力，登记在案。
+///
+/// 本函数只用于 host 自身发起的受检访问（`calloc` 置零 / `realloc` 搬运）；
+/// calloc 误报缺陷修复（先清理 freed_logs 再置零）后，`UseAfterFree` 分支在
+/// host 内部为防御性保留（新分配块的窗口已清，不可达）。
 fn access_fault_text(fault : @memory.MemFault) -> String {
   match fault {
     @memory.MemFault::NullDeref(addr, _) =>
       "访问了 NULL 指针区域（地址 0x\{hex_upper(addr)}）。NULL 指针不能解引用。请确认指针已被正确初始化。"
     @memory.MemFault::OutOfBounds(addr, _) =>
       "内存访问越界（地址 0x\{hex_upper(addr)}）。请检查数组下标或指针运算是否超出分配范围。"
-    @memory.MemFault::UseAfterFree(info, _) =>
-      "💥 Use-After-Free (E3060)：你正在访问一块已经在第 \{info.freed_line} 行（第 \{info.freed_step} 步）被 free 的内存（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n💡 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n✅ 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。"
+    @memory.MemFault::UseAfterFree(info, kind) => {
+      let action = match kind {
+        @memory.AccessKind::Read => "读取"
+        @memory.AccessKind::Write => "写入"
+      }
+      "💥 Use-After-Free (E3060)：你正在向一块已经在第 \{info.freed_line} 行（第 \{info.freed_step} 步）被 free 的内存\{action}（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n💡 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n✅ 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。"
+    }
   }
 }

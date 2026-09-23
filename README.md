@@ -10,6 +10,8 @@
 
 > **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。
 >
+> **MoonBit 迁移进行中（2026-09-18 起，同仓绞杀者模式）**：引擎核心正以绞杀者方式向 MoonBit 重建——上方 Rust 版已冻结为**差分对照 oracle**（tag `rust-oracle-freeze`，只收安全修复，新特性一律不做），`moonbit/` 活跃区承载全部新开发；迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 已发布至 **0.5.0**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
+>
 > 定位转型的决策依据与路线见 [`docs/current/01-定位与路线/后端定位与白箱计划.md`](docs/current/01-定位与路线/后端定位与白箱计划.md)。
 
 ## 三出口一核心
@@ -72,26 +74,36 @@ vitro 引擎核心（Rust workspace，禁止平台 API 耦合）
 | 执行 | 自研 VitroVM 字节码解释器，1MB 线性内存，指令级边界检查 |
 | 加速 | 模板 JIT（热点循环 trace → 预编译 Rust 函数指针序列，非机器码 JIT） |
 | 出口 | C ABI（capi）、wasm32、`vitro_cli serve`（JSON-lines） |
+| 迁移目标 | **MoonBit**（`vitro/engine` workspace，同仓绞杀者重建中；Rust 版冻结为差分对照 oracle） |
 | 许可 | MIT |
 
 > **注意**：模板 JIT 不是传统机器码 JIT。由于核心 crate 启用 `#![forbid(unsafe_code)]`，无法动态生成机器码，因此把热点循环的字节码 trace 编译为预编译 Rust 函数指针序列（超级指令），跳过解释器 dispatch 开销，不匹配时回退标准解释执行。
 
-## 当前状态（2026-09-22 实测）
+## 当前状态（2026-09-23 实测）
+
+**现役 Rust 引擎（冻结对照 oracle）**：
 
 - **C 教学子集**：C Shadow Verification **683 个用例**（完全匹配 679 + known_issue 3 + gap_extension 1，无非预期差异；vitro_better 已清零）
-- **C++ 教学子集**：C++ Shadow Verification **99 个用例**（95 一致 + 4 个已记录的 `clang_compile_fail`：`cpp_vitro_vec_class` / `cpp_vitro_list_class` / `cpp_u3_class_instantiate_in_template` / `cpp_u3_vec_class_twice`）；C++ E2E 回归 83 个用例
+- **C++ 教学子集**：C++ Shadow Verification **99 个用例**（95 一致 + 4 个已记录的 `clang_compile_fail`：`cpp_vitro_vec_class` / `cpp_vitro_list_class` / `cpp_u3_class_instantiate_in_template` / `cpp_u3_vec_class_twice`）；C++ E2E 回归 83 个用例。**C++ 已裁砍（2026-09-20）**：冻结区内防线继续跑到 Rust 区退役为止，MoonBit 侧零迁移
 - **真实程序回归**：K&R 81 题全绿；LeetCode 138 题全部通过；Baseline 用例全部通过
 - **全量测试**：`cargo test --workspace --all-features` 全绿（**实测数字行，随工具链版本漂移**：2026-09-23 实测 1029 用例 / 64 套件，CI `windows-latest` 与本地同平台——按实测行人工维护）；clippy 0 warning
 - **capi 第一批**：13 个新入口全部落地（`vitro_abi_version` 首批 `1.1.0`，现 `2.1.0`），StepPayload schema v0.1 发布
 - **wasm32 出口**：零修改构建 3.75MB `.wasm`，Node 下 C API 全链路（compile → run → output）+ E3070 教学诊断通过
 - **时间旅行**：VM 快照 / 检查点 / Seek / 异常回退全链路可用（`vitro_cli unified`、`serve` 的 `step.*`/`seek`）
 
+**MoonBit 迁移（进行中，全部新开发在此）**：
+
+- **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → **0.5.0**（2026-09-23，parser 随架）
+- **已收官片**（2026-09-19~21 各片收官时点数字）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）
+- **进行中**：S6 memory + host 建包推进（110 路由 host handler 已接线 **101**——余控制流/回调族 9 随 vm 片；含 VFS 17 件；`moon test` **353 用例**全绿 + 十一闸绿）；下一片 = vm，其后 S7 协议/会话、S8 教学智能、S9 裁定批
+- 进度与里程碑验收锚：[MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md) §10
+
 > 失败与差异一律如实记录在各 `*_FAILURES.md`（见下文"测试防线"），禁止通过修改测试预期值粉饰数据。
 
 ## 项目结构
 
 ```
-native/                    Rust workspace（编译器 + VM + 三出口）
+native/                    Rust workspace（编译器 + VM + 三出口）——已冻结为差分对照 oracle（tag rust-oracle-freeze）
 ├── crates/                10 个子 crate
 │   ├── vitro_shared/       SourceLoc、ErrorCode 等共享基础类型
 │   ├── vitro_ast/          AST 节点与类型系统
@@ -116,6 +128,7 @@ native/                    Rust workspace（编译器 + VM + 三出口）
 ├── runtime_libc/          标准库存根 + 内置 C++ 容器（.cpp 接口声明为唯一真相来源）
 ├── benches/               性能基线
 └── tests/                 五层测试防线与用例（baseline / knr / leetcode / cpp / shadow）
+moonbit/                   MoonBit 活跃区（vitro/engine workspace；绞杀者重建，全部新开发在此——包切分与状态见 moonbit/AGENTS.md）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
 scripts/                   Go 防线驱动与工具脚本（Shadow 驱动、差分对拍、facts 对账、CI 一致性检查；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
 docs/                      设计文档、规范与事故报告
@@ -150,6 +163,9 @@ cd native && cargo clippy --workspace --all-targets --all-features -- -D warning
 go run ./scripts/shadow_verify
 go run ./scripts/shadow_verify_cpp
 go run ./scripts/serve_smoke
+
+# 7. MoonBit 活跃区（迁移进行中；构建 / 闸门 / 发布全流程见 moonbit/AGENTS.md）
+cd moonbit && moon check && moon test
 ```
 
 完整上手流程见 [`docs/current/02-构建与上手/快速入门.md`](docs/current/02-构建与上手/快速入门.md)，构建细节见 [`docs/current/02-构建与上手/构建指南.md`](docs/current/02-构建与上手/构建指南.md)，CLI 命令手册见 [`docs/current/02-构建与上手/CLI使用手册.md`](docs/current/02-构建与上手/CLI使用手册.md)。

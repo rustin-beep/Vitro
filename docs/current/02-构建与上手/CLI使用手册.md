@@ -1,8 +1,8 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-09-11
+> 最后核对日期：2026-09-23（MoonBit 迁移现状对齐——头注补迁移指引；断链修复）
 > 修订说明（2026-09-11）：去前端化——移除已删除的 `VITRO_CLI_EN.md` 链接，入口表述改为"无前端依赖"并补三出口交叉引用。
-> 出口定位：本文档描述的是"三出口一核心"中的**出口 3**（`vitro_cli serve` JSON-lines 会话模式）；另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [`后端定位与白箱计划.md`](../../01-定位与路线 §2.2。
+> 出口定位：本文档描述的是"三出口一核心"中的**出口 3**（`vitro_cli serve` JSON-lines 会话模式）；另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [后端定位与白箱计划.md](../01-定位与路线/后端定位与白箱计划.md) §2.2。**MoonBit 迁移进行中**：本 CLI 消费的现役引擎已冻结为差分对照 oracle，MoonBit 侧对应能力排 S7（session/protocol/gateway + Node 宿主），见 [MoonBit迁移总计划.md](../01-定位与路线/MoonBit迁移总计划.md)。
 
 `vitro_cli` 是 Vitro 项目 Rust 后端的命令行调试工具，**无前端依赖（headless 交互第一入口）**，可直接编译、运行和单步调试 C 代码。
 

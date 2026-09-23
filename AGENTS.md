@@ -30,5 +30,5 @@
 
 ## 当前阶段与档案
 
-- **当前**：第一阶段（S0.5 Rust 止血批 + S1 基础片）——逐项任务与验收锚见[第一阶段计划](docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)
+- **当前**：第一阶段 **S6 片进行中**（`memory` + `host` 已建包，vm 片待开工；宿主回调族 9 件随 vm）——排期权威与逐片验收锚见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)；已完成：S0.5/S1（[第一阶段计划](docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)）+ S2 lexer + S3 parser + S4 typeck + S5 codegen·bytecode（mooncakes `vitro/engine` 已发布 0.5.0，2026-09-23）
 - **退役**：MoonBit 全量切换（总计划 §10）完成后，Rust 区**整体删除**（不移入子文件夹——死树留在盘上与 Agent 上下文里才是干扰）；档案 = tag `rust-oracle-freeze` + git 历史（MoonBit 探测阶段 16 份文档在提交 `917251e`，取回方法见总计划 §11）

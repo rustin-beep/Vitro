@@ -20,7 +20,7 @@
 | `vitro/engine/bytecode` | L6 | Output schema + R1 layout pure functions + canonical dump emitter |
 | `vitro/engine/codegen` | L6 | `BytecodeGen` state machine with dual entry: `compile` / `compile_library`; slot strategy v1 |
 | `vitro/engine/memory` | L7 | 1 MiB linear-memory carrier + `MemoryMap` heap state machine (bump + bounded quarantine + first-fit) + single checked-access entry + ordered `freed_logs` |
-| `vitro/engine/host` | L7 | Host-function domain: call-route consumption side, byte-faithful output channels (`Bytes`), memory-family handlers with structured replies |
+| `vitro/engine/host` | L7 | Host-function domain: 110-route consumption side, byte-faithful output channels (`Bytes`), 100+ VM-independent handlers (memory / ctype / math / string / str-to-num / printf-scanner / VFS) returning structured replies |
 
 Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
 
@@ -59,7 +59,7 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 | `vitro/engine/bytecode` | L6 | 产物 schema + R1 布局纯函数 + canonical dump emitter |
 | `vitro/engine/codegen` | L6 | BytecodeGen 状态机双入口（`compile` / `compile_library`）+ 槽位策略 v1 逐位兼容 |
 | `vitro/engine/memory` | L7 | 1MB 载体（`Memory`）+ 堆状态机（`MemoryMap`：bump + 有界隔离 + first-fit）+ `checked_access` 单入口 + freed_logs 有序数组（S6 开工批） |
-| `vitro/engine/host` | L7 | 宿主函数域：路由表消费侧 + 输出通道（`Bytes` 字节保真）+ 内存族 handlers（结构化回复）+ E3061/E3027 文案（S6 开工批二） |
+| `vitro/engine/host` | L7 | 宿主函数域：110 路由表消费侧 + 输出通道（`Bytes` 字节保真）+ **100+ 个 VM 无耦合 handler**（内存族 / ctype / math / 字符串 / 转数值 / printf-scanf / VFS；统一 `HostMemReply` 结构化回复）+ E3061/E3027 文案（S6 余量全批） |
 
 各包 API 概览见对应目录的 `pkg.generated.mbti`；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）。
 
@@ -82,7 +82,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 347 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 15 / codegen 15 / memory 27 / host 104；分解和 341 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；memory 27 = 白盒 21 + 黑盒 6；host 104 = 白盒 96 + 黑盒 8（内存族 28 + 余量批一/二/三号 + 审阅修复批 P1/P2 锚：powi 633 点对拍/%% 语义/memchr——值锚取 oracle release 实测；黑盒承担对外面消费面点名）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 353 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 29 / host 106；分解和 347 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 29 / host 106 各含 2 个包 README doc test（2026-09-23 补指引批：三包 README.mbt.md 可执行快速上手）；memory 29 = 白盒 21 + 黑盒 6 + doc test 2；host 106 = 白盒 96 + 黑盒 8 + doc test 2（内存族 28 + 余量批一/二/三号 + 审阅修复批 P1/P2 锚：powi 633 点对拍/%% 语义/memchr——值锚取 oracle release 实测；黑盒承担对外面消费面点名）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

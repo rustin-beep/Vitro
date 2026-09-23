@@ -1,5 +1,8 @@
 # Vitro C++14 教学子集拓展实施计划
 
+> **已归档（2026-09-23）**：砍 C++ 裁定（2026-09-20，[MoonBit迁移总计划](../current/01-定位与路线/MoonBit迁移总计划.md) F-2）后 Phase 31~42 历史使命终结——C++ **零迁移**（MoonBit 侧无 C++ 前端，容器 containers 包改判 C# 批走 BCL 数据驱动）；Phase 实现的语义参考价值保留在 git 历史（tag `rust-oracle-freeze` 及此前提交）。
+> 本文件仅作历史追溯保留，内容不再维护；当前有效文档见 `docs/current/`。
+
 **版本**: 2.9（2026-09-11 现状对齐；正文 Stage 章节与历史记录保持原样）  
 **日期**: 2026-09-11  
 **状态**: **Phase 34~41 已完成，Phase 42 进行中**。C++ 容器收口（Phase 34）、栈对象 RAII（35）、`new[]/delete[]`（36）、引用语义（37）、隐式移动构造（38）、`unique_ptr<T>` dogfooding（39）、M6 测试防线收尾（40）、内置容器布局解耦（41）均已落地；**Phase 42（P0 语法/标准库拓展 + 代码审查报告推进 + 性能优化 + `vitro_vec<T>` 类类型模板实参支持）🚧 进行中**，其中 lambda 相关批次（批次 H：lambda 返回类型推断、文件作用域 lambda 变量）已修复并有回归测试 `native/tests/cpp_lambda_test.rs`，详见 [`ARCHIVE_代码审查复核20260911.md`](../../archive/ARCHIVE_代码审查复核20260911.md §批次 H。  

@@ -147,6 +147,6 @@
 
 ### 10.2 Phase 1 收尾（✅ 已全部完成，2026-09-12 核对）
 
-- ~~SharpTutor 用 capi 第一批（含 deterministic 最小形态）+ serve 跑通三进程集成~~ → 仓库侧已就绪；对端 S1~S5 签字回放 61/61 通过（2026-09-12，见 [`下游需求处置回执.md`](.) §1）；
+- ~~SharpTutor 用 capi 第一批（含 deterministic 最小形态）+ serve 跑通三进程集成~~ → 仓库侧已就绪；对端 S1~S5 签字回放 61/61 通过（2026-09-12，见 [`下游需求处置回执.md`](下游需求处置回执.md) §1）；
 - ~~**StepPayload schema v0.1 文档发布**~~ → 已发布为 [`../spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md 并冻结（2026-09-12，S1–S5 回放 61/61）；
-- ~~`vitro_cli serve` JSON-lines 会话模式~~ → 已落地并进 CI 冒烟（id 关联 / 错误帧同构 / `session.reset`，见 [`CLI使用手册.md`](../../02-构建与上手）。
+- ~~`vitro_cli serve` JSON-lines 会话模式~~ → 已落地并进 CI 冒烟（id 关联 / 错误帧同构 / `session.reset`，见 [CLI使用手册.md](../02-构建与上手/CLI使用手册.md)。

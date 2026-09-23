@@ -33,10 +33,10 @@
 // （类型符号消费已按类型名覆盖大部分场景）。
 // （原盲区③ import 别名已随本批修复：moon.pkg 零别名假设 + 未知形态红。）
 //
-// **provider 侧仍只扫一层**（Glob `*/pkg.generated.mbti`，13 包）：4 个子包
-// （lexer/token、lexer/internal/{host,pp,scanner}）的 pub 面未入「无主判定」
-// ——批二段（Glob 全递归）排在 0.6.0 发布前：属行为扩张，会暴露一批待收
-// 符号，须与既有收面义务合批。
+// **provider 侧全递归（S6 批二段，2026-09-23 已落地）**：13 个一级包 + 4 个
+// 子包（lexer/token、lexer/internal/{host,pp,scanner}）同入「无主判定」。
+// 实测零暴露——批一段的 `used` 全名记账已覆盖子包消费（原本预期"会暴露
+// 一批待收符号"未出现；新增仅 token::LineMap 一个签名闭包，自动免收）。
 //
 // 白名单 surface_allowlist.txt：一行一符号（格式 `包全名 sym`）= **允许保持
 // pub 但当前无消费**的集合（如管线预留/发包面）。-check 双向对账：
@@ -101,7 +101,15 @@ func main() {
 	moduleName := readModuleName()
 	pkgs := discoverPackages(moduleName)
 
+	// provider 侧**全递归**（S6 批二段，2026-09-23）：13 个一级包 +
+	// 4 个子包（lexer/token、lexer/internal/{host,pp,scanner}）——子包 pub 面
+	// 首次进「无主须收面或入白名单」判定。**实测零暴露**：批一段的全名记账
+	// （`used` 以 Provider 全名为键）早已覆盖子包消费，本段只是把提供侧接上
+	// （新增仅 1 个签名闭包 lexer/token::LineMap，自动免收）。
 	pkgsMbti, err := filepath.Glob("*/pkg.generated.mbti")
+	if deep, err2 := filepath.Glob("*/*/pkg.generated.mbti"); err2 == nil {
+		pkgsMbti = append(pkgsMbti, deep...)
+	}
 	if err != nil || len(pkgsMbti) == 0 {
 		fatal("未找到包接口面（须在 moonbit/ 下运行）")
 	}

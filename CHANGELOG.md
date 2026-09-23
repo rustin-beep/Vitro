@@ -204,9 +204,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **验证**：moon test 271/271；moon check 0 错；moonbit_surface / mbti_sync /
   pkg_deps / libc_single_source / single_source / gen_diag / gen_host_route /
   gen_stubs 八闸全绿。
-- **未做（批二段，挂 0.6.0 发布前）**：提供侧 `Glob("*/pkg.generated.mbti")`
-  仍只扫一层——4 个子包（`lexer/token`、`lexer/internal/{host,pp,scanner}`）
-  pub 面未入「无主判定」；全递归属行为扩张，与既有收面义务合批。
+- **批二段落地（2026-09-23，面闸 provider 全递归，0.6.0 前置窗口用尽）**：
+  13 个一级包 + 4 个子包（`lexer/token`、`lexer/internal/{host,pp,scanner}`）
+  同入「无主判定」——**实测零暴露**（批一段的全名记账已覆盖子包消费；新增
+  仅 `lexer/token::LineMap` 签名闭包自动免收，可收清单 4 条不变、边表零变更）；
+  J9 复验（过期白名单注入 → 红且报错显示子包全名）。收面义务清空。
 
 ### Fixed (S6 开工批二审阅批：P1–P6 + oracle 存量缺陷①②两侧同修，2026-09-23)
 

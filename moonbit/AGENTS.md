@@ -47,7 +47,7 @@ go run ./scripts/moonbit/gen_host_route       # host 路由 110 对再生成（b
 go run ./scripts/moonbit/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
 go run ./scripts/moonbit/gen_stubs          # 标准库存根表再生成（lexer/internal/host/stubs_gen.mbt，源 native/runtime_libc/include/*.h）
 go run ./scripts/moonbit/gen_stubs -check   # 幂等校验（2026-09-23 审阅批重构：flag 包口径 + 内置 moon fmt + check 无写副作用——此前手工只认 --check 且无 fmt，干净仓库上必红、-check 单横线会静默改写产物）
-go run ./scripts/moonbit/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；J9 注入双红留痕）
+go run ./scripts/moonbit/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；provider 全递归 17 包〔批一段全名口径 + 批二段全递归，2026-09-23〕；J9 注入双红留痕）
 go run ./scripts/moonbit/source_hygiene      # 源码卫生闸（真 NUL 扫描——git 判二进制/diff 不可见事故族；白名单 source_hygiene_allowlist.txt；J9 证红）
 go run ./scripts/moonbit/host_route_coverage # 路由覆盖闸（110 路由 ↔ host 实现；别名/VM 白名单规则外置 host_route_rules.json，白名单双向对账；J9 双路证红）
 go run ./scripts/moonbit/libc_single_source -check # libc 三表单源对账闸（builtin_all == host ∪ bytecode - excluded；交集计数 + PURE 子集 + 空集不得绿；J9 三路证红 ✅）

@@ -22,6 +22,10 @@
 不是缺陷，是判分确定性与 seek 回放可重放的来源。Wasmtime 宿主下该铁律由编译器保证，
 浏览器/Node 宿主下由 worker 结构保证。
 
+并发隔离模型图（由 `go run ./scripts/gen_svg` 生成，对账本节与 §2）：
+
+<p align="center"><img src="wasm-multi-instance-isolation.svg" alt="wasm 多实例并发隔离模型" width="900"></p>
+
 ## 2. 依据
 
 ### 2.1 隔离来自 core wasm 实例模型（不必等 wasm-gc）

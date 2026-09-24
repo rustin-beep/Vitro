@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="vitro MoonBit 包切分分层图">
+  <title>MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）</title>
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；虚线框=规划未建包；进度徽标截至生成批次（权威=总计划 §10） -->
+  <style>
+    .bg     { fill: #FFFFFF; }
+    .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
+    .card   { fill: #155E86; fill-opacity: .05; stroke: #155E86; stroke-width: 2.5; }
+    .cons   { fill: none; stroke: #94A3AD; stroke-width: 2; }
+    .warn   { fill: #155E86; fill-opacity: .04; stroke: #94A3AD; stroke-width: 2; stroke-dasharray: 7 5; }
+    .plan   { fill: none; stroke: #94A3AD; stroke-width: 1.8; stroke-dasharray: 5 4; }
+    .line   { stroke: #94A3AD; stroke-width: 3; fill: none; }
+    .edge   { stroke: #94A3AD; stroke-width: 2.5; fill: none; }
+    .ahf    { fill: #94A3AD; stroke: none; }
+    .tn     { font-family: "Consolas","Cascadia Mono",monospace; font-size: 17px; fill: #155E86; stroke: none; }
+    .zone   { fill: #155E86; fill-opacity: .028; stroke: #155E86; stroke-width: 1.6; }
+    .tt     { font-family: "Segoe UI","Microsoft YaHei",sans-serif; font-size: 34px; font-weight: 600; fill: #0D1B24; stroke: none; }
+    .t      { font-family: "Segoe UI","Microsoft YaHei",sans-serif; font-size: 23px; fill: #0D1B24; stroke: none; }
+    .ts     { font-family: "Consolas","Cascadia Mono",monospace; font-size: 21px; fill: #155E86; stroke: none; }
+    .tm     { font-family: "Segoe UI","Microsoft YaHei",sans-serif; font-size: 20px; fill: #5A6B75; stroke: none; }
+    .tc     { font-family: "Segoe UI","Microsoft YaHei",sans-serif; font-size: 18px; fill: #5A6B75; stroke: none; }
+    @media (prefers-color-scheme: dark) {
+      .bg   { fill: #0D1B24; }
+      .core { stroke: #4FB3E8; fill: #4FB3E8; fill-opacity: .1; }
+      .card { stroke: #4FB3E8; fill: #4FB3E8; fill-opacity: .07; }
+      .zone { stroke: #4FB3E8; fill: #4FB3E8; fill-opacity: .05; }
+      .cons, .warn, .plan { stroke: #5A6B75; }
+      .line, .edge { stroke: #5A6B75; }
+      .ahf  { fill: #5A6B75; }
+      .tt, .t { fill: #E9F1F7; }
+      .ts, .tn { fill: #4FB3E8; }
+      .tm, .tc { fill: #94A3AD; }
+    }
+  </style>
+  <rect class="bg" width="1200" height="720"/>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
+    </marker>
+  </defs>
+<text class="tt" x="600" y="56" text-anchor="middle">MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）</text>
+<text class="tm" x="600" y="94" text-anchor="middle">module vitro/engine · 依赖严格单向无环 · .mbti 取代 ABI 版本化成为对外义务载体</text>
+<rect class="card" x="20" y="118" width="1160" height="178" rx="12"/>
+<text class="t" x="40" y="152" text-anchor="start">L7</text>
+<text class="tc" x="40" y="180" text-anchor="start">执行</text>
+<text class="tc" x="1065" y="152" text-anchor="start">S6 进行中</text>
+<rect class="card" x="175" y="130" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="156" text-anchor="start">vitro/engine/memory</text>
+<text class="tc" x="191" y="180" text-anchor="start">MemoryMap + checked_access 单入口</text>
+<rect class="card" x="622" y="130" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="156" text-anchor="start">vitro/engine/host</text>
+<text class="tc" x="638" y="180" text-anchor="start">路由表消费侧 · Bytes 输出通道 · 100+ handlers</text>
+<rect class="plan" x="175" y="212" width="433" height="60" rx="10"/>
+<text class="ts" x="191" y="238" text-anchor="start">vitro/engine/vm</text>
+<text class="tc" x="191" y="262" text-anchor="start">executor 穷尽 match + snapshot 派生 · 未开工</text>
+<rect class="plan" x="622" y="212" width="433" height="60" rx="10"/>
+<text class="ts" x="638" y="238" text-anchor="start">vitro/engine/jit</text>
+<text class="tc" x="638" y="262" text-anchor="start">〔S9 裁定批〕必须可整体移除</text>
+<rect class="card" x="20" y="314" width="1160" height="96" rx="12"/>
+<text class="t" x="40" y="348" text-anchor="start">L8</text>
+<text class="tc" x="40" y="376" text-anchor="start">会话/协议</text>
+<text class="tc" x="1065" y="348" text-anchor="start">S7 未开工</text>
+<rect class="card" x="175" y="326" width="280" height="60" rx="10"/>
+<text class="tn" x="191" y="352" text-anchor="start">vitro/engine/session</text>
+<text class="tc" x="191" y="376" text-anchor="start">SessionConfig 值对象</text>
+<rect class="card" x="475" y="326" width="280" height="60" rx="10"/>
+<text class="tn" x="491" y="352" text-anchor="start">vitro/engine/protocol</text>
+<text class="tc" x="491" y="376" text-anchor="start">帧 + schema + 词汇表</text>
+<rect class="card" x="775" y="326" width="280" height="60" rx="10"/>
+<text class="tn" x="791" y="352" text-anchor="start">vitro/engine/gateway</text>
+<text class="tc" x="791" y="376" text-anchor="start">wasm-gc 4 函数导出 + NDJSON</text>
+<rect class="card" x="20" y="428" width="1160" height="122" rx="12"/>
+<text class="t" x="40" y="462" text-anchor="start">L9</text>
+<text class="tc" x="40" y="490" text-anchor="start">教学智能</text>
+<text class="tc" x="1065" y="462" text-anchor="start">S8 未开工</text>
+<rect class="card" x="175" y="440" width="210" height="60" rx="10"/>
+<text class="tn" x="191" y="466" text-anchor="start">time_travel</text>
+<text class="tc" x="191" y="490" text-anchor="start">seek / 检查点重放</text>
+<rect class="card" x="398" y="440" width="210" height="60" rx="10"/>
+<text class="tn" x="414" y="466" text-anchor="start">teaching/steps</text>
+<text class="tc" x="414" y="490" text-anchor="start">算法步骤语义</text>
+<rect class="card" x="621" y="440" width="210" height="60" rx="10"/>
+<text class="tn" x="637" y="466" text-anchor="start">analysis</text>
+<text class="tc" x="637" y="490" text-anchor="start">cfg / algorithms</text>
+<rect class="card" x="844" y="440" width="210" height="60" rx="10"/>
+<text class="tn" x="860" y="466" text-anchor="start">diagnostics</text>
+<text class="tc" x="860" y="490" text-anchor="start">根因 / 误区</text>
+<text class="tc" x="175" y="534" text-anchor="start">── 经 VmObserver / SourceProvider / AlgorithmContext 三接口依赖反转，不依赖 session</text>
+<rect class="warn" x="20" y="568" width="1160" height="60" rx="12"/>
+<text class="t" x="40" y="604" text-anchor="start">仓库外</text>
+<text class="tm" x="175" y="604" text-anchor="start">Go 驱动层（保留·司法/驱动语言）· Node engine-host（新增薄层·golden 生成宿主）· spike 目录</text>
+<text class="tc" x="600" y="670" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
+<text class="tc" x="600" y="696" text-anchor="middle">虚线框 = 规划未建包 · 进度徽标截至 2026-09-24（权威：总计划 §10）· 漂移重生成：go run ./scripts/gen_svg packages</text>
+</svg>

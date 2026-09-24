@@ -54,7 +54,7 @@ L5 语义     vitro/engine/typeck ─ vitro/engine/containers(JSON 数据驱动)
             〔CS 批〕vitro/engine/csharp/typeck（引用语义/类系统/异常类型链/ARC 插桩点判定；表达式定型内核消费 vitro/engine/typeck——共享切线=表达式/语句层，声明层分叉；原 typeck/cpp 预留位随砍 C++ 裁定撤销）
 L6 发射     vitro/engine/codegen(internal/{Layout Planner, frame LIFO 池, c})  vitro/engine/bytecode(产物 schema+libc 固定索引)
             〔CS 批〕vitro/engine/csharp/codegen（ARC 插桩/异常映射 trap→Throw/顶层语句入口合成；原 internal/cpp 子目录规划随砍 C++ 裁定撤销）
-L7 执行     vitro/engine/memory(载体+MemoryMap+checked_access 单入口+bump/隔离堆+freed_logs 有序结构)
+L7 执行     vitro/engine/memory(载体+MemoryMap+check_access 单入口+bump/隔离堆+freed_logs 有序结构)
             vitro/engine/host(宿主函数域：路由表消费侧+输出通道 Bytes 化+内存族 handlers；vfs 入场待建)
             vitro/engine/vm(executor 穷尽 match+snapshot 不可变派生)
             〔S6 开工批二裁定·任务书内部不一致登记（2026-09-23）〕"110 路由表单源"的**定义点落 L6 `bytecode`**
@@ -70,6 +70,12 @@ L9 教学智能  vitro/engine/time_travel  vitro/engine/teaching/steps  vitro/en
             —— 经 VmObserver/SourceProvider/AlgorithmContext 三接口依赖反转，不依赖 session
 仓库外      Go 驱动层(保留) + Node engine-host(新增薄层) + spike 目录
 ```
+
+包切分分层图（由 `go run ./scripts/gen_svg` 生成，与上图逐层对账；虚线框 = 规划未建包，进度徽标以本节与 §10 为权威）——编译侧与执行/智能侧两张：
+
+<p align="center"><img src="moonbit-package-layers-compile.svg" alt="MoonBit 迁移包切分分层（L0–L6 编译侧）" width="900"></p>
+
+<p align="center"><img src="moonbit-package-layers-runtime.svg" alt="MoonBit 迁移包切分分层（L7–L9 执行与智能侧）" width="900"></p>
 
 硬约束：依赖严格单向无环；`.mbti` 只暴露 `protocol` 全量 / `lexer.tokenize` / `typeck.check` 三面；跨包不变量做成可执行断言包；版本承诺锚 `protocol_version` 编译期常量。
 

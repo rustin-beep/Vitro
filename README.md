@@ -63,7 +63,7 @@ vitro 引擎核心（Rust workspace，禁止平台 API 耦合）
 **认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图。
 节点分类树与已实现范围：[认知推理系统设计.md](docs/current/05-教学体验/认知推理系统设计.md)
 
-> 四张插图均由 `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改。
+> 以上插图由 `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改；全部 11 张插图（另含 MoonBit 包切分两张 / 统一模式架构与状态机 / 内存布局 / StepPayload 帧结构 / wasm 并发隔离）见 [`docs/README.md`](docs/README.md) 插图约定。
 
 ## 技术栈
 

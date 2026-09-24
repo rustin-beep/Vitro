@@ -57,6 +57,10 @@
 | `pointer_snapshots` | array | 否 | 指针快照（§2.5），四状态见 §3.1 |
 | `root_cause_hint` | object | **是** | 运行时陷阱的根因提示（§2.8）；无提示时为 `null` |
 
+帧结构图（由 `go run ./scripts/gen_svg` 生成，对账本节字段表与 §4/§5）：
+
+<p align="center"><img src="step-payload-frame.svg" alt="StepPayload v0.1 帧结构" width="900"></p>
+
 ### 示例（截断）
 
 ```json

@@ -1,6 +1,7 @@
 ///|
-/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 132 个编号，
-/// 且命中的编号与 code() 互逆；其余全部 None。
+/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 135 个编号
+/// （132 原生 + C# 异常三件 44–46，S6 vm 批一号入位），且命中的编号与
+/// code() 互逆；其余全部 None。
 test "from_u8_full_space_0_to_255" {
   let mut hit = 0
   for v in 0..<=255 {
@@ -12,13 +13,15 @@ test "from_u8_full_space_0_to_255" {
       None => ()
     }
   }
-  assert_eq(hit, 132)
+  assert_eq(hit, 135)
 }
 
 ///|
-/// 空号断言：44–49 六个历史预留空号全部 None（编号照搬不重排的证据锚）。
-test "from_u8_holes_44_to_49" {
-  for v in 44..<=49 {
+/// 空号断言：47–49 三个历史预留空号全部 None（编号照搬不重排的证据锚；
+/// 44–46 已被 C# 异常三件占用——对 Rust oracle 空号区间的占用，双侧
+/// 皆空号故对拍面零扰动，见 CSharp 前端引入计划 §1）。
+test "from_u8_holes_47_to_49" {
+  for v in 47..<=49 {
     assert_true(OpCode::from_u8(v) is None)
   }
 }
@@ -34,7 +37,7 @@ test "from_u8_out_of_range" {
 ///|
 /// 双向映射互逆：每个 opcode 的 name → from_name 恢复原值，
 /// 且名字唯一（from_name 不会两义）。
-test "name_from_name_roundtrip_all_132" {
+test "name_from_name_roundtrip_all_135" {
   let mut seen = 0
   for v in 0..<=137 {
     match OpCode::from_u8(v) {
@@ -48,18 +51,23 @@ test "name_from_name_roundtrip_all_132" {
       None => ()
     }
   }
-  assert_eq(seen, 132)
+  assert_eq(seen, 135)
 }
 
 ///|
 /// 关键编号抽查（防整体漂移的定点锚，值亲验自 Rust 源）：
 /// Nop=0 / PushConst=1 / Jump=29 / Call=32 / Strlen=126（死码）/
-/// TrapBoundsVla=129（死码）/ LShrQ=137（末位）。
+/// TrapBoundsVla=129（死码）/ LShrQ=137（末位）；
+/// C# 异常三件占位锚：TryBegin=44 / TryEnd=45 / Throw=46
+/// （Rust 同段空号，零发射 reserved-for-csharp）。
 test "landmark_codes_frozen" {
   assert_eq(Nop.code(), 0)
   assert_eq(PushConst.code(), 1)
   assert_eq(Jump.code(), 29)
   assert_eq(Call.code(), 32)
+  assert_eq(TryBegin.code(), 44)
+  assert_eq(TryEnd.code(), 45)
+  assert_eq(Throw.code(), 46)
   assert_eq(Strlen.code(), 126)
   assert_eq(TrapBoundsVla.code(), 129)
   assert_eq(LShrQ.code(), 137)
@@ -74,10 +82,14 @@ test "float_segment_starts_at_50" {
 }
 
 ///|
-/// 死码编号位保留（零发射但编号冻结——产物对拍依赖）。
+/// 死码编号位保留（零发射但编号冻结——产物对拍依赖）；C# 异常三件
+/// 同为 C 前端零发射（reserved-for-csharp），名字冻结进契约。
 test "dead_opcodes_keep_number_slots" {
   assert_eq(Strlen.name(), "Strlen")
   assert_eq(TrapBoundsVla.name(), "TrapBoundsVla")
+  assert_eq(TryBegin.name(), "TryBegin")
+  assert_eq(TryEnd.name(), "TryEnd")
+  assert_eq(Throw.name(), "Throw")
 }
 
 ///|

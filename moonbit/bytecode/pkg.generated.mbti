@@ -49,6 +49,10 @@ pub fn compile_output_dump_json(CompileOutput) -> String
 
 pub fn compute_heap_base(UInt, Int, Array[String]) -> UInt
 
+pub fn cstring_bytes(String) -> Array[Byte]
+
+pub fn cstring_len(String) -> Int
+
 pub fn host_func_id_by_user_name(String) -> Int?
 
 pub fn is_host_func_name(String) -> Bool
@@ -96,7 +100,7 @@ pub(all) struct LocalBuffer {
   offset : Int
   size : Int
   name : String
-} derive(@debug.Debug)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct Symbol {
   name : String

@@ -32,7 +32,7 @@ fn BytecodeGen::get_member_offset(
       0
     }
     TK_Pointer =>
-      if base_kind(object_type) is TK_Struct {
+      if @ast.Type::base_kind(object_type) is TK_Struct {
         let fields = match self.struct_defs.get(object_type.name()) {
           Some(f) => f
           None => return 0

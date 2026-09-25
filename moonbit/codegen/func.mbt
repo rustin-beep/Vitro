@@ -220,7 +220,7 @@ fn BytecodeGen::type_size(self : BytecodeGen, ty : @ast.Type) -> Int {
 fn BytecodeGen::elem_type_size(self : BytecodeGen, arr_type : @ast.Type) -> Int {
   let (elem_kind, elem_type) = match arr_type {
     Array(element, _, _, _, _, _) => (element.kind(), element)
-    _ => (base_kind(arr_type), arr_type)
+    _ => (@ast.Type::base_kind(arr_type), arr_type)
   }
   match elem_kind {
     TK_Char => 1
@@ -280,20 +280,5 @@ fn BytecodeGen::ptr_step_size(self : BytecodeGen, ty : @ast.Type) -> Int {
       }
     TK_Array => compute_stride(ty, self.elem_type_size(ty))
     _ => 1
-  }
-}
-
-///|
-/// `base_kind`（Rust `type_utils::base_kind` **逐字照搬**：Pointer 只解
-/// **一层**取 pointee.kind()、Array 递归剥层）——与 immediate_base_kind
-/// 的差异仅在 Array：base_kind(char[3]) = Char 递归到底；
-/// base_kind(char**) = **Pointer**（不再解第二层）。此前误写成 Pointer
-/// 也递归，char**/char*[] 的 elem_type_size 全错（argv[i] 步长 1≠4、
-/// lists[i] 步长 8≠4——kr_5_10/lc_23 等 8 例对拍实锤）。
-fn base_kind(ty : @ast.Type) -> @ast.TypeKind {
-  match ty {
-    Pointer(pointee, _) => pointee.kind()
-    Array(element, _, _, _, _, _) => base_kind(element)
-    _ => ty.kind()
   }
 }

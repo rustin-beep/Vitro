@@ -1,0 +1,21 @@
+// L7 执行层·VM 域（S6 批一号——状态定形）：执行器状态机（VitroVM）+
+// 快照体系（VMSnapshot/MemoryImage 定形 + snapshot/restore 单点）+
+// C# 异常三执行状态（handler 栈 / 异常寄存器 / UNWINDING——CS 批硬前置，
+// 总计划 §4 L7 行：v1 设计输入非事后补丁）+ ARC 帧退出清理机制占位
+// （region refcount 已在 memory 包 v1 入形）。
+// executor 穷尽 match（132+3 opcode）随批二号；libc 自举装载器随批四号；
+// 控制流/回调族 9 件 host handler 随批三号（set_finished /
+// call_user_function 宿主回调哨兵是本包状态）。
+// 依赖严格单向：opcode（L0：Instruction）/ bytecode（L6：产物 schema +
+// 布局常量单源 + cstring 单源）/ memory、host（L7 同层）。被 L8
+// session/gateway 消费，不反向依赖。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
+import {
+  "moonbitlang/core/encoding/utf8",
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+  "vitro/engine/host",
+  "vitro/engine/memory",
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+}

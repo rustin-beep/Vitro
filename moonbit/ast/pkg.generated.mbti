@@ -264,6 +264,7 @@ pub(all) enum Type {
 pub fn Type::array_of(Self, Array[Int]) -> Self
 pub fn Type::array_size(Self) -> Int
 pub fn Type::base_element_type(Self) -> Self
+pub fn Type::base_kind(Self) -> TypeKind
 pub fn Type::char() -> Self
 pub fn Type::dims(Self) -> Array[Int]
 pub fn Type::double() -> Self

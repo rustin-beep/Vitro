@@ -1,0 +1,182 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/vm"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/set",
+  "vitro/engine/bytecode",
+  "vitro/engine/host",
+  "vitro/engine/memory",
+  "vitro/engine/opcode",
+}
+
+// Values
+pub const DEFAULT_MAX_STEPS : Int = 10_000_000
+
+pub const MAX_FUNCTIONS : Int = 65_536
+
+pub const MAX_STACK_DEPTH : Int = 10_000
+
+pub const SNAPSHOT_INTERVAL : Int = 100_000
+
+pub const VIS_EVENT_LIMIT : Int = 1024
+
+// Errors
+
+// Types and methods
+pub(all) struct CallFrame {
+  return_ip : Int?
+  locals_base : UInt
+  local_count : Int
+  func_name : String
+  original_stack_top : Int
+  caller_line : Int
+  local_buffers : Array[@bytecode.LocalBuffer]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ExecMode {
+  Running
+  Unwinding
+} derive(Eq, @debug.Debug)
+
+pub(all) struct HandlerFrame {
+  catch_ip : Int
+  frame_idx : Int
+  stack_depth : Int
+  mem_stack_top : UInt
+} derive(Eq, @debug.Debug)
+
+pub(all) enum MemoryImage {
+  Full(FixedArray[Byte])
+  Delta(Int, Array[(Int, FixedArray[Byte])])
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StepResult {
+  Ok
+  Paused
+  Finished
+  Trap
+  WaitingInput
+} derive(Eq, @debug.Debug)
+
+pub(all) struct VMSnapshot {
+  memory : MemoryImage
+  mem : @memory.MemorySnapshot
+  stack : Array[UInt64]
+  call_stack : Array[CallFrame]
+  ip : Int
+  mem_stack_top : UInt
+  step_count : Int
+  current_line : Int
+  finished : Bool
+  exit_code : Int
+  error : String
+  paused : Bool
+  cancelled : Bool
+  step_event_hit : Bool
+  waiting_input : Bool
+  qsort_depth : Int
+  argc : Int
+  argv_addr : UInt
+  vis_event_queue : Array[VisEventData]
+  breakpoints : Array[Int]
+  heatmap : Map[Int, UInt64]
+  snapshot_vars : Map[String, UInt64]
+  last_snapshot_step : Int
+  output : @host.OutputLog
+  input : @host.InputState
+  rand_seed : UInt
+  vfs : @host.VfsSnapshot
+  exec_mode : ExecMode
+  exception_ref : UInt?
+  unwind_remaining_frames : Int
+  unwind_target : HandlerFrame?
+  handler_stack : Array[HandlerFrame]
+}
+
+pub(all) struct VariableAccess {
+  name : String
+  access_type : @memory.AccessKind
+} derive(Eq, @debug.Debug)
+
+pub(all) struct VisEventData {
+  ty : Int
+  line : Int
+  extra0 : Int
+  extra1 : Int
+  extra2 : Int
+  context : String
+} derive(Eq, @debug.Debug)
+
+pub struct VitroVM {
+  code : Array[@opcode.Instruction]
+  mut ip : Int
+  memory : @memory.Memory
+  mut mem_map : @memory.MemoryMap
+  mut mem_stack_top : UInt
+  stack : Array[UInt64]
+  call_stack : Array[CallFrame]
+  mut qsort_depth : Int
+  func_table : Array[@bytecode.FuncMeta?]
+  func_names : Array[String?]
+  symbols : Array[@bytecode.Symbol]
+  f64_constants : Array[Double]
+  i64_constants : Array[Int64]
+  locals_by_func : Map[String, Map[Int, String]]
+  global_syms : Map[Int, String]
+  arc_cleanup : Map[String, Array[Int]]
+  mut step_count : Int
+  mut max_steps : Int
+  mut call_depth_limit : Int
+  mut finished : Bool
+  mut exit_code : Int
+  mut paused : Bool
+  mut cancelled : Bool
+  mut step_event_hit : Bool
+  mut error : String
+  mut current_line : Int
+  mut argc : Int
+  mut argv_addr : UInt
+  vis_event_queue : Array[VisEventData]
+  vis_event_lines : Array[(Int, Int, String)]
+  breakpoints : @set.Set[Int]
+  last_accessed_vars : Array[VariableAccess]
+  heatmap : Map[Int, UInt64]
+  snapshot_vars : Map[String, UInt64]
+  mut last_snapshot_step : Int
+  mut output : @host.OutputLog
+  mut input : @host.InputState
+  mut rand : @host.RandState
+  vfs : @host.VirtualFileSystem
+  mut waiting_input : Bool
+  mut deterministic : Bool
+  handler_stack : Array[HandlerFrame]
+  mut exec_mode : ExecMode
+  mut exception_ref : UInt?
+  mut unwind_remaining_frames : Int
+  mut unwind_target : HandlerFrame?
+}
+pub fn VitroVM::load_program(Self, Array[@opcode.Instruction]) -> Unit
+pub fn VitroVM::new() -> Self
+pub fn VitroVM::register_function(Self, Int, @bytecode.FuncMeta) -> Bool
+pub fn VitroVM::register_function_name(Self, Int, String) -> Bool
+pub fn VitroVM::reset(Self) -> Unit
+pub fn VitroVM::restore(Self, VMSnapshot) -> Unit
+pub fn VitroVM::run(Self) -> Int
+pub fn VitroVM::set_call_depth_limit(Self, Int) -> Unit
+pub fn VitroVM::set_deterministic(Self, Bool) -> Unit
+pub fn VitroVM::set_f64_constants(Self, Array[Double]) -> Unit
+pub fn VitroVM::set_globals_32(Self, Array[(UInt, Int)]) -> Unit
+pub fn VitroVM::set_globals_64(Self, Array[(UInt, UInt64)]) -> Unit
+pub fn VitroVM::set_i64_constants(Self, Array[Int64]) -> Unit
+pub fn VitroVM::set_max_steps(Self, Int) -> Unit
+pub fn VitroVM::set_symbols(Self, Array[@bytecode.Symbol]) -> Unit
+pub fn VitroVM::set_vis_event_lines(Self, Array[(Int, Int, String)]) -> Unit
+pub fn VitroVM::setup_argv(Self, Int, Array[String], UInt) -> Unit
+pub fn VitroVM::snapshot(Self) -> VMSnapshot
+pub fn VitroVM::step(Self) -> StepResult
+pub fn VitroVM::write_cstring(Self, UInt, String) -> Unit
+
+// Type aliases
+
+// Traits

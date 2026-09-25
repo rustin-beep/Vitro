@@ -88,7 +88,13 @@ pub(all) struct MemoryRegionData {
   mut alloc_line : Int
   mut alloc_by : String
   mut kind : String
-} derive(Debug)
+  /// **ARC 引用计数（CSharp 前端引入计划 §3——CS 硬前置，v1 入形非事后补丁）**：
+  /// 引用类型的 region 挂 `refcount`，retain/release 走 `CallHost`（RETAIN/RELEASE
+  /// host id，CS 批接线），计数归零立即确定性释放。**C 前端恒 0**——无 retain/
+  /// release 发射，本字段对 C 语料行为零影响；随 `MemorySnapshot.regions` 自动
+  /// 序列化（时间旅行免费安全，非事后扩快照结构）。
+  mut refcount : Int
+} derive(Debug, Eq)
 
 ///|
 /// 构造一条堆区域条目（host 分配路径的唯一构造点）。
@@ -112,6 +118,7 @@ pub fn MemoryRegionData::heap_block(
     alloc_line,
     alloc_by,
     kind: "heap",
+    refcount: 0,
   }
 }
 

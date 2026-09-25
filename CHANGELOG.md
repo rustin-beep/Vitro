@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Added（S6 vm 批一号——vm 状态定形，2026-09-25）
+
+- **vitro/engine/vm 建包**（状态定形批；executor 穷尽 match 随批二号）：
+  VitroVM 状态机（值栈 u64 位模式 / 调用栈〔宿主回调哨兵 = return_ip : Int?，
+  等价变换自 Rust usize::MAX〕/ 教学观测 / 宿主域三态）+ **C# 异常三执行状态**
+  （handler 栈 / 当前异常寄存器 / UNWINDING 状态机——CS 批硬前置，总计划 §4 L7；
+  含展开中间态三件，VMSnapshot 一等含入）+ **ARC 帧退出清理机制占位**
+  （arc_cleanup，C 恒空，retain/release 随 CS 批）。
+- **VMSnapshot / MemoryImage 定形**：快照 = 执行状态全量真相（编译期产物与
+  会话配置不入）；snapshot/restore 两端单点（字段增删由 struct 字面量构造
+  编译错强制同步）；**拷贝即快照**（MoonBit 无 Arc——snapshot 与 restore 两侧
+  各深拷一次，快照持有者与运行态互不渗透）。
+- **新设计裁剪**（相对 Rust 36 字段 vm，历史包袱不入）：JIT 全族（F-3）/
+  global_count（恒 0 死字段）/ C++ new[] 守卫 / trace（死路径）/
+  local_sym_map + global_sym_map 常驻索引（**改装载期派生索引**
+  locals_by_func / global_syms——结构性消除 Rust 每次 Call/Ret 全量重建热点，
+  勘察坑 12）。
+- **opcode 三件进历史空号**：TryBegin=44 / TryEnd=45 / Throw=46
+  （reserved-for-csharp，C 前端零发射；Rust 同段空号故对拍面零扰动）——
+  opcode 契约 132 → **135 条**，空号收缩为 47–49（0.6.0 面变更，minor）。
+- **memory 包**：MemoryRegionData + refcount 字段（CS 批 ARC 预留，C 恒 0，
+  随 MemorySnapshot 序列化——时间旅行免费安全非事后补丁）；**快照对偶**
+  MemoryMap::dump / load（单一出口整体替换 + 装后 verify fail loud）+
+  FreedLogs::load_entries（乱序 abort）；27 → 31 测试。
+- **host 包快照通道**：OutputLog::snapshot / InputState::snapshot /
+  VfsSnapshot + VirtualFileSystem::snapshot / restore（fd 元数据进快照——
+  修复 Rust「VFS 不入快照，回退后文件状态来自未来」P1 缺陷的 MoonBit 侧落点）。
+- **cstring 通道单源上提**：\\xHH≥0x80→Latin-1 口径自 codegen priv 上提至
+  bytecode.cstring_bytes / cstring_len（vm 的 argv 装载需同一字节口径；
+  codegen 改消费方——**A 级对拍 601 文件 CONTENT-DIFF=0 零漂移**）。
+- 装载原语对齐 Rust setup_vm 协议 vm 侧：load_program /
+  register_function(_name)（MAX_FUNCTIONS=65536 上限语义照搬）/
+  set_symbols（派生索引单点重建）/ set_globals_32/64 / set_*_constants /
+  write_cstring（Latin-1 口径 + 越界静默跳过照搬）/ setup_argv
+  （R1 ③ 自 GLOBAL_REGION_LIMIT 向下；推进口径 = UTF-8 与 footprint 单源一致）。
+- 测试 353 → **365**（vm 10 = wbtest 8〔快照全字段往返 / 快照独立性 / reset
+  会话配置保留 / UNWINDING 中间态快照 / register 上限 / 派生索引 / argv 布局 /
+  write_cstring 边界〕+ 黑盒 2〔对外面消费面点名〕）。
+- **vm 批二段一（executor 骨架，同日）**：`step`/`run` 循环 + **单层穷尽
+  match 135 臂**（Rust 两级分发〔外层族 match + 族内二次 match 必带 `_ => {}`
+  兜底〕合并为一级——opcode 增删即编译红，兜底臂消失）；栈 / 局部 / 全局 /
+  内存 / 算术 / 比较 / 位运算 / 教学观测八族照搬（溢出语义：有符号族 i64 中转
+  + 范围检查 → 教学 trap，U 族静默回绕〔MoonBit Int 四则 = Rust wrapping 同
+  语义〕，`INT_MIN / -1` 与 `INT_MIN % -1` 先拦截〔坑 8〕）；**trap 渲染单点**
+  四函数逐字照搬（UAF / 数组越界含最近数组扫描 / 除零含零值变量 / 无限循环
+  含变量对比）+ 受检访存封装 `vm_load_*/vm_store_*`（MemFault → 文案单点）；
+  F/D/Q 浮点三族与控制流族段二接线（本批 fail loud 到达即 trap，登记文案带
+  opcode 名）；`base_kind` 自 codegen priv **上提 ast 作 `Type::base_kind()`**
+  （trap 文案元素步长与 codegen 的 elem_type_size 需同一口径——Rust 侧
+  type_utils 本就是三方共用单源；A 级对拍 601 文件零漂移）。零发射死码
+  `Strlen`/`TrapBoundsVla` 到达即 trap（fail loud——Rust 侧带实现的死路径
+  不继承）。vm 10 → 24 测试（+14：溢出 trap / U 族回绕 / 除零文案 / MIN%-
+  1 / 局部全局往返 / 断点暂停 + vis 环形 1024 / TrapBounds 数组诊断 /
+  max_steps 保险丝 / 栈下溢 / Memcpy-Memset 弹参序 / 段二 fail loud）。
+
 ### Fixed (S6 审阅修复批：P1/P2/P3 全销项，2026-09-23)
 
 用户 blob 级审阅（五阶段复核）+ 本轮逐条亲验后修复；每条红→绿留痕。

@@ -64,3 +64,22 @@ pub fn Type::is_unsigned(self : Type) -> Bool {
     _ => false
   }
 }
+
+///|
+/// `base_kind`（Rust `type_utils::base_kind` 逐字照搬：Pointer 只解
+/// **一层**取 pointee.kind()、Array 递归剥层）——与 `immediate_base_kind`
+/// 的差异仅在 Array：base_kind(char[3]) = Char 递归到底；
+/// base_kind(char**) = Pointer（不再解第二层）。
+///
+/// **单源上提登记（S6 vm 批二号，2026-09-25）**：原 priv 在 L6 codegen
+/// （func.mbt）；vm 执行器的 trap 文案渲染（数组越界的元素步长）与 codegen
+/// 的 elem_type_size 需同一口径，跨 L6/L7 复用故上提至本包（Type 谓词面
+/// 的伴生方法）——Rust 侧同名函数在 `vitro_runtime::type_utils`，同为
+/// codegen/host/vm 三方共用单源。
+pub fn Type::base_kind(self : Type) -> TypeKind {
+  match self {
+    Pointer(pointee, _) => pointee.kind()
+    Array(element, _, _, _, _, _) => Type::base_kind(element)
+    _ => self.kind()
+  }
+}

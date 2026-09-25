@@ -184,7 +184,9 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     }
     StringLiteral(value, _, _) => {
       // 字符串字面量：全局区 bump 分配 + 地址入栈（Rust literal.rs:22-31）
-      let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+      let aligned = (
+          (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
+        ) &
         @bytecode.ALIGN4_MASK
       let addr = @bytecode.GLOBAL_START +
         self.next_global_offset.reinterpret_as_uint()

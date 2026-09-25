@@ -9,7 +9,7 @@
 | Package | Layer | What you get |
 |---|---|---|
 | `vitro/engine/source` | L0 | `SourceLoc` + column contract (UTF-8 byte offset + 1) + dual-coordinate `Pos` |
-| `vitro/engine/opcode` | L0 | 132 opcodes with stable numbering (44–49 reserved) + `Instruction` |
+| `vitro/engine/opcode` | L0 | 135 opcodes with stable numbering (44–46 = C# exception triple, 47–49 reserved) + `Instruction` |
 | `vitro/engine/diag` | L1 | 137-arm `ErrorCode` + severity/lang + teaching catalog (77 cards), byte-exact export |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 family + depth metrics + `type_eq` + C rendering & mangle + JSON dump |
 | `vitro/engine/names` | L3 | Naming single source: `__ctor__`/`__dtor__` family + 17-variant type-mangle suffix |
@@ -21,6 +21,7 @@
 | `vitro/engine/codegen` | L6 | `BytecodeGen` state machine with dual entry: `compile` / `compile_library`; slot strategy v1 |
 | `vitro/engine/memory` | L7 | 1 MiB linear-memory carrier + `MemoryMap` heap state machine (bump + bounded quarantine + first-fit) + single checked-access entry + ordered `freed_logs` |
 | `vitro/engine/host` | L7 | Host-function domain: 110-route consumption side, byte-faithful output channels (`Bytes`), 100+ VM-independent handlers (memory / ctype / math / string / str-to-num / printf-scanner / VFS) returning structured replies |
+| `vitro/engine/vm` | L7 | Executor state machine + snapshot system (`VMSnapshot` Full/Delta, two-endpoint single-point) + C# exception triple exec-state (handler stack / exception register / UNWINDING — v1 design input) |
 
 Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
 
@@ -35,7 +36,7 @@ The rest of this README is in Chinese.
 
 ---
 
-C 教学引擎的 MoonBit 实现——137 个诊断错误码、132 条字节码操作码、Type/Expr/Stmt 全族 AST 与 C 渲染/mangle，码表与 [Vitro Rust oracle](https://github.com/jingwei108/vitro) 逐字节对拍对齐。
+C 教学引擎的 MoonBit 实现——137 个诊断错误码、135 条字节码操作码、Type/Expr/Stmt 全族 AST 与 C 渲染/mangle，码表与 [Vitro Rust oracle](https://github.com/jingwei108/vitro) 逐字节对拍对齐。
 
 ## 安装
 
@@ -48,7 +49,7 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 | 包 | 层 | 职责 |
 |---|---|---|
 | `vitro/engine/source` | L0 | SourceLoc 三字段 + 列单位契约（字节偏移+1 主坐标 / Pos 双坐标预留） |
-| `vitro/engine/opcode` | L0 | 132 条 opcode（编号照搬不重排，空号 44–49）+ 双向映射 + Instruction |
+| `vitro/engine/opcode` | L0 | 135 条 opcode（编号照搬不重排；44–46 = C# 异常三件 TryBegin/TryEnd/Throw，47–49 空号）+ 双向映射 + Instruction |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂 + Severity/SourceLang + 教学卡片 77 条 + 目录导出（对拍逐字节一致） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth + type_eq + to_c_string + mangle + JSON dump |
 | `vitro/engine/names` | L3 | 产名族唯一出口（`__ctor__`/`__dtor__`）+ type_mangle_suffix 17 变体 + method_mangled_name |
@@ -60,6 +61,7 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 | `vitro/engine/codegen` | L6 | BytecodeGen 状态机双入口（`compile` / `compile_library`）+ 槽位策略 v1 逐位兼容 |
 | `vitro/engine/memory` | L7 | 1MB 载体（`Memory`）+ 堆状态机（`MemoryMap`：bump + 有界隔离 + first-fit）+ `checked_access` 单入口 + freed_logs 有序数组（S6 开工批） |
 | `vitro/engine/host` | L7 | 宿主函数域：110 路由表消费侧 + 输出通道（`Bytes` 字节保真）+ **100+ 个 VM 无耦合 handler**（内存族 / ctype / math / 字符串 / 转数值 / printf-scanf / VFS；统一 `HostMemReply` 结构化回复）+ E3061/E3027 文案（S6 余量全批） |
+| `vitro/engine/vm` | L7 | 执行器状态机（值栈 u64 位模式 / 调用栈 / 教学观测 / 宿主域三态）+ 快照体系（`VMSnapshot`/`MemoryImage` 两端单点）+ C# 异常三执行状态（handler 栈 / 异常寄存器 / UNWINDING——CS 批硬前置 v1 入形）+ ARC 帧退出清理占位（S6 vm 批一号） |
 
 各包 API 概览见对应目录的 `pkg.generated.mbti`；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）。
 
@@ -82,7 +84,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 353 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 29 / host 106；分解和 347 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 29 / host 106 各含 2 个包 README doc test（2026-09-23 补指引批：三包 README.mbt.md 可执行快速上手）；memory 29 = 白盒 21 + 黑盒 6 + doc test 2；host 106 = 白盒 96 + 黑盒 8 + doc test 2（内存族 28 + 余量批一/二/三号 + 审阅修复批 P1/P2 锚：powi 633 点对拍/%% 语义/memchr——值锚取 oracle release 实测；黑盒承担对外面消费面点名）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 379 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 106 / vm 24；分解和 373 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 29 / host 106 各含 2 个包 README doc test（2026-09-23 补指引批：三包 README.mbt.md 可执行快速上手）；memory 29 = 白盒 21 + 黑盒 6 + doc test 2（批一号 29→31：MemorySnapshot dump/load 对偶 + load_entries 乱序契约锚）；host 106 = 白盒 96 + 黑盒 8 + doc test 2；vm 24 = wbtest 22（批一号快照 8 + 批二段一 executor 14：溢出 trap / U 族回绕 / 除零文案 / MIN%-1 / 局部全局往返 / 断点暂停 + vis 环形 / TrapBounds 数组诊断 / max_steps 保险丝 / 栈下溢 / Memcpy-Memset 弹参序 / 段二 fail loud）+ 黑盒 2（对外面消费面点名）（内存族 28 + 余量批一/二/三号 + 审阅修复批 P1/P2 锚：powi 633 点对拍/%% 语义/memchr——值锚取 oracle release 实测；黑盒承担对外面消费面点名）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

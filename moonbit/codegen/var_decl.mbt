@@ -161,7 +161,7 @@ fn BytecodeGen::emit_static_init(
         _ => false
       }
       if is_char_array {
-        let bytes = cstring_bytes(value)
+        let bytes = @bytecode.cstring_bytes(value)
         for i in 0..<self.type_size(vty) {
           let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
           self.globals_init_32.push(
@@ -172,7 +172,9 @@ fn BytecodeGen::emit_static_init(
           )
         }
       } else {
-        let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+        let aligned = (
+            (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
+          ) &
           @bytecode.ALIGN4_MASK
         let str_offset = match
           self.bump_global_offset(
@@ -261,7 +263,9 @@ fn BytecodeGen::emit_static_scalar_array_init(
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
       match elem.value {
         StringLiteral(value, _, _) => {
-          let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+          let aligned = (
+              (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
+            ) &
             @bytecode.ALIGN4_MASK
           let str_offset = match
             self.bump_global_offset(
@@ -445,7 +449,7 @@ fn BytecodeGen::emit_local_string_array_init(
       self.emit(@opcode.OpCode::Add, 0, loc)
       self.emit(@opcode.OpCode::StoreLocal, base_temp, loc)
       let byte_count = vty.array_size()
-      let bytes = cstring_bytes(value)
+      let bytes = @bytecode.cstring_bytes(value)
       for i in 0..<byte_count {
         self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
         self.emit(@opcode.OpCode::PushConst, i, loc)

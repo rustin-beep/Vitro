@@ -45,6 +45,7 @@ pub fn FreedLogs::get(Self, UInt) -> FreedRegionInfo?
 pub fn FreedLogs::insert(Self, FreedRegionInfo) -> Unit
 pub fn FreedLogs::is_empty(Self) -> Bool
 pub fn FreedLogs::length(Self) -> Int
+pub fn FreedLogs::load_entries(Self, Array[FreedRegionInfo]) -> Unit
 pub fn FreedLogs::new() -> Self
 pub fn FreedLogs::remove_overlapping(Self, UInt, UInt) -> Unit
 pub fn FreedLogs::to_array(Self) -> Array[FreedRegionInfo]
@@ -113,6 +114,7 @@ pub fn MemoryMap::alloc_counter(Self) -> Int
 pub fn MemoryMap::allocate_raw(Self, UInt, UInt) -> UInt?
 pub fn MemoryMap::build_heap_stats(Self) -> HeapStatsData
 pub fn MemoryMap::check_access(Self, UInt, UInt, AccessKind) -> Result[Unit, MemFault]
+pub fn MemoryMap::dump(Self) -> MemorySnapshot
 pub fn MemoryMap::find_live_region_containing(Self, UInt) -> (UInt, MemoryRegionData)?
 pub fn MemoryMap::fragmentation_rate(Self) -> Int
 pub fn MemoryMap::free_list_at(Self, Int) -> FreeBlock
@@ -126,6 +128,7 @@ pub fn MemoryMap::freed_logs_remove_overlapping(Self, UInt, UInt) -> Unit
 pub fn MemoryMap::has_region(Self, UInt) -> Bool
 pub fn MemoryMap::heap_base(Self) -> UInt
 pub fn MemoryMap::heap_offset(Self) -> UInt
+pub fn MemoryMap::load(Self, MemorySnapshot) -> Unit
 pub fn MemoryMap::new() -> Self
 pub fn MemoryMap::quarantine_at(Self, Int) -> FreeBlock
 pub fn MemoryMap::quarantine_budget(Self) -> Int
@@ -152,8 +155,21 @@ pub(all) struct MemoryRegionData {
   mut alloc_line : Int
   mut alloc_by : String
   mut kind : String
-} derive(@debug.Debug)
+  mut refcount : Int
+} derive(Eq, @debug.Debug)
 pub fn MemoryRegionData::heap_block(Int, String, String, Int, String) -> Self
+
+pub(all) struct MemorySnapshot {
+  regions : Array[(UInt, MemoryRegionData)]
+  free_list : Array[FreeBlock]
+  quarantine : Array[FreeBlock]
+  quarantine_bytes : Int
+  quarantine_budget : Int
+  heap_base : UInt
+  heap_offset : UInt
+  alloc_counter : Int
+  freed : Array[FreedRegionInfo]
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

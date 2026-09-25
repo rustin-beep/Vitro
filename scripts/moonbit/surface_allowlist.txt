@@ -28,11 +28,7 @@ vitro/engine/diag codes_without_catalog
 # memory 包**不复制** L6 的地址布局常量（`@bytecode.` 前缀引用，单源不双写），
 # 但它只消费其中 4 个：MEM_SIZE / NULL_TRAP_SIZE / HEAP_START / align4。
 # 余下 3 个是 vm 片的消费面（S6 同批后续片，包尚未建）：
-#   STACK_START            → vm 的 mem_stack_top 初值
-#   argv_region_footprint  → vm 的 setup_argv 编址
 #   compute_heap_base      → vm 的 setup 动态堆起点（再喂 MemoryMap::set_heap_base）
 # 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
 # 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
-vitro/engine/bytecode STACK_START
-vitro/engine/bytecode argv_region_footprint
 vitro/engine/bytecode compute_heap_base

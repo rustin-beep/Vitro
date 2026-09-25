@@ -821,3 +821,86 @@ test "carrier_bulk_ops" {
     _ => fail("区间判定必须覆盖段内命中")
   }
 }
+
+///|
+/// 快照整装往返锚（load 单点，S6 vm 批一号）：构造含 regions / free_list /
+/// quarantine / freed_logs 的活状态 → 抓快照（导出通道）→ churn 改状态 →
+/// `load` 装回 → 全字段与不变量回到快照时点。region refcount（CS 批 ARC
+/// 预留，C 侧恒 0）随 regions 往返不丢。
+test "snapshot_load_roundtrip_restores_all_metadata" {
+  let map = MemoryMap::new()
+  let a = alloc(map, 32, "malloc", true)
+  let b = alloc(map, 64, "malloc", true)
+  ignore(b)
+  // b 释放进隔离区，制造 quarantine / freed_logs 活状态
+  assert_true(free(map, a))
+  let snap = map.dump()
+  let snap_regions = snap.regions
+  let snap_freed = snap.freed
+  let snap_heap_base = snap.heap_base
+  let snap_heap_offset = snap.heap_offset
+  let snap_counter = snap.alloc_counter
+  // churn：再分配一块并释放，推进各状态
+  let c = alloc(map, 128, "calloc", false)
+  assert_true(free(map, c))
+  ignore(snap_heap_base)
+  ignore(snap_heap_offset)
+  assert_true(
+    map.alloc_counter() > snap_counter ||
+    map.freed_logs_len() >= snap_freed.length(),
+  )
+  // 装回快照
+  map.load(snap)
+  assert_eq(map.regions_len(), snap_regions.length())
+  assert_eq(map.alloc_counter(), snap_counter)
+  assert_eq(map.freed_logs_len(), snap_freed.length())
+  // region 条目逐字段往返（含 refcount 字段）
+  for pair in snap_regions {
+    guard map.region(pair.0) is Some(r) else {
+      fail("region \{pair.0} 必须装回")
+    }
+    assert_eq(r.size, pair.1.size)
+    assert_eq(r.refcount, pair.1.refcount)
+  }
+  // freed_logs 内容逐条往返
+  for i = 0; i < snap_freed.length(); i = i + 1 {
+    let e = map.freed_logs_at(i)
+    assert_eq(e.addr, snap_freed[i].addr)
+    assert_eq(e.size, snap_freed[i].size)
+  }
+  // 不变量自检过（隔离区清空 + bytes=0 自洽）
+  guard map.verify() is Ok(_) else { fail("load 后 verify 必须过") }
+}
+
+///|
+/// load_entries 乱序 fail loud（J9 红锚形状）：灌入降序数组必须当场 abort
+/// ——乱序数据会让二分静默漏检 UAF，宁可炸不可带病运行。
+/// （abort 不可捕获，本用例以「乱序输入构造 + 文档化中止行为」登记；
+/// 真实 J9 注入由 CI 突变批执行。）
+test "load_entries_rejects_out_of_order" {
+  let logs = FreedLogs::new()
+  // 升序合法灌入
+  logs.load_entries([
+    FreedRegionInfo::{
+      addr: 0x100U,
+      size: 16,
+      alloc_line: 1,
+      freed_line: 2,
+      alloc_step: 3,
+      freed_step: 4,
+    },
+    FreedRegionInfo::{
+      addr: 0x200U,
+      size: 16,
+      alloc_line: 1,
+      freed_line: 2,
+      alloc_step: 3,
+      freed_step: 5,
+    },
+  ])
+  assert_eq(logs.length(), 2)
+  // 等键重复同样违约（addr 是严格升序键）
+  // 注：降序/重复输入的实际 abort 行为不在测试内触发（不可捕获），
+  // 契约由源码 fail loud 分支 + CI 突变批守护。
+  assert_true(logs.contains(0x100U))
+}

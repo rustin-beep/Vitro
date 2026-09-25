@@ -18,7 +18,7 @@ pub(all) struct LocalBuffer {
   size : Int
   /// 变量名（教学诊断用）。
   name : String
-} derive(Debug)
+} derive(Eq, Debug)
 
 ///|
 /// 函数元数据（Rust `vitro_runtime::FuncMeta` 照搬，字段序一致）。

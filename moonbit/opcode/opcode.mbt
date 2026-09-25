@@ -1,8 +1,11 @@
 ///|
-/// Vitro 字节码操作码（132 条，编号照搬 Rust oracle `vitro_runtime/src/opcode.rs`，不重排）。
+/// Vitro 字节码操作码（135 条，编号照搬 Rust oracle `vitro_runtime/src/opcode.rs`，不重排）。
 ///
-/// 编号契约：0..137 区间，空号 44–49（历史浮点段位预留）；`from_u8` 对空号与
-/// >137 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
+/// 编号契约：0..137 区间，空号 47–49（历史浮点段位预留）；44/45/46 为
+/// **C# 异常三件**（`TryBegin`/`TryEnd`/`Throw`，CSharp 前端引入计划 §1 拍板进
+/// 历史空号——Rust 侧同段为空号，对拍面零扰动）。C 前端零发射（reserved-for-csharp，
+/// 与 `Strlen`/`TrapBoundsVla` 零发射死码同款保留）；executor 侧到达即 fail loud。
+/// `from_u8` 对空号与 >137 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
 /// `Strlen` / `TrapBoundsVla` 为零发射死码——保留编号位（产物对拍依赖编号冻结），
 /// 不新增使用。
 ///
@@ -53,6 +56,10 @@ pub(all) enum OpCode {
   BitNot
   Shl
   Shr
+  // C# 异常三件（44–46 进历史空号，reserved-for-csharp——C 前端零发射）
+  TryBegin
+  TryEnd
+  Throw
   PushConstF
   AddF
   SubF
@@ -191,6 +198,9 @@ pub fn OpCode::code(self : OpCode) -> Int {
     BitNot => 41
     Shl => 42
     Shr => 43
+    TryBegin => 44
+    TryEnd => 45
+    Throw => 46
     PushConstF => 50
     AddF => 51
     SubF => 52
@@ -330,6 +340,9 @@ pub fn OpCode::from_u8(value : Int) -> OpCode? {
     41 => Some(BitNot)
     42 => Some(Shl)
     43 => Some(Shr)
+    44 => Some(TryBegin)
+    45 => Some(TryEnd)
+    46 => Some(Throw)
     50 => Some(PushConstF)
     51 => Some(AddF)
     52 => Some(SubF)
@@ -470,6 +483,9 @@ pub fn OpCode::name(self : OpCode) -> String {
     BitNot => "BitNot"
     Shl => "Shl"
     Shr => "Shr"
+    TryBegin => "TryBegin"
+    TryEnd => "TryEnd"
+    Throw => "Throw"
     PushConstF => "PushConstF"
     AddF => "AddF"
     SubF => "SubF"
@@ -611,6 +627,9 @@ pub fn OpCode::from_name(s : String) -> OpCode? {
     "BitNot" => Some(BitNot)
     "Shl" => Some(Shl)
     "Shr" => Some(Shr)
+    "TryBegin" => Some(TryBegin)
+    "TryEnd" => Some(TryEnd)
+    "Throw" => Some(Throw)
     "PushConstF" => Some(PushConstF)
     "AddF" => Some(AddF)
     "SubF" => Some(SubF)

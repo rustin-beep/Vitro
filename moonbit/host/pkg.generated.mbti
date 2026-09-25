@@ -247,6 +247,7 @@ pub(all) struct InputState {
   batch : Bool
 }
 pub fn InputState::new(Array[Bytes], Bool) -> Self
+pub fn InputState::snapshot(Self) -> Self
 
 pub(all) struct OutputChunk {
   kind : OutputKind
@@ -290,6 +291,7 @@ pub fn OutputLog::push_note_str(Self, String) -> Unit
 pub fn OutputLog::push_stderr(Self, Bytes) -> Unit
 pub fn OutputLog::push_stdout(Self, Bytes) -> Unit
 pub fn OutputLog::set_budget(Self, Int) -> Unit
+pub fn OutputLog::snapshot(Self) -> Self
 pub fn OutputLog::total_bytes(Self) -> Int
 
 pub(all) struct RandState {
@@ -305,9 +307,30 @@ pub(all) struct StackBufferSpan {
 
 type VfsDesc derive(@debug.Debug)
 
+pub(all) struct VfsDescSnapshot {
+  mut file_name : String
+  mode : Int
+  mut cursor : Int
+  mut eof : Bool
+  mut error : Bool
+  is_text_mode : Bool
+} derive(Eq, @debug.Debug)
+
 type VfsFileMeta derive(@debug.Debug)
 
+pub(all) struct VfsFileSnapshot {
+  mut heap_addr : UInt
+  mut size : Int
+  mut capacity : Int
+} derive(Eq, @debug.Debug)
+
 type VfsMode derive(Eq, @debug.Debug)
+
+pub(all) struct VfsSnapshot {
+  files : Array[(String, VfsFileSnapshot)]
+  descriptors : Array[(UInt, VfsDescSnapshot)]
+  next_fd : UInt
+} derive(Eq, @debug.Debug)
 
 pub struct VirtualFileSystem {
   files : Map[String, VfsFileMeta]
@@ -332,7 +355,9 @@ pub fn VirtualFileSystem::inject_preset_file(Self, @memory.MemoryMap, @memory.Me
 pub fn VirtualFileSystem::new() -> Self
 pub fn VirtualFileSystem::remove(Self, @memory.MemoryMap, String) -> Int
 pub fn VirtualFileSystem::rename(Self, String, String) -> Int
+pub fn VirtualFileSystem::restore(Self, VfsSnapshot) -> Unit
 pub fn VirtualFileSystem::rewind(Self, UInt) -> Unit
+pub fn VirtualFileSystem::snapshot(Self) -> VfsSnapshot
 
 // Type aliases
 

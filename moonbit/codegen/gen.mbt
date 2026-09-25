@@ -228,7 +228,7 @@ fn BytecodeGen::generate(
   self.pending_string_inits = []
   for entry in pending {
     let (base_offset, value) = entry
-    let aligned = ((cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+    let aligned = ((@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3) &
       @bytecode.ALIGN4_MASK
     match
       self.bump_global_offset(
@@ -449,7 +449,7 @@ fn BytecodeGen::pass1_register_global(
             _ => false
           }
           if is_char_array {
-            let bytes = cstring_bytes(value)
+            let bytes = @bytecode.cstring_bytes(value)
             for i in 0..<sz {
               let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
               self.globals_init_32.push(

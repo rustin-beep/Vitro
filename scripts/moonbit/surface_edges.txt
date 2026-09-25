@@ -7,6 +7,7 @@
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 两侧条目、只能靠注释区分——已随本批消除（同名符号 J9 注入实证分离）。
+
 . vitro/engine/diag ErrorCode
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
@@ -75,7 +76,6 @@ vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_typeck vitro/engine/parser parse
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
-vitro/engine/codegen moonbitlang/core/encoding/utf8 encode
 vitro/engine/codegen vitro/engine/ast AssignOp
 vitro/engine/codegen vitro/engine/ast BinaryOp
 vitro/engine/codegen vitro/engine/ast Expr
@@ -104,6 +104,8 @@ vitro/engine/codegen vitro/engine/bytecode align4
 vitro/engine/codegen vitro/engine/bytecode bytecode_libc_all_funcs
 vitro/engine/codegen vitro/engine/bytecode bytecode_libc_index
 vitro/engine/codegen vitro/engine/bytecode compile_output_dump_json
+vitro/engine/codegen vitro/engine/bytecode cstring_bytes
+vitro/engine/codegen vitro/engine/bytecode cstring_len
 vitro/engine/codegen vitro/engine/bytecode host_func_id_by_user_name
 vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
 vitro/engine/codegen vitro/engine/opcode Instruction
@@ -260,3 +262,31 @@ vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/source SourceLoc
+vitro/engine/vm moonbitlang/core/encoding/utf8 encode
+vitro/engine/vm vitro/engine/ast Type
+vitro/engine/vm vitro/engine/bytecode FuncMeta
+vitro/engine/vm vitro/engine/bytecode GLOBAL_REGION_LIMIT
+vitro/engine/vm vitro/engine/bytecode GLOBAL_START
+vitro/engine/vm vitro/engine/bytecode LocalBuffer
+vitro/engine/vm vitro/engine/bytecode MEM_SIZE
+vitro/engine/vm vitro/engine/bytecode NULL_TRAP_SIZE
+vitro/engine/vm vitro/engine/bytecode STACK_START
+vitro/engine/vm vitro/engine/bytecode Symbol
+vitro/engine/vm vitro/engine/bytecode align4
+vitro/engine/vm vitro/engine/bytecode argv_region_footprint
+vitro/engine/vm vitro/engine/bytecode cstring_bytes
+vitro/engine/vm vitro/engine/host InputState
+vitro/engine/vm vitro/engine/host OutputLog
+vitro/engine/vm vitro/engine/host RandState
+vitro/engine/vm vitro/engine/host VfsSnapshot
+vitro/engine/vm vitro/engine/host VirtualFileSystem
+vitro/engine/vm vitro/engine/host host_putchar
+vitro/engine/vm vitro/engine/memory AccessKind
+vitro/engine/vm vitro/engine/memory FreedRegionInfo
+vitro/engine/vm vitro/engine/memory MemFault
+vitro/engine/vm vitro/engine/memory Memory
+vitro/engine/vm vitro/engine/memory MemoryMap
+vitro/engine/vm vitro/engine/memory MemorySnapshot
+vitro/engine/vm vitro/engine/opcode Instruction
+vitro/engine/vm vitro/engine/opcode OpCode
+vitro/engine/vm vitro/engine/source SourceLoc

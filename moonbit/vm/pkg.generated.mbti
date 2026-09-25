@@ -29,7 +29,7 @@ pub(all) struct CallFrame {
   locals_base : UInt
   local_count : Int
   func_name : String
-  original_stack_top : Int
+  original_stack_top : UInt
   caller_line : Int
   local_buffers : Array[@bytecode.LocalBuffer]
 } derive(Eq, @debug.Debug)

@@ -95,6 +95,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   set_symbols（派生索引单点重建）/ set_globals_32/64 / set_*_constants /
   write_cstring（Latin-1 口径 + 越界静默跳过照搬）/ setup_argv
   （R1 ③ 自 GLOBAL_REGION_LIMIT 向下；推进口径 = UTF-8 与 footprint 单源一致）。
+- **vm 批二段二（executor 全量收官，2026-09-26）**：F（f32）/ D（f64）/
+  Q（i64）三族 + 控制流族照搬——① 转换契约探针实证：MoonBit
+  `Double::to_int` = `%f64_to_i32_saturate`（**饱和**，= Rust `as i32`）、
+  `Int64::to_int` = 低 32 位截断、f32/f64 位模式经 reinterpret 族往返；
+  ② DivF/DivD 除零**教学 trap** 照搬（非 IEEE inf）；比较族 IEEE 精确
+  （E1 无容差——0.1+0.2 != 0.3 有锚）；③ **Q 族回绕与 i32 族分口径**
+  （AddQ/SubQ/MulQ wrapping 不 trap；DivQ/ModQ/NegQ 的 LLONG_MIN/-1
+  拦截照搬）；④ do_call 四重栈溢出防护（深度限/栈顶/保留区/堆碰撞）+
+  参数逆序落局部区 + 变参 64B 预留清零边界；⑤ **宿主回调哨兵 Ret**
+  （return_ip None → 恢复栈顶 + 压返回值 + Finished——qsort/bsearch
+  协议 VM 侧形态）；⑥ CallHost 分发随批三号（臂内 fail loud 带 host id）；
+  ⑦ **新设计红利落账**：Rust 每次 Call/Ret 的 `rebuild_local_sym_map`
+  全量重建（坑 12 热点）在派生索引形态下**零调用**；Rust 的 meta clone
+  借用规避形态亦消失。fail loud 剩余面收缩至：CallHost + C# 三件。
+  vm 34 → 45 测试（+11：F 族位模式与除零/D 族常量池与 IEEE 比较
+  〔0.1+0.2!=0.3〕/Q 族回绕与 LLONG_MIN 防护/Cast 饱和 ×3 形态/
+  Call-Ret 往返/JumpIfZero 循环/深度限/CallPtr/宿主回调哨兵/RetVoid/
+  Jump 越界）。
 - 测试 353 → **365**（vm 10 = wbtest 8〔快照全字段往返 / 快照独立性 / reset
   会话配置保留 / UNWINDING 中间态快照 / register 上限 / 派生索引 / argv 布局 /
   write_cstring 边界〕+ 黑盒 2〔对外面消费面点名〕）。

@@ -7,6 +7,7 @@
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 两侧条目、只能靠注释区分——已随本批消除（同名符号 J9 注入实证分离）。
+
 . vitro/engine/diag ErrorCode
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
@@ -274,12 +275,59 @@ vitro/engine/vm vitro/engine/bytecode Symbol
 vitro/engine/vm vitro/engine/bytecode align4
 vitro/engine/vm vitro/engine/bytecode argv_region_footprint
 vitro/engine/vm vitro/engine/bytecode cstring_bytes
+vitro/engine/vm vitro/engine/host HostMemReply
 vitro/engine/vm vitro/engine/host InputState
+vitro/engine/vm vitro/engine/host OutputKind
 vitro/engine/vm vitro/engine/host OutputLog
 vitro/engine/vm vitro/engine/host RandState
 vitro/engine/vm vitro/engine/host VfsSnapshot
 vitro/engine/vm vitro/engine/host VirtualFileSystem
+vitro/engine/vm vitro/engine/host host_abs
+vitro/engine/vm vitro/engine/host host_acos
+vitro/engine/vm vitro/engine/host host_asin
+vitro/engine/vm vitro/engine/host host_atan
+vitro/engine/vm vitro/engine/host host_atan2
+vitro/engine/vm vitro/engine/host host_calloc
+vitro/engine/vm vitro/engine/host host_ceil
+vitro/engine/vm vitro/engine/host host_clock
+vitro/engine/vm vitro/engine/host host_cos
+vitro/engine/vm vitro/engine/host host_cosh
+vitro/engine/vm vitro/engine/host host_exp
+vitro/engine/vm vitro/engine/host host_fabs
+vitro/engine/vm vitro/engine/host host_floor
+vitro/engine/vm vitro/engine/host host_fmod
+vitro/engine/vm vitro/engine/host host_free
+vitro/engine/vm vitro/engine/host host_isalnum
+vitro/engine/vm vitro/engine/host host_isalpha
+vitro/engine/vm vitro/engine/host host_isblank
+vitro/engine/vm vitro/engine/host host_iscntrl
+vitro/engine/vm vitro/engine/host host_isdigit
+vitro/engine/vm vitro/engine/host host_isgraph
+vitro/engine/vm vitro/engine/host host_islower
+vitro/engine/vm vitro/engine/host host_isprint
+vitro/engine/vm vitro/engine/host host_ispunct
+vitro/engine/vm vitro/engine/host host_isspace
+vitro/engine/vm vitro/engine/host host_isupper
+vitro/engine/vm vitro/engine/host host_isxdigit
+vitro/engine/vm vitro/engine/host host_llabs
+vitro/engine/vm vitro/engine/host host_log
+vitro/engine/vm vitro/engine/host host_log10
+vitro/engine/vm vitro/engine/host host_malloc
+vitro/engine/vm vitro/engine/host host_pow
 vitro/engine/vm vitro/engine/host host_putchar
+vitro/engine/vm vitro/engine/host host_rand
+vitro/engine/vm vitro/engine/host host_realloc
+vitro/engine/vm vitro/engine/host host_round
+vitro/engine/vm vitro/engine/host host_sin
+vitro/engine/vm vitro/engine/host host_sinh
+vitro/engine/vm vitro/engine/host host_sqrt
+vitro/engine/vm vitro/engine/host host_srand
+vitro/engine/vm vitro/engine/host host_tan
+vitro/engine/vm vitro/engine/host host_tanh
+vitro/engine/vm vitro/engine/host host_time
+vitro/engine/vm vitro/engine/host host_tolower
+vitro/engine/vm vitro/engine/host host_toupper
+vitro/engine/vm vitro/engine/host host_unreachable
 vitro/engine/vm vitro/engine/memory AccessKind
 vitro/engine/vm vitro/engine/memory FreedRegionInfo
 vitro/engine/vm vitro/engine/memory MemFault

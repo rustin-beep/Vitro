@@ -12,7 +12,7 @@ test "snapshot_restore_roundtrip_all_state" {
     locals_base: 0x100U,
     local_count: 3,
     func_name: "cmp",
-    original_stack_top: 1,
+    original_stack_top: 1U,
     caller_line: 7,
     local_buffers: [
       @bytecode.LocalBuffer::{ offset: 4, size: 16, name: "buf", },

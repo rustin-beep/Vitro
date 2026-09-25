@@ -50,7 +50,7 @@ pub(all) struct CallFrame {
   /// 函数名（trap 文案 / 教学调用栈展示）。
   func_name : String
   /// 调用前值栈深度（返回时截回）。
-  original_stack_top : Int
+  original_stack_top : UInt
   /// 调用者行号（教学调用栈展示）。
   caller_line : Int
   /// 栈上局部数组缓冲区表（V-P1-6 栈缓冲容量校验；随函数 meta 克隆进帧）。

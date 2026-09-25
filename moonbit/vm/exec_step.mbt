@@ -11,9 +11,9 @@
 /// - 错误协议照搬：族函数写 `error` 字段，dispatch 尾判非空转 `Trap`
 ///   （首错优先）。
 ///
-/// 段二待接线（本批 fail loud 到达即 trap）：F/D/Q 浮点三族、控制流族
-/// （Jump/Call/CallPtr/CallVar/CallHost/Ret）、C# 异常三件（TryBegin/
-/// TryEnd/Throw——CS 批语义）。
+/// 段二已接线：F/D/Q 三族 + 控制流族（Call/CallPtr/CallVar/Ret 的完整
+/// 调用协议 + do_call 四重栈溢出防护）。fail loud 剩余面：CallHost 的
+/// host 分发（批三号——110 路由 host 侧已就绪）与 C# 异常三件（CS 批）。
 
 ///|
 /// 执行单条指令（Rust `step`，`executor/mod.rs:255-355` 砍 JIT 段）。
@@ -181,7 +181,7 @@ fn VitroVM::dispatch_single(
     | ShlQ
     | ShrQ
     | LShrQ => self.execute_bitwise(op, operand, line, column)
-    // ── F/D/Q 浮点与长整型族（段二接线，本批 fail loud）──
+    // ── F（f32）族 ──
     PushConstF
     | AddF
     | SubF
@@ -195,8 +195,9 @@ fn VitroVM::dispatch_single(
     | LtF
     | LeF
     | GtF
-    | GeF
-    | PushConstD
+    | GeF => self.execute_float(op, operand, line, column)
+    // ── D（f64）族 ──
+    PushConstD
     | AddD
     | SubD
     | MulD
@@ -211,8 +212,9 @@ fn VitroVM::dispatch_single(
     | LtD
     | LeD
     | GtD
-    | GeD
-    | PushConstQ
+    | GeD => self.execute_double(op, operand, line, column)
+    // ── Q（i64）族 ──
+    PushConstQ
     | AddQ
     | SubQ
     | MulQ
@@ -228,13 +230,8 @@ fn VitroVM::dispatch_single(
     | LtQ
     | LeQ
     | GtQ
-    | GeQ =>
-      self.trap(
-        "执行器批二段二待接线：浮点/长整型族（\{op.name()}）——F/D/Q 三族随 float 批落地",
-        line,
-        column,
-      )
-    // ── 控制流族（段二接线，本批 fail loud）──
+    | GeQ => self.execute_longlong(op, operand, line, column)
+    // ── 控制流族（CallHost 的 host 分发随批三号——其臂内 fail loud）──
     Jump
     | JumpIfZero
     | JumpIfNotZero
@@ -243,12 +240,7 @@ fn VitroVM::dispatch_single(
     | CallPtr
     | CallHost
     | Ret
-    | RetVoid =>
-      self.trap(
-        "执行器批二段二待接线：控制流族（\{op.name()}）——Jump/Call/Ret 随 control 批落地",
-        line,
-        column,
-      )
+    | RetVoid => return self.execute_control_flow(op, operand, line, column)
     // ── C# 异常三件（CS 批语义；C 前端零发射）──
     TryBegin | TryEnd | Throw =>
       self.trap(

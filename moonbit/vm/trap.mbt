@@ -34,6 +34,16 @@ fn VitroVM::push(self : VitroVM, val : UInt64) -> Unit {
 }
 
 ///|
+/// **i32 结果符号扩展压栈**（oracle `x as u64` 语义——Rust 从 i32 到 u64
+/// 的 `as` 是符号扩展；MoonBit `Int` 是 32 位，`reinterpret_as_uint().
+/// to_uint64()` 是零扩展，负值时位模式分叉〔审阅 P1-1 实锤：PushConst(-1)
+/// 落栈 0xFFFFFFFFFFFFFFFF vs 0x00000000FFFFFFFF〕）。所有「i32 语义值压栈」
+/// 的臂一律走本入口；u32 语义值（地址/无符号结果）仍 `push` 直压。
+fn VitroVM::push_i32(self : VitroVM, v : Int) -> Unit {
+  self.push(v.to_int64().reinterpret_as_uint64())
+}
+
+///|
 /// trap 首错单点：`error` 已非空时不再覆盖（首错优先——后续连锁错误不
 /// 冲掉根因）；行号非正时回退 `current_line`（Rust `trap.rs:145-156`）。
 fn VitroVM::trap(
@@ -94,7 +104,7 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
       base = self.call_stack[self.call_stack.length() - 1].locals_base +
         sym.addr
     }
-    let elem_size = self.elem_size_of(sym.ty)
+    let elem_size = elem_size_of(sym.ty)
     let size = (sym.ty.array_size().to_uint64() * elem_size.to_uint64()).to_uint()
     let dist : Int = if addr >= base && addr < base + size {
       0
@@ -112,7 +122,7 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
   }
   match best {
     Some((sym, base)) => {
-      let elem_size = self.elem_size_of(sym.ty)
+      let elem_size = elem_size_of(sym.ty)
       let index = ((addr.to_int64() - base.to_int64()) / elem_size.to_int64()).to_int()
       "🚫 数组越界：你访问了 " +
       sym.name +
@@ -145,7 +155,7 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
 /// 数组元素步长（base_kind 单源：Char=1 / Double=8 / 其余 4——Rust
 /// `format_bounds_error` 内两处 match 的合并；Float 族走 f32 但 base_kind
 /// 落 TK_Float → 4，与 Rust `_ => 4` 同口径）。
-fn VitroVM::elem_size_of(self : VitroVM, ty : @ast.Type) -> Int {
+fn elem_size_of(ty : @ast.Type) -> Int {
   match ty.base_kind() {
     TK_Char => 1
     TK_Double => 8

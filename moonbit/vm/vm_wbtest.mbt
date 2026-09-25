@@ -275,7 +275,7 @@ test "set_symbols_builds_derived_index" {
   assert_eq(vm.global_syms.get(0x1000), Some("g"))
   // 装载是单点重建（重复 set 覆盖旧表）
   vm.set_symbols([])
-  assert_eq(vm.locals_by_func.size(), 0)
+  assert_eq(vm.locals_by_func.length(), 0)
 }
 
 ///|

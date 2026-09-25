@@ -116,7 +116,10 @@ pub fn MemoryMap::load(self : MemoryMap, snap : MemorySnapshot) -> Unit {
   self.heap_base = snap.heap_base
   self.heap_offset = snap.heap_offset
   self.alloc_counter = snap.alloc_counter
-  self.freed_logs.load_entries(snap.freed)
+  match self.freed_logs.load_entries(snap.freed) {
+    Ok(_) => ()
+    Err(msg) => abort("MemoryMap::load: freed_logs 装载违约——" + msg)
+  }
   match self.verify() {
     Ok(_) => ()
     Err(msg) => abort("MemoryMap::load: 快照不变量违例——\{msg}")
@@ -127,20 +130,26 @@ pub fn MemoryMap::load(self : MemoryMap, snap : MemorySnapshot) -> Unit {
 /// freed_logs 批量装载：以升序数组**整体替换**登记表（快照恢复单点）。
 ///
 /// 要求 `items` 按 `addr` 严格升序且互不重叠（快照侧保证；violation 是
-/// 调用方 bug）——灌入后直接是二分查找的合法形态，无需重排。
+/// 调用方 bug）——灌入后直接是二分查找的合法形态，无需重排。乱序/重复
+/// 返回 `Err`（**可判定**——审阅 P3-1：契约违约有判定力；`load` 侧收到
+/// Err 后 abort，fail loud 不变而测试可断言）。
 pub fn FreedLogs::load_entries(
   self : FreedLogs,
   items : Array[FreedRegionInfo],
-) -> Unit {
+) -> Result[Unit, String] {
   let mut prev_addr : UInt = 0
   let mut first = true
   for item in items {
-    // fail loud：升序契约违反即中止（乱序灌入会让二分静默漏检 UAF）
+    // 升序契约校验（乱序灌入会让二分静默漏检 UAF）
     if first {
       first = false
     } else if item.addr <= prev_addr {
-      abort(
-        "FreedLogs::load_entries: 乱序或重复 addr（\{item.addr} <= \{prev_addr}）——快照数据损坏",
+      return Err(
+        "乱序或重复 addr（" +
+        item.addr.to_string() +
+        " <= " +
+        prev_addr.to_string() +
+        "）——快照数据损坏",
       )
     }
     prev_addr = item.addr
@@ -156,4 +165,5 @@ pub fn FreedLogs::load_entries(
       freed_step: item.freed_step,
     })
   }
+  Ok(())
 }

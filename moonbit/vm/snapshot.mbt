@@ -125,7 +125,7 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
       context: e.context,
     })
   }
-  let bps : Array[Int] = Array(capacity=self.breakpoints.size())
+  let bps : Array[Int] = Array(capacity=self.breakpoints.length())
   for bp in self.breakpoints {
     bps.push(bp)
   }

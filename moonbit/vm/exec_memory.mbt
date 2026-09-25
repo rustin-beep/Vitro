@@ -35,7 +35,8 @@ fn VitroVM::execute_memory(
     LoadMem => {
       let addr = self.pop_addr()
       let val = self.vm_load_u32(addr, line, column)
-      self.push(val.to_uint64())
+      // i32 语义值符号扩展压栈（二轮审阅补漏：LoadMem 与 LoadLocal 同型）
+      self.push_i32(val.reinterpret_as_int())
     }
     StoreMem => {
       let val = self.pop_i32()
@@ -55,7 +56,8 @@ fn VitroVM::execute_memory(
     LoadMemByte => {
       let addr = self.pop_addr()
       let val = self.vm_load_i8(addr, line, column)
-      self.push(val.reinterpret_as_uint().to_uint64())
+      // load_i8 已符号扩展到 i32（Rust as i8 as i32）；压栈再符号扩展
+      self.push_i32(val)
     }
     StoreMemByte => {
       let val = self.pop_i32()
@@ -64,10 +66,12 @@ fn VitroVM::execute_memory(
     }
     SplitD | SplitQ => {
       let val = self.pop()
+      // 两个半字各按 i32 语义符号扩展压栈（oracle (... & 0xFFFFFFFF) as i32
+      // 再 as u64——审阅 P1-1：SplitQ(-1) 两侧应落两个全 1 的 u64）
       let low = val.to_uint()
       let high = (val >> 32).to_uint()
-      self.push(low.to_uint64())
-      self.push(high.to_uint64())
+      self.push_i32(low.reinterpret_as_int())
+      self.push_i32(high.reinterpret_as_int())
     }
     StackAlloc => {
       let size = self.pop_i32()
@@ -110,8 +114,9 @@ fn VitroVM::execute_memory(
         Ok(_) => ()
       }
       // 段级受检 copy（重叠安全：memory.copy 走临时缓冲的 memmove 语义）。
-      // n 的软截断照搬（copy_len = min(n, 余量)）——但上界已在 check 拦截，
-      // 实际不会触达；保守保留 Result 通道。
+      // 与 oracle 的差异（诚实登记，审阅 P3-3）：oracle check 后仍有
+      // copy_len = min(n, 余量) 软截断；本实现 check 即终判、无截断路径
+      // （越界在 check_access 已 Err，实测 fill/copy 边界点全拦）。
       match self.memory.copy(self.mem_map, dest, src, n) {
         Ok(_) => ()
         Err(f) => self.render_mem_fault(f, line, column)

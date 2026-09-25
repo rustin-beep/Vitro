@@ -304,3 +304,179 @@ test "exec_unwired_opcodes_fail_loud" {
   assert_true(r3 is Trap)
   assert_true(vm3.error.contains("C# 异常指令被执行（Throw）"))
 }
+
+///|
+/// **P1-1 符号扩展锚（审阅修复批）**：PushConst(-1) 落栈必须是
+/// 0xFFFFFFFFFFFFFFFF（oracle `as u64` 符号扩展；修复前本实现零扩展落
+/// 0x00000000FFFFFFFF）。栈顶原始索引进 TrapBounds 的负索引分支——
+/// 诊断文案必须给「索引 -1」而非「索引 4294967295」。
+test "exec_push_const_negative_sign_extension" {
+  let vm = VitroVM::new()
+  vm.load_program(code_of([instr(PushConst, -1)]))
+  ignore(vm.step())
+  assert_eq(vm.stack[0], 18446744073709551615UL)
+}
+
+///|
+/// P1-1 文案锚：负索引经 TrapBounds 字面量形态（operand=-4 → size 4）
+/// 诊断「索引 -1 超出了合法范围 0~3」（栈上符号扩展位模式 → i64 解释 -1）。
+test "exec_trap_bounds_negative_index_diag" {
+  let vm = VitroVM::new()
+  vm.load_program(code_of([instr(PushConst, -1), instr(TrapBounds, -4)]))
+  ignore(vm.step())
+  let r = vm.step()
+  assert_true(r is Trap)
+  assert_true(
+    vm.error.contains(
+      "🚫 数组越界：索引 -1 超出了合法范围 0~3。",
+    ),
+  )
+}
+
+///|
+/// P1-1 位模式锚：SplitQ 拆 -1 的两个半字均符号扩展（oracle 同形——
+/// 修复前零扩展落 0x00000000FFFFFFFF ×2）。
+test "exec_split_q_negative_halves_sign_extended" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([
+      instr(PushConstQ, 0), // 占位（PushConstQ 段二接线——改用直接压栈形态）
+    ]),
+  )
+  // 直接压 -1 再 SplitQ（绕过未接线的常量池指令）
+  vm.stack.clear()
+  vm.stack.push(18446744073709551615UL)
+  vm.ip = 0
+  vm.load_program(code_of([instr(SplitQ, 0)]))
+  let r = vm.step()
+  assert_true(r is Ok)
+  assert_eq(vm.stack.length(), 2)
+  assert_eq(vm.stack[0], 18446744073709551615UL)
+  assert_eq(vm.stack[1], 18446744073709551615UL)
+}
+
+///|
+/// Neg 溢出拦截锚（P3-2 补锚：修复前该分支无测试覆盖）。
+test "exec_neg_overflow_traps" {
+  let vm = VitroVM::new()
+  vm.load_program(code_of([instr(PushConst, -2147483648), instr(Neg, 0)]))
+  ignore(vm.step())
+  let r = vm.step()
+  assert_true(r is Trap)
+  assert_true(vm.error.contains("整数取反溢出。-INT_MIN"))
+}
+
+///|
+/// 局部访存上下界预检锚（P3-2 补锚）：operand 使地址越过 NULL 陷阱区 /
+/// 上界 → 「LoadLocal: 地址越界」预检文案（非 MemFault 渲染路径）。
+test "exec_local_bounds_precheck_traps" {
+  // 下界：locals_base(0x8000) + operand(-0x8000) = 0 → NULL 区
+  let vm = VitroVM::new()
+  vm.call_stack.push(CallFrame::{
+    return_ip: Some(0),
+    locals_base: 0x8000U,
+    local_count: 1,
+    func_name: "main",
+    original_stack_top: 0,
+    caller_line: 0,
+    local_buffers: [],
+  })
+  vm.load_program(code_of([instr(LoadLocal, -32768)]))
+  let r = vm.step()
+  assert_true(r is Trap)
+  assert_true(vm.error.contains("LoadLocal: 地址越界"))
+  // 上界：locals_base(0xFFFF0) + operand(0x20) 越过 MEM_SIZE
+  let vm2 = VitroVM::new()
+  vm2.call_stack.push(CallFrame::{
+    return_ip: Some(0),
+    locals_base: 0xFFFF0U,
+    local_count: 1,
+    func_name: "main",
+    original_stack_top: 0,
+    caller_line: 0,
+    local_buffers: [],
+  })
+  vm2.load_program(code_of([instr(StoreLocalD, 32)]))
+  let r2 = vm2.step()
+  assert_true(r2 is Trap)
+  assert_true(vm2.error.contains("StoreLocalD: 地址越界"))
+}
+
+///|
+/// UAdd 负值符号扩展锚：UAdd(-1, -1) = -2（回绕）→ 落栈 0xFFFF...FF
+/// 的 i64 位形（修复前零扩展落 0x00000000FFFFFFFE）。
+test "exec_uadd_negative_sign_extension" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([instr(PushConst, -1), instr(PushConst, -1), instr(UAdd, 0)]),
+  )
+  let _ = vm.run()
+  assert_eq(vm.stack[0], 18446744073709551614UL) // -2 符号扩展
+}
+
+///|
+/// BitAnd 负结果符号扩展锚：-1 & 0xFFFFFFF0 = 0xFFFFFFF0（负）→ 落栈
+/// 0xFFFFFFFFFFFFFFF0（修复前零扩展落 0x00000000FFFFFFF0）。
+test "exec_bitand_negative_result_sign_extended" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([instr(PushConst, -1), instr(PushConst, -16), instr(BitAnd, 0)]),
+  )
+  let _ = vm.run()
+  assert_eq(vm.stack[0], 18446744073709551600UL) // 0xFFFF...FFF0
+}
+
+///|
+/// 二轮审阅补漏锚：LoadMem 负值符号扩展（与 LoadLocal 同型——修复前
+/// 零扩展落 4294967295）。种子经 StoreMem 写 -1 再 LoadMem 读回。
+test "exec_loadmem_negative_sign_extension" {
+  let vm = VitroVM::new()
+  // 堆区直接写 -1（绕过未接线的 host malloc——受检直写 0x6000）
+  guard vm.memory.store_u32(vm.mem_map, 0x6000U, 0xFFFFFFFFU) is Ok(_) else {
+    fail("种子写入必须成功")
+  }
+  vm.load_program(code_of([instr(PushConst, 0x6000), instr(LoadMem, 0)]))
+  let r = vm.run()
+  assert_eq(r, -1) // run 返回低 32 位符号解释
+  assert_eq(vm.stack[0], 18446744073709551615UL) // 栈上位模式 = 符号扩展
+}
+
+///|
+/// 二轮审阅补漏锚（**可达文案分叉**）：LoadMem 读出 -1 → TrapBounds(-4)
+/// 诊断必须给「索引 -1」（a[*p] 形状——修复前给「索引 4294967295」）。
+test "exec_loadmem_trap_bounds_negative_diag" {
+  let vm = VitroVM::new()
+  guard vm.memory.store_u32(vm.mem_map, 0x6000U, 0xFFFFFFFFU) is Ok(_) else {
+    fail("种子写入必须成功")
+  }
+  vm.load_program(
+    code_of([instr(PushConst, 0x6000), instr(LoadMem, 0), instr(TrapBounds, -4)]),
+  )
+  ignore(vm.step())
+  ignore(vm.step())
+  let r = vm.step()
+  assert_true(r is Trap)
+  assert_true(
+    vm.error.contains(
+      "🚫 数组越界：索引 -1 超出了合法范围 0~3。",
+    ),
+  )
+}
+
+///|
+/// 二轮审阅补漏锚：Div/Mod 负商/负余数符号扩展（-7/2 = -3、-7%2 = -1；
+/// 修复前零扩展落 4294967293 / 4294967295）。
+test "exec_div_mod_negative_sign_extension" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([instr(PushConst, -7), instr(PushConst, 2), instr(Div, 0)]),
+  )
+  let _ = vm.run()
+  assert_eq(vm.stack[0], 18446744073709551613UL) // -3 符号扩展
+  let vm2 = VitroVM::new()
+  vm2.load_program(
+    code_of([instr(PushConst, -7), instr(PushConst, 2), instr(Mod, 0)]),
+  )
+  let _ = vm2.run()
+  assert_eq(vm2.stack[0], 18446744073709551615UL) // -1 符号扩展
+}

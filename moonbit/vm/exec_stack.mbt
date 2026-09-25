@@ -16,8 +16,8 @@ fn VitroVM::execute_stack(
   column : Int,
 ) -> Unit {
   match op {
-    PushConst => self.push(operand.reinterpret_as_uint().to_uint64())
-    PushArgc => self.push(self.argc.reinterpret_as_uint().to_uint64())
+    PushConst => self.push_i32(operand)
+    PushArgc => self.push_i32(self.argc)
     PushArgv => self.push(self.argv_addr.to_uint64())
     Pop => {
       let _ = self.pop()
@@ -93,7 +93,7 @@ fn VitroVM::execute_local(
           self.trap("LoadLocal: 地址越界", line, column)
         } else {
           let val = self.vm_load_u32(addr, line, column)
-          self.push(val.to_uint64())
+          self.push_i32(val.reinterpret_as_int())
         }
       } else {
         self.trap("LoadLocal: 无调用帧", line, column)
@@ -181,7 +181,7 @@ fn VitroVM::execute_global(
         self.trap("LoadGlobal: 地址越界", line, column)
       } else {
         let val = self.vm_load_u32(addr, line, column)
-        self.push(val.to_uint64())
+        self.push_i32(val.reinterpret_as_int())
       }
     }
     StoreGlobal => {

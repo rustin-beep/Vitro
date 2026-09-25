@@ -47,6 +47,7 @@ test "vm_public_surface_smoke" {
   assert_eq(@vm.MAX_STACK_DEPTH, 10_000)
   assert_eq(@vm.DEFAULT_MAX_STEPS, 10_000_000)
   assert_eq(@vm.VIS_EVENT_LIMIT, 1024)
+  assert_eq(@vm.SNAPSHOT_INTERVAL, 100_000)
 }
 
 ///|

@@ -873,34 +873,75 @@ test "snapshot_load_roundtrip_restores_all_metadata" {
 }
 
 ///|
-/// load_entries 乱序 fail loud（J9 红锚形状）：灌入降序数组必须当场 abort
-/// ——乱序数据会让二分静默漏检 UAF，宁可炸不可带病运行。
-/// （abort 不可捕获，本用例以「乱序输入构造 + 文档化中止行为」登记；
-/// 真实 J9 注入由 CI 突变批执行。）
+/// load_entries 契约锚（P3-1 修复后可判定）：升序合法灌入 Ok 且内容就位；
+/// 降序 / 等键重复均 Err（乱序数据会让二分静默漏检 UAF——契约违约必须有
+/// 判定力，不再依赖不可捕获的 abort；先校验后装载，违约不清空旧内容）。
 test "load_entries_rejects_out_of_order" {
   let logs = FreedLogs::new()
-  // 升序合法灌入
-  logs.load_entries([
-    FreedRegionInfo::{
-      addr: 0x100U,
-      size: 16,
-      alloc_line: 1,
-      freed_line: 2,
-      alloc_step: 3,
-      freed_step: 4,
-    },
-    FreedRegionInfo::{
-      addr: 0x200U,
-      size: 16,
-      alloc_line: 1,
-      freed_line: 2,
-      alloc_step: 3,
-      freed_step: 5,
-    },
-  ])
+  guard logs.load_entries([
+      FreedRegionInfo::{
+        addr: 0x100U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 4,
+      },
+      FreedRegionInfo::{
+        addr: 0x200U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 5,
+      },
+    ])
+    is Ok(_) else {
+    fail("升序灌入必须 Ok")
+  }
   assert_eq(logs.length(), 2)
-  // 等键重复同样违约（addr 是严格升序键）
-  // 注：降序/重复输入的实际 abort 行为不在测试内触发（不可捕获），
-  // 契约由源码 fail loud 分支 + CI 突变批守护。
   assert_true(logs.contains(0x100U))
+  guard logs.load_entries([
+      FreedRegionInfo::{
+        addr: 0x300U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 6,
+      },
+      FreedRegionInfo::{
+        addr: 0x100U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 7,
+      },
+    ])
+    is Err(_) else {
+    fail("降序必须 Err")
+  }
+  assert_eq(logs.length(), 2)
+  guard logs.load_entries([
+      FreedRegionInfo::{
+        addr: 0x100U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 4,
+      },
+      FreedRegionInfo::{
+        addr: 0x100U,
+        size: 16,
+        alloc_line: 1,
+        freed_line: 2,
+        alloc_step: 3,
+        freed_step: 5,
+      },
+    ])
+    is Err(_) else {
+    fail("等键重复必须 Err")
+  }
 }

@@ -45,7 +45,7 @@ pub fn FreedLogs::get(Self, UInt) -> FreedRegionInfo?
 pub fn FreedLogs::insert(Self, FreedRegionInfo) -> Unit
 pub fn FreedLogs::is_empty(Self) -> Bool
 pub fn FreedLogs::length(Self) -> Int
-pub fn FreedLogs::load_entries(Self, Array[FreedRegionInfo]) -> Unit
+pub fn FreedLogs::load_entries(Self, Array[FreedRegionInfo]) -> Result[Unit, String]
 pub fn FreedLogs::new() -> Self
 pub fn FreedLogs::remove_overlapping(Self, UInt, UInt) -> Unit
 pub fn FreedLogs::to_array(Self) -> Array[FreedRegionInfo]

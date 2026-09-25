@@ -95,7 +95,7 @@ vitro 引擎核心（Rust workspace，禁止平台 API 耦合）
 
 - **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → **0.5.0**（2026-09-23，parser 随架）
 - **已收官片**（2026-09-19~21 各片收官时点数字）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）
-- **进行中**：S6 memory + host 建包推进（110 路由 host handler 已接线 **101**——余控制流/回调族 9 随 vm 片；含 VFS 17 件；`moon test` **353 用例**全绿 + 十一闸绿）；下一片 = vm，其后 S7 协议/会话、S8 教学智能、S9 裁定批
+- **进行中**：S6 memory + host 已落（110 路由余控制流/回调族 9 随 vm 片）+ **vm 片推进中**（批一号状态定形 + 批二段一 executor 骨架已落——opcode 135〔C# 异常三件进空号〕/ VMSnapshot 定形 / 八族 + trap 渲染单点；余 F/D/Q 三族与控制流族）；`moon test` **389 用例**全绿 + 十三闸绿；其后 S7 协议/会话、S8 教学智能、S9 裁定批
 - 进度与里程碑验收锚：[MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md) §10
 
 > 失败与差异一律如实记录在各 `*_FAILURES.md`（见下文"测试防线"），禁止通过修改测试预期值粉饰数据。

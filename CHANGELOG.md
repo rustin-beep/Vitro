@@ -8,6 +8,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+### Fixed（用户审阅修复批两轮：P1×2 + P2×2 + P3 全销项 + 二轮补漏，2026-09-26）
+
+用户 blob 级审阅（97fa5d1，两侧直驱指令序列 + 587 语料 opcode 直方图 +
+6 点突变注入实测）后逐条亲证修复。
+
+- **P1 i32→u64 压栈符号扩展**：MoonBit `Int` 32 位下
+  `reinterpret_as_uint().to_uint64()` 是**零扩展**，oracle `x as u64` 是
+  **符号扩展**——PushConst(-1) 落栈 0x00000000FFFFFFFF vs 0xFFFFFFFFFFFFFFFF
+  （两侧直驱实锤）。新增 `push_i32` 单入口（`to_int64().reinterpret_as_
+  uint64()`）收口 i32 语义压栈臂——一轮修 16 处（PushConst/PushArgc/
+  LoadLocal/LoadGlobal/LoadMemByte/UAdd/USub/UMul/Neg/BitAnd/Or/Xor/
+  Not/Shl/Shr/SplitD 与 SplitQ 两半字），**二轮审阅按「全部 push 站点 ×
+  oracle 逐点比」抓漏 3 处同类补齐：LoadMem/Div/Mod（LoadMem→TrapBounds
+  的负索引文案分叉与已修项同型可达）**；u32 语义值（地址/无符号结果）
+  维持零扩展直压（LShr/LShrQ/UDiv/UMod/UNeg/Memcpy/StackAlloc/
+  GetFrameBase/PushArgv 逐点核对确认本就该零扩展）。锚 10 条：一轮 7
+  （PushConst(-1) 位模式 / TrapBounds(-4) 负索引文案「索引 -1」/ SplitQ(-1)
+  两半字全 1 / UAdd(-1,-1) / BitAnd 负结果 / Neg 溢出 / 局部访存上下界
+  预检）+ 二轮 3（LoadMem 负值位模式 / **LoadMem→TrapBounds(-4) 文案锚**
+  / Div·Mod 负商负余数）。
+- **P1 面闸漏收**：`SNAPSHOT_INTERVAL` 未在 `vm_test.mbt` 点名（moon info
+  刷新 mbti 后闸红——「十三闸全绿」的提交声明不实，教训：moon info 后
+  必须复跑 surface）。已补点名，闸绿亲证。
+- **P2 facts 连坐缺口**：README.mbt.md 测试数漏更（353 停留）+
+  `facts --run` 重采（moonbit_test_passed 386/ok——「cached 真值与过期文档
+  互相对上」的假绿形态）。
+- **P2 reset 不清 vis_event_lines**：oracle `state.rs:201` 有 clear——
+  补齐并写进 reset 注释清单（session 复用 VM 不按旧行号表产事件）。
+- **P3 load_entries 判定力**：abort 不可捕获 → 改 `Result[Unit, String]`
+  （load 侧 Err→abort 保持 fail loud），测试补降序/等键重复 Err 断言
+  （先校验后装载，违约不清空旧内容）。
+- **P3 注释不实**：Memcpy 的「软截断照搬」改为诚实登记差异（本实现
+  check 即终判、无截断路径）；**P3 告警**：`elem_size_of` 去 unused self、
+  `size()`→`length()` 弃用清零（vm 包新增告警归零；`vm/moon.pkg` 的
+  `unused_package: source` 保留——wbtest 依赖 main import 块可见性，
+  陷阱 #26，挪 for-test 会破坏 wbtest）。
+- **P4**：surface_edges.txt 无信息空行清理。
+- **二轮补漏（2026-09-26）**：① P1-1 残留 3 处（LoadMem/Div/Mod——
+  见上）+ 3 锚；② `353 用例` 散文第二层残留三处连坐（仓库根 README「进行中」
+  段 + 项目路线图 §16/§21——含状态刷新为 vm 片推进中）；③ surface_edges.txt
+  字节级（数据区前空行删除 + EOF 换行补回）+ `moonbit_surface.go` 头注与
+  批一段实现口径的自相矛盾句修正（「包内不自引用故 grep 天然等于跨包」→
+  按文件归属包甄别）。二轮同时撤回一轮 P2-1（复核确认自引用算消费是批一段
+  明文口径，非本批破坏）。
+- **P2 复核结论（未改，登记）**：审阅指「面闸 used 不判跨包使自引用免收
+  面、设计前提被本批破坏」——经核，批一段口径文档（2026-09-23）明文
+  「黑盒测试 = main ∪ for-test ∪ 自引用（被测包按末段别名隐式 import）」
+  「普通源码/wbtest 自引用按自消费归账，保持旧口径」：自引用算消费是
+  **既定设计**而非本批破坏，且 P1-2 本身证明闸有效（点名免收、漏点名
+  即抓——host 106 测试的 @host. 点名是同款先例）。若改判跨包属面闸口径
+  变更，走独立裁定批。
+
 ### Added（S6 vm 批一号——vm 状态定形，2026-09-25）
 
 - **vitro/engine/vm 建包**（状态定形批；executor 穷尽 match 随批二号）：

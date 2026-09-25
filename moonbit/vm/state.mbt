@@ -218,6 +218,9 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   self.argc = 0
   self.argv_addr = 0U
   self.vis_event_queue.clear()
+  // vis_event_lines 同清（oracle state.rs:201 有 clear——审阅 P2-3：注入
+  // 配置随 reset 卸载，session 复用 VM 时不按旧行号表产事件）
+  self.vis_event_lines.clear()
   self.breakpoints.clear()
   self.last_accessed_vars.clear()
   self.heatmap.clear()

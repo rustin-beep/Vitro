@@ -84,7 +84,7 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 ## 验证
 
 ```bash
-moon check && moon test    # 379 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 106 / vm 24；分解和 373 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 29 / host 106 各含 2 个包 README doc test（2026-09-23 补指引批：三包 README.mbt.md 可执行快速上手）；memory 29 = 白盒 21 + 黑盒 6 + doc test 2（批一号 29→31：MemorySnapshot dump/load 对偶 + load_entries 乱序契约锚）；host 106 = 白盒 96 + 黑盒 8 + doc test 2；vm 24 = wbtest 22（批一号快照 8 + 批二段一 executor 14：溢出 trap / U 族回绕 / 除零文案 / MIN%-1 / 局部全局往返 / 断点暂停 + vis 环形 / TrapBounds 数组诊断 / max_steps 保险丝 / 栈下溢 / Memcpy-Memset 弹参序 / 段二 fail loud）+ 黑盒 2（对外面消费面点名）（内存族 28 + 余量批一/二/三号 + 审阅修复批 P1/P2 锚：powi 633 点对拍/%% 语义/memchr——值锚取 oracle release 实测；黑盒承担对外面消费面点名）；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 389 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 106 / vm 34；分解和 383 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host/vm 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 31 / host 106 各含 2 个包 README doc test（2026-09-23 补指引批）；memory 31 = 白盒 23 + 黑盒 6 + doc test 2；host 106 = 白盒 96 + 黑盒 8 + doc test 2（黑盒承担对外面消费面点名）；vm 34 = 快照 wbtest 8 + executor wbtest 24（八族 + 审阅修复批 P1-1 符号扩展锚×3/P3-2 补锚 Neg 溢出/边界预检）+ 黑盒 2；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

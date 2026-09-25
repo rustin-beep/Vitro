@@ -31,7 +31,7 @@ fn VitroVM::execute_arithmetic(
     UAdd => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a + b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a + b)
     }
     Sub => {
       let b = self.pop_i32()
@@ -49,7 +49,7 @@ fn VitroVM::execute_arithmetic(
     USub => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a - b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a - b)
     }
     Mul => {
       let b = self.pop_i32()
@@ -67,7 +67,7 @@ fn VitroVM::execute_arithmetic(
     UMul => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a * b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a * b)
     }
     Div => {
       let b = self.pop_i32()
@@ -81,7 +81,7 @@ fn VitroVM::execute_arithmetic(
           line, column,
         )
       } else {
-        self.push((a / b).reinterpret_as_uint().to_uint64())
+        self.push_i32(a / b)
       }
     }
     UDiv => {
@@ -107,7 +107,7 @@ fn VitroVM::execute_arithmetic(
           line, column,
         )
       } else {
-        self.push((a % b).reinterpret_as_uint().to_uint64())
+        self.push_i32(a % b)
       }
     }
     UMod => {
@@ -128,7 +128,7 @@ fn VitroVM::execute_arithmetic(
           line, column,
         )
       } else {
-        self.push((-a).reinterpret_as_uint().to_uint64())
+        self.push_i32(-a)
       }
     }
     UNeg => {
@@ -231,21 +231,21 @@ fn VitroVM::execute_bitwise(
     BitAnd => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a & b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a & b)
     }
     BitOr => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a | b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a | b)
     }
     BitXor => {
       let b = self.pop_i32()
       let a = self.pop_i32()
-      self.push((a ^ b).reinterpret_as_uint().to_uint64())
+      self.push_i32(a ^ b)
     }
     BitNot => {
       let a = self.pop_i32()
-      self.push((a ^ -1).reinterpret_as_uint().to_uint64())
+      self.push_i32(a ^ -1)
     }
     Shl => {
       let b = self.pop_i32()
@@ -257,7 +257,7 @@ fn VitroVM::execute_bitwise(
           column,
         )
       } else {
-        self.push((a << b).reinterpret_as_uint().to_uint64())
+        self.push_i32(a << b)
       }
     }
     Shr => {
@@ -270,7 +270,7 @@ fn VitroVM::execute_bitwise(
           column,
         )
       } else {
-        self.push((a >> b).reinterpret_as_uint().to_uint64())
+        self.push_i32(a >> b)
       }
     }
     LShr => {

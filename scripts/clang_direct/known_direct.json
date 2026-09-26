@@ -27,6 +27,6 @@
   {
     "case": "file_fopen.c",
     "digest": "5d175f95",
-    "reason": "同 file_fread：vfs 预设特有注入（out.txt 写侧——Clang 真实 fs 无此语义，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
+    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
   }
 ]

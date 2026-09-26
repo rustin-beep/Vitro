@@ -462,9 +462,21 @@ func runClangOnce(c caseRef, caseIdx int) *clangResult {
 	var rOut bytes.Buffer
 	runCmd.Stdout = &rOut
 	runCmd.Stderr = &rOut
-	timer := time.AfterFunc(clangRunTimeout, func() { runCmd.Process.Kill() })
+	// P2（2026-09-27 审阅销项）：超时结果**不得当确定性结果**——此前
+	// timer.Kill() 在 Windows 下让 Wait 返回 *ExitError(code=1)，落入
+	// 「确定性结果」分支并 storeCache：CI 上一次负载尖峰即可把该用例的
+	// clang golden 永久毒化（实测 spin.c：首轮 13s 含超时 → DIFF，次轮
+	// 2.56s 直返同结论）。timedOut 标志置位 ⇒ abnormal（不落缓存 + 重试）。
+	timedOut := false
+	timer := time.AfterFunc(clangRunTimeout, func() {
+		timedOut = true
+		runCmd.Process.Kill()
+	})
 	defer timer.Stop()
 	err := runCmd.Run()
+	if timedOut {
+		return &clangResult{compileFail: false, abnormal: true, stdout: rOut.String()}
+	}
 	code := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		code = exitErr.ExitCode()
@@ -621,6 +633,12 @@ func compareDirect(o *clangResult, m *moonResult) []string {
 	}
 	if o.exitCode != m.exitCode {
 		issues = append(issues, fmt.Sprintf("返回码 %d != %d", o.exitCode, m.exitCode))
+	}
+	// P3（2026-09-27 审阅销项）：abnormal 入判定——重试耗尽的异常结果
+	// （stdout "" + exit 0）与「程序本无输出」不可区分，会假 SAME。通道
+	// 直接入 issue 红比论证其不可达便宜（审阅处方）。
+	if o.abnormal {
+		issues = append(issues, "clang 侧结果异常（重试耗尽）——不可采信，请复跑")
 	}
 	// 正向证据（P2-4）：runner 真跑了全链 ⇒ 映像恰 1MB。静默 exe / 假 runner
 	// 在此红（实测：cmd/run 换 return-0 stub 时本条必红）。

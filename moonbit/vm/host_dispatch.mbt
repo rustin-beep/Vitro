@@ -27,8 +27,15 @@
 ///|
 /// `HostMemReply` 三态消费单点：trap → 首错写入（空 loc 回退
 /// current_line——host 层 trap 全族对齐 oracle 的 default loc）；note →
-/// 输出附注通道（heap_exhausted 去重）；value → 压栈（None 压 0——分配
-/// 失败返回 NULL 的 C 语义）。
+/// 输出附注通道（heap_exhausted 去重）；value → 压栈（**None = 不压**）。
+///
+/// **P1 缺陷修复（2026-09-26，e1_va_copy 批）**：此前 `None => 0UL` 无条件
+/// 压栈——把 `no_reply()`（void host 函数：va_start/va_end/free 等，
+/// oracle 侧 `misc.rs:566/587` 弹参后不 push）也压了一个幽灵 0，每次调用
+/// 泄露一个栈元素；「返回 NULL/0」的 C 语义在 host 包内由
+/// `null_with_note`/`null_silent`（显式 `Some(0)`）表达，不靠 None。
+/// 泄露只在「调用后栈上仍有更早压入元素待读」的嵌套形态暴露
+/// （`printf(..., f(...), f(...))`），裸调用静默无害——30 例抽样零覆盖。
 fn VitroVM::apply_reply(self : VitroVM, reply : @host.HostMemReply) -> Unit {
   match reply.trap {
     // host 层 trap 传空 loc 对齐 oracle（execute_host_func 全族
@@ -50,12 +57,10 @@ fn VitroVM::apply_reply(self : VitroVM, reply : @host.HostMemReply) -> Unit {
       }
     None => ()
   }
-  self.push(
-    match reply.value {
-      Some(v) => v
-      None => 0UL
-    },
-  )
+  match reply.value {
+    Some(v) => self.push(v)
+    None => ()
+  }
 }
 
 ///|

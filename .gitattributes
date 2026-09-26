@@ -14,3 +14,7 @@ moon.pkg text eol=lf
 # + 此处锁 LF 双保险——core.autocrlf checkout 曾致 -check CRLF 假红
 # （2026-09-23，toolchain_probe 假红同款）
 protocol/** text eol=lf
+# CHANGELOG：2026-09-26 六轮审阅 P2-5——第 114 行正文曾落真 NUL（描述
+# NUL 事故时自己带了真字节）使 git 判二进制、diff/审阅不可见；锁 text
+# 显式声明文本属性（NUL 复发时 -text 指纹更易被 source_hygiene 类闸抓住）
+CHANGELOG.md text eol=lf

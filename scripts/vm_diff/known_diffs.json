@@ -1,10 +1,5 @@
 [
   {
-    "case": "e1_va_copy.c",
-    "digest": "327074fa",
-    "reason": "真缺陷已实锤（2026-09-26 首轮全量发现）：变参函数第二次调用起 va_arg 读全零——根因 = apply_reply 对 HostMemReply.value=None 无条件压 0（void host 函数每次调用泄露幽灵栈值）；修复批待落，白名单锁 digest 跟踪"
-  },
-  {
     "case": "engine_note_lookalike.c",
     "digest": "821c46aa",
     "reason": "提取器已知限制（登记不修）：程序输出以「程序运行完成，返回值：」lookalike 开头被 oracle 侧尾注截断逻辑吃光（oracle 空 vs moonbit 全文）；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"

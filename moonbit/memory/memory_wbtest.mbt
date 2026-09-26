@@ -686,11 +686,19 @@ test "carrier_le_roundtrip" {
     Ok(v) => assert_eq(v, 4)
     Err(_) => fail("restore_raw 必须还原")
   }
-  // 长度不符时 restore_raw 不得越界（静默忽略）
-  let short : FixedArray[Byte] = FixedArray::make(16, b'\x00')
+  // 长度不符 → min 部分覆盖（六轮审阅顺带修：照搬 Rust snapshot.rs
+  // `apply_to` Full 分支 `min(v.len, dst.len)`——静默 return 会使快照短于
+  // 载体时恢复悄悄全丢，clone_snapshot_deep 往返正确性隐式依赖长度相等）
+  let short : FixedArray[Byte] = FixedArray::make(8, b'\xCC')
   mem.restore_raw(short)
+  assert_eq(
+    mem.bytes[0],
+    b'\xCC',
+    msg="前缀必须覆盖（min 部分覆盖）",
+  )
+  assert_eq(mem.bytes[8], full[8], msg="超出短映像的部分必须保留")
   match mem.load_i8(map, 0x5000U) {
-    Ok(v) => assert_eq(v, 4, msg="长度不符必须不带副作用")
+    Ok(v) => assert_eq(v, 4, msg="尾部（0x5000）必须不受影响")
     Err(_) => fail("读必须成功")
   }
 }

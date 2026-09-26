@@ -12,12 +12,14 @@
 //	            不会更新（2026-09-26 实测坑）；② moon build 必须在
 //	            moonbit/ 下跑，仓库根会 exit 127 "not in a Moon project"）
 //
-// 新鲜度门禁（2026-09-26 审阅 P1-2）：启动时校验 runner exe 不旧于
-// moonbit/ 下任一 .mbt/.mod/.pkg 源——构建失败后照跑旧 exe 报全绿的
-// 事故形态由此封死；过期即红并提示重建命令。已知误报：moon 的增量
-// 判定按内容 hash（touch 或等价内容再生成不触发重链），此时 exe 功能
-// 不陈旧但 mtime 落后——重跑一次构建即消；CI 全新 checkout + 首建
-// 不受影响。宁可误红不可假绿。
+// 新鲜度门禁（2026-09-26 审阅 P1-2 接线；同批批改：mtime 触发 + 构建
+// 复核）：启动时校验 runner exe 不旧于 moonbit/ 下任一 .mbt/.mod/.pkg
+// 源；落后则**跑一次规范化构建复核**——退出码 0 ⇒ moon 按内容 hash 已
+// 保证 exe 内容最新（重链或 no-work），放行；构建失败 ⇒ 红并拒绝给判定。
+// 设计动因：moon 的增量按内容 hash（touch/git 换行归一/等价内容再生成
+// 都会让 mtime 落后而内容其实最新——mtime 硬红会反复假阳性，实测于本批
+// 提交时的 git add 换行归一），而真死角是「构建失败照跑旧 exe 报假绿」
+// ——构建复核恰好只在该死角红。CI 全新 checkout + 首建路径不受影响。
 //
 // 三通道（诚实口径，2026-09-26 审阅 P2-2 修正：第三通道未做 diff）：
 //  1. stdout：双侧提取纯程序输出（oracle 取「=== 运行输出 ===」分隔
@@ -121,9 +123,23 @@ func main() {
 		fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
 		os.Exit(1)
 	}
+	// 新鲜度门禁（2026-09-26 批改：mtime 触发 + 构建复核）：moon 增量按
+	// **内容 hash** 判定——touch、git 换行归一重写、等价内容再生成都会
+	// 让 mtime 落后而 exe 内容其实最新（mtime 硬红 = 反复假阳性，实测：
+	// 提交批的 git add 换行归一即触发）；反之构建失败照跑旧 exe 报假绿
+	// 才是要封的死角。故落后时**跑一次规范化构建复核**：退出码 0 ⇒
+	// moon 已保证 exe 内容最新（重链了或判定 no-work），放行；失败 ⇒
+	// 红并拒绝给判定。
 	if stale := findStaleSource(runnerExe); stale != "" {
-		fmt.Fprintf(os.Stderr, "vm_diff: %s 旧于源 %s——旧 exe 会用陈旧代码报假绿，先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe, stale)
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "vm_diff: %s 旧于源 %s——跑构建复核（moon 内容 hash 增量）...\n", runnerExe, stale)
+		if !rebuildRunner() {
+			fmt.Fprintln(os.Stderr, "vm_diff: 构建失败——修好构建前不给判定（陈旧 exe 假绿由此封死）")
+			os.Exit(1)
+		}
+		if !fileExists(runnerExe) {
+			fmt.Fprintf(os.Stderr, "vm_diff: 构建成功但 %s 仍缺失（moon 缓存与磁盘不一致）——删 moonbit/_build/native/release/build/cmd/run 后重建\n", runnerExe)
+			os.Exit(1)
+		}
 	}
 
 	skips := loadSkipList()
@@ -452,6 +468,19 @@ func normalizeLines(lines []string) string {
 		out = out[1:]
 	}
 	return strings.Join(out, "\n")
+}
+
+// rebuildRunner：跑规范化构建（cwd=moonbit）——退出码 0 即 moon 已保证
+// exe 内容最新（重链了或内容 hash 判定 no-work）；供 mtime 落后时复核。
+func rebuildRunner() bool {
+	cmd := exec.Command("moon", "build", "--release", "--target", "native", "cmd/run")
+	cmd.Dir = "moonbit"
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, string(out))
+		return false
+	}
+	return true
 }
 
 // findStaleSource：返回任一比 runner exe 新的 moonbit 源文件（.mbt/

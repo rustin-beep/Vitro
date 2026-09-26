@@ -64,12 +64,19 @@ pub fn Memory::clone_raw(self : Memory) -> FixedArray[Byte] {
 }
 
 ///|
-/// 从整块映像恢复（Full 快照 apply / 载体重置）。
+/// 从整块映像恢复（Full 快照 apply / 载体重置）。长度不符时 **min 部分覆盖**
+/// （照搬 Rust `snapshot.rs::apply_to` Full 分支 `min(v.len, dst.len)`：
+/// 前缀覆盖、余部保留——静默 return 会叫短于载体的快照恢复悄悄全丢，
+/// clone_snapshot_deep 往返正确性不再隐式依赖长度相等；六轮审阅顺带修）。
 pub fn Memory::restore_raw(self : Memory, data : FixedArray[Byte]) -> Unit {
-  if data.length() != self.bytes.length() {
-    return
+  let n = if data.length() < self.bytes.length() {
+    data.length()
+  } else {
+    self.bytes.length()
   }
-  self.bytes.unsafe_blit(0, data, 0, self.bytes.length())
+  if n > 0 {
+    self.bytes.unsafe_blit(0, data, 0, n)
+  }
 }
 
 ///|

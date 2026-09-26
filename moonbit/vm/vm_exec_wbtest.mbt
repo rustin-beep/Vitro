@@ -809,6 +809,35 @@ test "exec_jump_out_of_range_traps" {
 }
 
 ///|
+/// 红锚（2026-09-26 e1_va_copy 缺陷批）：**void host 函数调用后值栈必须
+/// 平衡**——`no_reply()`（value=None）语义 = 不压值，apply_reply 曾无条件
+/// 压 0（`None => 0UL`），每次调用泄露一个幽灵 0；该泄露只在「调用后栈上
+/// 仍有更早压入的元素待读」的嵌套形态暴露（e1_va_copy 的
+/// `printf("%.1f %.1f", sum_twice(2,...), sum_twice(3,...))` 形态），
+/// 裸调用（独立语句）静默无害——故 30 例抽样零覆盖、全量 601 首轮暴露。
+/// 本锚用 va_end（id 142，Rust `misc.rs:587` 弹 1 不 push——纯 pop 不碰
+/// 内存，无 trap 面）直驱：压 1 实参 → CallHost 142 → 栈必须回到 0
+/// （修复前为 1）。
+test "host_void_call_stack_balance" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([
+      instr(PushConst, 0), // va_end 的 ap_addr 实参（只被 pop，不解引用）
+      instr(CallHost, 142),
+      instr(PushConst, 4242),
+    ]),
+  )
+  let r = vm.run()
+  assert_eq(r, 4242)
+  // 修复前栈为 [幽灵0, 4242]（长度 2）；修复后仅剩末尾哨兵 [4242]
+  assert_eq(
+    vm.stack.length(),
+    1,
+    msg="void host 调用后不得残留幽灵值",
+  )
+}
+
+///|
 /// 批三号第一段锚：ctype/math/内存族/exit 族经 CallHost 分发的完整协议。
 /// host id 来自 Rust host_func_id 常量表（ctype 42-55 等）。
 test "host_dispatch_ctype_math_exit" {

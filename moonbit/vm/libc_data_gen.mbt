@@ -6,7 +6,7 @@
 ///| 扁平指令流（每指令 5 元：opcode/operand/line/column/file_id——
 
 ///|
-/// 运行时 libc_load.mbt 组装为 Instruction）。
+/// 运行时 libc_setup.mbt 组装为 Instruction）。
 let libc_code_flat : Array[Int] = [
   // 0
   0, 0, 0, 0, 0, 36, 3, 3, 20, 0, 36, 4, 4, 5, 0, 2, 0, 4, 12, 0, 1, 48, 4, 17, 0,

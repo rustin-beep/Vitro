@@ -144,6 +144,11 @@ func renderImpl(consts [][2]string, pairs [][2]string, pure [][]string, srcHash 
 	w("// **S6 上提已落实**（2026-09-23）：本表已落在 L6 `vitro/engine/bytecode`")
 	w("// 包（与 `libc_index.mbt` 的 88 名单源同域）；消费者是 codegen 的 CallPtr")
 	w("// 臂（编译期选调用形态）与 host 的执行期分发。落点裁定见生成器头注。")
+	// 注释块与首个声明间的空行+///| 必须由模板自出（gen_diag 同款）：
+	// 整包 moon fmt 的稳定形态即如此——缺了它，带文件参数的 fmt 产出
+	// 与整包 fmt 不一致，-check 恒红（六轮审阅 P1-1 根因之二）。
+	w("")
+	w("///|")
 	for _, c := range consts {
 		w("const HOST_" + c[0] + " : Int = " + c[1])
 	}
@@ -206,6 +211,9 @@ func renderAnchor(pairs [][2]string, pureSet map[string]bool, constVals map[stri
 	w("// Host 路由硬编码对拍锚：110 对逐条断言 Some(id) + 14 PURE 名断言")
 	w("// None（Rust 语义：PURE 短路在 match 之前，match 臂的 Some 值不可达）。")
 	w("// 实现文件由同一生成器产出但为独立文件——实现手改/漂移与锚不同步即红。")
+	// 同上：空行+///| 由模板自出，与整包 moon fmt 稳定形态一致
+	w("")
+	w("///|")
 	w("test \"host route: hardcoded pairs from Rust source\" {")
 	w("    let pairs : Array[(String, Int)] = [")
 	for _, p := range pairs {
@@ -229,14 +237,16 @@ func renderAnchor(pairs [][2]string, pureSet map[string]bool, constVals map[stri
 	return b.String()
 }
 
+// item：产物路径与 check 模式开场保存的原内容（统一还原用）。
+type item struct {
+	path string
+	cur  []byte
+}
+
 // writeProducts 写出全部产物并经 moon fmt 规范化（gen_diag 同构：gen 与
 // fmt 不得互踩，最终形态一律以 moon fmt 输出为准；check 模式行尾归一后
 // 逐字节比对，不一致还原并红——check 不留副作用）。
 func writeProducts(dir string, products map[string]string, check bool) {
-	type item struct {
-		path string
-		cur  []byte
-	}
 	var items []item
 	paths := make([]string, 0, len(products))
 	for name := range products {
@@ -276,18 +286,33 @@ func writeProducts(dir string, products map[string]string, check bool) {
 	if !check {
 		return
 	}
+	// 全部比对完再统一还原+报红：逐个还原遇红即停会让后续产物停留在
+	// fmt 形态未还原（2026-09-26 审阅 P1-1 实测——字典序第二个产物变脏），
+	// 违反「check 不留副作用」契约。
+	var drifted []string
 	for _, it := range items {
 		now, err := os.ReadFile(it.path)
 		if err != nil {
+			restoreItems(items)
 			fatalf("-check: 回读产物失败 %s: %v", it.path, err)
 		}
 		nowLF := bytes.ReplaceAll(now, []byte{13, 10}, []byte{10})
 		curLF := bytes.ReplaceAll(it.cur, []byte{13, 10}, []byte{10})
 		if !bytes.Equal(nowLF, curLF) {
-			if werr := os.WriteFile(it.path, it.cur, 0o644); werr != nil {
-				fatalf("-check: 还原产物失败 %s: %v", it.path, werr)
-			}
-			fatalf("-check: 产物漂移 %s——源已变更未再生成（cd 仓库根 && go run ./scripts/moonbit/gen_host_route）", it.path)
+			drifted = append(drifted, it.path)
+		}
+	}
+	if len(drifted) > 0 {
+		restoreItems(items)
+		fatalf("-check: 产物漂移 %s——源已变更未再生成（cd 仓库根 && go run ./scripts/moonbit/gen_host_route）", strings.Join(drifted, ", "))
+	}
+}
+
+// restoreItems 还原 check 模式开场保存的原产物内容（失败路径不留覆盖副作用）。
+func restoreItems(items []item) {
+	for _, it := range items {
+		if len(it.cur) > 0 {
+			_ = os.WriteFile(it.path, it.cur, 0o644)
 		}
 	}
 }

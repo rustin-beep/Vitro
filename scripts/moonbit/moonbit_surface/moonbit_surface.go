@@ -88,7 +88,28 @@ type pkgInfo struct {
 	testAliases map[string]string // 别名 → provider 全名（for "test" 块）
 }
 
+func noConsecutiveBlankLines(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "moonbit_surface: read %s: %v\n", path, err)
+		os.Exit(1)
+	}
+	run := 0
+	for _, b := range data {
+		if b == '\n' {
+			run++
+			if run >= 3 {
+				fmt.Fprintf(os.Stderr, "moonbit_surface: %s has >= 2 consecutive blank lines\n", path)
+				os.Exit(1)
+			}
+		} else {
+			run = 0
+		}
+	}
+}
+
 func main() {
+	noConsecutiveBlankLines("scripts/moonbit/surface_edges.txt")
 	if err := os.Chdir("moonbit"); err != nil {
 		fmt.Fprintf(os.Stderr, "chdir moonbit failed: %v\n", err)
 		os.Exit(2)

@@ -412,15 +412,17 @@ fn VitroVM::execute_host_func2(
     }
     // ── va_* 4（纯内存操作）──
     140 => {
-      let last_param = self.pop_addr()
-      let n_fixed = self.pop_i32()
-      let n_total = self.pop_i32()
+      // 参数名照 oracle（misc.rs:566-575）：ap/last/last_size——六轮审阅
+      // P3：位置与语义已对，改名消除读码歧义
+      let ap_addr = self.pop_addr()
+      let last_addr = self.pop_i32()
+      let last_size = self.pop_i32()
       let reply = @host.host_va_start(
         self.memory,
         self.mem_map,
-        last_param,
-        n_fixed,
-        n_total,
+        ap_addr,
+        last_addr,
+        last_size,
       )
       self.apply_reply(reply)
     }

@@ -227,8 +227,10 @@ fn VitroVM::call_user_function(
 }
 
 ///|
-/// qsort 深度上限（照搬 Rust MAX_QSORT_DEPTH；递归比较器防护）。
-const MAX_QSORT_DEPTH : Int = 64
+/// qsort/bsearch 共用嵌套深度上限（照搬 oracle `MAX_QSORT_DEPTH = 8`——
+/// 六轮审阅 P2：此前误写 64 且注释自称照搬；bsearch 的 `MAX_BSEARCH_DEPTH`
+/// 与本常量同值 8，共用 `qsort_depth` 计数器）。
+const MAX_QSORT_DEPTH : Int = 8
 
 ///|
 /// 比较步数预算（单次 sort 内 call_user_function 总步数上限——照搬
@@ -286,6 +288,13 @@ fn VitroVM::execute_host_func3(
         }
       }
       let specs = @host.format_spec_kinds(codes_of(fmt))
+      if self.stack.length() < specs.length() {
+        self.trap(
+          "printf: 格式字符串要求的参数多于实际提供的参数。",
+          0, 0,
+        )
+        return
+      }
       let args : Array[UInt64] = []
       for i = 0; i < specs.length(); i = i + 1 {
         args.push(self.pop())
@@ -311,6 +320,13 @@ fn VitroVM::execute_host_func3(
         }
       }
       let specs = @host.format_spec_kinds(codes_of(fmt))
+      if self.stack.length() < specs.length() {
+        self.trap(
+          "fprintf: 格式字符串要求的参数多于实际提供的参数。",
+          0, 0,
+        )
+        return
+      }
       let args : Array[UInt64] = []
       for i = 0; i < specs.length(); i = i + 1 {
         args.push(self.pop())
@@ -450,13 +466,7 @@ fn VitroVM::execute_host_func3(
       match @host.host_getchar(self.input) {
         Value(v) => self.push(v)
         Trap(msg) => self.trap(msg, 0, 0)
-        Waiting =>
-          if self.input.eof {
-            // EOF 粘滞 + Interactive → 等输入（Batch 由 host 侧直返 -1）
-            self.waiting_input = true
-          } else {
-            self.waiting_input = true
-          }
+        Waiting => self.waiting_input = true
       }
     78 => {
       // ungetc(c, stream)：Rust 弹 ch 再弹 stream（stream 忽略）
@@ -579,8 +589,8 @@ fn VitroVM::host_qsort(
     })
   } else {
     indices.sort_by(fn(a, b) {
-      let addr_a = base.to_int() + a * sz
-      let addr_b = base.to_int() + b * sz
+      let addr_a = base.reinterpret_as_int() + a * sz
+      let addr_b = base.reinterpret_as_int() + b * sz
       match
         self.call_user_function(
           compar.reinterpret_as_int(),
@@ -618,8 +628,15 @@ fn VitroVM::host_qsort(
 }
 
 ///|
-/// bsearch（照搬 Rust `host/misc.rs:234-330`：二分 + 比较器经
-/// call_user_function；命中返回元素地址，未命中 NULL）。
+/// bsearch（照搬 Rust `host/misc.rs:234-327`）：二分 + **四重护栏**
+/// （六轮审阅 P2 补齐——① 深度限 8 与 qsort 共用计数器 → note + NULL；
+/// ② 平凡短路；③ 尺寸链 checked；④ **key 侧越界** `key + size >
+/// MEM_SIZE` → NULL——U2#13：学生常见野指针 key，oracle 此前直接切片
+/// panic，修复后按未找到返回；**检查必须在 depth+1 之前**〔早退不减
+/// 深度会让计数器只增不减——8 次野 key 后 bsearch 永久 NULL、qsort
+/// 静默 no-op〕）。compar==0 走**默认字节比较**（六轮审阅发现：oracle
+/// 有此分支，此前误判「无默认分支」）；命中返回元素地址，未命中 NULL；
+/// 进出各 depth ±1。
 fn VitroVM::host_bsearch(
   self : VitroVM,
   key : UInt,
@@ -628,6 +645,13 @@ fn VitroVM::host_bsearch(
   size : UInt64,
   compar : UInt,
 ) -> Unit {
+  if self.qsort_depth >= MAX_QSORT_DEPTH {
+    self.output.push_note_str(
+      "[bsearch] 嵌套深度超过限制，防止栈溢出",
+    )
+    self.push(0UL)
+    return
+  }
   if nmemb == 0UL || size == 0UL || base == 0U || key == 0U {
     self.push(0UL)
     return
@@ -637,37 +661,67 @@ fn VitroVM::host_bsearch(
     self.push(0UL)
     return
   }
-  let n = nmemb.to_uint().reinterpret_as_int()
+  // U2#13 key 侧边界（必须在 depth+1 之前——见头注）
+  if key.to_int64() + size.reinterpret_as_int64() >
+    @bytecode.MEM_SIZE.to_int64() {
+    self.push(0UL)
+    return
+  }
+  self.qsort_depth = self.qsort_depth + 1
   let sz = size.to_uint().reinterpret_as_int()
   let mut lo = 0
-  let mut hi = n
-  let mut found : Int? = None
-  while lo < hi {
-    let mid = (lo + hi) / 2
-    let addr = base.to_int() + mid * sz
-    match
-      self.call_user_function(
-        compar.reinterpret_as_int(),
-        [key.to_int(), addr],
-        MAX_COMPARE_STEPS,
-      ) {
-      Some(v) =>
-        if v < 0 {
-          hi = mid
-        } else if v > 0 {
-          lo = mid + 1
-        } else {
-          found = Some(mid)
-          break
+  let mut hi = nmemb.to_uint().reinterpret_as_int()
+  let mut result_ptr : UInt = 0U
+  if compar == 0U {
+    // 默认字节比较（compar==0——与 qsort 同款）
+    let key_blk = self.read_block(key, sz)
+    match key_blk {
+      Some(kb) =>
+        while lo < hi {
+          let mid = (lo + hi) / 2
+          let b_start = base + mid.reinterpret_as_uint() * size.to_uint()
+          match self.read_block(b_start, sz) {
+            Some(eb) => {
+              let c = block_cmp(kb, eb)
+              if c < 0 {
+                hi = mid
+              } else if c > 0 {
+                lo = mid + 1
+              } else {
+                result_ptr = b_start
+                break
+              }
+            }
+            None => break
+          }
         }
-      None => break
+      None => ()
+    }
+  } else {
+    while lo < hi {
+      let mid = (lo + hi) / 2
+      let addr = base.reinterpret_as_int() + mid * sz
+      match
+        self.call_user_function(
+          compar.reinterpret_as_int(),
+          [key.reinterpret_as_int(), addr],
+          MAX_COMPARE_STEPS,
+        ) {
+        Some(v) =>
+          if v < 0 {
+            hi = mid
+          } else if v > 0 {
+            lo = mid + 1
+          } else {
+            result_ptr = addr.reinterpret_as_uint()
+            break
+          }
+        None => break
+      }
     }
   }
-  match found {
-    Some(idx) =>
-      self.push((base.to_int() + idx * sz).reinterpret_as_uint().to_uint64())
-    None => self.push(0UL)
-  }
+  self.qsort_depth = self.qsort_depth - 1
+  self.push(result_ptr.to_uint64())
 }
 
 ///|

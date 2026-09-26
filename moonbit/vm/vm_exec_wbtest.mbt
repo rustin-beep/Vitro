@@ -1059,7 +1059,7 @@ test "host2_strtol_basic" {
   let vm = VitroVM::new()
   guard vm.memory.store_u32(vm.mem_map, 0x6000U, 0x00003234U) is Ok(_) else {
     fail("种子 '42'")
-  } // '4''2' 
+  } // 42
   guard vm.memory.store_i8(vm.mem_map, 0x6002U, 0) is Ok(_) else { fail("NUL") }
   vm.load_program(
     code_of([
@@ -1143,8 +1143,10 @@ test "host2_va_family" {
   let r = vm.run()
   assert_eq(r, 0) // va_start 返 0（无错误）
   assert_eq(vm.error, "")
-}///|///|///|///|
+} ///|///|///|///|
 /// 三段锚：bsearch 命中与未命中（经 call_user_function 比较器）。
+
+///|
 test "host3_bsearch_comparator" {
   let vm = VitroVM::new()
   for i = 0; i < 5; i = i + 1 {
@@ -1550,4 +1552,107 @@ test "host3_step_and_guards" {
   let _ = vm.run()
   assert_eq(vm.current_line, 77)
   assert_eq(vm.error, "")
+}
+
+///|
+/// 六轮审阅 P2 锚：bsearch 野指针 key（U2#13——key+size 越界按未找到
+/// 返回 NULL，不进比较器；且早退不减深度）。
+test "host3_bsearch_wild_key_null" {
+  let vm = VitroVM::new()
+  for i = 0; i < 5; i = i + 1 {
+    guard vm.memory.store_u32(
+        vm.mem_map,
+        0x7000U + i.reinterpret_as_uint() * 4U,
+        (i + 1).reinterpret_as_uint(),
+      )
+      is Ok(_) else {
+      fail("arr")
+    }
+  }
+  // key = 0xFFFFF0（+4 越过 MEM_SIZE）——野指针
+  vm.load_program(
+    code_of([
+      instr(PushConst, 0), // compar
+      instr(PushConst, 4),
+      instr(PushConst, 5),
+      instr(PushConst, 0x7000),
+      instr(PushConst, 0xFFFFF0),
+      instr(CallHost, 81),
+    ]),
+  )
+  let r = vm.run()
+  assert_eq(r, 0) // NULL（不 trap、不进比较器）
+  assert_eq(vm.error, "")
+  assert_eq(vm.qsort_depth, 0) // 早退不减深度——计数器未被污染
+}
+
+///|
+/// 六轮审阅 P2 锚：bsearch 默认字节比较分支（compar=0 不查函数表——
+/// 未注册任何函数时字节比较命中）。
+test "host3_bsearch_default_branch" {
+  let vm = VitroVM::new()
+  for i = 0; i < 5; i = i + 1 {
+    guard vm.memory.store_u32(
+        vm.mem_map,
+        0x7000U + i.reinterpret_as_uint() * 4U,
+        (i + 1).reinterpret_as_uint(),
+      )
+      is Ok(_) else {
+      fail("arr")
+    }
+  }
+  guard vm.memory.store_u32(vm.mem_map, 0x7020U, 3U) is Ok(_) else {
+    fail("key3")
+  }
+  vm.load_program(
+    code_of([
+      instr(PushConst, 0), // compar=0 → 默认字节比较（未注册函数也工作）
+      instr(PushConst, 4),
+      instr(PushConst, 5),
+      instr(PushConst, 0x7000),
+      instr(PushConst, 0x7020),
+      instr(CallHost, 81),
+    ]),
+  )
+  let r = vm.run()
+  assert_eq(r, 0x7008) // 3 在 idx2 → base+8
+  assert_eq(vm.error, "")
+}
+
+///|
+/// 六轮审阅 P2 锚：qsort/bsearch 深度限 8（共用计数器——8 层后 note+NULL）。
+test "host3_depth_limit_8" {
+  let vm = VitroVM::new()
+  vm.qsort_depth = 8 // 直接置满
+  guard vm.memory.store_u32(vm.mem_map, 0x7020U, 4U) is Ok(_) else {
+    fail("key")
+  }
+  vm.load_program(
+    code_of([
+      instr(PushConst, 0),
+      instr(PushConst, 4),
+      instr(PushConst, 5),
+      instr(PushConst, 0x7000),
+      instr(PushConst, 0x7020),
+      instr(CallHost, 81), // bsearch @深度 8 → note + NULL
+    ]),
+  )
+  let r = vm.run()
+  assert_eq(r, 0)
+  assert_true(vm.output.chunks_of(@host.OutputKind::Note).length() >= 1)
+  vm.qsort_depth = 8
+  vm.stack.clear()
+  vm.ip = 0
+  vm.error = ""
+  vm.load_program(
+    code_of([
+      instr(PushConst, 0),
+      instr(PushConst, 1),
+      instr(PushConst, 2),
+      instr(PushConst, 0x7000),
+      instr(CallHost, 52), // qsort @深度 8 → note + no-op
+    ]),
+  )
+  let _ = vm.run()
+  assert_true(vm.output.chunks_of(@host.OutputKind::Note).length() >= 2)
 }

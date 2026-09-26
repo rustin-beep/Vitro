@@ -15,6 +15,8 @@ pub const OUTPUT_LOG_BUDGET : Int = 16777216
 
 pub fn double_free_message(@memory.FreedRegionInfo) -> String
 
+pub fn format_spec_kinds(Array[Int]) -> Array[Int]
+
 pub fn heap_exhausted_note() -> String
 
 pub fn host_abs(Int) -> UInt64
@@ -223,6 +225,8 @@ pub fn invalid_free_message(@memory.MemoryMap, UInt) -> String
 
 pub fn malloc_zero_note() -> String
 
+pub fn scanf_spec_count(Array[Int]) -> Int
+
 // Errors
 
 // Types and methods
@@ -247,6 +251,7 @@ pub(all) struct InputState {
   batch : Bool
 }
 pub fn InputState::new(Array[Bytes], Bool) -> Self
+pub fn InputState::set_eof(Self) -> Unit
 pub fn InputState::snapshot(Self) -> Self
 
 pub(all) struct OutputChunk {

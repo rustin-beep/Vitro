@@ -10,7 +10,7 @@ license = "MIT"
 
 keywords = [ "c-compiler", "teaching", "diagnostics", "moonbit" ]
 
-description = "MoonBit implementation of the Vitro C teaching engine: 137 diagnostic codes, 132 opcodes, full AST family, byte-for-byte parity with the Rust oracle"
+description = "MoonBit implementation of the Vitro C teaching engine: 137 diagnostic codes, 135 opcodes, full AST family, byte-for-byte parity with the Rust oracle"
 
 import {
   "moonbitlang/x@0.5.5",

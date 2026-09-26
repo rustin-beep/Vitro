@@ -250,6 +250,13 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/source_hygiene
 
+      - name: Bytecode libc data generation idempotency
+        # 批四号（2026-09-26）：libc 产物派生闸——Rust include_str! 的
+        # JSON 是单一真相源，本闸保证 MoonBit 数据字面量与其一致
+        # （生成流程内置 moon fmt + check 同流程比对；J9 篡改证红）。
+        shell: bash
+        run: go run ./scripts/moonbit/gen_libc_data -check
+
       - name: MoonBit test count (README vs moon test truth)
         # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，
         # facts check 结构上看不见「文档↔facts 一起错」（四轮里三次同型

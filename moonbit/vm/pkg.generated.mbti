@@ -21,6 +21,8 @@ pub const SNAPSHOT_INTERVAL : Int = 100_000
 
 pub const VIS_EVENT_LIMIT : Int = 1024
 
+pub fn load_libc_artifact() -> LibcArtifact
+
 // Errors
 
 // Types and methods
@@ -34,6 +36,24 @@ pub(all) struct CallFrame {
   local_buffers : Array[@bytecode.LocalBuffer]
 } derive(Eq, @debug.Debug)
 
+pub struct CheckpointManager {
+  checkpoints : Array[(Int, VMSnapshot)]
+  interval : Int
+  mut smart_mode : Bool
+  mut max_checkpoints : Int
+  full_every : Int
+}
+pub fn CheckpointManager::clear(Self) -> Unit
+pub fn CheckpointManager::get_interval(Self) -> Int
+pub fn CheckpointManager::is_empty(Self) -> Bool
+pub fn CheckpointManager::length(Self) -> Int
+pub fn CheckpointManager::nearest(Self, Int) -> (Int, VMSnapshot)?
+pub fn CheckpointManager::new(Int) -> Self
+pub fn CheckpointManager::save(Self, Int, VitroVM) -> Unit
+pub fn CheckpointManager::set_max_checkpoints(Self, Int) -> Unit
+pub fn CheckpointManager::set_smart_mode(Self, Bool) -> Unit
+pub fn CheckpointManager::should_checkpoint(Self, Int, String) -> Bool
+
 pub(all) enum ExecMode {
   Running
   Unwinding
@@ -46,10 +66,20 @@ pub(all) struct HandlerFrame {
   mem_stack_top : UInt
 } derive(Eq, @debug.Debug)
 
+pub(all) struct LibcArtifact {
+  code : Array[@opcode.Instruction]
+  funcs : Array[(String, Int, @bytecode.FuncMeta)]
+  globals_32 : Array[(UInt, Int)]
+  globals_64 : Array[(UInt, UInt64)]
+  f64_constants : Array[Double]
+  i64_constants : Array[Int64]
+}
+
 pub(all) enum MemoryImage {
   Full(FixedArray[Byte])
   Delta(Int, Array[(Int, FixedArray[Byte])])
 } derive(Eq, @debug.Debug)
+pub fn MemoryImage::apply_to(Self, VitroVM) -> Unit
 
 pub(all) enum StepResult {
   Ok
@@ -156,6 +186,7 @@ pub struct VitroVM {
   mut unwind_remaining_frames : Int
   mut unwind_target : HandlerFrame?
 }
+pub fn VitroVM::dump_memory_raw(Self) -> Bytes
 pub fn VitroVM::load_program(Self, Array[@opcode.Instruction]) -> Unit
 pub fn VitroVM::new() -> Self
 pub fn VitroVM::register_function(Self, Int, @bytecode.FuncMeta) -> Bool
@@ -173,7 +204,9 @@ pub fn VitroVM::set_max_steps(Self, Int) -> Unit
 pub fn VitroVM::set_symbols(Self, Array[@bytecode.Symbol]) -> Unit
 pub fn VitroVM::set_vis_event_lines(Self, Array[(Int, Int, String)]) -> Unit
 pub fn VitroVM::setup_argv(Self, Int, Array[String], UInt) -> Unit
+pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int, Array[String]) -> Unit
 pub fn VitroVM::snapshot(Self) -> VMSnapshot
+pub fn VitroVM::snapshot_incremental(Self, Int) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult
 pub fn VitroVM::write_cstring(Self, UInt, String) -> Unit
 

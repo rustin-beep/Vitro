@@ -1,0 +1,15 @@
+// 批五号：D 级三联 diff 的 MoonBit 侧 runner——cmd 层（pkg_deps 豁免方向）。
+import {
+  "vitro/engine/codegen",
+  "vitro/engine/host",
+  "vitro/engine/lexer",
+  "vitro/engine/parser",
+  "vitro/engine/typeck",
+  "vitro/engine/vm",
+  "moonbitlang/x/fs",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

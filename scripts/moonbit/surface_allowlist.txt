@@ -32,3 +32,4 @@ vitro/engine/diag codes_without_catalog
 # 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
 # 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
 vitro/engine/bytecode compute_heap_base
+vitro/engine/vm load_libc_artifact

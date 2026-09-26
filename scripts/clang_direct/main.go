@@ -195,7 +195,7 @@ func main() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			clangRes[k] = runClang(cases[k], k%jobs, clangVersion)
+			clangRes[k] = runClang(cases[k], k, clangVersion)
 		}(k)
 	}
 	for k := range cases {
@@ -384,7 +384,7 @@ func cacheKey(src []byte, clangVersion string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:40]
 }
 
-func runClang(c caseRef, slot int, clangVersion string) *clangResult {
+func runClang(c caseRef, caseIdx int, clangVersion string) *clangResult {
 	src, err := os.ReadFile(c.path)
 	if err != nil {
 		return &clangResult{compileFail: true, abnormal: true}
@@ -402,7 +402,7 @@ func runClang(c caseRef, slot int, clangVersion string) *clangResult {
 	// 失败重试只是浪费 1.5s，换来瞬态不误判）。
 	var res *clangResult
 	for attempt := 0; attempt < clangRetry; attempt++ {
-		res = runClangOnce(c, slot)
+		res = runClangOnce(c, caseIdx)
 		if !res.compileFail && !res.abnormal {
 			break
 		}
@@ -411,20 +411,26 @@ func runClang(c caseRef, slot int, clangVersion string) *clangResult {
 		// 3 轮重试全失败、单独跑即绿）
 		time.Sleep(time.Duration(1000<<attempt) * time.Millisecond)
 	}
-	// 编译失败结果**不落缓存**（2026-09-26 审阅 P1-1 连带修复）：Windows
-	// 全量并发下调度竞态会让 clang 以 ExitError 伪装成确定性失败——三态
-	// 实证：全量 601 两轮稳定同 4 例 / 同 4 例单独并发 3 轮全绿 / 串行
-	// jobs=1 绿。缓存会把竞态快照固化成假确定性（key 不含运行环境状态）。
-	// 代价 = 每轮重算 ~10 个真编译失败例（每例 <1s），换来毒化通道封死。
-	if res != nil && !res.abnormal && !res.compileFail {
+	// 编译失败恢复落缓存（根因修复后回归正确形态）：竞态根因 = slot 目录
+	// 复用 + RemoveAll 删兄弟目录（见 runClangOnce 注释），目录唯一后编译
+	// 失败恢复确定性（~10 例正当失败三轮稳定）。指数退避保留作纵深——
+	// 环境级瞬态（Defender 真锁等）万一出现时兜底。
+	if res != nil && !res.abnormal {
 		storeCache(key, res)
 	}
 	return res
 }
 
 // runClangOnce：槽位隔离目录内编译 + 运行（stdin 空——与 MoonBit 侧同口径）。
-func runClangOnce(c caseRef, slot int) *clangResult {
-	runDir := filepath.Join(os.TempDir(), fmt.Sprintf("clang_direct_%d_%d", os.Getpid(), slot))
+func runClangOnce(c caseRef, caseIdx int) *clangResult {
+	// **目录按用例唯一**（2026-09-26 竞态根因修复）：此前目录按 slot=k%jobs
+	// 复用——sem 只限并发数、slot 取模无互斥语义，goroutine 抢 sem 不按 k
+	// 序，同 slot 的 k 与 k+8 可并发进入同一目录，后完成者的 defer
+	// RemoveAll 删掉先启动者正在写的目录 ⇒ lld-link "cannot open output
+	// file: no such file or directory"（目录缺失，非锁——Defender 假说由此
+	// 排除）。隔离探针实证：slot 复用形态 3 轮失败 109/170/137（~20%），
+	// 目录唯一后归零（剩 10 例为正当编译失败——教学诊断用例 + gap 扩展）。
+	runDir := filepath.Join(os.TempDir(), fmt.Sprintf("clang_direct_%d_%d", os.Getpid(), caseIdx))
 	if err := os.MkdirAll(runDir, 0o755); err != nil {
 		return &clangResult{compileFail: true, abnormal: true}
 	}

@@ -20,6 +20,7 @@ fn print_usage() {
     eprintln!("用法:");
     eprintln!("  vitro_cli compile <file.c>           编译并显示诊断信息");
     eprintln!("  vitro_cli run    <file.c> [-i <in>] [-- <arg>...]  编译并全速运行（-- 后参数传给 main）");
+    eprintln!("         [--dump-memory <out.bin>]       最终 1MB 内存映像落盘（vm_diff D 级第三通道，S6 防线）");
     eprintln!("  vitro_cli step   <file.c> [-i <in>]  交互式单步调试");
     eprintln!("  vitro_cli unified <file.c> [-i <in>] [--max-steps <n>] 统一模式（时间旅行）执行并摘要");
     eprintln!("  vitro_cli export <file1.c> [file2.c ...] -o <out.json> [--builtin-libc]  预编译为字节码产物");
@@ -128,7 +129,7 @@ fn cmd_compile(path: &str) {
     }
 }
 
-fn cmd_run(path: &str, input_lines: Vec<String>, argv: Vec<String>) {
+fn cmd_run(path: &str, input_lines: Vec<String>, argv: Vec<String>, dump_memory: Option<String>) {
     let source = read_source(path);
     let mut session = Session::default();
     if !compile_file(&mut session, path, &source) {
@@ -157,6 +158,17 @@ fn cmd_run(path: &str, input_lines: Vec<String>, argv: Vec<String>) {
     };
     println!("\n=== 运行输出 ===");
     println!("{}", session.runtime.output());
+    // D 级第三通道（S6 防线维护，2026-09-26）：最终 1MB 内存映像落盘——
+    // 与 MoonBit cmd/run --dump-memory 同口径（字节原样、trap/等待路径也写，
+    // 归一与 diff 统一在 Go 侧 vm_diff）。
+    if let Some(out) = &dump_memory {
+        if let Some(vm) = session.vm.as_ref() {
+            match std::fs::write(out, vm.memory_bytes()) {
+                Ok(()) => (),
+                Err(e) => eprintln!("--dump-memory 写入失败 {}: {}", out, e),
+            }
+        }
+    }
     match result {
         Ok((_, waiting)) => {
             if waiting {
@@ -984,12 +996,16 @@ fn main() {
     let mut argv = vec![file_path.clone()];
     let mut i = 3;
     let mut passthrough = false;
+    let mut dump_memory: Option<String> = None;
     while i < args.len() {
         if passthrough {
             argv.push(args[i].clone());
             i += 1;
         } else if args[i] == "-i" && i + 1 < args.len() {
             input_lines = read_input_file(&args[i + 1]);
+            i += 2;
+        } else if args[i] == "--dump-memory" && i + 1 < args.len() {
+            dump_memory = Some(args[i + 1].clone());
             i += 2;
         } else if args[i] == "--" {
             passthrough = true;
@@ -1003,7 +1019,7 @@ fn main() {
 
     match cmd.as_str() {
         "compile" => cmd_compile(file_path),
-        "run" => cmd_run(file_path, input_lines, argv),
+        "run" => cmd_run(file_path, input_lines, argv, dump_memory),
         "step" => cmd_step(file_path, input_lines),
         "unified" => {
             let mut max_steps = 100_000;

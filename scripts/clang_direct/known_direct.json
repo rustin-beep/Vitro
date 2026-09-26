@@ -1,0 +1,27 @@
+[
+  {
+    "case": "engine_note_lookalike.c",
+    "digest": "7f21e828",
+    "reason": "提取器已知限制（与 vm_diff known 同例同因，登记不修）：程序输出与协议标记 lookalike 混淆提取；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"
+  },
+  {
+    "case": "file_fread.c",
+    "digest": "26a6e512",
+    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 教学演示通道特有注入——Clang 直拍的本地文件系统无此文件，fopen 失败走不同分支；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
+  },
+  {
+    "case": "function_pointer_sizeof.c",
+    "digest": "c7a7c733",
+    "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
+  },
+  {
+    "case": "keyword_compat.c",
+    "digest": "7a2ca237",
+    "reason": "gap 目录语义 = Vitro 扩展关键字（U0#1②：gap_extension 判定）——Clang 严格模式编译失败 vs 引擎支持；双侧编译口径差异已登记"
+  },
+  {
+    "case": "sizeof_array_param.c",
+    "digest": "c7a7c733",
+    "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
+  }
+]

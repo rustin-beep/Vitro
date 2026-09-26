@@ -117,6 +117,7 @@ native/target/
 
 # Shadow 提速设施（2026-09-11）：Clang 结果缓存 + worker 隔离运行目录
 native/tests/shadow_verification/.clang_cache/
+.clang_cache_cd/
 native/tests/shadow_verification/.shadow_tmp/
 # C++ shadow 驱动的自管工作目录（替代 tempfile，E-P1-5 同期修复）
 /.shadow_cpp_tmp/

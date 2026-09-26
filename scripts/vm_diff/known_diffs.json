@@ -3,5 +3,25 @@
     "case": "engine_note_lookalike.c",
     "digest": "821c46aa",
     "reason": "提取器已知限制（登记不修）：程序输出以「程序运行完成，返回值：」lookalike 开头被 oracle 侧尾注截断逻辑吃光（oracle 空 vs moonbit 全文）；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"
+  },
+  {
+    "case": "qsort.c",
+    "digest": "19a1bb60",
+    "reason": "第三联映像：qsort 比较器最后一次调用的参数残渣互换（2 字节 @0xFFFE8）——两侧压参序一致（args[0]→低位），但排序算法内部比较序列不同（MoonBit 临时缓冲重排 vs Rust sort_by），末次比较对相异致栈底残渣镜像；stdout/返回码一致，生命周期外栈数据（2026-09-26 三联首跑归因）"
+  },
+  {
+    "case": "lc_15.c",
+    "digest": "93080073",
+    "reason": "同上：qsort 比较器栈残渣（2 字节 @0xFFF90）——排序比较序列差，非语义差"
+  },
+  {
+    "case": "lc_16.c",
+    "digest": "e86b7631",
+    "reason": "同上：qsort 比较器栈残渣（1 字节 @0xFFFB8）"
+  },
+  {
+    "case": "lc_217.c",
+    "digest": "5d4287b1",
+    "reason": "同上：qsort 比较器栈残渣（2 字节 @0xFFFA0）"
   }
 ]

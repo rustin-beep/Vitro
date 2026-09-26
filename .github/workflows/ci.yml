@@ -115,7 +115,9 @@ jobs:
       - name: Cache Clang golden results
         uses: actions/cache@v4
         with:
-          path: native/tests/shadow_verification/.clang_cache
+          path: |
+            native/tests/shadow_verification/.clang_cache
+            .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
           # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
           key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/shadow_verify/main.go', 'scripts/internal/**/*.go') }}
@@ -279,6 +281,19 @@ jobs:
         run: |
           cd moonbit && moon build --release --target native cmd/run
           cd .. && go run ./scripts/vm_diff
+
+      - name: Clang direct verify (layer 2, cmd/run vs Clang golden)
+        # §7.1 层 2 直拍防线（2026-09-26 提前落地——原排期 S7，用户拍板
+        # 前移）：真值源 = Clang 本尊（非 Rust oracle），cmd/run 的
+        # stdout+返回码 vs Clang golden。known_direct.json 按 case+digest
+        # 精确豁免（digest 漂移降级红防白名单腐化；条目转绿即红逼移除）。
+        # 与 vm_diff 分工：vm_diff 抓迁移偏差（引擎 vs oracle），本防线抓
+        # 两侧共同偏差（oracle 错而 Clang 对的形态）。重试判据 = shadow
+        # 同款（编译失败也重试——Windows 并发 Defender 锁目标文件首跑
+        # 127 例瞬态误判实锤）。Clang golden 缓存 .clang_cache_cd/ 随上方
+        # cache action 持久化（key 含 clang 版本）。
+        shell: bash
+        run: go run ./scripts/clang_direct
 
       - name: MoonBit test count (README vs moon test truth)
         # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，

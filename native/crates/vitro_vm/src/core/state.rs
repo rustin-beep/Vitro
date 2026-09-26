@@ -540,6 +540,13 @@ impl VitroVM {
         &self.error
     }
 
+    /// 最终 1MB 内存映像的只读出口（S6 防线维护，2026-09-26）：vm_diff D 级
+    /// 第三通道（stdout + 返回码 + 映像三联）的 oracle 侧数据源，与 MoonBit
+    /// `VitroVM::dump_memory_raw` 同口径——字节原样、不归一（Go 侧统一 diff）。
+    pub fn memory_bytes(&self) -> &[u8] {
+        &self.memory
+    }
+
     pub fn code_len(&self) -> usize {
         self.code.len()
     }

@@ -21,12 +21,13 @@
 // 提交时的 git add 换行归一），而真死角是「构建失败照跑旧 exe 报假绿」
 // ——构建复核恰好只在该死角红。CI 全新 checkout + 首建路径不受影响。
 //
-// 三通道（诚实口径，2026-09-26 审阅 P2-2 修正：第三通道未做 diff）：
+// 三通道（第三通道 2026-09-26 升级为真 diff——oracle 侧映像出口已建）：
 //  1. stdout：双侧提取纯程序输出（oracle 取「=== 运行输出 ===」分隔
 //     段 + 剥末行尾注；MoonBit 剥标记行）后逐字节比对
 //  2. 返回码：oracle 末行尾注 vs MoonBit `// EXIT N` 标记
-//  3. 1MB 映像：MoonBit 侧 --dump-memory——**本版仅自包含性校验（恰
-//     1MB），不做 diff**（oracle 侧 1MB 映像出口待建，出口就绪后补）
+//  3. 1MB 映像：双侧 --dump-memory（oracle 出口 = vitro_cli run
+//     --dump-memory → VitroVM::memory_bytes，防线维护批）逐字节 diff，
+//     首差地址 + 差异字节数入 issue；双侧编译失败（等价）无映像不比
 //
 // stdout 提取（2026-09-26 审阅 P2-3 收紧）：此前按前缀整行滤噪
 // （"// "、两空格缩进、Warning/Error/Finished.）会吃掉程序合法输出
@@ -224,6 +225,11 @@ func main() {
 		}
 	}
 
+	cleanup := func(r *result) {
+		if r != nil && r.memoryPath != "" {
+			os.Remove(r.memoryPath)
+		}
+	}
 	same, knownN, diff, skipN := 0, 0, 0, 0
 	for _, c := range cases {
 		base := filepath.Base(c.rel)
@@ -237,9 +243,13 @@ func main() {
 		if o.compileFail && m.compileFail {
 			fmt.Printf("SAME  %s（双侧编译失败——等价）\n", c.rel)
 			same++
+			cleanup(o)
+			cleanup(m)
 			continue
 		}
 		issues := compare(c.rel, o, m)
+		cleanup(o)
+		cleanup(m)
 		if len(issues) == 0 {
 			fmt.Printf("SAME  %s\n", c.rel)
 			same++
@@ -382,10 +392,31 @@ func compare(name string, o, m *result) []string {
 	if o.exitCode != m.exitCode {
 		issues = append(issues, fmt.Sprintf("返回码 %d != %d", o.exitCode, m.exitCode))
 	}
-	if m.memoryPath != "" {
-		if data, err := os.ReadFile(m.memoryPath); err == nil {
-			if len(data) != 1024*1024 {
-				issues = append(issues, fmt.Sprintf("映像非 1MB（%d）", len(data)))
+	// 第三通道：1MB 映像逐字节（双侧编译成功才比——双侧失败已在调用方
+	// 判等价后 continue 到不了这里；单侧失败已由 issue 1 报明）
+	if !o.compileFail && !m.compileFail {
+		switch {
+		case o.memoryPath == "" || m.memoryPath == "":
+			issues = append(issues, "映像缺失（一侧未产出 dump）")
+		default:
+			od, err1 := os.ReadFile(o.memoryPath)
+			md, err2 := os.ReadFile(m.memoryPath)
+			switch {
+			case err1 != nil || err2 != nil:
+				issues = append(issues, fmt.Sprintf("映像读取失败（oracle=%v moonbit=%v）", err1, err2))
+			case len(od) != 1024*1024 || len(md) != 1024*1024:
+				issues = append(issues, fmt.Sprintf("映像非 1MB（oracle=%d moonbit=%d）", len(od), len(md)))
+			case !bytes.Equal(od, md):
+				n, first := 0, -1
+				for i := range od {
+					if od[i] != md[i] {
+						if first < 0 {
+							first = i
+						}
+						n++
+					}
+				}
+				issues = append(issues, fmt.Sprintf("1MB 映像 %d 字节不一致（首差 @0x%X）", n, first))
 			}
 		}
 	}
@@ -521,16 +552,21 @@ func runOracle(path string) *result {
 	if !fileExists(bin) {
 		return &result{compileFail: true, stdout: "// ORACLE-MISSING"}
 	}
+	tmp, err := os.CreateTemp("", "ovmem_*.bin")
+	if err != nil {
+		return &result{compileFail: true, stdout: "// TMPFAIL"}
+	}
+	tmp.Close()
 	var out bytes.Buffer
-	cmd := exec.Command(bin, "run", path)
+	cmd := exec.Command(bin, "run", path, "--dump-memory", tmp.Name())
 	cmd.Stdout = &out
 	cmd.Stderr = &out
-	err := cmd.Run()
+	err = cmd.Run()
 	code := 0
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		code = exitErr.ExitCode()
 	}
-	r := &result{stdout: out.String(), exitCode: code}
+	r := &result{stdout: out.String(), exitCode: code, memoryPath: tmp.Name()}
 	// 编译失败判定：以「无运行输出段」为准——诊断段（=== 诊断信息 ===）
 	// 在编译**成功**但有警告/提示时也出现（file_fopen 实测：[提示] H3057 +
 	// 「编译成功。」+ 运行输出段），拿诊断段判失败会把 39 个正常用例误判
@@ -552,7 +588,6 @@ func runMoonBit(path string) *result {
 		return &result{stdout: "// TMPFAIL"}
 	}
 	tmp.Close()
-	defer os.Remove(tmp.Name())
 
 	var out bytes.Buffer
 	cmd := exec.Command(filepath.FromSlash(runnerExe), path, "--dump-memory", tmp.Name())

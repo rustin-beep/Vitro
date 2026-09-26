@@ -11,6 +11,7 @@ package main
 // 判定为双层：文件级（文件名含 裁定/决议/评估报告/工作记录…）+ 行级（含日期或 as-of 词）。
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -129,7 +130,42 @@ func splitLinesKeep(p string) ([]string, error) {
 	return strings.Split(string(b), "\n"), nil
 }
 
-// scanFiles 扫描目标文档：docs/ 全部 + 根目录 md（归档目录跳过）。
+// exemptDocEntry：文档豁免白名单条目（2026-09-26 用户裁定机制）——**只用于
+// "不维护仅查看"的文档**（外部项目事实调查记录等：行内数字是第三方项目的
+// 快照，既不该连坐 Vitro 真值、也不该被改写）；需维护文档一律走统一格式
+// （日期/as-of 词），禁入本清单。白名单条目指向不存在的文件即红（防腐化，
+// 与 vm_diff skip/known 白名单同构）；清单文件缺失视为空（向后兼容）。
+type exemptDocEntry struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
+func loadExemptDocs(root string) (map[string]string, error) {
+	data, err := os.ReadFile(filepath.Join(root, "scripts", "facts", "exempt_docs.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var entries []exemptDocEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, fmt.Errorf("exempt_docs.json 解析失败: %w", err)
+	}
+	out := map[string]string{}
+	for _, e := range entries {
+		if e.Path == "" || e.Reason == "" {
+			return nil, fmt.Errorf("exempt_docs.json 条目缺 path/reason: %+v", e)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(e.Path))); err != nil {
+			return nil, fmt.Errorf("豁免白名单条目指向不存在的文件 %s（删除或修正）", e.Path)
+		}
+		out[e.Path] = e.Reason
+	}
+	return out, nil
+}
+
+// scanFiles 扫描目标文档：docs/ 全部 + 根目录 md（归档目录与豁免白名单跳过）。
 func scanFiles(root string) []string {
 	var out []string
 	docsDir := filepath.Join(root, "docs")
@@ -155,6 +191,15 @@ func scanFiles(root string) []string {
 		}
 	}
 	sort.Strings(out)
+	if exempt, _ := loadExemptDocs(root); exempt != nil {
+		filtered := out[:0]
+		for _, f := range out {
+			if _, ok := exempt[f]; !ok {
+				filtered = append(filtered, f)
+			}
+		}
+		out = filtered
+	}
 	return out
 }
 

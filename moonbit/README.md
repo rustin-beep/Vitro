@@ -10,6 +10,7 @@
 |---|---|---|
 | `vitro/engine/source` | L0 | `SourceLoc` + column contract (UTF-8 byte offset + 1) + dual-coordinate `Pos` |
 | `vitro/engine/opcode` | L0 | 135 opcodes with stable numbering (44–46 = C# exception triple, 47–49 reserved) + `Instruction` |
+| `vitro/engine/util` | L0 | Zero-semantic mechanical helpers: `utf8_len` (UTF-8 byte length) / `str_cmp` (true lexicographic order — built-in String compare is not) / `i64_to_i32_bits` / little-endian byte reads |
 | `vitro/engine/diag` | L1 | 137-arm `ErrorCode` + severity/lang + teaching catalog (77 cards), byte-exact export |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 family + depth metrics + `type_eq` + C rendering & mangle + JSON dump |
 | `vitro/engine/names` | L3 | Naming single source: `__ctor__`/`__dtor__` family + 17-variant type-mangle suffix |
@@ -24,6 +25,10 @@
 | `vitro/engine/vm` | L7 | Executor state machine + snapshot system (`VMSnapshot` Full/Delta, two-endpoint single-point) + C# exception triple exec-state (handler stack / exception register / UNWINDING — v1 design input) |
 
 Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
+
+## Performance (honest disclosure, measured 2026-09-26)
+
+The VM is an interpreter built for stepping and time-travel observability, not raw speed. Measured against the Rust oracle on the same machine: end-to-end small-program runs are **1.42×** slower (compile-dominated; median over 366 baseline cases), compute-intensive programs **1.92×–15.7×** slower (fib(20) / bubble-200 / 500×500 nested loops), and the full engine runs the 300×300 loop benchmark at **10.1×** the oracle's JIT path. Full-speed execution is scheduled to move to a bytecode→wasm-GC generator (planned for **0.7.0+**), whose mapping covers this gap; the interpreter keeps serving single-step and time-travel semantics.
 
 ```moonbit
 let code = @diag.ErrorCode::from_code(3053).unwrap()
@@ -58,6 +63,7 @@ moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 |---|---|---|
 | `vitro/engine/source` | L0 | SourceLoc 三字段 + 列单位契约（字节偏移+1 主坐标 / Pos 双坐标预留） |
 | `vitro/engine/opcode` | L0 | 135 条 opcode（编号照搬不重排；44–46 = C# 异常三件 TryBegin/TryEnd/Throw，47–49 空号）+ 双向映射 + Instruction |
+| `vitro/engine/util` | L0 | 零语义机械件单点（G-1）：`utf8_len`（UTF-8 字节长度）/ `str_cmp`（真字典序——内置 String 比较非字典序）/ `i64_to_i32_bits`（位截断）/ `le_u32_at`·`le_u64_at`（小端拼装读） |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂 + Severity/SourceLang + 教学卡片 77 条 + 目录导出（对拍逐字节一致） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth + type_eq + to_c_string + mangle + JSON dump |
 | `vitro/engine/names` | L3 | 产名族唯一出口（`__ctor__`/`__dtor__`）+ type_mangle_suffix 17 变体 + method_mangled_name |
@@ -89,10 +95,25 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 - 坐标契约：`SourceLoc.column` = 行内 UTF-8 字节偏移 + 1；双坐标消费方用 `Pos{byte_off, col_scalar, col_utf16}`；
 - 渲染与 mangle 单源（`Type::to_c_string` / `Type::mangle_name_into`）。
 
+## 性能现状（诚实披露，2026-09-26 实测）
+
+VM 是为单步执行与时间旅行可观测性构建的**解释器**，不以裸速度为目标。同机对拍
+Rust oracle 的实测数字：
+
+| 场景 | MoonBit / Rust oracle |
+|---|---|
+| 端到端小程序（baseline 366 例中位，编译主导） | **1.42×** |
+| 计算密集：fib(20) 递归 / 冒泡 200 / 500×500 嵌套 | **1.92× / 6.32× / 15.7×** |
+| 条件 A 300×300 循环（完整引擎 vs oracle JIT 路径） | **10.1×**（1425ms vs 141ms） |
+
+全速执行差距的正解是 **bytecode→wasm-GC 生成器**（规划于 **0.7.0+**，栈式→栈式
+机械映射，其覆盖域正是该量级差距）；解释器持续服务于单步语义与时间旅行。完整实测
+方法与数字见上游仓库《性能探究实录》§11。
+
 ## 验证
 
 ```bash
-moon check && moon test    # 435 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 107 / vm 79；分解和 429 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host/vm 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 31 / host 107 各含 2 个包 README doc test（2026-09-23 补指引批）；memory 31 = 白盒 23 + 黑盒 6 + doc test 2；host 107 = 白盒 97 + 黑盒 8 + doc test 2（黑盒承担对外面消费面点名）；vm 79 = 快照 wbtest 14〔+门 3 五锚 + 删 Full 级联 pinned 锚〕+ executor wbtest 63〔含 void host 栈平衡红锚〕+ 黑盒 2（八族 + 审阅修复批符号扩展锚×10 + 段二 F/D/Q 三族锚 4 + 控制流锚 7 + 批三号一段分发锚 5〔ctype/math-exit/exit 族/malloc-free/输出与 rand〕+ 三轮审阅锚 3〔NegF 零符号/附注去重/fmod·atan2 非对称〕）+ 黑盒 2；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 443 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 107 / vm 80 / util 7；分解和 437 + 根 README doc test 6）——util 7 = 白盒 4 + doc test 3（G-1 机械件锚，2026-09-26 入列）——S5 起 bytecode/codegen 入列、S6 起 memory/host/vm 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 31 / host 107 各含 2 个包 README doc test（2026-09-23 补指引批）；memory 31 = 白盒 23 + 黑盒 6 + doc test 2；host 107 = 白盒 97 + 黑盒 8 + doc test 2（黑盒承担对外面消费面点名）；vm 80 = 快照 wbtest 14〔+门 3 五锚 + 删 Full 级联 pinned 锚〕+ executor wbtest 63〔含 void host 栈平衡红锚〕+ 黑盒 2（八族 + 审阅修复批符号扩展锚×10 + 段二 F/D/Q 三族锚 4 + 控制流锚 7 + 批三号一段分发锚 5〔ctype/math-exit/exit 族/malloc-free/输出与 rand〕+ 三轮审阅锚 3〔NegF 零符号/附注去重/fmod·atan2 非对称〕）+ 黑盒 2；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

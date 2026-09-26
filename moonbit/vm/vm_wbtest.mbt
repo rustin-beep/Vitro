@@ -626,7 +626,9 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
   let p2 = vm.mem_map.allocate_raw(48U, @bytecode.MEM_SIZE).unwrap()
   vm.mem_map.register_alloc(p2, 48, 2, "b", true)
   ignore(vm.mem_map.release(p1, 9, 100))
-  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  guard vm.mem_map.verify() is Ok(_) else {
+    fail("不变量自检必须通过")
+  }
   // ── 快照时刻基线：1MB 映像 + 堆元数据指纹 ──
   let before = vm.dump_memory_raw()
   let regions_before = vm.mem_map.regions.length()
@@ -635,11 +637,11 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
   let snap = vm.snapshot()
   let p3 = vm.mem_map.allocate_raw(32U, @bytecode.MEM_SIZE).unwrap()
   vm.mem_map.register_alloc(p3, 32, 3, "c", true)
-  ignore(
-    vm.memory.store_u64(vm.mem_map, p2, 0xDEADBEEFCAFEBABEUL),
-  )
+  ignore(vm.memory.store_u64(vm.mem_map, p2, 0xDEADBEEFCAFEBABEUL))
   vm.stack.push(42UL)
-  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  guard vm.mem_map.verify() is Ok(_) else {
+    fail("不变量自检必须通过")
+  }
   // ── 恢复：一切变更回滚 ──
   vm.restore(snap)
   // 1MB 逐字节
@@ -654,9 +656,15 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
   }
   assert_eq(mism, -1, msg="1MB 逐字节与快照时刻一致")
   assert_eq(vm.mem_map.regions.length(), regions_before, msg="区域数回滚")
-  assert_eq(vm.mem_map.freed_logs.length(), freed_before, msg="freed 计数回滚")
+  assert_eq(
+    vm.mem_map.freed_logs.length(),
+    freed_before,
+    msg="freed 计数回滚",
+  )
   assert_eq(vm.stack.length(), 0, msg="值栈回滚")
-  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  guard vm.mem_map.verify() is Ok(_) else {
+    fail("不变量自检必须通过")
+  }
   // 恢复态仍可运行到程序语义终点（PushConst 7; Ret）
   assert_eq(vm.run(), 7, msg="恢复后可继续执行")
 }

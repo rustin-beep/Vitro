@@ -191,7 +191,14 @@ func scanFiles(root string) []string {
 		}
 	}
 	sort.Strings(out)
-	if exempt, _ := loadExemptDocs(root); exempt != nil {
+	exempt, exErr := loadExemptDocs(root)
+	if exErr != nil {
+		// P2-5（2026-09-26 审阅）：此前 `_` 吞错——头注声称的「条目指向不
+		// 存在文件即红」从不打印，坏白名单被静默当空表。fail loud。
+		fmt.Fprintf(os.Stderr, "facts: 豁免白名单加载失败（fail loud）：%v\n", exErr)
+		os.Exit(2)
+	}
+	if exempt != nil {
 		filtered := out[:0]
 		for _, f := range out {
 			if _, ok := exempt[f]; !ok {

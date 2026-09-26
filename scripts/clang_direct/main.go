@@ -94,6 +94,7 @@ type moonResult struct {
 	compileFail bool
 	stdout      string // 已 Latin-1 归一（还原单字节）
 	exitCode    int
+	memoryPath  string // --dump-memory 产物（正向证据：恰 1MB）
 }
 
 type caseRef struct {
@@ -161,7 +162,7 @@ func main() {
 
 	known := loadKnown()
 	// 白名单防腐化（静态部分）：known 条目名不在用例集合即红（全量模式才判）
-	if len(explicit) == 0 && sample == 0 {
+	if fullCorpusRun(corpora, explicit, sample) {
 		names := map[string]bool{}
 		for _, c := range cases {
 			names[filepath.Base(c.rel)] = true
@@ -212,12 +213,16 @@ func main() {
 			continue
 		}
 		issues := compareDirect(o, m)
+		cleanupMoon(m)
 		if len(issues) == 0 {
 			fmt.Printf("SAME  %s\n", c.rel)
 			same++
 			continue
 		}
-		digest := issueDigest(issues)
+		// P3-7（2026-09-26 审阅）：digest 混入 case 名——两条用例的差异
+		// 文本完全相同时 digest 亦同（指针宽度两例撞车实锤），白名单豁免
+		// 必须钉到「这一例的这种差异」而非「任何一例的这种差异」。
+		digest := issueDigest(append([]string{base}, issues...))
 		if e, ok := known.lookup(base); ok {
 			if e.Digest == digest {
 				fmt.Printf("DIFF-KNOWN %s（%s；digest=%s）\n", c.rel, e.Reason, digest)
@@ -236,7 +241,7 @@ func main() {
 		same, knownN, diff, same+knownN+diff)
 
 	// 白名单防腐化（动态部分）：known 条目未命中即红（转绿逼移除）
-	if len(explicit) == 0 && sample == 0 {
+	if fullCorpusRun(corpora, explicit, sample) {
 		bad := false
 		for _, e := range known.entries {
 			if !known.hit[e.Case] {
@@ -250,6 +255,32 @@ func main() {
 	}
 	if diff > 0 {
 		os.Exit(1)
+	}
+}
+
+// fullCorpusRun：真·全量（默认四语料、无 --cases/--sample）——--corpus 单
+// 语料是子集运行，白名单空转校验（静态与动态）只在此形态判，否则
+// `--corpus gap` 会误报「engine_note_lookalike.c 不在本轮」（P3-6，
+// 2026-09-26 审阅：usage 写着支持 --corpus 却恒误红）。
+func fullCorpusRun(corpora []string, explicit []string, sample int) bool {
+	if len(explicit) != 0 || sample != 0 {
+		return false
+	}
+	if len(corpora) != len(corporaDefault) {
+		return false
+	}
+	for i := range corpora {
+		if corpora[i] != corporaDefault[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// cleanupMoon：runMoon 映像文件清理（compare 消费后）。
+func cleanupMoon(m *moonResult) {
+	if m != nil && m.memoryPath != "" {
+		os.Remove(m.memoryPath)
 	}
 }
 
@@ -375,9 +406,17 @@ func runClang(c caseRef, slot int, clangVersion string) *clangResult {
 		if !res.compileFail && !res.abnormal {
 			break
 		}
-		time.Sleep(time.Duration(500*(attempt+1)) * time.Millisecond)
+		// 指数退避 1s/2s/4s（P1-1 收敛批：全量并发下邻居编译窗口 >1.5s，
+		// 线性 500ms 退避 3 次仍可能全程落在竞态窗内——实测同 4 例连续
+		// 3 轮重试全失败、单独跑即绿）
+		time.Sleep(time.Duration(1000<<attempt) * time.Millisecond)
 	}
-	if res != nil && !res.abnormal {
+	// 编译失败结果**不落缓存**（2026-09-26 审阅 P1-1 连带修复）：Windows
+	// 全量并发下调度竞态会让 clang 以 ExitError 伪装成确定性失败——三态
+	// 实证：全量 601 两轮稳定同 4 例 / 同 4 例单独并发 3 轮全绿 / 串行
+	// jobs=1 绿。缓存会把竞态快照固化成假确定性（key 不含运行环境状态）。
+	// 代价 = 每轮重算 ~10 个真编译失败例（每例 <1s），换来毒化通道封死。
+	if res != nil && !res.abnormal && !res.compileFail {
 		storeCache(key, res)
 	}
 	return res
@@ -407,8 +446,13 @@ func runClangOnce(c caseRef, slot int) *clangResult {
 		}
 		return &clangResult{compileFail: true, abnormal: true}
 	}
-	// 运行（超时 = 环境异常可重试；exit != 0 = 确定性结果）
+	// 运行（超时 = 环境异常可重试；exit != 0 = 确定性结果）。
+	// **cwd = 槽位隔离目录**（2026-09-26 审阅 P1-1 修复）：此前在仓库根跑，
+	// fopen("test.txt") 族用例真读写仓库根的 gitignore 遗留文件，且 8 路并发
+	// 互相覆盖同源竞态（连跑两轮 DIFF=2/4，用户实测）——隔离后这些用例回到
+	// 确定性的 fopen 失败形态，known_direct 相应重新归因。
 	runCmd := exec.Command(exeFile)
+	runCmd.Dir = runDir
 	var rOut bytes.Buffer
 	runCmd.Stdout = &rOut
 	runCmd.Stderr = &rOut
@@ -440,13 +484,24 @@ func storeCache(key string, r *clangResult) {
 // ── MoonBit 侧（形态复刻 vm_diff）──
 
 func runMoon(c caseRef) *moonResult {
+	// P2-4（2026-09-26 审阅）：加 --dump-memory 正向证据通道——此前把
+	// run.exe 换成 `int main(){return 0;}` 的静默 exe 仍报 SAME（空 stdout
+	// + exit 0 全对上）。映像恰 1MB 是 runner 真跑了编译装载全链的充分
+	// 证据（vm_diff 同款口径）；缺失/非 1MB 进 issues 红。
+	tmp, err := os.CreateTemp("", "cdmem_*.bin")
+	if err != nil {
+		return &moonResult{compileFail: true, stdout: "// TMPFAIL"}
+	}
+	tmp.Close()
+	// 注意：不 defer 删除——compareDirect 消费映像在 runMoon 返回之后
+	//（vm_diff 曾同坑：defer 先删致校验永假）；清理由主循环 cleanup 承担。
 	var out bytes.Buffer
-	cmd := exec.Command(filepath.FromSlash(runnerExe), c.path)
+	cmd := exec.Command(filepath.FromSlash(runnerExe), c.path, "--dump-memory", tmp.Name())
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	_ = cmd.Run()
 	s := out.String()
-	r := &moonResult{stdout: s}
+	r := &moonResult{stdout: s, memoryPath: tmp.Name()}
 	if strings.Contains(s, "// COMPILE-ERROR") {
 		r.compileFail = true
 	}
@@ -538,7 +593,18 @@ func compareDirect(o *clangResult, m *moonResult) []string {
 		if m.compileFail {
 			who = "moonbit"
 		}
-		issues = append(issues, fmt.Sprintf("单侧编译失败（%s）", who))
+		detail := ""
+		if o.compileFail {
+			// clang 错误首行入报文（诊断可达——并发一过性失败与真源码
+			// 不支持靠它区分，P1-1 收敛批）
+			for _, l := range strings.Split(o.stdout, "\n") {
+				if t := strings.TrimSpace(l); t != "" {
+					detail = "；" + clip(t)
+					break
+				}
+			}
+		}
+		issues = append(issues, fmt.Sprintf("单侧编译失败（%s%s）", who, detail))
 		return issues
 	}
 	if o.compileFail {
@@ -549,6 +615,20 @@ func compareDirect(o *clangResult, m *moonResult) []string {
 	}
 	if o.exitCode != m.exitCode {
 		issues = append(issues, fmt.Sprintf("返回码 %d != %d", o.exitCode, m.exitCode))
+	}
+	// 正向证据（P2-4）：runner 真跑了全链 ⇒ 映像恰 1MB。静默 exe / 假 runner
+	// 在此红（实测：cmd/run 换 return-0 stub 时本条必红）。
+	if !m.compileFail {
+		switch {
+		case m.memoryPath == "":
+			issues = append(issues, "映像缺失（runner 未产出 dump）")
+		default:
+			if md, err := os.ReadFile(m.memoryPath); err != nil {
+				issues = append(issues, fmt.Sprintf("映像读取失败（%v）", err))
+			} else if len(md) != 1024*1024 {
+				issues = append(issues, fmt.Sprintf("映像非 1MB（%d）——runner 全链正向证据缺失", len(md)))
+			}
+		}
 	}
 	return issues
 }

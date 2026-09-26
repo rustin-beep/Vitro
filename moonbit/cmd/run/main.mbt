@@ -29,9 +29,12 @@ impl @token.SourceProvider for FsProvider with fn read(self, path : String) -> S
 }
 
 ///|
-/// 路径的目录段（末个 `/` 或 `\` 之前；无分隔符 = 当前目录 "."——对齐
-/// Rust `Path::parent()` 对裸文件名返回 Some("") 的口径，空串交 resolver
-/// 候选链时跳过该级）。分隔符统一转 `/`（resolver 的 VFS 规范化前提）。
+/// 路径的目录段（末个 `/` 或 `\` 之前；无分隔符 = "."）。分隔符统一转
+/// `/`。与 oracle 的等价性经 7 形态端到端探针对拍实证（裸文件名 / ./x /
+/// 绝对路径 / 子目录 / 嵌套 include 链 / 取不到的根相对路径 / 根斜杠）：
+/// 本函数返 "." 时 oracle base_path = Some("")——**两侧并不逐字相同**
+/// （MoonBit resolver 跳过空串 cur_dir，Rust Path("").join(p) 不跳过），
+/// 但两级候选链的最终解析行为逐形态一致——等价是行为级非文本级。
 fn dir_of(path : String) -> String {
   let mut last = -1
   for i = 0; i < path.length(); i = i + 1 {
@@ -77,7 +80,13 @@ fn main raise {
     )
     return
   }
-  let src = @fs.read_file_to_string(file)
+  // P3-10（2026-09-26 审阅）：源文件不可读此前抛裸 IOError（exit 127、非
+  // 协议形态）——协议化为 // COMPILE-ERROR io 行，harness 报文可读。
+  let src = @fs.read_file_to_string(file) catch { _ => "" }
+  guard src != "" else {
+    println("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
+    return
+  }
   // ── 编译管线（照 dump_compile 的 fail loud 样板）──
   // SourceProvider 接线（2026-09-26，消 vm_diff e2 include 族 SKIP）：对齐
   // Rust oracle 口径 = 首个源文件目录作 quote-include 候选链 base_dir，

@@ -28,6 +28,9 @@
 //  3. 1MB 映像：双侧 --dump-memory（oracle 出口 = vitro_cli run
 //     --dump-memory → VitroVM::memory_bytes，防线维护批）逐字节 diff，
 //     首差地址 + 差异字节数入 issue；双侧编译失败（等价）无映像不比
+//     **区间机判（2026-09-26 审阅销项）**：含映像差异的 known 条目必须
+//     声明 memory_stack_only 且实际残渣必须全部落在栈窗口内（映像顶部
+//     4096B），否则降级 DIFF——见 knownEntry 注释。
 //
 // stdout 提取（2026-09-26 审阅 P2-3 收紧）：此前按前缀整行滤噪
 // （"// "、两空格缩进、Warning/Error/Finished.）会吃掉程序合法输出
@@ -39,7 +42,9 @@
 //	SAME             无差异
 //	DIFF-known       case 在 known_diffs.json 且差异 digest 与登记一致
 //	                 （已归因差异——D 级台账登记的 @math 值级偏离等；
-//	                 digest 漂移即降级 DIFF，防白名单腐化为万能豁免）
+//	                 digest 漂移即降级 DIFF，防白名单腐化为万能豁免；
+//	                 含映像差异者另过区间机判：未声明 memory_stack_only
+//	                 或残渣越出栈窗口 ⇒ 仍判 DIFF）
 //	DIFF(unexpected) 其余一切差异——红
 //
 // 白名单防腐化：skip/known 条目全量跑后未命中任何用例即红（空转条目
@@ -75,10 +80,43 @@ type skipEntry struct {
 
 // knownEntry：已归因差异白名单——digest = 差异内容（issues 拼接）sha256
 // 前 8 位。case 命中但 digest 不匹配 = 差异形状已变，降级 DIFF 逼重新归因。
+//
+// memory_stack_only（2026-09-26 审阅销项，**含映像差异的条目必填**）：
+// digest 只钉「差异字节数 + 首差地址」（见 issueDigest 口径），差异搬家而
+// 计数与首差恰好不变时 digest 不动；且 digest 不表达差异落在哪一段内存。
+// 故含 1MB 映像差异的条目必须显式认领区间（`"memory_stack_only": true`），
+// 由 main 里的 stackWindow 机判复核实际落点——未声明或越窗一律降级 DIFF。
+// 这是"残渣必须是生命周期外栈内容"这条**归因**的机判替身（人写的 reason
+// 文本不作依据）。
 type knownEntry struct {
-	Case   string `json:"case"`
-	Digest string `json:"digest"`
-	Reason string `json:"reason"`
+	Case            string `json:"case"`
+	Digest          string `json:"digest"`
+	Reason          string `json:"reason"`
+	MemoryStackOnly bool   `json:"memory_stack_only,omitempty"`
+}
+
+// 栈窗口：`STACK_START = MEM_SIZE`、栈向下生长 ⇒ 栈天然占映像顶部。单源 =
+// moonbit/bytecode/memory.mbt（MEM_SIZE / STACK_START / GLOBAL_REGION_LIMIT）。
+// 窗口宽度取**实测标定**（2026-09-26，tmp/review_20260926/memdiff/）：5 个
+// known 用例的存活数据（全局/argv/堆）最高落点 = 0x10015，qsort 族残渣落点
+// = 0xFFF90–0xFFFEC ⇒ 取顶部 4KB 比实测栈用量（~112B）宽 36 倍，同时远低于
+// 堆可达高度。方向是 fail loud：真栈深超过 4KB 的用例会红（逼人看一眼），
+// 而"差异落在全局/堆/argv 区"必红。
+const stackWindowBytes = 4096
+
+// memDiff：第三通道差异的地址画像（nil = 本用例无映像差异）。
+type memDiff struct {
+	count, first, last, size int
+}
+
+// allInStackWindow：全部差异地址落在映像顶部 stackWindowBytes 内。
+func (d *memDiff) allInStackWindow() bool {
+	return d.size > 0 && d.first >= d.size-stackWindowBytes
+}
+
+func (d *memDiff) describe() string {
+	return fmt.Sprintf("映像残渣 %d 字节 @0x%X..0x%X（栈窗口 0x%X..0x%X）",
+		d.count, d.first, d.last, d.size-stackWindowBytes, d.size)
 }
 
 type result struct {
@@ -206,7 +244,7 @@ func main() {
 	// 判会误报（J9 注入实测实锤）。放在跑例之前，「语料中不存在」秒判
 	// 不必等全量跑完；命中性防腐化（条目存在但从未触发）由全量跑后的
 	// 动态检查承担（下方 known/skip 的 hit 表）。
-	if len(explicit) == 0 && sample == 0 {
+	if fullCorpusRun(corpora, explicit, sample) {
 		names := map[string]bool{}
 		for _, c := range cases {
 			names[filepath.Base(c.rel)] = true
@@ -247,7 +285,7 @@ func main() {
 			cleanup(m)
 			continue
 		}
-		issues := compare(c.rel, o, m)
+		issues, mem := compare(c.rel, o, m)
 		cleanup(o)
 		cleanup(m)
 		if len(issues) == 0 {
@@ -255,10 +293,31 @@ func main() {
 			same++
 			continue
 		}
-		digest := issueDigest(issues)
+		// P3-7（2026-09-26 审阅）：digest 混入 case 名——两条用例的差异
+		// 文本完全相同时 digest 亦同（指针宽度两例撞车实锤），白名单豁免
+		// 必须钉到「这一例的这种差异」而非「任何一例的这种差异」。
+		digest := issueDigest(append([]string{base}, issues...))
 		if e, ok := known.lookup(base); ok {
 			if e.Digest == digest {
-				fmt.Printf("DIFF-KNOWN %s（%s；digest=%s）\n", c.rel, e.Reason, digest)
+				// 区间机判（见 knownEntry.MemoryStackOnly 注释）：含映像差异的
+				// 条目必须显式认领 + 实际落点必须在栈窗口内，否则降级 DIFF。
+				if mem != nil && !e.MemoryStackOnly {
+					fmt.Printf("DIFF  %s：known 条目含 1MB 映像差异却未声明 \"memory_stack_only\": true——区间须显式认领（%s）\n",
+						c.rel, mem.describe())
+					diff++
+					continue
+				}
+				if mem != nil && !mem.allInStackWindow() {
+					fmt.Printf("DIFF  %s：%s——越出栈窗口，活数据差异不得豁免（重新归因或修真缺陷）\n",
+						c.rel, mem.describe())
+					diff++
+					continue
+				}
+				extra := ""
+				if mem != nil {
+					extra = "；" + mem.describe()
+				}
+				fmt.Printf("DIFF-KNOWN %s（%s；digest=%s%s）\n", c.rel, e.Reason, digest, extra)
 				knownN++
 				continue
 			}
@@ -274,7 +333,7 @@ func main() {
 		same, knownN, diff, skipN, same+knownN+diff+skipN)
 
 	// 白名单防腐化：全量模式（非 --cases/--sample）下空转条目即红。
-	if len(explicit) == 0 && sample == 0 {
+	if fullCorpusRun(corpora, explicit, sample) {
 		bad := false
 		for _, e := range skips.entries {
 			if !skips.hit[e.Case] {
@@ -367,14 +426,35 @@ func (k *knownList) lookup(caseName string) (knownEntry, bool) {
 	return knownEntry{}, false
 }
 
+// fullCorpusRun：真·全量（默认四语料、无 --cases/--sample）——--corpus 单
+// 语料是子集运行，白名单空转校验（静态与动态）只在此形态判，否则
+// `--corpus gap` 会误报「engine_note_lookalike.c 不在本轮」（P3-6，
+// 2026-09-26 审阅：usage 写着支持 --corpus 却恒误红）。
+func fullCorpusRun(corpora []string, explicit []string, sample int) bool {
+	if len(explicit) != 0 || sample != 0 {
+		return false
+	}
+	if len(corpora) != len(corporaDefault) {
+		return false
+	}
+	for i := range corpora {
+		if corpora[i] != corporaDefault[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
 }
 
-// compare：三通道比对（第三通道为自包含性校验，非 diff——见头注）。
-func compare(name string, o, m *result) []string {
+// compare：三通道比对（第三通道 = 1MB 映像逐字节 diff）。返回 issues 与
+// 第三通道的地址画像（nil = 未产出可比映像，含单侧编译失败/读取失败）。
+func compare(name string, o, m *result) ([]string, *memDiff) {
 	var issues []string
+	var mem *memDiff
 	// 单侧编译失败先行报明（否则降格成「stdout/返回码不一致」难归因——
 	// include_quote_sentinel 实锤：oracle vfs 磁盘/预设注入 vs cmd/run 无）
 	if o.compileFail != m.compileFail {
@@ -416,11 +496,18 @@ func compare(name string, o, m *result) []string {
 						n++
 					}
 				}
+				mem = &memDiff{count: n, first: first, last: first, size: len(od)}
+				for i := len(od) - 1; i >= 0; i-- {
+					if od[i] != md[i] {
+						mem.last = i
+						break
+					}
+				}
 				issues = append(issues, fmt.Sprintf("1MB 映像 %d 字节不一致（首差 @0x%X）", n, first))
 			}
 		}
 	}
-	return issues
+	return issues, mem
 }
 
 // extractOracleStdout：从 vitro_cli run 的 stdout 提取纯程序输出——

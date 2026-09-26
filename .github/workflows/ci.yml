@@ -120,7 +120,7 @@ jobs:
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
           # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/shadow_verify/main.go', 'scripts/internal/**/*.go') }}
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/shadow_verify/main.go', 'scripts/clang_direct/main.go', 'scripts/vm_diff/main.go', 'scripts/internal/**/*.go') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
 

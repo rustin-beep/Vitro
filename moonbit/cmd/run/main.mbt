@@ -11,6 +11,52 @@
 //   - 末行标记：`// EXIT <ret>`（返回码通道；ret=0 时省略）
 
 ///|
+/// 文件系统 provider：把 resolver 拼好的候选路径（"/" 分隔的规范形态，
+/// 相对/绝对均可——Windows fs 接受正斜杠）交给宿主文件系统。未命中统一
+/// `NotFound`（由 pp 层按候选链继续或最终报 E1021，与 Rust E1021 对拍）。
+enum FsProvider {
+  Fs
+}
+
+///|
+impl @token.SourceProvider for FsProvider with fn read(self, path : String) -> String raise @token.SourceError {
+  match self {
+    Fs => ()
+  }
+  @fs.read_file_to_string(path) catch {
+    _ => raise @token.SourceError::NotFound(path~)
+  }
+}
+
+///|
+/// 路径的目录段（末个 `/` 或 `\` 之前；无分隔符 = 当前目录 "."——对齐
+/// Rust `Path::parent()` 对裸文件名返回 Some("") 的口径，空串交 resolver
+/// 候选链时跳过该级）。分隔符统一转 `/`（resolver 的 VFS 规范化前提）。
+fn dir_of(path : String) -> String {
+  let mut last = -1
+  for i = 0; i < path.length(); i = i + 1 {
+    let c = path[i]
+    if c.to_int() == 47 || c.to_int() == 92 {
+      last = i
+    }
+  }
+  if last <= 0 {
+    "."
+  } else {
+    let buf = StringBuilder()
+    for i = 0; i < last; i = i + 1 {
+      let c = path[i]
+      if c.to_int() == 92 {
+        buf.write_char('/')
+      } else {
+        buf.write_char(c.to_int().unsafe_to_char())
+      }
+    }
+    buf.to_string()
+  }
+}
+
+///|
 fn main raise {
   let args = @env.args()
   let mut file = ""
@@ -33,7 +79,12 @@ fn main raise {
   }
   let src = @fs.read_file_to_string(file)
   // ── 编译管线（照 dump_compile 的 fail loud 样板）──
-  let lexed = @lexer.tokenize(src)
+  // SourceProvider 接线（2026-09-26，消 vm_diff e2 include 族 SKIP）：对齐
+  // Rust oracle 口径 = 首个源文件目录作 quote-include 候选链 base_dir，
+  // resolver 拼好候选路径后 provider 直读文件系统（compile_pipeline.rs
+  // `base_path = Path(filename).parent()` → directives.rs `fs::read_to_string`）。
+  let provider = FsProvider::Fs
+  let lexed = @lexer.tokenize_with(src, provider~, base_dir=dir_of(file))
   guard lexed.errors.is_empty() else {
     for e in lexed.errors {
       println("// COMPILE-ERROR lex \{e.loc.line}:\{e.loc.column} \{e.message}")
@@ -64,7 +115,36 @@ fn main raise {
   }
   // ── setup + run（批四号 12 步组装）──
   let vm = @vm.VitroVM::new()
-  vm.setup_from_output(output, 0, [])
+  // argv[0] = 源文件路径（对齐 oracle CLI 口径：main 解析处 argv 以 file_path
+  // 为首元素——C 惯例 argv[0]=程序名；第三联映像 diff 的 argv 区一致性前提）
+  let argv0 : Array[String] = [file]
+  vm.setup_from_output(output, 1, argv0)
+  // R1 ① 动态堆起点（对齐 oracle reset_runtime：argv 非空 ⇒ heap_base 上移
+  // GLOBAL_REGION_LIMIT）。须在 setup_from_output **之后**——其内部 reset 会
+  // 整体重建 mem_map（heap_base 回默认），预设注入前落位即可（oracle 的
+  // set_heap_base 虽在 setup_vm 前，但其 setup 不重建 MemoryState，语义等价）。
+  vm.mem_map.set_heap_base(
+    @bytecode.compute_heap_base(output.global_data_end, 1, argv0),
+  )
+  // vfs 预设注入（对齐 oracle CLI 口径：execute_run 无条件注入 test.txt/
+  // numbers.txt——教学演示通道，file_fopen/file_fread 族的依赖面；亦使
+  // 第三联映像的 vfs 预设区一致）
+  ignore(
+    vm.vfs.inject_preset_file(
+      vm.mem_map,
+      vm.memory,
+      "test.txt",
+      b"hello\nworld\n",
+    ),
+  )
+  ignore(
+    vm.vfs.inject_preset_file(
+      vm.mem_map,
+      vm.memory,
+      "numbers.txt",
+      b"1 2 3 4 5\n",
+    ),
+  )
   let ret = vm.run()
   // ── stdout 通道（Buffer 聚合 + print 整串——字节经 Char 直转；
   // 非 UTF-8 字节按 Latin-1 落文本，Go 侧归一时统一字节口径）──

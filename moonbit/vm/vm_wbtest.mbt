@@ -590,3 +590,73 @@ test "checkpoint_quarantine_triple_roundtrip" {
   // UAF 不出假阴性：回退后访问已释放块必命中 freed_logs
   assert_true(vm.mem_map.freed_logs_contains(a))
 }
+
+///|
+/// 门 3 集成版锚（2026-09-26 销账批）：libc 真装载（setup_from_output 合并
+/// 3485 条）+ argv + vfs 预设 + 非平凡堆（两分配一释放——regions/quarantine/
+/// freed_logs 三态非空）下的全量快照往返——恢复后 1MB 逐字节 + 堆元数据
+/// 与快照时刻全等；快照后的一切变更（新分配/脏写/值栈）必须被回滚。
+/// 对照模块级五锚（合成指令流），本锚以「cmd/run 同款集成链」销
+/// 总计划 §2 门 3 的「S6 集成版验收」。
+test "gate3_integrated_roundtrip_with_libc_setup" {
+  let vm = VitroVM::new()
+  let out = @bytecode.CompileOutput::{
+    code: [
+      @opcode.Instruction::new(PushConst, 7, @source.SourceLoc::new(1, 1)),
+      @opcode.Instruction::new(Ret, 0, @source.SourceLoc::new(1, 1)),
+    ],
+    globals_init_32: [],
+    globals_init_64: [],
+    func_table: Map([]),
+    func_index: Map([]),
+    string_data: [],
+    source_map: [],
+    symbols: [],
+    struct_defs: Map([]),
+    union_defs: Map([]),
+    f64_constants: [],
+    i64_constants: [],
+    global_data_end: 0U,
+  }
+  vm.setup_from_output(out, 1, ["prog"])
+  ignore(vm.vfs.inject_preset_file(vm.mem_map, vm.memory, "t.txt", b"ab"))
+  // 非平凡堆：两块分配 + 一块释放（隔离/日志非空）
+  let p1 = vm.mem_map.allocate_raw(64U, @bytecode.MEM_SIZE).unwrap()
+  vm.mem_map.register_alloc(p1, 64, 1, "a", true)
+  let p2 = vm.mem_map.allocate_raw(48U, @bytecode.MEM_SIZE).unwrap()
+  vm.mem_map.register_alloc(p2, 48, 2, "b", true)
+  ignore(vm.mem_map.release(p1, 9, 100))
+  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  // ── 快照时刻基线：1MB 映像 + 堆元数据指纹 ──
+  let before = vm.dump_memory_raw()
+  let regions_before = vm.mem_map.regions.length()
+  let freed_before = vm.mem_map.freed_logs.length()
+  // ── 快照后变更：新分配 + 脏写 + 值栈 ──
+  let snap = vm.snapshot()
+  let p3 = vm.mem_map.allocate_raw(32U, @bytecode.MEM_SIZE).unwrap()
+  vm.mem_map.register_alloc(p3, 32, 3, "c", true)
+  ignore(
+    vm.memory.store_u64(vm.mem_map, p2, 0xDEADBEEFCAFEBABEUL),
+  )
+  vm.stack.push(42UL)
+  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  // ── 恢复：一切变更回滚 ──
+  vm.restore(snap)
+  // 1MB 逐字节
+  let after = vm.dump_memory_raw()
+  assert_eq(after.length(), 1024 * 1024, msg="映像恰 1MB")
+  let mut mism = -1
+  for i = 0; i < after.length(); i = i + 1 {
+    if after[i] != before[i] {
+      mism = i
+      break
+    }
+  }
+  assert_eq(mism, -1, msg="1MB 逐字节与快照时刻一致")
+  assert_eq(vm.mem_map.regions.length(), regions_before, msg="区域数回滚")
+  assert_eq(vm.mem_map.freed_logs.length(), freed_before, msg="freed 计数回滚")
+  assert_eq(vm.stack.length(), 0, msg="值栈回滚")
+  guard vm.mem_map.verify() is Ok(_) else { fail("不变量自检必须通过") }
+  // 恢复态仍可运行到程序语义终点（PushConst 7; Ret）
+  assert_eq(vm.run(), 7, msg="恢复后可继续执行")
+}

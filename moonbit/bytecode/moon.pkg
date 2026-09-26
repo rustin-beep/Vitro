@@ -6,6 +6,7 @@ import {
   "vitro/engine/ast",
   "vitro/engine/opcode",
   "vitro/engine/source",
+  "vitro/engine/util",
 }
 
 import {

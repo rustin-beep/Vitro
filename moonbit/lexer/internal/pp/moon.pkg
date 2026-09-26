@@ -4,4 +4,5 @@ import {
   "vitro/engine/lexer/internal/host",
   "vitro/engine/diag",
   "moonbitlang/core/encoding/utf8",
+  "vitro/engine/util",
 }

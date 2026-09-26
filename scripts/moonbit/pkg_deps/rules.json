@@ -6,6 +6,7 @@
   "levels": {
     "source": 0,
     "opcode": 0,
+    "util": 0,
     "diag": 1,
     "ast": 2,
     "names": 3,

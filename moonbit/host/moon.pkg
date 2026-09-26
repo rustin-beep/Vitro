@@ -15,4 +15,5 @@ import {
   "moonbitlang/core/string",
   "vitro/engine/bytecode",
   "vitro/engine/memory",
+  "vitro/engine/util",
 }

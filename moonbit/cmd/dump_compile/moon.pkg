@@ -7,6 +7,7 @@ import {
   "vitro/engine/typeck",
   "moonbitlang/x/fs",
   "moonbitlang/core/env",
+  "vitro/engine/util",
 }
 
 supported_targets = "native"

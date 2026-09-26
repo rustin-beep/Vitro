@@ -434,7 +434,7 @@ pub fn VitroVM::setup_argv(
     // 推进口径 = UTF-8 字节数（与 `argv_region_footprint` 同口径——Rust
     // `s.len()` 同义）；**写入**字节走 cstring 单源（Latin-1 ≤0xFF）——
     // 非 ASCII 参数串内容短于推进量，尾部留零间隙，与 oracle 逐字节同形。
-    let byte_len = @utf8.encode(s).length().reinterpret_as_uint()
+    let byte_len = @util.utf8_len(s).reinterpret_as_uint()
     let next = string_addr + byte_len + 1U
     if next > @bytecode.GLOBAL_REGION_LIMIT {
       self.error = "setup_argv: 命令行参数过长，超出全局数据区"

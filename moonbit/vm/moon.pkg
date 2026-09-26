@@ -18,4 +18,5 @@ import {
   "vitro/engine/memory",
   "vitro/engine/opcode",
   "vitro/engine/source",
+  "vitro/engine/util",
 }

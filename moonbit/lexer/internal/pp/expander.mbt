@@ -424,7 +424,7 @@ fn truncate_utf8(s : String, limit : Int) -> String {
 ///|
 /// text 的 UTF-8 字节数（Rust `text.len()` 口径——预算计费/列号反推共用）。
 fn utf8_text_len(s : String) -> Int {
-  @utf8.encode(s).length()
+  @util.utf8_len(s)
 }
 
 ///|

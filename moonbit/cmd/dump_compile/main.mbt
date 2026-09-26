@@ -184,30 +184,11 @@ fn sort_files_lex(files : Array[String]) -> Unit {
   while i < files.length() {
     let k = files[i]
     let mut j = i - 1
-    while j >= 0 && str_cmp(files[j], k) > 0 {
+    while j >= 0 && @util.str_cmp(files[j], k) > 0 {
       files[j + 1] = files[j]
       j -= 1
     }
     files[j + 1] = k
     i += 1
-  }
-}
-
-///|
-fn str_cmp(a : String, b : String) -> Int {
-  let n = if a.length() < b.length() { a.length() } else { b.length() }
-  for i in 0..<n {
-    let x = a[i].to_int()
-    let y = b[i].to_int()
-    if x != y {
-      return if x < y { -1 } else { 1 }
-    }
-  }
-  if a.length() == b.length() {
-    0
-  } else if a.length() < b.length() {
-    -1
-  } else {
-    1
   }
 }

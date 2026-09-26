@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/util"
+
+// Values
+pub fn i64_to_i32_bits(Int64) -> Int
+
+pub fn le_u32_at(FixedArray[Byte], Int) -> UInt
+
+pub fn le_u64_at(FixedArray[Byte], Int) -> UInt64
+
+pub fn str_cmp(String, String) -> Int
+
+pub fn utf8_len(String) -> Int
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

@@ -1,13 +1,13 @@
-# moonbit_surface 边清单：全部合法跨包消费边（consumer provider sym）。
-# S6 批一段（2026-09-23）起两侧一律**包全名**（moon.mod 模块名 + 包目录）：
-#   - 工作区包如 vitro/engine/lexer、vitro/engine/lexer/internal/host；
+
 #   - core/第三方库记完整路径如 moonbitlang/core/string、moonbitlang/x/fs；
+#   - 工作区包如 vitro/engine/lexer、vitro/engine/lexer/internal/host；
 #   - 模块根 README（发布面文档承诺）的 consumer 记 "."。
+# S6 批一段（2026-09-23）起两侧一律**包全名**（moon.mod 模块名 + 包目录）：
+# moonbit_surface 边清单：全部合法跨包消费边（consumer provider sym）。
+# 两侧条目、只能靠注释区分——已随本批消除（同名符号 J9 注入实证分离）。
+# 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
-# 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
-# 两侧条目、只能靠注释区分——已随本批消除（同名符号 J9 注入实证分离）。
-
 . vitro/engine/diag ErrorCode
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
@@ -22,6 +22,8 @@ vitro/engine/bytecode vitro/engine/libc is_libc_func
 vitro/engine/bytecode vitro/engine/opcode Instruction
 vitro/engine/bytecode vitro/engine/opcode OpCode
 vitro/engine/bytecode vitro/engine/source SourceLoc
+vitro/engine/bytecode vitro/engine/util str_cmp
+vitro/engine/bytecode vitro/engine/util utf8_len
 vitro/engine/cmd/dump_ast moonbitlang/core/env args
 vitro/engine/cmd/dump_ast moonbitlang/x/fs create_dir
 vitro/engine/cmd/dump_ast moonbitlang/x/fs is_dir
@@ -51,6 +53,7 @@ vitro/engine/cmd/dump_compile vitro/engine/lexer tokenize
 vitro/engine/cmd/dump_compile vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_compile vitro/engine/parser parse
 vitro/engine/cmd/dump_compile vitro/engine/typeck TypeChecker
+vitro/engine/cmd/dump_compile vitro/engine/util str_cmp
 vitro/engine/cmd/dump_tokens moonbitlang/core/env args
 vitro/engine/cmd/dump_tokens moonbitlang/x/fs create_dir
 vitro/engine/cmd/dump_tokens moonbitlang/x/fs is_dir
@@ -79,9 +82,12 @@ vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
 vitro/engine/cmd/run moonbitlang/core/env args
 vitro/engine/cmd/run moonbitlang/x/fs read_file_to_string
 vitro/engine/cmd/run moonbitlang/x/fs write_bytes_to_file
+vitro/engine/cmd/run vitro/engine/bytecode compute_heap_base
 vitro/engine/cmd/run vitro/engine/codegen compile
 vitro/engine/cmd/run vitro/engine/host OutputKind
-vitro/engine/cmd/run vitro/engine/lexer tokenize
+vitro/engine/cmd/run vitro/engine/lexer tokenize_with
+vitro/engine/cmd/run vitro/engine/lexer/token SourceError
+vitro/engine/cmd/run vitro/engine/lexer/token SourceProvider
 vitro/engine/cmd/run vitro/engine/parser parse
 vitro/engine/cmd/run vitro/engine/typeck TypeChecker
 vitro/engine/cmd/run vitro/engine/vm VitroVM
@@ -158,6 +164,7 @@ vitro/engine/host vitro/engine/memory FreedRegionInfo
 vitro/engine/host vitro/engine/memory MemFault
 vitro/engine/host vitro/engine/memory Memory
 vitro/engine/host vitro/engine/memory MemoryMap
+vitro/engine/host vitro/engine/util utf8_len
 vitro/engine/lexer moonbitlang/core/encoding/utf8 encode
 vitro/engine/lexer vitro/engine/diag ErrorCode
 vitro/engine/lexer vitro/engine/lexer/internal/host StubsProvider
@@ -186,6 +193,7 @@ vitro/engine/lexer/internal/pp vitro/engine/lexer/token SourceProvider
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token Token
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token TokenType
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token TraceEntry
+vitro/engine/lexer/internal/pp vitro/engine/util utf8_len
 vitro/engine/lexer/internal/scanner moonbitlang/core/encoding/utf8 decode
 vitro/engine/lexer/internal/scanner moonbitlang/core/encoding/utf8 encode
 vitro/engine/lexer/internal/scanner vitro/engine/diag ErrorCode
@@ -193,6 +201,7 @@ vitro/engine/lexer/internal/scanner vitro/engine/lexer/token LexError
 vitro/engine/lexer/internal/scanner vitro/engine/lexer/token RawResult
 vitro/engine/lexer/internal/scanner vitro/engine/lexer/token Token
 vitro/engine/lexer/internal/scanner vitro/engine/lexer/token TokenType
+vitro/engine/lexer/internal/scanner vitro/engine/util utf8_len
 vitro/engine/lexer/token moonbitlang/core/debug Debug
 vitro/engine/lexer/token vitro/engine/diag ErrorCode
 vitro/engine/lexer/token vitro/engine/source SourceLoc
@@ -202,13 +211,14 @@ vitro/engine/memory vitro/engine/bytecode HEAP_START
 vitro/engine/memory vitro/engine/bytecode MEM_SIZE
 vitro/engine/memory vitro/engine/bytecode NULL_TRAP_SIZE
 vitro/engine/memory vitro/engine/bytecode align4
+vitro/engine/memory vitro/engine/util le_u32_at
+vitro/engine/memory vitro/engine/util le_u64_at
 vitro/engine/names vitro/engine/ast Expr
 vitro/engine/names vitro/engine/ast TemplateArg
 vitro/engine/names vitro/engine/ast Type
 vitro/engine/names vitro/engine/source SourceLoc
 vitro/engine/opcode vitro/engine/source SourceLoc
 vitro/engine/parser moonbitlang/core/debug Debug
-vitro/engine/parser moonbitlang/core/encoding/utf8 encode
 vitro/engine/parser moonbitlang/core/string parse_double
 vitro/engine/parser moonbitlang/core/string parse_int
 vitro/engine/parser moonbitlang/core/string parse_int64
@@ -248,6 +258,8 @@ vitro/engine/parser vitro/engine/lexer/token TokenType
 vitro/engine/parser vitro/engine/names ctor_call_name
 vitro/engine/parser vitro/engine/names ctor_def_name
 vitro/engine/parser vitro/engine/source SourceLoc
+vitro/engine/parser vitro/engine/util i64_to_i32_bits
+vitro/engine/parser vitro/engine/util utf8_len
 vitro/engine/typeck vitro/engine/ast AssignOp
 vitro/engine/typeck vitro/engine/ast BinaryOp
 vitro/engine/typeck vitro/engine/ast Designator
@@ -270,6 +282,7 @@ vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/source SourceLoc
+vitro/engine/util moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm vitro/engine/ast Type
 vitro/engine/vm vitro/engine/bytecode CompileOutput
@@ -407,3 +420,4 @@ vitro/engine/vm vitro/engine/memory PAGE_SIZE
 vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc
+vitro/engine/vm vitro/engine/util utf8_len

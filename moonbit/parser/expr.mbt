@@ -760,7 +760,7 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int) -> @ast.Expr {
     }
     // M12：字节长度必须 UTF-8 编码计（Rust value.len()；String::length()
     // 是 UTF-16 码元数——"中文" 会少 4）
-    let array_size = @utf8.encode(value).length() + 1
+    let array_size = @util.utf8_len(value) + 1
     // including null terminator
     return @ast.Expr::StringLiteral(
       value,

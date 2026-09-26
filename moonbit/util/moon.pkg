@@ -1,0 +1,9 @@
+// L0 零依赖·纯机械助手（G-1，2026-09-26）：utf8_len / str_cmp /
+// i64_to_i32_bits / le_u32_at / le_u64_at——只许零语义机械件（无业务判定、
+// 无状态、无副作用），任何层都可依赖而不引入语义耦合。
+// 收口动因：消「@utf8.encode(s).length() 散拼」（静默产空串事故同族）与
+// 「String 比较非字典序」（陷阱 #29）两族跨包重复。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。
+import {
+  "moonbitlang/core/encoding/utf8",
+}

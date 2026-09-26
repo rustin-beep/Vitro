@@ -599,7 +599,7 @@ fn push_enum_member_global(
   let in_i32 = next_value >= -2147483648 && next_value <= 2147483647
   let init : @ast.Expr = if in_i32 {
     @ast.Expr::Literal(
-      i64_to_i32_bits(next_value),
+      @util.i64_to_i32_bits(next_value),
       @source.SourceLoc::new(member_tok.loc.line, member_tok.loc.column),
       @ast.Type::int(),
     )
@@ -917,17 +917,6 @@ fn eval_enum_const(expr : @ast.Expr) -> Int64? {
 
 ///|
 const I64_MIN : Int64 = -9223372036854775807 - 1
-
-///|
-/// Rust `as i32` 的 i64→i32 位截断（低 32 位符号解释）。
-fn i64_to_i32_bits(v : Int64) -> Int {
-  let low = v & 0xFFFFFFFF
-  if low >= 2147483648 {
-    (low - 4294967296).to_int()
-  } else {
-    low.to_int()
-  }
-}
 
 ///|
 /// checked 四则（Int64 静默回绕 → 溢出 None；Rust checked_add 同构）

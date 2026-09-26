@@ -40,7 +40,7 @@ pub fn cstring_len(s : String) -> Int {
     if cp <= 0xFF {
       total += 1
     } else {
-      total += @utf8.encode(c.to_string()).length()
+      total += @util.utf8_len(c.to_string())
     }
   }
   total

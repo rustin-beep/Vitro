@@ -63,7 +63,7 @@ pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
   let count = if argc < argv.length() { argc } else { argv.length() }
   let mut strings : UInt64 = 0
   for i in 0..<count {
-    strings += @utf8.encode(argv[i]).length().to_uint64() + 1
+    strings += @util.utf8_len(argv[i]).to_uint64() + 1
   }
   align4((argc.to_uint64() * 4 + strings).to_uint())
 }

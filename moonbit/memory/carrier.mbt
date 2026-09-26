@@ -178,23 +178,13 @@ fn byte_to_i32(b : Byte) -> Int {
 ///|
 /// 尾部四字节的 u32 拼装（小端）。
 fn Memory::u32_at(self : Memory, off : Int) -> UInt {
-  self.bytes[off].to_uint() |
-  (self.bytes[off + 1].to_uint() << 8) |
-  (self.bytes[off + 2].to_uint() << 16) |
-  (self.bytes[off + 3].to_uint() << 24)
+  @util.le_u32_at(self.bytes, off)
 }
 
 ///|
 /// 尾部八字节的 u64 拼装（小端）。
 fn Memory::u64_at(self : Memory, off : Int) -> UInt64 {
-  self.bytes[off].to_uint64() |
-  (self.bytes[off + 1].to_uint64() << 8) |
-  (self.bytes[off + 2].to_uint64() << 16) |
-  (self.bytes[off + 3].to_uint64() << 24) |
-  (self.bytes[off + 4].to_uint64() << 32) |
-  (self.bytes[off + 5].to_uint64() << 40) |
-  (self.bytes[off + 6].to_uint64() << 48) |
-  (self.bytes[off + 7].to_uint64() << 56)
+  @util.le_u64_at(self.bytes, off)
 }
 
 ///|

@@ -117,7 +117,7 @@ fn is_octal_digit(c : Int) -> Bool {
 ///|
 /// text 的 UTF-8 字节数（Rust `text.len()` 口径——column 反推公式的被减数）。
 fn utf8_len(s : String) -> Int {
-  @utf8.encode(s).length()
+  @util.utf8_len(s)
 }
 
 ///|

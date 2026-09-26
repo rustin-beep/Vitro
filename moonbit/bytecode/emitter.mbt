@@ -13,32 +13,8 @@
 /// 随机，仍须 canonicalize 归一）。
 
 ///|
-/// 字典序比较（负/零/正）。**禁用 `String::compare` / `<` `>`**——MoonBit
-/// 内置 String 比较实测非字典序（`"delta" > "charlie"` 为 false，疑似
-/// 长度优先；2026-09-20 bytecode 白盒实测），与 Go canonicalize 的键排序
-/// （sort.Strings，字节字典序）不一致。本函数按 UTF-16 码元逐位比较 +
-/// 短者小——键域为 C 标识符（ASCII），与 UTF-8 字节字典序在此域等价。
-fn str_cmp(a : String, b : String) -> Int {
-  let n = if a.length() < b.length() { a.length() } else { b.length() }
-  for i in 0..<n {
-    let x = a[i].to_int()
-    let y = b[i].to_int()
-    if x != y {
-      return if x < y { -1 } else { 1 }
-    }
-  }
-  if a.length() == b.length() {
-    0
-  } else if a.length() < b.length() {
-    -1
-  } else {
-    1
-  }
-}
-
-///|
 /// 键升序排序（插入排序——Map 规模为函数/结构体数十级，无需快排；
-/// 字典序见 `str_cmp`）。
+/// 字典序见 `@util.str_cmp`）。
 fn[V] sorted_keys(m : Map[String, V]) -> Array[String] {
   let keys : Array[String] = []
   m.each((k, _) => keys.push(k))
@@ -46,7 +22,7 @@ fn[V] sorted_keys(m : Map[String, V]) -> Array[String] {
   while i < keys.length() {
     let k = keys[i]
     let mut j = i - 1
-    while j >= 0 && str_cmp(keys[j], k) > 0 {
+    while j >= 0 && @util.str_cmp(keys[j], k) > 0 {
       keys[j + 1] = keys[j]
       j -= 1
     }

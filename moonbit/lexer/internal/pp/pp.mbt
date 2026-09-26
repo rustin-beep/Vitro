@@ -191,7 +191,7 @@ pub fn[P : @token.SourceProvider] Pp::run_pp(
       ty: Eof,
       text: "",
       loc: { line: eof_line, column: eof_col, file_id: main_file_id, },
-      byte_off: main_byte_base + @utf8.encode(src).length(),
+      byte_off: main_byte_base + @util.utf8_len(src),
       real_line: if n == 0 {
         1
       } else if tail_newline {

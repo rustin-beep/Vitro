@@ -9,6 +9,7 @@ import {
   "moonbitlang/core/abort",
   "moonbitlang/core/deque",
   "vitro/engine/bytecode",
+  "vitro/engine/util",
 }
 
 import {

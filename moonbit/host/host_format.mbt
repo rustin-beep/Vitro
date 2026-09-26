@@ -239,7 +239,7 @@ fn apply_width(s : String, width : Int?, flags : String) -> String {
     Some(w) => w
     None => return s
   }
-  let slen = @utf8.encode(s).length()
+  let slen = @util.utf8_len(s)
   if slen >= w {
     return s
   }

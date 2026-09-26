@@ -5,8 +5,8 @@ import {
   "vitro/engine/names",
   "vitro/engine/source",
   "moonbitlang/core/debug",
-  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
+  "vitro/engine/util",
 }
 
 import {

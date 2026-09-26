@@ -59,7 +59,12 @@ pub fn InputState::new(lines : Array[Bytes], batch : Bool) -> InputState {
 ///|
 /// 置位 EOF 粘滞并把游标推到底（oracle `set_stdin_eof`：否则未消费的尾部
 /// 空白会被后续 getchar 当普通字符读出）。
-fn InputState::set_eof(self : InputState) -> Unit {
+///
+/// **批三号三段上提 pub**：vm 分发侧 Batch 模式 scanf/getchar 的
+/// 「输入耗尽即 EOF」分支需要同一置位语义（Rust 侧是 session.runtime
+/// 的方法，vm 可达；MoonBit 宿主域内聚在 InputState——vm 持有实例故
+/// 该置位通道须跨包可见）。
+pub fn InputState::set_eof(self : InputState) -> Unit {
   self.eof = true
   self.index = self.lines.length()
   self.char_offset = 0

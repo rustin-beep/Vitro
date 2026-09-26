@@ -234,11 +234,6 @@ fn VitroVM::execute_host_func(
     34 =>
       // putchar(c)
       @host.host_putchar(self.output, self.pop())
-    _ =>
-      self.trap(
-        "执行器批三号第二段待接线：CallHost id=\{id}（host 侧实现已就绪，弹参协议随第二段落）",
-        line,
-        column,
-      )
+    _ => self.execute_host_func2(id, line, column)
   }
 }

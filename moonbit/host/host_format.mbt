@@ -708,3 +708,24 @@ fn format_printf_string(
   }
   Ok(out)
 }
+
+///|
+/// printf 族参数计数（vm 分发侧用——批三号三段上提 pub：转换符个数，
+/// `%%` 不计）。与 `parse_format_specs` 同解析器，只吐数量。
+pub fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
+  parse_format_specs(fmt)
+}
+
+///|
+/// scanf 族指针参数计数（vm 分发侧用——只数 `%` 转换符，空白指令与
+/// 字面量不计；与 `parse_scanf_specs` 的 Spec 分支计数同口径）。
+pub fn scanf_spec_count(fmt : Array[Int]) -> Int {
+  let mut count = 0
+  for it in parse_scanf_specs(fmt) {
+    match it {
+      ScanfItem::Spec(_, _) => count = count + 1
+      _ => ()
+    }
+  }
+  count
+}

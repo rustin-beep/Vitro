@@ -8,6 +8,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+### Added（vm 批三号三段收官：printf/scanf/IO 族 + qsort/bsearch + guards/STEP——CallHost 110 臂全接线，2026-09-26）
+
+- **printf/scanf 族 8 臂**（printf_n/fprintf_n/scanf_n/sscanf/sprintf/
+  snprintf/getchar/ungetc）：vm 侧**受检 read_cstring**（memory 单入口，
+  与 host 包 read_cstring 同算法；NUL 直抵内存尾时最后一次越界读自然
+  fault）+ **参数计数上提**（`format_spec_kinds`/`scanf_spec_count` pub
+  ——vm 分发侧数转换符后按数弹参数组）+ **InputState::set_eof 上提
+  pub**（Batch 模式 EOF 粘滞的 vm 侧置位通道）；puts 直接 OutputLog
+  写入（+1 返回）；scanf 的 Waiting 分支做**参数回推**（指针组逆序 +
+  fmt 回推，ip 回退由 CallHost 臂统一）。
+- **qsort/bsearch**（核心）：`call_user_function` 照搬 Rust
+  `state.rs:384-509`——11 字段状态保存/恢复 + U2#13 参数形状教学诊断
+  （状态保存**前**检查，零污染）+ **哨兵帧 return_ip:None**（与批二段
+  Ret 哨兵分支对接）+ 逐 step 预算执行（MAX_COMPARE_STEPS=1000）；
+  qsort 深度限（64）/平凡短路/尺寸链 checked/默认字节比较/临时缓冲
+  重排全照搬；bsearch 二分命中返元素地址/未命中 NULL。
+- **guards×2（C++ new[] 守卫）登记为 C 前端零发射死面**——直通臂
+  （无守卫机制可清）；STEP 只更新 current_line（trace 死路径不搬）。
+  **CallHost 110 臂全接线**（一 50 + 二 46 + 三 14 臂）。
+- 锚 9：printf 全协议（x=42!）/ scanf Batch（42 落内存 + 返 1）/
+  getchar EOF 序列（-1 + 粘滞）/ puts / call_user_function（cmp(3,1)=2
+  + 状态恢复）/ qsort 默认字节序 + 比较器路径（升序）/ bsearch 命中
+  0x700C + 未命中 NULL / U2#13 形状诊断 / STEP+guards 死面直通。
+- **测试侧三坑（已入记忆）**：① `load_program` 两次会**覆盖 code**——
+  call_user_function 的 ip=meta.ip 指向的 cmp 体必须与主流程**同一份
+  code**；② 比较器收 `const void*`（地址）——cmp 体须 LoadMem 解引用
+  后再 Sub；③ key 地址勿与数组元素同址（0x7010 是 5 元素数组的末
+  元素）。
+- 测试 412 → **423**（vm 67）。
+
+### Added（vm 批三号二段：字符串/转数值/VFS/va_* 族 46 臂 + 义务②③落位，2026-09-26）
+
+- **CallHost 二段分发**（`host_dispatch2.mbt`）：字符串/内存 19 + 转数值
+  6 + VFS 17 + va_* 4——弹参序逐臂照搬 oracle 同名 handler 的 pop 次序；
+  **CallHost 全 110 臂中 96 臂已接线**，剩余 printf/scanf 族 10（需 vm 侧
+  read_cstring + 格式符计数 + 参数组弹）与 qsort/bsearch/guards×2/STEP 8
+  （`call_user_function` 状态保存恢复）随批三号三段。
+- **义务②落位**：`stack_buffer_spans`——strcpy/strcat 的栈缓冲表从
+  call_stack 展平（内层帧优先，与 oracle `check_stack_buffer_capacity`
+  的 rev 遍历同序）；E3070 栈缓冲溢出经分发有锚。
+- **义务③落位**：`resolve_errno_addr`——strtol/strtod 的 errno 地址从
+  符号表按名解析（无符号 None 直通）。
+- 锚 5：字符串族（strlen/strcmp）/ strcpy 栈缓冲 E3070（含 span 展平）/
+  strtol（"42"→42，errno None 路径）/ VFS 全协议（fopen→FILE* 留栈→
+  fwrite 写 3 项——**FILE\* 是堆地址而非 fd 号**，read_fd 从中取 fd）/
+  va_start 三参。
+- 测试 407 → **412**（vm 56）；C 调用约定压序（从右往左、栈顶=首实参）
+  在测试侧三次踩反后全数修正——**分发侧弹参序照 oracle 是对的，错的是
+  测试压序**（此坑已入记忆）。
+
 ### Fixed（五轮审阅：round 负平局 P1 + testcount v2 + 流程修正，2026-09-26）
 
 用户五轮审阅（含对四轮处置「单方面确认」的流程纠偏——审阅结论须双向

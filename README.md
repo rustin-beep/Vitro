@@ -11,7 +11,7 @@
 
 > 教学 C 子集参考执行引擎（白箱后端）
 
-一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；同仓保留一份**已冻结的 Rust 实现**作为差分对照 oracle 与防线基座（tag `rust-oracle-freeze`，只收安全修复），在 MoonBit 全量切换完成后整体退役删除。
+一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；同仓保留一份**已冻结的 Rust 实现**作为差分对照 oracle 与防线基座（tag `rust-oracle-freeze`，白名单 P1–P7/U1/U2 + 安全修复 + 防线维护），在 MoonBit 全量切换完成后整体退役删除。
 
 > **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。
 >
@@ -23,13 +23,13 @@
 
 - **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → **0.5.0**（2026-09-23）；**0.6.0**（S6 收官版：`memory` / `host` / `vm` / `util` + `cmd/run`）已建册，发布收尾中——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
 - **已收官片**（各片收官时点数字，历史快照不连坐当前真值）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）/ S6 memory·host·vm（135 opcode 穷尽执行器 + `VMSnapshot` 快照体系 + 110 host 路由 + `cmd/run` 端到端 runner）
-- **验证**：`moon test` **443 用例**全绿 + 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，彼时 601 用例 = 596 一致 / 5 条既有登记 known / 引擎零新缺陷）；对外面以 `moonbit_surface -check` 机判对账
+- **验证**：`moon test` **443 用例**全绿 + 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，彼时 601 用例 = 595 一致 / 6 条既有登记 known / 引擎零新缺陷）；对外面以 `moonbit_surface -check` 机判对账
 - **性能现状**（2026-09-26 实测，同机对拍 Rust oracle）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×。差距来自解释器 dispatch——全速执行规划于 0.7.0+（bytecode→wasm-GC 生成器路线），解释器形态持续服务单步语义与时间旅行
 - **其后**：S7 协议/会话、S8 教学智能、S9 裁定批——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
 
 ## Rust 冻结对照 oracle
 
-`native/` 是迁移前的完整 Rust 实现（10 个子 crate + 三出口），2026-09-18 起冻结（tag `rust-oracle-freeze`，只收安全修复，新特性一律不做）。它不再是开发目标，但仍是**活着的防线基座**：shadow 对拍、cargo 防线与 `vm_diff` 三联的 Rust 侧真值都跑在它上面，直到 MoonBit 全量切换完成后**整体删除**（档案 = tag + git 历史）。C++ 前端已随裁砍（2026-09-20）冻结在区内，防线继续跑到退役为止，MoonBit 侧零迁移。
+`native/` 是迁移前的完整 Rust 实现（10 个子 crate + 三出口），2026-09-18 起冻结（tag `rust-oracle-freeze`，只收白名单维护 P1–P7/U1/U2、安全修复与防线维护，新特性一律不做）。它不再是开发目标，但仍是**活着的防线基座**：shadow 对拍、cargo 防线与 `vm_diff` 三联的 Rust 侧真值都跑在它上面，直到 MoonBit 全量切换完成后**整体删除**（档案 = tag + git 历史）。C++ 前端已随裁砍（2026-09-20）冻结在区内，防线继续跑到退役为止，MoonBit 侧零迁移。
 
 <p align="center">
   <img src="docs/current/01-定位与路线/vitro-architecture-three-exits.svg" alt="vitro 三出口一核心架构（Rust oracle 历史架构）" width="900">
@@ -131,7 +131,7 @@ go run ./scripts/shadow_verify
 cd native && cargo build --target wasm32-unknown-unknown --release
 ```
 
-> **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（159–199s 级）；设 `MOON_CC=clang` 后全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)）。
+> **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（首跑 ~223s / 热态稳定 87–97s / 持续负载可漂至 180s 级——moon#2254 自述口径）；设 `MOON_CC=clang` 后全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)）。
 
 完整上手流程见 [`docs/current/02-构建与上手/快速入门.md`](docs/current/02-构建与上手/快速入门.md)，构建细节见 [`docs/current/02-构建与上手/构建指南.md`](docs/current/02-构建与上手/构建指南.md)，CLI 命令手册见 [`docs/current/02-构建与上手/CLI使用手册.md`](docs/current/02-构建与上手/CLI使用手册.md)。
 
@@ -143,8 +143,8 @@ cd native && cargo build --target wasm32-unknown-unknown --release
 
 **MoonBit 侧（现役）**：
 
-1. **`moon test` 443 用例 + 十五道闸门**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（601 用例，5 条 known 全为既有登记）
-2. **`scripts/vm_diff` 三联差分**：oracle 直拍 / clang_direct 直拍 / `cmd/run` 端到端，stdout / 返回码 / 1MB 内存映像三通道归一 diff
+1. **`moon test` 443 用例 + 十五道闸门**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（601 用例，6 条 known 全为既有登记）
+2. **运行期双防线**：`scripts/vm_diff` 三联差分（引擎 vs Rust oracle，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
 3. **对外面对账**：`go run ./scripts/moonbit/moonbit_surface -check` 机判 `.mbti` 接口面
 
 **Rust oracle 侧（退役前在跑）**：

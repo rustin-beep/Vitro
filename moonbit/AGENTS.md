@@ -64,6 +64,7 @@ go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚
 go run ./scripts/parser_diff --threshold     # E3+ 阈值样本（A/B 族两侧一致 + C 族形状）
 go run ./scripts/typeck_diff <corpus>        # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；红面基线期大面积 DIFF 属预期——typeck 实现推进中收敛）
 go run ./scripts/codegen_diff <corpus> [--baseline] # S5 codegen 差分（A 级 14 键全量 + **槽位策略版本对账**〔读产物外层 slot_strategy ↔ scripts/codegen_diff/slot_strategy.json，不符或空集即红〕；--baseline 豁免 one-sided 能力缺口，CONTENT-DIFF 永不计豁免；仓库根跑，语料 native/tests/cases/codegen_skeleton 为骨架可通面）
+go run ./scripts/vm_diff [--sample N | --corpus dir | --cases f1.c,...] # S6 D 级运行期 diff（**四语料全量 601 例**：stdout 提取 + 返回码 + 1MB 自包含；verdict 三级 SAME/DIFF-known/DIFF-unexpected——skip/known 白名单外置 scripts/vm_diff/*.json，digest 漂移/空转条目即红；前置 `cd moonbit && moon build --target native cmd/run`，脚本自带 exe 新鲜度门禁；总计划 §7.1 层 1，2026-09-26 接 CI）
 ```
 
 测试计数真值入 facts 台账（`moonbit_test_passed` 键，`--run` 采集 / CI 每轮刷新）。**注意（2026-09-20 审阅实测）**：moonbit/README*.md 的测试数为**分解式**写法（逐包拆解 + `分解和 179 + doc test 4`），facts 规则将分解式归"人工维护"不机判——**机判抓红不覆盖该处**，改测试数同步 README 是人工义务；裸总数以 facts.json 真值为准。

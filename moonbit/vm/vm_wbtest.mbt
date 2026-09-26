@@ -483,7 +483,7 @@ test "checkpoint_incremental_dirty_page" {
 }
 
 ///|
-/// 门 3 锚三：淘汰不变量（step-0 锚点永不裁 + 删 Full 级联）。
+/// 门 3 锚三：淘汰不变量（step-0 锚点永不裁）。
 test "checkpoint_eviction_invariants" {
   let vm = VitroVM::new()
   let cm = CheckpointManager::new(1)
@@ -500,6 +500,40 @@ test "checkpoint_eviction_invariants" {
   assert_true(cm.checkpoints[0].1.memory is Full(_))
   // 链头是 Full
   assert_true(cm.checkpoints[0].1.memory is Full(_))
+}
+
+///|
+/// 门 3 锚三补（六轮审阅 P2-1）：**删 Full 级联的 pinned 场景**——锚三
+/// 原构造是全 Full 链（full_every 节律被「len%5==0 且首个 is_empty」打
+/// 满），对 `removed_is_full` 分支零覆盖：突变注入 `&& false`（还原
+/// U2#5 缺陷版）原套 77/0 全绿。本锚构造 [0F,1D,2D,3D,4D,5F,6D,7D]
+/// 后收紧上限触发淘汰——删 5(F) 时 remove_idx=1（pinned 锚点后），
+/// 「删链头 Delta」防御分支只适用 remove_idx==0，唯一出口是级联
+/// drain：6D/7D/8D 悬空（base=5 已删）必须清掉，否则 nearest 给出的
+/// Delta 无法重建 = seek 静默错内存（U2#5 最坏调试器形状）。
+test "checkpoint_evict_full_cascade_pinned" {
+  let vm = VitroVM::new()
+  let cm = CheckpointManager::new(1)
+  cm.set_max_checkpoints(10)
+  for st = 0; st <= 7; st = st + 1 {
+    vm.step_count = st
+    cm.save(st, vm)
+  }
+  // full_every=5 节律：len0→F、len5→F，其余 D
+  assert_eq(cm.length(), 8)
+  assert_true(cm.checkpoints[5].1.memory is Full(_))
+  assert_true(cm.checkpoints[6].1.memory is Delta(_, _))
+  // 收紧上限 + 再 save 触发淘汰
+  cm.set_max_checkpoints(4)
+  vm.step_count = 8
+  cm.save(8, vm)
+  // 四轮删 Delta（1D..4D）→ 删 5(F) → 级联 drain 6D/7D/8D → 终态 [0(F)]
+  assert_eq(cm.length(), 1)
+  assert_eq(cm.checkpoints[0].0, 0)
+  assert_true(cm.checkpoints[0].1.memory is Full(_))
+  // 淘汰后 seek 只能回 step-0 锚点（悬空 Delta 已清）
+  guard cm.nearest(7) is Some((s, _)) else { fail("nearest(7) 必须命中 0") }
+  assert_eq(s, 0)
 }
 
 ///|

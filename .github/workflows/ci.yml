@@ -257,6 +257,29 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/gen_libc_data -check
 
+      - name: MoonBit VM runtime differential (D-grade stdout/exit/memory)
+        # 六轮审阅 P1-2 接线（2026-09-26）：vm_diff 此前不在 CI = 本地
+        # 工具——MoonBit VM 运行期回归无人拦。三通道口径见脚本头注
+        # （第三通道为 1MB 自包含性校验，oracle 映像出口待建）。
+        # **全量化（总计划 §7.1 层 1，2026-09-26 同日）**：默认四语料
+        # 全量（baseline+knr+leetcode+gap）+ verdict 三级（SAME /
+        # DIFF-known / DIFF-unexpected——known 白名单 scripts/vm_diff/
+        # known_diffs.json 按 case+digest 精确豁免，digest 漂移即降级红
+        # 防白名单腐化；skip 白名单空转条目跑例前秒红）。
+        # 依赖上方 Release 构建的 vitro_cli（oracle 真值源，与
+        # codegen_diff 同前提）+ moon build 产出 cmd/run exe（脚本自带
+        # 新鲜度门禁：exe 旧于任一 moonbit 源即红——本地 moon-lsp 后台
+        # 重建会静默删产物，构建失败照跑旧 exe 报假绿的事故形态由该
+        # 门禁封死）。
+        # **--release 必须带**（2026-09-26 e1_va_copy 缺陷批实测坑）：
+        # `moon build` 默认 debug，vm_diff 读的是 release 路径
+        # （moonbit/_build/native/release/...）——不带 --release 则
+        # release 产物不生成/不更新，门禁会红且构建目标错位。
+        shell: bash
+        run: |
+          cd moonbit && moon build --release --target native cmd/run
+          cd .. && go run ./scripts/vm_diff
+
       - name: MoonBit test count (README vs moon test truth)
         # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，
         # facts check 结构上看不见「文档↔facts 一起错」（四轮里三次同型

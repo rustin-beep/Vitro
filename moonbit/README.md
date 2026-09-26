@@ -44,6 +44,14 @@ C 教学引擎的 MoonBit 实现——137 个诊断错误码、135 条字节码�
 moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 ```
 
+**关于 `cmd/` 子包**：本模块附带 5 个命令行工具（`cmd/dump_tokens` /
+`cmd/dump_ast` / `cmd/dump_typeck` / `cmd/dump_compile`——差分对拍工具，
+与 Rust oracle 产物逐字节比对；`cmd/run`——端到端 runner，编译 C 源码
+并在 VM 中执行）。它们是**仓库开发工具**（差分锚点的 MoonBit 侧入口），
+随包分发但下游通常无需引用；`moon build` 会为每个 executable 生成独立
+产物——如果只消费引擎库（`vitro/engine/vm` 等），这些 cmd 产物可以
+忽略。
+
 ## 包清单
 
 | 包 | 层 | 职责 |

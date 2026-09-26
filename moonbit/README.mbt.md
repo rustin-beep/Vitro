@@ -13,6 +13,12 @@
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂（**gen_diag 生成，禁手抄**）+ Severity/SourceLang + catalog 77 条 + E4 出口 | 覆盖率断言 + E4 全量对拍（canonicalize 后逐字节一致） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth（显式栈）+ type_eq + to_c_string 单源 + mangle + E1 dump emitter | E1 对拍两样本 diff 空 + E5 黄金串 `prefix_p_a2_3_int` |
 
+## 关于 cmd/ 子包
+
+本模块附带 5 个命令行工具（4 个 `cmd/dump_*` 差分对拍 + `cmd/run` 端到端
+runner）——它们是仓库开发工具，随包分发但下游只消费引擎库时可忽略
+`moon build` 生成的 cmd 产物。
+
 ## 生成物纪律
 
 ```bash

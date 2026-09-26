@@ -31,10 +31,20 @@ go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 产物被�
 - 生成流程内置 `moon fmt`——产物最终形态以 fmt 输出为准，gen 与 fmt 不互踩；
 - 基线漂移（137 臂 / 77 卡片）fail loud：源变更须人工核对后更新 `expectedArms` / `expectedCatalog` 并登记差异。
 
+## 性能现状（诚实披露，2026-09-26 实测）
+
+VM 是为单步执行与时间旅行可观测性构建的**解释器**，不以裸速度为目标。
+同机对拍 Rust oracle：端到端小程序（baseline 366 例中位，编译主导）
+**1.42×**；计算密集 fib(20) / 冒泡 200 / 500×500 嵌套 **1.92× / 6.32× /
+15.7×**；条件 A 300×300 循环（完整引擎 vs oracle JIT 路径）**10.1×**。
+全速执行差距的正解是 bytecode→wasm-GC 生成器（规划 0.7.0+）；解释器持
+续服务单步语义与时间旅行。完整口径见 `README.md`「性能现状」节与
+`CHANGELOG.md`。
+
 ## 验证
 
 ```bash
-moon check && moon test    # 435 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 107 / vm 79；分解和 429 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host/vm 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 31 / host 107 各含 2 个包 README doc test（2026-09-23 补指引批）；memory 31 = 白盒 23 + 黑盒 6 + doc test 2；host 107 = 白盒 97 + 黑盒 8 + doc test 2（黑盒承担对外面消费面点名）；vm 79 = 快照 wbtest 14〔+门 3 五锚 + 删 Full 级联 pinned 锚〕+ executor wbtest 63〔含 void host 栈平衡红锚〕+ 黑盒 2（八族 + 审阅修复批符号扩展锚×10 + 段二 F/D/Q 三族锚 4 + 控制流锚 7 + 批三号一段分发锚 5〔ctype/math-exit/exit 族/malloc-free/输出与 rand〕+ 三轮审阅锚 3〔NegF 零符号/附注去重/fmod·atan2 非对称〕）+ 黑盒 2；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
+moon check && moon test    # 443 测试（source 14 / opcode 10 / diag 21 / ast 14 / lexer 51 / parser 31 / names 5 / libc 4 / typeck 30 / bytecode 17 / codegen 15 / memory 31 / host 107 / vm 80 / util 7；分解和 437 + 根 README doc test 6）——S5 起 bytecode/codegen 入列、S6 起 memory/host/vm 入列；libc 4 为 N3/N4 漂移登记锚（审阅批四恢复）；bytecode 17 / memory 31 / host 107 各含 2 个包 README doc test（补指引批——时点见 git 历史）；memory 31 = 白盒 23 + 黑盒 6 + doc test 2；host 107 = 白盒 97 + 黑盒 8 + doc test 2（黑盒承担对外面消费面点名）；vm 80 = 快照 wbtest 14〔+门 3 五锚 + 删 Full 级联 pinned 锚〕+ executor wbtest 63〔含 void host 栈平衡红锚〕+ 黑盒 2（八族 + 审阅修复批符号扩展锚×10 + 段二 F/D/Q 三族锚 4 + 控制流锚 7 + 批三号一段分发锚 5〔ctype/math-exit/exit 族/malloc-free/输出与 rand〕+ 三轮审阅锚 3〔NegF 零符号/附注去重/fmod·atan2 非对称〕）+ 黑盒 2；对外面以 go run ./scripts/moonbit/moonbit_surface -check 对账；分解数以 moon test -p 逐包为准、裸总数以 facts `moonbit_test_passed` 为准
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

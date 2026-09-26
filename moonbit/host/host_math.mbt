@@ -103,9 +103,21 @@ pub fn host_floor(x_bits : UInt64) -> UInt64 {
 }
 
 ///|
-/// `round(x)`
+/// `round(x)`——**C99 平局远离零**（half-away-from-zero）。
+///
+/// 五轮审阅 P1：MoonBit core `Double::round` 是 **half-up**（负数路径
+/// `(self + 0.5).floor()`，core 源 `builtin/double_round.mbt:135-152` 自证
+/// ——`-1.5 → -1`）；C99 §7.12.9.6 与 oracle（Rust libm）都是
+/// half-away-from-zero（`-1.5 → -2`）。**名字对位≠语义对位**——自实现：
+/// 正数 `floor(x+0.5)` / 负数 `ceil(x-0.5)`（负零经 ceil 保留）/ ±0、NaN、
+/// |x|≥2^52（加 0.5 会扰动整数域）直返。
 pub fn host_round(x_bits : UInt64) -> UInt64 {
-  @math.round(x_bits.reinterpret_as_double()).reinterpret_as_uint64()
+  let x = x_bits.reinterpret_as_double()
+  if x == 0.0 || x != x || x.abs() >= 4503599627370496.0 {
+    return x_bits
+  }
+  let r = if x > 0.0 { (x + 0.5).floor() } else { (x - 0.5).ceil() }
+  r.reinterpret_as_uint64()
 }
 
 ///|

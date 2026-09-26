@@ -8,6 +8,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+### Fixed（五轮审阅：round 负平局 P1 + testcount v2 + 流程修正，2026-09-26）
+
+用户五轮审阅（含对四轮处置「单方面确认」的流程纠偏——审阅结论须双向
+核实：独立实测 + 互证，用户的实测 ≠ 正确本身）。
+
+- **P1 `round()` 负平局语义错**：MoonBit core `Double::round` 是
+  half-up（负数路径 `(self+0.5).floor()`，core 源自证）——C99/oracle 是
+  **远离零**（-1.5→-2）。`host_round` 自实现（正 floor(x+0.5)/负
+  ceil(x-0.5)/±0·NaN·|x|≥2^52 直返）+ 负平局位锚 4 条 + 突变证红；
+  **oracle 真机三方闭环**（-1.0/-2.0/-3.0/-4.0 = clang = 修复侧）。
+  **浮点铁律入档：名字对位必核语义**（round 平局方向 / log→ln /
+  mod→fmod 截断）。语料负平局样本**随 MoonBit shadow 通道就绪时补**
+  （本机无 clang，golden 生成不了——与 DIFF-LIB-PUTCHAR-01 同款排期）。
+- **P2 testcount 闸 v1 是复述型**（用户注入三方旧值 400/400/400 复现
+  PASS）：真值读 facts.json cached 制品 = 复述；reports/ 不入 git 干净
+  clone 即失败。**v2：闸内自跑 `moon test` 解析 Total tests 作真值**，
+  facts 降为参考信息。J9 按三层验证（篡改 ±1 红 / 原缺陷场景红 / 接
+  CI——`.github/workflows/ci.yml` core job 新步骤）。
+- **P2 surface_edges.txt EOF 换行缺失**（上轮刚补过又丢——修复批自查
+  清单加 `git diff | grep "No newline at end of file"`）。
+- **P3 三项**：host_dispatch 头注「带行号」过时改实际形态；根 README
+  与项目路线图的状态句过期（数字改了状态句没改——「余 F/D/Q 三族与
+  控制流族」→「executor 131/135 臂已接，余 CallHost 二段 64 臂与 C#
+  三件」）；§10.5 G-3 净省口径修正（81×3≈243 行非 ~300——catch 块
+  本身占行）。
+- **snapshot 五字段锚补齐**（用户自更正：测试只断言 3/6 字段，
+  b5ae8b2 改 original_stack_top 类型时该面无锚——「已有测试覆盖」的
+  读码判定过于乐观；补 locals_base/local_count/func_name/
+  original_stack_top/caller_line 全量断言）。
+- **数学族三方对拍 160 条（D 级待入 S8 台账，18 条差异）**：MoonBit
+  偏离 clang=oracle 侧 13（round×1 已修 + **NaN 载荷/符号 ×10**
+  〔@math 0x7ff8…0001 vs libm 0xfff8…0000〕+ 1 ULP ×2〔cos(0.1)/
+  log10(π)〕）；oracle 偏离 2（exp(1.0)/cosh(1.0)——MoonBit 反而对，
+  Rust libm 与平台 libm 不一致）；三方皆异 3（sinh×2/cosh(e)——两侧
+  一致但偏离真值）。按「oracle 照搬为准」第三类合规；**首类 12 条
+  （NaN/ULP）为 MoonBit 侧真实偏离**，@math 库行为 host 层不可直接
+  修（NaN 载荷规范化涉全局口径），登记 S8 差异台账批裁定。顺带实锤：
+  **原 fmod 对拍 8 样本全正 x、y=2.0 对截断语义无判别力（假绿）**——
+  判别样本 `fmod(-7.5,2.0)=-1.5` 已单独验过正确。
+- 测试 407（+1 round 位锚）；门禁基线全绿。
+
 ### Fixed（用户审阅修复批两轮：P1×2 + P2×2 + P3 全销项 + 二轮补漏，2026-09-26）
 
 用户 blob 级审阅（97fa5d1，两侧直驱指令序列 + 587 语料 opcode 直方图 +
@@ -59,6 +100,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **既定设计**而非本批破坏，且 P1-2 本身证明闸有效（点名免收、漏点名
   即抓——host 106 测试的 @host. 点名是同款先例）。若改判跨包属面闸口径
   变更，走独立裁定批。
+
+### Fixed（三轮审阅修复：P1×2 + P2×2 + P3 四项，2026-09-26）
+
+用户第三轮深度审阅（b5ae8b2，两侧直驱 + 位级复现 + 突变注入）后逐条亲证修复。
+
+- **P1 fmod 弹参序反**：oracle 是 `x=pop(); y=pop(); fmod(x,y)`（与 pow
+  同向；atan2 才先弹 y）——此前写反致 `fmod(2,7.5)` 算成 `fmod(7.5,2)`。
+  修正 + 非对称锚（fmod(2,7.5)==2）。**同族复盘**：pow/atan2 逐条复核
+  确认原本正确——「弹参序义务①」三条中漏了 fmod（oracle 三处弹参序
+  不一致的完整清单：pow/atan2/fmod）。
+- **P1 NegF 丢零符号**：`0.0f - a` 对 +0.0f 给 +0.0f（IEEE 减法），
+  一元负应给 -0.0f（位 0x80000000）。改 `-a` + 零符号位锚
+  （2147483648）。
+- **P2 堆耗尽附注未去重**：`HostMemReply.note` 契约明写「调用方负责
+  去重」——`apply_reply` 补 `has_note` 查重（查询形态经
+  `normalize_note_bytes` 与 `push_note` 存储对齐：末尾无 `\n` 补 `\n`）；
+  **去重范围精确照搬 oracle**（只对 heap_exhausted_note——
+  report_heap_exhausted 的 contains 语义；malloc(0) 附注 oracle 每次
+  都推，不去重）。锚：3 次超限 malloc → note 通道恰 1 条。
+- **P2 臂数与遮蔽死面登记**：「46 臂」实为 50 臂（脚本数 `=>`）；其中
+  **14 臂为遮蔽死面**（ctype 11 + abs + rand + srand——被 Bytecode Libc
+  全量预注册遮蔽走 `Call 1000+idx`，按名调用不可达；实现保留与 oracle
+  对称）。头注登记；rand 3611 锚注明「直调单元锚（真实路径 Call 1014
+  seed=1 首值 16838）」。
+- **P3 四项**：① atan2 锚对称实参零判别力 → 换非对称
+  （atan2(2,1)=1.1071…）；② NegF/fmod 突变注入证红复绿（锚有牙亲证）；
+  ③ malloc-free 弱断言（`|| !error.is_empty()` 兜底使前四项死代码）→
+  收紧为 E3061 精确断言；④ host 层 trap 的 loc 对齐 oracle
+  （SourceLoc::default() → trap() 回退 current_line；指令 loc 更精确
+  但属未登记差异，跨行表达式渲染行号不同）+ Jump 族负 operand 文案
+  对齐 u64 重解释形态（18446744073709551615）。
+- 测试 404 → **406**（+2：NegF 零符号 / 堆耗尽附注去重）；突变验证：
+  fmod 翻转 → failed 1、NegF 恒等 → failed 1，还原复绿。
 
 ### Added（S6 vm 批一号——vm 状态定形，2026-09-25）
 

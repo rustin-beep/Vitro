@@ -129,7 +129,6 @@ vitro/engine/host moonbitlang/core/math floor
 vitro/engine/host moonbitlang/core/math ln
 vitro/engine/host moonbitlang/core/math log10
 vitro/engine/host moonbitlang/core/math pow
-vitro/engine/host moonbitlang/core/math round
 vitro/engine/host moonbitlang/core/math sin
 vitro/engine/host moonbitlang/core/math sinh
 vitro/engine/host moonbitlang/core/math tan
@@ -282,6 +281,7 @@ vitro/engine/vm vitro/engine/host OutputLog
 vitro/engine/vm vitro/engine/host RandState
 vitro/engine/vm vitro/engine/host VfsSnapshot
 vitro/engine/vm vitro/engine/host VirtualFileSystem
+vitro/engine/vm vitro/engine/host heap_exhausted_note
 vitro/engine/vm vitro/engine/host host_abs
 vitro/engine/vm vitro/engine/host host_acos
 vitro/engine/vm vitro/engine/host host_asin

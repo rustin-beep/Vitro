@@ -51,7 +51,9 @@ fn VitroVM::execute_float(
     }
     NegF => {
       let a = self.pop().to_uint().reinterpret_as_float()
-      let r = Float::from_double(0.0) - a
+      // 一元负（三轮审阅 P1-2：0.0 - a 会丢零符号——0.0-0.0=+0.0 而
+      // -0.0f 位 = 0x80000000；与 NegD 的 -a 同形）
+      let r = -a
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
     EqF | NeF | LtF | LeF | GtF | GeF => {

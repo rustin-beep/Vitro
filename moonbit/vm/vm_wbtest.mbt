@@ -80,6 +80,13 @@ test "snapshot_restore_roundtrip_all_state" {
   assert_eq(vm.call_stack.length(), 1)
   assert_true(vm.call_stack[0].return_ip is None)
   assert_eq(vm.call_stack[0].local_buffers.length(), 1)
+  // 五字段全量断言（五轮审阅自更正补齐：b5ae8b2 改了 original_stack_top
+  // 类型 Int→UInt 但该面当时无锚——仅读码判「已有测试覆盖」过于乐观）
+  assert_eq(vm.call_stack[0].locals_base, 0x100U)
+  assert_eq(vm.call_stack[0].local_count, 3)
+  assert_eq(vm.call_stack[0].func_name, "cmp")
+  assert_eq(vm.call_stack[0].original_stack_top, 1U)
+  assert_eq(vm.call_stack[0].caller_line, 7)
   assert_eq(vm.step_count, 99)
   assert_eq(vm.current_line, 12)
   assert_eq(vm.error, "占位错误")

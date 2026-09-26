@@ -250,6 +250,16 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/source_hygiene
 
+      - name: MoonBit test count (README vs moon test truth)
+        # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，
+        # facts check 结构上看不见「文档↔facts 一起错」（四轮里三次同型
+        # 事故）。闸自跑 moon test 取实跑真值对账两份 README 的声明数——
+        # v1 读 facts.json（cached 制品）是复述型，注入三方旧值不红（
+        # 用户 J9 三层之第二层抓出）；v2 真值实跑。J9：篡改声明 ±1 红 /
+        # 原缺陷场景（文档回旧值）红。
+        shell: bash
+        run: go run ./scripts/moonbit/testcount
+
       - name: Host route coverage (110 routes vs host impls)
         # P2-memchr 事故族（2026-09-23 修复批）：110 路由表中 memchr 整批
         # 漏实现——既有对账锚只校验「常量 ↔ 名字」双表一致，不校验

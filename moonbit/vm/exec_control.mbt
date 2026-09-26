@@ -173,7 +173,7 @@ fn VitroVM::execute_control_flow(
     Jump => {
       if operand < 0 || operand >= self.code.length() {
         self.trap(
-          "Jump 目标越界：\{operand}（代码长度：\{self.code.length()}）",
+          "Jump 目标越界：\{operand.to_int64().reinterpret_as_uint64()}（代码长度：\{self.code.length()}）",
           line,
           column,
         )
@@ -189,7 +189,7 @@ fn VitroVM::execute_control_flow(
         if operand < 0 || operand >= self.code.length() {
           let nm = if op is JumpIfZero { "JumpIfZero" } else { "JumpIfNotZero" }
           self.trap(
-            "\{nm} 目标越界：\{operand}（代码长度：\{self.code.length()}）",
+            "\{nm} 目标越界：\{operand.to_int64().reinterpret_as_uint64()}（代码长度：\{self.code.length()}）",
             line,
             column,
           )

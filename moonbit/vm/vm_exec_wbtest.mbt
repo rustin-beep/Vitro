@@ -826,13 +826,22 @@ test "host_dispatch_ctype_math_exit" {
   vm3.load_program(code_of([instr(CallHost, 73)]))
   let _ = vm3.run()
   assert_eq(vm3.stack[0].reinterpret_as_double(), 1024.0)
-  // atan2 弹参序：atan2(1.0, 1.0) = pi/4（y 先弹——栈序 x 先压 y 后压）
+  // atan2 弹参序（非对称实参——三轮审阅 P3：对称实参零判别力）：
+  // atan2(y=2, x=1) = 1.1071…（y 先弹——栈序 x 先压 y 后压；翻转会得 0.4636…）
   let vm4 = VitroVM::new()
   vm4.stack.push(1.0.reinterpret_as_uint64()) // x（先压）
-  vm4.stack.push(1.0.reinterpret_as_uint64()) // y（后压=栈顶）
+  vm4.stack.push(2.0.reinterpret_as_uint64()) // y（后压=栈顶）
   vm4.load_program(code_of([instr(CallHost, 111)]))
   let _ = vm4.run()
-  assert_eq(vm4.stack[0].reinterpret_as_double(), 0.7853981633974483)
+  assert_eq(vm4.stack[0].reinterpret_as_double(), 1.1071487177940904)
+  // fmod 弹参序（非对称，三轮审阅 P1-1：修复前算成 fmod(7.5,2)=1.5）：
+  // fmod(x=2, y=7.5) = 2（先弹 x——栈序 y 先压 x 后压）
+  let vm6 = VitroVM::new()
+  vm6.stack.push(7.5.reinterpret_as_uint64()) // y（先压）
+  vm6.stack.push(2.0.reinterpret_as_uint64()) // x（后压=栈顶）
+  vm6.load_program(code_of([instr(CallHost, 105)]))
+  let _ = vm6.run()
+  assert_eq(vm6.stack[0].reinterpret_as_double(), 2.0)
   // exit(42)：finished + exit_code
   let vm5 = VitroVM::new()
   vm5.load_program(code_of([instr(PushConst, 42), instr(CallHost, 38)]))
@@ -868,12 +877,13 @@ test "host_dispatch_malloc_free" {
   vm.load_program(code_of([instr(CallHost, 3)]))
   let r2 = vm.run()
   assert_eq(r2, 0)
+  // E3061 Double-Free（三轮审阅 P3：此前 || !error.is_empty() 的兜底使
+  // 前四项成死代码——收紧为精确断言）
+  assert_true(vm.error.contains("E3061"))
   assert_true(
-    vm.error.contains("Use-After-Free") ||
-    vm.error.contains("E3061") ||
-    vm.error.contains("double") ||
     vm.error.contains("重复释放") ||
-    !vm.error.is_empty(),
+    vm.error.contains("Double-Free") ||
+    vm.error.contains("已被释放"),
   )
   // 精确文案由 host 层锚覆盖——此处锚定「二次 free 必产 trap」
   assert_true(!vm.error.is_empty())
@@ -917,9 +927,43 @@ test "host_dispatch_output_and_rand" {
   )
   let _ = vm.run()
   assert_eq(vm.output.chunks_of(@host.OutputKind::Stdout).length(), 1)
-  // rand 序列确定性（LCG seed 42 首值 3611 硬锚——host 层锚的 vm 侧形态）
+  // rand 直调单元锚（**遮蔽死面的单元语义锚**——三轮审阅 P2-2：真实程序
+  // 里 rand 被 Bytecode Libc 预注册遮蔽走 `Call 1014`（__rand_seed=1，
+  // 首值 16838）；本臂是 host 直调形态的 LCG seed 42 首值 3611——与
+  // host 层锚同值，判 host_rand 接线本身）
   let vm2 = VitroVM::new()
   vm2.load_program(code_of([instr(CallHost, 35)]))
   let r2 = vm2.run()
   assert_eq(r2, 3611)
+}
+
+///|
+/// NegF 零符号锚（三轮审阅 P1-2）：-0.0f 位 = 0x80000000 = 2147483648
+/// （修复前 0.0f - 0.0f = +0.0f 丢符号落 0）。
+test "exec_negf_zero_sign" {
+  let vm = VitroVM::new()
+  vm.stack.push(0UL) // +0.0f 位
+  vm.load_program(code_of([instr(NegF, 0)]))
+  let r = vm.step()
+  assert_true(r is Ok)
+  assert_eq(vm.stack[0], 2147483648UL) // 0x80000000（符号位保留）
+}
+
+///|
+/// 堆耗尽附注去重锚（三轮审阅 P2-1）：连续多次超限 malloc 只产一条
+/// heap_exhausted 附注（oracle report_heap_exhausted 的 contains 去重；
+/// 修复前每次都推——3 次给 3 条）。
+test "host_dispatch_heap_exhausted_note_dedup" {
+  let vm = VitroVM::new()
+  // 巨尺寸 malloc（> 1MB）→ 堆耗尽 → NULL + 附注；连续三次
+  for k = 0; k < 3; k = k + 1 {
+    vm.ip = 0
+    vm.error = ""
+    vm.load_program(code_of([instr(PushConst, 2000000), instr(CallHost, 2)]))
+    let _ = vm.run()
+    assert_eq(vm.stack[vm.stack.length() - 1], 0UL) // NULL
+  }
+  let notes = vm.output.chunks_of(@host.OutputKind::Note)
+  let exhausted = notes.filter(fn(b) { b.length() > 0 && b[0] == b'[' })
+  assert_eq(exhausted.length(), 1, msg="堆耗尽附注必须去重到 1 条")
 }

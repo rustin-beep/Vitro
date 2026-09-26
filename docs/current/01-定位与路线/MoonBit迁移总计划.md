@@ -133,6 +133,29 @@ S4 期坑登记（2026-09-20 审阅，S9 裁定批输入）：① parser/decl.mb
 
 节奏纪律：锚点未全绿不发版；每片回填 facts（新键空间独立）；任一时刻可停。
 
+## 10.5 代码抽象与多写治理（四轮审阅落档，2026-09-26）
+
+> 输入：另一 agent 的静态抽象分析（经两轮独立复核——计数以四轮审阅
+> 修正版为准（双向核实后精确口径）：`Err(x)=>[return] fault_reply` 短路
+> **81 处**〔双向确认：本仓按该正则复数恰 81；原分析 112 为宽子串计数〕、
+> `self.report_error(` **217 处**〔任意前缀 220——数字依口径声明〕、恒默认
+> 字段 149 处核验一致；三处硬伤修正已吸收——热路径是
+> **vm→memory** 非 host、**raise 两路径实测都快于 Result 值式**
+> 〔成功 1151ms vs 1779ms / 失败 1656ms vs 2799ms，50M 叶调用
+> best-of-3，方向可信倍数不可外推〕、错误风格实为**四套**
+> 〔累积式/Result 值式/raise 式 + lexer pp 的 CondError〕且
+> `cond.mbt:29-38` 已是桥接形态成品实例）。
+
+| # | 项 | 内容与判据 | 排期 |
+|---|---|---|---|
+| G-1 | **L0 纯机械助手包** | `utf8_len`（≥10 处 `@utf8.encode(s).length()`——「静默产空串」事故同族根源，正确性收益）+ `str_cmp`（2 份）+ `i64→i32` 位截断 + LE 读拼装；**只许零语义机械件**；落地同步 `pkg_deps/rules.json` levels 与本节 §4 包图 | **S6 收官窗口（0.6.0 前）**，低风险有对拍兜底 |
+| G-2 | **AST `Default` 化** | `FuncDecl`/`GlobalDecl` 等 derive(Default) + 结构展开，消 149 处恒默认；**坑**：`X::default()` 触发 deprecated 警告 ⇒ 一律 `Default::default()` 或 extend 声明 | 0.6.0 后（minor 面变更窗口） |
+| G-3 | **host raise 桥** | memory 侧补 `*_raise` 变体，host handler 整体 raise 化 + 顶层 `catch` 转 `HostMemReply`——81 处 `Err(..)=>[return] fault_reply` 短路（每处 4 行 match → 1 行调用，**净省 ≈243 行**〔五轮审阅修正：81×3，非 ×4——catch 块本身占行〕）+ 每文件 1 处 catch；**先决条件已全证**（cond.mbt:29-38 语义半 + raise 成本半）；只对齐风格不改行为，host 层锚全覆盖 | 0.6.0 后独立批（发版前不大动；64 臂接线完成后做避免二次改） |
+| G-4 | **dup_scan 修复后作抽库依据** | window 提参数（默认 24 与用途相反）+ root 不存在/空目录 fail loud（纪律 #8）+ 剥行尾注释 + 区分生产/测试码；副产物：`cmd/dump_{ast,compile,tokens,typeck}` 四份近同 main（W=8 下最大跨文件重复 ≈400 行，cmd 豁免层可低成本合并） | 随 G-1 用前修；cmd 合并随下个 cmd 触点 |
+| — | **设计原则入档**（非待办） | 「缺线不一定都要用库补——**收口到单入口**有时比抽库更彻底」（FixedArray LE 读只剩 memory 一处 16 行的反例）；emitter 60+ 分支手写是「显式 emitter 纪律」的代价非可优化项；depth/json_emit/typeck 三种递归**禁抽通用 visitor**（度量/渲染/变换目的不同） | — |
+
+**执行纪律**（本节所有批次通用）：先跑基线门禁拿绿底，改一项验一项；计数一律实采不引旧记录；`moon test` 裸总数经 **testcount 闸**（v2：README×2 ↔ **moon test 实跑真值**——五轮审阅修正：v1 读 facts cached 制品属复述型，「文档与 facts 一起错」场景不红；v2 闸内自跑 moon test，J9 按三层验证〔篡改红 / 原缺陷场景红 / 接 CI〕）机判。
+
 ## 11. 探测档案指南（git 历史）
 
 全部 16 份探测文档保存在提交 `917251e`：

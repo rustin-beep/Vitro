@@ -428,7 +428,13 @@ pub fn host_strncpy(
   // 补零段
   let zero_len = write_len.reinterpret_as_int() - copy_len
   if zero_len > 0 {
-    fill_raise(mem, map, dest + copy_len.reinterpret_as_uint(), zero_len, b' ') catch {
+    fill_raise(
+      mem,
+      map,
+      dest + copy_len.reinterpret_as_uint(),
+      zero_len,
+      b'\x00',
+    ) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
   }

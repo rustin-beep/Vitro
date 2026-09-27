@@ -31,7 +31,16 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
     func_name: get_sym(batch.symbol_table, f.func_name_idx),
     return_line: f.return_line,
   })
-  let current_vis_events : Array[VisEvent] = base.vis_events
+  // Rust base.vis_events.clone() 等价——map 重建防共享（P1 审阅修复：
+  // 此前共享引用被后续 delta.clear() 就地污染，decode_batch 破坏输入）
+  let mut current_vis_events : Array[VisEvent] = base.vis_events.map(e => {
+    ty: e.ty,
+    line: e.line,
+    extra0: e.extra0,
+    extra1: e.extra1,
+    extra2: e.extra2,
+    context: e.context,
+  })
   let current_accessed_vars : Array[AccessedVar] = base.accessed_vars.map(a => {
     name: get_sym(batch.symbol_table, a.name_idx),
     access_type: get_sym(batch.symbol_table, a.access_type_idx),
@@ -131,14 +140,18 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
       }
       None => ()
     }
-    // 应用 vis_events 差分
+    // 应用 vis_events 差分（Rust = events.clone() 整体替换——不得就地
+    // clear 共享数组，否则污染 decode_step_payload_ref 路径的 base 帧）
     match delta.vis_events {
-      Some(events) => {
-        current_vis_events.clear()
-        for e in events {
-          current_vis_events.push(e)
-        }
-      }
+      Some(events) =>
+        current_vis_events = events.map(e => {
+          ty: e.ty,
+          line: e.line,
+          extra0: e.extra0,
+          extra1: e.extra1,
+          extra2: e.extra2,
+          context: e.context,
+        })
       None => ()
     }
     // 应用 accessed_vars 差分
@@ -261,7 +274,14 @@ fn decode_step_payload_ref(
       func_name: get_sym(sym, f.func_name_idx),
       return_line: f.return_line,
     }),
-    vis_events: base.vis_events,
+    vis_events: base.vis_events.map(e => {
+      ty: e.ty,
+      line: e.line,
+      extra0: e.extra0,
+      extra1: e.extra1,
+      extra2: e.extra2,
+      context: e.context,
+    }),
     heatmap_line: base.heatmap_line,
     heatmap_count: base.heatmap_count,
     accessed_vars: base.accessed_vars.map(a => {

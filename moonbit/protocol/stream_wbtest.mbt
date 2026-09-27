@@ -293,3 +293,136 @@ test "stream_cache_start_step_passthrough" {
   assert_false(batch.paused)
   assert_true(batch.trap_message is None)
 }
+// decode_batch 不 mutate 输入（回放幂等）——修复前本文件必须红。
+
+///|
+test "j9_vis_events_base_frame_not_clobbered" {
+  let p0 = make_payload(0, [mkvar("i", "int", "0")])
+  p0.vis_events = [
+    { ty: 1, line: 10, extra0: 0, extra1: 0, extra2: 0, context: "swap", },
+  ]
+  let p1 = clone_payload(p0)
+  p1.vis_events = []
+  let batch = encode_payloads([p0, p1], 0)
+  let decoded = decode_batch(batch)
+  // 修复前：共享引用被 clear ⇒ decoded[0] 也变空（审阅实测实锤）
+  assert_eq(
+    decoded[0].vis_events.length(),
+    1,
+    msg="base 帧 vis_events 不得被后续 delta 的空列表覆盖",
+  )
+}
+
+///|
+test "j9_decode_batch_does_not_mutate_input" {
+  let p0 = make_payload(0, [mkvar("i", "int", "0")])
+  p0.vis_events = [
+    { ty: 2, line: 5, extra0: 0, extra1: 0, extra2: 0, context: "cmp", },
+  ]
+  let p1 = clone_payload(p0)
+  p1.vis_events = []
+  let batch = encode_payloads([p0, p1], 0)
+  let base_events_before = batch.base_payloads[0].vis_events.length()
+  ignore(decode_batch(batch))
+  assert_eq(
+    batch.base_payloads[0].vis_events.length(),
+    base_events_before,
+    msg="decode_batch 不得 mutate 输入（Rust &不可变借用等价——回放幂等）",
+  )
+}
+
+///|
+test "stream_symbol_table_full_content_anchor" {
+  // 符号表全内容锚（审阅 P3：往返锚对「序」零判别力，而符号表插入序
+  // 是批四号双宿主字节级对拍核心面）。期望数组 = 独立第二份硬编码。
+  // 求值序 = encode_step_payload 的 struct 字面量书写序 = Rust 求值序
+  // （审阅探针实证：MoonBit struct 字面量按书写序求值）。
+  let p : StepPayload = {
+    step_index: 0,
+    code_line: 1,
+    func_name: "main",
+    semantic_label: "step 0",
+    algorithm_step: Some({
+      algorithm_name: "ALGO",
+      display_name: "DISPLAY",
+      phase: "PHASE",
+      description: "DESC",
+    }),
+    local_vars: [mkvar("i", "int", "0")],
+    call_stack: [],
+    vis_events: [],
+    heatmap_line: 1,
+    heatmap_count: 1,
+    accessed_vars: [],
+    array_snapshots: [],
+    pointer_snapshots: [],
+    root_cause_hint: None,
+  }
+  let batch = encode_payloads([p], 0)
+  let expected : Array[String] = [
+    "", "main", "step 0", "ALGO", "DISPLAY", "PHASE", "DESC", "i", "int",
+  ]
+  assert_eq(batch.symbol_table.length(), expected.length())
+  for i, want in expected {
+    assert_eq(
+      batch.symbol_table[i],
+      want,
+      msg="符号表第 \{i} 项漂移——插入序是批四号字节级对拍面，禁改",
+    )
+  }
+}
+
+///|
+test "stream_frame_same_length_change_detected" {
+  // 审阅 P3 锚盲区：frame_lists_equal 的 return_line 比较——现有
+  // call_stack_delta 锚只用「长度变化」形态，同长变化测不到（突变
+  // 实证：去掉 return_line 比较全绿）。本锚补同长 return_line 变化形态。
+  let p0 = make_payload(0, [mkvar("i", "int", "0")])
+  let p1 = make_payload(1, [mkvar("i", "int", "1")])
+  // 同长（1 帧）、func_name 同、仅 return_line 变
+  p1.call_stack = [{ func_name: "main", return_line: 3, }]
+  let batch = encode_payloads([p0, p1], 0)
+  assert_true(
+    batch.deltas[0].call_stack is Some(_),
+    msg="同长 return_line 变化必须产生 call_stack 差分",
+  )
+  let decoded = decode_batch(batch)
+  assert_eq(decoded[1].call_stack[0].return_line, 3)
+}
+
+///|
+test "stream_removed_var_reappears_as_new" {
+  // 审阅 P3 锚盲区：retain_ref_vars 恒不删突变全绿——需「变量删除后
+  // 同名重新出现」形态。突变下 current_full_ref 残留 i ⇒ prev_vars 含
+  // i ⇒ 重现走 var_deltas 而非 new_vars ⇒ 本锚红。
+  let payloads = [
+    make_payload(0, [mkvar("i", "int", "0")]),
+    make_payload(1, []),
+    make_payload(2, [mkvar("i", "int", "9")]),
+  ]
+  let batch = encode_payloads(payloads, 0)
+  assert_eq(
+    batch.deltas[0].removed_var_name_indices.length(),
+    1,
+    msg="i 删除",
+  )
+  assert_eq(
+    batch.deltas[1].new_vars.length(),
+    1,
+    msg="删除后的 i 重现必须走 new_vars（removed 链路正确性）",
+  )
+  let decoded = decode_batch(batch)
+  assert_eq(decoded[2].local_vars.length(), 1)
+  assert_eq(decoded[2].local_vars[0].name, "i")
+  assert_eq(decoded[2].local_vars[0].value, "9")
+}
+
+///|
+test "stream_get_sym_out_of_bounds_tolerant" {
+  // 审阅 P3（可接受级）：get_sym 越界容错读照搬 Rust unwrap_or_default
+  // ——白盒直调锚（跨包不可达 priv，直调即锚）。
+  assert_eq(get_sym(["a", "b"], 0), "a")
+  assert_eq(get_sym(["a", "b"], 1), "b")
+  assert_eq(get_sym(["a", "b"], 2), "", msg="越界返回空串")
+  assert_eq(get_sym(["a"], -1), "", msg="负索引返回空串")
+}

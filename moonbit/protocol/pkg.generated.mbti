@@ -1,0 +1,202 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/protocol"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub const SCHEMA_V0_1_FROZEN_AT : String = "2026-09-12"
+
+pub const SCHEMA_VERSION : String = "v0.1"
+
+pub fn behavior_contracts() -> Array[BehaviorContract]
+
+pub fn check_unwinding_granularity(Array[UnwindSample]) -> Result[Unit, String]
+
+pub fn classify(String) -> String?
+
+pub fn contracts_json() -> String
+
+pub fn kind_by_id(String) -> SemanticLabelKind?
+
+pub fn reserved_fields_v0_2() -> Array[String]
+
+pub fn semantic_label_vocabulary() -> Array[SemanticLabelKind]
+
+pub fn step_payload_fields_v0_1() -> Array[String]
+
+pub fn v0_2_activation_checklist() -> Array[String]
+
+pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan]
+
+pub fn vocabulary_json() -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct AccessedVar {
+  name : String
+  access_type : String
+} derive(@debug.Debug)
+
+pub(all) struct AlgorithmStepSnapshot {
+  algorithm_name : String
+  display_name : String
+  phase : String
+  description : String
+} derive(@debug.Debug)
+
+pub(all) struct ApiFrameInfo {
+  func_name : String
+  return_line : Int
+} derive(@debug.Debug)
+
+pub(all) struct ApiVariableSnapshot {
+  name : String
+  addr : UInt
+  is_local : Bool
+  ty_name : String
+  value : String
+} derive(@debug.Debug)
+
+pub(all) struct ArraySnapshot {
+  name : String
+  element_ty : String
+  elements : Array[String]
+  truncated : Bool
+} derive(@debug.Debug)
+
+pub(all) struct AutoStepResult {
+  payloads : Array[StepPayload]
+  finished : Bool
+  trapped : Bool
+  waiting_input : Bool
+  paused : Bool
+  current_line : Int
+  trap_message : String?
+  cache_start_step : Int
+} derive(@debug.Debug)
+
+pub(all) struct BehaviorContract {
+  id : String
+  statement : String
+  status : String
+  batch : String
+  enforced_by : String
+} derive(@debug.Debug)
+
+pub(all) struct DebugSummary {
+  local_vars : Array[ApiVariableSnapshot]
+  call_stack : Array[ApiFrameInfo]
+  output_len : Int
+} derive(@debug.Debug)
+
+pub(all) struct HeatmapData {
+  line_counts : Array[(Int, UInt64)]
+  max_count : UInt64
+} derive(@debug.Debug)
+
+pub(all) struct HeatmapDelta {
+  line : Int
+  count : UInt64
+} derive(@debug.Debug)
+
+pub(all) struct PointerSnapshot {
+  name : String
+  addr : UInt
+  ty_name : String
+  target_addr : UInt
+  target_name : String
+  status : PointerStatus
+} derive(@debug.Debug)
+
+pub(all) enum PointerStatus {
+  Valid
+  Freed
+  Null
+  Dangling
+} derive(Compare, Eq, @debug.Debug)
+pub fn PointerStatus::to_json_text(Self) -> String
+
+pub(all) struct RootCauseHint {
+  category : String
+  one_liner : String
+  related_lines : Array[Int]
+  suggested_fix_kind : String
+  suggested_fix_line : Int?
+  suggested_fix_desc : String?
+} derive(@debug.Debug)
+
+pub(all) struct SchemaFieldPlan {
+  field : String
+  kind : String
+  status : String
+  batch : String
+  note : String
+} derive(@debug.Debug)
+
+pub(all) struct SeekResult {
+  success : Bool
+  payload : StepPayload?
+  error : String?
+} derive(@debug.Debug)
+
+pub(all) struct SemanticLabelKind {
+  id : String
+  domain : String
+  template : String
+  example : String
+  status : String
+  since : String
+} derive(@debug.Debug)
+
+pub(all) struct StepMeta {
+  code_line : Int
+  func_name : String
+  loop_depth : Int
+  semantic_label : String
+} derive(@debug.Debug)
+
+pub(all) struct StepPayload {
+  step_index : Int
+  code_line : Int
+  func_name : String
+  semantic_label : String
+  algorithm_step : AlgorithmStepSnapshot?
+  local_vars : Array[ApiVariableSnapshot]
+  call_stack : Array[ApiFrameInfo]
+  vis_events : Array[VisEvent]
+  heatmap_line : Int
+  heatmap_count : UInt64
+  accessed_vars : Array[AccessedVar]
+  array_snapshots : Array[ArraySnapshot]
+  pointer_snapshots : Array[PointerSnapshot]
+  root_cause_hint : RootCauseHint?
+} derive(@debug.Debug)
+
+pub(all) struct UnifiedRunResult {
+  success : Bool
+  error : String?
+  total_steps : Int
+  finished : Bool
+} derive(@debug.Debug)
+
+pub(all) struct UnwindSample {
+  step_index : Int
+  unwinding : Bool
+  unwind_frames_left : Int
+} derive(Compare, Eq, @debug.Debug)
+
+pub(all) struct VisEvent {
+  ty : Int
+  line : Int
+  extra0 : Int
+  extra1 : Int
+  extra2 : Int
+  context : String
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

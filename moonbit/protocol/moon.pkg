@@ -1,0 +1,13 @@
+// L8 会话/协议层·protocol 包（S7 批一号，2026-09-27 建包）：StepPayload
+// schema 契约（v0.1 冻结 + v0.2 台账/激活清单 + 行为契约表）+ semantic_label
+// 受控词汇表 + 协议 DTO 族（StepPayload/快照/帧数据）+ 展开粒度可执行判据。
+// 照搬源：native/src/unified/contracts.rs + vocabulary.rs + types.rs +
+// root_cause.rs + session.rs::VisEvent（Rust 冻结区，tag rust-oracle-freeze）。
+// 包设计：零依赖自持——协议冻结的意义即不随引擎内部类型漂移，L8 session/
+// gateway 与 cmd/serve 消费本包，本包不依赖任何引擎包（含同层）。
+// 落点裁定：VisEvent 与 RootCauseHint 在 Rust 侧分属 session.rs 与
+// unified/root_cause.rs，本包因「StepPayload 字段类型必须协议内自持」收拢
+// 进 protocol 定义（session 批消费时自此 import，避免 session→protocol 之外
+// 再造孪生）；HeatmapData.line_counts 保持 Rust 元组语义（serde 落二元数组
+// [line, count]，emitter 随 gateway serve 批对齐）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。

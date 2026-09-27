@@ -432,7 +432,7 @@ int main() {
 
 ### 2.9 堆分配模型：bump + 有界隔离（2026-09-11 决议落地）
 
-依据 [`堆有界隔离决议.md`](../06-出口与协议（ASAN quarantine 原版机制）：
+依据 [`堆有界隔离决议.md`](../06-出口与协议/堆有界隔离决议.md)（ASAN quarantine 原版机制）：
 
 | 项 | 行为 |
 |---|---|
@@ -451,7 +451,7 @@ int main() {
 3. **`free` 后地址的复用时机不同**：glibc 立即可复用，Vitro 需等待隔离区驱逐（教学上更利于暴露"free 后仍持有旧指针"的错误）；
 4. **堆耗尽不 trap**：决议文本措辞为"教学 trap"，实现取 NULL + 输出教学提示 —— C 标准要求分配失败返回 NULL，Clang 同样返回 NULL，trap 会偏离"必须检查 malloc 返回值"这一编程习惯。
 
-> **反向链接**：本节隔离预算（堆上限 1/4 = 256KB）、FIFO 驱逐与"第三道墙"（region 表封顶）的完整推导、决议原文与验收用例见 [`堆有界隔离决议.md`](../06-出口与协议（语言中立的引擎层决议，三出口共用）。
+> **反向链接**：本节隔离预算（堆上限 1/4 = 256KB）、FIFO 驱逐与"第三道墙"（region 表封顶）的完整推导、决议原文与验收用例见 [`堆有界隔离决议.md`](../06-出口与协议/堆有界隔离决议.md)（语言中立的引擎层决议，三出口共用；MoonBit 侧同构落点 = `vitro/engine/memory`）。
 
 ### 2.10 C23 锚定特性（E1 批次，2026-09-11）
 
@@ -594,7 +594,7 @@ Shadow（e3_* 用例）。
 
 | 特性 | 排除理由 | 遇到时的错误提示 |
 |:---|:---|:---|
-| `double` | ⚠️ **部分支持**：`double` 字面量、变量、数组、函数参数、算术运算、printf `%lf` / scanf `%lf` 正常；**函数返回 `double` 值存在 ABI 异常**（调用方可能得到 `0.0`，见 `AGENTS.md` 已知差异与 `LEETCODE_FAILURES.md` 中 `lc_4` 记录），建议通过整数缩放或指针参数输出浮点结果 | 运行时输出 `0.0` |
+| `double` | ✅ **已支持**：`double` 字面量、变量、数组、函数参数、算术运算、函数返回值、printf `%lf` / scanf `%lf`（函数返回路径的 ABI 异常已于 2026-06-24 修复——`LEETCODE_FAILURES.md` `lc_4` 条目，修复前调用方可能得到 `0.0`；本文 §7.4 同步口径） | — |
 | `char` / `char*` / 字符串 | ✅ **已支持**：char 按 i32 存储，字符串通过 Data Segment 注入；支持 `strlen`/`strcpy`/`strcmp`/`strcat` | — |
 | `break` / `continue` | ✅ **已支持**：循环控制的核心语法 | — |
 | `goto` | ✅ **已支持**：无条件跳转到函数内标签 | — |
@@ -712,7 +712,7 @@ int main() {
 | enum | ❌ | ✅ |
 | printf / scanf | ❌ | ✅（printf 支持可变参数） |
 | float/double | ❌ | ✅ |
-| 预处理 | ❌ | ❌ |
+| 预处理 | ❌ | ✅（E2 模块化预处理器，§2.11 口径） |
 | 标准库（除 printf/scanf/malloc/free） | ❌ | ❌ |
 | 指针运算 | ❌ | ❌ |
 
@@ -874,12 +874,13 @@ int main() { return 0; }
 | `_Complex` / `_Imaginary` / `<complex.h>` | 数学/工程专用，教学不用 |
 | ~~`_Generic`（C11 泛型选择）~~ | ~~学生几乎不用，实现复杂~~ → **已支持**：编译期类型匹配 + `default` 分支 |
 | ~~复合字面量 `(Type){...}`~~ | ~~C99/C11 特性，实现复杂~~ → **已支持**：结构体/数组/标量复合字面量，lvalue 语义简化 |
-| `_Alignas` / `_Alignof` | C11 进阶，教学很少涉及；`_Static_assert` 已提供语法兼容 |
+| `_Alignas` | C11 进阶，教学很少涉及；`_Static_assert` 已提供语法兼容 |
+| ~~`_Alignof`~~ | ~~C11 进阶，教学很少涉及~~ → **已支持**（E1 批次，§2.10：`_Alignof(double)` 等编译期求值；已知差异 `_Alignof(int*)` Vitro=4 / Clang=8，见 §2.10 指针模型） |
 | `_Noreturn` / `_Thread_local` / `_Atomic` | 同上 |
 | `union` 的复杂初始化规则 | 当前已支持基本 union，复杂初始化极少见 |
-| **`va_list` / `va_start` / `va_arg` / `va_end`** | 自定义变参需全编译管线 + ABI 改造；`printf`/`scanf` 已内置支持，教学价值有限 |
+| **`va_list` / `va_start` / `va_arg` / `va_end`** | **自定义变参函数仍排除**（需全编译管线 + ABI 改造）；`va_copy` / `va_start` 等已随 E1 B 档与 host 侧 4 件落地（服务内建变参函数语义），`printf`/`scanf` 已内置支持，教学价值集中在内建形态 |
 | **全局 VLA** | 标准允许但教学/实际代码中极少见；实现需全局运行时栈分配机制 |
-| 完整预处理器（`#` / `##` 操作符、多行宏、条件宏表达式计算） | 教学场景 `#define` 常量宏已足够 |
+| ~~完整预处理器（`#` / `##` 操作符、多行宏、条件宏表达式计算）~~ | ~~教学场景 `#define` 常量宏已足够~~ → **已支持**（E2 模块化预处理器，§2.11：对象/参数化宏、`#`/`##`、`#if` 族整数常量表达式；诚实放弃清单见 §2.11） |
 
 ---
 
@@ -929,9 +930,9 @@ I/O：printf、scanf、sprintf、snprintf、sscanf、fprintf、puts、getchar、
 宏/类型：NULL、EOF、INT_MAX、INT_MIN、bool、true、false、size_t、ptrdiff_t、
          EXIT_SUCCESS、EXIT_FAILURE
 
-不支持：bitfield、_Complex、_Static_assert、_Alignas/_Alignof、
+不支持：bitfield、_Complex、_Static_assert、_Alignas、
        _Noreturn/_Thread_local/_Atomic、`__attribute__((cleanup(...)))` 等 GCC 扩展属性、
-       完整预处理器（仅 #define 常量宏 + 条件编译）
+       自定义变参函数（`va_list` 自建变参；内建变参 printf/scanf 与 E2 预处理器已支持，见 §2.10~§2.11）
 ```
 
 这个范围覆盖了 C 语言的核心教学价值（变量、控制流、函数、指针、内存、字符串、类型系统、标准库），

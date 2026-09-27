@@ -3,7 +3,7 @@
 > **核心理念**：自研 VM 的优势不是省内存，而是做通用 IDE/可视化工具做不出来的教学体验。  
 > **性能原则**：中端手机 50MB 内存换零延迟交互，完全可接受。拒绝为省 47.5MB 做过度工程化。
 >
-> **2026-09-11 前端切割后现状**：教学体验的载体已从 Dart widget 转为**协议载荷 + 三出口 API**。本仓库负责在后端产出这些能力（快照/检查点/热力图/语义标注/变量历史/变量级高亮），经 C ABI、wasm32、`vitro_cli serve` 交付；渲染与交互由社区前端实现。载荷字段以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md 为准。
+> **2026-09-11 前端切割后现状**：教学体验的载体已从 Dart widget 转为**协议载荷 + 三出口 API**。本仓库负责在后端产出这些能力（快照/检查点/热力图/语义标注/变量历史/变量级高亮），经 C ABI、wasm32、`vitro_cli serve` 交付；渲染与交互由社区前端实现。载荷字段以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准。
 >
 > **最后核对日期**：2026-09-11（修订：实现位置表中的 Dart widget 改为后端能力 + 三出口载荷；修正正文中的旧模块路径，并如实记录 `unified/checkpoint.rs` 已不存在等现状差异）
 
@@ -359,7 +359,7 @@ pub struct StepPayload {
 | `meta: StepMeta` | **存在**于 `native/src/unified/types.rs`，字段为 `{code_line, func_name, loop_depth, semantic_label}`（设计稿中的 `step_index` / `loop_iters` / `is_loop_boundary` / `is_func_call` / `is_swap` **未实现**）；用途是进度条标签与智能检查点，不是 `StepPayload` 的字段 |
 | `debug_summary: DebugSummary` | **存在**于同一文件，字段为 `{local_vars, call_stack, output_len}`（设计稿中的 `memory_summary` **未实现**） |
 
-实际载荷是上表的扁平字段，**字段级口径以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md 为准**（该 schema 是对外承诺的 wire format）。
+实际载荷是上表的扁平字段，**字段级口径以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准**（该 schema 是对外承诺的 wire format）。
 
 > **命名债（诚实记录）**：`native/src/unified/types.rs` 中仍有 "传输到 Flutter 前端作为 FrameCache"、"FRB 友好的变量快照" 等注释（所述 Flutter 前端与 FRB 桥接均为历史资产，已迁出），以及 `ApiVariableSnapshot` 等 `Api*` 前缀命名——这些属切割前的遗留措辞，代码本身已是语言中立 Rust 层，**名称待后续重构收敛**（本次文档翻新不改 `.rs` 代码）。
 

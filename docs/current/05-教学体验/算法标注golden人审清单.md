@@ -3,13 +3,16 @@
 ## 0. 当前状态
 
 - **基线 = v3 golden**（`native/tests/golden/algorithm_annotations_v3.json`，已接 CI）：
-  **82 个 C 模板 = 37 有标注（310 条首现 / 113 个 (模板, phase) 键）+ 45 零标注**，0 错误帧。
+  **82 个 C 模板 = 37 有标注（311 条首现 / 113 个 (模板, phase) 键）+ 45 零标注**，0 错误帧。
 - **v4 → v5 两轮**：
   1. **v4**：按《算法标注golden审阅意见三审20260914.md》§5 完成 8 项文档修复，并在重建后的
      表上**以审阅人身份逐行判定**——首判 **✅ 94 / ✗ 11 / ⛔ 8**。
   2. **v5（本版）**：§6 代码侧两批落地后（提交 `a528a4a` / `9cd1aa8`，含 golden 增 `algorithm` 归属），
      **对 8 个 ⛔ 键按算法复判**，并复判 11 个 ✗ 键与 2 个新词条——结果
      **✅ 110 / ✗ 3 / ⛔ 0**（113 键 / 310 条）。
+  3. **v5 第三批（同日，提交 `72e8c24`）**：§1.1 的 3 个 ✗ 键代码侧全部修复（红→绿，golden 重提取
+     更新 311 条——bst_validate/recursive 键内分离变体）——**113 键全部 ✅ / ✗ 0 / ⛔ 0
+     （人审 + 代码侧闭环，2026-09-27 状态回填）**。
 - **golden 定位（不变）**：三审修复链后的**行为基线快照，不是语义认证**。本表的人审结论
   与 golden 的差异即"基线已知偏差点"清单（§2），更新 golden 须附红→绿锚。
 - **口径（钉死，消除历史歧义）**：
@@ -54,14 +57,14 @@
 | 2 个新词条 | 本轮改动新引入 | `topologicalSort/dequeue` ✅；`computeNextVal/build_nextval` **✗（复判新发现，见 §1.1）** |
 
 **基线一致性复核**：`tmp/annot_extract_v5_20260914.json`（当前 release 构建 × 4000 步）
-与当前 golden **逐条 0 差异**——310 条 / 113 键 / 37 模板，CI 基线可复现。
+与当前 golden **逐条 0 差异**——310 条 / 113 键 / 37 模板（v5 提取时点；第三批后为 311 条），CI 基线可复现。
 
 ## 1. 审阅统计与结论
 
 | 判定 | 键数 | 含义 |
 |------|------|------|
-| ✅ 可进 golden | **110** | phase 与所挂语句一致、文案语义正确（含可接受的顶层调用帧） |
-| ✗ 必须改写 | **3** | 文案/挂载行/相位有误——**不阻断 golden 存在，但学生所见文案应修** |
+| ✅ 可进 golden | **113** | phase 与所挂语句一致、文案语义正确（含可接受的顶层调用帧）——**第三批 `72e8c24` 后全绿** |
+| ✗ 必须改写 | **0** | ~~3 键~~（`build_nextval` 值/下标错位、`bst_validate/recursive` 与 `hanoi/recursive` 首现入口语义）——**已由代码侧第三批全部修复（2026-09-14 同日，红→绿，见 §1.1 留痕）** |
 | ⛔ 必须作废或移出 | **0** | （v4 曾为 8 键 bst 归属不可表达；v5 复判后**归零**） |
 | 合计 | **113** | 与当前 golden 的 (模板, phase) 键数一致 |
 
@@ -78,7 +81,7 @@
 > C 柱"（char 形参按 i32 存、还原为字符；取不到降级不带柱名）。
 > **113 键至此全部 ✅（人审 + 代码侧闭环）**。
 
-### 1.1 ✗ 必须改写（3 键）
+### 1.1 ✗ 必须改写（3 键）——✅ 已全部处置（2026-09-14 第三批 `72e8c24`，本节留痕）
 
 - **`computeNextVal/build_nextval`（复判新发现）**：「构建 nextval 数组，**nextval[-1]**」挂在
   L23 `nextval[0] = -1;`——**下标位被填成了值**（-1 是值，下标应为 0）；且该词条只给下标不给值
@@ -94,7 +97,7 @@
 （`dpKnapsack`/`matrixChain` 的 `inner_loop` **缺陷键整体消失**，`dpLCS/inner_loop` 首现移回真内层 L14）、
 `topologicalSort/output` 挂载点、`hanoi/finish` 文案、`insertion/insert` 两态、
 `quick/partition_init` 值/下标、`dpCoinChange/outer_loop` 具名、`computeNextVal/build_next` nextval 混入。
-**仍 ✗ 的 2 键**（`binarySearchTreeValidation/recursive`、`hanoi/recursive`）不在 `9cd1aa8` 的处置范围内。
+**仍 ✗ 的 2 键**（`binarySearchTreeValidation/recursive`、`hanoi/recursive`）不在 `9cd1aa8` 的处置范围内——**已由同日第三批 `72e8c24` 处置（§1.1 批注）**。
 
 ### 1.2 ⛔ 已消除（8 键 → ✅）
 
@@ -118,7 +121,7 @@ v5 复判（golden 已有 `algorithm` 字段）逐条核对：
 > 归属，**消费方应按 `algorithm` 分组**（或把准备阶段单独呈现）；`bst_search`/`bst_delete`
 > 自身无 `create`/`finish` phase 已登记在 §4。
 
-## 2. 主审表（113 键 / 310 条）
+## 2. 主审表（113 键 / 311 条；第三批前为 310 条——bst_validate/recursive 键内分离变体）
 
 列说明：「算法」= 该键下所有帧的 `algorithm_name`（多个即"一键多算法"，见 M4 注，非缺陷）；「条」= 该键下不同
 `(phase, description)` 数；「首现 description」= 该键最先出现的那条文案；「行」= 首现挂载行号；
@@ -137,7 +140,7 @@ M4 一键多算法（v5 起按"**非缺陷**"读：同一模板的不同阶段�
 | 7 | `binary` | binary_search | `loop` | 1 | 搜索范围 [0, 4] | 5 | — | ✅ | L5 `while (left <= right)` ✓ |
 | 8 | `binary` | binary_search | `mid_calc` | 1 | 计算中点 mid=2 | 6 | — | ✅ | L6 `int mid = left + (right - left) / 2;`，首现 mid=2 ✓（P0-1 已修） |
 | 9 | `binary` | binary_search | `compare` | 1 | arr[2] 与目标值 5 比较 | 7 | — | ✅ | L7 `if (arr[mid] == target)`，target=5 与默认参数一致 ✓；默认参数一次命中，found/narrow_left 未出现（覆盖面） |
-| 10 | `binarySearchTreeValidation` | bst_validate | `recursive` | 1 | 递归校验子树：左子树区间收窄为 (min, val)，右子树为 (val, max) | 32 | M3 顶层调用帧 | ✗ | **复判仍 ✗（未处置）**：首现仍挂 L32 顶层调用行（M3），文案仍描述递归体内两分支（L22/L23 区间收窄），与所挂语句不符。建议改入口语义「校验整棵树：以 (INT_MIN-1, INT_MAX+1) 开区间开始」，或把首现挂到 L22 递归调用行 |
+| 10 | `binarySearchTreeValidation` | bst_validate | `recursive` | 1 | 递归校验子树：左子树区间收窄为 (min, val)，右子树为 (val, max) | 32 | M3 顶层调用帧 | ✅ | **复判曾 ✗ → 第三批 `72e8c24` 已处置**：首现改入口语义「启动校验：从根节点开始…」（传 env，at_callee_entry + caller_is_main 与 quick/merge 同款区分），体内行保持原递归文案（键内分离为两条变体，310→311 条） |
 | 11 | `binarySearchTreeValidation` | bst_validate | `empty_valid` | 1 | 空子树不违反 BST 性质，判定合法 | 20 | — | ✅ | L20 `if (root == NULL) return 1;` ✓ |
 | 12 | `binarySearchTreeValidation` | bst_validate | `range_check` | 1 | 校验当前节点值：必须严格落在开区间 (min, max) 内，越界即非法 | 21 | — | ✅ | L21 `if (root->val <= min \|\| root->val >= max) return 0;` ✓；缺「校验通过/非法」结论 phase |
 | 13 | `bstDelete` | bst_delete/bst_insert | `recursive` | 2 | 递归查找插入位置 | 64 | M3 顶层调用帧、M4 一键多算法、M5 文案多态 | ✅ | **复判（golden 已带归属）**：2 条各自归属——[bst_insert]「递归查找插入位置」@L64（建树）、[bst_delete]「递归在子树中定位并删除目标节点」@L71 ✓。原 ⛔ 的根因是归属不可见，现降为 ✅ |
@@ -162,7 +165,7 @@ M4 一键多算法（v5 起按"**非缺陷**"读：同一模板的不同阶段�
 | 32 | `bubble` | bubble_sort | `inner_loop` | 4 | 内层循环 j=0，比较相邻元素 | 5 | — | ✅ | L5 `for (j < n - i - 1)` ✓ |
 | 33 | `bubble` | bubble_sort | `compare` | 4 | 比较 arr[0] 与 arr[1] | 6 | — | ✅ | L6 `if (arr[j] > arr[j + 1])` ✓ |
 | 34 | `bubble` | bubble_sort | `swap` | 4 | 交换 arr[0]↔arr[1]，较大的元素向右移动 | 7 | — | ✅ | L7 `int temp = arr[j];` 文案「较大的元素向右移动」与冒泡方向一致 ✓ |
-| 35 | `computeNextVal` | string_match_kmp | `build_nextval` | 10 | 调用构建 nextval 数组 | 35 | M3 顶层调用帧、M5 文案多态 | ✗ | **#7 新引入的词条，但文案有值/下标错位**：10 条中 `构建 nextval 数组，nextval[-1]` 挂在 L23 `nextval[0] = -1;`——**下标位被填成了值 -1**（应为 0）；且本词条只给下标不给值（`nextval[2]`/`nextval[3]`…），与 `构建 next 数组，next[N]=V` 的格式不一致。建议统一为 `构建 nextval 数组，nextval[0]=-1`。首现 L35 `getNextVal(T, nextval);` 为调用点起手（入口语义）✓ |
+| 35 | `computeNextVal` | string_match_kmp | `build_nextval` | 10 | 调用构建 nextval 数组 | 35 | M3 顶层调用帧、M5 文案多态 | ✅ | **复判曾 ✗ → 第三批 `72e8c24` 已处置**：下标/值改从行文本解析（`nextval[0]=-1`——此前用变量 j 填下标位，j 取到的是右侧的值），「带值」格式已统一；首现 L35 `getNextVal(T, nextval);` 为调用点起手（入口语义）✓ |
 | 36 | `computeNextVal` | string_match_kmp | `build_next` | 21 | 调用构建 next 数组 | 21 | M5 文案多态 | ✅ | **复判**：nextval 段已分离到新词条 `build_nextval`（#7），本键 21 条全部落在 getNext 内真语句（L6/L12/L14）或调用点起手（首现 L21 `getNext(T, next);`，入口语义）✓，原 ✗ 消除。残留观察：L25 `if (T[j] == T[next[j]])` 上的「构建 next 数组，next[#]=-1」展示的是**读到的 next 值**，建议文案改「读取 next[j]=-1」 |
 | 37 | `countingSort` | counting_sort | `collect` | 1 | 按数值从小到大收集元素 | 9 | — | ✅ | L9 `for (i < 10)` 值域遍历 ✓；缺 count（L5-6 统计频次）phase |
 | 38 | `countingSort` | counting_sort | `place` | 1 | 将数值放回原数组的正确位置 | 11 | — | ✅ | L11 `arr[index++] = i;` ✓（一审指出的 L8 初始化行已修） |
@@ -192,7 +195,7 @@ M4 一键多算法（v5 起按"**非缺陷**"读：同一模板的不同阶段�
 | 62 | `gcd` | gcd | `loop` | 3 | 辗转相除：a=48, b=18 | 4 | — | ✅ | L4 `while (b != 0)` ✓ |
 | 63 | `gcd` | gcd | `mod` | 3 | 计算 48 % 18 = 12（余数作为新的 b） | 6 | — | ✅ | L6 `b = a % b;`，首现「计算 48 % 18 = 12」✓（P0-4 行入口操作数修复生效） |
 | 64 | `gcd` | gcd | `finish` | 1 | 最大公约数为 6 | 9 | — | ✅ | L9 `return a;` ✓ |
-| 65 | `hanoi` | hanoi | `recursive` | 3 | 移动 3 个盘子的汉诺塔问题 | 15 | M3 顶层调用帧、M5 文案多态 | ✗ | **复判仍 ✗（未处置）**：#5 只改了 `finish`；首现仍是 L15 顶层调用帧（M3）上的**问题陈述**「移动 3 个盘子的汉诺塔问题」。变体「递归移动 N 个盘子」@L8 正确。建议首现改入口语义「从 A 柱移动 3 个盘子到 C 柱」 |
+| 65 | `hanoi` | hanoi | `recursive` | 3 | 移动 3 个盘子的汉诺塔问题 | 15 | M3 顶层调用帧、M5 文案多态 | ✅ | **复判曾 ✗ → 第三批 `72e8c24` 已处置**：首现改入口语义「从 A 柱移动 3 个盘子到 C 柱」（char 形参按 i32 存、还原为字符；取不到降级不带柱名）；变体「递归移动 N 个盘子」@L8 不变 |
 | 66 | `hanoi` | hanoi | `base` | 1 | 基准情况：直接把盘子从起始柱移到目标柱 | 4 | — | ✅ | L4 `if (n == 1) {` ✓ |
 | 67 | `hanoi` | hanoi | `move` | 3 | 移动第 1 个盘子 | 5 | — | ✅ | L5 `printf("Move disk 1 ...")` ✓（变体 L9 为第 2/3 个盘子） |
 | 68 | `hanoi` | hanoi | `finish` | 1 | 该层递归结束，返回上一层 | 6 | — | ✅ | **复判**：文案已按 `func_name` 区分——体内 return 报「该层递归结束，返回上一层」@L6 ✓（#5），原 ✗ 消除 |
@@ -333,28 +336,26 @@ M4 一键多算法（v5 起按"**非缺陷**"读：同一模板的不同阶段�
 
 | 项 | 提交 | 复核依据 |
 |----|------|----------|
-| 1. golden 增 `algorithm` / `display_name` 归属字段 | `a528a4a` | golden 310 条全部带 `algorithm`；本表「算法」列与 M4 标记；§1.2 的 8 个 ⛔ 由此可判 |
+| 1. golden 增 `algorithm` / `display_name` 归属字段 | `a528a4a` | golden 310 条（第三批后 311 条）全部带 `algorithm`；本表「算法」列与 M4 标记；§1.2 的 8 个 ⛔ 由此可判 |
 | 2. dp 初始化循环排除 | `a528a4a` | `dpKnapsack`/`matrixChain` 的 `inner_loop` 缺陷键**整体消失**；`dpLCS/inner_loop` 首现回真内层 L14 |
 | 3. dp 子族具名（币种 / 物品 / 金额） | `9cd1aa8` | `遍历币种 i` / `遍历物品 i` / `遍历金额 j` 实测 |
 | 4. `insertion/insert` 位置 0 降级消除 | `9cd1aa8` | 4 变体文案统一为「将 key=K 插入到正确位置 P」 |
 | 5. `hanoi/finish` 按 func_name 区分；`topologicalSort/output` 挂真 printf 行 + `dequeue` 拆分 | `9cd1aa8` | §2 表对应行 |
 | 6. `quick/partition_init` 值/下标语义 | `9cd1aa8` | 文案改「分区完成，枢轴落位下标 pivot=N」 |
 | 7. `build_nextval` 词条分离 | `9cd1aa8` | 新键 10 条；**同时引入 §1.1 的 `nextval[-1]` 格式问题** |
+| 8. **§1.1 三 ✗ 键全部修复（第三批，2026-09-14 同日）**：`build_nextval` 值/下标改行文本解析（`nextval[0]=-1`）/ `bst_validate/recursive` 入口语义 + 键内变体分离（310→311 条）/ `hanoi/recursive` 首现入口语义 | `72e8c24` | 红→绿：golden 漂移 4 处 → 重提取更新 311 条 → CI 复绿；**113 键全部 ✅（人审 + 代码侧闭环）** |
 | 9. `step.next` 结束后重复发布末帧 | `a528a4a` | 终态末帧重放根治（各模板 `last_step_index` 较 v4 减 1 即为佐证） |
 
-**未落地（本表 ✗ 与残留，需改代码）**：
+**未落地（残留，需改代码；原 1–3 条已由第三批 `72e8c24` 处置并上移入"已落地"表）**：
 
-1. **`build_nextval` 文案值/下标错位**（§1.1 首条）：`nextval[-1]` 应为 `nextval[0]=-1`，并统一"带值"格式。
-2. **`binarySearchTreeValidation/recursive` 首现挂载点**：顶层调用行 vs 递归体描述——改入口语义，或把首现移焦到 L22。
-3. **`hanoi/recursive` 首现文案**：问题陈述改入口语义（#5 只覆盖了 `finish`）。
-4. **`quick/partition_init` 的 phase 名**：`partition_init` 与"分区已完成"不符；#6 已裁定"词汇面改动另行裁定"，
+1. **`quick/partition_init` 的 phase 名**：`partition_init` 与"分区已完成"不符；#6 已裁定"词汇面改动另行裁定"，
    需走词汇表单源（`native/src/unified/vocabulary.rs` + schema 附录 B）。
-5. **`computeNextVal/build_next` 的 L25 展示**：「构建 next 数组，next[#]=-1」实为**读取** next[j]，
+2. **`computeNextVal/build_next` 的 L25 展示**：「构建 next 数组，next[#]=-1」实为**读取** next[j]，
    建议改「读取 next[j]=-1」。
-6. **登记未修（历史遗留，见附录 A）**：P1-3/P1-4 的顶层调用区分、P0-4 prev 操作数管道——本版 §0 判定规则 ③
+3. **登记未修（历史遗留，见附录 A）**：P1-3/P1-4 的顶层调用区分、P0-4 prev 操作数管道——本版 §0 判定规则 ③
    把"顶层调用帧 + 入口语义"判为可接受；若后续按 `at_callee_entry && caller_is_main` 做区分，
    请同步复核 §2 表中 9 个 M3 键。
-7. **golden 文件名**：`algorithm_annotations_v3.json` 的内容已迭代到第五次全量提取（310 条），
+4. **golden 文件名**：`algorithm_annotations_v3.json` 的内容已迭代到第五次全量提取（现 311 条），
    文件名与内容版本脱节——建议改名或在文件内加 `baseline`/日期字段（改名前须同步
    `algorithm_annotation_golden_test.rs` 的路径常量）。
 
@@ -419,3 +420,9 @@ J9 埋雷已证红）。原始数据：`tmp/annot_extract_v3_20260914.json`。
 > 二审文件对这组数字的建议是"34 模板 × 95 条（现 38 × 100）"——**两套口径**：
 > 二审按 `(算法, phase)` 计数，本表按 `(phase, desc)` 计数（=113 键 / 317 条）。
 > v4 已在 §0 口径 1 中钉死，不再混用。
+
+### A.6 第三批收口（2026-09-14 同日，§1.1 三 ✗ 键代码侧修复）
+`72e8c24`：① `build_nextval` 下标/值改从行文本解析（`nextval[0]=-1`）；
+② `bst_validate/recursive` 顶层调用帧入口语义 + 键内变体分离（310→311 条）；
+③ `hanoi/recursive` 首现入口语义。红→绿：golden 漂移 4 处 → 重提取更新 311 条 → CI 复绿。
+**113 键全部 ✅ / ✗ 0 / ⛔ 0（人审 + 代码侧闭环）**；后续维护以本册 §0 当前状态与 §6 为准。

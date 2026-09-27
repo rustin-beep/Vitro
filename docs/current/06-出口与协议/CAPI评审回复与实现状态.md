@@ -143,10 +143,10 @@
 
 **集成测试**：`native/tests/capi_first_batch_tests.rs`（12 用例）——覆盖字符串所有权、severity 与 end 字段、运行三态、游标增量语义、三处保险丝（max_steps / call_depth_limit / deterministic）。
 
-**已知问题（本次实测发现，待修，不属于本批复核范围）**：`#include <time.h>` 会导致"编译失败"且**不给出任何诊断**（runtime_libc 的 `time.h` stub 经 include 展开路径失败；把同样内容手写进源文件则编译成功）。自带原型声明 `long time(long *t);` 可绕过。
+**已知问题（本次实测发现，2026-09-27 状态注：`#include` 失败静默的根因已随 H-1 修复消除（U1#11，2026-09-14，E1021 候选链单源，红→绿——见[实测发现登记](../07-质量与裁定/实测发现登记20260913_性能与头文件.md)），include 展开失败不再静默；本条按当日记录留痕）**：`#include <time.h>` 会导致"编译失败"且**不给出任何诊断**（runtime_libc 的 `time.h` stub 经 include 展开路径失败；把同样内容手写进源文件则编译成功）。自带原型声明 `long time(long *t);` 可绕过。
 
 ### 10.2 Phase 1 收尾（✅ 已全部完成，2026-09-12 核对）
 
 - ~~SharpTutor 用 capi 第一批（含 deterministic 最小形态）+ serve 跑通三进程集成~~ → 仓库侧已就绪；对端 S1~S5 签字回放 61/61 通过（2026-09-12，见 [`下游需求处置回执.md`](下游需求处置回执.md) §1）；
-- ~~**StepPayload schema v0.1 文档发布**~~ → 已发布为 [`../spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md 并冻结（2026-09-12，S1–S5 回放 61/61）；
+- ~~**StepPayload schema v0.1 文档发布**~~ → 已发布为 [`../spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 并冻结（2026-09-12，S1–S5 回放 61/61）；
 - ~~`vitro_cli serve` JSON-lines 会话模式~~ → 已落地并进 CI 冒烟（id 关联 / 错误帧同构 / `session.reset`，见 [CLI使用手册.md](../02-构建与上手/CLI使用手册.md)。

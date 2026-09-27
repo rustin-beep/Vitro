@@ -1,6 +1,7 @@
 # MoonBit 迁移第一阶段计划（S0.5 Rust 止血批 + S1 基础片）
 
 > **定稿**：2026-09-18 ｜ 上位文档：[`MoonBit迁移总计划.md`](MoonBit迁移总计划.md)
+> **状态（2026-09-27 补记）**：✅ **本阶段已完结**——S0.5 + S1 于 2026-09-19 收官（T1–T6 全 ✅，后续排期见[总计划 §10](MoonBit迁移总计划.md)）；本文保留为 P1–P7/U1/U2 红绿锚与三大工程约定的第一手清单。
 > **范围**：S0 已实质完成（四门实测关闭，见总计划 §2）——本阶段从 **S0.5（Rust 侧止血批）** 起步，止于 **S1（基础片 mooncakes 首发）**。
 > **纪律**：每条修复先红后绿（锚用例名进提交信息）；判"构建失败"前 tail 全量输出（SIGPIPE 两犯教训）；每条护栏上线前证红（J9）；全程未获允许不 git 提交的部分按仓库现行纪律执行。
 
@@ -99,7 +100,7 @@
 | T3 `vitro/engine/opcode` | ✅ 已完成（2026-09-19）：132 条编号照搬不重排（空号 44–49 实测入档）+ from_u8 空号/越界 None + name/from_name 双向映射 + Instruction{op, operand, loc}；白盒单测 10 例 | ✅ 0..255 全空间断言（命中恰 132 且与 code() 互逆）+ 关键编号定点锚（Nop=0…LShrQ=137）；operand 语义校验**诚实延后**至 S5（Rust 侧无先验语义表，不脑测发明——包注释登记） |
 | T4 `vitro/engine/ast` | ✅ 主体完成（2026-09-19）：Type 17 / Expr 26 / Stmt 16 / BinaryOp 19 / UnaryOp 9 / AssignOp 11 / decl 全族（Param/FuncDecl/Struct 族/GlobalDecl/C++ 类族/Template 族/CaptureMode/ProgramNode）；depth 四函数显式栈（expr/stmt/type/stmt_type——U1#8 + P1 语义照搬）；类型判等显式 `type_eq`（Typeof 自反 false + Array 忽略 vla_dims，Rust PartialEq 全语义）+ `template_arg_eq`（Expr 形态恒 false）；渲染单源 `to_c_string`（Rust Display 现状口径：基础类型不显 unsigned——照搬不私改，注释登记）；`compute_type_size` 不入包（计划边界）；`Stmt::Try` 标 reserved-for-csharp；E1 dump emitter（externally-tagged serde 同构 + 浮点 serde/ryu 文本化对齐：整值补 .0 / -0.0 保符号——MoonBit to_string 实测 1→"1"/-0.0→"0" 两处偏差由 emitter 根治） | ✅ E1 对拍两样本 diff 为空（int main + 富样本含 FloatLiteral/StringLiteral/全局/While/Assign，canonicalize 归一）；E5 黄金串 `prefix_p_a2_3_int` 同断言（mangle_golden_prefix_p_a2_3_int）；53 测试绿。遗留：E1 **全量**对拍管道（C 样本集 × 自动构造）随 S3 parser 片落地（本批手工构造两样本验证 emitter 形态；构造自动化依赖 parser 产出）；kind()/is_* 消费面函数待 S4/S5 按需补 |
 | T5 首发 | ✅ 已完成（2026-09-19）：`moon publish` 200 OK——`vitro/engine@0.1.0` 上架 mooncakes（owner `vitro`）；README 三上下文示例（教学反馈 / 前端着色 / 目录导出）以 `mbt check` 文档测试形态入库；安装闭环实测（全新项目 `moon add vitro/engine@0.1.0` → import diag → `W3053`/`77` 输出正确）；`.mbti` 入版本控制；137 码位 versioned 常量语义随 0.1.0 占位 | ✅ mooncakes 可安装（registry 索引同步延迟约数分钟，`moon search vitro` 可查）；发布身份插曲登记：首试 403（module owner `vitro` ≠ 账号 `jingwei108`），项目所有者注册 `vitro` 账号后解决——**命名规则不变** |
-| T6 facts 接线 | 新引擎侧真值键空间独立（`moonbit_*` 前缀）；指标自报行格式沿用 | `facts check` 对新键可采 |
+| T6 facts 接线 | ✅ 已完成（随 S1 收官接线；此后各片回填，`moonbit_*` 键空间已入 facts check 常态双绿）：新引擎侧真值键空间独立（`moonbit_*` 前缀）；指标自报行格式沿用 | ✅ `facts check` 对新键可采 |
 
 **T2 执行期发现与修复（登记）**：
 1. **gen/fmt 互踩缺陷**：gen 原始输出与 moon fmt 规范形态不一致（fmt 对超 80 列 match 臂折行、Some(of(...)) 全参数爆开、Int 数组贪心装行、宽度按 UTF-8 字节计）——根治为 gen 流程内置 `moon fmt`，产物最终形态以 fmt 为准；

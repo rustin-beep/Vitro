@@ -193,7 +193,7 @@ vitro_cli serve
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（字节游标，UTF-8 边界安全） |
 | `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
-| `step.next` | — | 单步推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md） |
+| `step.next` | — | 单步推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
 | `breakpoints.set` | `lines:[int]` | 设置断点行集合（应在 `step.begin` 之后） |

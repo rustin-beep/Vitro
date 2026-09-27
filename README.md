@@ -32,10 +32,10 @@
 `native/` 是迁移前的完整 Rust 实现（10 个子 crate + 三出口），2026-09-18 起冻结（tag `rust-oracle-freeze`，只收白名单维护 P1–P7/U1/U2、安全修复与防线维护，新特性一律不做）。它不再是开发目标，但仍是**活着的防线基座**：shadow 对拍、cargo 防线与 `vm_diff` 三联的 Rust 侧真值都跑在它上面，直到 MoonBit 全量切换完成后**整体删除**（档案 = tag + git 历史）。C++ 前端已随裁砍（2026-09-20）冻结在区内，防线继续跑到退役为止，MoonBit 侧零迁移。
 
 <p align="center">
-  <img src="docs/current/01-定位与路线/vitro-architecture-three-exits.svg" alt="vitro 三出口一核心架构（Rust oracle 历史架构）" width="900">
+  <img src="docs/current/01-定位与路线/vitro-dual-track-architecture.svg" alt="vitro 双轨格局：MoonBit 现役引擎 × Rust 冻结 oracle × Go 司法防线层" width="900">
 </p>
 
-**三出口一核心（Rust oracle 历史架构）** —— 引擎核心（编译管线 + VitroVM + 统一模式 + 诊断）经 C ABI（capi）、wasm32、`vitro_cli serve` 三个薄出口对外，共用 `session_api` 会话语义中立层；MoonBit 侧的出口形态收敛为 wasm-gc 单出口多宿主（见总计划）。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
+**双轨格局** —— 上轨 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；下轨 **Rust 冻结 oracle**（三出口一核心为其历史架构，仍是 shadow / vm_diff 的防线真值基座，全量切换后整体退役）；中带 **Go 司法与防线层**（对拍驱动 · 生成器 · facts 对账）。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
 
 **Rust oracle 实测状态（2026-09-23）**：
 

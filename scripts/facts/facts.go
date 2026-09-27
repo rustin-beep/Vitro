@@ -11,6 +11,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -327,6 +328,68 @@ func collectAbiVersion(root string, facts map[string]Fact) {
 		Provenance: "read_const", AsOf: mtimeISO(p), Status: "ok"}
 }
 
+// ─── 采集器：MoonBit 建包状态（扫目录 / 读 moon.mod，零副作用）──────────────
+
+// collectMoonbitPackages 采集 MoonBit 活跃区的建包状态（2026-09-28，包切分
+// 分层图防漂移批）：两张包图的实/虚线与进度徽标此前是 gen_svg 生成器内的
+// 静态字符串——S6 收官、S7 开工连续两个批次无人更新，而 CI 重生成闸只能红
+// "落盘与生成器不一致"、红不了"生成器源码本身过时"（结构性盲区，2026-09-28
+// 盘点实证）。本采集器把状态真值机械化，gen_svg 改为从此消费：
+//   - moonbit_built_packages：moonbit/ 下所有含 moon.pkg 的目录（仓库相对
+//     路径，/ 分隔；_build 与 .mooncakes 排除）——"包已建成"的唯一机械判据，
+//     不解析总计划表格（批次语义的表格无稳定机读形态）；
+//   - moonbit_engine_version：moonbit/moon.mod 的 version 字段。
+//
+// 均为 SValue 条目（Value=nil），天然不参与超龄降级；缺文件记 unavailable
+// 不兜底。
+func collectMoonbitPackages(root string, facts map[string]Fact) {
+	var pkgs []string
+	walkErr := filepath.WalkDir(filepath.Join(root, "moonbit"), func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case "_build", ".mooncakes": // 构建产物 / 依赖安装目录，非源码包
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() == "moon.pkg" || d.Name() == "moon.pkg.json" {
+			pkgs = append(pkgs, relOf(root, filepath.Dir(p)))
+		}
+		return nil
+	})
+	howPkgs := "扫 moonbit/ 下含 moon.pkg 的目录（排除 _build / .mooncakes）"
+	if walkErr != nil {
+		facts["moonbit_built_packages"] = unavail("包", "moonbit/", howPkgs, walkErr.Error())
+	} else if len(pkgs) == 0 {
+		facts["moonbit_built_packages"] = unavail("包", "moonbit/", howPkgs, "未找到任何 moon.pkg（目录形态变更？）")
+	} else {
+		sort.Strings(pkgs)
+		facts["moonbit_built_packages"] = Fact{SValue: strings.Join(pkgs, " "), Unit: "包",
+			Source: "moonbit/（moon.pkg 目录扫描）", Provenance: "fs_scan", AsOf: nowISO(), Status: "ok"}
+	}
+
+	rel := "moonbit/moon.mod"
+	p := filepath.Join(root, "moonbit", "moon.mod")
+	howVer := "读 " + rel + " 的 version 字段"
+	b, err := os.ReadFile(p)
+	if err != nil {
+		facts["moonbit_engine_version"] = unavail("版本", rel, howVer, "文件缺失")
+		return
+	}
+	m := reMoonModVersion.FindStringSubmatch(string(b))
+	if m == nil {
+		facts["moonbit_engine_version"] = unavail("版本", rel, howVer, "未解析到 version 字段（形态变更？）")
+		return
+	}
+	facts["moonbit_engine_version"] = Fact{SValue: m[1], Unit: "版本", Source: rel,
+		Provenance: "read_const", AsOf: mtimeISO(p), Status: "ok"}
+}
+
+var reMoonModVersion = regexp.MustCompile(`(?m)^\s*version\s*=\s*"([^"]+)"`)
+
 // ─── 采集器：需执行类（--run / --run-slow 才启用）───────────────────────────
 
 func runCmd(root string, timeout time.Duration, args ...string) (string, int, bool) {
@@ -626,6 +689,7 @@ func collectAll(root string, run, runSlow bool, cargoLog string, prev *FactsDoc)
 	collectFailureLedgers(root, facts)
 	collectCaseDirs(root, facts)
 	collectAbiVersion(root, facts)
+	collectMoonbitPackages(root, facts)
 
 	if run {
 		collectReplay(root, facts)

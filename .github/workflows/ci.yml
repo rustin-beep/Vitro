@@ -552,6 +552,18 @@ jobs:
         shell: bash
         run: go run ./scripts/facts --run --cargo-log native/cargo_test_ci.log check
 
+      - name: Docs SVG freshness (gen_svg -check)
+        # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成
+        # 不一致红不了，生成器源码过时（如包图徽标停在上个批次）更无人知，
+        # 2026-09-28 盘点实证：S6 收官 / S7 开工两个批次后包图仍写「S6 进行
+        # 中 / 未开工 / 截至 2026-09-24」。现双管齐下：建成状态改 facts 派生
+        # （moonbit_built_packages / moonbit_engine_version，上一 facts 步已
+        # 落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9 证红：手改
+        # 落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归 hygiene：红 =
+        # 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
+        shell: bash
+        run: go run ./scripts/gen_svg -check
+
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用
       - name: Engineering health report

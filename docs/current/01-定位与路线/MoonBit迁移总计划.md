@@ -71,7 +71,7 @@ L9 教学智能  vitro/engine/time_travel  vitro/engine/teaching/steps  vitro/en
 仓库外      Go 驱动层(保留) + Node engine-host(新增薄层) + spike 目录
 ```
 
-包切分分层图（由 `go run ./scripts/gen_svg` 生成，与上图逐层对账；虚线框 = 规划未建包，进度徽标以本节与 §10 为权威）——编译侧与执行/智能侧两张：
+包切分分层图（由 `go run ./scripts/gen_svg` 生成，与上图逐层对账；实/虚线与在架版本徽标机器对账 facts——`moonbit_built_packages` / `moonbit_engine_version`，CI hygiene `-check` 兜底，**建包/退役批须连坐重生成**；批次权威仍以本节与 §10 为准）——编译侧与执行/智能侧两张：
 
 <p align="center"><img src="moonbit-package-layers-compile.svg" alt="MoonBit 迁移包切分分层（L0–L6 编译侧）" width="900"></p>
 

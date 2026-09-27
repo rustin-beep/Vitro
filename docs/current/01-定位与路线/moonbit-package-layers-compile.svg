@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1230" role="img" aria-label="vitro MoonBit 包切分分层图">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1258" role="img" aria-label="vitro MoonBit 包切分分层图">
   <title>MoonBit 迁移 · 包切分分层（L0–L6 编译侧）</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；虚线框=规划未建包；进度徽标截至生成批次（权威=总计划 §10） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；实/虚线与在架版本机器对账 facts（moonbit_built_packages / moonbit_engine_version），批次权威=总计划 §10 -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -31,7 +31,7 @@
       .tm, .tc { fill: #94A3AD; }
     }
   </style>
-  <rect class="bg" width="1200" height="1230"/>
+  <rect class="bg" width="1200" height="1258"/>
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
@@ -42,7 +42,7 @@
 <rect class="card" x="20" y="118" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="152" text-anchor="start">L0</text>
 <text class="tc" x="40" y="180" text-anchor="start">零依赖</text>
-<text class="tc" x="1065" y="152" text-anchor="start">0.5.0 在架</text>
+<text class="tc" x="1065" y="152" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="130" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="156" text-anchor="start">vitro/engine/source</text>
 <text class="tc" x="191" y="180" text-anchor="start">SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）</text>
@@ -52,28 +52,28 @@
 <rect class="card" x="20" y="232" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="266" text-anchor="start">L1</text>
 <text class="tc" x="40" y="294" text-anchor="start">诊断契约</text>
-<text class="tc" x="1065" y="266" text-anchor="start">0.5.0 在架</text>
+<text class="tc" x="1065" y="266" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="244" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="270" text-anchor="start">vitro/engine/diag</text>
 <text class="tc" x="191" y="294" text-anchor="start">ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言</text>
 <rect class="card" x="20" y="346" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="380" text-anchor="start">L2</text>
 <text class="tc" x="40" y="408" text-anchor="start">抽象语法</text>
-<text class="tc" x="1065" y="380" text-anchor="start">0.5.0 在架</text>
+<text class="tc" x="1065" y="380" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="358" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="384" text-anchor="start">vitro/engine/ast</text>
 <text class="tc" x="191" y="408" text-anchor="start">Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源</text>
 <rect class="card" x="20" y="460" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="494" text-anchor="start">L3</text>
 <text class="tc" x="40" y="522" text-anchor="start">名字单源</text>
-<text class="tc" x="1065" y="494" text-anchor="start">0.4.0 在架</text>
+<text class="tc" x="1065" y="494" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="472" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="498" text-anchor="start">vitro/engine/names</text>
 <text class="tc" x="191" y="522" text-anchor="start">InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）</text>
 <rect class="card" x="20" y="574" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="608" text-anchor="start">L4</text>
 <text class="tc" x="40" y="636" text-anchor="start">前端</text>
-<text class="tc" x="1065" y="608" text-anchor="start">0.5.0 在架</text>
+<text class="tc" x="1065" y="608" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="586" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="612" text-anchor="start">vitro/engine/lexer</text>
 <text class="tc" x="191" y="636" text-anchor="start">独立预处理 pass + LineMap + 宿主 IO</text>
@@ -86,11 +86,11 @@
 <rect class="card" x="20" y="770" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="804" text-anchor="start">L5</text>
 <text class="tc" x="40" y="832" text-anchor="start">语义</text>
-<text class="tc" x="1065" y="804" text-anchor="start">0.4.0 在架</text>
+<text class="tc" x="1065" y="804" text-anchor="start">在建 2/3</text>
 <rect class="card" x="175" y="782" width="280" height="60" rx="10"/>
 <text class="tn" x="191" y="808" text-anchor="start">vitro/engine/typeck</text>
 <text class="tc" x="191" y="832" text-anchor="start">定型 + lowering（4 Pass）</text>
-<rect class="card" x="475" y="782" width="280" height="60" rx="10"/>
+<rect class="plan" x="475" y="782" width="280" height="60" rx="10"/>
 <text class="tn" x="491" y="808" text-anchor="start">vitro/engine/containers</text>
 <text class="tc" x="491" y="832" text-anchor="start">JSON 数据驱动 · S9 裁定</text>
 <rect class="card" x="775" y="782" width="280" height="60" rx="10"/>
@@ -102,7 +102,7 @@
 <rect class="card" x="20" y="966" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="1000" text-anchor="start">L6</text>
 <text class="tc" x="40" y="1028" text-anchor="start">发射</text>
-<text class="tc" x="1065" y="1000" text-anchor="start">0.4.0 在架</text>
+<text class="tc" x="1065" y="1000" text-anchor="start">0.6.0 在架</text>
 <rect class="card" x="175" y="978" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="1004" text-anchor="start">vitro/engine/codegen</text>
 <text class="tc" x="191" y="1028" text-anchor="start">compile/compile_library 双入口 · 槽位 v1</text>
@@ -113,5 +113,6 @@
 <text class="ts" x="191" y="1086" text-anchor="start">csharp/codegen</text>
 <text class="tc" x="191" y="1110" text-anchor="start">〔CS 批〕ARC 插桩 / 异常映射 trap→Throw / 顶层语句入口合成</text>
 <text class="tc" x="600" y="1186" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
-<text class="tc" x="600" y="1212" text-anchor="middle">虚线框 = 规划未建包 · 进度徽标截至 2026-09-24（权威：总计划 §10）· 漂移重生成：go run ./scripts/gen_svg packages</text>
+<text class="tc" x="600" y="1214" text-anchor="middle">虚线框 = 包目录未建（facts: moonbit_built_packages · as_of 2026-09-28）</text>
+<text class="tc" x="600" y="1242" text-anchor="middle">权威：总计划 §10 · 漂移重生成：go run ./scripts/gen_svg packages</text>
 </svg>

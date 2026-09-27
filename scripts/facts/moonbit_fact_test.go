@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 // T6（2026-09-19）：MoonBit 测试真值解析器——绿路径 + J9 埋雷（假输出 /
 // 无 Total 行 / 失败计数非零时的字段语义），红证随 go test 留痕。
@@ -79,5 +84,85 @@ func TestParserDiffParseFailLoud(t *testing.T) {
 		if n, ok := parseParserDiffPass(out); ok || n != 0 {
 			t.Fatalf("假输出必须不可采（%q）: n=%d ok=%v", out, n, ok)
 		}
+	}
+}
+
+// ── 建包状态采集（2026-09-28 包图防漂移批）────────────────────────────────
+
+func TestMoonbitPackagesGreen(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{
+		"moonbit/ast", "moonbit/vm", "moonbit/protocol",
+		"moonbit/cmd/run", "moonbit/lexer/internal/scanner",
+		"moonbit/_build/pkg", "moonbit/.mooncakes/moonbitlang/x/fs", // 必须排除
+	} {
+		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(d)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(d), "moon.pkg"), []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "moonbit", "moon.mod"),
+		[]byte("name = \"vitro/engine\"\n\nversion = \"0.6.0\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	facts := map[string]Fact{}
+	collectMoonbitPackages(root, facts)
+
+	f, ok := facts["moonbit_built_packages"]
+	if !ok || f.Status != "ok" || f.SValue == "" {
+		t.Fatalf("built_packages 绿路径失败: %+v", f)
+	}
+	got := map[string]bool{}
+	for _, p := range strings.Fields(f.SValue) {
+		got[p] = true
+	}
+	for _, want := range []string{"moonbit/ast", "moonbit/vm", "moonbit/protocol", "moonbit/cmd/run", "moonbit/lexer/internal/scanner"} {
+		if !got[want] {
+			t.Fatalf("缺包 %s: %q", want, f.SValue)
+		}
+	}
+	for _, banned := range []string{"moonbit/_build/pkg", "moonbit/.mooncakes/moonbitlang/x/fs"} {
+		if got[banned] {
+			t.Fatalf("排除目录漏网: %q", f.SValue)
+		}
+	}
+
+	v, ok := facts["moonbit_engine_version"]
+	if !ok || v.Status != "ok" || v.SValue != "0.6.0" {
+		t.Fatalf("engine_version 绿路径失败: %+v", v)
+	}
+}
+
+func TestMoonbitPackagesNoVersionField(t *testing.T) {
+	// J9 埋雷：moon.mod 缺 version 字段（形态变更）必须 unavailable，禁止兜底
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "moonbit", "ast"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "moonbit", "ast", "moon.pkg"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "moonbit", "moon.mod"), []byte("name = \"vitro/engine\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	facts := map[string]Fact{}
+	collectMoonbitPackages(root, facts)
+	if f := facts["moonbit_engine_version"]; f.Status != "unavailable" {
+		t.Fatalf("缺 version 字段必须 unavailable: %+v", f)
+	}
+	if f := facts["moonbit_built_packages"]; f.Status != "ok" || !strings.Contains(f.SValue, "moonbit/ast") {
+		t.Fatalf("包扫描不受 moon.mod 影响: %+v", f)
+	}
+}
+
+func TestMoonbitPackagesEmptyTree(t *testing.T) {
+	// J9 埋雷：零包目录（moonbit/ 整体缺失或空）必须 unavailable，禁止空串冒充真值
+	root := t.TempDir()
+	facts := map[string]Fact{}
+	collectMoonbitPackages(root, facts)
+	if f := facts["moonbit_built_packages"]; f.Status != "unavailable" {
+		t.Fatalf("空树必须 unavailable: %+v", f)
 	}
 }

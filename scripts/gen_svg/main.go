@@ -2,7 +2,10 @@ package main
 
 // 文档插图生成器 —— 探针转正 Go 重写（2026-09-20，原 tmp/gen_arch_svg.py +
 // tmp/gen_three_svg.py 退役）；2026-09-24 扩为九张（新增包切分/统一模式架构/
-// 状态机/内存布局/协议帧/wasm 并发五张，来源与对账见各 gen 函数头注）。
+// 状态机/内存布局/协议帧/wasm 并发五张）；2026-09-28 防漂移批：包切分图的
+// 实/虚线与徽标改 facts 派生（moonbit_built_packages / moonbit_engine_version，
+// 采集器见 scripts/facts）、架构图重画为双轨格局、新增防线全景图，共十一个
+// gen 函数十二张文件。
 //
 // 入库插图的跑批快照数字**只在此处为模板**：生成时从
 // reports/facts.json 读真值注入，并以 <tspan data-fact="key">n</tspan> 显式
@@ -11,13 +14,20 @@ package main
 //	跑防线（或 go run ./scripts/facts）→ facts check 红（SVG 数字过时）
 //	→ go run ./scripts/gen_svg → facts check 绿
 //
+// 建成状态类内容（包图实/虚线、在架版本徽标）同样 facts 派生——CI 重生成
+// 闸红不了"生成器源码过时"（2026-09-28 盘点实证的结构性盲区），故状态词
+// 一律不写死在生成器里，改由 facts 采集器供给机械真值。
+//
 // 禁止手改入库 SVG 的 data-fact 锚定数字——下次生成即回退（facts 的
 // interactiveSync 也刻意跳过 .svg 命中）。设计常量（2000 帧 / 50 检查点 /
-// 256KB 隔离预算等）与建包进度徽标不是跑批快照、无锚，改动属代码常量
-// 变更，走评审。
+// 256KB 隔离预算等）不是跑批快照、无锚，改动属代码常量变更，走评审。
 //
-// 用法：go run ./scripts/gen_svg [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|all]
-//（默认 all）
+// 用法（flag 在子命令之前）：
+//
+//	go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|all]
+//
+// -check：与落盘 SVG 逐字节比对，漂移列清单后 exit 1，无写副作用（CI hygiene
+// 闸用；J9 证红：手改任一落盘 SVG 后 -check 必红——2026-09-28 本批实测留痕）。
 //
 // 品牌纪律（照搬 assets/logo/vitro-logo.svg）：只用玻璃蓝 #155E86 /
 // #4FB3E8(dark) + 基准灰 #94A3AD / #5A6B75(dark) + 墨 #0D1B24 / #E9F1F7(dark)
@@ -25,6 +35,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,6 +46,7 @@ import (
 
 type factEntry struct {
 	Value  *int   `json:"value"`
+	SValue string `json:"svalue"`
 	AsOf   string `json:"as_of"`
 	Status string `json:"status"`
 	Source string `json:"source"`
@@ -62,7 +74,7 @@ func loadFacts(root string) factsDoc {
 // mustFact 取数值真值，fail loud：不猜默认值（缺 key / 待采集 / 超龄一律红）。
 func mustFact(d factsDoc, key string) int {
 	f, ok := d.Facts[key]
-	if !ok || f.Value == nil || (f.Status != "ok" && f.Status != "stale") {
+	if !ok || f.Value == nil || (f.Status != "ok" && f.Status != "stale" && f.Status != "cached") {
 		how := ""
 		if ok {
 			how = f.HowTo
@@ -71,6 +83,20 @@ func mustFact(d factsDoc, key string) int {
 			key, f.Status, how))
 	}
 	return *f.Value
+}
+
+// mustFactS 取字符串真值（如建包清单 / 引擎版本），fail loud 同 mustFact。
+func mustFactS(d factsDoc, key string) string {
+	f, ok := d.Facts[key]
+	if !ok || f.SValue == "" || (f.Status != "ok" && f.Status != "stale" && f.Status != "cached") {
+		how := ""
+		if ok {
+			how = f.HowTo
+		}
+		fatal(fmt.Sprintf("facts 键 %q 不可用（status=%s）——how_to_get: %s",
+			key, f.Status, how))
+	}
+	return f.SValue
 }
 
 func asOfOf(d factsDoc, key string) string {
@@ -198,71 +224,99 @@ func svgOpen(w, h int, label, title, note string) []string {
 	}
 }
 
-func writeSVG(root, rel string, parts []string) {
-	p := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		fatal(err.Error())
-	}
-	body := strings.Join(parts, "\n") + "\n</svg>\n"
-	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
-		fatal("写 " + rel + " 失败: " + err.Error())
-	}
-	fmt.Printf("written: %s (%d bytes)\n", rel, len(body))
-}
-
-// ─── 图 A：三出口一核心架构（源：README.md:15-30 + 架构设计.md §2）────────────
+// ─── 图 A：双轨格局（源：README 双轨口径节 + 架构设计.md §2）─────────────────
+// 2026-09-28 重画：旧图"三出口一核心"图心写"Rust workspace"，README 双轨化
+// 后仅靠 alt 文字"（Rust oracle 历史架构）"打补丁。本图改为双轨格局主图——
+// 上轨 MoonBit 现役引擎（wasm-gc 单出口终态）、中带 Go 司法与防线层、下轨
+// Rust 冻结 oracle（三出口为历史架构 + 退役线）。不画快照数字（用例规模等
+// 留 README，facts md 通道对账）。
 
 func genArch(root string, _ factsDoc) {
-	P := svgOpen(1200, 720, "vitro 三出口一核心架构图", "vitro — 三出口一核心架构",
-		"内容对账 README.md:15-30 与 架构设计.md §2；配色沿用 assets/logo/ 品牌三色")
-	P = append(P,
-		box(220, 40, 760, 168, "core", 14),
-		textF(600, 86, "tt", "vitro 引擎核心（Rust workspace）", ""),
-		textF(600, 126, "t", "编译器管线 Lexer → Parser → TypeChecker → BytecodeGen", ""),
-		textF(600, 162, "t", "VitroVM · 统一模式 · 诊断系统 · 禁止平台 API 耦合", ""),
-		textF(600, 192, "tm", "session_api 会话语义中立层：三出口共用同一套入口语义", ""),
-		line(600, 208, 600, 260, "line"),
-		line(195, 260, 995, 260, "line"),
-		line(195, 260, 195, 330, "line"),
-		line(595, 260, 595, 330, "line"),
-		line(995, 260, 995, 330, "line"),
+	P := svgOpen(1200, 860, "vitro 双轨格局架构图", "vitro — 双轨格局 · MoonBit 现役 × Rust 冻结 oracle",
+		"内容对账 README.md 双轨口径节 与 架构设计.md §2；进度与版本以 README / 总计划 §10 为权威（无快照数字，无 data-fact 锚）")
+	// 上轨：MoonBit 现役引擎
+	P = append(P, box(40, 116, 1120, 262, "core", 14),
+		textF(600, 150, "t", "MoonBit 现役引擎 · vitro/engine（mooncakes 源码级发布）", ""),
 	)
-	exitTitles := [][3]string{
-		{"出口 1：native cdylib / C ABI", "ABI 版本化", "vitro_abi_version()"},
-		{"出口 2：wasm32", ".wasm + 薄 JS/TS 绑定", "3.75MB 冒烟实证"},
-		{"出口 3：vitro_cli serve", "JSON-lines 会话模式", "headless 交互"},
+	pipe := []struct {
+		x          int
+		name, desc string
+	}{
+		{64, "lexer", "独立 pass · LineMap"},
+		{280, "parser", "depth 守卫"},
+		{496, "typeck", "定型 + lowering"},
+		{712, "codegen", "槽位 v1"},
+		{928, "bytecode", "产物 schema 单源"},
 	}
-	// 消费者文案逐条对账 README.md:17-30（不增减事实）。用例规模数字留在
-	// README（facts md 通道对账）——架构图口径化"全量 C 语料"，消掉随跑批
-	// 漂移的第二份拷贝。
-	// 2026-09-24 观感批允许缩略（事实不增减）：wasm32-unknown-unknown→wasm32、
-	// 省略 E3070 字样——字号上调后卡宽所限，详名见 README 正文。
-	consLines := [][]string{
-		{"第一消费者：vitro_cli", "scripts/shadow_verify.go（capi 直调）",
-			"全量 C 语料的生产验证", "第三方教学 IDE（P/Invoke）· 任意语言 FFI"},
-		{"浏览器前端（社区）· 在线教学演示", "移动浏览器“看”场景",
-			"已冒烟实证：零修改构建 3.75MB", "C API 全链路 + 安全检测可用"},
-		{"编译 / 运行 / 单步", "时间旅行 / 断点", "脚本化消费", ""},
-	}
-	exitX := [3]int{15, 415, 815}
-	for i, x := range exitX {
-		cx := x + 180
-		P = append(P,
-			box(x, 330, 360, 128, "card", 14),
-			textF(cx, 372, "t", exitTitles[i][0], ""),
-			textF(cx, 406, "tm", exitTitles[i][1], ""),
-			textF(cx, 436, "ts", exitTitles[i][2], ""),
-			line(cx, 458, cx, 520, "line"),
-			box(x, 520, 360, 124, "cons", 12),
-		)
-		for j, l := range consLines[i] {
-			if l == "" {
-				continue
-			}
-			P = append(P, textF(cx, 550+j*25, "tc", l, ""))
+	for i, c := range pipe {
+		cx := c.x + 95
+		P = append(P, box(c.x, 170, 190, 60, "card", 10),
+			textF(cx, 196, "tn", c.name, ""),
+			textF(cx, 218, "tc", c.desc, ""))
+		if i < len(pipe)-1 {
+			P = append(P, arrow(c.x+190, 200, c.x+216, 200, "edge"))
 		}
 	}
-	writeSVG(root, "docs/current/01-定位与路线/vitro-architecture-three-exits.svg", P)
+	base := []struct {
+		x          int
+		name, desc string
+	}{
+		{64, "memory", "MemoryMap + check_access 单入口"},
+		{428, "host", "路由表 + Bytes 输出通道"},
+		{792, "vm", "穷尽 executor + VMSnapshot"},
+	}
+	for _, c := range base {
+		cx := c.x + 172
+		P = append(P, box(c.x, 248, 344, 62, "zone", 10),
+			textF(cx, 274, "tn", c.name, ""),
+			textF(cx, 298, "tc", c.desc, ""))
+	}
+	P = append(P, box(64, 326, 1072, 40, "card", 10),
+		textF(600, 352, "tm", "出口：wasm-gc 单出口多宿主（浏览器 Worker · Node · .NET）——S7+ gateway 接线中", ""))
+	// 中带：Go 司法与防线层
+	P = append(P,
+		line(600, 378, 600, 412, "line"),
+		box(40, 412, 1120, 168, "zone", 14),
+		textF(600, 446, "t", "Go 司法与防线层（归一化器 · 对拍驱动 · 生成器）", ""),
+	)
+	diffs := []struct {
+		x          int
+		name, desc string
+	}{
+		{64, "lexer_diff", "token TSV"},
+		{280, "parser_diff", "AST+诊断归一"},
+		{496, "typeck_diff", "E1–E4"},
+		{712, "codegen_diff", "字节码逐指令"},
+		{928, "vm_diff", "执行轨迹"},
+	}
+	for i, c := range diffs {
+		cx := c.x + 95
+		P = append(P, box(c.x, 466, 190, 56, "card", 10),
+			textF(cx, 490, "tn", c.name, ""),
+			textF(cx, 512, "tc", c.desc, ""))
+		if i < len(diffs)-1 {
+			P = append(P, arrow(c.x+190, 494, c.x+216, 494, "edge"))
+		}
+	}
+	P = append(P,
+		textF(600, 556, "tc", "层 2 直拍 clang_direct（Clang golden）· 层 3 shadow_verify（Clang 唯一真值）· facts check（文档数字对账）· 生成器 -check 闸", ""),
+	)
+	// 下轨：Rust 冻结 oracle
+	P = append(P,
+		line(600, 580, 600, 614, "line"),
+		box(40, 614, 1120, 182, "warn", 14),
+		textF(600, 648, "t", "Rust 冻结对照 oracle · native/（2026-09-18 冻结 · tag rust-oracle-freeze）", ""),
+		box(64, 668, 546, 108, "card", 10),
+		textF(337, 696, "ts", "迁移前完整实现（历史架构）", ""),
+		textF(337, 722, "tc", "编译管线 + VM + 统一模式 + 诊断", ""),
+		textF(337, 748, "tc", "三出口：capi · wasm32 · serve（薄包装）", ""),
+		box(630, 668, 506, 108, "card", 10),
+		textF(883, 696, "ts", "活着的防线基座", ""),
+		textF(883, 722, "tc", "shadow / vm_diff 的 Rust 侧真值", ""),
+		textF(883, 748, "tc", "退役线：全量切换后整体删除（档案 = tag + git 历史）", ""),
+		textF(600, 824, "tc", "对账 README 双轨口径节 + 架构设计.md §2 · 漂移重生成：go run ./scripts/gen_svg arch", ""),
+	)
+	writeSVG(root, "docs/current/01-定位与路线/vitro-dual-track-architecture.svg", P)
 }
 
 // ─── 图 B：统一模式·三态缓存（源：统一模式设计.md §2.1 表格 + §5.2）──────────
@@ -484,71 +538,120 @@ type layerRow struct {
 	note             string // 层内底部补充行（可空）
 }
 
-func genPackages(root string, _ factsDoc) {
+func genPackages(root string, fd factsDoc) {
 	// 2026-09-24 观感批（用户反馈"挤、字小"）：拆为编译侧（L0–L6）与执行与
 	// 智能侧（L7–L9+仓库外）两张；字号随共享 CSS 上调，行距 82 / 卡高 60。
+	//
+	// 2026-09-28 防漂移批：实/虚线与徽标此前是本函数内静态字符串（"S6 进行
+	// 中"/"未开工"/"截至 2026-09-24"），S6 收官、S7 开工连续两批无人更新而
+	// CI 重生成闸恒绿（闸红不了"源码过时"）。现全部改为 facts 派生：
+	//   - 实/虚线：builtAs 列的包全部出现在 facts moonbit_built_packages
+	//     （moonbit/ 下 moon.pkg 目录扫描）→ 实线，否则虚线；
+	//   - 徽标：按层机械计数（全建 = 在架版本 / 部分 = 在建 n/m / 零 = 未开工），
+	//     版本取 facts moonbit_engine_version（moonbit/moon.mod）；
+	//   - extra 包（jit = S9 裁定件、csharp/* = CS 批）：恒虚线且不参与层计数。
+	// 从此"包建成状态"漂移 = facts 漂移，重生成即同步；批次权威仍是总计划 §10。
+	built := map[string]bool{}
+	for _, p := range strings.Fields(mustFactS(fd, "moonbit_built_packages")) {
+		built[strings.TrimPrefix(p, "moonbit/")] = true
+	}
+	ver := mustFactS(fd, "moonbit_engine_version")
+	type pkgCell struct {
+		name, desc string
+		builtAs    string // 空格分隔的 moonbit/ 相对包路径（对账 facts）
+		extra      bool   // 规划外围件（jit / CS 批）：恒虚线、不参与层计数
+	}
 	type lyr struct {
-		tag, name, badge string
-		rows             [][]pkgCell
-		note             string
+		tag, name string
+		rows      [][]pkgCell
+		note      string
 	}
 	compile := []lyr{
-		{"L0", "零依赖", "0.5.0 在架", [][]pkgCell{
-			{{"vitro/engine/source", "SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）", false},
-				{"vitro/engine/opcode", "132 opcodes 稳定编号 + operand 校验", false}}},
+		{"L0", "零依赖", [][]pkgCell{
+			{{"vitro/engine/source", "SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）", "source", false},
+				{"vitro/engine/opcode", "132 opcodes 稳定编号 + operand 校验", "opcode", false}}},
 			""},
-		{"L1", "诊断契约", "0.5.0 在架", [][]pkgCell{
-			{{"vitro/engine/diag", "ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言", false}}},
+		{"L1", "诊断契约", [][]pkgCell{
+			{{"vitro/engine/diag", "ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言", "diag", false}}},
 			""},
-		{"L2", "抽象语法", "0.5.0 在架", [][]pkgCell{
-			{{"vitro/engine/ast", "Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源", false}}},
+		{"L2", "抽象语法", [][]pkgCell{
+			{{"vitro/engine/ast", "Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源", "ast", false}}},
 			""},
-		{"L3", "名字单源", "0.4.0 在架", [][]pkgCell{
-			{{"vitro/engine/names", "InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）", false}}},
+		{"L3", "名字单源", [][]pkgCell{
+			{{"vitro/engine/names", "InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）", "names", false}}},
 			""},
-		{"L4", "前端", "0.5.0 在架", [][]pkgCell{
-			{{"vitro/engine/lexer", "独立预处理 pass + LineMap + 宿主 IO", false},
-				{"vitro/engine/parser", "token→AST · 瀑布 + 声明符螺旋 · depth 守卫", false}},
-			{{"csharp/lexer + csharp/parser", "〔CS 批·S6 后〕C# 前端；插值字符串 hole 级 span", true}}},
+		{"L4", "前端", [][]pkgCell{
+			{{"vitro/engine/lexer", "独立预处理 pass + LineMap + 宿主 IO", "lexer", false},
+				{"vitro/engine/parser", "token→AST · 瀑布 + 声明符螺旋 · depth 守卫", "parser", false}},
+			{{"csharp/lexer + csharp/parser", "〔CS 批·S6 后〕C# 前端；插值字符串 hole 级 span", "csharp/lexer csharp/parser", true}}},
 			""},
-		{"L5", "语义", "0.4.0 在架", [][]pkgCell{
-			{{"vitro/engine/typeck", "定型 + lowering（4 Pass）", false},
-				{"vitro/engine/containers", "JSON 数据驱动 · S9 裁定", false},
-				{"vitro/engine/libc", "单表签名 57 + 放行 175", false}},
-			{{"csharp/typeck", "〔CS 批〕引用语义 / 类系统 / 异常类型链 / ARC 插桩点判定（共享切线=表达式/语句层）", true}}},
+		{"L5", "语义", [][]pkgCell{
+			{{"vitro/engine/typeck", "定型 + lowering（4 Pass）", "typeck", false},
+				{"vitro/engine/containers", "JSON 数据驱动 · S9 裁定", "containers", false},
+				{"vitro/engine/libc", "单表签名 57 + 放行 175", "libc", false}},
+			{{"csharp/typeck", "〔CS 批〕引用语义 / 类系统 / 异常类型链 / ARC 插桩点判定（共享切线=表达式/语句层）", "csharp/typeck", true}}},
 			""},
-		{"L6", "发射", "0.4.0 在架", [][]pkgCell{
-			{{"vitro/engine/codegen", "compile/compile_library 双入口 · 槽位 v1", false},
-				{"vitro/engine/bytecode", "产物 schema + libc 固定索引 + 路由表单源", false}},
-			{{"csharp/codegen", "〔CS 批〕ARC 插桩 / 异常映射 trap→Throw / 顶层语句入口合成", true}}},
+		{"L6", "发射", [][]pkgCell{
+			{{"vitro/engine/codegen", "compile/compile_library 双入口 · 槽位 v1", "codegen", false},
+				{"vitro/engine/bytecode", "产物 schema + libc 固定索引 + 路由表单源", "bytecode", false}},
+			{{"csharp/codegen", "〔CS 批〕ARC 插桩 / 异常映射 trap→Throw / 顶层语句入口合成", "csharp/codegen", true}}},
 			""},
 	}
 	runtime := []lyr{
-		{"L7", "执行", "S6 进行中", [][]pkgCell{
-			{{"vitro/engine/memory", "MemoryMap + checked_access 单入口", false},
-				{"vitro/engine/host", "路由表消费侧 · Bytes 输出通道 · 100+ handlers", false}},
-			{{"vitro/engine/vm", "executor 穷尽 match + snapshot 派生 · 未开工", true},
-				{"vitro/engine/jit", "〔S9 裁定批〕必须可整体移除", true}}},
+		{"L7", "执行", [][]pkgCell{
+			{{"vitro/engine/memory", "MemoryMap + checked_access 单入口", "memory", false},
+				{"vitro/engine/host", "路由表消费侧 · Bytes 输出通道 · 100+ handlers", "host", false}},
+			{{"vitro/engine/vm", "executor 穷尽 match + snapshot 派生", "vm", false},
+				{"vitro/engine/jit", "〔S9 裁定批〕必须可整体移除", "jit", true}}},
 			""},
-		{"L8", "会话/协议", "S7 未开工", [][]pkgCell{
-			{{"vitro/engine/session", "SessionConfig 值对象", false},
-				{"vitro/engine/protocol", "帧 + schema + 词汇表", false},
-				{"vitro/engine/gateway", "wasm-gc 4 函数导出 + NDJSON", false}}},
+		{"L8", "会话/协议", [][]pkgCell{
+			{{"vitro/engine/session", "SessionConfig 值对象", "session", false},
+				{"vitro/engine/protocol", "schema + stream 差分", "protocol", false},
+				{"vitro/engine/gateway", "wasm-gc 导出 + NDJSON", "gateway", false}}},
 			""},
-		{"L9", "教学智能", "S8 未开工", [][]pkgCell{
-			{{"time_travel", "seek / 检查点重放", false},
-				{"teaching/steps", "算法步骤语义", false},
-				{"analysis", "cfg / algorithms", false},
-				{"diagnostics", "根因 / 误区", false}}},
+		{"L9", "教学智能", [][]pkgCell{
+			{{"time_travel", "seek / 检查点重放", "time_travel", false},
+				{"teaching/steps", "算法步骤语义", "teaching/steps", false},
+				{"analysis", "cfg / algorithms", "analysis", false},
+				{"diagnostics", "根因 / 误区", "diagnostics", false}}},
 			"── 经 VmObserver / SourceProvider / AlgorithmContext 三接口依赖反转，不依赖 session"},
+	}
+	// 层徽标：builtAs 全集机械计数（extra 不计入）。全建 = 在架版本；
+	// 部分 = 在建 n/m；零 = 未开工——文字全部派生，无手工状态词可漂移。
+	badgeOf := func(layers []lyr) func(lyr) string {
+		return func(lr lyr) string {
+			total, have := 0, 0
+			for _, row := range lr.rows {
+				for _, pc := range row {
+					if pc.extra || pc.builtAs == "" {
+						continue
+					}
+					for _, p := range strings.Fields(pc.builtAs) {
+						total++
+						if built[p] {
+							have++
+						}
+					}
+				}
+			}
+			switch {
+			case total > 0 && have == total:
+				return ver + " 在架"
+			case have > 0:
+				return fmt.Sprintf("在建 %d/%d", have, total)
+			default:
+				return "未开工"
+			}
+		}
 	}
 	drawLayers := func(title, sub string, layers []lyr, canvasH int, out string, withOutside bool) {
 		P := svgOpen(1200, canvasH, "vitro MoonBit 包切分分层图", title,
-			"对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；虚线框=规划未建包；进度徽标截至生成批次（权威=总计划 §10）")
+			"对账 MoonBit迁移总计划.md §4 包切分总图逐层文字；实/虚线与在架版本机器对账 facts（moonbit_built_packages / moonbit_engine_version），批次权威=总计划 §10")
 		P = append(P, markerDef,
 			textF(600, 56, "tt", title, ""),
 			textF(600, 94, "tm", sub, ""),
 		)
+		badge := badgeOf(layers)
 		y := 118
 		for _, lr := range layers {
 			h := 12 + len(lr.rows)*72 + 12
@@ -561,8 +664,8 @@ func genPackages(root string, _ factsDoc) {
 			P = append(P, box(20, y, 1160, h, "card", 12),
 				textL(40, y+34, "t", lr.tag),
 				textL(40, y+62, "tc", lr.name))
-			if lr.badge != "" {
-				P = append(P, textL(1065, y+34, "tc", lr.badge))
+			if b := badge(lr); b != "" {
+				P = append(P, textL(1065, y+34, "tc", b))
 			}
 			for j, row := range lr.rows {
 				fy := y + 12 + j*82
@@ -584,7 +687,7 @@ func genPackages(root string, _ factsDoc) {
 				x := 175
 				for k, pc := range row {
 					pcls := "card"
-					if pc.plan {
+					if pc.extra || !allBuilt(pc.builtAs, built) {
 						pcls = "plan"
 					}
 					nameCls := "ts"
@@ -608,17 +711,36 @@ func genPackages(root string, _ factsDoc) {
 				textL(175, y+36, "tm", "Go 驱动层（保留·司法/驱动语言）· Node engine-host（新增薄层·golden 生成宿主）· spike 目录"))
 			y += 78
 		}
+		asOf := asOfOf(fd, "moonbit_built_packages")
+		if len(asOf) >= 10 {
+			asOf = asOf[:10] // RFC3339 取日期段——完整时间戳曾把本行撑爆画布
+		}
 		P = append(P,
 			textF(600, y+24, "tc", "硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量", ""),
-			textF(600, y+50, "tc", "虚线框 = 规划未建包 · 进度徽标截至 2026-09-24（权威：总计划 §10）· 漂移重生成：go run ./scripts/gen_svg packages", ""),
+			textF(600, y+52, "tc", "虚线框 = 包目录未建（facts: moonbit_built_packages · as_of "+asOf+"）", ""),
+			textF(600, y+80, "tc", "权威：总计划 §10 · 漂移重生成：go run ./scripts/gen_svg packages", ""),
 		)
 		writeSVG(root, out, P)
 	}
 	sub := "module vitro/engine · 依赖严格单向无环 · .mbti 取代 ABI 版本化成为对外义务载体"
-	drawLayers("MoonBit 迁移 · 包切分分层（L0–L6 编译侧）", sub, compile, 1230,
+	drawLayers("MoonBit 迁移 · 包切分分层（L0–L6 编译侧）", sub, compile, 1258,
 		"docs/current/01-定位与路线/moonbit-package-layers-compile.svg", false)
-	drawLayers("MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）", sub, runtime, 720,
+	drawLayers("MoonBit 迁移 · 包切分分层（L7–L9 执行与智能侧）", sub, runtime, 748,
 		"docs/current/01-定位与路线/moonbit-package-layers-runtime.svg", true)
+}
+
+// allBuilt：builtAs 列的全部包都已建成（facts moonbit_built_packages）。
+// 空清单视为未建（防御：漏填 builtAs 的 cell 不应假绿）。
+func allBuilt(builtAs string, built map[string]bool) bool {
+	if builtAs == "" {
+		return false
+	}
+	for _, p := range strings.Fields(builtAs) {
+		if !built[p] {
+			return false
+		}
+	}
+	return true
 }
 
 func sum(ws []int) int {
@@ -973,12 +1095,131 @@ func genWasm(root string, _ factsDoc) {
 	writeSVG(root, "docs/current/06-出口与协议/wasm-multi-instance-isolation.svg", P)
 }
 
+// checkMode 为 true 时 writeSVG 不落盘，改为与现有文件逐字节比对，漂移
+// 收进 checkDrifts（main 末尾统一 exit 1）。无写副作用——CI 可安全运行。
+var checkMode bool
+
+var checkDrifts []string
+
+func writeSVG(root, rel string, parts []string) {
+	body := strings.Join(parts, "\n") + "\n</svg>\n"
+	p := filepath.Join(root, filepath.FromSlash(rel))
+	if checkMode {
+		existing, err := os.ReadFile(p)
+		if err != nil {
+			checkDrifts = append(checkDrifts, rel+"（落盘缺失）")
+			return
+		}
+		if string(existing) != body {
+			checkDrifts = append(checkDrifts, rel)
+		}
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		fatal(err.Error())
+	}
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		fatal("写 " + rel + " 失败: " + err.Error())
+	}
+	fmt.Printf("written: %s (%d bytes)\n", rel, len(body))
+}
+
+// ─── 图 K：MoonBit 自建验证防线全景（源：脚本总清单与必跑防线.md §1/§2 + ci.yml）─
+// 2026-09-28 新增：此前防线图只有 shadow 一张，MoonBit 侧对拍五闸 + 直拍/
+// 影子双联 + -check 闸卫家族无全景。本图收结构（闸道集合不随批次变）；
+// 数字只锚 facts（moonbit_test_passed），其余一律口径化——不制造第二份
+// 会漂移的数字拷贝。
+
+func genGates(root string, fd factsDoc) {
+	mt := mustFact(fd, "moonbit_test_passed")
+	P := svgOpen(1200, 900, "vitro MoonBit 自建验证防线全景", "MoonBit 自建验证防线 · 对拍链与闸卫",
+		"对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；moon test 数 data-fact 锚定 reports/facts.json")
+	// 顶条：引擎白盒测试
+	P = append(P, markerDef,
+		textF(600, 56, "tt", "MoonBit 自建验证防线 · 对拍链与闸卫", ""),
+	)
+	P = append(P, box(40, 108, 1120, 62, "core", 12))
+	P = append(P, textSegs(600, 146, "t", []seg{
+		{text: "moon test 引擎白盒 + 契约测试："},
+		{num: "moonbit_test_passed", val: mt},
+		{text: " 用例全绿（十五道闸的底座）"},
+	}))
+	// 左列：对拍链（差分五闸 + Clang 双联）
+	P = append(P, box(40, 190, 640, 300, "zone", 14),
+		textF(360, 224, "t", "逐层对拍（MoonBit ↔ Rust oracle，冻结对照）", ""),
+	)
+	layers := []struct{ name, desc string }{
+		{"lexer_diff", "token TSV 双层逐字节一致"},
+		{"parser_diff", "AST + 诊断序列归一逐字节"},
+		{"typeck_diff", "E1–E4 四出口归一"},
+		{"codegen_diff", "字节码 code 段逐指令"},
+		{"vm_diff", "执行轨迹差分（cmd/run 对齐）"},
+	}
+	for i, l := range layers {
+		y := 240 + i*48
+		P = append(P, box(64, y, 592, 42, "card", 10),
+			textL(84, y+28, "tn", l.name),
+			textL(230, y+28, "tc", l.desc))
+	}
+	P = append(P,
+		line(360, 490, 360, 516, "line"),
+		box(64, 516, 286, 84, "card", 10),
+		textF(207, 548, "ts", "clang_direct", ""),
+		textF(207, 574, "tc", "层 2 · Clang 编译直拍", ""),
+		textF(207, 596, "tc", "不经 oracle 中转", ""),
+		box(370, 516, 286, 84, "card", 10),
+		textF(513, 548, "ts", "shadow_verify", ""),
+		textF(513, 574, "tc", "层 3 · Clang golden 全量影子", ""),
+		textF(513, 596, "tc", "五分类判定 · CI 硬门禁", ""),
+	)
+	// 右列：闸卫家族
+	P = append(P, box(700, 190, 460, 410, "zone", 14),
+		textF(930, 224, "t", "闸卫家族（-check 硬闸 · CI hygiene）", ""),
+	)
+	guards := []struct{ name, desc string }{
+		{"moonbit_surface", "对外面对账"},
+		{"pkg_deps", "依赖单向无环"},
+		{"mbti_sync", ".mbti 接口面"},
+		{"gen_diag ×4", "生成物新鲜度"},
+		{"gen_protocol_fields", "S7 字段单源"},
+		{"gen_svg", "插图重生成一致"},
+		{"facts check", "文档数字对账"},
+		{"source_hygiene", "NUL 卫生"},
+		{"toolchain_probe", "工具链漂移探针"},
+	}
+	for i, g := range guards {
+		y := 240 + i*38
+		P = append(P, box(724, y, 412, 32, "card", 8),
+			textL(742, y+23, "tn", g.name),
+			textL(962, y+23, "tc", g.desc))
+	}
+	// 底部：真值源与裸奔期敞口
+	P = append(P, box(40, 620, 1120, 76, "warn", 12),
+		textF(600, 650, "t", "真值源", ""),
+		textF(600, 678, "tc", "Clang = golden 唯一来源 · Rust oracle = 差分对照（tag rust-oracle-freeze）——退役后对拍锚由本链自持", ""),
+	)
+	P = append(P, box(40, 712, 1120, 96, "warn", 12),
+		textF(600, 744, "t", "裸奔期敞口（诚实记录）", ""),
+		textF(600, 772, "tc", "Rust oracle 退役时其测试体量随之消失——MoonBit 自建测试与对拍闸须在此之前", ""),
+		textF(600, 796, "tc", "补足等价覆盖；进度与敞口清算以总计划 §10 为权威", ""),
+	)
+	P = append(P,
+		textF(600, 848, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：go run ./scripts/gen_svg gates", ""),
+	)
+	writeSVG(root, "docs/current/02-构建与上手/moonbit-verification-gates.svg", P)
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 func main() {
-	which := "all"
-	if len(os.Args) > 1 {
-		which = os.Args[1]
+	// flag 在子命令之前（Go flag 在第一个位置参数处停止解析——与 scripts/facts 同款纪律）：
+	//   go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|all]
+	check := flag.Bool("check", false, "校验落盘 SVG 与生成器输出逐字节一致（无写副作用；漂移 exit 1）")
+	flag.Parse()
+	checkMode = *check
+	which := flag.Arg(0)
+	if which == "" {
+		which = "all"
 	}
 	root, err := os.Getwd()
 	if err != nil {
@@ -1009,6 +1250,8 @@ func main() {
 		genProtocol(root, fd)
 	case "wasm":
 		genWasm(root, fd)
+	case "gates":
+		genGates(root, fd)
 	case "all":
 		genArch(root, fd)
 		genCache(root, fd)
@@ -1020,7 +1263,18 @@ func main() {
 		genMemory(root, fd)
 		genProtocol(root, fd)
 		genWasm(root, fd)
+		genGates(root, fd)
 	default:
-		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / all）")
+		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / gates / all）")
+	}
+	if checkMode {
+		if len(checkDrifts) > 0 {
+			fmt.Fprintf(os.Stderr, "SVG 漂移 %d 张（生成器输出与落盘不一致——禁手改，跑 go run ./scripts/gen_svg 重生成）：\n", len(checkDrifts))
+			for _, d := range checkDrifts {
+				fmt.Fprintln(os.Stderr, "  "+d)
+			}
+			os.Exit(1)
+		}
+		fmt.Println("check ok：落盘 SVG 与生成器输出一致")
 	}
 }

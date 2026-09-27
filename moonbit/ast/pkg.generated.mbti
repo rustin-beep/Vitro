@@ -148,7 +148,7 @@ pub(all) struct FuncDecl {
   is_extern : Bool
   source_file : String
   is_variadic : Bool
-} derive(@debug.Debug)
+} derive(Default, @debug.Debug)
 
 pub(all) struct GlobalDecl {
   loc : @source.SourceLoc
@@ -158,7 +158,7 @@ pub(all) struct GlobalDecl {
   is_static : Bool
   is_extern : Bool
   source_file : String
-} derive(@debug.Debug)
+} derive(Default, @debug.Debug)
 
 pub(all) struct InitElement {
   designators : Array[Designator]
@@ -170,7 +170,7 @@ pub(all) struct Param {
   name : String
   loc : @source.SourceLoc
   default : Expr?
-} derive(@debug.Debug)
+} derive(Default, @debug.Debug)
 
 pub(all) struct ProgramNode {
   structs : Array[StructDecl]
@@ -206,7 +206,7 @@ pub(all) struct StructDecl {
   loc : @source.SourceLoc
   name : String
   fields : Array[StructField]
-} derive(@debug.Debug)
+} derive(Default, @debug.Debug)
 
 pub(all) struct StructField {
   ty : Type
@@ -290,6 +290,7 @@ pub fn Type::total_elements(Self) -> Int
 pub fn Type::union_type(String) -> Self
 pub fn Type::unsigned_int() -> Self
 pub fn Type::void_type() -> Self
+pub impl Default for Type
 
 pub enum TypeKind {
   TK_Void

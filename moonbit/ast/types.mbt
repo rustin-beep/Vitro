@@ -35,6 +35,16 @@ pub(all) enum Type {
   Typeof(Expr, Bool, Bool) // expr, is_const, unqual（C23 typeof_unqual）
 } derive(Debug)
 
+///| 默认类型 = Void(is_const=false)——照搬 Rust types.rs:185 的显式
+
+///| `impl Default for Type`（G-2：AST Default 化基座；derive 对 17 变体
+
+///|
+/// enum 的默认选择不可控，显式 impl 与 Rust 单点对齐）。
+pub impl Default for Type with fn default() -> Type {
+  Void(false)
+}
+
 ///|
 /// `int`。
 pub fn Type::int() -> Type {

@@ -75,10 +75,7 @@ fn BytecodeGen::gen_nested_init(
           if i >= fields.length() {
             break
           }
-          let mut field_offset = 0
-          for j in 0..<i {
-            field_offset += self.type_size(fields[j].ty)
-          }
+          let field_offset = self.struct_fields_prefix_offset(fields, i)
           self.gen_nested_init(
             base_temp,
             offset + field_offset,

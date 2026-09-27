@@ -608,6 +608,9 @@ fn accessed_vars_equal(a : Array[AccessedVar], b : Array[AccessedVar]) -> Bool {
 
 ///|
 fn arrays_equal(a : ArraySnapshot, b : ArraySnapshot) -> Bool {
+  // 照搬 diff.rs:38 逐字（不含 truncated 比较）——Rust 侧现状：仅
+  // truncated 翻转（elements 不变）不触发数组差分。潜在缺陷登记不修
+  // 正（编码纪律 #4；U2#10 截断标记同族，S8 差异台账收口）。
   a.name == b.name && a.element_ty == b.element_ty && a.elements == b.elements
 }
 

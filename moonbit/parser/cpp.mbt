@@ -59,6 +59,7 @@ fn Parser::try_parse_cpp_ctor_out_of_line(
     None
   }
   program.funcs.push({
+    ..Default::default(),
     loc: @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     return_type: @ast.Type::void_type(),
     name: @names.ctor_def_name(name_tok.text),
@@ -66,8 +67,6 @@ fn Parser::try_parse_cpp_ctor_out_of_line(
     body,
     is_static,
     is_extern,
-    source_file: "",
-    is_variadic: false,
   })
   true
 }
@@ -106,13 +105,13 @@ fn Parser::try_parse_cpp_qualified_static_field(
   }
   let prev = self.previous()
   program.globals.push({
+    ..Default::default(),
     loc: @source.SourceLoc::new(prev.loc.line, prev.loc.column),
     ty,
     name,
     init,
     is_static,
     is_extern,
-    source_file: "",
   })
   ignore(self.consume(Semicolon, "静态成员定义后预期 ';'"))
   true

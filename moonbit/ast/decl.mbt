@@ -5,7 +5,7 @@ pub(all) struct Param {
   name : String
   loc : @source.SourceLoc
   default : Expr?
-} derive(Debug)
+} derive(Debug, Default)
 
 ///|
 /// 函数声明。
@@ -19,7 +19,7 @@ pub(all) struct FuncDecl {
   is_extern : Bool
   source_file : String
   is_variadic : Bool
-} derive(Debug)
+} derive(Debug, Default)
 
 ///|
 /// struct 字段。
@@ -35,7 +35,7 @@ pub(all) struct StructDecl {
   loc : @source.SourceLoc
   name : String
   fields : Array[StructField]
-} derive(Debug)
+} derive(Debug, Default)
 
 ///|
 /// 全局变量声明。
@@ -47,7 +47,7 @@ pub(all) struct GlobalDecl {
   is_static : Bool
   is_extern : Bool
   source_file : String
-} derive(Debug)
+} derive(Debug, Default)
 
 // ============================================================================
 // C++ 声明节点

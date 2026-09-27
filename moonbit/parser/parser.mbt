@@ -930,13 +930,13 @@ fn Parser::parse_global_var_or_func(
     let prev = self.previous()
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
     program.globals.push({
+      ..Default::default(),
       loc,
       ty,
       name,
       init,
       is_static,
       is_extern,
-      source_file: "",
     })
     while self.match_token(Comma) {
       let ex = self.parse_var_declarator(base_type, 0)
@@ -956,13 +956,13 @@ fn Parser::parse_global_var_or_func(
       let prev2 = self.previous()
       let loc2 = @source.SourceLoc::new(prev2.loc.line, prev2.loc.column)
       program.globals.push({
+        ..Default::default(),
         loc: loc2,
         ty: extra_ty,
         name: extra_name,
         init: extra_init,
         is_static,
         is_extern,
-        source_file: "",
       })
     }
     ignore(self.consume(Semicolon, "全局变量声明后预期 ';'"))

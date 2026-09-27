@@ -611,6 +611,7 @@ fn push_enum_member_global(
     )
   }
   program.globals.push({
+    ..Default::default(),
     loc,
     ty: if in_i32 {
       @ast.Type::int()
@@ -619,9 +620,6 @@ fn push_enum_member_global(
     },
     name: member_tok.text,
     init: Some(init),
-    is_static: false,
-    is_extern: false,
-    source_file: "",
   })
 }
 
@@ -684,6 +682,7 @@ fn Parser::parse_func_decl(
     None
   }
   {
+    ..Default::default(),
     loc: @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     return_type: ret_type,
     name: func_name,
@@ -691,7 +690,6 @@ fn Parser::parse_func_decl(
     body,
     is_static,
     is_extern,
-    source_file: "",
     is_variadic: pl.1,
   }
 }

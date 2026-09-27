@@ -17,39 +17,62 @@ fn BytecodeGen::get_member_offset(
 ) -> Int {
   match object_type.kind() {
     TK_Union => 0 // union 成员全在偏移 0
-    TK_Struct => {
-      let fields = match self.struct_defs.get(object_type.name()) {
-        Some(f) => f
-        None => return 0
-      }
-      let mut offset = 0
-      for field in fields {
-        if field.name == mname {
-          return offset
-        }
-        offset += self.type_size(field.ty)
-      }
-      0
-    }
+    TK_Struct => self.struct_field_offset_by_name(object_type.name(), mname)
     TK_Pointer =>
       if @ast.Type::base_kind(object_type) is TK_Struct {
-        let fields = match self.struct_defs.get(object_type.name()) {
-          Some(f) => f
-          None => return 0
-        }
-        let mut offset = 0
-        for field in fields {
-          if field.name == mname {
-            return offset
-          }
-          offset += self.type_size(field.ty)
-        }
-        0
+        self.struct_field_offset_by_name(object_type.name(), mname)
       } else {
         0
       }
     _ => 0
   }
+}
+
+// ── 成员偏移单源（G-5，总计划 §10.5；kimicc FieldLayout/offset_of_path
+// 单点先例）——消三份独立累加：get_member_offset 的 struct/pointer 双臂
+// 与 addr.mbt gen_nested_init 初始化器前缀和。行为等价重构（原「累加
+// 遍历命中返回」≡「按位前缀和」），A 级对拍全量兜底。 ──
+
+///|
+/// 按结构体名取成员偏移（字段表缺失返 0——照搬原分支语义）。
+fn BytecodeGen::struct_field_offset_by_name(
+  self : BytecodeGen,
+  struct_name : String,
+  mname : String,
+) -> Int {
+  match self.struct_defs.get(struct_name) {
+    Some(fields) => self.struct_fields_offset_by_name(fields, mname)
+    None => 0
+  }
+}
+
+///|
+/// 字段表内按名定位并返回其前缀偏移。
+fn BytecodeGen::struct_fields_offset_by_name(
+  self : BytecodeGen,
+  fields : Array[@ast.StructField],
+  mname : String,
+) -> Int {
+  for i, field in fields {
+    if field.name == mname {
+      return self.struct_fields_prefix_offset(fields, i)
+    }
+  }
+  0
+}
+
+///|
+/// 前 index 个字段的尺寸和（初始化器按位取偏移的共用单点）。
+fn BytecodeGen::struct_fields_prefix_offset(
+  self : BytecodeGen,
+  fields : Array[@ast.StructField],
+  index : Int,
+) -> Int {
+  let mut offset = 0
+  for j in 0..<index {
+    offset += self.type_size(fields[j].ty)
+  }
+  offset
 }
 
 ///|

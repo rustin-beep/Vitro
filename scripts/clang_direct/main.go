@@ -49,6 +49,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -68,7 +69,26 @@ const clangRetry = 3
 
 const clangRunTimeout = 10 * time.Second
 
-var corporaDefault = []string{"baseline", "knr", "leetcode", "gap"}
+// 语料集（2026-09-27 扩容：+codegen_skeleton 13〔原 codegen_diff 专用，可运行 C
+// 顺手纳入〕+cases_template_generated 82〔shadow 五目录差值，用户调查缺口〕；
+// 元素为相对仓库根路径——含路径分隔符时原样使用，裸名仍拼 cases/ 前缀兼容
+// --corpus baseline 旧用法）。
+var corporaDefault = []string{
+	"native/tests/cases/baseline",
+	"native/tests/cases/knr",
+	"native/tests/cases/leetcode",
+	"native/tests/cases/gap",
+	"native/tests/cases/codegen_skeleton",
+	"native/tests/cases_template_generated",
+}
+
+// corpusPath：裸语料名 → cases/ 前缀；含分隔符 → 原样（corporaDefault 路径化）。
+func corpusPath(c string) string {
+	if strings.ContainsAny(c, "/\\") {
+		return c
+	}
+	return filepath.Join("native", "tests", "cases", c)
+}
 
 // knownEntry：已归因差异（case + digest + reason；digest = 差异内容 sha256
 // 前 8 位——漂移即降级 DIFF 逼重新归因）。
@@ -106,6 +126,7 @@ func main() {
 	corpora := corporaDefault
 	sample := 0
 	jobs := 0
+	checkKnownFlag := false
 	var explicit []string
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -122,10 +143,21 @@ func main() {
 		case args[i] == "--jobs" && i+1 < len(args):
 			i++
 			fmt.Sscanf(args[i], "%d", &jobs)
+		case args[i] == "--check-known":
+			checkKnownFlag = true
 		default:
 			fmt.Fprintf(os.Stderr, "clang_direct: 未知参数 %q\n", args[i])
 			os.Exit(2)
 		}
+	}
+
+	// --check-known：静态校验免 runner/clang（拆分前置——CI 可独立跑）
+	if checkKnownFlag {
+		k := loadKnown()
+		if !checkKnown(k.entries) {
+			os.Exit(2)
+		}
+		return
 	}
 
 	// 前置：runner 存在 + 新鲜度门禁（vm_diff 同款：mtime 触发 + 构建复核）
@@ -258,6 +290,41 @@ func main() {
 	}
 }
 
+// checkKnown：known_direct.json 静态校验子命令（2026-09-27 拆分前置，用户
+// 调查：known 防腐化双校验原先只在全量形态判——任何拆分形态下条目腐化无人
+// 拦）。只做免 runner/clang 的静态部分：①每条 case 在全语料集存在；②digest
+// 为 8 位 hex；③台账非空。动态部分（转绿未命中即红）仍由全量运行承担。
+func checkKnown(known []knownEntry) bool {
+	if len(known) == 0 {
+		fmt.Println("clang_direct: --check-known: known 台账为空（空集不得绿）")
+		return false
+	}
+	ok := true
+	for _, k := range known {
+		found := false
+		for _, corpus := range corporaDefault {
+			if fileExists(filepath.Join(corpusPath(corpus), k.Case)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Printf("clang_direct: --check-known: 条目 %q 在全语料集无对应文件（用例改名/删除后悬空）\n", k.Case)
+			ok = false
+		}
+		if !digestRe.MatchString(k.Digest) {
+			fmt.Printf("clang_direct: --check-known: 条目 %q digest %q 非 8 位 hex\n", k.Case, k.Digest)
+			ok = false
+		}
+	}
+	if ok {
+		fmt.Printf("clang_direct: --check-known: OK（%d 条静态校验通过；动态转绿监控由全量运行承担）\n", len(known))
+	}
+	return ok
+}
+
+var digestRe = regexp.MustCompile("^[0-9a-f]{8}$")
+
 // fullCorpusRun：真·全量（默认四语料、无 --cases/--sample）——--corpus 单
 // 语料是子集运行，白名单空转校验（静态与动态）只在此形态判，否则
 // `--corpus gap` 会误报「engine_note_lookalike.c 不在本轮」（P3-6，
@@ -302,7 +369,7 @@ func collectCases(corpora []string, sample int, explicit []string) []caseRef {
 		for _, c := range explicit {
 			p := ""
 			for _, corpus := range corporaDefault {
-				cand := filepath.Join("native", "tests", "cases", corpus, c)
+				cand := filepath.Join(corpusPath(corpus), c)
 				if fileExists(cand) {
 					p = cand
 					break
@@ -317,7 +384,7 @@ func collectCases(corpora []string, sample int, explicit []string) []caseRef {
 		return out
 	}
 	for _, c := range corpora {
-		dir := filepath.Join("native", "tests", "cases", c)
+		dir := corpusPath(c)
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue

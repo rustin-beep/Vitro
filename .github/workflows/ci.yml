@@ -293,7 +293,9 @@ jobs:
         # 127 例瞬态误判实锤）。Clang golden 缓存 .clang_cache_cd/ 随上方
         # cache action 持久化（key 含 clang 版本）。
         shell: bash
-        run: go run ./scripts/clang_direct
+        run: |
+          go run ./scripts/clang_direct --check-known
+          go run ./scripts/clang_direct
 
       - name: MoonBit test count (README vs moon test truth)
         # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，

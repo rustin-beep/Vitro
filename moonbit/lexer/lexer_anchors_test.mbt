@@ -338,3 +338,34 @@ test "directive line isolation" {
   assert_eq(r2.errors.length(), 0)
   inspect(r2.tokens.map(t => t.text).join(" "), content="int x ; ")
 }
+
+///|
+/// kimicc 对照二销项锚（2026-09-27，调查报告 §4.1）：跨行宏调用——
+/// 函数式宏实参跨物理行（裸换行，无续行符）在 token 流架构下天然成立
+///（逐逻辑行词法化 → 全量 token 池 → capture_args 按括号深度扫参，
+/// pp.mbt:236 收尾全量展开）；kimicc 的 pending/hold 双保险是
+/// source→source 文本行架构特有的凑行问题，Vitro 架构性豁免——
+/// 本锚留痕该结论（若未来改逐行展开架构，此锚红即架构回退警报）。
+test "macro_call_args_across_lines" {
+  let nl = "\n"
+  let src = "#define ADD(a, b) ((a) + (b))" +
+    nl +
+    "int r = ADD(1," +
+    nl +
+    "           2);" +
+    nl
+  let r = @lexer.tokenize(src)
+  assert_true(
+    r.errors.is_empty(),
+    msg="跨行实参必须正常展开：\{r.errors.length()} 错",
+  )
+  // 展开产物含加法形状（ADD 实参跨物理行 → ((1) + (2))）——文本面粗锚
+  let texts : Array[String] = []
+  for t in r.tokens {
+    texts.push(t.text)
+  }
+  assert_true(
+    texts.contains("+"),
+    msg="ADD 跨行调用必须完成展开（含 + token）",
+  )
+}

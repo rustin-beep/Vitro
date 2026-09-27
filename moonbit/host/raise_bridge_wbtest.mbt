@@ -2,6 +2,7 @@
 // 丢类型（J9 实证：固定 OutOfBounds 注入下 host 白盒与 vm_diff/clang_direct
 // 双防线全绿）= 全防线盲区，学生将看到错误诊断（UAF 被报成越界）。
 // fault 类型是 trap 文案单点（vm 渲染按变体分派）的输入面，锚锁之。
+
 ///|
 test "raise_bridge_fault_type_fidelity_uaf" {
   let map = @memory.MemoryMap::new()

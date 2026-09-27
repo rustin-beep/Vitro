@@ -37,14 +37,16 @@ pub fn host_fopen(
   mode_addr : UInt,
   alloc_line : Int,
 ) -> HostMemReply {
-  let path = match read_cstring(mem, map, path_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
-  let mode = match read_cstring(mem, map, mode_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
+  let path = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, path_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
+  let mode = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, mode_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
   let fd = vfs.fopen(map, path, mode)
   if fd == 0U {
     return null_silent()
@@ -57,10 +59,10 @@ pub fn host_fopen(
   map.freed_logs_remove_overlapping(addr, addr + 4U)
   map.register_alloc(addr, 4, alloc_line, "fopen", false)
   rename_region(map, addr, "FILE:\{path}")
-  match mem.store_u32(map, addr, fd) {
-    Ok(_) => value_only(addr.to_uint64())
-    Err(f) => fault_reply(f)
+  store_u32_raise(mem, map, addr, fd) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
+  value_only(addr.to_uint64())
 }
 
 ///|
@@ -74,9 +76,8 @@ pub fn host_fread(
   nmemb : Int,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fread(mem, map, fd, buf, size, nmemb).to_uint64())
 }
@@ -92,9 +93,8 @@ pub fn host_fwrite(
   nmemb : Int,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fwrite(mem, map, fd, buf, size, nmemb).to_uint64())
 }
@@ -110,9 +110,8 @@ pub fn host_fclose(
   freed_line : Int,
   freed_step : Int,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let ret = vfs.fclose(fd)
   ignore(map.release(stream, freed_line, freed_step))
@@ -127,9 +126,8 @@ pub fn host_feof(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.feof(fd).to_uint64())
 }
@@ -144,9 +142,8 @@ pub fn host_fgets(
   n : Int,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fgets(mem, map, fd, buf, n).to_uint64())
 }
@@ -163,9 +160,8 @@ pub fn host_fputs(
   stream : UInt,
 ) -> HostMemReply {
   if stream == 1U || stream == 2U {
-    let s = match read_cstring(mem, map, s_addr) {
-      Ok(b) => b
-      Err(f) => return fault_reply(f)
+    let s = read_cstring_raise(mem, map, s_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if stream == 2U {
       log.push_stderr(@utf8.encode(@utf8.decode_lossy(s)))
@@ -174,9 +170,8 @@ pub fn host_fputs(
     }
     return value_only(0UL)
   }
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fputs(mem, map, fd, s_addr).to_uint64())
 }
@@ -189,9 +184,8 @@ pub fn host_fgetc(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fgetc(mem, map, fd).to_int64().reinterpret_as_uint64())
 }
@@ -205,9 +199,8 @@ pub fn host_fputc(
   c : Int,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fputc(mem, map, fd, c).to_int64().reinterpret_as_uint64())
 }
@@ -222,9 +215,8 @@ pub fn host_fseek(
   offset : Int,
   whence : Int,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.fseek(mem, map, fd, offset, whence).to_uint64())
 }
@@ -237,9 +229,8 @@ pub fn host_ftell(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(vfs.ftell(fd).to_int64().reinterpret_as_uint64())
 }
@@ -252,9 +243,8 @@ pub fn host_rewind(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   vfs.rewind(fd)
   no_reply()
@@ -269,9 +259,8 @@ pub fn host_fflush(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let ret = if fd == 0U { 0 } else { vfs.fflush(fd) }
   value_only(ret.to_uint64())
@@ -285,10 +274,11 @@ pub fn host_perror(
   log : OutputLog,
   s_addr : UInt,
 ) -> HostMemReply {
-  let prefix = match read_cstring(mem, map, s_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
+  let prefix = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, s_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
   if prefix == "" {
     log.push_stderr(b"Error\n")
   } else {
@@ -305,9 +295,8 @@ pub fn host_clearerr(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
-  let fd = match read_fd(mem, map, stream) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let fd = read_fd_raise(mem, map, stream) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   vfs.clearerr(fd)
   no_reply()
@@ -321,10 +310,11 @@ pub fn host_remove(
   vfs : VirtualFileSystem,
   path_addr : UInt,
 ) -> HostMemReply {
-  let path = match read_cstring(mem, map, path_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
+  let path = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, path_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
   value_only(vfs.remove(map, path).to_uint64())
 }
 
@@ -337,13 +327,15 @@ pub fn host_rename(
   old_addr : UInt,
   new_addr : UInt,
 ) -> HostMemReply {
-  let old_path = match read_cstring(mem, map, old_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
-  let new_path = match read_cstring(mem, map, new_addr) {
-    Ok(b) => @utf8.decode_lossy(b)
-    Err(f) => return fault_reply(f)
-  }
+  let old_path = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, old_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
+  let new_path = @utf8.decode_lossy(
+    read_cstring_raise(mem, map, new_addr) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
+    },
+  )
   value_only(vfs.rename(old_path, new_path).to_uint64())
 }

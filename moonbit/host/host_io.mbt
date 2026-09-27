@@ -190,13 +190,11 @@ pub fn host_sprintf(
     Err(r) => return r
   }
   let bytes = @utf8.encode(out)
-  match mem.write_bytes(map, buf_addr, bytes) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  write_bytes_raise(mem, map, buf_addr, bytes) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_i8(map, buf_addr + bytes.length().reinterpret_as_uint(), 0) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  store_i8_raise(mem, map, buf_addr + bytes.length().reinterpret_as_uint(), 0) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(bytes.length().to_uint64())
 }
@@ -227,14 +225,12 @@ pub fn host_snprintf(
       i = i + 1
     }
     if n > 0 {
-      match mem.write_bytes(map, buf_addr, Bytes::from_array(head)) {
-        Ok(_) => ()
-        Err(f) => return fault_reply(f)
+      write_bytes_raise(mem, map, buf_addr, Bytes::from_array(head)) catch {
+        AccessFault::Fault(f~) => return fault_reply(f)
       }
     }
-    match mem.store_i8(map, buf_addr + n.reinterpret_as_uint(), 0) {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    store_i8_raise(mem, map, buf_addr + n.reinterpret_as_uint(), 0) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
   value_only(bytes.length().to_uint64())
@@ -248,9 +244,8 @@ pub fn host_puts(
   log : OutputLog,
   s_addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, s_addr) {
-    Ok(b) => b
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, s_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   log.push_stdout(@utf8.encode(@utf8.decode_lossy(s) + "\n"))
   value_only(1UL)
@@ -828,13 +823,11 @@ pub fn host_sscanf(
   fmt_addr : UInt,
   ptrs : Array[UInt],
 ) -> HostMemReply {
-  let fmt_bytes = match read_cstring(mem, map, fmt_addr) {
-    Ok(b) => b
-    Err(f) => return fault_reply(f)
+  let fmt_bytes = read_cstring_raise(mem, map, fmt_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let src = match read_cstring(mem, map, str_addr) {
-    Ok(b) => b
-    Err(f) => return fault_reply(f)
+  let src = read_cstring_raise(mem, map, str_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let spec_types = parse_scanf_specs(lossy_codes(fmt_bytes))
   let chars : Array[Byte] = []

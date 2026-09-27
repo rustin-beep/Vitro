@@ -27,9 +27,8 @@ pub fn host_atoi(
   map : @memory.MemoryMap,
   addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(atoi_bytes(s).to_int64().reinterpret_as_uint64())
 }
@@ -80,9 +79,8 @@ pub fn host_atol(
   map : @memory.MemoryMap,
   addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(atol_bytes(s).reinterpret_as_uint64())
 }
@@ -126,9 +124,8 @@ pub fn host_atof(
   map : @memory.MemoryMap,
   addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   // 两端裁 ASCII 空白（oracle trim 是 Unicode 空白——微差登记见模块头）
   let n = s.length()
@@ -167,9 +164,8 @@ pub fn host_strtol(
   base : Int,
   errno_addr : UInt?,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, str_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, str_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let n = s.length()
   let mut pos = 0
@@ -237,9 +233,8 @@ pub fn host_strtod(
   endptr_addr : UInt,
   errno_addr : UInt?,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, str_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, str_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let n = s.length()
   let mut pos = 0

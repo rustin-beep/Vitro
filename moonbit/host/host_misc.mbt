@@ -83,10 +83,10 @@ pub fn host_va_start(
   last_size : Int,
 ) -> HostMemReply {
   let va_base = last_addr + last_size
-  match mem.store_u32(map, ap_addr, va_base.reinterpret_as_uint()) {
-    Ok(_) => no_reply()
-    Err(f) => fault_reply(f)
+  store_u32_raise(mem, map, ap_addr, va_base.reinterpret_as_uint()) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
+  no_reply()
 }
 
 ///|
@@ -98,14 +98,14 @@ pub fn host_va_arg(
   ap_addr : UInt,
   size : Int,
 ) -> HostMemReply {
-  let current = match mem.load_u32(map, ap_addr) {
-    Ok(v) => v.reinterpret_as_int()
-    Err(f) => return fault_reply(f)
+  let cursor = load_u32_raise(mem, map, ap_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_u32(map, ap_addr, (current + size).reinterpret_as_uint()) {
-    Ok(_) => value_only(current.to_int64().reinterpret_as_uint64())
-    Err(f) => fault_reply(f)
+  let current = cursor.reinterpret_as_int()
+  store_u32_raise(mem, map, ap_addr, (current + size).reinterpret_as_uint()) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
+  value_only(current.to_int64().reinterpret_as_uint64())
 }
 
 ///|
@@ -124,12 +124,11 @@ pub fn host_va_copy(
   dst_addr : UInt,
   src_addr : UInt,
 ) -> HostMemReply {
-  let value = match mem.load_u32(map, src_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let value = load_u32_raise(mem, map, src_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_u32(map, dst_addr, value) {
-    Ok(_) => no_reply()
-    Err(f) => fault_reply(f)
+  store_u32_raise(mem, map, dst_addr, value) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
+  no_reply()
 }

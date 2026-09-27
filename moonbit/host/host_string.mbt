@@ -162,9 +162,11 @@ pub fn host_strlen(
   map : @memory.MemoryMap,
   addr : UInt,
 ) -> HostMemReply {
-  match read_cstring(mem, map, addr) {
-    Ok(s) => value_only(s.length().to_uint64())
-    Err(f) => fault_reply(f)
+  try {
+    let s = read_cstring_raise(mem, map, addr)
+    value_only(s.length().to_uint64())
+  } catch {
+    AccessFault::Fault(f~) => fault_reply(f)
   }
 }
 
@@ -180,9 +182,8 @@ pub fn host_strdup(
   src : UInt,
   alloc_line : Int,
 ) -> HostMemReply {
-  let src_bytes = match read_cstring(mem, map, src) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let src_bytes = read_cstring_raise(mem, map, src) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let len = src_bytes.length()
   let size = len + 1
@@ -197,13 +198,11 @@ pub fn host_strdup(
   map.freed_logs_remove_overlapping(addr, addr + aligned)
   // 复制内容 + 终止符（oracle 是截断到内存尾的 store_i8 循环；受检批量写
   // 在合法形状下等价，越界/NUL 落点故障转 trap）
-  match mem.write_bytes(map, addr, src_bytes) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  write_bytes_raise(mem, map, addr, src_bytes) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_i8(map, addr + len.reinterpret_as_uint(), 0) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  store_i8_raise(mem, map, addr + len.reinterpret_as_uint(), 0) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   map.register_alloc(addr, size, alloc_line, "strdup", true)
   value_only(addr.to_uint64())
@@ -220,9 +219,8 @@ pub fn host_strcpy(
   src : UInt,
   stack_buffers : Array[StackBufferSpan],
 ) -> HostMemReply {
-  let src_bytes = match read_cstring(mem, map, src) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let src_bytes = read_cstring_raise(mem, map, src) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let src_len = src_bytes.length()
   // E3070 堆块容量检查（第一个包含 dest 的存活块）
@@ -247,13 +245,11 @@ pub fn host_strcpy(
     None => ()
   }
   // 写入（受检批量；oracle 是截断 store_i8 循环）
-  match mem.write_bytes(map, dest, src_bytes) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  write_bytes_raise(mem, map, dest, src_bytes) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_i8(map, dest + src_len.reinterpret_as_uint(), 0) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  store_i8_raise(mem, map, dest + src_len.reinterpret_as_uint(), 0) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(dest.to_uint64())
 }
@@ -269,13 +265,11 @@ pub fn host_strcmp(
 ) -> HostMemReply {
   let mut i = 0
   while true {
-    let a = match mem.load_i8(map, addr1 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let a = load_i8_raise(mem, map, addr1 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
-    let b = match mem.load_i8(map, addr2 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr2 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
       return value_only((a - b).to_int64().reinterpret_as_uint64())
@@ -317,15 +311,14 @@ pub fn host_memset(
     )
   }
   if write_len > 0U {
-    match
-      mem.fill(
-        map,
-        ptr,
-        write_len.reinterpret_as_int(),
-        (value & 0xFFUL).to_byte(),
-      ) {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    fill_raise(
+      mem,
+      map,
+      ptr,
+      write_len.reinterpret_as_int(),
+      (value & 0xFFUL).to_byte(),
+    ) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
   value_only(ptr.to_uint64())
@@ -356,9 +349,8 @@ pub fn host_strcat(
     }
   }
   let dest_len = (end - dest).reinterpret_as_int()
-  let src_bytes = match read_cstring(mem, map, src) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let src_bytes = read_cstring_raise(mem, map, src) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let src_len = src_bytes.length()
   // E3070 堆块容量检查
@@ -385,13 +377,11 @@ pub fn host_strcat(
     None => ()
   }
   // 追加 + 终止符（受检批量；oracle 是截断 store_i8 循环）
-  match mem.write_bytes(map, end, src_bytes) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  write_bytes_raise(mem, map, end, src_bytes) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  match mem.store_i8(map, end + src_len.reinterpret_as_uint(), 0) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  store_i8_raise(mem, map, end + src_len.reinterpret_as_uint(), 0) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(dest.to_uint64())
 }
@@ -407,9 +397,8 @@ pub fn host_strncpy(
   src : UInt,
   n : Int,
 ) -> HostMemReply {
-  let src_bytes = match read_cstring(mem, map, src) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let src_bytes = read_cstring_raise(mem, map, src) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let mem_size = @bytecode.MEM_SIZE
   let max_write = if dest >= mem_size { 0U } else { mem_size - dest }
@@ -432,18 +421,15 @@ pub fn host_strncpy(
       head.push(src_bytes[i])
       i = i + 1
     }
-    match mem.write_bytes(map, dest, Bytes::from_array(head)) {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    write_bytes_raise(mem, map, dest, Bytes::from_array(head)) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
   // 补零段
   let zero_len = write_len.reinterpret_as_int() - copy_len
   if zero_len > 0 {
-    match
-      mem.fill(map, dest + copy_len.reinterpret_as_uint(), zero_len, b'\x00') {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    fill_raise(mem, map, dest + copy_len.reinterpret_as_uint(), zero_len, b' ') catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
   value_only(dest.to_uint64())
@@ -494,9 +480,8 @@ pub fn host_memmove(
     n.reinterpret_as_uint()
   }
   if copy_len > 0U {
-    match mem.copy(map, dest, src, copy_len.reinterpret_as_int()) {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    copy_raise(mem, map, dest, src, copy_len.reinterpret_as_int()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
   value_only(dest.to_uint64())
@@ -525,9 +510,8 @@ pub fn host_strncat(
       Err(f) => return fault_reply(f)
     }
   }
-  let src_bytes = match read_cstring(mem, map, src) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let src_bytes = read_cstring_raise(mem, map, src) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let mem_size = @bytecode.MEM_SIZE
   let want = if src_bytes.length().to_uint64() > n {
@@ -549,14 +533,12 @@ pub fn host_strncat(
       head.push(src_bytes[i])
       i = i + 1
     }
-    match mem.write_bytes(map, end, Bytes::from_array(head)) {
-      Ok(_) => ()
-      Err(f) => return fault_reply(f)
+    write_bytes_raise(mem, map, end, Bytes::from_array(head)) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
   }
-  match mem.store_i8(map, end + actual.to_uint(), 0) {
-    Ok(_) => ()
-    Err(f) => return fault_reply(f)
+  store_i8_raise(mem, map, end + actual.to_uint(), 0) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   value_only(dest.to_uint64())
 }
@@ -573,13 +555,11 @@ pub fn host_strncmp(
 ) -> HostMemReply {
   let mut i = 0UL
   while i < n {
-    let a = match mem.load_i8(map, addr1 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let a = load_i8_raise(mem, map, addr1 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
-    let b = match mem.load_i8(map, addr2 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr2 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
       return value_only((a - b).to_int64().reinterpret_as_uint64())
@@ -604,13 +584,11 @@ pub fn host_memcmp(
 ) -> HostMemReply {
   let mut i = 0UL
   while i < n {
-    let a = match mem.load_i8(map, addr1 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let a = load_i8_raise(mem, map, addr1 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
-    let b = match mem.load_i8(map, addr2 + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr2 + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
       return value_only((a - b).to_int64().reinterpret_as_uint64())
@@ -632,9 +610,8 @@ pub fn host_strchr(
 ) -> HostMemReply {
   let mut i = 0
   while true {
-    let b = match mem.load_i8(map, addr + i.reinterpret_as_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr + i.reinterpret_as_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if (b & 0xFF) == c {
       return value_only((addr + i.reinterpret_as_uint()).to_uint64())
@@ -659,9 +636,8 @@ pub fn host_strrchr(
   let mut result = 0U
   let mut i = 0
   while true {
-    let b = match mem.load_i8(map, addr + i.reinterpret_as_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr + i.reinterpret_as_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if (b & 0xFF) == c {
       result = addr + i.reinterpret_as_uint()
@@ -683,13 +659,11 @@ pub fn host_strstr(
   haystack : UInt,
   needle : UInt,
 ) -> HostMemReply {
-  let hay = match read_cstring(mem, map, haystack) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let hay = read_cstring_raise(mem, map, haystack) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let nd = match read_cstring(mem, map, needle) {
-    Ok(s) => s
-    Err(f) => return fault_reply(f)
+  let nd = read_cstring_raise(mem, map, needle) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   if nd.length() == 0 {
     return value_only(haystack.to_uint64())
@@ -735,9 +709,8 @@ pub fn host_memchr(
 ) -> HostMemReply {
   let mut i = 0UL
   while i < n {
-    let b = match mem.load_i8(map, addr + i.to_uint()) {
-      Ok(v) => v
-      Err(f) => return fault_reply(f)
+    let b = load_i8_raise(mem, map, addr + i.to_uint()) catch {
+      AccessFault::Fault(f~) => return fault_reply(f)
     }
     if (b & 0xFF) == c {
       return value_only((addr + i.to_uint()).to_uint64())
@@ -762,13 +735,11 @@ pub fn host_strpbrk(
   s_addr : UInt,
   accept_addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, s_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, s_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let accept = match read_cstring(mem, map, accept_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let accept = read_cstring_raise(mem, map, accept_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let n = s.length()
   let mut i = 0
@@ -790,13 +761,11 @@ pub fn host_strspn(
   s_addr : UInt,
   accept_addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, s_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, s_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let accept = match read_cstring(mem, map, accept_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let accept = read_cstring_raise(mem, map, accept_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let n = s.length()
   let mut count = 0
@@ -819,13 +788,11 @@ pub fn host_strcspn(
   s_addr : UInt,
   reject_addr : UInt,
 ) -> HostMemReply {
-  let s = match read_cstring(mem, map, s_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let s = read_cstring_raise(mem, map, s_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let reject = match read_cstring(mem, map, reject_addr) {
-    Ok(v) => v
-    Err(f) => return fault_reply(f)
+  let reject = read_cstring_raise(mem, map, reject_addr) catch {
+    AccessFault::Fault(f~) => return fault_reply(f)
   }
   let n = s.length()
   let mut count = 0

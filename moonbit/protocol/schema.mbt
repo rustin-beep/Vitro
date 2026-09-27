@@ -17,32 +17,10 @@ pub const SCHEMA_VERSION : String = "v0.1"
 ///|
 /// v0.1 冻结时间与签字依据（S1–S5 签字回放 61/61）。
 pub const SCHEMA_V0_1_FROZEN_AT : String = "2026-09-12"
-
-///| StepPayload v0.1 顶层字段白名单（14 字段，顺序 = schema §字段表）。
-
-///| 对账单源：scripts/replay/v01_payload_fields.json 的 v01_payload_fields
-
-///| （Go/Python 回放驱动共读同一份；本表为 MoonBit 侧等价物，白盒测试
-
-///|
-/// 逐条对账锚锁定，两侧漂移即红）。
-pub fn step_payload_fields_v0_1() -> Array[String] {
-  [
-    "step_index", "code_line", "func_name", "semantic_label", "algorithm_step", "local_vars",
-    "call_stack", "vis_events", "heatmap_line", "heatmap_count", "accessed_vars",
-    "array_snapshots", "pointer_snapshots", "root_cause_hint",
-  ]
-}
-
-///| v0.2 预留位字段（异常域，随 v0.1 冻结以"预留位"写入，激活前不得出现
-
-///| 在任何 payload 中）。顺序与 schema §7.x 表格一致；冻结测试按此断言
-
-///|
-/// "预留位缺省"。对账单源：v01_payload_fields.json 的 reserved_fields。
-pub fn reserved_fields_v0_2() -> Array[String] {
-  ["handler_depth", "unwinding", "unwind_frames_left", "current_exception"]
-}
+// （step_payload_fields_v0_1 / reserved_fields_v0_2 两函数已移至
+// schema_fields_gen.mbt——gen_protocol_fields 生成物，单源 =
+// scripts/replay/v01_payload_fields.json。2026-09-27 用户审阅 P2-2：
+// 此前手写常量与 JSON 零联动，注入实验实锤假绿；生成期联动自此成立。）
 
 ///| v0.2 激活清单（激活提交必须逐条走完）。这不是"建议流程"——预留位
 

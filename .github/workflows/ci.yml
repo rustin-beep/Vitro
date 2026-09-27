@@ -390,6 +390,7 @@ jobs:
           go run ./scripts/moonbit/gen_diag -check
           go run ./scripts/moonbit/gen_host_route -check
           go run ./scripts/moonbit/gen_stubs -check
+          go run ./scripts/moonbit/gen_protocol_fields -check
 
       - name: C ABI declaration parity (error codes + binding symbols)
         # 2026-09-22 接线（架构审阅 v2 A 组 #3 / §2.9）：vitro_capi.h 的

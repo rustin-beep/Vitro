@@ -1,7 +1,12 @@
 // schema 契约白盒锚（S7 批一号）：展开粒度判据 5 锚照搬 contracts.rs
 // tests 模块 + v0.1 冻结对账锚（字段白名单/预留位/常量/计数）。
-// 对账单源：scripts/replay/v01_payload_fields.json（Go/Python 回放驱动
-// 共读）；本测试硬编码第二份预期，MoonBit 表与任一侧漂移即红。
+// 三层联动（2026-09-27 用户审阅 P2-2 修正——此前「对账 JSON」为虚假
+// 声称，注入第 15 字段实测假绿）：
+//   ① JSON 单源 →(gen_protocol_fields 生成期)→ schema_fields_gen.mbt
+//   ② 生成物 →(本测试硬编码第三份锚)→ 语义防手改
+//   ③ JSON →(Go/Python replay 运行期)→ Rust serve 输出
+// 本测试硬编码份锁 ②；① 由生成器 -check（CI）锁；JSON 字段数变更被
+// 生成器基线断言拦截（expectedV01=14 只增不改，v0.2 激活走 checklist）。
 
 ///|
 fn s(step_index : Int, unwinding : Bool, left : Int) -> UnwindSample {

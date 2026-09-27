@@ -159,3 +159,53 @@ test "blackbox_dto_surface" {
   assert_eq(heatmap.max_count, 1)
   assert_eq(@protocol.PointerStatus::Null.to_json_text(), "Null")
 }
+
+///|
+test "blackbox_stream_surface" {
+  // stream 差分编码四函数消费面点名（encode_step_delta 为 encode_payloads
+  // 内部路径的独立出口——TS 侧同构消费；显式点名保面闸）
+  let p0 : @protocol.StepPayload = {
+    step_index: 0,
+    code_line: 1,
+    func_name: "main",
+    semantic_label: "返回",
+    algorithm_step: None,
+    local_vars: [
+      { name: "i", addr: 0, is_local: true, ty_name: "int", value: "0", },
+    ],
+    call_stack: [{ func_name: "main", return_line: 0, }],
+    vis_events: [],
+    heatmap_line: 1,
+    heatmap_count: 1,
+    accessed_vars: [],
+    array_snapshots: [],
+    pointer_snapshots: [],
+    root_cause_hint: None,
+  }
+  // 第二步仅 i 值变化（黑盒侧不用 mutate 链——直接构造）
+  let p1 : @protocol.StepPayload = {
+    step_index: 1,
+    code_line: 2,
+    func_name: "main",
+    semantic_label: "返回",
+    algorithm_step: None,
+    local_vars: [
+      { name: "i", addr: 0, is_local: true, ty_name: "int", value: "1", },
+    ],
+    call_stack: [{ func_name: "main", return_line: 0, }],
+    vis_events: [],
+    heatmap_line: 2,
+    heatmap_count: 1,
+    accessed_vars: [],
+    array_snapshots: [],
+    pointer_snapshots: [],
+    root_cause_hint: None,
+  }
+  let batch = @protocol.encode_payloads([p0, p1], 0)
+  assert_eq(batch.deltas.length(), 1)
+  // 两个 encode 细粒度出口的签名含 priv SymbolTable 跨包不可调（照搬
+  // Rust pub+priv 形态，surface_allowlist 登记）——黑盒不点名
+  let single = @protocol.encode_payloads([p0], 7)
+  assert_eq(@protocol.decode_batch(single).length(), 1)
+  assert_eq(single.cache_start_step, 7)
+}

@@ -76,7 +76,8 @@ pub(all) struct PointerSnapshot {
   name : String
   addr : UInt
   ty_name : String
-  target_addr : UInt
+  /// mut：消费方 clone+mutate 使用形态
+  mut target_addr : UInt
   target_name : String
   status : PointerStatus
 } derive(Debug)
@@ -85,8 +86,9 @@ pub(all) struct PointerSnapshot {
 /// 当前步访问的变量（用于变量级高亮）。
 pub(all) struct AccessedVar {
   name : String
-  /// "Read" | "Write"（保持 Rust 侧 String 形态，不造枚举）
-  access_type : String
+  /// "Read" | "Write"（保持 Rust 侧 String 形态，不造枚举）；
+  /// mut：消费方 clone+mutate 使用形态
+  mut access_type : String
 } derive(Debug)
 
 ///|
@@ -96,7 +98,8 @@ pub(all) struct ApiVariableSnapshot {
   addr : UInt
   is_local : Bool
   ty_name : String
-  value : String
+  /// mut：decode 差分应用与消费方 clone+mutate 使用形态（Rust 同构）
+  mut value : String
 } derive(Debug)
 
 ///|
@@ -104,7 +107,8 @@ pub(all) struct ApiVariableSnapshot {
 pub(all) struct ArraySnapshot {
   name : String
   element_ty : String
-  elements : Array[String]
+  /// mut：消费方 clone+mutate 使用形态
+  mut elements : Array[String]
   /// U2#10：元素被截断的可见标记
   truncated : Bool
 } derive(Debug)
@@ -127,13 +131,13 @@ pub(all) struct StepPayload {
   semantic_label : String
   algorithm_step : AlgorithmStepSnapshot?
   local_vars : Array[ApiVariableSnapshot]
-  call_stack : Array[ApiFrameInfo]
-  vis_events : Array[VisEvent]
+  mut call_stack : Array[ApiFrameInfo]
+  mut vis_events : Array[VisEvent]
   heatmap_line : Int
   heatmap_count : UInt64
-  accessed_vars : Array[AccessedVar]
-  array_snapshots : Array[ArraySnapshot]
-  pointer_snapshots : Array[PointerSnapshot]
+  mut accessed_vars : Array[AccessedVar]
+  mut array_snapshots : Array[ArraySnapshot]
+  mut pointer_snapshots : Array[PointerSnapshot]
   root_cause_hint : RootCauseHint?
 } derive(Debug)
 

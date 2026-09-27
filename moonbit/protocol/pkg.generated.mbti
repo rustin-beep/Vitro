@@ -18,6 +18,14 @@ pub fn classify(String) -> String?
 
 pub fn contracts_json() -> String
 
+pub fn decode_batch(StepStreamBatch) -> Array[StepPayload]
+
+pub fn encode_payloads(Array[StepPayload], Int) -> StepStreamBatch
+
+pub fn encode_step_delta(StepPayload, StepPayload, SymbolTable, Map[Int, String]) -> StepPayloadDelta
+
+pub fn encode_step_payload(StepPayload, SymbolTable) -> StepPayloadRef
+
 pub fn kind_by_id(String) -> SemanticLabelKind?
 
 pub fn reserved_fields_v0_2() -> Array[String]
@@ -37,7 +45,12 @@ pub fn vocabulary_json() -> String
 // Types and methods
 pub(all) struct AccessedVar {
   name : String
-  access_type : String
+  mut access_type : String
+} derive(@debug.Debug)
+
+pub(all) struct AccessedVarRef {
+  name_idx : Int
+  access_type_idx : Int
 } derive(@debug.Debug)
 
 pub(all) struct AlgorithmStepSnapshot {
@@ -47,9 +60,29 @@ pub(all) struct AlgorithmStepSnapshot {
   description : String
 } derive(@debug.Debug)
 
+pub(all) struct AlgorithmStepSnapshotRef {
+  algorithm_name_idx : Int
+  display_name_idx : Int
+  phase_idx : Int
+  description_idx : Int
+} derive(@debug.Debug)
+
 pub(all) struct ApiFrameInfo {
   func_name : String
   return_line : Int
+} derive(@debug.Debug)
+
+pub(all) struct ApiFrameInfoRef {
+  func_name_idx : Int
+  return_line : Int
+} derive(@debug.Debug)
+
+pub(all) struct ApiVarSnapshotRef {
+  name_idx : Int
+  addr : UInt
+  is_local : Bool
+  ty_name_idx : Int
+  mut value : String
 } derive(@debug.Debug)
 
 pub(all) struct ApiVariableSnapshot {
@@ -57,12 +90,19 @@ pub(all) struct ApiVariableSnapshot {
   addr : UInt
   is_local : Bool
   ty_name : String
-  value : String
+  mut value : String
 } derive(@debug.Debug)
 
 pub(all) struct ArraySnapshot {
   name : String
   element_ty : String
+  mut elements : Array[String]
+  truncated : Bool
+} derive(@debug.Debug)
+
+pub(all) struct ArraySnapshotRef {
+  name_idx : Int
+  element_ty_idx : Int
   elements : Array[String]
   truncated : Bool
 } derive(@debug.Debug)
@@ -106,8 +146,17 @@ pub(all) struct PointerSnapshot {
   name : String
   addr : UInt
   ty_name : String
-  target_addr : UInt
+  mut target_addr : UInt
   target_name : String
+  status : PointerStatus
+} derive(@debug.Debug)
+
+pub(all) struct PointerSnapshotRef {
+  name_idx : Int
+  addr : UInt
+  ty_name_idx : Int
+  target_addr : UInt
+  target_name_idx : Int
   status : PointerStatus
 } derive(@debug.Debug)
 
@@ -165,15 +214,68 @@ pub(all) struct StepPayload {
   semantic_label : String
   algorithm_step : AlgorithmStepSnapshot?
   local_vars : Array[ApiVariableSnapshot]
-  call_stack : Array[ApiFrameInfo]
+  mut call_stack : Array[ApiFrameInfo]
+  mut vis_events : Array[VisEvent]
+  heatmap_line : Int
+  heatmap_count : UInt64
+  mut accessed_vars : Array[AccessedVar]
+  mut array_snapshots : Array[ArraySnapshot]
+  mut pointer_snapshots : Array[PointerSnapshot]
+  root_cause_hint : RootCauseHint?
+} derive(@debug.Debug)
+
+pub(all) struct StepPayloadDelta {
+  step_index : Int
+  code_line : Int
+  func_name_idx : Int
+  semantic_label_idx : Int
+  algorithm_step : AlgorithmStepSnapshotRef?
+  var_deltas : Array[VarDelta]
+  new_vars : Array[ApiVarSnapshotRef]
+  removed_var_name_indices : Array[Int]
+  call_stack : Array[ApiFrameInfoRef]?
+  vis_events : Array[VisEvent]?
+  heatmap_line : Int
+  heatmap_count : UInt64
+  accessed_vars : Array[AccessedVarRef]?
+  array_snapshots : Array[ArraySnapshotRef]?
+  removed_array_name_indices : Array[Int]
+  pointer_snapshots : Array[PointerSnapshotRef]?
+  removed_pointer_name_indices : Array[Int]
+  root_cause_hint : RootCauseHint?
+} derive(@debug.Debug)
+
+pub(all) struct StepPayloadRef {
+  step_index : Int
+  code_line : Int
+  func_name_idx : Int
+  semantic_label_idx : Int
+  algorithm_step : AlgorithmStepSnapshotRef?
+  local_vars : Array[ApiVarSnapshotRef]
+  call_stack : Array[ApiFrameInfoRef]
   vis_events : Array[VisEvent]
   heatmap_line : Int
   heatmap_count : UInt64
-  accessed_vars : Array[AccessedVar]
-  array_snapshots : Array[ArraySnapshot]
-  pointer_snapshots : Array[PointerSnapshot]
+  accessed_vars : Array[AccessedVarRef]
+  array_snapshots : Array[ArraySnapshotRef]
+  pointer_snapshots : Array[PointerSnapshotRef]
   root_cause_hint : RootCauseHint?
 } derive(@debug.Debug)
+
+pub(all) struct StepStreamBatch {
+  symbol_table : Array[String]
+  base_payloads : Array[StepPayloadRef]
+  deltas : Array[StepPayloadDelta]
+  finished : Bool
+  trapped : Bool
+  waiting_input : Bool
+  paused : Bool
+  current_line : Int
+  trap_message : String?
+  cache_start_step : Int
+} derive(@debug.Debug)
+
+type SymbolTable
 
 pub(all) struct UnifiedRunResult {
   success : Bool
@@ -188,6 +290,11 @@ pub(all) struct UnwindSample {
   unwind_frames_left : Int
 } derive(Compare, Eq, @debug.Debug)
 
+pub(all) struct VarDelta {
+  name_idx : Int
+  value : String
+} derive(@debug.Debug)
+
 pub(all) struct VisEvent {
   ty : Int
   line : Int
@@ -198,5 +305,6 @@ pub(all) struct VisEvent {
 } derive(@debug.Debug)
 
 // Type aliases
+pub type SymIdx = Int
 
 // Traits

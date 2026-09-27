@@ -32,3 +32,7 @@ vitro/engine/diag codes_without_catalog
 # 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
 # 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
 vitro/engine/vm load_libc_artifact
+# S7 段二：两个 encode 细粒度出口的签名含 priv SymbolTable（跨包不可构造，
+# 照搬 Rust pub+priv 形态）；真消费面 = encode_payloads 内部。
+vitro/engine/protocol encode_step_payload
+vitro/engine/protocol encode_step_delta

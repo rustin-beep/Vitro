@@ -29,15 +29,13 @@ fn func_of(
   loc : @source.SourceLoc,
 ) -> @ast.FuncDecl {
   {
+    ..Default::default(),
     loc,
     return_type: @ast.Type::int(),
     name,
     params,
     body,
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
-    is_variadic: false,
   }
 }
 

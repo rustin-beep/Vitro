@@ -21,15 +21,13 @@ fn empty_prog(funcs : Array[@ast.FuncDecl]) -> @ast.ProgramNode {
 fn main_of(body : @ast.Stmt) -> @ast.FuncDecl {
   let loc = @source.SourceLoc::new(1, 1)
   {
+    ..Default::default(),
     loc,
     return_type: @ast.Type::int(),
     name: "main",
     params: [],
     body: Some(body),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
-    is_variadic: false,
   }
 }
 

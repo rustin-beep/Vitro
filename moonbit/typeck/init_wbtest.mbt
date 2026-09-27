@@ -12,6 +12,7 @@ test "init_array_size_inference" {
     { designators: [], value: @ast.Expr::Literal(v, loc, @ast.Type::int()), }
   }
   let g : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::Array(@ast.Type::int(), -1, [-1], false, false, []),
     name: "a",
@@ -22,8 +23,6 @@ test "init_array_size_inference" {
         @ast.Type::void_type(),
       ),
     ),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog : @ast.ProgramNode = {
@@ -47,6 +46,7 @@ test "init_array_size_inference" {
   }
   // 超量：int b[2] = {1,2,3} → E3005
   let g2 : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::array_of(@ast.Type::int(), [2]),
     name: "b",
@@ -57,8 +57,6 @@ test "init_array_size_inference" {
         @ast.Type::void_type(),
       ),
     ),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog2 : @ast.ProgramNode = { ..prog, globals: [g2], }
@@ -74,12 +72,11 @@ test "init_array_size_inference" {
 test "init_string_literal_track" {
   let loc = @source.SourceLoc::new(1, 1)
   let s : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::Array(@ast.Type::char(), -1, [-1], false, false, []),
     name: "s",
     init: Some(@ast.Expr::StringLiteral("ab", loc, @ast.Type::void_type())),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog : @ast.ProgramNode = {
@@ -102,12 +99,11 @@ test "init_string_literal_track" {
     _ => fail("char 数组")
   }
   let t : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::array_of(@ast.Type::char(), [2]),
     name: "t",
     init: Some(@ast.Expr::StringLiteral("ab", loc, @ast.Type::void_type())),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog2 : @ast.ProgramNode = { ..prog, globals: [t], }
@@ -141,6 +137,7 @@ test "init_struct_tracks" {
   }
   // 合法定位初始化
   let ok_g : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::struct_type("P"),
     name: "p",
@@ -153,12 +150,11 @@ test "init_struct_tracks" {
         loc,
       ),
     ),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   // designated 未知字段 → E3042
   let bad_field_g : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::struct_type("P"),
     name: "q",
@@ -168,12 +164,11 @@ test "init_struct_tracks" {
         loc,
       ),
     ),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   // 混合 → E3005
   let mix_g : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::struct_type("P"),
     name: "r",
@@ -186,8 +181,6 @@ test "init_struct_tracks" {
         loc,
       ),
     ),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog : @ast.ProgramNode = {
@@ -228,12 +221,11 @@ test "init_multidim_flat_scalar" {
     )
   }
   let m : @ast.GlobalDecl = {
+    ..Default::default(),
     loc,
     ty: @ast.Type::array_of(@ast.Type::int(), [2, 3]),
     name: "m",
     init: Some(flat([1, 2, 3, 4, 5, 6], loc)),
-    is_static: false,
-    is_extern: false,
     source_file: "t.c",
   }
   let prog : @ast.ProgramNode = {

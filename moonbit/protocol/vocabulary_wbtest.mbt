@@ -91,16 +91,23 @@ test "vocabulary_table_matches_rust_source" {
 
 ///|
 test "vocabulary_json_shape" {
+  // 键序 = serde 字典序（discipline 首键、条目 domain/example/id/...）
   let json = vocabulary_json()
   assert_false(json.contains(": "), msg="紧凑形态不得含键值空格")
   assert_true(json.contains("\"schema\":\"v0.1\""))
-  assert_true(json.contains("\"discipline\":\"词汇只增不改"))
-  assert_true(json.contains("\"labels\":["))
+  assert_true(
+    json.has_prefix("{\"discipline\":\"词汇只增不改"),
+    msg="顶层首键 = discipline（serde 字典序）",
+  )
+  assert_true(
+    json.has_suffix("\"schema\":\"v0.1\"}"),
+    msg="顶层末键 = schema 段收尾",
+  )
   assert_true(
     json.contains(
-      "{\"id\":\"swap\",\"domain\":\"c\",\"template\":\"交换 arr[{i}]↔arr[{j}]\"",
+      "{\"domain\":\"c\",\"example\":\"交换 arr[3]↔arr[4]\",\"id\":\"swap\"",
     ),
-    msg="条目字段序 = id/domain/template 在前",
+    msg="条目键序 = domain/example/id/since/status/template（serde 字典序）",
   )
 }
 
@@ -114,4 +121,43 @@ test "kind_by_id_roundtrip" {
     Some(k) => assert_eq(k.domain, "c")
     None => fail("loop 必在词汇表内")
   }
+}
+
+///|
+test "vocabulary_json_byte_exact_rust_truth" {
+  // 与 Rust 真值逐字节对拍锚（用户审阅 P2-1 实测锁定，2026-09-27）：探针 stdout 真值第二条。键序漂移（含 preserve_order 启用 / 词汇改文）即红。
+  let vt : Array[String] = [
+    "{\"discipline\":\"词汇只增不改：id 与 template 一经发布不得改语义，扩充只能追加条目\",\"labels\":[{\"domain\":\"c",
+    "\",\"example\":\"交换 arr[3]↔arr[4]\",\"id\":\"swap\",\"since\":\"-\",\"status\":\"active",
+    "\",\"template\":\"交换 arr[{i}]↔arr[{j}]\"},{\"domain\":\"c\",\"example\":\"递归调用 fib\",\"i",
+    "d\":\"recursive_call\",\"since\":\"-\",\"status\":\"active\",\"template\":\"递归调用 {func}",
+    "\"},{\"domain\":\"c\",\"example\":\"调用 printf / 调用 qsort / 调用 swap\",\"id\":\"call\",\"s",
+    "ince\":\"-\",\"status\":\"active\",\"template\":\"调用 {func}\"},{\"domain\":\"c\",\"examp",
+    "le\":\"函数调用\",\"id\":\"generic_call\",\"since\":\"-\",\"status\":\"active\",\"template\"",
+    ":\"函数调用\"},{\"domain\":\"c\",\"example\":\"循环 i=0, j=1（无值形态为裸 `循环`）\",\"id\":\"loop\",\"",
+    "since\":\"-\",\"status\":\"active\",\"template\":\"循环 {iter=v, …}\"},{\"domain\":\"c\",",
+    "\"example\":\"返回\",\"id\":\"return\",\"since\":\"-\",\"status\":\"active\",\"template\":",
+    "\"返回\"},{\"domain\":\"c\",\"example\":\"内存分配\",\"id\":\"heap_alloc\",\"since\":\"-\",\"s",
+    "tatus\":\"active\",\"template\":\"内存分配\"},{\"domain\":\"c\",\"example\":\"释放内存\",\"id\":",
+    "\"heap_free\",\"since\":\"-\",\"status\":\"active\",\"template\":\"释放内存\"},{\"domain\":",
+    "\"c\",\"example\":\"IO 操作\",\"id\":\"io\",\"since\":\"-\",\"status\":\"active\",\"templa",
+    "te\":\"IO 操作\"},{\"domain\":\"c\",\"example\":\"第 12 行\",\"id\":\"line_fallback\",\"sinc",
+    "e\":\"-\",\"status\":\"active\",\"template\":\"第 {line} 行\"},{\"domain\":\"csharp\",\"ex",
+    "ample\":\"抛出异常\",\"id\":\"throw\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template",
+    "\":\"抛出异常\"},{\"domain\":\"csharp\",\"example\":\"栈展开\",\"id\":\"unwind\",\"since\":\"CS",
+    "3b\",\"status\":\"reserved\",\"template\":\"栈展开\"},{\"domain\":\"csharp\",\"example\":\"",
+    "进入 catch\",\"id\":\"catch_enter\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template",
+    "\":\"进入 catch\"},{\"domain\":\"csharp\",\"example\":\"finally 执行\",\"id\":\"finally\",\"",
+    "since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"finally 执行\"}],\"schema\":\"v0.1",
+    "\"}",
+  ]
+  let buf = StringBuilder()
+  for p in vt {
+    buf.write_string(p)
+  }
+  assert_eq(
+    vocabulary_json(),
+    buf.to_string(),
+    msg="vocabulary_json 必须与 Rust 探针真值逐字符一致",
+  )
 }

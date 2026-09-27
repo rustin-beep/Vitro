@@ -90,7 +90,7 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
       kind: "reserve",
       status: "pending",
       batch: "CS3b",
-      note: "展开态显式标记；每帧一 step，不得合并（见行为契约表）",
+      note: "展开态显式标记；每帧一 step，不得合并（见 BEHAVIOR_CONTRACTS）",
     },
     {
       field: "unwind_frames_left",
@@ -118,7 +118,7 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
       kind: "add",
       status: "pending",
       batch: "v0.2",
-      note: "补全既有字段值（§8 #1）：字段已在 v0.1 中恒为 0，激活 = 记录 VM 帧返回行，属补值不改字段",
+      note: "补全既有字段值（§8 #1）：字段已在 v0.1 中恒为 0，激活 = 记录 VM 帧返回行，属**补值不改字段**",
     },
     {
       field: "func_display_name / func_mangled_name",
@@ -158,7 +158,7 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
       statement: "StepPayload 字段只增不改语义；新增字段必须可空/有默认值；v0.1 阶段不得携带未发布字段",
       status: "active",
       batch: "-",
-      enforced_by: "step_payload_schema_v0_1_test（键集合冻结 + reserved_fields_v0_2 缺省断言）",
+      enforced_by: "step_payload_schema_v0_1_test（键集合冻结 + contracts::RESERVED_FIELDS_V0_2 缺省断言）",
     },
     {
       id: "jit_breakpoint_integrity",
@@ -169,10 +169,10 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
     },
     {
       id: "unwinding_step_granularity",
-      statement: "UNWINDING 每弹一帧 / 执行一个 finally 块 = 一个 VM step，不得合并单步（展开动画的根基）",
+      statement: "UNWINDING 每弹一帧 / 执行一个 finally 块 = 一个 VM step，**不得合并单步**（展开动画的根基）",
       status: "reserved",
       batch: "CS3b",
-      enforced_by: "check_unwinding_granularity（单测合成序列）+ SharpTutor S4 §5 A2/A5 回放",
+      enforced_by: "contracts::check_unwinding_granularity（单测合成序列）+ SharpTutor S4 §5 A2/A5 回放",
     },
     {
       id: "try_excludes_jit",
@@ -265,21 +265,46 @@ pub fn check_unwinding_granularity(
 
 ///| 契约表 JSON（capabilities.behavior_contracts / 文档自检共用）。
 
-///| 显式 emitter（B 级锚纪律：禁 ToJson 派生；字段序/紧凑形态对齐 Rust
+///| 显式 emitter（B 级锚纪律：禁 ToJson 派生）。**键序 = serde_json 字典序**
 
-///| contracts_json 的 serde 输出）。值域全部来自本包常量表（受控词表，
+///| （Rust 侧 serde_json::json! 宏先落 Value::Object，native/Cargo.toml 未启
+
+///| preserve_order ⇒ Map = BTreeMap，to_string 按键字典序输出；条目内 struct
+
+///| 字段同样被重排）——顶层 behavior_contracts/frozen_at/reserved_fields_v0_2/
+
+///| schema/v0_2_activation_checklist/v0_2_field_ledger，BehaviorContract 条目
+
+///| batch/enforced_by/id/statement/status，SchemaFieldPlan 条目
+
+///| batch/field/kind/note/status。紧凑无空格。与 Rust 真值的**逐字节对拍锚**
+
+///| 在 schema_wbtest（探针 tmp/review_20260927/json_order，serde_json ~1.0.149
+
+///| 同 native，2026-09-27 用户审阅 P2-1 实测锁定）。值域全部来自本包常量表
+
+///| （受控词表，无引号/反斜杠/控制字符，直拼安全；任意值 emitter 随 gateway
 
 ///|
-/// 无引号/反斜杠/控制字符，直拼安全；任意值 emitter 随 gateway serve 批）。
+/// serve 批）。
 pub fn contracts_json() -> String {
   let buf = StringBuilder()
-  buf.write_string("{\"schema\":\"")
-  buf.write_string(SCHEMA_VERSION)
-  buf.write_string("\",\"frozen_at\":\"")
+  buf.write_string("{\"behavior_contracts\":[")
+  for i, c in behavior_contracts() {
+    if i > 0 {
+      buf.write_char(',')
+    }
+    buf.write_string(
+      "{\"batch\":\"\{c.batch}\",\"enforced_by\":\"\{c.enforced_by}\",\"id\":\"\{c.id}\",\"statement\":\"\{c.statement}\",\"status\":\"\{c.status}\"}",
+    )
+  }
+  buf.write_string("],\"frozen_at\":\"")
   buf.write_string(SCHEMA_V0_1_FROZEN_AT)
   buf.write_string("\",\"reserved_fields_v0_2\":[")
   write_json_string_array(buf, reserved_fields_v0_2())
-  buf.write_string("],\"v0_2_activation_checklist\":[")
+  buf.write_string("],\"schema\":\"")
+  buf.write_string(SCHEMA_VERSION)
+  buf.write_string("\",\"v0_2_activation_checklist\":[")
   write_json_string_array(buf, v0_2_activation_checklist())
   buf.write_string("],\"v0_2_field_ledger\":[")
   for i, plan in v0_2_field_ledger() {
@@ -287,16 +312,7 @@ pub fn contracts_json() -> String {
       buf.write_char(',')
     }
     buf.write_string(
-      "{\"field\":\"\{plan.field}\",\"kind\":\"\{plan.kind}\",\"status\":\"\{plan.status}\",\"batch\":\"\{plan.batch}\",\"note\":\"\{plan.note}\"}",
-    )
-  }
-  buf.write_string("],\"behavior_contracts\":[")
-  for i, c in behavior_contracts() {
-    if i > 0 {
-      buf.write_char(',')
-    }
-    buf.write_string(
-      "{\"id\":\"\{c.id}\",\"statement\":\"\{c.statement}\",\"status\":\"\{c.status}\",\"batch\":\"\{c.batch}\",\"enforced_by\":\"\{c.enforced_by}\"}",
+      "{\"batch\":\"\{plan.batch}\",\"field\":\"\{plan.field}\",\"kind\":\"\{plan.kind}\",\"note\":\"\{plan.note}\",\"status\":\"\{plan.status}\"}",
     )
   }
   buf.write_string("]}")

@@ -227,23 +227,33 @@ pub fn kind_by_id(id : String) -> SemanticLabelKind? {
 
 ///| 词汇表 JSON（serve 的 semantic_labels 出口 / 文档自检共用）。
 
-///| 显式 emitter：字段序与紧凑形态对齐 Rust vocabulary_json 的 serde
+///| 显式 emitter：**键序 = serde_json 字典序**（Rust 侧 json! 宏落
+
+///| Value::Object = BTreeMap，to_string 按键字典序——顶层
+
+///| discipline/labels/schema，SemanticLabelKind 条目
+
+///| domain/example/id/since/status/template；数组元素序保持插入序）。
+
+///| 紧凑无空格；与 Rust 真值的逐字节对拍锚在 vocabulary_wbtest（探针
+
+///| tmp/review_20260927/json_order，2026-09-27 用户审阅 P2-1 实测锁定）。
 
 ///|
-/// 输出；值域全部来自本包常量表，直拼安全（同 contracts_json）。
+/// 值域全部来自本包常量表，直拼安全（同 contracts_json）。
 pub fn vocabulary_json() -> String {
   let buf = StringBuilder()
   buf.write_string(
-    "{\"schema\":\"\{SCHEMA_VERSION}\",\"discipline\":\"词汇只增不改：id 与 template 一经发布不得改语义，扩充只能追加条目\",\"labels\":[",
+    "{\"discipline\":\"词汇只增不改：id 与 template 一经发布不得改语义，扩充只能追加条目\",\"labels\":[",
   )
   for i, k in semantic_label_vocabulary() {
     if i > 0 {
       buf.write_char(',')
     }
     buf.write_string(
-      "{\"id\":\"\{k.id}\",\"domain\":\"\{k.domain}\",\"template\":\"\{k.template}\",\"example\":\"\{k.example}\",\"status\":\"\{k.status}\",\"since\":\"\{k.since}\"}",
+      "{\"domain\":\"\{k.domain}\",\"example\":\"\{k.example}\",\"id\":\"\{k.id}\",\"since\":\"\{k.since}\",\"status\":\"\{k.status}\",\"template\":\"\{k.template}\"}",
     )
   }
-  buf.write_string("]}")
+  buf.write_string("],\"schema\":\"\{SCHEMA_VERSION}\"}")
   buf.to_string()
 }

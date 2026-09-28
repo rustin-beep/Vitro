@@ -1,0 +1,30 @@
+{
+  "_generated_by": "go run ./scripts/moonbit/vendor_drift --update-baseline",
+  "as_of": "2026-09-28",
+  "repo": "moonbitlang/x",
+  "ref": "main",
+  "upstream_version": "0.5.5",
+  "version_note": "辅助口径仅报告不判红：2026-09-27 实证上游内容漂移而 version 未 bump（fs_native.mbt 的 unicode→core/utf8 迁移）——内容哈希是唯一主口径",
+  "files": [
+    {
+      "path": "fs/fs.mbt",
+      "sha256": "41d895c76d4694aaa80b3f93cdb456aa99a480f997c3282aab78421458baaa0e",
+      "vendored": "moonbit/fs/fs.mbt"
+    },
+    {
+      "path": "fs/fs_native.mbt",
+      "sha256": "5f20626eac50967dbc88a2b5130e02a3f283dc41ddc1e5464b5debfd086a9ac9",
+      "vendored": "moonbit/fs/fs_native.mbt"
+    },
+    {
+      "path": "fs/fs_native.c",
+      "sha256": "f10144a5cbd2a4fa36fa4f058b1461b6788ec43b9e4fd9bb0be3015e3aa272b0",
+      "vendored": "moonbit/fs/fs_native.c"
+    },
+    {
+      "path": "fs/blackbox_test.mbt",
+      "sha256": "1ca6ce5b39087d87c8310eb4b84890f8e01a048e61f72d4b928925abd654d8d0",
+      "vendored": "moonbit/fs/fs_wbtest.mbt + fs_test.mbt（上游测试改写转正：全函数面移白盒、@encoding UTF16 依赖裁除）"
+    }
+  ]
+}

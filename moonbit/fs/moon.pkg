@@ -1,0 +1,18 @@
+// vendored 包（唯一依赖清除 B 路线批，2026-09-28）：fs 实现
+// 自 moonbitlang/x@0.5.5 搬迁（fs.mbt / fs_native.mbt / fs_native.c /
+// utf8_compat.mbt 四文件 + 测试转正），零 import——vendor 边界闭合。
+// pub 面收窄到 7 函数 + IOError（cmd×5 实际消费面）。
+// 上游漂移监控：go run ./scripts/moonbit/vendor_drift（基线
+// scripts/moonbit/vendor_baseline.json）。
+// read_file_to_bytes / is_file / remove_dir / remove_file 四函数按 B 路线
+// 拍板保留 priv（不 pub——moonbit_surface 无主 pub 闸；实现保留使上游
+// 跟进 diff 可读），其消费点全部在 _wbtest.mbt——moon check 的 unused
+// 分析不计测试文件，故包级关闭 unused_value（core builtin 同款先例）。
+// 本包体量 4 文件，关闭面可控；新增真死码会在 moon test 编译路径暴露。
+warnings = "-unused_value"
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "fs_native.c" ],
+)

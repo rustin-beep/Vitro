@@ -2,7 +2,7 @@ import {
   "vitro/engine/ast",
   "vitro/engine/lexer",
   "vitro/engine/parser",
-  "moonbitlang/x/fs",
+  "vitro/engine/fs",
   "moonbitlang/core/env",
 }
 

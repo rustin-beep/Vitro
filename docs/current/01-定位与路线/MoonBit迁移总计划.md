@@ -44,7 +44,7 @@
 ## 4. 包切分总图（L0–L9，`.mbti` 取代 ABI 版本化成为对外义务载体）
 
 ```
-L0 零依赖   vitro/engine/source(SourceLoc+坐标契约)   vitro/engine/opcode(135+Instruction+operand 校验；44–46 = C# 异常三件 TryBegin/TryEnd/Throw 进历史空号，2026-09-25 vm 批一号)   vitro/engine/util(零语义机械件单源：utf8_len/str_cmp/i64_to_i32_bits/LE 拼装读——G-1，2026-09-26 已落)
+L0 零依赖   vitro/engine/source(SourceLoc+坐标契约)   vitro/engine/opcode(135+Instruction+operand 校验；44–46 = C# 异常三件 TryBegin/TryEnd/Throw 进历史空号，2026-09-25 vm 批一号)   vitro/engine/util(零语义机械件单源：utf8_len/str_cmp/i64_to_i32_bits/LE 拼装读——G-1，2026-09-26 已落)   vitro/engine/fs(vendored 自 moonbitlang/x@0.5.5 的 native-only 文件系统件——唯一依赖清除 B 路线批 2026-09-28 已落：pub 收窄 7 函数+IOError，上游漂移由 scripts/moonbit/vendor_drift 内容哈希探针盯〔CI hygiene〕；moon.mod 依赖块自此清空=模块零外部依赖)
 L1 诊断契约  vitro/engine/diag(ErrorCode 137+Severity+SourceLang+Diagnostic+catalog JSON+覆盖率断言)
 L2 抽象语法  vitro/engine/ast(Type 17/Expr 26/Stmt 16+depth+判等渲染单源；不含 compute_type_size)
 L3 名字单源  vitro/engine/names(InstKey→InstId→mangled Name 唯一产出口；parser/typeck 共依赖)

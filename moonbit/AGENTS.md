@@ -11,6 +11,7 @@
 | `vitro/engine/source` | L0 | SourceLoc + 列单位契约（column = 行内 UTF-8 字节偏移+1）+ Pos 双坐标 | ✅ 已发布 0.1.1 |
 | `vitro/engine/opcode` | L0 | 135 条 opcode（44–46 = C# 异常三件 reserved，47–49 空号）+ Instruction | ✅ 已发布 |
 | `vitro/engine/util` | L0 | 零语义机械件单源（G-1，2026-09-26）：`utf8_len`（UTF-8 字节长度，8 处散拼收口）/ `str_cmp`（真字典序，陷阱 #29 的唯一正解）/ `i64_to_i32_bits`（Rust `as i32` 位截断）/ `le_u32_at`·`le_u64_at`（FixedArray[Byte] 小端拼装读，陷阱 #35）；**只许零语义机械件，新件入包先登记 G 表** | ✅ G-1 落地（随 0.6.0 发布） |
+| `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**，唯一依赖清除 B 路线批，2026-09-28）：`fs.mbt`+`fs_native.mbt`+`fs_native.c`+`utf8_compat.mbt`（unicode 四函数内联 priv）四文件搬迁，C 符号前缀 `vitro_engine_fs_*`；**pub 面收窄 7 函数+IOError**（消费面 = cmd×5；`read_file_to_bytes`/`is_file`/`remove_dir`/`remove_file` 保留 priv 由白盒覆盖）；**moon.mod 依赖块清空——模块零外部依赖**（deps 字段/传递解析/registry 存续绑定归零）；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希主口径，CI hygiene；红=人工评估令）；0.5.5 截断语义与上游 main U+FFFD 的分界锚在 fs_wbtest；Apache-2.0 合规 = 文件头保留+来源标注+`THIRD_PARTY.md` | ✅ vendored 批落地（随 0.7.0 发布）；9 测试（白盒 7+黑盒 2） |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂（gen_diag 生成）+ catalog 77 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size（S3 消费驱动补齐） | ✅ 已发布 |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |

@@ -5,7 +5,7 @@ import {
   "vitro/engine/lexer",
   "vitro/engine/parser",
   "vitro/engine/typeck",
-  "moonbitlang/x/fs",
+  "vitro/engine/fs",
   "moonbitlang/core/env",
   "vitro/engine/util",
 }

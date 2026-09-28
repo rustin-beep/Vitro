@@ -8,7 +8,7 @@ import {
   "vitro/engine/parser",
   "vitro/engine/typeck",
   "vitro/engine/vm",
-  "moonbitlang/x/fs",
+  "vitro/engine/fs",
   "moonbitlang/core/env",
 }
 

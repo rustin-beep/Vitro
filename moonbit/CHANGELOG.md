@@ -4,6 +4,26 @@
 修复只能递增版本；弃用须给出迁移路径与移除版本）。版本语义：修复已发布内容 →
 patch；新增包 / 公共 API → minor。
 
+## [Unreleased]（0.7.0 开发期）
+
+### Added
+
+- `vitro/engine/fs`（L0，native-only）：**vendored 自 moonbitlang/x@0.5.5**
+  的文件系统件（唯一依赖清除 B 路线批，2026-09-28）——`read_file_to_string`
+  / `write_string_to_file` / `write_bytes_to_file` / `path_exists` / `read_dir`
+  / `create_dir` / `is_dir` 七函数 + `IOError`。C 符号前缀
+  `vitro_engine_fs_*`；unicode 四函数内联 priv（vendor 边界闭合）。
+  上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希口径，CI hygiene；
+  处置手册见仓库 docs/current/01-定位与路线/唯一依赖清除路线.md §3B-4）。
+
+### Changed
+
+- **`moon.mod` 依赖块清空——module 零外部依赖**（原唯一依赖
+  `moonbitlang/x@0.5.5` 的消费面 cmd×5 全部切换到 `vitro/engine/fs`，
+  `@fs` 别名不变，调用方零改动）。发布件自包含：index 行 deps 可空，
+  下游安装不再连带拉 x 全模块、不再绑定第三方 registry 存续。
+  vendored 文件为 Apache-2.0（文件头保留 + `THIRD_PARTY.md` 全文）。
+
 ## [0.6.0] - 2026-09-26
 
 ### Added

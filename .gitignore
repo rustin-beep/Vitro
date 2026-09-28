@@ -145,3 +145,7 @@ moonbit/.mooncakes/
 scripts/lexer_diff/_build/
 moonbit/target/
 moonbit/.repos/
+
+# fs 包测试临时目录（vendored 批 2026-09-28）：黑盒无 pub remove 自清能力（收窄），
+# 白盒断言中途失败也会留残骸——统一忽略包目录下的 tmp_vitro_fs_*
+moonbit/fs/tmp_vitro_fs_*/

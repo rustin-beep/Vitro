@@ -523,6 +523,18 @@ jobs:
         shell: bash
         run: go run ./scripts/toolchain_probe
 
+      - name: Vendored upstream drift probe (moonbitlang/x fs)
+        # 2026-09-28 唯一依赖清除 B 路线批接线：moonbit/fs vendored 自
+        # moonbitlang/x@0.5.5，上游是活仓库且实证发生过「内容漂移而
+        # version 未 bump」（fs_native.mbt 的 utf8 迁移）——探针走内容哈希
+        # 口径盯上游 main 四文件（版本号仅报告）。归 hygiene：红 = 上游
+        # 漂移待人工评估（评估令非自动同步令——裁定权在人，处置流程见
+        # docs/current/01-定位与路线/唯一依赖清除路线.md §3B-4）；
+        # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
+        # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
+        shell: bash
+        run: go run ./scripts/moonbit/vendor_drift
+
       - name: Performance-assumption budget (corpus scale premises)
         # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
         # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次

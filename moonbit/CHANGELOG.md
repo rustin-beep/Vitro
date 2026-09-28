@@ -8,6 +8,15 @@ patch；新增包 / 公共 API → minor。
 
 ### Fixed
 
+- **`set_call_depth_limit` 缺 V-P1-10 下限 16 兜底**（2026-09-29 用户
+  审阅 P2 实锤并双向证明）：Rust `state.rs` 的 `limit.max(16)` 未随
+  S6 照搬——`config.set {"call_depth_limit": 0/-5}` 时 oracle 回 16
+  / 本侧回原值（过小配置把正常程序直接判死）。修复 = vm setter 补
+  clamp（同 Rust）+ Session 写入口同款（回显读 SessionConfig 须持
+  clamp 后值——与 Rust「回显读 vm getter」语义对齐）；连坐翻转
+  `exec_call_depth_limit_traps` 锚（传 8 的 trap 文案 8 层→16 层——
+  无 clamp 期的旧锁值）；新增 vm setter 单元锚 + serve 回显锚。
+
 - **局部 struct 数组部分初始化的零填充偏移双重计数**（2026-09-28
   kruskalMST 调查批实锤）：`var_decl.mbt` 零填充循环照搬 Rust 的
   `(i, _) in range.enumerate()` 形态时，把 enumerate 下标（0 起）误接到

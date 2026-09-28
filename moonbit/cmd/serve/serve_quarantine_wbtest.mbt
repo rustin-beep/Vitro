@@ -86,3 +86,18 @@ test "serve_config_echoes_input_mode_batch" {
     msg="run 帧切换后回显",
   )
 }
+
+///|
+test "serve_config_set_call_depth_limit_floor_16" {
+  // 审阅 P2：call_depth_limit 的 clamp 下界走 serve 通道锁行为
+  //（oracle 真值 16——vitro_cli serve 实测 0/-5 均回 16）
+  let s = @session.Session::new()
+  let (r1, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"call_depth_limit\":0}}",
+  )
+  assert_true(r1.contains("\"call_depth_limit\":16"), msg="0 → 16")
+  let (r2, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"config.set\",\"params\":{\"call_depth_limit\":-5}}",
+  )
+  assert_true(r2.contains("\"call_depth_limit\":16"), msg="-5 → 16")
+}

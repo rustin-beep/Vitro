@@ -668,3 +668,17 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
   // 恢复态仍可运行到程序语义终点（PushConst 7; Ret）
   assert_eq(vm.run(), 7, msg="恢复后可继续执行")
 }
+
+///|
+test "set_call_depth_limit_clamps_to_16_floor" {
+  // V-P1-10 下限 16 层兜底（Rust state.rs:523 limit.max(16) 同形）——
+  // 过小配置不得把正常程序直接判死；2026-09-29 用户审阅 P2 实锤：
+  // 此前裸赋值，config.set 0/-5 时 oracle 回 16 / 本侧回原值
+  let vm = VitroVM::new()
+  vm.set_call_depth_limit(0)
+  assert_eq(vm.call_depth_limit, 16, msg="0 → 16 兜底")
+  vm.set_call_depth_limit(-5)
+  assert_eq(vm.call_depth_limit, 16, msg="-5 → 16 兜底")
+  vm.set_call_depth_limit(48)
+  assert_eq(vm.call_depth_limit, 48, msg="正常值不夹")
+}

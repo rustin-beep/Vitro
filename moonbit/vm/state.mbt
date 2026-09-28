@@ -487,7 +487,10 @@ pub fn VitroVM::set_max_steps(self : VitroVM, max_steps : Int) -> Unit {
 ///|
 /// 设置调用深度上限（会话级配置）。
 pub fn VitroVM::set_call_depth_limit(self : VitroVM, limit : Int) -> Unit {
-  self.call_depth_limit = limit
+  // V-P1-10 下限 16 层兜底（Rust state.rs:523 `limit.max(16)` 同形——
+  // 过小配置不得把正常程序直接判死；2026-09-29 用户审阅 P2 补齐，
+  // 此前裸赋值致 config.set 0/-5 分叉）
+  self.call_depth_limit = if limit < 16 { 16 } else { limit }
 }
 
 ///|

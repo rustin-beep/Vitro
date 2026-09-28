@@ -23,7 +23,7 @@
 
 - **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → 0.5.0（2026-09-23）→ **0.6.0**（S6 收官版：`memory` / `host` / `vm` / `util` + `cmd/run`，2026-09-27 发布）——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
 - **已收官片**（各片收官时点数字，历史快照不连坐当前真值）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）/ S6 memory·host·vm（135 opcode 穷尽执行器 + `VMSnapshot` 快照体系 + 110 host 路由 + `cmd/run` 端到端 runner）
-- **验证**：`moon test` **506 用例**全绿（2026-09-29 快照，分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准）+ 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，全量 696 例 = 688 一致 / 8 条既有登记 known / DIFF 0，2026-09-27 实测）；对外面以 `moonbit_surface -check` 机判对账
+- **验证**：`moon test` **506 用例**全绿（2026-09-29 快照，分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准）+ 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，全量 696 例 = 689 一致 / 7 条既有登记 known / DIFF 0，2026-09-29 实测〔kruskalMST 缺陷修复转绿销一条〕）；对外面以 `moonbit_surface -check` 机判对账
 - **性能现状**（2026-09-26 实测，同机对拍 Rust oracle）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×。差距来自解释器 dispatch——全速执行规划于 0.7.0+（bytecode→wasm-GC 生成器路线），解释器形态持续服务单步语义与时间旅行
 - **其后**：S7 协议/会话、S8 教学智能、S9 裁定批——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
 
@@ -152,7 +152,7 @@ cd native && cargo build --target wasm32-unknown-unknown --release
 
 **MoonBit 侧（现役）**：
 
-1. **`moon test` 506 用例 + 十五道闸门**（2026-09-29 快照）：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（全量 696 例 = 688 一致 / 8 条既有登记 known / DIFF 0，2026-09-27 实测）
+1. **`moon test` 506 用例 + 十五道闸门**（2026-09-29 快照）：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（全量 696 例 = 689 一致 / 7 条既有登记 known / DIFF 0，2026-09-29 实测〔kruskalMST 缺陷修复转绿销一条〕）
 2. **运行期双防线**：`scripts/vm_diff` 三联差分（引擎 vs Rust oracle，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
 3. **对外面对账**：`go run ./scripts/moonbit/moonbit_surface -check` 机判 `.mbti` 接口面
 

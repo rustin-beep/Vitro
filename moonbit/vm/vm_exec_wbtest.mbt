@@ -692,6 +692,9 @@ test "exec_jump_if_zero_loop" {
 /// 控制流锚：调用深度上限（V-P1-10——递归无终止条件时可控 trap）。
 test "exec_call_depth_limit_traps" {
   let vm = VitroVM::new()
+  // V-P1-10 下限 16 兜底（2026-09-29 审阅 P2 连坐翻转）：传 8 被
+  // clamp 到 16（Rust state.rs limit.max(16) 同形——8 层文案是无
+  // clamp 期的旧锁值），trap 文案随之报 16 层
   vm.set_call_depth_limit(8)
   // 函数 0：无限自递归 f(){ f(); }
   assert_true(
@@ -714,7 +717,10 @@ test "exec_call_depth_limit_traps" {
   let r = vm.run()
   // 深度超限 → Trap（run 返 0）
   assert_eq(r, 0)
-  assert_true(vm.error.contains("调用深度超过上限（8 层）"))
+  assert_true(
+    vm.error.contains("调用深度超过上限（16 层）"),
+    msg="8 被 16 兜底（V-P1-10 连坐翻转）",
+  )
 }
 
 ///|

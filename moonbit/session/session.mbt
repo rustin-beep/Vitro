@@ -126,8 +126,13 @@ pub fn Session::set_max_steps(self : Session, max : Int) -> Unit {
 
 ///|
 /// 调用深度保险丝（会话级，单一写入口）——同 set_max_steps。
+/// 下限 16 兜底（V-P1-10，2026-09-29 用户审阅 P2 补齐）：Rust 的
+/// 回显读 vm getter（vm 层 `limit.max(16)` 生效值），本侧回显读
+/// SessionConfig——config 须直接持有 clamp 后值（否则回显与 vm 生效
+/// 值分叉：实测 oracle 0/-5 均回 16）；vm setter 的同款兜底保留为
+/// 双保险（直接调 vm 通道的路径）。
 pub fn Session::set_call_depth_limit(self : Session, limit : Int) -> Unit {
-  self.config.call_depth_limit = limit
+  self.config.call_depth_limit = if limit < 16 { 16 } else { limit }
   self.config.apply_to_vm(self.vm)
 }
 

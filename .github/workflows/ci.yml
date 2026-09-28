@@ -470,6 +470,29 @@ jobs:
           merge-multiple: true
           path: .
 
+      - name: Restore core artifacts to engine-reported paths
+        # 2026-09-28 gen_svg -check 接线暴露的既有错位：upload-artifact v4
+        # 以最小公共父目录（或单文件自身）为 artifact 根，上一步下载落位后
+        # 五个真值产物全部**平铺在仓库根**；而 facts 采集器按引擎产物的
+        # 原位路径读取（native/cargo_test_ci.log 与
+        # native/tests/shadow_verification/reports/*——collectShadowC 兼容
+        # shadow_data_latest/shadow_data 两个名字，但目录必须原位）。
+        # 此前错位只产生 facts check 的「待采集」软提示（unavailable 真值
+        # 无人消费、不红）；gen_svg -check 的 mustFact fail loud 是第一个
+        # 硬消费者，5e9faf7 CI 首跑即红（Hygiene Failing after 3m）。
+        # 本步把平铺文件搬回原位，此后 facts 全键在 CI 可用。
+        shell: bash
+        run: |
+          mkdir -p native/tests/shadow_verification/reports
+          if [ -f cargo_test_ci.log ]; then
+            mv cargo_test_ci.log native/
+          fi
+          for f in shadow_report.md kr_leetcode_report.json shadow_data.json cpp_shadow_report.json; do
+            if [ -f "$f" ]; then
+              mv "$f" native/tests/shadow_verification/reports/
+            fi
+          done
+
       - name: Install MoonBit toolchain (probe / fmt / facts --run)
         shell: pwsh
         run: |

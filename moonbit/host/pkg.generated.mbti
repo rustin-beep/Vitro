@@ -251,6 +251,7 @@ pub(all) struct InputState {
   batch : Bool
 }
 pub fn InputState::new(Array[Bytes], Bool) -> Self
+pub fn InputState::push_lines(Self, Array[Bytes]) -> Unit
 pub fn InputState::set_eof(Self) -> Unit
 pub fn InputState::snapshot(Self) -> Self
 

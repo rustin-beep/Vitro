@@ -70,6 +70,16 @@ pub(all) struct Session {
   /// 行入口变量快照的维护状态（S8 时间旅行片深水区，字段先行照搬）。
   mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]
   mut unified_row_entry_vars : Array[@protocol.ApiVariableSnapshot]
+  /// 运行态参数域的最小承载（Rust `session.runtime` 的 argv/input_mode 两角；
+  /// stdin 行本体在 `vm.input`——vm reset 不清，跨 run 存活同 Rust
+  /// reset_runtime 不碰输入的口径）。argv 跨 run 存活：run 帧未带 argv
+  /// 参数时沿用上次值（Rust serve run 语义）。
+  mut runtime_argv : Array[String]
+  /// 输入模式跨 run 存活（Rust `InputMode` 默认 **Interactive**——
+  /// `#[default]` 取首变体，serve 出口 waiting_input 语义的前提；
+  /// MoonBit `vm` 构造默认 batch=true 是 `vm` 包形态，serve 层以此
+  /// 字段为准在 run 时重建 `InputState`）。
+  mut runtime_batch : Bool
 } //（Debug 不派生：VitroVM 无 Debug impl；会话调试走字段级访问）
 
 ///|
@@ -83,6 +93,8 @@ pub fn Session::new() -> Session {
     unified_last_line: 0,
     unified_last_frame_vars: [],
     unified_row_entry_vars: [],
+    runtime_argv: [],
+    runtime_batch: false,
   }
 }
 

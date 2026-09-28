@@ -57,6 +57,18 @@ pub fn InputState::new(lines : Array[Bytes], batch : Bool) -> InputState {
 }
 
 ///|
+/// 追加输入行并**清除 EOF 粘滞位**（Rust `RuntimeState::push_stdin_text`
+/// 同形——交互续跑 `input.feed` 的通道：追加非覆盖，读取游标保留）。
+/// 同步清除的语义：C 里管道关闭后不可复活，但教学场景下交互式续跑
+/// 本质是"学生又键入了一行"，属预期的新内容到达。
+pub fn InputState::push_lines(self : InputState, more : Array[Bytes]) -> Unit {
+  for l in more {
+    self.lines.push(l)
+  }
+  self.eof = false
+}
+
+///|
 /// 置位 EOF 粘滞并把游标推到底（oracle `set_stdin_eof`：否则未消费的尾部
 /// 空白会被后续 getchar 当普通字符读出）。
 ///

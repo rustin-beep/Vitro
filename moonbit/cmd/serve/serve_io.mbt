@@ -1,0 +1,92 @@
+// S7 批三号三段：serve 交互 IO 方法族——input.feed（增量喂入续跑）+
+// output.delta（输出通道增量，E-P1-5 四通道游标）。
+// 照搬源：native/src/bin/vitro_cli.rs 的 input.feed/output.delta 臂 +
+// native/src/session_api.rs 的 input_feed/output_delta_on。
+//
+// **input.feed 语义**（下游需求清单 A2）：run 返回 waiting_input 后追加
+// stdin 文本（可含多行，split_stdin 同口径切行）并续跑到 finished /
+// trapped / 下一次 waiting_input。状态机：
+//   waiting_input --input.feed--> running --> waiting_input | finished | trap
+// feed 在非等待态也可调用：文本追加后正常跑（execute_run 非 resume 分支
+// 会 reset + setup 从头重跑——Rust 现状同形，照搬不私改）。
+//
+// **output.delta 分叉登记**：Rust 输出通道是 UTF-8 String（putchar(200)
+// 被重编码为两字节——DIFF-LIB-PUTCHAR-01）；MoonBit OutputLog 是 Bytes
+// 保真（单字节 0xC8）。delta 字段按 Latin-1 逐字节折回 String（cmd/run
+// stdout 通道同口径——消费方在字节域归一）；游标/total 用字节口径，
+// UTF-8 字符边界前移逻辑因此无对象（字节域无切半问题）。
+
+///|
+/// input.feed 方法帧（Rust input_feed 照搬）：params.text 缺省 "" 等价
+/// 「续推进一步」；text 非空追加（非覆盖，游标保留 + EOF 粘滞清除）；
+// 出口与 run 同构六字段。
+fn serve_input_feed_frame(
+  s : @session.Session,
+  id : Json,
+  params : Json,
+) -> (String, Bool) {
+  if !s.compile.compiled {
+    return (serve_ok(id, not_compiled_json()).stringify(), false)
+  }
+  let text = match json_field(params, "text").as_string() {
+    Some(t) => t
+    None => ""
+  }
+  if !text.is_empty() {
+    s.vm.input.push_lines(split_stdin_lines(text))
+  }
+  // resume 语义：waiting_input 由 serve_execute_run 的 is_resume 承担
+  // （参数回推 + ip 回退已就位；二段锚 serve_run_waiting_then_input_resumes
+  // 已锁行为——本帧是同一机制的独立方法入口）
+  (serve_ok(id, serve_execute_run(s)).stringify(), false)
+}
+
+///|
+/// output.delta 方法帧（Rust output_delta_on 照搬）：
+/// `{delta, cursor, total, stream}`——cursor 起（字节偏移）的增量；
+/// cursor 越界按末尾处理；display 视图 = 全通道按写入序拼接。
+fn serve_output_delta_frame(
+  s : @session.Session,
+  id : Json,
+  params : Json,
+) -> (String, Bool) {
+  let cursor = match json_field(params, "cursor").as_int() {
+    Some(c) => c
+    None => 0
+  }
+  let view = match json_field(params, "stream").as_string() {
+    Some(v) => v
+    None => "display"
+  }
+  // 通道解析复用 OutputKind::parse（trim/lower/note|notes 归一单源；
+  // display = 全通道按写入序拼接的投影，由本帧处理；未知退化 display
+  // ——Rust 同形，旧值客户端行为不变）
+  let kind_opt = @host.OutputKind::parse(view)
+  let stream_name = match kind_opt {
+    Some(kind) => kind.as_str()
+    None => "display"
+  }
+  let all = match kind_opt {
+    Some(kind) => s.vm.output.join(kind)
+    None => s.vm.output.join_all()
+  }
+  let total = all.length()
+  let start = if cursor < 0 {
+    0
+  } else if cursor > total {
+    total
+  } else {
+    cursor
+  }
+  // delta：字节域 Latin-1 折回（分叉登记见文件头）
+  let buf = StringBuilder()
+  for i = start; i < total; i = i + 1 {
+    buf.write_char(all[i].to_int().unsafe_to_char())
+  }
+  let m : Map[String, Json] = Map([])
+  m.set("delta", Json::string(buf.to_string()))
+  m.set("cursor", total.to_json())
+  m.set("total", total.to_json())
+  m.set("stream", Json::string(stream_name))
+  (serve_ok(id, Json::object(m)).stringify(), false)
+}

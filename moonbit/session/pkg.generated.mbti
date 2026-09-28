@@ -97,6 +97,8 @@ pub(all) struct Session {
   mut unified_last_line : Int
   mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]
   mut unified_row_entry_vars : Array[@protocol.ApiVariableSnapshot]
+  mut runtime_argv : Array[String]
+  mut runtime_batch : Bool
 }
 pub fn Session::new() -> Self
 pub fn Session::set_call_depth_limit(Self, Int) -> Unit

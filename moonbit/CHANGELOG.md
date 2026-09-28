@@ -24,6 +24,22 @@ patch；新增包 / 公共 API → minor。
   下游安装不再连带拉 x 全模块、不再绑定第三方 registry 存续。
   vendored 文件为 Apache-2.0（文件头保留 + `THIRD_PARTY.md` 全文）。
 
+### Added（S7 批三号二段，serve compile/run 接线配套）
+
+- `vitro/engine/host`：`InputState::push_lines(Array[Bytes])`——交互续跑
+  `input.feed` 的追加通道（行追加 + EOF 粘滞清除，读取游标保留——
+  Rust `RuntimeState::push_stdin_text` 同形语义）。
+- `vitro/engine/vm`：三装载通道方法（跨包 mut 字段只读——MoonBit
+  语义下的宿主侧写入口）——`VitroVM::set_input`（运行态输入整体替换，
+  Rust `RuntimeState::set_stdin` 落点）、`VitroVM::reset_vfs`（Rust
+  `reset_runtime` 的 VFS 重建落点）、`VitroVM::clear_waiting_input`
+  （Rust `execute_run` 开头清 session 旗的落点）；`VitroVM.vfs` 字段
+  升 `mut`（重建通道前提，快照仍走 `VfsSnapshot` 值形态不受影响）。
+- `vitro/engine/session`：`Session` 增 `runtime_argv : Array[String]` /
+  `runtime_batch : Bool` 两字段（Rust `session.runtime` 的 argv/
+  input_mode 两角最小承载——argv 跨 run 存活；输入模式缺省
+  **Interactive** 对齐 Rust `InputMode` 默认首变体）。
+
 ## [0.6.0] - 2026-09-26
 
 ### Added

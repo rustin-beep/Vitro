@@ -114,7 +114,10 @@ pub struct VitroVM {
   mut output : @host.OutputLog
   mut input : @host.InputState
   mut rand : @host.RandState
-  vfs : @host.VirtualFileSystem
+  // mut（S7 serve 批升格）：reset_runtime 的 VFS 整体重建（Rust
+  // session_ops.rs:76 同形）需要赋值通道；快照走 VfsSnapshot 值形态
+  // 不受影响（restore 是整表回放）
+  mut vfs : @host.VirtualFileSystem
   /// Interactive 模式 stdin 未就绪标志（可续跑）。
   mut waiting_input : Bool
   /// 确定性模式（time/clock 恒 0；wasm-gc 无熵源 F5/R12 ⇒ 默认开）。
@@ -244,6 +247,32 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
 // 装载通道（setup 协议的 vm 侧原语——libc 自举的 12 步组装随批四号；
 // 此处只提供与 Rust `VitroVM` 对齐的装载入口）
 // ---------------------------------------------------------------------------
+
+///|
+/// 运行态输入通道（S7 serve 批）：跨包 mut 字段只读（MoonBit 语义），
+/// 宿主层（serve run 的 input/batch_input 参数）经此整体替换输入态。
+/// 语义 = Rust `session.runtime.set_stdin` 的落点（行本体 + 模式 + 游标
+/// 归零一次到位——InputState 不可变字段 batch 的重建是唯一通道）。
+pub fn VitroVM::set_input(self : VitroVM, input : @host.InputState) -> Unit {
+  self.input = input
+}
+
+///|
+/// VFS 重建（S7 serve 批）：Rust `reset_runtime` 的 `session.vfs =
+/// VirtualFileSystem::new()` 落点——vfs 非 mut 字段（快照一致性考虑），
+/// 宿主层经此整体重建（文件表/描述符表清空；预设注入由调用方紧随）。
+pub fn VitroVM::reset_vfs(self : VitroVM) -> Unit {
+  self.vfs = @host.VirtualFileSystem::new()
+}
+
+///|
+/// 清 waiting_input 旗（S7 serve 批）：Rust `execute_run` 开头
+/// `session.runtime.waiting_input = false` 的落点（MoonBit 侧该旗收拢
+/// 在 vm——serve run 取 is_resume 后清位，出口字段只反映本次 run 结果；
+/// 续跑成功结束的残留 true 误报由本通道消除）。
+pub fn VitroVM::clear_waiting_input(self : VitroVM) -> Unit {
+  self.waiting_input = false
+}
 
 ///|
 /// 装载指令流（ip 归零）。

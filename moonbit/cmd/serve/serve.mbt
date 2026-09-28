@@ -132,7 +132,11 @@ fn dispatch(
       (serve_ok(id, Json::object(m)).stringify(), false)
     }
     "session.create" => {
+      // Rust create = Session::default()（runtime 域全清）——与 reset 的
+      // 「保留」语义分界：argv/输入模式在 create/destroy 时回默认
       reset_session_preserving_config(s)
+      s.runtime_argv = []
+      s.runtime_batch = false
       let m : Map[String, Json] = Map([])
       m.set("created", Json::boolean(true))
       m.set("session", serve_session_semantics())
@@ -148,7 +152,10 @@ fn dispatch(
       (serve_ok(id, Json::object(m)).stringify(), false)
     }
     "session.destroy" => {
+      // 同 create：Rust destroy = Session::default()——runtime 域全清
       reset_session_preserving_config(s)
+      s.runtime_argv = []
+      s.runtime_batch = false
       let m : Map[String, Json] = Map([])
       m.set("destroyed", Json::boolean(true))
       m.set("session", serve_session_semantics())
@@ -161,12 +168,23 @@ fn dispatch(
     }
     "config.get" => (serve_ok(id, serve_config(s)).stringify(), false)
     "config.set" => (serve_apply_config(s, params).stringify(), false)
+    // 静态元数据族（三段）
+    "capabilities" => serve_capabilities_frame(id)
+    "error_catalog" => serve_error_catalog_frame(id)
+    "semantic_labels" => serve_semantic_labels_frame(id)
+    "contracts" => serve_contracts_frame(id)
+    // 引擎方法族（二段起）
+    "compile" => serve_compile_frame(s, id, params)
+    "run" => serve_run_frame(s, id, params)
+    "input.feed" => serve_input_feed_frame(s, id, params)
+    "output.delta" => serve_output_delta_frame(s, id, params)
+    "memory.regions" => serve_memory_regions_frame(s, id)
     _ =>
       (
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（一段静态族已接：ping/session.create/reset/destroy/config.get/config.set/shutdown；引擎方法随批三号后续段接入）",
+          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/shutdown；step 族与 dump 族随批三号后续段/S8 片接入）",
         ).stringify(),
         false,
       )

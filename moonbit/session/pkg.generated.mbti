@@ -1,0 +1,145 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/session"
+
+import {
+  "moonbitlang/core/debug",
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+  "vitro/engine/protocol",
+  "vitro/engine/vm",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct AlgorithmMatch {
+  name : String
+  display_name : String
+  func_name : String
+  confidence : Int
+  suggestion : String
+  line : Int
+  vis_events : Array[@protocol.VisEvent]
+} derive(@debug.Debug)
+
+pub(all) struct CompileState {
+  mut errors : String
+  mut compile_units : Array[CompileUnit]
+  mut compiled : Bool
+  mut output : @bytecode.CompileOutput?
+  mut diagnostics : Array[Diagnostic]
+  mut algorithm_matches : Array[AlgorithmMatch]
+  mut struct_fields : Map[String, Array[(String, Int)]]
+  mut file_ranges : Array[FileRange]
+  mut preprocessor_trace : Array[String]
+} derive(@debug.Debug)
+pub fn CompileState::new() -> Self
+
+pub(all) struct CompileUnit {
+  filename : String
+  source : String
+} derive(@debug.Debug)
+
+pub(all) struct Diagnostic {
+  line : Int
+  column : Int
+  error_code : Int
+  severity : Int
+  message : String
+  fix_suggestion : String
+  fix_kind : Int
+  replace_start_line : Int
+  replace_start_column : Int
+  replace_end_line : Int
+  replace_end_column : Int
+  replacement_text : String
+  filename : String
+} derive(@debug.Debug)
+
+pub(all) struct FileRange {
+  filename : String
+  start_line : Int
+  end_line : Int
+} derive(@debug.Debug)
+
+pub(all) struct HeapStats {
+  heap_base : Int
+  total_heap : Int
+  allocated : Int
+  fragmented : Int
+  fragmentation_rate : Int
+} derive(@debug.Debug)
+
+pub(all) struct MemoryFragment {
+  addr : UInt
+  size : Int
+} derive(@debug.Debug)
+
+pub(all) struct MemoryRegion {
+  addr : UInt
+  size : Int
+  name : String
+  ty : String
+  is_heap : Bool
+  is_freed : Bool
+  alloc_line : Int
+  alloc_by : String
+  kind : String
+} derive(@debug.Debug)
+
+pub(all) struct Session {
+  mut config : SessionConfig
+  mut compile : CompileState
+  vm : @vm.VitroVM
+  mut unified_pending : @protocol.StepPayload?
+  mut unified_last_line : Int
+  mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]
+  mut unified_row_entry_vars : Array[@protocol.ApiVariableSnapshot]
+}
+pub fn Session::new() -> Self
+pub fn Session::set_call_depth_limit(Self, Int) -> Unit
+pub fn Session::set_max_steps(Self, Int) -> Unit
+pub fn Session::source_line_at(Self, Int) -> String?
+
+pub(all) struct SessionConfig {
+  mut max_steps : Int
+  mut call_depth_limit : Int
+  mut deterministic : Bool
+} derive(@debug.Debug)
+pub fn SessionConfig::apply_to_vm(Self, @vm.VitroVM) -> Unit
+pub fn SessionConfig::default() -> Self
+pub fn SessionConfig::from_vm(@vm.VitroVM) -> Self
+
+pub(all) struct StepResult {
+  status : StepStatus
+  current_line : Int
+  output : String
+  waiting_input : Bool
+} derive(@debug.Debug)
+
+pub(all) enum StepStatus {
+  Paused
+  WaitingInput
+  Finished
+  Trap
+} derive(Compare, Eq, @debug.Debug)
+pub fn StepStatus::to_text(Self) -> String
+
+pub(all) struct TraceEntry {
+  line : Int
+  operation : String
+} derive(@debug.Debug)
+
+pub(all) struct VariableSnapshot {
+  name : String
+  addr : UInt
+  is_local : Bool
+  ty : @ast.Type
+  value : Int64
+} derive(@debug.Debug)
+
+// Type aliases
+
+// Traits

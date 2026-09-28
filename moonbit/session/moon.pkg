@@ -1,0 +1,26 @@
+// L8 会话/协议层·session 包（S7 批二号，2026-09-27 建包）：会话骨架 +
+// SessionConfig 值对象 + 会话侧 DTO 族。
+// 照搬源：native/src/session.rs（432 行）+ tests/session_config_test.rs
+//（四锚：max_steps 生效且跨 run 存活 / call_depth 存活 / config 回显 /
+// 编译前设置生效）。
+// **SessionConfig 落形裁定（总计划 §4 L8 行的目标架构命名在 Rust 侧并不
+// 存在——配置散在 VitroVM 字段 + set_* 方法）**：本包把它收拢为显式值
+// 对象作**单一真相源**（serve config.get/set 的对象 + 回显），Session 的
+// set_* 是唯一写入口（写 config 后立即应用到 VM——双写同步的单一通道，
+// 消 Rust 侧「vm Option + get_or_insert + setup_vm 保留」的三段式事故面：
+// Rust 曾在 setup_vm 硬编码 10_000_000 抹掉用户配置，MoonBit 侧
+// vm/state.mbt 装载通道已禁写 + 本包单一入口双保险）。
+// **VisEvent 落点**：批一号已收拢进 protocol（StepPayload 自持），本包
+// 消费 @protocol.VisEvent 不再造孪生。CompileState 持 @bytecode.
+// CompileOutput 聚合而非散装复制产物字段（消 Rust 侧 CompileState 17
+// 字段与 runtime 产物结构的复制形态）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
+import {
+  "vitro/engine/ast",
+  "vitro/engine/bytecode",
+  "vitro/engine/diag",
+  "vitro/engine/memory",
+  "vitro/engine/protocol",
+  "vitro/engine/source",
+  "vitro/engine/vm",
+}

@@ -421,3 +421,11 @@ vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/util utf8_len
+vitro/engine/session vitro/engine/ast Type
+vitro/engine/session vitro/engine/bytecode CompileOutput
+vitro/engine/session vitro/engine/protocol ApiVariableSnapshot
+vitro/engine/session vitro/engine/protocol StepPayload
+vitro/engine/session vitro/engine/protocol VisEvent
+vitro/engine/session vitro/engine/vm DEFAULT_MAX_STEPS
+vitro/engine/session vitro/engine/vm MAX_STACK_DEPTH
+vitro/engine/session vitro/engine/vm VitroVM

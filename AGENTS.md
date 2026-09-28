@@ -28,6 +28,10 @@
 9. **工具陷阱五条**：`| head` 会 SIGPIPE 杀编译器（判"构建失败"前必须 tail 全量输出）；管道 `$?` 是尾命令退出码（用 PIPESTATUS 或裸命令取）；哨兵先证红再采信结论；基准对照必须校验和逐位一致才计时；Windows 路径的 grep 过滤要 `[/\]` 双兼容
 10. **提交署名 = 审阅深度信号**（2026-09-19 拍板）：git 提交信息中**提及用户**（署名 / 审阅标记）表明该批代码经过用户深度审阅与探针测试；**未标明**仅代表用户浏览过，不构成审阅背书。机器判读提交可信度时以此为准。
 
+## Agent Skills（`.agents/skills/`，2026-09-28 建）
+
+踩过实锤的操作手册——工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程——按**通用 Agent Skills 格式**（目录 + `SKILL.md`）存放于 `.agents/skills/`，与两分区手册分工：AGENTS.md 是每批都读的静态纪律，skills 是 agent 命中触发场景时才加载的详细手册。ZCode 直接扫描该目录无需安装；其他工具 `go run .agents/install_skills.go --all`（零依赖 Go 安装器，详见 [`.agents/README.md`](.agents/README.md)）。**维护义务**：改动 skill 覆盖的流程须连坐更新对应 `SKILL.md`（各文件尾部有 as_of）。
+
 ## 当前阶段与档案
 
 - **当前**：第一阶段 **S6 已收官**（memory + host + vm 全落，2026-09-26 收官批落库；mooncakes `vitro/engine` 0.6.0 发布收尾中），其后 S7 协议/会话、S8 教学智能、S9 裁定批——排期权威与逐片验收锚见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)；已完成：S0.5/S1（[第一阶段计划](docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)）+ S2 lexer + S3 parser + S4 typeck + S5 codegen·bytecode（0.5.0，2026-09-23）+ S6 memory·host·vm（0.6.0 待发）

@@ -8,6 +8,15 @@ patch；新增包 / 公共 API → minor。
 
 ### Fixed
 
+- **局部 struct 数组部分初始化的零填充偏移双重计数**（2026-09-28
+  kruskalMST 调查批实锤）：`var_decl.mbt` 零填充循环照搬 Rust 的
+  `(i, _) in range.enumerate()` 形态时，把 enumerate 下标（0 起）误接到
+  MoonBit 的 range 迭代值（len 起）上——`idx = len + k` 双重计数使填充
+  写偏移翻倍越界（kruskalMST：写 168/180/192 而非 84/96/108，越界砸
+  相邻栈数据致 Find 递归读垃圾索引二次越界 trap）。修复 = `idx = k`；
+  产物层/运行层/stdout/返回码/1MB 映像五面闭环（codegen_diff SAME +
+  clang_direct 转绿销 known 条目〔8→7〕+ vm_diff 三联 SAME）；顺手修
+  vm_diff `--cases` 对不存在路径静默跑空判假 SAME 的 fail-loud 缺陷。
 - **serve 输入通道的 getchar 行间换行丢失**（2026-09-28 审阅批 P1 实锤
   并双向证明）：`split_stdin_lines` 剥掉行尾换行，与 oracle
   `RuntimeState::split_stdin`（`split_inclusive('\n')`——行含尾换行）

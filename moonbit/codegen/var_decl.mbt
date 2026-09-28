@@ -515,8 +515,15 @@ fn BytecodeGen::emit_local_array_init(
         } else {
           elements.length()
         }
+        // Rust 侧循环形态是 `(i, _) in (len..expected).enumerate()`——
+        // i 是 enumerate 下标（0 起），idx = len + i；MoonBit 的 range
+        // 循环变量 k 即迭代值（len 起），照搬时保留 `idx = len + k`
+        // 成双重计数（kruskalMST 实锤：填充偏移 168/180/192 = idx 14/
+        // 15/16，越界写砸相邻栈数据 → Find 递归读垃圾索引二次越界
+        // trap @0x1048620——2026-09-28 调查批；idx = k 与 Rust 语义
+        // 等价〔k 本身就是 len+j〕）
         for k in elements.length()..<expected_count {
-          let idx = elements.length() + k
+          let idx = k
           let addr_offset = idx * elem_stride
           self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
           if addr_offset > 0 {

@@ -208,6 +208,13 @@ func main() {
 					fmt.Printf("SKIP  %s（四语料均不存在）\n", f)
 					continue
 				}
+			} else if !filepath.IsAbs(f) && !fileExists(f) {
+				// 含分隔符的相对路径按仓库根原样使用（clang_direct 同口径）——
+				// 此前静默跑不存在文件：oracle 报 ORACLE-MISSING、MoonBit 报
+				// io COMPILE-ERROR，双侧 compileFail 凑成假 SAME（kruskalMST
+				// 调查批实测踩中）；fail loud 优于静默空跑
+				fmt.Fprintf(os.Stderr, "vm_diff: --cases 路径不存在: %s（相对仓库根，如 native/tests/cases/baseline/x.c）\n", f)
+				os.Exit(2)
 			}
 			cases = append(cases, Case{rel: filepath.Base(f), path: path})
 		}

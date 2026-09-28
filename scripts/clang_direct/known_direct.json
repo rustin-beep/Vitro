@@ -33,10 +33,5 @@
     "case": "bTree_default.c",
     "digest": "65593255",
     "reason": "模板 UB（未初始化子节点指针）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）：Clang 侧 UB 表现非确定（本次空输出 0），引擎侧受检 trap 诊断 + 崩溃码 0xC0000005；模板代码缺陷非编译器缺陷，保留作安全检测教学示例"
-  },
-  {
-    "case": "kruskalMST_default.c",
-    "digest": "fcb7411c",
-    "reason": "【真缺陷候选·调查批跟踪·修复后本条目应删】MoonBit 独有分叉：oracle 与 Clang 双侧一致输出 (0,1)=2，MoonBit 越界 trap @0x1048620（超 1MB 上界 44 字节）+ 1MB 映像栈区 63 字节分叉首差 @0xFFF00——栈帧布局形状分叉（总计划 §7.1 层 2 注记登记）；known 双向监控：修复转绿即空转红强制移除本条"
   }
 ]

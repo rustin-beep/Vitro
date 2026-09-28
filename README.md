@@ -15,15 +15,15 @@
 
 > **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。
 >
-> **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S6 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm 全部落地并对拍闭环；mooncakes 已发布 0.5.0（2026-09-23），0.6.0（S6 收官版）发布收尾中。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
+> **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S6 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm 全部落地并对拍闭环；mooncakes 已发布 0.5.0（2026-09-23）与 **0.6.0**（S6 收官版，2026-09-27）。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
 >
 > 定位转型的决策依据与路线见 [`docs/current/01-定位与路线/后端定位与白箱计划.md`](docs/current/01-定位与路线/后端定位与白箱计划.md)。
 
 ## 现役引擎：MoonBit（`vitro/engine`）
 
-- **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → **0.5.0**（2026-09-23）；**0.6.0**（S6 收官版：`memory` / `host` / `vm` / `util` + `cmd/run`）已建册，发布收尾中——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
+- **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → 0.5.0（2026-09-23）→ **0.6.0**（S6 收官版：`memory` / `host` / `vm` / `util` + `cmd/run`，2026-09-27 发布）——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
 - **已收官片**（各片收官时点数字，历史快照不连坐当前真值）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）/ S6 memory·host·vm（135 opcode 穷尽执行器 + `VMSnapshot` 快照体系 + 110 host 路由 + `cmd/run` 端到端 runner）
-- **验证**：`moon test` **503 用例**全绿 + 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，彼时 601 用例 = 595 一致 / 6 条既有登记 known / 引擎零新缺陷）；对外面以 `moonbit_surface -check` 机判对账
+- **验证**：`moon test` **506 用例**全绿（2026-09-29 快照，分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准）+ 十五道闸门（token / AST / 诊断 / 字节码逐层对拍；第十五闸 = clang_direct 层 2 直拍，全量 696 例 = 688 一致 / 8 条既有登记 known / DIFF 0，2026-09-27 实测）；对外面以 `moonbit_surface -check` 机判对账
 - **性能现状**（2026-09-26 实测，同机对拍 Rust oracle）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×。差距来自解释器 dispatch——全速执行规划于 0.7.0+（bytecode→wasm-GC 生成器路线），解释器形态持续服务单步语义与时间旅行
 - **其后**：S7 协议/会话、S8 教学智能、S9 裁定批——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
 
@@ -70,13 +70,20 @@
 **认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图（Rust oracle 已实现；MoonBit 侧随 S8 教学智能迁移）。
 节点分类树与已实现范围：[认知推理系统设计.md](docs/current/05-教学体验/认知推理系统设计.md)
 
-> 以上插图由 `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改；全部 11 张插图（另含 MoonBit 包切分两张 / 统一模式架构与状态机 / 内存布局 / StepPayload 帧结构 / wasm 并发隔离）见 [`docs/README.md`](docs/README.md) 插图约定。
+<p align="center">
+  <img src="docs/current/02-构建与上手/agent-skills-overview.svg" alt="Agent Skills 全景" width="900">
+</p>
+
+**Agent Skills（`.agents/skills/`）** —— 一组踩过实锤的项目专属操作手册（工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程），通用 Agent Skills 格式、不绑定特定工具；ZCode 直接扫描工作区，其他工具 `go run .agents/install_skills.go --all` 安装。图由 `gen_svg` 从盘上 skill 目录与 frontmatter 扫描生成——skill 增删改名 / 描述变更必使图失步、CI `-check` 即红，杜绝「AI 改了手册而人不知情」；skill 内容全部可读，frontmatter 校验同样入 CI。
+清单与安装：[.agents/README.md](.agents/README.md)
+
+> 以上插图由 `go run ./scripts/gen_svg` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改；全部 14 张插图（另含 MoonBit 包切分两张 / 统一模式架构与状态机 / 内存布局 / MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景）见 [`docs/README.md`](docs/README.md) 插图约定。
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| 现役实现 | **MoonBit**（`vitro/engine` workspace：L0–L7 共 15 包 + 5 个 `cmd` 工具；mooncakes 发布） |
+| 现役实现 | **MoonBit**（`vitro/engine` workspace：L0–L8 共 18 包 + 6 个 `cmd` 工具；mooncakes 发布） |
 | 执行 | 自研字节码解释器（135 opcode 穷尽 match，1MB 线性内存，指令级边界检查）+ `VMSnapshot` 快照体系（时间旅行基座） |
 | 加速规划 | 0.7.0+ bytecode→wasm-GC 生成器（全速执行）；解释器持续服务单步语义与时间旅行 |
 | 对照 oracle | **Rust 1.95.0**（`#![forbid(unsafe_code)]`；模板 JIT = 热点 trace → 预编译 Rust 函数指针序列，非机器码 JIT） |
@@ -93,7 +100,8 @@ moonbit/                   MoonBit 活跃区（vitro/engine workspace）——�
 ├── lexer/ parser/ typeck/ 前端（S2–S4 收官）
 ├── bytecode/ codegen/     字节码与生成器（S5 收官）
 ├── memory/ host/ vm/      运行时（S6 收官：1MB 内存状态机 / 110 host 路由 / 执行器 + 快照）
-└── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner
+├── protocol/ session/     协议冻结层与会话（S7 进行中：StepPayload 契约 + 词汇表 / 会话状态）
+└── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口
 native/                    Rust workspace——冻结差分对照 oracle（tag rust-oracle-freeze）
 ├── crates/                10 个子 crate（lexer → vm 全链路）
 ├── src/                   capi（C ABI 出口）/ session_api / unified 时间旅行 / serve 出口
@@ -101,6 +109,7 @@ native/                    Rust workspace——冻结差分对照 oracle（tag r
 └── tests/                 五层测试防线与用例（baseline / knr / leetcode / cpp / shadow）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
 scripts/                   Go 防线驱动与工具脚本（Shadow 驱动、vm_diff 三联、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
+.agents/                   Agent Skills（踩过实锤的项目专属操作手册 + 零依赖安装器；清单与安装见 .agents/README.md）
 docs/                      设计文档、规范与事故报告
   ├── current/             当前有效文档
   ├── spec/                语言中立协议 schema
@@ -110,7 +119,7 @@ docs/                      设计文档、规范与事故报告
 ## 快速开始
 
 ```bash
-# 1. MoonBit 现役引擎：503 测试用例 + 十五闸（构建/闸门/发布全流程见 moonbit/AGENTS.md）
+# 1. MoonBit 现役引擎：506 测试用例（2026-09-29 实测）+ 十五闸（构建/闸门/发布全流程见 moonbit/AGENTS.md）
 cd moonbit && moon check && moon test
 
 # 2. 端到端跑一个 C 程序（cmd/run：C 源码 → 编译 → VM 执行，stdout / 返回码 / 1MB 内存映像三通道）
@@ -143,7 +152,7 @@ cd native && cargo build --target wasm32-unknown-unknown --release
 
 **MoonBit 侧（现役）**：
 
-1. **`moon test` 503 用例 + 十五道闸门**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（601 用例，6 条 known 全为既有登记）
+1. **`moon test` 506 用例 + 十五道闸门**（2026-09-29 快照）：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍；第十五闸 = clang_direct 层 2 直拍（全量 696 例 = 688 一致 / 8 条既有登记 known / DIFF 0，2026-09-27 实测）
 2. **运行期双防线**：`scripts/vm_diff` 三联差分（引擎 vs Rust oracle，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
 3. **对外面对账**：`go run ./scripts/moonbit/moonbit_surface -check` 机判 `.mbti` 接口面
 

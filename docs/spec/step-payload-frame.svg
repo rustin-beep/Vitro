@@ -93,7 +93,7 @@
 <text class="t" x="985" y="760" text-anchor="middle">消费方</text>
 <text class="tc" x="820" y="788" text-anchor="start">capi 第一批 · vitro_cli serve · wasm 绑定</text>
 <text class="tc" x="820" y="812" text-anchor="start">任何第三方语言按本 schema 自行解析</text>
-<text class="tc" x="600" y="852" text-anchor="middle">实现锚：unified/{types,collector,engine,stream,contracts,vocabulary}.rs · capi/first_batch.rs（出口序列化）</text>
-<text class="tc" x="600" y="878" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol</text>
-<text class="tc" x="600" y="904" text-anchor="middle">步号约定：step_index 从 0 起；一步 = VM 执行一条字节码指令（含透明 StepEvent 调试指令）</text>
+<text class="tc" x="600" y="852" text-anchor="middle">实现锚 Rust 侧：unified/{types,collector,engine,stream,contracts,vocabulary}.rs · capi/first_batch.rs</text>
+<text class="tc" x="600" y="878" text-anchor="middle">实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）</text>
+<text class="tc" x="600" y="904" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol</text>
 </svg>

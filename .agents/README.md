@@ -27,6 +27,7 @@ go run .agents/install_skills.go --list        # 查看 + frontmatter 校验
 go run .agents/install_skills.go --all         # 装到检测到的工具（用户级）
 go run .agents/install_skills.go --tool claude # 装到 ~/.claude/skills
 go run .agents/install_skills.go --dest <dir>  # 任意目录（其他工具）
+go run .agents/install_skills.go --diff --all  # 升级前逐文件比对源与已装副本（谁新谁旧、本地演化了什么），再决定是否 --force
 ```
 
 **ZCode 用户无需安装**：ZCode 直接扫描工作区 `.agents/skills/`。
@@ -36,3 +37,9 @@ Claude Code 等其他工具按上面的命令装到各自目录；安装物是�
 
 改动 skill 覆盖的流程（防线、生成器契约、facts 判据、发版步骤）时**连坐更新**对应 `SKILL.md`；
 每个 skill 尾部有 `as_of` 日期，过期即疑。新增 skill 后跑一次 `go run .agents/install_skills.go --list` 确认校验绿。
+
+**新增 / 改名 / 改 description 时的三处连坐**（CI 双闸会拦失步，但最好一次改齐）：
+
+1. 本清单表（人工维护）；
+2. `go run ./scripts/gen_svg skills` 重生成插图 `docs/current/02-构建与上手/agent-skills-overview.svg`——图从盘上目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必致图失步，`gen_svg -check`（CI hygiene）即红；
+3. frontmatter 校验 `go run .agents/install_skills.go --list`（CI）——缺 SKILL.md / 缺 name 或 description / name 与目录名不一致即红。

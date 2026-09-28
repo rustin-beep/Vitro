@@ -616,6 +616,16 @@ jobs:
         shell: bash
         run: go run ./scripts/gen_svg -check
 
+      - name: Agent skills frontmatter audit (install_skills --list)
+        # 2026-09-29 skills 图批接线：.agents/skills/ 的 SKILL.md 此前只有本地
+        # 校验（脚本存在 ≠ 接线）。--list 对每个 skill 做 fail loud 校验：缺
+        # SKILL.md / frontmatter 缺 name 或 description / name 与目录名不一致
+        # → exit 1。与 gen_svg -check（skills 图失步即红）构成双闸——前者挡
+        # 结构坏，后者挡「AI 改了手册而清单图没跟上」。
+        # J9 证红：删任一 SKILL.md 的 name 行 → 必红。
+        shell: bash
+        run: go run .agents/install_skills.go --list
+
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用
       - name: Engineering health report

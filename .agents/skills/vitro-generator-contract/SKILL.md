@@ -34,6 +34,8 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
 9. **从源码文本抽符号表**：显式约束抽取窗口（定位目标函数起点、扫到收尾 `}` 为止）+ 重名 fail loud + 抽取条数低于阈值即红。否则今天「恰好正确」，明天新增一个同形态分支就静默污染。
 10. **解析了但未消费的字段 fail loud**（如 JSON 字段声明了却不用）——无声的版本漂移入口，当前值为空 ≠ 永远为空，且没有任何闸能替你发现。
 11. **gen 与 fmt 互踩有两种形态**：宽度换行（第 2 条）与格式化空行/`///|` 归属（第 8 条）。遇到「-check 恒红」先想这两处。
+12. **多产物生成器的"单产物子命令 + all"必须双向登记**：新增产物时只加 `case "xxx"`、漏把调用加进 `all` 分支 ⇒ 新产物**不在 `-check` 闸内**，篡改/失步一律不红（闸看似接了、实际没牙）。2026-09-29 gen_svg 加 skills 图实测：J9 篡改证红时发现 `-check` 恒绿，根因即此。核对法：`grep -c "genXxx(" main.go` 应 = 分支数 + all 调用数。
+13. **读入外部结构化文本先归一 CRLF**：`core.autocrlf=true` 的 Windows clone 工作区里仓库文件是 CRLF，`strings.HasPrefix(text, "---\n")` 这类行首锚会误判（2026-09-29 同日实证——checkout 还原 SKILL.md 后 frontmatter 解析全挂）。归一 `strings.ReplaceAll(text, "\r\n", "\n")` 再解析 + `.gitattributes` 锁 `.agents/** text eol=lf` 双保险。
 
 ## -check 产物的防漂移三规则（CI 首跑两轮红的学费）
 
@@ -58,4 +60,4 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
 ## 权威源与时效
 - 各生成器 `.go` 头注；`docs/current/02-构建与上手/脚本总清单与必跑防线.md`
 - **相关规程**：`vitro-facts-reconciliation`（facts 依赖收窄与产物落位）、`vitro-release-playbook`（包图徽标为 facts 锚，改包集/版本必连坐）、`vitro-baseline-corpus-workflow`（`gen_svg` 重生成）
-- as_of: 2026-09-28（gen_stubs / gen_libc_data / gen_host_route / gen_svg 四轮实战沉淀）
+- as_of: 2026-09-29（gen_stubs / gen_libc_data / gen_host_route / gen_svg 四轮实战沉淀 + skills 图批两坑：all 分支漏登记、CRLF frontmatter 假红）

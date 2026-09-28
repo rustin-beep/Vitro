@@ -4,8 +4,9 @@ package main
 // tmp/gen_three_svg.py 退役）；2026-09-24 扩为九张（新增包切分/统一模式架构/
 // 状态机/内存布局/协议帧/wasm 并发五张）；2026-09-28 防漂移批：包切分图的
 // 实/虚线与徽标改 facts 派生（moonbit_built_packages / moonbit_engine_version，
-// 采集器见 scripts/facts）、架构图重画为双轨格局、新增防线全景图，共十一个
-// gen 函数十二张文件。
+// 采集器见 scripts/facts）、架构图重画为双轨格局、新增防线全景图；2026-09-29
+// 新增 agent skills 全景图（从 .agents/skills/ 盘上目录扫描生成）与冻结协议层
+// 全景图（panorama，独立文件 panorama.go），共十三个 gen 函数十四张文件。
 //
 // 入库插图的跑批快照数字**只在此处为模板**：生成时从
 // reports/facts.json 读真值注入，并以 <tspan data-fact="key">n</tspan> 显式
@@ -24,7 +25,7 @@ package main
 //
 // 用法（flag 在子命令之前）：
 //
-//	go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|all]
+//	go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|skills|panorama|all]
 //
 // -check：与落盘 SVG 逐字节比对，漂移列清单后 exit 1，无写副作用（CI hygiene
 // 闸用；J9 证红：手改任一落盘 SVG 后 -check 必红——2026-09-28 本批实测留痕）。
@@ -39,6 +40,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -227,6 +230,12 @@ func svgOpen(w, h int, label, title, note string) []string {
 func genArch(root string, _ factsDoc) {
 	P := svgOpen(1200, 860, "vitro 双轨格局架构图", "vitro — 双轨格局 · MoonBit 现役 × Rust 冻结 oracle",
 		"内容对账 README.md 双轨口径节 与 架构设计.md §2；进度与版本以 README / 总计划 §10 为权威（无快照数字，无 data-fact 锚）")
+	// 顶注：本图此前无可见标题（svgOpen 的 title 参数只进无障碍 <title> 不渲染），
+	// 画布顶部留白一块——2026-09-29 用户看图指出，补标题行并连带补上缺失的
+	// markerDef（本图 arrow 自重画起未渲染三角）。
+	P = append(P, markerDef,
+		textF(600, 56, "tt", "vitro — 双轨格局 · MoonBit 现役 × Rust 冻结 oracle", ""),
+	)
 	// 上轨：MoonBit 现役引擎
 	P = append(P, box(40, 116, 1120, 262, "core", 14),
 		textF(600, 150, "t", "MoonBit 现役引擎 · vitro/engine（mooncakes 源码级发布）", ""),
@@ -990,9 +999,9 @@ func genProtocol(root string, _ factsDoc) {
 		textL(820, 812, "tc", "任何第三方语言按本 schema 自行解析"),
 	)
 	P = append(P,
-		textF(600, 852, "tc", "实现锚：unified/{types,collector,engine,stream,contracts,vocabulary}.rs · capi/first_batch.rs（出口序列化）", ""),
-		textF(600, 878, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol", ""),
-		textF(600, 904, "tc", "步号约定：step_index 从 0 起；一步 = VM 执行一条字节码指令（含透明 StepEvent 调试指令）", ""),
+		textF(600, 852, "tc", "实现锚 Rust 侧：unified/{types,collector,engine,stream,contracts,vocabulary}.rs · capi/first_batch.rs", ""),
+		textF(600, 878, "tc", "实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）", ""),
+		textF(600, 904, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol", ""),
 	)
 	writeSVG(root, "docs/spec/step-payload-frame.svg", P)
 }
@@ -1190,11 +1199,180 @@ func genGates(root string, _ factsDoc) {
 	writeSVG(root, "docs/current/02-构建与上手/moonbit-verification-gates.svg", P)
 }
 
+// ─── 图 L：Agent Skills 全景（源：.agents/skills/ 盘上目录 + frontmatter 扫描）─
+// 2026-09-29 新增：skill 清单此前只有 .agents/README.md 人工表一份，根 README
+// 零提及——路人无法在门面上看到仓库自带哪些 agent 手册。本图输入源是盘上
+// 目录本身（不经 facts 中转：skill 清单的真相源就是目录），skill 增删改名 /
+// description 变更必致本图失步，gen_svg -check（CI hygiene）即红，把「AI 改
+// 了手册」顶到人审必经的 README diff 里。口径与 .agents/install_skills.go 的
+// discover 一致：缺 SKILL.md / 缺 name|description / name 与目录名不一致即
+// fatal。描述按显示宽度折两行、超长截断（"…" 收尾）——图承载人审可见性，
+// 正文比对交给 git diff（内容哈希锁文件方案已裁定不加）。
+
+var fmLine = regexp.MustCompile(`(?m)^([A-Za-z][\w-]*):\s*(.+?)\s*$`)
+
+type skillInfo struct{ name, desc string }
+
+func discoverSkills(root string) []skillInfo {
+	dir := filepath.Join(root, ".agents", "skills")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		fatal("读不到 .agents/skills/（skills 图输入源）: " + err.Error())
+	}
+	var out []skillInfo
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		p := filepath.Join(dir, e.Name(), "SKILL.md")
+		b, err := os.ReadFile(p)
+		if err != nil {
+			fatal("skills/" + e.Name() + ": 缺 SKILL.md: " + err.Error())
+		}
+		text := string(b)
+		// CRLF 兼容（2026-09-29 J9 证红抓出）：core.autocrlf=true 的 Windows
+		// clone 工作区里 SKILL.md 是 CRLF，"---\r\n" 不匹配 "---\n" 前缀会
+		// 误报缺 frontmatter——归一后再解析（.gitattributes 锁 LF 是双保险）。
+		text = strings.ReplaceAll(text, "\r\n", "\n")
+		if !strings.HasPrefix(text, "---\n") {
+			fatal("skills/" + e.Name() + ": SKILL.md 缺 YAML frontmatter")
+		}
+		end := strings.Index(text[4:], "\n---")
+		if end < 0 {
+			fatal("skills/" + e.Name() + ": frontmatter 未闭合")
+		}
+		meta := map[string]string{}
+		for _, m := range fmLine.FindAllStringSubmatch(text[4:end+4], -1) {
+			meta[m[1]] = m[2]
+		}
+		if meta["name"] == "" || meta["description"] == "" {
+			fatal("skills/" + e.Name() + ": frontmatter 缺 name 或 description")
+		}
+		if meta["name"] != e.Name() {
+			fatal(fmt.Sprintf("skills/%s: frontmatter name=%q 与目录名不一致", e.Name(), meta["name"]))
+		}
+		out = append(out, skillInfo{name: e.Name(), desc: meta["description"]})
+	}
+	if len(out) == 0 {
+		fatal(".agents/skills/ 下没有可绘制的 skill")
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
+	return out
+}
+
+// dispW：显示宽度估算（CJK 全角 = 2，其余 = 1）。
+func dispW(s string) int {
+	w := 0
+	for _, r := range s {
+		if r >= 0x2E80 {
+			w += 2
+		} else {
+			w++
+		}
+	}
+	return w
+}
+
+// wrapDesc：按显示宽度贪心折行，最多 maxLines 行；放不下时末行以 "…" 收尾。
+// 硬切点若落在英文单词中间（切点两侧都是词字符），回退到最近词边界——
+// 2026-09-29 视觉审实证 "generator"→"generat…"、"golden" 被拆行的缺陷。
+func wrapDesc(s string, maxUnits, maxLines int) []string {
+	isWord := func(r rune) bool {
+		return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-'
+	}
+	rs := []rune(s)
+	var lines []string
+	i := 0
+	for line := 0; line < maxLines; line++ {
+		w, j, last := 0, i, i
+		for j < len(rs) {
+			rw := 1
+			if rs[j] >= 0x2E80 {
+				rw = 2
+			}
+			if w+rw > maxUnits {
+				break
+			}
+			w += rw
+			j++
+			last = j
+		}
+		if last == i {
+			last = i + 1
+		}
+		if last < len(rs) && last > i && isWord(rs[last-1]) && isWord(rs[last]) {
+			k := last
+			for k > i+1 && isWord(rs[k-1]) {
+				k--
+			}
+			last = k
+		}
+		lines = append(lines, strings.TrimRight(string(rs[i:last]), " "))
+		i = last
+		if i >= len(rs) {
+			return lines
+		}
+	}
+	tail := []rune(lines[len(lines)-1])
+	// cutPos = 原串中 tail 末字符的下一个位置（宽度回退同步左移）——残词判据
+	// 必须看它而非贪心停点：贪心常停在词后的分隔符上（探针实证 rs[cutPos]=' '
+	// 使 isWord 假、残词漏判 "generat…"）。
+	cutPos := i + len(tail)
+	for dispW(strings.TrimRight(string(tail), " ")) > maxUnits-2 && len(tail) > 1 {
+		tail = tail[:len(tail)-1]
+		cutPos--
+	}
+	// 末行残词处理：tail 末词在原串中被腰斩（紧随原字符仍是词字符）时去掉整个残词再补 "…"。
+	if len(tail) > 0 && cutPos < len(rs) && isWord(tail[len(tail)-1]) && isWord(rs[cutPos]) {
+		for len(tail) > 1 && isWord(tail[len(tail)-1]) {
+			tail = tail[:len(tail)-1]
+		}
+	}
+	lines[len(lines)-1] = strings.TrimRight(string(tail), " ") + "…"
+	return lines
+}
+
+func genSkills(root string, _ factsDoc) {
+	skills := discoverSkills(root)
+	const (
+		W, cardW, cardH     = 1200, 550, 170
+		gapX, gapY          = 20, 22
+		headH, warnH, units = 128, 110, 54
+	)
+	rows := (len(skills) + 1) / 2
+	warnY := headH + rows*(cardH+gapY)
+	n1, n2 := warnY+warnH+32, warnY+warnH+60
+	H := n2 + 30
+	P := svgOpen(W, H, "vitro Agent Skills 全景", fmt.Sprintf("Vitro Agent Skills · %d 个项目专属操作手册", len(skills)),
+		"内容从 .agents/skills/ 盘上目录与 SKILL.md frontmatter 扫描生成——skill 增删改名 / 描述变更必致本图失步，gen_svg -check（CI）即红；权威清单 .agents/README.md")
+	P = append(P,
+		textF(600, 56, "tt", fmt.Sprintf("Vitro Agent Skills · %d 个项目专属操作手册", len(skills)), ""),
+		textF(600, 94, "tm", "通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 go run .agents/install_skills.go --all 安装", ""),
+	)
+	for i, s := range skills {
+		x := 40 + (i%2)*(cardW+gapX)
+		y := headH + (i/2)*(cardH+gapY)
+		P = append(P, box(x, y, cardW, cardH, "card", 12),
+			textL(x+24, y+42, "tn", s.name))
+		for k, ln := range wrapDesc(s.desc, units, 2) {
+			P = append(P, textL(x+24, y+78+k*30, "tc", ln))
+		}
+	}
+	P = append(P,
+		box(40, warnY, 1120, warnH, "warn", 12),
+		textF(600, warnY+36, "t", "透明度与防漂移（CI 双闸）", ""),
+		textF(600, warnY+68, "tc", "skill 内容全部可读：.agents/skills/<name>/SKILL.md（+ references/）· 任何 skill 变更必经 git diff 人审", ""),
+		textF(600, warnY+94, "tc", "frontmatter 校验 go run .agents/install_skills.go --list（CI）· 本图失步即 gen_svg -check 红（CI）", ""),
+		textF(600, n1, "tc", "权威清单与维护义务：.agents/README.md · 漂移重生成：go run ./scripts/gen_svg skills", ""),
+	)
+	writeSVG(root, "docs/current/02-构建与上手/agent-skills-overview.svg", P)
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 func main() {
 	// flag 在子命令之前（Go flag 在第一个位置参数处停止解析——与 scripts/facts 同款纪律）：
-	//   go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|all]
+	//   go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|skills|panorama|all]
 	check := flag.Bool("check", false, "校验落盘 SVG 与生成器输出逐字节一致（无写副作用；漂移 exit 1）")
 	flag.Parse()
 	checkMode = *check
@@ -1233,6 +1411,10 @@ func main() {
 		genWasm(root, fd)
 	case "gates":
 		genGates(root, fd)
+	case "skills":
+		genSkills(root, fd)
+	case "panorama":
+		genPanorama(root, fd)
 	case "all":
 		genArch(root, fd)
 		genCache(root, fd)
@@ -1245,8 +1427,10 @@ func main() {
 		genProtocol(root, fd)
 		genWasm(root, fd)
 		genGates(root, fd)
+		genSkills(root, fd)
+		genPanorama(root, fd)
 	default:
-		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / gates / all）")
+		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / gates / skills / panorama / all）")
 	}
 	if checkMode {
 		if len(checkDrifts) > 0 {

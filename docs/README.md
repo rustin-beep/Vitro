@@ -34,11 +34,13 @@
 > **命名约定**：`current/` 下文档自 2026-09-13 起使用中文文件名（专有名词如 C++/CLI/VM/schema 保留英文）；
 > 旧英文名在其他分支或本地检出中可能仍被引用，对照关系见各文档自身头部。
 >
-> **插图（SVG）约定**：`current/` 与 `spec/` 下的 11 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱 /
+> **插图（SVG）约定**：`current/` 与 `spec/` 下的 14 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱 /
 > MoonBit 包切分编译侧 + 执行智能侧 / 统一模式架构 / 统一模式状态机 / 内存布局与有界隔离 /
-> StepPayload 帧结构 / wasm 并发隔离）由 `go run ./scripts/gen_svg` 生成——插图自带深浅双底色
+> MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景）由 `go run ./scripts/gen_svg` 生成——插图自带深浅双底色
 > （亮色白底 / 深色品牌墨底，随查看环境自动切换）；影子验证图内的跑批快照数字带 `data-fact`
-> 锚，由 `go run ./scripts/facts check` 机判漂移；**勿手改**入库 SVG（下次生成即回退）。
+> 锚，由 `go run ./scripts/facts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
+> 目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必使图失步（`gen_svg -check` 即红）；
+> **勿手改**入库 SVG（下次生成即回退）。
 
 ## 文档目录
 

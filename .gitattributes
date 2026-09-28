@@ -18,3 +18,9 @@ protocol/** text eol=lf
 # NUL 事故时自己带了真字节）使 git 判二进制、diff/审阅不可见；锁 text
 # 显式声明文本属性（NUL 复发时 -text 指纹更易被 source_hygiene 类闸抓住）
 CHANGELOG.md text eol=lf
+
+# Agent Skills 结构化文件（2026-09-29）：core.autocrlf=true 的 Windows clone
+# 会把 SKILL.md 还原成 CRLF，破坏 frontmatter 的 "---" 包头解析——锁 LF；
+# 两处解析器（.agents/install_skills.go 与 scripts/gen_svg discoverSkills）
+# 另有 CRLF 归一兼容双保险，Windows autocrlf 工作区照样可装可画。
+.agents/** text eol=lf

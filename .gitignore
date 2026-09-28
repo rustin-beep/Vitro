@@ -151,3 +151,24 @@ moonbit/.repos/
 # （2026-09-28 扩：黑盒 roundtrip 探针工作目录会落在 moonbit/ 根等任意层，
 # 原先只盖 moonbit/fs/ 一处的路径限定漏住了 moonbit/tmp_vitro_fs_bb_roundtrip）
 tmp_vitro_fs_*/
+
+# AI 工具项目级目录（skills 批 2026-09-29）：install_skills.go --scope project
+# 与各工具自建的项目级配置会落在仓库根隐藏目录——安装物与工具本地状态不入库，
+# skill 唯一真相源是 .agents/skills/（入库）。.zcode/ 只挡 skills/：workflows 要入库。
+/.claude/
+/.cursor/
+/.windsurf/
+/.codebuddy/
+/.gemini/
+/.qwen/
+/.opencode/
+/.iflow/
+/.kiro/
+/.trae/
+/.qoder/
+/.roo/
+/.continue/
+/.lingma/
+/.comate/
+/.antigravity/
+/.zcode/skills/

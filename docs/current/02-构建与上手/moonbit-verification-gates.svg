@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="vitro MoonBit 自建验证防线全景">
   <title>MoonBit 自建验证防线 · 对拍链与闸卫</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；moon test 数 data-fact 锚定 reports/facts.json -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；结构图无数字锚（测试数见 README 机判行） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -39,7 +39,7 @@
   </defs>
 <text class="tt" x="600" y="56" text-anchor="middle">MoonBit 自建验证防线 · 对拍链与闸卫</text>
 <rect class="core" x="40" y="108" width="1120" height="62" rx="12"/>
-<text class="t" x="600" y="146" text-anchor="middle">moon test 引擎白盒 + 契约测试：<tspan data-fact="moonbit_test_passed">492</tspan> 用例全绿（十五道闸的底座）</text>
+<text class="t" x="600" y="146" text-anchor="middle">moon test 引擎白盒 + 契约测试全绿（十五道闸的底座 · 数字见 README 机判行）</text>
 <rect class="zone" x="40" y="190" width="640" height="300" rx="14"/>
 <text class="t" x="360" y="224" text-anchor="middle">逐层对拍（MoonBit ↔ Rust oracle，冻结对照）</text>
 <rect class="card" x="64" y="240" width="592" height="42" rx="10"/>

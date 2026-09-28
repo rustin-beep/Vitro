@@ -99,13 +99,6 @@ func mustFactS(d factsDoc, key string) string {
 	return f.SValue
 }
 
-func asOfOf(d factsDoc, key string) string {
-	if f, ok := d.Facts[key]; ok {
-		return f.AsOf
-	}
-	return d.GeneratedAt
-}
-
 func fatal(msg string) {
 	fmt.Fprintln(os.Stderr, "错误: "+msg)
 	os.Exit(2)
@@ -508,7 +501,7 @@ func genShadow(root string, fd factsDoc) {
 			{num: "shadow_cpp_cases", val: cppCases},
 			{text: " 用例（一致 + 已记录 clang_compile_fail，明细人工维护）· Clang 预检缺失即 fail fast(exit 2)"},
 		}),
-		textF(600, 810, "tc", "数据 as_of "+asOfOf(fd, "shadow_c_cases")+" · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）", ""),
+		textF(600, 810, "tc", "数字 data-fact 锚定 reports/facts.json 真值台账 · 漂移重生成：go run ./scripts/gen_svg", ""),
 	)
 	writeSVG(root, "docs/current/04-标准库与防线/shadow-verification-flow.svg", P)
 }
@@ -701,13 +694,11 @@ func genPackages(root string, fd factsDoc) {
 				textL(175, y+36, "tm", "Go 驱动层（保留·司法/驱动语言）· Node engine-host（新增薄层·golden 生成宿主）· spike 目录"))
 			y += 78
 		}
-		asOf := asOfOf(fd, "moonbit_built_packages")
-		if len(asOf) >= 10 {
-			asOf = asOf[:10] // RFC3339 取日期段——完整时间戳曾把本行撑爆画布
-		}
+		// 脚注不含 as_of 日期：采集时刻烙进落盘产物后，任何环境重生成必漂
+		//（2026-09-28 e35e4eb CI 实证——-check 的比对对象必须只含跨环境稳定内容）。
 		P = append(P,
 			textF(600, y+24, "tc", "硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量", ""),
-			textF(600, y+52, "tc", "虚线框 = 包目录未建（facts: moonbit_built_packages · as_of "+asOf+"）", ""),
+			textF(600, y+52, "tc", "虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）", ""),
 			textF(600, y+80, "tc", "权威：总计划 §10 · 漂移重生成：go run ./scripts/gen_svg packages", ""),
 		)
 		writeSVG(root, out, P)
@@ -1120,20 +1111,20 @@ func writeSVG(root, rel string, parts []string) {
 // 数字只锚 facts（moonbit_test_passed），其余一律口径化——不制造第二份
 // 会漂移的数字拷贝。
 
-func genGates(root string, fd factsDoc) {
-	mt := mustFact(fd, "moonbit_test_passed")
+func genGates(root string, _ factsDoc) {
+	// 本图零 facts 依赖：moonbit_test_passed 的采集依赖 moon test（CI --run
+	// 形态下疑似秒挂 → unavailable → mustFact 会把 -check 闸 fatal）。
+	// 数字由 README 的 moonbit_test_passed 机判行 + scripts/moonbit/testcount
+	// 三向对账承载，图上口径化——-check 的 facts 依赖收窄为 CI 必可用的
+	// read_report / fs_scan / read_const 类键。
 	P := svgOpen(1200, 900, "vitro MoonBit 自建验证防线全景", "MoonBit 自建验证防线 · 对拍链与闸卫",
-		"对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；moon test 数 data-fact 锚定 reports/facts.json")
+		"对账 docs/current/02-构建与上手/脚本总清单与必跑防线.md §1/§2 与 .github/workflows/ci.yml hygiene job；结构图无数字锚（测试数见 README 机判行）")
 	// 顶条：引擎白盒测试
 	P = append(P, markerDef,
 		textF(600, 56, "tt", "MoonBit 自建验证防线 · 对拍链与闸卫", ""),
 	)
 	P = append(P, box(40, 108, 1120, 62, "core", 12))
-	P = append(P, textSegs(600, 146, "t", []seg{
-		{text: "moon test 引擎白盒 + 契约测试："},
-		{num: "moonbit_test_passed", val: mt},
-		{text: " 用例全绿（十五道闸的底座）"},
-	}))
+	P = append(P, textF(600, 146, "t", "moon test 引擎白盒 + 契约测试全绿（十五道闸的底座 · 数字见 README 机判行）", ""))
 	// 左列：对拍链（差分五闸 + Clang 双联）
 	P = append(P, box(40, 190, 640, 300, "zone", 14),
 		textF(360, 224, "t", "逐层对拍（MoonBit ↔ Rust oracle，冻结对照）", ""),

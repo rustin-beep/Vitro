@@ -89,6 +89,6 @@
 <text class="t" x="40" y="604" text-anchor="start">仓库外</text>
 <text class="tm" x="175" y="604" text-anchor="start">Go 驱动层（保留·司法/驱动语言）· Node engine-host（新增薄层·golden 生成宿主）· spike 目录</text>
 <text class="tc" x="600" y="670" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
-<text class="tc" x="600" y="698" text-anchor="middle">虚线框 = 包目录未建（facts: moonbit_built_packages · as_of 2026-09-28）</text>
+<text class="tc" x="600" y="698" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
 <text class="tc" x="600" y="726" text-anchor="middle">权威：总计划 §10 · 漂移重生成：go run ./scripts/gen_svg packages</text>
 </svg>

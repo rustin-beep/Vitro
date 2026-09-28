@@ -20,25 +20,40 @@
 //    捕获通道，vm.run 内部 fail loud 即错误面。
 
 ///|
-/// stdin 切行（Rust `RuntimeState::split_stdin` 的等价形态）：`\r\n` 规整
-/// 为 `\n` 后按行切——**行内容不含行尾换行**（InputState.lines 的形态，
-/// 行间 `\n` 由 scanf 虚拟流消费侧补——V-P1-13 形态转换，两侧 scanf
-/// 消费面等价）；末行无换行保持原样；空串 = 零行。
+/// stdin 切行（Rust `RuntimeState::split_stdin` 同形——**split_inclusive
+/// 语义：行含尾换行**；`\r\n` 规整为 `\n`；末行无换行保持原样〔尾换行
+/// 信息不得丢失——审阅批 P1 实锤：剥掉换行使 getchar 每行少产一个
+/// `\n`，oracle `"ab\ncd\n"` 计 n=6 而本侧 n=4〕；空串 = 零行）。
+/// host 侧消费面：getchar 逐字节读行数据（含 `\n` 自然读到）；scanf
+/// 虚拟流的补位守卫（行尾 ≠ `\n` 才补）天然兼容本形态，无换行行
+/// （直接构造/末行）仍兜底。
 fn split_stdin_lines(input : String) -> Array[Bytes] {
   let normalized = if input.contains("\r\n") {
     input.replace(old="\r\n", new="\n")
   } else {
     input
   }
-  let lines : Array[Bytes] = []
   if normalized.is_empty() {
-    return lines
+    return []
   }
+  let nl : String = "\n"
+  let ends_with_nl = normalized.has_suffix(nl)
+  // split 产出段（以 \n 结尾时多一个末空段）；每段拼回分隔符——
+  // 除「不以 \n 结尾的末段」（split_inclusive 语义）
+  let segs : Array[String] = []
   for seg in normalized.split("\n") {
-    lines.push(@utf8.encode(seg.to_string()))
+    segs.push(seg.to_string())
   }
-  // 尾换行：split 产生末空段——丢弃（行数语义与 Rust split_inclusive 一致）
-  if lines.length() > 1 && lines[lines.length() - 1].length() == 0 {
+  let lines : Array[Bytes] = []
+  let last = segs.length() - 1
+  for i = 0; i < segs.length(); i = i + 1 {
+    if ends_with_nl || i < last {
+      lines.push(@utf8.encode(segs[i] + nl))
+    } else {
+      lines.push(@utf8.encode(segs[i]))
+    }
+  }
+  if ends_with_nl {
     ignore(lines.pop())
   }
   lines

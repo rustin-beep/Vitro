@@ -195,9 +195,20 @@ test "puts_appends_newline_and_putchar_byte_channel" {
 
 ///|
 test "getchar_reads_across_lines_and_eof_sticky" {
-  let input = InputState::new([b"ab", b"cd"], true)
+  // 形态勘误（2026-09-28 审阅批 P1）：锚输入改为 oracle 可达形态
+  // [b"ab\n", b"cd"]（split_inclusive 产物——"ab\ncd" 的切行）；旧形态
+  // [b"ab", b"cd"]（行不含换行）是 V-P1-13 形态转换期的中间态构造，
+  // 在 oracle 的 split_inclusive 切行下不可产生，且把「getchar 跳过
+  // 行间换行」的错误行为固定成了预期（审阅实锤：serve 通道 n=4 vs
+  // oracle n=6）。行含 \n 后 getchar 逐字节自然读到（a b \n c d）
+  let input = InputState::new([b"ab\n", b"cd"], true)
   assert_eq(host_getchar(input), InputOutcome::Value(97UL))
   assert_eq(host_getchar(input), InputOutcome::Value(98UL))
+  assert_eq(
+    host_getchar(input),
+    InputOutcome::Value(10UL),
+    msg="行尾换行是数据字节（oracle split_inclusive）",
+  )
   assert_eq(host_getchar(input), InputOutcome::Value(99UL))
   assert_eq(host_getchar(input), InputOutcome::Value(100UL))
   // 耗尽 → -1 + 粘滞

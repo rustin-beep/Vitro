@@ -6,6 +6,22 @@ patch；新增包 / 公共 API → minor。
 
 ## [Unreleased]（0.7.0 开发期）
 
+### Fixed
+
+- **serve 输入通道的 getchar 行间换行丢失**（2026-09-28 审阅批 P1 实锤
+  并双向证明）：`split_stdin_lines` 剥掉行尾换行，与 oracle
+  `RuntimeState::split_stdin`（`split_inclusive('\n')`——行含尾换行）
+  形态不符，导致 `getchar()` 每行少产一个 `\n`（实测
+  `"ab\ncd\n"`：oracle 计 n=6 / 本侧 n=4；`scanf("%s")` 后 getchar
+  读到下一行首字符而非 `\n`）。修复 = 切行改保留尾换行（末行无换行
+  原样——尾换行信息不丢）；host 侧 scanf 虚拟流的补位守卫（行尾
+  ≠ `\n` 才补）天然兼容，零改动。`InputState.lines` 形态约定同步
+  勘误为「行含尾换行」（`host_io_wbtest` 的
+  `getchar_reads_across_lines_and_eof_sticky` 锚翻转——旧构造
+  `[b"ab", b"cd"]` 是 oracle `split_inclusive` 下不可产生的中间态，
+  且把错误行为固定成了预期）。三锚新增（n=6 / n=5 / scanf+getchar
+  读 10）。
+
 ### Added
 
 - `vitro/engine/fs`（L0，native-only）：**vendored 自 moonbitlang/x@0.5.5**
@@ -39,6 +55,11 @@ patch；新增包 / 公共 API → minor。
   `runtime_batch : Bool` 两字段（Rust `session.runtime` 的 argv/
   input_mode 两角最小承载——argv 跨 run 存活；输入模式缺省
   **Interactive** 对齐 Rust `InputMode` 默认首变体）。
+- **capabilities 出口的分叉登记**（serve 静态族，批四号双宿主对拍的
+  已知必红点）：`abi_version`/`engine_version` 字段不出（MoonBit 侧
+  无 capi 层——.mbti 取代 ABI 版本化，构建期 git 短哈希通道不存在，
+  版本协商走 mooncakes 版本号）；`languages.cpp` 节不出（F-2 终局
+  已裁 C++）。对拍白名单须含此四项。
 
 ## [0.6.0] - 2026-09-26
 

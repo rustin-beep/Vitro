@@ -9,8 +9,10 @@
 /// + 参数回推，`StepResult::WaitingInput` 语义）。
 ///
 /// **scanf 流式游标（V-P1-13 照搬）**：从 `(index, char_offset)` 起拼虚拟
-/// 字节流（行间补 `\n`，映射表记补位），按实际消费量推进游标——"每行整行
-/// 消费"的旧缺陷不复刻。
+/// 字节流，按实际消费量推进游标——"每行整行消费"的旧缺陷不复刻。
+/// 行尾 `\n` 补位（映射表记 `(i+1, -1)`）是**守卫形态**：行已含尾换行
+/// （2026-09-28 审阅批 P1 对齐后的正统形态）不补；仅无换行行（直接
+/// 构造/末行无换行）兜底补一个流终止 `\n`。
 ///
 /// **栈深守卫的族内不一致（坑 17，照搬不修）**：printf/fprintf/scanf 有
 /// 参数计数守卫（教学文案 trap）；**sprintf/snprintf/sscanf 没有**——参数
@@ -31,8 +33,13 @@ pub(all) enum InputOutcome {
 ///|
 /// 会话输入态（oracle `RuntimeState` 输入域 + 模式）。
 pub(all) struct InputState {
-  /// 输入行（oracle `input_lines : Vec<String>`——此处按字节承载，语义同
-  /// 其 `as_bytes()` 消费面）。
+  /// 输入行（oracle `input_lines : Vec<String>`——此处按字节承载）。
+  /// **行含尾换行**（oracle `split_stdin` 的 `split_inclusive('\n')` 产物
+  /// 同形；2026-09-28 审阅批 P1 对齐——此前「行不含换行」形态是 V-P1-13
+  /// 形态转换期的中间态，serve 切行剥掉换行使 getchar 每行少产一个
+  /// `\n`〔实测 oracle `"ab\ncd\n"` 计 n=6 / 本侧 n=4〕；形态统一后
+  /// getchar 逐字节读行数据自然对齐。无换行行〔直接构造/末行无换行〕
+  /// 由 scanf 虚拟流的补位守卫兜底）。
   lines : Array[Bytes]
   mut index : Int
   mut char_offset : Int

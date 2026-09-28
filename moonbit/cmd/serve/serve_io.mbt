@@ -10,11 +10,19 @@
 // feed 在非等待态也可调用：文本追加后正常跑（execute_run 非 resume 分支
 // 会 reset + setup 从头重跑——Rust 现状同形，照搬不私改）。
 //
-// **output.delta 分叉登记**：Rust 输出通道是 UTF-8 String（putchar(200)
-// 被重编码为两字节——DIFF-LIB-PUTCHAR-01）；MoonBit OutputLog 是 Bytes
-// 保真（单字节 0xC8）。delta 字段按 Latin-1 逐字节折回 String（cmd/run
-// stdout 通道同口径——消费方在字节域归一）；游标/total 用字节口径，
-// UTF-8 字符边界前移逻辑因此无对象（字节域无切半问题）。
+// **output.delta 分叉登记**（两条，2026-09-28 审阅批 P2 补全）：
+// ① **delta 编码形态**：Rust 输出通道是 UTF-8 String（putchar(200)
+//    被重编码为两字节——DIFF-LIB-PUTCHAR-01）；MoonBit OutputLog 是
+//    Bytes 保真（单字节 0xC8）。delta 字段按 Latin-1 逐字节折回
+//    String（cmd/run stdout 通道同口径——消费方在字节域归一）。
+// ② **cursor 无 UTF-8 字符边界前移**：Rust 侧 `while !all.
+//    is_char_boundary(start) { start += 1 }` 使「cursor 落在多字节
+//    字符中间」时空转下个边界（delta 恒合法 UTF-8）；本侧字节域无
+//    边界概念，中段 cursor 直接切字节（探针实测：`printf("中")`
+//    cursor=1 → oracle delta=""〔前移到 3〕/ 本侧 delta=2 尾字节）。
+//    **消费方契约**：cursor 只用响应里的 `total` 回填推进，永不自算
+//    中段游标 ⇒ 两侧行为一致；自算中段游标（如按显示宽度截取）才会
+//    触发本分叉。锚 `serve_output_delta_cursor_mid_utf8_byte` 锁现状。
 
 ///|
 /// input.feed 方法帧（Rust input_feed 照搬）：params.text 缺省 "" 等价

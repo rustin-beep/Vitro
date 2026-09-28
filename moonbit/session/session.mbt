@@ -175,6 +175,11 @@ fn nth_line(source : String, n : Int) -> String? {
   if n < 0 {
     return None
   }
+  // Rust lines() 语义：空串 = 零行（"".lines().nth(0) = None——split
+  // 形态会得 [""] 一行空串，审阅⑦字节级取证分叉点）
+  if source.is_empty() {
+    return None
+  }
   let lines : Array[String] = []
   for line in source.split("\n") {
     lines.push(line.to_string())

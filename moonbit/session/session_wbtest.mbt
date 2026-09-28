@@ -124,3 +124,20 @@ test "session_unified_frame_buffer_fields_default" {
   assert_eq(s.unified_last_frame_vars.length(), 0)
   assert_eq(s.unified_row_entry_vars.length(), 0)
 }
+
+///|
+test "session_nth_line_empty_source_rust_alignment" {
+  // 审阅⑦字节级取证：Rust "".lines().nth(0) = None（空串 = 零行）；
+  // 修复前 MoonBit split 形态 Some("")。空源码 + 查行必须 None。
+  assert_true(
+    s_source_line_at_empty(),
+    msg="空源码查第 1 行必须 None（Rust lines() 语义：空串零行）",
+  )
+}
+
+///|
+fn s_source_line_at_empty() -> Bool {
+  let s = Session::new()
+  s.compile.compile_units = [{ filename: "empty.c", source: "", }]
+  s.source_line_at(1) is None
+}

@@ -58,8 +58,8 @@
 <rect class="card" x="20" y="314" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="348" text-anchor="start">L8</text>
 <text class="tc" x="40" y="376" text-anchor="start">会话/协议</text>
-<text class="tc" x="1065" y="348" text-anchor="start">在建 1/3</text>
-<rect class="plan" x="175" y="326" width="280" height="60" rx="10"/>
+<text class="tc" x="1065" y="348" text-anchor="start">在建 2/3</text>
+<rect class="card" x="175" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="191" y="352" text-anchor="start">vitro/engine/session</text>
 <text class="tc" x="191" y="376" text-anchor="start">SessionConfig 值对象</text>
 <rect class="card" x="475" y="326" width="280" height="60" rx="10"/>

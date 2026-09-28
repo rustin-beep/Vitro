@@ -433,14 +433,14 @@ func genKG(root string, _ factsDoc) {
 // 本图的跑批快照数字全部 data-fact 锚定 facts 台账。
 
 func genShadow(root string, fd factsDoc) {
+	// 2026-09-28 CI 首轮真值对账实证（f32a85c Hygiene）：分类明细数字
+	// （match/known_issue/gap_extension 等）随跑批环境的 Clang 版本微漂
+	// （本地 clang 22.1.4 判 679/3，CI runner 判 680/2，总数 683 两边一致）
+	// ——环境函数不适合机器锚定（与 README 分解式行归人工维护同一哲学），
+	// 图上只锚总数与门禁零指标（非 0 即真差异，本就该红），明细口径化。
 	cases := mustFact(fd, "shadow_c_cases")
-	match := mustFact(fd, "shadow_c_match")
-	knownN := mustFact(fd, "shadow_c_known_issue")
-	gapExtN := mustFact(fd, "shadow_c_gap_extension")
 	gaps := mustFact(fd, "shadow_c_gaps")
 	cppCases := mustFact(fd, "shadow_cpp_cases")
-	cppMatch := mustFact(fd, "shadow_cpp_match")
-	cppFail := mustFact(fd, "shadow_cpp_clang_fail")
 
 	P := svgOpen(1200, 836, "vitro 影子验证门禁流水线", "影子验证框架 · Clang 影子对照与 CI 硬门禁",
 		"对账 影子验证框架.md §一思想 + §三流程 + §2.3 五分类门禁判定表；快照数字 data-fact 锚定 reports/facts.json")
@@ -499,24 +499,14 @@ func genShadow(root string, fd factsDoc) {
 		textSegs(600, 756, "tc", []seg{
 			{text: "当前规模：C "},
 			{num: "shadow_c_cases", val: cases},
-			{text: "（"},
-			{num: "shadow_c_match", val: match},
-			{text: " match + "},
-			{num: "shadow_c_known_issue", val: knownN},
-			{text: " known_issue + "},
-			{num: "shadow_c_gap_extension", val: gapExtN},
-			{text: " gap_extension，"},
+			{text: " 用例（全量一致 + 已登记差异，无非预期；分类明细随跑批环境"},
 			{num: "shadow_c_gaps", val: gaps},
-			{text: " 非预期差异）"},
+			{text: " 非预期为门禁零指标 · 明细人工维护）"},
 		}),
 		textSegs(600, 784, "tc", []seg{
 			{text: "C++ "},
 			{num: "shadow_cpp_cases", val: cppCases},
-			{text: "（"},
-			{num: "shadow_cpp_match", val: cppMatch},
-			{text: " 一致 + "},
-			{num: "shadow_cpp_clang_fail", val: cppFail},
-			{text: " 已记录 clang_compile_fail）· Clang 预检缺失即 fail fast(exit 2)"},
+			{text: " 用例（一致 + 已记录 clang_compile_fail，明细人工维护）· Clang 预检缺失即 fail fast(exit 2)"},
 		}),
 		textF(600, 810, "tc", "数据 as_of "+asOfOf(fd, "shadow_c_cases")+" · reports/facts.json（漂移重生成：go run ./scripts/gen_svg）", ""),
 	)

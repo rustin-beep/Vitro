@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -77,12 +78,30 @@ const defaultQuarantineBudget = 256 * 1024
 var (
 	failures   []string
 	assertions int
+	// MoonBit 臂（S7 批四号：双宿主对拍）——同一请求表与断言集，
+	// 豁免面外置 moonbit_exemptions.json（断言名精确匹配 + 整批豁免；
+	// 表外断言名红即真红——防静默豁免面扩张）。Rust 臂行为零变。
+	mbMode    bool
+	mbExempt  map[string]string
+	mbBatches map[string]string
+	exempted  int
 )
 
 // tally 与 Python 版同构：断言总数自计数，"断言数" 是机器采集的真值口径。
 func tally(okFlag bool) { assertions++ }
 
 func check(cond bool, label, detail string) {
+	// MoonBit 臂豁免：表内断言名跳过并计数（Rust 臂永远不进此分支——
+	// 豁免表只在 --moonbit 下加载）。PASS 也豁免——该面两侧一致时同样
+	// 不计入 MoonBit 臂口径，避免"豁免了但实际一直绿"的僵尸条目；
+	// 销项时机到了直接删条目即恢复断言。
+	if mbMode {
+		if reason, ok := mbExempt[label]; ok {
+			exempted++
+			fmt.Printf("  SKIP  %s（豁免：%s）\n", label, reason)
+			return
+		}
+	}
 	tally(cond)
 	if cond {
 		fmt.Printf("  PASS  %s\n", label)
@@ -144,7 +163,12 @@ func strOf(v any) string {
 func runServeBatch(exe, payload string, timeout time.Duration) (stdout, stderr string, exitCode int, timedOut bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, exe, "serve")
+	var cmd *exec.Cmd
+	if mbMode {
+		cmd = exec.CommandContext(ctx, exe) // MoonBit cmd/serve 是主程序无子命令
+	} else {
+		cmd = exec.CommandContext(ctx, exe, "serve")
+	}
 	cmd.Stdin = strings.NewReader(payload)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -179,13 +203,62 @@ func main() {
 	os.Exit(run())
 }
 
-func run() int {
-	exe := resolveExe()
-	if _, err := os.Stat(exe); err != nil {
-		fmt.Printf("错误: 找不到 %s，请先 `cd native && cargo build --bin vitro_cli`\n", exe)
-		return 2
+// loadMoonBitExemptions 读豁免表（断言名 → 理由）。缺文件/坏 JSON 即
+// fail loud——豁免面自身也是被审计对象，静默降级等于放大豁免面。
+func loadMoonBitExemptions() (map[string]string, map[string]string, error) {
+	path := filepath.Join("scripts", "serve_smoke", "moonbit_exemptions.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("读豁免表失败: %w", err)
 	}
-	fmt.Printf("vitro_cli: %s\n", exe)
+	var doc struct {
+		Assertions map[string]string `json:"assertions"`
+		Batches    map[string]string `json:"batches"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, nil, fmt.Errorf("豁免表非法 JSON: %w", err)
+	}
+	return doc.Assertions, doc.Batches, nil
+}
+
+// resolveMoonBitExe 定位 MoonBit 侧 serve 产物（cmd/serve 主程序——
+// 无子命令形态）。VITRO_SERVE_MB 覆盖优先。
+func resolveMoonBitExe() string {
+	if override := os.Getenv("VITRO_SERVE_MB"); override != "" {
+		return override
+	}
+	name := "serve"
+	if runtime.GOOS == "windows" {
+		name = "serve.exe"
+	}
+	return filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "native", "debug", "build", "cmd", "serve", name)
+}
+
+func run() int {
+	flag.BoolVar(&mbMode, "moonbit", false, "跑 MoonBit 臂（cmd/serve exe；同一请求表与断言集，豁免面见 moonbit_exemptions.json）")
+	flag.Parse()
+	var exe string
+	if mbMode {
+		var err error
+		mbExempt, mbBatches, err = loadMoonBitExemptions()
+		if err != nil {
+			fmt.Printf("错误: %v\n", err)
+			return 2
+		}
+		exe = resolveMoonBitExe()
+		if _, err := os.Stat(exe); err != nil {
+			fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", exe)
+			return 2
+		}
+		fmt.Printf("MoonBit serve: %s（豁免 %d 断言 + %d 整批）\n", exe, len(mbExempt), len(mbBatches))
+	} else {
+		exe = resolveExe()
+		if _, err := os.Stat(exe); err != nil {
+			fmt.Printf("错误: 找不到 %s，请先 `cd native && cargo build --bin vitro_cli`\n", exe)
+			return 2
+		}
+		fmt.Printf("vitro_cli: %s\n", exe)
+	}
 
 	// ── 主批：20 请求协议契约 ──
 	var payloadBuilder strings.Builder
@@ -491,14 +564,28 @@ func run() int {
 	r20 := asObj(byID[20]["result"])
 	check(isBool(r20["shutdown"], true), "shutdown 回应", "")
 
-	// ── 三个追加批 ──
-	failures = append(failures, runEdgeBatch(exe)...)
-	failures = append(failures, runPendingLeakBatch(exe)...)
-	failures = append(failures, runRSSGuardBatch(exe)...)
+	// ── 三个追加批（MoonBit 臂按豁免表整批跳过——批次依赖 step 族/seek）──
+	for _, batch := range []struct {
+		key string
+		fn  func(string) []string
+	}{{"edge", runEdgeBatch}, {"pending_leak", runPendingLeakBatch}, {"rss_guard", runRSSGuardBatch}} {
+		if mbMode {
+			if reason, ok := mbBatches[batch.key]; ok {
+				fmt.Printf("\n== %s 批：SKIP（豁免：%s）==\n", batch.key, reason)
+				continue
+			}
+		}
+		failures = append(failures, batch.fn(exe)...)
+	}
 
 	fmt.Println()
 	// 自报口径（供 facts 台账采集；格式稳定，勿随意改动）
-	fmt.Printf("断言数: %d  (PASS %d / FAIL %d)\n", assertions, assertions-len(failures), len(failures))
+	if mbMode {
+		fmt.Printf("MoonBit 臂断言数: %d  (PASS %d / FAIL %d / 豁免 %d)\n",
+			assertions+exempted, assertions-len(failures), len(failures), exempted)
+	} else {
+		fmt.Printf("断言数: %d  (PASS %d / FAIL %d)\n", assertions, assertions-len(failures), len(failures))
+	}
 	if len(failures) > 0 {
 		fmt.Printf("FAILED: %d 项 -> %v\n", len(failures), failures)
 		return 1

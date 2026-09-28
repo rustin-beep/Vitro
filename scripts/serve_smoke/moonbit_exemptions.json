@@ -1,0 +1,24 @@
+{
+  "_comment": "serve_smoke MoonBit 臂豁免表（S7 批四号双宿主对拍）。规则：断言名与 check() 的 label 精确匹配；PASS 也豁免（防僵尸条目——销项时机到了直接删条目即恢复断言）；整批豁免单列 batches。表外断言名红即真红（防静默豁免面扩张，J9 双路证红：删表 fail loud + 删条目断言真红）。豁免须带理由与销项时机。",
+  "assertions": {
+    "ping 携带 ABI 版本": "分叉登记：MoonBit 侧无 capi 层（.mbti 取代 ABI 版本化）——CHANGELOG 0.7.0 与总计划批四号段在案；永久豁免（形态差非缺陷）",
+    "step.next(id=6) 返回 payloads 数组": "step 族五方法依赖 unified 引擎（S8 时间旅行片）未接——serve 分发回未知方法错误帧",
+    "step.next(id=7) 返回 payloads 数组": "同上（S8）",
+    "step.next 帧序列非空（首调空 + 后续逐帧的合并序列）": "同上（S8）",
+    "step_index 严格递增且无重复投递（spec 附录 A）": "同上（S8）",
+    "StepPayload 含 schema 字段": "同上（S8）",
+    "payload.get 携带窗口字段": "同上（S8）",
+    "breakpoints.set 回显行号": "同上（S8）",
+    "seek 成功": "同上（S8）",
+    "栈帧区域带函数名（C2）": "断言依赖 step 族执行后停在中间态使栈非空；MoonBit 臂请求表同源但 step 族未接，run 完成后栈空——栈区合成本身已有白盒锚 serve_memory_regions_stack_frames_while_waiting（waiting 态锁定）；S8 接入 step 族后销项",
+    "栈帧区域带 alloc_by=call / alloc_line（C2）": "同上（S8）",
+    "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）",
+    "config.set 生效（预算可调）": "serve_apply_config 未接 quarantine_budget 字段（一段欠账，本批登记）——MoonBit 侧 MemoryMap 有 set_quarantine_budget 通道，serve 层接线随批四号后续或 S8 随用随接",
+    "reset 保留会话级配置（隔离预算）": "同上（quarantine_budget 通道未接）"
+  },
+  "batches": {
+    "edge": "边界/负值/极值批的前置是 step 族产生帧缓存与检查点（seek/payload.get 越界形状）——S8 时间旅行片未接不可达；非法 JSON 行/no.such.method 的进程存活面已有白盒锚（serve_wbtest）",
+    "pending_leak": "二次运行串帧批断言 step.next 帧缓冲（U1#1 P0-1 发布缓冲）——S8 未接；MoonBit 侧 unified_pending 字段已备（session 批）",
+    "rss_guard": "远距 seek 压力形状（VITRO_RSS_BUDGET_MB 护栏）——seek 依赖 S8；MoonBit 侧 RSS 形态随 S8 统一引擎批定基线"
+  }
+}

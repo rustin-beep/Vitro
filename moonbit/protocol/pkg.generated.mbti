@@ -26,6 +26,8 @@ pub fn encode_step_delta(StepPayload, StepPayload, SymbolTable, Map[Int, String]
 
 pub fn encode_step_payload(StepPayload, SymbolTable) -> StepPayloadRef
 
+pub fn json_or_null(Json?) -> Json
+
 pub fn kind_by_id(String) -> SemanticLabelKind?
 
 pub fn reserved_fields_v0_2() -> Array[String]

@@ -193,12 +193,12 @@ jobs:
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
-      - name: Refresh MoonBit registry index
-        # 2026-09-20 CI 实锤：全新安装的 moon 无 registry 索引，解析
-        # moonbitlang/x 报 "module was not found in the registry"；
-        # moon update 只刷索引不动 moon.mod 固定版本（本地验证零回归）
-        shell: bash
-        run: cd moonbit && moon update
+      # （2026-09-28 死代码清除）原「Refresh MoonBit registry index」步骤删除——
+      # 其存在理由是「全新安装的 moon 解析 moonbitlang/x 报 module was not
+      # found」（2026-09-20 CI 实锤）；唯一依赖清除批（d29a347）后 moon.mod
+      # deps 已空（vendored vitro/engine/fs），moon test/build 只解析 core
+      # （工具链自带）不触 registry。hygiene job 的同名步骤保留——它服务
+      # toolchain_probe 的索引预检（A8），与 x 依赖无关。
 
       - name: MoonBit unit tests (moon test)
         # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
@@ -212,6 +212,18 @@ jobs:
         # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
         # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。
         run: cd moonbit && moon test --target native
+
+      # S7 批四号（2026-09-28）：双宿主对拍——同一请求表与断言集跑 MoonBit
+      # cmd/serve；豁免面外置 moonbit_exemptions.json（step 族 S8 / 已登记
+      # 分叉 / quarantine_budget 欠账，14 断言 + 3 整批，PASS 也豁免防僵尸
+      # 条目）。首跑战果：抓到 config.set 未包 serve_ok 帧的一段真缺陷。
+      # J9 双路证红：删豁免表 → fail loud exit 2；删单条目 → 该断言真红。
+      - name: MoonBit serve smoke (dual-host, Exit 3)
+        run: |
+          cd moonbit && moon build --target native cmd/serve && cd ..
+          go run ./scripts/serve_smoke -moonbit
+        shell: bash
+
 
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash

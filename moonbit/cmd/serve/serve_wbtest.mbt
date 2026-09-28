@@ -83,6 +83,14 @@ test "serve_config_set_before_compile_effective" {
     s, "{\"id\":9,\"method\":\"config.set\",\"params\":{\"max_steps\":777}}",
   )
   assert_true(resp.contains("\"max_steps\":777"), msg="config.set 回显")
+  // 帧结构锚（2026-09-28 批四号双宿主对拍实锤补）：响应必须是
+  // serve_ok 帧（id 回填 + ok:true + result 承载 config）——一段写成
+  // 裸 config 对象（无帧包装），serve_smoke MoonBit 臂「id 一一对应/
+  // 帧同构」两断言红后修复；contains 数字形态的旧锚不锁帧结构故未暴露
+  assert_true(
+    resp.has_prefix("{\"id\":9,\"ok\":true,\"result\":{"),
+    msg="serve_ok 帧包装",
+  )
   assert_eq(s.vm.max_steps, 777, msg="VM 侧生效（编译前设置不丢）")
 }
 
@@ -232,4 +240,39 @@ test "json_parse_number_grammar_rfc8259" {
   assert_false(rejects("0.5"))
   assert_false(rejects("1e5"))
   assert_false(rejects("-1.5e-3"))
+}
+
+// ── openseek 对照纪律批 ②（总计划批四号段排期）：serve 帧 golden 锚 ──
+// 单编码者原则「同一帧两个书写者不得有两种拼法」——serve_ok/serve_err
+// 结构钉死（字段序 + null id 形态），批四号双宿主对拍的帧契约基线；
+// MoonBit 出口与 gen_protocol_ts 生成器是 Vitro 的双写面（openseek
+// 实证：双写漂移直到穷举解码才被发现）。
+
+///|
+test "serve_ok_frame_golden_shape" {
+  let m : Map[String, Json] = Map([])
+  m.set("pong", Json::boolean(true))
+  let frame = serve_ok(Json::number(7), Json::object(m))
+  assert_eq(
+    frame.stringify(),
+    "{\"id\":7,\"ok\":true,\"result\":{\"pong\":true}}",
+    msg="serve_ok 帧 golden（字段序：id/ok/result）",
+  )
+  // 字符串 id 原样回填（异步竞态对账场景）
+  let frame2 = serve_ok(Json::string("abc"), Json::object(m))
+  assert_eq(
+    frame2.stringify(),
+    "{\"id\":\"abc\",\"ok\":true,\"result\":{\"pong\":true}}",
+    msg="字符串 id golden",
+  )
+}
+
+///|
+test "serve_err_frame_golden_shape" {
+  let frame = serve_err(Json::null(), "protocol", "未知方法：x")
+  assert_eq(
+    frame.stringify(),
+    "{\"id\":null,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"未知方法：x\"}}",
+    msg="serve_err 帧 golden（kind/message 字段序 + null id 形态）",
+  )
 }

@@ -167,7 +167,12 @@ fn dispatch(
       (serve_ok(id, Json::object(m)).stringify(), true)
     }
     "config.get" => (serve_ok(id, serve_config(s)).stringify(), false)
-    "config.set" => (serve_apply_config(s, params).stringify(), false)
+    "config.set" =>
+      // 帧结构对齐 Rust（serve 臂：serve_ok(id, cfg)）——一段写成裸
+      // config 对象回串（无 id/ok 包装），serve_smoke 双宿主对拍实锤
+      // （响应 id 一一对应 + 帧同构两断言红）；既有锚只 contains 数字
+      // 未锁帧结构故未暴露
+      (serve_ok(id, serve_apply_config(s, params)).stringify(), false)
     // 静态元数据族（三段）
     "capabilities" => serve_capabilities_frame(id)
     "error_catalog" => serve_error_catalog_frame(id)

@@ -7,6 +7,7 @@
 // -1 = EOF（含立即 EOF）；-2 = 行超长（未消费完，视为协议错误）。
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -28,10 +29,3 @@ int moonbit_vitro_serve_read_line(char *buf, int cap) {
     }
     return (int)len;
 }
-
-// JSON 数字解析（精度语义 = C strtod 的最近 Double；MoonBit core 的
-// parse_double 在 internal 包不可见——协议参数域的正确性走本出口）。
-// 返回 double 的位模式（uint64）——MoonBit FFI 的 -> Double 返回通道
-// ABI 不匹配（实测读到垃圾值 -2），位模式通道 + 侧 reinterpret 稳定。
-//（数字解析改 MoonBit 侧手写累积——FFI 数值返回通道在本机实测不稳定）
-

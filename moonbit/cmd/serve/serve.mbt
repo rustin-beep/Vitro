@@ -248,7 +248,9 @@ fn main {
     if n < 0 {
       break // EOF（-1）或超长行（-2 视协议错退出）
     }
-    let line = buf[:n].to_string()
+    // BytesView.to_string 是 Show 展示形态（引号被 debug 转义成 "——
+    // 端到端实测实锤），UTF-8 解码走 @utf8.decode_lossy
+    let line = @utf8.decode_lossy(buf[:n])
     let (resp, stop) = serve_handle(s, line)
     println(resp)
     if stop {

@@ -190,3 +190,46 @@ test "json_parse_negative_and_exp" {
     _ => fail("应为 Array")
   }
 }
+
+// ── 审阅八轮 P2②/P3③ 补锚（先证红后修）──
+
+///|
+test "json_parse_depth_limit_128" {
+  // 深嵌套必须有界（serde_json 默认 128 层——serve 长驻进程的 DoS 面；
+  // 审阅实测 20000 层栈溢出 0xc00000fd 不可捕获）
+  // 合法闭合的深嵌套（200 开 + 200 闭——未闭合串会被语法错先拦，测不到深度）
+  let mut deep = ""
+  for i in 0..<200 {
+    deep = deep + "["
+  }
+  for i in 0..<200 {
+    deep = deep + "]"
+  }
+  let r : Result[Json, JsonParseError] = Ok(json_parse(deep)) catch {
+    e => Err(e)
+  }
+  assert_true(r is Err(_), msg="200 层深嵌套必须被拒（超 128 限）")
+}
+
+///|
+test "json_parse_number_grammar_rfc8259" {
+  // RFC 8259 禁止形态：前导零（01）/ 裸点（.5 / 1.）/ 悬空指数（1e / 1e+）
+  fn rejects(s : String) -> Bool {
+    try {
+      ignore(json_parse(s))
+      false
+    } catch {
+      _ => true
+    }
+  }
+  assert_true(rejects("01"), msg="前导零禁止（RFC 8259 number 文法）")
+  assert_true(rejects("1."), msg="裸尾点禁止")
+  assert_true(rejects(".5"), msg="裸前导点禁止")
+  assert_true(rejects("1e"), msg="悬空指数禁止")
+  assert_true(rejects("1e+"), msg="指数缺数字禁止")
+  // 合法形态不误伤
+  assert_false(rejects("0"))
+  assert_false(rejects("0.5"))
+  assert_false(rejects("1e5"))
+  assert_false(rejects("-1.5e-3"))
+}

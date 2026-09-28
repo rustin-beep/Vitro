@@ -5,6 +5,7 @@
 // 会话；serve_handle 为纯函数（行入 → (响应 JSON 串, 继续旗)）——白盒可
 // 直测协议层，stdio stub 只管取行。
 import {
+  "moonbitlang/core/encoding/utf8",
   "vitro/engine/diag",
   "vitro/engine/protocol",
   "vitro/engine/session",

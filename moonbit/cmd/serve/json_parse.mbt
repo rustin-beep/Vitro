@@ -16,15 +16,19 @@ priv suberror JsonParseError {
 }
 
 ///|
+const JSON_PARSE_DEPTH_LIMIT : Int = 128
+
+///|
 struct JsonCursor {
   src : String
   mut pos : Int
+  mut depth : Int
 }
 
 ///|
 /// 入口：一行请求 → Json 值（失败 raise JsonParseError）。
 fn json_parse(input : String) -> Json raise JsonParseError {
-  let c = { src: input, pos: 0, }
+  let c = { src: input, pos: 0, depth: 0, }
   skip_ws(c)
   let v = parse_value(c)
   skip_ws(c)
@@ -73,6 +77,20 @@ fn expect(c : JsonCursor, ch : Int) -> Unit raise JsonParseError {
 
 ///|
 fn parse_value(c : JsonCursor) -> Json raise JsonParseError {
+  c.depth += 1
+  if c.depth > JSON_PARSE_DEPTH_LIMIT {
+    raise JsonParseError::Fail(
+      message="嵌套深度超限（>\{JSON_PARSE_DEPTH_LIMIT}，对齐 serde_json 默认）",
+      offset=c.pos,
+    )
+  }
+  let v = parse_value_inner(c)
+  c.depth -= 1
+  v
+}
+
+///|
+fn parse_value_inner(c : JsonCursor) -> Json raise JsonParseError {
   skip_ws(c)
   match peek(c) {
     -1 =>
@@ -274,6 +292,15 @@ fn parse_number(c : JsonCursor) -> Json raise JsonParseError {
   if text.length() == 0 || text == "-" {
     raise JsonParseError::Fail(message="非法数字字面量", offset=start)
   }
+  // RFC 8259 number 文法校验（审阅八轮 P3③：此前 1e/01/1./.5/1e+ 全被
+  // 静默放行——扫描只认字符集不认结构）：int 部分禁前导零（"0" 或
+  // 非零开头）；'.' 后必须至少一位数字；'e' 后可带符号但必须有数字
+  if !valid_json_number(text) {
+    raise JsonParseError::Fail(
+      message="非法数字字面量（RFC 8259）：\{text}",
+      offset=start,
+    )
+  }
   // C strtod（最近 Double 精度；core 的 parse_double 在 internal 不可见）。
   // 数字串纯 ASCII；Bytes 不可按下标写——from_array 构造并自带 NUL 终止
   //（Bytes 内存布局不保证 NUL，x/fs OsString 同款自带约定）
@@ -348,4 +375,53 @@ fn accumulate_double(text : String) -> Double {
   } else {
     v
   }
+}
+
+///|
+/// RFC 8259 number 文法校验：[-]?int[.frac][e[+-]?exp]——int 禁前导零、
+/// frac/exp 至少一位数字。text 已过字符集扫描（只含 [0-9.eE+-]）。
+fn valid_json_number(text : String) -> Bool {
+  let n = text.length()
+  let mut i = 0
+  if i < n && text[i] == '-' {
+    i += 1
+  }
+  // int 部分
+  let int_start = i
+  while i < n && text[i] >= '0' && text[i] <= '9' {
+    i += 1
+  }
+  let int_len = i - int_start
+  if int_len == 0 {
+    return false
+  }
+  if int_len > 1 && text[int_start] == '0' {
+    return false // 前导零（"01"）
+  }
+  // frac 部分
+  if i < n && text[i] == '.' {
+    i += 1
+    let frac_start = i
+    while i < n && text[i] >= '0' && text[i] <= '9' {
+      i += 1
+    }
+    if i == frac_start {
+      return false // "1." 裸尾点（".5" 在更早被 int_len==0 拦）
+    }
+  }
+  // exp 部分
+  if i < n && (text[i] == 'e' || text[i] == 'E') {
+    i += 1
+    if i < n && (text[i] == '+' || text[i] == '-') {
+      i += 1
+    }
+    let exp_start = i
+    while i < n && text[i] >= '0' && text[i] <= '9' {
+      i += 1
+    }
+    if i == exp_start {
+      return false // "1e" / "1e+"
+    }
+  }
+  i == n
 }

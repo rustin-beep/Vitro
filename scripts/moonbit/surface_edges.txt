@@ -91,6 +91,9 @@ vitro/engine/cmd/run vitro/engine/lexer/token SourceProvider
 vitro/engine/cmd/run vitro/engine/parser parse
 vitro/engine/cmd/run vitro/engine/typeck TypeChecker
 vitro/engine/cmd/run vitro/engine/vm VitroVM
+vitro/engine/cmd/serve moonbitlang/core/encoding/utf8 decode_lossy
+vitro/engine/cmd/serve vitro/engine/session CompileState
+vitro/engine/cmd/serve vitro/engine/session Session
 vitro/engine/codegen vitro/engine/ast AssignOp
 vitro/engine/codegen vitro/engine/ast BinaryOp
 vitro/engine/codegen vitro/engine/ast Expr

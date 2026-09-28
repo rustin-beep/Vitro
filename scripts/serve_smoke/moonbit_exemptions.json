@@ -12,9 +12,7 @@
     "seek 成功": "同上（S8）",
     "栈帧区域带函数名（C2）": "断言依赖 step 族执行后停在中间态使栈非空；MoonBit 臂请求表同源但 step 族未接，run 完成后栈空——栈区合成本身已有白盒锚 serve_memory_regions_stack_frames_while_waiting（waiting 态锁定）；S8 接入 step 族后销项",
     "栈帧区域带 alloc_by=call / alloc_line（C2）": "同上（S8）",
-    "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）",
-    "config.set 生效（预算可调）": "serve_apply_config 未接 quarantine_budget 字段（一段欠账，本批登记）——MoonBit 侧 MemoryMap 有 set_quarantine_budget 通道，serve 层接线随批四号后续或 S8 随用随接",
-    "reset 保留会话级配置（隔离预算）": "同上（quarantine_budget 通道未接）"
+    "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）"
   },
   "batches": {
     "edge": "边界/负值/极值批的前置是 step 族产生帧缓存与检查点（seek/payload.get 越界形状）——S8 时间旅行片未接不可达；非法 JSON 行/no.such.method 的进程存活面已有白盒锚（serve_wbtest）",

@@ -65,12 +65,15 @@ fn serve_session_semantics() -> Json {
 }
 
 ///|
-/// config.get 出口（Rust session_api::config 同构面——MoonBit 侧以
+/// config.get 出口（Rust session_api::config 六字段同构面——MoonBit 侧以
 /// SessionConfig 为单一真相源，无「vm None 时回 Null」形态〔vm 非 Option〕；
-/// quarantine_budget/input_mode_batch/argv 等运行态字段随二段接线补）。
+/// quarantine_budget 的定义点在 MemoryMap〔memory 包——capi 直映射字段〕，
+/// 回显直读；input_mode_batch 回显 runtime_batch）。
 fn serve_config(s : @session.Session) -> Json {
   let m : Map[String, Json] = Map([])
   m.set("deterministic", s.config.deterministic.to_json())
+  m.set("quarantine_budget", s.vm.mem_map.quarantine_budget().to_json())
+  m.set("input_mode_batch", s.runtime_batch.to_json())
   m.set("compiled", s.compile.compiled.to_json())
   m.set("max_steps", s.config.max_steps.to_json())
   m.set("call_depth_limit", s.config.call_depth_limit.to_json())
@@ -197,9 +200,18 @@ fn dispatch(
 }
 
 ///|
-/// config.set（与 Rust serve_apply_config 同批字段；quarantine_budget
-/// 等运行态字段随二段接线）。
+/// config.set（与 Rust serve_apply_config 同批字段）。quarantine_budget：
+/// clamp 0..1MB（Rust 同形）直写 MemoryMap 定义点（memory 包——capi
+/// `vitro_set_quarantine_budget` 直映射字段；vm reset 跨重建保留 ⇒
+/// 会话级语义由 reset 纪律承担，无需 SessionConfig 双写）。
 fn serve_apply_config(s : @session.Session, params : Json) -> Json {
+  match json_field(params, "quarantine_budget").as_int() {
+    Some(v) => {
+      let clamped = if v < 0 { 0 } else if v > 1048576 { 1048576 } else { v }
+      s.vm.mem_map.set_quarantine_budget(clamped)
+    }
+    None => ()
+  }
   match json_field(params, "max_steps").as_int() {
     Some(v) => s.set_max_steps(v)
     None => ()

@@ -1,0 +1,31 @@
+// cmd/serve：NDJSON 会话模式的 native stdio 壳（S7 批五号起协议层在
+// vitro/engine/gateway——本包只剩 stdio 循环；帧语义/方法表见 gateway）。
+
+///|
+#borrow(buf)
+extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int) -> Int = "moonbit_vitro_serve_read_line"
+
+///|
+const SERVE_LINE_CAP : Int = 65536
+
+///|
+/// serve 主循环：stdin 逐行 → gateway.invoke → stdout 响应；shutdown 停。
+fn main {
+  let buf : Bytes = Bytes::make(SERVE_LINE_CAP, b'\x00')
+  while true {
+    let n = serve_read_line_stub(buf, SERVE_LINE_CAP)
+    if n < 0 {
+      break // EOF（-1）或超长行（-2 视协议错退出）
+    }
+    // BytesView.to_string 是 Show 展示形态（引号被 debug 转义成 "——
+    // 端到端实测实锤），UTF-8 解码走 @utf8.decode_lossy
+    let line = @utf8.decode_lossy(buf[:n])
+    let resp = @gateway.invoke(line)
+    println(resp)
+    // shutdown 帧判停（gateway.invoke 的 String→String 单口语义——
+    // 宿主见 "shutdown":true 帧自行停止，与 wasm 宿主同判据）
+    if resp.contains("\"shutdown\":true") {
+      break
+    }
+  }
+}

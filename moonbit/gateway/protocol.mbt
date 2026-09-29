@@ -1,14 +1,7 @@
-// serve 主循环与协议层（S7 批三号一段，2026-09-28）。
+// NDJSON 帧协议层（自 cmd/serve 上提，S7 批五号——gateway 为 wasm-gc 单出口载体）。
 // 照搬 vitro_cli.rs serve 段的帧协议与会话语义；一段方法族 = 协议静态面
 //（ping/session.create/reset/destroy/shutdown/config.get/config.set）；
 // 二段起接 compile/run/step 等引擎方法（批三号后续段）。
-
-///|
-#borrow(buf)
-extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int) -> Int = "moonbit_vitro_serve_read_line"
-
-///|
-const SERVE_LINE_CAP : Int = 65536
 
 ///|
 /// 成功帧：{id, ok:true, result}。
@@ -270,26 +263,5 @@ fn Json::as_bool(self : Json) -> Bool? {
     True => Some(true)
     False => Some(false)
     _ => None
-  }
-}
-
-///|
-/// serve 主循环：stdin 逐行 → serve_handle → stdout 响应；shutdown 停。
-fn main {
-  let s = @session.Session::new()
-  let buf : Bytes = Bytes::make(SERVE_LINE_CAP, b'\x00')
-  while true {
-    let n = serve_read_line_stub(buf, SERVE_LINE_CAP)
-    if n < 0 {
-      break // EOF（-1）或超长行（-2 视协议错退出）
-    }
-    // BytesView.to_string 是 Show 展示形态（引号被 debug 转义成 "——
-    // 端到端实测实锤），UTF-8 解码走 @utf8.decode_lossy
-    let line = @utf8.decode_lossy(buf[:n])
-    let (resp, stop) = serve_handle(s, line)
-    println(resp)
-    if stop {
-      break
-    }
   }
 }

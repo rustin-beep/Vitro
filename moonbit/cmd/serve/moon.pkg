@@ -1,26 +1,9 @@
-// S7 批三号：serve——JSON-lines 会话模式 runner（cmd 层，pkg_deps 豁免方向）。
-// 照搬 native/src/bin/vitro_cli.rs 的 serve 段（:631 起）+ session_api 的
-// 方法语义。设计：NDJSON 每行一请求一响应；请求可选 id 原样回填；错误帧
-// 与成功帧同构（id/ok 二选一携带 result/error）；单 serve 进程 = 单活跃
-// 会话；serve_handle 为纯函数（行入 → (响应 JSON 串, 继续旗)）——白盒可
-// 直测协议层，stdio stub 只管取行。
-// 二段起接引擎方法（compile/run——serve_compile.mbt/serve_run.mbt）。
+// S7 批五号：cmd/serve = native stdio 壳（协议层在 vitro/engine/gateway；
+// cmd 层 pkg_deps 豁免方向）。帧语义/方法表/豁免面见 gateway 与
+// scripts/serve_smoke/moonbit_exemptions.json。
 import {
   "moonbitlang/core/encoding/utf8",
-  "vitro/engine/ast",
-  "vitro/engine/bytecode",
-  "vitro/engine/codegen",
-  "vitro/engine/diag",
-  "vitro/engine/fs",
-  "vitro/engine/host",
-  "vitro/engine/lexer",
-  "vitro/engine/lexer/token",
-  "vitro/engine/memory",
-  "vitro/engine/parser",
-  "vitro/engine/protocol",
-  "vitro/engine/session",
-  "vitro/engine/typeck",
-  "vitro/engine/vm",
+  "vitro/engine/gateway",
 }
 
 supported_targets = "native"

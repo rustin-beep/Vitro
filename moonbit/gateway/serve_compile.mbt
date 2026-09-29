@@ -23,54 +23,6 @@
 // file_ranges 区间锚 + 2000 步真停锚（serve_run_wbtest）。
 
 ///|
-/// 文件系统 provider（cmd 层复制件——与 cmd/run/main.mbt 的 FsProvider
-/// 形态一致：cmd 包间无共享机制，pkg_deps 豁免方向下的双份登记，
-/// 修改须两处同步）。
-enum ServeFsProvider {
-  Fs
-}
-
-///|
-impl @token.SourceProvider for ServeFsProvider with fn read(
-  self : ServeFsProvider,
-  path : String,
-) -> String raise @token.SourceError {
-  match self {
-    Fs => ()
-  }
-  @fs.read_file_to_string(path) catch {
-    _ => raise @token.SourceError::NotFound(path~)
-  }
-}
-
-///|
-/// 路径目录段（cmd/run/main.mbt dir_of 的复制件——等价性经 7 形态端到端
-/// 探针实证，见彼处头注；修改须两处同步）。
-fn serve_dir_of(path : String) -> String {
-  let mut last = -1
-  for i = 0; i < path.length(); i = i + 1 {
-    let c = path[i]
-    if c.to_int() == 47 || c.to_int() == 92 {
-      last = i
-    }
-  }
-  if last <= 0 {
-    "."
-  } else {
-    let buf = StringBuilder()
-    for i = 0; i < last; i = i + 1 {
-      let c = path[i]
-      if c.to_int() == 92 {
-        buf.write_char('/')
-      } else {
-        buf.write_char(c.to_int().unsafe_to_char())
-      }
-    }
-    buf.to_string()
-  }
-}
-
-///|
 /// 合并编译单元（**file_ranges 生产者**——Rust merge_compile_units 逐语义
 /// 照搬，compile_pipeline.rs:557）：源串顺序拼接（无尾换行补 `\n`，空
 /// 文件也补）+ 全局行号 → 文件区间表。行数语义：空文件 0 行不产区间；
@@ -273,21 +225,13 @@ fn serve_compile_pipeline(
   // ── 合并（file_ranges 生产者）──
   let (full_source, ranges) = merge_units(units)
   st.file_ranges = ranges
-  // quote-include 候选链 base_dir：首个非空文件名的目录段（Rust base_path
-  // = Path(filename).parent()——行为级等价，见 serve_dir_of 头注）
-  let mut base_dir = "."
-  for u in units {
-    if !u.filename.is_empty() {
-      base_dir = serve_dir_of(u.filename)
-      break
-    }
-  }
   // ── 1. Lexer（E2：预处理警告与追踪随词法产出）──
-  let lexed = @lexer.tokenize_with(
-    full_source,
-    provider=ServeFsProvider::Fs,
-    base_dir~,
-  )
+  // wasm-gc 形态无文件系统：quote-include 走内存 vfs 空表——include
+  // 家族解析为 E1021 not found（正当教学诊断；宿主注入文件表是将来
+  // 扩展位，F-5 未承诺）；native 壳（cmd/serve）与 wasm 宿主同形态
+  // （差异仅 native 可改走文件系统 provider——分叉登记见包头注）
+  let files : Map[String, String] = Map([])
+  let lexed = @lexer.tokenize_with_vfs(full_source, files~)
   for t in lexed.trace {
     st.preprocessor_trace.push(t.render())
   }

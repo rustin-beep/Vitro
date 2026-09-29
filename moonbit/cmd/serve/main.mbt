@@ -28,7 +28,9 @@ fn main {
         // （沉默是调用方唯一无法处置的回应——模块审阅 06 P1-1 实锤：
         // ≥65536 字节行零输出 rc=0，与 shutdown 正常退出不可区分）。
         // 回显式错误帧后干净退出；帧形态对齐 gateway serve_err。
-        println("{\"id\":0,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"请求行超过 65535 字符上限（serve 定长行缓冲）——请缩减单帧 source 或分段喂入\"}}")
+        println(
+          "{\"id\":0,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"请求行超过 65535 字符上限（serve 定长行缓冲）——请缩减单帧 source 或分段喂入\"}}",
+        )
       }
       break // EOF（-1）
     }

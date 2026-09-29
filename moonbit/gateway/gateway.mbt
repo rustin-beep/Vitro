@@ -1,4 +1,5 @@
-// gateway 核心（S7 批五号，2026-09-29）：NDJSON 帧协议的 4 函数导出面
+// gateway 核心（S7 批五号，2026-09-29）：NDJSON 帧协议的会话承载
+// （拆包 2026-09-29：4 函数在本包为普通 pub——wasm 导出面在外壳包 gateway/wasm）
 // （F-5 裁定）——invoke 单口承载 21 方法表，session 全局单例（单活跃
 // 会话语义 D2，与 cmd/serve 进程模型同构）。
 // 宿主契约（Node/浏览器）：
@@ -25,7 +26,6 @@ let session : @session.Session = @session.Session::new()
 ///|
 /// 单行请求 → 响应串（NDJSON 帧；未知方法回 protocol 错误帧——读不懂
 /// 的请求必须报错，协议演化纪律 ②）。
-#export_name("invoke")
 pub fn invoke(line : String) -> String {
   serve_handle(session, line).0
 }
@@ -33,7 +33,6 @@ pub fn invoke(line : String) -> String {
 ///|
 /// 会话重置（R3 语义：清空编译/运行态，保留会话级配置——与
 /// session.reset 方法同语义，供宿主在无方法帧场景下直调）。
-#export_name("reset")
 pub fn reset() -> Unit {
   reset_session_preserving_config(session)
 }
@@ -41,14 +40,12 @@ pub fn reset() -> Unit {
 ///|
 /// 协议版本（StepPayload schema 轨道——与 capabilities.schema.version
 /// 同单源 @protocol.SCHEMA_VERSION）。
-#export_name("protocol_version")
 pub fn protocol_version() -> String {
   @protocol.SCHEMA_VERSION
 }
 
 ///|
 /// 引擎版本（手维护常量——见文件头分叉登记）。
-#export_name("engine_version")
 pub fn engine_version() -> String {
   ENGINE_VERSION
 }
@@ -61,7 +58,7 @@ pub fn engine_version() -> String {
 /// native 静默丢掉文件系统解析**（审阅实锤：oracle 同请求出宏展开链
 /// 返 7、本侧 E1021）——回调注入消掉 fs 依赖（wasm-gc 构建图不兼容
 /// native-only 包），native 语义经注册恢复。
-let include_reader : Ref[((String) -> String?)?] = Ref::new(None)
+let include_reader : Ref[((String) -> String?)?] = Ref(None)
 
 ///|
 /// 注册 include 读取器（返回 None = 该路径不存在，词法层报 E1021）。
@@ -71,13 +68,13 @@ pub fn set_include_reader(read : (String) -> String?) -> Unit {
 
 ///|
 /// include 读取 provider（把注入回调包装成 SourceProvider）。
-enum HostIncludeProvider {
+priv enum HostIncludeProvider {
   P
 }
 
 ///|
 impl @token.SourceProvider for HostIncludeProvider with fn read(
-  self : HostIncludeProvider,
+  _self : HostIncludeProvider,
   path : String,
 ) -> String raise @token.SourceError {
   match include_reader.val {

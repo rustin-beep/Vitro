@@ -28,8 +28,8 @@ for (let i = 0; i < args.length; i++) {
 }
 const repoRoot = path.resolve(__dirname, "../..");
 if (!wasmPath) {
-  const release = path.join(repoRoot, "moonbit/_build/wasm-gc/release/build/gateway/gateway.wasm");
-  const debug = path.join(repoRoot, "moonbit/_build/wasm-gc/debug/build/gateway/gateway.wasm");
+  const release = path.join(repoRoot, "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm");
+  const debug = path.join(repoRoot, "moonbit/_build/wasm-gc/debug/build/gateway/wasm/wasm.wasm");
   wasmPath = fs.existsSync(release) ? release : debug;
 }
 const isRelease = wasmPath.includes(path.join("release", "build"));
@@ -64,9 +64,10 @@ function check(cond, label, detail) {
         "零功能性 imports（除字符串常量模块 _ 外无依赖）",
         JSON.stringify(functionalImports));
 
-  // 旧版 Node（22 系）不认 importedStringConstants 编译选项 ⇒ "_" 常量
-  // 以真实 import 出现——两段式：先无参实例化（新版走编译选项），失败
-  // 再带 Proxy 兜底（函数名即字面量，返回该字符串）
+  // 两段式实例化：先无参（Node 25 走编译选项消化 "_" 常量 import）；
+  // 失败再带 Proxy 尝试。**注意（2026-09-29 审阅勘误）：Node 22 实测
+  // 此兜底不工作（illegal cast——V8 层面 string 常量 import 形态不兼容），
+  // 留作清晰报错路径而非兼容承诺；本闸的判定面在 Node 25（CI pin）
   let inst;
   try {
     inst = await WebAssembly.instantiate(mod, {});

@@ -472,3 +472,7 @@ vitro/engine/gateway vitro/engine/lexer tokenize_with
 vitro/engine/gateway vitro/engine/lexer/token LexResult
 vitro/engine/gateway vitro/engine/lexer/token SourceError
 vitro/engine/gateway vitro/engine/lexer/token SourceProvider
+vitro/engine/gateway/wasm vitro/engine/gateway invoke
+vitro/engine/gateway/wasm vitro/engine/gateway reset
+vitro/engine/gateway/wasm vitro/engine/gateway protocol_version
+vitro/engine/gateway/wasm vitro/engine/gateway engine_version

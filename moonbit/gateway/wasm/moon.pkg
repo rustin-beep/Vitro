@@ -1,0 +1,20 @@
+// gateway/wasm：wasm-gc 单出口外壳（2026-09-29 拆包，§12.6 验证过的
+// 配方落地）。只含 4 个 #export_name 转发（实现全在 gateway 本体）；
+// foreign_library + wasm-gc 单目标（moon 对 foreign_library 的 native
+// 走 exe 链接 ⇒ LNK1561——上游 issue 草稿在 tmp/perf_probe/，仓库侧
+// 以拆包绕开）。
+// link 的 use-js-builtin-string：String 参数/返回直传 JS（宿主侧以
+// WebAssembly 编译选项 builtins:['js-string'] 供给内建——零功能性
+// imports：import 段仅 "_" 模块的字符串字面量常量）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
+import {
+  "vitro/engine/gateway",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm-gc"
+
+options(
+  link: { "wasm-gc": { "use-js-builtin-string": true } },
+)

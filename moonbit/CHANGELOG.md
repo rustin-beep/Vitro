@@ -21,6 +21,14 @@ patch；新增包 / 公共 API → minor。
   静默丢解析），wasm-gc 不注册 ⇒ E1021 教学诊断；Node 宿主驱动
   `scripts/wasm_gateway/host.js`（16 断言：NDJSON 全链 + E3070/E3061
   真 trap + 4 导出面 + 失联锚 + 体积上限）。
+- **gateway 拆包（2026-09-29 审阅 P2 假声明销项，§12.6 配方落地）**：
+  gateway 本体改 `library`（`+wasm-gc +native`——native 消费者与
+  wasm 外壳共用），4 个 `#export_name` 导出面移至新包
+  `vitro/engine/gateway/wasm`（foreign_library + wasm-gc 单目标）；
+  moon 对 foreign_library 的 native 走 exe 链接 ⇒ LNK1561（上游契约
+  缺口）——拆包后 CI 全量 native release 构建门由「已知债豁免」转
+  **硬门**；include 双分支锚补齐（审阅 P2 零锚：突变回缺陷形态曾
+  58/58 全绿——新锚后突变必红）。
 - **stdin 注入通道三件**（2026-09-29 层 2 遗留 stdin 34 例批）：
   - `host::InputState::from_stdin_text(text, batch)`——stdin 切行单源
     （`\r\n` 循环规整 + `split_inclusive` 语义行含尾换行 + 模式一次

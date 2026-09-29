@@ -238,7 +238,7 @@ jobs:
           node-version: "25"
       - name: wasm-gc gateway build + Node host smoke (run)
         run: |
-          cd moonbit && moon build --release --target wasm-gc gateway && cd ..
+          cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
           node scripts/wasm_gateway/host.js
         shell: bash
 
@@ -610,14 +610,15 @@ jobs:
             exit 1
           fi
 
-      # M15 + M13 细化（2026-09-18）：文档事实对账门禁接线。此前 facts check
-      # 自称 CI 门禁但 ci.yml 无此步骤（§7A 复核 M15 实锤）——文档数字与机器
-      # 真值漂移、跨文档 ABI 版本漂移均无门禁可拦。本步是 hygiene 的主体：
-      # 白天改代码文档滞后的时序差在此显形，夜间批量复绿（用户工作流裁定）。
-      # --run 重放 replay/serve_smoke 秒级刷新真值（Debug 构建在上方）；
-      # cargo 真值从 core artifact 日志解析，不重跑 30 分钟测试；
-      # shadow 产物真值来自 core artifact（当轮新鲜）。真值超龄即红
-      #（无 --allow-stale），坏引用同红。
+      - name: Full native release build gate (declared targets must build)
+        # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
+        # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
+        # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
+        shell: bash
+        run: |
+          cd moonbit
+          moon build --release --target native
+          echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
         shell: bash
         run: go run ./scripts/facts --run --cargo-log native/cargo_test_ci.log check
@@ -689,3 +690,43 @@ jobs:
         with:
           name: coverage-report
           path: native/lcov.info
+
+  # ── portability（2026-09-29 接线，跨 OS 探路 job）────────────────────────
+  # 目的：全仓 CI 首次在非 Windows 环境构建——验证 moon 工具链 unix 装法、
+  # fs 包 vendored C stub 走 cc、native 后端的 linux 链接形态（LNK1561 是
+  # Windows MSVC 的形，linux ld 行为未验证——探路即归因）、wasm-gc 产物与
+  # Node 宿主。**独立 job 设计**：红面不阻塞 core/hygiene 的发版判断，
+  # 首跑踩雷就地归因（下游语料/Windows 假设的防线不搬——vm_diff/
+  # clang_direct/serve_smoke 留在 core）。
+  portability:
+    name: Ubuntu build & test (cross-OS probe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit toolchain (unix)
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: MoonBit tests (three targets)
+        run: |
+          cd moonbit
+          moon test
+          moon test --target native
+          moon test --target wasm-gc
+
+      - name: Full native release build (linux cc/ld form)
+        # Windows 侧同款门（core 的 Full native release build gate）——
+        # linux 链接器是另一形态，本步即探路：红了就是新事实
+        run: cd moonbit && moon build --release --target native
+
+      - name: Install Node 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+
+      - name: wasm-gc gateway artifact + Node host smoke
+        run: |
+          cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
+          node scripts/wasm_gateway/host.js

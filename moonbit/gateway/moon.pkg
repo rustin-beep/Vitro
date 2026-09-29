@@ -1,16 +1,15 @@
 // L8 会话/协议层·gateway 包（S7 批五号，2026-09-29 建包）：NDJSON 帧协议
-// 层的引擎无关载体——F-5 裁定的 wasm-gc 单出口落点（4 函数导出：
-// invoke / reset / protocol_version / engine_version + 21 方法表）。
-// 协议层自 cmd/serve 整体上提（serve 变 native stdio 壳：cmd/serve 与
-// wasm-gc/Node 宿主消费同一 dispatch）。
-// **quote-include 的宿主形态分叉（2026-09-29 审阅 P2 修复）**：文件级
-// 目标选择（env 包先例）——native 走真实文件系统（lex_provider_native），
-// wasm-gc 无文件系统走内存 vfs 空表（lex_provider_wasm）⇒ include 家族
-// 在 wasm 形态下解析为 E1021 not found（正当教学诊断）；宿主注入文件表
-// 是将来扩展位（F-5 未承诺）。
-// link 的 use-js-builtin-string：String 参数/返回直传 JS（宿主侧以
-// WebAssembly 编译选项 builtins:['js-string'] 供给内建——零功能性
-// imports：import 段仅 "_" 模块的字符串字面量常量，由编译选项消化）。
+// 层的引擎无关载体（21 方法表 dispatch + 会话承载）。
+// **拆包（2026-09-29 §12.6 验证过的配方落地，审阅 P2 假声明销项）**：
+// 本包 = 协议层本体（library——native 消费者 cmd/serve 与 wasm 外壳
+// gateway/wasm 共用）；4 个 #export_name 导出面在外壳包 gateway/wasm
+// （foreign_library + wasm-gc 单目标）。moon 对 foreign_library 的
+// native 仍走 exe 链接 => LNK1561（上游契约缺口，issue 草稿在
+// tmp/perf_probe/）——拆包后全量 native release 构建门（CI）转硬绿。
+// **quote-include 的宿主形态分叉（2026-09-29 审阅 P2 修复）**：
+// set_include_reader 回调注入——native 壳注册文件系统读取，wasm-gc
+// 不注册走内存 vfs 空表 => include 家族在 wasm 形态下解析为 E1021
+// not found（正当教学诊断）；宿主注入文件表是将来扩展位（F-5 未承诺）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
 import {
   "moonbitlang/core/encoding/utf8",
@@ -29,10 +28,4 @@ import {
   "vitro/engine/vm",
 }
 
-pkgtype(kind: "foreign_library")
-
 supported_targets = "+wasm-gc +native"
-
-options(
-  link: { "wasm-gc": { "use-js-builtin-string": true } },
-)

@@ -117,10 +117,15 @@ go run ./scripts/clang_direct [--sample N | --corpus dir | --cases f1.c,...] # �
 33. **core 的 `Map` 即 LinkedHashMap**（`linked_hash_map.mbt` 实现的就是 `Map`）——**迭代序 = 插入序**，且既有键 `set` **保持原插入位**（等键分支只写 value）；但**没有 `get_mut`**——就地改值要么 `update(k, fn(V?) -> V?)`（闭包内改 mut 字段），要么 `get` 出来改完 `set` 回去。⇒ "Vec + 平行索引"可整体换成 `Map[K, V]`：O(1) 定位 + 保序 + **失配面归零**（S6 memory 的 regions 即此形态，消掉坑 6 的根因）。
 34. **弃用 API 三例（`moon check` 会给 `deprecated` 告警）**：`Array::new(capacity=)` → `Array(capacity=)`、`Deque::new()` → `Deque([])`、`Int::to_uint` / `UInt::to_int` → `reinterpret_as_uint` / `reinterpret_as_int`（**语义相同，只是把"重解释"写明**；注意 `to_uint64()` 未弃用）。
 35. **`FixedArray[Byte]` 只有写侧 LE 原语**（`unsafe_write_uint32_le` / `..._uint64_le`），**读侧原语只在 `Bytes`**（`Bytes::unsafe_read_uint32_le`）——用 `FixedArray[Byte]` 当内存本体时，读必须手工 4/8 次索引拼装（与 Rust `i32::from_le_bytes([m[a],...])` 同形）。
-38. **`moon build --target native main` 的 `main` 是目录过滤器而非包名**——目录是否被当包**只看有无 moon.pkg**：只写 main/main.mbt 漏 moon.pkg ⇒ 该目录不算包 ⇒ 构建任务数 0 ⇒ **EXIT=0 零输出零产物静默不构建**（2026-09-27 用户 bench 巩固工程实测；判定看"ran N tasks"的 N）。顺带：main 函数签名须无参 `fn main { ... }`（带参/带 raise 均拒绝），参数化用编译期 const 切换重编译。
-39. **`String::replace` 只替换首个匹配**（2026-09-29 stdin 34 例批实锤：`abc`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace }`（先例 `host_io.mbt::from_stdin_text` 的 CRLF 规整）；单符号场景（指数文本剥 +/-）不受影响。同族新单源：`InputState::from_stdin_text`（stdin 切行——行含尾换行，serve input 参数 / cmd/run -i 共用），勿再散拼。
-37. **经 shell/python 管道写源码时反斜杠转义会层层衰减**（2026-09-23 P2-NUL 事故）：JSON→shell→python 三级解码会吃掉层层反斜杠（两层写法只剩一层，再经 python 字符串解析即成真字节）——`b"hello\x00"` 落成二进制文件、git 判 `w/-text`、15KB 测试 diff 不可见。写含转义序列的源码一律用 `chr(92)` 构造，或写完后 `source_hygiene` 扫一遍兜底。同族：注释里的 \n 会断行、Go 字符串里的 \n 会变真换行。
-36. **测试宏的说明文字必须用 `msg=` 具名参数**——`assert_eq(a, b, "说明")` 会被拒（"requires 2 positional arguments"），写 `assert_eq(a, b, msg="说明")`；`assert_true`/`assert_false` 同理。另：**`_` 不能作 `for` 循环变量名**（`for _ = 0; ...` 是解析错误，换 `i`/`n`）。
+36. **`moon build --target native main` 的 `main` 是目录过滤器而非包名**——目录是否被当包**只看有无 moon.pkg**：只写 main/main.mbt 漏 moon.pkg ⇒ 该目录不算包 ⇒ 构建任务数 0 ⇒ **EXIT=0 零输出零产物静默不构建**（2026-09-27 用户 bench 巩固工程实测；判定看"ran N tasks"的 N）。顺带：main 函数签名须无参 `fn main { ... }`（带参/带 raise 均拒绝），参数化用编译期 const 切换重编译。
+37. **`String::replace` 只替换首个匹配**（2026-09-29 stdin 34 例批实锤：`a
+b
+c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace }`（先例 `host_io.mbt::from_stdin_text` 的 CRLF 规整）；单符号场景（指数文本剥 +/-）不受影响。同族新单源：`InputState::from_stdin_text`（stdin 切行——行含尾换行，serve input 参数 / cmd/run -i 共用），勿再散拼。
+38. **经 shell/python 管道写源码时反斜杠转义会层层衰减**（2026-09-23 P2-NUL 事故）：JSON→shell→python 三级解码会吃掉层层反斜杠（两层写法只剩一层，再经 python 字符串解析即成真字节）——`b"hello\x00"` 落成二进制文件、git 判 `w/-text`、15KB 测试 diff 不可见。写含转义序列的源码一律用 `chr(92)` 构造，或写完后 `source_hygiene` 扫一遍兜底。同族：注释里的 \n 会断行、Go 字符串里的 \n 会变真换行。
+39. **测试宏的说明文字必须用 `msg=` 具名参数**——`assert_eq(a, b, "说明")` 会被拒（"requires 2 positional arguments"），写 `assert_eq(a, b, msg="说明")`；`assert_true`/`assert_false` 同理。另：**`_` 不能作 `for` 循环变量名**（`for _ = 0; ...` 是解析错误，换 `i`/`n`）。
+
+40. **wasm-gc 导出三事实（2026-09-29 批五号一手实证）**：① 导出 = `pkgtype(kind: "foreign_library")` + `#export_name("名")` 属性（executable 形态只导 `_start`，pub fn 不自动导出）；② String 直传 = moon.pkg `options("link": {"wasm-gc": {"use-js-builtin-string": true}})` + 宿主 `new WebAssembly.Module(buf, {builtins:['js-string'], importedStringConstants:'_'})`（不开内建则 String 是 GC 引用类型、宿主无法构造——「type incompatibility」）；③ foreign_library 不拉 println 链 ⇒ 产物零**功能性** imports（import 段仅 "_" 字符串常量模块——字节层 ≈2000 条，旧 Node 以真实 import 呈现需宿主兜底）。注意 moon.pkg 的 link 不是顶层键（`link = {...}` 解析失败——须 `options("link": {...})`）。
+
 
 ## 编码与架构纪律（S1 已定型）
 

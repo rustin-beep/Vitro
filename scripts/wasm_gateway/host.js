@@ -14,7 +14,7 @@
 // 续跑）+ 两条真教学 trap 断言（E3070 strcpy 越界 / E3061 NULL 解引用
 // 受检）+ 4 导出面 + 体积上限（防依赖性膨胀回归）。
 //
-// 自报口径（facts/CI 采集锚，格式稳定勿改）：
+// 自报口径（CI 断言口径，格式稳定勿改；facts 键未接——如需机器采集在 facts.go runKeys 登记）：
 //   wasm_gateway 冒烟: N (PASS x / FAIL y)
 
 "use strict";
@@ -55,16 +55,41 @@ function check(cond, label, detail) {
   check(exportNames.includes("invoke") && exportNames.includes("reset") &&
         exportNames.includes("protocol_version") && exportNames.includes("engine_version"),
         "4 函数导出面（invoke/reset/protocol_version/engine_version）", exportNames.join(","));
-  check(WebAssembly.Module.imports(mod).length === 0,
-        "产物零 imports（js-string 内建由宿主编译选项供给）",
-        JSON.stringify(WebAssembly.Module.imports(mod)));
+  // 「零 imports」在字节层不成立（2026-09-29 审阅 P3 勘误）：import 段含
+  // "_" 模块的字符串字面量常量（新版 V8 的高层 API 不计入，旧版/字节层
+  // 可见）——正确口径 = 零**功能性** imports（除 "_" 外无任何模块依赖，
+  // js-string 内建由宿主编译选项供给）
+  const functionalImports = WebAssembly.Module.imports(mod).filter(i => i.module !== "_");
+  check(functionalImports.length === 0,
+        "零功能性 imports（除字符串常量模块 _ 外无依赖）",
+        JSON.stringify(functionalImports));
 
-  const inst = await WebAssembly.instantiate(mod, {});
+  // 旧版 Node（22 系）不认 importedStringConstants 编译选项 ⇒ "_" 常量
+  // 以真实 import 出现——两段式：先无参实例化（新版走编译选项），失败
+  // 再带 Proxy 兜底（函数名即字面量，返回该字符串）
+  let inst;
+  try {
+    inst = await WebAssembly.instantiate(mod, {});
+  } catch (e) {
+    const stringConstFallback = new Proxy({}, {
+      get: (_t, prop) => { if (typeof prop === "string") return () => prop; }
+    });
+    try {
+      inst = await WebAssembly.instantiate(mod, { "_": stringConstFallback });
+    } catch (e2) {
+      console.error("[wasm-gateway] 实例化失败（Node 版本过旧不支持 js-string？）:", e2.message);
+      process.exit(2);
+    }
+  }
   const g = inst.exports;
 
   check(g.protocol_version() === "v0.1", "protocol_version = v0.1", g.protocol_version());
-  check(typeof g.engine_version() === "string" && g.engine_version().length > 0,
-        "engine_version 非空", g.engine_version());
+  // ENGINE_VERSION ↔ moon.mod 版本失联锚（2026-09-29 审阅 P3-5）：
+  // 读 moon.mod 的 version 逐字对比——发版忘 bump 即红
+  const modText = fs.readFileSync(path.join(repoRoot, "moonbit/moon.mod"), "utf8");
+  const modVer = (modText.match(/version\s*=\s*"([^"]+)"/) || [])[1];
+  check(g.engine_version() === modVer,
+        "engine_version == moon.mod version（失联即红）", `${g.engine_version()} vs ${modVer}`);
 
   // ── NDJSON 全链（与 serve_smoke 同语义的 wasm 宿主面）──
   function invoke(line) { return g.invoke(line); }

@@ -228,8 +228,15 @@ jobs:
       # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
       # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
       # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
-      # release 形态 676KB。
+     
       - name: wasm-gc gateway build + Node host smoke (Exit 2)
+        # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
+        # host.js 两段式实例化兼容 22 系但判定面在 25 上定版——pin 25。
+        # 体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚手工数字教训）
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+      - name: wasm-gc gateway build + Node host smoke (run)
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway && cd ..
           node scripts/wasm_gateway/host.js

@@ -226,12 +226,12 @@ fn serve_compile_pipeline(
   let (full_source, ranges) = merge_units(units)
   st.file_ranges = ranges
   // ── 1. Lexer（E2：预处理警告与追踪随词法产出）──
-  // wasm-gc 形态无文件系统：quote-include 走内存 vfs 空表——include
-  // 家族解析为 E1021 not found（正当教学诊断；宿主注入文件表是将来
-  // 扩展位，F-5 未承诺）；native 壳（cmd/serve）与 wasm 宿主同形态
-  // （差异仅 native 可改走文件系统 provider——分叉登记见包头注）
-  let files : Map[String, String] = Map([])
-  let lexed = @lexer.tokenize_with_vfs(full_source, files~)
+  // quote-include 的 provider 按宿主形态文件级分叉（2026-09-29 审阅
+  // P2 修复）：native = 真实文件系统 + base_dir 候选链；wasm-gc =
+  // 内存 vfs 空表（无 fs，E1021 是正当教学诊断）。此前统一 vfs 空表
+  // 曾使 native 壳静默丢失 include 解析（oracle 同请求成功而本侧
+  // E1021——审阅实锤）。
+  let lexed = lex_full_source(full_source, units)
   for t in lexed.trace {
     st.preprocessor_trace.push(t.render())
   }

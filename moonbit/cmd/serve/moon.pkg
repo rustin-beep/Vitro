@@ -3,6 +3,7 @@
 // scripts/serve_smoke/moonbit_exemptions.json。
 import {
   "moonbitlang/core/encoding/utf8",
+  "vitro/engine/fs",
   "vitro/engine/gateway",
 }
 

@@ -8,6 +8,19 @@ patch；新增包 / 公共 API → minor。
 
 ### Added
 
+- **`vitro/engine/gateway`（L8，S7 批五号）——wasm-gc 单出口（F-5 裁定
+  落点）**：NDJSON 帧协议层自 cmd/serve 上提为引擎无关载体（serve 变
+  native stdio 壳），4 函数导出 `invoke`（String→String 单口承载 21
+  方法表）/ `reset` / `protocol_version`（@protocol.SCHEMA_VERSION
+  单源）/ `engine_version`（手维护常量 `ENGINE_VERSION`，与 moon.mod
+  版本失联由 host.js 锚判定——发版 bump 忘更即红）；宿主契约 =
+  `use-js-builtin-string` + 宿主编译选项 `builtins:['js-string']`
+  （String 零拷贝直传、零功能性 imports——import 段仅 "_" 字符串常量
+  模块）；quote-include 宿主形态分叉：native 壳经 `set_include_reader`
+  注册文件系统读取（**审阅 P2 修复**——此前统一 vfs 空表曾使 native
+  静默丢解析），wasm-gc 不注册 ⇒ E1021 教学诊断；Node 宿主驱动
+  `scripts/wasm_gateway/host.js`（16 断言：NDJSON 全链 + E3070/E3061
+  真 trap + 4 导出面 + 失联锚 + 体积上限）。
 - **stdin 注入通道三件**（2026-09-29 层 2 遗留 stdin 34 例批）：
   - `host::InputState::from_stdin_text(text, batch)`——stdin 切行单源
     （`\r\n` 循环规整 + `split_inclusive` 语义行含尾换行 + 模式一次
@@ -25,7 +38,8 @@ patch；新增包 / 公共 API → minor。
   首跑实锤）：`from_stdin_text` 单次 replace 只消一个 `\r\n`——
   kr_1_19 实测第二行起 `\r` 泄入程序（输出多 `\r` 分叉，4 例真 DIFF）；
   改循环规整后 knr 29 例全 SAME。语言事实入 moonbit/AGENTS.md 陷阱
-  #39；host 包 CRLF 全量规整锚锁定。
+  〔String::replace 首个匹配条——AGENTS 陷阱 #37〕；host 包 CRLF
+  全量规整锚锁定。
 - **bTree known 条目归因勘误**：原写「未初始化子节点指针」——细读
   createNode 已循环置 NULL children，真 UB 面是 `keys[M]` malloc 后
   未清零 + splitChild 搬移读越 keyCount 界；kruskal 修复改变布局后

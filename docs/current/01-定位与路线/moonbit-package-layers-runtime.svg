@@ -42,7 +42,7 @@
 <rect class="card" x="20" y="118" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="152" text-anchor="start">L7</text>
 <text class="tc" x="40" y="180" text-anchor="start">执行</text>
-<text class="tc" x="1065" y="152" text-anchor="start">0.6.0 在架</text>
+<text class="tc" x="1065" y="152" text-anchor="start">0.7.0 在架</text>
 <rect class="card" x="175" y="130" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="156" text-anchor="start">vitro/engine/memory</text>
 <text class="tc" x="191" y="180" text-anchor="start">MemoryMap + checked_access 单入口</text>
@@ -58,14 +58,14 @@
 <rect class="card" x="20" y="314" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="348" text-anchor="start">L8</text>
 <text class="tc" x="40" y="376" text-anchor="start">会话/协议</text>
-<text class="tc" x="1065" y="348" text-anchor="start">在建 2/3</text>
+<text class="tc" x="1065" y="348" text-anchor="start">0.7.0 在架</text>
 <rect class="card" x="175" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="191" y="352" text-anchor="start">vitro/engine/session</text>
 <text class="tc" x="191" y="376" text-anchor="start">SessionConfig 值对象</text>
 <rect class="card" x="475" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="491" y="352" text-anchor="start">vitro/engine/protocol</text>
 <text class="tc" x="491" y="376" text-anchor="start">schema + stream 差分</text>
-<rect class="plan" x="775" y="326" width="280" height="60" rx="10"/>
+<rect class="card" x="775" y="326" width="280" height="60" rx="10"/>
 <text class="tn" x="791" y="352" text-anchor="start">vitro/engine/gateway</text>
 <text class="tc" x="791" y="376" text-anchor="start">wasm-gc 导出 + NDJSON</text>
 <rect class="card" x="20" y="428" width="1160" height="122" rx="12"/>

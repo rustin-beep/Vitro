@@ -52,3 +52,98 @@ pub fn protocol_version() -> String {
 pub fn engine_version() -> String {
   ENGINE_VERSION
 }
+
+///|
+/// 宿主注入的 quote-include 读取器（2026-09-29 审阅 P2 修复）：native
+/// 壳（cmd/serve）启动时注册文件系统读取；wasm-gc 无文件系统、不注册
+/// ⇒ include 家族解析为 E1021 not found（正当教学诊断；宿主注入文件表
+/// 是将来扩展位）。**此前批五号上提时统一换成 vfs 空表，双宿主共用使
+/// native 静默丢掉文件系统解析**（审阅实锤：oracle 同请求出宏展开链
+/// 返 7、本侧 E1021）——回调注入消掉 fs 依赖（wasm-gc 构建图不兼容
+/// native-only 包），native 语义经注册恢复。
+let include_reader : Ref[((String) -> String?)?] = Ref::new(None)
+
+///|
+/// 注册 include 读取器（返回 None = 该路径不存在，词法层报 E1021）。
+pub fn set_include_reader(read : (String) -> String?) -> Unit {
+  include_reader.val = Some(read)
+}
+
+///|
+/// include 读取 provider（把注入回调包装成 SourceProvider）。
+enum HostIncludeProvider {
+  P
+}
+
+///|
+impl @token.SourceProvider for HostIncludeProvider with fn read(
+  self : HostIncludeProvider,
+  path : String,
+) -> String raise @token.SourceError {
+  match include_reader.val {
+    Some(read) =>
+      match read(path) {
+        Some(s) => s
+        None => raise @token.SourceError::NotFound(path~)
+      }
+    None => raise @token.SourceError::NotFound(path~)
+  }
+}
+
+///|
+/// quote-include 词法入口（宿主形态经注册状态分叉——见 include_reader）。
+fn lex_full_source(
+  full_source : String,
+  units : Array[@session.CompileUnit],
+) -> @token.LexResult {
+  match include_reader.val {
+    Some(_) => {
+      // 首个非空文件名的目录段作候选链 base_dir（Rust base_path 语义
+      // 的行为级等价——cmd/run/main.mbt dir_of 头注的 7 形态探针）
+      let mut base_dir = "."
+      for u in units {
+        if !u.filename.is_empty() {
+          base_dir = dir_of(u.filename)
+          break
+        }
+      }
+      @lexer.tokenize_with(
+        full_source,
+        provider=HostIncludeProvider::P,
+        base_dir~,
+      )
+    }
+    None => {
+      // wasm-gc：内存 vfs 空表（include → E1021）
+      let files : Map[String, String] = Map([])
+      @lexer.tokenize_with_vfs(full_source, files~)
+    }
+  }
+}
+
+///|
+/// 路径目录段（cmd/run/main.mbt dir_of 的复制件——等价性经 7 形态
+/// 端到端探针实证，见彼处头注；修改须两处同步）。
+fn dir_of(path : String) -> String {
+  let mut last = -1
+  for i = 0; i < path.length(); i = i + 1 {
+    let c = path[i]
+    if c.to_int() == 47 || c.to_int() == 92 {
+      last = i
+    }
+  }
+  if last <= 0 {
+    "."
+  } else {
+    let buf = StringBuilder()
+    for i = 0; i < last; i = i + 1 {
+      let c = path[i]
+      if c.to_int() == 92 {
+        buf.write_char('/')
+      } else {
+        buf.write_char(c.to_int().unsafe_to_char())
+      }
+    }
+    buf.to_string()
+  }
+}

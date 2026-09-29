@@ -1,14 +1,16 @@
 // L8 会话/协议层·gateway 包（S7 批五号，2026-09-29 建包）：NDJSON 帧协议
 // 层的引擎无关载体——F-5 裁定的 wasm-gc 单出口落点（4 函数导出：
 // invoke / reset / protocol_version / engine_version + 21 方法表）。
-// 协议层自 cmd/serve 整体上提（serve 变 native stdio 壳，双宿主零分叉：
-// cmd/serve 与 wasm-gc/Node 宿主消费同一 dispatch）。
-// **形态分叉登记（wasm-gc 无文件系统）**：quote-include 的 provider 用
-// 内存 vfs 空表（tokenize_with_vfs——差分驱动先例）——include 家族在
-// wasm 形态下解析为 E1021 not found（正当教学诊断）；宿主注入文件表是
-// 将来扩展位（F-5 未承诺）。
+// 协议层自 cmd/serve 整体上提（serve 变 native stdio 壳：cmd/serve 与
+// wasm-gc/Node 宿主消费同一 dispatch）。
+// **quote-include 的宿主形态分叉（2026-09-29 审阅 P2 修复）**：文件级
+// 目标选择（env 包先例）——native 走真实文件系统（lex_provider_native），
+// wasm-gc 无文件系统走内存 vfs 空表（lex_provider_wasm）⇒ include 家族
+// 在 wasm 形态下解析为 E1021 not found（正当教学诊断）；宿主注入文件表
+// 是将来扩展位（F-5 未承诺）。
 // link 的 use-js-builtin-string：String 参数/返回直传 JS（宿主侧以
-// WebAssembly 编译选项 builtins:['js-string'] 供给内建——零手写 imports）。
+// WebAssembly 编译选项 builtins:['js-string'] 供给内建——零功能性
+// imports：import 段仅 "_" 模块的字符串字面量常量，由编译选项消化）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
 import {
   "moonbitlang/core/encoding/utf8",

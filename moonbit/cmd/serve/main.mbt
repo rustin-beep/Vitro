@@ -11,6 +11,13 @@ const SERVE_LINE_CAP : Int = 65536
 ///|
 /// serve 主循环：stdin 逐行 → gateway.invoke → stdout 响应；shutdown 停。
 fn main {
+  // quote-include 的文件系统读取注册（2026-09-29 审阅 P2 修复——
+  // native 形态恢复；gateway 侧经 include_reader 分叉，wasm-gc 不
+  // 注册走 E1021 教学诊断）
+  @gateway.set_include_reader(fn(path : String) -> String? {
+    let s = @fs.read_file_to_string(path) catch { _ => return None }
+    Some(s)
+  })
   let buf : Bytes = Bytes::make(SERVE_LINE_CAP, b'\x00')
   while true {
     let n = serve_read_line_stub(buf, SERVE_LINE_CAP)

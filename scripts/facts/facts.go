@@ -535,7 +535,7 @@ func collectMoonbitFromOutput(out string, code int, facts map[string]Fact) {
 	passed, _ := strconv.Atoi(m[2])
 	failed, _ := strconv.Atoi(m[3])
 	f := okFact(passed, "用例", "moonbit/（moon test）", "run", nowISO())
-	f.Note = fmt.Sprintf("total=%d failed=%d exit=%d（S1 source/opcode/diag/ast + S2 lexer + S3 parser + S4 names/libc/typeck + S5 bytecode/codegen 全 11 包）", total, failed, code)
+	f.Note = fmt.Sprintf("total=%d failed=%d exit=%d（裸 moon test 口径 = 默认目标后端，不含 native-only 包如 fs/gateway；逐包分解以 moon test -p 为准）", total, failed, code)
 	facts["moonbit_test_passed"] = f
 }
 
@@ -581,7 +581,7 @@ func collectMoonbitLexerDiff(root string, facts map[string]Fact) {
 		total += n
 	}
 	f := okFact(total, "个", "scripts/lexer_diff（Rust oracle ↔ MoonBit lexer）", "run", nowISO())
-	f.Note = "随机 2400 例（seed 20260919）+ baseline 363 + K&R 81 + leetcode 138 + gap 15，L1/L2 双层 TSV 逐字节一致"
+	f.Note = "随机 2400 例（seed 20260919）+ baseline 366 + K&R 81 + leetcode 138 + gap 16，L1/L2 双层 TSV 逐字节一致（分项随语料目录增删，以 total 为准）"
 	facts["moonbit_lexer_diff_tsv"] = f
 }
 
@@ -650,7 +650,7 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 		return
 	}
 	f := okFact(total, "个", "scripts/parser_diff（Rust oracle ↔ MoonBit parser）", "run", nowISO())
-	f.Note = "baseline 363 + K&R 81 + leetcode 138 + gap 15 的 AST dump + 诊断序列归一逐字节一致（含活性 stall=0）；E3 病态 12 样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致；E3+ 阈值样本（offsetof 深链/常量链两侧一致 + 指针多维数组 C 语义折叠）"
+	f.Note = "baseline 366 + K&R 81 + leetcode 138 + gap 16 的 AST dump + 诊断序列归一逐字节一致（含活性 stall=0；分项随语料目录增删，以 total 为准）；E3 病态 12 样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致；E3+ 阈值样本（offsetof 深链/常量链两侧一致 + 指针多维数组 C 语义折叠）"
 	facts["moonbit_parser_diff_samples"] = f
 }
 

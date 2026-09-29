@@ -101,6 +101,11 @@ func main() {
 	staleN := demoteStale(doc, *maxAge)
 
 	// ── 对账 ──
+	// 真值越界自检先于文档扫描（模块审阅 09 P2-2 治本）：带宽过时会让
+	// 对账整体静默——先红一次，逼人改区间，而不是拿盲区当绿灯。
+	if key, truth, lo, hi, out := truthsInRange(rules(), doc); out {
+		fatal(fmt.Sprintf("规则 %s 真值 %d 越出带宽 [%d,%d]——候选过滤后整行静默；请放宽区间（scripts/facts/audit.go rules()）", key, truth, lo, hi))
+	}
 	res := auditDocs(root, doc)
 	if err := os.MkdirAll(filepath.Dir(reportPath), 0o755); err != nil {
 		fatal(err.Error())

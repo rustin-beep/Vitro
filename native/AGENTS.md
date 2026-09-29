@@ -164,7 +164,7 @@ Vitro 采用**五条分层协作的测试防线**，核心哲学：*测试不是
 
 - **Baseline**：`native/tests/cases/baseline/`（366 个，全绿（j1 为双侧编译失败红锚，E2E 登记跳过"必须可运行"契约）；2026-09-06 新增 `codegen_soundness_regression.c` 固化第三批 soundness 修复；2026-09-11 新增 `engine_note_lookalike.c` 固化 E-P1-5 输出通道口径、`scanf_return_value.c` / `scanf_literal_match.c` / `scanf_literal_mismatch.c` 固化 scanf 返回值与普通字符指令）
 - **K&R**：《C程序设计语言》课后习题（81 个，81 绿，0 已知失败）
-- **Template Generated**：算法模板批量生成（82 个，80 绿，2 已知失败：`bTree_default` / `spfa_default`；G12 对账 2026-09-12：`infixEvaluation_default` 已修复并从失败口径移除）
+- **Template Generated**：算法模板批量生成（82 个，81 绿，1 已知失败：`bTree_default`；`spfa_default` 2026-09-13 修复转绿（shadow 侧空转条目 2026-09-29 同步移除，模块审阅 08 P2-1）；G12 对账 2026-09-12：`infixEvaluation_default` 已修复并从失败口径移除）
 - **LeetCode**：已全面实施阶段 4 + 阶段 5，当前 138 道题全部通过，详见 `native/tests/LEETCODE_FAILURES.md`
 - **报告**：`native/tests/TEST_REPORT.md`、`KR_FAILURES.md`、`E2E_FAILURES.md`、`LEETCODE_FAILURES.md`
 

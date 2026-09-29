@@ -564,11 +564,12 @@ func run() int {
 	r20 := asObj(byID[20]["result"])
 	check(isBool(r20["shutdown"], true), "shutdown 回应", "")
 
-	// ── 三个追加批（MoonBit 臂按豁免表整批跳过——批次依赖 step 族/seek）──
+	// ── 追加批（edge/pending_leak/rss_guard 三批 MoonBit 臂按豁免表整批跳过
+	// ——批次依赖 step 族/seek；long_line 批不豁免：两侧共同不变量，双臂都跑）──
 	for _, batch := range []struct {
 		key string
 		fn  func(string) []string
-	}{{"edge", runEdgeBatch}, {"pending_leak", runPendingLeakBatch}, {"rss_guard", runRSSGuardBatch}} {
+	}{{"edge", runEdgeBatch}, {"pending_leak", runPendingLeakBatch}, {"rss_guard", runRSSGuardBatch}, {"long_line", runLongLineBatch}} {
 		if mbMode {
 			if reason, ok := mbBatches[batch.key]; ok {
 				fmt.Printf("\n== %s 批：SKIP（豁免：%s）==\n", batch.key, reason)
@@ -1004,6 +1005,37 @@ func runRSSGuardBatch(exe string) []string {
 				peakMB, budgetMB))
 	} else {
 		check(false, "RSS 护栏：采样可用", "psapi 采样失败")
+	}
+	return fails
+}
+
+// ─── 超长行批（模块审阅 06 P1-1，2026-09-29）：行 ≥65536 字节不得静默 ────
+// cmd/serve 的 fgets 定长缓冲（SERVE_LINE_CAP 65536）在行内容 ≥65535 字符且
+// 不含换行时返回 -2，修复前静默 break——stdout 零字节、rc=0，与 shutdown
+// 正常退出不可区分，违反协议演化纪律②「沉默是调用方唯一无法处置的回应」。
+// 两侧共同不变量：超长行至少产生一行合法 JSON 帧响应（Rust 臂 BufRead::lines
+// 无上限回 pong；MoonBit 臂回显式 protocol 错误帧后干净退出——形态差登记在
+// cmd/serve/main.mbt，本批只锁共同不变量故双臂都跑、不进豁免表）。
+func runLongLineBatch(exe string) []string {
+	fmt.Println("\n== 超长行批（静默丢弃回归即红）==")
+	var fails []string
+	pad := strings.Repeat(" ", 70000-28)
+	line := "{\"id\": 1, \"method\": \"ping\"}" + pad + "\n"
+	stdout, stderr, code, timedOut := runServeBatch(exe, line, 60*time.Second)
+	if timedOut {
+		fmt.Println("  FAIL  超长行批超时（疑似挂起）")
+		return []string{"long-line-timeout"}
+	}
+	lines := nonEmptyLines(stdout)
+	check(len(lines) >= 1, "超长行非静默（≥1 响应行）",
+		fmt.Sprintf("responses=%d exit=%d stderr=%s", len(lines), code, capi.TruncateRunes(stderr, 200)))
+	if len(lines) >= 1 {
+		if f, err := parseFrame(lines[0]); err == nil {
+			_, hasOK := f["ok"]
+			check(hasOK, "超长行响应是帧（含 ok 字段）", capi.TruncateRunes(lines[0], 120))
+		} else {
+			check(false, "超长行响应是合法 JSON", capi.TruncateRunes(lines[0], 120))
+		}
 	}
 	return fails
 }

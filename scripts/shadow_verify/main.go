@@ -94,9 +94,11 @@ var (
 	// 根因分析见 native/tests/E2E_FAILURES.md）。这些模板在 Vitro VM 的边界检查下
 	// 触发陷阱而 Clang 静默 UB，属于已记录的教学差异，门禁不视为回归。
 	// ⚠️ 防线 5 双向监控约定：若这些用例在 E2E 防线转绿，需同步移除此处条目。
+	// spfa_default 已于 2026-09-29 移除（模块审阅 08 P2-1）：E2E 侧 2026-09-13
+	// 修复转 match 后此条空转——空转条目是"静音器"而非"保险丝"（回归会被
+	// 降级为 known_issue 而非 output_gap 判红），双向监控恢复后回归即红。
 	knownFailureCases = map[string]bool{
 		"bTree_default": true, // E2E_FAILURES.md：未插入元素时访问 NULL 指针区域
-		"spfa_default":  true, // E2E_FAILURES.md：队列大小 MAXV(5) 不足导致越界
 	}
 )
 

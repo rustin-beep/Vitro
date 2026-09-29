@@ -69,7 +69,7 @@ import (
 var assetsFS embed.FS
 
 const (
-	repoSlug = "jingwei108/vitro"
+	repoSlug = "rustin-beep/Vitro"
 	repoURL  = "https://github.com/" + repoSlug
 	// 渲染器版本：改动渲染逻辑后 +1（缓存整体失效）。
 	// v2：行内强调/裸链接标签改走占位符池（此前被收尾转义成 &lt;strong&gt; 之类）；

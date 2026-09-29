@@ -1,6 +1,6 @@
 # vitro/engine/lexer — Vitro C 词法器
 
-C 教学子集的完整词法与预处理：**116 变体 token 体系 + 独立预处理 pass**（`\` 续行拼接 → 字符串感知的注释剥离 → 指令消费 → include（显式栈 + LineMap）→ 宏展开），与 Rust oracle（冻结对照实现）的 token 流**逐字节对齐**——经 2400 例随机语料 + 444 例真实语料（baseline/K&R）的 L1/L2 双层差分验证。
+C 教学子集的完整词法与预处理：**116 变体 token 体系 + 独立预处理 pass**（`\` 续行拼接 → 字符串感知的注释剥离 → 指令消费 → include（显式栈 + LineMap）→ 宏展开），与 Rust oracle（冻结对照实现）的 token 流**逐字节对齐**——经 2400 例随机语料 + 447 例真实语料（baseline/K&R）的 L1/L2 双层差分验证。
 
 ## 安装
 

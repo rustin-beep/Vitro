@@ -269,15 +269,15 @@ func main() {
 				fail("未知工具 %q（可选: claude, zcode）", *tool)
 			}
 			if *scope == "user" {
-				targets = append(targets, target{*tool+"(user)", userDir})
+				targets = append(targets, target{*tool + "(user)", userDir})
 			} else {
-				targets = append(targets, target{*tool+"(project)", filepath.Join(repoRoot, "."+*tool, "skills")})
+				targets = append(targets, target{*tool + "(project)", filepath.Join(repoRoot, "."+*tool, "skills")})
 			}
 		}
 		if *all {
 			for name, userDir := range tools {
 				if fi, err := os.Stat(filepath.Dir(userDir)); err == nil && fi.IsDir() {
-					targets = append(targets, target{name+"(user)", userDir})
+					targets = append(targets, target{name + "(user)", userDir})
 				}
 			}
 		}

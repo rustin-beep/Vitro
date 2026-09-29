@@ -48,7 +48,7 @@
 <text class="tc" x="191" y="180" text-anchor="start">SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）</text>
 <rect class="card" x="622" y="130" width="433" height="60" rx="10"/>
 <text class="ts" x="638" y="156" text-anchor="start">vitro/engine/opcode</text>
-<text class="tc" x="638" y="180" text-anchor="start">132 opcodes 稳定编号 + operand 校验</text>
+<text class="tc" x="638" y="180" text-anchor="start">135 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号）</text>
 <rect class="card" x="20" y="232" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="266" text-anchor="start">L1</text>
 <text class="tc" x="40" y="294" text-anchor="start">诊断契约</text>

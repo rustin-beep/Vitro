@@ -63,4 +63,4 @@ test {
 
 ## 生成物说明
 
-`error_code_gen.mbt` / `catalog_gen.mbt` 由 `moonbit/scripts/gen_diag` 生成（**禁手改**，文件头有源 sha256 落款）。
+`error_code_gen.mbt` / `catalog_gen.mbt` 由 `scripts/moonbit/gen_diag` 生成（**禁手改**，文件头有源 sha256 落款）。

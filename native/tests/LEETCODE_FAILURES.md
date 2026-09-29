@@ -1,7 +1,7 @@
 # LeetCode 失败记录
 
 > 记录原则：诚实记录，不隐藏失败。
-> 格式参见 `docs/current/PHASE_KR_LEETCODE_TEST_PLAN.md` 附录 B。
+> 格式沿用建册约定（原格式模板已随阶段计划归档 docs/archive/，按纪律不再引用）。
 
 ## 当前状态
 
@@ -9,8 +9,8 @@
 
 - `native/tests/cases/leetcode/` 已创建
 - `native/tests/cases_golden/leetcode/` 已创建
-- 当前已填充 **48** 道 LeetCode 简单题 + **20** 道中等题源码
-- 当前通过 **68** 道，已知失败 **0** 道
+- 建册批次：48 道简单题 + 20 道中等题；后续扩容至当前规模（构成以目录为准）
+- 当前 **138** 道全部通过，已知失败 **0** 道（2026-09-29 对真值：facts `c_e2e_leetcode_cases=138`）
 - 在填充过程中发现 1 处 Vitro 与 Clang 行为差异，已通过改写源码规避，详见下方"实施过程发现"章节
 
 ## 已覆盖用例

@@ -409,9 +409,6 @@ pub fn MemoryMap::freed_logs_at(self : MemoryMap, i : Int) -> FreedRegionInfo {
 }
 
 ///|
-/// 该 addr **精确**是某条已释放登记的起点（Double-Free 拦截输入，E3061）。
-
-///|
 /// 按 addr 精确取已释放登记（E3061 文案需要 `freed_line` / `alloc_line`）。
 pub fn MemoryMap::freed_logs_get(
   self : MemoryMap,

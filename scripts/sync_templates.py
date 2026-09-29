@@ -50,50 +50,6 @@ def scan_tutorial_anchors(source: str) -> dict:
     return anchors
 
 
-def extract_all_dart_tutorials() -> dict:
-    """从 Dart 硬编码模板中提取完整 tutorial steps（含 focusLines + explanations）"""
-    result = {}
-    dart_dir = PROJECT_ROOT / "CideFlutter/lib/models/templates"
-    for dart_path in sorted(dart_dir.glob("*.dart")):
-        text = dart_path.read_text(encoding="utf-8")
-        parts = text.split("CodeTemplate(")
-        for part in parts[1:]:
-            key_match = re.search(r"^\s*['\"]([^'\"]+)['\"]", part)
-            if not key_match:
-                continue
-            key = key_match.group(1)
-            step_pattern = (
-                r"TutorialStep\(\s*title:\s*'([^']*)',\s*description:\s*'([^']*)',"
-                r"\s*focusLines:\s*\[([^\]]*)\],\s*explanations:\s*\[(.*?)\],?\s*\),"
-            )
-            steps = []
-            for m in re.finditer(step_pattern, part, re.DOTALL):
-                title = m.group(1)
-                description = m.group(2)
-                focus_lines = [int(x.strip()) for x in m.group(3).split(",") if x.strip()]
-                exp_block = m.group(4)
-                explanations = []
-                exp_pattern = (
-                    r"LineExplanation\(\s*line:\s*(\d+),\s*short:\s*'((?:[^'\\]|\\.)*)',"
-                    r"\s*detail:\s*'((?:[^'\\]|\\.)*)',?\s*\)"
-                )
-                for em in re.finditer(exp_pattern, exp_block):
-                    explanations.append({
-                        "line": int(em.group(1)),
-                        "short": em.group(2).replace(r"\'", "'"),
-                        "detail": em.group(3).replace(r"\'", "'"),
-                    })
-                steps.append({
-                    "title": title,
-                    "description": description,
-                    "focusLines": focus_lines,
-                    "explanations": explanations,
-                })
-            if steps:
-                result[key] = steps
-    return result
-
-
 def run_with_clang(source: str) -> str:
     """用 Clang 编译运行 C 代码，返回 stdout 文本"""
     header = '#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#undef min\n#undef max\n\n'
@@ -196,7 +152,8 @@ def sync():
     golden_skipped = 0
     gen_count = 0
     golden_fails = []
-    dart_tutorials = extract_all_dart_tutorials()
+    # Dart 硬编码教程读取已删（2026-09-29 模块审阅 14 P2-3）：CideFlutter 目录随
+    # 2026-09-11 前端切割移出，该读取恒返回空——死代码；S8 教学智能批按新契约重建。
 
     for d in sorted(TPL_DIR.iterdir()):
         if not d.is_dir():
@@ -224,8 +181,9 @@ def sync():
         anchors = scan_tutorial_anchors(source_c)
         key = meta.get("key", d.name)
 
-        # 构建 tutorial steps：优先使用 Dart 硬编码数据（更完整，含 focusLines + explanations）
-        tutorial_steps = dart_tutorials.get(key, [])
+        # 构建 tutorial steps：现从 meta.yaml 构建（anchor 匹配现状见模板维护指南
+        # 「anchor 现状与 S8 契约」节——95 锚点全失配，标记随 S8 铺设）
+        tutorial_steps = []
         if not tutorial_steps:
             # fallback: 从 meta.yaml 构建（无 explanations）
             for step in meta.get("tutorial", {}).get("steps", []):

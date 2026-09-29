@@ -561,7 +561,7 @@ func genPackages(root string, fd factsDoc) {
 	compile := []lyr{
 		{"L0", "零依赖", [][]pkgCell{
 			{{"vitro/engine/source", "SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）", "source", false},
-				{"vitro/engine/opcode", "132 opcodes 稳定编号 + operand 校验", "opcode", false}}},
+				{"vitro/engine/opcode", "135 opcodes 稳定编号（44–46 C# 异常三件 + 47–49 空号）", "opcode", false}}},
 			""},
 		{"L1", "诊断契约", [][]pkgCell{
 			{{"vitro/engine/diag", "ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言", "diag", false}}},

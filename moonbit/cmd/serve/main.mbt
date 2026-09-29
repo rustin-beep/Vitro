@@ -22,7 +22,15 @@ fn main {
   while true {
     let n = serve_read_line_stub(buf, SERVE_LINE_CAP)
     if n < 0 {
-      break // EOF（-1）或超长行（-2 视协议错退出）
+      if n == -2 {
+        // 超长行（行内容 ≥65535 字符且不含换行）：oracle 侧 BufRead::lines
+        // 按需增长无上限，本壳 fgets 定长缓冲。静默丢弃违反协议演化纪律②
+        // （沉默是调用方唯一无法处置的回应——模块审阅 06 P1-1 实锤：
+        // ≥65536 字节行零输出 rc=0，与 shutdown 正常退出不可区分）。
+        // 回显式错误帧后干净退出；帧形态对齐 gateway serve_err。
+        println("{\"id\":0,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"请求行超过 65535 字符上限（serve 定长行缓冲）——请缩减单帧 source 或分段喂入\"}}")
+      }
+      break // EOF（-1）
     }
     // BytesView.to_string 是 Show 展示形态（引号被 debug 转义成 "——
     // 端到端实测实锤），UTF-8 解码走 @utf8.decode_lossy

@@ -475,6 +475,8 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 		byKey[rs[i].Key] = a
 		order = append(order, rs[i].Key)
 	}
+	// 真值越界自检的说明见 truthsInRange（模块审阅 09 P2-2 治本，2026-09-29）；
+	// 判红接线在 main.go check 流程（auditDocs 保持库函数纯净，可被测试夹具安全调用）。
 
 	files := scanFiles(root)
 	for _, rel := range files {
@@ -1086,4 +1088,20 @@ func applyHit(root string, h Hit, truth int) error {
 	}
 	lines[idx] = line
 	return os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o644)
+}
+
+// truthsInRange 真值越界自检（模块审阅 09 P2-2 治本，2026-09-29）：
+// 候选数字先按 [Lo,Hi] 过滤，真值越界 ⇒ 行内候选被滤空 ⇒ 整行不进任何桶
+// ——静默盲区（09 号 E11 实证：真值 383 越下界 400 时文档同写 383 判绿灯；
+// b28736a 的 508 越上限 500 假红是同一机制的另一面）。本函数把「带宽过时」
+// 从静默变成可判定的错误，check 流程据此一次性红、逼人改区间。
+// 返回 (规则键, 真值, Lo, Hi, true)；全部在界返回 false。
+// 锚 TestTruthInRangeSelfCheck（suspect_test.go 同批）。
+func truthsInRange(rs []Rule, doc FactsDoc) (string, int, int, int, bool) {
+	for _, r := range rs {
+		if t := doc.Facts[r.Key].Value; t != nil && (*t < r.Lo || *t > r.Hi) {
+			return r.Key, *t, r.Lo, r.Hi, true
+		}
+	}
+	return "", 0, 0, 0, false
 }

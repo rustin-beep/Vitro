@@ -146,13 +146,40 @@ func TestCargoRuleStillMatchesNumberPassed(t *testing.T) {
 
 // moonbit 区间带宽锚（2026-09-29）：真值 508 曾越旧上限 500 被滤出候选，
 // 整行（README.mbt.md:47 形态）无候选等于真值 → Suspect 假红。锁两件事：
-//   1. 真值落在区间内时，行内等于真值的数字使其不进 Suspect；
-//   2. 真值越过区间上限的形态必须进 Suspect（带宽兜底本身可被发现——
-//      上限再过时一次，这里会先红）。
+//  1. 真值落在区间内时，行内等于真值的数字使其不进 Suspect；
+//  2. 真值越过区间上限时**不再静默**——由 truthsInRange 自检暴露（模块
+//     审阅 09 P2-2 实证：旧锚注释承诺了这件事但实现只锁了第 1 件，且
+//     auditDocs 对越界真值整行不进任何桶、Suspect 恒 0——锚在桶模型上
+//     锁不住这个形态，自检函数才是正确落点）。
 func TestMoonbitTruthInRange(t *testing.T) {
 	a := suspectFixture(t, "moonbit_test_passed", 508,
 		"moon check && moon test    # 508 测试（source 14 + opcode 10 分解和 502）")
 	if len(a.Suspect) != 0 {
 		t.Fatalf("行内 508 等于真值且在区间内，不应进 Suspect：Suspect=%d", len(a.Suspect))
+	}
+}
+
+// truthsInRange 自检锚（2026-09-29，模块审阅 09 P2-2 治本）：真值越出规则
+// 带宽必须被检出——「带宽过时」从静默盲区变成一次性红。两个方向各锁一条
+// （E11 形态 = 越下界；b28736a 形态 = 越上限），并锁在界真值不误报。
+func TestTruthInRangeSelfCheck(t *testing.T) {
+	doc := FactsDoc{Facts: map[string]Fact{}}
+	// 越下界（09 号 E11 原始形态：shadow_c_cases 区间 [400,900]，真值 383）
+	set := func(k string, v int) { doc.Facts[k] = Fact{Value: intPtr(v), Status: "ok"} }
+	set("shadow_c_cases", 383)
+	if key, truth, _, _, out := truthsInRange(rules(), doc); !out || key != "shadow_c_cases" || truth != 383 {
+		t.Fatalf("真值 383 越下界 400 未被检出：out=%v key=%s truth=%d", out, key, truth)
+	}
+	// 越上限（b28736a 原始形态：moonbit 区间 [40,2000]，真值 2001 模拟 S8 后再越界）
+	doc2 := FactsDoc{Facts: map[string]Fact{}}
+	doc2.Facts["moonbit_test_passed"] = Fact{Value: intPtr(2001), Status: "ok"}
+	if key, _, _, _, out := truthsInRange(rules(), doc2); !out || key != "moonbit_test_passed" {
+		t.Fatalf("真值 2001 越上限 2000 未被检出：out=%v key=%s", out, key)
+	}
+	// 在界不误报
+	doc3 := FactsDoc{Facts: map[string]Fact{}}
+	doc3.Facts["moonbit_test_passed"] = Fact{Value: intPtr(508), Status: "ok"}
+	if _, _, _, _, out := truthsInRange(rules(), doc3); out {
+		t.Fatal("真值 508 在区间 [40,2000] 内，不应误报越界")
 	}
 }

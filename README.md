@@ -85,7 +85,7 @@
 
 | 层级 | 技术 |
 |------|------|
-| 现役实现 | **MoonBit**（`vitro/engine` workspace：L0–L8 共 18 包 + 6 个 `cmd` 工具；mooncakes 发布） |
+| 现役实现 | **MoonBit**（`vitro/engine` workspace：L0–L8 共 20 包 + 6 个 `cmd` 工具；mooncakes 发布） |
 | 执行 | 自研字节码解释器（135 opcode 穷尽 match，1MB 线性内存，指令级边界检查）+ `VMSnapshot` 快照体系（时间旅行基座） |
 | 加速规划 | 0.7.0+ bytecode→wasm-GC 生成器（全速执行）；解释器持续服务单步语义与时间旅行 |
 | 对照 oracle | **Rust 1.95.0**（`#![forbid(unsafe_code)]`；模板 JIT = 热点 trace → 预编译 Rust 函数指针序列，非机器码 JIT） |
@@ -98,11 +98,11 @@
 
 ```
 moonbit/                   MoonBit 活跃区（vitro/engine workspace）——现役实现，全部新开发在此
-├── source/ … util/        基础层（SourceLoc / 135 opcode / diag 生成物 / AST / 零语义机械件）
+├── source/ … util/ fs/    基础层（SourceLoc / 135 opcode / diag 生成物 / AST / 零语义机械件 / vendored 文件系统件）
 ├── lexer/ parser/ typeck/ 前端（S2–S4 收官）
 ├── bytecode/ codegen/     字节码与生成器（S5 收官）
 ├── memory/ host/ vm/      运行时（S6 收官：1MB 内存状态机 / 110 host 路由 / 执行器 + 快照）
-├── protocol/ session/     协议冻结层与会话（S7 进行中：StepPayload 契约 + 词汇表 / 会话状态）
+├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（S7 批一~五已落：StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳；step 族与 dump 族随 S8）
 └── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口
 native/                    Rust workspace——冻结差分对照 oracle（tag rust-oracle-freeze）
 ├── crates/                10 个子 crate（lexer → vm 全链路）

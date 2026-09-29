@@ -166,3 +166,31 @@ func TestMoonbitPackagesEmptyTree(t *testing.T) {
 		t.Fatalf("空树必须 unavailable: %+v", f)
 	}
 }
+
+// runKeys 沿用名单完整性锚（2026-09-29）：无 --run 运行时 collectAll 走 else
+// 占位的键，若采集器新增了占位而漏登 runKeys，已采真值会在下一次日常
+// check 写盘时被静默覆盖丢弃（parser 键实证：--run 采到 601，一次无 --run
+// 运行即回魂「待采集 3 处」）。行为锚：占位产生的 unavail 键必须全部落在
+// runKeys 内，漏登即红。
+func TestRunKeysCoversUnavailPlaceholders(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "moonbit"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	doc := collectAll(root, false, false, "", nil)
+	inRunKeys := map[string]bool{}
+	for _, k := range runKeys {
+		inRunKeys[k] = true
+	}
+	for k, f := range doc.Facts {
+		if f.Status != "unavailable" {
+			continue
+		}
+		if !strings.Contains(f.Note, "--run") && !strings.Contains(f.HowToGet, "--run") {
+			continue // 只管「--run 才执行」占位形态，非采集类 unavail 不在管辖
+		}
+		if !inRunKeys[k] {
+			t.Fatalf("占位键 %s 漏登 runKeys——--run 采集的真值会在下次日常运行被覆盖丢弃", k)
+		}
+	}
+}

@@ -15,9 +15,9 @@
 
 ## 关于 cmd/ 子包
 
-本模块附带 5 个命令行工具（4 个 `cmd/dump_*` 差分对拍 + `cmd/run` 端到端
-runner）——它们是仓库开发工具，随包分发但下游只消费引擎库时可忽略
-`moon build` 生成的 cmd 产物。
+本模块附带 6 个命令行工具（4 个 `cmd/dump_*` 差分对拍 + `cmd/run` 端到端
+runner + `cmd/serve` JSON-lines 会话模式 native 壳）——它们是仓库开发工具，
+随包分发但下游只消费引擎库时可忽略 `moon build` 生成的 cmd 产物。
 
 ## 生成物纪律
 

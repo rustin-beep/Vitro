@@ -676,10 +676,14 @@ func firstLine(s string) string {
 
 // runKeys 是需要实际执行才能取得真值的事实；未执行时沿用上次采集值（标 cached），
 // 这样 `--run` 补全一次之后，日常运行不必每次重跑防线。
+// moonbit_parser_diff_samples（2026-09-29 补入）：S3 采集器建键时漏登本名单
+// ——无 --run 运行时该键既不走采集也不占位，已采真值被下一次写盘覆盖为
+// 缺失 →「待采集 3 处」在日常 check 里反复回魂（--run 一次即消、下次又现）。
 var runKeys = []string{
 	"replay_assertions", "serve_smoke_assertions",
 	"cargo_test_passed", "cargo_test_suites",
 	"moonbit_test_passed", "moonbit_lexer_diff_tsv",
+	"moonbit_parser_diff_samples",
 }
 
 func collectAll(root string, run, runSlow bool, cargoLog string, prev *FactsDoc) FactsDoc {

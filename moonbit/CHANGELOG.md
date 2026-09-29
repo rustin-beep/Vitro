@@ -8,6 +8,43 @@ patch；新增包 / 公共 API → minor。
 
 ### Added
 
+- **`vitro/engine/protocol`（L8，S7 批一号）——冻结协议 v0.1 的引擎侧权威
+  载体（零依赖自持）**：`SCHEMA_VERSION`/`SCHEMA_V0_1_FROZEN_AT` 常量 +
+  StepPayload 十四字段白名单（对账单源 `scripts/replay/v01_payload_fields.json`
+  ——白盒硬编码第二份逐条锚，任一侧漂移即红）+ 语义标签受控词汇表 14 条
+  （10 active c 域 + 4 reserved csharp 域，`classify`/`kind_by_id` 双向）+
+  协议 DTO 族 17 类型（StepPayload 全家 + VisEvent/RootCauseHint 收拢进本包，
+  `pub(all)`——协议字段即协议面）+ stream 差分编码（SymbolTable + Ref/Delta
+  全族 encode/decode 往返）。
+- **`vitro/engine/session`（L8，S7 批二号）——会话状态层**：`SessionConfig`
+  单一真相源 + 单一写入口（`set_*` 写 config 即经 vm setter 应用——Rust 侧
+  「配置散在 VM 字段 + setup 硬编码覆盖 + capi 静默丢弃」三段事故链在本侧
+  结构性消除）+ `Session` 骨架（CompileState 聚合 `@bytecode.CompileOutput`
+  非散装复制）+ 多文件安全 `source_line_at`（file_ranges 换算）+ 会话侧
+  DTO 九型（VisEvent 消费 protocol 不造孪生）。
+- **`cmd/serve`（S7 批三号）——JSON-lines 会话模式（协议层在 gateway 包，
+  serve 为 native stdio 壳）**：`compile`/`run` 两方法（merge_units 合并
+  通道 + 四 pass 管线 + 诊断出口十字段 + preprocessor_trace 真通道；run
+  六字段出口，输入模式缺省 Interactive——缺省 scanf 得 `waiting_input`
+  而非 EOF）+ 运行态与静态十四方法（`input.feed` 追加式续跑 /
+  `output.delta` 四通道游标 / `memory.regions` 三段式合成 / `capabilities`
+  + `error_catalog`/`semantic_labels`/`contracts` 三静态导出 /
+  `session.create`/`reset`/`destroy`/`config.get`/`config.set`（含
+  `quarantine_budget` 通道——一段欠账销项）/ `ping`/`shutdown`）；「2000
+  步真停」端到端锚（Rust 事故对照）与 file_ranges 生产者两条登记义务闭环；
+  step 族五方法依赖 unified 引擎随 S8 时间旅行片接入。
+- **防线（S7 批四号）——serve_smoke 双宿主对拍 + gen_protocol_ts 权威源切
+  MoonBit**：`scripts/serve_smoke --moonbit` 跑 cmd/serve exe 同一请求表与
+  断言集（豁免面外置 `moonbit_exemptions.json`——表外断言名红即真红，PASS
+  也豁免防僵尸条目）；首跑战果抓到 `config.set` 返回裸 config 对象未包
+  `serve_ok` 帧的真缺陷（一段锚只 contains 数字未锁帧结构故未暴露）。
+  `gen_protocol_ts` 生成源切 `moonbit/protocol/types.mbt`（切源零语义变更
+  实证：产物 diff 仅头注源路径行、interface 声明体逐字节一致）；过渡期
+  三向对账 = MoonBit↔schema 文档 + MoonBit↔Rust oracle（名字集双向比对，
+  Rust 区整体删除时移除）；TS 消费者 `scripts/protocol/consumer.mjs` PASS。
+- **已知限制与差异清单**（as-of 0.7.0 主动披露）：四分类 30 条
+  （`docs/current/07-质量与裁定/已知限制与差异.md`），README 双落点——
+  mooncakes 模块页（`README.mbt.md`）与仓库根 README 均含入口。
 - **`vitro/engine/gateway`（L8，S7 批五号）——wasm-gc 单出口（F-5 裁定
   落点）**：NDJSON 帧协议层自 cmd/serve 上提为引擎无关载体（serve 变
   native stdio 壳），4 函数导出 `invoke`（String→String 单口承载 21

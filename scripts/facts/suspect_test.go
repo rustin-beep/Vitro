@@ -113,3 +113,46 @@ func TestSuspectDoesNotHijackPlainDrift(t *testing.T) {
 		t.Fatalf("非 Manual 行不得进 Suspect：Suspect=%d", len(a.Suspect))
 	}
 }
+
+// cargo 规则 pattern 不得被 facts 键名 `moonbit_test_passed` 的 "passed"
+// 子串误命中（2026-09-29 实锤：README.mbt.md:47 是 moon 测试分解式行，
+// 行内键名含 passed → 被圈进 cargo Manual/Suspect → --strict 假红）。
+// 真实 cargo 行的形态是 "1027 passed"（数字紧邻），键名形态是
+// `*_test_passed`（前缀下划线字母）——以 `\d+\s*passed` 收紧区分。
+func TestCargoRuleIgnoresFactsKeyName(t *testing.T) {
+	a := suspectFixture(t, "cargo_test_passed", 1027,
+		"moon check && moon test    # 508 测试（source 14 + opcode 10 分解和 502；裸总数以 facts `moonbit_test_passed` 为准）")
+	if len(a.Manual) != 0 {
+		t.Fatalf("facts 键名 moonbit_test_passed 不得使 moon 分解式行进 cargo 规则 Manual：Manual=%d", len(a.Manual))
+	}
+	if len(a.Suspect) != 0 {
+		t.Fatalf("facts 键名 moonbit_test_passed 不得使 moon 分解式行进 cargo 规则 Suspect：Suspect=%d", len(a.Suspect))
+	}
+}
+
+// 反向锚：数字紧邻 passed 的真实形态（"1027 passed"）仍必须命中——
+// 夹具行刻意不含 "cargo test"/"rust 单测"/"全绿" 其他分支词，单锁
+// `\d+\s*passed` 分支自身（收紧不是漏防）。
+func TestCargoRuleStillMatchesNumberPassed(t *testing.T) {
+	a := suspectFixture(t, "cargo_test_passed", 1027,
+		"- 防线快照：1027 passed，0 failed（分解式 1025 + 2）")
+	if len(a.Manual) != 1 {
+		t.Fatalf("数字紧邻 passed 的分解式行仍应进 Manual：Manual=%d", len(a.Manual))
+	}
+	if len(a.Suspect) != 0 {
+		t.Fatalf("行内总数 1027 等于真值，不应进 Suspect：Suspect=%d", len(a.Suspect))
+	}
+}
+
+// moonbit 区间带宽锚（2026-09-29）：真值 508 曾越旧上限 500 被滤出候选，
+// 整行（README.mbt.md:47 形态）无候选等于真值 → Suspect 假红。锁两件事：
+//   1. 真值落在区间内时，行内等于真值的数字使其不进 Suspect；
+//   2. 真值越过区间上限的形态必须进 Suspect（带宽兜底本身可被发现——
+//      上限再过时一次，这里会先红）。
+func TestMoonbitTruthInRange(t *testing.T) {
+	a := suspectFixture(t, "moonbit_test_passed", 508,
+		"moon check && moon test    # 508 测试（source 14 + opcode 10 分解和 502）")
+	if len(a.Suspect) != 0 {
+		t.Fatalf("行内 508 等于真值且在区间内，不应进 Suspect：Suspect=%d", len(a.Suspect))
+	}
+}

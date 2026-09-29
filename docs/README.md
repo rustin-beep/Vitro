@@ -150,6 +150,7 @@
 | [`current/08-发布档案/0.4.0.md`](current/08-发布档案/0.4.0.md) | **0.4.0（2026-09-21）**：编译层全链在架——names/libc/typeck/codegen/bytecode + parser + 3 工具；收面 27 符号 + 双面闸 |
 | [`current/08-发布档案/0.5.0.md`](current/08-发布档案/0.5.0.md) | **0.5.0（2026-09-23）**：README 英文化 + 接口面三处实变（+compile_library/+LibcSig/−template_arg_eq）；外部用户证实（25 下载） |
 | [`current/08-发布档案/0.6.0.md`](current/08-发布档案/0.6.0.md) | **0.6.0（2026-09-26 发版件 · 09-27 线上发布）**：执行层收官——memory/host/vm 三包 + util + cmd/run；HostMemReply.value 加宽 UInt?→UInt64?；兼容义务建册 + 性能披露双语落档 |
+| [`current/08-发布档案/0.7.0.md`](current/08-发布档案/0.7.0.md) | **0.7.0（发版件 · publish 待令）**：协议层与 wasm-gc 单出口——fs/protocol/session/gateway/gateway-wasm 五新包（L0–L8 共 20 包）；module 依赖清零（vendored）；彩排全绿实录 |
 
 ---
 ### 📁 [spec/](spec/) — 语言中立协议

@@ -53,12 +53,19 @@ func rules() []Rule {
 			``, 20, 200, "条"),
 		mk("serve_smoke_assertions", "serve 冒烟断言数",
 			`serve_smoke|serve 冒烟|协议断言|项断言`, ``, 10, 150, "项"),
-		mk("cargo_test_passed", "cargo test 用例数", `cargo test|passed|全绿|rust 单测`,
+		// "passed" 分支 2026-09-29 收紧为 `\d+\s*passed`：裸 passed 会命中
+		// facts 键名 `moonbit_test_passed`（README.mbt.md:47 moon 分解式行
+		// 因此被误圈进 cargo Manual/Suspect，--strict 假红）——真实 cargo 行
+		// 是 "1027 passed" 数字紧邻形态；锚 TestCargoRuleIgnoresFactsKeyName。
+		mk("cargo_test_passed", "cargo test 用例数", `cargo test|\d+\s*passed|全绿|rust 单测`,
 			``, 500, 2500, "用例"),
 		mk("cargo_test_suites", "cargo test 套件数", `套件`, `断言|项断言`, 20, 200, "个"),
 		// T6/T5 审阅（2026-09-19）：moonbit README 测试数防漂移——发布面
 		// 审阅实证 0.1.0 的 README 计数过期（53 vs 实跑 58），纳入机判。
-		mk("moonbit_test_passed", "MoonBit 测试数", `moon\s*test|moonbit[^\n]*测试|测试[^\n]*moonbit`, ``, 40, 500, "用例"),
+		// 上限 500 → 2000（2026-09-29）：0.7.0 实测 508 越上限被滤出候选，
+		// README.mbt.md:47 整行无候选等于真值 → Suspect 假红；S8/S9 后
+		// 测试数仍会涨，带宽给足。锚 TestMoonbitTruthInRange。
+		mk("moonbit_test_passed", "MoonBit 测试数", `moon\s*test|moonbit[^\n]*测试|测试[^\n]*moonbit`, ``, 40, 2000, "用例"),
 		// S2（2026-09-19）：词法差分 TSV 总数防漂移——随机 2400 例 ×2 层 +
 		// baseline 363×2 + K&R 81×2 = 5688；语料增删会移动真值，文档数字须随动。
 		mk("moonbit_lexer_diff_tsv", "词法差分 TSV 数", `差分[^\n]*TSV|TSV[^\n]*差分|逐字节一致[^\n]*TSV|词法差分`, ``, 5000, 8000, "个"),

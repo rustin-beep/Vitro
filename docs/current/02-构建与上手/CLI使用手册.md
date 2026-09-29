@@ -1,6 +1,6 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-09-23（MoonBit 迁移现状对齐——头注补迁移指引；断链修复）
+> 最后核对日期：2026-09-29（serve 节补 MoonBit 孪生实现指引与超长行形态差。前一沿革 2026-09-23 迁移现状对齐）
 > 修订说明（2026-09-11）：去前端化——移除已删除的 `VITRO_CLI_EN.md` 链接，入口表述改为"无前端依赖"并补三出口交叉引用。
 > 出口定位：本文档描述的是"三出口一核心"中的**出口 3**（`vitro_cli serve` JSON-lines 会话模式）；另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [后端定位与白箱计划.md](../01-定位与路线/后端定位与白箱计划.md) §2.2。**MoonBit 迁移进行中**：本 CLI 消费的现役引擎已冻结为差分对照 oracle，MoonBit 侧对应能力排 S7（session/protocol/gateway + Node 宿主），见 [MoonBit迁移总计划.md](../01-定位与路线/MoonBit迁移总计划.md)。
 
@@ -280,6 +280,12 @@ EOF
 > ```
 >
 > 防线：`go run ./scripts/serve_smoke` 覆盖 id 关联 / 帧同构 / 生命周期 / 配置一致性 / 三段式内存地图 / schema 轨道与词汇表的 59 项断言（CI 已纳入，脚本自报口径）。
+
+> **MoonBit 孪生实现（S7 批三号起）**：`moonbit/cmd/serve` 以同构方法族承接同一 JSON-lines 协议
+> （协议层在 `gateway` 包，serve 为 native stdio 壳；step 族随 S8 接入），`serve_smoke -moonbit`
+> 以同一请求表对拍锁定。已知形态差（登记不照搬）：请求行 ≥65535 字节时 MoonBit 侧回 protocol
+> 错误帧后干净退出（2026-09-29 超长行修复——静默丢弃违反协议演化纪律②），Rust 侧
+> `BufRead::lines` 无行上限继续回 pong。
 
 ## 快速测试片段
 

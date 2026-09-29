@@ -31,7 +31,7 @@
   },
   {
     "case": "bTree_default.c",
-    "digest": "65593255",
-    "reason": "模板 UB（未初始化子节点指针）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）：Clang 侧 UB 表现非确定（本次空输出 0），引擎侧受检 trap 诊断 + 崩溃码 0xC0000005；模板代码缺陷非编译器缺陷，保留作安全检测教学示例"
+    "digest": "ff228a13",
+    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。Clang 侧 UB 恰好无害（输出 1）；引擎侧 kruskal 零填充修复（0c893ae）改变内存布局后 UB 走向 NULL 解引用受检 trap @71:32——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态，保留作安全检测教学示例"
   }
 ]

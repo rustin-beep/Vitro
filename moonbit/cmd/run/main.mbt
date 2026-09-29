@@ -64,11 +64,18 @@ fn main raise {
   let args = @env.args()
   let mut file = ""
   let mut dump_mem = ""
+  let mut stdin_file = ""
   let mut i = 1
   while i < args.length() {
     if args[i] == "--dump-memory" && i + 1 < args.length() {
       i = i + 1
       dump_mem = args[i]
+    } else if args[i] == "-i" && i + 1 < args.length() {
+      // stdin 注入（2026-09-29 层 2 遗留 stdin 34 例批）：文件 → host
+      // 单源切行（行含尾换行）；Batch 模式（headless——输入耗尽即 EOF
+      // 不交互，oracle CLI -i 同语义：while(scanf...)!=EOF 习语不挂起）
+      i = i + 1
+      stdin_file = args[i]
     } else if !args[i].starts_with("-") {
       file = args[i]
     }
@@ -76,7 +83,7 @@ fn main raise {
   }
   if file == "" {
     println(
-      "用法: moon run moonbit/cmd/run -- <file.c> [--dump-memory out.bin]",
+      "用法: moon run moonbit/cmd/run -- <file.c> [--dump-memory out.bin] [-i input.in]",
     )
     return
   }
@@ -154,6 +161,10 @@ fn main raise {
       b"1 2 3 4 5\n",
     ),
   )
+  if stdin_file != "" {
+    let text = @fs.read_file_to_string(stdin_file)
+    vm.set_input(@host.InputState::from_stdin_text(text, true))
+  }
   let ret = vm.run()
   // ── stdout 通道（Buffer 聚合 + print 整串——字节经 Char 直转；
   // 非 UTF-8 字节按 Latin-1 落文本，Go 侧归一时统一字节口径）──

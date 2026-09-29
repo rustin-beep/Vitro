@@ -41,7 +41,9 @@ fn serve_input_feed_frame(
     None => ""
   }
   if !text.is_empty() {
-    s.vm.input.push_lines(split_stdin_lines(text))
+    // 切行单源 host::from_stdin_text（serve/run/-i 三消费者）——追加只
+    // 取行数组（模式与 EOF 清除由 push_lines 承担）
+    s.vm.input.push_lines(@host.InputState::from_stdin_text(text, true).lines)
   }
   // resume 语义：waiting_input 由 serve_execute_run 的 is_resume 承担
   // （参数回推 + ip 回退已就位；二段锚 serve_run_waiting_then_input_resumes

@@ -85,6 +85,7 @@ vitro/engine/cmd/run vitro/engine/fs write_bytes_to_file
 vitro/engine/cmd/run vitro/engine/bytecode compute_heap_base
 vitro/engine/cmd/run vitro/engine/codegen compile
 vitro/engine/cmd/run vitro/engine/host OutputKind
+vitro/engine/cmd/run vitro/engine/host InputState
 vitro/engine/cmd/run vitro/engine/lexer tokenize_with
 vitro/engine/cmd/run vitro/engine/lexer/token SourceError
 vitro/engine/cmd/run vitro/engine/lexer/token SourceProvider

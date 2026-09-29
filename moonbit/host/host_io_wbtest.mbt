@@ -482,3 +482,31 @@ test "printf_percent_percent_semantics" {
   let (log4, _) = printf_run(map, mem, "x%", [])
   assert_eq(log4.join(OutputKind::Stdout), b"x%")
 }
+
+///|
+test "from_stdin_text_crlf_fully_normalized" {
+  // **replace 首个匹配陷阱锚**（2026-09-29 stdin 34 例批实锤）：MoonBit
+  // String::replace 只替换首个匹配——单次规整只消一个 CRLF，kr_1_19
+  // 实测第二行起 \r 泄入程序（输出多 \r 分叉）。from_stdin_text 循环
+  // 规整后全量：每行字节序列必须无 13（\r）
+  let cr = Char::from_int(13).to_string()
+  let nl = Char::from_int(10).to_string()
+  let text = "hello" + cr + nl + "world" + cr + nl + "tail" + cr + nl
+  let st = InputState::from_stdin_text(text, true)
+  assert_eq(st.lines.length(), 3)
+  for l in st.lines {
+    for i = 0; i < l.length(); i = i + 1 {
+      assert_not_eq(
+        l[i].to_int(),
+        13,
+        msg="行内不得残留 \r（全量规整）",
+      )
+    }
+  }
+  // 末行无换行原样 + 空串零行（既有语义回归位）
+  let st2 = InputState::from_stdin_text("ab" + cr + nl + "cd", true)
+  assert_eq(st2.lines.length(), 2)
+  assert_eq(st2.lines[0].length(), 3, msg="ab\n（3 字节）")
+  assert_eq(st2.lines[1].length(), 2, msg="cd 原样（末行无换行）")
+  assert_true(InputState::from_stdin_text("", true).lines.is_empty())
+}

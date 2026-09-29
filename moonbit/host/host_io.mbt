@@ -1026,3 +1026,43 @@ pub fn host_sscanf(
   }
   value_only(matched.to_uint64())
 }
+
+///|
+/// 从 stdin 文本构造输入态（oracle `RuntimeState::split_stdin` +
+/// `set_stdin` 的单源收口，2026-09-29 stdin 34 例批）：`\r\n` 规整 →
+/// `split_inclusive('\n')` 切行（**行含尾换行**、末行无换行原样、空串
+/// 零行）+ Batch/Interactive 模式一次到位。消费者：cmd/serve（run 的
+/// input 参数 / input.feed）与 cmd/run（`-i` headless 通道）——此前
+/// serve 层私有实现，runner 层缺口接线时上提为三消费者单源。
+pub fn InputState::from_stdin_text(text : String, batch : Bool) -> InputState {
+  // **循环规整**（2026-09-29 stdin 34 例批实锤）：MoonBit String::replace
+  // 只替换**首个**匹配（探针：a\rb\rc.replace → a-bc）——单次调用只消
+  // 一个 CRLF，kr_1_19 实测第二行起 \r 泄入程序（输出多 \r 分叉）；
+  // 循环到不含即全量（stdin 规模小，O(n^2) 最坏可忽略）
+  let mut normalized = text
+  while normalized.contains("\r\n") {
+    normalized = normalized.replace(old="\r\n", new="\n")
+  }
+  if normalized.is_empty() {
+    return InputState::new([], batch)
+  }
+  let nl : String = "\n"
+  let ends_with_nl = normalized.has_suffix(nl)
+  let segs : Array[String] = []
+  for seg in normalized.split("\n") {
+    segs.push(seg.to_string())
+  }
+  let lines : Array[Bytes] = []
+  let last = segs.length() - 1
+  for i = 0; i < segs.length(); i = i + 1 {
+    if ends_with_nl || i < last {
+      lines.push(@utf8.encode(segs[i] + nl))
+    } else {
+      lines.push(@utf8.encode(segs[i]))
+    }
+  }
+  if ends_with_nl {
+    ignore(lines.pop())
+  }
+  InputState::new(lines, batch)
+}

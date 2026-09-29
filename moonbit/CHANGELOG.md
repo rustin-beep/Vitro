@@ -6,8 +6,30 @@ patch；新增包 / 公共 API → minor。
 
 ## [Unreleased]（0.7.0 开发期）
 
+### Added
+
+- **stdin 注入通道三件**（2026-09-29 层 2 遗留 stdin 34 例批）：
+  - `host::InputState::from_stdin_text(text, batch)`——stdin 切行单源
+    （`\r\n` 循环规整 + `split_inclusive` 语义行含尾换行 + 模式一次
+    到位），三消费者即刻收口（serve 的 input 参数 / input.feed /
+    cmd/run 的 `-i`）；
+  - `cmd/run -i <file>`：headless Batch 通道（oracle CLI `-i` 同语义
+    ——输入耗尽即 EOF 不交互，A1）；
+  - vm_diff / clang_direct 驱动自动配对同名 `.in`（34 例自此测真实
+    输入形态而非 EOF 空跑）；clang_direct 的 cacheKey 实写 stdin 维度
+    （schema 设计位预留——防同源码不同输入命中旧缓存）。
+
 ### Fixed
 
+- **`String::replace` 只替换首个匹配致 CRLF 规整不全**（stdin 34 例批
+  首跑实锤）：`from_stdin_text` 单次 replace 只消一个 `\r\n`——
+  kr_1_19 实测第二行起 `\r` 泄入程序（输出多 `\r` 分叉，4 例真 DIFF）；
+  改循环规整后 knr 29 例全 SAME。语言事实入 moonbit/AGENTS.md 陷阱
+  #39；host 包 CRLF 全量规整锚锁定。
+- **bTree known 条目归因勘误**：原写「未初始化子节点指针」——细读
+  createNode 已循环置 NULL children，真 UB 面是 `keys[M]` malloc 后
+  未清零 + splitChild 搬移读越 keyCount 界；kruskal 修复改变布局后
+  UB 走向 NULL 解引用受检 trap（digest 更新 + 归因重写）。
 - **`set_call_depth_limit` 缺 V-P1-10 下限 16 兜底**（2026-09-29 用户
   审阅 P2 实锤并双向证明）：Rust `state.rs` 的 `limit.max(16)` 未随
   S6 照搬——`config.set {"call_depth_limit": 0/-5}` 时 oracle 回 16

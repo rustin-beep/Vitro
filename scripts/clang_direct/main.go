@@ -122,6 +122,16 @@ type caseRef struct {
 	path string
 }
 
+// stdinFor：同名 .in 配对（x.c → x.in；无则空串）。2026-09-29 层 2 遗留
+// stdin 34 例批——此前 34 例只测 EOF 形态（shadow 曾靠 .in 修过真 bug）。
+func stdinFor(path string) string {
+	p := strings.TrimSuffix(path, ".c") + ".in"
+	if fileExists(p) {
+		return p
+	}
+	return ""
+}
+
 func main() {
 	corpora := corporaDefault
 	sample := 0
@@ -438,13 +448,21 @@ type cachePayload struct {
 	CompileFail bool   `json:"compile_fail"`
 }
 
-func cacheKey(src []byte, clangVersion string) string {
+func cacheKey(src []byte, clangVersion, stdinPath string) string {
 	h := sha256.New()
 	h.Write([]byte(cacheSchema))
 	h.Write([]byte{0})
 	h.Write(src)
 	h.Write([]byte{0})
 	h.Write([]byte(clangVersion))
+	h.Write([]byte{0})
+	// stdin 维度（2026-09-29 实写——头注 schema 设计位预留）：同源码不同
+	// 输入必须分键，否则 34 例 .in 接入后命中 EOF 形态的旧缓存
+	if stdin, err := os.ReadFile(stdinPath); err == nil {
+		h.Write(stdin)
+	} else {
+		h.Write([]byte("<no-stdin>"))
+	}
 	h.Write([]byte{0})
 	args := clangCompileArgs("<src>", "<exe>")
 	h.Write([]byte(strings.Join(args, " ")))
@@ -456,7 +474,7 @@ func runClang(c caseRef, caseIdx int, clangVersion string) *clangResult {
 	if err != nil {
 		return &clangResult{compileFail: true, abnormal: true}
 	}
-	key := cacheKey(src, clangVersion)
+	key := cacheKey(src, clangVersion, stdinFor(c.path))
 	if data, err := os.ReadFile(filepath.Join(clangCacheDir, key+".json")); err == nil {
 		var p cachePayload
 		if json.Unmarshal(data, &p) == nil && p.Schema == cacheSchema {
@@ -526,6 +544,12 @@ func runClangOnce(c caseRef, caseIdx int) *clangResult {
 	// 确定性的 fopen 失败形态，known_direct 相应重新归因。
 	runCmd := exec.Command(exeFile)
 	runCmd.Dir = runDir
+	// .in 配对喂入（stdin 34 例批；无 .in 保持空 stdin 原口径）
+	if in := stdinFor(c.path); in != "" {
+		if b, err := os.ReadFile(in); err == nil {
+			runCmd.Stdin = bytes.NewReader(b)
+		}
+	}
 	var rOut bytes.Buffer
 	runCmd.Stdout = &rOut
 	runCmd.Stderr = &rOut
@@ -581,7 +605,12 @@ func runMoon(c caseRef) *moonResult {
 	// 注意：不 defer 删除——compareDirect 消费映像在 runMoon 返回之后
 	//（vm_diff 曾同坑：defer 先删致校验永假）；清理由主循环 cleanup 承担。
 	var out bytes.Buffer
-	cmd := exec.Command(filepath.FromSlash(runnerExe), c.path, "--dump-memory", tmp.Name())
+	args := []string{c.path}
+	if in := stdinFor(c.path); in != "" {
+		args = append(args, "-i", in)
+	}
+	args = append(args, "--dump-memory", tmp.Name())
+	cmd := exec.Command(filepath.FromSlash(runnerExe), args...)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	_ = cmd.Run()

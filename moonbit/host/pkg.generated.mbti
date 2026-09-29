@@ -250,6 +250,7 @@ pub(all) struct InputState {
   mut ungetc : Int?
   batch : Bool
 }
+pub fn InputState::from_stdin_text(String, Bool) -> Self
 pub fn InputState::new(Array[Bytes], Bool) -> Self
 pub fn InputState::push_lines(Self, Array[Bytes]) -> Unit
 pub fn InputState::set_eof(Self) -> Unit

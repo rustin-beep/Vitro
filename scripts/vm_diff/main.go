@@ -452,6 +452,15 @@ func fullCorpusRun(corpora []string, explicit []string, sample int) bool {
 	return true
 }
 
+// stdinFor：同名 .in 配对（x.c → x.in；无则空串）。2026-09-29 层 2 遗留
+// stdin 34 例批——此前 34 例只测 EOF 形态。
+func stdinFor(path string) string {
+	p := strings.TrimSuffix(path, ".c") + ".in"
+	if fileExists(p) {
+		return p
+	}
+	return ""
+}
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
@@ -652,7 +661,12 @@ func runOracle(path string) *result {
 	}
 	tmp.Close()
 	var out bytes.Buffer
-	cmd := exec.Command(bin, "run", path, "--dump-memory", tmp.Name())
+	args := []string{"run", path}
+	if in := stdinFor(path); in != "" {
+		args = append(args, "-i", in)
+	}
+	args = append(args, "--dump-memory", tmp.Name())
+	cmd := exec.Command(bin, args...)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err = cmd.Run()
@@ -684,7 +698,12 @@ func runMoonBit(path string) *result {
 	tmp.Close()
 
 	var out bytes.Buffer
-	cmd := exec.Command(filepath.FromSlash(runnerExe), path, "--dump-memory", tmp.Name())
+	margs := []string{path}
+	if in := stdinFor(path); in != "" {
+		margs = append(margs, "-i", in)
+	}
+	margs = append(margs, "--dump-memory", tmp.Name())
+	cmd := exec.Command(filepath.FromSlash(runnerExe), margs...)
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	_ = cmd.Run()

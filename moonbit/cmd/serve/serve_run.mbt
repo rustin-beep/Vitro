@@ -20,46 +20,6 @@
 //    捕获通道，vm.run 内部 fail loud 即错误面。
 
 ///|
-/// stdin 切行（Rust `RuntimeState::split_stdin` 同形——**split_inclusive
-/// 语义：行含尾换行**；`\r\n` 规整为 `\n`；末行无换行保持原样〔尾换行
-/// 信息不得丢失——审阅批 P1 实锤：剥掉换行使 getchar 每行少产一个
-/// `\n`，oracle `"ab\ncd\n"` 计 n=6 而本侧 n=4〕；空串 = 零行）。
-/// host 侧消费面：getchar 逐字节读行数据（含 `\n` 自然读到）；scanf
-/// 虚拟流的补位守卫（行尾 ≠ `\n` 才补）天然兼容本形态，无换行行
-/// （直接构造/末行）仍兜底。
-fn split_stdin_lines(input : String) -> Array[Bytes] {
-  let normalized = if input.contains("\r\n") {
-    input.replace(old="\r\n", new="\n")
-  } else {
-    input
-  }
-  if normalized.is_empty() {
-    return []
-  }
-  let nl : String = "\n"
-  let ends_with_nl = normalized.has_suffix(nl)
-  // split 产出段（以 \n 结尾时多一个末空段）；每段拼回分隔符——
-  // 除「不以 \n 结尾的末段」（split_inclusive 语义）
-  let segs : Array[String] = []
-  for seg in normalized.split("\n") {
-    segs.push(seg.to_string())
-  }
-  let lines : Array[Bytes] = []
-  let last = segs.length() - 1
-  for i = 0; i < segs.length(); i = i + 1 {
-    if ends_with_nl || i < last {
-      lines.push(@utf8.encode(segs[i] + nl))
-    } else {
-      lines.push(@utf8.encode(segs[i]))
-    }
-  }
-  if ends_with_nl {
-    ignore(lines.pop())
-  }
-  lines
-}
-
-///|
 /// not_compiled 错误帧体（Rust session_api::run 的未编译出口——run 与
 /// input.feed 两帧同构消费）。
 fn not_compiled_json() -> Json {
@@ -162,9 +122,7 @@ fn serve_run_frame(
   // ── 参数域（Rust run 臂顺序）──
   match json_field(params, "input").as_string() {
     Some(input) =>
-      s.vm.set_input(
-        @host.InputState::new(split_stdin_lines(input), s.runtime_batch),
-      )
+      s.vm.set_input(@host.InputState::from_stdin_text(input, s.runtime_batch))
     None => ()
   }
   match json_field(params, "argv") {

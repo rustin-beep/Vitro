@@ -500,6 +500,22 @@ function selectCase() {
 }
 
 // ── 启动 ─────────────────────────────────────────────────
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem("vitro-theme"); } catch (e) {}
+  // 默认暗色（品牌主题）；显式存过 light/dark 则遵循
+  var theme = saved === "light" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", theme);
+  var btn = document.getElementById("theme-toggle");
+  if (btn) {
+    btn.onclick = function () {
+      var cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", cur);
+      try { localStorage.setItem("vitro-theme", cur); } catch (e) {}
+    };
+  }
+})();
+
 (async function boot() {
   bindTabs();
   const sel = $("case-select");

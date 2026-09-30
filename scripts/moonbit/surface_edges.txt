@@ -284,6 +284,8 @@ vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/source SourceLoc
+vitro/engine/time_travel moonbitlang/core/deque Deque
+vitro/engine/time_travel vitro/engine/protocol StepPayload
 vitro/engine/time_travel vitro/engine/bytecode MEM_SIZE
 vitro/engine/time_travel vitro/engine/memory PAGE_SIZE
 vitro/engine/time_travel vitro/engine/opcode Instruction

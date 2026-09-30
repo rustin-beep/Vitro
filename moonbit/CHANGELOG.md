@@ -13,6 +13,12 @@ patch；新增包 / 公共 API → minor。
   淘汰不变量三件套 + set_smart_mode/set_max_checkpoints 等会话配置入口）；
   门 3 六锚（全量往返/增量脏页/淘汰不变量/删 Full 级联 pinned/智能模式/
   隔离区三件套）随迁 `checkpoint_wbtest.mbt`，锚名与断言原样。
+- **time_travel 批一号二段（2026-10-01）**：`FrameWindow`——StepPayload
+  帧缓存的自带不变量类型（`@deque.Deque` 承载，两端 O(1) 摊还；窗口参数
+  2_000/0.2 与 discard=ceil 公式协议锚定逐字保留；**push 唯一写入口**、
+  超窗自动裁——U2#1 修复形态类型化；slice 钳位族防线）；`UnifiedEngine`
+  状态定形（窗口四字段内聚、`pre_step_snap` 不迁〔Trap 回退改重放的前置〕、
+  三粘性标志 reset 唯一清除、`resume` 保留字改 `unpause`）。
 
 ### Changed
 

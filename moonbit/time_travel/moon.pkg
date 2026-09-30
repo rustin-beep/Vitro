@@ -20,9 +20,12 @@
 // （门 3 六锚随迁）。不依赖 session（§4 L9 行三接口反转纪律）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L9，总计划 §4）。
 import {
+  "moonbitlang/core/abort",
+  "moonbitlang/core/deque",
   "vitro/engine/bytecode",
   "vitro/engine/memory",
   "vitro/engine/opcode",
+  "vitro/engine/protocol",
   "vitro/engine/source",
   "vitro/engine/vm",
 }

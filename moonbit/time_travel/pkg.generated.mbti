@@ -2,6 +2,8 @@
 package "vitro/engine/time_travel"
 
 import {
+  "moonbitlang/core/deque",
+  "vitro/engine/protocol",
   "vitro/engine/vm",
 }
 
@@ -27,6 +29,40 @@ pub fn CheckpointManager::save(Self, Int, @vm.VitroVM) -> Unit
 pub fn CheckpointManager::set_max_checkpoints(Self, Int) -> Unit
 pub fn CheckpointManager::set_smart_mode(Self, Bool) -> Unit
 pub fn CheckpointManager::should_checkpoint(Self, Int, String) -> Bool
+
+pub struct FrameWindow {
+  frames : @deque.Deque[@protocol.StepPayload]
+  mut start_step : Int
+  window_size : Int
+  trim_ratio : Double
+}
+pub fn FrameWindow::clear(Self) -> Unit
+pub fn FrameWindow::is_empty(Self) -> Bool
+pub fn FrameWindow::last(Self) -> @protocol.StepPayload?
+pub fn FrameWindow::length(Self) -> Int
+pub fn FrameWindow::new() -> Self
+pub fn FrameWindow::push(Self, @protocol.StepPayload) -> Unit
+pub fn FrameWindow::slice(Self, Int, Int) -> Array[@protocol.StepPayload]
+pub fn FrameWindow::start_step(Self) -> Int
+pub fn FrameWindow::window_limit(Self) -> Int
+pub fn FrameWindow::with_limits(Int, Double) -> Self
+
+pub struct UnifiedEngine {
+  checkpoints : CheckpointManager
+  frames : FrameWindow
+  mut max_steps : Int
+  mut is_paused : Bool
+  mut is_cancelled : Bool
+  mut is_finished : Bool
+}
+pub fn UnifiedEngine::cancel(Self) -> Unit
+pub fn UnifiedEngine::get_max_steps(Self) -> Int
+pub fn UnifiedEngine::new() -> Self
+pub fn UnifiedEngine::pause(Self) -> Unit
+pub fn UnifiedEngine::reset(Self) -> Unit
+pub fn UnifiedEngine::set_max_steps(Self, Int) -> Unit
+pub fn UnifiedEngine::unpause(Self) -> Unit
+pub fn UnifiedEngine::with_max_steps(Int) -> Self
 
 // Type aliases
 

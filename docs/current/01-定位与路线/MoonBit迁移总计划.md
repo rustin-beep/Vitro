@@ -185,6 +185,28 @@ S4 期坑登记（2026-09-20 审阅，S9 裁定批输入）：① parser/decl.mb
 
 **执行纪律**（本节所有批次通用）：先跑基线门禁拿绿底，改一项验一项；计数一律实采不引旧记录；`moon test` 裸总数经 **testcount 闸**（v2：README×2 ↔ **moon test 实跑真值**——五轮审阅修正：v1 读 facts cached 制品属复述型，「文档与 facts 一起错」场景不红；v2 闸内自跑 moon test，J9 按三层验证〔篡改红 / 原缺陷场景红 / 接 CI〕）机判。
 
+### 10.6 前端路线（2026-09-30 三端实测收敛，用户拍板）
+
+**定性**：S7 批五号的 wasm-gc 单出口（gateway 4 函数导出）+ demo 单页（023ee42）实证了「引擎本体进浏览器」全链路——浏览器从「渲染器」升格为「运行时宿主」。**架构裁定**：原讨论中的 Go 壳 `vitro_web`（静态壳 + SSE↔stdio 桥 + spawn serve 子进程）**降级为可选件**——其承重理由「浏览器拿不到引擎、需本地进程喂它」被 gateway 直调拆掉；修正后形态比原终局还少一个组件（moon 单工具链 + 静态托管，无 Go）。**不变项**：MoonBit SVG 渲染纯函数包 + native CI 快照路线原样（渲染逻辑进 MoonBit 侧、E-08 不开浏览器可测——demo 页 JS 即迁移原型）；vim 手感分层；协议冻结；判定闸纪律（demo_smoke 127 项已接线 core）。
+
+**三端实测证据链（2026-09-30，全部一手）**：桌面 1400px + IAB 移动视口 390px + 真机 iPhone（4G）三端回归零失败；iOS Safari 的 wasm-gc + js-string builtins 由真机实证（首页徽章 `engine 0.7.0` 为引擎导出直调返回值）；GitHub Pages push 24s 部署 + 三资源 200（index 6.6KB / wasm 686,830B / app.js 24.8KB，全套静态载入 ≈716KB——对照：oracle 侧 Skia 二进制数十 MB 级、Flutter 壳上百 MB 级）；**网络层实测（同日）：关闭代理、GitHub 主站不可达的条件下 Pages（github.io，与主站不同路由/CDN）仍可正常打开**——可达性不以主站连通为前提；agent 可测 = ZCode 内置浏览器全程驱动开发回归 + node 协议闸不开浏览器跑 golden。移动端覆盖兑现 README「原生移动端放弃，'看'的场景由 Web + 移动浏览器天然覆盖」的预言，且以引擎本体直调的超集形态。
+
+**排期**（旁路线，不占 S 编号；S8 step 流是协议预留位衔接点）：
+
+| 批次 | 内容 | 验收锚 | 状态 |
+|---|---|---|---|
+| F-0 | demo 单页 + Pages 部署 + demo_smoke 闸 | 三资源 200 + J9 双向证红 + ci.yml 接线 | ✅ 2026-09-30（023ee42） |
+| F-1 | 无后端分享（源码编码进 URL hash，打开即复现）+ 诊断卡片点击跳编辑器行；顺带两个 P3 微优化：app.js 升级 `instantiateStreaming`（线上实测 MIME=`application/wasm`，Pages 已具备流式编译条件）+ demo/README 补「Pages 是静态托管、跑 wasm-gc 的是访问者浏览器」的概念说明 | 手机动线实测：出错程序链接可发可开；跳行命中 `line:column` | 待开工（周级） |
+| F-1b | **呈现层体验批（web 栈效果与动效）**：① C 语法高亮——textarea 透明前景 + 背后高亮层叠加（零依赖自写小型 C 着色器：关键字/字符串/注释/数字/预处理指令分色；与引擎 lexer 无契约绑定，页面侧独立实现）；② 动效——CSS transition 性价比之王（既定拍板）：内存条块 addr/size 过渡、诊断卡与手册卡展开渐变、行跳转高亮闪烁定位、tab 切换过渡、stdout 增量淡入——**动效语义随渲染层走**：F-2a SVG 包接管后 transition 原样保留（SVG 元素同样吃 CSS） | 移动视口/真机无卡顿（60fps 级）；高亮零第三方依赖；动效在 F-2a 迁移后无重做 | 待开工（随 F-1 同窗） |
+| F-2a | MoonBit SVG 渲染纯函数包建包——内存地图/诊断卡片/条块图三类渲染自页面 JS 迁入（native CI 快照，E-08 不开浏览器） | `moon test` 快照锚 + 页面渲染视觉等价（native 快照 diff） | 待开工（第一刀照旧） |
+| F-3 | S8 衔接：step 流落地后时间旅行回放进 demo（`semantic_labels` 14 类词表已消费展示为呈现层词汇） | S8 协议预留位激活后回放可用 | 随 S8 |
+
+**诚实边界**：① github.io 与 github.com 走不同路由/CDN：2026-09-30 关代理实测「主站不可达时 Pages 仍可打开」；极端受限网络的兜底路径仍为仓库 clone + 本地静态服务器（`demo/README.md` 三步）；② 纯浏览器宿主无会话持久化——F-1 的 URL hash 分享补位（无后端设计，非缺省）；③ 浏览器兼容面（wasm-gc + js-string builtins：Chrome/Edge 130+ / Firefox 134+ / Safari 真机实证）页面有降级提示；④ 教学负载内性能充足（1MB 内存模型 + 千万步上限），非通用运行时声明不变。
+
+**体积预算（2026-09-30 四类栈实验，探针实测后即删）**：站点传输 259KB 中 **wasm-gc 占 94%**（gateway 686,830B raw / 244,076B gzip，线上与本地 sha256 同一 = `57612d05…`）；HTML/JS/CSS 全部合计仅 15KB gzip。**SVG 是运行时生成——写多了不增大站点体积**（内存地图单帧 gzip 345B、77 卡极端列表态 gzip 1.1KB，上限在渲染性能不在下载）；**MoonBit→wasm 增量系数温和**（空基线 346B；真实感渲染代码约 100 行 → 14.4KB raw / 7.2KB gzip 一包）；文本栈密度 gzip≈raw 的 25–37%。**定量结论：前端路线 F-1 至 F-3 全部做完传输约 +25KB（+10%）；体积不构成任何批次的选型约束，F-2a 按工程正路推进勿为省 KB 留 JS。**唯一有闸意义的体积项 = 引擎本体（1.5MB 闸，现用 45.8%）。
+
+**「为什么是 MoonBit」叙事要点（对外材料口径，全部一手实测）**：教学引擎这类「大量结构化数据 + 要跑在学生任何设备上」的负载，正是为 GC 堆设计的语言对自管内存语言的**代差场景**——2026-09-30 格局：wasm-gc 已随 WebAssembly 3.0 全浏览器落地，Kotlin/Dart/Java/.NET 真支持（诚实的竞争者，但生态位是应用框架语言），Go 不用 WasmGC（自带 GC 进模块 ⇒ 体积大），Rust/C++ 自管内存与 GC 提案结构性冲突（Emscripten 路线几十 MB 级）。MoonBit 的差异不是「独有能力」而是「为 GC 堆而生 vs 迁就」的完整度：687KB 全链路编译器+VM、GC 对象直通宿主堆、String 经 js-string builtins 零拷贝（gateway import 段仅 "_" 常量模块实测）、执行层快于 native。**687KB 对几十 MB 就是这个代差的定价。**
+
 ## 11. 探测档案指南（git 历史）
 
 全部 16 份探测文档保存在提交 `917251e`：

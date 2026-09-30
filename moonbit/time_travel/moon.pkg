@@ -34,4 +34,5 @@ import {
 // MEM_SIZE）——moon check 的 unused 分析不计测试文件，包级关闭
 // unused_package（fs 包 -unused_value 同款先例，2026-09-28；本体真死码
 // 仍由 moon test 编译路径与 surface 闸暴露）。
+
 warnings = "-unused_package"

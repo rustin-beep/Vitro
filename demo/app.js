@@ -59,8 +59,9 @@ function esc(s) {
 // ── C 语法高亮（F-1b①）───────────────────────────────────
 // 页面侧独立小型着色器：零第三方依赖，与引擎 lexer 无契约绑定（呈现层
 // 自治，F-2a SVG 包接管渲染时本逻辑随 JS 侧一起迁走，CSS transition 原样保留）。
-// 形态：textarea 前景透明 + 背后 <pre> 高亮层叠加，两侧 font/line-height/
-// padding/tab-size 严格一致 + wrap="off"（横向滚动，规避软换行点对齐问题）。
+// 形态（修订版）：textarea 前景透明只留光标 + 背后逐行行盒高亮层；软换行
+// 自动折行（无横向滚动）+ 编辑器高度随内容伸缩（滚动收口在外层 .editor-wrap，
+// 两层恒等宽保证折行断点一致——textarea 自身不滚，滚动条不会挤压文本区）。
 const C_KEYWORDS = new Set(
   (
     "auto break case char const continue default do double else enum extern " +
@@ -75,61 +76,60 @@ const C_KEYWORDS = new Set(
 const C_TOKEN =
   /(\/\*[\s\S]*?(?:\*\/|$))|(\/\/[^\n]*)|("(?:\\.|[^"\\\n])*"?)|('(?:\\.|[^'\\\n])*'?)|(^[ \t]*#[^\n]*)|(\.?\d(?:[\w.]|[eEpP][+-])*)|([A-Za-z_]\w*)/gm;
 
-function highlightC(src) {
-  let out = "";
+function tokenizeC(src) {
+  const toks = [];
   let last = 0;
   let m;
   C_TOKEN.lastIndex = 0;
   while ((m = C_TOKEN.exec(src))) {
-    const tok = m[0];
-    if (m.index > last) out += esc(src.slice(last, m.index));
+    if (m.index > last) toks.push({ cls: "", text: src.slice(last, m.index) });
     const cls = m[1] || m[2] ? "syn-com"
       : m[3] || m[4] ? "syn-str"
       : m[5] ? "syn-pre"
       : m[6] ? "syn-num"
       : C_KEYWORDS.has(m[7]) ? "syn-key"
       : "";
-    out += cls ? `<span class="${cls}">${esc(tok)}</span>` : esc(tok);
-    last = m.index + tok.length;
-    if (tok.length === 0) C_TOKEN.lastIndex += 1; // 防零宽匹配死循环
+    toks.push({ cls, text: m[0] });
+    last = m.index + m[0].length;
+    if (m[0].length === 0) C_TOKEN.lastIndex += 1; // 防零宽匹配死循环
   }
-  return out + esc(src.slice(last));
+  if (last < src.length) toks.push({ cls: "", text: src.slice(last) });
+  return toks;
 }
 
-function syncEditorScroll() {
-  const ta = $("editor");
-  const hl = $("editor-hl");
-  if (!ta || !hl) return;
-  hl.scrollTop = ta.scrollTop;
-  hl.scrollLeft = ta.scrollLeft;
-  const g = $("editor-gutter");
-  if (g) g.style.transform = `translateY(${-ta.scrollTop}px)`;
+// 整体 tokenize 后按 \n 切分组装行盒（块注释等跨行 token 的着色状态
+// 在行间延续）；每行一个 .cl，行号 .ln 内嵌行盒，折行后行号不重复。
+function highlightLines(src) {
+  const rows = [];
+  let cur = "";
+  const feed = (cls, text) => {
+    const parts = text.split("\n");
+    for (let i = 0; i < parts.length; i++) {
+      if (i > 0) {
+        rows.push(cur);
+        cur = "";
+      }
+      if (parts[i]) cur += cls ? `<span class="${cls}">${esc(parts[i])}</span>` : esc(parts[i]);
+    }
+  };
+  for (const t of tokenizeC(src)) feed(t.cls, t.text);
+  rows.push(cur);
+  return rows
+    .map((html, i) => `<div class="cl"><span class="ln">${i + 1}</span><span class="lc">${html || "\u200b"}</span></div>`)
+    .join("");
 }
 
+// input 同步渲染（不走 rAF）：textarea 高度即时跟随内容，消除打字回车
+// 瞬间 textarea 内部出现溢出的时序差。
 function renderEditorDecor() {
   const ta = $("editor");
   if (!ta) return;
-  $("editor-hl").innerHTML = highlightC(ta.value) + "\n"; // 末尾补行，滚动高度与 textarea 对齐
-  const lines = ta.value.split("\n").length;
-  let g = "";
-  for (let i = 1; i <= lines; i++) g += `<span>${i}</span>\n`;
-  $("editor-gutter").innerHTML = g;
-  syncEditorScroll();
-}
-
-let editorRaf = 0;
-function scheduleEditorRender() {
-  if (editorRaf) return;
-  editorRaf = requestAnimationFrame(() => {
-    editorRaf = 0;
-    renderEditorDecor();
-  });
+  $("editor-hl").innerHTML = highlightLines(ta.value);
 }
 
 function initEditorDecor() {
   const ta = $("editor");
-  ta.addEventListener("input", scheduleEditorRender);
-  ta.addEventListener("scroll", syncEditorScroll, { passive: true });
+  ta.addEventListener("input", renderEditorDecor);
   renderEditorDecor();
 }
 
@@ -137,28 +137,21 @@ function initEditorDecor() {
 function scrollToLine(line) {
   line = Number(line);
   if (!line || line < 1) return;
-  const ta = $("editor");
-  const cs = getComputedStyle(ta);
-  const lh = parseFloat(cs.lineHeight) || 19.5;
-  const padTop = parseFloat(cs.paddingTop) || 10;
-  const y = (line - 1) * lh;
-  ta.scrollTop = Math.max(0, y - ta.clientHeight / 2 + padTop); // 目标行滚到视口中部
-  syncEditorScroll();
-  flashLine(line, lh, padTop, ta.scrollTop);
-  const spans = $("editor-gutter").children;
-  for (const s of spans) s.classList.remove("cur");
-  if (spans[line - 1]) spans[line - 1].classList.add("cur");
-}
-
-function flashLine(line, lh, padTop, scrollTop) {
-  const scope = $("editor").parentElement; // .editor-code（与滚动上下文同原点）
-  scope.querySelectorAll(".line-flash").forEach((el) => el.remove());
-  const el = document.createElement("div");
-  el.className = "line-flash";
-  el.style.top = `${padTop + (line - 1) * lh - scrollTop}px`;
-  el.style.height = `${lh}px`;
-  scope.appendChild(el);
-  el.addEventListener("animationend", () => el.remove());
+  const wrapEl = $("editor-wrap");
+  const row = wrapEl.querySelectorAll("#editor-hl .cl")[line - 1];
+  if (!row) return;
+  // 目标行滚到编辑器视口中部（offsetTop 相对 .editor-lay，即内容坐标）
+  wrapEl.scrollTop = Math.max(0, row.offsetTop - wrapEl.clientHeight / 2);
+  const hlEl = $("editor-hl");
+  hlEl.querySelectorAll(".flash-on").forEach((el) => el.classList.remove("flash-on"));
+  hlEl.querySelectorAll(".cl.cur").forEach((el) => el.classList.remove("cur"));
+  void hlEl.offsetWidth; // 重触发闪烁动画
+  row.classList.add("flash-on", "cur");
+  const onEnd = () => {
+    row.classList.remove("flash-on");
+    row.removeEventListener("animationend", onEnd);
+  };
+  row.addEventListener("animationend", onEnd);
 }
 
 // ── tab 切换 ─────────────────────────────────────────────
@@ -413,6 +406,16 @@ function renderReference(runResult, stdout, kase) {
 }
 
 // ── 渲染：内存地图 ───────────────────────────────────────
+// 堆区放大视角的跨度计算（内存地图 tab 与动画演示 tab 共用）
+function heapSpanOf(mem) {
+  const heapEnd = Math.max(
+    mem.heap_offset ?? 0,
+    ...mem.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size),
+    mem.heap_base + 64
+  );
+  return { heapBase: mem.heap_base, heapEnd, span: heapEnd - mem.heap_base };
+}
+
 function renderMemory(mem) {
   $("mem-stats").innerHTML =
     `<span>全局 ${mem.region_counts.global}</span>` +
@@ -427,17 +430,16 @@ function renderMemory(mem) {
     band,
     mem.regions.map((r) => ({ r, left: r.addr / MEM_TOTAL, width: Math.max(r.size / MEM_TOTAL, 0.004) }))
   );
-  const heapEnd = Math.max(mem.heap_offset, ...mem.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size), mem.heap_base + 64);
-  const heapSpan = heapEnd - mem.heap_base;
+  const { heapBase, span: heapSpan } = heapSpanOf(mem);
   const zoom = $("mem-band-heap");
   bandRender(
     zoom,
     mem.regions
       .filter((r) => r.is_heap)
-      .map((r) => ({ r, left: (r.addr - mem.heap_base) / heapSpan, width: Math.max(r.size / heapSpan, 0.02) }))
+      .map((r) => ({ r, left: (r.addr - heapBase) / heapSpan, width: Math.max(r.size / heapSpan, 0.02) }))
   );
   $("mem-zoom-label").textContent =
-    `堆区放大 0x${mem.heap_base.toString(16)} – 0x${heapEnd.toString(16)}（span ${heapSpan} B）`;
+    `堆区放大 0x${heapBase.toString(16)} – 0x${heapSpanOf(mem).heapEnd.toString(16)}（span ${heapSpan} B）`;
 
   const q = mem.quarantine;
   $("quar-bar-fill").style.width = `${Math.min((q.bytes / q.budget) * 100, 100)}%`;
@@ -612,6 +614,215 @@ function renderProto(cap, contracts, labels) {
       .join("");
 }
 
+// ── 动画演示（帧采集播放器）──────────────────────────────
+// 原理：同一程序按步数上限阶梯（config.set max_steps）反复实跑，每档拉取
+// memory.regions / output.delta 快照作一帧——每一帧都是引擎真实状态，
+// 页面只负责按帧播放。事件时间轴由相邻帧差分推导（同样源自引擎数据）。
+const ANIM_SCENES = ["malloc_free", "uaf", "infinite"];
+const ANIM_MAX_MID_FRAMES = 44;
+let animData = null; // { frames, events }
+let animIdx = 0;
+let animTimer = 0;
+
+function animGrab(kase, cap) {
+  gw.reset();
+  bodyOf(invoke({ method: "session.create" }));
+  bodyOf(invoke({ method: "config.set", params: { max_steps: cap } }));
+  bodyOf(invoke({ method: "compile", params: { source: kase.source } }));
+  const r = bodyOf(invoke({ method: "run" }));
+  const m = bodyOf(invoke({ method: "memory.regions" }));
+  const o = bodyOf(invoke({ method: "output.delta", params: { cursor: 0, stream: "stdout" } }));
+  return {
+    cap,
+    steps: r.steps_executed ?? 0,
+    status: r.status,
+    ret: r.return_value,
+    trap: r.trap || "",
+    regions: m.regions,
+    quar: m.quarantine,
+    alloc: m.alloc_counter,
+    heapBase: m.heap_base,
+    heapOffset: m.heap_offset,
+    out: latin1ToUtf8(o.delta) || "",
+  };
+}
+
+async function animCollect(sceneId) {
+  const kase = DEMO_CASES.find((k) => k.id === sceneId);
+  if (!kase) return null;
+  const frames = [];
+  // 帧 0：不执行，初始态（VFS 预设文件已在堆上）
+  gw.reset();
+  bodyOf(invoke({ method: "session.create" }));
+  const m0 = bodyOf(invoke({ method: "memory.regions" }));
+  frames.push({ cap: 0, steps: 0, status: "idle", ret: undefined, trap: "", regions: m0.regions, quar: m0.quarantine, alloc: m0.alloc_counter, heapBase: m0.heap_base, heapOffset: m0.heap_offset, out: "" });
+  // 终帧：无步数上限（死循环用 configHint 的预算即其教学终态）
+  const finalCap = (kase.configHint && kase.configHint.max_steps) || 10000000;
+  const fin = animGrab(kase, finalCap);
+  const total = fin.steps;
+  // 中间帧：小步数程序逐步采样，大步数程序均匀采样
+  const caps = [];
+  if (total > 1) {
+    if (total - 1 <= ANIM_MAX_MID_FRAMES) {
+      for (let c = 1; c <= total - 1; c++) caps.push(c);
+    } else {
+      for (let i = 1; i <= ANIM_MAX_MID_FRAMES; i++) caps.push(Math.max(1, Math.round((i * (total - 1)) / ANIM_MAX_MID_FRAMES)));
+    }
+  }
+  const seen = new Set([0, finalCap]);
+  let n = 0;
+  for (const c of caps) {
+    if (seen.has(c)) continue;
+    seen.add(c);
+    frames.push(animGrab(kase, c));
+    if (++n % 8 === 0) await new Promise((r2) => setTimeout(r2)); // 分片，让 UI 喘息
+  }
+  frames.push(fin);
+  // 事件差分（相邻帧的 region 集与 stdout 对比——推导自引擎数据）
+  const keyOf = (r) => `${r.addr}:${r.size}:${r.name}`;
+  const events = [];
+  for (let i = 1; i < frames.length; i++) {
+    const a = frames[i - 1];
+    const b = frames[i];
+    const ak = new Map(a.regions.map((r) => [keyOf(r), r]));
+    const bk = new Map(b.regions.map((r) => [keyOf(r), r]));
+    for (const [k, r] of bk) {
+      if (!ak.has(k)) {
+        const verb = r.kind === "stack" ? "栈帧" : r.kind === "global" ? "全局段" : "分配";
+        events.push({ f: i, text: `第 ${b.steps} 步 · ${verb} ${r.name}（${r.size} B @0x${r.addr.toString(16)}）` });
+      }
+    }
+    for (const [k, r0] of ak) {
+      const r1 = bk.get(k);
+      if (r1 && !r0.is_freed && r1.is_freed) events.push({ f: i, text: `第 ${b.steps} 步 · 释放 ${r1.name} → 隔离区（${r1.size} B）` });
+    }
+    if (b.out.length > a.out.length) events.push({ f: i, text: `第 ${b.steps} 步 · 输出 ${JSON.stringify(b.out.slice(a.out.length))}` });
+  }
+  if (fin.status === "trap" && fin.trap) {
+    events.push({ f: frames.length - 1, text: `终止 · ${fin.trap.split("\n")[0].slice(0, 64)}`, terminal: true });
+  } else if (fin.status === "finished") {
+    events.push({ f: frames.length - 1, text: `程序结束 · 返回码 ${fin.ret}`, terminal: true });
+  }
+  return { frames, events };
+}
+
+function animGoto(i) {
+  if (!animData) return;
+  animIdx = Math.max(0, Math.min(i, animData.frames.length - 1));
+  animRender();
+}
+
+function animRender() {
+  const f = animData.frames[animIdx];
+  const isFinal = animIdx === animData.frames.length - 1;
+  const full = f.regions.map((r) => ({ r, left: r.addr / MEM_TOTAL, width: Math.max(r.size / MEM_TOTAL, 0.004) }));
+  bandRender($("anim-band-full"), full);
+  const heapEnd = Math.max(f.heapOffset ?? 0, ...f.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size), f.heapBase + 64);
+  const span = Math.max(heapEnd - f.heapBase, 1);
+  bandRender(
+    $("anim-band-heap"),
+    f.regions
+      .filter((r) => r.is_heap)
+      .map((r) => ({ r, left: (r.addr - f.heapBase) / span, width: Math.max(r.size / span, 0.02) }))
+  );
+  $("anim-seek").value = animIdx;
+  $("anim-progress").textContent = `帧 ${animIdx + 1}/${animData.frames.length} · 第 ${f.steps} 步 · 隔离区 ${f.quar.blocks} 块`;
+  // 阶段说明：中间帧是「步数上限截断的快照」，终帧才是真实终态
+  let last = null;
+  for (const e of animData.events) if (e.f <= animIdx) last = e;
+  const stateTxt = isFinal
+    ? f.status === "finished" ? `程序结束（返回码 ${f.ret}）`
+      : f.status === "trap" ? "受检终止：" + (f.trap.split("\n")[0] || "").slice(0, 72)
+      : f.status
+    : `快照于第 ${f.steps} 步（步数上限 ${f.cap} 截断）`;
+  let tail;
+  if (f.steps === 0) tail = "初始状态：VFS 预设文件已位于堆底";
+  else if (last && !(isFinal && last.terminal)) tail = last.text; // 终帧 trap 文案已在 stateTxt，不重复
+  else tail = isFinal ? "" : "VM 指令推进中…";
+  $("anim-phase").textContent = `【${stateTxt}】${tail}`;
+  const chips = $("anim-events").children;
+  for (let j = 0; j < animData.events.length; j++) chips[j].classList.toggle("on", animData.events[j].f <= animIdx);
+  // stdout 回放（内容变化时淡入）
+  const el = $("anim-out");
+  const prev = animIdx > 0 ? animData.frames[animIdx - 1] : null;
+  el.textContent = f.out === "" ? "（暂无输出）" : f.out;
+  el.classList.toggle("empty", f.out === "");
+  if (!prev || prev.out !== f.out) {
+    el.classList.remove("flash-in");
+    void el.offsetWidth;
+    el.classList.add("flash-in");
+  }
+  $("anim-out-meta").textContent = `${f.out.length} 字节（截至第 ${f.steps} 步）`;
+}
+
+function animStopTimer() {
+  if (animTimer) {
+    clearInterval(animTimer);
+    animTimer = 0;
+  }
+  $("anim-play").textContent = "▶ 播放";
+}
+
+function animPlay() {
+  if (!animData) return;
+  animStopTimer();
+  if (animIdx >= animData.frames.length - 1) animGoto(0); // 播完再点 = 重播
+  $("anim-play").textContent = "⏸ 暂停";
+  animTimer = setInterval(() => {
+    if (animIdx >= animData.frames.length - 1) {
+      animStopTimer();
+      return;
+    }
+    animGoto(animIdx + 1);
+  }, Number($("anim-speed").value) || 200);
+}
+
+async function animLoadScene(sceneId) {
+  animStopTimer();
+  animData = null;
+  animIdx = 0;
+  $("anim-events").innerHTML = "";
+  $("anim-band-full").innerHTML = "";
+  $("anim-band-heap").innerHTML = "";
+  $("anim-phase").textContent = "采集中：按步数上限阶梯反复实跑引擎…";
+  $("anim-play").disabled = true;
+  $("anim-play").textContent = "… 采集中";
+  await new Promise((r) => setTimeout(r)); // 让按钮态先渲染
+  animData = await animCollect(sceneId);
+  $("anim-events").innerHTML = animData.events
+    .map((e) => `<span class="evt${e.terminal ? " terminal" : ""}">${esc(e.text)}</span>`)
+    .join("");
+  $("anim-seek").max = animData.frames.length - 1;
+  $("anim-play").disabled = false;
+  animRender();
+  animPlay(); // 采集完自动播放
+}
+
+function bindAnim() {
+  const sel = $("anim-scene");
+  sel.innerHTML = ANIM_SCENES.map((id) => {
+    const k = DEMO_CASES.find((x) => x.id === id);
+    return `<option value="${id}">${esc(k ? k.label : id)}</option>`;
+  }).join("");
+  $("anim-play").onclick = () => {
+    if (!animData) return;
+    animTimer ? animStopTimer() : animPlay();
+  };
+  $("anim-reset").onclick = () => {
+    if (!animData) return;
+    animStopTimer();
+    animGoto(0);
+  };
+  $("anim-speed").onchange = () => {
+    if (animTimer) animPlay(); // 播放中调速 = 重启节奏
+  };
+  $("anim-seek").oninput = (e) => {
+    animStopTimer();
+    animGoto(Number(e.target.value));
+  };
+  sel.onchange = () => animLoadScene(sel.value);
+}
+
 // ── 用例切换 ─────────────────────────────────────────────
 function selectCase() {
   const k = DEMO_CASES.find((k) => k.id === $("case-select").value);
@@ -658,6 +869,15 @@ function selectCase() {
     const card = e.target.closest(".diag.jumpy");
     if (card) scrollToLine(card.dataset.line);
   });
+  // 动画演示：首次切到该 tab 时懒采集（探针 + 播放器都在协议面内）
+  bindAnim();
+  document.querySelector('.tab[data-tab="anim"]').addEventListener(
+    "click",
+    () => {
+      if (!animData && !$("anim-play").disabled) animLoadScene($("anim-scene").value);
+    },
+    { once: true }
+  );
   const sel = $("case-select");
   sel.innerHTML = DEMO_CASES.map((k) => `<option value="${k.id}">${k.label}</option>`).join("");
   sel.onchange = selectCase;

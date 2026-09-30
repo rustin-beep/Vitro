@@ -4,102 +4,13 @@
 // 栈/全局不写回 mem_map.regions——该清单是堆统计单源，混入栈帧会让
 // "已分配堆内存"把栈算进去；全局/栈区域只在导出层合成）。
 //
-// `type_display_name`（Rust vitro_runtime/type_utils.rs 照搬——Type 的
-// 人类可读全形态渲染，含 const/unsigned/指针星号/数组维度/函数签名）：
-// serve 私有实现——首个引擎侧消费者出现时上提 ast 包（变量快照的 ty
-// 渲染是 S8 analysis 批的既定消费点）；ast 的 Type::name 是去修饰基础
-// 名（符号表口径），形态不同不互替。
+// type_display_name 已上提 ast（2026-10-01 S8 批一号三段-a：vm 观测面
+// get_variable_snapshot/get_array_snapshots 是首个引擎侧消费者）；本文件
+// 调用点改 @ast.type_display_name。ast 的 Type::name 是去修饰基础名
+//（符号表口径），形态不同不互替。
 
 ///|
 /// const 前缀（Rust cst 同形）。
-fn cst_prefix(is_const : Bool) -> String {
-  if is_const {
-    "const "
-  } else {
-    ""
-  }
-}
-
-///|
-/// Type 的显示名（Rust type_display_name 逐变体照搬）。
-fn type_display_name(ty : @ast.Type) -> String {
-  match ty {
-    Void(is_const) => "\{cst_prefix(is_const)}void"
-    Int(is_unsigned, is_const) => {
-      let n = if is_unsigned { "unsigned int" } else { "int" }
-      "\{cst_prefix(is_const)}\{n}"
-    }
-    Char(is_unsigned, is_const) => {
-      let n = if is_unsigned { "unsigned char" } else { "char" }
-      "\{cst_prefix(is_const)}\{n}"
-    }
-    Float(is_const) => "\{cst_prefix(is_const)}float"
-    Double(is_const) => "\{cst_prefix(is_const)}double"
-    LongLong(is_unsigned, is_const) => {
-      let n = if is_unsigned { "unsigned long long" } else { "long long" }
-      "\{cst_prefix(is_const)}\{n}"
-    }
-    Pointer(pointee, is_const) =>
-      if is_const {
-        "\{type_display_name(pointee)}* const"
-      } else {
-        "\{type_display_name(pointee)}*"
-      }
-    Array(element, array_size, dims, _, is_vla, _) => {
-      let base = type_display_name(element)
-      let mut all_pos = !dims.is_empty()
-      for d in dims {
-        if d <= 0 {
-          all_pos = false
-        }
-      }
-      if all_pos {
-        let buf = StringBuilder()
-        buf.write_string(base)
-        for d in dims {
-          buf.write_string("[\{d}]")
-        }
-        buf.to_string()
-      } else if is_vla || array_size <= 0 {
-        "\{base}[]"
-      } else {
-        "\{base}[\{array_size}]"
-      }
-    }
-    Function(return_type, param_types, is_variadic, _) => {
-      let buf = StringBuilder()
-      buf.write_string(type_display_name(return_type))
-      buf.write_string(" (*)(")
-      let mut first = true
-      for p in param_types {
-        if !first {
-          buf.write_string(", ")
-        }
-        buf.write_string(type_display_name(p))
-        first = false
-      }
-      if is_variadic {
-        if !first {
-          buf.write_string(", ")
-        }
-        buf.write_string("...")
-      }
-      buf.write_string(")")
-      buf.to_string()
-    }
-    Struct(name, is_const) => "\{cst_prefix(is_const)}struct \{name}"
-    Union(name, is_const) => "\{cst_prefix(is_const)}union \{name}"
-    Class(name, is_const) => "\{cst_prefix(is_const)}\{name}"
-    Reference(base, is_const) =>
-      "\{cst_prefix(is_const)}\{type_display_name(base)}&"
-    RValueRef(base) => "\{type_display_name(base)}&&"
-    Auto => "auto"
-    // C 子集不可达（names/typeck 的 C 路径零产出）；渲染取基础名——
-    // Rust 侧 {:?} Debug 形态在 MoonBit 无同源单点，登记形状差异
-    TemplateId(base, _, is_const) => "\{cst_prefix(is_const)}\{base}"
-    Typeof(_, is_const, _) => "\{cst_prefix(is_const)}typeof(...)"
-  }
-}
 
 ///|
 /// 区域条目 emitter（Rust MemoryRegionData 的 serde 字段序照搬）。
@@ -166,7 +77,7 @@ fn global_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
           addr,
           size,
           sym.name,
-          type_display_name(sym.ty),
+          @ast.type_display_name(sym.ty),
           false,
           false,
           sym.decl_line,

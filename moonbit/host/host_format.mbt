@@ -467,7 +467,7 @@ fn u64_radix(v : UInt64, digits : String) -> String {
 /// - `e = -k < 0`：`m × 5^k / 10^k`——`m × 5^k` 的十进制即精确展开（k 位
 ///   小数），`k ≤ prec` 补零，`k > prec` 在第 prec 位 half-even（比较
 ///   `2r` 与除数，相等取偶）。
-fn format_fixed(val : Double, prec : Int) -> String {
+pub fn format_fixed(val : Double, prec : Int) -> String {
   if val.is_nan() {
     return "NaN"
   }

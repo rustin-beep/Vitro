@@ -9,6 +9,8 @@ import {
 // Values
 pub fn ast_dump_json(ProgramNode) -> String
 
+pub fn base_element_type(Type) -> Type
+
 pub fn compute_type_size(Type, Map[String, Array[StructField]], Map[String, Array[StructField]], Map[String, Int]) -> Int
 
 pub fn double_to_json_text(Double) -> String
@@ -22,6 +24,8 @@ pub fn stmt_depth(Stmt) -> Int
 pub fn stmt_type_depth(Stmt) -> Int
 
 pub fn type_depth(Type) -> Int
+
+pub fn type_display_name(Type) -> String
 
 pub fn type_eq(Type, Type) -> Bool
 

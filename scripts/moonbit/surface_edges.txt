@@ -300,6 +300,9 @@ vitro/engine/time_travel vitro/engine/vm VitroVM
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm vitro/engine/ast Type
+vitro/engine/vm vitro/engine/ast base_element_type
+vitro/engine/vm vitro/engine/ast type_display_name
+vitro/engine/vm vitro/engine/host format_fixed
 vitro/engine/vm vitro/engine/bytecode CompileOutput
 vitro/engine/vm vitro/engine/bytecode FuncMeta
 vitro/engine/vm vitro/engine/bytecode GLOBAL_REGION_LIMIT
@@ -448,6 +451,7 @@ vitro/engine/gateway moonbitlang/core/encoding/utf8 encode
 vitro/engine/gateway vitro/engine/ast StructField
 vitro/engine/gateway vitro/engine/ast Type
 vitro/engine/gateway vitro/engine/ast compute_type_size
+vitro/engine/gateway vitro/engine/ast type_display_name
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_REGION_LIMIT
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_START
 vitro/engine/gateway vitro/engine/bytecode HEAP_START

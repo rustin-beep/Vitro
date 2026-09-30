@@ -16,7 +16,6 @@
       <span class="badge">protocol <b id="proto-ver">…</b></span>
       <span class="badge">浏览器直调 gateway，无后端</span>
       <span class="badge" id="cap-badge">…</span>
-      <a class="badge badge-docs" href="./docs/current/02-构建与上手/快速入门.html" title="文档站 · 快速入门">📘 文档站</a>
     </div>
   </div>
   <div class="links">
@@ -44,10 +43,9 @@
     </div>
     <p id="case-blurb" class="blurb"></p>
     <div class="editor-wrap" id="editor-wrap">
-      <div class="editor-gutter" aria-hidden="true"><pre id="editor-gutter"></pre></div>
-      <div class="editor-code">
+      <div class="editor-lay">
         <pre id="editor-hl" aria-hidden="true"></pre>
-        <textarea id="editor" spellcheck="false" wrap="off"></textarea>
+        <textarea id="editor" spellcheck="false"></textarea>
       </div>
     </div>
 
@@ -80,6 +78,7 @@
       <button class="tab" data-tab="memory">内存地图</button>
       <button class="tab" data-tab="catalog">诊断手册</button>
       <button class="tab" data-tab="proto">引擎与协议</button>
+      <button class="tab" data-tab="anim">动画演示</button>
     </nav>
 
     <div class="tabpage" id="tab-result">
@@ -120,6 +119,34 @@
       <input id="cat-search" placeholder="搜索：码位 / 标题 / 分类…（如 E3070、越界、词法）" spellcheck="false">
       <div id="cat-stats" class="muted small"></div>
       <div id="cat-list" class="cat-list"></div>
+    </div>
+
+    <div class="tabpage hidden" id="tab-anim">
+      <div class="anim-ctrl">
+        <select id="anim-scene"></select>
+        <button id="anim-play">▶ 播放</button>
+        <button id="anim-reset" class="minor">⟲ 重播</button>
+        <select id="anim-speed">
+          <option value="400">0.5×</option>
+          <option value="200" selected>1×</option>
+          <option value="100">2×</option>
+        </select>
+        <input id="anim-seek" type="range" min="0" max="0" value="0">
+        <span id="anim-progress" class="muted small"></span>
+      </div>
+      <div id="anim-phase" class="anim-phase">（选择场景后自动采集引擎快照帧）</div>
+      <div class="band-wrap">
+        <div class="band-label">内存地图 · 堆区放大</div>
+        <div id="anim-band-heap" class="band"></div>
+      </div>
+      <div class="band-wrap">
+        <div class="band-label">内存地图 · 全地址空间 0 – 1MB</div>
+        <div id="anim-band-full" class="band"></div>
+      </div>
+      <div id="anim-events" class="anim-events"></div>
+      <div class="pane-head"><h2>stdout 回放</h2><span id="anim-out-meta" class="muted"></span></div>
+      <pre id="anim-out" class="stdout empty"><span class="muted">（点「播放」后展示）</span></pre>
+      <p class="blurb">每一帧都是引擎在对应步数上限（config.set 阶梯）下的真实快照（memory.regions / output.delta），播放由页面驱动——非补间 mock。</p>
     </div>
 
     <div class="tabpage hidden" id="tab-proto">

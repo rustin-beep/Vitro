@@ -4,6 +4,7 @@ package "vitro/engine/vm"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/set",
+  "vitro/engine/ast",
   "vitro/engine/bytecode",
   "vitro/engine/host",
   "vitro/engine/memory",
@@ -12,6 +13,8 @@ import {
 
 // Values
 pub const DEFAULT_MAX_STEPS : Int = 10_000_000
+
+pub const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int = 256
 
 pub const MAX_FUNCTIONS : Int = 65_536
 
@@ -26,6 +29,13 @@ pub fn load_libc_artifact() -> LibcArtifact
 // Errors
 
 // Types and methods
+pub(all) struct ArraySnapshotData {
+  name : String
+  element_ty : String
+  elements : Array[String]
+  truncated : Bool
+}
+
 pub(all) struct CallFrame {
   return_ip : Int?
   locals_base : UInt
@@ -111,6 +121,14 @@ pub(all) struct VariableAccess {
   access_type : @memory.AccessKind
 } derive(Eq, @debug.Debug)
 
+pub(all) struct VariableSnapshotData {
+  name : String
+  addr : UInt
+  is_local : Bool
+  ty : @ast.Type
+  value : Int64
+} derive(@debug.Debug)
+
 pub(all) struct VisEventData {
   ty : Int
   line : Int
@@ -149,7 +167,7 @@ pub struct VitroVM {
   mut current_line : Int
   mut argc : Int
   mut argv_addr : UInt
-  vis_event_queue : Array[VisEventData]
+  mut vis_event_queue : Array[VisEventData]
   vis_event_lines : Array[(Int, Int, String)]
   breakpoints : @set.Set[Int]
   last_accessed_vars : Array[VariableAccess]
@@ -168,8 +186,14 @@ pub struct VitroVM {
   mut unwind_remaining_frames : Int
   mut unwind_target : HandlerFrame?
 }
+pub fn VitroVM::call_stack_at(Self, Int) -> CallFrame
+pub fn VitroVM::call_stack_len(Self) -> Int
 pub fn VitroVM::clear_waiting_input(Self) -> Unit
 pub fn VitroVM::dump_memory_raw(Self) -> Bytes
+pub fn VitroVM::find_variable_name_at_addr(Self, UInt) -> String?
+pub fn VitroVM::get_array_snapshots(Self) -> Array[ArraySnapshotData]
+pub fn VitroVM::get_current_line(Self) -> Int
+pub fn VitroVM::get_variable_snapshot(Self) -> Array[VariableSnapshotData]
 pub fn VitroVM::load_program(Self, Array[@opcode.Instruction]) -> Unit
 pub fn VitroVM::new() -> Self
 pub fn VitroVM::register_function(Self, Int, @bytecode.FuncMeta) -> Bool
@@ -193,6 +217,7 @@ pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int, Array[Stri
 pub fn VitroVM::snapshot(Self) -> VMSnapshot
 pub fn VitroVM::snapshot_incremental(Self, Int) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult
+pub fn VitroVM::take_vis_events(Self) -> Array[VisEventData]
 pub fn VitroVM::write_cstring(Self, UInt, String) -> Unit
 
 // Type aliases

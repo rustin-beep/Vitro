@@ -31,8 +31,6 @@ header .sub { font-size: 12px; color: var(--muted); font-weight: normal; margin-
 .badges { margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
 .badge { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); }
 .badge b { color: var(--accent); }
-.badge-docs { color: var(--fg); background: var(--panel); text-decoration: none; cursor: pointer; }
-.badge-docs:hover { border-color: var(--accent); color: var(--accent); }
 
 /* 主题切换按钮：月亮/太阳随主题显隐 */
 #theme-toggle .ic-sun { display: none; }
@@ -81,29 +79,40 @@ button.minor { background: var(--btn-blue); }
 .pill.wait { color: var(--warn); border-color: var(--warn); }
 
 .blurb { color: var(--muted); font-size: 12.5px; margin: 4px 0 8px; }
-/* 编辑器三层叠加（F-1b①）：textarea 前景透明只留光标，背后 pre 做高亮；
-   对齐契约 = 同 font/line-height/padding/tab-size，wrap="off" 横向滚动 */
-.editor-wrap { display: flex; height: 220px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; resize: vertical; min-height: 120px; transition: border-color .2s ease; }
+/* 编辑器三层叠加（F-1b①），修订版：软换行 + 高度自适应内容。
+   架构 = 外层 .editor-wrap 统一滚动（min/max 高度随内容伸缩）+
+   .editor-lay 内 static 高亮层撑高 + textarea absolute 覆盖。
+   软换行对齐的硬前提是两层恒等宽——textarea 自身不滚（overflow:hidden，
+   高度恒等于内容），滚动条只在 wrap 上，宽度永不挤压文本区。
+   对齐契约：同 font/line-height/padding/tab-size + 同为 pre-wrap/
+   break-word 的换行规则；textarea 的左 padding（60px）= hl 的 12px +
+   行盒的 48px 行号区。 */
+.editor-wrap { position: relative; display: flex; flex-direction: column; min-height: 180px; max-height: min(560px, 70vh); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow-y: auto; transition: border-color .2s ease; }
 .editor-wrap:focus-within { border-color: var(--accent); }
-.editor-gutter { flex: none; min-width: 44px; overflow: hidden; padding: 10px 0; border-right: 1px solid var(--border); background: var(--bg); }
-.editor-gutter pre { margin: 0; padding: 0 8px 0 10px; font: 13px/1.5 var(--mono); color: var(--muted); opacity: .6; text-align: right; white-space: pre; }
-.editor-gutter pre .cur { color: var(--accent); font-weight: 600; opacity: 1; }
-.editor-code { position: relative; flex: 1; min-width: 0; }
-#editor-hl { position: absolute; inset: 0; margin: 0; overflow: hidden; pointer-events: none; padding: 10px 12px; font: 13px/1.5 var(--mono); white-space: pre; tab-size: 4; }
+.editor-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+.editor-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+.editor-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.editor-lay { position: relative; flex: 1; }
+#editor-hl { margin: 0; min-height: 100%; padding: 10px 12px; font: 13px/1.5 var(--mono); white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; tab-size: 4; }
+#editor-hl .cl { position: relative; padding-left: 48px; min-height: 1.5em; }
+#editor-hl .ln { position: absolute; left: 0; top: 0; width: 40px; text-align: right; color: var(--muted); opacity: .55; }
+#editor-hl .cl.cur .ln { color: var(--accent); opacity: 1; font-weight: 600; }
 #editor-hl .syn-key { color: var(--syn-key); }
 #editor-hl .syn-str { color: var(--syn-str); }
 #editor-hl .syn-num { color: var(--syn-num); }
 #editor-hl .syn-com { color: var(--syn-com); font-style: italic; }
 #editor-hl .syn-pre { color: var(--syn-pre); }
-#editor { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; color: transparent; caret-color: var(--fg); border: 0; outline: none; padding: 10px 12px; font: 13px/1.5 var(--mono); white-space: pre; tab-size: 4; resize: none; overflow: auto; }
+#editor { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; color: transparent; caret-color: var(--fg); border: 0; outline: none; padding: 10px 12px 10px 60px; font: 13px/1.5 var(--mono); white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; tab-size: 4; resize: none; overflow: hidden; }
 #editor::selection { color: transparent; background: color-mix(in srgb, var(--accent) 30%, transparent); }
-#editor::-webkit-scrollbar { width: 10px; height: 10px; }
-#editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-#editor::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-#editor::-webkit-scrollbar-corner { background: transparent; }
-/* 行跳转高亮闪烁（F-1b②）：absolute 条带按行定位，动画完自移除 */
-.line-flash { position: absolute; left: 0; right: 0; background: var(--accent); pointer-events: none; border-radius: 2px; opacity: 0; animation: line-flash 1.2s ease-out forwards; }
-@keyframes line-flash { 0% { opacity: 0; } 12%, 45% { opacity: .32; } 70% { opacity: .1; } 82% { opacity: .22; } 100% { opacity: 0; } }
+/* 行跳转高亮闪烁（F-1b②）：直接挂在目标行盒上，随折行高度/滚动位置自然跟随 */
+#editor-hl .cl.flash-on { animation: line-flash 1.2s ease-out forwards; border-radius: 3px; }
+@keyframes line-flash {
+  0% { background: transparent; }
+  12%, 45% { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+  70% { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  82% { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  100% { background: transparent; }
+}
 .config-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
 .config-row input[type=number] { width: 100px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 6px; font: 12px var(--mono); }
 .config-row .chk { display: flex; align-items: center; gap: 5px; }
@@ -112,7 +121,7 @@ button.minor { background: var(--btn-blue); }
 #stdin-box { flex: 1; background: var(--bg); color: var(--fg); border: 1px solid var(--warn); border-radius: 6px; padding: 6px 10px; font: 13px var(--mono); }
 
 /* tabs：active 背景过渡 + 页面切换淡入上移（display 切换靠 animation 触发） */
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .tab { background: transparent; color: var(--muted); border: 1px solid transparent; border-radius: 6px; padding: 5px 12px; font-size: 13px; transition: color .15s ease, background-color .15s ease, border-color .15s ease; }
 .tab:hover { color: var(--fg); background: var(--bg); }
 .tab.active { color: var(--fg); background: var(--bg); border-color: var(--border); }
@@ -202,6 +211,16 @@ button.minor { background: var(--btn-blue); }
 .ledger { padding: 3px 0; border-bottom: 1px solid var(--row-line); }
 .ledger .code { font: 12px var(--mono); color: var(--warn); margin-right: 8px; }
 
+/* 动画演示（帧采集播放器）：控件条 / 阶段说明 / 事件时间轴 */
+.anim-ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+.anim-ctrl select { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 12.5px; }
+#anim-seek { flex: 1; min-width: 120px; accent-color: var(--accent); cursor: pointer; }
+.anim-phase { padding: 8px 12px; background: var(--note-bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; font: 12.5px/1.6 var(--mono); color: var(--note-fg); margin-bottom: 8px; min-height: 20px; }
+.anim-events { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.anim-events .evt { font: 11.5px/1.4 var(--mono); padding: 3px 9px; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); opacity: .5; transition: opacity .3s ease, color .3s ease, border-color .3s ease; }
+.anim-events .evt.on { opacity: 1; color: var(--fg); border-color: var(--accent); }
+.anim-events .evt.terminal.on { color: var(--err); border-color: var(--err); }
+
 #ref-box { font-size: 13px; }
 #ref-box .match { color: var(--ok); font-weight: 600; }
 #ref-box .mismatch { color: var(--err); font-weight: 600; }
@@ -212,7 +231,7 @@ footer code { color: var(--fg); }
 
 /* ── F-1b② 全局体验面 ────────────────────────────────────
    主题切换平滑（只上大面元素，避免全量 * 的过渡开销；小元素瞬切无妨） */
-body, header, .pane, .band, .stdout, .editor-wrap, .editor-gutter,
+body, header, .pane, .band, .stdout, .editor-wrap,
 input, select, .ref-pre, .cat-card, .quar-bar {
   transition: background-color .25s ease, border-color .25s ease, color .25s ease;
 }

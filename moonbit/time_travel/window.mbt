@@ -50,17 +50,16 @@ pub fn FrameWindow::with_limits(
   trim_ratio : Double,
 ) -> FrameWindow {
   guard window_size > 0 else {
-    abort("FrameWindow::with_limits: window_size 须 > 0，得到 \{window_size}")
+    abort(
+      "FrameWindow::with_limits: window_size 须 > 0，得到 \{window_size}",
+    )
   }
   guard trim_ratio > 0.0 && trim_ratio <= 1.0 else {
-    abort("FrameWindow::with_limits: trim_ratio 须 ∈ (0, 1]，得到 \{trim_ratio}")
+    abort(
+      "FrameWindow::with_limits: trim_ratio 须 ∈ (0, 1]，得到 \{trim_ratio}",
+    )
   }
-  {
-    frames: @deque.Deque([]),
-    start_step: 0,
-    window_size,
-    trim_ratio,
-  }
+  { frames: @deque.Deque([]), start_step: 0, window_size, trim_ratio, }
 }
 
 ///|
@@ -126,9 +125,7 @@ pub fn FrameWindow::window_limit(self : FrameWindow) -> Int {
 
 ///|
 /// 窗口末帧（发布缓冲/终态帧读口；空窗口返回 None）。
-pub fn FrameWindow::last(
-  self : FrameWindow,
-) -> @protocol.StepPayload? {
+pub fn FrameWindow::last(self : FrameWindow) -> @protocol.StepPayload? {
   let len = self.frames.length()
   if len == 0 {
     return None

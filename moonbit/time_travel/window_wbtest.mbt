@@ -59,6 +59,21 @@ test "frame_window_trim_semantics" {
 }
 
 ///|
+/// 锚二补（用户审阅 P3-2，2026-10-01）：**整数积分界锚**——len×ratio 恰为
+/// 整数时 `<` 与 `<=` 实现分界（20×0.2=4.0：正确 ceil 得 4；`<=` 突变态
+/// 〔floor+1 语义〕得 5 → 多裁一帧 → 本锚红）。锚二族原有样本全为小数积
+/// （2.2/10.2/400.2），对 `<`↔`<=` 手误零判别力——协议字段 cache_start_step
+/// 会静默偏移，此锚补上分界牙（突变实测有牙：注入 `<=` 后 15 != 16 红）。
+test "frame_window_trim_integer_product_boundary" {
+  let w = FrameWindow::with_limits(19, 0.2)
+  for s = 0; s < 20; s = s + 1 {
+    w.push(mk_payload(s))
+  }
+  assert_eq(w.length(), 16)
+  assert_eq(w.start_step(), 4)
+}
+
+///|
 /// 锚三：U2#1 不变量——**每次 push 后 len ≤ window_size 恒成立**（类型
 /// 保证；Rust 侧"重放循环内忘裁 → 63.6GB"形态在结构上不可表达）。
 test "frame_window_u21_invariant_push_then_trim" {

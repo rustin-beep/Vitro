@@ -210,10 +210,7 @@ fn rebuild_full_from_base(
 
 ///|
 /// last_le： checkpoints 中最后一个 step <= target 的下标。
-fn last_le(
-  checkpoints : Array[(Int, @vm.VMSnapshot)],
-  target : Int,
-) -> Int? {
+fn last_le(checkpoints : Array[(Int, @vm.VMSnapshot)], target : Int) -> Int? {
   let mut found : Int? = None
   for i = 0; i < checkpoints.length(); i = i + 1 {
     if checkpoints[i].0 <= target {

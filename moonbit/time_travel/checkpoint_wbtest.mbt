@@ -81,7 +81,9 @@ test "checkpoint_incremental_dirty_page" {
   guard cm.checkpoints[1].1.memory is @vm.Delta(_, pages) else {
     fail("第二个必须是 Delta")
   }
-  guard cm.checkpoints[1].1.memory is @vm.Delta(base, ps) else { fail("重绑") }
+  guard cm.checkpoints[1].1.memory is @vm.Delta(base, ps) else {
+    fail("重绑")
+  }
   assert_eq(base, 2)
   assert_eq(ps.length(), 1) // 只脏了页 6
   assert_eq(ps[0].0, 6)

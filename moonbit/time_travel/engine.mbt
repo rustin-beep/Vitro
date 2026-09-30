@@ -45,7 +45,9 @@ pub fn UnifiedEngine::new() -> UnifiedEngine {
 /// 自定义步数预算创建（教学长程序放宽入口——Rust with_max_steps 同名同义）。
 pub fn UnifiedEngine::with_max_steps(max_steps : Int) -> UnifiedEngine {
   guard max_steps > 0 else {
-    abort("UnifiedEngine::with_max_steps: max_steps 须 > 0，得到 \{max_steps}")
+    abort(
+      "UnifiedEngine::with_max_steps: max_steps 须 > 0，得到 \{max_steps}",
+    )
   }
   {
     checkpoints: CheckpointManager::new(20),

@@ -15,6 +15,8 @@ pub const OUTPUT_LOG_BUDGET : Int = 16777216
 
 pub fn double_free_message(@memory.FreedRegionInfo) -> String
 
+pub fn format_fixed(Double, Int) -> String
+
 pub fn format_spec_kinds(Array[Int]) -> Array[Int]
 
 pub fn heap_exhausted_note() -> String

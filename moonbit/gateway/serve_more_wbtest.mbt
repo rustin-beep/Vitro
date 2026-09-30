@@ -232,19 +232,19 @@ test "serve_memory_regions_stack_frames_while_waiting" {
 ///|
 test "type_display_name_rendering_shapes" {
   // type_display_name 单元锚（Rust type_utils.rs 同形）
-  assert_eq(type_display_name(@ast.Type::int()), "int")
-  assert_eq(type_display_name(@ast.Type::unsigned_int()), "unsigned int")
-  assert_eq(type_display_name(@ast.Type::char()), "char")
-  assert_eq(type_display_name(@ast.Type::char().set_const(true)), "const char")
+  assert_eq(@ast.type_display_name(@ast.Type::int()), "int")
+  assert_eq(@ast.type_display_name(@ast.Type::unsigned_int()), "unsigned int")
+  assert_eq(@ast.type_display_name(@ast.Type::char()), "char")
+  assert_eq(@ast.type_display_name(@ast.Type::char().set_const(true)), "const char")
   assert_eq(
-    type_display_name(@ast.Type::int().pointer_to()),
+    @ast.type_display_name(@ast.Type::int().pointer_to()),
     "int*",
     msg="指针星号",
   )
   assert_eq(
-    type_display_name(@ast.Type::int().pointer_to().pointer_to()),
+    @ast.type_display_name(@ast.Type::int().pointer_to().pointer_to()),
     "int**",
     msg="二级指针",
   )
-  assert_eq(type_display_name(@ast.Type::long_long()), "long long")
+  assert_eq(@ast.type_display_name(@ast.Type::long_long()), "long long")
 }

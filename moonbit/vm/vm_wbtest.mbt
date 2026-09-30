@@ -396,6 +396,7 @@ test "setup_from_output_protocol" {
   let r = vm.run()
   assert_eq(r, 7)
 }
+
 ///|
 /// 门 3 集成版锚（2026-09-26 销账批）：libc 真装载（setup_from_output 合并
 /// 3485 条）+ argv + vfs 预设 + 非平凡堆（两分配一释放——regions/quarantine/

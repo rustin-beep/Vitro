@@ -13,6 +13,15 @@ patch；新增包 / 公共 API → minor。
   淘汰不变量三件套 + set_smart_mode/set_max_checkpoints 等会话配置入口）；
   门 3 六锚（全量往返/增量脏页/淘汰不变量/删 Full 级联 pinned/智能模式/
   隔离区三件套）随迁 `checkpoint_wbtest.mbt`，锚名与断言原样。
+- **vm 观测面（批一号三段-a，2026-10-01）**：`get_current_line` /
+  `call_stack_len`·`call_stack_at`（窄口——不暴露整表可写句柄，Rust
+  `&[CallFrame]` 借用的等价形态）/ `take_vis_events`（取出即清）/
+  `get_variable_snapshot`（作用域过滤 + 同名声明行择优 + Double 宽读位值）/
+  `find_variable_name_at_addr`（跨帧最近定义 + 数组元素区间 slot_covers）/
+  `get_array_snapshots`（U2#10 256 截断 + 五类元素文本化）+ 观测 DTO
+  `VariableSnapshotData`/`ArraySnapshotData` + `MAX_ARRAY_SNAPSHOT_ELEMENTS`
+  ——照搬 `crates/vitro_vm/src/core/{state,memory}.rs`，time_travel collector
+  的 VM 调用面（三段-b）。
 - **time_travel 批一号二段（2026-10-01）**：`FrameWindow`——StepPayload
   帧缓存的自带不变量类型（`@deque.Deque` 承载，两端 O(1) 摊还；窗口参数
   2_000/0.2 与 discard=ceil 公式协议锚定逐字保留；**push 唯一写入口**、
@@ -31,6 +40,11 @@ patch；新增包 / 公共 API → minor。
   （API 签名零变更）；判据字符串形态照搬（enum 化随 S8 collector 批
   配套 protocol 词汇单源后单批走红→绿）。纯迁移零语义变更：全仓
   `moon test` 508/508 绿（vm 81→75 + time_travel 6）。
+- **`type_display_name` 上提 ast（三段-a 触发，gateway 私有 → `@ast` pub）**
+  ——首个引擎侧消费者 = vm 观测面的 ty/element_ty 渲染（S7 serve_memory
+  头注既定义务兑现）；`@ast.base_element_type` 新增（数组剥壳，照搬
+  vitro_ast）。**`@host.format_fixed` pub 化**（vm 数组快照 Float/Double
+  `{:.2}` 文本化——与 Rust `{:.2}` 同为精确十进制 half-even，单源复用）。
 
 ## [0.7.0] - 2026-09-29
 

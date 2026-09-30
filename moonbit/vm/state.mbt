@@ -95,7 +95,7 @@ pub struct VitroVM {
   mut argv_addr : UInt
   // ── 教学观测 ──
   /// 可视化事件队列（环形 `VIS_EVENT_LIMIT`——超限丢最老）。
-  vis_event_queue : Array[VisEventData]
+  mut vis_event_queue : Array[VisEventData]
   /// 可视化事件行登记（**会话注入配置**，快照不含——Rust `VMSnapshot`
   /// 同口径；set_vis_event_lines 灌入）。
   vis_event_lines : Array[(Int, Int, String)]

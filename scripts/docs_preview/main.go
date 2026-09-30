@@ -313,6 +313,17 @@ func (r *rewriter) mapHref(value, docRel string) string {
 	}
 	target := path.Clean(path.Join(docDir, decoded))
 
+	// 相对基准 = 当前文档**输出页**所在目录（不是目标自己的目录——
+	// 2026-09-30 修跨目录链接全断的缺陷：旧代码 relHref(path.Dir(page), page)
+	// 恒产出"同目录相对路径"=裸文件名，同目录链接碰巧正确、跨目录全断；
+	// 167 篇文本对账覆盖不了 href 面，故该缺陷存活至今）。
+	srcDir := ""
+	if srcPage, ok := r.docMap[docRel]; ok {
+		if pd := path.Dir(srcPage); pd != "." {
+			srcDir = pd
+		}
+	}
+
 	if strings.HasPrefix(target, "..") {
 		repoRel := path.Clean(path.Join("docs", target))
 		return repoURLFor(repoRel, isDir(filepath.Join(rootDir, filepath.FromSlash(repoRel))))
@@ -321,18 +332,14 @@ func (r *rewriter) mapHref(value, docRel string) string {
 	abs := filepath.Join(docsDir, filepath.FromSlash(target))
 	if info, err := os.Stat(abs); err == nil && info.IsDir() {
 		if page, ok := r.dirMap[target]; ok {
-			return relHref(path.Dir(page), page) + frag
+			return relHref(srcDir, page) + frag
 		}
 		return repoURLFor(path.Join("docs", target), true)
 	}
 
 	if strings.HasSuffix(strings.ToLower(decoded), ".md") {
 		if page, ok := r.docMap[target]; ok {
-			pd := path.Dir(page)
-			if pd == "." {
-				pd = ""
-			}
-			return relHref(pd, page) + frag
+			return relHref(srcDir, page) + frag
 		}
 		r.missing = append(r.missing, [2]string{docRel, value})
 		return repoURLFor(path.Join("docs", target), false)
@@ -493,19 +500,26 @@ func build(outDir string, doOpen, force, quiet bool) error {
 		if pageDir == "." {
 			pageDir = ""
 		}
+		docTitle, body := extractDocTitle(d.html)
+		words := countWords(d.text)
 		page := renderPage(pageTemplateData{
-			title:   d.title,
-			source:  "docs/" + d.rel,
-			assets:  strings.Repeat("../", depthOf(pageDir)) + "assets/",
-			nav:     renderNav(docs, dirs, dirMap, pageDir, d.rel),
-			chips:   chipsFor(d.rel),
-			mtime:   d.mtime.Format("2006-01-02 15:04"),
-			lines:   strconv.Itoa(d.lines),
-			size:    humanSize(d.size),
-			body:    d.html,
-			outline: renderOutline(d.outline),
-			ghURL:   repoURL + "/blob/" + repoBranch + "/" + encodePath("docs/"+d.rel),
-			crumbs:  "docs/" + d.rel,
+			title:       d.title,
+			source:      "docs/" + d.rel,
+			assets:      strings.Repeat("../", depthOf(pageDir)) + "assets/",
+			nav:         renderNav(docs, dirs, dirMap, pageDir, d.rel),
+			chips:       chipsFor(d.rel),
+			mtime:       d.mtime.Format("2006-01-02 15:04"),
+			lines:       strconv.Itoa(d.lines),
+			size:        humanSize(d.size),
+			body:        body,
+			outline:     renderOutline(d.outline),
+			ghURL:       repoURL + "/blob/" + repoBranch + "/" + encodePath("docs/"+d.rel),
+			crumbs:      "docs/" + d.rel,
+			breadcrumbs: breadcrumbsFor(d.rel, pageDir, dirMap),
+			docTitle:    docTitle,
+			words:       strconv.Itoa(words),
+			readMin:     readingLabel(words),
+			brandHref:   relHref(pageDir, docMap["README.md"]),
 		})
 		if err := writeFile(filepath.Join(outDir, filepath.FromSlash(d.out)), page); err != nil {
 			return err
@@ -552,6 +566,12 @@ func build(outDir string, doOpen, force, quiet bool) error {
 			outline: renderOutline(extractOutline(body, 3)),
 			ghURL:   repoURL + "/tree/" + repoBranch + "/docs" + dashPath(rel),
 			crumbs:  "docs/" + dashPath(rel),
+			breadcrumbs: breadcrumbsFor(
+				strings.TrimSuffix(path.Join(rel, "README.md"), "/"),
+				pageDir, dirMap),
+			words:     "—",
+			readMin:   "—",
+			brandHref: relHref(pageDir, docMap["README.md"]),
 		})
 		if err := writeFile(filepath.Join(outDir, filepath.FromSlash(pageOut)), page); err != nil {
 			return err

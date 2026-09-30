@@ -23,6 +23,10 @@ const pageTemplate = `<!DOCTYPE html>
 <header class="topbar">
   <button class="icon-btn" id="nav-toggle" type="button" title="显示 / 隐藏目录树" aria-label="显示或隐藏目录树">☰</button>
   <div class="crumbs" title="__SOURCE__">__CRUMBS__</div>
+  <div class="topbar-search">
+    <input id="search" type="search" placeholder="搜索文档（按 / 聚焦）" autocomplete="off">
+    <div class="search-hits" id="search-hits" hidden></div>
+  </div>
   <div class="topbar-right">
     <a class="icon-btn gh" href="__GHURL__" target="_blank" rel="noopener" title="在 GitHub 上查看源文件">GitHub ↗</a>
     <button class="icon-btn" id="theme-toggle" type="button" title="切换明暗主题（自动 / 浅色 / 深色）">◐</button>
@@ -31,26 +35,26 @@ const pageTemplate = `<!DOCTYPE html>
 </header>
 <div class="layout" id="layout">
   <aside class="sidebar" id="sidebar">
-    <div class="search-box">
-      <input id="search" type="search" placeholder="检索标题 / 标题级 / 正文（按 / 聚焦）" autocomplete="off">
-      <div class="search-hits" id="search-hits" hidden></div>
+    <div class="site-brand">
+      <a class="brand-link" href="__BRANDHREF__">Vitro <span>docs</span></a>
+      <div class="brand-sub">教学 C 子集引擎 · 白箱后端</div>
     </div>
     __NAV__
   </aside>
   <main class="content">
     <div class="doc-head">
+      <nav class="breadcrumbs">__BREADCRUMBS__</nav>
       <div class="chips">__CHIPS__</div>
+      __DOCTITLE_BLOCK__
       <div class="doc-meta">
-        <span title="源文件">__SOURCE__</span>
-        <span class="dot">·</span><span>修改 __MTIME__</span>
-        <span class="dot">·</span><span>__LINES__ 行</span>
-        <span class="dot">·</span><span>__SIZE__</span>
+        <span class="meta-left"><span>__WORDS__ 字</span><span class="dot">·</span><span>约 __READMIN__ 阅读</span></span>
+        <span class="meta-right"><span title="源文件最后修改">__MTIME__</span></span>
       </div>
     </div>
     <article class="markdown-body" id="doc">__BODY__</article>
     <footer class="doc-foot">
-      <span>本页是 __BUILT__ 从 git 工作区快照生成的本地静态预览，不是仓库内容本身。</span>
-      <span>源文件：<code>__SOURCE__</code></span>
+      <a class="edit-link" href="__GHURL__" target="_blank" rel="noopener">✎ 在 GitHub 上编辑此页</a>
+      <span class="foot-meta">最后更新 __MTIME__ · <code>__SOURCE__</code></span>
     </footer>
   </main>
   <aside class="outline-wrap" id="outline-wrap">
@@ -64,34 +68,48 @@ const pageTemplate = `<!DOCTYPE html>
 `
 
 type pageTemplateData struct {
-	title   string
-	source  string
-	assets  string
-	nav     string
-	chips   string
-	mtime   string
-	lines   string
-	size    string
-	body    string
-	outline string
-	ghURL   string
-	crumbs  string
+	title       string
+	source      string
+	assets      string
+	nav         string
+	chips       string
+	mtime       string
+	lines       string
+	size        string
+	body        string
+	outline     string
+	ghURL       string
+	crumbs      string
+	breadcrumbs string
+	docTitle    string
+	words       string
+	readMin     string
+	brandHref   string
 }
 
 func renderPage(d pageTemplateData) string {
+	docTitleBlock := ""
+	if d.docTitle != "" {
+		docTitleBlock = `<h1 class="doc-title">` + d.docTitle + `</h1>`
+	}
 	r := strings.NewReplacer(
 		"__TITLE__", escHTML(d.title),
 		"__SOURCE__", escHTML(d.source),
 		"__ASSETS__", d.assets,
 		"__NAV__", d.nav,
 		"__CHIPS__", d.chips,
-		"__MTIME__", d.mtime,
+		"__MTIME__", escHTML(d.mtime),
 		"__LINES__", d.lines,
 		"__SIZE__", d.size,
 		"__BODY__", d.body,
 		"__OUTLINE__", d.outline,
 		"__GHURL__", d.ghURL,
 		"__CRUMBS__", escHTML(d.crumbs),
+		"__BREADCRUMBS__", d.breadcrumbs,
+		"__DOCTITLE_BLOCK__", docTitleBlock,
+		"__WORDS__", d.words,
+		"__READMIN__", d.readMin,
+		"__BRANDHREF__", d.brandHref,
 		"__BUILT__", time.Now().Format("2006-01-02 15:04"),
 	)
 	return r.Replace(pageTemplate)
@@ -143,7 +161,14 @@ func renderNav(docs []*doc, dirs []string, dirMap map[string]string, pageDir, ac
 			escHTML(d.title) + `</a></li>`)
 	}
 	names := append([]string(nil), root.order...)
-	sort.Slice(names, func(i, j int) bool { return naturalLess(names[i], names[j]) })
+	sort.Slice(names, func(i, j int) bool {
+		// archive 组永远沉底（对外呈现"当前有效"优先；组内仍按名称序）
+		ai, aj := names[i] == "archive", names[j] == "archive"
+		if ai != aj {
+			return aj
+		}
+		return naturalLess(names[i], names[j])
+	})
 	for _, name := range names {
 		writeNavNode(&b, root.dirs[name], dirMap, pageDir, activeRel)
 	}
@@ -257,6 +282,90 @@ func chipsFor(rel string) string {
 	default:
 		return `<span class="chip chip-other">` + escHTML(top) + `</span>`
 	}
+}
+
+// breadcrumbsFor 生成博客式面包屑（参考 tokenizers-moonbit 文档站形态）：
+// 「首页 › current › 02-构建与上手 › 快速入门」——目录段链接到目录清单页
+// （dirMap 命中时），末段为当前页纯文本。pageDir = 当前页输出目录（相对链接基准）。
+func breadcrumbsFor(rel, pageDir string, dirMap map[string]string) string {
+	var b strings.Builder
+	if home := dirMap["."]; home != "" {
+		b.WriteString(`<a class="crumb crumb-home" href="` + relHref(pageDir, home) + `">首页</a>`)
+	}
+	parts := strings.Split(rel, "/")
+	for i, seg := range parts {
+		b.WriteString(`<span class="crumb-sep">›</span>`)
+		if i == len(parts)-1 {
+			name := strings.TrimSuffix(seg, ".md")
+			b.WriteString(`<span class="crumb is-here">` + escHTML(name) + `</span>`)
+			continue
+		}
+		dirRel := strings.Join(parts[:i+1], "/")
+		if page, ok := dirMap[dirRel]; ok {
+			b.WriteString(`<a class="crumb" href="` + relHref(pageDir, page) + `">` + escHTML(seg) + `</a>`)
+		} else {
+			b.WriteString(`<span class="crumb">` + escHTML(seg) + `</span>`)
+		}
+	}
+	return b.String()
+}
+
+// countWords 统计「字数」：CJK 字符按字计，非 CJK 连续字母/数字段按词计。
+func countWords(text string) int {
+	total := 0
+	inWord := false
+	for _, r := range text {
+		if r >= 0x2E80 { // CJK 及全角区
+			total++
+			inWord = false
+			continue
+		}
+		if isWordSepASCII(r) {
+			inWord = false
+			continue
+		}
+		if !inWord {
+			total++
+			inWord = true
+		}
+	}
+	return total
+}
+
+func isWordSepASCII(r rune) bool {
+	switch {
+	case r == ' ' || r == '\t' || r == '\n' || r == '\u00a0':
+		return true
+	case r >= '!' && r <= '/':
+		return true
+	case r >= ':' && r <= '@':
+		return true
+	case r >= '[' && r <= '`':
+		return true
+	case r >= '{' && r <= '~':
+		return true
+	}
+	return false
+}
+
+// readingLabel 阅读时长口径：400 字/分钟，不足 1 分钟显示「小于 1 分钟」。
+func readingLabel(words int) string {
+	if words < 400 {
+		return "小于 1 分钟"
+	}
+	return strconvItoa((words + 399) / 400) + " 分钟"
+}
+
+// extractDocTitle 从渲染后的正文抠出第一个 <h1>（内部 HTML 作文档大标题，
+// h1 本身从 body 移除——由模板统一排版）。无 h1 返回空串。
+func extractDocTitle(body string) (title, rest string) {
+	loc := h1Re.FindStringIndex(body)
+	if loc == nil {
+		return "", body
+	}
+	inner := h1Re.FindStringSubmatch(body)[1]
+	rest = body[:loc[0]] + body[loc[1]:]
+	return strings.TrimSpace(inner), rest
 }
 
 // ---------------------------------------------------------------------------

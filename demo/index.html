@@ -43,7 +43,13 @@
       <span id="status-pill" class="pill idle">就绪</span>
     </div>
     <p id="case-blurb" class="blurb"></p>
-    <textarea id="editor" spellcheck="false"></textarea>
+    <div class="editor-wrap" id="editor-wrap">
+      <div class="editor-gutter" aria-hidden="true"><pre id="editor-gutter"></pre></div>
+      <div class="editor-code">
+        <pre id="editor-hl" aria-hidden="true"></pre>
+        <textarea id="editor" spellcheck="false" wrap="off"></textarea>
+      </div>
+    </div>
 
     <div class="pane-head subhead"><h2>会话配置（config.set）</h2></div>
     <div class="config-row">

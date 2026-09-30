@@ -56,6 +56,111 @@ function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 }
 
+// ── C 语法高亮（F-1b①）───────────────────────────────────
+// 页面侧独立小型着色器：零第三方依赖，与引擎 lexer 无契约绑定（呈现层
+// 自治，F-2a SVG 包接管渲染时本逻辑随 JS 侧一起迁走，CSS transition 原样保留）。
+// 形态：textarea 前景透明 + 背后 <pre> 高亮层叠加，两侧 font/line-height/
+// padding/tab-size 严格一致 + wrap="off"（横向滚动，规避软换行点对齐问题）。
+const C_KEYWORDS = new Set(
+  (
+    "auto break case char const continue default do double else enum extern " +
+    "float for goto if inline int long register restrict return short signed " +
+    "sizeof static struct switch typedef union unsigned void volatile while " +
+    "_Bool _Complex _Imaginary bool true false nullptr"
+  ).split(" ")
+);
+// 组合正则按优先级一次扫描：块注释/行注释/字符串/字符/预处理行/数字/标识符。
+// 未闭合的注释与字符串也吞到末尾（打字中间态高亮稳定）；预处理行匹配
+// ^\s*#（m 标志），因注释/字符串组在前，处于它们内部的 # 不会被误判。
+const C_TOKEN =
+  /(\/\*[\s\S]*?(?:\*\/|$))|(\/\/[^\n]*)|("(?:\\.|[^"\\\n])*"?)|('(?:\\.|[^'\\\n])*'?)|(^[ \t]*#[^\n]*)|(\.?\d(?:[\w.]|[eEpP][+-])*)|([A-Za-z_]\w*)/gm;
+
+function highlightC(src) {
+  let out = "";
+  let last = 0;
+  let m;
+  C_TOKEN.lastIndex = 0;
+  while ((m = C_TOKEN.exec(src))) {
+    const tok = m[0];
+    if (m.index > last) out += esc(src.slice(last, m.index));
+    const cls = m[1] || m[2] ? "syn-com"
+      : m[3] || m[4] ? "syn-str"
+      : m[5] ? "syn-pre"
+      : m[6] ? "syn-num"
+      : C_KEYWORDS.has(m[7]) ? "syn-key"
+      : "";
+    out += cls ? `<span class="${cls}">${esc(tok)}</span>` : esc(tok);
+    last = m.index + tok.length;
+    if (tok.length === 0) C_TOKEN.lastIndex += 1; // 防零宽匹配死循环
+  }
+  return out + esc(src.slice(last));
+}
+
+function syncEditorScroll() {
+  const ta = $("editor");
+  const hl = $("editor-hl");
+  if (!ta || !hl) return;
+  hl.scrollTop = ta.scrollTop;
+  hl.scrollLeft = ta.scrollLeft;
+  const g = $("editor-gutter");
+  if (g) g.style.transform = `translateY(${-ta.scrollTop}px)`;
+}
+
+function renderEditorDecor() {
+  const ta = $("editor");
+  if (!ta) return;
+  $("editor-hl").innerHTML = highlightC(ta.value) + "\n"; // 末尾补行，滚动高度与 textarea 对齐
+  const lines = ta.value.split("\n").length;
+  let g = "";
+  for (let i = 1; i <= lines; i++) g += `<span>${i}</span>\n`;
+  $("editor-gutter").innerHTML = g;
+  syncEditorScroll();
+}
+
+let editorRaf = 0;
+function scheduleEditorRender() {
+  if (editorRaf) return;
+  editorRaf = requestAnimationFrame(() => {
+    editorRaf = 0;
+    renderEditorDecor();
+  });
+}
+
+function initEditorDecor() {
+  const ta = $("editor");
+  ta.addEventListener("input", scheduleEditorRender);
+  ta.addEventListener("scroll", syncEditorScroll, { passive: true });
+  renderEditorDecor();
+}
+
+// ── 行跳转（F-1 视觉件）+ 高亮闪烁定位（F-1b②动效）──────────
+function scrollToLine(line) {
+  line = Number(line);
+  if (!line || line < 1) return;
+  const ta = $("editor");
+  const cs = getComputedStyle(ta);
+  const lh = parseFloat(cs.lineHeight) || 19.5;
+  const padTop = parseFloat(cs.paddingTop) || 10;
+  const y = (line - 1) * lh;
+  ta.scrollTop = Math.max(0, y - ta.clientHeight / 2 + padTop); // 目标行滚到视口中部
+  syncEditorScroll();
+  flashLine(line, lh, padTop, ta.scrollTop);
+  const spans = $("editor-gutter").children;
+  for (const s of spans) s.classList.remove("cur");
+  if (spans[line - 1]) spans[line - 1].classList.add("cur");
+}
+
+function flashLine(line, lh, padTop, scrollTop) {
+  const scope = $("editor").parentElement; // .editor-code（与滚动上下文同原点）
+  scope.querySelectorAll(".line-flash").forEach((el) => el.remove());
+  const el = document.createElement("div");
+  el.className = "line-flash";
+  el.style.top = `${padTop + (line - 1) * lh - scrollTop}px`;
+  el.style.height = `${lh}px`;
+  scope.appendChild(el);
+  el.addEventListener("animationend", () => el.remove());
+}
+
 // ── tab 切换 ─────────────────────────────────────────────
 function bindTabs() {
   document.querySelectorAll(".tabs .tab").forEach((btn) => {
@@ -227,6 +332,9 @@ function renderOutput(delta, total) {
   const el = $("stdout-box");
   el.textContent = delta === "" ? "（无 stdout 输出）" : delta;
   el.classList.toggle("empty", delta === "");
+  el.classList.remove("flash-in"); // F-1b②：重触发淡入
+  void el.offsetWidth;
+  el.classList.add("flash-in");
   $("stdout-meta").textContent = `${total} 字节 · output.delta 全量拉取`;
 }
 
@@ -238,8 +346,10 @@ function renderDiagnostics(diags) {
   }
   el.innerHTML = diags
     .map(
-      (d) =>
-        `<div class="diag ${esc(d.severity)}"><span class="code">${esc(d.code)}</span>` +
+      (d, i) =>
+        `<div class="diag ${esc(d.severity)}${d.line > 0 ? " jumpy" : ""}" style="--i:${i}"` +
+        (d.line > 0 ? ` data-line="${d.line}" title="点击跳到 main.c 第 ${d.line} 行"` : "") +
+        `><span class="code">${esc(d.code)}</span>` +
         `<span class="loc">${esc(d.filename || "main.c")} 行 ${d.line}:${d.column}</span> ${esc(d.message)}` +
         (d.fix_suggestion ? `<div class="fix">✚ ${esc(d.fix_suggestion)}</div>` : "") +
         `</div>`
@@ -313,16 +423,19 @@ function renderMemory(mem) {
     `<span>隔离区 ${mem.quarantine.bytes} / ${mem.quarantine.budget} 字节（${mem.quarantine.blocks} 块）</span>`;
 
   const band = $("mem-band-full");
-  band.innerHTML = "";
-  for (const r of mem.regions) placeBlock(band, r, r.addr / MEM_TOTAL, Math.max(r.size / MEM_TOTAL, 0.004));
+  bandRender(
+    band,
+    mem.regions.map((r) => ({ r, left: r.addr / MEM_TOTAL, width: Math.max(r.size / MEM_TOTAL, 0.004) }))
+  );
   const heapEnd = Math.max(mem.heap_offset, ...mem.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size), mem.heap_base + 64);
   const heapSpan = heapEnd - mem.heap_base;
   const zoom = $("mem-band-heap");
-  zoom.innerHTML = "";
-  for (const r of mem.regions.filter((r) => r.is_heap)) {
-    const left = (r.addr - mem.heap_base) / heapSpan;
-    placeBlock(zoom, r, left, Math.max(r.size / heapSpan, 0.02));
-  }
+  bandRender(
+    zoom,
+    mem.regions
+      .filter((r) => r.is_heap)
+      .map((r) => ({ r, left: (r.addr - mem.heap_base) / heapSpan, width: Math.max(r.size / heapSpan, 0.02) }))
+  );
   $("mem-zoom-label").textContent =
     `堆区放大 0x${mem.heap_base.toString(16)} – 0x${heapEnd.toString(16)}（span ${heapSpan} B）`;
 
@@ -342,13 +455,33 @@ function renderMemory(mem) {
       .join("");
 }
 
-function placeBlock(band, r, left, width) {
-  const b = document.createElement("div");
-  b.className = "blk " + r.kind + (r.is_freed ? " freed" : "");
-  b.style.left = `${Math.min(left * 100, 99.6)}%`;
-  b.style.width = `${width * 100}%`;
-  b.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
-  band.appendChild(b);
+// 条块 keyed 复用（F-1b②）：addr/size 过渡的前提是元素存活——同 key 只更新
+// 位置/尺寸/状态类，transition 才吃得到变化；本帧消失的 key 直接移除。
+// key 含 addr+size+name：同一位置复分配出的新块视为新块（瞬现，不跨会话漂移）。
+function bandRender(band, entries) {
+  for (const n of Array.from(band.childNodes)) {
+    // 占位提示（HTML 静态 .muted.center 与 selectCase 重置的 .muted 两种）一律清，
+    // 条块本体（.blk）是复用对象，不能动
+    if (!(n.nodeType === 1 && n.classList.contains("blk"))) n.remove();
+  }
+  const seen = new Set();
+  for (const { r, left, width } of entries) {
+    const key = `${r.addr}:${r.size}:${r.name}`;
+    seen.add(key);
+    let b = band.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (!b) {
+      b = document.createElement("div");
+      b.dataset.key = key;
+      band.appendChild(b);
+    }
+    b.className = "blk " + r.kind + (r.is_freed ? " freed" : "");
+    b.style.left = `${Math.min(left * 100, 99.6)}%`;
+    b.style.width = `${width * 100}%`;
+    b.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
+  }
+  for (const b of band.querySelectorAll(".blk")) {
+    if (!seen.has(b.dataset.key)) b.remove();
+  }
 }
 
 // ── 诊断手册（error_catalog）────────────────────────────
@@ -484,6 +617,7 @@ function selectCase() {
   const k = DEMO_CASES.find((k) => k.id === $("case-select").value);
   if (!k) return;
   $("editor").value = k.source;
+  renderEditorDecor();
   $("case-blurb").textContent = k.blurb;
   $("stdin-row").classList.remove("active");
   pendingRun = null;
@@ -518,6 +652,12 @@ function selectCase() {
 
 (async function boot() {
   bindTabs();
+  initEditorDecor();
+  // 诊断卡点击跳行（F-1 视觉件：事件委托，卡片是批量重渲染的）
+  $("diag-list").addEventListener("click", (e) => {
+    const card = e.target.closest(".diag.jumpy");
+    if (card) scrollToLine(card.dataset.line);
+  });
   const sel = $("case-select");
   sel.innerHTML = DEMO_CASES.map((k) => `<option value="${k.id}">${k.label}</option>`).join("");
   sel.onchange = selectCase;

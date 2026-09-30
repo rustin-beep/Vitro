@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/time_travel"
+
+import {
+  "vitro/engine/vm",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct CheckpointManager {
+  checkpoints : Array[(Int, @vm.VMSnapshot)]
+  interval : Int
+  mut smart_mode : Bool
+  mut max_checkpoints : Int
+  full_every : Int
+}
+pub fn CheckpointManager::clear(Self) -> Unit
+pub fn CheckpointManager::get_interval(Self) -> Int
+pub fn CheckpointManager::is_empty(Self) -> Bool
+pub fn CheckpointManager::length(Self) -> Int
+pub fn CheckpointManager::nearest(Self, Int) -> (Int, @vm.VMSnapshot)?
+pub fn CheckpointManager::new(Int) -> Self
+pub fn CheckpointManager::save(Self, Int, @vm.VitroVM) -> Unit
+pub fn CheckpointManager::set_max_checkpoints(Self, Int) -> Unit
+pub fn CheckpointManager::set_smart_mode(Self, Bool) -> Unit
+pub fn CheckpointManager::should_checkpoint(Self, Int, String) -> Bool
+
+// Type aliases
+
+// Traits

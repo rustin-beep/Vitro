@@ -340,6 +340,18 @@ jobs:
           go run ./scripts/clang_direct --check-known
           go run ./scripts/clang_direct
 
+      - name: Difference ledger reconciliation (known whitelists ↔ ledger)
+        # S8 批零号二段（2026-09-30）：差异台账守门规则机判化——
+        # 三防线 known 白名单（shadow/clang_direct/vm_diff）与
+        # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
+        # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
+        # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
+        # --selftest 五路注入证红（J9）；shadow 真值为闸内清单
+        # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
+        # 维护窗口——G-7 同族）。
+        shell: bash
+        run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
+
       - name: MoonBit test count (README vs moon test truth)
         # 五轮审阅流程漏洞封堵（2026-09-26）：测试数/文档数连坐靠人记，
         # facts check 结构上看不见「文档↔facts 一起错」（四轮里三次同型

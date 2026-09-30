@@ -1,0 +1,34 @@
+// L9 教学智能·time_travel 包（S8 批一号一段，2026-09-30 建包）：时间旅行
+// 引擎域——检查点管理器（CheckpointManager，本批自 vm 迁入）+ 帧窗口/
+// UnifiedEngine（随批一号后续段；Rust 蓝本 = native/src/unified/engine.rs，
+// 探测档案 917251e《unified 模块勘察报告》）。
+//
+// **CheckpointManager 迁出落点裁定（总计划 §4 L9 / 勘察 ⑤-5.7）**：
+// should_checkpoint 的智能判据是**教学语义词汇**（"调用 "/"返回"/"内存分配"…
+// 词汇单源在 L8 protocol），Rust 侧把它放在 vitro_vm::snapshot 致 VM crate
+// 反向依赖应用层语义（勘察 ①-1.4 结论 1：分层破损）。MoonBit 侧自此归
+// time_travel(L9)；vm(L7) 只保留**无策略**快照原语（snapshot /
+// snapshot_incremental / restore / MemoryImage::apply_to）。依赖方向
+// L9→L7 向下合法（§4 硬约束单向无环不破）。
+//
+// **批一号一段 = 纯迁移零语义变更**：判据字符串形态照搬（enum 化待
+// protocol 词汇 enum 单源落地后随 collector 批配套走红→绿，单独成批——
+// 迁移与改形分离纪律）；VMSnapshot/MemoryImage 等 vm 类型一律 @vm. 限定。
+//
+// 依赖严格单向：memory（L7：PAGE_SIZE——Delta 页写入）/ vm（L7：VMSnapshot
+// + 快照原语 + VitroVM）。opcode/bytecode 仅供本包 wbtest 构造指令流
+// （门 3 六锚随迁）。不依赖 session（§4 L9 行三接口反转纪律）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L9，总计划 §4）。
+import {
+  "vitro/engine/bytecode",
+  "vitro/engine/memory",
+  "vitro/engine/opcode",
+  "vitro/engine/source",
+  "vitro/engine/vm",
+}
+
+// opcode/bytecode/source 仅供 wbtest 消费（门 3 六锚的指令流 helper 与
+// MEM_SIZE）——moon check 的 unused 分析不计测试文件，包级关闭
+// unused_package（fs 包 -unused_value 同款先例，2026-09-28；本体真死码
+// 仍由 moon test 编译路径与 surface 闸暴露）。
+warnings = "-unused_package"

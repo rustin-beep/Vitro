@@ -284,6 +284,17 @@ vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/source SourceLoc
+vitro/engine/time_travel vitro/engine/bytecode MEM_SIZE
+vitro/engine/time_travel vitro/engine/memory PAGE_SIZE
+vitro/engine/time_travel vitro/engine/opcode Instruction
+vitro/engine/time_travel vitro/engine/opcode Nop
+vitro/engine/time_travel vitro/engine/opcode OpCode
+vitro/engine/time_travel vitro/engine/opcode PushConst
+vitro/engine/time_travel vitro/engine/source SourceLoc
+vitro/engine/time_travel vitro/engine/vm Delta
+vitro/engine/time_travel vitro/engine/vm Full
+vitro/engine/time_travel vitro/engine/vm VMSnapshot
+vitro/engine/time_travel vitro/engine/vm VitroVM
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm vitro/engine/ast Type
@@ -418,7 +429,6 @@ vitro/engine/vm vitro/engine/memory Memory
 vitro/engine/vm vitro/engine/memory MemoryMap
 vitro/engine/vm vitro/engine/memory MemorySnapshot
 vitro/engine/vm vitro/engine/memory PAGE_COUNT
-vitro/engine/vm vitro/engine/memory PAGE_SIZE
 vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc

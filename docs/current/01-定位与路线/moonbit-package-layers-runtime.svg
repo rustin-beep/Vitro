@@ -71,8 +71,8 @@
 <rect class="card" x="20" y="428" width="1160" height="122" rx="12"/>
 <text class="t" x="40" y="462" text-anchor="start">L9</text>
 <text class="tc" x="40" y="490" text-anchor="start">教学智能</text>
-<text class="tc" x="1065" y="462" text-anchor="start">未开工</text>
-<rect class="plan" x="175" y="440" width="210" height="60" rx="10"/>
+<text class="tc" x="1065" y="462" text-anchor="start">在建 1/4</text>
+<rect class="card" x="175" y="440" width="210" height="60" rx="10"/>
 <text class="tn" x="191" y="466" text-anchor="start">time_travel</text>
 <text class="tc" x="191" y="490" text-anchor="start">seek / 检查点重放</text>
 <rect class="plan" x="398" y="440" width="210" height="60" rx="10"/>

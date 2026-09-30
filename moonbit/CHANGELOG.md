@@ -4,6 +4,28 @@
 修复只能递增版本；弃用须给出迁移路径与移除版本）。版本语义：修复已发布内容 →
 patch；新增包 / 公共 API → minor。
 
+## [Unreleased]
+
+### Added
+
+- **`vitro/engine/time_travel`（L9，S8 批一号一段）**——时间旅行引擎域建包：
+  `CheckpointManager` 全家自 `vm` 迁入（new/should_checkpoint/save/nearest/
+  淘汰不变量三件套 + set_smart_mode/set_max_checkpoints 等会话配置入口）；
+  门 3 六锚（全量往返/增量脏页/淘汰不变量/删 Full 级联 pinned/智能模式/
+  隔离区三件套）随迁 `checkpoint_wbtest.mbt`，锚名与断言原样。
+
+### Changed
+
+- **⚠️ 破坏性：`CheckpointManager` 自 `vitro/engine/vm` 迁至
+  `vitro/engine/time_travel`**（落点裁定：`should_checkpoint` 的智能判据
+  是教学语义词汇——词汇单源在 L8 protocol，VM 包反向依赖应用层语义是
+  Rust 侧已登记的分层破损；MoonBit 侧 vm(L7) 只保留无策略快照原语
+  `snapshot`/`snapshot_incremental`/`restore`/`MemoryImage::apply_to`）。
+  **迁移路径**：`@vm.CheckpointManager` → `@time_travel.CheckpointManager`
+  （API 签名零变更）；判据字符串形态照搬（enum 化随 S8 collector 批
+  配套 protocol 词汇单源后单批走红→绿）。纯迁移零语义变更：全仓
+  `moon test` 508/508 绿（vm 81→75 + time_travel 6）。
+
 ## [0.7.0] - 2026-09-29
 
 ### Added

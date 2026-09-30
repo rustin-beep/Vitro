@@ -18,7 +18,11 @@ fn mksym(
     addr,
     is_local,
     ty,
-    scope_depth: if is_local { 1 } else { 0 },
+    scope_depth: if is_local {
+      1
+    } else {
+      0
+    },
     func_name,
     decl_line,
   }
@@ -81,9 +85,7 @@ test "observe_variable_snapshot_scoping" {
   ignore(vm.memory.store_u32(vm.mem_map, @bytecode.GLOBAL_START + 0U, 42U))
   ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 4U, 111U))
   ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 8U, 43U))
-  ignore(
-    vm.memory.store_u64(vm.mem_map, 0x5000U + 16U, 0x3FF8000000000000UL),
-  )
+  ignore(vm.memory.store_u64(vm.mem_map, 0x5000U + 16U, 0x3FF8000000000000UL))
   let snaps = vm.get_variable_snapshot()
   // 名集 = {g, x, d}——y 属 other 函数不入
   let names : Array[String] = []
@@ -161,7 +163,14 @@ test "observe_find_variable_name_at_addr" {
 /// 域外按 i8 数值）+ int 数组元素文本 + element_ty 显示名。
 test "observe_array_snapshots_truncation_and_chars" {
   let vm = VitroVM::new()
-  let char_arr : @ast.Type = Array(Char(false, false), 300, [300], false, false, [])
+  let char_arr : @ast.Type = Array(
+    Char(false, false),
+    300,
+    [300],
+    false,
+    false,
+    [],
+  )
   let int_arr : @ast.Type = Array(Int(false, false), 2, [2], false, false, [])
   vm.set_symbols([
     mksym("big", 0U, false, char_arr, "", 0),

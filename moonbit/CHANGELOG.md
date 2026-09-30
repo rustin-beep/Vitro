@@ -22,6 +22,15 @@ patch；新增包 / 公共 API → minor。
   `VariableSnapshotData`/`ArraySnapshotData` + `MAX_ARRAY_SNAPSHOT_ELEMENTS`
   ——照搬 `crates/vitro_vm/src/core/{state,memory}.rs`，time_travel collector
   的 VM 调用面（三段-b）。
+- **time_travel 批一号三段-b（2026-10-01）：StepCollector + 语义分类器**
+  （照搬 unified/collector.rs 478 行）：`collect`（十四字段装配——纯函数
+  形态，`SourceLineProvider` trait 依赖反转〔L9 不依赖 session，编排层
+  实现注入〕+ heatmap 传值 + freed 查走 vm.mem_map〔比 Rust 少一处
+  session 依赖〕；algorithm_step/root_cause_hint 占位 None 随 teaching/
+  analysis 批）+ `infer_semantic_label` 全库唯一分类器（判定顺序契约
+  头注照搬——具体语句模式优先于循环上下文）+ 指针四态/parse_addr/
+  format_value/extract_called_func 辅助族；八锚锁判定链（含两处照搬
+  偏差被锚实锤纠正：trim 位归 infer 内部 / extract 整段纯标识符判定）。
 - **time_travel 批一号二段（2026-10-01）**：`FrameWindow`——StepPayload
   帧缓存的自带不变量类型（`@deque.Deque` 承载，两端 O(1) 摊还；窗口参数
   2_000/0.2 与 discard=ceil 公式协议锚定逐字保留；**push 唯一写入口**、

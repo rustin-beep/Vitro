@@ -235,7 +235,10 @@ test "type_display_name_rendering_shapes" {
   assert_eq(@ast.type_display_name(@ast.Type::int()), "int")
   assert_eq(@ast.type_display_name(@ast.Type::unsigned_int()), "unsigned int")
   assert_eq(@ast.type_display_name(@ast.Type::char()), "char")
-  assert_eq(@ast.type_display_name(@ast.Type::char().set_const(true)), "const char")
+  assert_eq(
+    @ast.type_display_name(@ast.Type::char().set_const(true)),
+    "const char",
+  )
   assert_eq(
     @ast.type_display_name(@ast.Type::int().pointer_to()),
     "int*",

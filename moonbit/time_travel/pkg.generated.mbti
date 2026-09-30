@@ -8,6 +8,9 @@ import {
 }
 
 // Values
+pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int) -> @protocol.StepPayload
+
+pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String
 
 // Errors
 
@@ -67,3 +70,6 @@ pub fn UnifiedEngine::with_max_steps(Int) -> Self
 // Type aliases
 
 // Traits
+pub(open) trait SourceLineProvider {
+  fn source_line_at(Self, Int) -> String?
+}

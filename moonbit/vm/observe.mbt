@@ -47,7 +47,7 @@ pub(all) struct ArraySnapshotData {
 ///|
 /// 数组快照元素上限（Rust MAX_ARRAY_SNAPSHOT_ELEMENTS = 256——`int
 /// a[50000]` × 2000 帧窗口 5~20GB 形态的截断锚，协议字段级标记）。
-pub const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int = 256
+const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int = 256
 
 ///|
 /// 当前执行行（state.rs:566 照搬——读口）。
@@ -70,9 +70,7 @@ pub fn VitroVM::call_stack_at(self : VitroVM, idx : Int) -> CallFrame {
 ///|
 /// 取走队列中累积的可视化事件（state.rs:352 std::mem::take 同义——取出
 /// 即清空，消费方幂等）。
-pub fn VitroVM::take_vis_events(
-  self : VitroVM,
-) -> Array[VisEventData] {
+pub fn VitroVM::take_vis_events(self : VitroVM) -> Array[VisEventData] {
   let out = self.vis_event_queue
   self.vis_event_queue = []
   out
@@ -240,9 +238,7 @@ fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
 /// 全部数组变量的元素快照（memory.rs:379-463 照搬——算法可视化条形图
 /// 数据源）。逐元素文本化（Char 可打印形态 / Int·LongLong 位模式 /
 /// Float·Double 定点两位 {:.2}）；256 截断置 truncated。
-pub fn VitroVM::get_array_snapshots(
-  self : VitroVM,
-) -> Array[ArraySnapshotData] {
+pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] {
   let result : Array[ArraySnapshotData] = []
   let frame : CallFrame? = if self.call_stack.length() > 0 {
     Some(self.call_stack[self.call_stack.length() - 1])
@@ -338,4 +334,16 @@ pub fn VitroVM::get_array_snapshots(
     })
   }
   result
+}
+
+///|
+/// 最近访问变量条数（观测窄口——last_accessed_vars 每步重置、不随快照）。
+pub fn VitroVM::accessed_len(self : VitroVM) -> Int {
+  self.last_accessed_vars.length()
+}
+
+///|
+/// 最近访问变量按序读（Rust get_last_accessed_vars → collector 消费面）。
+pub fn VitroVM::accessed_at(self : VitroVM, idx : Int) -> VariableAccess {
+  self.last_accessed_vars[idx]
 }

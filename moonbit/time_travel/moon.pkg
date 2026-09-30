@@ -22,7 +22,9 @@
 import {
   "moonbitlang/core/abort",
   "moonbitlang/core/deque",
+  "vitro/engine/ast",
   "vitro/engine/bytecode",
+  "vitro/engine/host",
   "vitro/engine/memory",
   "vitro/engine/opcode",
   "vitro/engine/protocol",

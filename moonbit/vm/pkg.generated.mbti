@@ -14,8 +14,6 @@ import {
 // Values
 pub const DEFAULT_MAX_STEPS : Int = 10_000_000
 
-pub const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int = 256
-
 pub const MAX_FUNCTIONS : Int = 65_536
 
 pub const MAX_STACK_DEPTH : Int = 10_000
@@ -186,6 +184,8 @@ pub struct VitroVM {
   mut unwind_remaining_frames : Int
   mut unwind_target : HandlerFrame?
 }
+pub fn VitroVM::accessed_at(Self, Int) -> VariableAccess
+pub fn VitroVM::accessed_len(Self) -> Int
 pub fn VitroVM::call_stack_at(Self, Int) -> CallFrame
 pub fn VitroVM::call_stack_len(Self) -> Int
 pub fn VitroVM::clear_waiting_input(Self) -> Unit

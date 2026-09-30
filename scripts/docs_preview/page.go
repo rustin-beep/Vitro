@@ -353,7 +353,7 @@ func readingLabel(words int) string {
 	if words < 400 {
 		return "小于 1 分钟"
 	}
-	return strconvItoa((words + 399) / 400) + " 分钟"
+	return strconvItoa((words+399)/400) + " 分钟"
 }
 
 // extractDocTitle 从渲染后的正文抠出第一个 <h1>（内部 HTML 作文档大标题，

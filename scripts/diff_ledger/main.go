@@ -77,6 +77,17 @@ var (
 		"verified-doc", "resolved-verified", "open", "open-unverified")
 	evidenceSet = set("run", "code", "anchor", "doc")
 
+	// detectableSet —— detectable_by_defense 值域（D18 修复 2026-09-30：
+	// 原域开放且与 anchors 无一致性断言 ⇒ 旁证字段笔误静默——P3-1 实锤
+	// 形态。三防线名 + 两个非 anchors 的防线侧观测值；加值须连坐本枚举）。
+	detectableSet = map[string]bool{
+		"shadow":               true,
+		"clang_direct":         true,
+		"vm_diff":              true,
+		"libc_single_source":   true,
+		"memory-verify-wbtest": true,
+	}
+
 	idPattern = regexp.MustCompile(`^DIFF-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]{2}$`)
 
 	// capabilityFlagsKeys —— 17 键锁定（知识沉淀附录 A 原数；值随引擎演化
@@ -164,6 +175,25 @@ func validate(l *ledger, shadow, clangDirect, vmDiff []string) []string {
 		for _, c := range d.Anchors.VMDiffKnown {
 			if strings.TrimSpace(c) == "" {
 				bad = append(bad, d.ID+": vm_diff_known 含空串")
+			}
+		}
+		// —— D18 断言（P3-2，2026-09-30）：detectable_by_defense 域枚举 +
+		// 与 anchors 的一致性（⊇ 有锚防线名——旁证字段不得与锚矛盾；
+		// 单向：防线"可检测"不要求"已豁免在册"〔语料未覆盖时合法〕）
+		for _, v := range d.DetectableByDefense {
+			if !detectableSet[v] {
+				bad = append(bad, d.ID+": detectable_by_defense 越界: "+v)
+			}
+		}
+		anchored := map[string][]string{
+			"shadow":       d.Anchors.ShadowKnown,
+			"clang_direct": d.Anchors.ClangDirectKnown,
+			"vm_diff":      d.Anchors.VMDiffKnown,
+		}
+		for defense, cases := range anchored {
+			if len(cases) > 0 && !contains(d.DetectableByDefense, defense) {
+				bad = append(bad, d.ID+": detectable_by_defense 缺有锚防线 "+defense+
+					"（anchors 与旁证字段矛盾——D18）")
 			}
 		}
 	}
@@ -294,6 +324,13 @@ func selftest(good *ledger, shadow, clangDirect, vmDiff []string) {
 		{"capability_flags 删键", func(l *ledger) {
 			delete(l.CapabilityFlags, "time_source")
 		}},
+		{"detectable 与 anchors 矛盾（D18：摘掉有锚防线）", func(l *ledger) {
+			for i := range l.Differences {
+				if l.Differences[i].ID == "DIFF-PTR-4BYTE-01" {
+					l.Differences[i].DetectableByDefense = nil
+				}
+			}
+		}},
 	}
 	ok := true
 	for _, p := range probes {
@@ -344,7 +381,7 @@ func main() {
 
 	if selftestMode := len(os.Args) > 1 && (os.Args[1] == "--selftest" || os.Args[1] == "-selftest"); selftestMode {
 		selftest(&l, shadow, clangDirect, vmDiff)
-		fmt.Println("[selftest] 五路全红，闸可信")
+		fmt.Println("[selftest] 六路全红，闸可信")
 		return
 	}
 

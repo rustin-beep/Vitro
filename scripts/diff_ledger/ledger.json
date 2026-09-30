@@ -211,18 +211,18 @@
     },
     {
       "id": "DIFF-PREPROC-MULTILINE-01",
-      "title": "多行宏 \\ 续行——已支持（实测输出正确）；规范反向漂移已修（C语言子集规范 §表格 已更新为'已支持'并划线保留误写历史）",
+      "title": "多行宏 \\ 续行——MoonBit 侧支持（S2 独立 pass 设计红利，从未有此缺陷）；**oracle 侧不支持**（用户审阅实测 2026-09-30：Rust vitro_cli 编译失败 E2005）——对 oracle 是 vitro_better 分叉；规范反向漂移已修（§表格更新为'已支持'并划线保留误写历史）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "resolved-verified",
+      "carry_over": "drop",
+      "status": "verified-run",
       "evidence": "run",
-      "rationale": "蓝图定性 fix（独立 pass 天然解决）——S2 lexer 预处理独立 pass 兑现；行为与规范双确认",
+      "rationale": "蓝图 §⑦ 原文「多行宏不支持（实测 clang 通过 / Vitro 报 3 条'无法识别的字符'）」描述的缺陷方是 **Rust oracle**；MoonBit 独立 pass 天然支持（探针输出 3 正确）——carry_over=drop（oracle 行为不继承，实际从未继承），非 fix（MoonBit 无欠账，无修复轨迹）。〔P3-3 修复 2026-09-30：原标 resolved-verified 只记录 MoonBit/Clang 层，漏 oracle 分叉层——语料零覆盖多行宏形状故对拍面从未暴露；将来加语料时 vm_diff（vs oracle）会 ONE-SIDED 红而 clang_direct 绿，届时白名单归因引用本条〕",
       "subsystems": ["lexer"],
-      "clang_verdict": "Clang 一致（已支持）",
+      "clang_verdict": "Clang 一致（MoonBit 支持且输出正确）；oracle 不一致（E2005 编译失败）",
       "source_docs": ["MoonBit迁移蓝图v1 §⑦", "已知限制与差异.md ①-7"],
       "anchors": { "shadow_known": [], "clang_direct_known": [], "vm_diff_known": [] },
       "detectable_by_defense": ["clang_direct"],
-      "notes": "multiline_macro.c 探针（2026-09-30）：MoonBit 输出 3 与 Clang 一致；规范 883 行亲读确认反向漂移已修。**保留此条为 resolved 态**——台账记录修复轨迹，不删除（0.8.0 销账时 carry_over=fix 面清零的证据）"
+      "notes": "multiline_macro.c 探针（2026-09-30）：MoonBit 输出 3 与 Clang 一致；oracle 侧 E2005（用户审阅实测）。保留此条 = vitro_better 分叉在册——0.8.0 销账清单过一遍时这条标 drop（无需动作），防「将来以 oracle 为真值判 MoonBit 错」"
     },
     {
       "id": "DIFF-TYPE-SHORT-01",
@@ -402,8 +402,8 @@
         "clang_direct_known": ["engine_note_lookalike.c"],
         "vm_diff_known": ["engine_note_lookalike.c"]
       },
-      "detectable_by_defense": ["shadow"],
-      "notes": "两防线 known 同例同因在册；baseline/engine_note_lookalike.c 固化该口径"
+      "detectable_by_defense": ["clang_direct", "vm_diff"],
+      "notes": "两防线 known 同例同因在册；baseline/engine_note_lookalike.c 固化该口径。〔P3-1 修复 2026-09-30：原误写 [\"shadow\"] 而锚全在 cd+vd——P3-2 闸断言上线前该笔误静默〕"
     }
   ]
 }

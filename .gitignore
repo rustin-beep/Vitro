@@ -172,3 +172,7 @@ tmp_vitro_fs_*/
 /.comate/
 /.antigravity/
 /.zcode/skills/
+
+# demo 页的 wasm 构建产物（pages.yml 现构建，不入库）
+demo/wasm.wasm
+demo-dist/

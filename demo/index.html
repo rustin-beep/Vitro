@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitro 引擎 · 白箱 C 教学引擎（wasm-gc 直调 demo）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Vitro <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span></h1>
+    <div class="badges">
+      <span class="badge">engine <b id="eng-ver">…</b></span>
+      <span class="badge">protocol <b id="proto-ver">…</b></span>
+      <span class="badge">浏览器直调 gateway，无后端</span>
+      <span class="badge" id="cap-badge">…</span>
+    </div>
+  </div>
+  <div class="links">
+    <a href="https://github.com/rustin-beep/Vitro">GitHub</a>
+    <a href="https://mooncakes.io/docs/#/vitro/engine/">mooncakes</a>
+  </div>
+</header>
+
+<div id="boot-error" class="boot-error hidden"></div>
+
+<main>
+  <section class="pane editor-pane">
+    <div class="pane-head">
+      <select id="case-select"></select>
+      <button id="run-btn">▶ 运行</button>
+      <span id="status-pill" class="pill idle">就绪</span>
+    </div>
+    <p id="case-blurb" class="blurb"></p>
+    <textarea id="editor" spellcheck="false"></textarea>
+
+    <div class="pane-head subhead"><h2>会话配置（config.set）</h2></div>
+    <div class="config-row">
+      <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
+      <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
+      <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
+      <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
+      <button id="cfg-btn" class="minor">应用</button>
+      <span id="cfg-msg" class="muted small"></span>
+    </div>
+    <div class="config-row">
+      <label>argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false" style="width:230px"></label>
+    </div>
+
+    <div id="stdin-row" class="hidden">
+      <label>stdin</label>
+      <input id="stdin-box" value="42" spellcheck="false">
+      <button id="feed-btn">喂入续跑</button>
+    </div>
+
+    <div class="pane-head subhead"><h2>编译期诊断与宏展开</h2></div>
+    <div id="diag-list" class="diag-list"><span class="muted">（点「运行」后展示）</span></div>
+  </section>
+
+  <section class="pane result-pane">
+    <nav class="tabs">
+      <button class="tab active" data-tab="result">运行结果</button>
+      <button class="tab" data-tab="memory">内存地图</button>
+      <button class="tab" data-tab="catalog">诊断手册</button>
+      <button class="tab" data-tab="proto">引擎与协议</button>
+    </nav>
+
+    <div class="tabpage" id="tab-result">
+      <div class="row">
+        <div class="stat"><label>返回码</label><b id="ret-value">—</b></div>
+        <div class="stat"><label>VM 步数</label><b id="steps-value">—</b></div>
+      </div>
+      <div class="pane-head"><h2>stdout</h2><span id="stdout-meta" class="muted"></span></div>
+      <pre id="stdout-box" class="stdout empty"><span class="muted">（点「运行」后展示）</span></pre>
+      <div id="stderr-box" class="stderr hidden"></div>
+      <div id="stderr-meta" class="muted small"></div>
+      <div id="note-box" class="note hidden"></div>
+      <div id="note-meta" class="muted small"></div>
+      <div id="trap-box" class="trap hidden"></div>
+      <div class="pane-head"><h2>与 Clang golden 对照</h2></div>
+      <div id="ref-box"><span class="muted">（点「运行」后展示）</span></div>
+    </div>
+
+    <div class="tabpage hidden" id="tab-memory">
+      <div id="mem-stats" class="mem-stats"></div>
+      <div class="band-wrap">
+        <div class="band-label">全地址空间 0 – 1MB</div>
+        <div id="mem-band-full" class="band"><span class="muted center">（点「运行」后展示）</span></div>
+      </div>
+      <div class="band-wrap">
+        <div class="band-label" id="mem-zoom-label">堆区放大</div>
+        <div id="mem-band-heap" class="band"></div>
+      </div>
+      <div class="quar">
+        <div id="quar-bar" class="quar-bar"><div id="quar-bar-fill"></div></div>
+        <div id="quar-label" class="muted small"></div>
+      </div>
+      <table id="mem-table" class="mem-table"></table>
+    </div>
+
+    <div class="tabpage hidden" id="tab-catalog">
+      <p class="blurb">引擎的诊断目录（<code>error_catalog</code> 方法实时拉取）——77 张卡片每条含教学解释与常见原因，与 shadow 防线同源。</p>
+      <input id="cat-search" placeholder="搜索：码位 / 标题 / 分类…（如 E3070、越界、词法）" spellcheck="false">
+      <div id="cat-stats" class="muted small"></div>
+      <div id="cat-list" class="cat-list"></div>
+    </div>
+
+    <div class="tabpage hidden" id="tab-proto">
+      <p class="blurb">本页所有能力均来自冻结协议 <b>v0.1</b>（2026-09-12 定版）的 NDJSON 方法帧——demo 就是协议的第一个浏览器消费者。</p>
+      <div class="pane-head"><h2>方法面（16 个，本页消费 13 个）</h2></div>
+      <div id="methods-list" class="methods"></div>
+      <div class="pane-head"><h2>schema 冻结与 v0.2 预留台账（capabilities）</h2></div>
+      <div id="cap-box" class="cap-box"></div>
+      <div class="pane-head"><h2>当前会话配置</h2></div>
+      <pre id="cfg-view" class="stdout">…</pre>
+      <div class="pane-head"><h2>行为契约（contracts）</h2></div>
+      <div id="contracts-box" class="cap-box"></div>
+      <div class="pane-head"><h2>语言子集锚（capabilities.languages）</h2></div>
+      <div id="lang-box" class="cap-box"></div>
+      <div class="pane-head"><h2>内存模型常数（capabilities.memory_model）</h2></div>
+      <div id="memmodel-box" class="cap-box"></div>
+      <div class="pane-head"><h2>语义标注词表（semantic_labels）</h2></div>
+      <div id="labels-box" class="cap-box"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>白箱引擎：内存映射、freed/隔离区、VM 步数、诊断全部来自引擎真实数据（<code>memory.regions</code> / <code>output.delta</code> / <code>error_catalog</code> / trap 帧），非装饰性 mock。</p>
+  <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。S8 时间旅行（step 流回放）在路线图上——<code>semantic_labels</code> 词表已就位。</p>
+</footer>
+<script src="cases.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

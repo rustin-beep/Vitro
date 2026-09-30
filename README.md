@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://github.com/rustin-beep/Vitro/actions/workflows/ci.yml"><img src="https://github.com/rustin-beep/Vitro/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://rustin-beep.github.io/Vitro/"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%20demo-%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9B%B4%E8%B0%83%20wasm%E2%80%93gc-2ea44f" alt="在线 demo"></a>
 </p>
 
 # Vitro
@@ -13,7 +14,7 @@
 
 一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；同仓保留一份**已冻结的 Rust 实现**作为差分对照 oracle 与防线基座（tag `rust-oracle-freeze`，白名单 P1–P7/U1/U2 + 安全修复 + 防线维护），在 MoonBit 全量切换完成后整体退役删除。
 
-> **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。
+> **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。为展示 0.7.0 的 wasm-gc 单出口，仓库附带一个**无前端框架的静态单页 demo**（`demo/`，浏览器直调 gateway，[在线体验](https://rustin-beep.github.io/Vitro/)）——它是引擎能力的展示面，不是前端产品。
 >
 > **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S6 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm 全部落地并对拍闭环；mooncakes 已发布 0.5.0（2026-09-23）与 **0.6.0**（S6 收官版，2026-09-27）。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
 >

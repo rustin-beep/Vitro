@@ -1,0 +1,75 @@
+# 单页 demo 部署（2026-09-30 建，同日审阅批修订）：
+# 把 0.7.0 的 wasm-gc 单出口（gateway 4 函数导出）变成评委点得开的页面。
+#
+# ── 发布前置（人工一次性，GITHUB_TOKEN 无法自愈）────────────────
+# actions/configure-pages 的 enablement 默认 false，自动启用 Pages 需要
+# GITHUB_TOKEN 之外的有 admin 权限的 token——本 workflow 未传。因此**首次
+# 发布前必须**：仓库 Settings → Pages → Source 选 "GitHub Actions"。
+# 未做这步时本 workflow 在 configure-pages 步失败（不会静默 404）。
+# 发布完成后用 curl -o /dev/null -w "%{http_code}" https://rustin-beep.github.io/Vitro/
+# 验 200（README 徽章与「在线体验」链接都指向它；facts 等本地闸查不了外链可达性）。
+#
+# ── 形态 ────────────────────────────────────────────────────────
+# 与 moonraft / MoUI Playground 同路：GitHub Pages + 现构建 wasm——
+# demo/ 只入库静态源（HTML/JS/CSS），wasm.wasm 是构建产物不入库
+# （.gitignore 有 demo/wasm.wasm），本 workflow 现构建后组装 artifact。
+# 构建环境用 ubuntu：portability job 已实证 wasm-gc release 构建 + 行为
+# 断言在该平台全绿（2026-09-29 起）；产物哈希的跨平台对账未做（诚实边界）。
+#
+# cancel-in-progress 用 false（官方 starter-workflows 模板同款）：部署中
+# 被新 push 取消可能留下不一致的发布状态，生产部署让它跑完。
+name: Deploy demo (GitHub Pages)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "demo/**"
+      - "moonbit/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit toolchain (unix)
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Build wasm-gc gateway (release)
+        run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
+
+      - name: Assemble demo artifact
+        run: |
+          mkdir -p demo-dist
+          cp demo/index.html demo/app.js demo/cases.js demo/style.css demo-dist/
+          cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo-dist/wasm.wasm
+          ls -la demo-dist
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo-dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

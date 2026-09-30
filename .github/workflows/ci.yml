@@ -242,6 +242,14 @@ jobs:
           node scripts/wasm_gateway/host.js
         shell: bash
 
+      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
+      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
+      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
+      # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
+      - name: demo page smoke (protocol-level, cases golden + field keys)
+        run: node scripts/demo_smoke/main.js
+        shell: bash
+
 
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash

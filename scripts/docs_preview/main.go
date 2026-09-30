@@ -123,13 +123,21 @@ type cacheFile struct {
 	Entries map[string]*cacheEntry `json:"entries"`
 }
 
+var (
+	// sectionFilter 由 main() 从 -section 装入（包级：watch/build/collectDocs
+	// 三处共享，避免签名链三连改——gen_* 脚本同款包级配置形态）
+	sectionFilter string
+)
+
 func main() {
 	out := flag.String("out", filepath.Join("tmp", "docs_preview"), "输出目录")
 	doOpen := flag.Bool("open", false, "构建完成后用默认浏览器打开首页")
 	watch := flag.Bool("watch", false, "常驻监听，docs/ 变动即重建")
 	force := flag.Bool("force", false, "忽略缓存全量重建")
 	quiet := flag.Bool("quiet", false, "只输出摘要")
+	section := flag.String("section", "", "只渲染指定顶层子树（如 current——对外部署口径，112 篇 archive 不进站点）；空 = 全量")
 	flag.Parse()
+	sectionFilter = *section
 
 	self, err := os.Executable()
 	if err != nil {
@@ -209,6 +217,11 @@ func collectDocs() ([]*doc, []string, error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
+		// -section 过滤（对外部署口径）：只保留根 README + 指定顶层子树
+		// （如 current——112 篇 archive 内部历史档案不进对外站点）
+		if sectionFilter != "" && rel != "README.md" && !strings.HasPrefix(rel, sectionFilter+"/") {
+			return nil
+		}
 		info, err := d.Info()
 		if err != nil {
 			return err
@@ -249,6 +262,11 @@ func collectDocs() ([]*doc, []string, error) {
 		rel, err := filepath.Rel(docsDir, p)
 		if err != nil {
 			return err
+		}
+		rel = filepath.ToSlash(rel)
+		// -section 联动：目录清单同样只保留过滤子树（含顶层 section 目录自身）
+		if sectionFilter != "" && rel != sectionFilter && !strings.HasPrefix(rel, sectionFilter+"/") {
+			return nil
 		}
 		dirs = append(dirs, filepath.ToSlash(rel))
 		return nil

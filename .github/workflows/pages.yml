@@ -55,12 +55,18 @@ jobs:
       - name: Build wasm-gc gateway (release)
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
 
+      # docs 子站：-section current（62 篇活跃文档；112 篇 archive 内部
+      # 历史档案不进对外站点）→ 组装进 demo-dist/docs/（Pages 单站点
+      # 单 artifact，docs 以子路径共存；ubuntu runner 自带 Go）
+      - name: Render docs site (current-only)
+        run: go run ./scripts/docs_preview -section current -force -out demo-dist/docs
+
       - name: Assemble demo artifact
         run: |
           mkdir -p demo-dist
           cp demo/index.html demo/app.js demo/cases.js demo/style.css demo-dist/
           cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo-dist/wasm.wasm
-          ls -la demo-dist
+          ls -la demo-dist demo-dist/docs | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

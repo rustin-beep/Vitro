@@ -61,6 +61,12 @@ pub(all) struct Session {
   /// VM（**非 Option**——设计红利：配置永有所宿，消 get_or_insert 形态；
   /// compile → run 由 serve 批接线 reset+装载，reset 保留会话级配置）。
   vm : @vm.VitroVM
+  /// 统一模式（时间旅行）引擎（S8 批一号三段-c 接线：serve step 族五
+  /// 方法的编排本体——step.begin 建实例、reset/session 族作废）。层位
+  /// 注：time_travel 与本包同层 L8（降层裁定见总计划 §4——time_travel
+  /// 依赖面全 ≤L8 且语义为编排引擎非教学智能；L9 留给 teaching/analysis/
+  /// diagnostics 真智能域）。
+  mut unified : @time_travel.UnifiedEngine?
   /// 统一模式一帧发布缓冲（U1#1 P0-1：流式协议下「行末帧」判定需要
   /// 未来信息，当前帧暂存、下一帧到来时回改后再发布——serve 批消费）。
   mut unified_pending : @protocol.StepPayload?
@@ -89,6 +95,7 @@ pub fn Session::new() -> Session {
     config: SessionConfig::default(),
     compile: CompileState::new(),
     vm: @vm.VitroVM::new(),
+    unified: None,
     unified_pending: None,
     unified_last_line: 0,
     unified_last_frame_vars: [],

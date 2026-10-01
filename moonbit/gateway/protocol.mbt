@@ -83,6 +83,10 @@ fn reset_session_preserving_config(s : @session.Session) -> Unit {
   // vm/state.mbt 纪律，双保险语义同 Rust 的 mem::take 回放形态）
   s.compile = @session.CompileState::new()
   s.vm.reset()
+  // 旧引擎与 reset 后的 vm 不再自洽（检查点指向已重置状态）——一并作废
+  //（step.begin 无条件新建实例，提前作废无行为差；分叉登记：Rust reset
+  // 不显式清 unified，靠 step_begin 覆盖——本侧取保守作废语义）
+  s.unified = None
   s.unified_pending = None
   s.unified_last_line = 0
   s.unified_last_frame_vars = []
@@ -180,12 +184,22 @@ fn dispatch(
     "input.feed" => serve_input_feed_frame(s, id, params)
     "output.delta" => serve_output_delta_frame(s, id, params)
     "memory.regions" => serve_memory_regions_frame(s, id)
+    // step 族五方法（S8 批一号接线——编排本体 time_travel.UnifiedEngine）
+    "step.begin" => serve_step_begin_frame(s, id, params)
+    "step.next" => serve_step_next_frame(s, id, params)
+    "payload.get" => serve_payload_get_frame(s, id, params)
+    "seek" => serve_seek_frame(s, id, params)
+    "breakpoints.set" => serve_breakpoints_set_frame(s, id, params)
+    // dump 族三方法（只读语义——独立通道不碰会话态；diagnostics_probe 随 diagnostics 批）
+    "ast.dump" => serve_ast_dump_frame(s, id, params)
+    "typeck.dump" => serve_typeck_dump_frame(s, id, params)
+    "symbols.dump" => serve_symbols_dump_frame(s, id, params)
     _ =>
       (
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/shutdown；step 族与 dump 族随批三号后续段/S8 片接入）",
+          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols；diagnostics_probe 随 diagnostics 批）",
         ).stringify(),
         false,
       )

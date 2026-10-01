@@ -186,14 +186,17 @@ pub struct VitroVM {
 }
 pub fn VitroVM::accessed_at(Self, Int) -> VariableAccess
 pub fn VitroVM::accessed_len(Self) -> Int
+pub fn VitroVM::add_breakpoint(Self, Int) -> Unit
 pub fn VitroVM::call_stack_at(Self, Int) -> CallFrame
 pub fn VitroVM::call_stack_len(Self) -> Int
+pub fn VitroVM::clear_breakpoints(Self) -> Unit
 pub fn VitroVM::clear_waiting_input(Self) -> Unit
 pub fn VitroVM::dump_memory_raw(Self) -> Bytes
 pub fn VitroVM::find_variable_name_at_addr(Self, UInt) -> String?
 pub fn VitroVM::get_array_snapshots(Self) -> Array[ArraySnapshotData]
 pub fn VitroVM::get_current_line(Self) -> Int
 pub fn VitroVM::get_variable_snapshot(Self) -> Array[VariableSnapshotData]
+pub fn VitroVM::heatmap_count_at(Self, Int) -> UInt64
 pub fn VitroVM::load_program(Self, Array[@opcode.Instruction]) -> Unit
 pub fn VitroVM::new() -> Self
 pub fn VitroVM::register_function(Self, Int, @bytecode.FuncMeta) -> Bool
@@ -218,6 +221,7 @@ pub fn VitroVM::snapshot(Self) -> VMSnapshot
 pub fn VitroVM::snapshot_incremental(Self, Int) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult
 pub fn VitroVM::take_vis_events(Self) -> Array[VisEventData]
+pub fn VitroVM::unpause(Self) -> Unit
 pub fn VitroVM::write_cstring(Self, UInt, String) -> Unit
 
 // Type aliases

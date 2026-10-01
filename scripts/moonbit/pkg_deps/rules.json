@@ -27,7 +27,7 @@
     "analysis": 9,
     "diagnostics": 9,
     "teaching": 9,
-    "time_travel": 9,
+    "time_travel": 8,
     "gateway/wasm": 8
   },
   "exempt_prefixes": [

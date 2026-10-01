@@ -6,6 +6,7 @@ import {
   "vitro/engine/ast",
   "vitro/engine/bytecode",
   "vitro/engine/protocol",
+  "vitro/engine/time_travel",
   "vitro/engine/vm",
 }
 
@@ -93,6 +94,7 @@ pub(all) struct Session {
   mut config : SessionConfig
   mut compile : CompileState
   vm : @vm.VitroVM
+  mut unified : @time_travel.UnifiedEngine?
   mut unified_pending : @protocol.StepPayload?
   mut unified_last_line : Int
   mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]

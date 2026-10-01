@@ -32,6 +32,44 @@ patch；新增包 / 公共 API → minor。
   头注照搬——具体语句模式优先于循环上下文）+ 指针四态/parse_addr/
   format_value/extract_called_func 辅助族；八锚锁判定链（含两处照搬
   偏差被锚实锤纠正：trim 位归 infer 内部 / extract 整段纯标识符判定）。
+- **serve dump 族三方法（S8 dump 接线批，2026-10-01）**：`ast.dump` /
+  `typeck.dump` / `symbols.dump`——**只读语义**（2026-09-29 契约拍板）：
+  独立编译通道不碰会话态（oracle 的 run_multi_file_pipeline 诊断写入
+  副作用不照搬——已知限制 ④表）；emitter 零新建（ast/typed_ast 复用
+  @ast.ast_dump_json——E1 面 597 语料与 Rust serde 逐字节一致）；
+  只读契约机判锚（dump 前后 session 诊断/编译态/产物零变）。
+  diagnostics_probe 随 diagnostics 批（依赖分析器域）。七锚
+  serve_dump_wbtest。
+- **serve step 族五方法（S8 批一号接线批，2026-10-01）**：`step.begin` /
+  `step.next` / `payload.get` / `seek` / `breakpoints.set`——编排本体 =
+  time_travel 的 UnifiedEngine（三段-c）。gateway 新增 `serve_step.mbt`
+  （StepPayload 全家显式 emitter——serde 序 14 字段 + AutoStepResult/
+  SeekResult；**UInt 数值字段 number 形态修正**：core `UInt64::to_json`
+  出字符串而 serde u64 出 number，域内值经 `to_double` 无损转换）+
+  Session 增 `unified` 引擎字段；vm 增断点三口（clear_breakpoints /
+  add_breakpoint / unpause）；U1#1 一帧发布缓冲（R2 首调空帧语义）与
+  终结冲刷照搬。**层位裁定**：time_travel 自 L9 降 L8（依赖面全 ≤L8、
+  语义=编排引擎非教学智能；L9 留 teaching/analysis/diagnostics）——
+  gateway(L8) 消费 time_travel 原违反 §4 单向约束。九锚
+  `serve_step_wbtest`；serve_smoke MoonBit 臂豁免 12→4（step 族七断言 +
+  栈帧 + edge/pending_leak 两整批销项转真跑，54 PASS / 0 FAIL）；Rust
+  臂 59/59 零变。分叉登记：reset 作废引擎（保守语义）；rss_guard 批
+  豁免留待 RSS 基线。
+- **time_travel 批一号三段-c（2026-10-01）：run_batch · seek_to——批一号
+  收官段**：`UnifiedEngine::run_batch`（五态分发 + 坑 ⑥-6 终结粘性 +
+  U2#7 早退不丢帧）与 `seek_to`（协议 §4.2 越窗五步契约：nearest 检查点
+  → restore → 窗口 reset_to → 正向重放含 target → finish_replay 截尾）
+  + `get_payloads`/`max_collected_step` 读口。**⑤-5.1「直接按目标架构
+  实现」落地**：Trap 回退不再每步拍 1MB 全量快照（pre_step_snap 机制
+  不迁——常态每步 O(1MB)→O(1)），改「最近检查点 + 正向重放到 trap 前
+  一步」，trap 帧以 trap 前状态收集（语义与 pre-step 回退精确一致）；
+  trap 文案在回滚前抓取（回滚后随快照清空）。FrameWindow 增
+  frame_at/push_batch（行末去重 U1#1 P0-1）/push_or_replace_at/
+  reset_to/finish_replay（钳位族防线）；vm 增 `heatmap_count_at` 窄读口
+  （Map 句柄不泄漏）。分叉登记：root_cause_hint 恒 None（TraceAnalyzer
+  随 analysis 批）；serve 接线层须保证 vm.max_steps ≥ engine.max_steps
+  （两层步数预算）。九锚（trap 回退专项 / 越窗 seek 往返相等 / 续跑
+  连续 / Finished 提前终止 / 无检查点失败等）。
 - **time_travel 批一号二段（2026-10-01）**：`FrameWindow`——StepPayload
   帧缓存的自带不变量类型（`@deque.Deque` 承载，两端 O(1) 摊还；窗口参数
   2_000/0.2 与 discard=ceil 公式协议锚定逐字保留；**push 唯一写入口**、

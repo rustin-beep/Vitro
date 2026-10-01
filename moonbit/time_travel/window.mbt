@@ -174,3 +174,168 @@ pub fn FrameWindow::clear(self : FrameWindow) -> Unit {
   }
   self.start_step = 0
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 三段-c 增补（2026-10-01）：run_batch/seek_to 的窗口操作面。写入口仍唯一
+// 走 push 家族（push / push_batch / push_or_replace_at——后两者内部收敛
+// 到 push 语义 + 超窗自动裁不变量），读口 frame_at，seek 专用 reset_to /
+// finish_replay。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 按全局步号取窗口内帧（engine.rs:410-420 frame_cache_index 照搬：
+/// step < start_step 或 ≥ start_step + len → None）。
+pub fn FrameWindow::frame_at(
+  self : FrameWindow,
+  step : Int,
+) -> @protocol.StepPayload? {
+  if step < self.start_step {
+    return None
+  }
+  let idx = step - self.start_step
+  let len = self.frames.length()
+  if idx < len {
+    Some(self.frames[idx])
+  } else {
+    None
+  }
+}
+
+///|
+/// 批收尾入窗（engine.rs:248-261 finalize_batch 照搬）：行末帧标注去重
+/// （U1#1 P0-1——同一源码行的多帧只有行末帧携带 algorithm_step；当前
+/// teaching 未接恒 None，逻辑照搬为 teaching 就绪）+ 逐帧入窗（超窗自动
+/// 裁由 push 保证——U2#1 的"push 后立即 trim"结构化）。
+///
+/// 去重两段：①批内相邻同 code_line → 前帧降级；②窗口尾帧与批首帧同
+/// code_line → 窗口尾帧降级（批边界切在语句中间时上批尾帧不再是行末）。
+pub fn FrameWindow::push_batch(
+  self : FrameWindow,
+  batch : Array[@protocol.StepPayload],
+) -> Unit {
+  // 批内相邻同 code_line → 前帧降级（StepPayload 字段不可变——结构展开
+  // 重建整帧替换，语义等价 Rust 就地置 None）
+  for i in 1..<batch.length() {
+    if batch[i].code_line == batch[i - 1].code_line {
+      batch[i - 1] = { ..batch[i - 1], algorithm_step: None, }
+    }
+  }
+  // 窗口尾帧与批首帧同 code_line → 尾帧降级（批边界切在语句中间时）
+  let len = self.frames.length()
+  if len > 0 && batch.length() > 0 {
+    let tail = self.frames[len - 1]
+    if tail.code_line == batch[0].code_line {
+      self.frames.set(len - 1, { ..tail, algorithm_step: None, })
+    }
+  }
+  for p in batch {
+    self.push(p)
+  }
+}
+
+///|
+/// 重放过程中的帧放入（engine.rs:435-468 push_or_replace_in_replay 照搬）：
+/// 顺序追加（idx == len → push，超窗自动裁）；同步覆盖（重放重复步）；
+/// 中间缺口占位填充（code_line=0 空帧——正常重放不应出现的防御分支）。
+/// 追加后对尾段行末标注降级（demote_row_annotations——teaching 就绪）。
+pub fn FrameWindow::push_or_replace_at(
+  self : FrameWindow,
+  step : Int,
+  payload : @protocol.StepPayload,
+) -> Unit {
+  // 目标步早于窗口起点：越窗重放路径已 reset_to，此为防御分支（坑 ⑥-1
+  // 的负差下标绕回形态在类型层不可达——Int 差直接比较，无绕回）
+  if step < self.start_step {
+    return
+  }
+  let idx = step - self.start_step
+  let len = self.frames.length()
+  if idx == len {
+    self.push(payload)
+    self.demote_tail(len)
+  } else if idx < len {
+    self.frames.set(idx, payload)
+  } else {
+    while self.frames.length() < idx {
+      let filler_step = self.start_step + self.frames.length()
+      self.frames.push_back(blank_payload(filler_step))
+    }
+    self.push(payload)
+    self.demote_tail(self.frames.length() - 1)
+  }
+}
+
+///|
+/// 尾段行末标注降级（engine.rs:426-432 demote_row_annotations 的 from=
+/// len-1 段——与前一帧同 code_line 的帧不是行末，前帧降级）。algorithm_step
+/// 当前恒 None（teaching 批接入），逻辑照搬为零开销 no-op。
+fn FrameWindow::demote_tail(self : FrameWindow, from : Int) -> Unit {
+  let len = self.frames.length()
+  if from >= 1 && from < len {
+    let cur = self.frames[from]
+    let prev = self.frames[from - 1]
+    if cur.code_line == prev.code_line {
+      self.frames.set(from - 1, { ..prev, algorithm_step: None, })
+    }
+  }
+}
+
+///|
+/// 越窗重放的窗口重置（engine.rs:299-300 照搬）：清窗 + 起点置检查点步。
+/// 不 reset_to 的旧窗口残留会让 step - start_step 为负（坑 2 的 63.6GB
+/// 事故形态）——reset_to 是 seek 越窗路径的强制前置。
+pub fn FrameWindow::reset_to(self : FrameWindow, step : Int) -> Unit {
+  while self.frames.length() > 0 {
+    ignore(self.frames.pop_front())
+  }
+  self.start_step = step
+}
+
+///|
+/// 重放收尾窗口（engine.rs:471-485 finish_replay_window 照搬）：只保留
+/// 目标步及其之前 window_size-1 帧——`want_start = max(0, target -
+/// window_size + 1)`；discard 钳到实际长度（坑 ⑥-4：seek 目标远超已有
+/// 步数时理论 discard > len，直接切会越界——钳位后按实际推进量记账）；
+/// 再截断 target 之后的多余帧。
+pub fn FrameWindow::finish_replay(self : FrameWindow, target : Int) -> Unit {
+  let want_start = target - self.window_size + 1
+  let want_start = if want_start > 0 { want_start } else { 0 }
+  let len = self.frames.length()
+  if self.start_step < want_start && len > 0 {
+    let discard = want_start - self.start_step
+    let discard = if discard < len { discard } else { len }
+    let mut k = 0
+    while k < discard {
+      ignore(self.frames.pop_front())
+      k = k + 1
+    }
+    self.start_step = self.start_step + discard
+  }
+  // 截断 target 之后的多余帧（expected_len = target - start + 1，钳非负）
+  let expected = target - self.start_step + 1
+  let expected = if expected > 0 { expected } else { 0 }
+  while self.frames.length() > expected {
+    ignore(self.frames.pop_back())
+  }
+}
+
+///|
+/// 空帧占位（push_or_replace_at 缺口防御——Rust 占位帧 14 字段全零形态）。
+fn blank_payload(step : Int) -> @protocol.StepPayload {
+  {
+    step_index: step,
+    code_line: 0,
+    func_name: "",
+    semantic_label: "",
+    algorithm_step: None,
+    local_vars: [],
+    call_stack: [],
+    vis_events: [],
+    heatmap_line: 0,
+    heatmap_count: 0UL,
+    accessed_vars: [],
+    array_snapshots: [],
+    pointer_snapshots: [],
+    root_cause_hint: None,
+  }
+}

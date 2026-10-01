@@ -353,3 +353,32 @@ pub fn VitroVM::accessed_len(self : VitroVM) -> Int {
 pub fn VitroVM::accessed_at(self : VitroVM, idx : Int) -> VariableAccess {
   self.last_accessed_vars[idx]
 }
+
+///|
+/// 执行热力图读口（窄口——`heatmap` 是可变 Map，字段直读会泄漏可写句柄，
+/// call_stack_at 同款纪律）。行未命中返回 0（Rust `unwrap_or(0)` 同口径）。
+pub fn VitroVM::heatmap_count_at(self : VitroVM, line : Int) -> UInt64 {
+  match self.heatmap.get(line) {
+    Some(v) => v
+    None => 0UL
+  }
+}
+
+///|
+/// 清空断点集合（Rust vm.clear_breakpoints——serve breakpoints.set 先清后设）。
+pub fn VitroVM::clear_breakpoints(self : VitroVM) -> Unit {
+  self.breakpoints.clear()
+}
+
+///|
+/// 加断点行号（Rust vm.add_breakpoint；非正行号由调用方过滤——serve 层口径）。
+pub fn VitroVM::add_breakpoint(self : VitroVM, line : Int) -> Unit {
+  self.breakpoints.add(line)
+}
+
+///|
+/// 恢复推进（Rust vm.resume——清空断点即恢复的 serve 出口语义；命名同
+/// engine 侧 unpause 先例避免保留字）。
+pub fn VitroVM::unpause(self : VitroVM) -> Unit {
+  self.paused = false
+}

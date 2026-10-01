@@ -640,8 +640,13 @@ jobs:
           moon build --release --target native
           echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
+        # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：
+        # Manual 兜底层（整行无数字等于真值）自此进 CI 判红。合法误报面
+        # （里程碑未来值行等）经 scripts/facts/suspect_exemptions.json 显式
+        # 过闸——条目零命中判僵尸、无条件红（防腐化），go test 锚
+        # suspect_exemptions_test.go 五路 J9。
         shell: bash
-        run: go run ./scripts/facts --run --cargo-log native/cargo_test_ci.log check
+        run: go run ./scripts/facts --run --strict --cargo-log native/cargo_test_ci.log check
 
       - name: Docs SVG freshness (gen_svg -check)
         # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成

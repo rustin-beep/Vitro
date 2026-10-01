@@ -134,9 +134,11 @@ func main() {
 		//
 		// --strict：再叠一层 Manual 兜底（分解式行整行无数字等于真值）。默认
 		// 不判红——未来值/里程碑目标行（如总计划「全量切换 758 用例 + golden
-		// 733」）同样"整行不含真值"却是合法写法，误报面须人工评估后再固化。
+		// 733」）同样"整行不含真值"却是合法写法，误报面经 suspect_exemptions.json
+		// 显式过闸后 CI 启用（2026-10-01 接线）。僵尸豁免条目无条件红（数据
+		// 错误非口径问题，不随 --strict 开关）。
 		suspectRed := *strict && res.SuspectN > 0
-		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) || suspectRed {
+		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) || suspectRed || len(res.StaleSuspectExempts) > 0 {
 			os.Exit(1)
 		}
 	case "report":
@@ -204,6 +206,15 @@ func summarize(res AuditResult, doc FactsDoc) {
 			fmt.Printf("  ❗[疑似未连坐] %s: %d 处整行无数字等于真值 %d（manual 兜底；--strict 判红）如 %s:%d = %d\n",
 				a.Rule.Label, len(a.Suspect), *a.Truth, first.File, first.LineNo, first.Value())
 		}
+	}
+	// Suspect 豁免留痕（suspect_exemptions.json，2026-10-01 接线批）——
+	// 豁免面常显，防"白名单悄悄扩大"。
+	if res.SuspectExemptedN > 0 {
+		fmt.Printf("  [Suspect 已豁免] %d 处经 suspect_exemptions.json 过闸（--strict 不判红；详情见报告）\n",
+			res.SuspectExemptedN)
+	}
+	for _, s := range res.StaleSuspectExempts {
+		fmt.Printf("  ❗[僵尸豁免] suspect_exemptions.json 条目本轮零命中：%s（删除或修正该条目）\n", s)
 	}
 	for _, r := range res.Broken {
 		fmt.Printf("  [坏引用] %s:%d → %s（文件不存在）\n", r.File, r.LineNo, r.Path)

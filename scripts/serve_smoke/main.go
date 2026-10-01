@@ -85,6 +85,9 @@ var (
 	mbExempt  map[string]string
 	mbBatches map[string]string
 	exempted  int
+	// expectMemoryGlobalRegionLimit：capabilities.memory_model 断言期望
+	// （外置 expectations.json，loadExpectations 装载；0 = 未装载）。
+	expectMemoryGlobalRegionLimit int
 )
 
 // tally 与 Python 版同构：断言总数自计数，"断言数" 是机器采集的真值口径。
@@ -221,6 +224,29 @@ func loadMoonBitExemptions() (map[string]string, map[string]string, error) {
 	return doc.Assertions, doc.Batches, nil
 }
 
+// loadExpectations 读断言期望值资产（2026-10-01 硬编码外置批——期望值
+// 外置 JSON，代码只做解释器；缺文件/坏 JSON/字段缺失 fail loud，双臂共用）。
+func loadExpectations() error {
+	path := filepath.Join("scripts", "serve_smoke", "expectations.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("读期望值资产失败: %w", err)
+	}
+	var doc struct {
+		MemoryModel struct {
+			GlobalRegionLimit int `json:"global_region_limit"`
+		} `json:"memory_model"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return fmt.Errorf("期望值资产非法 JSON: %w", err)
+	}
+	if doc.MemoryModel.GlobalRegionLimit <= 0 {
+		return fmt.Errorf("期望值资产字段缺失: memory_model.global_region_limit")
+	}
+	expectMemoryGlobalRegionLimit = doc.MemoryModel.GlobalRegionLimit
+	return nil
+}
+
 // resolveMoonBitExe 定位 MoonBit 侧 serve 产物（cmd/serve 主程序——
 // 无子命令形态）。VITRO_SERVE_MB 覆盖优先。
 func resolveMoonBitExe() string {
@@ -237,6 +263,10 @@ func resolveMoonBitExe() string {
 func run() int {
 	flag.BoolVar(&mbMode, "moonbit", false, "跑 MoonBit 臂（cmd/serve exe；同一请求表与断言集，豁免面见 moonbit_exemptions.json）")
 	flag.Parse()
+	if err := loadExpectations(); err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return 2
+	}
 	var exe string
 	if mbMode {
 		var err error
@@ -489,7 +519,7 @@ func run() int {
 	langC := asObj(langs["c"])
 	check(strOf(langC["stdc_version_macro_nominal"]) == "202311L", "capabilities 版本宏名义锚点", "")
 	memModel := asObj(caps["memory_model"])
-	check(numEq(memModel["global_region_limit"], 65536), "capabilities 内存模型常量（单源 vitro_runtime）", "")
+	check(numEq(memModel["global_region_limit"], float64(expectMemoryGlobalRegionLimit)), "capabilities 内存模型常量（单源 vitro_runtime）", "")
 
 	// B2：schema 轨道与行为契约进能力清单（消费方可直读版本协商信息）
 	schema := asObj(caps["schema"])

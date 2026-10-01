@@ -38,11 +38,29 @@ import (
 	"strings"
 )
 
-const (
-	expectedV01    = 14
-	expectedRes    = 4
-	expectedSchema = "v0.1"
-)
+// baselinesFile：轨道基线（外置 baselines.json，2026-10-01 硬编码外置批——
+// 期望值资产化，代码只做解释器；缺文件/坏 JSON/字段缺失即红）。
+type baselinesFile struct {
+	ExpectedSchema    string `json:"expected_schema"`
+	ExpectedV01Fields int    `json:"expected_v01_fields"`
+	ExpectedReserved  int    `json:"expected_reserved"`
+}
+
+func loadBaselines(path string) baselinesFile {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		fatalf("读基线 JSON 失败 %s: %v（基线已外置，勿在代码内重新硬编码）", path, err)
+	}
+	raw = bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
+	var b baselinesFile
+	if err := json.Unmarshal(raw, &b); err != nil {
+		fatalf("基线 JSON 非法 %s: %v", path, err)
+	}
+	if b.ExpectedSchema == "" || b.ExpectedV01Fields <= 0 || b.ExpectedReserved <= 0 {
+		fatalf("基线 JSON 字段缺失 %s（expected_schema/expected_v01_fields/expected_reserved）", path)
+	}
+	return b
+}
 
 type fieldsFile struct {
 	Schema           string   `json:"schema"`
@@ -57,7 +75,10 @@ func main() {
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
 	srcPath := flag.String("src", "../scripts/replay/v01_payload_fields.json", "字段白名单 JSON 路径")
 	outDir := flag.String("out", "protocol", "输出目录")
+	baselinesPath := flag.String("baselines", "../scripts/moonbit/gen_protocol_fields/baselines.json", "轨道基线 JSON 路径")
 	flag.Parse()
+
+	base := loadBaselines(*baselinesPath)
 
 	src, err := os.ReadFile(*srcPath)
 	if err != nil {
@@ -70,14 +91,14 @@ func main() {
 	if err := json.Unmarshal(srcLF, &f); err != nil {
 		fatalf("解析 JSON 失败: %v", err)
 	}
-	if f.Schema != expectedSchema {
-		fatalf("schema %q ≠ %q——版本轨道变更，须人工评估（v0_2_activation_checklist 全流程）", f.Schema, expectedSchema)
+	if f.Schema != base.ExpectedSchema {
+		fatalf("schema %q ≠ %q——版本轨道变更，须人工评估（v0_2_activation_checklist 全流程；基线在 baselines.json）", f.Schema, base.ExpectedSchema)
 	}
-	if len(f.V01PayloadFields) != expectedV01 {
-		fatalf("v01_payload_fields 数 %d ≠ 基线 %d——源已变更：字段表只增不改，请人工核对后更新 expectedV01 并登记（v0.2 激活走 checklist）", len(f.V01PayloadFields), expectedV01)
+	if len(f.V01PayloadFields) != base.ExpectedV01Fields {
+		fatalf("v01_payload_fields 数 %d ≠ 基线 %d——源已变更：字段表只增不改，请人工核对后更新 baselines.json 的 expected_v01_fields 并登记（v0.2 激活走 checklist）", len(f.V01PayloadFields), base.ExpectedV01Fields)
 	}
-	if len(f.ReservedFields) != expectedRes {
-		fatalf("reserved_fields 数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedRes", len(f.ReservedFields), expectedRes)
+	if len(f.ReservedFields) != base.ExpectedReserved {
+		fatalf("reserved_fields 数 %d ≠ 基线 %d——源已变更，请人工核对后更新 baselines.json 的 expected_reserved", len(f.ReservedFields), base.ExpectedReserved)
 	}
 	// 白名单自身查重（重复字段 = 单源内部矛盾，生成期拒绝）
 	seen := map[string]bool{}

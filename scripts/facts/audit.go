@@ -172,6 +172,42 @@ func loadExemptDocs(root string) (map[string]string, error) {
 	return out, nil
 }
 
+// suspectExemptEntry：--strict Suspect 兜底的行级豁免白名单条目（2026-10-01
+// 接线批，模块审阅 09 P2-1 处方①——CI 启用 --strict 前先把合法误报面显式过闸）。
+// Suspect = Manual 桶中"整行无一个数字对上真值"的行，已知合法形态（1.0 里程碑
+// 未来值行等）在此登记：path 定位文件（slash 相对路径，同 exempt_docs）、
+// contains 作行内容锚（行号会漂，不锚行号）。防腐化双向：条目指向不存在的
+// 文件 → 加载即红；条目 contains 本轮扫描零命中 → StaleSuspectExempts
+// （check 无条件红）——白名单不能沉淀为僵尸豁免面。
+type suspectExemptEntry struct {
+	Path     string `json:"path"`
+	Contains string `json:"contains"`
+	Reason   string `json:"reason"`
+}
+
+func loadSuspectExemptions(root string) ([]suspectExemptEntry, error) {
+	data, err := os.ReadFile(filepath.Join(root, "scripts", "facts", "suspect_exemptions.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var entries []suspectExemptEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, fmt.Errorf("suspect_exemptions.json 解析失败: %w", err)
+	}
+	for _, e := range entries {
+		if e.Path == "" || e.Contains == "" || e.Reason == "" {
+			return nil, fmt.Errorf("suspect_exemptions.json 条目缺 path/contains/reason: %+v", e)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(e.Path))); err != nil {
+			return nil, fmt.Errorf("Suspect 豁免条目指向不存在的文件 %s（删除或修正）", e.Path)
+		}
+	}
+	return entries, nil
+}
+
 // scanFiles 扫描目标文档：docs/ 全部 + 根目录 md（归档目录与豁免白名单跳过）。
 func scanFiles(root string) []string {
 	var out []string
@@ -329,6 +365,9 @@ type FactAudit struct {
 	// （如总计划「全量切换 758 用例 + golden 733」是 1.0 目标，非当期现值），
 	// 故不强推 CI 判红，--strict 由使用方按误报面自行评估后启用。
 	Suspect []Hit
+	// SuspectExempted：Suspect 子集中被 suspect_exemptions.json 登记豁免的
+	// 行（2026-10-01 接线批）——--strict 判红的显式过闸面，豁免必须留痕可见。
+	SuspectExempted []Hit
 }
 
 // ─── 常量对账（M13 细化，2026-09-18）─────────────────────────────────────────
@@ -397,6 +436,12 @@ type AuditResult struct {
 	// SuspectN：Manual 桶中整行无数字对上真值的处数（兜底提醒；仅 --strict 判红，
 	// 见 FactAudit.Suspect 注释）。
 	SuspectN int
+	// SuspectExemptedN：被 suspect_exemptions.json 豁免的 Suspect 行数
+	// （--strict 过闸面——豁免留痕，报告常显）。
+	SuspectExemptedN int
+	// StaleSuspectExempts：白名单条目本轮扫描零命中（目标文件已无该 Suspect
+	// 行）——僵尸豁免面，check 无条件红（防腐化，2026-10-01 接线批）。
+	StaleSuspectExempts []string
 	ScanN    int
 	// 坏引用：文档指向不存在的脚本文件（CURRENT 层才算；as-of/归档里的
 	// 旧路径是有意的历史叙述）。数字冻住不等于路径永远有效——退役驱动
@@ -698,16 +743,53 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 	}
 
 	res := AuditResult{TruthOf: map[string]int{}, ScanN: len(files)}
+	// Suspect 行级豁免白名单（2026-10-01 --strict 接线批）：fail loud 同
+	// loadExemptDocs；TempDir 测试夹具无该文件视为空表（向后兼容）。
+	susExempts, sxErr := loadSuspectExemptions(root)
+	if sxErr != nil {
+		fmt.Fprintf(os.Stderr, "facts: Suspect 豁免白名单加载失败（fail loud）：%v\n", sxErr)
+		os.Exit(2)
+	}
+	exemptHit := make([]bool, len(susExempts))
 	for _, k := range order {
 		a := byKey[k]
+		// Suspect 豁免过滤（先于计数）：命中（path+contains）→ SuspectExempted
+		// 留痕；未命中 → 留在 Suspect（--strict 判红依据不变）。
+		if len(a.Suspect) > 0 && len(susExempts) > 0 {
+			kept := make([]Hit, 0, len(a.Suspect))
+			for _, h := range a.Suspect {
+				matched := false
+				for i, e := range susExempts {
+					if e.Path == h.File && strings.Contains(h.Text, e.Contains) {
+						exemptHit[i] = true
+						matched = true
+						break
+					}
+				}
+				if matched {
+					a.SuspectExempted = append(a.SuspectExempted, h)
+				} else {
+					kept = append(kept, h)
+				}
+			}
+			a.Suspect = kept
+		}
 		res.Audits = append(res.Audits, *a)
 		res.DriftN += len(a.Drift)
 		res.ManualN += len(a.Manual)
 		res.SuspectN += len(a.Suspect)
+		res.SuspectExemptedN += len(a.SuspectExempted)
 		res.FrozenN += len(a.Frozen)
 		res.PendingN += len(a.Pending)
 		if a.Truth != nil {
 			res.TruthOf[k] = *a.Truth
+		}
+	}
+	// 白名单零命中条目 = 僵尸豁免面（目标行已被改写/删除），check 无条件红。
+	for i, e := range susExempts {
+		if !exemptHit[i] {
+			res.StaleSuspectExempts = append(res.StaleSuspectExempts,
+				fmt.Sprintf("%s（contains=%q, reason=%s）", e.Path, e.Contains, e.Reason))
 		}
 	}
 	// 按文件 + 行号排序，便于人工顺序核对

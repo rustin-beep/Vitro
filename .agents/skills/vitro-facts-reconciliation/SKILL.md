@@ -10,8 +10,9 @@ description: Vitro 文档数字对账（scripts/facts）的判读手册——假
 ## 机制认知
 - facts = CI `hygiene` job 的文档数字对账门禁；真值存 `reports/facts.json`（**gitignored**，防双真相）——本地对账前先采集。
 - `cached` 真值沿用不红，`--run` 才刷新；子命令顺序与 flag 位置**照抄 CI 接线**（flag 必须写在子命令之前）。
-- ⚠️ **无子命令 ⇒ 不对账、恒 exit 0**：`main.go` 的 `switch cmd` 只有 `check` / `report` / `sync`，**没有 default**。`go run ./scripts/facts --run` 只采集刷新真值，**不判红**；要"确认无回归"必须带子命令——`facts --run check`（CI 完整形态 `facts --run --cargo-log native/cargo_test_ci.log check`）。
+- ⚠️ **无子命令 ⇒ 不对账、恒 exit 0**：`main.go` 的 `switch cmd` 只有 `check` / `report` / `sync`，**没有 default**。`go run ./scripts/facts --run` 只采集刷新真值，**不判红**；要"确认无回归"必须带子命令——`facts --run check`（CI 完整形态 `facts --run --strict --cargo-log native/cargo_test_ci.log check`，2026-10-01 起 CI 含 `--strict`）。
 - cargo 真值走 `--cargo-log`，规范形态 = cargo test 输出 tee 落在 `native/cargo_test_ci.log`（gitignored）再传该相对路径。日志放 Git Bash 的 `/tmp` 时，Go 进程看到的是不同路径——解析**静默失败**、真值沿用 cached 而不报错。处置 = 把日志拷到规范路径再跑。
+- **`--strict` 与 Suspect 白名单（2026-10-01 接线）**：`--strict` = Manual 兜底层（整行无数字等于真值）判红；合法误报面（1.0 里程碑未来值行等）经 `scripts/facts/suspect_exemptions.json` 行级过闸（`path` + `contains` 内容锚 + `reason`，**不锚行号**）；条目零命中 = 僵尸豁免，**无条件红**（不随 --strict 开关）——Suspect 行被改写/删除后须同步删条目。J9 锚在 `suspect_exemptions_test.go` 五路。
 
 ## 假绿四形态（绿 ≠ 账对）
 - **cached 沿用**：要 `--run` 才刷新；
@@ -44,4 +45,4 @@ description: Vitro 文档数字对账（scripts/facts）的判读手册——假
 ## 权威源与时效
 - `scripts/facts/` 头注与 `img_line_test.go` / `cargo_fact_test.go` 的 J9 锚
 - **相关规程**：`vitro-baseline-corpus-workflow`（加语料后的连坐面）、`vitro-generator-contract`（SVG `data-fact` 由生成器出，漂移红后重生成）、`vitro-toolchain-upgrade`（升级后刷新真值）
-- as_of: 2026-09-28（判据词表与白名单路径以仓库现行实现为准）
+- as_of: 2026-10-01（判据词表与白名单路径以仓库现行实现为准；本日新增 suspect_exemptions 白名单机制与 CI --strict 接线）

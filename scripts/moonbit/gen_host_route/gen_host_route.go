@@ -37,6 +37,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -47,11 +48,29 @@ import (
 	"strings"
 )
 
-const (
-	expectedConsts = 110
-	expectedPairs  = 110
-	expectedPure   = 14
-)
+// baselinesFile：抽取面基线（外置 baselines.json，2026-10-01 硬编码外置批——
+// 「规则、期望值等资产外置为 JSON，代码只做解释器」纪律；缺文件/坏 JSON 即红）。
+type baselinesFile struct {
+	ExpectedConsts int `json:"expected_consts"`
+	ExpectedPairs  int `json:"expected_pairs"`
+	ExpectedPure   int `json:"expected_pure"`
+}
+
+func loadBaselines(path string) baselinesFile {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		fatalf("读基线 JSON 失败 %s: %v（基线已外置，勿在代码内重新硬编码）", path, err)
+	}
+	raw = bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
+	var b baselinesFile
+	if err := json.Unmarshal(raw, &b); err != nil {
+		fatalf("基线 JSON 非法 %s: %v", path, err)
+	}
+	if b.ExpectedConsts <= 0 || b.ExpectedPairs <= 0 || b.ExpectedPure <= 0 {
+		fatalf("基线 JSON 字段缺失/非正 %s（expected_consts/expected_pairs/expected_pure）", path)
+	}
+	return b
+}
 
 var constRe = regexp.MustCompile(`pub const ([A-Z][A-Z0-9_]+): u32 = (\d+);`)
 var armRe = regexp.MustCompile(`((?:"[a-zA-Z_][a-zA-Z0-9_]*"(?:\s*\|\s*)?)+)\s*=>\s*Some\(([A-Z][A-Z0-9_]+)\)`)
@@ -67,7 +86,10 @@ func main() {
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
 	srcPath := flag.String("src", "../native/crates/vitro_runtime/src/host_func_id.rs", "host_func_id.rs 路径")
 	outDir := flag.String("out", "bytecode", "输出目录")
+	baselinesPath := flag.String("baselines", "../scripts/moonbit/gen_host_route/baselines.json", "抽取面基线 JSON 路径")
 	flag.Parse()
+
+	base := loadBaselines(*baselinesPath)
 
 	src, err := os.ReadFile(*srcPath)
 	if err != nil {
@@ -83,8 +105,8 @@ func main() {
 		consts = append(consts, [2]string{m[1], m[2]})
 		constVals[m[1]] = m[2]
 	}
-	if len(consts) != expectedConsts {
-		fatalf("常量数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedConsts 并登记差异", len(consts), expectedConsts)
+	if len(consts) != base.ExpectedConsts {
+		fatalf("常量数 %d ≠ 基线 %d——源已变更，请人工核对后更新 baselines.json 的 expected_consts 并登记差异", len(consts), base.ExpectedConsts)
 	}
 	pairs := [][2]string{} // (user_name, CONST)
 	for _, m := range armRe.FindAllStringSubmatch(string(src), -1) {
@@ -92,8 +114,8 @@ func main() {
 			pairs = append(pairs, [2]string{n[1], m[2]})
 		}
 	}
-	if len(pairs) != expectedPairs {
-		fatalf("名→常量对数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedPairs 并登记差异", len(pairs), expectedPairs)
+	if len(pairs) != base.ExpectedPairs {
+		fatalf("名→常量对数 %d ≠ 基线 %d——源已变更，请人工核对后更新 baselines.json 的 expected_pairs 并登记差异", len(pairs), base.ExpectedPairs)
 	}
 	for _, p := range pairs {
 		if _, ok := constVals[p[1]]; !ok {
@@ -105,8 +127,8 @@ func main() {
 		fatalf("PURE 表未找到")
 	}
 	pure := nameRe.FindAllStringSubmatch(pureBlock[1], -1)
-	if len(pure) != expectedPure {
-		fatalf("PURE 名数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedPure 并登记差异", len(pure), expectedPure)
+	if len(pure) != base.ExpectedPure {
+		fatalf("PURE 名数 %d ≠ 基线 %d——源已变更，请人工核对后更新 baselines.json 的 expected_pure 并登记差异", len(pure), base.ExpectedPure)
 	}
 	pureSet := map[string]bool{}
 	for _, m := range pure {

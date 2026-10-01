@@ -19,7 +19,7 @@
 
 1. **必须中文输出思考与回答**
 2. **未经允许禁止 git 提交**
-3. **实测大于脑测、统一真相来源**：结论须来自亲跑命令 / 亲读代码；报告与文档声明只作线索不作依据；数字对真值（`reports/facts.json` 的 key + as_of）。**口径注（2026-09-29 拍板）**：CI 的 facts 步是 `check`（不含 `--strict`——Suspect 兜底为本地深度口径）；测试数键 `moonbit_test_passed` = 裸 `moon test` 口径（默认目标后端，不含 native-only 包；native 全量另有 CI 门禁步）——引用测试数时须带口径，勿把「508」说成全量
+3. **实测大于脑测、统一真相来源**：结论须来自亲跑命令 / 亲读代码；报告与文档声明只作线索不作依据；数字对真值（`reports/facts.json` 的 key + as_of）。**口径注（2026-09-29 拍板；2026-10-01 起 CI 已含 `--strict`——Suspect 兜底进 CI 判红，合法误报面经 `scripts/facts/suspect_exemptions.json` 显式过闸，僵尸条目无条件红）**：CI 的 facts 步是 `check --strict`；测试数键 `moonbit_test_passed` = 裸 `moon test` 口径（默认目标后端，不含 native-only 包；native 全量另有 CI 门禁步）——引用测试数时须带口径，勿把「508」说成全量
 4. **诚实记录**：以 Clang 为标准，任何与标准不符之处必须记录；禁止修改测试预期值粉饰数据
 5. **红→绿纪律**：每个缺陷修复先有会失败的用例，修复提交引用用例名；护栏 / 判定型脚本必须先证会红（J9 埋雷义务）
 6. `docs/archive/` 下的归档文档**不具备参考价值**，禁止引用

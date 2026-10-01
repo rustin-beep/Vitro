@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "expected_schema": "v0.1",
+  "expected_v01_fields": 14,
+  "expected_reserved": 4,
+  "_note": "源侧（scripts/replay/v01_payload_fields.json）轨道基线（2026-10-01 硬编码外置批：schema 版本/v0.1 字段数/预留位数自 Go const 迁出）。schema 轨道变更须走 v0_2_activation_checklist 全流程；字段表只增不改，数量不符时人工核对后更新本文件并登记。"
+}

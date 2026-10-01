@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "expected_consts": 110,
+  "expected_pairs": 110,
+  "expected_pure": 14,
+  "_note": "源侧（native/crates/vitro_runtime/src/host_func_id.rs）三个抽取面的基线数（2026-10-01 硬编码外置批：常量数/名→常量对数/PURE 名数自 Go const 迁出）。源变更致数量不符时脚本判红——人工核对后更新本文件并登记差异，勿为过闸改判据。",
+  "_sync": "与 bytecode/host_route_anchor_wbtest.mbt 的硬编码锚同源（110 对）；两者应同步变更。"
+}

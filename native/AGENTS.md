@@ -255,7 +255,8 @@ Vitro 采用**五条分层协作的测试防线**，核心哲学：*测试不是
 **文档测试数字对账（`scripts/facts`，2026-09-13 起用）**：文档里的测试数字（用例数/断言数/套件数）由机器真值对账，禁止长期人肉同步。判据：CURRENT 文档的裸数字必须等于真值，否则判漂移；带日期或位于历史文档（裁定/决议/工作记录等）的数字视为 as-of 快照冻结；**分解式与实测数字行归"人工维护"**（子项与总数机判不区分，自动替换会改断算式/伪造测量）；CURRENT 文档引用的脚本路径必须真实存在（叙述性"已退役/已迁出"记载豁免）。产物：`reports/facts.json`（真值台账，含溯源与 how_to_get）、`reports/doc_fact_drift.md`。用法（**flag 必须写在子命令之前**——Go flag 在第一个位置参数处停止解析，顺序错了脚本会 fatal 拦截）：
 
 ```bash
-go run ./scripts/facts check            # CI 门禁：漂移/坏引用/真值超龄任一非零即 exit 1
+go run ./scripts/facts check            # 本地口径：漂移/坏引用/真值超龄任一非零即 exit 1
+go run ./scripts/facts --strict check   # 深度口径：再叠 Suspect 兜底（CI 形态，2026-10-01 起；合法误报面过 suspect_exemptions.json 白名单，僵尸条目无条件红）
 go run ./scripts/facts                  # 交互式逐条同步（y/n/a/d/q）
 go run ./scripts/facts --yes sync       # 自动应用无警告条目（分解式/实测行跳过，人工维护）
 go run ./scripts/facts report           # 只生成报告

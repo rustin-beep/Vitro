@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "memory_model": {
+    "global_region_limit": 65536
+  },
+  "_note": "capabilities.memory_model 断言期望值（2026-10-01 硬编码外置批：global_region_limit 自 main.go 字面量迁出）。真值单源 = vitro_runtime 的 GLOBAL_REGION_LIMIT（0x10000 = 64KB）；引擎侧布局常量变更时同步更新本文件，断言红即提示连坐。",
+  "_sync": "值与 native/src（vitro_runtime）GLOBAL_REGION_LIMIT 及 moonbit bytecode 包布局常量同源。"
+}

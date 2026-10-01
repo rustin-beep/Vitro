@@ -9,8 +9,10 @@
 // 行号定位自此两侧闭环。
 //
 // 登记分叉（本段不搬，诚实记录）：
-// ① algorithm_matches 恒空——algorithm_detector 是 S8 analysis 片的
-//    语义标注批产物（Rust 侧 2273 行独立模块）；
+// ① algorithm_matches——**已接线**（2026-10-01 批四号）：compile 成功
+//    尾段调 @steps.detect_algorithms（teaching/steps 判据族，已迁移
+//    sorting/search/string/tree/graph 五族 28/42 算法；未迁移族判据
+//    不命中 = 零标注降级，协议合法形态）；
 // ② fix_kind/replace_*/replacement_text 恒 0/空——error_catalog 的
 //    generate_fix（机器修复文本生成）无 MoonBit 对等物，随 diag 教学
 //    批；fix_suggestion 的 catalog explanation fallback 已照搬；
@@ -326,7 +328,8 @@ fn serve_compile_pipeline(
     }
     st.struct_fields.set(k, fields)
   }
-  // algorithm_matches 恒空（分叉①：S8 analysis 片接入）
+  // 算法检测（Rust compile_pipeline.rs:544 同位点——teaching/steps 判据族）
+  st.algorithm_matches = @steps.detect_algorithms(program)
   st.compiled = true
   st.errors = ""
   true

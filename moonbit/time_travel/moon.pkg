@@ -1,4 +1,5 @@
-// L9 教学智能·time_travel 包（S8 批一号一段，2026-09-30 建包）：时间旅行
+// L8 会话/协议·time_travel 包（S8 批一号一段 2026-09-30 建包；**2026-10-01
+// 批一号接线批自 L9 降 L8**，**批四号 teaching 接线随包落地**）：时间旅行
 // 引擎域——检查点管理器（CheckpointManager，本批自 vm 迁入）+ 帧窗口/
 // UnifiedEngine（随批一号后续段；Rust 蓝本 = native/src/unified/engine.rs，
 // 探测档案 917251e《unified 模块勘察报告》）。
@@ -15,9 +16,11 @@
 // protocol 词汇 enum 单源落地后随 collector 批配套走红→绿，单独成批——
 // 迁移与改形分离纪律）；VMSnapshot/MemoryImage 等 vm 类型一律 @vm. 限定。
 //
-// 依赖严格单向：memory（L7：PAGE_SIZE——Delta 页写入）/ vm（L7：VMSnapshot
-// + 快照原语 + VitroVM）。opcode/bytecode 仅供本包 wbtest 构造指令流
-// （门 3 六锚随迁）。不依赖 session（§4 L9 行三接口反转纪律）。
+// 依赖严格单向：memory（L7）/ vm（L7）/ protocol（L8）/ teaching/steps
+//（L8——批四号 collector 接线；session import time_travel 成环故
+// AlgorithmMatch 经 protocol 单源）。opcode/bytecode 仅供本包 wbtest
+// 构造指令流（门 3 六锚随迁）。不依赖 session（SourceLineProvider 依赖
+// 反转——成环硬约束）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L9，总计划 §4）。
 import {
   "moonbitlang/core/abort",
@@ -29,6 +32,7 @@ import {
   "vitro/engine/opcode",
   "vitro/engine/protocol",
   "vitro/engine/source",
+  "vitro/engine/teaching/steps",
   "vitro/engine/vm",
 }
 

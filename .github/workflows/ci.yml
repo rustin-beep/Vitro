@@ -231,6 +231,16 @@ jobs:
         run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
         shell: bash
 
+      # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
+      # cmd/serve 与 Rust golden（algorithm_annotations_v3.json）的首现序列
+      # 比对（compile→run→step.begin→step.next×4000；只比已迁移族——
+      # rules.json 外置迁移集+豁免面；双向模板集断言；serve exe 由上一步
+      # 构建）。J9 双路证红：golden desc 篡改 → exit 1（连锁红）；
+      # step_budget 40 → exit 1（首现缺失）。
+      - name: Teaching annotation diff (family-incremental golden, Exit 1)
+        run: go run ./scripts/teaching_annotation_diff
+        shell: bash
+
       # S7 批五号（2026-09-29）：wasm-gc 单出口（F-5）——gateway 4 函数导出
       # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
       # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +

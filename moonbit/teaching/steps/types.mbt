@@ -116,7 +116,7 @@ fn is_comparison_line(line : String) -> Bool {
 /// 步骤快照构造（Rust build_step——algorithm_name/display_name 取自
 /// 匹配，phase/description 为判据产出）。
 fn build_step(
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   phase : String,
   description : String,
 ) -> @protocol.AlgorithmStepSnapshot {
@@ -173,7 +173,7 @@ pub fn infer_algorithm_step(
   local_vars : Array[VarSnapshot],
   func_name : String,
   source_line : String,
-  algorithm : @session.AlgorithmMatch?,
+  algorithm : @protocol.AlgorithmMatch?,
   env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
   if code_line <= 0 || func_name.is_empty() {
@@ -209,11 +209,19 @@ pub fn infer_algorithm_step(
     "threaded_binary_tree" => infer_threaded_binary_tree(source_line, vars, alg)
     "huffman_tree" => infer_huffman_tree(source_line, vars, alg)
     "avl_tree" => infer_avl_tree(source_line, vars, alg)
-    // —— 未迁移族（批四号+逐族补齐，None 降级是协议合法形态）——
-    // bfs/dfs/dp/linked_list_delete/gcd/is_prime/hanoi/seq_list/
+    // 批四号（graph 族）
+    "bfs" => infer_bfs(source_line, vars, alg)
+    "dfs" => infer_dfs(source_line, vars, alg, func_name)
+    "prim_mst" => infer_prim_mst(source_line, vars, alg)
+    "kruskal_mst" => infer_kruskal_mst(source_line, vars, alg)
+    "dijkstra" => infer_dijkstra(source_line, vars, alg)
+    "floyd" => infer_floyd(source_line, vars, alg)
+    "topological_sort" => infer_topological_sort(source_line, vars, alg)
+    // —— 未迁移族（批五号+逐族补齐，None 降级是协议合法形态）——
+    // dp/linked_list_delete/gcd/is_prime/hanoi/seq_list/
     // linked_list_append/circular_queue/linked_stack/linked_queue/
     // hash_table/josephus/circular_linked_list/static_linked_list/
-    // union_find/prim_mst/kruskal_mst/dijkstra/floyd/topological_sort
+    // union_find
     _ => None
   }
 }

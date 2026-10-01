@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（S8 teaching 批四号：graph 族 + serve 标注端到端接线 + 族级 golden 对拍器，2026-10-01）
+
+- **graph 族七算法**（判据照搬 detector/graph.rs——U1#1 P0-2 收紧版全命名主导；infer 照搬 algorithm_steps/graph.rs——BFS 起点入队文案区分 P1-6 / Prim lowcost[k]=0 收紧 P1-76 / Dijkstra visited[u]=1 收紧 P0-1 / 拓扑 output 挂真输出行 §6-5 v4 #112 全注释照搬；锚八条含 oracle 两侧 tests 照搬与 phase 表）。teaching/steps 达 **五族 28/42 算法**。
+- **serve 通道算法标注端到端接线**（此前 compile 分叉① algorithm_matches 恒空 + collector algorithm_step 恒 None 占位）：compile 尾段接 `detect_algorithms`；time_travel collector 接 `infer_algorithm_step` + U1#1 管道三状态（`AlgoInferCtx` 引擎内聚——session import time_travel 成环，Rust 侧 session 三字段的落位裁定；跨 seek 不回滚与 Rust 同语义）+ InferEnv 三类帧上下文（prev_vars 行入口快照/at_callee_entry/lookahead 下 3 行）照搬。
+- **破坏性面变更**：`AlgorithmMatch` 自 session/dto 收编 **protocol**（VisEvent/RootCauseHint 同款先例；session import time_travel 成环下解锁 time_travel/teaching 消费——Rust 侧该类型两域各一份靠 map 转换，本侧单源不造孪生）；`StepCollector::collect` 增第五参 `AlgoInferCtx`；`UnifiedEngine` 新增 `algo` 字段 + `set_algorithm_matches` 写入口。
+- **`teaching/steps` L9→L8 层位变更**（time_travel 同日先例之后第二件）：serve compile/collector 双面消费暴露 gateway/time_travel(L8)→teaching(L9) 违反 §4 单向约束；依赖面全 ≤L8，标注判据/推断是编排消费的教学语义词汇（与 protocol semantic_label 词汇表同族）。§4 连坐 + pkg_deps rules.json。
+- **`scripts/teaching_annotation_diff`**（族级增量对拍器，Go）：MoonBit cmd/serve vs Rust golden（algorithm_annotations_v3.json）的标注首现序列比对——compile→run→step.begin→step.next×4000 提取（口径照搬 native golden test：(phase,desc) 去重键 + 六字段条目），按已迁移族过滤（rules.json 外置迁移集+豁免面+僵尸审计），双向模板集断言。**全量 82 模板绿（230 条首现逐条一致）**；J9 双路证红（golden 篡改→连锁红；budget 缩减→首现缺失红）；CI core job 接线。
+- **接线双锚**（gateway wbtest）：bubble_sort 正向（compile 检出→matches 注入→帧带标注全链）+ gcd 反向（未迁移族恒 null）。锚源码形状实锤登记：main 一行多语句形态 VM 帧行号不前进（标注面合法零命中，非接线缺陷）。
+
 ### Fixed（`apply_reply` 幽灵栈值——va_copy/变参嵌套全零缺陷，2026-09-26）
 
 - **变参函数第二次调用起 `va_arg` 读全零**（`baseline/e1_va_copy.c`，全量 vm_diff 首轮发现）：`sum_twice(3, 1.0, 2.0, 3.5)` 返回 0.0（oracle 13.0）；最小探针定形为「**变参调用会把先于它压入的实参清零**」（`add(sum_once(2,15,25), 65)` → `add(40, 0)`）。

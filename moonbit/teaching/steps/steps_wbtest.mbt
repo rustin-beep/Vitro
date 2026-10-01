@@ -81,7 +81,7 @@ test "teaching_detect_merge_word_context" {
 ///|
 /// 锚五：infer 冒泡——外层趟文案（第 pass 趟 + 第 kth 大——概念教反
 /// 修复的回归形态：pass == kth）。
-fn mk_alg(name : String, display : String) -> @session.AlgorithmMatch {
+fn mk_alg(name : String, display : String) -> @protocol.AlgorithmMatch {
   {
     name,
     display_name: display,
@@ -316,7 +316,7 @@ test "teaching_parse_int_boundaries" {
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
-fn mk_alg2(name : String, display : String) -> @session.AlgorithmMatch {
+fn mk_alg2(name : String, display : String) -> @protocol.AlgorithmMatch {
   {
     name,
     display_name: display,
@@ -498,7 +498,7 @@ test "teaching_detect_search_and_string" {
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
-fn fnames(ms : Array[@session.AlgorithmMatch]) -> Array[String] {
+fn fnames(ms : Array[@protocol.AlgorithmMatch]) -> Array[String] {
   let out : Array[String] = []
   for m in ms {
     out.push(m.name)
@@ -603,7 +603,7 @@ test "teaching_detect_bare_names_no_ctx_rejected" {
 ///|
 /// 锚二十四（二审 P0-B 方案②回归照搬）：validate 三 phase 落模板行。
 test "teaching_infer_validate_phases_match_lines" {
-  let alg : @session.AlgorithmMatch = {
+  let alg : @protocol.AlgorithmMatch = {
     name: "bst_validate",
     display_name: "BST 合法性校验",
     func_name: "isValidBST",
@@ -648,7 +648,7 @@ test "teaching_infer_validate_phases_match_lines" {
 ///|
 /// 锚二十五（反向照搬）：普通比较行不判区间校验。
 test "teaching_infer_validate_rejects_plain_compare" {
-  let alg : @session.AlgorithmMatch = {
+  let alg : @protocol.AlgorithmMatch = {
     name: "bst_validate",
     display_name: "BST 合法性校验",
     func_name: "isValidBST",
@@ -674,7 +674,7 @@ test "teaching_infer_validate_rejects_plain_compare" {
 ///|
 /// 锚二十六（照搬）：bst_delete 八行 phase 表。
 test "teaching_infer_delete_phases_table" {
-  let alg : @session.AlgorithmMatch = {
+  let alg : @protocol.AlgorithmMatch = {
     name: "bst_delete",
     display_name: "BST 删除",
     func_name: "deleteNode",
@@ -711,7 +711,7 @@ test "teaching_infer_delete_phases_table" {
 ///|
 /// 锚二十七（反向照搬）：bst_delete 无关行不标注。
 test "teaching_infer_delete_rejects_unrelated" {
-  let alg : @session.AlgorithmMatch = {
+  let alg : @protocol.AlgorithmMatch = {
     name: "bst_delete",
     display_name: "BST 删除",
     func_name: "deleteNode",
@@ -734,4 +734,296 @@ test "teaching_infer_delete_rejects_unrelated" {
     )
     assert_true(r is None, msg="无关行不应标注：\{src}")
   }
+}
+
+///|
+/// 锚二十八（U1#1 P0-2 照搬）：linearSearch（单循环）曾被 BFS 结构分支
+/// 误判——"linear(linearSearch) → BFS 遍历完成"；收紧后命名主导不误判。
+/// （Rust 锚的 cfg_has_back_edge 字段本侧 CFG 分叉恒默认——分叉登记见
+/// moon.pkg 头注，锚取 has_single_loop 表达同款"带回边的单循环"。）
+test "teaching_detect_linear_search_not_bfs" {
+  let f = FuncFeatures::default()
+  f.has_single_loop = true
+  let m = detect_graph("linearsearch", f, "linearSearch", 1)
+  let mut names = ""
+  for x in m {
+    names = "\{names} \{x.name}"
+  }
+  assert_eq(m.length(), 0, msg="linearSearch 不应被判 BFS:\{names}")
+}
+
+///|
+/// 锚二十九（U1#1 P0-2 照搬）：递归 binarySearch 曾被 DFS 结构分支误判。
+test "teaching_detect_recursive_binary_search_not_dfs" {
+  let f = FuncFeatures::default()
+  f.is_recursive = true
+  let m = detect_graph("binarysearch", f, "binarySearch", 1)
+  assert_eq(m.length(), 0, msg="递归 binarySearch 不应被判 DFS")
+}
+
+///|
+/// 锚三十（反向照搬）：bfs/dfs 命名仍识别。
+test "teaching_detect_graph_names_still_detected" {
+  let f = FuncFeatures::default()
+  let m1 = detect_graph("bfs", f, "bfs", 1)
+  let mut hit1 = false
+  for x in m1 {
+    if x.name == "bfs" {
+      hit1 = true
+    }
+  }
+  assert_true(hit1, msg="bfs 应识别 BFS")
+  let m2 = detect_graph("dfs_graph", f, "dfs_graph", 1)
+  let mut hit2 = false
+  for x in m2 {
+    if x.name == "dfs" {
+      hit2 = true
+    }
+  }
+  assert_true(hit2, msg="dfs_graph 应识别 DFS")
+}
+
+///|
+/// 锚三十一：graph 七算法命名正面覆盖（判据全分支 + display_name 逐条）。
+test "teaching_detect_graph_all_seven" {
+  let f = FuncFeatures::default()
+  let cases : Array[(String, String, String)] = [
+    ("bfs_traverse", "bfs", "BFS 广度优先搜索"),
+    ("breadth_first", "bfs", "BFS 广度优先搜索"),
+    ("depth_first", "dfs", "DFS 深度优先搜索"),
+    ("prim_mst", "prim_mst", "Prim 最小生成树"),
+    ("kruskal_mst", "kruskal_mst", "Kruskal 最小生成树"),
+    ("dijkstra_sp", "dijkstra", "Dijkstra 最短路径"),
+    ("floyd_warshall", "floyd", "Floyd 最短路径"),
+    ("topological_sort", "topological_sort", "拓扑排序"),
+  ]
+  for c in cases {
+    let (nm, want, display) = c
+    let m = detect_graph(nm.to_lower(), f, nm, 1)
+    let mut hit = false
+    for x in m {
+      if x.name == want {
+        hit = true
+        assert_eq(
+          x.display_name,
+          display,
+          msg="\{nm} display_name 应为 \{display}",
+        )
+      }
+    }
+    assert_true(hit, msg="\{nm} 应识别 \{want}")
+  }
+}
+
+///|
+/// 锚三十二（U1#1 P0-1 复审照搬）：初始化行 `visited[v0] = 1;` 不得被判
+/// "确认顶点"（u 未初始化哨兵 -1，实测输出"顶点 -1 的最短距离已确定"）。
+test "teaching_infer_dijkstra_init_line_not_confirmed" {
+  let alg = mk_alg("dijkstra", "Dijkstra 最短路径")
+  let vars : Array[VarSnapshot] = [{ name: "u", value: "-1", }]
+  let r = infer_algorithm_step(
+    5,
+    vars,
+    "dijkstra",
+    "visited[v0] = 1;",
+    Some(alg),
+    empty_env(),
+  )
+  // 照搬 oracle 断言语义：None 或文案不含 -1
+  guard r is Some(step) else { return }
+  assert_false(
+    step.description.contains("-1"),
+    msg="初始化行不应产出「顶点 -1 已确定」",
+  )
+}
+
+///|
+/// 锚三十三（反向照搬）：`visited[u] = 1;` 仍产出 confirm。
+test "teaching_infer_dijkstra_visited_u_confirms" {
+  let alg = mk_alg("dijkstra", "Dijkstra 最短路径")
+  let vars : Array[VarSnapshot] = [{ name: "u", value: "1", }]
+  let r = infer_algorithm_step(
+    6,
+    vars,
+    "dijkstra",
+    "visited[u] = 1;",
+    Some(alg),
+    empty_env(),
+  )
+  guard r is Some(step) else {
+    fail("visited[u] 行应有标注")
+    return
+  }
+  assert_eq(step.phase, "confirm", msg="phase 应为 confirm")
+  assert_true(
+    step.description.contains("顶点 1"),
+    msg="文案应含「顶点 1」",
+  )
+}
+
+///|
+/// 锚三十四：infer BFS 六分支 phase 表（含 P1-6 起点入队文案区分）。
+test "teaching_infer_bfs_phases_table" {
+  let alg = mk_alg("bfs", "BFS 广度优先搜索")
+  let vars : Array[VarSnapshot] = [
+    { name: "u", value: "3", },
+    { name: "front", value: "1", },
+    { name: "rear", value: "5", },
+  ]
+  let cases : Array[(String, String)] = [
+    ("while (front < rear) {", "loop"),
+    ("int u = queue[front++];", "dequeue"),
+    ("queue[rear++] = start;", "enqueue"),
+    ("queue[rear++] = w;", "enqueue"),
+    ("visited[u] = 1;", "visit"),
+    ("return 0;", "finish"),
+  ]
+  for c in cases {
+    let (src, phase) = c
+    let r = infer_algorithm_step(
+      7,
+      vars,
+      "bfsGraph",
+      src,
+      Some(alg),
+      empty_env(),
+    )
+    guard r is Some(step) else {
+      fail("BFS 行应有标注：\{src}")
+      return
+    }
+    assert_eq(step.phase, phase, msg="\{src} phase 应为 \{phase}")
+  }
+  // 起点入队文案区分（P1-6）：start 版「起点入队」、邻居版「邻居节点入队」
+  let r1 = infer_algorithm_step(
+    7,
+    vars,
+    "bfsGraph",
+    "queue[rear++] = start;",
+    Some(alg),
+    empty_env(),
+  )
+  guard r1 is Some(s1) else {
+    fail("起点入队行应有标注")
+    return
+  }
+  assert_eq(s1.description, "起点入队", msg="start 版文案")
+  let r2 = infer_algorithm_step(
+    7,
+    vars,
+    "bfsGraph",
+    "queue[rear++] = w;",
+    Some(alg),
+    empty_env(),
+  )
+  guard r2 is Some(s2) else {
+    fail("邻居入队行应有标注")
+    return
+  }
+  assert_eq(s2.description, "邻居节点入队", msg="邻居版文案")
+  // loop 文案实际值（front=1, rear=5）
+  let r3 = infer_algorithm_step(
+    7,
+    vars,
+    "bfsGraph",
+    "while (front < rear) {",
+    Some(alg),
+    empty_env(),
+  )
+  guard r3 is Some(s3) else {
+    fail("while 行应有标注")
+    return
+  }
+  assert_eq(
+    s3.description,
+    "队列非空，继续广度优先搜索 [front=1, rear=5]",
+    msg="loop 文案实际值",
+  )
+}
+
+///|
+/// 锚三十五：graph 其余六算法 phase 表（主分派臂接线覆盖——dfs 递归判定
+/// 用原大小写行、prim P1-76 收紧、kruskal/dijkstra/floyd/topological 全
+/// 分支）。
+test "teaching_infer_graph_remaining_phases_table" {
+  let k2 : Array[VarSnapshot] = [{ name: "k", value: "2", }]
+  // (算法, 行, func_name, 期望 phase)
+  let cases : Array[(String, String, String, String)] = [
+    ("dfs", "dfsGraph(w, adj, visited);", "dfsGraph", "recursive"),
+    ("dfs", "for (int i = 0; i < n; i++) {", "dfsGraph", "scan"),
+    ("dfs", "return;", "dfsGraph", "finish"),
+    ("prim_mst", "k = min_dist(lowcost, n, INF);", "primMst", "select_min"),
+    ("prim_mst", "lowcost[k] = 0;", "primMst", "add_vertex"),
+    ("prim_mst", "if (g[k][j] < lowcost[j]) {", "primMst", "update"),
+    ("kruskal_mst", "return edges[i].w < edges[j].w;", "kruskal", "sort"),
+    (
+      "kruskal_mst", "if (find(parent, x) != find(parent, y)) {", "kruskal", "check_cycle",
+    ),
+    ("kruskal_mst", "union_parent(parent, x, y);", "kruskal", "add_edge"),
+    ("dijkstra", "u = min_dist(dist, INF, visited, n);", "dijkstra", "select"),
+    ("dijkstra", "if (dist[u] + g[u][j] < dist[j]) {", "dijkstra", "relax"),
+    ("floyd", "for (k = 0; k < n; k++) {", "floyd", "outer_loop"),
+    ("floyd", "if (g[i][k] + g[k][j] < g[i][j]) {", "floyd", "relax"),
+    (
+      "topological_sort", "if (indegree[i] == 0) queue[rear++] = i;", "topo", "enqueue",
+    ),
+    ("topological_sort", "printf(\"%d \", u);", "topo", "output"),
+    ("topological_sort", "int u = queue[front++];", "topo", "dequeue"),
+    ("topological_sort", "indegree[w]--;", "topo", "decrease"),
+  ]
+  for c in cases {
+    let (alg_name, src, fname, phase) = c
+    let r = infer_algorithm_step(
+      9,
+      k2,
+      fname,
+      src,
+      Some(mk_alg(alg_name, alg_name)),
+      empty_env(),
+    )
+    guard r is Some(step) else {
+      fail("[\{alg_name}] 行应有标注：\{src}")
+      return
+    }
+    assert_eq(
+      step.phase,
+      phase,
+      msg="[\{alg_name}] \{src} phase 应为 \{phase}（实际 \{step.phase}）",
+    )
+  }
+  // prim select_min 文案带 k 实际值（k=2）
+  let r = infer_algorithm_step(
+    9,
+    k2,
+    "primMst",
+    "k = min_dist(lowcost, n, INF);",
+    Some(mk_alg("prim_mst", "prim_mst")),
+    empty_env(),
+  )
+  guard r is Some(step) else {
+    fail("prim select_min 行应有标注")
+    return
+  }
+  assert_eq(
+    step.description,
+    "选择最小边，顶点 k=2",
+    msg="prim select_min 文案实际值",
+  )
+  // P1-76 收紧反向：初始化行 `lowcost[0] = 0;` 不产 add_vertex
+  let r0 = infer_algorithm_step(
+    9,
+    k2,
+    "primMst",
+    "lowcost[0] = 0;",
+    Some(mk_alg("prim_mst", "prim_mst")),
+    empty_env(),
+  )
+  let bad = match r0 {
+    None => false
+    Some(step) => step.description.contains("-1")
+  }
+  assert_false(
+    bad,
+    msg="初始化行 lowcost[0]=0 不应产「顶点 -1 加入生成树」",
+  )
 }

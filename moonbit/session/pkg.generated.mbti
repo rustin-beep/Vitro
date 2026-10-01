@@ -15,23 +15,13 @@ import {
 // Errors
 
 // Types and methods
-pub(all) struct AlgorithmMatch {
-  name : String
-  display_name : String
-  func_name : String
-  confidence : Int
-  suggestion : String
-  line : Int
-  vis_events : Array[@protocol.VisEvent]
-} derive(@debug.Debug)
-
 pub(all) struct CompileState {
   mut errors : String
   mut compile_units : Array[CompileUnit]
   mut compiled : Bool
   mut output : @bytecode.CompileOutput?
   mut diagnostics : Array[Diagnostic]
-  mut algorithm_matches : Array[AlgorithmMatch]
+  mut algorithm_matches : Array[@protocol.AlgorithmMatch]
   mut struct_fields : Map[String, Array[(String, Int)]]
   mut file_ranges : Array[FileRange]
   mut preprocessor_trace : Array[String]

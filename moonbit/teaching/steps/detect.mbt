@@ -8,8 +8,8 @@
 /// 检测程序中的所有算法模式（逐函数特征提取 + 各族判据）。
 pub fn detect_algorithms(
   program : @ast.ProgramNode,
-) -> Array[@session.AlgorithmMatch] {
-  let matches : Array[@session.AlgorithmMatch] = []
+) -> Array[@protocol.AlgorithmMatch] {
+  let matches : Array[@protocol.AlgorithmMatch] = []
   for func in program.funcs {
     match func.body {
       Some(body) =>
@@ -28,10 +28,10 @@ pub fn detect_algorithms(
 fn detect_in_func(
   func : @ast.FuncDecl,
   body : @ast.Stmt,
-) -> Array[@session.AlgorithmMatch] {
+) -> Array[@protocol.AlgorithmMatch] {
   let features = extract_features(func, body)
   let name_lower = func.name.to_lower()
-  let matches : Array[@session.AlgorithmMatch] = []
+  let matches : Array[@protocol.AlgorithmMatch] = []
   // 族序 = oracle 次序（detector/mod.rs:35-41：sorting → search →
   // graph → tree → structures → string → math + dp 附加）——输出数组
   // 是对外面，序即契约（B13：同命中多族的输入两侧元素序必须一致，
@@ -43,7 +43,9 @@ fn detect_in_func(
   for m in detect_search(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
-  // graph（未迁移——oracle 位点在此）
+  for m in detect_graph(name_lower, features, func.name, func.loc.line) {
+    matches.push(m)
+  }
   for m in detect_tree(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
@@ -62,8 +64,8 @@ pub fn detect_sorting(
   features : FuncFeatures,
   func_name : String,
   line : Int,
-) -> Array[@session.AlgorithmMatch] {
-  let matches : Array[@session.AlgorithmMatch] = []
+) -> Array[@protocol.AlgorithmMatch] {
+  let matches : Array[@protocol.AlgorithmMatch] = []
   // 冒泡排序
   if name_lower.contains("bubble") ||
     (

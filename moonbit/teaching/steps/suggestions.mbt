@@ -11,7 +11,7 @@ pub fn build_match(
   func_name : String,
   line : Int,
   compare_lines : Array[(Int, Int, String)],
-) -> @session.AlgorithmMatch {
+) -> @protocol.AlgorithmMatch {
   let suggestion = match name {
     "bubble_sort" =>
       "冒泡排序：通过相邻元素两两比较并交换，将最大元素逐步「冒泡」到数组末尾。时间复杂度 O(n²)。"

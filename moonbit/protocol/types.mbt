@@ -40,6 +40,21 @@ pub(all) struct RootCauseHint {
 } derive(Debug)
 
 ///|
+/// 算法匹配（语义标注检测产物——2026-10-01 批四号自 session/dto.mbt 收拢
+/// 进本包：session import time_travel 成环约束下，time_travel/teaching 两侧
+/// 消费须走 protocol〔VisEvent/RootCauseHint 同款收编先例〕；Rust 侧该类型
+/// 在 algorithm_detector/session 两域各一份靠 map 转换，本侧单源不造孪生）。
+pub(all) struct AlgorithmMatch {
+  name : String
+  display_name : String
+  func_name : String
+  confidence : Int
+  suggestion : String
+  line : Int
+  vis_events : Array[VisEvent]
+} derive(Debug)
+
+///|
 /// 算法步骤语义快照（用于前端步骤标注）。
 pub(all) struct AlgorithmStepSnapshot {
   algorithm_name : String

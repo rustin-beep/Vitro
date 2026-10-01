@@ -8,7 +8,7 @@
 fn infer_bst_insert(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
@@ -44,7 +44,7 @@ fn infer_bst_insert(
 fn infer_bst_validate(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
   env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
@@ -91,7 +91,7 @@ fn infer_bst_validate(
 fn infer_bst_delete(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
@@ -163,7 +163,7 @@ fn infer_bst_delete(
 fn infer_bst_search(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
@@ -194,7 +194,7 @@ fn infer_bst_search(
 fn infer_level_order(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
   let line_lower = source_line.to_lower()
@@ -226,7 +226,7 @@ fn infer_level_order(
 fn infer_threaded_binary_tree(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
   let line_lower = source_line.to_lower()
@@ -260,7 +260,7 @@ fn infer_threaded_binary_tree(
 fn infer_huffman_tree(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
   let line_lower = source_line.to_lower()
@@ -286,7 +286,7 @@ fn infer_huffman_tree(
 fn infer_avl_tree(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   ignore(vars)
   let line_lower = source_line.to_lower()

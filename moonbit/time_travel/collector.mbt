@@ -8,11 +8,47 @@
 /// - 热力图计数：`heatmap_count` 传值（编排层从会话运行态取）；
 /// - freed 堆判定：走 `vm.mem_map`（MoonBit 侧内存本就在 vm 上——比
 ///   Rust 侧少一处 session.memory 依赖）；
-/// - **algorithm_step 恒 None 占位**：Rust 侧该字段依赖
-///   vitro_algorithm_steps 的 43 判据（teaching/steps 批范围）——接线随
-///   S8 teaching 批，此处登记不实现；
-/// - **U1#1 管道（row_entry_vars/last_line/last_frame_vars）未迁**：仅
-///   服务算法步骤推断的 prev_vars 环境，与 algorithm_step 同批接线。
+/// - **algorithm_step 已接线**（2026-10-01 批四号）：teaching/steps 的
+///   `infer_algorithm_step` + U1#1 管道三状态（row_entry_vars/last_line/
+///   last_frame_vars）——Rust 侧在 session 上（collector 拿 &Session），
+///   本侧 session import time_travel 成环，状态内聚 `AlgoInferCtx`
+///   （编排层直供 matches，moon.pkg 头注「AlgorithmContext 不迁——编排层
+///   直供」先例的落地形态）。
+
+///|
+/// 算法步骤推断上下文（Rust session.unified_{row_entry_vars,last_line,
+/// last_frame_vars} 三字段 + algorithm_matches 的引擎侧内聚；批四号接线
+/// 裁定——跨 seek 不回滚，与 Rust session 字段「重放连续演化」同语义）。
+pub struct AlgoInferCtx {
+  /// 编译期检测产物（编排层 compile 时注入；空 = 全部帧无标注降级）。
+  mut matches : Array[@protocol.AlgorithmMatch]
+  /// 行入口变量快照（U1#1 P0-4——「展示运算过程」的 phase 用它拼算式：
+  /// 行末帧的 b 已被本语句赋值）。
+  mut row_entry_vars : Array[@steps.VarSnapshot]
+  /// 上一帧行号（行变化检测）。
+  mut last_line : Int
+  /// 上一帧变量快照（行末固化，供下一行的 row_entry_vars）。
+  mut last_frame_vars : Array[@steps.VarSnapshot]
+}
+
+///|
+pub fn AlgoInferCtx::new() -> AlgoInferCtx {
+  { matches: [], row_entry_vars: [], last_line: 0, last_frame_vars: [], }
+}
+
+///|
+/// 按 func_name 查匹配（Rust session find_algorithm——首中，大小写敏感）。
+fn find_algo_match(
+  algo : AlgoInferCtx,
+  func_name : String,
+) -> @protocol.AlgorithmMatch? {
+  for m in algo.matches {
+    if m.func_name == func_name {
+      return Some(m)
+    }
+  }
+  None
+}
 ///
 /// **判定顺序契约**（Rust collector.rs:405-412 修订注释照搬）：具体语句
 /// 模式优先于循环上下文——旧序把 loop_depth 置前导致循环后的
@@ -30,12 +66,14 @@ pub(open) trait SourceLineProvider {
 
 ///|
 /// 采集一帧（Rust StepCollector::collect 照搬；纯函数形态——状态在调用
-/// 方 engine/编排层，本侧无采集器状态故不设 struct 壳）。
+/// 方 engine/编排层，本侧无采集器状态故不设 struct 壳；算法推断三状态
+/// 经 AlgoInferCtx 由调用方持入）。
 pub fn[P : SourceLineProvider] collect(
   vm : @vm.VitroVM,
   src : P,
   heatmap_count : UInt64,
   step_index : Int,
+  algo : AlgoInferCtx,
 ) -> @protocol.StepPayload {
   let code_line = vm.get_current_line()
   let cs_len = vm.call_stack_len()
@@ -134,6 +172,56 @@ pub fn[P : SourceLineProvider] collect(
     source_line,
     at_callee_entry,
   )
+  // 算法步骤推断（Rust collector.rs:83-118 照搬）：行入口快照维护（行变
+  // 化时把上一行末帧固化）→ 变量映射（name/value 两字段）→ env 三类帧
+  // 上下文 → 推断；last_frame_vars 无条件固化（find 失败也维护——Rust
+  // 同形）。
+  if code_line != algo.last_line {
+    algo.row_entry_vars = algo.last_frame_vars.copy()
+    algo.last_line = code_line
+  }
+  let algo_vars : Array[@steps.VarSnapshot] = []
+  for v in local_vars {
+    algo_vars.push({ name: v.name, value: v.value, })
+  }
+  let algorithm_step : @protocol.AlgorithmStepSnapshot? = match
+    find_algo_match(algo, func_name) {
+    None => None
+    Some(am) => {
+      // caller_is_main：栈深 ≥2 且倒数第二层是 main（Rust
+      // eq_ignore_ascii_case——ASCII 域 to_lower 等价）
+      let caller_is_main = cs_len >= 2 &&
+        vm.call_stack_at(cs_len - 2).func_name.to_lower() == "main"
+      // lookahead：下 3 行源码（trim——Rust ctx.source_line 口径；多行
+      // for 的体不在 for 行内，+1 行不够——U1#1 P1-1）
+      let lab = StringBuilder()
+      for dl = 1; dl <= 3; dl = dl + 1 {
+        match src.source_line_at(code_line + dl) {
+          Some(l) => {
+            lab.write_string(l.trim().to_string())
+            lab.write_char('\n')
+          }
+          None => ()
+        }
+      }
+      let env : @steps.InferEnv = {
+        prev_vars: algo.row_entry_vars,
+        at_callee_entry,
+        caller_is_main,
+        lookahead: lab.to_string(),
+      }
+      let step = @steps.infer_algorithm_step(
+        code_line,
+        algo_vars,
+        func_name,
+        source_line,
+        Some(am),
+        env,
+      )
+      step
+    }
+  }
+  algo.last_frame_vars = algo_vars
   // 最近访问变量（Read/Write 文本形态——保持 Rust String 形态不造枚举）
   let accessed_vars : Array[@protocol.AccessedVar] = []
   let mut ai = 0
@@ -154,7 +242,7 @@ pub fn[P : SourceLineProvider] collect(
     code_line,
     func_name,
     semantic_label,
-    algorithm_step: None, // 占位——随 teaching 批接线（模块头注）
+    algorithm_step,
     local_vars,
     call_stack,
     vis_events,

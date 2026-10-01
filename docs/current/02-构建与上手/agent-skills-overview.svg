@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 904" role="img" aria-label="vitro Agent Skills 全景">
-  <title>Vitro Agent Skills · 6 个项目专属操作手册</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1096" role="img" aria-label="vitro Agent Skills 全景">
+  <title>Vitro Agent Skills · 7 个项目专属操作手册</title>
   <!-- 由 scripts/gen_svg 生成（勿手改）：内容从 .agents/skills/ 盘上目录与 SKILL.md frontmatter 扫描生成——skill 增删改名 / 描述变更必致本图失步，gen_svg -check（CI）即红；权威清单 .agents/README.md -->
   <style>
     .bg     { fill: #FFFFFF; }
@@ -31,8 +31,8 @@
       .tm, .tc { fill: #94A3AD; }
     }
   </style>
-  <rect class="bg" width="1200" height="904"/>
-<text class="tt" x="600" y="56" text-anchor="middle">Vitro Agent Skills · 6 个项目专属操作手册</text>
+  <rect class="bg" width="1200" height="1096"/>
+<text class="tt" x="600" y="56" text-anchor="middle">Vitro Agent Skills · 7 个项目专属操作手册</text>
 <text class="tm" x="600" y="94" text-anchor="middle">通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 go run .agents/install_skills.go --all 安装</text>
 <rect class="card" x="40" y="128" width="550" height="170" rx="12"/>
 <text class="tn" x="64" y="170" text-anchor="start">vitro-baseline-corpus-workflow</text>
@@ -47,20 +47,24 @@
 <text class="tc" x="64" y="398" text-anchor="start">Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生</text>
 <text class="tc" x="64" y="428" text-anchor="start">产陷阱。Use when writing or modifying a code…</text>
 <rect class="card" x="610" y="320" width="550" height="170" rx="12"/>
-<text class="tn" x="634" y="362" text-anchor="start">vitro-release-playbook</text>
-<text class="tc" x="634" y="398" text-anchor="start">Vitro mooncakes（vitro/engine）发版与彩排手册——版本定</text>
-<text class="tc" x="634" y="428" text-anchor="start">性、发布前置、moon publish 机械事实、registry 投放彩…</text>
+<text class="tn" x="634" y="362" text-anchor="start">vitro-realcode-diff-workflow</text>
+<text class="tc" x="634" y="398" text-anchor="start">Vitro 实机代码对拍审阅与外部 C 仓库勘探的完整工作流——</text>
+<text class="tc" x="634" y="428" text-anchor="start">三方对拍(Clang 真值/Vitro/oracle 同病)、已知缺陷指纹…</text>
 <rect class="card" x="40" y="512" width="550" height="170" rx="12"/>
-<text class="tn" x="64" y="554" text-anchor="start">vitro-toolchain-upgrade</text>
-<text class="tc" x="64" y="590" text-anchor="start">Vitro 项目 MoonBit 工具链漂移处置手册。Use when</text>
-<text class="tc" x="64" y="620" text-anchor="start">toolchain_probe reports version drift (A8),…</text>
+<text class="tn" x="64" y="554" text-anchor="start">vitro-release-playbook</text>
+<text class="tc" x="64" y="590" text-anchor="start">Vitro mooncakes（vitro/engine）发版与彩排手册——版本定</text>
+<text class="tc" x="64" y="620" text-anchor="start">性、发布前置、moon publish 机械事实、registry 投放彩…</text>
 <rect class="card" x="610" y="512" width="550" height="170" rx="12"/>
-<text class="tn" x="634" y="554" text-anchor="start">vitro-workspace-review</text>
-<text class="tc" x="634" y="590" text-anchor="start">审阅 Vitro 仓库的未提交改动、最近提交批，或仓库内人写</text>
-<text class="tc" x="634" y="620" text-anchor="start">的分析/判定脚本与方案主张。强制五阶段：全量门禁 → 逐…</text>
-<rect class="warn" x="40" y="704" width="1120" height="110" rx="12"/>
-<text class="t" x="600" y="740" text-anchor="middle">透明度与防漂移（CI 双闸）</text>
-<text class="tc" x="600" y="772" text-anchor="middle">skill 内容全部可读：.agents/skills/&lt;name&gt;/SKILL.md（+ references/）· 任何 skill 变更必经 git diff 人审</text>
-<text class="tc" x="600" y="798" text-anchor="middle">frontmatter 校验 go run .agents/install_skills.go --list（CI）· 本图失步即 gen_svg -check 红（CI）</text>
-<text class="tc" x="600" y="846" text-anchor="middle">权威清单与维护义务：.agents/README.md · 漂移重生成：go run ./scripts/gen_svg skills</text>
+<text class="tn" x="634" y="554" text-anchor="start">vitro-toolchain-upgrade</text>
+<text class="tc" x="634" y="590" text-anchor="start">Vitro 项目 MoonBit 工具链漂移处置手册。Use when</text>
+<text class="tc" x="634" y="620" text-anchor="start">toolchain_probe reports version drift (A8),…</text>
+<rect class="card" x="40" y="704" width="550" height="170" rx="12"/>
+<text class="tn" x="64" y="746" text-anchor="start">vitro-workspace-review</text>
+<text class="tc" x="64" y="782" text-anchor="start">审阅 Vitro 仓库的未提交改动、最近提交批，或仓库内人写</text>
+<text class="tc" x="64" y="812" text-anchor="start">的分析/判定脚本与方案主张。强制五阶段：全量门禁 → 逐…</text>
+<rect class="warn" x="40" y="896" width="1120" height="110" rx="12"/>
+<text class="t" x="600" y="932" text-anchor="middle">透明度与防漂移（CI 双闸）</text>
+<text class="tc" x="600" y="964" text-anchor="middle">skill 内容全部可读：.agents/skills/&lt;name&gt;/SKILL.md（+ references/）· 任何 skill 变更必经 git diff 人审</text>
+<text class="tc" x="600" y="990" text-anchor="middle">frontmatter 校验 go run .agents/install_skills.go --list（CI）· 本图失步即 gen_svg -check 红（CI）</text>
+<text class="tc" x="600" y="1038" text-anchor="middle">权威清单与维护义务：.agents/README.md · 漂移重生成：go run ./scripts/gen_svg skills</text>
 </svg>

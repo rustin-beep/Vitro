@@ -3,21 +3,21 @@
 // + **步骤推断**（native/crates/vitro_algorithm_steps/，2273 行）的教学
 // 域单源；AlgorithmMatch 消费 session 预埋形态（S7 dto——不造孪生）。
 //
-// 批切（一~三号已落 = 骨架 + features + sorting/search/string/tree
-// 四族 21/42 算法）；后续批 graph/dp/math/structures 四族（分派表
-// `_ => None` 段登记进度）。**对拍排期（2026-10-01 审阅 P2 调整）**：
+// 批切（一~四号已落 = 骨架 + features + sorting/search/string/tree/graph
+// 五族 28/42 算法）；后续批 dp/math/structures 三族（分派表 `_ => None`
+// 段登记进度）。**对拍排期（2026-10-01 审阅 P2 调整）**：
 // golden 三方 diff 不攒末批——按**族级增量**对已迁移族提前对拍
 //（algorithm_annotations_v3.json 按 algorithm 键过滤已迁移族条目）。
 //
-// 分叉登记（本批）：①CFG 四特征（early_return / back_edge / num_blocks /
+// 分叉登记（本包）：①CFG 四特征（early_return / back_edge / num_blocks /
 // unreachable）恒默认值——CFG 属 analysis 域（M7/M8 孤儿零调用者，价值
-// 复核随批），判据面现仅 graph 族消费 back_edge（sorting 零消费——
-// graph 族迁移时再定 CFG 迁移或轻量回边探测替代）；②Rust
+// 复核随批）；批四号销案：graph 族判据（U1#1 P0-2 收紧版）全命名主导、
+// 零结构特征消费，头注前身的「graph 族消费 back_edge」悬案以实测销案，
+// CFG 迁移决策继续悬置到 analysis 批（现全族零 CFG 消费）；②Rust
 // AlgorithmMatch.vis_events 的 compare_lines 投影本批照搬（protocol.
 // VisEvent 消费）。
 import {
   "vitro/engine/ast",
   "vitro/engine/protocol",
-  "vitro/engine/session",
   "vitro/engine/source",
 }

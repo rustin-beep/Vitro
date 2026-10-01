@@ -55,6 +55,16 @@ pub(all) struct AccessedVarRef {
   access_type_idx : Int
 } derive(@debug.Debug)
 
+pub(all) struct AlgorithmMatch {
+  name : String
+  display_name : String
+  func_name : String
+  confidence : Int
+  suggestion : String
+  line : Int
+  vis_events : Array[VisEvent]
+} derive(@debug.Debug)
+
 pub(all) struct AlgorithmStepSnapshot {
   algorithm_name : String
   display_name : String

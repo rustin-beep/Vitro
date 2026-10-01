@@ -23,16 +23,9 @@ pub(all) struct Diagnostic {
 } derive(Debug)
 
 ///|
-/// 算法匹配（语义标注——S8 analysis 片产出，此处承载形态）。
-pub(all) struct AlgorithmMatch {
-  name : String
-  display_name : String
-  func_name : String
-  confidence : Int
-  suggestion : String
-  line : Int
-  vis_events : Array[@protocol.VisEvent]
-} derive(Debug)
+/// 算法匹配（2026-10-01 批四号收拢至 protocol——session import
+/// time_travel 成环，time_travel/teaching 消费走 @protocol.AlgorithmMatch；
+/// 此处定义已删，session.algorithm_matches 字段类型随改）。
 
 ///|
 /// 执行追踪条目。

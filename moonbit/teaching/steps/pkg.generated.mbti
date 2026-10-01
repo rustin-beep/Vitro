@@ -5,21 +5,22 @@ import {
   "moonbitlang/core/debug",
   "vitro/engine/ast",
   "vitro/engine/protocol",
-  "vitro/engine/session",
 }
 
 // Values
-pub fn build_match(String, String, String, Int, Array[(Int, Int, String)]) -> @session.AlgorithmMatch
+pub fn build_match(String, String, String, Int, Array[(Int, Int, String)]) -> @protocol.AlgorithmMatch
 
-pub fn detect_algorithms(@ast.ProgramNode) -> Array[@session.AlgorithmMatch]
+pub fn detect_algorithms(@ast.ProgramNode) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_search(String, FuncFeatures, String, Int) -> Array[@session.AlgorithmMatch]
+pub fn detect_graph(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_sorting(String, FuncFeatures, String, Int) -> Array[@session.AlgorithmMatch]
+pub fn detect_search(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_string(String, String, Int) -> Array[@session.AlgorithmMatch]
+pub fn detect_sorting(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_tree(String, FuncFeatures, String, Int) -> Array[@session.AlgorithmMatch]
+pub fn detect_string(String, String, Int) -> Array[@protocol.AlgorithmMatch]
+
+pub fn detect_tree(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
 pub fn expr_to_string(@ast.Expr) -> String
 
@@ -27,7 +28,7 @@ pub fn extract_features(@ast.FuncDecl, @ast.Stmt) -> FuncFeatures
 
 pub fn has_word(String, String) -> Bool
 
-pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @session.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
+pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
 
 // Errors
 

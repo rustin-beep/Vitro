@@ -41,8 +41,9 @@ pub(all) struct CompileState {
   mut output : @bytecode.CompileOutput?
   /// 编译诊断（协议形态——含修复建议字段族）。
   mut diagnostics : Array[Diagnostic]
-  /// 算法匹配（语义标注批产出；S8 analysis 消费）。
-  mut algorithm_matches : Array[AlgorithmMatch]
+  /// 算法匹配（语义标注批产出；S8 teaching/analysis 消费——DTO 已收拢
+  /// protocol，2026-10-01 批四号）。
+  mut algorithm_matches : Array[@protocol.AlgorithmMatch]
   /// 结构体字段元数据（`名 → [(字段名, 偏移)]`——变量快照的 ty 渲染用）。
   mut struct_fields : Map[String, Array[(String, Int)]]
   /// 多文件会话的全局行号映射（空 = 单文件）。

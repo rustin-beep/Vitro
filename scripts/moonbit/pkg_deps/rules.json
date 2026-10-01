@@ -29,7 +29,7 @@
     "teaching": 9,
     "time_travel": 8,
     "gateway/wasm": 8,
-    "teaching/steps": 9
+    "teaching/steps": 8
   },
   "exempt_prefixes": [
     "cmd"

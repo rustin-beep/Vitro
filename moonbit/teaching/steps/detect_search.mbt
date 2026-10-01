@@ -11,8 +11,8 @@ pub fn detect_search(
   features : FuncFeatures,
   func_name : String,
   line : Int,
-) -> Array[@session.AlgorithmMatch] {
-  let matches : Array[@session.AlgorithmMatch] = []
+) -> Array[@protocol.AlgorithmMatch] {
+  let matches : Array[@protocol.AlgorithmMatch] = []
   // 二分查找
   if name_lower.contains("binary") ||
     name_lower.contains("bsearch") ||
@@ -40,8 +40,8 @@ pub fn detect_string(
   name_lower : String,
   func_name : String,
   line : Int,
-) -> Array[@session.AlgorithmMatch] {
-  let matches : Array[@session.AlgorithmMatch] = []
+) -> Array[@protocol.AlgorithmMatch] {
+  let matches : Array[@protocol.AlgorithmMatch] = []
   // 字符串反转
   if name_lower.contains("reverse") && name_lower.contains("str") {
     matches.push(

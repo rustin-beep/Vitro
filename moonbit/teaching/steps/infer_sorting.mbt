@@ -9,7 +9,7 @@
 fn infer_bubble_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let i = match vars.get_int("i") {
@@ -90,7 +90,7 @@ fn infer_bubble_sort(
 fn infer_selection_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let i = match vars.get_int("i") {
@@ -167,7 +167,7 @@ fn infer_selection_sort(
 fn infer_insertion_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
@@ -245,7 +245,7 @@ fn infer_insertion_sort(
 fn infer_quick_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
   env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
@@ -339,7 +339,7 @@ fn infer_quick_sort(
 fn infer_merge_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
   env : InferEnv,
 ) -> @protocol.AlgorithmStepSnapshot? {
@@ -396,7 +396,7 @@ fn infer_merge_sort(
 fn infer_heap_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
   func_name : String,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
@@ -436,7 +436,7 @@ fn infer_heap_sort(
 fn infer_shell_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let gap = match vars.get_int_any(["gap"]) {
@@ -481,7 +481,7 @@ fn infer_shell_sort(
 fn infer_counting_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   ignore(vars)
@@ -517,7 +517,7 @@ fn infer_counting_sort(
 fn infer_radix_sort(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let exp = match vars.get_int_any(["exp"]) {

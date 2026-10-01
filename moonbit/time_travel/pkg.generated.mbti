@@ -4,17 +4,26 @@ package "vitro/engine/time_travel"
 import {
   "moonbitlang/core/deque",
   "vitro/engine/protocol",
+  "vitro/engine/teaching/steps",
   "vitro/engine/vm",
 }
 
 // Values
-pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int) -> @protocol.StepPayload
+pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx) -> @protocol.StepPayload
 
 pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String
 
 // Errors
 
 // Types and methods
+pub struct AlgoInferCtx {
+  mut matches : Array[@protocol.AlgorithmMatch]
+  mut row_entry_vars : Array[@steps.VarSnapshot]
+  mut last_line : Int
+  mut last_frame_vars : Array[@steps.VarSnapshot]
+}
+pub fn AlgoInferCtx::new() -> Self
+
 pub struct CheckpointManager {
   checkpoints : Array[(Int, @vm.VMSnapshot)]
   interval : Int
@@ -62,6 +71,7 @@ pub struct UnifiedEngine {
   mut is_paused : Bool
   mut is_cancelled : Bool
   mut is_finished : Bool
+  algo : AlgoInferCtx
 }
 pub fn UnifiedEngine::cancel(Self) -> Unit
 pub fn UnifiedEngine::get_max_steps(Self) -> Int
@@ -72,6 +82,7 @@ pub fn UnifiedEngine::pause(Self) -> Unit
 pub fn UnifiedEngine::reset(Self) -> Unit
 pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(Self, @vm.VitroVM, P, Int) -> Result[@protocol.AutoStepResult, String]
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(Self, Int, @vm.VitroVM, P) -> @protocol.SeekResult
+pub fn UnifiedEngine::set_algorithm_matches(Self, Array[@protocol.AlgorithmMatch]) -> Unit
 pub fn UnifiedEngine::set_max_steps(Self, Int) -> Unit
 pub fn UnifiedEngine::unpause(Self) -> Unit
 pub fn UnifiedEngine::with_limits(Int, Int, Double) -> Self

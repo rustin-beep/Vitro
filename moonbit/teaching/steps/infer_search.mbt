@@ -10,7 +10,7 @@
 fn infer_binary_search(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let left = match vars.get_int_any(["left", "low", "l"]) {
@@ -103,7 +103,7 @@ fn infer_binary_search(
 fn infer_string_reverse(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let len = match vars.get_int_any(["len", "length"]) {
@@ -134,7 +134,7 @@ fn infer_string_reverse(
 fn infer_string_match_bf(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let i = match vars.get_int_any(["i"]) {
@@ -166,7 +166,7 @@ fn infer_string_match_bf(
 fn infer_string_match_kmp(
   source_line : String,
   vars : VarMap,
-  algorithm : @session.AlgorithmMatch,
+  algorithm : @protocol.AlgorithmMatch,
 ) -> @protocol.AlgorithmStepSnapshot? {
   let line_lower = source_line.to_lower()
   let j = match vars.get_int_any(["j"]) {

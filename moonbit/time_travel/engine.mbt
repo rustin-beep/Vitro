@@ -34,6 +34,9 @@ pub struct UnifiedEngine {
   mut is_cancelled : Bool
   /// 终结粘性（坑 ⑥-6：VM Finished 后不得重放末帧；reset 才清）。
   mut is_finished : Bool
+  /// 算法步骤推断上下文（批四号接线——matches 编排层 compile 时注入，
+  /// 三状态随帧演化；跨包只读，写经 set_algorithm_matches）。
+  pub algo : AlgoInferCtx
 }
 
 ///|
@@ -56,7 +59,22 @@ pub fn UnifiedEngine::with_max_steps(max_steps : Int) -> UnifiedEngine {
     is_paused: false,
     is_cancelled: false,
     is_finished: false,
+    algo: AlgoInferCtx::new(),
   }
+}
+
+///|
+/// 注入算法检测产物（批四号接线——serve compile 后编排层调用；新匹配集
+/// 伴随新程序，行入口三状态一并复位。Rust 侧三状态在 session 上跨
+/// engine 生命周期存活，reset 不动它们——本侧同语义）。
+pub fn UnifiedEngine::set_algorithm_matches(
+  self : UnifiedEngine,
+  matches : Array[@protocol.AlgorithmMatch],
+) -> Unit {
+  self.algo.matches = matches
+  self.algo.last_line = 0
+  self.algo.row_entry_vars = []
+  self.algo.last_frame_vars = []
 }
 
 ///|
@@ -207,22 +225,30 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
     match vm.step() {
       Ok => {
         let l2 = vm.get_current_line()
-        payloads.push(collect(vm, src, vm.heatmap_count_at(l2), step))
+        payloads.push(
+          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+        )
       }
       Paused => {
         let l2 = vm.get_current_line()
-        payloads.push(collect(vm, src, vm.heatmap_count_at(l2), step))
+        payloads.push(
+          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+        )
         self.is_paused = true
       }
       WaitingInput => {
         let l2 = vm.get_current_line()
-        payloads.push(collect(vm, src, vm.heatmap_count_at(l2), step))
+        payloads.push(
+          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+        )
         waiting_input = true
         break
       }
       Finished => {
         let l2 = vm.get_current_line()
-        payloads.push(collect(vm, src, vm.heatmap_count_at(l2), step))
+        payloads.push(
+          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+        )
         finished = true
         self.is_finished = true
         break
@@ -234,12 +260,18 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
         let msg = vm.error
         if self.rollback_before_trap(vm, step) {
           payloads.push(
-            collect(vm, src, vm.heatmap_count_at(vm.get_current_line()), step),
+            collect(
+              vm,
+              src,
+              vm.heatmap_count_at(vm.get_current_line()),
+              step,
+              self.algo,
+            ),
           )
         } else {
           // 结构性不可达：首循环 should_checkpoint(0) 恒真 ⇒ step ≥ 1 前
           // 必有检查点 0。防御形态 = 不回退（VM 停留 trap 态）收集。
-          payloads.push(collect(vm, src, 0UL, step))
+          payloads.push(collect(vm, src, 0UL, step, self.algo))
         }
         trapped = true
         trap_message = Some(msg)
@@ -355,7 +387,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                 let l2 = vm.get_current_line()
                 self.frames.push_or_replace_at(
                   pre_step,
-                  collect(vm, src, vm.heatmap_count_at(l2), pre_step),
+                  collect(vm, src, vm.heatmap_count_at(l2), pre_step, self.algo),
                 )
                 // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
                 // push 后立即 trim 的修复形态结构化）
@@ -368,6 +400,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                   src,
                   vm.heatmap_count_at(l2),
                   pre_step,
+                  self.algo,
                 )
                 self.frames.push_or_replace_at(pre_step, payload)
                 self.frames.finish_replay(target)

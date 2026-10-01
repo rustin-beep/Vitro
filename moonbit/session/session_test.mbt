@@ -47,7 +47,7 @@ test "blackbox_dto_surface" {
     replacement_text: "",
     filename: "main.c",
   }
-  let am : @session.AlgorithmMatch = {
+  let am : @protocol.AlgorithmMatch = {
     name: "bubble_sort",
     display_name: "冒泡排序",
     func_name: "main",

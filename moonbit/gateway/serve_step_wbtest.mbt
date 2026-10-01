@@ -177,3 +177,97 @@ test "serve_step_reset_invalidates_engine" {
   let (resp, _) = serve_handle(s, "{\"id\":4,\"method\":\"step.next\"}")
   assert_true(resp.contains("统一模式会话未初始化"))
 }
+
+///|
+/// 批四号接线锚一：serve 通道端到端出算法标注——compile（检测）→
+/// step.begin（matches 注入引擎）→ step.next（帧带 algorithm_step）。
+/// 冒泡源码（bubble 命名分支双命中）；回归形态 = matches 恒空 /
+/// AlgoInferCtx 未接线时该锚必红（标注全 null）。
+test "serve_step_algorithm_step_annotated" {
+  let s = @session.Session::new()
+  // 多行源码（行级判据依赖每语句独立行——starts_with("for ") 等在单行
+  // 源码上全失效；JSON \n 转义经 json_parse 还原。main 须逐语句分行：
+  // 一行多语句形态 VM 帧行号不前进（code_line 恒同一行），标注面合法
+  // 零命中——非接线缺陷，此处不测该形态）
+  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    "void bubbleSort(int arr[], int n) {\\n" +
+    "  int i, j, temp;\\n" +
+    "  for (i = 0; i < n - 1; i++) {\\n" +
+    "    for (j = 0; j < n - i - 1; j++) {\\n" +
+    "      if (arr[j] > arr[j + 1]) {\\n" +
+    "        temp = arr[j];\\n" +
+    "        arr[j] = arr[j + 1];\\n" +
+    "        arr[j + 1] = temp;\\n" +
+    "      }\\n" +
+    "    }\\n" +
+    "  }\\n" +
+    "}\\n" +
+    "int main() {\\n" +
+    "  int arr[3] = {3, 1, 2};\\n" +
+    "  int n = 3;\\n" +
+    "  bubbleSort(arr, n);\\n" +
+    "  return arr[0];\\n" +
+    "}\\n" +
+    "\"}}"
+  let (cresp, _) = serve_handle(s, jsrc)
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  // 检测面：compile 产物 matches 含 bubble_sort（serve_compile 接线）
+  let mut hit = false
+  for m in s.compile.algorithm_matches {
+    if m.name == "bubble_sort" {
+      hit = true
+    }
+  }
+  assert_true(hit, msg="compile 须检出 bubble_sort")
+  // run 先行（Rust golden test 提取序照搬：compile → run → step.begin →
+  // step.next——run 建立会话运行态）
+  ignore(serve_handle(s, "{\"id\":9,\"method\":\"run\"}"))
+  let (bresp, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
+  assert_true(bresp.contains("\"ready\":true"))
+  // 推断面：逐帧推进，交换行帧应带 bubble_sort 标注
+  let mut annotated = false
+  for k = 0; k < 64; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{10 + k},\"method\":\"step.next\"}")
+    if r.contains("\"algorithm_name\":\"bubble_sort\"") {
+      annotated = true
+    }
+  }
+  assert_true(
+    annotated,
+    msg="64 帧内应出现 bubble_sort 标注（接线回归 = 全 null）",
+  )
+}
+
+///|
+/// 批四号接线锚二（反向）：未迁移族（gcd）判据不命中——帧 algorithm_step
+/// 恒 null（None 降级是协议合法形态；分派表未迁移段）。
+test "serve_step_unmigrated_family_stays_null" {
+  let s = @session.Session::new()
+  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    "int gcd(int a, int b) {\\n" +
+    "  while (b != 0) { int t = a % b; a = b; b = t; }\\n" +
+    "  return a;\\n" +
+    "}\\n" +
+    "int main() { return gcd(48, 18); }\\n" +
+    "\"}}"
+  let (cresp, _) = serve_handle(s, jsrc)
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  let mut detected = false
+  for m in s.compile.algorithm_matches {
+    if m.name == "gcd" {
+      detected = true
+    }
+  }
+  assert_false(
+    detected,
+    msg="gcd 未迁移——判据不命中（detect 面零标注）",
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  for k = 0; k < 20; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{30 + k},\"method\":\"step.next\"}")
+    assert_false(
+      r.contains("\"algorithm_name\""),
+      msg="未迁移族帧不得带标注（帧长 \{r.length()}）",
+    )
+  }
+}

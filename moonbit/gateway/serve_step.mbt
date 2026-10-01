@@ -226,6 +226,10 @@ fn serve_step_begin_frame(
   }
   s.unified_pending = None
   let engine = @time_travel.UnifiedEngine::new()
+  // 算法检测产物注入（批四号接线——compile 通道产出 matches，引擎侧
+  // AlgoInferCtx 消费；Rust 侧经 session AlgorithmContext::find_algorithm
+  // 查询，本侧编排层直供同语义）
+  engine.set_algorithm_matches(s.compile.algorithm_matches)
   // vm 五步重建（非 resume 形态——与 serve_execute_run 同源；输出清 +
   // vfs 重建 + 装载 + 动态堆起点 + 预设注入）
   s.vm.output.clear()

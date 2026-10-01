@@ -10,8 +10,8 @@ pub fn detect_tree(
   features : FuncFeatures,
   func_name : String,
   line : Int,
-) -> Array[@session.AlgorithmMatch] {
-  let matches : Array[@session.AlgorithmMatch] = []
+) -> Array[@protocol.AlgorithmMatch] {
+  let matches : Array[@protocol.AlgorithmMatch] = []
   // —— bst 家族（else-if 链：校验 > 插入 > 查找 > 删除）——
   let has_bst = has_word(func_name, "bst")
   let in_tree_ctx = has_bst || features.is_treenode_ctx

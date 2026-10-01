@@ -201,9 +201,10 @@ fn serve_symbols_dump_frame(
     None => "main.c"
   }
   let units : Array[@session.CompileUnit] = [{ filename, source, }]
-  // 单遍独立管线（serve_compile_pipeline 的只读投影——状态零写入）：
-  // compiled 判定与 symbols 产物同源（错误路径表空——Rust 读 session.
-  // compile.symbols 的失败残留形态不照搬：只读通道失败即空表）
+  // 单遍独立管线（serve_compile_pipeline 的只读投影——状态零写入）。
+  // 错误路径两侧均空表（审阅 P3 实测：oracle 管线失败即清 session.
+  // compile.symbols，无「失败残留」形态——早前头注声称的分叉不存在，
+  // 已删；只读通道失败同样空表，行为两侧一致）
   let (full_source, _) = merge_units(units)
   let lexed = lex_full_source(full_source, units)
   let symbols : Array[@bytecode.Symbol] = []

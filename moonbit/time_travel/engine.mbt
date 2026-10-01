@@ -60,6 +60,23 @@ pub fn UnifiedEngine::with_max_steps(max_steps : Int) -> UnifiedEngine {
 }
 
 ///|
+/// 自定义窗口参数入口（审阅 P1 补：引擎层小窗口越窗 seek 的可达通道——
+/// 协议默认 2_000 使小 target 下 finish_replay 分支全不可达，锚族经此
+/// 入口放大参数〔缺陷形态 A12 的补锚正解〕；会话级配置语义同
+/// FrameWindow::with_limits——教学长程序放宽）。
+pub fn UnifiedEngine::with_limits(
+  max_steps : Int,
+  window_size : Int,
+  trim_ratio : Double,
+) -> UnifiedEngine {
+  guard max_steps > 0 else {
+    abort("UnifiedEngine::with_limits: max_steps 须 > 0，得到 \{max_steps}")
+  }
+  let e = UnifiedEngine::with_max_steps(max_steps)
+  { ..e, frames: FrameWindow::with_limits(window_size, trim_ratio), }
+}
+
+///|
 pub fn UnifiedEngine::pause(self : UnifiedEngine) -> Unit {
   self.is_paused = true
 }

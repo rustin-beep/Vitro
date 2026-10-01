@@ -140,3 +140,79 @@ test "frame_window_last_and_clear" {
   assert_eq(w.start_step(), 0)
   assert_true(w.last() is None)
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// finish_replay 三分支直锚（2026-10-01 审阅 P1 补锚）：重放收尾窗口承载
+// 三次历史事故修复（63.6GB 未重置 / R-2026-09-01/02 钳位缺失 panic /
+// 越窗记账），但协议默认窗口 2_000 使小 target 下分支全不可达（缺陷
+// 形态 A12——锚须放大参数构造可达分支）。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 锚七：finish_replay 的 discard 段（want_start > start 时按 min 钳位
+// 裁头 + 起点记账）——with_limits(10, 0.2) 推 5 帧后 finish_replay(20)：
+
+///|
+/// want_start = 20-10+1 = 11 > start(0)，discard = min(11, 5) = 5 ⇒
+/// 清空 + start=5；expected = 20-5+1 = 16 > len(0) 不截尾。
+test "frame_window_finish_replay_discard_branch" {
+  let w = FrameWindow::with_limits(10, 0.2)
+  for i = 0; i < 5; i = i + 1 {
+    w.push(mk_payload(i))
+  }
+  assert_eq(w.start_step(), 0)
+  assert_eq(w.length(), 5)
+  w.finish_replay(20)
+  assert_eq(w.length(), 0, msg="discard=min(11,5)=5 清空")
+  assert_eq(
+    w.start_step(),
+    5,
+    msg="起点按实际推进量记账（钳位后 5 而非 11）",
+  )
+  // expected=16 > len=0：截尾段不动
+  assert_true(w.frame_at(5) is None)
+}
+
+///|
+/// 锚八：finish_replay 的钳位分支（want_start - start > len——seek 目标
+/// 远超已有步数，R-2026-09-01/02 事故形态：无钳位的理论 discard 直接
+/// 切会越界）——with_limits(10, 0.2) 推 3 帧后 finish_replay(50)：
+/// want_start = 41，理论 discard = 41 > len = 3 ⇒ 钳到 3。
+test "frame_window_finish_replay_clamp_branch" {
+  let w = FrameWindow::with_limits(10, 0.2)
+  for i = 0; i < 3; i = i + 1 {
+    w.push(mk_payload(i))
+  }
+  w.finish_replay(50)
+  // 钳位：discard = min(41, 3) = 3——清空且不越界，起点 = 0+3
+  assert_eq(w.length(), 0)
+  assert_eq(w.start_step(), 3)
+}
+
+///|
+/// 锚九：finish_replay 的截尾段（target 之后的多余帧裁除；discard 段
+/// 不触发——want_start 钳 0 后不大于 start）——with_limits(10, 0.2)
+/// 推 8 帧后 finish_replay(5)：expected = 5-0+1 = 6 ⇒ pop_back 2。
+test "frame_window_finish_replay_truncate_branch" {
+  let w = FrameWindow::with_limits(10, 0.2)
+  for i = 0; i < 8; i = i + 1 {
+    w.push(mk_payload(i))
+  }
+  w.finish_replay(5)
+  assert_eq(w.start_step(), 0, msg="discard 段不触发（want_start 钳 0）")
+  assert_eq(w.length(), 6, msg="expected=6 截去 target 后 2 帧")
+  guard w.frame_at(5) is Some(p) else { fail("target 帧保留") }
+  assert_eq(p.step_index, 5)
+  assert_true(w.frame_at(6) is None, msg="target 之后帧裁除")
+}
+
+///|
+/// 锚十：finish_replay 空窗口幂等（reset_to 后收尾——seek 越窗前置
+/// 与收尾的组合形态）。
+test "frame_window_finish_replay_empty_noop" {
+  let w = FrameWindow::with_limits(10, 0.2)
+  w.reset_to(7)
+  w.finish_replay(7)
+  assert_eq(w.start_step(), 7)
+  assert_eq(w.length(), 0)
+}

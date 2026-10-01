@@ -81,10 +81,17 @@ var (
 	// MoonBit 臂（S7 批四号：双宿主对拍）——同一请求表与断言集，
 	// 豁免面外置 moonbit_exemptions.json（断言名精确匹配 + 整批豁免；
 	// 表外断言名红即真红——防静默豁免面扩张）。Rust 臂行为零变。
-	mbMode    bool
-	mbExempt  map[string]string
-	mbBatches map[string]string
-	exempted  int
+	// --audit-exemptions（D19 僵尸机判，2026-10-01 审阅 P2 处方）：
+	// 豁免面整体失效真跑一轮——原豁免条目 PASS/未触达 ⇒ 僵尸（exit 1）；
+	// FAIL ⇒ 合法豁免。「PASS 也豁免」防僵尸的设计须配机判防呆。
+	auditAll     bool
+	auditVerdict map[string]string
+	auditNames   []string
+	auditSet     map[string]bool
+	mbMode       bool
+	mbExempt     map[string]string
+	mbBatches    map[string]string
+	exempted     int
 	// expectMemoryGlobalRegionLimit：capabilities.memory_model 断言期望
 	// （外置 expectations.json，loadExpectations 装载；0 = 未装载）。
 	expectMemoryGlobalRegionLimit int
@@ -97,7 +104,8 @@ func check(cond bool, label, detail string) {
 	// MoonBit 臂豁免：表内断言名跳过并计数（Rust 臂永远不进此分支——
 	// 豁免表只在 --moonbit 下加载）。PASS 也豁免——该面两侧一致时同样
 	// 不计入 MoonBit 臂口径，避免"豁免了但实际一直绿"的僵尸条目；
-	// 销项时机到了直接删条目即恢复断言。
+	// 销项时机到了直接删条目即恢复断言。（僵尸的机判 = --audit-exemptions：
+	// 豁免全失效真跑，PASS 即僵尸——D19。）
 	if mbMode {
 		if reason, ok := mbExempt[label]; ok {
 			exempted++
@@ -105,11 +113,25 @@ func check(cond bool, label, detail string) {
 			return
 		}
 	}
+	// 审计轮判定记录（首见为准——同名断言多处时按首处）
+	if auditVerdict != nil {
+		if _, seen := auditVerdict[label]; !seen {
+			if cond {
+				auditVerdict[label] = "PASS"
+			} else {
+				auditVerdict[label] = "FAIL"
+			}
+		}
+	}
 	tally(cond)
 	if cond {
 		fmt.Printf("  PASS  %s\n", label)
 	} else {
 		fmt.Printf("  FAIL  %s  %s\n", label, detail)
+		// 审计轮：原豁免名的 FAIL = 合法豁免证明，不进判红
+		if auditSet[label] {
+			return
+		}
 		failures = append(failures, label)
 	}
 }
@@ -262,7 +284,12 @@ func resolveMoonBitExe() string {
 
 func run() int {
 	flag.BoolVar(&mbMode, "moonbit", false, "跑 MoonBit 臂（cmd/serve exe；同一请求表与断言集，豁免面见 moonbit_exemptions.json）")
+	flag.BoolVar(&auditAll, "audit-exemptions", false, "豁免面僵尸审计（D19）：豁免全部失效真跑一轮——原豁免条目 PASS/未触达即僵尸 exit 1，FAIL=合法豁免（仅 MoonBit 臂）")
 	flag.Parse()
+	if auditAll && !mbMode {
+		fmt.Println("错误: --audit-exemptions 须与 --moonbit 同用（豁免面仅作用于 MoonBit 臂）")
+		return 2
+	}
 	if err := loadExpectations(); err != nil {
 		fmt.Printf("错误: %v\n", err)
 		return 2
@@ -274,6 +301,20 @@ func run() int {
 		if err != nil {
 			fmt.Printf("错误: %v\n", err)
 			return 2
+		}
+		if auditAll {
+			// 审计轮（v1 只审断言级）：豁免断言真跑，原名入审计集。
+			// 原豁免名的 FAIL 是合法豁免的证明——不进 failures 判红。
+			// 批级豁免照常 SKIP 不审（判据=批能全绿跑完，成本高留人审；
+			// 当前批级豁免为零——2026-10-01）。
+			auditVerdict = map[string]string{}
+			auditSet = map[string]bool{}
+			for k := range mbExempt {
+				auditNames = append(auditNames, k)
+				auditSet[k] = true
+			}
+			fmt.Printf("审计轮：%d 条断言豁免全部失效真跑（PASS/未触达 = 僵尸）\n", len(auditNames))
+			mbExempt = map[string]string{}
 		}
 		exe = resolveMoonBitExe()
 		if _, err := os.Stat(exe); err != nil {
@@ -610,6 +651,30 @@ func run() int {
 	}
 
 	fmt.Println()
+	// 审计判定（D19）：原豁免条目 PASS/未触达 ⇒ 僵尸；FAIL ⇒ 合法
+	if auditAll {
+		zombies := []string{}
+		fmt.Println("── 豁免审计判定 ──")
+		for _, name := range auditNames {
+			v, hit := auditVerdict[name]
+			switch {
+			case !hit:
+				zombies = append(zombies, name)
+				fmt.Printf("  ZOMBIE(未触达)  %s\n", name)
+			case v == "PASS":
+				zombies = append(zombies, name)
+				fmt.Printf("  ZOMBIE(PASS)    %s\n", name)
+			default:
+				fmt.Printf("  LEGIT(FAIL)     %s\n", name)
+			}
+		}
+		if len(zombies) > 0 {
+			fmt.Printf("豁免审计：发现 %d 条僵尸（断言真跑即绿/永不触达——请删除条目）\n", len(zombies))
+			return 1
+		}
+		fmt.Println("豁免审计：无僵尸（全部豁免经真跑证伪为合法）")
+		return 0
+	}
 	// 自报口径（供 facts 台账采集；格式稳定，勿随意改动）
 	if mbMode {
 		fmt.Printf("MoonBit 臂断言数: %d  (PASS %d / FAIL %d / 豁免 %d)\n",

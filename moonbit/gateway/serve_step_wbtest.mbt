@@ -36,7 +36,8 @@ test "serve_step_flow_begin_next_first_call_empty" {
   // 第二调起发布上一帧：step_index 0 起
   let (r2, _) = serve_handle(s, "{\"id\":4,\"method\":\"step.next\"}")
   assert_true(r2.contains("\"step_index\":0"))
-  // emitter 字段序（serde 邻接形态锚）
+  // emitter 插入序形态锚（本侧写死序；Rust serde Value 是字典序——键序
+  // 分叉已登记已知限制 ④-6，serve 帧比较一律经 canonicalize）
   assert_true(r2.contains("\"step_index\":0,\"code_line\":"))
   // 帧 0 = 全局初始化帧（未进 main——call_stack 空、func_name 空串是
   // 正确语义，Rust 同形）；main 内帧的 func_name 由 finished 冲刷锚覆盖

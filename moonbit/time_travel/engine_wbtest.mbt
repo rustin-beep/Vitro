@@ -325,3 +325,60 @@ test "engine_seek_no_checkpoint_fails" {
   guard r.error is Some(msg) else { fail("错误文案必在") }
   assert_true(msg.contains("没有可用的检查点"))
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 小窗口引擎锚（2026-10-01 审阅 P1 补）：协议默认窗口 2_000 使 engine
+// 层越窗路径不可锚（A12）——经 with_limits 缩窗后：批量 run（batch>1）
+// 的窗口推进 + 双向越窗 seek 的重放收尾（finish_replay 分支在引擎语境
+// 真触发）。
+// ─────────────────────────────────────────────────────────────────────
+
+///|
+/// 锚 J：小窗口批量推进 + 后向越窗 seek——run_batch(30) 一批推 30 帧
+/// （窗口 8 恒有界，起点随逐帧 trim 推进——U2#1 形态），seek(2) 越窗
+/// 走重放（重放 3 帧 + finish_replay 截尾段）。
+test "engine_small_window_batch_and_backseek" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  guard e.run_batch(vm, src, 30) is Ok(r) else { fail("批跑应 Ok") }
+  assert_false(r.finished)
+  // 窗口有界（push 自 trim）：len ≤ 8 且起点已推进
+  assert_true(e.frames.length() <= 8)
+  assert_true(e.frames.start_step() > 0, msg="30 帧后窗口起点须推进")
+  // 后向越窗 seek(2)：nearest(2)=检查点 0（首循环 save(0)）→ 重放
+  // 0..=2 → finish_replay(2)（want_start 钳 0 不 discard；expected=3）
+  let sk = e.seek_to(2, vm, src)
+  assert_true(sk.success)
+  guard sk.payload is Some(p) else { fail("帧必在") }
+  assert_eq(p.step_index, 2)
+  assert_eq(e.frames.start_step(), 0)
+  assert_eq(e.frames.length(), 3)
+}
+
+///|
+/// 锚 K：前向越窗 seek——窗口滑过 cp 后 seek 至未入窗步（重放中
+/// push 自 trim + finish_replay 的 want_start 语义）。
+test "engine_small_window_forward_seek" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(40))
+  let e = UnifiedEngine::with_limits(100_000, 8, 0.5)
+  let src = fake_src()
+  ignore(e.run_batch(vm, src, 30))
+  // 前向越窗：seek(35)（窗口已裁掉 22 之前的帧，cp=20 在 nearest(35)）
+  let sk = e.seek_to(35, vm, src)
+  assert_true(sk.success)
+  guard sk.payload is Some(p) else { fail("帧必在") }
+  assert_eq(p.step_index, 35)
+  // finish_replay(35)：want_start = 35-8+1 = 28；重放 20..=35 共 16 帧
+  // 经逐帧 trim（0.5 比例）后窗口有界
+  assert_true(e.frames.length() <= 8)
+  assert_true(
+    e.frames.start_step() >= 28 - 4,
+    msg="起点按 trim 推进（含比例舍入）",
+  )
+  assert_true(e.frames.frame_at(35) is Some(_))
+  // 续跑连续（重放终态 = executed 36）
+  assert_eq(vm.step_count, 36)
+}

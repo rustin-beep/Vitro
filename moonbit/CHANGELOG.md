@@ -6,6 +6,17 @@ patch；新增包 / 公共 API → minor。
 
 ## [Unreleased]
 
+### Fixed
+
+- **cmd/serve 交互管道死锁修复（2026-10-01 审阅 P1·rss 批销项实锤）**：
+  stdout 在管道/重定向形态下全缓冲（MSVC CRT 无可靠行缓冲），批式消费
+  方（一次性喂 stdin）无感，**交互式消费方**（写一行读一行——serve_smoke
+  rss 批 / 上游宿主）死等首响应（实测 python 交互管道 >60s 零输出；
+  Rust 侧 println! 自带行 flush 无此形态）。serve_stdio.c 增
+  `moonbit_vitro_serve_flush` + main 循环每响应行显式 fflush。红→绿：
+  修复前 rss 批挂死/compile-fail，修复后 4 次 seek 完成峰值 22MB/64MB
+  PASS——**rss_guard 批豁免销项**（MoonBit 臂 59 断言与 Rust 臂同数）。
+
 
 ### Added
 
@@ -32,6 +43,17 @@ patch；新增包 / 公共 API → minor。
   头注照搬——具体语句模式优先于循环上下文）+ 指针四态/parse_addr/
   format_value/extract_called_func 辅助族；八锚锁判定链（含两处照搬
   偏差被锚实锤纠正：trim 位归 infer 内部 / extract 整段纯标识符判定）。
+- **审阅销项批（2026-10-01，P1/P2/P3 五件）**：① finish_replay 三分支
+  直锚 ×4（discard/钳位/截尾/空窗——协议默认窗口 2_000 使小 target
+  不可达，A12 形态补锚；双突变证红留痕）+ `UnifiedEngine::with_limits`
+  窗口参数入口 + engine 层小窗口锚 ×2（batch>1 批量与双向越窗 seek）；
+  ② serve_smoke **豁免僵尸机判**（`--audit-exemptions`：豁免全失效真跑
+  一轮，PASS/未触达即僵尸红——D19；CI 接线独立步；J9 假豁免注入
+  ZOMBIE(PASS) 留痕）+ 僵尸条目 ×2 删除；③ serve 帧 JSON 键序跨语言
+  分叉登记（Rust serde Value=BTreeMap 字典序 vs 本侧插入序——比较口径
+  一律 canonicalize，已知限制 ④-6）；④ push_batch trim 时机有意分叉
+  标注（oracle 单次 vs 本侧逐帧恒有界，batch>1 不可达）；⑤ serve_dump
+  伪分叉注释修正（oracle 失败路径同样空表）。
 - **serve dump 族三方法（S8 dump 接线批，2026-10-01）**：`ast.dump` /
   `typeck.dump` / `symbols.dump`——**只读语义**（2026-09-29 契约拍板）：
   独立编译通道不碰会话态（oracle 的 run_multi_file_pipeline 诊断写入

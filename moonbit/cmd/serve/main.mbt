@@ -6,6 +6,11 @@
 extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int) -> Int = "moonbit_vitro_serve_read_line"
 
 ///|
+/// 响应行显式 flush（交互死锁修复——见 serve_stdio.c 头注：stdout 管道
+/// 形态全缓冲，交互消费方写一行读一行会死等首响应；批式消费无感）。
+extern "C" fn serve_flush_stdout() -> Unit = "moonbit_vitro_serve_flush"
+
+///|
 const SERVE_LINE_CAP : Int = 65536
 
 ///|
@@ -31,6 +36,7 @@ fn main {
         println(
           "{\"id\":0,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"请求行超过 65535 字符上限（serve 定长行缓冲）——请缩减单帧 source 或分段喂入\"}}",
         )
+        serve_flush_stdout()
       }
       break // EOF（-1）
     }
@@ -39,6 +45,7 @@ fn main {
     let line = @utf8.decode_lossy(buf[:n])
     let resp = @gateway.invoke(line)
     println(resp)
+    serve_flush_stdout()
     // shutdown 帧判停（gateway.invoke 的 String→String 单口语义——
     // 宿主见 "shutdown":true 帧自行停止，与 wasm 宿主同判据）
     if resp.contains("\"shutdown\":true") {

@@ -2,11 +2,7 @@
   "_comment": "serve_smoke MoonBit 臂豁免表（S7 批四号双宿主对拍）。规则：断言名与 check() 的 label 精确匹配；PASS 也豁免（防僵尸条目——销项时机到了直接删条目即恢复断言）；整批豁免单列 batches。表外断言名红即真红（防静默豁免面扩张，J9 双路证红：删表 fail loud + 删条目断言真红）。豁免须带理由与销项时机。",
   "assertions": {
     "ping 携带 ABI 版本": "分叉登记：MoonBit 侧无 capi 层（.mbti 取代 ABI 版本化）——CHANGELOG 0.7.0 与总计划批四号段在案；永久豁免（形态差非缺陷）",
-    "StepPayload 含 schema 字段": "同上（S8）",
-    "栈帧区域带 alloc_by=call / alloc_line（C2）": "同上（S8）",
     "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）"
   },
-  "batches": {
-    "rss_guard": "远距 seek 压力形状（VITRO_RSS_BUDGET_MB 护栏）——seek 已随 S8 批一号接线（2026-10-01）；MoonBit 侧 RSS 基线随 S8 收官批定基线后销项"
-  }
+  "batches": {}
 }

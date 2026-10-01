@@ -224,6 +224,13 @@ jobs:
           go run ./scripts/serve_smoke -moonbit
         shell: bash
 
+      # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
+      # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
+      # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
+      - name: MoonBit exemption audit (zombie detector, D19)
+        run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
+        shell: bash
+
       # S7 批五号（2026-09-29）：wasm-gc 单出口（F-5）——gateway 4 函数导出
       # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
       # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +

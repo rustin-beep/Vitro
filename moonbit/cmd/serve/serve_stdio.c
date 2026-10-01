@@ -5,6 +5,12 @@
 // 64KB，与 Rust 侧 bufio 默认量级同域）。
 // 返回值：>0 = 行字节数（不含结尾 NUL，已剥 \n 与 \r\n）；0 = 空行；
 // -1 = EOF（含立即 EOF）；-2 = 行超长（未消费完，视为协议错误）。
+//
+// serve_flush_stdout（2026-10-01 审阅 P1 rss 批销项实锤的交互死锁修复）：
+// stdout 在管道/重定向形态下是全缓冲（MSVC CRT 无可靠行缓冲），批式
+// 消费方（一次性喂 stdin）无感，**交互式消费方**（写一行读一行——
+// serve_smoke rss 批/上游宿主）会死等首响应。Rust 侧 println! 自带行
+// flush 无此形态。每响应行显式 fflush（频次 = 请求量级，开销可忽略）。
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,4 +34,8 @@ int moonbit_vitro_serve_read_line(char *buf, int cap) {
         buf[len] = '\0';
     }
     return (int)len;
+}
+
+void moonbit_vitro_serve_flush(void) {
+    fflush(stdout);
 }

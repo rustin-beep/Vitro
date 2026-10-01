@@ -202,7 +202,11 @@ pub fn FrameWindow::frame_at(
 }
 
 ///|
-/// 批收尾入窗（engine.rs:248-261 finalize_batch 照搬）：行末帧标注去重
+/// 批收尾入窗（engine.rs:248-261 finalize_batch 照搬——**trim 时机有意
+/// 分叉**〔2026-10-01 审阅 P3 登记〕：oracle 是 extend 全部 + 单次 trim
+/// 〔裁后 len 可 > window_size〕，本侧逐帧 push 恒有界〔len ≤ window_size
+/// 不变量由类型保证〕；batch>1 时窗口起点/长度数值形态不同——serve 的
+/// step.next 恒 batch=1 实际不可达，结构取舍以类型不变量优先）：行末帧标注去重
 /// （U1#1 P0-1——同一源码行的多帧只有行末帧携带 algorithm_step；当前
 /// teaching 未接恒 None，逻辑照搬为 teaching 就绪）+ 逐帧入窗（超窗自动
 /// 裁由 push 保证——U2#1 的"push 后立即 trim"结构化）。

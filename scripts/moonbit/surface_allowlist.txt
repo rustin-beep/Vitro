@@ -37,3 +37,13 @@ vitro/engine/vm load_libc_artifact
 vitro/engine/protocol encode_step_payload
 vitro/engine/protocol encode_step_delta
 vitro/engine/time_travel infer_semantic_label
+vitro/engine/teaching/steps build_match
+vitro/engine/teaching/steps detect_algorithms
+vitro/engine/teaching/steps detect_sorting
+vitro/engine/teaching/steps expr_to_string
+vitro/engine/teaching/steps extract_features
+vitro/engine/teaching/steps has_word
+vitro/engine/teaching/steps infer_algorithm_step
+vitro/engine/teaching/steps detect_search
+vitro/engine/teaching/steps detect_string
+vitro/engine/teaching/steps detect_tree

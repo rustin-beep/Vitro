@@ -516,3 +516,12 @@ vitro/engine/gateway/wasm vitro/engine/gateway invoke
 vitro/engine/gateway/wasm vitro/engine/gateway reset
 vitro/engine/gateway/wasm vitro/engine/gateway protocol_version
 vitro/engine/gateway/wasm vitro/engine/gateway engine_version
+vitro/engine/teaching/steps vitro/engine/ast BinaryOp
+vitro/engine/teaching/steps vitro/engine/ast Expr
+vitro/engine/teaching/steps vitro/engine/ast FuncDecl
+vitro/engine/teaching/steps vitro/engine/ast ProgramNode
+vitro/engine/teaching/steps vitro/engine/ast Stmt
+vitro/engine/teaching/steps vitro/engine/ast Type
+vitro/engine/teaching/steps vitro/engine/protocol AlgorithmStepSnapshot
+vitro/engine/teaching/steps vitro/engine/protocol VisEvent
+vitro/engine/teaching/steps vitro/engine/session AlgorithmMatch

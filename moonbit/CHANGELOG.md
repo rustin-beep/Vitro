@@ -54,6 +54,34 @@ patch；新增包 / 公共 API → minor。
   一律 canonicalize，已知限制 ④-6）；④ push_batch trim 时机有意分叉
   标注（oracle 单次 vs 本侧逐帧恒有界，batch>1 不可达）；⑤ serve_dump
   伪分叉注释修正（oracle 失败路径同样空表）。
+- **teaching/steps 批三号（2026-10-01）：tree 族八算法**：判据
+  （bst 家族「名字+语义双条件」else-if 链——valid 优先于 insert、
+  裸命名靠 is_treenode_ctx 补齐；level_order/avl/huffman/threaded
+  命名）+ infer 八算法照搬（validate 三 phase 锚定模板行 + v5 ✗2
+  顶层调用帧入口语义 + delete 判据置顶优先序）。十一锚照搬（判据
+  七锚全套 + infer 四锚——含 bstHeight 无语义词反例与语境反锚）。
+- **teaching/steps 批二号（2026-10-01）：search + string 族四算法**：
+  判据（binary_search 命名三分支 + 结构分支〔单循环+mid 计算+left/right
+  更新〕；string_reverse/bf/kmp 纯命名）+ infer 四算法照搬——含全部
+  审阅修复：mid_calc 收紧（比较行不再被短路——三分支不可达修复）、
+  narrow 实际边界值（差一修复）、nextval 两表优先序（§6-7 v4 #35）、
+  nextval 下标从行文本解析（v5 ✗1）、getNext 调用点无数值
+  （U1#1 P1-19/96）。六锚（binary 三红锚照搬 + KMP 两语义锚 +
+  判据面锚）。
+- **`vitro/engine/teaching/steps`（L9，S8 teaching 批一号，2026-10-01）
+  ——算法语义标注建包**：判据（algorithm_detector 1519 行的 features
+  特征提取 + sorting 族九算法判据——含 U1#1 P0-2 四处误判收紧全部
+  语义：select/merge 整词+sort 语境、insertion 形态、贪心语境排除）
+  + 步骤推断（vitro_algorithm_steps sorting.rs 九算法照搬——含全部
+  用户审阅修复：j 合法上界越界描述拦截 / minIdx 别名表 / 插入写回
+  收紧 + prev_vars 兜底 /「子子数组」错字 / 空区间递归基拦截 / 枢轴
+  落位文案 / 位权位序 / count[...]++ 收紧）+ 43 算法教学文案全表
+  （后续族直接消费）。十锚（has_word 21 例表 / 判据双锚 / infer 四
+  算言语义锚 / parse_int 边界）。**分叉登记**：①CFG 四特征恒默认
+  （CFG 属 analysis 域孤儿复核——sorting 零消费，graph 族迁移时再
+  定）；②AlgorithmContext trait 不迁（source_line/algorithm 由编排
+  层直供——collector 纯函数化先例）。后续批：search/tree/graph/dp/
+  math/structures/string 七族逐批 + golden 311 三方 diff（S8 验收锚）。
 - **serve dump 族三方法（S8 dump 接线批，2026-10-01）**：`ast.dump` /
   `typeck.dump` / `symbols.dump`——**只读语义**（2026-09-29 契约拍板）：
   独立编译通道不碰会话态（oracle 的 run_multi_file_pipeline 诊断写入

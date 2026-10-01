@@ -1,0 +1,23 @@
+// L9 教学智能·teaching/steps 包（S8 teaching 批一号，2026-10-01）：算法
+// 语义标注——**判据**（native/src/compiler/algorithm_detector/，1519 行）
+// + **步骤推断**（native/crates/vitro_algorithm_steps/，2273 行）的教学
+// 域单源；AlgorithmMatch 消费 session 预埋形态（S7 dto——不造孪生）。
+//
+// 批切（一号 = 骨架 + features + sorting 族九算法判据/infer 全件）：
+// 后续批逐族（search/tree/graph/dp/math/structures/string——分派表
+// `_ => None` 段登记进度）；末批 golden 三方 diff
+//（algorithm_annotations_v3.json：37 模板 / 311 条首现，双向断言——
+// S8 行验收锚）。
+//
+// 分叉登记（本批）：①CFG 四特征（early_return / back_edge / num_blocks /
+// unreachable）恒默认值——CFG 属 analysis 域（M7/M8 孤儿零调用者，价值
+// 复核随批），判据面现仅 graph 族消费 back_edge（sorting 零消费——
+// graph 族迁移时再定 CFG 迁移或轻量回边探测替代）；②Rust
+// AlgorithmMatch.vis_events 的 compare_lines 投影本批照搬（protocol.
+// VisEvent 消费）。
+import {
+  "vitro/engine/ast",
+  "vitro/engine/protocol",
+  "vitro/engine/session",
+  "vitro/engine/source",
+}

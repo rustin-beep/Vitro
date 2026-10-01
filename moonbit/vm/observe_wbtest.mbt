@@ -205,3 +205,82 @@ test "observe_array_snapshots_truncation_and_chars" {
   assert_eq(c.elements[0], "7")
   assert_eq(c.element_ty, "int")
 }
+
+///|
+/// 锚五（审阅 P1 红锚，2026-10-01）：slot_covers 元素宽度按 base_kind
+/// 维度——非 4 字节元素（double 8 / char 1）的区间归属。锚三只用 int[4]
+/// （恰为 4）与缺陷形态 A11 不可区分，本锚以 double[4]/char[4] 补维度。
+test "observe_find_variable_name_at_addr_elem_width" {
+  let vm = VitroVM::new()
+  let da_ty : @ast.Type = Array(Double(false), 4, [4], false, false, [])
+  let ca_ty : @ast.Type = Array(Char(false, false), 4, [4], false, false, [])
+  vm.set_symbols([
+    mksym("da", 0U, false, da_ty, "", 0),
+    mksym("ca", 64U, false, ca_ty, "", 0),
+  ])
+  let base = @bytecode.GLOBAL_START
+  // double[4]：元素宽 8，区间 [base, base+32)——&da[3]=base+24 命中
+  assert_eq(vm.find_variable_name_at_addr(base + 24U), Some("da"))
+  // 区间末之后（base+32）不命中
+  assert_eq(vm.find_variable_name_at_addr(base + 32U), None)
+  // char[4]：元素宽 1，ca 区间 [base+64, base+68)——&ca[2]=base+66 命中
+  assert_eq(vm.find_variable_name_at_addr(base + 66U), Some("ca"))
+  // 区间外（base+72）不得误归属（缺陷形态：按恒 4 算时误报 Some）
+  assert_eq(vm.find_variable_name_at_addr(base + 72U), None)
+}
+
+///|
+/// 锚六（审阅 P2 红锚，2026-10-01）：get_array_snapshots 指针数组——
+/// base_kind 先解一层指针再判元素（int*[2] 按 Int 取值、char*[2] 按
+/// Char 按 1 字节步长）；element_ty 显示名仍走 base_element_type
+/// （不解指针，与 oracle 显示层一致）。
+test "observe_array_snapshots_pointer_array" {
+  let vm = VitroVM::new()
+  let pa_ty : @ast.Type = Array(
+    Pointer(Int(false, false), false),
+    2,
+    [2],
+    false,
+    false,
+    [],
+  )
+  let qa_ty : @ast.Type = Array(
+    Pointer(Char(false, false), false),
+    2,
+    [2],
+    false,
+    false,
+    [],
+  )
+  vm.set_symbols([
+    mksym("pa", 0U, false, pa_ty, "", 0),
+    mksym("qa", 64U, false, qa_ty, "", 0),
+  ])
+  let base = @bytecode.GLOBAL_START
+  // pa 按 TK_Int 取值：小端 u32 位模式重解释
+  ignore(vm.memory.store_u32(vm.mem_map, base + 0U, 0x1234U))
+  ignore(vm.memory.store_u32(vm.mem_map, base + 4U, 0U))
+  // qa 按 TK_Char、步长 1：[0]=0x41 'A'、[1]=0x30 '0'（均 32..=126 可打印）
+  ignore(vm.memory.store_u32(vm.mem_map, base + 64U, 0x003041U))
+  let snaps = vm.get_array_snapshots()
+  let mut pa : ArraySnapshotData? = None
+  let mut qa : ArraySnapshotData? = None
+  for s in snaps {
+    if s.name == "pa" {
+      pa = Some(s)
+    }
+    if s.name == "qa" {
+      qa = Some(s)
+    }
+  }
+  guard pa is Some(p) else { fail("pa 必在") }
+  guard qa is Some(q) else { fail("qa 必在") }
+  // 步长 4 按 Int 位模式文本化（缺陷形态 B12：原按 Pointer 落 "?"）
+  assert_eq(p.elements.length(), 2)
+  assert_eq(p.elements[0], "4660")
+  assert_eq(p.elements[1], "0")
+  // 步长 1 按 Char 可打印形态（缺陷形态 B12：原按 Pointer 落 "?"、步长 4）
+  assert_eq(q.elements.length(), 2)
+  assert_eq(q.elements[0], "'A'")
+  assert_eq(q.elements[1], "'0'")
+}

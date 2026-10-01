@@ -292,6 +292,12 @@ fn is_pointer_type(ty_name : String) -> Bool {
 
 ///|
 /// 地址解析（Rust parse_addr：0x 前缀十六进制 / 十进制非负）。
+///
+/// **形态分叉登记（2026-10-01 审阅 P3，域内不可达不修）**：Rust 侧
+/// `u32::from_str_radix` / `i64::parse` 拒绝 `+` 前缀与溢出；本实现
+/// 十六进制分支溢出 wrap（`n * 16U + d` 无检）。入参源 = 引擎文本化的
+/// 地址（≤1MB，probe 实测域内两种形态均不可达）——若未来入参来源变为
+/// 非引擎文本化（如宿主直传用户串），须复刻拒溢出语义。
 fn parse_addr(value : String) -> UInt? {
   if value.length() > 2 && (value.starts_with("0x") || value.starts_with("0X")) {
     let hex = value.substring(start=2)

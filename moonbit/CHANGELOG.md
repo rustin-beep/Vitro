@@ -6,6 +6,7 @@ patch；新增包 / 公共 API → minor。
 
 ## [Unreleased]
 
+
 ### Added
 
 - **`vitro/engine/time_travel`（L9，S8 批一号一段）**——时间旅行引擎域建包：
@@ -55,6 +56,17 @@ patch；新增包 / 公共 API → minor。
   vitro_ast）。**`@host.format_fixed` pub 化**（vm 数组快照 Float/Double
   `{:.2}` 文本化——与 Rust `{:.2}` 同为精确十进制 half-even，单源复用）。
 
+### Fixed
+
+- **vm 观测面元素宽度维度修复（2026-10-01 用户审阅 P1/P2，红→绿锚
+  `observe_find_variable_name_at_addr_elem_width` /
+  `observe_array_snapshots_pointer_array`）**：`find_variable_name_at_addr`
+  的 slot_covers 原误用 `sym.ty.kind()`（数组自身恒落默认臂 4——double/char
+  数组区间归属双向出错）、`get_array_snapshots` 原误用 `base_element_type`
+  兼任语义宽度（指针数组落 "?" 且步长错）——两处统一改按既有单源
+  `Type::base_kind`（oracle `memory.rs:490/398` 同源：先解一层指针、数组
+  递归剥层）；element_ty 显示名保持 `base_element_type`（oracle 显示层
+  同款）。观测面为未发布新增面，无兼容负担。
 ## [0.7.0] - 2026-09-29
 
 ### Added

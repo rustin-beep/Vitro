@@ -213,8 +213,10 @@ pub fn VitroVM::find_variable_name_at_addr(
 ///|
 /// 变量槽 base 是否覆盖 addr（memory.rs:479-497 slot_covers 照搬）：
 /// 精确命中恒真；数组类型额外接受元素区间（开区间 base < addr <
-/// base + count×elem_size）；元素宽度与 get_array_snapshots 取值口径
-/// 同源（char 1 / double·long long 8 / 其余 4）。
+/// base + count×elem_size）；元素宽度按 `base_kind` 判定（审阅 P1 修复
+/// 2026-10-01：原误用 `sym.ty.kind()`——数组自身恒落默认臂 4，double/char
+/// 数组区间归属双向出错；oracle memory.rs:490 用 `base_kind`，与
+/// get_array_snapshots 取值口径同源——char 1 / double·long long 8 / 其余 4）。
 fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
   if base == addr {
     return true
@@ -226,7 +228,7 @@ fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
   if count <= 0 {
     return false
   }
-  let elem_size : UInt = match sym.ty.kind() {
+  let elem_size : UInt = match sym.ty.base_kind() {
     TK_Char => 1U
     TK_Double | TK_LongLong => 8U
     _ => 4U
@@ -261,11 +263,15 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     if array_size <= 0 {
       continue
     }
-    let base = @ast.base_element_type(sym.ty)
-    let elem_size : UInt = match base {
-      Char(_) => 1U
-      Int(_, _) | Pointer(_, _) | Float(_) => 4U
-      Double(_) | LongLong(_, _) => 8U
+    // 审阅 P2 修复（2026-10-01）：宽度与取值按 `base_kind`（先解一层指针、
+    // 数组递归剥层——oracle memory.rs:398 同源）；element_ty 显示名仍走
+    // `base_element_type`（只剥数组不解指针，oracle 显示层同款）。原误用
+    // base_element_type 兼任语义宽度：int*[2] 落 "?"、char*[2] 步长 4。
+    let bk = sym.ty.base_kind()
+    let elem_size : UInt = match bk {
+      TK_Char => 1U
+      TK_Int | TK_Pointer | TK_Float => 4U
+      TK_Double | TK_LongLong => 8U
       _ => 4U
     }
     // U2#10：声明长度超 256 → 截断 + 标记
@@ -282,8 +288,8 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
       if addr < @bytecode.NULL_TRAP_SIZE {
         break
       }
-      match base {
-        Char(_) => {
+      match bk {
+        TK_Char => {
           let b = match self.memory.load_i8(self.mem_map, addr) {
             Ok(v) => v
             Err(_) => break
@@ -295,28 +301,28 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
             elements.push("\{b}")
           }
         }
-        Int(_, _) => {
+        TK_Int => {
           let v = match self.memory.load_u32(self.mem_map, addr) {
             Ok(bits) => bits.reinterpret_as_int()
             Err(_) => break
           }
           elements.push("\{v}")
         }
-        Float(_) => {
+        TK_Float => {
           let v = match self.memory.load_u32(self.mem_map, addr) {
             Ok(bits) => bits.reinterpret_as_float()
             Err(_) => break
           }
           elements.push(@host.format_fixed(v.to_double(), 2))
         }
-        Double(_) => {
+        TK_Double => {
           let v = match self.memory.load_u64(self.mem_map, addr) {
             Ok(bits) => bits.reinterpret_as_double()
             Err(_) => break
           }
           elements.push(@host.format_fixed(v, 2))
         }
-        LongLong(_, _) => {
+        TK_LongLong => {
           let v = match self.memory.load_u64(self.mem_map, addr) {
             Ok(bits) => bits.reinterpret_as_int64()
             Err(_) => break
@@ -328,7 +334,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     }
     result.push({
       name: sym.name,
-      element_ty: @ast.type_display_name(base),
+      element_ty: @ast.type_display_name(@ast.base_element_type(sym.ty)),
       elements,
       truncated,
     })

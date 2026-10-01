@@ -32,19 +32,26 @@ fn detect_in_func(
   let features = extract_features(func, body)
   let name_lower = func.name.to_lower()
   let matches : Array[@session.AlgorithmMatch] = []
+  // 族序 = oracle 次序（detector/mod.rs:35-41：sorting → search →
+  // graph → tree → structures → string → math + dp 附加）——输出数组
+  // 是对外面，序即契约（B13：同命中多族的输入两侧元素序必须一致，
+  // bstKmpSearch 实测例在案）。未迁移族（graph/structures/math/dp）的
+  // 调用按 oracle 位点预留插入。
   for m in detect_sorting(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
   for m in detect_search(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
-  for m in detect_string(name_lower, func.name, func.loc.line) {
-    matches.push(m)
-  }
+  // graph（未迁移——oracle 位点在此）
   for m in detect_tree(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
-  // —— 未迁移族（graph/structures/math/dp——随批四号+逐族补齐）——
+  // structures（未迁移——oracle 位点在此）
+  for m in detect_string(name_lower, func.name, func.loc.line) {
+    matches.push(m)
+  }
+  // math + dp 附加（未迁移——oracle 位点在此）
   matches
 }
 

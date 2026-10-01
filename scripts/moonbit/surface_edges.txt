@@ -525,3 +525,4 @@ vitro/engine/teaching/steps vitro/engine/ast Type
 vitro/engine/teaching/steps vitro/engine/protocol AlgorithmStepSnapshot
 vitro/engine/teaching/steps vitro/engine/protocol VisEvent
 vitro/engine/teaching/steps vitro/engine/session AlgorithmMatch
+vitro/engine/teaching/steps vitro/engine/source SourceLoc

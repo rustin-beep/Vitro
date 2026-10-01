@@ -54,6 +54,17 @@ patch；新增包 / 公共 API → minor。
   一律 canonicalize，已知限制 ④-6）；④ push_batch trim 时机有意分叉
   标注（oracle 单次 vs 本侧逐帧恒有界，batch>1 不可达）；⑤ serve_dump
   伪分叉注释修正（oracle 失败路径同样空表）。
+- **teaching 审阅销项（2026-10-01，用户审阅 P1/P2/P3 五件）**：
+  ① 判据族序对齐 oracle（sorting→search→graph→tree→structures→
+  string——B13：bstKmpSearch 同命中多族的元素序，tree 先于 string）；
+  ② extract_features 结构特征面补真 AST 锚 ×4（此前全 default 零锚
+  ——三个突变全绿；现 has_swap/has_array_compare 突变即红）；
+  **③ oracle 继承死分支实锤登记**：判据 `loop_depth >= 2` 恒假（两侧
+  walk 从不写 f.loop_depth——bubble/selection/insertion 三结构分支
+  在 oracle 也是死分支），锚定「不命中 = 等价」，修复归 0.8.0 脱钩
+  批裁定；④ 对拍排期调整：golden 不攒末批，族级增量（已迁移族提前
+  对拍）；⑤ 文档口径四修（已知限制 ④表编号重排/AGENTS 27→31 锚/
+  moon.pkg 批切头注/render 27 变体）。
 - **teaching/steps 批三号（2026-10-01）：tree 族八算法**：判据
   （bst 家族「名字+语义双条件」else-if 链——valid 优先于 insert、
   裸命名靠 is_treenode_ctx 补齐；level_order/avl/huffman/threaded

@@ -239,7 +239,9 @@ async function runCase() {
     if (rr.waiting_input) {
       pendingRun = run;
       setStatus("wait", "等待输入…（下方 stdin 喂入后继续）");
-      $("stdin-row").classList.add("active");
+      // 显示 stdin 行：HTML 初始带 .hidden（display:none !important），
+      // 必须显式移除（历史上这里操作的是无消费者的 .active 类，行永不出现）
+      $("stdin-row").classList.remove("hidden");
       renderRunResult(rr);
       renderMemory(bodyOf(invoke({ method: "memory.regions" })));
       return;
@@ -261,7 +263,7 @@ async function feedStdin() {
     return;
   }
   pendingRun = null;
-  $("stdin-row").classList.remove("active");
+  $("stdin-row").classList.add("hidden");
   const kase = DEMO_CASES.find((k) => k.id === $("case-select").value) || {};
   finishRun(rr, kase);
 }
@@ -317,8 +319,15 @@ function renderStderr(text, total) {
 
 // ── 渲染：结果 ───────────────────────────────────────────
 function renderRunResult(r) {
-  $("ret-value").textContent = r.status === "finished" ? String(r.return_value) : "—";
-  $("steps-value").textContent = String(r.steps_executed ?? "—");
+  const ret = $("ret-value");
+  const steps = $("steps-value");
+  ret.textContent = r.status === "finished" ? String(r.return_value) : "—";
+  steps.textContent = String(r.steps_executed ?? "—");
+  for (const el of [ret, steps]) {
+    el.classList.remove("flash-in"); // 数字更新淡入，与 stdout 同款
+    void el.offsetWidth;
+    el.classList.add("flash-in");
+  }
 }
 
 function renderOutput(delta, total) {
@@ -830,7 +839,7 @@ function selectCase() {
   $("editor").value = k.source;
   renderEditorDecor();
   $("case-blurb").textContent = k.blurb;
-  $("stdin-row").classList.remove("active");
+  $("stdin-row").classList.add("hidden");
   pendingRun = null;
   setStatus("idle", "就绪");
   ["stdout-box", "trap-box", "ref-box", "mem-band-full", "mem-band-heap", "mem-table", "mem-stats", "diag-list", "note-box", "stderr-box", "stderr-meta", "note-meta"].forEach(
@@ -844,23 +853,73 @@ function selectCase() {
   $("stdout-meta").textContent = "";
 }
 
-// ── 启动 ─────────────────────────────────────────────────
-(function initTheme() {
-  var saved = null;
-  try { saved = localStorage.getItem("vitro-theme"); } catch (e) {}
-  // 默认暗色（品牌主题）；显式存过 light/dark 则遵循
-  var theme = saved === "light" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", theme);
-  var btn = document.getElementById("theme-toggle");
-  if (btn) {
-    btn.onclick = function () {
-      var cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-      document.documentElement.setAttribute("data-theme", cur);
-      try { localStorage.setItem("vitro-theme", cur); } catch (e) {}
-    };
+// ── 界面设置（主题 / 编辑器字号 / 动效开关；localStorage 持久化）──────────
+// 设置面板（齿轮）与 header 快捷主题按钮共用同一路径，两处状态恒同步。
+function storeGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function storeSet(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+function syncSeg(segId, v) {
+  const seg = $(segId);
+  if (!seg) return;
+  for (const b of seg.querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === v);
+}
+
+function setTheme(v) {
+  document.documentElement.setAttribute("data-theme", v);
+  storeSet("vitro-theme", v);
+  syncSeg("set-theme", v);
+}
+
+function applyEdFont(px) {
+  // 编辑器对齐契约：hl 与 textarea 两层的 font 都引用 --ed-fs，改一处即同步
+  document.documentElement.style.setProperty("--ed-fs", px);
+  syncSeg("set-font", px);
+}
+
+function applyMotion(v) {
+  if (v === "off") document.documentElement.setAttribute("data-motion", "off");
+  else document.documentElement.removeAttribute("data-motion");
+  syncSeg("set-motion", v);
+}
+
+(function initSettings() {
+  setTheme(storeGet("vitro-theme") === "light" ? "light" : "dark");
+  const savedFont = storeGet("vitro-ed-font");
+  applyEdFont(savedFont === "12px" || savedFont === "15px" ? savedFont : "13px");
+  applyMotion(storeGet("vitro-motion") === "off" ? "off" : "on");
+
+  const themeBtn = $("theme-toggle");
+  if (themeBtn) {
+    themeBtn.onclick = () =>
+      setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
   }
+  const segBind = (segId, apply) => {
+    $(segId).addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b) apply(b.dataset.v);
+    });
+  };
+  segBind("set-theme", setTheme);
+  segBind("set-font", (px) => { applyEdFont(px); storeSet("vitro-ed-font", px); });
+  segBind("set-motion", (v) => { applyMotion(v); storeSet("vitro-motion", v); });
+
+  // 面板开关：齿轮 toggle / 点击面板外关闭 / ESC 关闭
+  const panel = $("settings-panel");
+  const toggle = $("settings-toggle");
+  const setOpen = (open) => {
+    panel.classList.toggle("hidden", !open);
+    toggle.setAttribute("aria-expanded", String(open));
+  };
+  toggle.addEventListener("click", () => setOpen(panel.classList.contains("hidden")));
+  document.addEventListener("click", (e) => {
+    if (!panel.classList.contains("hidden") && !e.target.closest(".settings-wrap")) setOpen(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !panel.classList.contains("hidden")) setOpen(false);
+  });
 })();
 
+// ── 启动 ─────────────────────────────────────────────────
 (async function boot() {
   bindTabs();
   initEditorDecor();

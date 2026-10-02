@@ -9,11 +9,13 @@
 //
 // 分叉登记（本方法，随段四入差异台账）：
 // ① intents 段恒 `[]`——intent 推断属 analysis 域（M8 孤儿复核随批）；
-// ② params.completion 存在时 fail loud（M15 无 MoonBit 实现——不支持
-//    而非静默假空；无参数时两侧同 `[]`）；
-// ③ confidence 文本 = f32 最短表示（serde_json f32 wire 形态，经
-//    @diagnostics.f32_shortest_text——拼串→json_parse 通道穿透 f64
-//    emitter 保真）。
+// ② params.completion 键存在即 fail loud（M15 无 MoonBit 实现——不支持
+//    而非静默假空；显式 null 亦算键存在，与 oracle params.get 对
+//    Some(Null) 走 error 帧同形；无键时两侧同 `[]`）；
+// ③ confidence 文本已对齐（2026-10-02 审阅 P1 销案）：oracle json! 走
+//    Value 路径，f32 先提升 f64 ⇒ wire = f64 最短文本；值面经
+//    round_to_f32（=oracle `as f32`）、文本面经 @ast.double_to_json_text
+//    （f64 ryu-pretty 单源，1.0 形态防 to_string 退化）。
 
 ///|
 /// diagnostics_probe 方法帧：{ok, diagnostics, misconceptions,
@@ -29,8 +31,11 @@ fn serve_diagnostics_probe_frame(
       false,
     )
   }
-  // M15 无实现：completion 参数存在即 fail loud（头注分叉②）
-  guard json_field(params, "completion") is Null else {
+  // M15 无实现：completion 键存在即 fail loud（头注分叉②）。显式 null
+  // 亦算存在——oracle params.get 返 Some(Null) 后 .get("line") 为 None
+  // 同走 error 帧；仅缺键放过（json_field 对两者都塌缩 Null，故判键
+  // 存在性而非值形态——2026-10-02 审阅 P2 修复，防静默假空）
+  guard !(params is Object(m) && m.contains("completion")) else {
     return (
       serve_err(
         id, "protocol", "diagnostics_probe: completion 段随 analysis 批（本侧未实现）",
@@ -124,14 +129,14 @@ fn serve_diagnostics_probe_frame(
     )
   }
   buf.write_string("]")
-  // ② misconceptions 段（confidence = f32 最短文本——头注分叉③）
+  // ② misconceptions 段（confidence 文本 = f64 最短表示——头注分叉③）
   buf.write_string(", \"misconceptions\": [")
   for i, m in detected {
     if i > 0 {
       buf.write_string(", ")
     }
     buf.write_string(
-      "{\"pattern_id\": \{dump_json_escape(m.pattern_id)}, \"pattern_name\": \{dump_json_escape(m.pattern_name)}, \"occurrence_count\": \{m.occurrence_count}, \"confidence\": \{@diagnostics.f32_shortest_text(m.confidence)}}",
+      "{\"pattern_id\": \{dump_json_escape(m.pattern_id)}, \"pattern_name\": \{dump_json_escape(m.pattern_name)}, \"occurrence_count\": \{m.occurrence_count}, \"confidence\": \{@ast.double_to_json_text(m.confidence)}}",
     )
   }
   buf.write_string("]")

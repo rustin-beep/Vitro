@@ -109,6 +109,72 @@ test "probe_completion_param_fail_loud" {
 }
 
 ///|
+test "probe_confidence_wire_text" {
+  // 审阅 P1（2026-10-02）：oracle 的 json! 走 Value 路径，f32 先提升
+  // f64 ⇒ wire 文本 = f64 最短表示（2/3 → 0.6666666865348816）而非
+  // f32 最短（0.6666667）。双侧原始字节锚；1.0 边界锁 serde 形态
+  // "1.0"（防退化成 to_string 的 "1"）。
+  let s = @session.Session::new()
+  let (r23, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3035]},{\"ts\":1,\"ok\":false,\"codes\":[3035]},{\"ts\":2,\"ok\":false,\"codes\":[3021]}]}}",
+  )
+  assert_true(
+    r23.contains("\"confidence\":0.6666666865348816"),
+    msg="2/3 wire 文本须为 f64 最短表示（serde_json Value 路径）",
+  )
+  let (r33, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3051]},{\"ts\":1,\"ok\":false,\"codes\":[3051]},{\"ts\":2,\"ok\":false,\"codes\":[3051]}]}}",
+  )
+  assert_true(r33.contains("\"confidence\":1.0"), msg="3/3=1.0 wire 须为 1.0")
+}
+
+///|
+test "probe_completion_explicit_null_fail_loud" {
+  // 审阅 P2（2026-10-02）：显式 null ≠ 缺键——oracle 侧
+  // params.get("completion") 对显式 null 返 Some(Null)，其 .get("line")
+  // 为 None ⇒ error 帧；缺键才放过。json_field 把两者塌缩成 Null
+  // 曾致静默假空（成功帧 + completion:[]）。
+  let s = @session.Session::new()
+  let (r, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int x\",\"completion\":null}}",
+  )
+  assert_true(
+    r.contains("\"error\"") && r.contains("completion 段随 analysis 批"),
+    msg="completion 显式 null 须 error 帧（键存在即 fail loud）",
+  )
+}
+
+///|
+test "probe_records_codes_number_form" {
+  // 审阅 P3（2026-10-02）：serde_json as_i64 对浮点形态（原文含
+  // '.'/'e'/'E'）恒 None ⇒ codes:[3051.0] 整批忽略；Number 直 to_int
+  // 曾宽收（3051.0 检出、3051.7 截断检出）。repr 原文判形态对齐。
+  let s = @session.Session::new()
+  let (r0, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3051.0]},{\"ts\":1,\"ok\":false,\"codes\":[3051.0]},{\"ts\":2,\"ok\":false,\"codes\":[3051.0]}]}}",
+  )
+  assert_true(
+    r0.contains("\"misconceptions\":[]"),
+    msg="3051.0 浮点形态须忽略",
+  )
+  let (r7, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3051.7]},{\"ts\":1,\"ok\":false,\"codes\":[3051.7]},{\"ts\":2,\"ok\":false,\"codes\":[3051.7]}]}}",
+  )
+  assert_true(
+    r7.contains("\"misconceptions\":[]"),
+    msg="3051.7 不得截断检出",
+  )
+  // 整型对照：整数文本两侧同检出（防收窄过杀）
+  let (ri, _) = serve_handle(
+    s, "{\"id\":6,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3051]},{\"ts\":1,\"ok\":false,\"codes\":[3051]},{\"ts\":2,\"ok\":false,\"codes\":[3051]}]}}",
+  )
+  assert_true(
+    ri.contains("\"pattern_id\":\"M01\""),
+    msg="整数字面量仍检出",
+  )
+}
+
+///|
 test "probe_readonly_no_session_mutation" {
   let s = @session.Session::new()
   // 先 compile 建立会话诊断态，再跑 probe——会话诊断不被覆盖（只读语义）

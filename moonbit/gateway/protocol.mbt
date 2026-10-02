@@ -266,9 +266,24 @@ fn Json::as_string(self : Json) -> String? {
 }
 
 ///|
+/// 整数语义访问器（serde_json `as_i64` 对齐，2026-10-02 审阅 P3 修复）：
+/// 浮点形态（原文含 '.'/'e'/'E'——json_parse 恒保 repr）恒 None，
+/// 整数文本超 i32 域丢弃（Double::to_int 溢出防护；错误码/协议参数域
+/// 远离边界——i64 内超 i32 的病态截断语义不照搬，此处收窄丢弃）。
+/// repr=None（手工构造）退值域判 n==n.floor()。
 fn Json::as_int(self : Json) -> Int? {
   match self {
-    Number(n) => Some(n.to_int())
+    Number(n, repr~) => {
+      let float_form = match repr {
+        Some(t) => t.contains(".") || t.contains("e") || t.contains("E")
+        None => n != n.floor()
+      }
+      if float_form || n < -2147483648.0 || n > 2147483647.0 {
+        None
+      } else {
+        Some(n.to_int())
+      }
+    }
     _ => None
   }
 }

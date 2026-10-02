@@ -24,8 +24,6 @@ pub fn detect_misconceptions(Array[CompileRecord]) -> Array[DetectedMisconceptio
 
 pub fn error_concept_map() -> Map[Int, Array[String]]
 
-pub fn f32_shortest_text(Double) -> String
-
 pub fn find_prerequisite_path(String) -> Array[ConceptNode]
 
 pub fn fix_payload(Int) -> FixPayload?

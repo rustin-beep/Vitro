@@ -132,7 +132,6 @@ vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
 vitro/engine/codegen vitro/engine/opcode Instruction
 vitro/engine/codegen vitro/engine/opcode OpCode
 vitro/engine/codegen vitro/engine/source SourceLoc
-vitro/engine/diagnostics moonbitlang/core/string parse_double
 vitro/engine/diagnostics vitro/engine/util utf8_bytes
 vitro/engine/diagnostics vitro/engine/util utf8_text
 vitro/engine/gateway moonbitlang/core/encoding/utf8 encode
@@ -140,6 +139,7 @@ vitro/engine/gateway vitro/engine/ast StructField
 vitro/engine/gateway vitro/engine/ast Type
 vitro/engine/gateway vitro/engine/ast ast_dump_json
 vitro/engine/gateway vitro/engine/ast compute_type_size
+vitro/engine/gateway vitro/engine/ast double_to_json_text
 vitro/engine/gateway vitro/engine/ast type_display_name
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_REGION_LIMIT
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_START
@@ -158,7 +158,6 @@ vitro/engine/gateway vitro/engine/diagnostics apply_fix
 vitro/engine/gateway vitro/engine/diagnostics concept_edges
 vitro/engine/gateway vitro/engine/diagnostics concept_nodes
 vitro/engine/gateway vitro/engine/diagnostics detect_misconceptions
-vitro/engine/gateway vitro/engine/diagnostics f32_shortest_text
 vitro/engine/gateway vitro/engine/diagnostics generate_fix
 vitro/engine/gateway vitro/engine/diagnostics recommend_learning_paths
 vitro/engine/gateway vitro/engine/diagnostics split_lines

@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S8 diagnostics 批段三+四审阅销项：confidence wire 文本销案 + 两处宽容度分叉，2026-10-02）
+
+- **P1 confidence wire 文本与 oracle 不一致（可达比值 26/45 分叉）**：oracle `json!` 走 serde_json **Value 路径**，`serialize_f32` = `Number::from_f64(f as f64)` ⇒ wire 文本 = **f64 最短表示**（2/3 → `0.6666666865348816`）；本批原实现 `f32_shortest_text` 输出 f32 最短（`0.6666667`）——对序列化路径的误判（仅 `to_string` 直序列化才走 ryu f32），且被 wbtest 期望值钉死（锚错 > 锚漏）。销案：删 `f32_shortest_text`/`pow10d`/`pad_zero_to`，probe 改 `@ast.double_to_json_text`（f64 ryu-pretty 单源）。**审阅处方为裸 `to_string`，实测否决**：`Double::to_string(1.0)` 输出 `1` 而 oracle 恒 `1.0`（d/d 满命中可达 1.0），wire 探针原始字节实锤。值面 `round_to_f32` 保留（45/45 位模式一致）。锚：`probe_confidence_wire_text`（2/3 + 1.0 双形态原始字节）。
+- **P2 `params.completion: null` 静默假空**：`json_field` 对缺键与显式 null 同塌缩 `Null` ⇒ 守卫放过、回成功帧 + `completion: []`，恰为台账声称要避免的形态（oracle 对 `Some(Null)` 的 `.get("line")` 为 None 走 error 帧）。修复：判键存在性（`Object(m) && m.contains("completion")`），显式 null 亦 fail loud。锚：`probe_completion_explicit_null_fail_loud`。
+- **P3 `records[].codes` 浮点形态宽收**：serde_json `as_i64` 对浮点形态（原文含 `.`/`e`/`E`）恒 None（`[3051.0]` 整批忽略）；本侧 `Json::as_int` 对任意 Number 直 `to_int()`（3051.0 误检出、3051.7 截断检出）。修复：`as_int` 本体收窄——repr 原文判整数形态 + i32 值域闸（`json_parse` 恒保 repr；9 个消费点一次对齐：codes/ts/config.set/seek/payload.get 族）。锚：`probe_records_codes_number_form`（3051.0/3051.7 忽略 + 整型对照仍检出）。
+- 连坐：差异台账分叉③销案改写 + 分叉②补显式 null 语义 / 上批 CHANGELOG 误述修正 / `wb_f32_shortest_text_wire_form` 退役（diagnostics 留值面锚）/ surface 边三连（+`gateway→ast double_to_json_text`、−两条过期）/ diagnostics moon.pkg 清 `core/string` import / README 分解式五处（629→628、721→723、diagnostics 33→32、native-only 92→95）。
+- 红→绿：三锚先证红（gateway 3 红）→ 修复后 gateway+diagnostics 118/118 全绿。防线：裸 `moon test` 628 / native 全量 723（+3 锚 −1 退役，两口径净变精确吻合）/ 双臂 wire 探针七例原始字节全同 / serve_smoke Rust 67 + MB 65 PASS/2 豁免 / gen_diagnostics·mbti·surface·hygiene·facts --strict 全绿。
+- 批外挂账（未修）：printf/scanf 非整数格式符参数序号诊断系统性 +1（`typeck/builtin.mbt:220,303`，da48174 引入；语料无 %f 配 int 形状，typeck_diff 遮蔽）——**MoonBit 侧独有分叉非两侧同病**，oracle 行为正确、独立可修；issue 待拍板。
+
 ### Added（S8 diagnostics 批：数据层四表外置 + 机制层五件 + diagnostics_probe 第四方法——**dump 族四方法整面**，2026-10-02）
 
 - **新包 `vitro/engine/diagnostics`（L8 层位裁定**——gateway 消费所致，time_travel/teaching-steps 同因降层第三例；依赖仅 @util + core/string）：**数据层** A3–A7 四张表（`*_gen.mbt` 由新生成器 `scripts/moonbit/gen_diagnostics` 自 Rust 冻结源产 **.mbt + JSON 双产物**——人审/vendor 面 `scripts/moonbit/diagnostics_data/` 四张；fix 载荷 25 静态码〔动态五码 1004/3035/3041/3050/3051 按勘察 A3 拆分判据留机制层〕/ 概念图 25 节点+25 边+28 映射〔**3020→Recursion oracle 存量语义错照搬不修**，差异台账两侧同修批〕/ 误区模式 6 / 学习路径 6，基线计数 fail loud；J9 双路证红 + 读写两阶段分离防 check 污染工作区〔审阅 F5〕；CI 生成物新鲜度步接线）+ **机制层** M1–M5（generate_fix 字节域坐标照搬 / apply_fix〔safe_byte_col 三级退化照搬 + E-P1-6 中文行回归〕/ 误区滑窗 / 路径组装 / 图激活 DFS〔边声明序契约〕）。
 - **分叉②销案**（serve compile 诊断 fix 族此前恒 0/空）：push_one_diag 接 generate_fix 七元组直填，errors/warnings/hints 三级全挂（Rust push_one 同形）；fix_suggestion 空文案回退 catalog explanation。
-- **diagnostics_probe**（dump 族第四方法，八段照搬 Rust U1 导出）：只读语义 = 一次性会话承载管线即弃；三条分叉登记（只读形态 / `intents` 恒 `[]` 随 analysis 批 / `params.completion` 存在即 fail loud——M15 未实现不支持而非静默假空）；**confidence 的 wire 形态 = f32 最短表示**（serde_json f32 同形——`round_to_f32` 计算处语义化〔f32→f64 宽度放大分叉，审阅 F6〕+ `f32_shortest_text` 文本化穿透 f64 emitter）。
+- **diagnostics_probe**（dump 族第四方法，八段照搬 Rust U1 导出）：只读语义 = 一次性会话承载管线即弃；三条分叉登记（只读形态 / `intents` 恒 `[]` 随 analysis 批 / `params.completion` 存在即 fail loud——M15 未实现不支持而非静默假空）；**confidence 的 wire 形态 = f64 最短表示**（oracle `json!` 的 Value 路径先提升 f64——2/3 → `0.6666666865348816`；值面 `round_to_f32` 位模式对齐 `as f32`〔f32→f64 宽度放大，审阅 F6〕+ 文本面 `double_to_json_text` 单源。2026-10-02 审阅 P1 修正：原「f32 最短表示/serde_json f32 同形」系对序列化路径的误判，`f32_shortest_text` 随销案删除）。
 - **serve_smoke 双臂 67 断言全绿**（Rust 67/67 + MoonBit 65 PASS/2 永久豁免/0 FAIL）：probe 八断言含 **fix 七元组经两侧独立 generate_fix/apply_fix 后 `fixed_source` 全文一致**（分叉②销案的端到端证明）与 M01 confidence 3/4 双臂同值。
 - 锚：diagnostics 33（黑盒 26 = Rust 单测照搬 13 + 行为锚 8 + 出口点名 1 + 审阅锚 4；白盒 7 = 机制锚 6 + f32 文本化锚 1）+ gateway probe 4（帧结构/误区流/completion fail loud/只读语义）。
 - 连坐：`pkg_deps` rules.json diagnostics 9→8 + `moonbit/AGENTS.md` 包清单条目 + README ×2 包表 S8 三行（time_travel/teaching·steps 同族沿漏一并收口）与测试数双口径（**裸 629 / native 全量 721**）+ surface +12 边 + `util` 新增 `utf8_bytes`/`utf8_text` 机械件（**语言新事实：`String::to_bytes()` = UTF-16LE 非 UTF-8**）。

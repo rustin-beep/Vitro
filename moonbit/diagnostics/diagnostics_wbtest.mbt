@@ -75,16 +75,12 @@ test "wb_round_to_f32_f32_parity" {
   inspect(round_to_f32(0.0), content="0")
   // 进位跨界：0.9999999999999999（f64 最大 <1）→ 舍到 1.0
   inspect(round_to_f32(0.9999999999999999), content="1")
+  // 满命中 5/5（confidence 1.0 可达形态）
+  inspect(round_to_f32(5.0 / 5.0), content="1")
 }
 
-///|
-test "wb_f32_shortest_text_wire_form" {
-  // serde_json f32 wire 形态对齐（confidence 对拍面）
-  inspect(f32_shortest_text(0.6666666865348816), content="0.6666667")
-  inspect(f32_shortest_text(0.4285714328289032), content="0.42857143")
-  inspect(f32_shortest_text(0.75), content="0.75")
-  inspect(f32_shortest_text(1.0), content="1.0")
-  inspect(f32_shortest_text(0.0), content="0.0")
-  // 满命中 5/5（confidence 1.0 可达形态）
-  inspect(f32_shortest_text(round_to_f32(5.0 / 5.0)), content="1.0")
-}
+// wire 文本锚（原 wb_f32_shortest_text_wire_form）随审阅 P1 销案退役：
+// f32 最短文本（0.6666667）系对 oracle 序列化路径的误判——json! 走
+// Value 路径先提升 f64，wire 恒 f64 最短文本。文本面锁定移至 gateway
+// 的 probe_confidence_wire_text（原始字节锚，含 1.0 形态）；本包只锚
+// 值面（上锚 round_to_f32 位模式对齐 oracle `as f32`）。

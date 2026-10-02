@@ -26,10 +26,11 @@ pub fn detect_misconceptions(
     if count >= pat.min_occurrences {
       let denominator = if recent_len > 1 { recent_len } else { 1 }
       let raw_confidence = count.to_double() / denominator.to_double()
-      // f32 语义化（审阅 F6 修复 2026-10-02）：oracle confidence 是 f32
-      //（Rust `as f32`），本侧 Double=f64——2/3 等非十进制比值两侧文本
-      // 分叉（0.6666666666666666 vs serde f32 "0.6666667"，探针实证）。
-      // 计算处舍入到最近 f32 保 wire 等价。
+      // f32 语义化（审阅 F6 修复 2026-10-02；文本面销案随审阅 P1）：
+      // oracle confidence 是 f32（Rust `as f32`），本侧 Double=f64——
+      // 计算处舍入到最近 f32 保**位模式**等价。wire 文本由出口侧
+      // double_to_json_text 输出 f64 最短表示（oracle json! 的 Value
+      // 路径同样先提升 f64——0.6666666865348816，非 f32 最短 0.6666667）。
       let confidence = if raw_confidence > 1.0 {
         1.0
       } else {
@@ -152,58 +153,4 @@ fn pow2i(e : Int) -> Double {
     k = k - 1
   }
   r
-}
-
-///|
-/// f32 精确值的最短十进制文本（ryu f32 的行为等价物——serde_json 序列化
-/// f32 的 wire 形态；confidence 对拍面用）。**前置**：v 须已是 f32 精确值
-///（经 `round_to_f32`）。算法 = 逐小数位 D（1..=9）四舍五入生成候选 +
-/// parse 回代验证 `round_to_f32(parse(s)) == v`——**不能截断 f64 最短
-/// 文本**（f32 与 f64 在各数位上舍入到不同精度，首版截断法实锤产出
-/// "0.6666668" 假值）。域约束 (0,1) 小数（confidence = n/d，n<d；
-/// 0/1 前置分支；邻近 1 的进位形态域内不可达，9 位全败走防御 fallback）。
-pub fn f32_shortest_text(v : Double) -> String {
-  if v == 0.0 {
-    return "0.0" // serde_json 整值形态（同 1.0）
-  }
-  if v == 1.0 {
-    return "1.0"
-  }
-  for d = 1; d <= 9; d = d + 1 {
-    let digits = (v * pow10d(d) + 0.5).floor().to_int()
-    if digits <= 0 {
-      continue
-    }
-    let text = "0." + pad_zero_to(digits, d)
-    let parsed = @string.parse_double(text.view()) catch { _ => continue }
-    if round_to_f32(parsed) == v {
-      return text
-    }
-  }
-  v.to_string() // 防御（域内不可达——f32 九位十进制唯一标识）
-}
-
-///|
-/// 10 的正整数幂（d ≤ 9）。
-fn pow10d(d : Int) -> Double {
-  let mut r = 1.0
-  for _i = 0; _i < d; _i = _i + 1 {
-    r = r * 10.0
-  }
-  r
-}
-
-///|
-/// 数字文本左补零至 width 位（"6666667"→d=7 同宽；"5"→d=2 得 "05"）。
-fn pad_zero_to(digits : Int, width : Int) -> String {
-  let t = digits.to_string()
-  if t.length() >= width {
-    return t
-  }
-  let buf = StringBuilder()
-  for _i = 0; _i < width - t.length(); _i = _i + 1 {
-    buf.write_char('0')
-  }
-  buf.write_string(t)
-  buf.to_string()
 }

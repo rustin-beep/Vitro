@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（勘探资产入仓：fork 方案——外置语料基线 + 金样本合规闸，2026-10-02）
+
+- **外置语料锚**：fork [rustin-beep/C](https://github.com/rustin-beep/C)，**默认分支 `vitro-probe-baseline`**（上游 TheAlgorithms/C@`e5dad3f`〔2023-09 终态〕+ 89 文件探针态——补 include 与 struct 模板反注释，diff 全量定性零误改；分支头含 fork 说明 README）。上游代码与探针 diff 只在 fork，**永不进本仓**（GPL 红线）。
+- `scripts/realcode_diff/` 入仓：勘探脚本三模式（`-repo` 勘探 / `-aggregate` 聚合〔端到端 407/407 与原金样本零差异——复现链工具化闭环〕/ `-check` 合规闸）+ `gold_signatures.json`（407 条测量事实，`_meta` provenance 含重建配方；零源码文本渗漏实测在案）+ 目录 README（就地说明）。
+- `-check` 接 CI hygiene（四道校验：schema 键集白名单/值域实测全集/诊断码形态/provenance 锚；J9 三路证红）。**勘探运行不接 CI**（维持拍板；勘探 CI 化二期待拍板）。
+- `testcount` 新增 README 分解式**算术自洽机判**（三组加法互洽，防线维护通道）——当前 85 陈旧值即红锚证红后修 88 转绿；README ×2 连坐。
+- 样本库 README 口径勘误注（6aa0718 已推送不可改）：25 .c = 19 原码 + 5 双拒 + 1 副本，引用规模以映射表点数为准。
+
 ### Added（S8 teaching 批六号：structures 族——**43/43 全量收官**，对拍 311/311 全覆盖，2026-10-02）
 
 - **structures 十一算法**（判据照搬 detector/structures.rs——U1#1 P0-2 收紧：链表删除 = deletenode/delete_node 形态**且** linked/list 语境，BST 的 deleteNode 不误判；hash 的 cash 排除；unionfind 与 union+find 双形态；infer 照搬 algorithm_steps/structures.rs——seq_list 的 P1-89 表长更新挂真值行〔length--/length++ 原大小写判定〕，josephus/union_find 数值文案）。

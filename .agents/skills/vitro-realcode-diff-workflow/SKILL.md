@@ -67,7 +67,7 @@ metadata:
 
 - 脚本：`scripts/realcode_diff/vitro_clang_diff.go`（仓内版本化；勘探产物 report.md/result.json 仍不进仓——诊断 message 可引用源码 token）。三模式：勘探 `-repo` / 聚合 `-aggregate <result.json>` / 合规 `-check`（CI hygiene）。
 - 金样本：`scripts/realcode_diff/gold_signatures.json`（**只存码/数量/运行判定签名，不存源码文本——GPL 红线**；`-check` 三道校验：schema 键集白名单/值域/码形态，J9 三路证红在案）。用途：修复批后重跑，签名只应向绿迁移。
-- **provenance 锚（复现链）**：上游 TheAlgorithms/C@`e5dad3f`（2023-09 终态）→ fork [rustin-beep/C](https://github.com/rustin-beep/C) 分支 `vitro-probe-baseline`@`4519833b`（89 文件探针态：补 include 128 处 + leetcode 注释内 struct 模板反注释为真定义——上游代码与探针 diff 都只在 fork，永不进 Vitro 仓）。重建命令见金样本 `_meta.regen`。
+- **provenance 锚（复现链）**：上游 TheAlgorithms/C@`e5dad3f`（2023-09 终态）→ fork [rustin-beep/C](https://github.com/rustin-beep/C) 分支 `vitro-probe-baseline`@`462074f6`（**默认分支**——clone 即得正确基线态）（89 文件探针态：补 include 128 处 + leetcode 注释内 struct 模板反注释为真定义——上游代码与探针 diff 都只在 fork，永不进 Vitro 仓）。重建命令见金样本 `_meta.regen`。
 - 勘探前置自检：clone fork 分支 → Vitro serve exe 在位（`moon build --target native cmd/serve`）→ Clang 22+ 在 PATH。任一缺失 → 本节降级跳过并在产出中明示（不静默）。
 - 2026-10-01 基线：407 份 → Clang 红 122（无 main 35+平台/真错）→ 双绿 155 → Vitro 红 130；运行 match 57+rand 10；mismatch 23 已定性（#21 遮蔽 1 / UB 1 / 护栏+资源上限 4 / 交互 16 / 方法 1）。
 - CI 现状：`-check` 合规闸已接 hygiene（只守仓内金样本静态合规，**不跑勘探本身**——维持拍板）；勘探 CI 化（pinned-sha clone 重跑断言，形态同 toolchain_probe）仍为二期待拍板。

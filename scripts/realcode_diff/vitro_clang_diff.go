@@ -742,7 +742,9 @@ func runCheck() int {
 		}
 		if codes, ok := e["codes"].(map[string]any); ok {
 			for c, n := range codes {
-				if !strings.HasPrefix(c, "E") || !isAllDigits(c[1:]) {
+				// 码形态 = 引擎三族（E 错误/W 警告/H 提示——gen_diag 137 码位
+				// 全表；v2 勘探起 hints 也入签名）。首字母白名单 + 全数字。
+				if len(c) != 5 || (c[0] != 'E' && c[0] != 'W' && c[0] != 'H') || !isAllDigits(c[1:]) {
 					fail(fmt.Sprintf("files.%s.codes 键非诊断码形态: %q", name, c))
 				}
 				if f, ok := n.(float64); !ok || f < 1 {

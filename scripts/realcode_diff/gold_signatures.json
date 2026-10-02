@@ -1,18 +1,18 @@
 {
   "_meta": {
-    "as_of": "2026-10-01",
+    "as_of": "2026-10-02",
     "source_fork": "https://github.com/rustin-beep/C/tree/vitro-probe-baseline",
     "source_commit": "462074f6201b72f6c7420cbcba7e9c8292f88ef2",
     "upstream_commit": "e5dad3fa8def3726ec850ca66a7f51521f8ad393",
     "regen": "git clone -b vitro-probe-baseline https://github.com/rustin-beep/C && cd Vitro/moonbit && moon build --target native cmd/serve && go run ./scripts/realcode_diff/vitro_clang_diff.go -repo <clone> -out <out> && go run ./scripts/realcode_diff/vitro_clang_diff.go -aggregate <out>/result.json",
-    "repo": "TheAlgorithms/C",
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。用途:#3~#21 修复批回归断言(修复后重跑,签名应只向绿迁移;向红迁移=回归)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。",
-    "total": 407,
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。",
     "buckets": {
-      "clang_red": 122,
-      "both_green": 155,
-      "vitro_red": 130
-    }
+      "clang_red": 46,
+      "both_green": 208,
+      "vitro_red": 153
+    },
+    "repo": "TheAlgorithms/C",
+    "total": 407
   },
   "files": {
     "audio/alaw.c": {
@@ -39,7 +39,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -220,7 +222,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -244,7 +248,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -264,7 +270,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "W3050": 1,
+        "W3053": 2
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -272,7 +281,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 1,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -290,7 +302,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -298,7 +313,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -306,7 +324,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 4,
-      "codes": {},
+      "codes": {
+        "H3057": 3,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -322,7 +343,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 8,
-      "codes": {},
+      "codes": {
+        "H3057": 4,
+        "W3053": 4
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -358,7 +382,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3054": 5
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -366,7 +392,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -382,7 +410,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 7,
-      "codes": {},
+      "codes": {
+        "W3054": 7
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -400,7 +430,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3054": 5
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -466,7 +498,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 7,
-      "codes": {},
+      "codes": {
+        "H3057": 5,
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -484,7 +519,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 6,
-      "codes": {},
+      "codes": {
+        "H3057": 4,
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -548,7 +586,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "H3057": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -566,7 +606,11 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 8,
-      "codes": {},
+      "codes": {
+        "H3057": 5,
+        "W1018": 1,
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -574,7 +618,11 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 8,
-      "codes": {},
+      "codes": {
+        "H3057": 5,
+        "W1018": 1,
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -632,7 +680,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 6,
-      "codes": {},
+      "codes": {
+        "W3054": 6
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -647,18 +697,23 @@
       "run": ""
     },
     "data_structures/linked_list/circular_linked_list.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "W3054": 5
+      },
+      "layer": "ok",
+      "run": "clang_timeout"
     },
     "data_structures/linked_list/doubly_linked_list.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 13,
-      "codes": {},
+      "codes": {
+        "H3057": 7,
+        "W3054": 6
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -666,7 +721,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 6,
-      "codes": {},
+      "codes": {
+        "W3054": 6
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -674,7 +731,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -682,7 +741,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 4,
-      "codes": {},
+      "codes": {
+        "W3054": 4
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -690,7 +751,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3054": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -698,7 +761,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -707,7 +772,8 @@
       "vitro_errs": 1,
       "vitro_warns": 1,
       "codes": {
-        "E1021": 1
+        "E1021": 1,
+        "W1018": 1
       },
       "layer": "lex",
       "run": ""
@@ -765,7 +831,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -813,7 +881,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "H3057": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -868,12 +938,15 @@
       "run": ""
     },
     "exercism/acronym/acronym.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 1,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "exercism/hello_world/hello_world.c": {
       "clang_ok": true,
@@ -899,7 +972,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "H3057": 1,
+        "W3053": 4
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
@@ -927,7 +1003,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 11,
-      "codes": {},
+      "codes": {
+        "W3053": 11
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -935,7 +1013,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3053": 4,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff_match"
     },
@@ -1002,9 +1083,9 @@
       "vitro_errs": 6,
       "vitro_warns": 0,
       "codes": {
-        "E1021": 1,
         "E1001": 2,
-        "E1006": 3
+        "E1006": 3,
+        "E1021": 1
       },
       "layer": "lex",
       "run": ""
@@ -1024,8 +1105,8 @@
       "vitro_errs": 5,
       "vitro_warns": 0,
       "codes": {
-        "E1021": 1,
-        "E1006": 4
+        "E1006": 4,
+        "E1021": 1
       },
       "layer": "lex",
       "run": ""
@@ -1051,35 +1132,45 @@
       "run": ""
     },
     "leetcode/src/1.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/10.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/1008.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 1,
+        "W3054": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1009.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 2,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E3023": 1,
+        "E3066": 1
+      },
+      "layer": "typeck",
       "run": ""
     },
     "leetcode/src/101.c": {
@@ -1091,52 +1182,60 @@
       "run": ""
     },
     "leetcode/src/1019.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1026.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/104.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/108.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 3,
+      "codes": {
+        "H3057": 1,
+        "W3054": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1089.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/109.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 4,
+      "codes": {
+        "H3057": 1,
+        "W3054": 3
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/11.c": {
       "clang_ok": true,
@@ -1155,11 +1254,13 @@
       "run": ""
     },
     "leetcode/src/112.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/1137.c": {
@@ -1179,12 +1280,12 @@
       "run": ""
     },
     "leetcode/src/118.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1184.c": {
       "clang_ok": false,
@@ -1203,27 +1304,32 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/119.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/12.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 1,
+        "W3054": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1207.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/121.c": {
@@ -1235,12 +1341,14 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/124.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3053": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/125.c": {
       "clang_ok": false,
@@ -1283,20 +1391,24 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/141.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/142.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "W3054": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1524.c": {
       "clang_ok": true,
@@ -1318,17 +1430,21 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 3
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
     "leetcode/src/160.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1653.c": {
       "clang_ok": false,
@@ -1355,27 +1471,33 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/1695.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/17.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 4,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
     "leetcode/src/1704.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/173.c": {
@@ -1387,20 +1509,24 @@
       "run": ""
     },
     "leetcode/src/1752.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/1769.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/1833.c": {
       "clang_ok": false,
@@ -1411,12 +1537,14 @@
       "run": ""
     },
     "leetcode/src/1838.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/189.c": {
       "clang_ok": true,
@@ -1427,12 +1555,14 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/19.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/190.c": {
       "clang_ok": false,
@@ -1451,19 +1581,24 @@
       "run": ""
     },
     "leetcode/src/2.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 1,
+        "W3054": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/20.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/201.c": {
@@ -1483,28 +1618,34 @@
       "run": ""
     },
     "leetcode/src/203.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/206.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/2095.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/21.c": {
       "clang_ok": false,
@@ -1523,12 +1664,14 @@
       "run": ""
     },
     "leetcode/src/2130.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/215.c": {
       "clang_ok": false,
@@ -1539,11 +1682,13 @@
       "run": ""
     },
     "leetcode/src/217.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/2222.c": {
@@ -1563,20 +1708,24 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/2256.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3053": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/226.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/2270.c": {
       "clang_ok": true,
@@ -1587,35 +1736,41 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/2279.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/230.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/2304.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/231.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/234.c": {
@@ -1643,28 +1798,34 @@
       "run": ""
     },
     "leetcode/src/242.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/2482.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 4,
+      "codes": {
+        "H3057": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/2501.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/26.c": {
       "clang_ok": true,
@@ -1699,11 +1860,13 @@
       "run": ""
     },
     "leetcode/src/278.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/28.c": {
@@ -1771,36 +1934,45 @@
       "run": ""
     },
     "leetcode/src/367.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/37.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/38.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 1,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/387.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/389.c": {
       "clang_ok": false,
@@ -1814,25 +1986,31 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 4,
-      "codes": {},
+      "codes": {
+        "H3057": 4
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
     "leetcode/src/404.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/42.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/434.c": {
       "clang_ok": false,
@@ -1843,20 +2021,24 @@
       "run": ""
     },
     "leetcode/src/442.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/45.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 3,
+      "codes": {
+        "H3057": 3
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/461.c": {
       "clang_ok": false,
@@ -1886,7 +2068,13 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3050": 1,
+        "W3052": 1,
+        "W3053": 1,
+        "W3054": 1,
+        "W3067": 1
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
@@ -1894,7 +2082,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 1,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "clang_build_fail"
     },
@@ -1939,27 +2130,33 @@
       "run": ""
     },
     "leetcode/src/567.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/6.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 3
+      },
       "layer": "ok",
       "run": "match"
     },
     "leetcode/src/617.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 4,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E3004": 4
+      },
+      "layer": "typeck",
       "run": ""
     },
     "leetcode/src/62.c": {
@@ -1987,20 +2184,22 @@
       "run": ""
     },
     "leetcode/src/66.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/669.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/674.c": {
       "clang_ok": true,
@@ -2011,12 +2210,14 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/684.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/69.c": {
       "clang_ok": true,
@@ -2037,20 +2238,25 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/700.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/701.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 1,
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/704.c": {
       "clang_ok": false,
@@ -2085,36 +2291,44 @@
       "run": "clang_build_fail"
     },
     "leetcode/src/79.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/8.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 6,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E3023": 6
+      },
+      "layer": "typeck",
       "run": ""
     },
     "leetcode/src/807.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/82.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "W3054": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/83.c": {
       "clang_ok": false,
@@ -2125,11 +2339,13 @@
       "run": ""
     },
     "leetcode/src/841.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/852.c": {
@@ -2149,28 +2365,32 @@
       "run": ""
     },
     "leetcode/src/9.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/901.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/905.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/917.c": {
       "clang_ok": false,
@@ -2181,60 +2401,72 @@
       "run": ""
     },
     "leetcode/src/931.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/938.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
       "codes": {},
-      "layer": "",
-      "run": ""
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/94.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/953.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/965.c": {
-      "clang_ok": false,
-      "vitro_errs": 0,
+      "clang_ok": true,
+      "vitro_errs": 3,
       "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
       "run": ""
     },
     "leetcode/src/977.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 3,
+      "codes": {
+        "H3057": 3
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/979.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/98.c": {
       "clang_ok": false,
@@ -2245,20 +2477,24 @@
       "run": ""
     },
     "leetcode/src/985.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 1,
+      "codes": {
+        "H3057": 1
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "leetcode/src/997.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
-      "run": ""
+      "vitro_warns": 2,
+      "codes": {
+        "H3057": 2
+      },
+      "layer": "ok",
+      "run": "clang_build_fail"
     },
     "machine_learning/adaline_learning.c": {
       "clang_ok": true,
@@ -2286,8 +2522,8 @@
       "vitro_errs": 12,
       "vitro_warns": 0,
       "codes": {
-        "E3038": 11,
-        "E3023": 1
+        "E3023": 1,
+        "E3038": 11
       },
       "layer": "typeck",
       "run": ""
@@ -2337,7 +2573,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "H3057": 1
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -2346,9 +2584,9 @@
       "vitro_errs": 4,
       "vitro_warns": 0,
       "codes": {
+        "E3017": 2,
         "E3023": 1,
-        "E3066": 1,
-        "E3017": 2
+        "E3066": 1
       },
       "layer": "typeck",
       "run": ""
@@ -2375,7 +2613,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "W3053": 3
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -2383,7 +2623,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -2419,7 +2662,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 8,
-      "codes": {},
+      "codes": {
+        "H3057": 6,
+        "W3053": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2461,7 +2707,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "H3057": 3
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -2491,8 +2739,8 @@
       "vitro_warns": 0,
       "codes": {
         "E2003": 2,
-        "E2007": 1,
-        "E2005": 9
+        "E2005": 9,
+        "E2007": 1
       },
       "layer": "parse",
       "run": ""
@@ -2502,8 +2750,8 @@
       "vitro_errs": 73,
       "vitro_warns": 0,
       "codes": {
-        "E2005": 70,
         "E2003": 2,
+        "E2005": 70,
         "E2007": 1
       },
       "layer": "parse",
@@ -2525,7 +2773,7 @@
       "vitro_warns": 0,
       "codes": {},
       "layer": "ok",
-      "run": "clang_timeout"
+      "run": "clang_run_fail"
     },
     "misc/hamming_distance.c": {
       "clang_ok": true,
@@ -2549,7 +2797,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3054": 5
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2586,7 +2836,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 7,
-      "codes": {},
+      "codes": {
+        "W3054": 7
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2594,7 +2846,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 9,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 7
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2602,15 +2857,20 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 2
+      },
       "layer": "ok",
-      "run": "rand_diff_match"
+      "run": "clang_build_fail"
     },
     "misc/rselect.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff_match"
     },
@@ -2649,7 +2909,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2665,7 +2927,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 2
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2681,7 +2945,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 6,
-      "codes": {},
+      "codes": {
+        "H3057": 4,
+        "W3053": 2
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -2689,7 +2956,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 4,
-      "codes": {},
+      "codes": {
+        "H3057": 3,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -2697,7 +2967,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 1,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2723,7 +2996,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 2
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -2809,7 +3084,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "W3053": 3
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -2817,7 +3094,11 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 8,
-      "codes": {},
+      "codes": {
+        "H3057": 5,
+        "W3053": 2,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff"
     },
@@ -2830,6 +3111,38 @@
       },
       "layer": "parse",
       "run": ""
+    },
+    "project_euler/problem_1/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "project_euler/problem_1/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_1/sol3.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "project_euler/problem_1/sol4.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
     },
     "project_euler/problem_10/sol1.c": {
       "clang_ok": true,
@@ -2847,8 +3160,8 @@
       "vitro_errs": 5,
       "vitro_warns": 0,
       "codes": {
-        "E3038": 1,
         "E3023": 2,
+        "E3038": 1,
         "E3066": 2
       },
       "layer": "typeck",
@@ -2859,9 +3172,9 @@
       "vitro_errs": 4,
       "vitro_warns": 0,
       "codes": {
+        "E3017": 2,
         "E3023": 1,
-        "E3066": 1,
-        "E3017": 2
+        "E3066": 1
       },
       "layer": "typeck",
       "run": ""
@@ -2872,8 +3185,8 @@
       "vitro_warns": 0,
       "codes": {
         "E3023": 1,
-        "E3066": 1,
-        "E3038": 3
+        "E3038": 3,
+        "E3066": 1
       },
       "layer": "typeck",
       "run": ""
@@ -2912,35 +3225,14 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 10,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 8
+      },
       "layer": "ok",
       "run": "match"
     },
-    "project_euler/problem_1/sol1.c": {
-      "clang_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "ok",
-      "run": "clang_timeout"
-    },
-    "project_euler/problem_1/sol2.c": {
-      "clang_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "ok",
-      "run": "match"
-    },
-    "project_euler/problem_1/sol3.c": {
-      "clang_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "ok",
-      "run": "match"
-    },
-    "project_euler/problem_1/sol4.c": {
+    "project_euler/problem_2/so1.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 0,
@@ -2962,7 +3254,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 5,
-      "codes": {},
+      "codes": {
+        "W3053": 5
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -2971,8 +3265,8 @@
       "vitro_errs": 3,
       "vitro_warns": 0,
       "codes": {
-        "E3038": 1,
         "E3023": 1,
+        "E3038": 1,
         "E3066": 1
       },
       "layer": "typeck",
@@ -2995,8 +3289,8 @@
       "vitro_warns": 0,
       "codes": {
         "E3023": 1,
-        "E3066": 1,
-        "E3038": 1
+        "E3038": 1,
+        "E3066": 1
       },
       "layer": "typeck",
       "run": ""
@@ -3005,7 +3299,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 14,
-      "codes": {},
+      "codes": {
+        "H3057": 4,
+        "W3053": 10
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -3014,25 +3311,20 @@
       "vitro_errs": 8,
       "vitro_warns": 0,
       "codes": {
-        "E2005": 5,
-        "E2003": 3
+        "E2003": 3,
+        "E2005": 5
       },
       "layer": "parse",
       "run": ""
-    },
-    "project_euler/problem_2/so1.c": {
-      "clang_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "ok",
-      "run": "match"
     },
     "project_euler/problem_3/sol1.c": {
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 6,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 4
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -3044,6 +3336,14 @@
       "layer": "ok",
       "run": "match"
     },
+    "project_euler/problem_4/sol.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
     "project_euler/problem_401/sol1.c": {
       "clang_ok": true,
       "vitro_errs": 1,
@@ -3053,14 +3353,6 @@
       },
       "layer": "lex",
       "run": ""
-    },
-    "project_euler/problem_4/sol.c": {
-      "clang_ok": true,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "ok",
-      "run": "mismatch"
     },
     "project_euler/problem_5/sol1.c": {
       "clang_ok": true,
@@ -3087,7 +3379,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3050": 1,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -3103,7 +3398,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -3222,7 +3519,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "W3067": 1
+      },
       "layer": "ok",
       "run": "clang_timeout"
     },
@@ -3232,7 +3531,7 @@
       "vitro_warns": 0,
       "codes": {},
       "layer": "ok",
-      "run": "match"
+      "run": "clang_build_fail"
     },
     "searching/pattern_search/boyer_moore_search.c": {
       "clang_ok": true,
@@ -3240,7 +3539,7 @@
       "vitro_warns": 0,
       "codes": {},
       "layer": "ok",
-      "run": "match"
+      "run": "clang_build_fail"
     },
     "searching/pattern_search/naive_search.c": {
       "clang_ok": true,
@@ -3248,7 +3547,7 @@
       "vitro_warns": 0,
       "codes": {},
       "layer": "ok",
-      "run": "match"
+      "run": "clang_build_fail"
     },
     "searching/pattern_search/rabin_karp_search.c": {
       "clang_ok": true,
@@ -3278,7 +3577,11 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 7,
-      "codes": {},
+      "codes": {
+        "H3057": 2,
+        "W3053": 3,
+        "W3067": 2
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -3334,7 +3637,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 3,
-      "codes": {},
+      "codes": {
+        "W3054": 3
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -3350,7 +3655,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "H3057": 1,
+        "W3053": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -3374,7 +3682,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "H3057": 1
+      },
       "layer": "ok",
       "run": "mismatch"
     },
@@ -3400,7 +3710,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff_match"
     },
@@ -3408,7 +3721,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "clang_run_fail"
     },
@@ -3468,7 +3784,9 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 1,
-      "codes": {},
+      "codes": {
+        "H3057": 1
+      },
       "layer": "ok",
       "run": "match"
     },
@@ -3508,7 +3826,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff"
     },
@@ -3516,7 +3837,10 @@
       "clang_ok": true,
       "vitro_errs": 0,
       "vitro_warns": 2,
-      "codes": {},
+      "codes": {
+        "W3053": 1,
+        "W3054": 1
+      },
       "layer": "ok",
       "run": "rand_diff_match"
     },
@@ -3543,9 +3867,9 @@
       "vitro_errs": 9,
       "vitro_warns": 0,
       "codes": {
-        "E1003": 2,
+        "E1001": 5,
         "E1002": 2,
-        "E1001": 5
+        "E1003": 2
       },
       "layer": "lex",
       "run": ""

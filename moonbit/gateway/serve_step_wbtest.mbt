@@ -271,3 +271,62 @@ test "serve_step_unmigrated_family_stays_null" {
     )
   }
 }
+
+///|
+/// 审阅销项锚（2026-10-02）：同会话二次 step.begin 的标注链路——审阅
+/// 读码发现本侧 set_algorithm_matches 复位三状态而 Rust 对应 session
+/// 字段不复位，理论差异形态「同会话不重编译、连续两次 step.begin 后
+/// 残留 prev_vars 影响标注」探针未复现（判据不足未报缺陷）；本锚把该
+/// 面从「未覆盖」变「已覆盖」：二次 begin（新引擎 + matches 重注入 +
+/// 状态复位）后跑到带标注帧，标注链路须完好。
+test "serve_step_second_begin_reannotates" {
+  let s = @session.Session::new()
+  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    "void bubbleSort(int arr[], int n) {\\n" +
+    "  int i, j, temp;\\n" +
+    "  for (i = 0; i < n - 1; i++) {\\n" +
+    "    for (j = 0; j < n - i - 1; j++) {\\n" +
+    "      if (arr[j] > arr[j + 1]) {\\n" +
+    "        temp = arr[j];\\n" +
+    "        arr[j] = arr[j + 1];\\n" +
+    "        arr[j + 1] = temp;\\n" +
+    "      }\\n" +
+    "    }\\n" +
+    "  }\\n" +
+    "}\\n" +
+    "int main() {\\n" +
+    "  int arr[3] = {3, 1, 2};\\n" +
+    "  int n = 3;\\n" +
+    "  bubbleSort(arr, n);\\n" +
+    "  return arr[0];\\n" +
+    "}\\n" +
+    "\"}}"
+  let (cresp, _) = serve_handle(s, jsrc)
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":9,\"method\":\"run\"}"))
+  // 首段：begin → 推进 → 出现标注
+  let (b1, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
+  assert_true(b1.contains("\"ready\":true"), msg="首次 begin")
+  let mut first = false
+  for k = 0; k < 64; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{100 + k},\"method\":\"step.next\"}")
+    if r.contains("\"algorithm_name\":\"bubble_sort\"") {
+      first = true
+    }
+  }
+  assert_true(first, msg="首段应出现标注")
+  // 二次 begin（同会话不重编译）：新引擎 + matches 重注入 + 三状态复位
+  let (b2, _) = serve_handle(s, "{\"id\":3,\"method\":\"step.begin\"}")
+  assert_true(b2.contains("\"ready\":true"), msg="二次 begin 须可用")
+  let mut second = false
+  for k = 0; k < 64; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{200 + k},\"method\":\"step.next\"}")
+    if r.contains("\"algorithm_name\":\"bubble_sort\"") {
+      second = true
+    }
+  }
+  assert_true(
+    second,
+    msg="二次 begin 后标注链路须完好（复位语义回归即红）",
+  )
+}

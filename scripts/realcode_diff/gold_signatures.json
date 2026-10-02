@@ -1,0 +1,3575 @@
+{
+  "_meta": {
+    "as_of": "2026-10-01",
+    "source_fork": "https://github.com/rustin-beep/C/tree/vitro-probe-baseline",
+    "source_commit": "4519833bb510bd45ce81fbe13eec4213028be571",
+    "upstream_commit": "e5dad3fa8def3726ec850ca66a7f51521f8ad393",
+    "regen": "git clone -b vitro-probe-baseline https://github.com/rustin-beep/C && cd Vitro/moonbit && moon build --target native cmd/serve && go run ./scripts/realcode_diff/vitro_clang_diff.go -repo <clone> -out <out> && go run ./scripts/realcode_diff/vitro_clang_diff.go -aggregate <out>/result.json",
+    "repo": "TheAlgorithms/C",
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。用途:#3~#21 修复批回归断言(修复后重跑,签名应只向绿迁移;向红迁移=回归)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。",
+    "total": 407,
+    "buckets": {
+      "clang_red": 122,
+      "both_green": 155,
+      "vitro_red": 130
+    }
+  },
+  "files": {
+    "audio/alaw.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "cipher/affine.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "cipher/rot13.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "client_server/client.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 4
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/remote_command_exec_udp_client.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/remote_command_exec_udp_server.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/server.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 4
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/tcp_full_duplex_client.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/tcp_full_duplex_server.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/tcp_half_duplex_client.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 4
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/tcp_half_duplex_server.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 4
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/udp_client.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "client_server/udp_server.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 6
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "conversions/binary_to_decimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "conversions/binary_to_hexadecimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/binary_to_octal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/c_atoi_str_to_integer.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 6
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "conversions/celsius_to_fahrenheit.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/decimal_to_any_base.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1006": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "conversions/decimal_to_binary.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/decimal_to_binary_recursion.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E2003": 1,
+        "E2006": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "conversions/decimal_to_hexa.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/decimal_to_octal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/decimal_to_octal_recursion.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "conversions/hexadecimal_to_octal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "conversions/hexadecimal_to_octal2.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E3014": 2,
+        "E3017": 1,
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "conversions/infix_to_postfix.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "conversions/infix_to_postfix2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "conversions/int_to_string.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "conversions/octal_to_binary.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/octal_to_decimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/octal_to_hexadecimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "conversions/roman_numerals_to_decimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "conversions/to_decimal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/array/carray.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/array/carray_tests.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/binary_trees/avl_tree.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "data_structures/binary_trees/binary_search_tree.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/binary_trees/create_node.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/binary_trees/recursive_traversals.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "data_structures/binary_trees/red_black_tree.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/binary_trees/segment_tree.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/binary_trees/threaded_binary_trees.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/binary_trees/words_alphabetical.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/dictionary/dict.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/dictionary/test_program.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/dynamic_array/dynamic_array.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/dynamic_array/main.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/bellman_ford.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/bfs.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/bfs_queue.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 2
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/dfs.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/dfs_recursive.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/dijkstra.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/euler.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/floyd_warshall.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/graph.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/hamiltonian.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/kruskal.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/graphs/queue.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/graphs/strongly_connected_components.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/graphs/topological_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "data_structures/graphs/transitive_closure.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "data_structures/hash_set/hash_set.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/hash_set/main.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/heap/max_heap.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "data_structures/heap/min_heap.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "data_structures/linked_list/ascending_priority_queue.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/linked_list/circular_doubly_linked_list.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/linked_list/circular_linked_list.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "data_structures/linked_list/doubly_linked_list.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 13,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "data_structures/linked_list/merge_linked_lists.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/linked_list/middle_element_in_list.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/linked_list/queue_linked_list.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/linked_list/singly_link_list_deletion.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/linked_list/stack_using_linked_lists.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/list/list.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 1,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/list/main.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/queue/queue.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/stack.c": {
+      "clang_ok": true,
+      "vitro_errs": 152,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 151,
+        "E2007": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "data_structures/stack/dynamic_stack.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/stack/main.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "data_structures/stack/parenthesis.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "data_structures/stack/stack.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/stack/stack_linked_list/main.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/stack/stack_linked_list/stack.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "data_structures/trie/trie.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "data_structures/vector.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "developer_tools/malloc_dbg.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "developer_tools/test_malloc_dbg.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "developer_tools/test_min_printf.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "dynamic_programming/lcs.c": {
+      "clang_ok": true,
+      "vitro_errs": 5,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 5
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "dynamic_programming/matrix_chain_order.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "exercism/acronym/acronym.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "exercism/hello_world/hello_world.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "exercism/isogram/isogram.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "exercism/rna_transcription/rna_transcription.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "exercism/word_count/word_count.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "games/hangman.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 3
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "games/naval_battle.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 11,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "games/tic_tac_toe.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "geometry/quaternions.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "geometry/vectors_3d.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "graphics/spirograph.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 4
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "greedy_approach/dijkstra.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "greedy_approach/prim.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_adler32.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_blake2b.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1,
+        "E1001": 2,
+        "E1006": 3
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_crc32.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_djb2.c": {
+      "clang_ok": true,
+      "vitro_errs": 5,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1,
+        "E1006": 4
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_sdbm.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "hash/hash_xor8.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "leetcode/src/1.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/10.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1008.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1009.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/101.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1019.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1026.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/104.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/108.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1089.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/109.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/11.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/110.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/112.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1137.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/1147.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/118.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1184.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1189.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/119.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/12.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1207.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/121.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/124.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/125.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1283.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/13.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/136.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/14.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/141.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/142.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1524.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/153.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/16.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/160.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1653.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1657.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/169.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/1695.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/17.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/1704.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/173.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1752.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1769.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1833.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/1838.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/189.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/19.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/190.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/191.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/20.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/201.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/2024.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/203.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/206.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2095.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/21.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2125.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2130.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/215.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/217.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2222.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/223.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/2256.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/226.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2270.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/2279.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/230.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2304.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/231.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/234.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/236.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/24.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/242.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2482.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/2501.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/26.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/268.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/27.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/274.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/278.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/28.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/283.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/287.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/29.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/3.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/32.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/344.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/35.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/367.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/37.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/38.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/387.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/389.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/4.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/404.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/42.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/434.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/442.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/45.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/461.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/476.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/485.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/5.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/50.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/509.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/520.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/53.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/540.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/561.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/567.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/6.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "leetcode/src/617.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/62.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/63.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/647.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/66.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/669.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/674.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/684.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/69.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 6
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "leetcode/src/7.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/700.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/701.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/704.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/709.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/75.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/771.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/79.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/8.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/807.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/82.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/83.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/841.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/852.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_build_fail"
+    },
+    "leetcode/src/876.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/9.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/901.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/905.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/917.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/931.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/938.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/94.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/953.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/965.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/977.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/979.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/98.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/985.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "leetcode/src/997.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "machine_learning/adaline_learning.c": {
+      "clang_ok": true,
+      "vitro_errs": 8,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 6,
+        "E2007": 2
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "machine_learning/k_means_clustering.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "machine_learning/kohonen_som_topology.c": {
+      "clang_ok": true,
+      "vitro_errs": 12,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 11,
+        "E3023": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "machine_learning/kohonen_som_trace.c": {
+      "clang_ok": true,
+      "vitro_errs": 208,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 205,
+        "E2007": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/armstrong_number.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "math/cantor_set.c": {
+      "clang_ok": true,
+      "vitro_errs": 150,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 149,
+        "E2007": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/cartesian_to_polar.c": {
+      "clang_ok": true,
+      "vitro_errs": 8,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 7,
+        "E3066": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "math/catalan.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "math/collatz.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1,
+        "E3017": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "math/euclidean_algorithm_extended.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/factorial.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "math/factorial_large_number.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "math/factorial_trailing_zeroes.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "math/fibonacci.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "math/fibonacci_dp.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "math/fibonacci_fast.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "math/fibonacci_formula.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "math/gcd.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "math/is_armstrong.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "math/large_factorials.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 2
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/lcm.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "math/lerp.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "math/palindrome.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/prime.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/prime_factoriziation.c": {
+      "clang_ok": true,
+      "vitro_errs": 12,
+      "vitro_warns": 0,
+      "codes": {
+        "E2003": 2,
+        "E2007": 1,
+        "E2005": 9
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/prime_sieve.c": {
+      "clang_ok": true,
+      "vitro_errs": 73,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 70,
+        "E2003": 2,
+        "E2007": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "math/strong_number.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "misc/demonetization.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "misc/hamming_distance.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/lexicographic_permutations.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "misc/longest_subsequence.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/mcnaughton_yamada_thompson.c": {
+      "clang_ok": true,
+      "vitro_errs": 25,
+      "vitro_warns": 0,
+      "codes": {
+        "E3003": 1,
+        "E3038": 24
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "misc/mirror.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/pid.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3004": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "misc/poly_add.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/postfix_evaluation.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 9,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/quartile.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "misc/rselect.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "misc/run_length_encoding.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "misc/shunting_yard.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 3,
+        "E3066": 3
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "misc/sudoku_solver.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "misc/tower_of_hanoi.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "misc/union_find.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "numerical_methods/bisection_method.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "numerical_methods/durand_kerner_roots.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "numerical_methods/gauss_elimination.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "numerical_methods/gauss_seidel_method.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "numerical_methods/lagrange_theorem.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "numerical_methods/lu_decompose.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "numerical_methods/mean.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff"
+    },
+    "numerical_methods/median.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "numerical_methods/newton_raphson_root.c": {
+      "clang_ok": false,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "",
+      "run": ""
+    },
+    "numerical_methods/ode_forward_euler.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "numerical_methods/ode_midpoint_euler.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "numerical_methods/ode_semi_implicit_euler.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "numerical_methods/qr_decomposition.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "numerical_methods/qr_eigen_values.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "numerical_methods/realtime_stats.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "numerical_methods/secant_method.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "numerical_methods/simpsons_1_3rd_rule.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "numerical_methods/variance.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff"
+    },
+    "process_scheduling_algorithms/non_preemptive_priority_scheduling.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_10/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_10/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 5,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1,
+        "E3023": 2,
+        "E3066": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_12/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1,
+        "E3017": 2
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_13/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 5,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1,
+        "E3038": 3
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_14/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E3017": 1,
+        "E3023": 1,
+        "E3066": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_15/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_16/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_19/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 10,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_1/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "project_euler/problem_1/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_1/sol3.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_1/sol4.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_20/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_21/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_22/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 1,
+        "E3023": 1,
+        "E3066": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_23/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_23/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 1,
+        "E3066": 1,
+        "E3038": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_25/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 14,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "project_euler/problem_26/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 8,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 5,
+        "E2003": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_2/so1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_3/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "project_euler/problem_3/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_401/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "project_euler/problem_4/sol.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "project_euler/problem_5/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3017": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "project_euler/problem_5/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E2003": 1,
+        "E2006": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_5/sol3.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_6/sol.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "project_euler/problem_7/sol.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "project_euler/problem_7/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "project_euler/problem_8/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 6
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_8/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 2,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 2
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "project_euler/problem_9/sol1.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "project_euler/problem_9/sol2.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 1
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "searching/binary_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 4,
+      "vitro_warns": 0,
+      "codes": {
+        "E3038": 4
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "searching/exponential_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "searching/fibonacci_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/floyd_cycle_detection_algorithm.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "searching/interpolation_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/jump_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 5,
+      "vitro_warns": 0,
+      "codes": {
+        "E3004": 2,
+        "E3038": 3
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "searching/linear_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "searching/modified_binary_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "searching/other_binary_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/pattern_search/boyer_moore_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/pattern_search/naive_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/pattern_search/rabin_karp_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/sentinel_linear_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "searching/ternary_search.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/bead_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/binary_insertion_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "sorting/bogo_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "sorting/bubble_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "sorting/bubble_sort_2.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "sorting/bubble_sort_recursion.c": {
+      "clang_ok": true,
+      "vitro_errs": 3,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 3
+      },
+      "layer": "parse",
+      "run": ""
+    },
+    "sorting/bucket_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/cocktail_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "sorting/comb_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/counting_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_timeout"
+    },
+    "sorting/cycle_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/gnome_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/heap_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/heap_sort_2.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "sorting/insertion_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "sorting/insertion_sort_recursive.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "clang_run_fail"
+    },
+    "sorting/merge_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/merge_sort_nr.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/multikey_quick_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 8,
+      "vitro_warns": 0,
+      "codes": {
+        "E1001": 8
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "sorting/odd_even_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "sorting/pancake_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "sorting/partition_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "sorting/patience_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 1,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/pigeonhole_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/quick_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "match"
+    },
+    "sorting/radix_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/radix_sort_2.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/random_quick_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff"
+    },
+    "sorting/selection_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {},
+      "layer": "ok",
+      "run": "rand_diff_match"
+    },
+    "sorting/selection_sort_recursive.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E1021": 1
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "sorting/shaker_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": "mismatch"
+    },
+    "sorting/shell_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 9,
+      "vitro_warns": 0,
+      "codes": {
+        "E1003": 2,
+        "E1002": 2,
+        "E1001": 5
+      },
+      "layer": "lex",
+      "run": ""
+    },
+    "sorting/shell_sort2.c": {
+      "clang_ok": true,
+      "vitro_errs": 1,
+      "vitro_warns": 0,
+      "codes": {
+        "E3062": 1
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "sorting/stooge_sort.c": {
+      "clang_ok": true,
+      "vitro_errs": 6,
+      "vitro_warns": 0,
+      "codes": {
+        "E2005": 5,
+        "E2007": 1
+      },
+      "layer": "parse",
+      "run": ""
+    }
+  }
+}

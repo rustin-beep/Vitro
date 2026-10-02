@@ -607,6 +607,15 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/vendor_drift
 
+      # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
+      # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance
+      # 锚四道，防诊断文案透传即 GPL 渗漏），**不跑勘探本身**（维持拍板——
+      # 勘探需外部仓库+Clang，CI 不可复现；勘探 CI 化仍二期待拍板）。
+      # J9 三路证红：加 message 键 / 删 source_commit / 伪码形态 → exit 2。
+      - name: Realcode gold signatures compliance (scripts/realcode_diff -check)
+        shell: bash
+        run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+
       - name: Performance-assumption budget (corpus scale premises)
         # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
         # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次

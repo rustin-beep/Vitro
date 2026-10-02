@@ -5,8 +5,11 @@ metadata:
   as_of: 2026-10-01
   演化日志: |
     - 2026-10-01 初版：蒸馏 batch11~22 实机审阅（31 份样本、#11~#21 开立）+ TheAlgorithms/C 全量勘探
-      （407 份、67 份全管线 match、#21 遮蔽缺陷）。后续修复批（#3~#21）落地时须连坐更新本文
+      （407 份、67 份全管线 match、#21 遮蔽缺陷）。后续修复批落地时须连坐更新本文
       「指纹表指向」与「剥壳变换」（缺陷清零后剥壳场景消失）。
+    - 2026-10-02 fork 方案落地：勘探脚本+金样本入仓（scripts/realcode_diff/，
+      -check 合规闸接 CI hygiene）+ provenance 锚 rustin-beep/C@vitro-probe-baseline
+      （复现链闭环，聚合器工具化端到端 407/407 一致）；第四节改写；范围词指针化。
 ---
 
 # Vitro 实机代码对拍工作流
@@ -19,7 +22,7 @@ metadata:
 1. **落库**：用户原码逐字保留进 `docs/current/07-质量与裁定/demo实测样本库20261001/batchN-主题/`（禁混探针；平台差异代码带注记）。探针只进 `.shadow_tmp/`（gitignore 域）。
 2. **Clang 真值**：`clang -std=c11 -Wall -Wextra -fsyntax-only <f>`。Clang 红 = 先甄别三类：平台差异（POSIX 函数/M_PI/MSVC 头）、代码真错（引号未转义/漏参数/UB）、链接需求（无 main）——**前两类才有对拍意义，双侧都拒=双拒样本不立案**（现有五例：arc/sccp/memmodel/sched/concurrency）。
 3. **Vitro 对拍**：**必须走 serve/gateway 协议通道**（带 E 码+W 警告；cmd/run 丢弃警告与码——见 [#16](https://github.com/rustin-beep/Vitro/issues/16)）。JSON-lines：`{"id":N,"method":"compile","params":{"source":"..."}}`。
-4. **指纹归类**：先读全部 open issue 建指纹表（现 #3~#21），已知形状 → 评论增补实例（只挂实测命中，parse 短路遮蔽的不挂）；新形状 → 第 5 步。
+4. **指纹归类**：先读全部 open issue 建指纹表（**open 全集以 issue 台账为准，勿以本文数字为限**——as_of 2026-10-02 已至 #24），已知形状 → 评论增补实例（只挂实测命中，parse 短路遮蔽的不挂）；新形状 → 第 5 步。
 5. **探针收缩**：最小化触发物（逐行删减/等价替换），每步保留探针于 `.shadow_tmp/`。
 6. **oracle 同病判定**：`vitro_cli compile <probe>`（tag rust-oracle-freeze 构建）。同病=两侧同修候选挂退役后；不同病=MoonBit 迁移引入（单独处理）。
 7. **立案+连坐**：开 issue（bug/enhancement 标签、NOTE 结论块、最小复现表、根因、红→绿锚）+ 样本库 README 两表连坐 + 相关旧 issue 评论增补。
@@ -60,13 +63,16 @@ metadata:
 
 ## 四、批量勘探（外部仓库）
 
-脚本：`D:\code\C\vitro_clang_diff.go`（仓库外，防协议污染）。流程 P1 walk → P2 Clang 真值 → P3 serve 连发（batch 25）→ P4 剥壳重试 → P5 运行对比（Latin-1 还原+归一）→ P6 report.md+result.json。
+**资产已入仓（2026-10-02，fork 方案）**：
 
-- 金样本清单：`D:\code\C\_diff_out\gold_signatures.json`（**只存码/数量/运行判定签名，不存源码文本——GPL 红线**）。用途：修复批后重跑，签名只应向绿迁移。
+- 脚本：`scripts/realcode_diff/vitro_clang_diff.go`（仓内版本化；勘探产物 report.md/result.json 仍不进仓——诊断 message 可引用源码 token）。三模式：勘探 `-repo` / 聚合 `-aggregate <result.json>` / 合规 `-check`（CI hygiene）。
+- 金样本：`scripts/realcode_diff/gold_signatures.json`（**只存码/数量/运行判定签名，不存源码文本——GPL 红线**；`-check` 三道校验：schema 键集白名单/值域/码形态，J9 三路证红在案）。用途：修复批后重跑，签名只应向绿迁移。
+- **provenance 锚（复现链）**：上游 TheAlgorithms/C@`e5dad3f`（2023-09 终态）→ fork [rustin-beep/C](https://github.com/rustin-beep/C) 分支 `vitro-probe-baseline`@`4519833b`（89 文件探针态：补 include 128 处 + leetcode 注释内 struct 模板反注释为真定义——上游代码与探针 diff 都只在 fork，永不进 Vitro 仓）。重建命令见金样本 `_meta.regen`。
+- 勘探前置自检：clone fork 分支 → Vitro serve exe 在位（`moon build --target native cmd/serve`）→ Clang 22+ 在 PATH。任一缺失 → 本节降级跳过并在产出中明示（不静默）。
 - 2026-10-01 基线：407 份 → Clang 红 122（无 main 35+平台/真错）→ 双绿 155 → Vitro 红 130；运行 match 57+rand 10；mismatch 23 已定性（#21 遮蔽 1 / UB 1 / 护栏+资源上限 4 / 交互 16 / 方法 1）。
-- CI 接线（二期，待拍板）：清单固化进 scripts/ + CI pinned-sha clone 外部仓跑断言（形态同 toolchain_probe）。
+- CI 现状：`-check` 合规闸已接 hygiene（只守仓内金样本静态合规，**不跑勘探本身**——维持拍板）；勘探 CI 化（pinned-sha clone 重跑断言，形态同 toolchain_probe）仍为二期待拍板。
 
 ## 五、已知缺陷指纹（指向单源，勿在此复制数字）
 
-- issue 台账：#3~#21（#3 const 加宽五码族 / #4 尾逗号 / #5 static 函数名 / #6 long long / #7 union body / #8 诊断质量 / #9 三目 / #11 bool 关键字 / #12 未定义类型名 / #13 sizeof 常量 / #14 va_arg W1018 / #15 enum body / #16 cmd/run 通道 / #17 const struct 指针赋值 / #18 ungetc 臂 / #19 {0} 清零 / #20 分层遮蔽 / #21 参数遮蔽函数）
+- issue 台账（**清单 as_of 2026-10-02，新开 issue 见台账**）：#3 const 加宽五码族 / #4 尾逗号 / #5 static 函数名 / #6 long long / #7 union body / #8 诊断质量 / #9 三目 / #11 bool 关键字 / #12 未定义类型名 / #13 sizeof 常量 / #14 va_arg W1018 / #15 enum body / #16 cmd/run 通道 / #17 const struct 指针赋值 / #18 ungetc 臂 / #19 {0} 清零 / #20 分层遮蔽 / #21 参数遮蔽函数）
 - 样本库：`docs/current/07-质量与裁定/demo实测样本库20261001/README.md`（批次映射+遮蔽清单+转正清单）

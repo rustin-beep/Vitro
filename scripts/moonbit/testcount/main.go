@@ -45,6 +45,61 @@ func readDeclared(path string) (int, error) {
 	return n, nil
 }
 
+// checkArithmetic：README 分解式**算术自洽**校验（防线维护 2026-10-02，
+// A7 形态第三次兑现后的机判化——不比真值只比加法，抓「改一处漏总数」）：
+//
+//	① 分解和 Y + doc test Z == 裸声明 X
+//	② fs A + gateway B == native-only 总数 N
+//	③ X + N == native 全量 Q
+//
+// （分解式本身仍是人工维护口径——本校验只保证三者互洽，防总数句漂移。）
+func checkArithmetic(path string, declared int) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("读 %s: %w", path, err)
+	}
+	s := string(data)
+	type pair struct {
+		re   *regexp.Regexp
+		name string
+	}
+	get := func(re *regexp.Regexp, name string) ([]int, error) {
+		ms := re.FindAllStringSubmatch(s, -1)
+		if len(ms) != 1 {
+			return nil, fmt.Errorf("%s「%s」锚行数=%d（须唯一）", path, name, len(ms))
+		}
+		out := make([]int, len(ms[0])-1)
+		for i := 1; i < len(ms[0]); i++ {
+			n, err := strconv.Atoi(ms[0][i])
+			if err != nil {
+				return nil, fmt.Errorf("%s「%s」数字解析失败: %w", path, name, err)
+			}
+			out[i-1] = n
+		}
+		return out, nil
+	}
+	// ① 裸分解：分解和 Y + doc test Z == declared
+	if yz, err := get(regexp.MustCompile(`分解和 (\d+) \+ 根 README doc test (\d+)`), "裸分解"); err != nil {
+		return err
+	} else if yz[0]+yz[1] != declared {
+		return fmt.Errorf("%s 分解不自洽: 分解和 %d + doc test %d = %d != 裸声明 %d", path, yz[0], yz[1], yz[0]+yz[1], declared)
+	}
+	// ② native-only：fs A + gateway B == N
+	if ab, err := get(regexp.MustCompile(`native-only 包测试 (\d+) 个（fs (\d+) / gateway (\d+)`), "native-only 分解"); err != nil {
+		return err
+	} else if ab[1]+ab[2] != ab[0] {
+		return fmt.Errorf("%s native-only 不自洽: fs %d + gateway %d = %d != 总数 %d", path, ab[1], ab[2], ab[1]+ab[2], ab[0])
+	} else {
+		// ③ 裸 + native-only == 全量
+		if qs, err := get(regexp.MustCompile(`--target native`+"`"+` 全量 (\d+)`), "native 全量"); err != nil {
+			return err
+		} else if declared+ab[0] != qs[0] {
+			return fmt.Errorf("%s 全量不自洽: 裸 %d + native-only %d = %d != 全量 %d", path, declared, ab[0], declared+ab[0], qs[0])
+		}
+	}
+	return nil
+}
+
 // runMoonTest：实跑 moon test 取真值（cwd=moonbit；解析最后一行 Total tests）。
 func runMoonTest() (int, error) {
 	cmd := exec.Command("moon", "test")
@@ -90,6 +145,11 @@ func main() {
 		}
 		if n != truth {
 			fmt.Fprintf(os.Stderr, "testcount: %s 声明 %d != moon test 实跑 %d\n", p, n, truth)
+			fail = true
+		}
+		// 算术自洽（防线维护 2026-10-02）：真值对账之外，分解式三组加法互洽
+		if err := checkArithmetic(p, n); err != nil {
+			fmt.Fprintln(os.Stderr, "testcount:", err)
 			fail = true
 		}
 	}

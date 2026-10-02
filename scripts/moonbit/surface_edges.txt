@@ -8,6 +8,7 @@
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
+
 . vitro/engine/diag ErrorCode
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
@@ -131,6 +132,8 @@ vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
 vitro/engine/codegen vitro/engine/opcode Instruction
 vitro/engine/codegen vitro/engine/opcode OpCode
 vitro/engine/codegen vitro/engine/source SourceLoc
+vitro/engine/diagnostics vitro/engine/util utf8_bytes
+vitro/engine/diagnostics vitro/engine/util utf8_text
 vitro/engine/gateway moonbitlang/core/encoding/utf8 encode
 vitro/engine/gateway vitro/engine/ast StructField
 vitro/engine/gateway vitro/engine/ast Type
@@ -391,6 +394,7 @@ vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/source SourceLoc
+vitro/engine/util moonbitlang/core/encoding/utf8 decode
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm vitro/engine/ast Type

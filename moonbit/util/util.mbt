@@ -79,3 +79,24 @@ pub fn le_u64_at(bytes : FixedArray[Byte], off : Int) -> UInt64 {
   (bytes[off + 6].to_uint64() << 48) |
   (bytes[off + 7].to_uint64() << 56)
 }
+
+///|
+/// String 的 UTF-8 字节序列（`@utf8.encode` 收口——S8 diagnostics 批
+/// fix_gen/auto_fix 的字节域坐标操作共用；与 `String::to_bytes` 的
+/// **UTF-16LE** 通道区分〔后者首跑实测 "a中b" → 8 字节〕）。非法 UTF-8
+/// 现状同 `utf8_len` 的审计点声明（静默产空串）。
+pub fn utf8_bytes(s : String) -> Bytes {
+  @utf8.encode(s)
+}
+
+///|
+/// UTF-8 字节序列解码回 String（`utf8_bytes` 的逆操作）。Malformed 即
+/// 调用方拼装 bug——fail loud abort，不吞解码错误（本包不做 lossy）。
+pub fn utf8_text(b : Bytes) -> String {
+  @utf8.decode(b) catch {
+    _ =>
+      abort(
+        "util.utf8_text: 非法 UTF-8 字节序列（调用方拼装 bug）",
+      )
+  }
+}

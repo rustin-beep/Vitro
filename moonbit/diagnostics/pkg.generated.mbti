@@ -1,0 +1,139 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/diagnostics"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn activate_from_ast(Array[String]) -> Array[ActivatedConcept]
+
+pub fn activate_from_error(Int) -> Array[ActivatedConcept]
+
+pub fn apply_fix(String, FixTarget) -> String?
+
+pub fn concept_edges() -> Array[ConceptEdge]
+
+pub fn concept_nodes() -> Array[ConceptNode]
+
+pub fn default_paths() -> Map[String, LearningPath]
+
+pub fn default_patterns() -> Array[MisconceptionPattern]
+
+pub fn detect_misconceptions(Array[CompileRecord]) -> Array[DetectedMisconception]
+
+pub fn error_concept_map() -> Map[Int, Array[String]]
+
+pub fn find_prerequisite_path(String) -> Array[ConceptNode]
+
+pub fn fix_payload(Int) -> FixPayload?
+
+pub fn generate_fix(Int, Int, Int, String, Array[String]) -> FixOutcome
+
+pub fn recommend_learning_paths(Array[DetectedMisconception]) -> Array[LearningPath]
+
+// Errors
+
+// Types and methods
+pub(all) struct ActivatedConcept {
+  node : ConceptNode
+  activated_by : String
+  neighbors : Array[NeighborConcept]
+} derive(Show, @debug.Debug)
+
+pub(all) struct CompileRecord {
+  timestamp_ms : Int64
+  success : Bool
+  error_codes : Array[Int]
+  trap_message : String?
+} derive(Show, @debug.Debug)
+
+pub(all) struct ConceptEdge {
+  from_id : String
+  to_id : String
+  relation : String
+  strength : Double
+} derive(Show, @debug.Debug)
+
+pub(all) struct ConceptNode {
+  id : String
+  domain : String
+  title : String
+  description : String
+  difficulty : Int
+  related_card_ids : Array[String]
+} derive(Show, @debug.Debug)
+
+pub(all) struct DetectedMisconception {
+  pattern_id : String
+  pattern_name : String
+  description : String
+  occurrence_count : Int
+  confidence : Double
+} derive(Show, @debug.Debug)
+
+pub enum FixAnchor {
+  Manual
+  LineEnd
+} derive(Show, @debug.Debug)
+
+pub(all) struct FixOutcome {
+  suggestion : String
+  fix_kind : Int
+  start_line : Int
+  start_col : Int
+  end_line : Int
+  end_col : Int
+  text : String
+} derive(Show, @debug.Debug)
+
+pub(all) struct FixPayload {
+  suggestion : String
+  fix_kind : Int
+  anchor : FixAnchor
+  text : String
+} derive(Show, @debug.Debug)
+
+pub(all) struct FixTarget {
+  fix_kind : Int
+  replace_start_line : Int
+  replace_start_column : Int
+  replace_end_line : Int
+  replace_end_column : Int
+  replacement_text : String
+} derive(Show, @debug.Debug)
+
+pub(all) struct LearningPath {
+  target_misconception_id : String
+  target_misconception_name : String
+  estimated_time_minutes : Int
+  steps : Array[PathStep]
+} derive(Show, @debug.Debug)
+
+pub(all) struct MisconceptionPattern {
+  id : String
+  name : String
+  description : String
+  error_codes : Array[Int]
+  min_occurrences : Int
+  time_window : Int
+} derive(Show, @debug.Debug)
+
+pub(all) struct NeighborConcept {
+  node : ConceptNode
+  relation : String
+  strength : Double
+  is_prerequisite : Bool
+} derive(Show, @debug.Debug)
+
+pub(all) struct PathStep {
+  step_type : String
+  title : String
+  detail : String
+  target_id : String
+  highlight_lines : Array[Int]
+} derive(Show, @debug.Debug)
+
+// Type aliases
+
+// Traits

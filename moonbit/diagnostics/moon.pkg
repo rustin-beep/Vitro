@@ -1,0 +1,29 @@
+// L8 诊断教学域·diagnostics 包（S8 diagnostics 批，2026-10-02）：
+// 结构化诊断的教学资产与认知链机制——fix 载荷表（A3）/ 概念图
+//（A4+A5）/ 误区模式（A6）/ 学习路径（A7）四张表 + M1 修复生成 /
+// M2 修复应用 / M3 误区滑窗 / M4 路径组装 / M5 图激活五机制。
+// 照搬源：native/src/diagnostics/（error_catalog.rs 的 generate_fix +
+// knowledge_graph.rs + misconception_patterns.rs + learning_path.rs +
+// auto_fix.rs）。**零 import 自持**——apply_fix 目标用本包 FixTarget
+// DTO（不依赖 session，gateway 调用处转装；勘察 §9.1 autofix 同款裁定）。
+//
+// **层位裁定（2026-10-02）**：总计划 §4 原排 L9，本批降 **L8**——
+// gateway（L8）消费本包（diagnostics_probe 第四方法 + compile 诊断
+// fix 族），L8→L9 违反「依赖只能向下或同层」；与 time_travel/
+// teaching-steps 同因降层（§4 连坐），L9 只剩 analysis 域。
+//
+// **数据/机制分列**（勘察 §2.0 核心交付）：`*_gen.mbt` 四件 = 数据层
+//（@generated，源 sha 落款，禁手改；人审/vendor 面在
+// scripts/moonbit/diagnostics_data/*.json）；fix_gen/auto_fix/
+// misconception/learning_path/graph 五件 = 机制层（动态五码
+// 1004/3035/3041/3050/3051 与坐标计算是机制，不入表——勘察 A3
+// 拆分判据）。
+//
+// 分叉登记（本包，详见已知限制与差异）：①ERROR_CONCEPT_MAP 的
+// 3020→Recursion 系 oracle 存量语义错（勘察 ⑥-5），**照搬不修**——
+// 两侧同错保对拍等价，修复走差异台账两侧同修批；②apply_fix 沿用
+// oracle 的混合坐标语义（safe_byte_col 三级退化，勘察 S1「症状
+// 治疗」）——本批照搬，坐标口径单源化（⑤-2）随 CS/后续批。
+import {
+  "vitro/engine/util",
+}

@@ -1,0 +1,577 @@
+{
+  "edges": [
+    {
+      "from": "VarDecl",
+      "to": "TypeSystem",
+      "relation": "Prerequisite",
+      "strength": 0.9
+    },
+    {
+      "from": "TypeSystem",
+      "to": "ImplicitCast",
+      "relation": "LeadsTo",
+      "strength": 0.8
+    },
+    {
+      "from": "TypeSystem",
+      "to": "PointerType",
+      "relation": "LeadsTo",
+      "strength": 0.8
+    },
+    {
+      "from": "LogicOp",
+      "to": "BitOp",
+      "relation": "CommonMistake",
+      "strength": 0.9
+    },
+    {
+      "from": "ArithOp",
+      "to": "PointerType",
+      "relation": "UsedTogether",
+      "strength": 0.6
+    },
+    {
+      "from": "Scope",
+      "to": "VarDecl",
+      "relation": "UsedTogether",
+      "strength": 0.7
+    },
+    {
+      "from": "StackMemory",
+      "to": "HeapMemory",
+      "relation": "Contradicts",
+      "strength": 0.8
+    },
+    {
+      "from": "Pointer",
+      "to": "AddressOf",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "Pointer",
+      "to": "Dereference",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "Pointer",
+      "to": "PtrArithmetic",
+      "relation": "LeadsTo",
+      "strength": 0.8
+    },
+    {
+      "from": "Array",
+      "to": "Pointer",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "Array",
+      "to": "ArrayDecay",
+      "relation": "LeadsTo",
+      "strength": 0.8
+    },
+    {
+      "from": "ArrayDecay",
+      "to": "PointerType",
+      "relation": "CommonMistake",
+      "strength": 0.7
+    },
+    {
+      "from": "HeapMemory",
+      "to": "Pointer",
+      "relation": "UsedTogether",
+      "strength": 0.9
+    },
+    {
+      "from": "StructLayout",
+      "to": "Pointer",
+      "relation": "UsedTogether",
+      "strength": 0.6
+    },
+    {
+      "from": "ForLoop",
+      "to": "BoundaryCondition",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "WhileLoop",
+      "to": "BoundaryCondition",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "IfSwitch",
+      "to": "LogicOp",
+      "relation": "UsedTogether",
+      "strength": 0.9
+    },
+    {
+      "from": "FunctionCall",
+      "to": "ParameterPassing",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "FunctionCall",
+      "to": "ReturnValue",
+      "relation": "LeadsTo",
+      "strength": 0.8
+    },
+    {
+      "from": "Recursion",
+      "to": "FunctionCall",
+      "relation": "Prerequisite",
+      "strength": 0.9
+    },
+    {
+      "from": "Recursion",
+      "to": "BoundaryCondition",
+      "relation": "UsedTogether",
+      "strength": 0.9
+    },
+    {
+      "from": "BoundaryCondition",
+      "to": "Array",
+      "relation": "UsedTogether",
+      "strength": 0.9
+    },
+    {
+      "from": "PointerType",
+      "to": "Pointer",
+      "relation": "LeadsTo",
+      "strength": 0.9
+    },
+    {
+      "from": "ParameterPassing",
+      "to": "Pointer",
+      "relation": "UsedTogether",
+      "strength": 0.7
+    }
+  ],
+  "error_concept_map": [
+    {
+      "code": 3023,
+      "concepts": [
+        "VarDecl"
+      ]
+    },
+    {
+      "code": 3004,
+      "concepts": [
+        "TypeSystem",
+        "ImplicitCast"
+      ]
+    },
+    {
+      "code": 3053,
+      "concepts": [
+        "ImplicitCast"
+      ]
+    },
+    {
+      "code": 3054,
+      "concepts": [
+        "PointerType"
+      ]
+    },
+    {
+      "code": 1004,
+      "concepts": [
+        "LogicOp",
+        "BitOp"
+      ]
+    },
+    {
+      "code": 3050,
+      "concepts": [
+        "LogicOp"
+      ]
+    },
+    {
+      "code": 3048,
+      "concepts": [
+        "BitOp"
+      ]
+    },
+    {
+      "code": 3021,
+      "concepts": [
+        "Pointer",
+        "Dereference"
+      ]
+    },
+    {
+      "code": 3060,
+      "concepts": [
+        "HeapMemory",
+        "Pointer"
+      ]
+    },
+    {
+      "code": 3061,
+      "concepts": [
+        "HeapMemory",
+        "Pointer"
+      ]
+    },
+    {
+      "code": 3051,
+      "concepts": [
+        "BoundaryCondition",
+        "Array"
+      ]
+    },
+    {
+      "code": 3052,
+      "concepts": [
+        "ArrayDecay",
+        "Array"
+      ]
+    },
+    {
+      "code": 3041,
+      "concepts": [
+        "StructLayout"
+      ]
+    },
+    {
+      "code": 3042,
+      "concepts": [
+        "StructLayout"
+      ]
+    },
+    {
+      "code": 3015,
+      "concepts": [
+        "IfSwitch",
+        "LogicOp"
+      ]
+    },
+    {
+      "code": 3010,
+      "concepts": [
+        "ForLoop",
+        "WhileLoop"
+      ]
+    },
+    {
+      "code": 3011,
+      "concepts": [
+        "ForLoop",
+        "WhileLoop"
+      ]
+    },
+    {
+      "code": 3036,
+      "concepts": [
+        "FunctionCall"
+      ]
+    },
+    {
+      "code": 3037,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3038,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3013,
+      "concepts": [
+        "ReturnValue"
+      ]
+    },
+    {
+      "code": 3020,
+      "concepts": [
+        "Recursion"
+      ]
+    },
+    {
+      "code": 3030,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3031,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3032,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3033,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3034,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    },
+    {
+      "code": 3035,
+      "concepts": [
+        "FunctionCall",
+        "ParameterPassing"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "VarDecl",
+      "domain": "Compile",
+      "title": "变量声明",
+      "description": "在使用变量之前必须先声明其类型。C 语言不会自动创建变量。",
+      "difficulty": 1,
+      "related_card_ids": [
+        "undeclared_var"
+      ]
+    },
+    {
+      "id": "TypeSystem",
+      "domain": "Compile",
+      "title": "类型系统",
+      "description": "C 语言是静态类型语言，每个变量和表达式都有明确的类型。",
+      "difficulty": 2,
+      "related_card_ids": []
+    },
+    {
+      "id": "ImplicitCast",
+      "domain": "Compile",
+      "title": "隐式转换",
+      "description": "编译器在某些情况下会自动转换类型，如 char → int、int → float。",
+      "difficulty": 3,
+      "related_card_ids": []
+    },
+    {
+      "id": "PointerType",
+      "domain": "Compile",
+      "title": "指针类型",
+      "description": "指针存储的是内存地址，而不是数据本身。int* 和 int 是不同的类型。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "null_pointer"
+      ]
+    },
+    {
+      "id": "ArithOp",
+      "domain": "Compile",
+      "title": "算术运算符",
+      "description": "+ - * / % 等运算符要求操作数是整数或浮点数。",
+      "difficulty": 1,
+      "related_card_ids": []
+    },
+    {
+      "id": "LogicOp",
+      "domain": "Compile",
+      "title": "逻辑运算符",
+      "description": "&& || ! 用于条件判断，0 为假，非 0 为真。注意与位运算符 & | 区分。",
+      "difficulty": 2,
+      "related_card_ids": [
+        "logic_vs_bitwise",
+        "assignment_in_condition"
+      ]
+    },
+    {
+      "id": "BitOp",
+      "domain": "Compile",
+      "title": "位运算符",
+      "description": "& | ^ ~ << >> 对二进制位进行操作，只能用于整数类型。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "logic_vs_bitwise"
+      ]
+    },
+    {
+      "id": "Scope",
+      "domain": "Compile",
+      "title": "作用域",
+      "description": "变量只在声明它的代码块内有效。花括号定义了作用域边界。",
+      "difficulty": 2,
+      "related_card_ids": []
+    },
+    {
+      "id": "StackMemory",
+      "domain": "Memory",
+      "title": "栈内存",
+      "description": "局部变量和函数参数存储在栈上，函数返回后自动释放。",
+      "difficulty": 2,
+      "related_card_ids": [
+        "stack_overflow"
+      ]
+    },
+    {
+      "id": "HeapMemory",
+      "domain": "Memory",
+      "title": "堆内存",
+      "description": "malloc/calloc/realloc 分配的内存位于堆上，必须手动 free 释放。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "use_after_free"
+      ]
+    },
+    {
+      "id": "Pointer",
+      "domain": "Memory",
+      "title": "指针",
+      "description": "指针是存储内存地址的变量。所有指针的大小相同（通常为 4 或 8 字节）。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "null_pointer",
+        "use_after_free"
+      ]
+    },
+    {
+      "id": "AddressOf",
+      "domain": "Memory",
+      "title": "取地址 (&)",
+      "description": "& 运算符获取变量的内存地址，返回指针。scanf 需要传入地址。",
+      "difficulty": 2,
+      "related_card_ids": [
+        "scanf_address"
+      ]
+    },
+    {
+      "id": "Dereference",
+      "domain": "Memory",
+      "title": "解引用 (*)",
+      "description": "* 运算符访问指针指向的内存内容。对 NULL 指针解引用会导致崩溃。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "null_pointer"
+      ]
+    },
+    {
+      "id": "PtrArithmetic",
+      "domain": "Memory",
+      "title": "指针算术",
+      "description": "指针加减整数时，步长自动按 pointee 类型大小缩放（如 int* 步长为 4）。",
+      "difficulty": 4,
+      "related_card_ids": []
+    },
+    {
+      "id": "Array",
+      "domain": "Memory",
+      "title": "数组",
+      "description": "数组是相同类型元素的连续存储。大小在编译期确定（当前子集）。",
+      "difficulty": 2,
+      "related_card_ids": [
+        "array_out_of_bounds"
+      ]
+    },
+    {
+      "id": "ArrayDecay",
+      "domain": "Memory",
+      "title": "数组退化",
+      "description": "数组名在表达式中通常退化为指向首元素的指针，sizeof 行为会改变。",
+      "difficulty": 4,
+      "related_card_ids": []
+    },
+    {
+      "id": "StructLayout",
+      "domain": "Memory",
+      "title": "结构体内存布局",
+      "description": "结构体成员按声明顺序存储，可能有内存对齐填充。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "struct_member"
+      ]
+    },
+    {
+      "id": "IfSwitch",
+      "domain": "ControlFlow",
+      "title": "条件分支",
+      "description": "if/switch 根据条件选择执行路径。条件表达式必须是整数或指针。",
+      "difficulty": 1,
+      "related_card_ids": [
+        "assignment_in_condition"
+      ]
+    },
+    {
+      "id": "ForLoop",
+      "domain": "ControlFlow",
+      "title": "for 循环",
+      "description": "for (init; cond; update) 适合已知循环次数的场景。",
+      "difficulty": 2,
+      "related_card_ids": []
+    },
+    {
+      "id": "WhileLoop",
+      "domain": "ControlFlow",
+      "title": "while 循环",
+      "description": "while (cond) 在条件为真时重复执行，适合未知次数的循环。",
+      "difficulty": 2,
+      "related_card_ids": []
+    },
+    {
+      "id": "BoundaryCondition",
+      "domain": "ControlFlow",
+      "title": "边界条件",
+      "description": "循环边界决定执行次数。大小为 N 的数组，有效索引是 0 ~ N-1。",
+      "difficulty": 3,
+      "related_card_ids": [
+        "array_out_of_bounds"
+      ]
+    },
+    {
+      "id": "FunctionCall",
+      "domain": "ControlFlow",
+      "title": "函数调用",
+      "description": "函数将代码组织为可复用的模块。调用前需要声明或定义。",
+      "difficulty": 2,
+      "related_card_ids": []
+    },
+    {
+      "id": "ParameterPassing",
+      "domain": "ControlFlow",
+      "title": "参数传递",
+      "description": "C 语言使用值传递。函数内修改参数不会影响调用者（除非传指针）。",
+      "difficulty": 3,
+      "related_card_ids": []
+    },
+    {
+      "id": "ReturnValue",
+      "domain": "ControlFlow",
+      "title": "返回值",
+      "description": "非 void 函数必须通过 return 返回对应类型的值，否则行为未定义。",
+      "difficulty": 2,
+      "related_card_ids": [
+        "missing_return"
+      ]
+    },
+    {
+      "id": "Recursion",
+      "domain": "ControlFlow",
+      "title": "递归",
+      "description": "函数调用自身。必须有终止条件，否则导致栈溢出。",
+      "difficulty": 4,
+      "related_card_ids": [
+        "stack_overflow"
+      ]
+    }
+  ],
+  "source_sha": "58c1a461"
+}

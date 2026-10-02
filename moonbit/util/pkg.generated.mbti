@@ -10,7 +10,11 @@ pub fn le_u64_at(FixedArray[Byte], Int) -> UInt64
 
 pub fn str_cmp(String, String) -> Int
 
+pub fn utf8_bytes(String) -> Bytes
+
 pub fn utf8_len(String) -> Int
+
+pub fn utf8_text(Bytes) -> String
 
 // Errors
 

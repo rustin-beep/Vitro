@@ -35,8 +35,7 @@ fn detect_in_func(
   // 族序 = oracle 次序（detector/mod.rs:35-41：sorting → search →
   // graph → tree → structures → string → math + dp 附加）——输出数组
   // 是对外面，序即契约（B13：同命中多族的输入两侧元素序必须一致，
-  // bstKmpSearch 实测例在案）。未迁移族（graph/structures/math/dp）的
-  // 调用按 oracle 位点预留插入。
+  // bstKmpSearch 实测例在案）。43/43 七族全迁移（批六号收官——历史「42」系统计笔误）。
   for m in detect_sorting(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
@@ -49,11 +48,32 @@ fn detect_in_func(
   for m in detect_tree(name_lower, features, func.name, func.loc.line) {
     matches.push(m)
   }
-  // structures（未迁移——oracle 位点在此）
+  for m in detect_structures(name_lower, features, func.name, func.loc.line) {
+    matches.push(m)
+  }
   for m in detect_string(name_lower, func.name, func.loc.line) {
     matches.push(m)
   }
-  // math + dp 附加（未迁移——oracle 位点在此）
+  for m in detect_math(name_lower, features, func.name, func.loc.line) {
+    matches.push(m)
+  }
+  // U1#1 P1-a：dp 检测接线——infer_dp 早已实现但检测器此前无 dp 分支
+  //（孤儿，41 个 build_match 无一产出 dp）。dpFib/dpKnapsack/dpLCS/
+  // dpLIS 的状态机都在 main 或独立函数里，以 `dp[` 状态表访问 + 循环
+  // 为结构特征（Rust 手写 AlgorithmMatch 非 build_match——suggestion/
+  // vis_events 恒空同形）。
+  if features.has_dp_array &&
+    (features.has_single_loop || features.has_nested_loops) {
+    matches.push({
+      name: "dp",
+      display_name: "动态规划",
+      func_name: func.name,
+      confidence: 85,
+      suggestion: "",
+      line: func.loc.line,
+      vis_events: [],
+    })
+  }
   matches
 }
 

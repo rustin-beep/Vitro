@@ -14,11 +14,15 @@ pub fn detect_algorithms(@ast.ProgramNode) -> Array[@protocol.AlgorithmMatch]
 
 pub fn detect_graph(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
+pub fn detect_math(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+
 pub fn detect_search(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
 pub fn detect_sorting(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
 pub fn detect_string(String, String, Int) -> Array[@protocol.AlgorithmMatch]
+
+pub fn detect_structures(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
 pub fn detect_tree(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 

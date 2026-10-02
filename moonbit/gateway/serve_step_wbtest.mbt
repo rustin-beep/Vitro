@@ -239,35 +239,32 @@ test "serve_step_algorithm_step_annotated" {
 }
 
 ///|
-/// 批四号接线锚二（反向）：未迁移族（gcd）判据不命中——帧 algorithm_step
-/// 恒 null（None 降级是协议合法形态；分派表未迁移段）。
+/// 批四号接线锚二（反向）：**判据不命中的函数**帧 algorithm_step 恒
+/// null（None 降级是协议合法形态）。素材随批翻新至终结：批四号=gcd、
+/// 批五号=static_list_insert、批六号 structures 迁移后 43/43 全量——
+/// 「未迁移族」语义终结，素材改为无任何算法特征的普通函数 compute。
 test "serve_step_unmigrated_family_stays_null" {
   let s = @session.Session::new()
   let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
-    "int gcd(int a, int b) {\\n" +
-    "  while (b != 0) { int t = a % b; a = b; b = t; }\\n" +
-    "  return a;\\n" +
+    "int compute(int a, int b) {\\n" +
+    "  int t = a + b;\\n" +
+    "  return t * 2;\\n" +
     "}\\n" +
-    "int main() { return gcd(48, 18); }\\n" +
+    "int main() { return compute(3, 4); }\\n" +
     "\"}}"
   let (cresp, _) = serve_handle(s, jsrc)
   assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
-  let mut detected = false
-  for m in s.compile.algorithm_matches {
-    if m.name == "gcd" {
-      detected = true
-    }
-  }
-  assert_false(
-    detected,
-    msg="gcd 未迁移——判据不命中（detect 面零标注）",
+  assert_eq(
+    s.compile.algorithm_matches.length(),
+    0,
+    msg="普通函数——全部判据不命中（detect 面零标注；42/42 后语义）",
   )
   ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
   for k = 0; k < 20; k = k + 1 {
     let (r, _) = serve_handle(s, "{\"id\":\{30 + k},\"method\":\"step.next\"}")
     assert_false(
       r.contains("\"algorithm_name\""),
-      msg="未迁移族帧不得带标注（帧长 \{r.length()}）",
+      msg="无匹配函数帧不得带标注（帧长 \{r.length()}）",
     )
   }
 }

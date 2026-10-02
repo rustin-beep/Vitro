@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（S8 teaching 批六号：structures 族——**43/43 全量收官**，对拍 311/311 全覆盖，2026-10-02）
+
+- **structures 十一算法**（判据照搬 detector/structures.rs——U1#1 P0-2 收紧：链表删除 = deletenode/delete_node 形态**且** linked/list 语境，BST 的 deleteNode 不误判；hash 的 cash 排除；unionfind 与 union+find 双形态；infer 照搬 algorithm_steps/structures.rs——seq_list 的 P1-89 表长更新挂真值行〔length--/length++ 原大小写判定〕，josephus/union_find 数值文案）。
+- **算法总数口径勘误**：历史「42 算法」系批一号统计笔误——实际 **43**（sorting 9+search/string 4+tree 8+graph 7+math 3+dp 1+structures 11），suggestions 文案全表 43 与 Rust match 43 臂自证；注释/文档连坐修正。
+- **族级对拍 rules.json 43 全量**：全量 82 模板 OK——**311/311 条 golden 首现全覆盖**（structures 新增 hash_table 1+seq_list 2）；42 算法时代的过滤机制就此功成（过滤集=全集）。
+- **gateway 反向锚素材终结翻新**：批五号的 structures 素材（static_list_insert）被本批正确翻红→「未迁移族」语义终结，素材改为无算法特征的普通函数 compute（detect 面零命中恒 null 语义保持）。
+- 锚四（oracle detect 两照搬 + 十一判据覆盖 + phase 表）至 48；防线：moon test 596/596 + native 684/684 + surface/mbti/pkg_deps/testcount/facts --strict 全绿；README ×2 连坐（596/590/684）。
+
+### Added（S8 teaching 批五号：math + dp 族——对拍面 308/311，2026-10-02）
+
+- **math 三算法**（判据照搬 detector/math.rs 全命名主导——与 graph 族差异：build_match 的 compare_lines 传空数组，Rust `&[]` 同款；infer 照搬 algorithm_steps/math.rs）：gcd（**P0-4 收口**：mod 算式用行入口操作数 prev_vars 拼——行末帧 b 已被赋值，48 % 18 = 12 而非 48 % 12 = 0；二审 P0-C 的 IO 行排除与表达式语境收紧）/ is_prime / hanoi（P1-50 递归 n-1 与顶层调用区分 + v5 ✗3 柱名还原 + §6-5 v4 #68 体内 return=该层递归结束）。
+- **泛型 dp**（infer 照搬 dp.rs）：外/内循环初始化体排除（二审 P1-1 多行 for 体经 lookahead 找首个非循环头行；§6-2 j 分支同款）+ transition 双 dp[ 收紧（P0-3：同语句两侧都有 dp[ 才是状态转移）+ 循环主语具名（§6-3 币种/物品/金额）；**检测接线 = U1#1 P1-a 分支**（has_dp_array + 循环结构特征，Rust 手写 AlgorithmMatch 非 build_match 同形）。
+- **族级对拍 rules.json 扩至 32 算法**：全量 82 模板复跑 OK——**dp 63 + gcd 7 + hanoi 8 共 78 条新增首现逐条一致**，golden 覆盖 308/311（仅剩 structures 的 hash_table 1 + seq_list 2）；dp 键路径突变证红（golden phase 篡改 → missing 红）。
+- **锚翻新**（素材随批迁移正确翻转）：gateway 反向锚的 gcd 素材被批五号迁移翻转 → 换 structures 族 static_linked_list 形态（锚语义「未迁移族恒 null」保持）；teaching 包 +5 锚（dp 两照搬 + 判据 + prev_vars 算式 + phase 表）至 44。
+- 防线：moon test 592/592 + native 全量 680/680 + surface/mbti/pkg_deps/testcount/facts --strict 全绿；README ×2 测试数连坐。
+
 ### Added（S8 teaching 批四号：graph 族 + serve 标注端到端接线 + 族级 golden 对拍器，2026-10-01）
 
 - **graph 族七算法**（判据照搬 detector/graph.rs——U1#1 P0-2 收紧版全命名主导；infer 照搬 algorithm_steps/graph.rs——BFS 起点入队文案区分 P1-6 / Prim lowcost[k]=0 收紧 P1-76 / Dijkstra visited[u]=1 收紧 P0-1 / 拓扑 output 挂真输出行 §6-5 v4 #112 全注释照搬；锚八条含 oracle 两侧 tests 照搬与 phase 表）。teaching/steps 达 **五族 28/42 算法**。

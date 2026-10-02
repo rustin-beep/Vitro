@@ -217,11 +217,24 @@ pub fn infer_algorithm_step(
     "dijkstra" => infer_dijkstra(source_line, vars, alg)
     "floyd" => infer_floyd(source_line, vars, alg)
     "topological_sort" => infer_topological_sort(source_line, vars, alg)
-    // —— 未迁移族（批五号+逐族补齐，None 降级是协议合法形态）——
-    // dp/linked_list_delete/gcd/is_prime/hanoi/seq_list/
-    // linked_list_append/circular_queue/linked_stack/linked_queue/
-    // hash_table/josephus/circular_linked_list/static_linked_list/
-    // union_find
+    // 批五号（math + dp 族）
+    "gcd" => infer_gcd(source_line, vars, alg, env)
+    "is_prime" => infer_is_prime(source_line, vars, alg)
+    "hanoi" => infer_hanoi(source_line, vars, alg, func_name)
+    "dp" => infer_dp(source_line, vars, alg, env)
+    // 批六号（structures 族——42/42 收官）
+    "linked_list_delete" => infer_linked_list_delete(source_line, vars, alg)
+    "seq_list" => infer_seq_list(source_line, vars, alg)
+    "linked_list_append" => infer_linked_list_append(source_line, vars, alg)
+    "circular_queue" => infer_circular_queue(source_line, vars, alg)
+    "linked_stack" => infer_linked_stack(source_line, vars, alg)
+    "linked_queue" => infer_linked_queue(source_line, vars, alg)
+    "hash_table" => infer_hash_table(source_line, vars, alg)
+    "josephus" => infer_josephus(source_line, vars, alg)
+    "circular_linked_list" => infer_circular_linked_list(source_line, vars, alg)
+    "static_linked_list" => infer_static_linked_list(source_line, vars, alg)
+    "union_find" => infer_union_find(source_line, vars, alg)
+    // 43/43 全迁移完毕（历史「42」口径系批一号统计笔误——suggestions 文案全表 43 自证）——判据不命中的函数 None 降级（协议合法形态）
     _ => None
   }
 }

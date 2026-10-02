@@ -1027,3 +1027,554 @@ test "teaching_infer_graph_remaining_phases_table" {
     msg="初始化行 lowcost[0]=0 不应产「顶点 -1 加入生成树」",
   )
 }
+
+///|
+/// 锚三十六（照搬 dp.rs tests §6-2）：初始化双层循环的**内层 j 行**不得
+/// 产出 inner_loop——多行 for 体不在 for 行内（dpLCS L11 for j / L12 体
+/// `dp[i][j] = 0;`），outer_loop 已有排除而 j 分支漏掉时人审 ✗ ×3。
+test "teaching_infer_dp_inner_init_multiline_excluded" {
+  // dpLCS 形态：L10 for i / L11 for j / L12 体
+  let r1 = infer_algorithm_step(
+    11,
+    [],
+    "main",
+    "for (j = 0; j <= n; j++) {",
+    Some(mk_alg("dp", "动态规划")),
+    {
+      prev_vars: [],
+      at_callee_entry: false,
+      caller_is_main: false,
+      lookahead: "        dp[i][j] = 0;\n    }\n",
+    },
+  )
+  assert_true(r1 is None, msg="初始化内层 j 循环不得产出 inner_loop")
+  // matrixChain 形态：体为 dp[j][j] = 0;
+  let r2 = infer_algorithm_step(
+    11,
+    [],
+    "main",
+    "for (j = 0; j < n; j++)",
+    Some(mk_alg("dp", "动态规划")),
+    {
+      prev_vars: [],
+      at_callee_entry: false,
+      caller_is_main: false,
+      lookahead: "            dp[j][j] = 0;\n        }\n",
+    },
+  )
+  assert_true(r2 is None, msg="dp[j][j] = 0 初始化体同上")
+}
+
+///|
+/// 锚三十七（反向照搬）：算法体的内层 j 循环（体引用 dp 依赖/变量）仍
+/// 产出 inner_loop。
+test "teaching_infer_dp_inner_real_body_annotated" {
+  // dpCoinChange 形态：j 从 coins[i] 起、体是转移语句
+  let r = infer_algorithm_step(
+    15,
+    [],
+    "main",
+    "for (j = coins[i]; j <= amount; j++) {",
+    Some(mk_alg("dp", "动态规划")),
+    {
+      prev_vars: [],
+      at_callee_entry: false,
+      caller_is_main: false,
+      lookahead: "            dp[j] = min(dp[j], dp[j - coins[i]] + 1);\n        }\n",
+    },
+  )
+  guard r is Some(step) else {
+    fail("真实子问题维度循环应产出 inner_loop")
+    return
+  }
+  assert_eq(step.phase, "inner_loop", msg="phase 应为 inner_loop")
+  assert_true(
+    step.description.contains("金额"),
+    msg="dpCoinChange 的 j 主语应为「金额」：\{step.description}",
+  )
+}
+
+///|
+/// 锚三十八：math 族判据三命中 + compare_lines 恒空投影（Rust `&[]`
+/// 同款）+ dp 结构分支（U1#1 P1-a：has_dp_array + 循环——dpFib 的状态
+/// 机在 main 里也命中；无 dp 数组不命中）。
+test "teaching_detect_math_and_dp_branch" {
+  let f = FuncFeatures::default()
+  // math 三命名
+  let m1 = detect_math("mygcd".to_lower(), f, "myGcd", 1)
+  let mut hit_gcd = false
+  for x in m1 {
+    if x.name == "gcd" {
+      hit_gcd = true
+      assert_eq(x.vis_events.length(), 0, msg="math 族 compare_lines 恒空")
+    }
+  }
+  assert_true(hit_gcd, msg="myGcd 应识别 gcd")
+  let m2 = detect_math("greatest_common", f, "greatest_common", 1)
+  let mut hit2 = false
+  for x in m2 {
+    if x.name == "gcd" {
+      hit2 = true
+    }
+  }
+  assert_true(hit2, msg="greatest 应识别 gcd")
+  let m3 = detect_math("is_prime", f, "is_prime", 1)
+  let mut hit3 = false
+  for x in m3 {
+    if x.name == "is_prime" {
+      hit3 = true
+    }
+  }
+  assert_true(hit3, msg="is_prime 应识别")
+  let m4 = detect_math("hanoi_move", f, "hanoi_move", 1)
+  let mut hit4 = false
+  for x in m4 {
+    if x.name == "hanoi" {
+      hit4 = true
+    }
+  }
+  assert_true(hit4, msg="hanoi_move 应识别 hanoi")
+  // dp 结构分支：has_dp_array + 单循环 → dp（P1-a 接线）
+  let fd = FuncFeatures::default()
+  fd.has_dp_array = true
+  fd.has_single_loop = true
+  let md = detect_math("main".to_lower(), fd, "main", 1)
+  assert_eq(
+    md.length(),
+    0,
+    msg="dp 不在 detect_math（接线在 detect_in_func）",
+  )
+  // （dp 分支经 detect_in_func 集成路径由族级对拍器 82 模板全量覆盖——
+  // dpFib/dpKnapsack 等 6 模板 golden 条目 63 条）
+}
+
+///|
+/// 锚三十九（P0-4 收口）：gcd mod 算式用**行入口操作数**——行末帧的 b
+/// 已被赋值（b=12），prev 的 a=48/b=18 拼出 48 % 18 = 12；IO 行的格式串
+/// 百分号不命中（二审 P0-C）。
+test "teaching_infer_gcd_prev_vars_arithmetic" {
+  let alg = mk_alg("gcd", "最大公约数")
+  // 行末帧 vars：b 已是余数 12；prev_vars：进入本行前 a=48, b=18
+  let vars : Array[VarSnapshot] = [
+    { name: "a", value: "48", },
+    { name: "b", value: "12", },
+  ]
+  let env : InferEnv = {
+    prev_vars: [{ name: "a", value: "48", }, { name: "b", value: "18", }],
+    at_callee_entry: false,
+    caller_is_main: false,
+    lookahead: "",
+  }
+  let r = infer_algorithm_step(5, vars, "gcd", "b = a % b;", Some(alg), env)
+  guard r is Some(step) else {
+    fail("mod 行应有标注")
+    return
+  }
+  assert_eq(step.phase, "mod", msg="phase 应为 mod")
+  assert_eq(
+    step.description,
+    "计算 48 % 18 = 12（余数作为新的 b）",
+    msg="算式须用行入口操作数（48 % 18 而非 48 % 12）",
+  )
+  // prev 缺失时降级无数值文案
+  let r2 = infer_algorithm_step(
+    5,
+    vars,
+    "gcd",
+    "b = a % b;",
+    Some(mk_alg("gcd", "最大公约数")),
+    empty_env(),
+  )
+  guard r2 is Some(s2) else {
+    fail("mod 行降级也应有标注")
+    return
+  }
+  assert_eq(
+    s2.description,
+    "求余并更新 b（辗转相除一步）",
+    msg="prev 缺失降级文案",
+  )
+  // IO 行：printf 格式串含 " % " 不产 mod
+  let r3 = infer_algorithm_step(
+    9,
+    vars,
+    "gcd",
+    "printf(\"%d % d\", a);",
+    Some(mk_alg("gcd", "最大公约数")),
+    env,
+  )
+  assert_true(r3 is None, msg="printf 格式串百分号不得命中 mod")
+}
+
+///|
+/// 锚四十：math + dp phase 表（hanoi 顶层柱名还原/递归 n-1 区分/
+/// return 的 main 判定 §6-5 v4 #68；dp transition 双 dp[ 收紧 P0-3 +
+/// outer_loop 初始化体排除 + 币种主语 §6-3）。
+test "teaching_infer_math_dp_phases_table" {
+  let mk_env = fn(la : String) {
+    {
+      prev_vars: [],
+      at_callee_entry: false,
+      caller_is_main: false,
+      lookahead: la,
+    }
+  }
+  let n3 : Array[VarSnapshot] = [
+    { name: "n", value: "3", },
+    { name: "from", value: "65", },
+    { name: "to", value: "67", },
+  ]
+  // (算法, 行, func_name, vars, env, 期望 phase)
+  let cases : Array[
+    (String, String, String, Array[VarSnapshot], InferEnv, String),
+  ] = [
+    (
+      "gcd",
+      "while (b != 0) {",
+      "gcd",
+      [{ name: "a", value: "48", }, { name: "b", value: "18", }],
+      mk_env(""),
+      "loop",
+    ),
+    (
+      "gcd",
+      "return a;",
+      "gcd",
+      [{ name: "a", value: "6", }],
+      mk_env(""),
+      "finish",
+    ),
+    (
+      "is_prime",
+      "if (n <= 1) {",
+      "isPrime",
+      [{ name: "n", value: "1", }],
+      mk_env(""),
+      "check_small",
+    ),
+    (
+      "is_prime",
+      "for (i = 2; i * i <= n; i++) {",
+      "isPrime",
+      [{ name: "n", value: "7", }, { name: "i", value: "2", }],
+      mk_env(""),
+      "test_divisor",
+    ),
+    (
+      "is_prime",
+      "if (n % i == 0) {",
+      "isPrime",
+      [{ name: "n", value: "7", }, { name: "i", value: "2", }],
+      mk_env(""),
+      "found_factor",
+    ),
+    ("hanoi", "if (n == 1) {", "hanoi", n3, mk_env(""), "base"),
+    ("hanoi", "hanoi(n - 1, from, via);", "hanoi", n3, mk_env(""), "recursive"),
+    ("hanoi", "return 0;", "main", n3, mk_env(""), "finish"),
+    ("hanoi", "return;", "hanoi", n3, mk_env(""), "finish"),
+    (
+      "dp",
+      "dp[i] = dp[i - 1] + dp[i - 2];",
+      "main",
+      [{ name: "i", value: "5", }],
+      mk_env(""),
+      "transition",
+    ),
+    (
+      "dp",
+      "return dp[n];",
+      "main",
+      [{ name: "n", value: "10", }],
+      mk_env(""),
+      "finish",
+    ),
+    (
+      "dp",
+      "for (int i = 2; i <= n; i++) {",
+      "main",
+      [{ name: "i", value: "2", }, { name: "n", value: "10", }],
+      mk_env("        dp[i] = dp[i - 1] + dp[i - 2];\n    }\n"),
+      "outer_loop",
+    ),
+    // 初始化循环排除（二审 P1-1）：体为 dp[..] = 纯字面量
+    (
+      "dp",
+      "for (int i = 0; i <= n; i++) {",
+      "main",
+      [{ name: "i", value: "0", }],
+      mk_env("        dp[i] = 1000;\n    }\n"),
+      "__none__",
+    ),
+  ]
+  for c in cases {
+    let (alg_name, src, fname, vs, env, phase) = c
+    let r = infer_algorithm_step(
+      9,
+      vs,
+      fname,
+      src,
+      Some(mk_alg(alg_name, alg_name)),
+      env,
+    )
+    if phase == "__none__" {
+      assert_true(
+        r is None,
+        msg="[\{alg_name}] 初始化循环应无标注：\{src}",
+      )
+      continue
+    }
+    guard r is Some(step) else {
+      fail("[\{alg_name}] 行应有标注：\{src}")
+      return
+    }
+    assert_eq(
+      step.phase,
+      phase,
+      msg="[\{alg_name}] \{src} phase 应为 \{phase}（实际 \{step.phase}）",
+    )
+  }
+  // hanoi 顶层调用柱名还原（from=65 'A' / to=67 'C'）
+  let rh = infer_algorithm_step(
+    9,
+    n3,
+    "hanoi",
+    "hanoi(n, from, to);",
+    Some(mk_alg("hanoi", "hanoi")),
+    mk_env(""),
+  )
+  guard rh is Some(sh) else {
+    fail("顶层调用行应有标注")
+    return
+  }
+  assert_eq(
+    sh.description,
+    "从 A 柱移动 3 个盘子到 C 柱",
+    msg="顶层调用柱名还原（v5 ✗3）",
+  )
+  // 币种主语（§6-3）：dpCoinChange 外层 i + coin 特征词
+  let rc = infer_algorithm_step(
+    9,
+    [{ name: "i", value: "0", }],
+    "main",
+    "for (int i = 0; i < coinCount; i++) {",
+    Some(mk_alg("dp", "dp")),
+    mk_env(
+      "        for (int j = coins[i]; j <= amount; j++) {\n            dp[j] = min(dp[j], dp[j - coins[i]] + 1);\n",
+    ),
+  )
+  guard rc is Some(sc) else {
+    fail("币种外层循环应有标注")
+    return
+  }
+  assert_eq(
+    sc.description,
+    "遍历币种 i=0",
+    msg="币种主语具名（§6-3）",
+  )
+}
+
+///|
+/// 锚四十一（U1#1 P0-2 照搬）：bstDelete 模板的 deleteNode（BST 删除）
+/// 曾被 `contains("deletenode")` 误判链表删除——收紧为链表语境后不误判。
+test "teaching_detect_bst_deletenode_not_linked_list_delete" {
+  let f = FuncFeatures::default()
+  let m = detect_structures("deletenode", f, "deleteNode", 1)
+  assert_eq(m.length(), 0, msg="BST deleteNode 不应被判链表删除")
+}
+
+///|
+/// 锚四十二（反向照搬）：链表语境的 delete_node 仍识别。
+test "teaching_detect_linked_list_delete_node_detected" {
+  let f = FuncFeatures::default()
+  let m = detect_structures("linkedlist_deletenode", f, "f", 1)
+  let mut hit = false
+  for x in m {
+    if x.name == "linked_list_delete" {
+      hit = true
+    }
+  }
+  assert_true(hit, msg="linkedListDeleteNode 应识别链表删除")
+}
+
+///|
+/// 锚四十三：structures 十一判据正面覆盖（含 hash 的 cash 排除、
+/// unionfind 与 union+find 双形态、circular 的 queue/list 分族）。
+test "teaching_detect_structures_all_eleven" {
+  let f = FuncFeatures::default()
+  let cases : Array[(String, String)] = [
+    ("linked_list_delete_node", "linked_list_delete"),
+    ("deleteNode_list", "linked_list_delete"),
+    ("seqList_insert", "seq_list"),
+    ("list_insert", "seq_list"),
+    ("listDelete", "seq_list"),
+    ("appendNode", "linked_list_append"),
+    ("list_append", "linked_list_append"),
+    ("circular_queue_init", "circular_queue"),
+    ("linkedStack_push", "linked_stack"),
+    ("linkedQueue_enqueue", "linked_queue"),
+    ("hash_insert", "hash_table"),
+    ("josephus_solve", "josephus"),
+    ("circular_list_build", "circular_linked_list"),
+    ("static_list_init", "static_linked_list"),
+    ("unionFind", "union_find"),
+    ("union_root_find", "union_find"),
+  ]
+  for c in cases {
+    let (nm, want) = c
+    let m = detect_structures(nm.to_lower(), f, nm, 1)
+    let mut hit = false
+    for x in m {
+      if x.name == want {
+        hit = true
+      }
+    }
+    assert_true(hit, msg="\{nm} 应识别 \{want}")
+  }
+  // 排除面：cash 不判哈希
+  let mc = detect_structures("cash_count", f, "cash_count", 1)
+  let mut bad = false
+  for x in mc {
+    if x.name == "hash_table" {
+      bad = true
+    }
+  }
+  assert_false(bad, msg="cash_count 不得判哈希表")
+  // 排除面：裸 deleteNode 无链表语境零命中（锚四十一同族补充——裸 union 不判）
+  let mu = detect_structures("union_merge", f, "union_merge", 1)
+  assert_eq(mu.length(), 0, msg="union 无 find 语境不判并查集")
+}
+
+///|
+/// 锚四十四：structures phase 表（十一算法主分支——josephus 的 m/remain
+/// 数值文案、union_find 的 x 数值、seq_list 的 P1-89 length-- 原大小写）。
+test "teaching_infer_structures_phases_table" {
+  let mk = fn(name : String) { mk_alg(name, name) }
+  let josephus_vars : Array[VarSnapshot] = [
+    { name: "m", value: "3", },
+    { name: "remain", value: "4", },
+  ]
+  let uf_vars : Array[VarSnapshot] = [{ name: "x", value: "5", }]
+  // (算法, 行, 期望 phase)
+  let cases : Array[(String, String, String)] = [
+    ("linked_list_delete", "free(head); head = head->next;", "delete_head"),
+    ("linked_list_delete", "while (cur->data != key) {", "search"),
+    ("linked_list_delete", "prev->next = temp->next;", "unlink"),
+    ("linked_list_delete", "free(temp);", "free"),
+    ("linked_list_delete", "return head;", "finish"),
+    (
+      "seq_list", "if (pos < 1 || pos > L->length + 1 || pos > maxsize) {", "check",
+    ),
+    ("seq_list", "L->data[i] = L->data[i - 1];", "shift"),
+    ("seq_list", "L->data[pos] = val;", "place"),
+    ("seq_list", "L->length--;", "update_len"),
+    ("linked_list_append", "while (cur->next != NULL) {", "find_tail"),
+    ("linked_list_append", "tail->next = node;", "link"),
+    ("circular_queue", "if ((rear + 1) % maxSize == front) {", "check"),
+    ("circular_queue", "data[rear] = val;", "enqueue"),
+    ("circular_queue", "int v = data[front];", "dequeue"),
+    ("circular_queue", "rear = (rear + 1) % maxSize;", "wrap"),
+    (
+      "linked_stack", "node->next = top; top = node; node = malloc(...);", "push",
+    ),
+    ("linked_stack", "free(temp);", "pop"),
+    ("linked_queue", "rear->next = node;", "enqueue"),
+    ("linked_queue", "front = front->next;", "dequeue"),
+    ("linked_queue", "free(temp);", "free"),
+    ("hash_table", "int h = key % TABLE_SIZE;", "hash"),
+    ("hash_table", "while (table[h].occupied) {", "probe"),
+    ("hash_table", "if (table[h].key == key) return h;", "hit"),
+    ("josephus", "alive[i] = 1;", "init"),
+    ("josephus", "alive[idx] = 0;", "eliminate"),
+    ("josephus", "idx = (idx + m - 1) % remain + 1;", "rotate"),
+    ("josephus", "return last;", "finish"),
+    ("circular_linked_list", "tail->next = head;", "link"),
+    ("circular_linked_list", "do {", "traverse"),
+    ("circular_linked_list", "return head;", "finish"),
+    ("static_linked_list", "space[i].cur = i + 1;", "init"),
+    (
+      "static_linked_list", "int k = space[0].cur; space[0].cur = space[i].cur;",
+      "malloc",
+    ),
+    ("static_linked_list", "space[k].cur = space[0].cur;", "free"),
+    ("union_find", "if (parent[x] < 0) return x;", "find"),
+    ("union_find", "parent[x] = find(parent[x]);", "compress"),
+    ("union_find", "union_root(rootX, rootY);", "union"),
+  ]
+  for c in cases {
+    let (alg_name, src, phase) = c
+    let vs = if alg_name == "josephus" {
+      josephus_vars
+    } else if alg_name == "union_find" {
+      uf_vars
+    } else {
+      []
+    }
+    let r = infer_algorithm_step(
+      9,
+      vs,
+      "f",
+      src,
+      Some(mk(alg_name)),
+      empty_env(),
+    )
+    guard r is Some(step) else {
+      fail("[\{alg_name}] 行应有标注：\{src}")
+      return
+    }
+    assert_eq(
+      step.phase,
+      phase,
+      msg="[\{alg_name}] \{src} phase 应为 \{phase}（实际 \{step.phase}）",
+    )
+  }
+  // josephus 数值文案（m=3, remain=4）
+  let rj = infer_algorithm_step(
+    9,
+    josephus_vars,
+    "f",
+    "alive[idx] = 0;",
+    Some(mk("josephus")),
+    empty_env(),
+  )
+  guard rj is Some(sj) else {
+    fail("eliminate 行应有标注")
+    return
+  }
+  assert_eq(
+    sj.description,
+    "报到 3 的人被淘汰，剩余 4 人",
+    msg="josephus 数值文案",
+  )
+  // union_find 数值文案（x=5）
+  let ru = infer_algorithm_step(
+    9,
+    uf_vars,
+    "f",
+    "if (parent[x] < 0) return x;",
+    Some(mk("union_find")),
+    empty_env(),
+  )
+  guard ru is Some(su) else {
+    fail("find 行应有标注")
+    return
+  }
+  assert_eq(
+    su.description,
+    "查找 5 的根节点",
+    msg="union_find 数值文案",
+  )
+  // seq_list P1-89：length++ 原大小写（source_line 非降级小写判定）
+  let rp = infer_algorithm_step(
+    9,
+    [],
+    "f",
+    "L->length++;",
+    Some(mk("seq_list")),
+    empty_env(),
+  )
+  guard rp is Some(sp) else {
+    fail("length++ 行应有标注")
+    return
+  }
+  assert_eq(sp.phase, "update_len", msg="P1-89 表长更新挂真值行")
+}

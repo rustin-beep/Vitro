@@ -25,5 +25,6 @@
 // oracle 的混合坐标语义（safe_byte_col 三级退化，勘察 S1「症状
 // 治疗」）——本批照搬，坐标口径单源化（⑤-2）随 CS/后续批。
 import {
+  "moonbitlang/core/string",
   "vitro/engine/util",
 }

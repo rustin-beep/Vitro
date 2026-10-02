@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（S8 diagnostics 批：数据层四表外置 + 机制层五件 + diagnostics_probe 第四方法——**dump 族四方法整面**，2026-10-02）
+
+- **新包 `vitro/engine/diagnostics`（L8 层位裁定**——gateway 消费所致，time_travel/teaching-steps 同因降层第三例；依赖仅 @util + core/string）：**数据层** A3–A7 四张表（`*_gen.mbt` 由新生成器 `scripts/moonbit/gen_diagnostics` 自 Rust 冻结源产 **.mbt + JSON 双产物**——人审/vendor 面 `scripts/moonbit/diagnostics_data/` 四张；fix 载荷 25 静态码〔动态五码 1004/3035/3041/3050/3051 按勘察 A3 拆分判据留机制层〕/ 概念图 25 节点+25 边+28 映射〔**3020→Recursion oracle 存量语义错照搬不修**，差异台账两侧同修批〕/ 误区模式 6 / 学习路径 6，基线计数 fail loud；J9 双路证红 + 读写两阶段分离防 check 污染工作区〔审阅 F5〕；CI 生成物新鲜度步接线）+ **机制层** M1–M5（generate_fix 字节域坐标照搬 / apply_fix〔safe_byte_col 三级退化照搬 + E-P1-6 中文行回归〕/ 误区滑窗 / 路径组装 / 图激活 DFS〔边声明序契约〕）。
+- **分叉②销案**（serve compile 诊断 fix 族此前恒 0/空）：push_one_diag 接 generate_fix 七元组直填，errors/warnings/hints 三级全挂（Rust push_one 同形）；fix_suggestion 空文案回退 catalog explanation。
+- **diagnostics_probe**（dump 族第四方法，八段照搬 Rust U1 导出）：只读语义 = 一次性会话承载管线即弃；三条分叉登记（只读形态 / `intents` 恒 `[]` 随 analysis 批 / `params.completion` 存在即 fail loud——M15 未实现不支持而非静默假空）；**confidence 的 wire 形态 = f32 最短表示**（serde_json f32 同形——`round_to_f32` 计算处语义化〔f32→f64 宽度放大分叉，审阅 F6〕+ `f32_shortest_text` 文本化穿透 f64 emitter）。
+- **serve_smoke 双臂 67 断言全绿**（Rust 67/67 + MoonBit 65 PASS/2 永久豁免/0 FAIL）：probe 八断言含 **fix 七元组经两侧独立 generate_fix/apply_fix 后 `fixed_source` 全文一致**（分叉②销案的端到端证明）与 M01 confidence 3/4 双臂同值。
+- 锚：diagnostics 33（黑盒 26 = Rust 单测照搬 13 + 行为锚 8 + 出口点名 1 + 审阅锚 4；白盒 7 = 机制锚 6 + f32 文本化锚 1）+ gateway probe 4（帧结构/误区流/completion fail loud/只读语义）。
+- 连坐：`pkg_deps` rules.json diagnostics 9→8 + `moonbit/AGENTS.md` 包清单条目 + README ×2 包表 S8 三行（time_travel/teaching·steps 同族沿漏一并收口）与测试数双口径（**裸 629 / native 全量 721**）+ surface +12 边 + `util` 新增 `utf8_bytes`/`utf8_text` 机械件（**语言新事实：`String::to_bytes()` = UTF-16LE 非 UTF-8**）。
+- 防线：moon test 629/629 + native 721/721 + surface/mbti/pkg_deps/testcount/facts --strict/svg 全绿。
+
 ### Added（勘探资产入仓：fork 方案——外置语料基线 + 金样本合规闸，2026-10-02）
 
 - **外置语料锚**：fork [rustin-beep/C](https://github.com/rustin-beep/C)，**默认分支 `vitro-probe-baseline`**（上游 TheAlgorithms/C@`e5dad3f`〔2023-09 终态〕+ 89 文件探针态——补 include 与 struct 模板反注释，diff 全量定性零误改；分支头含 fork 说明 README）。上游代码与探针 diff 只在 fork，**永不进本仓**（GPL 红线）。

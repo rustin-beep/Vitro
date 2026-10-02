@@ -17,6 +17,7 @@ import {
   "vitro/engine/bytecode",
   "vitro/engine/codegen",
   "vitro/engine/diag",
+  "vitro/engine/diagnostics",
   "vitro/engine/host",
   "vitro/engine/lexer",
   "vitro/engine/lexer/token",

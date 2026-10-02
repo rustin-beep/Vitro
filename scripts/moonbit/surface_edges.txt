@@ -132,6 +132,7 @@ vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
 vitro/engine/codegen vitro/engine/opcode Instruction
 vitro/engine/codegen vitro/engine/opcode OpCode
 vitro/engine/codegen vitro/engine/source SourceLoc
+vitro/engine/diagnostics moonbitlang/core/string parse_double
 vitro/engine/diagnostics vitro/engine/util utf8_bytes
 vitro/engine/diagnostics vitro/engine/util utf8_text
 vitro/engine/gateway moonbitlang/core/encoding/utf8 encode
@@ -150,6 +151,17 @@ vitro/engine/gateway vitro/engine/bytecode compute_heap_base
 vitro/engine/gateway vitro/engine/codegen compile
 vitro/engine/gateway vitro/engine/diag ErrorCode
 vitro/engine/gateway vitro/engine/diag export_catalog_json
+vitro/engine/gateway vitro/engine/diagnostics CompileRecord
+vitro/engine/gateway vitro/engine/diagnostics FixTarget
+vitro/engine/gateway vitro/engine/diagnostics activate_from_error
+vitro/engine/gateway vitro/engine/diagnostics apply_fix
+vitro/engine/gateway vitro/engine/diagnostics concept_edges
+vitro/engine/gateway vitro/engine/diagnostics concept_nodes
+vitro/engine/gateway vitro/engine/diagnostics detect_misconceptions
+vitro/engine/gateway vitro/engine/diagnostics f32_shortest_text
+vitro/engine/gateway vitro/engine/diagnostics generate_fix
+vitro/engine/gateway vitro/engine/diagnostics recommend_learning_paths
+vitro/engine/gateway vitro/engine/diagnostics split_lines
 vitro/engine/gateway vitro/engine/host InputState
 vitro/engine/gateway vitro/engine/host OutputKind
 vitro/engine/gateway vitro/engine/lexer tokenize_with

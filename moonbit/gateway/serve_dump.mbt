@@ -5,7 +5,8 @@
 // 代价）。诊断/产物 emitter 单源复用：ast 字段 = @ast.ast_dump_json
 //（E1 面，597 语料与 Rust serde 逐字节一致——零新 emitter）；
 // wire 形态 = 拼 cmd/dump_{ast,typeck} 同构 JSON 串后 json_parse 转值。
-// diagnostics_probe 不在本批（依赖 diagnostics/analysis 域，随其批）。
+// diagnostics_probe 已随 S8 段三接线（serve_probe.mbt，2026-10-02——
+// 一次性会话承载管线的只读形态）。
 
 ///|
 /// JSON 字符串转义（cmd/dump_* 的 json_escape 复制件——含首尾引号；

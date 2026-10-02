@@ -13,9 +13,10 @@
 //    尾段调 @steps.detect_algorithms（teaching/steps 判据族，已迁移
 //    sorting/search/string/tree/graph 五族 28/42 算法；未迁移族判据
 //    不命中 = 零标注降级，协议合法形态）；
-// ② fix_kind/replace_*/replacement_text 恒 0/空——error_catalog 的
-//    generate_fix（机器修复文本生成）无 MoonBit 对等物，随 diag 教学
-//    批；fix_suggestion 的 catalog explanation fallback 已照搬；
+// ② fix 族**已接线**（S8 段三销案 2026-10-02）：push_one_diag 调
+//    @diagnostics.generate_fix 七元组直填（errors/warnings/hints 三级
+//    全挂——Rust push_one 同形）；fix_suggestion 空文案回退 catalog
+//    explanation；
 // ③ cpp 扩展名检测（.cpp/.cxx/.vitrocpp → cpp_mode）不搬——F-2 终局
 //    已裁 C++（cpp_mode 恒 false，cpp 文件名按 C 子集处理）；
 // ④ errors 串富化 = catalog emoji/title 前缀照搬，但 codegen 错误的
@@ -107,8 +108,10 @@ fn severity_prefix(severity : Int) -> String {
 /// 单条诊断推送（Rust push_one 主体照搬）：Diagnostic 全字段 + errors 串
 /// 富化行（catalog 命中 = "{emoji} {title} — 错误 E{code} (第{line}行,
 /// 第{column}列): {message}"，未命中 = 裸格式——Rust 富化同形）。
-/// fix_suggestion：generate_fix 无对等物（分叉②），fallback 到 catalog
-/// explanation（Rust push_one 的空 fix 分支同形）。
+/// fix 族（段三接线 2026-10-02，销分叉②）：@diagnostics.generate_fix
+/// 七元组直填；fix_suggestion 空文案回退 catalog explanation（Rust
+/// push_one 的空 fix 分支同形）。source_lines 口径单源 =
+/// @diagnostics.split_lines（Rust source.lines() 语义）。
 fn push_one_diag(
   s : @session.Session,
   code : Int,
@@ -117,14 +120,20 @@ fn push_one_diag(
   message : String,
   severity : Int,
   ranges : Array[@session.FileRange],
+  source_lines : Array[String],
 ) -> Unit {
   let entry = match @diag.ErrorCode::from_code(code) {
     Some(e) => e.catalog()
     None => None
   }
-  let fix_suggestion = match entry {
-    Some(i) => i.explanation
-    None => ""
+  let fix = @diagnostics.generate_fix(code, line, column, message, source_lines)
+  let fix_suggestion = if fix.suggestion == "" {
+    match entry {
+      Some(i) => i.explanation
+      None => ""
+    }
+  } else {
+    fix.suggestion
   }
   let filename = match resolve_filename(line, ranges) {
     Some(f) => f
@@ -137,12 +146,12 @@ fn push_one_diag(
     severity,
     message,
     fix_suggestion,
-    fix_kind: 0, // 分叉②：机器修复生成随 diag 教学批
-    replace_start_line: 0,
-    replace_start_column: 0,
-    replace_end_line: 0,
-    replace_end_column: 0,
-    replacement_text: "",
+    fix_kind: fix.fix_kind,
+    replace_start_line: fix.start_line,
+    replace_start_column: fix.start_col,
+    replace_end_line: fix.end_line,
+    replace_end_column: fix.end_col,
+    replacement_text: fix.text,
     filename,
   })
   let rich = match entry {
@@ -159,6 +168,7 @@ fn push_lex_errors(
   s : @session.Session,
   errors : Array[@token.LexError],
   ranges : Array[@session.FileRange],
+  source_lines : Array[String],
 ) -> Unit {
   for e in errors {
     push_one_diag(
@@ -169,6 +179,7 @@ fn push_lex_errors(
       e.message,
       0,
       ranges,
+      source_lines,
     )
   }
 }
@@ -179,6 +190,7 @@ fn push_lex_warnings(
   s : @session.Session,
   warnings : Array[@token.LexWarning],
   ranges : Array[@session.FileRange],
+  source_lines : Array[String],
 ) -> Unit {
   for w in warnings {
     push_one_diag(
@@ -189,6 +201,7 @@ fn push_lex_warnings(
       w.message,
       1,
       ranges,
+      source_lines,
     )
   }
 }
@@ -200,10 +213,13 @@ fn push_code_errors(
   errors : Array[(Int, Int, Int, String)],
   severity : Int,
   ranges : Array[@session.FileRange],
+  source_lines : Array[String],
 ) -> Unit {
   for pair in errors {
     let (code, line, column, message) = pair
-    push_one_diag(s, code, line, column, message, severity, ranges)
+    push_one_diag(
+      s, code, line, column, message, severity, ranges, source_lines,
+    )
   }
 }
 
@@ -227,6 +243,8 @@ fn serve_compile_pipeline(
   // ── 合并（file_ranges 生产者）──
   let (full_source, ranges) = merge_units(units)
   st.file_ranges = ranges
+  // fix 生成用的行表（Rust push_diagnostics 外层 source.lines() 同形）
+  let source_lines = @diagnostics.split_lines(full_source)
   // ── 1. Lexer（E2：预处理警告与追踪随词法产出）──
   // quote-include 的 provider 按宿主形态文件级分叉（2026-09-29 审阅
   // P2 修复）：native = 真实文件系统 + base_dir 候选链；wasm-gc =
@@ -238,10 +256,10 @@ fn serve_compile_pipeline(
     st.preprocessor_trace.push(t.render())
   }
   if !lexed.warnings.is_empty() {
-    push_lex_warnings(s, lexed.warnings, ranges)
+    push_lex_warnings(s, lexed.warnings, ranges, source_lines)
   }
   if !lexed.errors.is_empty() {
-    push_lex_errors(s, lexed.errors, ranges)
+    push_lex_errors(s, lexed.errors, ranges, source_lines)
     st.errors = st.errors + "词法错误\n"
     return false
   }
@@ -252,7 +270,7 @@ fn serve_compile_pipeline(
     for e in r.errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 0, ranges)
+    push_code_errors(s, rows, 0, ranges, source_lines)
     st.errors = st.errors + "语法错误\n"
     return false
   }
@@ -271,7 +289,7 @@ fn serve_compile_pipeline(
     for e in type_errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 0, ranges)
+    push_code_errors(s, rows, 0, ranges, source_lines)
     st.errors = st.errors + "类型错误\n"
     return false
   }
@@ -280,14 +298,14 @@ fn serve_compile_pipeline(
     for e in type_warnings {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 1, ranges)
+    push_code_errors(s, rows, 1, ranges, source_lines)
   }
   if !type_hints.is_empty() {
     let rows : Array[(Int, Int, Int, String)] = []
     for e in type_hints {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 2, ranges)
+    push_code_errors(s, rows, 2, ranges, source_lines)
   }
   // ── 4. BytecodeGen ──
   let (output_opt, gen_errors) = @codegen.compile(typed)

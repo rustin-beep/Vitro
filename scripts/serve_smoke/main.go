@@ -69,7 +69,19 @@ var requests = []request{
 	{ID: 17, Method: "semantic_labels"},
 	{ID: 18, Method: "contracts"},
 	{ID: 19, Method: "session.create"},
-	{ID: 20, Method: "shutdown"},
+	// diagnostics_probe（S8 段四对拍 2026-10-02）：20 = 错误源码（E2005
+	// fix 接线端到端）；21 = 合法源码 + records（误区/路径/图谱流）
+	{ID: 20, Method: "diagnostics_probe", Params: map[string]any{"source": "int x = 1"}},
+	{ID: 21, Method: "diagnostics_probe", Params: map[string]any{
+		"source":  "int binary_search(int* a, int n){ return a[0]; }\nint main(){ return 0; }",
+		"records": []any{
+			map[string]any{"ts": 0, "ok": false, "codes": []int{3051}},
+			map[string]any{"ts": 1, "ok": false, "codes": []int{3021}},
+			map[string]any{"ts": 2, "ok": false, "codes": []int{3051}},
+			map[string]any{"ts": 3, "ok": true, "codes": []int{}},
+		},
+	}},
+	{ID: 22, Method: "shutdown"},
 }
 
 // defaultQuarantineBudget 1MB 堆上限的 1/4（堆决议 §1）。
@@ -632,8 +644,39 @@ func run() int {
 		numEq(sess["active_sessions"], 1) && isBool(sess["concurrent_sessions"], false),
 		"session.create 显式回带单会话语义（D2）", tailMap(sess))
 
+	// ── diagnostics_probe（S8 段四：分叉②销案的端到端对拍——fix 七元组
+	// 经两侧 generate_fix/apply_fix 独立实现后 fixed_source 全文一致）──
 	r20 := asObj(byID[20]["result"])
-	check(isBool(r20["shutdown"], true), "shutdown 回应", "")
+	check(isBool(byID[20]["ok"], true) && !isBool(r20["ok"], true), "probe: ok=false（error 级诊断在）", tailMap(byID[20]))
+	probeDiags, _ := r20["diagnostics"].([]any)
+	check(len(probeDiags) == 1 && strOf(asObj(probeDiags[0])["code"]) == "E2005" &&
+		numEq(asObj(probeDiags[0])["fix_kind"], 2),
+		"probe: E2005 诊断 + fix_kind=2（分叉②接线）", tailMap(r20))
+	probeFixes, _ := r20["auto_fixes"].([]any)
+	check(len(probeFixes) == 1 && strOf(asObj(probeFixes[0])["fixed_source"]) == "int x = 1;",
+		"probe: auto_fixes 行末补分号（fixed_source 全文对拍）", tailMap(r20))
+	r21 := asObj(byID[21]["result"])
+	check(isBool(byID[21]["ok"], true) && isBool(r21["ok"], true), "probe: 合法源 ok=true", tailMap(byID[21]))
+	probeMiscon, _ := r21["misconceptions"].([]any)
+	check(len(probeMiscon) == 1 && strOf(asObj(probeMiscon[0])["pattern_id"]) == "M01" &&
+		numEq(asObj(probeMiscon[0])["confidence"], 0.75),
+		"probe: misconceptions M01 检出（confidence 3/4）", tailMap(r21))
+	probePaths, _ := r21["learning_paths"].([]any)
+	probeSteps, _ := asObj(probePaths[0])["steps"].([]any)
+	check(len(probePaths) == 1 && len(probeSteps) == 3,
+		"probe: learning_paths M01 三步", tailMap(r21))
+	probeKG := asObj(r21["knowledge_graph"])
+	check(numEq(probeKG["concepts_total"], 25) && numEq(probeKG["edges_total"], 25),
+		"probe: 概念图基线 25/25", tailMap(probeKG))
+	// intents/completion 段：只锁协议形态（数组）——值差异走差异台账
+	//（MoonBit 侧 intents 恒空由 gateway probe wbtest 锚锁定）
+	_, intentsOK := r21["intents"].([]any)
+	completionArr, completionOK := r21["completion"].([]any)
+	check(intentsOK && completionOK && len(completionArr) == 0,
+		"probe: intents/completion 段数组形态（未传参 completion 空）", tailMap(r21))
+
+	r22 := asObj(byID[22]["result"])
+	check(isBool(r22["shutdown"], true), "shutdown 回应", "")
 
 	// ── 追加批（edge/pending_leak/rss_guard 三批 MoonBit 臂按豁免表整批跳过
 	// ——批次依赖 step 族/seek；long_line 批不豁免：两侧共同不变量，双臂都跑）──

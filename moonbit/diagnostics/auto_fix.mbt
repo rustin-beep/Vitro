@@ -23,8 +23,10 @@ pub fn apply_fix(source : String, target : FixTarget) -> String? {
 
 ///|
 /// 行切分（Rust `str::lines()` 语义）：按 \n 切、行尾 \r 剔除、
-/// 尾随 \n 不产空尾行、空串 = 0 行。
-fn split_lines(source : String) -> Array[String] {
+/// 尾随 \n 不产空尾行、空串 = 0 行。**pub**（段三接线 2026-10-02）：
+/// generate_fix 的 source_lines 参数口径单源——gateway 编译管线与
+/// probe 共用，勿在消费侧再写一份 lines 语义。
+pub fn split_lines(source : String) -> Array[String] {
   if source.is_empty() {
     return []
   }

@@ -190,16 +190,18 @@ fn dispatch(
     "payload.get" => serve_payload_get_frame(s, id, params)
     "seek" => serve_seek_frame(s, id, params)
     "breakpoints.set" => serve_breakpoints_set_frame(s, id, params)
-    // dump 族三方法（只读语义——独立通道不碰会话态；diagnostics_probe 随 diagnostics 批）
+    // dump 族四方法（只读语义——独立通道不碰会话态；diagnostics_probe
+    // 段三接线 2026-10-02：一次性会话承载管线，认知链八段导出）
     "ast.dump" => serve_ast_dump_frame(s, id, params)
     "typeck.dump" => serve_typeck_dump_frame(s, id, params)
     "symbols.dump" => serve_symbols_dump_frame(s, id, params)
+    "diagnostics_probe" => serve_diagnostics_probe_frame(s, id, params)
     _ =>
       (
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols；diagnostics_probe 随 diagnostics 批）",
+          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
         ).stringify(),
         false,
       )

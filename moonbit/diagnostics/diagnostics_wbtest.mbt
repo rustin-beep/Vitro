@@ -76,3 +76,15 @@ test "wb_round_to_f32_f32_parity" {
   // 进位跨界：0.9999999999999999（f64 最大 <1）→ 舍到 1.0
   inspect(round_to_f32(0.9999999999999999), content="1")
 }
+
+///|
+test "wb_f32_shortest_text_wire_form" {
+  // serde_json f32 wire 形态对齐（confidence 对拍面）
+  inspect(f32_shortest_text(0.6666666865348816), content="0.6666667")
+  inspect(f32_shortest_text(0.4285714328289032), content="0.42857143")
+  inspect(f32_shortest_text(0.75), content="0.75")
+  inspect(f32_shortest_text(1.0), content="1.0")
+  inspect(f32_shortest_text(0.0), content="0.0")
+  // 满命中 5/5（confidence 1.0 可达形态）
+  inspect(f32_shortest_text(round_to_f32(5.0 / 5.0)), content="1.0")
+}

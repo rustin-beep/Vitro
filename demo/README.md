@@ -31,9 +31,10 @@ Firefox 134+），加载失败页面会显示降级提示。
 
 ## 门禁
 
-`go run` 之外本页有一条 node 判定闸：`node scripts/demo_smoke/main.js`——
-对 `cases.js` 每个预置用例实跑协议链并逐字节比对 golden，同时断言渲染所需的
-响应字段存在（已接线 CI core，篡改 golden 或页面引用字段名漂移即红）。
+`go run` 之外本页有两条判定闸：
+
+1. `node scripts/demo_smoke/main.js`——对 `cases.js` 每个预置用例实跑协议链并逐字节比对 golden，同时断言渲染所需的响应字段存在（已接线 CI core，篡改 golden 或页面引用字段名漂移即红）。
+2. `go run ./scripts/demo_ui_lint`——JS↔CSS 字符串契约三路对账：`classList` 写操作的类名对「CSS 复合单元 ∪ JS 生成面 ∪ 元素候选闭包 ∪ rules.json 白名单」对账、`var(--x)` 引用对定义面对账、`$("id")` 对 html id 集对账（动态 className 拼接簇与动态 id 前缀在 rules.json 显式登记，僵尸条目无条件红）。抓「操作永不生效的类」「引用不存在的 CSS 变量」形态——2026-10-02 批的 stdin-row 死类与 `--fg-muted` 幽灵变量两实锤即其证红锚（HEAD 版三件套复现 5 条）。
 
 ## 诚实边界
 

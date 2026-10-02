@@ -267,6 +267,15 @@ jobs:
         run: node scripts/demo_smoke/main.js
         shell: bash
 
+      # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS
+      # 变量/id 三路文本对账——demo UI 批三实锤 bug 中两个的归因面
+      # （stdin-row 死类 + --fg-muted 幽灵变量；HEAD 版证红留痕：bug 版
+      # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
+      # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
+      - name: demo UI string-contract lint (class/var/id reconciliation)
+        run: go run ./scripts/demo_ui_lint
+        shell: bash
+
 
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash

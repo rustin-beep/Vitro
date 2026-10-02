@@ -24,7 +24,7 @@
 **Clang 真值全量**（`-std=c11 -Wall -Wextra -fsyntax-only`，本机 22.1.4）：
 
 - chibicc test/：**16/41 绿**；8cc test/：**33/43 绿**。
-- 24 个红的归因（抽验 bitfield/control/typedef 三例）：**测试套件故意测非标准语义**——重复位域成员（C11 禁止）、隐式 int（C99 起禁止）、chibicc 自家怪癖语义（"expression is not assignable"）。**gcc 同拒**（见 1.3 双口径数据）——这些是"编译器怪癖测试"不是 GNU 扩展问题。
+- 24 个红的归因（抽验 bitfield/control/typedef 三例）：**用例故意测非标准语义**——重复位域成员（C11 禁止）、隐式 int（C99 起禁止）、chibicc 自家怪癖语义（"expression is not assignable"）。**gcc 同拒**（见 1.3 双口径数据）——这些是"编译器怪癖测试"不是 GNU 扩展问题。
 - 红文件进金样本 `clang_red` 桶（与现 TheAlgorithms 122 红同桶，双拒无立案信号）。
 
 **Vitro serve 试金石**（cwd 注入后，enum.c/cast.c）：

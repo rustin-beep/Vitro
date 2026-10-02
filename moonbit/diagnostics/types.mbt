@@ -42,7 +42,9 @@ pub(all) struct ConceptEdge {
   to_id : String
   /// "Prerequisite" | "LeadsTo" | "CommonMistake" | "UsedTogether" | "Contradicts"
   relation : String
-  /// 0.0 ~ 1.0
+  /// 0.0 ~ 1.0。oracle 系 f32、本侧 Double——现状取值全为十进制常量
+  ///（0.6/0.7/0.8/0.9）两侧文本一致，**系常量域遮蔽非宽度无害**（审阅
+  /// F6 登记）：表内新增非十进制 strength 时须过 round_to_f32 语义化
   strength : Double
 } derive(Debug, Show)
 

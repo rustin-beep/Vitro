@@ -974,9 +974,18 @@ type productItem struct {
 // writeProducts 写 .mbt 产物并经 moon fmt 规范化（gen 与 fmt 不得互踩：
 // 最终形态以 fmt 输出为准）；check 模式逐字节（行尾归一）比对，
 // 全部比对完再统一还原，失败路径不留覆盖副作用（契约同 gen_diag）。
+// **读旧/写新两阶段分离**（审阅 F5 修复 2026-10-02）：map 迭代无序，
+// 交错形态下「产物缺失→读旧失败 fatalf」时已写入的其它产物不还原，
+// 工作区被污染成未 fmt 原文（CI 只读退出码看不见）；先读完全部旧产物
+// （此阶段失败零写入，天然安全）再统一写。
 func writeProducts(dir string, products map[string]string, check bool) {
+	names := make([]string, 0, len(products))
+	for name := range products {
+		names = append(names, name)
+	}
+	sort.Strings(names)
 	var items []productItem
-	for name, content := range products {
+	for _, name := range names {
 		path := filepath.Join(dir, name)
 		var cur []byte
 		if check {
@@ -986,15 +995,17 @@ func writeProducts(dir string, products map[string]string, check bool) {
 				fatalf("-check: 读产物失败 %s: %v", path, err)
 			}
 		}
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			fatalf("建目录失败 %s: %v", dir, err)
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			fatalf("写产物失败 %s: %v", path, err)
-		}
 		items = append(items, productItem{path, cur})
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].path < items[j].path })
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		fatalf("建目录失败 %s: %v", dir, err)
+	}
+	for k, it := range items {
+		if err := os.WriteFile(it.path, []byte(products[names[k]]), 0o644); err != nil {
+			restoreItems(items)
+			fatalf("写产物失败 %s: %v", it.path, err)
+		}
+	}
 	args := []string{"fmt"}
 	for _, it := range items {
 		args = append(args, it.path)
@@ -1049,12 +1060,14 @@ func writeJSON(dir, srcHash string, fixes []fixEntry, dynamic map[int]bool, node
 			"source_sha": srcHash, "paths": paths,
 		},
 	}
-	var items []productItem
 	names := make([]string, 0, len(docs))
 	for n := range docs {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	// 读旧/写新两阶段分离（F5 同族修复：交错形态下读失败早退会留污染）
+	serialized := make(map[string][]byte, len(names))
+	var items []productItem
 	for _, n := range names {
 		var buf bytes.Buffer
 		enc := json.NewEncoder(&buf)
@@ -1063,6 +1076,7 @@ func writeJSON(dir, srcHash string, fixes []fixEntry, dynamic map[int]bool, node
 		if err := enc.Encode(docs[n]); err != nil {
 			fatalf("JSON 序列化失败 %s: %v", n, err)
 		}
+		serialized[n] = buf.Bytes()
 		path := filepath.Join(dir, n)
 		var cur []byte
 		if check {
@@ -1072,10 +1086,13 @@ func writeJSON(dir, srcHash string, fixes []fixEntry, dynamic map[int]bool, node
 				fatalf("-check: 读 JSON 失败 %s: %v", path, err)
 			}
 		}
-		if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
-			fatalf("写 JSON 失败 %s: %v", path, err)
-		}
 		items = append(items, productItem{path, cur})
+	}
+	for k, it := range items {
+		if err := os.WriteFile(it.path, serialized[names[k]], 0o644); err != nil {
+			restoreItems(items)
+			fatalf("写 JSON 失败 %s: %v", it.path, err)
+		}
 	}
 	if !check {
 		return

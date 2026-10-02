@@ -62,3 +62,17 @@ test "wb_find_single_equals_edge_forms" {
     content="Some((17, 18))",
   )
 }
+
+///|
+test "wb_round_to_f32_f32_parity" {
+  // F6 修复锚：oracle f32 的 f64 展开形态（2/3 与 3/7 系原锚零判别力的
+  // 补样——3/4 十进制精确值两侧同 0.75 测不出宽度差）
+  inspect(round_to_f32(2.0 / 3.0), content="0.6666666865348816") // f32 0x3F2AAAAB
+  inspect(round_to_f32(3.0 / 7.0), content="0.4285714328289032") // f32 0x3EDB6DB7
+  // 精确值直通
+  inspect(round_to_f32(0.75), content="0.75")
+  inspect(round_to_f32(1.0 / 4.0), content="0.25")
+  inspect(round_to_f32(0.0), content="0")
+  // 进位跨界：0.9999999999999999（f64 最大 <1）→ 舍到 1.0
+  inspect(round_to_f32(0.9999999999999999), content="1")
+}

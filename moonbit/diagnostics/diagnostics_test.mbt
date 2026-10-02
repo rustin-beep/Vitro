@@ -253,7 +253,7 @@ test "fixgen_3050_no_equals_fallback_manual" {
 
 ///|
 test "fixgen_3051_off_by_one" {
-  // "for(i=0;i<=n;i++)"：首现 "<=" 字节位 8 → (8,10) 替换为 "<"
+  // "for(i=0;i<=n;i++)"：首现 "<=" 字节位 9 → (9,11) 替换为 "<"
   let out = @diagnostics.generate_fix(3051, 1, 9, "", ["for(i=0;i<=n;i++)"])
   inspect(out.fix_kind, content="1")
   inspect(out.start_col, content="9")
@@ -314,4 +314,75 @@ test "data_table_surface" {
   // default_paths：六路径出口（键域 M01..M06）
   assert_eq(@diagnostics.default_paths().size(), 6)
   assert_true(@diagnostics.default_paths().contains("M06"))
+}
+
+// ============ F7 锚盲区补断言（审阅 2026-10-02） ============
+
+///|
+test "graph_neighbor_prerequisite_flag" {
+  // is_prerequisite 反向边旗标：3004 → TypeSystem，其邻居 VarDecl 经
+  // Prerequisite 边（VarDecl→TypeSystem）指向 TypeSystem → true；
+  // ImplicitCast 邻居 TypeSystem 是 LeadsTo 正向 → false
+  let activated = @diagnostics.activate_from_error(3004)
+  assert_eq(activated.length(), 2)
+  let mut var_decl_flag : Bool? = None
+  for a in activated {
+    if a.node.id == "TypeSystem" {
+      for n in a.neighbors {
+        if n.node.id == "VarDecl" {
+          var_decl_flag = Some(n.is_prerequisite)
+        }
+      }
+    }
+  }
+  assert_eq(var_decl_flag, Some(true))
+}
+
+///|
+test "path_minutes_asserted" {
+  // estimated_time_minutes（表值 10——恒 0 突变此前无断言）
+  let paths = @diagnostics.recommend_learning_paths([
+    @diagnostics.DetectedMisconception::{
+      pattern_id: "M01",
+      pattern_name: "边界混淆",
+      description: "",
+      occurrence_count: 3,
+      confidence: 0.75,
+    },
+  ])
+  assert_eq(paths[0].estimated_time_minutes, 10)
+}
+
+///|
+test "graph_ast_struct_member_mapping" {
+  // struct_member | "." | "->" → StructLayout（映射清空突变此前无断言）
+  let activated = @diagnostics.activate_from_ast(["struct_member", "->", "."])
+  assert_eq(activated.length(), 1) // 三特征同概念去重
+  assert_eq(activated[0].node.id, "StructLayout")
+  assert_eq(activated[0].activated_by, "AST")
+}
+
+///|
+test "miscon_confidence_f32_semantics" {
+  // F6：非十进制比值的 f32 语义化（2/3 = M02 命中 2/3 条；3/7 = M04 命中 3/7 条）
+  let h23 = [
+    make_record([3035], None),
+    make_record([3035], None),
+    make_record([1000], None),
+  ]
+  let d1 = @diagnostics.detect_misconceptions(h23)
+  assert_eq(d1.length(), 1)
+  inspect(d1[0].confidence, content="0.6666666865348816")
+  let h37 = [
+    make_record([3045], None),
+    make_record([1000], None),
+    make_record([3045], None),
+    make_record([1000], None),
+    make_record([1000], None),
+    make_record([3052], None),
+    make_record([1000], None),
+  ]
+  let d2 = @diagnostics.detect_misconceptions(h37)
+  assert_eq(d2.length(), 1)
+  inspect(d2[0].confidence, content="0.4285714328289032")
 }

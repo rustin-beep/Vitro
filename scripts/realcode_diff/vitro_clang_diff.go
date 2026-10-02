@@ -27,7 +27,7 @@
 //	   Latin-1 通道坑; rand( 含文件标 rand-diff 预期; client_server 网络目录跳运行——挂起坑)
 //	→ P6 报告(分桶/码 top/层分布/W 清单/运行对比)。
 //
-// 用法: go run vitro_clang_diff.go -repo D:/code/C -out _diff_out [-filter cipher/] [-limit N]
+// 用法: go run vitro_clang_diff.go -repo <fork 仓路径> -out _diff_out [-filter cipher/] [-limit N]
 package main
 
 import (
@@ -75,7 +75,7 @@ var (
 	flagFilter = flag.String("filter", "", "路径子串过滤")
 	flagLimit  = flag.Int("limit", 0, "最多处理文件数, 0=全部")
 	flagBatch  = flag.Int("batch", 25, "serve 连发批大小")
-	flagVitro  = flag.String("vitro", "D:/code/Vitro", "Vitro 仓库根(serve/cwd)")
+	flagVitro  = flag.String("vitro", mustRepoRoot(), "Vitro 仓库根(serve/cwd)")
 	flagAgg    = flag.String("aggregate", "", "聚合模式: 输入 result.json 路径, 产 gold_signatures.json")
 	flagCheck  = flag.Bool("check", false, "合规模式: 校验仓内 gold_signatures.json(格式+无源码文本渗漏)")
 )
@@ -690,9 +690,11 @@ func runAggregate(resultPath string) int {
 }
 
 // ---------- 合规模式: gold_signatures.json 校验（CI hygiene） ----------
-// 三道: ①格式合法（_meta 必含 source_fork/source_commit, files 字段类型）
+// 四道: ①格式合法（_meta 必含 source_fork/source_commit, files 字段类型）
 // ②无源码文本渗漏（字符串值白名单: run 判定词/层名/诊断码格式/E 数字;
-//   _meta.note 例外但限长）③fail loud——任何不符 exit 1。
+//   _meta.note 例外但限长）③_meta 与 files 重算对账（total/分桶计数——
+//   D18 缺口补，审阅 F8 2026-10-02：此前篡改 _meta 计数闸不红）
+// ④fail loud——任何不符 exit 1。
 
 // 值域 = result.json 实测全集（2026-10-02 全量统计——注释里的枚举不全，
 // 以测量为准；新判定词出现时此处红，人工评估后扩）。
@@ -772,7 +774,40 @@ func runCheck() int {
 	if note, ok := meta["note"].(string); ok && len(note) > 300 {
 		fail("_meta.note 超长")
 	}
-	fmt.Fprintf(os.Stderr, "gold_signatures.json 合规 OK: %d 文件条目（格式/值域/零渗漏）\n", len(files))
+	// 第三道: _meta 与 files 重算对账（分桶口径同 aggregate 侧：
+	// clang_ok=false → clang_red；true 且 vitro_errs==0 → both_green；
+	// 其余 → vitro_red）
+	recount := map[string]int{"clang_red": 0, "both_green": 0, "vitro_red": 0}
+	for _, v := range files {
+		e := v.(map[string]any)
+		clangOK, _ := e["clang_ok"].(bool)
+		errs := 0.0
+		if f, ok := e["vitro_errs"].(float64); ok {
+			errs = f
+		}
+		switch {
+		case !clangOK:
+			recount["clang_red"]++
+		case errs == 0:
+			recount["both_green"]++
+		default:
+			recount["vitro_red"]++
+		}
+	}
+	if tot, ok := meta["total"].(float64); !ok || int(tot) != len(files) {
+		fail(fmt.Sprintf("_meta.total %v != files 计数 %d", meta["total"], len(files)))
+	}
+	mb, ok := meta["buckets"].(map[string]any)
+	if !ok {
+		fail("_meta.buckets 缺失或非对象")
+	}
+	for _, k := range []string{"clang_red", "both_green", "vitro_red"} {
+		got, _ := mb[k].(float64)
+		if int(got) != recount[k] {
+			fail(fmt.Sprintf("_meta.buckets.%s = %v != files 重算 %d", k, mb[k], recount[k]))
+		}
+	}
+	fmt.Fprintf(os.Stderr, "gold_signatures.json 合规 OK: %d 文件条目（格式/值域/零渗漏/_meta 对账）\n", len(files))
 	return 0
 }
 
@@ -794,7 +829,7 @@ func mustRepoRoot() string {
 	if v := os.Getenv("VITRO_ROOT"); v != "" {
 		return v
 	}
-	for _, cand := range []string{".", "..", "../..", "D:/code/Vitro"} {
+	for _, cand := range []string{".", "..", "../.."} {
 		if _, err := os.Stat(filepath.Join(cand, "scripts", "realcode_diff")); err == nil {
 			abs, _ := filepath.Abs(cand)
 			return abs

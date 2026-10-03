@@ -130,6 +130,7 @@ func run(strict bool) int {
 
 	exit := 0
 	inTable := map[string]bool{}
+	anchoredUsed := map[string]int{}
 	usedMb := map[string]bool{}
 	missing := []string{}
 	for _, m := range maps {
@@ -153,7 +154,27 @@ func run(strict bool) int {
 			}
 			usedMb[a] = true
 		}
+		// 语义保险丝（审阅 P3-③，2026-10-04）：机判可及的两条——1:1
+		// anchored 要求锚名与测试名对齐（拦「指向实存但语义错指」的最低成本
+		// 形态，如 math_sin_zero 改指 math_cos_zero）；同一锚被多条 anchored
+		// 复用应改 state=merged（合并语义须人审 note）。跨包 merged 的语义
+		// 等价性仍属人工域（表 note 列承载）。
+		if m.State == "anchored" {
+			if len(m.MbAnchors) != 1 || m.MbAnchors[0] != m.RustTest {
+				fmt.Printf("[CROSS] %s state=anchored 但锚名不对齐 %v（1:1 要求同名；合并覆盖改 state=merged）\n", m.RustTest, m.MbAnchors)
+				exit = 1
+			}
+			anchoredUsed[m.MbAnchors[0]] = anchoredUsed[m.MbAnchors[0]] + 1
+		}
 	}
+	// 语义保险丝后半：同一锚被多条 anchored 复用即红（应改 merged）
+	for a, n := range anchoredUsed {
+		if n > 1 {
+			fmt.Printf("[REUSE] 锚 %q 被 %d 条 anchored 复用——合并覆盖改 state=merged 并补 note\n", a, n)
+			exit = 1
+		}
+	}
+
 	// 判据 1：Rust 实测 ⊆ 表
 	var holes []string
 	for t := range rust {

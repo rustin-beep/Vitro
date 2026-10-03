@@ -91,11 +91,26 @@ func corpusPath(c string) string {
 }
 
 // knownEntry：已归因差异（case + digest + reason；digest = 差异内容 sha256
-// 前 8 位——漂移即降级 DIFF 逼重新归因）。
+// 前 8 位——漂移即降级 DIFF 逼重新归因）。**digests 多值集（2026-10-04
+// CI 漂移批）**：真值源是 Clang 本尊，其编译产物行为随版本变（putchar_range
+// 实锤：本地 clang 22 出口替换符 `A???Z` vs CI runner clang 原始字节
+// `A\x80\xc8\xffZ`——差异文本不同 ⇒ digest 不同）——条目可登记跨环境
+// digest 集（本地 + 各 CI runner 实测值），匹配 = 集合内；`digest` 单值
+// 字段向后兼容（旧条目读入并入集合）。
 type knownEntry struct {
-	Case   string `json:"case"`
-	Digest string `json:"digest"`
-	Reason string `json:"reason"`
+	Case    string   `json:"case"`
+	Digest  string   `json:"digest"`  // 兼容单值（读入并入 digests）
+	Digests []string `json:"digests"` // 跨环境集合（权威字段；缺省并入 Digest）
+	Reason  string   `json:"reason"`
+}
+
+// digests 返回该条目的完整 digest 集。
+func (e *knownEntry) digestSet() []string {
+	set := append([]string(nil), e.Digests...)
+	if e.Digest != "" {
+		set = append(set, e.Digest)
+	}
+	return set
 }
 
 type knownList struct {
@@ -266,13 +281,20 @@ func main() {
 		// 必须钉到「这一例的这种差异」而非「任何一例的这种差异」。
 		digest := issueDigest(append([]string{base}, issues...))
 		if e, ok := known.lookup(base); ok {
-			if e.Digest == digest {
+			hitDigest := false
+			for _, d := range e.digestSet() {
+				if d == digest {
+					hitDigest = true
+					break
+				}
+			}
+			if hitDigest {
 				fmt.Printf("DIFF-KNOWN %s（%s；digest=%s）\n", c.rel, e.Reason, digest)
 				knownN++
 				continue
 			}
-			fmt.Printf("DIFF  %s：已知差异形状已变（登记 %s 实测 %s）——重新归因更新 known_direct.json：%s\n",
-				c.rel, e.Digest, digest, strings.Join(issues, "；"))
+			fmt.Printf("DIFF  %s：已知差异形状已变（登记 %v 实测 %s）——重新归因更新 known_direct.json：%s\n",
+				c.rel, e.digestSet(), digest, strings.Join(issues, "；"))
 			diff++
 			continue
 		}
@@ -322,9 +344,11 @@ func checkKnown(known []knownEntry) bool {
 			fmt.Printf("clang_direct: --check-known: 条目 %q 在全语料集无对应文件（用例改名/删除后悬空）\n", k.Case)
 			ok = false
 		}
-		if !digestRe.MatchString(k.Digest) {
-			fmt.Printf("clang_direct: --check-known: 条目 %q digest %q 非 8 位 hex\n", k.Case, k.Digest)
-			ok = false
+		for _, d := range k.digestSet() {
+			if !digestRe.MatchString(d) {
+				fmt.Printf("clang_direct: --check-known: 条目 %q digest %q 非 8 位 hex\n", k.Case, d)
+				ok = false
+			}
 		}
 	}
 	if ok {

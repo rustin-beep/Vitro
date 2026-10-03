@@ -47,6 +47,13 @@ test "math_sin_zero" {
     r.reinterpret_as_double().abs() < 0.000000001,
     msg="sin(0.0) 应接近 0",
   )
+  // 判别力增强（2026-10-04 审阅阶段4：零输入对「常量 0」实现零判别力——
+  // 突变 host_sin 改恒 0.0 时本锚原样绿）：非零输入 sin(pi/6) 接近 0.5
+  let half = host_sin(0.5235987755982988.reinterpret_as_uint64())
+  assert_true(
+    (half.reinterpret_as_double() - 0.5).abs() < 0.000000001,
+    msg="sin(pi/6) 应接近 0.5（非零输入判别锚）",
+  )
 }
 
 ///|

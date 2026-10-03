@@ -172,8 +172,29 @@ func main() {
 		return string(b)
 	}
 	html := read("index.html", selftestHTML)
-	css := read("style.css", selftestCSS)
 	js := read("app.js", selftestJS)
+	// css = demo 目录下全部 .css 合并解析（tokens.css 令牌定义面 +
+	// style.css 消费面——2026-10-03 换肤批拆两文件后定义跨文件）
+	css := selftestCSS
+	if !*selftest {
+		files, err := filepath.Glob(filepath.Join(*demoDir, "*.css"))
+		if err != nil || len(files) == 0 {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 下无 .css 可扫: %v\n", *demoDir, err)
+			os.Exit(2)
+		}
+		sort.Strings(files)
+		var sb strings.Builder
+		for _, f := range files {
+			b, err := os.ReadFile(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
+				os.Exit(2)
+			}
+			sb.WriteByte('\n')
+			sb.Write(b)
+		}
+		css = sb.String()
+	}
 
 	var issues []issue
 

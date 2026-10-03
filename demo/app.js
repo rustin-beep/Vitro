@@ -853,10 +853,15 @@ function selectCase() {
   $("stdout-meta").textContent = "";
 }
 
-// ── 界面设置（主题 / 编辑器字号 / 动效开关；localStorage 持久化）──────────
-// 设置面板（齿轮）与 header 快捷主题按钮共用同一路径，两处状态恒同步。
+// ── 界面设置（五主题 / 编辑器字号 / 动效开关；localStorage 持久化）────────
+// 主题 id 与 tokens.css 的 data-theme 取值一一对应；昼 = ice/rose/paper，
+// 夜 = glass/soft（header 快捷按钮在组间切换：夜→ice、昼→glass）。
+// 旧值迁移（2026-10-03 换肤批）："light"→ice、"dark"→glass，读到即回写。
 function storeGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
 function storeSet(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+const THEMES = ["ice", "rose", "paper", "glass", "soft"];
+const NIGHT_THEMES = new Set(["glass", "soft"]);
 
 function syncSeg(segId, v) {
   const seg = $(segId);
@@ -883,15 +888,21 @@ function applyMotion(v) {
 }
 
 (function initSettings() {
-  setTheme(storeGet("vitro-theme") === "light" ? "light" : "dark");
+  let saved = storeGet("vitro-theme");
+  if (saved === "light") saved = "ice"; // 旧双值迁移
+  else if (!saved || saved === "dark") saved = "glass";
+  if (!THEMES.includes(saved)) saved = "glass";
+  setTheme(saved);
   const savedFont = storeGet("vitro-ed-font");
   applyEdFont(savedFont === "12px" || savedFont === "15px" ? savedFont : "13px");
   applyMotion(storeGet("vitro-motion") === "off" ? "off" : "on");
 
   const themeBtn = $("theme-toggle");
   if (themeBtn) {
-    themeBtn.onclick = () =>
-      setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+    themeBtn.onclick = () => {
+      const cur = document.documentElement.getAttribute("data-theme");
+      setTheme(NIGHT_THEMES.has(cur) ? "ice" : "glass");
+    };
   }
   const segBind = (segId, apply) => {
     $(segId).addEventListener("click", (e) => {

@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vitro 引擎 · 白箱 C 教学引擎（wasm-gc 直调 demo）</title>
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
-<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")document.documentElement.setAttribute("data-theme","light");var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
+<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")_t="ice";else if(!_t||_t==="dark")_t="glass";document.documentElement.setAttribute("data-theme",_t);var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
 </head>
 <body>
 <header>
@@ -34,9 +35,13 @@
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/></svg>
       </button>
       <div id="settings-panel" class="settings-panel hidden" role="dialog" aria-label="界面设置">
-        <div class="set-row"><span class="set-label">主题</span>
-          <div class="seg" id="set-theme">
-            <button type="button" data-v="dark">暗色</button><button type="button" data-v="light">亮色</button>
+        <div class="set-row set-col"><span class="set-label">主题</span>
+          <div class="theme-cards" id="set-theme">
+            <button type="button" class="tcard" data-v="ice"><span class="tc-dots"><i style="background:#f2f7fd"></i><i style="background:#2563eb"></i><i style="background:#1a2740"></i></span><span>明亮实验室</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="rose"><span class="tc-dots"><i style="background:#fbf5f7"></i><i style="background:#d4597a"></i><i style="background:#2e2428"></i></span><span>奶油手账</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="paper"><span class="tc-dots"><i style="background:#f2eee6"></i><i style="background:#a67d48"></i><i style="background:#080a08"></i></span><span>牛皮档案</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="glass"><span class="tc-dots"><i style="background:#0b1533"></i><i style="background:#8b9cf5"></i><i style="background:#eaf0ff"></i></span><span>深夜书房</span><span class="tc-dn">夜</span></button>
+            <button type="button" class="tcard" data-v="soft"><span class="tc-dots"><i style="background:#0d1428"></i><i style="background:#7a94e6"></i><i style="background:#e6ebf7"></i></span><span>绒面深蓝</span><span class="tc-dn">夜</span></button>
           </div>
         </div>
         <div class="set-row"><span class="set-label">编辑器字号</span>

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #29 step 族：trap 终态粘性 + step 流 waiting_input 上报——`is_trapped` 终态语义 + InputState 模式同步，2026-10-03）
+
+- **#29-1 trap 后 step.next 不终止（双侧同病，mb 侧销）**：`run_batch` 的 Trap 分支 rollback 重放到 trap 前一步后，**下一批 `step()` 重新执行同一条 trap 指令**——每批 rollback→再 Trap 无限循环（UAF 端到端实测：首批 trap 后 23 批全部继续产帧，消费方无法感知已 trap；「重放止于其前一条 ⇒ 不会重现 trap」的原论证不成立跨批场景）。修复：`is_trapped` + `last_trap_message` 进终态粘性族——run_batch 开头终态短路（空批 + `trapped=true` + 死因照报）、reset/seek 清除（seek 回 trap 前即离开终态）、**seek 重放遇 trap 的失败路径连坐置位**（否则后续 next 在 trap 态 VM 重执行）。端到端：修复后后续 22 空批仅 1 冲刷批（滞后一帧语义的正确缓冲冲刷）。锚：`engine_run_batch_trap_terminal_sticky`（六场景：置位/短路/死因复报/VM 不动/reset 重至 trap/窗口直返/滑窗重放遇 trap/seek 失败后短路）+ `serve_step_trap_terminal_next_terminates`（gateway 层，注入废短路证牙）。
+- **#29-5 step 流 waiting_input 不上报**：`step.begin` 的 vm 五步重建**漏设 InputState**——`vm.new` 默认 `batch=true`（scanf 直达 EOF 不等待），会话默认 Interactive（oracle `InputMode #[default]` 同款）——run 通道被 serve_run 的模式同步掩盖、step 流独缺。修复：重建段补 `set_input`（run 通道同款模式同步）。锚：`serve_step_next_waiting_input_flag`（waiting 上报 → input.feed → finished → got=42 交互闭环，红→绿）。
+- **#29-2/#3/#4 勘察定性（issue 评论随 PR）**：argv 为**会话级**（run 设 → step 流复用，双臂实测同形——`begin(params.argv)` 两侧同构忽略，非缺陷）；seek/payload.get/breakpoints.set **代码+wbtest+wasm 出口全在**（issue 快照过时——S8 批一号接线批已接五方法，demo 前端未消费而已）；vis_events 恒空根因 = compile 管线第 9 步（`algorithm_matches.vis_events` → `set_vis_event_lines`）mb 侧未接——登记 teaching 接线批。
+- **oracle 分叉登记**（差异台账条目 10）：oracle step 流 trap 不终止 + `trap_message` 恒空串——mb 实现终态语义，随 Rust 退役收敛（dump 族只读语义同款拍板模式）。
+- 连坐：README ×2 分解式（631/625/729/native-only 98 + time_travel 41）。
+- 防线：裸 631/631 + native 729/729（+1/+3 与锚数吻合）+ serve_smoke 双臂 68 全绿 + demo_smoke 130/130（node 25）+ mbti/fmt。
+
 ### Fixed（deterministic 默认值分叉销案 + time/clock 墙钟接线，2026-10-02 审阅 P1〔批外既有〕）
 
 - **默认值两层改 false 对齐 oracle**：oracle 的 `deterministic` 唯一宿主 `RuntimeState` 是 `#[derive(Default)]` ⇒ false（CLI 手册同口径），Rust `VitroVM` 无此字段；本侧 `VitroVM::new`/`SessionConfig::default` 写 true 系迁移自设（原注释「= VitroVM::new 的默认」同义反复自证；「wasm 无熵源 ⇒ 默认开」的理由不成立——无熵源下 false 亦恒 0，物理必然）。841554a（S7 批二号）引入；四处盲区叠加遮蔽（差异台账无登记 / serve_smoke 无豁免 / replay 只跑 Rust 臂 / vm_diff 语料无时间调用）。后果实测：`time(0)/clock()` 两侧恒差（rust 真值 vs 恒 0）+ 全部 `config.get/set` 帧 `deterministic` 字段恒差。教学确定性走显式 `config.set`。

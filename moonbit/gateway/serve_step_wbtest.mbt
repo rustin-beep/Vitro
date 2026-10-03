@@ -162,6 +162,43 @@ test "serve_step_trap_frame_trapped_flag" {
 }
 
 ///|
+test "serve_step_trap_terminal_next_terminates" {
+  // issue #29：trap 后 step.next 可终止——终态短路空批 + trapped 照报 +
+  // 死因恒定（此前每批 rollback→重执行→再 Trap 无限循环，消费方无法
+  // 感知"已 trap"；oracle 侧同病，mb 终态语义差异台账登记随退役收敛）
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int z = 0; return 10 / z; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  let mut trapped_resp = ""
+  for i = 0; i < 40; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":10,\"method\":\"step.next\"}")
+    if r.contains("\"trapped\":true") {
+      trapped_resp = r
+      break
+    }
+  }
+  assert_false(trapped_resp == "", msg="须先到 trap 批")
+  // 终态首批（滞后一帧语义：冲刷发布缓冲——至多 1 帧上批缓冲的 trap
+  // 帧）+ trapped=true + 死因照报
+  let (r2, _) = serve_handle(s, "{\"id\":11,\"method\":\"step.next\"}")
+  assert_true(r2.contains("\"trapped\":true"), msg="终态批照报 trapped")
+  assert_true(
+    r2.contains("\"trap_message\":") && !r2.contains("\"trap_message\":null"),
+    msg="死因照报",
+  )
+  // 终态次批：完全空（缓冲已冲尽、不重执行）
+  let (r3, _) = serve_handle(s, "{\"id\":12,\"method\":\"step.next\"}")
+  assert_true(
+    r3.contains("\"trapped\":true") && r3.contains("\"payloads\":[]"),
+    msg="终态次批空 payloads（不重执行）",
+  )
+}
+
+///|
 test "serve_step_reset_invalidates_engine" {
   let s = @session.Session::new()
   ignore(
@@ -326,4 +363,46 @@ test "serve_step_second_begin_reannotates" {
     second,
     msg="二次 begin 后标注链路须完好（复位语义回归即红）",
   )
+}
+
+///|
+test "serve_step_next_waiting_input_flag" {
+  // issue #29 #5：step 流的 waiting_input 上报——scanf 未喂入时 step.next
+  // 须出 waiting_input=true（消费方据此 input.feed；此前 step.begin 重建
+  // VM 漏设 InputState，vm.new 默认 batch=true ⇒ scanf 直达 EOF 不等待，
+  // 与 oracle 会话默认 Interactive 相反——run 通道被 serve_run 的模式
+  // 同步掩盖、step 流独缺）
+  let s = @session.Session::new()
+  let (rc, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main(){ int a; if (scanf(\\\"%d\\\", &a) == 1) printf(\\\"got=%d\\\", a * 2); return 0; }\"}}",
+  )
+  assert_true(
+    rc.contains("\"ok\":true"),
+    msg="compile 须成功，实得：\{rc}",
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  let mut waiting = false
+  for i = 0; i < 20 && !waiting; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":10,\"method\":\"step.next\"}")
+    if r.contains("\"waiting_input\":true") {
+      waiting = true
+    }
+  }
+  assert_true(waiting, msg="scanf 等待点须上报 waiting_input=true")
+  // feed 后续跑完成 + 输出（交互闭环）
+  let _ = serve_handle(
+    s, "{\"id\":11,\"method\":\"input.feed\",\"params\":{\"text\":\"21\\n\"}}",
+  )
+  let mut finished = false
+  for i = 0; i < 20 && !finished; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":12,\"method\":\"step.next\"}")
+    if r.contains("\"finished\":true") {
+      finished = true
+    }
+  }
+  assert_true(finished, msg="feed 后续跑可完成")
+  let (out, _) = serve_handle(
+    s, "{\"id\":13,\"method\":\"output.delta\",\"params\":{\"cursor\":0}}",
+  )
+  assert_true(out.contains("got=42"), msg="scanf 读入 feed 值")
 }

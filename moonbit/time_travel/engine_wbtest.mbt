@@ -227,6 +227,68 @@ test "engine_run_batch_trap_rollback_replay" {
 }
 
 ///|
+/// issue #29：trap 终态粘性——trap 后再 run_batch 不得重执行 trap 指令
+/// （此前每批 rollback→重执行→再 Trap，step 流无限循环不终止，双侧
+/// 同病；mb 侧实现终态语义，oracle 缺口差异台账登记随退役收敛）。
+test "engine_run_batch_trap_terminal_sticky" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(
+    code_of([
+      instr_at(@opcode.PushConst, 0, 1),
+      instr_at(@opcode.PushConst, 0, 2),
+      instr_at(@opcode.Div, 0, 3),
+      instr_at(@opcode.Nop, 0, 3),
+    ]),
+  )
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  // 首批：trap（trapped=true + trap 帧 + 回退态）
+  guard e.run_batch(vm, src, 10) is Ok(r1) else { fail("trap 走 Ok 通道") }
+  assert_true(r1.trapped)
+  let msg1 = r1.trap_message
+  guard msg1 is Some(_) else { fail("trap 文案必在") }
+  let executed_after_trap = vm.step_count
+  // 第二批：终态短路——空批 + trapped=true + trap_message 照报 +
+  // VM 不动（不重执行 trap 指令、不回滚）
+  guard e.run_batch(vm, src, 10) is Ok(r2) else { fail("终态走 Ok 通道") }
+  assert_eq(r2.payloads.length(), 0, msg="终态批空 payloads")
+  assert_true(r2.trapped, msg="终态批照报 trapped")
+  assert_false(r2.finished)
+  assert_eq(r2.trap_message, msg1, msg="死因文案恒定可复报")
+  assert_eq(vm.step_count, executed_after_trap, msg="VM 不因重执行推进")
+  // reset 是终态唯一清除通道——VM 一并回零（引擎 reset 单独用而 VM 带
+  // 历史步数续跑是「连续帧带」窗口的越界组合：frame_at 按 start+idx 取
+  // 帧不校验步号，帧 step_index 与带起点错位——真值语义 reset=全新采集）
+  e.reset()
+  vm.reset()
+  // vm.reset 连 code 一并清空——重装程序（reset 场景 = 全新采集同款）
+  vm.load_program(
+    code_of([
+      instr_at(@opcode.PushConst, 0, 1),
+      instr_at(@opcode.PushConst, 0, 2),
+      instr_at(@opcode.Div, 0, 3),
+      instr_at(@opcode.Nop, 0, 3),
+    ]),
+  )
+  guard e.run_batch(vm, src, 10) is Ok(r3) else { fail("reset 后可执行") }
+  assert_true(r3.trapped)
+  // seek 离开终态：trap 帧（step 2）在窗 → 直返成功 + 粘性清
+  let sr = e.seek_to(2, vm, src)
+  assert_true(sr.success, msg="窗口内直返 trap 帧")
+  assert_false(e.is_trapped)
+  // 窗口滑走后 seek 到 trap 步：重放含 target → 再触发 trap → 失败 +
+  // 终态连坐置位（seek Trap 臂——否则后续 step.next 在 trap 态 VM 重执行）
+  e.frames.reset_to(9)
+  let sr2 = e.seek_to(2, vm, src)
+  assert_false(sr2.success, msg="重放 seek 到 trap 步必失败")
+  assert_true(e.is_trapped, msg="seek 重放遇 trap 记终态")
+  // seek 失败后的 step.next：终态短路空批（VM 不动）
+  guard e.run_batch(vm, src, 10) is Ok(r4) else { fail("seek 失败后走 Ok") }
+  assert_true(r4.trapped)
+  assert_eq(r4.payloads.length(), 0, msg="终态批空")
+}
+
+///|
 /// 锚 E：窗口内 seek 直返——不动 VM（无重放），帧即缓存帧。
 test "engine_seek_in_window_direct_return" {
   let vm = @vm.VitroVM::new()

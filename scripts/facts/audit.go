@@ -442,7 +442,7 @@ type AuditResult struct {
 	// StaleSuspectExempts：白名单条目本轮扫描零命中（目标文件已无该 Suspect
 	// 行）——僵尸豁免面，check 无条件红（防腐化，2026-10-01 接线批）。
 	StaleSuspectExempts []string
-	ScanN    int
+	ScanN               int
 	// 坏引用：文档指向不存在的脚本文件（CURRENT 层才算；as-of/归档里的
 	// 旧路径是有意的历史叙述）。数字冻住不等于路径永远有效——退役驱动
 	// 留在文档里会让读者按图索骥扑空（spec 曾实测：shadow_verify.py 等

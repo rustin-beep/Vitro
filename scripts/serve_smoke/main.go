@@ -73,7 +73,7 @@ var requests = []request{
 	// fix 接线端到端）；21 = 合法源码 + records（误区/路径/图谱流）
 	{ID: 20, Method: "diagnostics_probe", Params: map[string]any{"source": "int x = 1"}},
 	{ID: 21, Method: "diagnostics_probe", Params: map[string]any{
-		"source":  "int binary_search(int* a, int n){ return a[0]; }\nint main(){ return 0; }",
+		"source": "int binary_search(int* a, int n){ return a[0]; }\nint main(){ return 0; }",
 		"records": []any{
 			map[string]any{"ts": 0, "ok": false, "codes": []int{3051}},
 			map[string]any{"ts": 1, "ok": false, "codes": []int{3021}},

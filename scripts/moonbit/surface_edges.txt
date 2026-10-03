@@ -352,6 +352,7 @@ vitro/engine/teaching/steps vitro/engine/protocol AlgorithmStepSnapshot
 vitro/engine/teaching/steps vitro/engine/protocol VisEvent
 vitro/engine/teaching/steps vitro/engine/source SourceLoc
 vitro/engine/time_travel moonbitlang/core/deque Deque
+vitro/engine/time_travel moonbitlang/core/string parse_int
 vitro/engine/time_travel vitro/engine/ast Type
 vitro/engine/time_travel vitro/engine/ast type_display_name
 vitro/engine/time_travel vitro/engine/bytecode MEM_SIZE
@@ -373,6 +374,7 @@ vitro/engine/time_travel vitro/engine/protocol ArraySnapshot
 vitro/engine/time_travel vitro/engine/protocol AutoStepResult
 vitro/engine/time_travel vitro/engine/protocol PointerSnapshot
 vitro/engine/time_travel vitro/engine/protocol PointerStatus
+vitro/engine/time_travel vitro/engine/protocol RootCauseHint
 vitro/engine/time_travel vitro/engine/protocol SeekResult
 vitro/engine/time_travel vitro/engine/protocol StepPayload
 vitro/engine/time_travel vitro/engine/protocol VisEvent

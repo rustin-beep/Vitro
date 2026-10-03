@@ -3,13 +3,14 @@
 // 用途：MoonBit cmd/serve 与 Rust golden（native/tests/golden/
 // algorithm_annotations_v3.json）的**算法标注首现序列**族级对拍——只比
 // 已迁移族条目（rules.json migrated_algorithms），未迁移族条目两侧跳过
-//（MoonBit 侧 infer 臂 `None` 天然缺失，golden 侧按 algorithm 键过滤）。
+// （MoonBit 侧 infer 臂 `None` 天然缺失，golden 侧按 algorithm 键过滤）。
 // 族级增量（moon.pkg 头注对拍排期）：每族迁移批全量跑一轮，golden 不攒末批。
 //
 // 口径逐字照搬 native/tests/algorithm_annotation_golden_test.rs（提取段）：
-//   compile（含算法检测）→ run → step.begin → step.next × step_budget
-//   首现去重键 = (phase, desc)；条目 = algorithm/display_name/phase/desc/
-//   code_line/src；src = 源码第 code_line 行 trim；code_line 越界 = ""。
+//
+//	compile（含算法检测）→ run → step.begin → step.next × step_budget
+//	首现去重键 = (phase, desc)；条目 = algorithm/display_name/phase/desc/
+//	code_line/src；src = 源码第 code_line 行 trim；code_line 越界 = ""。
 //
 // 双向断言：① 过滤后首现序列逐条相等（六字段）② 非空模板集与 golden
 // 过滤后键集严格相等（MoonBit 新报已迁移族标注而 golden 无 = 红；反之亦然）。
@@ -43,10 +44,10 @@ import (
 // ── 规则资产 ───────────────────────────────────────────────────────────────
 
 type Rules struct {
-	AsOf                string       `json:"as_of"`
-	MigratedAlgorithms  []string     `json:"migrated_algorithms"`
-	StepBudget          int          `json:"step_budget"`
-	Exemptions          []Exemption  `json:"exemptions"`
+	AsOf               string      `json:"as_of"`
+	MigratedAlgorithms []string    `json:"migrated_algorithms"`
+	StepBudget         int         `json:"step_budget"`
+	Exemptions         []Exemption `json:"exemptions"`
 }
 
 type Exemption struct {

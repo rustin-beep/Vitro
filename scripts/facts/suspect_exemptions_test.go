@@ -105,9 +105,9 @@ func TestSuspectExemptLoadRejects(t *testing.T) {
 	p := filepath.Join(dir, "suspect_exemptions.json")
 
 	for name, body := range map[string]string{
-		"坏 JSON":     `[{`,
-		"缺字段":        `[{"path": "docs/current/x.md", "contains": "x"}]`,
-		"文件不存在": `[{"path": "docs/current/无此文件.md", "contains": "x", "reason": "r"}]`,
+		"坏 JSON": `[{`,
+		"缺字段":    `[{"path": "docs/current/x.md", "contains": "x"}]`,
+		"文件不存在":  `[{"path": "docs/current/无此文件.md", "contains": "x", "reason": "r"}]`,
 	} {
 		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 			t.Fatal(err)

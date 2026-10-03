@@ -108,9 +108,9 @@ type stepEntry struct {
 }
 
 type pathEntry struct {
-	ID          string      `json:"id"`
-	Minutes     int         `json:"estimated_time_minutes"`
-	Steps       []stepEntry `json:"steps"`
+	ID      string      `json:"id"`
+	Minutes int         `json:"estimated_time_minutes"`
+	Steps   []stepEntry `json:"steps"`
 }
 
 func fatalf(format string, args ...any) {
@@ -822,7 +822,7 @@ func intVecField(block, field string) []int {
 		fatalf("字段 %s vec! 未闭合", field)
 	}
 	out := []int{}
-	for _, part := range strings.Split(rest[start : start+end], ",") {
+	for _, part := range strings.Split(rest[start:start+end], ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

@@ -64,7 +64,7 @@
 <main>
   <section class="pane editor-pane">
     <div class="pane-head">
-      <select id="case-select"></select>
+      <div id="case-select" class="dd"></div>
       <button id="run-btn">▶ 运行</button>
       <span id="status-pill" class="pill idle">就绪</span>
     </div>
@@ -76,15 +76,8 @@
       </div>
     </div>
 
-    <div class="pane-head subhead"><h2>会话配置（config.set）</h2></div>
-    <div class="config-grid">
-      <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
-      <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
-      <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
-      <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
-      <div class="cfg-actions"><button id="cfg-btn" class="minor">应用</button><span id="cfg-msg" class="muted small"></span></div>
-      <label class="cfg-argv">argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false"></label>
-    </div>
+    <div class="pane-head subhead"><h2>编译期诊断与宏展开</h2></div>
+    <div id="diag-list" class="diag-list"><span class="muted">（点「运行」后展示）</span></div>
 
     <div id="stdin-row" class="hidden">
       <label>stdin</label>
@@ -92,8 +85,17 @@
       <button id="feed-btn">喂入续跑</button>
     </div>
 
-    <div class="pane-head subhead"><h2>编译期诊断与宏展开</h2></div>
-    <div id="diag-list" class="diag-list"><span class="muted">（点「运行」后展示）</span></div>
+    <details class="cfg-details">
+      <summary>会话配置（config.set）</summary>
+      <div class="config-grid">
+        <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
+        <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
+        <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
+        <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
+        <div class="cfg-actions"><button id="cfg-btn" class="minor">应用</button><span id="cfg-msg" class="muted small"></span></div>
+        <label class="cfg-argv">argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false"></label>
+      </div>
+    </details>
   </section>
 
   <section class="pane result-pane">
@@ -147,14 +149,10 @@
 
     <div class="tabpage hidden" id="tab-anim">
       <div class="anim-ctrl">
-        <select id="anim-scene"></select>
+        <div id="anim-scene" class="dd"></div>
         <button id="anim-play">▶ 播放</button>
         <button id="anim-reset" class="minor">⟲ 重播</button>
-        <select id="anim-speed">
-          <option value="400">0.5×</option>
-          <option value="200" selected>1×</option>
-          <option value="100">2×</option>
-        </select>
+        <div id="anim-speed" class="dd"></div>
         <input id="anim-seek" type="range" min="0" max="0" value="0">
         <span id="anim-progress" class="muted small"></span>
       </div>

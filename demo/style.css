@@ -101,8 +101,38 @@ main { display: grid; grid-template-columns: minmax(360px, 5fr) 7fr; gap: 18px; 
 .pane-head { display: flex; align-items: center; gap: 10px; margin: 10px 0 8px; flex-wrap: wrap; }
 .pane-head h2 { font-size: 13px; margin: 0; color: var(--t3); text-transform: uppercase; letter-spacing: .06em; }
 .subhead { margin-top: 18px; }
-.pane-head select { background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 7px; padding: 7px 10px; font-size: 13px; flex: 1 1 auto; min-width: 0; max-width: 320px; transition: border-color var(--t-fast) var(--ease-out); }
-.pane-head select:hover { border-color: var(--t3); }
+/* 自绘下拉：原生 <select> 的弹出列表由 OS 渲染（Win 上为系统菜单风格），
+   无法跟随主题——闭合态/展开态全自绘（listbox 语义 + 键盘导航在 app.js） */
+.pane-head .dd { flex: 1 1 auto; min-width: 0; max-width: 320px; }
+.dd { position: relative; }
+.dd-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--field); color: var(--t1);
+  border: 1px solid var(--hairline); border-radius: 7px;
+  padding: 7px 10px; font-size: 13px; cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out);
+  box-shadow: none; text-align: left;
+}
+.dd-btn:hover { border-color: var(--t3); }
+.dd-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-chev { flex: none; opacity: .6; transition: transform var(--t-fast) var(--ease-out); }
+.dd[data-open] .dd-chev { transform: rotate(180deg); }
+.dd-list {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  max-height: 320px; overflow: auto;
+  background: var(--glass); border: var(--pane-border); border-radius: 10px;
+  box-shadow: var(--float-shadow); padding: 4px;
+  animation: tab-in var(--t-fast) var(--ease-out);
+}
+html[data-theme="glass"] .dd-list { backdrop-filter: var(--pane-blur); }
+.dd-opt {
+  display: block; width: 100%; text-align: left;
+  background: transparent; color: var(--t1);
+  border: 0; border-radius: 6px; padding: 6px 10px; font-size: 13px;
+  box-shadow: none;
+}
+.dd-opt:hover { background: var(--accent-tint); }
+.dd-opt.on { background: var(--accent-fill); color: var(--on-accent); }
 button { background: var(--accent-grad); color: var(--on-accent); border: 0; border-radius: 7px; padding: 7px 16px; font-size: 13px; cursor: pointer; transition: filter var(--t-fast) var(--ease-out), transform .08s ease, box-shadow var(--t-base) var(--ease-out); }
 button:hover { filter: brightness(1.08); }
 button:active:not(:disabled) { transform: translateY(1px); }
@@ -147,7 +177,10 @@ button.minor, #feed-btn { background: var(--accent-fill); color: var(--on-accent
 #editor-hl .syn-com { color: var(--cmt); font-style: italic; }
 #editor-hl .syn-pre { color: var(--num); } /* 预处理行并入暖橙数字系（映射约定见 tokens 头注） */
 #editor { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; color: transparent; caret-color: var(--t1); border: 0; outline: none; padding: 10px 12px 10px 60px; font: var(--ed-fs)/1.5 var(--mono); white-space: pre-wrap; word-break: normal; overflow-wrap: break-word; tab-size: 4; resize: none; overflow: hidden; }
-#editor::selection { color: transparent; background: var(--editor-selection); }
+#editor::selection { color: transparent; background: color-mix(in srgb, var(--editor-selection) 60%, transparent); }
+/* 选区背景必须半透明：双层编辑器（透明 textarea + 底层高亮层）里，
+   textarea 的选区色画在上层——不透明会把高亮文字全糊住（2026-10-03
+   换肤批回归：原 30% 透明 accent 被换成不透明 Monaco 衍生色）。 */
 /* 行跳转高亮闪烁（F-1b②）：直接挂在目标行盒上，随折行高度/滚动位置自然跟随 */
 #editor-hl .cl.flash-on { animation: line-flash 1.2s ease-out forwards; border-radius: 3px; }
 @keyframes line-flash {
@@ -162,6 +195,21 @@ button.minor, #feed-btn { background: var(--accent-fill); color: var(--on-accent
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+/* 会话配置折叠条：低频设置（设一次不动）收起让位给高频的诊断区 */
+.cfg-details { margin-top: 16px; border-top: 1px solid var(--hairline); }
+.cfg-details summary {
+  cursor: pointer; padding: 9px 0 7px; list-style: none;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 700; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .06em;
+  transition: color var(--t-fast) var(--ease-out);
+}
+.cfg-details summary::-webkit-details-marker { display: none; }
+.cfg-details summary::before { content: "▸"; font-size: 11px; transition: transform var(--t-fast) var(--ease-out); }
+.cfg-details summary:hover { color: var(--t1); }
+.cfg-details[open] summary::before { transform: rotate(90deg); }
+.cfg-details .config-grid { margin: 4px 0 10px; }
 
 /* 会话配置：字段式网格——数字字段纵排标签、输入框等宽并排；
    chk 独立一格，应用行与 argv 跨满整行；容器 = pane 内嵌分组（inset 描边） */
@@ -209,7 +257,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 #argv-box { background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 4px 8px; font: 12px var(--mono); transition: border-color var(--t-fast) var(--ease-out); }
 #argv-box:hover, #argv-box:focus { border-color: var(--t3); }
 
-.diag-list { max-height: 180px; overflow: auto; font-size: 12.5px; }
+.diag-list { max-height: 40vh; overflow: auto; font-size: 12.5px; }
 .diag { padding: 4px 8px; border-left: 3px solid var(--num); margin-bottom: 4px; background: var(--field); border-radius: 0 6px 6px 0; animation: rise-in .25s var(--ease-out) backwards; animation-delay: min(calc(var(--i, 0) * var(--stagger)), 280ms); transition: background-color var(--t-fast) var(--ease-out); }
 @keyframes rise-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .diag.jumpy { cursor: pointer; }
@@ -284,7 +332,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* 动画演示（帧采集播放器）：控件条 / 阶段说明 / 事件时间轴 */
 .anim-ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
-.anim-ctrl select { background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 6px; padding: 5px 8px; font-size: 12.5px; }
+.anim-ctrl .dd-btn { padding: 5px 8px; font-size: 12.5px; }
+#anim-scene { min-width: 170px; }
+#anim-speed { width: 92px; flex: none; }
 #anim-seek { flex: 1; min-width: 120px; accent-color: var(--accent); cursor: pointer; }
 .anim-phase { padding: 8px 12px; background: var(--accent-tint); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; font: 12.5px/1.6 var(--mono); color: var(--accent-strong); margin-bottom: 8px; min-height: 20px; }
 .anim-events { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
@@ -307,6 +357,7 @@ footer p { margin: 6px 0; }
    rose 生效；其余四主题无此钩子，形态零变化。 */
 html[data-theme="rose"] input,
 html[data-theme="rose"] select,
+html[data-theme="rose"] .dd-btn,
 html[data-theme="rose"] #stdin-box,
 html[data-theme="rose"] #argv-box,
 html[data-theme="rose"] #cat-search,

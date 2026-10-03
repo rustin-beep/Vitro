@@ -46,6 +46,94 @@ const latin1ToUtf8 = (delta) => {
 
 // ── 页面骨架 ──────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
+let caseDd, sceneDd, speedDd; // 自绘下拉实例（原生 select 弹出层为 OS 渲染，无法跟随主题）
+
+// 自绘下拉：闭合态按钮 + 浮层 listbox；键盘（Enter/Space 开、↑↓ 浏览、
+// Enter 确认、Esc 撤回）、点击外部关闭、aria 展开态。
+function makeDropdown(hostId, items, value, onChange) {
+  const host = $(hostId);
+  host.innerHTML =
+    '<button type="button" class="dd-btn" aria-haspopup="listbox" aria-expanded="false">' +
+    '<span class="dd-label"></span>' +
+    '<svg class="dd-chev" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+    '</button><div class="dd-list" role="listbox" hidden></div>';
+  const btn = host.querySelector(".dd-btn");
+  const label = host.querySelector(".dd-label");
+  const list = host.querySelector(".dd-list");
+  let cur = value;
+  let committed = value;
+  const idxOf = () => items.findIndex((i) => i.v === cur);
+  function syncLabel() {
+    const it = items[idxOf()];
+    label.textContent = it ? it.label : "";
+  }
+  function renderList() {
+    list.innerHTML = items
+      .map((i) =>
+        `<button type="button" class="dd-opt${i.v === cur ? " on" : ""}" role="option" aria-selected="${i.v === cur}" data-v="${esc(String(i.v))}">${esc(i.label)}</button>`
+      )
+      .join("");
+  }
+  function open() {
+    committed = cur;
+    renderList();
+    list.hidden = false;
+    host.setAttribute("data-open", "");
+    btn.setAttribute("aria-expanded", "true");
+    const el = list.querySelector(".dd-opt.on");
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }
+  function close() {
+    list.hidden = true;
+    host.removeAttribute("data-open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  function pick(v) {
+    cur = v;
+    syncLabel();
+    close();
+    if (onChange) onChange(v);
+  }
+  btn.onclick = () => (list.hidden ? open() : close());
+  list.onclick = (e) => {
+    const opt = e.target.closest(".dd-opt");
+    if (opt) pick(opt.dataset.v);
+  };
+  btn.onkeydown = (e) => {
+    if (list.hidden) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      cur = committed; // 撤回浏览未确认的值
+      syncLabel();
+      close();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const idx = Math.max(0, idxOf()) + (e.key === "ArrowDown" ? 1 : -1);
+      cur = items[Math.max(0, Math.min(idx, items.length - 1))].v;
+      renderList();
+      syncLabel();
+      const el = list.querySelector(".dd-opt.on");
+      if (el) el.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pick(cur);
+    }
+  };
+  document.addEventListener("click", (e) => {
+    if (!list.hidden && !e.target.closest("#" + host.id)) close();
+  });
+  syncLabel();
+  return {
+    get value() { return cur; },
+  };
+}
+
 function setStatus(kind, text) {
   const el = $("status-pill");
   el.className = "pill " + kind;
@@ -188,7 +276,7 @@ function renderCfgView(c) {
 // ── 运行一条用例 ──────────────────────────────────────────
 async function runCase() {
   if (!gw) return;
-  const kase = DEMO_CASES.find((k) => k.id === $("case-select").value) || {};
+  const kase = DEMO_CASES.find((k) => k.id === caseDd.value) || {};
   $("run-btn").disabled = true;
   setStatus("busy", "运行中…");
   try {
@@ -244,6 +332,10 @@ async function runCase() {
       $("stdin-row").classList.remove("hidden");
       renderRunResult(rr);
       renderMemory(bodyOf(invoke({ method: "memory.regions" })));
+      // scanf 暂停前的 printf 输出已在通道里（如提示语 "n="）——即时拉取显示，
+      // 否则要等喂入续跑后才见（2026-10-03 用户问交互时实测发现的显示缺口）
+      const o = bodyOf(invoke({ method: "output.delta", params: { cursor: 0, stream: "stdout" } }));
+      renderOutput(latin1ToUtf8(o.delta) || "", o.total || 0);
       return;
     }
     pendingRun = null;
@@ -264,7 +356,7 @@ async function feedStdin() {
   }
   pendingRun = null;
   $("stdin-row").classList.add("hidden");
-  const kase = DEMO_CASES.find((k) => k.id === $("case-select").value) || {};
+  const kase = DEMO_CASES.find((k) => k.id === caseDd.value) || {};
   finishRun(rr, kase);
 }
 
@@ -783,7 +875,7 @@ function animPlay() {
       return;
     }
     animGoto(animIdx + 1);
-  }, Number($("anim-speed").value) || 200);
+  }, Number(speedDd.value) || 200);
 }
 
 async function animLoadScene(sceneId) {
@@ -808,11 +900,21 @@ async function animLoadScene(sceneId) {
 }
 
 function bindAnim() {
-  const sel = $("anim-scene");
-  sel.innerHTML = ANIM_SCENES.map((id) => {
-    const k = DEMO_CASES.find((x) => x.id === id);
-    return `<option value="${id}">${esc(k ? k.label : id)}</option>`;
-  }).join("");
+  sceneDd = makeDropdown(
+    "anim-scene",
+    ANIM_SCENES.map((id) => {
+      const k = DEMO_CASES.find((x) => x.id === id);
+      return { v: id, label: k ? k.label : id };
+    }),
+    ANIM_SCENES[0],
+    (v) => animLoadScene(v)
+  );
+  speedDd = makeDropdown(
+    "anim-speed",
+    [ { v: "400", label: "0.5×" }, { v: "200", label: "1×" }, { v: "100", label: "2×" } ],
+    "200",
+    () => { if (animTimer) animPlay(); } // 播放中调速 = 重启节奏
+  );
   $("anim-play").onclick = () => {
     if (!animData) return;
     animTimer ? animStopTimer() : animPlay();
@@ -822,19 +924,15 @@ function bindAnim() {
     animStopTimer();
     animGoto(0);
   };
-  $("anim-speed").onchange = () => {
-    if (animTimer) animPlay(); // 播放中调速 = 重启节奏
-  };
   $("anim-seek").oninput = (e) => {
     animStopTimer();
     animGoto(Number(e.target.value));
   };
-  sel.onchange = () => animLoadScene(sel.value);
 }
 
 // ── 用例切换 ─────────────────────────────────────────────
 function selectCase() {
-  const k = DEMO_CASES.find((k) => k.id === $("case-select").value);
+  const k = DEMO_CASES.find((k) => k.id === caseDd.value);
   if (!k) return;
   $("editor").value = k.source;
   renderEditorDecor();
@@ -944,13 +1042,16 @@ function applyMotion(v) {
   document.querySelector('.tab[data-tab="anim"]').addEventListener(
     "click",
     () => {
-      if (!animData && !$("anim-play").disabled) animLoadScene($("anim-scene").value);
+      if (!animData && !$("anim-play").disabled) animLoadScene(sceneDd.value);
     },
     { once: true }
   );
-  const sel = $("case-select");
-  sel.innerHTML = DEMO_CASES.map((k) => `<option value="${k.id}">${k.label}</option>`).join("");
-  sel.onchange = selectCase;
+  caseDd = makeDropdown(
+    "case-select",
+    DEMO_CASES.map((k) => ({ v: k.id, label: k.label })),
+    DEMO_CASES[0].id,
+    selectCase
+  );
   $("run-btn").onclick = runCase;
   $("feed-btn").onclick = feedStdin;
   $("cfg-btn").onclick = applyConfig;

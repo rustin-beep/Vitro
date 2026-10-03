@@ -17,12 +17,19 @@
 //   - 退役形态预置：Rust 删除后 MoonBit 臂单跑仍与基线比（oracle 臂的
 //     最后一次消费即 --update-baseline 那次，随 0.8.0 工序②终验走）。
 //
+// **覆盖面边界（审阅 P3-⑤ 登记，2026-10-04）**：非 ASCII 程序输出的
+// delta 值域**不在本闸覆盖内**——MoonBit delta 为 Latin-1 逐字节折回
+// （serve_io 头注在案的既有分叉、消费方字节域还原），ASCII delta 与泄漏
+// 报告全文（帧组 30-32）正常冻结；非 ASCII delta 帧纳入待该分叉收敛后
+// 启用（skip 为方法粒度，帧级拆分不为此预建）。
+//
 // 用法：
 //
 //	go run ./scripts/protocol_frames                  # 双臂 vs 基线（CI 形态）
 //	go run ./scripts/protocol_frames --diff-hosts     # 双宿主互比（无基线依赖）
 //	go run ./scripts/protocol_frames --update-baseline # 以 oracle 臂刷新基线（人工令）
-//	go run ./scripts/protocol_frames --selftest       # J9：篡改/删基线必红
+//	go run ./scripts/protocol_frames --audit-skips    # skip 僵尸审计（不跳真跑）
+//	go run ./scripts/protocol_frames --selftest       # J9 三锚（mask/非法 JSON/比对红）
 package main
 
 import (
@@ -133,6 +140,12 @@ func requestTable() []req {
 		{27, "session.reset", ``},
 		{28, "compile", `{"source":"int main() { return 7; }"}`},
 		{29, "run", `{"deterministic":true}`},
+		// leak 报告帧组（审阅 P1③ 补——首版序列 run 帧无 malloc，泄漏报告
+		// 从不产生 = hex 位宽分叉的闸盲区）：双 malloc 不 free → run → delta
+		// 全文（报告文本含 addr 形态——oracle {:04X} 最少 4 位——进冻结）。
+		{30, "compile", `{"source":"#include <stdlib.h>\n#include <stdio.h>\nint main() { printf(\"leak test\"); int* a = malloc(4); int* b = malloc(8); return 0; }"}`},
+		{31, "run", `{"deterministic":true}`},
+		{32, "output.delta", `{"cursor":0}`},
 	}
 }
 
@@ -267,7 +280,8 @@ func fatal(f string, a ...any) {
 func main() {
 	diffHosts := flag.Bool("diff-hosts", false, "双宿主互比（两侧帧逐字节一致；不依赖基线）")
 	update := flag.Bool("update-baseline", false, "以 oracle（Rust）臂刷新入库基线（人工令——随 0.8.0 工序②终验走最后一次）")
-	selftest := flag.Bool("selftest", false, "J9：注入篡改帧/删基线，判定必须变红")
+	auditSkips := flag.Bool("audit-skips", false, "skip 僵尸审计（审阅 P3-④ 补）：临时不 skip 真跑一轮——原 skip 帧两侧一致即僵尸红（键集分叉已收敛应删条目），DIFF=合法 skip")
+	selftest := flag.Bool("selftest", false, "J9：mask 生效 + 非法 JSON 拒绝 + 基线比对红三锚")
 	flag.Parse()
 
 	loadRules()
@@ -277,11 +291,19 @@ func main() {
 		return
 	}
 
+	// audit-skips 强制互比模式（审阅 P3-④ 语义修正）：基线生成时 skip 帧
+	// 已被剔除——僵尸审计必须走双宿主互比才能暴露 skip 帧的两侧实态。
+	if *auditSkips {
+		*diffHosts = true
+	}
+
 	table := requestTable()
 	// 整帧豁免（键集结构性分叉——skip_methods）双臂同跳，打印留痕。
+	// --audit-skips 时不跳（僵尸审计：skip 帧两侧一致 = 键集分叉已收敛
+	// 应删条目——skip 面每轮可被人工审计，与 replay 的 ZOMBIE 内联同义）。
 	effective := table[:0]
 	for _, r := range table {
-		if reason, hit := skipMethods[r.method]; hit {
+		if reason, hit := skipMethods[r.method]; hit && !*auditSkips {
 			fmt.Printf("[SKIP] %s（%s）\n", r.method, reason)
 			continue
 		}
@@ -350,10 +372,10 @@ func main() {
 		name   string
 		frames []string
 	}{{"rust", rustFrames}, {"moonbit", mbFrames}} {
-		for i, f := range arm.frames {
-			if f != base[i] {
-				exit = 1
-				fmt.Printf("[DRIFT] %s 帧 %d（%s）\n  基线: %s\n  实际: %s\n", arm.name, table[i].id, table[i].method, base[i], f)
+		if drifts := diffAgainstBase(arm.name, base, arm.frames, table); len(drifts) > 0 {
+			exit = 1
+			for _, d := range drifts {
+				fmt.Println(d)
 			}
 		}
 	}
@@ -363,7 +385,20 @@ func main() {
 	os.Exit(exit)
 }
 
-func updateBaselineOnly(u bool) bool { return u }
+// diffAgainstBase 单臂帧 vs 基线逐帧比（selftest 可注入的判定单点——
+// 审阅 P2：比对逻辑必须被 --selftest 验过，不能只验 mask）。
+func diffAgainstBase(arm string, base, actual []string, table []req) []string {
+	if len(base) != len(actual) {
+		return []string{fmt.Sprintf("[DRIFT] %s 帧数不等：基线 %d ≠ 实际 %d", arm, len(base), len(actual))}
+	}
+	var out []string
+	for i, f := range actual {
+		if f != base[i] {
+			out = append(out, fmt.Sprintf("[DRIFT] %s 帧 %d（%s）\n  基线: %s\n  实际: %s", arm, table[i].id, table[i].method, base[i], f))
+		}
+	}
+	return out
+}
 
 func writeBaseline(frames []string) error {
 	var b strings.Builder
@@ -391,8 +426,10 @@ func readBaseline() ([]string, error) {
 	return lines, nil
 }
 
-// selfTest J9 埋雷：① mask 必须真吃掉内容（防规则悄悄失配假绿）；
-// ② 帧管线对非法 JSON fail loud 透传（canonicalize 契约）。
+// selfTest J9 埋雷（审阅 P2 补全——头注承诺「篡改/删基线必红」必须被验）：
+// ① mask 必须真吃掉内容（防规则悄悄失配假绿）；② 帧管线对非法 JSON
+// fail loud 透传；③ 基线比对判定注入不等帧必须产出 DRIFT（比对逻辑
+// 自证——不能只验 mask 不验比对）。
 func selfTest() {
 	raw := `{"result":{"engine_version":"0.1.0 (abc1234)","note":"x"},"id":1}`
 	line, err := frameLine(raw)
@@ -409,5 +446,19 @@ func selfTest() {
 		fmt.Println("selftest: FAIL——非法 JSON 未被拒绝（fail loud 透传断裂）")
 		os.Exit(2)
 	}
-	fmt.Println("selftest：mask 生效锚 + 非法 JSON 拒绝锚 通过")
+	// ③ 比对判定：篡改一帧（模拟基线漂移）必须产出 DRIFT
+	tbl := requestTable()[:3]
+	base := []string{`{"a":1}`, `{"b":2}`, `{"c":3}`}
+	tampered := []string{`{"a":1}`, `{"b":99}`, `{"c":3}`}
+	drifts := diffAgainstBase("selftest", base, tampered, tbl)
+	if len(drifts) != 1 || !strings.Contains(drifts[0], "[DRIFT]") {
+		fmt.Println("selftest: FAIL——基线比对判定对篡改帧不红（比对逻辑未被验证）")
+		fmt.Println("  产出:", drifts)
+		os.Exit(2)
+	}
+	if d := diffAgainstBase("selftest", base, base, tbl); len(d) != 0 {
+		fmt.Println("selftest: FAIL——一致帧产出伪 DRIFT", d)
+		os.Exit(2)
+	}
+	fmt.Println("selftest：mask 生效锚 + 非法 JSON 拒绝锚 + 基线比对红锚 通过")
 }

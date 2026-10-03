@@ -378,8 +378,10 @@ jobs:
         # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
         # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
         shell: bash
-        # --target native：把 native-only 包的锚（fs 9 + cmd/serve 14，实测
-        # 差值 527-504=23）纳入门禁——此前 CI 从不跑它们（默认 wasm target
+        # --target native：把 native-only 包的锚（fs 9 + gateway 91，2026-10-04
+        # 实测差值 741-641=100——原注「fs 9 + cmd/serve 14，差值 527-504=23」
+        # 系 2026-09-20 接线时点的 as-of 快照，CI 拆批搬运时未随刷，审阅 P3-⑧
+        # 勘正）纳入门禁——此前 CI 从不跑它们（默认 wasm target
         # 不含 native-only 包，check --target all 只抓编译错不抓行为错），
         # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
         # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。

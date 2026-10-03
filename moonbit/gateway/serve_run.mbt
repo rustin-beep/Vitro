@@ -236,12 +236,24 @@ fn append_leak_report(s : @session.Session) -> Unit {
 }
 
 ///|
-/// UInt → 4 位大写十六进制（oracle `{:04X}` 对应物；仓内无 hex 单源，
-/// 本函数 priv 自持——第二消费者出现时上提 util 登记机械件）。
+/// UInt → 大写十六进制，**最少 4 位**（oracle `{:04X}` 语义——不足 4 位
+/// 补前导零，超过原样不截不补；审阅 P1 修正 2026-10-04：首版恒 8 位与
+/// oracle 不符且被锚锁死）。仓内无 hex 单源，本函数 priv 自持——第二
+/// 消费者出现时上提 util 登记机械件。
 fn uint_to_hex4(v : UInt) -> String {
   let digits = "0123456789ABCDEF"
-  let buf = StringBuilder()
+  // 最高非零 nibble 位置（0 值给 -1 → 由保底 4 位兜出 "0000"）
+  let mut top = -1
   for shift = 28; shift >= 0; shift = shift - 4 {
+    if ((v >> shift) & 0xFU) != 0U {
+      top = shift
+      break
+    }
+  }
+  // 起始 shift = max(最高非零 nibble, 12)——保底 4 位、超长不截
+  let start = if top > 12 { top } else { 12 }
+  let buf = StringBuilder()
+  for shift = start; shift >= 0; shift = shift - 4 {
     buf.write_char(digits[((v >> shift) & 0xFU).to_int()].unsafe_to_char())
   }
   buf.to_string()

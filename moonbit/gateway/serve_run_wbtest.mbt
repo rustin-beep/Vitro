@@ -222,10 +222,10 @@ test "serve_run_leak_report_note_channel" {
   assert_true(
     s.vm.output.has_note(
       @utf8.encode(
-        "  • 第 2 行的 malloc 分配了 16 字节 (addr=0x00005018)，未被 free\n",
+        "  • 第 2 行的 malloc 分配了 16 字节 (addr=0x5018)，未被 free\n",
       ),
     ),
-    msg="逐条行（行号/函数/字节/地址全字段）",
+    msg="逐条行（行号/函数/字节/地址全字段——addr 为 oracle {:04X} 最少 4 位形态，非恒 8 位）",
   )
   assert_true(
     s.vm.output.has_note(
@@ -235,16 +235,4 @@ test "serve_run_leak_report_note_channel" {
     ),
     msg="教学提示行",
   )
-}
-
-///|
-/// note 通道全文（测试辅助：chunks 拼接，与 output.delta 同语义）。
-fn note_text(s : @session.Session) -> String {
-  let buf = StringBuilder()
-  for chunk in s.vm.output.chunks_of(@host.OutputKind::Note) {
-    for j = 0; j < chunk.length(); j = j + 1 {
-      buf.write_char(chunk[j].to_int().unsafe_to_char())
-    }
-  }
-  buf.to_string()
 }

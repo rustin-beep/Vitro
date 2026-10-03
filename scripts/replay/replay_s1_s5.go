@@ -301,13 +301,21 @@ func (r *Report) check(section, aid string, cond bool, detail string) bool {
 func (r *Report) summarize() int {
 	total := len(r.rows)
 	failed := 0
+	exempt := 0 // 审阅 P3-⑥：EXEMPT 分开计——豁免不是 PASS，口径与 serve_smoke 对齐（59+2≠61）
 	for _, row := range r.rows {
 		if !row.ok {
 			failed++
 		}
+		if strings.HasPrefix(row.detail, "（豁免）") {
+			exempt++
+		}
 	}
 	fmt.Println("\n========== 回放汇总 ==========")
-	fmt.Printf("断言总数: %d  PASS: %d  FAIL: %d\n", total, total-failed, failed)
+	if exempt > 0 {
+		fmt.Printf("断言总数: %d  PASS: %d  EXEMPT: %d  FAIL: %d\n", total, total-failed-exempt, exempt, failed)
+	} else {
+		fmt.Printf("断言总数: %d  PASS: %d  FAIL: %d\n", total, total-failed, failed)
+	}
 	for _, row := range r.rows {
 		if !row.ok {
 			fmt.Printf("  FAIL %s %s: %s\n", row.section, row.aid, row.detail)
@@ -1180,8 +1188,10 @@ func main() {
 	selftest := flag.Bool("selftest", false, "只跑判定口径埋雷自检（J9）")
 	flag.Parse()
 
-	selfTest()
+	// 审阅 P3-⑦（2026-10-04）：自检只在 --selftest 跑——原无条件形态每轮
+	// 输出 [FAIL] T A2 透传行，与真实 FAIL 同格式，人工 grep 易误判
 	if *selftest {
+		selfTest()
 		return
 	}
 

@@ -169,7 +169,7 @@
 
     <div class="tabpage hidden" id="tab-proto">
       <p class="blurb">本页所有能力均来自冻结协议 <b>v0.1</b>（2026-09-12 定版）的 NDJSON 方法帧——demo 就是协议的第一个浏览器消费者。</p>
-      <div class="pane-head"><h2>方法面（16 个，本页消费 13 个）</h2></div>
+      <div class="pane-head"><h2>方法面（21 个，本页消费 15 个）</h2></div>
       <div id="methods-list" class="methods"></div>
       <div class="pane-head"><h2>schema 冻结与 v0.2 预留台账（capabilities）</h2></div>
       <div id="cap-box" class="cap-box"></div>
@@ -189,7 +189,7 @@
 
 <footer>
   <p>白箱引擎：内存映射、freed/隔离区、VM 步数、诊断全部来自引擎真实数据（<code>memory.regions</code> / <code>output.delta</code> / <code>error_catalog</code> / trap 帧），非装饰性 mock。</p>
-  <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。S8 时间旅行（step 流回放）在路线图上——<code>semantic_labels</code> 词表已就位。</p>
+  <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。时间旅行（step 流回放 + 调用树 + 数组动画）已上线「运行」视图——trap 类程序与结构可视化的引擎侧能力缺口见 issue 台账。</p>
 </footer>
 <script src="cases.js"></script>
 <script src="app.js"></script>

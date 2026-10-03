@@ -2,17 +2,33 @@
   "dynamic_class_assigns": [
     {
       "where": "setStatus: el.className = \"pill \" + kind（kind 为状态字面量）",
-      "classes": ["idle", "busy", "ok", "err", "wait"]
+      "classes": [
+        "idle",
+        "busy",
+        "ok",
+        "err",
+        "wait"
+      ]
     },
     {
       "where": "bandRender: b.className = \"blk \" + r.kind（引擎 region.kind 枚举）",
-      "classes": ["global", "heap", "stack", "freed"]
+      "classes": [
+        "global",
+        "heap",
+        "stack",
+        "freed"
+      ]
     }
   ],
   "dynamic_id_prefixes": [
     {
       "prefix": "tab-",
-      "ids": ["tab-result", "tab-memory", "tab-catalog", "tab-proto"]
+      "ids": [
+        "tab-result",
+        "tab-memory",
+        "tab-catalog",
+        "tab-proto"
+      ]
     }
   ],
   "class_whitelist": [],

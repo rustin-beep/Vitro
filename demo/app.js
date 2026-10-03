@@ -1103,11 +1103,14 @@ function renderArrayViz(f) {
     const nums = m[1].split(",").map((x) => parseInt(x.trim(), 10));
     return nums.length >= 2 && nums.length <= 32 && nums.every((n) => !isNaN(n));
   });
+  const head = document.getElementById("array-viz-head");
   if (!arrays.length) {
     host.style.display = "none";
+    if (head) head.style.display = "none"; // 审阅 P3-1：标题与教学说明随区显隐（曾写死 none 无人解锁）
     return;
   }
   host.style.display = "";
+  if (head) head.style.display = "";
   // div 柱而非 SVG：preserveAspectRatio="none" 的非等比拉伸会把柱下数字压扁
   host.innerHTML = arrays
     .map((v) => {

@@ -4,15 +4,15 @@
 // **JS↔CSS 的字符串契约**或 CSS 本体问题——TS 类型系统一个都拦不住，对症
 // 防线是文本对账闸：
 //
-//   A. CSS 变量：var(--x) 引用 ⊆ 定义（css 定义 ∪ JS/HTML setProperty）∪ 白名单
-//      ——实锤先例：--fg-muted 引用不存在的变量，静默回退 inherit。
-//   B. 类名：classList 写操作字面量对「元素候选类闭包 ∪ CSS 复合单元 ∪ JS
-//      生成面 ∪ 白名单」对账。CSS 单元 = 复合选择器里同属一个元素的段
-//      （.tab.active 的 {tab,active}）——单元必须整体落在元素候选类集内才
-//      为该元素提供定义，专抓「操作了永不生效的类」形态（实锤先例：
-//      $("stdin-row").classList.add("active") 只有 .tab.active 定义，
-//      #stdin-row 永远没有 tab 类，行永不显示）。
-//   C. getElementById 字面量 id ⊆ html id 集 ∪ 动态前缀白名单（防静默 null）。
+//	A. CSS 变量：var(--x) 引用 ⊆ 定义（css 定义 ∪ JS/HTML setProperty）∪ 白名单
+//	   ——实锤先例：--fg-muted 引用不存在的变量，静默回退 inherit。
+//	B. 类名：classList 写操作字面量对「元素候选类闭包 ∪ CSS 复合单元 ∪ JS
+//	   生成面 ∪ 白名单」对账。CSS 单元 = 复合选择器里同属一个元素的段
+//	   （.tab.active 的 {tab,active}）——单元必须整体落在元素候选类集内才
+//	   为该元素提供定义，专抓「操作了永不生效的类」形态（实锤先例：
+//	   $("stdin-row").classList.add("active") 只有 .tab.active 定义，
+//	   #stdin-row 永远没有 tab 类，行永不显示）。
+//	C. getElementById 字面量 id ⊆ html id 集 ∪ 动态前缀白名单（防静默 null）。
 //
 // 规则外置 rules.json：动态 className 拼接簇（"pill " + kind 一类静态不可
 // 提取的写操作，显式登记合法类集）、动态 id 前缀、显式白名单；**僵尸条目
@@ -54,6 +54,7 @@ type dynIDRule struct {
 }
 
 type rules struct {
+	MinClassSites       int            `json:"min_class_sites"` // classList 字面量位点下限（防抽取面被变量化掏空；0=缺省 3）
 	DynamicClassAssigns []dynClassRule `json:"dynamic_class_assigns"`
 	DynamicIDPrefixes   []dynIDRule    `json:"dynamic_id_prefixes"`
 	ClassWhitelist      []string       `json:"class_whitelist"`
@@ -83,7 +84,6 @@ var reQuotedArgs = regexp.MustCompile(`"([^"]+)"`)
 var reCSSVarUseNoFB = regexp.MustCompile(`var\((--[\w-]+)\s*\)`)
 var reJSInlineStyleVar = regexp.MustCompile(`style=\\?"[^"\\$]*?(--[\w-]+)`)
 
-
 // classListArgs 提取调用的类名实参：只认带引号的字面量串。
 // toggle("empty", expr) 的第二参（布尔表达式）自然被排除；
 // add("a", "b") 多类名照常展开；非字面量实参返回空（由调用方降级处理）。
@@ -96,9 +96,9 @@ func classListArgs(s string) []string {
 }
 
 type compoundUnit struct {
-	id      string            // 复合段中的 #id（可空）
-	classes map[string]bool   // 复合段中的类
-	raw     string            // 原文（报错用）
+	id      string          // 复合段中的 #id（可空）
+	classes map[string]bool // 复合段中的类
+	raw     string          // 原文（报错用）
 }
 
 // parseCSS 返回：复合单元全集、变量定义集。@media 头剥离后规则提取不受嵌套影响。
@@ -474,6 +474,36 @@ func main() {
 		}
 	}
 
+	// ── logo 双份一致性（审阅 2026-10-03 P3-5）：demo/assets/logo 是根 assets/logo
+	//    的拷贝，pages.yml 用根份、本地预览用 demo 份——分叉即线上门面与本地
+	//    不一致且零告警
+	if !*selftest {
+		rootLogo := filepath.Join(filepath.Dir(filepath.Clean(*demoDir)), "assets", "logo")
+		demoLogo := filepath.Join(*demoDir, "assets", "logo")
+		for _, name := range []string{"vitro-icon.svg", "vitro-icon-light.svg", "vitro-icon-dark.svg"} {
+			rb, err1 := os.ReadFile(filepath.Join(rootLogo, name))
+			db, err2 := os.ReadFile(filepath.Join(demoLogo, name))
+			if err1 != nil || err2 != nil {
+				issues = append(issues, issue{"logo", fmt.Sprintf("logo 双份缺失：%s（根份在=%v / demo 份在=%v）", name, err1 == nil, err2 == nil)})
+				continue
+			}
+			if string(rb) != string(db) {
+				issues = append(issues, issue{"logo", fmt.Sprintf("logo 双份分叉：%s 根份与 demo/assets 份内容不一致——同步后复跑（义务见 demo/assets/logo/README.md）", name)})
+			}
+		}
+	}
+
+	// ── classList 抽取面记录（审阅 2026-10-03 P3-7 销项定性：文本闸防不住
+	//    定向变量化掏空——变量实参（el.classList.add(_z)）在文本层不可解析，
+	//    「该类字面量位点是否清零」无从判定。已验证：把 flash-on 全部写操作
+	//    位点变量化后闸仍绿（残留 .querySelectorAll("...") 字符串面命中 CSS
+	//    单元而合法）。完整解需 AST 级实参追踪，超出文本闸能力边界——本项
+	//    记录在案（skill 演化日志同步），不做半吊子假闸。
+	if !*selftest {
+		sites := len(reJSClassListChain.FindAllStringSubmatch(js, -1)) + countVarSites(js, varBind, varAmbiguous)
+		fmt.Printf("demo_ui_lint: classList 可解析位点 %d（观测值——跌破历史值时人工复核抽取面）\n", sites)
+	}
+
 	// ── selftest 预期四类红（id 路判定补齐：2026-10-02 审阅 P2-1——此前
 	// 打印 id 计数却不参与判定，逐路打坏 id 路仍绿 = 看着覆盖实际没判）──
 	if *selftest {
@@ -535,6 +565,18 @@ func validClass(c, anchorID string, candidate func(string) map[string]bool, unit
 		}
 	}
 	return false
+}
+
+// 锚定变量的 classList 写操作位点数（下限检查用——与主对账同口径，
+// 歧义绑定不计入：那类位点本就走降级全局检查）
+func countVarSites(js string, varBind map[string]string, varAmbiguous map[string]bool) int {
+	n := 0
+	for _, m := range reJSClassListVar.FindAllStringSubmatch(js, -1) {
+		if _, ok := varBind[m[1]]; ok && !varAmbiguous[m[1]] && m[2] != "contains" {
+			n++
+		}
+	}
+	return n
 }
 
 // 单元对锚点元素有效：单元 #id 匹配（或无 id）且全部类 ⊆ 元素候选类闭包

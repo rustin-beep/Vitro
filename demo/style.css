@@ -270,7 +270,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .diag.jumpy .loc { text-decoration: underline dotted; text-underline-offset: 2px; }
 .diag.warning { border-left-color: var(--num); }
 .diag.error { border-left-color: var(--danger); }
-.diag .code { font-family: var(--mono); color: var(--num); margin-right: 8px; }
+.diag .code { font-family: var(--mono); color: var(--warn-code, var(--num)); margin-right: 8px; }
 .diag.error .code { color: var(--danger); }
 .diag .loc { color: var(--t3); margin-right: 8px; font-size: 11.5px; }
 .pp-trace { margin-top: 6px; padding: 6px 8px; background: var(--editor-bg); border: 1px dashed var(--hairline); border-radius: 6px; }
@@ -319,7 +319,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .cat-card summary { cursor: pointer; padding: 6px 10px; font-size: 13px; list-style-position: inside; color: var(--t1); }
 .cat-card summary:hover { color: var(--accent-strong); }
 .cat-card .emoji { margin-right: 6px; }
-.cat-card .code { font-family: var(--mono); color: var(--num); margin-right: 6px; }
+.cat-card .code { font-family: var(--mono); color: var(--warn-code, var(--num)); margin-right: 6px; }
 .cat-body { padding: 4px 12px 8px; font-size: 12.5px; color: var(--t1); }
 .cat-body p { margin: 4px 0; }
 .cat-body .causes { color: var(--t3); font-size: 12px; }
@@ -338,7 +338,6 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* 动画演示（帧采集播放器）：控件条 / 阶段说明 / 事件时间轴 */
 .anim-ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
 .anim-ctrl .dd-btn { padding: 5px 8px; font-size: 12.5px; }
-#anim-scene { min-width: 170px; }
 #anim-speed { width: 92px; flex: none; }
 #anim-seek { flex: 1; min-width: 120px; accent-color: var(--accent); cursor: pointer; }
 .anim-phase { padding: 8px 12px; background: var(--accent-tint); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; font: 12.5px/1.6 var(--mono); color: var(--accent-strong); margin-bottom: 8px; min-height: 20px; }

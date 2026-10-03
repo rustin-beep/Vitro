@@ -24,8 +24,14 @@ on:
   push:
     branches: [master]
     paths:
+      # 触发面 ⊇ artifact 组装实际消费的源路径集（审阅 P2-1：曾漏
+      # assets/logo〔品牌图拷贝源〕与 docs/scripts〔docs 子站渲染源〕——
+      # 改这些不重部署 = 线上静默陈旧）
       - "demo/**"
       - "moonbit/**"
+      - "assets/logo/**"
+      - "docs/**"
+      - "scripts/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

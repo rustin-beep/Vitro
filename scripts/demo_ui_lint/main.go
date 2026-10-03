@@ -19,7 +19,13 @@
 // （登记的类/id 已无任何引用或定义）无条件红**。
 //
 // 判定型脚本纪律：Go 零第三方依赖、fail loud（exit 1 列出全部未命中）、
-// -selftest 内存注入证红（不落盘）。
+// -selftest 内存注入四类证红（class/var/id/zombie 各≥1，不落盘）。
+// 抽取面下限（D8 族防线，2026-10-02 审阅 P2-2）：真跑时各路有效检查
+// 位点数低于硬编码下限即红——字面量改变量等抽取器不认的形态会让闸
+// 静默失能（同一 bug 字面量红、变量绿，实测实锤）。class 位点口径 =
+// 含字面量实参的可对账调用数（demo 2026-10-02 实测 5/100/201——其余
+// 25 个 classList 调用是变量/拼接实参，计入不可解析打印），下限取可
+// 对答基线过半 + 塌缩缓冲；demo 大重构触发时按新基线更新常量。
 //
 // 用法：go run ./scripts/demo_ui_lint [-demo demo] [-rules scripts/demo_ui_lint/rules.json]
 package main
@@ -264,9 +270,9 @@ func main() {
 				}
 			}
 		}
-		for _, m := range reJSClassNameLit.FindAllStringSubmatch(js, -1) {
-			_ = m // className 整体赋值不并入候选（覆盖语义），仅进生成面
-		}
+		// className 整体赋值不并入候选（覆盖语义），生成面已由 reJSGenClass 收集
+		// 动态簇并入**每个**元素的候选闭包（登记即全局放行）——已知降级：
+		// 动态拼接无法静态定位元素，登记面承担"这些类合法"的证明义务
 		for _, r := range rl.DynamicClassAssigns {
 			for _, c := range r.Classes {
 				set[c] = true
@@ -275,11 +281,19 @@ func main() {
 		return set
 	}
 
-	// ── 检查 B：classList 写操作类名对账 ──
+	// ── 检查 B：classList 写操作类名对账（位点计数：含字面量实参的调用
+	// 才是可对账位点；变量实参调用计 unresolved 单独打印——抽取面可见）──
+	sitesClass := 0
+	sitesUnresolved := 0
 	checkClassWrite := func(anchorID, kind, args, at string) {
 		if kind == "contains" {
 			return // 读操作保守不查（恒 false 也算 bug，但避免误报面扩大）
 		}
+		if len(classListArgs(args)) == 0 {
+			sitesUnresolved++
+			return
+		}
+		sitesClass++
 		for _, c := range classListArgs(args) {
 			if !validClass(c, anchorID, candidate, cssUnits, jsGenClasses, htmlClassAll, rl) {
 				issues = append(issues, issue{"class", fmt.Sprintf("%s: %s 类名 %q 对元素 #%s 永不生效（无匹配 CSS 单元/生成面/白名单）", at, kind, c, anchorID)})
@@ -307,11 +321,13 @@ func main() {
 		}
 	}
 
-	// ── 检查 A：CSS 变量对账 ──
+	// ── 检查 A：CSS 变量对账（varRefs 同时收集自然引用面——var_whitelist
+	// 僵尸判定用）──
 	// 定义面 = css --x: 定义 ∪ JS/HTML setProperty ∪ JS innerHTML 内联 style="--x:…"
 	// ∪ 白名单。带回退值的 var(--x, fb) 引用按 CSS 语义跳过（未定义时回退兜底，
 	// 不是契约破坏——--fg-muted 实锤形态是无回退引用）。
 	varDefs := map[string]bool{}
+	varNatural := map[string]bool{} // 定义面快照（白名单并入前——僵尸判定用）
 	for v := range cssVarDefs {
 		varDefs[v] = true
 	}
@@ -324,15 +340,20 @@ func main() {
 	for _, m := range reJSInlineStyleVar.FindAllStringSubmatch(js, -1) {
 		varDefs[m[1]] = true
 	}
-	for _, w := range rl.VarWhitelist {
-		varDefs[w] = true
+	for v := range varDefs {
+		varNatural[v] = true
 	}
+	for _, w := range rl.VarWhitelist {
+		varDefs[w] = true // 白名单豁免检查（在 varNatural 快照后并入——僵尸判定不看它）
+	}
+	varRefs := map[string]bool{}
 	varWithFallback := map[string]bool{}
 	for _, m := range regexp.MustCompile(`var\(([\w-]+)\s*,`).FindAllStringSubmatch(css, -1) {
 		varWithFallback[m[1]] = true
 	}
 	checkVars := func(text, file string) {
 		for _, m := range reCSSVarUse.FindAllStringSubmatch(text, -1) {
+			varRefs[m[1]] = true
 			if varWithFallback[m[1]] {
 				continue // 带回退值，未定义也不破坏渲染
 			}
@@ -340,6 +361,19 @@ func main() {
 				issues = append(issues, issue{"var", fmt.Sprintf("%s: var(%s) 引用未定义变量", file, m[1])})
 			}
 		}
+	}
+	sitesVar := 0
+	for _, m := range reCSSVarUse.FindAllStringSubmatch(css, -1) {
+		_ = m
+		sitesVar++
+	}
+	for _, m := range reCSSVarUse.FindAllStringSubmatch(js, -1) {
+		_ = m
+		sitesVar++
+	}
+	for _, m := range reCSSVarUse.FindAllStringSubmatch(html, -1) {
+		_ = m
+		sitesVar++
 	}
 	checkVars(css, "style.css")
 	checkVars(js, "app.js")
@@ -352,8 +386,10 @@ func main() {
 			dynIDs[id] = true
 		}
 	}
+	sitesID := 0
 	for _, m := range reJSGetByID.FindAllStringSubmatch(js, -1) {
 		id := m[1]
+		sitesID++
 		if !htmlIDs[id] && !dynIDs[id] {
 			issues = append(issues, issue{"id", fmt.Sprintf("app.js: $(%q) 在 index.html 无此 id", id)})
 		}
@@ -408,19 +444,39 @@ func main() {
 			}
 		}
 	}
+	// var_whitelist 僵尸（2026-10-02 审阅 P3-1 补齐——契约早写"僵尸无条件红"，
+	// 此前实现对不上）：登记的变量须在自然定义面（css 定义/setProperty/内联
+	// style）或引用面（任一 var() 引用）仍出现
+	for _, w := range rl.VarWhitelist {
+		if !varNatural[w] && !varRefs[w] {
+			issues = append(issues, issue{"zombie", fmt.Sprintf("rules.json: var_whitelist 登记的 %q 全库无定义无引用（僵尸条目）", w)})
+		}
+	}
 
-	// ── selftest 预期三路红 ──
+	// ── selftest 预期四类红（id 路判定补齐：2026-10-02 审阅 P2-1——此前
+	// 打印 id 计数却不参与判定，逐路打坏 id 路仍绿 = 看着覆盖实际没判）──
 	if *selftest {
 		kinds := map[string]int{}
 		for _, i := range issues {
 			kinds[i.kind]++
 		}
-		if kinds["class"] < 1 || kinds["var"] < 1 || kinds["zombie"] < 1 {
-			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 未达到三路证红（class=%d var=%d zombie=%d）——闸失效\n", kinds["class"], kinds["var"], kinds["zombie"])
+		// zombie 下限 2 = 僵尸两张表（dynamic_class_assigns/var_whitelist）雷各一
+		// ——单表判定失能时另一表撑不住，表粒度打坏即红
+		if kinds["class"] < 1 || kinds["var"] < 1 || kinds["id"] < 1 || kinds["zombie"] < 2 {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 未达到四类证红（class=%d var=%d id=%d zombie=%d）——闸失效\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
 			os.Exit(1)
 		}
-		fmt.Printf("demo_ui_lint: -selftest 三路证红 OK（class=%d var=%d zombie=%d id=%d）\n", kinds["class"], kinds["var"], kinds["zombie"], kinds["id"])
+		fmt.Printf("demo_ui_lint: -selftest 四类证红 OK（class=%d var=%d id=%d zombie=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
 		return
+	}
+
+	// ── 抽取面下限（2026-10-02 审阅 P2-2）：各路有效位点塌缩即红——
+	// 同一 bug 字面量红、变量绿的静默失能形态由下限兜住（下限出处见头注）──
+	const minClassSites, minIDSites, minVarSites = 3, 30, 60
+	if sitesClass < minClassSites || sitesID < minIDSites || sitesVar < minVarSites {
+		issues = append(issues, issue{"coverage", fmt.Sprintf(
+			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",
+			sitesClass, minClassSites, sitesID, minIDSites, sitesVar, minVarSites)})
 	}
 
 	if len(issues) > 0 {
@@ -431,7 +487,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "demo_ui_lint: %d 条未命中——字符串契约对账红\n", len(issues))
 		os.Exit(1)
 	}
-	fmt.Println("demo_ui_lint: 类名/CSS 变量/id 三路对账全部通过")
+	fmt.Printf("demo_ui_lint: 类名/CSS 变量/id 三路对账全部通过（位点 class=%d〔不可解析 %d〕/ id=%d / var=%d）\n", sitesClass, sitesUnresolved, sitesID, sitesVar)
 }
 
 func validClass(c, anchorID string, candidate func(string) map[string]bool, units []compoundUnit, gen, htmlAll map[string]bool, rl rules) bool {
@@ -496,6 +552,7 @@ func selftestRules() rules {
 	return rules{
 		DynamicClassAssigns: []dynClassRule{{Where: "st", Classes: []string{"ghost-class"}}},
 		DynamicIDPrefixes:   []dynIDRule{{Prefix: "tab-", IDs: []string{"tab-result"}}},
+		VarWhitelist:        []string{"--ghost-var"},
 	}
 }
 

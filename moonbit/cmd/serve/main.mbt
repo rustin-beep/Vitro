@@ -6,6 +6,14 @@
 extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int) -> Int = "moonbit_vitro_serve_read_line"
 
 ///|
+/// 墙钟源（deterministic=false 时 time/clock 的真值通道——两个 int 组
+/// millis；stub 见 cmd/host_clock_stub.c，通道选型注记在其文件头）。
+extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"
+
+///|
+extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac"
+
+///|
 /// 响应行显式 flush（交互死锁修复——见 serve_stdio.c 头注：stdout 管道
 /// 形态全缓冲，交互消费方写一行读一行会死等首响应；批式消费无感）。
 extern "C" fn serve_flush_stdout() -> Unit = "moonbit_vitro_serve_flush"
@@ -22,6 +30,12 @@ fn main {
   @gateway.set_include_reader(fn(path : String) -> String? {
     let s = @fs.read_file_to_string(path) catch { _ => return None }
     Some(s)
+  })
+  // 墙钟注册（2026-10-02 deterministic 销分叉接线：oracle time/clock
+  // 走 current_time_millis 真值——wasm-gc 形态不注册恒 0）
+  @gateway.set_clock_source(fn() {
+    clock_secs_stub().to_uint64() * 1000UL +
+    clock_millis_frac_stub().to_uint64()
   })
   let buf : Bytes = Bytes::make(SERVE_LINE_CAP, b'\x00')
   while true {

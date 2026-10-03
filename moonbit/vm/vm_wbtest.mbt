@@ -488,3 +488,29 @@ test "set_call_depth_limit_clamps_to_16_floor" {
   vm.set_call_depth_limit(48)
   assert_eq(vm.call_depth_limit, 48, msg="正常值不夹")
 }
+
+///|
+test "time_clock_host_wall_source_wiring" {
+  // 2026-10-02 deterministic 分叉销案接线锚：dispatch 123/124 的
+  // now_millis 取 clock_source（宿主注入）；不注册恒 0（wasm-gc 形态）、
+  // deterministic=true 恒 0（判分可复现）——三态经假钟 123456789UL 直锚
+  let vm = VitroVM::new()
+  // 无源：恒 0
+  vm.push(0UL)
+  vm.execute_host_func(123, 1, 1)
+  assert_eq(vm.pop(), 0UL)
+  vm.execute_host_func(124, 1, 1)
+  assert_eq(vm.pop(), 0UL)
+  // 有源：time = millis/1000、clock = millis*1000
+  vm.set_clock_source(fn() { 123456789UL })
+  vm.push(0UL)
+  vm.execute_host_func(123, 1, 1)
+  assert_eq(vm.pop(), 123456UL)
+  vm.execute_host_func(124, 1, 1)
+  assert_eq(vm.pop(), 123456789000UL)
+  // 有源 + deterministic：恒 0（判分模式压过墙钟）
+  vm.set_deterministic(true)
+  vm.push(0UL)
+  vm.execute_host_func(123, 1, 1)
+  assert_eq(vm.pop(), 0UL)
+}

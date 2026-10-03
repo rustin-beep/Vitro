@@ -101,3 +101,16 @@ test "serve_config_set_call_depth_limit_floor_16" {
   )
   assert_true(r2.contains("\"call_depth_limit\":16"), msg="-5 → 16")
 }
+
+///|
+test "serve_config_get_default_deterministic_wire" {
+  // 审阅 P1（2026-10-02，本批外分叉销案）：oracle RuntimeState derive
+  // 默认 false（CLI 手册同口径）——config.get 默认帧两侧同形；此前本侧
+  // 默认 true 致 time/clock 恒 0 + 全部 config 帧恒差
+  let s = @session.Session::new()
+  let (r, _) = serve_handle(s, "{\"id\":1,\"method\":\"config.get\"}")
+  assert_true(
+    r.contains("\"deterministic\":false"),
+    msg="config.get 默认帧 deterministic=false（对齐 oracle）",
+  )
+}

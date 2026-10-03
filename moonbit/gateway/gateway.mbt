@@ -67,6 +67,15 @@ pub fn set_include_reader(read : (String) -> String?) -> Unit {
 }
 
 ///|
+/// 注册墙钟源（native 壳启动时调用——time/clock 非确定性模式的真值通道；
+/// wasm-gc 宿主不注册 ⇒ 恒 0〔无熵源 F5/R12〕）。2026-10-02 deterministic
+/// 分叉销案接线：oracle serve 的 time/clock 走 current_time_millis 真值，
+/// 本侧此前 dispatch 恒传 0UL 占位。
+pub fn set_clock_source(f : () -> UInt64) -> Unit {
+  session.vm.set_clock_source(f)
+}
+
+///|
 /// include 读取 provider（把注入回调包装成 SourceProvider）。
 priv enum HostIncludeProvider {
   P

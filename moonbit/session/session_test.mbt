@@ -6,14 +6,16 @@ test "blackbox_config_surface" {
   let cfg : @session.SessionConfig = @session.SessionConfig::default()
   assert_true(cfg.max_steps > 0)
   assert_true(cfg.call_depth_limit > 0)
-  assert_true(cfg.deterministic)
+  // 默认 false 对齐 oracle（RuntimeState derive 默认；2026-10-02 审阅 P1）
+  assert_false(cfg.deterministic)
   let vm = @vm.VitroVM::new()
   ignore(@session.SessionConfig::from_vm(vm))
   cfg.max_steps = 100
   cfg.call_depth_limit = 32
-  cfg.deterministic = false
+  cfg.deterministic = true
   cfg.apply_to_vm(vm)
   assert_eq(vm.max_steps, 100)
+  assert_true(vm.deterministic)
 }
 
 ///|

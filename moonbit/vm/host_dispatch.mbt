@@ -20,9 +20,10 @@
 /// 同名 host handler 同为死面），遮蔽集变更时无需重写。活的 ctype 3：
 /// isgraph/ispunct/isblank。
 ///
-/// **time/clock 的非确定性通道登记**：`now_millis` 传 0（deterministic
-/// 模式恒 0——与 Rust「完整 step 派生伪时钟留 Phase 3」同口径；真实时钟
-/// 属 session 层职责，wasm-gc 无熵源 F5/R12）。
+/// **time/clock 的墙钟通道（2026-10-02 接线——deterministic 分叉销案）**：
+/// `now_millis` 取宿主注入的 `clock_source`（native 壳注册真时钟；
+/// None〔wasm-gc 无熵源 F5/R12〕恒 0）。deterministic=true 仍恒 0
+/// （判分可复现——与 Rust「完整 step 派生伪时钟留 Phase 3」同口径）。
 
 ///|
 /// `HostMemReply` 三态消费单点：trap → 首错写入（空 loc 回退
@@ -223,12 +224,22 @@ fn VitroVM::execute_host_func(
       let n = self.pop_i64()
       self.push(@host.host_llabs(n))
     }
-    // ── time/clock（deterministic 恒 0；非确定性时钟留 session 层）──
+    // ── time/clock（deterministic 恒 0；否则宿主墙钟——无源恒 0）──
     123 => {
       let _tloc = self.pop_addr()
-      self.push(@host.host_time(self.deterministic, 0UL))
+      let now = match self.clock_source {
+        Some(f) => f()
+        None => 0UL
+      }
+      self.push(@host.host_time(self.deterministic, now))
     }
-    124 => self.push(@host.host_clock(self.deterministic, 0UL))
+    124 => {
+      let now = match self.clock_source {
+        Some(f) => f()
+        None => 0UL
+      }
+      self.push(@host.host_clock(self.deterministic, now))
+    }
     // ── 输出族 ──
     0 => {
       // __vitro_output：值 + 换行（Rust push_stdout(format!("{}\n", val))）

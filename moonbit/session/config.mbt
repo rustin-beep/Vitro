@@ -19,13 +19,17 @@ pub(all) struct SessionConfig {
 } derive(Debug)
 
 ///|
-/// 默认值 = VitroVM::new 的默认（对齐 Rust：1000 万步 / MAX_STACK_DEPTH
-/// / deterministic 开——vm 侧常量是执行器读的定义点，此处取值对齐）。
+/// 默认值 = VitroVM::new 的默认（1000 万步 / MAX_STACK_DEPTH /
+/// deterministic **关**）。deterministic 对齐 oracle：Rust 侧唯一宿主
+/// RuntimeState 是 #[derive(Default)] ⇒ false（CLI 手册同口径），Rust
+/// VitroVM 无此字段；原注释"对齐 Rust deterministic 开"系同义反复
+/// 自证——2026-10-02 审阅 P1 销分叉（此前 time/clock 恒 0 + config 帧
+/// 两侧恒差）。教学确定性走显式 config.set。
 pub fn SessionConfig::default() -> SessionConfig {
   {
     max_steps: @vm.DEFAULT_MAX_STEPS,
     call_depth_limit: @vm.MAX_STACK_DEPTH,
-    deterministic: true,
+    deterministic: false,
   }
 }
 

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（deterministic 默认值分叉销案 + time/clock 墙钟接线，2026-10-02 审阅 P1〔批外既有〕）
+
+- **默认值两层改 false 对齐 oracle**：oracle 的 `deterministic` 唯一宿主 `RuntimeState` 是 `#[derive(Default)]` ⇒ false（CLI 手册同口径），Rust `VitroVM` 无此字段；本侧 `VitroVM::new`/`SessionConfig::default` 写 true 系迁移自设（原注释「= VitroVM::new 的默认」同义反复自证；「wasm 无熵源 ⇒ 默认开」的理由不成立——无熵源下 false 亦恒 0，物理必然）。841554a（S7 批二号）引入；四处盲区叠加遮蔽（差异台账无登记 / serve_smoke 无豁免 / replay 只跑 Rust 臂 / vm_diff 语料无时间调用）。后果实测：`time(0)/clock()` 两侧恒差（rust 真值 vs 恒 0）+ 全部 `config.get/set` 帧 `deterministic` 字段恒差。教学确定性走显式 `config.set`。
+- **time/clock 墙钟接线**（分叉的下半——改 false 后 mb 侧非确定性仍恒 0：dispatch 的 `now_millis` 恒传 `0UL` 占位，「留 session 层」从未接线）：`VitroVM` 新增 `clock_source : (() -> UInt64)?` 注入字段（`set_clock_source`）+ `set_clock_source` gateway 注册口（include_reader 同款宿主注入形态）+ cmd/serve 与 cmd/run 各接 `host_clock_stub.c`（**两份同源复制连坐**——moon 的 native-stub 禁 `../` 路径；返回通道两 int 组 millis——FFI 数值返回实测仅 32 位可靠，fs 包 fseek/is_null 先例）。wasm-gc 不注册 ⇒ 恒 0（无熵源 F5/R12 天然形态）。
+- 三态锚（vm 假钟 123456789UL 直调 dispatch 123/124）：无源恒 0 / 有源 time=millis÷1000、clock=millis×1000 / 有源+deterministic 恒 0。红→绿：session 双锚翻转（黑盒+白盒）+ gateway `config.get` 默认帧 wire 锚先证红（3 红）→ 修复后全绿。
+- 端到端：`time(0)/clock()` 三通道真值终证（rust / mb serve / mb run 各自非零同量级）；serve_smoke 加 time 三连用例（compile 前置声明绕隐式声明 E 级 + run + output.delta）双臂各自非零断言——断言数 67→**68**（双臂）。
+- 连坐：README ×2 分解式（629/623/725/native-only 96 + vm 82）+ surface 边 +1（cmd/serve→gateway set_clock_source）+ mbti 同步；`rand()` 不受影响（LCG 独立于 deterministic）。
+- 防线：裸 629/629 + native 725/725 + smoke 双臂（Rust 68/68 + MB 66 PASS/2 豁免）+ demo_smoke 127/127（node 25）+ demo_ui_lint + surface/mbti/pkg_deps/testcount/facts --strict 全绿。
+
+### Fixed（demo_ui_lint 审阅三缺口销项：selftest id 路判定 + 抽取面下限 + var_whitelist 僵尸检查，2026-10-02）
+
+- **P2-1 `-selftest` 不判 id 路**：通过条件 class/var/zombie ≥1 不含 id 而打印含 `id=N`——"看着覆盖了、实际没判"（注入废 id 路仍绿，证红在案）。修复：四类各 ≥1 且 **zombie ≥2**（僵尸两张表〔dynamic_class_assigns/var_whitelist〕雷各一，单表判定失能即红——表粒度打坏复验两发各红）。
+- **P2-2 抽取面欠收 ⇒ 静默绿（D8 族）**：同一 bug 字面量红、变量形态静默通过（`el.classList.add(cls)` 实测 exit 0；空 app.js 同样全绿）。修复：各路**有效检查位点数**硬编码下限（class≥3 / id≥30 / var≥60——class 位点口径 = 含字面量实参的可对账调用，2026-10-02 demo 实测基线 5/100/201），塌缩即红（coverage 类）+ 不可解析位点计数随绿行打印。
+- **P3-1 `var_whitelist` 无僵尸检查**：契约写"僵尸条目无条件红"但实现只覆盖三表——塞入 ghost-var 零报告（证红在案）。修复：登记变量须在自然定义面（css 定义/setProperty/内联 style）或引用面（任一 `var()` 引用）仍出现；selftest 补 `--ghost-var` 雷（zombie 两表雷形态随之成立）。
+- 证红→证绿：三缺口先注入证红（id 路废仍绿 / 变量与空文件 exit 0 / ghost-var 零报告）→ 修复后逐路打坏六发（id/class/var/zombie×2 表）全红 + 真跑绿（位点 5/100/201）+ demo_smoke 127/127（node 25）。
+- 顺手：死代码清理（`reJSClassNameLit` 空循环）+ candidate 动态簇"登记即全局放行"设计取舍注释点名；CI 步（ci.yml:276 真跑）形态兼容零改动。
+
 ### Fixed（S8 diagnostics 批段三+四审阅销项：confidence wire 文本销案 + 两处宽容度分叉，2026-10-02）
 
 - **P1 confidence wire 文本与 oracle 不一致（可达比值 26/45 分叉）**：oracle `json!` 走 serde_json **Value 路径**，`serialize_f32` = `Number::from_f64(f as f64)` ⇒ wire 文本 = **f64 最短表示**（2/3 → `0.6666666865348816`）；本批原实现 `f32_shortest_text` 输出 f32 最短（`0.6666667`）——对序列化路径的误判（仅 `to_string` 直序列化才走 ryu f32），且被 wbtest 期望值钉死（锚错 > 锚漏）。销案：删 `f32_shortest_text`/`pow10d`/`pad_zero_to`，probe 改 `@ast.double_to_json_text`（f64 ryu-pretty 单源）。**审阅处方为裸 `to_string`，实测否决**：`Double::to_string(1.0)` 输出 `1` 而 oracle 恒 `1.0`（d/d 满命中可达 1.0），wire 探针原始字节实锤。值面 `round_to_f32` 保留（45/45 位模式一致）。锚：`probe_confidence_wire_text`（2/3 + 1.0 双形态原始字节）。

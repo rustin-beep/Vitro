@@ -10,7 +10,10 @@ test "session_config_defaults_align_vm" {
   let vm = @vm.VitroVM::new()
   assert_eq(cfg.max_steps, vm.max_steps, msg="默认步数与 VM 对齐")
   assert_eq(cfg.call_depth_limit, vm.call_depth_limit)
-  assert_true(cfg.deterministic)
+  // oracle 对齐（2026-10-02 审阅 P1 销分叉）：RuntimeState derive 默认
+  // false——session/vm 两层默认同 false；教学确定性走显式 config.set
+  assert_false(cfg.deterministic, msg="默认 false 对齐 oracle RuntimeState")
+  assert_false(vm.deterministic, msg="vm 层默认同 false")
 }
 
 ///|

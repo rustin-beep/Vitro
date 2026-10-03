@@ -120,9 +120,16 @@ pub struct VitroVM {
   mut vfs : @host.VirtualFileSystem
   /// Interactive 模式 stdin 未就绪标志（可续跑）。
   mut waiting_input : Bool
-  /// 确定性模式（time/clock 恒 0；wasm-gc 无熵源 F5/R12 ⇒ 默认开）。
-  /// 会话级配置（reset 保留）。
+  /// 确定性模式（true = time/clock 恒 0、rand 走 42 号固定 LCG）。
+  /// 默认 false 对齐 oracle（RuntimeState derive 默认；2026-10-02 审阅
+  /// P1 销分叉）。wasm-gc 无熵源（F5/R12）下 false 亦恒 0——物理必然，
+  /// 非"须默认开"的理由。会话级配置（reset 保留）。
   mut deterministic : Bool
+  /// 墙钟源（宿主注入回调；None = 无时钟源——time/clock 恒 0，wasm-gc
+  /// 无熵源的天然形态）。oracle `current_time_millis` 的对应物；2026-10-02
+  /// deterministic 销分叉接线（此前 dispatch 恒传 0UL 占位）。不入快照、
+  /// `reset` 保留（宿主注入物非执行态）。
+  mut clock_source : (() -> UInt64)?
   // ── C# 异常三执行状态（CS 批硬前置；C 前端恒默认值）──
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
@@ -136,7 +143,7 @@ pub struct VitroVM {
 
 ///|
 /// 新建 VM（全默认态：空程序、1MB 零页、`STACK_START` 栈顶、1000 万步预算、
-/// 42 号种子 LCG、deterministic 开）。
+/// 42 号种子 LCG、deterministic 关——oracle RuntimeState derive 默认）。
 pub fn VitroVM::new() -> VitroVM {
   VitroVM::{
     code: [],
@@ -179,7 +186,8 @@ pub fn VitroVM::new() -> VitroVM {
     rand: @host.RandState::new(42U),
     vfs: @host.VirtualFileSystem::new(),
     waiting_input: false,
-    deterministic: true,
+    deterministic: false,
+    clock_source: None,
     handler_stack: [],
     exec_mode: Running,
     exception_ref: None,
@@ -498,4 +506,11 @@ pub fn VitroVM::set_call_depth_limit(self : VitroVM, limit : Int) -> Unit {
 /// capi vitro_set_deterministic 对应物）。
 pub fn VitroVM::set_deterministic(self : VitroVM, deterministic : Bool) -> Unit {
   self.deterministic = deterministic
+}
+
+///|
+/// 注册墙钟源（宿主注入——native 壳注册真时钟；不注册〔wasm-gc〕恒 0。
+/// 2026-10-02 deterministic 分叉销案接线：oracle current_time_millis 对应物）。
+pub fn VitroVM::set_clock_source(self : VitroVM, f : () -> UInt64) -> Unit {
+  self.clock_source = Some(f)
 }

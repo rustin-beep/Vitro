@@ -12,5 +12,5 @@ supported_targets = "native"
 pkgtype(kind: "executable")
 
 options(
-  "native-stub": [ "serve_stdio.c" ],
+  "native-stub": [ "serve_stdio.c", "host_clock_stub.c" ],
 )

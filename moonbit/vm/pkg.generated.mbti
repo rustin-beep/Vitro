@@ -178,6 +178,7 @@ pub struct VitroVM {
   mut vfs : @host.VirtualFileSystem
   mut waiting_input : Bool
   mut deterministic : Bool
+  mut clock_source : (() -> UInt64)?
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
   mut exception_ref : UInt?
@@ -206,6 +207,7 @@ pub fn VitroVM::reset_vfs(Self) -> Unit
 pub fn VitroVM::restore(Self, VMSnapshot) -> Unit
 pub fn VitroVM::run(Self) -> Int
 pub fn VitroVM::set_call_depth_limit(Self, Int) -> Unit
+pub fn VitroVM::set_clock_source(Self, () -> UInt64) -> Unit
 pub fn VitroVM::set_deterministic(Self, Bool) -> Unit
 pub fn VitroVM::set_f64_constants(Self, Array[Double]) -> Unit
 pub fn VitroVM::set_globals_32(Self, Array[(UInt, Int)]) -> Unit

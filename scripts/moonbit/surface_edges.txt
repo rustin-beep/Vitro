@@ -97,6 +97,7 @@ vitro/engine/cmd/serve moonbitlang/core/encoding/utf8 decode_lossy
 vitro/engine/cmd/serve vitro/engine/fs read_file_to_string
 vitro/engine/cmd/serve vitro/engine/gateway invoke
 vitro/engine/cmd/serve vitro/engine/gateway set_include_reader
+vitro/engine/cmd/serve vitro/engine/gateway set_clock_source
 vitro/engine/codegen vitro/engine/ast AssignOp
 vitro/engine/codegen vitro/engine/ast BinaryOp
 vitro/engine/codegen vitro/engine/ast Expr

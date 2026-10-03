@@ -81,6 +81,12 @@ var requests = []request{
 			map[string]any{"ts": 3, "ok": true, "codes": []int{}},
 		},
 	}},
+	// time/clock 墙钟真值（2026-10-02 deterministic 分叉销案的端到端锚）：
+	// 23 编译（前置声明绕隐式声明 E 级）→ 24 运行 → 25 取输出——双臂各自
+	// 断言 t/c 非零（两侧时钟不同刻，各自非零即销"恒 0"分叉）
+	{ID: 23, Method: "compile", Params: map[string]any{"source": "long time(long*); long clock();\nint main(){ long t = time((long*)0); long c = clock();\n  printf(\"t=%d c=%d\\n\", (int)t, (int)(c/1000)); return 0; }"}},
+	{ID: 24, Method: "run"},
+	{ID: 25, Method: "output.delta", Params: map[string]any{"cursor": 0}},
 	{ID: 22, Method: "shutdown"},
 }
 
@@ -674,6 +680,15 @@ func run() int {
 	completionArr, completionOK := r21["completion"].([]any)
 	check(intentsOK && completionOK && len(completionArr) == 0,
 		"probe: intents/completion 段数组形态（未传参 completion 空）", tailMap(r21))
+
+	// ── time/clock 墙钟（deterministic 默认 false 销分叉的端到端：双臂
+	// 各自非零——MB 侧经 cmd/serve 注册的 clock_source，oracle 走
+	// current_time_millis；deterministic 语义〔判分可复现〕走 config.set 通道）──
+	d25 := asObj(byID[25]["result"])
+	deltaTxt := strOf(d25["delta"])
+	check(strings.Contains(deltaTxt, "t=1") && !strings.Contains(deltaTxt, "t=0 ") &&
+		strings.Contains(deltaTxt, "c=") && !strings.Contains(deltaTxt, "c=0\n"),
+		"time/clock 墙钟真值（非零——deterministic 销分叉）", tailMap(d25))
 
 	r22 := asObj(byID[22]["result"])
 	check(isBool(r22["shutdown"], true), "shutdown 回应", "")

@@ -60,6 +60,14 @@ fn dir_of(path : String) -> String {
 }
 
 ///|
+///|
+/// 墙钟源（time/clock 非确定性真值通道；两 int 组 millis——通道选型
+/// 注记在 cmd/host_clock_stub.c 文件头）。
+extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"
+
+///|
+extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac"
+
 fn main raise {
   let args = @env.args()
   let mut file = ""
@@ -131,6 +139,12 @@ fn main raise {
   }
   // ── setup + run（批四号 12 步组装）──
   let vm = @vm.VitroVM::new()
+  // 墙钟注册（2026-10-02 deterministic 销分叉接线——oracle run 通道
+  // current_time_millis 真值；stub 见 cmd/host_clock_stub.c）
+  vm.set_clock_source(fn() {
+    clock_secs_stub().to_uint64() * 1000UL +
+    clock_millis_frac_stub().to_uint64()
+  })
   // argv[0] = 源文件路径（对齐 oracle CLI 口径：main 解析处 argv 以 file_path
   // 为首元素——C 惯例 argv[0]=程序名；第三联映像 diff 的 argv 区一致性前提）
   let argv0 : Array[String] = [file]

@@ -1,0 +1,15 @@
+// @category: printf_scanf_type_mismatch
+// E3062/E3063 格式-参数类型错配的**诊断面**语料（2026-10-03 审阅 P2-2 补）：
+// 合法语料全绿程序盖不到消息文案（含参数序号）——单靠 wbtest 锚是单点兜底，
+// 同族文案漂移（如序号算式再动）语料面不可见。本用例经 typeck_diff 的 E1
+// 诊断序列双侧逐字节对拍锁文案；**两侧引擎同拒（E3062/E3063 error 级），
+// Clang 对同形状仅 -Wformat 警告继续运行**——故只进诊断面语料（gap），不进
+// e2e 运行口径（e2e 消费面本就不读 gap 目录）。
+int main() {
+    int a = 1;
+    double d = 1.0;
+    printf("%f", a);   // E3062：第 2 个参数类型 'int' 不匹配 %f
+    printf("%d", d);   // E3062：第 2 个参数类型 'double' 不匹配 %d
+    scanf("%d", &d);   // E3063：第 2 个参数 pointee double 不匹配 %d
+    return 0;
+}

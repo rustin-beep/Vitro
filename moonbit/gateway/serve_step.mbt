@@ -234,6 +234,11 @@ fn serve_step_begin_frame(
   // vfs 重建 + 装载 + 动态堆起点 + 预设注入）
   s.vm.output.clear()
   s.vm.reset_vfs()
+  // InputState 模式同步（issue #29 #5）：vm.new 默认 batch=true（空批
+  // 模式——scanf 直达 EOF 不等待），会话默认 Interactive（oracle
+  // InputMode #[default] Interactive 同款）——run 通道由 serve_run 的
+  // 模式同步掩盖，step 流重建独缺此步 ⇒ waiting_input 永不上报
+  s.vm.set_input(@host.InputState::new(s.vm.input.lines, s.runtime_batch))
   let output = match s.compile.output {
     Some(o) => o
     None =>

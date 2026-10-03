@@ -34,6 +34,11 @@ pub struct UnifiedEngine {
   mut is_cancelled : Bool
   /// 终结粘性（坑 ⑥-6：VM Finished 后不得重放末帧；reset 才清）。
   mut is_finished : Bool
+  /// trap 终态粘性（issue #29：trap 后不得重执行 trap 指令——此前每批
+  /// rollback→重执行→再 Trap，step 流无限循环；reset/seek 才清）。
+  mut is_trapped : Bool
+  /// trap 死因留存（终态批照报——消费方任意批次可见死因）。
+  mut last_trap_message : String?
   /// 算法步骤推断上下文（批四号接线——matches 编排层 compile 时注入，
   /// 三状态随帧演化；跨包只读，写经 set_algorithm_matches）。
   pub algo : AlgoInferCtx
@@ -59,6 +64,8 @@ pub fn UnifiedEngine::with_max_steps(max_steps : Int) -> UnifiedEngine {
     is_paused: false,
     is_cancelled: false,
     is_finished: false,
+    is_trapped: false,
+    last_trap_message: None,
     algo: AlgoInferCtx::new(),
   }
 }
@@ -137,6 +144,8 @@ pub fn UnifiedEngine::reset(self : UnifiedEngine) -> Unit {
   self.is_paused = false
   self.is_cancelled = false
   self.is_finished = false
+  self.is_trapped = false
+  self.last_trap_message = None
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -179,6 +188,21 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
       paused: self.is_paused,
       current_line: vm.get_current_line(),
       trap_message: None,
+      cache_start_step: self.frames.start_step(),
+    })
+  }
+  // issue #29 trap 终态：不再 step（重执行必再 Trap——rollback 重放止于
+  // trap 前一条，下一批 step() 又是同一条 trap 指令）。空批 + trapped
+  // 照报 + 死因留存复报；消费方见 trapped=true 即停
+  if self.is_trapped {
+    return Ok({
+      payloads: [],
+      finished: false,
+      trapped: true,
+      waiting_input: false,
+      paused: self.is_paused,
+      current_line: vm.get_current_line(),
+      trap_message: self.last_trap_message,
       cache_start_step: self.frames.start_step(),
     })
   }
@@ -275,6 +299,8 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
         }
         trapped = true
         trap_message = Some(msg)
+        self.is_trapped = true
+        self.last_trap_message = Some(msg)
         break
       }
     }
@@ -334,8 +360,11 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   src : P,
 ) -> @protocol.SeekResult {
   // 坑 ⑥-6：seek = 回到过去——终结标志复位（重放路径若真到终结态会
-  // 再次置位），否则 seek 回中段后 step.next 静默返回 finished 空帧
+  // 再次置位），否则 seek 回中段后 step.next 静默返回 finished 空帧。
+  // trap 终态同款（issue #29）：seek 回 trap 前即离开终态可续跑
   self.is_finished = false
+  self.is_trapped = false
+  self.last_trap_message = None
   // 前置：目标已在当前窗口 → 直返（协议 §4.2 之前的快路径）
   match self.frames.frame_at(target) {
     Some(p) => return { success: true, payload: Some(p), error: None, }
@@ -406,13 +435,18 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                 self.frames.finish_replay(target)
                 return { success: true, payload: Some(payload), error: None, }
               }
-              Trap =>
-                // 协议 §4.2 第 4 步：重放遇 trap → 失败
+              Trap => {
+                // 协议 §4.2 第 4 步：重放遇 trap → 失败。终态连坐（issue
+                // #29）：seek 失败也须记 trap 粘性——否则后续 step.next
+                // 在 trap 态 VM 上重执行
+                self.is_trapped = true
+                self.last_trap_message = Some(vm.error)
                 return {
                   success: false,
                   payload: None,
                   error: Some("运行时错误：\{vm.error}"),
                 }
+              }
             }
           }
           // 第 5 步：窗口重置——只保留目标步及其之前 window_size-1 帧

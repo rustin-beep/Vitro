@@ -301,6 +301,23 @@ footer { max-width: 1560px; margin: 0 auto; padding: 12px 24px 28px; color: var(
 footer code { color: var(--t1); }
 footer p { margin: 6px 0; }
 
+/* ── rose 新拟物质感层（#28 换肤批补）──────────────────────
+   「奶油手账」的精髓 = 色板之外还有凹陷/凸起手感：输入件与仪表槽
+   内凹（inset-soft 双影）、面板子卡外凸（neu-raised 双影）。只对
+   rose 生效；其余四主题无此钩子，形态零变化。 */
+html[data-theme="rose"] input,
+html[data-theme="rose"] select,
+html[data-theme="rose"] #stdin-box,
+html[data-theme="rose"] #argv-box,
+html[data-theme="rose"] #cat-search,
+html[data-theme="rose"] .band,
+html[data-theme="rose"] .quar-bar,
+html[data-theme="rose"] .config-grid { box-shadow: var(--inset-soft); }
+html[data-theme="rose"] .stat,
+html[data-theme="rose"] .tcard,
+html[data-theme="rose"] .seg,
+html[data-theme="rose"] .pill { box-shadow: var(--neu-raised); }
+
 /* ── 全局体验面 ──────────────────────────────────────────
    主题切换平滑（只上大面元素；时长走动效令牌 --t-base） */
 body, header, .pane, .band, .stdout, .editor-wrap,

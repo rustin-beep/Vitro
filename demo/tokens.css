@@ -132,6 +132,9 @@
   --pane-blur: none;
   --glass: #fffdfd;
   --inset-soft: inset -2px -2px 5px rgba(255, 255, 255, 0.9), inset 3px 3px 6px rgba(142, 82, 92, 0.10);
+  /* 新拟物凸起（rose 专属质感层，2026-10-03 换肤批补——与 inset-soft 同光向的
+     外凸双影：左上白高光、右下粉暗影；demo 消费面 = 面板内子卡/seg 容器） */
+  --neu-raised: -2px -2px 5px rgba(255, 255, 255, 0.9), 3px 3px 6px rgba(142, 82, 92, 0.14);
   --field: #f9f0f3;
   --hairline: rgba(142, 82, 92, 0.08);
   --edge-tint: #e3c3cd;

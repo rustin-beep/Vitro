@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（S8 analysis 批段一：M14 root_cause_hint 接线——trace_analyzer 六分析器照搬 + trap 帧装配，2026-10-03）
+
+- **`time_travel/trace_analyzer.mbt`**（照搬 `unified/trace_analyzer/` 六件 ~600 行 → 单文件）：utils 七件（变量历史切片/越界文案解析〔数组名+下标〕/UAF·DoubleFree 文案解析〔alloc/freed 行〕/循环构造扫描 ±6 行/**get_line 闭包注入**源码查询——Rust session 依赖的 Provider 化，诊断域零 session 依赖）+ 五分析器（bounds〔细分类 OffByOne/WrongInit/WrongIncrement/UninitializedIndex/Generic + 文案与修复建议构造〕/div_zero/double_free/null_deref/use_after_free）+ `analyze_trap` 文案子串分派（六臂，oracle mod.rs 逐分支照搬——文案是 vm trap 渲染单源产物，子串判据两侧稳定）。
+- **run_batch Trap 分支装配**（engine.rs:209 同形）：全历史 = 窗口帧 + 本批帧（含 trap 帧），hint 装进 trap 帧的 `root_cause_hint`——**gateway serve_step 头注分叉①销案**（此前恒 null）。
+- 锚 +7（41→48）：六臂单元锚（直调 analyze_trap——构造 StepPayload 历史与 trap 文案，免 vm 程序装配；OffByOne 含 get_line 源码扫描形态）+ 除零端到端锚（trap 帧 hint.category 断言）。
+- **端到端**：UAF 程序 wire 实测 trap 帧完整 hint（category=UseAfterFree / fix=SetNullAfterFree / line=3 / one_liner 全文含相关指针）。
+- **oracle 分叉**（台账条目 10 连锁补充）：oracle 的 root_cause_hint 亦恒 null——engine.rs:209 装配代码在，但上游 trap_message 恒空串 ⇒ 分派全不命中；mb 全量接线后两侧形态分叉，随 Rust 退役收敛。
+- 防线：裸 638/638 + native 736/736（+7 两口径吻合）+ serve_smoke 双臂全绿 + demo_smoke 全绿 + mbti/testcount(638)/facts --strict 零漂移。连坐：README ×2 分解式（638/632/736/time_travel 48）+ moon.pkg 补 core/string import。
+
 ### Fixed（issue #29 step 族：trap 终态粘性 + step 流 waiting_input 上报——`is_trapped` 终态语义 + InputState 模式同步，2026-10-03）
 
 - **#29-1 trap 后 step.next 不终止（双侧同病，mb 侧销）**：`run_batch` 的 Trap 分支 rollback 重放到 trap 前一步后，**下一批 `step()` 重新执行同一条 trap 指令**——每批 rollback→再 Trap 无限循环（UAF 端到端实测：首批 trap 后 23 批全部继续产帧，消费方无法感知已 trap；「重放止于其前一条 ⇒ 不会重现 trap」的原论证不成立跨批场景）。修复：`is_trapped` + `last_trap_message` 进终态粘性族——run_batch 开头终态短路（空批 + `trapped=true` + 死因照报）、reset/seek 清除（seek 回 trap 前即离开终态）、**seek 重放遇 trap 的失败路径连坐置位**（否则后续 next 在 trap 态 VM 重执行）。端到端：修复后后续 22 空批仅 1 冲刷批（滞后一帧语义的正确缓冲冲刷）。锚：`engine_run_batch_trap_terminal_sticky`（六场景：置位/短路/死因复报/VM 不动/reset 重至 trap/窗口直返/滑窗重放遇 trap/seek 失败后短路）+ `serve_step_trap_terminal_next_terminates`（gateway 层，注入废短路证牙）。

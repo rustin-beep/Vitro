@@ -24,6 +24,7 @@
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L9，总计划 §4）。
 import {
   "moonbitlang/core/abort",
+  "moonbitlang/core/string",
   "moonbitlang/core/deque",
   "vitro/engine/ast",
   "vitro/engine/bytecode",

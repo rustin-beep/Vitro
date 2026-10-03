@@ -297,6 +297,33 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
           // 必有检查点 0。防御形态 = 不回退（VM 停留 trap 态）收集。
           payloads.push(collect(vm, src, 0UL, step, self.algo))
         }
+        // M14 根因提示（S8 analysis 批，engine.rs:209 同形）：全历史 =
+        // 窗口帧 + 本批帧（含刚收集的 trap 帧），对 trap 帧装配 hint。
+        // get_line 闭包注入源码查询（Rust session.source_line_at 的
+        // Provider 形态——诊断域零 session 依赖）
+        let trap_idx = payloads.length() - 1
+        if trap_idx >= 0 {
+          let history = self.frames.slice(
+            self.frames.start_step(),
+            self.frames.start_step() + self.frames.length(),
+          )
+          for p in payloads {
+            history.push(p)
+          }
+          let get_line = fn(line : Int) -> String {
+            match src.source_line_at(line) {
+              Some(s) => s.trim().to_owned()
+              None => ""
+            }
+          }
+          match analyze_trap(history, history.length() - 1, msg, get_line) {
+            Some(hint) => {
+              let tp = payloads[trap_idx]
+              payloads[trap_idx] = { ..tp, root_cause_hint: Some(hint), }
+            }
+            None => ()
+          }
+        }
         trapped = true
         trap_message = Some(msg)
         self.is_trapped = true

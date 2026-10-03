@@ -11,8 +11,9 @@
 // (L8) 消费 time_travel(L8) 同层合法（降层前 L8→L9 违反 §4 单向约束，
 // step 族接线暴露的结构题）。
 //
-// 分叉登记：①trap 帧的 root_cause_hint 恒 null（TraceAnalyzer 随
-// analysis 批——engine 侧同源登记）；②两层层号预算：engine.new() 默认
+// 分叉登记：①~~trap 帧的 root_cause_hint 恒 null~~ **已销案（M14，S8
+// analysis 批 2026-10-03）**：trace_analyzer 六分析器照搬入 time_travel，
+// run_batch Trap 分支装配（oracle engine.rs:209 同形——两侧同构非分叉）；②两层层号预算：engine.new() 默认
 // 100_000（Rust step_begin 同款 new()），vm 内建 max_steps（config.set
 // 应用）更小时 vm 层先 trap——行为受 min(engine, vm) 控制同 Rust。
 

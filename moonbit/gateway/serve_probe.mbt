@@ -7,8 +7,12 @@
 // 副作用不照搬（与 ast/typeck/symbols.dump 同拍板，差异台账在案）。
 // 实现形态 = 一次性 `@session.Session::new()` 承载管线后即弃。
 //
-// 分叉登记（本方法，随段四入差异台账）：
-// ① intents 段恒 `[]`——intent 推断属 analysis 域（M8 孤儿复核随批）；
+// 分叉登记（本方法，已入已知限制与差异.md 条目 2——段四 2026-10-02）：
+// ① intents 段恒 `[]`——**已裁定不照搬（2026-10-04 owner 拍板，issue
+//    #32）**：oracle intent/cfg/data_flow 系 Phase 23 半成品孤儿域
+//    （data_flow 从未接线、intent 仅 diagnostics_probe 一出口且被
+//    teaching 43 族覆盖），退役后按目标架构重新设计——对烂尾楼照搬
+//    会把烂尾刻进新楼；段四对拍此段走豁免白名单；
 // ② params.completion 键存在即 fail loud（M15 无 MoonBit 实现——不支持
 //    而非静默假空；显式 null 亦算键存在，与 oracle params.get 对
 //    Some(Null) 走 error 帧同形；无键时两侧同 `[]`）；

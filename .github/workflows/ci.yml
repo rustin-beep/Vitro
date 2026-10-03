@@ -327,6 +327,19 @@ jobs:
         shell: bash
         run: node protocol/consumer.mjs
 
+      # serve 协议帧字段级冻结（S7 批四号交付物第三件，2026-10-04 兑现）：
+      # 固定请求序列 × 双宿主（release vitro_cli + cmd/serve）→ canonicalize
+      # → mask（已知分叉外置 rules.json）→ 与入库基线 baseline.jsonl 逐帧
+      # 比对。差分性质（消费 oracle 臂）——归 core 随 Rust 退役转单臂基线比
+      # （退役时删 rust 臂采集段即成）。前置：release vitro_cli（上一步）+
+      # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
+      - name: Protocol frames freeze (dual-host, canonicalized)
+        run: |
+          cd moonbit && moon build --target native cmd/serve && cd ..
+          go run ./scripts/protocol_frames --diff-hosts
+          go run ./scripts/protocol_frames
+        shell: bash
+
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
       - name: wasm32 build & smoke (Exit 2 guard)
@@ -496,6 +509,14 @@ jobs:
         run: |
           cd moonbit && moon build --target native cmd/serve && cd ..
           go run ./scripts/serve_smoke -moonbit
+        shell: bash
+
+      # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
+      # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
+      # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
+      # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
+      - name: replay S1-S5 protocol assertions (MoonBit arm)
+        run: go run ./scripts/replay -moonbit
         shell: bash
 
       # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑

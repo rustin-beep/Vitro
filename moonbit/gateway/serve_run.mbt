@@ -13,8 +13,9 @@
 // max_steps）——结构上不可丢弃；锚锁行为（serve_run_wbtest）。
 //
 // 登记分叉（本段不搬，诚实记录）：
-// ① 运行完成附注的 leak report（Rust append_leak_report 的教学泄漏
-//    报告）不搬——堆教学附注随 S8 analysis 片；「程序运行完成，返回
+// ① ~~运行完成附注的 leak report~~ **已销案（2026-10-04 analysis 片）**：
+//    append_leak_report 已接线（session_ops.rs 逐字照搬，note 通道，
+//    锚 serve_run_leak_report_note_channel）；「程序运行完成，返回
 //    值：N」note 已照搬（E-P1-5 note 通道）；
 // ② Rust execute_run 的 catch_unwind 保护（B47）不搬——MoonBit 无 panic
 //    捕获通道，vm.run 内部 fail loud 即错误面。
@@ -90,8 +91,10 @@ fn serve_execute_run(s : @session.Session) -> Json {
   let trap = s.vm.error
   let waiting = s.vm.waiting_input
   if trap.is_empty() && !waiting {
-    // E-P1-5：运行完成提示是引擎附注（note 通道）；leak report 分叉①
+    // E-P1-5：运行完成提示是引擎附注（note 通道）；堆教学附注同通道
+    //（oracle session_ops.rs:152-153 同序：完成提示 → 泄漏报告）
     s.vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
+    append_leak_report(s)
   }
   let status = if !trap.is_empty() {
     "trap"
@@ -163,4 +166,83 @@ fn serve_run_frame(
   }
   ignore(serve_apply_config(s, params))
   (serve_ok(id, serve_execute_run(s)).stringify(), false)
+}
+
+///|
+/// 内存泄漏教学报告（oracle engine/session_ops.rs append_leak_report 逐字
+/// 照搬，2026-10-04 analysis 片接线——serve_run 头注分叉①销案）：遍历
+/// 未释放堆区域按分配行号排序，note 通道追加（push_note 段落语义自动
+/// 补尾换行，与 Rust push_note 同款）。alloc_by "vfs" 排除（FILE\* 内部
+/// 分配不算用户泄漏）；空泄漏静默返回（零报告形态同 Rust）。
+fn append_leak_report(s : @session.Session) -> Unit {
+  let leaks : Array[@memory.MemoryRegionData] = []
+  let addrs : Array[UInt] = []
+  for addr, r in s.vm.mem_map.regions {
+    if r.is_heap && !r.is_freed && r.alloc_by != "vfs" {
+      leaks.push(r)
+      addrs.push(addr)
+    }
+  }
+  if leaks.length() == 0 {
+    return
+  }
+  // 行号排序（稳定保持配对的 addr——同步重排）
+  let n = leaks.length()
+  for i = 0; i < n; i = i + 1 {
+    for j = 0; j < n - 1 - i; j = j + 1 {
+      if leaks[j + 1].alloc_line < leaks[j].alloc_line {
+        let t = leaks[j]
+        leaks[j] = leaks[j + 1]
+        leaks[j + 1] = t
+        let a = addrs[j]
+        addrs[j] = addrs[j + 1]
+        addrs[j + 1] = a
+      }
+    }
+  }
+  let mut total_leaked = 0
+  for r in leaks {
+    total_leaked = total_leaked + r.size
+  }
+  let lines : Array[String] = []
+  // 首行前导 \n 与最后一段程序输出分隔（oracle 同款；尾随换行由
+  // push_note 段落语义补齐）
+  lines.push("\n===== 内存泄漏检测报告 =====")
+  lines.push(
+    "发现 \{leaks.length()} 处未释放的堆内存，共 \{total_leaked} 字节：",
+  )
+  for i = 0; i < n; i = i + 1 {
+    let r = leaks[i]
+    let by = if r.alloc_by == "" { "malloc" } else { r.alloc_by }
+    let hex = uint_to_hex4(addrs[i])
+    if r.alloc_line > 0 {
+      lines.push(
+        "  • 第 \{r.alloc_line} 行的 \{by} 分配了 \{r.size} 字节 (addr=0x\{hex})，未被 free",
+      )
+    } else {
+      lines.push(
+        "  • \{by} 分配了 \{r.size} 字节 (addr=0x\{hex})，未被 free",
+      )
+    }
+  }
+  lines.push(
+    "💡 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。",
+  )
+  lines.push("==============================")
+  for line in lines {
+    // E-P1-5：泄漏报告是引擎附注，绝不混入程序 stdout
+    s.vm.output.push_note_str(line)
+  }
+}
+
+///|
+/// UInt → 4 位大写十六进制（oracle `{:04X}` 对应物；仓内无 hex 单源，
+/// 本函数 priv 自持——第二消费者出现时上提 util 登记机械件）。
+fn uint_to_hex4(v : UInt) -> String {
+  let digits = "0123456789ABCDEF"
+  let buf = StringBuilder()
+  for shift = 28; shift >= 0; shift = shift - 4 {
+    buf.write_char(digits[((v >> shift) & 0xFU).to_int()].unsafe_to_char())
+  }
+  buf.to_string()
 }

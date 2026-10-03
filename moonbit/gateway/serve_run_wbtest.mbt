@@ -191,3 +191,60 @@ fn stdout_text(s : @session.Session) -> String {
   }
   buf.to_string()
 }
+
+///|
+test "serve_run_leak_report_note_channel" {
+  // S8 analysis 片·堆教学附注（oracle session_ops.rs append_leak_report
+  // 照搬）：malloc 不 free → run 完成 → note 通道追加泄漏报告（此前
+  // 分叉①登记「随 S8 analysis 片」未接线）。文案逐字对齐 oracle。
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { int* p = malloc(16); *p = 1; return 0; }\\n\"}}",
+  )
+  let (resp, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(resp.contains("\"status\":\"finished\""), msg="run 须完成")
+  // 泄漏报告逐项：标题/计数/逐条（行号+函数名+字节数+地址）/教学提示。
+  // 断言走 has_note 字节级比对（push_note_str 逐行成段，段落精确等值）
+  // ——勿用 chunks 逐字节 to_char 重建（UTF-8 折回 Latin-1 形态，
+  // contains 永失配——本锚首版实锤；serve_io 分叉登记同源）
+  assert_true(
+    s.vm.output.has_note(
+      @utf8.encode("\n===== 内存泄漏检测报告 =====\n"),
+    ),
+    msg="报告标题（首行带前导 \\n 分隔——oracle 同款；push_note 补尾 \\n）",
+  )
+  assert_true(
+    s.vm.output.has_note(
+      @utf8.encode("发现 1 处未释放的堆内存，共 16 字节：\n"),
+    ),
+    msg="计数行",
+  )
+  assert_true(
+    s.vm.output.has_note(
+      @utf8.encode(
+        "  • 第 2 行的 malloc 分配了 16 字节 (addr=0x00005018)，未被 free\n",
+      ),
+    ),
+    msg="逐条行（行号/函数/字节/地址全字段）",
+  )
+  assert_true(
+    s.vm.output.has_note(
+      @utf8.encode(
+        "💡 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。\n",
+      ),
+    ),
+    msg="教学提示行",
+  )
+}
+
+///|
+/// note 通道全文（测试辅助：chunks 拼接，与 output.delta 同语义）。
+fn note_text(s : @session.Session) -> String {
+  let buf = StringBuilder()
+  for chunk in s.vm.output.chunks_of(@host.OutputKind::Note) {
+    for j = 0; j < chunk.length(); j = j + 1 {
+      buf.write_char(chunk[j].to_int().unsafe_to_char())
+    }
+  }
+  buf.to_string()
+}

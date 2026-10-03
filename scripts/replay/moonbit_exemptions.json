@@ -1,0 +1,7 @@
+{
+  "_comment": "replay S1-S5 MoonBit 臂豁免表（S7 批四号留批义务兑现，2026-10-04 建表）。机制照抄 serve_smoke/moonbit_exemptions.json：断言名（'S1 A10' 形态，section + 空格 + aid）精确匹配；缺文件/坏 JSON fail loud。语义更严一档（主跑即审计，D19 内联化）：FAIL → EXEMPT 放行；PASS → ZOMBIE 红逼删条目（豁免面每轮被审计，无需独立 audit 步骤）。表外断言名红即真红。豁免须带理由。",
+  "assertions": {
+    "S5 A4a": "永久豁免（形态差非缺陷）：MoonBit 侧无 capi 层（.mbti 取代 ABI 版本化）——serve_smoke 同款口径；协议版本由 capabilities.protocol_version 出口承担（wasm-gc host.js 断言在案）",
+    "S5 A4b": "永久豁免（形态差非缺陷）：MoonBit 侧无 DLL 产物——A4b 直读 vitro_native.dll 的 engine 版本自检不适用；MoonBit 版本自检走 wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 失联锚"
+  }
+}

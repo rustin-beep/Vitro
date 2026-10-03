@@ -232,8 +232,59 @@ type Report struct {
 	rows []reportRow
 }
 
+// MoonBit 臂豁免面（S7 批四号留批义务兑现，2026-10-04）——机制照抄
+// serve_smoke/moonbit_exemptions.json：断言名 "S1 A10" 精确匹配，fail loud。
+// 语义比 serve_smoke 更严一档（主跑即审计，D19 内联化）：豁免条目 FAIL →
+// 记 EXEMPT 放行；**PASS → ZOMBIE 红逼删条目**（豁免面自身每轮被审计，
+// 无需独立 -audit 步骤——replay 豁免面预期极小，两三条封顶）。
+var (
+	mbMode   bool
+	mbExempt map[string]string
+)
+
+func loadMBExemptions() {
+	raw, err := os.ReadFile(filepath.Join("scripts", "replay", "moonbit_exemptions.json"))
+	if err != nil {
+		capi.Fatal("读 replay MoonBit 豁免表失败: %v", err)
+	}
+	var doc struct {
+		Assertions map[string]string `json:"assertions"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		capi.Fatal("replay MoonBit 豁免表非法 JSON: %v", err)
+	}
+	mbExempt = doc.Assertions
+}
+
+// resolveMoonBitServeExe 定位 MoonBit 侧 serve 产物（serve_smoke 同款：
+// debug 构建路径 + VITRO_SERVE_MB 覆盖；构建命令 moon build --target
+// native cmd/serve 与 serve_smoke 步骤一致——CI 内同 exe 复用零重建）。
+func resolveMoonBitServeExe() string {
+	if override := os.Getenv("VITRO_SERVE_MB"); override != "" {
+		return override
+	}
+	name := "serve"
+	if runtime.GOOS == "windows" {
+		name = "serve.exe"
+	}
+	return filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "native", "debug", "build", "cmd", "serve", name)
+}
+
 // check 输出格式与 Python 版一致：PASS 也打印尾部两空格，FAIL 附 detail。
 func (r *Report) check(section, aid string, cond bool, detail string) bool {
+	if mbMode {
+		key := section + " " + aid
+		if reason, hit := mbExempt[key]; hit {
+			if cond {
+				fmt.Printf("  [ZOMBIE] %s %s  豁免条目已真 PASS——删条目（理由: %s）\n", section, aid, reason)
+				r.rows = append(r.rows, reportRow{section, aid, false, "豁免僵尸（已真 PASS，删条目）"})
+				return false
+			}
+			fmt.Printf("  [EXEMPT] %s %s  %s\n", section, aid, reason)
+			r.rows = append(r.rows, reportRow{section, aid, true, "（豁免）" + reason})
+			return true
+		}
+	}
 	r.rows = append(r.rows, reportRow{section, aid, cond, detail})
 	mark := "FAIL"
 	if cond {
@@ -984,15 +1035,28 @@ func gitShortHead() string {
 var anchorRe = regexp.MustCompile(`\(([0-9a-f]{7,40})\)`)
 
 // preflight 产物新鲜度门禁（fail fast，exit 2）+ 锚点解析。返回 (engineVersion, anchor)。
+// MoonBit 臂：构建期无 git 短哈希通道（engine_version = moon.mod 版本号，
+// wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 锚承担版本自检）——新鲜度
+// 锚定不适用（serve_smoke 永久豁免同口径），只验非空；锚点回填占位
+// （S5 A4b 在 MB 臂走豁免表）。
 func preflight(s *Serve, anchorArg string) (string, string) {
 	caps := mmap(s.request("capabilities", nil)["result"])
 	engineVersion := mstr(caps["engine_version"])
-	head := gitShortHead()
 
-	if engineVersion == "" {
+	if engineVersion == "" && !mbMode {
 		fmt.Println("错误: capabilities 未携带 engine_version —— 产物过旧，请先 `cd native && cargo build --release`")
 		os.Exit(2)
 	}
+	if mbMode {
+		// MoonBit 臂：capabilities 不带 engine_version（永久分叉——构建期
+		// git 短哈希通道不存在，serve_smoke 豁免表同口径）；版本自检走
+		// wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 锚。进程活性已由
+		// 上方 request 保证（起不来在 newServe/request 处 Fatal）。
+		fmt.Println("引擎版本: (MoonBit 臂不出 engine_version——永久分叉；锚定不适用，版本自检走 wasm-gc host.js 锚)")
+		return "(moonbit)", "(moonbit)"
+	}
+
+	head := gitShortHead()
 	if head != "" && !strings.Contains(engineVersion, head) {
 		fmt.Printf("错误: 产物不是当前提交构建的 —— engine_version=%q 不含 HEAD %s\n", engineVersion, head)
 		fmt.Println("      回放/影子验证都读 release 产物，请先 `cd native && cargo build --release`")
@@ -1110,6 +1174,7 @@ func isContainer(v any) bool {
 
 func main() {
 	cli := flag.String("cli", cliDefault, "vitro_cli 路径")
+	moonbit := flag.Bool("moonbit", false, "跑 MoonBit 臂（cmd/serve exe——同一断言集，豁免面 scripts/replay/moonbit_exemptions.json；S7 批四号留批义务兑现）")
 	anchor := flag.String("anchor", "", "版本锚定短哈希；缺省 = 从引擎版本串自动取")
 	sections := flag.String("sections", "S1,S2,S3,S5", "要跑的分节")
 	selftest := flag.Bool("selftest", false, "只跑判定口径埋雷自检（J9）")
@@ -1120,13 +1185,24 @@ func main() {
 		return
 	}
 
+	cliPath := *cli
+	if *moonbit {
+		mbMode = true
+		loadMBExemptions()
+		cliPath = resolveMoonBitServeExe()
+		if _, err := os.Stat(cliPath); err != nil {
+			fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", cliPath)
+			os.Exit(2)
+		}
+	}
+
 	sectionSet := map[string]bool{}
 	for _, sec := range strings.Split(*sections, ",") {
 		sectionSet[strings.ToUpper(strings.TrimSpace(sec))] = true
 	}
 
 	rep := &Report{}
-	s := newServe(*cli)
+	s := newServe(cliPath)
 
 	// 产物新鲜度门禁 + 锚点对齐
 	_, resolvedAnchor := preflight(s, *anchor)
@@ -1143,7 +1219,7 @@ func main() {
 	if sectionSet["S3"] {
 		p3 := runS3(s, rep)
 		allPayloads = append(allPayloads, s.collectPayloads()...)
-		runS3A16(*cli, rep, p3)
+		runS3A16(cliPath, rep, p3)
 	}
 	if sectionSet["S5"] {
 		// S5 的 A4 ping/直读 dll 用当前 serve；A1–A3 用 S1–S3 全量 payload

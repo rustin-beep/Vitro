@@ -139,11 +139,27 @@ function assertKeys(obj, keys, label) {
     }
   }
 
-  // 协议方法面 16 个（错误帧自报清单为单源——标题数字漂移即红，审阅 P2-1）
+  // 协议方法面（错误帧自报清单为单源）+ 页面标题计数对账：
+  // gateway 方法数 == 页面宣称数；消费数 == app.js 的 method: "..." 去重数。
+  // （审阅 P2-2：原 methodCount 变量算了从不参与断言——守护空转，本批接上）
   const bad = body(inv({ method: "no.such" }));
   const errMsg = (bad.error && bad.error.message) || JSON.stringify(bad);
-  const methodCount = (errMsg.match(/method/g) || []).length;
   check(bad.ok === false, "未知方法回 protocol 错误帧", errMsg.slice(0, 80));
+  const mListMatch = errMsg.match(/已接：([\s\S]+)$/);
+  // 斜杠并写项（session.create/reset/destroy）按展开计；dump 族提示以全角
+  // 分号开头且不在"已接："直报段——按分号截断排除（J9 证红抓过 21 的过计形态）
+  const methodCount = mListMatch
+    ? mListMatch[1].split(/[；;]/)[0].split(/[、/]/).map((x) => x.trim()).filter(Boolean).length
+    : 0;
+  check(methodCount === 21, "gateway 方法面 = 21（错误帧自报）", "实得 " + methodCount);
+  const pageTitle = fs.readFileSync(path.join(repoRoot, "demo/index.html"), "utf8");
+  const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
+  check(!!claim && Number(claim[1]) === methodCount, "页面方法面计数与 gateway 一致",
+    claim ? "页面写 " + claim[1] + " / 实际 " + methodCount : "页面未找到方法面计数句");
+  const appSrc = fs.readFileSync(path.join(repoRoot, "demo/app.js"), "utf8");
+  const consumed = new Set([...appSrc.matchAll(/method: "([a-z._]+)"/g)].map((m) => m[1]));
+  check(!!claim && Number(claim[2]) === consumed.size, "页面消费计数与 app.js 实消费一致",
+    claim ? "页面写 " + claim[2] + " / 实际 " + consumed.size : "—");
 
   const total = pass + fail;
   console.log();

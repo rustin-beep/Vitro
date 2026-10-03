@@ -273,7 +273,9 @@ jobs:
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
-        run: go run ./scripts/demo_ui_lint
+        run: |
+          go run ./scripts/demo_ui_lint -selftest
+          go run ./scripts/demo_ui_lint
         shell: bash
 
 

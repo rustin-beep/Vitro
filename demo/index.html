@@ -4,13 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vitro 引擎 · 白箱 C 教学引擎（wasm-gc 直调 demo）</title>
+<link rel="icon" type="image/svg+xml" href="assets/logo/vitro-icon.svg">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
-<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")document.documentElement.setAttribute("data-theme","light");var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
+<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")_t="ice";else if(!_t||_t==="dark")_t="glass";document.documentElement.setAttribute("data-theme",_t);document.documentElement.setAttribute("data-shade",(_t==="glass"||_t==="soft")?"night":"day");var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
 </head>
 <body>
 <header>
   <div class="brand">
-    <h1>Vitro <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span></h1>
+    <h1><img class="logo logo-light" src="assets/logo/vitro-icon-light.svg" alt="" width="24" height="24"><img class="logo logo-dark" src="assets/logo/vitro-icon-dark.svg" alt="" width="24" height="24">Vitro <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span></h1>
     <div class="badges">
       <span class="badge">engine <b id="eng-ver">…</b></span>
       <span class="badge">protocol <b id="proto-ver">…</b></span>
@@ -34,9 +36,13 @@
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/></svg>
       </button>
       <div id="settings-panel" class="settings-panel hidden" role="dialog" aria-label="界面设置">
-        <div class="set-row"><span class="set-label">主题</span>
-          <div class="seg" id="set-theme">
-            <button type="button" data-v="dark">暗色</button><button type="button" data-v="light">亮色</button>
+        <div class="set-row set-col"><span class="set-label">主题</span>
+          <div class="theme-cards" id="set-theme">
+            <button type="button" class="tcard" data-v="ice"><span class="tc-dots"><i style="background:#f2f7fd"></i><i style="background:#2563eb"></i><i style="background:#1a2740"></i></span><span>明亮实验室</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="rose"><span class="tc-dots"><i style="background:#fbf5f7"></i><i style="background:#d4597a"></i><i style="background:#2e2428"></i></span><span>奶油手账</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="paper"><span class="tc-dots"><i style="background:#f2eee6"></i><i style="background:#a67d48"></i><i style="background:#080a08"></i></span><span>牛皮档案</span><span class="tc-dn">昼</span></button>
+            <button type="button" class="tcard" data-v="glass"><span class="tc-dots"><i style="background:#0b1533"></i><i style="background:#8b9cf5"></i><i style="background:#eaf0ff"></i></span><span>深夜书房</span><span class="tc-dn">夜</span></button>
+            <button type="button" class="tcard" data-v="soft"><span class="tc-dots"><i style="background:#0d1428"></i><i style="background:#7a94e6"></i><i style="background:#e6ebf7"></i></span><span>绒面深蓝</span><span class="tc-dn">夜</span></button>
           </div>
         </div>
         <div class="set-row"><span class="set-label">编辑器字号</span>
@@ -59,7 +65,7 @@
 <main>
   <section class="pane editor-pane">
     <div class="pane-head">
-      <select id="case-select"></select>
+      <div id="case-select" class="dd"></div>
       <button id="run-btn">▶ 运行</button>
       <span id="status-pill" class="pill idle">就绪</span>
     </div>
@@ -71,15 +77,8 @@
       </div>
     </div>
 
-    <div class="pane-head subhead"><h2>会话配置（config.set）</h2></div>
-    <div class="config-grid">
-      <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
-      <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
-      <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
-      <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
-      <div class="cfg-actions"><button id="cfg-btn" class="minor">应用</button><span id="cfg-msg" class="muted small"></span></div>
-      <label class="cfg-argv">argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false"></label>
-    </div>
+    <div class="pane-head subhead"><h2>编译期诊断与宏展开</h2></div>
+    <div id="diag-list" class="diag-list"><span class="muted">（点「运行」后展示）</span></div>
 
     <div id="stdin-row" class="hidden">
       <label>stdin</label>
@@ -87,17 +86,25 @@
       <button id="feed-btn">喂入续跑</button>
     </div>
 
-    <div class="pane-head subhead"><h2>编译期诊断与宏展开</h2></div>
-    <div id="diag-list" class="diag-list"><span class="muted">（点「运行」后展示）</span></div>
+    <details class="cfg-details">
+      <summary>会话配置（config.set）</summary>
+      <div class="config-grid">
+        <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
+        <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
+        <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
+        <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
+        <div class="cfg-actions"><button id="cfg-btn" class="minor">应用</button><span id="cfg-msg" class="muted small"></span></div>
+        <label class="cfg-argv">argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false"></label>
+      </div>
+    </details>
   </section>
 
   <section class="pane result-pane">
     <nav class="tabs">
-      <button class="tab active" data-tab="result">运行结果</button>
+      <button class="tab active" data-tab="result">运行</button>
       <button class="tab" data-tab="memory">内存地图</button>
       <button class="tab" data-tab="catalog">诊断手册</button>
       <button class="tab" data-tab="proto">引擎与协议</button>
-      <button class="tab" data-tab="anim">动画演示</button>
     </nav>
 
     <div class="tabpage" id="tab-result">
@@ -114,6 +121,26 @@
       <div id="trap-box" class="trap hidden"></div>
       <div class="pane-head"><h2>与 Clang golden 对照</h2></div>
       <div id="ref-box"><span class="muted">（点「运行」后展示）</span></div>
+
+      <div class="pane-head subhead"><h2>时间旅行回放</h2><span id="replay-hint" class="muted small">运行后点「采集并回放」——step 流重建执行过程</span></div>
+      <div class="anim-ctrl">
+        <button id="anim-play">▶ 采集并回放</button>
+        <button id="anim-prev" class="minor">◀ 上一步</button>
+        <button id="anim-next" class="minor">下一步 ▶</button>
+        <button id="anim-reset" class="minor">↻ 重新采集</button>
+        <div id="anim-speed" class="dd"></div>
+        <input id="anim-seek" type="range" min="0" max="0" value="0">
+        <span id="anim-progress" class="muted small"></span>
+      </div>
+      <div id="anim-phase" class="anim-phase">（采集后展示执行过程——数据来自引擎 step 流）</div>
+      <div class="pane-head"><h2>调用树</h2><span class="muted small">step 流 call_stack 序列重建 · 当前帧节点高亮</span></div>
+      <div id="step-tree" class="step-tree"><span class="muted">（采集后展示）</span><div id="node-card" class="node-card"><p class="nc-ev muted">（采集后展示当前事件）</p></div></div>
+      <div class="pane-head" id="array-viz-head" style="display:none"><h2>数组状态</h2><span class="muted small">每帧都是某条 VM 指令执行后的真实内存——交换类操作会出现「半完成」中间态</span></div>
+      <div id="array-viz" style="display:none"></div>
+      <div class="pane-head"><h2>局部变量</h2></div>
+      <table id="step-vars" class="mem-table"></table>
+      <div class="pane-head"><h2>调用栈</h2></div>
+      <div id="step-stack" class="step-stack muted small">—</div>
     </div>
 
     <div class="tabpage hidden" id="tab-memory">
@@ -140,37 +167,9 @@
       <div id="cat-list" class="cat-list"></div>
     </div>
 
-    <div class="tabpage hidden" id="tab-anim">
-      <div class="anim-ctrl">
-        <select id="anim-scene"></select>
-        <button id="anim-play">▶ 播放</button>
-        <button id="anim-reset" class="minor">⟲ 重播</button>
-        <select id="anim-speed">
-          <option value="400">0.5×</option>
-          <option value="200" selected>1×</option>
-          <option value="100">2×</option>
-        </select>
-        <input id="anim-seek" type="range" min="0" max="0" value="0">
-        <span id="anim-progress" class="muted small"></span>
-      </div>
-      <div id="anim-phase" class="anim-phase">（选择场景后自动采集引擎快照帧）</div>
-      <div class="band-wrap">
-        <div class="band-label">内存地图 · 堆区放大</div>
-        <div id="anim-band-heap" class="band"></div>
-      </div>
-      <div class="band-wrap">
-        <div class="band-label">内存地图 · 全地址空间 0 – 1MB</div>
-        <div id="anim-band-full" class="band"></div>
-      </div>
-      <div id="anim-events" class="anim-events"></div>
-      <div class="pane-head"><h2>stdout 回放</h2><span id="anim-out-meta" class="muted"></span></div>
-      <pre id="anim-out" class="stdout empty"><span class="muted">（点「播放」后展示）</span></pre>
-      <p class="blurb">每一帧都是引擎在对应步数上限（config.set 阶梯）下的真实快照（memory.regions / output.delta），播放由页面驱动——非补间 mock。</p>
-    </div>
-
     <div class="tabpage hidden" id="tab-proto">
       <p class="blurb">本页所有能力均来自冻结协议 <b>v0.1</b>（2026-09-12 定版）的 NDJSON 方法帧——demo 就是协议的第一个浏览器消费者。</p>
-      <div class="pane-head"><h2>方法面（16 个，本页消费 13 个）</h2></div>
+      <div class="pane-head"><h2>方法面（21 个，本页消费 15 个）</h2></div>
       <div id="methods-list" class="methods"></div>
       <div class="pane-head"><h2>schema 冻结与 v0.2 预留台账（capabilities）</h2></div>
       <div id="cap-box" class="cap-box"></div>
@@ -190,7 +189,7 @@
 
 <footer>
   <p>白箱引擎：内存映射、freed/隔离区、VM 步数、诊断全部来自引擎真实数据（<code>memory.regions</code> / <code>output.delta</code> / <code>error_catalog</code> / trap 帧），非装饰性 mock。</p>
-  <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。S8 时间旅行（step 流回放）在路线图上——<code>semantic_labels</code> 词表已就位。</p>
+  <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。时间旅行（step 流回放 + 调用树 + 数组动画）已上线「运行」视图——trap 类程序与结构可视化的引擎侧能力缺口见 issue 台账。</p>
 </footer>
 <script src="cases.js"></script>
 <script src="app.js"></script>

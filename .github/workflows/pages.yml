@@ -24,8 +24,14 @@ on:
   push:
     branches: [master]
     paths:
+      # 触发面 ⊇ artifact 组装实际消费的源路径集（审阅 P2-1：曾漏
+      # assets/logo〔品牌图拷贝源〕与 docs/scripts〔docs 子站渲染源〕——
+      # 改这些不重部署 = 线上静默陈旧）
       - "demo/**"
       - "moonbit/**"
+      - "assets/logo/**"
+      - "docs/**"
+      - "scripts/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -63,10 +69,13 @@ jobs:
 
       - name: Assemble demo artifact
         run: |
-          mkdir -p demo-dist
-          cp demo/index.html demo/app.js demo/cases.js demo/style.css demo-dist/
+          mkdir -p demo-dist/assets/logo
+          # 样式/脚本按通配收集（换肤批新增 tokens.css 曾漏白名单——显式列文件的模式已废）
+          cp demo/*.html demo/*.css demo/*.js demo-dist/
+          # 品牌 logo 三枚（favicon 自适应版 + 昼/夜 header 变体；来源 assets/logo/）
+          cp assets/logo/vitro-icon.svg assets/logo/vitro-icon-light.svg assets/logo/vitro-icon-dark.svg demo-dist/assets/logo/
           cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo-dist/wasm.wasm
-          ls -la demo-dist demo-dist/docs | head -20
+          ls -la demo-dist demo-dist/assets/logo demo-dist/docs | head -24
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

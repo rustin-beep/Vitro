@@ -135,6 +135,8 @@
       <div id="anim-phase" class="anim-phase">（采集后展示执行过程——数据来自引擎 step 流）</div>
       <div class="pane-head"><h2>调用树</h2><span class="muted small">step 流 call_stack 序列重建 · 当前帧节点高亮</span></div>
       <div id="step-tree" class="step-tree"><span class="muted">（采集后展示）</span><div id="node-card" class="node-card"><p class="nc-ev muted">（采集后展示当前事件）</p></div></div>
+      <div class="pane-head" id="array-viz-head" style="display:none"><h2>数组状态</h2><span class="muted small">每帧都是某条 VM 指令执行后的真实内存——交换类操作会出现「半完成」中间态</span></div>
+      <div id="array-viz" style="display:none"></div>
       <div class="pane-head"><h2>局部变量</h2></div>
       <table id="step-vars" class="mem-table"></table>
       <div class="pane-head"><h2>调用栈</h2></div>

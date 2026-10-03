@@ -954,25 +954,60 @@ function bindTreeView(contentW, contentH) {
     treeView.follow = false;
     applyTreeView();
   }, { passive: false });
+  // 双指 pinch 缩放（触屏）：touch-action:none 禁掉了浏览器原生 pinch，
+  // 移动端缩放完全依赖此手势——双指距离比=缩放比，双指中点为锚
+  const pointers = new Map();
+  let pinch = null;
   let drag = null;
   svg.addEventListener("pointerdown", (e) => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      drag = null; // 进入 pinch：取消单指拖拽
+      const [p1, p2] = Array.from(pointers.values());
+      pinch = {
+        dist: Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1,
+        midX: (p1.x + p2.x) / 2,
+        midY: (p1.y + p2.y) / 2,
+        k: treeView.k, tx: treeView.tx, ty: treeView.ty,
+      };
+      return;
+    }
     drag = { x: e.clientX, y: e.clientY, tx: treeView.tx, ty: treeView.ty };
     const g = document.querySelector("#tree-viewport");
     if (g) g.classList.add("dragging"); // 拖拽无过渡
     svg.setPointerCapture(e.pointerId);
   });
   svg.addEventListener("pointermove", (e) => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pointers.size >= 2) {
+      const [p1, p2] = Array.from(pointers.values());
+      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1;
+      const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+      const k2 = Math.max(0.12, Math.min(2.5, (pinch.k * dist) / pinch.dist));
+      const svgRect = svg.getBoundingClientRect();
+      const ax = pinch.midX - svgRect.left, ay = pinch.midY - svgRect.top;
+      treeView.tx = ax - ((ax - pinch.tx) / pinch.k) * k2;
+      treeView.ty = ay - ((ay - pinch.ty) / pinch.k) * k2;
+      treeView.k = k2;
+      treeView.follow = false;
+      applyTreeView();
+      return;
+    }
     if (!drag) return;
     treeView.tx = drag.tx + (e.clientX - drag.x);
     treeView.ty = drag.ty + (e.clientY - drag.y);
     treeView.follow = false;
     applyTreeView();
   });
-  svg.addEventListener("pointerup", () => {
+  const endPointer = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
     drag = null;
     const g = document.querySelector("#tree-viewport");
     if (g) g.classList.remove("dragging");
-  });
+  };
+  svg.addEventListener("pointerup", endPointer);
+  svg.addEventListener("pointercancel", endPointer);
   svg.addEventListener("dblclick", () => {
     treeView.k = 0; // 触发重新初始化（小树完整渲染 / 大树镜头跟随）
     initTreeView(contentW, contentH, null);
@@ -1014,6 +1049,7 @@ function stepRender() {
   // 调用树高亮（树结构采集后重建一次，此处只挪高亮节点）
   renderCallTree(stepData.tree, stepData.frameNode[stepIdx]); // 传根节点（stepData.tree=buildCallTree().root）
   updateNodeCard(f); // 常驻信息卡跟随当前帧
+  renderArrayViz(f); // 数组柱状图（有数组变量才显示）
 }
 
 // 常驻信息卡：跟随当前帧刷新（事件/位置/步数/局部变量/代码预览——手机可达，
@@ -1052,6 +1088,39 @@ function applyCardFold(el) {
   const mark = el.querySelector(".nc-fold");
   if (body) body.style.display = folded ? "none" : "";
   if (mark) mark.textContent = folded ? "▸" : "▾";
+}
+
+// 数组可视化：local_vars 里 ty_name=int[N] 且 value={…} 的变量 → 柱状图。
+// step 流是逐 VM 指令推进，交换类操作会出现「半完成」中间态（如 a[j]=a[j+1]
+// 已写、a[j+1]=t 未写）——这是指令级真实执行状态，是白箱教学的卖点而非 bug。
+function renderArrayViz(f) {
+  const host = document.getElementById("array-viz");
+  if (!host) return;
+  const arrays = (f.local_vars || []).filter((v) => {
+    if (!/^[A-Za-z_]\w*\[\d+\]$/.test(v.ty_name || "")) return false;
+    const m = String(v.value).match(/^\{([-,\d\s]*)\}$/);
+    if (!m) return false;
+    const nums = m[1].split(",").map((x) => parseInt(x.trim(), 10));
+    return nums.length >= 2 && nums.length <= 32 && nums.every((n) => !isNaN(n));
+  });
+  if (!arrays.length) {
+    host.style.display = "none";
+    return;
+  }
+  host.style.display = "";
+  // div 柱而非 SVG：preserveAspectRatio="none" 的非等比拉伸会把柱下数字压扁
+  host.innerHTML = arrays
+    .map((v) => {
+      const nums = String(v.value).match(/^\{([-,\d\s]*)\}$/)[1].split(",").map((x) => parseInt(x.trim(), 10));
+      const max = Math.max(...nums.map((n) => Math.abs(n)), 1);
+      const cols = nums
+        .map((n) =>
+          `<div class="av-col"><div class="av-bar" style="height:${((Math.abs(n) / max) * 100).toFixed(1)}%"></div><div class="av-num">${n}</div></div>`
+        )
+        .join("");
+      return `<div class="av-item"><div class="av-name">${esc(v.name)} · ${esc(v.ty_name)}</div><div class="av-chart">${cols}</div></div>`;
+    })
+    .join("");
 }
 
 function stepStopTimer() {
@@ -1256,7 +1325,11 @@ function applyMotion(v) {
   bindAnim();
   caseDd = makeDropdown(
     "case-select",
-    DEMO_CASES.map((k) => ({ v: k.id, label: k.label })),
+    // 含数组声明的用例标注「· 数组」——时间旅行会对这类用例出柱状图动画
+    DEMO_CASES.map((k) => ({
+      v: k.id,
+      label: k.label + (/(?:int|char|long|short|unsigned|float|double)\s+\*?\s*\w+\s*\[\s*\d+\s*\]/.test(k.source) ? " · 数组动画" : ""),
+    })),
     DEMO_CASES[0].id,
     selectCase
   );

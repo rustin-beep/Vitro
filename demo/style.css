@@ -18,14 +18,19 @@ header .sub { font-size: 12px; color: var(--t3); font-weight: normal; margin-lef
 .badge { font-size: 11px; padding: 2px 8px; border: 1px solid var(--hairline); border-radius: 10px; color: var(--t3); background: var(--pane); }
 .badge b { color: var(--accent-strong); }
 
-/* 主题快捷按钮：图标显示当前所在昼/夜组（昼组显示日、夜组显示月），点击切到对面组默认 */
-#theme-toggle .ic-sun { display: none; }
-html[data-theme="ice"] #theme-toggle .ic-sun,
-html[data-theme="rose"] #theme-toggle .ic-sun,
-html[data-theme="paper"] #theme-toggle .ic-sun { display: block; }
-html[data-theme="ice"] #theme-toggle .ic-moon,
-html[data-theme="rose"] #theme-toggle .ic-moon,
-html[data-theme="paper"] #theme-toggle .ic-moon { display: none; }
+/* 昼/夜组显隐（data-shade 由 setTheme/head 预置脚本随主题写入）：logo 变体
+   （-light 浅底 / -dark 深底，assets 单一来源拷贝见 demo/assets/logo/README）
+   与 header 快捷按钮的日/月图标共用同一机制 */
+.logo { flex: none; vertical-align: -5px; margin-right: 3px; }
+.logo-dark, #theme-toggle .ic-sun { display: none; }
+html[data-shade="day"] .logo-dark,
+html[data-shade="day"] #theme-toggle .ic-moon { display: none; }
+html[data-shade="day"] .logo-light,
+html[data-shade="day"] #theme-toggle .ic-sun { display: inline; }
+html[data-shade="night"] .logo-dark,
+html[data-shade="night"] #theme-toggle .ic-moon { display: inline; }
+html[data-shade="night"] .logo-light,
+html[data-shade="night"] #theme-toggle .ic-sun { display: none; }
 .links { display: flex; align-items: center; gap: 10px; }
 .icon-link {
   display: inline-flex;

@@ -969,6 +969,7 @@ function syncSeg(segId, v) {
 
 function setTheme(v) {
   document.documentElement.setAttribute("data-theme", v);
+  document.documentElement.setAttribute("data-shade", NIGHT_THEMES.has(v) ? "night" : "day");
   storeSet("vitro-theme", v);
   syncSeg("set-theme", v);
 }

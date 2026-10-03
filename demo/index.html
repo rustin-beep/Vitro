@@ -4,14 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vitro 引擎 · 白箱 C 教学引擎（wasm-gc 直调 demo）</title>
+<link rel="icon" type="image/svg+xml" href="assets/logo/vitro-icon.svg">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
-<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")_t="ice";else if(!_t||_t==="dark")_t="glass";document.documentElement.setAttribute("data-theme",_t);var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
+<script>try{var _t=localStorage.getItem("vitro-theme");if(_t==="light")_t="ice";else if(!_t||_t==="dark")_t="glass";document.documentElement.setAttribute("data-theme",_t);document.documentElement.setAttribute("data-shade",(_t==="glass"||_t==="soft")?"night":"day");var _f=localStorage.getItem("vitro-ed-font");if(_f==="12px"||_f==="15px")document.documentElement.style.setProperty("--ed-fs",_f);if(localStorage.getItem("vitro-motion")==="off")document.documentElement.setAttribute("data-motion","off")}catch(e){}</script>
 </head>
 <body>
 <header>
   <div class="brand">
-    <h1>Vitro <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span></h1>
+    <h1><img class="logo logo-light" src="assets/logo/vitro-icon-light.svg" alt="" width="24" height="24"><img class="logo logo-dark" src="assets/logo/vitro-icon-dark.svg" alt="" width="24" height="24">Vitro <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span></h1>
     <div class="badges">
       <span class="badge">engine <b id="eng-ver">…</b></span>
       <span class="badge">protocol <b id="proto-ver">…</b></span>

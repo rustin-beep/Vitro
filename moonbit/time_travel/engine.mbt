@@ -160,12 +160,16 @@ pub fn UnifiedEngine::reset(self : UnifiedEngine) -> Unit {
 // 重放确定性前置已备：stdin 游标 / rand / eof / heatmap 均在 VMSnapshot
 // 全量态内（U2#11 后半）。
 //
-// 分叉登记：①root_cause_hint 恒 None（TraceAnalyzer 随 analysis 批接线
-// ——Rust trap 帧 analyze_trap 覆写不迁）；②trap_message 在回滚**之前**
-// 抓取 vm.error（回滚后 error 随快照清空——两侧观察等价）；③vm 内建步数
-// 上限（exec_step 的 max_steps trap）与 engine 层预算是两层——serve 接线
-// 层须保证 vm.max_steps ≥ engine.max_steps（登记为 serve 接线义务，随
-// step 族五方法批）。
+// 分叉登记：①~~root_cause_hint 恒 None~~ **已销案（M14，S8 analysis 批
+// 2026-10-03）**：trace_analyzer 六分析器照搬入包，run_batch Trap 分支
+// 装配——输出面与 oracle 分叉：oracle engine.rs:198 restore 先以快照
+// 覆写 error（快照采于 step 前、error 恒空）⇒ :208/:214 取到空串 ⇒
+// hint 恒 None；本侧回滚前抓取真文案 ⇒ hint 有效（oracle 取值时序缺陷，
+// 随退役收敛）；②trap_message 在回滚**之前**抓取 vm.error——oracle
+// :214 在回滚**之后**取 ⇒ 恒空串，两侧输出面分叉（根源同①）；③vm 内建
+// 步数上限（exec_step 的 max_steps trap）与 engine 层预算是两层——serve
+// 接线层须保证 vm.max_steps ≥ engine.max_steps（登记为 serve 接线义务，
+// 随 step 族五方法批）。
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
@@ -297,9 +301,10 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
           // 必有检查点 0。防御形态 = 不回退（VM 停留 trap 态）收集。
           payloads.push(collect(vm, src, 0UL, step, self.algo))
         }
-        // M14 根因提示（S8 analysis 批，engine.rs:209 同形）：全历史 =
-        // 窗口帧 + 本批帧（含刚收集的 trap 帧），对 trap 帧装配 hint。
-        // get_line 闭包注入源码查询（Rust session.source_line_at 的
+        // M14 根因提示（S8 analysis 批，engine.rs:202-210 装配结构同形
+        // ——输出面分叉见上分叉登记①：oracle 回滚后取 error 恒空串）：
+        // 全历史 = 窗口帧 + 本批帧（含刚收集的 trap 帧），对 trap 帧装配
+        // hint。get_line 闭包注入源码查询（Rust session.source_line_at 的
         // Provider 形态——诊断域零 session 依赖）
         let trap_idx = payloads.length() - 1
         if trap_idx >= 0 {

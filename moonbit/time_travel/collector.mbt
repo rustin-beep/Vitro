@@ -251,7 +251,7 @@ pub fn[P : SourceLineProvider] collect(
     accessed_vars,
     array_snapshots,
     pointer_snapshots,
-    root_cause_hint: None, // 随 analysis 批（trace_analyzer 五类根因）
+    root_cause_hint: None, // trap 帧由 run_batch 回填（M14 已接线 2026-10-03，六分析器）
   }
 }
 

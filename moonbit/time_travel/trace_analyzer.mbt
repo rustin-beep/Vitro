@@ -16,8 +16,8 @@
 priv struct LoopInfo {
   lines : Array[Int]
   mut has_le : Bool
-  mut has_ge : Bool
-  mut start_val : Int?
+  mut has_ge : Bool // oracle 同形死字段（utils.rs:14 只写不读）——照搬忠实
+  mut start_val : Int? // oracle 同形死字段（utils.rs:16 只写不读——bounds.rs 消费的是局部 start_val）
   mut increment : Int?
 }
 
@@ -46,7 +46,7 @@ fn str_find(s : String, pat : String) -> Int? {
 /// marker 之后到串尾的子串（"只有 X 个元素" 类抽取的基础件）。
 fn after_marker(s : String, marker : String) -> String? {
   guard str_find(s, marker) is Some(i) else { return None }
-  Some(s[i + marker.length():].to_string())
+  Some(s[i + marker.length():].to_owned())
 }
 
 ///|
@@ -58,7 +58,7 @@ fn between_markers(
 ) -> String? {
   guard after_marker(s, start_marker) is Some(rest) else { return None }
   guard str_find(rest, end_marker) is Some(e) else { return None }
-  Some(rest[0:e].to_string())
+  Some(rest[0:e].to_owned())
 }
 
 ///|
@@ -108,7 +108,7 @@ fn parse_bounds_message(msg : String) -> (String, Int)? {
     return None
   }
   let array_name = rest[0:bo].to_owned().trim().to_owned()
-  guard parse_int_opt(rest[bo + 1:bc].to_string()) is Some(index) else {
+  guard parse_int_opt(rest[bo + 1:bc].to_owned()) is Some(index) else {
     return None
   }
   Some((array_name, index))

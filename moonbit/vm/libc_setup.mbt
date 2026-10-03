@@ -109,12 +109,17 @@ pub fn load_libc_artifact() -> LibcArtifact {
 /// max_steps **不设**（会话配置）→ 符号表 → vis 行 → 字符串写入 →
 /// 入口 ip = libc_code_len → argv。
 ///
-/// `output` = 用户编译产物（CompileOutput）；`argv`/`argc` 命令行参数。
+/// `output` = 用户编译产物（CompileOutput）；`argv`/`argc` 命令行参数；
+/// `vis_lines` = algorithm_matches.vis_events 的编排层投影（第 9 步，
+/// issue #29 #4 接线 2026-10-04）——vm 不 import protocol（L7→L8 禁止），
+/// 故收 (line, ty, ctx) 三元组而非 AlgorithmMatch（oracle compile_pipeline
+/// 在 engine 层做同款投影，分层同构）。
 pub fn VitroVM::setup_from_output(
   self : VitroVM,
   output : @bytecode.CompileOutput,
   argc : Int,
   argv : Array[String],
+  vis_lines : Array[(Int, Int, String)],
 ) -> Unit {
   self.reset()
   // ── 1. 装载 libc ──
@@ -199,7 +204,11 @@ pub fn VitroVM::setup_from_output(
   // （max_steps 不设——会话配置由调用方 set_max_steps）
   // ── 8. 符号表 ──
   self.set_symbols(output.symbols)
-  // ── 9. vis 行（algorithm_matches 的投影——CompileOutput 无此字段时空）──
+  // ── 9. vis 行（issue #29 #4 接线 2026-10-04：compile_pipeline.rs:357-364
+  // 第 9 步对应物——algorithm_matches.vis_events 的投影；此前恒空分叉销案。
+  // snapshot 不含 vis_event_lines（装载期注入配置，reset 清）——本调用在
+  // 开头 reset 之后，顺序正确）──
+  self.set_vis_event_lines(vis_lines)
   // ── 10. 字符串数据 ──
   for pair in output.string_data {
     self.write_cstring(pair.0, pair.1)

@@ -167,9 +167,10 @@ pub fn UnifiedEngine::reset(self : UnifiedEngine) -> Unit {
 // hint 恒 None；本侧回滚前抓取真文案 ⇒ hint 有效（oracle 取值时序缺陷，
 // 随退役收敛）；②trap_message 在回滚**之前**抓取 vm.error——oracle
 // :214 在回滚**之后**取 ⇒ 恒空串，两侧输出面分叉（根源同①）；③vm 内建
-// 步数上限（exec_step 的 max_steps trap）与 engine 层预算是两层——serve
-// 接线层须保证 vm.max_steps ≥ engine.max_steps（登记为 serve 接线义务，
-// 随 step 族五方法批）。
+// 步数上限（exec_step 的 max_steps trap）与 engine 层预算是两层——
+// **已定案（2026-10-04）**：行为受 min(vm, engine) 控制且两侧同构
+//（oracle step_begin 同款 new() 默认 100_000；config.set 更小时 vm 层
+// 先 trap 报 vm 侧文案，同 Rust），非分叉，无 serve 侧额外义务。
 // ─────────────────────────────────────────────────────────────────────
 
 ///|

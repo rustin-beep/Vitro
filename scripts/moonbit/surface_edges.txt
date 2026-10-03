@@ -173,6 +173,7 @@ vitro/engine/gateway vitro/engine/lexer/token SourceError
 vitro/engine/gateway vitro/engine/lexer/token SourceProvider
 vitro/engine/gateway vitro/engine/parser ParseError
 vitro/engine/gateway vitro/engine/parser parse
+vitro/engine/gateway vitro/engine/protocol AlgorithmMatch
 vitro/engine/gateway vitro/engine/protocol AutoStepResult
 vitro/engine/gateway vitro/engine/protocol SCHEMA_V0_1_FROZEN_AT
 vitro/engine/gateway vitro/engine/protocol SCHEMA_VERSION

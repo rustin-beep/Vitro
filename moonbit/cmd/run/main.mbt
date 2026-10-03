@@ -150,7 +150,11 @@ fn main raise {
   // argv[0] = 源文件路径（对齐 oracle CLI 口径：main 解析处 argv 以 file_path
   // 为首元素——C 惯例 argv[0]=程序名；第三联映像 diff 的 argv 区一致性前提）
   let argv0 : Array[String] = [file]
-  vm.setup_from_output(output, 1, argv0)
+  // vis 行恒空（cmd/run 纯编译通道不跑 detect，无 algorithm_matches 产物
+  // ——issue #29 #4 登记等价：两侧 cmd/run 输出面均无 vis_events 观察
+  //（stdout/返回码/第三联 1MB 映像都不含 vm 内部 vis 状态），服务面
+  // 消费走 serve step 流）
+  vm.setup_from_output(output, 1, argv0, [])
   // R1 ① 动态堆起点（对齐 oracle reset_runtime：argv 非空 ⇒ heap_base 上移
   // GLOBAL_REGION_LIMIT）。须在 setup_from_output **之后**——其内部 reset 会
   // 整体重建 mem_map（heap_base 回默认），预设注入前落位即可（oracle 的

@@ -51,7 +51,13 @@ fn serve_execute_run(s : @session.Session) -> Json {
       None => return not_compiled_json()
     }
     let argc = s.runtime_argv.length()
-    s.vm.setup_from_output(output, argc, s.runtime_argv)
+    // issue #29 #4：vis 行随装配灌入（与 step.begin 同一投影，两通道统一）
+    s.vm.setup_from_output(
+      output,
+      argc,
+      s.runtime_argv,
+      project_vis_lines(s.compile.algorithm_matches),
+    )
     // R1 ① 动态堆起点（须在 setup 之后——其内部 reset 重建 mem_map 回
     // 默认；cmd/run 同款注释）
     let global_data_end = output.global_data_end

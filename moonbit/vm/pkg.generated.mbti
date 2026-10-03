@@ -218,7 +218,7 @@ pub fn VitroVM::set_max_steps(Self, Int) -> Unit
 pub fn VitroVM::set_symbols(Self, Array[@bytecode.Symbol]) -> Unit
 pub fn VitroVM::set_vis_event_lines(Self, Array[(Int, Int, String)]) -> Unit
 pub fn VitroVM::setup_argv(Self, Int, Array[String], UInt) -> Unit
-pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int, Array[String]) -> Unit
+pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int, Array[String], Array[(Int, Int, String)]) -> Unit
 pub fn VitroVM::snapshot(Self) -> VMSnapshot
 pub fn VitroVM::snapshot_incremental(Self, Int) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult

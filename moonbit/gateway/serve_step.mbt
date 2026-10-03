@@ -254,7 +254,14 @@ fn serve_step_begin_frame(
       )
   }
   let argc = s.runtime_argv.length()
-  s.vm.setup_from_output(output, argc, s.runtime_argv)
+  // issue #29 #4：vis 行随重建灌入（compile_pipeline.rs:364 同形——run/step
+  // 两通道统一装配，demo 可视化侧栏的数据源）
+  s.vm.setup_from_output(
+    output,
+    argc,
+    s.runtime_argv,
+    project_vis_lines(s.compile.algorithm_matches),
+  )
   s.vm.mem_map.set_heap_base(
     @bytecode.compute_heap_base(output.global_data_end, argc, s.runtime_argv),
   )

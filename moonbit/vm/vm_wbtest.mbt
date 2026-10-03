@@ -381,7 +381,7 @@ test "setup_from_output_protocol" {
     i64_constants: [],
     global_data_end: 0U,
   }
-  vm.setup_from_output(out, 0, [])
+  vm.setup_from_output(out, 0, [], [])
   // 合并后 code 长度 = 3485 + 2
   assert_eq(vm.code.length(), 3487)
   // 入口 ip = libc_code_len
@@ -424,7 +424,7 @@ test "gate3_integrated_roundtrip_with_libc_setup" {
     i64_constants: [],
     global_data_end: 0U,
   }
-  vm.setup_from_output(out, 1, ["prog"])
+  vm.setup_from_output(out, 1, ["prog"], [])
   ignore(vm.vfs.inject_preset_file(vm.mem_map, vm.memory, "t.txt", b"ab"))
   // 非平凡堆：两块分配 + 一块释放（隔离/日志非空）
   let p1 = vm.mem_map.allocate_raw(64U, @bytecode.MEM_SIZE).unwrap()

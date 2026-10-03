@@ -406,3 +406,36 @@ test "serve_step_next_waiting_input_flag" {
   )
   assert_true(out.contains("got=42"), msg="scanf 读入 feed 值")
 }
+
+///|
+test "serve_step_vis_events_from_algorithm_matches" {
+  // issue #29 #4 红锚：compile 管线第 9 步（algorithm_matches.vis_events
+  // → vm.set_vis_event_lines，oracle compile_pipeline.rs:357-364 对应物）
+  // ——未接线时 StepPayload.vis_events 恒空（demo 可视化侧栏数据源缺失）。
+  // bubble_sort 命名命中判据族；a[j] > a[j+1] 比较行进 compare_lines
+  //（features walk 收集，两侧同形）→ VM 执行到该行时 vis 事件进帧。
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"void bubble_sort(int a[3]) {\\n  int i = 0;\\n  while (i < 2) {\\n    int j = 0;\\n    while (j < 2 - i) {\\n      if (a[j] > a[j + 1]) {\\n        int t = a[j];\\n        a[j] = a[j + 1];\\n        a[j + 1] = t;\\n      }\\n      j = j + 1;\\n    }\\n    i = i + 1;\\n  }\\n}\\nint main() {\\n  int a[3];\\n  a[0] = 3;\\n  a[1] = 1;\\n  a[2] = 2;\\n  bubble_sort(a);\\n  return a[0];\\n}\\n\"}}",
+  )
+  assert_true(
+    cresp.contains("\"ok\":true"),
+    msg="compile 须成功，实得：\{cresp}",
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  let mut acc = ""
+  let mut finished = false
+  for i = 0; i < 400 && !finished; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":10,\"method\":\"step.next\"}")
+    acc = acc + r
+    if r.contains("\"finished\":true") {
+      finished = true
+    }
+  }
+  assert_true(finished, msg="程序须跑完（400 批内）")
+  // 非空 vis_events：emitter 形态 \"vis_events\":[{（恒空时为 []）
+  assert_true(
+    acc.contains("\"vis_events\":[{"),
+    msg="比较行命中须产出 vis 事件（第 9 步接线缺失则恒空）",
+  )
+}

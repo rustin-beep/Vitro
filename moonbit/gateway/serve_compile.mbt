@@ -431,3 +431,20 @@ fn compile_result_json(s : @session.Session) -> Json {
   m.set("preprocessor_trace", Json::array(trace))
   Json::object(m)
 }
+
+///|
+/// vis 行投影（compile_pipeline.rs:357-364 第 9 步对应物，issue #29 #4
+/// 接线 2026-10-04）：algorithm_matches 各 match 的 vis_events 展平为
+/// (line, ty, context) 三元组——vm 不 import protocol（L7→L8 禁止），
+/// 投影在编排层完成（oracle 在 engine 层做同款展平，分层同构）。
+fn project_vis_lines(
+  matches : Array[@protocol.AlgorithmMatch],
+) -> Array[(Int, Int, String)] {
+  let lines : Array[(Int, Int, String)] = []
+  for m in matches {
+    for ev in m.vis_events {
+      lines.push((ev.line, ev.ty, ev.context))
+    }
+  }
+  lines
+}

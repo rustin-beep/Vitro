@@ -481,6 +481,19 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/host_route_coverage
 
+      - name: Host contract map (oracle 103 tests vs mb anchors, 3-state)
+        # Host Contract 三态对账（总计划表 3，2026-10-04 建）：oracle
+        # host_contract_tests.rs 103 条 ↔ MoonBit 锚（host/memory/vm 三包
+        # wbtest 实测抽取）的 anchored/merged/missing 映射——判据：映射
+        # 无洞（oracle 测试全部在表）+ 锚引用无陈旧；missing 非空提示不红
+        # （补锚段清零后 --strict 收官）。纯文本抽取零 Rust 构建依赖，
+        # 归 moonbit job 静态闸族。J9：--selftest 三锚 + 盘上删条目 HOLE 红
+        # 留痕（2026-10-04 实测）。
+        shell: bash
+        run: |
+          go run ./scripts/host_contract_map --selftest
+          go run ./scripts/host_contract_map --strict
+
       - name: Protocol TS types freshness + schema doc parity
         # 2026-09-22 接线（架构审阅 v2 A 组 #9 / §7.5）：@vitro/protocol 的 TS
         # 类型从权威 Rust 源（native/src/unified/*.rs，受字段冻结测试守护）

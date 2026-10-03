@@ -396,3 +396,32 @@ test "memchr_scan_unsigned_and_bounds" {
   }
   assert_true(t.contains("越界"))
 }
+
+// ── Host Contract 补锚段续（2026-10-04）：strcpy 高边界/NULL trap——
+// oracle host_contract_tests.rs:263/528 断言照搬（dst=MEM_SIZE-4 界内成功 /
+// NULL dest 受检 trap——mb 受检化分叉族形态）。
+
+///|
+test "strcpy_dest_at_high_boundary" {
+  let (map, mem) = fresh()
+  put_cstr(mem, map, 0x6000U, "ab")
+  // dst 靠近内存末尾（MEM_SIZE-4）：两字符 + NUL 界内——必须成功拷贝
+  let dst = @bytecode.MEM_SIZE - 4U
+  let r = host_strcpy(map, mem, dst, 0x6000U, [])
+  assert_eq(r.value, Some(dst.to_uint64()))
+  assert_eq(peek(mem, map, dst, 3), b"ab\x00")
+}
+
+///|
+test "strcpy_null_dest_traps" {
+  let (map, mem) = fresh()
+  put_cstr(mem, map, 0x6000U, "ab")
+  // NULL dest：mb 受检访问单入口（NULL 区首查）——E30xx trap 分叉形态
+  //（oracle 侧 has_error 同义；oracle 裸写 segfault 防护面）
+  let r = host_strcpy(map, mem, 0U, 0x6000U, [])
+  guard r.trap is Some(t) else { fail("NULL dest 必须受检 trap") }
+  assert_true(
+    t.contains("访问了 NULL 指针区域"),
+    msg="NULL 区受检 fault 文案",
+  )
+}

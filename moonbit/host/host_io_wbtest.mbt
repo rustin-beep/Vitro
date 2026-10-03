@@ -510,3 +510,22 @@ test "from_stdin_text_crlf_fully_normalized" {
   assert_eq(st2.lines[1].length(), 2, msg="cd 原样（末行无换行）")
   assert_true(InputState::from_stdin_text("", true).lines.is_empty())
 }
+
+// ── Host Contract 补锚段续（2026-10-04）：scanf 实参不足（B43）——
+// oracle host_contract_tests.rs:1394 断言照搬（mb 侧守卫在 ptrs 长度判定，
+// host_io.mbt:565——行为在、锚缺）。
+
+///|
+test "scanf_n_rejects_insufficient_args" {
+  let (map, mem) = fresh()
+  put_cstr(mem, map, 0x2000U, "%d %d")
+  // fmt 要求 2 个目标指针，ptrs 只给 1 个——必须 Trap 且文案点名
+  let r = host_scanf_n(map, mem, InputState::new([], true), [], 0x2000U, [
+    0x3000U,
+  ])
+  guard r is InputOutcome::Trap(t) else { fail("实参不足必须 Trap") }
+  assert_true(
+    t.contains("参数多于实际提供的参数"),
+    msg="文案与 oracle 同形（B43）",
+  )
+}

@@ -432,3 +432,20 @@ test "calloc_oversize_reports_heap_exhausted" {
   assert_true(map.region(0U) is None, msg="不得登记 addr=0 垃圾条目")
   guard map.verify() is Ok(_) else { fail("元数据自检必须通过") }
 }
+
+// ── Host Contract 补锚段收官（2026-10-04）：heap_offset 单调性——
+// oracle host_contract_tests.rs:1481 断言照搬（bump 语义：free 后堆游标
+// 不回退；leak 路径由此撞 1MB 墙，churn 复用不推进堆顶）。
+
+///|
+test "heap_offset_never_rewinds" {
+  let (map, _mem) = fresh()
+  let a1 = host_malloc(map, 64, 1).value.unwrap().to_uint()
+  let top1 = map.heap_offset
+  ignore(host_free(map, a1, 2, 2))
+  let _a2 = host_malloc(map, 64, 3).value.unwrap().to_uint()
+  assert_true(
+    map.heap_offset >= top1,
+    msg="free 后 heap_offset 不得回退（bump 单调——原地收缩特例已移除）",
+  )
+}

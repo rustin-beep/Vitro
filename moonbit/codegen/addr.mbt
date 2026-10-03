@@ -35,7 +35,9 @@ fn BytecodeGen::gen_addr(
             None =>
               // static local（Rust gen_addr 此处无 static 分支——勘察 #29
               // 登记的既有缺陷照搬：`static struct S s1; struct S s2 = s1;`
-              // 报"未声明的变量"；差异随 S8 台账裁定，迁移期不私改）
+              // 报"未声明的变量"——**已收编 DIFF-CODEGEN-STATIC-ADDR-01
+              // （2026-10-04，S8 收官清单 #9）**：oracle 缺陷，迁移期不私改
+              //（codegen_diff A 级面），脱钩工序①销账补 static 分支）
               self.report_error("未声明的变量", loc)
           }
       }

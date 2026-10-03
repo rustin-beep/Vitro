@@ -107,6 +107,7 @@ var (
 		"function_pointer_sizeof.c",
 		"sizeof_array_param.c",
 		"bTree_default.c",
+		"putchar_range.c", // 2026-10-04 语料转正（DIFF-LIB-PUTCHAR-01 闭环）
 	}
 )
 

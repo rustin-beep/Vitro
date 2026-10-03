@@ -97,7 +97,9 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
   depth : Int,
 ) -> String? {
   // S2 审阅 P3 登记：封顶时返回 None（= 判"无环"）是 Rust walk_cycle 的
-  // 复刻口径（对拍一致）；超限无诊断属两侧共同现状，随 S8 差异台账统一裁定
+  // 复刻口径（对拍一致）；超限无诊断属两侧共同现状——**已收编差异台账
+  // DIFF-PREPROC-INCLUDE-DEPTH-01（2026-10-04，S8 收官清单 #9）**：迁移期
+  // 不单侧修（E1 对拍面），脱钩工序①销账（超限改报诊断走红→绿）
   if depth > MAX_INCLUDE_DEPTH || visited.length() > MAX_INCLUDE_GRAPH_NODES {
     return None
   }

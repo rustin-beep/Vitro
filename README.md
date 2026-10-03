@@ -42,7 +42,7 @@
 
 **Rust oracle 实测状态（2026-09-23）**：
 
-- **C 教学子集**：C Shadow Verification **684 个用例**（完全匹配 680 + known_issue 3 + gap_extension 1，无非预期差异；vitro_better 已清零）
+- **C 教学子集**：C Shadow Verification **685 个用例**（完全匹配 680 + known_issue 4 + gap_extension 1，无非预期差异；vitro_better 已清零）
 - **C++ 教学子集**：99 个用例（95 一致 + 4 个已记录的 `clang_compile_fail`：`cpp_vitro_vec_class` / `cpp_vitro_list_class` / `cpp_u3_class_instantiate_in_template` / `cpp_u3_vec_class_twice`）；C++ E2E 回归 83 个用例
 - **真实程序回归**：K&R 81 题全绿；LeetCode 138 题全部通过；Baseline 用例全部通过
 - **全量测试**：`cargo test --workspace --all-features` 全绿（**实测数字行，随工具链版本漂移**：2026-09-23 实测 1029 用例 / 64 套件，CI `windows-latest` 与本地同平台——按实测行人工维护）；clippy 0 warning

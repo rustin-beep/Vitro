@@ -99,6 +99,11 @@ var (
 	// 降级为 known_issue 而非 output_gap 判红），双向监控恢复后回归即红。
 	knownFailureCases = map[string]bool{
 		"bTree_default": true, // E2E_FAILURES.md：未插入元素时访问 NULL 指针区域
+		// putchar_range（2026-10-04 转正，DIFF-LIB-PUTCHAR-01 语料闭环）：两侧
+		// cmd/run 出口层对 ≥0x80 字节双编码且形态互异（oracle 8 字节 vs moonbit
+		// 14 字节）——与 Clang golden（5 原始字节）必不等；修复转绿即红逼移除
+		//（双向监控：diff_ledger 条目 anchors.shadow_known 在案）。
+		"putchar_range": true,
 	}
 )
 

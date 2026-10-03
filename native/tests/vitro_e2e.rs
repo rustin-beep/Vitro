@@ -220,6 +220,12 @@ fn run_case_with_compiler(
 // P5：提升为模块级常量并配 test_vitro_e2e_baseline_compile_failures_known
 // 反向监控（转绿即 panic）——五个 KNOWN_* 常量全部成对。
 const KNOWN_BASELINE_COMPILE_FAILURES: &[&str] = &[
+    // putchar_range（2026-10-04 转正，DIFF-LIB-PUTCHAR-01 闭环）：非编译失败——
+    // golden 为二进制字节（4180c8ff5a），本表借用为「golden 行协议不兼容跳过」：
+    // e2e 的 load_golden 是 UTF-8 文本行协议（trim/空行过滤），承载不了 ≥0x80
+    // 原始字节；字节真值由三防线（shadow/clang_direct/vm_diff 字节级 stdout +
+    // known 白名单）承担。golden 协议二进制化（若将来做）时移除此条。
+    "putchar_range",
     "e2_include_cycle",
     "e3_static_assert_fail",
     "e2_include_not_found_quote",

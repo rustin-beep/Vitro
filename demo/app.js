@@ -46,7 +46,7 @@ const latin1ToUtf8 = (delta) => {
 
 // ── 页面骨架 ──────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-let caseDd, sceneDd, speedDd; // 自绘下拉实例（原生 select 弹出层为 OS 渲染，无法跟随主题）
+let caseDd, speedDd; // 自绘下拉实例（原生 select 弹出层为 OS 渲染，无法跟随主题）
 
 // 自绘下拉：闭合态按钮 + 浮层 listbox；键盘（Enter/Space 开、↑↓ 浏览、
 // Enter 确认、Esc 撤回）、点击外部关闭、aria 展开态。
@@ -131,6 +131,8 @@ function makeDropdown(hostId, items, value, onChange) {
   syncLabel();
   return {
     get value() { return cur; },
+    // 外部同步显示用（不触发 onChange——同视图双向同步语义）
+    setValue(v) { if (items.some((i) => i.v === v)) { cur = v; syncLabel(); } },
   };
 }
 
@@ -222,7 +224,7 @@ function initEditorDecor() {
 }
 
 // ── 行跳转（F-1 视觉件）+ 高亮闪烁定位（F-1b②动效）──────────
-function scrollToLine(line) {
+function scrollToLine(line, flash = true) {
   line = Number(line);
   if (!line || line < 1) return;
   const wrapEl = $("editor-wrap");
@@ -233,8 +235,10 @@ function scrollToLine(line) {
   const hlEl = $("editor-hl");
   hlEl.querySelectorAll(".flash-on").forEach((el) => el.classList.remove("flash-on"));
   hlEl.querySelectorAll(".cl.cur").forEach((el) => el.classList.remove("cur"));
+  row.classList.add("cur");
+  if (!flash) return; // 时间旅行播放中：只滚+描边当前行，不闪
   void hlEl.offsetWidth; // 重触发闪烁动画
-  row.classList.add("flash-on", "cur");
+  row.classList.add("flash-on");
   const onEnd = () => {
     row.classList.remove("flash-on");
     row.removeEventListener("animationend", onEnd);
@@ -490,6 +494,11 @@ function renderReference(runResult, stdout, kase) {
     el.innerHTML = '<div class="muted">（本用例未预置参考值）</div>';
     return;
   }
+  // 诚实边界：编辑器内容被修改后，golden 只属于原用例——不拿旧预期比新代码
+  if ($("editor").value !== kase.source) {
+    el.innerHTML = '<div class="muted">（编辑器内容已修改——Clang golden 对照仅对未修改的预置用例有效；可切回用例或点「↻ 重新采集」前先比对）</div>';
+    return;
+  }
   let match, expect;
   if (kase.referenceKind === "stdout") {
     expect = kase.referenceOutput;
@@ -715,225 +724,431 @@ function renderProto(cap, contracts, labels) {
       .join("");
 }
 
-// ── 动画演示（帧采集播放器）──────────────────────────────
-// 原理：同一程序按步数上限阶梯（config.set max_steps）反复实跑，每档拉取
-// memory.regions / output.delta 快照作一帧——每一帧都是引擎真实状态，
-// 页面只负责按帧播放。事件时间轴由相邻帧差分推导（同样源自引擎数据）。
-const ANIM_SCENES = ["malloc_free", "uaf", "infinite"];
-const ANIM_MAX_MID_FRAMES = 44;
-let animData = null; // { frames, events }
-let animIdx = 0;
-let animTimer = 0;
+// ── 时间旅行（S8 step 流采集-回放）──────────────────────
+// 帧数据源 = gateway step 族（step.begin / step.next 批量推进），每帧带
+// 引擎真实标注（semantic_labels 词表渲染文本）/ 局部变量 / 调用栈 / 当前
+// 执行行；seek 与 ◀▶ 为本地帧数组形态（gateway wasm 未接 step.seek /
+// payload.get——那是 serve 通道能力，教学回放形态下本地索引足够，引擎级
+// 断点留实时调试形态）。场景 = 全部预置用例；左侧编辑器随帧高亮当前行。
+const STEP_FRAME_CAP = 4000; // 上限防大程序把回放 DOM/内存拖爆（infinite 类用例 20000 步在此截断，回放提示截断）
+let stepData = null; // { frames, marks, stopped }
+let stepIdx = 0;
+let stepTimer = 0;
 
-function animGrab(kase, cap) {
+async function stepCollect() {
+  const kase = DEMO_CASES.find((k) => k.id === caseDd.value) || {};
   gw.reset();
   bodyOf(invoke({ method: "session.create" }));
-  bodyOf(invoke({ method: "config.set", params: { max_steps: cap } }));
-  bodyOf(invoke({ method: "compile", params: { source: kase.source } }));
-  const r = bodyOf(invoke({ method: "run" }));
-  const m = bodyOf(invoke({ method: "memory.regions" }));
-  const o = bodyOf(invoke({ method: "output.delta", params: { cursor: 0, stream: "stdout" } }));
-  return {
-    cap,
-    steps: r.steps_executed ?? 0,
-    status: r.status,
-    ret: r.return_value,
-    trap: r.trap || "",
-    regions: m.regions,
-    quar: m.quarantine,
-    alloc: m.alloc_counter,
-    heapBase: m.heap_base,
-    heapOffset: m.heap_offset,
-    out: latin1ToUtf8(o.delta) || "",
-  };
-}
-
-async function animCollect(sceneId) {
-  const kase = DEMO_CASES.find((k) => k.id === sceneId);
-  if (!kase) return null;
-  const frames = [];
-  // 帧 0：不执行，初始态（VFS 预设文件已在堆上）
-  gw.reset();
-  bodyOf(invoke({ method: "session.create" }));
-  const m0 = bodyOf(invoke({ method: "memory.regions" }));
-  frames.push({ cap: 0, steps: 0, status: "idle", ret: undefined, trap: "", regions: m0.regions, quar: m0.quarantine, alloc: m0.alloc_counter, heapBase: m0.heap_base, heapOffset: m0.heap_offset, out: "" });
-  // 终帧：无步数上限（死循环用 configHint 的预算即其教学终态）
   const finalCap = (kase.configHint && kase.configHint.max_steps) || 10000000;
-  const fin = animGrab(kase, finalCap);
-  const total = fin.steps;
-  // 中间帧：小步数程序逐步采样，大步数程序均匀采样
-  const caps = [];
-  if (total > 1) {
-    if (total - 1 <= ANIM_MAX_MID_FRAMES) {
-      for (let c = 1; c <= total - 1; c++) caps.push(c);
-    } else {
-      for (let i = 1; i <= ANIM_MAX_MID_FRAMES; i++) caps.push(Math.max(1, Math.round((i * (total - 1)) / ANIM_MAX_MID_FRAMES)));
-    }
-  }
-  const seen = new Set([0, finalCap]);
-  let n = 0;
-  for (const c of caps) {
-    if (seen.has(c)) continue;
-    seen.add(c);
-    frames.push(animGrab(kase, c));
-    if (++n % 8 === 0) await new Promise((r2) => setTimeout(r2)); // 分片，让 UI 喘息
-  }
-  frames.push(fin);
-  // 事件差分（相邻帧的 region 集与 stdout 对比——推导自引擎数据）
-  const keyOf = (r) => `${r.addr}:${r.size}:${r.name}`;
-  const events = [];
-  for (let i = 1; i < frames.length; i++) {
-    const a = frames[i - 1];
-    const b = frames[i];
-    const ak = new Map(a.regions.map((r) => [keyOf(r), r]));
-    const bk = new Map(b.regions.map((r) => [keyOf(r), r]));
-    for (const [k, r] of bk) {
-      if (!ak.has(k)) {
-        const verb = r.kind === "stack" ? "栈帧" : r.kind === "global" ? "全局段" : "分配";
-        events.push({ f: i, text: `第 ${b.steps} 步 · ${verb} ${r.name}（${r.size} B @0x${r.addr.toString(16)}）` });
-      }
-    }
-    for (const [k, r0] of ak) {
-      const r1 = bk.get(k);
-      if (r1 && !r0.is_freed && r1.is_freed) events.push({ f: i, text: `第 ${b.steps} 步 · 释放 ${r1.name} → 隔离区（${r1.size} B）` });
-    }
-    if (b.out.length > a.out.length) events.push({ f: i, text: `第 ${b.steps} 步 · 输出 ${JSON.stringify(b.out.slice(a.out.length))}` });
-  }
-  if (fin.status === "trap" && fin.trap) {
-    events.push({ f: frames.length - 1, text: `终止 · ${fin.trap.split("\n")[0].slice(0, 64)}`, terminal: true });
-  } else if (fin.status === "finished") {
-    events.push({ f: frames.length - 1, text: `程序结束 · 返回码 ${fin.ret}`, terminal: true });
-  }
-  return { frames, events };
-}
-
-function animGoto(i) {
-  if (!animData) return;
-  animIdx = Math.max(0, Math.min(i, animData.frames.length - 1));
-  animRender();
-}
-
-function animRender() {
-  const f = animData.frames[animIdx];
-  const isFinal = animIdx === animData.frames.length - 1;
-  const full = f.regions.map((r) => ({ r, left: r.addr / MEM_TOTAL, width: Math.max(r.size / MEM_TOTAL, 0.004) }));
-  bandRender($("anim-band-full"), full);
-  const heapEnd = Math.max(f.heapOffset ?? 0, ...f.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size), f.heapBase + 64);
-  const span = Math.max(heapEnd - f.heapBase, 1);
-  bandRender(
-    $("anim-band-heap"),
-    f.regions
-      .filter((r) => r.is_heap)
-      .map((r) => ({ r, left: (r.addr - f.heapBase) / span, width: Math.max(r.size / span, 0.02) }))
-  );
-  $("anim-seek").value = animIdx;
-  $("anim-progress").textContent = `帧 ${animIdx + 1}/${animData.frames.length} · 第 ${f.steps} 步 · 隔离区 ${f.quar.blocks} 块`;
-  // 阶段说明：中间帧是「步数上限截断的快照」，终帧才是真实终态
+  bodyOf(invoke({
+    method: "config.set",
+    params: { max_steps: finalCap, call_depth_limit: 10000, deterministic: true, quarantine_budget: 262144 },
+  }));
+  const comp = bodyOf(invoke({ method: "compile", params: { source: $("editor").value } }));
+  if (!comp.ok) return { error: "编译失败——先解决左侧诊断", frames: [], marks: [] };
+  bodyOf(invoke({ method: "step.begin", params: {} }));
+  const frames = [];
+  let stopped = "";
+  let batch;
+  do {
+    batch = bodyOf(invoke({ method: "step.next", params: {} }));
+    if (batch.payloads) frames.push(...batch.payloads);
+    if (batch.waiting_input) { stopped = "程序等待输入（scanf）——回放到暂停点为止"; break; }
+    if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || "").split("\n")[0]; break; }
+  } while (!batch.finished && frames.length < STEP_FRAME_CAP);
+  if (frames.length >= STEP_FRAME_CAP) stopped = stopped || `帧数超 ${STEP_FRAME_CAP} 上限，回放截断`;
+  // 事件轴：semantic_label + 行号组合的变化点（教学事件序列）
+  const marks = [];
   let last = null;
-  for (const e of animData.events) if (e.f <= animIdx) last = e;
-  const stateTxt = isFinal
-    ? f.status === "finished" ? `程序结束（返回码 ${f.ret}）`
-      : f.status === "trap" ? "受检终止：" + (f.trap.split("\n")[0] || "").slice(0, 72)
-      : f.status
-    : `快照于第 ${f.steps} 步（步数上限 ${f.cap} 截断）`;
-  let tail;
-  if (f.steps === 0) tail = "初始状态：VFS 预设文件已位于堆底";
-  else if (last && !(isFinal && last.terminal)) tail = last.text; // 终帧 trap 文案已在 stateTxt，不重复
-  else tail = isFinal ? "" : "VM 指令推进中…";
-  $("anim-phase").textContent = `【${stateTxt}】${tail}`;
-  const chips = $("anim-events").children;
-  for (let j = 0; j < animData.events.length; j++) chips[j].classList.toggle("on", animData.events[j].f <= animIdx);
-  // stdout 回放（内容变化时淡入）
-  const el = $("anim-out");
-  const prev = animIdx > 0 ? animData.frames[animIdx - 1] : null;
-  el.textContent = f.out === "" ? "（暂无输出）" : f.out;
-  el.classList.toggle("empty", f.out === "");
-  if (!prev || prev.out !== f.out) {
-    el.classList.remove("flash-in");
-    void el.offsetWidth;
-    el.classList.add("flash-in");
-  }
-  $("anim-out-meta").textContent = `${f.out.length} 字节（截至第 ${f.steps} 步）`;
+  frames.forEach((f, i) => {
+    const k = (f.semantic_label || "") + "@" + f.code_line;
+    if (k !== last) {
+      marks.push({ idx: i, text: `第 ${f.step_index} 步 · ${f.semantic_label || "执行"}` });
+      last = k;
+    }
+  });
+  return { frames, marks, stopped };
 }
 
-function animStopTimer() {
-  if (animTimer) {
-    clearInterval(animTimer);
-    animTimer = 0;
-  }
-  $("anim-play").textContent = "▶ 播放";
+// 调用树重建：call_stack 是「根到当前帧」的路径序列——按帧序走进/退事件
+// 把路径增量挂成 trie（循环迭代不换栈帧 = 同节点；返回后再调 = 新兄弟节点）。
+// frameNode[i] = 第 i 帧所在节点（播放高亮用）。
+function buildCallTree(frames) {
+  const root = { name: "prog", children: [], depth: 0 };
+  let cur = root;
+  let curPath = [];
+  const frameNode = new Array(frames.length);
+  frames.forEach((f, i) => {
+    const path = (f.call_stack || []).map((c) => c.func_name);
+    if (!path.length) { frameNode[i] = root; return; }
+    let lcp = 0;
+    while (lcp < path.length && lcp < curPath.length && path[lcp] === curPath[lcp]) lcp++;
+    while (curPath.length > lcp) { curPath.pop(); cur = cur.parent; }
+    while (curPath.length < path.length) {
+      const node = { name: path[curPath.length], parent: cur, children: [], depth: curPath.length + 1, firstStep: f.step_index, enterVars: f.local_vars || [], enterLabel: f.semantic_label || "执行" };
+      cur.children.push(node);
+      cur = node;
+      curPath.push(node.name);
+    }
+    cur.lastStep = f.step_index;
+    cur.hitCount = (cur.hitCount || 0) + 1;
+    frameNode[i] = cur;
+  });
+  return { root, frameNode };
 }
 
-function animPlay() {
-  if (!animData) return;
-  animStopTimer();
-  if (animIdx >= animData.frames.length - 1) animGoto(0); // 播完再点 = 重播
-  $("anim-play").textContent = "⏸ 暂停";
-  animTimer = setInterval(() => {
-    if (animIdx >= animData.frames.length - 1) {
-      animStopTimer();
+// 调用树 SVG：分层布局（深度=行，父居子重心），节点=函数名胶囊；
+// 已走过的边/节点提亮，当前帧节点反色。树宽自适应 viewBox，容器内横向滚动。
+// 调用树视图状态（缩放/平移/跟随；采集重置，用户交互后暂停跟随，双击恢复）
+const treeView = { k: 1, tx: 0, ty: 0, follow: true };
+
+function renderCallTree(root, curNode) {
+  if (!root) return;
+  const NW = 78, NH = 36, VGAP = 42, PAD = 26;
+  let maxDepth = 0;
+  let minX = 0;
+  function layout(node, depth) {
+    maxDepth = Math.max(maxDepth, depth);
+    node.depth = depth;
+    if (!node.children.length) {
+      node.w = 1;
+      node.x = minX;
+      minX += 1;
       return;
     }
-    animGoto(animIdx + 1);
+    let first = null, last = null;
+    for (const c of node.children) {
+      layout(c, depth + 1);
+      if (!first) first = c;
+      last = c;
+    }
+    node.w = node.children.reduce((s, c) => s + c.w, 0);
+    node.x = (first.x + last.x) / 2;
+  }
+  layout(root, 0);
+  const unitW = NW + 18;
+  const width = PAD * 2 + minX * unitW;
+  const height = PAD * 2 + (maxDepth + 1) * (NH + VGAP);
+  const cx = (node) => PAD + node.x * unitW + unitW / 2;
+  const cy = (node) => PAD + node.depth * (NH + VGAP);
+  const edgePath = (x1, y1, x2, y2) => {
+    const my = (y1 + y2) / 2;
+    return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+  };
+  const edges = [], nodes = [], dots = [];
+  // 教学可读性：节点副行只取「局部」变量的首项且截断——全局数组等内部
+  // 数据原样 dump 会把初学者劝退（白箱 = 透明且可理解，不是裸数据）
+  const shortArg = (vars) => {
+    const v = (vars || []).find((x) => x.is_local && String(x.value).length <= 8) ||
+      (vars || []).find((x) => x.is_local);
+    if (!v) return "";
+    let val = String(v.value);
+    if (val.length > 8) val = val.slice(0, 7) + "…";
+    return `${v.name}=${val}`;
+  };
+  (function emit(node, walkedPath) {
+    const x = cx(node), y = cy(node);
+    node._x = x; node._y = y; // 供跟随居中定位
+    node.children.forEach((c, ci) => {
+      const walkedEdge = walkedPath && c.lastStep !== undefined;
+      edges.push(`<path class="edge${walkedEdge ? " walked" : ""}" d="${edgePath(x, y + NH / 2, cx(c), cy(c) - NH / 2)}"/>`);
+      if (walkedEdge) dots.push(`<circle class="dot" cx="${cx(c)}" cy="${cy(c) - NH / 2}" r="3"/>`);
+      emit(c, walkedPath && walkedEdge);
+    });
+    const isCur = node === curNode;
+    const isVisited = !isCur && node.lastStep !== undefined;
+    const cls = isCur ? " cur" : isVisited ? " visited" : "";
+    const v = (node.enterVars || []).find((x) => x.is_local);
+    let arg = v ? `${v.name}=${v.value}` : "";
+    if (arg.length > 10) arg = arg.slice(0, 9) + "…";
+    const label = node.name.length > 9 ? node.name.slice(0, 8) + "…" : node.name;
+    // 树面只保留 函数名 + 首参（信息卡常驻右上角、随帧刷新——树面零噪音）
+    nodes.push(
+      `<g class="nd${cls}">` +
+      `<rect x="${x - NW / 2}" y="${y - NH / 2}" width="${NW}" height="${NH}" rx="9"/>` +
+      `<text class="tname" x="${x}" y="${y - 1}">${esc(label)}</text>` +
+      (arg ? `<text class="targ" x="${x}" y="${y + 12}">${esc(arg)}</text>` : "") +
+      `</g>`
+    );
+  })(root, true);
+  const host = $("step-tree");
+  // 常驻信息卡（#node-card）不被覆盖——每帧只重建 svg
+  const oldSvg = document.querySelector("#tree-svg"); // 每帧重建的动态元素
+  if (oldSvg) oldSvg.remove();
+  const ph = host.querySelector(":scope > span.muted"); // 静态占位文字（插入式渲染后残留会露在画布角落）
+  if (ph) ph.remove();
+  host.insertAdjacentHTML(
+    "afterbegin",
+    `<svg id="tree-svg" width="100%" height="340">` +
+    `<g id="tree-viewport" transform="translate(0,0) scale(1)">` +
+    edges.join("") + dots.join("") + nodes.join("") +
+    `</g></svg>`
+  );
+  treeView.contentW = width;
+  treeView.contentH = height;
+  // 视图状态（k/tx/ty/follow）跨帧保留——每帧重建 DOM 但不重置用户的缩放平移；
+  // 仅 k===0（新采集）时初始化：小树完整渲染居中，大树走「镜头跟随」模式
+  if (!treeView.k) initTreeView(width, height, curNode);
+  else {
+    applyTreeView();
+    if (treeView.follow && curNode) centerOnNode(curNode);
+  }
+  bindTreeView(width, height);
+}
+
+// 视图初始化：小树（fit ≥ 0.75）完整渲染居中不跟随；大树固定可读缩放，
+// 当前事件节点为窗口重心（到哪帧镜头跟到哪，帧间 CSS 过渡平滑移动）
+function initTreeView(width, height, curNode) {
+  const host = $("step-tree");
+  const cw = host.clientWidth || 600;
+  const fitK = Math.min(1, (cw - 8) / width);
+  if (fitK >= 0.75) {
+    treeView.k = fitK;
+    treeView.tx = (cw - width * fitK) / 2;
+    treeView.ty = 6;
+    treeView.follow = false; // 全貌可见，无需跟随
+  } else {
+    treeView.k = 0.75;
+    treeView.follow = true;
+  }
+  applyTreeView();
+  if (treeView.follow && curNode) centerOnNode(curNode);
+  bindTreeView(width, height);
+}
+
+function applyTreeView() {
+  const g = document.querySelector("#tree-viewport"); // 动态生成元素，querySelector 检索
+  if (g) g.setAttribute("transform", `translate(${treeView.tx},${treeView.ty}) scale(${treeView.k})`);
+}
+
+// 当前帧节点居中（跟随模式）：水平垂直都到画布重心，帧间由 CSS 过渡平滑
+function centerOnNode(node) {
+  const host = $("step-tree");
+  if (!host || !node || node._x === undefined) return;
+  const cw = host.clientWidth || 600;
+  const ch = host.clientHeight || 360;
+  const dx = cw / 2 - (treeView.tx + node._x * treeView.k);
+  if (Math.abs(dx) > 2) treeView.tx += dx;
+  const dy = ch / 2 - (treeView.ty + node._y * treeView.k);
+  if (Math.abs(dy) > 2) treeView.ty += dy;
+  applyTreeView();
+}
+
+// 树画布交互：滚轮缩放（鼠标锚点）、拖拽平移（暂停跟随）、双击恢复适应+跟随
+function bindTreeView(contentW, contentH) {
+  const host = $("step-tree");
+  const svg = document.querySelector("#tree-svg"); // 动态生成元素
+  // dataset.bound 防的是同一 svg 重复绑定；svg 每帧随 DOM 重建，新元素必须重绑
+  if (!svg || svg.dataset.bound) return;
+  svg.dataset.bound = "1";
+  svg.style.touchAction = "none";
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const k2 = Math.max(0.12, Math.min(2.5, treeView.k * (1 - e.deltaY * 0.0012)));
+    // 鼠标位置为锚：缩放前后该内容点保持在屏幕同处
+    treeView.tx = mx - ((mx - treeView.tx) / treeView.k) * k2;
+    treeView.ty = my - ((my - treeView.ty) / treeView.k) * k2;
+    treeView.k = k2;
+    treeView.follow = false;
+    applyTreeView();
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener("pointerdown", (e) => {
+    drag = { x: e.clientX, y: e.clientY, tx: treeView.tx, ty: treeView.ty };
+    const g = document.querySelector("#tree-viewport");
+    if (g) g.classList.add("dragging"); // 拖拽无过渡
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    treeView.tx = drag.tx + (e.clientX - drag.x);
+    treeView.ty = drag.ty + (e.clientY - drag.y);
+    treeView.follow = false;
+    applyTreeView();
+  });
+  svg.addEventListener("pointerup", () => {
+    drag = null;
+    const g = document.querySelector("#tree-viewport");
+    if (g) g.classList.remove("dragging");
+  });
+  svg.addEventListener("dblclick", () => {
+    treeView.k = 0; // 触发重新初始化（小树完整渲染 / 大树镜头跟随）
+    initTreeView(contentW, contentH, null);
+  });
+}
+
+function stepGoto(i) {
+  if (!stepData) return;
+  stepIdx = Math.max(0, Math.min(i, stepData.frames.length - 1));
+  // 帧推进（seek/单步/播放）= 镜头回到当前事件重心——手动平移只在不动帧时保持
+  treeView.follow = true;
+  stepRender();
+}
+
+function stepRender() {
+  const f = stepData.frames[stepIdx];
+  $("anim-seek").value = stepIdx;
+  $("anim-progress").textContent =
+    `帧 ${stepIdx + 1}/${stepData.frames.length} · 第 ${f.step_index} 步` +
+    (stepData.stopped ? " · " + stepData.stopped : "");
+  const label = f.semantic_label || "执行";
+  $("anim-phase").textContent = `【${label}】第 ${f.code_line} 行` + (f.func_name ? ` · ${f.func_name}` : "");
+  scrollToLine(f.code_line, false); // 播放中只滚动+描边当前行，不闪烁
+  // 局部变量表
+  const vars = f.local_vars || [];
+  $("step-vars").innerHTML = vars.length
+    ? "<tr><th>名称</th><th>类型</th><th>值</th><th>地址</th></tr>" +
+      vars
+        .map((v) => `<tr><td>${esc(v.name)}</td><td>${esc(v.ty_name)}</td><td>${esc(v.value)}</td><td>0x${(v.addr || 0).toString(16)}</td></tr>`)
+        .join("")
+    : '<tr><td class="muted">（此帧无局部变量）</td></tr>';
+  // 调用栈链（main → fib → …）
+  const stack = f.call_stack || [];
+  $("step-stack").innerHTML = stack.length
+    ? stack
+        .map((c, i) => (i ? '<span class="arrow">→</span>' : "") + `<span class="frm">${esc(c.func_name)}${c.return_line ? `<span class="ln">ret:${c.return_line}</span>` : ""}</span>`)
+        .join("")
+    : '<span class="muted">（空栈）</span>';
+  // 调用树高亮（树结构采集后重建一次，此处只挪高亮节点）
+  renderCallTree(stepData.tree, stepData.frameNode[stepIdx]); // 传根节点（stepData.tree=buildCallTree().root）
+  updateNodeCard(f); // 常驻信息卡跟随当前帧
+}
+
+// 常驻信息卡：跟随当前帧刷新（事件/位置/步数/局部变量/代码预览——手机可达，
+// 不依赖悬停；教学化文案，is_local 过滤后仍不裸 dump 内部数据）
+function updateNodeCard(f) {
+  const el = document.getElementById("node-card");
+  if (!el) return;
+  const vars = (f.local_vars || []).filter((v) => v.is_local);
+  // 代码预览：当前执行行 ±2 行——用户不必左右扫视编辑器
+  const NL = String.fromCharCode(10); // heredoc 吃 \n 转义，运行时构造
+  const srcLines = ($("editor").value || "").split(NL);
+  const cl = Math.max(1, f.code_line || 1);
+  const from = Math.max(0, cl - 3), to = Math.min(srcLines.length, cl + 2);
+  let codeHtml = "";
+  for (let i = from; i < to; i++) {
+    codeHtml += `<div class="nc-code${i + 1 === cl ? " on" : ""}"><span class="n">${i + 1}</span>${esc(srcLines[i] || "")}</div>`;
+  }
+  el.innerHTML =
+    `<div class="nc-head" title="点击收纳/展开"><span>执行信息</span><span class="nc-fold">▾</span></div>` +
+    `<div class="nc-body">` +
+    `<p class="nc-ev">${esc(f.semantic_label || "执行")}</p>` +
+    `<p class="nc-fn">${esc(f.func_name || "—")} · 第 ${f.code_line} 行</p>` +
+    `<p class="nc-step">第 ${f.step_index} 步</p>` +
+    (vars.length
+      ? vars.map((v) => `<p class="nc-var">${esc(v.name)} = ${esc(v.value)}</p>`).join("")
+      : `<p class="nc-var muted">（此帧无局部变量）</p>`) +
+    `<div class="nc-codebox">${codeHtml}</div>` +
+    `</div>`;
+  applyCardFold(el); // 折叠态跨帧保持（dataset 在常驻容器上）
+}
+
+// 收纳开关：点击卡头折叠/展开（boot 时对常驻容器绑一次，事件委托）
+function applyCardFold(el) {
+  const folded = el.dataset.folded === "1";
+  const body = el.querySelector(".nc-body");
+  const mark = el.querySelector(".nc-fold");
+  if (body) body.style.display = folded ? "none" : "";
+  if (mark) mark.textContent = folded ? "▸" : "▾";
+}
+
+function stepStopTimer() {
+  if (stepTimer) {
+    clearInterval(stepTimer);
+    stepTimer = 0;
+  }
+  $("anim-play").textContent = "▶ 采集并回放";
+}
+
+function stepPlay() {
+  if (!stepData || !stepData.frames.length) return;
+  stepStopTimer();
+  if (stepIdx >= stepData.frames.length - 1) stepGoto(0);
+  $("anim-play").textContent = "⏸ 暂停";
+  stepTimer = setInterval(() => {
+    if (stepIdx >= stepData.frames.length - 1) {
+      stepStopTimer();
+      return;
+    }
+    stepGoto(stepIdx + 1);
   }, Number(speedDd.value) || 200);
 }
 
-async function animLoadScene(sceneId) {
-  animStopTimer();
-  animData = null;
-  animIdx = 0;
-  $("anim-events").innerHTML = "";
-  $("anim-band-full").innerHTML = "";
-  $("anim-band-heap").innerHTML = "";
-  $("anim-phase").textContent = "采集中：按步数上限阶梯反复实跑引擎…";
+async function stepRecollect() {
+  // 采集源恒为当前编辑器内容（无场景概念——左栏用例选择即场景入口）
+  stepStopTimer();
+  treeView.k = 0; // 新采集：视图按小树/大树规则重新初始化
+  stepData = null;
+  stepIdx = 0;
+  $("step-vars").innerHTML = "";
+  $("step-stack").textContent = "—";
+  $("anim-phase").textContent = "采集中：step.begin + step.next 推进引擎…";
   $("anim-play").disabled = true;
   $("anim-play").textContent = "… 采集中";
   await new Promise((r) => setTimeout(r)); // 让按钮态先渲染
-  animData = await animCollect(sceneId);
-  $("anim-events").innerHTML = animData.events
-    .map((e) => `<span class="evt${e.terminal ? " terminal" : ""}">${esc(e.text)}</span>`)
-    .join("");
-  $("anim-seek").max = animData.frames.length - 1;
+  stepData = await stepCollect();
+  if (stepData.error) {
+    $("anim-phase").textContent = "采集失败：" + stepData.error;
+    $("anim-play").disabled = false;
+    $("anim-play").textContent = "▶ 采集并回放";
+    return;
+  }
+  const built = buildCallTree(stepData.frames);
+  stepData.tree = built.root;
+  stepData.frameNode = built.frameNode;
+  $("anim-seek").max = stepData.frames.length - 1;
   $("anim-play").disabled = false;
-  animRender();
-  animPlay(); // 采集完自动播放
+  stepGoto(0);
+  stepPlay(); // 采集完自动播放
 }
 
 function bindAnim() {
-  sceneDd = makeDropdown(
-    "anim-scene",
-    ANIM_SCENES.map((id) => {
-      const k = DEMO_CASES.find((x) => x.id === id);
-      return { v: id, label: k ? k.label : id };
-    }),
-    ANIM_SCENES[0],
-    (v) => animLoadScene(v)
-  );
   speedDd = makeDropdown(
     "anim-speed",
     [ { v: "400", label: "0.5×" }, { v: "200", label: "1×" }, { v: "100", label: "2×" } ],
     "200",
-    () => { if (animTimer) animPlay(); } // 播放中调速 = 重启节奏
+    () => { if (stepTimer) stepPlay(); } // 播放中调速 = 重启节奏
   );
   $("anim-play").onclick = () => {
-    if (!animData) return;
-    animTimer ? animStopTimer() : animPlay();
+    if (!stepData) { stepRecollect(); return; }
+    stepTimer ? stepStopTimer() : stepPlay();
   };
-  $("anim-reset").onclick = () => {
-    if (!animData) return;
-    animStopTimer();
-    animGoto(0);
-  };
+  $("anim-prev").onclick = () => { stepStopTimer(); stepGoto(stepIdx - 1); };
+  $("anim-next").onclick = () => { stepStopTimer(); stepGoto(stepIdx + 1); };
+  // 重新采集 = 用当前编辑器内容重跑 step 流（回到帧 0 用进度条拖动即可）
+  $("anim-reset").onclick = () => stepRecollect();
   $("anim-seek").oninput = (e) => {
-    animStopTimer();
-    animGoto(Number(e.target.value));
+    stepStopTimer();
+    stepGoto(Number(e.target.value));
   };
 }
 
+
 // ── 用例切换 ─────────────────────────────────────────────
+function stepReset() {
+  // 编辑器内容变化后旧采集过期：回放区回到待采集态
+  stepStopTimer();
+  treeView.k = 0;
+  stepData = null;
+  stepIdx = 0;
+  $("step-tree").innerHTML =
+    '<span class="muted">（采集后展示）</span>' +
+    '<div id="node-card" class="node-card"><p class="nc-ev muted">（采集后展示当前事件）</p></div>'; // 常驻卡随容器重建一起恢复
+  $("step-vars").innerHTML = "";
+  $("step-stack").textContent = "—";
+  $("anim-seek").max = 0;
+  $("anim-progress").textContent = "";
+  $("anim-phase").textContent = "（采集后展示执行过程——数据来自引擎 step 流）";
+  $("anim-play").disabled = false;
+  $("anim-play").textContent = "▶ 采集并回放";
+}
+
 function selectCase() {
   const k = DEMO_CASES.find((k) => k.id === caseDd.value);
   if (!k) return;
+  stepReset(); // 编辑器内容被用例覆盖，回放区过期
   $("editor").value = k.source;
   renderEditorDecor();
   $("case-blurb").textContent = k.blurb;
@@ -1038,15 +1253,7 @@ function applyMotion(v) {
     const card = e.target.closest(".diag.jumpy");
     if (card) scrollToLine(card.dataset.line);
   });
-  // 动画演示：首次切到该 tab 时懒采集（探针 + 播放器都在协议面内）
   bindAnim();
-  document.querySelector('.tab[data-tab="anim"]').addEventListener(
-    "click",
-    () => {
-      if (!animData && !$("anim-play").disabled) animLoadScene(sceneDd.value);
-    },
-    { once: true }
-  );
   caseDd = makeDropdown(
     "case-select",
     DEMO_CASES.map((k) => ({ v: k.id, label: k.label })),
@@ -1057,6 +1264,14 @@ function applyMotion(v) {
   $("feed-btn").onclick = feedStdin;
   $("cfg-btn").onclick = applyConfig;
   $("cat-search").oninput = (e) => renderCatalog(e.target.value);
+  // 信息卡收纳开关（卡体每帧/每次重置都会重建——委托必须挂在恒存的
+  // step-tree 容器上；挂卡片自身的话 listener 随首次 innerHTML 重写即失效）
+  $("step-tree").addEventListener("click", (e) => {
+    if (!e.target.closest(".nc-head")) return;
+    const card = $("node-card");
+    card.dataset.folded = card.dataset.folded === "1" ? "0" : "1";
+    applyCardFold(card);
+  });
   try {
     gw = await loadGateway();
   } catch (e) {

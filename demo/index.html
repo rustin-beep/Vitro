@@ -101,11 +101,10 @@
 
   <section class="pane result-pane">
     <nav class="tabs">
-      <button class="tab active" data-tab="result">运行结果</button>
+      <button class="tab active" data-tab="result">运行</button>
       <button class="tab" data-tab="memory">内存地图</button>
       <button class="tab" data-tab="catalog">诊断手册</button>
       <button class="tab" data-tab="proto">引擎与协议</button>
-      <button class="tab" data-tab="anim">动画演示</button>
     </nav>
 
     <div class="tabpage" id="tab-result">
@@ -122,6 +121,24 @@
       <div id="trap-box" class="trap hidden"></div>
       <div class="pane-head"><h2>与 Clang golden 对照</h2></div>
       <div id="ref-box"><span class="muted">（点「运行」后展示）</span></div>
+
+      <div class="pane-head subhead"><h2>时间旅行回放</h2><span id="replay-hint" class="muted small">运行后点「采集并回放」——step 流重建执行过程</span></div>
+      <div class="anim-ctrl">
+        <button id="anim-play">▶ 采集并回放</button>
+        <button id="anim-prev" class="minor">◀ 上一步</button>
+        <button id="anim-next" class="minor">下一步 ▶</button>
+        <button id="anim-reset" class="minor">↻ 重新采集</button>
+        <div id="anim-speed" class="dd"></div>
+        <input id="anim-seek" type="range" min="0" max="0" value="0">
+        <span id="anim-progress" class="muted small"></span>
+      </div>
+      <div id="anim-phase" class="anim-phase">（采集后展示执行过程——数据来自引擎 step 流）</div>
+      <div class="pane-head"><h2>调用树</h2><span class="muted small">step 流 call_stack 序列重建 · 当前帧节点高亮</span></div>
+      <div id="step-tree" class="step-tree"><span class="muted">（采集后展示）</span><div id="node-card" class="node-card"><p class="nc-ev muted">（采集后展示当前事件）</p></div></div>
+      <div class="pane-head"><h2>局部变量</h2></div>
+      <table id="step-vars" class="mem-table"></table>
+      <div class="pane-head"><h2>调用栈</h2></div>
+      <div id="step-stack" class="step-stack muted small">—</div>
     </div>
 
     <div class="tabpage hidden" id="tab-memory">
@@ -146,30 +163,6 @@
       <input id="cat-search" placeholder="搜索：码位 / 标题 / 分类…（如 E3070、越界、词法）" spellcheck="false">
       <div id="cat-stats" class="muted small"></div>
       <div id="cat-list" class="cat-list"></div>
-    </div>
-
-    <div class="tabpage hidden" id="tab-anim">
-      <div class="anim-ctrl">
-        <div id="anim-scene" class="dd"></div>
-        <button id="anim-play">▶ 播放</button>
-        <button id="anim-reset" class="minor">⟲ 重播</button>
-        <div id="anim-speed" class="dd"></div>
-        <input id="anim-seek" type="range" min="0" max="0" value="0">
-        <span id="anim-progress" class="muted small"></span>
-      </div>
-      <div id="anim-phase" class="anim-phase">（选择场景后自动采集引擎快照帧）</div>
-      <div class="band-wrap">
-        <div class="band-label">内存地图 · 堆区放大</div>
-        <div id="anim-band-heap" class="band"></div>
-      </div>
-      <div class="band-wrap">
-        <div class="band-label">内存地图 · 全地址空间 0 – 1MB</div>
-        <div id="anim-band-full" class="band"></div>
-      </div>
-      <div id="anim-events" class="anim-events"></div>
-      <div class="pane-head"><h2>stdout 回放</h2><span id="anim-out-meta" class="muted"></span></div>
-      <pre id="anim-out" class="stdout empty"><span class="muted">（点「播放」后展示）</span></pre>
-      <p class="blurb">每一帧都是引擎在对应步数上限（config.set 阶梯）下的真实快照（memory.regions / output.delta），播放由页面驱动——非补间 mock。</p>
     </div>
 
     <div class="tabpage hidden" id="tab-proto">

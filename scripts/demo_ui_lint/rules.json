@@ -12,7 +12,7 @@
   "dynamic_id_prefixes": [
     {
       "prefix": "tab-",
-      "ids": ["tab-result", "tab-memory", "tab-catalog", "tab-anim", "tab-proto"]
+      "ids": ["tab-result", "tab-memory", "tab-catalog", "tab-proto"]
     }
   ],
   "class_whitelist": [],

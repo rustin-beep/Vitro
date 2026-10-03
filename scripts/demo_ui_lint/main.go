@@ -523,7 +523,15 @@ func main() {
 
 	// ── 抽取面下限（2026-10-02 审阅 P2-2）：各路有效位点塌缩即红——
 	// 同一 bug 字面量红、变量绿的静默失能形态由下限兜住（下限出处见头注）──
-	const minClassSites, minIDSites, minVarSites = 3, 30, 60
+	// class 下限可经 rules.json min_class_sites 配置（0/缺省 = 3——显式
+	// 缺省非静默 default；2026-10-03 审阅 P2-1 接线：字段此前声明即死置，
+	// 配 99 闸照绿 = D18-b 守护变量空转）。id/var 下限维持硬编码（无配置
+	// 诉求，不加孤儿旋钮）。
+	minClassSites := rl.MinClassSites
+	if minClassSites <= 0 {
+		minClassSites = 3
+	}
+	const minIDSites, minVarSites = 30, 60
 	if sitesClass < minClassSites || sitesID < minIDSites || sitesVar < minVarSites {
 		issues = append(issues, issue{"coverage", fmt.Sprintf(
 			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",

@@ -162,7 +162,9 @@ fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
 
 ///|
 /// printf 格式-参数类型匹配（E3032 数量 / E3062 类型；start = 格式串
-/// 之后的首参下标——printf 1 / fprintf 2）。实参解析定型原地写回。
+/// 在全参数中的 1-based 位——printf 1；序号算式 start+j+1 与 oracle
+/// 的 i+2 同值〔i=j 切片序〕，issue #26 修复：原 start+j+2 系统性 +1）。
+/// 实参解析定型原地写回。
 pub fn TypeChecker::check_printf_format(
   self : TypeChecker,
   fmt : String,
@@ -217,7 +219,7 @@ pub fn TypeChecker::check_printf_format(
     }
     if !ok {
       self.report_error(
-        "printf 格式 '%\{spec}' 与第 \{start + j + 2} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
+        "printf 格式 '%\{spec}' 与第 \{start + j + 1} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
         loc,
         E3062_PrintfFormatMismatch,
       )
@@ -300,7 +302,7 @@ pub fn TypeChecker::check_scanf_format(
     }
     if !ok {
       self.report_error(
-        "scanf 格式 '%\{spec}' 与第 \{start + j + 2} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
+        "scanf 格式 '%\{spec}' 与第 \{start + j + 1} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
         loc,
         E3063_ScanfFormatMismatch,
       )

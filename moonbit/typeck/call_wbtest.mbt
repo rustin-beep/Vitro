@@ -144,6 +144,73 @@ test "call_printf_builtin_arm" {
 }
 
 ///|
+/// issue #26：printf/scanf 格式不匹配诊断的**参数序号**（oracle 算式
+/// i+2 = 全参数 1-based，参数 1 是格式串——"%f" 配 int 报「第 2 个」）。
+/// 此前实现 start+j+2 系统性 +1（报「第 3 个」）；修复 = start+j+1。
+test "call_printf_scanf_arg_index_ordinal" {
+  let loc = @source.SourceLoc::new(2, 9)
+  fn call1(
+    name : String,
+    fmt : String,
+    arg : @ast.Expr,
+    loc : @source.SourceLoc,
+  ) -> @ast.Stmt {
+    @ast.Stmt::Expr(
+      @ast.Expr::Call(
+        name,
+        [@ast.Expr::StringLiteral(fmt, loc, @ast.Type::void_type()), arg],
+        loc,
+        @ast.Type::void_type(),
+      ),
+      loc,
+    )
+  }
+  fn int_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(1, loc, @ast.Type::int())
+  }
+  fn dbl_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::FloatLiteral(1.0, loc, @ast.Type::double())
+  }
+  // int a; scanf("%d", &a)——double 变量地址（pointee double 不配 %d）
+  fn addr_of_d(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Unary(
+      Addr,
+      @ast.Expr::Identifier("d", loc, @ast.Type::double()),
+      loc,
+      @ast.Type::void_type(),
+    )
+  }
+  let body : @ast.Stmt = @ast.Stmt::Block(
+    [
+      call1("printf", "%f", int_lit(loc), loc), // E3062：第 2 个参数 'int'
+      call1("printf", "%d", dbl_lit(loc), loc), // E3062：第 2 个参数 'double'
+      @ast.Stmt::VarDecl(@ast.Type::double(), "d", None, [], false, loc),
+      call1("scanf", "%d", addr_of_d(loc), loc), // E3063：第 2 个参数
+    ],
+    loc,
+  )
+  let main = func_of("main", [], Some(body), loc)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(prog_of([main], []))
+  assert_eq(errs.length(), 3)
+  assert_true(errs[0].code == 3062)
+  assert_true(
+    errs[0].message.contains("第 2 个参数"),
+    msg="printf %f 报第 2 个（非第 3）",
+  )
+  assert_true(errs[1].code == 3062)
+  assert_true(
+    errs[1].message.contains("第 2 个参数"),
+    msg="printf %d 报第 2 个",
+  )
+  assert_true(errs[2].code == 3063)
+  assert_true(
+    errs[2].message.contains("第 2 个参数"),
+    msg="scanf %d 报第 2 个",
+  )
+}
+
+///|
 /// resolve_call_ptr 三轨：具名函数（funcs 命中走 visit_call 定型）/
 /// 函数指针轨（参数检查 + 返回类型定型）/ 非函数 E3066。
 test "call_ptr_three_tracks" {

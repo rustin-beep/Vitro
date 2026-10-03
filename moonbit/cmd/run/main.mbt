@@ -60,6 +60,7 @@ fn dir_of(path : String) -> String {
 }
 
 ///|
+
 ///|
 /// 墙钟源（time/clock 非确定性真值通道；两 int 组 millis——通道选型
 /// 注记在 cmd/host_clock_stub.c 文件头）。
@@ -68,6 +69,7 @@ extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"
 ///|
 extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac"
 
+///|
 fn main raise {
   let args = @env.args()
   let mut file = ""

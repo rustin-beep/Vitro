@@ -16,7 +16,7 @@
 
 ///|
 /// 引擎版本常量（发版批随 moon.mod 版本连坐更新——0.7.0 首值）。
-pub const ENGINE_VERSION : String = "0.7.0"
+pub const ENGINE_VERSION : String = "0.8.0"
 
 ///|
 /// 会话全局单例（模块级——一实例一引擎，多实例由宿主起多模块实例承担，

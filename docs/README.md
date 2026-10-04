@@ -68,7 +68,7 @@
 | [`current/07-质量与裁定/demo实测样本库20261001/`](current/07-质量与裁定/demo实测样本库20261001/README.md) | **Demo 实测样本库（2026-10-01）**：九批真实 C 代码实测的**用户原码归档**（19 份逐字保留），每份均三方对拍（Clang 绿 / 引擎红 / Rust oracle 同病），命中 issue #3~#9——const char\* decay 加宽 / 初始化列表尾逗号 / static 函数名作值 / long long 比较 / union 内联 body / E3036 不可达 / 三目类型统一；**暂不入测试体系**（语料扫描域外），转正条件与逐份映射见库内 README；全部两侧同病存量，修复挂 Rust 退役后单侧执行批 |
 | [`current/07-质量与裁定/20260919_S2词法器执行记录.md`](current/07-质量与裁定/20260919_S2词法器执行记录.md) | **S2 词法器执行记录（2026-09-19）**：vitro/engine/lexer 收官——独立预处理 pass（续行拼接/注释剥离/指令/展开）+ LineMap + 宿主 IO（SourceProvider/Vfs）；L1/L2 双层 token TSV 差分逐字节一致（随机 2400 例 4800 TSV + 真实语料 444 例）；已知差异清单 13 条（MoonBit 修复项）+ 故意复刻的 oracle 缺陷 3 项登记；vitro/engine@0.2.0 上架 |
 | [`current/07-质量与裁定/20260919_S3解析器执行记录.md`](current/07-质量与裁定/20260919_S3解析器执行记录.md) | **S3 解析器执行记录（2026-09-19）**：vitro/engine/parser 收官——六文件平移（瀑布/声明符螺旋/语句/声明/C++）；防护形态改造（depth 参数化 8 壳同构 + 声明符 Array 链迭代化 1250 层存活 + 回滚七字段全量快照 + stall_count 活性观测）；E1/E2 差分 597 样本逐字节一致 + E3 病态 12 样本同等拒绝 + E4 反向锚；差异驱动 parser_diff（--selftest J9）；未发布（随 0.4.0）；**§7 审阅修复批（09-20）**：offsetof depth 透传 + enum 常量求值迭代化 + 声明符折叠按 C 语义（有意分叉登记）+ --threshold 阈值锚 + 熔断守卫 + 顶层前瞻判定收口 + CI 接线 |
-| [`current/07-质量与裁定/20260922_性能探究实录.md`](current/07-质量与裁定/20260922_性能探究实录.md) | **性能探究实录（2026-09-22 首轮四轮 §1–§4；其后 §8/§9 复跑与归因、§10 遗留、§11 S6 后复跑、§12 S7 wasm-gc 单出口后复跑、§13 S8 收官批全量复跑 + HEAD vs 0.7.0 同时段 A/B〔2026-10-04，判「无回归」〕）**：①native 管线基线（四层 dump baseline 365 例全跑 1.2s/单文件 12.3ms/冷构建 6.2s）；②用户场景 + Rust oracle 对比（compile/run 中位 8–10ms；同层 1.4–1.6×；压力 6 维度随规模恶化至 ~3×，locals 最差；设计性拒绝两侧同构——expr 深度 512/全局区 60KB，**moon dump rc=0 须查产物 ok 字段**）；③时间旅行性能裁定（**累赘实锤**：每步全量快照 21μs=全速 320×、vs CPython 慢 3–4 数量级、bubble/nested 60s 跑不完；病灶=每步 CPU 非内存〔曾误判 OOM 已修正〕；优化=按需物化+checkpoint+写集 undo，StepPayload 协议冻结不动）；④wasm-gc 全面测试（**6/7 场景持平或反超 native**：lexer 1.7×/GC 2.3×；体积 -54%；唯一弱项=大批量超线性）+ 路线裁定（**bytecode→wasm 生成器为全速正解**〔栈式→栈式/1MB→memory 16 页/trap 白送〕，**模板超级指令搬运退役**）。含方法学坑 6 条与探针资产清单（`tmp/perf_probe/` 忽略区） |
+| [`current/07-质量与裁定/20260922_性能探究实录.md`](current/07-质量与裁定/20260922_性能探究实录.md) | **性能探究实录（2026-09-22 首轮四轮 §1–§4；其后 §8/§9 复跑与归因、§10 遗留、§11 S6 后复跑、§12 S7 wasm-gc 单出口后复跑、§13 S8 收官批全量复跑 + HEAD vs 0.7.0 同时段 A/B〔2026-10-04，判「无回归」〕、§14 时间旅行优化现状 + JIT 正交性、§15 S8 交付面全量实测（CLI 口径 + 库级对照，2026-10-04）、§16 wasm-gc 出口全场景实测（Node 宿主 + gateway；与 native CLI 同请求对照）、§17 跨实现执行对照（Clang/CPython/V8）**：①native 管线基线（四层 dump baseline 365 例全跑 1.2s/单文件 12.3ms/冷构建 6.2s）；②用户场景 + Rust oracle 对比（compile/run 中位 8–10ms；同层 1.4–1.6×；压力 6 维度随规模恶化至 ~3×，locals 最差；设计性拒绝两侧同构——expr 深度 512/全局区 60KB，**moon dump rc=0 须查产物 ok 字段**）；③时间旅行性能裁定（**累赘实锤**：每步全量快照 21μs=全速 320×、vs CPython 慢 3–4 数量级、bubble/nested 60s 跑不完；病灶=每步 CPU 非内存〔曾误判 OOM 已修正〕；优化=按需物化+checkpoint+写集 undo，StepPayload 协议冻结不动）；④wasm-gc 全面测试（**6/7 场景持平或反超 native**：lexer 1.7×/GC 2.3×；体积 -54%；唯一弱项=大批量超线性）+ 路线裁定（**bytecode→wasm 生成器为全速正解**〔栈式→栈式/1MB→memory 16 页/trap 白送〕，**模板超级指令搬运退役**）。含方法学坑 6 条与探针资产清单（`tmp/perf_probe/` 忽略区） |
 | [`current/01-定位与路线/架构设计.md`](current/01-定位与路线/架构设计.md) | 架构总纲（编译器管线 / VitroVM / 内存模型 / 时间旅行 / 诊断 / 协议 / 关键决策）（原 `DESIGN.md`） |
 | [`current/01-定位与路线/项目路线图.md`](current/01-定位与路线/项目路线图.md) | 项目路线图：当前状态、已完成里程碑、下一步、已知缺口 G1~G13（诚实记录）（原 `ROADMAP.md`） |
 | [`current/01-定位与路线/结构重构与C23锚定决议.md`](current/01-定位与路线/结构重构与C23锚定决议.md) | 结构重构决议（R1~R4，已全部交付）+ C23 语言锚定 + E2 模块化预处理器 + E3 C23 语义级（原 `VITRO_RESTRUCTURE_PLAN.md`） |
@@ -108,6 +108,7 @@
 
 | 文档 | 说明 |
 |------|------|
+| [`current/05-教学体验/S8时间旅行与教学智能总览.md`](current/05-教学体验/S8时间旅行与教学智能总览.md) | **S8 四域收官总览（单一导读）**：时间旅行帧语义与检查点体系 / teaching 43 族识别与推断 / diagnostics 教学七元组 / analysis 裁定边界 + demo 展示面与已知边界（2026-10-04） |
 | [`current/05-教学体验/统一模式设计.md`](current/05-教学体验/统一模式设计.md) | 统一模式 / 时间旅行设计（状态机、检查点、帧缓存、seek 契约）（原 `UNIFIED_MODE_DESIGN.md`） |
 | [`current/05-教学体验/VM教学体验优势.md`](current/05-教学体验/VM教学体验优势.md) | 自研 VM 的体验优势（热力图 / 语义进度条 / 变量历史 / 异常回退）（原 `VM_EXPERIENCE_ADVANTAGE.md`） |
 | [`current/05-教学体验/算法与数据结构教学设计.md`](current/05-教学体验/算法与数据结构教学设计.md) | 算法与数据结构支持总设计（模式识别 / 运行时验证 / 轨迹分析；G9 缺口权威证据源 §7）（原 `ALGORITHM_DATASTRUCTURE_DESIGN.md`） |
@@ -163,6 +164,7 @@
 | [`current/08-发布档案/0.5.0.md`](current/08-发布档案/0.5.0.md) | **0.5.0（2026-09-23）**：README 英文化 + 接口面三处实变（+compile_library/+LibcSig/−template_arg_eq）；外部用户证实（25 下载） |
 | [`current/08-发布档案/0.6.0.md`](current/08-发布档案/0.6.0.md) | **0.6.0（2026-09-26 发版件 · 09-27 线上发布）**：执行层收官——memory/host/vm 三包 + util + cmd/run；HostMemReply.value 加宽 UInt?→UInt64?；兼容义务建册 + 性能披露双语落档 |
 | [`current/08-发布档案/0.7.0.md`](current/08-发布档案/0.7.0.md) | **0.7.0（2026-09-29 发版件 · 09-30 线上发布）**：协议层与 wasm-gc 单出口——fs/protocol/session/gateway/gateway-wasm 五新包（L0–L8 共 20 包）；module 依赖清零（vendored）；彩排 + 线上验收全绿实录 |
+| [`current/08-发布档案/0.8.0.md`](current/08-发布档案/0.8.0.md) | **0.8.0（S8 收官版 · 2026-10-04 发版件；彩排/publish 待执行）**：时间旅行与教学智能四域（time_travel/teaching/steps/diagnostics）+ CLI 出口总账（vitro 总入口/cmd/lib/cli/api 万能单帧/协议契约 spec）+ compile 帧 algorithm_matches（净增 4 包共 24 包）；实录待回填 |
 
 ---
 ### 📁 [spec/](spec/) — 语言中立协议

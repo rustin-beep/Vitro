@@ -1,6 +1,7 @@
 # Vitro MoonBit 引擎
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![在线 demo（浏览器直调 wasm-gc）](https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%20demo-浏览器直调-2ea44f)](https://rustin-beep.github.io/Vitro/)
 
 ## English
 
@@ -57,13 +58,17 @@ C 教学引擎的 MoonBit 实现——137 个诊断错误码、135 条字节码�
 moon add vitro/engine        # 或按包引入 vitro/engine/diag 等
 ```
 
-**关于 `cmd/` 子包**：本模块附带 5 个命令行工具（`cmd/dump_tokens` /
-`cmd/dump_ast` / `cmd/dump_typeck` / `cmd/dump_compile`——差分对拍工具，
-与 Rust oracle 产物逐字节比对；`cmd/run`——端到端 runner，编译 C 源码
-并在 VM 中执行）。它们是**仓库开发工具**（差分锚点的 MoonBit 侧入口），
-随包分发但下游通常无需引用；`moon build` 会为每个 executable 生成独立
-产物——如果只消费引擎库（`vitro/engine/vm` 等），这些 cmd 产物可以
-忽略。
+**关于 `cmd/` 子包**：本模块附带 9 个命令行工具——`cmd/vitro`（CLI 总入口：
+`run`/`compile`/`step`/`api` 四子命令——`api` 可单帧或 `--batch` 批式调用全部
+协议方法，输出契约见 [CLI_PROTOCOL_V1.md](../docs/spec/CLI_PROTOCOL_V1.md)）；
+`cmd/run`/`cmd/compile`/`cmd/step`（独立薄壳，行为与总入口同名子命令一致）；
+`cmd/dump_tokens`/`cmd/dump_ast`/`cmd/dump_typeck`/`cmd/dump_compile`（差分
+对拍工具，与 Rust oracle 产物逐字节比对）；`cmd/serve`（JSON-lines 会话模式
+stdio 壳）。它们是**仓库开发工具 + agent 调用端口**，随包分发但下游通常
+无需引用；`moon build` 会为每个 executable 生成独立产物——如果只消费引擎库
+（`vitro/engine/vm` 等），这些 cmd 产物可以忽略。Windows/MSVC 冷态全量构建
+有分钟级悬崖（见 [moon#2254](https://github.com/moonbitlang/moon/issues/2254)），
+建议 `MOON_CC=clang`。
 
 ## 包清单
 

@@ -1,10 +1,4 @@
-# Changelog
-
-自 0.6.0 起本 module 的对外面变更携带兼容义务（mooncakes checksum 不可覆盖，
-修复只能递增版本；弃用须给出迁移路径与移除版本）。版本语义：修复已发布内容 →
-patch；新增包 / 公共 API → minor。
-
-## [Unreleased]
+## [0.8.0] - 2026-10-04（S8 收官版；发布实录待彩排+publish 后回填 08-发布档案/0.8.0.md）
 
 ### Fixed
 
@@ -19,6 +13,209 @@ patch；新增包 / 公共 API → minor。
 
 
 ### Added
+
+- **CLI 出口总账三批（2026-10-04，refs #37）**——`cmd/lib/cli`（逻辑单包，
+  函数名=命令名）+ `cmd/vitro` 总入口 + `cmd/compile`/`cmd/step` 新薄壳：
+  - `vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]`：
+    NDJSON 事件流（diag/run/stdout 三帧 gateway 单源）；退出码全表
+    0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO（`-- EXIT N` 标记行双轨不变）；
+  - `vitro compile <f> [--json]`：编译+诊断单出（compile 帧新增
+    `algorithm_matches` 字段——teaching detect wire 出口，七字段含
+    vis_events；协议「只增不改」纪律内，「自诞生即可选」豁免旧读者）；
+  - `vitro step <f> [--max-steps N] [--json|--summary]`：一次性 step 流
+    （有意分叉登记：Rust step 为交互 REPL；交互面归 serve）；
+    **step 族引擎预算消费 config.max_steps**（原恒 new() 默认 100_000，
+    `--max-steps`/config.set 对引擎无效且错配时假 finished——性能实测
+    Blocker 1 修正）；
+  - `vitro api <method> [params-json] | api --batch < frames.ndjson`：
+    **全部协议方法的脚本化出口**——单帧直出 / 批式同进程顺序 invoke
+    （状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化）；
+  - `-` stdin 源码全命令通用；run note 通道（完成附注 + 泄漏报告，
+    行级 `// NOTE` 前缀）；输出契约冻结于
+    `docs/spec/CLI_PROTOCOL_V1.md`（标记行六前缀/退出码表/事件流）。
+
+- **`vitro/engine/time_travel`（L9，S8 批一号一段）**——时间旅行引擎域建包：
+  `CheckpointManager` 全家自 `vm` 迁入（new/should_checkpoint/save/nearest/
+  淘汰不变量三件套 + set_smart_mode/set_max_checkpoints 等会话配置入口）；
+  门 3 六锚（全量往返/增量脏页/淘汰不变量/删 Full 级联 pinned/智能模式/
+  隔离区三件套）随迁 `checkpoint_wbtest.mbt`，锚名与断言原样。
+- **vm 观测面（批一号三段-a，2026-10-01）**：`get_current_line` /
+  `call_stack_len`·`call_stack_at`（窄口——不暴露整表可写句柄，Rust
+  `&[CallFrame]` 借用的等价形态）/ `take_vis_events`（取出即清）/
+  `get_variable_snapshot`（作用域过滤 + 同名声明行择优 + Double 宽读位值）/
+  `find_variable_name_at_addr`（跨帧最近定义 + 数组元素区间 slot_covers）/
+  `get_array_snapshots`（U2#10 256 截断 + 五类元素文本化）+ 观测 DTO
+  `VariableSnapshotData`/`ArraySnapshotData` + `MAX_ARRAY_SNAPSHOT_ELEMENTS`
+  ——照搬 `crates/vitro_vm/src/core/{state,memory}.rs`，time_travel collector
+  的 VM 调用面（三段-b）。
+- **time_travel 批一号三段-b（2026-10-01）：StepCollector + 语义分类器**
+  （照搬 unified/collector.rs 478 行）：`collect`（十四字段装配——纯函数
+  形态，`SourceLineProvider` trait 依赖反转〔L9 不依赖 session，编排层
+  实现注入〕+ heatmap 传值 + freed 查走 vm.mem_map〔比 Rust 少一处
+  session 依赖〕；algorithm_step/root_cause_hint 占位 None 随 teaching/
+  analysis 批）+ `infer_semantic_label` 全库唯一分类器（判定顺序契约
+  头注照搬——具体语句模式优先于循环上下文）+ 指针四态/parse_addr/
+  format_value/extract_called_func 辅助族；八锚锁判定链（含两处照搬
+  偏差被锚实锤纠正：trim 位归 infer 内部 / extract 整段纯标识符判定）。
+- **审阅销项批（2026-10-01，P1/P2/P3 五件）**：① finish_replay 三分支
+  直锚 ×4（discard/钳位/截尾/空窗——协议默认窗口 2_000 使小 target
+  不可达，A12 形态补锚；双突变证红留痕）+ `UnifiedEngine::with_limits`
+  窗口参数入口 + engine 层小窗口锚 ×2（batch>1 批量与双向越窗 seek）；
+  ② serve_smoke **豁免僵尸机判**（`--audit-exemptions`：豁免全失效真跑
+  一轮，PASS/未触达即僵尸红——D19；CI 接线独立步；J9 假豁免注入
+  ZOMBIE(PASS) 留痕）+ 僵尸条目 ×2 删除；③ serve 帧 JSON 键序跨语言
+  分叉登记（Rust serde Value=BTreeMap 字典序 vs 本侧插入序——比较口径
+  一律 canonicalize，已知限制 ④-6）；④ push_batch trim 时机有意分叉
+  标注（oracle 单次 vs 本侧逐帧恒有界，batch>1 不可达）；⑤ serve_dump
+  伪分叉注释修正（oracle 失败路径同样空表）。
+- **teaching 审阅销项（2026-10-01，用户审阅 P1/P2/P3 五件）**：
+  ① 判据族序对齐 oracle（sorting→search→graph→tree→structures→
+  string——B13：bstKmpSearch 同命中多族的元素序，tree 先于 string）；
+  ② extract_features 结构特征面补真 AST 锚 ×4（此前全 default 零锚
+  ——三个突变全绿；现 has_swap/has_array_compare 突变即红）；
+  **③ oracle 继承死分支实锤登记**：判据 `loop_depth >= 2` 恒假（两侧
+  walk 从不写 f.loop_depth——bubble/selection/insertion 三结构分支
+  在 oracle 也是死分支），锚定「不命中 = 等价」，修复归 0.8.0 脱钩
+  批裁定；④ 对拍排期调整：golden 不攒末批，族级增量（已迁移族提前
+  对拍）；⑤ 文档口径四修（已知限制 ④表编号重排/AGENTS 27→31 锚/
+  moon.pkg 批切头注/render 27 变体）。
+- **teaching/steps 批三号（2026-10-01）：tree 族八算法**：判据
+  （bst 家族「名字+语义双条件」else-if 链——valid 优先于 insert、
+  裸命名靠 is_treenode_ctx 补齐；level_order/avl/huffman/threaded
+  命名）+ infer 八算法照搬（validate 三 phase 锚定模板行 + v5 ✗2
+  顶层调用帧入口语义 + delete 判据置顶优先序）。十一锚照搬（判据
+  七锚全套 + infer 四锚——含 bstHeight 无语义词反例与语境反锚）。
+- **teaching/steps 批二号（2026-10-01）：search + string 族四算法**：
+  判据（binary_search 命名三分支 + 结构分支〔单循环+mid 计算+left/right
+  更新〕；string_reverse/bf/kmp 纯命名）+ infer 四算法照搬——含全部
+  审阅修复：mid_calc 收紧（比较行不再被短路——三分支不可达修复）、
+  narrow 实际边界值（差一修复）、nextval 两表优先序（§6-7 v4 #35）、
+  nextval 下标从行文本解析（v5 ✗1）、getNext 调用点无数值
+  （U1#1 P1-19/96）。六锚（binary 三红锚照搬 + KMP 两语义锚 +
+  判据面锚）。
+- **`vitro/engine/teaching/steps`（L9，S8 teaching 批一号，2026-10-01）
+  ——算法语义标注建包**：判据（algorithm_detector 1519 行的 features
+  特征提取 + sorting 族九算法判据——含 U1#1 P0-2 四处误判收紧全部
+  语义：select/merge 整词+sort 语境、insertion 形态、贪心语境排除）
+  + 步骤推断（vitro_algorithm_steps sorting.rs 九算法照搬——含全部
+  用户审阅修复：j 合法上界越界描述拦截 / minIdx 别名表 / 插入写回
+  收紧 + prev_vars 兜底 /「子子数组」错字 / 空区间递归基拦截 / 枢轴
+  落位文案 / 位权位序 / count[...]++ 收紧）+ 43 算法教学文案全表
+  （后续族直接消费）。十锚（has_word 21 例表 / 判据双锚 / infer 四
+  算言语义锚 / parse_int 边界）。**分叉登记**：①CFG 四特征恒默认
+  （CFG 属 analysis 域孤儿复核——sorting 零消费，graph 族迁移时再
+  定）；②AlgorithmContext trait 不迁（source_line/algorithm 由编排
+  层直供——collector 纯函数化先例）。后续批：search/tree/graph/dp/
+  math/structures/string 七族逐批 + golden 311 三方 diff（S8 验收锚）。
+- **serve dump 族三方法（S8 dump 接线批，2026-10-01）**：`ast.dump` /
+  `typeck.dump` / `symbols.dump`——**只读语义**（2026-09-29 契约拍板）：
+  独立编译通道不碰会话态（oracle 的 run_multi_file_pipeline 诊断写入
+  副作用不照搬——已知限制 ④表）；emitter 零新建（ast/typed_ast 复用
+  @ast.ast_dump_json——E1 面 597 语料与 Rust serde 逐字节一致）；
+  只读契约机判锚（dump 前后 session 诊断/编译态/产物零变）。
+  diagnostics_probe 随 diagnostics 批（依赖分析器域）。七锚
+  serve_dump_wbtest。
+- **serve step 族五方法（S8 批一号接线批，2026-10-01）**：`step.begin` /
+  `step.next` / `payload.get` / `seek` / `breakpoints.set`——编排本体 =
+  time_travel 的 UnifiedEngine（三段-c）。gateway 新增 `serve_step.mbt`
+  （StepPayload 全家显式 emitter——serde 序 14 字段 + AutoStepResult/
+  SeekResult；**UInt 数值字段 number 形态修正**：core `UInt64::to_json`
+  出字符串而 serde u64 出 number，域内值经 `to_double` 无损转换）+
+  Session 增 `unified` 引擎字段；vm 增断点三口（clear_breakpoints /
+  add_breakpoint / unpause）；U1#1 一帧发布缓冲（R2 首调空帧语义）与
+  终结冲刷照搬。**层位裁定**：time_travel 自 L9 降 L8（依赖面全 ≤L8、
+  语义=编排引擎非教学智能；L9 留 teaching/analysis/diagnostics）——
+  gateway(L8) 消费 time_travel 原违反 §4 单向约束。九锚
+  `serve_step_wbtest`；serve_smoke MoonBit 臂豁免 12→4（step 族七断言 +
+  栈帧 + edge/pending_leak 两整批销项转真跑，54 PASS / 0 FAIL）；Rust
+  臂 59/59 零变。分叉登记：reset 作废引擎（保守语义）；rss_guard 批
+  豁免留待 RSS 基线。
+- **time_travel 批一号三段-c（2026-10-01）：run_batch · seek_to——批一号
+  收官段**：`UnifiedEngine::run_batch`（五态分发 + 坑 ⑥-6 终结粘性 +
+  U2#7 早退不丢帧）与 `seek_to`（协议 §4.2 越窗五步契约：nearest 检查点
+  → restore → 窗口 reset_to → 正向重放含 target → finish_replay 截尾）
+  + `get_payloads`/`max_collected_step` 读口。**⑤-5.1「直接按目标架构
+  实现」落地**：Trap 回退不再每步拍 1MB 全量快照（pre_step_snap 机制
+  不迁——常态每步 O(1MB)→O(1)），改「最近检查点 + 正向重放到 trap 前
+  一步」，trap 帧以 trap 前状态收集（语义与 pre-step 回退精确一致）；
+  trap 文案在回滚前抓取（回滚后随快照清空）。FrameWindow 增
+  frame_at/push_batch（行末去重 U1#1 P0-1）/push_or_replace_at/
+  reset_to/finish_replay（钳位族防线）；vm 增 `heatmap_count_at` 窄读口
+  （Map 句柄不泄漏）。分叉登记：root_cause_hint 恒 None（TraceAnalyzer
+  随 analysis 批）；serve 接线层须保证 vm.max_steps ≥ engine.max_steps
+  （两层步数预算）。九锚（trap 回退专项 / 越窗 seek 往返相等 / 续跑
+  连续 / Finished 提前终止 / 无检查点失败等）。
+- **time_travel 批一号二段（2026-10-01）**：`FrameWindow`——StepPayload
+  帧缓存的自带不变量类型（`@deque.Deque` 承载，两端 O(1) 摊还；窗口参数
+  2_000/0.2 与 discard=ceil 公式协议锚定逐字保留；**push 唯一写入口**、
+  超窗自动裁——U2#1 修复形态类型化；slice 钳位族防线）；`UnifiedEngine`
+  状态定形（窗口四字段内聚、`pre_step_snap` 不迁〔Trap 回退改重放的前置〕、
+  三粘性标志 reset 唯一清除、`resume` 保留字改 `unpause`）。
+
+### Changed
+
+- **⚠️ 破坏性：`CheckpointManager` 自 `vitro/engine/vm` 迁至
+  `vitro/engine/time_travel`**（落点裁定：`should_checkpoint` 的智能判据
+  是教学语义词汇——词汇单源在 L8 protocol，VM 包反向依赖应用层语义是
+  Rust 侧已登记的分层破损；MoonBit 侧 vm(L7) 只保留无策略快照原语
+  `snapshot`/`snapshot_incremental`/`restore`/`MemoryImage::apply_to`）。
+  **迁移路径**：`@vm.CheckpointManager` → `@time_travel.CheckpointManager`
+  （API 签名零变更）；判据字符串形态照搬（enum 化随 S8 collector 批
+  配套 protocol 词汇单源后单批走红→绿）。纯迁移零语义变更：全仓
+  `moon test` 508/508 绿（vm 81→75 + time_travel 6）。
+- **`type_display_name` 上提 ast（三段-a 触发，gateway 私有 → `@ast` pub）**
+  ——首个引擎侧消费者 = vm 观测面的 ty/element_ty 渲染（S7 serve_memory
+  头注既定义务兑现）；`@ast.base_element_type` 新增（数组剥壳，照搬
+  vitro_ast）。**`@host.format_fixed` pub 化**（vm 数组快照 Float/Double
+  `{:.2}` 文本化——与 Rust `{:.2}` 同为精确十进制 half-even，单源复用）。
+
+### Fixed
+
+- **vm 观测面元素宽度维度修复（2026-10-01 用户审阅 P1/P2，红→绿锚
+  `observe_find_variable_name_at_addr_elem_width` /
+  `observe_array_snapshots_pointer_array`）**：`find_variable_name_at_addr`
+  的 slot_covers 原误用 `sym.ty.kind()`（数组自身恒落默认臂 4——double/char
+  数组区间归属双向出错）、`get_array_snapshots` 原误用 `base_element_type`
+  兼任语义宽度（指针数组落 "?" 且步长错）——两处统一改按既有单源
+  `Type::base_kind`（oracle `memory.rs:490/398` 同源：先解一层指针、数组
+  递归剥层）；element_ty 显示名保持 `base_element_type`（oracle 显示层
+  同款）。观测面为未发布新增面，无兼容负担。
+
+---
+
+> 版本语义：0.7.0 → 0.8.0（minor）——S8 四域新包（time_travel/teaching/steps/diagnostics）+
+> CLI 出口三批（cmd/lib/cli + cmd/{vitro,compile,step}）+ compile 帧 algorithm_matches 字段；
+> 无已发布 API 破坏（新增均「自诞生即可选」或新包）。（2026-10-01 审阅 P1·rss 批销项实锤）**：
+  stdout 在管道/重定向形态下全缓冲（MSVC CRT 无可靠行缓冲），批式消费
+  方（一次性喂 stdin）无感，**交互式消费方**（写一行读一行——serve_smoke
+  rss 批 / 上游宿主）死等首响应（实测 python 交互管道 >60s 零输出；
+  Rust 侧 println! 自带行 flush 无此形态）。serve_stdio.c 增
+  `moonbit_vitro_serve_flush` + main 循环每响应行显式 fflush。红→绿：
+  修复前 rss 批挂死/compile-fail，修复后 4 次 seek 完成峰值 22MB/64MB
+  PASS——**rss_guard 批豁免销项**（MoonBit 臂 59 断言与 Rust 臂同数）。
+
+
+### Added
+
+- **CLI 出口总账三批（2026-10-04，refs #37）**——`cmd/lib/cli`（逻辑单包，
+  函数名=命令名）+ `cmd/vitro` 总入口 + `cmd/compile`/`cmd/step` 新薄壳：
+  - `vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]`：
+    NDJSON 事件流（diag/run/stdout 三帧 gateway 单源）；退出码全表
+    0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO（`-- EXIT N` 标记行双轨不变）；
+  - `vitro compile <f> [--json]`：编译+诊断单出（compile 帧新增
+    `algorithm_matches` 字段——teaching detect wire 出口，七字段含
+    vis_events；协议「只增不改」纪律内，「自诞生即可选」豁免旧读者）；
+  - `vitro step <f> [--max-steps N] [--json|--summary]`：一次性 step 流
+    （有意分叉登记：Rust step 为交互 REPL；交互面归 serve）；
+    **step 族引擎预算消费 config.max_steps**（原恒 new() 默认 100_000，
+    `--max-steps`/config.set 对引擎无效且错配时假 finished——性能实测
+    Blocker 1 修正）；
+  - `vitro api <method> [params-json] | api --batch < frames.ndjson`：
+    **全部协议方法的脚本化出口**——单帧直出 / 批式同进程顺序 invoke
+    （状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化）；
+  - `-` stdin 源码全命令通用；run note 通道（完成附注 + 泄漏报告，
+    行级 `// NOTE` 前缀）；输出契约冻结于
+    `docs/spec/CLI_PROTOCOL_V1.md`（标记行六前缀/退出码表/事件流）。
 
 - **`vitro/engine/time_travel`（L9，S8 批一号一段）**——时间旅行引擎域建包：
   `CheckpointManager` 全家自 `vm` 迁入（new/should_checkpoint/save/nearest/

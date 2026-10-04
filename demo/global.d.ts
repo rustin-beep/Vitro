@@ -28,3 +28,29 @@ interface DemoCase {
 }
 
 declare const DEMO_CASES: DemoCase[];
+
+// 算法侧栏数据（algorithms.js = scripts/gen_demo_algorithms 机判产物；
+// 形态见 AlgoItem——template "extra" = 演示覆盖源，其余为 templates/ 模板名）
+interface DemoAlgoVariant {
+  tpl: string;
+  source: string;
+}
+interface DemoAlgoItem {
+  id: string;
+  name: string;
+  template: string;
+  source: string;
+  variants?: DemoAlgoVariant[];
+}
+interface DemoAlgoXItem {
+  id: string;
+  name: string;
+  source: string;
+}
+interface DemoAlgoGroup {
+  id: string;
+  label: string;
+  items?: DemoAlgoItem[];
+  xitems?: DemoAlgoXItem[];
+}
+declare const DEMO_ALGORITHMS: { groups: DemoAlgoGroup[] };

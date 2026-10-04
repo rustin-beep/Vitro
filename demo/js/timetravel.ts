@@ -16,7 +16,7 @@ import { $, esc, makeDropdown } from "./util.ts";
 import { scrollToLine } from "./editor.ts";
 import { buildCallTree, renderCallTree, treeView } from "./calltree.ts";
 import type { TreeNode } from "./calltree.ts";
-import { currentCaseId, setSpeedDropdown, speedValue } from "./state.ts";
+import { currentCaseId, setSpeedDropdown, speedValue, currentBreakpoints } from "./state.ts";
 import type { StepPayload, StepNextResult, CompileResult } from "./types.ts";
 
 const STEP_FRAME_CAP = 4000; // 上限防大程序把回放 DOM/内存拖爆（infinite 类用例 20000 步在此截断，回放提示截断）
@@ -46,7 +46,19 @@ async function stepCollect(): Promise<StepData> {
   }));
   const comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { source: ($("editor") as HTMLTextAreaElement).value } }));
   if (!comp.ok) return { error: "编译失败——先解决左侧诊断", frames: [], marks: [], stopped: "" };
+  // run 先行（2026-10-04，refs #28：Rust golden 提取序照搬 compile→run→
+  // step.begin→step.next）——run 建立会话运行态并把 compile 期的算法检测
+  // matches 注入引擎；缺此步则帧的 algorithm_step/vis_events 恒空
+  //（smoke 抽验带 run 所以绿、本通道此前无标注用例路径未暴露）
+  bodyOf(invoke({ method: "run", params: {} }));
   bodyOf(invoke({ method: "step.begin", params: {} }));
+  // 断点下发（2026-10-04，refs #28：编辑器行号点击标记——先清后设语义，
+  // step.next 推进到断点行的批次暂停并带 paused 字段）。**须在 step.begin
+  // 之后**：begin 重建 vm（#29 #5 语义），重建前设置的断点会被清掉。
+  const bpLines = currentBreakpoints();
+  if (bpLines.length) {
+    bodyOf(invoke({ method: "breakpoints.set", params: { lines: bpLines } }));
+  }
   const frames: StepPayload[] = [];
   let stopped = "";
   let batch: StepNextResult;
@@ -54,6 +66,7 @@ async function stepCollect(): Promise<StepData> {
     batch = bodyOf<StepNextResult>(invoke({ method: "step.next", params: {} }));
     if (batch.payloads) frames.push(...batch.payloads);
     if (batch.waiting_input) { stopped = "程序等待输入（scanf）——回放到暂停点为止"; break; }
+    if (batch.paused) { stopped = "⏸ 已到断点（引擎暂停）——清除断点后 ↻ 重新采集可继续"; break; }
     if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || "").split("\n")[0]; break; }
   } while (!batch.finished && frames.length < STEP_FRAME_CAP);
   if (frames.length >= STEP_FRAME_CAP) stopped = stopped || `帧数超 ${STEP_FRAME_CAP} 上限，回放截断`;
@@ -78,6 +91,18 @@ function stepGoto(i: number): void {
   stepRender();
 }
 
+// vis_events 行标记（2026-10-04，refs #28）：帧的可视化事件行在编辑器装饰层
+// 左缘加竖条（.cl.vis-on——叠加类不动 highlightLines 行渲染管线）。
+// ty 含义见 protocol（1=比较 等）——首版不分类全同色，分类呈现随 #28 迭代。
+function markVisEventLines(f: StepPayload): void {
+  const rows = document.querySelectorAll<HTMLElement>("#editor-hl .cl");
+  rows.forEach((r) => r.classList.remove("vis-on"));
+  for (const ev of f.vis_events || []) {
+    const row = rows[ev.line - 1];
+    if (row) row.classList.add("vis-on");
+  }
+}
+
 function stepRender(): void {
   if (!stepData) return;
   const f = stepData.frames[stepIdx];
@@ -88,6 +113,7 @@ function stepRender(): void {
   const label = f.semantic_label || "执行";
   $("anim-phase").textContent = `【${label}】第 ${f.code_line} 行` + (f.func_name ? ` · ${f.func_name}` : "");
   scrollToLine(f.code_line, false); // 播放中只滚动+描边当前行，不闪烁
+  markVisEventLines(f); // vis_events 行（编辑器左缘 accent 标记——常显至下帧）
   // 局部变量表
   const vars = f.local_vars || [];
   $("step-vars").innerHTML = vars.length
@@ -128,6 +154,9 @@ function updateNodeCard(f: StepPayload): void {
     `<div class="nc-head" title="点击收纳/展开"><span>执行信息</span><span class="nc-fold">▾</span></div>` +
     `<div class="nc-body">` +
     `<p class="nc-ev">${esc(f.semantic_label || "执行")}</p>` +
+    (f.algorithm_step
+      ? `<p class="nc-algo">🧭 ${esc(f.algorithm_step.display_name || f.algorithm_step.algorithm_name)} · ${esc(f.algorithm_step.phase)}<br><span class="nc-algo-desc">${esc(f.algorithm_step.description)}</span></p>`
+      : "") +
     `<p class="nc-fn">${esc(f.func_name || "—")} · 第 ${f.code_line} 行</p>` +
     `<p class="nc-step">第 ${f.step_index} 步</p>` +
     (vars.length
@@ -233,6 +262,56 @@ async function stepRecollect(): Promise<void> {
   stepPlay(); // 采集完自动播放
 }
 
+// 算法侧栏入口（2026-10-04，refs #28）：algo 卡片载入示例后自动采集——
+// 与 anim-reset 同源（编辑器当前内容采集），导出供跨模块调用
+export function collectCurrentEditor(): void {
+  void stepRecollect();
+}
+
+// ── 引擎级跳转（2026-10-04，refs #28：gateway step.seek 消费）────────
+// 与本地拖条的分工：本地 seek = 已采集缓存内的回放（含树高亮/进度）；
+// 引擎跳转 = 引擎权威帧——超出本地采集范围（4000 帧截断外）仍可取帧。
+// 命中本地缓存时回落本地渲染（全兼容），超界走最小渲染面。
+export function engineSeek(step: number): void {
+  if (!hasGatewaySafe()) return;
+  stepStopTimer();
+  const r = bodyOf<{ success: boolean; payload: StepPayload }>(
+    invoke({ method: "seek", params: { step } })
+  );
+  if (!r || !r.success || !r.payload) {
+    $("anim-progress").textContent = `引擎跳转 step ${step} 失败（越界或未采集）`;
+    return;
+  }
+  const f = r.payload;
+  const localIdx = stepData ? stepData.frames.findIndex((x) => x.step_index === f.step_index) : -1;
+  if (localIdx >= 0) { stepGoto(localIdx); return; } // 本地缓存命中：全兼容渲染
+  renderEngineFrame(f);
+}
+
+// 超采集范围的引擎帧：最小渲染面（phase/变量表/调用栈/信息卡/vis 行——
+// 树高亮依赖本地 frameNode 索引，引擎帧跳过）
+function renderEngineFrame(f: StepPayload): void {
+  $("anim-phase").textContent = `【${f.semantic_label || "执行"}】第 ${f.code_line} 行（引擎帧 · step ${f.step_index}）`;
+  $("anim-progress").textContent = `引擎帧 step ${f.step_index}（超出本地采集范围）`;
+  const vars = f.local_vars || [];
+  $("step-vars").innerHTML = vars.length
+    ? "<tr><th>名称</th><th>类型</th><th>值</th><th>地址</th></tr>" +
+      vars.map((v) => `<tr><td>${esc(v.name)}</td><td>${esc(v.ty_name)}</td><td>${esc(v.value)}</td><td>0x${(v.addr || 0).toString(16)}</td></tr>`).join("")
+    : '<tr><td class="muted">（此帧无局部变量）</td></tr>';
+  const stack = f.call_stack || [];
+  $("step-stack").innerHTML = stack.length
+    ? stack.map((c) => `<span class="frm">${esc(c.func_name)}</span>`).join('<span class="arrow">→</span>')
+    : '<span class="muted">（空栈）</span>';
+  markVisEventLines(f);
+  updateNodeCard(f);
+  renderArrayViz(f);
+  scrollToLine(f.code_line, false);
+}
+
+function hasGatewaySafe(): boolean {
+  try { gateway(); return true; } catch { return false; }
+}
+
 export function bindAnim(): void {
   setSpeedDropdown(makeDropdown(
     "anim-speed",
@@ -251,6 +330,11 @@ export function bindAnim(): void {
   $("anim-seek").oninput = (e: Event) => {
     stepStopTimer();
     stepGoto(Number((e.target as HTMLInputElement).value));
+  };
+  // 引擎级跳转（step.seek 消费——引擎权威帧，超出本地采集范围可用）
+  $("eng-seek-btn").onclick = () => {
+    const n = Number(($("eng-seek-num") as HTMLInputElement).value);
+    if (Number.isFinite(n) && n >= 0) engineSeek(n);
   };
 }
 

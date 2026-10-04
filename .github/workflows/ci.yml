@@ -307,6 +307,31 @@ jobs:
         shell: bash
         run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
 
+      # ── 性能基线报告（报告型，无常驻阈值；artifact 留证）─────────────────────
+      # 2026-10-04 用户拍板入库：此前性能数字只存在于 gitignore 的 tmp/perf_probe/，
+      # 谁都复跑不了（"一人言"）。本步让 CI 每次构建后自动采一份基线并上传 artifact，
+      # **同时解掉两个问题**：① 数字可复跑可审计；② CI runner 不在 agent 进程树内
+      # ⇒ 逐进程口径本来合法（本地 agent 会话内进程创建 ~150ms，实录 §12.1/§13.1，
+      # 本地复跑须走计划任务/普通窗口）。依赖上方 `cargo build --release` 的 oracle；
+      # MoonBit 四层 dump 工具在本步内构建（cmd/run 已在 vm_diff 步构建 ⇒ 增量）。
+      # 判红面仅「工具自身出错」（缺产物 / 空语料即 fail loud）；**数值不定红绿**
+      # （比值阈值门禁待基线固化，见脚本总清单 §1.1）。J9 证红 = `-selftest`
+      # 两路注入（缺产物 / 空语料）每轮随跑。
+      - name: Perf baseline report
+        shell: bash
+        run: |
+          cd moonbit && moon build --release --target native cmd/dump_tokens cmd/dump_ast cmd/dump_typeck cmd/dump_compile
+          cd ..
+          go run ./scripts/perf_baseline -selftest
+          go run ./scripts/perf_baseline
+
+      - name: Upload perf baseline report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-baseline
+          path: reports/perf_baseline.md
+
       - name: libc bootstrap parity (MoonBit library mode vs Rust export)
         # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
         # 自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」。两侧形态不
@@ -599,6 +624,12 @@ jobs:
       # 原地发射后的 demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
         run: node scripts/demo_assemble_check/main.js demo
+        shell: bash
+
+      # 算法侧栏数据生成器契约（2026-10-04，refs #28）：algorithms.js 为
+      # 机判产物——盘上手改或生成器漂移即红（分组并集 == rules.json 43 族）
+      - name: demo algorithms data generator check
+        run: go run ./scripts/gen_demo_algorithms -check
         shell: bash
 
       - name: demo page smoke (protocol-level, cases golden + field keys)

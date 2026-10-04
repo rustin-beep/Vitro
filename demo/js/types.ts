@@ -79,6 +79,8 @@ export interface StepNextResult {
   finished: boolean;
   trapped: boolean;
   waiting_input?: boolean;
+  /** 断点暂停（breakpoints.set 后推进到断点行的批次——2026-10-04 消费接线） */
+  paused?: boolean;
   trap_message: string | null;
   max_collected_step?: number;
 }

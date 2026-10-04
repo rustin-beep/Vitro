@@ -102,6 +102,7 @@
   <section class="pane result-pane">
     <nav class="tabs">
       <button class="tab active" data-tab="result">运行</button>
+      <button class="tab" data-tab="algo">算法</button>
       <button class="tab" data-tab="memory">内存地图</button>
       <button class="tab" data-tab="catalog">诊断手册</button>
       <button class="tab" data-tab="proto">引擎与协议</button>
@@ -131,6 +132,10 @@
         <div id="anim-speed" class="dd"></div>
         <input id="anim-seek" type="range" min="0" max="0" value="0">
         <span id="anim-progress" class="muted small"></span>
+        <span class="eng-seek">
+          <input id="eng-seek-num" type="number" min="0" value="0" title="引擎步号（step_index）">
+          <button id="eng-seek-btn" class="minor" title="gateway step.seek 引擎级跳转——返回引擎权威帧（非本地缓存）">引擎跳转</button>
+        </span>
       </div>
       <div id="anim-phase" class="anim-phase">（采集后展示执行过程——数据来自引擎 step 流）</div>
       <div class="pane-head"><h2>调用树</h2><span class="muted small">step 流 call_stack 序列重建 · 当前帧节点高亮</span></div>
@@ -141,6 +146,15 @@
       <table id="step-vars" class="mem-table"></table>
       <div class="pane-head"><h2>调用栈</h2></div>
       <div id="step-stack" class="step-stack muted small">—</div>
+    </div>
+
+    <div class="tabpage hidden" id="tab-algo">
+      <p class="small muted" style="margin: 0 0 8px">
+        引擎教学标注族（43 族，全部 MoonBit 侧判据）：点击载入示例到编辑器并采集回放——
+        帧推进时信息卡展示算法阶段说明（algorithm_step），可视化事件行在编辑器左缘标记
+        （vis_events）。数据由 scripts/gen_demo_algorithms 机判生成，非逐项手画。
+      </p>
+      <div id="algo-grid"></div>
     </div>
 
     <div class="tabpage hidden" id="tab-memory">
@@ -169,7 +183,7 @@
 
     <div class="tabpage hidden" id="tab-proto">
       <p class="blurb">本页所有能力均来自冻结协议 <b>v0.1</b>（2026-09-12 定版）的 NDJSON 方法帧——demo 就是协议的第一个浏览器消费者。</p>
-      <div class="pane-head"><h2>方法面（21 个，本页消费 15 个）</h2></div>
+      <div class="pane-head"><h2>方法面（21 个，本页消费 17 个）</h2></div>
       <div id="methods-list" class="methods"></div>
       <div class="pane-head"><h2>schema 冻结与 v0.2 预留台账（capabilities）</h2></div>
       <div id="cap-box" class="cap-box"></div>
@@ -192,6 +206,7 @@
   <p>参考输出为 Clang golden 预置真值（CI shadow 防线持续对拍；浏览器内无 Clang，不做实时交叉编译）。时间旅行（step 流回放 + 调用树 + 数组动画）已上线「运行」视图——trap 类程序与结构可视化的引擎侧能力缺口见 issue 台账。</p>
 </footer>
 <script src="cases.js"></script>
+<script src="algorithms.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

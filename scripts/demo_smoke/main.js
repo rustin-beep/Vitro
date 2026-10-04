@@ -223,6 +223,113 @@ function assertKeys(obj, keys, label) {
     }
   }
 
+  // ── 算法侧栏数据契约（2026-10-04，refs #28）─────────────────────
+  // algorithms.js = scripts/gen_demo_algorithms 机判产物。本段三断言：
+  // ① 族集与 rules.json（teaching 43 族权威）一致——生成器漂移/手改即红；
+  // ② 每族源码 compile ok（43 次，快）；
+  // ③ step 标注命中抽验（golden 源/extra 源/math 各一：bubble_sort /
+  //    linked_list_append / gcd——全量 43×4000 批太重，完备性由生成器
+  //    分组并集断言兜底）。
+  // 已知豁免（引擎 code_line 基准偏移致 infer 拿错行文本——两侧同病，
+  // 修复挂 Rust 退役后，与差异台账同类）：is_prime、threaded_binary_tree
+  // 两族无帧标注，侧栏条件渲染不显示。
+  {
+    const rulesPath = path.join(repoRoot, "scripts/teaching_annotation_diff/rules.json");
+    const rules = JSON.parse(fs.readFileSync(rulesPath, "utf8"));
+    const algoSrc = fs.readFileSync(path.join(repoRoot, "demo/algorithms.js"), "utf8");
+    const vctx = {};
+    vm.createContext(vctx);
+    vm.runInContext(algoSrc + "\n;DEMO_ALGORITHMS;", vctx);
+    const DEMO = vm.runInContext("DEMO_ALGORITHMS", vctx);
+    const items = (DEMO.groups || []).flatMap((g) => g.items || []);
+    const ids = new Set(items.map((i) => i.id));
+    const want = new Set(rules.migrated_algorithms);
+    const missR = [...want].filter((x) => !ids.has(x));
+    const extraR = [...ids].filter((x) => !want.has(x));
+    check(missR.length === 0 && extraR.length === 0,
+      "算法侧栏族集 = rules.json 43 族（机判对账）",
+      "缺: " + missR.join(",") + " / 多: " + extraR.join(","));
+    check(items.length === want.size, `侧栏族数 ${want.size}`, "实得 " + items.length);
+    // 全量纳入（2026-10-04 用户拍板）：43 族 + 变体 + 扩展练习 == templates/*.c
+    // 82 全集（Set 语义）；变体/扩展源同样 compile ok
+    const xitems = (DEMO.groups || []).flatMap((g) => g.xitems || []);
+    const varSrcs = items.flatMap((i) => (i.variants || []).map((v) => ({ tpl: v.tpl, source: v.source })));
+    const tplNames = new Set([
+      ...items.filter((i) => i.template !== "extra").map((i) => i.template),
+      ...varSrcs.map((v) => v.tpl),
+      ...xitems.map((x) => x.id),
+    ]);
+    const diskTpls = fs.readdirSync(path.join(repoRoot, "templates"))
+      .filter((t) => fs.existsSync(path.join(repoRoot, "templates", t, "source.c")));
+    const diskSet = new Set(diskTpls);
+    const ghost = [...tplNames].filter((t) => !diskSet.has(t));
+    const notIn = diskTpls.filter((t) => !tplNames.has(t));
+    check(ghost.length === 0 && notIn.length === 0,
+      "侧栏模板全集对账 = templates/*.c（82 面，Set 语义）",
+      "幽灵: " + ghost.join(",") + " / 未纳: " + notIn.join(","));
+    let vFail = [];
+    for (const v of varSrcs.concat(xitems.map((x) => ({ tpl: x.id, source: x.source })))) {
+      g.reset();
+      body(inv({ method: "session.create" }));
+      const c = body(inv({ method: "compile", params: { source: v.source } }));
+      if (c.ok !== true) vFail.push(v.tpl);
+    }
+    check(vFail.length === 0, `变体+扩展源全部编译通过（${varSrcs.length + xitems.length} 份）`, "失败: " + vFail.join(","));
+    let compFail = [];
+    for (const it of items) {
+      g.reset();
+      body(inv({ method: "session.create" }));
+      const c = body(inv({ method: "compile", params: { source: it.source } }));
+      if (c.ok !== true) compFail.push(it.id);
+    }
+    check(compFail.length === 0, "43 族示例源码全部编译通过", "失败: " + compFail.join(","));
+    // 命中抽验（三源各一：golden 模板 / extra 覆盖 / math 族）
+    const spot = ["bubble_sort", "linked_list_append", "gcd"];
+    const exempt = new Set(["is_prime", "threaded_binary_tree"]);
+    for (const algo of spot) {
+      const it = items.find((x) => x.id === algo);
+      g.reset();
+      body(inv({ method: "session.create" }));
+      body(inv({ method: "config.set", params: { max_steps: 2000000, call_depth_limit: 10000, deterministic: true, quarantine_budget: 262144 } }));
+      body(inv({ method: "compile", params: { source: it.source } }));
+      body(inv({ method: "run", params: {} }));
+      body(inv({ method: "step.begin", params: {} }));
+      let found = false;
+      for (let i = 0; i < 1200 && !found; i++) {
+        const b = body(inv({ method: "step.next", params: {} }));
+        for (const p of b.payloads || []) {
+          if (p.algorithm_step && p.algorithm_step.algorithm_name === algo) { found = true; break; }
+        }
+        if (b.finished || b.trapped) break;
+      }
+      check(found, `[${algo}] step 标注命中抽验（三源代表）`, "1200 批内无该族标注——生成器代表源或引擎链路回归");
+    }
+    check(exempt.size === 2, "标注豁免表恒为 2（is_prime/threaded_binary_tree——引擎行号偏移，修复后此处应改并加回抽验）", "豁免面漂移");
+  }
+
+  // ── seek / breakpoints.set 契约（2026-10-04，refs #28 键族层消费）──
+  {
+    const k = cases.find((c) => c.id === "hello") || cases[0];
+    g.reset();
+    body(inv({ method: "session.create" }));
+    body(inv({ method: "config.set", params: { max_steps: 100000, call_depth_limit: 10000, deterministic: true } }));
+    body(inv({ method: "compile", params: { source: k.source } }));
+    body(inv({ method: "run", params: {} }));
+    body(inv({ method: "step.begin", params: {} }));
+    for (let i = 0; i < 10; i++) { const b = body(inv({ method: "step.next", params: {} })); if (b.finished) break; }
+    const sk = body(inv({ method: "seek", params: { step: 3 } }));
+    check(sk && sk.success === true && sk.payload && typeof sk.payload.step_index === "number",
+      "seek{step:3} 返回引擎权威帧（success+payload.step_index）", JSON.stringify(sk).slice(0, 80));
+    const badSk = body(inv({ method: "seek", params: {} }));
+    check(badSk && badSk.ok === false, "seek 缺参回协议错误帧（fail loud）", JSON.stringify(badSk).slice(0, 80));
+    const pg = body(inv({ method: "payload.get", params: { step: 0 } }));
+    check(pg && Array.isArray(pg.payloads) && "cache_start_step" in pg && "max_collected_step" in pg,
+      "payload.get{step:0} 窗口查询三键（payloads/cache_start_step/max_collected_step）", Object.keys(pg || {}).join(","));
+    const bp = body(inv({ method: "breakpoints.set", params: { lines: [4] } }));
+    check(bp && Array.isArray(bp.lines) && bp.lines.includes(4),
+      "breakpoints.set{lines:[4]} 先清后设回显", JSON.stringify(bp));
+  }
+
   const total = pass + fail;
   console.log();
   console.log(`demo_smoke: ${total} 用例项 (PASS ${pass} / FAIL ${fail})`);

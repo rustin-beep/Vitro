@@ -4,6 +4,7 @@
 "use strict";
 
 import { $, esc } from "./util.ts";
+import { toggleBreakpoint, currentBreakpoints } from "./state.ts";
 
 export const C_KEYWORDS: ReadonlySet<string> = new Set(
   (
@@ -73,11 +74,30 @@ export function highlightLines(src: string): string {
 export function renderEditorDecor(): void {
   const ta = $<HTMLTextAreaElement>("editor");
   $("editor-hl").innerHTML = highlightLines(ta.value);
+  markBreakpointRows();
+}
+
+// 断点行标记（2026-10-04，refs #28：行号点击切换断点——引擎 breakpoints.set
+// 的 UI 入口；重渲染后恢复标记）
+function markBreakpointRows(): void {
+  const rows = document.querySelectorAll<HTMLElement>("#editor-hl .cl");
+  const bps = new Set(currentBreakpoints());
+  rows.forEach((r, i) => r.classList.toggle("bp-on", bps.has(i + 1)));
 }
 
 export function initEditorDecor(): void {
-  const ta = $<HTMLTextAreaElement>("editor");
+  const ta = $("editor");
   ta.addEventListener("input", renderEditorDecor);
+  // 行号点击 = 断点切换（事件委托——行是批量重渲染的）
+  $("editor-hl").addEventListener("click", (e: MouseEvent) => {
+    const ln = (e.target as HTMLElement).closest<HTMLElement>(".ln");
+    if (!ln) return;
+    const row = ln.closest<HTMLElement>(".cl");
+    const idx = row ? Array.from(document.querySelectorAll("#editor-hl .cl")).indexOf(row) : -1;
+    if (idx < 0) return;
+    toggleBreakpoint(idx + 1);
+    markBreakpointRows();
+  });
   renderEditorDecor();
 }
 

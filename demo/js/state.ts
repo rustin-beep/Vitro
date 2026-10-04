@@ -8,8 +8,15 @@ import type { Dropdown } from "./util.ts";
 
 let caseDd: Dropdown | null = null;
 let speedDd: Dropdown | null = null;
+let breakpointLines: number[] = []; // 引擎断点行集（editor 行号点击写、timetravel 采集时读——2026-10-04，refs #28）
 
 export function setCaseDropdown(d: Dropdown): void { caseDd = d; }
 export function currentCaseId(): string { return caseDd ? caseDd.value : ""; }
 export function setSpeedDropdown(d: Dropdown): void { speedDd = d; }
 export function speedValue(): string { return speedDd ? speedDd.value : "200"; }
+export function currentBreakpoints(): number[] { return breakpointLines.slice(); }
+export function toggleBreakpoint(line: number): void {
+  const i = breakpointLines.indexOf(line);
+  if (i >= 0) breakpointLines.splice(i, 1);
+  else { breakpointLines.push(line); breakpointLines.sort((a, b) => a - b); }
+}

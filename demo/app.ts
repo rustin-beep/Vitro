@@ -18,6 +18,7 @@ import { renderEditorDecor, initEditorDecor, scrollToLine } from "./js/editor.ts
 import { bindTabs, applyConfig, runCase, feedStdin, renderCfgView, resetPendingRun } from "./js/run.ts";
 import { loadCatalog, renderCatalog, renderProto } from "./js/catalog.ts";
 import { stepReset, bindAnim, applyCardFold } from "./js/timetravel.ts";
+import { renderAlgoGrid } from "./js/algo.ts";
 import { setCaseDropdown } from "./js/state.ts";
 import type { Dropdown } from "./js/util.ts";
 import { initSettings } from "./js/settings.ts";
@@ -103,5 +104,6 @@ function selectCase() {
   renderCfgView(bodyOf(invoke({ method: "config.get" })));
   bodyOf(invoke({ method: "ping" }));
   loadCatalog();
+  renderAlgoGrid(); // 算法侧栏（43 族卡片——algorithms.js 机判产物）
   selectCase();
 })();

@@ -33,6 +33,12 @@
       "pattern": "(\"delta\":)\"((\\\\.|[^\"\\\\])*)\"",
       "replace": "${1}\"<TEXT>\"",
       "reason": "delta 值域整体 mask（帧组 30-32 首跑实锤激活，2026-10-04）：MoonBit delta 出口为 Latin-1 逐字节折回（serve_io 头注既有分叉、消费方字节域还原），Rust 为 UTF-8 文本——出口编码层分叉使值级对拍不可行；**字节级一致性由 total/cursor 冻结承担**（首跑实测 total=424=424——通道存原始 UTF-8 字节，字节量是比出口文本更本质的等值证据）。分叉收敛（随退役）后删本条目恢复值冻结"
+    },
+    {
+      "name": "compile-algorithm-matches-del",
+      "pattern": "\"algorithm_matches\":(\\[.*?\\]),\"diagnostics\"",
+      "replace": "\"diagnostics\"",
+      "reason": "compile 帧 algorithm_matches 整键抹除（2026-10-04 本地全量 CI 实锤激活）：0.8.0 批（a66e5c9，#36 最小路径）在 MoonBit compile 帧新增该可选字段（协议「只增不改」纪律内、「自诞生即可选」豁免旧读者——serve_compile.mbt:408 头注在案），Rust oracle 侧无此字段且已冻结不跟——键集结构性分叉与 engine_version-del 同款（oracle 缺席方向）。基线为 oracle 臂冻结（-update-baseline 注明随 S9 工序②终验走最后一次，本批不动基线）；抹除后 diagnostics/ok/preprocessor_trace 三字段照常比对。正则用 canonical 序定界（algorithm_matches 排 result 首位、后继键恒为 diagnostics；vis_events 嵌套数组含 ] 故不可用 [^\\]] 形态）。分叉收敛（随退役）后删本条目恢复字段冻结"
     }
   ]
 }

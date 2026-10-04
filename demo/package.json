@@ -1,0 +1,15 @@
+{
+  "name": "vitro-demo",
+  "private": true,
+  "version": "0.7.0",
+  "type": "module",
+  "description": "Vitro 引擎浏览器单页 demo（TS 源 + tsc 原地发射；发射产物不入库，与 wasm.wasm 对称）",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

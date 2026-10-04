@@ -175,4 +175,7 @@ tmp_vitro_fs_*/
 
 # demo 页的 wasm 构建产物（pages.yml 现构建，不入库）
 demo/wasm.wasm
+# TS 发射产物（原地发射——源 = demo/app.ts + demo/js/*.ts；B 方案批 2026-10-04）
+demo/app.js
+demo/js/*.js
 demo-dist/

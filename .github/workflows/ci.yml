@@ -217,6 +217,17 @@ jobs:
           go run ./scripts/parser_diff --legal-deep
           go run ./scripts/parser_diff --threshold
 
+      - name: MoonBit lexer differential (L1/L2 TSV, full corpus)
+        # 2026-10-04 升格接线：lexer_diff 此前建册即定位「本地配套」（S2 词法
+        # 差分与 parser/typeck/codegen 三兄弟同族独漏 CI——三轮拍板悬置后销项）。
+        # 管线 = 双侧 dump-tokens 批量 TSV 逐字节比对（本地实测四语料 1206
+        # TSV 全绿）；依赖 Release vitro_cli（与 parser_diff 同前提）。
+        shell: bash
+        run: |
+          for d in baseline knr leetcode gap; do
+            go run ./scripts/lexer_diff native/tests/cases/$d
+          done
+
       - name: MoonBit typeck differential (E1-E4 full corpus)
         # 2026-09-20 审阅补线：typeck_diff（S4 对拍防线）此前零 CI 接线
         # （原排期"E1 全量对拍管道 CI 化待 S5 片后统一"，防线空窗期由
@@ -574,6 +585,15 @@ jobs:
       # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
       # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
+      # TS 重写批（2026-10-04，refs #28）：demo/js 产物不入库——消费产物的
+      # 步骤一律前置发射（npm ci + tsc，发射即检查；本步的 method 消费面
+      # 扫描读 .ts 源不依赖产物，但运行依赖 wasm 与 cases 均在，故本步
+      # 排在下方发射步之后语义更清晰——实排见 lint 步后）。
+      - name: demo TS build (tsc emit = type gate)
+        run: |
+          cd demo && npm ci && npx tsc -p tsconfig.json
+        shell: bash
+
       - name: demo page smoke (protocol-level, cases golden + field keys)
         run: node scripts/demo_smoke/main.js
         shell: bash
@@ -583,10 +603,21 @@ jobs:
       # （stdin-row 死类 + --fg-muted 幽灵变量；HEAD 版证红留痕：bug 版
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
+      # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
         run: |
           go run ./scripts/demo_ui_lint -selftest
           go run ./scripts/demo_ui_lint
+        shell: bash
+
+      # 拆分批（2026-10-04，refs #28）→ TS 重写批：纯函数层 node --test——
+      # 黄一批评「demo 层无自己测试」的正解药方。node 25 type stripping
+      # 直跑 .ts（零发射依赖——源在即跑，比发射更早的红）。锚位对历史
+      # bug 窝点：buildCallTree trie / isArrayAnimCase 紧凑声明存量 bug
+      # 锁 / latin1ToUtf8 / tokenizeC / highlightLines / heapSpanOf / esc。
+      # DOM 交互层不硬测，维持浏览器实测纪律。
+      - name: demo pure-function tests (node --test on .ts)
+        run: node --test demo/tests/pure.test.mts
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

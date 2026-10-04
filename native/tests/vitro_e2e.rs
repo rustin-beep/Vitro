@@ -221,10 +221,14 @@ fn run_case_with_compiler(
 // 反向监控（转绿即 panic）——五个 KNOWN_* 常量全部成对。
 const KNOWN_BASELINE_COMPILE_FAILURES: &[&str] = &[
     // putchar_range（2026-10-04 转正，DIFF-LIB-PUTCHAR-01 闭环）：非编译失败——
-    // golden 为二进制字节（4180c8ff5a），本表借用为「golden 行协议不兼容跳过」：
-    // e2e 的 load_golden 是 UTF-8 文本行协议（trim/空行过滤），承载不了 ≥0x80
-    // 原始字节；字节真值由三防线（shadow/clang_direct/vm_diff 字节级 stdout +
-    // known 白名单）承担。golden 协议二进制化（若将来做）时移除此条。
+    // golden 为二进制字节（4180c8ff5a），本表借用为「golden 行协议不兼容跳过」。
+    // 【移除条件修正（2026-10-04 方案复验）：不做 golden 二进制化工程】——三重
+    // 理由：① e2e 系 Rust 冻结区测试，随 Rust 退役整体删除，为将删设施投资
+    // 违背冻结纪律经济性；② 二进制化也不解决本例转绿——引擎出口层双编码
+    // （oracle 8 字节形态）≠ Clang 原始字节是真实输出差异（DIFF-LIB-PUTCHAR
+    // 主体），非协议问题；③ 字节级防线的归宿已存在且是 MoonBit 侧：
+    // vm_diff/clang_direct 均字节级 stdout 提取——非 ASCII 输出可锚在那成立。
+    // 本条随 e2e 防线退役自然消失。
     "putchar_range",
     "e2_include_cycle",
     "e3_static_assert_fail",

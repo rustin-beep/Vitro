@@ -37,6 +37,13 @@ indent_style = space
 [*.go]
 indent_style = tab
 
+# TypeScript（tsc 惯用法 2 空格；demo TS 重写批 2026-10-04——
+# 发射产物缩进由 tsc 固定 4 空格、不入库，本节只约束手写源）
+[*.{ts,mts,cts,d.ts}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
 # YAML
 [*.{yml,yaml}]
 indent_size = 2

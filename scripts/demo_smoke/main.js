@@ -156,7 +156,13 @@ function assertKeys(obj, keys, label) {
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(!!claim && Number(claim[1]) === methodCount, "页面方法面计数与 gateway 一致",
     claim ? "页面写 " + claim[1] + " / 实际 " + methodCount : "页面未找到方法面计数句");
-  const appSrc = fs.readFileSync(path.join(repoRoot, "demo/app.js"), "utf8");
+  // 拆分批（2026-10-04，refs #28）：app.js → 入口 + demo/js/ 十模块 ESM——
+  // method 消费面扫入口 + 全部模块（逐字迁移，散布面等价）
+  const jsDir = path.join(repoRoot, "demo/js");
+  const appSrc = [path.join(repoRoot, "demo/app.ts")]
+    .concat(fs.readdirSync(jsDir).filter((f) => f.endsWith(".ts")).sort().map((f) => path.join(jsDir, f)))
+    .map((f) => fs.readFileSync(f, "utf8"))
+    .join("\n");
   const consumed = new Set([...appSrc.matchAll(/method: "([a-z._]+)"/g)].map((m) => m[1]));
   check(!!claim && Number(claim[2]) === consumed.size, "页面消费计数与 app.js 实消费一致",
     claim ? "页面写 " + claim[2] + " / 实际 " + consumed.size : "—");

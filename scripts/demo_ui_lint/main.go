@@ -172,7 +172,30 @@ func main() {
 		return string(b)
 	}
 	html := read("index.html", selftestHTML)
-	js := read("app.js", selftestJS)
+	// 拆分批（2026-10-04，refs #28）：app.js → 入口 + js/ 十模块 ESM——
+	// JS 扫描面 = 入口 + js/*.js 排序合并（冻结区防线维护通道；位点下限
+	// 随扫描面扩大自然满足）。
+	js := read("app.ts", selftestJS)
+	if !*selftest {
+		mods, err := filepath.Glob(filepath.Join(*demoDir, "js", "*.ts"))
+		if err != nil || len(mods) == 0 {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: demo/js/ 无模块文件（拆分后形态预期）\n")
+			os.Exit(2)
+		}
+		sort.Strings(mods)
+		var b strings.Builder
+		b.WriteString(js)
+		for _, f := range mods {
+			mb, err := os.ReadFile(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
+				os.Exit(2)
+			}
+			b.WriteString("\n")
+			b.Write(mb)
+		}
+		js = b.String()
+	}
 	// css = demo 目录下全部 .css 合并解析（tokens.css 令牌定义面 +
 	// style.css 消费面——2026-10-03 换肤批拆两文件后定义跨文件）
 	css := selftestCSS

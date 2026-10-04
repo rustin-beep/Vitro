@@ -57,9 +57,12 @@ import { SCHEMA_VERSION, FIELDS, ENUMS } from '@vitro/protocol/fields';
    该节表格是压缩式（多字段合并一行，如 `step_index / code_line / func_name_idx /
    semantic_label_idx`），无法逐字段机判；且它们是编码细节，不是内容消费者的必需面。
    待 v0.2 轨道决定（见 `scripts/gen_protocol_ts/rules.json` 的 `_scope_note`）。
-2. **编译期收益未验证**：本环境有 node 但**无 npm / npx / tsc**，故只能验
-   「生成物描述得了真实输出」（运行时字段校验），**验不了**「字段名写错在 tsc
-   编译期即红」——而后者才是 TS 类型的核心收益。待 tsc 环境就绪后补。
+2. ~~编译期收益未验证~~ **已验证并反向证红（2026-10-04，demo TS 重写批顺带
+   闭合）**：npm 10.9.7 + tsc 5.9.3 实测在位（原「无 npm」断言过时勘正）——
+   正向：`import type { StepPayload }` + SCHEMA_VERSION/ENUMS/FIELDS 零错；
+   反向：`PointerStatus = "Zombie"` → TS2322、字段拼错 → TS2339（编译期收益
+   成立）。**剩余缺口**：`fields.mjs` 无声明文件（TS7016）——`gen_protocol_ts`
+   量产 `fields.d.mts` 待做（rules.json 加 out 条目复用 writeOrCheck，成本低）。
 3. **发布动作不在此处**：`npm publish` 属仓库持有者执行（贡献者无 npm 账号）。
    本目录只负责把包内容与门禁准备到可直接发布的状态。
 

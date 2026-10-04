@@ -65,7 +65,6 @@
 <main>
   <section class="pane editor-pane">
     <div class="pane-head">
-      <div id="case-select" class="dd"></div>
       <button id="run-btn">▶ 运行</button>
       <span id="status-pill" class="pill idle">就绪</span>
     </div>
@@ -91,7 +90,7 @@
       <div class="config-grid">
         <label class="chk"><input type="checkbox" id="cfg-det"> 确定性模式</label>
         <label>步数上限 <input type="number" id="cfg-maxsteps" value="10000000" min="1"></label>
-        <label>调用深度 <input type="number" id="cfg-depth" value="10000" min="1"></label>
+        <label>调用深度 <input type="number" id="cfg-depth" value="10000000" min="1"></label>
         <label>隔离区预算 <input type="number" id="cfg-quar" value="262144" min="1"></label>
         <div class="cfg-actions"><button id="cfg-btn" class="minor">应用</button><span id="cfg-msg" class="muted small"></span></div>
         <label class="cfg-argv">argv <input type="text" id="argv-box" placeholder="程序参数（空格分隔，可留空）" spellcheck="false"></label>
@@ -101,14 +100,23 @@
 
   <section class="pane result-pane">
     <nav class="tabs">
-      <button class="tab active" data-tab="result">运行</button>
-      <button class="tab" data-tab="algo">算法</button>
+      <button class="tab active" data-tab="content">内容</button>
+      <button class="tab" data-tab="result">运行</button>
       <button class="tab" data-tab="memory">内存地图</button>
       <button class="tab" data-tab="catalog">诊断手册</button>
       <button class="tab" data-tab="proto">引擎与协议</button>
     </nav>
 
-    <div class="tabpage" id="tab-result">
+    <div class="tabpage" id="tab-content">
+      <p class="small muted" style="margin: 0 0 8px">
+        课程档案——章节树导航：点击课程载入示例并自动采集回放；
+        状态环标记已完成。数据全部引擎侧机判产物（cases.js + algorithms.js）。
+      </p>
+      <input id="course-search" class="course-search" type="search" placeholder="搜索课程：标题 / 描述" autocomplete="off">
+      <div id="course-tree" class="course-tree"></div>
+    </div>
+
+    <div class="tabpage hidden" id="tab-result">
       <div class="row">
         <div class="stat"><label>返回码</label><b id="ret-value">—</b></div>
         <div class="stat"><label>VM 步数</label><b id="steps-value">—</b></div>
@@ -146,15 +154,6 @@
       <table id="step-vars" class="mem-table"></table>
       <div class="pane-head"><h2>调用栈</h2></div>
       <div id="step-stack" class="step-stack muted small">—</div>
-    </div>
-
-    <div class="tabpage hidden" id="tab-algo">
-      <p class="small muted" style="margin: 0 0 8px">
-        引擎教学标注族（43 族，全部 MoonBit 侧判据）：点击载入示例到编辑器并采集回放——
-        帧推进时信息卡展示算法阶段说明（algorithm_step），可视化事件行在编辑器左缘标记
-        （vis_events）。数据由 scripts/gen_demo_algorithms 机判生成，非逐项手画。
-      </p>
-      <div id="algo-grid"></div>
     </div>
 
     <div class="tabpage hidden" id="tab-memory">

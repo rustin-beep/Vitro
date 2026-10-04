@@ -504,3 +504,30 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 .algo-var:hover { color: var(--accent-strong); border-color: var(--accent); }
 .algo-gnote { display: inline-block; margin-left: 8px; font-size: 10.5px; color: var(--t3); font-weight: 400; }
 .algo-card.xitem { color: var(--t2); }
+
+/* ── 课程档案树（2026-10-04 课程式重构：heron 式章节树——内容入口归一）── */
+.crs-title { font-size: 12px; color: var(--t2); letter-spacing: .04em; }
+.course-search { width: 100%; margin: 6px 0 8px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 7px; padding: 5px 9px; font-size: 12px; }
+.course-search:focus { outline: none; border-color: var(--accent); }
+.course-tree { display: flex; flex-direction: column; gap: 2px; max-height: 34vh; overflow-y: auto; margin-bottom: 8px; padding-right: 2px; }
+.crs-group { border-radius: 8px; }
+.crs-chap { display: flex; align-items: center; gap: 7px; width: 100%; background: var(--pane); color: var(--t1); border: 1px solid var(--hairline); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; cursor: pointer; text-align: left; }
+.crs-chap:hover { border-color: var(--chip, var(--accent)); }
+.crs-cchip { width: 8px; height: 8px; border-radius: 50%; background: var(--chip, var(--accent)); flex: none; }
+.crs-badge { margin-left: auto; font-size: 10.5px; color: var(--t3); background: var(--field); border-radius: 8px; padding: 0 6px; }
+.crs-chev { width: 13px; height: 13px; color: var(--t3); transition: transform var(--t-fast) var(--ease-out); flex: none; }
+.crs-group.closed .crs-chev { transform: rotate(-90deg); }
+.crs-group.closed .crs-lessons { display: none; }
+.crs-lessons { display: flex; flex-direction: column; gap: 1px; padding: 4px 0 6px 8px; }
+.crs-lesson { display: flex; align-items: center; gap: 7px; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--t2); cursor: pointer; }
+.crs-lesson:hover { background: var(--accent-tint); color: var(--t1); }
+.crs-lesson.sub { padding-left: 26px; font-size: 11.5px; color: var(--t3); }
+.crs-ring { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--hairline); flex: none; transition: all var(--t-fast) var(--ease-out); }
+.crs-lesson.done .crs-ring { border-color: var(--ok); background: var(--ok-tint); box-shadow: inset 0 0 0 2.5px var(--pane), inset 0 0 0 10px var(--ok); }
+.crs-lesson.done { color: var(--t1); }
+/* 章 chip 色（tokens --chip-1..5 的类形态——避免模板字符串内联 style 被 lint 静态抽取器截断） */
+.crs-chip1 { --chip: var(--chip-1); }
+.crs-chip2 { --chip: var(--chip-2); }
+.crs-chip3 { --chip: var(--chip-3); }
+.crs-chip4 { --chip: var(--chip-4); }
+.crs-chip5 { --chip: var(--chip-5); }

@@ -13,25 +13,26 @@
 "use strict";
 
 import { loadGateway, setGateway, invoke, bodyOf, gateway } from "./js/gw.ts";
-import { $, setStatus, makeDropdown, isArrayAnimCase } from "./js/util.ts";
+import { $, setStatus, isArrayAnimCase } from "./js/util.ts";
 import { renderEditorDecor, initEditorDecor, scrollToLine } from "./js/editor.ts";
 import { bindTabs, applyConfig, runCase, feedStdin, renderCfgView, resetPendingRun } from "./js/run.ts";
 import { loadCatalog, renderCatalog, renderProto } from "./js/catalog.ts";
-import { stepReset, bindAnim, applyCardFold } from "./js/timetravel.ts";
-import { renderAlgoGrid } from "./js/algo.ts";
-import { setCaseDropdown } from "./js/state.ts";
-import type { Dropdown } from "./js/util.ts";
+import { stepReset, bindAnim, applyCardFold, collectCurrentEditor } from "./js/timetravel.ts";
+import { renderCourseTree, bindCasePicker } from "./js/course.ts";
+import { setCurrentCase } from "./js/state.ts";
 import { initSettings } from "./js/settings.ts";
 
-let caseDd: Dropdown; // 用例下拉实例（入口持有；state.ts 暴露读口）
-
-function selectCase() {
-  const k = DEMO_CASES.find((k) => k.id === caseDd.value);
+// 课程树基础课选中（原 selectCase 语义照搬：编辑器/blurb/回放区过期/输出区清零）
+function selectCaseById(id: string) {
+  const k = DEMO_CASES.find((k) => k.id === id);
   if (!k) return;
+  setCurrentCase(id);
+  const tabBtn = document.querySelector<HTMLElement>('.tabs .tab[data-tab="result"]');
+  if (tabBtn) tabBtn.click(); // 内容页选课 → 切运行视图
   stepReset(); // 编辑器内容被用例覆盖，回放区过期
   ($("editor") as HTMLTextAreaElement).value = k.source;
   renderEditorDecor();
-  $("case-blurb").textContent = k.blurb;
+  $("case-blurb").textContent = k.blurb + (isArrayAnimCase(k.source) ? "（数组动画）" : "");
   $("stdin-row").classList.add("hidden");
   resetPendingRun();
   setStatus("idle", "就绪");
@@ -44,6 +45,9 @@ function selectCase() {
     }
   );
   $("stdout-meta").textContent = "";
+  // 点课即采集（课程心智统一：基础课与算法课同为「载入→回放」一步到位；
+  // stdin 类用例采集停在等待输入提示——语义已有）
+  void collectCurrentEditor();
 }
 
 // ── 界面设置（五主题 / 编辑器字号 / 动效开关；localStorage 持久化）────────
@@ -62,17 +66,10 @@ function selectCase() {
     if (card) scrollToLine(card.dataset.line as string);
   });
   bindAnim();
-  caseDd = makeDropdown(
-    "case-select",
-    // 含数组声明的用例标注「· 数组」——时间旅行会对这类用例出柱状图动画
-    DEMO_CASES.map((k) => ({
-      v: k.id,
-      label: k.label + (isArrayAnimCase(k.source) ? " · 数组动画" : ""),
-    })),
-    DEMO_CASES[0].id,
-    selectCase
-  );
-  setCaseDropdown(caseDd);
+  // 课程树（内容入口归一：基础用例 + 43 族 + 变体 + 扩展——heron 式章节树；
+  // 基础课点击走 selectCaseById，算法/扩展课走 course 模块内置载入）
+  bindCasePicker(selectCaseById);
+  renderCourseTree();
   $("run-btn").onclick = runCase;
   $("feed-btn").onclick = feedStdin;
   $("cfg-btn").onclick = applyConfig;
@@ -104,6 +101,13 @@ function selectCase() {
   renderCfgView(bodyOf(invoke({ method: "config.get" })));
   bodyOf(invoke({ method: "ping" }));
   loadCatalog();
-  renderAlgoGrid(); // 算法侧栏（43 族卡片——algorithms.js 机判产物）
-  selectCase();
+  // 编辑器空态（2026-10-04 课程重构批用户拍板：初始不预设代码——内容页选课填入）
+  ($("editor") as HTMLTextAreaElement).value = [
+    "// 请输入代码，或者在「内容」页选择要预先填入的示例",
+    "// 注意：从内容页选择时会覆盖编辑器里原有的代码",
+    "// 提示：编辑器左侧行号单击可设置/取消引擎断点（采集回放将在断点处暂停）；",
+    "//       回放条「引擎跳转」输入步号可直达引擎权威帧",
+    "",
+  ].join("\n");
+  renderEditorDecor();
 })();

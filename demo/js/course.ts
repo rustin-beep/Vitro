@@ -22,7 +22,6 @@ interface TreeLesson {
   kind: "case" | "algo" | "variant" | "xlab";
   famId?: string;      // variant 所属族（缩进渲染用）
   source: string;      // 载入编辑器的源码
-  autoCollect: boolean; // 用例=false（走 selectCase 原语义）；算法/扩展=true
 }
 interface TreeChapter {
   id: string;
@@ -52,7 +51,7 @@ function buildChapters(): TreeChapter[] {
     chip: 1,
     lessons: DEMO_CASES.map((k) => ({
       id: k.id, title: k.label, blurb: k.blurb || "",
-      kind: "case" as const, source: k.source, autoCollect: false,
+      kind: "case" as const, source: k.source,
     })),
   });
   // 七算法章（族 = 课；变体 = 族内子项）
@@ -64,12 +63,12 @@ function buildChapters(): TreeChapter[] {
     for (const it of g.items || []) {
       lessons.push({
         id: it.id, title: it.name, blurb: it.id,
-        kind: "algo", source: it.source, autoCollect: true,
+        kind: "algo", source: it.source,
       });
       for (const v of it.variants || []) {
         lessons.push({
           id: v.tpl, title: v.tpl, blurb: `${it.name} · 变体`,
-          kind: "variant", famId: it.id, source: v.source, autoCollect: true,
+          kind: "variant", famId: it.id, source: v.source,
         });
       }
     }
@@ -84,7 +83,7 @@ function buildChapters(): TreeChapter[] {
       chip: 4,
       lessons: xg.xitems.map((x) => ({
         id: x.id, title: prettify(x.id), blurb: "未标注族——可运行回放，算法标注随引擎迁移面",
-        kind: "xlab" as const, source: x.source, autoCollect: true,
+        kind: "xlab" as const, source: x.source,
       })),
     });
   }

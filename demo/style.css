@@ -468,17 +468,6 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
   animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important;
 }
 
-/* ── 算法可视化侧栏（2026-10-04，refs #28：43 教学标注族导航）────── */
-#algo-grid { display: flex; flex-direction: column; gap: 14px; }
-.algo-group { border-top: 1px solid var(--hairline); padding-top: 10px; }
-.algo-group:first-child { border-top: 0; padding-top: 0; }
-.algo-gtitle { font-size: 12px; color: var(--t2); margin-bottom: 8px; letter-spacing: .04em; }
-.algo-gcount { display: inline-block; min-width: 18px; text-align: center; margin-left: 6px; border-radius: 8px; padding: 0 5px; font-size: 10.5px; color: var(--accent-strong); background: var(--accent-tint); }
-.algo-cards { display: flex; flex-wrap: wrap; gap: 7px; }
-.algo-card { position: relative; background: var(--pane); color: var(--t1); border: 1px solid var(--hairline); border-radius: 8px; padding: 6px 12px; font-size: 12.5px; line-height: 1.4; }
-.algo-card:hover { border-color: var(--accent); background: var(--accent-tint); }
-.algo-badge { display: inline-block; margin-left: 5px; font-size: 10px; color: var(--t3); border: 1px solid var(--hairline); border-radius: 6px; padding: 0 4px; vertical-align: 1px; }
-
 /* vis_events 行标记（编辑器左缘竖条——与 .cur 当前行并存） */
 #editor-hl .cl.vis-on::before { content: ""; position: absolute; left: 40px; top: 2px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--accent); opacity: .9; }
 
@@ -495,18 +484,7 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 .eng-seek { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; }
 .eng-seek input[type="number"] { width: 84px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 7px; font: 12px var(--mono); }
 
-/* 变体展开与扩展练习组（全量纳入批——课程式三级 组→族→变体） */
-.algo-cardwrap { display: inline-flex; align-items: stretch; }
-.algo-variants { background: var(--field); color: var(--t3); border: 1px solid var(--hairline); border-left: 0; border-radius: 0 8px 8px 0; padding: 0 8px; font-size: 11px; cursor: pointer; }
-.algo-variants:hover { color: var(--accent-strong); }
-.algo-varlist { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; padding: 7px 8px; background: var(--field); border: 1px solid var(--hairline); border-radius: 8px; }
-.algo-var { background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); border-radius: 6px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; }
-.algo-var:hover { color: var(--accent-strong); border-color: var(--accent); }
-.algo-gnote { display: inline-block; margin-left: 8px; font-size: 10.5px; color: var(--t3); font-weight: 400; }
-.algo-card.xitem { color: var(--t2); }
-
 /* ── 课程档案树（2026-10-04 课程式重构：heron 式章节树——内容入口归一）── */
-.crs-title { font-size: 12px; color: var(--t2); letter-spacing: .04em; }
 .course-search { width: 100%; margin: 6px 0 8px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 7px; padding: 5px 9px; font-size: 12px; }
 .course-search:focus { outline: none; border-color: var(--accent); }
 .course-tree { display: flex; flex-direction: column; gap: 2px; max-height: 34vh; overflow-y: auto; margin-bottom: 8px; padding-right: 2px; }

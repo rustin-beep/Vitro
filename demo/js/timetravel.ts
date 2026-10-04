@@ -15,6 +15,7 @@ import { invoke, bodyOf, gateway } from "./gw.ts";
 import { $, esc, makeDropdown } from "./util.ts";
 import { scrollToLine } from "./editor.ts";
 import { buildCallTree, renderCallTree, treeView } from "./calltree.ts";
+import { buildCompileParams, buildRunParams, buildBaseConfig } from "./run.ts";
 import type { TreeNode } from "./calltree.ts";
 import { currentCaseId, setSpeedDropdown, speedValue, currentBreakpoints } from "./state.ts";
 import type { StepPayload, StepNextResult, CompileResult } from "./types.ts";
@@ -39,18 +40,25 @@ async function stepCollect(): Promise<StepData> {
   const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
   gateway().reset();
   bodyOf(invoke({ method: "session.create" }));
-  const finalCap = (kase.configHint && kase.configHint.max_steps) || 10000000;
+  // 参数构造单一源（2026-10-04 审阅 P2）：与「运行」按钮通道同构——
+  // 此前只走 compile{source}+run{}，multi_file（files）与 argv_prog（argv）
+  // 两课点课采集直接失败的实锤；config = UI 基准 + 用例 configHint 覆盖
   bodyOf(invoke({
     method: "config.set",
-    params: { max_steps: finalCap, call_depth_limit: 10000, deterministic: true, quarantine_budget: 262144 },
+    params: Object.assign(buildBaseConfig(), kase.configHint || {}),
   }));
-  const comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { source: ($("editor") as HTMLTextAreaElement).value } }));
+  const cp = buildCompileParams(kase);
+  const comp = bodyOf<CompileResult>(invoke({
+    method: "compile",
+    params: cp.files ? { files: cp.files } : { source: cp.source },
+  }));
   if (!comp.ok) return { error: "编译失败——先解决左侧诊断", frames: [], marks: [], stopped: "" };
   // run 先行（2026-10-04，refs #28：Rust golden 提取序照搬 compile→run→
   // step.begin→step.next）——run 建立会话运行态并把 compile 期的算法检测
   // matches 注入引擎；缺此步则帧的 algorithm_step/vis_events 恒空
   //（smoke 抽验带 run 所以绿、本通道此前无标注用例路径未暴露）
-  bodyOf(invoke({ method: "run", params: {} }));
+  const rp = buildRunParams(kase);
+  bodyOf(invoke({ method: "run", params: rp.argv ? { argv: rp.argv } : {} }));
   bodyOf(invoke({ method: "step.begin", params: {} }));
   // 断点下发（2026-10-04，refs #28：编辑器行号点击标记——先清后设语义，
   // step.next 推进到断点行的批次暂停并带 paused 字段）。**须在 step.begin

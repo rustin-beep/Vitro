@@ -283,10 +283,13 @@ function assertKeys(obj, keys, label) {
       if (c.ok !== true) compFail.push(it.id);
     }
     check(compFail.length === 0, "43 族示例源码全部编译通过", "失败: " + compFail.join(","));
-    // 命中抽验（三源各一：golden 模板 / extra 覆盖 / math 族）
-    const spot = ["bubble_sort", "linked_list_append", "gcd"];
-    const exempt = new Set(["is_prime", "threaded_binary_tree"]);
-    for (const algo of spot) {
+    // 命中抽验（2026-10-04 审阅 P3-④ 扩面：七组各一代表——3 族抽验不保证
+    // 每组标注链路真命中；全量 43×4000 批过重，每组代表 + 豁免族反向锚）
+    const spot = ["bubble_sort", "binary_search", "bfs", "bst_insert", "threaded_binary_tree", "linked_list_append", "string_match_kmp", "gcd"];
+    // threaded_binary_tree 2026-10-04 反向锚首跑翻红移出豁免：extra 源函数名
+    // inorderThreadedTree 命中 detect 且该形态行号偏移不显——确有标注
+    const exempt = new Set(["is_prime"]);
+    const spotRun = (algo) => {
       const it = items.find((x) => x.id === algo);
       g.reset();
       body(inv({ method: "session.create" }));
@@ -302,9 +305,18 @@ function assertKeys(obj, keys, label) {
         }
         if (b.finished || b.trapped) break;
       }
-      check(found, `[${algo}] step 标注命中抽验（三源代表）`, "1200 批内无该族标注——生成器代表源或引擎链路回归");
+      return found;
+    };
+    for (const algo of spot) {
+      check(spotRun(algo), `[${algo}] step 标注命中抽验（七组代表）`, "1200 批内无该族标注——生成器代表源或引擎链路回归");
     }
-    check(exempt.size === 2, "标注豁免表恒为 2（is_prime/threaded_binary_tree——引擎行号偏移，修复后此处应改并加回抽验）", "豁免面漂移");
+    // 豁免反向锚（2026-10-04 审阅 P3-④：恒真 Set 断言无牙——改实测两豁免族
+    // 确无标注（引擎 code_line 基准偏移 issue #34 的客观锚；修复后此断言翻红
+    // 逼移除豁免并加回命中抽验——豁免转绿即红）
+    for (const algo of exempt) {
+      check(!spotRun(algo), `[${algo}] 豁免族确无标注（issue #34 行号偏移在案）`,
+        "豁免族出现标注 = 引擎行号修复已上线——应移除豁免并把两族加回命中抽验");
+    }
   }
 
   // ── seek / breakpoints.set 契约（2026-10-04，refs #28 键族层消费）──
@@ -328,6 +340,11 @@ function assertKeys(obj, keys, label) {
     const bp = body(inv({ method: "breakpoints.set", params: { lines: [4] } }));
     check(bp && Array.isArray(bp.lines) && bp.lines.includes(4),
       "breakpoints.set{lines:[4]} 先清后设回显", JSON.stringify(bp));
+    // 先清验证（2026-10-04 审阅 P3-④：断言名写「先清后设」却未验先清——
+    // 二次 set 后回显须只含新行集（含旧行 = 清空失效）
+    const bp2 = body(inv({ method: "breakpoints.set", params: { lines: [5] } }));
+    check(bp2 && Array.isArray(bp2.lines) && bp2.lines.includes(5) && !bp2.lines.includes(4),
+      "breakpoints.set 二次设回显只含新行（先清生效）", JSON.stringify(bp2));
   }
 
   const total = pass + fail;

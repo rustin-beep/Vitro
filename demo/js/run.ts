@@ -64,12 +64,7 @@ export async function runCase(): Promise<void> {
     // 会泄漏到后续所有用例），再应用用例级覆盖。
     bodyOf(invoke({
       method: "config.set",
-      params: {
-        max_steps: Number(($("cfg-maxsteps") as HTMLInputElement).value) || 10000000,
-        call_depth_limit: Number(($("cfg-depth") as HTMLInputElement).value) || 10000,
-        deterministic: ($("cfg-det") as HTMLInputElement).checked,
-        quarantine_budget: Number(($("cfg-quar") as HTMLInputElement).value) || 262144,
-      },
+      params: buildBaseConfig(),
     }));
     if (kase.configHint) {
       bodyOf(invoke({ method: "config.set", params: kase.configHint }));
@@ -79,14 +74,11 @@ export async function runCase(): Promise<void> {
     }
     // compile：用例可带 files（多编译单元）或单 source；编辑器内容跟随主文件
     let comp: CompileResult;
-    if (kase.files) {
-      const files = kase.files.map((f, i) => ({
-        filename: f.filename,
-        source: i === 0 ? ($("editor") as HTMLTextAreaElement).value : f.source,
-      }));
-      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { files } }));
+    const cp = buildCompileParams(kase);
+    if (cp.files) {
+      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { files: cp.files } }));
     } else {
-      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { source: ($("editor") as HTMLTextAreaElement).value } }));
+      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { source: cp.source } }));
     }
     renderDiagnostics(comp.diagnostics || []);
     renderPpTrace(comp.preprocessor_trace || []);
@@ -141,6 +133,34 @@ function runParams(kase: DemoCase): { argv?: string[] } {
   if (argvText) p.argv = argvText.split(/\s+/);
   else if (kase.argv) p.argv = kase.argv;
   return p;
+}
+
+// ── 参数构造单一源（2026-10-04 审阅 P2：点课采集通道与运行按钮通道口径
+// 分裂——multi_file/argv_prog 在采集通道直接失败的实锤。三构造导出，
+// runCase 与 timetravel.stepCollect 共同消费；改一处两条通道同改）──
+
+export function buildCompileParams(kase: DemoCase): { files?: Array<{ filename: string; source: string }>; source?: string } {
+  if (kase.files) {
+    // 多编译单元：主文件跟随编辑器内容（与运行通道同语义）
+    return { files: kase.files.map((f, i) => ({
+      filename: f.filename,
+      source: i === 0 ? ($("editor") as HTMLTextAreaElement).value : f.source,
+    })) };
+  }
+  return { source: ($("editor") as HTMLTextAreaElement).value };
+}
+
+export function buildRunParams(kase: DemoCase): { argv?: string[] } {
+  return runParams(kase);
+}
+
+export function buildBaseConfig(): { max_steps: number; call_depth_limit: number; deterministic: boolean; quarantine_budget: number } {
+  return {
+    max_steps: Number(($("cfg-maxsteps") as HTMLInputElement).value) || 10000000,
+    call_depth_limit: Number(($("cfg-depth") as HTMLInputElement).value) || 10000,
+    deterministic: ($("cfg-det") as HTMLInputElement).checked,
+    quarantine_budget: Number(($("cfg-quar") as HTMLInputElement).value) || 262144,
+  };
 }
 
 function finishRun(rr: RunResult, kase: DemoCase): void {

@@ -4,7 +4,7 @@
 网络请求到第三方、不跑构建器），浏览器内直接调
 [`vitro/engine/gateway`](../moonbit/gateway/) 的 wasm-gc 产物（NDJSON 帧协议
 v0.1）。**开发期工具有 npm devDependencies**（typescript + @types/node——仅
-类型检查/发射用，不进页面）；源码形态 = TS（`app.ts` + `js/*.ts` 十一模块），
+类型检查/发射用，不进页面）；源码形态 = TS（`app.ts` + `js/*.ts` 十二模块），
 发射产物 `app.js`/`js/*.js` **不入库**（与 `wasm.wasm` 对称，`.gitignore`
 在案）。
 
@@ -56,10 +56,11 @@ Firefox 134+），加载失败页面会显示降级提示。
    rules.json 显式登记，僵尸条目无条件红）。抓「操作永不生效的类」「引用不存
    在的 CSS 变量」形态——2026-10-02 批的 stdin-row 死类与 `--fg-muted` 幽灵变
    量两实锤即其证红锚。
-4. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
+4. `go run ./scripts/gen_demo_algorithms -check`——算法侧栏数据机判产物锁（分组并集 == rules.json 43 族 + 82 模板全集对账，已接 CI）。
+5. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
-5. `node --test demo/tests/pure.test.mts`——纯函数七锚（buildCallTree trie /
+6. `node --test demo/tests/pure.test.mts`——纯函数七锚（buildCallTree trie /
    isArrayAnimCase / latin1ToUtf8 / tokenizeC / highlightLines / heapSpanOf /
    esc；**须 node 25**，type stripping 直跑 .ts）。DOM 交互层不硬测，维持
    浏览器实测纪律。
@@ -70,6 +71,6 @@ Firefox 134+），加载失败页面会显示降级提示。
   落地后由其接管（总计划既定路线）。
 - Clang golden 参考值为预置真值（CI shadow 防线持续对拍），页面内无实时
   交叉编译。
-- 时间旅行（step 流采集-回放）已接 gateway 通道（step.begin/step.next 批量
-  推进 + 本地帧数组回放）；可视化侧栏（43 算法族导航）为接线批在途——见
-  issue #28。
+- 时间旅行（step 流采集-回放）与算法可视化（「内容」页课程树：43 算法族
+  + 变体 + 82 模板全量）均已接 gateway 通道（step.begin/step.next/seek/
+  breakpoints.set）；引擎侧行号偏移两族标注边界见 issue #34。

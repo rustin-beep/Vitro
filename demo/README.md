@@ -56,7 +56,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    rules.json 显式登记，僵尸条目无条件红）。抓「操作永不生效的类」「引用不存
    在的 CSS 变量」形态——2026-10-02 批的 stdin-row 死类与 `--fg-muted` 幽灵变
    量两实锤即其证红锚。
-4. `go run ./scripts/gen_demo_algorithms -check`——算法侧栏数据机判产物锁（分组并集 == rules.json 43 族 + 82 模板全集对账，已接 CI）。
+4. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
 5. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。

@@ -74,6 +74,9 @@ jobs:
           # 不入库（与 wasm.wasm 对称）——组装前置发射（发射即类型检查闸；
           # 源 .ts 在库、产物 CI 现场生成）
           (cd demo && npm ci && npx tsc -p tsconfig.json)
+          # 算法侧栏数据同形态（2026-10-04 发射化）：algorithms.js 不入库，
+          # 组装前现场发射（生成器完备性断言即闸；ubuntu runner 自带 Go）
+          go run ./scripts/gen_demo_algorithms
           cp demo/*.html demo/*.css demo/*.js demo-dist/
           cp -r demo/js demo-dist/
           rm -f demo-dist/js/*.ts

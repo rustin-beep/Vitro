@@ -594,17 +594,19 @@ jobs:
           cd demo && npm ci && npx tsc -p tsconfig.json --noEmit && npx tsc -p tsconfig.json
         shell: bash
 
+      # 算法侧栏数据发射（2026-10-04 refs #28 建，同日发射化）：产物不入库
+      # （与 js/*.js、wasm.wasm 同形态）——发射即检查闸（分组并集 ==
+      # rules.json 43 族、82 模板全集对账，断言失败即红）。assemble check
+      # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
+      - name: demo algorithms data emit (generator assertions = gate)
+        run: go run ./scripts/gen_demo_algorithms
+        shell: bash
+
       # 2026-10-04 审阅 P3-②：组装自检原先只在 push-master 的 pages.yml——PR
       # 侧拷贝面缺口（历史白屏同类）无闸。单源脚本（demo_assemble_check）对
       # 原地发射后的 demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
         run: node scripts/demo_assemble_check/main.js demo
-        shell: bash
-
-      # 算法侧栏数据生成器契约（2026-10-04，refs #28）：algorithms.js 为
-      # 机判产物——盘上手改或生成器漂移即红（分组并集 == rules.json 43 族）
-      - name: demo algorithms data generator check
-        run: go run ./scripts/gen_demo_algorithms -check
         shell: bash
 
       - name: demo page smoke (protocol-level, cases golden + field keys)

@@ -178,4 +178,6 @@ demo/wasm.wasm
 # TS 发射产物（原地发射——源 = demo/app.ts + demo/js/*.ts；B 方案批 2026-10-04）
 demo/app.js
 demo/js/*.js
+# 算法侧栏数据生成物（gen_demo_algorithms 发射——三真值源机判，发射化 2026-10-04）
+demo/algorithms.js
 demo-dist/

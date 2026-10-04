@@ -2,7 +2,16 @@
 
 > 教学 C/C++ 子集参考执行引擎（白箱后端）——架构设计、语言子集规范、协议与测试防线
 >
-> 最后核对：2026-09-29（全库逐份翻新第二轮：S7 批二~五全落 / 0.7.0 发版件就绪 / 模块审阅处置批对齐——
+> 最后核对：2026-10-04（全库逐份翻新第三轮：S8 收官 + 0.8.0 发版件对齐 + 10 份过程记录归档——
+> 路线图/架构设计 S8 状态回灌〔四域收官、0.8.0 发版件、CLI 出口总账、测试数 655/685 对 facts 真值〕、
+> 已知限制与差异 as-of 升 0.8.0〔脱钩轨道改 0.9.0、台账 28 条、缺口 8 putchar 语料闭环划销〕、
+> 05 目录四份 S8 承接回灌、审阅主册加 S8 对拍承接注、快速入门补 `vitro` 总入口、
+> 04 目录三份旧头部翻新、INCIDENTS seek 事故结案注记〔MoonBit 侧结构性消除〕、核心资产裁定/统一整备路线图
+> 加现状注记、J9 台账闸清单补 S8 三闸、CSharp 计划加状态注记〔设计稿定位/时序锚过时〕、
+> 0.8.0 发布档案头部对齐彩排实录；**归档判定：10 份过程记录移入 archive/**〔三份 golden 审阅意见已闭环 /
+> 架构审阅 v1 被 v2 取代 / 突变测试一次性记录 / 实测发现登记使命已尽 / 重构评估与三语化整备已被 U-S 系列承接 /
+> CAPI 评审对象已裁不做 / 代码审阅追踪随冻结终局〕，全仓 15 处活引用改指 archive）。
+> 前一沿革：2026-09-29 全库逐份翻新第二轮（S7 批二~五全落 / 0.7.0 发版件就绪 / 模块审阅处置批对齐——
 > 路线图与架构设计的 S7 状态回灌、出口分档落地状态行、CLI 手册补 MoonBit serve 孪生指引、
 > 标准库防线引言测试数对真值（1027+508）、J9 台账补 2026-09-29 两记录并声明覆盖面演化、
 > 快速入门 wasm 节 wasm-gc 落地对齐、任务 E 验收项 wasm32 进 CI 翻绿、
@@ -43,9 +52,10 @@
 > **命名约定**：`current/` 下文档自 2026-09-13 起使用中文文件名（专有名词如 C++/CLI/VM/schema 保留英文）；
 > 旧英文名在其他分支或本地检出中可能仍被引用，对照关系见各文档自身头部。
 >
-> **插图（SVG）约定**：`current/` 与 `spec/` 下的 14 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱 /
+> **插图（SVG）约定**：`current/` 与 `spec/` 下的 15 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱 /
 > MoonBit 包切分编译侧 + 执行智能侧 / 统一模式架构 / 统一模式状态机 / 内存布局与有界隔离 /
-> MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景）由 `go run ./scripts/gen_svg` 生成——插图自带深浅双底色
+> MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 /
+> 教学智能流水线）由 `go run ./scripts/gen_svg` 生成——插图自带深浅双底色
 > （亮色白底 / 深色品牌墨底，随查看环境自动切换）；影子验证图内的跑批快照数字带 `data-fact`
 > 锚，由 `go run ./scripts/facts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
 > 目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必使图失步（`gen_svg -check` 即红）；
@@ -61,10 +71,10 @@
 |------|------|
 | [`current/01-定位与路线/后端定位与白箱计划.md`](current/01-定位与路线/后端定位与白箱计划.md) | **后端定位主计划**：前端切割决策、三出口一核心架构、协议先行、Phase 0~3 路线（原 `VITRO_BACKEND_SPLIT_WASM_WHITEBOX_PLAN.md`） |
 | [`current/01-定位与路线/项目更名记录.md`](current/01-定位与路线/项目更名记录.md) | **项目更名记录**：Cide → Vitro 决策依据、命名映射、ABI 2.0.0 迁移指引、诚实边界与验证记录（2026-09-14） |
-| [`current/01-定位与路线/MoonBit迁移总计划.md`](current/01-定位与路线/MoonBit迁移总计划.md) | **MoonBit 迁移总计划（2026-09-18 定稿，当前工作排期权威）**：唯一存活计划——形态裁定（同仓绞杀者/v1=C only〔C++ 已裁砍〕/JIT 倾向不搬/Go 驱动保留/wasm-gc 单出口）；**四门终局 0 红**（门0 弱通过、门1 通过 快于现役解释器 3.3×、门2 有条件 -W gc、门3 通过）；9 条一手语言事实；L0-L9 包切分总图；P1-P7 止血+按目标架构+放弃三清单；A/B/C/D 四级差分锚点；裸奔期最小防线 24 例；差异台账 v0（17 capability_flags）；风险登记册；S0.5-S9+全量切换里程碑（**实测进度：S2–S6 已收官（0.6.0 已发布，2026-09-27）；S7 协议/会话/出口批一~五已全落（protocol/session/gateway+gateway-wasm/cmd/serve/wasm-gc 单出口），0.7.0 发版件就绪（彩排全绿，publish 待令）；§10.5 G 系列已全闭环**）；探测档案取回指南（提交 `917251e`，16 份文档全量入 git 历史） |
+| [`current/01-定位与路线/MoonBit迁移总计划.md`](current/01-定位与路线/MoonBit迁移总计划.md) | **MoonBit 迁移总计划（2026-09-18 定稿，当前工作排期权威）**：唯一存活计划——形态裁定（同仓绞杀者/v1=C only〔C++ 已裁砍〕/JIT 倾向不搬/Go 驱动保留/wasm-gc 单出口）；**四门终局 0 红**（门0 弱通过、门1 通过 快于现役解释器 3.3×、门2 有条件 -W gc、门3 通过）；9 条一手语言事实；L0-L9 包切分总图；P1-P7 止血+按目标架构+放弃三清单；A/B/C/D 四级差分锚点；裸奔期最小防线 24 例；差异台账 v0（17 capability_flags）；风险登记册；S0.5-S9+全量切换里程碑（**实测进度：S2–S8 已全部收官——S8 时间旅行/教学智能四域验收三件 2026-10-04 销案（0.8.0 = S8 收官版发版件就绪，彩排全绿 publish 待令）；0.7.0 已于 2026-09-30 线上发布；下一站 0.9.0 = Rust oracle 脱钩批 + S9 裁定 + 解锁修复面（2026-10-04 排期改写含 #39 真值源迁移前置）；§10.5 G 系列已全闭环**）；探测档案取回指南（提交 `917251e`，16 份文档全量入 git 历史） |
 | [`current/01-定位与路线/MoonBit迁移第一阶段计划.md`](current/01-定位与路线/MoonBit迁移第一阶段计划.md) | **MoonBit 迁移第一阶段计划（S0.5 + S1）**：Rust 止血批 P1-P7+U1/U2 逐项（现象/根因 file:line/修法/验收锚，全部经第八轮亲证：J1 栈溢出、★A 双侧、E 前缀 4 处、string 转义、golden 完整性含手写 golden 循环论证处置、列号口径、AST dump 出口）+ S1 基础片任务分解（source/diag/opcode/ast 四包+码表生成脚本+三大工程约定+五条工具陷阱规则+mooncakes 首发判据） |
 | [`current/07-质量与裁定/实机勘探语料扩充方案——许可分流与gcc分桶裁判.md`](current/07-质量与裁定/实机勘探语料扩充方案——许可分流与gcc分桶裁判.md) | **实机勘探语料扩充方案（2026-10-02）**：候选仓许可三级核验（chibicc/8cc/sds/csmith=无毒进主仓，gcc c-torture=GPL 留 fork，haoel/leetcode 无 license 排除）+ **许可分流格局**（无毒→主仓 corpus 目录五步义务链 / GPL→fork 孤儿分支 / 无主→排除）+ **gcc 分桶裁判**（fork 语料实测救回 ≥77 份 clang_red〔362 vs 285 绿〕——MinGW 头生态平台桶；golden 只来自 Clang 纪律不变，gcc 只改分桶）+ **cwd 注入解锁同目录 quote-include**（E1021 方法限制的同目录形态解法实证）+ chibicc 试金石（E2005×169=GNU 语句表达式教学边界确认） |
-| [`current/07-质量与裁定/已知限制与差异.md`](current/07-质量与裁定/已知限制与差异.md) | **已知限制与差异（as-of 0.7.0，主动披露）**：四分类清单——已知缺陷 8 条（printf 旗标/atof 前缀等，已排 0.8.0 脱钩批修复轨道）/ 教学语义设计 6 条（受检访存·E3070 栈缓冲校验——有意的产品语义，Clang 同输入下是 UB）/ 与 C 标准·Clang 架构差异 8 条（32 位指针 4 字节模型等）/ 路线图缺口 8 条（S8/S9 排期）；每条标注 Clang 对照状态；根 README 与 moonbit/README 双落点链接；S8 差异台账机器单源化后演化为台账人工导读层 |
+| [`current/07-质量与裁定/已知限制与差异.md`](current/07-质量与裁定/已知限制与差异.md) | **已知限制与差异（as-of 0.8.0，主动披露）**：四分类清单——已知缺陷 9 条（printf 旗标/atof 前缀/cmd/run 出口双编码等，已排 0.9.0 脱钩批修复轨道）/ 教学语义设计 6 条（受检访存·E3070 栈缓冲校验——有意的产品语义，Clang 同输入下是 UB）/ 与 C 标准·Clang 架构差异 8 条（32 位指针 4 字节模型等）/ 路线图缺口（S8 各项已落、S9 排期）；每条标注 Clang 对照状态；根 README 与 moonbit/README 双落点链接；差异台账机器单源 = `scripts/diff_ledger/ledger.json`（28 条），本清单为台账人工导读层 |
 | [`current/07-质量与裁定/demo实测样本库20261001/`](current/07-质量与裁定/demo实测样本库20261001/README.md) | **Demo 实测样本库（2026-10-01）**：九批真实 C 代码实测的**用户原码归档**（19 份逐字保留），每份均三方对拍（Clang 绿 / 引擎红 / Rust oracle 同病），命中 issue #3~#9——const char\* decay 加宽 / 初始化列表尾逗号 / static 函数名作值 / long long 比较 / union 内联 body / E3036 不可达 / 三目类型统一；**暂不入测试体系**（语料扫描域外），转正条件与逐份映射见库内 README；全部两侧同病存量，修复挂 Rust 退役后单侧执行批 |
 | [`current/07-质量与裁定/20260919_S2词法器执行记录.md`](current/07-质量与裁定/20260919_S2词法器执行记录.md) | **S2 词法器执行记录（2026-09-19）**：vitro/engine/lexer 收官——独立预处理 pass（续行拼接/注释剥离/指令/展开）+ LineMap + 宿主 IO（SourceProvider/Vfs）；L1/L2 双层 token TSV 差分逐字节一致（随机 2400 例 4800 TSV + 真实语料 444 例）；已知差异清单 13 条（MoonBit 修复项）+ 故意复刻的 oracle 缺陷 3 项登记；vitro/engine@0.2.0 上架 |
 | [`current/07-质量与裁定/20260919_S3解析器执行记录.md`](current/07-质量与裁定/20260919_S3解析器执行记录.md) | **S3 解析器执行记录（2026-09-19）**：vitro/engine/parser 收官——六文件平移（瀑布/声明符螺旋/语句/声明/C++）；防护形态改造（depth 参数化 8 壳同构 + 声明符 Array 链迭代化 1250 层存活 + 回滚七字段全量快照 + stall_count 活性观测）；E1/E2 差分 597 样本逐字节一致 + E3 病态 12 样本同等拒绝 + E4 反向锚；差异驱动 parser_diff（--selftest J9）；未发布（随 0.4.0）；**§7 审阅修复批（09-20）**：offsetof depth 透传 + enum 常量求值迭代化 + 声明符折叠按 C 语义（有意分叉登记）+ --threshold 阈值锚 + 熔断守卫 + 顶层前瞻判定收口 + CI 接线 |
@@ -90,7 +100,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`current/03-语言子集/C语言子集规范.md`](current/03-语言子集/C语言子集规范.md) | C 教学子集规范（支持语法 / C23 锚定 §2.10~2.12 / 排除清单 / 与 Clang 的已记录差异）（原 `C_SUBSET_SPEC.md`） |
-| [`current/03-语言子集/CSharp前端引入计划.md`](current/03-语言子集/CSharp前端引入计划.md) | **C# 教学子集前端引入计划**（v4：砍 C++ 裁定后 MoonBit 四包重设计——原生类模型 / ARC / 异常栈展开 / 插值 host func 语义核 / 双 oracle 语料格局；CS 批排 S6 后，SharpTutor 锚定）（原 `CSHARP_EXTENSION_PLAN.md`） |
+| [`current/03-语言子集/CSharp前端引入计划.md`](current/03-语言子集/CSharp前端引入计划.md) | **C# 教学子集前端引入计划**（v4：砍 C++ 裁定后 MoonBit 四包重设计——原生类模型 / ARC / 异常栈展开 / 插值 host func 语义核 / 双 oracle 语料格局；SharpTutor 锚定；**设计稿**——CS 批挂 MoonBit 1.0 后语言版图窗口，未开工，2026-10-04 状态注记）（原 `CSHARP_EXTENSION_PLAN.md`） |
 
 > C++ 子集两份文档（规范 + 拓展实施计划）已随砍 C++ 裁定（2026-09-20）归档至 [`archive/`](archive/)，见下方归档记录。
 
@@ -115,10 +125,7 @@
 | [`current/05-教学体验/认知推理系统设计.md`](current/05-教学体验/认知推理系统设计.md) | 认知推理系统（根因分析 / 认知误区 / 知识图谱 / 意图推断，P0~P3 全部落地）（原 `COGNITIVE_REASONING_ROADMAP.md`） |
 | [`current/05-教学体验/模板维护指南.md`](current/05-教学体验/模板维护指南.md) | 算法模板维护指南（目录结构、meta.yaml、占位符、生成链路；生成器已由 R4 G1 恢复）（原 `TEMPLATE_GUIDE.md`） |
 | [`current/05-教学体验/模板与验证解耦设计.md`](current/05-教学体验/模板与验证解耦设计.md) | 模板与验证解耦方案（模板即合法 C + Clang Golden + 双重验证）（原 `TEMPLATE_AND_VERIFICATION_DECOUPLING.md`） |
-| [`current/05-教学体验/算法标注golden人审清单.md`](current/05-教学体验/算法标注golden人审清单.md) | **算法标注 golden 人审清单（防线 6 · U1#1①，v5 2026-09-14）**：82 模板（37 有标注 310 条首现 + 45 零标注）人审主册，基线 v3 golden 已接 CI |
-| [`current/05-教学体验/算法标注golden审阅意见.md`](current/05-教学体验/算法标注golden审阅意见.md) | 算法标注 golden · 机器初审（2026-09-13）：serve + step.next 全量提取 82 模板对账人审清单（U1#1 第三批修复驱动） |
-| [`current/05-教学体验/算法标注golden审阅意见二审20260913.md`](current/05-教学体验/算法标注golden审阅意见二审20260913.md) | 算法标注 golden · 三提交二审（2026-09-13）：引擎/判据/检测器三层修复的独立复核 |
-| [`current/05-教学体验/算法标注golden审阅意见三审20260914.md`](current/05-教学体验/算法标注golden审阅意见三审20260914.md) | 算法标注 golden 人审清单 · 三审意见（2026-09-14）：数字与行逐条对可复现产物对账（不读结论读数据） |
+| [`current/05-教学体验/算法标注golden人审清单.md`](current/05-教学体验/算法标注golden人审清单.md) | **算法标注 golden 人审清单（防线 6 · U1#1①，v5 2026-09-14）**：82 模板（37 有标注 311 条首现 + 45 零标注）人审主册，基线 v3 golden 已接 CI；**S8 承接（2026-10-04）**：golden 体系已进 MoonBit teaching/steps（311/311 对拍 + `teaching_annotation_diff` 入 CI + compile 帧 `algorithm_matches` 出口）；三份审阅过程记录已归档 |
 
 #### 出口、协议与引擎决议
 
@@ -126,8 +133,7 @@
 |------|------|
 | [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | **StepPayload v0.1 语言中立协议 schema**（已冻结，S1–S5 签字回放 61/61；§9 v0.2 激活轨道、附录 B 受控词汇表） |
 | [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行六前缀 + 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
-| [`current/06-出口与协议/CAPI评审回复与实现状态.md`](current/06-出口与协议/CAPI评审回复与实现状态.md) | capi 签名评审定稿（外部消费者诉求逐条回应 + 第一批 13 入口实现台账）（原 `VITRO_CAPI_REVIEW_RESPONSE.md`） |
-| [`current/06-出口与协议/下游需求处置回执.md`](current/06-出口与协议/下游需求处置回执.md) | 下游需求清单处置与窗口表态（A/B/C/D 逐项回执；第二批 capi 窗口、三段式内存地图、会话语义）（原 `VITRO_DOWNSTREAM_REQUESTS_RESPONSE.md`） |
+| [`current/06-出口与协议/下游需求处置回执.md`](current/06-出口与协议/下游需求处置回执.md) | 下游需求清单处置与窗口表态（A/B/C/D 逐项回执；第二批 capi 窗口、三段式内存地图、会话语义；capi 后续已由 U2 拍板裁不做）（原 `VITRO_DOWNSTREAM_REQUESTS_RESPONSE.md`） |
 | [`current/06-出口与协议/堆有界隔离决议.md`](current/06-出口与协议/堆有界隔离决议.md) | 堆内存决议：bump 分配 + 有界隔离（三道墙；已拍板已实施，U2 不可破坏项）（原 `VITRO_HEAP_QUARANTINE_DECISION.md`） |
 | [`current/06-出口与协议/wasm多实例并发模型与U2拍板.md`](current/06-出口与协议/wasm多实例并发模型与U2拍板.md) | 宿主并发模型裁定：N 线程 × N 实例构造性隔离（三宿主形态 + 1实例=1线程=1会话铁律）+ U2 拍板（19 声明冻结现状、第二批 capi 裁不做、下游改道 wasm/serve）（2026-09-19） |
 | [`current/06-出口与协议/出口分档与宿主策略.md`](current/06-出口与协议/出口分档与宿主策略.md) | **出口承诺面口径契约 + 宿主接入策略**（F-5 展开）：三分档（承诺=wasm-gc 制品/冻结协议/生成 SDK/.mbti ｜ 可用不承诺=native/js ｜ **不提供=C ABI** 三条硬理由+触发线）、四通道宿主矩阵（WebView=图形宿主首选/协议 sidecar/mooncakes 源码级/生成 SDK）、数据源单源论（引擎画数据、下游画像素）、SharpTutor 三段迁移路径、**§6 TS 层职责三层拆解 + 待命时序 + 语言版图终态**（双核 MoonBit+Go、TS 待命、UI 主体=下游/社区，2026-09-25） |
@@ -137,17 +143,11 @@
 | 文档 | 说明 |
 |------|------|
 | [`current/07-质量与裁定/统一整备路线图.md`](current/07-质量与裁定/统一整备路线图.md) | **统一整备路线图 U0~U7**〔**排期权威已让位**：2026-09-18 起实际排期载体为 [MoonBit 迁移总计划](current/01-定位与路线/MoonBit迁移总计划.md) 的 S 系列；本表保留为 U 批次历史口径与未闭环项索引〕：三语化 S 系列与重构评估 Phase 系列的合并执行方案（波次总览 / CS 硬门禁 / 防伪绿机制）（原 `VITRO_OVERHAUL_ROADMAP.md`） |
-| [`current/07-质量与裁定/核心资产重构裁定.md`](current/07-质量与裁定/核心资产重构裁定.md) | **核心资产重构裁定 v1（独立裁定）+ 重构执行方案**：分区裁定 / 判据 J1~J10 / 候选对比 / 中止条件 / §13 五域执行方案（D1 防线自身、D5 工具链语言 Python→Go 迁移边界与双轨纪律）；**§14 JIT trace 路径 P0 静默错值**（嵌套纯计数循环被外层 trace 穿透；**归因修正为与 `long long` 无关**；根因 = JIT fast path 在录制期间未禁用；含四组双向验证实验与 `vm_bench` 两处方法学缺陷）；**§14.11 对重构范围的影响**：新增子域 **D6（JIT 加速器存废重裁：先校正 `vm_bench` 重测加速比 → 删 JIT 或收缩作用域）**、D1b 形状对抗生成、J10 前置到 W1——**裁定①（核心不重写）维持**。实测脚本与证据 JSON 在 [`scripts/core_asset_verdict/`](../scripts/core_asset_verdict/)（原 `VITRO_CORE_ASSET_RECONSTRUCTION_VERDICT.md`） |
-| [`current/07-质量与裁定/Vitro架构审阅报告20260921.md`](current/07-质量与裁定/Vitro架构审阅报告20260921.md) | **Vitro 架构审阅报告 v1·时序累积版（2026-09-21）**：架构级审阅（分层边界/生命周期归属/跨语言单源/可扩展判据/对拍锚锁死的重构空间）+ §0.1 与探测档案（917251e）关系的自我核查（重发现 vs 新贡献逐条判定，浓缩比 33:1）；v2 为整合版，本版按时序保留 |
-| [`current/07-质量与裁定/Vitro架构审阅报告v2.md`](current/07-质量与裁定/Vitro架构审阅报告v2.md) | **Vitro 架构审阅报告 v2·整合版（2026-09-21，含修正批 b）**：12+ 轮对话收敛——技术终局（一门语言做核心 + 协议做契约 + 主进程掌控实例边界 + 任意语言做插件两档隔离）/ 15 处认知修正台账 / 对外面实测 200 符号 vs "只暴露三面"硬约束（收窄路径：未发布包零成本窗口 + 签名闭包单位 + 白名单 -check 先证红）/ SLOT_STRATEGY_VERSION 三态分档方案（含 global_data_end 交叉点）/ 插件架构终局裁决 / 最紧三条待办与依赖排序 |
+| [`current/07-质量与裁定/核心资产重构裁定.md`](current/07-质量与裁定/核心资产重构裁定.md) | **核心资产重构裁定 v1（独立裁定）+ 重构执行方案**：分区裁定 / 判据 J1~J10 / 候选对比 / 中止条件 / §13 五域执行方案（D1 防线自身、D5 工具链语言 Python→Go 迁移边界与双轨纪律）；**§14 JIT trace 路径 P0 静默错值**（嵌套纯计数循环被外层 trace 穿透；**归因修正为与 `long long` 无关**；根因 = JIT fast path 在录制期间未禁用；含四组双向验证实验与 `vm_bench` 两处方法学缺陷）；**§14.11 对重构范围的影响**：新增子域 **D6（JIT 加速器存废重裁：先校正 `vm_bench` 重测加速比 → 删 JIT 或收缩作用域）**、D1b 形状对抗生成、J10 前置到 W1。**现状注记（2026-10-04）**：裁定①已被 MoonBit 绞杀者迁移实践超越、D5 已收官、D6 已由总计划 F-3 承接——本文保留为裁定过程与判据体系档案（native 冻结区防线仍引用）。实测脚本与证据 JSON 在 [`scripts/core_asset_verdict/`](../scripts/core_asset_verdict/)（原 `VITRO_CORE_ASSET_RECONSTRUCTION_VERDICT.md`） |
+| [`current/07-质量与裁定/Vitro架构审阅报告v2.md`](current/07-质量与裁定/Vitro架构审阅报告v2.md) | **Vitro 架构审阅报告 v2·整合版（2026-09-21，含修正批 b）**：12+ 轮对话收敛——技术终局（一门语言做核心 + 协议做契约 + 主进程掌控实例边界 + 任意语言做插件两档隔离）/ 15 处认知修正台账 / 对外面实测 200 符号 vs "只暴露三面"硬约束（收窄路径：未发布包零成本窗口 + 签名闭包单位 + 白名单 -check 先证红）/ SLOT_STRATEGY_VERSION 三态分档方案（含 global_data_end 交叉点）/ 插件架构终局裁决 / 最紧三条待办与依赖排序（v1 时序累积版已归档） |
 | [`current/07-质量与裁定/kimicc外部参考调查报告20260926.md`](current/07-质量与裁定/kimicc外部参考调查报告20260926.md) | **kimicc 外部参考调查报告（2026-09-26）**：moonbitlang 官方 MoonBit C 编译器（bobzhang 主理，1467 commits 极活跃，SQLite 3.49.1 conformance 水平）五维度深挖（预处理器/解析器 AST/MIR ctype/后端 JIT/测试防线）+ 主会话亲读交叉验证，全部结论带 file:line 证据；**总裁定 = 参考方法学/惯用法/防线形态/架构决策样本，不搬实现**（kimicc 不能当 oracle、bobzhang/cfront 依赖禁入核心链、覆盖面是上界非追赶目标）；**Vitro 自查三产出**（codegen 成员偏移两份 inline 拷贝 / printf 事实三处分居 / BytecodeGen 不依赖 typeck——前两项已排版进总计划 §10.5 G-5/G-6）；后续工作项排版：§10.5 增补 G-5/G-6、§7.1 层 2 参照注记+防线增量五件、§10 S9 JIT 复核 W^X 先例注记 |
 | [`current/07-质量与裁定/列号口径冻结.md`](current/07-质量与裁定/列号口径冻结.md) | 列号现状口径冻结（词法 +1 / 解析非 ASCII −4 / make_token 量纲混算根因）+ MoonBit vitro/source 双坐标契约输入 + 10 形状防漂移锚（2026-09-19） |
-| [`current/07-质量与裁定/三语化整备审计计划.md`](current/07-质量与裁定/三语化整备审计计划.md) | 三语化整备计划 v1.1（§1~§4 渗出证据链 / 防伪绿解剖 / 10591ad 事故裁定仍为权威记录；§5 批次表已并入 U 系列路线图）（原 `VITRO_TRILINGUAL_OVERHAUL_PLAN.md`） |
-| [`current/07-质量与裁定/重构评估报告20260912.md`](current/07-质量与裁定/重构评估报告20260912.md) | 重构评估（§1~§4 权威证据：泄漏复发洞实锤 / 7 项动态探针 / 分模块风险清单；§5 计划已并入 U 系列路线图）（原 `VITRO_REFACTOR_ASSESSMENT_2026_09_12.md`） |
-| [`current/07-质量与裁定/代码审阅与修复追踪20260906.md`](current/07-质量与裁定/代码审阅与修复追踪20260906.md) | 全面代码审阅报告（137 条发现）与四批修复追踪（**修复进度权威追踪**；0911 复核已闭环归档）（原 `code_review_report_2026-09-06.md`） |
-| [`current/07-质量与裁定/实测发现登记20260913_性能与头文件.md`](current/07-质量与裁定/实测发现登记20260913_性能与头文件.md) | **实测发现登记（2026-09-13，登记未修复）**：性能域 P-1~P-6（三引擎同源基准量化：JIT 8.80×/7.92×、解释 35~41 ns/步、`malloc` churn 44.6 μs/次超线性、统一模式 58.5 μs/步；含"空载单线程非稳定条件"方法学告警）+ 头文件域 H-1~H-5（**两条 P0**：找不到头文件静默跳过零诊断、`__has_include` 与 `#include` 口径不一致）+ 文档漂移 D-1~D-4 + 跨平台备查 4 项；15 个 include 探针 × Clang 对照，含复现命令与外推边界；全部经独立复核（§8）并挂接批次（H-1/H-2 入 U1 第三批；P-1 完成 G6 复核一半） |
-| [`current/07-质量与裁定/脚本埋雷验证记录.md`](current/07-质量与裁定/脚本埋雷验证记录.md) | **J9 台账**：三个判定型脚本（shadow_verify / ci_three_tier_check / serve_smoke）各一条"注入→必须红"埋雷实证——判定型脚本埋雷记录 = 0 时其全绿不得作为结论依据（W0-1 / U0#8 验收达成）；含 serve_smoke 边界批与两处脚本自身缺陷的发现记录 |
-| [`current/07-质量与裁定/工作记录20260912_突变测试.md`](current/07-质量与裁定/工作记录20260912_突变测试.md) | 工作记录：影子防线突变测试首次实测（3/3 检出；M3 裕度=1 实证用例形状盲区）（原 `WORKLOG_2026_09_12_MUTATION_TEST.md`） |
+| [`current/07-质量与裁定/脚本埋雷验证记录.md`](current/07-质量与裁定/脚本埋雷验证记录.md) | **J9 台账**：五个判定型脚本（shadow_verify / ci_three_tier_check / serve_smoke / facts / precompile_bytecode_libc）的"注入→必须红"埋雷实证台账——判定型脚本埋雷记录 = 0 时其全绿不得作为结论依据（W0-1 / U0#8 验收达成）；MoonBit 迁移期新增闸（diff_ledger / teaching_annotation_diff / protocol_frames 等 20+）的证红以各脚本头注与提交为权威源（覆盖面演化注记） |
 | [`current/07-质量与裁定/INCIDENTS/README.md`](current/07-质量与裁定/INCIDENTS/README.md) | **事故归档制度与索引**（模板 + 归档规则：任何 GB 级资源事故必须归档，与 CHANGELOG 分工；在档：[seek 重放泄漏](current/07-质量与裁定/INCIDENTS/事故202609_Seek重放泄漏.md)） |
 
 #### 发布档案（mooncakes 版本史）
@@ -164,7 +164,7 @@
 | [`current/08-发布档案/0.5.0.md`](current/08-发布档案/0.5.0.md) | **0.5.0（2026-09-23）**：README 英文化 + 接口面三处实变（+compile_library/+LibcSig/−template_arg_eq）；外部用户证实（25 下载） |
 | [`current/08-发布档案/0.6.0.md`](current/08-发布档案/0.6.0.md) | **0.6.0（2026-09-26 发版件 · 09-27 线上发布）**：执行层收官——memory/host/vm 三包 + util + cmd/run；HostMemReply.value 加宽 UInt?→UInt64?；兼容义务建册 + 性能披露双语落档 |
 | [`current/08-发布档案/0.7.0.md`](current/08-发布档案/0.7.0.md) | **0.7.0（2026-09-29 发版件 · 09-30 线上发布）**：协议层与 wasm-gc 单出口——fs/protocol/session/gateway/gateway-wasm 五新包（L0–L8 共 20 包）；module 依赖清零（vendored）；彩排 + 线上验收全绿实录 |
-| [`current/08-发布档案/0.8.0.md`](current/08-发布档案/0.8.0.md) | **0.8.0（S8 收官版 · 2026-10-04 发版件；彩排/publish 待执行）**：时间旅行与教学智能四域（time_travel/teaching/steps/diagnostics）+ CLI 出口总账（vitro 总入口/cmd/lib/cli/api 万能单帧/协议契约 spec）+ compile 帧 algorithm_matches（净增 4 包共 24 包）；实录待回填 |
+| [`current/08-发布档案/0.8.0.md`](current/08-发布档案/0.8.0.md) | **0.8.0（S8 收官版 · 2026-10-04 发版件；彩排实录已回填〔registry 投放法四件验收全绿〕，publish 待授权执行）**：时间旅行与教学智能四域（time_travel/teaching/steps/diagnostics）+ CLI 出口总账（vitro 总入口/cmd/lib/cli/api 万能单帧/协议契约 spec）+ compile 帧 algorithm_matches（净增 4 包共 24 包） |
 
 ---
 ### 📁 [spec/](spec/) — 语言中立协议
@@ -189,6 +189,21 @@
 - 历史代码审查报告与事故复盘
 - 已完成的实现计划（double / 函数指针 / 多文件编译 / 内存扩容 / 递归类型重构 / 指针复合赋值等）
 - 一次性评估报告与工作记录
+
+**2026-10-04 本次归档**（全库逐份翻新第三轮，逐个取证后判定；10 份——全部加归档横幅，current 区 15 处活引用已改指 archive）：
+
+| 归档文件 | 原名（docs/current/） | 原因 |
+|------|------|------|
+| `ARCHIVE_算法标注golden机器初审20260913.md` | `05-教学体验/算法标注golden审阅意见.md` | 过程记录·已闭环（2026-09-27 注）——发现经二审/三审与主册 v5 第三批全部消化，终态 113 键全 ✅ 由主册承载 |
+| `ARCHIVE_算法标注golden审阅意见二审20260913.md` | `05-教学体验/算法标注golden审阅意见二审20260913.md` | 同上（P0/P1 经主册附录 A.3/A.4 收口） |
+| `ARCHIVE_算法标注golden审阅意见三审20260914.md` | `05-教学体验/算法标注golden审阅意见三审20260914.md` | 同上（§5 最小处置清单 8 项经主册 §0.1 处置完毕） |
+| `ARCHIVE_工作记录20260912_突变测试.md` | `07-质量与裁定/工作记录20260912_突变测试.md` | 一次性工作记录（3/3 检出已实证）；J9 制度由《脚本埋雷验证记录》台账持续承载 |
+| `ARCHIVE_Vitro架构审阅报告v1_20260921.md` | `07-质量与裁定/Vitro架构审阅报告20260921.md` | 被同日 v2 整合版（含修正批 b）取代，v1 仅时序保留 |
+| `ARCHIVE_实测发现登记20260913_性能与头文件.md` | `07-质量与裁定/实测发现登记20260913_性能与头文件.md` | 登记使命已尽——H 域/D 域随 U1#11 修复闭环、P-1 随 G6 关闭、性能域被《性能探究实录》（§1–§17 持续复跑）全面超越 |
+| `ARCHIVE_重构评估报告20260912.md` | `07-质量与裁定/重构评估报告20260912.md` | §5 已并入 U 系列路线图；§1~§4 证据由 INCIDENTS 事故档案与 MoonBit 逐包勘察承接 |
+| `ARCHIVE_三语化整备审计计划.md` | `07-质量与裁定/三语化整备审计计划.md` | 三语化整备路线已被 MoonBit 迁移全面取代落地（S0.5–S8 收官）；§5 批次表早已并入 U 系列 |
+| `ARCHIVE_CAPI评审回复与实现状态.md` | `06-出口与协议/CAPI评审回复与实现状态.md` | 对象已终局——capi 后续批次经 U2 拍板裁不做、出口分档锁定「不提供 C ABI」；首批 13 入口为冻结区存量随 1.0 退役 |
+| `ARCHIVE_代码审阅与修复追踪20260906.md` | `07-质量与裁定/代码审阅与修复追踪20260906.md` | 追踪使命终局——前端条目随切割关闭、Rust 条目随冻结转登记态、E-P1 落点已整删；活跃缺陷由 GitHub issue 承接 |
 
 **2026-09-23 本次归档**（MoonBit 迁移现状对齐翻新）：
 

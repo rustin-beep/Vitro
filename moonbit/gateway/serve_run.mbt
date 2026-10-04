@@ -94,7 +94,7 @@ fn serve_execute_run(s : @session.Session) -> Json {
     // E-P1-5：运行完成提示是引擎附注（note 通道）；堆教学附注同通道
     //（oracle session_ops.rs:152-153 同序：完成提示 → 泄漏报告）
     s.vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
-    append_leak_report(s)
+    append_leak_report(s.vm)
   }
   let status = if !trap.is_empty() {
     "trap"
@@ -174,10 +174,10 @@ fn serve_run_frame(
 /// 未释放堆区域按分配行号排序，note 通道追加（push_note 段落语义自动
 /// 补尾换行，与 Rust push_note 同款）。alloc_by "vfs" 排除（FILE\* 内部
 /// 分配不算用户泄漏）；空泄漏静默返回（零报告形态同 Rust）。
-fn append_leak_report(s : @session.Session) -> Unit {
+pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   let leaks : Array[@memory.MemoryRegionData] = []
   let addrs : Array[UInt] = []
-  for addr, r in s.vm.mem_map.regions {
+  for addr, r in vm.mem_map.regions {
     if r.is_heap && !r.is_freed && r.alloc_by != "vfs" {
       leaks.push(r)
       addrs.push(addr)
@@ -231,7 +231,7 @@ fn append_leak_report(s : @session.Session) -> Unit {
   lines.push("==============================")
   for line in lines {
     // E-P1-5：泄漏报告是引擎附注，绝不混入程序 stdout
-    s.vm.output.push_note_str(line)
+    vm.output.push_note_str(line)
   }
 }
 

@@ -33,6 +33,7 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 | `// COMPILE-HINT ` | 提示 | `// COMPILE-HINT H3054 3:1 …` |
 | `// COMPILE-OK ` | 编译通过标记（仅 `compile` 命令） | `// COMPILE-OK` |
 | `// TRAP ` | 受检终止附注 | `// TRAP 💥 Use-After-Free (E3060)：…` |
+| `// NOTE ` | note 通道（完成附注「程序运行完成，返回值：N」+ 内存泄漏检测报告——2026-10-04 二轮审 P2 补，此前 CLI 整段丢失；内容可多行） | `// NOTE 程序运行完成，返回值：0` |
 | `// EXIT ` | **末行**返回码（ret=0 时省略） | `// EXIT 7` |
 
 诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。
@@ -41,6 +42,8 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 - **codegen 段暂无 E 码**——行形态 `// COMPILE-ERROR codegen <文案>`（无码无位）：根因 = codegen 错误体系无诊断码（三出口三形态：Rust compile 零诊断 / mb CLI 出文案 / serve 进 errors 串不进 diagnostics——均照搬分叉④在案），且 E4 号段已被 C++ 预埋码占死（E4001~E4031/E4100+——砍 C++ 后死码但号段语义占用）；立码段与三出口统一挂 issue（退役后或码段拍板时）。
 - **`// TRAP ` 标记可跨多行**（trap 教学文案含 emoji 行与 📍 行号行）——消费方剥离按首行前缀 + 后续无前缀行与 oracle 同形（归一比对不受影响）。
 - **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
+- **文本模式 stdout 行尾为 CRLF**（Windows native 的 println 文本模式产物；`--json` 的 delta 为 LF）——仓库内消费方归一器已 `TrimRight(l,"\r")` 吸收；第三方按「程序输出原样」解析时须注意该平台差异（2026-10-04 二轮审 P3 登记）。
+- **note 通道内容经 stdout 同管道输出**（Latin-1 折回形态与程序 stdout 同族——中文/ emoji 在 Windows 控制台呈现 mojibake 属 stdout 通道已知形态；字节级归一由消费方处理）。
 
 **剥离规则（消费方实现要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。
 
@@ -54,7 +57,7 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 | 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
 | 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误） |
 
-历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）；步数超限的判定：`run` 按引擎事实（`vm.step_count >= vm.max_steps`），`step` 按 trap_message 文案「步数」分档（帧无结构位——2026-10-04 性能实测抓到 step 恒 2 的分叉后修正，两出口同码）。
+历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。**步数超限判定口径（2026-10-04 审阅 P3 统一）**：`run` 文本 = 引擎事实（`vm.step_count >= vm.max_steps`）；`run --json` = 帧结构位（`steps_executed` 恰等 max_steps——实测超限到达即停）；`step` = trap_message 的引擎固定文案前缀「程序执行步数超过限制」（帧无结构化步数位——该文案是引擎格式字符串，变更连坐 cli_step 判定）。
 
 ## 3. `run` 命令
 
@@ -93,7 +96,7 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 
 | 命令 | 事件 |
 |---|---|
-| `run --json` | `{"type":"diag","frame":<compile 帧>}` → `{"type":"run","frame":<run 帧>}` → `{"type":"stdout","frame":<output.delta 帧>}` |
+| `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"note",...}`（note 通道：完成附注+泄漏报告——二轮审 P2 补） |
 | `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组——比文本形态富） |
 | `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
 

@@ -2,8 +2,9 @@
 //
 // 用法（cd moonbit）：
 //
-//	go run ./scripts/moonbit_surface            # 列出各包"无跨包消费"的 pub 符号
-//	go run ./scripts/moonbit_surface -check     # 对账白名单：可收集合 ≠ 白名单即红
+//	go run ./scripts/moonbit_surface            # 列收面 + 白名单/边表双对账（判定；漂移 exit 2）
+//	go run ./scripts/moonbit_surface -check     # 同上——2026-10-04 假绿修正后两形态同强度，
+//	                                            # 旗标仅兼容旧调用（原默认模式提前 return 恒绿已删）
 //
 // 判定：一个 pub 符号是**对外面**当且仅当它被消费——**黑盒测试/doc 测试的
 // 自引用 `@pkg.` 点名也算消费**（批一段口径：被测包按末段别名隐式 import，

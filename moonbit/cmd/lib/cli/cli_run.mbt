@@ -92,9 +92,12 @@ impl @token.SourceProvider for FsProvider with fn read(
 
 ///|
 /// 源文件目录（quote-include 候选链 base_dir——oracle compile_pipeline
-/// `base_path = Path(filename).parent()` 口径）。
+/// `base_path = Path(filename).parent()` 口径）。旧 cmd/run 实现附带
+/// `\`→`/` 归一与 7 形态端到端对拍论证（下沉时随代码删除——2026-10-04
+/// 二轮审 P3 登记）；当前形态实测 `inc\sub\m3.c` 与中文目录名均正常
+/// （resolver/fs 层接受双分隔符），维持原样 + 本锚（dir_of wbtest）。
 fn dir_of(file : String) -> String {
-  // 从尾找 '/'（含 ''——Windows 路径双兼容，全域纪律 9）
+  // 从尾找 '/'（含 '\'——Windows 路径双兼容，全域纪律 9）
   let cs = file.to_array()
   let mut idx = -1
   let mut i = cs.length() - 1
@@ -267,6 +270,11 @@ pub fn run(
     vm.set_input(@host.InputState::from_stdin_text(text, true))
   }
   let ret = vm.run()
+  // 完成附注 + 泄漏报告（2026-10-04 二轮审 P2：note 通道此前整段丢失——
+  // oracle cmd_run 与 demo 均消费。复用 gateway.append_leak_report 单源
+  //（签名已收窄为 vm 直取）；完成附注同 serve_run 口径）
+  vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
+  @gateway.append_leak_report(vm)
   // ── stdout 通道（Buffer 聚合 + print 整串——字节经 Char 直转；
   // 非 UTF-8 字节按 Latin-1 落文本，Go 侧归一时统一字节口径）──
   let buf = StringBuilder()
@@ -281,6 +289,25 @@ pub fn run(
     text = text + nl
   }
   println(text)
+  // note 通道（2026-10-04 二轮审 P2：泄漏报告 + 完成附注「程序运行完成，
+  // 返回值：N」——oracle cmd_run 与 demo 均消费，gateway append_leak_report
+  // 已接线；此前 CLI 只取 Stdout 致整段丢失）。**行级前缀**：多行报告每行
+  // 带 `// NOTE `（vm_diff/clang_direct 剥离器逐行剥零特判——整段单前缀
+  // 会让报告体裸行进 stdout 比对，vm_diff 30 抽样实锤 12 行假 DIFF）
+  let nbuf = StringBuilder()
+  for chunk in vm.output.chunks_of(@host.OutputKind::Note) {
+    for j = 0; j < chunk.length(); j = j + 1 {
+      nbuf.write_char(chunk[j].to_int().unsafe_to_char())
+    }
+  }
+  let note = nbuf.to_string()
+  if !note.is_empty() {
+    for line in note.split("\n") {
+      if !line.is_empty() {
+        println("// NOTE \{line}")
+      }
+    }
+  }
   // trap 时 stderr 通道附注
   if !vm.error.is_empty() {
     println("// TRAP \{vm.error}")

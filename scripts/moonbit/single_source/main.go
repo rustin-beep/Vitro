@@ -18,11 +18,15 @@
 //	              少一处 → 单源被删/改名（红）。
 //	registered —— 单源形态是"生成物"或"另有专用闸门"，本闸只校验声明的两侧
 //	              路径存在，并把检测锚点登记在案（供人查"这条谁在守"）。
+//	copies     —— "多副本逐字节一致"形态（2026-10-04 审阅 P2）：同一 C stub
+//	              因 native-stub 禁 ../ 被迫多份复制（host_clock_stub 四份），
+//	              此前零机判。copies_must_match 全路径存在 + 相互逐字节一致。
 //
 // 判定：任一条目失败即红；列表为空（解析不到条目）亦红（空集不得绿）。
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -41,6 +45,7 @@ type entry struct {
 	DefPattern         string   `json:"def_pattern"`
 	ExcludeLinePattern string   `json:"exclude_line_pattern"`
 	AllowedDefFiles    []string `json:"allowed_def_files"`
+	CopiesMustMatch    []string `json:"copies_must_match"`
 	RustSource         string   `json:"rust_source"`
 	MoonbitSource      string   `json:"moonbit_source"`
 	Sync               string   `json:"sync"`
@@ -126,6 +131,32 @@ func main() {
 				sort.Strings(r.missing)
 				if len(r.extra) > 0 || len(r.missing) > 0 {
 					r.ok = false
+				}
+			}
+		} else if e.Kind == "copies" {
+			// copies（2026-10-04 审阅 P2 新增）：「多副本逐字节一致」形态——
+			// 同一 C stub 因 native-stub 禁 ../ 被迫多份复制（如 host_clock_stub），
+			// 此前零机判（改一份漏其余静默漂移）。判定：copies_must_match 全部
+			// 路径存在 + 相互逐字节一致（首份为基准）；任一缺失/差异即红。
+			if len(e.CopiesMustMatch) < 2 {
+				r.ok = false
+				r.msg += "copies 条目须声明 ≥2 份路径（copies_must_match）\n"
+			} else {
+				var base []byte
+				var baseFile string
+				for _, p := range e.CopiesMustMatch {
+					b, err := os.ReadFile(p)
+					if err != nil {
+						r.ok = false
+						r.msg += fmt.Sprintf("副本缺失: %s (%v)\n", p, err)
+						continue
+					}
+					if baseFile == "" {
+						base, baseFile = b, p
+					} else if !bytes.Equal(base, b) {
+						r.ok = false
+						r.msg += fmt.Sprintf("副本漂移: %s 与 %s 不一致（连坐改动须全量同步）\n", p, baseFile)
+					}
 				}
 			}
 		} else if e.Kind != "registered" {

@@ -1,8 +1,17 @@
 {
   "schema": 1,
   "_comment": "单一真相源清单（架构审阅 v2 A 组 #7 / 判据 C-04）。每条记：概念 × 两侧单源位置 × 同步方式 × 检测锚点。C-04 的裁决要点：项目 L1 判据『同一概念多真相来源』只覆盖**仓内同语言重复**，不覆盖『两侧各一份、靠人工同步』的跨语言孪生——本清单补这一层。",
-  "search_roots": ["native", "moonbit"],
-  "search_exclude_dirs": ["target", "_build", ".mooncakes", ".git", "node_modules"],
+  "search_roots": [
+    "native",
+    "moonbit"
+  ],
+  "search_exclude_dirs": [
+    "target",
+    "_build",
+    ".mooncakes",
+    ".git",
+    "node_modules"
+  ],
   "entries": [
     {
       "id": "compute_type_size",
@@ -96,6 +105,29 @@
       "sync": "**无 Rust 对应物**（Rust 产物平铺 14 键、无该字段）——本条的『单源』目前只在 MoonBit 侧",
       "anchor": "codegen_diff 的 slot_strategy 对账（读产物包装层 ↔ scripts/codegen_diff/slot_strategy.json）+ codegen 白盒断言",
       "_asymmetry": "诚实登记：这是**单向对账**而非两侧等值——Rust 侧补字段后（架构审阅 A 组 #2 剩余半）可升级。当前迁移期内 Rust 冻结、不会漂移，故风险低（故该剩余半建议降级为『Rust 退役前不做』）。"
+    },
+    {
+      "id": "host_clock_stub_copies",
+      "concept": "墙钟 C stub 多副本（native-stub 禁 ../ 被迫复制——四份逐字节同；cmd/serve 为墙钟子集单独演化）",
+      "kind": "copies",
+      "copies_must_match": [
+        "moonbit/cmd/run/host_clock_stub.c",
+        "moonbit/cmd/compile/host_clock_stub.c",
+        "moonbit/cmd/step/host_clock_stub.c",
+        "moonbit/cmd/vitro/host_clock_stub.c"
+      ],
+      "rust_source": "",
+      "moonbit_source": "moonbit/cmd/run/host_clock_stub.c",
+      "sync": "四份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）；cmd/serve 子集形态单独维护（墙钟两函数无 stdin 段）",
+      "consumers": [
+        "moonbit/cmd/run",
+        "moonbit/cmd/compile",
+        "moonbit/cmd/step",
+        "moonbit/cmd/vitro",
+        "moonbit/cmd/serve（子集）"
+      ],
+      "anchor": "本闸 copies 判定（逐字节比对）+ 2026-10-04 审阅 P2（副本从 2 涨到 5 零机判实锤）",
+      "upstream_ref": "用户审阅报告 2026-10-04 第六轮 P2"
     }
   ]
 }

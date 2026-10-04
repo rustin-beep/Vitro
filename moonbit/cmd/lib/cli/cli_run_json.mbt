@@ -33,37 +33,42 @@ fn json_event_stream(
   if comp.contains("\"ok\":false") {
     return 1
   }
-  // argv 透传（gateway 语义：argv 数组 = **完整 argv 含 argv[0]**
-  //（cases.js 先例 ["prog","hello-arg"]）——与文本管线 argv_full 同构：
-  // [源文件路径, ...透传]）
-  let argv_json = if argv.length() > 0 {
-    let items = StringBuilder()
-    items.write_string("\"\{escape_json(file)}\"")
-    for i = 0; i < argv.length(); i = i + 1 {
-      items.write_string(",\"\{escape_json(argv[i])}\"")
-    }
-    "{\"argv\":[\{items.to_string()}]}"
-  } else {
-    "{}"
+  // argv **恒下发**（2026-10-04 二轮审 P1-A 修正：gateway 语义 = argv 数组为
+  // 完整 argv 含 argv[0]——零透传时也须发 [源文件路径]，否则 gateway 侧
+  // runtime_argv 保持会话默认 []（argc=0、argv[0] 解引用 NULL trap、堆起点
+  // 不上移）；初版 else "{}" 丢整段，自验样本只落在「有透传」形态漏掉零参）
+  let items = StringBuilder()
+  items.write_string("\"\{escape_json(file)}\"")
+  for i = 0; i < argv.length(); i = i + 1 {
+    items.write_string(",\"\{escape_json(argv[i])}\"")
   }
-  let mut run = inv("run", argv_json)
-  // -i 批注入等价：waiting 时 input.feed——**feed 的响应帧即续跑结果**
-  //（demo run.ts feedStdin 同款协议语义，非再发 run）
-  if run.contains("\"waiting_input\":true") && stdin_file != "" {
+  let argv_json = "\"argv\":[\{items.to_string()}]"
+  // -i 批注入（2026-10-04 二轮审 P1-B 修正：与文本模式**同构**走
+  // run{input, batch_input:true}——批注入耗尽即 EOF；初版 input.feed 单次
+  // 喂在多行 scanf 循环下仍 waiting（feed 不置 batch 态），输出静默丢）
+  let input_json = if stdin_file != "" {
     let mut text = @fs.read_file_to_string(stdin_file) catch { _ => "" }
     if !text.has_suffix("\n") {
       text = text + "\n"
     }
-    if text != "\n" {
-      run = inv("input.feed", "{\"text\":\"\{escape_json(text)}\"}")
-    }
+    ",\"input\":\"\{escape_json(text)}\",\"batch_input\":true"
+  } else {
+    ""
   }
+  let run = inv("run", "{\{argv_json}\{input_json}}")
   println("{\"type\":\"run\",\"frame\":\{run}}")
   let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
   println("{\"type\":\"stdout\",\"frame\":\{out}}")
-  // 退出码与 run 帧 status 对齐（文本模式判 vm 事实——json 模式帧字段）
+  // note 通道（2026-10-04 二轮审 P2：完成附注 + 泄漏报告——gateway 侧
+  // serve_run 已合成 note，CLI 此前只拉 stdout 致整段丢失）
+  let note = inv("output.delta", "{\"cursor\":0,\"stream\":\"note\"}")
+  println("{\"type\":\"note\",\"frame\":\{note}}")
+  // 退出码与 run 帧 status 对齐（文本模式判 vm 事实——json 模式帧字段）。
+  // 超限判定=结构化 steps_executed（2026-10-04 审阅 P3 统一：实测超限时
+  // steps_executed 恰等 max_steps〔到达即停〕——值判免教学文案变更脆；
+  // cli 侧 max_steps 即本函数 config.set 写入值 10000000）
   if run.contains("\"status\":\"trap\"") {
-    if run.contains("步数") {
+    if run.contains("\"steps_executed\":10000000") {
       return 3
     }
     return 2

@@ -254,13 +254,18 @@ async function stepRecollect(): Promise<void> {
   $("anim-play").setAttribute("disabled", "true");
   $("anim-play").textContent = "… 采集中";
   // 采集互斥（#28 评论区待办①）：采集是异步长任务，中途「运行」会 reset
-  // 会话打断采集（并发状态错乱）——运行/喂入按钮同步禁用，采集结束恢复
+  // 会话打断采集（并发状态错乱）——运行/喂入按钮同步禁用，采集结束恢复。
+  // try/finally（2026-10-04 审阅 P3）：stepCollect 抛异常时按钮永久禁用
+  //（C4-b 锁死态）——恢复动作进 finally 兜底
   $("run-btn").setAttribute("disabled", "true");
   $("feed-btn").setAttribute("disabled", "true");
-  await new Promise((r) => setTimeout(r)); // 让按钮态先渲染
-  stepData = await stepCollect();
-  $("run-btn").removeAttribute("disabled");
-  $("feed-btn").removeAttribute("disabled");
+  try {
+    await new Promise((r) => setTimeout(r)); // 让按钮态先渲染
+    stepData = await stepCollect();
+  } finally {
+    $("run-btn").removeAttribute("disabled");
+    $("feed-btn").removeAttribute("disabled");
+  }
   if (stepData.error) {
     $("anim-phase").textContent = "采集失败：" + stepData.error;
     $("anim-play").removeAttribute("disabled");

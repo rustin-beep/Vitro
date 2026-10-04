@@ -19,7 +19,15 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
       json_mode = false // 显式摘要模式（默认）
     } else if args[i] == "--max-steps" && i + 1 < args.length() {
       i += 1
-      max_steps = parse_int_or(args[i], 100000)
+      // 非数字 = 用法错（2026-10-04 二轮审 P3：静默回落 100000 违反
+      // 「禁止静默 default」纪律——对齐 Rust unified 的 eprintln+exit）
+      match parse_int(args[i]) {
+        Some(v) => max_steps = v
+        None => {
+          println("用法错: --max-steps 需要整数，得到 '\{args[i]}'")
+          return 4
+        }
+      }
     } else if (!args[i].has_prefix("-") || args[i] == "-") && file == "" {
       file = args[i]
     }
@@ -64,7 +72,9 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
     println(comp)
     return 1
   }
-  ignore(inv("run", "{}"))
+  // run 帧带 argv [file]（2026-10-04 二轮审 P1-A 同根：step 无 argv 面但
+  // argv[0] 语义必须有——gateway 默认 [] 会让 argv[0] 解引用 NULL trap）
+  ignore(inv("run", "{\"argv\":[\"\{escape_json(file)}\"]}"))
   ignore(inv("step.begin", "{}"))
   let mut frames = 0
   let mut last : String = ""
@@ -104,10 +114,14 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
     }
   }
   if trapped {
-    // 退出码分档（契约 §2：3=步数超限 / 2=trap——与 run 同口径；超限在
-    // step 流也是 trap 形态，按 trap_message 文案「步数」判——2026-10-04
-    // 用户性能实测抓到 step 恒 2 与 run 分叉）
-    if extract_json_string_field(last, "trap_message").contains("步数") {
+    // 退出码分档（契约 §2：3=步数超限 / 2=trap——与 run 同口径）。step 帧
+    // 无结构化步数位（max_collected_step 超限时 None——2026-10-04 探针实测），
+    // 判 trap_message 的**引擎固定文案前缀**「程序执行步数超过限制」（比泛
+    // 「步数」收窄到零误命中面；该文案是引擎格式字符串，变更连坐此处——
+    // spec §2 限定句在案）
+    if extract_json_string_field(last, "trap_message").contains(
+        "程序执行步数超过限制",
+      ) {
       return 3
     }
     return 2
@@ -201,22 +215,21 @@ fn count_payloads(batch_json : String) -> Int {
 }
 
 ///|
-fn parse_int_or(s : String, default : Int) -> Int {
+/// 整数解析（非数字/空 → None——调用方判用法错；2026-10-04 二轮审 P3
+/// 弃 parse_int_or 静默 default 形态）
+fn parse_int(s : String) -> Int? {
+  if s.length() == 0 {
+    return None
+  }
   let mut v = 0
-  let mut ok = false
   for c in s {
     if c >= '0' && c <= '9' {
       v = v * 10 + (c.to_int() - '0'.to_int())
-      ok = true
     } else {
-      return default
+      return None
     }
   }
-  if ok {
-    v
-  } else {
-    default
-  }
+  Some(v)
 }
 
 ///|

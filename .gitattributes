@@ -26,3 +26,8 @@ CHANGELOG.md text eol=lf
 .agents/** text eol=lf
 *.ts text eol=lf
 demo/** text eol=lf
+# linguist 显式声明（GitHub 语言统计：TS 重写批后缓存未刷新的保险——
+# .mts/.d.ts 等扩展与 demo 路径显式归 TypeScript，消除启发式歧义）
+*.ts linguist-language=TypeScript
+*.mts linguist-language=TypeScript
+demo/**/*.ts linguist-language=TypeScript

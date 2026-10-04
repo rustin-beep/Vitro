@@ -21,7 +21,7 @@ description: Vitro 文档数字对账（scripts/facts）的判读手册——假
 - **真值键缺位**：历史上发生过采到的套件数在下一次落盘时被无声丢弃（现两处已对称补 unavailable 占位，本地可预演 CI）。见怪先查**并发**（用户/CI 同时在跑 facts 覆写报告）。
 
 ## 假红三形态（红 ≠ 文档错）
-- **Context 命中无紧邻单位约束**：同行的无关数字会被就近规则吸走判漂移（行数被当用例数、包版本被当 ABI 版本）；
+- **Context 命中无紧邻单位约束**：同行的无关数字会被就近规则吸走判漂移（行数被当用例数、包版本被当 ABI 版本）；**实例（2026-10-04）**：`回放|replay|S1[-–]S5` 规则区间 [20,200] 把同一行里描述**每步耗时**的 `21μs` 吸成「回放断言数」（真值 61）判漂移——处方 = 该历史数字句加时点词走规范② 冻结，**但仅当该行本无真值声明**；行内确含真值声明的改去数字化 / 分解式，**禁滥用时点词**（见下「冻结盲区」，整行失明比假红更贵）；
 - **超龄按 provenance 分流**：read_const / fs_scan 类的 as_of = 源文件 mtime，源未变即真值有效，按「采集动作超龄」判是假红；只有须重跑才保真的 provenance（run / read_report 类）超龄才真红；
 - **新表格行裸写数字**：会被邻近规则的区间吸走判漂移——口径括注引用上行（「语料口径同上行」）或去数字化。另：往表格中间插说明段落会把表物理拆断，说明段放表后。
 
@@ -46,4 +46,4 @@ description: Vitro 文档数字对账（scripts/facts）的判读手册——假
 ## 权威源与时效
 - `scripts/facts/` 头注与 `img_line_test.go` / `cargo_fact_test.go` 的 J9 锚
 - **相关规程**：`vitro-baseline-corpus-workflow`（加语料后的连坐面）、`vitro-generator-contract`（SVG `data-fact` 由生成器出，漂移红后重生成）、`vitro-toolchain-upgrade`（升级后刷新真值）
-- as_of: 2026-10-01（判据词表与白名单路径以仓库现行实现为准；本日新增 suspect_exemptions 白名单机制与 CI --strict 接线）
+- as_of: 2026-10-04（假红形态① 补实例：回放/replay 规则吸走同行每步耗时数字；2026-10-01 记：suspect_exemptions 白名单机制与 CI --strict 接线）

@@ -15,7 +15,7 @@
 
 | 形态 | 入口 | 用途 |
 |---|---|---|
-| 总入口单 exe | `vitro <cmd> [args]`（`moonbit/_build/native/release/build/cmd/vitro/`） | agent 主入口 |
+| 总入口单 exe | `vitro <cmd> [args]`（`moonbit/_build/native/release/build/cmd/vitro/`） | agent 主入口（run/compile/step/api 四子命令） |
 | 独立 exe | `cmd/run`、`cmd/compile`、`cmd/step`（薄壳，行为与总入口同名子命令**逐字节一致**） | 防线调用面（vm_diff/clang_direct 硬编码 run.exe 路径） |
 | 交互面 | `cmd/serve`（stdio NDJSON 会话协议——**不在本规格**，见 gateway 协议） | 长会话/断点交互/input.feed |
 | dump 族 | `cmd/dump_{tokens,ast,typeck,compile}`（位置参数形态，**有意保留**——语法分叉登记 #37 B3） | 静态产物 |
@@ -79,13 +79,26 @@ vitro compile <file.c | -> [--json]
 
 只编译+诊断不执行；文本模式 = 三级诊断行 + `// COMPILE-OK`；`--json` 见 §6。
 
+## 4.5 `api` 命令（万能单帧——全部协议方法的脚本化出口）
+
+```
+vitro api <method> [params-json]
+```
+
+- **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把 21+4 方法全部拉平为「一行命令」）；响应帧 stdout 原样直出；
+- params 缺省 `{}`；非 JSON 对象字面量 → 用法错 rc=4（fail loud）；
+- 退出码：0=帧 `ok:true` / **1=帧 `ok:false`（协议内错误统一——含编译错/trap 报错帧，api 是透传层不细分语义）** / 4=用法错；
+- **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；
+- 单帧形态会话态：每次 api 调用独立进程会话（跨调用不保留——会话场景走 --batch 或 serve 长会话）；
+- 例：`vitro api ping` / `vitro api compile '{"source":"int main(){return 0;}"}'` / `vitro api ast.dump '{"source":"…"}'`。
+
 ## 5. `step` 命令（有意分叉登记：Rust `step` 是交互 REPL，mb 是一次性——交互面归 serve）
 
 ```
 vitro step <file.c | -> [--max-steps N] [--json | --summary]
 ```
 
-- `--max-steps` 默认 **100_000**（对齐 Rust `unified` 同款默认——2026-10-04 手册对照复核修正，初版 2_000_000 系实现自拍未登记形态差）；
+- `--max-steps` 经 config.set 传导至 step 族引擎预算（**2026-10-04 性能实测 Blocker 1 修正**：原引擎恒 UnifiedEngine::new() 默认 100_000——参数完全无效且 engine<vm 错配时预算到顶返回**假 finished**〔程序 35% 即报正常结束〕；修正后消费会话 config，到顶走 vm 层步数超限 trap 真语义）；默认 100_000；
 - 默认 `--summary`：帧数 / 终态（`finished` / `trap` / `waiting_input/截断`）/ trap 死因文案；
 - `--json`：每批 `step.next` 的 result JSON 一行（NDJSON——帧数组嵌行内，字段语义见 StepPayload schema）+ 末行 `{"type":"summary","frames":N,"finished":B,"trapped":B}` 收口；
 - 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）。
@@ -97,7 +110,7 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 | 命令 | 事件 |
 |---|---|
 | `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"note",...}`（note 通道：完成附注+泄漏报告——二轮审 P2 补） |
-| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组——比文本形态富） |
+| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富） |
 | `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。

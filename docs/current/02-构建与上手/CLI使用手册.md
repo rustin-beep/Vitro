@@ -16,9 +16,10 @@ cd moonbit && moon build --release --target native cmd/vitro cmd/run cmd/compile
 vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]   编译+执行
 vitro compile <f> [--json]                                        编译+诊断单出
 vitro step <f> [--max-steps N] [--json|--summary]                 一次性 step 流（交互调试走 serve）
+vitro api <method> [params-json] | api --batch < frames.ndjson    万能单帧 + 批式多帧（状态跨帧——seek/断点/喂入序列可脚本化）
 ```
 
-命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
+`api` 子命令（2026-10-04 补）是全部 serve 协议方法的**脚本统一测试出口**——单帧形态 `vitro api memory.regions`、`vitro api compile '{"source":"…"}'` 一行命令直出响应帧；**批式形态 `cat frames.ndjson | vitro api --batch`** 同进程顺序执行帧序列（状态跨帧保留——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等前置依赖序列全部可脚本化；与 serve 的区别 = 管道终止型，无逐行交互锁）。退出码 0=全帧 ok:true / 1=任一帧 ok:false / 4=用法错；单帧形态会话态跨调用不保留（会话序列走 --batch，长活驻留归 serve）。命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
 
 ## Rust 侧 vitro_cli（oracle——退役前仍用）
 

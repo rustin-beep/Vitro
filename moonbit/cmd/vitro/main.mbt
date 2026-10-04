@@ -19,9 +19,10 @@ fn main {
     "run" => @cli.run(rest, make_clock(), make_stdin())
     "compile" => @cli.compile(rest, make_stdin())
     "step" => @cli.step(rest, make_stdin())
+    "api" => @cli.api(rest, make_stdin())
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       println(
-        "vitro: '\{cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；见 issue #37 B1）",
+        "vitro: '\{cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；见 issue #37 B1）；一次性脚本化用 'vitro api <method> <params>' 覆盖全部协议方法",
       )
       4
     }
@@ -45,10 +46,13 @@ fn print_help() -> Unit {
     "  run <file.c> [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4）",
   )
   println(
-    "  compile <file.c>                                          编译+诊断单出",
+    "  compile <file.c | -> [--json]                             编译+诊断单出",
   )
   println(
-    "  step <file.c> [--max-steps N] [--json|--summary]          一次性 step 流（交互调试走 serve）",
+    "  step <file.c | -> [--max-steps N] [--json|--summary]      一次性 step 流（交互调试走 serve）",
+  )
+  println(
+    "  api <method> [params-json] | api --batch < frames.ndjson  万能单帧 + 批式多帧（状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化；响应 NDJSON 直出；任一帧 ok:false → rc=1）",
   )
   println(
     "  help                                                      本帮助",

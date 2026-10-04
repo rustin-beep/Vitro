@@ -60,7 +60,7 @@ function loadCases() {
 
 // ── 渲染必需字段（demo/app.js 消费面的字段清单；缺键 = 页面静默 undefined）──
 const REQUIRED = {
-  compile: ["ok", "diagnostics", "preprocessor_trace"],
+  compile: ["ok", "diagnostics", "preprocessor_trace", "algorithm_matches"],
   run: ["status", "return_value", "trap", "waiting_input", "steps_executed"],
   output: ["delta", "cursor", "total", "stream"],
   memory: [
@@ -276,13 +276,24 @@ function assertKeys(obj, keys, label) {
     }
     check(vFail.length === 0, `变体+扩展源全部编译通过（${varSrcs.length + xitems.length} 份）`, "失败: " + vFail.join(","));
     let compFail = [];
+    let matchHit = null;
     for (const it of items) {
       g.reset();
       body(inv({ method: "session.create" }));
       const c = body(inv({ method: "compile", params: { source: it.source } }));
       if (c.ok !== true) compFail.push(it.id);
+      if (!matchHit && Array.isArray(c.algorithm_matches)) {
+        const m = c.algorithm_matches.find((x) => x.name === it.id && x.display_name && x.func_name);
+        if (m) matchHit = m;
+      }
     }
     check(compFail.length === 0, "43 族示例源码全部编译通过", "失败: " + compFail.join(","));
+    // compile 帧 algorithm_matches 透出锚（2026-10-04 补——#36 最小路径：
+    // teaching detect 的 wire 出口；正向形态 = 某族示例的 compile 帧含同名
+    // match 且带 display_name/func_name/confidence——agent 问「什么算法」自此有出口）
+    check(!!matchHit && matchHit.confidence > 0,
+      "compile 帧 algorithm_matches 正向透出（teaching detect wire 出口）",
+      "43 族示例零命中——emitter 或 detect 链路回归");
     // 命中抽验（2026-10-04 审阅 P3-④ 扩面：七组各一代表——3 族抽验不保证
     // 每组标注链路真命中；全量 43×4000 批过重，每组代表 + 豁免族反向锚）
     const spot = ["bubble_sort", "binary_search", "bfs", "bst_insert", "threaded_binary_tree", "linked_list_append", "string_match_kmp", "gcd"];

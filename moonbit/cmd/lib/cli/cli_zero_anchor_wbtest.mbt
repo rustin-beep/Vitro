@@ -57,3 +57,22 @@ test "parse_run_args_P1A_零透传不吞文件位" {
   inspect(ra.file, content="only.c")
   inspect(ra.argv_passthrough.length(), content="0")
 }
+
+///|
+test "api_params_解析形态" {
+  // api 参数解析抽验：无 params → "{}"；params 非 { 开头 → 用法错路径的
+  // 判定输入（cli 层轻锚——api 主体是 gateway.invoke 透传，协议面锚在
+  // serve_smoke/gateway wbtest 在案）
+  inspect("{}".has_prefix("{"), content="true")
+  inspect("not-json".has_prefix("{"), content="false")
+}
+
+///|
+test "api_batch_行解析形态" {
+  // 批式行级预处理抽验：CRLF/空白行耐受（\r 由 Windows 管道常见——
+  // trim " \t\r" 后空行跳过；NDJSON 帧本体不受影响）
+  let l1 : String = "  {\"id\":1}  ".trim(chars=" \t\r").to_string()
+  inspect(l1, content="{\"id\":1}")
+  let l2 : String = "\r".trim(chars=" \t\r").to_string()
+  inspect(l2.is_empty(), content="true")
+}

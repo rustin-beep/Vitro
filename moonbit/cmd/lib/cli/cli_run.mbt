@@ -293,14 +293,16 @@ pub fn run(
   // 返回值：N」——oracle cmd_run 与 demo 均消费，gateway append_leak_report
   // 已接线；此前 CLI 只取 Stdout 致整段丢失）。**行级前缀**：多行报告每行
   // 带 `// NOTE `（vm_diff/clang_direct 剥离器逐行剥零特判——整段单前缀
-  // 会让报告体裸行进 stdout 比对，vm_diff 30 抽样实锤 12 行假 DIFF）
-  let nbuf = StringBuilder()
+  // 会让报告体裸行进 stdout 比对，vm_diff 30 抽样实锤 12 行假 DIFF）。
+  // **UTF-8 解码**（Blocker 2 修正）：push_note_str 以 UTF-8 字节入通道
+  //（引擎 String 语义），取出端不可按 stdout 的 Latin-1 char 直转（中文
+  // mojibake 实锤 C3A7C2A8…；stdout 直转是程序字节域的既定口径，note
+  // 是引擎文本域——两通道不同源），utf8_decode 纯函数（wbtest 三态锚在案）
+  let mut nbuf : Bytes = b""
   for chunk in vm.output.chunks_of(@host.OutputKind::Note) {
-    for j = 0; j < chunk.length(); j = j + 1 {
-      nbuf.write_char(chunk[j].to_int().unsafe_to_char())
-    }
+    nbuf = nbuf.add(chunk)
   }
-  let note = nbuf.to_string()
+  let note = utf8_decode(nbuf)
   if !note.is_empty() {
     for line in note.split("\n") {
       if !line.is_empty() {

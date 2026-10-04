@@ -403,8 +403,12 @@ fn serve_compile_frame(
 
 ///|
 /// compile 出口 emitter（Rust session_api::compile 的 json! 序照搬）：
-/// `{ok, diagnostics, preprocessor_trace}`；诊断元素十字段
+/// `{ok, diagnostics, preprocessor_trace, algorithm_matches}`；诊断元素十字段
 /// （end_line/end_column 为「起点 + 1」退化值——Rust Phase 1 同形）。
+/// algorithm_matches（2026-10-04 补——#36 最小实现路径 / 协议「只增不改」
+/// 纪律内新增字段：teaching detect 产物的 wire 出口——agent 经 compile --json
+/// 顺带拿到算法识别，demo 侧栏可甩 algorithms.js 生成物；缺省语义按冻结
+/// 纪律「自诞生即可选」豁免——旧读者忽略未知字段零影响）。
 fn compile_result_json(s : @session.Session) -> Json {
   let diags : Array[Json] = []
   for d in s.compile.diagnostics {
@@ -425,10 +429,34 @@ fn compile_result_json(s : @session.Session) -> Json {
   for t in s.compile.preprocessor_trace {
     trace.push(Json::string(t))
   }
+  let matches : Array[Json] = []
+  for am in s.compile.algorithm_matches {
+    let mm : Map[String, Json] = Map([])
+    mm.set("name", Json::string(am.name))
+    mm.set("display_name", Json::string(am.display_name))
+    mm.set("func_name", Json::string(am.func_name))
+    mm.set("confidence", am.confidence.to_json())
+    mm.set("suggestion", Json::string(am.suggestion))
+    mm.set("line", am.line.to_json())
+    let ves : Array[Json] = []
+    for ve in am.vis_events {
+      let vm : Map[String, Json] = Map([])
+      vm.set("ty", ve.ty.to_json())
+      vm.set("line", ve.line.to_json())
+      vm.set("extra0", ve.extra0.to_json())
+      vm.set("extra1", ve.extra1.to_json())
+      vm.set("extra2", ve.extra2.to_json())
+      vm.set("context", Json::string(ve.context))
+      ves.push(Json::object(vm))
+    }
+    mm.set("vis_events", Json::array(ves))
+    matches.push(Json::object(mm))
+  }
   let m : Map[String, Json] = Map([])
   m.set("ok", s.compile.compiled.to_json())
   m.set("diagnostics", Json::array(diags))
   m.set("preprocessor_trace", Json::array(trace))
+  m.set("algorithm_matches", Json::array(matches))
   Json::object(m)
 }
 

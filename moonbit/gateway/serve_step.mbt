@@ -16,9 +16,10 @@
 // run_batch Trap 分支装配——装配结构同形、**输出面分叉**（oracle
 // engine.rs:198 restore 先以快照覆写 error ⇒ :208 取到空串 ⇒ 六臂全不
 // 命中、hint 恒 null——oracle 取值时序缺陷，随退役收敛；本侧真 hint）；
-// ②两层层号预算：engine.new() 默认
-// 100_000（Rust step_begin 同款 new()），vm 内建 max_steps（config.set
-// 应用）更小时 vm 层先 trap——行为受 min(engine, vm) 控制同 Rust。
+// ②两层层号预算：engine 预算消费会话 config.max_steps（2026-10-04
+// Blocker 1 修正——原 new() 恒 100_000 致 config/--max-steps 对引擎无效 +
+// 错配时假 finished），vm 内建 max_steps（config.set 应用）同源——两层
+// 一致，到顶走 vm 层步数超限 trap 真语义。
 
 ///|
 /// 源码行供给（SourceLineProvider 适配器——Session.source_line_at 的
@@ -229,7 +230,12 @@ fn serve_step_begin_frame(
     )
   }
   s.unified_pending = None
-  let engine = @time_travel.UnifiedEngine::new()
+  // engine 预算消费会话 config.max_steps（2026-10-04 性能实测 Blocker 1
+  // 修正：原 UnifiedEngine::new() 恒默认 100_000——CLI/gateway 的
+  // --max-steps/config.set 对 step 族引擎**无效**，且 engine<vm 错配时预算
+  // 到顶返回假 finished（程序只跑 35% 却报正常结束）；消费 config 后两层
+  // 同源、min(engine,vm) 错配形态消除——到顶走 vm 层步数超限 trap 真语义）
+  let engine = @time_travel.UnifiedEngine::with_max_steps(s.config.max_steps)
   // 算法检测产物注入（批四号接线——compile 通道产出 matches，引擎侧
   // AlgoInferCtx 消费；Rust 侧经 session AlgorithmContext::find_algorithm
   // 查询，本侧编排层直供同语义）

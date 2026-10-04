@@ -6,7 +6,9 @@ package main
 // 实/虚线与徽标改 facts 派生（moonbit_built_packages / moonbit_engine_version，
 // 采集器见 scripts/facts）、架构图重画为双轨格局、新增防线全景图；2026-09-29
 // 新增 agent skills 全景图（从 .agents/skills/ 盘上目录扫描生成）与冻结协议层
-// 全景图（panorama，独立文件 panorama.go），共十三个 gen 函数十四张文件。
+// 全景图（panorama，独立文件 panorama.go），共十三个 gen 函数十四张文件；
+// 2026-10-04 新增教学智能流水线图（teach.go，S8 收官文档配套），共十四个
+// gen 函数十五张文件。
 //
 // 入库插图的跑批快照数字**只在此处为模板**：生成时从
 // reports/facts.json 读真值注入，并以 <tspan data-fact="key">n</tspan> 显式
@@ -1372,7 +1374,7 @@ func genSkills(root string, _ factsDoc) {
 
 func main() {
 	// flag 在子命令之前（Go flag 在第一个位置参数处停止解析——与 scripts/facts 同款纪律）：
-	//   go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|skills|panorama|all]
+	//   go run ./scripts/gen_svg [-check] [arch|cache|kg|shadow|packages|uarch|ustate|memory|protocol|wasm|gates|skills|panorama|teach|all]
 	check := flag.Bool("check", false, "校验落盘 SVG 与生成器输出逐字节一致（无写副作用；漂移 exit 1）")
 	flag.Parse()
 	checkMode = *check
@@ -1415,6 +1417,8 @@ func main() {
 		genSkills(root, fd)
 	case "panorama":
 		genPanorama(root, fd)
+	case "teach":
+		genTeach(root, fd)
 	case "all":
 		genArch(root, fd)
 		genCache(root, fd)
@@ -1429,8 +1433,9 @@ func main() {
 		genGates(root, fd)
 		genSkills(root, fd)
 		genPanorama(root, fd)
+		genTeach(root, fd)
 	default:
-		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / gates / skills / panorama / all）")
+		fatal("未知目标: " + which + "（可用: arch / cache / kg / shadow / packages / uarch / ustate / memory / protocol / wasm / gates / skills / panorama / teach / all）")
 	}
 	if checkMode {
 		if len(checkDrifts) > 0 {

@@ -1,0 +1,13 @@
+// cmd/compile：CLI `compile` 薄壳（#37 批②——编译+诊断单出，不执行）。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "host_clock_stub.c" ],
+)

@@ -709,6 +709,52 @@
       },
       "detectable_by_defense": [],
       "notes": "S8 收官清单 #9 收编（2026-10-04）——原「随 S8 台账裁定」头注销案；语料零覆盖此形状（脱钩修复批连同语料补齐）"
+    },
+    {
+      "id": "DIFF-TYPECK-SEVERITY-FORMAT-01",
+      "title": "printf/scanf 格式符类型不匹配报错误级（E3032/E3062 族）——Clang -Wformat 为警告级（paxos 勘探先例 + 外部仓库 shell_sort2.c %.4g 实测 2026-10-01）",
+      "class": "implementable",
+      "carry_over": "fix",
+      "status": "open",
+      "evidence": "run",
+      "rationale": "严重性口径差非误报（诊断本身成立）。降级（error→warning 放行编译）是引擎 typeck 行为变更且两侧同病（oracle 同报 error）——单侧降级立即打破 vm_diff/clang_direct 编译成败判定对拍，按台账纪律挂 Rust 退役后两侧同修。#16 评论 2026-10-01 定级：warning 级",
+      "subsystems": [
+        "typeck"
+      ],
+      "clang_verdict": "不一致（Clang 警告级；诊断成立、严重性分叉）",
+      "source_docs": [
+        "issue #16 评论 2026-10-01（外部仓库勘探 2 例之②）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [],
+      "notes": "paxos E3032 先例同族；修复=severity 降级+ok 放行，语料预期连坐"
+    },
+    {
+      "id": "DIFF-LEX-DECL-BIGCONST-01",
+      "title": "十进制无后缀大常量（>INT64_MAX）报 E1006 错误——C11 §6.4.4.1 constraint 违反要求诊断（error 站得住）；Clang 给警告+按 unsigned long long 扩展（实现自由度）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-doc",
+      "evidence": "doc",
+      "rationale": "与十六进制 #24 性质根本不同：#24 是标准明确合法、引擎错报（真缺陷退役后修）；本条标准允许 error/warning 两种实现（要求诊断非要求错误）——教学白箱语境维持严格 error 有教学价值（帮学习者发现该数放不进任何有符号类型）。2026-10-04 定级：保持 error，登记口径",
+      "subsystems": [
+        "lexer"
+      ],
+      "clang_verdict": "不一致（严重性口径；诊断合规）",
+      "source_docs": [
+        "issue #16 评论 2026-10-01（外部仓库勘探 2 例之①：hash_djb2.c assert 13827776004929097857）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [],
+      "notes": "勿与 #24（十六进制、标准合法）混修——两者标准地位不同"
     }
   ]
 }

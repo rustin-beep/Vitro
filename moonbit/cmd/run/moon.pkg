@@ -9,6 +9,7 @@ import {
   "vitro/engine/typeck",
   "vitro/engine/vm",
   "vitro/engine/fs",
+  "vitro/engine/cmd/lib/cli",
   "moonbitlang/core/env",
 }
 

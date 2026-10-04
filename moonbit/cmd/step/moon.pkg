@@ -1,0 +1,14 @@
+// cmd/step：CLI `step` 薄壳（#37 批②——一次性 step 流：--summary 摘要 /
+// --json 帧流；交互式调试归 serve）。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "host_clock_stub.c" ],
+)

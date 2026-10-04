@@ -1,0 +1,104 @@
+# CLI 输出协议 v1（语言中立）
+
+> 状态：**v1**（2026-10-04，CLI 出口总账 issue #37 批①②③落地随批冻结）
+> 冻结锚点：本批提交（fixes #16 / refs #37）
+> 归属：CLI 出口（`moonbit/cmd/*`——四薄壳 + `cmd/lib/cli` 逻辑层 + `cmd/vitro` 总入口）
+> 消费者：agent / shell 脚本 / 仓库防线（vm_diff、clang_direct 的标记行剥离器）/ 任何第三方
+> 关联规格：[`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md)——`--json` 模式的帧语义**引用不重复定义**（帧 = gateway 协议单源）
+> 最后核对日期：2026-10-04
+
+本文档是 CLI 的**输出契约**：消费方按此解析，无需了解 MoonBit 内部。协议变更纪律与 StepPayload 同源：**标记行前缀与退出码语义只增不改**；新前缀/新事件 type 走追加。
+
+---
+
+## 0. 出口形态与分派
+
+| 形态 | 入口 | 用途 |
+|---|---|---|
+| 总入口单 exe | `vitro <cmd> [args]`（`moonbit/_build/native/release/build/cmd/vitro/`） | agent 主入口 |
+| 独立 exe | `cmd/run`、`cmd/compile`、`cmd/step`（薄壳，行为与总入口同名子命令**逐字节一致**） | 防线调用面（vm_diff/clang_direct 硬编码 run.exe 路径） |
+| 交互面 | `cmd/serve`（stdio NDJSON 会话协议——**不在本规格**，见 gateway 协议） | 长会话/断点交互/input.feed |
+| dump 族 | `cmd/dump_{tokens,ast,typeck,compile}`（位置参数形态，**有意保留**——语法分叉登记 #37 B3） | 静态产物 |
+
+`vitro` 的 argv 偏移约定：子命令逻辑层（`cmd/lib/cli`）统一收**已剥子命令名的参数**（独立 exe 传 `args[1:]`、总入口传 `args[2:]`——对逻辑层零差异）。
+
+## 1. 文本模式输出协议（标记行）
+
+stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理）与**引擎标记行**。标记行前缀白名单：
+
+| 前缀 | 语义 | 示例 |
+|---|---|---|
+| `// COMPILE-ERROR ` | 错误诊断（带码） | `// COMPILE-ERROR E3004 2:14 类型不匹配：无法将 'char*' 赋值给 'int'` |
+| `// COMPILE-WARNING ` | 警告诊断 | `// COMPILE-WARNING W1018 -1:0 宏 'va_arg' 被重复定义…` |
+| `// COMPILE-HINT ` | 提示 | `// COMPILE-HINT H3054 3:1 …` |
+| `// COMPILE-OK ` | 编译通过标记（仅 `compile` 命令） | `// COMPILE-OK` |
+| `// TRAP ` | 受检终止附注 | `// TRAP 💥 Use-After-Free (E3060)：…` |
+| `// EXIT ` | **末行**返回码（ret=0 时省略） | `// EXIT 7` |
+
+诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。
+
+**剥离规则（消费方实现要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。
+
+## 2. 进程退出码（唯一消费方 = shell/agent——防线全部读标记行）
+
+| 码 | 语义 |
+|---|---|
+| 0 | 正常结束（含 C `return 0`；非零返回值走 `// EXIT N` 标记行） |
+| 1 | 编译错误（四阶段任一） |
+| 2 | trap（受检终止） |
+| 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
+| 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令） |
+
+历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。
+
+## 3. `run` 命令
+
+```
+vitro run <file.c> [-i <input.in>] [--dump-memory <out.bin>] [-- <argv...>] [--json]
+```
+
+- `-i`：stdin 注入文件（batch 模式——输入耗尽即 EOF 不交互，`while(scanf...)!=EOF` 习语不挂起）；
+- `--`：其后全部透传给 C 程序 argv（`argv[0]` = 源文件路径，C 惯例）；
+- `-`（文件位）：源码从进程 stdin 读（UTF-8）——**全命令通用**（run/compile/step；Rust `read_source` 同品类，B2）；
+- `--json`：见 §6。
+
+## 4. `compile` 命令
+
+```
+vitro compile <file.c | -> [--json]
+```
+
+只编译+诊断不执行；文本模式 = 三级诊断行 + `// COMPILE-OK`；`--json` 见 §6。
+
+## 5. `step` 命令（有意分叉登记：Rust `step` 是交互 REPL，mb 是一次性——交互面归 serve）
+
+```
+vitro step <file.c | -> [--max-steps N] [--json | --summary]
+```
+
+- `--max-steps` 默认 **100_000**（对齐 Rust `unified` 同款默认——2026-10-04 手册对照复核修正，初版 2_000_000 系实现自拍未登记形态差）；
+- 默认 `--summary`：帧数 / 终态（`finished` / `trap` / `waiting_input/截断`）/ trap 死因文案；
+- `--json`：每批 `step.next` 的 result JSON 一行（NDJSON——帧数组嵌行内，字段语义见 StepPayload schema）+ 末行 `{"type":"summary","frames":N,"finished":B,"trapped":B}` 收口；
+- 执行序列：compile → run → step.begin → step.next（**run 先行**注入算法检测 matches——缺则帧的 `algorithm_step`/`vis_events` 恒空，demo 通道同坑实证）。
+
+## 6. `--json` 事件流约定
+
+**单一 NDJSON 流走 stdout**；程序原样输出保留给文本模式（标记行协议可管道解析）——agent 拿结构化、shell 管道拿原文，两模式各取所需：
+
+| 命令 | 事件 |
+|---|---|
+| `run --json` | `{"type":"diag","frame":<compile 帧>}` → `{"type":"run","frame":<run 帧>}` → `{"type":"stdout","frame":<output.delta 帧>}` |
+| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组——比文本形态富） |
+| `step --json` | `<step.next result 帧>` × N + `{"type":"summary",…}` |
+
+`<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。
+
+## 7. dump 族语法（有意分叉，登记保留）
+
+Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_tokens <dir|file> <out_dir> <raw|pp|both>` 等）——消费者是仓库内 Go 防线（调用面稳定优先），不收敛（#37 B1/B3）。
+
+## 8. 版本与演进
+
+- v1 冻结面：标记行前缀六种 / 退出码五值 / `--json` 事件 type 三种 + summary；
+- 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
+- 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

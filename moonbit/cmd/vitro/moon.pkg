@@ -1,0 +1,15 @@
+// cmd/vitro：CLI 总入口（#37 批② agent 态单 exe——`vitro <cmd> [args]`）。
+// 分派面：run / compile / step（三 lib）；dump_*/serve 保持独立 exe
+// （防线调用面硬编码路径，不收敛——总入口 help 提示路径）。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")
+
+options(
+  "native-stub": [ "host_clock_stub.c" ],
+)

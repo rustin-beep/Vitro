@@ -662,7 +662,8 @@ func extractMoonStdout(s string) string {
 	var kept []string
 	for _, l := range lines {
 		t := strings.TrimRight(l, "\r")
-		if strings.HasPrefix(t, "// TRAP ") || strings.HasPrefix(t, "// COMPILE-ERROR ") {
+		if strings.HasPrefix(t, "// TRAP ") || strings.HasPrefix(t, "// COMPILE-ERROR ") ||
+			strings.HasPrefix(t, "// COMPILE-WARNING ") || strings.HasPrefix(t, "// COMPILE-HINT ") {
 			continue
 		}
 		kept = append(kept, l)

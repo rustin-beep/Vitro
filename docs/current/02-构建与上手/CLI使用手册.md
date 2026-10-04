@@ -1,12 +1,30 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-09-29（serve 节补 MoonBit 孪生实现指引与超长行形态差。前一沿革 2026-09-23 迁移现状对齐）
+> 最后核对日期：2026-10-04（补 MoonBit 侧 `vitro` 总入口一节——CLI 出口总账 #37 批①②③落地；正文 Rust oracle 用法不变。前一沿革 2026-09-29 serve 节）
 > 修订说明（2026-09-11）：去前端化——移除已删除的 `VITRO_CLI_EN.md` 链接，入口表述改为"无前端依赖"并补三出口交叉引用。
-> 出口定位：本文档描述的是"三出口一核心"中的**出口 3**（`vitro_cli serve` JSON-lines 会话模式）；另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [后端定位与白箱计划.md](../01-定位与路线/后端定位与白箱计划.md) §2.2。**MoonBit 迁移进行中**：本 CLI 消费的现役引擎已冻结为差分对照 oracle，MoonBit 侧对应能力排 S7（session/protocol/gateway + Node 宿主），见 [MoonBit迁移总计划.md](../01-定位与路线/MoonBit迁移总计划.md)。
+> 出口定位：本文档是 CLI **使用指南（双轨）**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [后端定位与白箱计划.md](../01-定位与路线/后端定位与白箱计划.md) §2.2。
+> **MoonBit 迁移现状（2026-10-04）**：MoonBit 侧 CLI 已落地（见下节 `vitro` 总入口）并成为 **agent 主入口**；下文 Rust `vitro_cli` 在 Rust 退役前仍是对拍 oracle 与性能基线的运行形态（两侧已知形态差——trap 退出码 / step 交互 vs 一次性 / dump 语法——spec §2/§5/§7 逐条登记，随退役自然消失）。
+
+## MoonBit 侧 CLI（2026-10-04 起——agent 主入口）
+
+```bash
+cd moonbit && moon build --release --target native cmd/vitro cmd/run cmd/compile cmd/step
+# 产物：moonbit/_build/native/release/build/cmd/vitro/vitro.exe（及三薄壳）
+```
+
+```
+vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]   编译+执行
+vitro compile <f> [--json]                                        编译+诊断单出
+vitro step <f> [--max-steps N] [--json|--summary]                 一次性 step 流（交互调试走 serve）
+```
+
+命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
+
+## Rust 侧 vitro_cli（oracle——退役前仍用）
 
 `vitro_cli` 是 Vitro 项目 Rust 后端的命令行调试工具，**无前端依赖（headless 交互第一入口）**，可直接编译、运行和单步调试 C 代码。
 
-## 构建
+## 构建（Rust oracle）
 
 ```bash
 cd native

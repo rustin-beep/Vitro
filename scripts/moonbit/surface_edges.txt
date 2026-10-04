@@ -1,4 +1,3 @@
-
 #   - core/第三方库记完整路径如 moonbitlang/core/string、moonbitlang/x/fs；
 #   - 工作区包如 vitro/engine/lexer、vitro/engine/lexer/internal/host；
 #   - 模块根 README（发布面文档承诺）的 consumer 记 "."。
@@ -8,7 +7,6 @@
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
-
 . vitro/engine/diag ErrorCode
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
@@ -81,18 +79,6 @@ vitro/engine/cmd/dump_typeck vitro/engine/parser parse
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
 vitro/engine/cmd/run moonbitlang/core/env args
-vitro/engine/cmd/run vitro/engine/bytecode compute_heap_base
-vitro/engine/cmd/run vitro/engine/codegen compile
-vitro/engine/cmd/run vitro/engine/fs read_file_to_string
-vitro/engine/cmd/run vitro/engine/fs write_bytes_to_file
-vitro/engine/cmd/run vitro/engine/host InputState
-vitro/engine/cmd/run vitro/engine/host OutputKind
-vitro/engine/cmd/run vitro/engine/lexer tokenize_with
-vitro/engine/cmd/run vitro/engine/lexer/token SourceError
-vitro/engine/cmd/run vitro/engine/lexer/token SourceProvider
-vitro/engine/cmd/run vitro/engine/parser parse
-vitro/engine/cmd/run vitro/engine/typeck TypeChecker
-vitro/engine/cmd/run vitro/engine/vm VitroVM
 vitro/engine/cmd/serve moonbitlang/core/encoding/utf8 decode_lossy
 vitro/engine/cmd/serve vitro/engine/fs read_file_to_string
 vitro/engine/cmd/serve vitro/engine/gateway invoke
@@ -552,3 +538,27 @@ vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/util utf8_len
+vitro/engine/cmd/compile moonbitlang/core/env args
+vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/lib/cli vitro/engine/bytecode CompileOutput
+vitro/engine/cmd/lib/cli vitro/engine/bytecode compute_heap_base
+vitro/engine/cmd/lib/cli vitro/engine/codegen compile
+vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
+vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
+vitro/engine/cmd/lib/cli vitro/engine/gateway invoke
+vitro/engine/cmd/lib/cli vitro/engine/gateway reset
+vitro/engine/cmd/lib/cli vitro/engine/host InputState
+vitro/engine/cmd/lib/cli vitro/engine/host OutputKind
+vitro/engine/cmd/lib/cli vitro/engine/lexer tokenize_with
+vitro/engine/cmd/lib/cli vitro/engine/lexer/token SourceError
+vitro/engine/cmd/lib/cli vitro/engine/lexer/token SourceProvider
+vitro/engine/cmd/lib/cli vitro/engine/parser parse
+vitro/engine/cmd/lib/cli vitro/engine/typeck TypeChecker
+vitro/engine/cmd/lib/cli vitro/engine/vm VitroVM
+vitro/engine/cmd/run vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/step moonbitlang/core/env args
+vitro/engine/cmd/step vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro moonbitlang/core/env args
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step

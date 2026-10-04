@@ -54,3 +54,21 @@ test "utf8_decode_截断序列静默止" {
   let b = b"\xe4\xb8"
   inspect(utf8_decode(b), content="")
 }
+
+///|
+test "parse_run_args_多位参数_首为文件余进 argv（Rust 口径）" {
+  let ra = parse_run_args(["ok.c", "extra1", "extra2"])
+  inspect(ra.file, content="ok.c")
+  inspect(ra.argv_passthrough.length(), content="2")
+  inspect(ra.argv_passthrough[0], content="extra1")
+  inspect(ra.argv_passthrough[1], content="extra2")
+}
+
+///|
+test "parse_run_args_裸位置参数与__透传合流" {
+  let ra = parse_run_args(["ok.c", "a", "--", "b"])
+  inspect(ra.file, content="ok.c")
+  inspect(ra.argv_passthrough.length(), content="2")
+  inspect(ra.argv_passthrough[0], content="a")
+  inspect(ra.argv_passthrough[1], content="b")
+}

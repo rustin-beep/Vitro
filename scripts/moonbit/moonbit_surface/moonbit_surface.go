@@ -267,6 +267,11 @@ func main() {
 		closureSig[pkg] = csDedup
 	}
 	if !check {
+		// 默认模式曾在此提前 return（2026-10-04 修正）：收面打印后直接返回
+		// ⇒ 白名单对账与 checkEdges 边表对账**全部跳过、退出码恒 0**——本地
+		// 跑裸命令拿到查看输出误以为闸绿（假绿实锤：CLI 批 36 边差默认模式
+		// 绿、-check 红）。修正 = 默认模式与 -check 同强度（fail loud 单一
+		// 真值：本地任何跑法都是 CI 口径），-check 旗标保留仅为兼容旧调用。
 		total := 0
 		for _, pkg := range sortedKeys(collectable) {
 			if len(collectable[pkg]) == 0 {
@@ -275,7 +280,7 @@ func main() {
 			fmt.Printf("%s: %s\n", pkg, strings.Join(collectable[pkg], ", "))
 			total += len(collectable[pkg])
 		}
-		fmt.Printf("moonbit_surface: %d 个无跨包消费 pub 符号（收面对象；-check 对账 surface_allowlist.txt）\n", total)
+		fmt.Printf("moonbit_surface: %d 个无跨包消费 pub 符号（收面对象；对账 surface_allowlist.txt）\n", total)
 		// 签名闭包（自动识别）——**不是收面对象**：私有化会让引用它的
 		// pub 函数/常量签名非法。列出供人工核对（此前靠白名单手工登记，
 		// 易漏且曾误报 4 个符号为"可收"）。
@@ -288,7 +293,6 @@ func main() {
 			csTotal += len(closureSig[pkg])
 		}
 		fmt.Printf("moonbit_surface: 另 %d 个 pub 类型为签名闭包（保持 pub，不计入收面）\n", csTotal)
-		return
 	}
 	// -check：与白名单双向对账
 	allow := map[string]bool{}
@@ -328,7 +332,7 @@ func main() {
 	// 全收集后统一红（首面 fatal 早退会吞掉边级证据——注入实测发现）——
 	edgeBad := checkEdges(usedEdges)
 	if bad > 0 || edgeBad > 0 {
-		fatal("moonbit_surface: 对账不符（无主 %d + 边 %d）", bad, edgeBad)
+		fatal("对账不符（无主 %d + 边 %d）", bad, edgeBad)
 	}
 	fmt.Println("moonbit_surface: check OK（可收清单与白名单一致 + 消费边与边清单一致）")
 }

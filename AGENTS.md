@@ -27,6 +27,7 @@
 8. **判定型脚本默认 Go**：零第三方依赖、规则外置 JSON、fail loud、禁止静默 default
 9. **工具陷阱五条**：`| head` 会 SIGPIPE 杀编译器（判"构建失败"前必须 tail 全量输出）；管道 `$?` 是尾命令退出码（用 PIPESTATUS 或裸命令取）；哨兵先证红再采信结论；基准对照必须校验和逐位一致才计时；Windows 路径的 grep 过滤要 `[/\]` 双兼容
 10. **提交署名 = 审阅深度信号**（2026-09-19 拍板）：git 提交信息中**提及用户**（署名 / 审阅标记）表明该批代码经过用户深度审阅与探针测试；**未标明**仅代表用户浏览过，不构成审阅背书。机器判读提交可信度时以此为准。
+11. **native 构建默认 clang、放弃 MSVC**（2026-10-04 拍板）：Windows 上 moon 探测序默认绑 MSVC，撞 [moon#2254](https://github.com/moonbitlang/moon/issues/2254) 构建悬崖（每个链引擎闭包的 exe 冷态 ~130s——本仓已 5 个此类 exe，全量分钟级；`MOON_CC=clang` 同构建 29s 实测）。**一律 `MOON_CC=clang` 后再 `moon build --target native`**；另**新增包或出口面须连坐 surface 边表/pkg_deps 白名单登记，否则 CI 红**。
 
 ## Agent Skills（`.agents/skills/`，2026-09-28 建）
 

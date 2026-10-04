@@ -55,8 +55,14 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       i += 1
       ra.stdin_file = args[i]
     } else if !a.has_prefix("-") || a == "-" {
-      // `-`（stdin 源）在批③接线——占位接收避免落用法提示
-      ra.file = a
+      // 首个位置参数 = 源文件；其余位置参数进 argv 透传（Rust vitro_cli
+      // :1010 语义「未识别的位置参数视为传给 main 的 argv」——2026-10-04
+      // 用户实测抓到旧形态取最后一个的分叉后对齐）
+      if ra.file == "" {
+        ra.file = a
+      } else if a != "-" {
+        ra.argv_passthrough.push(a)
+      }
     }
     i += 1
   }
@@ -207,7 +213,7 @@ pub fn run(
     return 4
   }
   if ra.json_mode {
-    return json_event_stream(src)
+    return json_event_stream(src, ra.file, ra.stdin_file, ra.argv_passthrough)
   }
   let (output_opt, code) = compile_and_report(src, ra.file)
   guard output_opt is Some(output) else { return code }

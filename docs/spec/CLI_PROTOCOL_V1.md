@@ -37,6 +37,11 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 
 诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。
 
+**例外登记（2026-10-04 性能实测复核）**：
+- **codegen 段暂无 E 码**——行形态 `// COMPILE-ERROR codegen <文案>`（无码无位）：根因 = codegen 错误体系无诊断码（三出口三形态：Rust compile 零诊断 / mb CLI 出文案 / serve 进 errors 串不进 diagnostics——均照搬分叉④在案），且 E4 号段已被 C++ 预埋码占死（E4001~E4031/E4100+——砍 C++ 后死码但号段语义占用）；立码段与三出口统一挂 issue（退役后或码段拍板时）。
+- **`// TRAP ` 标记可跨多行**（trap 教学文案含 emoji 行与 📍 行号行）——消费方剥离按首行前缀 + 后续无前缀行与 oracle 同形（归一比对不受影响）。
+- **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
+
 **剥离规则（消费方实现要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。
 
 ## 2. 进程退出码（唯一消费方 = shell/agent——防线全部读标记行）
@@ -47,9 +52,9 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 | 1 | 编译错误（四阶段任一） |
 | 2 | trap（受检终止） |
 | 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
-| 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令） |
+| 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误） |
 
-历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。
+历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）；步数超限的判定：`run` 按引擎事实（`vm.step_count >= vm.max_steps`），`step` 按 trap_message 文案「步数」分档（帧无结构位——2026-10-04 性能实测抓到 step 恒 2 的分叉后修正，两出口同码）。
 
 ## 3. `run` 命令
 
@@ -57,9 +62,10 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 vitro run <file.c> [-i <input.in>] [--dump-memory <out.bin>] [-- <argv...>] [--json]
 ```
 
-- `-i`：stdin 注入文件（batch 模式——输入耗尽即 EOF 不交互，`while(scanf...)!=EOF` 习语不挂起）；
-- `--`：其后全部透传给 C 程序 argv（`argv[0]` = 源文件路径，C 惯例）；
+- `-i`：stdin 注入文件（batch 模式——输入耗尽即 EOF 不交互，`while(scanf...)!=EOF` 习语不挂起；`--json` 模式下等效实现 = waiting_input 时 `input.feed` 续跑后重拉输出——2026-10-04 修正：初版静默丢弃，agent 得空输出 + rc=0 的静默错误）；
+- `--`：其后全部透传给 C 程序 argv（`argv[0]` = 源文件路径，C 惯例）；**首个裸位置参数后的其余位置参数同样进 argv**（Rust vitro_cli :1010「未识别位置参数视为传给 main 的 argv」口径——2026-10-04 修正：初版取最后一个位置参数，分叉未登记）；
 - `-`（文件位）：源码从进程 stdin 读（UTF-8）——**全命令通用**（run/compile/step；Rust `read_source` 同品类，B2）；
+- `--dump-memory`：**`--json` 模式下不适用**（gateway 协议无 1MB 映像导出面——同时给出两旗标按 dump-memory 忽略处理）；
 - `--json`：见 §6。
 
 ## 4. `compile` 命令
@@ -89,7 +95,7 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 |---|---|
 | `run --json` | `{"type":"diag","frame":<compile 帧>}` → `{"type":"run","frame":<run 帧>}` → `{"type":"stdout","frame":<output.delta 帧>}` |
 | `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组——比文本形态富） |
-| `step --json` | `<step.next result 帧>` × N + `{"type":"summary",…}` |
+| `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。
 

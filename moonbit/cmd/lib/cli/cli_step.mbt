@@ -104,6 +104,12 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
     }
   }
   if trapped {
+    // 退出码分档（契约 §2：3=步数超限 / 2=trap——与 run 同口径；超限在
+    // step 流也是 trap 形态，按 trap_message 文案「步数」判——2026-10-04
+    // 用户性能实测抓到 step 恒 2 与 run 分叉）
+    if extract_json_string_field(last, "trap_message").contains("步数") {
+      return 3
+    }
     return 2
   }
   0

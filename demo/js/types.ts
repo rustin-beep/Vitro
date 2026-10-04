@@ -73,6 +73,7 @@ export interface StepNextResult {
   payloads: StepPayload[];
   finished: boolean;
   trapped: boolean;
+  waiting_input?: boolean;
   trap_message: string | null;
   max_collected_step?: number;
 }
@@ -107,6 +108,15 @@ export interface RunResult {
   steps_executed: number;
 }
 
+// ── output.delta（四通道游标制增量）─────────────────────────
+
+export interface OutputDelta {
+  delta: string;
+  cursor: number;
+  total: number;
+  stream: string;
+}
+
 // ── memory.regions（内存地图消费）───────────────────────────
 
 export interface HeapRegion {
@@ -118,6 +128,8 @@ export interface HeapRegion {
   alloc_by: string;
   ty: string;
   name: string;
+  /** 段着色类（band 渲染消费：blk 类名组成） */
+  kind: string;
 }
 
 export interface MemoryRegions {

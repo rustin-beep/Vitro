@@ -19,15 +19,16 @@ import { bindTabs, applyConfig, runCase, feedStdin, renderCfgView, resetPendingR
 import { loadCatalog, renderCatalog, renderProto } from "./js/catalog.ts";
 import { stepReset, bindAnim, applyCardFold } from "./js/timetravel.ts";
 import { setCaseDropdown } from "./js/state.ts";
+import type { Dropdown } from "./js/util.ts";
 import { initSettings } from "./js/settings.ts";
 
-let caseDd; // 用例下拉实例（入口持有；state.js 暴露读口）
+let caseDd: Dropdown; // 用例下拉实例（入口持有；state.ts 暴露读口）
 
 function selectCase() {
   const k = DEMO_CASES.find((k) => k.id === caseDd.value);
   if (!k) return;
   stepReset(); // 编辑器内容被用例覆盖，回放区过期
-  $("editor").value = k.source;
+  ($("editor") as HTMLTextAreaElement).value = k.source;
   renderEditorDecor();
   $("case-blurb").textContent = k.blurb;
   $("stdin-row").classList.add("hidden");
@@ -55,9 +56,9 @@ function selectCase() {
   bindTabs();
   initEditorDecor();
   // 诊断卡点击跳行（F-1 视觉件：事件委托，卡片是批量重渲染的）
-  $("diag-list").addEventListener("click", (e) => {
-    const card = e.target.closest(".diag.jumpy");
-    if (card) scrollToLine(card.dataset.line);
+  $("diag-list").addEventListener("click", (e: MouseEvent) => {
+    const card = (e.target as HTMLElement).closest<HTMLElement>(".diag.jumpy");
+    if (card) scrollToLine(card.dataset.line as string);
   });
   bindAnim();
   caseDd = makeDropdown(
@@ -74,11 +75,11 @@ function selectCase() {
   $("run-btn").onclick = runCase;
   $("feed-btn").onclick = feedStdin;
   $("cfg-btn").onclick = applyConfig;
-  $("cat-search").oninput = (e) => renderCatalog(e.target.value);
+  $("cat-search").oninput = (e: Event) => renderCatalog((e.target as HTMLInputElement).value);
   // 信息卡收纳开关（卡体每帧/每次重置都会重建——委托必须挂在恒存的
   // step-tree 容器上；挂卡片自身的话 listener 随首次 innerHTML 重写即失效）
-  $("step-tree").addEventListener("click", (e) => {
-    if (!e.target.closest(".nc-head")) return;
+  $("step-tree").addEventListener("click", (e: MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".nc-head")) return;
     const card = $("node-card");
     card.dataset.folded = card.dataset.folded === "1" ? "0" : "1";
     applyCardFold(card);
@@ -89,7 +90,7 @@ function selectCase() {
     setStatus("err", "无法加载 wasm-gc");
     $("boot-error").classList.remove("hidden");
     $("boot-error").textContent =
-      "wasm-gc 加载失败（" + e.message + "）——本页需要支持 wasm-gc 与 js-string builtins 的现代浏览器（Chrome/Edge 130+、Firefox 134+）。";
+      "wasm-gc 加载失败（" + (e instanceof Error ? e.message : String(e)) + "）——本页需要支持 wasm-gc 与 js-string builtins 的现代浏览器（Chrome/Edge 130+、Firefox 134+）。";
     return;
   }
   const gw = gateway();

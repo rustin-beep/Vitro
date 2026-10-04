@@ -1,11 +1,18 @@
 // Vitro demo · 内存地图（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
-// app.js 逐字迁移，仅增 import/export。）
+// app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
-import { MEM_TOTAL, $, esc } from "./util.js";
+import { MEM_TOTAL, $, esc } from "./util.ts";
+import type { MemoryRegions, HeapRegion } from "./types.ts";
 
-export function heapSpanOf(mem) {
+export interface HeapSpan {
+  heapBase: number;
+  heapEnd: number;
+  span: number;
+}
+
+export function heapSpanOf(mem: MemoryRegions): HeapSpan {
   const heapEnd = Math.max(
     mem.heap_offset ?? 0,
     ...mem.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size),
@@ -14,7 +21,13 @@ export function heapSpanOf(mem) {
   return { heapBase: mem.heap_base, heapEnd, span: heapEnd - mem.heap_base };
 }
 
-export function renderMemory(mem) {
+interface BandEntry {
+  r: HeapRegion;
+  left: number;
+  width: number;
+}
+
+export function renderMemory(mem: MemoryRegions): void {
   $("mem-stats").innerHTML =
     `<span>全局 ${mem.region_counts.global}</span>` +
     `<span>堆 ${mem.region_counts.heap}</span>` +
@@ -58,17 +71,17 @@ export function renderMemory(mem) {
 // 条块 keyed 复用（F-1b②）：addr/size 过渡的前提是元素存活——同 key 只更新
 // 位置/尺寸/状态类，transition 才吃得到变化；本帧消失的 key 直接移除。
 // key 含 addr+size+name：同一位置复分配出的新块视为新块（瞬现，不跨会话漂移）。
-function bandRender(band, entries) {
+function bandRender(band: HTMLElement, entries: BandEntry[]): void {
   for (const n of Array.from(band.childNodes)) {
     // 占位提示（HTML 静态 .muted.center 与 selectCase 重置的 .muted 两种）一律清，
     // 条块本体（.blk）是复用对象，不能动
-    if (!(n.nodeType === 1 && n.classList.contains("blk"))) n.remove();
+    if (!(n.nodeType === 1 && (n as HTMLElement).classList.contains("blk"))) n.remove();
   }
-  const seen = new Set();
+  const seen = new Set<string>();
   for (const { r, left, width } of entries) {
     const key = `${r.addr}:${r.size}:${r.name}`;
     seen.add(key);
-    let b = band.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    let b = band.querySelector(`[data-key="${CSS.escape(key)}"]`) as HTMLElement | null;
     if (!b) {
       b = document.createElement("div");
       b.dataset.key = key;
@@ -80,8 +93,6 @@ function bandRender(band, entries) {
     b.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
   }
   for (const b of band.querySelectorAll(".blk")) {
-    if (!seen.has(b.dataset.key)) b.remove();
+    if (!seen.has((b as HTMLElement).dataset.key as string)) b.remove();
   }
 }
-
-// ── 诊断手册（error_catalog）────────────────────────────

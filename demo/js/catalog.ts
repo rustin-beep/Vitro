@@ -3,14 +3,24 @@
 // app.js 逐字迁移，仅增 import/export。）
 "use strict";
 
-import { invoke, bodyOf } from "./gw.js";
-import { $, esc } from "./util.js";
+import { invoke, bodyOf } from "./gw.ts";
+import { $, esc } from "./util.ts";
 
-let catalogData = null; // error_catalog 缓存
+export interface CatalogCard {
+  lang: string;
+  category: string;
+  code_str: string;
+  title: string;
+  explanation: string;
+  emoji: string;
+  common_causes?: string[];
+}
+
+let catalogData: CatalogCard[] | null = null; // error_catalog 缓存
 
 export async function loadCatalog() {
   if (catalogData) return;
-  const r = bodyOf(invoke({ method: "error_catalog" }));
+  const r = bodyOf<{ catalog?: CatalogCard[] }>(invoke({ method: "error_catalog" }));
   const all = r.catalog || [];
   // 按 lang 过滤：C++ 卡（5 张）为 F-2 裁砍前的历史目录——展示会误导
   // 读者以为引擎支持 C++（审阅二批 §2）；保留数据不删，仅不展示。
@@ -23,7 +33,7 @@ export async function loadCatalog() {
   renderCatalog("");
 }
 
-export function renderCatalog(query) {
+export function renderCatalog(query: string): void {
   const q = query.trim().toLowerCase();
   const list = q
     ? catalogData.filter((c) =>
@@ -31,7 +41,7 @@ export function renderCatalog(query) {
           .join(" ").toLowerCase().includes(q)
       )
     : catalogData;
-  const byCat = {};
+  const byCat: Record<string, CatalogCard[]> = {};
   for (const c of list) (byCat[c.category] = byCat[c.category] || []).push(c);
   $("cat-list").innerHTML =
     (list.length === 0 ? '<div class="muted">无匹配条目</div>' : "") +
@@ -57,9 +67,15 @@ export function renderCatalog(query) {
 }
 
 // ── 引擎与协议 ───────────────────────────────────────────
-export function renderProto(cap, contracts, labels) {
-  const schema = cap.schema || {};
-  const ledger = schema.v0_2_field_ledger || [];
+/** capabilities/contracts/labels 帧的演示消费面（展示字段全走 esc——结构
+ *  演进时本接口随 wire 面扩，不锁全量）。 */
+interface JsonRec {
+  [key: string]: any;
+}
+
+export function renderProto(cap: JsonRec, contracts: JsonRec | null, labels: JsonRec | null): void {
+  const schema = cap.schema as JsonRec || {};
+  const ledger: JsonRec[] = (schema.v0_2_field_ledger as JsonRec[]) || [];
   $("cap-badge").textContent = `schema ${schema.version || "?"}（冻结于 ${schema.frozen_at || "?"}）`;
   $("cap-badge").title = `semantic_label_kinds=${cap.semantic_label_kinds ?? "?"}`;
   const methods = [
@@ -93,20 +109,20 @@ export function renderProto(cap, contracts, labels) {
       )
       .join("");
   // languages（语言子集锚——C23 基准与预处理器能力）
-  const c = (cap.languages && cap.languages.c) || {};
-  const pp = c.preprocessor || {};
+  const c = ((cap.languages as JsonRec | undefined) && (cap.languages as JsonRec).c as JsonRec) || {};
+  const pp: JsonRec = c.preprocessor || {};
   $("lang-box").innerHTML =
-    `<div class="ledger"><span class="code">${esc(c.anchor || "")}</span> <code>__STDC_VERSION__</code>=${esc((c.predefined_macros || {})["__STDC_VERSION__"] || "")} · <code>__VITRO_SUBSET__</code>=${esc((c.predefined_macros || {})["__VITRO_SUBSET__"] || "")}</div>` +
+    `<div class="ledger"><span class="code">${esc(c.anchor || "")}</span> <code>__STDC_VERSION__</code>=${esc(((c.predefined_macros as JsonRec) || {})["__STDC_VERSION__"] || "")} · <code>__VITRO_SUBSET__</code>=${esc(((c.predefined_macros as JsonRec) || {})["__VITRO_SUBSET__"] || "")}</div>` +
     `<div class="ledger">预处理器：对象宏/函数宏/字符串化/拼接 ${pp.stringize && pp.token_paste ? "✓" : "—"} · 条件编译 ${((pp.conditionals || []).length)} 指令 · <code>include_cycle_detection</code>=${esc(pp.include_cycle_detection)} · <code>expand_depth_fuse</code>=${esc(pp.expand_depth_fuse)}（熔断）</div>` +
-    `<div class="ledger">教学层：${(pp.teaching_layer || []).map((t) => `<code>${esc(t)}</code>`).join(" ")}</div>`;
+    `<div class="ledger">教学层：${(pp.teaching_layer as string[] || []).map((t: string) => `<code>${esc(t)}</code>`).join(" ")}</div>`;
   // memory_model（内存白箱的物理常数）
-  const mm = cap.memory_model || {};
+  const mm: JsonRec = cap.memory_model || {};
   $("memmodel-box").innerHTML =
     `<div class="ledger"><code>mem_size</code>=${mm.mem_size} B（1MB 映射） · <code>null_trap_size</code>=${mm.null_trap_size} B（NULL 页受检）</div>` +
     `<div class="ledger"><code>global_start</code>=0x${(mm.global_start || 0).toString(16)} · <code>global_region_limit</code>=${mm.global_region_limit} B · <code>heap_start_default</code>=0x${(mm.heap_start_default || 0).toString(16)}（动态：max(HEAP_START, align4(global_data_end))）</div>`;
   // 行为契约 + v0.2 激活清单
-  const bc = (contracts && contracts.behavior_contracts) || [];
-  const checklist = (contracts && contracts.v0_2_activation_checklist) || [];
+  const bc: JsonRec[] = (contracts && (contracts.behavior_contracts as JsonRec[])) || [];
+  const checklist: JsonRec[] = (contracts && (contracts.v0_2_activation_checklist as JsonRec[])) || [];
   $("contracts-box").innerHTML =
     (contracts ? `<p class="small">schema ${esc(contracts.schema || "")} · 冻结于 ${esc(contracts.frozen_at || "")} · 契约 ${bc.length} 条（enforced_by = 守护它的防线测试名）：</p>` : "") +
     bc
@@ -119,10 +135,10 @@ export function renderProto(cap, contracts, labels) {
       .join("") +
     (checklist.length
       ? `<p class="small" style="margin-top:8px">v0.2 激活清单（${checklist.length} 步——预留位激活的既定流程）：</p>` +
-        checklist.map((s, i) => `<div class="ledger"><span class="code">${i + 1}</span> ${esc(s)}</div>`).join("")
+        checklist.map((s: JsonRec, i: number) => `<div class="ledger"><span class="code">${i + 1}</span> ${esc(String(s))}</div>`).join("")
       : "");
   // semantic_labels（14 类步进语义词表——时间旅行回放的标注词汇，已冻结）
-  const sl = (labels && labels.labels) || [];
+  const sl: JsonRec[] = (labels && (labels.labels as JsonRec[])) || [];
   $("labels-box").innerHTML =
     (labels ? `<p class="small">${esc(labels.discipline || "")} · 共 ${sl.length} 类：</p>` : "") +
     sl

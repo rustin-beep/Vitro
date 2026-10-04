@@ -4,14 +4,27 @@
 // 注意：本文件必须保持无顶层 import/export（否则沦为模块、ambient 失效）。
 
 /** 预置用例（cases.js 数据文件的消费契约） */
+interface DemoCaseFile {
+  filename: string;
+  source: string;
+}
+
 interface DemoCase {
   id: string;
   label: string;
   blurb: string;
   source: string;
   stdin?: string;
+  /** 命令行参数（run params.argv 的用例声明形态） */
+  argv?: string[];
+  /** 多编译单元（compile params.files；首文件 = 编辑器内容） */
+  files?: DemoCaseFile[];
   /** configHint.max_steps：长程序（infinite 类）放宽步数上限的用例提示 */
   configHint?: { max_steps?: number };
+  /** 参考对照（Clang golden 预置真值——诚实边界：编辑器改动后不比对） */
+  referenceKind?: "stdout" | "trap";
+  referenceOutput?: string;
+  referenceTrap?: string;
 }
 
 declare const DEMO_CASES: DemoCase[];

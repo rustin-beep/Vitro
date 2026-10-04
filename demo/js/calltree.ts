@@ -1,26 +1,50 @@
 // Vitro demo · 调用树（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
-// app.js 逐字迁移，仅增 import/export。）
+// app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
-import { $, esc } from "./util.js";
+import { $, esc } from "./util.ts";
+import type { StepPayload, LocalVar } from "./types.ts";
+
+/** 调用树节点（trie：路径增量挂靠——循环迭代同节点、返回后再调新兄弟）。 */
+export interface TreeNode {
+  name: string;
+  parent: TreeNode | null;
+  children: TreeNode[];
+  depth: number;
+  firstStep?: number;
+  lastStep?: number;
+  hitCount?: number;
+  enterVars?: LocalVar[];
+  enterLabel?: string;
+  /** 布局/渲染派生（renderCallTree 写入） */
+  w?: number;
+  x?: number;
+  _x?: number;
+  _y?: number;
+}
+
+export interface CallTree {
+  root: TreeNode;
+  frameNode: (TreeNode | null)[];
+}
 
 // 调用树重建：call_stack 是「根到当前帧」的路径序列——按帧序走进/退事件
 // 把路径增量挂成 trie（循环迭代不换栈帧 = 同节点；返回后再调 = 新兄弟节点）。
 // frameNode[i] = 第 i 帧所在节点（播放高亮用）。
-export function buildCallTree(frames) {
-  const root = { name: "prog", children: [], depth: 0 };
+export function buildCallTree(frames: StepPayload[]): CallTree {
+  const root: TreeNode = { name: "prog", parent: null, children: [], depth: 0 };
   let cur = root;
-  let curPath = [];
-  const frameNode = new Array(frames.length);
+  let curPath: string[] = [];
+  const frameNode: (TreeNode | null)[] = new Array(frames.length);
   frames.forEach((f, i) => {
     const path = (f.call_stack || []).map((c) => c.func_name);
     if (!path.length) { frameNode[i] = root; return; }
     let lcp = 0;
     while (lcp < path.length && lcp < curPath.length && path[lcp] === curPath[lcp]) lcp++;
-    while (curPath.length > lcp) { curPath.pop(); cur = cur.parent; }
+    while (curPath.length > lcp) { curPath.pop(); cur = cur.parent as TreeNode; }
     while (curPath.length < path.length) {
-      const node = { name: path[curPath.length], parent: cur, children: [], depth: curPath.length + 1, firstStep: f.step_index, enterVars: f.local_vars || [], enterLabel: f.semantic_label || "执行" };
+      const node: TreeNode = { name: path[curPath.length], parent: cur, children: [], depth: curPath.length + 1, firstStep: f.step_index, enterVars: f.local_vars || [], enterLabel: f.semantic_label || "执行" };
       cur.children.push(node);
       cur = node;
       curPath.push(node.name);
@@ -32,17 +56,24 @@ export function buildCallTree(frames) {
   return { root, frameNode };
 }
 
-// 调用树 SVG：分层布局（深度=行，父居子重心），节点=函数名胶囊；
-// 已走过的边/节点提亮，当前帧节点反色。树宽自适应 viewBox，容器内横向滚动。
-// 调用树视图状态（缩放/平移/跟随；采集重置，用户交互后暂停跟随，双击恢复）
-export const treeView = { k: 1, tx: 0, ty: 0, follow: true };
+/** 视图状态（缩放/平移/跟随；采集重置，用户交互后暂停跟随，双击恢复） */
+export interface TreeViewState {
+  k: number;
+  tx: number;
+  ty: number;
+  follow: boolean;
+  contentW?: number;
+  contentH?: number;
+}
 
-export function renderCallTree(root, curNode) {
+export const treeView: TreeViewState = { k: 1, tx: 0, ty: 0, follow: true };
+
+export function renderCallTree(root: TreeNode | null, curNode: TreeNode | null): void {
   if (!root) return;
   const NW = 78, NH = 36, VGAP = 42, PAD = 26;
   let maxDepth = 0;
   let minX = 0;
-  function layout(node, depth) {
+  function layout(node: TreeNode, depth: number): void {
     maxDepth = Math.max(maxDepth, depth);
     node.depth = depth;
     if (!node.children.length) {
@@ -51,37 +82,29 @@ export function renderCallTree(root, curNode) {
       minX += 1;
       return;
     }
-    let first = null, last = null;
+    let first: TreeNode | null = null, last: TreeNode | null = null;
     for (const c of node.children) {
       layout(c, depth + 1);
       if (!first) first = c;
       last = c;
     }
-    node.w = node.children.reduce((s, c) => s + c.w, 0);
-    node.x = (first.x + last.x) / 2;
+    node.w = node.children.reduce((s, c) => s + (c.w as number), 0);
+    node.x = ((first as TreeNode).x as number + (last as TreeNode).x as number) / 2;
   }
   layout(root, 0);
   const unitW = NW + 18;
   const width = PAD * 2 + minX * unitW;
   const height = PAD * 2 + (maxDepth + 1) * (NH + VGAP);
-  const cx = (node) => PAD + node.x * unitW + unitW / 2;
-  const cy = (node) => PAD + node.depth * (NH + VGAP);
-  const edgePath = (x1, y1, x2, y2) => {
+  const cx = (node: TreeNode): number => PAD + (node.x as number) * unitW + unitW / 2;
+  const cy = (node: TreeNode): number => PAD + node.depth * (NH + VGAP);
+  const edgePath = (x1: number, y1: number, x2: number, y2: number): string => {
     const my = (y1 + y2) / 2;
     return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
   };
-  const edges = [], nodes = [], dots = [];
-  // 教学可读性：节点副行只取「局部」变量的首项且截断——全局数组等内部
-  // 数据原样 dump 会把初学者劝退（白箱 = 透明且可理解，不是裸数据）
-  const shortArg = (vars) => {
-    const v = (vars || []).find((x) => x.is_local && String(x.value).length <= 8) ||
-      (vars || []).find((x) => x.is_local);
-    if (!v) return "";
-    let val = String(v.value);
-    if (val.length > 8) val = val.slice(0, 7) + "…";
-    return `${v.name}=${val}`;
-  };
-  (function emit(node, walkedPath) {
+  const edges: string[] = [], nodes: string[] = [], dots: string[] = [];
+  // 【TS 重写批注】原 shortArg 死函数已删（emit 内联 find 从未调它——
+  //  noUnusedLocals 抓出；教学截断逻辑仍活在 emit 的 arg 段）
+  (function emit(node: TreeNode, walkedPath: boolean): void {
     const x = cx(node), y = cy(node);
     node._x = x; node._y = y; // 供跟随居中定位
     node.children.forEach((c, ci) => {
@@ -133,7 +156,7 @@ export function renderCallTree(root, curNode) {
 
 // 视图初始化：小树（fit ≥ 0.75）完整渲染居中不跟随；大树固定可读缩放，
 // 当前事件节点为窗口重心（到哪帧镜头跟到哪，帧间 CSS 过渡平滑移动）
-function initTreeView(width, height, curNode) {
+function initTreeView(width: number, height: number, curNode: TreeNode | null): void {
   const host = $("step-tree");
   const cw = host.clientWidth || 600;
   const fitK = Math.min(1, (cw - 8) / width);
@@ -151,13 +174,13 @@ function initTreeView(width, height, curNode) {
   bindTreeView(width, height);
 }
 
-function applyTreeView() {
+function applyTreeView(): void {
   const g = document.querySelector("#tree-viewport"); // 动态生成元素，querySelector 检索
   if (g) g.setAttribute("transform", `translate(${treeView.tx},${treeView.ty}) scale(${treeView.k})`);
 }
 
 // 当前帧节点居中（跟随模式）：水平垂直都到画布重心，帧间由 CSS 过渡平滑
-function centerOnNode(node) {
+function centerOnNode(node: TreeNode | null): void {
   const host = $("step-tree");
   if (!host || !node || node._x === undefined) return;
   const cw = host.clientWidth || 600;
@@ -169,15 +192,30 @@ function centerOnNode(node) {
   applyTreeView();
 }
 
+interface PinchState {
+  dist: number;
+  midX: number;
+  midY: number;
+  k: number;
+  tx: number;
+  ty: number;
+}
+
+interface DragState {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+}
+
 // 树画布交互：滚轮缩放（鼠标锚点）、拖拽平移（暂停跟随）、双击恢复适应+跟随
-function bindTreeView(contentW, contentH) {
-  const host = $("step-tree");
-  const svg = document.querySelector("#tree-svg"); // 动态生成元素
+function bindTreeView(contentW: number, contentH: number): void {
+  const svg = document.querySelector("#tree-svg") as SVGElement | null; // 动态生成元素
   // dataset.bound 防的是同一 svg 重复绑定；svg 每帧随 DOM 重建，新元素必须重绑
   if (!svg || svg.dataset.bound) return;
   svg.dataset.bound = "1";
   svg.style.touchAction = "none";
-  svg.addEventListener("wheel", (e) => {
+  svg.addEventListener("wheel", (e: WheelEvent) => {
     e.preventDefault();
     const rect = svg.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
@@ -191,10 +229,10 @@ function bindTreeView(contentW, contentH) {
   }, { passive: false });
   // 双指 pinch 缩放（触屏）：touch-action:none 禁掉了浏览器原生 pinch，
   // 移动端缩放完全依赖此手势——双指距离比=缩放比，双指中点为锚
-  const pointers = new Map();
-  let pinch = null;
-  let drag = null;
-  svg.addEventListener("pointerdown", (e) => {
+  const pointers = new Map<number, { x: number; y: number }>();
+  let pinch: PinchState | null = null;
+  let drag: DragState | null = null;
+  svg.addEventListener("pointerdown", (e: PointerEvent) => {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 2) {
       drag = null; // 进入 pinch：取消单指拖拽
@@ -212,12 +250,11 @@ function bindTreeView(contentW, contentH) {
     if (g) g.classList.add("dragging"); // 拖拽无过渡
     svg.setPointerCapture(e.pointerId);
   });
-  svg.addEventListener("pointermove", (e) => {
+  svg.addEventListener("pointermove", (e: PointerEvent) => {
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pinch && pointers.size >= 2) {
       const [p1, p2] = Array.from(pointers.values());
       const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1;
-      const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
       const k2 = Math.max(0.12, Math.min(2.5, (pinch.k * dist) / pinch.dist));
       const svgRect = svg.getBoundingClientRect();
       const ax = pinch.midX - svgRect.left, ay = pinch.midY - svgRect.top;
@@ -234,7 +271,7 @@ function bindTreeView(contentW, contentH) {
     treeView.follow = false;
     applyTreeView();
   });
-  const endPointer = (e) => {
+  const endPointer = (e: PointerEvent): void => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
     drag = null;
@@ -248,4 +285,3 @@ function bindTreeView(contentW, contentH) {
     initTreeView(contentW, contentH, null);
   });
 }
-

@@ -586,12 +586,12 @@ jobs:
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
       # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
       # TS 重写批（2026-10-04，refs #28）：demo/js 产物不入库——消费产物的
-      # 步骤一律前置发射（npm ci + tsc，发射即检查；本步的 method 消费面
+      # 步骤一律前置发射（npm ci + tsc，发射即检查闸；本步的 method 消费面
       # 扫描读 .ts 源不依赖产物，但运行依赖 wasm 与 cases 均在，故本步
       # 排在下方发射步之后语义更清晰——实排见 lint 步后）。
       - name: demo TS build (tsc emit = type gate)
         run: |
-          cd demo && npm ci && npx tsc -p tsconfig.json
+          cd demo && npm ci && npx tsc -p tsconfig.json --noEmit && npx tsc -p tsconfig.json
         shell: bash
 
       - name: demo page smoke (protocol-level, cases golden + field keys)

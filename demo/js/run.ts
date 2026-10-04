@@ -1,21 +1,23 @@
 // Vitro demo · 运行链（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
-// app.js 逐字迁移，仅增 import/export。）
+// app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
-import { invoke, bodyOf, gateway } from "./gw.js";
-import { $, esc, setStatus, latin1ToUtf8 } from "./util.js";
-import { scrollToLine } from "./editor.js";
-import { renderMemory } from "./memory.js";
-import { currentCaseId } from "./state.js";
+import { invoke, bodyOf, gateway } from "./gw.ts";
+import { $, esc, setStatus, latin1ToUtf8 } from "./util.ts";
+import { renderMemory } from "./memory.ts";
+import { currentCaseId } from "./state.ts";
+import type { Frame } from "./types.ts";
+import type { CompileResult, Diagnostic, RunResult, EngineConfig, OutputDelta, MemoryRegions } from "./types.ts";
 
-let pendingRun = null; // waiting_input 时的会话上下文
+/** waiting_input 时保留的会话上下文（input.feed 续跑用——完整响应帧）。 */
+let pendingRun: Frame | null = null;
 
-export function getPendingRun() { return pendingRun; }
-export function resetPendingRun() { pendingRun = null; }
+export function getPendingRun(): Frame | null { return pendingRun; }
+export function resetPendingRun(): void { pendingRun = null; }
 
-export function bindTabs() {
-  document.querySelectorAll(".tabs .tab").forEach((btn) => {
+export function bindTabs(): void {
+  document.querySelectorAll<HTMLElement>(".tabs .tab").forEach((btn) => {
     btn.onclick = () => {
       document.querySelectorAll(".tabs .tab").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
@@ -26,29 +28,29 @@ export function bindTabs() {
 }
 
 // ── 会话配置 ─────────────────────────────────────────────
-export function applyConfig() {
+export function applyConfig(): Record<string, any> {
   if (!gateway()) return;
   const params = {
-    deterministic: $("cfg-det").checked,
-    max_steps: Number($("cfg-maxsteps").value) || 10000000,
-    call_depth_limit: Number($("cfg-depth").value) || 10000,
+    deterministic: ($("cfg-det") as HTMLInputElement).checked,
+    max_steps: Number(($("cfg-maxsteps") as HTMLInputElement).value) || 10000000,
+    call_depth_limit: Number(($("cfg-depth") as HTMLInputElement).value) || 10000,
   };
   const r = bodyOf(invoke({ method: "config.set", params }));
-  const c = bodyOf(invoke({ method: "config.get" }));
+  const c = bodyOf<EngineConfig>(invoke({ method: "config.get" }));
   $("cfg-msg").textContent = `已应用 ✓（deterministic=${c.deterministic}，max_steps=${c.max_steps}，call_depth=${c.call_depth_limit}）`;
   renderCfgView(c);
   return r;
 }
 
-export function renderCfgView(c) {
+export function renderCfgView(c: unknown): void {
   if (c) $("cfg-view").textContent = JSON.stringify(c, null, 2);
 }
 
 // ── 运行一条用例 ──────────────────────────────────────────
-export async function runCase() {
+export async function runCase(): Promise<void> {
   if (!gateway()) return;
-  const kase = DEMO_CASES.find((k) => k.id === currentCaseId()) || {};
-  $("run-btn").disabled = true;
+  const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
+  $("run-btn").setAttribute("disabled", "true");
   setStatus("busy", "运行中…");
   try {
     gateway().reset();
@@ -63,10 +65,10 @@ export async function runCase() {
     bodyOf(invoke({
       method: "config.set",
       params: {
-        max_steps: Number($("cfg-maxsteps").value) || 10000000,
-        call_depth_limit: Number($("cfg-depth").value) || 10000,
-        deterministic: $("cfg-det").checked,
-        quarantine_budget: Number($("cfg-quar").value) || 262144,
+        max_steps: Number(($("cfg-maxsteps") as HTMLInputElement).value) || 10000000,
+        call_depth_limit: Number(($("cfg-depth") as HTMLInputElement).value) || 10000,
+        deterministic: ($("cfg-det") as HTMLInputElement).checked,
+        quarantine_budget: Number(($("cfg-quar") as HTMLInputElement).value) || 262144,
       },
     }));
     if (kase.configHint) {
@@ -76,15 +78,15 @@ export async function runCase() {
       $("cfg-msg").textContent = `本用例临时覆盖 config：max_steps=${kase.configHint.max_steps}（下一用例自动恢复基准）`;
     }
     // compile：用例可带 files（多编译单元）或单 source；编辑器内容跟随主文件
-    let comp;
+    let comp: CompileResult;
     if (kase.files) {
       const files = kase.files.map((f, i) => ({
         filename: f.filename,
-        source: i === 0 ? $("editor").value : f.source,
+        source: i === 0 ? ($("editor") as HTMLTextAreaElement).value : f.source,
       }));
-      comp = bodyOf(invoke({ method: "compile", params: { files } }));
+      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { files } }));
     } else {
-      comp = bodyOf(invoke({ method: "compile", params: { source: $("editor").value } }));
+      comp = bodyOf<CompileResult>(invoke({ method: "compile", params: { source: ($("editor") as HTMLTextAreaElement).value } }));
     }
     renderDiagnostics(comp.diagnostics || []);
     renderPpTrace(comp.preprocessor_trace || []);
@@ -93,8 +95,8 @@ export async function runCase() {
       renderTrap("编译失败——诊断见左侧列表");
       return;
     }
-    let run = invoke({ method: "run", params: runParams(kase) });
-    let rr = bodyOf(run);
+    const run = invoke({ method: "run", params: runParams(kase) });
+    const rr = bodyOf<RunResult>(run);
     if (rr.waiting_input) {
       pendingRun = run;
       setStatus("wait", "等待输入…（下方 stdin 喂入后继续）");
@@ -102,51 +104,51 @@ export async function runCase() {
       // 必须显式移除（历史上这里操作的是无消费者的 .active 类，行永不出现）
       $("stdin-row").classList.remove("hidden");
       renderRunResult(rr);
-      renderMemory(bodyOf(invoke({ method: "memory.regions" })));
+      renderMemory(bodyOf<MemoryRegions>(invoke({ method: "memory.regions" })));
       // scanf 暂停前的 printf 输出已在通道里（如提示语 "n="）——即时拉取显示，
       // 否则要等喂入续跑后才见（2026-10-03 用户问交互时实测发现的显示缺口）
-      const o = bodyOf(invoke({ method: "output.delta", params: { cursor: 0, stream: "stdout" } }));
+      const o = bodyOf<OutputDelta>(invoke({ method: "output.delta", params: { cursor: 0, stream: "stdout" } }));
       renderOutput(latin1ToUtf8(o.delta) || "", o.total || 0);
       return;
     }
     pendingRun = null;
     finishRun(rr, kase);
   } finally {
-    $("run-btn").disabled = false;
+    $("run-btn").removeAttribute("disabled");
   }
 }
 
-export async function feedStdin() {
+export async function feedStdin(): Promise<void> {
   if (!pendingRun) return;
-  const text = $("stdin-box").value;
+  const text = ($("stdin-box") as HTMLTextAreaElement).value;
   const feed = invoke({ method: "input.feed", params: { text: text + "\n" } });
-  const rr = bodyOf(feed);
+  const rr = bodyOf<RunResult>(feed);
   if (rr.waiting_input) {
     setStatus("wait", "仍在等待输入…");
     return;
   }
   pendingRun = null;
   $("stdin-row").classList.add("hidden");
-  const kase = DEMO_CASES.find((k) => k.id === currentCaseId()) || {};
+  const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
   finishRun(rr, kase);
 }
 
 // run 参数面：argv 输入框（空格分隔）或用例声明；stdin 两步交互保留
 // （waiting_input 本身是教学演示点）
-function runParams(kase) {
-  const p = {};
-  const argvText = $("argv-box").value.trim();
+function runParams(kase: DemoCase): { argv?: string[] } {
+  const p: { argv?: string[] } = {};
+  const argvText = ($("argv-box") as HTMLInputElement).value.trim();
   if (argvText) p.argv = argvText.split(/\s+/);
   else if (kase.argv) p.argv = kase.argv;
   return p;
 }
 
-function finishRun(rr, kase) {
+function finishRun(rr: RunResult, kase: DemoCase): void {
   renderRunResult(rr);
   // 四通道视图：stdout / stderr / note（display=全通道按写入序拼接，页内
   // 用分通道展示替代）。字节域 Latin-1 → UTF-8 还原后展示。
-  const pull = (stream) => {
-    const o = bodyOf(invoke({ method: "output.delta", params: { cursor: 0, stream } }));
+  const pull = (stream: string): { text: string; total: number } => {
+    const o = bodyOf<OutputDelta>(invoke({ method: "output.delta", params: { cursor: 0, stream } }));
     return { text: latin1ToUtf8(o.delta) || "", total: o.total || 0 };
   };
   const stdout = pull("stdout");
@@ -155,7 +157,7 @@ function finishRun(rr, kase) {
   renderStderr(stderr.text, stderr.total);
   const note = pull("note");
   renderNote(note.text, note.total);
-  renderMemory(bodyOf(invoke({ method: "memory.regions" })));
+  renderMemory(bodyOf<MemoryRegions>(invoke({ method: "memory.regions" })));
   if (rr.status === "trap") {
     setStatus("err", "trap（受检终止）");
     renderTrap(rr.trap || "");
@@ -169,7 +171,7 @@ function finishRun(rr, kase) {
   renderCfgView(bodyOf(invoke({ method: "config.get" })));
 }
 
-function renderStderr(text, total) {
+function renderStderr(text: string, total: number): void {
   const el = $("stderr-box");
   if (!text) {
     el.classList.add("hidden");
@@ -181,7 +183,7 @@ function renderStderr(text, total) {
 }
 
 // ── 渲染：结果 ───────────────────────────────────────────
-function renderRunResult(r) {
+function renderRunResult(r: RunResult): void {
   const ret = $("ret-value");
   const steps = $("steps-value");
   ret.textContent = r.status === "finished" ? String(r.return_value) : "—";
@@ -193,7 +195,7 @@ function renderRunResult(r) {
   }
 }
 
-function renderOutput(delta, total) {
+function renderOutput(delta: string, total: number): void {
   const el = $("stdout-box");
   el.textContent = delta === "" ? "（无 stdout 输出）" : delta;
   el.classList.toggle("empty", delta === "");
@@ -203,7 +205,7 @@ function renderOutput(delta, total) {
   $("stdout-meta").textContent = `${total} 字节 · output.delta 全量拉取`;
 }
 
-function renderDiagnostics(diags) {
+function renderDiagnostics(diags: Diagnostic[]): void {
   const el = $("diag-list");
   if (!diags || diags.length === 0) {
     el.innerHTML = '<div class="muted">无编译期诊断</div>';
@@ -222,7 +224,7 @@ function renderDiagnostics(diags) {
     .join("");
 }
 
-function renderNote(text, total) {
+function renderNote(text: string, total: number): void {
   const el = $("note-box");
   if (!text) {
     el.classList.add("hidden");
@@ -232,7 +234,7 @@ function renderNote(text, total) {
   el.innerHTML = esc(text).replace(/\n/g, "<br>");
   $("note-meta").textContent = `${total} 字节 · note 审计流（Latin-1 字节域按 UTF-8 还原）`;
 }
-function renderPpTrace(trace) {
+function renderPpTrace(trace: string[]): void {
   const el = $("diag-list");
   if (trace && trace.length) {
     const div = document.createElement("div");
@@ -244,7 +246,7 @@ function renderPpTrace(trace) {
   }
 }
 
-function renderTrap(text) {
+function renderTrap(text: string): void {
   const el = $("trap-box");
   if (!text) {
     el.classList.add("hidden");
@@ -255,18 +257,18 @@ function renderTrap(text) {
 }
 
 // 参考对照（Clang golden 预置真值——诚实边界在文案）
-function renderReference(runResult, stdout, kase) {
+function renderReference(runResult: RunResult, stdout: string, kase: DemoCase): void {
   const el = $("ref-box");
   if (!kase || (!kase.referenceOutput && !kase.referenceTrap)) {
     el.innerHTML = '<div class="muted">（本用例未预置参考值）</div>';
     return;
   }
   // 诚实边界：编辑器内容被修改后，golden 只属于原用例——不拿旧预期比新代码
-  if ($("editor").value !== kase.source) {
+  if (($("editor") as HTMLTextAreaElement).value !== kase.source) {
     el.innerHTML = '<div class="muted">（编辑器内容已修改——Clang golden 对照仅对未修改的预置用例有效；可切回用例或点「↻ 重新采集」前先比对）</div>';
     return;
   }
-  let match, expect;
+  let match: boolean, expect: string | undefined;
   if (kase.referenceKind === "stdout") {
     expect = kase.referenceOutput;
     match = stdout === expect;
@@ -275,12 +277,9 @@ function renderReference(runResult, stdout, kase) {
       `<pre class="ref-pre">Clang golden（预置真值）: ${esc(JSON.stringify(expect))}\nVitro 实跑 stdout      : ${esc(JSON.stringify(stdout))}</pre>`;
   } else {
     expect = kase.referenceTrap;
-    match = (runResult.trap || "").includes(expect);
+    match = (runResult.trap || "").includes(expect as string);
     el.innerHTML =
-      `<div class="${match ? "match" : "mismatch"}">${match ? "✓ 诊断类别一致（含 " + esc(expect) + "）" : "✗ 未复现预期诊断"}</div>` +
+      `<div class="${match ? "match" : "mismatch"}">${match ? "✓ 诊断类别一致（含 " + esc(expect as string) + "）" : "✗ 未复现预期诊断"}</div>` +
       `<pre class="ref-pre">参考真值：CI 防线对该诊断类别的断言（由 wasm 宿主冒烟与 shadow 防线持续对拍）</pre>`;
   }
 }
-
-// ── 渲染：内存地图 ───────────────────────────────────────
-// 堆区放大视角的跨度计算（内存地图 tab 与动画演示 tab 共用）

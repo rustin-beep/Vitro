@@ -1,11 +1,11 @@
 // Vitro demo · 编辑器（词法高亮）（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
-// app.js 逐字迁移，仅增 import/export。）
+// app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
-import { $, esc } from "./util.js";
+import { $, esc } from "./util.ts";
 
-export const C_KEYWORDS = new Set(
+export const C_KEYWORDS: ReadonlySet<string> = new Set(
   (
     "auto break case char const continue default do double else enum extern " +
     "float for goto if inline int long register restrict return short signed " +
@@ -16,13 +16,19 @@ export const C_KEYWORDS = new Set(
 // 组合正则按优先级一次扫描：块注释/行注释/字符串/字符/预处理行/数字/标识符。
 // 未闭合的注释与字符串也吞到末尾（打字中间态高亮稳定）；预处理行匹配
 // ^\s*#（m 标志），因注释/字符串组在前，处于它们内部的 # 不会被误判。
-export const C_TOKEN =
+export const C_TOKEN: RegExp =
   /(\/\*[\s\S]*?(?:\*\/|$))|(\/\/[^\n]*)|("(?:\\.|[^"\\\n])*"?)|('(?:\\.|[^'\\\n])*'?)|(^[ \t]*#[^\n]*)|(\.?\d(?:[\w.]|[eEpP][+-])*)|([A-Za-z_]\w*)/gm;
 
-export function tokenizeC(src) {
-  const toks = [];
+/** 词法 token：cls = 着色类名（syn-*；空串 = 无着色的间隔文本）。 */
+export interface CToken {
+  cls: string;
+  text: string;
+}
+
+export function tokenizeC(src: string): CToken[] {
+  const toks: CToken[] = [];
   let last = 0;
-  let m;
+  let m: RegExpExecArray | null;
   C_TOKEN.lastIndex = 0;
   while ((m = C_TOKEN.exec(src))) {
     if (m.index > last) toks.push({ cls: "", text: src.slice(last, m.index) });
@@ -42,10 +48,10 @@ export function tokenizeC(src) {
 
 // 整体 tokenize 后按 \n 切分组装行盒（块注释等跨行 token 的着色状态
 // 在行间延续）；每行一个 .cl，行号 .ln 内嵌行盒，折行后行号不重复。
-export function highlightLines(src) {
-  const rows = [];
+export function highlightLines(src: string): string {
+  const rows: string[] = [];
   let cur = "";
-  const feed = (cls, text) => {
+  const feed = (cls: string, text: string): void => {
     const parts = text.split("\n");
     for (let i = 0; i < parts.length; i++) {
       if (i > 0) {
@@ -64,24 +70,23 @@ export function highlightLines(src) {
 
 // input 同步渲染（不走 rAF）：textarea 高度即时跟随内容，消除打字回车
 // 瞬间 textarea 内部出现溢出的时序差。
-export function renderEditorDecor() {
-  const ta = $("editor");
-  if (!ta) return;
+export function renderEditorDecor(): void {
+  const ta = $<HTMLTextAreaElement>("editor");
   $("editor-hl").innerHTML = highlightLines(ta.value);
 }
 
-export function initEditorDecor() {
-  const ta = $("editor");
+export function initEditorDecor(): void {
+  const ta = $<HTMLTextAreaElement>("editor");
   ta.addEventListener("input", renderEditorDecor);
   renderEditorDecor();
 }
 
 // ── 行跳转（F-1 视觉件）+ 高亮闪烁定位（F-1b②动效）──────────
-export function scrollToLine(line, flash = true) {
+export function scrollToLine(line: number | string, flash = true): void {
   line = Number(line);
   if (!line || line < 1) return;
   const wrapEl = $("editor-wrap");
-  const row = wrapEl.querySelectorAll("#editor-hl .cl")[line - 1];
+  const row = wrapEl.querySelectorAll("#editor-hl .cl")[line - 1] as HTMLElement | undefined;
   if (!row) return;
   // 目标行滚到编辑器视口中部（offsetTop 相对 .editor-lay，即内容坐标）
   wrapEl.scrollTop = Math.max(0, row.offsetTop - wrapEl.clientHeight / 2);
@@ -92,11 +97,9 @@ export function scrollToLine(line, flash = true) {
   if (!flash) return; // 时间旅行播放中：只滚+描边当前行，不闪
   void hlEl.offsetWidth; // 重触发闪烁动画
   row.classList.add("flash-on");
-  const onEnd = () => {
+  const onEnd = (): void => {
     row.classList.remove("flash-on");
     row.removeEventListener("animationend", onEnd);
   };
   row.addEventListener("animationend", onEnd);
 }
-
-// ── tab 切换 ─────────────────────────────────────────────

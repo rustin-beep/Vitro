@@ -4,10 +4,12 @@
 // 用 get/set 对（比模块循环 import 干净）。
 "use strict";
 
-let caseDd = null;
-let speedDd = null;
+import type { Dropdown } from "./util.ts";
 
-export function setCaseDropdown(d) { caseDd = d; }
-export function currentCaseId() { return caseDd ? caseDd.value : ""; }
-export function setSpeedDropdown(d) { speedDd = d; }
-export function speedValue() { return speedDd ? speedDd.value : "200"; }
+let caseDd: Dropdown | null = null;
+let speedDd: Dropdown | null = null;
+
+export function setCaseDropdown(d: Dropdown): void { caseDd = d; }
+export function currentCaseId(): string { return caseDd ? caseDd.value : ""; }
+export function setSpeedDropdown(d: Dropdown): void { speedDd = d; }
+export function speedValue(): string { return speedDd ? speedDd.value : "200"; }

@@ -1,7 +1,12 @@
 // Vitro demo · wire DTO 类型（TS 惯用法重写批 2026-10-04，refs #28）。
-// 接口字段 = JS 消费面实际读取的字段集（逐字原则：以代码为准，不预支协议
-// 全集——协议权威面在 @vitro/protocol/index.d.ts，demo 只声明消费契约）。
 // 源 = gateway wire 帧（canonicalize 口径），与 engine 侧 emitter 字段序无关。
+//
+// 声明口径（2026-10-04 审阅 P2-3 修正）：StepPayload 顶层 14 字段 = 协议
+// v0.1 白名单全集（demo_smoke 键集全等断言机判）；但「字段已声明」≠「页面
+// 已消费」——vis_events / algorithm_step / root_cause_hint / pointer_
+// snapshots / accessed_vars / heatmap_line / heatmap_count / array_snapshots
+// 八字段当前无前端消费者，为 demo 前端接线批（#28 可视化侧栏）的预留声明；
+// 接线落地时此处逐字段补消费点注释。协议权威面在 @vitro/protocol/index.d.ts。
 
 // ── step 流（时间旅行回放消费）────────────────────────────────
 

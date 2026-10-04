@@ -1,7 +1,8 @@
 // Vitro demo · gateway 通道（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
 // app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化 + js-string
-// 扩展的 WebAssembly.Options 局部声明合并（DOM lib 缺口，非迁移税））。
+// 扩展实例化参走 @ts-expect-error（DOM lib 的 ModuleOptions 签名缺该
+// 扩展参——非声明合并，头注原文误写，2026-10-04 审阅 P3-⑤ 勘正））。
 "use strict";
 
 import type { Frame } from "./types.ts";
@@ -19,6 +20,11 @@ let gw: GatewayExports | null = null; // gateway exports
 let frameId = 0;
 
 export function setGateway(g: GatewayExports): void { gw = g; }
+// 无操作守卫专用（2026-10-04 审阅 P3-①）：gateway() 是 fail-fast 抛错口
+// （boot 后正常路径用），旧版 `if (!gw) return;` 语义在 TS 重写时被误写成
+// `if (!gateway())`——调用 gateway() 本身即抛，守卫永不生效。装载窗口
+// （run-btn 绑定早于 wasm fetch 完成）点击会未捕获抛错。
+export function hasGateway(): boolean { return gw !== null; }
 export function gateway(): GatewayExports {
   if (!gw) throw new Error("gateway 未装载（boot 前调用）");
   return gw;

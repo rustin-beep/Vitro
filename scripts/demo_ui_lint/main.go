@@ -73,12 +73,16 @@ var reHTMLTag = regexp.MustCompile(`<([a-z]+)[^>]*>`)
 var reAttrID = regexp.MustCompile(`\bid="([\w-]+)"`)
 var reAttrClass = regexp.MustCompile(`\bclass="([^"]*)"`)
 
-var reJSClassListChain = regexp.MustCompile(`(?:\$\(|getElementById\(|querySelector\()["']#?([\w-]+)["']\)\.classList\.(add|remove|toggle|contains)\(([^)]*)\)`)
-var reJSVarBind = regexp.MustCompile(`(?:const|let|var)\s+(\w+)\s*=\s*(?:\$\(|getElementById\(|querySelector\()["']#?([\w-]+)["']\)`)
+// 泛型实参分支 \$<[^>()]*>\(（2026-10-04 审阅 P2-1）：TS 源面 $<T>("id")
+// 形态裸 \( 侧正则全漏——注入泛型 ghost id 闸绿实锤（位点 26→21 静默塌缩）；
+// 禁 () 因函数定义签名（util.ts 的 function $<T extends ...>(id: string)）
+// 会被误入捕获域，[^>()]* 使其不命中引号捕获组。
+var reJSClassListChain = regexp.MustCompile(`(?:\$<[^>()]*>\(|\$\(|getElementById\(|querySelector\()["']#?([\w-]+)["']\)\.classList\.(add|remove|toggle|contains)\(([^)]*)\)`)
+var reJSVarBind = regexp.MustCompile(`(?:const|let|var)\s+(\w+)\s*=\s*(?:\$<[^>()]*>\(|\$\(|getElementById\(|querySelector\()["']#?([\w-]+)["']\)`)
 var reJSClassListVar = regexp.MustCompile(`(\w+)\.classList\.(add|remove|toggle|contains)\(([^)]*)\)`)
 var reJSClassNameLit = regexp.MustCompile(`\.className\s*=\s*"([^"]*)"`)
-var reJSGetByID = regexp.MustCompile(`(?:\$\(|getElementById\()["']([\w-]+)["']\)`)
-var reJSGetByIDDyn = regexp.MustCompile(`(?:\$\(|getElementById\()["']([\w-]+)["']\s*\+`)
+var reJSGetByID = regexp.MustCompile(`(?:\$<[^>()]*>\(|\$\(|getElementById\()["']([\w-]+)["']\)`)
+var reJSGetByIDDyn = regexp.MustCompile(`(?:\$<[^>()]*>\(|\$\(|getElementById\()["']([\w-]+)["']\s*\+`)
 var reJSGenClass = regexp.MustCompile(`class=\\?"([^"\\$]+)\\?"`)
 var reQuotedArgs = regexp.MustCompile(`"([^"]+)"`)
 var reCSSVarUseNoFB = regexp.MustCompile(`var\((--[\w-]+)\s*\)`)
@@ -172,7 +176,7 @@ func main() {
 		return string(b)
 	}
 	html := read("index.html", selftestHTML)
-	// 拆分批（2026-10-04，refs #28）：app.js → 入口 + js/ 十模块 ESM——
+	// 拆分批（2026-10-04，refs #28）：app.js → 入口 + js/ 十一模块 ESM——
 	// JS 扫描面 = 入口 + js/*.js 排序合并（冻结区防线维护通道；位点下限
 	// 随扫描面扩大自然满足）。
 	js := read("app.ts", selftestJS)
@@ -540,7 +544,19 @@ func main() {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 未达到四类证红（class=%d var=%d id=%d zombie=%d）——闸失效\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
 			os.Exit(1)
 		}
-		fmt.Printf("demo_ui_lint: -selftest 四类证红 OK（class=%d var=%d id=%d zombie=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
+		// 泛型回归锚（2026-10-04 审阅 P2-1）：$<T>("ghost") 形态必须被抓——
+		// 正则退化丢泛型分支时本断言红（id 类四类计数由 getElementById 撑着，不敏感）
+		genericHit := false
+		for _, i := range issues {
+			if strings.Contains(i.msg, "no-such-id-generic") {
+				genericHit = true
+			}
+		}
+		if !genericHit {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 泛型形态 $<T>(\"id\") 未被抓——泛型抽取分支失明复发（审阅 P2-1 回归锚）\n")
+			os.Exit(1)
+		}
+		fmt.Printf("demo_ui_lint: -selftest 四类证红 OK + 泛型锚 OK（class=%d var=%d id=%d zombie=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
 		return
 	}
 
@@ -654,4 +670,5 @@ const selftestHTML = `<div id="box" class="tab"></div><div id="tab-result"></div
 const selftestCSS = `:root { --real: 1px; } .tab.on { color: red; }`
 const selftestJS = `$("box").classList.add("phantom-class");
 document.getElementById("no-such-id").onclick = null;
+const g = $<HTMLTextAreaElement>("no-such-id-generic");
 const v = "var(--no-such-var)";`

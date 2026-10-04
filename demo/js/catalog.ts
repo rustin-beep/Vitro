@@ -150,10 +150,3 @@ export function renderProto(cap: JsonRec, contracts: JsonRec | null, labels: Jso
       )
       .join("");
 }
-
-// ── 时间旅行（S8 step 流采集-回放）──────────────────────
-// 帧数据源 = gateway step 族（step.begin / step.next 批量推进），每帧带
-// 引擎真实标注（semantic_labels 词表渲染文本）/ 局部变量 / 调用栈 / 当前
-// 执行行；seek 与 ◀▶ 为本地帧数组形态（gateway wasm 未接 step.seek /
-// payload.get——那是 serve 通道能力，教学回放形态下本地索引足够，引擎级
-// 断点留实时调试形态）。场景 = 全部预置用例；左侧编辑器随帧高亮当前行。

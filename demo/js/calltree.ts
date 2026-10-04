@@ -4,7 +4,7 @@
 "use strict";
 
 import { $, esc } from "./util.ts";
-import type { StepPayload, LocalVar } from "./types.ts";
+import type { LocalVar, CallFrame, SemanticLabel } from "./types.ts";
 
 /** 调用树节点（trie：路径增量挂靠——循环迭代同节点、返回后再调新兄弟）。 */
 export interface TreeNode {
@@ -32,7 +32,17 @@ export interface CallTree {
 // 调用树重建：call_stack 是「根到当前帧」的路径序列——按帧序走进/退事件
 // 把路径增量挂成 trie（循环迭代不换栈帧 = 同节点；返回后再调 = 新兄弟节点）。
 // frameNode[i] = 第 i 帧所在节点（播放高亮用）。
-export function buildCallTree(frames: StepPayload[]): CallTree {
+// buildCallTree 的入参消费面（2026-10-04 审阅 P3-④/tests 类型面）：只读本四
+// 字段（local_vars/semantic_label 体内 || 兜底故可选）——StepPayload 结构
+// 兼容可直传，测试 mock 只需造最小帧
+export interface CallTreeFrame {
+  step_index: number;
+  call_stack: Array<Pick<CallFrame, "func_name">>;
+  local_vars?: LocalVar[];
+  semantic_label?: SemanticLabel;
+}
+
+export function buildCallTree(frames: CallTreeFrame[]): CallTree {
   const root: TreeNode = { name: "prog", parent: null, children: [], depth: 0 };
   let cur = root;
   let curPath: string[] = [];

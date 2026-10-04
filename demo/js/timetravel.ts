@@ -1,6 +1,14 @@
 // Vitro demo · 时间旅行回放（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
 // 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
 // app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
+//
+// 帧数据源 = gateway step 族（step.begin / step.next 批量推进），每帧带
+// 引擎真实标注（semantic_labels 词表渲染文本）/ 局部变量 / 调用栈 / 当前
+// 执行行；seek 与 ◀▶ 为本地帧数组形态（gateway wasm 未接 step.seek /
+// payload.get——那是 serve 通道能力，教学回放形态下本地索引足够，引擎级
+// 断点留实时调试形态）。场景 = 全部预置用例；左侧编辑器随帧高亮当前行。
+// （本段 2026-10-04 自 catalog.ts 尾部迁入——审阅 P3-⑤ 注释漂移：拆分时
+// 段落归属错位。）
 "use strict";
 
 import { invoke, bodyOf, gateway } from "./gw.ts";
@@ -188,7 +196,7 @@ function stepPlay(): void {
   stepStopTimer();
   if (stepIdx >= stepData.frames.length - 1) stepGoto(0);
   $("anim-play").textContent = "⏸ 暂停";
-  stepTimer = setInterval(() => {
+  stepTimer = window.setInterval(() => {
     if (stepIdx >= stepData.frames.length - 1) {
       stepStopTimer();
       return;

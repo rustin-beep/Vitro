@@ -3,7 +3,7 @@
 // app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
-import { invoke, bodyOf, gateway } from "./gw.ts";
+import { invoke, bodyOf, gateway, hasGateway } from "./gw.ts";
 import { $, esc, setStatus, latin1ToUtf8 } from "./util.ts";
 import { renderMemory } from "./memory.ts";
 import { currentCaseId } from "./state.ts";
@@ -29,7 +29,7 @@ export function bindTabs(): void {
 
 // ── 会话配置 ─────────────────────────────────────────────
 export function applyConfig(): Record<string, any> {
-  if (!gateway()) return;
+  if (!hasGateway()) return;
   const params = {
     deterministic: ($("cfg-det") as HTMLInputElement).checked,
     max_steps: Number(($("cfg-maxsteps") as HTMLInputElement).value) || 10000000,
@@ -48,7 +48,7 @@ export function renderCfgView(c: unknown): void {
 
 // ── 运行一条用例 ──────────────────────────────────────────
 export async function runCase(): Promise<void> {
-  if (!gateway()) return;
+  if (!hasGateway()) return;
   const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
   $("run-btn").setAttribute("disabled", "true");
   setStatus("busy", "运行中…");

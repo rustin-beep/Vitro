@@ -25,6 +25,9 @@ CHANGELOG.md text eol=lf
 # 另有 CRLF 归一兼容双保险，Windows autocrlf 工作区照样可装可画。
 .agents/** text eol=lf
 *.ts text eol=lf
+# .mts 行尾（2026-10-04 审阅 P3-⑦）：*.ts 不匹配 .mts——pure.test.mts 此前
+# 靠 demo/** 兜住，移出 demo/ 即失保护
+*.mts text eol=lf
 demo/** text eol=lf
 # linguist 显式声明（GitHub 语言统计：TS 重写批后缓存未刷新的保险——
 # .mts/.d.ts 等扩展与 demo 路径显式归 TypeScript，消除启发式歧义）

@@ -156,7 +156,7 @@ function assertKeys(obj, keys, label) {
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(!!claim && Number(claim[1]) === methodCount, "页面方法面计数与 gateway 一致",
     claim ? "页面写 " + claim[1] + " / 实际 " + methodCount : "页面未找到方法面计数句");
-  // 拆分批（2026-10-04，refs #28）：app.js → 入口 + demo/js/ 十模块 ESM——
+  // 拆分批（2026-10-04，refs #28）：app.js → 入口 + demo/js/ 十一模块 ESM——
   // method 消费面扫入口 + 全部模块（逐字迁移，散布面等价）
   const jsDir = path.join(repoRoot, "demo/js");
   const appSrc = [path.join(repoRoot, "demo/app.ts")]
@@ -166,6 +166,62 @@ function assertKeys(obj, keys, label) {
   const consumed = new Set([...appSrc.matchAll(/method: "([a-z._]+)"/g)].map((m) => m[1]));
   check(!!claim && Number(claim[2]) === consumed.size, "页面消费计数与 app.js 实消费一致",
     claim ? "页面写 " + claim[2] + " / 实际 " + consumed.size : "—");
+
+  // ── step 族字段契约（2026-10-04 审阅 P2-3：demo_smoke 原先零触 step 族，
+  // types.ts 的 wire 声明无任何机判——探针留 tmp/review_20261004/ 本批固化）。
+  // 断言口径：StepPayload 顶层 = 协议 v0.1 十四字段白名单键集全等（多键少键
+  // 都红，突变 heatmap_line→linee 已证红）；嵌套结构 = 必备键在
+  // （array_snapshots 实测多一个未声明 truncated，属「只声明消费面」合法
+  // 形态，不做键集全等）。累积推批形态 = 探针 probe2 同款（U1#1 一帧发布
+  // 缓冲：首批可为空）。
+  {
+    const k = cases.find((c) => c.id === "bubble") || cases.find((c) => !c.files && c.stdin === undefined);
+    g.reset();
+    body(inv({ method: "session.create" }));
+    body(inv({ method: "config.set", params: { max_steps: 10000000, call_depth_limit: 10000, deterministic: true } }));
+    const comp = body(inv({ method: "compile", params: { source: k.source } }));
+    check(comp.ok === true, `[${k.id}] step 面编译 ok`, JSON.stringify(comp.diagnostics || []).slice(0, 80));
+    const begin = body(inv({ method: "step.begin", params: {} }));
+    check(begin && begin.ok !== false, "step.begin 返回帧", JSON.stringify(begin).slice(0, 80));
+    let payloads = [];
+    let lastBatch = null;
+    for (let i = 0; i < 60 && payloads.length < 12; i++) {
+      lastBatch = body(inv({ method: "step.next", params: {} }));
+      if (lastBatch.payloads) payloads = payloads.concat(lastBatch.payloads);
+      if (lastBatch.finished || lastBatch.trapped) break;
+    }
+    check(payloads.length > 0, "step.next 累积产出帧", "推尽 60 批零帧——step 族断链");
+    if (payloads.length > 0 && lastBatch) {
+      for (const f of ["payloads", "finished", "trapped", "trap_message"]) {
+        check(f in lastBatch, `step.next 批字段 ${f}`, "缺键");
+      }
+      const want14 = ["accessed_vars", "algorithm_step", "array_snapshots", "call_stack", "code_line",
+        "func_name", "heatmap_count", "heatmap_line", "local_vars", "pointer_snapshots",
+        "root_cause_hint", "semantic_label", "step_index", "vis_events"].sort().join(",");
+      check(Object.keys(payloads[0]).sort().join(",") === want14,
+        "StepPayload 顶层键集 = 协议 v0.1 十四字段白名单", "实得 " + Object.keys(payloads[0]).sort().join(","));
+      const withVars = payloads.find((p) => p.local_vars && p.local_vars.length);
+      if (withVars) {
+        for (const f of ["name", "addr", "is_local", "ty_name", "value"]) {
+          check(f in withVars.local_vars[0], `LocalVar 字段 ${f}`, "缺键");
+        }
+      }
+      const withStack = payloads.find((p) => p.call_stack && p.call_stack.length);
+      if (withStack) {
+        for (const f of ["func_name", "return_line"]) {
+          check(f in withStack.call_stack[0], `CallFrame 字段 ${f}`, "缺键");
+        }
+      }
+      const arrSnap = payloads.find((p) => p.array_snapshots && p.array_snapshots.length);
+      if (arrSnap) {
+        for (const f of ["name", "element_ty", "elements"]) {
+          check(f in arrSnap.array_snapshots[0], `ArraySnapshot 字段 ${f}`, "缺键");
+        }
+      } else {
+        check(false, "array_snapshots 帧可采（数组柱状图消费面）", "累积帧未见非空数组快照——用例或引擎面变更？");
+      }
+    }
+  }
 
   const total = pass + fail;
   console.log();

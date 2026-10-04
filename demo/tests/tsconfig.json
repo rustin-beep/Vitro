@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    // tests 独立类型面（2026-10-04 审阅 P3-④）：主 tsconfig 的 include 不含
+  // tests/，测试文件此前只有「node 25 直跑能过」保证、无类型保证。此处
+    // 单独声明（node:test/assert 需 @types/node，主面 types:[] 是零依赖
+    // 页面域不放行）——CI 在 node --test 前先 tsc -p 本面（发射检查闸）。
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    // 与主面同裁定（见 ../tsconfig.json 注释）
+    "strictNullChecks": false
+  },
+  "include": ["*.mts", "../js/**/*.ts", "../app.ts", "../global.d.ts"]
+}

@@ -5,7 +5,7 @@
 // 定位是门面不是架构件：渲染逻辑暂放宿主页内 JS，MoonBit SVG 纯函数包
 // 落地后由其接管（总计划既定路线）。
 //
-// 【拆分批 2026-10-04，refs #28】单体 1370 行 → 本入口胶水 + demo/js/ 十模块
+// 【拆分批 2026-10-04，refs #28】单体 1370 行 → 本入口胶水 + demo/js/ 十一模块
 // （gw/util/state/editor/run/memory/catalog/calltree/timetravel/settings），
 // ESM 零构建直开（<script type="module">）；纯数据函数经 node --test 锚定
 // （demo/tests/，对历史 bug 窝点）。ESM 下 cases.js 的全局 DEMO_CASES 仍可

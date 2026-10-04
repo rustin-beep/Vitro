@@ -10,6 +10,7 @@
     "dev": "tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
+    "@types/node": "^25.9.9",
     "typescript": "^5.9.3"
   }
 }

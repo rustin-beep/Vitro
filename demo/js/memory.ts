@@ -12,7 +12,16 @@ export interface HeapSpan {
   span: number;
 }
 
-export function heapSpanOf(mem: MemoryRegions): HeapSpan {
+// heapSpanOf 的入参消费面（2026-10-04 审阅 P3-④/tests 类型面）：只读本三
+// 面（heap_offset 体内 ?? 0 兜底故可选）——MemoryRegions 结构兼容可直传，
+// 测试 mock 只需造最小 regions 块
+export interface HeapSpanInput {
+  heap_base: number;
+  heap_offset?: number;
+  regions: Array<Pick<HeapRegion, "is_heap" | "addr" | "size">>;
+}
+
+export function heapSpanOf(mem: HeapSpanInput): HeapSpan {
   const heapEnd = Math.max(
     mem.heap_offset ?? 0,
     ...mem.regions.filter((r) => r.is_heap).map((r) => r.addr + r.size),

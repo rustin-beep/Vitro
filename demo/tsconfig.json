@@ -16,6 +16,11 @@
     "noEmitOnError": false,
     "skipLibCheck": true,
     "types": [],
+    // strictNullChecks=false（2026-10-04 裁定，原仅存于提交信息——审阅 P3-⑥
+    // 补规格层落档）：strict 重写批按「先 strict 后收窄」走，285 处 strict
+    // 标注清零后保留此单档收窄——wire 帧走 bodyOf 防御式取值桥兜底，读写
+    // 流中 null 检查税不起；demo 前端接线批（#28）若引入可选 DOM 句柄
+    // 密集面可复议
     "strictNullChecks": false
   },
   "include": [

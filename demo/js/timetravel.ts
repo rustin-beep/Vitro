@@ -253,8 +253,14 @@ async function stepRecollect(): Promise<void> {
   $("anim-phase").textContent = "采集中：step.begin + step.next 推进引擎…";
   $("anim-play").setAttribute("disabled", "true");
   $("anim-play").textContent = "… 采集中";
+  // 采集互斥（#28 评论区待办①）：采集是异步长任务，中途「运行」会 reset
+  // 会话打断采集（并发状态错乱）——运行/喂入按钮同步禁用，采集结束恢复
+  $("run-btn").setAttribute("disabled", "true");
+  $("feed-btn").setAttribute("disabled", "true");
   await new Promise((r) => setTimeout(r)); // 让按钮态先渲染
   stepData = await stepCollect();
+  $("run-btn").removeAttribute("disabled");
+  $("feed-btn").removeAttribute("disabled");
   if (stepData.error) {
     $("anim-phase").textContent = "采集失败：" + stepData.error;
     $("anim-play").removeAttribute("disabled");

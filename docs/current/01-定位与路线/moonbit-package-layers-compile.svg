@@ -42,7 +42,7 @@
 <rect class="card" x="20" y="118" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="152" text-anchor="start">L0</text>
 <text class="tc" x="40" y="180" text-anchor="start">零依赖</text>
-<text class="tc" x="1065" y="152" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="152" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="130" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="156" text-anchor="start">vitro/engine/source</text>
 <text class="tc" x="191" y="180" text-anchor="start">SourceLoc + 坐标契约（字节偏移 +1 · 双坐标）</text>
@@ -52,28 +52,28 @@
 <rect class="card" x="20" y="232" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="266" text-anchor="start">L1</text>
 <text class="tc" x="40" y="294" text-anchor="start">诊断契约</text>
-<text class="tc" x="1065" y="266" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="266" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="244" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="270" text-anchor="start">vitro/engine/diag</text>
 <text class="tc" x="191" y="294" text-anchor="start">ErrorCode 137 臂 + Severity + SourceLang + catalog JSON + 覆盖率断言</text>
 <rect class="card" x="20" y="346" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="380" text-anchor="start">L2</text>
 <text class="tc" x="40" y="408" text-anchor="start">抽象语法</text>
-<text class="tc" x="1065" y="380" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="380" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="358" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="384" text-anchor="start">vitro/engine/ast</text>
 <text class="tc" x="191" y="408" text-anchor="start">Type 17 / Expr 26 / Stmt 16 + depth + 判等渲染单源</text>
 <rect class="card" x="20" y="460" width="1160" height="96" rx="12"/>
 <text class="t" x="40" y="494" text-anchor="start">L3</text>
 <text class="tc" x="40" y="522" text-anchor="start">名字单源</text>
-<text class="tc" x="1065" y="494" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="494" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="472" width="880" height="60" rx="10"/>
 <text class="ts" x="191" y="498" text-anchor="start">vitro/engine/names</text>
 <text class="tc" x="191" y="522" text-anchor="start">InstKey→InstId→mangled Name 唯一产出口（parser / typeck 共依赖）</text>
 <rect class="card" x="20" y="574" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="608" text-anchor="start">L4</text>
 <text class="tc" x="40" y="636" text-anchor="start">前端</text>
-<text class="tc" x="1065" y="608" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="608" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="586" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="612" text-anchor="start">vitro/engine/lexer</text>
 <text class="tc" x="191" y="636" text-anchor="start">独立预处理 pass + LineMap + 宿主 IO</text>
@@ -102,7 +102,7 @@
 <rect class="card" x="20" y="966" width="1160" height="178" rx="12"/>
 <text class="t" x="40" y="1000" text-anchor="start">L6</text>
 <text class="tc" x="40" y="1028" text-anchor="start">发射</text>
-<text class="tc" x="1065" y="1000" text-anchor="start">0.7.0 在架</text>
+<text class="tc" x="1065" y="1000" text-anchor="start">0.8.0 在架</text>
 <rect class="card" x="175" y="978" width="433" height="60" rx="10"/>
 <text class="ts" x="191" y="1004" text-anchor="start">vitro/engine/codegen</text>
 <text class="tc" x="191" y="1028" text-anchor="start">compile/compile_library 双入口 · 槽位 v1</text>

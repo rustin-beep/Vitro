@@ -35,9 +35,9 @@
 
 Stability guarantees: diagnostic codes and opcode numbering are **versioned constants — append-only**; exhaustive matches have no fallback arm, so new enum cases surface as compile errors in dependents. Import the whole module or pick per-package dependencies — layers only point downward.
 
-## Performance (honest disclosure, measured 2026-09-26)
+## Performance (honest disclosure; first measured 2026-09-26, re-measured 2026-10-04 after S8)
 
-The VM is an interpreter built for stepping and time-travel observability, not raw speed. Measured against the Rust oracle on the same machine: end-to-end small-program runs are **1.42×** slower (compile-dominated; median over 366 baseline cases), compute-intensive programs **1.92×–15.7×** slower (fib(20) / bubble-200 / 500×500 nested loops), and the full engine runs the 300×300 loop benchmark at **10.1×** the oracle's JIT path. Full-speed execution is scheduled to move to a bytecode→wasm-GC generator (planned for **0.7.0+**), whose mapping covers this gap; the interpreter keeps serving single-step and time-travel semantics.
+The VM is an interpreter built for stepping and time-travel observability, not raw speed. Measured against the Rust oracle on the same machine: end-to-end small-program runs are **1.42×** slower (compile-dominated; median over baseline cases), compute-intensive programs **1.92×–15.7×** slower (fib(20) / bubble-200 / 500×500 nested loops), and the full engine runs the 300×300 loop benchmark at **10.1×** the oracle's JIT path. The S8 release re-measured everything and verified **no regression** vs 0.7.0 (same-hour A/B: pipeline 0.86–1.01×, execution 0.99–1.08×). The **wasm-gc target beats the native CLI on all seven benchmark scenarios by 1.5–6.3×** — browsers and Node are the fastest host form. Honest caveat: full-speed execution remains 9.6–19.8× slower than CPython on wasm-gc (CPython is a pure interpreter, the fairest baseline) — inherent to the VM interpreter loop and inherited from the Rust era; a bytecode→wasm-GC generator would only cover 2–2.8× of that gap (issue #41, under evaluation). The interpreter keeps serving single-step and time-travel semantics.
 
 ```moonbit
 let code = @diag.ErrorCode::from_code(3053).unwrap()
@@ -117,20 +117,22 @@ code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常�
 
 主动披露的四分类清单（每条标注 Clang 对照状态）：**已知缺陷**（printf 旗标/atof 前缀等 8 条，已排修复轨道）/ **教学语义设计**（受检访存、E3070 栈缓冲校验——有意为之，Clang 在同输入下是未定义行为）/ **架构差异**（32 位指针 4 字节模型等）/ 路线图缺口（step 族时间旅行 S8 等）——完整清单见仓库 [docs/current/07-质量与裁定/已知限制与差异.md](../docs/current/07-质量与裁定/已知限制与差异.md)。
 
-## 性能现状（诚实披露，2026-09-26 实测）
+## 性能现状（诚实披露；2026-09-26 首测，2026-10-04 S8 收官批全量复跑）
 
 VM 是为单步执行与时间旅行可观测性构建的**解释器**，不以裸速度为目标。同机对拍
 Rust oracle 的实测数字：
 
 | 场景 | MoonBit / Rust oracle |
 |---|---|
-| 端到端小程序（baseline 366 例中位，编译主导） | **1.42×** |
+| 端到端小程序（baseline 例中位，编译主导） | **1.42×** |
 | 计算密集：fib(20) 递归 / 冒泡 200 / 500×500 嵌套 | **1.92× / 6.32× / 15.7×** |
 | 条件 A 300×300 循环（完整引擎 vs oracle JIT 路径） | **10.1×**（1425ms vs 141ms） |
 
-全速执行差距的正解是 **bytecode→wasm-GC 生成器**（规划于 **0.7.0+**，栈式→栈式
-机械映射，其覆盖域正是该量级差距）；解释器持续服务于单步语义与时间旅行。完整实测
-方法与数字见上游仓库《性能探究实录》§11。
+- **S8 收官批复跑（2026-10-04）**：计算密集三项复测 1.58–1.74× / 6.43–6.89× / 15.8×（同量级）；**HEAD vs 0.7.0 同时段 A/B 判「无回归」**（四层管线 0.86–1.01× / 执行层 0.99–1.08×）。
+- **wasm-gc 是主出口且有实测背书**：同请求对照**全部七场景快 native CLI 1.5–6.3×**（step 帧流 21.4 μs/帧 vs 88.5）——浏览器 / Node 宿主是性能更优的消费形态。
+- **诚实短板**：全速执行慢 CPython（纯解释器，最公平基准）**9.6–19.8×**（wasm-gc）/ 31–54×（native）——VM 解释循环本身（自 Rust 期继承，oracle 亦慢 CPython ~2×）。bytecode→wasm-GC 生成器实测仅覆盖 **2–2.8×**、量级不足以补齐（issue #41 单独评估）；解释器持续服务于单步语义与时间旅行。
+
+完整实测方法与数字见上游仓库《性能探究实录》§11–§17。
 
 ## 验证
 

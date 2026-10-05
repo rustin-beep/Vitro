@@ -52,19 +52,28 @@
       "id": "error_code_table",
       "concept": "错误码表（137 臂）",
       "kind": "registered",
-      "rust_source": "native/src/diagnostics/error_catalog.rs",
+      "rust_source": "scripts/moonbit/diagnostics_data/error_codes.json",
       "moonbit_source": "moonbit/diag/error_code_gen.mbt",
-      "sync": "**生成**（非人工）：moonbit 侧为 gen_diag 生成物，文件头带源 sha256 落款，禁手改",
-      "anchor": "`go run ./scripts/moonbit/gen_diag -check`（源变产物变 / 篡改即红）"
+      "sync": "**生成**（非人工）：真源 = diagnostics_data/error_codes.json（#39 迁出冻结区 2026-10-05；137 臂含 E4xxx 38 码保守全迁；WARN/HINT 白名单 W/H 前缀派生）；moonbit 侧为 gen_diag 生成物，文件头带真源 sha256 落款，禁手改。Rust 旧源（vitro_shared/error_codes.rs）降为 gen_diag 内 legacy 结构对账臂，工序④删区自动豁免",
+      "anchor": "`go run ./scripts/moonbit/gen_diag -check`（源变产物变 / 篡改即红；`-export-json` = legacy→JSON 同步工具）"
     },
     {
       "id": "catalog_cards",
       "concept": "教学卡片目录（77 条）",
       "kind": "registered",
-      "rust_source": "native/src/diagnostics/error_catalog.rs",
+      "rust_source": "scripts/moonbit/diagnostics_data/catalog.json",
       "moonbit_source": "moonbit/diag/catalog_gen.mbt",
-      "sync": "**生成**（moonbit 侧 gen_diag 产物，禁手改）",
-      "anchor": "gen_diag -check + E4 全量对拍（Rust serve error_catalog ↔ MoonBit export_catalog_json，77 条逐字节 diff 为空）"
+      "sync": "**生成**（moonbit 侧 gen_diag 产物，禁手改）：真源 = diagnostics_data/catalog.json（#39 迁出冻结区 2026-10-05）；emoji/title/explanation/common_causes 文案值 = #27 与修复批合法演化面，legacy 臂不比",
+      "anchor": "gen_diag -check（legacy 臂比卡片码集合）+ E4 全量对拍（Rust serve error_catalog ↔ MoonBit export_catalog_json，77 条逐字节 diff 为空）"
+    },
+    {
+      "id": "bytecode_libc_data",
+      "concept": "Bytecode Libc 预编译产物（551KB JSON → vm 数据字面量；3485 指令 / 88 函数）",
+      "kind": "registered",
+      "rust_source": "scripts/moonbit/libc_data/bytecode_libc_data.json",
+      "moonbit_source": "moonbit/vm/libc_data_gen.mbt",
+      "sync": "**生成**（非人工）：真源 = libc_data/bytecode_libc_data.json（#39 迁出冻结区 2026-10-05，原 Rust include_str! 同一份逐字节迁出）；moonbit 侧为 gen_libc_data 生成物（扁平数组字面量，禁手改，真源 sha256 落款）。上游 = scripts/precompile_bytecode_libc（源 native/runtime_libc C 源）过渡期**双写**新旧两份；Rust 旧份 sha 对账臂（gen_libc_data 内）+ mirror drift 判定（precompile --check 内）至工序④删区",
+      "anchor": "`go run ./scripts/moonbit/gen_libc_data -check` + `go run ./scripts/precompile_bytecode_libc --check`（source_digest + mirror 一致性）"
     },
     {
       "id": "host_route",

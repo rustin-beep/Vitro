@@ -78,13 +78,18 @@ func main() {
 	srcPath := filepath.Join("scripts", "moonbit", "libc_data", "bytecode_libc_data.json")
 	raw, err := os.ReadFile(srcPath)
 	must(err, "读源 "+srcPath)
-	srcSha := fmt.Sprintf("%x", sha256.Sum256(raw))
+	// 行尾归一（CI 实锤 2026-10-05：库内容两份逐字节一致，但 Windows
+	// runner smudge 对旧份 LF→CRLF、对镜像不转换——raw sha 在 CI 必分叉）。
+	// 归一后取 sha/解析/对账：内容差异才红，行尾形态不参与判定
+	// （gen_diag/gen_diagnostics 同款惯例；norm() = 本文件既有归一函数）。
+	srcNorm := []byte(norm(raw))
+	srcSha := fmt.Sprintf("%x", sha256.Sum256(srcNorm))
 
-	// 过渡对账臂（#39）：冻结区旧份存在期间 sha256 必须一致；旧份消失
-	// （工序④删区）则自动豁免——删区零改动。
+	// 过渡对账臂（#39）：冻结区旧份存在期间，**行尾归一后** sha256 必须
+	// 一致；旧份消失（工序④删区）则自动豁免——删区零改动。
 	legacyPath := filepath.Join("native", "crates", "vitro_vm", "src", "bytecode_libc_data.json")
 	if legacyRaw, lerr := os.ReadFile(legacyPath); lerr == nil {
-		legacySha := fmt.Sprintf("%x", sha256.Sum256(legacyRaw))
+		legacySha := fmt.Sprintf("%x", sha256.Sum256([]byte(norm(legacyRaw))))
 		if legacySha != srcSha {
 			fmt.Fprintf(os.Stderr, "gen_libc_data: 过渡对账红——新旧源 sha256 不一致（迁移期双向漂移）:\n  新源 %s %s\n  旧源 %s %s\n  处置：以真源侧为准同步另一份（旧份更新属防线维护），或确认变更意图后重跑\n", srcPath, srcSha, legacyPath, legacySha)
 			os.Exit(1)
@@ -92,10 +97,12 @@ func main() {
 		fmt.Printf("gen_libc_data: 过渡对账 OK（旧源 %s sha 一致，删区后自动豁免）\n", legacyPath)
 	} else if !os.IsNotExist(lerr) {
 		must(lerr, "读旧源 "+legacyPath)
+	} else {
+		fmt.Println("gen_libc_data: 旧源已删区（工序④），过渡对账臂豁免")
 	}
 
 	var art artifactJSON
-	must(json.Unmarshal(raw, &art), "解析 JSON")
+	must(json.Unmarshal(srcNorm, &art), "解析 JSON")
 
 	// 六轮审阅 P3-1：MoonBit 侧 LibcArtifact 无 string_data 字段（当前
 	// 空数组无影响），静默丢弃 = 潜伏缺口且无闸可发现——非空即 fail loud，

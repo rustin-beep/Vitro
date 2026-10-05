@@ -453,14 +453,17 @@ func checkUpToDate() bool {
 		fmt.Printf("  unreadable artifact: %v\n", err)
 		return false
 	}
-	// #39 双写一致性：mirror 与旧份必须逐字节一致（漏跑旧版本脚本只写了
-	// 单份的形态在此拦截）。
+	// #39 双写一致性：mirror 与旧份必须一致。**行尾归一后比对**——
+	// 库内容两份逐字节同，但 Windows runner smudge 对旧份 LF→CRLF、对
+	// 镜像不转换（CI 实锤 2026-10-05），raw bytes.Equal 在 CI 必假红；
+	// 漏跑旧版本脚本只写单份的形态仍在此拦截（内容差异与行尾无关）。
 	mirrorRaw, err := os.ReadFile(mirrorJSON)
 	if err != nil {
 		fmt.Printf("  unreadable mirror artifact: %v\n", err)
 		return false
 	}
-	if !bytes.Equal(raw, mirrorRaw) {
+	eol := func(b []byte) []byte { return bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")) }
+	if !bytes.Equal(eol(raw), eol(mirrorRaw)) {
 		fmt.Println("  mirror drift: scripts/moonbit/libc_data/bytecode_libc_data.json != native 旧份")
 		return false
 	}

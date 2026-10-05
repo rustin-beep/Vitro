@@ -5,8 +5,13 @@
 // scripts/moonbit/diagnostics_data/ 四 JSON 单源（原为双产物输出面，
 // 现为真源——退役后修复批改文案的落笔处）。.rs 解析层保留为
 // **legacy 对账臂**（绞杀者纪律，gen_protocol_ts 先例）：
-//   - 结构性对账（非值级）：码位/条目 id/图骨架（边三元组）/映射键/
-//     error_codes/step_type 序列两侧必须一致；文案值不比——修复批
+//   - 结构性对账（非值级）——「行为/引用参数 = 骨架，文案 = 值」：
+//   - 骨架（比）：码位 / 条目 id / 边三元组 / 映射键+值列表 / 节点→卡片
+//     引用映射（per-node）/ fix 的 fix_kind+anchor（应用行为）/ 模式
+//     检测阈值 min_occurrences+time_window / step 的 step_type 序列 +
+//     target_id+highlight_lines（教学路由引用）
+//   - 值级（不比）：suggestion/title/detail/description/name 文案、
+//     emoji、strength 权重（F6 f32 登记在案）、difficulty——修复批
 //     （工序②后、工序④前的窗口）只改 JSON 值是合法演化，值级臂会
 //     挡住修复批正道（结构即 oracle 对拍防线依赖的骨架，值是呈现面）；
 //   - 冻结区四 .rs 全存在 → 对账；全不存在（工序④删区）→ 自动豁免；
@@ -222,14 +227,14 @@ func legacyReconcile(srcDir string, fixes []fixEntry, dynamic map[int]bool, node
 	lPaths := parseLearningPath(string(raws[3]))
 
 	var diffs []string
-	// fix 面：静态码位集合 + 动态码集合
-	if d := cmpIntSets("静态码位", fixCodes(fixes), fixCodes(lFixes)); d != nil {
+	// fix 面：静态码位 + 应用行为参数（fix_kind/anchor——行为参数 = 骨架） + 动态码集合
+	if d := cmpStrSets("静态码位+应用行为", fixSigs(fixes), fixSigs(lFixes)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	if d := cmpIntSets("动态码位", boolKeys(dynamic), boolKeys(lDynamic)); d != nil {
+	if d := cmpStrSets("动态码位", boolKeys(dynamic), boolKeys(lDynamic)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	// 概念图骨架：节点 id / 边三元组 / 映射键+值
+	// 概念图骨架：节点 id / 边三元组 / 映射键+值 / 节点→卡片引用（per-node）
 	if d := cmpStrSets("概念节点 id", nodeIDs(nodes), nodeIDs(lNodes)); d != nil {
 		diffs = append(diffs, d...)
 	}
@@ -239,21 +244,21 @@ func legacyReconcile(srcDir string, fixes []fixEntry, dynamic map[int]bool, node
 	if d := cmpStrSets("错误码→概念映射", mapSigs(conceptMap), mapSigs(lMap)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	if d := cmpStrSets("节点卡片引用", cardRefs(nodes), cardRefs(lNodes)); d != nil {
+	if d := cmpStrSets("节点→卡片引用", nodeCardSigs(nodes), nodeCardSigs(lNodes)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	// 误区模式骨架：id + error_codes
+	// 误区模式骨架：id + error_codes + 检测阈值（行为参数 = 骨架）
 	if d := cmpStrSets("误区模式 id", patternIDs(patterns), patternIDs(lPatterns)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	if d := cmpStrSets("误区模式码位", patternCodes(patterns), patternCodes(lPatterns)); d != nil {
+	if d := cmpStrSets("误区模式码位+检测阈值", patternCodes(patterns), patternCodes(lPatterns)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	// 学习路径骨架：id + step_type 序列
+	// 学习路径骨架：id + step_type 序列 + 教学路由引用（target_id/highlight_lines）
 	if d := cmpStrSets("路径 id", pathIDs(paths), pathIDs(lPaths)); d != nil {
 		diffs = append(diffs, d...)
 	}
-	if d := cmpStrSets("路径步骤序列", pathStepSigs(paths), pathStepSigs(lPaths)); d != nil {
+	if d := cmpStrSets("路径步骤序列+路由引用", pathStepSigs(paths), pathStepSigs(lPaths)); d != nil {
 		diffs = append(diffs, d...)
 	}
 
@@ -270,10 +275,10 @@ func legacyReconcile(srcDir string, fixes []fixEntry, dynamic map[int]bool, node
 
 // ---- 结构签名提取（两侧同函数，输出可排序字符串集） ----
 
-func fixCodes(fixes []fixEntry) []string {
+func fixSigs(fixes []fixEntry) []string {
 	out := make([]string, len(fixes))
 	for i, e := range fixes {
-		out[i] = strconv.Itoa(e.Code)
+		out[i] = fmt.Sprintf("%d:kind%d:%s", e.Code, e.FixKind, e.Anchor)
 	}
 	return out
 }
@@ -312,12 +317,14 @@ func mapSigs(m []mapEntry) []string {
 	return out
 }
 
-func cardRefs(nodes []nodeEntry) []string {
-	var out []string
-	for _, n := range nodes {
-		for _, c := range n.RelatedCardIDs {
-			out = append(out, c)
-		}
+// nodeCardSigs：节点→卡片引用映射（per-node 签名——比 bag 多重集强：
+// 「A 节点丢了卡、B 节点补了同一张」的换位漂移 bag 抓不住）。
+func nodeCardSigs(nodes []nodeEntry) []string {
+	out := make([]string, len(nodes))
+	for i, n := range nodes {
+		cards := append([]string(nil), n.RelatedCardIDs...)
+		sort.Strings(cards)
+		out[i] = n.ID + "=" + strings.Join(cards, ",")
 	}
 	return out
 }
@@ -337,6 +344,8 @@ func patternCodes(ps []patternEntry) []string {
 		for _, c := range p.ErrorCodes {
 			out = append(out, p.ID+":"+strconv.Itoa(c))
 		}
+		// 检测阈值（行为参数 = 骨架——变更即检测行为分叉）
+		out = append(out, p.ID+fmt.Sprintf("@min%d:win%d", p.MinOccurrences, p.TimeWindow))
 	}
 	return out
 }
@@ -354,7 +363,11 @@ func pathStepSigs(ps []pathEntry) []string {
 	for _, p := range ps {
 		var steps []string
 		for _, s := range p.Steps {
-			steps = append(steps, s.StepType)
+			hl := make([]string, len(s.Highlights))
+			for i, v := range s.Highlights {
+				hl[i] = strconv.Itoa(v)
+			}
+			steps = append(steps, s.StepType+"@"+s.TargetID+"["+strings.Join(hl, ",")+"]")
 		}
 		out = append(out, p.ID+"="+strings.Join(steps, ">"))
 	}
@@ -378,8 +391,6 @@ func cmpStrSets(what string, a, b []string) []string {
 	}
 	return nil
 }
-
-func cmpIntSets(what string, a, b []string) []string { return cmpStrSets(what, a, b) }
 
 func main() {
 	if err := os.Chdir("moonbit"); err != nil {

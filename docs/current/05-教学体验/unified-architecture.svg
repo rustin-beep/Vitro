@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 902" role="img" aria-label="vitro 统一模式架构总览">
   <title>统一模式 · 架构总览</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 统一模式设计.md §3 架构总览图（消费方前端 → 三出口 → session_api → UnifiedEngine → VitroVM） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 统一模式设计.md §3 架构总览图（消费方前端 → 出口 → session → time_travel → VitroVM；实现锚已随删区/S8 切换 MoonBit 侧） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -38,7 +38,7 @@
     </marker>
   </defs>
 <text class="tt" x="600" y="56" text-anchor="middle">统一模式 · 架构总览</text>
-<text class="tm" x="600" y="94" text-anchor="middle">消费方前端（社区实现）经三出口触及 session_api 与 UnifiedEngine；seek 越窗 = 最近 Checkpoint 恢复 + 正向重放</text>
+<text class="tm" x="600" y="94" text-anchor="middle">消费方前端（社区实现）经出口触及 session 会话层与 time_travel 采集引擎；seek 越窗 = 最近 Checkpoint 恢复 + 正向重放</text>
 <rect class="core" x="40" y="112" width="1120" height="240" rx="14"/>
 <text class="t" x="64" y="146" text-anchor="start">消费方前端（社区实现；本仓库不含前端）</text>
 <rect class="card" x="64" y="162" width="336" height="76" rx="12"/>
@@ -55,32 +55,32 @@
 <text class="tc" x="592" y="310" text-anchor="middle">FrameCache（窗口内 payload 的本地副本，可选）· StateMachine: Idle / Collecting / Paused / Playback / Seeking</text>
 <text class="tc" x="592" y="334" text-anchor="middle">CurrentStep: int</text>
 <line class="line" x1="600" y1="352" x2="600" y2="414" marker-end="url(#ah)"/>
-<text class="tm" x="620" y="378" text-anchor="start">出口：capi JSON / serve JSON-lines / wasm 绑定</text>
-<text class="tc" x="620" y="404" text-anchor="start">出口只做薄包装，语义一律取自 session_api</text>
+<text class="tm" x="620" y="378" text-anchor="start">出口：serve JSON-lines / wasm gateway / vitro api 单帧</text>
+<text class="tc" x="620" y="404" text-anchor="start">出口只做薄包装，语义一律取自 session 会话层</text>
 <rect class="core" x="40" y="421" width="1120" height="405" rx="14"/>
-<text class="t" x="64" y="455" text-anchor="start">Rust 后端</text>
+<text class="t" x="64" y="455" text-anchor="start">MoonBit 后端（vitro/engine）</text>
 <rect class="card" x="200" y="462" width="800" height="50" rx="10"/>
-<text class="t" x="600" y="492" text-anchor="middle">session_api —— 语言中立会话语义层（三出口共用同一套入口语义）</text>
+<text class="t" x="600" y="492" text-anchor="middle">session —— 语言中立会话语义层（各出口共用同一套入口语义）</text>
 <line class="line" x1="600" y1="512" x2="600" y2="536" marker-end="url(#ah)"/>
 <rect class="card" x="100" y="536" width="1000" height="200" rx="12"/>
-<text class="ts" x="600" y="568" text-anchor="middle">UnifiedEngine（native/src/unified/engine.rs）</text>
+<text class="ts" x="600" y="568" text-anchor="middle">time_travel 采集引擎（vitro/engine/time_travel）</text>
 <rect class="zone" x="130" y="584" width="300" height="80" rx="10"/>
-<text class="t" x="280" y="614" text-anchor="middle">run_batch</text>
-<text class="tc" x="280" y="636" text-anchor="middle">step_loop 推进 · collect 收集</text>
+<text class="t" x="280" y="614" text-anchor="middle">collect</text>
+<text class="tc" x="280" y="636" text-anchor="middle">StepPayload 逐帧采集</text>
 <rect class="zone" x="450" y="584" width="300" height="80" rx="10"/>
 <text class="t" x="600" y="614" text-anchor="middle">CheckpointMgr</text>
-<text class="tc" x="600" y="636" text-anchor="middle">checkpoints · seek()</text>
+<text class="tc" x="600" y="636" text-anchor="middle">save · nearest 恢复</text>
 <rect class="zone" x="770" y="584" width="300" height="80" rx="10"/>
 <text class="t" x="920" y="614" text-anchor="middle">VM (Active)</text>
-<text class="tc" x="920" y="636" text-anchor="middle">memory 1MB · value_stack</text>
+<text class="tc" x="920" y="636" text-anchor="middle">memory 1MB · VMSnapshot</text>
 <line class="line" x1="280" y1="664" x2="280" y2="706"/>
 <line class="line" x1="600" y1="664" x2="600" y2="706"/>
 <line class="line" x1="920" y1="664" x2="920" y2="706"/>
 <line class="line" x1="280" y1="706" x2="920" y2="706"/>
 <line class="line" x1="600" y1="706" x2="600" y2="746" marker-end="url(#ah)"/>
 <rect class="card" x="100" y="746" width="1000" height="76" rx="12"/>
-<text class="t" x="600" y="774" text-anchor="middle">VitroVM：step_next() · snapshot() / restore() · read_memory(addr)</text>
-<text class="tc" x="600" y="800" text-anchor="middle">快照/恢复实现 crates/vitro_vm/src/snapshot.rs（CheckpointManager）· 隔离区 quarantine 必须随快照往返</text>
+<text class="t" x="600" y="774" text-anchor="middle">VitroVM：step() · snapshot() / restore() · 内存读（check_access 单入口）</text>
+<text class="tc" x="600" y="800" text-anchor="middle">快照/恢复实现 vitro/engine/time_travel + vm · 隔离区 quarantine 必须随快照往返</text>
 <text class="tc" x="600" y="854" text-anchor="middle">一致性契约：seek 到第 N 步后 local_vars / call_stack / array_snapshots / pointer_snapshots / heatmap_count 以第 N 步快照为准（spec §4.3）</text>
 <text class="tc" x="600" y="880" text-anchor="middle">对账 统一模式设计.md §3 · 漂移重生成：go run ./scripts/gen_svg uarch</text>
 </svg>

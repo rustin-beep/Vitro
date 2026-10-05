@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 836" role="img" aria-label="vitro Clang 直拍门禁流水线">
   <title>Clang 直拍框架 · 真值对照与 CI 硬门禁</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对齐 影子验证框架.md 删区版语义（shadow → clang_direct 吸收，2026-10-05）；数字 data-fact 锚定 reports/facts.json -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；数字 data-fact 锚定 reports/facts.json -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }

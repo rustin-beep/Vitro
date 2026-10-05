@@ -36,20 +36,21 @@
 <text class="tm" x="600" y="92" text-anchor="middle">90% 操作只访问 Frame Cache（零延迟）· 10% 操作恢复 Active VM（从 Checkpoint 懒加载）· 只有一个“当前 VM”</text>
 <rect class="card" x="30" y="130" width="340" height="210" rx="14"/>
 <text class="t" x="200" y="172" text-anchor="middle">Frame Cache</text>
-<text class="tc" x="200" y="206" text-anchor="middle">UnifiedEngine 滑动窗口（2000 帧）</text>
-<text class="ts" x="200" y="242" text-anchor="middle">Vec&lt;StepPayload&gt;</text>
-<text class="tm" x="200" y="278" text-anchor="middle">动画渲染 / 变量面板 / 进度条拖动</text>
+<text class="ts" x="200" y="200" text-anchor="middle">time_travel FrameWindow</text>
+<text class="tc" x="200" y="224" text-anchor="middle">滑动窗口（2000 帧）</text>
+<text class="ts" x="200" y="250" text-anchor="middle">Array[StepPayload]</text>
+<text class="tm" x="200" y="280" text-anchor="middle">动画渲染 / 变量面板 / 进度条拖动</text>
 <text class="tm" x="200" y="312" text-anchor="middle">大小：2~5MB（1000 步）</text>
 <rect class="card" x="430" y="130" width="340" height="210" rx="14"/>
 <text class="t" x="600" y="172" text-anchor="middle">Checkpoint</text>
-<text class="tc" x="600" y="202" text-anchor="middle">vitro_vm::snapshot::CheckpointManager</text>
-<text class="ts" x="600" y="232" text-anchor="middle">Vec&lt;(i32, VMSnapshot)&gt;</text>
+<text class="tc" x="600" y="202" text-anchor="middle">time_travel.CheckpointManager</text>
+<text class="ts" x="600" y="232" text-anchor="middle">Array[(Int, VMSnapshot)]</text>
 <text class="tm" x="600" y="258" text-anchor="middle">全量 + 增量混合</text>
 <text class="tm" x="600" y="286" text-anchor="middle">VM 状态恢复·继续执行</text>
 <text class="tm" x="600" y="314" text-anchor="middle">大小：全量 50MB → 增量 5~10MB</text>
 <rect class="card" x="830" y="130" width="340" height="210" rx="14"/>
 <text class="t" x="1000" y="172" text-anchor="middle">Active VM</text>
-<text class="tc" x="1000" y="206" text-anchor="middle">Rust 后端</text>
+<text class="tc" x="1000" y="206" text-anchor="middle">MoonBit 引擎（vitro/engine/vm）</text>
 <text class="ts" x="1000" y="242" text-anchor="middle">VitroVM 实例</text>
 <text class="tm" x="1000" y="278" text-anchor="middle">当前可执行的 VM 状态</text>
 <text class="tm" x="1000" y="312" text-anchor="middle">大小：1MB</text>
@@ -59,9 +60,9 @@
 <line class="line" x1="200" y1="430" x2="1000" y2="430"/>
 <line class="line" x1="600" y1="430" x2="600" y2="470"/>
 <rect class="warn" x="120" y="470" width="960" height="146" rx="12"/>
-<text class="t" x="600" y="508" text-anchor="middle">CheckpointManager 落地机制（§5.2，2026-09-11 核对）</text>
+<text class="t" x="600" y="508" text-anchor="middle">CheckpointManager 落地机制（§5.2，MoonBit 侧随 S8 落地）</text>
 <text class="tc" x="600" y="540" text-anchor="middle">每 full_every 个检查点存完整 1MB 全量，其余仅存被修改的 4KB 脏页</text>
 <text class="tc" x="600" y="566" text-anchor="middle">上限 max_checkpoints = 50 · smart_mode 语义关键点强制保存</text>
 <text class="tc" x="600" y="592" text-anchor="middle">隔离区 quarantine 必须随快照往返，否则时间旅行回退后 UAF 检测出现假阴性</text>
-<text class="tc" x="600" y="640" text-anchor="middle">Frame Cache 权威副本在引擎内；消费方经 vitro_get_step_payloads_json / serve payload.get 取用，不得假设窗口外历史仍可查询</text>
+<text class="tc" x="600" y="640" text-anchor="middle">Frame Cache 权威副本在引擎内；消费方经 serve payload.get / gateway step 族取用，不得假设窗口外历史仍可查询</text>
 </svg>

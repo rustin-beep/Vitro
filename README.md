@@ -12,11 +12,11 @@
 
 > 教学 C 子集参考执行引擎（白箱后端）
 
-一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；同仓保留一份**已冻结的 Rust 实现**作为差分对照 oracle 与防线基座（tag `rust-oracle-freeze`，白名单 P1–P7/U1/U2 + 安全修复 + 防线维护），在 MoonBit 全量切换完成后整体退役删除。
+一个教学 C 子集编译器与字节码虚拟机：**Lexer → Parser → TypeChecker → BytecodeGen → VitroVM** 全链路自研，以 Clang 为行为基准做诚实对照，把"程序究竟怎么跑"变成可见、可解释、可回放的教学素材。**现役且唯一的实现是 MoonBit**（`moonbit/`，mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/)）；迁移期的 Rust 对照实现已于 2026-10-05 退役删除（S9 工序④删区，档案 = tag `rust-oracle-freeze` + git 历史），对拍防线全部切换为冻结 golden + Clang 直拍。
 
 > **本仓库只做后端（MIT 许可）。** 2026-09-11 完成前端切割：`CideFlutter/`、FRB 桥接、web 部署 workflow 与全部 Flutter 构建脚本已迁出，前端交给社区；原生移动端放弃（"看"的场景由 wasm32 + 任意 Web 前端的移动浏览器天然覆盖）。切割前最后完整状态由标签 `before-frontend-split` 保留（`git checkout before-frontend-split -- CideFlutter` 可取回）。为展示 0.7.0 的 wasm-gc 单出口，仓库附带一个**无前端框架的静态单页 demo**（`demo/`，浏览器直调 gateway，[在线体验](https://rustin-beep.github.io/Vitro/)）——它是引擎能力的展示面，不是前端产品。
 >
-> **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S6 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm 全部落地并对拍闭环；mooncakes 已发布 0.5.0（2026-09-23）与 **0.6.0**（S6 收官版，2026-09-27）。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
+> **MoonBit 迁移（2026-09-18 起，同仓绞杀者模式）**：S2–S8 已收官——lexer / parser / typeck / codegen·bytecode / memory·host·vm / 协议会话与 wasm-gc 单出口 / 时间旅行与教学智能四域全部落地并对拍闭环；mooncakes 已发布至 **0.8.0**（S8 收官版，2026-10-05）。迁移 v1 范围 = **C only**（C++ 已裁砍，2026-09-20），目标出口为 **wasm-gc 单出口多宿主**。形态裁定、包切分与逐片进度见 [MoonBit迁移总计划](docs/current/01-定位与路线/MoonBit迁移总计划.md)，活跃区操作手册见 [`moonbit/AGENTS.md`](moonbit/AGENTS.md)。
 >
 > 定位转型的决策依据与路线见 [`docs/current/01-定位与路线/后端定位与白箱计划.md`](docs/current/01-定位与路线/后端定位与白箱计划.md)。
 
@@ -28,51 +28,43 @@
 - **验证**：`moon test` **655 用例**全绿 + **全部闸门绿**（分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准；本行为现值行，不写日期——留在 facts 数字对账管束内，漂移即红即连坐）
 - **验证明细**：对拍四件（token / AST / 诊断 / 字节码逐层）+ 运行期 `vm_diff`/`clang_direct`（层 2 直拍全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）+ **实机代码勘探**（真实世界 C 语料 [TheAlgorithms/C 的 fork 基线](https://github.com/rustin-beep/C/tree/vitro-probe-baseline)逐文件 vs Clang 差分——累计开立 20 个缺陷 issue（见 [台账](https://github.com/rustin-beep/Vitro/issues?q=is%3Aissue)，as_of 2026-10-02）且形态收敛（运行差异全部可归因，零未知形态），金样本回归锚 + fork 语料随修复批重跑作外部印证；GPL 语料外置不进仓，工具见 [scripts/realcode_diff](scripts/realcode_diff/)）+ 卫生与生成器闸；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（core + hygiene 两 job 全表，闸随批增长**不锚闸数**——2026-09-29 起统一口径，此前「十五闸/十二闸」为各自时点计数）；对外面以 `moonbit_surface -check` 机判对账
 - **已知限制与差异**（主动披露，as-of 0.8.0）：已知缺陷 9 条（已排 0.9.0 脱钩批修复轨道）/ 教学语义设计 6 条（受检访存、E3070 栈缓冲校验等——**有意为之的产品语义**，Clang 在同输入下是未定义行为）/ 与 C 标准·Clang 的架构差异 8 条（32 位指针模型等）/ 路线图缺口——分类清单见 [docs/current/07-质量与裁定/已知限制与差异.md](docs/current/07-质量与裁定/已知限制与差异.md)，每条标注 Clang 对照状态；机器单源 = 差异台账 `scripts/diff_ledger/ledger.json`（28 条）
-- **性能现状**（同机对拍 Rust oracle；2026-09-26 首测，2026-10-04 S8 收官批全量复跑）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×（S8 复测 1.58–1.74× / 6.43–6.89× / 15.8×，同量级）；**HEAD vs 0.7.0 同时段 A/B 判「无回归」**（四层管线 0.86–1.01× / 执行层 0.99–1.08×）。S8 交付面首次有 mb 侧实测：时间旅行 28 万帧纯引擎 **14.2 μs/帧**、seek 越窗 55.6ms（检查点+正向重放）、teaching 判据 ~62μs / diagnostics ~44μs/轮——详见[性能探究实录 §13–§15](docs/current/07-质量与裁定/20260922_性能探究实录.md)
-- **出口与短板（诚实披露）**：**wasm-gc 同请求对照全部七场景快 native CLI 1.5–6.3×**（step 帧流 21.4 μs/帧 vs native 88.5；compile 差距最显著）——「wasm-gc 主出口」的实测印证；全速执行仍慢 CPython（纯解释器，最公平基准）**9.6–19.8×**（wasm）/ 31–54×（native），系 VM 解释循环本身（自 Rust 期继承——oracle VM 亦慢 CPython ~2×），优化挂 issue #41（bytecode→wasm 生成器实测仅 2–2.8×，量级不足以补齐，需单独评估）；解释器形态持续服务单步语义与时间旅行
-- **其后**：0.9.0 Rust oracle 脱钩批 + S9 裁定批 + 解锁修复面 → 全量切换后 Rust 区退役——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
+- **性能现状**（同机对拍 Rust oracle〔该基线随 2026-10-05 删区退役，此后对照通道为 Clang / CPython〕；2026-09-26 首测，2026-10-04 S8 收官批全量复跑）：端到端小程序中位 **1.42×**（编译主导）；计算密集 fib(20) 1.92× / 冒泡 6.32× / 500×500 嵌套 15.7×（S8 复测 1.58–1.74× / 6.43–6.89× / 15.8×，同量级）；**HEAD vs 0.7.0 同时段 A/B 判「无回归」**（四层管线 0.86–1.01× / 执行层 0.99–1.08×）。S8 交付面首次有 mb 侧实测：时间旅行 28 万帧纯引擎 **14.2 μs/帧**、seek 越窗 55.6ms（检查点+正向重放）、teaching 判据 ~62μs / diagnostics ~44μs/轮——详见[性能探究实录 §13–§15](docs/current/07-质量与裁定/20260922_性能探究实录.md)
+- **出口与短板（诚实披露）**：**wasm-gc 同请求对照全部七场景快 native CLI 1.5–6.3×**（step 帧流 21.4 μs/帧 vs native 88.5；compile 差距最显著；对照对象为已退役的 Rust native CLI，历史实测）——「wasm-gc 主出口」的实测印证；全速执行仍慢 CPython（纯解释器，最公平基准）**9.6–19.8×**（wasm）/ 31–54×（native），系 VM 解释循环本身（自 Rust 期继承——历史实测 oracle VM 亦慢 CPython ~2×），优化挂 issue #41（bytecode→wasm 生成器实测仅 2–2.8×，量级不足以补齐，需单独评估）；解释器形态持续服务单步语义与时间旅行
+- **其后**：0.9.0 = S9 裁定批执行 + 解锁修复面（#3~#24 等 22 条）——排期权威见[总计划 §10](docs/current/01-定位与路线/MoonBit迁移总计划.md)
 
-## Rust 冻结对照 oracle
-
-`native/` 是迁移前的完整 Rust 实现（10 个子 crate + 三出口），2026-09-18 起冻结（tag `rust-oracle-freeze`，只收白名单维护 P1–P7/U1/U2、安全修复与防线维护，新特性一律不做）。它不再是开发目标，但仍是**活着的防线基座**：shadow 对拍、cargo 防线与 `vm_diff` 三联的 Rust 侧真值都跑在它上面，直到 MoonBit 全量切换完成后**整体删除**（档案 = tag + git 历史）。C++ 前端已随裁砍（2026-09-20）冻结在区内，防线继续跑到退役为止，MoonBit 侧零迁移。
+## 架构总览与 Rust oracle 退役档案
 
 <p align="center">
-  <img src="docs/current/01-定位与路线/vitro-dual-track-architecture.svg" alt="vitro 双轨格局：MoonBit 现役引擎 × Rust 冻结 oracle × Go 司法防线层" width="900">
+  <img src="docs/current/01-定位与路线/vitro-architecture.svg" alt="vitro 架构总览：MoonBit 现役引擎 × Go 司法防线层 × Clang 真值源" width="900">
 </p>
 
-**双轨格局** —— 上轨 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；下轨 **Rust 冻结 oracle**（三出口一核心为其历史架构，仍是 shadow / vm_diff 的防线真值基座，全量切换后整体退役）；中带 **Go 司法与防线层**（对拍驱动 · 生成器 · facts 对账）。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
+**单轨格局** —— 主体 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；中带 **Go 司法与防线层**（差分 golden 对拍 · Clang 直拍 · 生成器 · facts 对账）；真值源 **Clang**（golden 唯一来源）。迁移期的下轨 **Rust 冻结对照 oracle** 已于 2026-10-05（S9 工序④删区）物理删除。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
 
-**Rust oracle 实测状态（2026-09-23）**：
+**Rust oracle 历史快照（删区前终态，2026-09-23 实测口径）**：C Shadow Verification 685 用例（680 匹配 + 4 known_issue + 1 gap_extension）、cargo test 1029 用例全绿、capi ABI 2.1.0、wasm32 构建 3.75MB——完整终态见 tag `rust-oracle-freeze` 与 [0.8.0 发布档案](docs/current/08-发布档案/0.8.0.md)；语料域差量已由 clang_direct 吸收（shadow 685 ⊆ 698，差量 0），历史失败记录见 tag 内 `native/tests/*_FAILURES.md`。现行差异台账 = `scripts/diff_ledger/ledger.json`。
 
-- **C 教学子集**：C Shadow Verification **685 个用例**（完全匹配 680 + known_issue 4 + gap_extension 1，无非预期差异；vitro_better 已清零）
-- **C++ 教学子集**：99 个用例（95 一致 + 4 个已记录的 `clang_compile_fail`：`cpp_vitro_vec_class` / `cpp_vitro_list_class` / `cpp_u3_class_instantiate_in_template` / `cpp_u3_vec_class_twice`）；C++ E2E 回归 83 个用例
-- **真实程序回归**：K&R 81 题全绿；LeetCode 138 题全部通过；Baseline 用例全部通过
-- **全量测试**：`cargo test --workspace --all-features` 全绿（**实测数字行，随工具链版本漂移**：2026-09-23 实测 1029 用例 / 64 套件，CI `windows-latest` 与本地同平台——按实测行人工维护）；clippy 0 warning
-- **出口与能力**：capi ABI `2.1.0`，StepPayload schema v0.1 已冻结；wasm32 零修改构建 3.75MB（Node 下 C API 全链路 + E3070 教学诊断）；时间旅行（VM 快照 / 检查点 / Seek / 异常回退）全链路可用
-
-> 失败与差异一律如实记录在各 `*_FAILURES.md`（见下文"测试防线"），禁止通过修改测试预期值粉饰数据。
+> 失败与差异一律如实记录（现行于 [已知限制与差异.md](docs/current/07-质量与裁定/已知限制与差异.md)），禁止通过修改测试预期值粉饰数据。
 
 ## 项目图览
 
 <p align="center">
-  <img src="docs/current/04-标准库与防线/shadow-verification-flow.svg" alt="影子验证门禁流水线" width="900">
+  <img src="docs/current/04-标准库与防线/clang-direct-gate-flow.svg" alt="Clang 直拍门禁流水线" width="900">
 </p>
 
-**影子验证门禁** —— 同一份 C/C++ 语料喂给 Clang 与 Vitro 逐字节对拍，"通过 / 非预期差异"分流驱动扩展优先级；CI 硬门禁，图内规模数字由 facts 台账机判防漂移。
-机制与判定表：[影子验证框架.md](docs/current/04-标准库与防线/影子验证框架.md)
+**Clang 直拍门禁** —— 同一份 C 语料喂给 Clang 与 Vitro 逐字节对拍，"通过 / 非预期差异"分流驱动扩展优先级；CI 硬门禁，图内规模数字由 facts 台账机判防漂移。（shadow 验证已随删区吸收为本防线，2026-10-05）
+机制与判定表：[Clang直拍门禁.md](docs/current/04-标准库与防线/Clang直拍门禁.md)
 
 <p align="center">
   <img src="docs/current/05-教学体验/unified-triple-cache.svg" alt="统一模式三态缓存" width="900">
 </p>
 
-**统一模式三态缓存** —— 时间旅行教学交互的三层缓存：Frame Cache 承接动画与面板的零延迟浏览，Checkpoint 支撑状态恢复，Active VM 保持唯一可执行现场（**两侧已实现**——MoonBit 侧随 S8 收官：`time_travel` 包 FrameWindow O(1) 窗口 + step 族五方法上线）。
+**统一模式三态缓存** —— 时间旅行教学交互的三层缓存：Frame Cache 承接动画与面板的零延迟浏览，Checkpoint 支撑状态恢复，Active VM 保持唯一可执行现场（**MoonBit 侧已实现**——随 S8 收官：`time_travel` 包 FrameWindow O(1) 窗口 + step 族五方法上线；Rust 侧历史实现随删区退役）。
 设计与落地口径：[统一模式设计.md](docs/current/05-教学体验/统一模式设计.md)；S8 落地面：[S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)
 
 <p align="center">
   <img src="docs/current/05-教学体验/cognitive-knowledge-graph.svg" alt="P2 知识图谱概念三域" width="900">
 </p>
 
-**认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图（**两侧已实现**——MoonBit 侧教学智能随 S8 收官：teaching 43 族识别与推断 + diagnostics 教学七元组，算法识别经 compile 帧 `algorithm_matches` 直出）。
+**认知推理知识图谱** —— 把 C 语言离散知识点建模为编译 / 内存 / 控制流三域概念图，学生遇错时动态激活关联子图（**MoonBit 侧已实现**——教学智能随 S8 收官：teaching 43 族识别与推断 + diagnostics 教学七元组〔概念激活 / 先修路径〕，算法识别经 compile 帧 `algorithm_matches` 直出）。
 节点分类树与已实现范围：[认知推理系统设计.md](docs/current/05-教学体验/认知推理系统设计.md)；教学智能落地面：[S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)
 
 <p align="center">
@@ -91,11 +83,9 @@
 | 现役实现 | **MoonBit**（`vitro/engine` workspace：L0–L8 共 24 包 + 9 个 `cmd` 工具；mooncakes 发布） |
 | 执行 | 自研字节码解释器（135 opcode 穷尽 match，1MB 线性内存，指令级边界检查）+ `VMSnapshot` 快照体系（时间旅行基座） |
 | 加速规划 | 0.7.0+ bytecode→wasm-GC 生成器（全速执行）；解释器持续服务单步语义与时间旅行 |
-| 对照 oracle | **Rust 1.95.0**（`#![forbid(unsafe_code)]`；模板 JIT = 热点 trace → 预编译 Rust 函数指针序列，非机器码 JIT） |
 | 行为基准 | Clang / Clang++（Golden 唯一来源，禁止来自 Vitro 自己） |
+| 已退役对照 | ~~Rust oracle~~（迁移期差分对照实现，2026-10-05 删区退役；档案 = tag `rust-oracle-freeze` + git 历史；模板 JIT 随之退役、MoonBit 侧不复刻——裁定见 S9 判定书） |
 | 许可 | MIT |
-
-> **注意**：模板 JIT 不是传统机器码 JIT。由于核心 crate 启用 `#![forbid(unsafe_code)]`，无法动态生成机器码，因此把热点循环的字节码 trace 编译为预编译 Rust 函数指针序列（超级指令），跳过解释器 dispatch 开销，不匹配时回退标准解释执行。
 
 ## 项目结构
 
@@ -108,19 +98,17 @@ moonbit/                   MoonBit 活跃区（vitro/engine workspace）——�
 ├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（S7 批一~五已落：StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳；step 族与 dump 族 S8 已接）
 ├── time_travel/ teaching/ steps/ diagnostics/ 时间旅行与教学智能（S8 收官：检查点 + FrameWindow / 43 算法族识别推断 / 教学诊断七元组）
 └── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口 + `vitro` 总入口（run/compile/step/api 四子命令，#37 CLI 出口总账）
-native/                    Rust workspace——冻结差分对照 oracle（tag rust-oracle-freeze）
-├── crates/                10 个子 crate（lexer → vm 全链路）
-├── src/                   capi（C ABI 出口）/ session_api / unified 时间旅行 / serve 出口
-├── runtime_libc/          标准库存根 + 内置 C++ 容器（.cpp 接口声明为唯一真相来源）
-└── tests/                 五层测试防线与用例（baseline / knr / leetcode / cpp / shadow）
+corpus/                    C 语料（baseline / knr / leetcode / gap / cpp；Clang golden 与 e2e 驱动的输入，原 native/tests/cases 迁入）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
-scripts/                   Go 防线驱动与工具脚本（Shadow 驱动、vm_diff 三联、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
+scripts/                   Go 防线驱动与工具脚本（clang_direct Clang 直拍、五差分 golden 对拍、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
 .agents/                   Agent Skills（踩过实锤的项目专属操作手册 + 零依赖安装器；清单与安装见 .agents/README.md）
 docs/                      设计文档、规范与事故报告
   ├── current/             当前有效文档
   ├── spec/                语言中立协议 schema
   └── archive/             历史归档（仅供追溯，可能严重过时）
 ```
+
+> 原 `native/`（Rust workspace：10 子 crate + capi/unified/serve 出口 + runtime_libc + 五层测试防线）已于 2026-10-05 删区退役——完整终态见 tag `rust-oracle-freeze`。
 
 ## 快速开始
 
@@ -130,21 +118,11 @@ cd moonbit && moon check && moon test
 
 # 2. 端到端跑一个 C 程序（`vitro` 总入口：stdout / 返回码 / 1MB 内存映像三通道）
 cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro
-./_build/native/release/build/cmd/vitro/vitro.exe run ../native/tests/cases/baseline/hello_world.c
+./_build/native/release/build/cmd/vitro/vitro.exe run ../corpus/baseline/hello_world.c
 # 另有 compile / step / api（万能单帧）三个子命令，见 docs/spec/CLI_PROTOCOL_V1.md
 
-# 3. Rust oracle CLI（冻结对照，退役前继续可用）
-cd native && cargo build --release --bin vitro_cli
-./target/release/vitro_cli run tests/cases/baseline/hello_world.c
-./target/release/vitro_cli serve            # JSON-lines 会话（headless 交互出口）
-cd native && cargo test --workspace --all-features
-cd native && cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-# 4. 测试防线（Shadow Verification：与 Clang / Clang++ 对照 stdout）
-go run ./scripts/shadow_verify
-
-# 5. wasm32 出口（oracle 侧；MoonBit 侧目标 wasm-gc 单出口已落地〔S7 gateway〕，全速生成器为脱钩后单侧演化批）
-cd native && cargo build --target wasm32-unknown-unknown --release
+# 3. 测试防线（Clang 直拍：与 Clang / Clang++ 对照全量语料 stdout，吸收原 Shadow 防线）
+go run ./scripts/clang_direct
 ```
 
 > **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（首跑 ~223s / 热态稳定 87–97s / 持续负载可漂至 180s 级——moon#2254 自述口径）；设 `MOON_CC=clang` 后全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)）。
@@ -155,24 +133,16 @@ cd native && cargo build --target wasm32-unknown-unknown --release
 
 ## 测试防线
 
-项目采用**双轨分层**的测试防线，核心哲学：*测试不是为了标榜通过率，而是为了诚实地发现自己可能存在的问题*。
+项目采用**分层**的测试防线，核心哲学：*测试不是为了标榜通过率，而是为了诚实地发现自己可能存在的问题*。
 
 **MoonBit 侧（现役）**：
 
 1. **`moon test` 655 用例 + 全部闸门绿**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍 + `clang_direct` 层 2 直拍（全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（闸随批增长不锚闸数）
-2. **运行期双防线**：`scripts/vm_diff` 三联差分（引擎 vs Rust oracle，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
+2. **运行期双防线**：`scripts/vm_diff` 差分（引擎 vs 冻结 golden——工序③固化锚，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
 3. **实机代码勘探**（防线外的实测补充——登记制非门禁制）：真实世界 C 语料（[TheAlgorithms/C 的 fork 基线](https://github.com/rustin-beep/C/tree/vitro-probe-baseline)）与 demo 实测用户代码的逐文件 vs Clang 差分——累计开立 **20 个缺陷 issue**（见 [issue 台账](https://github.com/rustin-beep/Vitro/issues?q=is%3Aissue)，as_of 2026-10-02，台账为活文档）；缺陷形态呈**收敛**而非蔓延：后期实测以存量 issue 的实例增补为主，全量勘探的运行差异全部可归因定性（已知缺陷 / UB / 护栏与资源上限 / 交互依赖——零未知形态）；配测量金样本回归锚（缺陷只应向绿迁移），fork 语料在修复批全量重跑即为各 issue 修复的**外部语料印证**；GPL 语料外置不进仓，工具见 [`scripts/realcode_diff`](scripts/realcode_diff/)
 4. **对外面对账**：`go run ./scripts/moonbit/moonbit_surface -check` 机判 `.mbti` 接口面
 
-**Rust oracle 侧（退役前在跑）**：
-
-1. **Shadow Verification**：同一份源码同时交给 Clang / Clang++ 与 Vitro 执行，比对纯程序 stdout（Golden 只能来自 Clang，不能来自 Vitro 自己）；自 2026-09-06 起为 CI 硬门禁
-2. **K&R + LeetCode 真实程序回归**：验证"真实世界代码能不能跑"
-3. **三层契约验证**：Host Contract / Bytecode Self-Consistency / Differential Stress
-4. **Fuzz 压力测试**：确定性 RNG 生成恶意内存与调用序列，验证安全检测不泄漏
-5. **CI 集成与一致性监控**：`*_FAILURES.md` 与测试结果双向对账，转绿未更新文档即 CI 失败
-
-失败与差异记录位于 `native/tests/*_FAILURES.md`，每次 CI 运行生成一致性报告。
+**Rust oracle 侧（已随 2026-10-05 删区退役）**：Shadow Verification（由 `clang_direct` 吸收，语料差量 0）、K&R + LeetCode 真实程序回归（语料迁 `corpus/` 由 MoonBit 侧驱动接续）、三层契约验证（Host Contract 以 103 条冻结名册经 `host_contract_map` 对账承接）、Fuzz 压力测试（不变量自检路 A 已迁入 MoonBit 测试）、`*_FAILURES.md` 一致性监控（随 CI 拆臂退役，现行差异台账 = `scripts/diff_ledger/ledger.json`）——历史终态见 tag `rust-oracle-freeze`。
 
 ## 诚实声明：这是一个 AI 实验田
 

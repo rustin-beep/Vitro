@@ -39,9 +39,9 @@
   </defs>
 <text class="tt" x="600" y="56" text-anchor="middle">MoonBit 自建验证防线 · 对拍链与闸卫</text>
 <rect class="core" x="40" y="108" width="1120" height="62" rx="12"/>
-<text class="t" x="600" y="146" text-anchor="middle">moon test 引擎白盒 + 契约测试全绿（十五道闸的底座 · 数字见 README 机判行）</text>
+<text class="t" x="600" y="146" text-anchor="middle">moon test 引擎白盒 + 契约测试全绿（防线底座 · 数字见 README 机判行）</text>
 <rect class="zone" x="40" y="190" width="640" height="300" rx="14"/>
-<text class="t" x="360" y="224" text-anchor="middle">逐层对拍（MoonBit ↔ Rust oracle，冻结对照）</text>
+<text class="t" x="360" y="224" text-anchor="middle">逐层对拍（MoonBit ↔ 冻结 golden，工序③固化锚）</text>
 <rect class="card" x="64" y="240" width="592" height="42" rx="10"/>
 <text class="tn" x="84" y="268" text-anchor="start">lexer_diff</text>
 <text class="tc" x="230" y="268" text-anchor="start">token TSV 双层逐字节一致</text>
@@ -60,12 +60,12 @@
 <line class="line" x1="360" y1="490" x2="360" y2="516"/>
 <rect class="card" x="64" y="516" width="286" height="84" rx="10"/>
 <text class="ts" x="207" y="548" text-anchor="middle">clang_direct</text>
-<text class="tc" x="207" y="574" text-anchor="middle">层 2 · Clang 编译直拍</text>
-<text class="tc" x="207" y="596" text-anchor="middle">不经 oracle 中转</text>
+<text class="tc" x="207" y="574" text-anchor="middle">层 2 · Clang 编译运行直拍</text>
+<text class="tc" x="207" y="596" text-anchor="middle">吸收 shadow（2026-10-05）</text>
 <rect class="card" x="370" y="516" width="286" height="84" rx="10"/>
-<text class="ts" x="513" y="548" text-anchor="middle">shadow_verify</text>
-<text class="tc" x="513" y="574" text-anchor="middle">层 3 · Clang golden 全量影子</text>
-<text class="tc" x="513" y="596" text-anchor="middle">五分类判定 · CI 硬门禁</text>
+<text class="ts" x="513" y="548" text-anchor="middle">冻结 golden 锚</text>
+<text class="tc" x="513" y="574" text-anchor="middle">工序③固化 · 五闸对拍锚</text>
+<text class="tc" x="513" y="596" text-anchor="middle">oracle 退役后自持</text>
 <rect class="zone" x="700" y="190" width="460" height="410" rx="14"/>
 <text class="t" x="930" y="224" text-anchor="middle">闸卫家族（-check 硬闸 · CI hygiene）</text>
 <rect class="card" x="724" y="240" width="412" height="32" rx="8"/>
@@ -78,7 +78,7 @@
 <text class="tn" x="742" y="339" text-anchor="start">mbti_sync</text>
 <text class="tc" x="962" y="339" text-anchor="start">.mbti 接口面</text>
 <rect class="card" x="724" y="354" width="412" height="32" rx="8"/>
-<text class="tn" x="742" y="377" text-anchor="start">gen_diag ×4</text>
+<text class="tn" x="742" y="377" text-anchor="start">gen_diag 族 ×4</text>
 <text class="tc" x="962" y="377" text-anchor="start">生成物新鲜度</text>
 <rect class="card" x="724" y="392" width="412" height="32" rx="8"/>
 <text class="tn" x="742" y="415" text-anchor="start">gen_protocol_fields</text>
@@ -90,17 +90,17 @@
 <text class="tn" x="742" y="491" text-anchor="start">facts check</text>
 <text class="tc" x="962" y="491" text-anchor="start">文档数字对账</text>
 <rect class="card" x="724" y="506" width="412" height="32" rx="8"/>
-<text class="tn" x="742" y="529" text-anchor="start">source_hygiene</text>
-<text class="tc" x="962" y="529" text-anchor="start">NUL 卫生</text>
+<text class="tn" x="742" y="529" text-anchor="start">host_contract_map</text>
+<text class="tc" x="962" y="529" text-anchor="start">host 契约对账</text>
 <rect class="card" x="724" y="544" width="412" height="32" rx="8"/>
 <text class="tn" x="742" y="567" text-anchor="start">toolchain_probe</text>
 <text class="tc" x="962" y="567" text-anchor="start">工具链漂移探针</text>
 <rect class="warn" x="40" y="620" width="1120" height="76" rx="12"/>
 <text class="t" x="600" y="650" text-anchor="middle">真值源</text>
-<text class="tc" x="600" y="678" text-anchor="middle">Clang = golden 唯一来源 · Rust oracle = 差分对照（tag rust-oracle-freeze）——退役后对拍锚由本链自持</text>
+<text class="tc" x="600" y="678" text-anchor="middle">Clang = golden 唯一来源 · 对拍锚 = 冻结 golden（工序③固化）· Rust oracle 已退役（档案 tag rust-oracle-freeze）</text>
 <rect class="warn" x="40" y="712" width="1120" height="96" rx="12"/>
-<text class="t" x="600" y="744" text-anchor="middle">裸奔期敞口（诚实记录）</text>
-<text class="tc" x="600" y="772" text-anchor="middle">Rust oracle 退役时其测试体量随之消失——MoonBit 自建测试与对拍闸须在此之前</text>
-<text class="tc" x="600" y="796" text-anchor="middle">补足等价覆盖；进度与敞口清算以总计划 §10 为权威</text>
+<text class="t" x="600" y="744" text-anchor="middle">删区敞口清算（2026-10-05 删区批）</text>
+<text class="tc" x="600" y="772" text-anchor="middle">oracle 测试体量随删区消失——语料域差量经 clang_direct 吸收（shadow 685 ⊆ 698 差量 0）+ MoonBit 自建测试 + fuzz 不变量自检承接；</text>
+<text class="tc" x="600" y="796" text-anchor="middle">遗留敞口与逐项清算以总计划 §10 为权威</text>
 <text class="tc" x="600" y="848" text-anchor="middle">对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：go run ./scripts/gen_svg gates</text>
 </svg>

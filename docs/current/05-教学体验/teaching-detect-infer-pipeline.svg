@@ -96,6 +96,6 @@
 <text class="ts" x="1080" y="702" text-anchor="middle">3</text>
 <rect class="warn" x="40" y="748" width="1120" height="76" rx="12"/>
 <text class="t" x="600" y="778" text-anchor="middle">对拍纪律</text>
-<text class="tc" x="600" y="806" text-anchor="middle">311 条 golden 首现序列 ↔ Rust oracle 逐条一致 · teaching_annotation_diff 机判 · 82 模板全绿（豁免显式过闸）</text>
+<text class="tc" x="600" y="806" text-anchor="middle">311 条 golden 首现序列 · teaching_annotation_diff 机判（golden 已迁出冻结区，sha 对账自持）· 82 模板全绿（豁免显式过闸）</text>
 <text class="tc" x="600" y="858" text-anchor="middle">对账 S8时间旅行与教学智能总览.md §二 · 漂移重生成：go run ./scripts/gen_svg teach</text>
 </svg>

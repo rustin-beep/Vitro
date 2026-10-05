@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" role="img" aria-label="vitro 认知推理概念图谱">
-  <title>P2 知识图谱 · C 语言概念三域（已实现 Phase 22）</title>
+  <title>P2 知识图谱 · C 语言概念三域（已实现）</title>
   <!-- 由 scripts/gen_svg 生成（勿手改）：对账 认知推理系统设计.md §3.1 节点分类树；P2 状态=已实现（24 节点 + 30+ 边） -->
   <style>
     .bg     { fill: #FFFFFF; }
@@ -33,7 +33,7 @@
   </style>
   <rect class="bg" width="1200" height="780"/>
 <text class="tt" x="600" y="54" text-anchor="middle">P2 知识图谱 · C 语言概念三域</text>
-<text class="tm" x="600" y="88" text-anchor="middle">已实现（Phase 22）：KnowledgeGraph 24 概念节点 + 30+ 关系边 · native/src/diagnostics/knowledge_graph.rs</text>
+<text class="tm" x="600" y="88" text-anchor="middle">已实现：概念激活 activate_from_error / activate_from_ast · 先修路径 find_prerequisite_path · vitro/engine/diagnostics</text>
 <rect class="core" x="60" y="150" width="300" height="64" rx="14"/>
 <text class="t" x="210" y="191" text-anchor="middle">编译概念域</text>
 <line class="line" x1="210" y1="214" x2="210" y2="246"/>

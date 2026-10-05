@@ -56,7 +56,7 @@ func genPanorama(root string, _ factsDoc) {
 	type smoke struct{ name, sub string }
 	smokes := []smoke{
 		{"replay", "S1–S5 帧序列断言（冻结签字回放主锚）"},
-		{"serve_smoke", "NDJSON 出口冒烟 · 双宿主臂 · 豁免表外置"},
+		{"serve_smoke", "NDJSON 出口冒烟 · 豁免表外置"},
 		{"interaction_probe", "会话交互 fuzz（帧形状 / payload 不变量）"},
 		{"protocol 错误帧", "serve 未知 method 必回错（读侧严格纪律二）"},
 	}
@@ -66,17 +66,16 @@ func genPanorama(root string, _ factsDoc) {
 			textL(704, y+21, "tn", s.name),
 			textL(704, y+43, "tc", s.sub))
 	}
-	P = append(P, textL(684, 580, "tc", "双宿主 = Rust 臂 + -moonbit MoonBit 臂"))
-	// 底带一：实现锚（双侧）
-	P = append(P, box(40, 624, 1120, 96, "card", 12),
-		textF(600, 654, "t", "实现锚（双侧）", ""),
-		textF(600, 682, "tn", "Rust 侧（冻结）：native/src/unified/{types,collector,engine,stream,contracts,vocabulary}.rs + capi/first_batch.rs", ""),
-		textF(600, 710, "tn", "MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary · 零依赖自持）", ""),
+	P = append(P, textL(684, 580, "tc", "Rust 对拍臂已随删区退役 · MoonBit 臂为现役"))
+	// 底带一：实现锚
+	P = append(P, box(40, 624, 1120, 72, "card", 12),
+		textF(600, 654, "t", "实现锚", ""),
+		textF(600, 682, "tn", "vitro/engine/protocol（schema · stream · types · vocabulary）+ session + gateway", ""),
 	)
 	// 底带二：消费者拓扑
-	P = append(P, box(40, 740, 1120, 76, "card", 12),
-		textF(600, 770, "t", "消费者拓扑（数据源单源论：引擎画数据，下游画像素）", ""),
-		textF(600, 798, "tc", "capi 步数据 · vitro_cli serve（NDJSON）· wasm 绑定 · TS @vitro/protocol · 任意第三方语言", ""),
+	P = append(P, box(40, 716, 1120, 76, "card", 12),
+		textF(600, 746, "t", "消费者拓扑（数据源单源论：引擎画数据，下游画像素）", ""),
+		textF(600, 774, "tc", "serve JSON-lines（cmd/serve · cmd/vitro api）· gateway wasm 绑定 · TS @vitro/protocol · 任意第三方语言", ""),
 	)
 	// 演化纪律带
 	P = append(P, box(40, 836, 1120, 88, "warn", 12),

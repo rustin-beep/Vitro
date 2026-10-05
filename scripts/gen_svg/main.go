@@ -222,25 +222,21 @@ func svgOpen(w, h int, label, title, note string) []string {
 	}
 }
 
-// ─── 图 A：双轨格局（源：README 双轨口径节 + 架构设计.md §2）─────────────────
-// 2026-09-28 重画：旧图"三出口一核心"图心写"Rust workspace"，README 双轨化
-// 后仅靠 alt 文字"（Rust oracle 历史架构）"打补丁。本图改为双轨格局主图——
-// 上轨 MoonBit 现役引擎（wasm-gc 单出口终态）、中带 Go 司法与防线层、下轨
-// Rust 冻结 oracle（三出口为历史架构 + 退役线）。不画快照数字（用例规模等
-// 留 README，facts md 通道对账）。
+// ─── 图 A：架构总览（源：README 单轨口径节 + 架构设计.md §2）─────────────────
+// 2026-09-28 重画为双轨格局主图；2026-10-05 工序④删区（Rust oracle 物理删除）
+// 再重画为单轨：MoonBit 现役引擎 + Go 司法与防线层 + Clang 真值源，退役事实
+// 压缩为底部档案条。文件名 vitro-dual-track-architecture.svg 同步退役为
+// vitro-architecture.svg。不画快照数字（用例规模等留 README，facts md 通道对账）。
 
 func genArch(root string, _ factsDoc) {
-	P := svgOpen(1200, 860, "vitro 双轨格局架构图", "vitro — 双轨格局 · MoonBit 现役 × Rust 冻结 oracle",
-		"内容对账 README.md 双轨口径节 与 架构设计.md §2；进度与版本以 README / 总计划 §10 为权威（无快照数字，无 data-fact 锚）")
-	// 顶注：本图此前无可见标题（svgOpen 的 title 参数只进无障碍 <title> 不渲染），
-	// 画布顶部留白一块——2026-09-29 用户看图指出，补标题行并连带补上缺失的
-	// markerDef（本图 arrow 自重画起未渲染三角）。
+	P := svgOpen(1200, 724, "vitro 架构总览图", "vitro — MoonBit 现役单轨 · 引擎 + Go 防线 + Clang 真值",
+		"内容对账 README.md 单轨口径节 与 架构设计.md §2；进度与版本以 README / 总计划 §10 为权威（无快照数字，无 data-fact 锚）")
 	P = append(P, markerDef,
-		textF(600, 56, "tt", "vitro — 双轨格局 · MoonBit 现役 × Rust 冻结 oracle", ""),
+		textF(600, 56, "tt", "vitro — MoonBit 现役单轨 · 引擎 + Go 防线 + Clang 真值", ""),
 	)
-	// 上轨：MoonBit 现役引擎
-	P = append(P, box(40, 116, 1120, 262, "core", 14),
-		textF(600, 150, "t", "MoonBit 现役引擎 · vitro/engine（mooncakes 源码级发布）", ""),
+	// 主轨：MoonBit 现役引擎
+	P = append(P, box(40, 96, 1120, 300, "core", 14),
+		textF(600, 128, "t", "MoonBit 现役引擎 · vitro/engine（mooncakes 源码级发布）", ""),
 	)
 	pipe := []struct {
 		x          int
@@ -254,11 +250,11 @@ func genArch(root string, _ factsDoc) {
 	}
 	for i, c := range pipe {
 		cx := c.x + 95
-		P = append(P, box(c.x, 170, 190, 60, "card", 10),
-			textF(cx, 196, "tn", c.name, ""),
-			textF(cx, 218, "tc", c.desc, ""))
+		P = append(P, box(c.x, 148, 190, 60, "card", 10),
+			textF(cx, 174, "tn", c.name, ""),
+			textF(cx, 196, "tc", c.desc, ""))
 		if i < len(pipe)-1 {
-			P = append(P, arrow(c.x+190, 200, c.x+216, 200, "edge"))
+			P = append(P, arrow(c.x+190, 178, c.x+216, 178, "edge"))
 		}
 	}
 	base := []struct {
@@ -271,17 +267,19 @@ func genArch(root string, _ factsDoc) {
 	}
 	for _, c := range base {
 		cx := c.x + 172
-		P = append(P, box(c.x, 248, 344, 62, "zone", 10),
-			textF(cx, 274, "tn", c.name, ""),
-			textF(cx, 298, "tc", c.desc, ""))
+		P = append(P, box(c.x, 224, 344, 62, "zone", 10),
+			textF(cx, 250, "tn", c.name, ""),
+			textF(cx, 274, "tc", c.desc, ""))
 	}
-	P = append(P, box(64, 326, 1072, 40, "card", 10),
-		textF(600, 352, "tm", "出口：wasm-gc 单出口多宿主（浏览器 Worker · Node · .NET）——S7+ gateway 接线中", ""))
+	P = append(P, box(64, 302, 1072, 32, "card", 10),
+		textF(600, 324, "tm", "S8 已落：time_travel 时间旅行 · teaching/steps 教学判据 · diagnostics 教学诊断 · protocol/session/gateway 会话协议", ""))
+	P = append(P, box(64, 348, 1072, 32, "card", 10),
+		textF(600, 370, "tm", "出口：wasm-gc 单出口多宿主（浏览器 Worker · Node · .NET）+ native stdio 壳 cmd/serve · cmd/vitro", ""))
 	// 中带：Go 司法与防线层
 	P = append(P,
-		line(600, 378, 600, 412, "line"),
-		box(40, 412, 1120, 168, "zone", 14),
-		textF(600, 446, "t", "Go 司法与防线层（归一化器 · 对拍驱动 · 生成器）", ""),
+		line(600, 396, 600, 420, "line"),
+		box(40, 420, 1120, 150, "zone", 14),
+		textF(600, 450, "t", "Go 司法与防线层（归一化器 · 对拍驱动 · 生成器）", ""),
 	)
 	diffs := []struct {
 		x          int
@@ -295,32 +293,25 @@ func genArch(root string, _ factsDoc) {
 	}
 	for i, c := range diffs {
 		cx := c.x + 95
-		P = append(P, box(c.x, 466, 190, 56, "card", 10),
-			textF(cx, 490, "tn", c.name, ""),
-			textF(cx, 512, "tc", c.desc, ""))
+		P = append(P, box(c.x, 470, 190, 56, "card", 10),
+			textF(cx, 494, "tn", c.name, ""),
+			textF(cx, 516, "tc", c.desc, ""))
 		if i < len(diffs)-1 {
-			P = append(P, arrow(c.x+190, 494, c.x+216, 494, "edge"))
+			P = append(P, arrow(c.x+190, 498, c.x+216, 498, "edge"))
 		}
 	}
 	P = append(P,
-		textF(600, 556, "tc", "层 2 直拍 clang_direct（Clang golden）· 层 3 shadow_verify（Clang 唯一真值）· facts check（文档数字对账）· 生成器 -check 闸", ""),
+		textF(600, 552, "tc", "对拍真值 = 冻结 golden（工序③固化锚）· 层 2 直拍 clang_direct（Clang 唯一真值）· facts check · 生成器 -check 闸", ""),
 	)
-	// 下轨：Rust 冻结 oracle
+	// 底部：Rust oracle 退役档案条
 	P = append(P,
-		line(600, 580, 600, 614, "line"),
-		box(40, 614, 1120, 182, "warn", 14),
-		textF(600, 648, "t", "Rust 冻结对照 oracle · native/（2026-09-18 冻结 · tag rust-oracle-freeze）", ""),
-		box(64, 668, 546, 108, "card", 10),
-		textF(337, 696, "ts", "迁移前完整实现（历史架构）", ""),
-		textF(337, 722, "tc", "编译管线 + VM + 统一模式 + 诊断", ""),
-		textF(337, 748, "tc", "三出口：capi · wasm32 · serve（薄包装）", ""),
-		box(630, 668, 506, 108, "card", 10),
-		textF(883, 696, "ts", "活着的防线基座", ""),
-		textF(883, 722, "tc", "shadow / vm_diff 的 Rust 侧真值", ""),
-		textF(883, 748, "tc", "退役线：全量切换后整体删除（档案 = tag + git 历史）", ""),
-		textF(600, 824, "tc", "对账 README 双轨口径节 + 架构设计.md §2 · 漂移重生成：go run ./scripts/gen_svg arch", ""),
+		line(600, 570, 600, 594, "line"),
+		box(40, 594, 1120, 66, "warn", 14),
+		textF(600, 620, "t", "Rust 冻结对照 oracle — 已退役（2026-10-05 工序④删区，native/ 物理删除）", ""),
+		textF(600, 644, "tc", "档案：tag rust-oracle-freeze · 分支 frozen-oracle-snapshot · git 历史（探测档案提交 917251e）", ""),
+		textF(600, 694, "tc", "对账 README 单轨口径节 + 架构设计.md §2 · 漂移重生成：go run ./scripts/gen_svg arch", ""),
 	)
-	writeSVG(root, "docs/current/01-定位与路线/vitro-dual-track-architecture.svg", P)
+	writeSVG(root, "docs/current/01-定位与路线/vitro-architecture.svg", P)
 }
 
 // ─── 图 B：统一模式·三态缓存（源：统一模式设计.md §2.1 表格 + §5.2）──────────
@@ -345,22 +336,23 @@ func genCache(root string, _ factsDoc) {
 	}{
 		{30, []row{
 			{42, "t", "Frame Cache"},
-			{76, "tc", "UnifiedEngine 滑动窗口（2000 帧）"},
-			{112, "ts", "Vec<StepPayload>"},
-			{148, "tm", "动画渲染 / 变量面板 / 进度条拖动"},
+			{70, "ts", "time_travel FrameWindow"},
+			{94, "tc", "滑动窗口（2000 帧）"},
+			{120, "ts", "Array[StepPayload]"},
+			{150, "tm", "动画渲染 / 变量面板 / 进度条拖动"},
 			{182, "tm", "大小：2~5MB（1000 步）"},
 		}},
 		{430, []row{
 			{42, "t", "Checkpoint"},
-			{72, "tc", "vitro_vm::snapshot::CheckpointManager"},
-			{102, "ts", "Vec<(i32, VMSnapshot)>"},
+			{72, "tc", "time_travel.CheckpointManager"},
+			{102, "ts", "Array[(Int, VMSnapshot)]"},
 			{128, "tm", "全量 + 增量混合"},
 			{156, "tm", "VM 状态恢复·继续执行"},
 			{184, "tm", "大小：全量 50MB → 增量 5~10MB"},
 		}},
 		{830, []row{
 			{42, "t", "Active VM"},
-			{76, "tc", "Rust 后端"},
+			{76, "tc", "MoonBit 引擎（vitro/engine/vm）"},
 			{112, "ts", "VitroVM 实例"},
 			{148, "tm", "当前可执行的 VM 状态"},
 			{182, "tm", "大小：1MB"},
@@ -380,11 +372,11 @@ func genCache(root string, _ factsDoc) {
 		line(200, 430, 1000, 430, "line"),
 		line(600, 430, 600, 470, "line"),
 		box(120, 470, 960, 146, "warn", 12),
-		textF(600, 508, "t", "CheckpointManager 落地机制（§5.2，2026-09-11 核对）", ""),
+		textF(600, 508, "t", "CheckpointManager 落地机制（§5.2，MoonBit 侧随 S8 落地）", ""),
 		textF(600, 540, "tc", "每 full_every 个检查点存完整 1MB 全量，其余仅存被修改的 4KB 脏页", ""),
 		textF(600, 566, "tc", "上限 max_checkpoints = 50 · smart_mode 语义关键点强制保存", ""),
 		textF(600, 592, "tc", "隔离区 quarantine 必须随快照往返，否则时间旅行回退后 UAF 检测出现假阴性", ""),
-		textF(600, 640, "tc", "Frame Cache 权威副本在引擎内；消费方经 vitro_get_step_payloads_json / serve payload.get 取用，不得假设窗口外历史仍可查询", ""),
+		textF(600, 640, "tc", "Frame Cache 权威副本在引擎内；消费方经 serve payload.get / gateway step 族取用，不得假设窗口外历史仍可查询", ""),
 	)
 	writeSVG(root, "docs/current/05-教学体验/unified-triple-cache.svg", P)
 }
@@ -392,11 +384,11 @@ func genCache(root string, _ factsDoc) {
 // ─── 图 C：认知推理·概念图谱（源：认知推理系统设计.md §3.1 三域树）────────────
 
 func genKG(root string, _ factsDoc) {
-	P := svgOpen(1200, 780, "vitro 认知推理概念图谱", "P2 知识图谱 · C 语言概念三域（已实现 Phase 22）",
+	P := svgOpen(1200, 780, "vitro 认知推理概念图谱", "P2 知识图谱 · C 语言概念三域（已实现）",
 		"对账 认知推理系统设计.md §3.1 节点分类树；P2 状态=已实现（24 节点 + 30+ 边）")
 	P = append(P,
 		textF(600, 54, "tt", "P2 知识图谱 · C 语言概念三域", ""),
-		textF(600, 88, "tm", "已实现（Phase 22）：KnowledgeGraph 24 概念节点 + 30+ 关系边 · native/src/diagnostics/knowledge_graph.rs", ""),
+		textF(600, 88, "tm", "已实现：概念激活 activate_from_error / activate_from_ast · 先修路径 find_prerequisite_path · vitro/engine/diagnostics", ""),
 	)
 	domains := []struct {
 		name  string
@@ -442,7 +434,7 @@ func genShadow(root string, fd factsDoc) {
 	// 数字锚 facts 现役键（clang_direct 全量在 CI 产真值——如键缺失则 fail loud）。
 	cases := mustFact(fd, "moonbit_test_passed")
 	P := svgOpen(1200, 836, "vitro Clang 直拍门禁流水线", "Clang 直拍框架 · 真值对照与 CI 硬门禁",
-		"对齐 影子验证框架.md 删区版语义（shadow → clang_direct 吸收，2026-10-05）；数字 data-fact 锚定 reports/facts.json")
+		"对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；数字 data-fact 锚定 reports/facts.json")
 	P = append(P,
 		textF(600, 54, "tt", "Clang 直拍 · 真值对照与 CI 硬门禁", ""),
 	)
@@ -454,7 +446,7 @@ func genShadow(root string, fd factsDoc) {
 		textF(600, 300, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役", ""),
 		textF(600, 330, "tm", "语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）", ""),
 	)
-	writeSVG(root, "docs/current/04-标准库与防线/shadow-verification-flow.svg", P)
+	writeSVG(root, "docs/current/04-标准库与防线/clang-direct-gate-flow.svg", P)
 
 }
 
@@ -673,10 +665,10 @@ func sum(ws []int) int {
 
 func genUnifiedArch(root string, _ factsDoc) {
 	P := svgOpen(1200, 902, "vitro 统一模式架构总览", "统一模式 · 架构总览",
-		"对账 统一模式设计.md §3 架构总览图（消费方前端 → 三出口 → session_api → UnifiedEngine → VitroVM）")
+		"对账 统一模式设计.md §3 架构总览图（消费方前端 → 出口 → session → time_travel → VitroVM；实现锚已随删区/S8 切换 MoonBit 侧）")
 	P = append(P, markerDef,
 		textF(600, 56, "tt", "统一模式 · 架构总览", ""),
-		textF(600, 94, "tm", "消费方前端（社区实现）经三出口触及 session_api 与 UnifiedEngine；seek 越窗 = 最近 Checkpoint 恢复 + 正向重放", ""),
+		textF(600, 94, "tm", "消费方前端（社区实现）经出口触及 session 会话层与 time_travel 采集引擎；seek 越窗 = 最近 Checkpoint 恢复 + 正向重放", ""),
 	)
 	// 消费方前端
 	P = append(P, box(40, 112, 1120, 240, "core", 14),
@@ -701,23 +693,23 @@ func genUnifiedArch(root string, _ factsDoc) {
 		textF(592, 334, "tc", "CurrentStep: int", ""))
 	// 出口带（加高：文字与后端框缘脱开）
 	P = append(P, arrow(600, 352, 600, 414, "line"),
-		textL(620, 378, "tm", "出口：capi JSON / serve JSON-lines / wasm 绑定"),
-		textL(620, 404, "tc", "出口只做薄包装，语义一律取自 session_api"))
-	// Rust 后端
+		textL(620, 378, "tm", "出口：serve JSON-lines / wasm gateway / vitro api 单帧"),
+		textL(620, 404, "tc", "出口只做薄包装，语义一律取自 session 会话层"))
+	// MoonBit 后端
 	P = append(P, box(40, 421, 1120, 405, "core", 14),
-		textL(64, 455, "t", "Rust 后端"))
+		textL(64, 455, "t", "MoonBit 后端（vitro/engine）"))
 	P = append(P, box(200, 462, 800, 50, "card", 10),
-		textF(600, 492, "t", "session_api —— 语言中立会话语义层（三出口共用同一套入口语义）", ""))
+		textF(600, 492, "t", "session —— 语言中立会话语义层（各出口共用同一套入口语义）", ""))
 	P = append(P, arrow(600, 512, 600, 536, "line"),
 		box(100, 536, 1000, 200, "card", 12),
-		textF(600, 568, "ts", "UnifiedEngine（native/src/unified/engine.rs）", ""))
+		textF(600, 568, "ts", "time_travel 采集引擎（vitro/engine/time_travel）", ""))
 	ue := []struct {
 		x          int
 		name, desc string
 	}{
-		{130, "run_batch", "step_loop 推进 · collect 收集"},
-		{450, "CheckpointMgr", "checkpoints · seek()"},
-		{770, "VM (Active)", "memory 1MB · value_stack"},
+		{130, "collect", "StepPayload 逐帧采集"},
+		{450, "CheckpointMgr", "save · nearest 恢复"},
+		{770, "VM (Active)", "memory 1MB · VMSnapshot"},
 	}
 	for _, u := range ue {
 		cx := u.x + 150
@@ -733,8 +725,8 @@ func genUnifiedArch(root string, _ factsDoc) {
 		line(280, 706, 920, 706, "line"),
 		arrow(600, 706, 600, 746, "line"),
 		box(100, 746, 1000, 76, "card", 12),
-		textF(600, 774, "t", "VitroVM：step_next() · snapshot() / restore() · read_memory(addr)", ""),
-		textF(600, 800, "tc", "快照/恢复实现 crates/vitro_vm/src/snapshot.rs（CheckpointManager）· 隔离区 quarantine 必须随快照往返", ""),
+		textF(600, 774, "t", "VitroVM：step() · snapshot() / restore() · 内存读（check_access 单入口）", ""),
+		textF(600, 800, "tc", "快照/恢复实现 vitro/engine/time_travel + vm · 隔离区 quarantine 必须随快照往返", ""),
 	)
 	P = append(P,
 		textF(600, 854, "tc", "一致性契约：seek 到第 N 步后 local_vars / call_stack / array_snapshots / pointer_snapshots / heatmap_count 以第 N 步快照为准（spec §4.3）", ""),
@@ -874,8 +866,8 @@ func genProtocol(root string, _ factsDoc) {
 		"对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5；字段清单为 schema 冻结内容（非快照，无 data-fact 锚）")
 	P = append(P,
 		textF(600, 56, "tt", "StepPayload Schema v0.1 · 单步快照帧", ""),
-		textF(600, 94, "tm", "已冻结（2026-09-12 · S1–S5 签字回放 61/61）· 语言中立，任何语言按此解析步数据，无需了解 Rust 内部表示", ""),
-		textF(600, 138, "tc", "（同一语义）出口：capi vitro_step_next_json · vitro_get_step_payloads_json(session, start, end) · serve NDJSON · wasm 绑定", ""),
+		textF(600, 94, "tm", "已冻结（2026-09-12 · S1–S5 签字回放 61/61）· 语言中立，任何语言按此解析步数据，无需了解引擎内部表示", ""),
+		textF(600, 138, "tc", "（同一语义）出口：serve JSON-lines（step / payload.get）· gateway wasm 帧 · vitro api 万能单帧", ""),
 		box(40, 174, 720, 638, "core", 14),
 		textL(64, 204, "ts", "StepPayload（单步快照 · 14 顶层字段）"),
 		textL(64, 234, "tc", "── 步定位 ──"),
@@ -923,13 +915,12 @@ func genProtocol(root string, _ factsDoc) {
 	)
 	P = append(P, box(800, 730, 370, 104, "zone", 12),
 		textF(985, 760, "t", "消费方", ""),
-		textL(820, 788, "tc", "capi 第一批 · vitro_cli serve · wasm 绑定"),
+		textL(820, 788, "tc", "serve JSON-lines · gateway wasm 绑定 · cmd/vitro api"),
 		textL(820, 812, "tc", "任何第三方语言按本 schema 自行解析"),
 	)
 	P = append(P,
-		textF(600, 852, "tc", "实现锚 Rust 侧：unified/{types,collector,engine,stream,contracts,vocabulary}.rs · capi/first_batch.rs", ""),
-		textF(600, 878, "tc", "实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）", ""),
-		textF(600, 904, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol", ""),
+		textF(600, 852, "tc", "实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）· session（会话状态机）· gateway（出口帧）", ""),
+		textF(600, 878, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol", ""),
 	)
 	writeSVG(root, "docs/spec/step-payload-frame.svg", P)
 }
@@ -1061,10 +1052,10 @@ func genGates(root string, _ factsDoc) {
 		textF(600, 56, "tt", "MoonBit 自建验证防线 · 对拍链与闸卫", ""),
 	)
 	P = append(P, box(40, 108, 1120, 62, "core", 12))
-	P = append(P, textF(600, 146, "t", "moon test 引擎白盒 + 契约测试全绿（十五道闸的底座 · 数字见 README 机判行）", ""))
-	// 左列：对拍链（差分五闸 + Clang 双联）
+	P = append(P, textF(600, 146, "t", "moon test 引擎白盒 + 契约测试全绿（防线底座 · 数字见 README 机判行）", ""))
+	// 左列：对拍链（差分五闸 + Clang 直拍）
 	P = append(P, box(40, 190, 640, 300, "zone", 14),
-		textF(360, 224, "t", "逐层对拍（MoonBit ↔ Rust oracle，冻结对照）", ""),
+		textF(360, 224, "t", "逐层对拍（MoonBit ↔ 冻结 golden，工序③固化锚）", ""),
 	)
 	layers := []struct{ name, desc string }{
 		{"lexer_diff", "token TSV 双层逐字节一致"},
@@ -1083,12 +1074,12 @@ func genGates(root string, _ factsDoc) {
 		line(360, 490, 360, 516, "line"),
 		box(64, 516, 286, 84, "card", 10),
 		textF(207, 548, "ts", "clang_direct", ""),
-		textF(207, 574, "tc", "层 2 · Clang 编译直拍", ""),
-		textF(207, 596, "tc", "不经 oracle 中转", ""),
+		textF(207, 574, "tc", "层 2 · Clang 编译运行直拍", ""),
+		textF(207, 596, "tc", "吸收 shadow（2026-10-05）", ""),
 		box(370, 516, 286, 84, "card", 10),
-		textF(513, 548, "ts", "shadow_verify", ""),
-		textF(513, 574, "tc", "层 3 · Clang golden 全量影子", ""),
-		textF(513, 596, "tc", "五分类判定 · CI 硬门禁", ""),
+		textF(513, 548, "ts", "冻结 golden 锚", ""),
+		textF(513, 574, "tc", "工序③固化 · 五闸对拍锚", ""),
+		textF(513, 596, "tc", "oracle 退役后自持", ""),
 	)
 	// 右列：闸卫家族
 	P = append(P, box(700, 190, 460, 410, "zone", 14),
@@ -1098,11 +1089,11 @@ func genGates(root string, _ factsDoc) {
 		{"moonbit_surface", "对外面对账"},
 		{"pkg_deps", "依赖单向无环"},
 		{"mbti_sync", ".mbti 接口面"},
-		{"gen_diag ×4", "生成物新鲜度"},
+		{"gen_diag 族 ×4", "生成物新鲜度"},
 		{"gen_protocol_fields", "S7 字段单源"},
 		{"gen_svg", "插图重生成一致"},
 		{"facts check", "文档数字对账"},
-		{"source_hygiene", "NUL 卫生"},
+		{"host_contract_map", "host 契约对账"},
 		{"toolchain_probe", "工具链漂移探针"},
 	}
 	for i, g := range guards {
@@ -1111,15 +1102,15 @@ func genGates(root string, _ factsDoc) {
 			textL(742, y+23, "tn", g.name),
 			textL(962, y+23, "tc", g.desc))
 	}
-	// 底部：真值源与裸奔期敞口
+	// 底部：真值源与删区敞口清算
 	P = append(P, box(40, 620, 1120, 76, "warn", 12),
 		textF(600, 650, "t", "真值源", ""),
-		textF(600, 678, "tc", "Clang = golden 唯一来源 · Rust oracle = 差分对照（tag rust-oracle-freeze）——退役后对拍锚由本链自持", ""),
+		textF(600, 678, "tc", "Clang = golden 唯一来源 · 对拍锚 = 冻结 golden（工序③固化）· Rust oracle 已退役（档案 tag rust-oracle-freeze）", ""),
 	)
 	P = append(P, box(40, 712, 1120, 96, "warn", 12),
-		textF(600, 744, "t", "裸奔期敞口（诚实记录）", ""),
-		textF(600, 772, "tc", "Rust oracle 退役时其测试体量随之消失——MoonBit 自建测试与对拍闸须在此之前", ""),
-		textF(600, 796, "tc", "补足等价覆盖；进度与敞口清算以总计划 §10 为权威", ""),
+		textF(600, 744, "t", "删区敞口清算（2026-10-05 删区批）", ""),
+		textF(600, 772, "tc", "oracle 测试体量随删区消失——语料域差量经 clang_direct 吸收（shadow 685 ⊆ 698 差量 0）+ MoonBit 自建测试 + fuzz 不变量自检承接；", ""),
+		textF(600, 796, "tc", "遗留敞口与逐项清算以总计划 §10 为权威", ""),
 	)
 	P = append(P,
 		textF(600, 848, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：go run ./scripts/gen_svg gates", ""),

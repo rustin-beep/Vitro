@@ -1,8 +1,8 @@
 # MoonBit 活跃区操作手册（moonbit/）
 
-> **本文件是按需读取的分区手册**——根 [`AGENTS.md`](../AGENTS.md) 双区制路由指向此处，**仅在触碰 MoonBit 活跃区（`moonbit/`）时才读取**，与 [`native/AGENTS.md`](../native/AGENTS.md)（Rust 冻结对照区）对称。
+> **本文件是按需读取的分区手册**——根 [`AGENTS.md`](../AGENTS.md) 分区路由指向此处，**仅在触碰 MoonBit 活跃区（`moonbit/`）时才读取**（Rust 冻结对照区已于 2026-10-05 删区退役，档案 tag `rust-oracle-freeze`；`scripts/`、`.github/` 为语言中立 Go 防线层，无分区手册）。
 > **全域纪律**（中文输出 / 禁擅自 git 提交 / 实测大于脑测 / 诚实记录 / 红→绿 / J9 / archive 规则 / 提交署名规则）以根 AGENTS.md 为准，同样约束本区。
-> **上位文档**：[MoonBit迁移总计划](../docs/current/01-定位与路线/MoonBit迁移总计划.md)（包切分 L0–L9 / 锚点体系 / F1–F9 语言事实）+ [第一阶段计划](../docs/current/01-定位与路线/MoonBit迁移第一阶段计划.md)。本手册只沉淀**工程操作层**（命令 / 陷阱 / 纪律 / 发布），不重复上位文档内容。
+> **上位文档**：[MoonBit迁移总计划](../docs/current/01-定位与路线/MoonBit迁移总计划.md)（包切分 L0–L9 / 锚点体系 / F1–F9 语言事实）+ [第一阶段计划（已归档）](../docs/archive/ARCHIVE_MoonBit迁移第一阶段计划.md)（S0.5/S1 均已收官）。本手册只沉淀**工程操作层**（命令 / 陷阱 / 纪律 / 发布），不重复上位文档内容。
 
 ## 包清单与状态（S6 开工批二——memory + host 建包；语料真值 **600**，2026-09-22 实测）
 

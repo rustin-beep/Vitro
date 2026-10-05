@@ -30,6 +30,6 @@
 
 ## 统计与 review
 
-TODO/FIXME/HACK 数量统计由 `go run ./scripts/engineering_health` 产出（`reports/engineering_health.md`，当前仅扫 `native/` Rust 侧）；`scripts/lint_check.sh` 的同类统计已因前端切割失效（其 Dart 段指向已删除的 `CideFlutter/`，脚本 `set -euo pipefail` 下不可用）——维护者以 engineering_health 报告查看趋势。`moonbit/` 活跃区暂未纳入统计（待补）。
+TODO/FIXME/HACK 数量统计：原 `engineering_health` / `lint_check.sh` 两工具的对象（`native/` Rust 侧、前端 Dart 段）均已退役，两脚本已随删区批删除；`moonbit/` 活跃区的 TODO 趋势统计暂无专用工具（如实记录——待补），当前以 `grep -r "TODO(#DXX)" moonbit/ 人工抽查。
 
 MoonBit 侧沿用同一标签集与 `#DXX` 编号（`// TODO(#DXX):` 形式）；豁免依据标签对应 moon check / moon fmt 口径，新增活账目在[工程债务维护方案](../01-定位与路线/工程债务维护方案.md)登记。

@@ -72,21 +72,20 @@
 <text class="tc" x="704" y="331" text-anchor="start">S1–S5 帧序列断言（冻结签字回放主锚）</text>
 <rect class="card" x="684" y="350" width="452" height="52" rx="10"/>
 <text class="tn" x="704" y="371" text-anchor="start">serve_smoke</text>
-<text class="tc" x="704" y="393" text-anchor="start">NDJSON 出口冒烟 · 双宿主臂 · 豁免表外置</text>
+<text class="tc" x="704" y="393" text-anchor="start">NDJSON 出口冒烟 · 豁免表外置</text>
 <rect class="card" x="684" y="412" width="452" height="52" rx="10"/>
 <text class="tn" x="704" y="433" text-anchor="start">interaction_probe</text>
 <text class="tc" x="704" y="455" text-anchor="start">会话交互 fuzz（帧形状 / payload 不变量）</text>
 <rect class="card" x="684" y="474" width="452" height="52" rx="10"/>
 <text class="tn" x="704" y="495" text-anchor="start">protocol 错误帧</text>
 <text class="tc" x="704" y="517" text-anchor="start">serve 未知 method 必回错（读侧严格纪律二）</text>
-<text class="tc" x="684" y="580" text-anchor="start">双宿主 = Rust 臂 + -moonbit MoonBit 臂</text>
-<rect class="card" x="40" y="624" width="1120" height="96" rx="12"/>
-<text class="t" x="600" y="654" text-anchor="middle">实现锚（双侧）</text>
-<text class="tn" x="600" y="682" text-anchor="middle">Rust 侧（冻结）：native/src/unified/{types,collector,engine,stream,contracts,vocabulary}.rs + capi/first_batch.rs</text>
-<text class="tn" x="600" y="710" text-anchor="middle">MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary · 零依赖自持）</text>
-<rect class="card" x="40" y="740" width="1120" height="76" rx="12"/>
-<text class="t" x="600" y="770" text-anchor="middle">消费者拓扑（数据源单源论：引擎画数据，下游画像素）</text>
-<text class="tc" x="600" y="798" text-anchor="middle">capi 步数据 · vitro_cli serve（NDJSON）· wasm 绑定 · TS @vitro/protocol · 任意第三方语言</text>
+<text class="tc" x="684" y="580" text-anchor="start">Rust 对拍臂已随删区退役 · MoonBit 臂为现役</text>
+<rect class="card" x="40" y="624" width="1120" height="72" rx="12"/>
+<text class="t" x="600" y="654" text-anchor="middle">实现锚</text>
+<text class="tn" x="600" y="682" text-anchor="middle">vitro/engine/protocol（schema · stream · types · vocabulary）+ session + gateway</text>
+<rect class="card" x="40" y="716" width="1120" height="76" rx="12"/>
+<text class="t" x="600" y="746" text-anchor="middle">消费者拓扑（数据源单源论：引擎画数据，下游画像素）</text>
+<text class="tc" x="600" y="774" text-anchor="middle">serve JSON-lines（cmd/serve · cmd/vitro api）· gateway wasm 绑定 · TS @vitro/protocol · 任意第三方语言</text>
 <rect class="warn" x="40" y="836" width="1120" height="88" rx="12"/>
 <text class="t" x="600" y="866" text-anchor="middle">协议演化纪律三条（对 v0.2 激活与一切 v0.x 追加生效）</text>
 <text class="tc" x="600" y="892" text-anchor="middle">缺省字段双条件规则 · 未知容忍非对称（写侧宽容、读侧严格）· 单解码器佐证</text>

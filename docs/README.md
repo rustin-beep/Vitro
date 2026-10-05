@@ -1,16 +1,14 @@
 # Vitro 项目文档
 
-> 教学 C/C++ 子集参考执行引擎（白箱后端）——架构设计、语言子集规范、协议与测试防线
+> 教学 C 子集参考执行引擎（白箱后端）——架构设计、语言子集规范、协议与测试防线
 >
-> 最后核对：2026-10-04（全库逐份翻新第三轮：S8 收官 + 0.8.0 发版件对齐 + 10 份过程记录归档——
-> 路线图/架构设计 S8 状态回灌〔四域收官、0.8.0 发版件、CLI 出口总账、测试数 655/685 对 facts 真值〕、
-> 已知限制与差异 as-of 升 0.8.0〔脱钩轨道改 0.9.0、台账 28 条、缺口 8 putchar 语料闭环划销〕、
-> 05 目录四份 S8 承接回灌、审阅主册加 S8 对拍承接注、快速入门补 `vitro` 总入口、
-> 04 目录三份旧头部翻新、INCIDENTS seek 事故结案注记〔MoonBit 侧结构性消除〕、核心资产裁定/统一整备路线图
-> 加现状注记、J9 台账闸清单补 S8 三闸、CSharp 计划加状态注记〔设计稿定位/时序锚过时〕、
-> 0.8.0 发布档案头部对齐彩排实录；**归档判定：10 份过程记录移入 archive/**〔三份 golden 审阅意见已闭环 /
-> 架构审阅 v1 被 v2 取代 / 突变测试一次性记录 / 实测发现登记使命已尽 / 重构评估与三语化整备已被 U-S 系列承接 /
-> CAPI 评审对象已裁不做 / 代码审阅追踪随冻结终局〕，全仓 15 处活引用改指 archive）。
+> 最后核对：2026-10-05（**删区批文档翻新第四轮**：S9 工序④ native/ 物理删除后的文档面连坐——
+> 根 AGENTS 双区制改写为单区+退役档案、根 README oracle 节改退役档案与单轨格局、架构总图重画单轨并改名
+> `vitro-architecture.svg`、shadow 门禁图改名 `clang-direct-gate-flow.svg` 且《影子验证框架》归档〔防线由
+> clang_direct 吸收〕新建现役《Clang直拍门禁》、统一模式/协议/知识图谱/防线全景四图实现锚自 native/*.rs
+> 切换 MoonBit 包〔session/time_travel/diagnostics 真锚实测核对〕、AGENTS_EN 同步）。
+> 前一沿革：2026-10-04 全库逐份翻新第三轮（S8 收官 + 0.8.0 发版件对齐 + 10 份过程记录归档，
+> 详见 git 历史 6870ca1 与下文归档记录）。
 > 前一沿革：2026-09-29 全库逐份翻新第二轮（S7 批二~五全落 / 0.7.0 发版件就绪 / 模块审阅处置批对齐——
 > 路线图与架构设计的 S7 状态回灌、出口分档落地状态行、CLI 手册补 MoonBit serve 孪生指引、
 > 标准库防线引言测试数对真值（1027+508）、J9 台账补 2026-09-29 两记录并声明覆盖面演化、
@@ -52,11 +50,12 @@
 > **命名约定**：`current/` 下文档自 2026-09-13 起使用中文文件名（专有名词如 C++/CLI/VM/schema 保留英文）；
 > 旧英文名在其他分支或本地检出中可能仍被引用，对照关系见各文档自身头部。
 >
-> **插图（SVG）约定**：`current/` 与 `spec/` 下的 15 张结构插图（架构 / 影子验证 / 三态缓存 / 知识图谱 /
+> **插图（SVG）约定**：`current/` 与 `spec/` 下的 15 张结构插图（架构总览〔原双轨格局图，2026-10-05 删区重画单轨〕 /
+> Clang 直拍门禁〔原影子验证图，随防线吸收更名〕 / 三态缓存 / 知识图谱 /
 > MoonBit 包切分编译侧 + 执行智能侧 / 统一模式架构 / 统一模式状态机 / 内存布局与有界隔离 /
 > MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 /
 > 教学智能流水线）由 `go run ./scripts/gen_svg` 生成——插图自带深浅双底色
-> （亮色白底 / 深色品牌墨底，随查看环境自动切换）；影子验证图内的跑批快照数字带 `data-fact`
+> （亮色白底 / 深色品牌墨底，随查看环境自动切换）；Clang 直拍图内的跑批快照数字带 `data-fact`
 > 锚，由 `go run ./scripts/facts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
 > 目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必使图失步（`gen_svg -check` 即红）；
 > **勿手改**入库 SVG（下次生成即回退）。
@@ -72,7 +71,6 @@
 | [`current/01-定位与路线/后端定位与白箱计划.md`](current/01-定位与路线/后端定位与白箱计划.md) | **后端定位主计划**：前端切割决策、三出口一核心架构、协议先行、Phase 0~3 路线（原 `VITRO_BACKEND_SPLIT_WASM_WHITEBOX_PLAN.md`） |
 | [`current/01-定位与路线/项目更名记录.md`](current/01-定位与路线/项目更名记录.md) | **项目更名记录**：Cide → Vitro 决策依据、命名映射、ABI 2.0.0 迁移指引、诚实边界与验证记录（2026-09-14） |
 | [`current/01-定位与路线/MoonBit迁移总计划.md`](current/01-定位与路线/MoonBit迁移总计划.md) | **MoonBit 迁移总计划（2026-09-18 定稿，当前工作排期权威）**：唯一存活计划——形态裁定（同仓绞杀者/v1=C only〔C++ 已裁砍〕/JIT 倾向不搬/Go 驱动保留/wasm-gc 单出口）；**四门终局 0 红**（门0 弱通过、门1 通过 快于现役解释器 3.3×、门2 有条件 -W gc、门3 通过）；9 条一手语言事实；L0-L9 包切分总图；P1-P7 止血+按目标架构+放弃三清单；A/B/C/D 四级差分锚点；裸奔期最小防线 24 例；差异台账 v0（17 capability_flags）；风险登记册；S0.5-S9+全量切换里程碑（**实测进度：S2–S8 已全部收官——S8 时间旅行/教学智能四域验收三件 2026-10-04 销案；0.8.0 已于 2026-10-05 线上发布（tag `vitro-engine-0.8.0`，线上验收三件全绿）；0.7.0 已于 2026-09-30 线上发布；当前阶段 = S9 = Rust oracle 脱钩批 + S9 裁定 + 解锁修复面（2026-10-04 排期改写含 #39 真值源迁移前置）；§10.5 G 系列已全闭环**）；探测档案取回指南（提交 `917251e`，16 份文档全量入 git 历史） |
-| [`current/01-定位与路线/MoonBit迁移第一阶段计划.md`](current/01-定位与路线/MoonBit迁移第一阶段计划.md) | **MoonBit 迁移第一阶段计划（S0.5 + S1）**：Rust 止血批 P1-P7+U1/U2 逐项（现象/根因 file:line/修法/验收锚，全部经第八轮亲证：J1 栈溢出、★A 双侧、E 前缀 4 处、string 转义、golden 完整性含手写 golden 循环论证处置、列号口径、AST dump 出口）+ S1 基础片任务分解（source/diag/opcode/ast 四包+码表生成脚本+三大工程约定+五条工具陷阱规则+mooncakes 首发判据） |
 | [`current/07-质量与裁定/moonbit生态参考调研20261005.md`](current/07-质量与裁定/moonbit生态参考调研20261005.md) | **MoonBit 生态参考调研（2026-10-05）**：GitHub 全量扫描（2,995 仓）+ 6 仓 clone 亲读——**Tier 1 事实：moonc 源码已开源**（前端+中端+wasm 后端〔native 后端未开源〕；relaxed SSPL + **非商业修改条款** + **编译产物 license 自选例外**〔vitro/engine 产物无传染〕；moon/core/async 均 Apache-2.0）——**停更应急预案经裁定不做**（判定书 §3.3：真停更即 fork OCaml 维护 wasm 后端链）；Tier 2 模式参考：minimoonbit-public（官方课程 MoonBit 子集编译器〔KNF/RISC-V〕）/ MoonbitNES（wasm 内存特化+多 target 条件编译）/ MoonLLVM（执行加速远期对照）；**零采纳零新增依赖** |
 | [`current/07-质量与裁定/S9脱钩与裁定批判定书.md`](current/07-质量与裁定/S9脱钩与裁定批判定书.md) | **S9 脱钩与裁定批判定书（2026-10-05 终稿，十项全裁）**：三裁定实测终判输入——**JIT = wasm-gc 物理无处可放**（制品功能性 imports 仅 js-string ×6，零执行面 API）/ **libc = 单一路由表已落**（86 Bytecode + 2 改判 + 108 Host，遮蔽病结构性消除；**实锤 #39 漏登记第四生成链 gen_libc_data→bytecode_libc_data.json**，已评论登记）/ **Wasmtime 实测不成立**（.NET 绑定 48 编译期拒 non-externref + js-string 两侧无支持；CLI 引擎核心可编译——差距在绑定层，.NET 通道 = serve sidecar 或 WebView2）+ S4 期三欠账补收（names 二选一 / containers 归档〔实测从未建包〕/ decl 散拼重挂）+ **工序③升格冻结资产清单**（四层中间产物 diff〔vm_diff 无基线文件删即失效〕+ e2e 275 三路映射 + trap 锚面〔无 Clang 真值面须逐锚证红〕）+ **工序④准出升级**（替代建成才许移除；MoonBit 侧 fuzz 现状为零）；**§6 裁定表含「不做会怎样/默认值」分级列**（清扫组默认动作直接推进 / 风险防线组硬准出）；工序③④硬准出已改写总计划原文 |
 | [`current/07-质量与裁定/S9冻结资产清单.md`](current/07-质量与裁定/S9冻结资产清单.md) | **S9 冻结资产清单（工序③固化验收件，2026-10-05 建）**：工序顺序翻转（固化先行→脱钩→修复统一窗口）后的主战线——六面逐行（teaching golden ✅ 已迁出冻结区〔sha 对账臂 + 82 模板全量绿〕/ 四层中间产物 golden 601 例 / E1–E4 598 / e2e 275 三路映射 / trap 锚面逐锚证红 / shadow·clang_direct 差量吸收随工序④）；固化 gate = 当轮三防线全绿（起点 CI e8e5b63）；过渡对账臂纪律（旧份活到删区 + 行尾归一比 sha + 删区自动豁免） |
@@ -82,7 +80,7 @@
 | [`current/07-质量与裁定/20260919_S2词法器执行记录.md`](current/07-质量与裁定/20260919_S2词法器执行记录.md) | **S2 词法器执行记录（2026-09-19）**：vitro/engine/lexer 收官——独立预处理 pass（续行拼接/注释剥离/指令/展开）+ LineMap + 宿主 IO（SourceProvider/Vfs）；L1/L2 双层 token TSV 差分逐字节一致（随机 2400 例 4800 TSV + 真实语料 444 例）；已知差异清单 13 条（MoonBit 修复项）+ 故意复刻的 oracle 缺陷 3 项登记；vitro/engine@0.2.0 上架 |
 | [`current/07-质量与裁定/20260919_S3解析器执行记录.md`](current/07-质量与裁定/20260919_S3解析器执行记录.md) | **S3 解析器执行记录（2026-09-19）**：vitro/engine/parser 收官——六文件平移（瀑布/声明符螺旋/语句/声明/C++）；防护形态改造（depth 参数化 8 壳同构 + 声明符 Array 链迭代化 1250 层存活 + 回滚七字段全量快照 + stall_count 活性观测）；E1/E2 差分 597 样本逐字节一致 + E3 病态 12 样本同等拒绝 + E4 反向锚；差异驱动 parser_diff（--selftest J9）；未发布（随 0.4.0）；**§7 审阅修复批（09-20）**：offsetof depth 透传 + enum 常量求值迭代化 + 声明符折叠按 C 语义（有意分叉登记）+ --threshold 阈值锚 + 熔断守卫 + 顶层前瞻判定收口 + CI 接线 |
 | [`current/07-质量与裁定/20260922_性能探究实录.md`](current/07-质量与裁定/20260922_性能探究实录.md) | **性能探究实录（2026-09-22 首轮四轮 §1–§4；其后 §8/§9 复跑与归因、§10 遗留、§11 S6 后复跑、§12 S7 wasm-gc 单出口后复跑、§13 S8 收官批全量复跑 + HEAD vs 0.7.0 同时段 A/B〔2026-10-04，判「无回归」〕、§14 时间旅行优化现状 + JIT 正交性、§15 S8 交付面全量实测（CLI 口径 + 库级对照，2026-10-04）、§16 wasm-gc 出口全场景实测（Node 宿主 + gateway；与 native CLI 同请求对照）、§17 跨实现执行对照（Clang/CPython/V8）**：①native 管线基线（四层 dump baseline 365 例全跑 1.2s/单文件 12.3ms/冷构建 6.2s）；②用户场景 + Rust oracle 对比（compile/run 中位 8–10ms；同层 1.4–1.6×；压力 6 维度随规模恶化至 ~3×，locals 最差；设计性拒绝两侧同构——expr 深度 512/全局区 60KB，**moon dump rc=0 须查产物 ok 字段**）；③时间旅行性能裁定（**累赘实锤**：每步全量快照 21μs=全速 320×、vs CPython 慢 3–4 数量级、bubble/nested 60s 跑不完；病灶=每步 CPU 非内存〔曾误判 OOM 已修正〕；优化=按需物化+checkpoint+写集 undo，StepPayload 协议冻结不动）；④wasm-gc 全面测试（**6/7 场景持平或反超 native**：lexer 1.7×/GC 2.3×；体积 -54%；唯一弱项=大批量超线性）+ 路线裁定（**bytecode→wasm 生成器为全速正解**〔栈式→栈式/1MB→memory 16 页/trap 白送〕，**模板超级指令搬运退役**）。含方法学坑 6 条与探针资产清单（`tmp/perf_probe/` 忽略区） |
-| [`current/01-定位与路线/架构设计.md`](current/01-定位与路线/架构设计.md) | 架构总纲（编译器管线 / VitroVM / 内存模型 / 时间旅行 / 诊断 / 协议 / 关键决策）（原 `DESIGN.md`） |
+| [`current/01-定位与路线/架构设计.md`](current/01-定位与路线/架构设计.md) | 架构总纲（编译器管线 / VitroVM / 内存模型 / 时间旅行 / 诊断 / 协议 / 关键决策）——**主体描述删区前的 Rust 实现〔2026-10-05 退役〕，语义章节仍为 MoonBit 侧同语义参照，头部有现状横幅；按 MoonBit 目标架构重写已列待办**（原 `DESIGN.md`） |
 | [`current/01-定位与路线/项目路线图.md`](current/01-定位与路线/项目路线图.md) | 项目路线图：当前状态、已完成里程碑、下一步、已知缺口 G1~G13（诚实记录）（原 `ROADMAP.md`） |
 | [`current/01-定位与路线/结构重构与C23锚定决议.md`](current/01-定位与路线/结构重构与C23锚定决议.md) | 结构重构决议（R1~R4，已全部交付）+ C23 语言锚定 + E2 模块化预处理器 + E3 C23 语义级（原 `VITRO_RESTRUCTURE_PLAN.md`） |
 | [`current/01-定位与路线/工程债务维护方案.md`](current/01-定位与路线/工程债务维护方案.md) | 工程债务偿还与长期维护方案（`#DXX` 债务编号体系的事实源）（原 `MAINTENANCE_PLAN.md`） |
@@ -96,7 +94,7 @@
 | [`current/02-构建与上手/快速入门.md`](current/02-构建与上手/快速入门.md) | 快速入门：命令行 / JSON-lines 会话 / wasm32 三条主路径（原 `QUICKSTART.md`） |
 | [`current/02-构建与上手/构建指南.md`](current/02-构建与上手/构建指南.md) | 构建指南：引擎、CLI、wasm32、测试防线与排障（原 `BUILD.md`；脚本清单已拆分至下方专册） |
 | [`current/02-构建与上手/脚本总清单与必跑防线.md`](current/02-构建与上手/脚本总清单与必跑防线.md) | **脚本总清单与必跑防线（2026-09-22 建册）**：`scripts/` 全量脚本入册（CI 门禁驱动 / 差分对拍 / 探针 / 生成器 / Python 残留处置）；CI 门禁全表与**本地提交前按改动区域的必跑矩阵**；用法权威源=各脚本头注，本册为一级索引与入册义务 |
-| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI **双轨使用指南**：MoonBit 侧 `vitro` 总入口（agent 主入口，2026-10-04）+ Rust `vitro_cli` oracle（含 `serve` JSON-lines 协议与方法一览；协议契约单源在 [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
+| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI 使用指南：MoonBit 侧 `vitro` 总入口（agent 主入口，2026-10-04；Rust `vitro_cli` oracle 已随删区退役——oracle 章节待翻新）（协议契约单源在 [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
 
 #### 语言子集规范（行为契约）
 
@@ -113,7 +111,7 @@
 |------|------|
 | [`current/04-标准库与防线/标准库支持矩阵.md`](current/04-标准库与防线/标准库支持矩阵.md) | 标准库支持矩阵（头文件 × 函数 × 实现层 × 验证状态）（原 `SUPPORTED_LIBC.md`） |
 | [`current/04-标准库与防线/标准库架构与测试防线.md`](current/04-标准库与防线/标准库架构与测试防线.md) | 标准库四层架构（VM Builtin / Rust Host / Bytecode Libc）与测试设计（原 `STDLIB_AND_TEST_DESIGN.md`） |
-| [`current/04-标准库与防线/影子验证框架.md`](current/04-标准库与防线/影子验证框架.md) | 影子验证框架（Clang 对照、门禁语义、提速设施、已知限制）（原 `SHADOW_VERIFICATION_FRAMEWORK.md`） |
+| [`current/04-标准库与防线/Clang直拍门禁.md`](current/04-标准库与防线/Clang直拍门禁.md) | **Clang 直拍门禁（clang_direct，CI 硬门禁）**：真值源 = Clang 本尊、被测物 = MoonBit `cmd/run`，全量语料逐例对照；`known_direct.json` 白名单 digest 锁定；吸收 shadow 防线（2026-10-05 删区批，语料差量 0；前身已归档 [`ARCHIVE_影子验证框架.md`](../archive/ARCHIVE_影子验证框架.md)） |
 | [`current/04-标准库与防线/学生错误用例集.md`](current/04-标准库与防线/学生错误用例集.md) | 学生常见错误测试用例集（⚠️ 人工整理的假想清单，未接防线；真实失败路径语料见裁定 G1）（原 `STUDENT_ERROR_TEST_CASES.md`） |
 | [`current/04-标准库与防线/TODO注释规范.md`](current/04-标准库与防线/TODO注释规范.md) | 代码内 TODO/FIXME/HACK/SAFETY 标签与 `#DXX` 编号约定（原 `TODO_CONVENTION.md`） |
 
@@ -192,6 +190,13 @@
 - 历史代码审查报告与事故复盘
 - 已完成的实现计划（double / 函数指针 / 多文件编译 / 内存扩容 / 递归类型重构 / 指针复合赋值等）
 - 一次性评估报告与工作记录
+
+**2026-10-05 本次归档**（S9 工序④删区批文档翻新，逐个取证后判定；2 份——全部加归档横幅，current 区 9 处活引用已改指现役/归档）：
+
+| 归档文件 | 原名（docs/current/） | 原因 |
+|------|------|------|
+| `ARCHIVE_影子验证框架.md` | `04-标准库与防线/影子验证框架.md` | 对象已退役——shadow 驱动 `scripts/shadow_verify.go` 随 2026-10-05 删区物理删除，防线由 clang_direct 吸收（语料差量 0）；机制章节失效，§七演化史（45→685 例）留档；现役文档《Clang直拍门禁》承接 |
+| `ARCHIVE_MoonBit迁移第一阶段计划.md` | `01-定位与路线/MoonBit迁移第一阶段计划.md` | 双使命终局——S0.5 Rust 止血批（P1–P7/U1/U2）修复对象随删区物理删除；S1 基础片已落地随 0.1.0 发布，工程约定由总计划与 moonbit/AGENTS.md 承接；迁移史追溯留档 |
 
 **2026-10-04 本次归档**（全库逐份翻新第三轮，逐个取证后判定；10 份——全部加归档横幅，current 区 15 处活引用已改指 archive）：
 

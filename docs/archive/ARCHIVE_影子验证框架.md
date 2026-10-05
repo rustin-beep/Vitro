@@ -1,5 +1,12 @@
 # Vitro 影子验证框架（Shadow Verification）
 
+> **已归档（2026-10-05，S9 工序④删区批）**：本框架描述的 shadow 防线已随 Rust oracle 删区**整体退役**——
+> 驱动 `scripts/shadow_verify.go` 已物理删除，语料迁 `corpus/`，CI 拆臂移除 shadow 步骤。其职能由
+> **clang_direct**（Clang 直拍，真值 = Clang 本尊、被测物 = MoonBit `cmd/run`）吸收承接，语料域差量 0
+> （shadow 685 ⊆ clang_direct 698）。现役防线文档见 [`docs/current/04-标准库与防线/Clang直拍门禁.md`](../current/04-标准库与防线/Clang直拍门禁.md)。
+> 本文 §一~§六 的机制描述（运行方法 / 缓存 schema / 分类判定）随驱动退役失效；§五历史口径与 §七演化史（2026-05-17 起五个月 45→685 例）
+> 为防线历史档案保留。本文件仅作历史追溯，内容不再维护。
+
 > 目的：用 Clang 作为"影子"编译器，数据驱动自研编译器扩展决策。
 > 最后核对：2026-10-04（头部核对行随连坐批提升——规模口径 685/680/4/1 与 facts 一致：2026-10-04 putchar_range 语料转正 +1 known_issue 连坐〔DIFF-LIB-PUTCHAR-01 闭环〕、2026-10-03 gap 补 printf/scanf 错配诊断面用例 +1 连坐；spfa_default shadow 空转条目已随 2026-09-29 处置批销除。前一沿革 2026-09-29 全库逐份翻新复核）
 >

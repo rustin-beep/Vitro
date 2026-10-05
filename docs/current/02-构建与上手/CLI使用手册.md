@@ -1,14 +1,12 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-10-04（补 MoonBit 侧 `vitro` 总入口一节——CLI 出口总账 #37 批①②③落地；正文 Rust oracle 用法不变。前一沿革 2026-09-29 serve 节）
-> 修订说明（2026-09-11）：去前端化——移除已删除的 `VITRO_CLI_EN.md` 链接，入口表述改为"无前端依赖"并补三出口交叉引用。
-> 出口定位：本文档是 CLI **使用指南（双轨）**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。另两个出口为 C ABI（`native/src/capi/`）与 wasm32，完整清单与职责边界见 [后端定位与白箱计划.md](../01-定位与路线/后端定位与白箱计划.md) §2.2。
-> **MoonBit 迁移现状（2026-10-04）**：MoonBit 侧 CLI 已落地（见下节 `vitro` 总入口）并成为 **agent 主入口**；下文 Rust `vitro_cli` 在 Rust 退役前仍是对拍 oracle 与性能基线的运行形态（两侧已知形态差——trap 退出码 / step 交互 vs 一次性 / dump 语法——spec §2/§5/§7 逐条登记，随退役自然消失）。
+> 最后核对日期：2026-10-05（**S9 工序④删区整篇改单轨**——Rust `vitro_cli` 章节整体退役〔构建/命令表/unified/交互式 step 随 `native/` 物理删除失效，历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现。前一沿革 2026-10-04 补 MoonBit 侧 `vitro` 总入口）
+> 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
-## MoonBit 侧 CLI（2026-10-04 起——agent 主入口）
+## MoonBit 侧 CLI（agent 主入口）
 
 ```bash
-cd moonbit && moon build --release --target native cmd/vitro cmd/run cmd/compile cmd/step
+cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro cmd/run cmd/compile cmd/step
 # 产物：moonbit/_build/native/release/build/cmd/vitro/vitro.exe（及三薄壳）
 ```
 
@@ -19,176 +17,31 @@ vitro step <f> [--max-steps N] [--json|--summary]                 一次性 step
 vitro api <method> [params-json] | api --batch < frames.ndjson    万能单帧 + 批式多帧（状态跨帧——seek/断点/喂入序列可脚本化）
 ```
 
-`api` 子命令（2026-10-04 补）是全部 serve 协议方法的**脚本统一测试出口**——单帧形态 `vitro api memory.regions`、`vitro api compile '{"source":"…"}'` 一行命令直出响应帧；**批式形态 `cat frames.ndjson | vitro api --batch`** 同进程顺序执行帧序列（状态跨帧保留——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等前置依赖序列全部可脚本化；与 serve 的区别 = 管道终止型，无逐行交互锁）。退出码 0=全帧 ok:true / 1=任一帧 ok:false / 4=用法错；单帧形态会话态跨调用不保留（会话序列走 --batch，长活驻留归 serve）。命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
+`api` 子命令是全部 serve 协议方法的**脚本统一测试出口**——单帧形态 `vitro api memory.regions`、`vitro api compile '{"source":"…"}'` 一行命令直出响应帧；**批式形态 `cat frames.ndjson | vitro api --batch`** 同进程顺序执行帧序列（状态跨帧保留——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等前置依赖序列全部可脚本化；与 serve 的区别 = 管道终止型，无逐行交互锁）。退出码 0=全帧 ok:true / 1=任一帧 ok:false / 4=用法错；单帧形态会话态跨调用不保留（会话序列走 --batch，长活驻留归 serve）。命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流、`-` stdin 源码形态（全命令通用）与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
 
-## Rust 侧 vitro_cli（oracle——退役前仍用）
+## Rust 侧 vitro_cli（已退役）
 
-`vitro_cli` 是 Vitro 项目 Rust 后端的命令行调试工具，**无前端依赖（headless 交互第一入口）**，可直接编译、运行和单步调试 C 代码。
+Rust 后端的 `vitro_cli`（compile / run / step / unified / serve 五命令与交互式单步调试）已随 2026-10-05 工序④删区**整体退役**——对应章节自本手册移除，完整历史形态见 tag `rust-oracle-freeze` 与 git 历史。现行等价物：
 
-## 构建（Rust oracle）
+| 原 vitro_cli 命令 | 现行等价 |
+|:---|:---|
+| `vitro_cli run <file>` | `vitro run <file>` |
+| `vitro_cli compile <file>` | `vitro compile <file>` |
+| `vitro_cli step <file>`（交互式） | `vitro step <file>`（一次性流；交互走 serve） |
+| `vitro_cli unified <file>` | `vitro step <file> --summary` / serve `step.begin`+`step.next` |
+| `vitro_cli serve` | `cmd/serve`（见下节） |
 
-```bash
-cd native
-cargo build --release --bin vitro_cli
-```
-
-构建产物位于 `native/target/release/vitro_cli`（Linux/macOS）或 `native/target/release/vitro_cli.exe`（Windows）。
-
-## 基本用法
-
-```bash
-vitro_cli <command> <file> [options]
-```
-
-## 命令
-
-| 命令 | 说明 |
-|------|------|
-| `compile <file>` | 编译 C 文件并显示诊断信息（错误/警告/建议） |
-| `run <file>` | 编译并全速运行程序 |
-| `step <file>` | 交互式单步调试 |
-| `unified <file>` | 统一模式（时间旅行引擎）批量执行并输出摘要（支持 `--max-steps <n>`） |
-| `serve` | **JSON-lines 会话模式**（headless 交互；无文件参数，内容经 stdin 提供），见下文 |
-
-## 选项
-
-| 选项 | 说明 |
-|------|------|
-| `-i <file>` | 从指定文件读取标准输入（多行输入，供 `scanf`/`fgets` 等使用） |
-| `--max-steps <n>` | 统一模式下允许的最大执行步数（默认 100_000），用于长程序时间旅行或性能基线测试 |
-
-## 特殊文件名
-
-使用 `-` 作为文件名时，CLI 从**标准输入**读取源代码，便于快速测试代码片段：
-
-```bash
-# 管道方式
-echo '#include <stdio.h>
-int main() { printf("hello\n"); return 0; }' | vitro_cli run -
-
-# here-document 方式
-vitro_cli compile - <<'EOF'
-#include <stdio.h>
-int main() {
-    int a = 10, b = 20;
-    printf("%d\n", a + b);
-    return 0;
-}
-EOF
-```
-
-## 使用示例
-
-### 1. 编译并检查诊断
-
-```bash
-vitro_cli compile hello.c
-```
-
-输出示例：
-```
-编译成功。
-检测到算法:
-  • 数组遍历 (置信度: 95%)
-```
-
-若存在错误：
-```
-=== 诊断信息 ===
-[错误] 4:5  类型不匹配：无法将 'char[6]' 赋值给 'int' (E3004)
-    建议: 赋值或传参时，左右两边的类型不一致...
-
-编译失败。
-```
-
-### 2. 全速运行
-
-```bash
-vitro_cli run hello.c
-```
-
-输出示例：
-```
-编译成功。
-
-=== 运行输出 ===
-Hello, Vitro CLI!
-
-程序运行完成，返回值：0
-```
-
-### 3. 带输入运行
-
-```bash
-# input.txt 内容：
-# 5 7
-
-vitro_cli run sum.c -i input.txt
-```
-
-### 4. 交互式单步调试
-
-```bash
-vitro_cli step hello.c
-```
-
-进入调试交互后，支持的命令：
-
-| 调试命令 | 说明 |
-|----------|------|
-| `Enter`（空输入） | 执行下一步 |
-| `p` / `print` | 打印当前局部变量 |
-| `o` / `output` | 打印当前程序输出 |
-| `r` / `run` | 全速运行到结束 |
-| `q` / `quit` | 退出调试 |
-
-输出示例：
-```
-=== 交互式单步调试 ===
-命令: [Enter]=下一步, p=打印变量, o=打印输出, q=退出, r=运行到结束
-
-步    0 | 行   0:   >
-步    1 | 行   3: int main() {  > p
-  a: Int = 10
-  b: Int = 20
-步    2 | 行   4: int a = 10;  >
-```
-
-### 5. 统一模式（时间旅行引擎）
-
-```bash
-vitro_cli unified hello.c
-```
-
-输出示例：
-```
-=== 统一模式执行（时间旅行引擎）===
-  共执行 117 步
-
-=== 执行摘要 ===
-总步数: 117
-状态: 正常结束
-
-=== 最终输出 ===
-sum=15
-```
-
-统一模式会完整记录每一步的 VM 状态，支持检查点保存和回溯；`vitro_cli serve` 的 `step.begin` / `step.next` / `seek` 与之共用同一 `UnifiedEngine`（三出口一套语义，见 §6）。
-
-对于可能超过默认 10 万步限制的长程序，可使用 `--max-steps` 放宽限制：
-
-```bash
-vitro_cli unified long_sort.c --max-steps 500000
-```
-
-### 6. serve：JSON-lines 会话模式（Phase 1 出口 3）
+## serve：JSON-lines 会话模式
 
 长寿命 headless 会话进程：**stdin 每行一个 JSON 请求，stdout 每行一个 JSON 响应**（NDJSON）。
 供 IDE 后端/判分服务/自动化脚本以任意语言消费，无需 ctypes 或 FFI。
 
 ```bash
-vitro_cli serve
+cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
+./_build/native/release/build/cmd/serve/serve.exe
 ```
+
+现役实现 = `moonbit/cmd/serve`（native stdio 壳，协议层在 `gateway` 包——S7 批三号起以同构方法族承接，`serve_smoke` 以同一请求表对拍锁定）。
 
 协议契约：
 
@@ -197,8 +50,8 @@ vitro_cli serve
 | **id 关联** | 请求可带 `id`（任意 JSON 值），响应原样回填 —— 便于异步/乱序对账 |
 | **帧同构** | 成功帧 `{"id":N,"ok":true,"result":{…}}`，错误帧 `{"id":N,"ok":false,"error":{"kind":…,"message":…}}` —— 解析路径统一 |
 | 错误 kind | `protocol`（请求格式/未知方法）/ `state`（会话状态不满足）/ `internal` |
-| 入口语义 | 与 capi **共用 `session_api`**（运行结果/诊断/步 payload 形状完全一致），三出口不产生语义分叉 |
-| 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` 与 capi 同名 setter 一致 |
+| 入口语义 | 会话语义层单源（MoonBit 侧 = `vitro/engine/session` 包；运行结果/诊断/步 payload 形状各出口一致），出口间不产生语义分叉 |
+| 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` |
 | 重置语义 | `session.reset` 清空编译/运行状态，**保留会话级配置**（隔离预算、判分确定性、argv） |
 | **会话拓扑** | **单 serve 进程 = 单活跃会话**：方法表无并发句柄参数，`session.create`/`destroy` 都是"清空重建同一实例"；需要并发逻辑会话（如"长寿命诊断进程 + 瞬态运行进程"）时**起多个 serve 进程**——这是当前唯一受支持的并发形态（下游需求清单 D2）|
 
@@ -206,7 +59,7 @@ vitro_cli serve
 
 | 方法 | 参数 | 说明 |
 |---|---|---|
-| `ping` | — | 存活探测，返回 ABI 版本 |
+| `ping` | — | 存活探测，返回引擎版本 |
 | `compile` | `source`（或 `files:[{filename,source}]`） | 覆盖式编译当前单元集合，返回诊断 JSON |
 | `run` | `input` / `argv` / `batch_input` / `max_steps` / `deterministic` | 全速运行，返回 `status`/`return_value`/`steps_executed` |
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
@@ -235,12 +88,11 @@ vitro_cli serve
 | `stack` | 函数名 | **进入该帧的调用行**（`main` 为 0） | `call` | `size` = 帧跨度 |
 
 栈/全局区域**只在导出层合成**，不写回内部堆清单（堆统计口径不受影响）。
-`capi` 第二批将把该形状语言中立化。
 
 示例（一次会话跑完编译 → 运行 → 取输出 → 单步 → 收尾）：
 
 ```bash
-$ vitro_cli serve <<'EOF'
+$ ./_build/native/release/build/cmd/serve/serve.exe <<'EOF'
 {"id":1,"method":"compile","params":{"source":"#include <stdio.h>\nint main(){ printf(\"%d\", 1+2); return 0; }\n"}}
 {"id":2,"method":"run"}
 {"id":3,"method":"output.delta","params":{"cursor":0}}
@@ -258,7 +110,7 @@ EOF
 {"id":7,"ok":true,"result":{"shutdown":true}}
 ```
 
-> 上述输出为 2026-09-11 实测（字段顺序由 JSON 对象语义决定，消费方不应依赖顺序）。
+> 上述输出为 2026-09-11 实测（Rust 侧 oracle 时代记录；MoonBit 侧同一请求表经 serve_smoke 对拍锁定同一帧形状——字段顺序由 JSON 对象语义决定，消费方不应依赖顺序）。
 >
 > **E-P1-5（输出通道）**：`output.delta` 默认返回 `stream:"display"` —— 即展示视图，除程序输出外
 > 还含 Vitro 追加的"程序运行完成"提示与（有泄漏时的）泄漏报告，供 UI 原样显示。
@@ -272,7 +124,7 @@ EOF
 > `OutputKind` 给每段输出打标，消费方**不得**再对文本做正则清洗——此前散落十余处的
 > "程序运行完成"清洗规则已在 E-P1-5 中全部废除（程序自己打印同类文本时会被误删）。
 >
-> 与 `jq` 配合：`vitro_cli serve < session.ndjson | jq -c 'select(.ok|not)'` 可只筛错误帧。
+> 与 `jq` 配合：`serve < session.ndjson | jq -c 'select(.ok|not)'` 可只筛错误帧。
 >
 > **输入语义（`InputMode`）**：`run` 的 `batch_input`（默认 `false`）决定"输入耗尽"的含义：
 >
@@ -282,7 +134,7 @@ EOF
 >   程序正常 `finished`——`while (scanf("%d", &n) != EOF)` 这类 C 第一课习语依赖此语义。
 >   **判分 / 批量路径应以 `batch_input:true` 为准**（一次性给全 stdin 时语义等价于 EOF）。
 >
-> CLI 的 `vitro_cli run <file> -i <input>`（headless 批处理）固定走 Batch，无需额外参数。
+> CLI 的 `vitro run <file> -i <input>`（headless 批处理）固定走 Batch，无需额外参数。
 >
 > **EOF 粘滞**（2026-09-12 补，对齐 C11 7.21.5.1 `feof`）：Batch 下**任一路径**首次判定
 > "流耗尽"即置位 `stdin_eof` 并把读取游标推到底——此后 `scanf`/`getchar` 一律返回 `-1`，
@@ -298,25 +150,22 @@ EOF
 > {"id":3,"method":"input.feed","params":{"text":"35\n"}}   // → finished，读入 a=7, b=35
 > ```
 >
-> 防线：`go run ./scripts/serve_smoke` 覆盖 id 关联 / 帧同构 / 生命周期 / 配置一致性 / 三段式内存地图 / schema 轨道与词汇表的 68 项断言（CI 已纳入，脚本自报口径）。
-
-> **MoonBit 孪生实现（S7 批三号起）**：`moonbit/cmd/serve` 以同构方法族承接同一 JSON-lines 协议
-> （协议层在 `gateway` 包，serve 为 native stdio 壳；step 族随 S8 接入），`serve_smoke -moonbit`
-> 以同一请求表对拍锁定。已知形态差（登记不照搬）：请求行 ≥65535 字节时 MoonBit 侧回 protocol
-> 错误帧后干净退出（2026-09-29 超长行修复——静默丢弃违反协议演化纪律②），Rust 侧
-> `BufRead::lines` 无行上限继续回 pong。
+> 防线：`go run ./scripts/serve_smoke` 覆盖 id 关联 / 帧同构 / 生命周期 / 配置一致性 / 三段式内存地图 / schema 轨道与词汇表断言（CI 已纳入，脚本自报口径）。
+>
+> **已知形态差（登记不照搬）**：请求行 ≥65535 字节时 MoonBit 侧回 protocol
+> 错误帧后干净退出（2026-09-29 超长行修复——静默丢弃违反协议演化纪律②）。
 
 ## 快速测试片段
 
-无需创建临时文件，直接通过标准输入快速验证代码：
+无需创建临时文件，直接通过标准输入快速验证代码（`-` 文件位 = 源码从 stdin 读，全命令通用，见 spec）：
 
 ```bash
-# 测试 printf
+# 测试 printf（管道方式）
 echo '#include <stdio.h>
-int main() { printf("ok\n"); return 0; }' | vitro_cli run -
+int main() { printf("ok\n"); return 0; }' | vitro run -
 
-# 测试循环
-vitro_cli unified - <<'EOF'
+# 测试循环（here-document 方式）
+vitro run - <<'EOF'
 #include <stdio.h>
 int main() {
     int s = 0;
@@ -326,12 +175,8 @@ int main() {
 }
 EOF
 
-# 测试 scanf + 输入
-cat <<'EOF' | vitro_cli run - -i /dev/stdin
-#include <stdio.h>
-int main() { int a,b; scanf("%d%d",&a,&b); printf("%d\n",a+b); return 0; }
-EOF
-# 然后输入两个数字并按 Ctrl+D（Unix）或 Ctrl+Z（Windows）
+# 测试 scanf + 输入（输入数据写文件后 -i 注入）
+vitro run sum.c -i input.txt
 ```
 
 > **注意**：当使用 `-` 从 stdin 读取源代码时，不能再通过 `-i -` 从同一 stdin 读取输入数据，建议将输入数据写入文件后使用 `-i data.txt`。

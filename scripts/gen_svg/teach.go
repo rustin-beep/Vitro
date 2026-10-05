@@ -181,7 +181,7 @@ func genTeach(root string, _ factsDoc) {
 	// 对拍纪律
 	P = append(P, box(40, 748, 1120, 76, "warn", 12),
 		textF(600, 778, "t", "对拍纪律", ""),
-		textF(600, 806, "tc", fmt.Sprintf("%d 条 golden 首现序列 ↔ Rust oracle 逐条一致 · teaching_annotation_diff 机判 · %d 模板全绿（豁免显式过闸）", nGolden, nTemplates), ""),
+		textF(600, 806, "tc", fmt.Sprintf("%d 条 golden 首现序列 · teaching_annotation_diff 机判（golden 已迁出冻结区，sha 对账自持）· %d 模板全绿（豁免显式过闸）", nGolden, nTemplates), ""),
 	)
 
 	P = append(P,

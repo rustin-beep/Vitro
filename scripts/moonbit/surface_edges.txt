@@ -32,7 +32,6 @@ vitro/engine/cmd/dump_ast vitro/engine/fs read_dir
 vitro/engine/cmd/dump_ast vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_ast vitro/engine/fs write_string_to_file
 vitro/engine/cmd/dump_ast vitro/engine/lexer LexResult
-vitro/engine/cmd/dump_ast vitro/engine/lexer tokenize
 vitro/engine/cmd/dump_ast vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_ast vitro/engine/parser parse
 vitro/engine/cmd/dump_compile moonbitlang/core/env args
@@ -48,7 +47,6 @@ vitro/engine/cmd/dump_compile vitro/engine/fs read_dir
 vitro/engine/cmd/dump_compile vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_compile vitro/engine/fs write_string_to_file
 vitro/engine/cmd/dump_compile vitro/engine/lexer LexResult
-vitro/engine/cmd/dump_compile vitro/engine/lexer tokenize
 vitro/engine/cmd/dump_compile vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_compile vitro/engine/parser parse
 vitro/engine/cmd/dump_compile vitro/engine/typeck TypeChecker
@@ -73,7 +71,6 @@ vitro/engine/cmd/dump_typeck vitro/engine/fs read_dir
 vitro/engine/cmd/dump_typeck vitro/engine/fs read_file_to_string
 vitro/engine/cmd/dump_typeck vitro/engine/fs write_string_to_file
 vitro/engine/cmd/dump_typeck vitro/engine/lexer LexResult
-vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize
 vitro/engine/cmd/dump_typeck vitro/engine/lexer tokenize_with_vfs
 vitro/engine/cmd/dump_typeck vitro/engine/parser parse
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker

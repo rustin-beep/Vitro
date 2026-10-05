@@ -15,6 +15,7 @@
         "array_param_with_size.c": "7a1c4d62",
         "array_sum_loop.c": "8c7ae6f7",
         "assign_chain.c": "4d4fa060",
+        "atof_prefix.c": "ff81773c",
         "atoi_function.c": "d4151a08",
         "atoi_negative.c": "02336071",
         "bfs_graph.c": "753681a3",
@@ -143,6 +144,7 @@
         "for_no_init.c": "0bf8b34a",
         "forward_decl.c": "b9d6fc57",
         "fprintf_basic.c": "853d5fe4",
+        "fprintf_persist.c": "035bf73c",
         "func_many_params.c": "2ba219ee",
         "func_ptr_param_decay.c": "f6d41aad",
         "func_return_as_arg.c": "7801ab85",
@@ -407,6 +409,9 @@
         },
         "assign_chain.c": {
           "result_sha": "1519c7d47a0a9b46"
+        },
+        "atof_prefix.c": {
+          "result_sha": "55d82b7134e42ba1"
         },
         "atoi_function.c": {
           "result_sha": "84283a2fbcef936f"
@@ -796,6 +801,9 @@
         },
         "fprintf_basic.c": {
           "result_sha": "9d50ce41bc74afe2"
+        },
+        "fprintf_persist.c": {
+          "result_sha": "ef2475aaea138de8"
         },
         "func_many_params.c": {
           "result_sha": "0eb0abdbbaedda37"

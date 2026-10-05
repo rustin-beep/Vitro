@@ -170,13 +170,17 @@ pub fn host_printf_n(
 }
 
 ///|
-/// `fprintf(stream, fmt, ...)`（oracle `io.rs:349-374`）——`stream == 2`
-/// 分流 stderr（E-P1-5），其余（含 `stdout` 与自定义 `FILE*`）走 stdout
-/// 通道；**fprintf 到自定义 FILE\* 不落盘**是既有偏差（照搬，VFS 批裁定）。
+/// `fprintf(stream, fmt, ...)`（C 语义三通道分流）——`stream == 1` 走
+/// stdout、`stream == 2` 走 stderr（E-P1-5）、**自定义 `FILE*` 落盘 VFS**
+///（DIFF-LIB-FPRINTF-01 销案，2026-10-05 批二-a：旧形态按 `stream != 2`
+/// 全走 stdout 通道、自定义文件写静默丢弃系 oracle 照搬在案；fread 读回
+/// 端到端锚见 host_io_wbtest）。返回值形态维持 no_reply（printf 族返回
+/// void 是 N3 漂移登记，批四处置）。
 pub fn host_fprintf_n(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   log : OutputLog,
+  vfs : VirtualFileSystem,
   stream : UInt64,
   fmt_addr : UInt,
   args : Array[UInt64],
@@ -185,8 +189,18 @@ pub fn host_fprintf_n(
     Ok(out) => {
       if stream == 2UL {
         log.push_stderr(@utf8.encode(out))
-      } else {
+      } else if stream == 1UL {
         log.push_stdout(@utf8.encode(out))
+      } else {
+        let fd = read_fd_raise(mem, map, stream.to_uint()) catch {
+          AccessFault::Fault(f~) => return fault_reply(f)
+        }
+        let n = vfs.write_direct(map, mem, fd, @utf8.encode(out))
+        if n < 0 {
+          return trap_only(
+            "fprintf: stream 指向未打开的文件或文件不可写（FILE\\* 读取或写入失败）。",
+          )
+        }
       }
       no_reply()
     }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批二-a：libc 语义三连——atof 前缀 / strtol 前缀探测 / fprintf 落盘，2026-10-05）
+
+- **atof 整串解析失败返回 0.0**〔DIFF-LIB-ATOF-01 销案〕：atof ≡ strtod(str, NULL)（C §7.22.1.1）——取最长浮点前缀（`"12abc"`→12.0）；扫描器与 strtod 抽单源 `scan_float_token`；语料锚 atof_prefix.c（clang_direct SAME）。
+- **strtol 前缀语义**（#47 新病销案）：base=0 按前缀探测（`0x`+十六进制数字→16、`0` 前缀→8、否则 10）+ base=16 允许可选 `0x` 前缀（`0x` 后无数字回退只消费 `'0'`，C §7.22.1.4）；旧恒 10/不剥系照搬。语料锚被**预拦截级新病**阻挡（见下）。
+- **fprintf 到自定义 FILE\* 不落盘**〔DIFF-LIB-FPRINTF-01 销案〕：三通道分流（1→stdout / 2→stderr / 自定义→VFS 落盘 `write_direct`）；端到端锚 fopen→fprintf→fread 读回；语料锚 fprintf_persist.c（clang_direct SAME——自建文件域不撞 vfs 预设 known）。
+- **发现并登记新病**（#47 评论）：strtol/strtod 的 `char** endptr` 形参存根解析炸——任何调用形态一律 E3038 且**报错参序错位**（真炸点在 char\*\* 形参），两函数完全不可编译；归批三 typeck 域。
+
 ### Fixed（BUG-C：dump_compile/dump_ast/dump_typeck 目录模式 base_dir 缺失——include 族在 codegen/AST/typeck 对拍面恒 lex-fail，2026-10-05）
 
 - **机制**：目录模式把文件集装 VFS（键 = 带目录前缀的完整路径），但 `tokenize_with_vfs` 未传 base_dir——resolver 候选链（栈顶目录 → base_dir）拼出裸名，与 VFS 键口径对不上，查找恒 miss → E1021/lex-fail。信息在驱动装配层丢失（S2 §7-5 与 dump_typeck 头注 2020-09-20 审阅"注入实际无效"在案）。

@@ -286,7 +286,15 @@ test "host_io_surface" {
   ])
   assert_eq(log.join(@host.OutputKind::Stdout), b"n=42")
   assert_true(r.value is None)
-  let r2 = @host.host_fprintf_n(map, mem, log, 2UL, 0x6000U, [])
+  let r2 = @host.host_fprintf_n(
+    map,
+    mem,
+    log,
+    @host.VirtualFileSystem::new(),
+    2UL,
+    0x6000U,
+    [],
+  )
   assert_true(r2.value is None)
   let buf = 0x7000U
   assert_true(

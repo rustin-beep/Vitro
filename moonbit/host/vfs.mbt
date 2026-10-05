@@ -604,6 +604,52 @@ pub fn VirtualFileSystem::fputs(
 }
 
 ///|
+/// 格式化直写（fprintf 落盘通道——DIFF-LIB-FPRINTF-01 销案，2026-10-05
+/// 批二-a）：写 host 侧已格式化字节（不经用户内存），文本模式 0x0A 展开为
+/// 0x0D 0x0A；返回写入字节数（逻辑域）或 -1（fd 无效/只读/写失败）。
+pub fn VirtualFileSystem::write_direct(
+  self : VirtualFileSystem,
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  fd : UInt,
+  data : Bytes,
+) -> Int {
+  let desc = match self.descriptors.get(fd) {
+    Some(d) => d
+    None => return -1
+  }
+  if desc.mode == VfsMode::Read {
+    return -1
+  }
+  let meta = match self.files.get(desc.file_name) {
+    Some(m) => m
+    None => return -1
+  }
+  let data_to_write : Array[Byte] = []
+  if desc.is_text_mode {
+    for b in data {
+      if b == b'
+' {
+        data_to_write.push(b'')
+        data_to_write.push(b'
+')
+      } else {
+        data_to_write.push(b)
+      }
+    }
+  } else {
+    for b in data {
+      data_to_write.push(b)
+    }
+  }
+  if vfs_append_bytes(map, mem, meta, desc, data_to_write) == 0 {
+    data.length()
+  } else {
+    -1
+  }
+}
+
+///|
 /// 追加写入公共段（fputs/fputc/fwrite 的尾部三步：扩容 → 写 → 前移游标）。
 fn vfs_append_bytes(
   map : @memory.MemoryMap,

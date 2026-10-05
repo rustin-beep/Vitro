@@ -140,16 +140,44 @@ test "printf_unknown_spec_consumes_arg_and_passthrough" {
 ///|
 test "fprintf_stderr_split" {
   let (map, mem) = fresh()
+  let vfs = VirtualFileSystem::new()
   put_bytes(mem, map, 0x6000U, b"boom\x00", false)
   let log = OutputLog::new()
-  let r = host_fprintf_n(map, mem, log, 2UL, 0x6000U, [])
+  let r = host_fprintf_n(map, mem, log, vfs, 2UL, 0x6000U, [])
   assert_eq(r.trap, None)
   assert_eq(log.join(OutputKind::Stderr), b"boom")
   assert_eq(log.len_of(OutputKind::Stdout), 0)
-  // 非 2（stdout/自定义 FILE*）→ stdout 通道
+  // stream=1 → stdout 通道（显式分流）
   let log2 = OutputLog::new()
-  ignore(host_fprintf_n(map, mem, log2, 1UL, 0x6000U, []))
+  ignore(host_fprintf_n(map, mem, log2, vfs, 1UL, 0x6000U, []))
   assert_eq(log2.join(OutputKind::Stdout), b"boom")
+}
+
+///|
+test "fprintf_custom_file_persists" {
+  // DIFF-LIB-FPRINTF-01 销案锚（2026-10-05 批二-a）：fprintf 到 fopen 的
+  // 自定义 FILE* 落盘 VFS（fopen 读回端到端）；旧形态静默转 stdout 通道
+  //（照搬 oracle 在案）——修复后 stdout 通道零串扰
+  let (map, mem) = fresh()
+  let vfs = VirtualFileSystem::new()
+  put_cstr(mem, map, 0x6000U, "v=%d\n")
+  let fd = vfs.fopen(map, "out.txt", "w")
+  assert_true(fd > 0U)
+  // FILE* 协议 = 堆上 4 字节存 fd（host_fopen 同款——测试直接构造）
+  ignore(mem.store_u32(map, 0x6500U, fd))
+  let log = OutputLog::new()
+  let r = host_fprintf_n(map, mem, log, vfs, 0x6500UL, 0x6000U, [
+    (7).to_uint64(),
+  ])
+  assert_eq(r.trap, None)
+  assert_eq(log.len_of(OutputKind::Stdout), 0)
+  // 读回（文本模式写 \n 已展开 CRLF，文本模式读压回）——逐字节等于格式化输出
+  let fdr = vfs.fopen(map, "out.txt", "r")
+  assert_true(fdr > 0U)
+  let buf = 0x7000U
+  let n = vfs.fread(mem, map, fdr, buf, 1, 16)
+  assert_eq(n, 4)
+  assert_eq(peek(mem, map, buf, 5), b"v=7\n\x00")
 }
 
 ///|

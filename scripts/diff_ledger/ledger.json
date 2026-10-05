@@ -139,8 +139,8 @@
       "id": "DIFF-LIB-FPRINTF-01",
       "title": "fprintf 到自定义 FILE* 不落盘（非 stderr 通道写入静默转 stdout 输出，读回为空）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "verified-run",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "host_fprintf 不解析 stream 实参；VFS 批裁定照搬，0.8.0 清",
       "subsystems": [
@@ -157,7 +157,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "fprintf_file.c 探针实锤（2026-09-30）：MoonBit 输出 'hello 42' 于 stdout + read:[] vs Clang read:[hello 42]"
+      "notes": "销案 2026-10-05（脱钩修复批批二-a）：三通道分流 + vfs write_direct 落盘 + 端到端锚；语料锚 fprintf_persist.c 转绿（自建文件域不撞预设 known）"
     },
     {
       "id": "DIFF-LIB-PUTCHAR-01",
@@ -414,8 +414,8 @@
       "id": "DIFF-LIB-ATOF-01",
       "title": "atof 整串解析失败返回 0.0（atof(\"12abc\")→0 vs C 语义取前缀 12.0）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "verified-run",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "oracle 既有行为照搬（已知限制①-2）；0.8.0 清",
       "subsystems": [
@@ -431,7 +431,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "atof_prefix.c 探针实锤（2026-09-30）：MoonBit 0 vs Clang 12"
+      "notes": "销案 2026-10-05（脱钩修复批批二-a）：atof≡strtod 前缀语义（scan_float_token 单源）+ 语料锚 atof_prefix.c 转绿"
     },
     {
       "id": "DIFF-VFS-CRLF-01",

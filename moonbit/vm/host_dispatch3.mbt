@@ -335,6 +335,7 @@ fn VitroVM::execute_host_func3(
         self.mem_map,
         self.memory,
         self.output,
+        self.vfs,
         stream.to_uint64(),
         fmt_addr,
         args,

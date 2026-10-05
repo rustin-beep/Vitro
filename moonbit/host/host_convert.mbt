@@ -117,8 +117,68 @@ fn atol_bytes(s : Bytes) -> Int64 {
 }
 
 ///|
-/// `atof(s)`（oracle `misc.rs:329-334`）——**两端**裁剪后整串 parse，失败
-/// → 0.0（与 C 取前缀语义的偏差是 oracle 既有行为，照搬）。
+/// 字节 → 数字值（非字母数字 → -1；进位域判定由调用方负责）。
+fn digit_value(c : Byte) -> Int {
+  let v = c.to_int()
+  if v >= 48 && v <= 57 {
+    v - 48
+  } else if v >= 97 && v <= 122 {
+    v - 97 + 10
+  } else if v >= 65 && v <= 90 {
+    v - 65 + 10
+  } else {
+    -1
+  }
+}
+
+///|
+/// 浮点 token 前缀扫描（C strtod 语义）：跳 ASCII 空白 → 可选符号 →
+/// 数字/小数点（一次）/指数（一次，后可带符号）——atof ≡ strtod(str, NULL)
+///（C §7.22.1.1）的公共扫描器；返回 (token 字节, 消费位数)。
+/// 2026-10-05 批二-a 自 strtod 内联体抽出（atof 前缀语义修复复用）。
+fn scan_float_token(s : Bytes) -> (Array[Byte], Int) {
+  let n = s.length()
+  let mut pos = 0
+  while pos < n && is_ascii_ws_byte(s[pos]) {
+    pos = pos + 1
+  }
+  let start = pos
+  if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
+    pos = pos + 1
+  }
+  let mut has_dot = false
+  let mut has_exp = false
+  while pos < n {
+    let c = s[pos]
+    if c >= b'0' && c <= b'9' {
+      pos = pos + 1
+    } else if c == b'.' && !has_dot {
+      has_dot = true
+      pos = pos + 1
+    } else if (c == b'e' || c == b'E') && !has_exp {
+      has_exp = true
+      pos = pos + 1
+      if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
+        pos = pos + 1
+      }
+    } else {
+      break
+    }
+  }
+  let token : Array[Byte] = []
+  let mut i = start
+  while i < pos {
+    token.push(s[i])
+    i = i + 1
+  }
+  (token, pos)
+}
+
+///|
+/// `atof(s)`（C §7.22.1.1：atof(str) ≡ strtod(str, NULL)）——取最长浮点
+/// 前缀 parse（`"12abc"` → 12.0）。DIFF-LIB-ATOF-01 销案（2026-10-05
+/// 批二-a）：旧「两端裁剪后整串 parse，失败 → 0.0」系 oracle 照搬（与 C
+/// 取前缀语义的偏差在案）；脱钩后回归 C 语义，扫描器与 strtod 单源。
 pub fn host_atof(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
@@ -127,22 +187,7 @@ pub fn host_atof(
   let s = read_cstring_raise(mem, map, addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
-  // 两端裁 ASCII 空白（oracle trim 是 Unicode 空白——微差登记见模块头）
-  let n = s.length()
-  let mut lo = 0
-  while lo < n && is_ascii_ws_byte(s[lo]) {
-    lo = lo + 1
-  }
-  let mut hi = n
-  while hi > lo && is_ascii_ws_byte(s[hi - 1]) {
-    hi = hi - 1
-  }
-  let token : Array[Byte] = []
-  let mut i = lo
-  while i < hi {
-    token.push(s[i])
-    i = i + 1
-  }
+  let (token, _) = scan_float_token(s)
   let val : Double = @string.parse_double(
     @utf8.decode_lossy(Bytes::from_array(token)),
   ) catch {
@@ -152,10 +197,12 @@ pub fn host_atof(
 }
 
 ///|
-/// `strtol(str, endptr, base)`（oracle `misc.rs:368-415`）——`base == 0`
-/// 视为 10（**不识别 `0x` 前缀**，`base=16` 下 `"0x10"` 解析为 0——oracle
-/// 现状照搬）；无数字时写 `errno=1`（EINVAL）。`endptr` 非 NULL 时写入
-/// 停止位（str 起始 + 扫描位数）。
+/// `strtol(str, endptr, base)`（C §7.22.1.4）——**base=0 前缀探测**：
+/// `0x`/`0X`+十六进制数字 → 16、`0` 前缀 → 8、否则 10；**base=16 允许
+/// 可选 `0x`/`0X` 前缀**（`0x` 后无数字则回退为只消费 `'0'`）。
+/// 2026-10-05 批二-a 修复（#47 新病销案）：旧「base=0 恒 10、base=16
+/// 不剥 0x」系 oracle 照搬在案。无数字时写 `errno=1`（EINVAL）。
+/// `endptr` 非 NULL 时写入停止位（str 起始 + 扫描位数）。
 pub fn host_strtol(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
@@ -183,22 +230,31 @@ pub fn host_strtol(
   }
   let start_pos = pos
   let mut val = 0L
-  let effective_base = if base == 0 { 10L } else { base.to_int64() }
-  while pos < n {
-    let c = s[pos]
-    let digit = if c >= b'0' && c <= b'9' {
-      (c.to_int() - 48).to_int64()
-    } else if c >= b'a' && c <= b'z' {
-      (c.to_int() - 97 + 10).to_int64()
-    } else if c >= b'A' && c <= b'Z' {
-      (c.to_int() - 65 + 10).to_int64()
+  // 前缀探测（C §7.22.1.4 subject sequence；0x 后无有效数字不消费 x）
+  let effective_base : Int = if base == 0 {
+    if pos + 1 < n && s[pos] == b'0' && (s[pos + 1] == b'x' || s[pos + 1] == b'X') && pos + 2 < n && digit_value(s[pos + 2]) < 16 {
+      pos = pos + 2
+      16
+    } else if pos < n && s[pos] == b'0' {
+      8
     } else {
+      10
+    }
+  } else if base == 16 {
+    if pos + 1 < n && s[pos] == b'0' && (s[pos + 1] == b'x' || s[pos + 1] == b'X') && pos + 2 < n && digit_value(s[pos + 2]) < 16 {
+      pos = pos + 2
+    }
+    16
+  } else {
+    base
+  }
+  let eff = effective_base.to_int64()
+  while pos < n {
+    let digit = digit_value(s[pos])
+    if digit < 0 || digit.to_int64() >= eff {
       break
     }
-    if digit >= effective_base {
-      break
-    }
-    val = val * effective_base + digit
+    val = val * eff + digit.to_int64()
     pos = pos + 1
   }
   if pos == start_pos {
@@ -236,46 +292,14 @@ pub fn host_strtod(
   let s = read_cstring_raise(mem, map, str_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
-  let n = s.length()
-  let mut pos = 0
-  while pos < n && is_ascii_ws_byte(s[pos]) {
-    pos = pos + 1
-  }
-  let start = pos
-  if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
-    pos = pos + 1
-  }
-  let mut has_dot = false
-  let mut has_exp = false
-  while pos < n {
-    let c = s[pos]
-    if c >= b'0' && c <= b'9' {
-      pos = pos + 1
-    } else if c == b'.' && !has_dot {
-      has_dot = true
-      pos = pos + 1
-    } else if (c == b'e' || c == b'E') && !has_exp {
-      has_exp = true
-      pos = pos + 1
-      if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
-        pos = pos + 1
-      }
-    } else {
-      break
-    }
-  }
-  let token : Array[Byte] = []
-  let mut i = start
-  while i < pos {
-    token.push(s[i])
-    i = i + 1
-  }
+  // 扫描器与 atof 单源（2026-10-05 批二-a 抽出）
+  let (token, pos) = scan_float_token(s)
   let val : Double = @string.parse_double(
     @utf8.decode_lossy(Bytes::from_array(token)),
   ) catch {
     _ => 0.0
   }
-  if pos == start {
+  if token.is_empty() {
     match errno_addr {
       Some(a) =>
         match mem.store_u32(map, a, 1U) {

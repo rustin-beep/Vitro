@@ -68,6 +68,12 @@
       "stdout_sha": "d3cee6df83f68a3e",
       "memory_sha": "11d32aa1374e87d2"
     },
+    "baseline/atof_prefix.c": {
+      "src_sha": "ff81773c",
+      "exit_code": 0,
+      "stdout_sha": "365b521cdf7d40c7",
+      "memory_sha": "43e67aaa1edc4cd1"
+    },
     "baseline/atoi_function.c": {
       "src_sha": "d4151a08",
       "exit_code": 0,
@@ -836,6 +842,12 @@
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
       "memory_sha": "6c2d581d82e287dc"
+    },
+    "baseline/fprintf_persist.c": {
+      "src_sha": "035bf73c",
+      "exit_code": 0,
+      "stdout_sha": "24d0bfde4de2aedd",
+      "memory_sha": "a5057d06e50310ee"
     },
     "baseline/func_many_params.c": {
       "src_sha": "2ba219ee",

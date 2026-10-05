@@ -190,9 +190,22 @@ test "atof_parse_trim_and_garbage_zero" {
     host_atof(mem, map, 0x6100U).value,
     Some(1.5.reinterpret_as_uint64()),
   )
-  // oracle 既有偏差锚：整串 parse 失败 → 0.0（C 的 atof 取前缀 12.0）
+  // DIFF-LIB-ATOF-01 销案（2026-10-05 批二-a）：atof ≡ strtod(str, NULL)
+  //（C §7.22.1.1）——取最长浮点前缀，"12abc"→12.0（旧整串 parse 失败
+  // →0.0 系 oracle 照搬形态）
   put_cstr(mem, map, 0x6200U, "12abc")
-  assert_eq(host_atof(mem, map, 0x6200U).value, Some(0UL))
+  assert_eq(
+    host_atof(mem, map, 0x6200U).value,
+    Some(12.0.reinterpret_as_uint64()),
+  )
+  // 前缀语义边界：符号 + 小数前缀 + 指数前缀
+  put_cstr(mem, map, 0x6300U, "-2.5e1xyz")
+  assert_eq(
+    host_atof(mem, map, 0x6300U).value,
+    Some((-25.0).reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6400U, "abc")
+  assert_eq(host_atof(mem, map, 0x6400U).value, Some(0UL))
 }
 
 ///|
@@ -208,12 +221,17 @@ test "strtol_base_endptr_errno" {
   // base 16
   put_cstr(mem, map, 0x6100U, "ff")
   assert_eq(host_strtol(mem, map, 0x6100U, 0U, 16, None).value, Some(255UL))
-  // base 16 不剥 0x 前缀（oracle 现状）："0x10" → 0，停止位在 'x' 前
+  // base 16 剥 0x 前缀（#47 新病销案 2026-10-05 批二-a，C §7.22.1.4：
+  // base=16 时 0x/0X 可选前缀；旧不剥系 oracle 照搬）
   put_cstr(mem, map, 0x6200U, "0x10")
   let r2 = host_strtol(mem, map, 0x6200U, endp, 16, None)
-  assert_eq(r2.value, Some(0UL))
-  assert_eq(mem.load_u32(map, endp), Ok(0x6201U))
-  // base 0 → 10
+  assert_eq(r2.value, Some(16UL))
+  assert_eq(mem.load_u32(map, endp), Ok(0x6204U))
+  // base 0 前缀探测：0x→16 / 0 前缀→8 / 否则 10（旧恒 10 系照搬）
+  put_cstr(mem, map, 0x6280U, "0x1f")
+  assert_eq(host_strtol(mem, map, 0x6280U, 0U, 0, None).value, Some(31UL))
+  put_cstr(mem, map, 0x6290U, "017")
+  assert_eq(host_strtol(mem, map, 0x6290U, 0U, 0, None).value, Some(15UL))
   put_cstr(mem, map, 0x6300U, "9")
   assert_eq(host_strtol(mem, map, 0x6300U, 0U, 0, None).value, Some(9UL))
   // 无数字 → errno=1 + 停止位 = 起点

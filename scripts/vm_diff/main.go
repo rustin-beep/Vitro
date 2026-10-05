@@ -867,7 +867,7 @@ func fileSHA(p string) string {
 // 对拍——语料目录 mv（native/tests/cases → corpus，工序④）曾使 593 例
 // memory hash 全翻（stdout 逐位同）实锤此耦合（2026-10-05）。
 const argvMaskHi = 0x10000
-const argvMaskLo = 0xC000
+const argvMaskLo = 0xF000 // 审阅 P3 收窄（2026-10-05）：argv 载荷实测 ~50B，16KB 掩窗过宽——无 argv 时堆自 0x5000 上行/全局数据可落入窗内成漏报面；4KB 仍余量 ~80×
 
 // memorySHA：argv 窗口置零后取 hash（环境无关指纹）。
 func memorySHA(p string) string {

@@ -54,16 +54,21 @@ func fatal(f string, a ...any) {
 
 // rustHostTestNames 实测抽取 host_contract_tests.rs 的测试名（去 test_ 前缀）。
 func rustHostTestNames() map[string]bool {
-	raw, err := os.ReadFile(filepath.Join("native", "tests", "host_contract_tests.rs"))
+	// 工序④删区（2026-10-05）：Rust 契约测试源随区删除——名册冻结为仓内资产
+	//（native-removal-baseline 提取 103 条）；三态对账语义不变（名册 ⊆ 映射表）。
+	raw, err := os.ReadFile(filepath.Join("scripts", "host_contract_map", "rust_contract_names.json"))
 	if err != nil {
-		fatal("读 oracle 契约测试失败: %v", err)
+		fatal("读契约名册失败: %v", err)
+	}
+	var doc struct {
+		Names []string `json:"names"`
+	}
+	if jerr := json.Unmarshal(raw, &doc); jerr != nil || len(doc.Names) == 0 {
+		fatal("契约名册坏或空集——空集不得绿")
 	}
 	out := map[string]bool{}
-	for _, m := range rustTestRe.FindAllStringSubmatch(string(raw), -1) {
-		out[strings.TrimPrefix(m[1], "test_")] = true
-	}
-	if len(out) == 0 {
-		fatal("oracle 契约测试名抽取为空集（正则失配？）——空集不得绿")
+	for _, n := range doc.Names {
+		out[strings.TrimPrefix(n, "test_")] = true
 	}
 	return out
 }

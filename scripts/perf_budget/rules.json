@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "corpus_root": "native/tests/cases",
+  "corpus_root": "corpus",
   "corpus_dirs": ["baseline", "knr", "leetcode", "gap", "codegen_skeleton"],
   "file_ext": ".c",
   "_corpus_note": [

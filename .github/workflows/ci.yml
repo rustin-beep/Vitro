@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           for d in baseline knr leetcode gap; do
-            go run ./scripts/lexer_diff native/tests/cases/$d
+            go run ./scripts/lexer_diff corpus/$d
           done
 
       - name: MoonBit typeck differential (E1-E4 full corpus)
@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           for d in baseline knr leetcode gap; do
-            go run ./scripts/typeck_diff native/tests/cases/$d
+            go run ./scripts/typeck_diff corpus/$d
           done
 
       - name: MoonBit codegen differential (A-grade, full corpus)
@@ -130,9 +130,9 @@ jobs:
         # typeck_diff / libc_boot_diff 同一前提；缺 release 产物会 fail loud。
         shell: bash
         run: |
-          go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton
+          go run ./scripts/codegen_diff corpus/codegen_skeleton
           for d in baseline knr leetcode gap; do
-            go run ./scripts/codegen_diff native/tests/cases/$d
+            go run ./scripts/codegen_diff corpus/$d
           done
 
       - name: MoonBit VM runtime differential (D-grade stdout/exit/memory)
@@ -635,22 +635,6 @@ jobs:
 
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用
-      - name: Engineering health report
-        # D5 后续批次第四站（2026-09-18）：engineering_health.py → Go。
-        # 双轨对账：摘要数值 / Top 表逐项一致（tie 行序差异已在驱动头注
-        # 声明）。纯报告生成器，无红绿判定（无 J9 义务）。
-        run: go run ./scripts/engineering_health
-        shell: bash
-
-      - name: Upload engineering health report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: engineering-health
-          path: reports/engineering_health.md
-
-      # U0#4：target 体积预算（防构建产物无界膨胀拖垮 runner 磁盘——两次 GB 级
-      # 事故的制度性护栏之一；预算 10GB，超限 fail 并回显分布）
       - name: Install MoonBit toolchain (unix)
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash

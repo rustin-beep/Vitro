@@ -115,93 +115,12 @@ func relOf(root, p string) string {
 // ─── 采集器：影子防线（读产物，零副作用）────────────────────────────────────
 
 func collectShadowC(root string, facts map[string]Fact) {
-	// 两个产物名并存：本地默认写 shadow_data_latest.json；CI 用 --json
-	// 指定 shadow_data.json（M15 接线后 CI 每轮采集，两者都认，缺一不兜底）。
-	rel := "native/tests/shadow_verification/reports/shadow_data_latest.json"
-	how := "cd native && cargo build --release && go run ./scripts/shadow_verify"
-
-	var d struct {
-		Timestamp string         `json:"timestamp"`
-		Summary   map[string]int `json:"summary"`
-		Details   []struct {
-			DiffType string `json:"diff_type"`
-		} `json:"details"`
-	}
-	var asOf string
-	found := false
-	for _, name := range []string{"shadow_data_latest.json", "shadow_data.json"} {
-		p := filepath.Join(root, "native/tests/shadow_verification/reports", name)
-		if err := readJSON(p, &d); err == nil && d.Summary != nil {
-			rel = "native/tests/shadow_verification/reports/" + name
-			asOf = d.Timestamp
-			if asOf == "" {
-				asOf = mtimeISO(p)
-			}
-			found = true
-			break
-		}
-	}
-	if !found {
-		for _, k := range []string{"shadow_c_cases", "shadow_c_match",
-			"shadow_c_known_issue", "shadow_c_gap_extension", "shadow_c_gaps"} {
-			facts[k] = unavail("用例", rel, how, "产物缺失或格式不符")
-		}
-		return
-	}
-	total, hasTotal := d.Summary["total"]
-	match, hasMatch := d.Summary["match"]
-	if !hasTotal {
-		facts["shadow_c_cases"] = unavail("用例", rel, how, "summary 缺 total 字段")
-		return
-	}
-	facts["shadow_c_cases"] = okFact(total, "用例", rel, "read_report", asOf)
-	if hasMatch {
-		facts["shadow_c_match"] = okFact(match, "用例", rel, "read_report", asOf)
-	}
-	// 分类明细与缺口数从 details / summary 机数（2026-09-20，为 SVG data-fact
-	// 对账补的真值——影子验证框架.md 头部与 docs SVG 的分解式数字不再人肉同步）。
-	knownN, gapExtN := 0, 0
-	for _, it := range d.Details {
-		switch it.DiffType {
-		case "known_issue":
-			knownN++
-		case "gap_extension":
-			gapExtN++
-		}
-	}
-	facts["shadow_c_known_issue"] = okFact(knownN, "用例", rel, "read_report", asOf)
-	facts["shadow_c_gap_extension"] = okFact(gapExtN, "用例", rel, "read_report", asOf)
-	gaps := d.Summary["compile_gap"] + d.Summary["runtime_gap"] + d.Summary["output_gap"]
-	facts["shadow_c_gaps"] = okFact(gaps, "处", rel, "read_report", asOf)
+	// 工序④删区（2026-10-05）：shadow 报告（被测物 = Rust DLL）随区退役——
+	// 键真值由 markRetiredFacts 统一占位（本函数退役为空操作）。
 }
 
 func collectShadowCpp(root string, facts map[string]Fact) {
-	rel := "native/tests/shadow_verification/reports/cpp_shadow_report.json"
-	p := filepath.Join(root, "native/tests/shadow_verification/reports/cpp_shadow_report.json")
-	how := "cd native && cargo build --release && go run ./scripts/shadow_verify_cpp"
-
-	var arr []struct {
-		DiffType string `json:"diff_type"`
-	}
-	if err := readJSON(p, &arr); err != nil || len(arr) == 0 {
-		facts["shadow_cpp_cases"] = unavail("用例", rel, how, "产物缺失或不是数组")
-		facts["shadow_cpp_match"] = unavail("用例", rel, how, "产物缺失或不是数组")
-		facts["shadow_cpp_clang_fail"] = unavail("用例", rel, how, "产物缺失或不是数组")
-		return
-	}
-	matched, clangFail := 0, 0
-	for _, c := range arr {
-		switch c.DiffType {
-		case "match":
-			matched++
-		case "clang_compile_fail":
-			clangFail++
-		}
-	}
-	asOf := mtimeISO(p)
-	facts["shadow_cpp_cases"] = okFact(len(arr), "用例", rel, "read_report", asOf)
-	facts["shadow_cpp_match"] = okFact(matched, "用例", rel, "read_report", asOf)
-	facts["shadow_cpp_clang_fail"] = okFact(clangFail, "用例", rel, "read_report", asOf)
+	// 工序④删区（2026-10-05）：C++ shadow 随 Rust DLL 退役——同 collectShadowC。
 }
 
 // ─── 采集器：失败台账活跃条目（解析 md，零副作用）──────────────────────────
@@ -311,21 +230,9 @@ var reAbiConst = regexp.MustCompile(`VITRO_ABI_VERSION\s*:\s*&str\s*=\s*"(\d+\.\
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
 // 版本号一律不是真相（M13 实证：代码 2.1.0 时仍有多份文档写 1.2.0/2.0.0）。
 func collectAbiVersion(root string, facts map[string]Fact) {
-	rel := "native/src/capi/first_batch.rs"
-	p := filepath.Join(root, "native", "src", "capi", "first_batch.rs")
-	how := "读 " + rel + " 的 VITRO_ABI_VERSION 常量"
-	b, err := os.ReadFile(p)
-	if err != nil {
-		facts["abi_version"] = unavail("版本", rel, how, "文件缺失")
-		return
-	}
-	m := reAbiConst.FindSubmatch(b)
-	if m == nil {
-		facts["abi_version"] = unavail("版本", rel, how, "未解析到 VITRO_ABI_VERSION 常量（形态变更？）")
-		return
-	}
-	facts["abi_version"] = Fact{SValue: string(m[1]), Unit: "版本", Source: rel,
-		Provenance: "read_const", AsOf: mtimeISO(p), Status: "ok"}
+	// 工序④删区（2026-10-05）：ABI 真值源（Rust first_batch.rs）随区删除——
+	// C ABI 已随 F-5 裁撤，常量退役（文档历史句豁免）。
+	facts["abi_version"] = unavail("版本", "native/（已删除）", "Rust 区已退役（2026-10-05）", "真值源退役")
 }
 
 // ─── 采集器：MoonBit 建包状态（扫目录 / 读 moon.mod，零副作用）──────────────

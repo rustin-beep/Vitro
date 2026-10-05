@@ -28,6 +28,7 @@ var retiredKeys = map[string]bool{
 	"shadow_c_gap_extension": true, "shadow_c_gaps": true,
 	"replay_assertions": true, "serve_smoke_assertions": true,
 	"cargo_test_passed": true, "cargo_test_suites": true,
+	"shadow_cpp_cases": true, "cpp_e2e_cases": true,
 }
 
 // ─── 对账规则 ────────────────────────────────────────────────────────────────

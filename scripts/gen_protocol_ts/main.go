@@ -69,7 +69,7 @@ func repoRoot() string {
 	dir := wd
 	for i := 0; i < 6; i++ {
 		ok := true
-		for _, m := range []string{"native", "scripts"} {
+		for _, m := range []string{"corpus", "scripts"} {
 			if fi, err := os.Stat(filepath.Join(dir, m)); err != nil || !fi.IsDir() {
 				ok = false
 				break

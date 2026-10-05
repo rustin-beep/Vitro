@@ -437,99 +437,25 @@ func genKG(root string, _ factsDoc) {
 // 本图的跑批快照数字全部 data-fact 锚定 facts 台账。
 
 func genShadow(root string, fd factsDoc) {
-	// 2026-09-28 CI 首轮真值对账实证（f32a85c Hygiene）：分类明细数字
-	// （match/known_issue/gap_extension 等）随跑批环境的 Clang 版本微漂
-	// （本地 clang 22.1.4 判 679/3，CI runner 判 680/2，总数 683 两边一致）
-	// ——环境函数不适合机器锚定（与 README 分解式行归人工维护同一哲学），
-	// 图上只锚总数与门禁零指标（非 0 即真差异，本就该红），明细口径化。
-	cases := mustFact(fd, "shadow_c_cases")
-	gaps := mustFact(fd, "shadow_c_gaps")
-	cppCases := mustFact(fd, "shadow_cpp_cases")
-
-	P := svgOpen(1200, 836, "vitro 影子验证门禁流水线", "影子验证框架 · Clang 影子对照与 CI 硬门禁",
-		"对账 影子验证框架.md §一思想 + §三流程 + §2.3 五分类门禁判定表；快照数字 data-fact 锚定 reports/facts.json")
+	// 工序④删区（2026-10-05）：图 D 原锚 shadow（被测物 = Rust DLL）随区退役。
+	// 重绘为删区后语义——Clang 直拍门禁（真值 = Clang 本尊 + 被测物 = mb cmd/run），
+	// 数字锚 facts 现役键（clang_direct 全量在 CI 产真值——如键缺失则 fail loud）。
+	cases := mustFact(fd, "moonbit_test_passed")
+	P := svgOpen(1200, 836, "vitro Clang 直拍门禁流水线", "Clang 直拍框架 · 真值对照与 CI 硬门禁",
+		"对齐 影子验证框架.md 删区版语义（shadow → clang_direct 吸收，2026-10-05）；数字 data-fact 锚定 reports/facts.json")
 	P = append(P,
-		textF(600, 54, "tt", "影子验证 · Clang 影子对照与 CI 硬门禁", ""),
-		textF(600, 88, "tm", "「下一步该实现什么特性？」—— 收集缺失特性数据，驱动 ROADMAP 优先级（区别于双轨验证的“已实现的特性对不对”）", ""),
+		textF(600, 54, "tt", "Clang 直拍 · 真值对照与 CI 硬门禁", ""),
 	)
-	steps := []struct {
-		t, d string
-		dy   int
-		fact string
-		val  int
-	}{
-		{"收集标准 C 测试用例", "baseline / gap / template_generated 目录热加载 · 空集 fail loud(exit 2)", 0, "", 0},
-		{"跑影子验证 Clang vs Vitro", "用例冷启动 ~26s（16 并发）/ 缓存热跑 ~5s · stdin 同字节注入", 130, "shadow_c_cases", 0},
-		{"五分类判定（逐字节比对 stdout）", "match ≡ · vitro_better 更完整 · known_issue 在案 · compile/runtime/output_gap", 260, "", 0},
-	}
-	SY, SH, SW := 130, 96, 720
-	for i, st := range steps {
-		y := SY + i*(SH+34)
-		P = append(P, box(240, y, SW, SH, "card", 14))
-		P = append(P, textF(600, y+40, "t", st.t, ""))
-		if st.fact != "" {
-			// "Go 驱动 · 680 用例冷启动…"——数字 tspan 锚定
-			P = append(P, textSegs(600, y+72, "tc", []seg{
-				{text: "Go 驱动 · "},
-				{num: st.fact, val: cases},
-				{text: st.d},
-			}))
-		} else {
-			P = append(P, textF(600, y+72, "tc", st.d, ""))
-		}
-		if i < len(steps)-1 {
-			P = append(P, line(600, y+SH, 600, y+SH+34, "line"))
-		}
-	}
-	forkY := SY + 3*(SH+34) + 10
 	P = append(P,
-		line(600, SY+3*SH+2*34, 600, forkY, "line"),
-		line(300, forkY, 900, forkY, "line"),
-		line(300, forkY, 300, forkY+36, "line"),
-		line(900, forkY, 900, forkY+36, "line"),
-		box(110, forkY+36, 380, 150, "core", 14),
-		textF(300, forkY+76, "t", "通过（视为绿）", ""),
-		textF(300, forkY+108, "tm", "match · vitro_better · known_issue", ""),
-		textF(300, forkY+140, "tc", "KNOWN_FAILURE_CASES 与 E2E 防线", ""),
-		textF(300, forkY+164, "tc", "双向对齐，转绿未更新文档即 CI 失败", ""),
-		box(710, forkY+36, 380, 150, "warn", 14),
-		textF(900, forkY+76, "t", "非预期差异（exit 1）", ""),
-		textF(900, forkY+108, "tm", "compile_gap / runtime_gap / output_gap", ""),
-		textF(900, forkY+140, "tc", "缺失特性频率排序 → 确定 Top 3", ""),
-		textF(900, forkY+164, "tc", "→ 驱动扩展优先级，进入开发实现", ""),
-	)
-	// 规模脚注拆两行（原单行贴边），每个数字独立 tspan 锚。
-	P = append(P,
-		textSegs(600, 756, "tc", []seg{
-			{text: "当前规模：C "},
-			{num: "shadow_c_cases", val: cases},
-			{text: " 用例（全量一致 + 已登记差异，无非预期；分类明细随跑批环境"},
-			{num: "shadow_c_gaps", val: gaps},
-			{text: " 非预期为门禁零指标 · 明细人工维护）"},
-		}),
-		textSegs(600, 784, "tc", []seg{
-			{text: "C++ "},
-			{num: "shadow_cpp_cases", val: cppCases},
-			{text: " 用例（一致 + 已记录 clang_compile_fail，明细人工维护）· Clang 预检缺失即 fail fast(exit 2)"},
-		}),
-		textF(600, 810, "tc", "数字 data-fact 锚定 reports/facts.json 真值台账 · 漂移重生成：go run ./scripts/gen_svg", ""),
+		textF(600, 130, "tc", "真值源 = Clang 本尊（编译运行产 golden）", ""),
+		textF(600, 165, "tc", "被测物 = MoonBit cmd/run（stdout + 返回码）", ""),
+		textF(600, 200, "tc", "SAME=全量 / KNOWN=台账登记 / DIFF>0 即红", ""),
+		textF(600, 250, "th", fmt.Sprintf("MoonBit 测试真值 %d 例（facts 锚）", cases), ""),
+		textF(600, 300, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役", ""),
+		textF(600, 330, "tm", "语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）", ""),
 	)
 	writeSVG(root, "docs/current/04-标准库与防线/shadow-verification-flow.svg", P)
-}
 
-// ─── 图 E：MoonBit 包切分分层 L0–L9（源：总计划 §4 包切分总图 + §10 里程碑）──
-// 对账总计划 §4 逐层文字；虚线框 = 规划未建包；进度徽标为截至生成批次的状态
-// 快照（无 data-fact 锚，权威 = 总计划 §10）。
-
-type pkgCell struct {
-	name, desc string
-	plan       bool // 规划未建包（虚线框）
-}
-
-type layerRow struct {
-	tag, name, badge string
-	rows             [][]pkgCell
-	note             string // 层内底部补充行（可空）
 }
 
 func genPackages(root string, fd factsDoc) {

@@ -1,7 +1,9 @@
 // teaching_annotation_diff —— S8 teaching 族级增量对拍器（批四号建，2026-10-01）。
 //
-// 用途：MoonBit cmd/serve 与 Rust golden（native/tests/golden/
-// algorithm_annotations_v3.json）的**算法标注首现序列**族级对拍——只比
+// 用途：MoonBit cmd/serve 与 Rust golden（工序③固化 2026-10-05 迁出冻结区：
+// scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json；旧份
+// native/tests/golden/ 供 Rust 侧测试活到工序④删区，sha 过渡对账臂锁一致）
+// 的**算法标注首现序列**族级对拍——只比
 // 已迁移族条目（rules.json migrated_algorithms），未迁移族条目两侧跳过
 // （MoonBit 侧 infer 臂 `None` 天然缺失，golden 侧按 algorithm 键过滤）。
 // 族级增量（moon.pkg 头注对拍排期）：每族迁移批全量跑一轮，golden 不攒末批。
@@ -27,6 +29,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -335,7 +338,27 @@ func main() {
 
 	root := capi.ProjectRoot()
 	rulesPath := filepath.Join(root, "scripts", "teaching_annotation_diff", "rules.json")
-	goldenPath := filepath.Join(root, "native", "tests", "golden", "algorithm_annotations_v3.json")
+	// 工序③固化（2026-10-05）：golden 真源迁出冻结区。
+	goldenPath := filepath.Join(root, "scripts", "teaching_annotation_diff", "golden", "algorithm_annotations_v3.json")
+	// 过渡对账臂（#39 libc 同模式）：旧份存在期间 sha256 必须一致（行尾
+	// 归一后比——CI smudge 形态分叉免疫，gen_libc_data 同日实锤教训）；
+	// 旧份消失（工序④删区）自动豁免。
+	legacyGolden := filepath.Join(root, "native", "tests", "golden", "algorithm_annotations_v3.json")
+	gb, gerr := os.ReadFile(goldenPath)
+	if gerr != nil {
+		fmt.Println("错误: 读 golden 真源失败:", gerr)
+		os.Exit(2)
+	}
+	if lb, lerr := os.ReadFile(legacyGolden); lerr == nil {
+		norm := func(b []byte) []byte { return bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")) }
+		if sha256.Sum256(norm(gb)) != sha256.Sum256(norm(lb)) {
+			fmt.Println("错误: golden 过渡对账红——新旧份内容不一致（scripts/teaching_annotation_diff/golden/ ↔ native/tests/golden/）")
+			os.Exit(1)
+		}
+	} else if !os.IsNotExist(lerr) {
+		fmt.Println("错误: 读旧 golden 失败:", lerr)
+		os.Exit(2)
+	}
 	rules, migrated, err := loadRules(rulesPath)
 	if err != nil {
 		fmt.Println("错误:", err)

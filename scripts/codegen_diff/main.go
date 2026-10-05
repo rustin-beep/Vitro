@@ -47,6 +47,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -61,7 +62,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/codegen_diff <corpus_dir> [--baseline|--selftest]")
+		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/codegen_diff <corpus_dir> [--baseline|--freeze|--golden|--selftest]")
 		os.Exit(2)
 	}
 	corpus, err := filepath.Abs(os.Args[1])
@@ -76,11 +77,149 @@ func main() {
 			baseline = true
 		case "--selftest":
 			selftest = true
+		case "--freeze":
+			freezeMode = true
+		case "--golden":
+			goldenMode = true
 		default:
 			fail("未知参数: %s", a)
 		}
 	}
+	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
+	if freezeMode && goldenMode {
+		fail("--freeze 与 --golden 互斥")
+	}
+	if !freezeMode && !rustCliAlive() {
+		if !goldenMode {
+			fmt.Println("codegen_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			goldenMode = true
+		}
+	}
+	if freezeMode && !rustCliAlive() {
+		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
+	}
 	os.Exit(runCorpus(corpus, baseline, selftest))
+}
+
+// ---- 工序③固化：oracle 消费包装（result + stderr 双存） ----
+
+var freezeMode, goldenMode bool
+
+const codegenGoldenRoot = "scripts/codegen_diff/golden"
+
+func rustCliAlive() bool {
+	for _, p := range []string{
+		filepath.Join("native", "target", "release", "vitro_cli.exe"),
+		filepath.Join("native", "target", "release", "vitro_cli"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+type cgGoldenEntry struct {
+	Version int    `json:"version"`
+	Result  string `json:"result"` // dump-compile 产物原文（失败样本空串）
+	Stderr  string `json:"stderr"` // 失败层归类查表用（AGREE-ERROR 通道）
+}
+
+// oracleDumpBatch：freeze 落盘 / golden 读盘 / 默认活体。stderr 随序伴生
+// （AGREE-ERROR 判定依赖），golden 双存。
+func oracleDumpBatch(files []string) ([][]byte, [][]byte) {
+	dir := filepath.Join(codegenGoldenRoot, filepath.Base(filepath.Dir(files[0]))) // golden/<corpus>
+	// files[0] = <root>/native/tests/cases/<corpus>/x.c → 一级上取 corpus 名（两级会混成 cases/ 四语料互覆盖——2026-10-05 freeze 实测抓出）
+	if freezeMode {
+		outs, stderrs := rustDumpBatch(files)
+		must2(os.MkdirAll(dir, 0o755), "建 golden 目录")
+		for i, f := range files {
+			// freeze 存**归一后**产物：dump-compile 原文非确定（Rust 侧
+			// 迭代序，单文件双跑实测不一致——原对拍靠 canonicalize 消化）；
+			// 对拍语义 = 归一后逐字节，golden 固化该语义（canonicalize 幂等，
+			// 比对段再归一不变）。stderr 为纯文本，保留原文。
+			r := outs[i]
+			if r != nil {
+				r = canonicalize(r)
+			}
+			e := cgGoldenEntry{Version: 1, Result: string(r), Stderr: string(stderrs[i])}
+			data, _ := json.Marshal(e)
+			must2(os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), append(data, '\n'), 0o644), "写 golden "+f)
+		}
+		writeCgManifest(files, dir)
+		fmt.Printf("codegen_diff freeze: %d 响应落盘 → %s\n", len(files), dir)
+		return outs, stderrs
+	}
+	if goldenMode {
+		verifyCgManifest(files, dir)
+		outs := make([][]byte, len(files))
+		stderrs := make([][]byte, len(files))
+		for i, f := range files {
+			data, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
+			if err != nil {
+				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
+			}
+			var e cgGoldenEntry
+			if err := json.Unmarshal(data, &e); err != nil || e.Version != 1 {
+				fail("坏 golden 或版本不识 %s", filepath.Base(f)+".json")
+			}
+			if e.Result == "" {
+				outs[i] = nil // 与活体形态一致：失败样本 outs=nil
+			} else {
+				outs[i] = []byte(e.Result)
+			}
+			stderrs[i] = []byte(e.Stderr)
+		}
+		return outs, stderrs
+	}
+	return rustDumpBatch(files)
+}
+
+func cgSrcSHAs(files []string) map[string]string {
+	out := map[string]string{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			fail("读样本失败 %s: %v", f, err)
+		}
+		h := sha256.Sum256(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
+		out[filepath.Base(f)] = fmt.Sprintf("%x", h)[:8]
+	}
+	return out
+}
+
+func writeCgManifest(files []string, dir string) {
+	data, _ := json.MarshalIndent(map[string]any{"version": 1, "sources": cgSrcSHAs(files)}, "", "  ")
+	must2(os.WriteFile(filepath.Join(dir, "_manifest.json"), append(data, '\n'), 0o644), "写 _manifest.json")
+}
+
+func verifyCgManifest(files []string, dir string) {
+	data, err := os.ReadFile(filepath.Join(dir, "_manifest.json"))
+	if err != nil {
+		fail("缺 _manifest.json %s（先 --freeze）: %v", dir, err)
+	}
+	var m struct {
+		Version int               `json:"version"`
+		Sources map[string]string `json:"sources"`
+	}
+	if err := json.Unmarshal(data, &m); err != nil || m.Version != 1 {
+		fail("_manifest.json 坏或版本不识 %s", dir)
+	}
+	cur := cgSrcSHAs(files)
+	if len(cur) != len(m.Sources) {
+		fail("语料已变（现 %d ≠ 落盘 %d）——重跑 --freeze：%s", len(cur), len(m.Sources), dir)
+	}
+	for name, sha := range m.Sources {
+		if cur[name] != sha {
+			fail("语料 %s 已变更而 golden 未重刷（%s ≠ %s）——重跑 --freeze", name, cur[name], sha)
+		}
+	}
+}
+
+func must2(err error, what string) {
+	if err != nil {
+		fail("%s 失败: %v", what, err)
+	}
 }
 
 // knownForkFiles：parser 层已知有意分叉（S3 F3-v2 累加器裁定 b 白名单，
@@ -100,7 +239,7 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)
 	}
-	rustOuts, rustStderrs := rustDumpBatch(files)
+	rustOuts, rustStderrs := oracleDumpBatch(files)
 	moonDir := moonDump(corpus)
 	// 归一化：Rust 全文件；MoonBit 抽 .dump（ok=false 保留原文件形态参与
 	// stage 判定）

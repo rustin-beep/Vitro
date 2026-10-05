@@ -25,6 +25,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,11 +40,37 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/parser_diff <corpus_dir|--pathological|--legal-deep> [--selftest]")
+		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/parser_diff <corpus_dir|--pathological|--legal-deep|--threshold> [--freeze|--golden|--selftest]")
 		os.Exit(2)
 	}
 	mode := os.Args[1]
-	selftest := len(os.Args) > 2 && os.Args[2] == "--selftest"
+	selftest := false
+	for _, a := range os.Args[2:] {
+		switch a {
+		case "--selftest":
+			selftest = true
+		case "--freeze":
+			freezeMode = true
+		case "--golden":
+			goldenMode = true
+		default:
+			fmt.Fprintf(os.Stderr, "parser_diff: 未知参数 %q\n", a)
+			os.Exit(2)
+		}
+	}
+	if freezeMode && goldenMode {
+		fail("--freeze 与 --golden 互斥")
+	}
+	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
+	if !freezeMode && !oracleCLIExists() {
+		if !goldenMode {
+			fmt.Println("parser_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			goldenMode = true
+		}
+	}
+	if freezeMode && !oracleCLIExists() {
+		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
+	}
 	switch {
 	case mode == "--pathological":
 		os.Exit(runPathological(selftest))
@@ -57,6 +84,101 @@ func main() {
 			fail("语料路径解析失败: %v", err)
 		}
 		os.Exit(runCorpus(corpus, selftest))
+	}
+}
+
+// ---- 工序③固化：全局模式与 oracle 消费统一包装 ----
+
+var freezeMode, goldenMode bool
+
+const parserGoldenRoot = "scripts/parser_diff/golden"
+
+func oracleCLIExists() bool {
+	for _, p := range []string{
+		filepath.Join("native", "target", "release", "vitro_cli.exe"),
+		filepath.Join("native", "target", "release", "vitro_cli"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// oracleAstBatch：四个子模式的唯一 oracle 消费包装——freeze 落盘、
+// golden 读盘、默认活体。golden 锚样本 src sha（语料与生成样本统一处理：
+// 生成样本内容确定，代码变更后重 freeze 即一致）。
+func oracleAstBatch(files []string, mode string) [][]byte {
+	dir := filepath.Join(parserGoldenRoot, mode)
+	if freezeMode {
+		outs := rustAstDumpBatch(files)
+		must(os.MkdirAll(dir, 0o755), "建 golden 目录 "+dir)
+		for i, f := range files {
+			must(os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), outs[i], 0o644), "写 golden "+f)
+		}
+		writeParserManifest(files, dir)
+		fmt.Printf("parser_diff freeze[%s]: %d 响应落盘 → %s\n", mode, len(files), dir)
+		return outs
+	}
+	if goldenMode {
+		verifyParserManifest(files, dir)
+		outs := make([][]byte, len(files))
+		for i, f := range files {
+			b, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
+			if err != nil {
+				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
+			}
+			outs[i] = b
+		}
+		return outs
+	}
+	return rustAstDumpBatch(files)
+}
+
+func parserSrcSHAs(files []string) map[string]string {
+	out := map[string]string{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			fail("读样本失败 %s: %v", f, err)
+		}
+		h := sha256.Sum256(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
+		out[filepath.Base(f)] = fmt.Sprintf("%x", h)[:8]
+	}
+	return out
+}
+
+func writeParserManifest(files []string, dir string) {
+	data, _ := json.MarshalIndent(map[string]any{"version": 1, "sources": parserSrcSHAs(files)}, "", "  ")
+	must(os.WriteFile(filepath.Join(dir, "_manifest.json"), append(data, '\n'), 0o644), "写 _manifest.json")
+}
+
+func verifyParserManifest(files []string, dir string) {
+	data, err := os.ReadFile(filepath.Join(dir, "_manifest.json"))
+	if err != nil {
+		fail("缺 _manifest.json %s（先 --freeze）: %v", dir, err)
+	}
+	var m struct {
+		Version int               `json:"version"`
+		Sources map[string]string `json:"sources"`
+	}
+	if err := json.Unmarshal(data, &m); err != nil || m.Version != 1 {
+		fail("_manifest.json 坏或版本不识 %s", dir)
+	}
+	cur := parserSrcSHAs(files)
+	if len(cur) != len(m.Sources) {
+		fail("样本集已变（现 %d ≠ 落盘 %d）——重跑 --freeze：%s", len(cur), len(m.Sources), dir)
+	}
+	for name, sha := range m.Sources {
+		if cur[name] != sha {
+			fail("样本 %s 已变更而 golden 未重刷（%s ≠ %s）——重跑 --freeze", name, cur[name], sha)
+		}
+	}
+}
+
+func must(err error, what string) {
+	if err != nil {
+		fail("%s 失败: %v", what, err)
 	}
 }
 
@@ -85,7 +207,7 @@ func runCorpus(corpus string, selftest bool) int {
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)
 	}
-	rustOuts := rustAstDumpBatch(files)
+	rustOuts := oracleAstBatch(files, "corpus-"+filepath.Base(corpus))
 	if selftest {
 		// J9 埋雷：篡改首个文件的 Rust 侧输出（ok 翻转），驱动必须红
 		rustOuts[0] = []byte(`{"ok": false, "parse_error_count": 0, "ast": null, "parse_errors": [], "stall_count": 0}`)
@@ -172,7 +294,7 @@ func runPathological(selftest bool) int {
 	if len(files) != len(pathologicalSamples) {
 		fail("病态样本数不符: %d != %d", len(files), len(pathologicalSamples))
 	}
-	rustOuts := rustAstDumpBatch(files)
+	rustOuts := oracleAstBatch(files, "pathological")
 	if selftest {
 		// J9 埋雷：把"decl_suffix_1300"的 Rust 侧结果改成 ok=true——
 		// "同等拒绝"断言必须红
@@ -246,7 +368,7 @@ func runLegalDeep(selftest bool) int {
 		}
 	}
 	files := listCFiles(tmp)
-	rustOuts := rustAstDumpBatch(files)
+	rustOuts := oracleAstBatch(files, "legal_deep")
 	if selftest {
 		rustOuts[0] = []byte(`{"ok": false, "parse_error_count": 1, "ast": null, "parse_errors": [{"code":1006,"line":1,"column":1,"message":"x"}], "stall_count": 0}`)
 		fmt.Println("parser_diff: selftest 已注入差异（E4 样本 0 篡改为拒绝）")
@@ -414,7 +536,7 @@ func runThreshold(selftest bool) int {
 	if len(files) != all {
 		fail("阈值样本数不符: %d != %d", len(files), all)
 	}
-	rustOuts := rustAstDumpBatch(files)
+	rustOuts := oracleAstBatch(files, "threshold")
 	if selftest {
 		// J9 埋雷 1：offsetof_64 的 Rust 侧翻转 ok——两侧一致断言必须红
 		for i, f := range files {

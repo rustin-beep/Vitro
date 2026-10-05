@@ -3,7 +3,7 @@
 // 输入（全部机判真值源，禁手画——侧栏列表 = 渲染产物）：
 //
 //	① scripts/teaching_annotation_diff/rules.json   → migrated_algorithms 43 族全集
-//	② native/tests/golden/algorithm_annotations_v3.json → 模板→族映射 + display_name 中文名
+//	② scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json → 模板→族映射 + display_name 中文名（工序③固化迁出冻结区 2026-10-05）
 //	③ templates/<tpl>/source.c                      → 每族代表示例源码
 //
 // 输出：demo/algorithms.js（浏览器脚本形态，同 cases.js：全局 const 无导出）——
@@ -209,7 +209,7 @@ func main() {
 	}
 
 	// ② golden：模板→族 + display_name
-	gb, err := os.ReadFile(filepath.Join(root, "native", "tests", "golden", "algorithm_annotations_v3.json"))
+	gb, err := os.ReadFile(filepath.Join(root, "scripts", "teaching_annotation_diff", "golden", "algorithm_annotations_v3.json"))
 	if err != nil {
 		die("golden: %v", err)
 	}

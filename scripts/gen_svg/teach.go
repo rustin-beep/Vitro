@@ -8,7 +8,7 @@ package main
 // 输入源 = 盘上真值文件活值直读（不经 facts 中转，skills 图同款模式；数字源
 // 不在 facts.json 责任面内，全图无 data-fact 锚）：
 //   ① scripts/teaching_annotation_diff/rules.json   → migrated_algorithms 族全集
-//   ② native/tests/golden/algorithm_annotations_v3.json → golden 总条数（对拍纪律）
+//   ② scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json → golden 总条数（工序③固化迁出冻结区 2026-10-05）
 //   ③ templates/*/source.c                          → 机判模板数（teaching_annotation_diff 同口径）
 //
 // 七组分组表与 gen_demo_algorithms 同源复制，完备性断言同款（组表并集 ==
@@ -63,7 +63,7 @@ func genTeach(root string, _ factsDoc) {
 	}
 	nFamilies := len(rules.Migrated)
 
-	goldRaw, err := os.ReadFile(filepath.Join(root, "native", "tests", "golden", "algorithm_annotations_v3.json"))
+	goldRaw, err := os.ReadFile(filepath.Join(root, "scripts", "teaching_annotation_diff", "golden", "algorithm_annotations_v3.json"))
 	if err != nil {
 		fatal("读 algorithm_annotations_v3.json 失败: " + err.Error())
 	}

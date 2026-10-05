@@ -1,6 +1,20 @@
 // vm_diff：D 级 diff 驱动（批五号——总计划 §6 D 级锚：stdout + 返回码
 // + 1MB 最终内存映像；§7.1 层 1 全量化，2026-09-26 六轮审阅销项批）。
 //
+// 工序③固化基线模式（2026-10-05，digest 清单形态）：
+//
+//	go run ./scripts/vm_diff --freeze   # 跑双侧 → 聚合 digest 清单落盘 golden_digest.json
+//	go run ./scripts/vm_diff --golden   # mb ↔ 清单比对（基线模式）
+//
+//	清单 = 每例一行 {src_sha, exit_code, stdout_sha(提取后), memory_sha}；
+//	**known 分叉例额外登记 mb 侧整例 hash（known_mb_digest）**——比对语义
+//	统一为「mb 当前 hash ≡ 清单登记 hash」（非分叉例记 oracle 侧、分叉例
+//	记 mb 侧），known digest 漂移即降级 DIFF 与现模式同构。oracle exe 不存
+//	在时自动切 --golden（工序④删区后 CI 零改动）。全文产物兜底 = orphan
+//	分支 frozen-oracle-snapshot（默认 clone 不拉）；重刷 diff = 影响面清单。
+//	锚定语义：**一致性锚非正确性锚**——stdout 的正确性主锚是 shadow/Clang
+//	golden，本清单锚白箱特有面（映像/退出码/oracle 特有 stdout 语义）。
+//
 // 两侧：
 //
 //	Rust oracle：native/target/release/vitro_cli.exe run <file.c>
@@ -102,6 +116,36 @@ type knownEntry struct {
 // = 0xFFF90–0xFFFEC ⇒ 取顶部 4KB 比实测栈用量（~112B）宽 36 倍，同时远低于
 // 堆可达高度。方向是 fail loud：真栈深超过 4KB 的用例会红（逼人看一眼），
 // 而"差异落在全局/堆/argv 区"必红。
+// Case：对拍用例（rel = 语料内相对名，path = 绝对/仓库相对路径）。
+type Case struct {
+	rel  string
+	path string
+}
+
+// skips/known：白名单包级单例（main 装载，digest 函数集消费）。
+var skips *skipList
+var known *knownList
+
+// relOf：digest 清单键形态单源——四语料内 = "corpus/name.c"，外部路径
+// = basename（--cases 外部路径的键形态与 freeze 的 goldenPathFor 同构）。
+func relOf(path string) string {
+	base := filepath.Base(path)
+	dir := filepath.Base(filepath.Dir(path))
+	for _, c := range corporaDefault {
+		if dir == c {
+			return c + "/" + base
+		}
+	}
+	return base
+}
+
+// cleanup：临时映像回收（原 main 局部闭包，digest 路径共用）。
+func cleanup(r *result) {
+	if r != nil && r.memoryPath != "" {
+		os.Remove(r.memoryPath)
+	}
+}
+
 const stackWindowBytes = 4096
 
 // memDiff：第三通道差异的地址画像（nil = 本用例无映像差异）。
@@ -140,6 +184,8 @@ type knownList struct {
 func main() {
 	corpora := corporaDefault
 	sample := 0
+	freeze := false
+	againstGolden := false
 	var explicit []string
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
@@ -153,10 +199,33 @@ func main() {
 		case args[i] == "--cases" && i+1 < len(args):
 			i++
 			explicit = strings.Split(args[i], ",")
+		case args[i] == "--freeze":
+			// 工序③固化（2026-10-05）：oracle 侧三通道产物全量落盘 golden。
+			freeze = true
+		case args[i] == "--golden":
+			// 工序③固化：mb ↔ golden 对拍（oracle 消失后的基线模式）。
+			againstGolden = true
 		default:
 			fmt.Fprintf(os.Stderr, "vm_diff: 未知参数 %q\n", args[i])
 			os.Exit(2)
 		}
+	}
+	oracleBin := filepath.Join("native", "target", "release", "vitro_cli.exe")
+	if againstGolden && freeze {
+		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 与 --golden 互斥（先 freeze 后 golden）")
+		os.Exit(2)
+	}
+	// 删区自动降级：oracle exe 不存在且未显式 --golden ⇒ 自动转 golden 模式
+	// （工序④删区后零改动存活）；显式 --golden 而 oracle 仍在也照跑 golden。
+	if !fileExists(oracleBin) && !freeze {
+		if !againstGolden {
+			fmt.Println("vm_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			againstGolden = true
+		}
+	}
+	if freeze && !fileExists(oracleBin) {
+		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 需要 oracle exe（native/target/release/vitro_cli.exe）")
+		os.Exit(1)
 	}
 	if !fileExists(runnerExe) {
 		fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
@@ -181,14 +250,10 @@ func main() {
 		}
 	}
 
-	skips := loadSkipList()
-	known := loadKnownDiffs()
+	skips = loadSkipList()
+	known = loadKnownDiffs()
 
 	// 用例收集：--cases 精确指定（相对 corpus 根）或四语料全量/抽样。
-	type Case struct {
-		rel  string // 语料内相对名（display 用）
-		path string
-	}
 	var cases []Case
 	if len(explicit) > 0 {
 		for _, f := range explicit {
@@ -216,7 +281,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "vm_diff: --cases 路径不存在: %s（相对仓库根，如 native/tests/cases/baseline/x.c）\n", f)
 				os.Exit(2)
 			}
-			cases = append(cases, Case{rel: filepath.Base(f), path: path})
+			cases = append(cases, Case{rel: relOf(path), path: path})
 		}
 	} else {
 		for _, c := range corpora {
@@ -270,10 +335,12 @@ func main() {
 		}
 	}
 
-	cleanup := func(r *result) {
-		if r != nil && r.memoryPath != "" {
-			os.Remove(r.memoryPath)
-		}
+	// ---- 工序③固化（2026-10-05）：freeze / golden 基线模式（digest 清单） ----
+	if freeze {
+		os.Exit(freezeDigest(cases))
+	}
+	if againstGolden {
+		os.Exit(runAgainstDigest(cases))
 	}
 	same, knownN, diff, skipN := 0, 0, 0, 0
 	for _, c := range cases {
@@ -734,6 +801,201 @@ func summarizeStdout(o, m string) string {
 		return fmt.Sprintf("stdout 行数不一致（oracle %d vs moonbit %d；总 %d/%d 字节）", len(ol), len(ml), len(o), len(m))
 	}
 	return fmt.Sprintf("stdout 不一致（%d/%d 字节）", len(o), len(m))
+}
+
+// ============ 工序③固化：digest 清单（2026-10-05 定稿形态） ============
+//
+// 清单 = 每例一行聚合 digest（src_sha + exit_code + 提取后 stdout sha +
+// 映像 sha；known 分叉例另记 mb 整例 hash）。比对语义统一为「mb 当前值
+// ≡ 清单登记值」：非分叉例登记 oracle 侧值（freeze 时刻两侧一致的可证
+// 错——freeze 顺带全量对拍，DIFF 即拒写清单），known 分叉例登记 mb 侧
+// 整例 hash（分叉形状漂移即降级，与现模式 digest 漂移降级同构）。
+// 全文产物兜底 = orphan 分支 frozen-oracle-snapshot；重刷 diff 即影响面
+// 清单。一致性锚非正确性锚（stdout 正确性主锚 = shadow/Clang golden）。
+
+const digestPath = "scripts/vm_diff/golden_digest.json"
+
+type digestEntry struct {
+	SrcSHA      string `json:"src_sha"`
+	ExitCode    int    `json:"exit_code"`
+	StdoutSHA   string `json:"stdout_sha"` // 提取后纯程序输出（两侧各自提取，语义面同构）
+	MemorySHA   string `json:"memory_sha,omitempty"`
+	CompileFail bool   `json:"compile_fail,omitempty"`
+	// known 分叉例专用：freeze 时 mb 侧整例指纹（exit+stdout+memory 联合）
+	KnownMbDigest string `json:"known_mb_digest,omitempty"`
+}
+
+type digestDoc struct {
+	Version int                    `json:"version"`
+	Note    string                 `json:"note"`
+	Cases   map[string]digestEntry `json:"cases"` // 键 = "corpus/name.c"
+}
+
+func srcSHAOf(path string) string {
+	h := sha256.New()
+	for _, p := range append([]string{path}, stdinFor(path)) {
+		if p == "" {
+			continue
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		crlf := []byte{13, 10}
+		lf := []byte{10}
+		h.Write(bytes.ReplaceAll(b, crlf, lf))
+	}
+	return fmt.Sprintf("%x", h.Sum(nil))[:8]
+}
+
+func fileSHA(p string) string {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
+// digestOfResult：从 result 提三通道指纹（stdout 用 oracle 侧提取器——
+// golden 模式下 mb 侧经 extractMoonBitStdout 后应与 oracle 提取结果同
+// 字节，这正是 compare 的语义面）。
+func digestOfResult(r *result) (int, string, string, bool) {
+	stdout := extractOracleStdout(r.stdout)
+	memSHA := ""
+	if r.memoryPath != "" {
+		memSHA = fileSHA(r.memoryPath)
+	}
+	return r.exitCode, fmt.Sprintf("%x", sha256.Sum256([]byte(stdout)))[:16], memSHA, r.compileFail
+}
+
+func mbWholeDigest(exit int, stdoutSHA, memSHA string, cf bool) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%d|%s|%s|%v", exit, stdoutSHA, memSHA, cf))))[:16]
+}
+
+// freezeDigest：全量跑双侧 → 逐例对拍（现模式语义）→ 全绿才写清单
+// （known 例按登记降级）；known 例登记 mb 整例指纹。
+func freezeDigest(cases []Case) int {
+	doc := digestDoc{Version: 1, Note: "freeze 落盘前已全量对拍（SAME/DIFF-KNOWN），DIFF 例拒绝写入", Cases: map[string]digestEntry{}}
+	same, knownN := 0, 0
+	for _, c := range cases {
+		base := filepath.Base(c.rel)
+		if _, ok := skips.lookup(base); ok {
+			continue // skip 例不入清单（golden 模式同样跳过）
+		}
+		o := runOracle(c.path)
+		m := runMoonBit(c.path)
+		if o.compileFail && m.compileFail {
+			doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), CompileFail: true}
+			same++
+			cleanup(o)
+			cleanup(m)
+			continue
+		}
+		issues, _ := compare(c.rel, o, m)
+		oe, os_, om, ocf := digestOfResult(o)
+		me, ms, mm, mcf := digestOfResultMB(m)
+		_ = ocf
+		if len(issues) > 0 {
+			if e, ok := known.lookup(base); ok && e.Digest == issueDigest(append([]string{base}, issues...)) {
+				doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), ExitCode: me, StdoutSHA: ms, MemorySHA: mm, CompileFail: mcf, KnownMbDigest: mbWholeDigest(me, ms, mm, mcf)}
+				fmt.Printf("DIFF-KNOWN %s（%s）——登记 mb 侧指纹\n", c.rel, e.Reason)
+				knownN++
+				cleanup(o)
+				cleanup(m)
+				continue
+			}
+			fmt.Printf("DIFF  %s [%s]：%s——freeze 拒写清单（先归因或修复）"+string(rune(10)), c.rel, issueDigest(append([]string{base}, issues...)), strings.Join(issues, "；"))
+			cleanup(o)
+			cleanup(m)
+			os.Exit(1)
+		}
+		doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), ExitCode: oe, StdoutSHA: os_, MemorySHA: om}
+		same++
+		cleanup(o)
+		cleanup(m)
+	}
+	data, _ := json.MarshalIndent(doc, "", "  ")
+	if err := os.WriteFile(digestPath, append(data, 10), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff freeze: 写清单失败: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("\nvm_diff freeze: digest 清单落盘 %d 例（SAME=%d KNOWN=%d）→ %s\n", len(doc.Cases), same, knownN, digestPath)
+	return 0
+}
+
+// digestOfResultMB：mb 侧指纹（extractMoonBitStdout 提取器）。
+func digestOfResultMB(r *result) (int, string, string, bool) {
+	stdout := extractMoonBitStdout(r.stdout)
+	memSHA := ""
+	if r.memoryPath != "" {
+		memSHA = fileSHA(r.memoryPath)
+	}
+	return r.exitCode, fmt.Sprintf("%x", sha256.Sum256([]byte(stdout)))[:16], memSHA, r.compileFail
+}
+
+// runAgainstDigest：golden 基线模式——mb 当前值 ≡ 清单登记值。
+func runAgainstDigest(cases []Case) int {
+	raw, err := os.ReadFile(digestPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff[golden]: 缺清单 %s（先 --freeze）: %v\n", digestPath, err)
+		os.Exit(1)
+	}
+	var doc digestDoc
+	if err := json.Unmarshal(raw, &doc); err != nil || doc.Version != 1 {
+		fmt.Fprintf(os.Stderr, "vm_diff[golden]: 清单坏或版本不识\n")
+		os.Exit(1)
+	}
+	same, knownN, diff, skipN := 0, 0, 0, 0
+	for _, c := range cases {
+		base := filepath.Base(c.rel)
+		if r, ok := skips.lookup(base); ok {
+			fmt.Printf("SKIP  %s（%s）\n", c.rel, r)
+			skipN++
+			continue
+		}
+		e, ok := doc.Cases[c.rel]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "vm_diff[golden]: 清单缺例 %s——重跑 --freeze\n", c.rel)
+			os.Exit(1)
+		}
+		if sha := srcSHAOf(c.path); sha != e.SrcSHA {
+			fmt.Fprintf(os.Stderr, "vm_diff[golden]: 语料 %s 已变更而清单未重刷（%s ≠ %s）——重跑 --freeze\n", c.rel, sha, e.SrcSHA)
+			os.Exit(1)
+		}
+		m := runMoonBit(c.path)
+		me, ms, mm, mcf := digestOfResultMB(m)
+		cleanup(m)
+		if mcf && e.CompileFail {
+			fmt.Printf("SAME  %s（双侧编译失败——等价）\n", c.rel)
+			same++
+			continue
+		}
+		whole := mbWholeDigest(me, ms, mm, mcf)
+		if e.KnownMbDigest != "" {
+			if whole == e.KnownMbDigest {
+				fmt.Printf("DIFF-KNOWN %s（mb 分叉指纹一致；归因见 known_diffs.json）\n", c.rel)
+				knownN++
+			} else {
+				fmt.Printf("DIFF  %s：known 分叉形状已变（登记 mb 指纹 %s 实测 %s）——重新归因后重跑 --freeze\n", c.rel, e.KnownMbDigest, whole)
+				diff++
+			}
+			continue
+		}
+		if me == e.ExitCode && ms == e.StdoutSHA && mm == e.MemorySHA && mcf == e.CompileFail {
+			fmt.Printf("SAME  %s\n", c.rel)
+			same++
+			continue
+		}
+		fmt.Printf("DIFF  %s：与冻结基线不符（exit %d≠%d / stdout %s≠%s / memory %s≠%s）——全文对照见 frozen-oracle-snapshot 分支\n",
+			c.rel, me, e.ExitCode, ms, e.StdoutSHA, mm, e.MemorySHA)
+		diff++
+	}
+	fmt.Printf("\nvm_diff[golden]: SAME=%d DIFF-KNOWN=%d DIFF=%d SKIP=%d（共 %d）\n",
+		same, knownN, diff, skipN, same+knownN+diff+skipN)
+	if diff > 0 {
+		os.Exit(1)
+	}
+	return 0
 }
 
 func clip(s string) string {

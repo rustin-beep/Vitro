@@ -32,6 +32,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,15 +45,126 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/typeck_diff <corpus_dir> [--selftest]")
+		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/typeck_diff <corpus_dir> [--freeze|--golden|--selftest]")
 		os.Exit(2)
 	}
 	corpus, err := filepath.Abs(os.Args[1])
 	if err != nil {
 		fail("语料路径解析失败: %v", err)
 	}
-	selftest := len(os.Args) > 2 && os.Args[2] == "--selftest"
+	selftest := false
+	for _, a := range os.Args[2:] {
+		switch a {
+		case "--selftest":
+			selftest = true
+		case "--freeze":
+			freezeMode = true
+		case "--golden":
+			goldenMode = true
+		default:
+			fail("未知参数: %s", a)
+		}
+	}
+	if freezeMode && goldenMode {
+		fail("--freeze 与 --golden 互斥")
+	}
+	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
+	if !freezeMode && !oracleCLIExists() {
+		if !goldenMode {
+			fmt.Println("typeck_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			goldenMode = true
+		}
+	}
+	if freezeMode && !oracleCLIExists() {
+		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
+	}
 	os.Exit(runCorpus(corpus, selftest))
+}
+
+// ---- 工序③固化：oracle 消费包装（同 parser_diff 模式） ----
+
+var freezeMode, goldenMode bool
+
+const typeckGoldenRoot = "scripts/typeck_diff/golden"
+
+func oracleCLIExists() bool {
+	for _, p := range []string{
+		filepath.Join("native", "target", "release", "vitro_cli.exe"),
+		filepath.Join("native", "target", "release", "vitro_cli"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func oracleTypeckBatch(files []string, corpus string) [][]byte {
+	dir := filepath.Join(typeckGoldenRoot, "corpus-"+filepath.Base(corpus))
+	if freezeMode {
+		outs := rustTypeckDumpBatch(files)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fail("建 golden 目录失败: %v", err)
+		}
+		for i, f := range files {
+			if err := os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), outs[i], 0o644); err != nil {
+				fail("写 golden 失败 %s: %v", f, err)
+			}
+		}
+		data, _ := json.MarshalIndent(map[string]any{"version": 1, "sources": srcSHAs(files)}, "", "  ")
+		if err := os.WriteFile(filepath.Join(dir, "_manifest.json"), append(data, 10), 0o644); err != nil {
+			fail("写 _manifest.json 失败: %v", err)
+		}
+		fmt.Printf("typeck_diff freeze: %d 响应落盘 → %s"+string(rune(10)), len(files), dir)
+		return outs
+	}
+	if goldenMode {
+		data, err := os.ReadFile(filepath.Join(dir, "_manifest.json"))
+		if err != nil {
+			fail("缺 _manifest.json %s（先 --freeze）: %v", dir, err)
+		}
+		var m struct {
+			Version int               `json:"version"`
+			Sources map[string]string `json:"sources"`
+		}
+		if err := json.Unmarshal(data, &m); err != nil || m.Version != 1 {
+			fail("_manifest.json 坏或版本不识 %s", dir)
+		}
+		cur := srcSHAs(files)
+		if len(cur) != len(m.Sources) {
+			fail("语料已变（现 %d ≠ 落盘 %d）——重跑 --freeze", len(cur), len(m.Sources))
+		}
+		for name, sha := range m.Sources {
+			if cur[name] != sha {
+				fail("语料 %s 已变更而 golden 未重刷（%s ≠ %s）——重跑 --freeze", name, cur[name], sha)
+			}
+		}
+		outs := make([][]byte, len(files))
+		for i, f := range files {
+			b, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
+			if err != nil {
+				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
+			}
+			outs[i] = b
+		}
+		return outs
+	}
+	return rustTypeckDumpBatch(files)
+}
+
+func srcSHAs(files []string) map[string]string {
+	out := map[string]string{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			fail("读样本失败 %s: %v", f, err)
+		}
+		crlf := []byte{13, 10}
+		lf := []byte{10}
+		h := sha256.Sum256(bytes.ReplaceAll(b, crlf, lf))
+		out[filepath.Base(f)] = fmt.Sprintf("%x", h)[:8]
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +188,7 @@ func runCorpus(corpus string, selftest bool) int {
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)
 	}
-	rustOuts := rustTypeckDumpBatch(files)
+	rustOuts := oracleTypeckBatch(files, corpus)
 	moonDir := moonDump(corpus)
 	// 归一化缓存：注入判据需要先知道"哪些样本当前 PASS"（由绿转红才是
 	// 干净证红——注入本就 DIFF 的样本无法归因，F3 复盘）

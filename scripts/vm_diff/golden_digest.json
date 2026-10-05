@@ -844,10 +844,10 @@
       "memory_sha": "6c2d581d82e287dc"
     },
     "baseline/fprintf_persist.c": {
-      "src_sha": "035bf73c",
+      "src_sha": "631bd070",
       "exit_code": 0,
-      "stdout_sha": "24d0bfde4de2aedd",
-      "memory_sha": "a5057d06e50310ee"
+      "stdout_sha": "b45b40215589712b",
+      "memory_sha": "e7d94b598befc90a"
     },
     "baseline/func_many_params.c": {
       "src_sha": "2ba219ee",
@@ -1485,6 +1485,12 @@
       "stdout_sha": "559aead08264d579",
       "memory_sha": "47bd258d6a96781e"
     },
+    "baseline/printf_flags.c": {
+      "src_sha": "d18419fe",
+      "exit_code": 0,
+      "stdout_sha": "78846823adee3ad5",
+      "memory_sha": "fbc04817f09d0168"
+    },
     "baseline/ptr_arith_char.c": {
       "src_sha": "e459e224",
       "exit_code": 0,
@@ -1869,6 +1875,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "e83c783b2ff6c3df"
+    },
+    "baseline/strtol_prefix.c": {
+      "src_sha": "4a6bce23",
+      "exit_code": 0,
+      "stdout_sha": "6bbca5b7a148cb22",
+      "memory_sha": "28a8317d42968432"
     },
     "baseline/struct_array_nested_init.c": {
       "src_sha": "856da7ce",

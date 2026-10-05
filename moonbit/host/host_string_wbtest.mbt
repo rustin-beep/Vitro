@@ -241,13 +241,10 @@ test "strncpy_pads_and_negative_n_fills_tail" {
   let r = host_strncpy(map, mem, 0x7000U, 0x6000U, 4)
   assert_eq(r.value, Some(0x7000UL))
   assert_eq(peek(mem, map, 0x7000U, 4), b"ab\x00\x00")
-  // 负 n：从 dest 补零到内存尾
-  let near_end = @bytecode.MEM_SIZE - 4U
-  put_bytes(mem, map, near_end, b"XYZW", false)
-  let r2 = host_strncpy(map, mem, near_end, 0x6000U, -1)
-  assert_eq(r2.value, Some(near_end.to_uint64()))
-  // write_len = 4（到内存尾）；copy_len = min(2, 4) = 2 → "ab" + 补零 2
-  assert_eq(peek(mem, map, near_end, 4), b"ab\x00\x00")
+  // 负 n → 越界写 trap（DIFF-LIB-STRNCPY-01 销案翻转 2026-10-05 批二-b：
+  // 旧「补零到内存尾」软夹紧系 oracle 照搬；Clang 同形态 segfault 实证）
+  let r2 = host_strncpy(map, mem, 0x7000U, 0x6000U, -1)
+  assert_true(r2.trap is Some(_), msg="负 n 必须 trap 非软夹紧")
 }
 
 ///|
@@ -424,4 +421,53 @@ test "strcpy_null_dest_traps" {
     t.contains("访问了 NULL 指针区域"),
     msg="NULL 区受检 fault 文案",
   )
+}
+
+///|
+test "negative_n_family_traps_not_clamps" {
+  // DIFF-LIB-STRNCPY-01 销案锚（2026-10-05 批二-b）：负 n（size_t 符号
+  // 扩展巨量）= 清晰程序错误信号 → 越界写 trap（Clang 同形态 segfault
+  // 实证 rc=139）；旧形态软夹紧补零到内存尾系 oracle 照搬。正巨量（如
+  // 0x7FFFFFFF）保留教学软夹紧（与 memset ②-3 语义一致）
+  let (map, mem) = fresh()
+  put_cstr(mem, map, 0x6000U, "x")
+  // strncpy 负 n → trap
+  let r1 = host_strncpy(map, mem, 0x5000U, 0x6000U, -1)
+  assert_true(r1.trap is Some(_), msg="strncpy 负 n 必须 trap")
+  // memmove（memcpy 同实现）负 n → trap
+  let r2 = host_memmove(map, mem, 0x5000U, 0x6000U, -1)
+  assert_true(r2.trap is Some(_), msg="memmove 负 n 必须 trap")
+  // strncat 贅量 n（u64 栈字形态）→ trap
+  let r4 = host_strncat(map, mem, 0x5000U, 0x6000U, 0xFFFFFFFFFFFFFFFFUL)
+  assert_true(r4.trap is Some(_), msg="strncat 巨量 n 必须 trap")
+  // 正常形态不受影响
+  put_cstr(mem, map, 0x6200U, "ab")
+  let r3 = host_strncpy(map, mem, 0x6600U, 0x6200U, 4)
+  assert_eq(r3.value, Some(0x6600UL))
+  assert_eq(peek_str(mem, map, 0x6600U), "ab")
+}
+
+///|
+fn peek_str(
+  mem : @memory.Memory,
+  map : @memory.MemoryMap,
+  addr : UInt,
+) -> String {
+  let buf : Array[Byte] = []
+  let mut p = addr
+  let mut lim = 0
+  while lim < 64 {
+    match mem.load_i8(map, p) {
+      Ok(b) => {
+        if b == 0 {
+          break
+        }
+        buf.push(b.to_byte())
+        p = p + 1U
+      }
+      Err(_) => break
+    }
+    lim = lim + 1
+  }
+  @utf8.decode_lossy(Bytes::from_array(buf))
 }

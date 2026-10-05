@@ -232,16 +232,36 @@ fn validate_format_field_budget(fmt : Array[Int]) -> String? {
 }
 
 ///|
-/// 宽度填充（只实现 `-` 与 `0` 旗标——oracle 现状：`+`/空格/`#` 无效）。
+/// 宽度填充（`-`/`0`/`+`/空格/`#` 五旗标——DIFF-LIB-PRINTF-01 销案
+/// 2026-10-05 批二-b：旧「只实现 - 与 0」系 oracle 照搬在案）。
 /// 长度按**字节**计（Rust `s.len()`；非 ASCII 的 `%s` 域用 encode 长度对齐）。
-fn apply_width(s : String, width : Int?, flags : String) -> String {
+/// `+`/空格只对带符号数值说明符有意义（调用方数字族）；`#` 由调用方
+/// （x/X/o 臂）加前缀，此函数不处理。
+fn apply_width(
+  s : String,
+  width : Int?,
+  flags : String,
+  signed_pos? : Bool = false,
+) -> String {
+  // + / 空格旗标：正数带符号前缀（C：+ 优先于空格）
+  let body = if signed_pos && !s.has_prefix("-") {
+    if flags.contains("+") {
+      "+" + s
+    } else if flags.contains(" ") {
+      " " + s
+    } else {
+      s
+    }
+  } else {
+    s
+  }
   let w = match width {
     Some(w) => w
-    None => return s
+    None => return body
   }
-  let slen = @util.utf8_len(s)
+  let slen = @util.utf8_len(body)
   if slen >= w {
-    return s
+    return body
   }
   let pad_len = w - slen
   let left_align = flags.contains("-")
@@ -254,10 +274,45 @@ fn apply_width(s : String, width : Int?, flags : String) -> String {
     i = i + 1
   }
   if left_align {
-    s + pad
+    body + pad
   } else {
-    pad + s
+    pad + body
   }
+}
+
+///|
+/// `%s`/`%c` 的字节域宽度填充（左/右对齐空格——C 对字节串不用零填）。
+fn apply_width_bytes(b : Bytes, width : Int?, flags? : String = "") -> Bytes {
+  let w = match width {
+    Some(w) => w
+    None => return b
+  }
+  let blen = b.length()
+  if blen >= w {
+    return b
+  }
+  let pad_len = w - blen
+  let out : Array[Byte] = []
+  if flags.contains("-") {
+    for j = 0; j < blen; j = j + 1 {
+      out.push(b[j])
+    }
+    let mut i = 0
+    while i < pad_len {
+      out.push(b' ')
+      i = i + 1
+    }
+  } else {
+    let mut i = 0
+    while i < pad_len {
+      out.push(b' ')
+      i = i + 1
+    }
+    for j = 0; j < blen; j = j + 1 {
+      out.push(b[j])
+    }
+  }
+  Bytes::from_array(out)
 }
 
 ///|
@@ -571,18 +626,31 @@ fn big_fixed_to_string(q : @bigint.BigInt, prec : Int) -> String {
 }
 
 ///|
-/// 格式串 + 参数 → 输出（Rust `format_printf_string` 照搬）。
-///
-/// 返回 `Err` 的唯一来源是 `%s` 实参串的受检读（登记分叉：oracle 裸读
-/// 不 trap）。
+/// 格式串 + 参数 → 输出（Rust `format_printf_string` 照搬；2026-10-05
+/// 批二-b 重构为**字节域累积**——DIFF-LIB-PRINTF-01 销案：%c 低字节单
+/// 字节直出（旧 char 通道两字节化照搬）、%s 字节原样（旧 decode_lossy
+/// 对非 UTF-8 字节串有损）、%.Ns 精度截断（旧整串输出）、+ / 空格 /
+/// # 旗标（旧无效）。数字族仍在 String 域格式化后 encode 拼接（ASCII
+/// 无损），# 前缀在此加（x→0x / X→0X / o→0，非零值时）。
 fn format_printf_string(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
   fmt : Array[Int],
   args : Array[UInt64],
-) -> Result[String, @memory.MemFault] {
+) -> Result[Bytes, @memory.MemFault] {
   let scan = FmtScan::{ s: fmt, i: 0, }
-  let mut out = ""
+  let acc : Array[Byte] = []
+  fn push_str(t : String) -> Unit {
+    let b = @utf8.encode(t)
+    for i = 0; i < b.length(); i = i + 1 {
+      acc.push(b[i])
+    }
+  }
+  fn push_bytes(b : Bytes) -> Unit {
+    for i = 0; i < b.length(); i = i + 1 {
+      acc.push(b[i])
+    }
+  }
   let mut used = 0
   while true {
     let ch = match scan.peek() {
@@ -596,7 +664,7 @@ fn format_printf_string(
       match scan.peek() {
         Some(n) =>
           if n == 37 {
-            out = out + "%"
+            push_str("%")
             scan.advance()
           } else {
             match parse_format_spec(scan) {
@@ -607,14 +675,14 @@ fn format_printf_string(
                 let width = t.3
                 let flags = t.4
                 let arg = args[used]
-                let piece : String = if spec == 100 || spec == 105 {
-                  // d / i
+                if spec == 100 || spec == 105 {
+                  // d / i（+ / 空格旗标：正数带符号前缀）
                   let val = if is_ll {
                     arg.reinterpret_as_int64().to_string()
                   } else {
                     arg.to_uint().reinterpret_as_int().to_string()
                   }
-                  apply_width(val, width, flags)
+                  push_str(apply_width(val, width, flags, signed_pos=true))
                 } else if spec == 117 {
                   // u
                   let val = if is_ll {
@@ -622,96 +690,127 @@ fn format_printf_string(
                   } else {
                     arg.to_uint().to_string()
                   }
-                  apply_width(val, width, flags)
+                  push_str(apply_width(val, width, flags))
                 } else if spec == 120 {
-                  // x
-                  let val = if is_ll {
+                  // x（# → 0x 前缀，非零值）
+                  let raw = if is_ll {
                     u64_hex_lower(arg)
                   } else {
                     u64_hex_lower(arg.to_uint().to_uint64())
                   }
-                  apply_width(val, width, flags)
+                  let body = if flags.contains("#") && arg != 0UL {
+                    "0x" + raw
+                  } else {
+                    raw
+                  }
+                  push_str(apply_width(body, width, flags))
                 } else if spec == 88 {
-                  // X
-                  let val = if is_ll {
+                  // X（# → 0X）
+                  let raw = if is_ll {
                     u64_hex_upper(arg)
                   } else {
                     u64_hex_upper(arg.to_uint().to_uint64())
                   }
-                  apply_width(val, width, flags)
+                  let body = if flags.contains("#") && arg != 0UL {
+                    "0X" + raw
+                  } else {
+                    raw
+                  }
+                  push_str(apply_width(body, width, flags))
                 } else if spec == 111 {
-                  // o
-                  let val = if is_ll {
+                  // o（# → 前导 0，非零值）
+                  let raw = if is_ll {
                     u64_octal(arg)
                   } else {
                     u64_octal(arg.to_uint().to_uint64())
                   }
-                  apply_width(val, width, flags)
+                  let body = if flags.contains("#") && arg != 0UL {
+                    "0" + raw
+                  } else {
+                    raw
+                  }
+                  push_str(apply_width(body, width, flags))
                 } else if spec == 112 {
                   // p（oracle 实测 "0x1234"——小写不填充）
-                  apply_width(
-                    "0x\{u64_hex_lower(arg.to_uint().to_uint64())}",
-                    width,
-                    flags,
+                  push_str(
+                    apply_width(
+                      "0x\{u64_hex_lower(arg.to_uint().to_uint64())}",
+                      width,
+                      flags,
+                    ),
                   )
                 } else if spec == 102 {
                   // f
                   let f = arg.reinterpret_as_double()
-                  let p = match precision {
-                    Some(p) => p
+                  let pr = match precision {
+                    Some(pr) => pr
                     None => 6
                   }
-                  apply_width(format_fixed(f, p), width, flags)
+                  push_str(apply_width(format_fixed(f, pr), width, flags))
                 } else if spec == 103 {
                   // g
                   let f = arg.reinterpret_as_double()
-                  let p = match precision {
-                    Some(p) => p
+                  let pr = match precision {
+                    Some(pr) => pr
                     None => 6
                   }
-                  apply_width(format_g(f, p, false), width, flags)
+                  push_str(apply_width(format_g(f, pr, false), width, flags))
                 } else if spec == 71 {
                   // G
                   let f = arg.reinterpret_as_double()
-                  let p = match precision {
-                    Some(p) => p
+                  let pr = match precision {
+                    Some(pr) => pr
                     None => 6
                   }
-                  apply_width(format_g(f, p, true), width, flags)
+                  push_str(apply_width(format_g(f, pr, true), width, flags))
                 } else if spec == 115 {
-                  // s（受检读；**忽略精度**——oracle 现状，%.1s 整串输出）
+                  // s：字节原样（DIFF-LIB-PRINTF-01——旧 decode_lossy 对
+                  // 非 UTF-8 字节串有损）+ %.Ns 精度截断（旧忽略精度）+
+                  // 字节域宽度
                   match read_cstring(mem, map, arg.to_uint()) {
-                    Ok(bytes) =>
-                      apply_width(@utf8.decode_lossy(bytes), width, flags)
+                    Ok(bytes) => {
+                      let limited : Bytes = match precision {
+                        Some(pr) =>
+                          if pr < bytes.length() {
+                            let cut : Array[Byte] = []
+                            for q = 0; q < pr; q = q + 1 {
+                              cut.push(bytes[q])
+                            }
+                            Bytes::from_array(cut)
+                          } else {
+                            bytes
+                          }
+                        None => bytes
+                      }
+                      push_bytes(apply_width_bytes(limited, width, flags~))
+                    }
                     Err(f) => return Err(f)
                   }
                 } else if spec == 99 {
-                  // c：低字节经 char 通道（200 → U+00C8 → UTF-8 两字节，
-                  // oracle 缺陷形状照搬）
-                  let cs = Int::unsafe_to_char((arg & 0xFFUL).to_int()).to_string()
-                  apply_width(cs, width, flags)
+                  // c：低字节单字节直出（DIFF-LIB-PRINTF-01——旧 char 通道
+                  // 200 → U+00C8 → UTF-8 两字节 C3 88 照搬；现与 putchar
+                  // 单字节语义一致）+ 字节域宽度
+                  let one = Bytes::make(1, (arg & 0xFFUL).to_int().to_byte())
+                  push_bytes(apply_width_bytes(one, width, flags~))
                 } else {
                   // 未知说明符：原样 `%` + 字母，但**消耗一个实参**
-                  "%" + Int::unsafe_to_char(spec).to_string()
+                  push_str("%" + Int::unsafe_to_char(spec).to_string())
                 }
-                out = out + piece
                 used = used + 1
               }
               None => ()
             }
           }
-        None => out = out + "%" // 行尾孤立 %
+        None => push_str("%") // 行尾孤立 %
       }
     } else {
-      out = out + Int::unsafe_to_char(ch).to_string()
+      push_str(Int::unsafe_to_char(ch).to_string())
     }
   }
-  Ok(out)
+  Ok(Bytes::from_array(acc))
 }
 
 ///|
-/// printf 族参数计数（vm 分发侧用——批三号三段上提 pub：转换符个数，
-/// `%%` 不计）。与 `parse_format_specs` 同解析器，只吐数量。
 pub fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
   parse_format_specs(fmt)
 }

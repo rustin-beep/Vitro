@@ -114,8 +114,8 @@
       "id": "DIFF-LIB-PRINTF-01",
       "title": "printf 四偏差面：%+d 与 % d 旗标无效（按无旗标输出）、%.1s 忽略精度（整串输出）、%*d 动态宽度 typeck 编译拒（'说明符数量（1）与参数数量（2）不匹配'——不认 * 消耗参数）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "verified-run",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "oracle 既有偏差照搬（旗标/精度）+ typeck 格式检查能力缺口（动态宽度）；0.8.0 脱钩批逐项清",
       "subsystems": [
@@ -133,7 +133,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "pf_plus/pf_space/pf_prec1s/pf_dynw 四探针全实锤（2026-09-30）；蓝图条目面（%*d）与 0.7.0 披露面（旗标/精度三偏差）已合并定稿为四偏差面；语料零覆盖此类形状 → detectable 空"
+      "notes": "销案 2026-10-05（批二-b）：formatter 重构字节域累积——+ / 空格 / # 旗标（x→0x/X→0X/o→0 非零值）+ %.Ns 精度截断 + %c 低字节单字节直出（旧 char 通道两字节化）+ %s 字节原样（顺带修 decode_lossy 对非 UTF-8 串的有损——重读发现）；printf_pipeline/String 消费四件（printf/fprintf/sprintf/snprintf）适配 Bytes 直通；矩阵五行双侧逐行一致 + 语料 printf_flags.c / fprintf_persist.c（扩 %c 高位形态）SAME 入账。**%*d 动态宽度（typeck 编译拒）子项归批三 typeck 域**"
     },
     {
       "id": "DIFF-LIB-FPRINTF-01",
@@ -437,8 +437,8 @@
       "id": "DIFF-VFS-CRLF-01",
       "title": "fgets/fread 文本模式 CRLF 伸缩不分模式（二进制 \"rb\"/\"wb\" 读写也做 \\r\\n↔\\n 转换）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "verified-doc",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "doc",
       "rationale": "oracle 既有偏差登记（已知限制①-4）；0.8.0 清",
       "subsystems": [
@@ -455,7 +455,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "行为探针（wb 写 \\n 读回字节层）随二段闸的 golden 义务一并立；本批 doc 在册先行"
+      "notes": "销案 2026-10-05（批二-b）：fgets 补 is_text_mode 分支（fread/fputs/fwrite 本已分模式——病体仅 fgets 无条件走 read_text_byte 压缩）；Clang rb 探针 61 0d 0a vs 修前 61 0a 实证；锚 vfs_fgets_binary_mode_no_crlf_compress"
     },
     {
       "id": "DIFF-LIB-CTYPE-01",
@@ -484,8 +484,8 @@
       "id": "DIFF-LIB-STRNCPY-01",
       "title": "strncpy/strcat 族边界行为按 oracle 现状（负 n 补零到尾等界内软夹紧形态与 C 有出入）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "verified-doc",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "doc",
       "rationale": "oracle 照搬（已知限制①-6）；负 n 属 UB 域（size_t 巨值）Clang 无确定行为可对照；0.8.0 清",
       "subsystems": [
@@ -501,7 +501,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "U5#3 形状（S6 host 批照搬登记）；白盒锚在 host_string_wbtest"
+      "notes": "销案 2026-10-05（批二-b）：负号形 n → 越界写 trap（strncpy/memcpy·memmove i32 n<0；strncat u64 n>0x7FFFFFFF——Clang segfault rc=139 探针实证，教学化 trap 文案）；正巨量保留教学软夹紧（与 memset ②-3 语义一致）；锚 negative_n_family_traps_not_clamps + 旧软夹紧锚翻转"
     },
     {
       "id": "DIFF-LIBC-STUB-CONFLICT-01",

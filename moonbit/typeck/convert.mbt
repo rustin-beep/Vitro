@@ -138,6 +138,13 @@ fn TypeChecker::check_array_pointer_assignable(
       if @ast.type_eq(t_pointee, v_element) {
         return true
       }
+      // const 安全方向兼容（issue #3 根因修复，2026-10-06）：T[] decay 到
+      // const T* 合法（加 const 只读强化，C §6.5.16.1）——旧 type_eq 严格
+      // 等把 `const char*` 形参收 char[]/字符串字面量全判 E3038（strtol/
+      // strtod/strncpy 预拦截、用户 const char* 函数全灭的最小复现 g10）
+      if const_promoted_eq(t_pointee, v_element) {
+        return true
+      }
       // 多维数组 decay：int arr[3][3] -> int (*)[3]
       if @ast.type_eq(t_pointee, value.subscript_type()) {
         return true
@@ -316,8 +323,34 @@ fn TypeChecker::check_scalar_assignable(
 
 ///|
 /// 指针赋值兼容（整数→指针 W3054；任意指针/数组→void* H3057；指针间
-/// pointee 不一致 W3067（P1-6：向上转型豁免属 C++，C 子集不适用——
-/// 剔除登记）；const 丢失 W3053）。
+/// 目标 pointee **加 const 限定**的安全方向兼容（C：T → const T 合法、
+/// 去 const 反向禁止——仅一层顶层限定差异，char** → const char** 深层
+/// 不放行对齐 C 严格规则）。
+fn const_promoted_eq(target_pointee : @ast.Type, value : @ast.Type) -> Bool {
+  let stripped = strip_top_const(target_pointee)
+  // 目标本无 const（无可剥）或剥后仍不等 → 不兼容
+  !@ast.type_eq(target_pointee, stripped) && @ast.type_eq(stripped, value)
+}
+
+///|
+/// 剥类型顶层 const 限定（构造新值，原值不动）。
+fn strip_top_const(t : @ast.Type) -> @ast.Type {
+  match t {
+    Void(true) => Void(false)
+    Int(u, true) => Int(u, false)
+    Char(u, true) => Char(u, false)
+    Float(true) => Float(false)
+    Double(true) => Double(false)
+    LongLong(u, true) => LongLong(u, false)
+    Pointer(p, true) => Pointer(p, false)
+    Array(e, n, d, true, v, vd) => Array(e, n, d, false, v, vd)
+    Struct(n, true) => Struct(n, false)
+    Union(n, true) => Union(n, false)
+    _ => t
+  }
+}
+
+///|
 fn TypeChecker::check_pointer_assignable(
   self : TypeChecker,
   target : @ast.Type,

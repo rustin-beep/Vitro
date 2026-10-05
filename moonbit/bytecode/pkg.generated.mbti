@@ -29,7 +29,7 @@ pub const MEM_SIZE : UInt = 1048576
 
 pub const NULL_TRAP_SIZE : UInt = 0x1000
 
-pub const SHADOWED_HOST_NAME_COUNT : Int = 20
+pub const SHADOWED_HOST_NAME_COUNT : Int = 17
 
 pub const STACK_START : UInt = 1048576
 

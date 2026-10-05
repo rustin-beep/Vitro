@@ -539,13 +539,29 @@ pub fn VirtualFileSystem::fgets(
   }
   let mut read_count = 0
   let tmp : Array[Byte] = []
-  while read_count < n - 1 && desc.cursor < meta.size {
-    let pair = read_text_byte(data, desc.cursor)
-    tmp.push(pair.0)
-    desc.cursor = pair.1
-    read_count = read_count + 1
-    if pair.0 == b'\n' {
-      break
+  if desc.is_text_mode {
+    // 文本模式：\r\n 压缩为 \n（逻辑字节域）
+    while read_count < n - 1 && desc.cursor < meta.size {
+      let pair = read_text_byte(data, desc.cursor)
+      tmp.push(pair.0)
+      desc.cursor = pair.1
+      read_count = read_count + 1
+      if pair.0 == b'\n' {
+        break
+      }
+    }
+  } else {
+    // 二进制模式：字节原样（DIFF-VFS-CRLF-01 销案 2026-10-05 批二-b——
+    // 旧形态无条件压缩系 oracle 照搬「二进制 fgets 也压」在案；Clang rb
+    // 模式 fgets 对 \r\n 原样返回两字节——探针 fgets_bin.c 双侧实证）
+    while read_count < n - 1 && desc.cursor < meta.size {
+      let b = data[desc.cursor]
+      tmp.push(b)
+      desc.cursor = desc.cursor + 1
+      read_count = read_count + 1
+      if b == b'\n' {
+        break
+      }
     }
   }
   if read_count == 0 {

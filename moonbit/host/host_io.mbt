@@ -122,7 +122,7 @@ fn printf_pipeline(
   fmt_addr : UInt,
   args : Array[UInt64],
   guard_name : String?,
-) -> Result[String, HostMemReply] {
+) -> Result[Bytes, HostMemReply] {
   let fmt_bytes = match read_cstring(mem, map, fmt_addr) {
     Ok(b) => b
     Err(f) => return Err(fault_reply(f))
@@ -162,7 +162,7 @@ pub fn host_printf_n(
 ) -> HostMemReply {
   match printf_pipeline(map, mem, fmt_addr, args, Some("printf")) {
     Ok(out) => {
-      log.push_stdout(@utf8.encode(out))
+      log.push_stdout(out)
       no_reply()
     }
     Err(r) => r
@@ -188,14 +188,14 @@ pub fn host_fprintf_n(
   match printf_pipeline(map, mem, fmt_addr, args, Some("fprintf")) {
     Ok(out) => {
       if stream == 2UL {
-        log.push_stderr(@utf8.encode(out))
+        log.push_stderr(out)
       } else if stream == 1UL {
-        log.push_stdout(@utf8.encode(out))
+        log.push_stdout(out)
       } else {
         let fd = read_fd_raise(mem, map, stream.to_uint()) catch {
           AccessFault::Fault(f~) => return fault_reply(f)
         }
-        let n = vfs.write_direct(map, mem, fd, @utf8.encode(out))
+        let n = vfs.write_direct(map, mem, fd, out)
         if n < 0 {
           return trap_only(
             "fprintf: stream 指向未打开的文件或文件不可写（FILE\\* 读取或写入失败）。",
@@ -218,11 +218,10 @@ pub fn host_sprintf(
   fmt_addr : UInt,
   args : Array[UInt64],
 ) -> HostMemReply {
-  let out = match printf_pipeline(map, mem, fmt_addr, args, None) {
+  let bytes = match printf_pipeline(map, mem, fmt_addr, args, None) {
     Ok(o) => o
     Err(r) => return r
   }
-  let bytes = @utf8.encode(out)
   write_bytes_raise(mem, map, buf_addr, bytes) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -243,11 +242,10 @@ pub fn host_snprintf(
   fmt_addr : UInt,
   args : Array[UInt64],
 ) -> HostMemReply {
-  let out = match printf_pipeline(map, mem, fmt_addr, args, None) {
+  let bytes = match printf_pipeline(map, mem, fmt_addr, args, None) {
     Ok(o) => o
     Err(r) => return r
   }
-  let bytes = @utf8.encode(out)
   if size > 0 {
     let room = size - 1
     let n = if bytes.length() < room { bytes.length() } else { room }

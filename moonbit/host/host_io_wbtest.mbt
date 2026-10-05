@@ -112,12 +112,14 @@ test "printf_depth_guard_and_budget" {
 }
 
 ///|
-test "printf_percent_c_high_byte_two_byte_utf8" {
+test "printf_percent_c_high_byte_single_byte" {
   let (map, mem) = fresh()
   let (log, r) = printf_run(map, mem, "%c", [(200).to_uint64()])
   assert_eq(r.trap, None)
-  // oracle 实测缺陷形状：200 → U+00C8 → UTF-8 两字节（照搬）
-  assert_eq(log.join(OutputKind::Stdout), b"\xC3\x88")
+  // DIFF-LIB-PRINTF-01 销案翻转（2026-10-05 批二-b）：%c 低字节单字节
+  // 直出（与 putchar 一致；Clang printf("%c",200) 落单字节 0xC8）——
+  // 旧两字节 C3 88 系 oracle char 通道照搬
+  assert_eq(log.join(OutputKind::Stdout), Bytes::make(1, (200).to_byte()))
 }
 
 ///|

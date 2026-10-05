@@ -50,7 +50,11 @@ test "host_rerouted_exceptions" {
   assert_true(@bytecode.is_host_rerouted("strcpy"))
   assert_true(@bytecode.is_host_rerouted("strcat"))
   assert_false(@bytecode.is_host_rerouted("strlen"))
-  assert_false(@bytecode.is_host_rerouted("memcpy"))
+  // 2026-10-06（S9 新病批）：strncpy/memcpy/memmove 改判——Host 版负 n
+  // 越界写 trap（Bytecode 预编译段静默穿过实测），路由统一
+  assert_true(@bytecode.is_host_rerouted("strncpy"))
+  assert_true(@bytecode.is_host_rerouted("memcpy"))
+  assert_true(@bytecode.is_host_rerouted("memmove"))
   assert_true(
     @bytecode.call_route("strcpy") is Some(@bytecode.CallRoute::Host(_)),
     msg="strcpy 必须改判回 Host（不以固定索引形态出现）",
@@ -58,10 +62,12 @@ test "host_rerouted_exceptions" {
   assert_true(
     @bytecode.call_route("strcat") is Some(@bytecode.CallRoute::Host(_)),
   )
-  // 同族反例：strncpy 仍在固定索引段（同族分裂是现状，登记在案）
   assert_true(
-    @bytecode.call_route("strncpy")
-    is Some(@bytecode.CallRoute::BytecodeLibc(_)),
+    @bytecode.call_route("strncpy") is Some(@bytecode.CallRoute::Host(_)),
+    msg="strncpy 改判 Host（负 n trap 语义）",
+  )
+  assert_true(
+    @bytecode.call_route("memcpy") is Some(@bytecode.CallRoute::Host(_)),
   )
 }
 
@@ -73,15 +79,15 @@ test "host_rerouted_exceptions" {
 test "shadowed_host_names_are_declared" {
   let shadowed = @bytecode.shadowed_host_names()
   assert_eq(shadowed.length(), @bytecode.SHADOWED_HOST_NAME_COUNT)
-  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 20)
+  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 17)
   assert_eq(
     shadowed,
     [
       "isdigit", "isalpha", "islower", "isupper", "tolower", "toupper", "isspace",
       "isalnum", "isprint", "iscntrl", "isxdigit", "abs", "atoi", "srand", "rand",
-      "strlen", "strcmp", "strncpy", "memcpy", "memmove",
+      "strlen", "strcmp",
     ],
-    msg="遮蔽名单必须与勘察 §1.7 逐字一致",
+    msg="遮蔽名单必须与 route.mbt 显式清单逐字一致（2026-10-06 三函数改判出表）",
   )
   // 遮蔽名仍**登记在 host 表**（只是路由不选它）——这正是"隐式覆盖"要显式化的点
   for name in shadowed {
@@ -93,6 +99,9 @@ test "shadowed_host_names_are_declared" {
   // 改判集的两个名字**不在**遮蔽清单（它们实际路由到 Host）
   assert_false(shadowed.contains("strcpy"))
   assert_false(shadowed.contains("strcat"))
+  assert_false(shadowed.contains("strncpy"))
+  assert_false(shadowed.contains("memcpy"))
+  assert_false(shadowed.contains("memmove"))
 }
 
 ///|

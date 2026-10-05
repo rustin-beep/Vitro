@@ -34,24 +34,33 @@ pub(all) enum CallRoute {
 pub const HOST_FUNC_NAME_COUNT : Int = 110
 
 ///|
-/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 2）。
+/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 5）。
 ///
-/// 这 20 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
+/// 这 17 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
 /// `isdigit isalpha islower isupper tolower toupper isspace isalnum isprint
-/// iscntrl isxdigit abs atoi srand rand strlen strcmp strncpy memcpy memmove`。
-pub const SHADOWED_HOST_NAME_COUNT : Int = 20
+/// iscntrl isxdigit abs atoi srand rand strlen strcmp`。
+///（2026-10-06 strncpy/memcpy/memmove 改判 Host——负 n 越界写 trap 的
+/// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；改判集 5。）
+pub const SHADOWED_HOST_NAME_COUNT : Int = 17
 
 ///|
 /// 从固定索引段**改判回 Host** 的显式例外集。
 ///
-/// 唯一两条，理由在 Rust 侧有明文：Host 版 `strcpy`/`strcat` 带 **E3070 栈缓冲区
+/// strcpy/strcat 两条理由在 Rust 侧有明文：Host 版带 **E3070 栈缓冲区
 /// 校验**（`vitro_codegen/src/lib.rs:136-143` 只跳过这两个名字的预注册）。
+/// 2026-10-06 新增三条（S9 修复批新病批）：`strncpy`/`memcpy`/`memmove`
+/// 改判——Host 版负 n 越界写 trap（DIFF-LIB-STRNCPY-01 教学语义；Bytecode
+/// 预编译段对负 n 静默穿过，memcpy(-1) 实测无 trap）。
 /// 本函数是该例外的**单点定义**（2026-09-23 审阅批 P3 接线后真正收口）：
 /// codegen 的消费点是 `with_mode` 预注册跳过（`gen.mbt` 调本函数），新增例外
 /// 只改这里——预注册自动跳过、`call.mbt` 的 func_index 判定自动落 CallHost、
 /// `shadowed_host_names()` 清单与锚随之变红逼登记。
 pub fn is_host_rerouted(name : String) -> Bool {
-  name == "strcpy" || name == "strcat"
+  name == "strcpy" ||
+  name == "strcat" ||
+  name == "strncpy" ||
+  name == "memcpy" ||
+  name == "memmove"
 }
 
 ///|

@@ -316,3 +316,35 @@ test "file_misc_handlers_shape" {
   ignore(vfs.inject_preset_file(map, mem, "n.txt", b"z"))
   assert_eq(host_rename(map, mem, vfs, 0x6200U, 0x6300U).value, Some(0UL))
 }
+
+///|
+test "vfs_fgets_binary_mode_no_crlf_compress" {
+  // DIFF-VFS-CRLF-01 销案锚（2026-10-05 批二-b）：二进制模式 fgets 字节
+  // 原样（\r\n 不压缩）——旧形态无条件走 read_text_byte 系 oracle 照搬；
+  // Clang rb 模式探针 fgets_bin.c 双侧实证（61 0d 0a vs 修前 61 0a）
+  let (map, mem, vfs) = vfs_fresh()
+  // wb 写入 61 0D 0A 62（二进制原样——写侧本就不展开 \n）
+  let fdw = vfs.fopen(map, "bin_raw.bin", "wb")
+  assert_true(fdw > 0U)
+  ignore(mem.store_u32(map, 0x6000U, 0U))
+  put_bytes(mem, map, 0x6000U, b"a\r\nb", false)
+  assert_eq(vfs.fwrite(mem, map, fdw, 0x6000U, 1, 4), 4)
+  ignore(vfs.fclose(fdw))
+  // rb fgets：\r\n 原样两字节（修前被压成 \n）
+  let fdr = vfs.fopen(map, "bin_raw.bin", "rb")
+  assert_true(fdr > 0U)
+  let buf = 0x6500U
+  let ret = vfs.fgets(mem, map, fdr, buf, 16)
+  assert_eq(ret, buf)
+  let got : Array[Byte] = []
+  for i = 0; i < 4; i = i + 1 {
+    got.push(
+      mem.load_i8(map, buf + i.reinterpret_as_uint()).unwrap_or(0).to_byte(),
+    )
+  }
+  // 逐字节断言（避开字符串字面量转义链：a=97 CR=13 LF=10）
+  assert_eq(got[0].to_int(), 97)
+  assert_eq(got[1].to_int(), 13)
+  assert_eq(got[2].to_int(), 10)
+  ignore(vfs.fclose(fdr))
+}

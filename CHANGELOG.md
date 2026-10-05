@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 新病批：const 安全方向兼容——三条预拦截级解封 + issue #3 销案 + 路由改判，2026-10-06）
+
+- **check_array_pointer_assignable 补 const 兼容**（issue #3 根因）：T[]/字面量 → const T* 加 const 安全方向（C §6.5.16.1）合法——旧 type_eq 严格等致 `const char*` 形参收数组/字面量全 E3038（strtol/strtod/strncpy 三函数完全不可编译的预拦截根因；记载的"字面量形态"比实际窄，数组同炸）；`const_promoted_eq`/`strip_top_const` 仅一层顶层限定（char** → const char** 深层不放行）；g1–g10 十探针矩阵定位
+- **strncpy/memcpy/memmove 路由改判 Host**（is_host_rerouted 2→5）：负 n 越界写 trap 教学语义统一（Bytecode 预编译段对负 n 静默穿过实测——批二-b 的 host 臂修复到不了）；SHADOWED_HOST_NAME_COUNT 20→17、预注册锚 86→83、三驱动 golden 全量重刷 595 例（路由形态进产物；运行期行为零变化）
+- **被阻语料补回**：strtol_prefix.c（字面量+数组双形态）
+
+### Fixed（S9 修复批批二-b：libc/IO 语义三连——printf 偏差族 / strncpy 族负 n / VFS fgets 二进制，2026-10-05）
+
+- **printf 偏差族**〔DIFF-LIB-PRINTF-01 销案〕：formatter 重构为**字节域累积**——`+`/空格/`#` 旗标（x→0x / X→0X / o→0，非零值）、`%.Ns` 精度截断（旧 %.1s 整串输出）、`%c` 低字节单字节直出（旧 char 通道两字节化 C3 88——与 putchar 修复语义对齐）、`%s` 字节原样（顺带修 decode_lossy 对非 UTF-8 串的有损——重读发现）；printf_pipeline 与四消费（printf/fprintf/sprintf/snprintf）Bytes 直通；fprintf 落盘通道 %c 高位（审阅 P3-2）随之修复。矩阵五行双侧逐行一致；语料 printf_flags.c + fprintf_persist.c（扩 %c 形态）SAME。**%*d 动态宽度（typeck 编译拒）子项归批三**
+- **strncpy/memcpy·memmove/strncat 负 n**〔DIFF-LIB-STRNCPY-01 销案〕：负号形 n → 越界写 trap（Clang segfault rc=139 探针实证的教学化）；正巨量保留软夹紧（memset ②-3 语义一致）；旧「补零到内存尾」锚翻转
+- **VFS fgets 二进制模式压缩 CRLF**〔DIFF-VFS-CRLF-01 销案〕：fgets 补 is_text_mode 分支（fread/fputs/fwrite 本已分模式——病体仅 fgets）；Clang rb 探针 61 0d 0a vs 修前 61 0a 实证
+- **发现并登记新病**（#47）：strncpy 调用 E3038 名字特异预拦截（strcpy/strcat/strncat/strncmp/memcpy/memmove 对照全通——四函数中唯一炸，报错参序疑错位；归批三 typeck 域）
+
 ### Fixed（用户第六轮审阅处置：P2-1 atof 补全 / P2-2 深链误报环回退 / P1 mbti+fmt 机械同步 / P3 四条，2026-10-05）
 
 - **P2-1 atof 前缀语义补全**：悬空指数回退（`"1e"`/`"1e+"`/`"1e-"`→1.0——最长**合法**前缀）+ C99 hex float（`0x10`→16 / `0x1p4`→16 / `0x.8p1`→1 / `0x1p-2`→0.25——点开头 hex-fraction 形态含；hex mantissa 逐位精确、正确舍入取舍登记）；scan/parse 分层（parse_float_token 单源 atof/strtod 共用）；矩阵 12 形态双侧逐行一致 + 语料扩形态重入账

@@ -92,17 +92,23 @@ test "skeleton: libc pre-registration + strcpy/strcat dispatch exception" {
   let (output, errors) = gen.generate(minimal_program())
   assert_eq(errors.length(), 0)
   let o = output.unwrap()
-  // with_mode(false) 预注册：88 - 2（strcpy/strcat 分发回 Host）= 86 条
+  // with_mode(false) 预注册：88 - 5（strcpy/strcat/strncpy/memcpy/memmove
+  // 分发回 Host——2026-10-06 三函数扩入改判集：负 n 越界写 trap 语义）
+  // = 83 条
   let mut libc_count = 0
   o.func_index.each((_, idx) => {
     if idx >= 1000 && idx <= 1087 {
       libc_count += 1
     }
   })
-  assert_eq(libc_count, 86)
-  // strcpy/strcat 不预注册（Host 路径带 E3070 栈缓冲区检测）
+  assert_eq(libc_count, 83)
+  // strcpy/strcat/strncpy/memcpy/memmove 不预注册（Host 路径带 E3070
+  // 栈缓冲区检测 / 负 n trap 教学语义）
   assert_true(o.func_index.get("strcpy") is None)
   assert_true(o.func_index.get("strcat") is None)
+  assert_true(o.func_index.get("strncpy") is None)
+  assert_true(o.func_index.get("memcpy") is None)
+  assert_true(o.func_index.get("memmove") is None)
   assert_true(o.func_index.get("strlen") is Some(1015))
   // 用户函数索引从 1089 起
   assert_eq(o.func_index.get("main").unwrap(), 1089)

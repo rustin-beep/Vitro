@@ -400,10 +400,18 @@ pub fn host_strncpy(
   let src_bytes = read_cstring_raise(mem, map, src) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
+  // 负 n → 越界写 trap（DIFF-LIB-STRNCPY-01 销案 2026-10-05 批二-b）：
+  // size_t 符号扩展巨量 = 清晰程序错误信号（Clang 同形态 segfault rc=139
+  // 探针实证）；旧「软夹紧补零到内存尾」系 oracle 照搬。正巨量保留教学
+  // 软夹紧（与 memset ②-3 已知限制语义一致）
+  if n < 0 {
+    return trap_only(
+      "strncpy: 拷贝长度 n 为负（作为无符号长度是巨量越界写——请检查长度参数的计算）。",
+    )
+  }
   let mem_size = @bytecode.MEM_SIZE
   let max_write = if dest >= mem_size { 0U } else { mem_size - dest }
-  // 负 n：i32 as usize 符号扩展恒大于 max_write → 全额补零（oracle 缺陷形状）
-  let write_len = if n < 0 || n.reinterpret_as_uint() > max_write {
+  let write_len = if n.reinterpret_as_uint() > max_write {
     max_write
   } else {
     n.reinterpret_as_uint()
@@ -468,6 +476,13 @@ pub fn host_memmove(
   src : UInt,
   n : Int,
 ) -> HostMemReply {
+  // 负 n → 越界写 trap（同 host_strncpy——DIFF-LIB-STRNCPY-01 销案
+  // 2026-10-05 批二-b；旧符号扩展截断系 oracle 照搬）
+  if n < 0 {
+    return trap_only(
+      "memmove/memcpy: 拷贝长度 n 为负（作为无符号长度是巨量越界写——请检查长度参数的计算）。",
+    )
+  }
   let mem_size = @bytecode.MEM_SIZE
   let cap = if dest >= mem_size || src >= mem_size {
     0U
@@ -480,7 +495,7 @@ pub fn host_memmove(
       cap_s
     }
   }
-  let copy_len = if n < 0 || n.reinterpret_as_uint() > cap {
+  let copy_len = if n.reinterpret_as_uint() > cap {
     cap
   } else {
     n.reinterpret_as_uint()
@@ -503,7 +518,15 @@ pub fn host_strncat(
   src : UInt,
   n : UInt64,
 ) -> HostMemReply {
-  // 扫 dest 末尾（同 strcat）
+
+  // n 超 32 位正域（负号符号扩展形或巨量）→ 越界写 trap（同
+  // host_strncpy——DIFF-LIB-STRNCPY-01 销案 2026-10-05 批二-b；n 取
+  // 原始 u64 栈字与 strncpy 的 i32 不同系 oracle 形态保留）
+  if n > 0x7FFFFFFFUL {
+    return trap_only(
+      "strncat: 追加长度 n 超出正域（负数或巨量越界写——请检查长度参数的计算）。",
+    )
+  } // 扫 dest 末尾（同 strcat）
   let mut end = dest
   while true {
     match mem.load_i8(map, end) {

@@ -39,6 +39,6 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 - 数组形参 `sizeof` 在 Clang/gcc 都**不是**整型常量表达式（形参退化为指针）——别用 `_Static_assert` 给「Clang 能跑」造证据。Clang 能跑 ≠ 符合标准，两件事分开记。
 
 ## 权威源与时效
-- `scripts/shadow_verify` / `scripts/clang_direct` / `scripts/facts` 头注；`native/AGENTS.md` §测试防线
+- `scripts/clang_direct` / `scripts/facts` 头注（`shadow_verify` 已随 2026-10-05 删区退役）；原 `native/AGENTS.md` §测试防线（已删区，档案 tag `rust-oracle-freeze`）
 - **相关规程**：`vitro-facts-reconciliation`（连坐面的判读）、`vitro-generator-contract`（SVG 重生成属生成器闸）
 - as_of: 2026-09-28

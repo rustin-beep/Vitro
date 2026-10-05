@@ -11,7 +11,7 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
 >
 > | 位置 | 生成器 |
 > |---|---|
-> | `scripts/` | `gen_svg` / `gen_protocol_ts` / `gen_capi_bindings` / `gen_demo_algorithms`（发射形态，见下节） |
+> | `scripts/` | `gen_svg` / `gen_protocol_ts` / `gen_demo_algorithms`（gen_capi_bindings 已随 2026-10-05 C ABI 面裁撤删除）（发射形态，见下节） |
 > | `scripts/moonbit/` | `gen_diag` / `gen_host_route` / `gen_libc_data` / `gen_protocol_fields` / `gen_stubs` |
 >
 > **9 个里 5 个在 `scripts/moonbit/`**。把 `./scripts/gen_diag` 写成少一段的形态，在 `moonbit/` 与仓库根**两处都跑不起来**（`moonbit/` 下无 go.mod 也无 `scripts/`）。`moonbit_surface` 是唯一例外：其内部自带 `os.Chdir("moonbit")`，必须从仓库根调用。
@@ -61,7 +61,7 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
 
   | 路径 | 生成器 |
   |---|---|
-  | `scripts/` | `gen_svg`、`gen_protocol_ts`、`gen_capi_bindings`、`gen_demo_algorithms`（发射形态） |
+  | `scripts/` | `gen_svg`、`gen_protocol_ts`、`gen_demo_algorithms`（发射形态） |
   | `scripts/moonbit/` | `gen_diag`、`gen_host_route`、`gen_libc_data`、`gen_protocol_fields`、`gen_stubs` |
 
   （清单变更时同步更新此表；核对：`grep -oE "gen_[a-z_]+" .github/workflows/ci.yml \| sort -u`——发射步同样是 `go run` 形态可命中）

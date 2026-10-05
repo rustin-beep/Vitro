@@ -37,7 +37,7 @@
 <rect class="card" x="40" y="128" width="550" height="170" rx="12"/>
 <text class="tn" x="64" y="170" text-anchor="start">vitro-baseline-corpus-workflow</text>
 <text class="tc" x="64" y="206" text-anchor="start">Vitro 新增/修改 C 测试语料用例的完整义务链（clang</text>
-<text class="tc" x="64" y="236" text-anchor="start">golden、e2e、shadow、facts、SVG 连坐）。Use…</text>
+<text class="tc" x="64" y="236" text-anchor="start">golden、直拍、facts、SVG 连坐）。Use when adding a…</text>
 <rect class="card" x="610" y="128" width="550" height="170" rx="12"/>
 <text class="tn" x="634" y="170" text-anchor="start">vitro-facts-reconciliation</text>
 <text class="tc" x="634" y="206" text-anchor="start">Vitro 文档数字对账（scripts/facts）的判读手册——假红/假</text>

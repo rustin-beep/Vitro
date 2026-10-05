@@ -114,15 +114,6 @@ func relOf(root, p string) string {
 
 // ─── 采集器：影子防线（读产物，零副作用）────────────────────────────────────
 
-func collectShadowC(root string, facts map[string]Fact) {
-	// 工序④删区（2026-10-05）：shadow 报告（被测物 = Rust DLL）随区退役——
-	// 键真值由 markRetiredFacts 统一占位（本函数退役为空操作）。
-}
-
-func collectShadowCpp(root string, facts map[string]Fact) {
-	// 工序④删区（2026-10-05）：C++ shadow 随 Rust DLL 退役——同 collectShadowC。
-}
-
 // ─── 采集器：失败台账活跃条目（解析 md，零副作用）──────────────────────────
 
 var (
@@ -224,7 +215,6 @@ func collectCaseDirs(root string, facts map[string]Fact) {
 
 // ─── 采集器：常量真值（读源码，零副作用）────────────────────────────────────
 
-var reAbiConst = regexp.MustCompile(`VITRO_ABI_VERSION\s*:\s*&str\s*=\s*"(\d+\.\d+\.\d+)"`)
 
 // collectAbiVersion 采集 C ABI 版本真值。唯一来源是
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
@@ -608,8 +598,7 @@ func markRetiredFacts(facts map[string]Fact) {
 
 func collectAll(root string, run, runSlow bool, cargoLog string, prev *FactsDoc) FactsDoc {
 	facts := map[string]Fact{}
-	defer markRetiredFacts(facts) // 工序④删区批：退役键最终覆盖（历史值锚 git 历史 + 0.8.0 档案）
-	collectShadowCpp(root, facts)
+	defer markRetiredFacts(facts) // 工序④删区批：退役键最终覆盖（历史值锚 git 历史 + 0.8.0 档案；原 collectShadowC/Cpp 随 DLL 退役删除）
 	collectFailureLedgers(root, facts)
 	collectCaseDirs(root, facts)
 	collectAbiVersion(root, facts)

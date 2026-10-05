@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 836" role="img" aria-label="vitro Clang 直拍门禁流水线">
   <title>Clang 直拍框架 · 真值对照与 CI 硬门禁</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；数字 data-fact 锚定 reports/facts.json -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -36,7 +36,7 @@
 <text class="tc" x="600" y="130" text-anchor="middle">真值源 = Clang 本尊（编译运行产 golden）</text>
 <text class="tc" x="600" y="165" text-anchor="middle">被测物 = MoonBit cmd/run（stdout + 返回码）</text>
 <text class="tc" x="600" y="200" text-anchor="middle">SAME=全量 / KNOWN=台账登记 / DIFF&gt;0 即红</text>
-<text class="th" x="600" y="250" text-anchor="middle">MoonBit 测试真值 655 例（facts 锚）</text>
+<text class="th" x="600" y="250" text-anchor="middle">moon test 引擎白盒全绿（防线底座 · 数字见 README 机判行）</text>
 <text class="tm" x="600" y="300" text-anchor="middle">工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役</text>
 <text class="tm" x="600" y="330" text-anchor="middle">语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）</text>
 </svg>

@@ -264,7 +264,7 @@ func main() {
 				// 裸名在四语料里找第一个命中
 				found := false
 				for _, c := range corpora {
-					p := filepath.Join("native", "corpus", c, f)
+					p := filepath.Join("corpus", c, f)
 					if fileExists(p) {
 						path = p
 						found = true
@@ -272,8 +272,12 @@ func main() {
 					}
 				}
 				if !found {
-					fmt.Printf("SKIP  %s（四语料均不存在）\n", f)
-					continue
+					// fail loud（2026-10-05 审阅 P2）：此前 SKIP+continue 在混用
+					// 合法/非法名时整体 rc=0——丢弃不反映在退出码（假绿实测）；
+					// 且裸名分支曾漏改 native/ 前缀（同族漏改 C5），SKIP 掩盖了
+					// 全部裸名恒不可达。与下方「含分隔符路径不存在」同口径。
+					fmt.Fprintf(os.Stderr, "vm_diff: --cases 裸名在四语料均不存在: %s\n", f)
+					os.Exit(2)
 				}
 			} else if !filepath.IsAbs(f) && !fileExists(f) {
 				// 含分隔符的相对路径按仓库根原样使用（clang_direct 同口径）——

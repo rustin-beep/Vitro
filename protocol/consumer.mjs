@@ -21,7 +21,9 @@
 //
 // 用法（仓库根）：
 //   node protocol/consumer.mjs [cmd/serve 路径]
-//   缺省 exe = moonbit/_build/native/release/build/cmd/serve/serve.exe
+//   缺省 exe = moonbit/_build/native/debug/build/cmd/serve/serve.exe
+//   （debug 形态——与 protocol_frames / serve_smoke 同款；CI core job 的
+//   consumer 步自带 `moon build --target native cmd/serve` 前置构建）
 //   --selftest  注入非法 payload，断言校验必报错（J9 形式）
 
 import { spawnSync } from 'node:child_process';
@@ -174,7 +176,7 @@ function fetchPayloads(exe) {
 function main() {
   const argv = process.argv.slice(2);
   const selftest = argv.includes('--selftest');
-  const exe = argv.find((a) => !a.startsWith('--')) || 'moonbit/_build/native/release/build/cmd/serve/serve.exe';
+  const exe = argv.find((a) => !a.startsWith('--')) || 'moonbit/_build/native/debug/build/cmd/serve/serve.exe';
 
   if (selftest) {
     // J9：构造三类非法 payload，断言校验**必然**报错（否则判据是摆设）

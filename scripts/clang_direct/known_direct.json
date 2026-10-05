@@ -17,7 +17,11 @@
   {
     "case": "keyword_compat.c",
     "digest": "2c4d05b0",
-    "reason": "gap 目录语义 = Vitro 扩展关键字（U0#1②：gap_extension 判定）——Clang 严格模式编译失败 vs 引擎支持；双侧编译口径差异已登记"
+    "reason": "gap 目录语义 = Vitro 扩展关键字（U0#1②：gap_extension 判定）——Clang 严格模式编译失败 vs 引擎支持；双侧编译口径差异已登记。digests 双环境集（2026-10-05 CI 漂移补录）：digest 覆盖 clang 错误文本片段，本地 clang 22.1.4 报 \"use of undeclared identifier 'bool'\"（2c4d05b0）+ CI runner clang 措辞不同（7d80e2ef）——编译失败形状随 clang 版本漂，集合锚定；新环境形态漂移仍红逼归因补录",
+    "digests": [
+      "2c4d05b0",
+      "7d80e2ef"
+    ]
   },
   {
     "case": "sizeof_array_param.c",
@@ -32,7 +36,11 @@
   {
     "case": "bTree_default.c",
     "digest": "ff228a13",
-    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。Clang 侧 UB 恰好无害（输出 1）；引擎侧 kruskal 零填充修复（0c893ae）改变内存布局后 UB 走向 NULL 解引用受检 trap @71:32——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态，保留作安全检测教学示例"
+    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。Clang 侧 UB 恰好无害（输出 1）；引擎侧 kruskal 零填充修复（0c893ae）改变内存布局后 UB 走向 NULL 解引用受检 trap @71:32——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态，保留作安全检测教学示例。digests 双环境集（2026-10-05 CI 漂移补录）：本地 clang 构建 cmd/run = 受检 trap（ff228a13）+ CI（该时点 MSVC 构建 cmd/run）= 诊断行后 0xC0000005 崩溃（65593255）——引擎 exe 构建器差异下 UB 结局可漂；CI 构建已切 MOON_CC=clang（纪律 11），后续 CI 形态应收敛回 ff228a13，双集兼容共存",
+    "digests": [
+      "ff228a13",
+      "65593255"
+    ]
   },
   {
     "case": "putchar_range.c",

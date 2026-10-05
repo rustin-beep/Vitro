@@ -28,8 +28,6 @@
       "moonbit_source": "moonbit/ast/types_predicates.mbt",
       "sync": "单侧单源（MoonBit 唯一实现）（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）",
       "consumers": [
-        "native/crates/vitro_codegen/src/lib.rs",
-        "native/crates/vitro_typeck/src/context.rs",
         "moonbit/codegen/func.mbt",
         "moonbit/typeck/context.mbt",
         "moonbit/parser/decl.mbt"

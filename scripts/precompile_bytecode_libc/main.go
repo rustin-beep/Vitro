@@ -100,7 +100,8 @@ func computeSourceDigest() string {
 		h.Write([]byte{0})
 		b, err := os.ReadFile(f)
 		if err != nil {
-			continue
+			fmt.Fprintln(os.Stderr, "读源文件失败:", f, err, "（digest 拒绝静默缺文件——2026-10-05 审阅 P3）")
+			os.Exit(2)
 		}
 		h.Write(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
 		h.Write([]byte{0})

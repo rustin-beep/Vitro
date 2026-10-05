@@ -428,13 +428,15 @@ func genKG(root string, _ factsDoc) {
 // ─── 图 D：影子验证·门禁流水线（源：影子验证框架.md §一/§三/§2.3）────────────
 // 本图的跑批快照数字全部 data-fact 锚定 facts 台账。
 
-func genShadow(root string, fd factsDoc) {
+func genShadow(root string, _ factsDoc) {
 	// 工序④删区（2026-10-05）：图 D 原锚 shadow（被测物 = Rust DLL）随区退役。
-	// 重绘为删区后语义——Clang 直拍门禁（真值 = Clang 本尊 + 被测物 = mb cmd/run），
-	// 数字锚 facts 现役键（clang_direct 全量在 CI 产真值——如键缺失则 fail loud）。
-	cases := mustFact(fd, "moonbit_test_passed")
+	// 重绘为删区后语义——Clang 直拍门禁（真值 = Clang 本尊 + 被测物 = mb cmd/run）。
+	// 数字口径化零 facts 依赖（同 genGates 先例）：hygiene 的 facts 步为
+	// `--strict check`（无 --run），run 型键 moonbit_test_passed 在 CI 检出态
+	// 为 unavailable，mustFact 会把 -check 闸 fatal（2026-10-05 推送后 CI 红
+	// 实锤）；测试数由 README 机判行 + testcount 三向对账承载。
 	P := svgOpen(1200, 836, "vitro Clang 直拍门禁流水线", "Clang 直拍框架 · 真值对照与 CI 硬门禁",
-		"对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；数字 data-fact 锚定 reports/facts.json")
+		"对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行）")
 	P = append(P,
 		textF(600, 54, "tt", "Clang 直拍 · 真值对照与 CI 硬门禁", ""),
 	)
@@ -442,7 +444,7 @@ func genShadow(root string, fd factsDoc) {
 		textF(600, 130, "tc", "真值源 = Clang 本尊（编译运行产 golden）", ""),
 		textF(600, 165, "tc", "被测物 = MoonBit cmd/run（stdout + 返回码）", ""),
 		textF(600, 200, "tc", "SAME=全量 / KNOWN=台账登记 / DIFF>0 即红", ""),
-		textF(600, 250, "th", fmt.Sprintf("MoonBit 测试真值 %d 例（facts 锚）", cases), ""),
+		textF(600, 250, "th", "moon test 引擎白盒全绿（防线底座 · 数字见 README 机判行）", ""),
 		textF(600, 300, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役", ""),
 		textF(600, 330, "tm", "语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）", ""),
 	)

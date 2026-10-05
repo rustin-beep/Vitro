@@ -317,7 +317,7 @@ func main() {
 	useRust := true
 	if _, err := os.Stat(rustCli); err != nil {
 		useRust = false
-		fmt.Println("[retired] rust 臂不可用（oracle 已删区退役）——MoonBit 单臂基线比")
+		fmt.Fprintln(os.Stderr, "[retired] rust 臂不可用（oracle 已删区退役）——MoonBit 单臂基线比")
 	}
 	var rustFrames []string
 	if useRust {

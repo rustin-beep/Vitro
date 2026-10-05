@@ -1,16 +1,16 @@
 ---
 name: vitro-baseline-corpus-workflow
-description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang golden、e2e、shadow、facts、SVG 连坐）。Use when adding a C test case under native/tests/cases/, generating or fixing golden files, or when e2e/shadow/facts turn red after corpus changes. 触发词：新增用例、golden、baseline、语料、e2e 红、shadow、gap 目录、arch_diff_bug。
+description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang golden、直拍、facts、SVG 连坐）。Use when adding a C test case under corpus/, generating or fixing golden files, or when clang_direct/vm_diff/facts turn red after corpus changes. 触发词：新增用例、golden、baseline、语料、直拍红、gap 目录、arch_diff_bug。
 ---
 
 # 新增 C 语料用例义务链
 
-**适用场景**：往 `native/tests/cases/` 加（或改）C 用例；补/修 golden；加用例后 e2e / shadow / facts 红。
+**适用场景**：往 `corpus/` 加（或改）C 用例；补/修 golden；加用例后 clang_direct / vm_diff / facts 红（原 `native/tests/cases/` 已随 2026-10-05 删区整体迁至 `corpus/`；shadow / e2e 驱动已随 Rust 区退役）。
 
 ## 黄金验证序列（按序全跑）
 1. **clang 实跑**取 stdout + exit code（golden 由实跑生成，**勿手写**）；
-2. golden 落 `native/tests/cases_golden/<suite>/<name>.out`——`<suite>` ∈ `baseline` / `knr` / `leetcode` / `cpp`，与 `cases/` 同名子目录**一一对应**。⚠️ `cases_golden/` **根下另有 82 个 `*_default.out` 散文件**（模板/算法那套），别与用例 golden 放混；
-3. `cargo test --test vitro_e2e`（cwd=`native/`）；
+2. golden 落 `corpus/cases_golden/<suite>/<name>.out`（原 `native/tests/cases_golden/` 随删区迁入）——`<suite>` ∈ `baseline` / `knr` / `leetcode` / `cpp`，与 `cases/` 同名子目录**一一对应**。⚠️ `cases_golden/` **根下另有 82 个 `*_default.out` 散文件**（模板/算法那套），别与用例 golden 放混；
+3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
 4. `cargo build --release` 重建后 `go run ./scripts/shadow_verify`（cwd=仓库根）；
 5. `go run ./scripts/facts check` 漂移 0。
 
@@ -27,8 +27,8 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 1 个用例会牵动 shadow 总数与 match 计数，下游同步面约 6 处：markdown 现值句、**SVG 内嵌数字（生成物，`go run ./scripts/gen_svg` 重生成，禁手改；重生成后 `grep -o` 抽查数字落位）**、README 分解式行（人工维护不机判但须诚实同步）+ 更新 as_of 实测日期。
 
 ## 输出差异类用例：gap 目录配方
-双侧可跑但输出**必然不同**时（如 `putchar(>=128)` 的 UTF-8 重编码差异），不进 baseline（会被 e2e 硬性 golden 比对卡死）。照 `native/tests/cases/gap/` 先例：
-1. 落 `native/tests/cases/gap/`（e2e 扫 `cases/` 下的 baseline / knr / leetcode / cpp，外加**独立目录** `tests/cases_template_generated`——不是 `cases/template`；**不扫 gap**）；
+双侧可跑但输出**必然不同**时（如 `putchar(>=128)` 的 UTF-8 重编码差异），不进 baseline。照 `corpus/gap/` 先例：
+1. 落 `corpus/gap/`（clang_direct 直拍六目录含 gap 与 `template_generated`；gap 例通常须登记 `known_direct.json` 白名单〔case+digest 锁定〕）；
 2. 源内标 `// @category: arch_diff_bug`（shadow 的 known_issue 豁免通道）；
 3. golden = clang 实跑原始字节，不做任何归一。
 进 clang_direct known 台账的条目：`go run ./scripts/clang_direct --check-known` 做静态校验（悬空/格式）；known 是**双向监控**——缺陷修复转绿而台账未移除会红，这是自动提醒器，不是噪音。

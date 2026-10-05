@@ -42,7 +42,7 @@ go run ./scripts/facts --run check                   # ② 采集 + 对账判红
 
 > ⚠️ `scripts/facts/main.go` 的 `switch cmd` 只有 `check` / `report` / `sync` 三个分支、**没有 default**：
 > 不带子命令时**不执行任何对账、恒 exit 0**。只想刷新真值用 ①，要判红必须用 ②。
-> （CI 的完整形态见 `ci.yml`：`facts --run --cargo-log native/cargo_test_ci.log check`——**flag 写在子命令之前**。）
+> （CI 的现役完整形态见 `ci.yml`：`facts --strict check`——**flag 写在子命令之前**；删区批已去 `--run`/`--cargo-log`，cargo 族真值源随 Rust 区退役。）
 
 ## 假红鉴别：探针的 CRLF 坑
 症状：探针打印的基线与实测**一致却仍红** → 查行尾（`git ls-files --eol` 对比 blob 与检出）。Windows checkout 的 autocrlf 会把 LF 基线检出为 CRLF。探针已内置 CRLF 规范化与空行跳过；若仍见此形态，先确认基线文件入库为 LF。判「真漂移」前先分辨是不是行尾假红。

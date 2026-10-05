@@ -154,7 +154,7 @@ jobs:
         # release 产物不生成/不更新，门禁会红且构建目标错位。
         shell: bash
         run: |
-          cd moonbit && moon build --release --target native cmd/run
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/run
           cd .. && go run ./scripts/vm_diff
 
       - name: Clang direct verify (layer 2, cmd/run vs Clang golden)
@@ -197,12 +197,17 @@ jobs:
       - name: Protocol first consumer (fields-level validation on real engine output)
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
         # 用**生成的**协议面（protocol/fields.mjs）消费**真实的**引擎输出
-        # （vitro_cli serve 的 step 流），逐字段校验 + 最小内容层渲染。
-        # 依赖上方 Release 构建的 vitro_cli（与 codegen_diff / libc_boot_diff 同前提）。
+        # （cmd/serve 的 step 流——MoonBit 侧同协议现役实现），逐字段校验 +
+        # 最小内容层渲染。
+        # 审阅 P1（2026-10-05）：本步此前零前置构建——consumer 缺省引擎路径
+        # 在干净检出上必红（本地被历史 release 产物掩盖，D1 问四+问五叠加）。
+        # 现自带 debug 构建（与 protocol_frames 同款产物形态与位置）。
         # **限制（诚实登记）**：本环境无 npm/tsc，故只能验「生成物描述得了真实输出」，
         # 验不了「字段名写错在 tsc 编译期即红」——后者是 TS 的核心收益，待 tsc 就绪。
         shell: bash
-        run: node protocol/consumer.mjs
+        run: |
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
+          node protocol/consumer.mjs
 
       # serve 协议帧字段级冻结（S7 批四号交付物第三件，2026-10-04 兑现）：
       # 固定请求序列 × 双宿主（release vitro_cli + cmd/serve）→ canonicalize
@@ -212,7 +217,7 @@ jobs:
       # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
       - name: Protocol frames freeze (dual-host, canonicalized)
         run: |
-          cd moonbit && moon build --target native cmd/serve && cd ..
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           go run ./scripts/protocol_frames
         shell: bash
 
@@ -596,10 +601,14 @@ jobs:
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
         # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
         # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
+        # MOON_CC=clang（纪律 11 + 2026-10-05 审阅批）：被测物构建器与本地
+        # 一致（MSVC 构建的 cmd/run 在 UB 语料上结局可漂——bTree_default
+        # 0xC0000005 vs clang 构建受检 trap，known_direct 双集补录在案）；
+        # 且 MSVC 全量构建实测 12m51s，clang 显著更快（moon#2254）。
         shell: bash
         run: |
           cd moonbit
-          moon build --release --target native
+          MOON_CC=clang moon build --release --target native
           echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
         # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：

@@ -21,8 +21,10 @@ import { stepReset, bindAnim, applyCardFold, collectCurrentEditor } from "./js/t
 import { renderCourseTree, bindCasePicker } from "./js/course.ts";
 import { setCurrentCase } from "./js/state.ts";
 import { initSettings } from "./js/settings.ts";
+import { initWorkspace } from "./js/workspace.ts";
 
-// 课程树基础课选中（原 selectCase 语义照搬：编辑器/blurb/回放区过期/输出区清零）
+// 课程树基础课选中（原 selectCase 语义照搬：编辑器/blurb/回放区过期/输出区清零；
+// 工作区离开 guard 在 course.ts 课点击层统一处理，此处无需重复）
 function selectCaseById(id: string) {
   const k = DEMO_CASES.find((k) => k.id === id);
   if (!k) return;
@@ -58,6 +60,7 @@ function selectCaseById(id: string) {
 // ── 启动 ─────────────────────────────────────────────────
 (async function boot() {
   initSettings();
+  initWorkspace(); // 本地文件夹工作区（不支持的浏览器内部自隐入口）
   bindTabs();
   initEditorDecor();
   // 诊断卡点击跳行（F-1 视觉件：事件委托，卡片是批量重渲染的）

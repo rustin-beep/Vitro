@@ -69,7 +69,7 @@ pub fn host_fmod(UInt64, UInt64) -> UInt64
 
 pub fn host_fopen(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, UInt, UInt, Int) -> HostMemReply
 
-pub fn host_fprintf_n(@memory.MemoryMap, @memory.Memory, OutputLog, UInt64, UInt, Array[UInt64]) -> HostMemReply
+pub fn host_fprintf_n(@memory.MemoryMap, @memory.Memory, OutputLog, VirtualFileSystem, UInt64, UInt, Array[UInt64]) -> HostMemReply
 
 pub fn host_fputc(@memory.MemoryMap, @memory.Memory, VirtualFileSystem, Int, UInt) -> HostMemReply
 
@@ -367,6 +367,7 @@ pub fn VirtualFileSystem::rename(Self, String, String) -> Int
 pub fn VirtualFileSystem::restore(Self, VfsSnapshot) -> Unit
 pub fn VirtualFileSystem::rewind(Self, UInt) -> Unit
 pub fn VirtualFileSystem::snapshot(Self) -> VfsSnapshot
+pub fn VirtualFileSystem::write_direct(Self, @memory.MemoryMap, @memory.Memory, UInt, Bytes) -> Int
 
 // Type aliases
 

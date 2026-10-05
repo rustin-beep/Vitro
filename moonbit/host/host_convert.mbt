@@ -1,11 +1,13 @@
 ///| 字符串→数值族 6 个 handler（Rust `host/misc.rs` 照搬，勘察 §1.7 族 F）。
 ///
-/// **扫描管道的等价性论证（照搬依据）**：
-/// - `atoi`/`atol`/`atof`：oracle 走 `read_cstring`（lossy String）→
-///   **Unicode** `trim_start`/`trim` → 逐 char 累加/整串 parse。此处字节级
-///   实现——**登记微差**：多字节 Unicode 空白前缀（NBSP `C2 A0` 等）oracle
-///   会裁掉、此处不裁（字节 ≥ 0x80 一律非空白非数字即停）；ASCII 域逐位
-///   一致，语料形状不受影响。
+/// **扫描管道的等价性论证（照搬依据；atof 条目 2026-10-05 批二-a 修复后翻转）**：
+/// - `atoi`/`atol`：oracle 走 `read_cstring`（lossy String）→ **Unicode**
+///   `trim_start` → 逐 char 累加。此处字节级实现——**登记微差**：多字节
+///   Unicode 空白前缀（NBSP `C2 A0` 等）oracle 会裁掉、此处不裁（字节
+///   ≥ 0x80 一律非空白非数字即停）；ASCII 域逐位一致，语料形状不受影响。
+/// - `atof`：**已修（批二-a）**——前缀扫描只跳 ASCII 空白（与 C `isspace`
+///   域一致）；oracle 的 Unicode trim 对 NBSP 前缀的裁剪才是偏差（随
+///   Rust 退役收敛，无需对齐）。
 /// - `strtol`/`strtod`：oracle 虽也经 lossy String，但扫描用的是
 ///   `bytes[pos].is_ascii_whitespace()`（**只跳 ASCII 空白**）与 ASCII 数字
 ///   判定——多字节序列在 lossy 串里同样不被跳过、不构成数字 ⟹ **字节级
@@ -232,7 +234,11 @@ pub fn host_strtol(
   let mut val = 0L
   // 前缀探测（C §7.22.1.4 subject sequence；0x 后无有效数字不消费 x）
   let effective_base : Int = if base == 0 {
-    if pos + 1 < n && s[pos] == b'0' && (s[pos + 1] == b'x' || s[pos + 1] == b'X') && pos + 2 < n && digit_value(s[pos + 2]) < 16 {
+    if pos + 1 < n &&
+      s[pos] == b'0' &&
+      (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
+      pos + 2 < n &&
+      digit_value(s[pos + 2]) < 16 {
       pos = pos + 2
       16
     } else if pos < n && s[pos] == b'0' {
@@ -241,7 +247,11 @@ pub fn host_strtol(
       10
     }
   } else if base == 16 {
-    if pos + 1 < n && s[pos] == b'0' && (s[pos + 1] == b'x' || s[pos + 1] == b'X') && pos + 2 < n && digit_value(s[pos + 2]) < 16 {
+    if pos + 1 < n &&
+      s[pos] == b'0' &&
+      (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
+      pos + 2 < n &&
+      digit_value(s[pos + 2]) < 16 {
       pos = pos + 2
     }
     16

@@ -156,6 +156,23 @@ button:disabled { opacity: .5; cursor: default; filter: none; }
 @keyframes btn-pulse { 50% { opacity: .45; } }
 button.minor, #feed-btn { background: var(--accent-fill); color: var(--on-accent); }
 
+/* ── 本地文件夹工作区（2026-10-05 打开本地文件夹批）────────
+   chips 单行横滚（文件多不折行撑爆 pane）；dirty 点 = 修改未落盘标记；
+   移动端（≤960px）入口整体隐藏——FSA 目录选择器是桌面 Chromium 能力，
+   不做降级（用户拍板）。 */
+.ws-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.ws-name { font-size: 12px; color: var(--t3); flex: none; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-files { display: flex; gap: 6px; overflow-x: auto; flex: 1 1 auto; min-width: 0; padding: 2px; scrollbar-width: thin; }
+.ws-chip { background: var(--pane); color: var(--t3); border: 1px solid var(--hairline); border-radius: 12px; padding: 2px 10px; font-size: 12px; font-family: var(--mono); white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 5px; }
+.ws-chip:hover { color: var(--t1); border-color: var(--t3); filter: none; }
+.ws-chip.on { color: var(--t1); border-color: var(--accent); background: var(--accent-tint); }
+.ws-chip .ws-dot { display: none; width: 6px; height: 6px; border-radius: 50%; background: var(--num); flex: none; }
+.ws-chip.dirty .ws-dot { display: block; }
+#ws-save, #ws-close { padding: 4px 12px; font-size: 12px; flex: none; }
+#ws-open { display: inline-flex; align-items: center; gap: 6px; }
+#ws-open svg { flex: none; }
+@media (max-width: 960px) { .ws-ui { display: none !important; } }
+
 .pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); transition: color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out); display: inline-flex; align-items: center; gap: 6px; }
 .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 .pill.idle { color: var(--t3); }

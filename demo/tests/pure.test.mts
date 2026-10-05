@@ -12,6 +12,7 @@ import { latin1ToUtf8, esc, isArrayAnimCase } from "../js/util.ts";
 import { tokenizeC, highlightLines } from "../js/editor.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { heapSpanOf } from "../js/memory.ts";
+import { toPosix, isSourceFile, shouldSkipDir, orderForCompile } from "../js/workspace.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -100,4 +101,44 @@ test("heapSpanOf：堆跨度计算", () => {
 test("esc：HTML 转义三件", () => {
   assert.equal(esc("<a>&</a>"), "&lt;a&gt;&amp;&lt;/a&gt;");
   assert.equal(esc('"x"'), '"x"');
+});
+
+// ── workspace 纯函数（打开本地文件夹批 2026-10-05）：路径归一/文件过滤/
+//    目录剪枝/编译单元排序（active 居首——引擎 base_dir 锚在首个 unit 目录）
+test("workspace：toPosix 反斜杠归一与 ./ 前缀剥除", () => {
+  assert.equal(toPosix("src\\util.h"), "src/util.h");
+  assert.equal(toPosix(".\\main.c"), "main.c");
+  assert.equal(toPosix("a/b.c"), "a/b.c");
+});
+
+test("workspace：isSourceFile 大小写与扩展名边界", () => {
+  assert.equal(isSourceFile("main.c"), true);
+  assert.equal(isSourceFile("UTIL.H"), true);
+  assert.equal(isSourceFile("x.cpp"), false);
+  assert.equal(isSourceFile("x.cc"), false);
+  assert.equal(isSourceFile("ch"), false); // 无点不命中
+});
+
+test("workspace：shouldSkipDir 隐藏目录与大目录剪枝", () => {
+  assert.equal(shouldSkipDir(".git"), true);
+  assert.equal(shouldSkipDir("node_modules"), true);
+  assert.equal(shouldSkipDir("_build"), true);
+  assert.equal(shouldSkipDir("__pycache__"), true);
+  assert.equal(shouldSkipDir("BUILD"), true); // 大小写不敏感
+  assert.equal(shouldSkipDir("src"), false);
+  assert.equal(shouldSkipDir("include"), false);
+});
+
+test("workspace：orderForCompile active 居首 + 其余字典序", () => {
+  assert.deepEqual(
+    orderForCompile(["a/main.c", "z.c", "m/util.h"], "z.c"),
+    ["z.c", "a/main.c", "m/util.h"],
+  );
+  // active 不在集合 → 纯字典序（空串形态）
+  assert.deepEqual(orderForCompile(["b.c", "a.c"], ""), ["a.c", "b.c"]);
+  // active 首位形态（引擎 base_dir 取首 unit 目录段——子目录 include 候选链锚）
+  assert.deepEqual(
+    orderForCompile(["main.c", "sub/x.c"], "sub/x.c"),
+    ["sub/x.c", "main.c"],
+  );
 });

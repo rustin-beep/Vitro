@@ -12,6 +12,7 @@ import { $, esc } from "./util.ts";
 import { renderEditorDecor } from "./editor.ts";
 import { collectCurrentEditor } from "./timetravel.ts";
 import { setCurrentCase } from "./state.ts";
+import { ensureClosedForLesson } from "./workspace.ts";
 
 const DONE_KEY = "vitro-course-done";
 
@@ -135,23 +136,27 @@ export function renderCourseTree(): void {
   tree.querySelectorAll<HTMLElement>(".crs-chap").forEach((btn) => {
     btn.onclick = () => btn.parentElement!.classList.toggle("closed");
   });
-  // 课点击：路由两条路径 + 打勾
+  // 课点击：路由两条路径 + 打勾（工作区 dirty 时经 confirm 保存并关闭——
+  // 异步 guard，取消则整次点击含打勾都不发生）
   tree.querySelectorAll<HTMLElement>(".crs-lesson").forEach((el) => {
     el.onclick = () => {
-      const key = el.dataset.key || "";
-      const ch = chapters.find((c) => c.lessons.some((l) => lessonKey(l) === key));
-      const lesson = ch && ch.lessons.find((l) => lessonKey(l) === key);
-      if (!lesson) return;
-      if (lesson.kind === "case") {
-        onCasePick(lesson.id);
-      } else {
-        loadAlgoLesson(lesson);
-      }
-      const s = loadDone();
-      s.add(key);
-      saveDone(s);
-      markDoneRow(tree, key);
-      if (ch) updateBadge(tree, ch);
+      void (async () => {
+        if (!(await ensureClosedForLesson())) return;
+        const key = el.dataset.key || "";
+        const ch = chapters.find((c) => c.lessons.some((l) => lessonKey(l) === key));
+        const lesson = ch && ch.lessons.find((l) => lessonKey(l) === key);
+        if (!lesson) return;
+        if (lesson.kind === "case") {
+          onCasePick(lesson.id);
+        } else {
+          loadAlgoLesson(lesson);
+        }
+        const s = loadDone();
+        s.add(key);
+        saveDone(s);
+        markDoneRow(tree, key);
+        if (ch) updateBadge(tree, ch);
+      })();
     };
   });
   // 搜索过滤（标题/blurb 含关键词；无中课的章收起）

@@ -7,6 +7,7 @@ import { invoke, bodyOf, gateway, hasGateway } from "./gw.ts";
 import { $, esc, setStatus, latin1ToUtf8 } from "./util.ts";
 import { renderMemory } from "./memory.ts";
 import { currentCaseId } from "./state.ts";
+import { workspaceActive, workspaceFilesForCompile } from "./workspace.ts";
 import type { Frame } from "./types.ts";
 import type { CompileResult, Diagnostic, RunResult, EngineConfig, OutputDelta, MemoryRegions } from "./types.ts";
 
@@ -140,6 +141,11 @@ function runParams(kase: DemoCase): { argv?: string[] } {
 // runCase 与 timetravel.stepCollect 共同消费；改一处两条通道同改）──
 
 export function buildCompileParams(kase: DemoCase): { files?: Array<{ filename: string; source: string }>; source?: string } {
+  // 工作区模式（打开本地文件夹批 2026-10-05）：全量 .c/.h 打包
+  // compile.files，编辑器内容 = active 文件——两条通道（运行/采集）经
+  // 本单一源自动同口径；golden 对照在 renderReference 的 kase 空形态下
+  // 自然落「未预置参考值」（诚实边界沿用）
+  if (workspaceActive()) return { files: workspaceFilesForCompile() };
   if (kase.files) {
     // 多编译单元：主文件跟随编辑器内容（与运行通道同语义）
     return { files: kase.files.map((f, i) => ({

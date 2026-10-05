@@ -78,6 +78,7 @@
 | `batch21-dht-crdt-vclock-paxos/paxos.c` | Paxos 共识（Prepare/Promise/Accept/Accepted 四阶段+安全性场景） | #11 挡路；剥壳后 #3×18（E3038×13+E3006×5）+ **E3032×1**（262 行 `P%d` 漏传参——代码真错，Clang -Wformat 仅警告 EXIT=0、引擎判 error——**警告/错误严重性口径差异**，登记错误路径 golden 处方） | Clang 绿（含警告）；复合字面量 `(PropNum){0,0}` 绿 |
 | `batch22-pbft-dag/pbft.c` | PBFT 拜占庭容错（三阶段/quorum 计数/拜占庭节点/视图变更） | #11 挡路；剥壳后 **#3×14**（E3038：strncpy 存根轨 char[16] 数组实参 + broadcast 数组实参 + client_request 字面量） | 第二十二批；Clang 绿；剥壳需补 true/false 宏（引擎内置有、Clang 靠 stdbool.h——剥壳变换教训） |
 | `batch22-pbft-dag/dag.c` | DAG 类共识 Tangle 风格（tips/累积权重/拓扑排序） | #11 挡路；剥壳后 **0 条——首份全绿用户代码** | 第二十二批；**全管线首航里程碑**：typeck→codegen→VM 运行全通，输出与 Clang 逐字节一致（rand() 驱动的 40 行选择序列除外——C 标准不规定 rand 算法，属允许的实现差异，运行时对拍 skip 白名单类）；codegen/运行时层首航零缺陷 |
+| `batch23-parse-recovery/main-brace.c` | `int main{`（缺参数括号）+ `};` 尾分号——**错误路径诊断形状**首例 | **新 issue（parse 层内恢复缺失）**：首错 E2005 与 Clang 同位同形，其后 7 条级联（级联数 ∝ 首错后 token 数） | 第二十三批（2026-10-05 打开本地文件夹批真机测试用户实测）；Clang 1 error + 1 warning（main 变量 UB 警告）；垃圾 token 变体（`int main{dadadas`，探针 `.shadow_tmp/main_brace_junk.c`）钉死机制=声明起点重试非逐 token 报（首错行内剩余被丢弃——dadadas 两侧均零诊断） |
 
 ## 定向探边清单（后续挖缺陷的方向，2026-10-01 收敛判定后设立）
 

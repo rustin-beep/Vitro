@@ -224,6 +224,14 @@ fn push_code_errors(
 }
 
 ///|
+/// 头文件 unit 判定（小写后缀 `.h`）：不进 merge_units 拼接，仅进 vfs
+/// 供 #include 解析（打开本地文件夹批 2026-10-05；见 pipeline 合并段）。
+fn is_header_unit(filename : String) -> Bool {
+  let lower = filename.to_lower()
+  lower.has_suffix(".h")
+}
+
+///|
 /// 多文件编译管线主体（Rust run_multi_file_pipeline 照搬）。返回是否
 /// 编译成功；诊断/错误串/产物状态沿途写入 session.compile。
 fn serve_compile_pipeline(
@@ -241,16 +249,26 @@ fn serve_compile_pipeline(
   st.file_ranges = []
   st.preprocessor_trace = []
   // ── 合并（file_ranges 生产者）──
-  let (full_source, ranges) = merge_units(units)
+  // 头文件 unit（`.h` 后缀）不进拼接：C 语义里头文件不被"编译"，仅经
+  // #include 展开（vfs 全量注入在 lex_full_source）。拼接 + include 展开
+  // 各一份 = 双重定义面（打开本地文件夹批 2026-10-05：浏览器工作区把
+  // .h 与 .c 一并送 compile.files 的形态）
+  let compile_units : Array[@session.CompileUnit] = []
+  for u in units {
+    if !is_header_unit(u.filename) {
+      compile_units.push(u)
+    }
+  }
+  let (full_source, ranges) = merge_units(compile_units)
   st.file_ranges = ranges
   // fix 生成用的行表（Rust push_diagnostics 外层 source.lines() 同形）
   let source_lines = @diagnostics.split_lines(full_source)
   // ── 1. Lexer（E2：预处理警告与追踪随词法产出）──
   // quote-include 的 provider 按宿主形态文件级分叉（2026-09-29 审阅
   // P2 修复）：native = 真实文件系统 + base_dir 候选链；wasm-gc =
-  // 内存 vfs 空表（无 fs，E1021 是正当教学诊断）。此前统一 vfs 空表
-  // 曾使 native 壳静默丢失 include 解析（oracle 同请求成功而本侧
-  // E1021——审阅实锤）。
+  // units 全量注入内存 vfs（2026-10-05 files-vfs 批：集合内互引可解析，
+  // 集合外仍 E1021）。此前统一 vfs 空表曾使 native 壳静默丢失 include
+  // 解析（oracle 同请求成功而本侧 E1021——审阅实锤）。
   let lexed = lex_full_source(full_source, units)
   for t in lexed.trace {
     st.preprocessor_trace.push(t.render())

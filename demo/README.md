@@ -4,7 +4,7 @@
 网络请求到第三方、不跑构建器），浏览器内直接调
 [`vitro/engine/gateway`](../moonbit/gateway/) 的 wasm-gc 产物（NDJSON 帧协议
 v0.1）。**开发期工具有 npm devDependencies**（typescript + @types/node——仅
-类型检查/发射用，不进页面）；源码形态 = TS（`app.ts` + `js/*.ts` 十二模块），
+类型检查/发射用，不进页面）；源码形态 = TS（`app.ts` + `js/*.ts` 十三模块），
 发射产物 `app.js`/`js/*.js` **不入库**（与 `wasm.wasm` 对称，`.gitignore`
 在案）。
 
@@ -60,10 +60,22 @@ Firefox 134+），加载失败页面会显示降级提示。
 5. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
-6. `node --test demo/tests/pure.test.mts`——纯函数七锚（buildCallTree trie /
+6. `node --test demo/tests/pure.test.mts`——纯函数十一锚（buildCallTree trie /
    isArrayAnimCase / latin1ToUtf8 / tokenizeC / highlightLines / heapSpanOf /
-   esc；**须 node 25**，type stripping 直跑 .ts）。DOM 交互层不硬测，维持
+   esc / workspace 四锚：toPosix·isSourceFile·shouldSkipDir·orderForCompile；
+   **须 node 25**，type stripping 直跑 .ts）。DOM 交互层不硬测，维持
    浏览器实测纪律。
+
+## 打开本地文件夹（工作区模式，2026-10-05）
+
+「📂 打开文件夹」按钮（File System Access API，`showDirectoryPicker`）授权
+后可读写本地 C 工程目录：递归枚举 `.c/.h`（跳过隐藏目录与 node_modules 等
+大目录，200 文件 / 单文件 2MB / 深度 8 上限）→ 文件 chips 切换编辑 → 运行
+时全量打包 `compile.files`（集合内 `#include "x.h"` 由引擎内存 vfs 解析，
+`.h` 只进 vfs 不进编译单元拼接——C 语义对齐）→ Ctrl+S / 保存按钮写回磁盘
+原文件。**不自动保存**：dirty 文件以 chip 圆点标记，关页由浏览器原生
+beforeunload 提示兜底；点课离开时 confirm 后保存并关闭工作区。仅桌面
+Chromium（Chrome/Edge）支持；移动端（≤960px）入口整体隐藏，不做降级。
 
 ## 诚实边界
 

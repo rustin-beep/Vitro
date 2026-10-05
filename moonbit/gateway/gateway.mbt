@@ -102,27 +102,36 @@ fn lex_full_source(
   full_source : String,
   units : Array[@session.CompileUnit],
 ) -> @token.LexResult {
+  // 首个非空文件名的目录段作候选链 base_dir（Rust base_path 语义
+  // 的行为级等价——cmd/run/main.mbt dir_of 头注的 7 形态探针）
+  let mut base_dir = "."
+  for u in units {
+    if !u.filename.is_empty() {
+      base_dir = dir_of(u.filename)
+      break
+    }
+  }
   match include_reader.val {
-    Some(_) => {
-      // 首个非空文件名的目录段作候选链 base_dir（Rust base_path 语义
-      // 的行为级等价——cmd/run/main.mbt dir_of 头注的 7 形态探针）
-      let mut base_dir = "."
-      for u in units {
-        if !u.filename.is_empty() {
-          base_dir = dir_of(u.filename)
-          break
-        }
-      }
+    Some(_) =>
       @lexer.tokenize_with(
         full_source,
         provider=HostIncludeProvider::P,
         base_dir~,
       )
-    }
     None => {
-      // wasm-gc：内存 vfs 空表（include → E1021）
+      // wasm-gc：units 全量注入内存 vfs（打开本地文件夹批 2026-10-05
+      // 前置）——集合内文件互相 quote-include 可解析（浏览器端多文件
+      // include 的能力载体，tokenize_with_vfs 头注的既定语义）；集合外
+      // 仍 E1021（无 fs，宁诊断不静默——勘察 H-5）。key 为规范 posix
+      // 相对路径：`\` → `/`（resolver.normalize_path 语义的前置对齐）
       let files : Map[String, String] = Map([])
-      @lexer.tokenize_with_vfs(full_source, files~)
+      for u in units {
+        let key = u.filename.replace(old="\\", new="/")
+        if !key.is_empty() {
+          files[key] = u.source
+        }
+      }
+      @lexer.tokenize_with_vfs(full_source, files~, base_dir~)
     }
   }
 }

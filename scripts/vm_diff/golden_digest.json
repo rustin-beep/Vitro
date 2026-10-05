@@ -697,7 +697,7 @@
       "exit_code": 0,
       "stdout_sha": "18ff9673f8ed7360",
       "memory_sha": "a82bd0e64a6cf7a3",
-      "known_mb_digest": "cefc32b59afce200"
+      "known_mb_digest": "2ba5d0ecbf70ee0c"
     },
     "baseline/enum.c": {
       "src_sha": "1dac9003",
@@ -1542,9 +1542,8 @@
     "baseline/putchar_range.c": {
       "src_sha": "d399594b",
       "exit_code": 0,
-      "stdout_sha": "02db7cdb46b7c56e",
-      "memory_sha": "6741f207505527ba",
-      "known_mb_digest": "4818061580b049d5"
+      "stdout_sha": "7975a452654b22bd",
+      "memory_sha": "6741f207505527ba"
     },
     "baseline/puts_basic.c": {
       "src_sha": "70220385",

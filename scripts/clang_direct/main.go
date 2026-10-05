@@ -61,7 +61,7 @@ const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
 
 const clangCacheDir = ".clang_cache_cd"
 
-const cacheSchema = "cd1"
+const cacheSchema = "cd2"
 
 const clangPath = "clang"
 
@@ -466,8 +466,14 @@ func clangVersionString() string {
 }
 
 type cachePayload struct {
-	Schema      string `json:"schema"`
-	Stdout      string `json:"stdout"`
+	Schema string `json:"schema"`
+	// Stdout 走 []byte（JSON 自动 base64）——**字节保真存储**（2026-10-05
+	// 脱钩修复批批一修复）：此前 string 字段经 json.Marshal 会把无效 UTF-8
+	// 字节（clang 原生程序的 ≥0x80 输出）替换成 U+FFFD，缓存层毒化 golden
+	//（实测 putchar_range 缓存落 A\ufffd\ufffd\ufffdZ vs 真值 A\x80\xc8\xffZ
+	//——known 的"双环境形态差异"实为此毒化误归因）。schema bump 令旧缓存
+	// 全量失效重取真值（cacheKey 含 schema，不读旧文件）
+	Stdout      []byte `json:"stdout"`
 	ExitCode    int    `json:"exit_code"`
 	CompileFail bool   `json:"compile_fail"`
 }
@@ -502,7 +508,7 @@ func runClang(c caseRef, caseIdx int, clangVersion string) *clangResult {
 	if data, err := os.ReadFile(filepath.Join(clangCacheDir, key+".json")); err == nil {
 		var p cachePayload
 		if json.Unmarshal(data, &p) == nil && p.Schema == cacheSchema {
-			return &clangResult{compileFail: p.CompileFail, stdout: p.Stdout, exitCode: p.ExitCode}
+			return &clangResult{compileFail: p.CompileFail, stdout: string(p.Stdout), exitCode: p.ExitCode}
 		}
 	}
 	// 重试判据（shadow_verify 同款）：「编译成功且非瞬态异常」才接受——
@@ -603,7 +609,7 @@ func runClangOnce(c caseRef, caseIdx int) *clangResult {
 
 func storeCache(key string, r *clangResult) {
 	_ = os.MkdirAll(clangCacheDir, 0o755)
-	p := cachePayload{Schema: cacheSchema, Stdout: r.stdout, ExitCode: r.exitCode, CompileFail: r.compileFail}
+	p := cachePayload{Schema: cacheSchema, Stdout: []byte(r.stdout), ExitCode: r.exitCode, CompileFail: r.compileFail}
 	data, err := json.Marshal(p)
 	if err != nil {
 		return

@@ -137,6 +137,25 @@
       ],
       "anchor": "本闸 copies 判定（逐字节比对）+ 2026-10-04 审阅 P2（副本从 2 涨到 5 零机判实锤）",
       "upstream_ref": "用户审阅报告 2026-10-04 第六轮 P2"
+    },
+    {
+      "id": "stdout_stub_copies",
+      "concept": "stdout 字节直写 C stub 双副本（native-stub 禁 ../ 被迫复制——两份逐字节同；只有 run_main 出口消费〔cmd/run 与 cmd/vitro run 子命令〕，compile/step 无程序 stdout 物理输出）",
+      "kind": "copies",
+      "copies_must_match": [
+        "moonbit/cmd/run/stdout_stub.c",
+        "moonbit/cmd/vitro/stdout_stub.c"
+      ],
+      "rust_source": "",
+      "moonbit_source": "moonbit/cmd/run/stdout_stub.c",
+      "sync": "两份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）",
+      "consumers": [
+        "moonbit/cmd/run",
+        "moonbit/cmd/vitro（run 子命令）",
+        "moonbit/cmd/lib/cli（write_stdout 注入消费）"
+      ],
+      "anchor": "本闸 copies 判定（逐字节比对）+ DIFF-EXIT-STDOUT-ENCODE-01 销案（2026-10-05 脱钩修复批批一）",
+      "upstream_ref": "差异台账 DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01"
     }
   ]
 }

@@ -21,13 +21,13 @@
 /// 名单 FORK(known)，见 scripts/typeck_diff）。E2/E3 面不独立出口
 /// （驱动从 typed_ast 投影派生——改形登记见总计划 §10 S4 行）。
 ///
-/// **载体观察（2026-09-20 审阅）**：目录模式注入 dir-wide vfs，但
-/// `tokenize_with_vfs` 的 base_dir 默认 "."，quote-include 候选键
-/// `./x.h` 与 vfs 绝对路径键结构性不命中——注入实际无效，两侧同无
-/// 自定义 include 解析（与 S3 dump_ast 同款既有模式，"两侧同失败"
-/// 的一致属偶然对齐）。**哨兵已补**（T5-c）：gap/include_quote_
-/// sentinel.c 入语料，两驱动常驻监测该面——任一侧 vfs 行为独立变化
-/// 即红。
+/// **载体观察（2026-09-20 审阅登记；2026-10-05 已修——BUG-C）**：目录
+/// 模式曾因 base_dir 缺失令 dir-wide vfs 注入实际无效（quote-include
+/// 候选键与 vfs 路径键结构性不命中，include 恒 lex-fail——"两侧同失败"
+/// 的一致属偶然对齐）；修复 = tokenize_with_vfs 补 base_dir=
+/// dirname_of(path)（dump_tokens 先例同款），哨兵 gap/include_quote_
+/// sentinel.c 已翻转并随 golden 重刷（哨兵设计兑现：任一侧 vfs 行为
+/// 独立变化即红）。
 fn main raise {
   let args = @env.args()
   if args.length() < 3 {
@@ -63,9 +63,14 @@ fn main raise {
     let src = @fs.read_file_to_string(path)
     let stem = basename_no_ext(path)
     let lexed = if target_is_dir {
-      @lexer.tokenize_with_vfs(src, files=shared_vfs)
+      // BUG-C 修复（2026-10-05，S9 修复批批一后继）：补 base_dir——头注
+      // 2020-09-20 审阅登记的「注入实际无效」（./x.h 与 VFS 绝对键结构性
+      // 不命中）就此销案；对齐 dump_tokens 先例。单文件模式连坐同款装配
+      @lexer.tokenize_with_vfs(src, files=shared_vfs, base_dir=dirname_of(path))
     } else {
-      @lexer.tokenize(src)
+      let v : Map[String, String] = Map([])
+      collect_files(dirname_of(path), v)
+      @lexer.tokenize_with_vfs(src, files=v, base_dir=dirname_of(path))
     }
     let out = dump_one(lexed)
     // basename_no_ext 实为"取 basename 不去扩展名"（F11 规格：stem 含
@@ -194,6 +199,22 @@ fn basename_no_ext(path : String) -> String {
     i -= 1
   }
   name
+}
+
+///|
+
+///|
+/// 路径目录段（dump_tokens 同款复制——cmd 层互不可 import）。
+fn dirname_of(path : String) -> String {
+  let mut i = path.length() - 1
+  while i >= 0 {
+    let c = path[i].to_int()
+    if c == '/' || c == 92 {
+      return path[0:i].to_owned()
+    }
+    i -= 1
+  }
+  "."
 }
 
 ///|

@@ -103,11 +103,12 @@ var (
 
 	// shadowKnown —— shadow 防线实跑 known_issue 清单（真值源见包注释；
 	// .c 后缀与 ledger anchors 口径一致）。
+	// putchar_range.c 已移除（2026-10-05 脱钩修复批批一：出口层字节直写
+	// 修复——DIFF-LIB-PUTCHAR-01 / DIFF-EXIT-STDOUT-ENCODE-01 销案转绿）
 	shadowKnown = []string{
 		"function_pointer_sizeof.c",
 		"sizeof_array_param.c",
 		"bTree_default.c",
-		"putchar_range.c", // 2026-10-04 语料转正（DIFF-LIB-PUTCHAR-01 闭环）
 	}
 )
 

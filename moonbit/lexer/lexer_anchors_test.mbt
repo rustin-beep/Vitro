@@ -211,6 +211,26 @@ test "u11 unguarded self include still cycle" {
 }
 
 ///|
+test "u11 deep cycle reports cycle not depth" {
+  // 台账 DIFF-PREPROC-INCLUDE-DEPTH-01 销账锚（2026-10-05）：100 文件
+  // 无守卫环（深 >64）——静态 DFS 封顶不得静默判无环（动态保险丝文案
+  // 是「嵌套过深」，真因「环」漏归因）；修前 = 仅嵌套过深文案（红）、
+  // 修后 = 依赖环文案出现
+  let files : Map[String, String] = Map([])
+  for i in 0..<100 {
+    let next = if i == 99 { "c0.h" } else { "c\{i + 1}.h" }
+    files["c\{i}.h"] = "#include \"\{next}\"\nint m\{i};\n"
+  }
+  let r = @lexer.tokenize_with_vfs("#include \"c0.h\"\nint after;\n", files~)
+  let e1015 = r.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(e1015.length(), 1, msg="深环必须报且只报一次 E1015")
+  assert_true(
+    e1015[0].message.contains("依赖环"),
+    msg="深环归因必须是环文案（非仅嵌套过深）",
+  )
+}
+
+///|
 test "preprocessor undef" {
   // 原 test_preprocessor_undef
   let r = @lexer.tokenize(

@@ -185,10 +185,11 @@ test "puts_appends_newline_and_putchar_byte_channel" {
   let r = host_puts(map, mem, log, 0x6000U)
   assert_eq(r.value, Some(1UL))
   assert_eq(log.join(OutputKind::Stdout), b"hello\n")
-  // putchar(200)：C3 88 两字节（oracle 实测缺陷形状）
+  // putchar(200)：单字节 0xC8（DIFF-LIB-PUTCHAR-01 销账锚 2026-10-05——
+  // 旧形态 C3 88 两字节系 oracle char 通道照搬，脱钩后回归 C 字节语义）
   let log2 = OutputLog::new()
   host_putchar(log2, 200UL)
-  assert_eq(log2.join(OutputKind::Stdout), b"\xC3\x88")
+  assert_eq(log2.join(OutputKind::Stdout), b"\xC8")
 }
 
 // ── getchar / ungetc：行内游标 + EOF 粘滞 + 等待 ─────────────────────────

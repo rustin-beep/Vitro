@@ -49,7 +49,7 @@ func readDeclared(path string) (int, error) {
 // A7 形态第三次兑现后的机判化——不比真值只比加法，抓「改一处漏总数」）：
 //
 //	① 分解和 Y + doc test Z == 裸声明 X
-//	② fs A + gateway B == native-only 总数 N
+//	② fs A + gateway B + cli C == native-only 总数 N
 //	③ X + N == native 全量 Q
 //
 // （分解式本身仍是人工维护口径——本校验只保证三者互洽，防总数句漂移。）
@@ -84,11 +84,13 @@ func checkArithmetic(path string, declared int) error {
 	} else if yz[0]+yz[1] != declared {
 		return fmt.Errorf("%s 分解不自洽: 分解和 %d + doc test %d = %d != 裸声明 %d", path, yz[0], yz[1], yz[0]+yz[1], declared)
 	}
-	// ② native-only：fs A + gateway B == N
-	if ab, err := get(regexp.MustCompile(`native-only 包测试 (\d+) 个（fs (\d+) / gateway (\d+)`), "native-only 分解"); err != nil {
+	// ② native-only：fs A + gateway B + cli C == N（cli 段 2026-10-05 扩——
+	// #37 批起 cli 包有 native-only 测试，此前解析器只认 fs/gateway 两段，
+	// README 计数漏连坐 cli 16 个致 CI 对账红）
+	if ab, err := get(regexp.MustCompile(`native-only 包测试 (\d+) 个（fs (\d+) / gateway (\d+) / cli (\d+)`), "native-only 分解"); err != nil {
 		return err
-	} else if ab[1]+ab[2] != ab[0] {
-		return fmt.Errorf("%s native-only 不自洽: fs %d + gateway %d = %d != 总数 %d", path, ab[1], ab[2], ab[1]+ab[2], ab[0])
+	} else if ab[1]+ab[2]+ab[3] != ab[0] {
+		return fmt.Errorf("%s native-only 不自洽: fs %d + gateway %d + cli %d = %d != 总数 %d", path, ab[1], ab[2], ab[3], ab[1]+ab[2]+ab[3], ab[0])
 	} else {
 		// ③ 裸 + native-only == 全量
 		if qs, err := get(regexp.MustCompile(`--target native`+"`"+` 全量 (\d+)`), "native 全量"); err != nil {

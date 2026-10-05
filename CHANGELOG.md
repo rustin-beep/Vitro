@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（BUG-C：dump_compile/dump_ast/dump_typeck 目录模式 base_dir 缺失——include 族在 codegen/AST/typeck 对拍面恒 lex-fail，2026-10-05）
+
+- **机制**：目录模式把文件集装 VFS（键 = 带目录前缀的完整路径），但 `tokenize_with_vfs` 未传 base_dir——resolver 候选链（栈顶目录 → base_dir）拼出裸名，与 VFS 键口径对不上，查找恒 miss → E1021/lex-fail。信息在驱动装配层丢失（S2 §7-5 与 dump_typeck 头注 2020-09-20 审阅"注入实际无效"在案）。
+- **修复**：三工具统一对齐 dump_tokens 先例（`base_dir=dirname_of(path)`——它一直是对的，故 lexer_diff 从未红）；单文件模式连坐同款装配（现场收集所在目录 .h 进 VFS）。
+- **翻转面**：六例 golden 重刷——存量 e2_has_include_chain / e2_include_guarded / include_custom_header（fail:lex → ok）+ 批一 e2_guarded_self_include / e2_guarded_mutual + **哨兵 gap/include_quote_sentinel**（S2 期专为监测此面设计，如期翻红——哨兵设计兑现）。真环/真缺失用例（e2_include_cycle / e2_include_not_found_*）行为不变 ✓。
+
+### Fixed（S9 脱钩修复批批一：出口编码双条 + include 深度环归因——差异台账三条销案，2026-10-05）
+
+- **cmd/run 出口层 ≥0x80 字节双重 UTF-8 编码**〔DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01〕：出口通道改 Bytes 直写（C stub `fwrite` 原始字节，`write_stdout` 参数注入——run/vitro 双 exe 接线，lib 包零 native 依赖）+ `host_putchar` 改单字节直写通道（旧照搬 oracle char 通道 `200→C3 88` 翻转为 C 字节语义 `0xC8`）；`stdout_bytes_of` 纯函数 + wbtest 字节保真锚；`putchar_range.c` 三防线 known 全移除转 SAME。**连带修复 clang_direct 缓存层 UTF-8 毒化**（`json.Marshal` 对无效 UTF-8 落 U+FFFD——此前「双环境 golden 形态差异」实为缓存毒化误归因；`cachePayload.Stdout` 改 `[]byte` base64 + schema `cd2` 全量失效重取真值）。printf `\%c` 高位字节同族形态在 formatter String 域，随批二 DIFF-LIB-PRINTF-01 处置。
+- **include 深度/图节点超限时环检测静默判「无环」**〔DIFF-PREPROC-INCLUDE-DEPTH-01〕：封顶改报环诊断（desc 标注超限形态）；实质缺陷是环归因丢失（动态保险丝本兜住 E1015 次数，用户只见「嵌套过深」文案不知真因是环）；Clang 实探无守卫深环报 `#include nested too deeply`——两侧拦截口径一致；新锚 `u11 deep cycle reports cycle not depth`。
+
 ### Added（S8 analysis 批段一：M14 root_cause_hint 接线——trace_analyzer 六分析器照搬 + trap 帧装配，2026-10-03）
 
 - **`time_travel/trace_analyzer.mbt`**（照搬 `unified/trace_analyzer/` 六件 ~600 行 → 单文件）：utils 七件（变量历史切片/越界文案解析〔数组名+下标〕/UAF·DoubleFree 文案解析〔alloc/freed 行〕/循环构造扫描 ±6 行/**get_line 闭包注入**源码查询——Rust session 依赖的 Provider 化，诊断域零 session 依赖）+ 五分析器（bounds〔细分类 OffByOne/WrongInit/WrongIncrement/UninitializedIndex/Generic + 文案与修复建议构造〕/div_zero/double_free/null_deref/use_after_free）+ `analyze_trap` 文案子串分派（六臂，oracle mod.rs 逐分支照搬——文案是 vm trap 渲染单源产物，子串判据两侧稳定）。

@@ -1,54 +1,45 @@
 [
-  {
-    "case": "engine_note_lookalike.c",
-    "digest": "f1c1ce6a",
-    "reason": "提取器已知限制（与 vm_diff known 同例同因，登记不修）：程序输出与协议标记 lookalike 混淆提取；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"
-  },
-  {
-    "case": "file_fread.c",
-    "digest": "79c7c561",
-    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
-  },
-  {
-    "case": "function_pointer_sizeof.c",
-    "digest": "097c5e9f",
-    "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "keyword_compat.c",
-    "digest": "2c4d05b0",
-    "reason": "gap 目录语义 = Vitro 扩展关键字（U0#1②：gap_extension 判定）——Clang 严格模式编译失败 vs 引擎支持；双侧编译口径差异已登记。digests 双环境集（2026-10-05 CI 漂移补录）：digest 覆盖 clang 错误文本片段，本地 clang 22.1.4 报 \"use of undeclared identifier 'bool'\"（2c4d05b0）+ CI runner clang 措辞不同（7d80e2ef）——编译失败形状随 clang 版本漂，集合锚定；新环境形态漂移仍红逼归因补录",
-    "digests": [
-      "2c4d05b0",
-      "7d80e2ef"
-    ]
-  },
-  {
-    "case": "sizeof_array_param.c",
-    "digest": "fea933cd",
-    "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "file_fopen.c",
-    "digest": "5d175f95",
-    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
-  },
-  {
-    "case": "bTree_default.c",
-    "digest": "ff228a13",
-    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。Clang 侧 UB 恰好无害（输出 1）；引擎侧 kruskal 零填充修复（0c893ae）改变内存布局后 UB 走向 NULL 解引用受检 trap @71:32——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态，保留作安全检测教学示例。digests 双环境集（2026-10-05 CI 漂移补录）：本地 clang 构建 cmd/run = 受检 trap（ff228a13）+ CI（该时点 MSVC 构建 cmd/run）= 诊断行后 0xC0000005 崩溃（65593255）——引擎 exe 构建器差异下 UB 结局可漂；CI 构建已切 MOON_CC=clang（纪律 11），后续 CI 形态应收敛回 ff228a13，双集兼容共存",
-    "digests": [
-      "ff228a13",
-      "65593255"
-    ]
-  },
-  {
-    "case": "putchar_range.c",
-    "digest": "b8e525cb",
-    "reason": "DIFF-LIB-PUTCHAR-01（语料转正 2026-10-04）：putchar(≥128) cmd/run 出口层双编码 vs Clang 原始字节（golden=4180c8ff5a）；登记不修（Clang 为准三坑之一）；修复转绿即红逼移除（双向监控）；digests 双环境集（2026-10-04 CI 漂移批：本地 clang 22 出口替换符形态 b8e525cb + CI runner clang 原始字节形态 85b3e4fd——真值源随版本变，集合锚定；新环境形态漂移仍红逼归因补录）",
-    "digests": [
-      "b8e525cb",
-      "85b3e4fd"
-    ]
-  }
+ {
+  "case": "engine_note_lookalike.c",
+  "digest": "f1c1ce6a",
+  "reason": "提取器已知限制（与 vm_diff known 同例同因，登记不修）：程序输出与协议标记 lookalike 混淆提取；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"
+ },
+ {
+  "case": "file_fread.c",
+  "digest": "79c7c561",
+  "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
+ },
+ {
+  "case": "function_pointer_sizeof.c",
+  "digest": "097c5e9f",
+  "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
+ },
+ {
+  "case": "keyword_compat.c",
+  "digest": "2c4d05b0",
+  "reason": "gap 目录语义 = Vitro 扩展关键字（U0#1②：gap_extension 判定）——Clang 严格模式编译失败 vs 引擎支持；双侧编译口径差异已登记。digests 双环境集（2026-10-05 CI 漂移补录）：digest 覆盖 clang 错误文本片段，本地 clang 22.1.4 报 \"use of undeclared identifier 'bool'\"（2c4d05b0）+ CI runner clang 措辞不同（7d80e2ef）——编译失败形状随 clang 版本漂，集合锚定；新环境形态漂移仍红逼归因补录",
+  "digests": [
+   "2c4d05b0",
+   "7d80e2ef"
+  ]
+ },
+ {
+  "case": "sizeof_array_param.c",
+  "digest": "fea933cd",
+  "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
+ },
+ {
+  "case": "file_fopen.c",
+  "digest": "5d175f95",
+  "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
+ },
+ {
+  "case": "bTree_default.c",
+  "digest": "ff228a13",
+  "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。Clang 侧 UB 恰好无害（输出 1）；引擎侧 kruskal 零填充修复（0c893ae）改变内存布局后 UB 走向 NULL 解引用受检 trap @71:32——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态，保留作安全检测教学示例。digests 双环境集（2026-10-05 CI 漂移补录）：本地 clang 构建 cmd/run = 受检 trap（ff228a13）+ CI（该时点 MSVC 构建 cmd/run）= 诊断行后 0xC0000005 崩溃（65593255）——引擎 exe 构建器差异下 UB 结局可漂；CI 构建已切 MOON_CC=clang（纪律 11），后续 CI 形态应收敛回 ff228a13，双集兼容共存",
+  "digests": [
+   "ff228a13",
+   "65593255"
+  ]
+ }
 ]

@@ -187,12 +187,13 @@ pub fn compile_and_report(
 
 ///|
 /// CLI `run` 子命令主体（编译 → setup → run → stdout/返回码/1MB 映像
-/// 三通道 + 进程退出码）。read_stdin 由薄壳注入（`-` 源码通道——批③；
-/// 平台绑定归 exe 层，同 clock 注入模式）。
+/// 三通道 + 进程退出码）。read_stdin / write_stdout 由薄壳注入（`-` 源码
+/// 通道与 stdout 字节直写——平台绑定归 exe 层，同 clock 注入模式）。
 pub fn run(
   args : Array[String],
   clock_millis : () -> UInt64,
   read_stdin : () -> Bytes,
+  write_stdout : (Bytes) -> Unit,
 ) -> Int {
   let ra = parse_run_args(args)
   if ra.file == "" {
@@ -275,20 +276,15 @@ pub fn run(
   //（签名已收窄为 vm 直取）；完成附注同 serve_run 口径）
   vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
   @gateway.append_leak_report(vm)
-  // ── stdout 通道（Buffer 聚合 + print 整串——字节经 Char 直转；
-  // 非 UTF-8 字节按 Latin-1 落文本，Go 侧归一时统一字节口径）──
-  let buf = StringBuilder()
-  for chunk in vm.output.chunks_of(@host.OutputKind::Stdout) {
-    for j = 0; j < chunk.length(); j = j + 1 {
-      buf.write_char(chunk[j].to_int().unsafe_to_char())
-    }
-  }
-  let mut text = buf.to_string()
-  let nl : String = "\n"
-  if !text.has_suffix(nl) {
-    text = text + nl
-  }
-  println(text)
+  // ── stdout 通道（Bytes 聚合 + stub 字节直写）──
+  // DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01 销账（2026-10-05
+  // 脱钩修复批批一）：此前 Bytes→char Latin-1 直转进 String 再 println，
+  // 出口层把 ≥0x80 字节双重编码（实测 0xC8 → c3 83 c2 88；Clang 原始
+  // 字节 80 c8 ff 41）。修复 = 程序字节域原样落盘（write_stdout 由薄壳
+  // 注入——exe 层 C stub fwrite 原始字节，lib 包零 native 依赖）；
+  // vm_diff/clang_direct 的 Go 归一器 Latin-1 折回口径对两种物理形态
+  // 收敛同字节序，防线侧零改动
+  write_stdout(stdout_bytes_of(vm.output.chunks_of(@host.OutputKind::Stdout)))
   // note 通道（2026-10-04 二轮审 P2：泄漏报告 + 完成附注「程序运行完成，
   // 返回值：N」——oracle cmd_run 与 demo 均消费，gateway append_leak_report
   // 已接线；此前 CLI 只取 Stdout 致整段丢失）。**行级前缀**：多行报告每行
@@ -333,6 +329,21 @@ pub fn run(
     return 2
   }
   0
+}
+
+///|
+/// stdout 通道字节聚合（含尾换行保形——原 println 语义：无尾 `\n` 则补，
+/// 空输出亦补单换行）。纯函数可 wbtest：≥0x80 字节保真（0xC8 单字节
+/// 出入——出口层双编码修复的函数级锚）。
+fn stdout_bytes_of(chunks : Array[Bytes]) -> Bytes {
+  let mut buf : Bytes = b""
+  for chunk in chunks {
+    buf = buf.add(chunk)
+  }
+  if buf.length() == 0 || buf[buf.length() - 1] != b'\n' {
+    buf = buf.add(b"\n")
+  }
+  buf
 }
 
 ///|

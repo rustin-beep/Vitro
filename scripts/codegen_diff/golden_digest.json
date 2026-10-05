@@ -662,24 +662,20 @@
           "result_sha": "941648d7d1ca6f6f"
         },
         "e2_guarded_mutual.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "53513b94c88050b5"
         },
         "e2_guarded_self_include.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "acd34bea437e4fe5"
         },
         "e2_has_include_chain.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "578372355ca755d2"
         },
         "e2_include_cycle.c": {
           "fail": true,
           "fail_stage": "lex"
         },
         "e2_include_guarded.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "14743c07335b5b3b"
         },
         "e2_include_not_found_angle.c": {
           "fail": true,
@@ -877,8 +873,7 @@
           "result_sha": "fdcce55c095600f5"
         },
         "include_custom_header.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "54f5622822b9d0b4"
         },
         "increment_var.c": {
           "result_sha": "6d2fdd301dbedbb9"
@@ -1599,8 +1594,7 @@
           "fail_stage": "parse"
         },
         "include_quote_sentinel.c": {
-          "fail": true,
-          "fail_stage": "lex"
+          "result_sha": "2e69b8636496c078"
         },
         "inline_asm.c": {
           "result_sha": "5ebf9318bd377d9d"

@@ -27,10 +27,5 @@
     "digest": "ee9af703",
     "memory_stack_only": true,
     "reason": "同上：qsort 比较器栈残渣（2 字节 @0xFFFA0）"
-  },
-  {
-    "case": "putchar_range.c",
-    "digest": "fc4d5e23",
-    "reason": "DIFF-LIB-PUTCHAR-01 / DIFF-EXIT-STDOUT-ENCODE-01（语料转正 2026-10-04）：putchar(128/200/255) 出口层双编码——moonbit 14 字节 vs oracle 8 字节（两侧同病、形态互异——本防线锚的是 mb≠oracle 面）；host 通道层 Bytes 化正确（白盒锚 0xC8）；修复任一侧转一致即 digest 漂移红逼重估"
   }
 ]

@@ -46,9 +46,14 @@ fn main raise {
     let src = @fs.read_file_to_string(path)
     let stem = basename_no_ext(path)
     let lexed = if target_is_dir {
-      @lexer.tokenize_with_vfs(src, files=shared_vfs)
+      // BUG-C 修复（2026-10-05，S9 修复批批一后继）：补 base_dir——VFS 键
+      // 带目录前缀而解析走裸名，include 恒 miss（"两侧同失败偶然对齐"
+      // S2 §7-5 在案）；对齐 dump_tokens 先例。单文件模式连坐同款装配
+      @lexer.tokenize_with_vfs(src, files=shared_vfs, base_dir=dirname_of(path))
     } else {
-      @lexer.tokenize(src)
+      let v : Map[String, String] = Map([])
+      collect_files(dirname_of(path), v)
+      @lexer.tokenize_with_vfs(src, files=v, base_dir=dirname_of(path))
     }
     let out = dump_one(lexed)
     @fs.write_string_to_file("\{out_dir}/\{stem}.ast.json", out)
@@ -143,6 +148,22 @@ fn basename_no_ext(path : String) -> String {
     i -= 1
   }
   name
+}
+
+///|
+
+///|
+/// 路径目录段（dump_tokens 同款复制——cmd 层互不可 import）。
+fn dirname_of(path : String) -> String {
+  let mut i = path.length() - 1
+  while i >= 0 {
+    let c = path[i].to_int()
+    if c == '/' || c == 92 {
+      return path[0:i].to_owned()
+    }
+    i -= 1
+  }
+  "."
 }
 
 ///|

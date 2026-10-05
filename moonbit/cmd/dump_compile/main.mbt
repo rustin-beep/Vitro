@@ -80,10 +80,18 @@ fn main raise {
   for path in files {
     let src = @fs.read_file_to_string(path)
     let stem = basename_keep_ext(path)
+    // BUG-C 修复（2026-10-05，S9 修复批批一后继）：目录模式补 base_dir——
+    // VFS 键带目录前缀而解析走裸名，quote-include 恒 miss → include 族
+    // 全部 lex-fail（存量 e2_include* 五条既如此，S2 §7-5 与 dump_typeck
+    // 头注"注入实际无效"在案）；对齐 dump_tokens 先例（base_dir=
+    // dirname_of(path)，候选链与 VFS 键同口径）。单文件模式连坐：现场
+    // 收集所在目录 .h 进 VFS + 同款 base_dir
     let lexed = if target_is_dir {
-      @lexer.tokenize_with_vfs(src, files=shared_vfs)
+      @lexer.tokenize_with_vfs(src, files=shared_vfs, base_dir=dirname_of(path))
     } else {
-      @lexer.tokenize(src)
+      let v : Map[String, String] = Map([])
+      collect_files(dirname_of(path), v)
+      @lexer.tokenize_with_vfs(src, files=v, base_dir=dirname_of(path))
     }
     let out = dump_one(lexed, library)
     // stem 含 .c（F11 规格：与 parser_diff/typeck_diff 既有对拍约定同源）
@@ -160,6 +168,20 @@ fn basename_keep_ext(path : String) -> String {
     i -= 1
   }
   name
+}
+
+///|
+/// 路径目录段（dump_tokens 同款复制——cmd 层互不可 import）。
+fn dirname_of(path : String) -> String {
+  let mut i = path.length() - 1
+  while i >= 0 {
+    let c = path[i].to_int()
+    if c == '/' || c == '\\' {
+      return path[0:i].to_owned()
+    }
+    i -= 1
+  }
+  "."
 }
 
 ///|

@@ -18,5 +18,5 @@ supported_targets = "native"
 pkgtype(kind: "executable")
 
 options(
-  "native-stub": [ "host_clock_stub.c" ],
+  "native-stub": [ "host_clock_stub.c", "stdout_stub.c" ],
 )

@@ -96,12 +96,16 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
   visited : Array[String],
   depth : Int,
 ) -> String? {
-  // S2 审阅 P3 登记：封顶时返回 None（= 判"无环"）是 Rust walk_cycle 的
-  // 复刻口径（对拍一致）；超限无诊断属两侧共同现状——**已收编差异台账
-  // DIFF-PREPROC-INCLUDE-DEPTH-01（2026-10-04，S8 收官清单 #9）**：迁移期
-  // 不单侧修（E1 对拍面），脱钩工序①销账（超限改报诊断走红→绿）
+  // DIFF-PREPROC-INCLUDE-DEPTH-01 销账（2026-10-05，脱钩修复批批一）：
+  // 封顶不再静默判「无环」——深于 64 的链/环在静态层被丢弃后，动态保险
+  // 丝虽兜住次数（E1015「嵌套过深」）但真因「环」漏归因（修前深环用户
+  // 只见深度文案）；改为报环诊断（desc 标注超限形态）。Clang 对照
+  //（2026-10-05 实探）：无守卫深环 Clang 报 fatal "#include nested too
+  // deep"——拦截口径一致（两侧都拒绝），Vitro 教学化文案带环归因更准
   if depth > MAX_INCLUDE_DEPTH || visited.length() > MAX_INCLUDE_GRAPH_NODES {
-    return None
+    return Some(
+      "（include 依赖图超限：深度>\{MAX_INCLUDE_DEPTH} 或节点>\{MAX_INCLUDE_GRAPH_NODES}——深层环或病态深链）",
+    )
   }
   if full == start_key && depth > 0 {
     // 守卫感知（stb 自 include 修复，2026-10-05）：回到起点的边不再一律

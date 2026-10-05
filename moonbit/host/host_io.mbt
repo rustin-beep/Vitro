@@ -271,13 +271,15 @@ pub fn host_puts(
 }
 
 ///|
-/// `putchar(c)`（oracle `io.rs:344-347`）——低字节经 char 通道（`200` →
-/// U+00C8 → UTF-8 两字节 `C3 88`，oracle 实测；DIFF-LIB-PRINTF 族照搬），
-/// 无返回值。
+/// `putchar(c)`（oracle `io.rs:344-347` 对齐位）——**单字节直写通道**
+///（DIFF-LIB-PUTCHAR-01 / DIFF-EXIT-STDOUT-ENCODE-01 销账，2026-10-05
+/// 脱钩修复批批一）：此前照搬 oracle 的 char 通道（200 → U+00C8 →
+/// UTF-8 两字节 `C3 88`——迁移期两侧一致优先登记不修），脱钩后回归
+/// C 字节语义（Clang `putchar(200)` 落单字节 0xC8——putchar_range.c
+/// 语料锚）；printf `%c` 高位字节的同族形态在 formatter 的 String 域，
+/// 随批二 DIFF-LIB-PRINTF-01 处置
 pub fn host_putchar(log : OutputLog, val : UInt64) -> Unit {
-  log.push_stdout(
-    @utf8.encode(Int::unsafe_to_char((val & 0xFFUL).to_int()).to_string()),
-  )
+  log.push_stdout(Bytes::make(1, (val & 0xFFUL).to_int().to_byte()))
 }
 
 ///|

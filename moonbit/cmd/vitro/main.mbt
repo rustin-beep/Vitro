@@ -25,7 +25,7 @@ fn main {
     rest.push(args[i])
   }
   let code = match cmd {
-    "run" => @cli.run(rest, make_clock(), make_stdin())
+    "run" => @cli.run(rest, make_clock(), make_stdin(), write_stdout_stub)
     "compile" => @cli.compile(rest, make_stdin())
     "step" => @cli.step(rest, make_stdin())
     "api" => @cli.api(rest, make_stdin())
@@ -70,6 +70,12 @@ fn print_help() -> Unit {
 
 ///|
 extern "C" fn c_exit(code : Int) -> Unit = "exit"
+
+///|
+/// stdout 字节直写（stdout_stub.c 注入——≥0x80 字节原样落盘，绕开
+/// println 的 UTF-8 出口编码；DIFF-EXIT-STDOUT-ENCODE-01 销案接线）
+#borrow(b)
+extern "C" fn write_stdout_stub(b : Bytes) -> Unit = "moonbit_vitro_write_stdout"
 
 ///|
 extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"

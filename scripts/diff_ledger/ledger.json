@@ -163,8 +163,8 @@
       "id": "DIFF-LIB-PUTCHAR-01",
       "title": "putchar(>=128) 字节语义——host 输出通道 Bytes 化正确（白盒锚 1 字节 0xC8），但 cmd/run console 出口层双重 UTF-8 编码（详见 DIFF-EXIT-STDOUT-ENCODE-01）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "open",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "蓝图定性 fix（Bytes 化顺带根治）在 host 通道层成立；一段 b 实测发现出口层回退——语义通道与物理出口分两层各自定损",
       "subsystems": [
@@ -177,22 +177,16 @@
         "已知限制与差异.md ③-2 / ④-8"
       ],
       "anchors": {
-        "shadow_known": [
-          "putchar_range.c"
-        ],
-        "clang_direct_known": [
-          "putchar_range.c"
-        ],
-        "vm_diff_known": [
-          "putchar_range.c"
-        ]
+        "shadow_known": [],
+        "clang_direct_known": [],
+        "vm_diff_known": []
       },
       "detectable_by_defense": [
         "shadow",
         "clang_direct",
         "vm_diff"
       ],
-      "notes": "putchar_range.c 探针（2026-09-30）：128/200/255 三点出口层双编码，<0x80 正常；**语料转正（2026-10-04，S8 收官清单 #7）**：baseline 语料 + Clang golden（4180c8ff5a）+ 三防线 known 白名单（digest 锁定双向监控）——修复转绿即红逼移除"
+      "notes": "销案2026-10-05（脱钩修复批批一）：host_putchar 改单字节直写通道（Bytes::make(1, to_byte)——旧锚 C3 88 翻转为 0xC8）；出口层同 DIFF-EXIT-STDOUT-ENCODE-01；printf %c 高位字节同族形态仍在 formatter String 域，随 DIFF-LIB-PRINTF-01 批二处置；putchar_range 语料 clang_direct/vm_diff 双防线转 SAME"
     },
     {
       "id": "DIFF-ALLOC-REALLOC-01",
@@ -394,8 +388,8 @@
       "id": "DIFF-EXIT-STDOUT-ENCODE-01",
       "title": "cmd/run console 出口层对 >=0x80 字节双重 UTF-8 编码（0xC8 → U+00C8 UTF-8 化后每字节再 Latin-1→UTF-8，实测 128→c3 82 c2 80 / 200→c3 83 c2 88 / 255→c3 83 c2 bf）",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "open",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "一段 b 新实锤（2026-09-30）：host 输出通道 Bytes 化正确（白盒锚），但出口层 Bytes→String 折回发生两次；<0x80 字节不受影响；影响所有 >=0x80 字节的 stdout 物理输出（putchar/printf %c 等）",
       "subsystems": [
@@ -407,18 +401,14 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [
-          "putchar_range.c"
-        ],
-        "vm_diff_known": [
-          "putchar_range.c"
-        ]
+        "clang_direct_known": [],
+        "vm_diff_known": []
       },
       "detectable_by_defense": [
         "vm_diff",
         "clang_direct"
       ],
-      "notes": "语料零覆盖 >=0x80 putchar 形状（已知限制④-8 同根）；serve 出口（output.delta 拉丁-1 折回，消费方可字节域还原）与 cmd/run 出口形态分叉——出口层各自定损，本条限 cmd/run console；关联 DIFF-LIB-PUTCHAR-01；putchar_range 语料锚连坐（2026-10-04）"
+      "notes": "销案2026-10-05（脱钩修复批批一）：出口层改 Bytes 直写（C stub fwrite 注入——write_stdout 参数走 run/vitro 双 exe；stdout_bytes_of 纯函数 wbtest 锚）；连带修复 clang_direct 缓存层 UTF-8 毒化（json.Marshal 对无效 UTF-8 落 U+FFFD——此前「双环境形态差异」实为缓存毒化误归因；cachePayload.Stdout 改 []byte base64 + schema cd2 全量失效重取）；putchar_range 三 known 全移除转 SAME"
     },
     {
       "id": "DIFF-LIB-ATOF-01",
@@ -666,14 +656,14 @@
       "id": "DIFF-PREPROC-INCLUDE-DEPTH-01",
       "title": "include 深度/图节点超限时环检测静默判「无环」——两侧共同现状（resolver walk_cycle 复刻口径，对拍一致）；超深的真环漏报 E1015，功能缺失型非错误输出",
       "class": "implementable",
-      "carry_over": "fix",
-      "status": "open",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "code",
       "rationale": "迁移期不可单侧修（E1 对拍面——修 mb 则 parser_diff 红而 oracle 同病）；0.8.0 工序①销账项：脱钩后修为超限报「包含深度/图规模超限」诊断（issue 阈值口径 2026-10-01：功能缺失型不挂 issue，台账挂账随销账批）",
       "subsystems": [
         "lexer"
       ],
-      "clang_verdict": "未对照（Clang 超限行为未探——脱钩修复批补探针）",
+      "clang_verdict": "一致（拦截口径）：无守卫 100 文件深环 Clang 报 fatal #include nested too deeply（2026-10-05 实探）——两侧均拒绝，Vitro 教学化 E1015 带环归因",
       "source_docs": [
         "resolver.mbt:100 头注（S2 审阅 P3 登记）",
         "已知限制与差异.md（2026-10-04 收编）"
@@ -684,7 +674,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "S8 收官清单 #9 收编（2026-10-04）——原「随 S8 差异台账统一裁定」头注销案"
+      "notes": "销案2026-10-05（脱钩修复批批一）：封顶不再静默判无环——动态保险丝本兜住次数（深环仍 1 个 E1015），实质缺陷是环归因丢失（用户只见「嵌套过深」文案）；封顶改报环诊断（desc 标注超限形态），新锚 u11 deep cycle reports cycle not depth"
     },
     {
       "id": "DIFF-CODEGEN-STATIC-ADDR-01",

@@ -209,6 +209,53 @@ test "atof_parse_trim_and_garbage_zero" {
 }
 
 ///|
+test "atof_dangling_exp_and_hex_float" {
+  // 审阅 P2-1 补强锚（2026-10-05）：悬空指数回退（最长**合法**前缀）+
+  // C99 hex float——clang 22 实测矩阵对照（atof_matrix 探针）
+  let (map, mem) = fresh()
+  // 悬空指数：token 取到 e 即止（e/e+/e- 无后继数字回退）
+  put_cstr(mem, map, 0x6000U, "1e")
+  assert_eq(
+    host_atof(mem, map, 0x6000U).value,
+    Some(1.0.reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6100U, "1e+")
+  assert_eq(
+    host_atof(mem, map, 0x6100U).value,
+    Some(1.0.reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6200U, "1e-")
+  assert_eq(
+    host_atof(mem, map, 0x6200U).value,
+    Some(1.0.reinterpret_as_uint64()),
+  )
+  // hex float（C99 §6.4.4.2）：0x mantissa + 可选 p 指数
+  put_cstr(mem, map, 0x6300U, "0x10")
+  assert_eq(
+    host_atof(mem, map, 0x6300U).value,
+    Some(16.0.reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6400U, "0x1p4")
+  assert_eq(
+    host_atof(mem, map, 0x6400U).value,
+    Some(16.0.reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6500U, "0x.8p1")
+  assert_eq(
+    host_atof(mem, map, 0x6500U).value,
+    Some(1.0.reinterpret_as_uint64()),
+  )
+  put_cstr(mem, map, 0x6600U, "0x1p-2")
+  assert_eq(
+    host_atof(mem, map, 0x6600U).value,
+    Some(0.25.reinterpret_as_uint64()),
+  )
+  // 0x 无后继 hex 数字：回退十进制 "0"
+  put_cstr(mem, map, 0x6700U, "0x")
+  assert_eq(host_atof(mem, map, 0x6700U).value, Some(0UL))
+}
+
+///|
 test "strtol_base_endptr_errno" {
   let (map, mem) = fresh()
   let endp = 0x7000U

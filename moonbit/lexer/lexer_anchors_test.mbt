@@ -211,22 +211,43 @@ test "u11 unguarded self include still cycle" {
 }
 
 ///|
-test "u11 deep cycle reports cycle not depth" {
-  // 台账 DIFF-PREPROC-INCLUDE-DEPTH-01 销账锚（2026-10-05）：100 文件
-  // 无守卫环（深 >64）——静态 DFS 封顶不得静默判无环（动态保险丝文案
-  // 是「嵌套过深」，真因「环」漏归因）；修前 = 仅嵌套过深文案（红）、
-  // 修后 = 依赖环文案出现
-  let files : Map[String, String] = Map([])
+test "u11 deep chain and cycle depth attribution" {
+  // 台账 DIFF-PREPROC-INCLUDE-DEPTH-01 终局锚（2026-10-05 审阅 P2-2 修正）：
+  // 深链（无环）与深环（>64）同由动态保险丝报「嵌套过深」——Clang 对两
+  // 形态统一报 #include nested too deeply（归因标杆）；静态 DFS 封顶不得
+  // 冒充环归因（批一过渡版曾把无环深链报成「依赖环」——审阅推翻）
+  let chain : Map[String, String] = Map([])
+  for i in 0..<100 {
+    if i == 99 {
+      chain["d\{i}.h"] = "int tail\{i};\n"
+    } else {
+      chain["d\{i}.h"] = "#include \"d\{i + 1}.h\"\nint m\{i};\n"
+    }
+  }
+  let rc = @lexer.tokenize_with_vfs(
+    "#include \"d0.h\"\nint after;\n",
+    files=chain,
+  )
+  let ec = rc.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(ec.length(), 1, msg="深链必须报且只报一次 E1015")
+  assert_true(
+    ec[0].message.contains("嵌套过深"),
+    msg="深链归因必须是嵌套过深（非依赖环——Clang 标杆）",
+  )
+  let cycle : Map[String, String] = Map([])
   for i in 0..<100 {
     let next = if i == 99 { "c0.h" } else { "c\{i + 1}.h" }
-    files["c\{i}.h"] = "#include \"\{next}\"\nint m\{i};\n"
+    cycle["c\{i}.h"] = "#include \"\{next}\"\nint m\{i};\n"
   }
-  let r = @lexer.tokenize_with_vfs("#include \"c0.h\"\nint after;\n", files~)
-  let e1015 = r.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
-  assert_eq(e1015.length(), 1, msg="深环必须报且只报一次 E1015")
+  let rr = @lexer.tokenize_with_vfs(
+    "#include \"c0.h\"\nint after;\n",
+    files=cycle,
+  )
+  let er = rr.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(er.length(), 1, msg="深环必须报且只报一次 E1015")
   assert_true(
-    e1015[0].message.contains("依赖环"),
-    msg="深环归因必须是环文案（非仅嵌套过深）",
+    er[0].message.contains("嵌套过深"),
+    msg="深环归因与深链统一（动态保险丝——Clang nested too deeply 标杆）",
   )
 }
 

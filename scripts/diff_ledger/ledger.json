@@ -674,7 +674,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "销案2026-10-05（脱钩修复批批一）：封顶不再静默判无环——动态保险丝本兜住次数（深环仍 1 个 E1015），实质缺陷是环归因丢失（用户只见「嵌套过深」文案）；封顶改报环诊断（desc 标注超限形态），新锚 u11 deep cycle reports cycle not depth"
+      "notes": "终局（2026-10-05 审阅 P2-2 修正）：批一曾改「封顶报环诊断」被推翻——静态 DFS 封顶无法区分深环与无环深链，报环对深链是错误归因（Clang 对两形态统一报 #include nested too deeply）；终态 = 封顶保持 None，深环/深链归因统一由动态保险丝「嵌套过深」承担（两侧拦截口径一致）；visited.length 封顶为防御性死判据（depth==length 恒先触发）注记在案。终局锚 u11 deep chain and cycle depth attribution（深链深环双形态）"
     },
     {
       "id": "DIFF-CODEGEN-STATIC-ADDR-01",

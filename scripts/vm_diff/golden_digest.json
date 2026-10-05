@@ -69,10 +69,10 @@
       "memory_sha": "11d32aa1374e87d2"
     },
     "baseline/atof_prefix.c": {
-      "src_sha": "ff81773c",
+      "src_sha": "26dcdaf5",
       "exit_code": 0,
-      "stdout_sha": "365b521cdf7d40c7",
-      "memory_sha": "43e67aaa1edc4cd1"
+      "stdout_sha": "ac72734e2585a471",
+      "memory_sha": "d1377c8406e8cade"
     },
     "baseline/atoi_function.c": {
       "src_sha": "d4151a08",

@@ -209,7 +209,7 @@ fn dirname_of(path : String) -> String {
   let mut i = path.length() - 1
   while i >= 0 {
     let c = path[i].to_int()
-    if c == '/' || c == 92 {
+    if c == '/' || c == '\\' {
       return path[0:i].to_owned()
     }
     i -= 1

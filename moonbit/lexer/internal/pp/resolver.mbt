@@ -96,16 +96,15 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
   visited : Array[String],
   depth : Int,
 ) -> String? {
-  // DIFF-PREPROC-INCLUDE-DEPTH-01 销账（2026-10-05，脱钩修复批批一）：
-  // 封顶不再静默判「无环」——深于 64 的链/环在静态层被丢弃后，动态保险
-  // 丝虽兜住次数（E1015「嵌套过深」）但真因「环」漏归因（修前深环用户
-  // 只见深度文案）；改为报环诊断（desc 标注超限形态）。Clang 对照
-  //（2026-10-05 实探）：无守卫深环 Clang 报 fatal "#include nested too
-  // deep"——拦截口径一致（两侧都拒绝），Vitro 教学化文案带环归因更准
+  // DIFF-PREPROC-INCLUDE-DEPTH-01 终局（2026-10-05 批一曾改报环诊断，
+  // 同日审阅 P2-2 修正回 None）：静态 DFS 封顶时**无法区分深环与无环深链**
+  //（DFS 不完整即止）——报「依赖环」对无环深链是错误归因（Clang 对两形态
+  // 统一报 `#include nested too deeply`，两侧拦截口径一致；归因正确的
+  // 报点 = 动态保险丝「嵌套过深」，深环深链同由它承担）。visited.length()
+  // 封顶与 depth 封顶在此实现下恒同时触发（路径局部栈 depth==length），
+  // 保留双判据作防御性形态
   if depth > MAX_INCLUDE_DEPTH || visited.length() > MAX_INCLUDE_GRAPH_NODES {
-    return Some(
-      "（include 依赖图超限：深度>\{MAX_INCLUDE_DEPTH} 或节点>\{MAX_INCLUDE_GRAPH_NODES}——深层环或病态深链）",
-    )
+    return None
   }
   if full == start_key && depth > 0 {
     // 守卫感知（stb 自 include 修复，2026-10-05）：回到起点的边不再一律

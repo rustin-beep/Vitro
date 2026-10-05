@@ -134,10 +134,13 @@ fn digit_value(c : Byte) -> Int {
 }
 
 ///|
-/// 浮点 token 前缀扫描（C strtod 语义）：跳 ASCII 空白 → 可选符号 →
-/// 数字/小数点（一次）/指数（一次，后可带符号）——atof ≡ strtod(str, NULL)
-///（C §7.22.1.1）的公共扫描器；返回 (token 字节, 消费位数)。
-/// 2026-10-05 批二-a 自 strtod 内联体抽出（atof 前缀语义修复复用）。
+/// 浮点 token 前缀扫描（C strtod 语义，C99 §6.4.4.2 两形态）：跳 ASCII
+/// 空白 → 可选符号 → **十进制**（数字/小数点一次/eE 指数一次）或 **hex
+/// float**（`0x`+hex 数字 ≥1 → hex 数字/[.]/[pP 带符号十进制指数]）——
+/// **悬空指数回退**（`e`/`e+`/`e-`/`p`… 后无数字则不消费，最长**合法**
+/// 前缀语义——审阅 P2-1 补强）；atof ≡ strtod(str, NULL)（C §7.22.1.1）
+/// 的公共扫描器；返回 (token 字节, 消费位数)。
+/// 2026-10-05 批二-a 自 strtod 内联体抽出；同日审阅处置补悬空回退+hex。
 fn scan_float_token(s : Bytes) -> (Array[Byte], Int) {
   let n = s.length()
   let mut pos = 0
@@ -148,23 +151,75 @@ fn scan_float_token(s : Bytes) -> (Array[Byte], Int) {
   if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
     pos = pos + 1
   }
-  let mut has_dot = false
-  let mut has_exp = false
-  while pos < n {
-    let c = s[pos]
-    if c >= b'0' && c <= b'9' {
+  // hex float 探测：0x/0X 后（hex 数字 | '.'+hex 数字——C99 hex-fraction
+  // 可无整数位，"0x.8p1"）至少一位才成立（否则回退十进制，如 "0x" → "0"）
+  let hex_probe = pos + 2 < n &&
+    s[pos] == b'0' &&
+    (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
+    (
+      is_hex_digit(s[pos + 2]) ||
+      (s[pos + 2] == b'.' && pos + 3 < n && is_hex_digit(s[pos + 3]))
+    )
+  if hex_probe {
+    pos = pos + 2
+    while pos < n && is_hex_digit(s[pos]) {
       pos = pos + 1
-    } else if c == b'.' && !has_dot {
-      has_dot = true
-      pos = pos + 1
-    } else if (c == b'e' || c == b'E') && !has_exp {
-      has_exp = true
+    }
+    if pos < n && s[pos] == b'.' {
+      // hex 小数：点后须有 hex 数字，否则点不消费（"0x1." → "0x1"）
+      if pos + 1 < n && is_hex_digit(s[pos + 1]) {
+        pos = pos + 1
+        while pos < n && is_hex_digit(s[pos]) {
+          pos = pos + 1
+        }
+      }
+    }
+    // p 指数（可选，悬空回退）
+    if pos < n && (s[pos] == b'p' || s[pos] == b'P') {
+      let exp_start = pos
       pos = pos + 1
       if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
         pos = pos + 1
       }
-    } else {
-      break
+      if pos < n && s[pos] >= b'0' && s[pos] <= b'9' {
+        while pos < n && s[pos] >= b'0' && s[pos] <= b'9' {
+          pos = pos + 1
+        }
+      } else {
+        pos = exp_start
+      }
+    }
+  } else {
+    // 十进制形态：数字/小数点（一次）/eE 指数（一次，后可带符号）
+    let mut has_dot = false
+    let mut exp_start = -1
+    while pos < n {
+      let c = s[pos]
+      if c >= b'0' && c <= b'9' {
+        pos = pos + 1
+      } else if c == b'.' && !has_dot {
+        has_dot = true
+        pos = pos + 1
+      } else if (c == b'e' || c == b'E') && exp_start < 0 {
+        exp_start = pos
+        pos = pos + 1
+        if pos < n && (s[pos] == b'+' || s[pos] == b'-') {
+          pos = pos + 1
+        }
+      } else {
+        break
+      }
+    }
+    // 悬空指数回退：e（及可选符号）后无数字 → token 截到 e 前
+    //（"1e"→"1"、"1e+"→"1"；合法指数 "1e2" 不受影响）
+    if exp_start >= 0 {
+      let mut j = exp_start + 1
+      if j < n && (s[j] == b'+' || s[j] == b'-') {
+        j = j + 1
+      }
+      if j >= pos {
+        pos = exp_start
+      }
     }
   }
   let token : Array[Byte] = []
@@ -174,6 +229,70 @@ fn scan_float_token(s : Bytes) -> (Array[Byte], Int) {
     i = i + 1
   }
   (token, pos)
+}
+
+///|
+/// 浮点 token 值计算：十进制形态走 parse_double；hex float 形态
+///（`0x` mantissa + 可选 `p` 二进制指数）自算——mantissa hex 逐位累加
+///（≤2^53 域内 Double 精确）、小数段 16^-k 缩放累加、指数 2^p
+///（`@math.pow` 整数幂精确）。正确舍入（C 的 correctly-rounded）不做——
+/// 教学域精度取舍，登记。
+fn parse_float_token(token : Array[Byte]) -> Double {
+  let len = token.length()
+  let mut off = 0
+  let neg = len > 0 && token[0] == b'-'
+  if len > 0 && (token[0] == b'+' || token[0] == b'-') {
+    off = 1
+  }
+  let is_hex = len - off >= 3 &&
+    token[off] == b'0' &&
+    (token[off + 1] == b'x' || token[off + 1] == b'X')
+  let sign : Double = if neg { -1.0 } else { 1.0 }
+  if is_hex {
+    let mut i = off + 2
+    let mut mant = 0.0
+    while i < len && is_hex_digit(token[i]) {
+      mant = mant * 16.0 + digit_value(token[i]).to_double()
+      i = i + 1
+    }
+    if i < len && token[i] == b'.' {
+      i = i + 1
+      let mut scale = 1.0 / 16.0
+      while i < len && is_hex_digit(token[i]) {
+        mant = mant + digit_value(token[i]).to_double() * scale
+        scale = scale / 16.0
+        i = i + 1
+      }
+    }
+    let mut val = mant
+    if i < len && (token[i] == b'p' || token[i] == b'P') {
+      i = i + 1
+      let mut esign = 1
+      if i < len && token[i] == b'+' {
+        i = i + 1
+      } else if i < len && token[i] == b'-' {
+        esign = -1
+        i = i + 1
+      }
+      let mut ev = 0
+      while i < len && token[i] >= b'0' && token[i] <= b'9' {
+        ev = ev * 10 + (token[i].to_int() - 48)
+        i = i + 1
+      }
+      val = mant * @math.pow(2.0, (esign * ev).to_double())
+    }
+    sign * val
+  } else {
+    @string.parse_double(@utf8.decode_lossy(Bytes::from_array(token))) catch {
+      _ => 0.0
+    }
+  }
+}
+
+///|
+fn is_hex_digit(c : Byte) -> Bool {
+  let d = digit_value(c)
+  d >= 0 && d < 16
 }
 
 ///|
@@ -190,11 +309,7 @@ pub fn host_atof(
     AccessFault::Fault(f~) => return fault_reply(f)
   }
   let (token, _) = scan_float_token(s)
-  let val : Double = @string.parse_double(
-    @utf8.decode_lossy(Bytes::from_array(token)),
-  ) catch {
-    _ => 0.0
-  }
+  let val : Double = parse_float_token(token)
   value_only(val.reinterpret_as_uint64())
 }
 
@@ -232,13 +347,15 @@ pub fn host_strtol(
   }
   let start_pos = pos
   let mut val = 0L
-  // 前缀探测（C §7.22.1.4 subject sequence；0x 后无有效数字不消费 x）
+  // 前缀探测（C §7.22.1.4 subject sequence；0x 后无有效数字不消费 x）。
+  // digit_value 越界值 -1 不可当合法十六进制（审阅 P3-4：旧 `< 16` 把
+  // "0x!" 的 '!' 探测成有效——is_hex_digit 单源判定）
   let effective_base : Int = if base == 0 {
     if pos + 1 < n &&
       s[pos] == b'0' &&
       (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
       pos + 2 < n &&
-      digit_value(s[pos + 2]) < 16 {
+      is_hex_digit(s[pos + 2]) {
       pos = pos + 2
       16
     } else if pos < n && s[pos] == b'0' {
@@ -251,7 +368,7 @@ pub fn host_strtol(
       s[pos] == b'0' &&
       (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
       pos + 2 < n &&
-      digit_value(s[pos + 2]) < 16 {
+      is_hex_digit(s[pos + 2]) {
       pos = pos + 2
     }
     16
@@ -302,13 +419,10 @@ pub fn host_strtod(
   let s = read_cstring_raise(mem, map, str_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
-  // 扫描器与 atof 单源（2026-10-05 批二-a 抽出）
+  // 扫描器与 atof 单源（2026-10-05 批二-a 抽出；值计算同用 parse_float_token
+  //——含 hex float/悬空回退，审阅 P2-1 补强）
   let (token, pos) = scan_float_token(s)
-  let val : Double = @string.parse_double(
-    @utf8.decode_lossy(Bytes::from_array(token)),
-  ) catch {
-    _ => 0.0
-  }
+  let val : Double = parse_float_token(token)
   if token.is_empty() {
     match errno_addr {
       Some(a) =>

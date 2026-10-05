@@ -156,6 +156,23 @@
       ],
       "anchor": "本闸 copies 判定（逐字节比对）+ DIFF-EXIT-STDOUT-ENCODE-01 销案（2026-10-05 脱钩修复批批一）",
       "upstream_ref": "差异台账 DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01"
+    },
+    {
+      "id": "dirname_of_copies",
+      "concept": "路径目录段函数 7 复制件三语义组（审阅 P3-3 登记义务补全）：dump_ast/dump_compile/dump_typeck/dump_tokens 四份 dirname_of（宿主双分隔符版，逐份同型人工同步）+ cli_run/gateway 两份 dir_of（同语义异名——宿主双分隔符版）+ lexer/internal/pp/directives 的 dirname_of（VFS 正斜杠纯字符串域——语义故意不同非同源，勿「统一」）",
+      "kind": "registered",
+      "copies_must_match": [],
+      "rust_source": "",
+      "moonbit_source": "moonbit/cmd/dump_tokens/main.mbt",
+      "sync": "dump 四份 + dir_of 两份改其一须连坐全部六处（宿主双分隔符组）；pp 版独立演化（VFS 语义）；函数级复制无法走 copies 文件级机判——registered 登记 + 审阅复核",
+      "consumers": [
+        "moonbit/cmd/dump_* 四工具",
+        "moonbit/cmd/lib/cli",
+        "moonbit/gateway",
+        "moonbit/lexer/internal/pp"
+      ],
+      "anchor": "2026-10-05 审阅 P3-3（本批新增 3 份未登记而同批登记了 stdout_stub 两份——登记义务不一致实锤）",
+      "upstream_ref": "用户审阅报告 2026-10-05 P3-3"
     }
   ]
 }

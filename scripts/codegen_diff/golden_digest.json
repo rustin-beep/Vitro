@@ -15,7 +15,7 @@
         "array_param_with_size.c": "7a1c4d62",
         "array_sum_loop.c": "8c7ae6f7",
         "assign_chain.c": "4d4fa060",
-        "atof_prefix.c": "ff81773c",
+        "atof_prefix.c": "26dcdaf5",
         "atoi_function.c": "d4151a08",
         "atoi_negative.c": "02336071",
         "bfs_graph.c": "753681a3",
@@ -411,7 +411,7 @@
           "result_sha": "1519c7d47a0a9b46"
         },
         "atof_prefix.c": {
-          "result_sha": "55d82b7134e42ba1"
+          "result_sha": "10bbb8b055889909"
         },
         "atoi_function.c": {
           "result_sha": "84283a2fbcef936f"

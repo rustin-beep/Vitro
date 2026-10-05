@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第六轮审阅处置：P2-1 atof 补全 / P2-2 深链误报环回退 / P1 mbti+fmt 机械同步 / P3 四条，2026-10-05）
+
+- **P2-1 atof 前缀语义补全**：悬空指数回退（`"1e"`/`"1e+"`/`"1e-"`→1.0——最长**合法**前缀）+ C99 hex float（`0x10`→16 / `0x1p4`→16 / `0x.8p1`→1 / `0x1p-2`→0.25——点开头 hex-fraction 形态含；hex mantissa 逐位精确、正确舍入取舍登记）；scan/parse 分层（parse_float_token 单源 atof/strtod 共用）；矩阵 12 形态双侧逐行一致 + 语料扩形态重入账
+- **P2-2 include 封顶回退 None**（批一过渡版被审阅推翻）：静态 DFS 封顶无法区分深环与无环深链——报「依赖环」对深链是错误归因（Clang 两形态统一 `nested too deeply`）；归因统一由动态保险丝「嵌套过深」承担；锚翻转为深链+深环双形态归因断言；台账条目终局改写；visited.length 封顶系恒后触发死判据（防御性保留注记）
+- **P1 机械同步**：moon info（host mbti——批二-a fprintf 签名连坐）+ moon fmt；防线清单教训：按 CI 步面走、勿按记忆裁剪（两批连续栽同一步）
+- **P3-1 editorconfig 5 文件**：known_direct.json indent 1→2、ledger/single_source/vm_diff×2 尾换行补；E6 同族第二击——机判闸缺失登记 #47 批五
+- **P3-3 dirname_of 七复制件登记**：single_source +1 registered 条目（三语义组：dump×4 宿主双分隔符 / dir_of×2 同语义异名 / pp 版 VFS 正斜杠独立演化勿统一）；dump_ast/typeck 的裸码点 92 写法统一为反斜杠 char 字面量
+- **P3-4 strtol 前缀探测**：digit_value 越界值 -1 被 \<16 当合法十六进制（`"0x!"` 误探）——改 is_hex_digit 单源判定
+- **P3-2 登记**：fprintf 落盘通道继承 String 域 %c 双重编码（`fprintf(f,"%c",200)` 落盘 C3 88 vs Clang C8）——归批二-b DIFF-LIB-PRINTF-01（新通道同病面注记）
+
 ### Fixed（S9 修复批批二-a：libc 语义三连——atof 前缀 / strtol 前缀探测 / fprintf 落盘，2026-10-05）
 
 - **atof 整串解析失败返回 0.0**〔DIFF-LIB-ATOF-01 销案〕：atof ≡ strtod(str, NULL)（C §7.22.1.1）——取最长浮点前缀（`"12abc"`→12.0）；扫描器与 strtod 抽单源 `scan_float_token`；语料锚 atof_prefix.c（clang_direct SAME）。

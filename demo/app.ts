@@ -83,12 +83,24 @@ function selectCaseById(id: string) {
     applyCardFold(card);
   });
   try {
+    // 加载态先落盘（首访 wasm-gc 下载+实例化可到秒级——期间编辑器空白、
+    // 无任何反馈，用户无从区分「加载中」与「坏了」而误刷新；加载提示带上
+    // 超时指引，见 2026-10-05 UX 批用户拍板文案）
+    setStatus("busy", "加载引擎中…");
+    ($("editor") as HTMLTextAreaElement).value = [
+      "// 加载中：引擎（wasm-gc）正在载入……",
+      "// 若等待时间超过一分钟，建议刷新页面",
+      "",
+    ].join("\n");
+    renderEditorDecor();
     setGateway(await loadGateway());
   } catch (e) {
     setStatus("err", "无法加载 wasm-gc");
     $("boot-error").classList.remove("hidden");
     $("boot-error").textContent =
       "wasm-gc 加载失败（" + (e instanceof Error ? e.message : String(e)) + "）——本页需要支持 wasm-gc 与 js-string builtins 的现代浏览器（Chrome/Edge 130+、Firefox 134+）。";
+    ($("editor") as HTMLTextAreaElement).value = "// 引擎加载失败——见上方红色提示（需支持 wasm-gc 的现代浏览器）\n";
+    renderEditorDecor();
     return;
   }
   const gw = gateway();
@@ -110,4 +122,5 @@ function selectCaseById(id: string) {
     "",
   ].join("\n");
   renderEditorDecor();
+  setStatus("idle", "就绪"); // 初始 pill = busy 加载态（HTML 同步预置），引擎就绪此处才落回
 })();

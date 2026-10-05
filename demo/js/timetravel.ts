@@ -113,6 +113,7 @@ function markVisEventLines(f: StepPayload): void {
 
 function stepRender(): void {
   if (!stepData) return;
+  document.getElementById("replay-empty")?.classList.add("hidden"); // 有数据即撤空态卡
   const f = stepData.frames[stepIdx];
   $("anim-seek").setAttribute("value", String(stepIdx));
   $("anim-progress").textContent =
@@ -244,6 +245,12 @@ function stepPlay(): void {
 
 async function stepRecollect(): Promise<void> {
   // 采集源恒为当前编辑器内容（无场景概念——左栏用例选择即场景入口）
+  if (!hasGatewaySafe()) {
+    // wasm 未就绪（加载中或加载失败）时点采集/点课程：友好提示而非静默异常
+    //（此前 gateway() 直接 throw，stepRecollect 无 catch = unhandled rejection）
+    $("anim-phase").textContent = "引擎尚未加载完成——请等状态变为「就绪」后再试";
+    return;
+  }
   stepStopTimer();
   treeView.k = 0; // 新采集：视图按小树/大树规则重新初始化
   stepData = null;
@@ -373,6 +380,7 @@ export function stepReset(): void {
   ($("anim-seek") as HTMLInputElement).max = "0";
   $("anim-progress").textContent = "";
   $("anim-phase").textContent = "（采集后展示执行过程——数据来自引擎 step 流）";
+  document.getElementById("replay-empty")?.classList.remove("hidden"); // 回放区过期，空态卡复位
   $("anim-play").removeAttribute("disabled");
   $("anim-play").textContent = "▶ 采集并回放";
 }

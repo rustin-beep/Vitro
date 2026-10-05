@@ -33,6 +33,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,14 +66,33 @@ type pair struct {
 }
 
 func main() {
-	selftest := false
+	selftest, freeze, golden := false, false, false
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "--selftest":
 			selftest = true
+		case "--freeze":
+			freeze = true
+		case "--golden":
+			golden = true
 		default:
-			fatal("未知参数: %s（可用：--selftest）", a)
+			fatal("未知参数: %s（可用：--selftest/--freeze/--golden）", a)
 		}
+	}
+	if freeze && golden {
+		fatal("--freeze 与 --golden 互斥")
+	}
+	// 工序④固化（2026-10-05 面六）：oracle 缺失自动切 golden（删区后零改动存活）
+	rustAlive := fileExists(filepath.Join("native", "target", "release", "vitro_cli.exe")) ||
+		fileExists(filepath.Join("native", "target", "release", "vitro_cli"))
+	if !rustAlive && !freeze {
+		if !golden {
+			fmt.Fprintln(os.Stderr, "libc_boot_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
+			golden = true
+		}
+	}
+	if freeze && !rustAlive {
+		fatal("--freeze 需要 oracle exe")
 	}
 	rd := loadRules()
 
@@ -150,6 +170,11 @@ func main() {
 		}
 		p.moonOK, p.moonRaw, p.wrapperIP = true, filtered, wrap
 
+		if golden {
+			// golden 基线：不跑 oracle，比对段走清单 hash
+			pairs = append(pairs, p)
+			continue
+		}
 		rustPath := filepath.Join(work, strings.TrimSuffix(base, ".c")+".rust.json")
 		runRustExport(f, rustPath)
 		rb, err := os.ReadFile(rustPath)
@@ -166,6 +191,59 @@ func main() {
 	if !ok {
 		fmt.Println("libc_boot_diff: FAIL——任一侧缺产物（见上）")
 		os.Exit(1)
+	}
+
+	// ---- 工序④固化：golden / freeze 基线模式 ----
+	if golden || freeze {
+		doc := loadBootDigest()
+		if freeze {
+			// freeze：现模式已双侧跑齐（上方装载），逐例投影 hash 入清单——
+			// 先跑 comparePair 全绿才写（审阅 P2-1 纪律）
+			bad := 0
+			for i := range pairs {
+				pp := &pairs[i]
+				if same, _, err := comparePair(*pp, rd.CompareFields); err != nil || !same {
+					fmt.Printf("  DIFF %s（freeze 拒写清单——先归因）\n", pp.name)
+					bad++
+				} else {
+					doc.Cases[pp.name] = bootEntry{SrcSHA: fileSHA8(filepath.Join(rd.SrcDir, pp.name)), ProjSHA: hash16(projectRaw(pp.moonRaw, rd.CompareFields))}
+				}
+			}
+			if bad > 0 {
+				os.Exit(1)
+			}
+			saveBootDigest(doc)
+			fmt.Printf("libc_boot_diff freeze: %d 例投影 hash 入清单 → %s\n", len(pairs), bootDigestFile)
+			os.Exit(0)
+		}
+		// golden：mb 投影 hash ≡ 清单
+		nSame, nDiff := 0, 0
+		for i := range pairs {
+			pp := &pairs[i]
+			e, ok := doc.Cases[pp.name]
+			if !ok {
+				fmt.Printf("  DIFF %s：清单缺例（先 --freeze）\n", pp.name)
+				nDiff++
+				continue
+			}
+			if sha := fileSHA8(filepath.Join(rd.SrcDir, pp.name)); sha != e.SrcSHA {
+				fmt.Printf("  DIFF %s：libc 源已变更而清单未重刷（%s ≠ %s）\n", pp.name, sha, e.SrcSHA)
+				nDiff++
+				continue
+			}
+			if got := hash16(projectRaw(pp.moonRaw, rd.CompareFields)); got != e.ProjSHA {
+				fmt.Printf("  DIFF %s：投影 hash %s ≠ 清单 %s（全文对照见 frozen-oracle-snapshot 分支）\n", pp.name, got, e.ProjSHA)
+				nDiff++
+			} else {
+				nSame++
+			}
+		}
+		fmt.Printf("libc_boot_diff[golden]: SAME=%d DIFF=%d（%d 源）\n", nSame, nDiff, len(pairs))
+		if nDiff > 0 {
+			os.Exit(1)
+		}
+		fmt.Println("libc_boot_diff[golden]: PASS——MoonBit library mode 自举产物与冻结基线一致")
+		os.Exit(0)
 	}
 
 	// 基线判定
@@ -516,4 +594,62 @@ func preview(b []byte) string {
 func fatal(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "libc_boot_diff: "+format+"\n", args...)
 	os.Exit(2)
+}
+
+// ---- 工序④固化：digest 清单（投影 hash；重刷 diff = 影响面清单） ----
+
+const bootDigestFile = "scripts/moonbit/libc_boot_diff/golden_digest.json"
+
+type bootEntry struct {
+	SrcSHA  string `json:"src_sha"`
+	ProjSHA string `json:"proj_sha"`
+}
+
+type bootDigestDoc struct {
+	Version int                  `json:"version"`
+	Note    string               `json:"note"`
+	Cases   map[string]bootEntry `json:"cases"`
+}
+
+func loadBootDigest() bootDigestDoc {
+	d := bootDigestDoc{Version: 1, Note: "freeze 时已全量对拍；golden = mb 投影 hash ≡ 清单", Cases: map[string]bootEntry{}}
+	if b, err := os.ReadFile(bootDigestFile); err == nil {
+		if err := json.Unmarshal(b, &d); err != nil || d.Version != 1 {
+			fatal("digest 清单坏或版本不识 %s", bootDigestFile)
+		}
+		if d.Cases == nil {
+			d.Cases = map[string]bootEntry{}
+		}
+	}
+	return d
+}
+
+func saveBootDigest(d bootDigestDoc) {
+	data, _ := json.MarshalIndent(d, "", "  ")
+	if err := os.WriteFile(bootDigestFile, append(data, 10), 0o644); err != nil {
+		fatal("写 digest 清单失败: %v", err)
+	}
+}
+
+func hash16(b []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
+func fileSHA8(p string) string {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		fatal("读源失败 %s: %v", p, err)
+	}
+	crlf := []byte{13, 10}
+	lf := []byte{10}
+	return fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(b, crlf, lf)))[:8]
+}
+
+// projectRaw：compare 字段投影（比对语义面单源复用 project()）。
+func projectRaw(raw json.RawMessage, fields []string) []byte {
+	out, err := project(raw, fields)
+	if err != nil {
+		fatal("投影失败: %v", err)
+	}
+	return out
 }

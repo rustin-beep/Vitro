@@ -6,559 +6,559 @@
       "src_sha": "0ba37ef8",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "70a4379ea267bfce"
+      "memory_sha": "2835dd8cc655a3b8"
     },
     "baseline/array_bounds_safe.c": {
       "src_sha": "0f125842",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "022128a1f2c2c30b"
+      "memory_sha": "b4d787aff188ea45"
     },
     "baseline/array_index.c": {
       "src_sha": "a562c208",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "bd30d6f3922274b2"
+      "memory_sha": "cb4d66c0b32bbfe9"
     },
     "baseline/array_index_increment.c": {
       "src_sha": "d92fbb2c",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "f2abbc84fc50183d"
+      "memory_sha": "e33fb7fb1d1607eb"
     },
     "baseline/array_max.c": {
       "src_sha": "b5a97589",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "9a4e44837e42c13e"
+      "memory_sha": "361d6800c939aa92"
     },
     "baseline/array_no_size.c": {
       "src_sha": "ba07e61f",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "ee6f236858d0e950"
+      "memory_sha": "cb4d66c0b32bbfe9"
     },
     "baseline/array_of_union.c": {
       "src_sha": "0f80b07c",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "a05101ad1c6dc1f2"
+      "memory_sha": "fc51af950d920841"
     },
     "baseline/array_param_decay.c": {
       "src_sha": "2c361263",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "ba24a8906c63924a"
+      "memory_sha": "998fe884ea96a8d0"
     },
     "baseline/array_param_with_size.c": {
       "src_sha": "7a1c4d62",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "d2878416771f58f3"
+      "memory_sha": "937d6b4ff2d7315a"
     },
     "baseline/array_sum_loop.c": {
       "src_sha": "8c7ae6f7",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "a77c11e80d2297ae"
+      "memory_sha": "c7e9cede472e923a"
     },
     "baseline/assign_chain.c": {
       "src_sha": "4d4fa060",
       "exit_code": 0,
       "stdout_sha": "d3cee6df83f68a3e",
-      "memory_sha": "a326a78d3a72db42"
+      "memory_sha": "11d32aa1374e87d2"
     },
     "baseline/atoi_function.c": {
       "src_sha": "d4151a08",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "f398b8a89f471163"
+      "memory_sha": "6c7f36c1897fe222"
     },
     "baseline/atoi_negative.c": {
       "src_sha": "02336071",
       "exit_code": 0,
       "stdout_sha": "fec80006df054254",
-      "memory_sha": "a7d991a8a6b13e02"
+      "memory_sha": "5dd696e009d604c4"
     },
     "baseline/bfs_graph.c": {
       "src_sha": "753681a3",
       "exit_code": 0,
       "stdout_sha": "2fed29bb974c3cfe",
-      "memory_sha": "4c178c302cdec0e4"
+      "memory_sha": "c29fa8db6bd9431c"
     },
     "baseline/bit_not_zero.c": {
       "src_sha": "01df9ebd",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "8d8b638d50525c42"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/bit_xor.c": {
       "src_sha": "905d87d5",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "3ecb98e53f46111b"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/bitwise.c": {
       "src_sha": "ee71a0b6",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "e931bc56032bbd37"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/bitwise_combo.c": {
       "src_sha": "1528fad8",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "4bac11fd96e0998a"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/bitwise_not.c": {
       "src_sha": "715d1d7f",
       "exit_code": 0,
       "stdout_sha": "03b26944890929ff",
-      "memory_sha": "fadb199a29a2f461"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/bitwise_shift.c": {
       "src_sha": "84cc3209",
       "exit_code": 0,
       "stdout_sha": "1bfc2634ba2cc2e9",
-      "memory_sha": "29b7596efe8fee45"
+      "memory_sha": "96831022bdd66aad"
     },
     "baseline/block_comment.c": {
       "src_sha": "b9576079",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "0c01a911b06269fe"
+      "memory_sha": "fa469c12e9f69c55"
     },
     "baseline/bool_from_compare.c": {
       "src_sha": "eaba9b4d",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "3be6cac202b56f02"
+      "memory_sha": "6629896e6bcfd60d"
     },
     "baseline/break_continue.c": {
       "src_sha": "cc946821",
       "exit_code": 0,
       "stdout_sha": "a953f09a1b6b6725",
-      "memory_sha": "fa72723ef1b86940"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/break_in_nested_loop.c": {
       "src_sha": "7f8a63a2",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "53b6520482752a26"
+      "memory_sha": "c9570e5625295b9b"
     },
     "baseline/bsearch_basic.c": {
       "src_sha": "efac87e9",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "fdc9cb8b029ccee7"
+      "memory_sha": "a6b3d7ac4535b6ff"
     },
     "baseline/bst_insert_search.c": {
       "src_sha": "11594efc",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "8544fe653c6123e9"
+      "memory_sha": "4d3e1889385659f4"
     },
     "baseline/bubble_sort.c": {
       "src_sha": "ccd66c07",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "243b2aaf0fe7f48a"
+      "memory_sha": "d1fe6b11b175754f"
     },
     "baseline/c11_generic.c": {
       "src_sha": "c22101e8",
       "exit_code": 0,
       "stdout_sha": "6c74e7fdbe8e3ba0",
-      "memory_sha": "d84d4c6e7a567970"
+      "memory_sha": "1a3baeb726e4a334"
     },
     "baseline/calloc_basic.c": {
       "src_sha": "efd7ccc6",
       "exit_code": 0,
       "stdout_sha": "4a31f3538925bbcb",
-      "memory_sha": "ae1e2705f16d3911"
+      "memory_sha": "aa39ab8c9f8da17e"
     },
     "baseline/calloc_reuse_after_eviction.c": {
       "src_sha": "773d72db",
       "exit_code": 0,
       "stdout_sha": "69c948ea032dbbb3",
-      "memory_sha": "8a09649d113b95a3"
+      "memory_sha": "82592c32a63b63d3"
     },
     "baseline/cast_char_pointer.c": {
       "src_sha": "ed433b8a",
       "exit_code": 0,
       "stdout_sha": "f5ca38f748a1d6ea",
-      "memory_sha": "c0f7f37ed64c65d9"
+      "memory_sha": "fcb09f25424a5c3a"
     },
     "baseline/cast_float_to_int.c": {
       "src_sha": "fe7ab770",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "d124e9ae29d52207"
+      "memory_sha": "fe67b93df960f338"
     },
     "baseline/cast_void_pointer.c": {
       "src_sha": "5dd819b6",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "72719ea111253d85"
+      "memory_sha": "e2791d02a6aeb1d2"
     },
     "baseline/char_arr_no_size.c": {
       "src_sha": "3886e7ed",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "30b3bec92690c889"
+      "memory_sha": "c902b06db90f3e2c"
     },
     "baseline/char_array_init.c": {
       "src_sha": "a9a7459f",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "4036d219d42d2e07"
+      "memory_sha": "c902b06db90f3e2c"
     },
     "baseline/char_init_no_false_positive.c": {
       "src_sha": "c559bd1e",
       "exit_code": 0,
       "stdout_sha": "d80e6101a5e87c58",
-      "memory_sha": "b8d07f951173d0cd"
+      "memory_sha": "f604b0317ae074e5"
     },
     "baseline/char_literal.c": {
       "src_sha": "66ec14b0",
       "exit_code": 0,
       "stdout_sha": "108c995b953c8a35",
-      "memory_sha": "602c56b12c059bbc"
+      "memory_sha": "45a4cc430352349c"
     },
     "baseline/char_signedness.c": {
       "src_sha": "558096f8",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "a88e29f6d7101af4"
+      "memory_sha": "557c6c00dd9449d4"
     },
     "baseline/circular_queue.c": {
       "src_sha": "e85826b6",
       "exit_code": 0,
       "stdout_sha": "d15909be6dfffd57",
-      "memory_sha": "771a5613afc2b04c"
+      "memory_sha": "909f4160350ae167"
     },
     "baseline/codegen_soundness_regression.c": {
       "src_sha": "f6946525",
       "exit_code": 0,
       "stdout_sha": "309e7e5f3332b6dd",
-      "memory_sha": "0343868c0f6b8b38"
+      "memory_sha": "b29b5b81a6042a27"
     },
     "baseline/comma_operator.c": {
       "src_sha": "160ed832",
       "exit_code": 0,
       "stdout_sha": "7c8f5059290305ce",
-      "memory_sha": "23ea6f911a757cad"
+      "memory_sha": "dc622a20314ad5d7"
     },
     "baseline/compare_eq.c": {
       "src_sha": "cdb57571",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "2853540b8aa7c9e3"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/compare_gt_eq.c": {
       "src_sha": "33020a10",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "7cbb542bc48e9ca0"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/compare_lt_eq.c": {
       "src_sha": "87592593",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "b365f8d183a92623"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/compare_var.c": {
       "src_sha": "9b8d8590",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "422cb1282b5af96f"
+      "memory_sha": "9438b669dd71f8c7"
     },
     "baseline/compound_add_var.c": {
       "src_sha": "15e06e44",
       "exit_code": 0,
       "stdout_sha": "2c624232cdd22177",
-      "memory_sha": "80e54087af4d1731"
+      "memory_sha": "8429d1a0d7173510"
     },
     "baseline/compound_assign.c": {
       "src_sha": "bd4f84a7",
       "exit_code": 0,
       "stdout_sha": "2c624232cdd22177",
-      "memory_sha": "6d6c8f26d9bf557c"
+      "memory_sha": "8429d1a0d7173510"
     },
     "baseline/compound_assign_array.c": {
       "src_sha": "b8a3b013",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "2ae0e848b2a8640a"
+      "memory_sha": "4616b2c275a29e11"
     },
     "baseline/compound_assign_deref.c": {
       "src_sha": "7fc2300f",
       "exit_code": 0,
       "stdout_sha": "2c624232cdd22177",
-      "memory_sha": "3e4f127b17d28223"
+      "memory_sha": "35736c0f91a79596"
     },
     "baseline/compound_assign_struct.c": {
       "src_sha": "0ccfb227",
       "exit_code": 0,
       "stdout_sha": "e629fa6598d73276",
-      "memory_sha": "1c8f1d916d9aedf9"
+      "memory_sha": "d929f101ee7fccdb"
     },
     "baseline/compound_div_var.c": {
       "src_sha": "464f5d0a",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "c9e524fe3b12f4dd"
+      "memory_sha": "da0c997e08f642b2"
     },
     "baseline/compound_literal.c": {
       "src_sha": "1e8a9390",
       "exit_code": 0,
       "stdout_sha": "aa1b4691f86c3620",
-      "memory_sha": "1ed8252770fb2f53"
+      "memory_sha": "be09be8e273753db"
     },
     "baseline/compound_mod_var.c": {
       "src_sha": "e36b3f92",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "c697f7d0b180c2f1"
+      "memory_sha": "6629896e6bcfd60d"
     },
     "baseline/compound_mul_var.c": {
       "src_sha": "b8fda662",
       "exit_code": 0,
       "stdout_sha": "e629fa6598d73276",
-      "memory_sha": "778d4e3353f3b64d"
+      "memory_sha": "35b1f85a904627bf"
     },
     "baseline/compound_sub_var.c": {
       "src_sha": "4c3236cb",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "fa7d980b6ce62421"
+      "memory_sha": "da0c997e08f642b2"
     },
     "baseline/conditional_compile.c": {
       "src_sha": "6c65dc3e",
       "exit_code": 0,
       "stdout_sha": "e07450245f82c79d",
-      "memory_sha": "fcedc791ccb7cc4d"
+      "memory_sha": "b56048e258277a80"
     },
     "baseline/const.c": {
       "src_sha": "b97fa1c4",
       "exit_code": 0,
       "stdout_sha": "ad57366865126e55",
-      "memory_sha": "5a07fa3a3a7cff75"
+      "memory_sha": "a933ce35e39b1bff"
     },
     "baseline/continue_while.c": {
       "src_sha": "f12c98b8",
       "exit_code": 0,
       "stdout_sha": "3fdba35f04dc8c46",
-      "memory_sha": "5396c15cb72044dc"
+      "memory_sha": "93026d260c2e08c1"
     },
     "baseline/counting_sort.c": {
       "src_sha": "c43d54b1",
       "exit_code": 0,
       "stdout_sha": "87386e33b75deab6",
-      "memory_sha": "77c86c47a0b73726"
+      "memory_sha": "eda2689f47462496"
     },
     "baseline/decrement_var.c": {
       "src_sha": "629e3563",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "19db33823ab5960f"
+      "memory_sha": "93026d260c2e08c1"
     },
     "baseline/designated_init.c": {
       "src_sha": "1bb9fd6b",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "1ccb8476fd21a679"
+      "memory_sha": "e86899bd34ca3bf8"
     },
     "baseline/dfs_graph.c": {
       "src_sha": "7ec6a1df",
       "exit_code": 0,
       "stdout_sha": "addcd9245c1ca0e0",
-      "memory_sha": "fe2d8d8dbd3084ab"
+      "memory_sha": "695cc6619077b41e"
     },
     "baseline/div_by_var.c": {
       "src_sha": "9db4f22f",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "fbd1a5900d2d7312"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/do_while.c": {
       "src_sha": "8f06ab4b",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "3f5fa4db90cc2f49"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/do_while_break.c": {
       "src_sha": "a6b3b996",
       "exit_code": 0,
       "stdout_sha": "938db8c9f82c8cb5",
-      "memory_sha": "fb11a222c2259a4b"
+      "memory_sha": "da0c997e08f642b2"
     },
     "baseline/do_while_continue.c": {
       "src_sha": "37250cdb",
       "exit_code": 0,
       "stdout_sha": "5d389f5e2e34c6b0",
-      "memory_sha": "0fa8b20ab02cd94e"
+      "memory_sha": "93026d260c2e08c1"
     },
     "baseline/do_while_nested.c": {
       "src_sha": "5e54abd9",
       "exit_code": 0,
       "stdout_sha": "eb01dd90291c243a",
-      "memory_sha": "8c8cd821f1150a1c"
+      "memory_sha": "26d7a46c5624054b"
     },
     "baseline/double_arith.c": {
       "src_sha": "6d276c40",
       "exit_code": 0,
       "stdout_sha": "fbd04e1aae9ce0b1",
-      "memory_sha": "418e4d0f57fd79b6"
+      "memory_sha": "9007ab3d12c76fd6"
     },
     "baseline/double_arr.c": {
       "src_sha": "99578b40",
       "exit_code": 0,
       "stdout_sha": "914204c25f3f144d",
-      "memory_sha": "c9b5dca982b2cc4b"
+      "memory_sha": "e125345a3abc2649"
     },
     "baseline/double_array_op.c": {
       "src_sha": "861fbc43",
       "exit_code": 0,
       "stdout_sha": "fbd04e1aae9ce0b1",
-      "memory_sha": "c8a4a56de5f9f152"
+      "memory_sha": "d448d8d580c80b19"
     },
     "baseline/double_assign.c": {
       "src_sha": "6f11dde3",
       "exit_code": 0,
       "stdout_sha": "be8d135cbbef3c4c",
-      "memory_sha": "8b7d4e30820fbe0f"
+      "memory_sha": "fda651288baab987"
     },
     "baseline/double_basic.c": {
       "src_sha": "2b204da3",
       "exit_code": 0,
       "stdout_sha": "330548c742a7c77a",
-      "memory_sha": "d4b78915278e0ce0"
+      "memory_sha": "c71e9a7a2f945d73"
     },
     "baseline/double_cast_int.c": {
       "src_sha": "2cdab83f",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "566b4fdf588bec98"
+      "memory_sha": "2b6359591f912010"
     },
     "baseline/double_cmp_eq.c": {
       "src_sha": "832a665c",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "7b07ba8c8f08d820"
+      "memory_sha": "842cff2f36026440"
     },
     "baseline/double_compare.c": {
       "src_sha": "a66f7365",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "63f79aa2357017d1"
+      "memory_sha": "82291a5860d76c9f"
     },
     "baseline/double_init_zero.c": {
       "src_sha": "0d26c331",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "51c89aa45da4915b"
+      "memory_sha": "d714b9ad5803aba4"
     },
     "baseline/double_mul.c": {
       "src_sha": "7ca5c2fc",
       "exit_code": 0,
       "stdout_sha": "8ab31b5afaea5611",
-      "memory_sha": "9cb9ec0c62ee9edb"
+      "memory_sha": "a2e11e0f0cd5eda1"
     },
     "baseline/double_printf_lf.c": {
       "src_sha": "9ff58d47",
       "exit_code": 0,
       "stdout_sha": "f0f4a726dc0c7789",
-      "memory_sha": "73e22655b264ea78"
+      "memory_sha": "885bd50a97ceaf78"
     },
     "baseline/doubly_linked_list.c": {
       "src_sha": "b2646ed3",
       "exit_code": 0,
       "stdout_sha": "f71998fe363b9c29",
-      "memory_sha": "da3177dce1bf3f6a"
+      "memory_sha": "d1c457b2f6c65329"
     },
     "baseline/dp_fibonacci.c": {
       "src_sha": "8288bac6",
       "exit_code": 0,
       "stdout_sha": "02d20bbd7e394ad5",
-      "memory_sha": "10745ec7420d2ce9"
+      "memory_sha": "dd3e5a628f5f646a"
     },
     "baseline/dp_knapsack.c": {
       "src_sha": "c403183c",
       "exit_code": 0,
       "stdout_sha": "3fdba35f04dc8c46",
-      "memory_sha": "3c8ad996340cc7fa"
+      "memory_sha": "67987ed17bb15c41"
     },
     "baseline/e1_c23_alignof.c": {
       "src_sha": "3a5e8b48",
       "exit_code": 0,
       "stdout_sha": "901b0c197e451780",
-      "memory_sha": "425a31011921f9e7"
+      "memory_sha": "7da1dc69af79eb54"
     },
     "baseline/e1_c23_binary_literals.c": {
       "src_sha": "73f5cf7f",
       "exit_code": 0,
       "stdout_sha": "7cf1b29be6ff18e0",
-      "memory_sha": "03bbb4c47db6b320"
+      "memory_sha": "bfbc6c08cbe9a944"
     },
     "baseline/e1_c23_enum_underlying.c": {
       "src_sha": "02a0833b",
       "exit_code": 0,
       "stdout_sha": "fb26e1eeb81992cd",
-      "memory_sha": "e372d197d962ea58"
+      "memory_sha": "8ae11eba4475699c"
     },
     "baseline/e1_c23_typeof_unqual.c": {
       "src_sha": "118d5268",
       "exit_code": 0,
       "stdout_sha": "94b0bebcc00ad473",
-      "memory_sha": "ff4bd89762ba55f8"
+      "memory_sha": "24e39f5f0e1962d1"
     },
     "baseline/e1_c23_u8_string.c": {
       "src_sha": "f6259015",
       "exit_code": 0,
       "stdout_sha": "ba5e67d3d0b00646",
-      "memory_sha": "911b699648c0b48c"
+      "memory_sha": "dd1ef9859121fcb2"
     },
     "baseline/e1_float_literal_double.c": {
       "src_sha": "af11ca0f",
       "exit_code": 0,
       "stdout_sha": "840f80103e8721cc",
-      "memory_sha": "319685be6170c2ba"
+      "memory_sha": "2b0ab37a611f1d71"
     },
     "baseline/e1_float_macros.c": {
       "src_sha": "fff270f9",
       "exit_code": 0,
       "stdout_sha": "a3c46d227667c15d",
-      "memory_sha": "b3d2e4f30645b6c8"
+      "memory_sha": "d92af8a4895a888f"
     },
     "baseline/e1_func_identifier.c": {
       "src_sha": "6ccfd5f8",
       "exit_code": 1,
       "stdout_sha": "9dbf07b4c182dc9f",
-      "memory_sha": "5520cd1caffc877c"
+      "memory_sha": "50e718098d73301a"
     },
     "baseline/e1_limits_macros.c": {
       "src_sha": "790fb6a0",
       "exit_code": 0,
       "stdout_sha": "222533bccc82a799",
-      "memory_sha": "33a2a104e6486269"
+      "memory_sha": "c1d0a6a720e5ac8b"
     },
     "baseline/e1_llong_bitwise.c": {
       "src_sha": "3b71f1da",
       "exit_code": 0,
       "stdout_sha": "40274dec23cc3273",
-      "memory_sha": "d74cb1866f4a42d6"
+      "memory_sha": "bf224a742a7e597a"
     },
     "baseline/e1_string_concat.c": {
       "src_sha": "adbf84c9",
       "exit_code": 0,
       "stdout_sha": "ed0339c36addfe4b",
-      "memory_sha": "fb2997edd7929b21"
+      "memory_sha": "71da295927850685"
     },
     "baseline/e1_va_copy.c": {
       "src_sha": "c7a0cf58",
       "exit_code": 0,
       "stdout_sha": "6242a2774f422d17",
-      "memory_sha": "b49ac39c63aa08d9"
+      "memory_sha": "022331d60d9afcdc"
     },
     "baseline/e2_angle_local_header.c": {
       "src_sha": "49471035",
@@ -570,13 +570,13 @@
       "src_sha": "4f5f4c1c",
       "exit_code": 0,
       "stdout_sha": "6e333709ea1368c3",
-      "memory_sha": "319bad7c481a7289"
+      "memory_sha": "d28ea93ffb55f34b"
     },
     "baseline/e2_has_include_chain.c": {
       "src_sha": "37bff223",
       "exit_code": 0,
       "stdout_sha": "3fdba35f04dc8c46",
-      "memory_sha": "2a933995c423f849"
+      "memory_sha": "0e979f8878ede6b9"
     },
     "baseline/e2_include_cycle.c": {
       "src_sha": "edf98db3",
@@ -588,7 +588,7 @@
       "src_sha": "4cbb28b5",
       "exit_code": 0,
       "stdout_sha": "0f3dc674dd8d130d",
-      "memory_sha": "8dc73b8851ecb972"
+      "memory_sha": "4899e26f200ad08f"
     },
     "baseline/e2_include_not_found_angle.c": {
       "src_sha": "d40ce468",
@@ -606,43 +606,43 @@
       "src_sha": "cc116b8a",
       "exit_code": 0,
       "stdout_sha": "41b7d4f80b40f891",
-      "memory_sha": "980cd1960c2f6544"
+      "memory_sha": "a91a8b737136354d"
     },
     "baseline/e2_macro_paste.c": {
       "src_sha": "03515968",
       "exit_code": 0,
       "stdout_sha": "9909b3bbf95e51ec",
-      "memory_sha": "87148a0b7f034216"
+      "memory_sha": "5b01665cf4ba60cc"
     },
     "baseline/e2_macro_stringize.c": {
       "src_sha": "dd1615bf",
       "exit_code": 0,
       "stdout_sha": "6f650caa31f8ac18",
-      "memory_sha": "3686c930b1072e4c"
+      "memory_sha": "56d3441f6cf725d7"
     },
     "baseline/e2_predefined_macros.c": {
       "src_sha": "16ec0114",
       "exit_code": 0,
       "stdout_sha": "745ec4c2ec44b898",
-      "memory_sha": "c865ecdc7a7a3274"
+      "memory_sha": "9353c4ad74ed2181"
     },
     "baseline/e2_undef_redefine.c": {
       "src_sha": "1b388d30",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "3f108ab4b73f6cf7"
+      "memory_sha": "0e979f8878ede6b9"
     },
     "baseline/e3_attributes.c": {
       "src_sha": "b3f98db6",
       "exit_code": 0,
       "stdout_sha": "62de7cb81c717c67",
-      "memory_sha": "518e46a8313235e2"
+      "memory_sha": "b25796ad8c1a0c97"
     },
     "baseline/e3_static_assert.c": {
       "src_sha": "5f7e497d",
       "exit_code": 0,
       "stdout_sha": "6a8da7798539bcad",
-      "memory_sha": "d79f7d927ff4de79"
+      "memory_sha": "db6e811632becc3a"
     },
     "baseline/e3_static_assert_fail.c": {
       "src_sha": "2b882579",
@@ -654,374 +654,374 @@
       "src_sha": "a99fb3ca",
       "exit_code": 0,
       "stdout_sha": "6e1baeb6d8928848",
-      "memory_sha": "ee011df935a2ada2"
+      "memory_sha": "8680ca1a23d1fdad"
     },
     "baseline/empty_for.c": {
       "src_sha": "20282b21",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "3397ff9e398f50f0"
+      "memory_sha": "8a5d47b097c23bbf"
     },
     "baseline/empty_func.c": {
       "src_sha": "fd390c25",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "bfda4a17eb89ca24"
+      "memory_sha": "fa469c12e9f69c55"
     },
     "baseline/empty_if.c": {
       "src_sha": "c469e7a8",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "e4ff6478067d643f"
+      "memory_sha": "8a5d47b097c23bbf"
     },
     "baseline/empty_while.c": {
       "src_sha": "f7f98871",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "384d66a64b84cf32"
+      "memory_sha": "8a5d47b097c23bbf"
     },
     "baseline/engine_note_lookalike.c": {
       "src_sha": "897ed136",
       "exit_code": 0,
       "stdout_sha": "18ff9673f8ed7360",
-      "memory_sha": "56ccfb7e5d876224",
-      "known_mb_digest": "698070ef66ea89fa"
+      "memory_sha": "a82bd0e64a6cf7a3",
+      "known_mb_digest": "cefc32b59afce200"
     },
     "baseline/enum.c": {
       "src_sha": "1dac9003",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "f8254a2c28b2a6cc"
+      "memory_sha": "fa8e22f12a681197"
     },
     "baseline/enum_arith.c": {
       "src_sha": "b26960b5",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "56874b5f523d0971"
+      "memory_sha": "cab29b7b89b64a00"
     },
     "baseline/enum_non_continuous.c": {
       "src_sha": "bd182341",
       "exit_code": 0,
       "stdout_sha": "f5ca38f748a1d6ea",
-      "memory_sha": "e3960827a98d82e4"
+      "memory_sha": "1a5c3974a2dc103b"
     },
     "baseline/equal_var.c": {
       "src_sha": "674d6f88",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "8a63133dd6033256"
+      "memory_sha": "2546f566b38bce5f"
     },
     "baseline/escape_tab.c": {
       "src_sha": "6eca02c4",
       "exit_code": 0,
       "stdout_sha": "894891f8b78a9945",
-      "memory_sha": "5e5c083f0f810e2d"
+      "memory_sha": "97c272567cdfcbf1"
     },
     "baseline/exit_function.c": {
       "src_sha": "5ae58a28",
       "exit_code": 0,
       "stdout_sha": "6db7d803e74f1ffa",
-      "memory_sha": "fd5e921946b9ef17"
+      "memory_sha": "a8001bb649766791"
     },
     "baseline/extern_func.c": {
       "src_sha": "d1c8c55c",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "df87b664e5c41d83"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/extern_var.c": {
       "src_sha": "7445e769",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "18ded37d7f35469e"
+      "memory_sha": "8ac4425706295149"
     },
     "baseline/factorial.c": {
       "src_sha": "3e707e03",
       "exit_code": 0,
       "stdout_sha": "d829857eb1366e70",
-      "memory_sha": "619b99278e41f8d3"
+      "memory_sha": "4fb2a715f67a6ff5"
     },
     "baseline/fclose_leak.c": {
       "src_sha": "858d7156",
       "exit_code": 0,
       "stdout_sha": "a4c3ed04a95a3da1",
-      "memory_sha": "5ed3f2e453bfd3fe"
+      "memory_sha": "1e8a99af9141b9ca"
     },
     "baseline/fgets_fputs_basic.c": {
       "src_sha": "68b0a7bd",
       "exit_code": 0,
       "stdout_sha": "26c60a61d01db583",
-      "memory_sha": "2e5326cacb41c3c6"
+      "memory_sha": "e6c5c1236f3a6d7c"
     },
     "baseline/fibonacci.c": {
       "src_sha": "0fafa920",
       "exit_code": 0,
       "stdout_sha": "02d20bbd7e394ad5",
-      "memory_sha": "ae471236054726b1"
+      "memory_sha": "68142c1b30ddd9a1"
     },
     "baseline/float_basic.c": {
       "src_sha": "3016d3e3",
       "exit_code": 0,
       "stdout_sha": "2efff1261c25d94d",
-      "memory_sha": "d912390a7a2b0ade"
+      "memory_sha": "7ead62a0deb1bdef"
     },
     "baseline/float_compare.c": {
       "src_sha": "fb3b35b5",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "7337a8bf108cc13c"
+      "memory_sha": "a3947ca67e8b5103"
     },
     "baseline/float_func_return.c": {
       "src_sha": "e0a67f44",
       "exit_code": 0,
       "stdout_sha": "005db8a3457c2472",
-      "memory_sha": "1aa75677a6739aec"
+      "memory_sha": "d4a85d7fc29617a3"
     },
     "baseline/for_break.c": {
       "src_sha": "a0481497",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "967dcbc14926416d"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/for_continue.c": {
       "src_sha": "364a01ce",
       "exit_code": 0,
       "stdout_sha": "d538f5aa397f242e",
-      "memory_sha": "9fd9d14b1ee51e34"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/for_empty_cond.c": {
       "src_sha": "302dde5f",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "3e328e6c0eca0214"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/for_loop.c": {
       "src_sha": "0d53b995",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "bba6f93533188079"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/for_no_incr.c": {
       "src_sha": "6a9b02d5",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "4b3684214d44497a"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/for_no_init.c": {
       "src_sha": "0bf8b34a",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "344c869fd49ce418"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/forward_decl.c": {
       "src_sha": "b9d6fc57",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "74e45c1903b01751"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/fprintf_basic.c": {
       "src_sha": "853d5fe4",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "03608daecd057a90"
+      "memory_sha": "6c2d581d82e287dc"
     },
     "baseline/func_many_params.c": {
       "src_sha": "2ba219ee",
       "exit_code": 0,
       "stdout_sha": "e629fa6598d73276",
-      "memory_sha": "97f3df99d1275a26"
+      "memory_sha": "6ddd7bf9fc4620c2"
     },
     "baseline/func_ptr_param_decay.c": {
       "src_sha": "f6d41aad",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "b544512a84997c75"
+      "memory_sha": "1d9eb705e1bdc91f"
     },
     "baseline/func_return_as_arg.c": {
       "src_sha": "7801ab85",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "5f982ba27f230cb5"
+      "memory_sha": "e68c5145b95b3778"
     },
     "baseline/function_call.c": {
       "src_sha": "4e864050",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "85af7e552ef3d353"
+      "memory_sha": "6d73b37e23aa086a"
     },
     "baseline/function_pointer_arg.c": {
       "src_sha": "b93a77d0",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "76748adf2b77d27d"
+      "memory_sha": "3452a51cc6c6f900"
     },
     "baseline/function_pointer_array.c": {
       "src_sha": "9420f92e",
       "exit_code": 0,
       "stdout_sha": "f71998fe363b9c29",
-      "memory_sha": "e22878c1c7bca175"
+      "memory_sha": "d46739efe160863d"
     },
     "baseline/function_pointer_array_direct.c": {
       "src_sha": "0986729e",
       "exit_code": 0,
       "stdout_sha": "5b137f2e16514f8f",
-      "memory_sha": "13ff577180ce9186"
+      "memory_sha": "7e56a4023c132bd8"
     },
     "baseline/function_pointer_decl.c": {
       "src_sha": "521721eb",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "42bae49c4b987fe1"
+      "memory_sha": "de0aaa8012adeb16"
     },
     "baseline/function_pointer_local_typedef.c": {
       "src_sha": "5b1bc8c0",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "5084805916ad9214"
+      "memory_sha": "f2ef1dad0b6ccb43"
     },
     "baseline/function_pointer_multi_level.c": {
       "src_sha": "4cb7c8f8",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "08e0aafb1b52ab4f"
+      "memory_sha": "73e634d22cb30fa6"
     },
     "baseline/function_pointer_return_ptr.c": {
       "src_sha": "612b6d2b",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "03b28b1fd9c99714"
+      "memory_sha": "b6ad3f0d97658869"
     },
     "baseline/function_pointer_typedef.c": {
       "src_sha": "03251b3f",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "34294a39b85e7b03"
+      "memory_sha": "f2ef1dad0b6ccb43"
     },
     "baseline/gcd_euclid.c": {
       "src_sha": "2381a5a0",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "8e49a5a6e3a0d7c1"
+      "memory_sha": "f7b795d2ab9792c0"
     },
     "baseline/gcd_euclidean.c": {
       "src_sha": "e035c2fc",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "d8c9037c878d585d"
+      "memory_sha": "f7b795d2ab9792c0"
     },
     "baseline/global_string_pointer.c": {
       "src_sha": "92c98984",
       "exit_code": 0,
       "stdout_sha": "5ef647e503c06e5b",
-      "memory_sha": "209464e670cfc36c"
+      "memory_sha": "9392874d4dc23e73"
     },
     "baseline/global_struct_member.c": {
       "src_sha": "9440f980",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "22bc8cbe58198595"
+      "memory_sha": "a9e517111f4b3316"
     },
     "baseline/global_var_init.c": {
       "src_sha": "0f96eae9",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "cf709a549309ef90"
+      "memory_sha": "21021332d7c0bd57"
     },
     "baseline/goto_basic.c": {
       "src_sha": "2b75c016",
       "exit_code": 0,
       "stdout_sha": "041b4850f7075a41",
-      "memory_sha": "02a6331a9f3050a1"
+      "memory_sha": "31c1a3c1e8b0adea"
     },
     "baseline/hanoi_tower.c": {
       "src_sha": "78066ba3",
       "exit_code": 0,
       "stdout_sha": "8304ed8b0341be7a",
-      "memory_sha": "314d12983b4ee41f"
+      "memory_sha": "1f690ae0b5f4f6a6"
     },
     "baseline/hash_table_linear.c": {
       "src_sha": "c0d1c9c1",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "e9f2b321e1f0bcc9"
+      "memory_sha": "b2211f4868e7317e"
     },
     "baseline/heap_sort.c": {
       "src_sha": "bf510db5",
       "exit_code": 0,
       "stdout_sha": "79d093d94c919b77",
-      "memory_sha": "7e60d1e0296f3384"
+      "memory_sha": "0889846d7227abd6"
     },
     "baseline/hello_world.c": {
       "src_sha": "8309e187",
       "exit_code": 0,
       "stdout_sha": "185f8db32271fe25",
-      "memory_sha": "049eba27865f0b18"
+      "memory_sha": "d6e0a61854d81f95"
     },
     "baseline/hex_literal.c": {
       "src_sha": "f3c62234",
       "exit_code": 0,
       "stdout_sha": "9556b82499cc0aaf",
-      "memory_sha": "548ef0d4a6af0751"
+      "memory_sha": "60dda7c9d3444a29"
     },
     "baseline/if_else.c": {
       "src_sha": "2aa8d8e0",
       "exit_code": 0,
       "stdout_sha": "8a798890fe938171",
-      "memory_sha": "21f872ac69cef8d8"
+      "memory_sha": "1c54251e7272939c"
     },
     "baseline/if_nested.c": {
       "src_sha": "4a75425c",
       "exit_code": 0,
       "stdout_sha": "8a798890fe938171",
-      "memory_sha": "f02c0f6058ee0509"
+      "memory_sha": "1a7eec3b77004a59"
     },
     "baseline/include_custom_header.c": {
       "src_sha": "71539f00",
       "exit_code": 0,
       "stdout_sha": "c64a9227dfe72fa0",
-      "memory_sha": "8a9cb8eb4024c6ef"
+      "memory_sha": "4e5835dae7745df2"
     },
     "baseline/increment_var.c": {
       "src_sha": "336f773c",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "f03e9ba2db4c158b"
+      "memory_sha": "5c99cd20f383a154"
     },
     "baseline/init_base_slot_struct_call.c": {
       "src_sha": "42f4fa20",
       "exit_code": 0,
       "stdout_sha": "1a8bf27bc6dd95aa",
-      "memory_sha": "d754ef94afd63891"
+      "memory_sha": "45f045d2f62c27a7"
     },
     "baseline/init_base_slot_variadic.c": {
       "src_sha": "af17c9e1",
       "exit_code": 0,
       "stdout_sha": "7ba5c872ffb8c3ed",
-      "memory_sha": "fd0768f8445d0c0f"
+      "memory_sha": "17f8d3a3950895a4"
     },
     "baseline/int_arith.c": {
       "src_sha": "6836149d",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "8853ad9ba2138aa1"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/int_div.c": {
       "src_sha": "7f71c527",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "3959b9e43f5cb3ab"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/int_div_neg.c": {
       "src_sha": "8788553d",
       "exit_code": 0,
       "stdout_sha": "cf3bae39dd692048",
-      "memory_sha": "6415ea0141924f3f"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/is_prime.c": {
       "src_sha": "48f67633",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "818d244f0073cecc"
+      "memory_sha": "c35e79c7f62918f4"
     },
     "baseline/j1_declarator_depth.c": {
       "src_sha": "3db16a2b",
@@ -1033,1179 +1033,1179 @@
       "src_sha": "ab1a4a6e",
       "exit_code": 0,
       "stdout_sha": "ae44b15b00e8e989",
-      "memory_sha": "b9a59068e2f8c934"
+      "memory_sha": "6219dbe1bb752587"
     },
     "baseline/jit_nested_counting_loop_longlong.c": {
       "src_sha": "96d5816f",
       "exit_code": 0,
       "stdout_sha": "6f9d3fa4d9ed8d1c",
-      "memory_sha": "16f76860c4d73b84"
+      "memory_sha": "d9549c98fd6a7188"
     },
     "baseline/jit_single_hot_loop.c": {
       "src_sha": "33e103e9",
       "exit_code": 0,
       "stdout_sha": "e51b2a2f31879524",
-      "memory_sha": "37cb8750254dc25a"
+      "memory_sha": "da33208406730b99"
     },
     "baseline/jit_trace_overflow_abort.c": {
       "src_sha": "2683b683",
       "exit_code": 0,
       "stdout_sha": "b60c4868b02134ad",
-      "memory_sha": "640763e9d293b7c6"
+      "memory_sha": "0ea871b18bcc9a10"
     },
     "baseline/jit_zero_init_trace_boundary.c": {
       "src_sha": "4e806ee9",
       "exit_code": 0,
       "stdout_sha": "c84a7f23de9854fd",
-      "memory_sha": "92f10ecb7ff005ce"
+      "memory_sha": "bf926f02305a2629"
     },
     "baseline/josephus_ring.c": {
       "src_sha": "d2c65ba0",
       "exit_code": 0,
       "stdout_sha": "bbe4d4792f58bcb5",
-      "memory_sha": "8acada26fefeaad4"
+      "memory_sha": "89a4ede0b6b439da"
     },
     "baseline/libc_extensions.c": {
       "src_sha": "92bd8a38",
       "exit_code": 0,
       "stdout_sha": "65e7aa2da900891c",
-      "memory_sha": "835754f945ac820b"
+      "memory_sha": "59fe86f22681e2d6"
     },
     "baseline/linear_search.c": {
       "src_sha": "f0de7f3b",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "8c3560ba51eecbfe"
+      "memory_sha": "5cf35856ed764dbc"
     },
     "baseline/linked_list_delete.c": {
       "src_sha": "53d26958",
       "exit_code": 0,
       "stdout_sha": "63b51e9a6a3330e3",
-      "memory_sha": "290ac0ae98f34f74"
+      "memory_sha": "33655472e845f401"
     },
     "baseline/linked_list_tail.c": {
       "src_sha": "f7662dcc",
       "exit_code": 0,
       "stdout_sha": "7c8f5059290305ce",
-      "memory_sha": "cdba59b5cbc290e2"
+      "memory_sha": "ab60e68572cdfd29"
     },
     "baseline/linked_queue.c": {
       "src_sha": "560447ef",
       "exit_code": 0,
       "stdout_sha": "d15909be6dfffd57",
-      "memory_sha": "cd609ccfc93f2bbe"
+      "memory_sha": "62634cd989ff5780"
     },
     "baseline/linked_stack.c": {
       "src_sha": "a0e038b1",
       "exit_code": 0,
       "stdout_sha": "c13c6ee09f69f5be",
-      "memory_sha": "8c0e8ab00e6c4888"
+      "memory_sha": "5d909df2583a241c"
     },
     "baseline/logical_and.c": {
       "src_sha": "d48c431d",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "1a42a60ba2a0f1b3"
+      "memory_sha": "8c96826f250d714c"
     },
     "baseline/logical_and_var.c": {
       "src_sha": "d48c431d",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "2d5d2e5165858e71"
+      "memory_sha": "8c96826f250d714c"
     },
     "baseline/logical_not.c": {
       "src_sha": "6a9f88bf",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "ca41b05750d18eee"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/logical_not_var.c": {
       "src_sha": "1fef2e19",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "c5b922b968039c77"
+      "memory_sha": "6629896e6bcfd60d"
     },
     "baseline/logical_or.c": {
       "src_sha": "32643640",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "c7366118c39140ee"
+      "memory_sha": "8c96826f250d714c"
     },
     "baseline/logical_or_var.c": {
       "src_sha": "70fec8ac",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "72a1b504a236f6a7"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/long_long.c": {
       "src_sha": "9aa10d56",
       "exit_code": 0,
       "stdout_sha": "b34a1c30a715f6bf",
-      "memory_sha": "4eb1936037889cd5"
+      "memory_sha": "a6b5fc07cc243308"
     },
     "baseline/long_type.c": {
       "src_sha": "6750967d",
       "exit_code": 0,
       "stdout_sha": "8d969eef6ecad3c2",
-      "memory_sha": "90089b4d43e9b6f4"
+      "memory_sha": "127a1e907616ae42"
     },
     "baseline/malloc_free.c": {
       "src_sha": "a67dcb26",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "16b77c28cbaada92"
+      "memory_sha": "463b1b95bcc00db4"
     },
     "baseline/matrix_trace.c": {
       "src_sha": "effa73e3",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "ec1fe4b6ad950b26"
+      "memory_sha": "d476f784bcbfe298"
     },
     "baseline/memcpy_manual.c": {
       "src_sha": "7b594bdc",
       "exit_code": 0,
       "stdout_sha": "4e07408562bedb8b",
-      "memory_sha": "124f23cafc7864d1"
+      "memory_sha": "abd01304eb4cbdd9"
     },
     "baseline/memset_basic.c": {
       "src_sha": "354dda06",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "a4f26c1af55dcc8f"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/memset_struct.c": {
       "src_sha": "1e918104",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "b3d8fbb9efd36982"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/mod_by_var.c": {
       "src_sha": "e104aaf1",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "657381cc2cf0e43c"
+      "memory_sha": "93026d260c2e08c1"
     },
     "baseline/modulo.c": {
       "src_sha": "b6ee5874",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "917bc36f7815f87d"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/mul_by_var.c": {
       "src_sha": "e605636b",
       "exit_code": 0,
       "stdout_sha": "624b60c58c9d8bfb",
-      "memory_sha": "f2526bdb3c345645"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/mul_overflow_safe.c": {
       "src_sha": "d9f622c3",
       "exit_code": 0,
       "stdout_sha": "6cce36d9f8a9e151",
-      "memory_sha": "cc42f88cc6e0d1e4"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/multi_dim_array.c": {
       "src_sha": "f5799390",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "2a7081edbea12985"
+      "memory_sha": "e8b59878a06124a7"
     },
     "baseline/multi_if_else.c": {
       "src_sha": "946da1a1",
       "exit_code": 0,
       "stdout_sha": "3fc4ccfe745870e2",
-      "memory_sha": "7881128dbf2ef729"
+      "memory_sha": "ea9e468de29a5be7"
     },
     "baseline/multi_level_ptr_cast_int.c": {
       "src_sha": "aed914f8",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "4adc4d128cc7b9a6"
+      "memory_sha": "1047ebf5dd41de09"
     },
     "baseline/multi_level_ptr_cast_struct.c": {
       "src_sha": "c419d97d",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "3a9559c9e2f8ede2"
+      "memory_sha": "bd3a103f240af2c0"
     },
     "baseline/multi_var_decl.c": {
       "src_sha": "97abe76a",
       "exit_code": 0,
       "stdout_sha": "f71998fe363b9c29",
-      "memory_sha": "814fd1512c95f07b"
+      "memory_sha": "2c2c91edcdf502a4"
     },
     "baseline/multidecl_array_pointer_mix.c": {
       "src_sha": "f211eea3",
       "exit_code": 0,
       "stdout_sha": "8527a891e2241369",
-      "memory_sha": "bb6a40df78bea431"
+      "memory_sha": "592e2bb332dbd082"
     },
     "baseline/neg_hex.c": {
       "src_sha": "e54bb7d7",
       "exit_code": 0,
       "stdout_sha": "828ea53759a6dbfb",
-      "memory_sha": "f104051abe7cf56f"
+      "memory_sha": "d3cf61846fbe3550"
     },
     "baseline/neg_modulo.c": {
       "src_sha": "5d33946c",
       "exit_code": 0,
       "stdout_sha": "cf3bae39dd692048",
-      "memory_sha": "6ee32d5aa648a293"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/negate.c": {
       "src_sha": "20a1f7fa",
       "exit_code": 0,
       "stdout_sha": "37aa1ccf80e48183",
-      "memory_sha": "b1718a22229fbbeb"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/negative_number.c": {
       "src_sha": "d3c8ccbb",
       "exit_code": 0,
       "stdout_sha": "fec80006df054254",
-      "memory_sha": "a87ce3a67f44820d"
+      "memory_sha": "d27fe8c4fb309d31"
     },
     "baseline/nested_call.c": {
       "src_sha": "59264a0e",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "f66b949e32143876"
+      "memory_sha": "b7cbbdf91d42f74f"
     },
     "baseline/nested_loop.c": {
       "src_sha": "9618b456",
       "exit_code": 0,
       "stdout_sha": "eb01dd90291c243a",
-      "memory_sha": "29829a38011919d8"
+      "memory_sha": "26d7a46c5624054b"
     },
     "baseline/nested_ternary.c": {
       "src_sha": "72656c5c",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "9dcadc13996b8e75"
+      "memory_sha": "4c43c9f5ac481534"
     },
     "baseline/nested_ternary2.c": {
       "src_sha": "69f6f36b",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "c40d14625052ddc3"
+      "memory_sha": "7c1b8847e641082a"
     },
     "baseline/not_equal.c": {
       "src_sha": "d14a5e7d",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "3c94102bb4d9c02c"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/not_equal_var.c": {
       "src_sha": "f3f6e9dd",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "6fb63238565fec3d"
+      "memory_sha": "9438b669dd71f8c7"
     },
     "baseline/not_zero.c": {
       "src_sha": "ecad3441",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "af4614fc9c79b7b1"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/null_keyword.c": {
       "src_sha": "eee2e083",
       "exit_code": 0,
       "stdout_sha": "74234e98afe7498f",
-      "memory_sha": "c2f64bb2598a4cef"
+      "memory_sha": "696742cafbe19286"
     },
     "baseline/octal_literal.c": {
       "src_sha": "64aa1f86",
       "exit_code": 0,
       "stdout_sha": "da4ea2a5506f2693",
-      "memory_sha": "ccd3cbaaf31f6660"
+      "memory_sha": "09346f05a876489d"
     },
     "baseline/offsetof_struct.c": {
       "src_sha": "0d66de85",
       "exit_code": 0,
       "stdout_sha": "b2a7c750c2fc773e",
-      "memory_sha": "526ec274702469fb"
+      "memory_sha": "96831022bdd66aad"
     },
     "baseline/parametric_macro_max.c": {
       "src_sha": "959dd066",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "e6161ecbd5e77572"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/parametric_macro_nested.c": {
       "src_sha": "398f17d7",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "e9ebeef04af9ce7f"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/parametric_macro_square.c": {
       "src_sha": "12d6615e",
       "exit_code": 0,
       "stdout_sha": "b7a56873cd771f2c",
-      "memory_sha": "dd6f51ffad6d1147"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/parametric_macro_swap.c": {
       "src_sha": "bdf2a2a9",
       "exit_code": 0,
       "stdout_sha": "e57acc10f53c55bd",
-      "memory_sha": "625cb23ae7b0f2fd"
+      "memory_sha": "560815ccfefb0795"
     },
     "baseline/parentheses_priority.c": {
       "src_sha": "b8b9271b",
       "exit_code": 0,
       "stdout_sha": "f5ca38f748a1d6ea",
-      "memory_sha": "1e5f0fdadf984ca9"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/partial_array_init.c": {
       "src_sha": "a7680cc9",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "4637b8fb6aa2a1bd"
+      "memory_sha": "b6492cf76d81d78b"
     },
     "baseline/pointer_add_assign.c": {
       "src_sha": "509a7dff",
       "exit_code": 0,
       "stdout_sha": "4132b06ae95d8960",
-      "memory_sha": "c4d5019cb8a77940"
+      "memory_sha": "b13e0405224ba532"
     },
     "baseline/pointer_add_assign_char.c": {
       "src_sha": "9aeea000",
       "exit_code": 0,
       "stdout_sha": "13d896353557f29e",
-      "memory_sha": "c7793c71e934d832"
+      "memory_sha": "2272b3328394c390"
     },
     "baseline/pointer_add_assign_double.c": {
       "src_sha": "b89c1309",
       "exit_code": 0,
       "stdout_sha": "8a199b120cf400d6",
-      "memory_sha": "14d4d61fdff62513"
+      "memory_sha": "67b03992fa6a3526"
     },
     "baseline/pointer_add_assign_member.c": {
       "src_sha": "6dc7c04b",
       "exit_code": 0,
       "stdout_sha": "624b60c58c9d8bfb",
-      "memory_sha": "b61c51d0cbddc067"
+      "memory_sha": "4d5aa5d4566d6495"
     },
     "baseline/pointer_add_assign_multi_level.c": {
       "src_sha": "535a299e",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "4732ea8c80d43f91"
+      "memory_sha": "224bd88c459c3f3f"
     },
     "baseline/pointer_add_assign_negative.c": {
       "src_sha": "4d9e8f27",
       "exit_code": 0,
       "stdout_sha": "0c8a47db2ee29fd8",
-      "memory_sha": "bd776b0ad9901c72"
+      "memory_sha": "0b77ef9f2cc58faf"
     },
     "baseline/pointer_add_assign_side_effect.c": {
       "src_sha": "275e60ac",
       "exit_code": 0,
       "stdout_sha": "cfb4b7a0e21fdb26",
-      "memory_sha": "a7bc4d221d8a405a"
+      "memory_sha": "ffb87081f8217155"
     },
     "baseline/pointer_add_assign_struct.c": {
       "src_sha": "533313e8",
       "exit_code": 0,
       "stdout_sha": "f5ca38f748a1d6ea",
-      "memory_sha": "9f09330084ba2f50"
+      "memory_sha": "921d9737d4fe0ea9"
     },
     "baseline/pointer_add_assign_void.c": {
       "src_sha": "b8b09feb",
       "exit_code": 0,
       "stdout_sha": "7593b73ab10a204d",
-      "memory_sha": "205fd2e1912f0782"
+      "memory_sha": "053e14123a370dd7"
     },
     "baseline/pointer_arith.c": {
       "src_sha": "88c5cdcf",
       "exit_code": 0,
       "stdout_sha": "f5ca38f748a1d6ea",
-      "memory_sha": "f39f938295a03535"
+      "memory_sha": "cb130a151ac84caf"
     },
     "baseline/pointer_deref.c": {
       "src_sha": "ea66838e",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "9185286a266892ce"
+      "memory_sha": "514fa3601dc7028e"
     },
     "baseline/post_inc_vs_pre_inc.c": {
       "src_sha": "4d545af4",
       "exit_code": 0,
       "stdout_sha": "c837649cce43f272",
-      "memory_sha": "37fe3ff95d934091"
+      "memory_sha": "aa417f188bcb7d20"
     },
     "baseline/power_of_2.c": {
       "src_sha": "10150c44",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "a309d7ed581d3cd2"
+      "memory_sha": "d4046963c143dbff"
     },
     "baseline/pre_decrement.c": {
       "src_sha": "c4c36fe5",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "b541ca5ac7a47582"
+      "memory_sha": "93026d260c2e08c1"
     },
     "baseline/pre_increment.c": {
       "src_sha": "3c0e8bcf",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "2d56b2f11769ba7e"
+      "memory_sha": "5c99cd20f383a154"
     },
     "baseline/precedence.c": {
       "src_sha": "e7405d44",
       "exit_code": 0,
       "stdout_sha": "8527a891e2241369",
-      "memory_sha": "8a1d28db68ed674f"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/printf_char.c": {
       "src_sha": "af37cd32",
       "exit_code": 0,
       "stdout_sha": "559aead08264d579",
-      "memory_sha": "6f63542e81ea87fd"
+      "memory_sha": "47bd258d6a96781e"
     },
     "baseline/ptr_arith_char.c": {
       "src_sha": "e459e224",
       "exit_code": 0,
       "stdout_sha": "3e23e8160039594a",
-      "memory_sha": "c71003d6f5e37ad3"
+      "memory_sha": "b535406fd0553799"
     },
     "baseline/ptr_arith_struct.c": {
       "src_sha": "10a54327",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "3839d8d1b8df4acd"
+      "memory_sha": "615e3dc68c4e8d47"
     },
     "baseline/ptr_assign_deref.c": {
       "src_sha": "4a524e0b",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "5721186b8b326c5c"
+      "memory_sha": "3f3e2cbf922fb2ff"
     },
     "baseline/ptr_compare_not_null.c": {
       "src_sha": "d106229f",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "a37395c7d5a74608"
+      "memory_sha": "514fa3601dc7028e"
     },
     "baseline/ptr_compare_null.c": {
       "src_sha": "e780d44f",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "fac63dd1c9d7d252"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/ptr_comparison.c": {
       "src_sha": "65b41368",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "418b8eb421ff39a6"
+      "memory_sha": "2065b609ea1341eb"
     },
     "baseline/ptr_diff.c": {
       "src_sha": "4b21e61f",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "70d88f069e25da03"
+      "memory_sha": "81a9d07cfb4a9031"
     },
     "baseline/ptr_init_null.c": {
       "src_sha": "e780d44f",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "2a4939d1a23c1fa8"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/ptr_member_widths.c": {
       "src_sha": "baf2b97f",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "798df34cbe321f27"
+      "memory_sha": "5920cf411f406dde"
     },
     "baseline/ptr_to_struct_member.c": {
       "src_sha": "533e3ba0",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "cc0e036e2c2a82a2"
+      "memory_sha": "ae03dc2dcd5e0b07"
     },
     "baseline/putchar_function.c": {
       "src_sha": "57312241",
       "exit_code": 0,
       "stdout_sha": "559aead08264d579",
-      "memory_sha": "40c948cbd4836d1b"
+      "memory_sha": "6741f207505527ba"
     },
     "baseline/putchar_range.c": {
       "src_sha": "d399594b",
       "exit_code": 0,
       "stdout_sha": "02db7cdb46b7c56e",
-      "memory_sha": "917530a3ea1fbb11",
-      "known_mb_digest": "92a81daeaa7ff97a"
+      "memory_sha": "6741f207505527ba",
+      "known_mb_digest": "4818061580b049d5"
     },
     "baseline/puts_basic.c": {
       "src_sha": "70220385",
       "exit_code": 0,
       "stdout_sha": "a62336eccd4000ad",
-      "memory_sha": "65c3d293d015c8b9"
+      "memory_sha": "e64982a823d5c7b3"
     },
     "baseline/qsort.c": {
       "src_sha": "484056da",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "6edce88c209546f1",
-      "known_mb_digest": "4a71cfd65c4a40dc"
+      "memory_sha": "5c554cb16edd21cb",
+      "known_mb_digest": "f57d92f3e16d06f3"
     },
     "baseline/realloc.c": {
       "src_sha": "d10f2cd4",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "67b1c9f7b96fccd5"
+      "memory_sha": "313544e4db273b18"
     },
     "baseline/realloc_shrink.c": {
       "src_sha": "d7cb943b",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "b33694ddcccc95a7"
+      "memory_sha": "ca064994ab938ef9"
     },
     "baseline/recursive_function.c": {
       "src_sha": "7ef6ad96",
       "exit_code": 0,
       "stdout_sha": "2abaca4911e68fa9",
-      "memory_sha": "4afa1934e0cad0f8"
+      "memory_sha": "6ddd7bf9fc4620c2"
     },
     "baseline/reverse_array.c": {
       "src_sha": "afd801dd",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "2abfed14dfe7c66c"
+      "memory_sha": "c1d19b78f7fea35a"
     },
     "baseline/scanf_eof_after_exhaust.c": {
       "src_sha": "bedc508a",
       "exit_code": 0,
       "stdout_sha": "6ae5e72960209d6f",
-      "memory_sha": "b88f6249a97c3664"
+      "memory_sha": "213ac1ec0a8f4510"
     },
     "baseline/scanf_eof_loop.c": {
       "src_sha": "16c870df",
       "exit_code": 0,
       "stdout_sha": "63d1845670f20d2e",
-      "memory_sha": "31f79be82564ed59"
+      "memory_sha": "55fa7d838eb59b31"
     },
     "baseline/scanf_float.c": {
       "src_sha": "3016d3e3",
       "exit_code": 0,
       "stdout_sha": "2efff1261c25d94d",
-      "memory_sha": "41f55e7bea30259a"
+      "memory_sha": "7ead62a0deb1bdef"
     },
     "baseline/scanf_literal_match.c": {
       "src_sha": "ab97cbcb",
       "exit_code": 0,
       "stdout_sha": "5382fb19e0e39691",
-      "memory_sha": "ce01b2b83900d457"
+      "memory_sha": "dfcc25a7f449f306"
     },
     "baseline/scanf_literal_mismatch.c": {
       "src_sha": "8cbc4a9f",
       "exit_code": 0,
       "stdout_sha": "e806a10abb27f16b",
-      "memory_sha": "e32bc0e1a30ed433"
+      "memory_sha": "22f1cc2425700e85"
     },
     "baseline/scanf_printf.c": {
       "src_sha": "67efa9e1",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "bc2582dd9578fffc"
+      "memory_sha": "15c57e88025ad99d"
     },
     "baseline/scanf_return_value.c": {
       "src_sha": "07f889cb",
       "exit_code": 0,
       "stdout_sha": "3b879acce9d2c67c",
-      "memory_sha": "ff636868008a1117"
+      "memory_sha": "d4eda8c3892b55c9"
     },
     "baseline/scanf_string.c": {
       "src_sha": "0ff6e57f",
       "exit_code": 0,
       "stdout_sha": "81d50b59cb0f2a19",
-      "memory_sha": "14d2f1db9f488df8"
+      "memory_sha": "760f09408521aeab"
     },
     "baseline/seq_list.c": {
       "src_sha": "6926c18e",
       "exit_code": 0,
       "stdout_sha": "557cd6e83ba2406c",
-      "memory_sha": "03609bf1b201a6e7"
+      "memory_sha": "02603c2f0e7534a2"
     },
     "baseline/shell_sort.c": {
       "src_sha": "d779018b",
       "exit_code": 0,
       "stdout_sha": "b1e4766af851f4ca",
-      "memory_sha": "f40d5e05637d9dea"
+      "memory_sha": "5d3727757d5b588e"
     },
     "baseline/shift_31.c": {
       "src_sha": "31131417",
       "exit_code": 0,
       "stdout_sha": "56bb3b3a6aa1747d",
-      "memory_sha": "c00e26d76500eb35"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/shift_zero.c": {
       "src_sha": "549cd5da",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "ea37bf7aca538bc0"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/shl_rhs.c": {
       "src_sha": "a8ee10b1",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "e8b6c4418f14c29c"
+      "memory_sha": "da0c997e08f642b2"
     },
     "baseline/short_circuit_and.c": {
       "src_sha": "a41f7da7",
       "exit_code": 0,
       "stdout_sha": "a4c3ed04a95a3da1",
-      "memory_sha": "103d49480cfd9ce5"
+      "memory_sha": "08f2b0f61eeba255"
     },
     "baseline/short_circuit_or.c": {
       "src_sha": "ef84b8df",
       "exit_code": 0,
       "stdout_sha": "98810ae742dc342d",
-      "memory_sha": "a5b6bd57ff66ddcf"
+      "memory_sha": "323fba0efa18e2e1"
     },
     "baseline/short_type.c": {
       "src_sha": "133233f4",
       "exit_code": 0,
       "stdout_sha": "ad57366865126e55",
-      "memory_sha": "77dad3859f8fcdba"
+      "memory_sha": "a933ce35e39b1bff"
     },
     "baseline/shr_rhs.c": {
       "src_sha": "2882cb76",
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
-      "memory_sha": "16ebc06115a707cd"
+      "memory_sha": "da0c997e08f642b2"
     },
     "baseline/side_effect_index.c": {
       "src_sha": "ed7b9b5e",
       "exit_code": 0,
       "stdout_sha": "ea7249f843239ccc",
-      "memory_sha": "a6b011f67ae68b0d"
+      "memory_sha": "691edc317fd815d5"
     },
     "baseline/signed_keyword.c": {
       "src_sha": "184d8ac9",
       "exit_code": 0,
       "stdout_sha": "37aa1ccf80e48183",
-      "memory_sha": "5be9b276891f707b"
+      "memory_sha": "e9845d718d4241ef"
     },
     "baseline/sizeof.c": {
       "src_sha": "7c4d11d9",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "30c2f51f7943ff41"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_basic_types.c": {
       "src_sha": "3ca0f77e",
       "exit_code": 0,
       "stdout_sha": "ed2da92e98faf304",
-      "memory_sha": "13f6d22499e557f9"
+      "memory_sha": "b827323be519a0cc"
     },
     "baseline/sizeof_double_arr.c": {
       "src_sha": "c63f89ef",
       "exit_code": 0,
       "stdout_sha": "c2356069e9d1e79c",
-      "memory_sha": "eab40d8e609dbcb3"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_enum.c": {
       "src_sha": "2458785d",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "c5f07d9075503d1a"
+      "memory_sha": "cab29b7b89b64a00"
     },
     "baseline/sizeof_expr.c": {
       "src_sha": "b8d6d5a4",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "29671d313887b434"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_float_arr.c": {
       "src_sha": "6c7a24da",
       "exit_code": 0,
       "stdout_sha": "6b51d431df5d7f14",
-      "memory_sha": "00e142b14c93ea33"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_long_long.c": {
       "src_sha": "05131d2f",
       "exit_code": 0,
       "stdout_sha": "2c624232cdd22177",
-      "memory_sha": "a10634adb044b6e7"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_struct_union.c": {
       "src_sha": "6ae1a70c",
       "exit_code": 0,
       "stdout_sha": "3fc6552433851f85",
-      "memory_sha": "fa31bb7be45ad0ef"
+      "memory_sha": "96831022bdd66aad"
     },
     "baseline/sizeof_typedef.c": {
       "src_sha": "80b9fe9c",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "b4e64794f9253bb8"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/sizeof_var.c": {
       "src_sha": "8c6b5cf8",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "b488f8e3dbaa23d4"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/snprintf_basic.c": {
       "src_sha": "9c8c09b0",
       "exit_code": 0,
       "stdout_sha": "a777d5a2d0a4836c",
-      "memory_sha": "6ecebcbf4bc5f7a9"
+      "memory_sha": "7d33b9d5e88ca97f"
     },
     "baseline/sprintf_basic.c": {
       "src_sha": "5788e72b",
       "exit_code": 0,
       "stdout_sha": "00579b77b8f4621d",
-      "memory_sha": "b4bb5b3371c4d28c"
+      "memory_sha": "98036126f89415b2"
     },
     "baseline/srand_rand.c": {
       "src_sha": "dfd66442",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "1a451826a4943827"
+      "memory_sha": "af855d7922ecbb70"
     },
     "baseline/sscanf_basic.c": {
       "src_sha": "a6a32f5c",
       "exit_code": 0,
       "stdout_sha": "3de6ef1be5dfb491",
-      "memory_sha": "cba169917ce68a08"
+      "memory_sha": "f28461cca4a9cc7c"
     },
     "baseline/static_global_basic.c": {
       "src_sha": "6e2264cf",
       "exit_code": 0,
       "stdout_sha": "ad53e8806d17c82d",
-      "memory_sha": "546e000e8eacd4ac"
+      "memory_sha": "532c609ced499e2a"
     },
     "baseline/static_local_array.c": {
       "src_sha": "b308a88f",
       "exit_code": 0,
       "stdout_sha": "10a44b4589edfd6e",
-      "memory_sha": "f387d092db36589d"
+      "memory_sha": "ee90b04eea0d22b4"
     },
     "baseline/static_local_counter.c": {
       "src_sha": "5bdd1dc8",
       "exit_code": 0,
       "stdout_sha": "5371f92756bff055",
-      "memory_sha": "7f4cbf50abaf1448"
+      "memory_sha": "c2fec499fbb42143"
     },
     "baseline/static_local_init_once.c": {
       "src_sha": "b5cb2f12",
       "exit_code": 0,
       "stdout_sha": "c117eca50cdc1156",
-      "memory_sha": "eaf067dd72c9b2b2"
+      "memory_sha": "934c55dc401b69c6"
     },
     "baseline/static_string_pointer.c": {
       "src_sha": "daf1e8be",
       "exit_code": 0,
       "stdout_sha": "817c932e35217449",
-      "memory_sha": "3767a6a71562ff61"
+      "memory_sha": "d2719f9fbe061499"
     },
     "baseline/strcat_empty.c": {
       "src_sha": "fba688cf",
       "exit_code": 0,
       "stdout_sha": "ca978112ca1bbdca",
-      "memory_sha": "124916025d36116b"
+      "memory_sha": "f4926777ab8e3125"
     },
     "baseline/strcat_function.c": {
       "src_sha": "64d863aa",
       "exit_code": 0,
       "stdout_sha": "b94d27b9934d3e08",
-      "memory_sha": "4f2fba5fc3a0ce74"
+      "memory_sha": "60da242118869fab"
     },
     "baseline/string_escape_octal_hex.c": {
       "src_sha": "9dda4d23",
       "exit_code": 0,
       "stdout_sha": "473551e7cbf88d64",
-      "memory_sha": "6b76565f8c305116"
+      "memory_sha": "c1568a2ae3d4f704"
     },
     "baseline/string_literal.c": {
       "src_sha": "fc69622a",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "1091d8087e1c07a0"
+      "memory_sha": "66cbcaddb05d21c4"
     },
     "baseline/string_reverse.c": {
       "src_sha": "717dff8d",
       "exit_code": 0,
       "stdout_sha": "0baf982fcab396fd",
-      "memory_sha": "05b5f78850c09933"
+      "memory_sha": "c497c4914065e34f"
     },
     "baseline/string_strcmp.c": {
       "src_sha": "08a19bfe",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "e2f3046d09468be0"
+      "memory_sha": "f40b0e7427d78e63"
     },
     "baseline/string_strcpy.c": {
       "src_sha": "badba1ab",
       "exit_code": 0,
       "stdout_sha": "8f434346648f6b96",
-      "memory_sha": "94dc18b750e5b570"
+      "memory_sha": "8090f6e2d7511b38"
     },
     "baseline/string_strlen.c": {
       "src_sha": "74038346",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "96b18063f196c9fc"
+      "memory_sha": "e83c783b2ff6c3df"
     },
     "baseline/struct_array_nested_init.c": {
       "src_sha": "856da7ce",
       "exit_code": 0,
       "stdout_sha": "d695181821d16477",
-      "memory_sha": "5c39823ea2a4e15d"
+      "memory_sha": "8d58c9d3b17f1b85"
     },
     "baseline/struct_assign.c": {
       "src_sha": "f31b2b41",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "c631a59206f83b9b"
+      "memory_sha": "9e621cbfb098e7f8"
     },
     "baseline/struct_basic.c": {
       "src_sha": "981e9927",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "2005bb936c7023c9"
+      "memory_sha": "06edb6c2f4a03311"
     },
     "baseline/struct_copy.c": {
       "src_sha": "c4a785bf",
       "exit_code": 0,
       "stdout_sha": "f71998fe363b9c29",
-      "memory_sha": "485fb10b1e7e608c"
+      "memory_sha": "27e722743b9e3d81"
     },
     "baseline/struct_member_array.c": {
       "src_sha": "18213307",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "7dfa0869ca8b2519"
+      "memory_sha": "711a6ee0121e9bda"
     },
     "baseline/struct_nested_init.c": {
       "src_sha": "54c201ca",
       "exit_code": 0,
       "stdout_sha": "7c8f5059290305ce",
-      "memory_sha": "ea591cf783a04993"
+      "memory_sha": "e9669fd576a3f70e"
     },
     "baseline/struct_pointer_access.c": {
       "src_sha": "ae064328",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "f7adba23c7266e08"
+      "memory_sha": "4241ee3641b43107"
     },
     "baseline/struct_return_by_value_as_arg.c": {
       "src_sha": "093ac906",
       "exit_code": 0,
       "stdout_sha": "6b51d431df5d7f14",
-      "memory_sha": "f1cfb5ee3a91bb4d"
+      "memory_sha": "4b0a56829e69d5f7"
     },
     "baseline/struct_return_by_value_basic.c": {
       "src_sha": "4160dc60",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "332f4e5f0338c4ee"
+      "memory_sha": "2368d474b67285bb"
     },
     "baseline/struct_return_by_value_direct.c": {
       "src_sha": "b81c9ac0",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "7683e46299e9f8ba"
+      "memory_sha": "5cef1bf038c75819"
     },
     "baseline/sub_by_var.c": {
       "src_sha": "77081d5b",
       "exit_code": 0,
       "stdout_sha": "7902699be42c8a8e",
-      "memory_sha": "84d1382c0f32aa20"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/sum_1_to_n.c": {
       "src_sha": "97b56b5f",
       "exit_code": 0,
       "stdout_sha": "02d20bbd7e394ad5",
-      "memory_sha": "a5147de21b941318"
+      "memory_sha": "dc5717d7f7578733"
     },
     "baseline/sum_of_digits.c": {
       "src_sha": "62529e84",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "8b4852330e438c48"
+      "memory_sha": "5c99cd20f383a154"
     },
     "baseline/swap_by_ptr.c": {
       "src_sha": "6b32a5a2",
       "exit_code": 0,
       "stdout_sha": "e57acc10f53c55bd",
-      "memory_sha": "cb7c269ddececb61"
+      "memory_sha": "1bcc0879e351f6ad"
     },
     "baseline/switch_break.c": {
       "src_sha": "fb6215bc",
       "exit_code": 0,
       "stdout_sha": "7692c3ad3540bb80",
-      "memory_sha": "151cfb5224b6f79a"
+      "memory_sha": "1b2c505cafa86024"
     },
     "baseline/switch_case.c": {
       "src_sha": "bcba706a",
       "exit_code": 0,
       "stdout_sha": "3fc4ccfe745870e2",
-      "memory_sha": "02ce3459b81d98ab"
+      "memory_sha": "0fcf9b3cdb4eef36"
     },
     "baseline/switch_default_first.c": {
       "src_sha": "3b9ec773",
       "exit_code": 0,
       "stdout_sha": "cb8379ac2098aa16",
-      "memory_sha": "fb5e4aac4153c579"
+      "memory_sha": "4b22036c7c818c14"
     },
     "baseline/switch_empty.c": {
       "src_sha": "54a14002",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "cef32b845682d5d9"
+      "memory_sha": "5b8974642029be6d"
     },
     "baseline/switch_fallthrough.c": {
       "src_sha": "ac0777b6",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "3a5a9f6ecd0663b9"
+      "memory_sha": "c06965c261a0d579"
     },
     "baseline/ternary.c": {
       "src_sha": "c49a244d",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "fbf71be1d7a7729e"
+      "memory_sha": "6629896e6bcfd60d"
     },
     "baseline/ternary_as_expr.c": {
       "src_sha": "c9996474",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "2abe15f15cae1c77"
+      "memory_sha": "8a963b98686e521d"
     },
     "baseline/ternary_nested.c": {
       "src_sha": "9169d971",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "31ef4f7ad1b0ac1e"
+      "memory_sha": "119e987770ef905e"
     },
     "baseline/tree_level_order.c": {
       "src_sha": "54a06e5f",
       "exit_code": 0,
       "stdout_sha": "4bc9974b09baaafa",
-      "memory_sha": "5dd097c9473559f1"
+      "memory_sha": "0b0b72cdd8ec2dc8"
     },
     "baseline/typedef.c": {
       "src_sha": "c13fd5cb",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "65bd98fa7e5aedd9"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/typedef_chain.c": {
       "src_sha": "8653824b",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "b0ed33378a47e550"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/typedef_pointer.c": {
       "src_sha": "024b6b1a",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "c588488d51ce95d6"
+      "memory_sha": "514fa3601dc7028e"
     },
     "baseline/typedef_struct_anon.c": {
       "src_sha": "2061a8b7",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "c8617a2d42790ad6"
+      "memory_sha": "514fa3601dc7028e"
     },
     "baseline/union_array.c": {
       "src_sha": "eb30623a",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "403613d2d4363242"
+      "memory_sha": "da3fcfd7095006a6"
     },
     "baseline/union_basic.c": {
       "src_sha": "d0a842c6",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "9763ebd04f7407b6"
+      "memory_sha": "6520a81b1a77a41b"
     },
     "baseline/union_int_member.c": {
       "src_sha": "aeb30e27",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "957a1b9bbecdfac5"
+      "memory_sha": "06edb6c2f4a03311"
     },
     "baseline/union_member_widths.c": {
       "src_sha": "40847cc3",
       "exit_code": 42,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "9d5d6cf9808ac9ce"
+      "memory_sha": "1c198841efca3e2d"
     },
     "baseline/union_size_access.c": {
       "src_sha": "7bd727f8",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "8350019b59c9ad3a"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/unsigned_add_wrap.c": {
       "src_sha": "53a0dee7",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "a3c58ea895e03cc2"
+      "memory_sha": "021e3d6fe0e1bbf4"
     },
     "baseline/unsigned_cmp_wrap.c": {
       "src_sha": "f72f16ff",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "4c657994f7d9388a"
+      "memory_sha": "5536606fd1819abd"
     },
     "baseline/unsigned_compound_wrap.c": {
       "src_sha": "21459c6d",
       "exit_code": 0,
       "stdout_sha": "88a4436bf89eee14",
-      "memory_sha": "0ade9f291dad3bf9"
+      "memory_sha": "c130aefe8166ee97"
     },
     "baseline/unsigned_div_mod.c": {
       "src_sha": "6d0f715c",
       "exit_code": 0,
       "stdout_sha": "c64b40bd6b04f739",
-      "memory_sha": "56f5c1e10bd9c8a0"
+      "memory_sha": "0578eeb2154ba7d3"
     },
     "baseline/unsigned_lshr.c": {
       "src_sha": "869bf491",
       "exit_code": 0,
       "stdout_sha": "972dcafa6fb4c2c8",
-      "memory_sha": "e2b1938c4ab292cd"
+      "memory_sha": "7129d2faec8cd843"
     },
     "baseline/unsigned_mul_wrap.c": {
       "src_sha": "7b99292d",
       "exit_code": 0,
       "stdout_sha": "8bf1896129b08d5d",
-      "memory_sha": "d77e975e5304d0a6"
+      "memory_sha": "0d099ba3e640c9d2"
     },
     "baseline/unsigned_printf_lu.c": {
       "src_sha": "0b5f1dd1",
       "exit_code": 0,
       "stdout_sha": "ad57366865126e55",
-      "memory_sha": "1d9eb4f4aa98cc44"
+      "memory_sha": "fadf8c3599a2106e"
     },
     "baseline/unsigned_printf_o.c": {
       "src_sha": "e83531ac",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "2734643686629da9"
+      "memory_sha": "7f92ccb702a92609"
     },
     "baseline/unsigned_printf_u.c": {
       "src_sha": "715dca75",
       "exit_code": 0,
       "stdout_sha": "ad57366865126e55",
-      "memory_sha": "87f01d4c3647a9a0"
+      "memory_sha": "972fed5dcd0fa7bb"
     },
     "baseline/unsigned_printf_x.c": {
       "src_sha": "93f335b5",
       "exit_code": 0,
       "stdout_sha": "096aa8510b0dc131",
-      "memory_sha": "f4b7e68830379f33"
+      "memory_sha": "91214883087807fb"
     },
     "baseline/unsigned_type.c": {
       "src_sha": "3a7ad33d",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "28ebf7ddee76190e"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/variable_length_array.c": {
       "src_sha": "08dc70e0",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "b0cf3dfba4c4ec24"
+      "memory_sha": "205ba61369b656b4"
     },
     "baseline/variadic.c": {
       "src_sha": "e1ee7b2a",
       "exit_code": 0,
       "stdout_sha": "e064cea1f0be1190",
-      "memory_sha": "9b6d9740e1f3397f"
+      "memory_sha": "7d901927520f4067"
     },
     "baseline/vfs_io_extensions.c": {
       "src_sha": "4e4c0144",
       "exit_code": 0,
       "stdout_sha": "531ab3d4e6d25c14",
-      "memory_sha": "8aae0fa8c44ad5fd"
+      "memory_sha": "d40a9fe2054b6a4d"
     },
     "baseline/vla_2d.c": {
       "src_sha": "5f19f2c9",
       "exit_code": 0,
       "stdout_sha": "7bd7df1a31049cd7",
-      "memory_sha": "0c77e8dddcd92fd7"
+      "memory_sha": "7d3c4ea9421f7dc5"
     },
     "baseline/vla_bounds.c": {
       "src_sha": "19eeabf2",
       "exit_code": 0,
       "stdout_sha": "14d8fb16aa282e37",
-      "memory_sha": "0d7c926bf613542b"
+      "memory_sha": "f0b2eec86e9c8fa6"
     },
     "baseline/vla_param_decay.c": {
       "src_sha": "b74164d1",
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
-      "memory_sha": "30d5d2ca405ed684"
+      "memory_sha": "db008c309500d8aa"
     },
     "baseline/vla_sizeof.c": {
       "src_sha": "64b20771",
       "exit_code": 0,
       "stdout_sha": "b17ef6d19c7a5b1e",
-      "memory_sha": "ad5a4eb7b90abce0"
+      "memory_sha": "47032b005091888d"
     },
     "baseline/vla_sizeof_type.c": {
       "src_sha": "ea52606c",
       "exit_code": 0,
       "stdout_sha": "ebd2e53ec42b96f5",
-      "memory_sha": "84cbf84a9fbe0b48"
+      "memory_sha": "3904ce52baf3a7a5"
     },
     "baseline/void_func.c": {
       "src_sha": "e66e98ed",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "8ae7938ff7b4607b"
+      "memory_sha": "fa469c12e9f69c55"
     },
     "baseline/void_param.c": {
       "src_sha": "5daee294",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "3f426ea51d49e85f"
+      "memory_sha": "74f081b24f1fa786"
     },
     "baseline/void_ptr_malloc.c": {
       "src_sha": "496d131d",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
-      "memory_sha": "9f090b3b1363a639"
+      "memory_sha": "463b1b95bcc00db4"
     },
     "baseline/volatile_basic.c": {
       "src_sha": "8c41c80f",
       "exit_code": 0,
       "stdout_sha": "265bc942ee9ffca7",
-      "memory_sha": "6a2ef6b235ebd326"
+      "memory_sha": "2269f8cf006b111c"
     },
     "baseline/while_continue.c": {
       "src_sha": "4f54c492",
       "exit_code": 0,
       "stdout_sha": "8d30c67819310525",
-      "memory_sha": "fb4f9db69d334549"
+      "memory_sha": "fac2f047ce351d88"
     },
     "baseline/while_loop.c": {
       "src_sha": "7e512347",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "829601ebccce28cc"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/while_nested.c": {
       "src_sha": "f8eae3aa",
       "exit_code": 0,
       "stdout_sha": "eb01dd90291c243a",
-      "memory_sha": "a2fd4ff15ecf6fbe"
+      "memory_sha": "26d7a46c5624054b"
     },
     "baseline/while_true_break.c": {
       "src_sha": "34d53d67",
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
-      "memory_sha": "fb2778bbdfca41ff"
+      "memory_sha": "bb44d3d4bc92389a"
     },
     "baseline/zero_init_array.c": {
       "src_sha": "40d03832",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "2290ade00d4eda9d"
+      "memory_sha": "0dad69f60e0fca6c"
     },
     "gap/complex_number.c": {
       "src_sha": "b5a7d055",
@@ -2217,31 +2217,31 @@
       "src_sha": "d1bdc876",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "e244d8fe7ed9c7a8"
+      "memory_sha": "0c3603ec185977f9"
     },
     "gap/file_fread.c": {
       "src_sha": "dc8404a4",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "3dbb4d51dd8dccce"
+      "memory_sha": "a57411365dce0312"
     },
     "gap/file_fwrite.c": {
       "src_sha": "e2c3c877",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "8e4b9f30e685a1ec"
+      "memory_sha": "15ddae049b8af189"
     },
     "gap/function_pointer_sizeof.c": {
       "src_sha": "68025bba",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "42566d12c9b98db0"
+      "memory_sha": "74f081b24f1fa786"
     },
     "gap/goto_basic.c": {
       "src_sha": "7c9d571e",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "78b74b363ddbf041"
+      "memory_sha": "74f081b24f1fa786"
     },
     "gap/implicit_int.c": {
       "src_sha": "ed15d81a",
@@ -2253,25 +2253,25 @@
       "src_sha": "83f75c9e",
       "exit_code": 42,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "20d1396d3d27b273"
+      "memory_sha": "6741f207505527ba"
     },
     "gap/inline_asm.c": {
       "src_sha": "b4fdb8d1",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "8c01717d20203f53"
+      "memory_sha": "6629896e6bcfd60d"
     },
     "gap/keyword_compat.c": {
       "src_sha": "ce1212f3",
       "exit_code": 0,
       "stdout_sha": "494e23313124385d",
-      "memory_sha": "0e0cd917e0133067"
+      "memory_sha": "d8982a1fcc915fa3"
     },
     "gap/loop_var_shadow.c": {
       "src_sha": "67d2073f",
       "exit_code": 0,
       "stdout_sha": "9263fb97316b540a",
-      "memory_sha": "c615be0090cbcd8c"
+      "memory_sha": "0f6796ebbbb6684d"
     },
     "gap/printf_scanf_type_mismatch.c": {
       "src_sha": "e358b16e",
@@ -2283,25 +2283,25 @@
       "src_sha": "34ee7a7e",
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
-      "memory_sha": "f71bedfbf485b778"
+      "memory_sha": "f45e123a1651ff36"
     },
     "gap/static_assert.c": {
       "src_sha": "4e388a20",
       "exit_code": 0,
       "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "07b0a9f490a616f0"
+      "memory_sha": "fa469c12e9f69c55"
     },
     "gap/string_len_manual.c": {
       "src_sha": "b5eb330a",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
-      "memory_sha": "3afb24cf49646165"
+      "memory_sha": "e63eb98a6fb62dcb"
     },
     "gap/typeof_operator.c": {
       "src_sha": "01ea6a44",
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
-      "memory_sha": "a802716f66a04c63"
+      "memory_sha": "de280dad311b6644"
     },
     "gap/variadic_macro.c": {
       "src_sha": "36f66bdb",
@@ -2313,1318 +2313,1318 @@
       "src_sha": "1507afd1",
       "exit_code": 0,
       "stdout_sha": "6212e655d484fe2a",
-      "memory_sha": "81d5939258210084"
+      "memory_sha": "34ef50e8de451298"
     },
     "knr/kr_1_11.c": {
       "src_sha": "f40d371a",
       "exit_code": 0,
       "stdout_sha": "6b20c7a4b5fe609e",
-      "memory_sha": "6fd657a352132861"
+      "memory_sha": "50b661d4e57930d1"
     },
     "knr/kr_1_12.c": {
       "src_sha": "1e3e5022",
       "exit_code": 0,
       "stdout_sha": "26c60a61d01db583",
-      "memory_sha": "1e56376718a7fbf9"
+      "memory_sha": "0f5e7b6f590d01d6"
     },
     "knr/kr_1_13.c": {
       "src_sha": "4476bf43",
       "exit_code": 0,
       "stdout_sha": "7b1ace43d70eb06a",
-      "memory_sha": "bceb3b78f92f5de3"
+      "memory_sha": "edb7068b4651ec8c"
     },
     "knr/kr_1_14.c": {
       "src_sha": "24a734d6",
       "exit_code": 0,
       "stdout_sha": "48712f2a34f174e7",
-      "memory_sha": "29440a06859786e6"
+      "memory_sha": "a93bbe8b390e113b"
     },
     "knr/kr_1_15.c": {
       "src_sha": "3391a717",
       "exit_code": 0,
       "stdout_sha": "1a282c8b32c60d0e",
-      "memory_sha": "88b18449c20647ef"
+      "memory_sha": "0b6bd2967e612c52"
     },
     "knr/kr_1_16.c": {
       "src_sha": "20e6c587",
       "exit_code": 0,
       "stdout_sha": "150c387b14cf17d8",
-      "memory_sha": "f6a65437f42ea207"
+      "memory_sha": "0b30e06c4d663ae6"
     },
     "knr/kr_1_17.c": {
       "src_sha": "a984f122",
       "exit_code": 0,
       "stdout_sha": "5536e037d5a399a0",
-      "memory_sha": "16e546280e8e7550"
+      "memory_sha": "e02eadb50d8ef83a"
     },
     "knr/kr_1_18.c": {
       "src_sha": "566d147c",
       "exit_code": 0,
       "stdout_sha": "5a4770fc23e785eb",
-      "memory_sha": "04a70afc360a3f5e"
+      "memory_sha": "0e5534331d83844a"
     },
     "knr/kr_1_19.c": {
       "src_sha": "c7dd2c80",
       "exit_code": 0,
       "stdout_sha": "8f44fda6d08fad71",
-      "memory_sha": "0d39c734a1d55b48"
+      "memory_sha": "a4e4cfb24d61ca9b"
     },
     "knr/kr_1_3.c": {
       "src_sha": "f47f16e5",
       "exit_code": 0,
       "stdout_sha": "1a282c8b32c60d0e",
-      "memory_sha": "59a940fec7d9752e"
+      "memory_sha": "3c5d9455a282c569"
     },
     "knr/kr_1_4.c": {
       "src_sha": "1fcde7a5",
       "exit_code": 0,
       "stdout_sha": "aeada5445e598dc6",
-      "memory_sha": "d9fe0aabb9890a9e"
+      "memory_sha": "21b7b9a436baded7"
     },
     "knr/kr_1_5.c": {
       "src_sha": "02314247",
       "exit_code": 0,
       "stdout_sha": "12b640b81561f486",
-      "memory_sha": "78a1ba4869c0d0fa"
+      "memory_sha": "03782b0a374e612e"
     },
     "knr/kr_1_6.c": {
       "src_sha": "15bae235",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "1453bfd5c782afc2"
+      "memory_sha": "49dffd7d618eed28"
     },
     "knr/kr_1_7.c": {
       "src_sha": "7041cc74",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "b7f3cdc7a8e80afa"
+      "memory_sha": "0e979f8878ede6b9"
     },
     "knr/kr_1_8.c": {
       "src_sha": "d585fef7",
       "exit_code": 0,
       "stdout_sha": "de2ad8e58ba76908",
-      "memory_sha": "3087968399945c1f"
+      "memory_sha": "e1237eed5229395f"
     },
     "knr/kr_1_9.c": {
       "src_sha": "7faad7af",
       "exit_code": 0,
       "stdout_sha": "0e9f64031fcb2bc7",
-      "memory_sha": "868befae39bfcbdf"
+      "memory_sha": "bb03677860b0dbe6"
     },
     "knr/kr_1_hello.c": {
       "src_sha": "8ccccec9",
       "exit_code": 0,
       "stdout_sha": "09ca7e4eaa6e8ae9",
-      "memory_sha": "cc1f35324ff99d10"
+      "memory_sha": "20b9d31bf93eb4c6"
     },
     "knr/kr_2_10.c": {
       "src_sha": "9078b9d3",
       "exit_code": 0,
       "stdout_sha": "64c921e065cd064a",
-      "memory_sha": "4e2e6cd5c9f2602d"
+      "memory_sha": "c384cae235ba45e7"
     },
     "knr/kr_2_3.c": {
       "src_sha": "5742dc28",
       "exit_code": 0,
       "stdout_sha": "e4f0145bccf178ab",
-      "memory_sha": "f1ad0e5a94e9906e"
+      "memory_sha": "cbd5723d0a8ca2d4"
     },
     "knr/kr_2_4.c": {
       "src_sha": "350596fa",
       "exit_code": 0,
       "stdout_sha": "543b8204dc9cbb29",
-      "memory_sha": "e17c78666c9e0e75"
+      "memory_sha": "ef598658f351a33f"
     },
     "knr/kr_2_5.c": {
       "src_sha": "058291b2",
       "exit_code": 0,
       "stdout_sha": "6990c30cef142cc7",
-      "memory_sha": "76fa2de18952ed1e"
+      "memory_sha": "00315e30610d4d64"
     },
     "knr/kr_2_6.c": {
       "src_sha": "e3983f00",
       "exit_code": 0,
       "stdout_sha": "bfa7634640c53da7",
-      "memory_sha": "bc6831008e0dbc5b"
+      "memory_sha": "3e3f8a6242990657"
     },
     "knr/kr_2_7.c": {
       "src_sha": "770b7715",
       "exit_code": 0,
       "stdout_sha": "bfa7634640c53da7",
-      "memory_sha": "7f96f1cc53ee25ff"
+      "memory_sha": "dc8c8bf8dbb1c328"
     },
     "knr/kr_2_8.c": {
       "src_sha": "1bd4bcf4",
       "exit_code": 0,
       "stdout_sha": "5da33b745f325e01",
-      "memory_sha": "b7cc8d65e1296f2f"
+      "memory_sha": "88b3cba3dc37a5dc"
     },
     "knr/kr_2_9.c": {
       "src_sha": "a1dd5031",
       "exit_code": 0,
       "stdout_sha": "bb364e3b54e1ce74",
-      "memory_sha": "bf5a868452a3bb9d"
+      "memory_sha": "b7a8cc03e5a394c2"
     },
     "knr/kr_2_celsius.c": {
       "src_sha": "c6444a17",
       "exit_code": 0,
       "stdout_sha": "b146f19430090a6b",
-      "memory_sha": "9e134dcc11783cd8"
+      "memory_sha": "77abee4e6fe38e29"
     },
     "knr/kr_3_1.c": {
       "src_sha": "0230983b",
       "exit_code": 0,
       "stdout_sha": "764acd6bc2f579be",
-      "memory_sha": "8ca12833ae2a7492"
+      "memory_sha": "8541d2abe20e26d4"
     },
     "knr/kr_3_2.c": {
       "src_sha": "cf5a88da",
       "exit_code": 0,
       "stdout_sha": "9686a4504dbd04eb",
-      "memory_sha": "cbd7b1c5796d301c"
+      "memory_sha": "150f4a546bb59d8e"
     },
     "knr/kr_3_3.c": {
       "src_sha": "ed12d5f4",
       "exit_code": 0,
       "stdout_sha": "011fc2994e39d251",
-      "memory_sha": "5d611ee17b524664"
+      "memory_sha": "a83add2749cdc36c"
     },
     "knr/kr_3_4.c": {
       "src_sha": "af501a59",
       "exit_code": 0,
       "stdout_sha": "8a08cff71c7d22ae",
-      "memory_sha": "262efe0ac125d2e1"
+      "memory_sha": "118e44120afe03ac"
     },
     "knr/kr_3_5.c": {
       "src_sha": "f492f30e",
       "exit_code": 0,
       "stdout_sha": "8066fa722c3de6a0",
-      "memory_sha": "1fec0fb592d65531"
+      "memory_sha": "d11f4d92d413afbe"
     },
     "knr/kr_3_6.c": {
       "src_sha": "4d40e1c2",
       "exit_code": 0,
       "stdout_sha": "7a742a5c751cc255",
-      "memory_sha": "f79430e790f7bb07"
+      "memory_sha": "3ad28b6ec154008f"
     },
     "knr/kr_3_7.c": {
       "src_sha": "5956c06e",
       "exit_code": 0,
       "stdout_sha": "c534bf66738c0f70",
-      "memory_sha": "15a711c3c7bacb07"
+      "memory_sha": "fcac6ec89402498c"
     },
     "knr/kr_3_8.c": {
       "src_sha": "225d30d5",
       "exit_code": 0,
       "stdout_sha": "0baf982fcab396fd",
-      "memory_sha": "be2beb6899f12472"
+      "memory_sha": "ee88ab7490f5a45d"
     },
     "knr/kr_4_1.c": {
       "src_sha": "c4a562ab",
       "exit_code": 0,
       "stdout_sha": "a23a9bbf6e0ef3f7",
-      "memory_sha": "d681318d9ddd666c"
+      "memory_sha": "1fecc96163ca8b5c"
     },
     "knr/kr_4_10.c": {
       "src_sha": "14b7558a",
       "exit_code": 0,
       "stdout_sha": "5994471abb01112a",
-      "memory_sha": "217ba223b1aa812c"
+      "memory_sha": "850a5b3322ec9c9c"
     },
     "knr/kr_4_11.c": {
       "src_sha": "1518c398",
       "exit_code": 0,
       "stdout_sha": "a56c7a46e3547dac",
-      "memory_sha": "8e65fe6692dccc37"
+      "memory_sha": "debfa7ab9129a2dc"
     },
     "knr/kr_4_12.c": {
       "src_sha": "a8abbee8",
       "exit_code": 0,
       "stdout_sha": "e39eef82f61b21e2",
-      "memory_sha": "ad5b233d17a45b66"
+      "memory_sha": "b15a51058af77baa"
     },
     "knr/kr_4_13.c": {
       "src_sha": "85f0131f",
       "exit_code": 0,
       "stdout_sha": "01bceba8ff08f248",
-      "memory_sha": "76e133c2d457e28c"
+      "memory_sha": "f753e5b64ba5c20c"
     },
     "knr/kr_4_14.c": {
       "src_sha": "5d103649",
       "exit_code": 0,
       "stdout_sha": "dcd9aec04729a5d9",
-      "memory_sha": "08cd0303516ea92c"
+      "memory_sha": "c6195b90622f6a65"
     },
     "knr/kr_4_2.c": {
       "src_sha": "3a722396",
       "exit_code": 0,
       "stdout_sha": "66126479f79c6946",
-      "memory_sha": "3f0c9410e0502e0a"
+      "memory_sha": "0af5e278c49a838f"
     },
     "knr/kr_4_3.c": {
       "src_sha": "d2531ab0",
       "exit_code": 0,
       "stdout_sha": "4b50fed1da8a9b27",
-      "memory_sha": "65c25ea642c3983f"
+      "memory_sha": "76c0d0d33d1964c0"
     },
     "knr/kr_4_4.c": {
       "src_sha": "2897d4ca",
       "exit_code": 0,
       "stdout_sha": "4e3f96727d5f790c",
-      "memory_sha": "9703bfd190e4f67b"
+      "memory_sha": "3b1487b8e9221734"
     },
     "knr/kr_4_5.c": {
       "src_sha": "8d570c5f",
       "exit_code": 0,
       "stdout_sha": "86d1d01983bc40a5",
-      "memory_sha": "bb34847917ccb38c"
+      "memory_sha": "bb40b54f5bdcf8d2"
     },
     "knr/kr_4_6.c": {
       "src_sha": "97d4f5e8",
       "exit_code": 0,
       "stdout_sha": "758008efb9c8566d",
-      "memory_sha": "0be606c8a1c495b2"
+      "memory_sha": "995cce20dc9d98fd"
     },
     "knr/kr_4_7.c": {
       "src_sha": "47c5e025",
       "exit_code": 0,
       "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "f2c8597fd0e8f48a"
+      "memory_sha": "ae9eb1ee743b1a19"
     },
     "knr/kr_4_8.c": {
       "src_sha": "cd439c68",
       "exit_code": 0,
       "stdout_sha": "87307974f8ea8ff1",
-      "memory_sha": "d8e64f394462ae1e"
+      "memory_sha": "981daedecbb5ae1d"
     },
     "knr/kr_4_9.c": {
       "src_sha": "8792dbdc",
       "exit_code": 0,
       "stdout_sha": "5828b2739c184f20",
-      "memory_sha": "8cc064d8d5422df0"
+      "memory_sha": "efb3b465f1b3bcf9"
     },
     "knr/kr_4_atoi.c": {
       "src_sha": "e45b6e2b",
       "exit_code": 0,
       "stdout_sha": "c00245f9a2f58b9b",
-      "memory_sha": "5eea1a75339cd2de"
+      "memory_sha": "1235e4b6e6cb8bdd"
     },
     "knr/kr_5_1.c": {
       "src_sha": "f57cd875",
       "exit_code": 0,
       "stdout_sha": "3cfea11ae0f54308",
-      "memory_sha": "def61e05c3847023"
+      "memory_sha": "6590f38694457d84"
     },
     "knr/kr_5_10.c": {
       "src_sha": "1b55d860",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "95e7bf8a46ca578b"
+      "memory_sha": "026315c2144aa5c4"
     },
     "knr/kr_5_11.c": {
       "src_sha": "7eb5bee4",
       "exit_code": 0,
       "stdout_sha": "9eed3928d31487fd",
-      "memory_sha": "45272e323256e29a"
+      "memory_sha": "855515e564cb9659"
     },
     "knr/kr_5_12.c": {
       "src_sha": "c4b3925c",
       "exit_code": 0,
       "stdout_sha": "8b4e84e4e5d1c12e",
-      "memory_sha": "dbd7c8606b82fe9b"
+      "memory_sha": "668293ee7f9d2083"
     },
     "knr/kr_5_13.c": {
       "src_sha": "389e7c61",
       "exit_code": 0,
       "stdout_sha": "26a5cd654e540e91",
-      "memory_sha": "5fb76ae4b46b5beb"
+      "memory_sha": "89603f21f2d1517b"
     },
     "knr/kr_5_14.c": {
       "src_sha": "7c034514",
       "exit_code": 0,
       "stdout_sha": "318c77397573234f",
-      "memory_sha": "10388869e4458c67"
+      "memory_sha": "2f87ade7f1d4765d"
     },
     "knr/kr_5_15.c": {
       "src_sha": "d6acfa69",
       "exit_code": 0,
       "stdout_sha": "3e4ad8efe09401cc",
-      "memory_sha": "4f683d8a2e6d8fde"
+      "memory_sha": "d369eecfeb59fb5e"
     },
     "knr/kr_5_16.c": {
       "src_sha": "f4351ebc",
       "exit_code": 0,
       "stdout_sha": "168c2b43a9d85612",
-      "memory_sha": "a8073cd3ceac4926"
+      "memory_sha": "953c8fbd84a89ec5"
     },
     "knr/kr_5_2.c": {
       "src_sha": "7f613315",
       "exit_code": 0,
       "stdout_sha": "d8f3402a9b361dee",
-      "memory_sha": "02639f8b5fc0168c"
+      "memory_sha": "dfd45f5e711a93e4"
     },
     "knr/kr_5_3.c": {
       "src_sha": "acf7008f",
       "exit_code": 0,
       "stdout_sha": "b94d27b9934d3e08",
-      "memory_sha": "eeaacc35bfaf5522"
+      "memory_sha": "7c367b88ec4f3454"
     },
     "knr/kr_5_4.c": {
       "src_sha": "226ebf0a",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "57c5a2a52b2ec0c0"
+      "memory_sha": "1f1bdda117d1cbfc"
     },
     "knr/kr_5_5.c": {
       "src_sha": "24858ba2",
       "exit_code": 0,
       "stdout_sha": "ac6b450eb4363e3c",
-      "memory_sha": "9a4365930fabd47e"
+      "memory_sha": "469d13e57bffa164"
     },
     "knr/kr_5_6.c": {
       "src_sha": "10474ecb",
       "exit_code": 0,
       "stdout_sha": "a0fb525966c3df4c",
-      "memory_sha": "878b0937b9dccc2d"
+      "memory_sha": "dbf943ee9309ca1d"
     },
     "knr/kr_5_7.c": {
       "src_sha": "991d3733",
       "exit_code": 0,
       "stdout_sha": "26a5cd654e540e91",
-      "memory_sha": "3a746c8e267b591d"
+      "memory_sha": "7f905c28efe44f3e"
     },
     "knr/kr_5_8.c": {
       "src_sha": "e97f195b",
       "exit_code": 0,
       "stdout_sha": "7944f72857b216e0",
-      "memory_sha": "6b3e85b3df6a2540"
+      "memory_sha": "e517c0f4188d3ff0"
     },
     "knr/kr_5_9.c": {
       "src_sha": "3476c306",
       "exit_code": 0,
       "stdout_sha": "48d67ad397d6bf1f",
-      "memory_sha": "f999908f3f9ac469"
+      "memory_sha": "ca46e84027fc51d4"
     },
     "knr/kr_5_itoa.c": {
       "src_sha": "24b16294",
       "exit_code": 0,
       "stdout_sha": "81ea9c30638709ea",
-      "memory_sha": "e5b3101d2e8296e3"
+      "memory_sha": "66e37787bc568629"
     },
     "knr/kr_6_1.c": {
       "src_sha": "77fb1eb0",
       "exit_code": 0,
       "stdout_sha": "fe1480c526c84208",
-      "memory_sha": "bddb04168aabfe3e"
+      "memory_sha": "584a1fb241e37c76"
     },
     "knr/kr_6_2.c": {
       "src_sha": "c4dfef97",
       "exit_code": 0,
       "stdout_sha": "2667296dc3c71372",
-      "memory_sha": "5df20f8a0522b789"
+      "memory_sha": "7dbdb5e639f25bcd"
     },
     "knr/kr_6_3.c": {
       "src_sha": "7c6ea1f4",
       "exit_code": 0,
       "stdout_sha": "9a7307d4df52e1c3",
-      "memory_sha": "7085700b02df550b"
+      "memory_sha": "222e8e08c9b22a7a"
     },
     "knr/kr_6_4.c": {
       "src_sha": "102d9580",
       "exit_code": 0,
       "stdout_sha": "3fbf557329f14fee",
-      "memory_sha": "d2211f7c1526b514"
+      "memory_sha": "bc27332a71d60200"
     },
     "knr/kr_6_5.c": {
       "src_sha": "bc38918d",
       "exit_code": 0,
       "stdout_sha": "b9056e5ae919cfb6",
-      "memory_sha": "7cc87264fdf636bd"
+      "memory_sha": "6a5c1ebc8083ec9d"
     },
     "knr/kr_6_6.c": {
       "src_sha": "067e2195",
       "exit_code": 0,
       "stdout_sha": "d028108d4bbbfb6d",
-      "memory_sha": "a04305ff5370bdc6"
+      "memory_sha": "7d7da04163b0f1fb"
     },
     "knr/kr_6_getword.c": {
       "src_sha": "7451c6ff",
       "exit_code": 0,
       "stdout_sha": "159c960737e64365",
-      "memory_sha": "da9ca54646d7f2ff"
+      "memory_sha": "911949f52aa4bb02"
     },
     "knr/kr_7_1.c": {
       "src_sha": "0ce7893c",
       "exit_code": 0,
       "stdout_sha": "cb66b33b1318bf65",
-      "memory_sha": "10f8737243600b7c"
+      "memory_sha": "63a326f0aed272e8"
     },
     "knr/kr_7_2.c": {
       "src_sha": "d3f2f9d9",
       "exit_code": 0,
       "stdout_sha": "d97e0a1e1215088d",
-      "memory_sha": "698dce9afe159714"
+      "memory_sha": "81ead51ef65b9efd"
     },
     "knr/kr_7_3.c": {
       "src_sha": "63da9c1c",
       "exit_code": 0,
       "stdout_sha": "3f93a69665293d84",
-      "memory_sha": "8897ebabb1cbcd42"
+      "memory_sha": "a9ef907611b58dcc"
     },
     "knr/kr_7_4.c": {
       "src_sha": "7259a13b",
       "exit_code": 0,
       "stdout_sha": "b94d27b9934d3e08",
-      "memory_sha": "141b01cf3a0d8e15"
+      "memory_sha": "429681524a258565"
     },
     "knr/kr_7_5.c": {
       "src_sha": "beafe673",
       "exit_code": 0,
       "stdout_sha": "683376e290829b48",
-      "memory_sha": "07793d7a62fa299f"
+      "memory_sha": "9885e62defa88095"
     },
     "knr/kr_7_6.c": {
       "src_sha": "0821440b",
       "exit_code": 0,
       "stdout_sha": "b47f957ec0dadc3d",
-      "memory_sha": "2de1d11f63e148f7"
+      "memory_sha": "45f4051383acbbfa"
     },
     "knr/kr_7_7.c": {
       "src_sha": "e392df61",
       "exit_code": 0,
       "stdout_sha": "df0e54e55abeb908",
-      "memory_sha": "96dc09557cac58e7"
+      "memory_sha": "f492e4f8729277c0"
     },
     "leetcode/lc_1.c": {
       "src_sha": "0b783a9e",
       "exit_code": 0,
       "stdout_sha": "334075329005b5ec",
-      "memory_sha": "8934d3812d89ec4f"
+      "memory_sha": "49015c6d21c8ddfa"
     },
     "leetcode/lc_100.c": {
       "src_sha": "984a2d6c",
       "exit_code": 0,
       "stdout_sha": "83989d1b22757813",
-      "memory_sha": "c96e378201e0e7b5"
+      "memory_sha": "49342467e7bc0cdc"
     },
     "leetcode/lc_101.c": {
       "src_sha": "dba80062",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "96501a5616a949fb"
+      "memory_sha": "d6a1275752992c8d"
     },
     "leetcode/lc_102.c": {
       "src_sha": "b7250e23",
       "exit_code": 0,
       "stdout_sha": "39cb94d9a077b742",
-      "memory_sha": "4ac56f4c92988ff5"
+      "memory_sha": "9f1888021a131842"
     },
     "leetcode/lc_104.c": {
       "src_sha": "bb223542",
       "exit_code": 0,
       "stdout_sha": "3deb9d4ab6c5751c",
-      "memory_sha": "b46846fa2233360d"
+      "memory_sha": "7f56818285593bbf"
     },
     "leetcode/lc_108.c": {
       "src_sha": "48a76b7b",
       "exit_code": 0,
       "stdout_sha": "6be0ba00519210ea",
-      "memory_sha": "771b614767aee001"
+      "memory_sha": "36effd7b86731a35"
     },
     "leetcode/lc_11.c": {
       "src_sha": "f44f8b63",
       "exit_code": 0,
       "stdout_sha": "3a514709804b773c",
-      "memory_sha": "863120e11f6082fd"
+      "memory_sha": "65736828a1212d65"
     },
     "leetcode/lc_110.c": {
       "src_sha": "020afaeb",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "3725560e1331954d"
+      "memory_sha": "9593bc1b8c8f2491"
     },
     "leetcode/lc_111.c": {
       "src_sha": "bf548547",
       "exit_code": 0,
       "stdout_sha": "3c4279b973b37bbc",
-      "memory_sha": "d239f093af5ae3c0"
+      "memory_sha": "67187c19cc74b046"
     },
     "leetcode/lc_112.c": {
       "src_sha": "dc0563a8",
       "exit_code": 0,
       "stdout_sha": "321243920ca19839",
-      "memory_sha": "a52c0ab6e712e238"
+      "memory_sha": "adc779b8b46c7d07"
     },
     "leetcode/lc_118.c": {
       "src_sha": "4a2c93bf",
       "exit_code": 0,
       "stdout_sha": "c1762b8c21a87ef3",
-      "memory_sha": "8212eb79fff22f95"
+      "memory_sha": "bd22baf24de55e7a"
     },
     "leetcode/lc_119.c": {
       "src_sha": "d2e2869a",
       "exit_code": 0,
       "stdout_sha": "76defcf1c6fda1c2",
-      "memory_sha": "13f6b597d0f957fe"
+      "memory_sha": "247a413a1816645f"
     },
     "leetcode/lc_121.c": {
       "src_sha": "687ffc2f",
       "exit_code": 0,
       "stdout_sha": "2851798caebffb2d",
-      "memory_sha": "a43478d0df99c197"
+      "memory_sha": "5e0bb9c4ebedc4b8"
     },
     "leetcode/lc_124.c": {
       "src_sha": "d3a0459c",
       "exit_code": 0,
       "stdout_sha": "5a70a9f0a9fe28bc",
-      "memory_sha": "1cd54b5579f28280"
+      "memory_sha": "96063dd485acba1c"
     },
     "leetcode/lc_125.c": {
       "src_sha": "1d098533",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "fb75ddc8ebce210f"
+      "memory_sha": "f4e56621ba5a82a1"
     },
     "leetcode/lc_13.c": {
       "src_sha": "e49181e9",
       "exit_code": 0,
       "stdout_sha": "d08796f70d55a709",
-      "memory_sha": "596fec355f82b7dd"
+      "memory_sha": "174d14eab43a77dc"
     },
     "leetcode/lc_136.c": {
       "src_sha": "a0de6412",
       "exit_code": 0,
       "stdout_sha": "e6005fa76b7a75be",
-      "memory_sha": "d3ec1f2dc3dfaa60"
+      "memory_sha": "579c0d444722cd79"
     },
     "leetcode/lc_139.c": {
       "src_sha": "7e6e994e",
       "exit_code": 0,
       "stdout_sha": "907152a6205ec48e",
-      "memory_sha": "790529423420da6d"
+      "memory_sha": "06d01f9d8c942483"
     },
     "leetcode/lc_14.c": {
       "src_sha": "9ff99f9b",
       "exit_code": 0,
       "stdout_sha": "593f2d04aab251f6",
-      "memory_sha": "dc34898bbed7f4f1"
+      "memory_sha": "0b907e9b924423cc"
     },
     "leetcode/lc_141.c": {
       "src_sha": "2900ac7a",
       "exit_code": 0,
       "stdout_sha": "68655f4578a6267c",
-      "memory_sha": "7074c4c14d9236e0"
+      "memory_sha": "2a15aaf95b208095"
     },
     "leetcode/lc_142.c": {
       "src_sha": "9feb3cde",
       "exit_code": 0,
       "stdout_sha": "7d25308951c7388e",
-      "memory_sha": "065bbf9d9053b459"
+      "memory_sha": "7243550e1beffa76"
     },
     "leetcode/lc_146.c": {
       "src_sha": "f59dfb9d",
       "exit_code": 0,
       "stdout_sha": "79f806cd2b759845",
-      "memory_sha": "57de39ae43e07106"
+      "memory_sha": "d47aef028ec64d00"
     },
     "leetcode/lc_15.c": {
       "src_sha": "008e7d52",
       "exit_code": 0,
       "stdout_sha": "8207ec30e85c0ad4",
-      "memory_sha": "ffead7b66de76b78",
-      "known_mb_digest": "300737fa2c04d0d2"
+      "memory_sha": "202b76ba7a772767",
+      "known_mb_digest": "f93fc233ae065f9a"
     },
     "leetcode/lc_150.c": {
       "src_sha": "fa19410d",
       "exit_code": 0,
       "stdout_sha": "bb2a4972114dcec3",
-      "memory_sha": "87394ecab97828eb"
+      "memory_sha": "0f942c765c025ad3"
     },
     "leetcode/lc_152.c": {
       "src_sha": "66099d25",
       "exit_code": 0,
       "stdout_sha": "90803cbfd15b1272",
-      "memory_sha": "8715f9662e0bdfa1"
+      "memory_sha": "9b93d565bc72b5a0"
     },
     "leetcode/lc_153.c": {
       "src_sha": "b9da8833",
       "exit_code": 0,
       "stdout_sha": "f5707b9cbab2b804",
-      "memory_sha": "b7e1c43eb9f23645"
+      "memory_sha": "4f32e3f657ddd1f4"
     },
     "leetcode/lc_155.c": {
       "src_sha": "446af163",
       "exit_code": 0,
       "stdout_sha": "97a5b1f94d6f2d33",
-      "memory_sha": "adc5986809674415"
+      "memory_sha": "1a7ef006e914dfab"
     },
     "leetcode/lc_16.c": {
       "src_sha": "48823dfb",
       "exit_code": 0,
       "stdout_sha": "f4264fa5a25ba11e",
-      "memory_sha": "fd18ba0c050e3b2d",
-      "known_mb_digest": "d968c8a2a864c2f0"
+      "memory_sha": "2dacad20056a2333",
+      "known_mb_digest": "e3c8b8f9022feb06"
     },
     "leetcode/lc_160.c": {
       "src_sha": "fb658564",
       "exit_code": 0,
       "stdout_sha": "ce33fd102b4dd856",
-      "memory_sha": "52c45ad8ba2b929b"
+      "memory_sha": "dd7846fe0d1975fc"
     },
     "leetcode/lc_162.c": {
       "src_sha": "696a57c0",
       "exit_code": 0,
       "stdout_sha": "05b6a35fb70bc2b7",
-      "memory_sha": "49ccf697ea253c79"
+      "memory_sha": "496234bf09c5d7f8"
     },
     "leetcode/lc_168.c": {
       "src_sha": "f5961e30",
       "exit_code": 0,
       "stdout_sha": "868b955db9872154",
-      "memory_sha": "9f5b07e5b56c04a4"
+      "memory_sha": "baa853ccf20a5aaa"
     },
     "leetcode/lc_169.c": {
       "src_sha": "c50a59fe",
       "exit_code": 0,
       "stdout_sha": "5bbe4d1413098c65",
-      "memory_sha": "27faefa2dc596964"
+      "memory_sha": "805aad58bdb720a2"
     },
     "leetcode/lc_17.c": {
       "src_sha": "a91158c2",
       "exit_code": 0,
       "stdout_sha": "54d82287bd9d33f9",
-      "memory_sha": "6977f84a0f5ff131"
+      "memory_sha": "635f33605300f553"
     },
     "leetcode/lc_189.c": {
       "src_sha": "de21f1ed",
       "exit_code": 0,
       "stdout_sha": "56190173535ccaa0",
-      "memory_sha": "43e64500819c4f9f"
+      "memory_sha": "8d520b52e6d6c3d2"
     },
     "leetcode/lc_19.c": {
       "src_sha": "a56df339",
       "exit_code": 0,
       "stdout_sha": "984dc33bb6f5d853",
-      "memory_sha": "1944840078745f1a"
+      "memory_sha": "f12ea2461de91da9"
     },
     "leetcode/lc_190.c": {
       "src_sha": "48c9f951",
       "exit_code": 0,
       "stdout_sha": "a0bef90565e3dcfc",
-      "memory_sha": "b4b43e53d2a0d967"
+      "memory_sha": "7276b4086ff3517c"
     },
     "leetcode/lc_191.c": {
       "src_sha": "8e923844",
       "exit_code": 0,
       "stdout_sha": "455b77672d935573",
-      "memory_sha": "a8317d175334790f"
+      "memory_sha": "8a68e307fd1dd416"
     },
     "leetcode/lc_198.c": {
       "src_sha": "a0fcd28c",
       "exit_code": 0,
       "stdout_sha": "3bca5a72071fd72f",
-      "memory_sha": "28e08690dad57a96"
+      "memory_sha": "5ca426209d0d55f3"
     },
     "leetcode/lc_199.c": {
       "src_sha": "19ea8518",
       "exit_code": 0,
       "stdout_sha": "12f9b3c28599eeee",
-      "memory_sha": "4db1e332b6e6a067"
+      "memory_sha": "7f6ec7e8372ffd55"
     },
     "leetcode/lc_2.c": {
       "src_sha": "91a84a4c",
       "exit_code": 0,
       "stdout_sha": "d55610d2818bfff0",
-      "memory_sha": "3fc8bb2cca5523f6"
+      "memory_sha": "e27f669ed31d4c03"
     },
     "leetcode/lc_20.c": {
       "src_sha": "ea6d3886",
       "exit_code": 0,
       "stdout_sha": "a181f1b54f334315",
-      "memory_sha": "f48ca8d85dc370f0"
+      "memory_sha": "624dcdf1680106f2"
     },
     "leetcode/lc_200.c": {
       "src_sha": "09bb9507",
       "exit_code": 0,
       "stdout_sha": "9f86c8ebf1af74b0",
-      "memory_sha": "0907c8ce0fc8b5fa"
+      "memory_sha": "13dec37e6d6f7281"
     },
     "leetcode/lc_202.c": {
       "src_sha": "de869b58",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "ac14a92d1615c102"
+      "memory_sha": "3b74415c214c5f44"
     },
     "leetcode/lc_203.c": {
       "src_sha": "fb61b4b3",
       "exit_code": 0,
       "stdout_sha": "2deb4db564eb7bf6",
-      "memory_sha": "7e563d7fdf1a0173"
+      "memory_sha": "7bfb8ae41469ae15"
     },
     "leetcode/lc_205.c": {
       "src_sha": "c6e7d521",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "7aeb603355dd1803"
+      "memory_sha": "26670edc991fceec"
     },
     "leetcode/lc_206.c": {
       "src_sha": "2d28b011",
       "exit_code": 0,
       "stdout_sha": "8207c669bc74fbb4",
-      "memory_sha": "9fa2e1f1e8a14a6e"
+      "memory_sha": "04536672360203d0"
     },
     "leetcode/lc_207.c": {
       "src_sha": "65ebb3fd",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "b59c24cf14e52765"
+      "memory_sha": "dca09480f0027a68"
     },
     "leetcode/lc_21.c": {
       "src_sha": "8c66a89b",
       "exit_code": 0,
       "stdout_sha": "b7650a9b247d62ed",
-      "memory_sha": "1a97ef7919b18273"
+      "memory_sha": "9263e5ea2ef6e685"
     },
     "leetcode/lc_217.c": {
       "src_sha": "026e0c87",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "67931f54d513c1d5",
-      "known_mb_digest": "37bcb5b7747248cd"
+      "memory_sha": "8793f33033f2122b",
+      "known_mb_digest": "a83103aa6e6b2d2c"
     },
     "leetcode/lc_219.c": {
       "src_sha": "362c9209",
       "exit_code": 0,
       "stdout_sha": "907152a6205ec48e",
-      "memory_sha": "244368eb1726213b"
+      "memory_sha": "09af016b27795f1b"
     },
     "leetcode/lc_22.c": {
       "src_sha": "64fe43ab",
       "exit_code": 0,
       "stdout_sha": "d21110611d3b483d",
-      "memory_sha": "e36210aee1078e2a"
+      "memory_sha": "48e6c73e6b26b970"
     },
     "leetcode/lc_221.c": {
       "src_sha": "049fc73f",
       "exit_code": 0,
       "stdout_sha": "35f10046ff46103e",
-      "memory_sha": "b41137fc7d4ae801"
+      "memory_sha": "cc554f98ae104d4e"
     },
     "leetcode/lc_225.c": {
       "src_sha": "55226d91",
       "exit_code": 0,
       "stdout_sha": "e1985acd66ff4e78",
-      "memory_sha": "eaa160b923ba6164"
+      "memory_sha": "9cff58cb3868293f"
     },
     "leetcode/lc_226.c": {
       "src_sha": "eb33f6ee",
       "exit_code": 0,
       "stdout_sha": "878fffaf2481903b",
-      "memory_sha": "f2f5792c8b9ced3a"
+      "memory_sha": "a747871145ce38a4"
     },
     "leetcode/lc_23.c": {
       "src_sha": "f935cf02",
       "exit_code": 0,
       "stdout_sha": "5dd24aedd1e798aa",
-      "memory_sha": "6ef9f426a3c360b1"
+      "memory_sha": "416c31ec5fc2890b"
     },
     "leetcode/lc_231.c": {
       "src_sha": "bd610dc9",
       "exit_code": 0,
       "stdout_sha": "f02252e127d2cb62",
-      "memory_sha": "51049880b904a887"
+      "memory_sha": "77cc4fc90ea06d62"
     },
     "leetcode/lc_232.c": {
       "src_sha": "affd939c",
       "exit_code": 0,
       "stdout_sha": "907152a6205ec48e",
-      "memory_sha": "4682f7f1b71c7744"
+      "memory_sha": "13a8faa88763a5f7"
     },
     "leetcode/lc_234.c": {
       "src_sha": "c30ff891",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "0f0704512df5a5cf"
+      "memory_sha": "8f8d0d160007340e"
     },
     "leetcode/lc_237.c": {
       "src_sha": "dafc229f",
       "exit_code": 0,
       "stdout_sha": "4d70e420863b19a4",
-      "memory_sha": "29f926c6a4e6daf4"
+      "memory_sha": "e1830f337c03c4e1"
     },
     "leetcode/lc_238.c": {
       "src_sha": "4b5d554d",
       "exit_code": 0,
       "stdout_sha": "a2aa121ec0ea4a4e",
-      "memory_sha": "dbf14c3545e82cd0"
+      "memory_sha": "649ac21c5dc673bf"
     },
     "leetcode/lc_24.c": {
       "src_sha": "36bdc4ae",
       "exit_code": 0,
       "stdout_sha": "b729d969817ac4d8",
-      "memory_sha": "48a2728248c62599"
+      "memory_sha": "28973a4c69411312"
     },
     "leetcode/lc_242.c": {
       "src_sha": "7797e6ca",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "ccc34d96df9ca881"
+      "memory_sha": "041523dde1e0b2d9"
     },
     "leetcode/lc_25.c": {
       "src_sha": "64be2d5d",
       "exit_code": 0,
       "stdout_sha": "1b62cb6084e4d967",
-      "memory_sha": "0017aff050b09ea4"
+      "memory_sha": "4c3d46141546b40b"
     },
     "leetcode/lc_257.c": {
       "src_sha": "5d95c0f5",
       "exit_code": 0,
       "stdout_sha": "95314cb1f6903c4d",
-      "memory_sha": "fa74dc9545bd1c84"
+      "memory_sha": "74b245786c65356a"
     },
     "leetcode/lc_26.c": {
       "src_sha": "08cecf66",
       "exit_code": 0,
       "stdout_sha": "2edfa6b02030bf3b",
-      "memory_sha": "878310928bfc837b"
+      "memory_sha": "5d2c8a3a1e762ea2"
     },
     "leetcode/lc_263.c": {
       "src_sha": "f6bab34a",
       "exit_code": 0,
       "stdout_sha": "aa50b1ccb01466f5",
-      "memory_sha": "59861782025dd13e"
+      "memory_sha": "cd0d36d088584f0f"
     },
     "leetcode/lc_268.c": {
       "src_sha": "5eabc2bf",
       "exit_code": 0,
       "stdout_sha": "fb7aa4f839022f10",
-      "memory_sha": "b425366fefe8e009"
+      "memory_sha": "4a3a509364104de4"
     },
     "leetcode/lc_27.c": {
       "src_sha": "052655d7",
       "exit_code": 0,
       "stdout_sha": "3b84d1f19394417b",
-      "memory_sha": "7f0f1c125e66f745"
+      "memory_sha": "d6011ac3ebf800e5"
     },
     "leetcode/lc_28.c": {
       "src_sha": "6c190c8a",
       "exit_code": 0,
       "stdout_sha": "bd11f65cc536e29e",
-      "memory_sha": "c6f14185e4a21262"
+      "memory_sha": "c48add0f5fc10b39"
     },
     "leetcode/lc_283.c": {
       "src_sha": "a8af6ef7",
       "exit_code": 0,
       "stdout_sha": "8d6ace1f0690ca1a",
-      "memory_sha": "47dc16856f86533b"
+      "memory_sha": "ffea8b418bd8e0a8"
     },
     "leetcode/lc_29.c": {
       "src_sha": "0a10f882",
       "exit_code": 0,
       "stdout_sha": "8b3d6431a5ae06b6",
-      "memory_sha": "9ad82edd468e0e0c"
+      "memory_sha": "5416829845406ef8"
     },
     "leetcode/lc_290.c": {
       "src_sha": "76f452f5",
       "exit_code": 0,
       "stdout_sha": "84b09a9f3473cf35",
-      "memory_sha": "263b97b56903c724"
+      "memory_sha": "7d9df4b47df809d3"
     },
     "leetcode/lc_292.c": {
       "src_sha": "b6f10ee8",
       "exit_code": 0,
       "stdout_sha": "699197984bc5f58b",
-      "memory_sha": "e6dfb0705ff507c4"
+      "memory_sha": "62b676cfdd9d0b20"
     },
     "leetcode/lc_3.c": {
       "src_sha": "54821e1a",
       "exit_code": 0,
       "stdout_sha": "541ffa544ad23a5f",
-      "memory_sha": "19b6584266932891"
+      "memory_sha": "fa2f6497b9628d84"
     },
     "leetcode/lc_300.c": {
       "src_sha": "c446aba2",
       "exit_code": 0,
       "stdout_sha": "23d9b2f24e03cf65",
-      "memory_sha": "ea7c4871169d679d"
+      "memory_sha": "51501c63786794d9"
     },
     "leetcode/lc_31.c": {
       "src_sha": "3ddeb702",
       "exit_code": 0,
       "stdout_sha": "afc879ddca4d39c1",
-      "memory_sha": "8fb91fed222c5092"
+      "memory_sha": "11e016a3c923c0bb"
     },
     "leetcode/lc_322.c": {
       "src_sha": "d6a6a44b",
       "exit_code": 0,
       "stdout_sha": "1d7b938e261d37f8",
-      "memory_sha": "2d932186b6881938"
+      "memory_sha": "5c9de2cd216815a4"
     },
     "leetcode/lc_326.c": {
       "src_sha": "ac331b9f",
       "exit_code": 0,
       "stdout_sha": "bdce4920ae475020",
-      "memory_sha": "e029d53c06e33213"
+      "memory_sha": "abff4bc7dbb60921"
     },
     "leetcode/lc_33.c": {
       "src_sha": "4dc9b8b7",
       "exit_code": 0,
       "stdout_sha": "e31e7ff4d1076476",
-      "memory_sha": "4a6b4e255bd3bc8c"
+      "memory_sha": "201f1a3cfd0630d6"
     },
     "leetcode/lc_34.c": {
       "src_sha": "6d0eb8d9",
       "exit_code": 0,
       "stdout_sha": "5d929dab96ee3abf",
-      "memory_sha": "c6a8727f51ad16f8"
+      "memory_sha": "ec8069164f357307"
     },
     "leetcode/lc_344.c": {
       "src_sha": "4c4688d4",
       "exit_code": 0,
       "stdout_sha": "8ba5a86e85c743a0",
-      "memory_sha": "d8f28a4eef865dae"
+      "memory_sha": "bd5181ef4777aaec"
     },
     "leetcode/lc_345.c": {
       "src_sha": "fd72be09",
       "exit_code": 0,
       "stdout_sha": "dc872b94f49bd033",
-      "memory_sha": "d0cb867aa1a6c831"
+      "memory_sha": "25c6dfe7fb04315c"
     },
     "leetcode/lc_349.c": {
       "src_sha": "2c2e7699",
       "exit_code": 0,
       "stdout_sha": "2c36ae61558f413c",
-      "memory_sha": "bfbd41fb48c1878f"
+      "memory_sha": "77fcd5b3b9f05eb8"
     },
     "leetcode/lc_35.c": {
       "src_sha": "efedfe34",
       "exit_code": 0,
       "stdout_sha": "bba52bb8754011c7",
-      "memory_sha": "e2c902b5de864f0c"
+      "memory_sha": "aff5bb9e5b3b7815"
     },
     "leetcode/lc_36.c": {
       "src_sha": "70c41449",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "5bf8672d19257102"
+      "memory_sha": "eded89add9489aec"
     },
     "leetcode/lc_367.c": {
       "src_sha": "45e8e6e3",
       "exit_code": 0,
       "stdout_sha": "9efec5bc928c8551",
-      "memory_sha": "c578a4b97dbf1529"
+      "memory_sha": "210b465204f8cb4b"
     },
     "leetcode/lc_38.c": {
       "src_sha": "fb421747",
       "exit_code": 0,
       "stdout_sha": "907237faf90a340a",
-      "memory_sha": "9aff8396dd358d72"
+      "memory_sha": "2ca853d4c5637cb9"
     },
     "leetcode/lc_383.c": {
       "src_sha": "04ba87f5",
       "exit_code": 0,
       "stdout_sha": "e5915907865758ed",
-      "memory_sha": "158f80da63f52acb"
+      "memory_sha": "d0167867be30aef0"
     },
     "leetcode/lc_387.c": {
       "src_sha": "994316e7",
       "exit_code": 0,
       "stdout_sha": "0c09c1e127f1babd",
-      "memory_sha": "4924fa25feb9ffe4"
+      "memory_sha": "6d87b3a91fb284e7"
     },
     "leetcode/lc_389.c": {
       "src_sha": "94aac93a",
       "exit_code": 0,
       "stdout_sha": "e5215813a75487f5",
-      "memory_sha": "f6efa4e7ac30da8d"
+      "memory_sha": "e88e0d7abeb3fd86"
     },
     "leetcode/lc_39.c": {
       "src_sha": "8bb99289",
       "exit_code": 0,
       "stdout_sha": "ac68d5511eb9b8a0",
-      "memory_sha": "6002c0825c9d9ebb"
+      "memory_sha": "6eb4b2c969dc2868"
     },
     "leetcode/lc_392.c": {
       "src_sha": "3fe68516",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "237d7a398a88e532"
+      "memory_sha": "18817e1be9a1eadf"
     },
     "leetcode/lc_394.c": {
       "src_sha": "a2759432",
       "exit_code": 0,
       "stdout_sha": "b97d754b0b45133f",
-      "memory_sha": "97c1a087bd4c1714"
+      "memory_sha": "f13dc65e851b7afc"
     },
     "leetcode/lc_4.c": {
       "src_sha": "95fa3d12",
       "exit_code": 0,
       "stdout_sha": "6d752526ad15bbfc",
-      "memory_sha": "6bd1a6d2c8c39a08"
+      "memory_sha": "e326193a66c99a33"
     },
     "leetcode/lc_40.c": {
       "src_sha": "e11b9e4d",
       "exit_code": 0,
       "stdout_sha": "9a636ee60b3d6832",
-      "memory_sha": "d621faa4119a126c"
+      "memory_sha": "a6c78bdf68e1c54e"
     },
     "leetcode/lc_401.c": {
       "src_sha": "6f445111",
       "exit_code": 0,
       "stdout_sha": "97ca9206022dd4a8",
-      "memory_sha": "277ac458f869a10c"
+      "memory_sha": "1df58ae67ca71032"
     },
     "leetcode/lc_404.c": {
       "src_sha": "9d0ad767",
       "exit_code": 0,
       "stdout_sha": "81124852bbad8b5e",
-      "memory_sha": "a5fc36b52546b1ab"
+      "memory_sha": "4fff669666f64527"
     },
     "leetcode/lc_409.c": {
       "src_sha": "e6fe0f81",
       "exit_code": 0,
       "stdout_sha": "1a00512b94db8a6d",
-      "memory_sha": "cc2e35a1e6b5dda9"
+      "memory_sha": "2fe063b50c2faf3c"
     },
     "leetcode/lc_412.c": {
       "src_sha": "e77703ac",
       "exit_code": 0,
       "stdout_sha": "45ffed13deb535fa",
-      "memory_sha": "a1df8da0abf186c0"
+      "memory_sha": "3080c104d6f495d0"
     },
     "leetcode/lc_415.c": {
       "src_sha": "c7f1cc1b",
       "exit_code": 0,
       "stdout_sha": "539663a1683184ab",
-      "memory_sha": "0ca24b937febf46d"
+      "memory_sha": "4440c66489383fad"
     },
     "leetcode/lc_42.c": {
       "src_sha": "871eb938",
       "exit_code": 0,
       "stdout_sha": "107035db6bcdbf77",
-      "memory_sha": "84cc3ced359506a3"
+      "memory_sha": "1a8a00a2de7852b6"
     },
     "leetcode/lc_448.c": {
       "src_sha": "d1551331",
       "exit_code": 0,
       "stdout_sha": "27cc465d9950a992",
-      "memory_sha": "e74ddbb3b334e8ba"
+      "memory_sha": "e2bdc2a55a995cb4"
     },
     "leetcode/lc_45.c": {
       "src_sha": "67fc9809",
       "exit_code": 0,
       "stdout_sha": "fcd36f0b0c5511ff",
-      "memory_sha": "2c2fd0bc2a696355"
+      "memory_sha": "af356d17e1becb1f"
     },
     "leetcode/lc_46.c": {
       "src_sha": "d45249c8",
       "exit_code": 0,
       "stdout_sha": "37d6755ca5fc8509",
-      "memory_sha": "53a3cea94c9db8e4"
+      "memory_sha": "c79816a44f0645bb"
     },
     "leetcode/lc_48.c": {
       "src_sha": "c5561cac",
       "exit_code": 0,
       "stdout_sha": "1c49186f3a02d227",
-      "memory_sha": "e074152fd0374f2b"
+      "memory_sha": "84567a97b3ec713b"
     },
     "leetcode/lc_49.c": {
       "src_sha": "37dde184",
       "exit_code": 0,
       "stdout_sha": "69c8297eb3b21f74",
-      "memory_sha": "fadd302b5a810af8"
+      "memory_sha": "25aadeb8e9850e28"
     },
     "leetcode/lc_496.c": {
       "src_sha": "b48df72b",
       "exit_code": 0,
       "stdout_sha": "c92df805dd71021d",
-      "memory_sha": "7798826797abb7fc"
+      "memory_sha": "3077a8a3cf4a8191"
     },
     "leetcode/lc_50.c": {
       "src_sha": "f52f95da",
       "exit_code": 0,
       "stdout_sha": "b7ed5b27952ef0f1",
-      "memory_sha": "11b78120d7d2108f"
+      "memory_sha": "4de0f0a3b597abd5"
     },
     "leetcode/lc_509.c": {
       "src_sha": "44a971de",
       "exit_code": 0,
       "stdout_sha": "78f19f0828cec6db",
-      "memory_sha": "f7238b69aafbd801"
+      "memory_sha": "00e04b4b16ef6fc4"
     },
     "leetcode/lc_53.c": {
       "src_sha": "f11f34ea",
       "exit_code": 0,
       "stdout_sha": "8bd8393427bc60ba",
-      "memory_sha": "2353bbee9c3692a0"
+      "memory_sha": "a33021cdd3a4ea6f"
     },
     "leetcode/lc_54.c": {
       "src_sha": "9462a745",
       "exit_code": 0,
       "stdout_sha": "80f273da4e3ce4e9",
-      "memory_sha": "687c54a9e8bad73b"
+      "memory_sha": "d3ccf935e252bf43"
     },
     "leetcode/lc_55.c": {
       "src_sha": "069ee703",
       "exit_code": 0,
       "stdout_sha": "6d7beedc2afa761c",
-      "memory_sha": "d239d78a442142f3"
+      "memory_sha": "b1668b50f8d0c29f"
     },
     "leetcode/lc_56.c": {
       "src_sha": "ae54a777",
       "exit_code": 0,
       "stdout_sha": "42d63ce181f66686",
-      "memory_sha": "196efde3510fd676"
+      "memory_sha": "055d56cdc6e2e764"
     },
     "leetcode/lc_560.c": {
       "src_sha": "7282e21a",
       "exit_code": 0,
       "stdout_sha": "e5a2c94da80eeef5",
-      "memory_sha": "fc13b1c7b6de094b"
+      "memory_sha": "1f857fba91aced69"
     },
     "leetcode/lc_572.c": {
       "src_sha": "77b9659f",
       "exit_code": 0,
       "stdout_sha": "4ea2ed1420659bf1",
-      "memory_sha": "95dc91984ecb2086"
+      "memory_sha": "ec3bb793f9953277"
     },
     "leetcode/lc_58.c": {
       "src_sha": "33c387a8",
       "exit_code": 0,
       "stdout_sha": "add9ecff8c231eca",
-      "memory_sha": "0e04e374a42eaf4a"
+      "memory_sha": "f1b31055bec45156"
     },
     "leetcode/lc_617.c": {
       "src_sha": "6873b77a",
       "exit_code": 0,
       "stdout_sha": "c72a1a7d9faeb069",
-      "memory_sha": "846b6405b5fbdcad"
+      "memory_sha": "4f4fbfe28490b41f"
     },
     "leetcode/lc_62.c": {
       "src_sha": "3ffdc68b",
       "exit_code": 0,
       "stdout_sha": "94ae0e1ff372b10b",
-      "memory_sha": "7a724e9db332a938"
+      "memory_sha": "b4b3634cbd374c98"
     },
     "leetcode/lc_64.c": {
       "src_sha": "d461efd4",
       "exit_code": 0,
       "stdout_sha": "cdab6a8daaba5bd2",
-      "memory_sha": "b885de299c8a0f57"
+      "memory_sha": "f62e03ed3b8d1bdd"
     },
     "leetcode/lc_66.c": {
       "src_sha": "faae26b5",
       "exit_code": 0,
       "stdout_sha": "e8ff3e0553097c15",
-      "memory_sha": "64a3986a161f9951"
+      "memory_sha": "db2809ef307bcca6"
     },
     "leetcode/lc_67.c": {
       "src_sha": "e2ebcdd2",
       "exit_code": 0,
       "stdout_sha": "447fb533a8f2e142",
-      "memory_sha": "b36adf40aae4f8de"
+      "memory_sha": "aebf2c893a2191d3"
     },
     "leetcode/lc_69.c": {
       "src_sha": "3925dfac",
       "exit_code": 0,
       "stdout_sha": "e8cdd275ca4cf875",
-      "memory_sha": "bdb54179abbfe02f"
+      "memory_sha": "e97808e1c6597052"
     },
     "leetcode/lc_7.c": {
       "src_sha": "07248407",
       "exit_code": 0,
       "stdout_sha": "79956b11b3c68caa",
-      "memory_sha": "61ace90a692a29b1"
+      "memory_sha": "d0b373752c69b19c"
     },
     "leetcode/lc_70.c": {
       "src_sha": "445347f3",
       "exit_code": 0,
       "stdout_sha": "45292bc29ffb32d6",
-      "memory_sha": "c8b9e7d39fd0c093"
+      "memory_sha": "89ccd493c262d16b"
     },
     "leetcode/lc_704.c": {
       "src_sha": "514a15e4",
       "exit_code": 0,
       "stdout_sha": "657e3c4a9871ff5e",
-      "memory_sha": "513887f870ca99fe"
+      "memory_sha": "529971ea8b7399d2"
     },
     "leetcode/lc_73.c": {
       "src_sha": "40605b11",
       "exit_code": 0,
       "stdout_sha": "94cd2f2a041366a7",
-      "memory_sha": "65e949dbdd8f36bd"
+      "memory_sha": "c78ffcd7d9b07078"
     },
     "leetcode/lc_746.c": {
       "src_sha": "04890166",
       "exit_code": 0,
       "stdout_sha": "d4dd65e40f93fd68",
-      "memory_sha": "3715b9d5d5117119"
+      "memory_sha": "b16493998e1364c2"
     },
     "leetcode/lc_75.c": {
       "src_sha": "170fe2ed",
       "exit_code": 0,
       "stdout_sha": "1fd08c86a01cb2f3",
-      "memory_sha": "f9c0f2db50f4432d"
+      "memory_sha": "a7776b156fb9106f"
     },
     "leetcode/lc_76.c": {
       "src_sha": "7b9083ba",
       "exit_code": 0,
       "stdout_sha": "6494fdff31e278f7",
-      "memory_sha": "d1c99ac565b9e28d"
+      "memory_sha": "894a51ed959a0b8e"
     },
     "leetcode/lc_78.c": {
       "src_sha": "8d132569",
       "exit_code": 0,
       "stdout_sha": "7bd1731355c8a965",
-      "memory_sha": "c07e494fb18adff2"
+      "memory_sha": "154263ed2af5c1d9"
     },
     "leetcode/lc_83.c": {
       "src_sha": "5f86fa7f",
       "exit_code": 0,
       "stdout_sha": "af61814c321ac1d3",
-      "memory_sha": "077c7832a5112b71"
+      "memory_sha": "1babe3c047b98c2f"
     },
     "leetcode/lc_84.c": {
       "src_sha": "4db828bc",
       "exit_code": 0,
       "stdout_sha": "13d3ab5c05ea4e77",
-      "memory_sha": "16da0b52b1542c67"
+      "memory_sha": "e58f2d30b5089f5a"
     },
     "leetcode/lc_876.c": {
       "src_sha": "c08e6e57",
       "exit_code": 0,
       "stdout_sha": "8911aba6ad275661",
-      "memory_sha": "3588feaf4b22cbc6"
+      "memory_sha": "1640ca75ffc119b9"
     },
     "leetcode/lc_88.c": {
       "src_sha": "b1e352c7",
       "exit_code": 0,
       "stdout_sha": "759efaf505453e82",
-      "memory_sha": "4131a0e48c5dbcb9"
+      "memory_sha": "0c9e36291dd7ed41"
     },
     "leetcode/lc_9.c": {
       "src_sha": "520f929e",
       "exit_code": 0,
       "stdout_sha": "84b09a9f3473cf35",
-      "memory_sha": "26cc406f43278f03"
+      "memory_sha": "5e62ab6c48352843"
     },
     "leetcode/lc_91.c": {
       "src_sha": "79f7edce",
       "exit_code": 0,
       "stdout_sha": "088c7985ae0e1ff8",
-      "memory_sha": "fcc88215d7a6ee77"
+      "memory_sha": "135b2f4c0e4a742b"
     },
     "leetcode/lc_977.c": {
       "src_sha": "8656321d",
       "exit_code": 0,
       "stdout_sha": "cefdc6afdee845af",
-      "memory_sha": "03597f1ce40bf788"
+      "memory_sha": "5ef495e6d1e0cf7e"
     },
     "leetcode/lc_98.c": {
       "src_sha": "d5dccfe3",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "08c360e0673271d6"
+      "memory_sha": "d7a051f796454bbb"
     }
   }
 }

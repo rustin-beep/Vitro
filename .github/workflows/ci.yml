@@ -38,64 +38,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: native
-
-      - name: Build native (Debug)
-        run: cargo build
-        working-directory: native
-
-      - name: Build native (Release)
-        run: cargo build --release
-        working-directory: native
-
-      - name: Run Rust tests
-        # M15（2026-09-18）：tee 日志落盘——facts 对账从日志解析 passed/套件真值，
-        # CI 内无需为文档对账重跑 30 分钟测试。pipefail 保证 tee 不吞失败退出码。
-        # 日志随 artifact 供 hygiene 的 facts 全键真值（2026-09-23 拆分）。
-        shell: bash
-        run: |
-          set -o pipefail
-          cargo test --workspace --all-features 2>&1 | tee cargo_test_ci.log
-        working-directory: native
-
-      - name: Upload cargo test log (for hygiene facts)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cargo-test-log
-          path: native/cargo_test_ci.log
-
-      # cargo test 已覆盖全部单元/集成测试（含 Phase A/B/C/E/Dogfooding），
-      # 无需再单独运行各防线测试套件。
-      - name: Three Tier Consistency Check & Report
-        # D5 后续批次第三站（2026-09-18）：ci_three_tier_check.py → Go。
-        # 双轨对账：9 套件判定/计数/hard-soft issue/退出码一致、报告逐行一致
-        # （除时间戳与 cargo 计时行）。J9 假 KNOWN 条目注入 → hard / exit 1
-        #（顺带抓出 title 提取缺捕获组的复刻 bug，绿路径对账不可见——埋雷
-        # 是判定面的必要补充）。
-        run: go run ./scripts/ci_three_tier_check
-        shell: bash
-
-      - name: Upload Three Tier Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: three-tier-report
-          path: reports/three_tier_report.md
-
-      - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-        working-directory: native
-
-      # U2#13（2026-09-14）：go vet 入 CI——此前无此步骤，scripts 侧 3 处
-      # unsafe.Pointer 误用（FFI 返回指针的 uintptr→Pointer 逆向转换）从未
-      # 被暴露；现随 buf 写入式 API（ABI 2.1.0）根治后设为常驻门禁。
       - name: Go vet (scripts)
         run: go vet ./scripts/...
 
@@ -134,75 +76,11 @@ jobs:
       # D5 语言迁移最后一站（2026-09-13）：C 影子验证主驱动 Python→Go。
       # 双轨对账 PASS（663 用例集合/顺序/逐用例 diff_type/summary/category_frequency
       # 全一致）后切换；Python 版 shadow_verify.py 已退役删除。
-      - name: Shadow Verification
-        shell: bash
-        run: |
-          EXTRA=""
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            # 夜间全量重算：忽略缓存、重算并覆盖写回，防止 Golden 随 clang 漂移
-            EXTRA="--refresh-clang"
-            echo "夜间模式：Clang Golden 全量重算（$EXTRA）"
-          fi
-          go run ./scripts/shadow_verify $EXTRA --report native/tests/shadow_verification/reports/shadow_report.md --json native/tests/shadow_verification/reports/shadow_data.json
-
-      - name: Upload Shadow Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: shadow-verification-report
-          path: |
-            native/tests/shadow_verification/reports/shadow_report.md
-            native/tests/shadow_verification/reports/kr_leetcode_report.json
-            native/tests/shadow_verification/reports/shadow_data.json
-
-      - name: C++ Shadow Verification
-        # D5 语言迁移第一站（2026-09-12）：Go 版与 Python 版双轨对账一致后切换。
-        # Python 版保留为对照基准；go vet 已是常驻门禁（见 Go vet 步骤）。
-        run: go run ./scripts/shadow_verify_cpp
-        shell: bash
-
-      - name: Upload C++ Shadow Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cpp-shadow-verification-report
-          path: native/tests/shadow_verification/reports/cpp_shadow_report.json
-
-      # 出口 3 防线：serve JSON-lines 协议契约（id 关联 / 错误帧同构 / session.reset
-      # / 与 capi 共用的入口语义）。依赖上一步 Debug 构建的 vitro_cli。
-      - name: vitro_cli serve smoke (Exit 3 protocol contract)
-        # D5 后续批次第一站（2026-09-18）：serve_smoke.py → Go。双轨对账
-        # （断言逐条同名同序、计数 57/57、判定一致、RSS 峰值同为 24MB）后
-        # 接管；J9 证红双通道：VITRO_RSS_BUDGET_MB=5 → FAIL/exit 1、
-        # 坏 exe → 51 FAIL/exit 1。依赖 Debug 构建的 vitro_cli。
-        run: go run ./scripts/serve_smoke
-        shell: bash
-
-      # R2（2026-09-14）：回放驱动纳入 CI——此前它不在任何验证循环里，
-      # "Go 驱动没跑"导致 step.next 重复投递（0,0,1，违反 spec 附录 A
-      # step_index 严格递增冻结不变量）漏过 U1#1 缓冲批的验收。本步骤含
-      # J9 selftest（判定口径埋雷，含版本下限比较组）+ S1~S5 全量断言
-      #（A7b = 帧序列主锚）。依赖 Debug 构建的 vitro_cli。
-      - name: replay S1-S5 protocol assertions (frame-sequence invariant)
-        run: go run ./scripts/replay
-        shell: bash
-
-      # （2026-09-28 死代码清除）原「Refresh MoonBit registry index」步骤删除——
-      # 其存在理由是「全新安装的 moon 解析 moonbitlang/x 报 module was not
-      # found」（2026-09-20 CI 实锤）；唯一依赖清除批（d29a347）后 moon.mod
-      # deps 已空（vendored vitro/engine/fs），moon test/build 只解析 core
-      # （工具链自带）不触 registry。hygiene job 的同名步骤保留——它服务
-      # toolchain_probe 的索引预检（A8），与 x 依赖无关。
-
-      # S3 审阅补线（2026-09-20，F5/G3）：MoonBit 工具链 + 解析差分锚。
-      # 此前 parser_diff 不在 CI——offsetof 深链崩溃（F1）/enum 常量链
-      # 崩溃（F2）/指针多维错值（F3）三项缺陷与"防线不在 CI"互为因果。
-      # 三模式均已降到秒级（2026-09-22 canonicalize 抽库：逐样本起进程成本
-      # 消除，旧口径"分钟级（预构建后）"失效）；全量经 hygiene 的 facts 采集。
-      # 依赖上方 Release 构建的 vitro_cli。
-      # 本工具链安装自 2026-10-03 拆批起只服务差分族（vm_diff / clang_direct /
-      # typeck_diff / codegen_diff / libc_boot_diff / parser_diff 的 MoonBit 被
-      # 测臂）；MoonBit 行为闸与静态对账闸已整体迁往 moonbit job 并发跑。
+      # === 工序④删区批（2026-10-05）：Rust 臂整体移除 ===
+      # 被删 = Rust 本体（build/test/clippy/coverage）+ 被测物为 Rust DLL 的防线（shadow ×2/
+      # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
+      # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
+      # 语义防线 = clang_direct（真值 Clang）+ moon test。
       - name: Install MoonBit toolchain (differential anchors)
         shell: pwsh
         run: |
@@ -280,43 +158,6 @@ jobs:
           cd moonbit && moon build --release --target native cmd/run
           cd .. && go run ./scripts/vm_diff
 
-      - name: Frozen-baseline digest freshness (vm/lexer/typeck/codegen golden freeze idempotence)
-        # 2026-10-05 工序③固化接线（审阅 P1-2：文档曾声称「golden 新鲜度闸」
-        # 而 CI 未接线）：幂等复 --freeze + git diff 空 = 入库 digest 清单 ≡
-        # 当轮 oracle 产物（等价 gen_* -check 纪律——源变则清单变，入库未刷
-        # 即红）。防两类腐化：①oracle 侧行为漂移而清单未重刷 ②清单被手改。
-        # lexer 同批修复（P1-1）：freeze 内嵌双侧对拍全绿才写 + 归一副本喂入
-        # （oracle dump-tokens 对工作区行尾敏感曾冻入 100 个 LF 时态坏值——
-        # 干净克隆实测抓出）。J9：改语料一文件复 freeze → 本步 git diff 红。
-        # **复审 P1 修复（2026-10-05 二轮）**：本步原排在 core job 唯一一处
-        # cmd/run 构建（VM 步）之前——开箱即红（vm_diff freeze 前置硬检查
-        # runner exe）。已移至 VM 步之后（exe 已建）；oracle 存在性 guard 防
-        # 工序④删区红窗口——删区时本步骤随连坐清单整体移除。
-        shell: bash
-        run: |
-          if [ ! -f native/target/release/vitro_cli.exe ]; then
-            echo "oracle exe 缺失（已删区？）——freeze 新鲜度闸为过渡期闸，随工序④退役；本步跳过"
-            exit 0
-          fi
-          go run ./scripts/vm_diff --freeze
-          go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton --freeze
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/typeck_diff native/tests/cases/$d --freeze
-            go run ./scripts/codegen_diff native/tests/cases/$d --freeze
-            go run ./scripts/lexer_diff native/tests/cases/$d --freeze
-          done
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/parser_diff native/tests/cases/$d --freeze
-          done
-          go run ./scripts/parser_diff --pathological --freeze
-          go run ./scripts/parser_diff --legal-deep --freeze
-          go run ./scripts/parser_diff --threshold --freeze
-          if ! git diff --quiet -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff; then
-            echo "❌ frozen digest 清单与现场复 freeze 不一致（oracle 行为漂移或清单手改未重刷）——差异文件："
-            git diff --name-only -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff
-            exit 1
-          fi
-          echo "✓ frozen digest 清单幂等（与当轮 oracle 产物一致）"
       - name: Clang direct verify (layer 2, cmd/run vs Clang golden)
         # §7.1 层 2 直拍防线（2026-09-26 提前落地——原排期 S7，用户拍板
         # 前移）：真值源 = Clang 本尊（非 Rust oracle），cmd/run 的
@@ -354,17 +195,6 @@ jobs:
         shell: bash
         run: go run ./scripts/moonbit/libc_boot_diff
 
-      - name: C ABI declaration parity (error codes + binding symbols)
-        # 2026-09-22 接线（架构审阅 v2 A 组 #3 / §2.9）：vitro_capi.h 的
-        # VitroErrorCode 枚举手抄自 Rust 源且注释只写「Keep in sync with ...」
-        # ——没说权威源、也没说裁剪策略，故「缺 25 个 C 侧码」既发现不了也
-        # 判断不了。本步三类判据：① C 头项必须存在于权威源（伪造码即红）
-        # ② 同名必须同值（值抄错最危险——下游按数值判错型）③ 源有而 C 头无
-        # 必须匹配豁免规则（哨兵 / E4xxx C++ 已砍）。另判 Go 绑定的 DLL
-        # 符号名均有 C 头声明。规则外置 rules.json；J9 四路注入证红。
-        shell: bash
-        run: go run ./scripts/gen_capi_bindings -check
-
       - name: Protocol first consumer (fields-level validation on real engine output)
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
         # 用**生成的**协议面（protocol/fields.mjs）消费**真实的**引擎输出
@@ -384,35 +214,11 @@ jobs:
       - name: Protocol frames freeze (dual-host, canonicalized)
         run: |
           cd moonbit && moon build --target native cmd/serve && cd ..
-          go run ./scripts/protocol_frames --diff-hosts
           go run ./scripts/protocol_frames
         shell: bash
 
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
-      - name: wasm32 build & smoke (Exit 2 guard)
-        run: |
-          rustup target add wasm32-unknown-unknown
-          cargo build --target wasm32-unknown-unknown --release
-          node ../scripts/wasm_smoke/wasm_smoke.js
-        working-directory: native
-        shell: bash
-
-  # ── moonbit（2026-10-03 拆批：MoonBit 侧步骤自 core 并发拆出）──────────────
-  # 动机：core 单 job 串行 ~19 分钟，MoonBit 侧步骤与 cargo 链无构建依赖却
-  # 陪跑全程；且 surface 等秒级闸的红要等满链才暴露（9981ac2 三笔连红实证
-  # ——surface 红挂在第 29 步）。拆出后本 job ~8 分钟独立报红，core ~12 分钟。
-  # 边界（只搬零 Rust 构建依赖的步骤）：差分五件套（vm_diff / clang_direct /
-  # typeck_diff / codegen_diff / libc_boot_diff）与 parser_diff / consumer.mjs
-  # 的 oracle 臂消费 Release vitro_cli——**留 core 随 Rust 退役自然消失**，
-  # 不为其做 artifact 传递（退役日重排，提前付拓扑税不划算）。
-  # 退役日操作：删除 core 内 Rust 段与差分段即完成绞杀，本 job 原样存活。
-  moonbit:
-    name: MoonBit gates (engine & contract)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Install MoonBit toolchain
         shell: pwsh
         run: |
@@ -681,9 +487,8 @@ jobs:
   # 红的含义是「账没跟上」而非「代码坏了」：文档漂移 / 工具链版本迁移 /
   # 产物新鲜度 / 格式 / 性能裁决的规模前提 / 构建卫生。白天推进时属预期债，
   # 夜间批量复绿（用户工作流裁定：白天不断推进、夜里花时间复绿）。
-  # needs core：facts 全键真值依赖 core 的 cargo 日志与 shadow 产物 artifact，
-  # 且真值重放（replay/serve_smoke 秒级）需要 Debug 构建——口径与拆分前
-  # 完全一致（不降级为缓存沿用）。
+  # needs core（2026-10-05 删区批后）：facts 真值源已转 MoonBit/Clang 侧
+  # （cargo/shadow/replay 随 Rust 退役——facts.go 连坐：相关键转 unavailable）。
   hygiene:
     name: Hygiene checks (bookkeeping)
     needs: core
@@ -696,53 +501,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: native
-
-      # facts --run 的真值重放（replay / serve_smoke 秒级）需要 Debug 的
-      # vitro_cli；rust-cache 命中后此步为增量，分钟内。
-      - name: Build native (Debug)
-        run: cargo build
-        working-directory: native
-
-      - name: Download core artifacts (cargo log + shadow truth)
-        uses: actions/download-artifact@v4
-        # 2026-10-03 拆批防连坐配套：core 红（准入型）时 artifact 不存在，
-        # 本步骤失败不应阻塞其余记账闸（见 job 级 if: always() 注释）。
-        continue-on-error: true
-        with:
-          pattern: "{cargo-test-log,shadow-verification-report,cpp-shadow-verification-report}"
-          merge-multiple: true
-          path: .
-
-      - name: Restore core artifacts to engine-reported paths
-        # 2026-09-28 gen_svg -check 接线暴露的既有错位：upload-artifact v4
-        # 以最小公共父目录（或单文件自身）为 artifact 根，上一步下载落位后
-        # 五个真值产物全部**平铺在仓库根**；而 facts 采集器按引擎产物的
-        # 原位路径读取（native/cargo_test_ci.log 与
-        # native/tests/shadow_verification/reports/*——collectShadowC 兼容
-        # shadow_data_latest/shadow_data 两个名字，但目录必须原位）。
-        # 此前错位只产生 facts check 的「待采集」软提示（unavailable 真值
-        # 无人消费、不红）；gen_svg -check 的 mustFact fail loud 是第一个
-        # 硬消费者，5e9faf7 CI 首跑即红（Hygiene Failing after 3m）。
-        # 本步把平铺文件搬回原位，此后 facts 全键在 CI 可用。
-        shell: bash
-        run: |
-          mkdir -p native/tests/shadow_verification/reports
-          if [ -f cargo_test_ci.log ]; then
-            mv cargo_test_ci.log native/
-          fi
-          for f in shadow_report.md kr_leetcode_report.json shadow_data.json cpp_shadow_report.json; do
-            if [ -f "$f" ]; then
-              mv "$f" native/tests/shadow_verification/reports/
-            fi
-          done
 
       - name: Install MoonBit toolchain (probe / fmt / facts --run)
         shell: pwsh
@@ -851,7 +609,7 @@ jobs:
         # 过闸——条目零命中判僵尸、无条件红（防腐化），go test 锚
         # suspect_exemptions_test.go 五路 J9。
         shell: bash
-        run: go run ./scripts/facts --run --strict --cargo-log native/cargo_test_ci.log check
+        run: go run ./scripts/facts --strict check
 
       - name: Docs SVG freshness (gen_svg -check)
         # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成
@@ -893,47 +651,6 @@ jobs:
 
       # U0#4：target 体积预算（防构建产物无界膨胀拖垮 runner 磁盘——两次 GB 级
       # 事故的制度性护栏之一；预算 10GB，超限 fail 并回显分布）
-      - name: Target size budget (10GB)
-        shell: bash
-        run: |
-          cd native
-          total_bytes=$(du -sb target 2>/dev/null | cut -f1)
-          total_gb=$(( (total_bytes + 1073741823) / 1073741824 ))
-          echo "native/target = ${total_gb} GB (budget 10 GB)"
-          du -sh target/* 2>/dev/null | sort -rh | head -8
-          if [ "$total_gb" -gt 10 ]; then
-            echo "::error::native/target 超出 10GB 预算——检查是否引入巨型依赖或死 target"
-            exit 1
-          fi
-
-      - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov --version 0.6.16
-        # 固定版本，避免非确定性；rust-cache 已缓存 cargo 目录
-
-      - name: Generate coverage report
-        run: cargo llvm-cov --lcov --output-path lcov.info
-        working-directory: native
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: native/lcov.info
-
-  # ── portability（2026-09-29 接线，跨 OS 探路 job）────────────────────────
-  # 目的：全仓 CI 首次在非 Windows 环境构建——验证 moon 工具链 unix 装法、
-  # fs 包 vendored C stub 走 cc、native 后端的 linux 链接形态（LNK1561 是
-  # Windows MSVC 的形，linux ld 行为未验证——探路即归因）、wasm-gc 产物与
-  # Node 宿主。**独立 job 设计**：红面不阻塞 core/hygiene 的发版判断，
-  # 首跑踩雷就地归因（下游语料/Windows 假设的防线不搬——vm_diff/
-  # clang_direct/serve_smoke 留在 core）。
-  portability:
-    name: Ubuntu build & test (cross-OS probe)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Install MoonBit toolchain (unix)
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
@@ -945,11 +662,6 @@ jobs:
           moon test
           moon test --target native
           moon test --target wasm-gc
-
-      - name: Full native release build (linux cc/ld form)
-        # Windows 侧同款门（core 的 Full native release build gate）——
-        # linux 链接器是另一形态，本步即探路：红了就是新事实
-        run: cd moonbit && moon build --release --target native
 
       - name: Install Node 25
         uses: actions/setup-node@v4

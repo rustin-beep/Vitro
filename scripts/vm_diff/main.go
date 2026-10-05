@@ -264,7 +264,7 @@ func main() {
 				// 裸名在四语料里找第一个命中
 				found := false
 				for _, c := range corpora {
-					p := filepath.Join("native", "tests", "cases", c, f)
+					p := filepath.Join("native", "corpus", c, f)
 					if fileExists(p) {
 						path = p
 						found = true
@@ -280,14 +280,14 @@ func main() {
 				// 此前静默跑不存在文件：oracle 报 ORACLE-MISSING、MoonBit 报
 				// io COMPILE-ERROR，双侧 compileFail 凑成假 SAME（kruskalMST
 				// 调查批实测踩中）；fail loud 优于静默空跑
-				fmt.Fprintf(os.Stderr, "vm_diff: --cases 路径不存在: %s（相对仓库根，如 native/tests/cases/baseline/x.c）\n", f)
+				fmt.Fprintf(os.Stderr, "vm_diff: --cases 路径不存在: %s（相对仓库根，如 corpus/baseline/x.c）\n", f)
 				os.Exit(2)
 			}
 			cases = append(cases, Case{rel: relOf(path), path: path})
 		}
 	} else {
 		for _, c := range corpora {
-			dir := filepath.Join("native", "tests", "cases", c)
+			dir := filepath.Join("corpus", c)
 			entries, err := os.ReadDir(dir)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "vm_diff: 读语料目录失败 %s: %v\n", dir, err)
@@ -861,6 +861,26 @@ func fileSHA(p string) string {
 	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
 }
 
+// argvMaskHi：映像 hash 的环境脱敏上界——argv 区自 GLOBAL_REGION_LIMIT
+// （0x10000）向下分配（R1 内存边界批），调用路径字节落在其下窗口。映像锚
+// 定**程序数据面**（堆/栈/全局），调用环境（argv 路径）归 shadow/argv 专项
+// 对拍——语料目录 mv（native/tests/cases → corpus，工序④）曾使 593 例
+// memory hash 全翻（stdout 逐位同）实锤此耦合（2026-10-05）。
+const argvMaskHi = 0x10000
+const argvMaskLo = 0xC000
+
+// memorySHA：argv 窗口置零后取 hash（环境无关指纹）。
+func memorySHA(p string) string {
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return ""
+	}
+	for i := argvMaskLo; i < argvMaskHi && i < len(b); i++ {
+		b[i] = 0
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
 // digestOfResult：从 result 提三通道指纹（stdout 用 oracle 侧提取器——
 // golden 模式下 mb 侧经 extractMoonBitStdout 后应与 oracle 提取结果同
 // 字节，这正是 compare 的语义面）。
@@ -868,7 +888,7 @@ func digestOfResult(r *result) (int, string, string, bool) {
 	stdout := extractOracleStdout(r.stdout)
 	memSHA := ""
 	if r.memoryPath != "" {
-		memSHA = fileSHA(r.memoryPath)
+		memSHA = memorySHA(r.memoryPath)
 	}
 	return r.exitCode, fmt.Sprintf("%x", sha256.Sum256([]byte(stdout)))[:16], memSHA, r.compileFail
 }
@@ -933,7 +953,7 @@ func digestOfResultMB(r *result) (int, string, string, bool) {
 	stdout := extractMoonBitStdout(r.stdout)
 	memSHA := ""
 	if r.memoryPath != "" {
-		memSHA = fileSHA(r.memoryPath)
+		memSHA = memorySHA(r.memoryPath)
 	}
 	return r.exitCode, fmt.Sprintf("%x", sha256.Sum256([]byte(stdout)))[:16], memSHA, r.compileFail
 }

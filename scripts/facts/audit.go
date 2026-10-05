@@ -21,6 +21,15 @@ import (
 	"strings"
 )
 
+// retiredKeys：Rust 退役键（工序④删区 2026-10-05）——真值源永久消失，
+// 待采集（--run 可补）语义不适用；引用面按历史句豁免，不进 Pending 红。
+var retiredKeys = map[string]bool{
+	"shadow_c_cases": true, "shadow_c_match": true, "shadow_c_known_issue": true,
+	"shadow_c_gap_extension": true, "shadow_c_gaps": true,
+	"replay_assertions": true, "serve_smoke_assertions": true,
+	"cargo_test_passed": true, "cargo_test_suites": true,
+}
+
 // ─── 对账规则 ────────────────────────────────────────────────────────────────
 
 type Rule struct {
@@ -644,7 +653,9 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 				h := Hit{Key: key, File: rel, LineNo: i + 1, Spans: cands,
 					Text: strings.TrimSpace(line)}
 				if a.Truth == nil {
-					a.Pending = append(a.Pending, h) // 无真值：待采集，不判漂移
+					if !retiredKeys[h.Key] {
+						a.Pending = append(a.Pending, h) // 无真值：待采集，不判漂移（退役键豁免）
+					}
 					continue
 				}
 				hit := false
@@ -737,7 +748,9 @@ func auditDocs(root string, doc FactsDoc) AuditResult {
 					}
 				}
 				if a.Truth == nil {
-					a.Pending = append(a.Pending, h) // 无真值：待采集，不判漂移
+					if !retiredKeys[h.Key] {
+						a.Pending = append(a.Pending, h) // 无真值：待采集，不判漂移（退役键豁免）
+					}
 					continue
 				}
 				found := false

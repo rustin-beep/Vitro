@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "note": "freeze 时已全量对拍；golden = mb 投影 hash ≡ 清单",
+  "cases": {
+    "ctype.c": {
+      "src_sha": "917245fb",
+      "proj_sha": "280bc3297d6516b3"
+    },
+    "stdlib.c": {
+      "src_sha": "63f8aec4",
+      "proj_sha": "285b52c5e5bfe017"
+    },
+    "string.c": {
+      "src_sha": "e630e30e",
+      "proj_sha": "e236b888db63ad34"
+    }
+  }
+}

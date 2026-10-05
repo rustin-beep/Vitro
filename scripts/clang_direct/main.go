@@ -74,12 +74,12 @@ const clangRunTimeout = 10 * time.Second
 // 元素为相对仓库根路径——含路径分隔符时原样使用，裸名仍拼 cases/ 前缀兼容
 // --corpus baseline 旧用法）。
 var corporaDefault = []string{
-	"native/tests/cases/baseline",
-	"native/tests/cases/knr",
-	"native/tests/cases/leetcode",
-	"native/tests/cases/gap",
-	"native/tests/cases/codegen_skeleton",
-	"native/tests/cases_template_generated",
+	"corpus/baseline",
+	"corpus/knr",
+	"corpus/leetcode",
+	"corpus/gap",
+	"corpus/codegen_skeleton",
+	"corpus/template_generated",
 }
 
 // corpusPath：裸语料名 → cases/ 前缀；含分隔符 → 原样（corporaDefault 路径化）。
@@ -87,7 +87,7 @@ func corpusPath(c string) string {
 	if strings.ContainsAny(c, "/\\") {
 		return c
 	}
-	return filepath.Join("native", "tests", "cases", c)
+	return filepath.Join("corpus", c)
 }
 
 // knownEntry：已归因差异（case + digest + reason；digest = 差异内容 sha256

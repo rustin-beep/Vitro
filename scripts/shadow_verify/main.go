@@ -626,11 +626,11 @@ func loadCaseFiles() []shadowCase {
 		srcDir string
 	}
 	dirs := []caseDir{
-		{filepath.Join("tests", "cases", "baseline"), "baseline"},
-		{filepath.Join("tests", "cases", "gap"), "gap"},
+		{filepath.Join("corpus", "baseline"), "baseline"},
+		{filepath.Join("corpus", "gap"), "gap"},
 		{filepath.Join("tests", "cases_template_generated"), "template"},
-		{filepath.Join("tests", "cases", "knr"), "knr"},
-		{filepath.Join("tests", "cases", "leetcode"), "leetcode"},
+		{filepath.Join("corpus", "knr"), "knr"},
+		{filepath.Join("corpus", "leetcode"), "leetcode"},
 	}
 	var cases []shadowCase
 	for _, d := range dirs {
@@ -694,7 +694,7 @@ func loadCaseFiles() []shadowCase {
 		}
 	}
 	if len(cases) == 0 {
-		capi.Fatal("用例目录加载为空（native/tests/cases/** 与 cases_template_generated 均无 .c）。\n" +
+		capi.Fatal("用例目录加载为空（corpus/** 与 cases_template_generated 均无 .c）。\n" +
 			"防线 1 不允许在空用例集上给出\"门禁通过\"（空转假绿）。")
 	}
 	return cases

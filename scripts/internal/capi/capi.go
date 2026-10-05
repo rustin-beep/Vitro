@@ -35,7 +35,7 @@ var (
 	projectRoot     string
 )
 
-// ProjectRoot 返回仓库根（含 native/ 与 scripts/ 的目录），找不到时 exit 2。
+// ProjectRoot 返回仓库根（含 corpus/ 与 scripts/ 的目录——2026-10-05 删区后 native/ 不再作标记），找不到时 exit 2。
 // Go 没有 Python 的 __file__ 锚点（go run 的可执行文件在 GOCACHE 临时目录），
 // 按"包含 native/ 与 scripts/ 的目录"向上探测，允许从仓库根、scripts/ 或更深
 // 子目录运行。
@@ -67,7 +67,7 @@ func findProjectRoot() string {
 }
 
 func isProjectRoot(dir string) bool {
-	for _, marker := range []string{"native", "scripts"} {
+	for _, marker := range []string{"corpus", "scripts"} { // 工序④删区（2026-10-05）：native/ 已删，根标记换 corpus/
 		if fi, err := os.Stat(filepath.Join(dir, marker)); err != nil || !fi.IsDir() {
 			return false
 		}

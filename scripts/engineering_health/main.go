@@ -49,7 +49,7 @@ var failuresFiles = []string{
 	"native/tests/LEETCODE_FAILURES.md",
 	"native/tests/CPP_FAILURES.md",
 	"native/tests/DOGFOODING_FAILURES.md",
-	"native/tests/cases_golden/GOLDEN_FAILURES.md",
+	"corpus_golden/GOLDEN_FAILURES.md",
 }
 
 const topN = 20

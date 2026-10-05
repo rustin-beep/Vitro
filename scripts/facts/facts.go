@@ -282,8 +282,8 @@ func collectCaseDirs(root string, facts map[string]Fact) {
 		{"c_e2e_knr_cases", "knr", ".c"},
 		{"c_e2e_leetcode_cases", "leetcode", ".c"},
 	} {
-		rel := "native/tests/cases/" + m.sub + "/"
-		d := filepath.Join(root, "native", "tests", "cases", m.sub)
+		rel := "corpus/" + m.sub + "/"
+		d := filepath.Join(root, "corpus", m.sub)
 		ents, err := os.ReadDir(d)
 		if err != nil {
 			facts[m.key] = unavail("用例", rel, "确认目录 "+rel+" 是否存在", "")
@@ -561,10 +561,10 @@ func collectMoonbitLexerDiff(root string, facts map[string]Fact) {
 	total := 0
 	for _, corpus := range []string{
 		tmp,
-		filepath.Join("native", "tests", "cases", "baseline"),
-		filepath.Join("native", "tests", "cases", "knr"),
-		filepath.Join("native", "tests", "cases", "leetcode"),
-		filepath.Join("native", "tests", "cases", "gap"),
+		filepath.Join("corpus", "baseline"),
+		filepath.Join("corpus", "knr"),
+		filepath.Join("corpus", "leetcode"),
+		filepath.Join("corpus", "gap"),
 	} {
 		out, code, ok := runCmd(root, 10*time.Minute, "go", "run", "./scripts/lexer_diff", corpus)
 		if !ok || code != 0 {
@@ -603,10 +603,10 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 	how := "go run ./scripts/parser_diff <corpus> ×4 + --pathological + --legal-deep + --threshold"
 	total := 0
 	for _, corpus := range []string{
-		filepath.Join("native", "tests", "cases", "baseline"),
-		filepath.Join("native", "tests", "cases", "knr"),
-		filepath.Join("native", "tests", "cases", "leetcode"),
-		filepath.Join("native", "tests", "cases", "gap"),
+		filepath.Join("corpus", "baseline"),
+		filepath.Join("corpus", "knr"),
+		filepath.Join("corpus", "leetcode"),
+		filepath.Join("corpus", "gap"),
 	} {
 		// 超时 20min 的原始依据（F5：10→20min，"canonicalize 已预构建、单
 		// 样本 ~0.3s、597 全量 ~分钟级"）**已随 2026-09-22 canonicalize 抽库
@@ -686,9 +686,22 @@ var runKeys = []string{
 	"moonbit_parser_diff_samples",
 }
 
+// markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
+func markRetiredFacts(facts map[string]Fact) {
+	how := "Rust oracle 已于工序④删区退役（2026-10-05）——历史值见 tag rust-oracle-freeze 与 0.8.0 发布档案"
+	for _, k := range []string{
+		"shadow_c_cases", "shadow_c_match", "shadow_c_known_issue",
+		"shadow_c_gap_extension", "shadow_c_gaps",
+		"replay_assertions", "serve_smoke_assertions",
+		"cargo_test_passed", "cargo_test_suites",
+	} {
+		facts[k] = unavail("用例", "native/（已删除）", how, "真值源退役")
+	}
+}
+
 func collectAll(root string, run, runSlow bool, cargoLog string, prev *FactsDoc) FactsDoc {
 	facts := map[string]Fact{}
-	collectShadowC(root, facts)
+	defer markRetiredFacts(facts) // 工序④删区批：退役键最终覆盖（历史值锚 git 历史 + 0.8.0 档案）
 	collectShadowCpp(root, facts)
 	collectFailureLedgers(root, facts)
 	collectCaseDirs(root, facts)

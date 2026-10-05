@@ -3,7 +3,7 @@
 // shadow_verify_cpp —— C++ Shadow Verification 的 Go 迁移试点（D5，裁定文档 §13.5）。
 //
 // 与 Python 版（scripts/shadow_verify_cpp.py）的口径逐项对齐：
-//   - 用例来源：内嵌 CPP_CASES + native/tests/cases/cpp/*.cpp（同名时目录版为准）；
+//   - 用例来源：内嵌 CPP_CASES + corpus/cpp/*.cpp（同名时目录版为准）；
 //   - Clang 侧：.shadow_cpp_tmp/ 自管工作目录、-std=c++14、编译失败重试 3 次、
 //     编译 30s / 运行 5s 超时；
 //   - Vitro 侧：capi 直调 + E-P1-5 结构化输出通道（禁文本清洗）+ ABI/产物新鲜度 fail fast；
@@ -48,7 +48,7 @@ var (
 	dllPath     = filepath.Join(nativeDir, "target", "release", "vitro_native.dll")
 	tmpDir      = filepath.Join(projectRoot, ".shadow_cpp_tmp")
 	reportPath  = filepath.Join(nativeDir, "tests", "shadow_verification", "reports", "cpp_shadow_report.json")
-	casesDir    = filepath.Join(nativeDir, "tests", "cases", "cpp")
+	casesDir    = filepath.Join(nativeDir, "corpus", "cpp")
 
 	clangPath  = "clang++"
 	workerN    = 16 // §13.1：78 个 clang++ 编译 jobs=16 实测最优（6.0x）

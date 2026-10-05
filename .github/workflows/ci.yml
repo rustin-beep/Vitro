@@ -643,10 +643,16 @@ jobs:
 
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用
-      - name: Install MoonBit toolchain (unix)
+      # 2026-10-05 修复：windows runner 上 unix.sh 报 Unsupported platform:
+      # MINGW64_NT-10.0-26100（runner 内核升级后 uname 形态被安装脚本拒绝；
+      # 此步未指定 shell 走 pwsh，curl|bash 撞平台检测）——改走 Windows 官方
+      # powershell 安装（与上方 differential anchors 步同款、shell 显式）
+      - name: Install MoonBit toolchain
+        shell: pwsh
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
       - name: MoonBit tests (three targets)
         run: |

@@ -45,15 +45,14 @@ type typeSpec struct {
 }
 
 type rulesDoc struct {
-	Schema            int        `json:"schema"`
-	SchemaVer         string     `json:"schema_version"`
-	FrozenAnchor      string     `json:"frozen_anchor"`
-	SchemaDoc         string     `json:"schema_doc"`
-	TypeSources       []string   `json:"type_sources"`
-	LegacyRustSources []string   `json:"legacy_rust_sources"` // 过渡对账源（Rust 退役时移除）
-	Types             []typeSpec `json:"types"`
-	OutTS             string     `json:"out_ts"`
-	OutMeta           string     `json:"out_meta"`
+	Schema       int        `json:"schema"`
+	SchemaVer    string     `json:"schema_version"`
+	FrozenAnchor string     `json:"frozen_anchor"`
+	SchemaDoc    string     `json:"schema_doc"`
+	TypeSources  []string   `json:"type_sources"`
+	Types        []typeSpec `json:"types"`
+	OutTS        string     `json:"out_ts"`
+	OutMeta      string     `json:"out_meta"`
 }
 
 func fatal(format string, args ...any) {
@@ -98,10 +97,10 @@ func mustRead(root, rel string) string {
 
 // ---------------------------------------------------------------- 类型解析
 //
-// S7 批四号权威源切换：生成源 = moonbit/protocol/types.mbt（MoonBit 结构
-// 体——protocol 包零依赖自持，是 Rust 退役后的存活真源）；Rust 解析器
-// 保留作**过渡对账源**（绞杀者纪律：Rust 冻结区作 diff oracle 直到退役，
-// legacy_rust_sources 字段与本段在 Rust 区整体删除时一并移除）。
+// 生成源 = moonbit/protocol/types.mbt（MoonBit 结构体——protocol 包
+// 零依赖自持）。原 Rust 过渡对账臂（parseRustTypes / legacyMismatch /
+// tsType + rules.legacy_rust_sources）已随 2026-10-05 工序④删区移除，
+// 对账收缩为双向：MoonBit 生成源 ↔ schema 文档。
 
 type rustField struct {
 	Name string
@@ -117,14 +116,6 @@ type rustType struct {
 }
 
 var (
-	reStructHead = regexp.MustCompile(`(?m)^\s*pub\s+struct\s+([A-Za-z_]\w*)`)
-	reEnumHead   = regexp.MustCompile(`(?m)^\s*pub\s+enum\s+([A-Za-z_]\w*)`)
-	// 行尾**允许注释**——否则 `pub access_type: String, // "Read" | "Write"`
-	// 这类带尾注的字段会被整行漏掉（实测踩过：AccessedVar 少一个字段，
-	// 闸门误报为「文档多列字段」——判据的假红／假绿都可能由此产生）。
-	reField   = regexp.MustCompile(`(?m)^\s*pub\s+([A-Za-z_]\w*)\s*:\s*(.+?),\s*(?://[^\n]*)?$`)
-	reVariant = regexp.MustCompile(`(?m)^\s*([A-Za-z_]\w*)\s*,?\s*$`)
-
 	// MoonBit 侧（生成源）：`pub(all) struct Name {` / `pub(all) enum Name {`；
 	// 字段行 `mut? name : Type`（mut 是存储细节非 wire 形态——剥离；行尾无
 	// 分隔符）；enum 变体行**带尾注**（`Valid // 指向有效内存…`——剥注释）。
@@ -156,73 +147,8 @@ func blockBody(src string, headEnd int) (string, bool) {
 	return "", false
 }
 
-func parseRustTypes(root string, files []string, want map[string]typeSpec) map[string]*rustType {
-	out := map[string]*rustType{}
-	for _, rel := range files {
-		src := mustRead(root, rel)
-		for name := range want {
-			if _, done := out[name]; done {
-				continue
-			}
-			var head *regexp.Regexp
-			kind := want[name].Kind
-			if kind == "struct" {
-				head = reStructHead
-			} else {
-				head = reEnumHead
-			}
-			loc := head.FindStringSubmatchIndex(src)
-			// 找的是**名为 name 的那个**定义，不是首个
-			for _, m := range head.FindAllStringSubmatchIndex(src, -1) {
-				if src[m[2]:m[3]] == name {
-					loc = m
-					break
-				} else {
-					loc = nil
-				}
-			}
-			if loc == nil {
-				continue
-			}
-			body, ok := blockBody(src, loc[1])
-			if !ok {
-				fatal("%s 的 %s 体定位失败（花括号不配对？）", rel, name)
-			}
-			rt := &rustType{Name: name, Kind: kind, Source: rel}
-			if kind == "struct" {
-				for _, f := range reField.FindAllStringSubmatch(body, -1) {
-					rt.Fields = append(rt.Fields, rustField{Name: f[1], Ty: strings.TrimSpace(f[2])})
-				}
-				if len(rt.Fields) == 0 {
-					fatal("%s 的 struct %s 解析出 0 字段——拒绝空转", rel, name)
-				}
-			} else {
-				for _, line := range strings.Split(body, "\n") {
-					t := strings.TrimSpace(line)
-					if t == "" || strings.HasPrefix(t, "//") || strings.HasPrefix(t, "#") {
-						continue
-					}
-					if m := reVariant.FindStringSubmatch(t); m != nil {
-						rt.Variants = append(rt.Variants, m[1])
-					}
-				}
-				if len(rt.Variants) == 0 {
-					fatal("%s 的 enum %s 解析出 0 变体——拒绝空转", rel, name)
-				}
-			}
-			out[name] = rt
-		}
-	}
-	for name := range want {
-		if _, ok := out[name]; !ok {
-			fatal("类型 %s 在 type_sources（%s）里找不到 pub 定义", name, strings.Join(files, ", "))
-		}
-	}
-	return out
-}
-
 // parseMoonbitTypes：从 MoonBit protocol 包源提取类型定义（生成源）。
-// 与 parseRustTypes 对称：head 定位（按名字找**名为 name 的那个**定义）
+// head 定位（按名字找**名为 name 的那个**定义）
 // → blockBody 花括号配对 → 字段/变体逐行提取；0 字段/0 变体 fail loud。
 func parseMoonbitTypes(root string, files []string, want map[string]typeSpec) map[string]*rustType {
 	out := map[string]*rustType{}
@@ -376,34 +302,6 @@ func tsTypeMB(rt string) string {
 	return s
 }
 
-// tsType：Rust 类型 → TS（过渡对账期保留——Rust 解析侧不再生成产物，
-// 仅当 legacy 对账需要类型级比较时使用；退役时随 Rust 段一并移除）。
-func tsType(rt string) string {
-	s := strings.TrimSpace(rt)
-	switch s {
-	case "i32", "i64", "u32", "u64", "f32", "f64", "usize", "isize", "i8", "u8", "i16", "u16":
-		return "number"
-	case "String", "&str":
-		return "string"
-	case "bool":
-		return "boolean"
-	}
-	if strings.HasPrefix(s, "Vec<") && strings.HasSuffix(s, ">") {
-		inner := tsType(s[4 : len(s)-1])
-		if strings.Contains(inner, " | ") {
-			return "(" + inner + ")[]"
-		}
-		return inner + "[]"
-	}
-	if strings.HasPrefix(s, "Option<") && strings.HasSuffix(s, ">") {
-		return tsType(s[7:len(s)-1]) + " | null"
-	}
-	if i := strings.LastIndex(s, "::"); i >= 0 {
-		s = s[i+2:]
-	}
-	return s
-}
-
 func genTS(rd rulesDoc, types map[string]*rustType) string {
 	var b strings.Builder
 	b.WriteString("// @generated by scripts/gen_protocol_ts —— 禁手改（git/diff 工具链按 @generated 识别）。\n")
@@ -489,8 +387,7 @@ func genMeta(rd rulesDoc, types map[string]*rustType) string {
 
 // ---------------------------------------------------------------- 主流程
 
-// loadAll：生成源 = MoonBit protocol 包；文档对账表同载。Rust 过渡
-// 对账源由 legacyTypes 单独加载（rulesDoc.LegacyRustSources）。
+// loadAll：生成源 = MoonBit protocol 包；文档对账表同载。
 func loadAll(root string, rd rulesDoc) (map[string]*rustType, map[string]map[string]bool) {
 	want := map[string]typeSpec{}
 	for _, t := range rd.Types {
@@ -543,61 +440,6 @@ func fieldSetMismatch(rd rulesDoc, types map[string]*rustType, docFields map[str
 		for _, n := range dnames {
 			if !rust[n] {
 				out = append(out, fmt.Sprintf("%s：文档列了 %s 而 Rust 无此字段", t.Name, n))
-			}
-		}
-	}
-	return out
-}
-
-// legacyMismatch：过渡期第三向——MoonBit 生成源 ↔ Rust oracle 字段集
-// （struct）/变体集（enum）双向对账。绞杀者纪律：Rust 冻结区作 diff
-// oracle 直到退役；两侧语法类型文本不同（Vec<T> vs Array[T]、Option<T>
-// vs T?）故只比名字集。Rust 区整体删除时本函数与解析器一并移除。
-func legacyMismatch(rd rulesDoc, mb, rust map[string]*rustType) []string {
-	var out []string
-	for _, spec := range rd.Types {
-		m, r := mb[spec.Name], rust[spec.Name]
-		if m == nil || r == nil {
-			out = append(out, fmt.Sprintf("%s：过渡对账缺位（mb=%v rust=%v）", spec.Name, m != nil, r != nil))
-			continue
-		}
-		if spec.Kind == "enum" {
-			ms := map[string]bool{}
-			for _, v := range m.Variants {
-				ms[v] = true
-			}
-			for _, v := range r.Variants {
-				if !ms[v] {
-					out = append(out, fmt.Sprintf("%s：Rust 有变体 %s 而 MoonBit 无", spec.Name, v))
-				}
-			}
-			rs := map[string]bool{}
-			for _, v := range r.Variants {
-				rs[v] = true
-			}
-			for _, v := range m.Variants {
-				if !rs[v] {
-					out = append(out, fmt.Sprintf("%s：MoonBit 有变体 %s 而 Rust 无", spec.Name, v))
-				}
-			}
-			continue
-		}
-		mf := map[string]bool{}
-		for _, f := range m.Fields {
-			mf[f.Name] = true
-		}
-		for _, f := range r.Fields {
-			if !mf[f.Name] {
-				out = append(out, fmt.Sprintf("%s：Rust 有字段 %s 而 MoonBit 无", spec.Name, f.Name))
-			}
-		}
-		rf := map[string]bool{}
-		for _, f := range r.Fields {
-			rf[f.Name] = true
-		}
-		for _, f := range m.Fields {
-			if !rf[f.Name] {
-				out = append(out, fmt.Sprintf("%s：MoonBit 有字段 %s 而 Rust 无", spec.Name, f.Name))
 			}
 		}
 	}
@@ -714,40 +556,16 @@ func selftest(root string, rd rulesDoc) int {
 		fmt.Println("gen_protocol_ts: selftest ok——文档多出字段被判红（反向对账生效）")
 	}
 
-	// ④ 过渡对账注入：MoonBit 侧删一字段 → legacy 对账必红（Rust 有 MoonBit 无）
-	if len(rd.LegacyRustSources) > 0 {
-		wantL := map[string]typeSpec{}
-		for _, tp := range rd.Types {
-			wantL[tp.Name] = tp
-		}
-		legacy := parseRustTypes(root, rd.LegacyRustSources, wantL)
-		mcp := map[string]*rustType{}
-		for k, v := range types {
-			nv := *v
-			nv.Fields = append([]rustField(nil), v.Fields...)
-			mcp[k] = &nv
-		}
-		if len(mcp[target].Fields) > 0 {
-			mcp[target].Fields = mcp[target].Fields[:len(mcp[target].Fields)-1]
-		}
-		if len(legacyMismatch(rd, mcp, legacy)) == 0 {
-			fmt.Println("gen_protocol_ts: selftest FAIL——MoonBit 删字段后过渡对账仍绿，oracle 防线失效")
-			failed++
-		} else {
-			fmt.Println("gen_protocol_ts: selftest ok——MoonBit 删字段被过渡对账判红（Rust oracle 防线生效）")
-		}
-	}
-
 	if failed > 0 {
 		return 1
 	}
-	fmt.Printf("gen_protocol_ts: selftest PASS——4 路注入全部判红（注入目标 %s）\n", target)
+	fmt.Printf("gen_protocol_ts: selftest PASS——3 路注入全部判红（注入目标 %s）\n", target)
 	return 0
 }
 
 func main() {
 	checkFlag := flag.Bool("check", false, "判定模式：磁盘产物 == 现场生成 + 字段集双向对账（CI 入口）")
-	selftestFlag := flag.Bool("selftest", false, "J9 证红：四路内存注入（含过渡对账）")
+	selftestFlag := flag.Bool("selftest", false, "J9 证红：三路内存注入")
 	flag.Parse()
 
 	root := repoRoot()
@@ -785,36 +603,18 @@ func main() {
 		}
 	}
 
-	// 过渡期第三向：MoonBit 生成源 ↔ Rust oracle（字段集/变体集双向）
-	var legMis []string
-	if len(rd.LegacyRustSources) > 0 {
-		wantL := map[string]typeSpec{}
-		for _, tp := range rd.Types {
-			wantL[tp.Name] = tp
-		}
-		legacy := parseRustTypes(root, rd.LegacyRustSources, wantL)
-		legMis = legacyMismatch(rd, types, legacy)
-		if len(legMis) == 0 {
-			fmt.Printf("  ok MoonBit ↔ Rust oracle（过渡对账，%d 文件）字段/变体集双向一致\n", len(rd.LegacyRustSources))
-		} else {
-			for _, m := range legMis {
-				fmt.Printf("  !! %s\n", m)
-			}
-		}
-	}
-
 	okTS := writeOrCheck(root, rd, rd.OutTS, ts, *checkFlag)
 	okMeta := writeOrCheck(root, rd, rd.OutMeta, meta, *checkFlag)
 	if !*checkFlag {
 		fmt.Printf("  ✓ 已写入 %s（%d 字节）与 %s（%d 字节）\n", rd.OutTS, len(ts), rd.OutMeta, len(meta))
 	}
 
-	if len(mis) > 0 || len(legMis) > 0 || !okTS || !okMeta {
+	if len(mis) > 0 || !okTS || !okMeta {
 		fmt.Println("gen_protocol_ts: FAIL——生成物或字段对账不一致")
 		os.Exit(1)
 	}
 	if *checkFlag {
-		fmt.Println("gen_protocol_ts: PASS——产物新鲜 + 三向对账一致（MoonBit ↔ 文档 ↔ Rust oracle 过渡期）")
+		fmt.Println("gen_protocol_ts: PASS——产物新鲜 + 双向对账一致（MoonBit 生成源 ↔ schema 文档）")
 	} else {
 		fmt.Println("gen_protocol_ts: 生成完成")
 	}

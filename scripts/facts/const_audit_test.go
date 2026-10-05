@@ -112,31 +112,22 @@ func TestConstAbiNoTruthNoVerdict(t *testing.T) {
 	}
 }
 
-func TestCollectAbiVersionReadsConst(t *testing.T) {
+func TestCollectAbiVersionRetired(t *testing.T) {
+	// 工序④删区（2026-10-05）：ABI 真值源（Rust first_batch.rs）随区删除，
+	// 采集器退役为固定 unavailable 形态——本测试锁退役契约本身（原
+	// TestCollectAbiVersionReadsConst 的常量读取断言随真值源退役失效）。
 	root := t.TempDir()
-	p := filepath.Join(root, "native", "src", "capi", "first_batch.rs")
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	src := "pub const VITRO_ABI_VERSION: &str = \"2.1.0\";\n"
-	if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	facts := map[string]Fact{}
 	collectAbiVersion(root, facts)
 	f, ok := facts["abi_version"]
-	if !ok || f.Status != "ok" || f.SValue != abiTruth {
-		t.Fatalf("采集失败: %+v", f)
+	if !ok {
+		t.Fatal("abi_version 键必须仍存在（退役形态）")
 	}
-
-	// 常量形态变更必须 fail loud（unavailable + how_to_get），禁止静默兜底
-	if err := os.WriteFile(p, []byte("pub const VITRO_ABI_VERSION: &str = \"x\";\n"), 0o644); err != nil {
-		t.Fatal(err)
+	if f.Status != "unavailable" || f.Value != nil || f.Source != "native/（已删除）" {
+		t.Fatalf("退役形态失约: %+v", f)
 	}
-	facts = map[string]Fact{}
-	collectAbiVersion(root, facts)
-	if facts["abi_version"].Status != "unavailable" {
-		t.Fatalf("常量解析失败必须 unavailable，得到 %+v", facts["abi_version"])
+	if f.HowToGet == "" {
+		t.Fatal("退役键必须带 how_to_get 指引（历史值取回路径）")
 	}
 }
 

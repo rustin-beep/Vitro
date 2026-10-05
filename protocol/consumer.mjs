@@ -4,7 +4,8 @@
 // 为什么它必须写出来：报告说「第一个消费者跑通之日，插件架构的所有开放问题
 // 都有了实证答案；跑不通，任何预建框架都是空中楼阁」。本脚本就是那个最小实证：
 // 用**生成的**协议面（`fields.mjs`，源自 `scripts/gen_protocol_ts`）去消费
-// **真实的**引擎输出（`vitro_cli serve` 的 step payload）。
+// **真实的**引擎输出（`cmd/serve` 的 step payload——MoonBit 侧同协议现役实现；
+// 原 Rust vitro_cli 形态已随 2026-10-05 删区退役）。
 //
 // 环境约束（实测）：本机有 node 但**无 npm / npx / tsc**，仓库零 TS 资产 ⇒
 // **无法验证「字段名写错在 tsc 编译期即红」**这一 TS 的核心收益。故本消费者
@@ -19,8 +20,8 @@
 //      故可在纯 node 下跑）。
 //
 // 用法（仓库根）：
-//   node protocol/consumer.mjs [vitro_cli 路径]
-//   缺省 exe = native/target/release/vitro_cli.exe
+//   node protocol/consumer.mjs [cmd/serve 路径]
+//   缺省 exe = moonbit/_build/native/release/build/cmd/serve/serve.exe
 //   --selftest  注入非法 payload，断言校验必报错（J9 形式）
 
 import { spawnSync } from 'node:child_process';
@@ -144,7 +145,7 @@ function fetchPayloads(exe) {
   }
   reqs.push(JSON.stringify({ id: 9999, method: 'shutdown' }));
 
-  const r = spawnSync(exe, ['serve'], { input: reqs.join('\n') + '\n', encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync(exe, { input: reqs.join('\n') + '\n', encoding: 'utf-8', maxBuffer: 256 * 1024 * 1024 });
   if (r.error) throw new Error(`serve 启动失败：${r.error.message}`);
   const lines = (r.stdout || '').split('\n').filter((l) => l.trim());
   const out = [];
@@ -173,7 +174,7 @@ function fetchPayloads(exe) {
 function main() {
   const argv = process.argv.slice(2);
   const selftest = argv.includes('--selftest');
-  const exe = argv.find((a) => !a.startsWith('--')) || 'native/target/release/vitro_cli.exe';
+  const exe = argv.find((a) => !a.startsWith('--')) || 'moonbit/_build/native/release/build/cmd/serve/serve.exe';
 
   if (selftest) {
     // J9：构造三类非法 payload，断言校验**必然**报错（否则判据是摆设）
@@ -208,13 +209,13 @@ function main() {
         console.log(`consumer: selftest ABORT——取真实 payload 失败：${e.message}`);
       }
     } else {
-      console.log(`consumer: selftest 跳过正向（找不到 ${exe}；先 cd native && cargo build --release）`);
+      console.log(`consumer: selftest 跳过正向（找不到 ${exe}；先 cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve）`);
     }
     process.exit(failed > 0 ? 1 : 0);
   }
 
   if (!existsSync(exe)) {
-    console.error(`consumer: 找不到引擎 ${exe}\n请先：cd native && cargo build --release --bin vitro_cli`);
+    console.error(`consumer: 找不到引擎 ${exe}\n请先：cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve`);
     process.exit(2);
   }
 

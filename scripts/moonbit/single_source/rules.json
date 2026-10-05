@@ -20,14 +20,13 @@
       "def_pattern": "fn compute_type_size\\b",
       "exclude_line_pattern": "&?self",
       "allowed_def_files": [
-        "native/crates/vitro_ast/src/lib.rs",
         "moonbit/ast/types_predicates.mbt"
       ],
       "_pattern_note": "\\b 使 compute_type_size_impl（两侧的递归实现）不匹配——它属于同一单源的内部实现，不是第二份真相。",
       "_exclude_note": "exclude_line_pattern 排掉**方法**定义行（含 self 者）。实测案例：`native/crates/vitro_typeck/src/context.rs:8` 有 `pub fn compute_type_size(&self, ty) -> i32`——语义上确是**委托**（方法体收集三张表后调 `vitro_ast::compute_type_size`，报告 §2.3 判定正确），但它与单源**同名**（报告未点出这一细节）。同名方法 vs 自由函数是真实的**可读性债**：读者/工具易误认为存在两份实现。本闸按『自由函数定义唯一』判定，该方法不计入；命名碰撞另行登记，待 S6/S9 重排时可考虑改名（如 `TypeChecker::type_size`）。",
-      "rust_source": "native/crates/vitro_ast/src/lib.rs",
+      "rust_source": "",
       "moonbit_source": "moonbit/ast/types_predicates.mbt",
-      "sync": "照搬不私改（人工同步；Rust 侧为冻结 oracle）",
+      "sync": "单侧单源（MoonBit 唯一实现）（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）",
       "consumers": [
         "native/crates/vitro_codegen/src/lib.rs",
         "native/crates/vitro_typeck/src/context.rs",
@@ -37,15 +36,16 @@
       ],
       "_consumers_note": "moonbit/parser/decl.mbt 是报告〔补遗 b〕点名的**第三消费点**（static_assert 的 sizeof 折叠）；其『查不到即回退 None』不属 §2.6 哨兵缺失对象，但单源清单必须收录，否则 C# 改尺寸语义时此处是盲点。",
       "anchor": "本闸（定义点文件集 == allowed_def_files）+ 报告 §2.3 实测",
-      "upstream_ref": "docs/current/07-质量与裁定/Vitro架构审阅报告v2.md §2.3 / C-03"
+      "upstream_ref": "docs/current/07-质量与裁定/Vitro架构审阅报告v2.md §2.3 / C-03",
+      "_retired_note": "原 allowed_def_files 含 native/crates/vitro_ast/src/lib.rs，随删区移除。"
     },
     {
       "id": "opcode_table",
       "concept": "字节码编号表（132 条 + 空号 44–49）",
       "kind": "registered",
-      "rust_source": "native/crates/vitro_runtime/src/opcode.rs",
+      "rust_source": "",
       "moonbit_source": "moonbit/opcode/opcode.mbt",
-      "sync": "照搬不重排（编号即契约，错一位即全线错）",
+      "sync": "单侧单源（MoonBit 唯一实现；编号即契约）（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）",
       "anchor": "opcode 包白盒定点锚（Nop=0 … LShrQ=137；0..255 全空间互逆）+ 空号实测入档"
     },
     {
@@ -79,29 +79,31 @@
       "id": "host_route",
       "concept": "Host 函数路由（110 常量 + PURE 短路表）",
       "kind": "registered",
-      "rust_source": "native/crates/vitro_runtime/src/host_func_id.rs",
+      "rust_source": "",
       "moonbit_source": "moonbit/bytecode/host_func_id_gen.mbt",
-      "sync": "**生成**（moonbit 侧 gen_host_route 产物，落款 sha + 内置 fmt，禁手改）",
+      "sync": "**生成**（moonbit 侧 gen_host_route 产物，落款 sha + 内置 fmt，禁手改）——输入已断源，host_func_id.rs 自 native-removal-baseline 冻结为生成器资产快照（2026-10-05）",
       "anchor": "`go run ./scripts/moonbit/gen_host_route -check`（三件套：落款 sha / fmt 内置 / 漂移红）",
-      "_move_note": "S6 建 vitro/engine/host 包时本表整体上提为 L7 单源，codegen 改 import（总计划 S5/S6 行已登记）。"
+      "_move_note": "S6 建 vitro/engine/host 包时本表整体上提为 L7 单源，codegen 改 import（总计划 S5/S6 行已登记）。",
+      "_retired_note": "（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）"
     },
     {
       "id": "bytecode_libc_index",
       "concept": "Bytecode Libc 固定索引（88 函数，索引自 1000 连续）",
       "kind": "registered",
-      "rust_source": "native/crates/vitro_runtime/src/bytecode_libc_index.rs",
+      "rust_source": "",
       "moonbit_source": "moonbit/bytecode/libc_index.mbt",
-      "sync": "**生成**（Rust 侧为 scripts/precompile_bytecode_libc 产物，源 = native/runtime_libc 的 C 源；moonbit 侧照搬为数组单源 + 索引派生）",
+      "sync": "**生成**（单源 = scripts/moonbit/libc_data/bytecode_libc_data.json → moonbit 侧数组单源 + 索引派生；precompile 已转冻结完整性闸）",
       "anchor": "bytecode 白盒锚（Rust 源 88 对硬编码对账，数组/派生规则漂移即红）+ `go run ./scripts/precompile_bytecode_libc --check`（source_digest）",
-      "_index_note": "索引值**不是稳定 ABI**（勘察 §8.2 三冻第三条：目录更名曾致整体 +1 漂移）——比对按『名字→索引』映射而非裸数值。"
+      "_index_note": "索引值**不是稳定 ABI**（勘察 §8.2 三冻第三条：目录更名曾致整体 +1 漂移）——比对按『名字→索引』映射而非裸数值。",
+      "_retired_note": "（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）"
     },
     {
       "id": "libc_release_set",
       "concept": "libc 放行名全集 + builtin 签名单表",
       "kind": "registered",
-      "rust_source": "native/crates/vitro_typeck/src/builtin/",
+      "rust_source": "",
       "moonbit_source": "moonbit/libc/libc.mbt",
-      "sync": "照搬不私改（人工；三表关系见 anchor）",
+      "sync": "单侧单源（moonbit/libc 表；三表关系由 libc_single_source 闸对账）（Rust 侧 2026-10-05 工序④删区退役——本条转 MoonBit 单侧单源，路径字段置空，历史孪生见 tag rust-oracle-freeze）",
       "anchor": "`go run ./scripts/moonbit/libc_single_source -check`（builtin_all == host ∪ bytecode − excluded；交集计数 + PURE 子集 + 空集不得绿）",
       "_gap_note": "计划原意『以 libc 表为单源**回填**下游两表』在分层约束下不可实现为派生（libc 在 L5、codegen/bytecode 在 L6，反向 import 非法）——只能实现为**对账**。派生待 S6 建 host 包时两表同层收敛。"
     },

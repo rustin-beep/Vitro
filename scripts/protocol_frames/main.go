@@ -311,19 +311,31 @@ func main() {
 	}
 	table = effective
 
-	// 收两臂帧
-	rust := startHost("rust", rustCli)
-	var rustFrames []string
-	for _, r := range table {
-		line, err := frameLine(rust.request(r))
-		if err != nil {
-			fatal("rust 臂帧处理失败（id=%d %s）: %v", r.id, r.method, err)
-		}
-		rustFrames = append(rustFrames, line)
+	// rust 臂（退役形态预置兑现，2026-10-05 删区批）：rustCli 不存在 =
+	// oracle 已删区退役 → MoonBit 单臂基线比；--diff-hosts（含 --audit-skips
+	// 强制互比）与 --update-baseline 依赖双臂/rust 侧真值，明示 fatal。
+	useRust := true
+	if _, err := os.Stat(rustCli); err != nil {
+		useRust = false
+		fmt.Println("[retired] rust 臂不可用（oracle 已删区退役）——MoonBit 单臂基线比")
 	}
-	rust.stop()
+	var rustFrames []string
+	if useRust {
+		rust := startHost("rust", rustCli)
+		for _, r := range table {
+			line, err := frameLine(rust.request(r))
+			if err != nil {
+				fatal("rust 臂帧处理失败（id=%d %s）: %v", r.id, r.method, err)
+			}
+			rustFrames = append(rustFrames, line)
+		}
+		rust.stop()
+	}
 
 	if *update {
+		if !useRust {
+			fatal("--update-baseline 需 rust 侧真值；oracle 已删区退役、基线已冻结——如需重建基线须人工裁定以哪臂为准")
+		}
 		if err := writeBaseline(rustFrames); err != nil {
 			fatal("写基线失败: %v", err)
 		}
@@ -345,6 +357,9 @@ func main() {
 	exit := 0
 
 	if *diffHosts {
+		if !useRust {
+			fatal("--diff-hosts（含 --audit-skips 强制互比）需双宿主；rust 臂已随删区退役——skip 帧审计改走 MoonBit 单臂基线比 + skip_methods 清单人工复核")
+		}
 		if len(rustFrames) != len(mbFrames) {
 			fatal("两臂帧数不等：rust=%d moonbit=%d", len(rustFrames), len(mbFrames))
 		}
@@ -360,18 +375,25 @@ func main() {
 		os.Exit(exit)
 	}
 
-	// 默认：基线冻结比对（两臂各自）
+	// 默认：基线冻结比对（moonbit 臂必在；rust 臂按退役形态可选）
 	base, err := readBaseline()
 	if err != nil {
 		fatal("读基线失败: %v", err)
 	}
-	if len(base) != len(rustFrames) {
-		fatal("基线帧数 %d ≠ 序列帧数 %d——序列已变更，须 --update-baseline 重建（人工评审令）", len(base), len(rustFrames))
+	if len(base) != len(mbFrames) {
+		fatal("基线帧数 %d ≠ 序列帧数 %d——序列已变更，须 --update-baseline 重建（人工评审令）", len(base), len(mbFrames))
 	}
-	for _, arm := range []struct {
+	arms := []struct {
 		name   string
 		frames []string
-	}{{"rust", rustFrames}, {"moonbit", mbFrames}} {
+	}{{"moonbit", mbFrames}}
+	if useRust {
+		arms = append([]struct {
+			name   string
+			frames []string
+		}{{"rust", rustFrames}}, arms...)
+	}
+	for _, arm := range arms {
 		if drifts := diffAgainstBase(arm.name, base, arm.frames, table); len(drifts) > 0 {
 			exit = 1
 			for _, d := range drifts {
@@ -380,7 +402,7 @@ func main() {
 		}
 	}
 	if exit == 0 {
-		fmt.Printf("基线冻结比对：双臂 × %d 帧全部一致\n", len(rustFrames))
+		fmt.Printf("基线冻结比对：%d 臂 × %d 帧全部一致\n", len(arms), len(mbFrames))
 	}
 	os.Exit(exit)
 }

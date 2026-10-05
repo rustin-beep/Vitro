@@ -38,7 +38,7 @@ func writeImgFixture(t *testing.T, lines ...string) AuditResult {
 // img 行 width=900（恰在 [400,900] 区间）：修复前判漂移，修复后豁免。
 func TestHTMLImgLineWidthExempt(t *testing.T) {
 	res := writeImgFixture(t,
-		`<img src="docs/current/04-标准库与防线/shadow-verification-flow.svg" alt="影子验证门禁流水线" width="900">`,
+		`<img src="docs/current/04-标准库与防线/clang-direct-gate-flow.svg" alt="Clang 直拍门禁流水线" width="900">`,
 	)
 	a := findAudit(res, "shadow_c_cases")
 	if a == nil {
@@ -55,7 +55,7 @@ func TestHTMLImgLineWidthExempt(t *testing.T) {
 // 豁免边界：同文件普通文本行的漂移数字必须仍红（豁免不得外溢到正文）。
 func TestTextLineNearImgStillAudited(t *testing.T) {
 	res := writeImgFixture(t,
-		`<img src="shadow-verification-flow.svg" alt="影子验证门禁流水线" width="900">`,
+		`<img src="clang-direct-gate-flow.svg" alt="Clang 直拍门禁流水线" width="900">`,
 		``,
 		`当前规模：C 侧 **700 个用例**（Clang 影子对照真值 676，此行必须红）`,
 	)

@@ -21,7 +21,7 @@
 // 三防线 known 真值源：
 //   - clang_direct：scripts/clang_direct/known_direct.json（JSON 直读，case 字段）
 //   - vm_diff：scripts/vm_diff/known_diffs.json（JSON 直读，case 字段）
-//   - shadow：**闸内清单**（下方 shadowKnown）——权威源 = native/AGENTS.md
+//   - shadow：**闸内清单**（下方 shadowKnown）——权威源 = 本清单（原 native/AGENTS.md 随 2026-10-05 删区退役后冻结于此）
 //     防线 1 记载的 known_issue 实跑清单 + scripts/shadow_verify/main.go
 //     knownFailureCases；shadow 侧 known 增删须同步本清单（双向监控义务，
 //     注释同 KNOWN_FAILURE_CASES 的 E2E 双向约定）。shadow 未把 known 外置

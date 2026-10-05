@@ -1,34 +1,42 @@
-// gen_diagnostics 从 Rust oracle 源生成 MoonBit vitro/engine/diagnostics
-// 包的数据层四件（A3 fix 载荷 / A4+A5 概念图 / A6 误区模式 / A7 学习路径）。
+// gen_diagnostics 生成 MoonBit vitro/engine/diagnostics 包的数据层四件
+// （A3 fix 载荷 / A4+A5 概念图 / A6 误区模式 / A7 学习路径）。
 //
-// 契约（同 gen_diag，S8 diagnostics 批 2026-10-02）：
-//   - 双产物：`*_gen.mbt`（包内装载，禁手改）+ scripts/moonbit/
-//     diagnostics_data/*.json（人审 / vendor 面——S8 计划「五张表外置
-//     JSON」的落盘形态；catalog.json 先行已由 gateway error_catalog
-//     导出通道达成，本脚本不重复）；
-//   - fail loud：任何解析失配 / 基线计数漂移 / 未知元组形态立即 exit 1，
+// #39 真值源迁移（2026-10-05）：输入已从 Rust 冻结区 .rs 翻转为
+// scripts/moonbit/diagnostics_data/ 四 JSON 单源（原为双产物输出面，
+// 现为真源——退役后修复批改文案的落笔处）。.rs 解析层保留为
+// **legacy 对账臂**（绞杀者纪律，gen_protocol_ts 先例）：
+//   - 结构性对账（非值级）：码位/条目 id/图骨架（边三元组）/映射键/
+//     error_codes/step_type 序列两侧必须一致；文案值不比——修复批
+//     （工序②后、工序④前的窗口）只改 JSON 值是合法演化，值级臂会
+//     挡住修复批正道（结构即 oracle 对拍防线依赖的骨架，值是呈现面）；
+//   - 冻结区四 .rs 全存在 → 对账；全不存在（工序④删区）→ 自动豁免；
+//     部分存在 → 红（异常形态，删区是一次性整目录操作）。
+//
+// 契约（同 gen_diag，S8 diagnostics 批 2026-10-02；2026-10-05 翻转沿用）：
+//   - fail loud：任何装载失配 / 基线计数漂移 / legacy 结构分叉立即 exit 1，
 //     禁静默 default；
-//   - 幂等：同源重复运行产物字节一致；四源文件（行尾归一）联合 sha256
-//     前 8 位随产物落款——源变则产物变，配合 -check 构成漂移防线；
+//   - 幂等：同源重复运行产物字节一致；四 JSON 文件（行尾归一）联合
+//     sha256 前 8 位随产物落款——JSON 变则产物变，-check 漂移防线
+//     语义不变；
 //   - 数据/机制分列（勘察 §2.0 A3 拆分判据）：generate_fix 的**动态五码**
 //     （1004/3035/3041/3050/3051——含坐标回搜 / 消息分支）不入表，
-//     由机制层 fix_gen.mbt 手写照搬；表只装纯静态载荷。动态码集合在
-//     提取期与白名单双向对账——源若增删动态码立即红。
+//     由机制层 fix_gen.mbt 手写照搬；表只装纯静态载荷。动态码集合
+//     在 JSON 侧与白名单双向对账——增删动态码立即红。
 //
 // 用法：
 //
 //	cd 仓库根 && go run ./scripts/moonbit/gen_diagnostics          # 生成 / 覆盖产物
 //	cd 仓库根 && go run ./scripts/moonbit/gen_diagnostics -check   # 校验产物未漂移
 //
-// 输入（Rust 冻结区，只读）：
-//   - native/src/diagnostics/error_catalog.rs（generate_fix 静态载荷）
-//   - native/src/diagnostics/knowledge_graph.rs
-//   - native/src/diagnostics/misconception_patterns.rs
-//   - native/src/diagnostics/learning_path.rs
+// 输入（真源，#39 迁出冻结区）：
+//   - scripts/moonbit/diagnostics_data/{fix_payloads,concepts,patterns,paths}.json
+//     （source_sha 字段为 2026-10-05 提取时的 .rs 指纹，冻结元数据不再更新）
+//
+// 过渡对账源（legacy 臂，Rust 冻结区只读，删区自动豁免）：
+//   - native/src/diagnostics/{error_catalog,knowledge_graph,misconception_patterns,learning_path}.rs
 //
 // 输出：
 //   - moonbit/diagnostics/{fix_payloads,concepts,patterns,paths}_gen.mbt
-//   - scripts/moonbit/diagnostics_data/{fix_payloads,concepts,patterns,paths}.json
 package main
 
 import (
@@ -118,71 +126,329 @@ func fatalf(format string, args ...any) {
 	os.Exit(1)
 }
 
+// ============ 装载：diagnostics_data/ JSON 真源（#39 翻转后输入） ============
+
+type fixDoc struct {
+	SourceSHA    string     `json:"source_sha"` // 提取时 .rs 指纹（冻结元数据，不参与判定）
+	Entries      []fixEntry `json:"entries"`
+	DynamicCodes []int      `json:"dynamic_codes"`
+}
+
+type conceptsDoc struct {
+	SourceSHA       string      `json:"source_sha"`
+	Nodes           []nodeEntry `json:"nodes"`
+	Edges           []edgeEntry `json:"edges"`
+	ErrorConceptMap []mapEntry  `json:"error_concept_map"`
+}
+
+type patternsDoc struct {
+	SourceSHA string         `json:"source_sha"`
+	Patterns  []patternEntry `json:"patterns"`
+}
+
+type pathsDoc struct {
+	SourceSHA string      `json:"source_sha"`
+	Paths     []pathEntry `json:"paths"`
+}
+
+func unmarshalDoc[T any](raw []byte, what string) T {
+	var d T
+	if err := json.Unmarshal(raw, &d); err != nil {
+		fatalf("%s 解析失败: %v", what, err)
+	}
+	return d
+}
+
+func loadFixDoc(raw []byte) ([]fixEntry, map[int]bool) {
+	d := unmarshalDoc[fixDoc](raw, "fix_payloads.json")
+	dynamic := make(map[int]bool, len(d.DynamicCodes))
+	for _, c := range d.DynamicCodes {
+		dynamic[c] = true
+	}
+	return d.Entries, dynamic
+}
+
+func loadConceptsDoc(raw []byte) ([]nodeEntry, []edgeEntry, []mapEntry) {
+	d := unmarshalDoc[conceptsDoc](raw, "concepts.json")
+	return d.Nodes, d.Edges, d.ErrorConceptMap
+}
+
+func loadPatternsDoc(raw []byte) []patternEntry {
+	return unmarshalDoc[patternsDoc](raw, "patterns.json").Patterns
+}
+
+func loadPathsDoc(raw []byte) []pathEntry {
+	return unmarshalDoc[pathsDoc](raw, "paths.json").Paths
+}
+
+// ============ legacy 对账臂（结构性，非值级——头注语义说明） ============
+
+// legacyReconcile：Rust 冻结区四 .rs 存在期间，其解析结果的**结构签名**必须
+// 与 JSON 真源一致。结构签名 = 码位/条目 id/边三元组/映射键值/引用面——
+// oracle 对拍防线依赖的骨架；文案值（suggestion/title/detail/…）不比，
+// 那是修复批在 JSON 侧的合法演化面。三态：全在→对账；全不在→豁免；
+// 部分在→红（异常形态——删区是一次性整目录操作，半删态只可能是事故）。
+func legacyReconcile(srcDir string, fixes []fixEntry, dynamic map[int]bool, nodes []nodeEntry, edges []edgeEntry, conceptMap []mapEntry, patterns []patternEntry, paths []pathEntry) {
+	legacyFiles := []string{"error_catalog.rs", "knowledge_graph.rs", "misconception_patterns.rs", "learning_path.rs"}
+	present := 0
+	for _, f := range legacyFiles {
+		if _, err := os.Stat(filepath.Join(srcDir, f)); err == nil {
+			present++
+		} else if !os.IsNotExist(err) {
+			fatalf("stat legacy 源 %s: %v", f, err)
+		}
+	}
+	switch present {
+	case 0:
+		fmt.Println("gen_diagnostics: legacy 源已删区（工序④），对账臂豁免")
+		return
+	case len(legacyFiles):
+		// 全在，走对账
+	default:
+		fatalf("legacy 源部分存在（%d/%d）——异常形态（删区应为一次性整目录），先排查再继续", present, len(legacyFiles))
+	}
+
+	var raws [][]byte
+	for _, f := range legacyFiles {
+		b, err := os.ReadFile(filepath.Join(srcDir, f))
+		if err != nil {
+			fatalf("读 legacy 源失败 %s: %v", f, err)
+		}
+		raws = append(raws, bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
+	}
+	lFixes, lDynamic := parseGenerateFix(string(raws[0]))
+	lNodes, lEdges, lMap := parseKnowledgeGraph(string(raws[1]))
+	lPatterns := parseMisconception(string(raws[2]))
+	lPaths := parseLearningPath(string(raws[3]))
+
+	var diffs []string
+	// fix 面：静态码位集合 + 动态码集合
+	if d := cmpIntSets("静态码位", fixCodes(fixes), fixCodes(lFixes)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpIntSets("动态码位", boolKeys(dynamic), boolKeys(lDynamic)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	// 概念图骨架：节点 id / 边三元组 / 映射键+值
+	if d := cmpStrSets("概念节点 id", nodeIDs(nodes), nodeIDs(lNodes)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpStrSets("概念边三元组", edgeSigs(edges), edgeSigs(lEdges)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpStrSets("错误码→概念映射", mapSigs(conceptMap), mapSigs(lMap)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpStrSets("节点卡片引用", cardRefs(nodes), cardRefs(lNodes)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	// 误区模式骨架：id + error_codes
+	if d := cmpStrSets("误区模式 id", patternIDs(patterns), patternIDs(lPatterns)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpStrSets("误区模式码位", patternCodes(patterns), patternCodes(lPatterns)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	// 学习路径骨架：id + step_type 序列
+	if d := cmpStrSets("路径 id", pathIDs(paths), pathIDs(lPaths)); d != nil {
+		diffs = append(diffs, d...)
+	}
+	if d := cmpStrSets("路径步骤序列", pathStepSigs(paths), pathStepSigs(lPaths)); d != nil {
+		diffs = append(diffs, d...)
+	}
+
+	if len(diffs) > 0 {
+		fmt.Fprintln(os.Stderr, "gen_diagnostics: FAIL: legacy 结构对账红（JSON 真源与 Rust oracle 骨架分叉）：")
+		for _, d := range diffs {
+			fmt.Fprintln(os.Stderr, "  - "+d)
+		}
+		fmt.Fprintln(os.Stderr, "处置：结构性变更须两侧同改（.rs 属防线维护）或确认后移除 legacy 臂；纯文案改动不应触发本红")
+		os.Exit(1)
+	}
+	fmt.Printf("gen_diagnostics: legacy 结构对账 OK（Rust oracle %d 文件骨架一致，删区后自动豁免）\n", len(legacyFiles))
+}
+
+// ---- 结构签名提取（两侧同函数，输出可排序字符串集） ----
+
+func fixCodes(fixes []fixEntry) []string {
+	out := make([]string, len(fixes))
+	for i, e := range fixes {
+		out[i] = strconv.Itoa(e.Code)
+	}
+	return out
+}
+
+func boolKeys(m map[int]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, strconv.Itoa(k))
+	}
+	return out
+}
+
+func nodeIDs(nodes []nodeEntry) []string {
+	out := make([]string, len(nodes))
+	for i, n := range nodes {
+		out[i] = n.ID
+	}
+	return out
+}
+
+func edgeSigs(edges []edgeEntry) []string {
+	out := make([]string, len(edges))
+	for i, e := range edges {
+		out[i] = e.From + " ->" + e.To + " [" + e.Relation + "]"
+	}
+	return out
+}
+
+func mapSigs(m []mapEntry) []string {
+	out := make([]string, len(m))
+	for i, me := range m {
+		cs := append([]string(nil), me.Concept...)
+		sort.Strings(cs)
+		out[i] = strconv.Itoa(me.Code) + ":" + strings.Join(cs, ",")
+	}
+	return out
+}
+
+func cardRefs(nodes []nodeEntry) []string {
+	var out []string
+	for _, n := range nodes {
+		for _, c := range n.RelatedCardIDs {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func patternIDs(ps []patternEntry) []string {
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.ID
+	}
+	return out
+}
+
+func patternCodes(ps []patternEntry) []string {
+	var out []string
+	for _, p := range ps {
+		out = append(out, p.ID+"="+strconv.Itoa(len(p.ErrorCodes)))
+		for _, c := range p.ErrorCodes {
+			out = append(out, p.ID+":"+strconv.Itoa(c))
+		}
+	}
+	return out
+}
+
+func pathIDs(ps []pathEntry) []string {
+	out := make([]string, len(ps))
+	for i, p := range ps {
+		out[i] = p.ID
+	}
+	return out
+}
+
+func pathStepSigs(ps []pathEntry) []string {
+	var out []string
+	for _, p := range ps {
+		var steps []string
+		for _, s := range p.Steps {
+			steps = append(steps, s.StepType)
+		}
+		out = append(out, p.ID+"="+strings.Join(steps, ">"))
+	}
+	return out
+}
+
+// ---- 集合比对（双侧排序后逐位；返回 nil = 一致） ----
+
+func cmpStrSets(what string, a, b []string) []string {
+	as := append([]string(nil), a...)
+	bs := append([]string(nil), b...)
+	sort.Strings(as)
+	sort.Strings(bs)
+	if len(as) != len(bs) {
+		return []string{fmt.Sprintf("%s：条数 %d ≠ %d", what, len(as), len(bs))}
+	}
+	for i := range as {
+		if as[i] != bs[i] {
+			return []string{fmt.Sprintf("%s：JSON[%q] ↔ legacy[%q]（首个分叉，后续省略）", what, as[i], bs[i])}
+		}
+	}
+	return nil
+}
+
+func cmpIntSets(what string, a, b []string) []string { return cmpStrSets(what, a, b) }
+
 func main() {
 	if err := os.Chdir("moonbit"); err != nil {
 		fmt.Fprintf(os.Stderr, "须在仓库根运行（找不到 moonbit/）: %v\n", err)
 		os.Exit(2)
 	}
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
-	srcDir := flag.String("src", "../native/src/diagnostics", "Rust 源目录")
+	jsonDir := flag.String("json", "../scripts/moonbit/diagnostics_data", "JSON 真源目录（#39 迁出冻结区）")
 	outDir := flag.String("out", "diagnostics", ".mbt 输出目录")
-	jsonDir := flag.String("json", "../scripts/moonbit/diagnostics_data", "JSON 输出目录")
+	legacyDir := flag.String("legacy-src", "../native/src/diagnostics", "legacy 对账源目录（Rust 冻结区，删区自动豁免）")
 	flag.Parse()
 
-	sources := []string{"error_catalog.rs", "knowledge_graph.rs", "misconception_patterns.rs", "learning_path.rs"}
-	var raws [][]byte
+	// ---- ① 装载 JSON 真源（固定顺序参与联合 sha——顺序变更即产物落款变更） ----
+	jsonFiles := []string{"fix_payloads.json", "concepts.json", "patterns.json", "paths.json"}
+	var jsonRaws [][]byte
 	h := sha256.New()
-	for _, f := range sources {
-		b, err := os.ReadFile(filepath.Join(*srcDir, f))
+	for _, f := range jsonFiles {
+		b, err := os.ReadFile(filepath.Join(*jsonDir, f))
 		if err != nil {
-			fatalf("读源失败 %s: %v", f, err)
+			fatalf("读 JSON 真源失败 %s: %v", f, err)
 		}
 		b = bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n"))
-		raws = append(raws, b)
+		jsonRaws = append(jsonRaws, b)
 		h.Write(b)
 	}
 	srcHash := fmt.Sprintf("%x", h.Sum(nil))[:8]
 
-	fixes, dynamic := parseGenerateFix(string(raws[0]))
+	fixes, dynamic := loadFixDoc(jsonRaws[0])
+	nodes, edges, conceptMap := loadConceptsDoc(jsonRaws[1])
+	patterns := loadPatternsDoc(jsonRaws[2])
+	paths := loadPathsDoc(jsonRaws[3])
+
+	// ---- ② 基线校验（数据面守恒——JSON 侧同受基线闸约束） ----
 	if len(fixes) != expectedStaticCodes {
-		fatalf("静态载荷码数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedStaticCodes 并登记差异", len(fixes), expectedStaticCodes)
+		fatalf("静态载荷码数 %d ≠ 基线 %d——JSON 真源已变更，请人工核对后更新 expectedStaticCodes 并登记差异", len(fixes), expectedStaticCodes)
 	}
 	if len(dynamic) != len(dynamicCodeWhitelist) {
-		fatalf("动态码集合 %v 与白名单基数 %d 不符——generate_fix 新增/减少了机制码", dynamic, len(dynamicCodeWhitelist))
+		fatalf("动态码集合 %v 与白名单基数 %d 不符——JSON 真源新增/减少了机制码", dynamic, len(dynamicCodeWhitelist))
 	}
 	for c := range dynamic {
 		if !dynamicCodeWhitelist[c] {
 			fatalf("码 %d 不在动态白名单 {1004,3035,3041,3050,3051}——新形态臂出现，请先裁定其数据/机制归属", c)
 		}
 	}
-
-	nodes, edges, conceptMap := parseKnowledgeGraph(string(raws[1]))
 	if len(nodes) != expectedNodes || len(edges) != expectedEdges || len(conceptMap) != expectedMapEntries {
 		fatalf("概念图基线漂移：nodes %d/%d edges %d/%d map %d/%d", len(nodes), expectedNodes, len(edges), expectedEdges, len(conceptMap), expectedMapEntries)
 	}
-
-	patterns := parseMisconception(string(raws[2]))
 	if len(patterns) != expectedPatterns {
 		fatalf("误区模式数 %d ≠ 基线 %d", len(patterns), expectedPatterns)
 	}
-
-	paths := parseLearningPath(string(raws[3]))
 	if len(paths) != expectedPaths {
 		fatalf("学习路径数 %d ≠ 基线 %d", len(paths), expectedPaths)
 	}
 
+	// ---- ③ 渲染 .mbt 产物 ----
 	writeProducts(*outDir, map[string]string{
 		"fix_payloads_gen.mbt": renderFixPayloads(fixes, dynamic, srcHash),
 		"concepts_gen.mbt":     renderConcepts(nodes, edges, conceptMap, srcHash),
 		"patterns_gen.mbt":     renderPatterns(patterns, srcHash),
 		"paths_gen.mbt":        renderPaths(paths, srcHash),
 	}, *check)
-	writeJSON(*jsonDir, srcHash, fixes, dynamic, nodes, edges, conceptMap, patterns, paths, *check)
+
+	// ---- ④ legacy 对账臂（结构性；.rs 全在才对账，全不在豁免） ----
+	legacyReconcile(*legacyDir, fixes, dynamic, nodes, edges, conceptMap, patterns, paths)
 
 	if *check {
-		fmt.Println("gen_diagnostics: check OK（.mbt 4 件 + JSON 4 件未漂移）")
+		fmt.Println("gen_diagnostics: check OK（.mbt 4 件未漂移）")
 	} else {
-		fmt.Println("gen_diagnostics: 生成完成（.mbt 4 + JSON 4）")
+		fmt.Println("gen_diagnostics: 生成完成（.mbt 4）")
 	}
 }
 
@@ -865,8 +1131,8 @@ func escapeMbt(s string) string {
 }
 
 const genBanner = "// @generated by scripts/moonbit/gen_diagnostics —— 禁手改（git/diff 工具链按 @generated 识别；再生成：cd 仓库根 && go run ./scripts/moonbit/gen_diagnostics）。\n" +
-	"// 源：native/src/diagnostics/{error_catalog,knowledge_graph,misconception_patterns,learning_path}.rs（四源联合 sha256/%s，行尾归一）\n" +
-	"// 人审 / vendor 面：scripts/moonbit/diagnostics_data/ 同名 JSON（与 .mbt 同源渲染）。\n"
+	"// 源：scripts/moonbit/diagnostics_data/ 四 JSON 真源（#39 迁出冻结区 2026-10-05；联合 sha256/%s，行尾归一）。\n" +
+	"// legacy：Rust oracle 四 .rs 结构对账至工序④删区（值级文案为修复批合法演化面，不比）。\n"
 
 func renderFixPayloads(fixes []fixEntry, dynamic map[int]bool, srcHash string) string {
 	var b strings.Builder
@@ -1033,84 +1299,6 @@ func writeProducts(dir string, products map[string]string, check bool) {
 	if len(drifted) > 0 {
 		restoreItems(items)
 		fatalf("-check: 产物漂移 %s——源已变更未再生成（cd 仓库根 && go run ./scripts/moonbit/gen_diagnostics）", strings.Join(drifted, ", "))
-	}
-}
-
-// writeJSON 落 JSON 产物（稳定序列化：字段序 = struct 声明序，无 HTML 转义）。
-func writeJSON(dir, srcHash string, fixes []fixEntry, dynamic map[int]bool, nodes []nodeEntry, edges []edgeEntry, conceptMap []mapEntry, patterns []patternEntry, paths []pathEntry, check bool) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		fatalf("建目录失败 %s: %v", dir, err)
-	}
-	dyn := make([]int, 0, len(dynamic))
-	for c := range dynamic {
-		dyn = append(dyn, c)
-	}
-	sort.Ints(dyn)
-	docs := map[string]any{
-		"fix_payloads.json": map[string]any{
-			"source_sha": srcHash, "entries": fixes, "dynamic_codes": dyn,
-		},
-		"concepts.json": map[string]any{
-			"source_sha": srcHash, "nodes": nodes, "edges": edges, "error_concept_map": conceptMap,
-		},
-		"patterns.json": map[string]any{
-			"source_sha": srcHash, "patterns": patterns,
-		},
-		"paths.json": map[string]any{
-			"source_sha": srcHash, "paths": paths,
-		},
-	}
-	names := make([]string, 0, len(docs))
-	for n := range docs {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	// 读旧/写新两阶段分离（F5 同族修复：交错形态下读失败早退会留污染）
-	serialized := make(map[string][]byte, len(names))
-	var items []productItem
-	for _, n := range names {
-		var buf bytes.Buffer
-		enc := json.NewEncoder(&buf)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(docs[n]); err != nil {
-			fatalf("JSON 序列化失败 %s: %v", n, err)
-		}
-		serialized[n] = buf.Bytes()
-		path := filepath.Join(dir, n)
-		var cur []byte
-		if check {
-			var err error
-			cur, err = os.ReadFile(path)
-			if err != nil {
-				fatalf("-check: 读 JSON 失败 %s: %v", path, err)
-			}
-		}
-		items = append(items, productItem{path, cur})
-	}
-	for k, it := range items {
-		if err := os.WriteFile(it.path, serialized[names[k]], 0o644); err != nil {
-			restoreItems(items)
-			fatalf("写 JSON 失败 %s: %v", it.path, err)
-		}
-	}
-	if !check {
-		return
-	}
-	var drifted []string
-	for _, it := range items {
-		now, _ := os.ReadFile(it.path)
-		if !bytes.Equal(bytes.ReplaceAll(now, []byte{13, 10}, []byte{10}), bytes.ReplaceAll(it.cur, []byte{13, 10}, []byte{10})) {
-			drifted = append(drifted, it.path)
-		}
-	}
-	if len(drifted) > 0 {
-		for _, it := range items {
-			if len(it.cur) > 0 {
-				_ = os.WriteFile(it.path, it.cur, 0o644)
-			}
-		}
-		fatalf("-check: JSON 产物漂移 %s", strings.Join(drifted, ", "))
 	}
 }
 

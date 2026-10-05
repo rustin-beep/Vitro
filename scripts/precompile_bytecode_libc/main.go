@@ -7,7 +7,12 @@ package main
 //  2. go run ./scripts/precompile_bytecode_libc
 //  3. git add native/crates/vitro_vm/src/bytecode_libc_data.json
 //     native/crates/vitro_runtime/src/bytecode_libc_index.rs
+//     scripts/moonbit/libc_data/bytecode_libc_data.json  (#39 镜像，双写)
 //  4. git commit
+//
+// #39 真值源迁移（2026-10-05）：JSON 产物双写——旧份（Rust include_str!
+// 活到工序④删区）+ scripts/moonbit/libc_data/ 镜像（MoonBit 生成链真源，
+// gen_libc_data 只读镜像；两份一致由 gen_libc_data 过渡对账臂锁住）。
 //
 // CI 检查：go run ./scripts/precompile_bytecode_libc --check
 //
@@ -50,6 +55,11 @@ var (
 	srcDirs    = []string{filepath.Join(nativeDir, "runtime_libc", "src"), filepath.Join(nativeDir, "runtime_libc", "vitro")}
 	outputJSON = filepath.Join(nativeDir, "crates", "vitro_vm", "src", "bytecode_libc_data.json")
 	outputRS   = filepath.Join(nativeDir, "crates", "vitro_runtime", "src", "bytecode_libc_index.rs")
+	// mirrorJSON：#39 真值源迁移（2026-10-05）——MoonBit 生成链
+	// (gen_libc_data) 的源已迁出冻结区，本脚本过渡期双写：旧份供 Rust
+	// include_str! 活到工序④删区，mirror 为脱钩后唯一真源。两份字节一致
+	// 由 gen_libc_data 的过渡对账臂另行锁住。
+	mirrorJSON = filepath.Join(root, "scripts", "moonbit", "libc_data", "bytecode_libc_data.json")
 	layoutJSON = filepath.Join(nativeDir, "crates", "vitro_cpp_frontend", "src", "builtin_layout_data.json")
 	vitroDir   = filepath.Join(nativeDir, "runtime_libc", "vitro")
 )
@@ -411,10 +421,16 @@ func writeOutputs(data map[string]any) {
 	}
 	// Python json.dump 不写尾换行；Encoder.Encode 会追加——剥掉后再做行尾展开。
 	out := strings.TrimSuffix(buf.String(), "\n")
-	if err := os.WriteFile(outputJSON, []byte(strings.ReplaceAll(out, "\n", "\r\n")), 0o644); err != nil {
+	jsonBytes := []byte(strings.ReplaceAll(out, "\n", "\r\n"))
+	if err := os.WriteFile(outputJSON, jsonBytes, 0o644); err != nil {
 		capi.Fatal("写产物失败: %v", err)
 	}
 	fmt.Printf("Written: %s\n", outputJSON)
+	// #39 过渡期双写：mirror 与旧份同字节（gen_libc_data 过渡对账臂锁一致）。
+	if err := os.WriteFile(mirrorJSON, jsonBytes, 0o644); err != nil {
+		capi.Fatal("写镜像产物失败: %v", err)
+	}
+	fmt.Printf("Written: %s\n", mirrorJSON)
 
 	rs := generateIndexRS(data)
 	if err := os.WriteFile(outputRS, []byte(strings.ReplaceAll(rs, "\n", "\r\n")), 0o644); err != nil {
@@ -425,7 +441,7 @@ func writeOutputs(data map[string]any) {
 
 // checkUpToDate 检查预编译产物是否与 runtime_libc 源码同步（digest 判定）。
 func checkUpToDate() bool {
-	for _, path := range []string{outputJSON, outputRS} {
+	for _, path := range []string{outputJSON, outputRS, mirrorJSON} {
 		if _, err := os.Stat(path); err != nil {
 			rel, _ := filepath.Rel(root, path)
 			fmt.Printf("  missing artifact: %s\n", filepath.ToSlash(rel))
@@ -435,6 +451,17 @@ func checkUpToDate() bool {
 	raw, err := os.ReadFile(outputJSON)
 	if err != nil {
 		fmt.Printf("  unreadable artifact: %v\n", err)
+		return false
+	}
+	// #39 双写一致性：mirror 与旧份必须逐字节一致（漏跑旧版本脚本只写了
+	// 单份的形态在此拦截）。
+	mirrorRaw, err := os.ReadFile(mirrorJSON)
+	if err != nil {
+		fmt.Printf("  unreadable mirror artifact: %v\n", err)
+		return false
+	}
+	if !bytes.Equal(raw, mirrorRaw) {
+		fmt.Println("  mirror drift: scripts/moonbit/libc_data/bytecode_libc_data.json != native 旧份")
 		return false
 	}
 	var probe map[string]any

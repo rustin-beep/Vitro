@@ -1,0 +1,553 @@
+{
+  "source_sha": "bfc9a567",
+  "arms": [
+    {
+      "name": "Unknown",
+      "code": 0
+    },
+    {
+      "name": "E1001_UnknownChar",
+      "code": 1001
+    },
+    {
+      "name": "E1002_UnterminatedString",
+      "code": 1002
+    },
+    {
+      "name": "E1003_StringCrossLine",
+      "code": 1003
+    },
+    {
+      "name": "E1004_UnsupportedOp",
+      "code": 1004
+    },
+    {
+      "name": "E1005_InvalidDefine",
+      "code": 1005
+    },
+    {
+      "name": "E1006_UnsupportedFeature",
+      "code": 1006
+    },
+    {
+      "name": "E1007_ComplexDeclarator",
+      "code": 1007
+    },
+    {
+      "name": "E1010_UnterminatedComment",
+      "code": 1010
+    },
+    {
+      "name": "E1011_UnmatchedConditional",
+      "code": 1011
+    },
+    {
+      "name": "E1012_DuplicateElse",
+      "code": 1012
+    },
+    {
+      "name": "E1013_UnclosedConditional",
+      "code": 1013
+    },
+    {
+      "name": "E1014_CondExprError",
+      "code": 1014
+    },
+    {
+      "name": "E1015_IncludeCycle",
+      "code": 1015
+    },
+    {
+      "name": "E1016_TokenPasteInvalid",
+      "code": 1016
+    },
+    {
+      "name": "E1017_ExpandDepthExceeded",
+      "code": 1017
+    },
+    {
+      "name": "W1018_MacroShadowing",
+      "code": 1018
+    },
+    {
+      "name": "W1019_MacroArgSideEffect",
+      "code": 1019
+    },
+    {
+      "name": "E1020_StaticAssertFailed",
+      "code": 1020
+    },
+    {
+      "name": "E1021_IncludeNotFound",
+      "code": 1021
+    },
+    {
+      "name": "E1022_TemplateInstantiationLimit",
+      "code": 1022
+    },
+    {
+      "name": "E2001_ExpectedType",
+      "code": 2001
+    },
+    {
+      "name": "E2002_ExpectedArraySize",
+      "code": 2002
+    },
+    {
+      "name": "E2003_ExpectedExpr",
+      "code": 2003
+    },
+    {
+      "name": "E2004_ExpectedCaseOrDefault",
+      "code": 2004
+    },
+    {
+      "name": "E2005_ExpectedSemicolon",
+      "code": 2005
+    },
+    {
+      "name": "E2006_ExpectedClosingBrace",
+      "code": 2006
+    },
+    {
+      "name": "E2007_ExpectedClosingParen",
+      "code": 2007
+    },
+    {
+      "name": "E2008_ExpectedClosingBracket",
+      "code": 2008
+    },
+    {
+      "name": "E3001_VarRedeclared",
+      "code": 3001
+    },
+    {
+      "name": "E3002_StructRedeclared",
+      "code": 3002
+    },
+    {
+      "name": "E3003_FuncRedeclared",
+      "code": 3003
+    },
+    {
+      "name": "E3004_TypeMismatch",
+      "code": 3004
+    },
+    {
+      "name": "E3005_ArrayInitTooMany",
+      "code": 3005
+    },
+    {
+      "name": "E3006_ArrayInitTypeMismatch",
+      "code": 3006
+    },
+    {
+      "name": "E3007_StringInitNonCharArray",
+      "code": 3007
+    },
+    {
+      "name": "E3008_StringTooLong",
+      "code": 3008
+    },
+    {
+      "name": "E3009_InvalidArrayInit",
+      "code": 3009
+    },
+    {
+      "name": "E3010_BreakOutsideLoop",
+      "code": 3010
+    },
+    {
+      "name": "E3011_ContinueOutsideLoop",
+      "code": 3011
+    },
+    {
+      "name": "E3012_VoidFuncReturnValue",
+      "code": 3012
+    },
+    {
+      "name": "E3013_MissingReturnValue",
+      "code": 3013
+    },
+    {
+      "name": "E3014_ReturnTypeMismatch",
+      "code": 3014
+    },
+    {
+      "name": "E3015_InvalidCondition",
+      "code": 3015
+    },
+    {
+      "name": "E3016_ArithmeticTypeError",
+      "code": 3016
+    },
+    {
+      "name": "E3017_ComparisonTypeError",
+      "code": 3017
+    },
+    {
+      "name": "E3018_RelationTypeError",
+      "code": 3018
+    },
+    {
+      "name": "E3019_LogicTypeError",
+      "code": 3019
+    },
+    {
+      "name": "E3020_UnaryTypeError",
+      "code": 3020
+    },
+    {
+      "name": "E3021_DerefNonPointer",
+      "code": 3021
+    },
+    {
+      "name": "E3022_IncDecTypeError",
+      "code": 3022
+    },
+    {
+      "name": "E3023_UndeclaredVar",
+      "code": 3023
+    },
+    {
+      "name": "E3024_MallocArgCount",
+      "code": 3024
+    },
+    {
+      "name": "E3025_MallocArgType",
+      "code": 3025
+    },
+    {
+      "name": "E3026_FreeArgCount",
+      "code": 3026
+    },
+    {
+      "name": "E3027_FreeArgType",
+      "code": 3027
+    },
+    {
+      "name": "E3028_BuiltInArgCount",
+      "code": 3028
+    },
+    {
+      "name": "E3029_BuiltInArgType",
+      "code": 3029
+    },
+    {
+      "name": "E3030_PrintfArgCount",
+      "code": 3030
+    },
+    {
+      "name": "E3031_PrintfFirstArg",
+      "code": 3031
+    },
+    {
+      "name": "E3032_PrintfArgType",
+      "code": 3032
+    },
+    {
+      "name": "E3033_ScanfArgCount",
+      "code": 3033
+    },
+    {
+      "name": "E3034_ScanfFirstArg",
+      "code": 3034
+    },
+    {
+      "name": "E3035_ScanfArgType",
+      "code": 3035
+    },
+    {
+      "name": "E3036_UndefinedFunc",
+      "code": 3036
+    },
+    {
+      "name": "E3037_FuncArgCount",
+      "code": 3037
+    },
+    {
+      "name": "E3038_FuncArgType",
+      "code": 3038
+    },
+    {
+      "name": "E3039_ArrayIndexType",
+      "code": 3039
+    },
+    {
+      "name": "E3040_IndexNonArray",
+      "code": 3040
+    },
+    {
+      "name": "E3041_MemberNonStruct",
+      "code": 3041
+    },
+    {
+      "name": "E3042_UnknownMember",
+      "code": 3042
+    },
+    {
+      "name": "E3043_AssignToRValue",
+      "code": 3043
+    },
+    {
+      "name": "E3044_AssignTypeMismatch",
+      "code": 3044
+    },
+    {
+      "name": "E3045_CompoundAssignType",
+      "code": 3045
+    },
+    {
+      "name": "E3046_SwitchCondType",
+      "code": 3046
+    },
+    {
+      "name": "E3047_CaseNotConstant",
+      "code": 3047
+    },
+    {
+      "name": "E3048_BitOpTypeError",
+      "code": 3048
+    },
+    {
+      "name": "E3049_AssignToConst",
+      "code": 3049
+    },
+    {
+      "name": "W3050_AssignInCondition",
+      "code": 3050
+    },
+    {
+      "name": "W3051_ArrayBoundOffByOne",
+      "code": 3051
+    },
+    {
+      "name": "W3052_ArrayToPointerDecay",
+      "code": 3052
+    },
+    {
+      "name": "W3053_ImplicitScalarConversion",
+      "code": 3053
+    },
+    {
+      "name": "W3054_IntToPointerCast",
+      "code": 3054
+    },
+    {
+      "name": "W3055_VoidPointerCast",
+      "code": 3055
+    },
+    {
+      "name": "W3056_UnsignedToInt",
+      "code": 3056
+    },
+    {
+      "name": "H3057_ImplicitConversionHint",
+      "code": 3057
+    },
+    {
+      "name": "E3058_StaticFuncAccess",
+      "code": 3058
+    },
+    {
+      "name": "E3059_StaticGlobalAccess",
+      "code": 3059
+    },
+    {
+      "name": "E3060_UseAfterFree",
+      "code": 3060
+    },
+    {
+      "name": "E3061_DoubleFree",
+      "code": 3061
+    },
+    {
+      "name": "E3062_PrintfFormatMismatch",
+      "code": 3062
+    },
+    {
+      "name": "E3063_ScanfFormatMismatch",
+      "code": 3063
+    },
+    {
+      "name": "W3064_DoublePointerCast",
+      "code": 3064
+    },
+    {
+      "name": "E3065_ConstViolation",
+      "code": 3065
+    },
+    {
+      "name": "E3066_CallNonFunction",
+      "code": 3066
+    },
+    {
+      "name": "W3067_PointerTypeMismatch",
+      "code": 3067
+    },
+    {
+      "name": "E3070_BufferOverflow",
+      "code": 3070
+    },
+    {
+      "name": "E3071_UndefinedLabel",
+      "code": 3071
+    },
+    {
+      "name": "E3072_StructSelfContain",
+      "code": 3072
+    },
+    {
+      "name": "E4001_ExceptionNotSupported",
+      "code": 4001
+    },
+    {
+      "name": "E4002_OperatorOverloadNotSupported",
+      "code": 4002
+    },
+    {
+      "name": "E4003_TemplateSpecializationNotSupported",
+      "code": 4003
+    },
+    {
+      "name": "E4004_ThreadNotSupported",
+      "code": 4004
+    },
+    {
+      "name": "E4005_MultipleInheritanceNotSupported",
+      "code": 4005
+    },
+    {
+      "name": "E4006_NamespaceNotSupported",
+      "code": 4006
+    },
+    {
+      "name": "E4007_VirtualInheritanceNotSupported",
+      "code": 4007
+    },
+    {
+      "name": "E4008_ExplicitNotSupported",
+      "code": 4008
+    },
+    {
+      "name": "E4009_MutableNotSupported",
+      "code": 4009
+    },
+    {
+      "name": "E4010_FriendNotSupported",
+      "code": 4010
+    },
+    {
+      "name": "E4011_UsingDirectiveNotSupported",
+      "code": 4011
+    },
+    {
+      "name": "E4012_TypenameContextError",
+      "code": 4012
+    },
+    {
+      "name": "E4013_NewDeleteNotSupported",
+      "code": 4013
+    },
+    {
+      "name": "E4014_RefQualifierNotSupported",
+      "code": 4014
+    },
+    {
+      "name": "E4015_NoexceptNotSupported",
+      "code": 4015
+    },
+    {
+      "name": "E4016_StaticAssertNotSupported",
+      "code": 4016
+    },
+    {
+      "name": "E4017_ConstexprNotSupported",
+      "code": 4017
+    },
+    {
+      "name": "E4018_DeletingDestructorNotSupported",
+      "code": 4018
+    },
+    {
+      "name": "E4019_EnumClassNotSupported",
+      "code": 4019
+    },
+    {
+      "name": "E4020_RangeForNotSupported",
+      "code": 4020
+    },
+    {
+      "name": "E4021_BaseClassNotFound",
+      "code": 4021
+    },
+    {
+      "name": "E4022_TemplateRecursionDepthExceeded",
+      "code": 4022
+    },
+    {
+      "name": "E4023_ThisOutsideClass",
+      "code": 4023
+    },
+    {
+      "name": "E4024_PrivateMemberAccess",
+      "code": 4024
+    },
+    {
+      "name": "E4025_AutoRequiresInitializer",
+      "code": 4025
+    },
+    {
+      "name": "E4026_AmbiguousMethodCall",
+      "code": 4026
+    },
+    {
+      "name": "E4027_InvalidNewType",
+      "code": 4027
+    },
+    {
+      "name": "E4028_InvalidDeleteType",
+      "code": 4028
+    },
+    {
+      "name": "E4029_ReferenceBindLvalueRequired",
+      "code": 4029
+    },
+    {
+      "name": "E4030_ConstructorNotFound",
+      "code": 4030
+    },
+    {
+      "name": "E4031_ConstructorOverloadAmbiguous",
+      "code": 4031
+    },
+    {
+      "name": "E4100_CppMemoryLeak",
+      "code": 4100
+    },
+    {
+      "name": "E4101_CppDanglingReference",
+      "code": 4101
+    },
+    {
+      "name": "E4102_CppObjectSlicing",
+      "code": 4102
+    },
+    {
+      "name": "E4103_CppUniquePtrDoubleFree",
+      "code": 4103
+    },
+    {
+      "name": "E4104_CppUseAfterMove",
+      "code": 4104
+    },
+    {
+      "name": "E4105_CppShallowCopyDoubleFree",
+      "code": 4105
+    },
+    {
+      "name": "E4106_CppReferenceToTemporary",
+      "code": 4106
+    }
+  ]
+}

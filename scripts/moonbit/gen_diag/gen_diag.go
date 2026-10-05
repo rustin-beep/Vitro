@@ -1,19 +1,32 @@
-// gen_diag 从 Rust oracle 源生成 MoonBit vitro/engine/diag 包的机器单源部分。
+// gen_diag 生成 MoonBit vitro/engine/diag 包的机器单源部分。
+//
+// #39 真值源迁移（2026-10-05）：输入已从 Rust 冻结区 .rs 翻转为
+// scripts/moonbit/diagnostics_data/{error_codes,catalog}.json 单源
+// （E4xxx 309 码位按判定书保守全迁——C++ 死面摘除批再裁）。
+// .rs 解析层保留为 **legacy 对账臂**（绞杀者纪律，gen_protocol_ts 先例）：
+// 结构性对账（臂名码全等 + WARN/HINT 白名单 + 卡片码集合）；文案值
+// （emoji/title/explanation/common_causes）不比——#27 与修复批的合法
+// 演化面。`-export-json` 为 legacy → JSON 同步工具（删区后无源可导自然失效）。
 //
 // 纪律（第一阶段计划 T2）：
 //   - ErrorCode 枚举禁手抄——本脚本是唯一产出口；
 //   - fail loud：任何解析失配 / 白名单不对账 / 卡片数异常立即 exit 1，
 //     禁静默 default；
-//   - 幂等：同源重复运行产物字节一致（无时间戳；源文件 sha256 前 8 位
+//   - 幂等：同源重复运行产物字节一致（无时间戳；源 JSON sha256 前 8 位
 //     随产物落款——源变则产物变，配合 -check 构成漂移防线）；
 //   - -check：产物与现存文件逐字节比对，不一致 exit 1（CI 幂等锚）。
 //
 // 用法：
 //
-//	cd 仓库根 && go run ./scripts/moonbit/gen_diag          # 生成 / 覆盖产物
-//	cd 仓库根 && go run ./scripts/moonbit/gen_diag -check   # 校验产物未漂移
+//	cd 仓库根 && go run ./scripts/moonbit/gen_diag                    # 生成 / 覆盖产物
+//	cd 仓库根 && go run ./scripts/moonbit/gen_diag -check             # 校验产物未漂移
+//	cd 仓库根 && go run ./scripts/moonbit/gen_diag -export-json       # legacy .rs → 两 JSON（同步工具）
 //
-// 输入（Rust 冻结区，只读）：
+// 输入（真源，#39 迁出冻结区）：
+//   - scripts/moonbit/diagnostics_data/error_codes.json（137 臂 + source_sha 指纹）
+//   - scripts/moonbit/diagnostics_data/catalog.json（77 卡片 + source_sha 指纹）
+//
+// legacy 对账源（Rust 冻结区只读，删区自动豁免）：
 //   - ../native/crates/vitro_shared/src/error_codes.rs
 //   - ../native/src/diagnostics/error_catalog/{lexer,parser,semantic,cpp}.rs
 //
@@ -25,6 +38,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -41,16 +55,16 @@ const (
 )
 
 type arm struct {
-	name string // Rust 变体名（如 E1001_UnknownChar）
-	code int
+	Name string `json:"name"` // Rust 变体名（如 E1001_UnknownChar）
+	Code int    `json:"code"`
 }
 
 type entry struct {
-	code         int
-	emoji        string
-	title        string
-	explanation  string
-	commonCauses []string
+	Code         int      `json:"code"`
+	Emoji        string   `json:"emoji"`
+	Title        string   `json:"title"`
+	Explanation  string   `json:"explanation"`
+	CommonCauses []string `json:"common_causes"`
 }
 
 // armNames 供 catalog 渲染按码取变体名（main 解析后填充）。
@@ -71,41 +85,51 @@ func main() {
 		os.Exit(2)
 	}
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
-	codesPath := flag.String("codes", "../native/crates/vitro_shared/src/error_codes.rs", "error_codes.rs 路径")
-	catalogDir := flag.String("catalog", "../native/src/diagnostics/error_catalog", "catalog 目录")
+	exportJSON := flag.Bool("export-json", false, "从 legacy .rs 提取/同步两 JSON 真源（过渡期工具；删区后无源可导自然失效）")
+	jsonDir := flag.String("json", "../scripts/moonbit/diagnostics_data", "JSON 真源目录（#39 迁出冻结区）")
+	codesPath := flag.String("codes", "../native/crates/vitro_shared/src/error_codes.rs", "legacy 枚举源路径（对账臂/导出模式）")
+	catalogDir := flag.String("catalog", "../native/src/diagnostics/error_catalog", "legacy 卡片源目录（对账臂/导出模式）")
 	outDir := flag.String("out", "diag", "输出目录")
 	flag.Parse()
 
-	src, err := os.ReadFile(*codesPath)
-	if err != nil {
-		fatalf("读源失败 %s: %v", *codesPath, err)
+	if *exportJSON {
+		exportJSONFromLegacy(*codesPath, *catalogDir, *jsonDir)
+		return
 	}
-	// 行尾规范化后取 sha：工作区 LF/CRLF 形态（git autocrlf、checkout 差异）
-	// 不得影响产物落款——否则换行尾即 -check 假红。归一同时回写 src：
-	// 解析层（parseArms 的转义处理）不接受 \r，CRLF 工作树下曾 fail loud
-	// "未处理的 Rust 转义 0x0d"（2026-09-20 收尾批实测修复）。
-	src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))
-	srcHash := fmt.Sprintf("%x", sha256.Sum256(src))[:8]
 
-	arms := parseArms(string(src))
+	// ---- ① 装载 JSON 真源（#39 翻转，2026-10-05） ----
+	// 行尾归一后取 sha：工作区 LF/CRLF 形态（git autocrlf、checkout 差异）
+	// 不得影响产物落款——否则换行尾即 -check 假红。
+	ecRaw, err := os.ReadFile(filepath.Join(*jsonDir, "error_codes.json"))
+	if err != nil {
+		fatalf("读 JSON 真源失败 error_codes.json: %v", err)
+	}
+	ecRaw = bytes.ReplaceAll(ecRaw, []byte("\r\n"), []byte("\n"))
+	srcHash := fmt.Sprintf("%x", sha256.Sum256(ecRaw))[:8]
+
+	catRaw, err := os.ReadFile(filepath.Join(*jsonDir, "catalog.json"))
+	if err != nil {
+		fatalf("读 JSON 真源失败 catalog.json: %v", err)
+	}
+	catRaw = bytes.ReplaceAll(catRaw, []byte("\r\n"), []byte("\n"))
+	catalogHash := fmt.Sprintf("%x", sha256.Sum256(catRaw))[:8]
+
+	arms := loadArms(ecRaw)
 	if len(arms) != expectedArms {
-		fatalf("枚举臂数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedArms 并登记差异", len(arms), expectedArms)
+		fatalf("枚举臂数 %d ≠ 基线 %d——JSON 真源已变更，请人工核对后更新 expectedArms 并登记差异", len(arms), expectedArms)
 	}
 	for _, a := range arms {
-		armNames[a.code] = a.name
+		armNames[a.Code] = a.Name
 	}
-	wCodes, hCodes := parseWhitelists(string(src))
-	crossCheckWhitelists(arms, wCodes, hCodes)
+	// 白名单不再独立入 JSON（纯派生数据——.rs 侧 WARN_CODES/HINT_CODES 与
+	// 变体前缀集双向一致由 crossCheckWhitelists 实证）：按 W/H 前缀派生。
+	wCodes, hCodes := deriveWhitelists(arms)
 
-	entries := parseCatalog(*catalogDir)
+	entries := loadEntries(catRaw)
 	if len(entries) != expectedCatalog {
-		fatalf("卡片数 %d ≠ 基线 %d——源已变更，请人工核对后更新 expectedCatalog 并登记差异", len(entries), expectedCatalog)
+		fatalf("卡片数 %d ≠ 基线 %d——JSON 真源已变更，请人工核对后更新 expectedCatalog 并登记差异", len(entries), expectedCatalog)
 	}
 	crossCheckCatalog(entries)
-
-	// 卡片源联合 sha（审阅 P3：原落款只引枚举源 sha，名不副实——四份
-	// 卡片源任一变更，落款随之变更，配合 -check 内容比对双保险）
-	catalogHash := catalogSourceHash(*catalogDir)
 
 	genCode := renderErrorCode(arms, wCodes, hCodes, entries, srcHash)
 	genCatalog := renderCatalog(entries, srcHash, catalogHash)
@@ -115,11 +139,208 @@ func main() {
 		"catalog_gen.mbt":    genCatalog,
 	}, *check)
 
+	// ---- ② legacy 对账臂（结构性：臂名码全等 + 白名单 + 卡片码集合；值不比） ----
+	legacyReconcileDiag(*codesPath, *catalogDir, arms, entries)
+
 	if *check {
-		fmt.Println("gen_diag: check OK（产物与源一致，2 文件未漂移）")
+		fmt.Println("gen_diag: check OK（产物与 JSON 真源一致，2 文件未漂移）")
 	} else {
 		fmt.Println("gen_diag: 生成完成（2 文件）")
 	}
+}
+
+// deriveWhitelists 按 W/H 变体名前缀派生白名单（Unknown 哨兵除外）。
+func deriveWhitelists(arms []arm) (w, h []int) {
+	for _, a := range arms {
+		if a.Name == "Unknown" {
+			continue
+		}
+		switch a.Name[0] {
+		case 'W':
+			w = append(w, a.Code)
+		case 'H':
+			h = append(h, a.Code)
+		}
+	}
+	return w, h
+}
+
+// ---- 装载：diagnostics_data/ JSON 真源 ----
+
+type armsDoc struct {
+	SourceSHA string `json:"source_sha"` // 提取时 .rs 指纹（冻结元数据，不参与判定）
+	Arms      []arm  `json:"arms"`
+}
+
+type catalogDoc struct {
+	SourceSHA string  `json:"source_sha"`
+	Entries   []entry `json:"entries"`
+}
+
+func loadArms(raw []byte) []arm {
+	var d armsDoc
+	if err := json.Unmarshal(raw, &d); err != nil {
+		fatalf("error_codes.json 解析失败: %v", err)
+	}
+	seen := map[int]string{}
+	for _, a := range d.Arms {
+		if prev, dup := seen[a.Code]; dup {
+			fatalf("编号 %d 重复：%s 与 %s", a.Code, prev, a.Name)
+		}
+		if !validVariantName(a.Name) {
+			fatalf("臂名 %q 不符 E/W/H 前缀规范——JSON 真源形态可疑", a.Name)
+		}
+		seen[a.Code] = a.Name
+	}
+	return d.Arms
+}
+
+func loadEntries(raw []byte) []entry {
+	var d catalogDoc
+	if err := json.Unmarshal(raw, &d); err != nil {
+		fatalf("catalog.json 解析失败: %v", err)
+	}
+	seen := map[int]bool{}
+	for _, e := range d.Entries {
+		if seen[e.Code] {
+			fatalf("卡片码 %d 重复", e.Code)
+		}
+		seen[e.Code] = true
+	}
+	return d.Entries
+}
+
+// ---- 导出：legacy .rs → 两 JSON（初始提取 / 过渡期同步工具） ----
+
+func exportJSONFromLegacy(codesPath, catalogDir, jsonDir string) {
+	src, err := os.ReadFile(codesPath)
+	if err != nil {
+		fatalf("export: 读 legacy 枚举源失败 %s: %v", codesPath, err)
+	}
+	src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))
+	srcHash := fmt.Sprintf("%x", sha256.Sum256(src))[:8]
+
+	arms := parseArms(string(src))
+	wCodes, hCodes := parseWhitelists(string(src))
+	crossCheckWhitelists(arms, wCodes, hCodes)
+	entries := parseCatalog(catalogDir)
+
+	if err := os.MkdirAll(jsonDir, 0o755); err != nil {
+		fatalf("export: 建目录失败: %v", err)
+	}
+	writeJSONDoc(filepath.Join(jsonDir, "error_codes.json"), armsDoc{SourceSHA: srcHash, Arms: arms})
+	writeJSONDoc(filepath.Join(jsonDir, "catalog.json"), catalogDoc{SourceSHA: catalogSourceHash(catalogDir), Entries: entries})
+	fmt.Printf("gen_diag: export 完成（arms %d / entries %d → %s；重跑生成刷新产物落款）\n", len(arms), len(entries), jsonDir)
+}
+
+func writeJSONDoc(path string, doc any) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(doc); err != nil {
+		fatalf("export: JSON 序列化失败 %s: %v", path, err)
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		fatalf("export: 写 %s 失败: %v", path, err)
+	}
+	fmt.Printf("gen_diag: export Written: %s\n", path)
+}
+
+// ---- legacy 对账臂（结构性，非值级——同 gen_diagnostics 语义） ----
+
+// legacyReconcileDiag：枚举臂名码全等 + WARN/HINT 白名单（.rs 独立声明）
+// == JSON 臂前缀派生集 + 卡片码集合相等。emoji/title/explanation/
+// common_causes 值不比——#27 与修复批的合法演化面。三态：全在→对账；
+// 全不在（工序④删区）→豁免；部分在→红（异常形态）。
+func legacyReconcileDiag(codesPath, catalogDir string, arms []arm, entries []entry) {
+	catalogFiles := []string{"lexer.rs", "parser.rs", "semantic.rs", "cpp.rs"}
+	_, codesErr := os.Stat(codesPath)
+	catalogPresent := 0
+	for _, f := range catalogFiles {
+		if _, err := os.Stat(filepath.Join(catalogDir, f)); err == nil {
+			catalogPresent++
+		}
+	}
+	codesPresent := codesErr == nil
+	allPresent := codesPresent && catalogPresent == len(catalogFiles)
+	nonePresent := !codesPresent && catalogPresent == 0
+	switch {
+	case nonePresent:
+		fmt.Println("gen_diag: legacy 源已删区（工序④），对账臂豁免")
+		return
+	case !allPresent:
+		fatalf("legacy 源部分存在（codes=%v catalog=%d/%d）——异常形态（删区应为一次性整目录），先排查再继续", codesPresent, catalogPresent, len(catalogFiles))
+	}
+
+	src, err := os.ReadFile(codesPath)
+	if err != nil {
+		fatalf("读 legacy 枚举源失败: %v", err)
+	}
+	src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n"))
+	lArms := parseArms(string(src))
+	lW, lH := parseWhitelists(string(src))
+	crossCheckWhitelists(lArms, lW, lH)
+	lEntries := parseCatalog(catalogDir)
+
+	var diffs []string
+	// 臂面：名码全等（声明序即源序，直接逐位比）
+	if len(lArms) != len(arms) {
+		diffs = append(diffs, fmt.Sprintf("枚举臂数：JSON %d ↔ legacy %d", len(arms), len(lArms)))
+	} else {
+		for i := range arms {
+			if arms[i].Name != lArms[i].Name || arms[i].Code != lArms[i].Code {
+				diffs = append(diffs, fmt.Sprintf("枚举臂[%d]：JSON %s/%d ↔ legacy %s/%d（首个分叉）", i, arms[i].Name, arms[i].Code, lArms[i].Name, lArms[i].Code))
+				break
+			}
+		}
+	}
+	// 白名单面：.rs 独立声明的 WARN/HINT == JSON 前缀派生集
+	jW, jH := deriveWhitelists(arms)
+	if !equalInts(jW, lW) {
+		diffs = append(diffs, "WARN 白名单：JSON 派生集 ↔ legacy 声明集不一致")
+	}
+	if !equalInts(jH, lH) {
+		diffs = append(diffs, "HINT 白名单：JSON 派生集 ↔ legacy 声明集不一致")
+	}
+	// 卡片面：码集合（值不比）
+	if d := cmpCodeSets(entryCodes(entries), entryCodes(lEntries)); d != "" {
+		diffs = append(diffs, "卡片码集合："+d)
+	}
+
+	if len(diffs) > 0 {
+		fmt.Fprintln(os.Stderr, "gen_diag: FAIL: legacy 结构对账红（JSON 真源与 Rust oracle 骨架分叉）：")
+		for _, d := range diffs {
+			fmt.Fprintln(os.Stderr, "  - "+d)
+		}
+		fmt.Fprintln(os.Stderr, "处置：结构性变更须两侧同改（.rs 属防线维护）或确认后移除 legacy 臂；纯文案改动不应触发本红")
+		os.Exit(1)
+	}
+	fmt.Println("gen_diag: legacy 结构对账 OK（Rust oracle 枚举+卡片骨架一致，删区后自动豁免）")
+}
+
+func entryCodes(entries []entry) []string {
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = strconv.Itoa(e.Code)
+	}
+	return out
+}
+
+func cmpCodeSets(a, b []string) string {
+	as := append([]string(nil), a...)
+	bs := append([]string(nil), b...)
+	sort.Strings(as)
+	sort.Strings(bs)
+	if len(as) != len(bs) {
+		return fmt.Sprintf("条数 %d ≠ %d", len(as), len(bs))
+	}
+	for i := range as {
+		if as[i] != bs[i] {
+			return fmt.Sprintf("JSON[%s] ↔ legacy[%s]（首个分叉）", as[i], bs[i])
+		}
+	}
+	return ""
 }
 
 // ---- 解析：error_codes.rs ----
@@ -158,7 +379,7 @@ func parseArms(src string) []arm {
 			fatalf("编号 %d 重复：%s 与 %s", code, prev, name)
 		}
 		seen[code] = name
-		arms = append(arms, arm{name: name, code: code})
+		arms = append(arms, arm{Name: name, Code: code})
 	}
 	return arms
 }
@@ -223,14 +444,14 @@ func extractList(src, name string) []int {
 func crossCheckWhitelists(arms []arm, w, h []int) {
 	var wVar, hVar []int
 	for _, a := range arms {
-		if a.name == "Unknown" {
+		if a.Name == "Unknown" {
 			continue
 		}
-		switch a.name[0] {
+		switch a.Name[0] {
 		case 'W':
-			wVar = append(wVar, a.code)
+			wVar = append(wVar, a.Code)
 		case 'H':
-			hVar = append(hVar, a.code)
+			hVar = append(hVar, a.Code)
 		}
 	}
 	if !equalInts(w, wVar) {
@@ -270,14 +491,14 @@ func parseCatalog(dir string) []entry {
 		}
 		src = bytes.ReplaceAll(src, []byte("\r\n"), []byte("\n")) // 解析层同归一（见 codesPath 处注释）
 		for _, e := range parseEntryBlocks(string(src), f) {
-			if seen[e.code] {
-				fatalf("卡片码 %d 重复（%s）", e.code, f)
+			if seen[e.Code] {
+				fatalf("卡片码 %d 重复（%s）", e.Code, f)
 			}
-			seen[e.code] = true
+			seen[e.Code] = true
 			entries = append(entries, e)
 		}
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].code < entries[j].code })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Code < entries[j].Code })
 	return entries
 }
 
@@ -315,11 +536,11 @@ func parseEntryBlocks(src, from string) []entry {
 		block := src[i : end+1]
 		src = src[end+1:]
 		out = append(out, entry{
-			code:         mustIntField(block, "code", from),
-			emoji:        mustStrField(block, "emoji", from),
-			title:        mustStrField(block, "title", from),
-			explanation:  mustStrField(block, "explanation", from),
-			commonCauses: mustStrArrayField(block, "common_causes", from),
+			Code:         mustIntField(block, "code", from),
+			Emoji:        mustStrField(block, "emoji", from),
+			Title:        mustStrField(block, "title", from),
+			Explanation:  mustStrField(block, "explanation", from),
+			CommonCauses: mustStrArrayField(block, "common_causes", from),
 		})
 	}
 	return out
@@ -434,8 +655,8 @@ func mustStrArrayField(block, field, from string) []string {
 
 func crossCheckCatalog(entries []entry) {
 	for _, e := range entries {
-		if _, ok := armNames[e.code]; !ok {
-			fatalf("卡片码 %d 不在 ErrorCode 枚举内——卡片源与枚举源失配", e.code)
+		if _, ok := armNames[e.Code]; !ok {
+			fatalf("卡片码 %d 不在 ErrorCode 枚举内——卡片源与枚举源失配", e.Code)
 		}
 	}
 }
@@ -466,9 +687,9 @@ func escapeMbt(s string) string {
 
 func severityOf(a arm, wSet, hSet map[int]bool) string {
 	switch {
-	case wSet[a.code]:
+	case wSet[a.Code]:
 		return "Warning"
-	case hSet[a.code]:
+	case hSet[a.Code]:
 		return "Hint"
 	default:
 		return "Error"
@@ -477,10 +698,10 @@ func severityOf(a arm, wSet, hSet map[int]bool) string {
 
 func langOf(a arm) string {
 	// 5xxx（C# 预留段）→ CSharp 先行落位；现库 137 码无 5xxx（审阅 P2-3）
-	if a.code >= 5000 {
+	if a.Code >= 5000 {
 		return "CSharp"
 	}
-	if a.code >= 4000 {
+	if a.Code >= 4000 {
 		return "Cpp"
 	}
 	return "C"
@@ -488,9 +709,9 @@ func langOf(a arm) string {
 
 func prefixOf(a arm, wSet, hSet map[int]bool) string {
 	switch {
-	case wSet[a.code]:
+	case wSet[a.Code]:
 		return "W"
-	case hSet[a.code]:
+	case hSet[a.Code]:
 		return "H"
 	default:
 		return "E"
@@ -507,15 +728,15 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 	}
 	entrySet := map[int]bool{}
 	for _, e := range entries {
-		entrySet[e.code] = true
+		entrySet[e.Code] = true
 	}
 
 	sorted := append([]arm{}, arms...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].code < sorted[j].code })
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Code < sorted[j].Code })
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "// @generated by scripts/moonbit/gen_diag —— 禁手改（git/diff 工具链按 @generated 识别；再生成：cd 仓库根 && go run ./scripts/moonbit/gen_diag）。\n"+
-		"// 源：native/crates/vitro_shared/src/error_codes.rs（sha256/%s）\n"+
+		"// 源：scripts/moonbit/diagnostics_data/error_codes.json（#39 迁出冻结区；sha256/%s）\n"+
 		"// 基线：137 臂 / catalog 77 条（漂移时本脚本 fail loud）。\n\n"+
 		"///|\n"+
 		"/// 诊断错误码（137 臂，生成自 Rust oracle——禁手抄，T2 纪律）。\n"+
@@ -523,7 +744,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// severity 由 W/H 白名单（与变体前缀双向对账）决定；lang 按 4xxx 段位。\n"+
 		"pub(all) enum ErrorCode {\n", srcHash)
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "  %s\n", a.name)
+		fmt.Fprintf(&b, "  %s\n", a.Name)
 	}
 	b.WriteString("} derive(Debug, Eq, Hash, Compare)\n")
 
@@ -531,7 +752,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// 编号（穷尽 match，无下划线兜底——增删臂即编译红）。\n" +
 		"pub fn ErrorCode::code(self : ErrorCode) -> Int {\n  match self {\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %s => %d\n", a.name, a.code)
+		fmt.Fprintf(&b, "    %s => %d\n", a.Name, a.Code)
 	}
 	b.WriteString("  }\n}\n")
 
@@ -540,7 +761,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// P3 语义单源：W/H 数值区间与 E 交织，不可按数值段判定）。\n" +
 		"pub fn ErrorCode::severity(self : ErrorCode) -> Severity {\n  match self {\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %s => %s\n", a.name, severityOf(a, wSet, hSet))
+		fmt.Fprintf(&b, "    %s => %s\n", a.Name, severityOf(a, wSet, hSet))
 	}
 	b.WriteString("  }\n}\n")
 
@@ -549,7 +770,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// （C++ 中的 C 子集同样触发）。\n" +
 		"pub fn ErrorCode::lang(self : ErrorCode) -> SourceLang {\n  match self {\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %s => %s\n", a.name, langOf(a))
+		fmt.Fprintf(&b, "    %s => %s\n", a.Name, langOf(a))
 	}
 	b.WriteString("  }\n}\n")
 
@@ -557,10 +778,10 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// 变体名（与 Rust 逐字一致——稳定标识，诊断序列差分锚的 key）。\n" +
 		"pub fn ErrorCode::name(self : ErrorCode) -> String {\n  match self {\n")
 	for _, a := range sorted {
-		line := fmt.Sprintf("    %s => \"%s\"", a.name, a.name)
+		line := fmt.Sprintf("    %s => \"%s\"", a.Name, a.Name)
 		if len(line) > 80 {
 			// 与 moon fmt 折行规范一致（>80 列折值到下一行），避免 fmt 与 gen 互踩
-			fmt.Fprintf(&b, "    %s =>\n      \"%s\"\n", a.name, a.name)
+			fmt.Fprintf(&b, "    %s =>\n      \"%s\"\n", a.Name, a.Name)
 		} else {
 			fmt.Fprintf(&b, "%s\n", line)
 		}
@@ -572,7 +793,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// code_prefix + 码值拼接同形）。\n" +
 		"pub fn ErrorCode::display_code(self : ErrorCode) -> String {\n  match self {\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %s => \"%s%d\"\n", a.name, prefixOf(a, wSet, hSet), a.code)
+		fmt.Fprintf(&b, "    %s => \"%s%d\"\n", a.Name, prefixOf(a, wSet, hSet), a.Code)
 	}
 	b.WriteString("  }\n}\n")
 
@@ -580,7 +801,7 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// 全量清单（137，编号升序）——覆盖率断言与差分遍历的载体。\n" +
 		"pub fn ErrorCode::all() -> Array[ErrorCode] {\n  [\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %s,\n", a.name)
+		fmt.Fprintf(&b, "    %s,\n", a.Name)
 	}
 	b.WriteString("  ]\n}\n")
 
@@ -588,16 +809,16 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 		"/// 编号 → 码；未知编号返回 None。\n" +
 		"pub fn ErrorCode::from_code(value : Int) -> ErrorCode? {\n  match value {\n")
 	for _, a := range sorted {
-		fmt.Fprintf(&b, "    %d => Some(%s)\n", a.code, a.name)
+		fmt.Fprintf(&b, "    %d => Some(%s)\n", a.Code, a.Name)
 	}
 	b.WriteString("    _ => None\n  }\n}\n")
 
 	var withC, withoutC []int
 	for _, a := range sorted {
-		if entrySet[a.code] {
-			withC = append(withC, a.code)
+		if entrySet[a.Code] {
+			withC = append(withC, a.Code)
 		} else {
-			withoutC = append(withoutC, a.code)
+			withoutC = append(withoutC, a.Code)
 		}
 	}
 	b.WriteString("\n///|\n" +
@@ -649,7 +870,7 @@ func catalogSourceHash(dir string) string {
 func renderCatalog(entries []entry, srcHash string, catalogHash string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// @generated by scripts/moonbit/gen_diag —— 禁手改（git/diff 工具链按 @generated 识别；再生成：cd 仓库根 && go run ./scripts/moonbit/gen_diag）。\n"+
-		"// 源：native/src/diagnostics/error_catalog/{lexer,parser,semantic,cpp}.rs（枚举源 sha256/%s；卡片源联合 sha256/%s，行尾归一）\n"+
+		"// 源：scripts/moonbit/diagnostics_data/{error_codes,catalog}.json（#39 迁出冻结区；枚举源 sha256/%s；卡片源 sha256/%s，行尾归一）\n"+
 		"// 基线：77 条（漂移时本脚本 fail loud）。\n\n"+
 		"///|\n"+
 		"/// 教学卡片查询（穷尽 match 137 臂无下划线兜底；77 臂 Some、60 臂 None）。\n"+
@@ -657,11 +878,11 @@ func renderCatalog(entries []entry, srcHash string, catalogHash string) string {
 		"pub fn ErrorCode::catalog(self : ErrorCode) -> CatalogEntry? {\n  match self {\n", srcHash, catalogHash)
 	entrySet := map[int]bool{}
 	for _, e := range entries {
-		entrySet[e.code] = true
+		entrySet[e.Code] = true
 		// 爆开形态与 moon fmt 输出逐字节一致：fmt 宽度按 UTF-8 字节计
 		// （中文 3 字节），causes 整行 >84 字节即爆开（元素并排不再折，
 		// 字符串字面量不可折）；Some(CatalogEntry::of(...)) 全参数逐行。
-		causes := causesLit(e.commonCauses)
+		causes := causesLit(e.CommonCauses)
 		causesLine := "          [" + causes + "],"
 		var causesForm string
 		if len(causesLine) <= 84 {
@@ -670,7 +891,7 @@ func renderCatalog(entries []entry, srcHash string, catalogHash string) string {
 			causesForm = "          [\n            " + causes + ",\n          ],"
 		}
 		fmt.Fprintf(&b, "    %s =>\n      Some(\n        CatalogEntry::of(\n          %d,\n          \"%s\",\n          \"%s\",\n          \"%s\",\n%s\n        ),\n      )\n",
-			armNames[e.code], e.code, escapeMbt(e.emoji), escapeMbt(e.title), escapeMbt(e.explanation), causesForm)
+			armNames[e.Code], e.Code, escapeMbt(e.Emoji), escapeMbt(e.Title), escapeMbt(e.Explanation), causesForm)
 	}
 	// 无卡片臂显式列 None（无兜底臂纪律：增删枚举臂即编译红）
 	var noneCodes []int

@@ -1,0 +1,35 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Int	int	2	14
+6	Identifier	x	2	18
+7	Assign	=	2	20
+8	Number	1	2	22
+9	Semicolon	;	2	23
+10	Switch	switch	2	25
+11	LParen	(	2	31
+12	Identifier	x	2	32
+13	RParen	)	2	33
+14	LBrace	{	2	35
+15	Case	case	2	37
+16	Number	1	2	42
+17	Colon	:	2	43
+18	Case	case	2	45
+19	Number	2	2	50
+20	Colon	:	2	51
+21	Identifier	printf	2	53
+22	LParen	(	2	59
+23	String	ok	2	60
+24	RParen	)	2	64
+25	Semicolon	;	2	65
+26	Break	break	2	67
+27	Semicolon	;	2	72
+28	RBrace	}	2	74
+29	Return	return	2	76
+30	Number	0	2	83
+31	Semicolon	;	2	84
+32	RBrace	}	2	86
+33	Eof		3	1
+count=33	errors=0	warnings=0

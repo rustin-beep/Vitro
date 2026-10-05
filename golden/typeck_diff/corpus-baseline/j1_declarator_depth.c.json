@@ -1,0 +1,1 @@
+{"ok":false,"parse_error_count":1,"parse_errors":[{"code":1006,"column":3757,"line":11,"message":"声明符数组/函数后缀层级过深（超过 1250 层），已停止解析该声明符"}],"type_errors":[],"type_hints":[],"type_warnings":[],"typed_ast":null}

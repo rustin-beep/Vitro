@@ -1,0 +1,1 @@
+{"version":1,"result":"","stderr":"语法错误: [ParseError { message: \"声明符数组/函数后缀层级过深（超过 1250 层），已停止解析该声明符\", line: 11, column: 3757, code: 1006 }]\n"}

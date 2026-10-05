@@ -1,0 +1,25 @@
+0	Hash	#	7	1	472
+1	Identifier	include	7	2	473
+2	Lt	<	7	10	481
+3	Identifier	e2_angle_local_header	7	11	482
+4	Dot	.	7	32	503
+5	Identifier	h	7	33	504
+6	Gt	>	7	34	505
+7	Int	int	8	1	507
+8	Identifier	main	8	5	511
+9	LParen	(	8	9	515
+10	RParen	)	8	10	516
+11	LBrace	{	8	12	518
+12	Identifier	printf	9	5	524
+13	LParen	(	9	11	530
+14	String	%d\n	9	12	531
+15	Comma	,	9	18	537
+16	Identifier	ANGLE_LOCAL_VAL	9	20	539
+17	RParen	)	9	35	554
+18	Semicolon	;	9	36	555
+19	Return	return	10	5	561
+20	Number	0	10	12	568
+21	Semicolon	;	10	13	569
+22	RBrace	}	11	1	571
+23	Eof		12	1	573
+count=23	errors=0	warnings=0

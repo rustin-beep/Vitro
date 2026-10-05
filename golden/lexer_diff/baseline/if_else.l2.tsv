@@ -1,0 +1,33 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Int	int	2	14
+6	Identifier	x	2	18
+7	Assign	=	2	20
+8	Number	5	2	22
+9	Semicolon	;	2	23
+10	If	if	2	25
+11	LParen	(	2	28
+12	Identifier	x	2	29
+13	Gt	>	2	31
+14	Number	3	2	33
+15	RParen	)	2	34
+16	Identifier	printf	2	36
+17	LParen	(	2	42
+18	String	yes	2	43
+19	RParen	)	2	48
+20	Semicolon	;	2	49
+21	Else	else	2	51
+22	Identifier	printf	2	56
+23	LParen	(	2	62
+24	String	no	2	63
+25	RParen	)	2	67
+26	Semicolon	;	2	68
+27	Return	return	2	70
+28	Number	0	2	77
+29	Semicolon	;	2	78
+30	RBrace	}	2	80
+31	Eof		3	1
+count=31	errors=0	warnings=0

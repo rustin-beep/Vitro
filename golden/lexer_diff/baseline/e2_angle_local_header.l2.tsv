@@ -1,0 +1,18 @@
+0	Int	int	8	1
+1	Identifier	main	8	5
+2	LParen	(	8	9
+3	RParen	)	8	10
+4	LBrace	{	8	12
+5	Identifier	printf	9	5
+6	LParen	(	9	11
+7	String	%d\n	9	12
+8	Comma	,	9	18
+9	Identifier	ANGLE_LOCAL_VAL	9	20
+10	RParen	)	9	35
+11	Semicolon	;	9	36
+12	Return	return	10	5
+13	Number	0	10	12
+14	Semicolon	;	10	13
+15	RBrace	}	11	1
+16	Eof		12	1
+count=16	errors=1	warnings=0

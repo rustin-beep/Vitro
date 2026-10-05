@@ -1,0 +1,30 @@
+0	Enum	enum	2	1
+1	Identifier	E	2	6
+2	LBrace	{	2	8
+3	Identifier	A	2	10
+4	Assign	=	2	12
+5	Number	10	2	14
+6	Comma	,	2	16
+7	Identifier	B	2	18
+8	Assign	=	2	20
+9	Number	20	2	22
+10	RBrace	}	2	25
+11	Semicolon	;	2	26
+12	Int	int	2	28
+13	Identifier	main	2	32
+14	LParen	(	2	36
+15	RParen	)	2	37
+16	LBrace	{	2	39
+17	Identifier	printf	2	41
+18	LParen	(	2	47
+19	String	%d	2	48
+20	Comma	,	2	52
+21	Identifier	B	2	54
+22	RParen	)	2	55
+23	Semicolon	;	2	56
+24	Return	return	2	58
+25	Number	0	2	65
+26	Semicolon	;	2	66
+27	RBrace	}	2	68
+28	Eof		3	1
+count=28	errors=0	warnings=0

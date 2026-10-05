@@ -1,0 +1,36 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Int	int	2	14
+6	Identifier	i	2	18
+7	Assign	=	2	20
+8	Number	0	2	22
+9	Semicolon	;	2	23
+10	For	for	2	25
+11	LParen	(	2	29
+12	Semicolon	;	2	30
+13	Identifier	i	2	32
+14	Lt	<	2	34
+15	Number	3	2	36
+16	Semicolon	;	2	37
+17	RParen	)	2	39
+18	LBrace	{	2	41
+19	Identifier	printf	2	43
+20	LParen	(	2	49
+21	String	%d	2	50
+22	Comma	,	2	54
+23	Identifier	i	2	56
+24	RParen	)	2	57
+25	Semicolon	;	2	58
+26	Identifier	i	2	60
+27	Increment	++	2	61
+28	Semicolon	;	2	63
+29	RBrace	}	2	65
+30	Return	return	2	67
+31	Number	0	2	74
+32	Semicolon	;	2	75
+33	RBrace	}	2	77
+34	Eof		3	1
+count=34	errors=0	warnings=0

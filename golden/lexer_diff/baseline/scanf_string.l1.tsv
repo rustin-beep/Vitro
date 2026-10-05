@@ -1,0 +1,64 @@
+0	Hash	#	1	1	0
+1	Identifier	include	1	2	1
+2	Lt	<	1	10	9
+3	Identifier	stdio	1	11	10
+4	Dot	.	1	16	15
+5	Identifier	h	1	17	16
+6	Gt	>	1	18	17
+7	Int	int	3	1	20
+8	Identifier	main	3	5	24
+9	LParen	(	3	9	28
+10	RParen	)	3	10	29
+11	LBrace	{	3	12	31
+12	Char	char	4	5	37
+13	Identifier	a	4	10	42
+14	LBracket	[	4	11	43
+15	Number	32	4	12	44
+16	RBracket	]	4	14	46
+17	Comma	,	4	15	47
+18	Identifier	b	4	17	49
+19	LBracket	[	4	18	50
+20	Number	32	4	19	51
+21	RBracket	]	4	21	53
+22	Semicolon	;	4	22	54
+23	Int	int	5	5	60
+24	Identifier	n	5	9	64
+25	Semicolon	;	5	10	65
+26	Char	char	6	5	71
+27	Identifier	src	6	10	76
+28	LBracket	[	6	13	79
+29	RBracket	]	6	14	80
+30	Assign	=	6	16	82
+31	String	hello world 42	6	18	84
+32	Semicolon	;	6	34	100
+33	Identifier	sscanf	7	5	106
+34	LParen	(	7	11	112
+35	Identifier	src	7	12	113
+36	Comma	,	7	15	116
+37	String	%s %s %d	7	17	118
+38	Comma	,	7	27	128
+39	Identifier	a	7	29	130
+40	Comma	,	7	30	131
+41	Identifier	b	7	32	133
+42	Comma	,	7	33	134
+43	Ampersand	&	7	35	136
+44	Identifier	n	7	36	137
+45	RParen	)	7	37	138
+46	Semicolon	;	7	38	139
+47	Identifier	printf	8	5	145
+48	LParen	(	8	11	151
+49	String	[%s] [%s] [%d]\n	8	12	152
+50	Comma	,	8	30	170
+51	Identifier	a	8	32	172
+52	Comma	,	8	33	173
+53	Identifier	b	8	35	175
+54	Comma	,	8	36	176
+55	Identifier	n	8	38	178
+56	RParen	)	8	39	179
+57	Semicolon	;	8	40	180
+58	Return	return	9	5	186
+59	Number	0	9	12	193
+60	Semicolon	;	9	13	194
+61	RBrace	}	10	1	196
+62	Eof		11	1	198
+count=62	errors=0	warnings=0

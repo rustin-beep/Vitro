@@ -1,0 +1,31 @@
+0	Typedef	typedef	2	1
+1	Int	int	2	9
+2	Identifier	A	2	13
+3	Semicolon	;	2	14
+4	Typedef	typedef	2	16
+5	Identifier	A	2	24
+6	Identifier	B	2	26
+7	Semicolon	;	2	27
+8	Int	int	2	29
+9	Identifier	main	2	33
+10	LParen	(	2	37
+11	RParen	)	2	38
+12	LBrace	{	2	40
+13	Identifier	B	2	42
+14	Identifier	x	2	44
+15	Assign	=	2	46
+16	Number	5	2	48
+17	Semicolon	;	2	49
+18	Identifier	printf	2	51
+19	LParen	(	2	57
+20	String	%d	2	58
+21	Comma	,	2	62
+22	Identifier	x	2	64
+23	RParen	)	2	65
+24	Semicolon	;	2	66
+25	Return	return	2	68
+26	Number	0	2	75
+27	Semicolon	;	2	76
+28	RBrace	}	2	78
+29	Eof		3	1
+count=29	errors=0	warnings=0

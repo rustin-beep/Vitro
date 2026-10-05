@@ -1,0 +1,15 @@
+0	Identifier	main	2	1	28
+1	LParen	(	2	5	32
+2	RParen	)	2	6	33
+3	LBrace	{	2	8	35
+4	Identifier	printf	2	10	37
+5	LParen	(	2	16	43
+6	String	hello	2	17	44
+7	RParen	)	2	24	51
+8	Semicolon	;	2	25	52
+9	Return	return	2	27	54
+10	Number	0	2	34	61
+11	Semicolon	;	2	35	62
+12	RBrace	}	2	37	64
+13	Eof		3	1	67
+count=13	errors=0	warnings=0

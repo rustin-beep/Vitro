@@ -1,0 +1,36 @@
+0	Hash	#	3	1	51
+1	Identifier	include	3	2	52
+2	Lt	<	3	10	60
+3	Identifier	stdio	3	11	61
+4	Dot	.	3	16	66
+5	Identifier	h	3	17	67
+6	Gt	>	3	18	68
+7	Hash	#	4	1	70
+8	Identifier	define	4	2	71
+9	Identifier	LEVEL	4	9	78
+10	Number	1	4	15	84
+11	Hash	#	5	1	86
+12	Identifier	undef	5	2	87
+13	Identifier	LEVEL	5	8	93
+14	Hash	#	6	1	99
+15	Identifier	define	6	2	100
+16	Identifier	LEVEL	6	9	107
+17	Number	7	6	15	113
+18	Int	int	7	1	115
+19	Identifier	main	7	5	119
+20	LParen	(	7	9	123
+21	RParen	)	7	10	124
+22	LBrace	{	7	12	126
+23	Identifier	printf	8	5	132
+24	LParen	(	8	11	138
+25	String	%d\n	8	12	139
+26	Comma	,	8	18	145
+27	Identifier	LEVEL	8	20	147
+28	RParen	)	8	25	152
+29	Semicolon	;	8	26	153
+30	Return	return	9	5	159
+31	Number	0	9	12	166
+32	Semicolon	;	9	13	167
+33	RBrace	}	10	1	169
+34	Eof		11	1	171
+count=34	errors=0	warnings=0

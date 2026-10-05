@@ -1,0 +1,52 @@
+0	Hash	#	4	1	222
+1	Identifier	include	4	2	223
+2	Lt	<	4	10	231
+3	Identifier	stdio	4	11	232
+4	Dot	.	4	16	237
+5	Identifier	h	4	17	238
+6	Gt	>	4	18	239
+7	Int	int	6	1	242
+8	Identifier	main	6	5	246
+9	LParen	(	6	9	250
+10	RParen	)	6	10	251
+11	LBrace	{	6	12	253
+12	Int	int	7	5	259
+13	Identifier	a	7	9	263
+14	Assign	=	7	11	265
+15	Number	0	7	13	267
+16	Comma	,	7	14	268
+17	Identifier	b	7	16	270
+18	Assign	=	7	18	272
+19	Number	0	7	20	274
+20	Semicolon	;	7	21	275
+21	Int	int	8	5	281
+22	Identifier	r	8	9	285
+23	Assign	=	8	11	287
+24	Identifier	scanf	8	13	289
+25	LParen	(	8	18	294
+26	String	%d %d	8	19	295
+27	Comma	,	8	26	302
+28	Ampersand	&	8	28	304
+29	Identifier	a	8	29	305
+30	Comma	,	8	30	306
+31	Ampersand	&	8	32	308
+32	Identifier	b	8	33	309
+33	RParen	)	8	34	310
+34	Semicolon	;	8	35	311
+35	Identifier	printf	9	5	317
+36	LParen	(	9	11	323
+37	String	%d %d %d\n	9	12	324
+38	Comma	,	9	24	336
+39	Identifier	a	9	26	338
+40	Comma	,	9	27	339
+41	Identifier	b	9	29	341
+42	Comma	,	9	30	342
+43	Identifier	r	9	32	344
+44	RParen	)	9	33	345
+45	Semicolon	;	9	34	346
+46	Return	return	10	5	352
+47	Number	0	10	12	359
+48	Semicolon	;	10	13	360
+49	RBrace	}	11	1	362
+50	Eof		12	1	364
+count=50	errors=0	warnings=0

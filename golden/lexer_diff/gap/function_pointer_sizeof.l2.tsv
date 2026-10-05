@@ -1,0 +1,27 @@
+0	Int	int	5	1
+1	Identifier	main	5	5
+2	LParen	(	5	9
+3	RParen	)	5	10
+4	LBrace	{	5	12
+5	Identifier	printf	5	14
+6	LParen	(	5	20
+7	String	%d	5	21
+8	Comma	,	5	25
+9	Sizeof	sizeof	5	27
+10	LParen	(	5	33
+11	Int	int	5	34
+12	LParen	(	5	38
+13	Star	*	5	39
+14	RParen	)	5	40
+15	LParen	(	5	41
+16	Int	int	5	42
+17	RParen	)	5	45
+18	RParen	)	5	46
+19	RParen	)	5	47
+20	Semicolon	;	5	48
+21	Return	return	5	50
+22	Number	0	5	57
+23	Semicolon	;	5	58
+24	RBrace	}	5	60
+25	Eof		6	1
+count=25	errors=0	warnings=0

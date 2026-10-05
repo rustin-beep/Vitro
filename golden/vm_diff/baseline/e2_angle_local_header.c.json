@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "49471035",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 7:0  \u003c\u003e 形式只匹配标准库头文件（未收录 'e2_angle_local_header.h'）；自定义头文件请使用 #include \"e2_angle_local_header.h\" (E1021)\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

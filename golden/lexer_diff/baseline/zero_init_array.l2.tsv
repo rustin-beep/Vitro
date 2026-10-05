@@ -1,0 +1,31 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Int	int	2	14
+6	Identifier	a	2	18
+7	LBracket	[	2	19
+8	Number	5	2	20
+9	RBracket	]	2	21
+10	Assign	=	2	23
+11	LBrace	{	2	25
+12	Number	0	2	26
+13	RBrace	}	2	27
+14	Semicolon	;	2	28
+15	Identifier	printf	2	30
+16	LParen	(	2	36
+17	String	%d	2	37
+18	Comma	,	2	41
+19	Identifier	a	2	43
+20	LBracket	[	2	44
+21	Number	4	2	45
+22	RBracket	]	2	46
+23	RParen	)	2	47
+24	Semicolon	;	2	48
+25	Return	return	2	50
+26	Number	0	2	57
+27	Semicolon	;	2	58
+28	RBrace	}	2	60
+29	Eof		3	1
+count=29	errors=0	warnings=0

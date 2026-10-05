@@ -1,0 +1,35 @@
+0	Typedef	typedef	2	1
+1	Int	int	2	9
+2	Star	*	2	12
+3	Identifier	IntPtr	2	14
+4	Semicolon	;	2	20
+5	Int	int	2	22
+6	Identifier	main	2	26
+7	LParen	(	2	30
+8	RParen	)	2	31
+9	LBrace	{	2	33
+10	Int	int	2	35
+11	Identifier	x	2	39
+12	Assign	=	2	41
+13	Number	5	2	43
+14	Semicolon	;	2	44
+15	Identifier	IntPtr	2	46
+16	Identifier	p	2	53
+17	Assign	=	2	55
+18	Ampersand	&	2	57
+19	Identifier	x	2	58
+20	Semicolon	;	2	59
+21	Identifier	printf	2	61
+22	LParen	(	2	67
+23	String	%d	2	68
+24	Comma	,	2	72
+25	Star	*	2	74
+26	Identifier	p	2	75
+27	RParen	)	2	76
+28	Semicolon	;	2	77
+29	Return	return	2	79
+30	Number	0	2	86
+31	Semicolon	;	2	87
+32	RBrace	}	2	89
+33	Eof		3	1
+count=33	errors=0	warnings=0

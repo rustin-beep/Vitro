@@ -1,0 +1,25 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	While	while	2	14
+6	LParen	(	2	20
+7	Number	0	2	21
+8	RParen	)	2	22
+9	Identifier	printf	2	24
+10	LParen	(	2	30
+11	String	no	2	31
+12	RParen	)	2	35
+13	Semicolon	;	2	36
+14	Identifier	printf	2	38
+15	LParen	(	2	44
+16	String	ok	2	45
+17	RParen	)	2	49
+18	Semicolon	;	2	50
+19	Return	return	2	52
+20	Number	0	2	59
+21	Semicolon	;	2	60
+22	RBrace	}	2	62
+23	Eof		3	1
+count=23	errors=0	warnings=0

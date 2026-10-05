@@ -1,0 +1,11 @@
+0	Int	int	11	1
+1	Identifier	main	11	5
+2	LParen	(	11	9
+3	RParen	)	11	10
+4	LBrace	{	11	12
+5	Return	return	11	14
+6	Number	42	11	21
+7	Semicolon	;	11	35
+8	RBrace	}	11	37
+9	Eof		12	1
+count=9	errors=0	warnings=0

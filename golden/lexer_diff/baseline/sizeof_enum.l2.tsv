@@ -1,0 +1,30 @@
+0	Enum	enum	2	1
+1	Identifier	Color	2	6
+2	LBrace	{	2	12
+3	Identifier	R	2	14
+4	Comma	,	2	15
+5	Identifier	G	2	17
+6	RBrace	}	2	19
+7	Semicolon	;	2	20
+8	Int	int	2	22
+9	Identifier	main	2	26
+10	LParen	(	2	30
+11	RParen	)	2	31
+12	LBrace	{	2	33
+13	Identifier	printf	2	35
+14	LParen	(	2	41
+15	String	%d	2	42
+16	Comma	,	2	46
+17	Sizeof	sizeof	2	48
+18	LParen	(	2	54
+19	Enum	enum	2	55
+20	Identifier	Color	2	60
+21	RParen	)	2	65
+22	RParen	)	2	66
+23	Semicolon	;	2	67
+24	Return	return	2	69
+25	Number	0	2	76
+26	Semicolon	;	2	77
+27	RBrace	}	2	79
+28	Eof		3	1
+count=28	errors=0	warnings=0

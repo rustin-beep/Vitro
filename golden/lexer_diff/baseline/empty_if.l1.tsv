@@ -1,0 +1,25 @@
+0	Int	int	2	1	24
+1	Identifier	main	2	5	28
+2	LParen	(	2	9	32
+3	RParen	)	2	10	33
+4	LBrace	{	2	12	35
+5	If	if	2	14	37
+6	LParen	(	2	17	40
+7	Number	0	2	18	41
+8	RParen	)	2	19	42
+9	Identifier	printf	2	21	44
+10	LParen	(	2	27	50
+11	String	no	2	28	51
+12	RParen	)	2	32	55
+13	Semicolon	;	2	33	56
+14	Identifier	printf	2	35	58
+15	LParen	(	2	41	64
+16	String	ok	2	42	65
+17	RParen	)	2	46	69
+18	Semicolon	;	2	47	70
+19	Return	return	2	49	72
+20	Number	0	2	56	79
+21	Semicolon	;	2	57	80
+22	RBrace	}	2	59	82
+23	Eof		3	1	85
+count=23	errors=0	warnings=0

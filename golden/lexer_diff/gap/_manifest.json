@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sources": {
+    "complex_number.c": "b5a7d055",
+    "file_fopen.c": "d1bdc876",
+    "file_fread.c": "dc8404a4",
+    "file_fwrite.c": "e2c3c877",
+    "function_pointer_sizeof.c": "68025bba",
+    "goto_basic.c": "7c9d571e",
+    "implicit_int.c": "ed15d81a",
+    "include_quote_sentinel.c": "83f75c9e",
+    "inline_asm.c": "b4fdb8d1",
+    "keyword_compat.c": "ce1212f3",
+    "loop_var_shadow.c": "67d2073f",
+    "printf_scanf_type_mismatch.c": "e358b16e",
+    "sizeof_array_param.c": "34ee7a7e",
+    "static_assert.c": "4e388a20",
+    "string_len_manual.c": "b5eb330a",
+    "typeof_operator.c": "01ea6a44",
+    "variadic_macro.c": "36f66bdb"
+  }
+}

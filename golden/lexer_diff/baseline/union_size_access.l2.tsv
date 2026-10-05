@@ -1,0 +1,33 @@
+0	Union	union	2	1
+1	Identifier	U	2	7
+2	LBrace	{	2	9
+3	Char	char	2	11
+4	Identifier	c	2	16
+5	Semicolon	;	2	17
+6	Int	int	2	19
+7	Identifier	i	2	23
+8	Semicolon	;	2	24
+9	RBrace	}	2	26
+10	Semicolon	;	2	27
+11	Int	int	2	29
+12	Identifier	main	2	33
+13	LParen	(	2	37
+14	RParen	)	2	38
+15	LBrace	{	2	40
+16	Identifier	printf	2	42
+17	LParen	(	2	48
+18	String	%d	2	49
+19	Comma	,	2	53
+20	Sizeof	sizeof	2	55
+21	LParen	(	2	61
+22	Union	union	2	62
+23	Identifier	U	2	68
+24	RParen	)	2	69
+25	RParen	)	2	70
+26	Semicolon	;	2	71
+27	Return	return	2	73
+28	Number	0	2	80
+29	Semicolon	;	2	81
+30	RBrace	}	2	83
+31	Eof		3	1
+count=31	errors=0	warnings=0

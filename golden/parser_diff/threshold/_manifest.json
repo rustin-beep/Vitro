@@ -1,0 +1,28 @@
+{
+  "sources": {
+    "enum_add_1200.c": "2b4b37bd",
+    "enum_add_600.c": "cef494f4",
+    "offsetof_128.c": "8472802e",
+    "offsetof_140.c": "45bd2635",
+    "offsetof_16.c": "99f553f1",
+    "offsetof_64.c": "57e592d9",
+    "sassert_add_1200.c": "0c4ff778",
+    "shape_arrptr_abstract.c": "0e0f98e7",
+    "shape_arrptr_dim1_guard.c": "476d6812",
+    "shape_arrptr_dim2.c": "abca3451",
+    "shape_arrptr_dim3.c": "dd113586",
+    "shape_arrptr_field.c": "d981bc29",
+    "shape_arrptr_inner_dim.c": "f0254192",
+    "shape_arrptr_inner_dim23.c": "d41aa013",
+    "shape_arrptr_param.c": "eaddd080",
+    "shape_arrptr_typedef.c": "3a01b1c3",
+    "shape_dblptr_arrptr.c": "54e3b137",
+    "shape_fnptr_arr_guard.c": "114473e2",
+    "shape_fnptr_guard.c": "9d6af40f",
+    "shape_fnptr_ret_arrptr.c": "cbf31f92",
+    "shape_fnret_arrptr.c": "ff652454",
+    "shape_ptrarr_dim23.c": "35f1de29",
+    "shape_ptrarr_guard.c": "630a8b22"
+  },
+  "version": 1
+}

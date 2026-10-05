@@ -1,0 +1,23 @@
+0	Hash	#	1	1	0
+1	Identifier	include	1	2	1
+2	Lt	<	1	10	9
+3	Identifier	stdio	1	11	10
+4	Dot	.	1	16	15
+5	Identifier	h	1	17	16
+6	Gt	>	1	18	17
+7	Int	int	2	1	19
+8	Identifier	main	2	5	23
+9	LParen	(	2	9	27
+10	RParen	)	2	10	28
+11	LBrace	{	2	12	30
+12	Identifier	printf	3	5	36
+13	LParen	(	3	11	42
+14	String	hello, world\n	3	12	43
+15	RParen	)	3	28	59
+16	Semicolon	;	3	29	60
+17	Return	return	4	5	66
+18	Number	0	4	12	73
+19	Semicolon	;	4	13	74
+20	RBrace	}	5	1	76
+21	Eof		6	1	78
+count=21	errors=0	warnings=0

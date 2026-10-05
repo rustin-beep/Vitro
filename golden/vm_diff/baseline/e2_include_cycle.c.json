@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "edf98db3",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 4:0  检测到 #include 依赖环：e2_cycle_b.h -\u003e e2_cycle_a.h（已跳过该 include） (E1015)\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

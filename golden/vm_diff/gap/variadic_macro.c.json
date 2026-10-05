@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "36f66bdb",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 2:18  宏参数必须是标识符 (E1005)\n    建议: #define 宏定义格式不正确。简单宏应该是 #define NAME value 的形式。\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

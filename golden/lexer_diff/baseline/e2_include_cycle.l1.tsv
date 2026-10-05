@@ -1,0 +1,14 @@
+0	Hash	#	4	1	211
+1	Identifier	include	4	2	212
+2	String	e2_cycle_a.h	4	10	220
+3	Int	int	5	1	235
+4	Identifier	main	5	5	239
+5	LParen	(	5	9	243
+6	RParen	)	5	10	244
+7	LBrace	{	5	12	246
+8	Return	return	6	5	252
+9	Number	0	6	12	259
+10	Semicolon	;	6	13	260
+11	RBrace	}	7	1	262
+12	Eof		8	1	264
+count=12	errors=0	warnings=0

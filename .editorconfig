@@ -1,0 +1,66 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Rust
+[*.rs]
+indent_size = 4
+indent_style = space
+max_line_length = 120
+
+# Python
+[*.py]
+indent_size = 4
+indent_style = space
+max_line_length = 120
+
+# C / C++
+[*.{c,cpp,h,hpp}]
+indent_size = 4
+indent_style = space
+max_line_length = 120
+
+# MoonBit（moon fmt 权威 4 空格；moon.pkg 为 JSON 风格 2 空格）
+[*.{mbt,mbti,mbtx}]
+indent_size = 4
+indent_style = space
+
+[moon.pkg]
+indent_size = 2
+indent_style = space
+
+# Go（gofmt 用 tab）
+[*.go]
+indent_style = tab
+
+# TypeScript（tsc 惯用法 2 空格；demo TS 重写批 2026-10-04——
+# 发射产物缩进由 tsc 固定 4 空格、不入库，本节只约束手写源）
+[*.{ts,mts,cts,d.ts}]
+indent_size = 2
+indent_style = space
+max_line_length = 120
+
+# YAML
+[*.{yml,yaml}]
+indent_size = 2
+indent_style = space
+
+# JSON / TOML
+[*.{json,toml}]
+indent_size = 2
+indent_style = space
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = 120
+
+# golden 基准输出：比对契约是逐字节一致，
+# 编辑器补末行换行 / 删行尾空格都会改校验和，故豁免规范化
+[*.out]
+insert_final_newline = false
+trim_trailing_whitespace = false

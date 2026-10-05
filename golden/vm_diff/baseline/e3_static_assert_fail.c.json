@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "2b882579",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 5:37  static_assert 断言失败：math broken (E1020)\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

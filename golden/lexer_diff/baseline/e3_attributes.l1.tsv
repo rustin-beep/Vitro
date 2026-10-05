@@ -1,0 +1,47 @@
+0	Hash	#	4	1	185
+1	Identifier	include	4	2	186
+2	Lt	<	4	10	194
+3	Identifier	stdio	4	11	195
+4	Dot	.	4	16	200
+5	Identifier	h	4	17	201
+6	Gt	>	4	18	202
+7	LBracket	[	5	1	204
+8	LBracket	[	5	2	205
+9	Identifier	maybe_unused	5	3	206
+10	RBracket	]	5	15	218
+11	RBracket	]	5	16	219
+12	Int	int	5	18	221
+13	Identifier	u	5	22	225
+14	Assign	=	5	24	227
+15	Number	5	5	26	229
+16	Semicolon	;	5	27	230
+17	Int	int	6	1	232
+18	Identifier	main	6	5	236
+19	LParen	(	6	9	240
+20	RParen	)	6	10	241
+21	LBrace	{	6	12	243
+22	LBracket	[	7	5	249
+23	LBracket	[	7	6	250
+24	Identifier	maybe_unused	7	7	251
+25	RBracket	]	7	19	263
+26	RBracket	]	7	20	264
+27	Int	int	7	22	266
+28	Identifier	v	7	26	270
+29	Assign	=	7	28	272
+30	Number	6	7	30	274
+31	Semicolon	;	7	31	275
+32	Identifier	printf	8	5	281
+33	LParen	(	8	11	287
+34	String	%d %d\n	8	12	288
+35	Comma	,	8	21	297
+36	Identifier	u	8	23	299
+37	Comma	,	8	24	300
+38	Identifier	v	8	26	302
+39	RParen	)	8	27	303
+40	Semicolon	;	8	28	304
+41	Return	return	9	5	310
+42	Number	0	9	12	317
+43	Semicolon	;	9	13	318
+44	RBrace	}	10	1	320
+45	Eof		11	1	322
+count=45	errors=0	warnings=0

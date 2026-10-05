@@ -1,0 +1,33 @@
+0	Int	int	2	1	24
+1	Identifier	main	2	5	28
+2	LParen	(	2	9	32
+3	RParen	)	2	10	33
+4	LBrace	{	2	12	35
+5	Char	char	2	14	37
+6	Identifier	a	2	19	42
+7	LBracket	[	2	20	43
+8	Number	20	2	21	44
+9	RBracket	]	2	23	46
+10	Assign	=	2	25	48
+11	String	hello	2	27	50
+12	Semicolon	;	2	34	57
+13	Identifier	strcat	2	36	59
+14	LParen	(	2	42	65
+15	Identifier	a	2	43	66
+16	Comma	,	2	44	67
+17	String	 world	2	46	69
+18	RParen	)	2	54	77
+19	Semicolon	;	2	55	78
+20	Identifier	printf	2	57	80
+21	LParen	(	2	63	86
+22	String	%s	2	64	87
+23	Comma	,	2	68	91
+24	Identifier	a	2	70	93
+25	RParen	)	2	71	94
+26	Semicolon	;	2	72	95
+27	Return	return	2	74	97
+28	Number	0	2	81	104
+29	Semicolon	;	2	82	105
+30	RBrace	}	2	84	107
+31	Eof		3	1	110
+count=31	errors=0	warnings=0

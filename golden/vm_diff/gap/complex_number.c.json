@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "b5a7d055",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 2:21  变量声明后预期 ';' (E2005)\n    建议: 语句末尾缺少分号，建议添加 ';'\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

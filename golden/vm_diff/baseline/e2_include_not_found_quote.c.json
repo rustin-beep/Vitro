@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "85c6bfc8",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 7:0  找不到头文件 'e2_no_such_header_xyz.h'（已搜索：当前文件目录、源文件目录；标准库存根未收录该名字） (E1021)\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

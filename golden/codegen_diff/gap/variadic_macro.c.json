@@ -1,0 +1,1 @@
+{"version":1,"result":"","stderr":"词法错误: [LexerError { message: \"宏参数必须是标识符\", line: 2, column: 18, code: 1005 }]\n"}

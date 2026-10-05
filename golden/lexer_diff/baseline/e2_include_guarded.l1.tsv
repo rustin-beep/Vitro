@@ -1,0 +1,38 @@
+0	Hash	#	3	1	125
+1	Identifier	include	3	2	126
+2	Lt	<	3	10	134
+3	Identifier	stdio	3	11	135
+4	Dot	.	3	16	140
+5	Identifier	h	3	17	141
+6	Gt	>	3	18	142
+7	Hash	#	4	1	144
+8	Identifier	include	4	2	145
+9	String	e2_guarded_helper.h	4	10	153
+10	Hash	#	5	1	175
+11	Identifier	include	5	2	176
+12	String	e2_guarded_helper.h	5	10	184
+13	Int	int	6	1	206
+14	Identifier	main	6	5	210
+15	LParen	(	6	9	214
+16	RParen	)	6	10	215
+17	LBrace	{	6	12	217
+18	Identifier	printf	7	5	223
+19	LParen	(	7	11	229
+20	String	%d %d\n	7	12	230
+21	Comma	,	7	21	239
+22	Identifier	g_val	7	23	241
+23	Comma	,	7	28	246
+24	Identifier	g_add	7	30	248
+25	LParen	(	7	35	253
+26	Number	1	7	36	254
+27	Comma	,	7	37	255
+28	Number	2	7	39	257
+29	RParen	)	7	40	258
+30	RParen	)	7	41	259
+31	Semicolon	;	7	42	260
+32	Return	return	8	5	266
+33	Number	0	8	12	273
+34	Semicolon	;	8	13	274
+35	RBrace	}	9	1	276
+36	Eof		10	1	278
+count=36	errors=0	warnings=0

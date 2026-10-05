@@ -1,0 +1,21 @@
+0	Hash	#	4	1	187
+1	Identifier	include	4	2	188
+2	String	e2_has_include_nest/outer.h	4	10	196
+3	Int	int	5	1	226
+4	Identifier	main	5	5	230
+5	LParen	(	5	9	234
+6	RParen	)	5	10	235
+7	LBrace	{	5	12	237
+8	Identifier	printf	6	5	243
+9	LParen	(	6	11	249
+10	String	%d\n	6	12	250
+11	Comma	,	6	18	256
+12	Identifier	INNER_VAL	6	20	258
+13	RParen	)	6	29	267
+14	Semicolon	;	6	30	268
+15	Return	return	7	5	274
+16	Number	0	7	12	281
+17	Semicolon	;	7	13	282
+18	RBrace	}	8	1	284
+19	Eof		9	1	286
+count=19	errors=0	warnings=0

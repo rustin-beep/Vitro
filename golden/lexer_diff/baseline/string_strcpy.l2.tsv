@@ -1,0 +1,31 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Char	char	2	14
+6	Identifier	d	2	19
+7	LBracket	[	2	20
+8	Number	10	2	21
+9	RBracket	]	2	23
+10	Semicolon	;	2	24
+11	Identifier	strcpy	2	26
+12	LParen	(	2	32
+13	Identifier	d	2	33
+14	Comma	,	2	34
+15	String	hi	2	36
+16	RParen	)	2	40
+17	Semicolon	;	2	41
+18	Identifier	printf	2	43
+19	LParen	(	2	49
+20	String	%s	2	50
+21	Comma	,	2	54
+22	Identifier	d	2	56
+23	RParen	)	2	57
+24	Semicolon	;	2	58
+25	Return	return	2	60
+26	Number	0	2	67
+27	Semicolon	;	2	68
+28	RBrace	}	2	70
+29	Eof		3	1
+count=29	errors=0	warnings=0

@@ -1,0 +1,31 @@
+0	Int	int	2	1
+1	Identifier	main	2	5
+2	LParen	(	2	9
+3	RParen	)	2	10
+4	LBrace	{	2	12
+5	Double	double	2	14
+6	Identifier	complex	2	21
+7	Identifier	z	2	29
+8	Assign	=	2	31
+9	FloatLiteral	1.0	2	33
+10	Plus	+	2	37
+11	FloatLiteral	2.0	2	39
+12	Star	*	2	42
+13	Identifier	I	2	43
+14	Semicolon	;	2	44
+15	Identifier	printf	2	46
+16	LParen	(	2	52
+17	String	%.1f	2	53
+18	Comma	,	2	59
+19	Identifier	creal	2	61
+20	LParen	(	2	66
+21	Identifier	z	2	67
+22	RParen	)	2	68
+23	RParen	)	2	69
+24	Semicolon	;	2	70
+25	Return	return	2	72
+26	Number	0	2	79
+27	Semicolon	;	2	80
+28	RBrace	}	2	82
+29	Eof		3	1
+count=29	errors=0	warnings=0

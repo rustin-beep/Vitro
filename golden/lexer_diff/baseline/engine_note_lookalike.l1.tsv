@@ -1,0 +1,84 @@
+0	Hash	#	16	1	1080
+1	Identifier	include	16	2	1081
+2	Lt	<	16	10	1089
+3	Identifier	stdio	16	11	1090
+4	Dot	.	16	16	1095
+5	Identifier	h	16	17	1096
+6	Gt	>	16	18	1097
+7	Hash	#	17	1	1099
+8	Identifier	include	17	2	1100
+9	Lt	<	17	10	1108
+10	Identifier	stdlib	17	11	1109
+11	Dot	.	17	17	1115
+12	Identifier	h	17	18	1116
+13	Gt	>	17	19	1117
+14	Int	int	19	1	1120
+15	Identifier	main	19	5	1124
+16	LParen	(	19	9	1128
+17	Void	void	19	10	1129
+18	RParen	)	19	14	1133
+19	LBrace	{	19	16	1135
+20	Identifier	printf	20	5	1141
+21	LParen	(	20	11	1147
+22	String	程序运行完成，返回值：7\n	20	-10	1148
+23	RParen	)	20	28	1186
+24	Semicolon	;	20	29	1187
+25	Identifier	printf	21	5	1193
+26	LParen	(	21	11	1199
+27	String	===== 内存泄漏检测报告 =====\n	21	-4	1200
+28	RParen	)	21	36	1240
+29	Semicolon	;	21	37	1241
+30	Identifier	printf	22	5	1247
+31	LParen	(	22	11	1253
+32	String	发现 1 处未释放的堆内存，共 4 字节：\n	22	-18	1254
+33	RParen	)	22	37	1309
+34	Semicolon	;	22	38	1310
+35	Identifier	printf	23	5	1316
+36	LParen	(	23	11	1322
+37	String	  - 第 12 行的 malloc 分配了 4 字节 (addr=0x1000)，未被 free\n	23	-10	1323
+38	RParen	)	23	65	1398
+39	Semicolon	;	23	66	1399
+40	Identifier	printf	24	5	1405
+41	LParen	(	24	11	1411
+42	String	==============================\n	24	12	1412
+43	RParen	)	24	46	1446
+44	Semicolon	;	24	47	1447
+45	Void	void	27	5	1538
+46	Star	*	27	10	1543
+47	Identifier	p	27	11	1544
+48	Assign	=	27	13	1546
+49	Identifier	malloc	27	15	1548
+50	LParen	(	27	21	1554
+51	Number	0	27	22	1555
+52	RParen	)	27	23	1556
+53	Semicolon	;	27	24	1557
+54	LParen	(	28	5	1563
+55	Void	void	28	6	1564
+56	RParen	)	28	10	1568
+57	Identifier	p	28	11	1569
+58	Semicolon	;	28	12	1570
+59	Identifier	printf	29	5	1576
+60	LParen	(	29	11	1582
+61	String	malloc(0) call done\n	29	12	1583
+62	RParen	)	29	35	1606
+63	Semicolon	;	29	36	1607
+64	Identifier	fprintf	32	5	1680
+65	LParen	(	32	12	1687
+66	Identifier	stderr	32	13	1688
+67	Comma	,	32	19	1694
+68	String	[stderr] 不属于 stdout\n	32	15	1696
+69	RParen	)	32	44	1725
+70	Semicolon	;	32	45	1726
+71	Identifier	fputs	35	5	1816
+72	LParen	(	35	10	1821
+73	String	tail-no-newline	35	11	1822
+74	Comma	,	35	28	1839
+75	Identifier	stdout	35	30	1841
+76	RParen	)	35	36	1847
+77	Semicolon	;	35	37	1848
+78	Return	return	36	5	1854
+79	Number	0	36	12	1861
+80	Semicolon	;	36	13	1862
+81	RBrace	}	37	1	1864
+82	Eof		38	1	1866
+count=82	errors=0	warnings=0

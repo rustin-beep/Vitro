@@ -1,0 +1,27 @@
+0	Extern	extern	2	1	24
+1	Int	int	2	8	31
+2	Identifier	g	2	12	35
+3	Semicolon	;	2	13	36
+4	Int	int	2	15	38
+5	Identifier	g	2	19	42
+6	Assign	=	2	21	44
+7	Number	42	2	23	46
+8	Semicolon	;	2	25	48
+9	Int	int	2	27	50
+10	Identifier	main	2	31	54
+11	LParen	(	2	35	58
+12	RParen	)	2	36	59
+13	LBrace	{	2	38	61
+14	Identifier	printf	2	40	63
+15	LParen	(	2	46	69
+16	String	%d	2	47	70
+17	Comma	,	2	51	74
+18	Identifier	g	2	53	76
+19	RParen	)	2	54	77
+20	Semicolon	;	2	55	78
+21	Return	return	2	57	80
+22	Number	0	2	64	87
+23	Semicolon	;	2	65	88
+24	RBrace	}	2	67	90
+25	Eof		3	1	93
+count=25	errors=0	warnings=0

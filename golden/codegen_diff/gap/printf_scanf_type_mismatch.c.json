@@ -1,0 +1,1 @@
+{"version":1,"result":"","stderr":"类型错误: [TypeError { message: \"printf 格式 '%f' 与第 2 个参数类型 'int' 不匹配\", line: 11, column: 19, code: 3062 }, TypeError { message: \"printf 格式 '%d' 与第 2 个参数类型 'double' 不匹配\", line: 12, column: 19, code: 3062 }, TypeError { message: \"scanf 格式 '%d' 与第 2 个参数类型 'double*' 不匹配\", line: 13, column: 19, code: 3063 }]\n"}

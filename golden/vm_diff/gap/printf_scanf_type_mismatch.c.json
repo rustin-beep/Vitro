@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "source_sha": "e358b16e",
+  "stdout_raw": "=== 诊断信息 ===\n[错误] 11:19  printf 格式 '%f' 与第 2 个参数类型 'int' 不匹配 (E3062)\n[错误] 12:19  printf 格式 '%d' 与第 2 个参数类型 'double' 不匹配 (E3062)\n[错误] 13:19  scanf 格式 '%d' 与第 2 个参数类型 'double*' 不匹配 (E3063)\n\n编译失败。\n",
+  "exit_code": 1,
+  "compile_fail": true
+}

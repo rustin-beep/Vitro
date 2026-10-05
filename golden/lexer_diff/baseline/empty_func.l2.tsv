@@ -1,0 +1,26 @@
+0	Void	void	2	1
+1	Identifier	f	2	6
+2	LParen	(	2	7
+3	RParen	)	2	8
+4	LBrace	{	2	10
+5	RBrace	}	2	11
+6	Int	int	2	13
+7	Identifier	main	2	17
+8	LParen	(	2	21
+9	RParen	)	2	22
+10	LBrace	{	2	24
+11	Identifier	f	2	26
+12	LParen	(	2	27
+13	RParen	)	2	28
+14	Semicolon	;	2	29
+15	Identifier	printf	2	31
+16	LParen	(	2	37
+17	String	ok	2	38
+18	RParen	)	2	42
+19	Semicolon	;	2	43
+20	Return	return	2	45
+21	Number	0	2	52
+22	Semicolon	;	2	53
+23	RBrace	}	2	55
+24	Eof		3	1
+count=24	errors=0	warnings=0

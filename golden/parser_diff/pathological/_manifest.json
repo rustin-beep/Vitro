@@ -1,0 +1,17 @@
+{
+  "sources": {
+    "assign_chain_3000.c": "e2bfe6bd",
+    "brace_300.c": "fb7eb9bb",
+    "decl_suffix_1300.c": "3a8ec58d",
+    "field_suffix_1500.c": "b95278ba",
+    "init_list_3000.c": "9aca74ea",
+    "param_suffix_1500.c": "cd88a975",
+    "paren_63.c": "5388bd98",
+    "pointer_chain_100.c": "504f890f",
+    "postfix_chain_5000.c": "312f09fc",
+    "sizeof_abstract_1400.c": "a012d517",
+    "typedef_suffix_1500.c": "cb2a2f61",
+    "unary_chain_5000.c": "f94ac988"
+  },
+  "version": 1
+}

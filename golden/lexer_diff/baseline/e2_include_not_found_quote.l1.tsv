@@ -1,0 +1,21 @@
+0	Hash	#	7	1	529
+1	Identifier	include	7	2	530
+2	String	e2_no_such_header_xyz.h	7	10	538
+3	Int	int	8	1	564
+4	Identifier	main	8	5	568
+5	LParen	(	8	9	572
+6	RParen	)	8	10	573
+7	LBrace	{	8	12	575
+8	Identifier	printf	9	5	581
+9	LParen	(	9	11	587
+10	String	%d\n	9	12	588
+11	Comma	,	9	18	594
+12	Identifier	NO_SUCH_MACRO	9	20	596
+13	RParen	)	9	33	609
+14	Semicolon	;	9	34	610
+15	Return	return	10	5	616
+16	Number	0	10	12	623
+17	Semicolon	;	10	13	624
+18	RBrace	}	11	1	626
+19	Eof		12	1	628
+count=19	errors=0	warnings=0

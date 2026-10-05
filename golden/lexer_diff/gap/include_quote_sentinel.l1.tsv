@@ -1,0 +1,14 @@
+0	Hash	#	10	1	749
+1	Identifier	include	10	2	750
+2	String	include_quote_sentinel_local.h	10	10	758
+3	Int	int	11	1	792
+4	Identifier	main	11	5	796
+5	LParen	(	11	9	800
+6	RParen	)	11	10	801
+7	LBrace	{	11	12	803
+8	Return	return	11	14	805
+9	Identifier	SENTINEL_VALUE	11	21	812
+10	Semicolon	;	11	35	826
+11	RBrace	}	11	37	828
+12	Eof		12	1	831
+count=12	errors=0	warnings=0

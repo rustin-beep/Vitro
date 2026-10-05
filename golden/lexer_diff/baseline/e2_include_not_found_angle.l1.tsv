@@ -1,0 +1,23 @@
+0	Hash	#	5	1	274
+1	Identifier	include	5	2	275
+2	Lt	<	5	10	283
+3	Identifier	no_such_stdlib_xyz	5	11	284
+4	Dot	.	5	29	302
+5	Identifier	h	5	30	303
+6	Gt	>	5	31	304
+7	Int	int	6	1	306
+8	Identifier	main	6	5	310
+9	LParen	(	6	9	314
+10	RParen	)	6	10	315
+11	LBrace	{	6	12	317
+12	Identifier	printf	7	5	323
+13	LParen	(	7	11	329
+14	String	ran\n	7	12	330
+15	RParen	)	7	19	337
+16	Semicolon	;	7	20	338
+17	Return	return	8	5	344
+18	Number	0	8	12	351
+19	Semicolon	;	8	13	352
+20	RBrace	}	9	1	354
+21	Eof		10	1	356
+count=21	errors=0	warnings=0

@@ -1,0 +1,26 @@
+0	Int	int	2	1	24
+1	Identifier	main	2	5	28
+2	LParen	(	2	9	32
+3	RParen	)	2	10	33
+4	LBrace	{	2	12	35
+5	Unsigned	unsigned	2	14	37
+6	Int	int	2	23	46
+7	Identifier	a	2	27	50
+8	Assign	=	2	29	52
+9	UnsignedLiteral	4294967295	2	32	54
+10	Semicolon	;	2	42	65
+11	Identifier	printf	2	44	67
+12	LParen	(	2	50	73
+13	String	%u	2	51	74
+14	Comma	,	2	55	78
+15	Identifier	a	2	57	80
+16	Shr	>>	2	59	82
+17	Number	1	2	62	85
+18	RParen	)	2	63	86
+19	Semicolon	;	2	64	87
+20	Return	return	2	66	89
+21	Number	0	2	73	96
+22	Semicolon	;	2	74	97
+23	RBrace	}	2	76	99
+24	Eof		3	1	102
+count=24	errors=0	warnings=0

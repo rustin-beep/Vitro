@@ -1,0 +1,32 @@
+0	Hash	#	4	1	168
+1	Identifier	include	4	2	169
+2	Lt	<	4	10	177
+3	Identifier	stdio	4	11	178
+4	Dot	.	4	16	183
+5	Identifier	h	4	17	184
+6	Gt	>	4	18	185
+7	Identifier	static_assert	5	1	187
+8	LParen	(	5	14	200
+9	Number	1	5	15	201
+10	Eq	==	5	17	203
+11	Number	2	5	20	206
+12	Comma	,	5	21	207
+13	String	math broken	5	23	209
+14	RParen	)	5	36	222
+15	Semicolon	;	5	37	223
+16	Int	int	6	1	225
+17	Identifier	main	6	5	229
+18	LParen	(	6	9	233
+19	RParen	)	6	10	234
+20	LBrace	{	6	12	236
+21	Identifier	printf	7	5	242
+22	LParen	(	7	11	248
+23	String	never\n	7	12	249
+24	RParen	)	7	21	258
+25	Semicolon	;	7	22	259
+26	Return	return	8	5	265
+27	Number	0	8	12	272
+28	Semicolon	;	8	13	273
+29	RBrace	}	9	1	275
+30	Eof		10	1	277
+count=30	errors=0	warnings=0

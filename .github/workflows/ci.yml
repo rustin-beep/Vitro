@@ -257,35 +257,6 @@ jobs:
             go run ./scripts/codegen_diff native/tests/cases/$d
           done
 
-      - name: Frozen-baseline digest freshness (vm/lexer/typeck/codegen golden freeze idempotence)
-        # 2026-10-05 工序③固化接线（审阅 P1-2：文档曾声称「golden 新鲜度闸」
-        # 而 CI 未接线）：幂等复 --freeze + git diff 空 = 入库 digest 清单 ≡
-        # 当轮 oracle 产物（等价 gen_* -check 纪律——源变则清单变，入库未刷
-        # 即红）。防两类腐化：①oracle 侧行为漂移而清单未重刷 ②清单被手改。
-        # lexer 同批修复（P1-1）：freeze 内嵌双侧对拍全绿才写 + 归一副本喂入
-        # （oracle dump-tokens 对工作区行尾敏感曾冻入 100 个 LF 时态坏值——
-        # 干净克隆实测抓出）。J9：改语料一文件复 freeze → 本步 git diff 红。
-        shell: bash
-        run: |
-          go run ./scripts/vm_diff --freeze
-          go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton --freeze
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/typeck_diff native/tests/cases/$d --freeze
-            go run ./scripts/codegen_diff native/tests/cases/$d --freeze
-            go run ./scripts/lexer_diff native/tests/cases/$d --freeze
-          done
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/parser_diff native/tests/cases/$d --freeze
-          done
-          go run ./scripts/parser_diff --pathological --freeze
-          go run ./scripts/parser_diff --legal-deep --freeze
-          go run ./scripts/parser_diff --threshold --freeze
-          if ! git diff --quiet -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff; then
-            echo "❌ frozen digest 清单与现场复 freeze 不一致（oracle 行为漂移或清单手改未重刷）——差异文件："
-            git diff --name-only -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff
-            exit 1
-          fi
-          echo "✓ frozen digest 清单幂等（与当轮 oracle 产物一致）"
       - name: MoonBit VM runtime differential (D-grade stdout/exit/memory)
         # 六轮审阅 P1-2 接线（2026-09-26）：vm_diff 此前不在 CI = 本地
         # 工具——MoonBit VM 运行期回归无人拦。三通道口径见脚本头注
@@ -309,6 +280,43 @@ jobs:
           cd moonbit && moon build --release --target native cmd/run
           cd .. && go run ./scripts/vm_diff
 
+      - name: Frozen-baseline digest freshness (vm/lexer/typeck/codegen golden freeze idempotence)
+        # 2026-10-05 工序③固化接线（审阅 P1-2：文档曾声称「golden 新鲜度闸」
+        # 而 CI 未接线）：幂等复 --freeze + git diff 空 = 入库 digest 清单 ≡
+        # 当轮 oracle 产物（等价 gen_* -check 纪律——源变则清单变，入库未刷
+        # 即红）。防两类腐化：①oracle 侧行为漂移而清单未重刷 ②清单被手改。
+        # lexer 同批修复（P1-1）：freeze 内嵌双侧对拍全绿才写 + 归一副本喂入
+        # （oracle dump-tokens 对工作区行尾敏感曾冻入 100 个 LF 时态坏值——
+        # 干净克隆实测抓出）。J9：改语料一文件复 freeze → 本步 git diff 红。
+        # **复审 P1 修复（2026-10-05 二轮）**：本步原排在 core job 唯一一处
+        # cmd/run 构建（VM 步）之前——开箱即红（vm_diff freeze 前置硬检查
+        # runner exe）。已移至 VM 步之后（exe 已建）；oracle 存在性 guard 防
+        # 工序④删区红窗口——删区时本步骤随连坐清单整体移除。
+        shell: bash
+        run: |
+          if [ ! -f native/target/release/vitro_cli.exe ]; then
+            echo "oracle exe 缺失（已删区？）——freeze 新鲜度闸为过渡期闸，随工序④退役；本步跳过"
+            exit 0
+          fi
+          go run ./scripts/vm_diff --freeze
+          go run ./scripts/codegen_diff native/tests/cases/codegen_skeleton --freeze
+          for d in baseline knr leetcode gap; do
+            go run ./scripts/typeck_diff native/tests/cases/$d --freeze
+            go run ./scripts/codegen_diff native/tests/cases/$d --freeze
+            go run ./scripts/lexer_diff native/tests/cases/$d --freeze
+          done
+          for d in baseline knr leetcode gap; do
+            go run ./scripts/parser_diff native/tests/cases/$d --freeze
+          done
+          go run ./scripts/parser_diff --pathological --freeze
+          go run ./scripts/parser_diff --legal-deep --freeze
+          go run ./scripts/parser_diff --threshold --freeze
+          if ! git diff --quiet -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff; then
+            echo "❌ frozen digest 清单与现场复 freeze 不一致（oracle 行为漂移或清单手改未重刷）——差异文件："
+            git diff --name-only -- scripts/vm_diff scripts/lexer_diff scripts/parser_diff scripts/typeck_diff scripts/codegen_diff
+            exit 1
+          fi
+          echo "✓ frozen digest 清单幂等（与当轮 oracle 产物一致）"
       - name: Clang direct verify (layer 2, cmd/run vs Clang golden)
         # §7.1 层 2 直拍防线（2026-09-26 提前落地——原排期 S7，用户拍板
         # 前移）：真值源 = Clang 本尊（非 Rust oracle），cmd/run 的

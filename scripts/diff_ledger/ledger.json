@@ -778,6 +778,42 @@
       },
       "detectable_by_defense": [],
       "notes": "wbtest strerror_message_with_nul_and_region 锚定 alloc_by/size（ty 字段无锚）；散点抽查四发之三（kr_1_19 \r=已修复记录/%g 9/60=被否决路径论证/round=已对齐陷阱记录）均无现存差异，唯本条真收编"
+    },
+    {
+      "id": "DIFF-E2E-KNOWN-LEDGER-01",
+      "title": "e2e KNOWN 豁免史实转写（工序③面四收口件，2026-10-05）——Rust 冻结区 vitro_e2e.rs 的 8 条豁免清单随删区退役前的台账化",
+      "class": "pedagogical",
+      "carry_over": "drop",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "工序④面四拍板（2026-10-05）：e2e 系 oracle 自身端到端防线，.rs/golden/KNOWN 全在冻结区随退役（正确语义——语义守护已由 shadow/clang_direct + 五驱动 digest 双锚承接）；映射闸降格不做（过渡期 e2e 在 CI cargo test 跑着已有缩水防线，删区后无守护对象）。本条 = KNOWN 史实台账化：防语料转绿无人知晓历史豁免、防将来 agent 重蹈。8 条中 putchar_range 属『golden 行协议不兼容跳过』非编译失败（DIFF-LIB-PUTCHAR-01 在册，随 e2e 退役自然消失）；bTree_default = 模板 UB（DIFF-UB-BTREE-01 在册）；其余 6 条 = 双侧编译失败等价类（E2/E3 语料族——j1_declarator_depth 红锚形态）",
+      "subsystems": [
+        "native/tests（冻结区）"
+      ],
+      "clang_verdict": "不适用（双侧编译失败等价类为主——Clang 同拒或豁免语义已在语料注释）",
+      "source_docs": [
+        "native/tests/vitro_e2e.rs KNOWN_* 常量（222/281/285/308/314 行）",
+        "工序③冻结资产清单面四"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [],
+      "known_e2e_baseline_compile": [
+        "putchar_range",
+        "e2_include_cycle",
+        "e3_static_assert_fail",
+        "e2_include_not_found_quote",
+        "e2_include_not_found_angle",
+        "e2_angle_local_header",
+        "j1_declarator_depth"
+      ],
+      "known_e2e_template": [
+        "bTree_default"
+      ],
+      "notes": "工序④删区连坐：vitro_e2e.rs + e2e_multi_file.rs + cases_golden/ 745 .out（936KB，无现役消费方——shadow/clang_direct 现场跑 Clang；git 历史可回取）随 Rust 区整体删除"
     }
   ]
 }

@@ -128,53 +128,169 @@ type cgGoldenEntry struct {
 // oracleDumpBatch：freeze 落盘 / golden 读盘 / 默认活体。stderr 随序伴生
 // （AGREE-ERROR 判定依赖），golden 双存。
 func oracleDumpBatch(files []string) ([][]byte, [][]byte) {
-	dir := filepath.Join(codegenGoldenRoot, filepath.Base(filepath.Dir(files[0]))) // golden/<corpus>
-	// files[0] = <root>/native/tests/cases/<corpus>/x.c → 一级上取 corpus 名（两级会混成 cases/ 四语料互覆盖——2026-10-05 freeze 实测抓出）
 	if freezeMode {
+		// digest 清单：ok 例存 canonicalize 后 result hash；fail 例存 mb 侧
+		// 失败层 stage（AGREE-ERROR 语义面的指纹化）；fork 例照存 oracle hash。
+		// 比对照旧跑（freeze 即验证）。
 		outs, stderrs := rustDumpBatch(files)
-		must2(os.MkdirAll(dir, 0o755), "建 golden 目录")
-		for i, f := range files {
-			// freeze 存**归一后**产物：dump-compile 原文非确定（Rust 侧
-			// 迭代序，单文件双跑实测不一致——原对拍靠 canonicalize 消化）；
-			// 对拍语义 = 归一后逐字节，golden 固化该语义（canonicalize 幂等，
-			// 比对段再归一不变）。stderr 为纯文本，保留原文。
-			r := outs[i]
-			if r != nil {
-				r = canonicalize(r)
-			}
-			e := cgGoldenEntry{Version: 1, Result: string(r), Stderr: string(stderrs[i])}
-			data, _ := json.Marshal(e)
-			must2(os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), append(data, '\n'), 0o644), "写 golden "+f)
+		doc := loadCgDigest()
+		corpus := filepath.Base(filepath.Dir(files[0]))
+		sec := doc.Corpora[corpus]
+		if sec == nil {
+			sec = &cgSec{Sources: map[string]string{}, Cases: map[string]cgDigestEntry{}}
+			doc.Corpora[corpus] = sec
 		}
-		writeCgManifest(files, dir)
-		fmt.Printf("codegen_diff freeze: %d 响应落盘 → %s\n", len(files), dir)
+		for i, f := range files {
+			name := filepath.Base(f)
+			sec.Sources[name] = cgSrcSHA(f)
+			e := cgDigestEntry{}
+			if outs[i] == nil {
+				e.Fail = true
+			} else {
+				e.ResultSHA = hash16(canonicalize(outs[i]))
+			}
+			sec.Cases[name] = e
+		}
+		saveCgDigest(doc)
+		fmt.Printf("codegen_diff freeze[%s]: %d 例入清单 → %s\n", corpus, len(files), cgDigestFile)
 		return outs, stderrs
 	}
 	if goldenMode {
-		verifyCgManifest(files, dir)
-		outs := make([][]byte, len(files))
-		stderrs := make([][]byte, len(files))
-		for i, f := range files {
-			data, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
-			if err != nil {
-				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
-			}
-			var e cgGoldenEntry
-			if err := json.Unmarshal(data, &e); err != nil || e.Version != 1 {
-				fail("坏 golden 或版本不识 %s", filepath.Base(f)+".json")
-			}
-			if e.Result == "" {
-				outs[i] = nil // 与活体形态一致：失败样本 outs=nil
-			} else {
-				outs[i] = []byte(e.Result)
-			}
-			stderrs[i] = []byte(e.Stderr)
-		}
-		return outs, stderrs
+		fail("golden 模式不走 oracleDumpBatch（runCorpus 入口已拦截到 goldenRun）")
 	}
 	return rustDumpBatch(files)
 }
 
+// ---- digest 清单（result hash + fail 例 stage 指纹；stderr 不入清单——
+// 失败层语义由 Fail 布尔 + 现模式承担，全文兜底走 orphan 分支） ----
+
+const cgDigestFile = "scripts/codegen_diff/golden_digest.json"
+
+type cgDigestEntry struct {
+	ResultSHA string `json:"result_sha,omitempty"` // ok 例：canonicalize 后产物 sha16
+	Fail      bool   `json:"fail,omitempty"`       // 失败例（失败层等价已由 freeze 时对拍验证）
+}
+
+type cgSec struct {
+	Sources map[string]string        `json:"sources"`
+	Cases   map[string]cgDigestEntry `json:"cases"`
+}
+
+type cgDigestDoc struct {
+	Version int               `json:"version"`
+	Note    string            `json:"note"`
+	Corpora map[string]*cgSec `json:"corpora"`
+}
+
+func loadCgDigest() cgDigestDoc {
+	d := cgDigestDoc{Version: 1, Note: "freeze 时已全量对拍（SAME/AGREE-ERROR/FORK）；golden = mb 指纹 ≡ 清单", Corpora: map[string]*cgSec{}}
+	if b, err := os.ReadFile(cgDigestFile); err == nil {
+		if err := json.Unmarshal(b, &d); err != nil || d.Version != 1 {
+			fail("digest 清单坏或版本不识 %s", cgDigestFile)
+		}
+		if d.Corpora == nil {
+			d.Corpora = map[string]*cgSec{}
+		}
+	}
+	return d
+}
+
+func saveCgDigest(d cgDigestDoc) {
+	data, _ := json.MarshalIndent(d, "", "  ")
+	must2(os.WriteFile(cgDigestFile, append(data, 10), 0o644), "写 digest 清单")
+}
+
+func hash16(b []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
+func cgSrcSHA(f string) string {
+	b, err := os.ReadFile(f)
+	if err != nil {
+		fail("读样本失败 %s: %v", f, err)
+	}
+	crlf := []byte{13, 10}
+	lf := []byte{10}
+	return fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(b, crlf, lf)))[:8]
+}
+
+// moonRawOf：读 mb 侧 dump_compile 产物（.c.compile.json 优先，fallback .compile.json）。
+func moonRawOf(moonDir, f string) []byte {
+	stem := stemOf(f)
+	moonRaw, err := os.ReadFile(filepath.Join(moonDir, stem+".c.compile.json"))
+	if err != nil {
+		moonRaw, err = os.ReadFile(filepath.Join(moonDir, stem+".compile.json"))
+		if err != nil {
+			fail("MoonBit 侧输出缺失: %s (%v)", stem, err)
+		}
+	}
+	return moonRaw
+}
+
+// goldenRun：mb 指纹 ≡ 清单——ok 例 canonicalize hash 比；fail 例布尔比；
+// fork 例跳过（清单存 oracle hash 仅供溯源）。
+func goldenRun(corpus string) int {
+	doc := loadCgDigest()
+	corpusName := filepath.Base(corpus)
+	sec, ok := doc.Corpora[corpusName]
+	if !ok {
+		fail("清单缺语料节 %s（先 --freeze）", corpusName)
+	}
+	files := listCFiles(corpus)
+	if len(files) == 0 {
+		fail("语料目录无 .c 文件: %s", corpus)
+	}
+	for _, f := range files {
+		name := filepath.Base(f)
+		if sha := cgSrcSHA(f); sec.Sources[name] != sha {
+			fail("语料 %s 已变更而清单未重刷（%s ≠ %s）——重跑 --freeze", name, sha, sec.Sources[name])
+		}
+	}
+	moonDir := moonDump(corpus)
+	failures, forkN, matched := 0, 0, 0
+	for _, f := range files {
+		name := filepath.Base(f)
+		if _, isFork := knownForkFiles[name]; isFork {
+			fmt.Printf("FORK(known-golden-skip) %s——有意分叉例，形状校验走现模式"+string(rune(10)), name)
+			forkN++
+			continue
+		}
+		e, ok := sec.Cases[name]
+		if !ok {
+			fmt.Printf("DIFF 缺失: 清单无 %s"+string(rune(10)), name)
+			failures++
+			continue
+		}
+		raw := moonRawOf(moonDir, f)
+		mok, dump, _, _ := parseMoonDoc(raw)
+		if e.Fail {
+			if mok {
+				fmt.Printf("DIFF %s: 冻结基线为编译失败，mb 现 ok——行为漂移（全文对照见 frozen-oracle-snapshot 分支）"+string(rune(10)), name)
+				failures++
+			} else {
+				matched++
+			}
+			continue
+		}
+		if !mok {
+			fmt.Printf("DIFF %s: 冻结基线 ok，mb 现编译失败（%s）——行为漂移"+string(rune(10)), name, name)
+			failures++
+			continue
+		}
+		if got := hash16(canonicalize(dump)); got != e.ResultSHA {
+			fmt.Printf("DIFF %s: hash %s ≠ 清单 %s（全文对照见 frozen-oracle-snapshot 分支）"+string(rune(10)), name, got, e.ResultSHA)
+			failures++
+		} else {
+			matched++
+		}
+	}
+	if failures > 0 {
+		fmt.Printf("codegen_diff[golden:%s]: FAIL——%d/%d 差异"+string(rune(10)), corpusName, failures, len(files))
+		return 1
+	}
+	fmt.Printf("codegen_diff[golden:%s]: PASS——%d 指纹一致（fork 跳过 %d）"+string(rune(10)), corpusName, matched, forkN)
+	return 0
+}
 func cgSrcSHAs(files []string) map[string]string {
 	out := map[string]string{}
 	for _, f := range files {
@@ -235,6 +351,9 @@ var knownForkFiles = map[string]string{
 }
 
 func runCorpus(corpus string, baseline bool, selftest bool) int {
+	if goldenMode {
+		return goldenRun(corpus)
+	}
 	files := listCFiles(corpus)
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)

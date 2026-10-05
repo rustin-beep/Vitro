@@ -99,59 +99,124 @@ func oracleCLIExists() bool {
 	return false
 }
 
+// ---- digest 清单（聚合单文件，按语料分节；同 parser_diff 形态） ----
+
+const typeckDigestFile = "scripts/typeck_diff/golden_digest.json"
+
+type typeckSec struct {
+	Sources    map[string]string `json:"sources"`
+	RespHashes map[string]string `json:"resp_hashes"`
+}
+
+type typeckDigestDoc struct {
+	Version int                   `json:"version"`
+	Note    string                `json:"note"`
+	Modes   map[string]*typeckSec `json:"modes"`
+}
+
+func loadTypeckDigest() typeckDigestDoc {
+	d := typeckDigestDoc{Version: 1, Note: "freeze 时已全量对拍；golden = mb 归一 hash ≡ 清单；fork 例 golden 跳过", Modes: map[string]*typeckSec{}}
+	if b, err := os.ReadFile(typeckDigestFile); err == nil {
+		if err := json.Unmarshal(b, &d); err != nil || d.Version != 1 {
+			fail("digest 清单坏或版本不识 %s", typeckDigestFile)
+		}
+		if d.Modes == nil {
+			d.Modes = map[string]*typeckSec{}
+		}
+	}
+	return d
+}
+
+func saveTypeckDigest(d typeckDigestDoc) {
+	data, _ := json.MarshalIndent(d, "", "  ")
+	if err := os.WriteFile(typeckDigestFile, append(data, 10), 0o644); err != nil {
+		fail("写 digest 清单失败: %v", err)
+	}
+}
+
+func hash16(b []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
+func typeckSrcSHA(f string) string {
+	b, err := os.ReadFile(f)
+	if err != nil {
+		fail("读样本失败 %s: %v", f, err)
+	}
+	crlf := []byte{13, 10}
+	lf := []byte{10}
+	return fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(b, crlf, lf)))[:8]
+}
+
+// goldenRun：mb 归一 hash ≡ 清单；fork 例跳过。
+func goldenRun(files []string, corpus string) int {
+	doc := loadTypeckDigest()
+	mode := "corpus-" + filepath.Base(corpus)
+	sec, ok := doc.Modes[mode]
+	if !ok {
+		fail("清单缺语料节 %s（先 --freeze）", mode)
+	}
+	for _, f := range files {
+		name := filepath.Base(f)
+		if sha := typeckSrcSHA(f); sec.Sources[name] != sha {
+			fail("语料 %s 已变更而清单未重刷（%s ≠ %s）——重跑 --freeze", name, sha, sec.Sources[name])
+		}
+	}
+	moonDir := moonDump(corpus)
+	failures, forkN, matched := 0, 0, 0
+	for _, f := range files {
+		name := filepath.Base(f)
+		if _, isFork := knownForkFiles[name]; isFork {
+			fmt.Printf("FORK(known-golden-skip) %s——有意分叉例，形状校验走现模式/wbtest 锚"+string(rune(10)), name)
+			forkN++
+			continue
+		}
+		want, ok := sec.RespHashes[name]
+		if !ok {
+			fmt.Printf("DIFF 缺失: 清单无 %s"+string(rune(10)), name)
+			failures++
+			continue
+		}
+		if got := hash16(canonicalize(moonRawOf(moonDir, f))); got != want {
+			fmt.Printf("DIFF %s: hash %s ≠ 清单 %s（全文对照见 frozen-oracle-snapshot 分支）"+string(rune(10)), name, got, want)
+			failures++
+		} else {
+			matched++
+		}
+	}
+	if failures > 0 {
+		fmt.Printf("typeck_diff[golden:%s]: FAIL——%d/%d 差异"+string(rune(10)), mode, failures, len(files))
+		return 1
+	}
+	fmt.Printf("typeck_diff[golden:%s]: PASS——%d hash 一致（fork 跳过 %d）"+string(rune(10)), mode, matched, forkN)
+	return 0
+}
+
 func oracleTypeckBatch(files []string, corpus string) [][]byte {
-	dir := filepath.Join(typeckGoldenRoot, "corpus-"+filepath.Base(corpus))
 	if freezeMode {
+		// digest 清单：oracle 响应 canonicalize 归一后 hash 入清单（fork 例照存
+		// oracle hash，golden 跳过）；比对照旧跑（freeze 即验证）。
 		outs := rustTypeckDumpBatch(files)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			fail("建 golden 目录失败: %v", err)
+		doc := loadTypeckDigest()
+		mode := "corpus-" + filepath.Base(corpus)
+		sec := doc.Modes[mode]
+		if sec == nil {
+			sec = &typeckSec{Sources: map[string]string{}, RespHashes: map[string]string{}}
+			doc.Modes[mode] = sec
 		}
 		for i, f := range files {
-			if err := os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), outs[i], 0o644); err != nil {
-				fail("写 golden 失败 %s: %v", f, err)
-			}
+			sec.Sources[filepath.Base(f)] = typeckSrcSHA(f)
+			sec.RespHashes[filepath.Base(f)] = hash16(canonicalize(outs[i]))
 		}
-		data, _ := json.MarshalIndent(map[string]any{"version": 1, "sources": srcSHAs(files)}, "", "  ")
-		if err := os.WriteFile(filepath.Join(dir, "_manifest.json"), append(data, 10), 0o644); err != nil {
-			fail("写 _manifest.json 失败: %v", err)
-		}
-		fmt.Printf("typeck_diff freeze: %d 响应落盘 → %s"+string(rune(10)), len(files), dir)
+		saveTypeckDigest(doc)
+		fmt.Printf("typeck_diff freeze[%s]: %d 响应 hash 入清单 → %s\n", mode, len(files), typeckDigestFile)
 		return outs
 	}
 	if goldenMode {
-		data, err := os.ReadFile(filepath.Join(dir, "_manifest.json"))
-		if err != nil {
-			fail("缺 _manifest.json %s（先 --freeze）: %v", dir, err)
-		}
-		var m struct {
-			Version int               `json:"version"`
-			Sources map[string]string `json:"sources"`
-		}
-		if err := json.Unmarshal(data, &m); err != nil || m.Version != 1 {
-			fail("_manifest.json 坏或版本不识 %s", dir)
-		}
-		cur := srcSHAs(files)
-		if len(cur) != len(m.Sources) {
-			fail("语料已变（现 %d ≠ 落盘 %d）——重跑 --freeze", len(cur), len(m.Sources))
-		}
-		for name, sha := range m.Sources {
-			if cur[name] != sha {
-				fail("语料 %s 已变更而 golden 未重刷（%s ≠ %s）——重跑 --freeze", name, cur[name], sha)
-			}
-		}
-		outs := make([][]byte, len(files))
-		for i, f := range files {
-			b, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
-			if err != nil {
-				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
-			}
-			outs[i] = b
-		}
-		return outs
+		fail("golden 模式不走 oracleTypeckBatch（runCorpus 入口已拦截到 goldenRun）")
 	}
 	return rustTypeckDumpBatch(files)
 }
-
 func srcSHAs(files []string) map[string]string {
 	out := map[string]string{}
 	for _, f := range files {
@@ -184,6 +249,13 @@ var knownForkFiles = map[string]string{
 }
 
 func runCorpus(corpus string, selftest bool) int {
+	if goldenMode {
+		files := listCFiles(corpus)
+		if len(files) == 0 {
+			fail("语料目录无 .c 文件: %s", corpus)
+		}
+		return goldenRun(files, corpus)
+	}
 	files := listCFiles(corpus)
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)

@@ -109,71 +109,141 @@ func oracleCLIExists() bool {
 // golden 读盘、默认活体。golden 锚样本 src sha（语料与生成样本统一处理：
 // 生成样本内容确定，代码变更后重 freeze 即一致）。
 func oracleAstBatch(files []string, mode string) [][]byte {
-	dir := filepath.Join(parserGoldenRoot, mode)
 	if freezeMode {
+		// digest 清单形态：oracle 响应经 canonicalize 归一后取 hash 入清单
+		// （单文件聚合，重刷 diff = 影响面清单；全文兜底 = orphan 分支）。
+		// 比对照旧跑（freeze 即验证），fork 例照存 oracle hash（golden 跳过）。
 		outs := rustAstDumpBatch(files)
-		must(os.MkdirAll(dir, 0o755), "建 golden 目录 "+dir)
-		for i, f := range files {
-			must(os.WriteFile(filepath.Join(dir, filepath.Base(f)+".json"), outs[i], 0o644), "写 golden "+f)
+		doc := loadParserDigest()
+		sec := doc.Modes[mode]
+		if sec == nil {
+			sec = &parserSec{Sources: map[string]string{}, RespHashes: map[string]string{}}
+			doc.Modes[mode] = sec
 		}
-		writeParserManifest(files, dir)
-		fmt.Printf("parser_diff freeze[%s]: %d 响应落盘 → %s\n", mode, len(files), dir)
+		for i, f := range files {
+			sec.Sources[filepath.Base(f)] = parserSrcSHA(f)
+			sec.RespHashes[filepath.Base(f)] = hash16(canonicalize(outs[i]))
+		}
+		saveParserDigest(doc)
+		fmt.Printf("parser_diff freeze[%s]: %d 响应 hash 入清单 → %s\n", mode, len(files), parserDigestFile)
 		return outs
 	}
 	if goldenMode {
-		verifyParserManifest(files, dir)
-		outs := make([][]byte, len(files))
-		for i, f := range files {
-			b, err := os.ReadFile(filepath.Join(dir, filepath.Base(f)+".json"))
-			if err != nil {
-				fail("缺 golden %s（先 --freeze）: %v", filepath.Base(f)+".json", err)
-			}
-			outs[i] = b
-		}
-		return outs
+		fail("golden 模式不走 oracleAstBatch（各 run 函数入口已拦截到 goldenRun）")
 	}
 	return rustAstDumpBatch(files)
 }
 
-func parserSrcSHAs(files []string) map[string]string {
-	out := map[string]string{}
-	for _, f := range files {
-		b, err := os.ReadFile(f)
-		if err != nil {
-			fail("读样本失败 %s: %v", f, err)
+// ---- digest 清单（聚合单文件，按模式分节） ----
+
+const parserDigestFile = "scripts/parser_diff/golden_digest.json"
+
+type parserSec struct {
+	Sources    map[string]string `json:"sources"`     // 样本名 → 源 sha8（生成样本同锚）
+	RespHashes map[string]string `json:"resp_hashes"` // 样本名 → canonicalize 后响应 sha16
+}
+
+type parserDigestDoc struct {
+	Version int                   `json:"version"`
+	Note    string                `json:"note"`
+	Modes   map[string]*parserSec `json:"modes"`
+}
+
+func loadParserDigest() parserDigestDoc {
+	d := parserDigestDoc{Version: 1, Note: "freeze 时已全量对拍；golden = mb 归一 hash ≡ 清单；fork 例 golden 跳过", Modes: map[string]*parserSec{}}
+	if b, err := os.ReadFile(parserDigestFile); err == nil {
+		if err := json.Unmarshal(b, &d); err != nil || d.Version != 1 {
+			fail("digest 清单坏或版本不识 %s", parserDigestFile)
 		}
-		h := sha256.Sum256(bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n")))
-		out[filepath.Base(f)] = fmt.Sprintf("%x", h)[:8]
+		if d.Modes == nil {
+			d.Modes = map[string]*parserSec{}
+		}
 	}
-	return out
+	return d
 }
 
-func writeParserManifest(files []string, dir string) {
-	data, _ := json.MarshalIndent(map[string]any{"version": 1, "sources": parserSrcSHAs(files)}, "", "  ")
-	must(os.WriteFile(filepath.Join(dir, "_manifest.json"), append(data, '\n'), 0o644), "写 _manifest.json")
+func saveParserDigest(d parserDigestDoc) {
+	data, _ := json.MarshalIndent(d, "", "  ")
+	must(os.WriteFile(parserDigestFile, append(data, 10), 0o644), "写 digest 清单")
 }
 
-func verifyParserManifest(files []string, dir string) {
-	data, err := os.ReadFile(filepath.Join(dir, "_manifest.json"))
+func hash16(b []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(b))[:16]
+}
+
+func parserSrcSHA(f string) string {
+	b, err := os.ReadFile(f)
 	if err != nil {
-		fail("缺 _manifest.json %s（先 --freeze）: %v", dir, err)
+		fail("读样本失败 %s: %v", f, err)
 	}
-	var m struct {
-		Version int               `json:"version"`
-		Sources map[string]string `json:"sources"`
-	}
-	if err := json.Unmarshal(data, &m); err != nil || m.Version != 1 {
-		fail("_manifest.json 坏或版本不识 %s", dir)
-	}
-	cur := parserSrcSHAs(files)
-	if len(cur) != len(m.Sources) {
-		fail("样本集已变（现 %d ≠ 落盘 %d）——重跑 --freeze：%s", len(cur), len(m.Sources), dir)
-	}
-	for name, sha := range m.Sources {
-		if cur[name] != sha {
-			fail("样本 %s 已变更而 golden 未重刷（%s ≠ %s）——重跑 --freeze", name, cur[name], sha)
+	crlf := []byte{13, 10}
+	lf := []byte{10}
+	return fmt.Sprintf("%x", sha256.Sum256(bytes.ReplaceAll(b, crlf, lf)))[:8]
+}
+
+func moonRawOf(moonDir, f string) []byte {
+	stem := stemOf(f)
+	moonRaw, err := os.ReadFile(filepath.Join(moonDir, stem+".c.ast.json"))
+	if err != nil {
+		moonRaw, err = os.ReadFile(filepath.Join(moonDir, stem+".ast.json"))
+		if err != nil {
+			fail("MoonBit 侧输出缺失: %s (%v)", stem, err)
 		}
 	}
+	return moonRaw
+}
+
+// goldenRun：golden 基线模式统一流程——mb 归一 hash ≡ 清单（行为指纹，
+// 覆盖各子模式断言语义：hash ≡ freeze 时行为 = 当时断言全过）；fork 例
+// 跳过（分叉例的形状校验由 wbtest 锚与现模式承担）。
+func goldenRun(files []string, mode string, corpusDir string) int {
+	doc := loadParserDigest()
+	sec, ok := doc.Modes[mode]
+	if !ok {
+		fail("清单缺模式节 %s（先 --freeze）", mode)
+	}
+	for _, f := range files {
+		name := filepath.Base(f)
+		if sha := parserSrcSHA(f); sec.Sources[name] != sha {
+			fail("样本 %s 与 freeze 时不一致（%s ≠ %s）——生成样本由代码决定，代码变了先重跑 --freeze", name, sha, sec.Sources[name])
+		}
+	}
+	moonDir := moonDump(corpusDir)
+	failures, forkN, matched := 0, 0, 0
+	for _, f := range files {
+		name := filepath.Base(f)
+		isFork := false
+		if _, ok := knownForkFiles[name]; ok {
+			isFork = true
+		}
+		if mode == "threshold" && thresholdShapeSampleOf(name) != nil {
+			isFork = true // C 族 = 裁定 b 有意分叉（撕裂折叠），清单登记 oracle hash 仅供溯源
+		}
+		if isFork {
+			fmt.Printf("FORK(known-golden-skip) %s——有意分叉例，形状校验走现模式/wbtest 锚%s", name, string(rune(10)))
+			forkN++
+			continue
+		}
+		want, ok := sec.RespHashes[name]
+		if !ok {
+			fmt.Printf("DIFF 缺失: 清单无 %s%s", name, string(rune(10)))
+			failures++
+			continue
+		}
+		moonNorm := canonicalize(moonRawOf(moonDir, f))
+		if got := hash16(moonNorm); got != want {
+			fmt.Printf("DIFF %s: hash %s ≠ 清单 %s（全文对照见 frozen-oracle-snapshot 分支）%s", name, got, want, string(rune(10)))
+			failures++
+		} else {
+			matched++
+		}
+	}
+	if failures > 0 {
+		fmt.Printf("parser_diff[golden:%s]: FAIL——%d/%d 差异%s", mode, failures, len(files), string(rune(10)))
+		return 1
+	}
+	fmt.Printf("parser_diff[golden:%s]: PASS——%d hash 一致（fork 跳过 %d）%s", mode, matched, forkN, string(rune(10)))
+	return 0
 }
 
 func must(err error, what string) {
@@ -206,6 +276,9 @@ func runCorpus(corpus string, selftest bool) int {
 	files := listCFiles(corpus)
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)
+	}
+	if goldenMode {
+		return goldenRun(files, "corpus-"+filepath.Base(corpus), corpus)
 	}
 	rustOuts := oracleAstBatch(files, "corpus-"+filepath.Base(corpus))
 	if selftest {
@@ -294,6 +367,9 @@ func runPathological(selftest bool) int {
 	if len(files) != len(pathologicalSamples) {
 		fail("病态样本数不符: %d != %d", len(files), len(pathologicalSamples))
 	}
+	if goldenMode {
+		return goldenRun(files, "pathological", tmp)
+	}
 	rustOuts := oracleAstBatch(files, "pathological")
 	if selftest {
 		// J9 埋雷：把"decl_suffix_1300"的 Rust 侧结果改成 ok=true——
@@ -368,6 +444,9 @@ func runLegalDeep(selftest bool) int {
 		}
 	}
 	files := listCFiles(tmp)
+	if goldenMode {
+		return goldenRun(files, "legal_deep", tmp)
+	}
 	rustOuts := oracleAstBatch(files, "legal_deep")
 	if selftest {
 		rustOuts[0] = []byte(`{"ok": false, "parse_error_count": 1, "ast": null, "parse_errors": [{"code":1006,"line":1,"column":1,"message":"x"}], "stall_count": 0}`)
@@ -535,6 +614,9 @@ func runThreshold(selftest bool) int {
 	files := listCFiles(tmp)
 	if len(files) != all {
 		fail("阈值样本数不符: %d != %d", len(files), all)
+	}
+	if goldenMode {
+		return goldenRun(files, "threshold", tmp)
 	}
 	rustOuts := oracleAstBatch(files, "threshold")
 	if selftest {

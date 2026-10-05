@@ -471,14 +471,14 @@
       "id": "DIFF-LIB-CTYPE-01",
       "title": "ctype 域外输入形态（已知限制①-5：部分函数域外恒 0 的比较形态）",
       "class": "implementable",
-      "carry_over": "retest",
-      "status": "open-unverified",
+      "carry_over": "drop",
+      "status": "resolved-verified",
       "evidence": "run",
       "rationale": "一段 b 四探针（isalpha(200)/isalpha(-1)/isdigit(255)/isalnum(-5)）MoonBit 与 Clang 输出一致（全 0）——已知限制①-5 描述的差异面未显现；差异面待更尖探针定位或条目撤销",
       "subsystems": [
         "host"
       ],
-      "clang_verdict": "待定（本批探针面一致）",
+      "clang_verdict": "一致（C locale 域全域）",
       "source_docs": [
         "已知限制与差异.md ①-5"
       ],
@@ -488,7 +488,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "ctype_domain.c 探针（2026-09-30）；retest 义务 = 定位①-5 原描述的差异面（可能已随 S6 ctype 14 handler 纯函数化对齐）——若确认已对齐则条目转 resolved 并连坐已知限制①-5 删行"
+      "notes": "retest 销账（2026-10-05 工序①）：一段 b 四点（isalpha(200)/isalpha(-1)/isdigit(255)/isalnum(-5)）+ 工序① 十点全套 ×12 函数（-5/-1/0/9/127/128/160/200/255/256 × isalpha/isdigit/isalnum/isspace/isprint/iscntrl/isupper/islower/isxdigit/isgraph/tolower/toupper）两侧逐位一致——原描述「负码位 glibc 按 256 取模非零 vs Vitro 恒 0」的差异面在 C locale 下数学上不存在（128-255 段表项全零/原值，镜像取模后与原值比较恒同）；探针留档 tmp/ctype_retest/。连坐：已知限制①-5 删行 + host_ctype.mbt 头注更正"
     },
     {
       "id": "DIFF-LIB-STRNCPY-01",
@@ -755,6 +755,29 @@
       },
       "detectable_by_defense": [],
       "notes": "勿与 #24（十六进制、标准合法）混修——两者标准地位不同"
+    },
+    {
+      "id": "DIFF-LIB-STRERROR-META-01",
+      "title": "strerror 内部分配区域的元数据类型名微差——mb 经 memory register_alloc 的 auto_name 落 \"int\"（oracle 手写 \"char\"）；符号表/内存观察面差异，stdout/返回值零影响",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-code",
+      "evidence": "code",
+      "rationale": "工序① 散点抽查收编（2026-10-05）：host_convert.mbt:303 注释就地登记但台账漏收——微差属元数据命名层（区域类型名是实现自选细节，无 C 语义约束），端到端不可见、无语料覆盖、无 known（三防线零触达）。两侧名字均非「对错」关系，脱钩后可自定（含语义化命名候选）；现形态照搬登记",
+      "subsystems": [
+        "host"
+      ],
+      "clang_verdict": "未对照（Clang 无对应观察面——strerror 内部实现不暴露区域类型名；本条为 mb↔oracle 观察面微差）",
+      "source_docs": [
+        "host_convert.mbt:303 注释（勘察 §3.2-9 邻域）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [],
+      "notes": "wbtest strerror_message_with_nul_and_region 锚定 alloc_by/size（ty 字段无锚）；散点抽查四发之三（kr_1_19 \r=已修复记录/%g 9/60=被否决路径论证/round=已对齐陷阱记录）均无现存差异，唯本条真收编"
     }
   ]
 }

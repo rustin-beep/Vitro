@@ -58,13 +58,14 @@ func main() {
 			os.Exit(2)
 		}
 	}
+	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
 	}
 	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
 	if !freezeMode && !oracleCLIExists() {
 		if !goldenMode {
-			fmt.Println("parser_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			fmt.Fprintln(os.Stderr, "parser_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			goldenMode = true
 		}
 	}
@@ -73,23 +74,42 @@ func main() {
 	}
 	switch {
 	case mode == "--pathological":
-		os.Exit(runPathological(selftest))
+		rc := runPathological(selftest)
+		if rc == 0 {
+			flushFreezePending()
+		}
+		os.Exit(rc)
 	case mode == "--legal-deep":
-		os.Exit(runLegalDeep(selftest))
+		rc := runLegalDeep(selftest)
+		if rc == 0 {
+			flushFreezePending()
+		}
+		os.Exit(rc)
 	case mode == "--threshold":
-		os.Exit(runThreshold(selftest))
+		rc := runThreshold(selftest)
+		if rc == 0 {
+			flushFreezePending()
+		}
+		os.Exit(rc)
 	default:
 		corpus, err := filepath.Abs(mode)
 		if err != nil {
 			fail("语料路径解析失败: %v", err)
 		}
-		os.Exit(runCorpus(corpus, selftest))
+		rc := runCorpus(corpus, selftest)
+		if rc == 0 {
+			flushFreezePending()
+		}
+		os.Exit(rc)
 	}
 }
 
 // ---- 工序③固化：全局模式与 oracle 消费统一包装 ----
 
 var freezeMode, goldenMode bool
+
+// selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
+var selftestFlag bool
 
 const parserGoldenRoot = "scripts/parser_diff/golden"
 
@@ -124,7 +144,7 @@ func oracleAstBatch(files []string, mode string) [][]byte {
 			sec.Sources[filepath.Base(f)] = parserSrcSHA(f)
 			sec.RespHashes[filepath.Base(f)] = hash16(canonicalize(outs[i]))
 		}
-		saveParserDigest(doc)
+		freezePendingParser = &doc // P2-1：对拍全绿才落盘
 		fmt.Printf("parser_diff freeze[%s]: %d 响应 hash 入清单 → %s\n", mode, len(files), parserDigestFile)
 		return outs
 	}
@@ -137,6 +157,16 @@ func oracleAstBatch(files []string, mode string) [][]byte {
 // ---- digest 清单（聚合单文件，按模式分节） ----
 
 const parserDigestFile = "scripts/parser_diff/golden_digest.json"
+
+// freezePendingParser：审阅 P2-1——freeze 产物暂存，run 返回 0（对拍全绿）才落盘；
+// 红/失败路径脏清单不再入库。
+var freezePendingParser *parserDigestDoc
+
+func flushFreezePending() {
+	if freezePendingParser != nil {
+		saveParserDigest(*freezePendingParser)
+	}
+}
 
 type parserSec struct {
 	Sources    map[string]string `json:"sources"`     // 样本名 → 源 sha8（生成样本同锚）
@@ -196,12 +226,26 @@ func moonRawOf(moonDir, f string) []byte {
 // goldenRun：golden 基线模式统一流程——mb 归一 hash ≡ 清单（行为指纹，
 // 覆盖各子模式断言语义：hash ≡ freeze 时行为 = 当时断言全过）；fork 例
 // 跳过（分叉例的形状校验由 wbtest 锚与现模式承担）。
+
+// goldenSelftestHit：--selftest 的 golden 路径自证——篡改当前节首值，随后比对必红（审阅 P3）。
+func goldenSelftestHit(m map[string]string) {
+	if !selftestFlag {
+		return
+	}
+	for k := range m {
+		m[k] = "deadbeef00000000"
+		fmt.Println("[selftest][golden] 已篡改清单条目:", k, "——随后比对必须 FAIL")
+		return
+	}
+}
+
 func goldenRun(files []string, mode string, corpusDir string) int {
 	doc := loadParserDigest()
 	sec, ok := doc.Modes[mode]
 	if !ok {
 		fail("清单缺模式节 %s（先 --freeze）", mode)
 	}
+	goldenSelftestHit(sec.RespHashes)
 	for _, f := range files {
 		name := filepath.Base(f)
 		if sha := parserSrcSHA(f); sec.Sources[name] != sha {

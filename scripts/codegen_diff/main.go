@@ -86,24 +86,32 @@ func main() {
 		}
 	}
 	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
+	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
 	}
 	if !freezeMode && !rustCliAlive() {
 		if !goldenMode {
-			fmt.Println("codegen_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			fmt.Fprintln(os.Stderr, "codegen_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			goldenMode = true
 		}
 	}
 	if freezeMode && !rustCliAlive() {
 		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
 	}
-	os.Exit(runCorpus(corpus, baseline, selftest))
+	rc := runCorpus(corpus, baseline, selftest)
+	if rc == 0 {
+		flushFreezePending()
+	}
+	os.Exit(rc)
 }
 
 // ---- 工序③固化：oracle 消费包装（result + stderr 双存） ----
 
 var freezeMode, goldenMode bool
+
+// selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
+var selftestFlag bool
 
 const codegenGoldenRoot = "scripts/codegen_diff/golden"
 
@@ -117,12 +125,6 @@ func rustCliAlive() bool {
 		}
 	}
 	return false
-}
-
-type cgGoldenEntry struct {
-	Version int    `json:"version"`
-	Result  string `json:"result"` // dump-compile 产物原文（失败样本空串）
-	Stderr  string `json:"stderr"` // 失败层归类查表用（AGREE-ERROR 通道）
 }
 
 // oracleDumpBatch：freeze 落盘 / golden 读盘 / 默认活体。stderr 随序伴生
@@ -146,12 +148,13 @@ func oracleDumpBatch(files []string) ([][]byte, [][]byte) {
 			e := cgDigestEntry{}
 			if outs[i] == nil {
 				e.Fail = true
+				e.FailStage = rustFailStage(stderrs[i], files[i])
 			} else {
 				e.ResultSHA = hash16(canonicalize(outs[i]))
 			}
 			sec.Cases[name] = e
 		}
-		saveCgDigest(doc)
+		freezePendingCg = &doc // P2-1：对拍全绿才落盘
 		fmt.Printf("codegen_diff freeze[%s]: %d 例入清单 → %s\n", corpus, len(files), cgDigestFile)
 		return outs, stderrs
 	}
@@ -166,9 +169,18 @@ func oracleDumpBatch(files []string) ([][]byte, [][]byte) {
 
 const cgDigestFile = "scripts/codegen_diff/golden_digest.json"
 
+var freezePendingCg *cgDigestDoc
+
+func flushFreezePending() {
+	if freezePendingCg != nil {
+		saveCgDigest(*freezePendingCg)
+	}
+}
+
 type cgDigestEntry struct {
 	ResultSHA string `json:"result_sha,omitempty"` // ok 例：canonicalize 后产物 sha16
 	Fail      bool   `json:"fail,omitempty"`       // 失败例（失败层等价已由 freeze 时对拍验证）
+	FailStage string `json:"fail_stage,omitempty"` // 失败层（lex/parse/type/gen——审阅 P3：删区后 AGREE-ERROR 层一致性锚）
 }
 
 type cgSec struct {
@@ -229,6 +241,25 @@ func moonRawOf(moonDir, f string) []byte {
 
 // goldenRun：mb 指纹 ≡ 清单——ok 例 canonicalize hash 比；fail 例布尔比；
 // fork 例跳过（清单存 oracle hash 仅供溯源）。
+
+type cgSelftestEntry = cgDigestEntry
+
+// goldenSelftestHit：--selftest 的 golden 路径自证——篡改当前节首值（ResultSHA），随后比对必红（审阅 P3）。
+func goldenSelftestHit(m map[string]cgDigestEntry) {
+	if !selftestFlag {
+		return
+	}
+	for k, e := range m {
+		if e.ResultSHA == "" {
+			continue // fail 例无 ResultSHA（布尔比对篡不动，fail_stage 例外）
+		}
+		e.ResultSHA = "deadbeef00000000"
+		m[k] = e
+		fmt.Println("[selftest][golden] 已篡改清单条目:", k, "——随后比对必须 FAIL")
+		return
+	}
+}
+
 func goldenRun(corpus string) int {
 	doc := loadCgDigest()
 	corpusName := filepath.Base(corpus)
@@ -236,6 +267,7 @@ func goldenRun(corpus string) int {
 	if !ok {
 		fail("清单缺语料节 %s（先 --freeze）", corpusName)
 	}
+	goldenSelftestHit(sec.Cases)
 	files := listCFiles(corpus)
 	if len(files) == 0 {
 		fail("语料目录无 .c 文件: %s", corpus)
@@ -266,6 +298,11 @@ func goldenRun(corpus string) int {
 		if e.Fail {
 			if mok {
 				fmt.Printf("DIFF %s: 冻结基线为编译失败，mb 现 ok——行为漂移（全文对照见 frozen-oracle-snapshot 分支）"+string(rune(10)), name)
+				failures++
+				continue
+			}
+			if _, _, mStage, _ := parseMoonDoc(raw); mStage != e.FailStage {
+				fmt.Printf("DIFF %s: 失败层漂移 mb=%s ≠ 冻结 %s（AGREE-ERROR 语义面）"+string(rune(10)), name, mStage, e.FailStage)
 				failures++
 			} else {
 				matched++

@@ -39,7 +39,11 @@ import (
 
 const rustCLI = "native/target/release/vitro_cli.exe"
 const selftestMutate = "count=" // 注入点：篡改尾行计数（必然逐字节差异）
-const goldenRoot = "scripts/lexer_diff/golden"
+
+// selftestFlag：包级转接（goldenSelftestMutate 消费——审阅 P3 golden 路径自证）。
+var selftestFlag bool
+
+const goldenRoot = "scripts/lexer_diff"
 
 func main() {
 	var corpusArg string
@@ -60,6 +64,7 @@ func main() {
 			corpusArg = a
 		}
 	}
+	selftestFlag = selftest // flag 解析后转接（golden 路径自证消费）
 	if corpusArg == "" {
 		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/lexer_diff <corpus_dir> [--freeze|--golden|--selftest]")
 		os.Exit(2)
@@ -74,11 +79,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "lexer_diff: --freeze 与 --golden 互斥")
 		os.Exit(2)
 	}
-	digestFile := filepath.Join(goldenRoot, "golden_digest.json")
+	digestFile := filepath.Join(goldenRoot, "golden_digest.json") // 与其余四驱动同构（审阅 P3）
 	oracleAlive := func() bool { _, err := os.Stat(rustCLI); return err == nil }
 	if !oracleAlive() && !freeze {
 		if !againstGolden {
-			fmt.Println("lexer_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			fmt.Fprintln(os.Stderr, "lexer_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			againstGolden = true
 		}
 	}
@@ -96,25 +101,61 @@ func main() {
 
 	// ① Rust oracle（digest 清单形态：freeze 产 hash 清单；golden 走独立比对）
 	if freeze {
-		runOrFail(exec.Command(rustCLI, "dump-tokens", corpus, "--out", rustOut, "--raw", "--pp"), rustCLI)
+		// 归一副本喂入（2026-10-05 审阅 P1-1 根因修复：oracle dump-tokens 对
+		// 源文件行尾敏感——CRLF/LF 产出不同 l1；曾因工作区行尾翻转冻入 100 个
+		// LF 时态坏值。双侧一律喂 LF 归一副本，行尾彻底出局）。
+		normDir := normalizeCorpusTo(corpus, rustOut+"_norm_src")
+		defer os.RemoveAll(normDir)
+		runOrFail(exec.Command(rustCLI, "dump-tokens", normDir, "--out", rustOut, "--raw", "--pp"), rustCLI)
+		// 内嵌双侧对拍：mb 同喂归一副本，逐 TSV 比对全绿才写清单（审阅处方——
+		// freeze 只跑 oracle 零对拍曾让坏值直接入库）。
+		mbNormOut, err := os.MkdirTemp("", "lexdiff_mbnorm_*")
+		must(err, "创建 mb 归一输出目录")
+		defer os.RemoveAll(mbNormOut)
+		runOrFail(exec.Command("moon", "-C", "moonbit", "run", "--target", "native",
+			"cmd/dump_tokens", "--", normDir, mbNormOut, "both"), "moon run cmd/dump_tokens")
 		doc := loadLexDigest(digestFile)
 		doc.Sources[filepath.Base(corpus)] = corpusSHAs(corpus)
-		n := 0
+		n, bad := 0, 0
 		for _, f := range listTSV(rustOut) {
+			b2, err := os.ReadFile(filepath.Join(mbNormOut, f))
+			if err != nil {
+				fmt.Printf("DIFF 缺失: mb 侧无 %s（归一副本喂入）"+string(rune(10)), f)
+				bad++
+				continue
+			}
+			o2, _ := os.ReadFile(filepath.Join(rustOut, f))
+			if !bytes.Equal(o2, b2) {
+				fmt.Printf("DIFF %s: freeze 内嵌对拍不符——拒写清单（先归因）"+string(rune(10)), f)
+				bad++
+				continue
+			}
 			doc.TSVs[filepath.Base(corpus)+"/"+f] = fileSHA16(filepath.Join(rustOut, f))
 			n++
 		}
+		for _, f := range listTSV(mbNormOut) {
+			if _, err := os.Stat(filepath.Join(rustOut, f)); err != nil {
+				fmt.Printf("DIFF 多余: oracle 侧无 %s"+string(rune(10)), f)
+				bad++
+			}
+		}
+		if bad > 0 {
+			fmt.Printf("lexer_diff freeze: FAIL——%d 处双侧不符，清单未写入"+string(rune(10)), bad)
+			os.Exit(1)
+		}
 		writeLexDigest(digestFile, doc)
-		fmt.Printf("lexer_diff freeze: digest 清单更新 %d TSV（%s 段）→ %s"+string(rune(10)), n, filepath.Base(corpus), digestFile)
+		fmt.Printf("lexer_diff freeze: 双侧对拍全绿，digest 清单写入 %d TSV（%s 段）→ %s"+string(rune(10)), n, filepath.Base(corpus), digestFile)
 		return
 	}
 	if againstGolden {
 		os.Exit(runLexGolden(corpus, mbOut, digestFile))
 	}
-	runOrFail(exec.Command(rustCLI, "dump-tokens", corpus, "--out", rustOut, "--raw", "--pp"), rustCLI)
-	// ② MoonBit
+	normDir := normalizeCorpusTo(corpus, rustOut+"_norm_src")
+	defer os.RemoveAll(normDir)
+	runOrFail(exec.Command(rustCLI, "dump-tokens", normDir, "--out", rustOut, "--raw", "--pp"), rustCLI)
+	// ② MoonBit（同喂归一副本——三模式同形态，行尾免疫）
 	runOrFail(exec.Command("moon", "-C", "moonbit", "run", "--target", "native",
-		"cmd/dump_tokens", "--", corpus, mbOut, "both"), "moon run cmd/dump_tokens")
+		"cmd/dump_tokens", "--", normDir, mbOut, "both"), "moon run cmd/dump_tokens")
 
 	// J9：对 MoonBit 侧第一个 TSV 注入差异，证明驱动会红
 	if selftest {
@@ -292,8 +333,26 @@ func fileSHA16(p string) string {
 }
 
 // runLexGolden：mb TSV hash ↔ 清单比对（字段级 DIFF；全文兜底走 orphan 分支）。
+
+// goldenSelftestMutate：--selftest 在 golden 路径的自证——篡改**当前语料段**首值（跨段键 gap 比对不触——map 首键曾落 baseline 段实测），随后比对必红。
+func goldenSelftestMutate(m map[string]string, corpus string) {
+	if !selftestFlag {
+		return
+	}
+	prefix := corpus + "/"
+	for k := range m {
+		if !strings.HasPrefix(k, prefix) {
+			continue
+		}
+		m[k] = "deadbeef00000000"
+		fmt.Println("[selftest][golden] 已篡改清单条目:", k, "——随后比对必须 FAIL")
+		return
+	}
+}
+
 func runLexGolden(corpus, mbOut, digestFile string) int {
 	doc := loadLexDigest(digestFile)
+	goldenSelftestMutate(doc.TSVs, filepath.Base(corpus)) // 审阅 P3：golden 路径自证（段内篡改→必红）
 	corpusName := filepath.Base(corpus)
 	src, ok := doc.Sources[corpusName]
 	if !ok {
@@ -311,8 +370,10 @@ func runLexGolden(corpus, mbOut, digestFile string) int {
 			return 1
 		}
 	}
+	normDir := normalizeCorpusTo(corpus, mbOut+"_norm_src")
+	defer os.RemoveAll(normDir)
 	runOrFail(exec.Command("moon", "-C", "moonbit", "run", "--target", "native",
-		"cmd/dump_tokens", "--", corpus, mbOut, "both"), "moon run cmd/dump_tokens")
+		"cmd/dump_tokens", "--", normDir, mbOut, "both"), "moon run cmd/dump_tokens")
 	failures := 0
 	mbFiles := listTSV(mbOut)
 	mbSet := map[string]bool{}
@@ -351,20 +412,41 @@ func runLexGolden(corpus, mbOut, digestFile string) int {
 	return 0
 }
 
+// normalizeCorpusTo：语料复制到 dst 并行尾归一为 LF（.c/.h/.in 全量伴生——
+// 审阅 P2-2：sha 闸曾漏 .h/.in，喂入面也须全量）。
+func normalizeCorpusTo(corpus, dst string) string {
+	must(os.MkdirAll(dst, 0o755), "建归一副本目录")
+	entries, err := os.ReadDir(corpus)
+	must(err, "读语料目录")
+	crlf := []byte{13, 10}
+	lf := []byte{10}
+	for _, e := range entries {
+		n := e.Name()
+		if !strings.HasSuffix(n, ".c") && !strings.HasSuffix(n, ".h") && !strings.HasSuffix(n, ".in") {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(corpus, n))
+		must(err, "读语料 "+n)
+		must(os.WriteFile(filepath.Join(dst, n), bytes.ReplaceAll(b, crlf, lf), 0o644), "写归一副本 "+n)
+	}
+	return dst
+}
+
 func corpusSHAs(corpus string) map[string]string {
 	out := map[string]string{}
 	entries, err := os.ReadDir(corpus)
 	must(err, "读语料目录")
 	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".c") {
+		n := e.Name()
+		if !strings.HasSuffix(n, ".c") && !strings.HasSuffix(n, ".h") && !strings.HasSuffix(n, ".in") {
 			continue
 		}
-		b, err := os.ReadFile(filepath.Join(corpus, e.Name()))
-		must(err, "读语料 "+e.Name())
-		crlf := []byte{13, 10}
-		lf := []byte{10}
-		h := sha256.Sum256(bytes.ReplaceAll(b, crlf, lf))
-		out[e.Name()] = fmt.Sprintf("%x", h)[:8]
+		b, err := os.ReadFile(filepath.Join(corpus, n))
+		must(err, "读语料 "+n)
+		crlf2 := []byte{13, 10}
+		lf2 := []byte{10}
+		h := sha256.Sum256(bytes.ReplaceAll(b, crlf2, lf2))
+		out[n] = fmt.Sprintf("%x", h)[:8]
 	}
 	return out
 }

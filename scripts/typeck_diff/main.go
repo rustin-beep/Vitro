@@ -65,25 +65,33 @@ func main() {
 			fail("未知参数: %s", a)
 		}
 	}
+	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
 	}
 	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
 	if !freezeMode && !oracleCLIExists() {
 		if !goldenMode {
-			fmt.Println("typeck_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			fmt.Fprintln(os.Stderr, "typeck_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			goldenMode = true
 		}
 	}
 	if freezeMode && !oracleCLIExists() {
 		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
 	}
-	os.Exit(runCorpus(corpus, selftest))
+	rc := runCorpus(corpus, selftest)
+	if rc == 0 {
+		flushFreezePending()
+	}
+	os.Exit(rc)
 }
 
 // ---- 工序③固化：oracle 消费包装（同 parser_diff 模式） ----
 
 var freezeMode, goldenMode bool
+
+// selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
+var selftestFlag bool
 
 const typeckGoldenRoot = "scripts/typeck_diff/golden"
 
@@ -102,6 +110,14 @@ func oracleCLIExists() bool {
 // ---- digest 清单（聚合单文件，按语料分节；同 parser_diff 形态） ----
 
 const typeckDigestFile = "scripts/typeck_diff/golden_digest.json"
+
+var freezePendingTypeck *typeckDigestDoc
+
+func flushFreezePending() {
+	if freezePendingTypeck != nil {
+		saveTypeckDigest(*freezePendingTypeck)
+	}
+}
 
 type typeckSec struct {
 	Sources    map[string]string `json:"sources"`
@@ -149,6 +165,19 @@ func typeckSrcSHA(f string) string {
 }
 
 // goldenRun：mb 归一 hash ≡ 清单；fork 例跳过。
+
+// goldenSelftestHit：--selftest 的 golden 路径自证——篡改当前节首值，随后比对必红（审阅 P3）。
+func goldenSelftestHit(m map[string]string) {
+	if !selftestFlag {
+		return
+	}
+	for k := range m {
+		m[k] = "deadbeef00000000"
+		fmt.Println("[selftest][golden] 已篡改清单条目:", k, "——随后比对必须 FAIL")
+		return
+	}
+}
+
 func goldenRun(files []string, corpus string) int {
 	doc := loadTypeckDigest()
 	mode := "corpus-" + filepath.Base(corpus)
@@ -156,6 +185,7 @@ func goldenRun(files []string, corpus string) int {
 	if !ok {
 		fail("清单缺语料节 %s（先 --freeze）", mode)
 	}
+	goldenSelftestHit(sec.RespHashes)
 	for _, f := range files {
 		name := filepath.Base(f)
 		if sha := typeckSrcSHA(f); sec.Sources[name] != sha {
@@ -208,7 +238,7 @@ func oracleTypeckBatch(files []string, corpus string) [][]byte {
 			sec.Sources[filepath.Base(f)] = typeckSrcSHA(f)
 			sec.RespHashes[filepath.Base(f)] = hash16(canonicalize(outs[i]))
 		}
-		saveTypeckDigest(doc)
+		freezePendingTypeck = &doc // P2-1：对拍全绿才落盘
 		fmt.Printf("typeck_diff freeze[%s]: %d 响应 hash 入清单 → %s\n", mode, len(files), typeckDigestFile)
 		return outs
 	}

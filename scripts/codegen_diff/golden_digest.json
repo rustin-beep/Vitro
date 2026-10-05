@@ -653,25 +653,31 @@
           "result_sha": "9a7ef52a440bdf13"
         },
         "e2_angle_local_header.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_cond_if_elif.c": {
           "result_sha": "941648d7d1ca6f6f"
         },
         "e2_has_include_chain.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_include_cycle.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_include_guarded.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_include_not_found_angle.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_include_not_found_quote.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_macro_nested_self.c": {
           "result_sha": "e74353dd6b7ed9dd"
@@ -695,7 +701,8 @@
           "result_sha": "e7363dd19c87e960"
         },
         "e3_static_assert_fail.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "parse"
         },
         "e3_unreachable_dead.c": {
           "result_sha": "90bdcb04e719dcd2"
@@ -860,7 +867,8 @@
           "result_sha": "fdcce55c095600f5"
         },
         "include_custom_header.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "increment_var.c": {
           "result_sha": "6d2fdd301dbedbb9"
@@ -884,7 +892,8 @@
           "result_sha": "2dfaef596d60e094"
         },
         "j1_declarator_depth.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "parse"
         },
         "jit_nested_counting_loop.c": {
           "result_sha": "7493e5beaee3f0b7"
@@ -1476,6 +1485,65 @@
         }
       }
     },
+    "codegen_skeleton": {
+      "sources": {
+        "float_inf_literal.c": "337d951a",
+        "func_identifier.c": "e03b4dc9",
+        "mini_char_array.c": "d0b88eae",
+        "mini_floats.c": "27741c00",
+        "mini_global_array.c": "09f48fe6",
+        "mini_global_double.c": "30d78239",
+        "mini_global_int.c": "362c99e1",
+        "mini_goto.c": "2de38afa",
+        "mini_long.c": "eb2ea703",
+        "mini_string.c": "64f705c3",
+        "mini_struct.c": "b908f135",
+        "mini_two_funcs.c": "32c7b02d",
+        "ull_overflow_2p64.c": "73c7ab7f"
+      },
+      "cases": {
+        "float_inf_literal.c": {
+          "result_sha": "2542b61e6a76c18f"
+        },
+        "func_identifier.c": {
+          "result_sha": "46b0eeccefccaa3c"
+        },
+        "mini_char_array.c": {
+          "result_sha": "9d0fe1554666c939"
+        },
+        "mini_floats.c": {
+          "result_sha": "9ea68e202d5c0199"
+        },
+        "mini_global_array.c": {
+          "result_sha": "315cbda126bfba63"
+        },
+        "mini_global_double.c": {
+          "result_sha": "a4794b3875b20056"
+        },
+        "mini_global_int.c": {
+          "result_sha": "174209f55abd5b1a"
+        },
+        "mini_goto.c": {
+          "result_sha": "61e3a8eb5ab159ea"
+        },
+        "mini_long.c": {
+          "result_sha": "9d51bc9a666642f6"
+        },
+        "mini_string.c": {
+          "result_sha": "454376a4866127b0"
+        },
+        "mini_struct.c": {
+          "result_sha": "fd5ec59f354240e2"
+        },
+        "mini_two_funcs.c": {
+          "result_sha": "5e16988d3ec79ea5"
+        },
+        "ull_overflow_2p64.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        }
+      }
+    },
     "gap": {
       "sources": {
         "complex_number.c": "b5a7d055",
@@ -1498,7 +1566,8 @@
       },
       "cases": {
         "complex_number.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "parse"
         },
         "file_fopen.c": {
           "result_sha": "d8fd9e3a8ce8ba56"
@@ -1516,10 +1585,12 @@
           "result_sha": "4f3b673033969bd8"
         },
         "implicit_int.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "parse"
         },
         "include_quote_sentinel.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         },
         "inline_asm.c": {
           "result_sha": "5ebf9318bd377d9d"
@@ -1531,7 +1602,8 @@
           "result_sha": "7c0c4a3119afefcc"
         },
         "printf_scanf_type_mismatch.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "type"
         },
         "sizeof_array_param.c": {
           "result_sha": "bcf171296b084af9"
@@ -1546,7 +1618,8 @@
           "result_sha": "b0e510fb37b541cc"
         },
         "variadic_macro.c": {
-          "fail": true
+          "fail": true,
+          "fail_stage": "lex"
         }
       }
     },

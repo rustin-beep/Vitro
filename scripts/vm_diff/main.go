@@ -202,6 +202,8 @@ func main() {
 		case args[i] == "--freeze":
 			// 工序③固化（2026-10-05）：oracle 侧三通道产物全量落盘 golden。
 			freeze = true
+		case args[i] == "--selftest":
+			selftestFlag = true
 		case args[i] == "--golden":
 			// 工序③固化：mb ↔ golden 对拍（oracle 消失后的基线模式）。
 			againstGolden = true
@@ -219,7 +221,7 @@ func main() {
 	// （工序④删区后零改动存活）；显式 --golden 而 oracle 仍在也照跑 golden。
 	if !fileExists(oracleBin) && !freeze {
 		if !againstGolden {
-			fmt.Println("vm_diff: oracle exe 不存在（已删区？）——自动切 --golden 基线模式")
+			fmt.Fprintln(os.Stderr, "vm_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			againstGolden = true
 		}
 	}
@@ -815,6 +817,9 @@ func summarizeStdout(o, m string) string {
 
 const digestPath = "scripts/vm_diff/golden_digest.json"
 
+// selftestFlag：golden 路径自证（审阅 P3——vm 原无 --selftest flag，本批补）。
+var selftestFlag bool
+
 type digestEntry struct {
 	SrcSHA      string `json:"src_sha"`
 	ExitCode    int    `json:"exit_code"`
@@ -892,9 +897,9 @@ func freezeDigest(cases []Case) int {
 			continue
 		}
 		issues, _ := compare(c.rel, o, m)
-		oe, os_, om, ocf := digestOfResult(o)
+		oe, os_, om, _ := digestOfResult(o)
 		me, ms, mm, mcf := digestOfResultMB(m)
-		_ = ocf
+
 		if len(issues) > 0 {
 			if e, ok := known.lookup(base); ok && e.Digest == issueDigest(append([]string{base}, issues...)) {
 				doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), ExitCode: me, StdoutSHA: ms, MemorySHA: mm, CompileFail: mcf, KnownMbDigest: mbWholeDigest(me, ms, mm, mcf)}
@@ -944,6 +949,15 @@ func runAgainstDigest(cases []Case) int {
 	if err := json.Unmarshal(raw, &doc); err != nil || doc.Version != 1 {
 		fmt.Fprintf(os.Stderr, "vm_diff[golden]: 清单坏或版本不识\n")
 		os.Exit(1)
+	}
+	// 审阅 P3：golden 路径自证——--selftest 篡改**当前比对集**首例的 StdoutSHA（map 首键曾落集外例——lc_198 实测），随后比对必红
+	if selftestFlag && len(cases) > 0 {
+		k := cases[0].rel
+		if e, ok := doc.Cases[k]; ok && e.KnownMbDigest == "" {
+			e.StdoutSHA = "deadbeef12345678"
+			doc.Cases[k] = e
+			fmt.Println("[selftest][golden] 已篡改清单条目:", k, "——随后比对必须 FAIL")
+		}
 	}
 	same, knownN, diff, skipN := 0, 0, 0, 0
 	for _, c := range cases {

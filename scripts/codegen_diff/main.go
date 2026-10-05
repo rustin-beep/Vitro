@@ -79,6 +79,10 @@ func main() {
 			selftest = true
 		case "--freeze":
 			freezeMode = true
+		case "--freeze-mb":
+			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
+			// 以 mb 侧产物指纹入账（见 freezeMBRun）
+			freezeMBMode = true
 		case "--golden":
 			goldenMode = true
 		default:
@@ -90,7 +94,10 @@ func main() {
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
 	}
-	if !freezeMode && !rustCliAlive() {
+	if freezeMBMode && (freezeMode || goldenMode) {
+		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
+	}
+	if !freezeMode && !freezeMBMode && !rustCliAlive() {
 		if !goldenMode {
 			fmt.Fprintln(os.Stderr, "codegen_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			goldenMode = true
@@ -98,6 +105,9 @@ func main() {
 	}
 	if freezeMode && !rustCliAlive() {
 		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
+	}
+	if freezeMBMode && rustCliAlive() {
+		fail("--freeze-mb 仅删区后形态（oracle 在时应走 --freeze 双侧固化）")
 	}
 	rc := runCorpus(corpus, baseline, selftest)
 	if rc == 0 {
@@ -109,6 +119,9 @@ func main() {
 // ---- 工序③固化：oracle 消费包装（result + stderr 双存） ----
 
 var freezeMode, goldenMode bool
+
+// freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
+var freezeMBMode bool
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool
@@ -237,6 +250,57 @@ func moonRawOf(moonDir, f string) []byte {
 		}
 	}
 	return moonRaw
+}
+
+// freezeMBRun：删区后新用例入账（2026-10-05 BUG-B 语料批建，与 vm_diff
+// --freeze-mb 同族）——oracle 断源后新语料以 mb 侧产物指纹入 Cases（golden
+// 比对同口径：ok 例 hash16(canonicalize(dump))）；正确性背书 = clang_direct
+// （stdout/退出码 vs Clang 真值）+ moon test 锚。**mb 编译失败例拒绝入账**
+// （单侧缺口会被固化为 Fail 基线掩盖——先归因：两侧编译失败例走 known/
+// 人工评估）；存量例跳过不覆盖；零新例即红。
+func freezeMBRun(corpus string) int {
+	doc := loadCgDigest()
+	corpusName := filepath.Base(corpus)
+	sec := doc.Corpora[corpusName]
+	if sec == nil {
+		fail("清单缺语料节 %s（首建节属工序③ freeze 语义——oracle 在时全量 freeze）", corpusName)
+	}
+	files := listCFiles(corpus)
+	if len(files) == 0 {
+		fail("语料目录无 .c 文件: %s", corpus)
+	}
+	moonDir := moonDump(corpus)
+	added, skipped := 0, 0
+	for _, f := range files {
+		name := filepath.Base(f)
+		if _, ok := sec.Cases[name]; ok {
+			skipped++
+			continue
+		}
+		raw := moonRawOf(moonDir, f)
+		mok, dump, stage, _ := parseMoonDoc(raw)
+		e := cgDigestEntry{}
+		if mok {
+			e.ResultSHA = hash16(canonicalize(dump))
+		} else {
+			// mb 侧失败例入账（与 freeze 存量形态同构——如 include 族在
+			// dump_compile 的存量 lex-fail 盲区）；固化的是工具现状而非
+			// 正确性，单侧缺口归因走 known/人工评估，醒目提示操作者
+			e.Fail = true
+			e.FailStage = stage
+			fmt.Printf("WARN %s: mb 侧编译失败（stage=%s）按现状入账——若属单侧缺口先归因勿固化\n", name, stage)
+		}
+		sec.Sources[name] = cgSrcSHA(f)
+		sec.Cases[name] = e
+		fmt.Printf("ADD %s\n", name)
+		added++
+	}
+	if added == 0 {
+		fail("无新例可入账（%d 例均已在清单）", skipped)
+	}
+	saveCgDigest(doc)
+	fmt.Printf("codegen_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）"+string(rune(10)), corpusName, added, skipped, cgDigestFile)
+	return 0
 }
 
 // goldenRun：mb 指纹 ≡ 清单——ok 例 canonicalize hash 比；fail 例布尔比；
@@ -388,6 +452,9 @@ var knownForkFiles = map[string]string{
 }
 
 func runCorpus(corpus string, baseline bool, selftest bool) int {
+	if freezeMBMode {
+		return freezeMBRun(corpus)
+	}
 	if goldenMode {
 		return goldenRun(corpus)
 	}

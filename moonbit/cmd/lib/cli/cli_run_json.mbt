@@ -28,7 +28,14 @@ fn json_event_stream(
       "config.set", "{\"max_steps\":10000000,\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
     ),
   )
-  let comp = inv("compile", "{\"source\":\"\{escape_json(src)}\"}")
+  // filename 装配（BUG-A 修复，2026-10-05）：同 cli_compile——丢 filename
+  // 则 base_dir 退化、同目录 include 断；stdin（"-"）不传
+  let compile_params = if file == "-" {
+    "{\"source\":\"\{escape_json(src)}\"}"
+  } else {
+    "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+  }
+  let comp = inv("compile", compile_params)
   println("{\"type\":\"diag\",\"frame\":\{comp}}")
   if comp.contains("\"ok\":false") {
     return 1

@@ -5,6 +5,15 @@
 
 ///|
 fn main {
+  // quote-include 的文件系统读取注册（BUG-A 修复连坐，2026-10-05）：
+  // gateway 经 include_reader 分叉——未注册则 compile 帧词法走 vfs 空表，
+  // quote-include 恒 E1021；run 文本模式不走 gateway（compile_and_report
+  // 直连 FsProvider）不受影响，--json / step / api 的 compile 帧在
+  // gateway 侧词法，CLI 进程必须注册（cmd/serve 同款）
+  @gateway.set_include_reader(fn(path : String) -> String? {
+    let s = @fs.read_file_to_string(path) catch { _ => return None }
+    Some(s)
+  })
   let args = @env.args()
   if args.length() < 2 {
     print_help()

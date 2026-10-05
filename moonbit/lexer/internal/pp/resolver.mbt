@@ -104,6 +104,29 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
     return None
   }
   if full == start_key && depth > 0 {
+    // 守卫感知（stb 自 include 修复，2026-10-05）：回到起点的边不再一律
+    // 判环——环上（visited = 当前 DFS 路径，即环经过的全部文件）任一
+    // 文件带 include 守卫（#ifndef X + 同名 #define X）时，C 语义下环的
+    // 有序展开中首个带守卫文件二次展开为空、递归断链，不会爆深
+    //（include-once 终点；GCC/Clang 均支持，stb_image.h 自 include 同款；
+    // 起点本身无守卫但环上他文件带守卫的互环同样终止）。环上全部无守卫
+    // 才是真环（每圈 body 完整重复进入文本流，Clang 下
+    // -fmax-include-depth 爆深 fatal——E1015 教学化提前拦截口径不变）。
+    // 动态展开侧由 processed 集合（守卫语义内置）跳过重复 include 兜底
+    let mut guarded = false
+    for v in visited {
+      match self.try_read(v) {
+        Some(t) =>
+          if has_include_guard(t) {
+            guarded = true
+            break
+          }
+        None => ()
+      }
+    }
+    if guarded {
+      return None
+    }
     return Some("") // 回到起点（环闭合）——由调用链拼描述
   }
   if visited.contains(full) {
@@ -184,4 +207,53 @@ fn custom_includes_of(text : String) -> Array[String] {
 ///|
 fn rest_starts_with_include(rest : String) -> Bool {
   rest.length() >= 7 && rest[0:7] == "include"
+}
+
+///|
+/// include 守卫形态检测（静态近似）：文件内首个 `#ifndef X` 指令之后
+/// 出现同名 `#define X` 指令即认为有守卫——stb 等自 include 库的标准
+/// 模式（二次展开为空）。近似口径：不校验 #endif 配对与守卫覆盖全文
+///（教学语料域误判面可忽略）；嵌套条件块内的同名对按「存在即有守卫」
+/// 从宽——漏检方向（把守卫环仍判真环）回到修复前行为，误检方向需
+/// `#ifndef X` 与同名 `#define X` 恰好成对散布，语料域无此形态。
+fn has_include_guard(text : String) -> Bool {
+  let mut pending : String? = None
+  for line_raw in text.split("\n") {
+    let t = leading_trim(line_raw.to_owned())
+    match pending {
+      None =>
+        if t.length() > 8 && t[0:8] == "#ifndef " {
+          let name = macro_name_of(leading_trim(t[8:].to_owned()))
+          if name.length() > 0 {
+            pending = Some(name)
+          }
+        }
+      Some(g) =>
+        if t.length() > 8 && t[0:8] == "#define " {
+          if macro_name_of(leading_trim(t[8:].to_owned())) == g {
+            return true
+          }
+        }
+    }
+  }
+  false
+}
+
+///|
+/// 宏名提取：`[A-Za-z0-9_]+` 前缀段（到首个其余字符截止——
+/// `#define GA_H2` 不误匹配守卫名 `GA_H`）。
+fn macro_name_of(s : String) -> String {
+  let mut i = 0
+  while i < s.length() {
+    let c = s[i].to_int()
+    let is_name_char = c == 95 ||
+      (c >= 48 && c <= 57) ||
+      (c >= 65 && c <= 90) ||
+      (c >= 97 && c <= 122)
+    if !is_name_char {
+      break
+    }
+    i += 1
+  }
+  s[0:i].to_owned()
 }

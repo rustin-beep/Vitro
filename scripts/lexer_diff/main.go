@@ -48,10 +48,15 @@ const goldenRoot = "scripts/lexer_diff"
 func main() {
 	var corpusArg string
 	freeze, againstGolden, selftest := false, false, false
+	freezeMB := false
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "--freeze":
 			freeze = true
+		case "--freeze-mb":
+			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
+			// 以 mb 侧归一 TSV hash 入账（见 freeze-mb 段）
+			freezeMB = true
 		case "--golden":
 			againstGolden = true
 		case "--selftest":
@@ -79,9 +84,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "lexer_diff: --freeze 与 --golden 互斥")
 		os.Exit(2)
 	}
+	if freezeMB && (freeze || againstGolden) {
+		fmt.Fprintln(os.Stderr, "lexer_diff: --freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
+		os.Exit(2)
+	}
 	digestFile := filepath.Join(goldenRoot, "golden_digest.json") // 与其余四驱动同构（审阅 P3）
 	oracleAlive := func() bool { _, err := os.Stat(rustCLI); return err == nil }
-	if !oracleAlive() && !freeze {
+	if !oracleAlive() && !freeze && !freezeMB {
 		if !againstGolden {
 			fmt.Fprintln(os.Stderr, "lexer_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			againstGolden = true
@@ -145,6 +154,57 @@ func main() {
 		}
 		writeLexDigest(digestFile, doc)
 		fmt.Printf("lexer_diff freeze: 双侧对拍全绿，digest 清单写入 %d TSV（%s 段）→ %s"+string(rune(10)), n, filepath.Base(corpus), digestFile)
+		return
+	}
+	if freezeMB {
+		// 删区后新用例入账（与 vm_diff/typeck_diff --freeze-mb 同族）：Sources
+		// 补登新文件（.c/.h/.in 全量伴生）、TSV 以 mb 侧归一副本产物入账
+		//（golden 比对同口径 fileSHA16）；存量条目不覆盖（已变更即红——刷
+		// 基线属修复批显式操作）；正确性背书 = clang_direct + moon test。
+		doc := loadLexDigest(digestFile)
+		corpusName := filepath.Base(corpus)
+		src, ok := doc.Sources[corpusName]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: 清单缺语料段 %s（首建段属 freeze 语义）", corpusName)
+			os.Exit(1)
+		}
+		cur := corpusSHAs(corpus)
+		srcAdded := 0
+		for name, sha := range cur {
+			if old, ok := src[name]; ok {
+				if old != sha {
+					fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: %s 已变更——刷基线属修复批显式操作（先删旧键重跑）", name)
+					os.Exit(1)
+				}
+				continue
+			}
+			src[name] = sha
+			srcAdded++
+		}
+		if len(cur) != len(src) {
+			fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: 清单含已删除文件（Sources %d ≠ 现文件 %d）——先人工清理", len(src), len(cur))
+			os.Exit(1)
+		}
+		normDir := normalizeCorpusTo(corpus, mbOut+"_norm_src")
+		defer os.RemoveAll(normDir)
+		runOrFail(exec.Command("moon", "-C", "moonbit", "run", "--target", "native",
+			"cmd/dump_tokens", "--", normDir, mbOut, "both"), "moon run cmd/dump_tokens")
+		tsvAdded := 0
+		for _, f := range listTSV(mbOut) {
+			key := corpusName + "/" + f
+			if _, ok := doc.TSVs[key]; ok {
+				continue
+			}
+			doc.TSVs[key] = fileSHA16(filepath.Join(mbOut, f))
+			fmt.Printf("ADD %s"+string(rune(10)), key)
+			tsvAdded++
+		}
+		if srcAdded == 0 && tsvAdded == 0 {
+			fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: 无新例可入账"+string(rune(10)))
+			os.Exit(1)
+		}
+		writeLexDigest(digestFile, doc)
+		fmt.Printf("lexer_diff --freeze-mb: Sources +%d、TSV +%d → %s（背书 = clang_direct + moon test）"+string(rune(10)), srcAdded, tsvAdded, digestFile)
 		return
 	}
 	if againstGolden {

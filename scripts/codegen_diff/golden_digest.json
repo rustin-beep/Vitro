@@ -99,6 +99,8 @@
         "e1_va_copy.c": "c7a0cf58",
         "e2_angle_local_header.c": "49471035",
         "e2_cond_if_elif.c": "4f5f4c1c",
+        "e2_guarded_mutual.c": "d64f3e2d",
+        "e2_guarded_self_include.c": "f82dc00f",
         "e2_has_include_chain.c": "37bff223",
         "e2_include_cycle.c": "edf98db3",
         "e2_include_guarded.c": "4cbb28b5",
@@ -658,6 +660,14 @@
         },
         "e2_cond_if_elif.c": {
           "result_sha": "941648d7d1ca6f6f"
+        },
+        "e2_guarded_mutual.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "e2_guarded_self_include.c": {
+          "fail": true,
+          "fail_stage": "lex"
         },
         "e2_has_include_chain.c": {
           "fail": true,

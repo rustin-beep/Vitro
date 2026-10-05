@@ -559,6 +559,8 @@ vitro/engine/cmd/run vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/step moonbitlang/core/env args
 vitro/engine/cmd/step vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro moonbitlang/core/env args
+vitro/engine/cmd/vitro vitro/engine/fs read_file_to_string
+vitro/engine/cmd/vitro vitro/engine/gateway set_include_reader
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step

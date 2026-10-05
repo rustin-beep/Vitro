@@ -215,7 +215,6 @@ func collectCaseDirs(root string, facts map[string]Fact) {
 
 // ─── 采集器：常量真值（读源码，零副作用）────────────────────────────────────
 
-
 // collectAbiVersion 采集 C ABI 版本真值。唯一来源是
 // native/src/capi/first_batch.rs 的 VITRO_ABI_VERSION 常量——文档里的
 // 版本号一律不是真相（M13 实证：代码 2.1.0 时仍有多份文档写 1.2.0/2.0.0）。

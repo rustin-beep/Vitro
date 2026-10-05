@@ -43,7 +43,17 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
     }
     @gateway.reset()
     ignore(inv("session.create", "{}"))
-    let comp = inv("compile", "{\"source\":\"\{escape_json(src)}\"}")
+    // filename 装配（BUG-A 修复，2026-10-05）：协议 compile 帧支持可选
+    // filename（gateway 侧 base_dir = dir_of(filename)，与文本模式
+    // compile_and_report 同语义）；此前只传 source 令 base_dir 退化为
+    // 缺省 "main.c" 所在目录，同目录 include 全断。stdin（"-"）无路径
+    // 语义不传。cli_run_json / cli_step 同款连坐
+    let compile_params = if file == "-" {
+      "{\"source\":\"\{escape_json(src)}\"}"
+    } else {
+      "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+    }
+    let comp = inv("compile", compile_params)
     println(comp)
     if comp.contains("\"ok\":false") {
       return 1

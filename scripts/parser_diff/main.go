@@ -51,6 +51,10 @@ func main() {
 			selftest = true
 		case "--freeze":
 			freezeMode = true
+		case "--freeze-mb":
+			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
+			// 以 mb 侧归一 hash 入账（见 freezeMBRun）
+			freezeMBMode = true
 		case "--golden":
 			goldenMode = true
 		default:
@@ -62,8 +66,11 @@ func main() {
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
 	}
+	if freezeMBMode && (freezeMode || goldenMode) {
+		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
+	}
 	// 工序③固化（2026-10-05）：oracle 缺失自动切 golden（删区后零改动存活）
-	if !freezeMode && !oracleCLIExists() {
+	if !freezeMode && !freezeMBMode && !oracleCLIExists() {
 		if !goldenMode {
 			fmt.Fprintln(os.Stderr, "parser_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			goldenMode = true
@@ -71,6 +78,9 @@ func main() {
 	}
 	if freezeMode && !oracleCLIExists() {
 		fail("--freeze 需要 oracle exe（cargo build --release --bin vitro_cli）")
+	}
+	if freezeMBMode && oracleCLIExists() {
+		fail("--freeze-mb 仅删区后形态（oracle 在时应走 --freeze 双侧固化）")
 	}
 	switch {
 	case mode == "--pathological":
@@ -107,6 +117,9 @@ func main() {
 // ---- 工序③固化：全局模式与 oracle 消费统一包装 ----
 
 var freezeMode, goldenMode bool
+
+// freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
+var freezeMBMode bool
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool
@@ -239,6 +252,37 @@ func goldenSelftestHit(m map[string]string) {
 	}
 }
 
+// freezeMBRun：删区后新用例入账（2026-10-05 BUG-B 语料批建，与 vm_diff
+// --freeze-mb 同族）——oracle 断源后新语料以 mb 侧归一 hash 入 RespHashes
+// （golden 比对同口径 hash16(canonicalize(moonRawOf))）；正确性背书 =
+// clang_direct + moon test；存量例跳过不覆盖；零新例即红。
+func freezeMBRun(files []string, mode string, corpusDir string) int {
+	doc := loadParserDigest()
+	sec := doc.Modes[mode]
+	if sec == nil {
+		fail("清单缺模式节 %s（首建节属工序③ freeze 语义——oracle 在时全量 freeze）", mode)
+	}
+	moonDir := moonDump(corpusDir)
+	added, skipped := 0, 0
+	for _, f := range files {
+		name := filepath.Base(f)
+		if _, ok := sec.RespHashes[name]; ok {
+			skipped++
+			continue
+		}
+		sec.Sources[name] = parserSrcSHA(f)
+		sec.RespHashes[name] = hash16(canonicalize(moonRawOf(moonDir, f)))
+		fmt.Printf("ADD %s\n", name)
+		added++
+	}
+	if added == 0 {
+		fail("无新例可入账（%d 例均已在清单）", skipped)
+	}
+	saveParserDigest(doc)
+	fmt.Printf("parser_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, skipped, parserDigestFile)
+	return 0
+}
+
 func goldenRun(files []string, mode string, corpusDir string) int {
 	doc := loadParserDigest()
 	sec, ok := doc.Modes[mode]
@@ -323,6 +367,9 @@ func runCorpus(corpus string, selftest bool) int {
 	}
 	if goldenMode {
 		return goldenRun(files, "corpus-"+filepath.Base(corpus), corpus)
+	}
+	if freezeMBMode {
+		return freezeMBRun(files, "corpus-"+filepath.Base(corpus), corpus)
 	}
 	rustOuts := oracleAstBatch(files, "corpus-"+filepath.Base(corpus))
 	if selftest {

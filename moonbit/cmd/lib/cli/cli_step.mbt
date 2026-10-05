@@ -65,7 +65,14 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
       "{\"max_steps\":\{max_steps},\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
     ),
   )
-  let comp = inv("compile", "{\"source\":\"\{escape_json(src)}\"}")
+  // filename 装配（BUG-A 修复，2026-10-05）：同 cli_compile——丢 filename
+  // 则 base_dir 退化、同目录 include 断；stdin（"-"）不传
+  let compile_params = if file == "-" {
+    "{\"source\":\"\{escape_json(src)}\"}"
+  } else {
+    "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+  }
+  let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
     // 诊断在 compile 帧——文本模式透传 JSON 行（agent 可解析）；json 模式
     // 同样透传（type 语义由行内 ok:false 自明）

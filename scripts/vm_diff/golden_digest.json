@@ -572,6 +572,18 @@
       "stdout_sha": "6e333709ea1368c3",
       "memory_sha": "d28ea93ffb55f34b"
     },
+    "baseline/e2_guarded_mutual.c": {
+      "src_sha": "d64f3e2d",
+      "exit_code": 8,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "b8996bdfad39a2af"
+    },
+    "baseline/e2_guarded_self_include.c": {
+      "src_sha": "f82dc00f",
+      "exit_code": 7,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "6741f207505527ba"
+    },
     "baseline/e2_has_include_chain.c": {
       "src_sha": "37bff223",
       "exit_code": 0,

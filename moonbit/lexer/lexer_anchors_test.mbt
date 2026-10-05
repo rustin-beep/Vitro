@@ -161,6 +161,56 @@ test "u11 include depth fuse" {
 }
 
 ///|
+test "u11 guarded self include stb mode" {
+  // stb 标准模式：头文件带 #ifndef 守卫 include 自身——二次展开为空，
+  // GCC/Clang 均支持（stb_image.h 279/330 行同款）。静态环检测不得把
+  // 「回到 start_key 的边」一律判环（守卫下环自然闭合——include-once
+  // 终点）；动态展开由 processed 集合跳过自 include
+  let files : Map[String, String] = {
+    "stb_like.h": "// header comment\n#ifndef STB_LIKE_H\n#define STB_LIKE_H\nint guarded_val;\n#include \"stb_like.h\"\n#endif\n",
+  }
+  let r = @lexer.tokenize_with_vfs(
+    "#include \"stb_like.h\"\nint main;\n",
+    files~,
+  )
+  let e1015 = r.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(e1015.length(), 0, msg="守卫自 include 不得误报 E1015")
+  // 展开成功：守卫内符号进入 token 流
+  assert_true(r.tokens.map(t => t.text).join(" ").contains("guarded_val"))
+}
+
+///|
+test "u11 guarded mutual include cycle" {
+  // 有守卫互包含环（a.h ↔ b.h，起点 a 有守卫）：C 语义下 a 第二圈展开为
+  // 空、环闭合；b 的守卫与否不影响终止性（被重复展开的只有起点）
+  let files : Map[String, String] = {
+    "ga.h": "#ifndef GA_H\n#define GA_H\nint ga_val;\n#include \"gb.h\"\n#endif\n",
+    "gb.h": "int gb_val;\n#include \"ga.h\"\n",
+  }
+  let r = @lexer.tokenize_with_vfs("#include \"ga.h\"\nint main;\n", files~)
+  let e1015 = r.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(e1015.length(), 0, msg="起点带守卫的互环不得误报 E1015")
+  let joined = r.tokens.map(t => t.text).join(" ")
+  assert_true(joined.contains("ga_val"))
+  assert_true(joined.contains("gb_val"))
+}
+
+///|
+test "u11 unguarded self include still cycle" {
+  // 反向锚：无守卫自环仍是真环——起点每圈重复进入文本流（Clang 下爆深
+  // fatal），E1015 教学化提前拦截口径不变
+  let files : Map[String, String] = {
+    "raw_loop.h": "#include \"raw_loop.h\"\nint raw_val;\n",
+  }
+  let r = @lexer.tokenize_with_vfs(
+    "#include \"raw_loop.h\"\nint main;\n",
+    files~,
+  )
+  let e1015 = r.errors.filter(e => @diag.ErrorCode::code(e.code) == 1015)
+  assert_eq(e1015.length(), 1, msg="无守卫自环必须检出 E1015")
+}
+
+///|
 test "preprocessor undef" {
   // 原 test_preprocessor_undef
   let r = @lexer.tokenize(

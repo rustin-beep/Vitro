@@ -185,6 +185,7 @@ func main() {
 	corpora := corporaDefault
 	sample := 0
 	freeze := false
+	freezeMB := false
 	againstGolden := false
 	var explicit []string
 	args := os.Args[1:]
@@ -202,6 +203,10 @@ func main() {
 		case args[i] == "--freeze":
 			// 工序③固化（2026-10-05）：oracle 侧三通道产物全量落盘 golden。
 			freeze = true
+		case args[i] == "--freeze-mb":
+			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：--freeze 的 oracle
+			// 侧已随工序④删区断源，本通道以 mb 侧产物入账（见 freezeMBDigest）。
+			freezeMB = true
 		case args[i] == "--selftest":
 			selftestFlag = true
 		case args[i] == "--golden":
@@ -217,9 +222,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 与 --golden 互斥（先 freeze 后 golden）")
 		os.Exit(2)
 	}
+	if freeze && freezeMB {
+		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 与 --freeze-mb 互斥（双侧固化 vs mb 单侧入账）")
+		os.Exit(2)
+	}
+	if againstGolden && freezeMB {
+		fmt.Fprintln(os.Stderr, "vm_diff: --golden 与 --freeze-mb 互斥（比对 vs 入账）")
+		os.Exit(2)
+	}
 	// 删区自动降级：oracle exe 不存在且未显式 --golden ⇒ 自动转 golden 模式
 	// （工序④删区后零改动存活）；显式 --golden 而 oracle 仍在也照跑 golden。
-	if !fileExists(oracleBin) && !freeze {
+	if !fileExists(oracleBin) && !freeze && !freezeMB {
 		if !againstGolden {
 			fmt.Fprintln(os.Stderr, "vm_diff: [裁判切换] oracle exe 不存在——本判定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）")
 			againstGolden = true
@@ -344,6 +357,9 @@ func main() {
 	// ---- 工序③固化（2026-10-05）：freeze / golden 基线模式（digest 清单） ----
 	if freeze {
 		os.Exit(freezeDigest(cases))
+	}
+	if freezeMB {
+		os.Exit(freezeMBDigest(cases))
 	}
 	if againstGolden {
 		os.Exit(runAgainstDigest(cases))
@@ -949,6 +965,56 @@ func freezeDigest(cases []Case) int {
 		os.Exit(1)
 	}
 	fmt.Printf("\nvm_diff freeze: digest 清单落盘 %d 例（SAME=%d KNOWN=%d）→ %s\n", len(doc.Cases), same, knownN, digestPath)
+	return 0
+}
+
+// freezeMBDigest：删区后新用例入账通道（2026-10-05 BUG-B 语料批建）：
+// --freeze 的 oracle 侧已随工序④删区断源，新语料无法走双侧对拍入账。
+// 本通道以 mb 侧三通道产物入账（digestOfResultMB 提取器——与 golden
+// 模式比对口径同源，known 例 KnownMbDigest 同构）；正确性背书 =
+// clang_direct（stdout/退出码 vs Clang 真值）+ moon test 锚；memory
+// 映像为白箱特有面（无 Clang 对照，快照 mb 当前行为作回归锚——与清单
+// 头注定位一致）。**已存在键拒绝覆盖**：刷基线属修复批显式操作
+// （先删旧键重跑），防新用例入账误刷存量基线。
+func freezeMBDigest(cases []Case) int {
+	raw, err := os.ReadFile(digestPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 缺清单 %s（首建基线属工序③ freeze 语义）: %v\n", digestPath, err)
+		os.Exit(1)
+	}
+	var doc digestDoc
+	if err := json.Unmarshal(raw, &doc); err != nil || doc.Version != 1 {
+		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 清单坏或版本不识\n")
+		os.Exit(1)
+	}
+	added, skipped := 0, 0
+	for _, c := range cases {
+		base := filepath.Base(c.rel)
+		if _, ok := skips.lookup(base); ok {
+			fmt.Printf("SKIP  %s（skip 清单——不入账）\n", c.rel)
+			continue
+		}
+		if _, ok := doc.Cases[c.rel]; ok {
+			skipped++ // 存量例跳过——不覆盖既有基线（刷基线先删旧键重跑）
+			continue
+		}
+		m := runMoonBit(c.path)
+		me, ms, mm, mcf := digestOfResultMB(m)
+		doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), ExitCode: me, StdoutSHA: ms, MemorySHA: mm, CompileFail: mcf}
+		fmt.Printf("ADD  %s（exit=%d stdout=%s mem=%s cf=%v）\n", c.rel, me, ms, mm, mcf)
+		added++
+		cleanup(m)
+	}
+	if added == 0 {
+		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 无新例可入账（%d 例均已在清单）\n", skipped)
+		os.Exit(1)
+	}
+	data, _ := json.MarshalIndent(doc, "", "  ")
+	if err := os.WriteFile(digestPath, append(data, 10), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 写清单失败: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("\nvm_diff --freeze-mb: 新增 %d 例（跳过存量 %d）→ %s（正确性背书 = clang_direct + moon test；映像为白箱回归锚）\n", added, skipped, digestPath)
 	return 0
 }
 

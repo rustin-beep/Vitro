@@ -3,6 +3,8 @@
 // （防线调用面硬编码路径，不收敛——总入口 help 提示路径）。
 import {
   "vitro/engine/cmd/lib/cli",
+  "vitro/engine/fs",
+  "vitro/engine/gateway",
   "moonbitlang/core/env",
 }
 

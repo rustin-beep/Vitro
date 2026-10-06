@@ -441,6 +441,18 @@ jobs:
           go run ./scripts/vitro_cli_smoke --corpus 30
         shell: bash
 
+      # 防线 wasm 臂（#49 批二段三：实证面搬家——vm_diff/clang_direct 被测物
+      # 切统一入口壳消费 gateway wasm.wasm）：三联（stdout/退出码/1MB 映像）
+      # 与冻结 golden 全量对拍。前置 = 上方 gateway wasm 产物 + node 25 +
+      # Go（core 天然）；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
+      # 全量各 ~80s（本地实测 609/704 例）。
+      - name: vm_diff wasm arm (gateway product vs frozen golden)
+        run: go run ./scripts/vm_diff --backend wasm
+        shell: bash
+      - name: clang_direct wasm arm (gateway product vs Clang)
+        run: go run ./scripts/clang_direct --backend wasm
+        shell: bash
+
       # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
       # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方

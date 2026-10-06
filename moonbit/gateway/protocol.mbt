@@ -184,6 +184,7 @@ fn dispatch(
     "input.feed" => serve_input_feed_frame(s, id, params)
     "output.delta" => serve_output_delta_frame(s, id, params)
     "memory.regions" => serve_memory_regions_frame(s, id)
+    "memory.dump" => serve_memory_dump_frame(s, id)
     // step 族五方法（S8 批一号接线——编排本体 time_travel.UnifiedEngine）
     "step.begin" => serve_step_begin_frame(s, id, params)
     "step.next" => serve_step_next_frame(s, id, params)
@@ -201,7 +202,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
+          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
         ).stringify(),
         false,
       )

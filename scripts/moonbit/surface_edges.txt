@@ -566,3 +566,4 @@ vitro/engine/gateway vitro/engine/vm VitroVM
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/lib/cli vitro/engine/util utf8_text_partial
 vitro/engine/gateway vitro/engine/util utf8_text_partial
+vitro/engine/gateway vitro/engine/util base64_encode

@@ -210,3 +210,18 @@ fn serve_memory_regions_frame(
   m.set("alloc_counter", s.vm.mem_map.alloc_counter().to_json())
   (serve_ok(id, Json::object(m)).stringify(), false)
 }
+
+///|
+/// memory.dump 方法帧（#49 批二，2026-10-06）：1MB 最终内存映像导出
+/// （`vm.dump_memory_raw` 单源——与 cmd/run `--dump-memory` 落盘同字节），
+/// base64 经 JSON 帧承载（`@util.base64_encode`；解码归宿主标准库）。
+/// 前置态：无（映像恒在——未 run 时为默认字节，诚实语义对齐
+/// memory.regions 的零前置检查形态）。消费方 = wasm 壳 `--dump-memory`
+/// 与 vm_diff wasm 臂第三联（1MB 逐字节 diff）。
+fn serve_memory_dump_frame(s : @session.Session, id : Json) -> (String, Bool) {
+  let raw = s.vm.dump_memory_raw()
+  let m : Map[String, Json] = Map([])
+  m.set("size", raw.length().to_json())
+  m.set("bytes_base64", Json::string(@util.base64_encode(raw)))
+  (serve_ok(id, Json::object(m)).stringify(), false)
+}

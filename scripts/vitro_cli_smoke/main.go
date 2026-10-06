@@ -74,6 +74,20 @@ func runOut(name string, argv ...string) (string, int) {
 	return normalize(stdout.String() + "\n--stderr--\n" + stderr.String()), rc
 }
 
+// firstDiff：两 buffer 首个差异偏移（等长前提；映像对拍诊断用）。
+func firstDiff(a, b []byte) int {
+	n := len(a)
+	if len(b) < n {
+		n = len(b)
+	}
+	for i := 0; i < n; i++ {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return n
+}
+
 func main() {
 	corpusN := flag.Int("corpus", 0, "B 组语料级扩面：corpus/baseline 取前 N 例双臂对拍（CI=30）")
 	flag.Parse()
@@ -171,6 +185,33 @@ func main() {
 			fatalf("B[双臂对拍] %s: stdout/stderr 不一致\n--- wasm ---\n%s\n--- native ---\n%s", c.name, wasmOut, natOut)
 		}
 		fmt.Printf("ok  B[双臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
+	}
+
+	// B 组附：1MB 映像双臂对拍（--dump-memory——memory.dump 帧链路，
+	// #49 批二段二）：双臂各落盘一份逐字节比（cmp 语义；与 vm_diff 第三联
+	// 同口径——同字节则 wasm 臂映像联齐备）
+	{
+		wasmDump := filepath.Join(tmpDir, "dump_wasm.bin")
+		natDump := filepath.Join(tmpDir, "dump_native.bin")
+		os.Remove(wasmDump)
+		os.Remove(natDump)
+		_, wrc := runOut(nodeBin, shell, "run", "corpus/baseline/bubble_sort.c", "--dump-memory", filepath.ToSlash(wasmDump))
+		_, nrc := runOut(nativeExe, "run", "corpus/baseline/bubble_sort.c", "--dump-memory", filepath.ToSlash(natDump))
+		if wrc != 0 || nrc != 0 {
+			fatalf("B[映像对拍] rc 异常 wasm=%d native=%d", wrc, nrc)
+		}
+		wb, err1 := os.ReadFile(wasmDump)
+		nb, err2 := os.ReadFile(natDump)
+		if err1 != nil || err2 != nil {
+			fatalf("B[映像对拍] dump 文件读取失败 wasm=%v native=%v", err1, err2)
+		}
+		if len(wb) != 1024*1024 {
+			fatalf("B[映像对拍] wasm dump 尺寸 %d ≠ 1MB", len(wb))
+		}
+		if !bytes.Equal(wb, nb) {
+			fatalf("B[映像对拍] 1MB 映像逐字节不一致（首差 offset=%d）", firstDiff(wb, nb))
+		}
+		fmt.Println("ok  B[映像对拍] 1MB dump 双臂逐字节一致（memory.dump 帧）")
 	}
 
 	// B 组扩面：语料级双臂对拍（--corpus N；#49 批二）——同判定口径

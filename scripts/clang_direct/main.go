@@ -46,6 +46,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,6 +59,14 @@ import (
 )
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
+
+// #49 批二段三：被测物后端（"native" cmd/run exe | "wasm" 统一入口壳——
+// 与 vm_diff 同款插座）。
+const wasmShell = "scripts/vitro_cli/main.js"
+
+const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"
+
+var backend = "native"
 
 const clangCacheDir = ".clang_cache_cd"
 
@@ -170,6 +179,14 @@ func main() {
 			fmt.Sscanf(args[i], "%d", &jobs)
 		case args[i] == "--check-known":
 			checkKnownFlag = true
+		case args[i] == "--backend" && i+1 < len(args):
+			// #49 批二段三：被测物插座（native | wasm——vm_diff 同款）。
+			i++
+			if args[i] != "native" && args[i] != "wasm" {
+				fmt.Fprintf(os.Stderr, "clang_direct: --backend 取值 native|wasm，得到 %q\n", args[i])
+				os.Exit(2)
+			}
+			backend = args[i]
 		default:
 			fmt.Fprintf(os.Stderr, "clang_direct: 未知参数 %q\n", args[i])
 			os.Exit(2)
@@ -186,7 +203,25 @@ func main() {
 	}
 
 	// 前置：runner 存在 + 新鲜度门禁（vm_diff 同款：mtime 触发 + 构建复核）
-	if !fileExists(runnerExe) {
+	if backend == "wasm" {
+		if !fileExists(wasmShell) {
+			fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在（统一入口壳）\n", wasmShell)
+			os.Exit(2)
+		}
+		if !fileExists(wasmMod) {
+			fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在——先跑 cd moonbit && moon build --release --target wasm-gc gateway/wasm\n", wasmMod)
+			os.Exit(2)
+		}
+		if stale := findStaleSource(wasmMod); stale != "" {
+			fmt.Fprintf(os.Stderr, "clang_direct: %s 旧于源 %s——跑 wasm-gc 构建复核...\n", wasmMod, stale)
+			rb := exec.Command("moon", "build", "--release", "--target", "wasm-gc", "gateway/wasm")
+			rb.Dir = "moonbit"
+			if out, err := rb.CombinedOutput(); err != nil {
+				fmt.Fprintf(os.Stderr, "clang_direct: wasm-gc 构建复核失败：%v\n%s\n", err, tailAll(out))
+				os.Exit(2)
+			}
+		}
+	} else if !fileExists(runnerExe) {
 		fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
 		os.Exit(2)
 	}
@@ -640,9 +675,20 @@ func runMoon(c caseRef) *moonResult {
 		args = append(args, "-i", in)
 	}
 	args = append(args, "--dump-memory", tmp.Name())
-	cmd := exec.Command(filepath.FromSlash(runnerExe), args...)
+	// 插座（#49 批二段三，与 vm_diff 同款）：wasm 臂 stderr 丢弃——backend
+	// 标注行非协议面，并入会污染 stdout 归一比对。
+	var cmd *exec.Cmd
+	if backend == "wasm" {
+		cmd = exec.Command("node", append([]string{wasmShell, "run"}, args...)...)
+	} else {
+		cmd = exec.Command(filepath.FromSlash(runnerExe), args...)
+	}
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	if backend == "wasm" {
+		cmd.Stderr = io.Discard
+	} else {
+		cmd.Stderr = &out
+	}
 	_ = cmd.Run()
 	s := out.String()
 	r := &moonResult{stdout: s, memoryPath: tmp.Name()}

@@ -9,6 +9,9 @@
 //   位截断自己写——陷阱 #25）；
 // - `le_u32_at` / `le_u64_at`：memory/carrier 的手工小端拼装上提
 //   （`FixedArray[Byte]` 读侧无 LE 原语——陷阱 #35）。
+// - `base64_encode`：gateway memory.dump 的 1MB 映像经 JSON 帧传输
+//   （RFC 4648 标准字母表 + `=` 补位；解码侧宿主标准库——MoonBit 侧
+//   只需编码方向，2026-10-06 #49 批二登记）。
 
 ///|
 /// String 的 UTF-8 字节长度（与 Rust `String::len()` 同口径；与
@@ -87,6 +90,41 @@ pub fn le_u64_at(bytes : FixedArray[Byte], off : Int) -> UInt64 {
 /// 现状同 `utf8_len` 的审计点声明（静默产空串）。
 pub fn utf8_bytes(s : String) -> Bytes {
   @utf8.encode(s)
+}
+
+///|
+/// 标准 base64 编码（RFC 4648 字母表 + `=` 补位）。纯函数机械件——
+/// gateway memory.dump 的 1MB 映像经 JSON 帧传输用（解码侧宿主标准库，
+/// MoonBit 侧只需编码方向）。锚 = RFC 测试向量全集（util_wbtest）。
+pub fn base64_encode(b : Bytes) -> String {
+  let table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  let n = b.length()
+  let buf = StringBuilder()
+  let mut i = 0
+  while i + 3 <= n {
+    let v = ((b[i].to_int() & 0xff) << 16) |
+      ((b[i + 1].to_int() & 0xff) << 8) |
+      (b[i + 2].to_int() & 0xff)
+    buf.write_char(table[(v >> 18) & 63].unsafe_to_char())
+    buf.write_char(table[(v >> 12) & 63].unsafe_to_char())
+    buf.write_char(table[(v >> 6) & 63].unsafe_to_char())
+    buf.write_char(table[v & 63].unsafe_to_char())
+    i += 3
+  }
+  let rem = n - i
+  if rem == 1 {
+    let v = (b[i].to_int() & 0xff) << 16
+    buf.write_char(table[(v >> 18) & 63].unsafe_to_char())
+    buf.write_char(table[(v >> 12) & 63].unsafe_to_char())
+    buf.write_string("==")
+  } else if rem == 2 {
+    let v = ((b[i].to_int() & 0xff) << 16) | ((b[i + 1].to_int() & 0xff) << 8)
+    buf.write_char(table[(v >> 18) & 63].unsafe_to_char())
+    buf.write_char(table[(v >> 12) & 63].unsafe_to_char())
+    buf.write_char(table[(v >> 6) & 63].unsafe_to_char())
+    buf.write_string("=")
+  }
+  buf.to_string()
 }
 
 ///|

@@ -180,9 +180,9 @@ async function cmdRun(args) {
     process.exitCode = 4;
     return;
   }
-  if (ra.dumpMem !== "") {
+  if (ra.dumpMem !== "" && ra.jsonMode) {
     process.stderr.write(
-      "// COMPILE-ERROR io 1:1 wasm 臂不支持 --dump-memory（协议无 1MB 映像导出面，spec §3 登记；映像联走 native 臂）\n",
+      "// COMPILE-ERROR io 1:1 --dump-memory 在 --json 下不适用（协议无映像导出事件行——spec §3 登记，native 同口径）\n",
     );
     process.exitCode = 4;
     return;
@@ -250,6 +250,20 @@ async function cmdRun(args) {
     }
     if (run.result && run.result.return_value !== 0) {
       process.stdout.write(`// EXIT ${run.result.return_value}\n`);
+    }
+    // --dump-memory（#49 批二：memory.dump 帧——1MB 映像 base64 解码落盘，
+    // 与 native --dump-memory 同字节；对齐 cli_run 形态=失败静默不挡 rc）
+    if (ra.dumpMem !== "") {
+      const dump = inv("memory.dump");
+      if (dump.ok && dump.result && dump.result.bytes_base64) {
+        try {
+          fs.writeFileSync(ra.dumpMem, Buffer.from(dump.result.bytes_base64, "base64"));
+        } catch {
+          process.stderr.write(`[vitro] --dump-memory 写盘失败：${ra.dumpMem}\n`);
+        }
+      } else {
+        process.stderr.write("[vitro] memory.dump 帧失败\n");
+      }
     }
   }
   const status = run.result && run.result.status;

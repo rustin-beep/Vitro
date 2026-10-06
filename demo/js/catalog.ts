@@ -84,6 +84,7 @@ export function renderProto(cap: JsonRec, contracts: JsonRec | null, labels: Jso
     ["output.delta", "stdout / stderr / note / display 四视图，游标制增量", "✓"],
     ["input.feed", "stdin 喂入续跑（交互程序）", "✓"],
     ["memory.regions", "内存白箱：三段式区域 + free_list + 隔离区", "✓"],
+    ["memory.dump", "1MB 映像 base64 导出（CLI --dump-memory / vm_diff 映像联）", "—"],
     ["error_catalog", "诊断目录 77 卡（72 C 卡展示；5 张 C++ 历史卡按 lang 过滤）", "✓"],
     ["config.get / config.set", "确定性 / 步数上限 / 调用深度 / 隔离区预算（4 可写字段）", "✓"],
     ["capabilities", "schema 冻结 + v0.2 台账 + languages + memory_model", "✓"],

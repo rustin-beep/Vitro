@@ -92,3 +92,14 @@ test "utf8_text_partial_三态_基础中文代理对与截断止" {
   // 中段截断：合法前缀 + 截断尾（「hi」+ 半个「中」→ 前缀止）
   inspect(utf8_text_partial(b"hi\xe4\xb8"), content="hi")
 }
+
+///|
+test "base64_encode_rfc4648_向量全集" {
+  inspect(base64_encode(b""), content="")
+  inspect(base64_encode(b"f"), content="Zg==")
+  inspect(base64_encode(b"fo"), content="Zm8=")
+  inspect(base64_encode(b"foo"), content="Zm9v")
+  inspect(base64_encode(b"foob"), content="Zm9vYg==")
+  inspect(base64_encode(b"fooba"), content="Zm9vYmE=")
+  inspect(base64_encode(b"foobar"), content="Zm9vYmFy")
+}

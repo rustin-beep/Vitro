@@ -258,3 +258,23 @@ test "type_display_name_rendering_shapes" {
   )
   assert_eq(@ast.type_display_name(@ast.Type::long_long()), "long long")
 }
+
+///|
+test "serve_memory_dump_roundtrip" {
+  // #49 批二：memory.dump 帧 = dump_memory_raw 单源的 base64 投影——
+  // 往返锚（帧值 == @util.base64_encode(vm.dump_memory_raw())）+ 常量
+  //（1MB）+ 未 run 态零前置（诚实语义，对齐 memory.regions 形态）
+  let s = @session.Session::new()
+  let _ = serve_handle(
+    s, "{\"id\":0,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\nint main() { printf(\\\"hi\\\"); return 0; }\n\"}}",
+  )
+  let _ = serve_handle(s, "{\"id\":1,\"method\":\"run\"}")
+  let (r, _) = serve_handle(s, "{\"id\":2,\"method\":\"memory.dump\"}")
+  assert_true(r.contains("\"ok\":true"), msg="帧 ok")
+  assert_true(r.contains("\"size\":1048576"), msg="1MB 常量")
+  let expect = @util.base64_encode(s.vm.dump_memory_raw())
+  assert_true(
+    r.contains("\"bytes_base64\":\"\{expect}\""),
+    msg="往返一致（帧值 == base64(dump_memory_raw)）",
+  )
+}

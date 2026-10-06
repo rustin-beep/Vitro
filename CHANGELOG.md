@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（#49 批二段二+段三：memory.dump 帧全链 + 防线 wasm 臂插座——主出口实证面搬家，2026-10-06）
+
+- **gateway `memory.dump` 帧**（21→22 方法）：1MB 最终映像 `dump_memory_raw` 单源 + `@util.base64_encode`（RFC 4648，G 表机械件 + RFC 向量全集锚；vendored 纪律禁引 x/codec 故自写 ~35 行）base64 承载（~1.37MB JSON）；wbtest 往返锚（帧值 == base64(dump_memory_raw)）+ J9 摘 dispatch 证红；protocol_frames `skip_methods` 登记（1.4MB 帧文本不宜基线全文冻结——覆盖面 = 双锚）；demo 方法面三处连坐（catalog/页面计数/demo_smoke 断言——**demo_smoke 首跑即抓计数缺口**）
+- **壳 `--dump-memory`**：文本模式拉帧 `Buffer.from(base64)` 落盘（写失败静默不挡 rc 对齐 cli_run 形态）；`--json` 下不适用（spec §3 同口径）；smoke 闸映像对拍断言（双臂 1MB `bytes.Equal` + 首差偏移）
+- **vm_diff/clang_direct `--backend native|wasm` 插座**（缺省 native 不动现状）：wasm 臂被测物 = 统一入口壳（gateway wasm.wasm）——**wasm 臂全量零 DIFF**（vm_diff 609 例三联 vs 冻结 golden SAME 604+KNOWN 5；clang_direct 704 例 vs Clang SAME 697+KNOWN 7；各 ~70-80s）；产物新鲜度门禁兜 #41 毒化；CI 两 wasm 臂步（排 gateway 产物构建后）；J9 证红（篡改壳 note 行 → wasm 臂单例红）
+- **插座迁移两教训**（开发中实锤）：① flag 赋值被局部变量遮蔽 = 假验证（`--backend wasm` 实跑 native 臂 77 SAME 自欺——插座类改动须先证「臂真的换了」）；② 壳 stderr 的 backend 标注行并入 stdout 流污染 digest（真 wasm 臂首跑 73 DIFF 唯一根因——exit/memory digest 逐位一致定责）——wasm 臂 stderr 丢弃
+
 ### Added（#49 批二段一：双臂对拍语料级扩面——373 例全量同形，四类真差异定责全修，2026-10-06）
 
 - **`vitro_cli_smoke --corpus N`**：corpus/baseline 字典序取前 N 例双臂对拍（rc + 剥 backend 行后逐字节）——本地全量 373 例同形、CI 接 30 例；J9 证红（篡改壳 note 前缀 → 32 处 FAIL）

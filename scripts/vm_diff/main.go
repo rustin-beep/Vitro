@@ -75,6 +75,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,6 +84,13 @@ import (
 )
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
+
+// #49 批二段三：被测物后端（"native" cmd/run exe | "wasm" 统一入口壳）。
+const wasmShell = "scripts/vitro_cli/main.js"
+
+const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"
+
+var backend = "native"
 
 var corporaDefault = []string{"baseline", "knr", "leetcode", "gap"}
 
@@ -209,6 +217,15 @@ func main() {
 			freezeMB = true
 		case args[i] == "--selftest":
 			selftestFlag = true
+		case args[i] == "--backend" && i+1 < len(args):
+			// #49 批二段三：被测物插座（缺省 native cmd/run exe；wasm = 统一
+			// 入口壳消费 gateway wasm.wasm——主出口产物的实证面搬家）。
+			i++
+			if args[i] != "native" && args[i] != "wasm" {
+				fmt.Fprintf(os.Stderr, "vm_diff: --backend 取值 native|wasm，得到 %q\n", args[i])
+				os.Exit(2)
+			}
+			backend = args[i]
 		case args[i] == "--golden":
 			// 工序③固化：mb ↔ golden 对拍（oracle 消失后的基线模式）。
 			againstGolden = true
@@ -242,7 +259,32 @@ func main() {
 		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 需要 oracle exe（native/target/release/vitro_cli.exe）")
 		os.Exit(1)
 	}
-	if !fileExists(runnerExe) {
+	if backend == "wasm" {
+		// wasm 臂前置（#49 批二段三）：壳 + gateway 产物存在性 + stale 重建
+		//（同 native 模式——mtime 触发 + 构建复核；#41 缓存毒化教训的机判兜底）。
+		if !fileExists(wasmShell) {
+			fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在（统一入口壳）\n", wasmShell)
+			os.Exit(1)
+		}
+		if !fileExists(wasmMod) {
+			fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target wasm-gc gateway/wasm\n", wasmMod)
+			os.Exit(1)
+		}
+		if stale := findStaleSource(wasmMod); stale != "" {
+			fmt.Fprintf(os.Stderr, "vm_diff: %s 旧于源 %s——跑 wasm-gc 构建复核...\n", wasmMod, stale)
+			rb := exec.Command("moon", "build", "--release", "--target", "wasm-gc", "gateway/wasm")
+			rb.Dir = "moonbit"
+			if out, err := rb.CombinedOutput(); err != nil {
+				fmt.Fprintln(os.Stderr, string(out))
+				fmt.Fprintln(os.Stderr, "vm_diff: wasm-gc 构建失败——修好构建前不给判定")
+				os.Exit(1)
+			}
+			if !fileExists(wasmMod) {
+				fmt.Fprintf(os.Stderr, "vm_diff: 构建成功但 %s 仍缺失（moon 缓存与磁盘不一致）——删 moonbit/_build/wasm-gc 后重建\n", wasmMod)
+				os.Exit(1)
+			}
+		}
+	} else if !fileExists(runnerExe) {
 		fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
 		os.Exit(1)
 	}
@@ -794,9 +836,23 @@ func runMoonBit(path string) *result {
 		margs = append(margs, "-i", in)
 	}
 	margs = append(margs, "--dump-memory", tmp.Name())
-	cmd := exec.Command(filepath.FromSlash(runnerExe), margs...)
+	// 被测物插座（#49 批二段三）：native = cmd/run exe 直跑；wasm = 统一
+	// 入口壳（node 消费 gateway wasm.wasm——壳输出协议与 exe 同形，解析
+	// 零分支）。wasm 臂 stderr **不并入** stdout：壳的 backend 标注行走
+	// stderr（设计差异非协议面），并入会污染 digest（首跑 73 DIFF 的唯一
+	// 根因——exit/memory digest 逐位一致实证）。
+	var cmd *exec.Cmd
+	if backend == "wasm" {
+		cmd = exec.Command("node", append([]string{wasmShell, "run"}, margs...)...)
+	} else {
+		cmd = exec.Command(filepath.FromSlash(runnerExe), margs...)
+	}
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	if backend == "wasm" {
+		cmd.Stderr = io.Discard
+	} else {
+		cmd.Stderr = &out
+	}
 	_ = cmd.Run()
 	r := &result{stdout: out.String(), memoryPath: tmp.Name()}
 	if strings.Contains(r.stdout, "// COMPILE-ERROR") {

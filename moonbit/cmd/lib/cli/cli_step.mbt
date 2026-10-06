@@ -39,7 +39,7 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
   }
   // `-` = 源码走 stdin（B2 全命令品类——同 compile 修正）
   let src = if file == "-" {
-    utf8_decode(read_stdin())
+    @util.utf8_text_partial(read_stdin())
   } else {
     @fs.read_file_to_string(file) catch {
       _ => ""

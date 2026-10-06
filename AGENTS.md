@@ -28,7 +28,7 @@
 9. **工具陷阱五条**：`| head` 会 SIGPIPE 杀编译器（判"构建失败"前必须 tail 全量输出）；管道 `$?` 是尾命令退出码（用 PIPESTATUS 或裸命令取）；哨兵先证红再采信结论；基准对照必须校验和逐位一致才计时；Windows 路径的 grep 过滤要 `[/\]` 双兼容
 10. **提交署名 = 审阅深度信号**（2026-09-19 拍板）：git 提交信息中**提及用户**（署名 / 审阅标记）表明该批代码经过用户深度审阅与探针测试；**未标明**仅代表用户浏览过，不构成审阅背书。机器判读提交可信度时以此为准。
 11. **MoonBit native 目标构建默认 clang、放弃 MSVC**（2026-10-04 拍板）：Windows 上 moon 探测序默认绑 MSVC，撞 [moon#2254](https://github.com/moonbitlang/moon/issues/2254) 构建悬崖（每个链引擎闭包的 exe 冷态 ~130s——本仓已 5 个此类 exe，全量分钟级；`MOON_CC=clang` 同构建 29s 实测）。**一律 `MOON_CC=clang` 后再 `moon build --target native`**；另**新增包或出口面须连坐 surface 边表/pkg_deps 白名单登记，否则 CI 红**。
-12. **agent 日常验证默认吃自家狗粮**（2026-10-04 拍板）：agent 日常临时验证 C 行为（试编译 / 查行为 / 复现小片段）默认走本仓 `vitro` CLI（`run` / `api` / `step`；exe = `moonbit/_build` 下 `cmd/vitro` 产物，构建按第 11 条 `MOON_CC=clang`；脚本消费一律 `--json`）。**真值源边界**：vitro 输出只作「Vitro 行为」依据、不作「C 语义正确」依据——存疑或对外断言必对拍 gcc/clang 定责，不一致按 vitro-realcode-diff-workflow 登记缺陷。防线既有通道（clang golden / e2e / 双侧对拍）豁免照旧。
+12. **agent 日常验证默认吃自家狗粮 + 统一入口（2026-10-04 拍板；2026-10-06 #49 批一改向统一入口）**：agent 日常临时验证 C 行为（试编译 / 查行为 / 复现小片段）默认走统一入口 `scripts/bin/vitro`（sh；Windows cmd 环境用 `vitro.cmd`）——**默认 wasm 臂**（node 壳消费 `gateway/wasm/wasm.wasm`，需 node ≥25），node 缺失/过旧自动降级 native exe（stderr 明示 `backend=`）；`--backend native|wasm` 显式选边。四子命令 `run`/`compile`/`step`/`api` 参数面与 rc 五值表 = CLI_PROTOCOL_V1 spec 单源；wasm 臂产物重建 `moon build --release --target wasm-gc gateway/wasm`、native 臂按第 11 条 `MOON_CC=clang`。脚本消费一律 `--json`。同形性由 CI 闸 `scripts/vitro_cli_smoke`（双臂对拍）锁。**真值源边界**照旧：vitro 输出只作「Vitro 行为」依据、不作「C 语义正确」依据——存疑或对外断言必对拍 gcc/clang 定责，不一致按 vitro-realcode-diff-workflow 登记缺陷。防线既有通道（clang golden / e2e / 双侧对拍）豁免照旧。
 
 ## Agent Skills（`.agents/skills/`，2026-09-28 建）
 

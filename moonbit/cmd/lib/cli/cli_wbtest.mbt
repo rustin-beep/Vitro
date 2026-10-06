@@ -1,5 +1,6 @@
 // cmd/lib/run 白盒锚（#37 批②③）——参数解析偏移约定与 UTF-8 解码。
-// J9：锚先于行为存在（parse_run_args/utf8_decode 是本批新面）。
+// J9：锚先于行为存在（parse_run_args 是本批新面；utf8_decode 三态锚
+// 2026-10-06 随函数上提 util_wbtest〔util.utf8_text_partial〕，本文件不再持锚）。
 
 ///|
 test "parse_run_args_偏移约定_透传与旗标" {
@@ -30,29 +31,6 @@ test "parse_run_args_json 与 stdin 占位" {
   let ra = parse_run_args(["--json", "-"])
   inspect(ra.json_mode, content="true")
   inspect(ra.file, content="-") // `-` 占位接收（批③ stdin 源）
-}
-
-///|
-test "utf8_decode_基础与中文与代理对" {
-  // ASCII
-  let b1 = b"hi"
-  inspect(utf8_decode(b1), content="hi")
-  // 中文三字节（「中」= E4 B8 AD）
-  let b2 = b"\xe4\xb8\xad"
-  inspect(utf8_decode(b2), content="中")
-  // 四字节 emoji（😀 = U+1F600）：String.length=2 证代理对编码成立；
-  // unsafe_char_at(0) 按码点返回合并值 128512（0x1F600——实测 API 形态）
-  let b3 = b"\xf0\x9f\x98\x80"
-  let s3 = utf8_decode(b3)
-  inspect(s3.length(), content="2")
-  inspect(s3.unsafe_char_at(0).to_int(), content="128512")
-}
-
-///|
-test "utf8_decode_截断序列静默止" {
-  // 尾不完整三字节（2 字节截断）——不抛，输出已解码前缀
-  let b = b"\xe4\xb8"
-  inspect(utf8_decode(b), content="")
 }
 
 ///|

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（统一 CLI 入口：默认 wasm-gc 降级 native——#49 批一，2026-10-06）
+
+- **统一入口 launcher**：`scripts/bin/vitro`（sh）+ `vitro.cmd`（纯 ASCII——cmd.exe 按 OEM 代码页解析，UTF-8 字节吃命令）——默认 **wasm 臂**（node 壳消费 `gateway/wasm/wasm.wasm`，与 demo 同产物），node 缺失/过旧（壳 exit 3 哨兵）自动降级 native exe，stderr 恒明示 `backend=` 行；`--backend native|wasm` 显式选边（排查用）
+- **wasm 壳四子命令**（`scripts/vitro_cli/main.js`）：run/compile/step/api 参数面与 rc 五值表对齐 CLI_PROTOCOL_V1（api `--batch` 整帧透传状态跨帧；run `--json` 事件流行带 backend 字段）；stdout 字节还原（Latin-1 逆折回 `Buffer.from(…,'latin1')`——与 native C stub fwrite 逐字节一致）；`--dump-memory` wasm 臂暂缺（协议无 1MB 映像导出面，spec §3 既有登记——映像联走 `--backend native`）
+- **CI 闸 `scripts/vitro_cli_smoke`**（Go 判定型）：壳 rc 契约 9 断言 + **双臂同形对拍**（壳 vs native exe 三用例逐行一致——差异消灭的机判锚，唯一剥离 = backend 标注行，零 canonicalize 特例）+ launcher 双形态语义；J9 证红（篡改壳 note 前缀 → 对拍红）留痕；CI 步随带 cmd/vitro native 构建（core job 此前从不构建）
+- AGENTS.md 纪律 12 改向统一入口；CLI 手册补统一入口节
+
+### Fixed（统一 CLI 批两缺陷——#49 批一，2026-10-06）
+
+- **gateway note 流 mojibake**：`output.delta {stream:"note"}` 的 delta 原按 Latin-1 逐字节折回——note 是引擎文本域（`push_note_str` UTF-8 编码入通道），中文全乱码（`ç¨åºè¿è¡å®æ¯` 形态；demo 不消费 note 流故从未暴露）。修复 = note 通道 `@util.utf8_text_partial` 解码（stdout/stderr 保持字节域 Latin-1 口径——两通道不同源，cmd/lib/cli note 消费同款修正的 gateway 侧补齐）；游标仍字节域；翻转锚 `serve_output_delta_stream_channels`（原锚把 mojibake 当分叉锁死）
+- **`utf8_decode` 单源化上提**：自 cmd/lib/cli 上提 util 为 `utf8_text_partial`（最长合法前缀、截断尾静默止——与 `utf8_text` 的 fail loud 分工；三态锚随迁 util_wbtest），CLI 六消费点改引，surface 边两条登记
+- **native CLI trap 语义对齐**：`cli_run` trap 时不再打「程序运行完成」NOTE/泄漏报告（对齐 `serve_execute_run` 的 `trap.is_empty()` 条件——trap ≠ 运行完成；双臂由此同形，防线 NOTE 行本就逐行剥离零比对影响）
+
 ### Fixed（S9 新病批：const 安全方向兼容——三条预拦截级解封 + issue #3 销案 + 路由改判，2026-10-06）
 
 - **check_array_pointer_assignable 补 const 兼容**（issue #3 根因）：T[]/字面量 → const T* 加 const 安全方向（C §6.5.16.1）合法——旧 type_eq 严格等致 `const char*` 形参收数组/字面量全 E3038（strtol/strtod/strncpy 三函数完全不可编译的预拦截根因；记载的"字面量形态"比实际窄，数组同炸）；`const_promoted_eq`/`strip_top_const` 仅一层顶层限定（char** → const char** 深层不放行）；g1–g10 十探针矩阵定位

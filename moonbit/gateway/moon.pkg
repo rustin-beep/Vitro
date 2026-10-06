@@ -28,6 +28,7 @@ import {
   "vitro/engine/teaching/steps",
   "vitro/engine/time_travel",
   "vitro/engine/typeck",
+  "vitro/engine/util",
   "vitro/engine/vm",
 }
 

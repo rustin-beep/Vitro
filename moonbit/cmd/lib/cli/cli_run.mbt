@@ -204,7 +204,7 @@ pub fn run(
   }
   // `-` = 源码走 stdin（Rust read_source 全命令通用品类——批③ B2）
   let src = if ra.file == "-" {
-    utf8_decode(read_stdin())
+    @util.utf8_text_partial(read_stdin())
   } else {
     // P3-10（2026-09-26 审阅）：源文件不可读此前抛裸 IOError（非协议形态）
     // ——协议化为 // COMPILE-ERROR io 行，harness 报文可读。
@@ -274,8 +274,14 @@ pub fn run(
   // 完成附注 + 泄漏报告（2026-10-04 二轮审 P2：note 通道此前整段丢失——
   // oracle cmd_run 与 demo 均消费。复用 gateway.append_leak_report 单源
   //（签名已收窄为 vm 直取）；完成附注同 serve_run 口径）
-  vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
-  @gateway.append_leak_report(vm)
+  // trap 时不打「程序运行完成」（2026-10-06 #49 统一 CLI 批：对齐
+  // serve_execute_run 的 trap.is_empty 条件——trap ≠ 运行完成，教学语义
+  // 修正；wasm 壳（gateway 通道）与 native 双臂由此同形，防线 NOTE 行
+  // 本就逐行剥离、零比对影响）
+  if vm.error.is_empty() {
+    vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
+    @gateway.append_leak_report(vm)
+  }
   // ── stdout 通道（Bytes 聚合 + stub 字节直写）──
   // DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01 销账（2026-10-05
   // 脱钩修复批批一）：此前 Bytes→char Latin-1 直转进 String 再 println，
@@ -293,12 +299,13 @@ pub fn run(
   // **UTF-8 解码**（Blocker 2 修正）：push_note_str 以 UTF-8 字节入通道
   //（引擎 String 语义），取出端不可按 stdout 的 Latin-1 char 直转（中文
   // mojibake 实锤 C3A7C2A8…；stdout 直转是程序字节域的既定口径，note
-  // 是引擎文本域——两通道不同源），utf8_decode 纯函数（wbtest 三态锚在案）
+  // 是引擎文本域——两通道不同源），@util.utf8_text_partial 纯函数（三态锚在
+  // util_wbtest——2026-10-06 自本包 utf8_decode 上提单源）
   let mut nbuf : Bytes = b""
   for chunk in vm.output.chunks_of(@host.OutputKind::Note) {
     nbuf = nbuf.add(chunk)
   }
-  let note = utf8_decode(nbuf)
+  let note = @util.utf8_text_partial(nbuf)
   if !note.is_empty() {
     for line in note.split("\n") {
       if !line.is_empty() {
@@ -344,42 +351,4 @@ fn stdout_bytes_of(chunks : Array[Bytes]) -> Bytes {
     buf = buf.add(b"\n")
   }
   buf
-}
-
-///|
-/// UTF-8 字节 → String（`-` stdin 通道——C stub 返回原始字节，解码在
-/// MoonBit 侧纯逻辑完成可 wbtest。截断序列静默止（尾不完整多字节——
-/// 文本源码域足够）。
-pub fn utf8_decode(b : Bytes) -> String {
-  let buf = StringBuilder()
-  let n = b.length()
-  let mut i = 0
-  while i < n {
-    let c0 = b[i].to_int() & 0xff
-    if c0 < 0x80 {
-      buf.write_char(c0.unsafe_to_char())
-      i += 1
-    } else if c0 < 0xe0 && i + 1 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      buf.write_char((((c0 & 0x1f) << 6) | c1).unsafe_to_char())
-      i += 2
-    } else if c0 < 0xf0 && i + 2 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      let c2 = b[i + 2].to_int() & 0x3f
-      buf.write_char((((c0 & 0x0f) << 12) | (c1 << 6) | c2).unsafe_to_char())
-      i += 3
-    } else if i + 3 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      let c2 = b[i + 2].to_int() & 0x3f
-      let c3 = b[i + 3].to_int() & 0x3f
-      let cp = ((c0 & 0x07) << 18) | (c1 << 12) | (c2 << 6) | c3
-      // MoonBit Char 是 Unicode 码点（非 UTF-16 码元）——直接写码点，
-      // String 内部自管 UTF-16 编码（wbtest 代理对锚抓过手拆形态的错）
-      buf.write_char(cp.unsafe_to_char())
-      i += 4
-    } else {
-      break
-    }
-  }
-  buf.to_string()
 }

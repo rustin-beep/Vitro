@@ -100,3 +100,46 @@ pub fn utf8_text(b : Bytes) -> String {
       )
   }
 }
+
+///|
+/// UTF-8 字节序列解码——**最长合法前缀，截断尾静默止**（`utf8_text` 的
+/// 宽容变体：malformed/截断不 abort，返回已解码前缀）。消费场景 = 游标
+/// 可落在多字节序列中间的字节域切片（gateway output.delta 的 note 通道
+/// cursor 增量；CLI note 聚合同款先例）。实现自 cmd/lib/cli `utf8_decode`
+/// 上提（三态锚随迁 util_wbtest）：ASCII 单字节 / 2–4 字节序列按续位
+/// 拼码点（Char = Unicode 码点，代理对由 String 内管）；**不校验续位
+/// 前缀字节合法性**（0xC0 0x41 会被拼出 U+041——宽容域语义，引擎文本
+/// 域实际恒合法，前缀截断是唯一现实形态）。
+pub fn utf8_text_partial(b : Bytes) -> String {
+  let buf = StringBuilder()
+  let n = b.length()
+  let mut i = 0
+  while i < n {
+    let c0 = b[i].to_int() & 0xff
+    if c0 < 0x80 {
+      buf.write_char(c0.unsafe_to_char())
+      i += 1
+    } else if c0 < 0xe0 && i + 1 < n {
+      let c1 = b[i + 1].to_int() & 0x3f
+      buf.write_char((((c0 & 0x1f) << 6) | c1).unsafe_to_char())
+      i += 2
+    } else if c0 < 0xf0 && i + 2 < n {
+      let c1 = b[i + 1].to_int() & 0x3f
+      let c2 = b[i + 2].to_int() & 0x3f
+      buf.write_char((((c0 & 0x0f) << 12) | (c1 << 6) | c2).unsafe_to_char())
+      i += 3
+    } else if i + 3 < n {
+      let c1 = b[i + 1].to_int() & 0x3f
+      let c2 = b[i + 2].to_int() & 0x3f
+      let c3 = b[i + 3].to_int() & 0x3f
+      let cp = ((c0 & 0x07) << 18) | (c1 << 12) | (c2 << 6) | c3
+      // MoonBit Char 是 Unicode 码点（非 UTF-16 码元）——直接写码点，
+      // String 内部自管 UTF-16 编码（wbtest 代理对锚抓过手拆形态的错）
+      buf.write_char(cp.unsafe_to_char())
+      i += 4
+    } else {
+      break
+    }
+  }
+  buf.to_string()
+}

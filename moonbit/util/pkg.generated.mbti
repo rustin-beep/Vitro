@@ -16,6 +16,8 @@ pub fn utf8_len(String) -> Int
 
 pub fn utf8_text(Bytes) -> String
 
+pub fn utf8_text_partial(Bytes) -> String
+
 // Errors
 
 // Types and methods

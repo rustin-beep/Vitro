@@ -41,7 +41,7 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
       )
       return 4
     }
-    let text = utf8_decode(read_stdin())
+    let text = @util.utf8_text_partial(read_stdin())
     if text.is_empty() {
       println(
         "用法错: --batch 收到空 stdin（喂 NDJSON 请求帧序列）",

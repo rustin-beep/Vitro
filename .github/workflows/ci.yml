@@ -428,6 +428,19 @@ jobs:
           node scripts/wasm_gateway/host.js
         shell: bash
 
+      # 统一 CLI 入口闸（#49 批一，2026-10-06）：wasm 壳（scripts/vitro_cli/
+      # main.js）四子命令 rc 契约 + **双臂同形对拍**（壳 vs native cmd/vitro
+      # exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize 特例；
+      # 唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
+      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = 上一步 gateway wasm
+      # 产物 + 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）+ Go
+      # （core job 天然）+ node 25（上方 setup-node）。
+      - name: unified CLI smoke (wasm shell vs native exe)
+        run: |
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
+          go run ./scripts/vitro_cli_smoke
+        shell: bash
+
       # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
       # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方

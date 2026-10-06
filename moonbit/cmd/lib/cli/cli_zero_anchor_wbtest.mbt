@@ -1,5 +1,5 @@
 // cmd/lib/cli 零锚区补锚（2026-10-04 二轮审「锚覆盖」结构性发现：
-// 初版 7 锚全落 parse_run_args/utf8_decode，escape_json /
+// 初版 7 锚全落 parse_run_args/utf8_decode（后者已上提 util），escape_json /
 // extract_json_string_field / count_payloads / parse_int / dir_of 零锚——
 // P1-A/P1-B 两缺陷全落零锚区。本件五函数锚 + P1 修复回归锚）。
 

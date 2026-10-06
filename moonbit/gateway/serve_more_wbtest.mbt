@@ -139,12 +139,19 @@ test "serve_output_delta_stream_channels" {
   let (r3, _) = serve_handle(
     s, "{\"id\":4,\"method\":\"output.delta\",\"params\":{\"cursor\":0,\"stream\":\"note\"}}",
   )
-  // delta 是 Latin-1 折回形态（serve_io 文件头分叉登记——中文 UTF-8 字节
-  // 被折成逐字节字符，contains 原文必失配）；断字节口径：完成附注
-  // 「程序运行完成，返回值：7\n」UTF-8 = 11×3 + 2 = 35 字节
+  // note 通道 = 引擎文本域（push_note_str UTF-8 编码入通道），delta 以
+  // UTF-8 解码返回原文（2026-10-06 #49 统一 CLI 批：修复前 Latin-1 逐字节
+  // 折回致中文 mojibake——本锚为翻转锚，contains 原文即绿）；total/cursor
+  // 保持字节域口径（游标契约不变）
+  assert_true(
+    r3.contains("\"delta\":\"程序运行完成，返回值：7\\n\""),
+    msg="note 通道完成附注中文原文（非 mojibake）",
+  )
+  // total 仍为字节总数：完成附注「程序运行完成，返回值：7\n」UTF-8
+  // = 11×3 + 2 = 35 字节
   assert_true(
     r3.contains("\"total\":35"),
-    msg="note 通道字节总数（完成附注 UTF-8 35 字节）",
+    msg="note 通道游标口径仍为字节总数",
   )
   assert_false(r3.contains("\"delta\":\"\""), msg="note 增量非空")
   let (r4, _) = serve_handle(s, "{\"id\":5,\"method\":\"output.delta\"}")

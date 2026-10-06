@@ -22,7 +22,7 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
   // `-` = 源码走 stdin（Rust read_source 全命令通用品类——B2；2026-10-04
   // 手册对照复核补齐：初版仅 run 有，缩面未登记属实现漂移）
   let src = if file == "-" {
-    utf8_decode(read_stdin())
+    @util.utf8_text_partial(read_stdin())
   } else {
     @fs.read_file_to_string(file) catch {
       _ => ""

@@ -1,7 +1,20 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-10-05（**S9 工序④删区整篇改单轨**——Rust `vitro_cli` 章节整体退役〔构建/命令表/unified/交互式 step 随 `native/` 物理删除失效，历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现。前一沿革 2026-10-04 补 MoonBit 侧 `vitro` 总入口）
+> 最后核对日期：2026-10-06（**统一入口批〔#49 批一〕**——`scripts/bin/vitro` launcher 落地：默认 **wasm 臂**〔node 壳 `scripts/vitro_cli/main.js` 消费 `gateway/wasm/wasm.wasm`，需 node ≥25〕，node 缺失/过旧自动降级 native exe〔stderr 明示 `backend=` 行〕，`--backend native|wasm` 显式选边；双臂输出同形由 CI 闸 `scripts/vitro_cli_smoke` 对拍锁定。wasm 臂 `--dump-memory` 暂缺——协议无 1MB 映像导出面〔spec §3 登记〕，映像联走 `--backend native`。前一沿革 2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现）
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
+
+## 统一入口（推荐——agent / 脚本默认形态）
+
+```bash
+# sh 形态（Git Bash / Linux / macOS；Windows cmd 用 scripts\bin\vitro.cmd）
+scripts/bin/vitro run corpus/baseline/array_sum_loop.c     # 默认 wasm 臂
+scripts/bin/vitro --backend native run <f>                 # 显式 native
+# 前置产物（缺哪个臂构建哪个）：
+cd moonbit && moon build --release --target wasm-gc gateway/wasm            # wasm 臂
+MOON_CC=clang moon build --release --target native cmd/vitro                # native 臂
+```
+
+降级链：node 不在 PATH 或版本 <25（壳 exit 3 哨兵）→ 自动 fallback native exe，stderr 明示原因；任何形态 stderr 恒一行 `[vitro] backend=…` 标注（脚本可断言所在臂）。
 
 ## MoonBit 侧 CLI（agent 主入口）
 

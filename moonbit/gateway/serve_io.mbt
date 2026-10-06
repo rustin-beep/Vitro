@@ -10,11 +10,15 @@
 // feed 在非等待态也可调用：文本追加后正常跑（execute_run 非 resume 分支
 // 会 reset + setup 从头重跑——Rust 现状同形，照搬不私改）。
 //
-// **output.delta 分叉登记**（两条，2026-09-28 审阅批 P2 补全）：
-// ① **delta 编码形态**：Rust 输出通道是 UTF-8 String（putchar(200)
-//    被重编码为两字节——DIFF-LIB-PUTCHAR-01）；MoonBit OutputLog 是
-//    Bytes 保真（单字节 0xC8）。delta 字段按 Latin-1 逐字节折回
-//    String（cmd/run stdout 通道同口径——消费方在字节域归一）。
+// **output.delta 分叉登记**（三条；①③ 于 2026-10-06 #49 统一 CLI 批修订）：
+// ① **delta 编码形态按通道分域**：Rust 输出通道是 UTF-8 String
+//    （putchar(200) 被重编码为两字节——DIFF-LIB-PUTCHAR-01）；MoonBit
+//    OutputLog 是 Bytes 保真（单字节 0xC8）。**Stdout/Stderr** 通道 delta
+//    按 Latin-1 逐字节折回 String（cmd/run stdout 通道同口径——消费方在
+//    字节域归一）；**Note** 通道是引擎文本域（push_note_str UTF-8 编码
+//    入通道），delta 以 `@util.utf8_text_partial` 解码回原文（修复前统一
+//    Latin-1 折回致中文 mojibake——CLI note 消费先例同款修正）；display
+//    混合域投影维持 Latin-1（note 部分差异并入本条）。
 // ② **cursor 无 UTF-8 字符边界前移**：Rust 侧 `while !all.
 //    is_char_boundary(start) { start += 1 }` 使「cursor 落在多字节
 //    字符中间」时空转下个边界（delta 恒合法 UTF-8）；本侧字节域无
@@ -88,13 +92,29 @@ fn serve_output_delta_frame(
   } else {
     cursor
   }
-  // delta：字节域 Latin-1 折回（分叉登记见文件头）
-  let buf = StringBuilder()
-  for i = start; i < total; i = i + 1 {
-    buf.write_char(all[i].to_int().unsafe_to_char())
+  // delta 构造按通道分域（2026-10-06 #49 统一 CLI 批——note mojibake 修复，
+  // 翻转锚 serve_output_delta_stream_channels）：
+  // - Stdout/Stderr = C 程序字节流：Latin-1 逐字节折回（既定口径，文件头
+  //   分叉登记①——消费方在字节域归一，putchar(200) 单字节保真）
+  // - Note = 引擎文本域（push_note_str 以 UTF-8 编码入通道）：delta 解码
+  //   回原文（cmd/lib/cli note 消费同款先例——两通道不同源，Latin-1 折回
+  //   中文必 mojibake）；cursor/total 保持字节域口径（游标契约不变，中段
+  //   cursor 切进多字节序列由前缀止语义消化）
+  // - display = 混合域投影：保持 Latin-1 现状（note 部分的 UTF-8 字节仍
+  //   逐字节折回——display 无逐通道解码语义，该差异并入分叉登记①）
+  let delta : String = match kind_opt {
+    Some(@host.OutputKind::Note) =>
+      @util.utf8_text_partial(all[start:total].to_bytes())
+    _ => {
+      let buf = StringBuilder()
+      for i = start; i < total; i = i + 1 {
+        buf.write_char(all[i].to_int().unsafe_to_char())
+      }
+      buf.to_string()
+    }
   }
   let m : Map[String, Json] = Map([])
-  m.set("delta", Json::string(buf.to_string()))
+  m.set("delta", Json::string(delta))
   m.set("cursor", total.to_json())
   m.set("total", total.to_json())
   m.set("stream", Json::string(stream_name))

@@ -14,6 +14,7 @@ import {
   "vitro/engine/lexer/token",
   "vitro/engine/parser",
   "vitro/engine/typeck",
+  "vitro/engine/util",
   "vitro/engine/vm",
 }
 

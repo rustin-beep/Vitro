@@ -75,3 +75,20 @@ test "le_u32_u64_at_known_bytes" {
   assert_eq(le_u32_at(z, 0), 0U, msg="全零 u32")
   assert_eq(le_u64_at(z, 0), 0UL, msg="全零 u64")
 }
+
+///|
+test "utf8_text_partial_三态_基础中文代理对与截断止" {
+  // ASCII 单字节
+  inspect(utf8_text_partial(b"hi"), content="hi")
+  // 中文三字节（「中」= E4 B8 AD）
+  inspect(utf8_text_partial(b"\xe4\xb8\xad"), content="中")
+  // 四字节 emoji（😀 = U+1F600）：String.length=2 证代理对编码成立；
+  // unsafe_char_at(0) 按码点返回合并值 128512（API 形态锚自 cli_wbtest 随迁）
+  let s3 = utf8_text_partial(b"\xf0\x9f\x98\x80")
+  inspect(s3.length(), content="2")
+  inspect(s3.unsafe_char_at(0).to_int(), content="128512")
+  // 尾不完整三字节（2 字节截断）——不抛，输出已解码前缀（空）
+  inspect(utf8_text_partial(b"\xe4\xb8"), content="")
+  // 中段截断：合法前缀 + 截断尾（「hi」+ 半个「中」→ 前缀止）
+  inspect(utf8_text_partial(b"hi\xe4\xb8"), content="hi")
+}

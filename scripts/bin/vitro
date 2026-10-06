@@ -1,0 +1,41 @@
+#!/bin/sh
+# vitro 统一入口 launcher（sh 形态，#49 批一）——默认 wasm 壳，node 缺失或
+# 版本不足（壳 exit 3 哨兵）降级 native exe；`--backend native|wasm` 显式
+# 选边（排查用）。降级必 stderr 明示（禁静默——两臂行为偶有微差时排查
+# 不精神分裂）。
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+WASM_SHELL="$REPO/scripts/vitro_cli/main.js"
+NATIVE_EXE="$REPO/moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
+
+run_native() {
+  reason="$1"
+  shift
+  echo "[vitro] backend=native（$reason）" >&2
+  exec "$NATIVE_EXE" "$@"
+}
+
+# --backend 覆盖（首参位；剥掉后透传）
+if [ "$1" = "--backend" ] && [ -n "$2" ]; then
+  if [ "$2" = "native" ]; then
+    shift 2
+    run_native "--backend 显式指定" "$@"
+  elif [ "$2" = "wasm" ]; then
+    shift 2
+  fi
+fi
+
+if [ ! -f "$WASM_SHELL" ]; then
+  run_native "wasm 壳不存在（scripts/vitro_cli/main.js）" "$@"
+fi
+
+NODE_BIN="$(command -v node 2>/dev/null)"
+if [ -z "$NODE_BIN" ]; then
+  run_native "node 不在 PATH" "$@"
+fi
+
+"$NODE_BIN" "$WASM_SHELL" "$@"
+rc=$?
+if [ $rc -eq 3 ]; then
+  run_native "node 版本不足（壳 rc=3）" "$@"
+fi
+exit $rc

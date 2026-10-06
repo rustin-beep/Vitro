@@ -5,6 +5,11 @@ All notable changes to the Vitro project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+> **读本须知（agent 必读）**：本文件是**过程记述编年史**——各条目内的路径、防线计数、设施状态只反映**撰写时点**，不作现况引用。已退役/已更名设施（Rust 对照区 \`native/\`〔2026-10-05 删除〕、Python 驱动〔D5 收官退役〕、Flutter 前端〔前端切割删除〕、Cide 旧名与 \`cide_*\` 符号〔2026-09-14 更名〕、C++ 支持面〔裁定砍除〕）的记述均为**历史快照非现况**；现况以 [AGENTS.md](AGENTS.md)「当前阶段与档案」与 \`docs/current/\` 为准；逐版详情见 [docs/current/08-发布档案/](docs/current/08-发布档案/)（0.1.0~0.8.0）。
+>
+> **维护纪律**：\`[Unreleased]\` 全文**唯一一段**——新条目**追加**到该段既有小节，禁止新插第二个 \`[Unreleased]\` 标题；已发布内容随发版移入对应版本节。
+
 ## [Unreleased]
 
 ### Added（#49 批二段一：双臂对拍语料级扩面——373 例全量同形，四类真差异定责全修，2026-10-06）
@@ -77,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **cmd/run 出口层 ≥0x80 字节双重 UTF-8 编码**〔DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01〕：出口通道改 Bytes 直写（C stub `fwrite` 原始字节，`write_stdout` 参数注入——run/vitro 双 exe 接线，lib 包零 native 依赖）+ `host_putchar` 改单字节直写通道（旧照搬 oracle char 通道 `200→C3 88` 翻转为 C 字节语义 `0xC8`）；`stdout_bytes_of` 纯函数 + wbtest 字节保真锚；`putchar_range.c` 三防线 known 全移除转 SAME。**连带修复 clang_direct 缓存层 UTF-8 毒化**（`json.Marshal` 对无效 UTF-8 落 U+FFFD——此前「双环境 golden 形态差异」实为缓存毒化误归因；`cachePayload.Stdout` 改 `[]byte` base64 + schema `cd2` 全量失效重取真值）。printf `\%c` 高位字节同族形态在 formatter String 域，随批二 DIFF-LIB-PRINTF-01 处置。
 - **include 深度/图节点超限时环检测静默判「无环」**〔DIFF-PREPROC-INCLUDE-DEPTH-01〕：封顶改报环诊断（desc 标注超限形态）；实质缺陷是环归因丢失（动态保险丝本兜住 E1015 次数，用户只见「嵌套过深」文案不知真因是环）；Clang 实探无守卫深环报 `#include nested too deeply`——两侧拦截口径一致；新锚 `u11 deep cycle reports cycle not depth`。
+
+
+## [0.8.0] - 2026-10-05
+
+> S8 diagnostics 收官版。发布档案：[0.8.0.md](docs/current/08-发布档案/0.8.0.md)。
 
 ### Added（S8 analysis 批段一：M14 root_cause_hint 接线——trace_analyzer 六分析器照搬 + trap 帧装配，2026-10-03）
 
@@ -164,6 +174,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`teaching/steps` L9→L8 层位变更**（time_travel 同日先例之后第二件）：serve compile/collector 双面消费暴露 gateway/time_travel(L8)→teaching(L9) 违反 §4 单向约束；依赖面全 ≤L8，标注判据/推断是编排消费的教学语义词汇（与 protocol semantic_label 词汇表同族）。§4 连坐 + pkg_deps rules.json。
 - **`scripts/teaching_annotation_diff`**（族级增量对拍器，Go）：MoonBit cmd/serve vs Rust golden（algorithm_annotations_v3.json）的标注首现序列比对——compile→run→step.begin→step.next×4000 提取（口径照搬 native golden test：(phase,desc) 去重键 + 六字段条目），按已迁移族过滤（rules.json 外置迁移集+豁免面+僵尸审计），双向模板集断言。**全量 82 模板绿（230 条首现逐条一致）**；J9 双路证红（golden 篡改→连锁红；budget 缩减→首现缺失红）；CI core job 接线。
 - **接线双锚**（gateway wbtest）：bubble_sort 正向（compile 检出→matches 注入→帧带标注全链）+ gcd 反向（未迁移族恒 null）。锚源码形状实锤登记：main 一行多语句形态 VM 帧行号不前进（标注面合法零命中，非接线缺陷）。
+
+
+## [0.7.0] - 2026-09-30
+
+> S7 协议与出口批（`vitro/engine/protocol` 建包、gateway wasm 薄壳、StepPayload v0.1 冻结、serve 通道对拍三件套）。本时期逐批记述未编入本文件（编录空窗），详情见发布档案 [0.7.0.md](docs/current/08-发布档案/0.7.0.md) 与 git 历史。
+
+## [0.6.0] - 2026-09-27
+
+> S6 vm 片（memory / host / vm 三包 + CallHost 110 臂 + 时间旅行底座）。发布档案：[0.6.0.md](docs/current/08-发布档案/0.6.0.md)。
 
 ### Fixed（`apply_reply` 幽灵栈值——va_copy/变参嵌套全零缺陷，2026-09-26）
 
@@ -948,6 +967,10 @@ gen_protocol_ts + toolchain_probe 基线头亲验）。
   cstring 通道（`write_cstring`/`read_cbytes`：`\xHH ≥ 0x80 → Latin-1` 的口径
   单源当前长在 L6 `codegen/init.mbt` 且为 priv，跨层复用需先上提为独立单源）。
 
+## [0.5.0] - 2026-09-23
+
+> S5 codegen 片收官版。发布档案：[0.5.0.md](docs/current/08-发布档案/0.5.0.md)。
+
 ### 发布（mooncakes）：vitro/engine 0.5.0（2026-09-23）
 
 - **版本语义裁定：0.4.0 → 0.5.0（非 patch）**——0.4.0（`2bf3b29`）以来 moonbit/
@@ -977,8 +1000,6 @@ gen_protocol_ts + toolchain_probe 基线头亲验）。
   ② `.gitattributes` 锁 `protocol/** text eol=lf`（同 `moonbit/**` 先例）。
 - **红→绿闭环**：产物翻转 CRLF 复现红 → 修复后同一份文件 PASS；
   `--selftest` 三路注入证红完好（判据自身修复不损判定力）。
-
-## [Unreleased]
 
 ### Added (协议 TS 类型生成链 + 首个消费者：A 组 #9/#10，2026-09-22)
 
@@ -1252,6 +1273,11 @@ gen_protocol_ts + toolchain_probe 基线头亲验）。
   for key`）——曾误判为删除所致；`cargo clean -p vitro_native` 后恢复。
   与 `codegen_diff` 头注记载的 Windows 句柄/杀软瞬时锁同类，排查「构建
   失败」时须先排除它。
+
+
+## [0.1.1 ~ 0.4.0] - 2026-05-14 ~ 2026-09-21（历史编年）
+
+> 0.5.0 发布前的逐批记述，按原顺序整体保留、未逐条考古归版。本段提及的设施大量已不存在：Rust 对照区（`native/`）已删除、Python 驱动已退役、Flutter 前端与 `flutter_bridge` 已删除、C++ 支持面已裁定砍除（总计划 F-2）、项目原名 Cide 已更名——记述为撰写时点快照。逐版边界以 mooncakes 发布史与发布档案（[0.1.0](docs/current/08-发布档案/0.1.0.md) ~ [0.4.0](docs/current/08-发布档案/0.4.0.md)）为准。
 
 ### Fixed (CI 红处置：28 个 golden 从未入库 + cargo 用例数平台差异，2026-09-19)
 
@@ -1552,9 +1578,6 @@ buf/指针两形态语义等价契约测试 ×2。
 从 4 字节 slot0 + 占位 slot1 止血迁至 8 字节专用槽（call.rs 四处：
 Call/CallPtr × D/Q）——两槽分配顺序由各自首次使用决定、不保证相邻，
 跨槽写可踩相邻局部变量（3 起槽位 bug 同病灶）。
-
-
-## [Unreleased]
 
 ### Fixed (CI 门禁)：Bytecode Libc 预编译产物在更名提交中被"文本替换"而非重生成——`--check` 自 `3a5e2f8` 起必红
 
@@ -2423,9 +2446,6 @@ PR 评审认定的三项技术债全部落地（评审意见：ptrToGoString UB 
   `gosmoke/cabi_smoke.go` 维持单文件最小冒烟形态不动。
 - CI 同步：`go run ./scripts/shadow_verify` / `./scripts/shadow_verify_cpp`，
   缓存 key 增列 `hashFiles('scripts/internal/**/*.go')`。
-
-## [Unreleased]
-
 ### Changed (D5 语言迁移最后一站：C 影子验证主驱动 shadow_verify.py Python→Go)
 
 唯一硬门禁（防线 1 主驱动）完成迁移，**D5 六站全部收官**：
@@ -3969,7 +3989,6 @@ C23 锚定决议下的第一批语言能力（详细口径与差异见 `C_SUBSET
 - `merge_free_list()` extracted in `host_funcs.rs` to eliminate ~20 lines of duplication between `host_free` and `host_realloc`.
 - `push_one()` extracted in `compile_pipeline.rs` to eliminate ~100 lines of duplication between `push_diagnostics` / `push_warnings` / `push_hints`.
 - `parse_declarator()` extracted in `parser.rs` to share declarator parsing between `parse_type_and_name()` and comma-separated extra variables.
-
 ## [0.1.0] - 2026-05-14
 
 ### Added

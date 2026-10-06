@@ -1616,7 +1616,8 @@
           "result_sha": "41a19afe2d0ffb12"
         },
         "keyword_compat.c": {
-          "result_sha": "0308c8ba03da3db0"
+          "fail": true,
+          "fail_stage": "parse"
         },
         "loop_var_shadow.c": {
           "result_sha": "421609f83ea06c92"

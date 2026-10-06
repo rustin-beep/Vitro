@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批三-a：parser 假阳性五连——issue #4/#7/#11/#12/#15 销案，2026-10-06）
+
+- **#4 初始化列表尾逗号**：`, }` 形态 C89/C11 合法（§6.7.9）——Comma 后紧跟 RBrace 即收口；函数实参表不修（C23 前不合法，形态边界在案）
+- **#7 匿名 union/struct 内联 body 全链**：parse_struct_body 嵌套聚合拦截（`struct|union [tag] { body } [声明器组] ;`——匿名无声明器字段名空串）+ typeck 匿名成员穿透查找（find_anonymous_member 递归深度 8）+ codegen offset 穿透（anon_field_offset——外层前缀偏移+内层递归，union 成员恒 0）；布局敏感形态 n5（pre/anon/post 三段 offset 交互）= 60 == Clang；anonymous_unions 新通道（union 布局语义灌 program.unions 非 structs）
+- **#11 stdbool 自爆**：`bool` 移出 C 关键字表（C 域 bool 只是 stdbool.h 的 typedef；`_Bool` C99 正牌保留）——cpp 表补 bool 保 cpp_mode 对称；`typedef int bool;` 合法化；keyword_compat.c 的裸 bool 宽容点随之转为两侧一致拒绝（gap 用例语义自动修正，golden 重入）
+- **#12 未定义类型名误导文案**：`A B;` 形态（A 未注册）前置专门诊断「未定义的标识符 'A'（作类型名使用——C 子集未收录该类型或缺少声明/include）」E2003——旧「预期 ';'」+ 缺分号建议误导（Clang 报 use of undeclared identifier 直指真因）；存储类文本词（static 等 Identifier 形态）不误伤
+- **#15 匿名 enum 两形状**：parse_enum_core 拆分（tag+底层类型+常量注册经 program_sink——顶层与成员嵌套共用）；顶层 `enum {...} var;` body 后声明器组 → 全局变量；struct 成员 `enum {...} k;` → 字段（常量注册全局可见，n8 端到端 = 9 == Clang）；typedef enum 路径不动
+- 附：顶层 `struct|union [T] {...} var;` body 后声明器（parse_aggregate_trailing_globals——issue #7 顶层形态）；锚 b3a_parser_five_fixes（黑盒六断言）
+
 ### Fixed（#49 六连提交用户审阅处置：P1 测试数连坐 / P2×2 / P3×4——typeck 警告裁定 b 方向，2026-10-06）
 
 - **P1 测试数连坐（CI 硬红）**：`b6b77725`/`1915401f` 新增测试（util base64 锚 + gateway memory.dump 锚）未回填——moonbit 双 README 五处（672/791/666/util 9/native-only 119 含 gateway 96）+ 根 README/快速入门/路线图/标准库四文档 670→672 全刷；`facts --run` 刷新零漂移；`testcount` PASS（处置中自抓一坑：gateway 96 括号注解破坏锚正则直连形态——注解挪锚行外）

@@ -2299,8 +2299,9 @@
     "gap/keyword_compat.c": {
       "src_sha": "ce1212f3",
       "exit_code": 0,
-      "stdout_sha": "494e23313124385d",
-      "memory_sha": "d8982a1fcc915fa3"
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "gap/loop_var_shadow.c": {
       "src_sha": "67d2073f",

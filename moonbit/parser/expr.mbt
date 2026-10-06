@@ -666,6 +666,13 @@ fn Parser::parse_init_list_body(self : Parser, depth : Int) -> @ast.Expr {
       if !self.match_token(Comma) {
         break
       }
+      // 尾逗号（issue #4 销案，2026-10-06）：初始化列表尾逗号 C89/C11
+      // 合法（§6.7.9 initializer-list 的 `, }` 形态；clang/gcc 全收）——
+      // Comma 后紧跟 RBrace 即收口；函数实参表（parse_arg_list）不修
+      //（C23 前不合法，形态边界在案）
+      if self.check(RBrace) {
+        break
+      }
     }
   }
   ignore(self.consume(RBrace, "初始化列表预期 '}'"))

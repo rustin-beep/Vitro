@@ -100,6 +100,8 @@ priv struct Rollback {
   pos : Int
   errors_len : Int
   anon_len : Int
+  /// 匿名/嵌套 union 回滚水位（issue #7）
+  anon_u_len : Int
   typedef_names : Map[String, @ast.Type]
   template_names : Set[String]
   current_class_len : Int
@@ -173,6 +175,11 @@ priv struct Parser {
   mut template_names : Set[String]
   mut pos : Int
   anonymous_structs : Array[@ast.StructDecl]
+  /// 匿名/嵌套 union 声明收集（issue #7——union 布局语义灌 program.unions）
+  anonymous_unions : Array[@ast.StructDecl]
+  /// program 引用（issue #15：嵌套 enum 成员位置的枚举常量注册需要
+  /// program——parse_program 开头注入；None = 单测直接构造 Parser 场景）
+  mut program_sink : @ast.ProgramNode?
   is_cpp_mode : Bool
   mut next_lambda_id : Int
   /// C++ 嵌套类解析上下文：当前外层类名栈
@@ -187,6 +194,7 @@ fn Parser::save(self : Parser) -> Rollback {
     pos: self.pos,
     errors_len: self.errors.length(),
     anon_len: self.anonymous_structs.length(),
+    anon_u_len: self.anonymous_unions.length(),
     typedef_names: self.typedef_names.copy(),
     template_names: self.template_names.copy(),
     current_class_len: self.current_class.length(),
@@ -199,6 +207,7 @@ fn Parser::restore(self : Parser, rb : Rollback) -> Unit {
   self.pos = rb.pos
   self.errors.truncate(rb.errors_len)
   self.anonymous_structs.truncate(rb.anon_len)
+  self.anonymous_unions.truncate(rb.anon_u_len)
   self.typedef_names = rb.typedef_names
   self.template_names = rb.template_names
   self.current_class.truncate(rb.current_class_len)
@@ -226,6 +235,8 @@ fn Parser::with_mode(
     template_names,
     pos: 0,
     anonymous_structs: [],
+    anonymous_unions: [],
+    program_sink: None,
     is_cpp_mode,
     next_lambda_id: 0,
     current_class: [],
@@ -263,6 +274,9 @@ pub fn parse(tokens : Array[@token.Token]) -> ParseResult {
     Some(pr) => {
       for d in p.anonymous_structs {
         pr.structs.push(d)
+      }
+      for d in p.anonymous_unions {
+        pr.unions.push(d)
       }
       pr
     }
@@ -799,8 +813,22 @@ fn Parser::dispatch_top_level(
         )
       }
       program.structs.push(struct_decl)
+      // issue #7 顶层形态：`struct [S] { ... } s;` body 后声明器组
+      self.parse_aggregate_trailing_globals(
+        program,
+        @ast.Type::struct_type(struct_decl.name),
+      )
     }
-    UnionDecl => program.unions.push(self.parse_union_decl(0))
+    UnionDecl => {
+      let decl = self.parse_union_decl(0)
+      program.unions.push(decl)
+      // issue #7 顶层形态（2026-10-06）：`union [U] { ... } g;` body 后
+      // 声明器组 → 全局变量（parse_union_decl 已收尾 ; 或停在声明器处）
+      self.parse_aggregate_trailing_globals(
+        program,
+        @ast.Type::union_type(decl.name),
+      )
+    }
     CppClassDecl => self.parse_cpp_class_decl(program)
     CppTemplateDecl => self.parse_cpp_template_decl(program)
     ExternDecl => {
@@ -828,6 +856,7 @@ fn Parser::dispatch_top_level(
 ///|
 fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
   let program = @ast.ProgramNode::empty()
+  self.program_sink = Some(program)
   while !self.is_at_end() {
     let round_start = self.pos
     // 跳过函数前缀修饰符 inline（可能出现在 static/extern 之前或之后）
@@ -1050,4 +1079,58 @@ fn Parser::find_template_arg_delimiter(
     i += 1
   }
   (i, Eof)
+}
+
+///|
+/// 顶层聚合声明 body 后的可选声明器组（issue #7：`union {...} g, h;`）——
+/// parse_struct_decl/parse_union_decl 的尾部在声明器处停（不报错）时，
+/// 由本函数把声明器组收为全局变量并消费收尾 ';'。已收尾（当前为下一
+/// 声明起点）则空操作。
+fn Parser::parse_aggregate_trailing_globals(
+  self : Parser,
+  program : @ast.ProgramNode,
+  base : @ast.Type,
+) -> Unit {
+  if self.check(Semicolon) {
+    ignore(self.advance())
+    return
+  }
+  if self.is_at_end() || self.check(RBrace) {
+    return
+  }
+  // 声明器组（Identifier/* 起头）；存储类/限定符等文本词（static/auto/
+  // register/extern/inline/const/volatile——非关键字 token，Identifier
+  // 形态按文本特判）不属声明器起点——留给下一轮顶层分发
+  if !(self.check(Identifier) || self.current().ty == Star) {
+    return
+  }
+  if self.check(Identifier) {
+    let t = self.current().text
+    if t == "static" ||
+      t == "auto" ||
+      t == "register" ||
+      t == "extern" ||
+      t == "inline" ||
+      t == "const" ||
+      t == "volatile" ||
+      t == "typedef" {
+      return
+    }
+  }
+  while true {
+    let d = self.parse_declarator(base, 0)
+    let prev = self.previous()
+    let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
+    program.globals.push({
+      ..Default::default(),
+      loc,
+      ty: d.0,
+      name: d.1,
+      init: None,
+    })
+    if !self.match_token(Comma) {
+      break
+    }
+  }
+  ignore(self.consume(Semicolon, "声明后预期 ';'"))
 }

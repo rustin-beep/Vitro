@@ -116,7 +116,24 @@ fn Parser::parse_statement_inner(self : Parser, depth : Int) -> @ast.Stmt {
       @ast.Stmt::Block([], loc)
     }
     _ =>
-      if self.is_type_token() ||
+      // issue #12 销案（2026-10-06）：`A B;`（A 为未注册标识符）形态——
+      // 旧走表达式路径报「预期 ';'」误导（真因：A 是未定义类型名，Clang
+      // 报 use of undeclared identifier 直指真因）；在此前置专门诊断
+      if self.check(Identifier) &&
+        self.peek(1).ty == Identifier &&
+        !(self.typedef_names.get(self.current().text) is Some(_)) {
+        let cur = self.current()
+        self.errors.push({
+          message: "未定义的标识符 '\{cur.text}'（作类型名使用——C 子集未收录该类型或缺少声明/include）",
+          line: cur.loc.line,
+          column: cur.loc.column,
+          code: @diag.ErrorCode::E2003_ExpectedExpr.code(),
+        })
+        ignore(self.advance())
+        ignore(self.advance()) // 跳过被误作变量名的第二标识符
+        ignore(self.consume(Semicolon, "预期 ';'"))
+        @ast.Stmt::Block([], cur.loc)
+      } else if self.is_type_token() ||
         self.is_static_token() ||
         self.check(Register) ||
         self.check(Auto) ||

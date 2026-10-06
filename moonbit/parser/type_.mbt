@@ -91,9 +91,19 @@ fn Parser::parse_base_type(self : Parser, depth : Int) -> @ast.Type {
   } else if self.match_token(Double) {
     @ast.Type::double()
   } else if self.match_token(Union) {
-    if self.check(Identifier) {
+    if self.check(Identifier) && !self.peek_is_lbrace_after_id() {
       let name_tok = self.advance()
       @ast.Type::union_type(name_tok.text)
+    } else if self.check(LBrace) {
+      // issue #7 销案（2026-10-06）：union 内联 body 臂（对称 struct 臂——
+      // 旧缺臂致 `union { ... }` 形态 parse 全灭）；匿名名生成 + 声明收集
+      // 走 anonymous_unions（union 布局语义——灌 program.unions 非 structs）
+      let prev = self.previous()
+      let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
+      let name = "__anon_union_\{self.pos}"
+      let decl = self.parse_struct_body(name, loc, depth)
+      self.anonymous_unions.push(decl)
+      @ast.Type::union_type(name)
     } else {
       @ast.Type::union_type("")
     }
@@ -860,4 +870,11 @@ fn array_prepend_dim(
       @ast.Type::Array(t, total_size, [d], false, is_vla, vla_dims)
     }
   }
+}
+
+///|
+/// 当前为 Identifier 时其后是否紧跟 LBrace（`union U {`/`struct S {` 的
+/// 嵌套带 tag 定义形态判定——issue #7 嵌套拦截共用）。
+fn Parser::peek_is_lbrace_after_id(self : Parser) -> Bool {
+  self.peek(1).ty == LBrace
 }

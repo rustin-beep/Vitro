@@ -279,3 +279,37 @@ test "compound literal anonymous struct" {
     inspect(e.code != 3002, content="true")
   }
 }
+
+///|
+test "b3a_parser_five_fixes" {
+  // 批三-a 五销案锚（2026-10-06，issue #4/#7/#11/#12/#15）
+  // #4：初始化列表尾逗号（C89/C11 合法）
+  let r1 = @parser.parse(@lexer.tokenize("int a[3] = {1, 2, };").tokens)
+  assert_eq(r1.errors.length(), 0, msg="#4 尾逗号")
+  // #7：匿名 union 内联 body（parse 层零错）
+  let r2 = @parser.parse(
+    @lexer.tokenize(
+      "struct S { int pre; union { int a; float b; }; int post; };",
+    ).tokens,
+  )
+  assert_eq(r2.errors.length(), 0, msg="#7 匿名 union 内联")
+  // #11：bool 不再注册 C 关键字（_Bool 保留；typedef int bool; 合法）
+  let r3 = @parser.parse(@lexer.tokenize("typedef int bool;").tokens)
+  assert_eq(r3.errors.length(), 0, msg="#11 bool 让位 typedef")
+  // #12：未定义类型名 `A B;` 报「未定义的标识符」非「预期 ';'」
+  let r4 = @parser.parse(
+    @lexer.tokenize("int main() { fpos_t pos; return 0; }").tokens,
+  )
+  assert_eq(r4.errors.length(), 1, msg="#12 单错")
+  assert_true(
+    r4.errors[0].message.contains("未定义的标识符"),
+    msg="#12 文案直指真因",
+  )
+  // #15：匿名 enum 两形状（顶层带声明器 + struct 成员）
+  let r5 = @parser.parse(@lexer.tokenize("enum { A, B } pair;").tokens)
+  assert_eq(r5.errors.length(), 0, msg="#15 顶层 enum 声明器")
+  let r6 = @parser.parse(
+    @lexer.tokenize("struct T { enum { X, Y } k; int v; };").tokens,
+  )
+  assert_eq(r6.errors.length(), 0, msg="#15 成员 enum")
+}

@@ -34,8 +34,12 @@ fn keyword_type(text : String) -> @token.TokenType? {
     "restrict" => Some(Restrict)
     "register" => Some(Register)
     "auto" => Some(Auto)
+    // issue #11 销案（2026-10-06）：`bool` 不注册为 C 关键字——C 域的
+    // bool 只是 stdbool.h 的 typedef（存根 `typedef int bool;`），旧
+    // C++ 预埋致 include <stdbool.h> 即 parse 全灭（typedef 目标撞关键
+    // 字）；`_Bool` 是 C99 正牌关键字保留。cpp 表补 bool（cpp_mode 语义
+    // 对称——C++ 的 bool 是真关键字）
     "_Bool" => Some(Bool)
-    "bool" => Some(Bool)
     "float" => Some(Float)
     "double" => Some(Double)
     "goto" => Some(Goto)
@@ -56,6 +60,7 @@ fn keyword_type(text : String) -> @token.TokenType? {
 /// C++ 关键字查找（照搬 `keyword.rs:6-29`——18 条 + nullptr→Null）。
 fn cpp_keyword_type(text : String) -> @token.TokenType? {
   match text {
+    "bool" => Some(Bool)
     "class" => Some(Class)
     "public" => Some(Public)
     "private" => Some(Private)

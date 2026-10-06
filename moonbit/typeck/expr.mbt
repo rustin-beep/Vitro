@@ -291,6 +291,12 @@ fn TypeChecker::resolve_member(
   } else {
     self.get_struct_field_type(type_name, member_name)
   }
+  // 匿名成员穿透（issue #7 销案，2026-10-06）：C11 匿名 struct/union 成员
+  //（字段名空串）的成员可经外层直接访问（s.a）——直查 miss 时递归匿名字段
+  let field_type = match field_type {
+    Some(_) => field_type
+    None => self.find_anonymous_member(type_name, is_union, member_name, 0)
+  }
   let ty : @ast.Type = match field_type {
     Some(ft) => ft
     None => {
@@ -475,4 +481,63 @@ fn TypeChecker::resolve_cast(
     )
   }
   (target_type, Cast(new_inner, target_type, loc, target_type))
+}
+
+///|
+/// 匿名成员穿透查找（issue #7）：先查本层匿名字段（name == ""）的聚合
+/// 类型内成员，递归深度上限 8（防御循环定义）。返回穿透命中的成员类型。
+fn TypeChecker::find_anonymous_member(
+  self : TypeChecker,
+  type_name : String,
+  is_union : Bool,
+  member_name : String,
+  depth : Int,
+) -> @ast.Type? {
+  if depth >= 8 {
+    return None
+  }
+  let table = if is_union { self.unions } else { self.structs }
+  match table.get(type_name) {
+    Some(sym) => {
+      for pair in sym.fields {
+        if pair.1 == "" {
+          // 匿名字段：在其聚合类型内递归查找（含同名直查与再穿透）
+          let inner_ty = pair.0
+          let inner_kind = inner_ty.kind()
+          if inner_kind is TK_Struct || inner_kind is TK_Union {
+            let inner_name = inner_ty.name()
+            let hit = if inner_kind is TK_Union {
+              match self.get_union_field_type(inner_name, member_name) {
+                Some(ft) => Some(ft)
+                None =>
+                  self.find_anonymous_member(
+                    inner_name,
+                    true,
+                    member_name,
+                    depth + 1,
+                  )
+              }
+            } else {
+              match self.get_struct_field_type(inner_name, member_name) {
+                Some(ft) => Some(ft)
+                None =>
+                  self.find_anonymous_member(
+                    inner_name,
+                    false,
+                    member_name,
+                    depth + 1,
+                  )
+              }
+            }
+            match hit {
+              Some(ft) => return Some(ft)
+              None => ()
+            }
+          }
+        }
+      }
+      None
+    }
+    None => None
+  }
 }

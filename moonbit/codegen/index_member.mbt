@@ -47,7 +47,9 @@ fn BytecodeGen::struct_field_offset_by_name(
 }
 
 ///|
-/// 字段表内按名定位并返回其前缀偏移。
+/// 字段表内按名定位并返回其前缀偏移；直查未命中时经匿名字段
+///（name == ""，C11 匿名成员）穿透——外层前缀偏移 + 内层偏移递归
+///（issue #7 销案，2026-10-06；内层 union 成员偏移恒 0）。
 fn BytecodeGen::struct_fields_offset_by_name(
   self : BytecodeGen,
   fields : Array[@ast.StructField],
@@ -58,7 +60,78 @@ fn BytecodeGen::struct_fields_offset_by_name(
       return self.struct_fields_prefix_offset(fields, i)
     }
   }
-  0
+  match self.anon_field_offset(fields, mname, 0) {
+    Some(off) => off
+    None => 0
+  }
+}
+
+///|
+/// 匿名成员穿透偏移（codegen 侧，与 typeck find_anonymous_member 同语义）：
+/// 在匿名字段的聚合内递归查找 mname，返回 相对 fields 的绝对偏移；
+/// depth 上限 8 防循环定义。Option 区分命中与「偏移恰为 0」。
+fn BytecodeGen::anon_field_offset(
+  self : BytecodeGen,
+  fields : Array[@ast.StructField],
+  mname : String,
+  depth : Int,
+) -> Int? {
+  if depth >= 8 {
+    return None
+  }
+  for i, field in fields {
+    if field.name != "" {
+      continue
+    }
+    let base = self.struct_fields_prefix_offset(fields, i)
+    let k = field.ty.kind()
+    if k is TK_Struct {
+      match self.struct_defs.get(field.ty.name()) {
+        Some(inner) =>
+          // 内层直查 + 内层再匿名，同一递归入口（struct_fields_offset_by_name
+          // 已含直查与穿透）
+          match
+            self.struct_fields_offset_by_name_with_hit(inner, mname, depth + 1) {
+            Some(off) => return Some(base + off)
+            None => ()
+          }
+        None => ()
+      }
+    } else if k is TK_Union {
+      match self.union_defs.get(field.ty.name()) {
+        Some(inner) => {
+          // union 成员偏移恒 0：内层直名命中即 base；内层匿名字段再穿透
+          for f2 in inner {
+            if f2.name == mname {
+              return Some(base)
+            }
+          }
+          match self.anon_field_offset(inner, mname, depth + 1) {
+            Some(off) => return Some(base + off)
+            None => ()
+          }
+        }
+        None => ()
+      }
+    }
+  }
+  None
+}
+
+///|
+/// struct_fields_offset_by_name 的命中可判版（Option 区分命中与 0 偏移）。
+fn BytecodeGen::struct_fields_offset_by_name_with_hit(
+  self : BytecodeGen,
+  fields : Array[@ast.StructField],
+  mname : String,
+  depth : Int,
+) -> Int? {
+  for i, field in fields {
+    if field.name == mname {
+      return Some(self.struct_fields_prefix_offset(fields, i))
+    }
+  }
+  self.anon_field_offset(fields, mname, depth)
 }
 
 ///|

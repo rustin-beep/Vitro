@@ -784,7 +784,7 @@
         "implicit_int.c": "7c7e77851da6e463",
         "include_quote_sentinel.c": "4b3055ef39d66833",
         "inline_asm.c": "09c2125ca256a563",
-        "keyword_compat.c": "99bf6ed590fb5b52",
+        "keyword_compat.c": "f02a6e7a850c5a4e",
         "loop_var_shadow.c": "6b7f48c1f2efc72b",
         "printf_scanf_type_mismatch.c": "e89ecf26cdd6f699",
         "sizeof_array_param.c": "b45955b4729ff5e9",

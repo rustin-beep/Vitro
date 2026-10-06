@@ -14,6 +14,81 @@ fn Parser::parse_struct_body(
   ignore(self.consume(LBrace, "预期 '{'"))
   let fields : Array[@ast.StructField] = []
   while !self.check(RBrace) && !self.is_at_end() {
+    // 嵌套 enum 定义拦截（issue #15 成员形状，2026-10-06）：
+    // `enum [tag] {...} [声明器组] ;` ——常量经 program_sink 注册全局
+    if self.check(Enum) {
+      let has_tag = self.peek(1).ty == Identifier
+      let has_body = if has_tag {
+        self.peek(2).ty == LBrace
+      } else {
+        self.peek(1).ty == LBrace
+      }
+      if has_body {
+        let (_, underlying) = self.parse_enum_core(depth)
+        if self.check(Semicolon) {
+          ignore(self.advance())
+          continue
+        }
+        let d = self.parse_declarator(underlying, depth)
+        fields.push({ ty: d.0, name: d.1, })
+        while self.match_token(Comma) {
+          let ex = self.parse_declarator(underlying, depth)
+          fields.push({ ty: ex.0, name: ex.1, })
+        }
+        ignore(self.consume(Semicolon, "预期 ';'"))
+        continue
+      }
+    }
+    // 嵌套聚合定义拦截（issue #7 销案，2026-10-06）：成员位置的
+    // `struct|union [tag] { body } [声明器组] ;` ——含匿名（无声明器，
+    // 字段名空串——C11 匿名成员直接访问由 typeck 穿透）与带 tag 两形
+    if self.check(Struct) || self.check(Union) {
+      let is_union = self.check(Union)
+      let has_tag = self.peek(1).ty == Identifier
+      let has_body = if has_tag {
+        self.peek(2).ty == LBrace
+      } else {
+        self.peek(1).ty == LBrace
+      }
+      if has_body {
+        let kw_loc = self.current().loc
+        ignore(self.advance()) // struct/union
+        let decl_name = if has_tag {
+          self.advance().text
+        } else if is_union {
+          "__anon_union_\{self.pos}"
+        } else {
+          "__anon_struct_\{self.pos}"
+        }
+        let decl = self.parse_struct_body(
+          decl_name,
+          @source.SourceLoc::new(kw_loc.line, kw_loc.column),
+          depth,
+        )
+        let base = if is_union {
+          self.anonymous_unions.push(decl)
+          @ast.Type::union_type(decl_name)
+        } else {
+          self.anonymous_structs.push(decl)
+          @ast.Type::struct_type(decl_name)
+        }
+        // 无声明器：匿名成员（字段名空——typeck/codegen 按链穿透访问）
+        if self.check(Semicolon) {
+          ignore(self.advance())
+          fields.push({ ty: base, name: "", })
+          continue
+        }
+        // 带声明器组（`union {...} u, v;`）
+        let d = self.parse_declarator(base, depth)
+        fields.push({ ty: d.0, name: d.1, })
+        while self.match_token(Comma) {
+          let ex = self.parse_declarator(base, depth)
+          fields.push({ ty: ex.0, name: ex.1, })
+        }
+        ignore(self.consume(Semicolon, "预期 ';'"))
+        continue
+      }
+    }
     let field_checkpoint = self.pos
     let base_type = self.parse_base_type(depth)
     let d = self.parse_declarator(base_type, depth)
@@ -52,7 +127,11 @@ fn Parser::parse_struct_decl(self : Parser, depth : Int) -> @ast.StructDecl {
     @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     depth,
   )
-  ignore(self.consume(Semicolon, "结构体声明后预期 ';'"))
+  // issue #7（2026-10-06）：body 后声明器（`struct S {...} s;`）在此静默
+  // 停——顶层 dispatch 的 parse_aggregate_trailing_globals 接手
+  if self.check(Semicolon) {
+    ignore(self.advance())
+  }
   if self.is_cpp_mode && !decl.name.has_prefix("__anon_struct_") {
     self.typedef_names.set(decl.name, @ast.Type::struct_type(decl.name))
   }
@@ -79,7 +158,10 @@ fn Parser::parse_union_decl(self : Parser, depth : Int) -> @ast.StructDecl {
     @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     depth,
   )
-  ignore(self.consume(Semicolon, "联合体声明后预期 ';'"))
+  // 同 parse_struct_decl（issue #7 顶层声明器形态）
+  if self.check(Semicolon) {
+    ignore(self.advance())
+  }
   decl
 }
 
@@ -709,6 +791,39 @@ fn Parser::parse_enum_decl(
   program : @ast.ProgramNode,
   depth : Int,
 ) -> Unit {
+  let (enum_name, underlying) = self.parse_enum_core(depth)
+  // #15 顶层形状（2026-10-06）：`enum [T] {...} var;` body 后声明器组 →
+  // 全局变量（类型 = 底层类型）
+  if self.check(Semicolon) {
+    ignore(self.advance())
+  } else if !self.is_at_end() && !self.check(RBrace) {
+    while true {
+      let d = self.parse_declarator(underlying, depth)
+      let prev = self.previous()
+      let gloc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
+      program.globals.push({
+        ..Default::default(),
+        loc: gloc,
+        ty: d.0,
+        name: d.1,
+        init: None,
+      })
+      if !self.match_token(Comma) {
+        break
+      }
+    }
+    ignore(self.consume(Semicolon, "enum 声明后预期 ';'"))
+  }
+  if enum_name != "" {
+    self.typedef_names.set(enum_name, underlying)
+  }
+}
+
+///|
+/// enum 声明主体（tag + 可选底层类型 + 成员常量注册；不含收尾——
+/// #15 拆出：顶层形态与 struct 成员嵌套形态共用）。返回 (tag, 底层
+/// 类型)。常量注册经 program_sink（parse_program 注入）。
+fn Parser::parse_enum_core(self : Parser, depth : Int) -> (String, @ast.Type) {
   let cur0 = self.current()
   let loc = @source.SourceLoc::new(cur0.loc.line, cur0.loc.column)
   ignore(self.advance())
@@ -751,17 +866,18 @@ fn Parser::parse_enum_decl(
           })
       }
     }
-    push_enum_member_global(program, loc, member_tok, next_value, underlying)
+    match self.program_sink {
+      Some(prog) =>
+        push_enum_member_global(prog, loc, member_tok, next_value, underlying)
+      None => ()
+    }
     next_value += 1
     if !self.match_token(Comma) {
       break
     }
   }
   ignore(self.consume(RBrace, "enum 成员后预期 '}'"))
-  ignore(self.consume(Semicolon, "enum 声明后预期 ';'"))
-  if enum_name != "" {
-    self.typedef_names.set(enum_name, underlying)
-  }
+  (enum_name, underlying)
 }
 
 ///|

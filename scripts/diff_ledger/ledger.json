@@ -327,10 +327,8 @@
         "clang_direct_known": [],
         "vm_diff_known": []
       },
-      "detectable_by_defense": [
-        "clang_direct"
-      ],
-      "notes": "lexer/internal/pp/expander.mbt:219 H01 契约亲证（2026-09-30）；keyword_compat.c 的 clang_direct known 条目归因 gap 扩展域（U0#1②）与本条同族——映射准确性随二段闸对账复核"
+      "detectable_by_defense": [],
+      "notes": "lexer/internal/pp/expander.mbt:219 H01 契约亲证（2026-09-30）；keyword_compat.c 的 clang_direct known 条目归因 gap 扩展域（U0#1②）与本条同族——映射准确性随二段闸对账复核（2026-10-06 审阅 P3-3：keyword_compat 销案后 anchors 已清，detectable 同步清空——该差异面已两侧一致，无差异可检出）"
     },
     {
       "id": "DIFF-PREPROC-MULTILINE-01",

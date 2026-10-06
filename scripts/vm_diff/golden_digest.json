@@ -987,6 +987,12 @@
       "stdout_sha": "9556b82499cc0aaf",
       "memory_sha": "60dda7c9d3444a29"
     },
+    "baseline/hex_ull_nosuffix.c": {
+      "src_sha": "af016828",
+      "exit_code": 0,
+      "stdout_sha": "33de8671df7d9cd1",
+      "memory_sha": "eeaf34024dba507b"
+    },
     "baseline/if_else.c": {
       "src_sha": "2aa8d8e0",
       "exit_code": 0,
@@ -1022,6 +1028,12 @@
       "exit_code": 0,
       "stdout_sha": "7ba5c872ffb8c3ed",
       "memory_sha": "17f8d3a3950895a4"
+    },
+    "baseline/init_trailing_comma.c": {
+      "src_sha": "6281a87b",
+      "exit_code": 0,
+      "stdout_sha": "71ea88adc928041d",
+      "memory_sha": "6b3b66932423e622"
     },
     "baseline/int_arith.c": {
       "src_sha": "6836149d",
@@ -1286,6 +1298,12 @@
       "exit_code": 0,
       "stdout_sha": "fec80006df054254",
       "memory_sha": "d27fe8c4fb309d31"
+    },
+    "baseline/nested_anon_union.c": {
+      "src_sha": "2a4eb877",
+      "exit_code": 0,
+      "stdout_sha": "bbfb6ea185f8782c",
+      "memory_sha": "78f4da77b3f79e9c"
     },
     "baseline/nested_call.c": {
       "src_sha": "59264a0e",
@@ -2007,6 +2025,12 @@
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
       "memory_sha": "8a963b98686e521d"
+    },
+    "baseline/ternary_mixed.c": {
+      "src_sha": "9e58872c",
+      "exit_code": 0,
+      "stdout_sha": "5c4aceb39e8f73d3",
+      "memory_sha": "1a60a197dc0c22ac"
     },
     "baseline/ternary_nested.c": {
       "src_sha": "9169d971",

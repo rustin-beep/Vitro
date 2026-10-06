@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第八轮审阅处置：P3 四条 + P2-2 补语料 + P2-3 新鲜度门禁 + #7 局部盲区，2026-10-06）
+
+- **P3-1 editorconfig 第 4 击**：known_direct.json indent 1→2（json.dumps 工作流——恒 indent=2 固化）
+- **P3-2 #12 级联多报**：`A B = 1;` 初始化器形态收尾改吞到 ';'（旧 consume 在 '=' 处炸第二条 E2005）；keyword_compat 诊断形态随之变化（两条→单条）三驱动 golden 重入
+- **P3-4 死分支**：trailing_globals 存储类 guard 收敛为仅 static（keyword 表核对：唯 static 是 Identifier 文本词，其余 7 词皆关键字 token 进不了分支）+ 注释纠 E5
+- **P3-3 ledger 残留**：DIFF-C-MACRO-SEMI-01 detectable_by_defense 清空（keyword_compat 销案后无差异可检出）
+- **P2-2 四销案形态补语料**：nested_anon_union.c（**三层穿透的差分锚定**——审阅突变注入证 typeck/codegen 层零门禁覆盖）/ ternary_mixed.c / hex_ull_nosuffix.c / init_trailing_comma.c——四例 clang_direct SAME + 五驱动入账
+- **#7 局部形态盲区**（P2-2 语料拆解逼出）：局部聚合定义带声明器 `struct T {...} t;`（q1 最简即炸）——parse_var_decl_stmt 前置拦截 + parse_var_decl_from_base 抽出（声明器组+初始化器复用）
+- **P2-3 统一入口 native 臂新鲜度门禁**：源 mtime 晚于 exe 时 stderr 大字警告（含重建命令；不阻断——降级场景常在探针中途）
+- **P2-1 流程固化**：修复批收尾清单条目化（known 表连坐 + 提交前本地 clang_direct 全量 + CI 步面逐条）——批三-a 的 CI 红教训
+- **审阅未跑面补跑**：serve_smoke 双臂（--moonbit/--backend-wasm 各 68 全过；裸默认找 oracle 系遗留——与 replay 同族登记 #47 批五）、protocol_frames 31 帧、teaching 82、boot、contract、svg 全绿
+
 ### Fixed（S9 修复批批三-b 段一：typeck 假阳性七连——#5/#6/#9/#17/#18/#23/#24 销案，2026-10-06）
 
 - **#17 struct 解引用整体赋值同名双红**：赋值兼容按 C11 §6.5.16.1 以 **unqualified** 类型比较——源侧顶层 const 剥离（`*dst = *src` 的 src 经 const struct E* 解引用带限定，值拷贝合法；目标侧不剥——写 const 目标由既有警告机制管）

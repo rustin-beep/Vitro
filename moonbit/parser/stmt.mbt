@@ -131,6 +131,11 @@ fn Parser::parse_statement_inner(self : Parser, depth : Int) -> @ast.Stmt {
         })
         ignore(self.advance())
         ignore(self.advance()) // 跳过被误作变量名的第二标识符
+        // 吞到收尾 ';'（`A B = 1;` 的初始化器段——审阅 P3-2：旧
+        // consume(Semicolon) 在 '=' 处炸出第二条 E2005 级联）
+        while !self.check(Semicolon) && !self.is_at_end() {
+          ignore(self.advance())
+        }
         ignore(self.consume(Semicolon, "预期 ';'"))
         @ast.Stmt::Block([], cur.loc)
       } else if self.is_type_token() ||
@@ -228,6 +233,48 @@ fn Parser::parse_var_decl_stmt(
 ) -> @ast.Stmt {
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
+  // 局部聚合定义带声明器（issue #7 局部形态，2026-10-06 审阅 P2-2 语料
+  // 拆解补）：`struct T { ... } t, u;`——顶层有 parse_aggregate_trailing
+  // 而局部语句路径无（q1 最简形态即炸）。聚合定义（Struct/Union+body）
+  // 先解析 body 注册类型，再以该类型为 base 走正常声明器路径
+  if self.check(Struct) || self.check(Union) {
+    let is_union = self.check(Union)
+    let has_tag = self.peek(1).ty == Identifier
+    let has_body = if has_tag {
+      self.peek(2).ty == LBrace
+    } else {
+      self.peek(1).ty == LBrace
+    }
+    if has_body {
+      let kw_loc = self.current().loc
+      ignore(self.advance()) // struct/union
+      let decl_name = if has_tag {
+        self.advance().text
+      } else if is_union {
+        "__anon_union_\{self.pos}"
+      } else {
+        "__anon_struct_\{self.pos}"
+      }
+      let decl = self.parse_struct_body(
+        decl_name,
+        @source.SourceLoc::new(kw_loc.line, kw_loc.column),
+        depth,
+      )
+      let base = if is_union {
+        self.anonymous_unions.push(decl)
+        @ast.Type::union_type(decl_name)
+      } else {
+        self.anonymous_structs.push(decl)
+        @ast.Type::struct_type(decl_name)
+      }
+      // 匿名无声明器（`struct { ... };` 局部声明）——占位空语句收尾
+      if self.check(Semicolon) {
+        ignore(self.advance())
+        return @ast.Stmt::Block([], loc)
+      }
+      return self.parse_var_decl_from_base(base, is_static, depth, loc)
+    }
+  }
   let base_type = self.parse_base_type(depth)
   // Detect C++ constructor initialization syntax: `Type name(args);`
   // 仅当声明符是裸标识符（无指针/引用/函数指针后缀）时才当构造调用；
@@ -310,6 +357,44 @@ fn Parser::parse_var_decl_stmt(
   }
   ignore(self.consume(Semicolon, "变量声明后预期 ';'"))
   @ast.Stmt::VarDecl(var_type, name, init, extra_vars, is_static, loc)
+}
+
+///|
+/// 以已知 base 类型解析声明器组 + 初始化器（局部聚合定义带声明器的
+/// 后半段——issue #7 局部形态，2026-10-06 抽出复用）。
+fn Parser::parse_var_decl_from_base(
+  self : Parser,
+  base : @ast.Type,
+  is_static : Bool,
+  depth : Int,
+  loc : @source.SourceLoc,
+) -> @ast.Stmt {
+  let d = self.parse_var_declarator(base, depth)
+  let init = if self.match_token(Assign) {
+    if self.check(LBrace) {
+      Some(self.parse_init_list(depth))
+    } else {
+      Some(self.parse_assign(depth))
+    }
+  } else {
+    None
+  }
+  let extra_vars : Array[@ast.VarDeclExtra] = []
+  while self.match_token(Comma) {
+    let ex = self.parse_var_declarator(base, depth)
+    let extra_init = if self.match_token(Assign) {
+      if self.check(LBrace) {
+        Some(self.parse_init_list(depth))
+      } else {
+        Some(self.parse_assign(depth))
+      }
+    } else {
+      None
+    }
+    extra_vars.push({ var_type: ex.0, name: ex.1, init: extra_init, })
+  }
+  ignore(self.consume(Semicolon, "变量声明后预期 ';'"))
+  @ast.Stmt::VarDecl(d.0, d.1, init, extra_vars, is_static, loc)
 }
 
 ///|

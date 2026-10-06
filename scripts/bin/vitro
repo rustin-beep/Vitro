@@ -10,6 +10,19 @@ NATIVE_EXE="$REPO/moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
 run_native() {
   reason="$1"
   shift
+  # 新鲜度门禁（2026-10-06 审阅 P2-3——vm_diff/clang_direct 同款）：
+  # native exe 不随源码自动重建，陈旧制品会对着旧代码下结论。检测
+  # cmd/ 与 host/ 源 mtime 晚于 exe 时 stderr 大字警告（不阻断——构建
+  # 需 MOON_CC=clang 且分钟级，降级场景常在探针中途）
+  if [ -f "$NATIVE_EXE" ]; then
+    exe_mtime=$(cd "$(dirname "$NATIVE_EXE")" && ls -l --time-style=+%s "$(basename "$NATIVE_EXE")" 2>/dev/null | awk '{print $6}')
+    if [ -n "$exe_mtime" ]; then
+      newer_src=$(find "$REPO/moonbit/cmd" "$REPO/moonbit/host" "$REPO/moonbit/parser" "$REPO/moonbit/typeck" "$REPO/moonbit/lexer" "$REPO/moonbit/codegen" "$REPO/moonbit/vm" -name '*.mbt' -newermt "@$exe_mtime" 2>/dev/null | head -1)
+      if [ -n "$newer_src" ]; then
+        echo "[vitro] ⚠ native exe 陈旧（源已改：${newer_src##*/} 等）——结论可能来自旧代码；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro" >&2
+      fi
+    fi
+  fi
   echo "[vitro] backend=native（$reason）" >&2
   exec "$NATIVE_EXE" "$@"
 }

@@ -1098,24 +1098,15 @@ fn Parser::parse_aggregate_trailing_globals(
   if self.is_at_end() || self.check(RBrace) {
     return
   }
-  // 声明器组（Identifier/* 起头）；存储类/限定符等文本词（static/auto/
-  // register/extern/inline/const/volatile——非关键字 token，Identifier
-  // 形态按文本特判）不属声明器起点——留给下一轮顶层分发
+  // 声明器组（Identifier/* 起头）。存储类/限定符中只有 static 是
+  // Identifier 文本词（keyword 表无 static——is_static_token 同款文本
+  // 特判；auto/register/extern/inline/const/volatile/typedef 均为关键字
+  // token，进不了本分支——审阅 P3-4 旧死分支与 E5 注释纠正）
   if !(self.check(Identifier) || self.current().ty == Star) {
     return
   }
-  if self.check(Identifier) {
-    let t = self.current().text
-    if t == "static" ||
-      t == "auto" ||
-      t == "register" ||
-      t == "extern" ||
-      t == "inline" ||
-      t == "const" ||
-      t == "volatile" ||
-      t == "typedef" {
-      return
-    }
+  if self.check(Identifier) && self.current().text == "static" {
+    return
   }
   while true {
     let d = self.parse_declarator(base, 0)

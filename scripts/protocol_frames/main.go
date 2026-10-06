@@ -53,10 +53,11 @@ import (
 // ---------------------------------------------------------------- 路径与请求表
 
 var (
-	rustCli   string
-	mbServe   string
-	rulesPath = filepath.Join("scripts", "protocol_frames", "rules.json")
-	basePath  = filepath.Join("scripts", "protocol_frames", "baseline.jsonl")
+	rustCli     string
+	mbServe     string
+	backendWasm bool // #49 批三：--backend-wasm
+	rulesPath   = filepath.Join("scripts", "protocol_frames", "rules.json")
+	basePath    = filepath.Join("scripts", "protocol_frames", "baseline.jsonl")
 )
 
 func init() {
@@ -206,9 +207,14 @@ type host struct {
 }
 
 func startHost(name, exe string) *host {
-	cmd := exec.Command(exe, "serve")
-	if name == "moonbit" {
+	var cmd *exec.Cmd
+	if name == "moonbit" && backendWasm {
+		// #49 批三：wasm 臂 = node 壳 serve（moonbit 产物位；协议同构）
+		cmd = exec.Command("node", exe, "serve")
+	} else if name == "moonbit" {
 		cmd = exec.Command(exe) // cmd/serve 无子命令形态
+	} else {
+		cmd = exec.Command(exe, "serve")
 	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -279,10 +285,25 @@ func fatal(f string, a ...any) {
 
 func main() {
 	diffHosts := flag.Bool("diff-hosts", false, "双宿主互比（两侧帧逐字节一致；不依赖基线）")
+	backendWasmFlag := flag.Bool("backend-wasm", false, "#49 批三：moonbit 臂被测物换统一入口壳 serve（node 消费 gateway wasm.wasm）——基线/断言零改动")
 	update := flag.Bool("update-baseline", false, "以 oracle（Rust）臂刷新入库基线（人工令——随 0.8.0 工序②终验走最后一次）")
 	auditSkips := flag.Bool("audit-skips", false, "skip 僵尸审计（审阅 P3-④ 补）：临时不 skip 真跑一轮——原 skip 帧两侧一致即僵尸红（键集分叉已收敛应删条目），DIFF=合法 skip")
 	selftest := flag.Bool("selftest", false, "J9：mask 生效 + 非法 JSON 拒绝 + 基线比对红三锚")
 	flag.Parse()
+	if *backendWasmFlag {
+		backendWasm = true
+		shell := filepath.Join(projectRoot(), "scripts", "vitro_cli", "main.js")
+		wasmMod := filepath.Join(projectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
+		for _, f := range []string{shell, wasmMod} {
+			if _, err := os.Stat(f); err != nil {
+				fatal("wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）", f)
+			}
+		}
+		if _, err := exec.LookPath("node"); err != nil {
+			fatal("wasm 臂需要 node（统一入口壳宿主）")
+		}
+		mbServe = shell
+	}
 
 	loadRules()
 

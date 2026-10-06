@@ -107,6 +107,7 @@ var (
 	auditNames   []string
 	auditSet     map[string]bool
 	mbMode       bool
+	backendWasm  bool // #49 批三：--backend-wasm
 	mbExempt     map[string]string
 	mbBatches    map[string]string
 	exempted     int
@@ -124,7 +125,7 @@ func check(cond bool, label, detail string) {
 	// 不计入 MoonBit 臂口径，避免"豁免了但实际一直绿"的僵尸条目；
 	// 销项时机到了直接删条目即恢复断言。（僵尸的机判 = --audit-exemptions：
 	// 豁免全失效真跑，PASS 即僵尸——D19。）
-	if mbMode {
+	if mbMode || backendWasm {
 		if reason, ok := mbExempt[label]; ok {
 			exempted++
 			fmt.Printf("  SKIP  %s（豁免：%s）\n", label, reason)
@@ -207,7 +208,11 @@ func runServeBatch(exe, payload string, timeout time.Duration) (stdout, stderr s
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var cmd *exec.Cmd
-	if mbMode {
+	if backendWasm {
+		// #49 批三：wasm 臂 = node 壳 serve 子命令（exe 参数此时是壳 js
+		// 路径——不可直接执行，须 node 解释）
+		cmd = exec.CommandContext(ctx, "node", exe, "serve")
+	} else if mbMode {
 		cmd = exec.CommandContext(ctx, exe) // MoonBit cmd/serve 是主程序无子命令
 	} else {
 		cmd = exec.CommandContext(ctx, exe, "serve")
@@ -255,11 +260,24 @@ func loadMoonBitExemptions() (map[string]string, map[string]string, error) {
 		return nil, nil, fmt.Errorf("读豁免表失败: %w", err)
 	}
 	var doc struct {
-		Assertions map[string]string `json:"assertions"`
-		Batches    map[string]string `json:"batches"`
+		Assertions     map[string]string `json:"assertions"`
+		Batches        map[string]string `json:"batches"`
+		WasmAssertions map[string]string `json:"wasm_assertions"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return nil, nil, fmt.Errorf("豁免表非法 JSON: %w", err)
+	}
+	if len(doc.WasmAssertions) > 0 && backendWasm {
+		// wasm 臂豁免段合并（仅 --backend-wasm 生效——native mbMode 不见
+		// 这些条目，防 ZOMBIE 假红；臂分家在文件 wasm_assertions 键）
+		merged := map[string]string{}
+		for k, v := range doc.Assertions {
+			merged[k] = v
+		}
+		for k, v := range doc.WasmAssertions {
+			merged[k] = v
+		}
+		return merged, doc.Batches, nil
 	}
 	return doc.Assertions, doc.Batches, nil
 }
@@ -302,10 +320,11 @@ func resolveMoonBitExe() string {
 
 func run() int {
 	flag.BoolVar(&mbMode, "moonbit", false, "跑 MoonBit 臂（cmd/serve exe；同一请求表与断言集，豁免面见 moonbit_exemptions.json）")
+	flag.BoolVar(&backendWasm, "backend-wasm", false, "#49 批三：wasm 臂（统一入口壳 serve——node 消费 gateway wasm.wasm；豁免面与 MoonBit 臂同款）")
 	flag.BoolVar(&auditAll, "audit-exemptions", false, "豁免面僵尸审计（D19）：豁免全部失效真跑一轮——原豁免条目 PASS/未触达即僵尸 exit 1，FAIL=合法豁免（仅 MoonBit 臂）")
 	flag.Parse()
-	if auditAll && !mbMode {
-		fmt.Println("错误: --audit-exemptions 须与 --moonbit 同用（豁免面仅作用于 MoonBit 臂）")
+	if auditAll && !mbMode && !backendWasm {
+		fmt.Println("错误: --audit-exemptions 须与 --moonbit/--backend-wasm 同用（豁免面仅作用于 MoonBit 产物臂）")
 		return 2
 	}
 	if err := loadExpectations(); err != nil {
@@ -313,7 +332,34 @@ func run() int {
 		return 2
 	}
 	var exe string
-	if mbMode {
+	if backendWasm {
+		var err error
+		mbExempt, mbBatches, err = loadMoonBitExemptions()
+		if err != nil {
+			fmt.Printf("错误: %v\n", err)
+			return 2
+		}
+		if auditAll {
+			auditVerdict = map[string]string{}
+			auditSet = map[string]bool{}
+			for k := range mbExempt {
+				auditNames = append(auditNames, k)
+				auditSet[k] = true
+			}
+			fmt.Printf("审计轮：%d 条断言豁免全部失效真跑（PASS/未触达 = 僵尸）\n", len(auditNames))
+			mbExempt = map[string]string{}
+		}
+		shell := filepath.Join(capi.ProjectRoot(), "scripts", "vitro_cli", "main.js")
+		wasmMod := filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
+		for _, f := range []string{shell, wasmMod} {
+			if _, err := os.Stat(f); err != nil {
+				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
+				return 2
+			}
+		}
+		exe = shell
+		fmt.Printf("wasm 臂 serve: node %s serve（豁免 %d 断言 + %d 整批）\n", shell, len(mbExempt), len(mbBatches))
+	} else if mbMode {
 		var err error
 		mbExempt, mbBatches, err = loadMoonBitExemptions()
 		if err != nil {
@@ -699,7 +745,7 @@ func run() int {
 		key string
 		fn  func(string) []string
 	}{{"edge", runEdgeBatch}, {"pending_leak", runPendingLeakBatch}, {"rss_guard", runRSSGuardBatch}, {"long_line", runLongLineBatch}} {
-		if mbMode {
+		if mbMode || backendWasm {
 			if reason, ok := mbBatches[batch.key]; ok {
 				fmt.Printf("\n== %s 批：SKIP（豁免：%s）==\n", batch.key, reason)
 				continue
@@ -734,7 +780,7 @@ func run() int {
 		return 0
 	}
 	// 自报口径（供 facts 台账采集；格式稳定，勿随意改动）
-	if mbMode {
+	if mbMode || backendWasm {
 		fmt.Printf("MoonBit 臂断言数: %d  (PASS %d / FAIL %d / 豁免 %d)\n",
 			assertions+exempted, assertions-len(failures), len(failures), exempted)
 	} else {
@@ -1074,7 +1120,12 @@ func runRSSGuardBatch(exe string) []string {
 		return nil
 	}
 
-	cmd := exec.Command(exe, "serve")
+	var cmd *exec.Cmd
+	if backendWasm {
+		cmd = exec.Command("node", exe, "serve")
+	} else {
+		cmd = exec.Command(exe, "serve")
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return []string{"rss-batch-spawn"}

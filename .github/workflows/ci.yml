@@ -453,6 +453,22 @@ jobs:
         run: go run ./scripts/clang_direct --backend wasm
         shell: bash
 
+      # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
+      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
+      # 家）/ protocol_frames 31 帧基线。前置同上（gateway wasm + node 25）。
+      - name: replay wasm arm (shell serve)
+        run: go run ./scripts/replay --backend wasm
+        shell: bash
+      - name: serve_smoke wasm arm (shell serve)
+        run: go run ./scripts/serve_smoke --backend-wasm
+        shell: bash
+      - name: protocol_frames wasm arm (shell serve)
+        run: go run ./scripts/protocol_frames --backend-wasm
+        shell: bash
+      - name: teaching_annotation_diff wasm arm (shell serve)
+        run: go run ./scripts/teaching_annotation_diff --backend-wasm
+        shell: bash
+
       # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
       # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方

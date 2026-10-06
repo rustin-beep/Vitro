@@ -122,7 +122,12 @@ func loadGolden(path string) (map[string][]FirstOccurrence, error) {
 func runServeBatch(exe, payload string, timeout time.Duration) (string, int, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, exe)
+	var cmd *exec.Cmd
+	if backendWasmOn {
+		cmd = exec.CommandContext(ctx, "node", exe, "serve")
+	} else {
+		cmd = exec.CommandContext(ctx, exe)
+	}
 	cmd.Stdin = strings.NewReader(payload)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
@@ -332,9 +337,14 @@ func resolveServeExe() string {
 	return filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "native", "debug", "build", "cmd", "serve", name)
 }
 
+// #49 批三：wasm 臂开关（--backend-wasm——统一入口壳 serve 被测物）。
+var backendWasmOn bool
+
 func main() {
 	only := flag.String("only", "", "逗号分隔的模板名子集（试水用；空=全量）")
+	backendWasm := flag.Bool("backend-wasm", false, "#49 批三：被测物换统一入口壳 serve（node 消费 gateway wasm.wasm）")
 	flag.Parse()
+	backendWasmOn = *backendWasm
 
 	root := capi.ProjectRoot()
 	rulesPath := filepath.Join(root, "scripts", "teaching_annotation_diff", "rules.json")
@@ -370,6 +380,17 @@ func main() {
 		os.Exit(2)
 	}
 	exe := resolveServeExe()
+	if backendWasmOn {
+		shell := filepath.Join(root, "scripts", "vitro_cli", "main.js")
+		wasmMod := filepath.Join(root, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
+		for _, f := range []string{shell, wasmMod} {
+			if _, err := os.Stat(f); err != nil {
+				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
+				os.Exit(2)
+			}
+		}
+		exe = shell
+	}
 	if _, err := os.Stat(exe); err != nil {
 		fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", exe)
 		os.Exit(2)

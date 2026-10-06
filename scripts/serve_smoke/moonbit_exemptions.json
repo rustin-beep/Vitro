@@ -1,8 +1,12 @@
 {
-  "_comment": "serve_smoke MoonBit 臂豁免表（S7 批四号双宿主对拍）。规则：断言名与 check() 的 label 精确匹配；PASS 也豁免（防僵尸条目——销项时机到了直接删条目即恢复断言）；整批豁免单列 batches。表外断言名红即真红（防静默豁免面扩张，J9 双路证红：删表 fail loud + 删条目断言真红）。豁免须带理由与销项时机。",
-  "assertions": {
-    "ping 携带 ABI 版本": "分叉登记：MoonBit 侧无 capi 层（.mbti 取代 ABI 版本化）——CHANGELOG 0.7.0 与总计划批四号段在案；永久豁免（形态差非缺陷）",
-    "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）"
-  },
-  "batches": {}
+ "_comment": "serve_smoke MoonBit 臂豁免表（S7 批四号双宿主对拍）。规则：断言名与 check() 的 label 精确匹配；PASS 也豁免（防僵尸条目——销项时机到了直接删条目即恢复断言）；整批豁免单列 batches。表外断言名红即真红（防静默豁免面扩张，J9 双路证红：删表 fail loud + 删条目断言真红）。豁免须带理由与销项时机。",
+ "assertions": {
+  "ping 携带 ABI 版本": "分叉登记：MoonBit 侧无 capi 层（.mbti 取代 ABI 版本化）——CHANGELOG 0.7.0 与总计划批四号段在案；永久豁免（形态差非缺陷）",
+  "capabilities 携带 engine_version（产物自检用）": "分叉登记：构建期 git 短哈希通道不存在（MoonBit 侧）——CHANGELOG 0.7.0 在案；永久豁免（形态差非缺陷）"
+ },
+ "batches": {},
+ "wasm_assertions": {
+  "time/clock 墙钟真值（非零——deterministic 销分叉）": "wasm 臂形态差（#49 批三 2026-10-06）：native serve 注册真钟 stub、gateway wasm 形态不注册恒 0（deterministic 设计——demo 同形态）；非缺陷，永久豁免（仅 --backend-wasm 臂生效）",
+  "RSS 护栏：提交峰值在预算内": "wasm 臂形态差（#49 批三 2026-10-06 实测）：护栏锚定引擎进程 RSS（native 预算 64MB、压力峰值 23MB），wasm 臂进程 = node/V8 宿主——实测峰值 276MB 且主体为 V8 运行时基线+GC 堆，引擎 1MB 白箱内存信号被宿主淹没，护栏对 wasm 臂无检测意义；非引擎缺陷，永久豁免（仅 --backend-wasm 臂生效；引擎内存回归由 vm_diff 1MB 映像联承担）"
+ }
 }

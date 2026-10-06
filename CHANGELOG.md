@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（#49 批三段二：teaching wasm 臂 + 迁移面收口裁定，2026-10-06）
+
+- **teaching_annotation_diff `--backend-wasm`**：82/82 模板 golden 一致（serve 驱动同款插座）；CI 接入（wasm 臂族至此六防线 + 双臂对拍闸）
+- **迁移面收口裁定**（#49 评论 issuecomment-6013532663）：codegen_diff 不迁（`moon run` 批产形态 + schema 对拍域非 gateway 行为面——wasm 等价性由 vm_diff wasm 臂 + wasm-gc 768 锚覆盖）；host_contract_map/diff_ledger 无 spawn 面销项；perf_baseline 归 #41 域；dump 族 CLI 保留 native（B1 裁定沿用）；退役路径 = 双臂观察期 → 六防线缺省切 wasm → CI 撤三 native 构建步 → 档案 tag
+
+### Added（#49 批三段一：serve 通道 wasm 臂——壳 serve 子命令 + 三防线插座，2026-10-06）
+
+- **壳 `serve` 子命令**（NDJSON 会话）：stdin 逐行**原文直传** invoke（不解析重组，与 cmd/serve 的 `@gateway.invoke(line)` 同通道）；shutdown 判停 = 响应帧含 `"shutdown":true` 宿主自停（同判据）；EOF 退出 rc=0；**空行不跳过**（gateway 对非法 JSON 回错误帧——跳过会造成响应行数错位 + id 对应雪崩，serve_smoke 实锤）；行长无上限（对齐 oracle `BufRead::lines`，native 65535 上限系手册在册形态差）
+- **replay `--backend wasm`**：61/61（PASS 59 + EXEMPT 2——engine_version/abi 永久分叉豁免与 native mbMode 同款）；版本锚 preflight 双处并臂
+- **serve_smoke `--backend-wasm`**：68 断言零 FAIL（豁免 4 = native 系 2 + **wasm 段 2**：墙钟恒 0〔wasm 不注册真钟设计〕与 RSS 护栏〔实测峰值 276MB 主体为 V8 宿主基线，引擎信号被淹没——检测意义失效〕）；豁免表 `wasm_assertions` 键**臂分家**（native mbMode 不见 wasm 条目防 ZOMBIE 假红）；三 spawn 点全接 node 壳（rss 批同款——首版漏接致 `rss-batch-spawn` 假 FAIL 的教训：**spawn 失败不该被豁免掩盖**，撤豁免修插座）
+- **protocol_frames `--backend-wasm`**：31 帧基线一致；J9 证红（壳 serve 注入杂质行 → 帧数红 → 复原绿）
+- CI 三步接入（replay/serve_smoke/protocol_frames wasm 臂，排 gateway 产物构建后）；native 臂回归全绿（replay 61/61 + serve_smoke 68 零 FAIL——豁免臂分家实证）
+- #47 覆盖度：cmd/serve/main.mbt（全文）+ gateway.mbt shutdown 段登记
+
 ### Added（#49 批二段二+段三：memory.dump 帧全链 + 防线 wasm 臂插座——主出口实证面搬家，2026-10-06）
 
 - **gateway `memory.dump` 帧**（21→22 方法）：1MB 最终映像 `dump_memory_raw` 单源 + `@util.base64_encode`（RFC 4648，G 表机械件 + RFC 向量全集锚；vendored 纪律禁引 x/codec 故自写 ~35 行）base64 承载（~1.37MB JSON）；wbtest 往返锚（帧值 == base64(dump_memory_raw)）+ J9 摘 dispatch 证红；protocol_frames `skip_methods` 登记（1.4MB 帧文本不宜基线全文冻结——覆盖面 = 双锚）；demo 方法面三处连坐（catalog/页面计数/demo_smoke 断言——**demo_smoke 首跑即抓计数缺口**）

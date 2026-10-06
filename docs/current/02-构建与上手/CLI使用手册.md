@@ -16,7 +16,7 @@ MOON_CC=clang moon build --release --target native cmd/vitro                # na
 
 降级链：node 不在 PATH 或版本 <25（壳 exit 3 哨兵）→ 自动 fallback native exe，stderr 明示原因；任何形态 stderr 恒一行 `[vitro] backend=…` 标注（脚本可断言所在臂）。
 
-防线插座（#49 批二）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）——wasm 臂被测物 = 统一入口壳（gateway wasm.wasm 主出口产物的实证面）；两臂 CI 并行全量。
+防线插座（#49 批二）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）——wasm 臂被测物 = 统一入口壳（gateway wasm.wasm 主出口产物的实证面）；两臂 CI 并行全量。批三扩：壳 `serve` 子命令（NDJSON 会话——与 cmd/serve 同形：shutdown 判停/EOF/空行回错误帧；行长无上限对齐 oracle）；replay / serve_smoke / protocol_frames / teaching_annotation_diff wasm 臂同款插座（CI 并行）；codegen_diff/host_contract_map/diff_ledger 裁定不迁（#49 批三评论在案）。
 
 ## MoonBit 侧 CLI（agent 主入口）
 

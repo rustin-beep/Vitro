@@ -50,6 +50,7 @@ const RUN_CONFIG = {
 
 let inv;
 let rawInvoke;
+let invokeRawText;
 async function loadGateway() {
   const buf = fs.readFileSync(WASM);
   const mod = new WebAssembly.Module(buf, {
@@ -58,6 +59,9 @@ async function loadGateway() {
   const inst = await WebAssembly.instantiate(mod, {});
   const g = inst.exports;
   let id = 0;
+  // invokeRawText：请求行原文直传（serve 会话形态——不解析重组，与
+  // cmd/serve 的 @gateway.invoke(line) 同通道）
+  invokeRawText = (line) => g.invoke(line);
   rawInvoke = (frame) => JSON.parse(g.invoke(JSON.stringify(frame)));
   inv = (method, params) => rawInvoke({ id: ++id, method, params: params || {} });
 }
@@ -444,9 +448,36 @@ async function cmdApi(args) {
   else if (cmd === "compile") await cmdCompile(rest);
   else if (cmd === "step") await cmdStep(rest);
   else if (cmd === "api") await cmdApi(rest);
-  else if (["serve", "dump-tokens", "dump-ast", "dump-typeck", "dump-compile"].includes(cmd)) {
+  else if (cmd === "serve") {
+    // NDJSON 会话形态（#49 批三：replay/serve_smoke/protocol_frames 的
+    // wasm 臂被测物）：stdin 逐行原文直传 invoke → stdout 响应行。
+    // - shutdown 判停 = 响应帧含 "shutdown":true（宿主自停——与 cmd/serve
+    //   同判据，gateway.mbt 单口语义）；
+    // - wasm 形态不注册 include_reader/clock（与 demo 同形态——native
+    //   serve 的盘读/真钟分叉走既有登记面）；
+    // - 行长无上限（node readline 天然——对齐 oracle BufRead::lines 按需
+    //   增长；native 65535 定长上限系 CLI 手册「已知形态差」在册条目）。
+    const readline = require("readline");
+    const rl = readline.createInterface({ input: process.stdin, terminal: false });
+    let stopped = false;
+    rl.on("line", (line) => {
+      if (stopped) return;
+      // 空行不跳过：原文直传 invoke——gateway 对非法 JSON 回错误帧（与
+      // cmd/serve 的 @gateway.invoke(line) 同源同形；跳过会造成响应行数
+      // 错位 + id 对应雪崩，serve_smoke 实锤）
+      const resp = invokeRawText(line);
+      process.stdout.write(resp + "\n");
+      if (resp.includes('"shutdown":true')) {
+        stopped = true;
+        rl.close();
+      }
+    });
+    rl.on("close", () => { process.exitCode = 0; });
+    return;
+  }
+  else if (["dump-tokens", "dump-ast", "dump-typeck", "dump-compile"].includes(cmd)) {
     process.stderr.write(
-      `vitro: '${cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；一次性脚本化用 'vitro api <method> <params>' 覆盖协议方法）\n`,
+      `vitro: '${cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；一次性脚本化用 'vitro api ast.dump' 等协议方法覆盖）\n`,
     );
     process.exitCode = 4;
     return;

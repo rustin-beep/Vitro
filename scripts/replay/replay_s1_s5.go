@@ -130,7 +130,16 @@ type ioWriteCloser interface {
 }
 
 func newServe(cliPath string) *Serve {
-	cmd := exec.Command(cliPath, "serve")
+	// 插座（#49 批三）：wasm 臂 = 统一入口壳 serve（node 消费 gateway
+	// wasm.wasm——协议与 cmd/serve 同构，断言集零改动）。stderr 照旧透传
+	// os.Stderr（backend 标注行不进断言通道——stdout 管道是唯一响应面）。
+	var cmd *exec.Cmd
+	if backendWasm {
+		shell := filepath.Join("scripts", "vitro_cli", "main.js")
+		cmd = exec.Command("node", shell, "serve")
+	} else {
+		cmd = exec.Command(cliPath, "serve")
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		capi.Fatal("serve stdin pipe: %v", err)
@@ -238,8 +247,9 @@ type Report struct {
 // 记 EXEMPT 放行；**PASS → ZOMBIE 红逼删条目**（豁免面自身每轮被审计，
 // 无需独立 -audit 步骤——replay 豁免面预期极小，两三条封顶）。
 var (
-	mbMode   bool
-	mbExempt map[string]string
+	mbMode      bool
+	mbExempt    map[string]string
+	backendWasm bool // #49 批三：--backend wasm（统一入口壳 serve 臂）
 )
 
 func loadMBExemptions() {
@@ -272,7 +282,7 @@ func resolveMoonBitServeExe() string {
 
 // check 输出格式与 Python 版一致：PASS 也打印尾部两空格，FAIL 附 detail。
 func (r *Report) check(section, aid string, cond bool, detail string) bool {
-	if mbMode {
+	if mbMode || backendWasm { // 豁免面 = MoonBit 产物永久分叉（native/wasm 同款——#49 批三）
 		key := section + " " + aid
 		if reason, hit := mbExempt[key]; hit {
 			if cond {
@@ -1051,15 +1061,16 @@ func preflight(s *Serve, anchorArg string) (string, string) {
 	caps := mmap(s.request("capabilities", nil)["result"])
 	engineVersion := mstr(caps["engine_version"])
 
-	if engineVersion == "" && !mbMode {
+	if engineVersion == "" && !mbMode && !backendWasm {
 		fmt.Println("错误: capabilities 未携带 engine_version —— 产物过旧，请先 `cd native && cargo build --release`")
 		os.Exit(2)
 	}
-	if mbMode {
-		// MoonBit 臂：capabilities 不带 engine_version（永久分叉——构建期
-		// git 短哈希通道不存在，serve_smoke 豁免表同口径）；版本自检走
-		// wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 锚。进程活性已由
-		// 上方 request 保证（起不来在 newServe/request 处 Fatal）。
+	if mbMode || backendWasm {
+		// MoonBit 臂（native/wasm 同判）：capabilities 不带 engine_version
+		//（永久分叉——构建期 git 短哈希通道不存在，serve_smoke 豁免表同
+		// 口径）；版本自检走 wasm-gc host.js 的 ENGINE_VERSION↔moon.mod
+		// 锚。进程活性已由上方 request 保证。wasm 臂同口径（#49 批三：
+		// gateway wasm 产物同源）。
 		fmt.Println("引擎版本: (MoonBit 臂不出 engine_version——永久分叉；锚定不适用，版本自检走 wasm-gc host.js 锚)")
 		return "(moonbit)", "(moonbit)"
 	}
@@ -1183,6 +1194,7 @@ func isContainer(v any) bool {
 func main() {
 	cli := flag.String("cli", cliDefault, "vitro_cli 路径")
 	moonbit := flag.Bool("moonbit", false, "跑 MoonBit 臂（cmd/serve exe——同一断言集，豁免面 scripts/replay/moonbit_exemptions.json；S7 批四号留批义务兑现）")
+	backendFlag := flag.String("backend", "native", "被测物后端（#49 批三）：native cmd/serve exe | wasm 统一入口壳 serve（node 消费 gateway wasm.wasm）")
 	anchor := flag.String("anchor", "", "版本锚定短哈希；缺省 = 从引擎版本串自动取")
 	sections := flag.String("sections", "S1,S2,S3,S5", "要跑的分节")
 	selftest := flag.Bool("selftest", false, "只跑判定口径埋雷自检（J9）")
@@ -1196,7 +1208,25 @@ func main() {
 	}
 
 	cliPath := *cli
-	if *moonbit {
+	if *backendFlag == "wasm" {
+		// #49 批三：wasm 臂 = 统一入口壳 serve 子命令（node 消费 gateway
+		// wasm.wasm）；同一断言集零改动——壳 serve 协议与 cmd/serve 同构
+		//（shutdown 判停/EOF 退出/请求行原文直传 invoke）。前置 fail loud。
+		shell := filepath.Join("scripts", "vitro_cli", "main.js")
+		wasmMod := filepath.Join("moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
+		if _, err := exec.LookPath("node"); err != nil {
+			fmt.Println("错误: wasm 臂需要 node（统一入口壳宿主）")
+			os.Exit(2)
+		}
+		for _, f := range []string{shell, wasmMod} {
+			if _, err := os.Stat(f); err != nil {
+				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
+				os.Exit(2)
+			}
+		}
+		loadMBExemptions()
+		backendWasm = true
+	} else if *moonbit {
 		mbMode = true
 		loadMBExemptions()
 		cliPath = resolveMoonBitServeExe()

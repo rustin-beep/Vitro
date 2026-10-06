@@ -133,6 +133,8 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 
 40. **wasm-gc 导出三事实（2026-09-29 批五号一手实证）**：① 导出 = `pkgtype(kind: "foreign_library")` + `#export_name("名")` 属性（executable 形态只导 `_start`，pub fn 不自动导出）；② String 直传 = moon.pkg `options("link": {"wasm-gc": {"use-js-builtin-string": true}})` + 宿主 `new WebAssembly.Module(buf, {builtins:['js-string'], importedStringConstants:'_'})`（不开内建则 String 是 GC 引用类型、宿主无法构造——「type incompatibility」）；③ foreign_library 不拉 println 链 ⇒ 产物零**功能性** imports（import 段仅 "_" 字符串常量模块——字节层 ≈2000 条，旧 Node 以真实 import 呈现需宿主兜底）。注意 moon.pkg 的 link 不是顶层键（`link = {...}` 解析失败——须 `options("link": {...})`）。
 
+41. **moon 跨会话/跨 target 增量缓存毒化（2026-10-06 批二双臂对拍实锤）**：并发会话改源后（实例：批二-b 改 `host/host_format.mbt` 的 printf 旗标），本会话 `moon build --release --target wasm-gc` 增量判定 up-to-date——产物**仍是旧代码**，而同刻构建的 native 产物是对的——「同源不同果」酷似 wasm-gc 后端语义 bug，极易误诊；`rm -rf moonbit/_build/wasm-gc` 强制全量重建即愈。**纪律：跨会话接过工作区后消费 wasm-gc/native 产物做行为验证前，先清对应 `_build/<target>` 增量重建**（CI 干净检出天然免疫，本地是唯一暴露面）；「产物 mtime 新」不构成「含新代码」证据（指纹一致三方全旧的 #81 形态同族）。双臂对拍（同输入跑 wasm 壳 vs native exe，`scripts/vitro_cli_smoke`）是最便宜的行为指纹。连坐提醒：`cp` 到 demo/ 的 wasm.wasm 若源自毒化构建同样带毒，demo_smoke 用例不踩该面时不报警。
+
 
 ## 编码与架构纪律（S1 已定型）
 

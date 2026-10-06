@@ -207,9 +207,20 @@ async function cmdRun(args) {
     process.exitCode = 1;
     return;
   }
+  // 成功路径的非错误级诊断（warning/hint）也渲染（native compile_and_report
+  // 全量形态——诊断行在程序 stdout 之前；语料对拍首跑即抓漏：bsearch_basic
+  // 的 H3057 void* 隐式转换提示此前 wasm 臂静默丢）
+  if (!ra.jsonMode) renderDiagnostics(comp.result);
   // argv 恒下发（gateway 语义 = 全量含 argv[0]；零透传也发 [file]）
   const argvFull = [ra.file === "-" ? "main.c" : ra.file, ...ra.argv];
   const runParams = { argv: argvFull };
+  // 无输入注入时 headless（batch）语义——对齐 native 文本模式（CLI vm 构造
+  // 默认批模式，scanf 耗尽即 EOF 续跑）；gateway 会话缺省 Interactive 会
+  // waiting_input 挂起（那是 serve/--json 面向交互的形态，语料对拍 scanf 族
+  // 6 例实锤分叉）。--json 模式保持 gateway 原生形态（与 native --json 对齐）
+  if (!ra.jsonMode) {
+    runParams.batch_input = true;
+  }
   if (ra.stdinFile !== "") {
     let text = "";
     try { text = fs.readFileSync(ra.stdinFile, "utf8"); } catch {

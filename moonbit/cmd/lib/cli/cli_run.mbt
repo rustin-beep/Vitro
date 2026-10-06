@@ -168,13 +168,16 @@ pub fn compile_and_report(
     }
     return (None, 1)
   }
+  // 成功路径诊断序 = 帧数组序（lex W → typeck W → typeck H——2026-10-06
+  // #49 批二：print_lex_warnings 此前尾置致与 gateway compile 帧 diagnostics
+  // 数组序分叉，wasm 壳逐帧序渲染即无法同形；语料对拍 variadic.c 实锤）
+  print_lex_warnings()
   for w in warns {
     println("// COMPILE-WARNING W\{w.code} \{w.line}:\{w.column} \{w.message}")
   }
   for h in hints {
     println("// COMPILE-HINT H\{h.code} \{h.line}:\{h.column} \{h.message}")
   }
-  print_lex_warnings()
   let (output_opt, gen_errors) = @codegen.compile(typed)
   guard gen_errors.is_empty() && output_opt is Some(output) else {
     for e in gen_errors {

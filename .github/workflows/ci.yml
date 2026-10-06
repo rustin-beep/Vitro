@@ -438,7 +438,7 @@ jobs:
       - name: unified CLI smoke (wasm shell vs native exe)
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
-          go run ./scripts/vitro_cli_smoke
+          go run ./scripts/vitro_cli_smoke --corpus 30
         shell: bash
 
       # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——

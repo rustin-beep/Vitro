@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（#49 批二段一：双臂对拍语料级扩面——373 例全量同形，四类真差异定责全修，2026-10-06）
+
+- **`vitro_cli_smoke --corpus N`**：corpus/baseline 字典序取前 N 例双臂对拍（rc + 剥 backend 行后逐字节）——本地全量 373 例同形、CI 接 30 例；J9 证红（篡改壳 note 前缀 → 32 处 FAIL）
+- **壳 run 成功路径补非错误级诊断渲染**（对拍首跑抓：H3057 等 hint/warning 此前 wasm 臂静默丢——compile 命令有、run 没有；诊断行在程序 stdout 之前，对齐 native）
+- **native 诊断序对齐帧数组序**：`compile_and_report` 成功路径 `print_lex_warnings` 尾置改前移（lex W → typeck W → typeck H）——帧数组序成为两臂共同真相序，壳零特例；语料 variadic.c 实锤（防线剥 COMPILE 行，vm_diff 137 抽样零翻转）
+- **壳 run 无输入时 headless 语义**（`batch_input:true`）：scanf 族 6 例实锤——native 文本模式 headless（EOF 续跑）vs gateway 缺省 Interactive（waiting 挂起）系 native 内部两形态既有别（`run --json` 同 waiting，探针实证）——壳逐模式对齐（文本 headless / --json 保持 gateway 形态），不擅动 native 内部分叉
+- **wasm-gc 增量缓存毒化实锤与根治**：printf_flags 语料双臂分叉（`%05d` 负数/`+` 旗标 wasm 全错）——定责为跨会话增量未感知批二-b host_format 变更（产物仍旧 formatter），`rm -rf moonbit/_build/wasm-gc` 强制重建后逐字节一致；demo/wasm.wasm 连坐刷新；坑入 moonbit/AGENTS.md 陷阱 #41（跨会话接手后消费产物前先清增量重建——CI 干净检出免疫，本地唯一暴露面）
+
 ### Fixed（用户第七轮审阅处置：P1 skeleton 漏刷 / P2-a printf 符号位 / P2-b dump 裸名键 / P3 两条，2026-10-06）
 
 - **P1 codegen_skeleton golden 漏刷**（CI 硬红）：路由改判 2→5 的重刷覆盖四语料 595 例**漏了第五语料 skeleton 13 例**（CI 单独一条命令）——13 例删键重入 PASS。形态教训（E2 同族面）：「重刷 M 例」的 M 精确等于某子集时反查第六个语料/第二条命令

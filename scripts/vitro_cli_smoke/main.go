@@ -9,17 +9,22 @@
 //	   同源、标记行协议同构），任何一臂漂移即红——零 canonicalize 特例。
 //	C. launcher 语义：backend 标注行（stderr）+ --backend 覆盖转发。
 //
+// --corpus N：B 组语料级扩面（#49 批二）——corpus/baseline 按稳定序取前 N
+// 例双臂对拍（同 B 组判定口径）。缺省 0 = 只跑内置三 fixture；CI 接 30 例。
+//
 // 前置：moonbit/_build 两产物在位（wasm-gc release gateway + native release
-// cmd/vitro）——CI 步骤先建；本闸零参数（fail loud 缺产物即红）。
+// cmd/vitro）——CI 步骤先建；缺产物即红（fail loud）。
 package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -70,6 +75,8 @@ func runOut(name string, argv ...string) (string, int) {
 }
 
 func main() {
+	corpusN := flag.Int("corpus", 0, "B 组语料级扩面：corpus/baseline 取前 N 例双臂对拍（CI=30）")
+	flag.Parse()
 	// cwd = 仓库根（防线惯例——vm_diff 等同款相对路径约定）
 	repoRoot = "."
 
@@ -164,6 +171,43 @@ func main() {
 			fatalf("B[双臂对拍] %s: stdout/stderr 不一致\n--- wasm ---\n%s\n--- native ---\n%s", c.name, wasmOut, natOut)
 		}
 		fmt.Printf("ok  B[双臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
+	}
+
+	// B 组扩面：语料级双臂对拍（--corpus N；#49 批二）——同判定口径
+	//（rc + 剥 backend 行后逐字节）。稳定序 = 文件名字典序取前 N。
+	if *corpusN > 0 {
+		entries, err := os.ReadDir(filepath.Join(repoRoot, "corpus", "baseline"))
+		if err != nil {
+			fatalf("B[语料对拍] corpus/baseline 不可读: %v", err)
+		}
+		var names []string
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".c") {
+				names = append(names, e.Name())
+			}
+		}
+		sort.Strings(names)
+		if len(names) == 0 {
+			fatalf("B[语料对拍] corpus/baseline 零 .c 用例——目录形态异常")
+		}
+		if *corpusN > len(names) {
+			*corpusN = len(names)
+		}
+		pass := 0
+		for _, name := range names[:*corpusN] {
+			rel := "corpus/baseline/" + name
+			wasmOut, wasmRc := runOut(nodeBin, shell, "run", rel)
+			natOut, natRc := runOut(nativeExe, "run", rel)
+			if wasmRc != natRc {
+				fatalf("B[语料对拍] %s: rc 不一致 wasm=%d native=%d", name, wasmRc, natRc)
+			}
+			wasmOut, natOut = stripBackendLine(wasmOut), stripBackendLine(natOut)
+			if wasmOut != natOut {
+				fatalf("B[语料对拍] %s: 输出不一致\n--- wasm ---\n%s\n--- native ---\n%s", name, wasmOut, natOut)
+			}
+			pass++
+		}
+		fmt.Printf("ok  B[语料对拍] 前 %d 例（字典序）双臂同形\n", pass)
 	}
 
 	// ── C 组：launcher 语义 ─────────────────────────────────────

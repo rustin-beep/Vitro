@@ -329,11 +329,11 @@ fn splice_continuations(lines : Array[LogicalLine]) -> Array[LogicalLine] {
   let mut i = 0
   while i < lines.length() {
     let mut cur = lines[i]
-    while ends_with_backslash(cur.text) && i + 1 < lines.length() {
+    while ends_with_splice_marker(cur.text) && i + 1 < lines.length() {
       i += 1
       let next = lines[i]
       cur = {
-        text: drop_last_char(cur.text) + next.text,
+        text: drop_splice_marker(cur.text) + next.text,
         head_line: cur.head_line,
         byte_off: cur.byte_off,
       }
@@ -345,19 +345,29 @@ fn splice_continuations(lines : Array[LogicalLine]) -> Array[LogicalLine] {
 }
 
 ///|
-fn ends_with_backslash(s : String) -> Bool {
-  s.length() > 0 && s[s.length() - 1] == '\\'
+fn ends_with_splice_marker(s : String) -> Bool {
+  // issue #22（2026-10-06）：phase 2 的反斜杠紧跟换行不论字节形态——LF
+  // 行尾反斜杠与 CRLF 行尾反斜杠+CR（split_physical_lines 保留行尾 CR
+  // ——S2 审阅 P2 决定）均属续行标记
+  let n = s.length()
+  if n == 0 {
+    return false
+  }
+  if s[n - 1] == '\\' {
+    return true
+  }
+  n >= 2 && s[n - 1] == '\r' && s[n - 2] == '\\'
 }
 
 ///|
-/// 去掉行尾反斜杠（ASCII 单 code unit——续行形状保证行尾为 `\`）。
-fn drop_last_char(s : String) -> String {
-  // 按字节长度切（String::length 是 UTF-16 码元数——非 ASCII 行按其切片会
-  // 落进多字节序列中间，decode 抛错；此前兜底空串 = 整行前缀静默丢失，
-  // S2 审阅 P1-1 实锤：中文注释续行把注释吞成代码行。兜底返回原串 s
-  //（防御路径：行尾保证为 ASCII 反斜杠，正常不触发）
+/// 去行尾续行标记（单反斜杠或反斜杠+CR 两字符）。
+fn drop_splice_marker(s : String) -> String {
+  // 去行尾续行标记（单反斜杠或反斜杠+CR 两字符；字节切——decode 失败
+  // 返回原串同旧口径）
   let b = @utf8.encode(s)
-  @utf8.decode(b[:b.length() - 1]) catch {
+  let n = s.length()
+  let cut = if n >= 2 && s[n - 1] == '\r' && s[n - 2] == '\\' { 2 } else { 1 }
+  @utf8.decode(b[:b.length() - cut]) catch {
     _ => s
   }
 }

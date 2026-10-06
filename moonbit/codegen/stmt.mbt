@@ -210,14 +210,9 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
         )
         return
       }
-      // 函数名作值（函数指针）
-      match self.func_index.get(name) {
-        Some(idx) => {
-          self.emit(@opcode.OpCode::PushConst, idx, loc)
-          return
-        }
-        None => ()
-      }
+      // issue #21 销案（2026-10-06）：函数名作值的 func_index 检查从臂头
+      // 挪到变量域（形参/局部/static/全局）之后——C 语义变量遮蔽函数名
+      //（`int f(int f)` 体内 f 是形参；旧函数表优先致返回函数地址 2178）
       // C++ reference 自动解引用：C only 不迁移（Reference 类型零出现）
       // static local 变量
       match self.static_local_indices.get(name) {
@@ -290,8 +285,14 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
             None => self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
         } else {
-          self.report_error("未声明的标识符 '\{name}'", loc)
-          self.emit(@opcode.OpCode::PushConst, 0, loc)
+          // 变量域全 miss → 函数名作值（函数指针；从臂头挪来——issue #21）
+          match self.func_index.get(name) {
+            Some(idx) => self.emit(@opcode.OpCode::PushConst, idx, loc)
+            None => {
+              self.report_error("未声明的标识符 '\{name}'", loc)
+              self.emit(@opcode.OpCode::PushConst, 0, loc)
+            }
+          }
         }
       }
     }

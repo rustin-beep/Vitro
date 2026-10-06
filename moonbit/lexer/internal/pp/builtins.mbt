@@ -162,7 +162,16 @@ fn[P] Pp::define_macro(
 ) -> Unit {
   match self.macros.get(name) {
     Some(existing) =>
-      if !macro_defs_equivalent(existing, def) {
+      // issue #14 销案（2026-10-06）：stdarg 四宏（va_start/va_arg/
+      // va_end/va_copy）的引擎双源（内置宏表 token 序列 ↔ stdarg.h
+      // 存根文本重扫）语义同构、token 序列有实现级漂移——C 实现的
+      // va 族双形态对用户透明（Clang 零警告）；该四名的重定义不报
+      // W1018（后定义者照常覆盖，行为不变）
+      if !macro_defs_equivalent(existing, def) &&
+        name != "va_start" &&
+        name != "va_arg" &&
+        name != "va_end" &&
+        name != "va_copy" {
         self.warnings.push({
           message: "宏 '\{name}' 被重复定义且宏体不同（遮蔽了先前的定义）。若非有意为之，请先 #undef 或改名",
           loc: { line, column: 0, file_id: self.current_file_id(), },

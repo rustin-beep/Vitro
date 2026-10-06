@@ -12,6 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批三-c 段二：#34 step 帧行号与语义同源，2026-10-06）
+
+- **#34 code_line 与 semantic_label 同帧错位**：run_batch 循环顶取「步进前行」算 label、
+  collect 内取「步进后行」作 code_line——同帧差一步（帧报 N 语义在 N+1，isPrime 的调用点帧
+  报 callee 入口行 3 而非调用点 14）。修复：collect 加 code_line~ 具名参数（engine 六处调用
+  传循环顶行——与 label 同源；None 自取保持旧调用兼容）。修复后帧序列实测：调用点帧 14 ✓、
+  行系列与语义分类同步；serve_smoke 双臂/protocol_frames 31 帧/vm_diff/clang_direct 全绿
+  （帧基线无翻——帧语义增强不破坏既有断言）；残留：非 StepEvent 指令帧的行过渡（完美对齐需
+  帧触发机制改 StepEvent-only——教学观感影响小，登记 #34 后续观察）
+- **#20 fail-fast 分流降级（方案 C）**：未实施——前置 #16 警告通道依赖与跨层假错误雪崩
+  风险（31 份样本实验数据在案），归批四机制批评估
+
+### Fixed（S9 修复批批三-c 段一：运行期四连——#22 CRLF 续行 / #14 va_arg 双源 / #8 E3036 折叠 / #21 形参遮蔽，2026-10-06）
+
+- **#22 CRLF 反斜杠行拼接**（C11 §5.1.1.2 phase 2）：续行判定双形态（LF 行尾反斜杠与 CRLF 行尾反斜杠+CR——split_physical_lines 保留行尾 CR 的 S2 决定下旧判定只认单反斜杠）——ends_with_splice_marker/drop_splice_marker 两函数；w22 双行尾探针 21==21==Clang；gap/variadic_macro.c（CRLF 变参宏续行）token 流合法变化重入
+- **#14 va_arg 双源 W1018 假警告**：stdarg 四宏（va_start/va_arg/va_end/va_copy）重定义豁免——引擎双源（内置宏表 token 序列 ↔ stdarg.h 存根文本）语义同构、token 序列实现级漂移，C 实现的 va 族双形态对用户透明（Clang 零警告口径）；va 功能链（sum(3,10,20,30)=60）双侧一致
+- **#8 未定义函数双错级联**：callee 为未声明 Identifier（不在 funcs/static/libc 且不在变量域）时直接落 check_user_func 第四级报 E3036「未定义的函数」（单错——旧 resolve 的 E3023+int 兜底引发 E3066 级联）；已声明变量调用（int q; q(3)）保持 E3066（变量域排除条件）
+- **#21 形参遮蔽函数**：gen_expr 的 Identifier 臂序调整——函数名作值的 func_index 检查从臂头挪到变量域（形参/局部/static/全局）之后（`int f(int f)` 体内 f 旧取函数地址 2178、现取形参 42；正常函数指针 fp(41)=42 不破）
+
 ### Fixed（S9 修复批批三-b 段二：#13 sizeof 聚合折叠 + #19 {0} 清零与 union init 三层——批三 21 条全清，2026-10-06）
 
 - **#13 static_assert 的 sizeof(聚合/数组) 折叠**：Parser 增量表两张（parsed_aggregates——

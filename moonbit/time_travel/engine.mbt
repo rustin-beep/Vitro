@@ -255,20 +255,41 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
       Ok => {
         let l2 = vm.get_current_line()
         payloads.push(
-          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+          collect(
+            vm,
+            src,
+            vm.heatmap_count_at(l2),
+            step,
+            self.algo,
+            code_line=Some(line),
+          ),
         )
       }
       Paused => {
         let l2 = vm.get_current_line()
         payloads.push(
-          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+          collect(
+            vm,
+            src,
+            vm.heatmap_count_at(l2),
+            step,
+            self.algo,
+            code_line=Some(line),
+          ),
         )
         self.is_paused = true
       }
       WaitingInput => {
         let l2 = vm.get_current_line()
         payloads.push(
-          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+          collect(
+            vm,
+            src,
+            vm.heatmap_count_at(l2),
+            step,
+            self.algo,
+            code_line=Some(line),
+          ),
         )
         waiting_input = true
         break
@@ -276,7 +297,14 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
       Finished => {
         let l2 = vm.get_current_line()
         payloads.push(
-          collect(vm, src, vm.heatmap_count_at(l2), step, self.algo),
+          collect(
+            vm,
+            src,
+            vm.heatmap_count_at(l2),
+            step,
+            self.algo,
+            code_line=Some(line),
+          ),
         )
         finished = true
         self.is_finished = true

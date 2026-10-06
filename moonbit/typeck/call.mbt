@@ -45,6 +45,22 @@ fn TypeChecker::resolve_call_ptr(
     }
     _ => ()
   }
+  // issue #8 销案（2026-10-06）：callee 为未声明 Identifier（函数不在
+  // 任何已知集）时不再走 resolve_expr_type（其 E3023「未声明的变量」+
+  // int 兜底类型引发 E3066 级联——双错且码误导）——直接落
+  // check_user_func 第四级报 E3036「未定义的函数」（单错、码与语义
+  // 对齐 Clang 的 implicit declaration 差异口径，文案教学化）
+  match callee {
+    Identifier(name, _, _) =>
+      if !self.funcs.contains(name) &&
+        !self.static_func_sigs.contains(name) &&
+        !@libc.is_libc_func(name) &&
+        self.lookup_var(name) is None {
+        let ty = self.check_user_func(name, args, loc)
+        return (ty, callee)
+      }
+    _ => ()
+  }
   // C++ method / 模板实例化 / lambda 三段剔除登记（见文件头）
   // 兜底：callee 按表达式解析
   let (callee_ty, new_callee) = self.resolve_expr_type(callee)

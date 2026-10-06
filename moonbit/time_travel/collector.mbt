@@ -74,8 +74,16 @@ pub fn[P : SourceLineProvider] collect(
   heatmap_count : UInt64,
   step_index : Int,
   algo : AlgoInferCtx,
+  code_line? : Int? = None,
 ) -> @protocol.StepPayload {
-  let code_line = vm.get_current_line()
+  // issue #34 销案（2026-10-06）：code_line 与语义 label 同源（engine
+  // 循环顶的步进前行）——旧 vm.get_current_line()（步进后）与 label
+  //（步进前）同帧错位一步（帧报 N 语义在 N+1）；None 时自取（旧调用
+  // 兼容——语义为「最近 StepEvent 行」）
+  let code_line = match code_line {
+    Some(l) => l
+    None => vm.get_current_line()
+  }
   let cs_len = vm.call_stack_len()
   let func_name : String = if cs_len > 0 {
     vm.call_stack_at(cs_len - 1).func_name

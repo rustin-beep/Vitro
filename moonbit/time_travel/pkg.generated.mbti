@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx) -> @protocol.StepPayload
+pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx, code_line? : Int?) -> @protocol.StepPayload
 
 pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String
 

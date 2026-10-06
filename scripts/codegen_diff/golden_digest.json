@@ -306,6 +306,7 @@
         "sprintf_basic.c": "5788e72b",
         "srand_rand.c": "dfd66442",
         "sscanf_basic.c": "a6a32f5c",
+        "static_assert_sizeof.c": "eaff46b4",
         "static_global_basic.c": "6e2264cf",
         "static_local_array.c": "b308a88f",
         "static_local_counter.c": "5bdd1dc8",
@@ -380,6 +381,7 @@
         "while_loop.c": "7e512347",
         "while_nested.c": "f8eae3aa",
         "while_true_break.c": "34d53d67",
+        "zero_init_aggregate.c": "9e20ed11",
         "zero_init_array.c": "40d03832"
       },
       "cases": {
@@ -1295,6 +1297,9 @@
         "sscanf_basic.c": {
           "result_sha": "fbe5e3ea76fb4f5a"
         },
+        "static_assert_sizeof.c": {
+          "result_sha": "00b46ecc00709e2f"
+        },
         "static_global_basic.c": {
           "result_sha": "86d3e889ff436df7"
         },
@@ -1516,6 +1521,9 @@
         },
         "while_true_break.c": {
           "result_sha": "68952224daecd7f4"
+        },
+        "zero_init_aggregate.c": {
+          "result_sha": "7dc33898afcf134e"
         },
         "zero_init_array.c": {
           "result_sha": "dbf14b68475f48bf"

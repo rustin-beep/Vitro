@@ -411,7 +411,10 @@ fn TypeChecker::process_var_decl(
       if var_type_2.is_array() {
         let (t, i) = self.check_array_initializer(var_type_2, init_expr, loc)
         (t, Some(i))
-      } else if var_type_2.kind() is TK_Struct && init_expr is InitList(_, _, _) {
+      } else if (
+          var_type_2.kind() is TK_Struct || var_type_2.kind() is TK_Union
+        ) &&
+        init_expr is InitList(_, _, _) {
         let i = self.check_struct_initializer(var_type_2, init_expr, loc)
         (var_type_2, Some(i))
       } else {

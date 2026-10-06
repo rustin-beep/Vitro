@@ -10,6 +10,7 @@ fn Parser::parse_struct_body(
   name : String,
   loc : @source.SourceLoc,
   depth : Int,
+  is_union? : Bool = false,
 ) -> @ast.StructDecl {
   ignore(self.consume(LBrace, "预期 '{'"))
   let fields : Array[@ast.StructField] = []
@@ -104,6 +105,9 @@ fn Parser::parse_struct_body(
     ignore(self.consume(Semicolon, "预期 ';'"))
   }
   ignore(self.consume(RBrace, "预期 '}'"))
+  // issue #13（2026-10-06）：聚合表单点收口（全路径经此——tag/匿名/
+  // 嵌套/typedef），供 static_assert 的 sizeof 折叠
+  self.parsed_aggregates.push((name, is_union, fields))
   { loc, name, fields, }
 }
 
@@ -157,6 +161,7 @@ fn Parser::parse_union_decl(self : Parser, depth : Int) -> @ast.StructDecl {
     name_tok.text,
     @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
     depth,
+    is_union=true,
   )
   // 同 parse_struct_decl（issue #7 顶层声明器形态）
   if self.check(Semicolon) {
@@ -642,7 +647,13 @@ fn Parser::parse_typedef_enum_decl(
     if self.match_token(Assign) {
       let val_expr = self.parse_assign(depth)
       // F-P0-3：非裸字面量初始化器经编译期常量求值
-      match eval_enum_const(val_expr) {
+      match
+        eval_enum_const(
+          val_expr,
+          structs_table=self.snapshot_structs_table(),
+          unions_table=self.snapshot_unions_table(),
+          var_types=self.snapshot_var_types(),
+        ) {
         Some(v) => next_value = v
         None =>
           self.errors.push({
@@ -855,7 +866,13 @@ fn Parser::parse_enum_core(self : Parser, depth : Int) -> (String, @ast.Type) {
     let member_tok = self.consume(Identifier, "enum 成员预期标识符")
     if self.match_token(Assign) {
       let val_expr = self.parse_assign(depth)
-      match eval_enum_const(val_expr) {
+      match
+        eval_enum_const(
+          val_expr,
+          structs_table=self.snapshot_structs_table(),
+          unions_table=self.snapshot_unions_table(),
+          var_types=self.snapshot_var_types(),
+        ) {
         Some(v) => next_value = v
         None =>
           self.errors.push({
@@ -958,7 +975,12 @@ fn apply_binary_const(op : @ast.BinaryOp, a : Int64, b : Int64) -> Int64? {
 }
 
 ///|
-fn eval_enum_const(expr : @ast.Expr) -> Int64? {
+fn eval_enum_const(
+  expr : @ast.Expr,
+  structs_table? : Map[String, Array[@ast.StructField]] = Map([]),
+  unions_table? : Map[String, Array[@ast.StructField]] = Map([]),
+  var_types? : Map[String, @ast.Type] = Map([]),
+) -> Int64? {
   // 显式栈后序求值：E(表达式) 展开、App*(算子) 消费值栈；叶子直接
   // 产值入 vals。压栈逆序保证弹序 = 左操作数、右操作数、算子（Rust
   // 递归版 a?/b? 序）。
@@ -996,12 +1018,31 @@ fn eval_enum_const(expr : @ast.Expr) -> Int64? {
           Literal(value, _, _) => vals.push(value.to_int64())
           LongLiteral(value, _, _) => vals.push(value)
           // E3：static_assert 的 sizeof（教学最高频用法）
+          // issue #13 销案（2026-10-06）：sizeof(聚合) 折叠用真实表
+          //（parse 期已解析聚合——旧空表致 sizeof(struct P) 恒 None →
+          // static_assert E1006 假阳性；数组 sizeof 由 compute_type_size
+          // 的 Array 臂自然覆盖）
+          // issue #13 数组形态：sizeof(表达式)（Identifier——查变量类型表
+          ///折叠尺寸；全局/局部声明点已收口）
+          Sizeof(None, Some(Identifier(name, _, _)), _, _) =>
+            match var_types.get(name) {
+              Some(t) => {
+                let empty_cls : Map[String, Int] = Map([])
+                let sz = @ast.compute_type_size(
+                  t, structs_table, unions_table, empty_cls,
+                )
+                if sz > 0 {
+                  vals.push(sz.to_int64())
+                } else {
+                  return None
+                }
+              }
+              None => return None
+            }
           Sizeof(Some(t), _, _, _) => {
-            let empty_structs : Map[String, Array[@ast.StructField]] = Map([])
-            let empty_unions : Map[String, Array[@ast.StructField]] = Map([])
             let empty_cls : Map[String, Int] = Map([])
             let sz = @ast.compute_type_size(
-              t, empty_structs, empty_unions, empty_cls,
+              t, structs_table, unions_table, empty_cls,
             )
             if sz > 0 {
               vals.push(sz.to_int64())

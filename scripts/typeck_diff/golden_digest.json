@@ -306,6 +306,7 @@
         "sprintf_basic.c": "5788e72b",
         "srand_rand.c": "dfd66442",
         "sscanf_basic.c": "a6a32f5c",
+        "static_assert_sizeof.c": "eaff46b4",
         "static_global_basic.c": "6e2264cf",
         "static_local_array.c": "b308a88f",
         "static_local_counter.c": "5bdd1dc8",
@@ -380,6 +381,7 @@
         "while_loop.c": "7e512347",
         "while_nested.c": "f8eae3aa",
         "while_true_break.c": "34d53d67",
+        "zero_init_aggregate.c": "9e20ed11",
         "zero_init_array.c": "40d03832"
       },
       "resp_hashes": {
@@ -685,6 +687,7 @@
         "sprintf_basic.c": "8ea5819072509276",
         "srand_rand.c": "e7a1d87cae21969a",
         "sscanf_basic.c": "c823f6a66e2ee470",
+        "static_assert_sizeof.c": "c14d815a5d53ebbf",
         "static_global_basic.c": "ce6927f3e3bd5e82",
         "static_local_array.c": "80a38c5b645d9737",
         "static_local_counter.c": "77f31dab7cfe5c5a",
@@ -759,6 +762,7 @@
         "while_loop.c": "3e183b757b7f6703",
         "while_nested.c": "0acda727bc290d9c",
         "while_true_break.c": "90d63fa0d13419e6",
+        "zero_init_aggregate.c": "0502468c4a6dd830",
         "zero_init_array.c": "37af57dadfb913fe"
       }
     },

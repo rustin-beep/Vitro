@@ -30,7 +30,13 @@ fn Parser::parse_static_assert(self : Parser, depth : Int) -> Unit {
   }
   ignore(self.consume(RParen, "static_assert 预期 ')'"))
   ignore(self.consume(Semicolon, "static_assert 预期 ';'"))
-  match eval_enum_const(cond) {
+  match
+    eval_enum_const(
+      cond,
+      structs_table=self.snapshot_structs_table(),
+      unions_table=self.snapshot_unions_table(),
+      var_types=self.snapshot_var_types(),
+    ) {
     Some(v) =>
       if v != 0 {
         // 断言成立
@@ -356,6 +362,10 @@ fn Parser::parse_var_decl_stmt(
     }
   }
   ignore(self.consume(Semicolon, "变量声明后预期 ';'"))
+  self.parsed_var_types.push((name, var_type))
+  for ev in extra_vars {
+    self.parsed_var_types.push((ev.name, ev.var_type))
+  }
   @ast.Stmt::VarDecl(var_type, name, init, extra_vars, is_static, loc)
 }
 
@@ -394,6 +404,10 @@ fn Parser::parse_var_decl_from_base(
     extra_vars.push({ var_type: ex.0, name: ex.1, init: extra_init, })
   }
   ignore(self.consume(Semicolon, "变量声明后预期 ';'"))
+  self.parsed_var_types.push((d.1, d.0))
+  for ev in extra_vars {
+    self.parsed_var_types.push((ev.name, ev.var_type))
+  }
   @ast.Stmt::VarDecl(d.0, d.1, init, extra_vars, is_static, loc)
 }
 

@@ -1816,6 +1816,12 @@
       "stdout_sha": "3de6ef1be5dfb491",
       "memory_sha": "f28461cca4a9cc7c"
     },
+    "baseline/static_assert_sizeof.c": {
+      "src_sha": "eaff46b4",
+      "exit_code": 0,
+      "stdout_sha": "6e3d85c528538cac",
+      "memory_sha": "0832d159943428cf"
+    },
     "baseline/static_global_basic.c": {
       "src_sha": "6e2264cf",
       "exit_code": 0,
@@ -2259,6 +2265,12 @@
       "exit_code": 0,
       "stdout_sha": "bf6aaaab7c143ca1",
       "memory_sha": "bb44d3d4bc92389a"
+    },
+    "baseline/zero_init_aggregate.c": {
+      "src_sha": "9e20ed11",
+      "exit_code": 0,
+      "stdout_sha": "c2171155a29968e0",
+      "memory_sha": "469af745bf5c58f4"
     },
     "baseline/zero_init_array.c": {
       "src_sha": "40d03832",

@@ -116,10 +116,15 @@ fn BytecodeGen::flatten_global_init(
 ) -> Unit {
   match init {
     InitList(elements, _, _) =>
-      if target_ty.kind() is TK_Struct {
+      if target_ty.kind() is TK_Struct || target_ty.kind() is TK_Union {
+        // issue #19 连带：union 全局 init（成员偏移恒 0——union_defs 表）
         let fields = match self.struct_defs.get(target_ty.name()) {
           Some(f) => f
-          None => []
+          None =>
+            match self.union_defs.get(target_ty.name()) {
+              Some(f) => f
+              None => []
+            }
         }
         for i, elem in elements {
           if i >= fields.length() {

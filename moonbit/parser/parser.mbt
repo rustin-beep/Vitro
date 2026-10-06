@@ -102,6 +102,10 @@ priv struct Rollback {
   anon_len : Int
   /// 匿名/嵌套 union 回滚水位（issue #7）
   anon_u_len : Int
+  /// 已解析聚合表回滚水位（issue #13）
+  agg_len : Int
+  /// 变量类型表回滚水位
+  var_types_len : Int
   typedef_names : Map[String, @ast.Type]
   template_names : Set[String]
   current_class_len : Int
@@ -180,6 +184,16 @@ priv struct Parser {
   /// program 引用（issue #15：嵌套 enum 成员位置的枚举常量注册需要
   /// program——parse_program 开头注入；None = 单测直接构造 Parser 场景）
   mut program_sink : @ast.ProgramNode?
+  /// 已解析聚合定义表（issue #13，2026-10-06）：parse_struct_body 单点
+  /// 收口追加（tag/匿名/嵌套/typedef 全路径）——static_assert 常量求值
+  /// 的 sizeof(struct/union) 折叠源（旧空表致 sizeof(聚合) 恒 None →
+  /// E1006 假阳性）。追加式 + 回滚长度水位（Map 无快照语义）
+  parsed_aggregates : Array[(String, Bool, Array[@ast.StructField])]
+  /// Bool = is_union
+
+  /// 已解析变量类型表（issue #13 数组形态）：声明点收口（全局+局部，
+  /// 后声明覆盖——单表近似，static_assert 的 sizeof(表达式) 折叠专用）
+  parsed_var_types : Array[(String, @ast.Type)]
   is_cpp_mode : Bool
   mut next_lambda_id : Int
   /// C++ 嵌套类解析上下文：当前外层类名栈
@@ -195,6 +209,8 @@ fn Parser::save(self : Parser) -> Rollback {
     errors_len: self.errors.length(),
     anon_len: self.anonymous_structs.length(),
     anon_u_len: self.anonymous_unions.length(),
+    agg_len: self.parsed_aggregates.length(),
+    var_types_len: self.parsed_var_types.length(),
     typedef_names: self.typedef_names.copy(),
     template_names: self.template_names.copy(),
     current_class_len: self.current_class.length(),
@@ -208,6 +224,8 @@ fn Parser::restore(self : Parser, rb : Rollback) -> Unit {
   self.errors.truncate(rb.errors_len)
   self.anonymous_structs.truncate(rb.anon_len)
   self.anonymous_unions.truncate(rb.anon_u_len)
+  self.parsed_aggregates.truncate(rb.agg_len)
+  self.parsed_var_types.truncate(rb.var_types_len)
   self.typedef_names = rb.typedef_names
   self.template_names = rb.template_names
   self.current_class.truncate(rb.current_class_len)
@@ -237,6 +255,8 @@ fn Parser::with_mode(
     anonymous_structs: [],
     anonymous_unions: [],
     program_sink: None,
+    parsed_aggregates: [],
+    parsed_var_types: [],
     is_cpp_mode,
     next_lambda_id: 0,
     current_class: [],
@@ -766,7 +786,16 @@ fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
     return StructDecl
   }
   if self.check(Union) {
-    return UnionDecl
+    // issue #19 连带（2026-10-06）：union 顶层三形态前瞻——`union U {..}`
+    //（tag+body 或匿名 body）= 定义；`union U g;`（tag 后非 LBrace）=
+    // 变量声明（旧无条件 UnionDecl 致 parse_struct_body 在声明器处
+    // consume LBrace 炸 E2005）
+    let p1 = ty_at(self.pos + 1)
+    let p2 = ty_at(self.pos + 2)
+    if p1 == LBrace || (p1 == Identifier && p2 == LBrace) {
+      return UnionDecl
+    }
+    return StructVarOrFunc
   }
   if self.is_cpp_mode && self.check(Class) {
     return CppClassDecl
@@ -967,6 +996,7 @@ fn Parser::parse_global_var_or_func(
       is_static,
       is_extern,
     })
+    self.parsed_var_types.push((name, ty))
     while self.match_token(Comma) {
       let ex = self.parse_var_declarator(base_type, 0)
       let extra_ty = ex.0
@@ -993,6 +1023,7 @@ fn Parser::parse_global_var_or_func(
         is_static,
         is_extern,
       })
+      self.parsed_var_types.push((extra_name, extra_ty))
     }
     ignore(self.consume(Semicolon, "全局变量声明后预期 ';'"))
   }
@@ -1105,8 +1136,14 @@ fn Parser::parse_aggregate_trailing_globals(
   if !(self.check(Identifier) || self.current().ty == Star) {
     return
   }
-  if self.check(Identifier) && self.current().text == "static" {
-    return
+  if self.check(Identifier) {
+    let t = self.current().text
+    // static 是 Identifier 文本词（keyword 表无）；_Static_assert/
+    // static_assert 由顶层 StaticAssertDecl 分支处理（trailing 若吞会
+    // 把断言解析成函数声明器——issue #13 顶层组合形态实测）
+    if t == "static" || t == "_Static_assert" || t == "static_assert" {
+      return
+    }
   }
   while true {
     let d = self.parse_declarator(base, 0)
@@ -1119,9 +1156,50 @@ fn Parser::parse_aggregate_trailing_globals(
       name: d.1,
       init: None,
     })
+    self.parsed_var_types.push((d.1, d.0))
     if !self.match_token(Comma) {
       break
     }
   }
   ignore(self.consume(Semicolon, "声明后预期 ';'"))
+}
+
+///|
+/// 已解析聚合表快照（static_assert 求值消费——issue #13）。
+fn Parser::snapshot_structs_table(
+  self : Parser,
+) -> Map[String, Array[@ast.StructField]] {
+  let m : Map[String, Array[@ast.StructField]] = Map([])
+  for t in self.parsed_aggregates {
+    let (name, is_union, fields) = t
+    if !is_union {
+      m.set(name, fields)
+    }
+  }
+  m
+}
+
+///|
+fn Parser::snapshot_unions_table(
+  self : Parser,
+) -> Map[String, Array[@ast.StructField]] {
+  let m : Map[String, Array[@ast.StructField]] = Map([])
+  for t in self.parsed_aggregates {
+    let (name, is_union, fields) = t
+    if is_union {
+      m.set(name, fields)
+    }
+  }
+  m
+}
+
+///|
+/// 变量类型快照（后声明覆盖语义——倒序首个命中）
+fn Parser::snapshot_var_types(self : Parser) -> Map[String, @ast.Type] {
+  let m : Map[String, @ast.Type] = Map([])
+  for t in self.parsed_var_types {
+    let (n, ty) = t
+    m.set(n, ty)
+  }
+  m
 }

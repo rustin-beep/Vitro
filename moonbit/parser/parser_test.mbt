@@ -313,3 +313,21 @@ test "b3a_parser_five_fixes" {
   )
   assert_eq(r6.errors.length(), 0, msg="#15 成员 enum")
 }
+
+///|
+test "b3b_static_assert_sizeof_aggregate" {
+  // issue #13 销案锚（2026-10-06）：static_assert 条件的 sizeof 聚合/
+  // 数组折叠（parsed_aggregates/parsed_var_types 声明点收口表）+ 顶层
+  // _Static_assert 组合形态（trailing_globals 曾吞成函数声明器）
+  let src = "struct P { int a; int b; };\nunion U { int a; double d; };\nint g[6];\n_Static_assert(sizeof(struct P) == 8, \"s\");\n_Static_assert(sizeof(union U) == 8, \"u\");\n_Static_assert(sizeof(g) == 24, \"g\");\nint main() { int arr[4]; _Static_assert(sizeof(arr) == 16, \"a\"); return 0; }"
+  let r = @parser.parse(@lexer.tokenize(src).tokens)
+  assert_eq(r.errors.length(), 0, msg="五断言全过零错")
+  // 反锚：断言失败必须报 E1020
+  let r2 = @parser.parse(
+    @lexer.tokenize(
+      "struct P { int a; };\n_Static_assert(sizeof(struct P) == 99, \"fail\");",
+    ).tokens,
+  )
+  assert_eq(r2.errors.length(), 1)
+  assert_true(r2.errors[0].code == 1020, msg="失败断言报 E1020")
+}

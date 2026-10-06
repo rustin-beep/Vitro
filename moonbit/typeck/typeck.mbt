@@ -266,7 +266,8 @@ pub fn TypeChecker::check(
         // 回写符号表，否则 sizeof(g) 用推断前快照恒 1
         self.update_var_type(g.name, new_ty)
         program.globals[i] = { ..g, ty: new_ty, init: Some(new_init), }
-      } else if g.ty.kind() is TK_Struct && init is InitList(_, _, _) {
+      } else if (g.ty.kind() is TK_Struct || g.ty.kind() is TK_Union) &&
+        init is InitList(_, _, _) {
         let new_init = self.check_struct_initializer(g.ty, init, g.loc)
         program.globals[i] = { ..g, init: Some(new_init), }
       } else {

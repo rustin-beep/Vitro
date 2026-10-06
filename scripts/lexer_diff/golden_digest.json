@@ -317,6 +317,7 @@
       "sprintf_basic.c": "5788e72b",
       "srand_rand.c": "dfd66442",
       "sscanf_basic.c": "a6a32f5c",
+      "static_assert_sizeof.c": "eaff46b4",
       "static_global_basic.c": "6e2264cf",
       "static_local_array.c": "b308a88f",
       "static_local_counter.c": "5bdd1dc8",
@@ -391,6 +392,7 @@
       "while_loop.c": "7e512347",
       "while_nested.c": "f8eae3aa",
       "while_true_break.c": "34d53d67",
+      "zero_init_aggregate.c": "9e20ed11",
       "zero_init_array.c": "40d03832"
     },
     "gap": {
@@ -1271,6 +1273,8 @@
     "baseline/srand_rand.l2.tsv": "9463832378fe0c67",
     "baseline/sscanf_basic.l1.tsv": "303d35d827c56d60",
     "baseline/sscanf_basic.l2.tsv": "59bc26abfb06ae15",
+    "baseline/static_assert_sizeof.l1.tsv": "c70c84689c02e54e",
+    "baseline/static_assert_sizeof.l2.tsv": "e10324948d9835cf",
     "baseline/static_global_basic.l1.tsv": "cc90ee1bc4085d20",
     "baseline/static_global_basic.l2.tsv": "e0a2d9ad1c8cd184",
     "baseline/static_local_array.l1.tsv": "c5665ff44f7fc681",
@@ -1419,6 +1423,8 @@
     "baseline/while_nested.l2.tsv": "3cb6cb46627b6728",
     "baseline/while_true_break.l1.tsv": "d9e1a466fa4b719a",
     "baseline/while_true_break.l2.tsv": "6e30761fede84084",
+    "baseline/zero_init_aggregate.l1.tsv": "bac1e487f1627a4b",
+    "baseline/zero_init_aggregate.l2.tsv": "3cd181d87c2df48f",
     "baseline/zero_init_array.l1.tsv": "b0a6680a7505e3d2",
     "baseline/zero_init_array.l2.tsv": "90c68ce2b49e3346",
     "gap/complex_number.l1.tsv": "ae7478deceb8c99e",

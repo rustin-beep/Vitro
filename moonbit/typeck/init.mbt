@@ -32,17 +32,24 @@ pub fn TypeChecker::check_struct_initializer(
       CompoundLiteral(target_type, new_inner, cl_loc, cl_ty)
     }
     InitList(elements, iloc, ity) => {
+      // issue #19 连带（2026-10-06）：union 变量的 InitList 初始化接入
+      //（字段表按类型分派——union 用 unions 表；旧只接 struct 致
+      // `union U g = {0};` 走整体赋值检查报 void 赋 union）
       let fields : Array[(@ast.Type, String)] = match
         self.structs.get(struct_type.name()) {
         Some(s) => s.fields
-        None => {
-          self.report_error(
-            "未知的结构体类型 '\{struct_type.name()}'",
-            loc,
-            E3004_TypeMismatch,
-          )
-          return init
-        }
+        None =>
+          match self.unions.get(struct_type.name()) {
+            Some(s) => s.fields
+            None => {
+              self.report_error(
+                "未知的结构体或联合体类型 '\{struct_type.name()}'",
+                loc,
+                E3004_TypeMismatch,
+              )
+              return init
+            }
+          }
       }
       let has_designators = elements.exists(e => e.designators.length() > 0)
       if has_designators {
@@ -144,7 +151,8 @@ fn TypeChecker::check_field_value(
   value : @ast.Expr,
   loc : @source.SourceLoc,
 ) -> @ast.Expr {
-  if field_ty.kind() is TK_Struct && value is InitList(_, _, _) {
+  if (field_ty.kind() is TK_Struct || field_ty.kind() is TK_Union) &&
+    value is InitList(_, _, _) {
     self.check_struct_initializer(field_ty, value, loc)
   } else if field_ty.is_array() && value is InitList(_, _, _) {
     // sub_ty 的尺寸推断结果随节点类型走（调用方存根类型不更新——
@@ -154,12 +162,28 @@ fn TypeChecker::check_field_value(
   } else {
     let (e_type, new_value) = self.resolve_expr_type(value)
     if !self.check_assignable(field_ty, e_type, loc) {
-      self.report_error(
-        "结构体初始化类型不匹配：字段 '\{field_name}' 期望 '\{field_ty.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
-        loc,
-        E3006_ArrayInitTypeMismatch,
-      )
-      new_value
+      // issue #19 销案（2026-10-06）：C11 §6.7.9 花括号省略/零初始化——
+      // 常量 0 可初始化任意聚合成员（`struct S g = {0};` 惯用法——标量 0
+      // 递归作用于首个标量子成员，数组成员收 0 即首元素零、其余默认零填
+      // 由 codegen 零填路径承接）。非 0 标量对聚合仍报
+      let is_zero_literal = match value {
+        Literal(0, _, _) => true
+        _ => false
+      }
+      let aggregate_field = field_ty.kind() is TK_Struct ||
+        field_ty.kind() is TK_Union ||
+        field_ty.is_array()
+      if is_zero_literal && aggregate_field {
+        // 放行：保持 0 字面量（codegen 聚合 init 对该字段按零填处理）
+        new_value
+      } else {
+        self.report_error(
+          "结构体初始化类型不匹配：字段 '\{field_name}' 期望 '\{field_ty.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
+          loc,
+          E3006_ArrayInitTypeMismatch,
+        )
+        new_value
+      }
     } else {
       insert_implicit_cast(new_value, field_ty)
     }

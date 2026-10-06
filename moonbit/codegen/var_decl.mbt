@@ -365,11 +365,13 @@ fn BytecodeGen::emit_local_init(
     self.emit_local_array_init(vty, init, local_offset, loc)
   } else if vty.is_array() && init is CompoundLiteral(_, inner, _, _) {
     self.emit_local_array_init(vty, inner, local_offset, loc)
-  } else if vty.kind() is TK_Struct && init is InitList(_, _, _) {
+  } else if (vty.kind() is TK_Struct || vty.kind() is TK_Union) &&
+    init is InitList(_, _, _) {
     self.emit_local_struct_init(vty, init, local_offset, loc)
-  } else if vty.kind() is TK_Struct && init is CompoundLiteral(_, _, _, _) {
+  } else if (vty.kind() is TK_Struct || vty.kind() is TK_Union) &&
+    init is CompoundLiteral(_, _, _, _) {
     self.gen_struct_copy_to_local(local_offset, init, loc)
-  } else if vty.kind() is TK_Struct {
+  } else if vty.kind() is TK_Struct || vty.kind() is TK_Union {
     self.gen_struct_copy_to_local(local_offset, init, loc)
   } else if vty.is_array() && init is StringLiteral(_, _, _) {
     self.emit_local_string_array_init(vty, init, local_offset, loc)
@@ -664,9 +666,14 @@ fn BytecodeGen::emit_local_struct_init(
       self.emit(@opcode.OpCode::PushConst, local_offset, loc)
       self.emit(@opcode.OpCode::Add, 0, loc)
       self.emit(@opcode.OpCode::StoreLocal, base_temp, loc)
+      // issue #19 连带：union 变量 init（union 字段表——成员全偏移 0）
       let fields = match self.struct_defs.get(vty.name()) {
         Some(f) => f
-        None => []
+        None =>
+          match self.union_defs.get(vty.name()) {
+            Some(f) => f
+            None => []
+          }
       }
       let has_designators = elements.exists(e => e.designators.length() > 0)
       if has_designators {

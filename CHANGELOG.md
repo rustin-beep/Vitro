@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批三-b 段二：#13 sizeof 聚合折叠 + #19 {0} 清零与 union init 三层——批三 21 条全清，2026-10-06）
+
+- **#13 static_assert 的 sizeof(聚合/数组) 折叠**：Parser 增量表两张（parsed_aggregates——
+  parse_struct_body 单点收口含回滚水位；parsed_var_types——全局三处+局部两处声明点收口）
+  + eval_enum_const 加表参（Sizeof(Some) 用真表 / Sizeof(None, Identifier) 查变量表）；
+  **连带两病**：顶层聚合后 trailing_globals 把 `_Static_assert(` 吞成函数声明器（guard 扩
+  static_assert 文本词）；i13c 初验的「过」系断言被解析成函数原型而静默失效的**假过**（实测
+  抓出）。十探针矩阵（struct/union/数组×局部/全局×顶层组合）全 == Clang；语料
+  static_assert_sizeof.c SAME 入账
+- **#19 {0} 清零初始化**（C11 §6.7.9 花括号省略）：check_field_value 对聚合字段收常量 0
+  放行（非 0 标量仍报）；**连带三层 union init 全域缺失**——parse（classify 的 union 无条件
+  UnionDecl 致 `union U g;` 在声明器处炸——补 Struct 同款 LBrace 前瞻）；typeck（局部/
+  全局 init 分派与字段表 unions fallback——旧走整体赋值报 void 赋 union）；codegen（局部
+  var_decl 三臂 + 全局 flatten 字段表 union_defs）；五形态（嵌套/union/局部/全局/非零值）
+  全 == Clang；语料 zero_init_aggregate.c SAME 入账
+- **批三收官**：#3~#15/#17~#24 共 21 条全清（#3 const decay / #4 尾逗号 / #5 static 函数名 /
+  #6 指针算术比较 / #7 匿名 union 三层+局部 / #9 三目统一 / #11 stdbool / #12 误导文案 /
+  #13 sizeof 折叠 / #15 匿名 enum / #17 unqualified 赋值 / #18 ungetc / #19 {0} 清零 /
+  #23 顶层 const / #24 hex ULL 档）；剩 #34（codegen 行基准）归批三-c
+
 ### Fixed（用户第八轮审阅处置：P3 四条 + P2-2 补语料 + P2-3 新鲜度门禁 + #7 局部盲区，2026-10-06）
 
 - **P3-1 editorconfig 第 4 击**：known_direct.json indent 1→2（json.dumps 工作流——恒 indent=2 固化）

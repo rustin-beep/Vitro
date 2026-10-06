@@ -91,7 +91,7 @@
 <text class="tc" x="820" y="680" text-anchor="start">废弃走双写过渡期；版本 abi + engine</text>
 <rect class="zone" x="800" y="730" width="370" height="104" rx="12"/>
 <text class="t" x="985" y="760" text-anchor="middle">消费方</text>
-<text class="tc" x="820" y="788" text-anchor="start">serve JSON-lines · gateway wasm 绑定 · cmd/vitro api</text>
+<text class="tc" x="820" y="788" text-anchor="start">serve · gateway wasm · vitro api</text>
 <text class="tc" x="820" y="812" text-anchor="start">任何第三方语言按本 schema 自行解析</text>
 <text class="tc" x="600" y="852" text-anchor="middle">实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）· session（会话状态机）· gateway（出口帧）</text>
 <text class="tc" x="600" y="878" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol</text>

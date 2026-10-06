@@ -429,27 +429,95 @@ func genKG(root string, _ factsDoc) {
 // 本图的跑批快照数字全部 data-fact 锚定 facts 台账。
 
 func genShadow(root string, _ factsDoc) {
-	// 工序④删区（2026-10-05）：图 D 原锚 shadow（被测物 = Rust DLL）随区退役。
-	// 重绘为删区后语义——Clang 直拍门禁（真值 = Clang 本尊 + 被测物 = mb cmd/run）。
+	// 工序④删区（2026-10-05）：图 D 原锚 shadow（被测物 = Rust DLL）随区退役，
+	// 重绘为删区后语义——Clang 直拍门禁完整流水线（corpus 双臂 → 逐字节比对 →
+	// 判定三分流；前身 shadow-verification-flow.svg 与首版更名壳均为纯文字占位，
+	// 2026-10-06 视觉验收补画）。
 	// 数字口径化零 facts 依赖（同 genGates 先例）：hygiene 的 facts 步为
 	// `--strict check`（无 --run），run 型键 moonbit_test_passed 在 CI 检出态
 	// 为 unavailable，mustFact 会把 -check 闸 fatal（2026-10-05 推送后 CI 红
-	// 实锤）；测试数由 README 机判行 + testcount 三向对账承载。
-	P := svgOpen(1200, 836, "vitro Clang 直拍门禁流水线", "Clang 直拍框架 · 真值对照与 CI 硬门禁",
-		"对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行）")
-	P = append(P,
+	// 实锤）；测试数由 README 机判行 + testcount 三向对账承载，语料域/白名单
+	// 规模由 known_direct.json 与 corpus/ 自身承载。
+	P := svgOpen(1200, 860, "vitro Clang 直拍门禁流水线", "Clang 直拍框架 · 真值对照与 CI 硬门禁",
+		"对账 docs/current/04-标准库与防线/Clang直拍门禁.md §1–§5（文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行）")
+	// 顶：标题 + 定位副题
+	P = append(P, markerDef,
 		textF(600, 54, "tt", "Clang 直拍 · 真值对照与 CI 硬门禁", ""),
+		textF(600, 94, "tm", "层 2 直拍活真值——「golden 固化锚 + 引擎」的共同偏差只有本防线兜得住（与 vm_diff 五闸互补）", ""),
+	)
+	// 左列主流水线：语料 → 双臂 → 比对 → 三分流
+	P = append(P, box(40, 128, 720, 66, "zone", 12),
+		textF(400, 156, "t", "语料 corpus/ 六目录全量", ""),
+		textF(400, 182, "tc", "baseline · knr · leetcode · gap · codegen_skeleton · template_generated", ""),
+	)
+	P = append(P, arrow(215, 194, 215, 238, "line"), arrow(585, 194, 585, 238, "line"))
+	P = append(P, box(40, 238, 350, 136, "card", 12),
+		textF(215, 270, "ts", "Clang 本尊（真值源）", ""),
+		textF(215, 298, "tc", "clang 编译 + 运行 → golden", ""),
+		textF(215, 322, "tc", "stdout + 返回码 · golden 唯一来源", ""),
+		textF(215, 346, "tc", "缓存：源码 + stdin + 版本 + 参数", ""),
+		box(410, 238, 350, 136, "card", 12),
+		textF(585, 270, "ts", "MoonBit cmd/run（被测物）", ""),
+		textF(585, 298, "tc", "stdout + 返回码", ""),
+		textF(585, 322, "tc", "Latin-1 归一后折回单字节比对", ""),
+		textF(585, 346, "tc", "exe 新鲜度门禁（MOON_CC=clang）", ""),
 	)
 	P = append(P,
-		textF(600, 130, "tc", "真值源 = Clang 本尊（编译运行产 golden）", ""),
-		textF(600, 165, "tc", "被测物 = MoonBit cmd/run（stdout + 返回码）", ""),
-		textF(600, 200, "tc", "SAME=全量 / KNOWN=台账登记 / DIFF>0 即红", ""),
-		textF(600, 250, "th", "moon test 引擎白盒全绿（防线底座 · 数字见 README 机判行）", ""),
-		textF(600, 300, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役", ""),
-		textF(600, 330, "tm", "语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）", ""),
+		arrowPoly("215,374 215,398 400,398 400,424", "line"),
+		arrowPoly("585,374 585,398 400,398 400,424", "line"),
 	)
+	P = append(P, box(140, 424, 520, 70, "card", 12),
+		textF(400, 452, "t", "逐字节比对（纯 stdout 通道）", ""),
+		textF(400, 480, "tc", "引擎附注 / stderr 独立通道不进比对 · stdin 同份字节注入", ""),
+	)
+	P = append(P,
+		arrowPoly("400,494 400,516 153,516 153,540", "line"),
+		arrow(400, 494, 400, 540, "line"),
+		arrowPoly("400,494 400,516 647,516 647,540", "line"),
+	)
+	P = append(P, box(40, 540, 226, 110, "card", 12),
+		textF(153, 574, "ts", "SAME", ""),
+		textF(153, 602, "tc", "通过", ""),
+		textF(153, 626, "tc", "含双侧编译失败等价", ""),
+		box(287, 540, 226, 110, "card", 12),
+		textF(400, 574, "ts", "DIFF-known", ""),
+		textF(400, 602, "tc", "白名单放行", ""),
+		textF(400, 626, "tc", "case + digest 锁定", ""),
+		box(534, 540, 226, 110, "warn", 12),
+		textF(647, 574, "ts", "DIFF 非预期", ""),
+		textF(647, 602, "tc", "exit 1 · CI 即红", ""),
+		textF(647, 626, "tc", "无 Clang → exit 2", ""),
+	)
+	// 右列三卡：白名单纪律 / 语义要点 / vm_diff 分工
+	P = append(P, box(780, 128, 390, 192, "zone", 14),
+		textF(975, 160, "t", "白名单纪律（活文档）", ""),
+		textL(804, 192, "tc", "每条 = 用例名 + 差异 digest 锁定"),
+		textL(804, 218, "tc", "输出漂移 → digest 失配 → 降级红"),
+		textL(804, 244, "tc", "修复转绿 → 即红逼移除（只减不增）"),
+		textL(804, 270, "tc", "新增条目须先以 DIFF 形态露红"),
+		textL(804, 296, "tc", "CI 前置 --check-known 逐条复现"),
+	)
+	P = append(P, box(780, 340, 390, 170, "zone", 14),
+		textF(975, 372, "t", "三个语义要点（比对面）", ""),
+		textL(804, 404, "tc", "① 纯 stdout 通道：附注 / stderr 不进"),
+		textL(804, 430, "tc", "② stdin 注入：两侧同份字节"),
+		textL(804, 456, "tc", "③ Latin-1 归一：0xC8 → 0xC3 0x88 折回"),
+		textL(804, 482, "tc", "（U+0080–00FF 封闭域，无损可逆）"),
+	)
+	P = append(P, box(780, 530, 390, 170, "zone", 14),
+		textF(975, 562, "t", "与 vm_diff 五闸分工", ""),
+		textL(804, 594, "tc", "本防线：直面 Clang 活真值，"),
+		textL(804, 620, "tc", "抓引擎与真值的一切偏差"),
+		textL(804, 646, "tc", "vm_diff：对拍冻结 golden 抓回归"),
+		textL(804, 672, "tc", "互补：固化锚共同偏差逃不过 Clang"),
+	)
+	// 底：删区清算 + CI 形态横条 + 脚注
+	P = append(P, box(40, 726, 1120, 84, "warn", 12),
+		textF(600, 758, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役；语料域 698 例由本防线独挑", ""),
+		textF(600, 788, "tm", "shadow 685 ⊆ clang_direct 698 差量 0 · 白名单逐条平移 · 瞬态异常（超时 / 启动失败 / 0xC0000005）重试不落缓存", ""),
+	)
+	P = append(P, textF(600, 838, "tc", "对账 Clang直拍门禁.md §1–§5 · 漂移重生成： go run ./scripts/gen_svg shadow", ""))
 	writeSVG(root, "docs/current/04-标准库与防线/clang-direct-gate-flow.svg", P)
-
 }
 
 func genPackages(root string, fd factsDoc) {
@@ -917,7 +985,7 @@ func genProtocol(root string, _ factsDoc) {
 	)
 	P = append(P, box(800, 730, 370, 104, "zone", 12),
 		textF(985, 760, "t", "消费方", ""),
-		textL(820, 788, "tc", "serve JSON-lines · gateway wasm 绑定 · cmd/vitro api"),
+		textL(820, 788, "tc", "serve · gateway wasm · vitro api"),
 		textL(820, 812, "tc", "任何第三方语言按本 schema 自行解析"),
 	)
 	P = append(P,

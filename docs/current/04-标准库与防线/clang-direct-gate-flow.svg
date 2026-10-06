@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 836" role="img" aria-label="vitro Clang 直拍门禁流水线">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" role="img" aria-label="vitro Clang 直拍门禁流水线">
   <title>Clang 直拍框架 · 真值对照与 CI 硬门禁</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对齐 Clang直拍门禁.md（shadow → clang_direct 吸收，2026-10-05；文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/current/04-标准库与防线/Clang直拍门禁.md §1–§5（文件名随防线更名 clang-direct-gate-flow.svg）；结构图无数字锚（测试数见 README 机判行） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -31,12 +31,70 @@
       .tm, .tc { fill: #94A3AD; }
     }
   </style>
-  <rect class="bg" width="1200" height="836"/>
+  <rect class="bg" width="1200" height="860"/>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
+    </marker>
+  </defs>
 <text class="tt" x="600" y="54" text-anchor="middle">Clang 直拍 · 真值对照与 CI 硬门禁</text>
-<text class="tc" x="600" y="130" text-anchor="middle">真值源 = Clang 本尊（编译运行产 golden）</text>
-<text class="tc" x="600" y="165" text-anchor="middle">被测物 = MoonBit cmd/run（stdout + 返回码）</text>
-<text class="tc" x="600" y="200" text-anchor="middle">SAME=全量 / KNOWN=台账登记 / DIFF&gt;0 即红</text>
-<text class="th" x="600" y="250" text-anchor="middle">moon test 引擎白盒全绿（防线底座 · 数字见 README 机判行）</text>
-<text class="tm" x="600" y="300" text-anchor="middle">工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役</text>
-<text class="tm" x="600" y="330" text-anchor="middle">语料域 698 例由本防线独挑（shadow 685 ⊆ clang_direct 698 差量 0）</text>
+<text class="tm" x="600" y="94" text-anchor="middle">层 2 直拍活真值——「golden 固化锚 + 引擎」的共同偏差只有本防线兜得住（与 vm_diff 五闸互补）</text>
+<rect class="zone" x="40" y="128" width="720" height="66" rx="12"/>
+<text class="t" x="400" y="156" text-anchor="middle">语料 corpus/ 六目录全量</text>
+<text class="tc" x="400" y="182" text-anchor="middle">baseline · knr · leetcode · gap · codegen_skeleton · template_generated</text>
+<line class="line" x1="215" y1="194" x2="215" y2="238" marker-end="url(#ah)"/>
+<line class="line" x1="585" y1="194" x2="585" y2="238" marker-end="url(#ah)"/>
+<rect class="card" x="40" y="238" width="350" height="136" rx="12"/>
+<text class="ts" x="215" y="270" text-anchor="middle">Clang 本尊（真值源）</text>
+<text class="tc" x="215" y="298" text-anchor="middle">clang 编译 + 运行 → golden</text>
+<text class="tc" x="215" y="322" text-anchor="middle">stdout + 返回码 · golden 唯一来源</text>
+<text class="tc" x="215" y="346" text-anchor="middle">缓存：源码 + stdin + 版本 + 参数</text>
+<rect class="card" x="410" y="238" width="350" height="136" rx="12"/>
+<text class="ts" x="585" y="270" text-anchor="middle">MoonBit cmd/run（被测物）</text>
+<text class="tc" x="585" y="298" text-anchor="middle">stdout + 返回码</text>
+<text class="tc" x="585" y="322" text-anchor="middle">Latin-1 归一后折回单字节比对</text>
+<text class="tc" x="585" y="346" text-anchor="middle">exe 新鲜度门禁（MOON_CC=clang）</text>
+<polyline class="line" points="215,374 215,398 400,398 400,424" marker-end="url(#ah)"/>
+<polyline class="line" points="585,374 585,398 400,398 400,424" marker-end="url(#ah)"/>
+<rect class="card" x="140" y="424" width="520" height="70" rx="12"/>
+<text class="t" x="400" y="452" text-anchor="middle">逐字节比对（纯 stdout 通道）</text>
+<text class="tc" x="400" y="480" text-anchor="middle">引擎附注 / stderr 独立通道不进比对 · stdin 同份字节注入</text>
+<polyline class="line" points="400,494 400,516 153,516 153,540" marker-end="url(#ah)"/>
+<line class="line" x1="400" y1="494" x2="400" y2="540" marker-end="url(#ah)"/>
+<polyline class="line" points="400,494 400,516 647,516 647,540" marker-end="url(#ah)"/>
+<rect class="card" x="40" y="540" width="226" height="110" rx="12"/>
+<text class="ts" x="153" y="574" text-anchor="middle">SAME</text>
+<text class="tc" x="153" y="602" text-anchor="middle">通过</text>
+<text class="tc" x="153" y="626" text-anchor="middle">含双侧编译失败等价</text>
+<rect class="card" x="287" y="540" width="226" height="110" rx="12"/>
+<text class="ts" x="400" y="574" text-anchor="middle">DIFF-known</text>
+<text class="tc" x="400" y="602" text-anchor="middle">白名单放行</text>
+<text class="tc" x="400" y="626" text-anchor="middle">case + digest 锁定</text>
+<rect class="warn" x="534" y="540" width="226" height="110" rx="12"/>
+<text class="ts" x="647" y="574" text-anchor="middle">DIFF 非预期</text>
+<text class="tc" x="647" y="602" text-anchor="middle">exit 1 · CI 即红</text>
+<text class="tc" x="647" y="626" text-anchor="middle">无 Clang → exit 2</text>
+<rect class="zone" x="780" y="128" width="390" height="192" rx="14"/>
+<text class="t" x="975" y="160" text-anchor="middle">白名单纪律（活文档）</text>
+<text class="tc" x="804" y="192" text-anchor="start">每条 = 用例名 + 差异 digest 锁定</text>
+<text class="tc" x="804" y="218" text-anchor="start">输出漂移 → digest 失配 → 降级红</text>
+<text class="tc" x="804" y="244" text-anchor="start">修复转绿 → 即红逼移除（只减不增）</text>
+<text class="tc" x="804" y="270" text-anchor="start">新增条目须先以 DIFF 形态露红</text>
+<text class="tc" x="804" y="296" text-anchor="start">CI 前置 --check-known 逐条复现</text>
+<rect class="zone" x="780" y="340" width="390" height="170" rx="14"/>
+<text class="t" x="975" y="372" text-anchor="middle">三个语义要点（比对面）</text>
+<text class="tc" x="804" y="404" text-anchor="start">① 纯 stdout 通道：附注 / stderr 不进</text>
+<text class="tc" x="804" y="430" text-anchor="start">② stdin 注入：两侧同份字节</text>
+<text class="tc" x="804" y="456" text-anchor="start">③ Latin-1 归一：0xC8 → 0xC3 0x88 折回</text>
+<text class="tc" x="804" y="482" text-anchor="start">（U+0080–00FF 封闭域，无损可逆）</text>
+<rect class="zone" x="780" y="530" width="390" height="170" rx="14"/>
+<text class="t" x="975" y="562" text-anchor="middle">与 vm_diff 五闸分工</text>
+<text class="tc" x="804" y="594" text-anchor="start">本防线：直面 Clang 活真值，</text>
+<text class="tc" x="804" y="620" text-anchor="start">抓引擎与真值的一切偏差</text>
+<text class="tc" x="804" y="646" text-anchor="start">vm_diff：对拍冻结 golden 抓回归</text>
+<text class="tc" x="804" y="672" text-anchor="start">互补：固化锚共同偏差逃不过 Clang</text>
+<rect class="warn" x="40" y="726" width="1120" height="84" rx="12"/>
+<text class="tm" x="600" y="758" text-anchor="middle">工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役；语料域 698 例由本防线独挑</text>
+<text class="tm" x="600" y="788" text-anchor="middle">shadow 685 ⊆ clang_direct 698 差量 0 · 白名单逐条平移 · 瞬态异常（超时 / 启动失败 / 0xC0000005）重试不落缓存</text>
+<text class="tc" x="600" y="838" text-anchor="middle">对账 Clang直拍门禁.md §1–§5 · 漂移重生成： go run ./scripts/gen_svg shadow</text>
 </svg>

@@ -560,3 +560,23 @@ test "scanf_n_rejects_insufficient_args" {
     msg="文案与 oracle 同形（B43）",
   )
 }
+
+///|
+test "printf_zero_pad_sign_prefix_and_float_flags" {
+  // 审阅 P2-a 锚（2026-10-06）：零填充符号前置（C +0003/-0003——旧
+  // 000+3）+ 浮点臂 +/空格旗标（旧只传 d/i 臂）
+  let (map, mem) = fresh()
+  let (log, _) = printf_run(map, mem, "[ %+05d ][ %05d ][ %05.1f ]", [
+    (3).to_uint64(),
+    (-3).to_uint64(),
+    (-3.5).reinterpret_as_uint64(),
+  ])
+  assert_eq(log.join(OutputKind::Stdout), b"[ +0003 ][ -0003 ][ -03.5 ]")
+  let (map2, mem2) = fresh()
+  let (log2, _) = printf_run(map2, mem2, "[%+f][% g][%+g]", [
+    3.5.reinterpret_as_uint64(),
+    3.5.reinterpret_as_uint64(),
+    3.5.reinterpret_as_uint64(),
+  ])
+  inspect(log2.join(OutputKind::Stdout), content="b\"[+3.500000][ 3.5][+3.5]\"")
+}

@@ -251,7 +251,7 @@
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
         "printf_char.c": "af37cd32",
-        "printf_flags.c": "d18419fe",
+        "printf_flags.c": "7db9bc67",
         "ptr_arith_char.c": "e459e224",
         "ptr_arith_struct.c": "10a54327",
         "ptr_assign_deref.c": "4a524e0b",
@@ -1127,7 +1127,7 @@
           "result_sha": "52b9784267304dc8"
         },
         "printf_flags.c": {
-          "result_sha": "6c25faf505b35ade"
+          "result_sha": "4132b99ef6868d34"
         },
         "ptr_arith_char.c": {
           "result_sha": "2bfb8e96535d4512"
@@ -1524,40 +1524,40 @@
       },
       "cases": {
         "float_inf_literal.c": {
-          "result_sha": "2542b61e6a76c18f"
+          "result_sha": "e9a7f428680ff72e"
         },
         "func_identifier.c": {
-          "result_sha": "46b0eeccefccaa3c"
+          "result_sha": "bc9282a96f4aaf29"
         },
         "mini_char_array.c": {
-          "result_sha": "9d0fe1554666c939"
+          "result_sha": "a2180e54a397caae"
         },
         "mini_floats.c": {
-          "result_sha": "9ea68e202d5c0199"
+          "result_sha": "4cfb156ee9238dbd"
         },
         "mini_global_array.c": {
-          "result_sha": "315cbda126bfba63"
+          "result_sha": "10b6b98864fab5a9"
         },
         "mini_global_double.c": {
-          "result_sha": "a4794b3875b20056"
+          "result_sha": "0a4f0c09c4bbe339"
         },
         "mini_global_int.c": {
-          "result_sha": "174209f55abd5b1a"
+          "result_sha": "3beaa3a399c55960"
         },
         "mini_goto.c": {
-          "result_sha": "61e3a8eb5ab159ea"
+          "result_sha": "3332162675949adb"
         },
         "mini_long.c": {
-          "result_sha": "9d51bc9a666642f6"
+          "result_sha": "21af2053d594badb"
         },
         "mini_string.c": {
-          "result_sha": "454376a4866127b0"
+          "result_sha": "04435234b9f07530"
         },
         "mini_struct.c": {
-          "result_sha": "fd5ec59f354240e2"
+          "result_sha": "a30da1c5addb8554"
         },
         "mini_two_funcs.c": {
-          "result_sha": "5e16988d3ec79ea5"
+          "result_sha": "e687b17e0e94cade"
         },
         "ull_overflow_2p64.c": {
           "fail": true,

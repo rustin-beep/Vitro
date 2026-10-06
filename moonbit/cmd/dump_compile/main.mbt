@@ -187,7 +187,10 @@ fn dirname_of(path : String) -> String {
 ///|
 fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
   for name in @fs.read_dir(dir) {
-    let full = "\{dir}/\{name}"
+    // 审阅 P2-b（2026-10-06）：dir 为 "."（裸名/./x.c 形态的 dirname_of 产物）
+    // 时键用裸名——与 resolver 候选键经 normalize_path（丢 "." 段）一致；
+    // 旧 "./hdr.h" 键结构性失配致同目录 include 恒 lex-fail
+    let full = if dir == "." { name } else { "\{dir}/\{name}" }
     let sub_is_dir = @fs.is_dir(full) catch { _ => false }
     if sub_is_dir {
       collect_files(full, vfs)

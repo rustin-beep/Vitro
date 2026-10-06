@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第七轮审阅处置：P1 skeleton 漏刷 / P2-a printf 符号位 / P2-b dump 裸名键 / P3 两条，2026-10-06）
+
+- **P1 codegen_skeleton golden 漏刷**（CI 硬红）：路由改判 2→5 的重刷覆盖四语料 595 例**漏了第五语料 skeleton 13 例**（CI 单独一条命令）——13 例删键重入 PASS。形态教训（E2 同族面）：「重刷 M 例」的 M 精确等于某子集时反查第六个语料/第二条命令
+- **P2-a printf 零填充符号位与浮点旗标**：零填充时符号（+/空格/-）前置 pad 前（C `+0003`/`-0003`/`-03.5`——旧 `000+3` 符号被推到填充后）；浮点臂（f/g/G）补传 signed_pos（旧只传 d/i 臂致 `%+f`/`% g`/`%+g` 符号未生效）；clang 矩阵四行逐行一致 + 语料 printf_flags.c 扩回避面（%+05d/%05d 负/%05.1f/浮点旗标）+ wbtest 双锚
+- **P2-b dump 工具裸名/./x.c 形态盲区**：collect_files 在 dir="."（裸名 dirname_of 产物）时键用裸名——与 resolver 候选键经 normalize_path（丢 "." 段）一致；旧 "./hdr.h" 键结构性失配致同目录 include 恒 lex-fail（CI 语料路径全含目录段零闸）；四工具同修，裸名探针 ok:true 实证
+- **P3-1 editorconfig 复发**：ledger/rules 尾换行被后续 json.dump 写回（工作流缺陷）+ 全仓 scripts JSON 排查补 10 文件；**工作流修正：json.dump 后恒 append 换行**（editorconfig 机判闸仍缺，#47 批五在案）
+- **P3-2 strtol endptr 位点差异记录**（纪律 4）："0x"/"0x!" base=0 形态 Clang(UCRT) off=0 vs 本实现 off=1——返回值两侧全对、C 标准 §7.22.1.4 subject sequence 口径**本实现更对**（UCRT 实现差异）——不对齐，差异注记在案
+- **判定修正收到**：const 修复的锚在差分面（strtol_prefix.c 语料）非单测——突变注入 D 项实证
+
 ### Added（统一 CLI 入口：默认 wasm-gc 降级 native——#49 批一，2026-10-06）
 
 - **统一入口 launcher**：`scripts/bin/vitro`（sh）+ `vitro.cmd`（纯 ASCII——cmd.exe 按 OEM 代码页解析，UTF-8 字节吃命令）——默认 **wasm 臂**（node 壳消费 `gateway/wasm/wasm.wasm`，与 demo 同产物），node 缺失/过旧（壳 exit 3 哨兵）自动降级 native exe，stderr 恒明示 `backend=` 行；`--backend native|wasm` 显式选边（排查用）

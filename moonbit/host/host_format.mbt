@@ -275,6 +275,16 @@ fn apply_width(
   }
   if left_align {
     body + pad
+  } else if zero_pad {
+    // 零填充时符号（+/空格/-）前置 pad 前（C：+0003 / -0003——审阅 P2-a：
+    // 旧 pad+body 把符号推到填充后成 000+3）
+    let first = body[0].to_int()
+    if body.length() > 0 && (first == 43 || first == 45 || first == 32) {
+      let sym = body[0:1].to_owned()
+      sym + pad + body[1:].to_owned()
+    } else {
+      pad + body
+    }
   } else {
     pad + body
   }
@@ -746,7 +756,14 @@ fn format_printf_string(
                     Some(pr) => pr
                     None => 6
                   }
-                  push_str(apply_width(format_fixed(f, pr), width, flags))
+                  push_str(
+                    apply_width(
+                      format_fixed(f, pr),
+                      width,
+                      flags,
+                      signed_pos=true,
+                    ),
+                  )
                 } else if spec == 103 {
                   // g
                   let f = arg.reinterpret_as_double()
@@ -754,7 +771,14 @@ fn format_printf_string(
                     Some(pr) => pr
                     None => 6
                   }
-                  push_str(apply_width(format_g(f, pr, false), width, flags))
+                  push_str(
+                    apply_width(
+                      format_g(f, pr, false),
+                      width,
+                      flags,
+                      signed_pos=true,
+                    ),
+                  )
                 } else if spec == 71 {
                   // G
                   let f = arg.reinterpret_as_double()
@@ -762,7 +786,14 @@ fn format_printf_string(
                     Some(pr) => pr
                     None => 6
                   }
-                  push_str(apply_width(format_g(f, pr, true), width, flags))
+                  push_str(
+                    apply_width(
+                      format_g(f, pr, true),
+                      width,
+                      flags,
+                      signed_pos=true,
+                    ),
+                  )
                 } else if spec == 115 {
                   // s：字节原样（DIFF-LIB-PRINTF-01——旧 decode_lossy 对
                   // 非 UTF-8 字节串有损）+ %.Ns 精度截断（旧忽略精度）+

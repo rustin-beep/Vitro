@@ -165,6 +165,11 @@ func main() {
 	}
 
 	// ── B 组：双臂同形对拍（核心锚——差异消灭的机判）────────────
+	//（编译错+warning 用例：审阅 P2 补——失败路径 type_warnings 透出〔gateway
+	// serve_compile typeck-error 分支〕；scanf 用例：审阅 P3 补——--corpus 30
+	// 字典序不含 scanf，批一段一修的 headless 分叉族无 CI 回归锚）
+	warnC := filepath.Join(tmpDir, "warn_case.c")
+	os.WriteFile(warnC, []byte("int main(){ int *p; char *c = p; int y = c; return y; }\n"), 0o644)
 	for _, c := range []struct {
 		name string
 		file string
@@ -172,6 +177,8 @@ func main() {
 		{"普通用例", plainC},
 		{"trap 用例", trapC},
 		{"quote-include 双文件", incC},
+		{"编译错+类型警告（失败路径诊断）", warnC},
+		{"scanf EOF（headless 语义）", filepath.Join(repoRoot, "corpus", "baseline", "scanf_return_value.c")},
 	} {
 		relPath, _ := filepath.Rel(repoRoot, c.file)
 		relPath = filepath.ToSlash(relPath)
@@ -183,8 +190,9 @@ func main() {
 		wasmOut, natOut = stripBackendLine(wasmOut), stripBackendLine(natOut)
 		if wasmOut != natOut {
 			fatalf("B[双臂对拍] %s: stdout/stderr 不一致\n--- wasm ---\n%s\n--- native ---\n%s", c.name, wasmOut, natOut)
+		} else {
+			fmt.Printf("ok  B[双臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
 		}
-		fmt.Printf("ok  B[双臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
 	}
 
 	// B 组附：1MB 映像双臂对拍（--dump-memory——memory.dump 帧链路，
@@ -199,19 +207,17 @@ func main() {
 		_, nrc := runOut(nativeExe, "run", "corpus/baseline/bubble_sort.c", "--dump-memory", filepath.ToSlash(natDump))
 		if wrc != 0 || nrc != 0 {
 			fatalf("B[映像对拍] rc 异常 wasm=%d native=%d", wrc, nrc)
-		}
-		wb, err1 := os.ReadFile(wasmDump)
-		nb, err2 := os.ReadFile(natDump)
-		if err1 != nil || err2 != nil {
-			fatalf("B[映像对拍] dump 文件读取失败 wasm=%v native=%v", err1, err2)
-		}
-		if len(wb) != 1024*1024 {
+		} else if wb, err1 := os.ReadFile(wasmDump); err1 != nil {
+			fatalf("B[映像对拍] dump 文件读取失败 wasm=%v", err1)
+		} else if nb, err2 := os.ReadFile(natDump); err2 != nil {
+			fatalf("B[映像对拍] dump 文件读取失败 native=%v", err2)
+		} else if len(wb) != 1024*1024 {
 			fatalf("B[映像对拍] wasm dump 尺寸 %d ≠ 1MB", len(wb))
-		}
-		if !bytes.Equal(wb, nb) {
+		} else if !bytes.Equal(wb, nb) {
 			fatalf("B[映像对拍] 1MB 映像逐字节不一致（首差 offset=%d）", firstDiff(wb, nb))
+		} else {
+			fmt.Println("ok  B[映像对拍] 1MB dump 双臂逐字节一致（memory.dump 帧）")
 		}
-		fmt.Println("ok  B[映像对拍] 1MB dump 双臂逐字节一致（memory.dump 帧）")
 	}
 
 	// B 组扩面：语料级双臂对拍（--corpus N；#49 批二）——同判定口径
@@ -245,42 +251,46 @@ func main() {
 			wasmOut, natOut = stripBackendLine(wasmOut), stripBackendLine(natOut)
 			if wasmOut != natOut {
 				fatalf("B[语料对拍] %s: 输出不一致\n--- wasm ---\n%s\n--- native ---\n%s", name, wasmOut, natOut)
+			} else {
+				pass++
 			}
-			pass++
 		}
-		fmt.Printf("ok  B[语料对拍] 前 %d 例（字典序）双臂同形\n", pass)
+		if failures == 0 {
+			fmt.Printf("ok  B[语料对拍] 前 %d 例（字典序）双臂同形\n", pass)
+		}
 	}
 
-	// ── C 组：launcher 语义 ─────────────────────────────────────
+	// ── C 组：launcher 语义（fatalf 不终止——ok 行须 else 门控，失败时
+	// 不打印自相矛盾的「ok」）─────────────────────────────────────
 	shLauncher := filepath.Join(repoRoot, "scripts", "bin", "vitro")
 	outL, rcL := runOut("sh", shLauncher, "run", "corpus/baseline/array_sum_loop.c")
 	if rcL != 0 {
 		fatalf("C[launcher sh] 默认臂 rc=%d", rcL)
-	}
-	if !strings.Contains(outL, "backend=wasm") {
+	} else if !strings.Contains(outL, "backend=wasm") {
 		fatalf("C[launcher sh] 默认臂缺 backend=wasm 标注：%s", outL)
+	} else {
+		fmt.Println("ok  C[launcher sh] 默认臂 backend 标注")
 	}
-	fmt.Println("ok  C[launcher sh] 默认臂 backend 标注")
 
 	outN, rcN := runOut("sh", shLauncher, "--backend", "native", "run", "corpus/baseline/array_sum_loop.c")
 	if rcN != 0 {
 		fatalf("C[launcher sh] --backend native rc=%d", rcN)
-	}
-	if !strings.Contains(outN, "backend=native") || !strings.Contains(outN, "程序运行完成") {
+	} else if !strings.Contains(outN, "backend=native") || !strings.Contains(outN, "程序运行完成") {
 		fatalf("C[launcher sh] --backend native 输出异常：%s", outN)
+	} else {
+		fmt.Println("ok  C[launcher sh] --backend native 转发")
 	}
-	fmt.Println("ok  C[launcher sh] --backend native 转发")
 
 	// cmd 形态仅 Windows 断言（CI 双 runner 覆盖；sh 版全平台）
 	if runtime.GOOS == "windows" {
 		outC, rcC := runOut("cmd.exe", "/c", filepath.Join(repoRoot, "scripts", "bin", "vitro.cmd"), "run", "corpus/baseline/array_sum_loop.c")
 		if rcC != 0 {
 			fatalf("C[launcher cmd] 默认臂 rc=%d：%s", rcC, outC)
-		}
-		if !strings.Contains(outC, "backend=wasm") {
+		} else if !strings.Contains(outC, "backend=wasm") {
 			fatalf("C[launcher cmd] 默认臂缺 backend 标注：%s", outC)
+		} else {
+			fmt.Println("ok  C[launcher cmd] 默认臂（Windows）")
 		}
-		fmt.Println("ok  C[launcher cmd] 默认臂（Windows）")
 	}
 
 	if failures > 0 {

@@ -18,7 +18,7 @@
 // （L6）**：与固定索引同层同域（"调用形态的产物层决定"）；host(L7) 与
 // codegen(L6) 各自向 L6 消费，无反向依赖。
 //
-// 源：../native/crates/vitro_runtime/src/host_func_id.rs（冻结区，只读）。
+// 源真值：本目录 host_func_id.snapshot.rs（冻结快照——Rust 区 2026-10-05 删区后随批迁出；原始路径 native/crates/vitro_runtime/src/host_func_id.rs 已随删区消失，git 历史/tag rust-oracle-freeze 可回溯）。
 // 源 sha256 前 8 位落款进产物头；源变须重新生成（-check 在 CI/审阅防漂移）。
 //
 // 幂等：同源重复运行产物字节一致（无时间戳）；行尾归一后取 sha（LF/CRLF

@@ -308,6 +308,17 @@ fn serve_compile_pipeline(
       rows.push((e.code, e.line, e.column, e.message))
     }
     push_code_errors(s, rows, 0, ranges, source_lines)
+    // 失败路径的 type_warnings 同帧透出（2026-10-06 审阅 P2：此前早退丢弃
+    // ——native cli_run 的 typeck-error 分支显式输出 warns，壳逐帧渲染即
+    // 拿不到；「错误 + 警告」同出对齐 native 失败路径形态。帧序 [lexW,
+    // typeckE, typeckW] 与壳三轮渲染（E→W）合成 native 同序）
+    let wrows : Array[(Int, Int, Int, String)] = []
+    for w in type_warnings {
+      wrows.push((w.code, w.line, w.column, w.message))
+    }
+    if !wrows.is_empty() {
+      push_code_errors(s, wrows, 1, ranges, source_lines)
+    }
     st.errors = st.errors + "类型错误\n"
     return false
   }

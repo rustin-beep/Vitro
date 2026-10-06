@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#49 六连提交用户审阅处置：P1 测试数连坐 / P2×2 / P3×4——typeck 警告裁定 b 方向，2026-10-06）
+
+- **P1 测试数连坐（CI 硬红）**：`b6b77725`/`1915401f` 新增测试（util base64 锚 + gateway memory.dump 锚）未回填——moonbit 双 README 五处（672/791/666/util 9/native-only 119 含 gateway 96）+ 根 README/快速入门/路线图/标准库四文档 670→672 全刷；`facts --run` 刷新零漂移；`testcount` PASS（处置中自抓一坑：gateway 96 括号注解破坏锚正则直连形态——注解挪锚行外）
+- **P2 编译失败路径 typeck 警告（裁定 b 方向，用户拍板）**：gateway `serve_compile` typeck-error 分支补 push `type_warnings`——oracle 失败路径丢 typeck 警告定性为 **oracle 缺陷**（rust 实现顺序自然形成；Clang 语义实证「error 存在时 warning 不丢」〔`-Wall` 下 unused warning 与 errors 并存〕+ CLI 批 #16「警告不丢」设计意图 + #47 定位三重依据，tag 直读 oracle 判据在 #47 病条目）；帧序 [lexW, typeckE, typeckW] 与 native 失败路径输出序同构——**两出口单一真相**；对拍闸 B 组补「编译错+类型警告（失败路径诊断）」+「scanf EOF（headless 语义）」用例（编译错路径此前零 CI 覆盖）
+- **P2 判定型闸失败仍打 ok（D21 同族）**：vitro_cli_smoke 的 B fixture/B 映像/B 语料（pass++ 入 else + 汇总行加 failures 门控）/C 组全部 else 门控——失败时不再出现「FAIL 与 ok 同形并存」
+- **P3×4**：`moonbit_exemptions.json` 缩进 2 空格重写（E6 第三次复发）；CHANGELOG 批一条目 `--dump-memory` 加更新注消同段自相矛盾（E4）；`gen_host_route` 头注 + `baselines.json` 旧 Rust 路径改指 snapshot 冻结快照（tag 可回溯）；scanf CI 回归锚（随 P2 用例）
+- **CI 红（gen_libc_data -check，1915401f 的 run）**：`f8d6c7d2` 的 P3-1「全仓 scripts JSON 排查补 10 文件」把 `libc_data/bytecode_libc_data.json` 一并 `json.dump` 规范化重写——语义零变但 sha 变，**未重跑生成器**致产物头 sha 漂移（干净检出即红；本地此前未跑该 -check 属验证缺口）。修复 = 重跑 `gen_libc_data` 刷产物（diff 仅 sha 行）；连坐教训：json.dump 批次凡涉及「生成器输入源」必须连带跑该生成器 -check
+
 ### Added（#49 批三段二：teaching wasm 臂 + 迁移面收口裁定，2026-10-06）
 
 - **teaching_annotation_diff `--backend-wasm`**：82/82 模板 golden 一致（serve 驱动同款插座）；CI 接入（wasm 臂族至此六防线 + 双臂对拍闸）
@@ -53,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added（统一 CLI 入口：默认 wasm-gc 降级 native——#49 批一，2026-10-06）
 
 - **统一入口 launcher**：`scripts/bin/vitro`（sh）+ `vitro.cmd`（纯 ASCII——cmd.exe 按 OEM 代码页解析，UTF-8 字节吃命令）——默认 **wasm 臂**（node 壳消费 `gateway/wasm/wasm.wasm`，与 demo 同产物），node 缺失/过旧（壳 exit 3 哨兵）自动降级 native exe，stderr 恒明示 `backend=` 行；`--backend native|wasm` 显式选边（排查用）
-- **wasm 壳四子命令**（`scripts/vitro_cli/main.js`）：run/compile/step/api 参数面与 rc 五值表对齐 CLI_PROTOCOL_V1（api `--batch` 整帧透传状态跨帧；run `--json` 事件流行带 backend 字段）；stdout 字节还原（Latin-1 逆折回 `Buffer.from(…,'latin1')`——与 native C stub fwrite 逐字节一致）；`--dump-memory` wasm 臂暂缺（协议无 1MB 映像导出面，spec §3 既有登记——映像联走 `--backend native`）
+- **wasm 壳四子命令**（`scripts/vitro_cli/main.js`）：run/compile/step/api 参数面与 rc 五值表对齐 CLI_PROTOCOL_V1（api `--batch` 整帧透传状态跨帧；run `--json` 事件流行带 backend 字段）；stdout 字节还原（Latin-1 逆折回 `Buffer.from(…,'latin1')`——与 native C stub fwrite 逐字节一致）；`--dump-memory` wasm 臂暂缺（协议无 1MB 映像导出面，spec §3 既有登记——映像联走 `--backend native`。**〔更新注 2026-10-06 审阅 P3：批二 memory.dump 帧落地后已支持——本行系批一时点状态原样保留〕**）
 - **CI 闸 `scripts/vitro_cli_smoke`**（Go 判定型）：壳 rc 契约 9 断言 + **双臂同形对拍**（壳 vs native exe 三用例逐行一致——差异消灭的机判锚，唯一剥离 = backend 标注行，零 canonicalize 特例）+ launcher 双形态语义；J9 证红（篡改壳 note 前缀 → 对拍红）留痕；CI 步随带 cmd/vitro native 构建（core job 此前从不构建）
 - AGENTS.md 纪律 12 改向统一入口；CLI 手册补统一入口节
 

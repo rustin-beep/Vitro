@@ -101,8 +101,18 @@ pub fn TypeChecker::is_comparable(
   ignore(self)
   let ak = a.kind()
   let bk = b.kind()
-  let a_num = ak is TK_Int || ak is TK_Char || ak is TK_Float || ak is TK_Double
-  let b_num = bk is TK_Int || bk is TK_Char || bk is TK_Float || bk is TK_Double
+  // issue #6（2026-10-06）：整数家族含 long long（uint64_t == int 等混合
+  // 宽度相等比较合法，C11 §6.5.9）
+  let a_num = ak is TK_Int ||
+    ak is TK_LongLong ||
+    ak is TK_Char ||
+    ak is TK_Float ||
+    ak is TK_Double
+  let b_num = bk is TK_Int ||
+    bk is TK_LongLong ||
+    bk is TK_Char ||
+    bk is TK_Float ||
+    bk is TK_Double
   if a_num && b_num {
     return true
   }
@@ -425,6 +435,17 @@ pub fn TypeChecker::check_assignable(
 ) -> Bool {
   if @ast.type_eq(target, value) {
     return true
+  }
+  // 源侧顶层 const 剥离（issue #17 根因，2026-10-06）：赋值兼容按
+  // C11 §6.5.16.1 以 **unqualified** 类型比较——`*src`（const struct E*
+  // 解引用，带 const 限定）值拷贝给 `*dst` 合法（const 只禁写源对象，
+  // 不禁读拷贝）；旧 type_eq 严格等致同名 struct 双红 E3044。目标侧
+  // const 不剥（写 const 目标由既有警告机制管）
+  let value_unqualified = strip_top_const(value)
+  if !@ast.type_eq(value_unqualified, value) {
+    if @ast.type_eq(target, value_unqualified) {
+      return true
+    }
   }
   if self.check_array_pointer_assignable(target, value) {
     return true

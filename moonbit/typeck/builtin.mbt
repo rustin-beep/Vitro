@@ -595,7 +595,9 @@ fn TypeChecker::check_builtin_getchar(
 }
 
 ///|
-/// ungetc（两 int 参）。
+/// ungetc(int c, FILE* stream)——issue #18 销案（2026-10-06）：第 2 参
+/// 是 FILE*（旧把两参都当 int 查——fopen 返回的 FILE* 直传即 E3029、
+/// int 字面量反而通过的索引/类型错位）。
 fn TypeChecker::check_builtin_ungetc(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -603,7 +605,15 @@ fn TypeChecker::check_builtin_ungetc(
 ) -> @ast.Type {
   if self.builtin_check_count(args, 2, "ungetc", loc) {
     self.builtin_check_int(args, 0, "ungetc", loc)
-    self.builtin_check_int(args, 1, "ungetc", loc)
+    let (stream_type, new_a1) = self.resolve_expr_type(args[1])
+    args[1] = new_a1
+    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
+      self.report_error(
+        "ungetc 的第 2 个参数必须是 FILE*（文件指针）",
+        loc,
+        E3029_BuiltInArgType,
+      )
+    }
   }
   @ast.Type::int()
 }

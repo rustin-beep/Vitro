@@ -289,11 +289,11 @@ fn Scanner::number(self : Scanner, start : Int) -> @token.Token {
     } else if fits_i64(val) {
       self.make_token(LongLiteral, val_str, start)
     } else {
-      self.err(
-        "整数常量 \{val_str} 超出可表示范围",
-        E1006_UnsupportedFeature,
-      )
-      self.make_token(Number, "0", start)
+      // issue #24 销案（2026-10-06）：hex/oct/bin 无后缀的 C11 候选类型
+      // 序列含 unsigned long long（§6.4.4.1——BLAKE2b IV 级大常量）——
+      // 64 位位模式承载为 UnsignedLiteral；十进制无后缀不含 unsigned 档
+      //（293 行路径维持报错——DIFF-LEX-DECL-BIGCONST-01 的十进制面）
+      self.make_token(UnsignedLiteral, val_str, start)
     }
     // Decimal 无后缀：不自动升 unsigned
   } else if fits_i32(val) {

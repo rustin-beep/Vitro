@@ -176,29 +176,38 @@ fn TypeChecker::resolve_identifier(
           // 函数名作值使用（函数指针）
           @ast.Type::function_pointer(sym.return_type, sym.param_types)
         None =>
-          // 隐式 this->field 改写（C++ name hiding——剔除登记，S9）
-          if name == "__func__" {
-            // C99 __func__（E1 B 档）：按 const char 数组定型（退化语义
-            // 同字符串字面量）；值由 codegen 发射当前函数名。名字长度
-            // 运行期才定，占位即可。**ty 不写回**（提前 return 照搬——
-            // E4 dump 节点保持占位 Void）
-            let n = name.length()
-            let arr = @ast.Type::Array(
-              Char(false, false),
-              n,
-              [n],
-              true,
-              false,
-              [],
-            )
-            return (arr, Identifier(name, loc, orig_ty))
-          } else {
-            self.report_error(
-              "未声明的变量 '\{name}'",
-              loc,
-              E3023_UndeclaredVar,
-            )
-            @ast.Type::int()
+          // issue #5 销案（2026-10-06）：static 函数名作值（`int (*fp)(int)
+          // = helper;`）——static 注册在 static_func_sigs（funcs miss 后
+          // 补查；旧直接 E3023「未声明的变量」）。同文件可见性检查豁免
+          //（E3058 检查在声明消费侧，值使用侧不重复）
+          match self.static_func_sigs.get(name) {
+            Some(sym) =>
+              @ast.Type::function_pointer(sym.return_type, sym.param_types)
+            None =>
+              // 隐式 this->field 改写（C++ name hiding——剔除登记，S9）
+              if name == "__func__" {
+                // C99 __func__（E1 B 档）：按 const char 数组定型（退化语义
+                // 同字符串字面量）；值由 codegen 发射当前函数名。名字长度
+                // 运行期才定，占位即可。**ty 不写回**（提前 return 照搬——
+                // E4 dump 节点保持占位 Void）
+                let n = name.length()
+                let arr = @ast.Type::Array(
+                  Char(false, false),
+                  n,
+                  [n],
+                  true,
+                  false,
+                  [],
+                )
+                return (arr, Identifier(name, loc, orig_ty))
+              } else {
+                self.report_error(
+                  "未声明的变量 '\{name}'",
+                  loc,
+                  E3023_UndeclaredVar,
+                )
+                @ast.Type::int()
+              }
           }
       }
   }

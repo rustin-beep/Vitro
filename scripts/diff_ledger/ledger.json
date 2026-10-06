@@ -324,9 +324,7 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [
-          "keyword_compat.c"
-        ],
+        "clang_direct_known": [],
         "vm_diff_known": []
       },
       "detectable_by_defense": [

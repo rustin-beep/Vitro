@@ -29,15 +29,21 @@ fn TypeChecker::resolve_binary(
         left_type.is_array()
       let right_is_ptrlike = right_type.kind() is TK_Pointer ||
         right_type.is_array()
+      // issue #6 销案（2026-10-06）：指针 ± **任何**整数类型（C11 §6.5.6
+      // ——char* + uint64_t 等合法；旧 is_int 限窄致 E3016；复合赋值臂
+      // ptr_compound_ok 已是 is_int||LongLong 宽口径——普通臂对齐）
+      let any_int = self.is_int(left_type) || left_type.kind() is TK_LongLong
+      let right_any_int = self.is_int(right_type) ||
+        right_type.kind() is TK_LongLong
       if self.is_scalar(left_type) && self.is_scalar(right_type) {
         promote_type(left_type, right_type)
-      } else if left_is_ptrlike && self.is_int(right_type) {
+      } else if left_is_ptrlike && right_any_int {
         if left_type.is_array() {
           @ast.Type::pointer_to(left_type.subscript_type())
         } else {
           left_type
         }
-      } else if self.is_int(left_type) && right_is_ptrlike && op is Add {
+      } else if any_int && right_is_ptrlike && op is Add {
         if right_type.is_array() {
           @ast.Type::pointer_to(right_type.subscript_type())
         } else {
@@ -177,16 +183,40 @@ fn TypeChecker::resolve_ternary(
   }
   let then_decayed = decay(then_type)
   let else_decayed = decay(else_type)
-  if then_decayed.kind() != else_decayed.kind() ||
-    then_decayed.name() != else_decayed.name() ||
-    !@ast.type_eq(then_decayed, else_decayed) {
+  // issue #9 销案（2026-10-06）：算术分支做 usual arithmetic conversions
+  //（C11 §6.5.15——`x > 0 ? 2 : 3.5` 统一为 double；旧要求分支严格同型
+  // 致混合数值三目全灭）。指针/数组分支与同型 struct 仍要求严格一致；
+  // void/void 允许（副作用三目）。
+  let result_type : @ast.Type = if @ast.type_eq(then_decayed, else_decayed) {
+    then_decayed
+  } else if then_decayed.kind() is TK_Void && else_decayed.kind() is TK_Void {
+    @ast.Type::void_type()
+  } else if self.is_scalar(then_decayed) &&
+    self.is_scalar(else_decayed) &&
+    !(then_decayed.kind() is TK_Pointer) &&
+    !(else_decayed.kind() is TK_Pointer) {
+    promote_type(then_decayed, else_decayed)
+  } else {
     self.report_error(
       "三目运算符分支类型不匹配",
       loc,
       E3004_TypeMismatch,
     )
+    then_decayed
   }
-  (then_decayed, Ternary(new_cond, new_then, new_else, loc, then_decayed))
+  // 分支值按统一类型插转换（issue #9：混合数值三目——typeck 统一了类型，
+  // codegen 按结果类型装载，分支须显式升位（int 分支 → double 等））
+  let new_then2 = if @ast.type_eq(then_decayed, result_type) {
+    new_then
+  } else {
+    insert_implicit_cast(new_then, result_type)
+  }
+  let new_else2 = if @ast.type_eq(else_decayed, result_type) {
+    new_else
+  } else {
+    insert_implicit_cast(new_else, result_type)
+  }
+  (result_type, Ternary(new_cond, new_then2, new_else2, loc, result_type))
 }
 
 ///|

@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批三-b 段一：typeck 假阳性七连——#5/#6/#9/#17/#18/#23/#24 销案，2026-10-06）
+
+- **#17 struct 解引用整体赋值同名双红**：赋值兼容按 C11 §6.5.16.1 以 **unqualified** 类型比较——源侧顶层 const 剥离（`*dst = *src` 的 src 经 const struct E* 解引用带限定，值拷贝合法；目标侧不剥——写 const 目标由既有警告机制管）
+- **#24 hex 大常量**：hex/oct/bin 无后缀档位序列补 ULL 档（C11 §6.4.4.1 候选序列含 unsigned long long——BLAKE2b IV 级；十进制无后缀不含 unsigned 档维持报错）
+- **#18 ungetc 索引错位**：第 2 参改查 FILE*（旧两参都当 int——fopen 返回的 FILE* 直传 E3029、int 字面量反过的索引/类型错位）
+- **#23 形参顶层 const**：params_eq 与返回类型比对双侧剥顶层 const（C11 §6.7.6.3(15) 顶层限定符不参与函数类型兼容；嵌套 const（const char* pointee）仍参与）
+- **#6 指针算术与整数比较**：指针 ± **任何**整数类型（§6.5.6——旧 is_int 限窄，复合赋值臂本已是宽口径的普通臂对齐）；is_comparable 整数家族补 long long（§6.5.9 混合宽度相等比较）
+- **#9 三目类型统一**：算术分支做 usual arithmetic conversions（§6.5.15——`x > 0 ? 2 : 3.5` 统一 double，分支插 implicit cast；指针/void/异类仍严格；旧严格同型 E3004 锚翻转为统一断言 + 真不匹配反锚 char* vs int）
+- **#5 static 函数名作值**：funcs miss 后补查 static_func_sigs（`int (*fp)(int) = helper;`——函数指针类型构造同款）
+- 附：keyword_compat.c 转绿后 known_direct 空转条目清理（双向监控催账兑现）+ ledger anchors 连坐
+
 ### Fixed（S9 修复批批三-a：parser 假阳性五连——issue #4/#7/#11/#12/#15 销案，2026-10-06）
 
 - **#4 初始化列表尾逗号**：`, }` 形态 C89/C11 合法（§6.7.9）——Comma 后紧跟 RBrace 即收口；函数实参表不修（C23 前不合法，形态边界在案）

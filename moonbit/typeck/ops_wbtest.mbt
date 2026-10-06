@@ -80,10 +80,16 @@ test "resolve_ternary_decay" {
     _ => fail("两 char 数组三目应 decay 统一 char*")
   }
   assert_eq(tc.errors.length(), 0)
-  // 分支不匹配：int vs double——decay 后仍异 → E3004
+  // issue #9 翻转（2026-10-06）：int vs double 算术分支做 usual
+  // arithmetic conversions 统一为 double（零错——旧严格同型 E3004 系
+  // 两侧同病照搬，Clang `x ? 2 : 3.5` 合法）
   let lit = @ast.Expr::Literal(1, loc, @ast.Type::int())
   let flit = @ast.Expr::FloatLiteral(2.0, loc, @ast.Type::double())
-  let _ = tc.resolve_ternary(cond, lit, flit, loc)
+  let (uty, _) = tc.resolve_ternary(cond, lit, flit, loc)
+  assert_eq(tc.errors.length(), 0, msg="混合数值三目统一非报错")
+  assert_true(uty.kind() is TK_Double, msg="统一结果为 double")
+  // 真不匹配形态：char* vs int（指针与算术不统一）→ E3004 仍在
+  let _ = tc.resolve_ternary(cond, s1, lit, loc)
   assert_eq(tc.errors.length(), 1)
   assert_true(tc.errors[0].code == 3004)
 }

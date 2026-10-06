@@ -174,7 +174,10 @@ pub fn TypeChecker::check(
     if f.is_static {
       match self.static_func_sigs.get(f.name) {
         Some(existing) =>
-          if !@ast.type_eq(existing.return_type, new_sym.return_type) ||
+          if !@ast.type_eq(
+              strip_top_const(existing.return_type),
+              strip_top_const(new_sym.return_type),
+            ) ||
             !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
@@ -191,7 +194,10 @@ pub fn TypeChecker::check(
     } else {
       match self.funcs.get(f.name) {
         Some(existing) =>
-          if !@ast.type_eq(existing.return_type, new_sym.return_type) ||
+          if !@ast.type_eq(
+              strip_top_const(existing.return_type),
+              strip_top_const(new_sym.return_type),
+            ) ||
             !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
@@ -314,7 +320,10 @@ fn params_eq(a : Array[@ast.Type], b : Array[@ast.Type]) -> Bool {
     return false
   }
   for i in 0..<a.length() {
-    if !@ast.type_eq(a[i], b[i]) {
+    // issue #23 销案（2026-10-06）：形参**顶层** const 差异不构成签名
+    // 不一致（C11 §6.7.6.3(15)——顶层限定符不参与函数类型兼容；两侧都
+    // 剥再比）。嵌套 const（const char* 的 pointee const）参与比较不动
+    if !@ast.type_eq(strip_top_const(a[i]), strip_top_const(b[i])) {
       return false
     }
   }

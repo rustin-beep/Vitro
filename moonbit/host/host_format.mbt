@@ -713,7 +713,11 @@ fn format_printf_string(
                     }
                   } else {
                     width = Some(
-                      if w > PRINTF_FIELD_BUDGET { PRINTF_FIELD_BUDGET } else { w },
+                      if w > PRINTF_FIELD_BUDGET {
+                        PRINTF_FIELD_BUDGET
+                      } else {
+                        w
+                      },
                     )
                   }
                   used += 1

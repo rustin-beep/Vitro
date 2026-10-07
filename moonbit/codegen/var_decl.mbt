@@ -149,12 +149,14 @@ fn BytecodeGen::emit_static_init(
             (global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
           )
         }
-      } else if vty.kind() is TK_Struct || vty.kind() is TK_Union ||
+      } else if vty.kind() is TK_Struct ||
+        vty.kind() is TK_Union ||
         (
-          vty.is_array() && {
+          vty.is_array() &&
+          ({
             let base = vty.base_element_type()
             base.kind() is TK_Struct || base.kind() is TK_Union
-          }
+          })
         ) {
         // struct/union（含聚合数组——审阅 P2-2 扩面：`static struct P ps[2]
         // = {{1,2},{3,4}}` 曾落平铺标量路径静默清零）聚合初值按成员偏移

@@ -230,7 +230,7 @@ test "serve_run_leak_report_note_channel" {
   assert_true(
     s.vm.output.has_note(
       @utf8.encode(
-        "💡 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。\n",
+        "[note] 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。\n",
       ),
     ),
     msg="教学提示行",

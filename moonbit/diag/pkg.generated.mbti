@@ -17,7 +17,7 @@ pub fn export_catalog_json() -> String
 // Types and methods
 pub(all) struct CatalogEntry {
   code : Int
-  emoji : String
+  icon : String
   title : String
   explanation : String
   common_causes : Array[String]

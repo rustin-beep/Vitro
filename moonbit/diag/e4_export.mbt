@@ -1,7 +1,7 @@
 ///|
 /// E4 锚出口（error_catalog JSON）——与 Rust `error_catalog::export_json`
 /// 同形：`{"catalog":[{...},...]}`，码升序，字段序
-/// code / code_str / lang / category / emoji / title / explanation / common_causes。
+/// code / code_str / lang / category / icon / title / explanation / common_causes。
 ///
 /// 显式 emitter 纪律（B 级锚）：两侧手写序列化，禁一侧 serde 一侧 ToJson
 /// 派生直拼——字段序与转义在此单点可控。
@@ -25,7 +25,7 @@ pub fn export_catalog_json() -> String {
     buf.write_string(",\"code_str\":\"\{op.display_code()}\"")
     buf.write_string(",\"lang\":\"\{export_lang_of(e.code)}\"")
     buf.write_string(",\"category\":\"\{category_of(e.code)}\"")
-    buf.write_string(",\"emoji\":\"\{json_escape(e.emoji)}\"")
+    buf.write_string(",\"icon\":\"\{json_escape(e.icon)}\"")
     buf.write_string(",\"title\":\"\{json_escape(e.title)}\"")
     buf.write_string(",\"explanation\":\"\{json_escape(e.explanation)}\"")
     buf.write_string(",\"common_causes\":[")

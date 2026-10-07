@@ -1,0 +1,5 @@
+// L0 零依赖·图标资产包（issue #27 方案 C，2026-10-07）：icons.get 协议方法的
+// 引擎侧数据面（契约常量 + 全量几何表 + 显式 emitter）。数据文件 icons_gen.mbt
+// 由 scripts/gen_icons 生成（真源 = 本目录 <id>.svg 手写资产，digest 双产物
+// 锁一致）；svg/tsv/json 资产随 mooncakes 包发布，下游 .mooncakes 路径直达。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。

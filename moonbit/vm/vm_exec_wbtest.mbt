@@ -51,7 +51,7 @@ test "exec_add_overflow_traps" {
   assert_true(r3 is Trap)
   assert_eq(
     vm.error,
-    "整数加法溢出。两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。\n📍 发生在第 1 行 第 1 列",
+    "整数加法溢出。两个很大的正数（或很小的负数）相加超出了 int 能表示的范围。\n[location] 发生在第 1 行 第 1 列",
   )
 }
 
@@ -80,7 +80,9 @@ test "exec_div_zero_traps_with_diag" {
   ignore(vm.step())
   let r = vm.step()
   assert_true(r is Trap)
-  assert_true(vm.error.contains("😵 除零错误：你试图用 10 除以 0"))
+  assert_true(
+    vm.error.contains("[divide-zero] 除零错误：你试图用 10 除以 0"),
+  )
 }
 
 ///|
@@ -217,7 +219,7 @@ test "exec_trap_bounds_symbol_diag_v2" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "🚫 数组越界：你访问了 a[4]，但数组 'a' 只有 4 个元素",
+      "[deny] 数组越界：你访问了 a[4]，但数组 'a' 只有 4 个元素",
     ),
   )
 }
@@ -244,7 +246,7 @@ test "exec_max_steps_fuse" {
     }
   }
   assert_true(trapped)
-  assert_true(vm.error.contains("🔄 程序执行步数超过限制"))
+  assert_true(vm.error.contains("[step-limit] 程序执行步数超过限制"))
 }
 
 ///|
@@ -337,7 +339,7 @@ test "exec_trap_bounds_negative_index_diag" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "🚫 数组越界：索引 -1 超出了合法范围 0~3。",
+      "[deny] 数组越界：索引 -1 超出了合法范围 0~3。",
     ),
   )
 }
@@ -467,7 +469,7 @@ test "exec_loadmem_trap_bounds_negative_diag" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "🚫 数组越界：索引 -1 超出了合法范围 0~3。",
+      "[deny] 数组越界：索引 -1 超出了合法范围 0~3。",
     ),
   )
 }

@@ -1,9 +1,11 @@
 {
   "_comment": "图标资产契约规则（scripts/icon_catalog 判定闸与 scripts/gen_icons 生成器共用，单一规则源）。改这里等于改契约，两处同时生效。",
 
-  "assets_dir": "assets/icons",
-  "index_tsv": "assets/icons/index.tsv",
-  "geometry_json": "assets/icons.json",
+  "assets_dir": "moonbit/icons",
+  "index_tsv": "moonbit/icons/index.tsv",
+  "geometry_json": "moonbit/icons/icons.json",
+  "icons_mbt": "moonbit/icons/icons_gen.mbt",
+  "catalog_json": "scripts/moonbit/diagnostics_data/catalog.json",
   "demo_ts": "demo/js/icons.ts",
 
   "svg_attrs": {

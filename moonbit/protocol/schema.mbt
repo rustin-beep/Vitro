@@ -53,7 +53,8 @@ pub(all) struct SchemaFieldPlan {
 } derive(Debug)
 
 ///|
-/// v0.2 字段台账（照搬 contracts.rs V0_2_FIELD_LEDGER，7 条）。
+/// v0.2 字段台账（7 条照搬 contracts.rs V0_2_FIELD_LEDGER；第 8 条为
+/// MoonBit 侧增补——#27 emoji→icon 语义化，Rust 退役后本表即单源）。
 pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
   [
     {
@@ -105,6 +106,13 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
       batch: "v0.2",
       note: "§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可读名双字段，保留 func_name 作 display 语义",
     },
+    {
+      field: "error_catalog[].icon",
+      kind: "add",
+      status: "active",
+      batch: "#27",
+      note: "emoji 码点退役为语义图标 id（值域 = moonbit/icons/index.tsv 52 id，icon_catalog 闸锁值域；无兼容别名，0.9 一步切换）",
+    },
   ]
 }
 
@@ -121,7 +129,8 @@ pub(all) struct BehaviorContract {
 } derive(Debug)
 
 ///|
-/// 行为契约清单（照搬 contracts.rs BEHAVIOR_CONTRACTS，5 条）。
+/// 行为契约清单（5 条照搬 contracts.rs BEHAVIOR_CONTRACTS；第 6 条为
+/// MoonBit 侧增补——#27 图标资产通道）。
 pub fn behavior_contracts() -> Array[BehaviorContract] {
   [
     {
@@ -158,6 +167,13 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
       status: "reserved",
       batch: "CS3a",
       enforced_by: "CS3a 批次 jit 用例（激活时落库）",
+    },
+    {
+      id: "icons_asset_channel",
+      statement: "图标资产经 icons.get 单通道下发（digest 与真源一致）；业务帧（error_catalog.icon / trap 文案装饰位）只携带语义 id 不携带字形",
+      status: "active",
+      batch: "#27",
+      enforced_by: "scripts/icon_catalog（值域对账）+ scripts/gen_icons -check（digest 双产物一致，CI 生成器闸组）",
     },
   ]
 }

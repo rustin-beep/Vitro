@@ -61,7 +61,7 @@ type arm struct {
 
 type entry struct {
 	Code         int      `json:"code"`
-	Emoji        string   `json:"emoji"`
+	Icon         string   `json:"icon"`
 	Title        string   `json:"title"`
 	Explanation  string   `json:"explanation"`
 	CommonCauses []string `json:"common_causes"`
@@ -251,7 +251,7 @@ func writeJSONDoc(path string, doc any) {
 
 // legacyReconcileDiag：枚举臂名码全等 + WARN/HINT 白名单（.rs 独立声明）
 // == JSON 臂前缀派生集 + 卡片码集合相等。emoji/title/explanation/
-// common_causes 值不比——#27 与修复批的合法演化面。三态：全在→对账；
+// common_causes 值不比——#27 与修复批的合法演化面（icon 同域，2026-10-07 emoji→icon）。三态：全在→对账；
 // 全不在（工序④删区）→豁免；部分在→红（异常形态）。
 func legacyReconcileDiag(codesPath, catalogDir string, arms []arm, entries []entry) {
 	catalogFiles := []string{"lexer.rs", "parser.rs", "semantic.rs", "cpp.rs"}
@@ -537,7 +537,7 @@ func parseEntryBlocks(src, from string) []entry {
 		src = src[end+1:]
 		out = append(out, entry{
 			Code:         mustIntField(block, "code", from),
-			Emoji:        mustStrField(block, "emoji", from),
+			Icon:         mustStrField(block, "icon", from),
 			Title:        mustStrField(block, "title", from),
 			Explanation:  mustStrField(block, "explanation", from),
 			CommonCauses: mustStrArrayField(block, "common_causes", from),
@@ -891,7 +891,7 @@ func renderCatalog(entries []entry, srcHash string, catalogHash string) string {
 			causesForm = "          [\n            " + causes + ",\n          ],"
 		}
 		fmt.Fprintf(&b, "    %s =>\n      Some(\n        CatalogEntry::of(\n          %d,\n          \"%s\",\n          \"%s\",\n          \"%s\",\n%s\n        ),\n      )\n",
-			armNames[e.Code], e.Code, escapeMbt(e.Emoji), escapeMbt(e.Title), escapeMbt(e.Explanation), causesForm)
+			armNames[e.Code], e.Code, escapeMbt(e.Icon), escapeMbt(e.Title), escapeMbt(e.Explanation), causesForm)
 	}
 	// 无卡片臂显式列 None（无兜底臂纪律：增删枚举臂即编译红）
 	var noneCodes []int

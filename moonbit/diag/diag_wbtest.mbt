@@ -108,11 +108,11 @@ test "all_codes_sorted_unique" {
 }
 
 ///|
-/// 卡片内容抽查（转义正确性锚）：E1002 卡片中文与 emoji 原样。
+/// 卡片内容抽查（转义正确性锚）：E1002 卡片中文与 icon 语义 id 原样。
 test "catalog_content_escape_probe" {
   let e2 = E1002_UnterminatedString.catalog().unwrap()
   assert_eq(e2.title, "字符串未闭合")
-  assert_eq(e2.emoji, "💬")
+  assert_eq(e2.icon, "string")
   let e3007 = E3007_StringInitNonCharArray.catalog().unwrap()
   assert_true(e3007.explanation.contains("char"))
 }

@@ -19,6 +19,7 @@ import {
   "vitro/engine/diag",
   "vitro/engine/diagnostics",
   "vitro/engine/host",
+  "vitro/engine/icons",
   "vitro/engine/lexer",
   "vitro/engine/lexer/token",
   "vitro/engine/memory",

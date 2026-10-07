@@ -68,7 +68,7 @@ fn VitroVM::execute_debug(
       if index < 0L || index >= size.to_int64() {
         let max_idx = if size > 0 { size - 1 } else { 0 }
         let diag = if operand >= 0 {
-          "🚫 数组越界：你访问了 " +
+          "[deny] 数组越界：你访问了 " +
           name +
           "[" +
           index.to_string() +
@@ -78,15 +78,15 @@ fn VitroVM::execute_debug(
           size.to_string() +
           " 个元素，有效索引是 0~" +
           max_idx.to_string() +
-          "。\n\n💡 原因：数组索引超出了合法范围。\n✅ 检查方法：确认索引变量值在 0 到 " +
+          "。\n\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 " +
           max_idx.to_string() +
           " 之间。"
         } else {
-          "🚫 数组越界：索引 " +
+          "[deny] 数组越界：索引 " +
           index.to_string() +
           " 超出了合法范围 0~" +
           max_idx.to_string() +
-          "。\n\n💡 原因：数组索引超出了合法范围。"
+          "。\n\n[cause] 原因：数组索引超出了合法范围。"
         }
         self.trap(diag, line, column)
       }

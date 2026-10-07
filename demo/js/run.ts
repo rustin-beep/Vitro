@@ -3,6 +3,7 @@
 // app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
+import { decorateBadges } from "./icon.ts";
 import { invoke, bodyOf, gateway, hasGateway } from "./gw.ts";
 import { $, esc, setStatus, latin1ToUtf8 } from "./util.ts";
 import { renderMemory } from "./memory.ts";
@@ -264,7 +265,7 @@ function renderNote(text: string, total: number): void {
     return;
   }
   el.classList.remove("hidden");
-  el.innerHTML = esc(text).replace(/\n/g, "<br>");
+  el.innerHTML = decorateBadges(esc(text).replace(/\n/g, "<br>"));
   $("note-meta").textContent = `${total} 字节 · note 审计流（引擎文本域直传）`;
 }
 function renderPpTrace(trace: string[]): void {
@@ -286,7 +287,7 @@ function renderTrap(text: string): void {
     return;
   }
   el.classList.remove("hidden");
-  el.innerHTML = esc(text).replace(/\n/g, "<br>");
+  el.innerHTML = decorateBadges(esc(text).replace(/\n/g, "<br>"));
 }
 
 // 参考对照（Clang golden 预置真值——诚实边界在文案）

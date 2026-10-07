@@ -206,7 +206,7 @@ fn VitroVM::execute_host_func(
     }
     125 => {
       // assert_fail：note + set_finished(1)
-      self.output.push_note_str("🚫 断言失败 (assertion failed)")
+      self.output.push_note_str("[deny] 断言失败 (assertion failed)")
       self.finished = true
       self.exit_code = 1
     }

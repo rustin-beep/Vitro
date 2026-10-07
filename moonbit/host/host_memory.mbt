@@ -371,7 +371,7 @@ pub fn host_free(
 ///|
 /// Double-Free 教学文案（E3061，逐字照搬 Rust `host/memory.rs:67`）。
 pub fn double_free_message(info : @memory.FreedRegionInfo) -> String {
-  "🔁 Double-Free (E3061)：你正在 free 一块已经在第 \{info.freed_line} 行被释放过的内存（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n💡 原因：同一块内存被释放了两次，这通常是因为 free(p) 后没有将 p 置为 NULL，或者两个指针指向同一块内存且都被释放了。\n✅ 解决方法：每次 free(p) 后立刻写 p = NULL;。对 NULL 指针重复 free 是安全的。"
+  "[double-free] Double-Free (E3061)：你正在 free 一块已经在第 \{info.freed_line} 行被释放过的内存（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：同一块内存被释放了两次，这通常是因为 free(p) 后没有将 p 置为 NULL，或者两个指针指向同一块内存且都被释放了。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;。对 NULL 指针重复 free 是安全的。"
 }
 
 ///|
@@ -385,13 +385,13 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
     Some(block) => {
       let base = block.0
       let r = block.1
-      "🚫 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 是第 \{r.alloc_line} 行 malloc 块（起始 0x\{hex_upper(base)}，\{r.size} 字节）的内部地址，不是起始地址。\n\n💡 原因：free 只能释放 malloc/calloc/realloc 返回的原始指针。\n✅ 解决方法：保存分配返回的原始指针用于 free；需要偏移访问时使用单独的指针变量，不要 free 偏移后的指针。"
+      "[deny] 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 是第 \{r.alloc_line} 行 malloc 块（起始 0x\{hex_upper(base)}，\{r.size} 字节）的内部地址，不是起始地址。\n\n[cause] 原因：free 只能释放 malloc/calloc/realloc 返回的原始指针。\n[fix] 解决方法：保存分配返回的原始指针用于 free；需要偏移访问时使用单独的指针变量，不要 free 偏移后的指针。"
     }
     None =>
       match map.freed_logs_find_overlapping(addr, 1U) {
         Some(log) =>
           if log.addr != addr {
-            "🔁 无效 free (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。free 只能释放 malloc 返回的原始指针。"
+            "[double-free] 无效 free (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。free 只能释放 malloc 返回的原始指针。"
           } else {
             // 已释放块的**精确起点**：host_free 走不进这里（Double-Free 前置
             // 拦下）；但 `realloc(p, 0)` 走 release 单出口（无前置），oracle 的
@@ -406,7 +406,7 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
 ///|
 /// E3027 兜底文案（不指向任何分配块起始地址）。
 fn unknown_free_message(addr : UInt) -> String {
-  "🚫 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 不指向任何 malloc/calloc/realloc 分配的内存块起始地址（可能是栈地址、全局变量地址或未初始化指针的垃圾值）。\n\n💡 原因：只有 malloc 系列函数返回的指针才能被 free。\n✅ 解决方法：检查该指针是否来自 malloc 分配，且未经过指针算术运算。"
+  "[deny] 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 不指向任何 malloc/calloc/realloc 分配的内存块起始地址（可能是栈地址、全局变量地址或未初始化指针的垃圾值）。\n\n[cause] 原因：只有 malloc 系列函数返回的指针才能被 free。\n[fix] 解决方法：检查该指针是否来自 malloc 分配，且未经过指针算术运算。"
 }
 
 ///|
@@ -417,7 +417,7 @@ fn unknown_free_message(addr : UInt) -> String {
 /// - **已渲染**：动作词（`写入`/`读取`——`AccessKind` 就在 `MemFault` 载荷里，
 ///   2026-09-23 审阅批 P2 补上，此前被 `_` 丢弃写成中性「访问」）与
 ///   `alloc_line` / `freed_line` / `freed_step` 行号步号段；
-/// - **vm 接线义务**：时间轴行 `⏱️ 分配 → 释放（第 N 步）→ 继续访问（第 M 步）`
+/// - **vm 接线义务**：时间轴行 `[timeline] 分配 → 释放（第 N 步）→ 继续访问（第 M 步）`
 ///   里的**当前步 M** 是 access 时刻的 VM 状态（oracle 取 `step_count`），host
 ///   拿不到，故整行不在此渲染——vm 消费 `HostMemReply.trap` 接线时须按
 ///   oracle 逐字口径补齐。同理 `NullDeref` 的写侧变体（「向 NULL 指针区域写入」，
@@ -438,7 +438,7 @@ fn access_fault_text(fault : @memory.MemFault) -> String {
         @memory.AccessKind::Read => "读取"
         @memory.AccessKind::Write => "写入"
       }
-      "💥 Use-After-Free (E3060)：你正在向一块已经在第 \{info.freed_line} 行（第 \{info.freed_step} 步）被 free 的内存\{action}（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n💡 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n✅ 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。"
+      "[uaf] Use-After-Free (E3060)：你正在向一块已经在第 \{info.freed_line} 行（第 \{info.freed_step} 步）被 free 的内存\{action}（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。"
     }
   }
 }

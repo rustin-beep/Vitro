@@ -222,6 +222,6 @@
 <g transform="translate(370,1178) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.8v13.4"/><path d="M4.3 14.8 6.5 17l2.2-2.2"/><circle cx="6.5" cy="7.4" r="2.1" fill="currentColor"/><circle cx="6.5" cy="15" r="2.1"/><path d="M11.8 7.4h8.4M11.8 15h5"/></g>
 <text x="390.4" y="1242" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">timeline</text>
 <text x="390.4" y="1257" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">时间轴</text>
-<text x="40" y="1302" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#7a7a80">真源 assets/icons/&lt;id&gt;.svg · 清单 index.tsv · 几何层 assets/icons.json（gen_icons 产）· 图鉴为展示层，不进契约闸</text>
+<text x="40" y="1302" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#7a7a80">真源 moonbit/icons/&lt;id&gt;.svg · 清单 index.tsv · 几何层 moonbit/icons/icons.json（gen_icons 产，随 mooncakes 包发布）· 图鉴为展示层，不进契约闸</text>
 <text x="40" y="1320" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#6b6b72">设计准则：代码字面量 / 经典 CS 隐喻优先，禁生活化抽象比喻（灯泡≠原因 · 水滴≠内存 · 角尺≠语汇）</text>
 </svg>

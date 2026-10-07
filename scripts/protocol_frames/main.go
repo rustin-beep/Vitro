@@ -148,6 +148,10 @@ func requestTable() []req {
 		{30, "compile", `{"source":"#include <stdlib.h>\n#include <stdio.h>\nint main() { printf(\"leak test\"); int* a = malloc(4); int* b = malloc(8); return 0; }"}`},
 		{31, "run", `{"deterministic":true}`},
 		{32, "output.delta", `{"cursor":0}`},
+		// icons.get（#27 方案 C——资产通道帧：全量 + 子集；digest 随资产
+		// 演化进基线，不 mask——资产漂移即红是本闸语义）
+		{33, "icons.get", ``},
+		{34, "icons.get", `{"ids":["uaf","timeline"]}`},
 	}
 }
 

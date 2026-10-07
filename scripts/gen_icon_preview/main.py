@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # 图鉴生成器 —— 展示层排版（非判定型；判定型闸是 Go 的 scripts/icon_catalog）。
 #
-# 读 assets/icons/*.svg + assets/icons/index.tsv，按 category 分组排卡片，产出
+# 读 moonbit/icons/*.svg + moonbit/icons/index.tsv，按 category 分组排卡片，产出
 # assets/icons-preview.svg：每卡 = 图标 + 英文 id + 中文短标签，深色底（图鉴是唯一
 # 自带底色的文件——图标资产一律透明，由消费方叠底着色）。
 #
@@ -19,7 +19,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ASSETS = os.path.join(ROOT, "assets", "icons")
+ASSETS = os.path.join(ROOT, "moonbit", "icons")
 TSV = os.path.join(ASSETS, "index.tsv")
 OUT = os.path.join(ROOT, "assets", "icons-preview.svg")
 
@@ -103,7 +103,7 @@ def main():
             p.append('<text x="%g" y="%d" text-anchor="middle" font-family="%s" font-size="11" fill="#f2f2f2">%s</text>' % (x + CW / 2, cy + 74, FONT, key))
             p.append('<text x="%g" y="%d" text-anchor="middle" font-family="%s" font-size="11" fill="#9a9aa0">%s</text>' % (x + CW / 2, cy + 89, FONT, SHORT.get(key, key)))
         y += ((len(ids) + COLS - 1) // COLS) * (CH + 12) + 10
-    p.append('<text x="40" y="%d" font-family="%s" font-size="11" fill="#7a7a80">真源 assets/icons/&lt;id&gt;.svg · 清单 index.tsv · 几何层 assets/icons.json（gen_icons 产）· 图鉴为展示层，不进契约闸</text>' % (y + 16, FONT))
+    p.append('<text x="40" y="%d" font-family="%s" font-size="11" fill="#7a7a80">真源 moonbit/icons/&lt;id&gt;.svg · 清单 index.tsv · 几何层 moonbit/icons/icons.json（gen_icons 产，随 mooncakes 包发布）· 图鉴为展示层，不进契约闸</text>' % (y + 16, FONT))
     p.append('<text x="40" y="%d" font-family="%s" font-size="11" fill="#6b6b72">设计准则：代码字面量 / 经典 CS 隐喻优先，禁生活化抽象比喻（灯泡≠原因 · 水滴≠内存 · 角尺≠语汇）</text>' % (y + 34, FONT))
     p.append("</svg>")
     out = "\n".join(p) + "\n"

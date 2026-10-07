@@ -29,7 +29,8 @@
     "time_travel": 8,
     "gateway/wasm": 8,
     "teaching/steps": 8,
-    "diagnostics": 8
+    "diagnostics": 8,
+    "icons": 0
   },
   "exempt_prefixes": [
     "cmd"

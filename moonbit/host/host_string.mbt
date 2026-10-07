@@ -145,7 +145,7 @@ fn stack_buffer_check(
       let available = buf.size - (dest - buf.base).reinterpret_as_int()
       if needed > available {
         return Some(
-          "💥 Buffer Overflow (E3070)：\{op} 写入栈上缓冲区 '\{buf.name}' 溢出。需要写入 \{needed} 字节，但该缓冲区从当前写入位置起仅剩 \{available} 字节（总大小 \{buf.size} 字节）。\n\n💡 原因：\{op} 不检查目标缓冲区大小，栈上数组越界会破坏相邻局部变量。\n✅ 解决方法：增大数组大小，或改用带长度限制的版本（如 strncpy/fgets）。",
+          "[buffer-overflow] Buffer Overflow (E3070)：\{op} 写入栈上缓冲区 '\{buf.name}' 溢出。需要写入 \{needed} 字节，但该缓冲区从当前写入位置起仅剩 \{available} 字节（总大小 \{buf.size} 字节）。\n\n[cause] 原因：\{op} 不检查目标缓冲区大小，栈上数组越界会破坏相邻局部变量。\n[fix] 解决方法：增大数组大小，或改用带长度限制的版本（如 strncpy/fgets）。",
         )
       }
       return None
@@ -233,7 +233,7 @@ pub fn host_strcpy(
       let available = rsize - offset
       if src_len + 1 > available {
         return trap_only(
-          "💥 Buffer Overflow (E3070)：strcpy 目标缓冲区溢出。源字符串长度 \{src_len} 字节（含终止符 \{src_len + 1} 字节），但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n💡 原因：strcpy 不会检查目标缓冲区大小。\n✅ 解决方法：使用 strncpy 或确保目标缓冲区足够大（至少 \{src_len + 1} 字节）。",
+          "[buffer-overflow] Buffer Overflow (E3070)：strcpy 目标缓冲区溢出。源字符串长度 \{src_len} 字节（含终止符 \{src_len + 1} 字节），但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n[cause] 原因：strcpy 不会检查目标缓冲区大小。\n[fix] 解决方法：使用 strncpy 或确保目标缓冲区足够大（至少 \{src_len + 1} 字节）。",
         )
       }
     }
@@ -364,7 +364,7 @@ pub fn host_strcat(
       let total = dest_len + src_len + 1
       if total > available {
         return trap_only(
-          "💥 Buffer Overflow (E3070)：strcat 目标缓冲区溢出。已有 \{dest_len} 字节 + 源字符串 \{src_len} 字节 + 终止符 1 字节 = \{total} 字节，但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n💡 原因：strcat 不会检查目标缓冲区剩余容量。\n✅ 解决方法：使用 strncat 或确保目标缓冲区足够大。",
+          "[buffer-overflow] Buffer Overflow (E3070)：strcat 目标缓冲区溢出。已有 \{dest_len} 字节 + 源字符串 \{src_len} 字节 + 终止符 1 字节 = \{total} 字节，但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n[cause] 原因：strcat 不会检查目标缓冲区剩余容量。\n[fix] 解决方法：使用 strncat 或确保目标缓冲区足够大。",
         )
       }
     }

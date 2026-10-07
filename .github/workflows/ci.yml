@@ -278,6 +278,12 @@ jobs:
           go run ./scripts/moonbit/gen_stubs -check
           go run ./scripts/moonbit/gen_protocol_fields -check
           go run ./scripts/moonbit/gen_diagnostics -check
+          # #27 图标资产双闸（2026-10-07 挂入）：gen_icons -check 锁几何层
+          # 与真源 svg 同步；icon_catalog 判定契约（viewBox/stroke/白名单/
+          # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
+          # 已在 c3601055 资产批留痕。
+          go run ./scripts/gen_icons -check
+          go run ./scripts/icon_catalog
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
         # 2026-09-21 S5 收尾批接线：对外面闸（架构审阅 v2 待办①——"面会

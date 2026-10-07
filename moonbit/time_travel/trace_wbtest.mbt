@@ -61,7 +61,7 @@ test "trace_analyze_div_zero" {
     make_step(1, 2, [("x", "42"), ("d", "0")], []),
   ]
   guard analyze_trap(
-      steps, 1, "😵 除零错误：你试图用 42 除以 0。", no_line,
+      steps, 1, "[divide-zero] 除零错误：你试图用 42 除以 0。", no_line,
     )
     is Some(h) else {
     fail("除零须出 hint")
@@ -73,7 +73,7 @@ test "trace_analyze_div_zero" {
 
 ///|
 test "trace_analyze_use_after_free" {
-  let msg = "💥 Use-After-Free (E3060)：你正在读取一块在第 3 行（第 19 步）被 free 的内存（由第 2 行的 malloc 分配）"
+  let msg = "[uaf] Use-After-Free (E3060)：你正在读取一块在第 3 行（第 19 步）被 free 的内存（由第 2 行的 malloc 分配）"
   let steps = [
     make_step(0, 2, [], [("p", @protocol.PointerStatus::Freed)]),
     make_step(1, 4, [], [("p", @protocol.PointerStatus::Freed)]),
@@ -91,7 +91,7 @@ test "trace_analyze_use_after_free" {
 
 ///|
 test "trace_analyze_double_free" {
-  let msg = "💥 Double-Free (E3061)：你正在释放一块在第 3 行（第 19 步）已被 free 的内存（由第 2 行的 malloc 分配）"
+  let msg = "[uaf] Double-Free (E3061)：你正在释放一块在第 3 行（第 19 步）已被 free 的内存（由第 2 行的 malloc 分配）"
   let steps = [make_step(0, 4, [], [])]
   guard analyze_trap(steps, 0, msg, no_line) is Some(h) else {
     fail("Double-Free 须出 hint")
@@ -115,7 +115,7 @@ test "trace_analyze_null_deref" {
 ///|
 test "trace_analyze_bounds_generic" {
   // 无匹配循环变量（local_vars 值不等于下标）→ GenericBounds
-  let msg = "🚫 数组越界：你访问了 arr[5]，但数组 'arr' 只有 5 个元素"
+  let msg = "[deny] 数组越界：你访问了 arr[5]，但数组 'arr' 只有 5 个元素"
   let steps = [make_step(0, 3, [("total", "9")], [])]
   guard analyze_trap(steps, 0, msg, no_line) is Some(h) else {
     fail("越界须出 hint")
@@ -128,7 +128,7 @@ test "trace_analyze_bounds_generic" {
 ///|
 test "trace_analyze_bounds_off_by_one" {
   // 经典 OffByOne：i 从 0 单调 +1 到 size，源码行含 <=
-  let msg = "🚫 数组越界：你访问了 arr[5]，但数组 'arr' 只有 5 个元素"
+  let msg = "[deny] 数组越界：你访问了 arr[5]，但数组 'arr' 只有 5 个元素"
   let steps = [
     make_step(0, 2, [("i", "0")], []),
     make_step(1, 2, [("i", "1")], []),

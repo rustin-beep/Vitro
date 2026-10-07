@@ -16,7 +16,9 @@ package main
 //  6. 禁在资产上写死 aria-hidden（会废掉 <title>）
 //  7. index.tsv 五列表头 / 值域（category / scope）/ 非空 emoji / id 命名合法
 //  8. 双向对账：孤儿资产（svg 无 tsv 行）、缺资产（tsv 行无 svg）
-//  9. 几何层 assets/icons.json 的 digest 与现算一致（生成物同步）
+//  9. 几何层 moonbit/icons/icons.json 的 digest 与现算一致（生成物同步）
+// 10. 协议值域对账：catalog.json 77 条的 icon 值 ⊆ index.tsv id 集
+//     （#27 §3.4——防「协议发 A、资产表叫 B」漂移；J9 注入 strng-typo 证红）
 //
 // 退出码：0 全绿 / 1 有违规（逐条列 stderr）/ 2 用法或环境错（fail loud，不静默 default）。
 
@@ -37,6 +39,7 @@ type Rules struct {
 	AssetsDir    string            `json:"assets_dir"`
 	IndexTsv     string            `json:"index_tsv"`
 	GeometryJSON string            `json:"geometry_json"`
+	CatalogJSON  string            `json:"catalog_json"`
 	SvgAttrs     map[string]string `json:"svg_attrs"`
 
 	AllowedElements []string `json:"allowed_elements"`
@@ -212,12 +215,12 @@ func main() {
 	sort.Strings(ids)
 	pass("资产契约：%d 个 svg 逐个校验（属性 / 色值 / 图元白名单 / title+desc 自证）", len(ids))
 
-	// 2) index.tsv 校验
+	// 2) index.tsv 校验（tsvIDs 提升到块外：段 5 协议值域对账复用）
+	tsvIDs := map[string]bool{}
 	tRows, terr := readTsv(rules.IndexTsv, rules.TsvColumns)
 	if terr != nil {
 		fail("index.tsv: %v", terr)
 	} else {
-		tsvIDs := map[string]bool{}
 		emojiSeen := map[string]string{}
 		for _, r := range tRows {
 			id, cat, scope, emo, desc := r.cols[0], r.cols[1], r.cols[2], r.cols[3], r.cols[4]
@@ -277,6 +280,36 @@ func main() {
 				fail("几何层 digest 过期：文件=%s 现算=%s（跑 gen_icons 同步）", geo.Digest, digestOf(ids, svgBytes))
 			} else {
 				pass("几何层 digest 同步：%s", geo.Digest[:min(23, len(geo.Digest))])
+			}
+		}
+	}
+
+	// 5) 协议 icon 值域对账（#27 §3.4：icon 字段值域 = 资产表 id 集，
+	//    防「协议发 A、资产表叫 B」的漂移；catalog_json 未配置则跳过）
+	if rules.CatalogJSON != "" {
+		cb, cerr := os.ReadFile(rules.CatalogJSON)
+		if cerr != nil {
+			fail("catalog 源缺失 %s：%v", rules.CatalogJSON, cerr)
+		} else {
+			var cat struct {
+				Entries []struct {
+					Code int    `json:"code"`
+					Icon string `json:"icon"`
+				} `json:"entries"`
+			}
+			if jerr := json.Unmarshal(cb, &cat); jerr != nil {
+				fail("catalog 源 %s 解析失败：%v", rules.CatalogJSON, jerr)
+			} else {
+				bad := 0
+				for _, e := range cat.Entries {
+					if !tsvIDs[e.Icon] {
+						fail("E%d 的 icon=%q 不在资产表（index.tsv 无此 id）", e.Code, e.Icon)
+						bad++
+					}
+				}
+				if bad == 0 {
+					pass("协议值域对账：%d 条 catalog icon 全部在册", len(cat.Entries))
+				}
 			}
 		}
 	}

@@ -133,6 +133,7 @@ vitro/engine/gateway vitro/engine/bytecode NULL_TRAP_SIZE
 vitro/engine/gateway vitro/engine/bytecode Symbol
 vitro/engine/gateway vitro/engine/bytecode compute_heap_base
 vitro/engine/gateway vitro/engine/codegen compile
+vitro/engine/gateway vitro/engine/icons export_icons_json
 vitro/engine/gateway vitro/engine/diag ErrorCode
 vitro/engine/gateway vitro/engine/diag export_catalog_json
 vitro/engine/gateway vitro/engine/diagnostics CompileRecord

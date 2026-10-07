@@ -178,6 +178,8 @@ fn dispatch(
     "error_catalog" => serve_error_catalog_frame(id)
     "semantic_labels" => serve_semantic_labels_frame(id)
     "contracts" => serve_contracts_frame(id)
+    // 图标资产通道（#27 方案 C——业务帧只带语义 id，资产经此按 digest 下发）
+    "icons.get" => serve_icons_get_frame(id, params)
     // 引擎方法族（二段起）
     "compile" => serve_compile_frame(s, id, params)
     "run" => serve_run_frame(s, id, params)
@@ -202,7 +204,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
+          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
         ).stringify(),
         false,
       )

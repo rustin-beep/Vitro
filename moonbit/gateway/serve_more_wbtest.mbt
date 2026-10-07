@@ -278,3 +278,39 @@ test "serve_memory_dump_roundtrip" {
     msg="往返一致（帧值 == base64(dump_memory_raw)）",
   )
 }
+
+///|
+test "serve_icons_get_asset_channel" {
+  let s = @session.Session::new()
+  // 全量：契约常量 + digest + 字典序首 id + paths 结构
+  let (r1, _) = serve_handle(s, "{\"id\":1,\"method\":\"icons.get\"}")
+  assert_true(r1.contains("\"ok\":true"))
+  assert_true(r1.contains("\"schema\":\"icons/v1\""))
+  assert_true(r1.contains("\"digest\":\"sha256:"))
+  assert_true(r1.contains("\"viewBox\":\"0 0 24 24\""))
+  assert_true(r1.contains("\"stroke_width\":1.8"))
+  assert_true(
+    r1.contains("\"alloc-args\":{\"paths\":["),
+    msg="字典序首 id 在帧（全量面 52 枚）",
+  )
+  assert_true(r1.contains("\"uaf\":{\"paths\":["), msg="both 域 id 在帧")
+  // 子集：请求 id 出帧、非请求 id 不出
+  let (r2, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"icons.get\",\"params\":{\"ids\":[\"timeline\",\"uaf\"]}}",
+  )
+  assert_true(r2.contains("\"ok\":true"))
+  assert_true(r2.contains("\"timeline\""))
+  assert_true(r2.contains("\"uaf\""))
+  assert_false(r2.contains("\"off-by-one\""), msg="子集不含未请求 id")
+  // 未知 id：整帧拒绝（fail loud 不静默缩水）
+  let (r3, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"icons.get\",\"params\":{\"ids\":[\"uaf\",\"no-such\"]}}",
+  )
+  assert_true(r3.contains("\"ok\":false"))
+  assert_true(r3.contains("未知 icon id"))
+  // 非字符串数组元素：参数形态拒绝
+  let (r4, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"icons.get\",\"params\":{\"ids\":[42]}}",
+  )
+  assert_true(r4.contains("\"ok\":false"))
+}

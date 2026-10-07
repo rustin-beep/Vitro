@@ -19,7 +19,7 @@
 //    explanation；
 // ③ cpp 扩展名检测（.cpp/.cxx/.vitrocpp → cpp_mode）不搬——F-2 终局
 //    已裁 C++（cpp_mode 恒 false，cpp 文件名按 C 子集处理）；
-// ④ errors 串富化 = catalog emoji/title 前缀照搬，但 codegen 错误的
+// ④ errors 串富化 = catalog icon(语义 id)/title 前缀照搬，但 codegen 错误的
 //    串形态是"生成错误: {}"逐条（Rust 同形）。
 //
 // 防线义务（本批 J9）：merge_units 行数语义（尾换行/空文件）+
@@ -106,7 +106,7 @@ fn severity_prefix(severity : Int) -> String {
 
 ///|
 /// 单条诊断推送（Rust push_one 主体照搬）：Diagnostic 全字段 + errors 串
-/// 富化行（catalog 命中 = "{emoji} {title} — 错误 E{code} (第{line}行,
+/// 富化行（catalog 命中 = "[icon] {title} — 错误 E{code} (第{line}行,
 /// 第{column}列): {message}"，未命中 = 裸格式——Rust 富化同形）。
 /// fix 族（段三接线 2026-10-02，销分叉②）：@diagnostics.generate_fix
 /// 七元组直填；fix_suggestion 空文案回退 catalog explanation（Rust
@@ -156,7 +156,7 @@ fn push_one_diag(
   })
   let rich = match entry {
     Some(i) =>
-      "\{i.emoji} \{i.title} — 错误 E\{code} (第\{line}行, 第\{column}列): \{message}"
+      "[\{i.icon}] \{i.title} — 错误 E\{code} (第\{line}行, 第\{column}列): \{message}"
     None => "错误 E\{code} (第\{line}行, 第\{column}列): \{message}"
   }
   s.compile.errors = s.compile.errors + rich + "\n"

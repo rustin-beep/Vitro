@@ -16,9 +16,9 @@ test "blackbox_schema_surface" {
   let checklist = @protocol.v0_2_activation_checklist()
   assert_eq(checklist.length(), 5)
   let ledger : Array[@protocol.SchemaFieldPlan] = @protocol.v0_2_field_ledger()
-  assert_eq(ledger.length(), 7)
+  assert_eq(ledger.length(), 8) // 7 Rust 照搬 + error_catalog[].icon（#27 增补）
   let contracts : Array[@protocol.BehaviorContract] = @protocol.behavior_contracts()
-  assert_eq(contracts.length(), 5)
+  assert_eq(contracts.length(), 6) // 5 Rust 照搬 + icons_asset_channel（#27 增补）
   // emitter
   let json = @protocol.contracts_json()
   assert_true(json.contains("\"schema\":\"v0.1\""))

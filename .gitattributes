@@ -41,7 +41,8 @@ demo/**/*.ts linguist-language=TypeScript
 # 图标资产（2026-10-07，issue #27）：icon_catalog 闸按字节判 CRLF（混合行尾会红），
 # 生成器写 LF —— 此处锁 LF 双保险。*.svg 已在上方锁过。
 *.tsv text eol=lf
-assets/icons.json text eol=lf
+# 图标几何层 2026-10-07 随真源搬进 moonbit/（moonbit/** 已锁 LF，此处显式声明双保险）
+moonbit/icons/icons.json text eol=lf
 # 本文件自身：core.autocrlf=true 的 checkout 会把工作区副本翻成 CRLF，
 # 而它声明的 eol=lf 规则正是为防这个 —— 规则文件自己更不能被翻（2026-10-07 提交时观察到 CRLF 警告）
 .gitattributes text eol=lf

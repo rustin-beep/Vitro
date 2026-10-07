@@ -132,19 +132,28 @@ test "reserved_fields_match_replay_single_source" {
 ///|
 test "contract_table_counts_and_ids" {
   // 台账/清单/契约表计数与 id 锚（照搬 contracts.rs 常量表）
-  assert_eq(v0_2_field_ledger().length(), 7, msg="台账必须恰 7 条")
+  assert_eq(
+    v0_2_field_ledger().length(),
+    8,
+    msg="台账必须恰 8 条（7 Rust 照搬 + #27 icon）",
+  )
   assert_eq(
     v0_2_activation_checklist().length(),
     5,
     msg="激活清单必须恰 5 条",
   )
   let contracts = behavior_contracts()
-  assert_eq(contracts.length(), 5, msg="行为契约必须恰 5 条")
+  assert_eq(
+    contracts.length(),
+    6,
+    msg="行为契约必须恰 6 条（5 Rust 照搬 + #27）",
+  )
   assert_eq(contracts[0].id, "step_granularity")
   assert_eq(contracts[1].id, "payload_additive_only")
   assert_eq(contracts[2].id, "jit_breakpoint_integrity")
   assert_eq(contracts[3].id, "unwinding_step_granularity")
   assert_eq(contracts[4].id, "try_excludes_jit")
+  assert_eq(contracts[5].id, "icons_asset_channel")
 }
 
 ///|
@@ -183,42 +192,45 @@ test "contracts_json_shape" {
 
 ///|
 test "contracts_json_byte_exact_rust_truth" {
-  // 与 Rust 真值逐字节对拍锚（用户审阅 P2-1 实测锁定，2026-09-27）：探针 tmp/review_20260927/json_order（serde_json ~1.0.149 与 native 同版，全量复刻 contracts.rs 数据与 json!+to_string 构造路径）的 stdout 真值。键序漂移（含未来 preserve_order 启用 / 常量改文）即红。
+  // 逐字节形态冻结锚（原 Rust 探针真值 2026-09-27 锁定；Rust 对照区退役后真值随合法演化人工更新——#27 增补 icons_asset_channel 契约与 error_catalog[].icon 台账条，2026-10-07）。锁的语义不变：键序（serde 字典序）/转义/紧凑形态漂移即红。
   let truth : Array[String] = [
-    "{\"behavior_contracts\":[{\"batch\":\"-\",\"enforced_by\":\"step_payload_schema_v0_1_tes",
-    "t::test_step_payload_top_level_fields_frozen（step_index 连续递增）\",\"id\":\"step_granularit",
-    "y\",\"statement\":\"一步 = 一条字节码指令（含透明的 StepEvent 调试指令）；同一步不被合并\",\"status\":\"active\"},{",
-    "\"batch\":\"-\",\"enforced_by\":\"step_payload_schema_v0_1_test（键集合冻结 + contracts::RESER",
-    "VED_FIELDS_V0_2 缺省断言）\",\"id\":\"payload_additive_only\",\"statement\":\"StepPayload 字段只",
-    "增不改语义；新增字段必须可空/有默认值；v0.1 阶段不得携带未发布字段\",\"status\":\"active\"},{\"batch\":\"-\",\"enforce",
-    "d_by\":\"jit_unit_test / e2e 断点用例\",\"id\":\"jit_breakpoint_integrity\",\"statement\":\"",
-    "含断点的循环排除出 JIT trace —— 断点语义不被 trace 优化吞掉\",\"status\":\"active\"},{\"batch\":\"CS3b\",\"",
-    "enforced_by\":\"contracts::check_unwinding_granularity（单测合成序列）+ SharpTutor S4 §5 A2/A5 回",
-    "放\",\"id\":\"unwinding_step_granularity\",\"statement\":\"UNWINDING 每弹一帧 / 执行一个 finally ",
-    "块 = 一个 VM step，**不得合并单步**（展开动画的根基）\",\"status\":\"reserved\"},{\"batch\":\"CS3a\",\"enfo",
-    "rced_by\":\"CS3a 批次 jit 用例（激活时落库）\",\"id\":\"try_excludes_jit\",\"statement\":\"含 TryBeg",
-    "in 的函数排除出 JIT trace 编译（与断点排除同一模式）\",\"status\":\"reserved\"}],\"frozen_at\":\"2026-09-12",
-    "\",\"reserved_fields_v0_2\":[\"handler_depth\",\"unwinding\",\"unwind_frames_left\",\"cu",
-    "rrent_exception\"],\"schema\":\"v0.1\",\"v0_2_activation_checklist\":[\"① 只增事件：不得改动 v0.1",
-    " 既有 14 字段的名称/类型/语义；预留位激活一律以新增字段形态落地（消费方须忽略未知字段）\",\"② 同步更新 docs/spec/STEP_PAYLOAD_SCHEMA",
-    "_V0_1.md：§9 台账状态 active + §7 校验表追加 v0.2 历史行\",\"③ 重跑引擎侧 C1–C3：cargo test --test step_pay",
-    "load_schema_v0_1_test / --test unified_engine_window_test + go run ./scripts/serve_smoke",
-    "\",\"④ 重跑签字回放 S1–S5：go run ./scripts/replay/replay_s1_s5.go --anchor <新短哈希>（异常域还需 S4 §5 ",
-    "激活契约 A1–A8）\",\"⑤ 解除冻结测试中的预留位断言（v0.1 断言 → v0.2 断言），并知会下游按容忍矩阵回归 T4 投影\"],\"v0_2_field_le",
-    "dger\":[{\"batch\":\"CS3b\",\"field\":\"handler_depth\",\"kind\":\"reserve\",\"note\":\"",
-    "当前受几层 try 保护；与 unwinding 正交（finally 步 handler_depth==0 但仍在展开）\",\"status\":\"pending\"},",
-    "{\"batch\":\"CS3b\",\"field\":\"unwinding\",\"kind\":\"reserve\",\"note\":\"展开态显式标记；每帧一 ",
-    "step，不得合并（见 BEHAVIOR_CONTRACTS）\",\"status\":\"pending\"},{\"batch\":\"CS3b\",\"field\":",
-    "\"unwind_frames_left\",\"kind\":\"reserve\",\"note\":\"剩余待展开帧数，展开动画驱动字段\",\"status\":\"p",
-    "ending\"},{\"batch\":\"CS3b\",\"field\":\"current_exception\",\"kind\":\"reserve\",\"not",
-    "e\":\"{type_name, message, addr, origin_line}|null；origin_line 为原始抛点（`throw;` 保留 / `thro",
-    "w e;` 改写）\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"field\":\"code_file\",\"kind\"",
-    ":\"add\",\"note\":\"多文件行号归位（§8 #9）：code_line 保持全局行号语义，另附文件名，避免破坏断点/heatmap 口径\",\"status",
-    "\":\"pending\"},{\"batch\":\"v0.2\",\"field\":\"call_stack[].return_line\",\"kind\":\"ad",
-    "d\",\"note\":\"补全既有字段值（§8 #1）：字段已在 v0.1 中恒为 0，激活 = 记录 VM 帧返回行，属**补值不改字段**\",\"status\":",
-    "\"pending\"},{\"batch\":\"v0.2\",\"field\":\"func_display_name / func_mangled_name\",\"k",
-    "ind\":\"add\",\"note\":\"§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可读名双字段，保留 func_name 作 display",
-    " 语义\",\"status\":\"pending\"}]}",
+    "{\"behavior_contracts\":[{\"batch\":\"-\",\"enforced_by\":\"step_payl", "oad_schema_v0_1_test::test_step_payload_top_level_fields_fro",
+    "zen（step_index 连续递增）\",\"id\":\"step_granularity\",\"s", "tatement\":\"一步 = 一条字节码指令（含透明的 Ste",
+    "pEvent 调试指令）；同一步不被合并\",\"status\":\"ac", "tive\"},{\"batch\":\"-\",\"enforced_by\":\"step_payload_schema_v0_1_",
+    "test（键集合冻结 + contracts::RESERVED_FIELDS_V0_2 缺", "省断言）\",\"id\":\"payload_additive_only\",\"statement\":\"Step",
+    "Payload 字段只增不改语义；新增字段必须可空/", "有默认值；v0.1 阶段不得携带未发布字段\",\"stat",
+    "us\":\"active\"},{\"batch\":\"-\",\"enforced_by\":\"jit_unit_test / e2", "e 断点用例\",\"id\":\"jit_breakpoint_integrity\",\"statement\":",
+    "\"含断点的循环排除出 JIT trace —— 断点语义", "不被 trace 优化吞掉\",\"status\":\"active\"},{\"batch\":\"CS3b",
+    "\",\"enforced_by\":\"contracts::check_unwinding_granularity（", "单测合成序列）+ SharpTutor S4 §5 A2/A5 回放\",\"id\":",
+    "\"unwinding_step_granularity\",\"statement\":\"UNWINDING 每弹", "一帧 / 执行一个 finally 块 = 一个 VM step，**不",
+    "得合并单步**（展开动画的根基）\",\"status\":\"rese", "rved\"},{\"batch\":\"CS3a\",\"enforced_by\":\"CS3a 批次 jit 用例",
+    "（激活时落库）\",\"id\":\"try_excludes_jit\",\"statement\":\"", "含 TryBegin 的函数排除出 JIT trace 编译（与断点",
+    "排除同一模式）\",\"status\":\"reserved\"},{\"batch\":\"#27\",\"", "enforced_by\":\"scripts/icon_catalog（值域对账）+ script",
+    "s/gen_icons -check（digest 双产物一致，CI 生成器", "闸组）\",\"id\":\"icons_asset_channel\",\"statement\":\"图标资",
+    "产经 icons.get 单通道下发（digest 与真源一致）", "；业务帧（error_catalog.icon / trap 文案装饰位）",
+    "只携带语义 id 不携带字形\",\"status\":\"active\"}],\"fro", "zen_at\":\"2026-09-12\",\"reserved_fields_v0_2\":[\"handler_depth\"",
+    ",\"unwinding\",\"unwind_frames_left\",\"current_exception\"],\"sche", "ma\":\"v0.1\",\"v0_2_activation_checklist\":[\"① 只增事件：",
+    "不得改动 v0.1 既有 14 字段的名称/类型/语义；", "预留位激活一律以新增字段形态落地（消费方",
+    "须忽略未知字段）\",\"② 同步更新 docs/spec/STEP_P", "AYLOAD_SCHEMA_V0_1.md：§9 台账状态 active + §7 校验",
+    "表追加 v0.2 历史行\",\"③ 重跑引擎侧 C1–C3：car", "go test --test step_payload_schema_v0_1_test / --test unifie",
+    "d_engine_window_test + go run ./scripts/serve_smoke\",\"④ ", "重跑签字回放 S1–S5：go run ./scripts/replay/replay_",
+    "s1_s5.go --anchor <新短哈希>（异常域还需 S4 §5 ", "激活契约 A1–A8）\",\"⑤ 解除冻结测试中的预留",
+    "位断言（v0.1 断言 → v0.2 断言），并知会下游", "按容忍矩阵回归 T4 投影\"],\"v0_2_field_ledger\":[{\"bat",
+    "ch\":\"CS3b\",\"field\":\"handler_depth\",\"kind\":\"reserve\",\"note\":\"",
+    "当前受几层 try 保护；与 unwinding 正交（finally ", "步 handler_depth==0 但仍在展开）\",\"status\":\"pending\"}",
+    ",{\"batch\":\"CS3b\",\"field\":\"unwinding\",\"kind\":\"reserve\",\"note\"",
+    ":\"展开态显式标记；每帧一 step，不得合并（", "见 BEHAVIOR_CONTRACTS）\",\"status\":\"pending\"},{\"batch\":\"CS3",
+    "b\",\"field\":\"unwind_frames_left\",\"kind\":\"reserve\",\"note\":\"剩", "余待展开帧数，展开动画驱动字段\",\"status\":\"pen",
+    "ding\"},{\"batch\":\"CS3b\",\"field\":\"current_exception\",\"kind\":\"r", "eserve\",\"note\":\"{type_name, message, addr, origin_line}|null",
+    "；origin_line 为原始抛点（`throw;` 保留 / `throw e;", "` 改写）\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"field\":\"co",
+    "de_file\",\"kind\":\"add\",\"note\":\"多文件行号归位（§8 #9", "）：code_line 保持全局行号语义，另附文件名",
+    "，避免破坏断点/heatmap 口径\",\"status\":\"pending\"},{\"", "batch\":\"v0.2\",\"field\":\"call_stack[].return_line\",\"kind\":\"add",
+    "\",\"note\":\"补全既有字段值（§8 #1）：字段已在 v", "0.1 中恒为 0，激活 = 记录 VM 帧返回行，属**补",
+    "值不改字段**\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"fiel", "d\":\"func_display_name / func_mangled_name\",\"kind\":\"add\",\"not",
+    "e\":\"§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可", "读名双字段，保留 func_name 作 display 语义\",\"stat",
+    "us\":\"pending\"},{\"batch\":\"#27\",\"field\":\"error_catalog[].icon\"", ",\"kind\":\"add\",\"note\":\"emoji 码点退役为语义图标 id",
+    "（值域 = moonbit/icons/index.tsv 52 id，icon_catalog 闸", "锁值域；无兼容别名，0.9 一步切换）\",\"status\":",
+    "\"active\"}]}",
   ]
   let buf = StringBuilder()
   for p in truth {

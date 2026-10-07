@@ -4,6 +4,8 @@
 "use strict";
 
 import { invoke, bodyOf } from "./gw.ts";
+import { iconSvg } from "./icon.ts";
+import { ICONS_DIGEST } from "./icons.ts";
 import { $, esc } from "./util.ts";
 
 export interface CatalogCard {
@@ -12,7 +14,7 @@ export interface CatalogCard {
   code_str: string;
   title: string;
   explanation: string;
-  emoji: string;
+  icon: string;
   common_causes?: string[];
 }
 
@@ -26,11 +28,28 @@ export async function loadCatalog() {
   // 读者以为引擎支持 C++（审阅二批 §2）；保留数据不删，仅不展示。
   catalogData = all.filter((c) => c.lang === "c");
   const cpp = all.length - catalogData.length;
+  checkIconsDigest();
   const cats = new Set(catalogData.map((c) => c.category));
   $("cat-stats").textContent =
     `C 卡 ${catalogData.length} 张 · 按 ${cats.size} 个分类` +
     (cpp ? `（另有 ${cpp} 张 C++ 历史卡不展示——C++ 已于 F-2 裁砍）` : "");
-  renderCatalog("");
+    renderCatalog("");
+}
+
+/** 本地表 ↔ 引擎资产 digest 对拍（#27：不一致 = 版本漂移信号，只告警不回退）。 */
+function checkIconsDigest(): void {
+  try {
+    const r = bodyOf<{ digest?: string }>(
+      invoke({ method: "icons.get", params: { ids: ["uaf"] } }),
+    );
+    if (r.digest && r.digest !== ICONS_DIGEST) {
+      console.warn(
+        `[icons] 版本漂移：引擎资产 digest=${r.digest} ≠ 本地表 ${ICONS_DIGEST}（跑 go run ./scripts/gen_icons -demo 同步）`,
+      );
+    }
+  } catch {
+    // icons.get 不可用（旧 wasm 产物）不阻断手册——徽章走文本降级
+  }
 }
 
 export function renderCatalog(query: string): void {
@@ -52,7 +71,7 @@ export function renderCatalog(query: string): void {
           items
             .map(
               (c) =>
-                `<details class="cat-card"><summary><span class="emoji">${esc(c.emoji)}</span>` +
+                `<details class="cat-card"><summary>${iconSvg(c.icon)}` +
                 `<span class="code">${esc(c.code_str)}</span> ${esc(c.title)}</summary>` +
                 `<div class="cat-body"><p>${esc(c.explanation)}</p>` +
                 (c.common_causes && c.common_causes.length

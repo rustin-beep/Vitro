@@ -61,7 +61,7 @@
       "kind": "registered",
       "rust_source": "scripts/moonbit/diagnostics_data/catalog.json",
       "moonbit_source": "moonbit/diag/catalog_gen.mbt",
-      "sync": "**生成**（moonbit 侧 gen_diag 产物，禁手改）：真源 = diagnostics_data/catalog.json（#39 迁出冻结区 2026-10-05）；emoji/title/explanation/common_causes 文案值 = #27 与修复批合法演化面，legacy 臂不比",
+      "sync": "**生成**（moonbit 侧 gen_diag 产物，禁手改）：真源 = diagnostics_data/catalog.json（#39 迁出冻结区 2026-10-05）；icon/title/explanation/common_causes 文案值 = #27 与修复批合法演化面（2026-10-07 emoji→icon），legacy 臂不比",
       "anchor": "gen_diag -check（legacy 臂比卡片码集合）+ E4 全量对拍（Rust serve error_catalog ↔ MoonBit export_catalog_json，77 条逐字节 diff 为空）"
     },
     {

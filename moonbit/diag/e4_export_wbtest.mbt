@@ -14,7 +14,7 @@ test "e4_export_shape_and_count" {
 test "e4_export_first_entry_bytes" {
   let json = export_catalog_json()
   // 首条即最小码 1002（catalog_codes 升序首位）
-  let expect_head = "{\"catalog\":[{\"code\":1002,\"code_str\":\"E1002\",\"lang\":\"c\",\"category\":\"词法\",\"emoji\":\"💬\",\"title\":\"字符串未闭合\","
+  let expect_head = "{\"catalog\":[{\"code\":1002,\"code_str\":\"E1002\",\"lang\":\"c\",\"category\":\"词法\",\"icon\":\"string\",\"title\":\"字符串未闭合\","
   assert_true(json.has_prefix(expect_head))
 }
 

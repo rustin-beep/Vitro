@@ -236,7 +236,7 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
     lines.push("  ... 其余 \{n - shown} 处已省略显示")
   }
   lines.push(
-    "💡 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。",
+    "[note] 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。",
   )
   lines.push("==============================")
   for line in lines {

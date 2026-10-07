@@ -34,17 +34,17 @@ agent_created: true
 
 1. **五阶段一个都不能少**——尤其**阶段 4「改原代码做边界 / 突变测试」**：只读码不注入的审阅，永远无法回答"这批锚到底有没有牙"。
 2. **禁止 grep 出结论**——grep 扫文件不扫调用图。"多报 / 漏报 / 不等价 / 新增 / 漏掉"类结论必须构造用例跑一遍。
-3. **oracle 只作对照，用前先确认它比源新**：
-   - 通常 `find native/crates -name "*.rs" -newer native/target/release/vitro_cli.exe`；不新就 `cd native && cargo build --release --bin vitro_cli`。
-   - **审「已提交的批」时 mtime 检查不够**：批只动 `moonbit/` 时 native 源码未变 ⇒ `find -newer` 零命中，但 exe 可能是**旧 commit** 构建的 ⇒ `shadow_verify` 的**版本门**（比对 HEAD 短哈希，比 mtime 严）直接 FATAL。
-   - ⇒ 审阅开头就 `go run ./scripts/shadow_verify`（或直接 rebuild，增量约 13s）。**别把版本门 FATAL 读成"Rust 区有问题"**；只跑 `find -newer` 就下"oracle 新鲜"结论 = 假绿。
+3. ****[Rust oracle 退役 2026-10-05]**（tag `rust-oracle-freeze`）——原铁律「oracle 只作对照，用前先确认它比源新」（mtime 检查 / `cargo build` / `shadow_verify` 版本门）随删区整体失效**。现役新鲜度口径：
+   - vm_diff / clang_direct **自带**「mtime 触发 + 构建复核」新鲜度门禁，跑前不必手动预检；
+   - 统一入口 `scripts/bin/vitro` 的 native 降级臂有**stderr 大字告警门禁**（不阻断；只扫 `cmd/host/parser/typeck/lexer/codegen/vm` 7 目录——gateway/memory/time_travel 等改源**不在告警面**，须自行 mtime 比对，见 `03` D16 同族面「陈旧制品」）；
+   - wasm 臂消费 `moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm`（壳写死该路径）——引擎改动收尾必须重建：`cd moonbit && moon build --release --target wasm-gc gateway/wasm`（**必须在 `moonbit/` 下**，仓库根跑 = `not in a Moon project` exit 127），否则双臂假分叉。
 4. **两侧比字节前一律过 `go run ./scripts/canonicalize`**（键排序；数字形态不归一）。
 5. **语料全绿 ≠ 正确**。门禁只覆盖语料形状；必须补边界形状探针 + 突变抽检。
 6. **禁改预期值 / 门禁数字粉饰**；发现"红"先反证是不是脚本口径假阳性。
-7. **判据分层**：本仓判据是 **oracle 照搬**；Clang 只作旁证（两者在 `%g` 等数值面上本就不同）。浮点面要**三方位级**，见 `references/01`。
+7. **判据分层**（**[Rust oracle 退役 2026-10-05]** 重写——原「本仓判据是 oracle 照搬；Clang 只作旁证」随删区反转）：**本仓判据是 Clang 直拍**（clang golden + `clang_direct`——golden 由 clang 现跑取真值，缓存 `.clang_cache_cd/`，结构指纹在各驱动 `golden_digest.json`；AGENTS.md 纪律 4「以 Clang 为标准」）；**冻结 golden digest**（工序③固化，结构面）与 **Rust oracle 档案**（tag `rust-oracle-freeze`，按需从档案取回，方法见总计划 §11）作第二方位。浮点面要**三方对拍**（Clang / 目标实现 / 平台 libm），见 `references/01`。
 8. **覆盖度必须自报**。没读、没跑、没探的面一律列出，**禁把"读码未见偏差"写成"已验证正确"**。
 9. **诚实归因**：报"锚缺口"前必须先判该分支**是否可达**——找得到一条区分两条路径的输入才叫缺口；找不到就是等价分支或不可达分支，属读码判定，不硬报。
-10. **Rust 冻结区只作 oracle**，`native/`、`scripts/`、`.github/` 已冻结（tag `rust-oracle-freeze`），只允许既有白名单 + 安全修复 + 防线维护。审阅**不改**冻结区。
+10. **~~Rust 冻结区只作 oracle~~**（**[Rust oracle 退役 2026-10-05]**——`native/` 已随工序④物理删除，档案 = tag `rust-oracle-freeze` + 分支 `frozen-oracle-snapshot` + git 历史；`scripts/`、`.github/` 为 Go 防线层，判定型脚本改动仍须过「规则外置 JSON、fail loud」纪律）。
 11. **收敛速率纪律**（防"追不存在的鬼"）：
     - **同一现象连续两轮无法给出区分性证据 ⇒ 停止深挖，降级为"未覆盖"并注明"判据不足"**，不要把它包装成结论。
     - **一个 root cause 只修一处**：发现同形点多处时，先列全清单再动手，避免"修一个冒一个"。
@@ -69,18 +69,18 @@ wc -l <新增文件...>                # 先估规模，决定读码预算
 命令见 [`references/06-复现清单.md`](references/06-复现清单.md)。要点：
 
 - 记录每个脚本**自报的稳定单行**（SAME / AGREE / ONE-SIDED / CONTENT-DIFF、用例数、漂移处数）作为基线。
-- **Rust 冻结区即使本批没动也要跑**——它是 oracle 的正确性底线。
+- ~~**Rust 冻结区即使本批没动也要跑**~~（**[Rust oracle 退役 2026-10-05]**——cargo test / clippy / shadow_verify 面已整体消失，oracle 正确性底线由 clang golden + clang_direct 承接）。
 - `moon check` 吐上百条 warning ⇒ 过滤结果行即可；**但审「修复批」时把 warning 总数当免费回归信号**（改前 / 改后比总数，再把增量落到 `文件:行`）。
 - `moon test` 失败**只打印 FAILED 行、不打印实际值** ⇒ 用 `fail()` dump，见 `references/01`。
 - **测试数三处一致**：裸总数 = 逐包之和 + 根 README doc test；与 `README.md` / `moonbit/README.md` / `README.mbt.md` / `reports/facts.json` 对账。`facts check` **看不见这类错**（它只比「文档 ↔ facts」，同为陈旧值就一起绿）。
-- **`--target native` 缺口**：CI 的测试步骤若不带 `--target native`，native-only 包的锚（`cmd/serve`、vendored `fs` 等）**全不在门禁内**。核对法：两种情况各跑一次比总数。
+- **`--target native` 覆盖核对**：CI 现役已有独立 `moon test --target native` 步骤（ci.yml），但新接线 / 拆批后须复核该步骤仍在——native-only 包的锚（`cmd/*`、vendored `fs` 等）不在裸 `moon test` 内。核对法：两种情况各跑一次比总数。
 
 ### 阶段 2 · 逐个读代码（不可跳）
 
-对象 = 本批**每个新增 / 改动文件**，以及它在 oracle 侧的对应函数。
+对象 = 本批**每个新增 / 改动文件**，以及它在**真值侧**的对应物（**[Rust oracle 退役 2026-10-05]**——对照对象由「oracle 源码」变为：clang golden / 冻结 golden digest / `03` 缺陷形态清单的既有实例；确需读 oracle 源码时从档案 tag `rust-oracle-freeze` 取回，方法见总计划 §11）。
 
-- 先列函数骨架，再逐段读**与 oracle 有语义映射**的部分。
-- 每个新臂**回 oracle 同函数逐行比**：load / store 宽度键、`is_*` 判定来源、回退分支、错误文案、**弹参顺序**、边界返回值。oracle 位置：`native/crates/vitro_vm/src/host/`、`native/crates/vitro_codegen/src/`（**不在** `native/src/`）。
+- 先列函数骨架，再逐段读**与真值侧有语义映射**的部分。
+- 每个新臂**回真值侧逐项比**：load / store 宽度键、`is_*` 判定来源、回退分支、错误文案、**弹参顺序**、边界返回值；Clang 侧用 C 探针实测（`references/01`）。
 - 审"移植片"要审**两层**：① 差分可比面（产物 / token 流）；② **差分根本没比的输出面**（诊断 loc / warnings / LineMap / trace / 文件归属 / 运行期 stdout 文本）。
 - 声称类结论必须反查：CHANGELOG / 注释写"已证等价""已对齐"的，都要找口径与证据。**"注释自称已登记" ≠ 真登记**（同时 grep 注释与文档两边）。
 - **同族一致性**：一串同类实现里，逐个数"有几个用了做法 A、有几个没用"——**漏掉的那一处就是缺陷**（历史高发）。
@@ -90,9 +90,9 @@ wc -l <新增文件...>                # 先估规模，决定读码预算
 手法在 [`references/01-探针与对拍.md`](references/01-探针与对拍.md)，四类：
 
 - **3a 形状探针**：语料对每个构造通常只取一种形状，换标量宽度 / 指针层数 / 存储类就出盲区。
-- **3b 运行时真机对照**：端到端门禁覆盖不到的面 ⇒ 用 C 探针取 oracle 真值 + 白盒 `fail()` dump 对照。含**弹参序判别必须用非对称实参**、**接线臂可达性**（"已接 N 臂" ≠ N 臂可达）、**输出通道去重 / 限额 / 幂等**、**输入通道行边界形态**。
+- **3b 运行时真机对照**：端到端门禁覆盖不到的面 ⇒ 用 C 探针取 Clang 真值（**[Rust oracle 退役 2026-10-05]**——原「oracle 真值」改由 clang 实跑产出）+ 白盒 `fail()` dump 对照。含**弹参序判别必须用非对称实参**、**接线臂可达性**（"已接 N 臂" ≠ N 臂可达）、**输出通道去重 / 限额 / 幂等**、**输入通道行边界形态**。
 - **3c 二进制遮蔽检查**：源码里的裸 NUL 会让整个文件在 git 里不可 diff。
-- **3d 跨语言真值对拍**：有现成出口（serve / CLI）就**直接取真值**，别用探针复刻。
+- **3d 跨语言真值对拍**：有现成出口（统一入口 `scripts/bin/vitro` 的 run / api / step，或 serve）就**直接取真值**，别用探针复刻。
 
 ### 阶段 4 · 改原代码做突变 / 边界注入
 
@@ -103,7 +103,7 @@ wc -l <新增文件...>                # 先估规模，决定读码预算
   - 注入写法、增量编译漏检坑（`sleep ≥1.5s`）、"改坏不红"的两分性质（真锚盲区 vs 等价分支）见 `references/01`。
   - **审「别人写的修复批」时反向突变**：把修复**还原成缺陷版**，期望对应用例红、还原后复绿，并记录红的是哪个用例名。`failed == 0` ⇒ 修复写了但锚没牙。
   - **反向突变必须打在「锚所在的那道闸」上**（2026-09-29 实证，差点误判"无锚"）：单测全绿 **≠** 锚没牙——该点的锚可能压根不在单测，而在**差分防线**。
-    实例：kruskalMST 栈布局修复（`codegen/var_decl.mbt` 的 `let idx = k`）反向注入后 `moon test -p vitro/engine/codegen` **15/15 全绿**（failed 0），而改跑 `go run ./scripts/codegen_diff native/tests/cases_template_generated` 立即 `CONTENT-DIFF=1` + exit 1（真红）。
+    实例：kruskalMST 栈布局修复（`codegen/var_decl.mbt` 的 `let idx = k`）反向注入后 `moon test -p vitro/engine/codegen` **15/15 全绿**（failed 0），而改跑 `go run ./scripts/codegen_diff corpus/template_generated`（当时为 `native/tests/cases_template_generated`，**[Rust oracle 退役 2026-10-05]** 后语料迁 `corpus/`）立即 `CONTENT-DIFF=1` + exit 1（真红）。
     判据：先读该提交**自称的锚在哪**（提交信息里的"防线 / 差分 / 对拍"字样），再去那道闸上注入；`moon test -p` 绿只说明"单测不覆盖这条路径"。
   - **扫「同族臂的结构同构」**（2026-09-29 实证，我自己漏过一次）：审 dispatch / 路由表 / emitter / 臂族时，把同族**所有臂并排列出来对比**——只看 diff 的上下文行容易漏掉"这一个臂跟邻居写法不一样"。
     实例：`cmd/serve/serve.mbt` 的 dispatch 十几个臂里只有 `config.set` 没包 `serve_ok(id, ...)`（返回裸 config 对象，帧结构不符 Rust）；667ae93 审阅时它以**上下文行**出现在 diff 里我没盯住，直到批四号双宿主对拍才抓到。
@@ -111,7 +111,7 @@ wc -l <新增文件...>                # 先估规模，决定读码预算
   - 同时审**修复的完整性**（一处根因常有多处同形点）与**反向回归**（改了 A 顺手碰坏 B：EOF 换行、注释不同步、状态句没跟着改）。
 - **(b) 边界值注入**：构造边界输入（`0` / `-0.0` / `DBN_MAX` / 次正规 / `INT_MIN` / 空串 / `\r\n` / 多字节 UTF-8 / `n=0` / 超大 `size×nmemb`），看实现是否与 oracle 同形。
 
-**浮点 / 数值移植必须三方对拍**（oracle / 目标实现 / 平台 libm），只看两侧会把三种情况混成一种。详法见 `references/01`。
+**浮点 / 数值移植必须三方对拍**（Clang / 目标实现 / 平台 libm——**[Rust oracle 退役 2026-10-05]**，原第一列 Rust oracle 现按需从档案取回），只看两侧会把三种情况混成一种。详法见 `references/01`。
 
 ### 阶段 5 · 脚本自证（闸与被审脚本）
 

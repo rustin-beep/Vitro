@@ -502,6 +502,20 @@ jobs:
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS
+      # skill 手册引用路径存在性闸（2026-10-07 接线；缺陷形态 03 E11/E13 同族面
+      # 「手册改写引用面按脑测填迁移目标」的机判面）：.agents/skills/** 内的
+      # 仓库路径引用（围栏代码块 + 行内反引号 span，首段 = 仓库根一级条目）
+      # 必须实存；退役/反例语境死路径经 rules.json dead_paths 过闸（新增须在
+      # 提交信息写明语境）；min_hits 下限守卫防抽取面塌缩（D8）。
+      # -selftest 九路注入证红（J9）。首跑战果：11 处缺失全数人工定性
+      # （2 陈旧路径修正 + 1 笔误前缀修正 + 1 占位符化 + 1 注释粘连 +
+      # 6 退役/反例语境收编 dead_paths）。
+      - name: skill docs referenced-path existence
+        run: |
+          go run ./scripts/skill_path_check -selftest
+          go run ./scripts/skill_path_check
+        shell: bash
+
       # 变量/id 三路文本对账——demo UI 批三实锤 bug 中两个的归因面
       # （stdin-row 死类 + --fg-muted 幽灵变量；HEAD 版证红留痕：bug 版
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。

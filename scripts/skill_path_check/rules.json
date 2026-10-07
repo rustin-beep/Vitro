@@ -1,0 +1,19 @@
+{
+  "whitelist_prefixes": [
+    "tmp/",
+    "moonbit/_build/",
+    ".clang_cache_cd/",
+    ".shadow_tmp/",
+    "native/",
+    "node_modules/"
+  ],
+  "dead_paths": [
+    "scripts/shadow_verify",
+    "corpus/cases_golden",
+    "corpus/cases"
+  ],
+  "skip_files": [
+    "vitro-workspace-review/references/07-演化日志.md"
+  ],
+  "min_hits": 45
+}

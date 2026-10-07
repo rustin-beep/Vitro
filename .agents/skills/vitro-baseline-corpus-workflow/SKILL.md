@@ -9,22 +9,22 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 
 ## 黄金验证序列（按序全跑）
 1. **clang 实跑**取 stdout + exit code（golden 由实跑生成，**勿手写**）；
-2. golden 落 `corpus/cases_golden/<suite>/<name>.out`（原 `native/tests/cases_golden/` 随删区迁入）——`<suite>` ∈ `baseline` / `knr` / `leetcode` / `cpp`，与 `cases/` 同名子目录**一一对应**。⚠️ `cases_golden/` **根下另有 82 个 `*_default.out` 散文件**（模板/算法那套），别与用例 golden 放混；
+2. **golden 不落盘 `.out` 文件**（**[Rust oracle 退役 2026-10-05]** 改写——原「`corpus/cases_golden/<suite>/<name>.out` + 82 个 `*_default.out`」形态已消亡，`corpus/` 下实测 0 个 `.out`）：期望值由 `clang_direct` **现跑** clang 取真值（缓存 `.clang_cache_cd/`，gitignore 域；行级归一内置）；结构面由各差分驱动随包固化的 `golden_digest.json` 对账（工序③形态）——**新用例入账跑 `go run ./scripts/codegen_diff <dir> --freeze-mb`**（mb 侧产物指纹入账）；
 3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
-4. `cargo build --release` 重建后 `go run ./scripts/shadow_verify`（cwd=仓库根）；
-5. `go run ./scripts/facts check` 漂移 0。
+4. ~~`cargo build --release` 重建后 `go run ./scripts/shadow_verify`~~（**[Rust oracle 退役 2026-10-05]**——`native/` 已整体删除，`scripts/shadow_verify` 同批消失；oracle 正确性底线职责由 clang golden + clang_direct 直拍承接）；
+5. `go run ./scripts/facts --strict check` 漂移 0（CI 现役完整形态，flag 在子命令之前）。
 
 ## golden 规则
 - **stdout 为空的用例，golden 就是 0 字节文件，合法**（比对按 trim 后非空行）。
-- **必须 LF**：clang 在 Windows 直出 CRLF，落盘前 `tr -d '\r'` 归一，与仓库既有形态一致。查形态：`od -c <golden> | head`（看 `\n` 而非 `\r\n`）。
+- **必须 LF**：clang 在 Windows 直出 CRLF——现役形态下归一由 `clang_direct` 的 `normalizeClangStdout` 内置承接（原「落盘前 `tr -d '\r'`」随 `.out` 落盘形态消亡）；查形态仍是一律看字节，别信 Read 渲染。
 - 「golden 从未生成」与「用例被 exclude 排除」是两种不同故障，别混判。
 
 ## 两个通道陷阱
 - **e2e 的 ret ≠ CLI 打印的返回值**：e2e ret 是引擎状态码，程序 `return 42` 不等于 e2e 失败。勿凭 CLI 输出预判 e2e 红。
-- **shadow_verify --rebuild 只看 mtime**：DLL 构建自旧提交但 mtime 新鲜（改的是别的文件）时不触发重建——靠 `engine_version()` 里的 git hash 检查 exit 2 fail fast 拦截；处置 = 手动 `cd native && cargo build --release`。
+- ~~**shadow_verify --rebuild 只看 mtime**~~（**[Rust oracle 退役 2026-10-05]**——本坑对象已删；教训由现役防线继承：vm_diff / clang_direct 自带「mtime 触发 + 构建复核」新鲜度门禁，统一入口 `scripts/bin/vitro` 的 native 降级臂有 **stderr 大字告警**（不阻断；只扫 `cmd/host/parser/typeck/lexer/codegen/vm` 7 目录，gateway 族改源不在告警面）——陈旧 exe 会用旧代码下结论，查法见 `vitro-workspace-review` 03 的 D16 同族面「陈旧制品」条）。
 
 ## 加用例的连坐面（facts）
-1 个用例会牵动 shadow 总数与 match 计数，下游同步面约 6 处：markdown 现值句、**SVG 内嵌数字（生成物，`go run ./scripts/gen_svg` 重生成，禁手改；重生成后 `grep -o` 抽查数字落位）**、README 分解式行（人工维护不机判但须诚实同步）+ 更新 as_of 实测日期。
+1 个用例会牵动 clang_direct / vm_diff 的对拍计数（原「shadow 总数与 match 计数」**[Rust oracle 退役 2026-10-05]**），下游同步面约 6 处：markdown 现值句、**SVG 内嵌数字（生成物，`go run ./scripts/gen_svg` 重生成，禁手改；重生成后 `grep -o` 抽查数字落位）**、README 分解式行（人工维护不机判但须诚实同步）+ 更新 as_of 实测日期。
 
 ## 输出差异类用例：gap 目录配方
 双侧可跑但输出**必然不同**时（如 `putchar(>=128)` 的 UTF-8 重编码差异），不进 baseline。照 `corpus/gap/` 先例：
@@ -41,4 +41,4 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 ## 权威源与时效
 - `scripts/clang_direct` / `scripts/facts` 头注（`shadow_verify` 已随 2026-10-05 删区退役）；原 `native/AGENTS.md` §测试防线（已删区，档案 tag `rust-oracle-freeze`）
 - **相关规程**：`vitro-facts-reconciliation`（连坐面的判读）、`vitro-generator-contract`（SVG 重生成属生成器闸）
-- as_of: 2026-09-28
+- as_of: 2026-10-07（删区后义务链退役标注同步批）

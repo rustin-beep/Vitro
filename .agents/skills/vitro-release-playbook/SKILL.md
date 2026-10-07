@@ -14,7 +14,7 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
 
 ## 2. 发布前置
 - 防线全绿：CI 两 job + `toolchain_probe`；本地 = `moon check --target all` 干净、`moon test` 全绿、`moon info` 无意外 diff、`gen_diag -check` 绿。
-- **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02/脚本总清单`。
+- **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02-构建与上手/脚本总清单与必跑防线.md`。
 
 ## 3. moon publish 机械事实（踩过的实锤）
 - **module 级打包，无包排除选项**：工作树有什么 zip 就装什么（连 AGENTS.md 都进包）。要「发布不含某包」只能：发布时临时移出包目录 → publish → 移回；移出前先验依赖方向（无人 import 则剩余树自洽编译）。

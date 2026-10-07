@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（skill 手册引用面纠错 + skill_path_check 新闸，2026-10-07）
+
+- **skill 手册 Rust oracle 退役结构性纠错**（9 文件）：判据反转（oracle 照搬 → Clang 直拍）、复现清单对齐 ci.yml 现役（`corpus/` 路径 / `MOON_CC=clang` / 统一入口 `scripts/bin/vitro`）、realcode/baseline 义务链退役标注（统一挂 [Rust oracle 退役 2026-10-05] 标签，tag `rust-oracle-freeze`）；外部审阅报告 F1–F9 处置（7 修 2 拍板执行）。
+- **新闸 `scripts/skill_path_check`**（接 CI hygiene）：`.agents/skills/**` 内仓库路径引用存在性机判（围栏代码块 + 行内反引号；规则外置 `rules.json`：白名单前缀 / `dead_paths` 退役·反例语境死路径 / `skip_files` 只追加历史日志 / `min_hits` 抽取面塌缩下限）；`-selftest` 九路注入证红 + J9 实弹注入-还原双向在案；首跑 13 文件 11 处缺失全数人工定性。缺陷形态 03 E11/E13 同族面「手册改写引用面按脑测填迁移目标」的机判面。
+
 ### Fixed（S9 修复批批三-c 段二：#34 step 帧行号与语义同源，2026-10-06）
 
 - **#34 code_line 与 semantic_label 同帧错位**：run_batch 循环顶取「步进前行」算 label、

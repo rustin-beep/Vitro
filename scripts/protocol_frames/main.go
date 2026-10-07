@@ -48,6 +48,7 @@ import (
 	"time"
 
 	"vitro/scripts/internal/canonicalize"
+	"vitro/scripts/internal/freshness"
 )
 
 // ---------------------------------------------------------------- 路径与请求表
@@ -294,15 +295,20 @@ func main() {
 		backendWasm = true
 		shell := filepath.Join(projectRoot(), "scripts", "vitro_cli", "main.js")
 		wasmMod := filepath.Join(projectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
-		for _, f := range []string{shell, wasmMod} {
-			if _, err := os.Stat(f); err != nil {
-				fatal("wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）", f)
-			}
+		if _, err := os.Stat(shell); err != nil {
+			fatal("wasm 臂产物缺失 %s（统一入口壳）", shell)
 		}
+		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
+		freshness.EnsureFresh("protocol_frames", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
 		if _, err := exec.LookPath("node"); err != nil {
 			fatal("wasm 臂需要 node（统一入口壳宿主）")
 		}
 		mbServe = shell
+	} else {
+		// serve exe 新鲜度门禁（批五 P2-5——陈旧 debug serve 产物假红封口）
+		freshness.EnsureFresh("protocol_frames", mbServe,
+			"build", "--target", "native", "cmd/serve")
 	}
 
 	loadRules()

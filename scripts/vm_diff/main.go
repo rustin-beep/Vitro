@@ -81,6 +81,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"vitro/scripts/internal/freshness"
 )
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
@@ -266,45 +268,16 @@ func main() {
 			fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在（统一入口壳）\n", wasmShell)
 			os.Exit(1)
 		}
-		if !fileExists(wasmMod) {
-			fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target wasm-gc gateway/wasm\n", wasmMod)
-			os.Exit(1)
-		}
-		if stale := findStaleSource(wasmMod); stale != "" {
-			fmt.Fprintf(os.Stderr, "vm_diff: %s 旧于源 %s——跑 wasm-gc 构建复核...\n", wasmMod, stale)
-			rb := exec.Command("moon", "build", "--release", "--target", "wasm-gc", "gateway/wasm")
-			rb.Dir = "moonbit"
-			if out, err := rb.CombinedOutput(); err != nil {
-				fmt.Fprintln(os.Stderr, string(out))
-				fmt.Fprintln(os.Stderr, "vm_diff: wasm-gc 构建失败——修好构建前不给判定")
-				os.Exit(1)
-			}
-			if !fileExists(wasmMod) {
-				fmt.Fprintf(os.Stderr, "vm_diff: 构建成功但 %s 仍缺失（moon 缓存与磁盘不一致）——删 moonbit/_build/wasm-gc 后重建\n", wasmMod)
-				os.Exit(1)
-			}
-		}
-	} else if !fileExists(runnerExe) {
-		fmt.Fprintf(os.Stderr, "vm_diff: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
-		os.Exit(1)
-	}
-	// 新鲜度门禁（2026-09-26 批改：mtime 触发 + 构建复核）：moon 增量按
-	// **内容 hash** 判定——touch、git 换行归一重写、等价内容再生成都会
-	// 让 mtime 落后而 exe 内容其实最新（mtime 硬红 = 反复假阳性，实测：
-	// 提交批的 git add 换行归一即触发）；反之构建失败照跑旧 exe 报假绿
-	// 才是要封的死角。故落后时**跑一次规范化构建复核**：退出码 0 ⇒
-	// moon 已保证 exe 内容最新（重链了或判定 no-work），放行；失败 ⇒
-	// 红并拒绝给判定。
-	if stale := findStaleSource(runnerExe); stale != "" {
-		fmt.Fprintf(os.Stderr, "vm_diff: %s 旧于源 %s——跑构建复核（moon 内容 hash 增量）...\n", runnerExe, stale)
-		if !rebuildRunner() {
-			fmt.Fprintln(os.Stderr, "vm_diff: 构建失败——修好构建前不给判定（陈旧 exe 假绿由此封死）")
-			os.Exit(1)
-		}
-		if !fileExists(runnerExe) {
-			fmt.Fprintf(os.Stderr, "vm_diff: 构建成功但 %s 仍缺失（moon 缓存与磁盘不一致）——删 moonbit/_build/native/release/build/cmd/run 后重建\n", runnerExe)
-			os.Exit(1)
-		}
+		// wasm 产物门禁（存在性 + mtime 触发 + 构建复核；#41 缓存毒化教训
+		// 的机判兜底）——单源 freshness 包（批五 P2-5 五家共用）。
+		freshness.EnsureFresh("vm_diff", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+	} else {
+		// native runner 门禁（2026-09-26 批改形态：mtime 触发 + 构建复核——
+		// moon 内容 hash 增量下 mtime 落后≠内容陈旧，硬红会反复假阳性；
+		// 构建失败照跑旧 exe 报假绿才是要封的死角）——单源 freshness 包。
+		freshness.EnsureFresh("vm_diff", runnerExe,
+			"build", "--release", "--target", "native", "cmd/run")
 	}
 
 	skips = loadSkipList()
@@ -735,52 +708,6 @@ func normalizeLines(lines []string) string {
 		out = out[1:]
 	}
 	return strings.Join(out, "\n")
-}
-
-// rebuildRunner：跑规范化构建（cwd=moonbit）——退出码 0 即 moon 已保证
-// exe 内容最新（重链了或内容 hash 判定 no-work）；供 mtime 落后时复核。
-func rebuildRunner() bool {
-	cmd := exec.Command("moon", "build", "--release", "--target", "native", "cmd/run")
-	cmd.Dir = "moonbit"
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, string(out))
-		return false
-	}
-	return true
-}
-
-// findStaleSource：返回任一比 runner exe 新的 moonbit 源文件（.mbt/
-// .mod/.pkg；跳过 _build 产物目录），全新鲜则返回空串。
-func findStaleSource(runner string) string {
-	st, err := os.Stat(runner)
-	if err != nil {
-		return runner
-	}
-	exeMtime := st.ModTime()
-	var stale string
-	_ = filepath.WalkDir("moonbit", func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			if d.Name() == "_build" || d.Name() == ".mooncakes" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		name := d.Name()
-		if strings.HasSuffix(name, ".mbt") || strings.HasSuffix(name, ".mod") ||
-			strings.HasSuffix(name, ".pkg") {
-			if info, err := d.Info(); err == nil && info.ModTime().After(exeMtime) {
-				if stale == "" {
-					stale = path
-				}
-			}
-		}
-		return nil
-	})
-	return stale
 }
 
 func runOracle(path string) *result {

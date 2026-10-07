@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（批五·防线脚本自证片：oracle 残留清理 + 被测物新鲜度门禁，refs #47，2026-10-07）
+
+- **freshness 门禁单源**（新包 `scripts/internal/freshness`，自 vm_diff 上提）：
+  「mtime 触发 + 构建复核」形态五家共用（vm_diff 双臂换源 + replay/serve_smoke/
+  protocol_frames/teaching_annotation_diff 双臂接线）——此前后四者对被测 serve
+  exe「按文件在位即用」，陈旧 debug 产物批量假红（teaching 145 处实锤）；J9 双
+  形态证红（坏源构建失败拒绝判定 / 缺产物 fail loud）+ touch 复核放行验证。
+- **oracle 残留引用清理**（replay/serve_smoke）：删 rust 死路径裸默认
+  （`native/target/*` 探测与 `--cli`/`--anchor` flag）——裸跑改 fail loud 指引
+  现役两臂；`VITRO_CLI` 显式注入通道保留（J9 埋雷）。连带退役死断言 **S5 A4b**
+  （直读 rust dll 版本锚——恒 false 由豁免表供养，改记录性 PASS + 豁免条目删除，
+  replay 断言集 59+2 → 60+1）与 readEngineVersion/gitShortHead/anchorRe 全链。
+- **typeck-error 两出口分叉关账**（批五遗留条目）：b 向实现（gateway 补 push
+  type_warnings）+ 对拍闸「编译错+类型警告（失败路径诊断）」B 组用例（vitro_cli_smoke:180）
+  均已在前批落地，本批核实关账。
+
 ### Fixed（批五·note 无界通道治理，refs #47，2026-10-07）
 
 - **note 通道双层收敛**（输出侧唯一无界通道销案——继承 Rust 的「不占预算不参与

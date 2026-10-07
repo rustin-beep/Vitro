@@ -10,15 +10,17 @@ package main
 // 迁移中锚定的口径：
 //   - `断言数: N  (PASS x / FAIL y)` 自报行是 scripts/facts 的采集锚点
 //     （serve_smoke_assertions 真值），格式不得改动；
-//   - 产物选择取 mtime 较新者（固定 debug 优先曾在陈旧 debug 上拿假绿——
-//     J9 埋雷实测踩中：注入 release 后 smoke 仍跑旧 debug 全绿）；
+//   - rust 产物 mtime 选择口径已随对照区退役（2026-10-07 批五）；MoonBit
+//     双臂由 freshness 新鲜度门禁守（mtime 触发 + 构建复核——陈旧 debug
+//     serve 产物批量假红的封口）；
 //   - RSS 护栏证红通道：`VITRO_RSS_BUDGET_MB=5`（预算压到 5MB 必红）；
 //   - 响应解析走 UseNumber：Python 的 isinstance(int) 整性检查在 Go 侧
 //     以 json.Number.Int64 可解析性等价复刻（3 与 3.0 可区分）。
 //
-// 运行：`go run ./scripts/serve_smoke`（需先构建 vitro_cli：
-// `cd native && cargo build --bin vitro_cli`）。
-// 或经环境变量指定可执行文件：`VITRO_CLI=/path/to/vitro_cli go run ./scripts/serve_smoke`。
+// 运行（rust 臂已退役，2026-10-05 删区）：
+// `go run ./scripts/serve_smoke -moonbit`（先 `cd moonbit && moon build --target native cmd/serve`）
+// 或 `--backend-wasm`（统一入口壳——先 `moon build --release --target wasm-gc gateway/wasm`）；
+// 显式注入通道（J9 埋雷用）：`VITRO_CLI=/path/to/exe go run ./scripts/serve_smoke`。
 
 import (
 	"bufio"
@@ -36,6 +38,7 @@ import (
 	"time"
 
 	"vitro/scripts/internal/capi"
+	"vitro/scripts/internal/freshness"
 	"vitro/scripts/internal/probeutil"
 )
 
@@ -351,12 +354,13 @@ func run() int {
 		}
 		shell := filepath.Join(capi.ProjectRoot(), "scripts", "vitro_cli", "main.js")
 		wasmMod := filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
-		for _, f := range []string{shell, wasmMod} {
-			if _, err := os.Stat(f); err != nil {
-				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
-				return 2
-			}
+		if _, err := os.Stat(shell); err != nil {
+			fmt.Printf("错误: wasm 臂产物缺失 %s（统一入口壳）\n", shell)
+			return 2
 		}
+		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
+		freshness.EnsureFresh("serve_smoke", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
 		exe = shell
 		fmt.Printf("wasm 臂 serve: node %s serve（豁免 %d 断言 + %d 整批）\n", shell, len(mbExempt), len(mbBatches))
 	} else if mbMode {
@@ -381,18 +385,26 @@ func run() int {
 			mbExempt = map[string]string{}
 		}
 		exe = resolveMoonBitExe()
-		if _, err := os.Stat(exe); err != nil {
-			fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", exe)
-			return 2
-		}
+		// serve exe 新鲜度门禁（批五 P2-5：陈旧 debug serve 产物批量假红
+		// ——teaching 145 处实锤同族；存在性 + mtime 触发 + 构建复核单源）
+		freshness.EnsureFresh("serve_smoke", exe,
+			"build", "--target", "native", "cmd/serve")
 		fmt.Printf("MoonBit serve: %s（豁免 %d 断言 + %d 整批）\n", exe, len(mbExempt), len(mbBatches))
-	} else {
-		exe = resolveExe()
+	} else if override := os.Getenv("VITRO_CLI"); override != "" {
+		// VITRO_CLI 显式注入通道保留（J9 埋雷用——桩 exe 注入证红在案）；
+		// rust 产物的 debug/release 探测路径已随对照区退役（2026-10-07 批五）。
+		exe = override
 		if _, err := os.Stat(exe); err != nil {
-			fmt.Printf("错误: 找不到 %s，请先 `cd native && cargo build --bin vitro_cli`\n", exe)
+			fmt.Printf("错误: VITRO_CLI 指定的 %s 不存在\n", exe)
 			return 2
 		}
-		fmt.Printf("vitro_cli: %s\n", exe)
+		fmt.Printf("vitro_cli（注入）: %s\n", exe)
+	} else {
+		fmt.Println("错误: 未选被测物臂——rust 臂已退役（2026-10-05 删区）。现役两枝：")
+		fmt.Println("  go run ./scripts/serve_smoke -moonbit            # native cmd/serve exe")
+		fmt.Println("  go run ./scripts/serve_smoke --backend-wasm      # 统一入口壳（node 消费 gateway wasm.wasm）")
+		fmt.Println("（VITRO_CLI=<exe> 显式注入通道保留——J9 埋雷用）")
+		return 2
 	}
 
 	// ── 主批：20 请求协议契约 ──
@@ -796,35 +808,8 @@ func run() int {
 
 // resolveExe 定位被测产物：VITRO_CLI 覆盖优先；否则 debug/release 取 mtime
 // 较新者——固定 debug 优先曾在陈旧 debug 上拿假绿（J9 埋雷实测）。
-func resolveExe() string {
-	if override := os.Getenv("VITRO_CLI"); override != "" {
-		return override
-	}
-	name := "vitro_cli"
-	if runtime.GOOS == "windows" {
-		name = "vitro_cli.exe"
-	}
-	root := capi.ProjectRoot()
-	debug := filepath.Join(root, "native", "target", "debug", name)
-	release := filepath.Join(root, "native", "target", "release", name)
-	candidates := []string{}
-	for _, p := range []string{debug, release} {
-		if _, err := os.Stat(p); err == nil {
-			candidates = append(candidates, p)
-		}
-	}
-	if len(candidates) == 0 {
-		return release
-	}
-	best := candidates[0]
-	var bestMT int64 = -1
-	for _, p := range candidates {
-		if fi, err := os.Stat(p); err == nil && fi.ModTime().UnixMilli() > bestMT {
-			best, bestMT = p, fi.ModTime().UnixMilli()
-		}
-	}
-	return best
-}
+//（resolveExe 的 rust debug/release 探测（native/target/*）已随对照区退役删除，
+// 2026-10-07 批五——VITRO_CLI 显式注入通道内联到主分派保留（J9 埋雷用）。）
 
 // ─── 小工具 ──────────────────────────────────────────────────────────────────
 

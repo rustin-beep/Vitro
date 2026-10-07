@@ -15,13 +15,15 @@
 //   - 输出格式与 Python 版一致（`  [PASS] S1 A1` / 汇总块），双轨对账可逐行 diff；
 //   - --selftest：J9 埋雷——对判定 helper 注入必然违反的输入，必须变红，否则 exit 2。
 //
-// 用法：go run scripts/replay/replay_s1_s5.go [--cli PATH] [--anchor <短哈希>] [--sections S1,S2,S3,S5] [--selftest]
+// 用法：go run scripts/replay/replay_s1_s5.go -moonbit | --backend wasm [--sections S1,S2,S3,S5] [--selftest]
+// （rust 臂与 --cli/--anchor 已随 Rust 对照区退役清理，2026-10-07 批五——
+// rust vitro_cli 产物不存在，裸默认找死路径的残骸删除；现役被测物两枝。）
 package main
 
 import (
 	"runtime"
-	"unsafe"
 	"vitro/scripts/internal/capi"
+	"vitro/scripts/internal/freshness"
 
 	"bufio"
 	"encoding/json"
@@ -31,25 +33,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
 
 // ---------------------------------------------------------------- 路径
-
-var (
-	cliDefault string
-	dllPath    string
-)
-
-func init() {
-	root := capi.ProjectRoot()
-	cliDefault = filepath.Join(root, "native", "target", "release", "vitro_cli.exe")
-	dllPath = filepath.Join(root, "native", "target", "release", "vitro_native.dll")
-}
+//（rust 臂路径变量 cliDefault/dllPath 已随对照区退役删除，2026-10-07 批五。）
 
 // ---------------------------------------------------------------- JSON 访问 helper
 
@@ -150,7 +140,7 @@ func newServe(cliPath string) *Serve {
 	}
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		capi.Fatal("无法启动 %s serve：%v（请先 cd native && cargo build --release）", cliPath, err)
+		capi.Fatal("无法启动 %s serve：%v（请先 cd moonbit && moon build --target native cmd/serve）", cliPath, err)
 	}
 	return &Serve{
 		cmd:    cmd,
@@ -955,7 +945,7 @@ func loadV01Fields() (v01, reserved map[string]bool) {
 	return v01, reserved
 }
 
-func runS5(s *Serve, rep *Report, payloads []map[string]any, anchor string) {
+func runS5(s *Serve, rep *Report, payloads []map[string]any) {
 	var a1Fail, a2Fail, a3Fail []string
 	for _, p := range payloads {
 		var unknown, reserved []string
@@ -1000,13 +990,10 @@ func runS5(s *Serve, rep *Report, payloads []map[string]any, anchor string) {
 	// 都假红；下限语义保留牙齿：major 变更（破坏性）或低于 1.1.0 的产物必红。
 	rep.check("S5", "A4a", abiVersionAtLeast(abi, 1, 1), fmt.Sprintf("abi=%s（要求 ≥ 1.1.0）", abi))
 
-	// A4b：直读 dll 的 vitro_engine_version（Go 走规范指针读取 + vitro_free_string）
-	if _, err := os.Stat(dllPath); err == nil {
-		ver := readEngineVersion(dllPath)
-		rep.check("S5", "A4b", strings.Contains(ver, anchor), fmt.Sprintf("engine_version=%q 含锚定 %s", ver, anchor))
-	} else {
-		rep.check("S5", "A4b", false, fmt.Sprintf("找不到 %s", dllPath))
-	}
+	// A4b：rust dll 版本锚自检已随对照区退役（2026-10-05 删区；2026-10-07
+	// 批五把恒 false + 豁免表供养的死断言正式退役）——MoonBit 双臂的版本
+	// 自检由 wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 失联锚承担。
+	rep.check("S5", "A4b", true, "rust dll 版本锚随对照区退役；版本自检走 wasm-gc host.js 锚（记录性 PASS）")
 	// A5：StepStreamBatch 差分编码不在 serve 出口（FRB stream 专用），由引擎侧
 	// stream.rs 单测覆盖——见 schema §5.3 与 stream 单测（引擎侧职责）
 	rep.check("S5", "A5", true, "serve 出口无差分批量编码；由引擎 stream 单测覆盖（记录性 PASS）")
@@ -1019,89 +1006,25 @@ func head3(ss []string) []string {
 	return ss
 }
 
-// readEngineVersion 读引擎版本串（buf 写入式 ABI 2.1.0：正向指针 + 零所有权
-// 转移——U2#13 收口，uintptr→unsafe.Pointer 的 vet unsafeptr 命中随此消除）。
-func readEngineVersion(path string) string {
-	dll := syscall.NewLazyDLL(path)
-	procVer := dll.NewProc("vitro_engine_version_into")
-	if procVer.Find() != nil {
-		capi.Fatal("DLL 缺少 vitro_engine_version_into: %s", path)
-	}
-	buf := make([]byte, 64)
-	r, _, _ := procVer.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
-	runtime.KeepAlive(buf)
-	n := int(int32(r))
-	if n <= 0 {
-		return ""
-	}
-	if n >= len(buf) {
-		n = len(buf) - 1
-	}
-	return string(buf[:n])
-}
-
 // ---------------------------------------------------------------- 前置门禁
 
-func gitShortHead() string {
-	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
-var anchorRe = regexp.MustCompile(`\(([0-9a-f]{7,40})\)`)
+//（gitShortHead/anchorRe 已随 rust 臂锚定段退役删除，2026-10-07 批五——
+// 消费面 preflight 锚定与 selftest 正则自检条目同批退役。）
 
 // preflight 产物新鲜度门禁（fail fast，exit 2）+ 锚点解析。返回 (engineVersion, anchor)。
 // MoonBit 臂：构建期无 git 短哈希通道（engine_version = moon.mod 版本号，
 // wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 锚承担版本自检）——新鲜度
 // 锚定不适用（serve_smoke 永久豁免同口径），只验非空；锚点回填占位
 // （S5 A4b 在 MB 臂走豁免表）。
-func preflight(s *Serve, anchorArg string) (string, string) {
-	caps := mmap(s.request("capabilities", nil)["result"])
-	engineVersion := mstr(caps["engine_version"])
-
-	if engineVersion == "" && !mbMode && !backendWasm {
-		fmt.Println("错误: capabilities 未携带 engine_version —— 产物过旧，请先 `cd native && cargo build --release`")
-		os.Exit(2)
-	}
-	if mbMode || backendWasm {
-		// MoonBit 臂（native/wasm 同判）：capabilities 不带 engine_version
-		//（永久分叉——构建期 git 短哈希通道不存在，serve_smoke 豁免表同
-		// 口径）；版本自检走 wasm-gc host.js 的 ENGINE_VERSION↔moon.mod
-		// 锚。进程活性已由上方 request 保证。wasm 臂同口径（#49 批三：
-		// gateway wasm 产物同源）。
-		fmt.Println("引擎版本: (MoonBit 臂不出 engine_version——永久分叉；锚定不适用，版本自检走 wasm-gc host.js 锚)")
-		return "(moonbit)", "(moonbit)"
-	}
-
-	head := gitShortHead()
-	if head != "" && !strings.Contains(engineVersion, head) {
-		fmt.Printf("错误: 产物不是当前提交构建的 —— engine_version=%q 不含 HEAD %s\n", engineVersion, head)
-		fmt.Println("      回放/影子验证都读 release 产物，请先 `cd native && cargo build --release`")
-		os.Exit(2)
-	}
-
-	resolved := anchorArg
-	if resolved == "" {
-		if m := anchorRe.FindStringSubmatch(engineVersion); m != nil {
-			resolved = m[1]
-		}
-	} else if !strings.Contains(engineVersion, resolved) {
-		fmt.Printf("错误: --anchor %s 不在引擎版本串 %q 中\n", resolved, engineVersion)
-		os.Exit(2)
-	}
-	if resolved == "" {
-		fmt.Println("错误: 引擎版本串不含可识别的短哈希（构建时 git 不可用？），请显式传 --anchor")
-		os.Exit(2)
-	}
-
-	headShow := head
-	if headShow == "" {
-		headShow = "(git 不可用)"
-	}
-	fmt.Printf("引擎版本: %s　锚点: %s　HEAD: %s\n", engineVersion, resolved, headShow)
-	return engineVersion, resolved
+// preflight：进程活性探针（capabilities 请求成功即活性成立）+ 版本口径说明。
+// rust 臂的 engine_version 锚定段（gitShortHead/anchorRe/--anchor）已随对照区
+// 退役清理（2026-10-07 批五）——MoonBit 双臂 capabilities 不带 engine_version
+// （永久分叉——构建期 git 短哈希通道不存在，serve_smoke 豁免表同口径）；
+// 版本自检走 wasm-gc host.js 的 ENGINE_VERSION↔moon.mod 失联锚。
+func preflight(s *Serve) {
+	// 进程活性探针：capabilities 请求返回（含 result 键）即活性成立。
+	mmap(s.request("capabilities", nil)["result"])
+	fmt.Println("引擎版本: (MoonBit 臂不出 engine_version——永久分叉；锚定不适用，版本自检走 wasm-gc host.js 锚)")
 }
 
 // ---------------------------------------------------------------- selftest（J9 埋雷）
@@ -1123,12 +1046,7 @@ func selfTest() {
 			}}}
 			return len(diagErrors(resp)) == 1 && diagErrors(resp)[0]["code"] == "E2005"
 		}()},
-		// 锚点正则：版本串 "0.1.0 (abc1234)" 取出短哈希
-		{"锚点正则命中", func() bool {
-			m := anchorRe.FindStringSubmatch("0.1.0 (abc1234)")
-			return m != nil && m[1] == "abc1234"
-		}()},
-		{"锚点正则拒绝 16 进制外串", anchorRe.FindStringSubmatch("0.1.0 (zzzz999)") == nil},
+		//（锚点正则自检两条已随 anchorRe 退役删除，2026-10-07 批五。）
 		// v0.1 键集合：注入未知键必须被 A1 口径发现
 		{"未知键必被识别", func() bool {
 			p := map[string]any{"step_index": float64(0), "bogus_field": 1}
@@ -1192,10 +1110,8 @@ func isContainer(v any) bool {
 // ---------------------------------------------------------------- main
 
 func main() {
-	cli := flag.String("cli", cliDefault, "vitro_cli 路径")
 	moonbit := flag.Bool("moonbit", false, "跑 MoonBit 臂（cmd/serve exe——同一断言集，豁免面 scripts/replay/moonbit_exemptions.json；S7 批四号留批义务兑现）")
 	backendFlag := flag.String("backend", "native", "被测物后端（#49 批三）：native cmd/serve exe | wasm 统一入口壳 serve（node 消费 gateway wasm.wasm）")
-	anchor := flag.String("anchor", "", "版本锚定短哈希；缺省 = 从引擎版本串自动取")
 	sections := flag.String("sections", "S1,S2,S3,S5", "要跑的分节")
 	selftest := flag.Bool("selftest", false, "只跑判定口径埋雷自检（J9）")
 	flag.Parse()
@@ -1207,7 +1123,7 @@ func main() {
 		return
 	}
 
-	cliPath := *cli
+	var cliPath string
 	if *backendFlag == "wasm" {
 		// #49 批三：wasm 臂 = 统一入口壳 serve 子命令（node 消费 gateway
 		// wasm.wasm）；同一断言集零改动——壳 serve 协议与 cmd/serve 同构
@@ -1218,22 +1134,31 @@ func main() {
 			fmt.Println("错误: wasm 臂需要 node（统一入口壳宿主）")
 			os.Exit(2)
 		}
-		for _, f := range []string{shell, wasmMod} {
-			if _, err := os.Stat(f); err != nil {
-				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
-				os.Exit(2)
-			}
+		if _, err := os.Stat(shell); err != nil {
+			fmt.Printf("错误: wasm 臂产物缺失 %s（统一入口壳）\n", shell)
+			os.Exit(2)
 		}
+		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
+		freshness.EnsureFresh("replay", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
 		loadMBExemptions()
 		backendWasm = true
+		cliPath = shell
 	} else if *moonbit {
 		mbMode = true
 		loadMBExemptions()
+		// serve exe 新鲜度门禁（批五 P2-5：陈旧 debug serve 产物曾批量假红
+		// ——teaching 145 处实锤同族；存在性 + mtime 触发 + 构建复核单源）
 		cliPath = resolveMoonBitServeExe()
-		if _, err := os.Stat(cliPath); err != nil {
-			fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", cliPath)
-			os.Exit(2)
-		}
+		freshness.EnsureFresh("replay", cliPath,
+			"build", "--target", "native", "cmd/serve")
+	} else {
+		// rust 臂已随对照区退役（2026-10-05 删区；2026-10-07 批五清理
+		// 裸默认死路径）——不再有第三条被测物通道。
+		fmt.Println("错误: 未选被测物臂——rust 臂已退役（2026-10-05 删区）。现役两枝：")
+		fmt.Println("  go run ./scripts/replay -moonbit        # native cmd/serve exe")
+		fmt.Println("  go run ./scripts/replay --backend wasm  # 统一入口壳（node 消费 gateway wasm.wasm）")
+		os.Exit(2)
 	}
 
 	sectionSet := map[string]bool{}
@@ -1244,8 +1169,8 @@ func main() {
 	rep := &Report{}
 	s := newServe(cliPath)
 
-	// 产物新鲜度门禁 + 锚点对齐
-	_, resolvedAnchor := preflight(s, *anchor)
+	// 进程活性探针 + 版本口径说明
+	preflight(s)
 
 	var allPayloads []map[string]any
 
@@ -1262,8 +1187,8 @@ func main() {
 		runS3A16(cliPath, rep, p3)
 	}
 	if sectionSet["S5"] {
-		// S5 的 A4 ping/直读 dll 用当前 serve；A1–A3 用 S1–S3 全量 payload
-		runS5(s, rep, allPayloads, resolvedAnchor)
+		// S5 的 A4 ping 用当前 serve；A1–A3 用 S1–S3 全量 payload
+		runS5(s, rep, allPayloads)
 	}
 
 	code := s.shutdown()

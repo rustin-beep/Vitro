@@ -22,7 +22,8 @@
 // fail loud：规则文件缺失/坏 JSON/字段缺失一律 exit 2。
 //
 // 前置：`cd moonbit && moon build --target native cmd/serve`（exe 新鲜度
-// 不机判——本脚本按文件在位即用，过时产物导致的批量红先自证再重构建）。
+// 已机判——批五 P2-5 销案：freshness 门禁「mtime 触发 + 构建复核」单源
+// 兜底；此前「按文件在位即用」曾因陈旧 debug serve 产物批量假红 145 处）。
 package main
 
 import (
@@ -42,6 +43,7 @@ import (
 	"time"
 
 	"vitro/scripts/internal/capi"
+	"vitro/scripts/internal/freshness"
 )
 
 // ── 规则资产 ───────────────────────────────────────────────────────────────
@@ -383,17 +385,20 @@ func main() {
 	if backendWasmOn {
 		shell := filepath.Join(root, "scripts", "vitro_cli", "main.js")
 		wasmMod := filepath.Join(root, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
-		for _, f := range []string{shell, wasmMod} {
-			if _, err := os.Stat(f); err != nil {
-				fmt.Printf("错误: wasm 臂产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm）\n", f)
-				os.Exit(2)
-			}
+		if _, err := os.Stat(shell); err != nil {
+			fmt.Printf("错误: wasm 臂产物缺失 %s（统一入口壳）\n", shell)
+			os.Exit(2)
 		}
+		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
+		freshness.EnsureFresh("teaching_annotation_diff", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
 		exe = shell
-	}
-	if _, err := os.Stat(exe); err != nil {
-		fmt.Printf("错误: 找不到 %s，请先 `cd moonbit && moon build --target native cmd/serve`\n", exe)
-		os.Exit(2)
+	} else {
+		// serve exe 新鲜度门禁（批五 P2-5 销案：此前「按文件在位即用」——
+		// 陈旧 debug serve 产物曾批量假红 145 处，重建后 82/82 绿；现由
+		// 门禁机判兜底：存在性 + mtime 触发 + 构建复核单源 freshness 包）
+		freshness.EnsureFresh("teaching_annotation_diff", exe,
+			"build", "--target", "native", "cmd/serve")
 	}
 
 	entries, err := os.ReadDir(filepath.Join(root, "templates"))

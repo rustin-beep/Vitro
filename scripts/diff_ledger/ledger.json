@@ -677,9 +677,9 @@
       "title": "static 局部变量无地址通路——`static struct S s1; struct S s2 = s1;` 报「未声明的变量」（gen_addr 无 static 分支，勘察 #29 登记的 oracle 既有缺陷，mb 照搬对拍一致）",
       "class": "implementable",
       "carry_over": "fix",
-      "status": "open",
-      "evidence": "code",
-      "rationale": "oracle 缺陷（正确行为 = static local 可寻址/可初始化引用）；迁移期不私改（照搬纪律——单侧修则 codegen_diff A 级红）；0.8.0 工序①销账项：脱钩后 mb 侧补 gen_addr static 分支走红→绿",
+      "status": "resolved-verified",
+      "evidence": "run",
+      "rationale": "批四销案（2026-10-07，#47）：gen_addr/gen_member_addr 的 Identifier 查找链补 static_local_indices 分支（static 落全局数据段，地址形态同 global）+ emit_static_init 的 struct/union 聚合初值改走 flatten_global_init 按成员偏移递归（旧平铺标量数组——elem_size=整尺寸致 `{1,2}` 第二元素写飞，static5 旧返 1 vs Clang 3）；探针矩阵（嵌套聚合/static 数组/static 字符串/聚合拷贝/取址）与 Clang 22.1.4 逐位一致（143/178）；语料 static_local_aggregate.c 入账（五 digest + clang_direct SAME）",
       "subsystems": [
         "codegen"
       ],
@@ -694,7 +694,7 @@
         "vm_diff_known": []
       },
       "detectable_by_defense": [],
-      "notes": "S8 收官清单 #9 收编（2026-10-04）——原「随 S8 台账裁定」头注销案；语料零覆盖此形状（脱钩修复批连同语料补齐）"
+      "notes": "S8 收官清单 #9 收编（2026-10-04）——原「随 S8 台账裁定」头注销案；语料零覆盖此形状（脱钩修复批连同语料补齐）；销案 2026-10-07 批四（#47 refs）；聚合成员含字符串指针的罕见形态走 pending_string_inits（Pass 1 后消费）而 static 在 Pass 3 执行会丢值——登记观察项"
     },
     {
       "id": "DIFF-TYPECK-SEVERITY-FORMAT-01",

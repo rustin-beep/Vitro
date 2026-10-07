@@ -1834,6 +1834,12 @@
       "stdout_sha": "ad53e8806d17c82d",
       "memory_sha": "532c609ced499e2a"
     },
+    "baseline/static_local_aggregate.c": {
+      "src_sha": "8f8c4d5f",
+      "exit_code": 178,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "b64af2aa3eced470"
+    },
     "baseline/static_local_array.c": {
       "src_sha": "b308a88f",
       "exit_code": 0,
@@ -2288,6 +2294,13 @@
       "src_sha": "b5a7d055",
       "exit_code": 0,
       "stdout_sha": "",
+      "compile_fail": true
+    },
+    "gap/failfast_chain.c": {
+      "src_sha": "3fe877ff",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/file_fopen.c": {

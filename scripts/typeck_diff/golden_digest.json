@@ -309,6 +309,7 @@
         "sscanf_basic.c": "a6a32f5c",
         "static_assert_sizeof.c": "eaff46b4",
         "static_global_basic.c": "6e2264cf",
+        "static_local_aggregate.c": "8f8c4d5f",
         "static_local_array.c": "b308a88f",
         "static_local_counter.c": "5bdd1dc8",
         "static_local_init_once.c": "b5cb2f12",
@@ -691,6 +692,7 @@
         "sscanf_basic.c": "4716aaaa4541618f",
         "static_assert_sizeof.c": "d981c818b247fbb9",
         "static_global_basic.c": "3a33f1c049e696d9",
+        "static_local_aggregate.c": "4d383e943fcdb5e3",
         "static_local_array.c": "f8d3792267e86281",
         "static_local_counter.c": "7f4177c5c6b9b9c7",
         "static_local_init_once.c": "82eae333f5d72741",
@@ -771,6 +773,7 @@
     "corpus-gap": {
       "sources": {
         "complex_number.c": "b5a7d055",
+        "failfast_chain.c": "3fe877ff",
         "file_fopen.c": "d1bdc876",
         "file_fread.c": "dc8404a4",
         "file_fwrite.c": "e2c3c877",
@@ -790,6 +793,7 @@
       },
       "resp_hashes": {
         "complex_number.c": "d82a29e938963e82",
+        "failfast_chain.c": "d7c58ebb0849e215",
         "file_fopen.c": "8a0e985db6a36410",
         "file_fread.c": "7d81704ee9577a18",
         "file_fwrite.c": "88e413adc7462996",

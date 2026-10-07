@@ -3,9 +3,9 @@
 /// ——Rust `expr.rs` 的 gen_index/gen_vla_stride/gen_member_addr 与
 /// `expr/struct_.rs::gen_member_expr`、`lib.rs::get_member_offset` 的
 /// C only 子集照搬。C only 裁剪：lambda by-ref 捕获段 / Class /
-/// Reference 分支不迁移。**Rust 现状缺口照搬登记**：gen_member_addr 的
-/// Identifier 分支无 static_local_indices（`static struct S s; s.x` 报
-/// "未声明的结构体变量"——与 gen_addr 勘察 #29 同族，S8 台账）。
+/// Reference 分支不迁移。~~Rust 现状缺口照搬登记：gen_member_addr 的
+/// Identifier 分支无 static_local_indices~~ **static 分支已补（批四
+/// 2026-10-07，DIFF-CODEGEN-STATIC-ADDR-01 销案——与 gen_addr 同族）**。
 
 ///|
 /// 成员字节偏移（Rust lib.rs:761-808 的 C only 子集：union 全 0 /
@@ -205,12 +205,20 @@ fn BytecodeGen::gen_member_addr(
                   @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
                   loc,
                 )
-              None => {
-                // static 局部缺口照搬（Rust 同位无 static_local_indices
-                // 分支——勘察 #29 同族，S8 台账）
-                self.report_error("未声明的结构体变量", loc)
-                self.emit(@opcode.OpCode::PushConst, 0, loc)
-              }
+              None =>
+                match self.static_local_indices.get(name) {
+                  // static 局部分支（批四 2026-10-07 销案——同 gen_addr）
+                  Some(offset) =>
+                    self.emit(
+                      @opcode.OpCode::PushConst,
+                      @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
+                      loc,
+                    )
+                  None => {
+                    self.report_error("未声明的结构体变量", loc)
+                    self.emit(@opcode.OpCode::PushConst, 0, loc)
+                  }
+                }
             }
         }
       _ =>

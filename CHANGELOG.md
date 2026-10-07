@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批四第三条：static 局部聚合地址通路与初值，2026-10-07）
+
+- **DIFF-CODEGEN-STATIC-ADDR-01 销案**：gen_addr / gen_member_addr 的 Identifier 查找链补
+  `static_local_indices` 分支（Rust gen_addr 同位无此分支照搬——`static struct S s1;
+  struct S s2 = s1;` 曾报"未声明的变量"）；static 落全局数据段，地址形态同 global。
+- **连带真病**：emit_static_init 的 struct/union 聚合初值曾被平铺标量数组处理
+  （elem_size=整尺寸，`{1,2}` 第二元素写飞——static5 旧返 1 vs Clang 3）——改走
+  flatten_global_init 按成员偏移递归（与全局路径同通道同语义）。
+- 探针矩阵（嵌套聚合 / static 数组 / static 字符串 / 聚合拷贝 / 取址）与 Clang 22.1.4
+  逐位一致（143 / 178）；语料 static_local_aggregate.c 入 baseline（五 digest + clang_direct
+  SAME）；台账 resolved-verified。
+- 观察项：聚合成员含字符串指针初值（`static struct {char* s;} = {"x"}` 罕见形态）走
+  pending_string_inits 而 static 在 Pass 3 执行会丢值。
+
 ### Fixed（S9 修复批批四第二条：格式符错配严重级对齐 Clang + %*d 全族语义落地，2026-10-07）
 
 - **SEVERITY-FORMAT 销案（DIFF-TYPECK-SEVERITY-FORMAT-01）**：W3032/W3035/W3062/W3063 四码

@@ -32,13 +32,19 @@ fn BytecodeGen::gen_addr(
                 @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
                 loc,
               )
-            None =>
-              // static local（Rust gen_addr 此处无 static 分支——勘察 #29
-              // 登记的既有缺陷照搬：`static struct S s1; struct S s2 = s1;`
-              // 报"未声明的变量"——**已收编 DIFF-CODEGEN-STATIC-ADDR-01
-              // （2026-10-04，S8 收官清单 #9）**：oracle 缺陷，迁移期不私改
-              //（codegen_diff A 级面），脱钩工序①销账补 static 分支）
-              self.report_error("未声明的变量", loc)
+        None =>
+          match self.static_local_indices.get(name) {
+            Some(offset) =>
+              // static local 地址通路（DIFF-CODEGEN-STATIC-ADDR-01 销案，
+              // 批四 2026-10-07——Rust gen_addr 同位无此分支照搬；static
+              // 落全局数据段，地址形态同 global）
+              self.emit(
+                @opcode.OpCode::PushConst,
+                @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
+                loc,
+              )
+            None => self.report_error("未声明的变量", loc)
+          }
           }
       }
     Unary(@ast.UnaryOp::Deref, operand, _, _) => self.gen_expr(operand)

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>缓冲区溢出</title>
+<desc>buffer-overflow</desc>
+
+<path d="M3.4 11.4h17.2v7.2H3.4z"/>
+<path d="M7 15.4h6"/>
+<path d="M9.2 7.4h2v2.2h-2z" fill="currentColor"/>
+<path d="M13.2 5.2h2v2.2h-2z" fill="currentColor"/>
+</svg>

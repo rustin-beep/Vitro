@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>索引错误</title>
+<desc>index</desc>
+
+<path d="M3.4 11h4.2v7H3.4z"/>
+<path d="M8.9 11h4.2v7H8.9z"/>
+<path d="M14.4 11h4.2v7h-4.2z"/>
+<path d="M11 3.5v4.5"/>
+<path d="M9.4 6.4 11 8l1.6-1.6"/>
+</svg>

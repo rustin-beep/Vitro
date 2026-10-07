@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>缺数组大小</title>
+<desc>array-size</desc>
+
+<path d="M8.6 4.6H7.2a1.6 1.6 0 0 0-1.6 1.6v11.6a1.6 1.6 0 0 0 1.6 1.6h1.4"/>
+<path d="M15.4 4.6h1.4a1.6 1.6 0 0 1 1.6 1.6v11.6a1.6 1.6 0 0 1-1.6 1.6h-1.4"/>
+<path d="M12 8.6v6.8"/>
+<path d="M9.9 10.7 12 8.6l2.1 2.1"/>
+<path d="M9.9 13.3 12 15.4l2.1-2.1"/>
+</svg>

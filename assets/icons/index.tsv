@@ -1,0 +1,53 @@
+id	category	scope	emoji	desc
+alloc-args	语义	catalog	🧱	分配函数参数错误
+array-decay	语义	catalog	📍	数组退化为指针
+array-init	语义	catalog	📦	数组初始化错误
+array-size	语法	catalog	📐	缺数组大小
+assign-readonly	语义	catalog	🔒	向右值赋值
+bracket	语法	catalog	🗂️	括号未闭合
+buffer-overflow	运行时	trap	💥	缓冲区溢出
+call-args	语义	catalog	📞	参数个数或类型错误
+call-target	语义	catalog	📞	调用目标不是函数
+case-const	语义	catalog	🔢	case 标签不是常量
+cause	运行时	trap	💡	原因
+comment	词法	catalog	💬	块注释未闭合
+complex	词法	catalog	🌀	声明过于复杂
+cond-invalid	语义	catalog	❓	条件表达式不合法
+dangling	C++	catalog	🎣	悬垂引用
+deny	运行时	trap	🚫	非法访问
+deref	语义	catalog	📍	对非指针解引用
+divide-zero	运行时	trap	😵	除零
+double-free	语义	both	🔁	重复释放内存
+duplicate	语义	catalog	🔄	重复定义
+expr-expected	语法	catalog	🧮	缺表达式
+fix	运行时	trap	✅	解决方法
+implicit-cast	语义	catalog	⚠️	隐式转换提示
+incdec	语义	catalog	➕	自增自减类型错误
+index	语义	catalog	📦	索引错误
+inspect	运行时	trap	🔍	查看当前值
+jump-outside	语义	catalog	🛑	跳转语句越界
+leak	C++	catalog	🚰	内存泄漏
+location	运行时	trap	📍	发生位置
+macro	词法	catalog	📋	无效宏定义
+move	C++	catalog	📤	移动后使用源对象
+note	运行时	trap	📝	示例与备注
+off-by-one	语义	catalog	🔢	差一错误
+op-type	语义	catalog	🧮	运算类型错误
+operator	词法	catalog	🔧	不支持的操作符
+ownership	C++	catalog	🪞	所有权混乱
+pointer-compat	语义	catalog	⚠️	指针类型不兼容
+printf	语义	catalog	🖨️	printf 参数错误
+promote	语义	catalog	💡	隐式类型提升
+return	语义	catalog	↩️	返回值错误
+scanf	语义	catalog	⌨️	scanf 参数错误
+semicolon	语法	catalog	⏹️	缺分号
+slice	C++	catalog	🔪	对象切片
+step-limit	运行时	trap	🔄	步数超限
+string	词法	catalog	💬	字符串未闭合
+struct-member	语义	catalog	🏗️	结构体成员错误
+switch-clause	语法	catalog	🔀	缺 case 或 default
+timeline	运行时	trap	⏱️	时间轴
+type-mismatch	语义	catalog	🔀	类型不匹配
+uaf	语义	both	💥	使用已释放的内存
+undeclared	语义	catalog	❓	变量未声明
+unsupported	词法	catalog	🚧	暂不支持的功能

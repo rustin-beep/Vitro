@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>移动后使用源对象</title>
+<desc>move</desc>
+
+<path d="M9 20.4H5.6A1.6 1.6 0 0 1 4 18.8V5.2a1.6 1.6 0 0 1 1.6-1.6H9"/>
+<path d="M16.2 16.4l4.4-4.4-4.4-4.4"/>
+<path d="M20.6 12H9"/>
+</svg>

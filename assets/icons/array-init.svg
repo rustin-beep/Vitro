@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>数组初始化错误</title>
+<desc>array-init</desc>
+
+<path d="M8.6 5.4H7.2a1.6 1.6 0 0 0-1.6 1.6v10a1.6 1.6 0 0 0 1.6 1.6h1.4"/>
+<path d="M15.4 5.4h1.4a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6h-1.4"/>
+<path d="M9.4 10.2h1.8v3.6H9.4z" fill="currentColor"/>
+<path d="M12.8 10.2h1.8v3.6h-1.8z"/>
+</svg>

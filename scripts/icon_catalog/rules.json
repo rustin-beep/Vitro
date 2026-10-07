@@ -1,0 +1,44 @@
+{
+  "_comment": "图标资产契约规则（scripts/icon_catalog 判定闸与 scripts/gen_icons 生成器共用，单一规则源）。改这里等于改契约，两处同时生效。",
+
+  "assets_dir": "assets/icons",
+  "index_tsv": "assets/icons/index.tsv",
+  "geometry_json": "assets/icons.json",
+  "demo_ts": "demo/js/icons.ts",
+
+  "svg_attrs": {
+    "viewBox": "0 0 24 24",
+    "width": "24",
+    "height": "24",
+    "fill": "none",
+    "stroke": "currentColor",
+    "stroke-width": "1.8",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round"
+  },
+
+  "allowed_elements": ["path", "circle", "rect"],
+  "rect_forbidden_attrs": ["rx", "ry"],
+
+  "forbid_color_literal": true,
+  "forbid_named_color": true,
+  "forbid_zero_length_subpath": true,
+  "forbid_aria_hidden": true,
+  "require_title": true,
+  "require_desc": true,
+
+  "tsv_columns": ["id", "category", "scope", "emoji", "desc"],
+  "categories": ["词法", "语法", "语义", "C++", "运行时", "ui"],
+  "scopes": ["catalog", "trap", "both", "ui"],
+  "emoji_required_scopes": ["catalog", "trap", "both"],
+  "_emoji_must_be_unique": "一个码点可派生多个语义（issue #27 §3.1 列了 13 处一对多），故 emoji 允许重复、只判非空。若将来改回「码点唯一」方案，把下面开关置 true。",
+  "emoji_must_be_unique": false,
+
+  "geometry_schema": "icons/v1",
+  "scale_formula": "strokeWidth = 1.8 * S / 24",
+
+  "named_colors": [
+    "red", "black", "white", "blue", "green", "gray", "grey", "orange",
+    "yellow", "purple", "pink", "brown", "cyan", "magenta", "silver", "gold"
+  ]
+}

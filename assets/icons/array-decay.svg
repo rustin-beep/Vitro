@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>数组退化为指针</title>
+<desc>array-decay</desc>
+
+<path d="M3.4 9.4h5.4v5.6H3.4z"/>
+<path d="M10.2 9.4h5.4v5.6h-5.4z"/>
+<path d="M17 12.2h2.6"/>
+<path d="M18.4 10.6l1.8 1.6-1.8 1.6"/>
+<circle cx="20.9" cy="12.2" r="0.8" fill="currentColor"/>
+</svg>

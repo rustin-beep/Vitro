@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>条件表达式不合法</title>
+<desc>cond-invalid</desc>
+
+<path d="M12 4.4 19.6 12 12 19.6 4.4 12z"/>
+<path d="M10.1 10.2a1.9 1.9 0 1 1 2.6 1.4c-.6.3-.8.7-.8 1.3v.3"/>
+<circle cx="12" cy="15.4" r="0.85"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>结构体成员错误</title>
+<desc>struct-member</desc>
+
+<path d="M4.6 5.4h14.8v13.2H4.6z"/>
+<path d="M4.6 12h14.8"/>
+<circle cx="8.2" cy="8.7" r="1"/>
+<path d="M11 8.7h5"/>
+<circle cx="8.2" cy="15.3" r="1"/>
+<path d="M11 15.3h3.4"/>
+</svg>

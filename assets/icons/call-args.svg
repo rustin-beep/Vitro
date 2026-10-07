@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>参数个数或类型错误</title>
+<desc>call-args</desc>
+
+<path d="M9.6 4.4C7.2 4.4 5.8 7.6 5.8 12s1.4 7.6 3.8 7.6"/>
+<path d="M14.4 4.4c2.4 0 3.8 3.2 3.8 7.6s-1.4 7.6-3.8 7.6"/>
+<circle cx="10.4" cy="12" r="1"/>
+<path d="M13.8 10.6v2.8"/>
+</svg>

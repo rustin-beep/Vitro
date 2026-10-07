@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 1342" width="680" height="1342" role="img">
+<title>Vitro 语义图标图鉴</title>
+<desc>按 category 分组的语义图标，每卡为图标、英文 id 与中文语义</desc>
+<rect x="0" y="0" width="680" height="1342" fill="#17171b"/>
+<text x="40" y="30" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="15" font-weight="500" fill="#f2f2f2">Vitro 语义图标图鉴 · 52 个</text>
+<text x="40" y="48" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#8a8a90">viewBox 24 · stroke 1.8 · currentColor · 语义 id 与图形严格双射</text>
+<text x="40" y="66" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="12" font-weight="500" fill="#c9c9cf">词法 · 6</text>
+<line x1="40" y1="72" x2="640" y2="72" stroke="#3a3a40" stroke-width="1"/>
+<rect x="40" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.4 5.6 3.6 13.4"/><path d="M11.4 5.6 8.6 13.4"/><path d="M4.6 17.6h14.8"/></g>
+<text x="88" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">comment</text>
+<text x="88" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">块注释</text>
+<rect x="140.8" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 4.4c-1.6 0-2.4 1.8-2.4 3.6 0 1.2.4 1.8.8 2.4-.4.6-.8 1.2-.8 2.4 0 1.8.8 3.6 2.4 3.6"/><path d="M12 4.4c-1.6 0-2.4 1.8-2.4 3.6 0 1.2.4 1.8.8 2.4-.4.6-.8 1.2-.8 2.4 0 1.8.8 3.6 2.4 3.6"/><path d="M15.6 4.4c-1.6 0-2.4 1.8-2.4 3.6 0 1.2.4 1.8.8 2.4-.4.6-.8 1.2-.8 2.4 0 1.8.8 3.6 2.4 3.6"/></g>
+<text x="188.8" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">complex</text>
+<text x="188.8" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">声明复杂</text>
+<rect x="241.6" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.6 4.6h8.8a2 2 0 0 1 2 2v11.4a2 2 0 0 1-2 2H7.6a2 2 0 0 1-2-2V6.6a2 2 0 0 1 2-2z"/><path d="M9.4 4.6h5.2V3.2H9.4z"/><path d="M9.4 10.6 8.2 17.4"/><path d="M13.4 10.6 12.2 17.4"/><path d="M6.6 12.4h8.4"/><path d="M6 15.4h8.4"/></g>
+<text x="289.6" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">macro</text>
+<text x="289.6" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">宏定义</text>
+<rect x="342.4" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 9.4h6.2"/><path d="M6.7 6.3v6.2"/><path d="M14.4 15.4h6.2"/></g>
+<text x="390.4" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">operator</text>
+<text x="390.4" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">操作符</text>
+<rect x="443.2" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.8 6.4v6.2l-1.6 1.8"/><path d="M15.2 6.4v6.2l-1.6 1.8"/><path d="M5.4 19.4h13.2"/></g>
+<text x="491.2" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">string</text>
+<text x="491.2" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">字符串</text>
+<rect x="544" y="84" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,94) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.2 8.6 6.4 12l2.8 3.4"/><path d="M14.8 8.6 17.6 12l-2.8 3.4"/><path d="M4.4 3.8 19.6 20.2"/></g>
+<text x="592" y="158" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">unsupported</text>
+<text x="592" y="173" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">暂不支持</text>
+<text x="40" y="202" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="12" font-weight="500" fill="#c9c9cf">语法 · 5</text>
+<line x1="40" y1="208" x2="640" y2="208" stroke="#3a3a40" stroke-width="1"/>
+<rect x="40" y="220" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,230) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 4.6H7.2a1.6 1.6 0 0 0-1.6 1.6v11.6a1.6 1.6 0 0 0 1.6 1.6h1.4"/><path d="M15.4 4.6h1.4a1.6 1.6 0 0 1 1.6 1.6v11.6a1.6 1.6 0 0 1-1.6 1.6h-1.4"/><path d="M12 8.6v6.8"/><path d="M9.9 10.7 12 8.6l2.1 2.1"/><path d="M9.9 13.3 12 15.4l2.1-2.1"/></g>
+<text x="88" y="294" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">array-size</text>
+<text x="88" y="309" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">数组大小</text>
+<rect x="140.8" y="220" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,230) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 4.2c-2 0-3.1 2.3-3.1 4.8 0 1.5.6 2.3 1.1 3-.5.7-1.1 1.5-1.1 3 0 2.5 1.1 4.8 3.1 4.8"/><path d="M14.4 4.2c2 0 3.1 2.3 3.1 4.8 0 1.5-.6 2.3-1.1 3 .5.7 1.1 1.5 1.1 3 0 2.5-1.1 4.8-3.1 4.8"/></g>
+<text x="188.8" y="294" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">bracket</text>
+<text x="188.8" y="309" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">括号</text>
+<rect x="241.6" y="220" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,230) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 5.4H7.2a1.6 1.6 0 0 0-1.6 1.6v10a1.6 1.6 0 0 0 1.6 1.6h2.2"/><path d="M14.6 5.4h2.2a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6h-2.2"/><path d="M10.2 10.2a1.9 1.9 0 1 1 2.6 1.4c-.6.3-.8.7-.8 1.3v.3"/><circle cx="12" cy="15.4" r="0.85"/></g>
+<text x="289.6" y="294" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">expr-expected</text>
+<text x="289.6" y="309" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">缺表达式</text>
+<rect x="342.4" y="220" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,230) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.6" r="2.3"/><path d="M12 12.6c0 3.6-2.8 5.4-6 5.6"/></g>
+<text x="390.4" y="294" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">semicolon</text>
+<text x="390.4" y="309" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">分号</text>
+<rect x="443.2" y="220" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,230) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4v-7.8"/><path d="M12 12.6 6.2 6.8"/><path d="M12 12.6l5.8-5.8"/><circle cx="5.4" cy="6.2" r="1.8" fill="currentColor"/><circle cx="18.6" cy="6.2" r="1.8" fill="currentColor"/></g>
+<text x="491.2" y="294" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">switch-clause</text>
+<text x="491.2" y="309" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">分支项</text>
+<text x="40" y="338" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="12" font-weight="500" fill="#c9c9cf">语义 · 26</text>
+<line x1="40" y1="344" x2="640" y2="344" stroke="#3a3a40" stroke-width="1"/>
+<rect x="40" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 10.2h5.2v4.6H4.4z"/><path d="M9.6 5.4H8.2a1.6 1.6 0 0 0-1.6 1.6v10a1.6 1.6 0 0 0 1.6 1.6h1.4"/><path d="M15.4 5.4h1.4a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6h-1.4"/></g>
+<text x="88" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">alloc-args</text>
+<text x="88" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">分配参数</text>
+<rect x="140.8" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 9.4h5.4v5.6H3.4z"/><path d="M10.2 9.4h5.4v5.6h-5.4z"/><path d="M17 12.2h2.6"/><path d="M18.4 10.6l1.8 1.6-1.8 1.6"/><circle cx="20.9" cy="12.2" r="0.8" fill="currentColor"/></g>
+<text x="188.8" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">array-decay</text>
+<text x="188.8" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">数组退化</text>
+<rect x="241.6" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 5.4H7.2a1.6 1.6 0 0 0-1.6 1.6v10a1.6 1.6 0 0 0 1.6 1.6h1.4"/><path d="M15.4 5.4h1.4a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6h-1.4"/><path d="M9.4 10.2h1.8v3.6H9.4z" fill="currentColor"/><path d="M12.8 10.2h1.8v3.6h-1.8z"/></g>
+<text x="289.6" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">array-init</text>
+<text x="289.6" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">数组初始化</text>
+<rect x="342.4" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 9.4h6.4"/><path d="M3.4 14.6h6.4"/><path d="M13.4 10.6h6.6v7.6h-6.6z"/><path d="M15.4 10.6V8.8a2 2 0 0 1 4 0v1.8"/></g>
+<text x="390.4" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">assign-readonly</text>
+<text x="390.4" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">右值赋值</text>
+<rect x="443.2" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 4.4C7.2 4.4 5.8 7.6 5.8 12s1.4 7.6 3.8 7.6"/><path d="M14.4 4.4c2.4 0 3.8 3.2 3.8 7.6s-1.4 7.6-3.8 7.6"/><circle cx="10.4" cy="12" r="1"/><path d="M13.8 10.6v2.8"/></g>
+<text x="491.2" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">call-args</text>
+<text x="491.2" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">实参</text>
+<rect x="544" y="356" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,366) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 4.4C7.2 4.4 5.8 7.6 5.8 12s1.4 7.6 3.8 7.6"/><path d="M14.4 4.4c2.4 0 3.8 3.2 3.8 7.6s-1.4 7.6-3.8 7.6"/><path d="M10.2 10.2 13.6 13.8"/><path d="M13.6 10.2 10.2 13.8"/></g>
+<text x="592" y="430" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">call-target</text>
+<text x="592" y="445" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">调用目标</text>
+<rect x="40" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 5.4H7.2a1.6 1.6 0 0 0-1.6 1.6v10a1.6 1.6 0 0 0 1.6 1.6h1.4"/><path d="M15.4 5.4h1.4a1.6 1.6 0 0 1 1.6 1.6v10a1.6 1.6 0 0 1-1.6 1.6h-1.4"/><path d="M14 9.6a2.8 2.8 0 1 0 0 4.8"/></g>
+<text x="88" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">case-const</text>
+<text x="88" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">case 常量</text>
+<rect x="140.8" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.4 19.6 12 12 19.6 4.4 12z"/><path d="M10.1 10.2a1.9 1.9 0 1 1 2.6 1.4c-.6.3-.8.7-.8 1.3v.3"/><circle cx="12" cy="15.4" r="0.85"/></g>
+<text x="188.8" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">cond-invalid</text>
+<text x="188.8" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">条件非法</text>
+<rect x="241.6" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.6v9.2"/><path d="M7.2 6.8 16.8 11.6"/><path d="M6.4 19 17.6 5.4"/></g>
+<text x="289.6" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">deref</text>
+<text x="289.6" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">解引用</text>
+<rect x="342.4" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 4.4h14.8v7.6H4.6z"/><path d="M8.8 13.4 12 16.6l3.2-3.2"/><path d="M9.6 18 12 20.4l2.4-2.4"/></g>
+<text x="390.4" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">double-free</text>
+<text x="390.4" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">重复释放</text>
+<rect x="443.2" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 8.5h9a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 8 19V10a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M5.5 15.5H5A1.5 1.5 0 0 1 3.5 14V5A1.5 1.5 0 0 1 5 3.5h9A1.5 1.5 0 0 1 15.5 5v.5"/></g>
+<text x="491.2" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">duplicate</text>
+<text x="491.2" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">重复定义</text>
+<rect x="544" y="464" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,474) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 10.4h4.6v5.2H4.4z"/><path d="M10.6 13h3.6"/><path d="M12.4 11.4 14 13l-1.6 1.6"/><path d="M17.4 10.4a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 1 1 0-5.2z"/></g>
+<text x="592" y="538" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">implicit-cast</text>
+<text x="592" y="553" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">隐式转换</text>
+<rect x="40" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4h4.8"/><path d="M6 5.6v5.6"/><path d="M9.4 5.6v5.6"/><path d="M14.2 14.6h4.8"/><path d="M14.2 17.8h4.8"/></g>
+<text x="88" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">incdec</text>
+<text x="88" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">自增自减</text>
+<rect x="140.8" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 11h4.2v7H3.4z"/><path d="M8.9 11h4.2v7H8.9z"/><path d="M14.4 11h4.2v7h-4.2z"/><path d="M11 3.5v4.5"/><path d="M9.4 6.4 11 8l1.6-1.6"/></g>
+<text x="188.8" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">index</text>
+<text x="188.8" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">索引</text>
+<rect x="241.6" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 8.4h11.2v7.2H4.4z"/><path d="M15.6 12h4.2"/><path d="M17.4 9.8 19.8 12l-2.4 2.2"/></g>
+<text x="289.6" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">jump-outside</text>
+<text x="289.6" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">跳转越界</text>
+<rect x="342.4" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 4.6H6a1.6 1.6 0 0 0-1.6 1.6v11.6A1.6 1.6 0 0 0 6 19.4h1.4"/><path d="M14.6 4.6H16a1.6 1.6 0 0 1 1.6 1.6v11.6a1.6 1.6 0 0 1-1.6 1.6h-1.4"/><path d="M8.2 10.2h2.2v3.6H8.2z" fill="currentColor"/><path d="M18.4 10.2h2.2v3.6h-2.2z"/></g>
+<text x="390.4" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">off-by-one</text>
+<text x="390.4" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">差一错误</text>
+<rect x="443.2" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 10.4h6.2"/><path d="M7.7 7.3v6.2"/><path d="M16.6 9.2a1.9 1.9 0 1 1 2.5 1.4c-.6.3-.8.7-.8 1.3v.3"/><circle cx="18.2" cy="14.6" r="0.8"/></g>
+<text x="491.2" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">op-type</text>
+<text x="491.2" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">运算类型</text>
+<rect x="544" y="572" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,582) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 9.8h5.2v4.4H3.2z"/><circle cx="17.6" cy="12" r="2.4"/><path d="M9.4 8.8 14.6 15.2"/><path d="M14.6 8.8 9.4 15.2"/></g>
+<text x="592" y="646" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">pointer-compat</text>
+<text x="592" y="661" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">指针兼容</text>
+<rect x="40" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 5.4h17.2v13.2H3.4z"/><path d="M6.6 10.2 9 12l-2.4 1.8"/><path d="M11.6 13.8h5.6"/></g>
+<text x="88" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">printf</text>
+<text x="88" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">printf</text>
+<rect x="140.8" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 15.2h5.4v4.8H3.4z"/><path d="M14.8 9.2h5.8v10.8h-5.8z"/><path d="M11.4 12.6V7.4"/><path d="M9.4 9.4 11.4 7.4l2 2"/></g>
+<text x="188.8" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">promote</text>
+<text x="188.8" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">类型提升</text>
+<rect x="241.6" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 4.4C7.2 4.4 5.8 7.6 5.8 12s1.4 7.6 3.8 7.6"/><path d="M14.4 4.4c2.4 0 3.8 3.2 3.8 7.6s-1.4 7.6-3.8 7.6"/><path d="M20.4 12h-5.4"/><path d="M17 9.8 14.6 12l2.4 2.2"/></g>
+<text x="289.6" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">return</text>
+<text x="289.6" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">返回值</text>
+<rect x="342.4" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6.2h14.8a1.8 1.8 0 0 1 1.8 1.8v6.4a1.8 1.8 0 0 1-1.8 1.8H4.6a1.8 1.8 0 0 1-1.8-1.8V8a1.8 1.8 0 0 1 1.8-1.8z"/><circle cx="6.4" cy="10.2" r="0.8"/><circle cx="9.6" cy="10.2" r="0.8"/><circle cx="12.8" cy="10.2" r="0.8"/><circle cx="16" cy="10.2" r="0.8"/><path d="M12 18.2v-3.6"/><path d="M10.2 16.2 12 18.2l1.8-2"/></g>
+<text x="390.4" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">scanf</text>
+<text x="390.4" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">scanf</text>
+<rect x="443.2" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 5.4h14.8v13.2H4.6z"/><path d="M4.6 12h14.8"/><circle cx="8.2" cy="8.7" r="1"/><path d="M11 8.7h5"/><circle cx="8.2" cy="15.3" r="1"/><path d="M11 15.3h3.4"/></g>
+<text x="491.2" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">struct-member</text>
+<text x="491.2" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">成员访问</text>
+<rect x="544" y="680" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,690) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 9.6h13.6"/><path d="M5.2 14.8h13.6"/><path d="M7.5 16.6l9-8.4"/></g>
+<text x="592" y="754" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">type-mismatch</text>
+<text x="592" y="769" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">类型不符</text>
+<rect x="40" y="788" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,798) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2a7.8 7.8 0 0 0-7.8 7.8v9.2c0 1 1.2 1.5 1.9.9l.8-.7a1.6 1.6 0 0 1 2.1 0l.9.8a1.6 1.6 0 0 0 2.1 0l.9-.8a1.6 1.6 0 0 1 2.1 0l.8.7c.7.6 1.9.1 1.9-.9V11A7.8 7.8 0 0 0 12 3.2z"/><circle cx="9.6" cy="10.4" r="0.9" fill="currentColor"/><circle cx="14.4" cy="10.4" r="0.9" fill="currentColor"/></g>
+<text x="88" y="862" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">uaf</text>
+<text x="88" y="877" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">内存已释放</text>
+<rect x="140.8" y="788" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,798) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 8.6 15 15.2"/><path d="M15 8.6 8.4 15.2"/><path d="M18.4 6.8a1.9 1.9 0 1 1 2.5 1.4c-.6.3-.8.7-.8 1.3v.3"/><circle cx="20" cy="12.4" r="0.8"/></g>
+<text x="188.8" y="862" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">undeclared</text>
+<text x="188.8" y="877" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">未声明</text>
+<text x="40" y="906" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="12" font-weight="500" fill="#c9c9cf">C++ · 5</text>
+<line x1="40" y1="912" x2="640" y2="912" stroke="#3a3a40" stroke-width="1"/>
+<rect x="40" y="924" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,934) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.2" cy="16.6" r="1.8" fill="currentColor"/><path d="M6.4 15.4l3.4-3.4"/><path d="M12.6 5.6h5.8"/><path d="M18.4 5.6v5.2"/><path d="M18.4 13.6v5.2"/><path d="M18.4 18.8h-5.8"/><path d="M12.6 18.8v-5.2"/><path d="M12.6 10.8V5.6"/></g>
+<text x="88" y="998" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">dangling</text>
+<text x="88" y="1013" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">悬垂引用</text>
+<rect x="140.8" y="924" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,934) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6h14.8v9.6H4.6z"/><path d="M7.4 15.6v1.5"/><circle cx="7.8" cy="19" r="1" fill="currentColor"/><path d="M12.4 15.6v1.1"/><circle cx="12.9" cy="19.2" r="0.62" fill="currentColor"/></g>
+<text x="188.8" y="998" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">leak</text>
+<text x="188.8" y="1013" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">内存泄漏</text>
+<rect x="241.6" y="924" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,934) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20.4H5.6A1.6 1.6 0 0 1 4 18.8V5.2a1.6 1.6 0 0 1 1.6-1.6H9"/><path d="M16.2 16.4l4.4-4.4-4.4-4.4"/><path d="M20.6 12H9"/></g>
+<text x="289.6" y="998" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">move</text>
+<text x="289.6" y="1013" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">移动后使用</text>
+<rect x="342.4" y="924" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,934) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 10.6h14.8v9.2H4.6z"/><path d="M8.4 10.6V7.8a3.6 3.6 0 0 1 7.2 0v2.8"/><circle cx="12" cy="15.2" r="1.3" fill="currentColor"/></g>
+<text x="390.4" y="998" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">ownership</text>
+<text x="390.4" y="1013" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">所有权</text>
+<rect x="443.2" y="924" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,934) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.2" cy="6.2" r="2.8"/><circle cx="6.2" cy="17.8" r="2.8"/><path d="M8.4 8.4 19.4 19.4"/><path d="M19.4 5.6 8.4 16.6"/></g>
+<text x="491.2" y="998" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">slice</text>
+<text x="491.2" y="1013" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">对象切片</text>
+<text x="40" y="1042" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="12" font-weight="500" fill="#c9c9cf">运行时 · 10</text>
+<line x1="40" y1="1048" x2="640" y2="1048" stroke="#3a3a40" stroke-width="1"/>
+<rect x="40" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 11.4h17.2v7.2H3.4z"/><path d="M7 15.4h6"/><path d="M9.2 7.4h2v2.2h-2z" fill="currentColor"/><path d="M13.2 5.2h2v2.2h-2z" fill="currentColor"/></g>
+<text x="88" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">buffer-overflow</text>
+<text x="88" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">缓冲区溢出</text>
+<rect x="140.8" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 12h9.4"/><path d="M10.8 9.4 13.4 12l-2.6 2.6"/><circle cx="18.2" cy="12" r="2.4" fill="currentColor"/></g>
+<text x="188.8" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">cause</text>
+<text x="188.8" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">原因</text>
+<rect x="241.6" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M5.9 5.9l12.2 12.2"/></g>
+<text x="289.6" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">deny</text>
+<text x="289.6" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">非法访问</text>
+<rect x="342.4" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.4" cy="8.8" r="1.5"/><path d="M4.4 12h8"/><circle cx="8.4" cy="15.2" r="1.5"/><path d="M17.4 8.4a2.3 3.6 0 1 0 0 7.2 2.3 3.6 0 1 0 0-7.2z"/></g>
+<text x="390.4" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">divide-zero</text>
+<text x="390.4" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">除零</text>
+<rect x="443.2" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(470.8,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M8.2 12.3l2.7 2.7 5-5.6"/></g>
+<text x="491.2" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">fix</text>
+<text x="491.2" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">解决方法</text>
+<rect x="544" y="1060" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(571.6,1070) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M15.8 15.8l4.6 4.6"/></g>
+<text x="592" y="1134" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">inspect</text>
+<text x="592" y="1149" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">查看</text>
+<rect x="40" y="1168" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(67.6,1178) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s6.6-6 6.6-10.6a6.6 6.6 0 1 0-13.2 0C5.4 15 12 21 12 21z"/><circle cx="12" cy="10.2" r="2.4"/></g>
+<text x="88" y="1242" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">location</text>
+<text x="88" y="1257" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">位置</text>
+<rect x="140.8" y="1168" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(168.4,1178) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5"/><path d="M8.5 13h7"/><path d="M8.5 17h4.5"/></g>
+<text x="188.8" y="1242" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">note</text>
+<text x="188.8" y="1257" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">示例</text>
+<rect x="241.6" y="1168" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(269.2,1178) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.6h17.6v6.8H3.2z"/><path d="M4.8 10.2h12.8v3.6H4.8z" fill="currentColor"/></g>
+<text x="289.6" y="1242" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">step-limit</text>
+<text x="289.6" y="1257" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">步数超限</text>
+<rect x="342.4" y="1168" width="96" height="96" rx="10" fill="#2b2b2e"/>
+<g transform="translate(370,1178) scale(1.7)" fill="none" stroke="#e8e8e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.8v13.4"/><path d="M4.3 14.8 6.5 17l2.2-2.2"/><circle cx="6.5" cy="7.4" r="2.1" fill="currentColor"/><circle cx="6.5" cy="15" r="2.1"/><path d="M11.8 7.4h8.4M11.8 15h5"/></g>
+<text x="390.4" y="1242" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#f2f2f2">timeline</text>
+<text x="390.4" y="1257" text-anchor="middle" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#9a9aa0">时间轴</text>
+<text x="40" y="1302" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#7a7a80">真源 assets/icons/&lt;id&gt;.svg · 清单 index.tsv · 几何层 assets/icons.json（gen_icons 产）· 图鉴为展示层，不进契约闸</text>
+<text x="40" y="1320" font-family="-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif" font-size="11" fill="#6b6b72">设计准则：代码字面量 / 经典 CS 隐喻优先，禁生活化抽象比喻（灯泡≠原因 · 水滴≠内存 · 角尺≠语汇）</text>
+</svg>

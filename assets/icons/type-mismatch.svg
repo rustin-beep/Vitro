@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>类型不匹配</title>
+<desc>type-mismatch</desc>
+
+<path d="M5.2 9.6h13.6"/>
+<path d="M5.2 14.8h13.6"/>
+<path d="M7.5 16.6l9-8.4"/>
+</svg>

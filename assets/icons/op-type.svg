@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>运算类型错误</title>
+<desc>op-type</desc>
+
+<path d="M4.6 10.4h6.2"/>
+<path d="M7.7 7.3v6.2"/>
+<path d="M16.6 9.2a1.9 1.9 0 1 1 2.5 1.4c-.6.3-.8.7-.8 1.3v.3"/>
+<circle cx="18.2" cy="14.6" r="0.8"/>
+</svg>

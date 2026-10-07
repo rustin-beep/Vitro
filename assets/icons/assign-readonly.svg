@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>向右值赋值</title>
+<desc>assign-readonly</desc>
+
+<path d="M3.4 9.4h6.4"/>
+<path d="M3.4 14.6h6.4"/>
+<path d="M13.4 10.6h6.6v7.6h-6.6z"/>
+<path d="M15.4 10.6V8.8a2 2 0 0 1 4 0v1.8"/>
+</svg>

@@ -4,7 +4,7 @@
 >
 > **定位**：实机代码勘探（`scripts/realcode_diff/`，见 [vitro-realcode-diff-workflow](../../../.agents/skills/vitro-realcode-diff-workflow/SKILL.md)）的语料扩充设计。现状 = TheAlgorithms/C fork 基线 407 份金样本（fork 方案已落地，见该 skill 第四节）。本方案回答两件事：**更多语料从哪来、按什么规则收纳**；**单 Clang 裁判的盲区怎么补**。
 >
-> issue 台账：<https://github.com/rustin-beep/Vitro/issues>（本方案对应 issue 待补编号）。
+> issue 台账：<https://github.com/rustin-beep/Vitro/issues>（本方案对应 issue = [#25](https://github.com/rustin-beep/Vitro/issues/25)，2026-10-02 立案在册）。
 
 ## 一、探索实录（2026-10-02）
 

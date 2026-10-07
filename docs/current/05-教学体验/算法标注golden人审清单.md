@@ -4,7 +4,7 @@
 
 ## 0. 当前状态
 
-- **基线 = v3 golden**（`native/tests/golden/algorithm_annotations_v3.json`，已接 CI）：
+- **基线 = v3 golden**（`scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json`，已接 CI——**2026-10-05 工序③自冻结区迁出此址**，原 `native/tests/golden/` 随删区退役）：
   **82 个 C 模板 = 37 有标注（311 条首现 / 113 个 (模板, phase) 键）+ 45 零标注**，0 错误帧。
 - **v4 → v5 两轮**：
   1. **v4**：按《算法标注golden审阅意见三审20260914.md》（已归档至 `docs/archive/`）§5 完成 8 项文档修复，并在重建后的
@@ -351,7 +351,7 @@ M4 一键多算法（v5 起按"**非缺陷**"读：同一模板的不同阶段�
 **未落地（残留，需改代码；原 1–3 条已由第三批 `72e8c24` 处置并上移入"已落地"表）**：
 
 1. **`quick/partition_init` 的 phase 名**：`partition_init` 与"分区已完成"不符；#6 已裁定"词汇面改动另行裁定"，
-   需走词汇表单源（`native/src/unified/vocabulary.rs` + schema 附录 B）。
+   需走词汇表单源（MoonBit `protocol` 包 vocabulary 单源 + schema 附录 B——原 Rust `vocabulary.rs` 已随删区退役）。
 2. **`computeNextVal/build_next` 的 L25 展示**：「构建 next 数组，next[#]=-1」实为**读取** next[j]，
    建议改「读取 next[j]=-1」。
 3. **登记未修（历史遗留，见附录 A）**：P1-3/P1-4 的顶层调用区分、P0-4 prev 操作数管道——本版 §0 判定规则 ③
@@ -407,7 +407,7 @@ P0-3 dp 判据、P1 判据批 10 项）；**主表待重提取对账后方可勾
 二审全部 P0/P1 修复（含管道批 P0-4/P1-3/P1-4 收口）后全量重提取：
 **82 模板 = 37 有标注（317 条首现 / 113 个 (模板,phase) 行）+ 45 零标注**
 （比二审 §4.2 预期的 34 多出的 3 个 = P0-B 批复亮的 bstInsert/bstSearch/bstDelete）。
-行为基线固化为 `native/tests/golden/algorithm_annotations_v3.json` 并接入 CI
+行为基线固化为 `algorithm_annotations_v3.json` 并接入 CI（时点路径 `native/tests/golden/`——该址已随 2026-10-05 删区退役，golden 现址 = `scripts/teaching_annotation_diff/golden/`）
 （`algorithm_annotation_golden_test`：Rust 直调 session_api 全量比对，双向防漂移；
 J9 埋雷已证红）。原始数据：`tmp/annot_extract_v3_20260914.json`。
 

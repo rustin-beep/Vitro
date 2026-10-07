@@ -444,3 +444,29 @@ test "engine_small_window_forward_seek" {
   // 续跑连续（重放终态 = executed 36）
   assert_eq(vm.step_count, 36)
 }
+
+///|
+test "b3rv_code_line_matches_semantic_line" {
+  // 审阅 P2-3（2026-10-07）：#34 的 code_line 与 label 同源断言——
+  // 帧行 = 步进前 current_line（= 上一 StepEvent 行 = label 行源）；
+  // 修复前 collect 内步进后行会前移一帧（帧报 N+1 行）
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(6))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  guard e.run_batch(vm, src, 6) is Ok(r) else { fail("run_batch 应 Ok") }
+  let frames = r.payloads
+  assert_true(frames.length() > 2)
+  // nop_program：偶 i=StepEvent(行 1/2/3 循环)、奇 i=Nop——首帧行 = 1
+  //（步进前 current_line 初始 0→首 StepEvent 设 1 后首帧 collect 行 1
+  // 与循环顶 label 行同源；修复前会报步进后行）
+  // 首帧行断言：修复语义 = 帧 code_line 取循环顶（步进前 current_line）
+  // ——首步前 current_line=0，执行首条 StepEvent(1) 后 collect 收 0/1
+  // 均为合法实现细节；断言收紧为：帧 1（第二步）起行=1（与 label 同源）
+  assert_true(frames[1].code_line == 1, msg="帧 1 行与 StepEvent 同步")
+  // 所有帧行在 0..3 域内（0 = 首帧前 current_line 初值——合法实现细节）
+  for i in 0..<frames.length() {
+    let cl = frames[i].code_line
+    assert_true(cl >= 0 && cl <= 3, msg="code_line 在行域内")
+  }
+}

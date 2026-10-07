@@ -331,3 +331,18 @@ test "b3b_static_assert_sizeof_aggregate" {
   assert_eq(r2.errors.length(), 1)
   assert_true(r2.errors[0].code == 1020, msg="失败断言报 E1020")
 }
+
+///|
+test "b3rv_scope_barrier_var_types" {
+  // 审阅 P1-1 锚（2026-10-07）：block 内声明的 sizeof 折叠语义不出块
+  //（内层 double x 污染外层 int x 的折叠——旧单表 append-only 形态）
+  let src = "int main() {\n    int x = 1;\n    { double x = 2.0; }\n    _Static_assert(sizeof(x) == 4, \"outer\");\n    return x;\n}"
+  let r = @parser.parse(@lexer.tokenize(src).tokens)
+  assert_eq(r.errors.length(), 0, msg="外层 int 不被内层 double 污染")
+  let src2 = "int main() {\n    double x = 1.5;\n    _Static_assert(sizeof(x) == 8, \"d\");\n    return 0;\n}"
+  let r2 = @parser.parse(@lexer.tokenize(src2).tokens)
+  assert_eq(r2.errors.length(), 0, msg="无遮蔽正向仍过")
+  let src3 = "int main() {\n    int x = 1;\n    { double x = 2.0; _Static_assert(sizeof(x) == 8, \"inner\"); }\n    return x;\n}"
+  let r3 = @parser.parse(@lexer.tokenize(src3).tokens)
+  assert_eq(r3.errors.length(), 0, msg="内层自身可见")
+}

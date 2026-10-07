@@ -126,6 +126,14 @@ fn Parser::parse_struct_decl(self : Parser, depth : Int) -> @ast.StructDecl {
       real_line: -1,
     }
   }
+  // 审阅 P2-6（2026-10-07）：`struct S;` 前向声明——tag 后直接 ; 跳过
+  // body（同 parse_union_decl；Clang 合法）
+  if self.check(Semicolon) {
+    let loc = @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column)
+    ignore(self.advance())
+    self.parsed_aggregates.push((name_tok.text, false, []))
+    return { loc, name: name_tok.text, fields: [], }
+  }
   let decl = self.parse_struct_body(
     name_tok.text,
     @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
@@ -156,6 +164,15 @@ fn Parser::parse_union_decl(self : Parser, depth : Int) -> @ast.StructDecl {
       byte_off: -1,
       real_line: -1,
     }
+  }
+  // 审阅 P2-6（2026-10-07）：`union U;` 前向声明——tag 后直接 ; 时
+  // 跳过 body 解析（空字段表声明——Clang 合法）；parse_union_decl 尾部
+  // 的 Semicolon 条件消费兼容此形态
+  if self.check(Semicolon) {
+    let loc = @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column)
+    ignore(self.advance()) // 消费前向声明的 ;
+    self.parsed_aggregates.push((name_tok.text, true, []))
+    return { loc, name: name_tok.text, fields: [], }
   }
   let decl = self.parse_struct_body(
     name_tok.text,

@@ -166,8 +166,16 @@ fn TypeChecker::check_field_value(
       // 常量 0 可初始化任意聚合成员（`struct S g = {0};` 惯用法——标量 0
       // 递归作用于首个标量子成员，数组成员收 0 即首元素零、其余默认零填
       // 由 codegen 零填路径承接）。非 0 标量对聚合仍报
+      // 审阅 P3-7 扩（2026-10-07）：零值常量全家桶——0/0u/0L 等字面
+      // 量与括号包裹（(0)）均属 C11 惯用清零形态（Clang 全接受）
       let is_zero_literal = match value {
         Literal(0, _, _) => true
+        LongLiteral(0L, _, _) => true
+        Cast(inner, _, _, _) =>
+          match inner {
+            Literal(0, _, _) => true
+            _ => false
+          }
         _ => false
       }
       let aggregate_field = field_ty.kind() is TK_Struct ||

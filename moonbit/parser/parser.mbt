@@ -191,9 +191,15 @@ priv struct Parser {
   parsed_aggregates : Array[(String, Bool, Array[@ast.StructField])]
   /// Bool = is_union
 
-  /// 已解析变量类型表（issue #13 数组形态）：声明点收口（全局+局部，
-  /// 后声明覆盖——单表近似，static_assert 的 sizeof(表达式) 折叠专用）
+  /// 已解析变量类型表（issue #13 数组形态）：声明点收口（全局+局部）。
+  /// 审阅 P1-1 修正（2026-10-07）：分块栈形态——每个 block/函数体 push
+  /// 边界，离开时 truncate 回水位（旧单表 append-only 让内层同名声明
+  /// 污染外层——`{ double x; }` 后外层 sizeof(x) 错取 double）。快照 =
+  /// 全表合并（内层遮蔽外层由后写覆盖语义天然成立），作用域语义由
+  /// block 边界的 truncate 保证
   parsed_var_types : Array[(String, @ast.Type)]
+  /// 变量类型表的 block 边界水位栈（enter/leave block 配对）
+  var_type_marks : Array[Int]
   is_cpp_mode : Bool
   mut next_lambda_id : Int
   /// C++ 嵌套类解析上下文：当前外层类名栈
@@ -257,6 +263,7 @@ fn Parser::with_mode(
     program_sink: None,
     parsed_aggregates: [],
     parsed_var_types: [],
+    var_type_marks: [],
     is_cpp_mode,
     next_lambda_id: 0,
     current_class: [],
@@ -752,7 +759,13 @@ fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
       la += 1
     }
     if ty_at(la) != LBrace {
-      // struct X（无体）——前向声明/变量声明当普通全局处理
+      // struct X（无体）——审阅 P2-6 修正：`struct S;` 前向声明归
+      // StructDecl（StructVarOrFunc 的 parse_global_var_or_func 对
+      // tag+; 形态炸「预期标识符名称」——parse_struct_decl 已有前向
+      // 声明跳 body 臂）；`struct S x` 变量声明仍走 VarOrFunc
+      if has_name && ty_at(la) == Semicolon {
+        return StructDecl
+      }
       return StructVarOrFunc
     }
     // 花括号配对扫描（原病灶：手写匹配内联在分发分支；此处只读索引版）
@@ -793,6 +806,12 @@ fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
     let p1 = ty_at(self.pos + 1)
     let p2 = ty_at(self.pos + 2)
     if p1 == LBrace || (p1 == Identifier && p2 == LBrace) {
+      return UnionDecl
+    }
+    // 审阅 P2-6（2026-10-07）：`union U;` 前向声明（tag 后直接 ;——
+    // Clang 合法；落 StructVarOrFunc 会在 parse_base_type 后把 ; 当
+    // 声明器炸 E2005）
+    if p1 == Identifier && p2 == Semicolon {
       return UnionDecl
     }
     return StructVarOrFunc
@@ -842,21 +861,27 @@ fn Parser::dispatch_top_level(
         )
       }
       program.structs.push(struct_decl)
-      // issue #7 顶层形态：`struct [S] { ... } s;` body 后声明器组
-      self.parse_aggregate_trailing_globals(
-        program,
-        @ast.Type::struct_type(struct_decl.name),
-      )
+      // issue #7 顶层形态：`struct [S] { ... } s;` body 后声明器组；
+      // 前向声明（fields 空且 ; 已消费——审阅 P2-6）跳过 trailing
+      if struct_decl.fields.length() > 0 {
+        self.parse_aggregate_trailing_globals(
+          program,
+          @ast.Type::struct_type(struct_decl.name),
+        )
+      }
     }
     UnionDecl => {
       let decl = self.parse_union_decl(0)
       program.unions.push(decl)
       // issue #7 顶层形态（2026-10-06）：`union [U] { ... } g;` body 后
       // 声明器组 → 全局变量（parse_union_decl 已收尾 ; 或停在声明器处）
-      self.parse_aggregate_trailing_globals(
-        program,
-        @ast.Type::union_type(decl.name),
-      )
+      // 前向声明（fields 空且 ; 已消费——审阅 P2-6）跳过 trailing
+      if decl.fields.length() > 0 {
+        self.parse_aggregate_trailing_globals(
+          program,
+          @ast.Type::union_type(decl.name),
+        )
+      }
     }
     CppClassDecl => self.parse_cpp_class_decl(program)
     CppTemplateDecl => self.parse_cpp_template_decl(program)

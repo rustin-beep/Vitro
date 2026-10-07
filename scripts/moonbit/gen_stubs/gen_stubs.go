@@ -109,6 +109,9 @@ func main() {
 	orig, origErr := os.ReadFile(outFile)
 
 	// 产物形态以 moon fmt 为准：写入 gen 原始输出 → fmt → 以 fmt 后字节为准
+	//（审阅 P3-8 探针实锤：磁盘=fmt 形态 vs gen 原始恒差 282B——「内容
+	// 一致跳写」判据在 fmt 型生成器上结构性不可得；mtime 副作用由统一
+	// 入口侧缓解——新鲜度警告是 stderr 提示非阻断；登记 #47 批五）
 	if err := os.WriteFile(outFile, out.Bytes(), 0o644); err != nil {
 		fatalf("写入失败: %v", err)
 	}

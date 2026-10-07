@@ -12,6 +12,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第九轮审阅处置：P1 两条真分叉 + P2-3 有效锚 + P2-4/6 + P3-7/8，2026-10-07）
+
+- **P1-1 #13 作用域污染**：parsed_var_types 单表 append-only → 分块栈（var_type_marks 边界
+  水位——parse_block 进出配对 truncate；内层 `{ double x; }` 不再污染外层 int x 的 sizeof
+  折叠；parsed_aggregates 同理按 block 语义走 Rollback 快照已有水位）——锚
+  b3rv_scope_barrier_var_types（外层不污染/正向仍过/内层自身可见三断言）
+- **P1-2 #8 级联未断根**：check_user_func 第四级返回 void→int（C 隐式 int 口径）——
+  `return foo(1)` 不再级联 E3014「返回类型不匹配」（Clang 单错口径）
+- **P2-3 三处有效锚**：#8 补 CallPtr 形态锚（旧锚手写 Expr::Call 走 resolve_call 对
+  新分支零判别——A1-i 锚节点类型错位形态；新锚断言单错+调用定型 int）；
+  #21 补语料 param_shadows_func.c（roman_numerals 教科书形态五驱动入账）；
+  #34 补 engine_wbtest 同源断言（帧 code_line = 循环顶行域断言——推翻初版锚的
+  首帧 0/1 实现细节耦合后语义化）
+- **P2-4 #34 补同源**：trap 兜底臂 + seek 重放 Ok/Paused 与 Waiting/Finished 四处
+  collect 全部接 code_line=Some(循环顶行)——提交信息「六处」系当时写后笔误（实测 4），
+  本批终态 8 处全同源
+- **P2-6 前向声明**：`union U;` / `struct S;`（tag 后直接 ;）——classify 补第三形态
+  （union：tag+; 归 UnionDecl；struct：tag+; 归 StructDecl——StructVarOrFunc 对该形态
+  炸「预期标识符名称」）；parse_union_decl/parse_struct_decl 补跳 body 臂（空字段表+
+  消费；）；dispatch trailing 前向跳过（fields 空）；fwd.c 三形态 == Clang
+- **P3-7 #19 放行面扩**：零值常量全家桶（0u→LongLiteral 不匹配 UnsignedLiteral 形态——
+  0u 实际产 Literal；0L→LongLiteral(0)；(0)→Cast 包裹）三形态入 is_zero_literal
+- **P3-8 gen_stubs mtime 副作用**：内容一致跳过写入（bytes.Equal 先比对）——消除
+  -check 的 mtime 前移对统一入口 native 臂新鲜度门禁的误报
+- **P2-5/P3-9 登记**：codegen 阶段错误不进结构化诊断（diagnostics=[] 而 ok=false——
+  消费方拿不到原因；归 #38 codegen 立码段批评估）；#14 豁免面按名豁免的用户冲突重定义
+  面收窄评估（豁免条件可加「先前定义来自内置宏表」判据——低危登记）
+
 ### Added（skill 手册引用面纠错 + skill_path_check 新闸，2026-10-07）
 
 - **skill 手册 Rust oracle 退役结构性纠错**（9 文件）：判据反转（oracle 照搬 → Clang 直拍）、复现清单对齐 ci.yml 现役（`corpus/` 路径 / `MOON_CC=clang` / 统一入口 `scripts/bin/vitro`）、realcode/baseline 义务链退役标注（统一挂 [Rust oracle 退役 2026-10-05] 标签，tag `rust-oracle-freeze`）；外部审阅报告 F1–F9 处置（7 修 2 拍板执行）。

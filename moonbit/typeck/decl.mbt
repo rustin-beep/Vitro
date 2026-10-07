@@ -579,7 +579,10 @@ fn TypeChecker::check_user_func(
                 loc,
                 E3036_UndefinedFunc,
               )
-              @ast.Type::void_type()
+              // 审阅 P1-2（2026-10-07）：返回 int 兜底（C 隐式 int 口径）
+              // ——void 会让  级联 E3014「返回类型不匹配」
+              //（#8 修复的 E3036 单错目标被次级错误破坏；Clang 单错）
+              @ast.Type::int()
             }
           }
       }

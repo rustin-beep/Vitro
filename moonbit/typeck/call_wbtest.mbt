@@ -325,3 +325,41 @@ test "call_variadic_default_promotion" {
     _ => fail("main body")
   }
 }
+
+///|
+test "b3c_undef_func_callptr_single_error" {
+  // 审阅 P2-3（2026-10-07）：#8 的锚必须走 **CallPtr**（C 输入实际形态
+  //——parser 后缀位统一产 CallPtr，Expr::Call 仅 C++ ctor 不可达；旧锚
+  // 手写 Expr::Call 走 resolve_call 对新分支零判别）。反锚：E3036 单错
+  //（无 E3014 级联——第四级返 int 兜底）+ 已声明变量调用仍 E3066
+  let loc = @source.SourceLoc::new(2, 5)
+  let call_undef : @ast.Expr = @ast.Expr::CallPtr(
+    @ast.Expr::Identifier("foo", loc, @ast.Type::void_type()),
+    [@ast.Expr::Literal(1, loc, @ast.Type::int())],
+    loc,
+    @ast.Type::void_type(),
+  )
+  let ret : @ast.Stmt = @ast.Stmt::Return(Some(call_undef), loc)
+  let main = func_of("main", [], Some(@ast.Stmt::Block([ret], loc)), loc)
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check(prog_of([main], []))
+  assert_eq(errs.length(), 1, msg="E3036 单错（无 E3014 级联）")
+  assert_true(errs[0].code == 3036)
+  // return 语句类型不匹配不再出现（int 兜底 == main 的 int 返回）
+  match typed.funcs[0].body {
+    Some(Block(stmts, _)) =>
+      if stmts.length() > 0 {
+        match stmts[stmts.length() - 1] {
+          Return(Some(CallPtr(_, _, _, rty)), _) =>
+            assert_true(
+              rty.kind() is TK_Int,
+              msg="调用定型 int（隐式 int 口径）",
+            )
+          _ => fail("形态不符: 末语句非 Return")
+        }
+      } else {
+        fail("形态不符: 空块")
+      }
+    _ => fail("形态不符: body 非 Block")
+  }
+}

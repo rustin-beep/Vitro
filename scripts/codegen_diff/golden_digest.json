@@ -231,6 +231,7 @@
         "null_keyword.c": "eee2e083",
         "octal_literal.c": "64aa1f86",
         "offsetof_struct.c": "0d66de85",
+        "param_shadows_func.c": "dbad2b64",
         "parametric_macro_max.c": "959dd066",
         "parametric_macro_nested.c": "398f17d7",
         "parametric_macro_square.c": "12d6615e",
@@ -1071,6 +1072,9 @@
         },
         "offsetof_struct.c": {
           "result_sha": "5c7a8fb5757b244a"
+        },
+        "param_shadows_func.c": {
+          "result_sha": "8806fc48d658c7ae"
         },
         "parametric_macro_max.c": {
           "result_sha": "ff3e4f6bddf43679"

@@ -1365,6 +1365,12 @@
       "stdout_sha": "b2a7c750c2fc773e",
       "memory_sha": "96831022bdd66aad"
     },
+    "baseline/param_shadows_func.c": {
+      "src_sha": "dbad2b64",
+      "exit_code": 0,
+      "stdout_sha": "3d2f0fde839cff88",
+      "memory_sha": "bcafb38f9c26cc19"
+    },
     "baseline/parametric_macro_max.c": {
       "src_sha": "959dd066",
       "exit_code": 0,

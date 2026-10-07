@@ -328,7 +328,11 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
         } else {
           // 结构性不可达：首循环 should_checkpoint(0) 恒真 ⇒ step ≥ 1 前
           // 必有检查点 0。防御形态 = 不回退（VM 停留 trap 态）收集。
-          payloads.push(collect(vm, src, 0UL, step, self.algo))
+          // 审阅 P2-4（2026-10-07）：trap 兜底臂同源化（循环顶 line——#34 修复
+          // 的补遗；旧自取步进后行）
+          payloads.push(
+            collect(vm, src, 0UL, step, self.algo, code_line=Some(line)),
+          )
         }
         // M14 根因提示（S8 analysis 批，engine.rs:202-210 装配结构同形
         // ——输出面分叉见上分叉登记①：oracle 回滚后取 error 恒空串）：
@@ -472,18 +476,29 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
               }
             }
             let pre_step = vm.step_count
+            // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
+            // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
+            let seek_line = vm.get_current_line()
             match vm.step() {
               Ok | Paused => {
                 let l2 = vm.get_current_line()
                 self.frames.push_or_replace_at(
                   pre_step,
-                  collect(vm, src, vm.heatmap_count_at(l2), pre_step, self.algo),
+                  collect(
+                    vm,
+                    src,
+                    vm.heatmap_count_at(l2),
+                    pre_step,
+                    self.algo,
+                    code_line=Some(seek_line),
+                  ),
                 )
                 // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
                 // push 后立即 trim 的修复形态结构化）
               }
               WaitingInput | Finished => {
                 // 协议 §4.2 第 4 步：以该步为终点返回 success
+                //（code_line 同源化——审阅 P2-4）
                 let l2 = vm.get_current_line()
                 let payload = collect(
                   vm,
@@ -491,6 +506,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                   vm.heatmap_count_at(l2),
                   pre_step,
                   self.algo,
+                  code_line=Some(seek_line),
                 )
                 self.frames.push_or_replace_at(pre_step, payload)
                 self.frames.finish_replay(target)

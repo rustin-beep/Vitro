@@ -210,6 +210,10 @@ fn Parser::stall_synchronize(self : Parser) -> Unit {
 
 ///|
 fn Parser::parse_block(self : Parser, depth : Int) -> @ast.Stmt {
+  // 审阅 P1-1（2026-10-07）：block 边界 = parsed_var_types 作用域屏障
+  //（内层声明的 sizeof 折叠语义不出块）；函数体（parse_func_body 的
+  // Block 形态）同样经此配对
+  self.var_type_marks.push(self.parsed_var_types.length())
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
   ignore(self.consume(LBrace, "预期 '{'"))
@@ -228,6 +232,11 @@ fn Parser::parse_block(self : Parser, depth : Int) -> @ast.Stmt {
     }
   }
   ignore(self.consume(RBrace, "预期 '}'"))
+  let mark = self.var_type_marks.pop()
+  match mark {
+    Some(m) => self.parsed_var_types.truncate(m)
+    None => ()
+  }
   @ast.Stmt::Block(stmts, loc)
 }
 

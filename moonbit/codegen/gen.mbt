@@ -224,26 +224,7 @@ fn BytecodeGen::generate(
   // vtable 分配（C++ 虚派发）：不迁移（F-2）。
   // 回填全局变量初始化中的字符串字面量地址（Pass 1 后统一分配——
   // 字符串区位于全局变量区之后）。
-  let pending = self.pending_string_inits
-  self.pending_string_inits = []
-  for entry in pending {
-    let (base_offset, value) = entry
-    let aligned = ((@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3) &
-      @bytecode.ALIGN4_MASK
-    match
-      self.bump_global_offset(
-        aligned.to_int(),
-        "全局初始化字符串",
-        default_loc(),
-      ) {
-      Some(str_offset) => {
-        let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
-        self.string_data.push((str_addr, value))
-        self.globals_init_32.push((base_offset, str_addr.to_int()))
-      }
-      None => ()
-    }
-  }
+  self.flush_pending_string_inits()
   // Pass 2：函数元数据（func_index 已预填）。
   for f in program.funcs {
     if f.body is None {
@@ -288,6 +269,11 @@ fn BytecodeGen::generate(
     }
     self.exit_function()
   }
+  // Pass 3 尾再回填一次：static 局部聚合的字符串指针成员初值在函数体
+  // 生成时（Pass 3）经 flatten_global_init 压入 pending——首轮回填在
+  // Pass 1 尾已过，无人消费即丢值（①表 9 号①：解引用 TRAP NULL，
+  // 批五 2026-10-07 收口）。幂等：pending 空则无操作。
+  self.flush_pending_string_inits()
   // 入口 wrapper：code[0] = Jump wrapper_ip；PushArgv/PushArgc + Call main + Ret。
   let wrapper_ip = self.current_ip()
   match self.func_index.get("main") {
@@ -343,6 +329,35 @@ fn BytecodeGen::generate(
 
 ///|
 /// `max(0, next_global_offset)` 照搬（Rust `self.next_global_offset.max(0)`）。
+
+///|
+/// 回填 pending_string_inits（字符串字面量地址 → globals_init_32；字符串
+/// 区位于全局变量区之后）。双调用点：Pass 1 尾（全局初值）+ Pass 3 尾
+///（static 局部聚合的字符串指针成员——批五 ①表 9 号①收口）。幂等。
+fn BytecodeGen::flush_pending_string_inits(self : BytecodeGen) -> Unit {
+  let pending = self.pending_string_inits
+  self.pending_string_inits = []
+  for entry in pending {
+    let (base_offset, value) = entry
+    let aligned = ((@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3) &
+      @bytecode.ALIGN4_MASK
+    match
+      self.bump_global_offset(
+        aligned.to_int(),
+        "全局初始化字符串",
+        default_loc(),
+      ) {
+      Some(str_offset) => {
+        let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
+        self.string_data.push((str_addr, value))
+        self.globals_init_32.push((base_offset, str_addr.to_int()))
+      }
+      None => ()
+    }
+  }
+}
+
+///|
 fn BytecodeGen::next_global_offset_clamped(self : BytecodeGen) -> Int {
   if self.next_global_offset > 0 {
     self.next_global_offset

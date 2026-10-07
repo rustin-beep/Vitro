@@ -56,6 +56,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"vitro/scripts/internal/freshness"
 )
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
@@ -202,41 +204,18 @@ func main() {
 		return
 	}
 
-	// 前置：runner 存在 + 新鲜度门禁（vm_diff 同款：mtime 触发 + 构建复核）
+	// 前置：runner 存在 + 新鲜度门禁（批五 P2-5 换单源 freshness 包——
+	// mtime 触发 + 构建复核；顺带修正：原 wasm 臂仍无条件复核 native exe）
 	if backend == "wasm" {
 		if !fileExists(wasmShell) {
 			fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在（统一入口壳）\n", wasmShell)
 			os.Exit(2)
 		}
-		if !fileExists(wasmMod) {
-			fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在——先跑 cd moonbit && moon build --release --target wasm-gc gateway/wasm\n", wasmMod)
-			os.Exit(2)
-		}
-		if stale := findStaleSource(wasmMod); stale != "" {
-			fmt.Fprintf(os.Stderr, "clang_direct: %s 旧于源 %s——跑 wasm-gc 构建复核...\n", wasmMod, stale)
-			rb := exec.Command("moon", "build", "--release", "--target", "wasm-gc", "gateway/wasm")
-			rb.Dir = "moonbit"
-			if out, err := rb.CombinedOutput(); err != nil {
-				fmt.Fprintf(os.Stderr, "clang_direct: wasm-gc 构建复核失败：%v\n%s\n", err, tailAll(out))
-				os.Exit(2)
-			}
-		}
-	} else if !fileExists(runnerExe) {
-		fmt.Fprintf(os.Stderr, "clang_direct: %s 不存在——先跑 cd moonbit && moon build --release --target native cmd/run\n", runnerExe)
-		os.Exit(2)
-	}
-	if stale := findStaleSource(runnerExe); stale != "" {
-		fmt.Fprintf(os.Stderr, "clang_direct: %s 旧于源 %s——跑构建复核...\n", runnerExe, stale)
-		cmd := exec.Command("moon", "build", "--release", "--target", "native", "cmd/run")
-		cmd.Dir = "moonbit"
-		if out, err := cmd.CombinedOutput(); err != nil {
-			fmt.Fprintf(os.Stderr, "clang_direct: 构建复核失败：%v\n%s（判失败前先看全量输出——| head 会 SIGPIPE 截断）\n", err, tailAll(out))
-			os.Exit(2)
-		}
-		if !fileExists(runnerExe) {
-			fmt.Fprintf(os.Stderr, "clang_direct: 构建成功但 %s 仍缺失\n", runnerExe)
-			os.Exit(2)
-		}
+		freshness.EnsureFresh("clang_direct", wasmMod,
+			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+	} else {
+		freshness.EnsureFresh("clang_direct", runnerExe,
+			"build", "--release", "--target", "native", "cmd/run")
 	}
 
 	// clang 可用性 fail fast（shadow 门禁同款纪律：缺失即 exit 2，不静默跳过）

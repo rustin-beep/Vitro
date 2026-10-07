@@ -330,6 +330,26 @@ test "scanf_star_suppression" {
 }
 
 ///|
+/// 抑制写不得触碰内存（批五 ①表 9 号②销案锚）：批四实现把抑制项的写
+/// 目标投到已解析格式串哑地址（0x6000——见 scanf_run 实现），按 spec
+/// 宽度的 store 可越出格式串实际长度踩相邻内存（机制实锤、无可见损坏
+/// 样本——本锚可见化）。修法 = store 消费面 16 处包抑制条件跳过。
+test "scanf_suppress_writes_notarget" {
+  let (map, mem) = fresh()
+  let input = InputState::new([b"7"], true)
+  // 先写同一格式串读回基线（与 scanf_run 内部落位同地址 0x6000）
+  put_bytes(mem, map, 0x6000U, @utf8.encode("%*d"), true)
+  let before = mem.load_u64(map, 0x6000U)
+  let r = scanf_run(map, mem, input, "%*d", [])
+  guard r is InputOutcome::Value(0UL) else { fail("抑制不计数") }
+  assert_eq(
+    mem.load_u64(map, 0x6000U),
+    before,
+    msg="抑制写不得触碰格式串区（哑地址写禁止——修前 store_u32 写坏低 4 字节）",
+  )
+}
+
+///|
 test "scanf_stream_cursor_five_calls" {
   let (map, mem) = fresh()
   let input = InputState::new([b"1 2", b"3 4"], true)

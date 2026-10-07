@@ -1515,6 +1515,12 @@
       "stdout_sha": "f1829524c1d7c28e",
       "memory_sha": "500de7e8cb1ec530"
     },
+    "baseline/printf_retval.c": {
+      "src_sha": "4659d3b4",
+      "exit_code": 104,
+      "stdout_sha": "4c8276581337addc",
+      "memory_sha": "bf05bffbf5ff8981"
+    },
     "baseline/printf_star_family.c": {
       "src_sha": "6c4cf6f8",
       "exit_code": 0,
@@ -1864,6 +1870,12 @@
       "stdout_sha": "c117eca50cdc1156",
       "memory_sha": "934c55dc401b69c6"
     },
+    "baseline/static_str_member.c": {
+      "src_sha": "e8f0723b",
+      "exit_code": 7,
+      "stdout_sha": "94369342f9ee549a",
+      "memory_sha": "da97fc7f5f446596"
+    },
     "baseline/static_string_pointer.c": {
       "src_sha": "daf1e8be",
       "exit_code": 0,
@@ -1881,6 +1893,12 @@
       "exit_code": 0,
       "stdout_sha": "b94d27b9934d3e08",
       "memory_sha": "60da242118869fab"
+    },
+    "baseline/strcpy_retval_chain.c": {
+      "src_sha": "e642bd01",
+      "exit_code": 5,
+      "stdout_sha": "3c609dad442c03ea",
+      "memory_sha": "7ba335d9ea4769a9"
     },
     "baseline/string_escape_octal_hex.c": {
       "src_sha": "9dda4d23",

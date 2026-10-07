@@ -12,6 +12,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed（图标语义化全链 #27——emoji 码点退役为语义图标 id，方案 C，2026-10-07）
+
+- **资产随包发布**：真源 `assets/icons/` → `moonbit/icons/`（52 svg + index.tsv
+  + 几何层 icons.json）——mooncakes 包内非 .mbt 文件全量下发（下游探针实证：
+  0.8.0 包内 14 md + LICENSE + 7 c 先例），消费方 `.mooncakes/vitro/engine/` 路径
+  直达零感知；砍掉原提案 release zip / Pages URL 分发通道。
+- **协议字段一刀切**（无兼容别名，0.9 一步切换）：`error_catalog` 帧 `emoji`
+  → `icon`（77 卡逐卡对号 52 语义 id——13 处一码多义按拍板拆分表落位）；
+  trap 文案装饰位 emoji 码点 → `[语义 id]` 方括号徽章（9 文件 63 处，含
+  host/vm/gateway 三层源文案与全部断言锚）。
+- **新增 `icons.get` 方法**（第 23 方法，点风格拍板）：独立资产通道——全量
+  （字典序）/子集（请求序去重）/未知 id 整帧拒绝；帧带 digest 与几何层
+  契约（viewBox 24 / stroke 1.8 / `strokeWidth = 1.8 × S / 24` 换算）。
+  数据面 = 新包 `vitro/engine/icons`（L0 纯数据零依赖，icons_gen.mbt 由
+  gen_icons 默认产出、内置 moon fmt、-check 锁 digest 双产物一致）。
+- **schema v0.2 台账 +1 行为契约**：`error_catalog[].icon`（add/active，值域
+  52 id 由 icon_catalog 闸锁）+ `icons_asset_channel`（业务帧只带 id 不带
+  字形）；protocol 断言锚 3 处连坐（台账 7→8 / 契约 5→6 / contracts_json
+  逐字节真值随合法演化更新——Rust 探针退役后的真值维护形态）。
+- **防线连坐**：protocol_frames 基线 31→33 帧（icons.get 全量+子集新帧、
+  contracts 帧随台账刷新；`-update-baseline` 冻结护栏下人工裁定以 moonbit
+  臂刷新）；`icon_catalog` 新增第 10 条协议值域对账（catalog 77 条 icon ⊆
+  资产表，J9 注入 strng-typo 证红）；gen_icons/-icon_catalog 双闸挂入 CI
+  生成器闸组；serve_compile 富化行 `[icon] 标题` 形态；surface 收面
+  （icons 包仅 export_icons_json pub + gateway 消费边登记）；pkg_deps
+  分层表 icons=L0（38 包）。
+- **demo 消费**（本地表优先拍板）：`demo/js/icons.ts`（gen_icons -demo 产，
+  含 ICONS_DIGEST；-check 锁发射漂移）+ `icon.ts` 渲染单源（iconSvg 缺 id
+  文本降级 + decorateBadges 白名单替换——C 代码 `[0]` 不误伤）；手册 72 卡
+  SVG 徽章、trap/note `[id]` 装饰（UAF 五件套实测）；digest 对拍不一致
+  console.warn 不回退；方法面计数 22→23 连坐（demo_smoke 基线 + index.html
+  计数句）；图标尺寸三轮调优终版手册 22px / trap 20px（描边随 1.8×S/24
+  契约换算，图标领出文本行）。
+- **moon test 685/685 全绿**（protocol 断言 3 红修复 + 并发批五语料合计）；
+  vm_diff 抽样零 DIFF 证实 trap 文案不进 stdout 对拍面。
+
+### Fixed（批五·①表 9 号两观察项收口：static 字符串指针初值 + scanf 抑制哑写，refs #47，2026-10-07）
+
+- **static 局部聚合的字符串指针成员初值**（`static struct {char* s;} t = {"abc"}`）：
+  初值经 flatten_global_init 压入 pending_string_inits，而该通道只在 Pass 1 尾
+  消费一次——static 声明在 Pass 3 执行，条目无人消费即丢值，成员 NULL、解引用
+  TRAP。修复 = 消费循环抽 `flush_pending_string_inits()` 单源方法（幂等），Pass 3
+  尾追加一次回填。语料 `static_str_member.c` 入 baseline（五 digest + clang_direct
+  SAME，Vitro `abc 7` == Clang 逐位）。
+- **scanf 赋值抑制的哑地址写**（批四实现把抑制项写目标投到已解析格式串地址）：
+  按 spec 宽度的 store（8 字节）/ `%s` 的 write_bytes（token 长度）可越出格式串
+  实际长度踩相邻内存（机制实锤、此前无可见样本）。修复 = 写消费面 19 处（16
+  store + 2 write_bytes + 1 栈缓冲校验）包 `if not(sl.2)` 跳过——哨兵锚
+  `scanf_suppress_writes_notarget` 可见化（修前格式串区 8 字节被写坏）。
+- **连带**：bTree_default 的 UB 结局第三次漂移（known_direct digest ff228a13/65593255
+  → f7c93a73 重新归因——本批修复改内存布局属引擎合法变更，UB 漂移是该用例的
+  预告正当形态）。
+
+### Added（批五·N3/N4 语料补齐——批四销案的 E2E 义务链收口，refs #47，2026-10-07）
+
+- `corpus/baseline/printf_retval.c` + `strcpy_retval_chain.c`：批四 N3/N4
+  （printf/putchar/fprintf 返回字符数、strcpy/memcpy 族返回目标指针）销案时
+  wbtest + Clang exit 对拍已锁，本批补齐 corpus E2E 锚——printf_retval 用
+  返回值参与算术与退出码（104）、strcpy_retval_chain 链式
+  `strcat(strcpy(...))` 只有返回指针正确才成立（退出码 5）。五 digest
+  freeze-mb 入账（lexer/parser/typeck/codegen/vm_diff）；clang_direct
+  709 与 vm_diff 616 双臂全绿。
+- **语料设计教训**：stderr 与 stdout 混排在 clang_direct（捕获合并流）下是
+  交错敏感场景——管道下 clang 的 stderr 无缓冲恒先于缓冲 stdout 刷出、引擎
+  按写入序（C 标准未定义交错序）；语料侧避开两流混排（首版 fprintf(stderr)
+  首行交错 DIFF 实锤，改 fprintf(stdout) 保返回值锚）。
+- **连带**：clang_direct 的新鲜度门禁补换单源 freshness（批五第二片只换
+  vm_diff 漏了这份本地副本；顺带修正原 wasm 臂仍无条件复核 native exe 的
+  小病）。
+
 ### Fixed（demo 前端 note 乱码——#49 批一连坐遗漏收口，2026-10-07）
 
 - **demo note 面板中文全乱码**（用户试玩实报）：#49 批一（2026-10-06）把

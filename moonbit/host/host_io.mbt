@@ -699,14 +699,22 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if len_mod >= 2 {
-        mem.store_u64(
-          map,
-          ptr,
-          parse_int64_or_zero(token).reinterpret_as_uint64(),
-        )
+      let f = if not(sl.2) {
+        if len_mod >= 2 {
+          mem.store_u64(
+            map,
+            ptr,
+            parse_int64_or_zero(token).reinterpret_as_uint64(),
+          )
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            parse_int_or_zero(token).reinterpret_as_uint(),
+          )
+        }
       } else {
-        mem.store_u32(map, ptr, parse_int_or_zero(token).reinterpret_as_uint())
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -734,14 +742,18 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if len_mod >= 2 {
-        mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+      let f = if not(sl.2) {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
+          )
+        }
       } else {
-        mem.store_u32(
-          map,
-          ptr,
-          parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
-        )
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -762,21 +774,25 @@ pub fn host_scanf_n(
       if token.length() == 0 {
         break
       }
-      let f = if len_mod >= 1 {
-        mem.store_u64(
-          map,
-          ptr,
-          parse_double_or_zero(token).reinterpret_as_uint64(),
-        )
+      let f = if not(sl.2) {
+        if len_mod >= 1 {
+          mem.store_u64(
+            map,
+            ptr,
+            parse_double_or_zero(token).reinterpret_as_uint64(),
+          )
+          // %f → float（4 字节位模式）
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            Float::reinterpret_as_uint(
+              Float::from_double(parse_double_or_zero(token)),
+            ),
+          )
+        }
       } else {
-        // %f → float（4 字节位模式）
-        mem.store_u32(
-          map,
-          ptr,
-          Float::reinterpret_as_uint(
-            Float::from_double(parse_double_or_zero(token)),
-          ),
-        )
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -790,9 +806,11 @@ pub fn host_scanf_n(
       }
       let ch = chars[pos]
       pos = pos + 1
-      match mem.store_i8(map, ptr, ch.to_int()) {
-        Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+      if not(sl.2) {
+        match mem.store_i8(map, ptr, ch.to_int()) {
+          Ok(_) => ()
+          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        }
       }
     } else if spec == 115 {
       // s
@@ -814,23 +832,29 @@ pub fn host_scanf_n(
         j = j + 1
       }
       // V-P1-6：栈缓冲容量校验（token + NUL）
-      match
-        stack_buffer_check(
-          stack_buffers,
-          ptr,
-          token.length() + 1,
-          "scanf(\"%s\")",
-        ) {
-        Some(t) => return InputOutcome::Trap(t)
-        None => ()
+      if not(sl.2) {
+        match
+          stack_buffer_check(
+            stack_buffers,
+            ptr,
+            token.length() + 1,
+            "scanf(\"%s\")",
+          ) {
+          Some(t) => return InputOutcome::Trap(t)
+          None => ()
+        }
       }
-      match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
-        Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+      if not(sl.2) {
+        match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
+          Ok(_) => ()
+          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        }
       }
-      match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
-        Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+      if not(sl.2) {
+        match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
+          Ok(_) => ()
+          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        }
       }
     } else {
       // 不支持的转换符：未消费输入，不计入成功项
@@ -945,14 +969,22 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if len_mod >= 2 {
-        mem.store_u64(
-          map,
-          ptr,
-          parse_int64_or_zero(token).reinterpret_as_uint64(),
-        )
+      let f = if not(sl.2) {
+        if len_mod >= 2 {
+          mem.store_u64(
+            map,
+            ptr,
+            parse_int64_or_zero(token).reinterpret_as_uint64(),
+          )
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            parse_int_or_zero(token).reinterpret_as_uint(),
+          )
+        }
       } else {
-        mem.store_u32(map, ptr, parse_int_or_zero(token).reinterpret_as_uint())
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -982,14 +1014,18 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if len_mod >= 2 {
-        mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+      let f = if not(sl.2) {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
+          )
+        }
       } else {
-        mem.store_u32(
-          map,
-          ptr,
-          parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
-        )
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -1006,20 +1042,24 @@ pub fn host_sscanf(
       if token.length() == 0 {
         break
       }
-      let f = if len_mod >= 1 {
-        mem.store_u64(
-          map,
-          ptr,
-          parse_double_or_zero(token).reinterpret_as_uint64(),
-        )
+      let f = if not(sl.2) {
+        if len_mod >= 1 {
+          mem.store_u64(
+            map,
+            ptr,
+            parse_double_or_zero(token).reinterpret_as_uint64(),
+          )
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            Float::reinterpret_as_uint(
+              Float::from_double(parse_double_or_zero(token)),
+            ),
+          )
+        }
       } else {
-        mem.store_u32(
-          map,
-          ptr,
-          Float::reinterpret_as_uint(
-            Float::from_double(parse_double_or_zero(token)),
-          ),
-        )
+        Ok(())
       }
       match f {
         Ok(_) => ()
@@ -1035,9 +1075,11 @@ pub fn host_sscanf(
       }
       let ch = chars[pos]
       pos = pos + 1
-      match mem.store_i8(map, ptr, ch.to_int()) {
-        Ok(_) => ()
-        Err(e) => return fault_reply(e)
+      if not(sl.2) {
+        match mem.store_i8(map, ptr, ch.to_int()) {
+          Ok(_) => ()
+          Err(e) => return fault_reply(e)
+        }
       }
       if not(sl.2) {
         matched = matched + 1
@@ -1060,13 +1102,17 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
-        Ok(_) => ()
-        Err(e) => return fault_reply(e)
+      if not(sl.2) {
+        match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
+          Ok(_) => ()
+          Err(e) => return fault_reply(e)
+        }
       }
-      match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
-        Ok(_) => ()
-        Err(e) => return fault_reply(e)
+      if not(sl.2) {
+        match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
+          Ok(_) => ()
+          Err(e) => return fault_reply(e)
+        }
       }
       if not(sl.2) {
         matched = matched + 1

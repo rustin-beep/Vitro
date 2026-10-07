@@ -255,6 +255,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 #stdin-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; animation: rise-in var(--t-base) var(--ease-out); }
 #stdin-row label { color: var(--num); font: 12px var(--mono); }
 #stdin-box { flex: 1; background: var(--field); color: var(--t1); border: 1px solid var(--num); border-radius: 6px; padding: 6px 10px; font: 13px var(--mono); }
+/* 挂起等输入态（#28 10-07 登记②）：accent 描边 + 底色——「程序在等你」一眼可辨 */
+#stdin-row.need-input #stdin-box { border-color: var(--accent-fill); background: var(--accent-tint); }
+#stdin-row.need-input label { color: var(--accent-fill); }
 
 /* tabs：下划线指示器式——active 侧 accent 色下划线 scaleX 展开，hover 半程预览；
    页面切换淡入上移（display 切换靠 animation 触发） */

@@ -93,10 +93,15 @@ export async function runCase(): Promise<void> {
     const rr = bodyOf<RunResult>(run);
     if (rr.waiting_input) {
       pendingRun = run;
-      setStatus("wait", "等待输入…（下方 stdin 喂入后继续）");
+      // 挂起提示强化（#28 10-07 登记②：用户曾误报「无法运行」——
+      // 状态文案点明输入位置 + stdin 框聚焦 + accent 高亮三管齐下）
+      setStatus("wait", "等待输入 —— 在下方 stdin 框输入后点「喂入」继续");
       // 显示 stdin 行：HTML 初始带 .hidden（display:none !important），
       // 必须显式移除（历史上这里操作的是无消费者的 .active 类，行永不出现）
       $("stdin-row").classList.remove("hidden");
+      $("stdin-row").classList.add("need-input");
+      const box = $("stdin-box") as HTMLTextAreaElement;
+      box.focus();
       renderRunResult(rr);
       renderMemory(bodyOf<MemoryRegions>(invoke({ method: "memory.regions" })));
       // scanf 暂停前的 printf 输出已在通道里（如提示语 "n="）——即时拉取显示，
@@ -123,6 +128,7 @@ export async function feedStdin(): Promise<void> {
   }
   pendingRun = null;
   $("stdin-row").classList.add("hidden");
+  $("stdin-row").classList.remove("need-input");
   const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
   finishRun(rr, kase);
 }
@@ -261,6 +267,9 @@ function renderDiagnostics(diags: Diagnostic[]): void {
 function renderNote(text: string, total: number): void {
   const el = $("note-box");
   if (!text) {
+    // 空态先清内容再隐藏——hidden 元素旧文本残留（#28 10-07 登记①）
+    el.innerHTML = "";
+    $("note-meta").textContent = "";
     el.classList.add("hidden");
     return;
   }
@@ -283,6 +292,8 @@ function renderPpTrace(trace: string[]): void {
 function renderTrap(text: string): void {
   const el = $("trap-box");
   if (!text) {
+    // 同 renderNote：空态清内容再隐藏（同款写法债连坐）
+    el.innerHTML = "";
     el.classList.add("hidden");
     return;
   }

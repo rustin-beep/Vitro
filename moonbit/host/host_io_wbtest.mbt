@@ -92,8 +92,15 @@ test "printf_pipeline_mixed_specs" {
     3.14159.reinterpret_as_uint64(),
   ])
   assert_eq(r.trap, None)
-  assert_eq(r.value, None, msg="printf 无返回值")
-  assert_eq(log.join(OutputKind::Stdout), b"42|hi|A|ff| 3.14")
+  // N3 销案锚（批四 2026-10-07）：printf 返回输出字节数（C 标准 int；
+  // 旧锚 None 系 oracle 照搬形态，已翻转）
+  let out = log.join(OutputKind::Stdout)
+  assert_eq(
+    r.value,
+    Some(out.length().to_uint64()),
+    msg="printf 返回输出字节数",
+  )
+  assert_eq(out, b"42|hi|A|ff| 3.14")
 }
 
 ///|
@@ -217,8 +224,9 @@ test "puts_appends_newline_and_putchar_byte_channel" {
   assert_eq(log.join(OutputKind::Stdout), b"hello\n")
   // putchar(200)：单字节 0xC8（DIFF-LIB-PUTCHAR-01 销账锚 2026-10-05——
   // 旧形态 C3 88 两字节系 oracle char 通道照搬，脱钩后回归 C 字节语义）
+  // N3 销案锚（批四 2026-10-07）：返回写入字节（unsigned char 语义）
   let log2 = OutputLog::new()
-  host_putchar(log2, 200UL)
+  assert_eq(host_putchar(log2, 200UL), 200UL)
   assert_eq(log2.join(OutputKind::Stdout), b"\xC8")
 }
 

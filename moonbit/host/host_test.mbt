@@ -285,7 +285,8 @@ test "host_io_surface" {
     (42).to_uint64(),
   ])
   assert_eq(log.join(@host.OutputKind::Stdout), b"n=42")
-  assert_true(r.value is None)
+  // N3 销案锚（批四 2026-10-07）：printf 返回输出字节数（"n=42" = 4）
+  assert_true(r.value is Some(4UL))
   let r2 = @host.host_fprintf_n(
     map,
     mem,
@@ -295,7 +296,9 @@ test "host_io_surface" {
     0x6000U,
     [],
   )
-  assert_true(r2.value is None)
+  // fprintf(stderr, "n=%d") 无参——参数守卫 trap（原 `value is None` 锚
+  // 恰因 trap_only 的 value=None 碰巧成立；N3 批四改锚显式钉 trap 形态）
+  assert_true(r2.trap is Some(_))
   let buf = 0x7000U
   assert_true(
     @host.host_sprintf(map, mem, buf, 0x6000U, [(7).to_uint64()]).value
@@ -306,7 +309,8 @@ test "host_io_surface" {
     is Some(3UL),
   )
   assert_true(@host.host_puts(map, mem, log, 0x6000U).value is Some(1UL))
-  @host.host_putchar(log, 65UL)
+  // putchar 返回写入字节（N3 销案批四 2026-10-07）
+  assert_eq(@host.host_putchar(log, 65UL), 65UL)
   // 输入族 3 个 + 状态类型
   let input : @host.InputState = @host.InputState::new([b"1 2"], true)
   let oc : @host.InputOutcome = @host.host_getchar(input)

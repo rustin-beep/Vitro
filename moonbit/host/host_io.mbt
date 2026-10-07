@@ -163,7 +163,8 @@ pub fn host_printf_n(
   match printf_pipeline(map, mem, fmt_addr, args, Some("printf")) {
     Ok(out) => {
       log.push_stdout(out)
-      no_reply()
+      // N3 销案（批四 2026-10-07）：返回输出字节数（C 标准 int）
+      value_only(out.length().to_uint64())
     }
     Err(r) => r
   }
@@ -174,8 +175,9 @@ pub fn host_printf_n(
 /// stdout、`stream == 2` 走 stderr（E-P1-5）、**自定义 `FILE*` 落盘 VFS**
 ///（DIFF-LIB-FPRINTF-01 销案，2026-10-05 批二-a：旧形态按 `stream != 2`
 /// 全走 stdout 通道、自定义文件写静默丢弃系 oracle 照搬在案；fread 读回
-/// 端到端锚见 host_io_wbtest）。返回值形态维持 no_reply（printf 族返回
-/// void 是 N3 漂移登记，批四处置）。
+/// 端到端锚见 host_io_wbtest）。**返回输出字节数（N3 销案，批四
+/// 2026-10-07）**——三通道统一按提交给通道的字符数（落盘通道 vfs 尽写，
+/// 无截断形态）。
 pub fn host_fprintf_n(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
@@ -202,7 +204,8 @@ pub fn host_fprintf_n(
           )
         }
       }
-      no_reply()
+      // N3 销案（批四 2026-10-07）：返回输出字节数（三通道统一）
+      value_only(out.length().to_uint64())
     }
     Err(r) => r
   }
@@ -290,8 +293,13 @@ pub fn host_puts(
 /// C 字节语义（Clang `putchar(200)` 落单字节 0xC8——putchar_range.c
 /// 语料锚）；printf `%c` 高位字节的同族形态在 formatter 的 String 域，
 /// 随批二 DIFF-LIB-PRINTF-01 处置
-pub fn host_putchar(log : OutputLog, val : UInt64) -> Unit {
+
+///|
+/// 返回写入的字节（unsigned char 语义——N3 销案批四 2026-10-07，
+/// `putchar('x') == 120`；原 Unit 形态系 oracle 照搬）。
+pub fn host_putchar(log : OutputLog, val : UInt64) -> UInt64 {
   log.push_stdout(Bytes::make(1, (val & 0xFFUL).to_int().to_byte()))
+  val & 0xFFUL
 }
 
 ///|

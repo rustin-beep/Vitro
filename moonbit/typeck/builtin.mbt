@@ -495,7 +495,8 @@ fn TypeChecker::check_builtin_print_int(
 
 ///|
 /// printf（E3030 空参 / E3031 首参字符串；字面量格式串走格式-参数
-/// 匹配，非字面量粗检 E3032）。返回 void 是 N3 漂移登记（C 标准 int）。
+/// 匹配，非字面量粗检 E3032）。返回 int（N3 销案批四 2026-10-07——
+/// C 标准/stdio.h 存根口径；原 void 系 oracle 照搬）。
 fn TypeChecker::check_builtin_printf(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -537,7 +538,7 @@ fn TypeChecker::check_builtin_printf(
         }
     }
   }
-  @ast.Type::void_type()
+  @ast.Type::int()
 }
 
 ///|
@@ -619,7 +620,8 @@ fn TypeChecker::check_builtin_ungetc(
 }
 
 ///|
-/// putchar（单 int 参；返回 void 是 N3 漂移登记——C 标准 int）。
+/// putchar（单 int 参；返回 int——N3 销案批四 2026-10-07，C 标准/存根
+/// 口径，原 void 系 oracle 照搬）。
 fn TypeChecker::check_builtin_putchar(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -628,11 +630,12 @@ fn TypeChecker::check_builtin_putchar(
   if self.builtin_check_count(args, 1, "putchar", loc) {
     self.builtin_check_int(args, 0, "putchar", loc)
   }
-  @ast.Type::void_type()
+  @ast.Type::int()
 }
 
 ///|
-/// fprintf（≥2 参：文件指针或整数 + 格式串 + 变参粗检）。
+/// fprintf（≥2 参：文件指针或整数 + 格式串 + 变参粗检）。返回 int
+///（N3 销案批四 2026-10-07，C 标准/存根口径；原 void 系 oracle 照搬）。
 fn TypeChecker::check_builtin_fprintf(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -677,7 +680,7 @@ fn TypeChecker::check_builtin_fprintf(
       }
     }
   }
-  @ast.Type::void_type()
+  @ast.Type::int()
 }
 
 ///|

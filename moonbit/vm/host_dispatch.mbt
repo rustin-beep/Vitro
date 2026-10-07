@@ -248,8 +248,8 @@ fn VitroVM::execute_host_func(
       self.output.push_stdout(@utf8.encode(text))
     }
     34 =>
-      // putchar(c)
-      @host.host_putchar(self.output, self.pop())
+      // putchar(c)——返回写入字节（N3 销案批四 2026-10-07）
+      self.push(@host.host_putchar(self.output, self.pop()))
     _ => self.execute_host_func2(id, line, column)
   }
 }

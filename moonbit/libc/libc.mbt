@@ -7,10 +7,12 @@
 /// **照搬现状口径**（差分对拍期两侧一致优先，照搬不私改）：表内容逐条
 /// 提取自 Rust `vitro_typeck/src/builtin/{mod,io,string,math,memory,
 /// file}.rs` 的 check_builtin_* 返回类型与实参约束。已知与 C 标准/
-/// 头文件存根冲突处**登记不修正**（N3/N4，待 S8 差异台账收编）：
-/// - `printf` / `putchar` / `fprintf` 返回 void（C 标准与 stdio.h 存根
-///   为 int；`int n = printf("hi");` 现状报 E3004）
-/// - `strcpy` 族返回 char*（bytecode_libc_sig 侧为 void）
+/// 头文件存根冲突处曾**登记不修正**（N3/N4，S8 台账收编）——
+/// **批四销案（2026-10-07，#47）**：脱钩后对齐 C 标准/存根——
+/// - `printf` / `putchar` / `fprintf` 返回 int（原 void，N3——运行期
+///   同批补返回值通路，host_printf_n/host_fprintf_n/host_putchar）；
+/// - `strcpy` 族 char* 与 bytecode_libc_sig 侧 void 的表间漂移（N4）
+///   随 bytecode_sig 对齐存根销案。
 ///
 /// 边界登记：本表只承载 **typeck 消费面**（visit_call 62-arm + 特殊臂
 /// 的名与签名）；host_func_id 110 路由表 / BYTECODE_LIBC_ALL_FUNCS 88
@@ -79,13 +81,14 @@ fn long_long_ty() -> @ast.Type {
 /// 签名单表（57 条 = visit_call 58 臂去 `std__move`——C++ 语义臂不入表，
 /// S9 C++ 片裁定；print_int/__vitro_output/__vitro_step 三名共享一臂）。
 let libc_table : Array[LibcSig] = [
-  // —— io（io.rs 提取；printf/putchar/fprintf 的 N3 漂移登记于包注释）——
-  { name: "printf", return_type: void_ty(), min_args: 1, max_args: -1, },
+  // —— io（io.rs 提取；printf/putchar/fprintf 返回 int 系批四 N3 销案，
+  //    口径=C 标准/stdio.h 存根）——
+  { name: "printf", return_type: int_ty(), min_args: 1, max_args: -1, },
   { name: "scanf", return_type: int_ty(), min_args: 2, max_args: -1, },
   { name: "getchar", return_type: int_ty(), min_args: 0, max_args: 0, },
-  { name: "putchar", return_type: void_ty(), min_args: 1, max_args: 1, },
+  { name: "putchar", return_type: int_ty(), min_args: 1, max_args: 1, },
   { name: "ungetc", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fprintf", return_type: void_ty(), min_args: 2, max_args: -1, },
+  { name: "fprintf", return_type: int_ty(), min_args: 2, max_args: -1, },
   { name: "puts", return_type: int_ty(), min_args: 1, max_args: 1, },
   { name: "sprintf", return_type: int_ty(), min_args: 2, max_args: -1, },
   { name: "snprintf", return_type: int_ty(), min_args: 3, max_args: -1, },

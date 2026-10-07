@@ -504,9 +504,9 @@
       "title": "libc 签名与 C 标准/存根冲突（N3：printf/putchar/fprintf 返回 void——int n = printf(...) 报 E3004，C 标准与 stdio.h 存根为 int；N4：strcpy 族 builtin 表 char* 与 bytecode_libc_sig 表 void 的 Rust 期表间冲突，MoonBit 侧由 libc_single_source 闸对账）",
       "class": "implementable",
       "carry_over": "fix",
-      "status": "verified-run",
+      "status": "resolved-verified",
       "evidence": "run",
-      "rationale": "照搬现状登记不修正（差分期两侧一致优先）；N3 行为面实锤；0.8.0 清",
+      "rationale": "批四销案（2026-10-07，#47）：三面单源对齐 C 标准/头文件存根——libc_table 与 typeck check_builtin_* 的 printf/putchar/fprintf void→int（运行期 host_printf_n/host_fprintf_n 返回输出字节数、host_putchar 返回写入字节+dispatch 压栈）；bytecode_libc_sig 的 strcpy/strcat/strncpy→char*、memcpy/memmove→void*（strncpy/memcpy/memmove 臂可达=无存根 include 时隐式调用返回类型曾错；strcpy/strcat 臂死表项清理）。探针 n3_recheck.c 与 Clang 22.1.4 逐位一致（exit 123）；wbtest 锚三处（libc_wbtest 销案锚+bytecode_libc_sig_c_face_returns/host_io_wbtest 返回值锚）；typeck/codegen 双 digest 598+597 例重刷入账（printf 语句新增 Pop discard+跳转平移）",
       "subsystems": [
         "libc",
         "typeck"
@@ -524,7 +524,7 @@
       "detectable_by_defense": [
         "libc_single_source"
       ],
-      "notes": "n3_probe.c 探针实锤（2026-09-30）：MoonBit 编译错 'void 赋 int' vs Clang 通过返回 2；N4 面由三表对账闸在 CI 管"
+      "notes": "n3_probe.c 探针实锤（2026-09-30）：MoonBit 编译错 'void 赋 int' vs Clang 通过返回 2；N4 面由三表对账闸在 CI 管；销案 2026-10-07 批四（#47 refs）——n3_probe.c 原探针 + n3_recheck.c 复核探针在 .shadow_tmp"
     },
     {
       "id": "DIFF-VFS-PRESET-01",

@@ -1,7 +1,7 @@
 {"id":1,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[]}}
 {"id":2,"ok":true,"result":{"diagnostics":[{"code":"E2003","column":22,"end_column":23,"end_line":1,"error_code":2003,"filename":"main.c","fix_suggestion":"这里需要一个表达式（如变量、数字、计算式）。请检查是否遗漏了操作数或写错了运算符。","line":1,"message":"预期表达式","severity":"error"},{"code":"E2005","column":22,"end_column":23,"end_line":1,"error_code":2005,"filename":"main.c","fix_suggestion":"语句末尾缺少分号，建议添加 ';'","line":1,"message":"变量声明后预期 ';'","severity":"error"}],"ok":false,"preprocessor_trace":[]}}
 {"id":3,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[]}}
-{"id":4,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","waiting_input":false}}
+{"id":4,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":15,"trap":"","waiting_input":false}}
 {"id":5,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[]}}
 {"id":6,"ok":true,"result":{"ok":false,"return_value":0,"status":"trap","steps_executed":10,"trap":"😵 除零错误：你试图用 1 除以 0。\n\n🔍 当前作用域内值为 0 的变量：a、b。请检查除法表达式中是否使用了这些变量。\n\n💡 原因：除数不能为 0。\n✅ 检查你的除法表达式，确保除数在被除之前不是 0。\n📝 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }\n📍 发生在第 1 行 第 37 列","waiting_input":false}}
 {"id":7,"ok":true,"result":{"cursor":0,"delta":"<TEXT>","stream":"display","total":0}}
@@ -27,5 +27,5 @@
 {"id":28,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[]}}
 {"id":29,"ok":true,"result":{"ok":true,"return_value":7,"status":"finished","steps_executed":7,"trap":"","waiting_input":false}}
 {"id":30,"ok":true,"result":{"diagnostics":[{"code":"H3057","column":35,"end_column":36,"end_line":3,"error_code":3057,"filename":"main.c","fix_suggestion":"隐式类型提升是安全的，如需更明确可添加显式强制转换","line":3,"message":"void* 被隐式转换为具体指针类型。","severity":"hint"},{"code":"H3057","column":55,"end_column":56,"end_line":3,"error_code":3057,"filename":"main.c","fix_suggestion":"隐式类型提升是安全的，如需更明确可添加显式强制转换","line":3,"message":"void* 被隐式转换为具体指针类型。","severity":"hint"}],"ok":true,"preprocessor_trace":[]}}
-{"id":31,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":18,"trap":"","waiting_input":false}}
+{"id":31,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":19,"trap":"","waiting_input":false}}
 {"id":32,"ok":true,"result":{"cursor":424,"delta":"<TEXT>","stream":"display","total":424}}

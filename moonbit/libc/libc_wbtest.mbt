@@ -16,11 +16,14 @@ test "libc_table_completeness_and_unique" {
 /// 关键签名抽查（照搬现状口径——Rust builtin/*.rs 逐条提取；漂移
 /// 登记 N3/N4 的条目在此锚定，修正须同步本表与差异台账）。
 test "libc_sig_spots" {
-  // N3 漂移锚：printf 返回 void（C 标准为 int——现状照搬，登记不修正）
+  // N3 销案锚（批四 2026-10-07）：printf/putchar/fprintf 返回 int
+  //（C 标准 + stdio.h 存根口径；旧锚 Void 系照搬登记形态，已翻转）
   let printf = lookup("printf").unwrap()
-  assert_true(printf.return_type is Void(_))
+  assert_true(printf.return_type is Int(_, _))
   assert_eq(printf.min_args, 1)
   assert_eq(printf.max_args, -1)
+  assert_true(lookup("putchar").unwrap().return_type is Int(_, _))
+  assert_true(lookup("fprintf").unwrap().return_type is Int(_, _))
   // scanf 返回 int（条目 3 修复后口径）
   let scanf = lookup("scanf").unwrap()
   assert_true(scanf.return_type is Int(_, _))
@@ -76,4 +79,27 @@ test "libc_table_invariants" {
     }
     assert_true(sig.min_args >= 0)
   }
+}
+
+///|
+/// N4 销案锚（批四 2026-10-07）：bytecode_libc_sig 的 C 面条目与
+/// 头文件存根/C 标准对齐——strcpy/strcat/strncpy 返回 char*、
+/// memcpy/memmove 返回 void*（旧表 void 系 Rust 期表间漂移，第四级
+/// 回退放行无存根调用时返回类型错了；strcpy/strcat 臂被 libc_table
+/// 先拦不可达，对齐是死臂清理）。
+test "bytecode_libc_sig_c_face_returns" {
+  let (r_strcpy, _) = bytecode_libc_sig("strcpy").unwrap()
+  assert_true(r_strcpy is Pointer(Char(_, _), _))
+  let (r_strcat, _) = bytecode_libc_sig("strcat").unwrap()
+  assert_true(r_strcat is Pointer(Char(_, _), _))
+  let (r_strncpy, p_strncpy) = bytecode_libc_sig("strncpy").unwrap()
+  assert_true(r_strncpy is Pointer(Char(_, _), _))
+  assert_eq(p_strncpy.length(), 3)
+  let (r_memcpy, _) = bytecode_libc_sig("memcpy").unwrap()
+  assert_true(r_memcpy is Pointer(_, _))
+  let (r_memmove, _) = bytecode_libc_sig("memmove").unwrap()
+  assert_true(r_memmove is Pointer(_, _))
+  // 旧形态锚定边界：srand 维持 void（C 标准本就 void）
+  let (r_srand, _) = bytecode_libc_sig("srand").unwrap()
+  assert_true(r_srand is Void(_))
 }

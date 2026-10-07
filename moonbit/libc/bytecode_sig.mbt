@@ -4,9 +4,11 @@
 /// 用户 funcs 也不在 static 表时，按此表做参数数量/类型检查并放行。
 ///
 /// **与 `libc_table` 的关系（O6 四套真相源现状照搬）**：本表与签名单表
-/// 是 Rust 侧两张**独立维护且互相冲突**的表（N4 漂移：strcpy 族此处
-/// void、单表 char*）——差分对拍期照搬不私改，单源收编随 S5/S6 回填
-/// 义务（见 libc.mbt 包注释边界登记）。
+/// 是 Rust 侧两张**独立维护且互相冲突**的表——**N4 漂移批四销案
+/// （2026-10-07，#47）**：strcpy/strcat/strncpy 返回 char*、
+/// memcpy/memmove 返回 void*，对齐头文件存根与 C 标准（原 void 形态：
+/// strcpy/strcat 臂被 libc_table 先拦不可达〔死臂清理〕，strncpy/
+/// memcpy/memmove 臂可达——无存根 include 时的隐式调用返回类型曾错）。
 ///
 /// C 面活跃条目：ctype 11 名 / abs / atoi / srand / rand / strlen /
 /// strcmp / strcpy / strcat / strncpy / memcpy / memmove（头文件存根
@@ -135,9 +137,11 @@ pub fn bytecode_libc_sig(name : String) -> (@ast.Type, Array[@ast.Type])? {
     "rand" => Some((i_ty(), []))
     "strlen" => Some((i_ty(), [c_ptr()]))
     "strcmp" => Some((i_ty(), [c_ptr(), c_ptr()]))
-    "strcpy" | "strcat" => Some((v_ty(), [c_ptr(), c_ptr()]))
-    "strncpy" => Some((v_ty(), [c_ptr(), c_ptr(), i_ty()]))
-    "memcpy" | "memmove" => Some((v_ty(), [v_ptr(), v_ptr(), i_ty()]))
+    // strcpy 族/内存族返回类型对齐存根（N4 销案，2026-10-07 批四）：
+    // strcpy/strcat/strncpy → char*；memcpy/memmove → void*（原 v_ty）
+    "strcpy" | "strcat" => Some((c_ptr(), [c_ptr(), c_ptr()]))
+    "strncpy" => Some((c_ptr(), [c_ptr(), c_ptr(), i_ty()]))
+    "memcpy" | "memmove" => Some((v_ptr(), [v_ptr(), v_ptr(), i_ty()]))
     _ => None
   }
 }

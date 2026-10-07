@@ -135,7 +135,7 @@ pub fn host_pow(UInt64, UInt64) -> UInt64
 
 pub fn host_printf_n(@memory.MemoryMap, @memory.Memory, OutputLog, UInt, Array[UInt64]) -> HostMemReply
 
-pub fn host_putchar(OutputLog, UInt64) -> Unit
+pub fn host_putchar(OutputLog, UInt64) -> UInt64
 
 pub fn host_puts(@memory.MemoryMap, @memory.Memory, OutputLog, UInt) -> HostMemReply
 

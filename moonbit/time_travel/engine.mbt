@@ -253,6 +253,12 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
     // ⑤-5.1：无每步快照（pre_step_snap 不迁）
     match vm.step() {
       Ok => {
+        // 帧行 = 步进后 current_line：StepEvent 指令帧取本行（发射器每行
+        // 首指令 StepEvent 先更行再产帧），非 StepEvent 帧保持最近行。
+        // #34 同源化曾统一为循环顶行（步进前行）——StepEvent 帧滞后一行，
+        // 与 heatmap_count_at(l2) 的查询行错位（A6 同行单调破）。
+        // label/heatmap_line 均由 collect 按 code_line 参数自推——三字段
+        // 同源自动成立（2026-10-07 定位，#47）。
         let l2 = vm.get_current_line()
         payloads.push(
           collect(
@@ -261,11 +267,15 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             vm.heatmap_count_at(l2),
             step,
             self.algo,
-            code_line=Some(line),
+            code_line=Some(l2),
           ),
         )
       }
       Paused => {
+        // 断点命中帧的 code_line = 断点行：StepEvent 处理先更新
+        // current_line 再判暂停（exec_debug.mbt）⇒ 此刻 l2 即断点行
+        // （断点行帧曾随 #34 同源化消失——replay S3 A1 卡死 + A6，
+        // 11492ee0 起 CI 红，2026-10-07 定位）。
         let l2 = vm.get_current_line()
         payloads.push(
           collect(
@@ -274,7 +284,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             vm.heatmap_count_at(l2),
             step,
             self.algo,
-            code_line=Some(line),
+            code_line=Some(l2),
           ),
         )
         self.is_paused = true
@@ -288,7 +298,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             vm.heatmap_count_at(l2),
             step,
             self.algo,
-            code_line=Some(line),
+            code_line=Some(l2),
           ),
         )
         waiting_input = true
@@ -303,7 +313,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
             vm.heatmap_count_at(l2),
             step,
             self.algo,
-            code_line=Some(line),
+            code_line=Some(l2),
           ),
         )
         finished = true

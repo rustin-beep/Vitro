@@ -12,6 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批四首条：N3/N4 libc 签名三面单源对齐 C 标准，2026-10-07）
+
+- **N3**：printf/putchar/fprintf 返回 void → **int**（C 标准/stdio.h 存根口径）——三面连坐：
+  `libc/libc.mbt` 签名单表 + `typeck/builtin.mbt` check_builtin_* 硬编码（`int n = printf(...)`
+  不再 E3004）+ 运行期（`host_printf_n`/`host_fprintf_n` 返回输出字节数、`host_putchar` 返回
+  写入字节 unsigned char 语义 + VM dispatch 压栈）。探针与 Clang 22.1.4 逐位一致（exit 123）。
+- **N4**：`bytecode_libc_sig` 表对齐存根——strcpy/strcat/strncpy → char*、memcpy/memmove →
+  void*（strncpy/memcpy/memmove 臂可达：无 include 时隐式调用返回类型曾错；strcpy/strcat 臂
+  被 libc_table 先拦=死表项清理）。
+- 连坐：printf 语句 codegen 新增 Pop discard 指令 → typeck/codegen 双 digest 598+597 例
+  重刷入账、protocol_frames 基线帧 4/31 steps_executed +1/+2、两条 wbtest 旧「无返回值」
+  锚翻转（fprintf surface 锚显式钉 trap 形态）。
+- 台账 DIFF-LIBC-STUB-CONFLICT-01 → resolved-verified；已知限制①-8 销案。
+
+### Fixed（CI 红：#34 连坐断点帧修复——replay S3 A1/A6，2026-10-07）
+
+- 11492ee0（批三-c）起 replay `-moonbit` S3 A1/A6 双红（CI Core gates 连红至 f3ae0490）：
+  #34 把 run_batch 帧行统一为循环顶行（步进前行）——**StepEvent 指令帧行滞后一行**，断点
+  行帧永不出现（A1 卡死 500 轮）+ heatmap_count 查询行（步进后行）与 code_line 标签错位
+  （A6 同行单调破）。
+- 修复：四分支统一 `code_line=Some(l2)`（步进后 current_line）——StepEvent 帧=本行、非
+  StepEvent 帧=最近 StepEvent 行、断点命中帧=断点行（exec_debug 先更行再判暂停）；帧内
+  label/heatmap_line/heatmap_count 三字段由 collect 按 code_line 参数同源自推。
+- replay 双臂 61 断言 FAIL 0；#34 wbtest 锚（b3rv）兼容验证过；protocol_frames/serve_smoke/
+  vm_diff/moon test 全绿。
+
 ### Fixed（用户第九轮审阅处置：P1 两条真分叉 + P2-3 有效锚 + P2-4/6 + P3-7/8，2026-10-07）
 
 - **P1-1 #13 作用域污染**：parsed_var_types 单表 append-only → 分块栈（var_type_marks 边界

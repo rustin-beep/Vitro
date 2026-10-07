@@ -42,8 +42,9 @@ test "snapshot_restore_roundtrip_all_state" {
   vm.snapshot_vars.set("i", 4UL)
   vm.last_snapshot_step = 40
   vm.waiting_input = true
-  // 宿主域：输出与输入有内容
-  @host.host_putchar(vm.output, 65UL)
+  // 宿主域：输出与输入有内容（putchar 返回值非本测对象——N3 批四起
+  // 返回 UInt64，语句调用须显式 ignore）
+  ignore(@host.host_putchar(vm.output, 65UL))
   vm.exec_mode = Unwinding
   vm.exception_ref = Some(0x5000U)
   vm.unwind_remaining_frames = 3
@@ -134,7 +135,7 @@ test "snapshot_independent_of_running_state" {
   // 恢复后改运行态
   vm.stack.push(2UL)
   vm.step_count = 999
-  @host.host_putchar(vm.output, 66UL)
+  ignore(@host.host_putchar(vm.output, 66UL))
   // 快照对象不动
   assert_eq(snap.stack.length(), 1)
   assert_eq(snap.stack[0], 1UL)

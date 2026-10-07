@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（demo 前端 note 乱码——#49 批一连坐遗漏收口，2026-10-07）
+
+- **demo note 面板中文全乱码**（用户试玩实报）：#49 批一（2026-10-06）把
+  gateway 的 note 通道 delta 从「Latin-1 逐字节折回」改为「解码回真 UTF-8
+  文本直传」时，漏连坐 demo 前端这个第三消费方（壳 main.js 与 cmd/lib/cli
+  都修了，demo 的 `latin1ToUtf8`（`charCodeAt & 0xff`）把 >0xFF 中文码点截
+  低字节 → U+FFFD 乱码——**每课都有的「程序运行完成，返回值：N」note 全部
+  乱码**）。修复：`run.ts` 的 `pull` 按通道分域（note 文本域直通，
+  stdout/stderr 仍 Latin-1 还原），note-meta 文案连坐。浏览器实测
+  「返回值附注」课 note 逐句正常；demo_smoke 168 / assemble 15 / pure
+  tests 全绿。防线盲区登记：vitro_cli_smoke 测壳（壳对）、demo_smoke 断言
+  面不含 note 文本还原——浏览器端 note 渲染零覆盖。
+
 ### Fixed（批五·防线脚本自证片：oracle 残留清理 + 被测物新鲜度门禁，refs #47，2026-10-07）
 
 - **freshness 门禁单源**（新包 `scripts/internal/freshness`，自 vm_diff 上提）：

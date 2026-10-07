@@ -172,10 +172,17 @@ export function buildBaseConfig(): { max_steps: number; call_depth_limit: number
 function finishRun(rr: RunResult, kase: DemoCase): void {
   renderRunResult(rr);
   // 四通道视图：stdout / stderr / note（display=全通道按写入序拼接，页内
-  // 用分通道展示替代）。字节域 Latin-1 → UTF-8 还原后展示。
+  // 用分通道展示替代）。分域解码（对齐 gateway serve_io 的 delta 通道语义，
+  // #49 批一 note mojibake 修复的连坐——批一改引擎侧时漏了本消费方，note
+  // 中文在 demo 全部 mojibake 的回归由本批收口）：
+  // - stdout/stderr = C 程序字节流（Latin-1 逐字节折回）→ latin1ToUtf8 还原；
+  // - note = 引擎文本域（gateway 已解码回原文直传，真 UTF-8 字符串）→
+  //   直接使用，过 latin1ToUtf8 会把 >0xFF 码点截低字节必乱码。
   const pull = (stream: string): { text: string; total: number } => {
     const o = bodyOf<OutputDelta>(invoke({ method: "output.delta", params: { cursor: 0, stream } }));
-    return { text: latin1ToUtf8(o.delta) || "", total: o.total || 0 };
+    const raw = o.delta || "";
+    const text = stream === "note" ? raw : latin1ToUtf8(raw);
+    return { text, total: o.total || 0 };
   };
   const stdout = pull("stdout");
   renderOutput(stdout.text, stdout.total);
@@ -258,7 +265,7 @@ function renderNote(text: string, total: number): void {
   }
   el.classList.remove("hidden");
   el.innerHTML = esc(text).replace(/\n/g, "<br>");
-  $("note-meta").textContent = `${total} 字节 · note 审计流（Latin-1 字节域按 UTF-8 还原）`;
+  $("note-meta").textContent = `${total} 字节 · note 审计流（引擎文本域直传）`;
 }
 function renderPpTrace(trace: string[]): void {
   const el = $("diag-list");

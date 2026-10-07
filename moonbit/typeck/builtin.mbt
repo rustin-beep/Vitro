@@ -88,9 +88,11 @@ pub fn TypeChecker::visit_call(
 
 ///|
 /// 解析 printf/scanf 格式字符串，返回非 %% 的格式说明符列表
-///（元素 (spec_char, length_mod)，如 ('d', "") / ('f', "l")）。
-fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
-  let specs : Array[(Char, String)] = []
+///（元素 (spec_char, length_mod, width_star, prec_star)——星号标记
+/// %*d 批四 2026-10-07 新增：printf 侧星号 = 运行期宽度/精度各消耗
+/// 1 参数；scanf 侧 width 星号 = 赋值抑制〔指针参数不消耗〕）。
+fn parse_format_specs(fmt : String) -> Array[(Char, String, Bool, Bool)] {
+  let specs : Array[(Char, String, Bool, Bool)] = []
   let chars : Array[Char] = []
   for c in fmt {
     chars.push(c)
@@ -114,21 +116,30 @@ fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
           break
         }
       }
-      // skip width
+      // width：数字累计跳过；`*`（width 星号——printf 消耗 1 宽度参数 /
+      // scanf 抑制赋值）置 width_star
+      let mut width_star = false
       while i < n {
         let c = chars[i]
-        if (c >= '0' && c <= '9') || c == '*' {
+        if c >= '0' && c <= '9' {
+          i += 1
+        } else if c == '*' {
+          width_star = true
           i += 1
         } else {
           break
         }
       }
-      // skip precision
+      // precision：`.` 开头；`*`（printf 消耗 1 精度参数）置 prec_star
+      let mut prec_star = false
       if i < n && chars[i] == '.' {
         i += 1
         while i < n {
           let c = chars[i]
           if (c >= '0' && c <= '9') || c == '*' {
+            if c == '*' {
+              prec_star = true
+            }
             i += 1
           } else {
             break
@@ -153,7 +164,7 @@ fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
       if i < n {
         let spec = chars[i]
         i += 1
-        specs.push((spec, len_mod))
+        specs.push((spec, len_mod, width_star, prec_star))
       }
     }
   }
@@ -161,10 +172,12 @@ fn parse_format_specs(fmt : String) -> Array[(Char, String)] {
 }
 
 ///|
-/// printf 格式-参数类型匹配（E3032 数量 / E3062 类型；start = 格式串
+/// printf 格式-参数类型匹配（W3032 数量 / W3062 类型；start = 格式串
 /// 在全参数中的 1-based 位——printf 1；序号算式 start+j+1 与 oracle
 /// 的 i+2 同值〔i=j 切片序〕，issue #26 修复：原 start+j+2 系统性 +1）。
-/// 实参解析定型原地写回。
+/// 实参解析定型原地写回。**SEVERITY-FORMAT 销案（批四 2026-10-07）**：
+/// 数量/类型错配降 warning（Clang -Wformat 口径——error 系 oracle 照搬；
+/// 参数硬约束 E3030/E3031 维持 error）。
 pub fn TypeChecker::check_printf_format(
   self : TypeChecker,
   fmt : String,
@@ -174,22 +187,42 @@ pub fn TypeChecker::check_printf_format(
 ) -> Unit {
   let specs = parse_format_specs(fmt)
   let arg_count = args.length() - start
-  if specs.length() != arg_count {
-    self.report_error(
-      "printf 格式说明符数量（\{specs.length()}）与参数数量（\{arg_count}）不匹配",
+  // %*d 批四（2026-10-07）：星号宽度/精度各消耗 1 个 int 参数——
+  // 数量臂按「每 spec = 1 + 星号数」计消耗
+  let expected : Int = {
+    let mut e = 0
+    for (_, _, ws, ps) in specs {
+      e += 1
+      if ws {
+        e += 1
+      }
+      if ps {
+        e += 1
+      }
+    }
+    e
+  }
+  if expected != arg_count {
+    self.report_warning(
+      "printf 格式说明符数量（\{expected}）与参数数量（\{arg_count}）不匹配",
       loc,
-      E3032_PrintfArgType,
+      W3032_PrintfArgType,
     )
   }
-  let check_count = if specs.length() < arg_count {
-    specs.length()
-  } else {
-    arg_count
-  }
-  for j in 0..<check_count {
-    let (spec, len_mod) = specs[j]
-    let (arg_type, new_arg) = self.resolve_expr_type(args[start + j])
-    args[start + j] = new_arg
+  // 类型臂：值参数对位 = spec 序 + 此前星号消耗累计 + 当前 spec 星号数
+  //（星号参数在值参数前——语义序 ("%*d", w, 42) 的值是组内最后一个；
+  // 星号参数本身为 int 宽度/精度，粗放行不查类型）
+  let mut star_off = 0
+  for j in 0..<specs.length() {
+    let (spec, len_mod, ws, ps) = specs[j]
+    let stars_here = (if ws { 1 } else { 0 }) + (if ps { 1 } else { 0 })
+    let idx = start + j + star_off + stars_here
+    star_off += stars_here
+    if idx >= args.length() {
+      break
+    }
+    let (arg_type, new_arg) = self.resolve_expr_type(args[idx])
+    args[idx] = new_arg
     let ak = arg_type.kind()
     // Rust 组合臂逐条：(""/"l"/"ll" × spec 族)——('F',"") 并入 ("f" 族,"l")
     // 臂的 Double|Float，("ll"+f 族) 落 unknown 放行
@@ -218,18 +251,19 @@ pub fn TypeChecker::check_printf_format(
       _ => true
     }
     if !ok {
-      self.report_error(
-        "printf 格式 '%\{spec}' 与第 \{start + j + 1} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
+      self.report_warning(
+        "printf 格式 '%\{spec}' 与第 \{idx + 1} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
         loc,
-        E3062_PrintfFormatMismatch,
+        W3062_PrintfFormatMismatch,
       )
     }
   }
 }
 
 ///|
-/// scanf 格式-参数类型匹配（E3035 数量 / E3063 类型；实参必须是指针，
-/// 按 pointee 检查）。
+/// scanf 格式-参数类型匹配（W3035 数量 / W3063 类型；实参必须是指针，
+/// 按 pointee 检查）。SEVERITY-FORMAT 销案（批四 2026-10-07）同
+/// printf 族降 warning（Clang -Wformat 口径）。
 pub fn TypeChecker::check_scanf_format(
   self : TypeChecker,
   fmt : String,
@@ -239,20 +273,36 @@ pub fn TypeChecker::check_scanf_format(
 ) -> Unit {
   let specs = parse_format_specs(fmt)
   let arg_count = args.length() - start
-  if specs.length() != arg_count {
-    self.report_error(
-      "scanf 格式说明符数量（\{specs.length()}）与参数数量（\{arg_count}）不匹配",
+  // %*d 批四（2026-10-07）：scanf width 星号 = 赋值抑制（C §7.21.6.2——
+  // 读入丢弃、不消耗指针参数）——数量臂只计非抑制 spec
+  let expected : Int = {
+    let mut e = 0
+    for (_, _, ws, _) in specs {
+      if not(ws) {
+        e += 1
+      }
+    }
+    e
+  }
+  if expected != arg_count {
+    self.report_warning(
+      "scanf 格式说明符数量（\{expected}）与参数数量（\{arg_count}）不匹配",
       loc,
-      E3035_ScanfArgType,
+      W3035_ScanfArgType,
     )
   }
-  let check_count = if specs.length() < arg_count {
-    specs.length()
-  } else {
-    arg_count
-  }
-  for j in 0..<check_count {
-    let (spec, len_mod) = specs[j]
+  // 类型臂：逐 spec 对位参数，suppress spec 跳过（不占参数槽）
+  let mut arg_i = 0
+  for tag in specs {
+    let (spec, len_mod, ws, _) = tag
+    if ws {
+      continue
+    }
+    if start + arg_i >= args.length() {
+      break
+    }
+    let j = arg_i
+    arg_i += 1
     let (arg_type, new_arg) = self.resolve_expr_type(args[start + j])
     args[start + j] = new_arg
     // scanf args must be pointers——pointee 类型判定经闭包传入（None 恒 false）
@@ -301,10 +351,10 @@ pub fn TypeChecker::check_scanf_format(
       _ => true
     }
     if !ok {
-      self.report_error(
+      self.report_warning(
         "scanf 格式 '%\{spec}' 与第 \{start + j + 1} 个参数类型 '\{arg_type.to_c_string()}' 不匹配",
         loc,
-        E3063_ScanfFormatMismatch,
+        W3063_ScanfFormatMismatch,
       )
     }
   }
@@ -529,10 +579,10 @@ fn TypeChecker::check_builtin_printf(
           if !self.is_scalar(arg_type) &&
             !(arg_type.kind() is TK_Pointer) &&
             !arg_type.is_array() {
-            self.report_error(
+            self.report_warning(
               "printf 的第 \{i + 1} 个参数必须是 int、float、char 或指针",
               loc,
-              E3032_PrintfArgType,
+              W3032_PrintfArgType,
             )
           }
         }
@@ -572,10 +622,10 @@ fn TypeChecker::check_builtin_scanf(
           let (arg_type, new_arg) = self.resolve_expr_type(args[i])
           args[i] = new_arg
           if !(arg_type.kind() is TK_Pointer) && !arg_type.is_array() {
-            self.report_error(
+            self.report_warning(
               "scanf 的第 \{i + 1} 个参数必须是指针",
               loc,
-              E3035_ScanfArgType,
+              W3035_ScanfArgType,
             )
           }
         }
@@ -672,10 +722,10 @@ fn TypeChecker::check_builtin_fprintf(
       if !self.is_scalar(arg_type) &&
         !(arg_type.kind() is TK_Pointer) &&
         !arg_type.is_array() {
-        self.report_error(
+        self.report_warning(
           "fprintf 的第 \{i + 1} 个参数必须是 int、float、char 或指针",
           loc,
-          E3032_PrintfArgType,
+          W3032_PrintfArgType,
         )
       }
     }

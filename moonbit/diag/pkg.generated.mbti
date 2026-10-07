@@ -85,10 +85,10 @@ pub(all) enum ErrorCode {
   E3029_BuiltInArgType
   E3030_PrintfArgCount
   E3031_PrintfFirstArg
-  E3032_PrintfArgType
+  W3032_PrintfArgType
   E3033_ScanfArgCount
   E3034_ScanfFirstArg
-  E3035_ScanfArgType
+  W3035_ScanfArgType
   E3036_UndefinedFunc
   E3037_FuncArgCount
   E3038_FuncArgType
@@ -115,8 +115,8 @@ pub(all) enum ErrorCode {
   E3059_StaticGlobalAccess
   E3060_UseAfterFree
   E3061_DoubleFree
-  E3062_PrintfFormatMismatch
-  E3063_ScanfFormatMismatch
+  W3062_PrintfFormatMismatch
+  W3063_ScanfFormatMismatch
   W3064_DoublePointerCast
   E3065_ConstViolation
   E3066_CallNonFunction

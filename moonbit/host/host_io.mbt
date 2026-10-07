@@ -365,8 +365,9 @@ pub fn host_getchar(input : InputState) -> InputOutcome {
 ///|
 /// scanf 格式串解析项（oracle `utils.rs:347-359` 的 `ScanfItem`）。
 priv enum ScanfItem {
-  /// `%` 转换符：(格式字母码, 长度修饰级别 0=无 1=l/h 2=ll)
-  Spec(Int, Int)
+  /// `%` 转换符：(格式字母码, 长度修饰级别 0=无 1=l/h 2=ll, 赋值抑制
+  /// ——width `*` 置位：读入丢弃、不消耗指针参数，%*d 批四 2026-10-07)
+  Spec(Int, Int, Bool)
   /// 空白指令：匹配任意数量（含零）空白
   Whitespace
   /// 普通字符指令（含 `%%` 展开的 `%`）：精确匹配
@@ -406,11 +407,16 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
                 None => break
               }
             }
-            // 跳 width
+            // width：数字累计跳过；`*` = 赋值抑制（C §7.21.6.2——%*d 批四
+            // 2026-10-07：读入丢弃、不消耗指针参数）
+            let mut suppress = false
             while true {
               match scan.peek() {
                 Some(c) =>
-                  if (c >= 48 && c <= 57) || c == 42 {
+                  if c >= 48 && c <= 57 {
+                    scan.advance()
+                  } else if c == 42 {
+                    suppress = true
                     scan.advance()
                   } else {
                     break
@@ -465,7 +471,7 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
             // 格式字母
             match scan.peek() {
               Some(spec) => {
-                specs.push(ScanfItem::Spec(spec, len_mod))
+                specs.push(ScanfItem::Spec(spec, len_mod, suppress))
                 scan.advance()
               }
               None => ()
@@ -581,7 +587,8 @@ pub fn host_scanf_n(
   let mut arg_count = 0
   for it in spec_types {
     match it {
-      ScanfItem::Spec(_, _) => arg_count = arg_count + 1
+      // 赋值抑制（%*d）不消耗指针参数——批四 2026-10-07
+      ScanfItem::Spec(_, _, false) => arg_count = arg_count + 1
       _ => ()
     }
   }
@@ -659,12 +666,17 @@ pub fn host_scanf_n(
         pos = pos + 1
         continue
       }
-      ScanfItem::Spec(s, lm) => (s, lm)
+      ScanfItem::Spec(s, lm, sup) => (s, lm, sup)
     }
     let spec = sl.0
     let len_mod = sl.1
-    let ptr = ptrs[arg_idx]
-    arg_idx = arg_idx + 1
+    // 抑制赋值（%*d 批四 2026-10-07）：写目标改投已解析完的格式串
+    // 地址（spec_types 在循环前已物化，覆盖无副作用）——读入消费
+    // 照常、指针参数不消耗
+    let ptr = if sl.2 { fmt_addr } else { ptrs[arg_idx] }
+    if not(sl.2) {
+      arg_idx = arg_idx + 1
+    }
     if spec == 100 {
       // d
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
@@ -824,7 +836,10 @@ pub fn host_scanf_n(
       // 不支持的转换符：未消费输入，不计入成功项
       continue
     }
-    matched = matched + 1
+    // 抑制赋值（%*d）不计入返回值（C §7.21.6.2——批四 2026-10-07）
+    if not(sl.2) {
+      matched = matched + 1
+    }
   }
   // 游标推进（映射表；未消费部分留给后续输入函数）
   if pos > 0 && pos - 1 < map_line.length() {
@@ -896,15 +911,19 @@ pub fn host_sscanf(
         pos = pos + 1
         continue
       }
-      ScanfItem::Spec(s, lm) => (s, lm)
+      ScanfItem::Spec(s, lm, sup) => (s, lm, sup)
     }
     let spec = sl.0
     let len_mod = sl.1
-    if arg_idx >= ptrs.length() {
+    if arg_idx >= ptrs.length() && not(sl.2) {
       break
     }
-    let ptr = ptrs[arg_idx]
-    arg_idx = arg_idx + 1
+    // 抑制赋值（%*d 批四 2026-10-07）：写目标改投已解析完的格式串
+    // 地址——读入消费照常、指针参数不消耗（同 host_scanf_n）
+    let ptr = if sl.2 { fmt_addr } else { ptrs[arg_idx] }
+    if not(sl.2) {
+      arg_idx = arg_idx + 1
+    }
     if spec == 100 {
       // d
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
@@ -939,7 +958,9 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      matched = matched + 1
+      if not(sl.2) {
+        matched = matched + 1
+      }
     } else if spec == 117 {
       // u
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
@@ -974,7 +995,9 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      matched = matched + 1
+      if not(sl.2) {
+        matched = matched + 1
+      }
     } else if spec == 102 {
       // f
       let pair = read_float_token(chars, pos)
@@ -1002,7 +1025,9 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      matched = matched + 1
+      if not(sl.2) {
+        matched = matched + 1
+      }
     } else if spec == 99 {
       // c
       if pos >= chars.length() {
@@ -1014,7 +1039,9 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      matched = matched + 1
+      if not(sl.2) {
+        matched = matched + 1
+      }
     } else if spec == 115 {
       // s
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
@@ -1041,7 +1068,9 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      matched = matched + 1
+      if not(sl.2) {
+        matched = matched + 1
+      }
     } else {
       // 未知转换符：不消费不计数
     }

@@ -32,5 +32,10 @@
       "ff228a13",
       "65593255"
     ]
+  },
+  {
+    "case": "printf_scanf_type_mismatch.c",
+    "digest": "d70d6dd0",
+    "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
   }
 ]

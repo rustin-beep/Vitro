@@ -242,7 +242,7 @@
       "code": 3031
     },
     {
-      "name": "E3032_PrintfArgType",
+      "name": "W3032_PrintfArgType",
       "code": 3032
     },
     {
@@ -254,7 +254,7 @@
       "code": 3034
     },
     {
-      "name": "E3035_ScanfArgType",
+      "name": "W3035_ScanfArgType",
       "code": 3035
     },
     {
@@ -362,11 +362,11 @@
       "code": 3061
     },
     {
-      "name": "E3062_PrintfFormatMismatch",
+      "name": "W3062_PrintfFormatMismatch",
       "code": 3062
     },
     {
-      "name": "E3063_ScanfFormatMismatch",
+      "name": "W3063_ScanfFormatMismatch",
       "code": 3063
     },
     {

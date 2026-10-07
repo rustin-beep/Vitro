@@ -12,6 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（S9 修复批批四第二条：格式符错配严重级对齐 Clang + %*d 全族语义落地，2026-10-07）
+
+- **SEVERITY-FORMAT 销案（DIFF-TYPECK-SEVERITY-FORMAT-01）**：W3032/W3035/W3062/W3063 四码
+  error→warning 降级放行（Clang -Wformat 默认口径实测全 warning；E3030/E3031/E3033 参数硬
+  约束维持 error）。码位源头 error_codes.json E→W 改名 + gen_diag 再生成 + typeck 七处
+  report_warning + call_wbtest 双锚 errs→warns 翻转（J9 先证红）。
+- **%*d 意外连坐销案**（旧拒收防线随降级放行——半开状态不可留）：
+  - printf 星号宽度/精度：typeck 四元组计数（星号 spec 消耗 +1）+ formatter 星号参数取值
+    （超 PRINTF_FIELD_BUDGET 教学截断、负值按 0）+ vm dispatch 按 format_arg_count 弹参
+    （原按说明符数弹——星号 spec 滞留栈错位）；
+  - scanf `%*d` 赋值抑制（C §7.21.6.2）：ScanfItem 三元 + 读入消费照常/写投已解析格式串
+    哑地址/指针参数与返回值均不计——`scanf("%*d%d")` 双侧输出 9 一致；
+  - 探针 star2.c（`%*d`/`%.*f`/`%-*d` 三形态）与 Clang 22.1.4 逐字节一致；wbtest 锚三处
+    （星号宽度/精度矩阵、scanf 抑制、数量臂零告警）。
+- 连坐：gap 语例 printf_scanf_type_mismatch.c 诊断面翻转重入账（typeck/vm_diff 双 digest）+
+  clang_direct known 登记（无 include scanf 的 Windows/MSVC 链接域 undefined symbol——环境
+  域非行为差）；README 681/800；台账 resolved-verified + anchors 收编；已知限制①-1 %*d 子项
+  划线销案。
+
 ### Fixed（S9 修复批批四首条：N3/N4 libc 签名三面单源对齐 C 标准，2026-10-07）
 
 - **N3**：printf/putchar/fprintf 返回 void → **int**（C 标准/stdio.h 存根口径）——三面连坐：

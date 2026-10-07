@@ -701,9 +701,9 @@
       "title": "printf/scanf 格式符类型不匹配报错误级（E3032/E3062 族）——Clang -Wformat 为警告级（paxos 勘探先例 + 外部仓库 shell_sort2.c %.4g 实测 2026-10-01）",
       "class": "implementable",
       "carry_over": "fix",
-      "status": "open",
+      "status": "resolved-verified",
       "evidence": "run",
-      "rationale": "严重性口径差非误报（诊断本身成立）。降级（error→warning 放行编译）是引擎 typeck 行为变更且两侧同病（oracle 同报 error）——单侧降级立即打破 vm_diff/clang_direct 编译成败判定对拍，按台账纪律挂 Rust 退役后两侧同修。#16 评论 2026-10-01 定级：warning 级",
+      "rationale": "批四销案（2026-10-07，#47）：W3032/W3035/W3062/W3063 四码 error→warning 降级放行（Clang -Wformat 默认口径实测——类型/数量/scanf/宽度全 warning 级；E3030/E3031/E3033 参数硬约束维持 error 对齐 Clang）。码位源头 diagnostics_data/error_codes.json 改名 E→W 前缀 + gen_diag 再生成（W 白名单连坐）+ typeck 七处调用点 report_warning + call_wbtest 双锚翻转（errs→warns 断言）。意外连坐：%*d 动态宽度/精度的旧拒收防线随降级放行——printf 星号语义补全（typeck 四元组计数 + formatter 星号宽度/精度取参 + format_arg_count 弹参）与 scanf %*d 赋值抑制（ScanfItem::Spec 三元 + 写投格式串哑地址 + matched 不计）一并落地，star2.c/scanf_star.c 探针与 Clang 22.1.4 逐位一致",
       "subsystems": [
         "typeck"
       ],
@@ -713,11 +713,15 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [],
+        "clang_direct_known": [
+          "printf_scanf_type_mismatch.c"
+        ],
         "vm_diff_known": []
       },
-      "detectable_by_defense": [],
-      "notes": "paxos E3032 先例同族；修复=severity 降级+ok 放行，语料预期连坐"
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "paxos E3032 先例同族；修复=severity 降级+ok 放行，语料预期连坐；销案 2026-10-07 批四（#47 refs）；gap 语例 printf_scanf_type_mismatch.c 诊断面翻转重入账 + clang_direct known 登记（无 include scanf 的 Windows/MSVC 链接域 undefined symbol——环境域非行为差）"
     },
     {
       "id": "DIFF-LEX-DECL-BIGCONST-01",

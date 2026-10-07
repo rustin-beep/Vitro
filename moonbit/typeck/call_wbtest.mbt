@@ -99,7 +99,7 @@ test "call_user_func_four_level_fallback" {
 }
 
 ///|
-/// visit_call 的 printf builtin 臂：空参 E3030 / 格式-参数错配 E3062 /
+/// visit_call 的 printf builtin 臂：空参 E3030 / 格式-参数错配 W3062（批四降级）/
 /// %s 对 char* 放行。
 test "call_printf_builtin_arm" {
   let loc = @source.SourceLoc::new(2, 9)
@@ -130,17 +130,52 @@ test "call_printf_builtin_arm" {
   let body : @ast.Stmt = @ast.Stmt::Block(
     [
       printf_call([], loc), // E3030
-      printf_call([fmt_d, str], loc), // E3062：%d 对 char*
+      printf_call([fmt_d, str], loc), // W3062：%d 对 char*
       printf_call([fmt_s, str], loc), // %s 对字符串字面量——放行
     ],
     loc,
   )
   let main = func_of("main", [], Some(body), loc)
   let tc = TypeChecker::new()
-  let (_, errs, _, _) = tc.check(prog_of([main], []))
-  assert_eq(errs.length(), 2)
+  // SEVERITY-FORMAT 销案锚（批四 2026-10-07）：3062 格式-参数类型错配
+  // 降 warning（Clang -Wformat 口径）；E3030 空参系参数硬约束维持 error
+  let (_, errs, warns, _) = tc.check(prog_of([main], []))
+  assert_eq(errs.length(), 1)
   assert_true(errs[0].code == 3030)
-  assert_true(errs[1].code == 3062)
+  assert_eq(warns.length(), 1)
+  assert_true(warns[0].code == 3062)
+}
+
+///|
+/// %*d 数量臂锚（批四 2026-10-07）：星号 spec 消耗 2 参——
+/// `printf("%*d", w, x)` 数量匹配不告警；`printf("%*d", w)` 少 1 参
+/// 报 W3032。
+test "printf_star_arg_count" {
+  let loc = @source.SourceLoc::new(2, 9)
+  fn star_call(args : Array[@ast.Expr], loc : @source.SourceLoc) -> @ast.Stmt {
+    @ast.Stmt::Expr(
+      @ast.Expr::Call(
+        "printf",
+        [@ast.Expr::StringLiteral("%*d", loc, @ast.Type::void_type()), ..args],
+        loc,
+        @ast.Type::void_type(),
+      ),
+      loc,
+    )
+  }
+  fn int_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(1, loc, @ast.Type::int())
+  }
+
+  let body_ok : @ast.Stmt = @ast.Stmt::Block(
+    [star_call([int_lit(loc), int_lit(loc)], loc)],
+    loc,
+  )
+  let main_ok = func_of("main", [], Some(body_ok), loc)
+  let tc = TypeChecker::new()
+  let (_, errs, warns, _) = tc.check(prog_of([main_ok], []))
+  assert_eq(errs.length(), 0)
+  assert_eq(warns.length(), 0, msg="%*d 双参数量匹配零告警")
 }
 
 ///|
@@ -182,8 +217,8 @@ test "call_printf_scanf_arg_index_ordinal" {
   }
   let body : @ast.Stmt = @ast.Stmt::Block(
     [
-      call1("printf", "%f", int_lit(loc), loc), // E3062：第 2 个参数 'int'
-      call1("printf", "%d", dbl_lit(loc), loc), // E3062：第 2 个参数 'double'
+      call1("printf", "%f", int_lit(loc), loc), // W3062：第 2 个参数 'int'
+      call1("printf", "%d", dbl_lit(loc), loc), // W3062：第 2 个参数 'double'
       @ast.Stmt::VarDecl(@ast.Type::double(), "d", None, [], false, loc),
       call1("scanf", "%d", addr_of_d(loc), loc), // E3063：第 2 个参数
     ],
@@ -191,21 +226,23 @@ test "call_printf_scanf_arg_index_ordinal" {
   )
   let main = func_of("main", [], Some(body), loc)
   let tc = TypeChecker::new()
-  let (_, errs, _, _) = tc.check(prog_of([main], []))
-  assert_eq(errs.length(), 3)
-  assert_true(errs[0].code == 3062)
+  // SEVERITY-FORMAT 销案锚（批四 2026-10-07）：3062/3063 全降 warning
+  let (_, errs, warns, _) = tc.check(prog_of([main], []))
+  assert_eq(errs.length(), 0)
+  assert_eq(warns.length(), 3)
+  assert_true(warns[0].code == 3062)
   assert_true(
-    errs[0].message.contains("第 2 个参数"),
+    warns[0].message.contains("第 2 个参数"),
     msg="printf %f 报第 2 个（非第 3）",
   )
-  assert_true(errs[1].code == 3062)
+  assert_true(warns[1].code == 3062)
   assert_true(
-    errs[1].message.contains("第 2 个参数"),
+    warns[1].message.contains("第 2 个参数"),
     msg="printf %d 报第 2 个",
   )
-  assert_true(errs[2].code == 3063)
+  assert_true(warns[2].code == 3063)
   assert_true(
-    errs[2].message.contains("第 2 个参数"),
+    warns[2].message.contains("第 2 个参数"),
     msg="scanf %d 报第 2 个",
   )
 }

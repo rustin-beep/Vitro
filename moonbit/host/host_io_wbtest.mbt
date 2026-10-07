@@ -130,6 +130,33 @@ test "printf_percent_c_high_byte_single_byte" {
 }
 
 ///|
+/// %*d 星号宽度/精度锚（批四 2026-10-07——SEVERITY-FORMAT 降级放行
+/// 后的运行期语义补全）：星号参数在值参数**前**（dispatch 弹参后
+/// args 为语义序）；三形态与 Clang 22.1.4 逐字节一致（star2.c 探针）。
+test "printf_star_width_precision" {
+  let (map, mem) = fresh()
+  let (log, r) = printf_run(map, mem, "[%*d]", [
+    (5).to_uint64(),
+    (42).to_uint64(),
+  ])
+  assert_eq(r.trap, None)
+  assert_eq(log.join(OutputKind::Stdout), b"[   42]")
+  let (map2, mem2) = fresh()
+  let (log2, _) = printf_run(map2, mem2, "[%.*f]", [
+    (2).to_uint64(),
+    3.14159.reinterpret_as_uint64(),
+  ])
+  assert_eq(log2.join(OutputKind::Stdout), b"[3.14]")
+  // 负星号宽度按 0（C 左对齐形态的教学面简化）+ 超预算截断
+  let (map3, mem3) = fresh()
+  let (log3, _) = printf_run(map3, mem3, "[%-*d]", [
+    (6).to_uint64(),
+    (7).to_uint64(),
+  ])
+  assert_eq(log3.join(OutputKind::Stdout), b"[7     ]")
+}
+
+///|
 test "printf_unknown_spec_consumes_arg_and_passthrough" {
   let (map, mem) = fresh()
   // 未知说明符 `%q`：原样输出且消耗实参（照搬）
@@ -282,6 +309,24 @@ fn scanf_run(
 ) -> InputOutcome raise {
   put_bytes(mem, map, 0x6000U, @utf8.encode(fmt), true)
   host_scanf_n(map, mem, input, [], 0x6000U, ptrs)
+}
+
+///|
+/// %*d 赋值抑制锚（批四 2026-10-07）：`%*d%d` 读两 token 只写第二个
+/// 指针（抑制 spec 消费输入不消耗参数——C §7.21.6.2；端到端
+/// `printf('7 9')` 双侧 == Clang 输出 9）。
+test "scanf_star_suppression" {
+  let (map, mem) = fresh()
+  let x_addr = 0x7000U
+  let input = InputState::new([b"7 9"], true)
+  let r = scanf_run(map, mem, input, "%*d%d", [x_addr])
+  guard r is InputOutcome::Value(n) else { fail("应匹配 1 项") }
+  assert_eq(n, 1UL)
+  assert_eq(mem.load_u32(map, x_addr), Ok(9U))
+  // 纯抑制（无目标参数）也安全：读入丢弃、返回 0 匹配项
+  let input2 = InputState::new([b"7"], true)
+  let r2 = scanf_run(map, mem, input2, "%*d", [])
+  guard r2 is InputOutcome::Value(0UL) else { fail("抑制不计数") }
 }
 
 ///|
@@ -504,8 +549,9 @@ test "printf_percent_percent_semantics" {
   // 零实参纯双百分号（oracle 真机已验：输出原样两字符）
   let (log2, _) = printf_run(map, mem, "%%", [])
   assert_eq(log2.join(OutputKind::Stdout), b"%%")
-  // 注：`"x%"` 尾孤立 % 形状在 oracle typeck 层被拒（E3032：尾 %+字符计入
-  // 说明符计数）——host 层行为见下（parity 由同构代码保证，无端到端真值）
+  // 注：`"x%"` 尾孤立 % 形状的 typeck 层口径随批四降级（W3032 warning
+  // 放行——旧 error 拒收形态已退役）——host 层行为见下（parity 由同构
+  // 代码保证，无端到端真值）
   // 混合：%% 不干扰其余转换符的实参计数
   let (log3, r3) = printf_run(map, mem, "%d%%|%d", [
     (7).to_uint64(),
@@ -517,7 +563,7 @@ test "printf_percent_percent_semantics" {
   let specs = parse_format_specs([97, 37, 37, 98, 37, 100, 99])
   assert_eq(specs.length(), 1, msg="a%%b%dc 只有一个真转换符")
   assert_eq(specs[0], 100, msg="'d'")
-  // 行尾孤立 %：原样输出（host 层；typeck 层另见 E3032 登记）
+  // 行尾孤立 %：原样输出（host 层；typeck 层 W3032 批四降级登记）
   let (log4, _) = printf_run(map, mem, "x%", [])
   assert_eq(log4.join(OutputKind::Stdout), b"x%")
 }

@@ -1,10 +1,12 @@
 // @category: printf_scanf_type_mismatch
-// E3062/E3063 格式-参数类型错配的**诊断面**语料（2026-10-03 审阅 P2-2 补）：
+// W3062/W3063 格式-参数类型错配的**诊断面**语料（2026-10-03 审阅 P2-2 补；
+// SEVERITY-FORMAT 销案批四 2026-10-07 降级翻转）：
 // 合法语料全绿程序盖不到消息文案（含参数序号）——单靠 wbtest 锚是单点兜底，
-// 同族文案漂移（如序号算式再动）语料面不可见。本用例经 typeck_diff 的 E1
-// 诊断序列双侧逐字节对拍锁文案；**两侧引擎同拒（E3062/E3063 error 级），
-// Clang 对同形状仅 -Wformat 警告继续运行**——故只进诊断面语料（gap），不进
-// e2e 运行口径（e2e 消费面本就不读 gap 目录）。
+// 同族文案漂移（如序号算式再动）语料面不可见。本用例经 typeck_diff 的
+// 诊断序列对拍锁文案。**批四起 3062/3063 降 warning 编译放行（Clang
+// -Wformat 口径，原 error 系 oracle 照搬）**——降级后 Clang 侧因无 include
+// 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（clang_direct
+// known_direct 登记在案），运行期输出为 UB 域无对拍意义，仍以诊断面为锚。
 int main() {
     int a = 1;
     double d = 1.0;

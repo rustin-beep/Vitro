@@ -287,8 +287,10 @@ fn VitroVM::execute_host_func3(
           return
         }
       }
-      let specs = @host.format_spec_kinds(codes_of(fmt))
-      if self.stack.length() < specs.length() {
+      // %*d 批四（2026-10-07）：弹参数数按星号消耗计（原按说明符数
+      // 弹参，星号 spec 少弹一参会滞留栈——错位形态）
+      let need = @host.format_arg_count(codes_of(fmt))
+      if self.stack.length() < need {
         self.trap(
           "printf: 格式字符串要求的参数多于实际提供的参数。",
           0, 0,
@@ -296,7 +298,7 @@ fn VitroVM::execute_host_func3(
         return
       }
       let args : Array[UInt64] = []
-      for i = 0; i < specs.length(); i = i + 1 {
+      for i = 0; i < need; i = i + 1 {
         args.push(self.pop())
       }
       let reply = @host.host_printf_n(
@@ -319,8 +321,9 @@ fn VitroVM::execute_host_func3(
           return
         }
       }
-      let specs = @host.format_spec_kinds(codes_of(fmt))
-      if self.stack.length() < specs.length() {
+      // %*d 批四（2026-10-07）：弹参数数按星号消耗计（同 printf 臂）
+      let need = @host.format_arg_count(codes_of(fmt))
+      if self.stack.length() < need {
         self.trap(
           "fprintf: 格式字符串要求的参数多于实际提供的参数。",
           0, 0,
@@ -328,7 +331,7 @@ fn VitroVM::execute_host_func3(
         return
       }
       let args : Array[UInt64] = []
-      for i = 0; i < specs.length(); i = i + 1 {
+      for i = 0; i < need; i = i + 1 {
         args.push(self.pop())
       }
       let reply = @host.host_fprintf_n(

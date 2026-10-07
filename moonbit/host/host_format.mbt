@@ -48,7 +48,9 @@ fn FmtScan::advance(self : FmtScan) -> Unit {
 ///|
 /// 解析一个格式说明符（`%` 之后）：flags / width（`*` 即止、值留空）/
 /// precision / 长度修饰（只记 `ll`）/ 格式字母。
-fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
+fn parse_format_spec(
+  scan : FmtScan,
+) -> (Int, Bool, Int?, Int?, String, Bool, Bool)? {
   // flags：- + 空格 # 0（去重追加）
   let mut flags = ""
   while true {
@@ -66,9 +68,11 @@ fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
       None => break
     }
   }
-  // width：数字累计；遇 `*` 消费即止（width 留 None——动态宽度整族由
-  // typeck 编译期拒收，E3032；U6#3 登记在案）
+  // width：数字累计；`*` = 运行期宽度（%*d 批四 2026-10-07——星号参数
+  // 由 formatter 从参数组取，width 留 None、star_w 置位；原「typeck 编译
+  // 期拒收」防线已随 W3032 降级退役）
   let mut width_str = ""
+  let mut star_w = false
   while true {
     match scan.peek() {
       Some(c) =>
@@ -76,6 +80,7 @@ fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
           width_str = width_str + Int::unsafe_to_char(c).to_string()
           scan.advance()
         } else if c == 42 {
+          star_w = true
           scan.advance()
           break
         } else {
@@ -91,8 +96,9 @@ fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
       _ => None
     }
   }
-  // precision：`.` 开头，数字累计或 `*`
+  // precision：`.` 开头，数字累计或 `*`（星号精度——参数组取值，批四）
   let mut precision : Int? = None
+  let mut star_p = false
   match scan.peek() {
     Some(46) => {
       scan.advance()
@@ -104,6 +110,7 @@ fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
               prec_str = prec_str + Int::unsafe_to_char(c).to_string()
               scan.advance()
             } else if c == 42 {
+              star_p = true
               scan.advance()
               break
             } else {
@@ -145,7 +152,7 @@ fn parse_format_spec(scan : FmtScan) -> (Int, Bool, Int?, Int?, String)? {
   match scan.peek() {
     Some(spec) => {
       scan.advance()
-      Some((spec, is_ll, precision, width, flags))
+      Some((spec, is_ll, precision, width, flags, star_w, star_p))
     }
     None => None
   }
@@ -681,10 +688,46 @@ fn format_printf_string(
               Some(t) => {
                 let spec = t.0
                 let is_ll = t.1
-                let precision = t.2
-                let width = t.3
+                let mut precision = t.2
+                let mut width = t.3
                 let flags = t.4
-                let arg = args[used]
+                // %*d 批四（2026-10-07）：星号宽度/精度从参数组**前位**取
+                //（语义序 ("%*d", w, 42)——星号参数在值参数前，dispatch 弹
+                // 参后 args 为语义序）。超 PRINTF_FIELD_BUDGET 教学截断
+                //（Clang 会尝试同量级输出——U2#9 静态闸的运行期对位）；
+                // 负值按 0（C 负星号宽度的左对齐形态教学面简化）。
+                if t.5 && used < args.length() {
+                  let w = args[used].to_uint().reinterpret_as_int()
+                  width = Some(
+                    if w < 0 || w > PRINTF_FIELD_BUDGET {
+                      if w < 0 {
+                        0
+                      } else {
+                        PRINTF_FIELD_BUDGET
+                      }
+                    } else {
+                      w
+                    },
+                  )
+                  used += 1
+                }
+                if t.6 && used < args.length() {
+                  let p = args[used].to_uint().reinterpret_as_int()
+                  precision = Some(
+                    if p < 0 || p > PRINTF_FIELD_BUDGET {
+                      if p < 0 {
+                        0
+                      } else {
+                        PRINTF_FIELD_BUDGET
+                      }
+                    } else {
+                      p
+                    },
+                  )
+                  used += 1
+                }
+                // 值参数（星号消耗后可能越界——参数不足形态按 0 字面输出）
+                let arg = if used < args.length() { args[used] } else { 0UL }
                 if spec == 100 || spec == 105 {
                   // d / i（+ / 空格旗标：正数带符号前缀）
                   let val = if is_ll {
@@ -847,13 +890,54 @@ pub fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
 }
 
 ///|
+/// printf 族参数消耗总数（vm 分发侧弹参数数用——%*d 批四 2026-10-07：
+/// 每 spec = 1 + 星号宽度 + 星号精度；dispatch 原按说明符个数弹参，
+/// 星号 spec 曾少弹导致栈失衡）。
+pub fn format_arg_count(fmt : Array[Int]) -> Int {
+  let scan = FmtScan::{ s: fmt, i: 0, }
+  let mut n = 0
+  while true {
+    match scan.peek() {
+      Some(ch) => {
+        scan.advance()
+        if ch == 37 {
+          match scan.peek() {
+            Some(nx) =>
+              if nx == 37 {
+                scan.advance() // %%
+              } else {
+                match parse_format_spec(scan) {
+                  Some(t) => {
+                    n += 1
+                    if t.5 {
+                      n += 1
+                    }
+                    if t.6 {
+                      n += 1
+                    }
+                  }
+                  None => ()
+                }
+              }
+            None => ()
+          }
+        }
+      }
+      None => break
+    }
+  }
+  n
+}
+
+///|
 /// scanf 族指针参数计数（vm 分发侧用——只数 `%` 转换符，空白指令与
 /// 字面量不计；与 `parse_scanf_specs` 的 Spec 分支计数同口径）。
 pub fn scanf_spec_count(fmt : Array[Int]) -> Int {
   let mut count = 0
   for it in parse_scanf_specs(fmt) {
     match it {
-      ScanfItem::Spec(_, _) => count = count + 1
+      // 赋值抑制（%*d 批四 2026-10-07）不消耗指针参数
+      ScanfItem::Spec(_, _, false) => count = count + 1
       _ => ()
     }
   }

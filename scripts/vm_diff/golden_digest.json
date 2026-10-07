@@ -2352,10 +2352,10 @@
       "memory_sha": "0f6796ebbbb6684d"
     },
     "gap/printf_scanf_type_mismatch.c": {
-      "src_sha": "e358b16e",
+      "src_sha": "6fb1cda5",
       "exit_code": 0,
-      "stdout_sha": "",
-      "compile_fail": true
+      "stdout_sha": "3b4db141016d678f",
+      "memory_sha": "8b5416bc247e812f"
     },
     "gap/sizeof_array_param.c": {
       "src_sha": "34ee7a7e",

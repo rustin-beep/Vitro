@@ -9,8 +9,9 @@
 #   # 采样一个已存在进程（PID）直到它退出：
 #   powershell -NoProfile -File scripts\diag_mem.ps1 -ProcId 12345
 #
-#   # 启动并采样一条命令（命令 + 参数）：
-#   powershell -NoProfile -File scripts\diag_mem.ps1 -FilePath native\target\release\vitro_cli.exe -Args "serve"
+#   # 启动并采样一条命令（命令 + 参数）——rust 臂已随 2026-10-05 删区退役，
+#   # 示例换现役 MoonBit serve exe：
+#   powershell -NoProfile -File scripts\diag_mem.ps1 -FilePath moonbit\_build\native\debug\build\cmd\serve\serve.exe -Args "serve"
 #
 #   # 带阈值：超过 400MB commit 即告警并以 exit 1 结束（不杀进程，只观测）
 #   powershell -NoProfile -File scripts\diag_mem.ps1 -ProcId 12345 -ThresholdMB 400

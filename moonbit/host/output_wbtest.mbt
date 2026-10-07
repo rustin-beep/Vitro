@@ -254,10 +254,9 @@ test "note_budget_single_chunk_trims_head" {
   log.set_note_budget(5)
   log.push_note_str("0123456789") // 11 字节 > 5 ⇒ 截头 6 字节保尾部
   assert_eq(log.note_dropped_bytes(), 6)
-  assert_eq(
-    log.len_of(OutputKind::Note) > 5,
-    true,
-    msg="截后 note 计数只含保留字节",
+  assert_true(
+    note_truncation_marker_count(log) == 1,
+    msg="截断注记恰一条（审阅 P3-5：旧 len_of>5 断言对截头字节数零判别力——注记追加后恒真，换注记计数）",
   )
   assert_true(
     log.has_note(@utf8.encode("6789\n")),

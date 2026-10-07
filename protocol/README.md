@@ -38,8 +38,9 @@ go run ./scripts/gen_protocol_ts -check
 # 判据证红（三路内存注入）
 go run ./scripts/gen_protocol_ts --selftest
 
-# 第一个消费者：消费真实引擎输出（需先构建 release 引擎）
-cd native && cargo build --release --bin vitro_cli && cd ..
+# 第一个消费者：消费真实引擎输出（需先构建 debug serve——rust 臂已随
+# 2026-10-05 删区退役，现役 MoonBit 产物）
+cd moonbit && moon build --target native cmd/serve && cd ..
 node protocol/consumer.mjs            # 字段级校验 + 最小渲染
 node protocol/consumer.mjs --selftest # 消费者判据证红（含正向）
 ```

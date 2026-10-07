@@ -195,6 +195,25 @@ func main() {
 		}
 	}
 
+	// B 组附 1：note 去重语义锚（审阅 P3-1，2026-10-07）——note 通道语义
+	// 不在 vm_diff/clang_direct 比对面（vm_diff 只比 stdout/rc/映像，壳把
+	// note 写成 // NOTE 行被提取器剥掉），apply_reply 全量同文本去重此前
+	// 零闸。malloc(0) 连续三次调用只产一条教学附注（批五第一片）；
+	// 双臂同形 + 期望计数双锚。
+	dupC := filepath.Join(tmpDir, "malloc0_dup.c")
+	os.WriteFile(dupC, []byte("#include <stdlib.h>\nint main(){ void*p; p=malloc(0); p=malloc(0); p=malloc(0); return p==0; }\n"), 0o644)
+	relDup, _ := filepath.Rel(repoRoot, dupC)
+	relDup = filepath.ToSlash(relDup)
+	wDup, rcDup := runOut(nodeBin, shell, "run", relDup)
+	nDup, rcNat := runOut(nativeExe, "run", relDup)
+	if rcDup != rcNat || stripBackendLine(wDup) != stripBackendLine(nDup) {
+		fatalf("B[双臂对拍] malloc(0)×3: 双臂不同形\n--- wasm ---\n%s\n--- native ---\n%s", wDup, nDup)
+	}
+	if c := strings.Count(stripBackendLine(wDup), "[warning] malloc(0)"); c != 1 {
+		fatalf("B[note 去重语义] malloc(0)×3 期望恰 1 条教学附注，实得 %d 条——apply_reply 全量同文本去重回归（批五第一片）", c)
+	}
+	fmt.Println("ok  B[note 去重语义] malloc(0)×3 恰 1 条附注（双臂同形）")
+
 	// B 组附：1MB 映像双臂对拍（--dump-memory——memory.dump 帧链路，
 	// #49 批二段二）：双臂各落盘一份逐字节比（cmp 语义；与 vm_diff 第三联
 	// 同口径——同字节则 wasm 臂映像联齐备）

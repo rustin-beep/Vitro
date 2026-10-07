@@ -54,8 +54,14 @@ func EnsureFresh(prefix, exePath string, buildArgs ...string) {
 
 // rebuild 跑规范化构建（cwd=仓库根/moonbit）——退出码 0 即 moon 已保证产物
 // 内容最新；供 mtime 落后时复核。
+//
+// **MOON_CC=clang 显式注入（审阅 P2-1，2026-10-07）**：CI 的 MOON_CC 全是
+// 行内前缀（ci.yml 无 workflow env: 级声明），进程继承不到——复核构建若落
+// Windows 默认 cl 会撞 moon#2254 构建悬崖（分钟级）且失败文案误导为「代码
+// 构建坏了」。此处与 ci.yml 各步同款显式注入（AGENTS 纪律 11 连坐）。
 func rebuild(buildArgs []string) bool {
 	cmd := exec.Command("moon", buildArgs...)
+	cmd.Env = append(os.Environ(), "MOON_CC=clang")
 	cmd.Dir = filepath.Join(capi.ProjectRoot(), "moonbit")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -67,6 +73,10 @@ func rebuild(buildArgs []string) bool {
 
 // findStaleSource 返回任一比产物新的 moonbit 源文件（.mbt/.mod/.pkg；跳过
 // _build 产物目录与 .mooncakes），全新鲜则返回空串。
+//
+// **测试文件排除（审阅 P3-4，2026-10-07）**：*_test.mbt / *_wbtest.mbt 不
+// 参与 `moon build` 产物——纳入扫描面会把「改一个测试锚」误判为产物陈旧
+// 并触发构建复核（叠加 P2-1 的 MSVC 悬崖曾是分钟级浪费）。判据=后缀排除。
 func findStaleSource(artifact string) string {
 	st, err := os.Stat(artifact)
 	if err != nil {
@@ -86,6 +96,9 @@ func findStaleSource(artifact string) string {
 			return nil
 		}
 		name := d.Name()
+		if strings.HasSuffix(name, "_test.mbt") || strings.HasSuffix(name, "_wbtest.mbt") {
+			return nil
+		}
 		if strings.HasSuffix(name, ".mbt") || strings.HasSuffix(name, ".mod") ||
 			strings.HasSuffix(name, ".pkg") {
 			if info, err := d.Info(); err == nil && info.ModTime().After(artMtime) {

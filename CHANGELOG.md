@@ -12,6 +12,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第十一轮审阅处置：P2-1 + P3×5 全清，2026-10-07）
+
+- **P2-1**：`freshness.rebuild` 显式注入 `MOON_CC=clang`（CI 的 MOON_CC 全是
+  行内前缀、进程继承不到——复核构建曾落 Windows 默认 cl 撞 moon#2254 构建
+  悬崖且失败文案误导为「代码构建坏了」；AGENTS 纪律 11 连坐）。J9：触发
+  stale 复核走 clang 秒级成功放行。
+- **P3-4**：`findStaleSource` 排除 `*_test.mbt`/`*_wbtest.mbt`（测试文件不
+  参与 `moon build` 产物——纳入扫描面会把「改一个测试锚」误判为产物陈旧并
+  触发构建复核）。J9：touch `_wbtest.mbt` 零触发、touch 源文件照常触发。
+- **P3-3**：capi 包 DLL 绑定族死代码整体删除（`Load`/`EnsureFreshArtifacts`/
+  `EngineVersionString`/`requiredSymbols`/`DLL` 及全部方法、`CBytes`/
+  `Normalize`/`ReadChannel`/`GitShortHead`/`MsSince`——删区孤儿、全仓零
+  调用者，与 freshness 构成同名概念双源；保留 Fatal/ProjectRoot/TruncateRunes
+  三活符号）；`protocol/README.md` 构建指令与 `scripts/diag_mem.ps1` 示例
+  的已删 `native/` 路径改指现役 MoonBit 产物。
+- **P3-1 登记 → 已加闸**：note 通道语义不在 vm_diff/clang_direct 比对面
+  （vm_diff 只比 stdout/退出码/映像，壳的 `// NOTE` 行被提取器剥掉）——
+  `vitro_cli_smoke` B 组新增「note 去重语义锚」（malloc(0)×3 双臂同形 +
+  期望恰 1 条附注计数双锚；J9 突变去重禁用实得 3 条红）。
+- **P3-2**：`NOTE_LOG_BUDGET` 注释限定「经 `vm.apply_reply` 通道的附注」
+  （qsort/bsearch 深度超限等 vm 层直写不经去重、仍由本预算兜底）。
+- **P3-5**：`note_budget_single_chunk_trims_head` 的无牙断言（`len_of > 5`
+  对截头字节数零判别力——注记追加后恒真）换注记计数恰 1 断言。
+
 ### Changed（图标语义化全链 #27——emoji 码点退役为语义图标 id，方案 C，2026-10-07）
 
 - **资产随包发布**：真源 `assets/icons/` → `moonbit/icons/`（52 svg + index.tsv

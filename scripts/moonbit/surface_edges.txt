@@ -420,7 +420,7 @@ vitro/engine/vm vitro/engine/host StackBufferSpan
 vitro/engine/vm vitro/engine/host VfsSnapshot
 vitro/engine/vm vitro/engine/host VirtualFileSystem
 vitro/engine/vm vitro/engine/host format_fixed
-vitro/engine/vm vitro/engine/host format_spec_kinds
+vitro/engine/vm vitro/engine/host format_arg_count
 vitro/engine/vm vitro/engine/host heap_exhausted_note
 vitro/engine/vm vitro/engine/host host_abs
 vitro/engine/vm vitro/engine/host host_acos

@@ -34,28 +34,28 @@ import (
 )
 
 type Rules struct {
-	AssetsDir   string `json:"assets_dir"`
-	IndexTsv    string `json:"index_tsv"`
-	GeometryJSON string `json:"geometry_json"`
-	SvgAttrs    map[string]string `json:"svg_attrs"`
+	AssetsDir    string            `json:"assets_dir"`
+	IndexTsv     string            `json:"index_tsv"`
+	GeometryJSON string            `json:"geometry_json"`
+	SvgAttrs     map[string]string `json:"svg_attrs"`
 
 	AllowedElements []string `json:"allowed_elements"`
 	RectForbidden   []string `json:"rect_forbidden_attrs"`
 
-	ForbidColorLiteral     bool `json:"forbid_color_literal"`
-	ForbidNamedColor       bool `json:"forbid_named_color"`
+	ForbidColorLiteral      bool `json:"forbid_color_literal"`
+	ForbidNamedColor        bool `json:"forbid_named_color"`
 	ForbidZeroLengthSubpath bool `json:"forbid_zero_length_subpath"`
-	ForbidAriaHidden       bool `json:"forbid_aria_hidden"`
-	RequireTitle           bool `json:"require_title"`
-	RequireDesc            bool `json:"require_desc"`
+	ForbidAriaHidden        bool `json:"forbid_aria_hidden"`
+	RequireTitle            bool `json:"require_title"`
+	RequireDesc             bool `json:"require_desc"`
 
-	TsvColumns         []string `json:"tsv_columns"`
-	Categories         []string `json:"categories"`
-	Scopes             []string `json:"scopes"`
+	TsvColumns          []string `json:"tsv_columns"`
+	Categories          []string `json:"categories"`
+	Scopes              []string `json:"scopes"`
 	EmojiRequiredScopes []string `json:"emoji_required_scopes"`
 	EmojiMustBeUnique   bool     `json:"emoji_must_be_unique"`
 
-	GeometrySchema string `json:"geometry_schema"`
+	GeometrySchema string   `json:"geometry_schema"`
 	NamedColors    []string `json:"named_colors"`
 }
 

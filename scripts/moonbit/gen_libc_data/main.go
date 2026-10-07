@@ -22,10 +22,12 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,7 +198,8 @@ func main() {
 		// 与现产物字节比——「生成路径」与「校验路径」完全一致。
 		tmp := filepath.Join("moonbit", "vm", "libc_data_gen_check_tmp.mbt") // .mbt 结尾才会被 moon fmt 处理
 		must(os.WriteFile(tmp, []byte(out), 0o644), "写临时产物")
-		if err := runMoonFmt(); err != nil { // fmt 整包（含 tmp）
+		// P2-6：keep 产物与临时产物，其余源文件 fmt 后还原（check 零副作用）
+		if err := runMoonFmt("vm/libc_data_gen.mbt", "vm/libc_data_gen_check_tmp.mbt"); err != nil {
 			fmt.Fprintf(os.Stderr, "gen_libc_data: moon fmt: %v\n", err)
 			os.Exit(1)
 		}
@@ -223,14 +226,59 @@ func main() {
 }
 
 // runMoonFmt：对产物跑 moon fmt（cwd=moonbit）。
-func runMoonFmt() error {
+// 审阅 P2-6（2026-10-07）：moon fmt 作用于整模块——check 路径调用会把
+// 模块内任意非 fmt-clean 的**无关源文件**重排（实测 2/2 还原 addr.mbt
+// 后仍被打回 M）。副作用治理：fmt 前快照 moonbit/ 全部 .mbt（排除产物
+// 与临时产物），fmt 后还原——check 出口保证零工作区副作用（生成路径
+// 不受影响：产物本身正是 fmt 的目标）。
+func runMoonFmt(keep ...string) error {
+	var snap map[string][]byte
+	if len(keep) > 0 { // check 路径：副作用防护
+		snap = snapshotMbts(keep)
+	}
 	cmd := exec.Command("moon", "fmt")
 	cmd.Dir = "moonbit"
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(out))
 	}
+	if snap != nil {
+		restoreMbts(snap)
+	}
 	return nil
+}
+
+// snapshotMbts：读 moonbit/ 下全部 .mbt 内容（排除 keep 指定的产物路径）。
+func snapshotMbts(keep []string) map[string][]byte {
+	keepSet := map[string]bool{}
+	for _, k := range keep {
+		keepSet[filepath.Join("moonbit", k)] = true
+	}
+	snap := map[string][]byte{}
+	_ = filepath.WalkDir("moonbit", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			if d != nil && d.IsDir() && (d.Name() == "_build" || d.Name() == "target") {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".mbt") && !keepSet[path] {
+			if b, err := os.ReadFile(path); err == nil {
+				snap[path] = b
+			}
+		}
+		return nil
+	})
+	return snap
+}
+
+// restoreMbts：把快照里被 fmt 改动的文件还原。
+func restoreMbts(snap map[string][]byte) {
+	for path, b := range snap {
+		if cur, err := os.ReadFile(path); err != nil || !bytes.Equal(cur, b) {
+			_ = os.WriteFile(path, b, 0o644)
+		}
+	}
 }
 
 // opCodeNumber：op 名 → 编号（与 @opcode.OpCode::code 一致——**查询表由

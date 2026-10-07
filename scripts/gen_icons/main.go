@@ -22,8 +22,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
-	"math"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,13 +33,13 @@ import (
 )
 
 type Rules struct {
-	AssetsDir     string            `json:"assets_dir"`
-	IndexTsv      string            `json:"index_tsv"`
-	GeometryJSON  string            `json:"geometry_json"`
-	DemoTs        string            `json:"demo_ts"`
-	SvgAttrs      map[string]string `json:"svg_attrs"`
-	GeometrySchema string           `json:"geometry_schema"`
-	ScaleFormula  string            `json:"scale_formula"`
+	AssetsDir      string            `json:"assets_dir"`
+	IndexTsv       string            `json:"index_tsv"`
+	GeometryJSON   string            `json:"geometry_json"`
+	DemoTs         string            `json:"demo_ts"`
+	SvgAttrs       map[string]string `json:"svg_attrs"`
+	GeometrySchema string            `json:"geometry_schema"`
+	ScaleFormula   string            `json:"scale_formula"`
 }
 
 type IconEntry struct {
@@ -50,23 +50,23 @@ type IconEntry struct {
 }
 
 type Geometry struct {
-	Schema          string                `json:"schema"`
-	Digest          string                `json:"digest"`
-	ViewBox         string                `json:"viewBox"`
-	StrokeWidth     float64               `json:"stroke_width"`
-	StrokeLinecap   string                `json:"stroke_linecap"`
-	StrokeLinejoin  string                `json:"stroke_linejoin"`
-	Fill            string                `json:"fill"`
-	ScaleFormula    string                `json:"scale_formula"`
-	Icons           map[string]IconEntry  `json:"icons"`
+	Schema         string               `json:"schema"`
+	Digest         string               `json:"digest"`
+	ViewBox        string               `json:"viewBox"`
+	StrokeWidth    float64              `json:"stroke_width"`
+	StrokeLinecap  string               `json:"stroke_linecap"`
+	StrokeLinejoin string               `json:"stroke_linejoin"`
+	Fill           string               `json:"fill"`
+	ScaleFormula   string               `json:"scale_formula"`
+	Icons          map[string]IconEntry `json:"icons"`
 }
 
 var (
-	elemRe    = regexp.MustCompile(`(?s)<(path|circle|rect)\b([^>]*?)/?>`)
-	attrRe    = regexp.MustCompile(`([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*"([^"]*)"`)
-	titleRe   = regexp.MustCompile(`(?s)<title>(.*?)</title>`)
-	descRe    = regexp.MustCompile(`(?s)<desc>(.*?)</desc>`)
-	numRe     = regexp.MustCompile(`^-?[0-9.]+$`)
+	elemRe  = regexp.MustCompile(`(?s)<(path|circle|rect)\b([^>]*?)/?>`)
+	attrRe  = regexp.MustCompile(`([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*"([^"]*)"`)
+	titleRe = regexp.MustCompile(`(?s)<title>(.*?)</title>`)
+	descRe  = regexp.MustCompile(`(?s)<desc>(.*?)</desc>`)
+	numRe   = regexp.MustCompile(`^-?[0-9.]+$`)
 )
 
 func main() {

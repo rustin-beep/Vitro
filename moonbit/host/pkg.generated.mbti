@@ -19,8 +19,6 @@ pub fn format_arg_count(Array[Int]) -> Int
 
 pub fn format_fixed(Double, Int) -> String
 
-pub fn format_spec_kinds(Array[Int]) -> Array[Int]
-
 pub fn heap_exhausted_note() -> String
 
 pub fn host_abs(Int) -> UInt64

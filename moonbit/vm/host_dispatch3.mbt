@@ -424,9 +424,11 @@ fn VitroVM::execute_host_func3(
           return
         }
       }
-      let specs = @host.format_spec_kinds(codes_of(fmt))
+      // %*d 批四（2026-10-07）：弹参数数按星号消耗计（审阅 P1-2——sprintf/
+      // snprintf 臂曾漏改，`sprintf(buf,"[%*d]",5,42)` 错值+滞留栈）
+      let need = @host.format_arg_count(codes_of(fmt))
       let args : Array[UInt64] = []
-      for i = 0; i < specs.length(); i = i + 1 {
+      for i = 0; i < need; i = i + 1 {
         args.push(self.pop())
       }
       let reply = @host.host_sprintf(
@@ -450,9 +452,10 @@ fn VitroVM::execute_host_func3(
           return
         }
       }
-      let specs = @host.format_spec_kinds(codes_of(fmt))
+      // %*d 批四（2026-10-07）：弹参数数按星号消耗计（同 sprintf 臂）
+      let need = @host.format_arg_count(codes_of(fmt))
       let args : Array[UInt64] = []
-      for i = 0; i < specs.length(); i = i + 1 {
+      for i = 0; i < need; i = i + 1 {
         args.push(self.pop())
       }
       let reply = @host.host_snprintf(

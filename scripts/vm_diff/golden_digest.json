@@ -1515,6 +1515,12 @@
       "stdout_sha": "f1829524c1d7c28e",
       "memory_sha": "500de7e8cb1ec530"
     },
+    "baseline/printf_star_family.c": {
+      "src_sha": "6c4cf6f8",
+      "exit_code": 0,
+      "stdout_sha": "9eb7248aa564c206",
+      "memory_sha": "a0a63c5aee3edd9d"
+    },
     "baseline/ptr_arith_char.c": {
       "src_sha": "e459e224",
       "exit_code": 0,
@@ -1835,10 +1841,10 @@
       "memory_sha": "532c609ced499e2a"
     },
     "baseline/static_local_aggregate.c": {
-      "src_sha": "8f8c4d5f",
-      "exit_code": 178,
+      "src_sha": "26d50ad9",
+      "exit_code": 181,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "b64af2aa3eced470"
+      "memory_sha": "43bd67a944b06414"
     },
     "baseline/static_local_array.c": {
       "src_sha": "b308a88f",

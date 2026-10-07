@@ -149,14 +149,21 @@ fn BytecodeGen::emit_static_init(
             (global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
           )
         }
-      } else if vty.kind() is TK_Struct || vty.kind() is TK_Union {
-        // struct/union 聚合初值按成员偏移递归（批四 2026-10-07——
-        // DIFF-CODEGEN-STATIC-ADDR-01 连带：旧 emit_static_scalar_array_init
-        // 把聚合当平铺标量数组〔elem_size=整尺寸〕，`{1,2}` 第二元素写飞；
-        // 复用全局路径 flatten_global_init 同通道同语义。注：聚合成员里的
-        // 字符串指针初值走 pending_string_inits〔Pass 1 后消费〕，static
-        // 在 Pass 3 执行——该罕见形态（`static struct {char* s;} = {"x"}`
-        // ）会丢值，登记观察项）
+      } else if vty.kind() is TK_Struct || vty.kind() is TK_Union ||
+        (
+          vty.is_array() && {
+            let base = vty.base_element_type()
+            base.kind() is TK_Struct || base.kind() is TK_Union
+          }
+        ) {
+        // struct/union（含聚合数组——审阅 P2-2 扩面：`static struct P ps[2]
+        // = {{1,2},{3,4}}` 曾落平铺标量路径静默清零）聚合初值按成员偏移
+        // 递归（批四 2026-10-07——DIFF-CODEGEN-STATIC-ADDR-01 连带：旧
+        // emit_static_scalar_array_init 把聚合当平铺标量数组〔elem_size=
+        // 整尺寸〕，`{1,2}` 第二元素写飞）；复用全局路径 flatten_global_init
+        // 同通道同语义。注：聚合成员里的字符串指针初值走 pending_string_
+        // inits〔Pass 1 后消费〕，static 在 Pass 3 执行——该罕见形态
+        //（`static struct {char* s;} = {"x"}`）会丢值，登记观察项）
         self.flatten_global_init(vty, init, global_offset.reinterpret_as_uint())
       } else {
         self.emit_static_scalar_array_init(vty, elements, global_offset, loc)

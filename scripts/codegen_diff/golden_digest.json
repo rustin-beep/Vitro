@@ -256,6 +256,7 @@
         "precedence.c": "e7405d44",
         "printf_char.c": "af37cd32",
         "printf_flags.c": "7db9bc67",
+        "printf_star_family.c": "6c4cf6f8",
         "ptr_arith_char.c": "e459e224",
         "ptr_arith_struct.c": "10a54327",
         "ptr_assign_deref.c": "4a524e0b",
@@ -309,7 +310,7 @@
         "sscanf_basic.c": "a6a32f5c",
         "static_assert_sizeof.c": "eaff46b4",
         "static_global_basic.c": "6e2264cf",
-        "static_local_aggregate.c": "8f8c4d5f",
+        "static_local_aggregate.c": "26d50ad9",
         "static_local_array.c": "b308a88f",
         "static_local_counter.c": "5bdd1dc8",
         "static_local_init_once.c": "b5cb2f12",
@@ -1149,6 +1150,9 @@
         "printf_flags.c": {
           "result_sha": "7550e50b10696fa1"
         },
+        "printf_star_family.c": {
+          "result_sha": "c73210d1eecf8514"
+        },
         "ptr_arith_char.c": {
           "result_sha": "853d8e1ea414700d"
         },
@@ -1309,7 +1313,7 @@
           "result_sha": "b193d6c6c0635343"
         },
         "static_local_aggregate.c": {
-          "result_sha": "44f020cd977360e2"
+          "result_sha": "7020db2b5ae9ab49"
         },
         "static_local_array.c": {
           "result_sha": "5160e2c21b62c7b4"
@@ -1611,7 +1615,7 @@
         "inline_asm.c": "b4fdb8d1",
         "keyword_compat.c": "ce1212f3",
         "loop_var_shadow.c": "67d2073f",
-        "printf_scanf_type_mismatch.c": "e358b16e",
+        "printf_scanf_type_mismatch.c": "6fb1cda5",
         "sizeof_array_param.c": "34ee7a7e",
         "static_assert.c": "4e388a20",
         "string_len_manual.c": "b5eb330a",
@@ -1660,8 +1664,7 @@
           "result_sha": "fd951e1a5b24c7f8"
         },
         "printf_scanf_type_mismatch.c": {
-          "fail": true,
-          "fail_stage": "type"
+          "result_sha": "29e47ff3f54193bc"
         },
         "sizeof_array_param.c": {
           "result_sha": "91143154c3ddac85"

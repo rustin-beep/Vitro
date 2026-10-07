@@ -12,6 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户第十轮审阅处置：P1×2 + P2×6 + P3 全清，2026-10-07）
+
+- **P1-1 四连修**（提交自述「13 闸绿」不可复现——根因=未按 CI 步骤全集跑）：addr.mbt
+  fmt 落盘（新增嵌套 match 缩进）；surface 边表补 `format_arg_count`；codegen_diff gap 的
+  printf_scanf_type_mismatch 补刷（五 digest 连坐教训）；protocol_frames 帧 9 基线
+  code_str E3032/E3035→W（E→W 改名连坐冻结基线）。
+- **P1-2 %*d 四臂补全**：sprintf/snprintf 臂弹参改 format_arg_count（曾静默错值
+  `[    0]` + 滞留栈）；探针 `sprintf("[%*d]",5,42)` 与 Clang 逐位一致。
+- **P2-1 负星号 C 语义**：负宽 = 左对齐 |w|（flags 追加 '-'）、负精度 = 视同省略
+  （precision None）——旧 clamp 0 与 Clang `[7     ]`/`[3.141590]` 不符，实测逐位一致。
+- **P2-2 static 聚合数组初值**：判定扩 Array-of-Struct（`static struct P ps[2] =
+  {{1,2},{3,4}}` 曾平铺静默清零）→ 走 flatten_global_init 成员偏移递归。
+- **P2-3/4 语料补锚**：static_local_aggregate 补标识符路 `struct Outer whole = o;`
+  （原始缺陷形态——成员路盖不到 gen_addr）；新语料 printf_star_family.c（sprintf/
+  snprintf/printf 三臂弹参 + 负星号，双侧逐位一致；含 include 避 Windows sprintf
+  legacy 链接域）。
+- **P2-5 被测物新鲜度**：登记批五（protocol_frames/replay 消费 debug serve exe 无
+  新鲜度门禁——本地「31 帧一致/replay 绿」可能是陈旧 exe 假绿；teaching 本地 145 处
+  红实为同形态，重建 serve 后 82/82 绿，判定修正）。
+- **P2-6 gen_libc_data --check 副作用**：check 路径 moon fmt 整模块曾重排无关源——
+  fmt 前快照 + fmt 后还原（keep 产物与临时产物），探针文件验证零副作用。
+- **P3**：① static 聚合成字符串指针初值 TRAP + scanf 抑制写超宽 → 已知限制①表
+  9 号登记（归批五）；③ 旧名三处连坐（支持矩阵/子集规范销案划线/语料行内注释）。
+- 附带：format_spec_kinds 随 vm 改用 format_arg_count 成零消费孤儿 → 降私有 +
+  边表清行 + mbti 连坐。
+
 ### Fixed（S9 修复批批四第三条：static 局部聚合地址通路与初值，2026-10-07）
 
 - **DIFF-CODEGEN-STATIC-ADDR-01 销案**：gen_addr / gen_member_addr 的 Identifier 查找链补

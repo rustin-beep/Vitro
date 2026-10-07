@@ -32,19 +32,19 @@ fn BytecodeGen::gen_addr(
                 @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
                 loc,
               )
-        None =>
-          match self.static_local_indices.get(name) {
-            Some(offset) =>
-              // static local 地址通路（DIFF-CODEGEN-STATIC-ADDR-01 销案，
-              // 批四 2026-10-07——Rust gen_addr 同位无此分支照搬；static
-              // 落全局数据段，地址形态同 global）
-              self.emit(
-                @opcode.OpCode::PushConst,
-                @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
-                loc,
-              )
-            None => self.report_error("未声明的变量", loc)
-          }
+            None =>
+              match self.static_local_indices.get(name) {
+                Some(offset) =>
+                  // static local 地址通路（DIFF-CODEGEN-STATIC-ADDR-01 销案，
+                  // 批四 2026-10-07——Rust gen_addr 同位无此分支照搬；static
+                  // 落全局数据段，地址形态同 global）
+                  self.emit(
+                    @opcode.OpCode::PushConst,
+                    @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
+                    loc,
+                  )
+                None => self.report_error("未声明的变量", loc)
+              }
           }
       }
     Unary(@ast.UnaryOp::Deref, operand, _, _) => self.gen_expr(operand)

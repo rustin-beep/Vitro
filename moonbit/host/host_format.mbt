@@ -690,40 +690,44 @@ fn format_printf_string(
                 let is_ll = t.1
                 let mut precision = t.2
                 let mut width = t.3
-                let flags = t.4
+                let mut flags = t.4
                 // %*d 批四（2026-10-07）：星号宽度/精度从参数组**前位**取
                 //（语义序 ("%*d", w, 42)——星号参数在值参数前，dispatch 弹
-                // 参后 args 为语义序）。超 PRINTF_FIELD_BUDGET 教学截断
-                //（Clang 会尝试同量级输出——U2#9 静态闸的运行期对位）；
-                // 负值按 0（C 负星号宽度的左对齐形态教学面简化）。
+                // 参后 args 为语义序）。**负宽度 = 左对齐 |w|（as if "%-*d"，
+                // C 语义——审阅 P2-1 修正，旧 clamp 0 与 Clang 不符）；负精度
+                // = 视同省略（precision None）**；超 PRINTF_FIELD_BUDGET 教学
+                // 截断（Clang 会尝试同量级输出——U2#9 静态闸的运行期对位）。
                 if t.5 && used < args.length() {
                   let w = args[used].to_uint().reinterpret_as_int()
-                  width = Some(
-                    if w < 0 || w > PRINTF_FIELD_BUDGET {
-                      if w < 0 {
-                        0
-                      } else {
+                  if w < 0 {
+                    let abs_w = -w
+                    width = Some(
+                      if abs_w > PRINTF_FIELD_BUDGET {
                         PRINTF_FIELD_BUDGET
-                      }
-                    } else {
-                      w
-                    },
-                  )
+                      } else {
+                        abs_w
+                      },
+                    )
+                    if not(flags.contains("-")) {
+                      flags = flags + "-"
+                    }
+                  } else {
+                    width = Some(
+                      if w > PRINTF_FIELD_BUDGET { PRINTF_FIELD_BUDGET } else { w },
+                    )
+                  }
                   used += 1
                 }
                 if t.6 && used < args.length() {
                   let p = args[used].to_uint().reinterpret_as_int()
-                  precision = Some(
-                    if p < 0 || p > PRINTF_FIELD_BUDGET {
-                      if p < 0 {
-                        0
-                      } else {
-                        PRINTF_FIELD_BUDGET
-                      }
-                    } else {
-                      p
-                    },
-                  )
+                  // 负精度视同省略（C 语义——审阅 P2-1）
+                  precision = if p < 0 {
+                    None
+                  } else if p > PRINTF_FIELD_BUDGET {
+                    Some(PRINTF_FIELD_BUDGET)
+                  } else {
+                    Some(p)
+                  }
                   used += 1
                 }
                 // 值参数（星号消耗后可能越界——参数不足形态按 0 字面输出）
@@ -885,7 +889,7 @@ fn format_printf_string(
 }
 
 ///|
-pub fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
+fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
   parse_format_specs(fmt)
 }
 

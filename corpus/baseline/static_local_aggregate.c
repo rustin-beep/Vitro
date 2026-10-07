@@ -14,7 +14,10 @@ int main() {
     static char msg[4] = "hi";
     static struct Inner direct = {7, 8};
     struct Inner copy = o.in;
+    // 标识符路聚合拷贝（审阅 P2-3——原始缺陷形态：gen_addr 的 static
+    // 分支；成员路 copy 走 index_member 盖不到此路）
+    struct Outer whole = o;
     int *p = &arr[1];
     int s = o.in.x + o.in.y + o.z + arr[2] + msg[1] + copy.y;
-    return s + direct.x + direct.y + *p;
+    return s + direct.x + direct.y + *p + whole.z;
 }

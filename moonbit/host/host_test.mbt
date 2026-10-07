@@ -34,6 +34,9 @@ test "output_surface_split" {
     msg="stdout 15 + stderr 4 + 附注 15 + 补的 \\n",
   )
   assert_eq(log.dropped_bytes(), 0)
+  // note 独立预算（批五治理）：默认值与程序预算同入口可查，丢弃记账分立
+  assert_eq(log.note_dropped_bytes(), 0)
+  assert_eq(log.note_budget(), @host.NOTE_LOG_BUDGET)
   assert_true(log.is_empty() == false)
   // 带通道标记的交错视图（`OutputChunk` 是它的元素类型）
   let chunks : Array[@host.OutputChunk] = log.chunk_list()

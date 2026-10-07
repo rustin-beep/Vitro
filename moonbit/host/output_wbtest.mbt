@@ -171,6 +171,101 @@ test "partial_trim_is_byte_exact_no_utf8_alignment" {
 }
 
 ///|
+/// **note 独立预算**（批五 note 无界治理）：超限丢最旧 note、保最新，附一条
+/// 截断注记；note 丢弃不触碰程序块（反向亦然——程序输出的裁剪从不动 note）。
+test "note_budget_ring_drops_oldest_keeps_tail" {
+  let log = OutputLog::new()
+  log.set_note_budget(10)
+  log.push_stdout(b"prog-stdout")
+  log.push_note_str("AAAA") // 5 字节（补 \n）
+  log.push_note_str("BBBB") // 5 字节，累计 10 恰满
+  assert_eq(log.note_dropped_bytes(), 0)
+  log.push_note_str("C") // +2 → 12 > 10 ⇒ 最旧 note（"AAAA\n"）截头 2 字节 → 10 ≤ 10
+  assert_eq(
+    log.note_dropped_bytes(),
+    2,
+    msg="丢最旧 note 的超出部分（2 字节）",
+  )
+  assert_true(
+    log.has_note(@utf8.encode("AA\n")),
+    msg="最旧附注被截头（剩 \"AA\\n\"——与程序块同款的部分截除）",
+  )
+  assert_true(
+    log.has_note(@utf8.encode("BBBB\n")),
+    msg="较新附注原样保留",
+  )
+  assert_true(log.has_note(@utf8.encode("C\n")), msg="最新附注原样保留")
+  assert_true(
+    log.has_note(
+      @utf8.encode(
+        "[引擎] 引擎附注超出 10 字节预算，更早的附注已截断丢弃，仅保留最新部分。\n",
+      ),
+    ),
+    msg="截断注记可见（与程序输出截断注记同款语义）",
+  )
+  // 截断注记只补一次：连环再丢（小预算下注记自身也会被环形语义吃掉，
+  // 但不得出现第二条注记——核心不变量是「至多一条」）
+  log.push_note_str("DDDD") // +5 触发连环丢
+  log.push_note_str("E")
+  assert_true(
+    note_truncation_marker_count(log) <= 1,
+    msg="截断注记至多一条（置位后不再重复追加）",
+  )
+  // 程序块不受 note 丢弃影响
+  assert_eq(log.join(OutputKind::Stdout), b"prog-stdout")
+  // clear 复位丢弃记账（预算配置保留）
+  log.clear()
+  assert_eq(log.note_dropped_bytes(), 0)
+  assert_eq(
+    log.note_budget(),
+    10,
+    msg="clear 保留预算配置（与程序预算同款）",
+  )
+}
+
+///|
+/// note 截断注记段的前缀匹配计数（`Bytes` 无 startsWith——逐字节比对）。
+fn note_truncation_marker_count(log : OutputLog) -> Int {
+  let marker = @utf8.encode("[引擎] 引擎附注超出")
+  let m = marker.length()
+  let mut count = 0
+  for c in log.chunks_of(OutputKind::Note) {
+    let mut hit = c.length() >= m
+    if hit {
+      for i = 0; i < m; i = i + 1 {
+        if c[i] != marker[i] {
+          hit = false
+          break
+        }
+      }
+    }
+    if hit {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
+/// 单条 note 超预算：截头留尾（防御形态——真实 8MB 预算下单条引擎附注
+/// 不可达，此锚钉住与程序块同款的部分截除语义）。
+test "note_budget_single_chunk_trims_head" {
+  let log = OutputLog::new()
+  log.set_note_budget(5)
+  log.push_note_str("0123456789") // 11 字节 > 5 ⇒ 截头 6 字节保尾部
+  assert_eq(log.note_dropped_bytes(), 6)
+  assert_eq(
+    log.len_of(OutputKind::Note) > 5,
+    true,
+    msg="截后 note 计数只含保留字节",
+  )
+  assert_true(
+    log.has_note(@utf8.encode("6789\n")),
+    msg="截头 6 字节后保留尾部（\"6789\\n\"——含补齐的段落换行）",
+  )
+}
+
+///|
 /// O(1) 长度口径与 clear 复位。
 test "counters_and_clear" {
   let log = OutputLog::new()

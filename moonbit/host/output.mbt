@@ -94,6 +94,17 @@ pub(all) struct OutputChunk {
 pub const OUTPUT_LOG_BUDGET : Int = 16 * 1024 * 1024
 
 ///|
+/// 引擎附注（note）通道的独立预算（批五 note 无界治理，2026-10-07）。
+///
+/// note 此前**不占预算不参与丢弃**（继承 Rust），是输出侧唯一无界通道。
+/// 治理后双层收敛：运行期附注在 `vm.apply_reply` 全量同文本去重（循环
+/// `malloc(0)` 从百万条收敛为一条）、泄漏报告逐条行在 gateway 封顶（1000 行
+/// + 省略汇总）；本预算是 OutputLog 单点的**兜底安全网**——覆盖合法极值
+/// （封顶后报告 ~80KB、全部附注文案 <2KB），未来新增 note 源再引入无界时
+/// 由它兜住，语义与程序输出同款：丢最旧保最新 + 截断注记可见。
+pub const NOTE_LOG_BUDGET : Int = 8 * 1024 * 1024
+
+///|
 /// stdout/stderr 连续小段合并阈值：写入 ≤ 此长度的程序片段与末尾同通道块拼接
 /// （`putchar` 逐字符分配合并）；大于此长度独立成段。
 pub const MERGE_THRESHOLD : Int = 64
@@ -109,10 +120,9 @@ pub const MERGE_LIMIT : Int = 4096
 /// - **超预算丢最旧**：尾部保真（学生看到的最新输出不丢），并附一条截断引擎
 ///   附注（截断可见，不静默）；
 /// - **O(1) 长度**：总量与逐通道字节长度增量维护；
-/// - **小段合并**：见模块头的适配说明。
-///
-/// **已知残余（继承 Rust 的诚实记录）**：引擎附注（note）不占预算、不参与丢弃
-/// ——它是输出侧唯一无界通道，当前靠调用方的文本去重控制条数（`has_note`）。
+/// - **小段合并**：见模块头的适配说明；
+/// - **note 独立预算**（批五治理）：附注通道有自己的字节数上限，同样丢最旧
+///   保最新——两方向互不触碰（程序输出的裁剪从不动 note，反之亦然）。
 pub struct OutputLog {
   /// 已封口的片段序列（写入序）。`Note` 永不参与合并。
   chunks : Array[OutputChunk]
@@ -132,10 +142,16 @@ pub struct OutputLog {
   mut pending_kind : OutputKind
   /// `pending` 是否有内容。
   mut has_pending : Bool
+  /// note 通道独立预算（运行配置，`clear` 保留）。
+  mut note_budget : Int
+  /// note 通道环形丢弃的累计字节数（诊断口径，`clear` 复位）。
+  mut note_dropped_bytes : Int
+  /// note 首次触发丢弃后置位，避免重复附截断注记。
+  mut note_truncation_noted : Bool
 }
 
 ///|
-/// 空日志（默认 16MB 预算）。
+/// 空日志（默认 16MB 程序输出预算 + 8MB note 预算）。
 pub fn OutputLog::new() -> OutputLog {
   OutputLog::{
     chunks: [],
@@ -147,6 +163,9 @@ pub fn OutputLog::new() -> OutputLog {
     pending: [],
     pending_kind: OutputKind::Stdout,
     has_pending: false,
+    note_budget: NOTE_LOG_BUDGET,
+    note_dropped_bytes: 0,
+    note_truncation_noted: false,
   }
 }
 
@@ -160,6 +179,24 @@ pub fn OutputLog::set_budget(self : OutputLog, budget : Int) -> Unit {
 /// 当前预算。
 pub fn OutputLog::budget(self : OutputLog) -> Int {
   self.budget
+}
+
+///|
+/// 调整 note 通道独立预算（只影响后续写入的裁剪判定；测试与诊断口径）。
+pub fn OutputLog::set_note_budget(self : OutputLog, budget : Int) -> Unit {
+  self.note_budget = budget
+}
+
+///|
+/// note 通道当前预算。
+pub fn OutputLog::note_budget(self : OutputLog) -> Int {
+  self.note_budget
+}
+
+///|
+/// note 通道环形丢弃的累计字节数。
+pub fn OutputLog::note_dropped_bytes(self : OutputLog) -> Int {
+  self.note_dropped_bytes
 }
 
 ///|
@@ -322,6 +359,7 @@ pub fn OutputLog::push_note(self : OutputLog, bytes : Bytes) -> Unit {
   let i = OutputKind::Note.index()
   self.kind_bytes[i] = self.kind_bytes[i] + text.length()
   self.enforce_budget()
+  self.enforce_note_budget()
 }
 
 ///|
@@ -413,6 +451,70 @@ fn OutputLog::on_bytes_removed(
 }
 
 ///|
+/// note 通道独立预算的裁剪（批五 note 无界治理）：超限从最旧 note 起丢
+/// （尾部保真），单条超预算截头留尾；**只动 note，程序块一律不碰**（与
+/// `enforce_budget` 的「只动程序块」互为镜像）。首次触发时附一条截断注记。
+///
+/// 截断注记自身也是 note 且**写入后不再触发本函数**（直接操作 `chunks`，
+/// 与 `enforce_budget` 的截断注记同款写法）——注记保证可见，哪怕极小预算
+/// 下它自身就超限。注记可被后续丢弃吃掉（环形语义不豁免），但
+/// `note_truncation_noted` 置位后不再重复追加。
+///
+/// 性能口径：常态（去重 + 报告封顶后 note 条数 < 数千）逐条 `remove` 的
+/// O(n) 可忽略；若未来新增海量 note 源使此处成为热点，先修源头而不是
+/// 给裁剪换数据结构。
+fn OutputLog::enforce_note_budget(self : OutputLog) -> Unit {
+  let ni = OutputKind::Note.index()
+  while self.kind_bytes[ni] > self.note_budget {
+    let mut idx = -1
+    for i = 0; i < self.chunks.length(); i = i + 1 {
+      if self.chunks[i].kind == OutputKind::Note {
+        idx = i
+        break
+      }
+    }
+    if idx < 0 {
+      break
+    }
+    let target = self.chunks[idx]
+    let n = target.bytes.length()
+    let over = self.kind_bytes[ni] - self.note_budget
+    if n > over {
+      // 从头部移除 over 字节，保留尾部
+      self.chunks[idx] = OutputChunk::{
+        kind: OutputKind::Note,
+        bytes: bytes_slice(target.bytes, over, n - over),
+      }
+      self.remove_note_bytes(over)
+      break
+    } else {
+      ignore(self.chunks.remove(idx))
+      self.remove_note_bytes(n)
+    }
+  }
+  if self.note_dropped_bytes > 0 && !self.note_truncation_noted {
+    self.note_truncation_noted = true
+    let note = "[引擎] 引擎附注超出 \{self.note_budget} 字节预算，更早的附注已截断丢弃，仅保留最新部分。\n"
+    self.chunks.push(OutputChunk::{
+      kind: OutputKind::Note,
+      bytes: @utf8.encode(note),
+    })
+    self.total_bytes = self.total_bytes + note.length()
+    self.kind_bytes[ni] = self.kind_bytes[ni] + note.length()
+  }
+}
+
+///|
+/// note 通道的移除记账（与 `on_bytes_removed` 分流——`dropped_bytes` 是程序
+/// 输出的诊断口径，note 的丢弃计 `note_dropped_bytes`，两者不混）。
+fn OutputLog::remove_note_bytes(self : OutputLog, n : Int) -> Unit {
+  self.total_bytes = self.total_bytes - n
+  let i = OutputKind::Note.index()
+  self.kind_bytes[i] = self.kind_bytes[i] - n
+  self.note_dropped_bytes = self.note_dropped_bytes + n
+}
+
+///|
 /// **片段视图（带通道标记，写入序）**：已封口片段 + 未封口尾块（若有）。
 ///
 /// 出口给"需要按原始交错顺序连同通道一起看"的消费方（引擎附注并非总在末尾，
@@ -484,7 +586,7 @@ fn kind_ok(actual : OutputKind, want : OutputKind?) -> Bool {
 }
 
 ///|
-/// 清空（预算与配置保留）。
+/// 清空（预算与配置保留——程序预算、note 预算同款）。
 pub fn OutputLog::clear(self : OutputLog) -> Unit {
   self.chunks.clear()
   self.pending.clear()
@@ -495,4 +597,6 @@ pub fn OutputLog::clear(self : OutputLog) -> Unit {
   }
   self.dropped_bytes = 0
   self.truncation_noted = false
+  self.note_dropped_bytes = 0
+  self.note_truncation_noted = false
 }

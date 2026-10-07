@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（批五·note 无界通道治理，refs #47，2026-10-07）
+
+- **note 通道双层收敛**（输出侧唯一无界通道销案——继承 Rust 的「不占预算不参与
+  丢弃」形态）：① `vm.apply_reply` 的附注去重从「仅 heap_exhausted」扩为**全量同
+  文本去重**（host 层附注文案全为固定文本——循环 `malloc(0)` 在 10M 步内从百万条
+  收敛为一条；stdout/返回值零变化）；② 泄漏报告逐条行封顶 1000 行 + 省略汇总行
+  （计数与总字节数仍为全量；1MB 堆最小 4B 块极端形态理论上限约 26 万行明细）。
+- **OutputLog note 独立预算兜底**（`NOTE_LOG_BUDGET` 8MB，与程序输出同款「丢最旧
+  保最新 + 截断注记可见」语义；`set_note_budget`/`note_dropped_bytes` 诊断出口；
+  快照往返连坐）——双层收敛后常态不触发，作为未来新增 note 源的安全网。
+
 ### Fixed（用户第十轮审阅处置：P1×2 + P2×6 + P3 全清，2026-10-07）
 
 - **P1-1 四连修**（提交自述「13 闸绿」不可复现——根因=未按 CI 步骤全集跑）：addr.mbt

@@ -46,12 +46,13 @@ fn VitroVM::apply_reply(self : VitroVM, reply : @host.HostMemReply) -> Unit {
     None => ()
   }
   match reply.note {
+    // 全量同文本去重（批五 note 无界治理，2026-10-07）：oracle 仅对
+    // heap_exhausted 查重、malloc(0) 等附注每次都推——循环调用下 note 通道
+    // 无界（10M 步内百万条）。host 层附注文案全为固定文本（无动态内容），
+    // 同文本去重后条数 = 文案种类数，天然有界；stdout/返回值不受影响。
+    // S9 解除照搬（#47 批五），语义分歧点：同一附注只提示一次。
     Some(n) =>
-      // 去重照搬 oracle report_heap_exhausted 的范围（只对堆耗尽附注
-      // contains 查重；malloc(0) 等 note oracle 每次都推，不去重——
-      // HostMemReply.note 契约「调用方负责去重」的三轮审阅 P2-1 落位）
-      if n == @host.heap_exhausted_note() &&
-        self.output.has_note(normalize_note_bytes(n)) {
+      if self.output.has_note(normalize_note_bytes(n)) {
         ()
       } else {
         self.output.push_note_str(n)

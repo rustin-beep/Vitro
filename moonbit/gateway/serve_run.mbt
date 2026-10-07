@@ -169,11 +169,17 @@ fn serve_run_frame(
 }
 
 ///|
-/// 内存泄漏教学报告（oracle engine/session_ops.rs append_leak_report 逐字
-/// 照搬，2026-10-04 analysis 片接线——serve_run 头注分叉①销案）：遍历
-/// 未释放堆区域按分配行号排序，note 通道追加（push_note 段落语义自动
-/// 补尾换行，与 Rust push_note 同款）。alloc_by "vfs" 排除（FILE\* 内部
-/// 分配不算用户泄漏）；空泄漏静默返回（零报告形态同 Rust）。
+/// 内存泄漏教学报告（oracle engine/session_ops.rs append_leak_report 照搬，
+/// 2026-10-04 analysis 片接线——serve_run 头注分叉①销案）：遍历未释放堆区域
+/// 按分配行号排序，note 通道追加（push_note 段落语义自动补尾换行，与 Rust
+/// push_note 同款）。alloc_by "vfs" 排除（FILE\* 内部分配不算用户泄漏）；
+/// 空泄漏静默返回（零报告形态同 Rust）。
+///
+/// **逐条行封顶**（批五 note 无界治理，2026-10-07，S9 解除照搬）：明细行
+/// 最多 `leak_report_max_rows` 行，超出以省略汇总行收口；计数行与总字节数
+/// 仍为全量。极端形态（1MB 堆最小 4B 对齐块全泄漏）理论上限约 26 万行
+/// 明细——封顶后报告自身有界（~80KB），教学无损（前 1000 行样本 + 全量
+/// 计数足以定位泄漏模式）。
 pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   let leaks : Array[@memory.MemoryRegionData] = []
   let addrs : Array[UInt] = []
@@ -211,7 +217,8 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   lines.push(
     "发现 \{leaks.length()} 处未释放的堆内存，共 \{total_leaked} 字节：",
   )
-  for i = 0; i < n; i = i + 1 {
+  let shown = if n > leak_report_max_rows { leak_report_max_rows } else { n }
+  for i = 0; i < shown; i = i + 1 {
     let r = leaks[i]
     let by = if r.alloc_by == "" { "malloc" } else { r.alloc_by }
     let hex = uint_to_hex4(addrs[i])
@@ -225,6 +232,9 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
       )
     }
   }
+  if n > shown {
+    lines.push("  ... 其余 \{n - shown} 处已省略显示")
+  }
   lines.push(
     "💡 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。",
   )
@@ -234,6 +244,10 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
     vm.output.push_note_str(line)
   }
 }
+
+///|
+/// 泄漏报告逐条明细行上限（计数与总字节数不受此限——见 `append_leak_report`）。
+let leak_report_max_rows : Int = 1000
 
 ///|
 /// UInt → 大写十六进制，**最少 4 位**（oracle `{:04X}` 语义——不足 4 位

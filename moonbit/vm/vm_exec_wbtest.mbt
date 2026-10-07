@@ -938,6 +938,38 @@ test "host_dispatch_malloc_free" {
 }
 
 ///|
+/// `apply_reply` 的 note 去重是**全量同文本**（批五 note 无界治理：S9 解除
+/// oracle 照搬——oracle 仅对 heap_exhausted 查重，malloc(0) 等附注每次都
+/// 推，循环调用下 note 通道无界；host 层附注文案全为固定文本，同文本去重
+/// 后条数 = 文案种类数，天然有界）。
+test "apply_reply_note_dedup_all_text" {
+  let vm = VitroVM::new()
+  let r : @host.HostMemReply = @host.HostMemReply::{
+    value: Some(0UL),
+    note: Some("[warning] malloc(0) 返回 NULL。"),
+    trap: None,
+  }
+  vm.apply_reply(r)
+  vm.apply_reply(r)
+  assert_eq(
+    vm.output.chunks_of(@host.OutputKind::Note).length(),
+    1,
+    msg="同文本附注只推一次（第二次被去重）",
+  )
+  // 不同文本不受影响
+  vm.apply_reply(@host.HostMemReply::{
+    value: None,
+    note: Some("另一条附注"),
+    trap: None,
+  })
+  assert_eq(
+    vm.output.chunks_of(@host.OutputKind::Note).length(),
+    2,
+    msg="不同文本各成一段",
+  )
+}
+
+///|
 /// abort/assert_fail/unreachable 三件。
 test "host_dispatch_exit_family" {
   let vm = VitroVM::new()

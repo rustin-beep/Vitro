@@ -236,3 +236,37 @@ test "serve_run_leak_report_note_channel" {
     msg="教学提示行",
   )
 }
+
+///|
+/// 泄漏报告行数封顶（批五 note 无界治理）：逐条行最多
+/// `leak_report_max_rows` 行，超出部分以省略汇总行收口；**计数行与总字节数
+/// 仍为全量**。极端形态（1MB 堆最小 4B 对齐块全泄漏）理论上限约 26 万行
+/// ——封顶后报告自身有界，note 通道兜底预算不再被报告撑爆。
+test "serve_run_leak_report_rows_capped" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { int i; for (i = 0; i < 1001; i++) { malloc(8); } return 0; }\\n\"}}",
+  )
+  let (resp, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(resp.contains("\"status\":\"finished\""), msg="run 须完成")
+  // 计数行 = 全量（封顶只作用于逐条明细）
+  assert_true(
+    s.vm.output.has_note(
+      @utf8.encode(
+        "发现 1001 处未释放的堆内存，共 8008 字节：\n",
+      ),
+    ),
+    msg="计数与总字节数为全量",
+  )
+  // 省略汇总行
+  assert_true(
+    s.vm.output.has_note(@utf8.encode("  ... 其余 1 处已省略显示\n")),
+    msg="超出上限的明细以省略行收口",
+  )
+  // 明细行不再全量铺开：报告总段数有界（标题+计数+1000 明细+省略+提示+尾行）
+  let note_count = s.vm.output.chunks_of(@host.OutputKind::Note).length()
+  assert_true(
+    note_count <= 1006,
+    msg="报告段数有界（\{note_count} ≤ 1006）",
+  )
+}

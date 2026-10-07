@@ -11,6 +11,8 @@ pub const MERGE_LIMIT : Int = 4096
 
 pub const MERGE_THRESHOLD : Int = 64
 
+pub const NOTE_LOG_BUDGET : Int = 8388608
+
 pub const OUTPUT_LOG_BUDGET : Int = 16777216
 
 pub fn double_free_message(@memory.FreedRegionInfo) -> String
@@ -281,6 +283,9 @@ pub struct OutputLog {
   pending : Array[Byte]
   mut pending_kind : OutputKind
   mut has_pending : Bool
+  mut note_budget : Int
+  mut note_dropped_bytes : Int
+  mut note_truncation_noted : Bool
 }
 pub fn OutputLog::budget(Self) -> Int
 pub fn OutputLog::chunk_list(Self) -> Array[OutputChunk]
@@ -294,12 +299,15 @@ pub fn OutputLog::join_all(Self) -> Bytes
 pub fn OutputLog::len(Self) -> Int
 pub fn OutputLog::len_of(Self, OutputKind) -> Int
 pub fn OutputLog::new() -> Self
+pub fn OutputLog::note_budget(Self) -> Int
+pub fn OutputLog::note_dropped_bytes(Self) -> Int
 pub fn OutputLog::push(Self, OutputKind, Bytes) -> Unit
 pub fn OutputLog::push_note(Self, Bytes) -> Unit
 pub fn OutputLog::push_note_str(Self, String) -> Unit
 pub fn OutputLog::push_stderr(Self, Bytes) -> Unit
 pub fn OutputLog::push_stdout(Self, Bytes) -> Unit
 pub fn OutputLog::set_budget(Self, Int) -> Unit
+pub fn OutputLog::set_note_budget(Self, Int) -> Unit
 pub fn OutputLog::snapshot(Self) -> Self
 pub fn OutputLog::total_bytes(Self) -> Int
 

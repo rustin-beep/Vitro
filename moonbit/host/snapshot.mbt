@@ -38,6 +38,9 @@ pub fn OutputLog::snapshot(self : OutputLog) -> OutputLog {
     pending: pending_copy,
     pending_kind: self.pending_kind,
     has_pending: self.has_pending,
+    note_budget: self.note_budget,
+    note_dropped_bytes: self.note_dropped_bytes,
+    note_truncation_noted: self.note_truncation_noted,
   }
 }
 

@@ -128,29 +128,40 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
           cd "$RUNNER_TEMP/jsonmbt"
+          # 干净 runner 上 registry index 未初始化时直接 build 必失败
+          # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
+          # moonbitlang/parser·lexer·x 全部 "module was not found in the
+          # registry"，stderr 另给三行 `you may need to run moon update`，
+          # 本步 rc=127）。Vitro 侧其余 moon 步骤踩不到是因为依赖面不同：
+          # scripts/moon.mod 只有 name（零依赖），moonbit 侧依赖 moonbitlang/core
+          # 已随工具链安装 bundle。moon update = 「Update the package registry
+          # index」，即补上本 runner 缺失的 index。
+          moon update
           MOON_CC=clang moon build --target native --release
           echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
 
       - name: Regenerate truth-source JSON (.json.mbt -> .json)
-        # 清单 10 张 = core 下游 8 个闸门所消费 + mbti_sync / perf_baseline
-        # （这两个闸目前只在本地跑，但 .json 同样不入仓——一并再生以保证
-        # 任何环境 clone 后跑本地闸都不缺规则文件，2026-10-07 CI 模拟实测：
-        # 缺文件时两者均 FATAL 读规则失败）。
+        # 清单由索引自枚举，不再手抄：2026-10-08 run 37733072522 实证手抄清单
+        # 漏了 perf_budget（当时写 10 张，注释还把 perf_budget 算进 "core 下游
+        # 8 闸门"），hygiene 的 perf_budget -check 遂在缺 rules.json 时
+        # FATAL 读规则失败、整 run 红。
+        # 命中面 = 10 张 rules.json.mbt + 1 张 host_route_rules.json.mbt = 11；
+        # 另有 5 张 golden_digest.json.mbt，其 .json 是入仓基线、不在此再生
+        # （故本清单按 `rules` 命名取面，不用全量 *.json.mbt）。
+        # 计数断言失败即红——增删真相源而未同步此处，不得静默通过。
         shell: bash
         run: |
           set -e
-          for m in \
-            scripts/moonbit/host_route_rules.json.mbt \
-            scripts/moonbit/libc_boot_diff/rules.json.mbt \
-            scripts/moonbit/libc_single_source/rules.json.mbt \
-            scripts/moonbit/mbti_sync/rules.json.mbt \
-            scripts/moonbit/pkg_deps/rules.json.mbt \
-            scripts/host_contract_map/rules.json.mbt \
-            scripts/gen_protocol_ts/rules.json.mbt \
-            scripts/perf_baseline/rules.json.mbt \
-            scripts/protocol_frames/rules.json.mbt \
-            scripts/skill_path_check/rules.json.mbt \
-          ; do
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 11 ]; then
+            echo "FATAL: 期望 11 张规则真相源，实得 $count"
+            printf '%s\n' "$files"
+            exit 2
+          fi
+          # 路径无空格，刻意按空白词拆分：`printf | while` 会把循环放进子 shell，
+          # 循环内失败不会终止脚本；`for` + `set -e` 才是直接生效的 fail-loud 形态。
+          for m in $files; do
             "$JSONMBT_EXE" build --pretty "$m"
           done
 

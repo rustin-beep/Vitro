@@ -30,6 +30,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   libc_boot_diff / host_route_coverage / host_contract_map / gen_protocol_ts /
   skill_path_check / perf_budget / protocol_frames 33 帧——字节兼容下消费方零感知。
 
+### Fixed（jsonmbt CI 复绿：moon update + 再生清单漏项，2026-10-08）
+
+- **Build jsonmbt rc=127 修复**：干净 runner 的 registry index 未初始化，jsonmbt 三个
+  直接依赖 `moonbitlang/parser`·`lexer`·`x` 全报 "module was not found in the
+  registry"（stderr 另给三行 `you may need to run moon update`）⇒ 该步骤补
+  `moon update`；Vitro 侧其余 moon 步骤踩不到（scripts/moon.mod 零依赖、moonbit 侧
+  依赖 moonbitlang/core 随工具链 bundle）。本地隔离 `MOON_HOME`（空 registry）复现
+  逐字同错 rc=127 → update 后 build rc=0（产物 4,003,840 B，路径与 `JSONMBT_EXE` 一致）。
+- **再生清单漏 `perf_budget` 修复**：原手抄 10 张（注释把 perf_budget 算进 "core 下游
+  闸门"）⇒ hygiene 的 `perf_budget -check` 在缺 rules.json 时 FATAL exit 2、整 run 红
+  （run 37733072522）。清单改按索引自枚举（`git ls-files 'scripts/**/rules.json.mbt'
+  'scripts/**/host_route_rules.json.mbt'`）+ **计数断言 11**（断言变异 ⇒ 10 张时
+  exit 2 并打印清单）。干净检出实测：修复前 FATAL 缺 rules.json → 按新清单再生后
+  `perf_budget: PASS`；其余消费方闸门（pkg_deps / libc_single_source /
+  host_contract_map / gen_protocol_ts / skill_path_check）再生后全绿。
+- **补回 `.json.mbt` 迁移说明文档**（`docs/current/07-质量与裁定/20261007_jsonmbt真相源迁移.md`
+  ——`ci.yml:125` 引用此前破链）+ 同步 `docs/README.md` 索引；文档同时勘正合流后形态
+  （`scripts/` 自立 workspace、`cd scripts && moon check`），并附本轮红→绿证据表。
+
 ### Added（机器写回域 .json.mbt 真源铺开：五套 digest freeze 循环接 D-5，2026-10-07）
 
 - **新包 `scripts/jmemit`**：freeze digest → .json.mbt 的公共 emitter——四变体

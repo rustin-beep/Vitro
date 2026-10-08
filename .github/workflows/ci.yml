@@ -87,6 +87,73 @@ jobs:
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
+
+      # ── .json.mbt 静态门禁（jsonmbt 批 C，2026-10-07；合流批改 scripts
+      # 自立 workspace——仓根 moon.work 会让 moonbit 产物搬仓根且路径加
+      # `vitro/engine/` 前缀，壳/防线消费面全断【实测亲历】，故 moonbit
+      # 保持原生单模块、scripts 自带 moon.work members=["."]）─────────
+      #
+      # scripts 侧 11 个包（各自带 moon.pkg）装着 .json.mbt 真相源——
+      # **这是 .json.mbt 的核心增量**：类型错 / 字段名错 / 字段缺失在编译期红
+      # （[4014] / [4044] / [4091]），而写坏的 .json 照样能通过下游 Go 闸门。
+      # 换言之：真相源选 .json.mbt 而非 .json 的 buying reason 就在这一步，
+      # 删掉它等于只换载体不换保护。
+      #
+      # 实测（2026-10-07，本地 Windows 复现，逐张注入验证 11/11 覆盖）：
+      #   moon build 不检查孤立包（注入类型错仍 rc=0）
+      #   moon check 覆盖 → 每张 .json.mbt 注入跨类型错误均 rc=127
+      # 已知非致命面：`module` 是 moon 保留字 → Warning（rc 仍 0），该字段名
+      # 来自 rules.json 的数据键，不可改（改了破坏 build 产物键名）。
+      #
+      # 刻意**不加** `moon fmt --check`：workspace 模式下它会 diff 全部成员，实测
+      # 因 `moonbit/codegen/addr.mbt` 既存缩进未归一而 rc=127（与本批无关）。
+      # 格式归一靠本地 `moon fmt scripts`（限定成员，不误伤 moonbit）。
+      - name: ".json.mbt static gate (scripts 自立 workspace)"
+        shell: bash
+        run: cd scripts && moon check
+
+      # ── jsonmbt 真相源再生（2026-10-07，.json.mbt 迁移批②）────────────
+      # 11 张 rules.json 已翻转为 .json.mbt 唯一真相源（原 .json 从索引删除 +
+      # .gitignore 遮蔽防误提交）；下游生成器闸门消费 .json，故在此统一再生
+      # ——**消费方零改动**。.json.mbt 非法即本步红（J1001 系），且 --pretty
+      # 是硬要求：原 .json 为 Go json.Encoder SetIndent 形态，紧凑输出会让
+      # 按字节锚定的对账漂移。
+      #
+      # exe 来源 = clone jsonmbt 仓现构建。这不是"未完成的过渡"而是**主动
+      # 选择**：工具捏在自己手里、Vitro 侧又是找问题的试验田，拉 master 即时
+      # 生效（改完 jsonmbt 推上去，本 CI 立刻用上）。代价是每次约 40 秒编译。
+      # 详见 docs/current/07-质量与裁定/20261007_jsonmbt真相源迁移.md
+      - name: Build jsonmbt (truth-source regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          MOON_CC=clang moon build --target native --release
+          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
+
+      - name: Regenerate truth-source JSON (.json.mbt -> .json)
+        # 清单 10 张 = core 下游 8 个闸门所消费 + mbti_sync / perf_baseline
+        # （这两个闸目前只在本地跑，但 .json 同样不入仓——一并再生以保证
+        # 任何环境 clone 后跑本地闸都不缺规则文件，2026-10-07 CI 模拟实测：
+        # 缺文件时两者均 FATAL 读规则失败）。
+        shell: bash
+        run: |
+          set -e
+          for m in \
+            scripts/moonbit/host_route_rules.json.mbt \
+            scripts/moonbit/libc_boot_diff/rules.json.mbt \
+            scripts/moonbit/libc_single_source/rules.json.mbt \
+            scripts/moonbit/mbti_sync/rules.json.mbt \
+            scripts/moonbit/pkg_deps/rules.json.mbt \
+            scripts/host_contract_map/rules.json.mbt \
+            scripts/gen_protocol_ts/rules.json.mbt \
+            scripts/perf_baseline/rules.json.mbt \
+            scripts/protocol_frames/rules.json.mbt \
+            scripts/skill_path_check/rules.json.mbt \
+          ; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
+
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash
         run: |

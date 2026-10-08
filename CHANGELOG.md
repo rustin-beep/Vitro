@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（jsonmbt-migrate 合流：11 张 rules 真相源翻转 + scripts 自立 workspace，2026-10-08）
+
+- **11 张 rules.json → .json.mbt 唯一真相源**（工具转路线——不 merge migrate 分支，
+  从 HEAD~1 真源用最新 jsonmbt import 原名重转 + moon fmt 归一 + build --pretty
+  再生回验**字节全兼容**；比 migrate 分支产物新——含 icons 包登记等图标批后条目，
+  migrate 转换早于图标批曾致 pkg_deps 抓红「icons 未登记」，本批修平）。
+- **scripts 自立 workspace 终案**（替代 migrate 的仓根 moon.work——仓根形态会让
+  moonbit 产物搬仓根且路径加 `vitro/engine/` 前缀，壳/防线消费面全断【实测亲历】）：
+  `scripts/moon.work`（members=["."]）+ `scripts/moon.mod` + 11 目录 moon.pkg；
+  moonbit 保持原生单模块零改动。
+- **CI 三步**（自 migrate 搬入并改终案口径）：`.json.mbt static gate`（`cd scripts
+  && moon check`）/ Build jsonmbt（clone 现构建——试毒模式滚动跟进）/ Regenerate
+  truth-source JSON（10 张 core 下游 + mbti_sync/perf_baseline 本地闸配齐）。
+- **.gitignore**：11 张再生 .json 遮蔽出仓（第二真相源归零）。
+- 下游闸全绿实测：pkg_deps（38 包含 icons）/ libc_single_source / mbti_sync /
+  libc_boot_diff / host_route_coverage / host_contract_map / gen_protocol_ts /
+  skill_path_check / perf_budget / protocol_frames 33 帧——字节兼容下消费方零感知。
+
 ### Added（机器写回域 .json.mbt 真源铺开：五套 digest freeze 循环接 D-5，2026-10-07）
 
 - **新包 `scripts/jmemit`**：freeze digest → .json.mbt 的公共 emitter——四变体

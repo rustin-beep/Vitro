@@ -184,3 +184,19 @@ demo-dist/
 
 # jsonmbt 使用 skill——权威源在 jsonmbt 仓（.agents/skills/jsonmbt-authoring），本地副本遮蔽不入库
 .agents/skills/jsonmbt-authoring/
+
+# ── jsonmbt 真相源再生产物（2026-10-07，.json.mbt 迁移批②；2026-10-08 合流）──
+# 11 张 rules.json 翻转为 .json.mbt 唯一真相源；.json 由 jsonmbt build
+# --pretty 再生，供下游生成器闸门消费（消费方零改动）。再生产物不入仓——
+# 入仓即产生第二真相源，.json.mbt 的「单源 + 门禁有牙」价值归零。
+scripts/gen_protocol_ts/rules.json
+scripts/host_contract_map/rules.json
+scripts/moonbit/host_route_rules.json
+scripts/moonbit/libc_boot_diff/rules.json
+scripts/moonbit/libc_single_source/rules.json
+scripts/moonbit/mbti_sync/rules.json
+scripts/moonbit/pkg_deps/rules.json
+scripts/perf_baseline/rules.json
+scripts/perf_budget/rules.json
+scripts/protocol_frames/rules.json
+scripts/skill_path_check/rules.json

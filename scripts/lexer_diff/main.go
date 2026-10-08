@@ -382,6 +382,7 @@ func writeLexDigest(p string, d lexDigestDoc) {
 	must(os.MkdirAll(filepath.Dir(p), 0o755), "建 golden 目录")
 	data, _ := json.MarshalIndent(d, "", "  ")
 	must(os.WriteFile(p, append(data, 10), 0o644), "写 digest 清单")
+	emitLexMbt(p, d)
 }
 
 func fileSHA16(p string) string {

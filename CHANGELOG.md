@@ -12,6 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（机器写回域 .json.mbt 真源铺开：五套 digest freeze 循环接 D-5，2026-10-07）
+
+- **新包 `scripts/jmemit`**：freeze digest → .json.mbt 的公共 emitter——四变体
+  形态（vm_diff：Standard/CompileFail/KnownDigest/FailKnown）+ 平面节形态
+  （typeck/codegen/parser：节×(sources+hashes) 双 StringMap；lexer：双层
+  sources + tsvs 平铺）+ 栈式 JSON 键序抽取（`KeyOrderOf` 对象值面 /
+  `KeyOrderOfScalars` 标量值面——节名与内层 Map 名撞形态时长度校验不可分，
+  标量限定版按值形态区分）+ `EmitAndVerify`（emit + jsonmbt build 再生 +
+  round-trip 语义对拍，exe 缺失时告警跳过、CI static gate 兜底）。
+- **五驱动 freeze 写回点接线**：`--freeze-mb` 落 .json 后同步产
+  `golden_digest.json.mbt` 真源 + round-trip 对拍绿才完成入账（fail loud）；
+  golden 读路径不消费 .mbt（.json 仍为读侧格式，零读侧改动）。
+  - vm_diff：622 案例四变体（603/9/5/2+known），对拍除 tag 键全等；
+  - codegen：cases 条目两态 enum（Ok{result_sha}/Fail{fail,fail_stage}——
+    Fail 变体 payload 显式带 fail 键，曾漏致 build J3006 + 投影漂移 12 处）；
+  - typeck/parser/lexer：平面节形态；lexer 的 tsvs 平铺层独立字段。
+- **round-trip 对拍固化为 freeze 循环固定一步**（铺开决策数据：流程税
+  ~0.5s/轮；tag 分组语义错 moon 不抓，靠本对拍兜——jsonmbt#2 回执口径）。
+- 试毒实录（回投 jsonmbt）：J4011 错误信息内部命名泄漏（#11）、产物非
+  fmt-stable 建议 --fmt 旗标（#10）、Map 值类型命名（#6 评论）。
+
 ### Fixed（用户第十一轮审阅处置：P2-1 + P3×5 全清，2026-10-07）
 
 - **P2-1**：`freshness.rebuild` 显式注入 `MOON_CC=clang`（CI 的 MOON_CC 全是

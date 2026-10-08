@@ -41,6 +41,8 @@ import (
 	"sort"
 
 	canon "vitro/scripts/internal/canonicalize"
+
+	"vitro/scripts/jmemit"
 )
 
 func main() {
@@ -129,6 +131,7 @@ var freezePendingTypeck *typeckDigestDoc
 func flushFreezePending() {
 	if freezePendingTypeck != nil {
 		saveTypeckDigest(*freezePendingTypeck)
+		emitTypeckMbt(*freezePendingTypeck)
 	}
 }
 
@@ -141,6 +144,91 @@ type typeckDigestDoc struct {
 	Version int                   `json:"version"`
 	Note    string                `json:"note"`
 	Modes   map[string]*typeckSec `json:"modes"`
+}
+
+// typeckDigestMbt：.json.mbt 真源（铺开批 2026-10-07——平面节形态）。
+const typeckDigestMbt = "scripts/typeck_diff/golden_digest.json.mbt"
+
+// emitTypeckMbt：写回 .json 后同步产 .mbt 真源 + round-trip 对拍。
+// 节内序用 KeyOrderOf 直抽（容器名 = modes 节名的 sources/resp_hashes
+// 两容器——同文重名时按首次出现，双 Map 同键集下序一致即可）。
+func emitTypeckMbt(d typeckDigestDoc) {
+	raw, err := os.ReadFile(typeckDigestFile)
+	if err != nil {
+		fail("emit: 读 %s: %v", typeckDigestFile, err)
+	}
+	names := sortedKeys2(d.Modes)
+	secs := []jmemit.FlatSection{}
+	for _, name := range names {
+		sec := d.Modes[name]
+		srcOrder := jmemit.KeyOrderOfScalars(raw, name)
+		if srcOrder == nil || len(srcOrder) != len(sec.Sources) {
+			srcOrder = sortedKeys2(sec.Sources) // 抽序失败退 map 序（对拍仍兜语义）
+		}
+		hashOrder := sortedKeys2(sec.RespHashes)
+		secs = append(secs, jmemit.FlatSection{
+			Name: name, Sources: sec.Sources, SrcOrder: srcOrder,
+			Hashes: sec.RespHashes, HashOrder: hashOrder,
+		})
+	}
+	jmemit.EmitAndVerify(typeckDigestMbt, raw, func(_ map[string][]string) string {
+		return jmemit.EmitSections(d.Version, d.Note, secs)
+	}, func(regen []byte) int {
+		// 再生件顶层键是 sections（EmitSections 投影）——用别名结构解
+		var rd struct {
+			Version  int                     `json:"version"`
+			Note     string                  `json:"note"`
+			Sections map[string]*typeckAlias `json:"sections"`
+		}
+		if err := json.Unmarshal(regen, &rd); err != nil {
+			fmt.Fprintf(os.Stderr, "emit: 再生件解析失败: %v\n", err)
+			return 1
+		}
+		bad := 0
+		for name, sec := range d.Modes {
+			rsec, ok := rd.Sections[name]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "emit: round-trip 丢节 %s\n", name)
+				bad++
+				continue
+			}
+			if !strMapsEqual(sec.Sources, rsec.Sources) || !strMapsEqual(sec.RespHashes, rsec.Hashes) {
+				fmt.Fprintf(os.Stderr, "emit: round-trip 语义漂移节 %s\n", name)
+				bad++
+			}
+		}
+		if len(rd.Sections) != len(d.Modes) {
+			bad++
+		}
+		return bad
+	})
+}
+
+// typeckAlias：EmitSections 投影（sources/hashes 键名）的对拍解包形态。
+type typeckAlias struct {
+	Sources map[string]string `json:"sources"`
+	Hashes  map[string]string `json:"hashes"`
+}
+
+func sortedKeys2[T any](m map[string]T) []string {
+	ks := make([]string, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Strings(ks)
+	return ks
+}
+
+func strMapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 func loadTypeckDigest() typeckDigestDoc {
@@ -206,6 +294,7 @@ func freezeMBRun(files []string, corpus string) int {
 		fail("无新例可入账（%d 例均已在清单）", skipped)
 	}
 	saveTypeckDigest(doc)
+	emitTypeckMbt(doc)
 	fmt.Printf("typeck_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, skipped, typeckDigestFile)
 	return 0
 }

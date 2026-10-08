@@ -142,7 +142,7 @@ cargo_test_ci.log
 moonbit/_build/
 moonbit/scripts/_build/
 moonbit/.mooncakes/
-scripts/lexer_diff/_build/
+scripts/**/_build/
 moonbit/target/
 moonbit/.repos/
 
@@ -181,3 +181,6 @@ demo/js/*.js
 # 算法侧栏数据生成物（gen_demo_algorithms 发射——三真值源机判，发射化 2026-10-04）
 demo/algorithms.js
 demo-dist/
+
+# jsonmbt 使用 skill——权威源在 jsonmbt 仓（.agents/skills/jsonmbt-authoring），本地副本遮蔽不入库
+.agents/skills/jsonmbt-authoring/

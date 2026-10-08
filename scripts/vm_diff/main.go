@@ -83,6 +83,8 @@ import (
 	"strings"
 
 	"vitro/scripts/internal/freshness"
+
+	"vitro/scripts/jmemit"
 )
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
@@ -820,6 +822,86 @@ func summarizeStdout(o, m string) string {
 
 const digestPath = "scripts/vm_diff/golden_digest.json"
 
+// digestMbtPath：.json.mbt 真源（D-5 四变体形态——铺开批 2026-10-07）。
+// 写路径：freeze 两通道写 .json 后同步 emit 本文件 + jsonmbt build 再生
+// .json round-trip 对拍（绿才完成入账）；golden 读路径不消费它（.json
+// 仍为读侧格式——零读侧改动）。
+const digestMbtPath = "scripts/vm_diff/golden_digest.json.mbt"
+
+// jsonmbtExe：build 再生用（本地开发机形态——CI 无此件时 emit 仍执行、
+// round-trip 对拍跳过并告警，防线主体在 CI 的 .json.mbt static gate）。
+const jsonmbtExe = "../jsonmbt/_build/native/debug/build/cmd/jsonmbt/jsonmbt.exe"
+
+// emitMbtAndVerify：.json → .json.mbt 真源 + round-trip 对拍。
+// 失败即红（fail loud——真源与 .json 不同步是不可入账态）。
+func emitMbtAndVerify() {
+	raw, err := os.ReadFile(digestPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 读 %s 失败: %v\n", digestPath, err)
+		os.Exit(1)
+	}
+	var doc digestDoc
+	if err := json.Unmarshal(raw, &doc); err != nil || doc.Version != 1 {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 清单坏或版本不识\n")
+		os.Exit(1)
+	}
+	ord := jmemit.KeyOrderOf(raw, "cases")
+	entries := make(map[string]jmemit.Entry, len(doc.Cases))
+	for k, v := range doc.Cases {
+		entries[k] = jmemit.Entry{SrcSha: v.SrcSHA, ExitCode: v.ExitCode, StdoutSha: v.StdoutSHA, MemorySha: v.MemorySHA, KnownMB: v.KnownMbDigest, CompileF: v.CompileFail}
+	}
+	mbt := jmemit.EmitVariants(doc.Version, doc.Note, ord, entries)
+	if err := jmemit.WriteFile(digestMbtPath, mbt); err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 写 %s 失败: %v\n", digestMbtPath, err)
+		os.Exit(1)
+	}
+	// round-trip：jsonmbt build 再生 .json 与写回件语义对拍（除 tag 键）
+	exe := jsonmbtExe
+	if _, err := os.Stat(exe); err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 警告——jsonmbt exe 缺失（%s），round-trip 对拍跳过（.mbt 已产，CI static gate 兜底）\n", exe)
+		return
+	}
+	regenPath := digestPath + ".regen.tmp"
+	out, err := exec.Command(exe, "build", digestMbtPath, "-o", regenPath).CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: jsonmbt build 失败: %v\n%s\n", err, out)
+		os.Exit(1)
+	}
+	regen, err := os.ReadFile(regenPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 读再生件失败: %v\n", err)
+		os.Exit(1)
+	}
+	var rd digestDoc
+	if err := json.Unmarshal(regen, &rd); err != nil {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: 再生件解析失败: %v\n", err)
+		os.Exit(1)
+	}
+	// 语义对拍：version/note 全等 + 每案例除 tag 键外全等
+	bad := 0
+	for k, orig := range doc.Cases {
+		rc, ok := rd.Cases[k]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "vm_diff emit: round-trip 丢案例 %s\n", k)
+			bad++
+			continue
+		}
+		if orig != rc {
+			fmt.Fprintf(os.Stderr, "vm_diff emit: round-trip 语义漂移 %s\n  原: %+v\n  再: %+v\n", k, orig, rc)
+			bad++
+		}
+	}
+	if len(rd.Cases) != len(doc.Cases) {
+		fmt.Fprintf(os.Stderr, "vm_diff emit: round-trip 案例数漂移 %d ≠ %d\n", len(rd.Cases), len(doc.Cases))
+		bad++
+	}
+	if bad > 0 {
+		os.Exit(1)
+	}
+	os.Remove(regenPath)
+	fmt.Printf("vm_diff emit: .mbt 真源 %d 例 → round-trip 对拍绿（除 tag 键全等）\n", len(doc.Cases))
+}
+
 // selftestFlag：golden 路径自证（审阅 P3——vm 原无 --selftest flag，本批补）。
 var selftestFlag bool
 
@@ -998,6 +1080,7 @@ func freezeMBDigest(cases []Case) int {
 		os.Exit(1)
 	}
 	fmt.Printf("\nvm_diff --freeze-mb: 新增 %d 例（跳过存量 %d）→ %s（正确性背书 = clang_direct + moon test；映像为白箱回归锚）\n", added, skipped, digestPath)
+	emitMbtAndVerify()
 	return 0
 }
 

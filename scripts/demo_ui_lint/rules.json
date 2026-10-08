@@ -1,4 +1,5 @@
 {
+  "_comment": "demo UI 契约：动态类名/ID 与静态白名单的对账基准（scripts/demo_ui_lint 判定闸消费）",
   "dynamic_class_assigns": [
     {
       "where": "setStatus: el.className = \"pill \" + kind（kind 为状态字面量）",

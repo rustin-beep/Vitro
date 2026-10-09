@@ -98,7 +98,12 @@ test "trace_analyze_double_free" {
   }
   assert_eq(h.category, "DoubleFree")
   assert_eq(h.suggested_fix_kind, "SetNullAfterFree")
-  assert_true(h.one_liner.contains("释放了两次"))
+  // 病 4 锚（#47，2026-10-09）：one_liner 行号语义必须正确——freed_line 是
+  // 首次 free 行、当前行是第二次 free；旧文案「第一次释放发生在第 {alloc}
+  // 行」把 malloc 行说成首次释放，误导学生（对照 analyze_use_after_free
+  // 的 alloc/free 分清口径，系漏改）。
+  assert_true(h.one_liner.contains("已被释放"))
+  assert_true(h.one_liner.contains("又 free 了一次"))
 }
 
 ///|

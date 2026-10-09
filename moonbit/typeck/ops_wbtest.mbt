@@ -252,3 +252,48 @@ test "resolve_generic_selection" {
   assert_true(ty3 is Double(_))
   assert_eq(tc.errors.length(), 1) // 无新错
 }
+
+///|
+/// 病 3 锚（#47，2026-10-09）：`char*` → `const char*` 是 C11 §6.5.16.1
+/// 的安全方向（目标指向类型的限定符不弱于源即合法），零 W3067；旧实现
+/// type_eq 严格等不认 pointee 顶层 const 增强，假阳性（文案还渲染成两侧
+/// 同型 "char*" 自相矛盾）。两条负锚锁不放松面：base 类型不同、多级指针
+/// const 增强（char** → const char**，C 标准判非法）均维持 W3067。
+test "assign_const_gain_pointer_no_w3067" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // char* a; const char* b = a;
+  let tc = TypeChecker::new()
+  let ok = tc.check_assignable(
+    @ast.Type::Pointer(@ast.Type::Char(false, true), false),
+    @ast.Type::Pointer(@ast.Type::Char(false, false), false),
+    loc,
+  )
+  assert_true(ok, msg="const 增强方向须可赋值")
+  assert_eq(tc.warnings.length(), 0, msg="const 增强方向不得产警告")
+  // 负锚 1：int* → char*（base 不同）照报
+  let tc2 = TypeChecker::new()
+  ignore(
+    tc2.check_assignable(
+      @ast.Type::Pointer(@ast.Type::Char(false, false), false),
+      @ast.Type::Pointer(@ast.Type::Int(false, false), false),
+      loc,
+    ),
+  )
+  assert_eq(tc2.warnings.length(), 1, msg="base 类型不同须维持 W3067")
+  // 负锚 2：char** → const char**（多级指针 const 增强，C 判非法）照报
+  let tc3 = TypeChecker::new()
+  ignore(
+    tc3.check_assignable(
+      @ast.Type::Pointer(
+        @ast.Type::Pointer(@ast.Type::Char(false, true), false),
+        false,
+      ),
+      @ast.Type::Pointer(
+        @ast.Type::Pointer(@ast.Type::Char(false, false), false),
+        false,
+      ),
+      loc,
+    ),
+  )
+  assert_eq(tc3.warnings.length(), 1, msg="多级 const 增强维持 W3067（C 标准）")
+}

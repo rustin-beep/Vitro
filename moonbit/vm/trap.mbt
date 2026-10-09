@@ -137,9 +137,10 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
       sym.ty.array_size().to_string() +
       " 个元素，有效索引是 0~" +
       (sym.ty.array_size() - 1).to_string() +
-      "。\n\n[location] 发生在第 " +
-      self.current_line.to_string() +
-      " 行\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 " +
+      // 病 10 修复（#47，2026-10-09）：删内嵌 [location] 段——location 统一
+      // 由 trap() 追加（带列）；内嵌段（无列）曾与 trap() 追加段并存出
+      // 双 [location]，违反「渲染单点纪律」，现与 exec_debug TrapBounds 臂同形。
+      "。\n\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 " +
       (sym.ty.array_size() - 1).to_string() +
       " 之间。"
     }

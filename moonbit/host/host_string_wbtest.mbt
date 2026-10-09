@@ -304,7 +304,8 @@ test "strncmp_and_memcmp" {
 
 ///|
 /// `strchr`：命中/未命中/`c == 0` 命中终止符/无符号字节匹配（c=200 命中
-/// 0xC8；负 c 恒不中——oracle 语义）。
+/// 0xC8；负 c 按 C11 §7.24.5.2 char 截断语义命中——病 1 修复随锚翻转，
+/// #47 2026-10-09，旧「恒不中」系 oracle 病行为的固化锚）。
 test "strchr_unsigned_byte_match" {
   let (map, mem) = fresh()
   put_cstr(mem, map, 0x6000U, "abc")
@@ -319,8 +320,8 @@ test "strchr_unsigned_byte_match" {
   // 无符号匹配：字节 0xC8 ↔ c = 200
   put_bytes(mem, map, 0x6100U, b"\xC8\x00", false)
   assert_eq(host_strchr(mem, map, 0x6100U, 200).value, Some(0x6100UL))
-  // 负 c（-56 ≡ 0xC8 的 i8 视图）恒不中
-  assert_eq(host_strchr(mem, map, 0x6100U, -56).value, Some(0UL))
+  // 负 c（-56 ≡ 0xC8）：char 截断语义命中（病 1 翻转锚——Clang 对拍同值）
+  assert_eq(host_strchr(mem, map, 0x6100U, -56).value, Some(0x6100UL))
 }
 
 ///|
@@ -470,4 +471,48 @@ fn peek_str(
     lim = lim + 1
   }
   @utf8.decode_lossy(Bytes::from_array(buf))
+}
+
+///|
+/// 病 2 锚（#47，2026-10-09）：strdup 堆耗尽口径对齐 malloc——**返回 NULL +
+/// 教学附注、不 trap**（旧照搬 oracle「静默压 NULL 无附注」与同包 malloc
+/// 不一致；oracle 已随删区消失可单侧修）。
+test "strdup_heap_exhausted_note" {
+  let (map, mem) = fresh()
+  put_cstr(mem, map, 0x6000U, "vitro")
+  let mut n = 0
+  let mut note : String? = None
+  while true {
+    let r = host_strdup(map, mem, 0x6000U, 7)
+    match r.note {
+      Some(t) => {
+        note = Some(t)
+        assert_eq(r.value, Some(0UL))
+        assert_eq(r.trap, None, msg="堆耗尽不 trap")
+        break
+      }
+      None => {
+        guard r.value is Some(a) else { fail("未耗尽前必须分配成功") }
+        assert_true(a != 0UL)
+        n = n + 1
+      }
+    }
+  }
+  guard note is Some(t) else { fail("循环到耗尽必须命中 note") }
+  assert_true(t.length() > 0)
+  assert_true(n > 0)
+}
+
+///|
+/// 病 1 锚（#47，2026-10-09）：strchr/strrchr 的 `c` 按 C11 §7.24.5.2
+/// 「转换为 char 后比较」——负 `c` 取低 8 位（-1 → 0xFF）命中高位字节；
+/// 旧实现负 `c` 恒不中（静默错值；Clang 对拍 `"abc\xFF""def"` 的
+/// strchr(s,-1) = offset 3 vs 旧 Vitro -1）。
+test "strchr_negative_c_char_conversion" {
+  let (map, mem) = fresh()
+  put_bytes(mem, map, 0x6000U, b"abc\xFFdef", true)
+  let r = host_strchr(mem, map, 0x6000U, -1)
+  assert_eq(r.value, Some(0x6003UL), msg="strchr 负 c 须按 char 截断语义命中 0xFF 字节")
+  let r2 = host_strrchr(mem, map, 0x6000U, -1)
+  assert_eq(r2.value, Some(0x6003UL), msg="strrchr 同款 char 截断语义")
 }

@@ -75,6 +75,22 @@ fn is_ascii_ws_byte(b : Byte) -> Bool {
 }
 
 ///|
+/// hex 数字字节值（'0'-'9'/'a'-'f'/'A'-'F' → 0-15；非 hex → -1）。
+/// scanf %i/%x 扫描与 strtoul 前缀判定共用（病 9，#47 2026-10-09）。
+fn hex_digit_val(b : Byte) -> Int {
+  if b >= 48 && b <= 57 {
+    b.to_int() - 48
+  } else if b >= 97 && b <= 102 {
+    b.to_int() - 97 + 10
+  } else if b >= 65 && b <= 70 {
+    b.to_int() - 65 + 10
+  } else {
+    -1
+  }
+}
+
+
+///|
 /// `atol(s)`（oracle `misc.rs:336-359`）——i64 回绕累加。
 pub fn host_atol(
   mem : @memory.Memory,

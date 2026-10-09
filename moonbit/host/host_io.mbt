@@ -856,6 +856,90 @@ pub fn host_scanf_n(
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
         }
       }
+    } else if spec == 105 || spec == 120 || spec == 111 {
+      // i / x / o（病 9 修复，#47 2026-10-09——方向 A 扩面拍板；oracle
+      // 从未实现、规范 :421 的 ✅ 系虚标，删区后以 C11 §7.21.6.2 为真值
+      // 源补齐）：`%i` = strtol(s,NULL,0) 语义（0x/0X 前缀 16 进制、
+      // 0 开头 8 进制、否则十进制）；`%x` = base 16（可选 0x 前缀——仅当
+      // 后随 hex 数字才跳，防游标错位）；`%o` = base 8（'0' 天然是 oct
+      // 数字无需前缀处理）。均可带符号；抑制（%*x）同外层只跳写不跳消费。
+      let entry_pos = pos
+      while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
+        pos = pos + 1
+      }
+      if pos >= chars.length() {
+        exhausted = true
+        break
+      }
+      let mut negative = false
+      if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
+        pos = pos + 1
+      }
+      if pos >= chars.length() {
+        exhausted = true
+        break
+      }
+      let mut base : Int = 10
+      if spec == 120 {
+        base = 16
+        // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
+        if pos + 2 < chars.length() && chars[pos] == 48 &&
+          (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+          hex_digit_val(chars[pos + 2]) >= 0 {
+          pos = pos + 2
+        }
+      } else if spec == 111 {
+        base = 8
+      } else if chars[pos] == 48 {
+        // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8（'0' 作为首个 oct
+        // 数字由下方扫描自然消费）
+        if pos + 2 < chars.length() &&
+          (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+          hex_digit_val(chars[pos + 2]) >= 0 {
+          base = 16
+          pos = pos + 2
+        } else {
+          base = 8
+        }
+      }
+      let mut val : UInt64 = 0UL
+      let mut scanned = false
+      while pos < chars.length() {
+        let d = hex_digit_val(chars[pos])
+        if d < 0 || d >= base {
+          break
+        }
+        val = val * base.to_uint64() + d.to_uint64()
+        pos = pos + 1
+        scanned = true
+      }
+      if !scanned {
+        // 无数字（如纯符号 / "0x" 无后随 hex）——匹配失败：游标回退到本项
+        // 进入处、不计入 matched、终止后续匹配（C：首项失败即返回已配数）
+        pos = entry_pos
+        break
+      }
+      if negative {
+        val = 0UL - val
+      }
+      let f = if !sl.2 {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, val)
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            @util.i64_to_i32_bits(val.reinterpret_as_int64()).reinterpret_as_uint(),
+          )
+        }
+      } else {
+        Ok(())
+      }
+      match f {
+        Ok(_) => ()
+        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+      }
     } else {
       // 不支持的转换符：未消费输入，不计入成功项
       continue

@@ -655,3 +655,45 @@ test "printf_zero_pad_sign_prefix_and_float_flags" {
   ])
   inspect(log2.join(OutputKind::Stdout), content="b\"[+3.500000][ 3.5][+3.5]\"")
 }
+
+///|
+/// 病 9 修复锚（#47，2026-10-09，方向 A 扩面拍板）：`%i`/`%x`/`%o` 按
+/// C11 §7.21.6.2 补齐——`%i` = strtol(s,NULL,0) 语义（0x/0X 前 16 进制、
+/// 0 前缀 8 进制、否则十进制，均可带符号）；`%x` = base 16（可选 0x 前缀）；
+/// `%o` = base 8。旧实现三符落 else 分支**静默跳过**（返回 0 且不消费输入
+/// ——学生无法与「格式错误」区分的双静默；规范 :421 的 ✅ 系虚标，oracle
+/// 从未实现〔tag rust-oracle-freeze io.rs 实锤只有 d/u/f/c/s 五分支〕）。
+/// 值全部对拍 gcc/Clang 同语义真值。
+test "scanf_i_x_o_conversions" {
+  let (map, mem) = fresh()
+  let a = 0x7000U
+  // %x：base 16
+  let r1 = scanf_run(map, mem, InputState::new([b"ff"], true), "%x", [a])
+  guard r1 is InputOutcome::Value(1UL) else { fail("%x 须匹配 1 项") }
+  assert_eq(mem.load_u32(map, a), Ok(255U))
+  // %x：0x 前缀也接受（strtoul base 16 语义）
+  let r1b = scanf_run(map, mem, InputState::new([b"0x1f"], true), "%x", [a])
+  guard r1b is InputOutcome::Value(1UL) else { fail("%x 0x 前缀须匹配") }
+  assert_eq(mem.load_u32(map, a), Ok(31U))
+  // %o：base 8
+  let r2 = scanf_run(map, mem, InputState::new([b"17"], true), "%o", [a])
+  guard r2 is InputOutcome::Value(1UL) else { fail("%o 须匹配 1 项") }
+  assert_eq(mem.load_u32(map, a), Ok(15U))
+  // %i：十进制 / 0x 前缀 16 进制 / 0 前缀 8 进制（strtol base 0）
+  let r3 = scanf_run(map, mem, InputState::new([b"17"], true), "%i", [a])
+  guard r3 is InputOutcome::Value(1UL) else { fail("%i 十进制须匹配") }
+  assert_eq(mem.load_u32(map, a), Ok(17U))
+  let r4 = scanf_run(map, mem, InputState::new([b"0x1f"], true), "%i", [a])
+  guard r4 is InputOutcome::Value(1UL) else { fail("%i 0x 前缀须匹配") }
+  assert_eq(mem.load_u32(map, a), Ok(31U))
+  let r5 = scanf_run(map, mem, InputState::new([b"017"], true), "%i", [a])
+  guard r5 is InputOutcome::Value(1UL) else { fail("%i 0 前缀须匹配") }
+  assert_eq(mem.load_u32(map, a), Ok(15U))
+  // 符号 + ll 修饰（store_u64 面）
+  let r6 = scanf_run(map, mem, InputState::new([b"-ff"], true), "%llx", [a])
+  guard r6 is InputOutcome::Value(1UL) else { fail("%llx 须匹配") }
+  let v6 = mem.load_u64(map, a)
+  guard v6 is Ok(u6) else { fail("load_u64") }
+  // -0xff 的 u64 位模式（与 Clang strtoul 负值语义一致：补码）
+  assert_eq(u6, 0xFFFFFFFFFFFFFF01UL)
+}

@@ -174,8 +174,8 @@ pub fn host_strlen(
 /// `strdup(s)`（oracle `string.rs:10-71`）。分配三步契约与 malloc 同构
 /// （allocate_raw → 清 freed_logs → register_alloc「复位或 push」）。
 ///
-/// 堆耗尽**静默压 NULL、无附注**（oracle `:20-26` 同——与 malloc 的附注
-/// 行为不一致，oracle 已知不一致点，照搬并登记两侧同修候选）。
+/// 堆耗尽**返回 NULL + 教学附注**（病 2 修复，#47 2026-10-09——对齐同包
+/// malloc 口径；旧照搬 oracle「静默压 NULL 无附注」的不一致已随删区可单侧修）。
 pub fn host_strdup(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
@@ -193,7 +193,8 @@ pub fn host_strdup(
   let aligned = @bytecode.align4(size.reinterpret_as_uint())
   let addr = match map.allocate_raw(aligned, @bytecode.MEM_SIZE) {
     Some(a) => a
-    None => return null_silent()
+    // 病 2 修复（#47）：堆耗尽口径对齐 malloc——附注而非静默
+    None => return null_with_note(heap_exhausted_note())
   }
   map.freed_logs_remove_overlapping(addr, addr + aligned)
   // 复制内容 + 终止符（oracle 是截断到内存尾的 store_i8 循环；受检批量写
@@ -628,9 +629,10 @@ pub fn host_memcmp(
 }
 
 ///|
-/// `strchr(s, c)`（oracle `string.rs:367-387`）——**无符号字节**与 `c`
-/// （i32）比较（`b as i32 == c`；负 `c` 恒不中——与 oracle 同）；`c == 0`
-/// 命中终止符（先查匹配再查 NUL，与 oracle 分支序一致）。
+/// `strchr(s, c)`——`c` 按 C11 §7.24.5.2「转换为 char 后比较」：比较前
+/// 取低 8 位（病 1 修复，#47 2026-10-09——旧照搬 oracle 的 i32 原样比较，
+/// 负 `c` 恒不中，Clang 对拍静默错值）；`c == 0` 命中终止符（先查匹配
+/// 再查 NUL，与 oracle 分支序一致）。
 pub fn host_strchr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
@@ -642,7 +644,7 @@ pub fn host_strchr(
     let b = load_i8_raise(mem, map, addr + i.reinterpret_as_uint()) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
-    if (b & 0xFF) == c {
+    if (b & 0xFF) == (c & 0xFF) {
       return value_only((addr + i.reinterpret_as_uint()).to_uint64())
     }
     if b == 0 {
@@ -668,7 +670,7 @@ pub fn host_strrchr(
     let b = load_i8_raise(mem, map, addr + i.reinterpret_as_uint()) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
-    if (b & 0xFF) == c {
+    if (b & 0xFF) == (c & 0xFF) {
       result = addr + i.reinterpret_as_uint()
     }
     if b == 0 {

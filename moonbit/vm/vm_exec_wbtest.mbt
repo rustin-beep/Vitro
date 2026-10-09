@@ -1725,3 +1725,38 @@ test "host3_depth_limit_8" {
   let _ = vm.run()
   assert_true(vm.output.chunks_of(@host.OutputKind::Note).length() >= 2)
 }
+
+///|
+/// 病 10 锚（#47，2026-10-09）：指针路径越界文案（format_bounds_error）
+/// **不得内嵌 [location] 段**——location 统一由 trap() 追加（带列）；
+/// 内嵌段曾致一条诊断出现两个 [location]（一个无列一个有列），违反
+/// trap.mbt 头注的「渲染单点纪律」。下标路径（exec_debug TrapBounds 臂）
+/// 本就不内嵌，本锚锁指针路径对齐。
+test "bounds_message_no_embedded_location" {
+  let vm = VitroVM::new()
+  vm.set_symbols([
+    @bytecode.Symbol::{
+      name: "a",
+      addr: 4U,
+      is_local: true,
+      ty: @ast.Type::Array(@ast.Type::Int(false, false), 4, [], false, false, []),
+      scope_depth: 0,
+      func_name: "main",
+      decl_line: 1,
+    },
+  ])
+  vm.call_stack.push(CallFrame::{
+    return_ip: Some(0),
+    locals_base: 0x8000U,
+    local_count: 1,
+    func_name: "main",
+    original_stack_top: 0U,
+    caller_line: 0,
+    local_buffers: [],
+  })
+  // local 数组实际基址 = locals_base(0x8000) + sym.addr(4) = 0x8004；
+  // 取 a[4] 元素地址（基址+16，越界一格）——命中 Some 臂尾部宽容窗
+  let s = vm.format_bounds_error(0x8018U)
+  assert_true(s.contains("数组越界"), msg="锚有效性：须命中 Some 臂（符号扫描成功）")
+  assert_false(s.contains("[location]"), msg="文案内不得内嵌 location 段")
+}

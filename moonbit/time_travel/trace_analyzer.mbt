@@ -408,11 +408,14 @@ fn analyze_double_free(
   }
   guard trap_step < steps.length() else { return None }
   let trap_payload = steps[trap_step]
+  // 病 4 修复（#47，2026-10-09）：行号语义改口——freed_line 是首次 free 行、
+  // code_line 是第二次 free 行（旧文案把 alloc_line 说成「第一次释放」，
+  // 与 analyze_use_after_free 的 alloc/free 分清口径对齐，系漏改）。
   let one_liner = "同一块内存在第 " +
     freed_line.to_string() +
-    " 行被释放了两次。第一次释放发生在第 " +
-    alloc_line.to_string() +
-    " 行。每次 free(p) 后请立刻执行 p = NULL;，因为对 NULL 重复 free 是安全的。"
+    " 行已被释放，现在第 " +
+    trap_payload.code_line.to_string() +
+    " 行又 free 了一次。每次 free(p) 后请立刻执行 p = NULL;，因为对 NULL 重复 free 是安全的。"
   let related = dedup_sorted([alloc_line, freed_line, trap_payload.code_line])
   Some({
     category: "DoubleFree",

@@ -19,7 +19,7 @@ priv suberror JsonParseError {
 const JSON_PARSE_DEPTH_LIMIT : Int = 128
 
 ///|
-struct JsonCursor {
+priv struct JsonCursor {
   src : String
   mut pos : Int
   mut depth : Int
@@ -68,7 +68,7 @@ fn skip_ws(c : JsonCursor) -> Unit {
 fn expect(c : JsonCursor, ch : Int) -> Unit raise JsonParseError {
   if peek(c) != ch {
     raise JsonParseError::Fail(
-      message="期望字符 '\{Char::from_int(ch)}'",
+      message="期望字符 '\{ch.unsafe_to_char()}'",
       offset=c.pos,
     )
   }
@@ -233,7 +233,7 @@ fn parse_string_body(
             }
             code = code * 16 + d
           }
-          buf.write_char(Char::from_int(code))
+          buf.write_char(code.unsafe_to_char())
         }
         _ =>
           raise JsonParseError::Fail(
@@ -247,7 +247,7 @@ fn parse_string_body(
         offset=c.pos - 1,
       )
     } else {
-      buf.write_char(Char::from_int(ch))
+      buf.write_char(ch.unsafe_to_char())
     }
   }
 }
@@ -288,7 +288,7 @@ fn parse_number(c : JsonCursor) -> Json raise JsonParseError {
       }
     }
   }
-  let text = c.src[start:c.pos].to_string()
+  let text = c.src[start:c.pos].to_owned()
   if text.length() == 0 || text == "-" {
     raise JsonParseError::Fail(message="非法数字字面量", offset=start)
   }

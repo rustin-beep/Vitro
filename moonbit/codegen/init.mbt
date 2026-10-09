@@ -73,9 +73,9 @@ fn f32_bits_u64(f : Float) -> UInt64 {
 fn Int64::to_int32_bits(v : Int64) -> Int {
   let low = v.reinterpret_as_uint64() & 0xFFFFFFFFUL
   if low >= 0x80000000UL {
-    (low.to_int64() - 0x100000000L).to_int()
+    (low.reinterpret_as_int64() - 0x100000000L).to_int()
   } else {
-    low.to_int64().to_int()
+    low.reinterpret_as_int64().to_int()
   }
 }
 
@@ -97,7 +97,9 @@ fn BytecodeGen::push_literal_init(
       if is64 {
         self.globals_init_64.push((offset, bits))
       } else {
-        self.globals_init_32.push((offset, bits.to_int64().to_int()))
+        self.globals_init_32.push(
+          (offset, bits.reinterpret_as_int64().to_int()),
+        )
       }
       true
     }
@@ -199,7 +201,7 @@ fn flatten_init_list(
         result.push(
           Float::from_double(value)
           |> Float::reinterpret_as_uint
-          |> UInt::to_int,
+          |> UInt::reinterpret_as_int,
         )
       InitList(inner, _, _) => {
         let sub = flatten_init_list(inner, errors)

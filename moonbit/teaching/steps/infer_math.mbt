@@ -47,7 +47,7 @@ fn infer_gcd(
     line_lower.contains("fprintf") ||
     line_lower.contains("snprintf")
   let has_mod_expr = line_lower.contains(" % ") || line_lower.contains("%=")
-  if has_mod_expr && not(is_io_line) {
+  if has_mod_expr && !is_io_line {
     // U1#1 管道批（P0-4 收口）：运算过程类 phase 用**行入口操作数**拼
     // 算式——行末帧的 b 已被 `b = a % b` 赋值（48 % 12 = 0 是错的），
     // prev 是进入本行前一刻（48 % 18），结果恰是行末的 b（余数 12）。
@@ -167,11 +167,21 @@ fn infer_hanoi(
     // MoonBit Char::from_int 恒返回 Char，有效性以可打印 ASCII 域近似
     //〔char 形参域即 'A'/'B'/'C'，ASCII 域内等价，登记〕，域外降级）。
     let from_c = match vars.get_int_any(["from"]) {
-      Some(v) => if v >= 32 && v < 127 { Some(Char::from_int(v)) } else { None }
+      Some(v) =>
+        if v >= 32 && v < 127 {
+          Some(v.unsafe_to_char())
+        } else {
+          None
+        }
       None => None
     }
     let to_c = match vars.get_int_any(["to"]) {
-      Some(v) => if v >= 32 && v < 127 { Some(Char::from_int(v)) } else { None }
+      Some(v) =>
+        if v >= 32 && v < 127 {
+          Some(v.unsafe_to_char())
+        } else {
+          None
+        }
       None => None
     }
     match (from_c, to_c) {

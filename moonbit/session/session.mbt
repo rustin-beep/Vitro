@@ -207,7 +207,7 @@ fn nth_line(source : String, n : Int) -> String? {
   }
   let lines : Array[String] = []
   for line in source.split("\n") {
-    lines.push(line.to_string())
+    lines.push(line.to_owned())
   }
   if lines.length() > 1 && lines[lines.length() - 1] == "" {
     ignore(lines.pop())

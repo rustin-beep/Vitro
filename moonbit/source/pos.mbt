@@ -28,7 +28,7 @@ pub(all) struct Pos {
 ///   // "int 中"：4 个 ASCII 后跟 3 字节汉字。byte_off=4 指向"中"首字节，
 ///   // 此前 4 个 scalar / 4 个 UTF-16 unit → 两列同为 5。
 ///   let line : Bytes = [0x69, 0x6e, 0x74, 0x20, 0xe4, 0xb8, 0xad]
-///   let pos = Pos::from_byte_off(line, 0, 4)
+///   let pos = @source.Pos::from_byte_off(line, 0, 4)
 ///   inspect(pos.col_scalar, content="5")
 ///   inspect(pos.col_utf16, content="5")
 /// }

@@ -193,7 +193,7 @@ fn BytecodeGen::gen_offsetof_expr(
 /// Rust `type_align_impl` 照搬：成员最大自然对齐，自含 struct（T-P0-8
 /// 同源环）以 visiting 集防递归。
 fn BytecodeGen::type_align(self : BytecodeGen, ty : @ast.Type) -> Int {
-  type_align_impl(ty, self.struct_defs, self.union_defs, Set::new())
+  type_align_impl(ty, self.struct_defs, self.union_defs, Set([]))
 }
 
 ///|
@@ -217,7 +217,7 @@ fn type_align_impl(
       if visiting.contains(name) {
         return 1 // 自含 struct（T-P0-8 同源环）：兜底最小对齐防递归
       }
-      let next_visiting = Set::new()
+      let next_visiting = Set([])
       visiting.each(k => next_visiting.add(k))
       next_visiting.add(name)
       let fields = if ty.kind() is TK_Struct {

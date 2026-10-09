@@ -10,7 +10,7 @@ test "libc_index: full table contiguous, unique, head/tail anchors" {
   }
   assert_eq(bytecode_libc_all_funcs.length(), BYTECODE_LIBC_FUNC_COUNT)
   // 名字唯一（重复名会使"数组序=索引序"派生失真）
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for n in bytecode_libc_all_funcs {
     guard !seen.contains(n) else { fail("重复函数名: \{n}") }
     seen.set(n, true)
@@ -79,7 +79,7 @@ test "argv_region_footprint (r1 #7 + F2 byte-unit anchor)" {
 
 ///|
 test "sorted_keys ascending (emitter determinism)" {
-  let m : Map[String, Int] = {}
+  let m : Map[String, Int] = Map([])
   m.set("delta", 4)
   m.set("alpha", 1)
   m.set("charlie", 3)

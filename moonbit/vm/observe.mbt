@@ -233,7 +233,7 @@ fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
     TK_Double | TK_LongLong => 8U
     _ => 4U
   }
-  addr > base && addr < base + count.to_uint() * elem_size
+  addr > base && addr < base + count.reinterpret_as_uint() * elem_size
 }
 
 ///|
@@ -283,7 +283,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     }
     let elements : Array[String] = []
     for i = 0; i < take_elems; i = i + 1 {
-      let addr = vaddr + i.to_uint() * elem_size
+      let addr = vaddr + i.reinterpret_as_uint() * elem_size
       // NULL 区检查；上界在后续读的 Err 防御兜底（Rust break 同位）
       if addr < @bytecode.NULL_TRAP_SIZE {
         break
@@ -310,7 +310,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
         }
         TK_Float => {
           let v = match self.memory.load_u32(self.mem_map, addr) {
-            Ok(bits) => bits.reinterpret_as_float()
+            Ok(bits) => Float::reinterpret_from_uint(bits)
             Err(_) => break
           }
           elements.push(@host.format_fixed(v.to_double(), 2))

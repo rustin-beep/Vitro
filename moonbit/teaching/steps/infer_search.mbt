@@ -198,7 +198,7 @@ fn infer_string_match_kmp(
     (line_lower.contains("next[") && line_lower.contains("=")) {
     // U1#1 P1-19/96：main 里的 getNext(T, next) 调用行命中 getnext——
     // 调用点产出无数值启动描述；函数体内（next[..] = 赋值形态）才带数值
-    if not(line_lower.contains("next[")) {
+    if !line_lower.contains("next[") {
       return Some(
         build_step(algorithm, "build_next", "调用构建 next 数组"),
       )
@@ -241,7 +241,7 @@ fn parse_array_assign(
   let end0 = find_char(lower, ']', start)
   guard end0 is Some(e0) else { return None }
   let end = e0
-  let idx_text = line.substring(start~, end~).trim().to_string()
+  let idx_text = line[start:end].trim().to_owned()
   let idx = if idx_text != "" && all_digits(idx_text) {
     idx_text
   } else {
@@ -252,17 +252,14 @@ fn parse_array_assign(
   }
   // 右侧：`=` 之后（取最后一个 = —— RHS 位）剥 ; 与空白
   let rhs_raw = if end + 1 < line.length() {
-    line.substring(start=end + 1, end=line.length())
+    line[end + 1:].to_owned()
   } else {
     ""
   }
   let eq0 = find_char_reverse(rhs_raw, '=')
   guard eq0 is Some(eq) else { return Some((idx, None)) }
-  let rhs = rhs_raw
-    .substring(start=eq + 1, end=rhs_raw.length())
-    .trim()
-    .to_string()
-  let rhs = strip_trailing_semicolon(rhs).trim().to_string()
+  let rhs = rhs_raw[eq + 1:].trim().to_owned()
+  let rhs = strip_trailing_semicolon(rhs).trim().to_owned()
   if rhs != "" && is_int_literal(rhs) {
     return Some((idx, Some(rhs)))
   }
@@ -278,7 +275,7 @@ fn find_sub(s : String, sub : String, from : Int) -> Int? {
   }
   let mut i = if from < 0 { 0 } else { from }
   while i + m <= n {
-    if s.substring(start=i, end=i + m).to_string() == sub {
+    if s[i:i + m].to_owned() == sub {
       return Some(i)
     }
     i = i + 1
@@ -343,10 +340,10 @@ fn is_int_literal(s : String) -> Bool {
 
 ///|
 fn strip_trailing_semicolon(s : String) -> String {
-  let t = s.trim_end().to_string()
+  let t = s.trim_end().to_owned()
   let n = t.length()
   if n > 0 && t[n - 1] == ';' {
-    return t.substring(start=0, end=n - 1).to_string()
+    return t[0:n - 1].to_owned()
   }
   t
 }

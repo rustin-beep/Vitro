@@ -103,7 +103,7 @@ pub fn[P : SourceLineProvider] collect(
     let mut k = 0
     let mut first = true
     while k < a.elements.length() && k < max_shown {
-      if not(first) {
+      if !first {
         buf.write_string(", ")
       }
       buf.write_string(a.elements[k])
@@ -206,7 +206,7 @@ pub fn[P : SourceLineProvider] collect(
       for dl = 1; dl <= 3; dl = dl + 1 {
         match src.source_line_at(code_line + dl) {
           Some(l) => {
-            lab.write_string(l.trim().to_string())
+            lab.write_string(l.trim().to_owned())
             lab.write_char('\n')
           }
           None => ()
@@ -274,7 +274,7 @@ fn collect_pointer_snapshots(
 ) -> Array[@protocol.PointerSnapshot] {
   let result : Array[@protocol.PointerSnapshot] = []
   for v in local_vars {
-    if not(is_pointer_type(v.ty_name)) {
+    if !is_pointer_type(v.ty_name) {
       continue
     }
     let target_addr = match parse_addr(v.value) {
@@ -348,7 +348,7 @@ fn format_value(ty : @ast.Type, value : Int64) -> String {
     }
     TK_Float => {
       let bits = value.reinterpret_as_uint64() & 0xFFFFFFFFUL
-      let f = bits.to_uint().reinterpret_as_float()
+      let f = Float::reinterpret_from_uint(bits.to_uint())
       trim_trailing_zeros(@host.format_fixed(f.to_double(), 7))
     }
     _ => "\{value}"
@@ -361,7 +361,7 @@ fn format_value(ty : @ast.Type, value : Int64) -> String {
 /// （防 "20" 被剪成 "2" 的形态——Rust 同序先剪 0 再剪 '.'，纯整数串
 /// 无 '.' 时 trim 零不发生，此处以"见到 '.' 才剪"等价实现）。
 fn trim_trailing_zeros(s : String) -> String {
-  if not(s.contains(".")) {
+  if !s.contains(".") {
     return s
   }
   let cs = s.to_array()
@@ -395,8 +395,8 @@ fn is_pointer_type(ty_name : String) -> Bool {
 /// 地址（≤1MB，probe 实测域内两种形态均不可达）——若未来入参来源变为
 /// 非引擎文本化（如宿主直传用户串），须复刻拒溢出语义。
 fn parse_addr(value : String) -> UInt? {
-  if value.length() > 2 && (value.starts_with("0x") || value.starts_with("0X")) {
-    let hex = value.substring(start=2)
+  if value.length() > 2 && (value.has_prefix("0x") || value.has_prefix("0X")) {
+    let hex = value[2:].to_owned()
     let mut n : UInt = 0U
     for c in hex {
       let d = match c {
@@ -418,7 +418,7 @@ fn parse_addr(value : String) -> UInt? {
         'f' | 'F' => 15
         _ => return None
       }
-      n = n * 16U + d.to_uint()
+      n = n * 16U + d.reinterpret_as_uint()
     }
     return Some(n)
   }
@@ -431,7 +431,7 @@ fn parse_addr(value : String) -> UInt? {
     if c < '0' || c > '9' {
       return None
     }
-    n = n * 10U + (c.to_int() - '0'.to_int()).to_uint()
+    n = n * 10U + (c.to_int() - '0'.to_int()).reinterpret_as_uint()
   }
   Some(n)
 }
@@ -472,26 +472,26 @@ pub fn infer_semantic_label(
   let loop_depth = loop_vars.length()
   // 降级形态：循环行首直接判"循环"（同词汇表）
   let is_loop_headline = local_vars is None &&
-    (source_line.starts_with("for ") || source_line.starts_with("while "))
+    (source_line.has_prefix("for ") || source_line.has_prefix("while "))
   // 交换模式：temp + arr[/a[ + 赋值
   let is_swap = source_line.contains("temp") &&
     (source_line.contains("arr[") || source_line.contains("a[")) &&
     source_line.contains("=")
   // 递归调用（排除 callee 入口首步〔S3 观测 #3：行归因调用点〕与定义行）
-  let is_recursive = not(at_callee_entry) &&
+  let is_recursive = !at_callee_entry &&
     func_name != "" &&
     func_name != "main" &&
     source_line.contains("\{func_name}(") &&
-    not(is_function_definition_line(source_line, func_name))
+    !is_function_definition_line(source_line, func_name)
   // 普通调用（排除控制流关键字/注释行首）
   let is_func_call = source_line.contains("(") &&
-    not(source_line.starts_with("if ")) &&
-    not(source_line.starts_with("while ")) &&
-    not(source_line.starts_with("for ")) &&
-    not(source_line.starts_with("switch ")) &&
-    not(source_line.starts_with("return ")) &&
-    not(source_line.starts_with("//")) &&
-    not(source_line.starts_with("/*"))
+    !source_line.has_prefix("if ") &&
+    !source_line.has_prefix("while ") &&
+    !source_line.has_prefix("for ") &&
+    !source_line.has_prefix("switch ") &&
+    !source_line.has_prefix("return ") &&
+    !source_line.has_prefix("//") &&
+    !source_line.has_prefix("/*")
   // ── 判定顺序（顺序敏感——具体模式优先于循环上下文，模块头注契约）──
   if is_loop_headline {
     return "循环"
@@ -505,15 +505,11 @@ pub fn infer_semantic_label(
   if is_recursive {
     return "递归调用 \{func_name}"
   }
-  if source_line.starts_with("printf") || source_line.starts_with("scanf") {
-    let func = if source_line.starts_with("printf") {
-      "printf"
-    } else {
-      "scanf"
-    }
+  if source_line.has_prefix("printf") || source_line.has_prefix("scanf") {
+    let func = if source_line.has_prefix("printf") { "printf" } else { "scanf" }
     return "调用 \{func}"
   }
-  if source_line.starts_with("return") {
+  if source_line.has_prefix("return") {
     return "返回"
   }
   if source_line.contains("malloc") || source_line.contains("calloc") {
@@ -538,7 +534,7 @@ pub fn infer_semantic_label(
     let buf = StringBuilder()
     let mut first = true
     for pair in loop_vars {
-      if not(first) {
+      if !first {
         buf.write_string(", ")
       }
       buf.write_string("\{pair.0}=\{pair.1}")
@@ -602,7 +598,7 @@ fn parse_i32(s : String) -> Int? {
 /// 函数定义行判定（`int helper(int x) {` 形态——把定义行从递归判定排除，
 /// 此前把定义行标成"递归调用 helper"是直接呈现给学生的错误描述）。
 fn is_function_definition_line(line : String, func_name : String) -> Bool {
-  line.ends_with("{") && line.contains("\{func_name}(")
+  line.has_suffix("{") && line.contains("\{func_name}(")
 }
 
 ///|
@@ -634,7 +630,7 @@ fn array_index_var(line : String) -> String? {
         let mut inner_ok = close > open + 1
         let mut k = open + 1
         while k < close {
-          if not(is_ident_char(cs[k])) {
+          if !is_ident_char(cs[k]) {
             inner_ok = false
             break
           }
@@ -747,7 +743,7 @@ fn extract_called_func(line : String) -> String? {
   }
   let mut w = name_start
   while w <= name_end {
-    if not(is_ident_char(cs[w])) {
+    if !is_ident_char(cs[w]) {
       return None
     }
     w = w + 1

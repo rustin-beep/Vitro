@@ -134,7 +134,7 @@ test "json_parse_number_repr_fidelity" {
 test "json_parse_string_escapes" {
   // JSON 输入含全套转义（源码字面量经 chr(92) 构造防 bash/heredoc
   // 转义吃层——单反斜杠+t 会被 MoonBit 词法吃成真 TAB，陷阱 #37 族）
-  let bs = Char::from_int(92).to_string()
+  let bs = Int::unsafe_to_char(92).to_string()
   let json_in = "{\"s\":\"a" +
     bs +
     "tb" +

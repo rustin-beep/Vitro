@@ -557,6 +557,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **cmd/run 出口层 ≥0x80 字节双重 UTF-8 编码**〔DIFF-EXIT-STDOUT-ENCODE-01 / DIFF-LIB-PUTCHAR-01〕：出口通道改 Bytes 直写（C stub `fwrite` 原始字节，`write_stdout` 参数注入——run/vitro 双 exe 接线，lib 包零 native 依赖）+ `host_putchar` 改单字节直写通道（旧照搬 oracle char 通道 `200→C3 88` 翻转为 C 字节语义 `0xC8`）；`stdout_bytes_of` 纯函数 + wbtest 字节保真锚；`putchar_range.c` 三防线 known 全移除转 SAME。**连带修复 clang_direct 缓存层 UTF-8 毒化**（`json.Marshal` 对无效 UTF-8 落 U+FFFD——此前「双环境 golden 形态差异」实为缓存毒化误归因；`cachePayload.Stdout` 改 `[]byte` base64 + schema `cd2` 全量失效重取真值）。printf `\%c` 高位字节同族形态在 formatter String 域，随批二 DIFF-LIB-PRINTF-01 处置。
 - **include 深度/图节点超限时环检测静默判「无环」**〔DIFF-PREPROC-INCLUDE-DEPTH-01〕：封顶改报环诊断（desc 标注超限形态）；实质缺陷是环归因丢失（动态保险丝本兜住 E1015 次数，用户只见「嵌套过深」文案不知真因是环）；Clang 实探无守卫深环报 `#include nested too deeply`——两侧拦截口径一致；新锚 `u11 deep cycle reports cycle not depth`。
 
+### Fixed（moon check 警告债 A1 机械批：542→310，refs #54，2026-10-09）
+
+- **弃用 API 全清**（0020 的 177/195 条 + 0027×13 + 0082×3 + 0008×4 + 0004×3 + 0025×19）：`not(x)`→`!(x)`×70、`starts_with/ends_with`→`has_prefix/has_suffix`、view `.to_string()`→`.to_owned()`、`substring`→切片、`to_int/to_uint/to_int64`→`reinterpret_*`（官方"语义相同，写明重解释"承诺）、`reinterpret_as_float`→`Float::reinterpret_from_uint`、`Char::from_int`→`unsafe_to_char`（值域全部受控点）、`or`→`unwrap_or`、`size`→`length`、`Set::new()`→`Set([])`、`{}`→`Map([])`、删 4 处冗余 `pub` 字段修饰、3 类型 priv 化（FsProvider/JsonCursor/LibcSig）、测试/doc 块 19 处隐式导入加 `@pkg.` 前缀。
+- **diagnostics 13 类型 `derive(Show)` 移除**（深水区——消费面零依赖实证后删除；三码连坐消 46 条：0027×13 + 0020×7 字段类型 + 0079×26 Show 提升对）。**接口面收缩警示**：`diagnostics/pkg.generated.mbti` 的 `derive(Show, @debug.Debug)` 全部变 `derive(@debug.Debug)`、`libc` 的 `LibcSig` 移出接口面——下游若依赖这些类型的 Show 能力（`inspect`/插值打印）属 0.9.0 breaking 变更点（零公开下游现状 + Show 本身是官方弃用 trait，删除是清 0027 弃用语法的唯一路径）。
+- **豁免登记（非修复）**：0020 余 18 条 = `inspect` 系测试 API 依赖 core 旧 trait（`moonbit/AGENTS.md` 发布流程既有「迁移期噪音」豁免，core 稳定后清零）；0079×217 永久豁免（issue #54 评论裁定）。基线 542→310（as_of 2026-10-09，`--target all` 口径）。
+- **验收**：moon test 687/687（685 基线 + 2 来自并发 #55 批）、vm_diff 617/5/0、clang_direct 710/7/0、demo smoke 168/168、mbti_sync/surface/pkg_deps/gen_diag/hygiene/facts 全绿。官方 85 项警告全表留档 `docs/current/07-质量与裁定/moonc警告全表20261009.md`。
+
 
 ## [0.8.0] - 2026-10-05
 

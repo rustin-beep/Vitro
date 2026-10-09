@@ -123,7 +123,7 @@ fn infer_bst_delete(
   if line_lower.contains("val") &&
     line_lower.contains("temp") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("==")) {
+    !line_lower.contains("==") {
     return Some(
       build_step(
         algorithm, "replace", "用中序后继的值替换被删节点的值",
@@ -275,7 +275,7 @@ fn infer_huffman_tree(
   }
   if line_lower.contains("parent") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("-1")) {
+    !line_lower.contains("-1") {
     return Some(build_step(algorithm, "merge", "合并两个节点为新树"))
   }
   None
@@ -302,7 +302,7 @@ fn infer_avl_tree(
   }
   if line_lower.contains("bf") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("null")) {
+    !line_lower.contains("null") {
     return Some(build_step(algorithm, "update_bf", "更新平衡因子"))
   }
   None

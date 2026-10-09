@@ -409,7 +409,7 @@ fn stmt_has_min_max_assign(stmt : @ast.Stmt) -> Bool {
         Some(e) => hit = expr_has_min_max_assign(e)
         None => ()
       }
-      if not(hit) {
+      if !hit {
         for ex in extra_vars {
           match ex.init {
             Some(e) =>

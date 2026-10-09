@@ -63,7 +63,7 @@ fn global_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
       // 槽位跨度（下一全局符号偏移 − 本符号偏移；非正退化为类型尺寸）
       let next_addr = globals[i + 1].addr
       if next_addr > sym.addr {
-        (next_addr - sym.addr).to_int()
+        (next_addr - sym.addr).reinterpret_as_int()
       } else {
         global_size_fallback(sym, empty_structs, empty_unions, empty_class)
       }
@@ -116,7 +116,7 @@ fn stack_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
   let out : Array[(UInt, Json)] = []
   for f in s.vm.call_stack {
     let size = if f.original_stack_top > f.locals_base {
-      (f.original_stack_top - f.locals_base).to_int()
+      (f.original_stack_top - f.locals_base).reinterpret_as_int()
     } else {
       0
     }

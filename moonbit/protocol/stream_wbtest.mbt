@@ -171,7 +171,7 @@ test "stream_symbol_table_dedup" {
   let seen : Map[String, Bool] = Map([])
   for s in batch.symbol_table {
     assert_false(
-      seen.get(s).or(false),
+      seen.get(s).unwrap_or(false),
       msg="符号表出现重复条目：\{s}",
     )
     seen.set(s, true)

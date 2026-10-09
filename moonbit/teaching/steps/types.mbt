@@ -141,12 +141,12 @@ fn is_signature_line(source_line : String) -> Bool {
   ]
   let mut hit = false
   for k in type_kw {
-    if t.length() >= k.length() && t[:k.length()].to_string() == k {
+    if t.length() >= k.length() && t[:k.length()].to_owned() == k {
       hit = true
       break
     }
   }
-  if not(hit) {
+  if !hit {
     return false
   }
   // 尾部首个非空白字符是 '{'（trim_end 语义的手工扫描——StringView

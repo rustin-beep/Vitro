@@ -116,12 +116,12 @@ pub fn detect_sorting(
       has_sort_word
     ) ||
     (
-      not(greedy_ctx) &&
+      !greedy_ctx &&
       features.has_nested_loops &&
       features.has_array_compare &&
       features.has_min_max_track &&
       features.loop_depth >= 2 &&
-      not(features.has_swap_in_inner_loop)
+      !features.has_swap_in_inner_loop
     ) {
     matches.push(
       build_match(
@@ -142,7 +142,7 @@ pub fn detect_sorting(
       features.has_nested_loops &&
       features.has_shift_pattern &&
       features.loop_depth >= 2 &&
-      not(features.has_swap)
+      !features.has_swap
     ) {
     matches.push(
       build_match(
@@ -177,7 +177,7 @@ pub fn detect_sorting(
     (
       features.is_recursive &&
       features.has_merge_pattern &&
-      not(features.has_partition_pattern)
+      !features.has_partition_pattern
     ) {
     matches.push(
       build_match(

@@ -278,7 +278,7 @@ pub fn TypeChecker::check_scanf_format(
   let expected : Int = {
     let mut e = 0
     for (_, _, ws, _) in specs {
-      if not(ws) {
+      if !ws {
         e += 1
       }
     }

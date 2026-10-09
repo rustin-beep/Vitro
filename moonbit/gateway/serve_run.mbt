@@ -268,7 +268,9 @@ fn uint_to_hex4(v : UInt) -> String {
   let start = if top > 12 { top } else { 12 }
   let buf = StringBuilder()
   for shift = start; shift >= 0; shift = shift - 4 {
-    buf.write_char(digits[((v >> shift) & 0xFU).to_int()].unsafe_to_char())
+    buf.write_char(
+      digits[((v >> shift) & 0xFU).reinterpret_as_int()].unsafe_to_char(),
+    )
   }
   buf.to_string()
 }

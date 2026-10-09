@@ -22,10 +22,10 @@
 /// 统一模式（时间旅行）引擎状态机。
 pub struct UnifiedEngine {
   /// 检查点管理器（同包——智能判据与快照策略一体）。
-  pub checkpoints : CheckpointManager
+  checkpoints : CheckpointManager
   /// 帧窗口（frame_cache 四字段的内聚形态——写入口唯一 FrameWindow::push，
   /// 窗口不变量由类型保证）。
-  pub frames : FrameWindow
+  frames : FrameWindow
   /// 最大步数预算（默认 100_000——防无限循环耗尽资源；协议锚定值）。
   mut max_steps : Int
   /// 暂停（断点/单步停——resume 复位）。
@@ -41,7 +41,7 @@ pub struct UnifiedEngine {
   mut last_trap_message : String?
   /// 算法步骤推断上下文（批四号接线——matches 编排层 compile 时注入，
   /// 三状态随帧演化；跨包只读，写经 set_algorithm_matches）。
-  pub algo : AlgoInferCtx
+  algo : AlgoInferCtx
 }
 
 ///|

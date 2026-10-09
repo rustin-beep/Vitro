@@ -168,7 +168,7 @@ fn extract_json_string_field(json : String, key : String) -> String {
   let mut start = -1
   let mut k = 0
   while k <= json.length() - pat.length() {
-    if json.substring(start=k, end=k + pat.length()) == pat {
+    if json[k:k + pat.length()].to_owned() == pat {
       start = k
       break
     }
@@ -211,7 +211,7 @@ fn count_payloads(batch_json : String) -> Int {
   let cs = batch_json.to_array()
   let mut i = 0
   while i <= cs.length() - pat.length() {
-    if batch_json.substring(start=i, end=i + pat.length()) == pat {
+    if batch_json[i:i + pat.length()].to_owned() == pat {
       n += 1
       i += pat.length()
     } else {

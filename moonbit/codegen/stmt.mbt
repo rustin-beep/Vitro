@@ -191,11 +191,15 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       let addr = @bytecode.GLOBAL_START +
         self.next_global_offset.reinterpret_as_uint()
       match
-        self.bump_global_offset(aligned.to_int(), "字符串字面量", loc) {
+        self.bump_global_offset(
+          aligned.reinterpret_as_int(),
+          "字符串字面量",
+          loc,
+        ) {
         Some(_) => self.string_data.push((addr, value))
         None => ()
       }
-      self.emit(@opcode.OpCode::PushConst, addr.to_int(), loc)
+      self.emit(@opcode.OpCode::PushConst, addr.reinterpret_as_int(), loc)
     }
     Identifier(name, _, _) => {
       // C99 __func__（E1 B 档）：预定义标识符 → 当前函数名字符串字面量
@@ -222,7 +226,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
               if ty.is_array() {
                 self.emit(
                   @opcode.OpCode::PushConst,
-                  @bytecode.GLOBAL_START.to_int() + static_offset,
+                  @bytecode.GLOBAL_START.reinterpret_as_int() + static_offset,
                   loc,
                 )
               } else if ty.kind() is TK_Double {
@@ -272,7 +276,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
               if ty.is_array() {
                 self.emit(
                   @opcode.OpCode::PushConst,
-                  @bytecode.GLOBAL_START.to_int() + global_offset,
+                  @bytecode.GLOBAL_START.reinterpret_as_int() + global_offset,
                   loc,
                 )
               } else if ty.kind() is TK_Double {

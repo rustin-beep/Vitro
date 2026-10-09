@@ -43,7 +43,7 @@ fn infer_dp(
     } else {
       lookahead_first_body_line(env.lookahead)
     }
-    if i_head && not(dp_loop_body_is_init(body_line)) {
+    if i_head && !dp_loop_body_is_init(body_line) {
       return Some(
         build_step(
           algorithm,
@@ -61,7 +61,7 @@ fn infer_dp(
         line_lower.contains(" j <") ||
         line_lower.contains("(j <")
       ) &&
-      not(dp_loop_body_is_init(body_line)) {
+      !dp_loop_body_is_init(body_line) {
       return Some(
         build_step(
           algorithm,
@@ -91,17 +91,14 @@ fn infer_dp(
 /// 二审 P1-1：循环行是否为 dp 状态表初始化（体为 `dp[..] = <纯字面量>`）。
 /// 真正的子问题遍历循环体要么为空（`{`），要么引用其他变量/dp 依赖。
 fn dp_loop_body_is_init(line_lower : String) -> Bool {
-  if not(line_lower.contains("dp[")) || not(line_lower.contains("=")) {
+  if !line_lower.contains("dp[") || !line_lower.contains("=") {
     return false
   }
   // 取最后一个 '=' 的右侧，trim 后是纯整数字面量即初始化
   match find_char_reverse(line_lower, '=') {
     Some(eq) => {
-      let rhs0 = line_lower
-        .substring(start=eq + 1, end=line_lower.length())
-        .trim()
-        .to_string()
-      let rhs = strip_trailing_semicolon(rhs0).trim().to_string()
+      let rhs0 = line_lower[eq + 1:].trim().to_owned()
+      let rhs = strip_trailing_semicolon(rhs0).trim().to_owned()
       rhs != "" && all_digits(rhs)
     }
     None => false
@@ -122,11 +119,11 @@ fn lookahead_first_body_line(lookahead : String) -> String {
       None => n
     }
     if end > start || end0 is Some(_) {
-      let l = lookahead.substring(start~, end~).trim().to_lower().to_string()
+      let l = lookahead[start:end].trim().to_lower().to_owned()
       if l != "" &&
-        not(starts_with(l, "for ")) &&
-        not(starts_with(l, "while ")) &&
-        not(starts_with(l, "{")) {
+        !starts_with(l, "for ") &&
+        !starts_with(l, "while ") &&
+        !starts_with(l, "{") {
         return l
       }
     }

@@ -595,8 +595,8 @@ test "from_stdin_text_crlf_fully_normalized" {
   // String::replace 只替换首个匹配——单次规整只消一个 CRLF，kr_1_19
   // 实测第二行起 \r 泄入程序（输出多 \r 分叉）。from_stdin_text 循环
   // 规整后全量：每行字节序列必须无 13（\r）
-  let cr = Char::from_int(13).to_string()
-  let nl = Char::from_int(10).to_string()
+  let cr = Int::unsafe_to_char(13).to_string()
+  let nl = Int::unsafe_to_char(10).to_string()
   let text = "hello" + cr + nl + "world" + cr + nl + "tail" + cr + nl
   let st = InputState::from_stdin_text(text, true)
   assert_eq(st.lines.length(), 3)

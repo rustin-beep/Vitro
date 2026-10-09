@@ -11,8 +11,8 @@ pub(all) enum Severity {
 ///
 /// ```mbt check
 /// test {
-///   inspect(Severity::Warning.to_str(), content="warning")
-///   inspect(Severity::Hint.to_str(), content="hint")
+///   inspect(@diag.Severity::Warning.to_str(), content="warning")
+///   inspect(@diag.Severity::Hint.to_str(), content="hint")
 /// }
 /// ```
 pub fn Severity::to_str(self : Severity) -> String {
@@ -28,7 +28,7 @@ pub fn Severity::to_str(self : Severity) -> String {
 ///
 /// ```mbt check
 /// test {
-///   inspect(Severity::Warning.prefix(), content="W")
+///   inspect(@diag.Severity::Warning.prefix(), content="W")
 /// }
 /// ```
 pub fn Severity::prefix(self : Severity) -> String {
@@ -55,7 +55,7 @@ pub(all) enum SourceLang {
 ///
 /// ```mbt check
 /// test {
-///   inspect(SourceLang::Cpp.to_str(), content="cpp")
+///   inspect(@diag.SourceLang::Cpp.to_str(), content="cpp")
 /// }
 /// ```
 pub fn SourceLang::to_str(self : SourceLang) -> String {

@@ -123,7 +123,7 @@ fn infer_prim_mst(
   if (line_lower.contains("lowcost[k]") || line_lower.contains("lowcost [k]")) &&
     line_lower.contains("0") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("!=")) {
+    !line_lower.contains("!=") {
     return Some(
       build_step(algorithm, "add_vertex", "顶点 \{k} 加入生成树"),
     )

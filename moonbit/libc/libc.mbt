@@ -35,7 +35,7 @@
 ///|
 /// libc 函数签名（typeck 消费面）。不 derive Eq/Show——`return_type` 的
 /// @ast.Type 走显式 `type_eq`（ast 包 S1 设计），结构体只做数据载体。
-struct LibcSig {
+priv struct LibcSig {
   name : String
   return_type : @ast.Type
   min_args : Int

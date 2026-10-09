@@ -265,10 +265,10 @@ pub fn host_strcmp(
 ) -> HostMemReply {
   let mut i = 0
   while true {
-    let a = load_i8_raise(mem, map, addr1 + i.to_uint()) catch {
+    let a = load_i8_raise(mem, map, addr1 + i.reinterpret_as_uint()) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
-    let b = load_i8_raise(mem, map, addr2 + i.to_uint()) catch {
+    let b = load_i8_raise(mem, map, addr2 + i.reinterpret_as_uint()) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {

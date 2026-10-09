@@ -19,7 +19,7 @@ pub(all) struct Instruction {
 ///
 /// ```mbt check
 /// test {
-///   let ins = Instruction::new(Nop, 0, @source.SourceLoc::new(1, 1))
+///   let ins = @opcode.Instruction::new(Nop, 0, @source.SourceLoc::new(1, 1))
 ///   inspect(ins.op.code(), content="0")
 /// }
 /// ```

@@ -70,7 +70,7 @@ fn infer_seq_list(
   }
   if line_lower.contains("data[pos]") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("||")) {
+    !line_lower.contains("||") {
     return Some(build_step(algorithm, "place", "在目标位置放入元素"))
   }
   // U1#1 P1-89（用户审阅）：旧判据命中后移循环，真值在 L->length--。
@@ -100,7 +100,7 @@ fn infer_linked_list_append(
   }
   if line_lower.contains("next") &&
     line_lower.contains("=") &&
-    not(line_lower.contains("null")) {
+    !line_lower.contains("null") {
     return Some(
       build_step(algorithm, "link", "将新节点链接到链表尾部"),
     )
@@ -130,7 +130,7 @@ fn infer_circular_queue(
   }
   if line_lower.contains("data") &&
     line_lower.contains("front") &&
-    not(line_lower.contains("==")) {
+    !line_lower.contains("==") {
     return Some(build_step(algorithm, "dequeue", "元素出队"))
   }
   if line_lower.contains("rear") && line_lower.contains("%") {
@@ -176,7 +176,7 @@ fn infer_linked_queue(
   }
   if line_lower.contains("front") &&
     line_lower.contains("next") &&
-    not(line_lower.contains("rear")) {
+    !line_lower.contains("rear") {
     return Some(build_step(algorithm, "dequeue", "队头出队"))
   }
   if line_lower.contains("free") {

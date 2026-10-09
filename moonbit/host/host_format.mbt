@@ -708,7 +708,7 @@ fn format_printf_string(
                         abs_w
                       },
                     )
-                    if not(flags.contains("-")) {
+                    if !flags.contains("-") {
                       flags = flags + "-"
                     }
                   } else {

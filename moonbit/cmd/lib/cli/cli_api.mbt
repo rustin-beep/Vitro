@@ -50,7 +50,7 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
     }
     let mut rc = 0
     for line in text.split("\n") {
-      let l : String = line.trim(chars=" \t\r").to_string()
+      let l : String = line.trim(chars=" \t\r").to_owned()
       if l.is_empty() {
         continue
       }

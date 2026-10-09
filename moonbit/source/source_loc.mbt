@@ -30,7 +30,7 @@ pub(all) struct SourceLoc {
 ///
 /// ```mbt check
 /// test {
-///   let loc = SourceLoc::new(3, 17)
+///   let loc = @source.SourceLoc::new(3, 17)
 ///   inspect(loc.line, content="3")
 ///   inspect(loc.file_id, content="0")
 /// }
@@ -44,7 +44,7 @@ pub fn SourceLoc::new(line : Int, column : Int) -> SourceLoc {
 ///
 /// ```mbt check
 /// test {
-///   let loc = SourceLoc::with_file(1, 6, 2)
+///   let loc = @source.SourceLoc::with_file(1, 6, 2)
 ///   inspect(loc.file_id, content="2")
 /// }
 /// ```
@@ -61,8 +61,8 @@ pub fn SourceLoc::with_file(
 ///
 /// ```mbt check
 /// test {
-///   assert_true(SourceLoc::new(1, 1).is_user_file())
-///   assert_false(SourceLoc::with_file(1, 1, 3).is_user_file())
+///   assert_true(@source.SourceLoc::new(1, 1).is_user_file())
+///   assert_false(@source.SourceLoc::with_file(1, 1, 3).is_user_file())
 /// }
 /// ```
 pub fn SourceLoc::is_user_file(self : SourceLoc) -> Bool {
@@ -75,7 +75,7 @@ pub fn SourceLoc::is_user_file(self : SourceLoc) -> Bool {
 ///
 /// ```mbt check
 /// test {
-///   inspect(SourceLoc::new(2, 13).display(), content="2:13")
+///   inspect(@source.SourceLoc::new(2, 13).display(), content="2:13")
 /// }
 /// ```
 pub fn SourceLoc::display(self : SourceLoc) -> String {

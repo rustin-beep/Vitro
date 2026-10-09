@@ -73,7 +73,7 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
 /// 文件系统 provider：把 resolver 拼好的候选路径（"/" 分隔的规范形态，
 /// 相对/绝对均可——Windows fs 接受正斜杠）交给宿主文件系统。未命中统一
 /// `NotFound`（由 pp 层按候选链继续或最终报 E1021，与 Rust E1021 对拍）。
-enum FsProvider {
+priv enum FsProvider {
   Fs
 }
 
@@ -111,7 +111,7 @@ fn dir_of(file : String) -> String {
   if idx <= 0 {
     "."
   } else {
-    file.substring(start=0, end=idx)
+    file[0:idx].to_owned()
   }
 }
 

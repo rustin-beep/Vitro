@@ -32,7 +32,7 @@ fn infer_bubble_sort(
     j >= 0
   }
   if starts_with(line_lower, "for ") || starts_with(line_lower, "while ") {
-    if line_lower.contains("i") && not(line_lower.contains("j")) {
+    if line_lower.contains("i") && !line_lower.contains("j") {
       let pass = if i >= 0 { "\{i + 1}" } else { "?" }
       // 第 pass 趟确定"第 pass 大"的元素（此前 n-i 写法把概念教反了）
       let kth = if n > 0 && i >= 0 && i < n { "\{i + 1}" } else { "?" }
@@ -56,7 +56,7 @@ fn infer_bubble_sort(
     }
   }
   if starts_with(line_lower, "if ") && is_comparison_line(line_lower) {
-    if not(j_in_inner_range) {
+    if !j_in_inner_range {
       return None
     }
     let j_str = if j >= 0 { "\{j}" } else { "?" }
@@ -66,7 +66,7 @@ fn infer_bubble_sort(
     )
   }
   if source_line.contains("temp") && source_line.contains("=") {
-    if not(j_in_inner_range) {
+    if !j_in_inner_range {
       return None
     }
     let j_str = if j >= 0 { "\{j}" } else { "?" }
@@ -109,7 +109,7 @@ fn infer_selection_sort(
     None => -1
   }
   if starts_with(line_lower, "for ") || starts_with(line_lower, "while ") {
-    if line_lower.contains("i") && not(line_lower.contains("j")) {
+    if line_lower.contains("i") && !line_lower.contains("j") {
       let pass = if i >= 0 { "\{i}" } else { "?" }
       return Some(
         build_step(
@@ -184,7 +184,7 @@ fn infer_insertion_sort(
     None => "?"
   }
   if starts_with(line_lower, "for ") || starts_with(line_lower, "while ") {
-    if line_lower.contains("i") && not(line_lower.contains("j")) {
+    if line_lower.contains("i") && !line_lower.contains("j") {
       let pass = if i >= 0 { "\{i}" } else { "?" }
       return Some(
         build_step(
@@ -216,7 +216,7 @@ fn infer_insertion_sort(
   if line_lower.contains("key") &&
     (source_line.contains("[j + 1]") || source_line.contains("[j+1]")) &&
     source_line.contains("=") &&
-    not(source_line.contains("= arr")) {
+    !source_line.contains("= arr") {
     // j 作用域收回时试行入口快照 prev_vars 的 j（§6-4/v4 #77 两态矛盾
     // 修复）；两处都取不到才降级（降级文案不带位置数字）
     let j_entry = env_prev_int(env, "j")
@@ -302,7 +302,7 @@ fn infer_quick_sort(
   }
   if line_lower.contains("pivot") &&
     line_lower.contains("=") &&
-    not(starts_with(line_lower, "for ")) {
+    !starts_with(line_lower, "for ") {
     let p_str = if pivot >= 0 { "\{pivot}" } else { "?" }
     // §6-6（v4 #93）：pivot 值是分区后落位下标非枢轴值——文案修正
     return Some(
@@ -454,7 +454,7 @@ fn infer_shell_sort(
   }
   if line_lower.contains("temp") &&
     line_lower.contains("=") &&
-    not(starts_with(line_lower, "for ")) {
+    !starts_with(line_lower, "for ") {
     return Some(
       build_step(
         algorithm, "insert", "保存当前元素，准备在同组内插入",
@@ -550,7 +550,7 @@ fn infer_radix_sort(
   // 清零行误命中，收紧 `]++`）
   if line_lower.contains("count[") &&
     line_lower.contains("]++") &&
-    not(line_lower.contains("+=")) {
+    !line_lower.contains("+=") {
     return Some(
       build_step(algorithm, "count", "统计当前位各数字出现次数"),
     )
@@ -571,8 +571,7 @@ fn infer_radix_sort(
 ///|
 /// 前缀工具：行首匹配。
 fn starts_with(s : String, prefix : String) -> Bool {
-  s.length() >= prefix.length() &&
-  s.substring(start=0, end=prefix.length()) == prefix
+  s.length() >= prefix.length() && s[0:prefix.length()].to_owned() == prefix
 }
 
 ///|
@@ -581,7 +580,7 @@ fn starts_with(s : String, prefix : String) -> Bool {
 fn env_prev_int(env : InferEnv, name : String) -> Int? {
   for v in env.prev_vars {
     if v.name == name {
-      return parse_int(v.value.trim().to_string())
+      return parse_int(v.value.trim().to_owned())
     }
   }
   None

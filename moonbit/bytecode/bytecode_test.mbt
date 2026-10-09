@@ -20,14 +20,14 @@ test "call_route_three_ways" {
   }
   assert_eq(
     idx,
-    BYTECODE_LIBC_BASE_INDEX + 0,
+    @bytecode.BYTECODE_LIBC_BASE_INDEX + 0,
     msg="序 = 88 名表序（isdigit 是首个）",
   )
   guard @bytecode.call_route("abs")
     is Some(@bytecode.CallRoute::BytecodeLibc(i2)) else {
     fail("abs 走固定索引")
   }
-  assert_eq(i2, BYTECODE_LIBC_BASE_INDEX + 11)
+  assert_eq(i2, @bytecode.BYTECODE_LIBC_BASE_INDEX + 11)
   // Host：诊断敏感 / 不在 88 名表内
   guard @bytecode.call_route("malloc") is Some(@bytecode.CallRoute::Host(h)) else {
     fail("malloc 应走 Host")
@@ -115,18 +115,18 @@ test "pure_shortcircuit_blocks_membership_test" {
     msg="isdigit 在 host 表内",
   )
   assert_eq(
-    host_func_id_by_user_name("isdigit"),
+    @bytecode.host_func_id_by_user_name("isdigit"),
     None,
     msg="但 by_user_name 对 PURE 名短路返回 None",
   )
   assert_true(@bytecode.is_host_func_name("strlen"))
-  assert_eq(host_func_id_by_user_name("strlen"), None)
+  assert_eq(@bytecode.host_func_id_by_user_name("strlen"), None)
   // 非 PURE 的 host 名两边一致
   assert_true(@bytecode.is_host_func_name("malloc"))
-  assert_eq(host_func_id_by_user_name("malloc"), Some(2))
+  assert_eq(@bytecode.host_func_id_by_user_name("malloc"), Some(2))
   // 别名：print_int / __vitro_output 同指 OUTPUT
-  assert_eq(host_func_id_by_user_name("print_int"), Some(0))
-  assert_eq(host_func_id_by_user_name("__vitro_output"), Some(0))
+  assert_eq(@bytecode.host_func_id_by_user_name("print_int"), Some(0))
+  assert_eq(@bytecode.host_func_id_by_user_name("__vitro_output"), Some(0))
 }
 
 ///|
@@ -136,7 +136,7 @@ test "route_union_matches_libc_allowlist" {
   let u = @bytecode.builtin_name_union()
   assert_eq(
     u.length(),
-    @bytecode.HOST_FUNC_NAME_COUNT + BYTECODE_LIBC_FUNC_COUNT - 22,
+    @bytecode.HOST_FUNC_NAME_COUNT + @bytecode.BYTECODE_LIBC_FUNC_COUNT - 22,
     msg="并集 = 110 + 88 − 交集 22 = 176",
   )
   assert_true(

@@ -224,5 +224,5 @@ pub fn VitroVM::setup_from_output(
 /// 只读 dump 不写——受检面不受影响。Bytes 输出便于 @fs 直接落盘）。
 pub fn VitroVM::dump_memory_raw(self : VitroVM) -> Bytes {
   let raw = self.memory.clone_raw()
-  Bytes::from_fixedarray(raw)
+  Bytes::from_array(raw)
 }

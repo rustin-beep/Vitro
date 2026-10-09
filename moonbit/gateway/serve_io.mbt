@@ -110,7 +110,7 @@ fn serve_output_delta_frame(
   //   逐字节折回——display 无逐通道解码语义，该差异并入分叉登记①）
   let delta : String = match kind_opt {
     Some(@host.OutputKind::Note) =>
-      @util.utf8_text_partial(all[start:total].to_bytes())
+      @util.utf8_text_partial(all[start:total].to_owned())
     _ => {
       let buf = StringBuilder()
       for i = start; i < total; i = i + 1 {

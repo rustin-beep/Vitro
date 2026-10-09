@@ -29,8 +29,8 @@ fn VitroVM::execute_float(
       // f32 位模式经 i32 operand（低 32 位零扩展压栈——位模式无符号语义）
       self.push(operand.reinterpret_as_uint().to_uint64())
     AddF | SubF | MulF => {
-      let b = self.pop().to_uint().reinterpret_as_float()
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let b = Float::reinterpret_from_uint(self.pop().to_uint())
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       let r = match op {
         AddF => a + b
         SubF => a - b
@@ -40,8 +40,8 @@ fn VitroVM::execute_float(
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
     DivF => {
-      let b = self.pop().to_uint().reinterpret_as_float()
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let b = Float::reinterpret_from_uint(self.pop().to_uint())
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       if b == Float::from_double(0.0) {
         self.trap("浮点数除以零", line, column)
       } else {
@@ -50,15 +50,15 @@ fn VitroVM::execute_float(
       }
     }
     NegF => {
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       // 一元负（三轮审阅 P1-2：0.0 - a 会丢零符号——0.0-0.0=+0.0 而
       // -0.0f 位 = 0x80000000；与 NegD 的 -a 同形）
       let r = -a
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
     EqF | NeF | LtF | LeF | GtF | GeF => {
-      let b = self.pop().to_uint().reinterpret_as_float()
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let b = Float::reinterpret_from_uint(self.pop().to_uint())
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       let r : Bool = match op {
         EqF => a == b
         NeF => a != b
@@ -76,7 +76,7 @@ fn VitroVM::execute_float(
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
     CastF2I => {
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       // 饱和语义（Rust as i32 = NaN→0 / inf→±MAX）
       self.push_i32(Float::to_int(a))
     }
@@ -134,7 +134,7 @@ fn VitroVM::execute_double(
       self.push(a.to_double().reinterpret_as_uint64())
     }
     CastF2D => {
-      let a = self.pop().to_uint().reinterpret_as_float()
+      let a = Float::reinterpret_from_uint(self.pop().to_uint())
       self.push(a.to_double().reinterpret_as_uint64())
     }
     CastD2I => {
@@ -144,7 +144,7 @@ fn VitroVM::execute_double(
     }
     CastD2F => {
       let a = self.pop().reinterpret_as_double()
-      self.push(Float::reinterpret_as_uint(Double::to_float(a)).to_uint64())
+      self.push(Float::reinterpret_as_uint(Float::from_double(a)).to_uint64())
     }
     EqD | NeD | LtD | LeD | GtD | GeD => {
       let b = self.pop().reinterpret_as_double()

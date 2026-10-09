@@ -71,9 +71,9 @@ test "api_params_解析形态" {
 test "api_batch_行解析形态" {
   // 批式行级预处理抽验：CRLF/空白行耐受（\r 由 Windows 管道常见——
   // trim " \t\r" 后空行跳过；NDJSON 帧本体不受影响）
-  let l1 : String = "  {\"id\":1}  ".trim(chars=" \t\r").to_string()
+  let l1 : String = "  {\"id\":1}  ".trim(chars=" \t\r").to_owned()
   inspect(l1, content="{\"id\":1}")
-  let l2 : String = "\r".trim(chars=" \t\r").to_string()
+  let l2 : String = "\r".trim(chars=" \t\r").to_owned()
   inspect(l2.is_empty(), content="true")
 }
 

@@ -124,7 +124,7 @@ test "fuzz_round_a_malloc_free_invariants" {
         let addr = r.value.unwrap().to_uint()
         if addr != 0U {
           assert_true(
-            addr + size.to_uint() <= 1048576U,
+            addr + size.reinterpret_as_uint() <= 1048576U,
             msg="不变量③越墙",
           )
         }

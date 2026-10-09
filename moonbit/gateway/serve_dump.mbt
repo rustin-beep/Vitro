@@ -44,9 +44,7 @@ fn dump_json_escape(s : String) -> String {
 fn dump_parse_or_abort(s : String) -> Json {
   json_parse(s) catch {
     _ =>
-      abort(
-        "dump JSON 拼装失败（emitter bug）：\{s.substring(start=0, end=80)}",
-      )
+      abort("dump JSON 拼装失败（emitter bug）：\{s[0:80].to_owned()}")
   }
 }
 

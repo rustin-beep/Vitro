@@ -89,7 +89,7 @@ priv struct ShadowEntry {
 
 ///|
 fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
-  let func_index : Map[String, Int] = {}
+  let func_index : Map[String, Int] = Map([])
   let next_func_idx = if is_library_mode {
     0
   } else {
@@ -146,7 +146,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     next_global_offset: if is_library_mode {
       0
     } else {
-      @bytecode.BYTECODE_LIBC_GLOBALS_RESERVED.to_int()
+      @bytecode.BYTECODE_LIBC_GLOBALS_RESERVED.reinterpret_as_int()
     },
     f64_constants: [],
     i64_constants: [],
@@ -343,14 +343,14 @@ fn BytecodeGen::flush_pending_string_inits(self : BytecodeGen) -> Unit {
       @bytecode.ALIGN4_MASK
     match
       self.bump_global_offset(
-        aligned.to_int(),
+        aligned.reinterpret_as_int(),
         "全局初始化字符串",
         default_loc(),
       ) {
       Some(str_offset) => {
         let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
         self.string_data.push((str_addr, value))
-        self.globals_init_32.push((base_offset, str_addr.to_int()))
+        self.globals_init_32.push((base_offset, str_addr.reinterpret_as_int()))
       }
       None => ()
     }

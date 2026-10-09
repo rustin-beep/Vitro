@@ -4,7 +4,7 @@ fn codes_to_str(bytes : Bytes) -> String {
   for i = 0; i < bytes.length(); i = i + 1 {
     codes.push(bytes[i].to_int())
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for c in codes {
     sb.write_char(c.unsafe_to_char())
   }

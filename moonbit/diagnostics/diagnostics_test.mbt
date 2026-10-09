@@ -312,7 +312,7 @@ test "data_table_surface" {
   // default_patterns：六模式出口（基线 6——生成器锁定的另一面）
   assert_eq(@diagnostics.default_patterns().length(), 6)
   // default_paths：六路径出口（键域 M01..M06）
-  assert_eq(@diagnostics.default_paths().size(), 6)
+  assert_eq(@diagnostics.default_paths().length(), 6)
   assert_true(@diagnostics.default_paths().contains("M06"))
 }
 

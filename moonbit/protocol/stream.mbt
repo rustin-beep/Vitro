@@ -279,7 +279,7 @@ pub fn encode_step_delta(
   }
   for v in prev.local_vars {
     let name_idx = sym.insert(v.name)
-    if !curr_vars.get(v.name).or(false) {
+    if !curr_vars.get(v.name).unwrap_or(false) {
       removed_var_name_indices.push(name_idx)
     }
   }
@@ -378,7 +378,7 @@ fn diff_array_snapshots(
   }
   let removed : Array[SymIdx] = []
   for a in prev {
-    if !curr_names.get(a.name).or(false) {
+    if !curr_names.get(a.name).unwrap_or(false) {
       removed.push(sym.insert(a.name))
     }
   }
@@ -416,7 +416,7 @@ fn diff_pointer_snapshots(
   }
   let removed : Array[SymIdx] = []
   for p in prev {
-    if !curr_names.get(p.name).or(false) {
+    if !curr_names.get(p.name).unwrap_or(false) {
       removed.push(sym.insert(p.name))
     }
   }

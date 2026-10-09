@@ -25,7 +25,7 @@ pub struct CheckpointManager {
   /// 最大检查点数量（防长程序内存无限增长）。
   mut max_checkpoints : Int
   /// 每 N 个检查点强制一个全量基准。
-  pub full_every : Int
+  full_every : Int
 }
 
 ///|
@@ -55,12 +55,12 @@ pub fn CheckpointManager::should_checkpoint(
     return false
   }
   // 智能策略：函数调用、返回、循环边界、数组交换、内存操作
-  let is_significant = semantic_label.starts_with("调用 ") ||
+  let is_significant = semantic_label.has_prefix("调用 ") ||
     semantic_label == "返回" ||
     semantic_label == "内存分配" ||
     semantic_label == "释放内存" ||
     semantic_label.contains("交换") ||
-    semantic_label.starts_with("循环")
+    semantic_label.has_prefix("循环")
   if !is_significant {
     return false
   }

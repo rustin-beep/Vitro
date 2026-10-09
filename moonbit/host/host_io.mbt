@@ -674,7 +674,7 @@ pub fn host_scanf_n(
     // 地址（spec_types 在循环前已物化，覆盖无副作用）——读入消费
     // 照常、指针参数不消耗
     let ptr = if sl.2 { fmt_addr } else { ptrs[arg_idx] }
-    if not(sl.2) {
+    if !sl.2 {
       arg_idx = arg_idx + 1
     }
     if spec == 100 {
@@ -699,7 +699,7 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 2 {
           mem.store_u64(
             map,
@@ -742,7 +742,7 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 2 {
           mem.store_u64(map, ptr, parse_uint64_or_zero(token))
         } else {
@@ -774,7 +774,7 @@ pub fn host_scanf_n(
       if token.length() == 0 {
         break
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 1 {
           mem.store_u64(
             map,
@@ -806,7 +806,7 @@ pub fn host_scanf_n(
       }
       let ch = chars[pos]
       pos = pos + 1
-      if not(sl.2) {
+      if !sl.2 {
         match mem.store_i8(map, ptr, ch.to_int()) {
           Ok(_) => ()
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
@@ -832,7 +832,7 @@ pub fn host_scanf_n(
         j = j + 1
       }
       // V-P1-6：栈缓冲容量校验（token + NUL）
-      if not(sl.2) {
+      if !sl.2 {
         match
           stack_buffer_check(
             stack_buffers,
@@ -844,13 +844,13 @@ pub fn host_scanf_n(
           None => ()
         }
       }
-      if not(sl.2) {
+      if !sl.2 {
         match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
           Ok(_) => ()
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
         }
       }
-      if not(sl.2) {
+      if !sl.2 {
         match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
           Ok(_) => ()
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
@@ -861,7 +861,7 @@ pub fn host_scanf_n(
       continue
     }
     // 抑制赋值（%*d）不计入返回值（C §7.21.6.2——批四 2026-10-07）
-    if not(sl.2) {
+    if !sl.2 {
       matched = matched + 1
     }
   }
@@ -939,13 +939,13 @@ pub fn host_sscanf(
     }
     let spec = sl.0
     let len_mod = sl.1
-    if arg_idx >= ptrs.length() && not(sl.2) {
+    if arg_idx >= ptrs.length() && !sl.2 {
       break
     }
     // 抑制赋值（%*d 批四 2026-10-07）：写目标改投已解析完的格式串
     // 地址——读入消费照常、指针参数不消耗（同 host_scanf_n）
     let ptr = if sl.2 { fmt_addr } else { ptrs[arg_idx] }
-    if not(sl.2) {
+    if !sl.2 {
       arg_idx = arg_idx + 1
     }
     if spec == 100 {
@@ -969,7 +969,7 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 2 {
           mem.store_u64(
             map,
@@ -990,7 +990,7 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      if not(sl.2) {
+      if !sl.2 {
         matched = matched + 1
       }
     } else if spec == 117 {
@@ -1014,7 +1014,7 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 2 {
           mem.store_u64(map, ptr, parse_uint64_or_zero(token))
         } else {
@@ -1031,7 +1031,7 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      if not(sl.2) {
+      if !sl.2 {
         matched = matched + 1
       }
     } else if spec == 102 {
@@ -1042,7 +1042,7 @@ pub fn host_sscanf(
       if token.length() == 0 {
         break
       }
-      let f = if not(sl.2) {
+      let f = if !sl.2 {
         if len_mod >= 1 {
           mem.store_u64(
             map,
@@ -1065,7 +1065,7 @@ pub fn host_sscanf(
         Ok(_) => ()
         Err(e) => return fault_reply(e)
       }
-      if not(sl.2) {
+      if !sl.2 {
         matched = matched + 1
       }
     } else if spec == 99 {
@@ -1075,13 +1075,13 @@ pub fn host_sscanf(
       }
       let ch = chars[pos]
       pos = pos + 1
-      if not(sl.2) {
+      if !sl.2 {
         match mem.store_i8(map, ptr, ch.to_int()) {
           Ok(_) => ()
           Err(e) => return fault_reply(e)
         }
       }
-      if not(sl.2) {
+      if !sl.2 {
         matched = matched + 1
       }
     } else if spec == 115 {
@@ -1102,19 +1102,19 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
-      if not(sl.2) {
+      if !sl.2 {
         match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
           Ok(_) => ()
           Err(e) => return fault_reply(e)
         }
       }
-      if not(sl.2) {
+      if !sl.2 {
         match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
           Ok(_) => ()
           Err(e) => return fault_reply(e)
         }
       }
-      if not(sl.2) {
+      if !sl.2 {
         matched = matched + 1
       }
     } else {
@@ -1147,7 +1147,7 @@ pub fn InputState::from_stdin_text(text : String, batch : Bool) -> InputState {
   let ends_with_nl = normalized.has_suffix(nl)
   let segs : Array[String] = []
   for seg in normalized.split("\n") {
-    segs.push(seg.to_string())
+    segs.push(seg.to_owned())
   }
   let lines : Array[Bytes] = []
   let last = segs.length() - 1

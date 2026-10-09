@@ -92,7 +92,7 @@ pub fn detect_structures(
     )
   }
   // 哈希表
-  if name_lower.contains("hash") && not(name_lower.contains("cash")) {
+  if name_lower.contains("hash") && !name_lower.contains("cash") {
     matches.push(
       build_match(
         "hash_table",

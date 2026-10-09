@@ -41,21 +41,21 @@ pub(all) struct ActivatedConcept {
   node : ConceptNode
   activated_by : String
   neighbors : Array[NeighborConcept]
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct CompileRecord {
   timestamp_ms : Int64
   success : Bool
   error_codes : Array[Int]
   trap_message : String?
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct ConceptEdge {
   from_id : String
   to_id : String
   relation : String
   strength : Double
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct ConceptNode {
   id : String
@@ -64,7 +64,7 @@ pub(all) struct ConceptNode {
   description : String
   difficulty : Int
   related_card_ids : Array[String]
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct DetectedMisconception {
   pattern_id : String
@@ -72,12 +72,12 @@ pub(all) struct DetectedMisconception {
   description : String
   occurrence_count : Int
   confidence : Double
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub enum FixAnchor {
   Manual
   LineEnd
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct FixOutcome {
   suggestion : String
@@ -87,14 +87,14 @@ pub(all) struct FixOutcome {
   end_line : Int
   end_col : Int
   text : String
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct FixPayload {
   suggestion : String
   fix_kind : Int
   anchor : FixAnchor
   text : String
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct FixTarget {
   fix_kind : Int
@@ -103,14 +103,14 @@ pub(all) struct FixTarget {
   replace_end_line : Int
   replace_end_column : Int
   replacement_text : String
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct LearningPath {
   target_misconception_id : String
   target_misconception_name : String
   estimated_time_minutes : Int
   steps : Array[PathStep]
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct MisconceptionPattern {
   id : String
@@ -119,14 +119,14 @@ pub(all) struct MisconceptionPattern {
   error_codes : Array[Int]
   min_occurrences : Int
   time_window : Int
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct NeighborConcept {
   node : ConceptNode
   relation : String
   strength : Double
   is_prerequisite : Bool
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 pub(all) struct PathStep {
   step_type : String
@@ -134,7 +134,7 @@ pub(all) struct PathStep {
   detail : String
   target_id : String
   highlight_lines : Array[Int]
-} derive(Show, @debug.Debug)
+} derive(@debug.Debug)
 
 // Type aliases
 

@@ -36,7 +36,7 @@ pub(all) struct MemorySnapshot {
 /// 不与运行态共享可变结构——拷贝即快照，时点明确）。
 pub fn MemoryMap::dump(self : MemoryMap) -> MemorySnapshot {
   let regions : Array[(UInt, MemoryRegionData)] = Array(
-    capacity=self.regions.size(),
+    capacity=self.regions.length(),
   )
   for addr, r in self.regions {
     regions.push(

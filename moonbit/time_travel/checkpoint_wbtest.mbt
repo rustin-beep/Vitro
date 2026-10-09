@@ -78,7 +78,7 @@ test "checkpoint_incremental_dirty_page" {
   // step 4 增量（2%5≠0 → Delta）
   cm.save(4, vm)
   assert_eq(cm.checkpoints.length(), 2)
-  guard cm.checkpoints[1].1.memory is @vm.Delta(_, pages) else {
+  guard cm.checkpoints[1].1.memory is @vm.Delta(_, _) else {
     fail("第二个必须是 Delta")
   }
   guard cm.checkpoints[1].1.memory is @vm.Delta(base, ps) else {

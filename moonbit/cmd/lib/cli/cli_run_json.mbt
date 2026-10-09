@@ -15,10 +15,10 @@ fn json_event_stream(
   argv : Array[String],
 ) -> Int {
   let mut id = 0
-  let inv = fn(method : String, params : String) -> String {
+  let inv = fn(method_name : String, params : String) -> String {
     id += 1
     @gateway.invoke(
-      "{\"id\":\{id},\"method\":\"\{method}\",\"params\":\{params}}",
+      "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
     )
   }
   @gateway.reset()

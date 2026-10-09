@@ -8,7 +8,6 @@
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
 import {
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/abort",
   "moonbitlang/core/bigint",
   "moonbitlang/core/double",
   "moonbitlang/core/math",

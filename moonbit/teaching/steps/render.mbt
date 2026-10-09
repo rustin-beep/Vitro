@@ -58,7 +58,8 @@ pub fn expr_to_string(expr : @ast.Expr) -> String {
     CallPtr(_, _, _, _) => "fp(...)"
     Index(array, index, _, _) =>
       "\{expr_to_string(array)}[\{expr_to_string(index)}]"
-    Member(object, member, _, _) => "\{expr_to_string(object)}.\{member}"
+    Member(object, member_name, _, _) =>
+      "\{expr_to_string(object)}.\{member_name}"
     Assign(op, left, right, _, _) => {
       let op_str = match op {
         Assign => "="
@@ -113,8 +114,8 @@ pub fn expr_to_string(expr : @ast.Expr) -> String {
     CompoundLiteral(target_type, init, _, _) =>
       "(\{type_to_string(target_type)})\{expr_to_string(init)}"
     This(_, _) => "this"
-    MemberCall(object, method, _, _, _, _, _) =>
-      "\{expr_to_string(object)}..\{method}(...)"
+    MemberCall(object, method_name, _, _, _, _, _) =>
+      "\{expr_to_string(object)}..\{method_name}(...)"
     New(elem_type, _, _, _, _) => "new \{type_to_string(elem_type)}"
     Delete(e, is_array, _, _) =>
       if is_array {
@@ -160,7 +161,7 @@ fn type_to_string(ty : @ast.Type) -> String {
         base
       }
     }
-    Pointer(pointee, is_const) => "\{type_to_string(pointee)}*"
+    Pointer(pointee, _) => "\{type_to_string(pointee)}*"
     Array(element, _, _, is_const, _, _) =>
       if is_const {
         "const \{type_to_string(element)}[]"

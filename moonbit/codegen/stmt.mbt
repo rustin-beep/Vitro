@@ -314,8 +314,8 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     CallPtr(callee, args, _, ret_ty) =>
       self.gen_call_ptr(callee, args, ret_ty, loc)
     Index(array, index, _, ty) => self.gen_index(array, index, ty, loc, false)
-    Member(object, member, _, ty) =>
-      self.gen_member_expr(object, member, ty, loc)
+    Member(object, member_name, _, ty) =>
+      self.gen_member_expr(object, member_name, ty, loc)
     Ternary(cond, then_branch, else_branch, _, _) =>
       self.gen_ternary_expr(cond, then_branch, else_branch, loc)
     Assign(op, left, right, _, _) => self.gen_assign(op, left, right, loc)

@@ -27,7 +27,7 @@ priv struct BytecodeGen {
   func_index : Map[String, Int]
   mut next_func_idx : Int
   mut current_func : String
-  mut current_func_arg_count : Int
+  mut current_func_arg_count : Int // 照搬 Rust 字段族（arg_bytes 邻位有消费）——MoonBit 侧暂无读取面，随 codegen 对齐批裁定
   mut current_func_arg_bytes : Int
   global_indices : Map[String, Int]
   global_types : Map[String, @ast.Type]

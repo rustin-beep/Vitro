@@ -893,11 +893,6 @@ fn format_printf_string(
 }
 
 ///|
-fn format_spec_kinds(fmt : Array[Int]) -> Array[Int] {
-  parse_format_specs(fmt)
-}
-
-///|
 /// printf 族参数消耗总数（vm 分发侧弹参数数用——%*d 批四 2026-10-07：
 /// 每 spec = 1 + 星号宽度 + 星号精度；dispatch 原按说明符个数弹参，
 /// 星号 spec 曾少弹导致栈失衡）。

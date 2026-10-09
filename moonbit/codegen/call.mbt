@@ -99,7 +99,7 @@ fn BytecodeGen::gen_call_ptr(
                         }
                       } else {
                         self.gen_expr(arg)
-                        for w2 in 1..<words {
+                        for _ in 1..<words {
                           self.emit(@opcode.OpCode::PushConst, 0, loc)
                         }
                       }
@@ -122,7 +122,7 @@ fn BytecodeGen::gen_call_ptr(
             }
           } else {
             self.gen_expr(arg)
-            for w2 in 1..<words {
+            for _ in 1..<words {
               self.emit(@opcode.OpCode::PushConst, 0, loc)
             }
           }

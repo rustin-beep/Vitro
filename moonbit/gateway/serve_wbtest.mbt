@@ -207,10 +207,10 @@ test "json_parse_depth_limit_128" {
   // 审阅实测 20000 层栈溢出 0xc00000fd 不可捕获）
   // 合法闭合的深嵌套（200 开 + 200 闭——未闭合串会被语法错先拦，测不到深度）
   let mut deep = ""
-  for i in 0..<200 {
+  for _ in 0..<200 {
     deep = deep + "["
   }
-  for i in 0..<200 {
+  for _ in 0..<200 {
     deep = deep + "]"
   }
   let r : Result[Json, JsonParseError] = Ok(json_parse(deep)) catch {

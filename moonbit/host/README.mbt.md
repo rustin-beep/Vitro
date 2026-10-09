@@ -16,7 +16,6 @@ moon add vitro/engine/host
 ///|
 test {
   let map = @memory.MemoryMap::new()
-  let mem = @memory.Memory::new()
   // malloc(8)：成功返回地址、失败返回 NULL + 教学附注（C 标准语义，不 trap）
   let r = @host.host_malloc(map, 8, 1)
   let p = r.value.unwrap().to_uint()

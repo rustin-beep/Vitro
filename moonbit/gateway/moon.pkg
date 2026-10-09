@@ -12,7 +12,6 @@
 // not found（正当教学诊断）；宿主注入文件表是将来扩展位（F-5 未承诺）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
 import {
-  "moonbitlang/core/encoding/utf8",
   "vitro/engine/ast",
   "vitro/engine/bytecode",
   "vitro/engine/codegen",
@@ -31,6 +30,9 @@ import {
   "vitro/engine/typeck",
   "vitro/engine/util",
   "vitro/engine/vm",
+  // utf8 仅 wbtest 消费（serve_run_wbtest @utf8.encode）——unused_package
+  // 判定不含 wbtest 面，假阳性豁免（A3 批 2026-10-09）
+  "moonbitlang/core/encoding/utf8",
 }
 
 supported_targets = "+wasm-gc +native"

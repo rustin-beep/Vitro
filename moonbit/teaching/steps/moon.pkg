@@ -20,5 +20,7 @@
 import {
   "vitro/engine/ast",
   "vitro/engine/protocol",
+  // source 仅 wbtest 消费（features_wbtest @source.SourceLoc）——moonc
+  // unused_package 判定不含 wbtest 面，假阳性豁免（A3 批 2026-10-09）
   "vitro/engine/source",
 }

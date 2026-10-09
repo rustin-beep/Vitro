@@ -105,7 +105,7 @@ fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
       )
   }
   let id = json_field(req, "id")
-  let method = match json_field(req, "method").as_string() {
+  let method_name = match json_field(req, "method").as_string() {
     Some(m) => m
     None =>
       return (
@@ -114,7 +114,7 @@ fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
       )
   }
   let params = json_field(req, "params")
-  dispatch(s, id, method, params)
+  dispatch(s, id, method_name, params)
 }
 
 ///|
@@ -122,10 +122,10 @@ fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
 fn dispatch(
   s : @session.Session,
   id : Json,
-  method : String,
+  method_name : String,
   params : Json,
 ) -> (String, Bool) {
-  match method {
+  match method_name {
     "ping" => {
       let m : Map[String, Json] = Map([])
       m.set("pong", Json::boolean(true))
@@ -204,7 +204,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
         ).stringify(),
         false,
       )
@@ -261,6 +261,8 @@ fn unwrap_or_null(v : Json?) -> Json {
 
 ///|
 /// Json 值访问器族（serve 协议层的窄面：id 透传只 stringify 不解构）。
+/// as_string/as_bool 有意遮蔽 core 同名方法（对齐 serde_json 命名）——
+/// 0050 警告以此豁免，core 升级时复核（#54 A3 登记 2026-10-09）。
 fn Json::as_string(self : Json) -> String? {
   match self {
     String(s) => Some(s)

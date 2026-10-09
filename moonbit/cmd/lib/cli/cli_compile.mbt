@@ -36,10 +36,10 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
     // escape_json 单源（定义在 cli_step.mbt，compile/run_json 裸名跨文件
     // 消费——批五注释清理：旧「三份同源复制连坐」指向已收口的历史形态）
     let mut id = 0
-    let inv = fn(method : String, params : String) -> String {
+    let inv = fn(method_name : String, params : String) -> String {
       id += 1
       @gateway.invoke(
-        "{\"id\":\{id},\"method\":\"\{method}\",\"params\":\{params}}",
+        "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
       )
     }
     @gateway.reset()

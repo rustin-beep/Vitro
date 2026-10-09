@@ -285,7 +285,7 @@ priv enum BoundsCategory {
   WrongIncrement // 步长跳越（i += 2）
   UninitializedIndex // 未初始化/外部输入
   Generic // 兜底
-} derive(Debug, Eq)
+}
 
 ///|
 fn BoundsCategory::as_str(self : BoundsCategory) -> String {

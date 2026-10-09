@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/core/encoding/utf8",
   "vitro/engine/ast",
   "vitro/engine/bytecode",
   "vitro/engine/opcode",

@@ -6,7 +6,6 @@
 // 被 host / vm 消费，不反向依赖。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
 import {
-  "moonbitlang/core/abort",
   "moonbitlang/core/deque",
   "vitro/engine/bytecode",
   "vitro/engine/util",

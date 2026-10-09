@@ -33,7 +33,11 @@
 /// check_builtin_*），不入数据表。
 
 ///|
-/// libc 函数签名（typeck 消费面）。不 derive Eq/Show——`return_type` 的
+/// libc 函数签名（登记性真值表条目——N3/N4 销案锚）。诚实边界（A3 批
+/// 2026-10-09 实测）：`lookup`/`return_type`/`min_args`/`max_args` 主面
+/// 零消费——builtin 检查现实路径是 typeck/builtin.mbt 的 62-arm 硬编码
+/// + bytecode_libc_sig 二路，本表列值只作 C 标准对齐登记，接线与否随
+/// typeck 对齐批裁定；`unused` 警告以此豁免。不 derive Eq/Show——`return_type` 的
 /// @ast.Type 走显式 `type_eq`（ast 包 S1 设计），结构体只做数据载体。
 priv struct LibcSig {
   name : String

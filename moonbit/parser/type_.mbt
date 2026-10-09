@@ -577,7 +577,7 @@ fn array_dim_info(size_expr : @ast.Expr?) -> (Int, Bool, @ast.Expr?) {
 /// 递归深度由 MAX_DECLARATOR_SUFFIX（收集期）封顶 1250——不加 depth
 /// 参数（Rust 同；该上限在 MoonBit 各后端栈预算内）。
 fn Parser::interpret_declarator_node(
-  self : Parser,
+  _self : Parser,
   node : DeclaratorNode,
   base_type : @ast.Type,
   depth : Int,

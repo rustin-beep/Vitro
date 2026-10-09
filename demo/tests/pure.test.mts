@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { latin1ToUtf8, esc, isArrayAnimCase } from "../js/util.ts";
+import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
 import { tokenizeC, highlightLines } from "../js/editor.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { heapSpanOf } from "../js/memory.ts";
@@ -223,4 +223,24 @@ test("share：链接过长告警（阈值边界含等号侧）", () => {
   assert.equal(urlLenWarning(SHARE_URL_WARN), "");
   assert.equal(urlLenWarning(SHARE_URL_WARN + 1).length > 0, true);
   assert.equal(urlLenWarning(200), "");
+});
+
+// ── 回放粒度分组（2026-10-09 语句级批）：按 code_line 连续同组合并——
+// 实测锚点：冒泡排序 1018 帧 → 42 帧（播放时长与 VM 指令密度解耦）
+test("粒度分组：连续同行合并计数（headLines 实测形态 [0,0,3,4,4,4,4,...]）", () => {
+  const frames = [0, 0, 3, 4, 4, 4, 7, 8, 9, 7].map((code_line, i) => ({ code_line, step_index: i }));
+  // 组：{0,0}{3}{4,4,4}{7}{8}{9}{7} = 7 组
+  assert.equal(coalesceStmt(frames).length, 7);
+  assert.equal(coalesceStmt(frames)[2].code_line, 4); // {4,4,4} 组尾帧（第 4 行语句执行完的状态）
+  assert.equal(annotateGroups(frames).length, frames.length); // 标注不丢帧
+  const grp4 = annotateGroups(frames).filter((g) => g.f.code_line === 4);
+  assert.deepEqual(grp4.map((g) => [g.m, g.k]), [[1, 3], [2, 3], [3, 3]]); // 组内序号/大小
+});
+test("粒度分组：空数组 / 单帧 / 全同行边界", () => {
+  assert.deepEqual(coalesceStmt([]), []);
+  const one = [{ code_line: 5, step_index: 0 }];
+  assert.equal(coalesceStmt(one).length, 1);
+  const same = [1, 1, 1, 1].map((code_line, i) => ({ code_line, step_index: i }));
+  assert.equal(coalesceStmt(same).length, 1); // 全同行压成 1 帧
+  assert.equal(annotateGroups(same).length, 4);
 });

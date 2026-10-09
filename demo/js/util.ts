@@ -29,6 +29,34 @@ export function isArrayAnimCase(source: string): boolean {
   return /(?:int|char|long|short|unsigned|float|double)\s*(?:\*+\s*)?\w+\s*\[\s*\d+\s*\]/.test(source);
 }
 
+// ── localStorage 安全读写（settings/state 共用单源；隐私模式静默）──
+export function storeGet(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
+export function storeSet(key: string, val: string): void { try { localStorage.setItem(key, val); } catch { /* 存储不可用 */ } }
+
+// ── 回放粒度变换（2026-10-09 语句级批）──────────────────────────
+// 按 code_line 把连续同行的帧划成语句组。指令级=原帧全集仅标注组内位置；
+// 语句级=每组取组尾帧（语句执行完的状态——局部变量表/调用栈是句末快照），
+// 播放时长与 VM 指令密度解耦、只与语句执行次数成正比（冒泡实测 1018→42）。
+export interface GranGroup<F> { f: F; m: number; k: number }
+
+/** 相邻同 code_line 的帧划为一组，组内标序 m（1 起）、组大小 k。O(n) 单遍。 */
+export function annotateGroups<F extends { code_line: number }>(frames: F[]): GranGroup<F>[] {
+  const out: GranGroup<F>[] = [];
+  let start = 0;
+  for (let i = 1; i <= frames.length; i++) {
+    if (i === frames.length || frames[i].code_line !== frames[start].code_line) {
+      for (let j = start; j < i; j++) out.push({ f: frames[j], m: j - start + 1, k: i - start });
+      start = i;
+    }
+  }
+  return out;
+}
+
+/** 语句级帧序列：每组取组尾帧（m === k）。 */
+export function coalesceStmt<F extends { code_line: number }>(frames: F[]): F[] {
+  return annotateGroups(frames).filter((g) => g.m === g.k).map((g) => g.f);
+}
+
 export interface DropdownItem {
   v: string;
   label: string;

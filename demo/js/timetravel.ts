@@ -12,19 +12,21 @@
 "use strict";
 
 import { invoke, bodyOf, gateway } from "./gw.ts";
-import { $, esc, makeDropdown } from "./util.ts";
+import { $, esc, annotateGroups } from "./util.ts";
 import { scrollToLine } from "./editor.ts";
 import { buildCallTree, renderCallTree, treeView } from "./calltree.ts";
 import { buildCompileParams, buildRunParams, buildBaseConfig } from "./run.ts";
+import { currentCaseId, currentBreakpoints, granularity, fpsValue } from "./state.ts";
 import type { TreeNode } from "./calltree.ts";
-import { currentCaseId, setSpeedDropdown, speedValue, currentBreakpoints } from "./state.ts";
-import type { StepPayload, StepNextResult, CompileResult } from "./types.ts";
+import type { StepPayload, StepNextResult, CompileResult, GranFrame } from "./types.ts";
 
 const STEP_FRAME_CAP = 4000; // 上限防大程序把回放 DOM/内存拖爆（infinite 类用例 20000 步在此截断，回放提示截断）
 
-/** 采集结果（stepCollect 返回；tree/frameNode 采集成功后由 stepRecollect 装配）。 */
+/** 采集结果（stepCollect 返回；tree/frameNode/frames 采集成功后由
+ *  rebuildGranData 按当前粒度装配——frames 是粒度变换后的播放数组）。 */
 interface StepData {
-  frames: StepPayload[];
+  rawFrames: StepPayload[]; // 引擎原始帧（粒度重算的单一数据源）
+  frames: GranFrame[]; // 播放数组（语句级=按行合并；指令级=原帧+组标注）
   marks: { idx: number; text: string }[];
   stopped: string;
   error?: string;
@@ -32,14 +34,14 @@ interface StepData {
   frameNode?: (TreeNode | null)[];
 }
 
-let stepData: StepData | null = null; // { frames, marks, stopped }
+let stepData: StepData | null = null; // { rawFrames, frames, marks, stopped }
 let stepIdx = 0;
 let stepTimer: number = 0; // setInterval 句柄（0 = 无）
 
 async function stepCollect(): Promise<StepData> {
   const kase = (DEMO_CASES.find((k) => k.id === currentCaseId()) || {}) as DemoCase;
   gateway().reset();
-  bodyOf(invoke({ method: "session.create" }));
+  bodyOf(invoke({ method: "session.create", params: {} }));
   // 参数构造单一源（2026-10-04 审阅 P2）：与「运行」按钮通道同构——
   // 此前只走 compile{source}+run{}，multi_file（files）与 argv_prog（argv）
   // 两课点课采集直接失败的实锤；config = UI 基准 + 用例 configHint 覆盖
@@ -52,7 +54,7 @@ async function stepCollect(): Promise<StepData> {
     method: "compile",
     params: cp.files ? { files: cp.files } : { source: cp.source },
   }));
-  if (!comp.ok) return { error: "编译失败——先解决左侧诊断", frames: [], marks: [], stopped: "" };
+  if (!comp.ok) return { error: "编译失败——先解决左侧诊断", rawFrames: [], frames: [], marks: [], stopped: "" };
   // run 先行（2026-10-04，refs #28：Rust golden 提取序照搬 compile→run→
   // step.begin→step.next）——run 建立会话运行态并把 compile 期的算法检测
   // matches 注入引擎；缺此步则帧的 algorithm_step/vis_events 恒空
@@ -67,18 +69,43 @@ async function stepCollect(): Promise<StepData> {
   if (bpLines.length) {
     bodyOf(invoke({ method: "breakpoints.set", params: { lines: bpLines } }));
   }
-  const frames: StepPayload[] = [];
+  const rawFrames: StepPayload[] = [];
   let stopped = "";
   let batch: StepNextResult;
   do {
     batch = bodyOf<StepNextResult>(invoke({ method: "step.next", params: {} }));
-    if (batch.payloads) frames.push(...batch.payloads);
+    if (batch.payloads) rawFrames.push(...batch.payloads);
     if (batch.waiting_input) { stopped = "程序等待输入（scanf）——回放到暂停点为止"; break; }
     if (batch.paused) { stopped = "⏸ 已到断点（引擎暂停）——清除断点后 ↻ 重新采集可继续"; break; }
     if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || "").split("\n")[0]; break; }
-  } while (!batch.finished && frames.length < STEP_FRAME_CAP);
-  if (frames.length >= STEP_FRAME_CAP) stopped = stopped || `帧数超 ${STEP_FRAME_CAP} 上限，回放截断`;
-  // 事件轴：semantic_label + 行号组合的变化点（教学事件序列）
+  } while (!batch.finished && rawFrames.length < STEP_FRAME_CAP);
+  if (rawFrames.length >= STEP_FRAME_CAP) stopped = stopped || `帧数超 ${STEP_FRAME_CAP} 上限，回放截断`;
+  return { rawFrames, frames: rawFrames, marks: [], stopped };
+}
+
+/** 粒度装配（2026-10-09 语句级批）：从 rawFrames 按当前粒度生成播放数组——
+ *  语句级=coalesceStmt 按行合并（组尾帧代表，挂 ⟨合并 K 条指令⟩ 标注）；
+ *  指令级=原帧全集（挂「语句内 m/K」标注）。marks/调用树/seek 上限全部
+ *  依 frames 重算——粒度切换即时生效的单一入口。 */
+function rebuildGranData(): void {
+  if (!stepData) return;
+  const raw = stepData.rawFrames;
+  let frames: GranFrame[];
+  if (granularity() === "stmt") {
+    frames = annotateGroups(raw)
+      .filter((g) => g.m === g.k)
+      .map((g) => {
+        const f = g.f as GranFrame;
+        if (g.k > 1) f._grp = { m: g.k, k: g.k };
+        return f;
+      });
+  } else {
+    frames = raw.map((p) => p as GranFrame);
+    for (const g of annotateGroups(raw)) {
+      if (g.k > 1) (g.f as GranFrame)._grp = { m: g.m, k: g.k };
+    }
+  }
+  // 事件轴：semantic_label + 行号组合的变化点（教学事件序列）——粒度变换后重算
   const marks: { idx: number; text: string }[] = [];
   let last: string | null = null;
   frames.forEach((f, i) => {
@@ -88,7 +115,12 @@ async function stepCollect(): Promise<StepData> {
       last = k;
     }
   });
-  return { frames, marks, stopped };
+  stepData.frames = frames;
+  stepData.marks = marks;
+  const built = buildCallTree(frames as StepPayload[]);
+  stepData.tree = built.root;
+  stepData.frameNode = built.frameNode;
+  ($("anim-seek") as HTMLInputElement).max = String(frames.length - 1);
 }
 
 function stepGoto(i: number): void {
@@ -146,7 +178,7 @@ function stepRender(): void {
 
 // 常驻信息卡：跟随当前帧刷新（事件/位置/步数/局部变量/代码预览——手机可达，
 // 不依赖悬停；教学化文案，is_local 过滤后仍不裸 dump 内部数据）
-function updateNodeCard(f: StepPayload): void {
+function updateNodeCard(f: GranFrame): void {
   const el = document.getElementById("node-card");
   if (!el) return;
   const vars = (f.local_vars || []).filter((v) => v.is_local);
@@ -163,6 +195,14 @@ function updateNodeCard(f: StepPayload): void {
     `<div class="nc-head" title="点击收纳/展开"><span>执行信息</span><span class="nc-fold">▾</span></div>` +
     `<div class="nc-body">` +
     `<p class="nc-ev">${esc(f.semantic_label || "执行")}</p>` +
+    // 帧身份（2026-10-09 粒度批）：语句级=这一帧合并了多少条 VM 指令；
+    // 指令级=这条指令在当前语句内的位置 m/K。前端按 code_line 分组算出
+    //（协议 v0.1 帧无 opcode 字段，指令名交代登记 v0.2 台账待引擎侧扩展）。
+    (f._grp
+      ? granularity() === "stmt"
+        ? `<p class="nc-grp">⟨本帧合并 ${f._grp.k} 条 VM 指令⟩</p>`
+        : `<p class="nc-grp">语句内第 ${f._grp.m}/${f._grp.k} 条 VM 指令</p>`
+      : "") +
     (f.algorithm_step
       ? `<p class="nc-algo">🧭 ${esc(f.algorithm_step.display_name || f.algorithm_step.algorithm_name)} · ${esc(f.algorithm_step.phase)}<br><span class="nc-algo-desc">${esc(f.algorithm_step.description)}</span></p>`
       : "") +
@@ -226,6 +266,7 @@ function stepStopTimer(): void {
     clearInterval(stepTimer);
     stepTimer = 0;
   }
+  document.body.classList.remove("replaying"); // 播放态退出——所有停止路径（暂停/单步/seek/采集/重置/播完）经此汇聚，左栏在此恢复
   $("anim-play").textContent = "▶ 采集并回放";
 }
 
@@ -233,14 +274,25 @@ function stepPlay(): void {
   if (!stepData || !stepData.frames.length) return;
   stepStopTimer();
   if (stepIdx >= stepData.frames.length - 1) stepGoto(0);
+  document.body.classList.add("replaying"); // 播放态——与设置 class replay-wide 相与后隐藏左栏
   $("anim-play").textContent = "⏸ 暂停";
+  // 时间戳驱动（2026-10-09 帧率批）：每拍按经过时间算目标帧而非 +1 递进——
+  // 渲染跟不上目标帧率时中间帧自动合成跳过（240fps 在 60Hz 屏 ≈ 4 帧合 1
+  // 显示），时间轴节奏恒等于 帧数/目标帧率，不被渲染速度拖慢失真；
+  // seek/单步/暂停是手动路径（stepStopTimer + stepGoto），仍逐帧精确渲染。
+  const interval = Math.max(4, Math.round(1000 / fpsValue()));
+  const startIdx = stepIdx;
+  const startedAt = performance.now();
   stepTimer = window.setInterval(() => {
-    if (stepIdx >= stepData.frames.length - 1) {
+    if (!stepData) { stepStopTimer(); return; }
+    const target = startIdx + Math.floor((performance.now() - startedAt) / interval);
+    if (target >= stepData.frames.length - 1) {
+      stepGoto(stepData.frames.length - 1);
       stepStopTimer();
       return;
     }
-    stepGoto(stepIdx + 1);
-  }, Number(speedValue()) || 200);
+    if (target !== stepIdx) stepGoto(target);
+  }, interval);
 }
 
 async function stepRecollect(): Promise<void> {
@@ -279,13 +331,23 @@ async function stepRecollect(): Promise<void> {
     $("anim-play").textContent = "▶ 采集并回放";
     return;
   }
-  const built = buildCallTree(stepData.frames);
-  stepData.tree = built.root;
-  stepData.frameNode = built.frameNode;
-  ($("anim-seek") as HTMLInputElement).max = String(stepData.frames.length - 1);
-  $("anim-play").removeAttribute("disabled");
+  rebuildGranData();
+  $("anim-play").removeAttribute("disabled"); // 采集期置灰的恢复（2026-10-09 粒度批改造时曾遗漏——播完按钮永久灰死，浏览器证红后补回）
   stepGoto(0);
   stepPlay(); // 采集完自动播放
+}
+
+/** 粒度切换入口（settings 的「回放粒度」seg 调）：有采集数据时停播重算，
+ *  播放位置按新旧帧数比例回跳；无数据空转（下次采集自然按新粒度装配）。 */
+export function replayGranularityChanged(): void {
+  if (!stepData || !stepData.rawFrames.length) return;
+  stepStopTimer();
+  const oldLen = stepData.frames.length;
+  const oldIdx = stepIdx;
+  rebuildGranData();
+  const newLen = stepData.frames.length;
+  const target = oldLen > 1 ? Math.round((oldIdx / (oldLen - 1)) * (newLen - 1)) : 0;
+  stepGoto(Math.max(0, Math.min(newLen - 1, target)));
 }
 
 // 算法侧栏入口（2026-10-04，refs #28）：algo 卡片载入示例后自动采集——
@@ -339,12 +401,8 @@ function hasGatewaySafe(): boolean {
 }
 
 export function bindAnim(): void {
-  setSpeedDropdown(makeDropdown(
-    "anim-speed",
-    [ { v: "400", label: "0.5×" }, { v: "200", label: "1×" }, { v: "100", label: "2×" } ],
-    "200",
-    () => { if (stepTimer) stepPlay(); } // 播放中调速 = 重启节奏
-  ));
+  // 速度下拉已撤销（2026-10-09 帧率批）：帧率收进设置面板「回放帧率」seg
+  //（state 单一真值+持久化）——原下拉不持久化、每次开页重置 1×，一并修正。
   $("anim-play").onclick = () => {
     if (!stepData) { stepRecollect(); return; }
     stepTimer ? stepStopTimer() : stepPlay();

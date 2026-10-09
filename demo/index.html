@@ -55,6 +55,21 @@
             <button type="button" data-v="on">开</button><button type="button" data-v="off">关</button>
           </div>
         </div>
+        <div class="set-row"><span class="set-label">回放粒度</span>
+          <div class="seg" id="set-gran">
+            <button type="button" data-v="stmt">语句级</button><button type="button" data-v="insn">指令级</button>
+          </div>
+        </div>
+        <div class="set-row"><span class="set-label">回放帧率</span>
+          <div class="seg" id="set-fps">
+            <button type="button" data-v="2">2</button><button type="button" data-v="8">8</button><button type="button" data-v="30">30</button><button type="button" data-v="60">60</button><button type="button" data-v="120">120</button><button type="button" data-v="240">240</button>
+          </div>
+        </div>
+        <div class="set-row"><span class="set-label">回放全宽</span>
+          <div class="seg" id="set-wide">
+            <button type="button" data-v="on">开</button><button type="button" data-v="off">关</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -150,7 +165,6 @@
         <button id="anim-prev" class="minor">◀ 上一步</button>
         <button id="anim-next" class="minor">下一步 ▶</button>
         <button id="anim-reset" class="minor">↻ 重新采集</button>
-        <div id="anim-speed" class="dd"></div>
         <input id="anim-seek" type="range" min="0" max="0" value="0">
         <span id="anim-progress" class="muted small"></span>
         <span class="eng-seek">

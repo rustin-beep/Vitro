@@ -93,6 +93,11 @@ html[data-theme="glass"] .settings-panel { backdrop-filter: var(--pane-blur); }
 .small { font-size: 12px; }
 
 main { display: grid; grid-template-columns: minmax(360px, 5fr) 7fr; gap: 18px; padding: 20px 24px; max-width: 1560px; margin: 0 auto; }
+/* 回放全宽（设置 vitro-replay-wide，默认关）：回放播放中隐藏左栏编辑区，
+   可视化独占整行——暂停/停止/断点态即恢复（replaying=播放器态由 timetravel
+   独占管理；replay-wide=设置态由 settings 独占管理，两 class 相与零耦合） */
+body.replaying.replay-wide main { grid-template-columns: 1fr; }
+body.replaying.replay-wide .editor-pane { display: none; }
 /* 移动端（≤960px 与主栅格断点一致）：header 无换行规则时，brand（标题+副题
    240px+）与右侧三图标（128px+）在窄屏互相挤压折行——wrap + 副题独立成行 */
 @media (max-width: 960px) {
@@ -444,6 +449,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 html[data-theme="glass"] .node-card { backdrop-filter: var(--pane-blur); }
 .node-card p { margin: 2px 0; font: 11px/1.5 var(--mono); color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .node-card .nc-ev { color: var(--accent-strong); font-weight: 700; font-size: 11.5px; }
+.node-card .nc-grp { color: var(--t3); font-size: 10.5px; } /* 帧身份（粒度批）：合并 K 条指令 / 语句内 m/K */
 .node-card .nc-fn { color: var(--t1); }
 .node-card .nc-var { color: var(--t1); }
 .node-card .nc-head {

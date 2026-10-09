@@ -1,18 +1,24 @@
 // Vitro demo · 共享态（app.js 拆分批 2026-10-04，refs #28）。
-// speedDd 由 timetravel 的 bindAnim 创建、播放调速读；currentCase 由
-// course 树的基础课点击写入（下拉已随课程树重构撤销）、run/timetravel
-// 读（configHint 语义只对基础用例生效）。ESM export 只读绑定的限制下
-// 用 get/set 对（比模块循环 import 干净）。
+// currentCase 由课程树点击写入、run/timetravel 读（configHint 语义只对基础
+// 用例生效）；breakpointLines 由编辑器行号点击写、采集时读。
+// 回放粒度/帧率（2026-10-09 语句级批）：真值在此、设置面板 seg 写入——原
+// speedDd 速度下拉已随帧率进设置面板撤销（单一真值，免双 UI 同步）。
 "use strict";
 
-import type { Dropdown } from "./util.ts";
+import { storeGet } from "./util.ts";
 
-let speedDd: Dropdown | null = null;
 let currentCase = ""; // 当前基础用例 id（课程树写入；算法/扩展课载入时清空）
 let breakpointLines: number[] = []; // 引擎断点行集（editor 行号点击写、timetravel 采集时读——2026-10-04，refs #28）
 
-export function setSpeedDropdown(d: Dropdown): void { speedDd = d; }
-export function speedValue(): string { return speedDd ? speedDd.value : "200"; }
+export type Gran = "stmt" | "insn";
+let gran: Gran = storeGet("vitro-step-gran") === "insn" ? "insn" : "stmt"; // 默认语句级（播放时长与指令密度解耦）
+const FPS_STEPS = [2, 8, 30, 60, 120, 240];
+let fps = FPS_STEPS.includes(Number(storeGet("vitro-playback-fps"))) ? Number(storeGet("vitro-playback-fps")) : 8; // 默认 8 帧/秒
+
+export function granularity(): Gran { return gran; }
+export function setGranularity(g: Gran): void { gran = g; }
+export function fpsValue(): number { return fps; }
+export function setFps(v: number): void { fps = v; }
 export function setCurrentCase(id: string): void { currentCase = id; }
 export function currentCaseId(): string { return currentCase; }
 export function currentBreakpoints(): number[] { return breakpointLines.slice(); }

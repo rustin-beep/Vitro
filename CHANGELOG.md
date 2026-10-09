@@ -104,6 +104,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 与 #20（层间 fail-fast 遮蔽）#8（typeck 码误导）三层互不替代——层内
   恢复不消除层间短路，反之亦然。
 
+### Fixed（#47 病 6/7/8 三病：realloc 诊断 / breakpoints 回显真源 / allocate_raw(0) 拒绝，refs #47，2026-10-09）
+
+- **病 6**：`host_realloc` 对无效/已释放指针不再静默压 NULL——`realloc_invalid_message` 三分支镜像 `invalid_free_message`（存活块内部 E3027 变体 / 已释放块 E3061 变体 / 兜底），文案 realloc 语境；翻 1 条固化锚（`realloc_not_live_silent_null` 旧锚固化「Rust :212-215 不 trap」病行为）。
+- **病 7**：`breakpoints.set` 回显改从生效集读回——新增 `VitroVM::breakpoints_sorted`（Set 升序视图），回显不再用请求原始数组（旧 `[4,-2,7]` 里 -2 未生效也回显——协议面与实际断点不一致）；翻 1 条固化锚（「回显含原始 lines——Rust 同款」）。
+- **病 8**：`allocate_raw(0)` 改返 `None`（调用方既有堆耗尽路径）——合法零尺寸与溢出回绕均已在 host 层拦截，0 到达本层即上游漏拦的防御分支；旧照搬 Rust `Some(0U)` 短路返 NULL 陷阱区地址 + 零诊断 + 可登记 addr=0 垃圾区域。
+- 验收：moon test 704/704（+2 新锚含翻 2）；vm_diff 618/5/0、clang_direct 711/7/0、demo smoke 168/168（gateway 动过 wasm 已重建）；语料零 realloc 无效指针/breakpoints 用例——golden 零翻。
+
+### Changed（#47 病 11 接线第一层：libc 单表成为判定源——15 个纯骨架臂表驱动化，refs #47，2026-10-09）
+
+- **方向 a 拍板执行**：builtin.mbt 的 15 个纯骨架臂（atof/atoi/atol/exit/free/getchar/putchar/puts/rand/srand/strcat/strcmp/strcpy/strdup/strlen——count + P/I 参数位 + 固定返回的完全同构形态）收编为 `check_builtin_table` 单臂，count/参数位/返回类型全部来自 `@libc.sig_of`（libc 单表投影，元组形态不暴露 priv struct）；文案仍走 builtin_check_count/pointer/int 单源。变参/格式串/FILE*/指针语义族保留专臂（其 param_kinds 列随逐臂收编补值——42 行暂空串不虚标）。visit_call 55→41 臂，删 15 个同构函数（-212 行）。
+- **接线前对拍探针**（等价性基础）：提取 62 臂的（count/参数位/返回）vs 表 57 行——**零真漂移**（初版探针 13 条告警全为解析假阳性：char_ptr() 与 pointer_to(char()) 同构、变参 min 相等）；LibcSig 扩 `param_kinds` 列 + `pub fn sig_of` 投影（libc .mbti +2 行）。
+- **验收**：typeck_diff **385 hash 逐字节一致**（等价性硬线）；moon test 702/702；vm_diff 618/5/0、clang_direct 711/7/0、demo smoke 168/168；surface（sig_of 新边已登记——上批漏边教训兑现）/pkg_deps/mbti_sync 全绿；check --target all 253→251（lookup unused 消）。
+- **第二层收编（同日追加）**：+14 臂——P/I 七族（strchr/strrchr/strstr/strncmp/strncat/memchr/memcmp——内联 count 文案中文数字随收编统一为阿拉伯数字）+ math D 族（tan/log10/fabs/ceil/floor/round/fmod——`check_builtin_table` 新增 'D' double 可赋值位分支，单参无位号文案统一为带位号）。表真值 15→29 行；visit_call 41→27 臂。**typeck_diff 全语料域 621 hash 一致**（385+138+18+80——文案微变零翻锚实证）；moon test 704/704、vm_diff/clang_direct/smoke 全绿。
+- 伴生：libc.mbt 头注叙事终版（「登记性真值表」→「判定源 + 登记册双角色」）。
+
 ### Fixed（#47 修复批六病 + 死字段清理：strchr 负 c / scanf i·x·o 扩面 / const 赋值假阳性 / 三文案 / 病5+12，refs #47，2026-10-09）
 
 - **行为修复三**：① `strchr/strrchr` 负 `c` 取低 8 位比较（C11 §7.24.5.2「转换为 char」——旧照搬 oracle i32 原样比较负 c 恒不中，Clang 对拍静默错值；翻 1 条固化锚）。② **scanf `%i`/`%x`/`%o` 扩面**（判别实锤 oracle 从未实现、规范 :421 系虚标——方向 A 拍板：`%i`=strtol(s,NULL,0) 前缀语义、`%x` base16（0x 前缀须后随 hex 防游标错位）、`%o` base8、带符号 u64 补码、`%*` 只跳写不跳消费、**无数字=匹配失败游标回退**——消灭「返回 0 且不消费输入」双静默；规范 ✅ 随实现成真；新 helper `hex_digit_val`）。③ `char*`→`const char*` 假阳性 W3067 放行（C11 §6.5.16.1 限定符只增不减——strip_top_const 单层剥离保证多级指针安全，`char**`→`const char**` 维持 W3067 负锚锁死）。
@@ -695,6 +710,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **diagnostics 13 类型 `derive(Show)` 移除**（深水区——消费面零依赖实证后删除；三码连坐消 46 条：0027×13 + 0020×7 字段类型 + 0079×26 Show 提升对）。**接口面收缩警示**：`diagnostics/pkg.generated.mbti` 的 `derive(Show, @debug.Debug)` 全部变 `derive(@debug.Debug)`、`libc` 的 `LibcSig` 移出接口面——下游若依赖这些类型的 Show 能力（`inspect`/插值打印）属 0.9.0 breaking 变更点（零公开下游现状 + Show 本身是官方弃用 trait，删除是清 0027 弃用语法的唯一路径）。
 - **豁免登记（非修复）**：0020 余 18 条 = `inspect` 系测试 API 依赖 core 旧 trait（`moonbit/AGENTS.md` 发布流程既有「迁移期噪音」豁免，core 稳定后清零）；0079×217 永久豁免（issue #54 评论裁定）。基线 542→310（as_of 2026-10-09，`--target all` 口径）。
 - **验收**：moon test 687/687（685 基线 + 2 来自并发 #55 批）、vm_diff 617/5/0、clang_direct 710/7/0、demo smoke 168/168、mbti_sync/surface/pkg_deps/gen_diag/hygiene/facts 全绿。官方 85 项警告全表留档 `docs/current/07-质量与裁定/moonc警告全表20261009.md`。
+
+### Added（demo 回放粒度：语句级/指令级切换 + 帧率档 + 帧身份交代，2026-10-09）
+
+- **「回放粒度」设置项**（`vitro-step-gran`，默认语句级）：语句级把连续同 code_line 的 VM 帧按组合并（取组尾帧——局部变量表/调用栈是语句执行完的句末快照），播放时长与 VM 指令密度解耦、只与语句执行次数成正比（冒泡实测 1018→42 帧，默认 8fps 约 5 秒播完）；指令级原帧全集保留（数组交换「半完成中间态」仅此档可见）。切换即时生效：停播重算+调用树重建+播放位置按比例回跳。
+- **「回放帧率」设置项**（`vitro-playback-fps`，六档 2/8/30/60/120/240，默认 8）：播放循环改**时间戳驱动**——每拍按经过时间算目标帧而非 +1 递进，渲染跟不上目标帧率时中间帧自动合成跳过（240fps 在 60Hz 屏 ≈ 4 帧合 1 显示），时间轴节奏恒等于帧数/目标帧率、不被渲染速度拖慢失真；实测 240fps 档有效帧率 ≈250/s（浏览器 setInterval 4ms clamp），1018 帧实测 4.0 秒（理论 4.24s）。播放器原速度下拉撤销（不持久化、每次开页重置 1× 的旧债一并修正），帧率真值收进设置面板单一来源。
+- **帧身份交代**：信息卡新增一行——语句级帧显「⟨本帧合并 K 条 VM 指令⟩」、指令级帧显「语句内第 m/K 条 VM 指令」（前端按 code_line 分组算出，`GranFrame._grp` 为 demo 自有扩展不进协议 wire）。**诚实边界**：协议 v0.1 帧无 opcode 字段（14 字段白名单查实），指令名（LOAD/比较跳转等）交代需引擎 step 流扩展 = v0.2 台账事项，本批不做。
+- **实现**：`annotateGroups`/`coalesceStmt` 纯函数入 util.ts（O(n) 单遍，配 pure.test 锚×2 含实测形态锁）；粒度/帧率真值入 state.ts；引擎与冻结协议零改动。
+- **回归**：tsc 零错 · pure.test 20/20 · 浏览器实测（默认语句级 42 帧+进度「帧 9/42·第 141 步」帧号步号解耦、指令级切换即时 1018 帧+比例回位、240fps 时间戳驱动 4.0s、seg 持久化、出厂默认交还）。
+- **回归修复（本批引入，用户实测抓获）**：stepRecollect 改造时吞掉正常路径的 `anim-play` `removeAttribute`——采集内置灰的按钮在自动播完后永久 disabled（JS 直调 stepPlay 不经点击故自动播放无恙，用户手动重播被灰死）。证红（播完 `disabled:true`）→ 补回恢复行 → 证绿（播完可点、再点重播成功）。
+
+### Added（demo 回放全宽：播放态隐藏左栏编辑区 + 设置开关，2026-10-09）
+
+- **「回放全宽」设置项**（设置面板第三行 seg，`vitro-replay-wide` localStorage，**默认关**——2026-10-09 用户拍板反转，可选不默认改布局）：开启后回放播放中隐藏左栏编辑区、右侧可视化独占整行——大屏播放/投屏形态。暂停/单步/拖条/重新采集/引擎跳转/播完即恢复双栏（全部停止路径汇聚 `stepStopTimer` 单点，播完自动停实测落在恢复态）。
+- **实现**：两 body class 相与零模块耦合——`replaying`（播放态，timetravel 的 `stepPlay`/`stepStopTimer` 独占管理）× `replay-wide`（设置态，settings 独占管理），CSS 组合选择器完成布局切换；播放中拨开关即时生效且**不中断播放**；关闭态行为与旧版全同；移动端单列下同样受益（隐藏编辑区让画布多得纵向空间）。
+- **回归**：tsc 零错 · pure.test 18/18 · 浏览器六态实测（默认双栏 / 播放单列 1512px / 暂停恢复 / 播放中拨开关即时切换 / 刷新持久化+seg 状态标 / 关闭态播放不隐藏）。
 
 
 ## [0.8.0] - 2026-10-05

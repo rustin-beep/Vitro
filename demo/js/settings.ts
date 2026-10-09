@@ -3,13 +3,13 @@
 // app.js 逐字迁移，仅增 import/export。）
 "use strict";
 
-import { $ } from "./util.ts";
-
-function storeGet(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
-function storeSet(key: string, val: string): void { try { localStorage.setItem(key, val); } catch { /* 存储不可用时静默（隐私模式） */ } }
+import { $, storeGet, storeSet } from "./util.ts";
+import { granularity, fpsValue, setGranularity, setFps } from "./state.ts";
+import { replayGranularityChanged } from "./timetravel.ts";
 
 const THEMES: readonly string[] = ["ice", "rose", "paper", "glass", "soft"];
 const NIGHT_THEMES: ReadonlySet<string> = new Set(["glass", "soft"]);
+const FPS_STEPS = [2, 8, 30, 60, 120, 240];
 
 function syncSeg(segId: string, v: string): void {
   const seg = $(segId);
@@ -36,6 +36,29 @@ function applyMotion(v: string): void {
   syncSeg("set-motion", v);
 }
 
+function applyReplayWide(v: string): void {
+  // 只管 body.replay-wide；播放态（body.replaying）由 timetravel 独占管理，
+  // 两 class 相与才隐藏左栏——设置拨动即时生效（播放中拨关立回双栏）
+  document.body.classList.toggle("replay-wide", v !== "off");
+  syncSeg("set-wide", v);
+}
+
+function applyGran(v: string): void {
+  if (v !== "stmt" && v !== "insn") return;
+  storeSet("vitro-step-gran", v);
+  setGranularity(v);
+  syncSeg("set-gran", v);
+  void replayGranularityChanged(); // 有采集数据时停播重算+按比例回位（无数据空转）
+}
+
+function applyFps(v: string): void {
+  const n = Number(v);
+  if (!FPS_STEPS.includes(n)) return;
+  storeSet("vitro-playback-fps", v);
+  setFps(n);
+  syncSeg("set-fps", v);
+}
+
 export function initSettings() {
   let saved: string = storeGet("vitro-theme") ?? "";
   if (saved === "light") saved = "ice"; // 旧双值迁移
@@ -45,6 +68,9 @@ export function initSettings() {
   const savedFont = storeGet("vitro-ed-font");
   applyEdFont(savedFont === "12px" || savedFont === "15px" ? savedFont : "13px");
   applyMotion(storeGet("vitro-motion") === "off" ? "off" : "on");
+  applyReplayWide(storeGet("vitro-replay-wide") === "on" ? "on" : "off"); // 默认关（2026-10-09 用户拍板反转：功能可选，不默认改变布局）
+  syncSeg("set-gran", granularity());
+  syncSeg("set-fps", String(fpsValue()));
 
   const themeBtn = $("theme-toggle");
   if (themeBtn) {
@@ -62,6 +88,9 @@ export function initSettings() {
   segBind("set-theme", setTheme);
   segBind("set-font", (px) => { if (px) { applyEdFont(px); storeSet("vitro-ed-font", px); } });
   segBind("set-motion", (v) => { applyMotion(v); storeSet("vitro-motion", v); });
+  segBind("set-wide", (v) => { if (v) { applyReplayWide(v); storeSet("vitro-replay-wide", v); } });
+  segBind("set-gran", applyGran);
+  segBind("set-fps", applyFps);
 
   // 面板开关：齿轮 toggle / 点击面板外关闭 / ESC 关闭
   const panel = $("settings-panel");

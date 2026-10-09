@@ -73,6 +73,13 @@ export interface StepPayload {
   } | null;
 }
 
+/** 粒度帧（2026-10-09 语句级批）：_grp = 前端按 code_line 分组算出的语句组
+ *  元数据（m=组内第几条 1 起、k=组大小），demo 自有扩展、不进协议 wire——
+ *  协议 v0.1 帧无 opcode 字段，指令名交代登记 v0.2 台账。k===1 时不挂。 */
+export interface GranFrame extends StepPayload {
+  _grp?: { m: number; k: number };
+}
+
 /** step.next 帧批（U1#1 一帧发布缓冲 + finished 冲刷形态） */
 export interface StepNextResult {
   payloads: StepPayload[];

@@ -66,21 +66,84 @@ type pair struct {
 }
 
 func main() {
-	selftest, freeze, golden := false, false, false
+	selftest, freeze, golden, freezeMB := false, false, false, false
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "--selftest":
 			selftest = true
 		case "--freeze":
 			freeze = true
+		case "--freeze-mb":
+			freezeMB = true
 		case "--golden":
 			golden = true
 		default:
-			fatal("未知参数: %s（可用：--selftest/--freeze/--golden）", a)
+			fatal("未知参数: %s（可用：--selftest/--freeze/--freeze-mb/--golden）", a)
 		}
 	}
-	if freeze && golden {
-		fatal("--freeze 与 --golden 互斥")
+	if freeze && golden || freezeMB && (freeze || golden) {
+		fatal("--freeze/--freeze-mb/--golden 互斥（freeze-mb 属删区后入账通道）")
+	}
+	// --freeze-mb（第十一轮审阅 P2-2，2026-10-09）：第 6 套 digest 的删区后
+	// 合法刷新路径——只跑 mb 侧 + 投影 hash 入账（正确性背书 = CI golden
+	// 步语义 + 下游消费），oracle 双侧通道已随工序④退役。
+	if freezeMB {
+		rd := loadRules()
+		if !fileExists(filepath.FromSlash(rd.SrcDir)) {
+			fatal("源目录不存在（须在仓库根运行）: %s", rd.SrcDir)
+		}
+		files := listC(rd.SrcDir)
+		work, err := os.MkdirTemp("", "libc_boot_fmb_*")
+		if err != nil {
+			fatal("临时目录失败: %v", err)
+		}
+		defer os.RemoveAll(work)
+		stubDir := filepath.Join(work, "src")
+		if err := os.MkdirAll(stubDir, 0o755); err != nil {
+			fatal("建目录失败: %v", err)
+		}
+		for _, f := range files {
+			body, err := os.ReadFile(f)
+			if err != nil {
+				fatal("读源失败 %s: %v", f, err)
+			}
+			out := append(append([]byte(nil), body...), []byte(rd.StubSource)...)
+			if err := os.WriteFile(filepath.Join(stubDir, filepath.Base(f)), out, 0o644); err != nil {
+				fatal("写 stub 源失败: %v", err)
+			}
+		}
+		moonDir := filepath.Join(work, "moon")
+		runMoon(stubDir, moonDir)
+		doc := loadBootDigest()
+		added, skipped := 0, 0
+		for _, f := range files {
+			base := filepath.Base(f)
+			if _, ok := doc.Cases[base]; ok {
+				skipped++
+				continue
+			}
+			var md struct{ Dump json.RawMessage }
+			mb, err := os.ReadFile(filepath.Join(moonDir, base+".compile.json"))
+			if err != nil {
+				fatal("--freeze-mb 读产物失败 %s: %v", base, err)
+			}
+			if err := json.Unmarshal(mb, &md); err != nil {
+				fatal("--freeze-mb 解析失败 %s: %v", base, err)
+			}
+			filtered, _, err := filterExport(md.Dump)
+			if err != nil {
+				fatal("--freeze-mb 过滤失败 %s: %v", base, err)
+			}
+			doc.Cases[base] = bootEntry{SrcSHA: fileSHA8(f), ProjSHA: hash16(projectRaw(filtered, rd.CompareFields))}
+			fmt.Printf("ADD %s\n", base)
+			added++
+		}
+		if added == 0 {
+			fatal("--freeze-mb: 无新例可入账（%d 例均已在清单；刷基线先删旧键重跑）", skipped)
+		}
+		saveBootDigest(doc)
+		fmt.Printf("libc_boot_diff --freeze-mb: 新增 %d 例（跳过存量 %d）→ %s\n", added, skipped, bootDigestFile)
+		os.Exit(0)
 	}
 	// 工序④固化（2026-10-05 面六）：oracle 缺失自动切 golden（删区后零改动存活）
 	rustAlive := fileExists(filepath.Join("native", "target", "release", "vitro_cli.exe")) ||

@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **11 张 rules.json → .json.mbt 唯一真相源**（工具转路线——不 merge migrate 分支，
   从 HEAD~1 真源用最新 jsonmbt import 原名重转 + moon fmt 归一 + build --pretty
-  再生回验**字节全兼容**；比 migrate 分支产物新——含 icons 包登记等图标批后条目，
+  再生回验**语义等价**（消费方 JSON 解析零感知；实测 7/11 逐字节等、4/11 仅紧凑数组→多行展开的格式差——第十一轮审阅 P2-1 修正，原称「字节全兼容」不实）；比 migrate 分支产物新——含 icons 包登记等图标批后条目，
   migrate 转换早于图标批曾致 pkg_deps 抓红「icons 未登记」，本批修平）。
 - **scripts 自立 workspace 终案**（替代 migrate 的仓根 moon.work——仓根形态会让
   moonbit 产物搬仓根且路径加 `vitro/engine/` 前缀，壳/防线消费面全断【实测亲历】）：

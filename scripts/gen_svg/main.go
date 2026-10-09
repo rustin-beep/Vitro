@@ -45,6 +45,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"os/exec"
 )
 
 // ─── facts 台账（只读；与 scripts/facts 同一份 reports/facts.json）──────────
@@ -1204,19 +1206,44 @@ type skillInfo struct{ name, desc string }
 
 func discoverSkills(root string) []skillInfo {
 	dir := filepath.Join(root, ".agents", "skills")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		fatal("读不到 .agents/skills/（skills 图输入源）: " + err.Error())
-	}
-	var out []skillInfo
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+	// 扫描面 = git 入库文件（第十一轮审阅 P3-3，2026-10-09）：盘上目录扫描
+	// 会把 gitignore 遮蔽的本地副本（jsonmbt-authoring——权威源在 jsonmbt
+	// 仓）也计入 ⇒ 本地 -check 假红（8 skill vs 入库 7）。按 git ls-files
+	// 取面 = 本地与 CI 天然一致；无 git 环境（理论面）退盘上扫描并打警告。
+	names := []string{}
+	if out, err := exec.Command("git", "-C", root, "ls-files", "--", ".agents/skills").Output(); err == nil {
+		seen := map[string]bool{}
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			if line == "" {
+				continue
+			}
+			rel := strings.TrimPrefix(strings.ReplaceAll(line, "\\", "/"), ".agents/skills/")
+			parts := strings.Split(rel, "/")
+			if parts[0] != "" && !seen[parts[0]] {
+				seen[parts[0]] = true
+				names = append(names, parts[0])
+			}
 		}
-		p := filepath.Join(dir, e.Name(), "SKILL.md")
+	} else {
+		fmt.Fprintln(os.Stderr, "gen_svg: 警告——git ls-files 不可用，退盘上目录扫描（本地副本可能计入）")
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			fatal("读不到 .agents/skills/（skills 图输入源）: " + err.Error())
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				names = append(names, e.Name())
+			}
+		}
+	}
+	sort.Strings(names)
+	var out []skillInfo
+	for _, name := range names {
+		e := name
+		p := filepath.Join(dir, e, "SKILL.md")
 		b, err := os.ReadFile(p)
 		if err != nil {
-			fatal("skills/" + e.Name() + ": 缺 SKILL.md: " + err.Error())
+			continue // git 面含已删未提交等瞬态——缺 SKILL.md 跳过（真实缺由 install_skills.go discover 抓）
 		}
 		text := string(b)
 		// CRLF 兼容（2026-09-29 J9 证红抓出）：core.autocrlf=true 的 Windows
@@ -1224,23 +1251,23 @@ func discoverSkills(root string) []skillInfo {
 		// 误报缺 frontmatter——归一后再解析（.gitattributes 锁 LF 是双保险）。
 		text = strings.ReplaceAll(text, "\r\n", "\n")
 		if !strings.HasPrefix(text, "---\n") {
-			fatal("skills/" + e.Name() + ": SKILL.md 缺 YAML frontmatter")
+			fatal("skills/" + e + ": SKILL.md 缺 YAML frontmatter")
 		}
 		end := strings.Index(text[4:], "\n---")
 		if end < 0 {
-			fatal("skills/" + e.Name() + ": frontmatter 未闭合")
+			fatal("skills/" + e + ": frontmatter 未闭合")
 		}
 		meta := map[string]string{}
 		for _, m := range fmLine.FindAllStringSubmatch(text[4:end+4], -1) {
 			meta[m[1]] = m[2]
 		}
 		if meta["name"] == "" || meta["description"] == "" {
-			fatal("skills/" + e.Name() + ": frontmatter 缺 name 或 description")
+			fatal("skills/" + e + ": frontmatter 缺 name 或 description")
 		}
-		if meta["name"] != e.Name() {
-			fatal(fmt.Sprintf("skills/%s: frontmatter name=%q 与目录名不一致", e.Name(), meta["name"]))
+		if meta["name"] != e {
+			fatal(fmt.Sprintf("skills/%s: frontmatter name=%q 与目录名不一致", e, meta["name"]))
 		}
-		out = append(out, skillInfo{name: e.Name(), desc: meta["description"]})
+		out = append(out, skillInfo{name: e, desc: meta["description"]})
 	}
 	if len(out) == 0 {
 		fatal(".agents/skills/ 下没有可绘制的 skill")

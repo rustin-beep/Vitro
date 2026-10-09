@@ -152,6 +152,7 @@
 | [`current/07-质量与裁定/列号口径冻结.md`](current/07-质量与裁定/列号口径冻结.md) | 列号现状口径冻结（词法 +1 / 解析非 ASCII −4 / make_token 量纲混算根因）+ MoonBit vitro/source 双坐标契约输入 + 10 形状防漂移锚（2026-09-19） |
 | [`current/07-质量与裁定/脚本埋雷验证记录.md`](current/07-质量与裁定/脚本埋雷验证记录.md) | **J9 台账**：五个判定型脚本（shadow_verify / ci_three_tier_check / serve_smoke / facts / precompile_bytecode_libc）的"注入→必须红"埋雷实证台账——判定型脚本埋雷记录 = 0 时其全绿不得作为结论依据（W0-1 / U0#8 验收达成）；MoonBit 迁移期新增闸（diff_ledger / teaching_annotation_diff / protocol_frames 等 20+）的证红以各脚本头注与提交为权威源（覆盖面演化注记） |
 | [`current/07-质量与裁定/INCIDENTS/README.md`](current/07-质量与裁定/INCIDENTS/README.md) | **事故归档制度与索引**（模板 + 归档规则：任何 GB 级资源事故必须归档，与 CHANGELOG 分工；在档：[seek 重放泄漏](current/07-质量与裁定/INCIDENTS/事故202609_Seek重放泄漏.md)） |
+| [`current/07-质量与裁定/协作纪律与事故档案.md`](current/07-质量与裁定/协作纪律与事故档案.md) | **协作纪律与事故档案（as_of 2026-10-09）**：回答"**这条纪律是哪次事故换来的**"——①审阅方式（突变测试 3/3 检出起源、**渗出证据链**〔09-06~09-12 九次"防线加压照出存量"：门禁化 4 例 / 外部审查 12 项全成立 / **保险丝从未生效** / **29 个 `.in` 从未使用致虚假 match** / 浮点语义错存活全部防线 / 词汇闭合首日 3 条不可达〕、J9 防线的防线、**人审位置在机器盲区**〔两次公开实锤：覆盖面质询照出 4 条注释 Rust 病入 [#47](https://github.com/rustin-beep/Vitro/issues/47)、`int main{` 抓出 parse error recovery 缺失立案 [#48](https://github.com/rustin-beep/Vitro/issues/48)〕）②**纪律 ↔ 来源事故对照表**（AGENTS 13 条逐条溯源 + 事故留痕 / 规模 realism / 保险丝可触发性 / 合成靶料效力边界 / 双向对账防僵尸条目等来自事故但按"不堆时点事实"留在本档者）③权限与授权（AI 无独立落案权、授权逐次且可细分）④**否决与撤回档案**（整体 C 重写多轮驳回 / 分而自治降级"已评估暂不采纳" / 语言选型三条结论全撤回 / 独立成仓立项当日改判废弃 / 3D 截图方案否决）⑤查证指引 + **残留缺口**（素材主要来自不入库的工作日志，已诚实登记）——与 `04-工具链与踩坑`（确定性坑）/ `INCIDENTS/`（GB 级资源事故）/ `统一整备路线图.md` §4（机制表）三处归口互补不重复 |
 
 #### 发布档案（mooncakes 版本史）
 

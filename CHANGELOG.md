@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #48 parse 层内错误恢复：顶层声明缺 ';' 且 '{' 紧随的级联雪崩收口——Clang 式 balanced-brace recovery，2026-10-09）
+
+- **病根场景**：`int main{`（学生漏写参数括号）——病根诊断与 Clang 同位同形
+  （E2005 "全局变量声明后预期 ';'"），但旧恢复（consume 失败 → synchronize
+  停到类型关键字/'}'）令函数体行逐 token 暴露在顶层循环，级联数 ∝ 首错后
+  token 数（用户实测 8 条 E2005 vs Clang 1 error 1 warning——单病多报）。
+- **修复**（单点 parser.mbt 顶层声明收尾）：缺 ';' 且 '{' 紧随 = 试图写函数
+  体的强信号——病根报错后整体吞配平块（嵌套计数，未闭合吞到 EOF=「首错
+  行内丢弃」语义锚）+ 尾 ';'，顶层循环从下一声明恢复；**无 '{' 紧随的
+  缺 ';' 形状维持旧恢复不动**（形状锁定锚 `int x y;` = 2 条不变）。
+- 红→绿四锚（parser 黑盒）：主锚 8→1 条（病根位 1:5）/ 垃圾变体
+  dadadas 恒零诊断 / `int a{3}; int b;` 防吞过头（int b 正常入列）/
+  旧形状锁定。目标形态 = 病根 1 条（与 Clang 对齐，demo 学生一屏红归一）。
+- **回归零翻转**：parser/typeck/codegen 差分四目录全 PASS——既有语料
+  诊断形状零漂移（该形状语料零存量），digest 无需重 freeze；moon test
+  699/700·native 820/821（唯一红 = 批五工作区 scanf %x/%o 在制品，非
+  本批面）；双臂 smoke + demo_smoke 168 全绿。
+- 与 #20（层间 fail-fast 遮蔽）#8（typeck 码误导）三层互不替代——层内
+  恢复不消除层间短路，反之亦然。
+
 ### Fixed（issue #55 控制字符三连修：词法 \v 空白缺口 + json_escape 六份收一 + 零断言补全，2026-10-09）
 
 - **词法器 `\v`(0x0B) 空白缺口**（C11 §6.4p3 white-space 全集 vs Rust

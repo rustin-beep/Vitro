@@ -1050,7 +1050,56 @@ fn Parser::parse_global_var_or_func(
       })
       self.parsed_var_types.push((extra_name, extra_ty))
     }
-    ignore(self.consume(Semicolon, "全局变量声明后预期 ';'"))
+    // issue #48（Clang ParseDecl 同款 balanced-brace recovery）：顶层声明
+    // 器组后缺 ';' 且 '{' 紧随 = 漏写参数括号试图写函数体的强信号——病根
+    // 报错后整体吞配平块 + 尾 ';'，顶层循环从下一声明恢复。旧路径
+    //（synchronize 停到类型关键字/'}'）会令函数体行逐 token 暴露在顶层，
+    // 级联数 ∝ 首错后 token 数（`int main{` 学生实测 8 条 E2005 vs Clang
+    // 1 error）。无 '{' 紧随的缺 ';' 形状维持旧恢复不动（形状锁定锚）。
+    if self.check(Semicolon) {
+      ignore(self.advance())
+    } else {
+      let prev = self.previous()
+      self.errors.push({
+        message: "全局变量声明后预期 ';'",
+        line: prev.loc.line,
+        column: prev.loc.column,
+        code: @diag.ErrorCode::E2005_ExpectedSemicolon.code(),
+      })
+      if self.check(LBrace) {
+        self.skip_balanced_braces()
+        if self.check(Semicolon) {
+          ignore(self.advance())
+        }
+      } else {
+        self.synchronize([Semicolon])
+      }
+    }
+  }
+}
+
+///|
+/// 吞一个 `{ ... }` 配平块（嵌套计数；未闭合吞到 EOF——垃圾变体
+/// 「首错行内丢弃」语义锚：块内任意内容恒零额外诊断）。仅在入口
+/// 确认是 LBrace 后调用；返回时 pos 在块闭合 '}' 之后（或 EOF）。
+fn Parser::skip_balanced_braces(self : Parser) -> Unit {
+  if !self.check(LBrace) {
+    return
+  }
+  ignore(self.advance())
+  let mut depth = 1
+  while !self.is_at_end() && depth > 0 {
+    match self.current().ty {
+      LBrace => {
+        depth += 1
+        ignore(self.advance())
+      }
+      RBrace => {
+        depth -= 1
+        ignore(self.advance())
+      }
+      _ => ignore(self.advance())
+    }
   }
 }
 

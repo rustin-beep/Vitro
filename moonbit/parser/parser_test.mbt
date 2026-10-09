@@ -346,3 +346,43 @@ test "b3rv_scope_barrier_var_types" {
   let r3 = @parser.parse(@lexer.tokenize(src3).tokens)
   assert_eq(r3.errors.length(), 0, msg="内层自身可见")
 }
+
+///|
+/// issue #48 红→绿主锚：顶层声明缺 ';' 且 '{' 紧随（学生漏写参数括号）
+/// ——Clang 式 panic-mode 恢复后级联归零，只留病根 1 条（修前 8 条）。
+test "parse decl missing semi with brace collapses to root" {
+  let r = parse_src("int main{\n int a,b;\n printf(\"hello\");\n};\n")
+  inspect(r.errors.length(), content="1")
+  inspect(r.errors[0].code, content="2005")
+  inspect(r.errors[0].line, content="1")
+  inspect(r.errors[0].column, content="5")
+}
+
+///|
+/// issue #48 垃圾 token 变体：首错行内丢弃语义（dadadas 恒零诊断），
+/// 整块吞到配平 '}' + 尾 ';'——与不带 dadadas 版逐条相同。
+test "parse decl brace junk swallow keeps root only" {
+  let r = parse_src("int main{dadadas\n int a,b;\n printf(\"hello\");\n};\n")
+  inspect(r.errors.length(), content="1")
+  inspect(r.errors[0].code, content="2005")
+}
+
+///|
+/// issue #48 防吞过头：块 + 尾 ';' 消费后下一声明正常入列。
+test "parse decl brace recovery keeps next decl" {
+  let r = parse_src("int a{3}; int b;\n")
+  inspect(r.errors.length(), content="1")
+  let p = r.program.unwrap()
+  assert_true(p.globals.length() >= 1, msg="int b; 须正常入列")
+  assert_eq(p.globals[p.globals.length() - 1].name, "b", msg="末位全局 = b")
+}
+
+///|
+/// issue #48 形状锁定：缺 ';' 但**无** '{' 紧随的旧恢复路径零扰动
+///（synchronize 停 ';' 前 → 顶层报 UnexpectedTop 一条——历史形状，锁 2 条）。
+test "parse decl missing semi without brace keeps legacy shape" {
+  let r = parse_src("int x y;\n")
+  inspect(r.errors.length(), content="2")
+  inspect(r.errors[0].code, content="2005")
+  inspect(r.errors[1].code, content="2005")
+}

@@ -33,7 +33,8 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
     return 4
   }
   if json_mode {
-    // escape 与 lib/run / lib/step 三份同源复制连坐
+    // escape_json 单源（定义在 cli_step.mbt，compile/run_json 裸名跨文件
+    // 消费——批五注释清理：旧「三份同源复制连坐」指向已收口的历史形态）
     let mut id = 0
     let inv = fn(method : String, params : String) -> String {
       id += 1

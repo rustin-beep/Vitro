@@ -4,11 +4,12 @@
 /// 独立维护的真相源：头文件存根 / visit_call 硬编码 / bytecode_libc_sig /
 /// codegen 两表，已实测互相冲突——勘察 §③-3 O6）。
 ///
-/// **照搬现状口径**（差分对拍期两侧一致优先，照搬不私改）：表内容逐条
-/// 提取自 Rust `vitro_typeck/src/builtin/{mod,io,string,math,memory,
-/// file}.rs` 的 check_builtin_* 返回类型与实参约束。已知与 C 标准/
-/// 头文件存根冲突处曾**登记不修正**（N3/N4，S8 台账收编）——
-/// **批四销案（2026-10-07，#47）**：脱钩后对齐 C 标准/存根——
+/// **表内容口径**（批五注释清理收口 2026-10-09）：差分对拍期初始内容
+/// 逐条提取自 Rust `vitro_typeck/src/builtin/{mod,io,string,math,memory,
+/// file}.rs` 的 check_builtin_*（该路径已随删区消失，tag
+/// rust-oracle-freeze 可回溯）；**批四销案（2026-10-07，#47）起真值
+/// 锚 = C 标准/头文件存根**——已知与 C 标准/头文件存根冲突处曾**登记
+/// 不修正**（N3/N4，S8 台账收编），脱钩后逐项对齐：
 /// - `printf` / `putchar` / `fprintf` 返回 int（原 void，N3——运行期
 ///   同批补返回值通路，host_printf_n/host_fprintf_n/host_putchar）；
 /// - `strcpy` 族 char* 与 bytecode_libc_sig 侧 void 的表间漂移（N4）

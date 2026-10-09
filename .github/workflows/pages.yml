@@ -61,6 +61,39 @@ jobs:
       - name: Build wasm-gc gateway (release)
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
 
+      # ── jsonmbt 真相源再生（2026-10-09 补，修 run 37884966704）────────────
+      # gen_demo_algorithms 读 scripts/teaching_annotation_diff/rules.json——
+      # 该 .json 已随 jsonmbt 手写面第二批翻转遮蔽不入仓（.json.mbt 唯一真源，
+      # 2026-10-09 refs #47），本 job 独立检出无 core 侧再生产物 ⇒ 组装步
+      # FATAL 缺文件。全量 13 张枚举再生（与 ci.yml core/hygiene 同款——
+      # 防后续翻转批再撞本 job 的隐藏消费面）。exe 后缀双兼容（本 job
+      # ubuntu 无 .exe，与 core 的 windows 形态共用脚本段）。
+      - name: Build jsonmbt (truth-source regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          moon update
+          MOON_CC=clang moon build --target native --release
+          exe="$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt"
+          [ -f "$exe" ] || exe="$exe.exe"
+          echo "JSONMBT_EXE=$exe" >> "$GITHUB_ENV"
+
+      - name: Regenerate truth-source JSON (.json.mbt -> .json)
+        shell: bash
+        run: |
+          set -e
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 13 ]; then
+            echo "FATAL: 期望 13 张规则真相源，实得 $count"
+            printf '%s\n' "$files"
+            exit 2
+          fi
+          for m in $files; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
+
       # docs 子站：-section current（62 篇活跃文档；112 篇 archive 内部
       # 历史档案不进对外站点）→ 组装进 demo-dist/docs/（Pages 单站点
       # 单 artifact，docs 以子路径共存；ubuntu runner 自带 Go）

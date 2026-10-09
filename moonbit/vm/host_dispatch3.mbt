@@ -62,7 +62,9 @@ fn concat_shapes(arr : Array[String]) -> String {
 
 ///|
 /// 比较器执行（`call_user_function`；返回 None = 函数未知/形状违约 trap/
-/// trap/步数超限——qsort/bsearch 按「比较失败 = 相等」处理，照搬 oracle）。
+/// trap/步数超限——qsort/bsearch 按「比较失败 = 相等」处理，防御性语义
+/// 维持〔批五注释清理收口 2026-10-09：历史出处 oracle 随删区退役，tag
+/// rust-oracle-freeze 可回溯——比较器失败不中止排序的教学容错取舍〕）。
 fn VitroVM::call_user_function(
   self : VitroVM,
   func_idx : Int,
@@ -227,7 +229,8 @@ fn VitroVM::call_user_function(
 }
 
 ///|
-/// qsort/bsearch 共用嵌套深度上限（照搬 oracle `MAX_QSORT_DEPTH = 8`——
+/// qsort/bsearch 共用嵌套深度上限（历史出处 oracle `MAX_QSORT_DEPTH = 8`，
+/// 已随删区消失 tag rust-oracle-freeze 可回溯，数值基线现自主维持——
 /// 六轮审阅 P2：此前误写 64 且注释自称照搬；bsearch 的 `MAX_BSEARCH_DEPTH`
 /// 与本常量同值 8，共用 `qsort_depth` 计数器）。
 const MAX_QSORT_DEPTH : Int = 8

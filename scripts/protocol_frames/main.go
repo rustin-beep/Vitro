@@ -4,18 +4,21 @@
 // 「serve 补字段级冻结测试（protocol_frames.jsonl 双宿主对拍）」——S7 批
 // 四号交付物第三件，2026-10-04 兑现）。
 //
-// 形态：固定请求序列发往双宿主（Rust vitro_cli serve = oracle 臂；
-// MoonBit cmd/serve = 迁移臂），每帧响应经 canonicalize（键排序归一——
-// 已知限制条目 9 定案口径：Rust serde BTreeMap 字典序 vs MoonBit 插入序，
-// 比较一律经 canonicalize）→ compact 单行 → 文本级 mask（已知永久分叉的
-// 字段值替换，规则外置 rules.json）→ 与入库基线 baseline.jsonl 逐帧比对。
+// 形态（D 桶基线翻转后，2026-10-09）：固定请求序列发往 MoonBit serve
+// （native 臂或 --backend-wasm 统一入口壳），每帧响应经 canonicalize
+// （键排序归一——历史遗留口径：Rust serde BTreeMap 字典序 vs MoonBit
+// 插入序，比较一律经 canonicalize）→ compact 单行 → 文本级 mask（长期
+// 形态差的字段值替换，规则外置 rules.json）→ 与入库基线 baseline.jsonl
+// 逐帧比对。
 //
-// 三重义务：
-//   - 双宿主互比（--diff-hosts）：两侧帧逐字节一致（分叉即红）；
-//   - 基线冻结（默认 --check）：两臂各自与基线比对——防两侧一起漂
-//     （白名单只管键集，这里管到值——「字段级冻结」的增量面）；
-//   - 退役形态预置：Rust 删除后 MoonBit 臂单跑仍与基线比（oracle 臂的
-//     最后一次消费即 --update-baseline 那次，随 0.8.0 工序②终验走）。
+// 义务：
+//   - 基线冻结（默认 --check）：帧与基线比对——防实现漂移（值级冻结，
+//     oracle 缺陷族 5 mask 已随 D 桶删除，delta/max_steps/heatmap_count/
+//     algorithm_matches/未知方法清单五面为真值冻结）；
+//   - 基线刷新（--update-baseline，人工令）：以 MoonBit 臂真值重建——
+//     D 桶人工裁定兑现（原 oracle 臂冻结基线随删区退役翻转，2026-10-09）；
+//   - 退役形态明示：--diff-hosts（含 --audit-skips）依赖 rust 双宿主，
+//     删区后 fatal（skip 面审计走 skip_methods 清单人工复核）。
 //
 // **覆盖面边界（审阅 P3-⑤ 登记，2026-10-04）**：非 ASCII 程序输出的
 // delta 值域**不在本闸覆盖内**——MoonBit delta 为 Latin-1 逐字节折回
@@ -27,7 +30,7 @@
 //
 //	go run ./scripts/protocol_frames                  # 双臂 vs 基线（CI 形态）
 //	go run ./scripts/protocol_frames --diff-hosts     # 双宿主互比（无基线依赖）
-//	go run ./scripts/protocol_frames --update-baseline # 以 oracle 臂刷新基线（人工令）
+//	go run ./scripts/protocol_frames --update-baseline # 以 MoonBit 臂刷新基线（人工令——D 桶裁定后形态）
 //	go run ./scripts/protocol_frames --audit-skips    # skip 僵尸审计（不跳真跑）
 //	go run ./scripts/protocol_frames --selftest       # J9 三锚（mask/非法 JSON/比对红）
 package main
@@ -291,7 +294,7 @@ func fatal(f string, a ...any) {
 func main() {
 	diffHosts := flag.Bool("diff-hosts", false, "双宿主互比（两侧帧逐字节一致；不依赖基线）")
 	backendWasmFlag := flag.Bool("backend-wasm", false, "#49 批三：moonbit 臂被测物换统一入口壳 serve（node 消费 gateway wasm.wasm）——基线/断言零改动")
-	update := flag.Bool("update-baseline", false, "以 oracle（Rust）臂刷新入库基线（人工令——随 0.8.0 工序②终验走最后一次）")
+	update := flag.Bool("update-baseline", false, "以 MoonBit 臂刷新入库基线（人工令——D 桶裁定：oracle 时代基线已翻转 mb 臂真值）")
 	auditSkips := flag.Bool("audit-skips", false, "skip 僵尸审计（审阅 P3-④ 补）：临时不 skip 真跑一轮——原 skip 帧两侧一致即僵尸红（键集分叉已收敛应删条目），DIFF=合法 skip")
 	selftest := flag.Bool("selftest", false, "J9：mask 生效 + 非法 JSON 拒绝 + 基线比对红三锚")
 	flag.Parse()
@@ -364,13 +367,23 @@ func main() {
 	}
 
 	if *update {
-		if !useRust {
-			fatal("--update-baseline 需 rust 侧真值；oracle 已删区退役、基线已冻结——如需重建基线须人工裁定以哪臂为准")
+		// D 桶裁定兑现（2026-10-09，refs #47 批五）：基线真值臂 = MoonBit
+		// （oracle 臂已随删区退役，原「需 rust 侧真值」fatal 护栏的本意是
+		// 阻止无主刷新——人工裁定后翻转）。
+		mb := startHost("moonbit", mbServe)
+		var frames []string
+		for _, r := range table {
+			line, err := frameLine(mb.request(r))
+			if err != nil {
+				fatal("moonbit 臂帧处理失败（id=%d %s）: %v", r.id, r.method, err)
+			}
+			frames = append(frames, line)
 		}
-		if err := writeBaseline(rustFrames); err != nil {
+		mb.stop()
+		if err := writeBaseline(frames); err != nil {
 			fatal("写基线失败: %v", err)
 		}
-		fmt.Printf("基线已刷新（%d 帧）→ %s\n", len(rustFrames), basePath)
+		fmt.Printf("基线已刷新（moonbit 臂，%d 帧）→ %s\n", len(frames), basePath)
 		return
 	}
 

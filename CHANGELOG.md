@@ -30,6 +30,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   libc_boot_diff / host_route_coverage / host_contract_map / gen_protocol_ts /
   skill_path_check / perf_budget / protocol_frames 33 帧——字节兼容下消费方零感知。
 
+### Fixed（批五·注释清理片：八条 oracle 照搬注释收口 + 分叉②审视裁定，refs #47，2026-10-09）
+
+- **八条注释遗留逐一收口**（issue #47 批五清单）：serve_io×2 / protocol
+  schema / source_loc / diagnostics types / auto_fix / vm qsort×2 / libc——
+  「照搬 / Rust 现状同形」的现行决策叙事统一翻转为「历史出处 + tag
+  `rust-oracle-freeze` 可回溯 + 本仓自主基线」（与 gen_host_route.go:21
+  范本同口径）。**纯注释批零行为改动**（moon test 685/685 实证）。
+- **serve_io 分叉② D 桶连带审视：裁定维持**——字节域通道语义自洽
+  （UTF-8 边界前移会破坏「cursor 只用 total 回填」的消费方契约），
+  裁定注记写入文件头。
+- addr 条目判定随批四销案已消化（无需动作）；两处过时注释顺手清
+  （cli_compile escape_json 单源注记 / host_io_wbtest apply_width
+  None-早退锚注——宽度 Some 时旗标批二-b 起有效，旧注释指向已收口
+  的 oracle 形态）。
+
+### Fixed（批五·D 桶销案：protocol_frames 豁免面清理 + 基线翻转 mb 臂真值，refs #47，2026-10-09）
+
+- **oracle 缺陷族 5 mask 删除 + 基线翻转**：heatmap-count-mask / reset-max-steps-mask /
+  delta-text-mask / compile-algorithm-matches-del / unknown-method-listing-del 五条随
+  D 桶人工裁定删除——`--update-baseline` 解锁以 MoonBit 臂刷新（原「需 rust 真值」
+  fatal 护栏的本意是阻止无主刷新，人工裁定后翻转），基线 33 帧翻 mb 臂真值
+  （max_steps=5000 / algorithm_matches×7 / 未知方法清单 / delta 真实 Latin-1 折回
+  文本全入基线，`<N>`/`<TEXT>` 占位符清零）——**五面恢复值冻结**（oracle 缺陷
+  随退役收敛的终态兑现；delta 字节级一致性不再由 total/cursor 单独承担）。
+- **J9 证红**：删 mask 后旧基线（mask 后形态）对拍实红 18 处 DRIFT——值冻结
+  回归后真值 vs oracle 时代占位符的全部差异显形；刷基线后 native/wasm 双臂
+  33 帧全一致。
+- **保留面**：engine_version-del（防御位，零命中）+ skip_methods 两条
+  （capabilities 键集结构性分叉 = 长期形态差；memory.dump 1.4MB 帧不冻结——
+  覆盖面由 wbtest 往返锚 + 映像对拍承担）。
+- 连坐：rules.json.mbt 头部翻转为手写真源标注（@generated 与「唯一真相源」
+  矛盾——11 张 rules 同族头部欠账登记 #47）；main.go 头注/flag/用法注释从
+  双宿主形态收口为单臂 vs 基线；已知限制①表条目 10/11/12/13 终态改写
+  （step trap 语义/root_cause_hint 面现为单实现真值冻结）。
+- 防线：protocol_frames selftest 三锚 + native/wasm 双臂 33 帧全绿、gofmt/vet
+  零输出、`moon check`/`moon fmt --check`（scripts）绿、`facts --strict` 零漂移。
+
 ### Fixed（jsonmbt CI 复绿：moon update + 再生清单漏项，2026-10-08）
 
 - **Build jsonmbt rc=127 修复**：干净 runner 的 registry index 未初始化，jsonmbt 三个

@@ -1,14 +1,16 @@
 // S7 批三号三段：serve 交互 IO 方法族——input.feed（增量喂入续跑）+
 // output.delta（输出通道增量，E-P1-5 四通道游标）。
-// 照搬源：native/src/bin/vitro_cli.rs 的 input.feed/output.delta 臂 +
-// native/src/session_api.rs 的 input_feed/output_delta_on。
+// 历史出处：native/src/bin/vitro_cli.rs 的 input.feed/output.delta 臂 +
+// native/src/session_api.rs 的 input_feed/output_delta_on（已随 2026-10-05
+// 删区消失，tag rust-oracle-freeze 可回溯；后续演化为本仓自主基线）。
 //
 // **input.feed 语义**（下游需求清单 A2）：run 返回 waiting_input 后追加
 // stdin 文本（可含多行，split_stdin 同口径切行）并续跑到 finished /
 // trapped / 下一次 waiting_input。状态机：
 //   waiting_input --input.feed--> running --> waiting_input | finished | trap
 // feed 在非等待态也可调用：文本追加后正常跑（execute_run 非 resume 分支
-// 会 reset + setup 从头重跑——Rust 现状同形，照搬不私改）。
+// 会 reset + setup 从头重跑——会话语义 = 喂入后重新执行全程；Rust 同形，
+// 出处同上 tag 可回溯）。
 //
 // **output.delta 分叉登记**（三条；①③ 于 2026-10-06 #49 统一 CLI 批修订）：
 // ① **delta 编码形态按通道分域**：Rust 输出通道是 UTF-8 String
@@ -19,14 +21,18 @@
 //    入通道），delta 以 `@util.utf8_text_partial` 解码回原文（修复前统一
 //    Latin-1 折回致中文 mojibake——CLI note 消费先例同款修正）；display
 //    混合域投影维持 Latin-1（note 部分差异并入本条）。
-// ② **cursor 无 UTF-8 字符边界前移**：Rust 侧 `while !all.
+// ② **cursor 无 UTF-8 字符边界前移**：历史对照（Rust `while !all.
 //    is_char_boundary(start) { start += 1 }` 使「cursor 落在多字节
-//    字符中间」时空转下个边界（delta 恒合法 UTF-8）；本侧字节域无
+//    字符中间」时空转下个边界，delta 恒合法 UTF-8）；本侧字节域无
 //    边界概念，中段 cursor 直接切字节（探针实测：`printf("中")`
-//    cursor=1 → oracle delta=""〔前移到 3〕/ 本侧 delta=2 尾字节）。
+//    cursor=1 → Rust delta=""〔前移到 3〕/ 本侧 delta=2 尾字节——
+//    对照形态随删区退役，tag rust-oracle-freeze 可回溯）。
 //    **消费方契约**：cursor 只用响应里的 `total` 回填推进，永不自算
-//    中段游标 ⇒ 两侧行为一致；自算中段游标（如按显示宽度截取）才会
-//    触发本分叉。锚 `serve_output_delta_cursor_mid_utf8_byte` 锁现状。
+//    中段游标；自算中段游标（如按显示宽度截取）才会踩到字节残段。
+//    **批五 D 桶审视裁定（2026-10-09，refs #47）：维持现状**——字节域
+//    通道语义自洽（实现 UTF-8 边界前移会使 cursor 增量与 total 不一致，
+//    反而破坏字节域消费方契约）。锚 `serve_output_delta_cursor_mid_utf8_byte`
+//    锁现状。
 
 ///|
 /// input.feed 方法帧（Rust input_feed 照搬）：params.text 缺省 "" 等价

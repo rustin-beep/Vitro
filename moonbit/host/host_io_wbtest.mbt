@@ -56,7 +56,8 @@ test "apply_width_flags_oracle_truth" {
   assert_eq(apply_width("42", Some(5), "-"), "42   ")
   assert_eq(apply_width("42", Some(5), "0"), "00042")
   assert_eq(apply_width("42", None, ""), "42")
-  // %+d / "% d"：旗标无效（oracle apply_width 只认 -/0）
+  // %+d / "% d"：宽度 None 时旗标早退不生效（宽度 Some 时旗标批二-b 起
+  // 有效——见 host_io_wbtest「审阅 P2-a 锚」；本组锚只验 None 早退路径）
   assert_eq(apply_width("42", None, "+"), "42")
   assert_eq(apply_width("42", None, " "), "42")
   // 0 旗标与 - 同时：- 优先

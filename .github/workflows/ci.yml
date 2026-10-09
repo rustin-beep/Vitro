@@ -717,13 +717,24 @@ jobs:
           MOON_CC=clang moon build --target native --release
           echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
 
-      - name: Regenerate perf_budget rules (hygiene-local)
+      - name: Regenerate truth-source JSON (hygiene-local)
+        # 全量 13 张（与 core Regenerate 同清单），非只 perf_budget：2026-10-09
+        # run 37884966704 实证 Pages/hygiene 侧还有隐藏消费面——gen_svg 图 M
+        # 读 teaching/rules.json（Docs SVG freshness 步在本步之后），单张再生
+        # 会漏。枚举自维护 + 计数断言与 core 同款。
         shell: bash
         run: |
           set -e
-          m=scripts/perf_budget/rules.json.mbt
-          [ -f "$m" ] || { echo "FATAL: 缺真相源 $m"; exit 2; }
-          "$JSONMBT_EXE" build --pretty "$m"
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 13 ]; then
+            echo "FATAL: 期望 13 张规则真相源，实得 $count"
+            printf '%s\n' "$files"
+            exit 2
+          fi
+          for m in $files; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
 
       - name: Performance-assumption budget (corpus scale premises)
         # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模

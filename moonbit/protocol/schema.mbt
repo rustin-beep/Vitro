@@ -1,5 +1,7 @@
-// schema 版本轨道与行为契约（照搬 native/src/unified/contracts.rs，
-// 2026-09-27）。三个问题的答案都在代码里（非只在文档里）：
+// schema 版本轨道与行为契约（历史出处 native/src/unified/contracts.rs，
+// 2026-09-27；该路径已随 2026-10-05 删区消失，tag rust-oracle-freeze
+// 可回溯——台账/契约内容现为本仓自主维护基线，v0.2 增补见下）。
+// 三个问题的答案都在代码里（非只在文档里）：
 // 1. v0.1 冻结了什么：SCHEMA_VERSION + STEP_PAYLOAD_FIELDS_V0_1（14 字段
 //    白名单，与 scripts/replay/v01_payload_fields.json 单源对账）+
 //    RESERVED_FIELDS_V0_2（预留位，激活前不得出现在任何 payload）；

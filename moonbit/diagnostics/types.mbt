@@ -1,7 +1,8 @@
-// 诊断教学域类型层（照搬 native/src/diagnostics/{error_catalog,
+// 诊断教学域类型层（历史出处 native/src/diagnostics/{error_catalog,
 // knowledge_graph,misconception_patterns,learning_path,auto_fix}.rs
-// 的类型定义；FixTarget 为自持形态——Rust 侧复用 session::Diagnostic，
-// 本包零 import 故转装，见 moon.pkg 头注）。
+// ——已随 2026-10-05 删区消失，tag rust-oracle-freeze 可回溯，类型定义
+// 现为本仓自主维护基线；FixTarget 为自持形态——Rust 侧复用 session::
+// Diagnostic，本包零 import 故转装，见 moon.pkg 头注）。
 
 ///|
 /// 静态修复载荷的坐标锚定模式（勘察 A3 拆分：载荷文案是数据、

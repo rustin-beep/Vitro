@@ -22,6 +22,7 @@ import { renderCourseTree, bindCasePicker } from "./js/course.ts";
 import { setCurrentCase } from "./js/state.ts";
 import { initSettings } from "./js/settings.ts";
 import { initWorkspace } from "./js/workspace.ts";
+import { initShare, applySharedSource } from "./js/share.ts";
 
 // 课程树基础课选中（原 selectCase 语义照搬：编辑器/blurb/回放区过期/输出区清零；
 // 工作区离开 guard 在 course.ts 课点击层统一处理，此处无需重复）
@@ -61,6 +62,7 @@ function selectCaseById(id: string) {
 (async function boot() {
   initSettings();
   initWorkspace(); // 本地文件夹工作区（不支持的浏览器内部自隐入口）
+  initShare(); // 链接分享（把编辑器内容压进 URL # 片段——2026-10-09 批）
   bindTabs();
   initEditorDecor();
   // 诊断卡点击跳行（F-1 视觉件：事件委托，卡片是批量重渲染的）
@@ -125,5 +127,9 @@ function selectCaseById(id: string) {
     "",
   ].join("\n");
   renderEditorDecor();
-  setStatus("idle", "就绪"); // 初始 pill = busy 加载态（HTML 同步预置），引擎就绪此处才落回
+  // 分享链接消费（# 片段）：命中则覆盖上面那段空态文案。放在最后是因为
+  // 它要盖掉 boot 的空态初始化；**不自动运行**——链接内容是不可信输入，
+  // 只落到编辑器（缺省态未被覆盖时状态 pill 才落「就绪」）。
+  const shared = await applySharedSource();
+  if (!shared) setStatus("idle", "就绪"); // 初始 pill = busy 加载态（HTML 同步预置），引擎就绪此处才落回
 })();

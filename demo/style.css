@@ -171,6 +171,17 @@ button.minor, #feed-btn { background: var(--accent-fill); color: var(--on-accent
 #ws-save, #ws-close { padding: 4px 12px; font-size: 12px; flex: none; }
 #ws-open { display: inline-flex; align-items: center; gap: 6px; }
 #ws-open svg { flex: none; }
+
+/* 链接分享条（2026-10-09 批）：生成后常驻——剪贴板被拒（非安全上下文 /
+   权限拒绝）时它是唯一的手动复制出口，故不做自动消失。长度提示在前
+   （源码→链接的字符数对照，用户据此判断这条链接值不值得发）。 */
+#share-btn { display: inline-flex; align-items: center; gap: 6px; }
+#share-btn svg { flex: none; }
+.share-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.share-len { font-size: 12px; color: var(--t3); flex: none; white-space: nowrap; }
+.share-out { flex: 1 1 auto; min-width: 0; background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); border-radius: 8px; padding: 4px 8px; font-family: var(--mono); font-size: 12px; }
+.share-out:focus { border-color: var(--accent); outline: none; }
+#share-copy { padding: 4px 12px; font-size: 12px; flex: none; }
 @media (max-width: 960px) { .ws-ui { display: none !important; } }
 
 .pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); transition: color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out); display: inline-flex; align-items: center; gap: 6px; }

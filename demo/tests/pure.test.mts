@@ -13,6 +13,17 @@ import { tokenizeC, highlightLines } from "../js/editor.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { heapSpanOf } from "../js/memory.ts";
 import { toPosix, isSourceFile, shouldSkipDir, orderForCompile } from "../js/workspace.ts";
+import {
+  bytesToB64url,
+  b64urlToBytes,
+  parseFragment,
+  shareUrlFrom,
+  packSource,
+  unpackSource,
+  urlLenWarning,
+  SHARE_URL_WARN,
+  SHARE_VERSION,
+} from "../js/share.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -141,4 +152,75 @@ test("workspace：orderForCompile active 居首 + 其余字典序", () => {
     orderForCompile(["main.c", "sub/x.c"], "sub/x.c"),
     ["sub/x.c", "main.c"],
   );
+});
+
+// ── 链接分享纯函数（2026-10-09 批）：base64url 往返 / fail loud 三形态 /
+//    片段解析三态 / deflate-raw 往返与「截断必被解压失败兜住」（载荷不花
+//    校验和的唯一依据——该锚就是它的回归防线）
+test("share：base64url 往返（含多字节与全 0xFF 字节面）", () => {
+  // 空字节 → 空串（合法输出，但空载荷不是合法片段——反解侧见下一锚）
+  assert.equal(bytesToB64url(new Uint8Array([])), "");
+  const cases = [
+    new TextEncoder().encode("Hello\n"),
+    new TextEncoder().encode("int main(){/* 中文注释 */return 0;}"),
+    new Uint8Array([0, 1, 254, 255, 251, 250, 62, 63]),
+  ];
+  for (const bytes of cases) {
+    assert.deepEqual(b64urlToBytes(bytesToB64url(bytes)), bytes);
+  }
+  // 无 padding、URL 安全字符集（+ / = 不得出现）
+  assert.equal(/[+/=]/.test(bytesToB64url(new Uint8Array([251, 255, 190]))), false);
+});
+
+test("share：b64urlToBytes 三形态 fail loud（空 / 非法字符 / 长度 %4==1）", () => {
+  assert.throws(() => b64urlToBytes(""), /空/);
+  assert.throws(() => b64urlToBytes("ab+cd"), /之外的字符/);
+  assert.throws(() => b64urlToBytes("abcde"), /长度非法/);
+  // 合法长度三种余数都要能过（0/2/3）
+  assert.equal(b64urlToBytes("YWJj").length, 3);
+  assert.equal(b64urlToBytes("YWI").length, 2);
+  assert.equal(b64urlToBytes("YQ").length, 1);
+});
+
+test("share：parseFragment 三态（无片段=首访 / 有片段但不认识=截断 / 正常）", () => {
+  assert.deepEqual(parseFragment(""), { kind: "none" });
+  // 有 # 但版本前缀被截断 —— 必须报 bad，绝不能静默当首访
+  assert.equal(parseFragment("z1").kind, "bad");
+  assert.equal(parseFragment("bogus").kind, "bad");
+  assert.equal(parseFragment("z9.AAAA").kind, "bad");
+  const ok = parseFragment("z1.AAAA");
+  assert.deepEqual(ok, { kind: "payload", payload: "AAAA" });
+  // 版本前缀在、载荷空 → bad
+  assert.equal(parseFragment("z1.").kind, "bad");
+});
+
+test("share：shareUrlFrom 剥已有 # 片段（连点分享不叠加）", () => {
+  assert.equal(shareUrlFrom("https://x/Vitro/", "z1.abc"), "https://x/Vitro/#z1.abc");
+  assert.equal(shareUrlFrom("https://x/Vitro/#z1.old", "z1.new"), "https://x/Vitro/#z1.new");
+  assert.equal(shareUrlFrom("https://x/Vitro/?a=1#z1.old", "z1.new"), "https://x/Vitro/?a=1#z1.new");
+});
+
+test("share：源码压缩往返（deflate-raw，原样还原缩进与中文）", async () => {
+  const src = '#include <stdio.h>\n\nint main() {\n  // 中文注释\n  printf("Hello\\n");\n  return 0;\n}\n';
+  const fragment = await packSource(src);
+  assert.ok(fragment.startsWith(SHARE_VERSION + "."), "片段带版本前缀");
+  const parsed = parseFragment(fragment);
+  assert.equal(parsed.kind, "payload");
+  assert.equal(await unpackSource(parsed.payload), src);
+});
+
+test("share：截断载荷必被解压失败兜住（载荷零校验和的依据）", async () => {
+  const src = "int main(){int a[5]={5,3,1,4,2};for(int i=0;i<4;i++)for(int j=0;j<4-i;j++)if(a[j]>a[j+1]){int t=a[j];a[j]=a[j+1];a[j+1]=t;}return 0;}";
+  const fragment = await packSource(src);
+  const payload = fragment.slice(SHARE_VERSION.length + 1);
+  // 尾部削 6 字符（≥1 字节）——DEFLATE 流缺尾即解压失败，不静默放行
+  await assert.rejects(() => unpackSource(payload.slice(0, payload.length - 6)));
+  // 中部截断同样必红
+  await assert.rejects(() => unpackSource(payload.slice(0, Math.floor(payload.length / 2))));
+});
+
+test("share：链接过长告警（阈值边界含等号侧）", () => {
+  assert.equal(urlLenWarning(SHARE_URL_WARN), "");
+  assert.equal(urlLenWarning(SHARE_URL_WARN + 1).length > 0, true);
+  assert.equal(urlLenWarning(200), "");
 });

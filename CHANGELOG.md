@@ -49,6 +49,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ——`ci.yml:125` 引用此前破链）+ 同步 `docs/README.md` 索引；文档同时勘正合流后形态
   （`scripts/` 自立 workspace、`cd scripts && moon check`），并附本轮红→绿证据表。
 
+### Fixed（两落批接线收口 + CI 双红修复：断言 11→13 / hygiene 自建再生，refs #47，2026-10-09）
+
+- **Core `Regenerate` 计数断言红**（run 37883006515 `期望 11 实得 13`）：手写面第二批
+  两落（`4913eece`）加 teaching/demo_ui_lint 两张 `rules.json.mbt` 命中自枚举 glob，
+  但提交正文声称的「CI 再生清单 +2 / .gitignore 遮蔽」两接线**实际未落**——断言牙
+  真实咬合（本红即实证）。修复：断言 11→13；两张入仓 `.json` 删除 + `.gitignore`
+  补遮蔽（形态对齐批② 11 张单源纪律——本地实测再生 BYTE-EQUAL ×2 后删除）。
+- **Hygiene `perf_budget` 连续红**（自 `10f752ff` 起，run 37765594479/37883006515）：
+  **job 间不共享工作区**——core 的 Regenerate 产物带不进 hygiene job，其唯一 rules
+  消费方 `perf_budget -check` 在干净检出下缺文件 FATAL（10f752ff 只修了 core 侧清单，
+  漏了 job 边界）。修复：hygiene job 内自建 `Build jsonmbt`（同款 clone + moon update
+  + MOON_CC=clang）+ 单张再生步，置于 `perf_budget -check` 前。
+- **两张 `.mbt` 头部标注翻转**：`@generated 禁手改` → 手写真源标注——`4913eece` 已
+  人工建模接管（`--fill`/whitelist `Array[String]`/Exemption 六字段），旧头部与
+  AGENTS 第 13 条「禁手改 @generated」纪律冲突会误导后续编辑；改后 check rc=0 +
+  再生 BYTE-EQUAL 不变。
+- **scripts 侧 fmt 归一**（5 张 digest `.json.mbt` + `demo_ui_lint/moon.pkg` 0→1 字节）：
+  995657a3 铺开时 `moon fmt` spawn 在 workspace 外静默无效，入库形态未过 fmt；scripts
+  自立 workspace 后 fmt 生效，`moon fmt scripts` 首跑翻动。**验证三件**：fmt 幂等
+  （二跑零新改动）+ `moon fmt --check` rc=0 + **fmt 前后 build 产物逐字节一致**
+  （`///|` 插入对 jsonmbt build 零影响，最小复现 + lexer 全量双证）——digest 的
+  `.json`（Go freeze 直写）与 `.mbt` build 再生本就存在键序差（round-trip 口径 =
+  语义对拍非字节对拍，995657a3 既定），fmt 不改变该口径。
+- 本地全绿：13 张再生 rc=0、`skill_path_check`（missing=0）/ `demo_ui_lint`+selftest
+  （class=10/id=150/var=500）/ `teaching_annotation_diff` 双臂 82/82 / `perf_budget`
+  PASS、`moon check`/`moon fmt --check` scripts 绿、`facts --strict` 零漂移。
+
 ### Added（机器写回域 .json.mbt 真源铺开：五套 digest freeze 循环接 D-5，2026-10-07）
 
 - **新包 `scripts/jmemit`**：freeze digest → .json.mbt 的公共 emitter——四变体

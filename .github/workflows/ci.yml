@@ -145,17 +145,21 @@ jobs:
         # 漏了 perf_budget（当时写 10 张，注释还把 perf_budget 算进 "core 下游
         # 8 闸门"），hygiene 的 perf_budget -check 遂在缺 rules.json 时
         # FATAL 读规则失败、整 run 红。
-        # 命中面 = 10 张 rules.json.mbt + 1 张 host_route_rules.json.mbt = 11；
-        # 另有 5 张 golden_digest.json.mbt，其 .json 是入仓基线、不在此再生
-        # （故本清单按 `rules` 命名取面，不用全量 *.json.mbt）。
-        # 计数断言失败即红——增删真相源而未同步此处，不得静默通过。
+        # 命中面 = 10 张 rules.json.mbt + 1 张 host_route_rules.json.mbt
+        #   + 手写面第二批两落（teaching_annotation_diff / demo_ui_lint，
+        #     2026-10-09 refs #47）= 13；另有 5 张 golden_digest.json.mbt，
+        #   其 .json 是入仓基线、不在此再生（故本清单按 `rules` 命名取面，
+        #   不用全量 *.json.mbt）。
+        # 计数断言失败即红——增删真相源而未同步此处，不得静默通过
+        #   （2026-10-09 run 37883006515 实证：两落批加 2 张未同步断言，
+        #   本步 `期望 11 实得 13` FATAL——断言牙真实咬合）。
         shell: bash
         run: |
           set -e
           files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
           count=$(printf '%s\n' "$files" | grep -c .)
-          if [ "$count" -ne 11 ]; then
-            echo "FATAL: 期望 11 张规则真相源，实得 $count"
+          if [ "$count" -ne 13 ]; then
+            echo "FATAL: 期望 13 张规则真相源，实得 $count"
             printf '%s\n' "$files"
             exit 2
           fi
@@ -695,6 +699,31 @@ jobs:
       - name: Realcode gold signatures compliance (scripts/realcode_diff -check)
         shell: bash
         run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+
+      # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
+      # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一
+      # 真源），但 job 间不共享工作区——core 的 Regenerate 步产物带不进本
+      # job，perf_budget -check 在干净检出下缺 rules.json 直接 FATAL（run
+      # 37765594479/37883006515 连续红）。本 job 唯一 rules 消费方就是
+      # perf_budget，故只再生这一张（编译 jsonmbt ~40s 是单 job 自洽的代价）。
+      - name: Build jsonmbt (hygiene-local regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          # 干净 runner registry index 未初始化时 build 必失败（rc=127，
+          # run 37733072522 实证；moon update 补 index——详见 core 同名步注释）
+          moon update
+          MOON_CC=clang moon build --target native --release
+          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
+
+      - name: Regenerate perf_budget rules (hygiene-local)
+        shell: bash
+        run: |
+          set -e
+          m=scripts/perf_budget/rules.json.mbt
+          [ -f "$m" ] || { echo "FATAL: 缺真相源 $m"; exit 2; }
+          "$JSONMBT_EXE" build --pretty "$m"
 
       - name: Performance-assumption budget (corpus scale premises)
         # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模

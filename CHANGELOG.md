@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 与 #20（层间 fail-fast 遮蔽）#8（typeck 码误导）三层互不替代——层内
   恢复不消除层间短路，反之亦然。
 
+### Fixed（#47 修复批六病 + 死字段清理：strchr 负 c / scanf i·x·o 扩面 / const 赋值假阳性 / 三文案 / 病5+12，refs #47，2026-10-09）
+
+- **行为修复三**：① `strchr/strrchr` 负 `c` 取低 8 位比较（C11 §7.24.5.2「转换为 char」——旧照搬 oracle i32 原样比较负 c 恒不中，Clang 对拍静默错值；翻 1 条固化锚）。② **scanf `%i`/`%x`/`%o` 扩面**（判别实锤 oracle 从未实现、规范 :421 系虚标——方向 A 拍板：`%i`=strtol(s,NULL,0) 前缀语义、`%x` base16（0x 前缀须后随 hex 防游标错位）、`%o` base8、带符号 u64 补码、`%*` 只跳写不跳消费、**无数字=匹配失败游标回退**——消灭「返回 0 且不消费输入」双静默；规范 ✅ 随实现成真；新 helper `hex_digit_val`）。③ `char*`→`const char*` 假阳性 W3067 放行（C11 §6.5.16.1 限定符只增不减——strip_top_const 单层剥离保证多级指针安全，`char**`→`const char**` 维持 W3067 负锚锁死）。
+- **文案/口径修复三**：double_free one_liner 行号语义（旧文案把 malloc 行说成「第一次释放」，学生被指错行）；越界文案单点化（删 format_bounds_error 内嵌 [location] 段，location 统一由 trap() 带列追加——一条诊断双 [location] 违反渲染单点纪律）；strdup 堆耗尽对齐 malloc 附注口径（oracle 已删可单侧修）。
+- **死字段清理（病 5+12）**：LoopInfo `has_ge`/`start_val` + `current_func_arg_count` 删（连坐删 `extract_assignment_rhs` 新死码 18 行）；遗留 7 补注（64 字素近似归属窗口 = Rust trap.rs 同形）；遗留 3 口径改写（strpbrk 族「两侧同修」→ tag 出处 + 自主基线三段式，文件头 memset 族同款一并）。
+- **验收**：check --target all 256→253（六病批 256 持平 + 死字段批 -3）；moon test 685→700（+15 锚含翻 1）；typeck_diff 385 全一致；vm_diff 618/5/0、clang_direct 711/7/0、demo smoke 168/168 全程绿。#47 评论：补登病 11/12、病 9 结案、死字段批登记三连。
+
 ### Fixed（issue #55 控制字符三连修：词法 \v 空白缺口 + json_escape 六份收一 + 零断言补全，2026-10-09）
 
 - **词法器 `\v`(0x0B) 空白缺口**（C11 §6.4p3 white-space 全集 vs Rust

@@ -16,14 +16,14 @@
 priv struct LoopInfo {
   lines : Array[Int]
   mut has_le : Bool
-  mut has_ge : Bool // oracle 同形死字段（utils.rs:14 只写不读）——照搬忠实
-  mut start_val : Int? // oracle 同形死字段（utils.rs:16 只写不读——bounds.rs 消费的是局部 start_val）
   mut increment : Int?
 }
 
 ///|
 fn LoopInfo::new() -> LoopInfo {
-  { lines: [], has_le: false, has_ge: false, start_val: None, increment: None, }
+  // has_ge/start_val 已删（病 5，#47 2026-10-09——oracle utils.rs 同形死字段，
+  // 照搬期注释登记后随死字段清理批摘除；bounds 判定消费的是局部 start_val）
+  { lines: [], has_le: false, increment: None, }
 }
 
 ///|
@@ -138,25 +138,6 @@ fn parse_alloc_freed_lines(msg : String) -> (Int, Int)? {
 }
 
 ///|
-/// 赋值右值抽取（utils.rs extract_assignment_rhs）："i = 1" / "i=1" → 1。
-fn extract_assignment_rhs(line : String, v : String) -> Int? {
-  for pat in [v + " = ", v + "="] {
-    guard after_marker(line, pat) is Some(rest) else { continue }
-    let buf = StringBuilder()
-    for c in rest {
-      if (c >= '0' && c <= '9') || c == '-' {
-        buf.write_char(c)
-      } else {
-        break
-      }
-    }
-    if parse_int_opt(buf.to_string()) is Some(v2) {
-      return Some(v2)
-    }
-  }
-  None
-}
-
 ///|
 /// 步长抽取（utils.rs extract_increment）："i++"/"i += 2"/"i = i + 2"。
 fn extract_increment(line : String, v : String) -> Int? {
@@ -214,12 +195,6 @@ fn scan_loop_info(
       }
       if text.contains("<=") {
         info.has_le = true
-      }
-      if text.contains(">=") {
-        info.has_ge = true
-      }
-      if extract_assignment_rhs(text, var_name) is Some(v) {
-        info.start_val = Some(v)
       }
     }
     if refers_var && !looks_like_loop && !looks_like_while {

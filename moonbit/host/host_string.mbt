@@ -11,7 +11,8 @@
 /// `store_i8`（**受检**），`memset`/`memcpy`/`memmove` 走裸切片（**无检**，
 /// U5#1 缺陷）。本实现统一受检（段级 `fill`/`copy`/`write_bytes`），后者与
 /// oracle 的分叉（写已释放块 oracle 静默、此处 E3060）按勘察 §4.2-2
-/// 「直接按目标架构实现」登记——oracle 侧两侧同修候选。
+/// 「直接按目标架构实现」登记（历史出处 tag `rust-oracle-freeze`；oracle
+/// 已随删区消失，本侧受检语义即自主基线）。
 ///
 /// **软夹紧的界内保留**：oracle 的 `min(n, 剩余空间)` 截断凡能在界内表达的
 /// 照搬（`memset` 超长截断到内存尾、`strncpy` 负 `n` 补零到内存尾——U5#3
@@ -755,11 +756,12 @@ pub fn host_memchr(
 /// `strpbrk(s, accept)`（oracle `string.rs:446-458`）——s 中**首个**出现在
 /// accept 集的字节位置。
 ///
-/// **字节语义（与 oracle 的登记分叉）**：oracle 经 `read_cstring` 的
-/// `from_utf8_lossy` 走 **char** 语义（`s.char_indices()` + `contains(c)`），
-/// 非 ASCII 输入下 `i` 是 lossy 串的字节偏移、与原内存错位（坑 8 同族，
-/// 静默错值形状）。此处按 **C 字节语义**实现——ASCII 输入与 oracle 逐字节
-/// 一致，非 ASCII 输入 oracle 侧缺陷登记两侧同修候选。
+/// **字节语义（历史出处 + 自主基线，遗留 3 口径改写 #47 2026-10-09）**：
+/// 历史上（tag `rust-oracle-freeze` 的 `string.rs`，经 `read_cstring` 的
+/// `from_utf8_lossy`）走 **char** 语义——非 ASCII 输入下 `i` 是 lossy 串
+/// 的字节偏移、与原内存错位（坑 8 同族，静默错值形状）；oracle 已随删区
+/// 消失，本仓自主基线 = **C 字节语义**（ASCII 与非 ASCII 均按字节，strspn/
+/// strcspn 同款）——旧「两侧同修候选」的对侧不复存在，语义以 C 标准为准。
 pub fn host_strpbrk(
   mem : @memory.Memory,
   map : @memory.MemoryMap,

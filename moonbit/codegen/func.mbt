@@ -58,10 +58,6 @@ fn BytecodeGen::enter_function(
   }
   self.next_local_offset = offset
   self.current_func_arg_bytes = offset - (if is_variadic { 64 } else { 0 })
-  self.current_func_arg_count = params.length()
-  if returns_struct {
-    self.current_func_arg_count += 1
-  }
   self.temp_slot0 = -1
   self.temp_slot1 = -1
   self.temp_slot2 = -1

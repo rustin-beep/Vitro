@@ -189,8 +189,6 @@ test "trace_analyze_bounds_wrong_init" {
   let loop_info : LoopInfo = {
     lines: [3],
     has_le: false,
-    has_ge: false,
-    start_val: Some(1),
     increment: Some(1),
   }
   let cat = infer_bounds_category(hist, 5, 5, loop_info)
@@ -212,8 +210,6 @@ test "trace_analyze_bounds_wrong_increment" {
   let loop_info : LoopInfo = {
     lines: [3, 5],
     has_le: false,
-    has_ge: false,
-    start_val: Some(0),
     increment: Some(2),
   }
   let cat = infer_bounds_category(hist, 6, 5, loop_info)

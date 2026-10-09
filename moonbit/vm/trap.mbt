@@ -109,6 +109,10 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
     }
     let elem_size = elem_size_of(sym.ty)
     let size = (sym.ty.array_size().to_uint64() * elem_size.to_uint64()).to_uint()
+    // 首尾各 64 字素的「近似归属窗口」（遗留 7 补注，#47 2026-10-09）：
+    // 越界地址落在数组尾/首邻近 64 字节内仍归因到该数组（`a[3]` 写偏 1
+    // 格这类典型教学形态须给出「哪个数组越界」而非泛地址文案）；64 系
+    // Rust `trap.rs` 同形魔数照搬（≈16 个 4 字节元素的教学尺度）。
     let dist : Int = if addr >= base && addr < base + size {
       0
     } else if addr >= base + size && addr < base + size + 64U {

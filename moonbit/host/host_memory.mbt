@@ -274,13 +274,17 @@ pub fn host_realloc(
     // 等价 malloc
     host_malloc(map, new_size, alloc_line)
   } else {
-    let old_region = match map.region(ptr) {
-      Some(r) => if r.is_freed { None } else { Some(r.size) }
-      None => None
-    }
-    let old_size = match old_region {
-      Some(s) => s
-      None => return null_silent()
+    // 病 6 修复（#47，2026-10-09）：无效 / 已释放指针不再静默压 NULL
+    //（旧照搬 oracle 形态，审计实测 realloc(p+1, 32) → q=0x0 零诊断）——
+    // 对齐 host_free 同形态的完整教学诊断，文案换 realloc 语境。
+    let old_size = match map.region(ptr) {
+      Some(r) =>
+        if r.is_freed {
+          return trap_only(realloc_invalid_message(map, ptr))
+        } else {
+          r.size
+        }
+      None => return trap_only(realloc_invalid_message(map, ptr))
     }
     let aligned_new = @bytecode.align4(new_size.reinterpret_as_uint())
     let new_addr = match map.allocate_raw(aligned_new, @bytecode.MEM_SIZE) {
@@ -399,6 +403,31 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
             unknown_free_message(addr)
           }
         None => unknown_free_message(addr)
+      }
+  }
+}
+
+///|
+/// 无效 realloc 教学文案（病 6 修复，#47 2026-10-09）——三分支镜像
+/// `invalid_free_message`（存活块内部 E3027 变体 / 已释放块 E3061 变体 /
+/// 兜底 E3027），文案换 realloc 语境：realloc 需要原始分配指针或 NULL。
+pub fn realloc_invalid_message(map : @memory.MemoryMap, addr : UInt) -> String {
+  match map.find_live_region_containing(addr) {
+    Some(block) => {
+      let base = block.0
+      let r = block.1
+      "[deny] 无效 realloc (E3027)：realloc 的地址 0x\{hex_upper(addr)} 是第 \{r.alloc_line} 行 malloc 块（起始 0x\{hex_upper(base)}，\{r.size} 字节）的内部地址，不是起始地址。\n\n[cause] 原因：realloc 只接受 malloc/calloc/realloc 返回的原始指针，或 NULL（等价 malloc）。\n[fix] 解决方法：保存分配返回的原始指针用于 realloc；需要偏移访问时使用单独的指针变量，不要 realloc 偏移后的指针。"
+    }
+    None =>
+      match map.freed_logs_find_overlapping(addr, 1U) {
+        Some(log) =>
+          if log.addr != addr {
+            "[double-free] 无效 realloc (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。realloc 只接受 malloc/calloc/realloc 返回的原始指针。"
+          } else {
+            "[double-free] 无效 realloc (E3061)：你正在 realloc 一块已经在第 \{log.freed_line} 行被释放过的内存（由第 \{log.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：realloc 已释放的指针与 double-free 同族。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;，对 NULL 做 realloc 等价 malloc 是安全的。"
+          }
+        _ =>
+          "[deny] 无效 realloc (E3027)：realloc 的地址 0x\{hex_upper(addr)} 不指向任何已分配块的起始位置。\n\n[cause] 原因：可能是栈地址、全局变量地址或未初始化的垃圾值。\n[fix] 解决方法：只对 malloc/calloc/realloc 的返回值调用 realloc。"
       }
   }
 }

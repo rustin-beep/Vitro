@@ -460,8 +460,11 @@ fn serve_breakpoints_set_frame(
       None => ()
     }
   }
+  // 病 7 修复（#47，2026-10-09）：回显从生效集读回（vm Set 视图——过滤/
+  // 去重后），不再回显请求原始数组（旧形态 [4,-2,7] 里 -2 未生效也回显，
+  // 与实际断点不一致——协议面撒谎，demo 断点 UI 显示错）。
   let arr : Array[Json] = []
-  for l in lines {
+  for l in s.vm.breakpoints_sorted() {
     arr.push(l.to_json())
   }
   let m : Map[String, Json] = Map([])

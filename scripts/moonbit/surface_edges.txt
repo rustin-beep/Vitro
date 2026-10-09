@@ -394,6 +394,7 @@ vitro/engine/typeck vitro/engine/ast type_eq
 vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
 vitro/engine/typeck vitro/engine/libc is_libc_func
+vitro/engine/typeck vitro/engine/libc sig_of
 vitro/engine/typeck vitro/engine/source SourceLoc
 vitro/engine/util moonbitlang/core/encoding/utf8 decode
 vitro/engine/util moonbitlang/core/encoding/utf8 encode

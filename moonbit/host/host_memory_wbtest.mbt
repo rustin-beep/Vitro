@@ -346,19 +346,19 @@ test "realloc_null_ptr_equivalent_malloc" {
 }
 
 ///|
-/// `realloc` 遇非活跃块：静默 NULL（Rust `:212-215` 不 trap）。
+/// `realloc` 遇已释放块：trap E3061 变体（病 6 翻转锚，#47 2026-10-09
+/// ——旧锚固化 oracle「静默 NULL（Rust :212-215 不 trap）」的病行为；
+/// 对齐 host_free 同形态诊断、文案 realloc 语境，见 realloc_invalid_message）。
 test "realloc_not_live_silent_null" {
   let (map, mem) = fresh()
   let p = host_malloc(map, 16, 1).value.unwrap().to_uint()
   assert_eq(host_free(map, p, 2, 2).trap, None)
   let r = host_realloc(map, mem, p, 32, 3, 3, 3)
-  assert_eq(r.value, Some(0UL))
-  assert_eq(r.note, None)
-  assert_eq(
-    r.trap,
-    None,
-    msg="已释放块不是「无效指针」——Rust 静默",
-  )
+  guard r.trap is Some(t) else {
+    fail("已释放块须 trap 而非静默（病 6 翻转）")
+  }
+  assert_true(t.contains("无效 realloc"), msg="诊断须 realloc 语境")
+  assert_true(t.contains("E3061"), msg="已释放块走 E3061 变体")
 }
 
 ///|
@@ -448,4 +448,29 @@ test "heap_offset_never_rewinds" {
     map.heap_offset >= top1,
     msg="free 后 heap_offset 不得回退（bump 单调——原地收缩特例已移除）",
   )
+}
+
+///|
+/// 病 6 锚（#47，2026-10-09）：realloc 对**无效 / 已释放**指针不得静默
+/// 压 NULL——对齐 host_free 同形态的完整教学诊断（旧照搬 oracle 静默，
+/// 审计实测 `realloc(p+1, 32)` → q=0x0 零诊断；文案换 realloc 语境，
+/// E3027/E3061 变体三分支镜像 invalid_free_message）。
+test "realloc_invalid_ptr_reports_not_silent" {
+  let (map, mem) = fresh()
+  // 块内部地址（p+1）：E3027 变体
+  let r = host_malloc(map, 8, 1)
+  let p = r.value.unwrap().to_uint()
+  let r2 = host_realloc(map, mem, p + 1U, 32, 2, 2, 2)
+  guard r2.trap is Some(t1) else {
+    fail("realloc 块内部地址须 trap 而非静默 NULL")
+  }
+  assert_true(t1.contains("无效 realloc"), msg="诊断须 realloc 语境")
+  assert_true(t1.contains("E3027"), msg="E3027 变体")
+  // 已释放指针：E3061 变体（double-free 语境）
+  let _ = host_free(map, p, 2, 2)
+  let r3 = host_realloc(map, mem, p, 32, 3, 3, 3)
+  guard r3.trap is Some(t2) else {
+    fail("realloc 已释放指针须 trap 而非静默 NULL")
+  }
+  assert_true(t2.contains("realloc"), msg="诊断须 realloc 语境")
 }

@@ -10,6 +10,8 @@ pub fn bytecode_libc_sig(String) -> (@ast.Type, Array[@ast.Type])?
 
 pub fn is_libc_func(String) -> Bool
 
+pub fn sig_of(String) -> (Int, String, @ast.Type)?
+
 // Errors
 
 // Types and methods

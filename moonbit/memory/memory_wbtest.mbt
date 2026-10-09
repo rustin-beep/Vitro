@@ -953,3 +953,14 @@ test "load_entries_rejects_out_of_order" {
     fail("等键重复必须 Err")
   }
 }
+
+///|
+/// 病 8 锚（#47，2026-10-09）：`allocate_raw(0)` 拒绝而非返回 NULL 陷阱区
+/// 地址——合法零尺寸（malloc(0) note / calloc 预检）与溢出回绕（缺陷②
+/// 2023-09-23 修复）均已在 host 层拦截，0 到达本层即上游漏拦的防御分支；
+/// 旧照搬 Rust 短路 `Some(0U)`（0 落 NULL_TRAP_SIZE 陷阱区、零诊断、
+/// 可登记 addr=0 垃圾区域）。
+test "allocate_raw_zero_rejected_not_trap_addr" {
+  let map = MemoryMap::new()
+  assert_eq(map.allocate_raw(0U, @bytecode.MEM_SIZE), None)
+}

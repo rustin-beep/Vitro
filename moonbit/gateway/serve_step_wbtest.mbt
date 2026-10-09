@@ -125,10 +125,11 @@ test "serve_step_breakpoints_set_and_clear" {
   let (b1, _) = serve_handle(
     s, "{\"id\":3,\"method\":\"breakpoints.set\",\"params\":{\"lines\":[4,-2,7]}}",
   )
-  // 非正行号过滤（Rust 同款）；回显含设置值
+  // 非正行号过滤；回显 = 生效集（病 7 翻转锚，#47 2026-10-09——旧锚固化
+  // 「回显原始数组（Rust 同款）」的病行为，-2 未生效不回显）
   assert_true(
-    b1.contains("\"lines\":[4,-2,7]"),
-    msg="回显含原始 lines 数组",
+    b1.contains("\"lines\":[4,7]"),
+    msg="回显须为生效集（过滤后）",
   )
   // 清空 = 两层恢复 + 空回显
   let (b2, _) = serve_handle(

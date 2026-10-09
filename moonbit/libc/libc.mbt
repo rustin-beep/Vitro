@@ -33,17 +33,26 @@
 /// check_builtin_*），不入数据表。
 
 ///|
-/// libc 函数签名（登记性真值表条目——N3/N4 销案锚）。诚实边界（A3 批
-/// 2026-10-09 实测）：`lookup`/`return_type`/`min_args`/`max_args` 主面
-/// 零消费——builtin 检查现实路径是 typeck/builtin.mbt 的 62-arm 硬编码
-/// + bytecode_libc_sig 二路，本表列值只作 C 标准对齐登记，接线与否随
-/// typeck 对齐批裁定；`unused` 警告以此豁免。不 derive Eq/Show——`return_type` 的
+/// libc 函数签名（**判定源 + 登记册双角色**——病 11 接线第一层已落，
+/// #47 2026-10-09 方向 a 拍板）。typeck 的 15 个纯骨架臂经 `sig_of`
+/// 消费本表（count/param_kinds/return_type 驱动 `check_builtin_table`，
+/// 与原硬编码臂逐字节同构——typeck_diff 385 hash 一致实证）；变参/
+/// 格式串/FILE*/指针语义族仍走 builtin.mbt 专臂，其 param_kinds 列随
+/// 逐臂收编补值。对拍探针（tmp 探针 2026-10-09）证实表与 62 臂在
+/// return_type/min_args 上零漂移——接线等价性基础成立。N3/N4 销案锚
+/// 角色不变。不 derive Eq/Show——`return_type` 的
 /// @ast.Type 走显式 `type_eq`（ast 包 S1 设计），结构体只做数据载体。
 priv struct LibcSig {
   name : String
   return_type : @ast.Type
   min_args : Int
   max_args : Int // -1 = 变参
+  // 参数位骨架（病 11 接线第一层，#47 2026-10-09）：P = 指针/数组位
+  //（E3029 builtin_check_pointer）、I = int 可赋值位（builtin_check_int）、
+  // 空串 = 零参。当前仅收编的 15 个纯骨架臂填真值，供 typeck
+  // check_builtin_table 消费；变参/格式串/FILE*/指针语义族的专臂
+  // kinds 随逐臂收编补列（登记参考值按 C 标准与专臂形态核对后填）。
+  param_kinds : String
 }
 
 ///|
@@ -88,70 +97,412 @@ fn long_long_ty() -> @ast.Type {
 let libc_table : Array[LibcSig] = [
   // —— io（io.rs 提取；printf/putchar/fprintf 返回 int 系批四 N3 销案，
   //    口径=C 标准/stdio.h 存根）——
-  { name: "printf", return_type: int_ty(), min_args: 1, max_args: -1, },
-  { name: "scanf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "getchar", return_type: int_ty(), min_args: 0, max_args: 0, },
-  { name: "putchar", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "ungetc", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fprintf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "puts", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "sprintf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "snprintf", return_type: int_ty(), min_args: 3, max_args: -1, },
-  { name: "sscanf", return_type: int_ty(), min_args: 2, max_args: -1, },
-  { name: "print_int", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "__vitro_output", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "__vitro_step", return_type: void_ty(), min_args: 1, max_args: 1, },
+  {
+    name: "printf",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "scanf",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "getchar",
+    return_type: int_ty(),
+    min_args: 0,
+    max_args: 0,
+    param_kinds: "",
+  },
+  {
+    name: "putchar",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "I",
+  },
+  {
+    name: "ungetc",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
+  {
+    name: "fprintf",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "puts",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "sprintf",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "snprintf",
+    return_type: int_ty(),
+    min_args: 3,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "sscanf",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: -1,
+    param_kinds: "",
+  },
+  {
+    name: "print_int",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "__vitro_output",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "__vitro_step",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
   // —— string（string.rs 提取）——
-  { name: "strlen", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "strcpy", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strdup", return_type: char_ptr(), min_args: 1, max_args: 1, },
-  { name: "strcmp", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "strcat", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "atoi", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "strncat", return_type: char_ptr(), min_args: 3, max_args: 3, },
-  { name: "strncmp", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "memcmp", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "strchr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strrchr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "strstr", return_type: char_ptr(), min_args: 2, max_args: 2, },
-  { name: "memchr", return_type: void_ptr(), min_args: 3, max_args: 3, },
-  { name: "atof", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "atol", return_type: long_long_ty(), min_args: 1, max_args: 1, },
+  {
+    name: "strlen",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "strcpy",
+    return_type: char_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PP",
+  },
+  {
+    name: "strdup",
+    return_type: char_ptr(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "strcmp",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PP",
+  },
+  {
+    name: "strcat",
+    return_type: char_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PP",
+  },
+  {
+    name: "atoi",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "strncat",
+    return_type: char_ptr(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "PPI",
+  },
+  {
+    name: "strncmp",
+    return_type: int_ty(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "PPI",
+  },
+  {
+    name: "memcmp",
+    return_type: int_ty(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "PPI",
+  },
+  {
+    name: "strchr",
+    return_type: char_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PI",
+  },
+  {
+    name: "strrchr",
+    return_type: char_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PI",
+  },
+  {
+    name: "strstr",
+    return_type: char_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "PP",
+  },
+  {
+    name: "memchr",
+    return_type: void_ptr(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "PII",
+  },
+  {
+    name: "atof",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "atol",
+    return_type: long_long_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
   // —— math（math.rs 提取；math.h 其余函数经头文件存根进 funcs 表，
   //    不走 builtin 分派——visit_call 兜底臂 check_user_func）——
-  { name: "rand", return_type: int_ty(), min_args: 0, max_args: 0, },
-  { name: "srand", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "tan", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "log10", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "fabs", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "ceil", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "floor", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "round", return_type: double_ty(), min_args: 1, max_args: 1, },
-  { name: "fmod", return_type: double_ty(), min_args: 2, max_args: 2, },
+  {
+    name: "rand",
+    return_type: int_ty(),
+    min_args: 0,
+    max_args: 0,
+    param_kinds: "",
+  },
+  {
+    name: "srand",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "I",
+  },
+  {
+    name: "tan",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "log10",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "fabs",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "ceil",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "floor",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "round",
+    return_type: double_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "D",
+  },
+  {
+    name: "fmod",
+    return_type: double_ty(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "DD",
+  },
   // —— memory（memory.rs 提取）——
-  { name: "malloc", return_type: void_ptr(), min_args: 1, max_args: 1, },
-  { name: "free", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "memset", return_type: void_ptr(), min_args: 3, max_args: 3, },
-  { name: "exit", return_type: void_ty(), min_args: 1, max_args: 1, },
-  { name: "realloc", return_type: void_ptr(), min_args: 2, max_args: 2, },
-  { name: "calloc", return_type: void_ptr(), min_args: 2, max_args: 2, },
+  {
+    name: "malloc",
+    return_type: void_ptr(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "free",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "P",
+  },
+  {
+    name: "memset",
+    return_type: void_ptr(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "",
+  },
+  {
+    name: "exit",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "I",
+  },
+  {
+    name: "realloc",
+    return_type: void_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
+  {
+    name: "calloc",
+    return_type: void_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
   // —— file（file.rs 提取；FILE* 表示层 = void*）——
-  { name: "fopen", return_type: void_ptr(), min_args: 2, max_args: 2, },
-  { name: "fread", return_type: int_ty(), min_args: 4, max_args: 4, },
-  { name: "fwrite", return_type: int_ty(), min_args: 4, max_args: 4, },
-  { name: "fclose", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "feof", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "fgets", return_type: char_ptr(), min_args: 3, max_args: 3, },
-  { name: "fputs", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fgetc", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "fputc", return_type: int_ty(), min_args: 2, max_args: 2, },
-  { name: "fseek", return_type: int_ty(), min_args: 3, max_args: 3, },
-  { name: "ftell", return_type: int_ty(), min_args: 1, max_args: 1, },
-  { name: "rewind", return_type: void_ty(), min_args: 1, max_args: 1, },
+  {
+    name: "fopen",
+    return_type: void_ptr(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
+  {
+    name: "fread",
+    return_type: int_ty(),
+    min_args: 4,
+    max_args: 4,
+    param_kinds: "",
+  },
+  {
+    name: "fwrite",
+    return_type: int_ty(),
+    min_args: 4,
+    max_args: 4,
+    param_kinds: "",
+  },
+  {
+    name: "fclose",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "feof",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "fgets",
+    return_type: char_ptr(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "",
+  },
+  {
+    name: "fputs",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
+  {
+    name: "fgetc",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "fputc",
+    return_type: int_ty(),
+    min_args: 2,
+    max_args: 2,
+    param_kinds: "",
+  },
+  {
+    name: "fseek",
+    return_type: int_ty(),
+    min_args: 3,
+    max_args: 3,
+    param_kinds: "",
+  },
+  {
+    name: "ftell",
+    return_type: int_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
+  {
+    name: "rewind",
+    return_type: void_ty(),
+    min_args: 1,
+    max_args: 1,
+    param_kinds: "",
+  },
   // —— 特殊臂（visit_call 内联；qsort 用户重定义优先——检查逻辑在
   //    typeck 包，签名数据在此）——
-  { name: "qsort", return_type: void_ty(), min_args: 4, max_args: 4, },
-  { name: "bsearch", return_type: void_ptr(), min_args: 5, max_args: 5, },
+  {
+    name: "qsort",
+    return_type: void_ty(),
+    min_args: 4,
+    max_args: 4,
+    param_kinds: "",
+  },
+  {
+    name: "bsearch",
+    return_type: void_ptr(),
+    min_args: 5,
+    max_args: 5,
+    param_kinds: "",
+  },
 ]
 
 ///|
@@ -160,6 +511,19 @@ fn lookup(name : String) -> LibcSig? {
   for sig in libc_table {
     if sig.name == name {
       return Some(sig)
+    }
+  }
+  None
+}
+
+///|
+/// 签名投影（病 11 接线，#47 2026-10-09）：typeck check_builtin_table 的
+/// 数据入口——返回 (min_args, param_kinds, return_type) 元组而非暴露
+/// priv struct（pub 面最小化）；仅 param_kinds 非空的行可被表驱动收编。
+pub fn sig_of(name : String) -> (Int, String, @ast.Type)? {
+  for sig in libc_table {
+    if sig.name == name {
+      return Some((sig.min_args, sig.param_kinds, sig.return_type))
     }
   }
   None

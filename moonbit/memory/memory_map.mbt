@@ -378,7 +378,13 @@ pub fn MemoryMap::allocate_raw(
   mem_limit : UInt,
 ) -> UInt? {
   if aligned_size == 0U {
-    return Some(0U)
+    // 病 8 修复（#47，2026-10-09）：拒绝而非返回 0（NULL 陷阱区地址）。
+    // 合法零尺寸（host_malloc 的 malloc_zero_note / calloc 的尺寸链预检）
+    // 与溢出回绕（缺陷② 2023-09-23 修复）均已在 host 层拦截——0 到达本层
+    // 即上游漏拦的防御分支，按堆耗尽口径返 None（调用方既有 None 路径），
+    // 不再照搬 Rust 的 Some(0U) 短路（审计病 8：零诊断 + 可登记 addr=0
+    // 垃圾区域）。
+    return None
   }
   self.evict_quarantine()
   match self.take_from_free_list(aligned_size) {

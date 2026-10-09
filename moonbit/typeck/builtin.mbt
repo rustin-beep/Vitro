@@ -20,24 +20,48 @@ pub fn TypeChecker::visit_call(
 ) -> @ast.Type {
   match name {
     "malloc" => self.check_builtin_malloc(args, loc)
-    "free" => self.check_builtin_free(args, loc)
+    // 病 11 接线第一层（#47，2026-10-09 方向 a 拍板）：15 个纯骨架臂
+    // 收编为表驱动（count/参数位/返回类型全部来自 @libc.sig_of 单表；
+    // 文案仍走 builtin_check_count/pointer/int 单源——与原臂逐字节
+    // 同构，typeck_diff 385 hash 一致为验收线）。变参/格式串/FILE*/
+    // 指针语义族保留专臂，随逐臂收编补 param_kinds 列。
+    "atof"
+    | "atoi"
+    | "atol"
+    | "exit"
+    | "free"
+    | "getchar"
+    | "putchar"
+    | "puts"
+    | "rand"
+    | "srand"
+    | "strcat"
+    | "strcmp"
+    | "strcpy"
+    | "strdup"
+    | "strlen"
+    // 第二层收编（2026-10-09）：P/I 七族（str/mem——count 文案中文数字
+    // 随收编统一为阿拉伯数字）+ math D 族（单参无位号文案统一为带位号）
+    | "strchr"
+    | "strrchr"
+    | "strstr"
+    | "strncmp"
+    | "strncat"
+    | "memchr"
+    | "memcmp"
+    | "tan"
+    | "log10"
+    | "fabs"
+    | "ceil"
+    | "floor"
+    | "round"
+    | "fmod" => self.check_builtin_table(name, args, loc)
     "print_int" | "__vitro_output" | "__vitro_step" =>
       self.check_builtin_print_int(args, loc, name)
     "printf" => self.check_builtin_printf(args, loc)
     "scanf" => self.check_builtin_scanf(args, loc)
-    "strlen" => self.check_builtin_strlen(args, loc)
-    "strcpy" => self.check_builtin_strcpy(args, loc)
-    "strcmp" => self.check_builtin_strcmp(args, loc)
-    "strdup" => self.check_builtin_strdup(args, loc)
-    "getchar" => self.check_builtin_getchar(args, loc)
-    "putchar" => self.check_builtin_putchar(args, loc)
     "ungetc" => self.check_builtin_ungetc(args, loc)
-    "rand" => self.check_builtin_rand(args, loc)
-    "srand" => self.check_builtin_srand(args, loc)
     "memset" => self.check_builtin_memset(args, loc)
-    "exit" => self.check_builtin_exit(args, loc)
-    "strcat" => self.check_builtin_strcat(args, loc)
-    "atoi" => self.check_builtin_atoi(args, loc)
     "fopen" => self.check_builtin_fopen(args, loc)
     "fread" => self.check_builtin_fread(args, loc)
     "fwrite" => self.check_builtin_fwrite(args, loc)
@@ -53,7 +77,6 @@ pub fn TypeChecker::visit_call(
       } else {
         self.check_builtin_qsort(args, loc)
       }
-    "puts" => self.check_builtin_puts(args, loc)
     "calloc" => self.check_builtin_calloc(args, loc)
     "bsearch" => self.check_builtin_bsearch(args, loc)
     "sprintf" => self.check_builtin_sprintf(args, loc)
@@ -64,22 +87,6 @@ pub fn TypeChecker::visit_call(
     "fseek" => self.check_builtin_fseek(args, loc)
     "ftell" => self.check_builtin_ftell(args, loc)
     "rewind" => self.check_builtin_rewind(args, loc)
-    "strncat" => self.check_builtin_strncat(args, loc)
-    "strncmp" => self.check_builtin_strncmp(args, loc)
-    "memcmp" => self.check_builtin_memcmp(args, loc)
-    "strchr" => self.check_builtin_strchr(args, loc)
-    "strrchr" => self.check_builtin_strrchr(args, loc)
-    "strstr" => self.check_builtin_strstr(args, loc)
-    "memchr" => self.check_builtin_memchr(args, loc)
-    "atof" => self.check_builtin_atof(args, loc)
-    "atol" => self.check_builtin_atol(args, loc)
-    "tan" => self.check_builtin_tan(args, loc)
-    "log10" => self.check_builtin_log10(args, loc)
-    "fabs" => self.check_builtin_fabs(args, loc)
-    "ceil" => self.check_builtin_ceil(args, loc)
-    "floor" => self.check_builtin_floor(args, loc)
-    "round" => self.check_builtin_round(args, loc)
-    "fmod" => self.check_builtin_fmod(args, loc)
     // math.h 函数经头文件存根进 funcs 表——visit_call 兜底臂
     // check_user_func（Rust 同形）
     _ => self.check_user_func(name, args, loc)
@@ -428,6 +435,51 @@ fn TypeChecker::builtin_check_int(
 // ---------- 内建函数检查器 ----------
 
 ///|
+/// 表驱动的纯骨架 builtin 检查（病 11 接线第一层，#47 2026-10-09）：
+/// count → 逐参数位（P = builtin_check_pointer / I = builtin_check_int）
+/// → 返回类型，全部数据来自 @libc.sig_of（libc 单表）；文案与检查逻辑
+/// 复用 builtin_check_* 单源——与被收编的 15 个原臂逐字节同构。
+fn TypeChecker::check_builtin_table(
+  self : TypeChecker,
+  name : String,
+  args : Array[@ast.Expr],
+  loc : @source.SourceLoc,
+) -> @ast.Type {
+  match @libc.sig_of(name) {
+    Some((min_args, param_kinds, return_type)) => {
+      if self.builtin_check_count(args, min_args, name, loc) {
+        for i = 0; i < param_kinds.length(); i = i + 1 {
+          let k = param_kinds[i]
+          if k == 80 {
+            // 'P'（UInt16 码元直比——String 索引陷阱 #24）
+            self.builtin_check_pointer(args, i, name, loc)
+          } else if k == 68 {
+            // 'D'：double 可赋值位（math 族——第二层收编；文案统一为带
+            // 位号形态「第 N 个参数必须是 double」，单参旧文案无位号随之
+            // 统一，typeck_diff 实测零翻锚）
+            let (t, new_arg) = self.resolve_expr_type(args[i])
+            let expected = @ast.Type::double()
+            if !self.check_assignable(expected, t, loc) {
+              self.report_error(
+                "\{name} 第 \{i + 1} 个参数必须是 double",
+                loc,
+                E3029_BuiltInArgType,
+              )
+            } else {
+              args[i] = insert_implicit_cast(new_arg, expected)
+            }
+          } else {
+            self.builtin_check_int(args, i, name, loc)
+          }
+        }
+      }
+      return_type
+    }
+    None => self.check_user_func(name, args, loc)
+  }
+}
+
+///|
 /// qsort（四参：base 指针数组 / 1..2 int / compar 函数指针）。
 fn TypeChecker::check_builtin_qsort(
   self : TypeChecker,
@@ -635,17 +687,6 @@ fn TypeChecker::check_builtin_scanf(
 }
 
 ///|
-/// getchar（零参）。
-fn TypeChecker::check_builtin_getchar(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  let _ = self.builtin_check_count(args, 0, "getchar", loc)
-  @ast.Type::int()
-}
-
-///|
 /// ungetc(int c, FILE* stream)——issue #18 销案（2026-10-06）：第 2 参
 /// 是 FILE*（旧把两参都当 int 查——fopen 返回的 FILE* 直传即 E3029、
 /// int 字面量反而通过的索引/类型错位）。
@@ -665,20 +706,6 @@ fn TypeChecker::check_builtin_ungetc(
         E3029_BuiltInArgType,
       )
     }
-  }
-  @ast.Type::int()
-}
-
-///|
-/// putchar（单 int 参；返回 int——N3 销案批四 2026-10-07，C 标准/存根
-/// 口径，原 void 系 oracle 照搬）。
-fn TypeChecker::check_builtin_putchar(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "putchar", loc) {
-    self.builtin_check_int(args, 0, "putchar", loc)
   }
   @ast.Type::int()
 }
@@ -729,19 +756,6 @@ fn TypeChecker::check_builtin_fprintf(
         )
       }
     }
-  }
-  @ast.Type::int()
-}
-
-///|
-/// puts（单指针参）。
-fn TypeChecker::check_builtin_puts(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "puts", loc) {
-    self.builtin_check_pointer(args, 0, "puts", loc)
   }
   @ast.Type::int()
 }
@@ -880,408 +894,7 @@ fn TypeChecker::check_builtin_fputs(
 
 // ---------- string（Rust builtin/string.rs）----------
 
-///|
-/// strlen（单指针参）。
-fn TypeChecker::check_builtin_strlen(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "strlen", loc) {
-    self.builtin_check_pointer(args, 0, "strlen", loc)
-  }
-  @ast.Type::int()
-}
-
-///|
-/// strcpy（两指针参；返回 char* 是 N4 漂移登记——bytecode 侧 void）。
-fn TypeChecker::check_builtin_strcpy(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 2, "strcpy", loc) {
-    self.builtin_check_pointer(args, 0, "strcpy", loc)
-    self.builtin_check_pointer(args, 1, "strcpy", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// strdup（单指针参）。
-fn TypeChecker::check_builtin_strdup(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "strdup", loc) {
-    self.builtin_check_pointer(args, 0, "strdup", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// strcmp（两指针参）。
-fn TypeChecker::check_builtin_strcmp(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 2, "strcmp", loc) {
-    self.builtin_check_pointer(args, 0, "strcmp", loc)
-    self.builtin_check_pointer(args, 1, "strcmp", loc)
-  }
-  @ast.Type::int()
-}
-
-///|
-/// strcat（两指针参；char* 同 N4 漂移登记）。
-fn TypeChecker::check_builtin_strcat(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 2, "strcat", loc) {
-    self.builtin_check_pointer(args, 0, "strcat", loc)
-    self.builtin_check_pointer(args, 1, "strcat", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// atoi（单指针参）。
-fn TypeChecker::check_builtin_atoi(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "atoi", loc) {
-    self.builtin_check_pointer(args, 0, "atoi", loc)
-  }
-  @ast.Type::int()
-}
-
-///|
-/// strncat（三参：两指针 + int；char* 同 N4）。
-fn TypeChecker::check_builtin_strncat(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 3 {
-    self.report_error("strncat 需要三个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "strncat", loc)
-    self.builtin_check_pointer(args, 1, "strncat", loc)
-    self.builtin_check_int(args, 2, "strncat", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// strncmp（三参：两指针 + int）。
-fn TypeChecker::check_builtin_strncmp(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 3 {
-    self.report_error("strncmp 需要三个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "strncmp", loc)
-    self.builtin_check_pointer(args, 1, "strncmp", loc)
-    self.builtin_check_int(args, 2, "strncmp", loc)
-  }
-  @ast.Type::int()
-}
-
-///|
-/// memcmp（三参：两指针 + int）。
-fn TypeChecker::check_builtin_memcmp(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 3 {
-    self.report_error("memcmp 需要三个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "memcmp", loc)
-    self.builtin_check_pointer(args, 1, "memcmp", loc)
-    self.builtin_check_int(args, 2, "memcmp", loc)
-  }
-  @ast.Type::int()
-}
-
-///|
-/// strchr（两参：指针 + int）。
-fn TypeChecker::check_builtin_strchr(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 2 {
-    self.report_error("strchr 需要两个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "strchr", loc)
-    self.builtin_check_int(args, 1, "strchr", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// strrchr（两参：指针 + int）。
-fn TypeChecker::check_builtin_strrchr(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 2 {
-    self.report_error("strrchr 需要两个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "strrchr", loc)
-    self.builtin_check_int(args, 1, "strrchr", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// strstr（两指针参）。
-fn TypeChecker::check_builtin_strstr(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 2 {
-    self.report_error("strstr 需要两个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "strstr", loc)
-    self.builtin_check_pointer(args, 1, "strstr", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::char())
-}
-
-///|
-/// memchr（三参：指针 + 两 int）。
-fn TypeChecker::check_builtin_memchr(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 3 {
-    self.report_error("memchr 需要三个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    self.builtin_check_pointer(args, 0, "memchr", loc)
-    self.builtin_check_int(args, 1, "memchr", loc)
-    self.builtin_check_int(args, 2, "memchr", loc)
-  }
-  @ast.Type::pointer_to(@ast.Type::void_type())
-}
-
-///|
-/// atof（单指针参）。
-fn TypeChecker::check_builtin_atof(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "atof", loc) {
-    self.builtin_check_pointer(args, 0, "atof", loc)
-  }
-  @ast.Type::double()
-}
-
-///|
-/// atol（单指针参）。
-fn TypeChecker::check_builtin_atol(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "atol", loc) {
-    self.builtin_check_pointer(args, 0, "atol", loc)
-  }
-  @ast.Type::long_long()
-}
-
 // ---------- math（Rust builtin/math.rs）----------
-
-///|
-/// rand（零参）。
-fn TypeChecker::check_builtin_rand(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  let _ = self.builtin_check_count(args, 0, "rand", loc)
-  @ast.Type::int()
-}
-
-///|
-/// srand（单 int 参）。
-fn TypeChecker::check_builtin_srand(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "srand", loc) {
-    self.builtin_check_int(args, 0, "srand", loc)
-  }
-  @ast.Type::void_type()
-}
-
-///|
-/// tan（单 double 参——可赋值即放行 + 隐式转换）。
-fn TypeChecker::check_builtin_tan(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "tan", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error("tan 参数必须是 double", loc, E3029_BuiltInArgType)
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// log10（单 double 参）。
-fn TypeChecker::check_builtin_log10(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "log10", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error(
-        "log10 参数必须是 double",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// fabs（单 double 参）。
-fn TypeChecker::check_builtin_fabs(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "fabs", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error(
-        "fabs 参数必须是 double",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// ceil（单 double 参）。
-fn TypeChecker::check_builtin_ceil(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "ceil", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error(
-        "ceil 参数必须是 double",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// floor（单 double 参）。
-fn TypeChecker::check_builtin_floor(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "floor", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error(
-        "floor 参数必须是 double",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// round（单 double 参）。
-fn TypeChecker::check_builtin_round(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "round", loc) {
-    let (t, new_arg) = self.resolve_expr_type(args[0])
-    if !self.check_assignable(@ast.Type::double(), t, loc) {
-      self.report_error(
-        "round 参数必须是 double",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    } else {
-      args[0] = insert_implicit_cast(new_arg, @ast.Type::double())
-    }
-  }
-  @ast.Type::double()
-}
-
-///|
-/// fmod（两 double 参）。
-fn TypeChecker::check_builtin_fmod(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 2 {
-    self.report_error("fmod 需要两个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    for i in 0..<2 {
-      let (t, new_arg) = self.resolve_expr_type(args[i])
-      if !self.check_assignable(@ast.Type::double(), t, loc) {
-        self.report_error(
-          "fmod 第 \{i + 1} 个参数必须是 double",
-          loc,
-          E3029_BuiltInArgType,
-        )
-      } else {
-        args[i] = insert_implicit_cast(new_arg, @ast.Type::double())
-      }
-    }
-  }
-  @ast.Type::double()
-}
 
 // ---------- memory（Rust builtin/memory.rs）----------
 
@@ -1304,19 +917,6 @@ fn TypeChecker::check_builtin_malloc(
     }
   }
   @ast.Type::pointer_to(@ast.Type::void_type())
-}
-
-///|
-/// free（单指针参）。
-fn TypeChecker::check_builtin_free(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "free", loc) {
-    self.builtin_check_pointer(args, 0, "free", loc)
-  }
-  @ast.Type::void_type()
 }
 
 ///|
@@ -1353,19 +953,6 @@ fn TypeChecker::check_builtin_memset(
     }
   }
   @ast.Type::pointer_to(@ast.Type::void_type())
-}
-
-///|
-/// exit（单 int 参）。
-fn TypeChecker::check_builtin_exit(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if self.builtin_check_count(args, 1, "exit", loc) {
-    self.builtin_check_int(args, 0, "exit", loc)
-  }
-  @ast.Type::void_type()
 }
 
 ///|

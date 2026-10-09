@@ -377,6 +377,19 @@ pub fn VitroVM::add_breakpoint(self : VitroVM, line : Int) -> Unit {
 }
 
 ///|
+/// 生效断点行号（升序读回——breakpoints.set 回显的真源；病 7 修复配套，
+/// #47 2026-10-09：回显须与实际生效集一致——过滤/去重后的 Set 视图，
+/// 而非请求原始数组）。
+pub fn VitroVM::breakpoints_sorted(self : VitroVM) -> Array[Int] {
+  let arr : Array[Int] = []
+  for l in self.breakpoints {
+    arr.push(l)
+  }
+  arr.sort()
+  arr
+}
+
+///|
 /// 恢复推进（Rust vm.resume——清空断点即恢复的 serve 出口语义；命名同
 /// engine 侧 unpause 先例避免保留字）。
 pub fn VitroVM::unpause(self : VitroVM) -> Unit {

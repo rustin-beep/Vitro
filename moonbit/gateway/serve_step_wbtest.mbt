@@ -439,3 +439,35 @@ test "serve_step_vis_events_from_algorithm_matches" {
     msg="比较行命中须产出 vis 事件（第 9 步接线缺失则恒空）",
   )
 }
+
+///|
+/// issue #35 红锚：UAF step 流 root_cause_hint 须亮（wire 链装配——
+/// trap 帧 root_cause_hint 非 null 且类目 UseAfterFree）。issue 立项时的
+/// 断点（trap 文案缺分配行段）已随文案迭代消失；本锚锁**端到端**链路
+/// （serve 滞后一帧缓冲冲刷 + engine 装配 + analyzer）不再回退为恒 null。
+test "serve_step_uaf_root_cause_hint_wire" {
+  let s = @session.Session::new()
+  ignore(
+    serve_handle(
+      s,
+      "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { int *p = malloc(sizeof(int)); *p = 42; free(p); return *p; }\\n\"}}",
+    ),
+  )
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  let mut trapped = false
+  let mut trap_resp = ""
+  for i = 0; i < 60 && !trapped; i = i + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":10,\"method\":\"step.next\"}")
+    if r.contains("\"trapped\":true") {
+      trapped = true
+      trap_resp = r
+    }
+  }
+  assert_true(trapped, msg="UAF 程序须出 trap")
+  assert_true(trap_resp.contains("Use-After-Free"), msg="trap 文案须为 UAF")
+  assert_true(
+    trap_resp.contains("\"root_cause_hint\":{"),
+    msg="trap 帧 root_cause_hint 须装配（恒 null = wire 链断——issue #35）",
+  )
+  assert_true(trap_resp.contains("\"category\":\"UseAfterFree\""))
+}

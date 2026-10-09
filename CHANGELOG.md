@@ -12,6 +12,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #35 UAF 死因提示恒 null：trap 帧被滞后一帧缓冲吞没——flushed 判定补 trap 终态，2026-10-09）
+
+- **断点考古**：issue 立项时的断点（trap 文案缺「由第 N 行的 malloc」分配
+  行段 → analyzer guard None）**已随文案迭代消失**（vm/trap.mbt 现文案含
+  全段，`parse_alloc_freed_lines` 两 marker 皆可匹配，time_travel 探针
+  实证 alloc/freed 双抽取通过）——但端到端 hint 仍恒 null。
+- **真断点（新形态）**：`serve_step_next_frame` 的滞后一帧缓冲（R2 语义）
+  ——`flushed` 只认 `payloads 空 || finished`，**trap 批**（payloads=[trap
+  帧]）走 else 分支把 trap 帧弹入 `unified_pending`、发布的是**前一正常帧**
+  + `trapped:true`；而消费方见 trapped 即停（CLI 循环退出、demo 不再调），
+  **无人再调 step.next 冲缓冲——trap 帧（hint 已装配！）永不发布**。
+- **修复**：`flushed` 判定补 `|| result.trapped`（trap 是终态，缓冲帧连同
+  trap 帧一起冲刷）——trap 批发布 [前一帧, trap 帧] 两帧。
+- 红→绿锚 `serve_step_uaf_root_cause_hint_wire`（gateway wbtest 全链：
+  UAF 源编译 → step.next 到 trap → 断言发布帧含 `root_cause_hint:{` +
+  `"category":"UseAfterFree"`）——修前红（hint 恒 null），修后绿。
+- 端到端（wasm 臂）：hint =「这块内存在第 3 行被分配，在第 5 行被释放，
+  现在又被访问了……相关指针: p」——**demo 死因卡数据就绪**（前端条件渲染
+  早已备好，issue 的「引擎修复即亮」达成）。
+- 回归：moon test 701/701 · native 823/823 · protocol_frames 33 帧一致
+  （零连坐）· replay 61 锚 · demo_smoke 168 · 双臂 smoke 全绿。
+
+### Added（demo 链接分享：编辑器内容 → URL # 片段，零后端零依赖，2026-10-09）
+
+- 新模块 `demo/js/share.ts` + 编辑器头「🔗 分享链接」按钮 + 链接条（写清
+  「源码 N 字符 → 链接 M 字符」）。载荷 = `#z1.<base64url(deflate-raw(utf8))>`，
+  压缩用浏览器原生 `CompressionStream("deflate-raw")`（本页底线浏览器 130+
+  / 134+ 已内含，零依赖零 polyfill），**只装源码**——步号/断点/课程 id 等
+  运行上下文一律不装（用户拍板「无关信息」）。
+- **载荷不花校验和**：实测 17 份用例 × 4 个截断比 + 尾部少 1 字节共 85 例，
+  DEFLATE 流被截必抛（`unexpected end of file`），故截断由解压失败兜住。
+  片段解析刻意分三态：无 `#` = 首访（静默）／有 `#` 但前缀非 `z1.` = 截断或
+  版本不认识（**明确报错，禁静默退回默认示例**）／前缀对载荷坏 = 同样报错。
+  链接超 8000 字符仍生成但状态提示劝阻（聊天工具截断风险）。**不自动运行**
+  （`#` 内容是不可信输入，只落编辑器）。
+- 纯函数七锚进 `demo/tests/pure.test.mts`（base64url 往返与三形态 fail loud、
+  片段三态、剥旧片段、压缩往返、**截断必被解压失败兜住**、长度阈值边界）；
+  截断锚经埋雷证红（把解压失败改成静默返回空串 ⇒ 该锚唯一转红，16/17→17/17
+  复绿）。门禁：demo 侧 `tsc --noEmit` / `demo_ui_lint`（class·var·id 三路
+  对账全过，id=160）/ `demo_assemble_check`（16 项资源全在）本地全绿。
+- 长度实测（deflate-raw + base64url，827 份真实 C 源）：源码 < 约 300 字符时
+  链接反而比代码长（0~2 倍桶比值 2.08 / 1.57 / 1.14），≥ 500 字符 72% 更短，
+  ≥ 1200 字符 100% 更短，模板面（p50 828 B）平均只有源码的 0.64 倍，90 KB
+  语料文件 → 约 1140 字符——故「直接粘代码」在小片段上确实更划算，README 与
+  链接条都把这层边界写明。
+- **否掉的路线（带实测）**：① 分享编译产物（字节码）——libc 组真值字节码
+  JSON 形态 deflate 后 = 压缩源码的 7.8 倍（未压缩 238 倍），且不可逆于源码、
+  与引擎版本强绑定，`moonbit/bytecode/` 亦无序列化出口，要做等于新增协议
+  方法 + 版本兼容面；② 字典预压缩（词表 + preset dictionary）——实测省
+  20~45%，但 `CompressionStream` 不支持 preset dictionary，为几十个字符自研
+  deflate 不值；③ 种子链接（只带课 id/断点/步号）——用户明确不要这类上下文。
+- 诚实边界：只带编辑器当前文件（工作区多文件容器未做）；本地 `demo_smoke`
+  因工作区 wasm 产物 import 形状不符（`module="_"`，该产物 20:31 由并行会话
+  构建，非本批面）在 instantiate 步即红，故本批未取得该闸的端到端绿灯——已
+  单独复算其与 `demo/index.html` 对账的两条断言（消费计数 18/18 一致）并跑
+  发射产物 `js/share.js` 编解码往返（一致）。
+
 ### Fixed（issue #48 parse 层内错误恢复：顶层声明缺 ';' 且 '{' 紧随的级联雪崩收口——Clang 式 balanced-brace recovery，2026-10-09）
 
 - **病根场景**：`int main{`（学生漏写参数括号）——病根诊断与 Clang 同位同形

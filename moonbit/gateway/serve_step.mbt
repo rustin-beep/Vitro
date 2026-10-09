@@ -319,7 +319,14 @@ fn serve_step_next_frame(
     return (serve_err(id, "state", msg).stringify(), false)
   }
   // 一帧发布缓冲（Rust 语义逐分支照搬——注释链见 session_api.rs:678-721）
-  let flushed = result.payloads.is_empty() || result.finished
+  // issue #35 修正（2026-10-09）：trap 是终态——trap 批必须连同缓冲帧一起
+  // 冲刷发布。旧判定只认 is_empty||finished，trap 批（payloads=[trap 帧]）
+  // 走 else 把 trap 帧吞进 unified_pending，而消费方见 trapped=true 即停、
+  // 无人再调 step.next 冲刷——**trap 帧（含已装配的 root_cause_hint）永远
+  // 发布不出去**（demo 死因卡恒空、CLI 端到端 hint 恒 null 的真断点）。
+  let flushed = result.payloads.is_empty() ||
+    result.finished ||
+    result.trapped
   if flushed {
     // 程序结束/无新帧：冲刷缓存帧（与结束帧同行则它不是行末，清标注）
     guard s.unified_pending is Some(pending) else {

@@ -8,7 +8,7 @@ pub struct FailCase {
   fail_stage : String
 }
 
-enum CaseE {
+pub enum CaseE {
   Ok(OkCase)
   Fail(FailCase)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -76,7 +77,12 @@ func EmitAndVerify(mbtPath string, docJSON []byte, emit func(ordOf map[string][]
 	// 调用无 workspace 副作用面，emitter 紧凑形态归一为 fmt-clean 入仓形态，
 	// 下轮 emit 重产仍会被本步归一——循环闭合）。moon 缺位时静默跳过
 	//（fmt 失败不挡 round-trip——它不是语义闸）。
-	if out, err := exec.Command("moon", "fmt", mbtPath).CombinedOutput(); err != nil {
+	// cmd.Dir = .mbt 所在目录：scripts 是自立 moon workspace（scripts/moon.work），
+	// 五驱动从仓库根跑、cwd 向上找不到 workspace ⇒ fmt 恒败，每次 freeze 把
+	// fmt 归一冲回 emitter 原形态（90e818e5 实锤冲掉 33f93354 的归一）。
+	fmtCmd := exec.Command("moon", "fmt", filepath.Base(mbtPath))
+	fmtCmd.Dir = filepath.Dir(mbtPath)
+	if out, err := fmtCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "emit: 警告——moon fmt 单文件失败（产物保持 emitter 原形态）: %v\n%s\n", err, out)
 	}
 	if _, err := os.Stat(Exe); err != nil {

@@ -543,7 +543,7 @@ jobs:
 
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
       # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
-      # 家）/ protocol_frames 31 帧基线。前置同上（gateway wasm + node 25）。
+      # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置同上（gateway wasm + node 25）。
       - name: replay wasm arm (shell serve)
         run: go run ./scripts/replay --backend wasm
         shell: bash

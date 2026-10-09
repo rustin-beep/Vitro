@@ -1,4 +1,14 @@
 ///|
+/// E4 出口字符串转义单点（审阅 P2-2 空转锚加牙，2026-10-09）：catalog
+/// 静态数据不含控制字节 ⇒「扫 export_catalog_json 输出无裸控制字节」
+/// 恒真、突变（拆 @util.json_escape 接线回 #55 前直拼形态）不红——
+/// 无牙。牙 = 白盒直测本单点：四字段转义全部经此一点，emitter 侧拆掉
+/// escape 接线即被 e4_json_str_escapes_control_bytes 抓红。
+fn e4_json_str(s : String) -> String {
+  "\"" + @util.json_escape(s) + "\""
+}
+
+///|
 /// E4 锚出口（error_catalog JSON）——与 Rust `error_catalog::export_json`
 /// 同形：`{"catalog":[{...},...]}`，码升序，字段序
 /// code / code_str / lang / category / icon / title / explanation / common_causes。
@@ -25,15 +35,15 @@ pub fn export_catalog_json() -> String {
     buf.write_string(",\"code_str\":\"\{op.display_code()}\"")
     buf.write_string(",\"lang\":\"\{export_lang_of(e.code)}\"")
     buf.write_string(",\"category\":\"\{category_of(e.code)}\"")
-    buf.write_string(",\"icon\":\"\{@util.json_escape(e.icon)}\"")
-    buf.write_string(",\"title\":\"\{@util.json_escape(e.title)}\"")
-    buf.write_string(",\"explanation\":\"\{@util.json_escape(e.explanation)}\"")
+    buf.write_string(",\"icon\":" + e4_json_str(e.icon))
+    buf.write_string(",\"title\":" + e4_json_str(e.title))
+    buf.write_string(",\"explanation\":" + e4_json_str(e.explanation))
     buf.write_string(",\"common_causes\":[")
     for j, cause in e.common_causes {
       if j > 0 {
         buf.write_string(",")
       }
-      buf.write_string("\"\{@util.json_escape(cause)}\"")
+      buf.write_string(e4_json_str(cause))
     }
     buf.write_string("]}")
   }

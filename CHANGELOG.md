@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（两轮审阅处置批：P1 五闸收口 + sscanf 同族补齐 + e4 出口锚加牙 + trap 帧帧级锚，2026-10-09，refs #59）
+
+- **P1 五闸**：surface 边表补 `host → util i64_to_i32_bits`（#47 引入未登记）+ moon fmt 归一 10 文件（含 #35/#47 死字段批的 serve_step×2/trace×2）+ lexer_diff baseline 入账 whitespace_vtab_formfeed（#55 新例漏冻）+ typeck_diff leetcode 重冻 lc_49.c（#47 W3067 抑制的行为变更 golden）+ 两份 README 测试数实测重账 691/685→702（lexer/internal/scanner 7 测试自旧合记拆分单列、fuzz 六测试实为 host 包内件、旧「分解和 + 根 doc test」两段式旁账撤销）。
+- **sscanf 同族补齐（#59 同族）**：`host_sscanf` 补 `%i/%x/%o` 三臂与 scanf 臂同源（C11 §7.21.6.2：`%i` 前缀探测 0x→16/0→8、`%x` 可选前缀仅后随 hex 才跳、`%o` base 8；均可带符号；无数字匹配失败不计数）。红→绿锚 `sscanf_i_x_o_conversions`（八组断言）。同族裁定遗留（`0x` 形态 UCRT vs msvcrt/glibc 反向 + `%d/%u` 无数字误计数双 CRT 分叉）立案 #59。
+- **e4 出口锚加牙（审阅 P2-2）**：抽出四字段共用转义单点 `e4_json_str`，新锚 `e4_json_str_escapes_control_bytes` 白盒直测——catalog 静态数据无控制字节使原扫描锚恒真空转（突变拆接线证红实锤），接线被拆即被新锚抓红。
+- **jmemit fmt-cwd 根因修复**：`EmitAndVerify` 的 `moon fmt` 单文件调用无 `cmd.Dir`——从仓库根跑找不到 scripts 自立 workspace 致 fmt 恒败，**每次 freeze 把 .mbt 真源冲回 emitter 原形态**（90e818e5 实锤冲掉 33f93354 归一）。修复后 freeze 循环自归一闭合；parser/codegen/vm_diff 三张 digest 仍处被冲形态，随下次各自 freeze 自动归一。
+- **protocol_frames trap step 流 14 帧（审阅 P3 缺口）**：序列 34→48（基线 47=−capabilities 结构豁免）——id46 冻结 `trapped:true` + 2 payloads + DivZero hint 的冲刷发布形态（#35 行为帧级锚）+ id47/48 守卫空 payload；native/wasm 双臂比对绿，突变去 `|| result.trapped` 即红（exit 1，DRIFT 帧 46/47）。步进粒度=单观测事件（除零程序约 9 发 next 到 trap）为实测所得。
+- **诚实性更正（审阅 E2/E5/E9）**：CHANGELOG #35 条「demo 死因卡数据就绪/引擎修复即亮」更正为引擎侧就绪、demo 前端对 root_cause_hint 零消费（types.ts:66 预留声明自认）——死因卡亮起待前端接线批；「moon test 701/701 · native 823/823」多计 1 更正（当时实跑 700/700 · 822/822）；serve_step.mbt 头注「Rust 语义逐分支照搬」更正为**有意偏离 oracle** 登记（oracle 同病：flushed 不含 trapped、trap 分支只置 trapped；本侧补 `||result.trapped` 主动纠偏；is_trapped 守卫保证不双发）。
+- 复验绿盘：vm_diff 618/5/0 · clang_direct 711/7/0（bTree 已入 known）· lexer/typeck/codegen 语料族全 PASS · surface/mbti_sync/gen_diag/testcount/facts/serve_smoke 66P · protocol_frames 双臂 47 帧 · moon test 702/702 · native 824/824。
+
 ### Fixed（issue #35 UAF 死因提示恒 null：trap 帧被滞后一帧缓冲吞没——flushed 判定补 trap 终态，2026-10-09）
 
 - **断点考古**：issue 立项时的断点（trap 文案缺「由第 N 行的 malloc」分配
@@ -29,10 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   UAF 源编译 → step.next 到 trap → 断言发布帧含 `root_cause_hint:{` +
   `"category":"UseAfterFree"`）——修前红（hint 恒 null），修后绿。
 - 端到端（wasm 臂）：hint =「这块内存在第 3 行被分配，在第 5 行被释放，
-  现在又被访问了……相关指针: p」——**demo 死因卡数据就绪**（前端条件渲染
-  早已备好，issue 的「引擎修复即亮」达成）。
-- 回归：moon test 701/701 · native 823/823 · protocol_frames 33 帧一致
-  （零连坐）· replay 61 锚 · demo_smoke 168 · 双臂 smoke 全绿。
+  现在又被访问了……相关指针: p」——**引擎侧死因卡数据就绪**。
+  **更正（2026-10-09 二轮审阅）：本条初稿写「demo 死因卡数据就绪（前端
+  条件渲染早已备好，issue 的『引擎修复即亮』达成）」系不实声称——demo/
+  对 root_cause_hint 零消费（js/types.ts:66 仅预留声明，同文件头自认
+  「八字段当前无前端消费者」）；死因卡亮起待 demo 前端接线批。**
+- 回归：protocol_frames 33 帧一致（零连坐）· replay 61 锚 · demo_smoke
+  168 · 双臂 smoke 全绿。**更正（2026-10-09 二轮审阅）：本条初稿
+  「moon test 701/701 · native 823/823」多计 1（在制 TEMP 探针误入
+  计数），当时实跑为 700/700 · 822/822。**
 
 ### Added（demo 链接分享：编辑器内容 → URL # 片段，零后端零依赖，2026-10-09）
 

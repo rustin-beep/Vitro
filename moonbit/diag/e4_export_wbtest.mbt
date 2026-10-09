@@ -53,6 +53,20 @@ test "e4_export_no_raw_control_bytes" {
 }
 
 ///|
+/// P2-2 加牙锚（审阅 2026-10-09）：出口转义单点对控制字节的转义行为。
+/// 上一锚扫静态 catalog 输出——数据面不含 <0x20 非 \n\r\t 字节，突变
+/// （emitter 拆 @util.json_escape 接线回直拼形态）下仍绿＝空转；本锚
+/// 直测 e4_json_str 单点，接线被拆即红（J9 突变已证）。
+test "e4_json_str_escapes_control_bytes" {
+  // \t 走短转义；U+0001 走 \u00XX（小写 hex，serde_json 口径）
+  inspect(e4_json_str("tab\there"), content="\"tab\\there\"")
+  inspect(e4_json_str("a\u{01}b"), content="\"a\\u0001b\"")
+  inspect(e4_json_str("q\"q\\q"), content="\"q\\\"q\\\\q\"")
+  // 引号包裹职责在本单点（四字段共用）
+  inspect(e4_json_str("plain"), content="\"plain\"")
+}
+
+///|
 /// lang/category 四值探针（P2-3：防 5xxx 落地静默错——白盒直测私有派生）。
 test "e4_lang_category_four_values" {
   inspect(export_lang_of(1001), content="c")

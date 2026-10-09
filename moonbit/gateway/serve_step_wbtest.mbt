@@ -449,8 +449,7 @@ test "serve_step_uaf_root_cause_hint_wire" {
   let s = @session.Session::new()
   ignore(
     serve_handle(
-      s,
-      "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { int *p = malloc(sizeof(int)); *p = 42; free(p); return *p; }\\n\"}}",
+      s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { int *p = malloc(sizeof(int)); *p = 42; free(p); return *p; }\\n\"}}",
     ),
   )
   ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))

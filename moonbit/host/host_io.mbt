@@ -1119,6 +1119,91 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
+    } else if spec == 105 || spec == 120 || spec == 111 {
+      // i / x / o（#47 同族对齐扩面，审阅 P2-1 2026-10-09——与 scanf 臂
+      // 同源，C11 §7.21.6.2 真值源：%i 前缀探测 0x→16 / 0→8，%x 可选
+      // 0x 前缀仅后随 hex 才跳，%o base 8；均可带符号。无数字 → 匹配
+      // 失败：游标回退、不计数、终止后续匹配——与 scanf 臂刻意同形，
+      // 与本函数 d/u 旧臂的「store 0 且计数」两套口径问题属 P3-2 待
+      // 裁定面，此处不扩散）
+      let entry_pos = pos
+      while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
+        pos = pos + 1
+      }
+      if pos >= chars.length() {
+        pos = entry_pos
+        break
+      }
+      let mut negative = false
+      if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
+        pos = pos + 1
+      }
+      if pos >= chars.length() {
+        pos = entry_pos
+        break
+      }
+      let mut base : Int = 10
+      if spec == 120 {
+        base = 16
+        // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
+        if pos + 2 < chars.length() &&
+          chars[pos] == 48 &&
+          (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+          hex_digit_val(chars[pos + 2]) >= 0 {
+          pos = pos + 2
+        }
+      } else if spec == 111 {
+        base = 8
+      } else if chars[pos] == 48 {
+        // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8
+        if pos + 2 < chars.length() &&
+          (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+          hex_digit_val(chars[pos + 2]) >= 0 {
+          base = 16
+          pos = pos + 2
+        } else {
+          base = 8
+        }
+      }
+      let mut val : UInt64 = 0UL
+      let mut scanned = false
+      while pos < chars.length() {
+        let d = hex_digit_val(chars[pos])
+        if d < 0 || d >= base {
+          break
+        }
+        val = val * base.to_uint64() + d.to_uint64()
+        pos = pos + 1
+        scanned = true
+      }
+      if !scanned {
+        pos = entry_pos
+        break
+      }
+      if negative {
+        val = 0UL - val
+      }
+      let f = if !sl.2 {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, val)
+        } else {
+          mem.store_u32(
+            map,
+            ptr,
+            @util.i64_to_i32_bits(val.reinterpret_as_int64()).reinterpret_as_uint(),
+          )
+        }
+      } else {
+        Ok(())
+      }
+      match f {
+        Ok(_) => ()
+        Err(e) => return fault_reply(e)
+      }
+      if !sl.2 {
+        matched = matched + 1
+      }
     } else if spec == 102 {
       // f
       let pair = read_float_token(chars, pos)

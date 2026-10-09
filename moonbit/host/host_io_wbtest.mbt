@@ -501,6 +501,63 @@ test "sscanf_mixed_and_no_guard_shape" {
 }
 
 ///|
+/// #47 批 sscanf %i/%x/%o 扩面锚（审阅 P2-1 同族漏改补齐，2026-10-09）：
+/// 三转换符与 scanf 臂同口径（C11 §7.21.6.2 真值源——%i 前缀探测 0x→16/
+/// 0→8、%x 可选 0x 前缀仅后随 hex 才跳、%o base 8；均可带符号）。红→绿
+/// 锚：补臂前三符走「未知转换符」分支不消费不计数，matched=0 即红。
+test "sscanf_i_x_o_conversions" {
+  let (map, mem) = fresh()
+  let pi = 0x8500U
+  let px = 0x8510U
+  let po = 0x8520U
+  let pn = 0x8530U
+  // %i：0x 前缀 → 16 进制
+  put_cstr(mem, map, 0x6A00U, "0x1F")
+  put_cstr(mem, map, 0x6200U, "%i")
+  let r = host_sscanf(map, mem, 0x6A00U, 0x6200U, [pi])
+  assert_eq(r.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pi), Ok(31U))
+  // %i：0 开头 → 8 进制
+  put_cstr(mem, map, 0x6A00U, "017")
+  let r2 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [pi])
+  assert_eq(r2.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pi), Ok(15U))
+  // %x：无前缀 hex 与 0x 前缀两形态
+  put_cstr(mem, map, 0x6A00U, "ff")
+  put_cstr(mem, map, 0x6200U, "%x")
+  let r3 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [px])
+  assert_eq(r3.value, Some(1UL))
+  assert_eq(mem.load_u32(map, px), Ok(255U))
+  put_cstr(mem, map, 0x6A00U, "0x10")
+  let r4 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [px])
+  assert_eq(r4.value, Some(1UL))
+  assert_eq(mem.load_u32(map, px), Ok(16U))
+  // %o：base 8
+  put_cstr(mem, map, 0x6A00U, "777")
+  put_cstr(mem, map, 0x6200U, "%o")
+  let r5 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [po])
+  assert_eq(r5.value, Some(1UL))
+  assert_eq(mem.load_u32(map, po), Ok(511U))
+  // 负号：三臂均可带符号
+  put_cstr(mem, map, 0x6A00U, "-42")
+  put_cstr(mem, map, 0x6200U, "%i")
+  let r6 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [pn])
+  assert_eq(r6.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pn), Ok((-42).reinterpret_as_uint()))
+  // 混排：一条格式串 i/x/o 并用（%i 的 0 前缀 8 进制与 %x 同串区分）
+  put_cstr(mem, map, 0x6A00U, "0x10 017 10")
+  put_cstr(mem, map, 0x6200U, "%i %i %x")
+  let m1 = 0x8540U
+  let m2 = 0x8550U
+  let m3 = 0x8560U
+  let r7 = host_sscanf(map, mem, 0x6A00U, 0x6200U, [m1, m2, m3])
+  assert_eq(r7.value, Some(3UL))
+  assert_eq(mem.load_u32(map, m1), Ok(16U))
+  assert_eq(mem.load_u32(map, m2), Ok(15U))
+  assert_eq(mem.load_u32(map, m3), Ok(16U))
+}
+
+///|
 /// P1 修复锚（oracle release 真机 2026-09-23 取值）：`format_g` 的 10^e
 /// 路径与 oracle `10f64.powi` 逐位对齐——含 exp 平局（e=23）、已知偏离
 /// （e=126）、次正规（powi(-320..-323)）与 oracle 自身的泄漏形状

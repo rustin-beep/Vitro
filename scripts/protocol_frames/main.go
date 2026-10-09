@@ -155,6 +155,24 @@ func requestTable() []req {
 		// 演化进基线，不 mask——资产漂移即红是本闸语义）
 		{33, "icons.get", ``},
 		{34, "icons.get", `{"ids":["uaf","timeline"]}`},
+		// trap 帧 step 流（二轮审阅 P3 补——此前序列无 trapped 的 step.next，
+		// #35 trap 帧发布路径零帧级覆盖）：除零 → step.begin → next 十二发
+		//（步进粒度=单观测事件，实测从进入到除零 trap 约 8~10 发；尾发测
+		// trap 后 is_trapped 守卫形态）。trap 帧连同缓冲帧冲刷进冻结基线。
+		{35, "compile", `{"source":"int main() { int a = 0; return 1 / a; }"}`},
+		{36, "step.begin", ``},
+		{37, "step.next", ``},
+		{38, "step.next", ``},
+		{39, "step.next", ``},
+		{40, "step.next", ``},
+		{41, "step.next", ``},
+		{42, "step.next", ``},
+		{43, "step.next", ``},
+		{44, "step.next", ``},
+		{45, "step.next", ``},
+		{46, "step.next", ``},
+		{47, "step.next", ``},
+		{48, "step.next", ``},
 	}
 }
 

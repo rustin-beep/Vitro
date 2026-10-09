@@ -295,5 +295,9 @@ test "assign_const_gain_pointer_no_w3067" {
       loc,
     ),
   )
-  assert_eq(tc3.warnings.length(), 1, msg="多级 const 增强维持 W3067（C 标准）")
+  assert_eq(
+    tc3.warnings.length(),
+    1,
+    msg="多级 const 增强维持 W3067（C 标准）",
+  )
 }

@@ -222,6 +222,7 @@ vitro/engine/host vitro/engine/memory FreedRegionInfo
 vitro/engine/host vitro/engine/memory MemFault
 vitro/engine/host vitro/engine/memory Memory
 vitro/engine/host vitro/engine/memory MemoryMap
+vitro/engine/host vitro/engine/util i64_to_i32_bits
 vitro/engine/host vitro/engine/util utf8_len
 vitro/engine/lexer moonbitlang/core/encoding/utf8 encode
 vitro/engine/lexer vitro/engine/diag ErrorCode

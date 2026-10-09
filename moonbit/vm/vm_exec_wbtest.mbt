@@ -1757,6 +1757,12 @@ test "bounds_message_no_embedded_location" {
   // local 数组实际基址 = locals_base(0x8000) + sym.addr(4) = 0x8004；
   // 取 a[4] 元素地址（基址+16，越界一格）——命中 Some 臂尾部宽容窗
   let s = vm.format_bounds_error(0x8018U)
-  assert_true(s.contains("数组越界"), msg="锚有效性：须命中 Some 臂（符号扫描成功）")
-  assert_false(s.contains("[location]"), msg="文案内不得内嵌 location 段")
+  assert_true(
+    s.contains("数组越界"),
+    msg="锚有效性：须命中 Some 臂（符号扫描成功）",
+  )
+  assert_false(
+    s.contains("[location]"),
+    msg="文案内不得内嵌 location 段",
+  )
 }

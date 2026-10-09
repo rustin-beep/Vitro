@@ -89,7 +89,6 @@ fn hex_digit_val(b : Byte) -> Int {
   }
 }
 
-
 ///|
 /// `atol(s)`（oracle `misc.rs:336-359`）——i64 回绕累加。
 pub fn host_atol(

@@ -512,7 +512,11 @@ test "strchr_negative_c_char_conversion" {
   let (map, mem) = fresh()
   put_bytes(mem, map, 0x6000U, b"abc\xFFdef", true)
   let r = host_strchr(mem, map, 0x6000U, -1)
-  assert_eq(r.value, Some(0x6003UL), msg="strchr 负 c 须按 char 截断语义命中 0xFF 字节")
+  assert_eq(
+    r.value,
+    Some(0x6003UL),
+    msg="strchr 负 c 须按 char 截断语义命中 0xFF 字节",
+  )
   let r2 = host_strrchr(mem, map, 0x6000U, -1)
   assert_eq(r2.value, Some(0x6003UL), msg="strrchr 同款 char 截断语义")
 }

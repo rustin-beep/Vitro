@@ -186,11 +186,7 @@ test "engine_run_batch_trap_root_cause_hint_divzero" {
 test "trace_analyze_bounds_wrong_init" {
   // oracle test_infer_wrong_init 照搬：i 从 1 起单调 +1，accessed=5=size
   let hist : Array[Int] = [1, 2, 3, 4, 5]
-  let loop_info : LoopInfo = {
-    lines: [3],
-    has_le: false,
-    increment: Some(1),
-  }
+  let loop_info : LoopInfo = { lines: [3], has_le: false, increment: Some(1), }
   let cat = infer_bounds_category(hist, 5, 5, loop_info)
   assert_eq(cat.as_str(), "WrongInit")
   let (one_liner, fix_kind, fix_line, fix_desc) = build_bounds_hint(

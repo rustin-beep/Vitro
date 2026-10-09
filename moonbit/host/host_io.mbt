@@ -884,7 +884,8 @@ pub fn host_scanf_n(
       if spec == 120 {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
-        if pos + 2 < chars.length() && chars[pos] == 48 &&
+        if pos + 2 < chars.length() &&
+          chars[pos] == 48 &&
           (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
           hex_digit_val(chars[pos + 2]) >= 0 {
           pos = pos + 2

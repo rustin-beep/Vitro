@@ -402,13 +402,13 @@ fn TypeChecker::check_pointer_assignable(
             H3057_ImplicitConversionHint,
           )
         } else if !@ast.type_eq(t_pointee, v_pointee) &&
-        // 病 3 修复（#47，2026-10-09）：「目标 pointee = 源 pointee + 顶层
-        // const」是 C11 §6.5.16.1 的安全方向（限定符只增不减），放行——
-        // char* → const char* 曾假阳性 W3067（文案渲染两侧同型 "char*"
-        // 自相矛盾）。多级指针不适用：strip 只剥一层，深层 const 差异仍被
-        // 递归 type_eq 抓住（char** → const char** 维持 W3067，C 标准同判
-        // 非法）；反向（剥 const）仍由下方 W3053 管。
-        !@ast.type_eq(strip_top_const(t_pointee), v_pointee) {
+          // 病 3 修复（#47，2026-10-09）：「目标 pointee = 源 pointee + 顶层
+          // const」是 C11 §6.5.16.1 的安全方向（限定符只增不减），放行——
+          // char* → const char* 曾假阳性 W3067（文案渲染两侧同型 "char*"
+          // 自相矛盾）。多级指针不适用：strip 只剥一层，深层 const 差异仍被
+          // 递归 type_eq 抓住（char** → const char** 维持 W3067，C 标准同判
+          // 非法）；反向（剥 const）仍由下方 W3053 管。
+          !@ast.type_eq(strip_top_const(t_pointee), v_pointee) {
           // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
           self.report_warning(
             "指针类型不兼容：\{t_pointee.name()}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",

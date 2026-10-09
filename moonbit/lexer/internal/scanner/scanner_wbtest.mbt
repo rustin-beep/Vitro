@@ -49,3 +49,16 @@ test "scan_raw cpp mode and hash" {
   let summary = r.tokens.map(t => t.ty.to_name()).join(" ")
   inspect(summary, content="Identifier HashHash Identifier Hash Identifier Eof")
 }
+
+///|
+test "scan_raw c11 whitespace vtab formfeed" {
+  // C11 §6.4p3 white-space 全集：space / \t / \n / \v(0x0B) / \f(0x0C) / \r。
+  // \v 曾缺（Rust is_ascii_whitespace 集合不含 \x0B 的照搬期分歧——issue #55）
+  let r = scan_raw(@utf8.encode("int\u{B} x\u{C} =\u{B}1;\r\n"))
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="Int:int Identifier:x Assign:= Number:1 Semicolon:; Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}

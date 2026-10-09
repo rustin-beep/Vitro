@@ -6,6 +6,10 @@ pub fn base64_encode(Bytes) -> String
 
 pub fn i64_to_i32_bits(Int64) -> Int
 
+pub fn json_escape(String) -> String
+
+pub fn json_escape_into(String, StringBuilder) -> Unit
+
 pub fn le_u32_at(FixedArray[Byte], Int) -> UInt
 
 pub fn le_u64_at(FixedArray[Byte], Int) -> UInt64

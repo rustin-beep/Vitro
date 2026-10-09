@@ -31,9 +31,9 @@ fn json_event_stream(
   // filename 装配（BUG-A 修复，2026-10-05）：同 cli_compile——丢 filename
   // 则 base_dir 退化、同目录 include 断；stdin（"-"）不传
   let compile_params = if file == "-" {
-    "{\"source\":\"\{escape_json(src)}\"}"
+    "{\"source\":\"\{@util.json_escape(src)}\"}"
   } else {
-    "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+    "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
   }
   let comp = inv("compile", compile_params)
   println("{\"type\":\"diag\",\"frame\":\{comp}}")
@@ -45,9 +45,9 @@ fn json_event_stream(
   // runtime_argv 保持会话默认 []（argc=0、argv[0] 解引用 NULL trap、堆起点
   // 不上移）；初版 else "{}" 丢整段，自验样本只落在「有透传」形态漏掉零参）
   let items = StringBuilder()
-  items.write_string("\"\{escape_json(file)}\"")
+  items.write_string("\"\{@util.json_escape(file)}\"")
   for i = 0; i < argv.length(); i = i + 1 {
-    items.write_string(",\"\{escape_json(argv[i])}\"")
+    items.write_string(",\"\{@util.json_escape(argv[i])}\"")
   }
   let argv_json = "\"argv\":[\{items.to_string()}]"
   // -i 批注入（2026-10-04 二轮审 P1-B 修正：与文本模式**同构**走
@@ -58,7 +58,7 @@ fn json_event_stream(
     if !text.has_suffix("\n") {
       text = text + "\n"
     }
-    ",\"input\":\"\{escape_json(text)}\",\"batch_input\":true"
+    ",\"input\":\"\{@util.json_escape(text)}\",\"batch_input\":true"
   } else {
     ""
   }

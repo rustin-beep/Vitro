@@ -1,6 +1,6 @@
 // cmd/lib/step：CLI `step` 主体（#37 批②——形态与序列约定见 moon.pkg）。
-// JSON 请求拼装：源码走 JSON 字符串转义（escape_json——gateway 协议输入
-// 是标准 JSON）；响应的 summary 提取用轻量字段判（gateway.json_parse 未
+// JSON 请求拼装：源码走 JSON 字符串转义（@util.json_escape——gateway
+// 协议输入是标准 JSON）；响应的 summary 提取用轻量字段判（gateway.json_parse 未
 // 导出，本命令 summary 面只要 finished/trapped/payloads 计数——contains
 // + 批计数足够，不做全解析）。
 
@@ -68,9 +68,9 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
   // filename 装配（BUG-A 修复，2026-10-05）：同 cli_compile——丢 filename
   // 则 base_dir 退化、同目录 include 断；stdin（"-"）不传
   let compile_params = if file == "-" {
-    "{\"source\":\"\{escape_json(src)}\"}"
+    "{\"source\":\"\{@util.json_escape(src)}\"}"
   } else {
-    "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+    "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
   }
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
@@ -81,7 +81,7 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
   }
   // run 帧带 argv [file]（2026-10-04 二轮审 P1-A 同根：step 无 argv 面但
   // argv[0] 语义必须有——gateway 默认 [] 会让 argv[0] 解引用 NULL trap）
-  ignore(inv("run", "{\"argv\":[\"\{escape_json(file)}\"]}"))
+  ignore(inv("run", "{\"argv\":[\"\{@util.json_escape(file)}\"]}"))
   ignore(inv("step.begin", "{}"))
   let mut frames = 0
   let mut last : String = ""
@@ -136,28 +136,8 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
   0
 }
 
-///|
-/// JSON 字符串转义（RFC 8259 面：源码文本 → JSON 字符串字面量内容）。
-fn escape_json(s : String) -> String {
-  let buf = StringBuilder()
-  for c in s {
-    match c {
-      '"' => buf.write_string("\\\"")
-      '\\' => buf.write_string("\\\\")
-      '\n' => buf.write_string("\\n")
-      '\r' => buf.write_string("\\r")
-      '\t' => buf.write_string("\\t")
-      _ =>
-        if c.to_int() < 0x20 {
-          buf.write_string("\\u")
-          buf.write_string(to_hex4(c.to_int()))
-        } else {
-          buf.write_char(c)
-        }
-    }
-  }
-  buf.to_string()
-}
+// 字符串转义已收口 @util.json_escape（issue #55 六份收一；原本地
+// escape_json 语义一致——RFC 8259 全量控制字符 \u00XX，hex 同小写）。
 
 ///|
 /// 轻量 JSON 字符串字段提取（"key":"value" 形态——summary 面专用，
@@ -239,14 +219,5 @@ fn parse_int(s : String) -> Int? {
   Some(v)
 }
 
-///|
-/// 四位十六进制（\u 转义专用——控制字符面）。
-fn to_hex4(v : Int) -> String {
-  let digits = "0123456789abcdef"
-  let mut out = ""
-  out += digits[v / 4096 % 16].to_string()
-  out += digits[v / 256 % 16].to_string()
-  out += digits[v / 16 % 16].to_string()
-  out += digits[v % 16].to_string()
-  out
-}
+// to_hex4 已随 escape_json 本地副本一并退役（转义单源 @util.json_escape，
+// issue #55 六份收一）。

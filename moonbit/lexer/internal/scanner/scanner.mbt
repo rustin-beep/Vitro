@@ -85,8 +85,16 @@ fn slice_string(bytes : Bytes, start : Int, end_ : Int) -> String {
 }
 
 ///|
+/// C11 §6.4p3 white-space 全集：space / \t / \n / \v(0x0B) / \f(0x0C) / \r。
+/// 注意与 Rust `is_ascii_whitespace` 集合（无 \v）刻意不同——照搬期曾随
+/// Rust 集合漏掉 \v，导致合法 C 被拒（E1001，issue #55）。
 fn is_ascii_whitespace(c : Int) -> Bool {
-  c == ' ' || c == '\t' || c == '\n' || c == '\u{C}' || c == '\r'
+  c == ' ' ||
+  c == '\t' ||
+  c == '\n' ||
+  c == '\u{B}' ||
+  c == '\u{C}' ||
+  c == '\r'
 }
 
 ///|
@@ -328,8 +336,8 @@ fn Scanner::err(
 }
 
 ///|
-/// 跳过 ASCII 空白（Rust `is_ascii_whitespace` 集合——BOM 不在内，⑥-8 由
-/// L2 管线的字节预处理阶段剥离）。
+/// 跳过 ASCII 空白（C11 white-space 全集，见 `is_ascii_whitespace`——BOM
+/// 不在内，⑥-8 由 L2 管线的字节预处理阶段剥离）。
 fn Scanner::skip_whitespace(self : Scanner) -> Unit {
   while !self.at_end() {
     if is_ascii_whitespace(self.peek(0)) {

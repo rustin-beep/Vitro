@@ -1,8 +1,9 @@
 // L0 零依赖·纯机械助手（G-1，2026-09-26）：utf8_len / str_cmp /
-// i64_to_i32_bits / le_u32_at / le_u64_at——只许零语义机械件（无业务判定、
-// 无状态、无副作用），任何层都可依赖而不引入语义耦合。
+// i64_to_i32_bits / le_u32_at / le_u64_at / json_escape(_into)——只许零语义
+// 机械件（无业务判定、无状态、无副作用），任何层都可依赖而不引入语义耦合。
 // 收口动因：消「@utf8.encode(s).length() 散拼」（静默产空串事故同族）与
-// 「String 比较非字典序」（陷阱 #29）两族跨包重复。
+// 「String 比较非字典序」（陷阱 #29）两族跨包重复；json_escape 六份收一
+// （issue #55，2026-10-09——ast/diag/gateway/cmd 族本地转义副本全撤）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。
 import {
   "moonbitlang/core/encoding/utf8",

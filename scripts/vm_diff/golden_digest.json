@@ -2302,6 +2302,12 @@
       "stdout_sha": "bf6aaaab7c143ca1",
       "memory_sha": "bb44d3d4bc92389a"
     },
+    "baseline/whitespace_vtab_formfeed.c": {
+      "src_sha": "8e2cf01f",
+      "exit_code": 0,
+      "stdout_sha": "e9348026dce8dd4e",
+      "memory_sha": "33bcc5b34dd0d6b9"
+    },
     "baseline/zero_init_aggregate.c": {
       "src_sha": "9e20ed11",
       "exit_code": 0,

@@ -5,9 +5,10 @@
 
 ///|
 test "escape_json_转义面" {
-  inspect(escape_json("a\"b\\c\nd\te"), content="a\\\"b\\\\c\\nd\\te")
-  inspect(escape_json("纯中文"), content="纯中文")
-  inspect(escape_json(""), content="")
+  // 收一后锚单源 @util.json_escape（原本地 escape_json 已删——issue #55）
+  inspect(@util.json_escape("a\"b\\c\nd\te"), content="a\\\"b\\\\c\\nd\\te")
+  inspect(@util.json_escape("纯中文"), content="纯中文")
+  inspect(@util.json_escape(""), content="")
 }
 
 ///|

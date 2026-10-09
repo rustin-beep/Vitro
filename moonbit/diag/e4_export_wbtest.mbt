@@ -40,10 +40,16 @@ test "e4_export_warn_prefix" {
 }
 
 ///|
-/// json_escape 转义集（与 Rust json_escape 同集）。
-test "json_escape_set" {
-  inspect(json_escape("a\"b\\c\nd\te"), content="a\\\"b\\\\c\\nd\\te")
-  inspect(json_escape("无转义"), content="无转义")
+/// E4 出口 JSON 合法性锚（issue #55 收口后）：全量 catalog 输出不得含
+/// U+0000–001F 裸控制字节（控制字符必须已是 \u00XX 转义文本——转义单源
+/// @util.json_escape，原本地副本只转五字符的缺口由此在出口面钉死）。
+test "e4_export_no_raw_control_bytes" {
+  let json = export_catalog_json()
+  for c in json {
+    if c.to_int() < 0x20 {
+      fail("E4 出口含裸控制字节 U+\{c.to_int()}")
+    }
+  }
 }
 
 ///|

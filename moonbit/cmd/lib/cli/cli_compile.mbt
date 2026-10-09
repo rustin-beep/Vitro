@@ -50,9 +50,9 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
     // 缺省 "main.c" 所在目录，同目录 include 全断。stdin（"-"）无路径
     // 语义不传。cli_run_json / cli_step 同款连坐
     let compile_params = if file == "-" {
-      "{\"source\":\"\{escape_json(src)}\"}"
+      "{\"source\":\"\{@util.json_escape(src)}\"}"
     } else {
-      "{\"source\":\"\{escape_json(src)}\",\"filename\":\"\{escape_json(file)}\"}"
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
     }
     let comp = inv("compile", compile_params)
     println(comp)

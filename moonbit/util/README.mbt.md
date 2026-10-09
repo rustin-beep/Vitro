@@ -49,3 +49,15 @@ test {
 ```
 
 `i64_to_i32_bits` = Rust `as i32`（低 32 位符号解释）；`le_u32_at` / `le_u64_at` = `FixedArray[Byte]` 的小端拼装读（越界不设防，调用方负责区间）。
+
+### 4. JSON 字符串转义（serde_json 口径，issue #55 六份收一）
+
+```mbt check
+///|
+test {
+  inspect(@util.json_escape("a\"b"), content="a\\\"b")
+  inspect(@util.json_escape("a\u{B}b"), content="a\\u000bb")
+}
+```
+
+`"` `\` + `\n` `\r` `\t` 五具名转义，其余 U+0000–001F 控制字符一律 `\u00XX`（小写 hex，RFC 8259 要求），≥ 0x20 原样透传。只转义字符串**内容**——首尾引号由调用方自拼。流式版 `json_escape_into(s, buf)` 直写 StringBuilder（大产物 emitter 零中间串）。消费面：ast（`json_escape_string` pub 面转发）/ diag E4 出口 / gateway dump 帧 / cmd 族 dump 与 CLI 请求拼装。

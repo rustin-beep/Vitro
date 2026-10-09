@@ -12,6 +12,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #55 控制字符三连修：词法 \v 空白缺口 + json_escape 六份收一 + 零断言补全，2026-10-09）
+
+- **词法器 `\v`(0x0B) 空白缺口**（C11 §6.4p3 white-space 全集 vs Rust
+  `is_ascii_whitespace` 集合的照搬期分歧——0x0C 已在集合、0x0B 漏）：
+  `lexer/internal/scanner` 的 `is_ascii_whitespace` 补 `'\u{B}'`——修复前
+  含 `\v` 的合法 C 被 E1001 拒绝（Clang rc=0 接受）；红→绿锚
+  `scan_raw c11 whitespace vtab formfeed`；靶料
+  `corpus/baseline/whitespace_vtab_formfeed.c`（0x0B/0x0C 落 token 间
+  空白位，clang/vitro 双端一致）。
+- **`json_escape` 六份收一**（单源违规 + diag 真缺口）：新增
+  `vitro/engine/util::json_escape`/`json_escape_into`（serde_json 口径——
+  五具名转义 + 其余 U+0000–001F 全量 `\u00XX`）；ast `json_escape_string`
+  转 pub 面转发（bytecode/codegen 消费边零动）；diag E4 出口原本地副本
+  **只转五字符、控制字符原样写出=非法 JSON**（红锚证红后收口，出口新锚
+  `e4_export_no_raw_control_bytes`）；gateway `dump_json_escape`/cmd 族
+  三副本（dump_ast/dump_typeck/cli_step+cli_compile+cli_run_json）全撤；
+  边表 8 新边登记；issue #55 所报「step --json 通道控制字符替换」症状在
+  现状已不复现（五副本已含全转义，实测 message `\u000b` 合法转义）。
+- **零断言测试补全**：`tokenize elifdef c23`（`#elifdef_QUIRK` 未知指令
+  ——原 `ignore(r)` 只证不崩）补零 token 泄漏 + E1006 单诊断断言。
+- 测试数 685→691（scanner 1 + util 4 + util doc test 1）；语料/防线计数
+  连坐：clang_direct 718 / vm_diff 623 / e2e baseline 386（路线图行 698
+  →718 含批五已提交语料的存量欠账，本批顺手对齐真值）。
+
 ### Added（jsonmbt-migrate 合流：11 张 rules 真相源翻转 + scripts 自立 workspace，2026-10-08）
 
 - **11 张 rules.json → .json.mbt 唯一真相源**（工具转路线——不 merge migrate 分支，
@@ -551,6 +575,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **机制**：目录模式把文件集装 VFS（键 = 带目录前缀的完整路径），但 `tokenize_with_vfs` 未传 base_dir——resolver 候选链（栈顶目录 → base_dir）拼出裸名，与 VFS 键口径对不上，查找恒 miss → E1021/lex-fail。信息在驱动装配层丢失（S2 §7-5 与 dump_typeck 头注 2020-09-20 审阅"注入实际无效"在案）。
 - **修复**：三工具统一对齐 dump_tokens 先例（`base_dir=dirname_of(path)`——它一直是对的，故 lexer_diff 从未红）；单文件模式连坐同款装配（现场收集所在目录 .h 进 VFS）。
 - **翻转面**：六例 golden 重刷——存量 e2_has_include_chain / e2_include_guarded / include_custom_header（fail:lex → ok）+ 批一 e2_guarded_self_include / e2_guarded_mutual + **哨兵 gap/include_quote_sentinel**（S2 期专为监测此面设计，如期翻红——哨兵设计兑现）。真环/真缺失用例（e2_include_cycle / e2_include_not_found_*）行为不变 ✓。
+
+### Fixed（moon check 警告债 A3 人工判断批：310→256，refs #54，2026-10-09）
+
+- **0035 保留字×26 全清（#46 拆面终案）**：深读证明全仓 26 条**全部是局部变量/闭包参数/模式绑定**（`method`×20 → `method_name`、`member`×4 → `member_name`，cli 四件 + gateway/protocol + codegen/addr·stmt + teaching/render）——wire 的 JSON 键 `"method"` 是字符串字面量**本就不触发 0035**，改名零 wire 影响；#46 的下游撞保留字痛点属下游语言面，issue 转登记不修仓。
+- **0029 死 import×16 删 + 假阳性×2 发现**：cmd/run 九连 vitro/engine 全家 + utf8/abort×4 + session 三项；**moonc `unused_package` 判定不含 wbtest 消费面**——teaching/steps 的 source 与 gateway 的 utf8 实为 wbtest 消费（假阳性），恢复 + 豁免注（moon.pkg 注释行 moonc 宽松解析实测接受）。
+- **0087×2 消**：`guard p is Some(x)` → `guard!` 断言形态（A1 报告的「未修而消失」系统计漏抓假警报，已在 issue 更正）。
+- **unused 族逐条判定**：删 `format_spec_kinds` 转发薄壳 + `BoundsCategory` 的 `derive(Debug, Eq)`（priv 无消费）；`for _ in`×6/模式 `_`×2/`_self`×1/doc 块删未用绑定×1 消；**豁免登记 21 条**——0079×217（issue 裁定永久）、0020×18（inspect 依赖 core 旧 trait）、0002×4（HOST guard 空号生成物 + 双 CODE_LEN 常量测试锚）、0001×7（names 产名族×5 = C# 预约消费 + is_bytecode_libc 测试锚 + libc lookup 表未接线）、0007×6（libc 三字段 N3/N4 锚 + trace_analyzer×2 照搬忠实 + arg_count 照搬）、0050×2（有意遮蔽对齐 serde_json，core 升级复核）、0029×2（wbtest 假阳性）。
+- **诚实注释三处**：libc.mbt 头注修正「typeck 消费面」为现实（62-arm 硬编码 + bytecode_libc_sig 二路，本表为登记性真值）；gen.mbt arg_count 行注（照搬 Rust 字段族暂无读取面）；protocol.mbt as_string/as_bool 遮蔽理由。
+- **验收**：--target all 310→256（0 errors）；moon test 691/691（+1 为并发批）；vm_diff 618/5/0、clang_direct 711/7/0（含并发 #55 新语料）、demo smoke 168/168（gateway 动过已重建 wasm）；mbti_sync/surface/pkg_deps PASS。
 
 ### Fixed（S9 脱钩修复批批一：出口编码双条 + include 深度环归因——差异台账三条销案，2026-10-05）
 

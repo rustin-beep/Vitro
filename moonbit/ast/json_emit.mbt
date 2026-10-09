@@ -74,6 +74,8 @@ fn emit_loc(loc : @source.SourceLoc, buf : StringBuilder) -> Unit {
 /// JSON 字符串转义单源（S5 起跨包复用）：serde_json 口径——`" \` + \n \r \t
 /// + 其余 < 0x20 控制字符 `\u00XX`；其余字符原样。bytecode/codegen 的产物
 /// emitter（string_data 等）一律经此，禁下游再写一份转义实现。
+/// （转义逻辑体已下移 L0 `@util.json_escape`——issue #55 六份收一；本函数
+/// 是**带首尾引号包裹**的组合出口，pub 面与消费边不变。）
 pub fn json_escape_string(s : String) -> String {
   let buf = StringBuilder()
   emit_json_str(s, buf)
@@ -83,29 +85,7 @@ pub fn json_escape_string(s : String) -> String {
 ///|
 fn emit_json_str(s : String, buf : StringBuilder) -> Unit {
   buf.write_string("\"")
-  for c in s {
-    match c {
-      '"' => buf.write_string("\\\"")
-      '\\' => buf.write_string("\\\\")
-      '\n' => buf.write_string("\\n")
-      '\r' => buf.write_string("\\r")
-      '\t' => buf.write_string("\\t")
-      _ => {
-        // serde_json 口径：控制字符（< 0x20）必须转义（转义序列 \x4
-        // 解析出的真字节 0x04 原样写出即非法 JSON——baseline 的
-        // string_escape_octal_hex.c 抓出）；其余原样
-        let code = c.to_int()
-        if code < 32 {
-          buf.write_string("\\u00")
-          let hex = "0123456789abcdef"
-          buf.write_string(hex[code / 16:code / 16 + 1].to_owned())
-          buf.write_string(hex[code % 16:code % 16 + 1].to_owned())
-        } else {
-          buf.write_char(c)
-        }
-      }
-    }
-  }
+  @util.json_escape_into(s, buf)
   buf.write_string("\"")
 }
 

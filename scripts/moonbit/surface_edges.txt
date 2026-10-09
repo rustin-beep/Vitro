@@ -567,3 +567,12 @@ vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/lib/cli vitro/engine/util utf8_text_partial
 vitro/engine/gateway vitro/engine/util utf8_text_partial
 vitro/engine/gateway vitro/engine/util base64_encode
+# issue #55 json_escape 六份收一（转义单源 vitro/engine/util）新增 8 边：
+vitro/engine/ast vitro/engine/util json_escape
+vitro/engine/ast vitro/engine/util json_escape_into
+vitro/engine/cmd/dump_ast vitro/engine/ast json_escape_string
+vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
+vitro/engine/cmd/lib/cli vitro/engine/util json_escape
+vitro/engine/diag vitro/engine/util json_escape
+vitro/engine/gateway vitro/engine/util json_escape
+vitro/engine/gateway vitro/engine/util json_escape_into

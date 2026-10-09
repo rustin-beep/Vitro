@@ -91,9 +91,13 @@ test "tokenize depth fuse on object macro chain" {
 
 ///|
 test "tokenize elifdef c23" {
-  // 修复 ⑥-11：#elifdef 正确选分支（Rust 静默跳过导致选错）
+  // 修复 ⑥-11：#elifdef_QUIRK 是未知指令（非 #elifdef）——整体按一条
+  // 未知指令处理，不得误切成 #elifdef 分支选择 + 标识符泄漏
   let r = @lexer.tokenize("#define FOO 1\n#elifdef_QUIRK\n")
-  ignore(r)
+  inspect(r.tokens.length(), content="1") // 仅 Eof，无 token 泄漏
+  inspect(r.tokens[0].ty.to_name(), content="Eof")
+  assert_eq(r.errors.length(), 1)
+  inspect(@diag.ErrorCode::code(r.errors[0].code), content="1006")
 }
 
 ///|

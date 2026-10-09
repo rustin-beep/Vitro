@@ -9,32 +9,13 @@
 // 一次性会话承载管线的只读形态）。
 
 ///|
-/// JSON 字符串转义（cmd/dump_* 的 json_escape 复制件——含首尾引号；
-/// 修改须两侧同步）。
+/// JSON 字符串转义（含首尾引号）——转义体已收口 @util.json_escape
+///（issue #55 六份收一；与 cmd/dump_* 的旧「复制件同步」义务就此解除，
+/// 三侧同源 @util）。
 fn dump_json_escape(s : String) -> String {
   let buf = StringBuilder()
   buf.write_char('"')
-  for c in s {
-    match c {
-      '"' => buf.write_string("\\\"")
-      '\\' => buf.write_string("\\\\")
-      '\n' => buf.write_string("\\n")
-      '\r' => buf.write_string("\\r")
-      '\t' => buf.write_string("\\t")
-      _ => {
-        // 控制字符防御性转义（serde_json 口径）
-        let code = c.to_int()
-        if code < 32 {
-          buf.write_string("\\u00")
-          let hex = "0123456789abcdef"
-          buf.write_string(hex[code / 16:code / 16 + 1].to_owned())
-          buf.write_string(hex[code % 16:code % 16 + 1].to_owned())
-        } else {
-          buf.write_char(c)
-        }
-      }
-    }
-  }
+  @util.json_escape_into(s, buf)
   buf.write_char('"')
   buf.to_string()
 }

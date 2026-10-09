@@ -387,6 +387,7 @@
         "while_loop.c": "7e512347",
         "while_nested.c": "f8eae3aa",
         "while_true_break.c": "34d53d67",
+        "whitespace_vtab_formfeed.c": "8e2cf01f",
         "zero_init_aggregate.c": "9e20ed11",
         "zero_init_array.c": "40d03832"
       },
@@ -1545,6 +1546,9 @@
         },
         "while_true_break.c": {
           "result_sha": "bdc8cb2fe7972a8e"
+        },
+        "whitespace_vtab_formfeed.c": {
+          "result_sha": "16465bc69b462ea6"
         },
         "zero_init_aggregate.c": {
           "result_sha": "39ff0e9aaeedab2d"

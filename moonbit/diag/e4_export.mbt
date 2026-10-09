@@ -25,15 +25,15 @@ pub fn export_catalog_json() -> String {
     buf.write_string(",\"code_str\":\"\{op.display_code()}\"")
     buf.write_string(",\"lang\":\"\{export_lang_of(e.code)}\"")
     buf.write_string(",\"category\":\"\{category_of(e.code)}\"")
-    buf.write_string(",\"icon\":\"\{json_escape(e.icon)}\"")
-    buf.write_string(",\"title\":\"\{json_escape(e.title)}\"")
-    buf.write_string(",\"explanation\":\"\{json_escape(e.explanation)}\"")
+    buf.write_string(",\"icon\":\"\{@util.json_escape(e.icon)}\"")
+    buf.write_string(",\"title\":\"\{@util.json_escape(e.title)}\"")
+    buf.write_string(",\"explanation\":\"\{@util.json_escape(e.explanation)}\"")
     buf.write_string(",\"common_causes\":[")
     for j, cause in e.common_causes {
       if j > 0 {
         buf.write_string(",")
       }
-      buf.write_string("\"\{json_escape(cause)}\"")
+      buf.write_string("\"\{@util.json_escape(cause)}\"")
     }
     buf.write_string("]}")
   }
@@ -70,19 +70,5 @@ fn category_of(code : Int) -> String {
   }
 }
 
-///|
-/// JSON 转义（Rust json_escape 同集：" \ \n \r \t；不引 serde——显式 emitter）。
-fn json_escape(s : String) -> String {
-  let buf = StringBuilder()
-  for c in s {
-    match c {
-      '"' => buf.write_string("\\\"")
-      '\\' => buf.write_string("\\\\")
-      '\n' => buf.write_string("\\n")
-      '\r' => buf.write_string("\\r")
-      '\t' => buf.write_string("\\t")
-      _ => buf.write_string("\{c}")
-    }
-  }
-  buf.to_string()
-}
+// 字符串转义已收口 @util.json_escape（issue #55 六份收一；原本地副本只转
+// 五字符、控制字符原样写出=非法 JSON——单源补齐 U+0000–001F 全转义）。

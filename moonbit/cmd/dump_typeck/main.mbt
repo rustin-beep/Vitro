@@ -105,7 +105,7 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
         buf.write_string(", ")
       }
       buf.write_string(
-        "{\"code\": \{e.code}, \"line\": \{e.line}, \"column\": \{e.column}, \"message\": \{json_escape(e.message)}}",
+        "{\"code\": \{e.code}, \"line\": \{e.line}, \"column\": \{e.column}, \"message\": \{@ast.json_escape_string(e.message)}}",
       )
     }
     buf.write_string(
@@ -145,40 +145,13 @@ fn write_diag_array(
       buf.write_string(", ")
     }
     buf.write_string(
-      "{\"code\": \{e.code}, \"line\": \{e.line}, \"column\": \{e.column}, \"message\": \{json_escape(e.message)}}",
+      "{\"code\": \{e.code}, \"line\": \{e.line}, \"column\": \{e.column}, \"message\": \{@ast.json_escape_string(e.message)}}",
     )
   }
 }
 
-///|
-/// JSON 字符串字面量转义（serde_json 口径：控制字符 \u00XX；与 dump_ast
-/// 同源——E1 面 message 在 canonicalize 逐字节比较面内）。
-fn json_escape(s : String) -> String {
-  let buf = StringBuilder()
-  buf.write_char('\"')
-  for c in s {
-    match c {
-      '\"' => buf.write_string("\\\"")
-      '\\' => buf.write_string("\\\\")
-      '\n' => buf.write_string("\\n")
-      '\r' => buf.write_string("\\r")
-      '\t' => buf.write_string("\\t")
-      _ => {
-        let code = c.to_int()
-        if code < 32 {
-          buf.write_string("\\u00")
-          let hex = "0123456789abcdef"
-          buf.write_string(hex[code / 16:code / 16 + 1].to_owned())
-          buf.write_string(hex[code % 16:code % 16 + 1].to_owned())
-        } else {
-          buf.write_char(c)
-        }
-      }
-    }
-  }
-  buf.write_char('\"')
-  buf.to_string()
-}
+// 字符串转义已收口 @ast.json_escape_string（转义体在 vitro/engine/util，
+// issue #55 六份收一；原本地副本语义一致——带引号包裹 + 全量控制字符转义）。
 
 ///|
 fn basename_no_ext(path : String) -> String {

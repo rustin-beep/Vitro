@@ -12,7 +12,7 @@
 |---|---|---|---|
 | `vitro/engine/source` | L0 | SourceLoc + 列单位契约（column = 行内 UTF-8 字节偏移+1）+ Pos 双坐标 | ✅ 已发布 0.1.1 |
 | `vitro/engine/opcode` | L0 | 135 条 opcode（44–46 = C# 异常三件 reserved，47–49 空号）+ Instruction | ✅ 已发布 |
-| `vitro/engine/util` | L0 | 零语义机械件单源（G-1）：`utf8_len` / `str_cmp`（真字典序——陷阱 #29 唯一正解）/ `i64_to_i32_bits`（Rust `as i32` 位截断）/ `le_u32_at`·`le_u64_at`（FixedArray[Byte] 小端拼装读——陷阱 #35）；**只许零语义机械件，新件入包先登记 G 表** | ✅ |
+| `vitro/engine/util` | L0 | 零语义机械件单源（G-1）：`utf8_len` / `str_cmp`（真字典序——陷阱 #29 唯一正解）/ `i64_to_i32_bits`（Rust `as i32` 位截断）/ `le_u32_at`·`le_u64_at`（FixedArray[Byte] 小端拼装读——陷阱 #35）/ `json_escape`·`json_escape_into`（serde_json 口径 JSON 字符串转义单源——issue #55 六份收一，U+0000–001F 全转义）；**只许零语义机械件，新件入包先登记 G 表** | ✅ |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**——模块零外部依赖）：四文件搬迁，C 符号前缀 `vitro_engine_fs_*`；pub 面 7 函数+IOError（消费面 = cmd×5）；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希主口径）；Apache-2.0 合规 = 文件头保留+来源标注+`THIRD_PARTY.md` | ✅ |
 | `vitro/engine/diag` | L1 | ErrorCode 137 臂（gen_diag 生成）+ catalog 77 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size | ✅ 已发布 |

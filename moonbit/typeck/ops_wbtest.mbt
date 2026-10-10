@@ -279,7 +279,11 @@ test "assign_const_gain_pointer_no_w3067" {
       loc,
     ),
   )
-  assert_eq(tc2.errors.length(), 1, msg="base 类型不同须维持 E3067（#50 批②升级）")
+  assert_eq(
+    tc2.errors.length(),
+    1,
+    msg="base 类型不同须维持 E3067（#50 批②升级）",
+  )
   // 负锚 2：char** → const char**（多级指针 const 增强，C 判非法）照报
   let tc3 = TypeChecker::new()
   ignore(
@@ -346,7 +350,11 @@ test "assign_null_pointer_constant_no_w3054" {
       value_expr=@ast.Expr::Literal(5, loc, @ast.Type::int()),
     ),
   )
-  assert_eq(tc3.errors.length(), 1, msg="非零整数常量须维持 E3054（#50 批②升级）")
+  assert_eq(
+    tc3.errors.length(),
+    1,
+    msg="非零整数常量须维持 E3054（#50 批②升级）",
+  )
   // 负锚 2：标识符（非常量整数表达式）照报
   let tc4 = TypeChecker::new()
   ignore(

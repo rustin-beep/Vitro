@@ -184,7 +184,7 @@ pub fn TypeChecker::check(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-          !params_eq(existing.param_types, new_sym.param_types) {
+            !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
               f.loc,
@@ -213,7 +213,7 @@ pub fn TypeChecker::check(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-          !params_eq(existing.param_types, new_sym.param_types) {
+            !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
               f.loc,

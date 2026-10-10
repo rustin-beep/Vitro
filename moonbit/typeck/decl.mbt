@@ -192,12 +192,7 @@ fn TypeChecker::dispatch_stmt(
             // 表达式句柄——`return NULL`（返回指针函数）是高频惯用法，
             // 原漏传致 NULL 被抹成 Int 后误报 W3054（13 调用点之外的第
             // 14 处）
-            if !self.check_assignable(
-              expected,
-              val_type,
-              loc,
-              value_expr=new_v,
-            ) {
+            if !self.check_assignable(expected, val_type, loc, value_expr=new_v) {
               let shown = match self.current_func_return {
                 Some(t) => t.to_c_string()
                 None => "int"

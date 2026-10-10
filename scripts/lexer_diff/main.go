@@ -49,6 +49,7 @@ func main() {
 	var corpusArg string
 	freeze, againstGolden, selftest := false, false, false
 	freezeMB := false
+	refreshExisting := false
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "--freeze":
@@ -57,6 +58,10 @@ func main() {
 			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
 			// 以 mb 侧归一 TSV hash 入账（见 freeze-mb 段）
 			freezeMB = true
+		case "--refresh":
+			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
+			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
+			refreshExisting = true
 		case "--golden":
 			againstGolden = true
 		case "--selftest":
@@ -82,6 +87,10 @@ func main() {
 	}
 	if freeze && againstGolden {
 		fmt.Fprintln(os.Stderr, "lexer_diff: --freeze 与 --golden 互斥")
+		os.Exit(2)
+	}
+	if refreshExisting && !freezeMB {
+		fmt.Fprintln(os.Stderr, "lexer_diff: --refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 		os.Exit(2)
 	}
 	if freezeMB && (freeze || againstGolden) {
@@ -170,11 +179,18 @@ func main() {
 		}
 		cur := corpusSHAs(corpus)
 		srcAdded := 0
+		srcRefreshed := 0
+		tsvRefreshed := 0
 		for name, sha := range cur {
 			if old, ok := src[name]; ok {
 				if old != sha {
-					fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: %s 已变更——刷基线属修复批显式操作（先删旧键重跑）", name)
-					os.Exit(1)
+					if !refreshExisting {
+						fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: %s 已变更——存量重算用 --refresh（--freeze-mb --refresh）", name)
+						os.Exit(1)
+					}
+					src[name] = sha
+					srcRefreshed++
+					continue
 				}
 				continue
 			}
@@ -192,19 +208,26 @@ func main() {
 		tsvAdded := 0
 		for _, f := range listTSV(mbOut) {
 			key := corpusName + "/" + f
-			if _, ok := doc.TSVs[key]; ok {
+			if old, ok := doc.TSVs[key]; ok {
+				if refreshExisting {
+					sha := fileSHA16(filepath.Join(mbOut, f))
+					if old != sha {
+						doc.TSVs[key] = sha
+						tsvRefreshed++
+					}
+				}
 				continue
 			}
 			doc.TSVs[key] = fileSHA16(filepath.Join(mbOut, f))
 			fmt.Printf("ADD %s"+string(rune(10)), key)
 			tsvAdded++
 		}
-		if srcAdded == 0 && tsvAdded == 0 {
+		if srcAdded == 0 && tsvAdded == 0 && srcRefreshed == 0 && tsvRefreshed == 0 {
 			fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: 无新例可入账"+string(rune(10)))
 			os.Exit(1)
 		}
 		writeLexDigest(digestFile, doc)
-		fmt.Printf("lexer_diff --freeze-mb: Sources +%d、TSV +%d → %s（背书 = clang_direct + moon test）"+string(rune(10)), srcAdded, tsvAdded, digestFile)
+		fmt.Printf("lexer_diff --freeze-mb: Sources +%d（重算 %d）、TSV +%d（重算 %d）→ %s（背书 = clang_direct + moon test）"+string(rune(10)), srcAdded, srcRefreshed, tsvAdded, tsvRefreshed, digestFile)
 		return
 	}
 	if againstGolden {

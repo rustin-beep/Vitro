@@ -198,6 +198,7 @@ func main() {
 	sample := 0
 	freeze := false
 	freezeMB := false
+	refreshExisting := false
 	againstGolden := false
 	var explicit []string
 	args := os.Args[1:]
@@ -219,6 +220,12 @@ func main() {
 			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：--freeze 的 oracle
 			// 侧已随工序④删区断源，本通道以 mb 侧产物入账（见 freezeMBDigest）。
 			freezeMB = true
+		case args[i] == "--refresh":
+			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随
+			// 现状重算覆盖（合法演化面：存根声明注入/引擎重构致产物漂移；死通道
+			// --freeze 需已删 oracle，存量漂移此前无活通道——#61 freeze-mb 时序
+			// 陷阱登记的工程解）。仅与 --freeze-mb 组合合法。
+			refreshExisting = true
 		case args[i] == "--selftest":
 			selftestFlag = true
 		case args[i] == "--backend" && i+1 < len(args):
@@ -241,6 +248,10 @@ func main() {
 	oracleBin := filepath.Join("native", "target", "release", "vitro_cli.exe")
 	if againstGolden && freeze {
 		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 与 --golden 互斥（先 freeze 后 golden）")
+		os.Exit(2)
+	}
+	if refreshExisting && !freezeMB {
+		fmt.Fprintln(os.Stderr, "vm_diff: --refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 		os.Exit(2)
 	}
 	if freeze && freezeMB {
@@ -376,7 +387,7 @@ func main() {
 		os.Exit(freezeDigest(cases))
 	}
 	if freezeMB {
-		os.Exit(freezeMBDigest(cases))
+		os.Exit(freezeMBDigest(cases, refreshExisting))
 	}
 	if againstGolden {
 		os.Exit(runAgainstDigest(cases))
@@ -1044,7 +1055,7 @@ func freezeDigest(cases []Case) int {
 // 映像为白箱特有面（无 Clang 对照，快照 mb 当前行为作回归锚——与清单
 // 头注定位一致）。**已存在键拒绝覆盖**：刷基线属修复批显式操作
 // （先删旧键重跑），防新用例入账误刷存量基线。
-func freezeMBDigest(cases []Case) int {
+func freezeMBDigest(cases []Case, refreshExisting bool) int {
 	raw, err := os.ReadFile(digestPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 缺清单 %s（首建基线属工序③ freeze 语义）: %v\n", digestPath, err)
@@ -1055,25 +1066,34 @@ func freezeMBDigest(cases []Case) int {
 		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 清单坏或版本不识\n")
 		os.Exit(1)
 	}
-	added, skipped := 0, 0
+	added, skipped, refreshed := 0, 0, 0
+	prevKeys := map[string]bool{}
+	for k := range doc.Cases {
+		prevKeys[k] = true
+	}
 	for _, c := range cases {
 		base := filepath.Base(c.rel)
 		if _, ok := skips.lookup(base); ok {
 			fmt.Printf("SKIP  %s（skip 清单——不入账）\n", c.rel)
 			continue
 		}
-		if _, ok := doc.Cases[c.rel]; ok {
-			skipped++ // 存量例跳过——不覆盖既有基线（刷基线先删旧键重跑）
+		if _, ok := doc.Cases[c.rel]; ok && !refreshExisting {
+			skipped++ // 存量例跳过——不覆盖既有基线（--refresh 时随现状重算）
 			continue
 		}
 		m := runMoonBit(c.path)
 		me, ms, mm, mcf := digestOfResultMB(m)
 		doc.Cases[c.rel] = digestEntry{SrcSHA: srcSHAOf(c.path), ExitCode: me, StdoutSHA: ms, MemorySHA: mm, CompileFail: mcf}
-		fmt.Printf("ADD  %s（exit=%d stdout=%s mem=%s cf=%v）\n", c.rel, me, ms, mm, mcf)
-		added++
+		if _, existed := prevKeys[c.rel]; existed {
+			fmt.Printf("REFRESH  %s（exit=%d stdout=%s mem=%s cf=%v）\n", c.rel, me, ms, mm, mcf)
+			refreshed++
+		} else {
+			fmt.Printf("ADD  %s（exit=%d stdout=%s mem=%s cf=%v）\n", c.rel, me, ms, mm, mcf)
+			added++
+		}
 		cleanup(m)
 	}
-	if added == 0 {
+	if added == 0 && refreshed == 0 {
 		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 无新例可入账（%d 例均已在清单）\n", skipped)
 		os.Exit(1)
 	}
@@ -1082,7 +1102,7 @@ func freezeMBDigest(cases []Case) int {
 		fmt.Fprintf(os.Stderr, "vm_diff --freeze-mb: 写清单失败: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\nvm_diff --freeze-mb: 新增 %d 例（跳过存量 %d）→ %s（正确性背书 = clang_direct + moon test；映像为白箱回归锚）\n", added, skipped, digestPath)
+	fmt.Printf("\nvm_diff --freeze-mb: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（正确性背书 = clang_direct + moon test；映像为白箱回归锚）\n", added, refreshed, skipped, digestPath)
 	emitMbtAndVerify()
 	return 0
 }

@@ -83,6 +83,10 @@ func main() {
 			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
 			// 以 mb 侧产物指纹入账（见 freezeMBRun）
 			freezeMBMode = true
+		case "--refresh":
+			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
+			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
+			refreshExistingMode = true
 		case "--golden":
 			goldenMode = true
 		default:
@@ -93,6 +97,9 @@ func main() {
 	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
+	}
+	if refreshExistingMode && !freezeMBMode {
+		fail("--refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 	}
 	if freezeMBMode && (freezeMode || goldenMode) {
 		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
@@ -122,6 +129,8 @@ var freezeMode, goldenMode bool
 
 // freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
 var freezeMBMode bool
+
+var refreshExistingMode bool
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool
@@ -258,7 +267,7 @@ func moonRawOf(moonDir, f string) []byte {
 // （stdout/退出码 vs Clang 真值）+ moon test 锚。**mb 编译失败例拒绝入账**
 // （单侧缺口会被固化为 Fail 基线掩盖——先归因：两侧编译失败例走 known/
 // 人工评估）；存量例跳过不覆盖；零新例即红。
-func freezeMBRun(corpus string) int {
+func freezeMBRun(corpus string, refresh bool) int {
 	doc := loadCgDigest()
 	corpusName := filepath.Base(corpus)
 	sec := doc.Corpora[corpusName]
@@ -270,10 +279,14 @@ func freezeMBRun(corpus string) int {
 		fail("语料目录无 .c 文件: %s", corpus)
 	}
 	moonDir := moonDump(corpus)
-	added, skipped := 0, 0
+	added, skipped, refreshed := 0, 0, 0
+	prev := map[string]bool{}
+	for k := range sec.Cases {
+		prev[k] = true
+	}
 	for _, f := range files {
 		name := filepath.Base(f)
-		if _, ok := sec.Cases[name]; ok {
+		if _, ok := sec.Cases[name]; ok && !refresh {
 			skipped++
 			continue
 		}
@@ -292,14 +305,19 @@ func freezeMBRun(corpus string) int {
 		}
 		sec.Sources[name] = cgSrcSHA(f)
 		sec.Cases[name] = e
-		fmt.Printf("ADD %s\n", name)
-		added++
+		if prev[name] {
+			fmt.Printf("REFRESH %s\n", name)
+			refreshed++
+		} else {
+			fmt.Printf("ADD %s\n", name)
+			added++
+		}
 	}
-	if added == 0 {
+	if added == 0 && refreshed == 0 {
 		fail("无新例可入账（%d 例均已在清单）", skipped)
 	}
 	saveCgDigest(doc)
-	fmt.Printf("codegen_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）"+string(rune(10)), corpusName, added, skipped, cgDigestFile)
+	fmt.Printf("codegen_diff --freeze-mb[%s]: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）"+string(rune(10)), corpusName, added, refreshed, skipped, cgDigestFile)
 	emitCgMbt(doc)
 	return 0
 }
@@ -454,7 +472,7 @@ var knownForkFiles = map[string]string{
 
 func runCorpus(corpus string, baseline bool, selftest bool) int {
 	if freezeMBMode {
-		return freezeMBRun(corpus)
+		return freezeMBRun(corpus, refreshExistingMode)
 	}
 	if goldenMode {
 		return goldenRun(corpus)

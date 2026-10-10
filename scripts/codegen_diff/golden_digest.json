@@ -191,7 +191,11 @@
         "jit_trace_overflow_abort.c": "2683b683",
         "jit_zero_init_trace_boundary.c": "4e806ee9",
         "josephus_ring.c": "d2c65ba0",
+        "libc_difftime.c": "8150eccb",
         "libc_extensions.c": "92bd8a38",
+        "libc_vfprintf.c": "aa12922d",
+        "libc_vprintf.c": "c5183d78",
+        "libc_vsnprintf.c": "8d892c3e",
         "linear_search.c": "f0de7f3b",
         "linked_list_delete.c": "53d26958",
         "linked_list_tail.c": "f7662dcc",
@@ -875,7 +879,7 @@
           "result_sha": "412af66b8ca5fa7f"
         },
         "function_pointer_return_ptr.c": {
-          "result_sha": "7617194337ef5cb6"
+          "result_sha": "62cbebe98ad63010"
         },
         "function_pointer_typedef.c": {
           "result_sha": "9aa92b3bb1c23f56"
@@ -971,8 +975,20 @@
         "josephus_ring.c": {
           "result_sha": "493457d38ef7eb8e"
         },
+        "libc_difftime.c": {
+          "result_sha": "a8b92e3f85e65d15"
+        },
         "libc_extensions.c": {
           "result_sha": "e954a2b830e48d4d"
+        },
+        "libc_vfprintf.c": {
+          "result_sha": "f0f8a3ec189c2a71"
+        },
+        "libc_vprintf.c": {
+          "result_sha": "9e7ffc7057e5a891"
+        },
+        "libc_vsnprintf.c": {
+          "result_sha": "9ad85b839be00a5e"
         },
         "linear_search.c": {
           "result_sha": "6d5d998763ffaa38"
@@ -1071,7 +1087,7 @@
           "result_sha": "8111110de5f5a52f"
         },
         "nested_anon_union.c": {
-          "result_sha": "ba93ee10fd87790e"
+          "result_sha": "f77ad23331494d63"
         },
         "nested_call.c": {
           "result_sha": "dbf7bf04798ebcee"
@@ -1293,7 +1309,7 @@
           "result_sha": "51f63ad71fa2d5f7"
         },
         "side_effect_index.c": {
-          "result_sha": "8c70cc76bc3e95f4"
+          "result_sha": "8268aa3ea1978eae"
         },
         "signed_keyword.c": {
           "result_sha": "3929d4ba558aa5c6"

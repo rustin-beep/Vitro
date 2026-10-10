@@ -55,6 +55,10 @@ func main() {
 			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
 			// 以 mb 侧归一 hash 入账（见 freezeMBRun）
 			freezeMBMode = true
+		case "--refresh":
+			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
+			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
+			refreshExistingMode = true
 		case "--golden":
 			goldenMode = true
 		default:
@@ -65,6 +69,9 @@ func main() {
 	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
+	}
+	if refreshExistingMode && !freezeMBMode {
+		fail("--refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 	}
 	if freezeMBMode && (freezeMode || goldenMode) {
 		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
@@ -120,6 +127,8 @@ var freezeMode, goldenMode bool
 
 // freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
 var freezeMBMode bool
+
+var refreshExistingMode bool
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool
@@ -256,31 +265,40 @@ func goldenSelftestHit(m map[string]string) {
 // --freeze-mb 同族）——oracle 断源后新语料以 mb 侧归一 hash 入 RespHashes
 // （golden 比对同口径 hash16(canonicalize(moonRawOf))）；正确性背书 =
 // clang_direct + moon test；存量例跳过不覆盖；零新例即红。
-func freezeMBRun(files []string, mode string, corpusDir string) int {
+func freezeMBRun(files []string, mode string, corpusDir string, refresh bool) int {
 	doc := loadParserDigest()
 	sec := doc.Modes[mode]
 	if sec == nil {
 		fail("清单缺模式节 %s（首建节属工序③ freeze 语义——oracle 在时全量 freeze）", mode)
 	}
 	moonDir := moonDump(corpusDir)
-	added, skipped := 0, 0
+	added, skipped, refreshed := 0, 0, 0
+	prev := map[string]bool{}
+	for k := range sec.RespHashes {
+		prev[k] = true
+	}
 	for _, f := range files {
 		name := filepath.Base(f)
-		if _, ok := sec.RespHashes[name]; ok {
-			skipped++
+		if _, ok := sec.RespHashes[name]; ok && !refresh {
+			skipped++ // 存量例跳过——不覆盖既有基线（--refresh 时随现状重算）
 			continue
 		}
 		sec.Sources[name] = parserSrcSHA(f)
 		sec.RespHashes[name] = hash16(canonicalize(moonRawOf(moonDir, f)))
-		fmt.Printf("ADD %s\n", name)
-		added++
+		if prev[name] {
+			fmt.Printf("REFRESH %s\n", name)
+			refreshed++
+		} else {
+			fmt.Printf("ADD %s\n", name)
+			added++
+		}
 	}
-	if added == 0 {
+	if added == 0 && refreshed == 0 {
 		fail("无新例可入账（%d 例均已在清单）", skipped)
 	}
 	saveParserDigest(doc)
 	emitParserMbt(doc)
-	fmt.Printf("parser_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, skipped, parserDigestFile)
+	fmt.Printf("parser_diff --freeze-mb[%s]: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, refreshed, skipped, parserDigestFile)
 	return 0
 }
 
@@ -370,7 +388,7 @@ func runCorpus(corpus string, selftest bool) int {
 		return goldenRun(files, "corpus-"+filepath.Base(corpus), corpus)
 	}
 	if freezeMBMode {
-		return freezeMBRun(files, "corpus-"+filepath.Base(corpus), corpus)
+		return freezeMBRun(files, "corpus-"+filepath.Base(corpus), corpus, refreshExistingMode)
 	}
 	rustOuts := oracleAstBatch(files, "corpus-"+filepath.Base(corpus))
 	if selftest {

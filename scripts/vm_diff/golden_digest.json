@@ -1127,11 +1127,35 @@
       "stdout_sha": "bbe4d4792f58bcb5",
       "memory_sha": "89a4ede0b6b439da"
     },
+    "baseline/libc_difftime.c": {
+      "src_sha": "8150eccb",
+      "exit_code": 0,
+      "stdout_sha": "db58b6c40698d737",
+      "memory_sha": "2a05b4aac81636b5"
+    },
     "baseline/libc_extensions.c": {
       "src_sha": "92bd8a38",
       "exit_code": 0,
       "stdout_sha": "65e7aa2da900891c",
       "memory_sha": "59fe86f22681e2d6"
+    },
+    "baseline/libc_vfprintf.c": {
+      "src_sha": "aa12922d",
+      "exit_code": 0,
+      "stdout_sha": "f78113adca3ff6c1",
+      "memory_sha": "41468442cd5f08da"
+    },
+    "baseline/libc_vprintf.c": {
+      "src_sha": "c5183d78",
+      "exit_code": 0,
+      "stdout_sha": "89f86a81343217a2",
+      "memory_sha": "6af1a3285649ec15"
+    },
+    "baseline/libc_vsnprintf.c": {
+      "src_sha": "8d892c3e",
+      "exit_code": 0,
+      "stdout_sha": "393098b51b04b45b",
+      "memory_sha": "883d4f6af036357d"
     },
     "baseline/linear_search.c": {
       "src_sha": "f0de7f3b",

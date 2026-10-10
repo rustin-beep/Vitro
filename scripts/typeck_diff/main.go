@@ -65,6 +65,10 @@ func main() {
 			// 删区后新用例入账（2026-10-05 BUG-B 语料批）：oracle 断源，
 			// 以 mb 侧归一 hash 入账（见 freezeMBRun）
 			freezeMBMode = true
+		case "--refresh":
+			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
+			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
+			refreshExistingMode = true
 		case "--golden":
 			goldenMode = true
 		default:
@@ -74,6 +78,9 @@ func main() {
 	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
+	}
+	if refreshExistingMode && !freezeMBMode {
+		fail("--refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 	}
 	if freezeMBMode && (freezeMode || goldenMode) {
 		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
@@ -104,6 +111,8 @@ var freezeMode, goldenMode bool
 
 // freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
 var freezeMBMode bool
+
+var refreshExistingMode bool
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool
@@ -270,7 +279,7 @@ func typeckSrcSHA(f string) string {
 // （golden 比对同口径 hash16(canonicalize(moonRawOf))）；正确性背书 =
 // clang_direct（stdout/退出码 vs Clang 真值）+ moon test 锚。存量例跳过
 // 不覆盖——刷基线属修复批显式操作（先删旧键重跑）；零新例即红。
-func freezeMBRun(files []string, corpus string) int {
+func freezeMBRun(files []string, corpus string, refresh bool) int {
 	doc := loadTypeckDigest()
 	mode := "corpus-" + filepath.Base(corpus)
 	sec := doc.Modes[mode]
@@ -278,24 +287,33 @@ func freezeMBRun(files []string, corpus string) int {
 		fail("清单缺语料节 %s（首建节属工序③ freeze 语义——oracle 在时全量 freeze）", mode)
 	}
 	moonDir := moonDump(corpus)
-	added, skipped := 0, 0
+	added, skipped, refreshed := 0, 0, 0
+	prev := map[string]bool{}
+	for k := range sec.RespHashes {
+		prev[k] = true
+	}
 	for _, f := range files {
 		name := filepath.Base(f)
-		if _, ok := sec.RespHashes[name]; ok {
-			skipped++ // 存量例跳过——不覆盖既有基线
+		if _, ok := sec.RespHashes[name]; ok && !refresh {
+			skipped++ // 存量例跳过——不覆盖既有基线（--refresh 时随现状重算）
 			continue
 		}
 		sec.Sources[name] = typeckSrcSHA(f)
 		sec.RespHashes[name] = hash16(canonicalize(moonRawOf(moonDir, f)))
-		fmt.Printf("ADD %s\n", name)
-		added++
+		if prev[name] {
+			fmt.Printf("REFRESH %s\n", name)
+			refreshed++
+		} else {
+			fmt.Printf("ADD %s\n", name)
+			added++
+		}
 	}
-	if added == 0 {
+	if added == 0 && refreshed == 0 {
 		fail("无新例可入账（%d 例均已在清单）", skipped)
 	}
 	saveTypeckDigest(doc)
 	emitTypeckMbt(doc)
-	fmt.Printf("typeck_diff --freeze-mb[%s]: 新增 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, skipped, typeckDigestFile)
+	fmt.Printf("typeck_diff --freeze-mb[%s]: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, refreshed, skipped, typeckDigestFile)
 	return 0
 }
 
@@ -419,7 +437,7 @@ func runCorpus(corpus string, selftest bool) int {
 		if len(files) == 0 {
 			fail("语料目录无 .c 文件: %s", corpus)
 		}
-		return freezeMBRun(files, corpus)
+		return freezeMBRun(files, corpus, refreshExistingMode)
 	}
 	if goldenMode {
 		files := listCFiles(corpus)

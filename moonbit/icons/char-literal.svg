@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>字符字面量未闭合</title>
+<desc>char-literal</desc>
+
+<path d="M9.4 6.4v5.4l-1.4 1.6"/>
+<path d="M5.4 19.4h8.4"/>
+<path d="M16.6 8.6l4.6 4.6"/>
+<path d="M21.2 8.6l-4.6 4.6"/>
+</svg>

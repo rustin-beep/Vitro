@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>头文件循环包含</title>
+<desc>include-cycle</desc>
+
+<path d="M8.8 8.8h6.4v6.4H8.8z"/>
+<path d="M3.69 9.77A8.6 8.6 0 1 1 4.96 16.93"/>
+<path d="M2.56 15.92 4.96 16.93 4.82 14.34"/>
+</svg>

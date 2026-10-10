@@ -229,7 +229,7 @@ test "contracts_json_byte_exact_rust_truth" {
     "值不改字段**\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"fiel", "d\":\"func_display_name / func_mangled_name\",\"kind\":\"add\",\"not",
     "e\":\"§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可", "读名双字段，保留 func_name 作 display 语义\",\"stat",
     "us\":\"pending\"},{\"batch\":\"#27\",\"field\":\"error_catalog[].icon\"", ",\"kind\":\"add\",\"note\":\"emoji 码点退役为语义图标 id",
-    "（值域 = moonbit/icons/index.tsv 52 id，icon_catalog 闸", "锁值域；无兼容别名，0.9 一步切换）\",\"status\":",
+    "（值域 = moonbit/icons/index.tsv 76 id，icon_catalog 闸", "锁值域；无兼容别名，0.9 一步切换）\",\"status\":",
     "\"active\"}]}",
   ]
   let buf = StringBuilder()

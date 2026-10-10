@@ -49,6 +49,19 @@ SHORT = {
     "cause": "原因", "deny": "非法访问", "divide-zero": "除零", "fix": "解决方法",
     "inspect": "查看", "location": "位置", "note": "示例", "step-limit": "步数超限",
     "timeline": "时间轴",
+    # 2026-10-10 C 语义全集批（24 枚新增，按 C 语言概念而非诊断码定粒度）
+    "unknown-char": "未知字符", "string-multiline": "字符串跨行",
+    "preproc-cond": "条件编译", "include-missing": "头文件缺失",
+    "include-cycle": "循环包含", "token-paste": "记号粘贴",
+    "depth-limit": "展开超限", "shadow": "遮蔽", "side-effect": "宏参副作用",
+    "static-assert": "静态断言", "number-literal": "数字字面量",
+    "char-literal": "字符字面量", "type-expected": "缺类型名",
+    "paren-close": "缺右圆括号", "bracket-close": "缺右方括号",
+    "static-linkage": "静态链接", "label-undefined": "标签未定义",
+    "cond-assign": "条件里赋值", "const-qual": "const 限定",
+    "printf-format": "输出格式串", "scanf-format": "输入格式串",
+    "func-undefined": "未定义函数", "null-deref": "空指针",
+    "uninit-read": "未初始化",
 }
 
 DESC_RE = re.compile(r"(?s)</desc>\n(.*?)\n</svg>")

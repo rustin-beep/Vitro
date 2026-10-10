@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>记号粘贴无效</title>
+<desc>token-paste</desc>
+
+<path d="M3.4 9.4h6.6v5.2H3.4z"/>
+<path d="M14 9.4h6.6v5.2H14z"/>
+<path d="M10.2 9.6l2.6 1.8-2.6 1.8 2.6 1.8"/>
+</svg>

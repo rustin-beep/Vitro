@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>const 限定被破坏</title>
+<desc>const-qual</desc>
+
+<path d="M4.6 10.4h8.4v7.6H4.6z"/>
+<path d="M6.6 14.2h4.4"/>
+<path d="M14.8 11.4v5.6"/>
+<path d="M16.4 14.2h4"/>
+<path d="M18.6 12.2 20.4 14.2l-1.8 2"/>
+</svg>

@@ -116,7 +116,7 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
       kind: "add",
       status: "active",
       batch: "#27",
-      note: "emoji 码点退役为语义图标 id（值域 = moonbit/icons/index.tsv 52 id，icon_catalog 闸锁值域；无兼容别名，0.9 一步切换）",
+      note: "emoji 码点退役为语义图标 id（值域 = moonbit/icons/index.tsv 76 id，icon_catalog 闸锁值域；无兼容别名，0.9 一步切换）",
     },
   ]
 }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>静态断言失败</title>
+<desc>static-assert</desc>
+
+<path d="M4.6 7.6h14.8"/>
+<path d="M7.4 11.8h9.2"/>
+<path d="M15.4 15.4l4.6 4.6"/>
+<path d="M20 15.4l-4.6 4.6"/>
+</svg>

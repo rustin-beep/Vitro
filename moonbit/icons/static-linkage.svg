@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>static 前向引用</title>
+<desc>static-linkage</desc>
+
+<path d="M5.4 12.4h8.4v6.2H5.4z"/>
+<path d="M7.6 15.5h4"/>
+<path d="M9.6 12.4V7.6"/>
+<path d="M7.6 9.6 9.6 7.2l2 2.4"/>
+<path d="M4.6 4.8h10.8"/>
+</svg>

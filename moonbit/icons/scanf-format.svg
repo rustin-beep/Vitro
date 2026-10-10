@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>scanf 格式串不匹配</title>
+<desc>scanf-format</desc>
+
+<path d="M6.2 17.6 15.4 6.4"/>
+<path d="M8.4 8a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8"/>
+<path d="M12.8 13.2a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8"/>
+<path d="M17.4 9.4h3.8v5.2h-3.8z"/>
+<path d="M16.4 16.6l4 4"/>
+<path d="M20.4 16.6l-4 4"/>
+</svg>

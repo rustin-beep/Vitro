@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<title>头文件找不到</title>
+<desc>include-missing</desc>
+
+<path d="M8.4 4.6h5.4l2 2v12.8H8.4z"/>
+<path d="M13.8 4.6v2h2"/>
+<path d="M10.4 10.2a1.7 1.7 0 1 1 2.3 1.3c-.5.3-.7.7-.7 1.2v.3"/>
+<circle cx="11.9" cy="14.8" r="0.8"/>
+</svg>

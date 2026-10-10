@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（demo 课程树打勾环 glass 主题糊成实心点，2026-10-10）
+
+- **用户实报**：课程树「已完成」圆环在「深夜书房」(glass) 下与其余四主题显示不一致——该主题里糊成一个实心绿点。
+- **根因**：`demo/style.css` 的 `.crs-lesson.done .crs-ring` 用 `box-shadow: inset 0 0 0 2.5px var(--pane)` **拿面板底色当遮挡色**、在 `--ok` 实心圆上挖出中缝以造「环 + 缝 + 点」三层；而 `demo/tokens.css` 里 glass 的 `--pane` 是 `rgba(255, 255, 255, 0.065)` **半透明** ⇒ 缝挡不住 `--ok`，三层糊成实心。其余四主题 `--pane` 均为不透明实色故正常；**soft 同为夜主题但 `--pane` 不透明（`#131a2e`）显示正常 ⇒ 病根是令牌透明度而非明暗**。
+- **处方**：芯点改由伪元素画（`.crs-ring::after` + `inset: 2.5px` + `opacity` 过渡），中缝**直接透出父级背景** ⇒ 实现与底色解耦、五主题形态一致；同批删除被 inset 阴影完全覆盖的死声明 `background: var(--ok-tint)`。
+- **验证**：Edge headless + CDP 逐主题（ice/rose/paper/glass/soft）截课程树同一区段对拍（修前仅 glass 实心，修后五主题一致）；`demo_ui_lint`（class=11 / id=160 / var=508 三路对账）、`demo_assemble_check`（16 项）、`tsc -p demo/tsconfig.json --noEmit` 全绿。探针留痕 `tmp/iconshot/`。
+
 ### Fixed（issue #50 批③：24 新图标接线 + catalog 扩容 77→102，2026-10-10，分支 issue50-alignment）
 
 - **口径**（owner 定）：语义族 ↔ svg **双射**——一个语义一张图、同族多码共享合法（static-linkage 挂 E3058+E3059、const-qual 挂 E3065+E3049、preproc-cond 挂 E1011/E1013/E1014）；反向「一码多图」禁止。

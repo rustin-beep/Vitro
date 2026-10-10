@@ -552,8 +552,15 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 .crs-lesson { display: flex; align-items: center; gap: 7px; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--t2); cursor: pointer; }
 .crs-lesson:hover { background: var(--accent-tint); color: var(--t1); }
 .crs-lesson.sub { padding-left: 26px; font-size: 11.5px; color: var(--t3); }
-.crs-ring { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--hairline); flex: none; transition: all var(--t-fast) var(--ease-out); }
-.crs-lesson.done .crs-ring { border-color: var(--ok); background: var(--ok-tint); box-shadow: inset 0 0 0 2.5px var(--pane), inset 0 0 0 10px var(--ok); }
+.crs-ring { position: relative; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--hairline); flex: none; transition: all var(--t-fast) var(--ease-out); }
+/* 打勾态 = 外环 + 中缝 + 芯点（三层）。中缝**不得**用 box-shadow inset 挖 ——
+   原实现 `inset 0 0 0 2.5px var(--pane)` 拿面板底色当遮挡色，glass 主题的
+   --pane 是 rgba(255,255,255,0.065) 半透明，挡不住 --ok ⇒ 缝消失、整体糊成
+   实心绿点（2026-10-10 用户报「深夜书房与其余四主题不一致」实锤）。改为伪元素
+   画芯点、中缝直接透出父级背景（主题无关，五主题形态一致）。 */
+.crs-ring::after { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--ok); opacity: 0; transition: opacity var(--t-fast) var(--ease-out); }
+.crs-lesson.done .crs-ring { border-color: var(--ok); }
+.crs-lesson.done .crs-ring::after { opacity: 1; }
 .crs-lesson.done { color: var(--t1); }
 /* 章 chip 色（tokens --chip-1..5 的类形态——避免模板字符串内联 style 被 lint 静态抽取器截断） */
 .crs-chip1 { --chip: var(--chip-1); }

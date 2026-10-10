@@ -20,6 +20,12 @@
       "stdout_sha": "4b227777d4dd1fc6",
       "memory_sha": "b4d787aff188ea45"
     },
+    "baseline/array_dim_const_expr.c": {
+      "src_sha": "8820e906",
+      "exit_code": 0,
+      "stdout_sha": "f93815e2ebfb2c66",
+      "memory_sha": "8978abd01ce36068"
+    },
     "baseline/array_index.c": {
       "src_sha": "a562c208",
       "exit_code": 0,
@@ -368,6 +374,12 @@
       "exit_code": 0,
       "stdout_sha": "ad57366865126e55",
       "memory_sha": "a933ce35e39b1bff"
+    },
+    "baseline/const_2d_array_param.c": {
+      "src_sha": "70d43963",
+      "exit_code": 0,
+      "stdout_sha": "9fc5a7d9f8ce0cd9",
+      "memory_sha": "e5f1dda3dff4e4ea"
     },
     "baseline/continue_while.c": {
       "src_sha": "f12c98b8",
@@ -1692,6 +1704,12 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "c1d19b78f7fea35a"
     },
+    "baseline/scanf_0x_behavior.c": {
+      "src_sha": "5a7c0856",
+      "exit_code": 0,
+      "stdout_sha": "0e857e28859f7923",
+      "memory_sha": "a7d5e1d4cd72a1ae"
+    },
     "baseline/scanf_digit_mismatch.c": {
       "src_sha": "18b9ac07",
       "exit_code": 0,
@@ -2009,8 +2027,8 @@
     "baseline/string_escape_octal_hex.c": {
       "src_sha": "9dda4d23",
       "exit_code": 0,
-      "stdout_sha": "473551e7cbf88d64",
-      "memory_sha": "c1568a2ae3d4f704"
+      "stdout_sha": "7139da8db3aadb99",
+      "memory_sha": "cc859366e5f464e5"
     },
     "baseline/string_literal.c": {
       "src_sha": "fc69622a",
@@ -2312,6 +2330,12 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "fac2f047ce351d88"
     },
+    "baseline/utf8_latin1_output.c": {
+      "src_sha": "7c27a07f",
+      "exit_code": 0,
+      "stdout_sha": "e02f3a2eba0e8862",
+      "memory_sha": "2c89534290a18455"
+    },
     "baseline/variable_length_array.c": {
       "src_sha": "08dc70e0",
       "exit_code": 0,
@@ -2505,6 +2529,12 @@
       "exit_code": 0,
       "stdout_sha": "3b4db141016d678f",
       "memory_sha": "8b5416bc247e812f"
+    },
+    "gap/scanf_0x_retval.c": {
+      "src_sha": "182a1281",
+      "exit_code": 0,
+      "stdout_sha": "8e6485ec4efd340a",
+      "memory_sha": "243e1b6e1714ad2d"
     },
     "gap/sizeof_array_param.c": {
       "src_sha": "34ee7a7e",

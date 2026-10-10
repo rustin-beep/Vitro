@@ -548,23 +548,81 @@ fn Parser::declarator_suffix_overflow(
 
 ///|
 /// 数组维度信息（U1#12：折叠一元负字面量让 typeck 报"负数组大小"）。
+
+///|
+/// 整型常量表达式求值（#64，2026-10-11）：C11 §6.6 常量表达式（字面量 /
+/// 一元负·位非 / 二元算术·位·移位）可作数组维度——**非 VLA**；折不出
+///（未定义标识符等非常量形态）仍走 VLA。递归结构求值与 #50 批①
+/// `is_int_constant_expr`（判真）同族，此处产出值。
+fn const_int_of(expr : @ast.Expr) -> Int? {
+  match expr {
+    Literal(v, _, _) => Some(v)
+    Unary(op, operand, _, _) =>
+      if op is @ast.UnaryOp::Neg {
+        match const_int_of(operand) {
+          Some(v) => Some(-v)
+          None => None
+        }
+      } else if op is @ast.UnaryOp::BitNot {
+        // 位非无运算符——二补码代数式 -1*(v+1) 等价（Int 域）
+        match const_int_of(operand) {
+          Some(v) => Some(-1 * (v + 1))
+          None => None
+        }
+      } else {
+        None
+      }
+    Binary(op, l, r, _, _) => {
+      let lv = const_int_of(l)
+      let rv = const_int_of(r)
+      match (lv, rv) {
+        (Some(a), Some(b)) =>
+          match op {
+            Add => Some(a + b)
+            Sub => Some(a - b)
+            Mul => Some(a * b)
+            Div => if b != 0 { Some(a / b) } else { None }
+            Mod => if b != 0 { Some(a % b) } else { None }
+            BitAnd => Some(a & b)
+            BitOr => Some(a | b)
+            BitXor => Some(a ^ b)
+            Shl => Some(a << b)
+            Shr => Some(a >> b)
+            _ => None
+          }
+        _ => None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 /// 返回 (array_size, is_vla, vla_dim)。
 fn array_dim_info(size_expr : @ast.Expr?) -> (Int, Bool, @ast.Expr?) {
   match size_expr {
     None => (-1, false, None)
     Some(expr) =>
-      match expr {
-        Literal(value, _, _) => (value, false, None)
-        Unary(op, operand, _, _) =>
-          match op {
-            @ast.UnaryOp::Neg =>
-              match operand {
-                Literal(value, _, _) => (-value, false, None)
-                _ => (0, true, Some(expr))
+      // #64（2026-10-11）：常量表达式折叠前置——旧形态对非 Literal（含
+      // `W + 1` 等二元常量）一律判 VLA，致 `static char grid[H][W+1]` 在
+      // compile_and_report 管线报「全局不支持 VLA」+级联、gateway 管线
+      // ok=false 零诊断（CLI 双入口同病灶——backend 恰好代理了壳/exe 两
+      // 条入口，非 wasm/native 后端差）
+      match const_int_of(expr) {
+        Some(v) => (v, false, None)
+        None =>
+          match expr {
+            Unary(op, operand, _, _) =>
+              if op is @ast.UnaryOp::Neg {
+                match operand {
+                  Literal(value, _, _) => (-value, false, None)
+                  _ => (0, true, Some(expr))
+                }
+              } else {
+                (0, true, Some(expr))
               }
             _ => (0, true, Some(expr))
           }
-        _ => (0, true, Some(expr))
       }
   }
 }

@@ -252,7 +252,9 @@ async function cmdRun(args) {
     writeStdoutBytes((outStd.result && outStd.result.delta) || "");
     const errText = (outErr.result && outErr.result.delta) || "";
     for (const line of errText.split("\n")) {
-      if (line !== "") process.stdout.write(`// STDERR ${line}\n`);
+      // #66：stderr delta 是 Latin-1 折回串——先还原字节再按 UTF-8 解码
+      // （程序 stderr 为 UTF-8 字节域；直印折回串二次 mojibake）
+      if (line !== "") process.stdout.write(`// STDERR ${Buffer.from(line, "latin1").toString("utf8")}\n`);
     }
     const note = (outNote.result && outNote.result.delta) || "";
     for (const line of note.split("\n")) {

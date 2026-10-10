@@ -489,9 +489,8 @@ fn VitroVM::execute_host_func3(
       let s_addr = self.pop_addr()
       match self.read_cstring_checked(s_addr) {
         Ok(bytes) => {
-          let mut text = lossy_string(bytes)
-          text = text + "\n"
-          self.output.push_stdout(@utf8.encode(text))
+          // #66：字节直推（旧 lossy_string 逐字节 Latin-1 折回 mojibake）
+          self.output.push_stdout(bytes.add(b"\n"))
           self.push(1UL)
         }
         Err(f) => self.render_mem_fault(f, 0, 0)

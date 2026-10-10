@@ -158,3 +158,13 @@ test "compile_output_dump_json rich shape (Type/f64/escape single-source)" {
   let expect = "{\"version\":1,\"code\":[{\"op\":\"StoreLocal\",\"operand\":12,\"loc\":{\"line\":2,\"column\":14,\"file_id\":0}}],\"globals_init_32\":[[16,65]],\"globals_init_64\":[[24,4294967296]],\"func_table\":{\"main\":{\"ip\":3,\"arg_count\":0,\"param_count\":0,\"local_count\":4,\"param_sizes\":[],\"return_type\":{\"Int\":{\"is_unsigned\":false,\"is_const\":false}},\"is_variadic\":false,\"local_buffers\":[]}},\"func_index\":{\"main\":1089},\"string_data\":[[4104,\"a\\\"b\"]],\"source_map\":[[1,{\"line\":2,\"column\":14,\"file_id\":0}]],\"symbols\":[{\"name\":\"p\",\"addr\":16,\"is_local\":true,\"ty\":{\"Pointer\":{\"pointee\":{\"Int\":{\"is_unsigned\":false,\"is_const\":false}},\"is_const\":false}},\"scope_depth\":1,\"func_name\":\"main\",\"decl_line\":2}],\"struct_defs\":{\"S\":[{\"ty\":{\"Int\":{\"is_unsigned\":false,\"is_const\":false}},\"name\":\"x\"}]},\"union_defs\":{},\"f64_constants\":[1.0,-0.0],\"i64_constants\":[9223372036854775807],\"global_data_end\":5124}"
   assert_eq(json, expect)
 }
+
+///|
+test "cstring_bytes_utf8_passthrough_66" {
+  // #66：源字符整串 UTF-8 直通（· U+00B7 → C2 B7 双字节）
+  let bs = cstring_bytes("A·X")
+  assert_eq(bs.length(), 4, msg="A + C2 B7 + X")
+  assert_eq(bs[1].to_int(), 0xC2)
+  assert_eq(bs[2].to_int(), 0xB7)
+  assert_eq(cstring_len("A·X"), 4)
+}

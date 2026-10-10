@@ -15,17 +15,16 @@
 ///|
 /// C 字符串字节序列（不含结尾 NUL）。
 pub fn cstring_bytes(s : String) -> Array[Byte] {
+  // #66（2026-10-10）：整串 UTF-8 encode 直通——对齐 clang 的 execution
+  // charset（源字符字节原样落盘）。旧「cp<=0xFF 单字节」Latin-1 口径使
+  // 源内 ·/×/° 等双字节字符落成单字节（与 clang 分叉），printf/fputs
+  // 等输出通道再怎么修都对不齐（fmt 装载与字节直推两种口径互相打架）。
+  // 转义 \xHH 与源字符在 String 载体同形（U+00B7），encode 后均落双
+  // 字节——sizeof("\xb7") 与 clang 的单字节形态分叉（F2 已知差异面
+  // 换位：源字符面〔教学高频、#66 实锤〕优先于转义字节面〔低频〕）。
   let out : Array[Byte] = []
-  for c in s {
-    let cp = c.to_int()
-    if cp <= 0xFF {
-      out.push(cp.to_byte())
-    } else {
-      // 码点 > 0xFF：按 UTF-8 编码写出（2~4 字节）
-      for b in @utf8.encode(c.to_string()) {
-        out.push(b)
-      }
-    }
+  for b in @utf8.encode(s) {
+    out.push(b)
   }
   out
 }
@@ -34,14 +33,6 @@ pub fn cstring_bytes(s : String) -> Array[Byte] {
 /// C 语义字节长度（不含结尾 NUL）——分配/对齐计算用。与 MoonBit
 /// `String::length()`（UTF-16 码元数）在含 `\xHH ≥ 0x80` 转义时不同（F2）。
 pub fn cstring_len(s : String) -> Int {
-  let mut total = 0
-  for c in s {
-    let cp = c.to_int()
-    if cp <= 0xFF {
-      total += 1
-    } else {
-      total += @util.utf8_len(c.to_string())
-    }
-  }
-  total
+  // #66：与 cstring_bytes 同口径（整串 UTF-8 长度）
+  @util.utf8_len(s)
 }

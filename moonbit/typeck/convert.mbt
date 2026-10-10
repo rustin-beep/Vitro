@@ -159,6 +159,13 @@ fn TypeChecker::check_array_pointer_assignable(
       if @ast.type_eq(t_pointee, value.subscript_type()) {
         return true
       }
+      // #63（2026-10-10）：const 加宽的二维形态——`const int g[9][9]` 形参
+      //（pointee = const int[9]，const 在 element 层）收 `int grid[9][9]`：
+      // 数组限定符传导元素（C11 §6.7.3/§6.7.6.2），qualifier_widens 递归
+      // 只增判定（Pointer 层不递归——char\*\* → const char\*\* 维持非法）
+      if qualifier_widens(value.subscript_type(), t_pointee) {
+        return true
+      }
       false
     }
     (Array(t_element, _, _, _, _, _), Pointer(v_pointee, _)) =>
@@ -361,6 +368,37 @@ fn strip_top_const(t : @ast.Type) -> @ast.Type {
 }
 
 ///|
+/// 限定符加宽的递归方向性判定（#63，2026-10-10）：`v` 可赋给 `t` 当且仅当
+/// 两者结构同形且 **v 每层 const ⊆ t**（只增不减）。病 3 的单层
+/// strip_top_const 够不着 `const int(*)[9]`（const 在 pointee 数组的
+/// element 层——`const int g[9][9]` 形参退化的标准形态）；反向（剥 const）
+/// 返回 false 由调用方维持 E3067。
+fn qualifier_widens(v : @ast.Type, t : @ast.Type) -> Bool {
+  match (v, t) {
+    (Void(vc), Void(tc)) | (Float(vc), Float(tc)) | (Double(vc), Double(tc)) =>
+      (!vc || tc) && (vc == tc || tc)
+    (Int(vu, vc), Int(tu, tc))
+    | (Char(vu, vc), Char(tu, tc))
+    | (LongLong(vu, vc), LongLong(tu, tc)) => vu == tu && (!vc || tc)
+    (Pointer(vp, vc), Pointer(tp, tc)) =>
+      // 指针层 const 差异**不**递归放行（C11 6.5.16.1：指针类型间无
+      // 「qualified 版本」关系——char\* 与 const char\* 不兼容；数组限定符
+      // 传导元素的语义只属 Array 分支。char\*\* → const char\*\* 因此维持
+      // 非法，经典 FAQ 写穿通道）
+      @ast.type_eq(v, t) || (@ast.type_eq(vp, tp) && (!vc || tc))
+    (Array(ve, vn, vd, vc, vvl, vvd), Array(te, tn, td, tc, tvl, tvd)) =>
+      vn == tn &&
+      vd == td &&
+      vvl == tvl &&
+      (!vc || tc) &&
+      qualifier_widens(ve, te)
+    (Struct(vn, vc), Struct(tn, tc)) | (Union(vn, vc), Union(tn, tc)) =>
+      vn == tn && (!vc || tc)
+    _ => @ast.type_eq(v, t)
+  }
+}
+
+///|
 /// 空指针常量判定（C11 §6.3.2.3，issue #56）：值为 0 的整型常量转指针
 /// 是空指针语义、定义良好无须诊断（Clang -Wall -Wextra 对惯用法全族
 /// 干净）。parser 把 NULL 关键字折为 Literal(0, void*)（parser/expr.mbt
@@ -435,13 +473,16 @@ fn TypeChecker::check_pointer_assignable(
             H3057_ImplicitConversionHint,
           )
         } else if !@ast.type_eq(t_pointee, v_pointee) &&
-          // 病 3 修复（#47，2026-10-09）：「目标 pointee = 源 pointee + 顶层
-          // const」是 C11 §6.5.16.1 的安全方向（限定符只增不减），放行——
-          // char* → const char* 曾假阳性 W3067（文案渲染两侧同型 "char*"
-          // 自相矛盾）。多级指针不适用：strip 只剥一层，深层 const 差异仍被
-          // 递归 type_eq 抓住（char** → const char** 维持 W3067，C 标准同判
-          // 非法）；反向（剥 const）仍由下方 W3053 管。
-          !@ast.type_eq(strip_top_const(t_pointee), v_pointee) {
+          // 病 3 修复（#47，2026-10-09）+ #63 扩面（2026-10-10）：「目标
+          // pointee = 源 pointee + 限定符加宽」是 C11 §6.5.16.1 的安全方向
+          // 放行——病 3 单层 strip 覆盖 char*→const char\*；#63 的
+          // `const int(*)[9]`（const 在 pointee 数组 element 层）由
+          // qualifier_widens 递归判定（v 每层 const ⊆ t）。反向（剥 const）
+          // 仍由下方 W3053 管；char** → const char** 在 C 标准实为非法
+          //（pointee 指针自身 const 位不参与数组元素语义）——qualifier_widens
+          // 对 Pointer(pointee) 层的 const 同样要求只增，char** 的第二层是
+          // 指针位非元素位，加宽判定与其一致。
+          !qualifier_widens(v_pointee, t_pointee) {
           // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
           self.report_error(
             "指针类型不兼容：\{pointee_name_with_const(t_pointee)}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",

@@ -12,6 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#64 定责与修复：宏+二元维度判 VLA——CLI 双出口「假性双臂不对账」机制全揭，2026-10-11）
+
+- **机制（用户七文件矩阵 + 本轮定责）**：`vitro compile` 文本模式——壳（wasm 臂）走 gateway 帧、exe（native 臂）走 `compile_and_report` 旧管线，**backend 恰好代理了「壳 vs exe」两条出口**；两臂引擎同码同判 VLA（`array_dim_info` 对 Binary 一律判），分叉纯在出口（exe 打印 VLA 错误+级联、gateway 吞诊断为 ok=false 零诊断——后者即 #61 待办「compile 空诊断出口病」）。**非 wasm/native 后端差、非上游 moon 工具链问题**。
+- **修复**：`const_int_of` 整型常量表达式求值（字面量 / 一元负·位非〔二补码代数式〕/ 二元算术·位·移位，C11 §6.6）接入 `array_dim_info` 折叠前置——`W+1`/`(W+1)`/首维表达式/一维全局/静态局部各形态全部折叠为常量维度**非 VLA**；局部自动形态本就绿。红→绿锚 `array_dim_const_expr_not_vla`（parser 包，dims [15,22] 折叠断言）；语料 `array_dim_const_expr.c`（四形态合一，双侧 `xyzz` 一致 + clang_direct SAME）。
+- **v6 尾巴（真非常量：未定义宏维度）**：双臂仍不对账（native 报 VLA 错诊断、wasm 吞）——正确形态应为「未定义标识符」诊断；与 gateway 空诊断出口病同批修（#64 尾巴登记）。
+- 修前实测教训入账：此前「双臂交叉验证全过」结论无效——`--backend` 尾置被 launcher 静默忽略（仅认 `$2` 位），所测「native」实为 wasm；本轮全部以正确位序复测。
+- 测试数连坐 728/850；digest 四驱动入账。
+- 验收：moon test 728/728；clang_direct 730/10/0（740）；vm_diff 640/5/0（645）；全域 PASS；全闸绿。
+
+### Fixed（#63/#66 批：const 二维形参放行 + Latin-1 字符输出全链 UTF-8 直通，2026-10-10~11）
+
+- **#63（typeck）**：`const int g[9][9]` 形参（退化 `const int(*)[9]`，const 在 pointee 数组 **element 层**）拒收 `int grid[9][9]` 实参——病 3 的单层 strip 够不着。新增 `qualifier_widens` **递归方向性判定**（v 每层 const ⊆ t 才放行；**Pointer 层 const 差异不递归放行**——char\*\* → const char\*\* 维持非法，C11 §6.5.16.1 指针类型间无 qualified 版本关系；数组限定符传导元素的语义只属 Array 分支）；接入 check_array_pointer_assignable 多维 decay 分支与 check_pointer_assignable E3067 臂。红→绿锚 + 语料 `const_2d_array_param.c`（双侧 7 0 一致）。
+- **#66（bytecode/host/vm/壳 全链）**：Latin-1 范围字符（·×°±，U+00A0–00BF 的 **C2 前缀段**——issue 原区间口径修正：C3 前缀段损坏形态不同）输出损坏，根因**三层**：① 落盘 `cstring_bytes` 的「cp<=0xFF 单字节」Latin-1 口径与 clang UTF-8 execution charset 分叉 → **整串 UTF-8 encode 直通**；② printf fmt 装载 `decode_lossy` 对旧落盘字节二次解码错位（随 ① 消除分叉，decode_lossy 回归本位）；③ fputs/puts 的 lossy 对与 vm puts 臂 `lossy_string` 逐字节折回 mojibake → **字节直推**；④ 出口侧：wasm 壳 stderr 文本打印补 Latin-1→字节→UTF-8 还原；**clang_direct 的 `latin1Fold` 归一退役**（前提「双重编码」已随出口字节直写消失，两侧对称原样比对）。四通道（printf/fputs/puts/fprintf-stderr）+ CJK 混排**双臂与 clang 逐字节一致**（od 级）；语料 `utf8_latin1_output.c`。
+- **F2 换位登记**：\xHH 转义与源字符在 String 载体同形——\xff 落 C3 83 双字节 vs C 单字节 FF（string_escape_octal_hex.c 一格翻，known_direct 10 条 + 台账改挂）；源字符面（教学高频）优先对齐，转义裸字节通道另批。
+- **两尾巴登记**：sizeof 折叠对多字节字符串少计 1（sizeof("A·X")=4≠5）；vm_diff `--refresh` 存量重算不保护 known 条目（本次手回滚+定点刷新绕开，通道设计缺口随防线批修）。
+- 测试数连坐 727/849；digest 四驱动入账（+4 语料）；known/台账三处连坐。
+- 验收：moon test 727/727；clang_direct 729/10/0（739）；vm_diff 639/5/0（644）；lexer/typeck/codegen 全域 PASS；testcount/diff_ledger/facts(0)/surface/mbti/demo_smoke 全绿。
+
+### Fixed（#59 题 1 执行批 + 病 20：scanf "0x" 残缺前缀匹配失败 + strtol/strtod endptr 64 位全宽，2026-10-10）
+
+- **#59 题 1（裁定执行）**：scanf/sscanf 的 `%i`/`%x` "0x" 残缺前缀（x 后无 hex、含串尾）旧臂按 msvcrt 派「匹配 "0" 返 1 写 0」——对 UCRT/glibc/C11 **三方全分叉**（glibc 2.43 实测反转矩阵：双派同判失败）；修为**匹配失败**（返已配数 0、哨兵不写、不计 matched、终止）且 **"0x" 两字符消费不退回**（双派 stdin 实测一致——%c 随后读到 Z；与病 13 d/u 的回退语义**刻意异构**：那边失败零消费故回退=未动，这边前缀已消费保留）。正常前缀 0x1f 匹配保留。scanf/sscanf 双处同改；wbtest 锚 `scanf_0x_prefix_incomplete_matching_failure`。
+- **语料两件**：`baseline/scanf_0x_behavior.c`（行为面严拍：哨兵不写 + stdin 游标消费锚 + 正常前缀，双侧逐字节一致）；`gap/scanf_0x_retval.c`（返回值派系差——UCRT -1 vs C11 已配数 0）+ known_direct 登记（9 条）+ **diff_ledger 台账收编新条目 `DIFF-SCANF-0X-RETVAL-01`**（33 条）。
+- **病 20（顺手抓出）**：`strtol`/`strtod` 的 endptr 写回用 `store_u32`——C 的 `char*` 是 8 字节，只写低 4 字节留高位内存残值 → 指针全乱风险；修为 `store_u64` 全宽（双处同款）。探针教训入账：Vitro 字符串字面量**不合并池**（C 允许）——endptr 偏移测试必须用同一指针比较（双字面量差是地址差非 bug）。
+- 测试数连坐：725/847（新锚双口径）+ docs 三份 + gen_svg。
+- 验收：moon test 725/725（native 847）；clang_direct 728/9/0（737）；vm_diff 637/5/0（642）；lexer/typeck/codegen 全域 PASS；testcount/diff_ledger(33)/facts(0 漂移)/demo_smoke 全绿。
+
 ### Fixed（审阅处置批：7 笔审阅 P1×3 + P2×2 全清——#61 决策日后续轮，2026-10-10）
 
 - **P1-1 diff_ledger 台账连坐**（CI 红主因）：`engine_note_lookalike.c` 随病 15 批 C 转绿删 known 时，`DIFF-TOOL-EXTRACT-01.anchors.clang_direct_known` 未同步——台账随实况裁（clang 侧锚清空 + notes 补记 + subsystems/detectable 收窄为 vm_diff 单防线）；diff_ledger 32 条对账全绿。

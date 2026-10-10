@@ -7,6 +7,7 @@
         "array_address.c": "0ba37ef8",
         "array_bound_const_index.c": "25cc0c64",
         "array_bounds_safe.c": "0f125842",
+        "array_dim_const_expr.c": "8820e906",
         "array_index.c": "a562c208",
         "array_index_increment.c": "d92fbb2c",
         "array_max.c": "b5a97589",
@@ -65,6 +66,7 @@
         "compound_sub_var.c": "4c3236cb",
         "conditional_compile.c": "6c65dc3e",
         "const.c": "b97fa1c4",
+        "const_2d_array_param.c": "70d43963",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
         "decrement_var.c": "629e3563",
@@ -285,6 +287,7 @@
         "realloc_shrink.c": "d7cb943b",
         "recursive_function.c": "7ef6ad96",
         "reverse_array.c": "afd801dd",
+        "scanf_0x_behavior.c": "d808487a",
         "scanf_digit_mismatch.c": "bf658db3",
         "scanf_eof_after_exhaust.c": "b3b8767a",
         "scanf_eof_loop.c": "0c619589",
@@ -388,6 +391,7 @@
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
         "unsigned_type.c": "3a7ad33d",
+        "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
         "variadic.c": "e1ee7b2a",
         "vfs_io_extensions.c": "4e4c0144",
@@ -417,6 +421,9 @@
         },
         "array_bounds_safe.c": {
           "result_sha": "23005defa221fd08"
+        },
+        "array_dim_const_expr.c": {
+          "result_sha": "1bf0088bee7741ce"
         },
         "array_index.c": {
           "result_sha": "7f2bb1691769e541"
@@ -592,6 +599,9 @@
         },
         "const.c": {
           "result_sha": "215ebc7d4672f15f"
+        },
+        "const_2d_array_param.c": {
+          "result_sha": "4903056aa39d40eb"
         },
         "continue_while.c": {
           "result_sha": "0060e0008cdbf3fa"
@@ -1260,6 +1270,9 @@
         "reverse_array.c": {
           "result_sha": "0df45ce2cd061fb1"
         },
+        "scanf_0x_behavior.c": {
+          "result_sha": "53c7d9ba03a8b600"
+        },
         "scanf_digit_mismatch.c": {
           "result_sha": "ef05a141bf72dd13"
         },
@@ -1419,7 +1432,7 @@
           "result_sha": "6c83e1c77401e3a8"
         },
         "string_escape_octal_hex.c": {
-          "result_sha": "7632aedd0fd430c0"
+          "result_sha": "9e57652a7bea36e8"
         },
         "string_literal.c": {
           "result_sha": "28efea5c42880532"
@@ -1571,6 +1584,9 @@
         "unsigned_type.c": {
           "result_sha": "b0e7ea07e13c980f"
         },
+        "utf8_latin1_output.c": {
+          "result_sha": "1e4e4472d2944a92"
+        },
         "variable_length_array.c": {
           "result_sha": "1f991ac932545338"
         },
@@ -1704,6 +1720,7 @@
         "keyword_compat.c": "ce1212f3",
         "loop_var_shadow.c": "67d2073f",
         "printf_scanf_type_mismatch.c": "6fb1cda5",
+        "scanf_0x_retval.c": "182a1281",
         "sizeof_array_param.c": "34ee7a7e",
         "static_assert.c": "4e388a20",
         "string_len_manual.c": "b5eb330a",
@@ -1753,6 +1770,9 @@
         },
         "printf_scanf_type_mismatch.c": {
           "result_sha": "29e47ff3f54193bc"
+        },
+        "scanf_0x_retval.c": {
+          "result_sha": "cff36aebcef3398e"
         },
         "sizeof_array_param.c": {
           "result_sha": "91143154c3ddac85"

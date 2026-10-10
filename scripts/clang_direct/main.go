@@ -719,7 +719,11 @@ func extractMoonStdout(s string) string {
 			kept = kept[:n-1]
 		}
 	}
-	return latin1Fold(normalizeLines(kept))
+	// #66（2026-10-10）：latin1Fold 退役——其前提（cmd/run println 把每字节
+	// 双重编码成 C2/C3 引导序列）随落盘 UTF-8 直通 + 出口字节直写消失；
+	// 两侧对称原样字节比对（存量 digest 不受影响：单字节 ≥0x80 输出
+	// （putchar(200) 族）无 C2/C3 前导本就不折，双重编码形态已不存在）
+	return normalizeLines(kept)
 }
 
 // normalizeLines：CRLF 归一 + 首尾空行剥（vm_diff 同款；无尾换行 join）。

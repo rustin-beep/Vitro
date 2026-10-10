@@ -480,3 +480,45 @@ test "assign_mismatch_copy_renders_const" {
     msg="目标 pointee 带 const 须渲出（差异点可见）",
   )
 }
+
+///|
+/// #63 红→绿锚（2026-10-10）：const 二维数组形参（`const int g[9][9]` 退化
+/// `const int(*)[9]` ← 实参 `int(*)[9]`）——const 在 pointee 数组的
+/// **element 层**，病 3 的单层 strip 够不着；限定符加宽须递归方向性判定
+///（v 每层 const ⊆ t 才放行；反向剥 const 仍拒）。
+test "assign_const_2d_array_param_widening" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // const int(*)[9] ← int(*)[9]：放行（C11 §6.5.16.1 限定符加宽）
+  let tc = TypeChecker::new()
+  let ok = tc.check_assignable(
+    @ast.Type::Pointer(
+      @ast.Type::Array(@ast.Type::Int(false, true), 9, [9], false, false, []),
+      false,
+    ),
+    @ast.Type::Pointer(
+      @ast.Type::Array(@ast.Type::Int(false, false), 9, [9], false, false, []),
+      false,
+    ),
+    loc,
+  )
+  assert_true(ok, msg="const int g[9][9] 形参收 int grid[9][9]")
+  assert_eq(tc.errors.length(), 0)
+  // 反向（int(*)[9] ← const int(*)[9]）：剥 const 仍拒（写穿风险）
+  let tc2 = TypeChecker::new()
+  let bad = tc2.check_assignable(
+    @ast.Type::Pointer(
+      @ast.Type::Array(@ast.Type::Int(false, false), 9, [9], false, false, []),
+      false,
+    ),
+    @ast.Type::Pointer(
+      @ast.Type::Array(@ast.Type::Int(false, true), 9, [9], false, false, []),
+      false,
+    ),
+    loc,
+  )
+  assert_true(
+    bad,
+    msg="指针赋值路径本身可达（报错在 E3067 臂）",
+  )
+  assert_eq(tc2.errors.length(), 1, msg="剥 const 方向维持 E3067")
+}

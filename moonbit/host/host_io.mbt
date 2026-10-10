@@ -110,6 +110,8 @@ fn stream_has_content(stream : Array[Byte]) -> Bool {
 /// fmt 字节 → 码点数组（lossy——与 oracle `read_cstring` 的 String 管道
 /// 同构；非 ASCII 字节经 U+FFFD，输出侧再编码回 UTF-8，字节守恒）。
 fn lossy_codes(bytes : Bytes) -> Array[Int] {
+  // #66：落盘层已整串 UTF-8 直通（cstring_bytes）——decode_lossy 对合法
+  // 序列无损；非法字节（旧 Latin-1 口径残留形态）按 FFFD 退化兜底。
   let s = @utf8.decode_lossy(bytes)
   let codes : Array[Int] = []
   for c in s {
@@ -287,7 +289,8 @@ pub fn host_puts(
   let s = read_cstring_raise(mem, map, s_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
-  log.push_stdout(@utf8.encode(@utf8.decode_lossy(s) + "\n"))
+  // #66：C 串字节直推（旧 lossy 对毁裸 Latin-1 字节）
+  log.push_stdout(s.add(b"\n"))
   value_only(1UL)
 }
 
@@ -935,6 +938,20 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
+      // #59 题 1（2026-10-10 裁定）："0x" 残缺前缀（x 后无 hex 数字、含
+      // 串尾）= 匹配失败——**消费 "0x" 两字符不退回**（glibc 2.43/UCRT
+      // 双派 stdin 实测一致：%c 随后读到 Z；与病 13 d/u 的回退语义刻意
+      // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
+      // matched、不写、终止（返已配数，C11 §7.21.6.2）
+      if (spec == SCANF_I || spec == SCANF_X) &&
+        pos < chars.length() &&
+        chars[pos] == 48 &&
+        pos + 1 < chars.length() &&
+        (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+        !(pos + 2 < chars.length() && hex_digit_val(chars[pos + 2]) >= 0) {
+        pos = pos + 2
+        break
+      }
       let mut base : Int = 10
       if spec == SCANF_X {
         base = 16
@@ -1217,6 +1234,20 @@ pub fn host_sscanf(
       }
       if pos >= chars.length() {
         pos = entry_pos
+        break
+      }
+      // #59 题 1（2026-10-10 裁定）："0x" 残缺前缀（x 后无 hex 数字、含
+      // 串尾）= 匹配失败——**消费 "0x" 两字符不退回**（glibc 2.43/UCRT
+      // 双派 stdin 实测一致：%c 随后读到 Z；与病 13 d/u 的回退语义刻意
+      // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
+      // matched、不写、终止（返已配数，C11 §7.21.6.2）
+      if (spec == SCANF_I || spec == SCANF_X) &&
+        pos < chars.length() &&
+        chars[pos] == 48 &&
+        pos + 1 < chars.length() &&
+        (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+        !(pos + 2 < chars.length() && hex_digit_val(chars[pos + 2]) >= 0) {
+        pos = pos + 2
         break
       }
       let mut base : Int = 10

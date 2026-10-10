@@ -619,13 +619,14 @@
     },
     {
       "id": "DIFF-TOOL-EXTRACT-01",
-      "title": "engine_note_lookalike 提取器限制（程序输出以'程序运行完成，返回值：'lookalike 开头被 oracle 侧尾注截断逻辑吃光；工具层非引擎差异）",
+      "title": "提取器/归一器限制登记：clang 侧 engine_note_lookalike 已随 #66 输出链分离转绿；现存 F2 换位面（\\xHH 转义载体同形）；vm 侧 lookalike 提取器限制仍在册",
       "class": "pedagogical",
       "carry_over": "inherit",
       "status": "verified-anchor",
       "evidence": "anchor",
       "rationale": "驱动提取器已知限制登记不修；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）",
       "subsystems": [
+        "scripts/clang_direct",
         "scripts/vm_diff"
       ],
       "clang_verdict": "无 Clang 对应（工具层）",
@@ -634,15 +635,18 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [],
+        "clang_direct_known": [
+          "string_escape_octal_hex.c"
+        ],
         "vm_diff_known": [
           "engine_note_lookalike.c"
         ]
       },
       "detectable_by_defense": [
+        "clang_direct",
         "vm_diff"
       ],
-      "notes": "两防线 known 同例同因在册；baseline/engine_note_lookalike.c 固化该口径。〔P3-1 修复 2026-09-30：原误写 [\"shadow\"] 而锚全在 cd+vd——P3-2 闸断言上线前该笔误静默〕〔2026-10-10 病 15 批 C（#61）：clang_direct 运行捕获改 stdout-only 分离（cacheSchema cd3）后该例转绿、known 条目删除——锚随删；vm_diff 侧提取器限制不受影响仍适用〕"
+      "notes": "〔2026-10-10 #66 连坐：clang 侧随 stdout-only 捕获分离转绿删 known；string_escape_octal_hex 因落盘 UTF-8 直通的 \\xHH 载体同形换位入账（g[8]=195 vs 255，源字符面已对齐）；vm 侧提取器限制不受影响维持〕"
     },
     {
       "id": "DIFF-PREPROC-INCLUDE-DEPTH-01",
@@ -856,6 +860,33 @@
         "clang_direct"
       ],
       "notes": "known reason 字段含完整归因"
+    },
+    {
+      "id": "DIFF-SCANF-0X-RETVAL-01",
+      "title": "sscanf 0x 残缺前缀返回值派系差：UCRT 把匹配冲突当 EOF 返 -1 vs Vitro/glibc/C11 匹配失败返已配数 0（行为面不写/游标消费双侧一致）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "#59 题 1 裁定（2026-10-10，glibc 2.43 实测反转矩阵）：返已配数 0 是 C11 §7.21.6.2 口径；UCRT -1 系把冲突当 EOF 的派系怪癖，不对齐",
+      "subsystems": [
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "返回值派系差（-1 vs 0）；行为面一致",
+      "source_docs": [
+        "#59 裁定评论 6097804922"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "scanf_0x_retval.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "baseline/scanf_0x_behavior.c 严拍行为面（不写/消费不退回/正常前缀保留）；本条目只锁返回值派系差。〔2026-10-10 随 #59 修复批入账〕"
     }
   ]
 }

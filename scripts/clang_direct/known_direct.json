@@ -43,5 +43,15 @@
     "case": "array_bound_const_index.c",
     "digest": "d07256b0",
     "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
+  },
+  {
+    "case": "scanf_0x_retval.c",
+    "digest": "71b4b08d",
+    "reason": "sscanf 0x 残缺前缀返回值派系差（#59 题 1 裁定 2026-10-10）：UCRT 把匹配冲突当 EOF 返 -1；Vitro 按 C11 §7.21.6.2 匹配失败返已配数 0（glibc 2.43 实测同判 0）。行为面（不写/游标消费不退回/正常前缀）双侧一致，由 baseline/scanf_0x_behavior.c 严拍；本例只锁返回值派系差"
+  },
+  {
+    "case": "string_escape_octal_hex.c",
+    "digest": "38dfc934",
+    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
   }
 ]

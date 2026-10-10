@@ -417,10 +417,13 @@ pub fn host_strtol(
     }
   }
   if endptr_addr != 0U {
-    let _ = mem.store_u32(
+    // 病 20（#61，2026-10-10）：endptr 是 char**——写回须 64 位全宽
+    //（旧 store_u32 只写低 4 字节，char* 高位留内存残值 → 指针全乱，
+    // `end - str` 出负偏移；strtol 主功能面，正常形态 0x1f 同样坏）
+    let _ = mem.store_u64(
       map,
       endptr_addr,
-      str_addr + pos.reinterpret_as_uint(),
+      (str_addr + pos.reinterpret_as_uint()).to_uint64(),
     )
   }
   value_only((sign * val).reinterpret_as_uint64())
@@ -455,10 +458,11 @@ pub fn host_strtod(
     }
   }
   if endptr_addr != 0U {
-    let _ = mem.store_u32(
+    // 病 20 同款（strtol 锚见上）：endptr 写回 64 位全宽
+    let _ = mem.store_u64(
       map,
       endptr_addr,
-      str_addr + pos.reinterpret_as_uint(),
+      (str_addr + pos.reinterpret_as_uint()).to_uint64(),
     )
   }
   value_only(val.reinterpret_as_uint64())

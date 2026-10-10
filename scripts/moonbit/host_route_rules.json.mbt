@@ -21,6 +21,8 @@ pub struct Print_int {
   scanf : String
   fprintf : String
   labs : String
+  vfprintf : String
+  vprintf : String
 }
 
 ///|
@@ -39,6 +41,10 @@ pub let host_route_rules : Host_route_rules = Host_route_rules::{
     scanf: "scanf_n",
     fprintf: "fprintf_n",
     labs: "abs",
+    // #10 P1 批（2026-10-10）vprintf 族实现名带 _n 后缀；2026-10-10 补登
+    //（CI 红：实现落地时漏登真源——下游 .json 曾被手改掩盖本地判定）
+    vfprintf: "vfprintf_n",
+    vprintf: "vprintf_n",
   },
   vm_whitelist: [
     "exit", "abort", "assert_fail", "set_array_guard", "clear_array_guard", "step",

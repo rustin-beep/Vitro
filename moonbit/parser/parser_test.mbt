@@ -386,3 +386,27 @@ test "parse decl missing semi without brace keeps legacy shape" {
   inspect(r.errors[0].code, content="2005")
   inspect(r.errors[1].code, content="2005")
 }
+
+///|
+/// #64 红→绿锚（2026-10-11）：宏+二元表达式的数组维度是 C11 整型常量
+/// 表达式（非 VLA）——旧 array_dim_info 对 Binary 一律判 VLA，致
+/// `static char grid[H][W+1]` 在 compile_and_report 管线报「全局不支持
+/// VLA」+级联、gateway 管线 ok=false 零诊断（双入口同病灶）。
+test "array_dim_const_expr_not_vla" {
+  let src = "#define W 21\n#define H 15\nstatic char grid[H][W + 1];\nint main(void) { grid[0][0] = 'x'; return 0; }"
+  let r = parse_src(src)
+  assert_eq(r.errors.length(), 0, msg="宏+二元维度零诊断")
+  match r.program {
+    Some(prog) =>
+      match prog.globals[0].ty {
+        Array(_, size, dims, _, is_vla, vla_dims) => {
+          assert_false(is_vla, msg="W+1 常量表达式非 VLA")
+          assert_eq(dims, [15, 22], msg="两维全折叠")
+          assert_eq(size, 15 * 22)
+          assert_eq(vla_dims.length(), 0)
+        }
+        _ => fail("应为数组类型")
+      }
+    None => fail("program 应为 Some")
+  }
+}

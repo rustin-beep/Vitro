@@ -405,3 +405,37 @@ test "host_vfs_surface" {
     is Some(0xFFFFFFFFFFFFFFFFUL),
   )
 }
+
+///|
+/// #59 题 1 裁定锚（2026-10-10）：%i/%x 的 "0x" 残缺前缀 = 匹配失败——
+/// 返已配数 0（C11，glibc 2.43 实测同判；UCRT -1 派系差见 known_direct）、
+/// 哨兵不写、"0x" 两字符消费不退回（%c 随后读到 'Z'——与病 13 d/u 的
+/// 回退语义刻意异构）；正常前缀 0x1f 匹配保留。
+test "scanf_0x_prefix_incomplete_matching_failure" {
+  let map = @memory.MemoryMap::new()
+  let mem = @memory.Memory::new()
+  let vfs : @host.VirtualFileSystem = @host.VirtualFileSystem::new()
+  ignore(vfs)
+  let pa = 0x8000U
+  // 哨兵 0xFFFFFF63（-99 的 i32 位模式）；输入 "0x"
+  ignore(mem.write_bytes(map, 0x6800U, b"0x\x00"))
+  ignore(mem.write_bytes(map, 0x6200U, b"%i\x00"))
+  ignore(mem.store_u32(map, pa, 0xFFFFFF63U))
+  let r = @host.host_sscanf(map, mem, 0x6800U, 0x6200U, [pa])
+  assert_true(
+    r.value is Some(0UL),
+    msg="残缺 0x 返已配数 0（非 -1 非 1）",
+  )
+  let v = mem.load_u32(map, pa)
+  assert_true(
+    v is Ok(0xFFFFFF63U),
+    msg="哨兵未写（匹配失败不落值）",
+  )
+  // 正常前缀保留：0x1f → 31
+  ignore(mem.write_bytes(map, 0x6801U, b"0x1f\x00"))
+  ignore(mem.store_u32(map, pa, 0xFFFFFF63U))
+  let r2 = @host.host_sscanf(map, mem, 0x6801U, 0x6200U, [pa])
+  assert_true(r2.value is Some(1UL))
+  let v2 = mem.load_u32(map, pa)
+  assert_true(v2 is Ok(31U), msg="0x1f 正常前缀匹配 31")
+}

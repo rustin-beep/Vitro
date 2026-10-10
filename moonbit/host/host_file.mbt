@@ -417,10 +417,11 @@ pub fn host_fputs(
     let s = read_cstring_raise(mem, map, s_addr) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
+    // #66：C 串字节直推（旧 lossy 对毁裸 Latin-1 字节）
     if stream == 2U {
-      log.push_stderr(@utf8.encode(@utf8.decode_lossy(s)))
+      log.push_stderr(s)
     } else {
-      log.push_stdout(@utf8.encode(@utf8.decode_lossy(s)))
+      log.push_stdout(s)
     }
     return value_only(0UL)
   }

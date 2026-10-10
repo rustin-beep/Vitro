@@ -130,14 +130,14 @@ test "pure_shortcircuit_blocks_membership_test" {
 }
 
 ///|
-/// **跨表对账**：两表并集 = 176，且与 `vitro/engine/libc` 的放行名全集逐名对齐
+/// **跨表对账**：两表并集 = 180，且与 `vitro/engine/libc` 的放行名全集逐名对齐
 /// （差 `print_int` 一个别名——S4 坑② 的"以 libc 为单源回填"在此接续）。
 test "route_union_matches_libc_allowlist" {
   let u = @bytecode.builtin_name_union()
   assert_eq(
     u.length(),
     @bytecode.HOST_FUNC_NAME_COUNT + @bytecode.BYTECODE_LIBC_FUNC_COUNT - 22,
-    msg="并集 = 110 + 88 − 交集 22 = 176",
+    msg="并集 = 114 + 88 − 交集 22 = 180（#10 P1 批 +4 host 名）",
   )
   assert_true(
     u.contains("print_int"),

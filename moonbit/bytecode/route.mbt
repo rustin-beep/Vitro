@@ -37,7 +37,7 @@ pub extend CallRoute with Eq::{not_equal, equal}
 ///|
 /// host 名表规模（Rust `host_func_id.rs`：110 常量 / 110 名映射，**含别名**——
 /// `print_int`/`__vitro_output` 同指 OUTPUT、`labs` 同指 ABS）。
-pub const HOST_FUNC_NAME_COUNT : Int = 110
+pub const HOST_FUNC_NAME_COUNT : Int = 114
 
 ///|
 /// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 5）。

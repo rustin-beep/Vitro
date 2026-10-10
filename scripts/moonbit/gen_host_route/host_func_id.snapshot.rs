@@ -142,6 +142,10 @@ pub const VA_ARG: u32 = 141;
 pub const VA_END: u32 = 142;
 pub const VA_COPY: u32 = 143;
 pub const UNREACHABLE: u32 = 144;
+pub const DIFFTIME: u32 = 145;
+pub const VPRINTF: u32 = 146;
+pub const VFPRINTF: u32 = 147;
+pub const VSNPRINTF: u32 = 148;
 
 /// 已由 Bytecode Libc 覆盖的纯计算函数。
 /// 这些函数不再走 CallHost 路径，而是走 Bytecode Libc 的固定索引 Call。
@@ -273,6 +277,10 @@ pub fn by_user_name(name: &str) -> Option<u32> {
         "__vitro_va_end" => Some(VA_END),
         "__vitro_va_copy" => Some(VA_COPY),
         "unreachable" => Some(UNREACHABLE),
+        "difftime" => Some(DIFFTIME),
+        "vprintf" => Some(VPRINTF),
+        "vfprintf" => Some(VFPRINTF),
+        "vsnprintf" => Some(VSNPRINTF),
         _ => None,
     }
 }

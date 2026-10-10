@@ -54,10 +54,11 @@ test "libc_sig_spots" {
 }
 
 ///|
-/// 放行全集计数与结构（175 = 109 host_func_id ∪ 88 bytecode_libc 去
-/// 重叠 22；含 C++ 容器名——判据语义照搬，C 模式不活跃）。
+/// 放行全集计数与结构（179 = 113 host_func_id ∪ 88 bytecode_libc 去
+/// 重叠 22；#10 P1 批 +4〔difftime/vprintf/vfprintf/vsnprintf〕；
+/// 含 C++ 容器名——判据语义照搬，C 模式不活跃）。
 test "builtin_all_membership" {
-  assert_eq(builtin_all.length(), 175)
+  assert_eq(builtin_all.length(), 179)
   // 签名表 57 名中 56 名 ⊆ 并集（print_int 例外，见上）
   let mut in_union = 0
   for sig in libc_table {

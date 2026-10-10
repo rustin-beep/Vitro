@@ -213,6 +213,58 @@ fn VitroVM::execute_host_func(
     144 =>
       // unreachable：教学 trap（文案 host 单源；空 loc 同上）
       self.trap(@host.host_unreachable(), 0, 0)
+    // ── #10 P1 批（2026-10-10）：difftime + vprintf 族 ──
+    145 => {
+      // difftime(time1, time0)：实参倒序压栈（argN 先压）——先弹 time1
+      let time1 = self.pop()
+      let time0 = self.pop()
+      self.push(@host.host_difftime(time1, time0))
+    }
+    146 => {
+      // vprintf(fmt, ap)：ap 是 va_list 游标值（指向调用者变参区）
+      let fmt_addr = self.pop_addr()
+      let ap = self.pop_addr()
+      let reply = @host.host_vprintf_n(
+        self.mem_map,
+        self.memory,
+        self.output,
+        fmt_addr,
+        ap,
+      )
+      self.apply_reply(reply)
+    }
+    147 => {
+      // vfprintf(stream, fmt, ap)
+      let stream = self.pop_addr()
+      let fmt_addr = self.pop_addr()
+      let ap = self.pop_addr()
+      let reply = @host.host_vfprintf_n(
+        self.mem_map,
+        self.memory,
+        self.output,
+        self.vfs,
+        stream.to_uint64(),
+        fmt_addr,
+        ap,
+      )
+      self.apply_reply(reply)
+    }
+    148 => {
+      // vsnprintf(buf, size, fmt, ap)：倒序压栈——弹序 buf→size→fmt→ap
+      let buf_addr = self.pop_addr()
+      let size = self.pop_i32()
+      let fmt_addr = self.pop_addr()
+      let ap = self.pop_addr()
+      let reply = @host.host_vsnprintf(
+        self.mem_map,
+        self.memory,
+        buf_addr,
+        size,
+        fmt_addr,
+        ap,
+      )
+      self.apply_reply(reply)
+    }
     // ── rand/srand（LCG 状态在 vm）──
     35 => self.push_i32(@host.host_rand(self.rand))
     36 => @host.host_srand(self.rand, self.pop().to_uint())

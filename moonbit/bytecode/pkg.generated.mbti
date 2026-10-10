@@ -23,7 +23,7 @@ pub const GLOBAL_START : UInt = 0x1000
 
 pub const HEAP_START : UInt = 0x5000
 
-pub const HOST_FUNC_NAME_COUNT : Int = 110
+pub const HOST_FUNC_NAME_COUNT : Int = 114
 
 pub const MEM_SIZE : UInt = 1048576
 

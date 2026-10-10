@@ -271,6 +271,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/not_equal_var.c": Standard(Std::{ src_sha: "f3f6e9dd", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "9438b669dd71f8c7" }),
     "baseline/not_zero.c": Standard(Std::{ src_sha: "ecad3441", exit_code: 0, stdout_sha: "1bad6b8cf97131fc", memory_sha: "74f081b24f1fa786" }),
     "baseline/null_keyword.c": Standard(Std::{ src_sha: "eee2e083", exit_code: 0, stdout_sha: "74234e98afe7498f", memory_sha: "696742cafbe19286" }),
+    "baseline/null_pointer_constant.c": Standard(Std::{ src_sha: "3f600f45", exit_code: 42, stdout_sha: "e3b0c44298fc1c14", memory_sha: "449913a8b67f0c01" }),
     "baseline/octal_literal.c": Standard(Std::{ src_sha: "64aa1f86", exit_code: 0, stdout_sha: "da4ea2a5506f2693", memory_sha: "09346f05a876489d" }),
     "baseline/offsetof_struct.c": Standard(Std::{ src_sha: "0d66de85", exit_code: 0, stdout_sha: "b2a7c750c2fc773e", memory_sha: "96831022bdd66aad" }),
     "baseline/param_shadows_func.c": Standard(Std::{ src_sha: "dbad2b64", exit_code: 0, stdout_sha: "3d2f0fde839cff88", memory_sha: "bcafb38f9c26cc19" }),

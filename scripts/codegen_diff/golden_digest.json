@@ -229,6 +229,7 @@
         "not_equal_var.c": "f3f6e9dd",
         "not_zero.c": "ecad3441",
         "null_keyword.c": "eee2e083",
+        "null_pointer_constant.c": "3f600f45",
         "octal_literal.c": "64aa1f86",
         "offsetof_struct.c": "0d66de85",
         "param_shadows_func.c": "dbad2b64",
@@ -1072,6 +1073,9 @@
         },
         "null_keyword.c": {
           "result_sha": "b904bbbbabb02546"
+        },
+        "null_pointer_constant.c": {
+          "result_sha": "2e3b86740ba1d2d5"
         },
         "octal_literal.c": {
           "result_sha": "30465c2b1ecaf3e0"

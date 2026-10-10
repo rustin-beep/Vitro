@@ -425,7 +425,12 @@ fn TypeChecker::process_var_decl(
         if suppress {
           self.char_narrow_suppress = true
         }
-        let assignable = self.check_assignable(var_type_2, init_type, loc)
+        let assignable = self.check_assignable(
+          var_type_2,
+          init_type,
+          loc,
+          value_expr=resolved,
+        )
         if suppress {
           self.char_narrow_suppress = false
         }
@@ -465,7 +470,7 @@ fn TypeChecker::check_and_adjust_call_args(
   for i in 0..<count {
     let (arg_type, new_arg) = self.resolve_expr_type(args[i])
     args[i] = new_arg
-    if !self.check_assignable(param_types[i], arg_type, loc) {
+    if !self.check_assignable(param_types[i], arg_type, loc, value_expr=args[i]) {
       self.report_error(
         "函数 '\{name}' 第 \{i + 1} 个参数类型不匹配",
         loc,
@@ -560,7 +565,12 @@ fn TypeChecker::check_user_func(
                 for i in 0..<param_types.length() {
                   let (arg_type, new_arg) = self.resolve_expr_type(args[i])
                   args[i] = new_arg
-                  if !self.check_assignable(param_types[i], arg_type, loc) {
+                  if !self.check_assignable(
+                      param_types[i],
+                      arg_type,
+                      loc,
+                      value_expr=args[i],
+                    ) {
                     self.report_error(
                       "函数 '\{name}' 第 \{i + 1} 个参数类型不匹配",
                       loc,

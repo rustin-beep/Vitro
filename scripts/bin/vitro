@@ -17,7 +17,11 @@ run_native() {
   if [ -f "$NATIVE_EXE" ]; then
     exe_mtime=$(cd "$(dirname "$NATIVE_EXE")" && ls -l --time-style=+%s "$(basename "$NATIVE_EXE")" 2>/dev/null | awk '{print $6}')
     if [ -n "$exe_mtime" ]; then
-      newer_src=$(find "$REPO/moonbit/cmd" "$REPO/moonbit/host" "$REPO/moonbit/parser" "$REPO/moonbit/typeck" "$REPO/moonbit/lexer" "$REPO/moonbit/codegen" "$REPO/moonbit/vm" -name '*.mbt' -newermt "@$exe_mtime" 2>/dev/null | head -1)
+      # 陈旧检测面 = moonbit/ 全部 .mbt（#57-2：原七目录枚举漏 gateway/
+      # time_travel/teaching/protocol/session/memory/diag/ast/util 九包——
+      # #35 排障时改 serve_step/engine 零告警连环假阴性；剪枝 _build 与
+      # .mooncakes，新包零维护自动入面）
+      newer_src=$(find "$REPO/moonbit" -type d \( -name '_build' -o -name '.mooncakes' \) -prune -o -type f -name '*.mbt' -newermt "@$exe_mtime" -print 2>/dev/null | head -1)
       if [ -n "$newer_src" ]; then
         echo "[vitro] ⚠ native exe 陈旧（源已改：${newer_src##*/} 等）——结论可能来自旧代码；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro" >&2
       fi

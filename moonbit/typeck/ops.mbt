@@ -400,7 +400,12 @@ fn TypeChecker::resolve_assign(
   let new_right : @ast.Expr = if ptr_compound_ok {
     // 指针 +=/-= 整数：跳过普通赋值兼容性检查，右侧保持整数类型
     new_right_pre
-  } else if !self.check_assignable(left_type, right_type, loc) {
+  } else if !self.check_assignable(
+      left_type,
+      right_type,
+      loc,
+      value_expr=new_right_pre,
+    ) {
     self.report_error(
       "类型不匹配：无法将 '\{right_type.to_c_string()}' 赋值给 '\{left_type.to_c_string()}'",
       loc,

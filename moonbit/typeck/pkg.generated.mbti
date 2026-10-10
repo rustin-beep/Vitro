@@ -40,7 +40,7 @@ pub struct TypeChecker {
 pub fn TypeChecker::check(Self, @ast.ProgramNode) -> (@ast.ProgramNode, Array[TypeError], Array[TypeError], Array[TypeError])
 pub fn TypeChecker::check_array_dims_legality(Self, @ast.Type, Bool, @source.SourceLoc) -> Unit
 pub fn TypeChecker::check_array_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> (@ast.Type, @ast.Expr)
-pub fn TypeChecker::check_assignable(Self, @ast.Type, @ast.Type, @source.SourceLoc) -> Bool
+pub fn TypeChecker::check_assignable(Self, @ast.Type, @ast.Type, @source.SourceLoc, value_expr? : @ast.Expr) -> Bool
 pub fn TypeChecker::check_printf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
 pub fn TypeChecker::check_scanf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
 pub fn TypeChecker::check_struct_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> @ast.Expr

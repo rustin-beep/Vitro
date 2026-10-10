@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #56：W3054 空指针常量误报——NULL/字面量 0 转指针的 C11 6.3.2.3 豁免，2026-10-10）
+
+- **根因**：`check_pointer_assignable`（typeck/convert.mbt）对「指针 ← 整数」一律 W3054，缺「值为 0 的整型常量」豁免——`f(NULL)` / `char *p = NULL` / `time(0)` 惯用法全族误报（Clang -Wall -Wextra 干净；警告文案自己举「NULL = 0」作正面例子却对它触发）。
+- **修复**：`check_assignable` 增可选参数 `value_expr? : @ast.Expr`（向后兼容），W3054 分支前置空指针常量判定——parser 已把 NULL 折为 `Literal(0, void*)`，`v == 0` 一并覆盖字面量 0；赋值/声明初始化/函数实参（新旧式）/函数指针调用/聚合初始化/全局初始化 13 处调用点传表达式句柄，builtin 参数面等无句柄路径保守维持警告（教学警示：非零常量 `f(5)`、变量 `char *q = z` 照旧）。红→绿锚 `assign_null_pointer_constant_no_w3054` 五臂（两正三负）。
+- **语料翻转**（W3054 消失 124 条 / 46 用例，全部码集 {3054}、零新增、type_warnings 之外零变化——dump 新旧对拍逐例验证）：typeck digest 五语料面重冻（删旧键重跑 `--freeze-mb`，2915541c 同款手法）；新用例 `null_pointer_constant.c` 入六驱动 digest（typeck/vm_diff/parser/codegen/lexer + clang_direct 直拍 SAME）。测试数连坐 705（README×3 / 快速入门×2 / 防线文档 / 路线图）；moonbit/README 分解式重账（typeck 35 / host 147 / memory 32——含 cdcbbcc3 病 6/8 两锚漏账）+ native 口径 827。
+
+### Fixed（issue #57：CLI 使用面三缺陷——step stdout 透出 + launcher 告警盲区 + serve_smoke 注入形态预检，2026-10-10）
+
+- **`vitro step` 不透出程序 stdout**：预跑 run 的输出被 `step.begin` 的 `output.clear()` 清掉、step 帧流本身不含 stdout。修复 = step 流后拉 `output.delta`（run --json 先例）：json 模式 summary 行前插 `{"type":"stdout",...}` 帧；文本模式终态/死因行后原样直写（native 侧 `decode_delta_stdout`——单步完整解码不经 extract 的部分还原〔字面 `
+` 会被误还原为换行〕，Latin-1 反折字节域 `write_stdout` 直写，`putchar(200)` 单字节保真实测）；双臂同形（node 壳 cmdStep 同步修，不补尾换行两臂一致）。`step` 增 `write_stdout` 参数（cmd/step 壳补 stdout_stub 链接）。预跑 run 的性能双倍问题不在本批（step.begin 无 argv 参数属 #29 引擎面）。
+- **launcher 陈旧告警目录盲区**：`scripts/bin/vitro` 只扫七目录，gateway/time_travel/teaching 等九包改源零告警（#35 排障连环假阴性帮凶）——改 `moonbit/` 全仓剪枝扫描（`_build`/`.mooncakes` 除外），新包零维护自动入面。证红：touch `gateway/serve_step.mbt` 触发告警（修复前盲区）。
+- **serve_smoke 注入通道形态预检**：`VITRO_CLI=<总入口 exe>` 对 serve 子命令按 #37 B1 拒绝，主批跑起来全 FAIL 误导排障——注入通道加 serve 形态预检（单请求 ping，首响应非 JSON 帧 = fail loud 给正道指引），预检过则同载豁免表（豁免跟着被测物走——否则暴露两条永久豁免形态差断言恒红）。`-moonbit` 臂本地全绿不受影响（68：66P/豁免2）；注入真 serve 产物 66P/0F。
+
 ### Fixed（两轮审阅处置批：P1 五闸收口 + sscanf 同族补齐 + e4 出口锚加牙 + trap 帧帧级锚，2026-10-09，refs #59）
 
 - **P1 五闸**：surface 边表补 `host → util i64_to_i32_bits`（#47 引入未登记）+ moon fmt 归一 10 文件（含 #35/#47 死字段批的 serve_step×2/trace×2）+ lexer_diff baseline 入账 whitespace_vtab_formfeed（#55 新例漏冻）+ typeck_diff leetcode 重冻 lc_49.c（#47 W3067 抑制的行为变更 golden）+ 两份 README 测试数实测重账 691/685→702（lexer/internal/scanner 7 测试自旧合记拆分单列、fuzz 六测试实为 host 包内件、旧「分解和 + 根 doc test」两段式旁账撤销）。
@@ -103,6 +116,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   本批面）；双臂 smoke + demo_smoke 168 全绿。
 - 与 #20（层间 fail-fast 遮蔽）#8（typeck 码误导）三层互不替代——层内
   恢复不消除层间短路，反之亦然。
+
+### Added（#60 批一：教学资产数据外置起步——43 算法文案真源 .json.mbt + 生成管线 + 键集闸，refs #60，2026-10-10）
+
+- **架构落地（SVG 图标模式推广）**：43 算法教学文案从 `teaching/steps/suggestions.mbt` 硬编码 match 臂外置为数据真源——管线 `scripts/moonbit/teaching_assets/suggestions.json.mbt`（jsonmbt：43 带参枚举变体〔拼错写时红〕+ `#|` 多行长文案 + `//` 教学意图注释）→ `jsonmbt build` 降级 JSON（不入仓、CI 再生，rules 模式）→ `scripts/moonbit/gen_teaching_assets`（Go 生成器：43 名单硬编码双向对账 + sha 落款幂等 `-check` + 内置 moon fmt〔fmt-stable 预置 `///|` 形态——moon fmt 会给紧邻顶层声明的注释后插分隔行〕）→ `teaching/steps/suggestions_gen.mbt` 内嵌产物；suggestions.mbt 改查表消费（43 臂删除，miss 走既有空串兜底）。
+- **形态裁定过程**：enum 键 Map 字面量 moon 判 4014 不合法（实测）——取带参枚举数组（D-5 形态）达成同等「拼错写时红」；`#|` 行净内容含可读性前导空格（jsonmbt 语义）由生成器剥。
+- **接线**：CI 独立步（jsonmbt build + gen_teaching_assets -check）；.gitignore 遮蔽降级 JSON；脚本总清单两表登记。
+- **验收（行为零漂移）**：moon test 704/704；teaching 族级对拍 82/82 逐条一致；vm_diff 618/5/0、typeck_diff 385 一致；surface/pkg_deps/mbti_sync 绿；J9 双路证红（名单错键红 / 产物篡改红 / 复原绿）。
 
 ### Fixed（#47 病 6/7/8 三病：realloc 诊断 / breakpoints 回显真源 / allocate_raw(0) 拒绝，refs #47，2026-10-09）
 

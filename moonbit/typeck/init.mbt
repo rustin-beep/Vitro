@@ -128,7 +128,12 @@ pub fn TypeChecker::check_struct_initializer(
     _ => {
       // 非 InitList：按整体赋值检查
       let (init_type, new_init) = self.resolve_expr_type(init)
-      if !self.check_assignable(struct_type, init_type, loc) {
+      if !self.check_assignable(
+          struct_type,
+          init_type,
+          loc,
+          value_expr=new_init,
+        ) {
         self.report_error(
           "类型不匹配：无法将 '\{init_type.to_c_string()}' 赋值给 '\{struct_type.to_c_string()}'",
           loc,
@@ -161,7 +166,7 @@ fn TypeChecker::check_field_value(
     new_value
   } else {
     let (e_type, new_value) = self.resolve_expr_type(value)
-    if !self.check_assignable(field_ty, e_type, loc) {
+    if !self.check_assignable(field_ty, e_type, loc, value_expr=new_value) {
       // issue #19 销案（2026-10-06）：C11 §6.7.9 花括号省略/零初始化——
       // 常量 0 可初始化任意聚合成员（`struct S g = {0};` 惯用法——标量 0
       // 递归作用于首个标量子成员，数组成员收 0 即首元素零、其余默认零填
@@ -229,7 +234,7 @@ fn TypeChecker::validate_nested_init_list(
       return (true, new_init)
     }
     let (e_type, new_init) = self.resolve_expr_type(init)
-    if !self.check_assignable(element_type, e_type, loc) {
+    if !self.check_assignable(element_type, e_type, loc, value_expr=new_init) {
       self.report_error(
         "数组初始化元素类型不匹配：期望 '\{element_type.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
         loc,
@@ -284,7 +289,7 @@ fn TypeChecker::validate_nested_init_list(
         // C/C++ 允许括号省略：标量可用于初始化当前子数组的第一个元素，
         // 其余零填充。例如 int a[5][5] = {0}; int b[2][3] = {1, 2};
         let (e_type, new_init) = self.resolve_expr_type(init)
-        if self.check_assignable(element_type, e_type, loc) {
+        if self.check_assignable(element_type, e_type, loc, value_expr=new_init) {
           return (true, insert_implicit_cast(new_init, element_type))
         }
         self.report_error(
@@ -426,7 +431,12 @@ pub fn TypeChecker::check_array_initializer(
               if suppress {
                 self.char_narrow_suppress = true
               }
-              let ok = self.check_assignable(elem_type, e_type, loc)
+              let ok = self.check_assignable(
+                elem_type,
+                e_type,
+                loc,
+                value_expr=new_value,
+              )
               if suppress {
                 self.char_narrow_suppress = false
               }
@@ -557,7 +567,7 @@ fn TypeChecker::check_array_elem_value(
     if suppress {
       self.char_narrow_suppress = true
     }
-    let ok = self.check_assignable(elem_type, e_type, loc)
+    let ok = self.check_assignable(elem_type, e_type, loc, value_expr=new_value)
     if suppress {
       self.char_narrow_suppress = false
     }
@@ -609,7 +619,12 @@ fn TypeChecker::resolve_compound_literal(
           } else {
             let elem = elements[0]
             let (e_type, new_value) = self.resolve_expr_type(elem.value)
-            if !self.check_assignable(target_type, e_type, loc) {
+            if !self.check_assignable(
+                target_type,
+                e_type,
+                loc,
+                value_expr=new_value,
+              ) {
               self.report_error(
                 "标量复合字面量类型不匹配：期望 '\{target_type.to_c_string()}'，实际 '\{e_type.to_c_string()}'",
                 loc,

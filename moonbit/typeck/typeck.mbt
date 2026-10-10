@@ -293,7 +293,13 @@ pub fn TypeChecker::check(
         if !@ast.type_eq(new_ty, g_now.ty) {
           program.globals[i] = { ..g_now, ty: new_ty, }
         }
-        if !self.check_assignable(new_ty, init_type, g.loc) {
+        let g_init_expr : @ast.Expr? = g_now.init
+        let g_assign_ok : Bool = match g_init_expr {
+          Some(ie) =>
+            self.check_assignable(new_ty, init_type, g.loc, value_expr=ie)
+          None => self.check_assignable(new_ty, init_type, g.loc)
+        }
+        if !g_assign_ok {
           self.report_error(
             "类型不匹配：无法将 '\{init_type.to_c_string()}' 赋值给 '\{new_ty.to_c_string()}'",
             g.loc,

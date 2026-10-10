@@ -5,7 +5,11 @@
 // + 批计数足够，不做全解析）。
 
 ///|
-pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
+pub fn step(
+  args : Array[String],
+  read_stdin : () -> Bytes,
+  write_stdout : (Bytes) -> Unit,
+) -> Int {
   let mut file = ""
   let mut json_mode = false
   // 默认 100_000 对齐 Rust unified（手册口径——2026-10-04 对照复核修正：
@@ -106,6 +110,11 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
     }
   }
   if json_mode {
+    // 程序 stdout 帧（#57-1：step 流不含 stdout——预跑 run 的输出被
+    // step.begin 的 output.clear() 清掉，重跑产物只在 vm 输出通道；本行
+    // 与 run --json 的 type:stdout 帧同形，summary 收口行之前）
+    let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
+    println("{\"type\":\"stdout\",\"frame\":\{out}}")
     // 摘要末行（type:summary——NDJSON 事件流收口）
     println(
       "{\"type\":\"summary\",\"frames\":\{frames},\"finished\":\{finished},\"trapped\":\{trapped}}",
@@ -118,6 +127,14 @@ pub fn step(args : Array[String], read_stdin : () -> Bytes) -> Int {
     if trapped {
       // trap 死因（轻提取：trap_message 字段串段——summary 模式够用）
       println("死因: \{extract_json_string_field(last, "trap_message")}")
+    }
+    // 程序 stdout 原样直写（#57-1：终态行后——文本模式消费面 = shell 管道
+    // 拿原文，与 run 文本模式同契约；delta 为 Latin-1 折回文本，反折回字
+    // 节域经 write_stdout 直写，putchar(200) 单字节保真同款）
+    let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
+    let bytes = decode_delta_stdout(out)
+    if bytes.length() > 0 {
+      write_stdout(bytes)
     }
   }
   if trapped {
@@ -221,3 +238,104 @@ fn parse_int(s : String) -> Int? {
 
 // to_hex4 已随 escape_json 本地副本一并退役（转义单源 @util.json_escape，
 // issue #55 六份收一）。
+
+///|
+/// output.delta 帧的 stdout 文本反折回字节域（#57-1 文本模式专用，
+/// 单步完整解码——不经 extract_json_string_field：其 \" / \n 部分还原
+/// 对含字面反斜杠的 stdout 有损，程序输出 `\n` 两字节〔JSON 文本 `\\n`〕
+/// 会被误还原为换行）：帧内定位 `"delta":"` 值段，按 RFC 8259 转义还原
+/// （\" \\ \/ \b \f \n \r \t \uXXXX；json_escape 只对 <0x20 与引号反斜杠
+/// 转义，\u 域 ≤0x1F 取低字节）+ 非 ASCII char 取低 8 位（delta 是
+/// Latin-1 逐字节折回文本——gateway serve_io 通道分域，C 程序字节流口
+/// 径），产出与程序原 stdout 逐字节一致。
+fn decode_delta_stdout(frame : String) -> Bytes {
+  let pat = "\"delta\":\""
+  let cs = frame.to_array()
+  let mut start = -1
+  let mut k = 0
+  while k <= cs.length() - pat.length() {
+    if frame[k:k + pat.length()].to_owned() == pat {
+      start = k + pat.length()
+      break
+    }
+    k += 1
+  }
+  let buf : Array[Byte] = []
+  let mut i = start
+  while i < cs.length() {
+    let c = cs[i]
+    if c == '"' {
+      break
+    }
+    if c == '\\' && i + 1 < cs.length() {
+      let n = cs[i + 1]
+      let b : Int = match n {
+        '"' => 0x22
+        '\\' => 0x5C
+        '/' => 0x2F
+        'b' => 0x08
+        'f' => 0x0C
+        'n' => 0x0A
+        'r' => 0x0D
+        't' => 0x09
+        'u' => {
+          // \uXXXX：json_escape 域 ≤0x1F（低字节即原字节）；防御性兼容
+          // 高码点——按 UTF-8 编码写入（不可达域，emitter 不产）
+          if i + 5 < cs.length() {
+            let cp = parse_hex4(cs[i + 2], cs[i + 3], cs[i + 4], cs[i + 5])
+            if cp <= 0xFF {
+              buf.push(cp.to_byte())
+              i += 6
+              continue
+            }
+            if cp < 0x80 {
+              buf.push(cp.to_byte())
+            } else if cp < 0x800 {
+              buf.push((0xC0 | (cp >> 6)).to_byte())
+              buf.push((0x80 | (cp & 0x3F)).to_byte())
+            } else if cp < 0x10000 {
+              buf.push((0xE0 | (cp >> 12)).to_byte())
+              buf.push((0x80 | ((cp >> 6) & 0x3F)).to_byte())
+              buf.push((0x80 | (cp & 0x3F)).to_byte())
+            } else {
+              buf.push((0xF0 | (cp >> 18)).to_byte())
+              buf.push((0x80 | ((cp >> 12) & 0x3F)).to_byte())
+              buf.push((0x80 | ((cp >> 6) & 0x3F)).to_byte())
+              buf.push((0x80 | (cp & 0x3F)).to_byte())
+            }
+            i += 6
+            continue
+          }
+          0x5C
+        }
+        _ => 0x5C
+      }
+      buf.push(b.to_byte())
+      i += 2
+    } else {
+      // Latin-1 反折：每 char 低 8 位（≥0x80 字节折回域）
+      buf.push((c.to_int() & 0xFF).to_byte())
+      i += 1
+    }
+  }
+  Bytes::from_array(buf)
+}
+
+///|
+/// 四位十六进制解析（decode_delta_stdout 的 \uXXXX 臂；非法位 = 0——
+/// gateway emitter 只产合法序列，防御性兜底）。
+fn parse_hex4(a : Char, b : Char, c : Char, d : Char) -> Int {
+  let h = fn(ch : Char) -> Int {
+    let v = ch.to_int()
+    if v >= '0'.to_int() && v <= '9'.to_int() {
+      v - '0'.to_int()
+    } else if v >= 'a'.to_int() && v <= 'f'.to_int() {
+      v - 'a'.to_int() + 10
+    } else if v >= 'A'.to_int() && v <= 'F'.to_int() {
+      v - 'A'.to_int() + 10
+    } else {
+      0
+    }
+  }
+  (h(a) << 12) | ((h(b) << 8) | ((h(c) << 4) | h(d)))
+}

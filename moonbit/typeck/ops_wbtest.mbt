@@ -301,3 +301,73 @@ test "assign_const_gain_pointer_no_w3067" {
     msg="多级 const 增强维持 W3067（C 标准）",
   )
 }
+
+///|
+/// #56 锚：空指针常量（C11 §6.3.2.3）转指针是定义良好语义，零 W3054——
+/// parser 把 NULL 折为 Literal(0, void*)，与字面量 0 同形，`v == 0` 一并
+/// 覆盖（实机样本 batch24 `time(NULL)` 全族曾误报、Clang -Wall -Wextra
+/// 干净）。负锚锁教学警示面：非零常量、标识符（非常量）、无表达式句柄
+/// （builtin 参数面等保守路径）照旧 W3054。
+test "assign_null_pointer_constant_no_w3054" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let char_ptr = @ast.Type::Pointer(@ast.Type::Char(false, false), false)
+  // char* p = NULL（parser 折 Literal(0, void*)）
+  let tc = TypeChecker::new()
+  let ok = tc.check_assignable(
+    char_ptr,
+    @ast.Type::int(),
+    loc,
+    value_expr=@ast.Expr::Literal(
+      0,
+      loc,
+      @ast.Type::pointer_to(@ast.Type::void_type()),
+    ),
+  )
+  assert_true(ok, msg="NULL 赋指针须可赋值")
+  assert_eq(tc.warnings.length(), 0, msg="NULL 不得产 W3054")
+  // char* p = 0（字面量 0）
+  let tc2 = TypeChecker::new()
+  ignore(
+    tc2.check_assignable(
+      char_ptr,
+      @ast.Type::int(),
+      loc,
+      value_expr=@ast.Expr::Literal(0, loc, @ast.Type::int()),
+    ),
+  )
+  assert_eq(tc2.warnings.length(), 0, msg="字面量 0 不得产 W3054")
+  // 负锚 1：非零常量照报
+  let tc3 = TypeChecker::new()
+  ignore(
+    tc3.check_assignable(
+      char_ptr,
+      @ast.Type::int(),
+      loc,
+      value_expr=@ast.Expr::Literal(5, loc, @ast.Type::int()),
+    ),
+  )
+  assert_eq(tc3.warnings.length(), 1, msg="非零整数常量须维持 W3054")
+  // 负锚 2：标识符（非常量整数表达式）照报
+  let tc4 = TypeChecker::new()
+  ignore(
+    tc4.check_assignable(
+      char_ptr,
+      @ast.Type::int(),
+      loc,
+      value_expr=@ast.Expr::Identifier("x", loc, @ast.Type::int()),
+    ),
+  )
+  assert_eq(
+    tc4.warnings.length(),
+    1,
+    msg="非常量整数表达式须维持 W3054",
+  )
+  // 负锚 3：无表达式句柄（builtin 参数面等）保守照报
+  let tc5 = TypeChecker::new()
+  ignore(tc5.check_assignable(char_ptr, @ast.Type::int(), loc))
+  assert_eq(
+    tc5.warnings.length(),
+    1,
+    msg="无表达式句柄时保守维持 W3054",
+  )
+}

@@ -361,20 +361,41 @@ fn strip_top_const(t : @ast.Type) -> @ast.Type {
 }
 
 ///|
+/// 空指针常量判定（C11 §6.3.2.3，issue #56）：值为 0 的整型常量转指针
+/// 是空指针语义、定义良好无须诊断（Clang -Wall -Wextra 对惯用法全族
+/// 干净）。parser 把 NULL 关键字折为 Literal(0, void*)（parser/expr.mbt
+/// Null 分支），与字面量 0 同形——`v == 0` 一并覆盖；非零常量与非常量
+/// 表达式不豁免（教学警示面保留）。显式 cast（(char*)0）类型层已是指
+/// 针，不经 W3054 分支。
+fn is_null_pointer_constant(e : @ast.Expr) -> Bool {
+  match e {
+    Literal(v, _, _) => v == 0
+    _ => false
+  }
+}
+
+///|
 fn TypeChecker::check_pointer_assignable(
   self : TypeChecker,
   target : @ast.Type,
   value : @ast.Type,
   loc : @source.SourceLoc,
+  value_expr : @ast.Expr?,
 ) -> Bool {
   let tk = target.kind()
   let vk = value.kind()
   if tk is TK_Pointer && vk is TK_Int {
-    self.report_warning(
-      "整数被隐式转换为指针。建议确保这是有意义的地址值（如 NULL = 0）。",
-      loc,
-      W3054_IntToPointerCast,
-    )
+    // issue #56（2026-10-10）：空指针常量豁免——NULL 惯用法全族
+    // （f(NULL) / char *p = NULL / f(0)）曾误报 W3054，警告文案自己举
+    // 「NULL = 0」作正面例子却对它触发；表达式句柄缺席（builtin 参数
+    // 面等）时保守维持警告
+    if !(value_expr is Some(e) && is_null_pointer_constant(e)) {
+      self.report_warning(
+        "整数被隐式转换为指针。建议确保这是有意义的地址值（如 NULL = 0）。",
+        loc,
+        W3054_IntToPointerCast,
+      )
+    }
     return true
   }
   // C 标准：任意指针或数组都可隐式转换为 void*
@@ -439,6 +460,7 @@ pub fn TypeChecker::check_assignable(
   target : @ast.Type,
   value : @ast.Type,
   loc : @source.SourceLoc,
+  value_expr? : @ast.Expr,
 ) -> Bool {
   if @ast.type_eq(target, value) {
     return true
@@ -463,7 +485,7 @@ pub fn TypeChecker::check_assignable(
   if self.check_scalar_assignable(target, value, loc) {
     return true
   }
-  if self.check_pointer_assignable(target, value, loc) {
+  if self.check_pointer_assignable(target, value, loc, value_expr) {
     return true
   }
   false

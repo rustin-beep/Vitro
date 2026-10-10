@@ -117,7 +117,12 @@ fn TypeChecker::resolve_call_ptr(
         for i in 0..<args.length() {
           let (arg_type, new_arg) = self.resolve_expr_type(args[i])
           args[i] = new_arg
-          if !self.check_assignable(param_types[i], arg_type, loc) {
+          if !self.check_assignable(
+              param_types[i],
+              arg_type,
+              loc,
+              value_expr=args[i],
+            ) {
             self.report_error(
               "函数指针调用第 \{i + 1} 个参数类型不匹配",
               loc,

@@ -1353,6 +1353,12 @@
       "stdout_sha": "74234e98afe7498f",
       "memory_sha": "696742cafbe19286"
     },
+    "baseline/null_pointer_constant.c": {
+      "src_sha": "3f600f45",
+      "exit_code": 42,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "449913a8b67f0c01"
+    },
     "baseline/octal_literal.c": {
       "src_sha": "64aa1f86",
       "exit_code": 0,

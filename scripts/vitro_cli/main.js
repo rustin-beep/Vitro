@@ -361,6 +361,9 @@ async function cmdStep(args) {
     else if (res.waiting_input === true) { running = false; }
   }
   if (jsonMode) {
+    // 程序 stdout 帧（#57-1：与 run --json 同形，summary 收口行之前）
+    const outStd = inv("output.delta", { cursor: 0, stream: "stdout" });
+    process.stdout.write(JSON.stringify({ type: "stdout", backend: BACKEND, frame: outStd }) + "\n");
     process.stdout.write(
       JSON.stringify({ type: "summary", backend: BACKEND, frames, finished, trapped }) + "\n",
     );
@@ -371,6 +374,13 @@ async function cmdStep(args) {
     if (trapped) {
       const msg = (last && last.result && last.result.trap_message) || "";
       process.stdout.write(`死因: ${msg}\n`);
+    }
+    // 程序 stdout 原样直写（#57-1：终态行后——Latin-1 折回反折字节域，
+    // 与 native cli_step 的 decode_delta_stdout 同口径；末段输出不补换行）
+    const outStd = inv("output.delta", { cursor: 0, stream: "stdout" });
+    const delta = (outStd.result && outStd.result.delta) || "";
+    if (delta !== "") {
+      process.stdout.write(Buffer.from(delta, "latin1"));
     }
   }
   if (trapped) {

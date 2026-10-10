@@ -27,7 +27,7 @@ fn main {
   let code = match cmd {
     "run" => @cli.run(rest, make_clock(), make_stdin(), write_stdout_stub)
     "compile" => @cli.compile(rest, make_stdin())
-    "step" => @cli.step(rest, make_stdin())
+    "step" => @cli.step(rest, make_stdin(), write_stdout_stub)
     "api" => @cli.api(rest, make_stdin())
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       println(

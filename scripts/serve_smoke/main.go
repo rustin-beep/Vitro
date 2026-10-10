@@ -111,6 +111,7 @@ var (
 	auditSet     map[string]bool
 	mbMode       bool
 	backendWasm  bool // #49 批三：--backend-wasm
+	injectedMB   bool // #57-3：VITRO_CLI 注入臂预检过（serve 形态）——豁免表同载
 	mbExempt     map[string]string
 	mbBatches    map[string]string
 	exempted     int
@@ -128,7 +129,10 @@ func check(cond bool, label, detail string) {
 	// 不计入 MoonBit 臂口径，避免"豁免了但实际一直绿"的僵尸条目；
 	// 销项时机到了直接删条目即恢复断言。（僵尸的机判 = --audit-exemptions：
 	// 豁免全失效真跑，PASS 即僵尸——D19。）
-	if mbMode || backendWasm {
+	// #57-3：VITRO_CLI 注入臂预检通过后同载豁免表（被测物同为 MoonBit
+	// serve 形态，豁免跟着被测物走——否则注入真产物暴露两条永久豁免的
+	// 形态差断言恒红，通道事实不可用）
+	if mbMode || backendWasm || injectedMB {
 		if reason, ok := mbExempt[label]; ok {
 			exempted++
 			fmt.Printf("  SKIP  %s（豁免：%s）\n", label, reason)
@@ -398,7 +402,30 @@ func run() int {
 			fmt.Printf("错误: VITRO_CLI 指定的 %s 不存在\n", exe)
 			return 2
 		}
-		fmt.Printf("vitro_cli（注入）: %s\n", exe)
+		// 形态预检（#57-3）：本通道消费面 = serve 形态（stdin JSONL → 首行
+		// JSON 帧）。总入口 exe 的 serve 子命令按 #37 B1 主动拒绝（打印
+		// 文案退出 4）——旧期待〔Rust vitro_cli serve 子命令〕与现役架构
+		// 脱节，注入总入口主批跑起来全 FAIL 误导排障（#35 排障实录）。
+		// 只判形态不判行为：桩 exe 保持 serve 形态即可继续埋雷证红。
+		pingOut, _, _, pingTimeout := runServeBatch(exe, "{\"id\":0,\"method\":\"session.create\",\"params\":{}}\n", 15*time.Second)
+		firstLine := strings.TrimSpace(strings.SplitN(pingOut, "\n", 2)[0])
+		if pingTimeout || !strings.HasPrefix(firstLine, "{") {
+			fmt.Printf("错误: VITRO_CLI 注入的 %s 不是 serve 形态（首响应非 JSON 帧）\n", exe)
+			fmt.Println("  总入口 exe 的 serve 子命令已按 #37 B1 拒绝收拢——本通道期待 cmd/serve 产物（stdin JSONL 主程序）")
+			fmt.Println("  正道：go run ./scripts/serve_smoke -moonbit（自动寻址/构建 cmd/serve）")
+			fmt.Println("  注入：VITRO_CLI=moonbit/_build/native/debug/build/cmd/serve/serve.exe（或 VITRO_SERVE_MB 同路径）")
+			return 2
+		}
+		// 豁免表同载（#57-3——被测物是 MoonBit serve 形态；check 闭包按
+		// injectedMB 走豁免分支）
+		ex, eb, err := loadMoonBitExemptions()
+		if err != nil {
+			fmt.Printf("错误: %v\n", err)
+			return 2
+		}
+		mbExempt, mbBatches = ex, eb
+		injectedMB = true
+		fmt.Printf("vitro_cli（注入）: %s（豁免 %d 断言 + %d 整批）\n", exe, len(mbExempt), len(mbBatches))
 	} else {
 		fmt.Println("错误: 未选被测物臂——rust 臂已退役（2026-10-05 删区）。现役两枝：")
 		fmt.Println("  go run ./scripts/serve_smoke -moonbit            # native cmd/serve exe")

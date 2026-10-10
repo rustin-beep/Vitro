@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（病 15 FILE\* 族三批全链：编译层三态判定 + 运行层标准流句柄接线 + stderr 出口透出，#61，2026-10-10）
+
+探针拆出三层缺陷并同批修毕（`fseek(1,0,0)` 零诊断只是表层；全部实测留痕 `tmp/issue47_p15/`）：
+
+- **批 A 编译层统一**：FILE\* 参数位 13 处 `!(指针)&&!(int)` 宽放收为三态——指针放行 / **int 字面量 0/1/2 放行**（stdin/stdout/stderr 宏展开通道，预处理后 `stdout` 与裸 `1` 同形，宁纵勿枉）/ 其他 int 报**新码 W3068**（`FilePointerIntArg`——对齐 Clang -Wint-conversion 警告级）/ 非指针非 int 维持 E3029；判定收单源 `builtin_check_file_arg`。**反向缺陷同修**：fflush/clearerr 原无专臂走存根签名检查，`fflush(stdout)` 展开后误吃 E3054 编译失败——补专臂解放。码表 137→138 臂 / catalog 102→103 条（gen_diag 基线连坐）；diag 包 5 基线锚 + e4 出口 + README doc 锚连坐更新。
+- **批 B 运行层标准流句柄接线**：废除 `read_fd` 的 `≤2 一律折叠 fd=0` 静默失败形态——fputc/fwrite 对 stdout/stderr 直推 OutputLog 通道；fgetc/fgets/fread 走 InputState（与 scanf/getchar 同游标；新增 `take_stdin_bytes`/`take_stdin_line` 批读原语——**零消费等待**〔Interactive 空 = `StdioRead::StdioWaiting`，vm 参数回推重试安全〕+ 游标一次性提交〔scanf 虚拟流先例〕）；fseek/ftell 对标准流返 -1（C 非语义 seekable）；fclose/fflush 返 0（拍板：C 语义合法成功，伪句柄常驻）；feof(stdin) 查 EOF 粘滞位。**修复前 `fputc('x', stdout)`/`fgets(b,n,stdin)` 合法 C 输出/输入凭空丢失。** 连带：泄漏报告尾注按来源适配（fopen 场景改教 fclose 配对，不再误导学生用 free）。
+- **批 C stderr 出口透出**：gateway `output.delta` 四通道本就支持 stderr，断点在 CLI/壳层——`run --json` 补 `{"type":"stderr"}` 帧、文本模式补 `// STDERR ` 标记行（`// NOTE` 同构）；vm_diff/clang_direct 两剥离器连坐；**clang_direct 运行捕获改 stdout-only 分离**（cacheSchema cd2→cd3 全量失效重取）——旧合并捕获形态下管道 stderr 无缓冲恒先于 stdout 刷出（fprintf_basic 注释的混排规避债就此消化），对拍口径双侧对称=stdout only。demo 的 stderr-box 消费面本就绪零改动；`engine_note_lookalike.c` 随 stderr 分离转绿，known_direct 台账删空转条目（9→8）。
+- **语料三件**：`stdio_fputc_stdout`（写族+stderr 分流）/ `stdio_fgets_stdin`（stdin 读，配 .in）/ `stdio_fseek_macro`（宏名形态 fflush/fclose——裸 `fseek(1,…)` 因本机 MSVC Clang error vs Vitro 放行的分裂面**不入语料**，由 wbtest 锚锁定）；vm_diff/codegen_diff golden `--freeze-mb` 入账（+7 例 / round-trip 绿）；protocol_frames 基线刷新（帧 9 catalog 103，47 帧一致）。
+- **验证**：moon test 722/722；vm_diff 632 SAME/5 KNOWN/0 DIFF；clang_direct 定点三用例 SAME（全量 4 DIFF = 并发批 vfprintf 族在制品，非本批）；typeck 等价性 stash 对照双证（knr 81 例字节零差 + printf_retval typed_ast 同 hash）；serve_smoke 双臂 / demo_smoke 168 / replay 双臂 61 / cli_smoke 双臂 / facts 漂移 0 / surface / mbti_sync / pkg_deps / libc_single_source / teaching 82/82 全绿。
+
 ### Fixed（demo 课程树打勾环 glass 主题糊成实心点，2026-10-10）
 
 - **用户实报**：课程树「已完成」圆环在「深夜书房」(glass) 下与其余四主题显示不一致——该主题里糊成一个实心绿点。

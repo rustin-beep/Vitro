@@ -260,16 +260,21 @@ fn VitroVM::execute_host_func2(
       let size = self.pop_i32()
       let nmemb = self.pop_i32()
       let stream = self.pop_addr()
-      let reply = @host.host_fread(
-        self.mem_map,
-        self.memory,
-        self.vfs,
-        buf,
-        size,
-        nmemb,
-        stream,
-      )
-      self.apply_reply(reply)
+      // 病 15 批 B：stdin(0) 走 InputState 批读（Interactive 等待语义）
+      match
+        @host.host_fread_dispatch(
+          self.mem_map,
+          self.memory,
+          self.vfs,
+          self.input,
+          buf,
+          size,
+          nmemb,
+          stream,
+        ) {
+        @host.StdioRead::Done(r) => self.apply_reply(r)
+        @host.StdioRead::StdioWaiting => self.waiting_input = true
+      }
     }
     62 => {
       let buf = self.pop_addr()
@@ -280,6 +285,7 @@ fn VitroVM::execute_host_func2(
         self.mem_map,
         self.memory,
         self.vfs,
+        self.output,
         buf,
         size,
         nmemb,
@@ -302,22 +308,33 @@ fn VitroVM::execute_host_func2(
     }
     64 => {
       let stream = self.pop_addr()
-      let reply = @host.host_feof(self.mem_map, self.memory, self.vfs, stream)
+      let reply = @host.host_feof(
+        self.mem_map,
+        self.memory,
+        self.vfs,
+        self.input,
+        stream,
+      )
       self.apply_reply(reply)
     }
     65 => {
       let buf = self.pop_addr()
       let n = self.pop_i32()
       let stream = self.pop_addr()
-      let reply = @host.host_fgets(
-        self.mem_map,
-        self.memory,
-        self.vfs,
-        buf,
-        n,
-        stream,
-      )
-      self.apply_reply(reply)
+      // 病 15 批 B：stdin(0) 走 InputState 单行读
+      match
+        @host.host_fgets_dispatch(
+          self.mem_map,
+          self.memory,
+          self.vfs,
+          self.input,
+          buf,
+          n,
+          stream,
+        ) {
+        @host.StdioRead::Done(r) => self.apply_reply(r)
+        @host.StdioRead::StdioWaiting => self.waiting_input = true
+      }
     }
     66 => {
       let s = self.pop_addr()
@@ -334,8 +351,17 @@ fn VitroVM::execute_host_func2(
     }
     85 => {
       let stream = self.pop_addr()
-      let reply = @host.host_fgetc(self.mem_map, self.memory, self.vfs, stream)
-      self.apply_reply(reply)
+      match
+        @host.host_fgetc_dispatch(
+          self.mem_map,
+          self.memory,
+          self.vfs,
+          self.input,
+          stream,
+        ) {
+        @host.StdioRead::Done(r) => self.apply_reply(r)
+        @host.StdioRead::StdioWaiting => self.waiting_input = true
+      }
     }
     86 => {
       let c = self.pop_i32()
@@ -344,6 +370,7 @@ fn VitroVM::execute_host_func2(
         self.mem_map,
         self.memory,
         self.vfs,
+        self.output,
         c,
         stream,
       )

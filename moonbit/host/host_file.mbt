@@ -1,9 +1,15 @@
 ///| VFS 文件族 17 个 handler（Rust `host/file.rs` 照搬，勘察 §1.7 族 D）。
 ///
 /// **FILE\* 协议**：`fopen` 在堆上分配 4 字节存 fd（区域名 `FILE:<path>`），
-/// 返回该地址；其余 handler 经 [`read_fd`] 从该地址取 fd。**哨兵流**（0/1/2）
-/// 的取数照搬 oracle 等价形态：oracle 裸读 1–4 号地址（NULL 区恒零）得
-/// fd 0，此处前置分支直接给 0——可观测行为一致且不触发 NULL trap。
+/// 返回该地址；其余 handler 经 [`read_fd`] 从该地址取 fd。
+///
+/// **标准流句柄分流（病 15 批 B，#61，2026-10-10）**：预处理宏
+/// stdin/stdout/stderr 展开为裸 int 0/1/2（非 FILE\* 堆地址）——各
+/// handler 前置分流：写族（fputc/fwrite）直推 OutputLog 对应通道、
+/// 读族（fgetc/fgets/fread）走 InputState 批读原语（与 scanf/getchar
+/// 同游标）、状态族（fseek/ftell 返 -1、fclose/fflush 返 0、rewind/
+/// clearerr no-op、feof 查 EOF 粘滞位）。旧形态（≤2 一律折叠 fd=0 静默
+/// 失败）系 oracle 照搬——`fputc('x', stdout)` 合法 C 全静默丢，在案。
 ///
 /// **登记分叉**：① `fclose` 释放 FILE\* 块走 memory `release` 单出口（进
 /// UAF 窗口；oracle `free_region` 不写 freed_logs——缺口 ②）；② fopen 的
@@ -13,17 +19,233 @@
 /// stdout 通道；VFS 落盘属后续裁定，登记）。
 
 ///|
-/// 从 FILE\* 取 fd：哨兵（0/1/2）恒 0（oracle 裸读 NULL 区零值的等价形态）；
-/// 其余受检读 4 字节。
+/// 从 FILE\* 取 fd：非标准流（>2）受检读 4 字节。
 fn read_fd(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
   stream : UInt,
 ) -> Result[UInt, @memory.MemFault] {
-  if stream <= 2U {
-    return Ok(0U)
-  }
   mem.load_u32(map, stream)
+}
+
+///|
+/// stdin 批读原语（病 15 批 B）——跨行取 n 字节（ungetc 优先）。
+/// **None = 零消费等待**（Interactive 无可用字节——vm 参数回推 + ip 回退
+/// 后重试安全，scanf 虚拟流同款判据）；Some = 游标已一次性提交
+/// （空 = EOF〔Batch 置粘滞〕；短读 = 剩余拼接不足 n——read(2) 同款）。
+pub fn InputState::take_stdin_bytes(self : InputState, n : Int) -> Bytes? {
+  if n <= 0 {
+    return Some(b"")
+  }
+  let out : Array[Byte] = []
+  match self.ungetc {
+    Some(ch) => {
+      out.push(ch.to_byte())
+      self.ungetc = None
+    }
+    None => ()
+  }
+  while out.length() < n && self.index < self.lines.length() {
+    let line = self.lines[self.index]
+    while self.char_offset < line.length() && out.length() < n {
+      out.push(line[self.char_offset])
+      self.char_offset = self.char_offset + 1
+    }
+    if self.char_offset >= line.length() {
+      self.index = self.index + 1
+      self.char_offset = 0
+    }
+  }
+  if out.length() == 0 {
+    if self.batch {
+      self.set_eof()
+      return Some(b"")
+    }
+    return None
+  }
+  Some(Bytes::from_array(out))
+}
+
+///|
+/// fgets 的 stdin 原语（病 15 批 B）——**单行域**取 min(max, 当前行剩余)
+/// 字节（行数据含尾 \n，天然止于行尾；当前行无尾 \n 且未满额时不跨行
+/// 续读——与 C 字节流形态的边缘差登记，教学面〔feed 行粒度〕等价）。
+pub fn InputState::take_stdin_line(self : InputState, max : Int) -> Bytes? {
+  if max <= 0 {
+    return Some(b"")
+  }
+  let out : Array[Byte] = []
+  match self.ungetc {
+    Some(ch) => {
+      out.push(ch.to_byte())
+      self.ungetc = None
+    }
+    None => ()
+  }
+  if self.index < self.lines.length() {
+    let line = self.lines[self.index]
+    while self.char_offset < line.length() && out.length() < max {
+      out.push(line[self.char_offset])
+      self.char_offset = self.char_offset + 1
+    }
+    if self.char_offset >= line.length() {
+      self.index = self.index + 1
+      self.char_offset = 0
+    }
+  }
+  if out.length() == 0 {
+    if self.batch {
+      self.set_eof()
+      return Some(b"")
+    }
+    return None
+  }
+  Some(Bytes::from_array(out))
+}
+
+///|
+/// 标准流读结果（host → vm，病 15 批 B）：读族的 Interactive 等待语义
+/// HostMemReply 表达不了——vm 臂 match 消费（`waiting_input = true`，
+/// getchar 臂同款）。
+pub enum StdioRead {
+  Done(HostMemReply)
+  StdioWaiting
+}
+
+///|
+/// `fgetc` 标准流分流：stdin 复用 getchar 全套（ungetc/EOF 粘滞/等待）；
+/// stdout/stderr 读取返 EOF。
+fn host_fgetc_stdio(input : InputState, stream : UInt) -> StdioRead {
+  if stream != 0U {
+    return StdioRead::Done(value_only((-1).to_int64().reinterpret_as_uint64()))
+  }
+  match host_getchar(input) {
+    Value(v) => StdioRead::Done(value_only(v))
+    Trap(msg) => StdioRead::Done(trap_only(msg))
+    Waiting => StdioRead::StdioWaiting
+  }
+}
+
+///|
+/// `fgetc` 总分发（VFS 文件 + 标准流）。
+pub fn host_fgetc_dispatch(
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  vfs : VirtualFileSystem,
+  input : InputState,
+  stream : UInt,
+) -> StdioRead {
+  if stream <= 2U {
+    return host_fgetc_stdio(input, stream)
+  }
+  StdioRead::Done(host_fgetc(map, mem, vfs, stream))
+}
+
+///|
+/// `fgets(buf, n, stream)` 标准流分流：stdin 单行读（成功写 buf+NUL 返
+/// buf；EOF/等待 返 NULL——等待时 buf 不写）；stdout/stderr 返 NULL。
+fn host_fgets_stdio(
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  input : InputState,
+  buf : UInt,
+  n : Int,
+) -> StdioRead {
+  if n <= 0 {
+    return StdioRead::Done(value_only(0UL))
+  }
+  match input.take_stdin_line(n - 1) {
+    None => StdioRead::StdioWaiting
+    Some(b) => {
+      if b.length() == 0 {
+        return StdioRead::Done(value_only(0UL)) // EOF → NULL
+      }
+      match mem.write_bytes(map, buf, b) {
+        Ok(_) =>
+          // NUL 终止符（正文后一字节；fault 同口径转 trap）
+          match
+            mem.write_bytes(
+              map,
+              buf + b.length().reinterpret_as_uint(),
+              b"\x00",
+            ) {
+            Ok(_) => StdioRead::Done(value_only(buf.to_uint64()))
+            Err(f) => StdioRead::Done(fault_reply(f))
+          }
+        Err(f) => StdioRead::Done(fault_reply(f))
+      }
+    }
+  }
+}
+
+///|
+/// `fgets` 总分发（VFS 文件 + 标准流）。
+pub fn host_fgets_dispatch(
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  vfs : VirtualFileSystem,
+  input : InputState,
+  buf : UInt,
+  n : Int,
+  stream : UInt,
+) -> StdioRead {
+  if stream <= 2U {
+    if stream == 0U {
+      return host_fgets_stdio(map, mem, input, buf, n)
+    }
+    return StdioRead::Done(value_only(0UL)) // 读 stdout/stderr → NULL
+  }
+  StdioRead::Done(host_fgets(map, mem, vfs, buf, n, stream))
+}
+
+///|
+/// `fread` 标准流分流：stdin 跨行批读（整元素截断）；stdout/stderr 返
+/// 0 元素。
+fn host_fread_stdio(
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  input : InputState,
+  buf : UInt,
+  size : Int,
+  nmemb : Int,
+) -> StdioRead {
+  if size <= 0 || nmemb <= 0 {
+    return StdioRead::Done(value_only(0UL))
+  }
+  let total = size * nmemb
+  match input.take_stdin_bytes(total) {
+    None => StdioRead::StdioWaiting
+    Some(b) => {
+      if b.length() == 0 {
+        return StdioRead::Done(value_only(0UL)) // EOF
+      }
+      match mem.write_bytes(map, buf, b) {
+        Ok(_) => StdioRead::Done(value_only((b.length() / size).to_uint64()))
+        Err(f) => StdioRead::Done(fault_reply(f))
+      }
+    }
+  }
+}
+
+///|
+/// `fread` 总分发（VFS 文件 + 标准流）。
+pub fn host_fread_dispatch(
+  map : @memory.MemoryMap,
+  mem : @memory.Memory,
+  vfs : VirtualFileSystem,
+  input : InputState,
+  buf : UInt,
+  size : Int,
+  nmemb : Int,
+  stream : UInt,
+) -> StdioRead {
+  if stream <= 2U {
+    if stream == 0U {
+      return host_fread_stdio(map, mem, input, buf, size, nmemb)
+    }
+    return StdioRead::Done(value_only(0UL))
+  }
+  StdioRead::Done(host_fread(map, mem, vfs, buf, size, nmemb, stream))
 }
 
 ///|
@@ -83,16 +305,38 @@ pub fn host_fread(
 }
 
 ///|
-/// `fwrite(buf, size, nmemb, stream)` → 元素数。
+/// `fwrite(buf, size, nmemb, stream)` → 元素数。标准流分流（病 15 批 B）：
+/// stdout/stderr 读 buf 直推对应通道返 nmemb；stdin 不可写返 0。
 pub fn host_fwrite(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
+  log : OutputLog,
   buf : UInt,
   size : Int,
   nmemb : Int,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    if stream == 0U {
+      return value_only(0UL)
+    }
+    let total = if size > 0 && nmemb > 0 { size * nmemb } else { 0 }
+    if total <= 0 {
+      return value_only(0UL)
+    }
+    match read_span(mem, map, buf, total) {
+      Ok(data) => {
+        if stream == 2U {
+          log.push_stderr(Bytes::from_array(data))
+        } else {
+          log.push_stdout(Bytes::from_array(data))
+        }
+        return value_only(nmemb.to_uint64())
+      }
+      Err(f) => return fault_reply(f)
+    }
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -110,6 +354,10 @@ pub fn host_fclose(
   freed_line : Int,
   freed_step : Int,
 ) -> HostMemReply {
+  if stream <= 2U {
+    // 标准流返 0 成功（C 语义合法；伪句柄不真关、流常驻——病 15 批 B 拍板）
+    return value_only(0UL)
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -119,13 +367,19 @@ pub fn host_fclose(
 }
 
 ///|
-/// `feof(stream)` → 1/0。
+/// `feof(stream)` → 1/0。stdin 查 InputState EOF 粘滞位（病 15 批 B）；
+/// stdout/stderr 恒 0。
 pub fn host_feof(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
+  input : InputState,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    let v = if stream == 0U && input.eof { 1 } else { 0 }
+    return value_only(v.to_uint64())
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -191,14 +445,28 @@ pub fn host_fgetc(
 }
 
 ///|
-/// `fputc(c, stream)` → 写入值或 EOF(-1)。
+/// `fputc(c, stream)` → 写入值或 EOF(-1)。标准流分流（病 15 批 B）：
+/// stdout/stderr 单字节直推通道返 (unsigned char)c；stdin 不可写返 EOF。
 pub fn host_fputc(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
+  log : OutputLog,
   c : Int,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    if stream == 0U {
+      return value_only((-1).to_int64().reinterpret_as_uint64())
+    }
+    let b = Bytes::make(1, (c & 0xFF).to_byte())
+    if stream == 2U {
+      log.push_stderr(b)
+    } else {
+      log.push_stdout(b)
+    }
+    return value_only((c & 0xFF).to_uint64())
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -215,6 +483,10 @@ pub fn host_fseek(
   offset : Int,
   whence : Int,
 ) -> HostMemReply {
+  if stream <= 2U {
+    // 标准流非 seekable（C 管道/终端同款失败）
+    return value_only(0xFFFFFFFFFFFFFFFFUL)
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -229,6 +501,9 @@ pub fn host_ftell(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    return value_only((-1).to_int64().reinterpret_as_uint64())
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -243,6 +518,9 @@ pub fn host_rewind(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    return no_reply() // 标准流 no-op
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -259,6 +537,9 @@ pub fn host_fflush(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    return value_only(0UL) // 标准流刷新成功
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }
@@ -295,6 +576,9 @@ pub fn host_clearerr(
   vfs : VirtualFileSystem,
   stream : UInt,
 ) -> HostMemReply {
+  if stream <= 2U {
+    return no_reply() // 标准流 no-op（不清 stdin EOF 粘滞——教学价值低，登记）
+  }
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
   }

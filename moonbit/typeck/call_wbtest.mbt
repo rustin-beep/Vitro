@@ -464,3 +464,131 @@ test "builtin_table_error_path_copy_anchor" {
     msg="P 位文案（builtin_check_pointer 单源复用）",
   )
 }
+
+///|
+/// 病 15 批 A 红→绿锚（FILE* 位三态判定）：int 字面量 0/1/2 放行
+/// （stdin/stdout/stderr 宏展开通道——预处理后 stdout 与裸 1 同形，宁纵
+/// 勿枉）；其他 int（变量/其他常量）报 W3068；非指针非 int 维持 E3029；
+/// fflush 补专臂（此前经存根签名检查——`fflush(stdout)` 展开后误吃 E3054）。
+test "file_pointer_arg_three_state_anchor" {
+  let loc = @source.SourceLoc::new(2, 9)
+  fn call(
+    name : String,
+    args : Array[@ast.Expr],
+    loc : @source.SourceLoc,
+  ) -> @ast.Expr {
+    @ast.Expr::Call(name, args, loc, @ast.Type::void_type())
+  }
+  fn int_lit(v : Int, loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::int())
+  }
+  fn dbl_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::FloatLiteral(1.5, loc, @ast.Type::double())
+  }
+  fn bad_var_decl(loc : @source.SourceLoc) -> @ast.Stmt {
+    @ast.Stmt::VarDecl(@ast.Type::int(), "bad", None, [], false, loc)
+  }
+  fn bad_var(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Identifier("bad", loc, @ast.Type::void_type())
+  }
+  fn expr_stmt(e : @ast.Expr, loc : @source.SourceLoc) -> @ast.Stmt {
+    @ast.Stmt::Expr(e, loc)
+  }
+  fn run(
+    stmts : Array[@ast.Stmt],
+    loc : @source.SourceLoc,
+  ) -> (Array[TypeError], Array[TypeError]) {
+    let body : @ast.Stmt = @ast.Stmt::Block(stmts, loc)
+    let main = func_of("main", [], Some(body), loc)
+    let tc = TypeChecker::new()
+    let (_, errs, warns, _) = tc.check(prog_of([main], []))
+    (errs, warns)
+  }
+  // ① 字面量 0/1/2 放行（宏展开通道）：零 err 零 warn
+  let (e1, w1) = run(
+    [
+      expr_stmt(
+        call("fseek", [int_lit(1, loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+      expr_stmt(
+        call("fseek", [int_lit(2, loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+      expr_stmt(
+        call("fseek", [int_lit(0, loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+    ],
+    loc,
+  )
+  assert_eq(
+    e1.length(),
+    0,
+    msg="字面量 0/1/2 放行（stdout 等宏展开通道）",
+  )
+  assert_eq(w1.length(), 0, msg="宏值字面量不报 W3068")
+  // ② 裸字面量 7：W3068（当前零诊断——红锚）
+  let (e2, w2) = run(
+    [
+      expr_stmt(
+        call("fseek", [int_lit(7, loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+    ],
+    loc,
+  )
+  assert_eq(e2.length(), 0, msg="非常量 int 不报错只报 W")
+  assert_eq(w2.length(), 1, msg="裸字面量 7 报一条 W3068")
+  assert_true(w2[0].code == 3068, msg="W3068 码位")
+  assert_true(
+    w2[0].message.contains("文件指针"),
+    msg="W3068 文案指向 FILE*",
+  )
+  // ③ int 变量：W3068（当前零诊断——红锚）
+  let (e3, w3) = run(
+    [
+      bad_var_decl(loc),
+      expr_stmt(
+        call("fseek", [bad_var(loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+    ],
+    loc,
+  )
+  assert_eq(e3.length(), 0)
+  assert_eq(w3.length(), 1, msg="int 变量传 FILE* 位报 W3068")
+  assert_true(w3[0].code == 3068)
+  // ④ fflush(stdout 展开形=1) 零诊断（现状 E3036/E3054——红锚）
+  let (e4, w4) = run(
+    [expr_stmt(call("fflush", [int_lit(1, loc)], loc), loc)],
+    loc,
+  )
+  assert_eq(
+    e4.length(),
+    0,
+    msg="fflush 专臂 + 宏值放行（原 E3054 误拦）",
+  )
+  assert_eq(w4.length(), 0)
+  // ⑤ fflush(int 变量)：W3068
+  let (e5, w5) = run(
+    [bad_var_decl(loc), expr_stmt(call("fflush", [bad_var(loc)], loc), loc)],
+    loc,
+  )
+  assert_eq(e5.length(), 0)
+  assert_eq(w5.length(), 1, msg="fflush int 变量报 W3068")
+  assert_true(w5[0].code == 3068)
+  // ⑥ 非指针非 int（double）维持 E3029（回归锚）
+  let (e6, w6) = run(
+    [
+      expr_stmt(
+        call("fseek", [dbl_lit(loc), int_lit(0, loc), int_lit(0, loc)], loc),
+        loc,
+      ),
+    ],
+    loc,
+  )
+  assert_eq(e6.length(), 1, msg="double 传 FILE* 位维持 E3029")
+  assert_true(e6[0].code == 3029)
+  assert_eq(w6.length(), 0)
+}

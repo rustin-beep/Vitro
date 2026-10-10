@@ -1,12 +1,12 @@
 ///|
-/// E4 出口形状：包裹结构 + 条目数 102（每条必含一个 common_causes 键）。
-/// #50 批③：77→102（图标接线批 +25 条目）。
+/// E4 出口形状：包裹结构 + 条目数 103（每条必含一个 common_causes 键）。
+/// #50 批③：77→102（+25）；病 15 批 A：+W3068→103（#47）。
 test "e4_export_shape_and_count" {
   let json = export_catalog_json()
   assert_true(json.has_prefix("{\"catalog\":["))
   assert_true(json.has_suffix("]}"))
   let hits = json.split("common_causes").length() - 1
-  assert_eq(hits, 102) // #50 批③：77→102
+  assert_eq(hits, 103) // 病 15 批 A：102→103
 }
 
 ///|

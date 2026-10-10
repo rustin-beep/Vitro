@@ -386,6 +386,10 @@
       "code": 3067
     },
     {
+      "name": "W3068_FilePointerIntArg",
+      "code": 3068
+    },
+    {
       "name": "E3070_BufferOverflow",
       "code": 3070
     },

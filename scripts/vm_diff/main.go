@@ -678,7 +678,10 @@ func extractMoonBitStdout(s string) string {
 		t := strings.TrimRight(l, "\r")
 		if strings.HasPrefix(t, "// TRAP ") || strings.HasPrefix(t, "// COMPILE-ERROR ") ||
 			strings.HasPrefix(t, "// COMPILE-WARNING ") || strings.HasPrefix(t, "// COMPILE-HINT ") ||
-			strings.HasPrefix(t, "// NOTE ") {
+			strings.HasPrefix(t, "// NOTE ") ||
+			// 病 15 批 C（#61）：stderr 标记行——stderr 不进 stdout 对拍
+			// digest（Clang 侧同口径，两流混排难题规避）
+			strings.HasPrefix(t, "// STDERR ") {
 			continue
 		}
 		kept = append(kept, l)

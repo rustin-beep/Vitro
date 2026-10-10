@@ -66,6 +66,11 @@ fn json_event_stream(
   println("{\"type\":\"run\",\"frame\":\{run}}")
   let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
   println("{\"type\":\"stdout\",\"frame\":\{out}}")
+  // stderr 通道（病 15 批 C，#61）：fprintf(stderr)/fputc(c,stderr) 的
+  // 落点——gateway 层四通道本就支持，此前 CLI 只拉 stdout/note 致整段
+  // 丢失（合法 C 的 stderr 输出凭空蒸发）。
+  let err = inv("output.delta", "{\"cursor\":0,\"stream\":\"stderr\"}")
+  println("{\"type\":\"stderr\",\"frame\":\{err}}")
   // note 通道（2026-10-04 二轮审 P2：完成附注 + 泄漏报告——gateway 侧
   // serve_run 已合成 note，CLI 此前只拉 stdout 致整段丢失）
   let note = inv("output.delta", "{\"cursor\":0,\"stream\":\"note\"}")

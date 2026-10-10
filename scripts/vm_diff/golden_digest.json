@@ -1928,6 +1928,24 @@
       "stdout_sha": "817c932e35217449",
       "memory_sha": "d2719f9fbe061499"
     },
+    "baseline/stdio_fgets_stdin.c": {
+      "src_sha": "ca6bc055",
+      "exit_code": 0,
+      "stdout_sha": "41e527ef5af631d2",
+      "memory_sha": "f8a7d463a89a1a8f"
+    },
+    "baseline/stdio_fputc_stdout.c": {
+      "src_sha": "5c4d507b",
+      "exit_code": 0,
+      "stdout_sha": "7bd0040f16ce9047",
+      "memory_sha": "9a13e52f867f2bb9"
+    },
+    "baseline/stdio_fseek_macro.c": {
+      "src_sha": "082a0f54",
+      "exit_code": 0,
+      "stdout_sha": "180406a9806d4b02",
+      "memory_sha": "fd4d8cc2506716be"
+    },
     "baseline/strcat_empty.c": {
       "src_sha": "fba688cf",
       "exit_code": 0,

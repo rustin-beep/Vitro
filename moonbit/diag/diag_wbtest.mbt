@@ -1,12 +1,12 @@
 ///|
-/// T2 覆盖率断言基线：137 臂 / 102 卡片 / 35 无卡片（102 + 35 = 137，
-/// #50 批③：77/60→102/35（图标接线批 +25 条目），
+/// T2 覆盖率断言基线：138 臂 / 103 卡片 / 35 无卡片（103 + 35 = 138，
+/// #50 批③：77/60→102/35（+25）；病 15 批 A：+W3068→103/35/138（#47），
 /// 清单互斥互补）。源漂移由 gen_diag fail loud 兜底，本断言锁生成产物。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
-  assert_eq(all.length(), 137)
-  assert_eq(catalog_codes().length(), 102) // #50 批③：77→102
-  assert_eq(codes_without_catalog().length(), 35) // #50 批③：60→35
+  assert_eq(all.length(), 138)
+  assert_eq(catalog_codes().length(), 103) // 病 15 批 A：102→103
+  assert_eq(codes_without_catalog().length(), 35)
   // 互补无交集
   let set : Map[Int, Bool] = Map([])
   for c in catalog_codes() {
@@ -79,7 +79,7 @@ test "lang_segment_4xxx_cpp" {
     }
   }
   assert_eq(cpp, 38)
-  assert_eq(c_lang, 99)
+  assert_eq(c_lang, 100) // 病 15 批 A：+W3068（C 段 3xxx）
   assert_eq(csharp, 0) // 5xxx 段空置（CSharp 变体先行落位——P2-3）
   assert_eq(SourceLang::CSharp.to_str(), "csharp")
 }
@@ -91,8 +91,8 @@ test "from_code_roundtrip_all" {
     assert_eq(ErrorCode::from_code(code.code()).unwrap(), code)
   }
   assert_true(ErrorCode::from_code(9999) is None)
-  assert_true(ErrorCode::from_code(3068) is None) // 3xxx 段空号
-  assert_true(ErrorCode::from_code(3069) is None)
+  assert_true(ErrorCode::from_code(3068).unwrap() is W3068_FilePointerIntArg) // 病 15 批 A 落位
+  assert_true(ErrorCode::from_code(3069) is None) // 3xxx 段空号
 }
 
 ///|

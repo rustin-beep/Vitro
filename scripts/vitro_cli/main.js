@@ -240,11 +240,20 @@ async function cmdRun(args) {
   }
   const outStd = inv("output.delta", { cursor: 0, stream: "stdout" });
   const outNote = inv("output.delta", { cursor: 0, stream: "note" });
+  // stderr 通道（病 15 批 C，#61）：fprintf(stderr)/fputc(c,stderr) 落点——
+  // json 模式独立帧、文本模式 // STDERR 标记行（与 // NOTE 同构；两防线
+  // 剥离器已连坐，stderr 不进 stdout 对拍 digest）
+  const outErr = inv("output.delta", { cursor: 0, stream: "stderr" });
   if (ra.jsonMode) {
     process.stdout.write(JSON.stringify({ type: "stdout", backend: BACKEND, frame: outStd }) + "\n");
+    process.stdout.write(JSON.stringify({ type: "stderr", backend: BACKEND, frame: outErr }) + "\n");
     process.stdout.write(JSON.stringify({ type: "note", backend: BACKEND, frame: outNote }) + "\n");
   } else {
     writeStdoutBytes((outStd.result && outStd.result.delta) || "");
+    const errText = (outErr.result && outErr.result.delta) || "";
+    for (const line of errText.split("\n")) {
+      if (line !== "") process.stdout.write(`// STDERR ${line}\n`);
+    }
     const note = (outNote.result && outNote.result.delta) || "";
     for (const line of note.split("\n")) {
       if (line !== "") process.stdout.write(`// NOTE ${line}\n`);

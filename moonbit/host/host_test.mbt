@@ -335,6 +335,8 @@ test "host_vfs_surface" {
   let map = @memory.MemoryMap::new()
   let mem = @memory.Memory::new()
   let vfs : @host.VirtualFileSystem = @host.VirtualFileSystem::new()
+  // 病 15 批 B：feof +InputState（占位 Batch 实例）
+  let input = @host.InputState::new([], true)
   assert_true(
     @host.VirtualFileSystem::inject_preset_file(vfs, map, mem, "s.txt", b"ab"),
   )
@@ -362,7 +364,7 @@ test "host_vfs_surface" {
   assert_true(
     @host.host_fgetc(map, mem, vfs, fp).value is Some(0xFFFFFFFFFFFFFFFFUL),
   )
-  assert_true(@host.host_feof(map, mem, vfs, fp).value is Some(_))
+  assert_true(@host.host_feof(map, mem, vfs, input, fp).value is Some(_))
   ignore(@host.host_rewind(map, mem, vfs, fp))
   ignore(@host.host_clearerr(map, mem, vfs, fp))
   assert_true(@host.host_fflush(map, mem, vfs, fp).value is Some(0UL))
@@ -379,9 +381,9 @@ test "host_vfs_surface" {
   assert_true(fw2 != 0U)
   ignore(mem.write_bytes(map, 0x6500U, b"XY"))
   assert_true(
-    @host.host_fwrite(map, mem, vfs, 0x6500U, 1, 2, fw2).value is Some(2UL),
+    @host.host_fwrite(map, mem, vfs, log, 0x6500U, 1, 2, fw2).value is Some(2UL),
   )
-  assert_true(@host.host_fputc(map, mem, vfs, 90, fw2).value is Some(90UL))
+  assert_true(@host.host_fputc(map, mem, vfs, log, 90, fw2).value is Some(90UL))
   ignore(mem.write_bytes(map, 0x6600U, b"Q\x00"))
   assert_true(
     @host.host_fputs(map, mem, vfs, log, 0x6600U, fw2).value is Some(0UL),

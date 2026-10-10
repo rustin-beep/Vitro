@@ -294,6 +294,26 @@ pub fn run(
   // vm_diff/clang_direct 的 Go 归一器 Latin-1 折回口径对两种物理形态
   // 收敛同字节序，防线侧零改动
   write_stdout(stdout_bytes_of(vm.output.chunks_of(@host.OutputKind::Stdout)))
+  // stderr 通道（病 15 批 C，#61）：标记行形态（`// NOTE` 同构）——可管道
+  // 解析且不与 stdout 混流；vm_diff/clang_direct 剥离器连坐剥（stderr 不
+  // 进 stdout 对拍 digest，Clang 侧同口径——两流混排难题由此规避）。
+  // 解码 = utf8_text_partial（UTF-8 优先、坏字节 U+FFFD 兜底——中文教学
+  // 文案正确还原；stderr 是程序字节域，裸高位字节在标记行 String 域
+  // 取折中，json 模式 stderr 帧仍是 Latin-1 逐字节折回的既定口径）。
+  {
+    let mut ebuf : Bytes = b""
+    for chunk in vm.output.chunks_of(@host.OutputKind::Stderr) {
+      ebuf = ebuf.add(chunk)
+    }
+    let etext = @util.utf8_text_partial(ebuf)
+    if !etext.is_empty() {
+      for line in etext.split("\n") {
+        if !line.is_empty() {
+          println("// STDERR \{line}")
+        }
+      }
+    }
+  }
   // note 通道（2026-10-04 二轮审 P2：泄漏报告 + 完成附注「程序运行完成，
   // 返回值：N」——oracle cmd_run 与 demo 均消费，gateway append_leak_report
   // 已接线；此前 CLI 只取 Stdout 致整段丢失）。**行级前缀**：多行报告每行

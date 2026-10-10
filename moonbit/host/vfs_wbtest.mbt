@@ -281,6 +281,9 @@ test "file_fputs_stdout_stderr_split_and_perror" {
 ///|
 test "file_misc_handlers_shape" {
   let (map, mem, vfs) = vfs_fresh()
+  // 病 15 批 B：fwrite/fputc +log、feof +InputState（stdin EOF 粘滞查询——占位）
+  let log = OutputLog::new()
+  let input = InputState::new([], true)
   ignore(vfs.inject_preset_file(map, mem, "m.txt", b"ab"))
   put_str(mem, map, 0x6100U, "m.txt")
   // fopen 拿 FILE*
@@ -289,7 +292,7 @@ test "file_misc_handlers_shape" {
     .unwrap()
     .to_uint()
   // fwrite 写回读模式 → 0（Read 拒写）
-  assert_eq(host_fwrite(map, mem, vfs, 0x8000U, 1, 1, fp).value, Some(0UL))
+  assert_eq(host_fwrite(map, mem, vfs, log, 0x8000U, 1, 1, fp).value, Some(0UL))
   // fgets / fgetc / feof / ftell / fseek / fflush / rewind / clearerr
   assert_eq(host_fgets(map, mem, vfs, 0x8000U, 10, fp).value, Some(0x8000UL))
   assert_eq(
@@ -297,7 +300,7 @@ test "file_misc_handlers_shape" {
     Some(0xFFFFFFFFFFFFFFFFUL),
     msg="EOF -1",
   )
-  assert_eq(host_feof(map, mem, vfs, fp).value, Some(1UL))
+  assert_eq(host_feof(map, mem, vfs, input, fp).value, Some(1UL))
   assert_eq(
     host_fseek(map, mem, vfs, fp, 0, 0).value,
     Some(0UL),
@@ -306,10 +309,13 @@ test "file_misc_handlers_shape" {
   assert_eq(host_ftell(map, mem, vfs, fp).value, Some(0UL))
   assert_eq(host_fflush(map, mem, vfs, fp).value, Some(0UL))
   ignore(host_rewind(map, mem, vfs, fp))
-  assert_eq(host_feof(map, mem, vfs, fp).value, Some(0UL))
+  assert_eq(host_feof(map, mem, vfs, input, fp).value, Some(0UL))
   ignore(host_clearerr(map, mem, vfs, fp))
   // fputc 读模式 → -1
-  assert_eq(host_fputc(map, mem, vfs, 66, fp).value, Some(0xFFFFFFFFFFFFFFFFUL))
+  assert_eq(
+    host_fputc(map, mem, vfs, log, 66, fp).value,
+    Some(0xFFFFFFFFFFFFFFFFUL),
+  )
   // remove / rename
   assert_eq(host_remove(map, mem, vfs, 0x6100U).value, Some(0UL))
   put_str(mem, map, 0x6200U, "n.txt")
@@ -347,4 +353,98 @@ test "vfs_fgets_binary_mode_no_crlf_compress" {
   assert_eq(got[1].to_int(), 13)
   assert_eq(got[2].to_int(), 10)
   ignore(vfs.fclose(fdr))
+}
+
+///|
+/// 病 15 批 B 红→绿锚（#61，2026-10-10）：标准流句柄（stdin=0/stdout=1/
+/// stderr=2 宏展开形态）分流——旧形态（≤2 折叠 fd=0 静默失败）下
+/// `fputc('x', stdout)` 输出凭空丢失、`fgets(b,n,stdin)` 恒空读。
+test "stdio_handle_dispatch_batch_b" {
+  let (map, mem, vfs) = vfs_fresh()
+  let log = OutputLog::new()
+  // 写族：stdout/stderr 直推通道、返回 (unsigned char)c
+  assert_eq(
+    host_fputc(map, mem, vfs, log, 120, 1U).value,
+    Some(120UL),
+    msg="fputc('x', stdout) 返 x",
+  )
+  assert_eq(log.join(OutputKind::Stdout), b"x", msg="fputc stdout 落流")
+  assert_eq(
+    host_fputc(map, mem, vfs, log, 121, 2U).value,
+    Some(121UL),
+    msg="fputc('y', stderr) 返 y",
+  )
+  assert_eq(log.join(OutputKind::Stderr), b"y", msg="fputc stderr 落流")
+  assert_eq(
+    host_fputc(map, mem, vfs, log, 120, 0U).value,
+    Some(0xFFFFFFFFFFFFFFFFUL),
+    msg="fputc 对 stdin 写 → EOF",
+  )
+  // fwrite 到 stdout：内容直推、返 nmemb
+  put_bytes(mem, map, 0x7000U, b"AB", false)
+  assert_eq(
+    host_fwrite(map, mem, vfs, log, 0x7000U, 1, 2, 1U).value,
+    Some(2UL),
+    msg="fwrite(buf,1,2,stdout) 返 2",
+  )
+  assert_eq(log.join(OutputKind::Stdout), b"xAB", msg="fwrite 追加落 stdout")
+  // 状态族：std 流非 seekable / fclose 成功 / fflush 成功
+  assert_eq(
+    host_fseek(map, mem, vfs, 1U, 0, 0).value,
+    Some(0xFFFFFFFFFFFFFFFFUL),
+    msg="fseek(stdout) → -1",
+  )
+  assert_eq(
+    host_ftell(map, mem, vfs, 1U).value,
+    Some(0xFFFFFFFFFFFFFFFFUL),
+    msg="ftell(stdout) → -1",
+  )
+  assert_eq(
+    host_fclose(map, mem, vfs, 1U, 9, 99).value,
+    Some(0UL),
+    msg="fclose(stdout) → 0（C 语义）",
+  )
+  assert_eq(
+    host_fflush(map, mem, vfs, 1U).value,
+    Some(0UL),
+    msg="fflush(stdout) → 0",
+  )
+  ignore(host_rewind(map, mem, vfs, 2U))
+  ignore(host_clearerr(map, mem, vfs, 0U))
+  // 读族：stdin 走 InputState（Batch 消费后 EOF）
+  let input = InputState::new([b"hi\n"], true)
+  let buf = 0x7100U
+  match host_fgets_dispatch(map, mem, vfs, input, buf, 8, 0U) {
+    StdioRead::Done(r) =>
+      assert_eq(r.value, Some(0x7100UL), msg="fgets(b,8,stdin) 返 buf")
+    StdioRead::StdioWaiting => fail("Batch 模式不应等待")
+  }
+  assert_eq(
+    read_span(mem, map, buf, 3),
+    Ok([b'h', b'i', b'\n']),
+    msg="fgets stdin 行落 buf（含 \n + NUL）",
+  )
+  assert_eq(
+    host_fgetc_dispatch(map, mem, vfs, input, 0U) is StdioRead::Done(_),
+    true,
+    msg="fgetc(stdin) Batch 耗尽 → EOF（Done 态）",
+  )
+  // Interactive 空输入 → StdioWaiting（零消费等待）
+  let inter = InputState::new([], false)
+  assert_true(
+    host_fgetc_dispatch(map, mem, vfs, inter, 0U) is StdioRead::StdioWaiting,
+    msg="fgetc(stdin) Interactive 空 → 等待",
+  )
+  // fread stdin 批读
+  let input2 = InputState::new([b"abc", b"de"], true)
+  match host_fread_dispatch(map, mem, vfs, input2, buf, 1, 4, 0U) {
+    StdioRead::Done(r) =>
+      assert_eq(r.value, Some(4UL), msg="fread(buf,1,4,stdin) 跨行返 4")
+    StdioRead::StdioWaiting => fail("Batch 不等待")
+  }
+  assert_eq(
+    read_span(mem, map, buf, 4),
+    Ok([b'a', b'b', b'c', b'd']),
+    msg="fread stdin 跨行拼接（'abc'+'de' 前 4 字节）",
+  )
 }

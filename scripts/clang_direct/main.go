@@ -72,7 +72,10 @@ var backend = "native"
 
 const clangCacheDir = ".clang_cache_cd"
 
-const cacheSchema = "cd2"
+// cd3（病 15 批 C，#61）：运行捕获 stderr 分离（此前 Stderr=&rOut 合并
+// 捕获——管道下 stderr 无缓冲恒先于 stdout 刷出；分离后 golden = stdout
+// only，与 Vitro 侧 // STDERR 标记行剥离对称）
+const cacheSchema = "cd3"
 
 const clangPath = "clang"
 
@@ -596,7 +599,12 @@ func runClangOnce(c caseRef, caseIdx int) *clangResult {
 	}
 	var rOut bytes.Buffer
 	runCmd.Stdout = &rOut
-	runCmd.Stderr = &rOut
+	// 病 15 批 C（#61）：stderr 分离丢弃——此前合并捕获（Stderr=&rOut），
+	// 管道下 Clang stderr 无缓冲恒先于缓冲 stdout 刷出（fprintf_basic 注
+	// 释的混排规避债），而 Vitro 侧 stderr 走 // STDERR 标记行被剥离——
+	// 两侧不对称必 DIFF。对拍口径 = stdout only 双侧对称（stderr 行为由
+	// wbtest/cli_smoke/demo 锚定）。
+	runCmd.Stderr = nil
 	// P2（2026-09-27 审阅销项）：超时结果**不得当确定性结果**——此前
 	// timer.Kill() 在 Windows 下让 Wait 返回 *ExitError(code=1)，落入
 	// 「确定性结果」分支并 storeCache：CI 上一次负载尖峰即可把该用例的
@@ -695,7 +703,10 @@ func extractMoonStdout(s string) string {
 		t := strings.TrimRight(l, "\r")
 		if strings.HasPrefix(t, "// TRAP ") || strings.HasPrefix(t, "// COMPILE-ERROR ") ||
 			strings.HasPrefix(t, "// COMPILE-WARNING ") || strings.HasPrefix(t, "// COMPILE-HINT ") ||
-			strings.HasPrefix(t, "// NOTE ") {
+			strings.HasPrefix(t, "// NOTE ") ||
+			// 病 15 批 C（#61）：stderr 标记行——stderr 不进 stdout 对拍
+			// digest（Clang 侧同口径，两流混排难题规避）
+			strings.HasPrefix(t, "// STDERR ") {
 			continue
 		}
 		kept = append(kept, l)

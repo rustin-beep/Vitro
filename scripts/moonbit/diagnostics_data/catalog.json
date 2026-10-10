@@ -964,6 +964,16 @@
       ]
     },
     {
+      "code": 3068,
+      "icon": "pointer-compat",
+      "title": "整数传给文件指针参数",
+      "explanation": "文件函数的文件指针参数位应是 FILE*（fopen 的返回值）或标准流宏 stdin/stdout/stderr。预处理后标准流宏就是 0/1/2 三个字面量，除此之外的整数传给文件指针位在 C 里是不兼容转换（Clang 至少警告），通常意味着把句柄、下标或普通整数误当成了文件指针。",
+      "common_causes": [
+        "把 int 变量或常数直接当 FILE* 传给 fseek/fclose 等函数",
+        "误以为 open 风格的整数句柄能用于 FILE* 系函数"
+      ]
+    },
+    {
       "code": 3070,
       "icon": "buffer-overflow",
       "title": "缓冲区溢出",

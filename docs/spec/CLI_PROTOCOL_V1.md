@@ -34,6 +34,7 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 | `// COMPILE-OK ` | 编译通过标记（仅 `compile` 命令） | `// COMPILE-OK` |
 | `// TRAP ` | 受检终止附注 | `// TRAP [uaf] Use-After-Free (E3060)：…` |
 | `// NOTE ` | note 通道（完成附注「程序运行完成，返回值：N」+ 内存泄漏检测报告——2026-10-04 二轮审 P2 补，此前 CLI 整段丢失；内容可多行） | `// NOTE 程序运行完成，返回值：0` |
+| `// STDERR ` | stderr 通道（`fprintf(stderr,…)`/`fputc(c,stderr)`/`perror` 落点——病 15 批 C 补，2026-10-10；与 stdout 分流标记行呈现，剥离器两处连坐；stderr 不进对拍 digest） | `// STDERR to-stderr` |
 | `// EXIT ` | **末行**返回码（ret=0 时省略） | `// EXIT 7` |
 
 诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。
@@ -109,7 +110,7 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 
 | 命令 | 事件 |
 |---|---|
-| `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"note",...}`（note 通道：完成附注+泄漏报告——二轮审 P2 补） |
+| `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"stderr",...}` → `{"type":"note",...}`（stderr 帧：stderr 通道 delta——病 15 批 C 补 2026-10-10，此前整段丢失；note 通道：完成附注+泄漏报告——二轮审 P2 补） |
 | `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富） |
 | `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
 

@@ -87,6 +87,10 @@ pub fn TypeChecker::visit_call(
     "fseek" => self.check_builtin_fseek(args, loc)
     "ftell" => self.check_builtin_ftell(args, loc)
     "rewind" => self.check_builtin_rewind(args, loc)
+    // 病 15 批 A（#61）：fflush/clearerr 补专臂——原经存根签名检查，
+    // `fflush(stdout)`（宏展开 = int 1）误吃 E3054 整数转指针。
+    "fflush" => self.check_builtin_fflush(args, loc)
+    "clearerr" => self.check_builtin_clearerr(args, loc)
     // math.h 函数经头文件存根进 funcs 表——visit_call 兜底臂
     // check_user_func（Rust 同形）
     _ => self.check_user_func(name, args, loc)
@@ -411,6 +415,41 @@ fn TypeChecker::builtin_check_pointer(
 }
 
 ///|
+/// FILE\* 参数位三态判定（病 15 批 A，#61，2026-10-10）：指针放行；int
+/// 字面量 0/1/2 放行——stdin/stdout/stderr 宏展开通道（预处理后 stdout
+/// 与裸 1 同形，宁纵勿枉）；其他 int（变量/其他常量）报 W3068（对齐
+/// Clang -Wint-conversion 警告面——int→FILE\* 在 C 是不兼容转换）；
+/// 非指针非 int 报 E3029（note = 调用方传入文案，外置真源优先）。
+fn TypeChecker::builtin_check_file_arg(
+  self : TypeChecker,
+  args : Array[@ast.Expr],
+  idx : Int,
+  name : String,
+  note : String,
+  loc : @source.SourceLoc,
+) -> Unit {
+  let (stream_type, new_arg) = self.resolve_expr_type(args[idx])
+  args[idx] = new_arg
+  let kind = stream_type.kind()
+  if kind is TK_Pointer {
+    return
+  }
+  if kind is TK_Int {
+    match new_arg {
+      Literal(v, _, _) => if v == 0 || v == 1 || v == 2 { return }
+      _ => ()
+    }
+    self.report_warning(
+      "\{name} 第 \{idx + 1} 个参数是 int 而非文件指针（FILE*）；标准流请写 stdin/stdout/stderr",
+      loc,
+      W3068_FilePointerIntArg,
+    )
+    return
+  }
+  self.report_error(note, loc, E3029_BuiltInArgType)
+}
+
+///|
 /// 第 idx 实参必须是 int（E3029；可赋值即放行 + 隐式转换插入）。
 fn TypeChecker::builtin_check_int(
   self : TypeChecker,
@@ -705,15 +744,10 @@ fn TypeChecker::check_builtin_ungetc(
 ) -> @ast.Type {
   if self.builtin_check_count(args, 2, "ungetc", loc) {
     self.builtin_check_int(args, 0, "ungetc", loc)
-    let (stream_type, new_a1) = self.resolve_expr_type(args[1])
-    args[1] = new_a1
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        "ungetc 的第 2 个参数必须是 FILE*（文件指针）",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args, 1, "ungetc", "ungetc 的第 2 个参数必须是 FILE*（文件指针）",
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -733,15 +767,10 @@ fn TypeChecker::check_builtin_fprintf(
       E3030_PrintfArgCount,
     )
   } else {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        "fprintf 的第一个参数必须是文件指针或整数",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args, 0, "fprintf", "fprintf 的第 1 个参数必须是文件指针（FILE*）",
+      loc,
+    )
     let (fmt_type, new_a1) = self.resolve_expr_type(args[1])
     args[1] = new_a1
     if !(fmt_type.kind() is TK_Pointer) && !fmt_type.is_array() {
@@ -857,15 +886,13 @@ fn TypeChecker::check_builtin_fgets(
     } else {
       args[1] = insert_implicit_cast(new_a1, @ast.Type::int())
     }
-    let (stream_type, new_a2) = self.resolve_expr_type(args[2])
-    args[2] = new_a2
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fgets").unwrap().param_notes[2],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      2,
+      "fgets",
+      @assets.builtin_notes.get("fgets").unwrap().param_notes[2],
+      loc,
+    )
   }
   @ast.Type::pointer_to(@ast.Type::char())
 }
@@ -887,15 +914,13 @@ fn TypeChecker::check_builtin_fputs(
         E3029_BuiltInArgType,
       )
     }
-    let (stream_type, new_a1) = self.resolve_expr_type(args[1])
-    args[1] = new_a1
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fputs").unwrap().param_notes[1],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      1,
+      "fputs",
+      @assets.builtin_notes.get("fputs").unwrap().param_notes[1],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1044,15 +1069,9 @@ fn TypeChecker::check_builtin_fread(
         args[i] = insert_implicit_cast(new_arg, @ast.Type::int())
       }
     }
-    let (stream_type, new_a3) = self.resolve_expr_type(args[3])
-    args[3] = new_a3
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        "fread 第四个参数必须是文件指针",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args, 3, "fread", "fread 第四个参数必须是文件指针", loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1092,15 +1111,13 @@ fn TypeChecker::check_builtin_fwrite(
         args[i] = insert_implicit_cast(new_arg, @ast.Type::int())
       }
     }
-    let (stream_type, new_a3) = self.resolve_expr_type(args[3])
-    args[3] = new_a3
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fwrite").unwrap().param_notes[3],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      3,
+      "fwrite",
+      @assets.builtin_notes.get("fwrite").unwrap().param_notes[3],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1113,15 +1130,13 @@ fn TypeChecker::check_builtin_fclose(
   loc : @source.SourceLoc,
 ) -> @ast.Type {
   if self.builtin_check_count(args, 1, "fclose", loc) {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fclose").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "fclose",
+      @assets.builtin_notes.get("fclose").unwrap().param_notes[0],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1134,15 +1149,13 @@ fn TypeChecker::check_builtin_feof(
   loc : @source.SourceLoc,
 ) -> @ast.Type {
   if self.builtin_check_count(args, 1, "feof", loc) {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("feof").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "feof",
+      @assets.builtin_notes.get("feof").unwrap().param_notes[0],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1155,15 +1168,13 @@ fn TypeChecker::check_builtin_fgetc(
   loc : @source.SourceLoc,
 ) -> @ast.Type {
   if self.builtin_check_count(args, 1, "fgetc", loc) {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fgetc").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "fgetc",
+      @assets.builtin_notes.get("fgetc").unwrap().param_notes[0],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1193,15 +1204,13 @@ fn TypeChecker::check_builtin_fputc(
     } else {
       args[0] = insert_implicit_cast(new_a0, @ast.Type::int())
     }
-    let (stream_type, new_a1) = self.resolve_expr_type(args[1])
-    args[1] = new_a1
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fputc").unwrap().param_notes[1],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      1,
+      "fputc",
+      @assets.builtin_notes.get("fputc").unwrap().param_notes[1],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1220,15 +1229,13 @@ fn TypeChecker::check_builtin_fseek(
       E3028_BuiltInArgCount,
     )
   } else {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("fseek").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "fseek",
+      @assets.builtin_notes.get("fseek").unwrap().param_notes[0],
+      loc,
+    )
     for i in [1, 2] {
       let (t, new_arg) = self.resolve_expr_type(args[i])
       if !self.check_assignable(@ast.Type::int(), t, loc) {
@@ -1253,15 +1260,13 @@ fn TypeChecker::check_builtin_ftell(
   loc : @source.SourceLoc,
 ) -> @ast.Type {
   if self.builtin_check_count(args, 1, "ftell", loc) {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("ftell").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "ftell",
+      @assets.builtin_notes.get("ftell").unwrap().param_notes[0],
+      loc,
+    )
   }
   @ast.Type::int()
 }
@@ -1274,15 +1279,44 @@ fn TypeChecker::check_builtin_rewind(
   loc : @source.SourceLoc,
 ) -> @ast.Type {
   if self.builtin_check_count(args, 1, "rewind", loc) {
-    let (stream_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
-      self.report_error(
-        @assets.builtin_notes.get("rewind").unwrap().param_notes[0],
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
+    self.builtin_check_file_arg(
+      args,
+      0,
+      "rewind",
+      @assets.builtin_notes.get("rewind").unwrap().param_notes[0],
+      loc,
+    )
+  }
+  @ast.Type::void_type()
+}
+
+///|
+/// fflush（单文件指针参；病 15 批 A 补专臂——此前经存根签名检查，
+/// `fflush(stdout)` 宏展开成 int 1 误吃 E3054）。返回 int。
+fn TypeChecker::check_builtin_fflush(
+  self : TypeChecker,
+  args : Array[@ast.Expr],
+  loc : @source.SourceLoc,
+) -> @ast.Type {
+  if self.builtin_check_count(args, 1, "fflush", loc) {
+    self.builtin_check_file_arg(
+      args, 0, "fflush", "fflush 参数必须是文件指针", loc,
+    )
+  }
+  @ast.Type::int()
+}
+
+///|
+/// clearerr（单文件指针参；病 15 批 A 补专臂——同 fflush）。返回 void。
+fn TypeChecker::check_builtin_clearerr(
+  self : TypeChecker,
+  args : Array[@ast.Expr],
+  loc : @source.SourceLoc,
+) -> @ast.Type {
+  if self.builtin_check_count(args, 1, "clearerr", loc) {
+    self.builtin_check_file_arg(
+      args, 0, "clearerr", "clearerr 参数必须是文件指针", loc,
+    )
   }
   @ast.Type::void_type()
 }

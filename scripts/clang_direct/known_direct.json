@@ -1,10 +1,5 @@
 [
   {
-    "case": "engine_note_lookalike.c",
-    "digest": "f1c1ce6a",
-    "reason": "提取器已知限制（与 vm_diff known 同例同因，登记不修）：程序输出与协议标记 lookalike 混淆提取；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）"
-  },
-  {
     "case": "file_fread.c",
     "digest": "79c7c561",
     "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"

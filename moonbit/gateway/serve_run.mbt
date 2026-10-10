@@ -235,8 +235,18 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   if n > shown {
     lines.push("  ... 其余 \{n - shown} 处已省略显示")
   }
+  // 病 15 批 B（#61）：尾注按泄漏来源适配——fopen 的 FILE\* 块教学生用
+  // fclose 配对（旧固定「malloc 需要 free」对 fopen 场景误导）。
+  let has_fopen = leaks.exists(r => r.alloc_by == "fopen")
+  let has_other = leaks.exists(r => r.alloc_by != "fopen")
   lines.push(
-    "[note] 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。",
+    if has_fopen && has_other {
+      "[note] 提示：fopen 打开的文件需要 fclose 关闭、malloc 分配的内存需要 free 释放，否则会造成内存泄漏。"
+    } else if has_fopen {
+      "[note] 提示：fopen 打开的文件需要 fclose 关闭，否则会造成内存泄漏。"
+    } else {
+      "[note] 提示：在 C 语言中，malloc 分配的内存需要对应 free 释放，否则会造成内存泄漏。"
+    },
   )
   lines.push("==============================")
   for line in lines {

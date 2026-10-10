@@ -125,6 +125,7 @@ pub(all) enum ErrorCode {
   E3066_CallNonFunction
   E3067_PointerTypeMismatch
   W3068_FilePointerIntArg
+  H3069_LoopLeOffByOneHint
   E3070_BufferOverflow
   E3071_UndefinedLabel
   E3072_StructSelfContain

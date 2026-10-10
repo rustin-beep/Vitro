@@ -10,10 +10,7 @@ fn builtin_macro_table() -> Map[String, @token.MacroDef] {
   let m : Map[String, @token.MacroDef] = Map([])
   // (name, ty, text) —— stdio/stdlib/limits/stdbool 常量宏
   let object_macros : Array[(String, @token.TokenType, String)] = [
-    ("stdout", Number, "1"),
-    ("stderr", Number, "2"),
     ("EOF", Number, "-1"),
-    ("stdin", Number, "0"),
     ("EXIT_SUCCESS", Number, "0"),
     ("EXIT_FAILURE", Number, "1"),
     ("RAND_MAX", Number, "32767"),
@@ -42,6 +39,28 @@ fn builtin_macro_table() -> Map[String, @token.MacroDef] {
   for pair in object_macros {
     let (name, ty, text) = pair
     m[name] = @token.MacroDef::Object(body=[synth_token(ty, text)])
+  }
+  // 病 15 残余收尾（#61，2026-10-10）：stdin/stdout/stderr 从 Number 单
+  // token 改为显式 cast 宏体 ((FILE *)n)——FILE* 赋值/传参/比较全语境一次
+  // 干净（旧 Number 形态下 `FILE *f = stdout` 走通用 int→指针赋值吃
+  // E3054，`typedef void* FILE` 使 typeck 无法从类型识别 std 流宏）；
+  // host 层按值分流不变（cast 不改值）。两项登记性影响：① `#if stdout`
+  // 语境改后非法（cast 体进 #if 算术域）——真 C 对 FILE* 宏同判不支持
+  //（UCRT 的 __acrt_iob_func(1) 在 #if 里同样过不了），改后更贴真 C；
+  // ② 未 include stdio.h 而用 stdout：两形态**等价照跑**（旧 ⇒1 直跑；
+  // 新展开 ((FILE*)1) 中 FILE 走 typeck 未知类型 cast 的既有宽容面——
+  // 真 C 报三错，该差距属未知类型面非本批）。
+  for triple in [("stdin", "0"), ("stdout", "1"), ("stderr", "2")] {
+    let (name, val) = triple
+    m[name] = @token.MacroDef::Object(body=[
+      synth_token(LParen, "("),
+      synth_token(LParen, "("),
+      synth_token(Identifier, "FILE"),
+      synth_token(Star, "*"),
+      synth_token(RParen, ")"),
+      synth_token(Number, val),
+      synth_token(RParen, ")"),
+    ])
   }
   // E2 预定义宏族：__STDC_VERSION__ 报 202311L 名义锚点（把版本当能力探测的
   // 病根由三层配套解决，见 Rust macro_table.rs 注释）；__VITRO_SUBSET__ 引擎探测

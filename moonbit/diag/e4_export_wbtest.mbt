@@ -6,7 +6,7 @@ test "e4_export_shape_and_count" {
   assert_true(json.has_prefix("{\"catalog\":["))
   assert_true(json.has_suffix("]}"))
   let hits = json.split("common_causes").length() - 1
-  assert_eq(hits, 103) // 病 15 批 A：102→103
+  assert_eq(hits, 104) // 病 19：103→104
 }
 
 ///|

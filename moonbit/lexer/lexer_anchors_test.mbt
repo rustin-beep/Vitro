@@ -460,3 +460,20 @@ test "macro_call_args_across_lines" {
     msg="ADD 跨行调用必须完成展开（含 + token）",
   )
 }
+
+///|
+test "stdio_macro_cast_body_expansion" {
+  // 病 15 残余收尾锚（#61，2026-10-10）：stdin/stdout/stderr 宏体从
+  // Number 单 token 改为显式 cast 体 ((FILE *)n)——trace 渲染与 token
+  // 面双锚（`FILE *f = stdout` 赋值语境不再吃 E3054；`#if stdout` 语境
+  // 改后非法系登记接受——真 C 对 FILE* 宏同判不支持）
+  let r = @lexer.tokenize("#include <stdio.h>\nFILE* f = stdout;\n")
+  let trace = r.trace.filter(t => t is Expand(..))
+  assert_eq(trace.length(), 1)
+  inspect(trace[0].render(), content="stdout ⇒ ( ( FILE * ) 1 )")
+  // 宏展开后 token 序：cast 体七 token 全量入流（非单 Number）
+  assert_true(
+    r.tokens.length() > 8,
+    msg="cast 宏体多 token 入流",
+  )
+}

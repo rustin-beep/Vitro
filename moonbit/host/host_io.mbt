@@ -535,6 +535,33 @@ fn read_float_token(chars : Array[Byte], pos0 : Int) -> (Array[Byte], Int) {
   (token, pos)
 }
 
+// scanf/sscanf 转换符 ASCII 码（病 14 具名化，#61——原 15 处 spec 裸魔数）：
+// d=100 u=117 f=102 c=99 s=115 i=105 x=120 o=111（fmt 字节域）
+
+///|
+const SCANF_D = 100
+
+///|
+const SCANF_U = 117
+
+///|
+const SCANF_F = 102
+
+///|
+const SCANF_C = 99
+
+///|
+const SCANF_S = 115
+
+///|
+const SCANF_I = 105
+
+///|
+const SCANF_X = 120
+
+///|
+const SCANF_O = 111
+
 ///|
 /// token → Int（oracle `parse().unwrap_or(0)`：溢出/空/孤立符号 → 0）。
 fn parse_int_or_zero(token : Array[Byte]) -> Int {
@@ -683,8 +710,10 @@ pub fn host_scanf_n(
     if !sl.2 {
       arg_idx = arg_idx + 1
     }
-    if spec == 100 {
-      // d
+    if spec == SCANF_D {
+      // d（病 13 修复，#61：无数字=匹配失败——回退/不计/不写/终止，对齐 i/x/o 臂；
+      // 旧臂 token 空也写 0 且 matched++ 对 UCRT/glibc 双分叉，C11 §7.21.6.2 匹配失败返 0）
+      let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
@@ -698,6 +727,11 @@ pub fn host_scanf_n(
       }
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
+      }
+      if pos == start ||
+        (pos == start + 1 && (chars[start] == 43 || chars[start] == 45)) {
+        pos = entry_pos
+        break
       }
       let token : Array[Byte] = []
       let mut j = start
@@ -726,8 +760,9 @@ pub fn host_scanf_n(
         Ok(_) => ()
         Err(e) => return InputOutcome::Trap(access_fault_text(e))
       }
-    } else if spec == 117 {
-      // u
+    } else if spec == SCANF_U {
+      // u（病 13 修复同 d 臂：无数字=匹配失败回退不写不计数）
+      let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
@@ -741,6 +776,10 @@ pub fn host_scanf_n(
       }
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
+      }
+      if pos == start || (pos == start + 1 && chars[start] == 43) {
+        pos = entry_pos
+        break
       }
       let token : Array[Byte] = []
       let mut j = start
@@ -765,7 +804,7 @@ pub fn host_scanf_n(
         Ok(_) => ()
         Err(e) => return InputOutcome::Trap(access_fault_text(e))
       }
-    } else if spec == 102 {
+    } else if spec == SCANF_F {
       // f
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
@@ -804,7 +843,7 @@ pub fn host_scanf_n(
         Ok(_) => ()
         Err(e) => return InputOutcome::Trap(access_fault_text(e))
       }
-    } else if spec == 99 {
+    } else if spec == SCANF_C {
       // c（不跳空白）
       if pos >= chars.length() {
         exhausted = true
@@ -818,7 +857,7 @@ pub fn host_scanf_n(
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
         }
       }
-    } else if spec == 115 {
+    } else if spec == SCANF_S {
       // s
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
@@ -862,7 +901,7 @@ pub fn host_scanf_n(
           Err(e) => return InputOutcome::Trap(access_fault_text(e))
         }
       }
-    } else if spec == 105 || spec == 120 || spec == 111 {
+    } else if spec == SCANF_I || spec == SCANF_X || spec == SCANF_O {
       // i / x / o（病 9 修复，#47 2026-10-09——方向 A 扩面拍板；oracle
       // 从未实现、规范 :421 的 ✅ 系虚标，删区后以 C11 §7.21.6.2 为真值
       // 源补齐）：`%i` = strtol(s,NULL,0) 语义（0x/0X 前缀 16 进制、
@@ -887,7 +926,7 @@ pub fn host_scanf_n(
         break
       }
       let mut base : Int = 10
-      if spec == 120 {
+      if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
         if pos + 2 < chars.length() &&
@@ -896,7 +935,7 @@ pub fn host_scanf_n(
           hex_digit_val(chars[pos + 2]) >= 0 {
           pos = pos + 2
         }
-      } else if spec == 111 {
+      } else if spec == SCANF_O {
         base = 8
       } else if chars[pos] == 48 {
         // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8（'0' 作为首个 oct
@@ -1039,8 +1078,9 @@ pub fn host_sscanf(
     if !sl.2 {
       arg_idx = arg_idx + 1
     }
-    if spec == 100 {
-      // d
+    if spec == SCANF_D {
+      // d（病 13 修复，#61：无数字=匹配失败——回退/不计/不写/终止，对齐 i/x/o 臂）
+      let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
@@ -1053,6 +1093,11 @@ pub fn host_sscanf(
       }
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
+      }
+      if pos == start ||
+        (pos == start + 1 && (chars[start] == 43 || chars[start] == 45)) {
+        pos = entry_pos
+        break
       }
       let token : Array[Byte] = []
       let mut j = start
@@ -1084,8 +1129,9 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == 117 {
-      // u
+    } else if spec == SCANF_U {
+      // u（病 13 修复同 d 臂：无数字=匹配失败回退不写不计数）
+      let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
@@ -1098,6 +1144,10 @@ pub fn host_sscanf(
       }
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
+      }
+      if pos == start || (pos == start + 1 && chars[start] == 43) {
+        pos = entry_pos
+        break
       }
       let token : Array[Byte] = []
       let mut j = start
@@ -1125,7 +1175,7 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == 105 || spec == 120 || spec == 111 {
+    } else if spec == SCANF_I || spec == SCANF_X || spec == SCANF_O {
       // i / x / o（#47 同族对齐扩面，审阅 P2-1 2026-10-09——与 scanf 臂
       // 同源，C11 §7.21.6.2 真值源：%i 前缀探测 0x→16 / 0→8，%x 可选
       // 0x 前缀仅后随 hex 才跳，%o base 8；均可带符号。无数字 → 匹配
@@ -1150,7 +1200,7 @@ pub fn host_sscanf(
         break
       }
       let mut base : Int = 10
-      if spec == 120 {
+      if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
         if pos + 2 < chars.length() &&
@@ -1159,7 +1209,7 @@ pub fn host_sscanf(
           hex_digit_val(chars[pos + 2]) >= 0 {
           pos = pos + 2
         }
-      } else if spec == 111 {
+      } else if spec == SCANF_O {
         base = 8
       } else if chars[pos] == 48 {
         // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8
@@ -1210,7 +1260,7 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == 102 {
+    } else if spec == SCANF_F {
       // f
       let pair = read_float_token(chars, pos)
       let token = pair.0
@@ -1244,7 +1294,7 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == 99 {
+    } else if spec == SCANF_C {
       // c
       if pos >= chars.length() {
         break
@@ -1260,7 +1310,7 @@ pub fn host_sscanf(
       if !sl.2 {
         matched = matched + 1
       }
-    } else if spec == 115 {
+    } else if spec == SCANF_S {
       // s
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1

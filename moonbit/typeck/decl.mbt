@@ -137,15 +137,18 @@ fn TypeChecker::dispatch_stmt(
       let new_cond : @ast.Expr? = match cond {
         Some(c) => {
           let nc = self.check_condition(c, "for 条件", loc)
-          // W3051：for 条件 Le + 数组/指针参与 → off-by-one 提示
+          // 病 19（#61，2026-10-10）：for 条件 Le + 数组/指针参与的
+          // off-by-one **教学提示**转 H 级（Clang 默认无对应警告——#50 拍板
+          // 转 H 教学层）；静态可判定的常数下标越界仍由 W3051 承载
+          //（expr.mbt resolve_index，-Warray-bounds 对齐）。
           match nc {
             Binary(Le, left, right, _, _) =>
               if self.expr_involves_array_or_pointer(left) ||
                 self.expr_involves_array_or_pointer(right) {
-                self.report_warning(
+                self.report_hint(
                   "循环条件中使用了 '<='，如果用于数组索引，可能导致越界（off-by-one 错误）。你是否想使用 '<'？",
                   loc,
-                  W3051_ArrayBoundOffByOne,
+                  H3069_LoopLeOffByOneHint,
                 )
               }
             _ => ()

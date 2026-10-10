@@ -273,7 +273,10 @@ test "condition_warnings" {
     loc,
   )
   let tc2 = TypeChecker::new()
-  let (_, _, warns2, _) = tc2.check(empty_prog([main_of(body2)]))
-  assert_eq(warns2.length(), 1)
-  assert_true(warns2[0].code == 3051)
+  let (_, _, warns2, hints2) = tc2.check(empty_prog([main_of(body2)]))
+  // 病 19（#61，2026-10-10）：「循环 <=」提示转 H 级（Clang 默认无对应——
+  // W3051 只承载静态常数下标越界）
+  assert_eq(warns2.length(), 0)
+  assert_eq(hints2.length(), 1)
+  assert_true(hints2[0].code == 3069)
 }

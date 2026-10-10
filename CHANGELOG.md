@@ -12,6 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（病 15 残余收尾：stdin/stdout/stderr 宏体 cast 化——FILE\* 全语境一次干净，#61，2026-10-10）
+
+- 宏展开面根治（所有者方案 + 实测定体）：`builtins.mbt` 的 std 流宏从 Number 单 token（`stdout ⇒ 1`）改为**显式 cast 体** `((FILE *)n)`（`MacroDef::Object` 多 token，va_\* 先例）——`FILE *f = stdout`、`f = stderr`、用户函数 `emit(FILE*)` 形参传 `stdout`、`if (f == stdout)` 比较、fputc/fputs/fprintf/fgets 全语境**零诊断**（旧形态赋值/传参吃 E3054——`typedef void* FILE` 使 typeck 无法从类型识别 std 流宏，三态放行只盖 builtin 面）。宏体选 `((FILE *)1)` 而非 `((void *)1)`：后者赋 `FILE*` 多一条 H3057 hint（void\* → void\*\* 隐式转换）。host 层按值分流不变（cast 不改值）。
+- **两项登记性影响**：① `#if stdout` 语境改后非法（cast 体进 #if 算术域）——真 C 对 FILE\* 宏同判不支持（UCRT `__acrt_iob_func(1)` 同样过不了），改后更贴真 C；② 缺 include 用 stdout 两形态等价照跑（typeck 未知类型 cast 既有宽容面，真 C 报三错——该差距属未知类型面非本批）。
+- **语料不可对拍面两格实证**：`fseek(stdout)` 返回值环境依赖（UCRT 管道 -1 / 文件重定向 0——Go exec 在 Windows 对任意 Writer 走临时文件中转 = seekable，clang_direct 恒 0）；`fclose(stdout)` 真关流后 printf 丢失且 UCRT fail-fast（0xC0000409）vs Vitro 伪句柄常驻（批 B 拍板）——语料 `stdio_macro_file_ptr.c` 规避输出这两值（fseek 值仅由 wbtest 锁 -1 语义，fclose 放尾 rc 携带）。
+- pp 宏体锚 `stdio_macro_cast_body_expansion`（trace 渲染 + 多 token 入流）；digest 三套 `--refresh` 重算（lexer baseline 6+8/knr、typeck baseline 401/knr 81、codegen baseline 401——宏展开 token 流位移存量）+ 新用例四处入账。
+- 验收：moon test 724/724；clang_direct 726/8/0（734）；vm_diff 634/5/0（639）；lexer/typeck/codegen 全域 PASS；surface/mbti/facts/demo_smoke 全绿。
+
+### Changed（病 19 尾巴销案：「循环 <=」提示转 H 教学层 H3069，#61，2026-10-10）
+
+- **W3051 语义错位终销**（#50 拍板执行）：`for (i=0; i<=n; i++)` 且条件两侧含数组/指针的 off-by-one 提示原挂 W3051（ArrayBoundOffByOne 名实不符——Clang 默认无对应警告）——新码 **H3069_LoopLeOffByOneHint** 承载（severity 降 Hint：教学提示不淹没真警告）；**静态可判定的常数下标越界仍由 W3051 承载**（expr.mbt resolve_index 的 -Warray-bounds 对齐面不动）。
+- 码表 138→139 / catalog 103→104（gen_diag 基线 + diag 五锚连坐）；decl.mbt for 臂 report_warning→report_hint；锚 `condition_warnings` 翻面（warns=0/hints=1）。
+- typeck 四域 hash 零翻（语料无该形态）；protocol_frames 帧九基线刷新（47 帧一致）；demo/wasm 重建 + demo_smoke 全绿。
+
+### Fixed（病 13+14 scanf 失败语义批：d/u 无数字误计数 + spec 魔数具名化，#61，2026-10-10）
+
+- **病 13**：`scanf`/`sscanf` 的 `%d`/`%u` 无数字形态（如遇 "abc"）旧臂写 0 且 matched++——对 UCRT 与 glibc **双双分叉**（两侧均返 0 不写，C11 §7.21.6.2 匹配失败），修为对齐病 9 i/x/o 臂的失败语义：**游标回退（含符号位）+ 不计 matched + 不写 + 终止**（scanf/sscanf 四臂同款）。**%f 实测无恙**（token 空 break 已对——#61 台账原口径含 %f 系登记时推测，本批更正为 d/u 两臂）。红→绿语料 `scanf_digit_mismatch.c`（sscanf 哨兵版 + stdin 跨调用版——首转换失败后字符退回输入流，`%c` 仍可读到）；**存量 34 例 stdin 语料零翻**（vm_diff 633 SAME 实证无依赖宽松形态）。
+- **病 14**：host_io.mbt 的 spec 裸 ASCII 魔数 15 处具名化（`SCANF_D`=100 … `SCANF_O`=111 常量块）。
+- 验收：moon test 723/723；vm_diff 633/5/0（638 例含新用例）；clang_direct 725/8/0；四驱动 freeze 入账（vm/codegen/typeck/lexer）；mbti/surface/facts 全绿。
+- **#59 题 2/3 随批销案**；题 1（`%i/%x` 的 "0x" 残缺前缀跟 UCRT 还是 glibc 系）待拍板——Vitro 现状=glibc 系。
+
 ### Fixed（小菜批：#46/#44 文档落地 + 注释陈旧两笔 + llabs 去重 + E3067 const 附注 + #10 批闸收尾账，2026-10-10）
 
 - **#46 关**：CLI_PROTOCOL_V1 头部补「下游 MoonBit 参数命名映射」声明（线上字段 `method` 冻结不改线，MoonBit 形参用 `m`/`method_`——保留字 0035 警告的官方规避）；同款随包落 protocol/README（下游可见）。

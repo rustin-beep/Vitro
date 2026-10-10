@@ -145,9 +145,10 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 ## 发布流程（T5 定型）
 
 ```bash
-# 前置：moon check --target all 干净（豁免：Show→Debug 迁移期噪音 10 条，
-#       全系 inspect 系测试 API 依赖 core 旧 trait，无本仓侧干净替代——
-#       见 S3 执行记录 §7-9/§8-6；core 稳定后清零）+ moon test 全绿 +
+# 前置：moon check --target all 干净（余额 34 条全为带据豁免：0020×18
+#       inspect 系 Show→Debug 迁移期噪音〔core 稳定后清零〕+ 0001/0002/0029/
+#       0050/0007 族 A3 批登记；0079/0027 已清零且经 moon.mod warnings
+#       @ 升错误锁死〔#54 B〕——复发即 check/test 双红）+ moon test 全绿 +
 #       moon info 无意外 diff + gen_diag -check 绿
 cd moonbit && moon publish        # Server 200 OK 后：
 # 验收：moon search vitro 可查 → 全新项目 moon add vitro/engine@<ver> →

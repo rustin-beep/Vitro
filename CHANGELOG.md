@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #54 Part B：警告严格度上锁——moon.mod warnings @ 升错误两类，2026-10-10）
+
+- **锁集**：`moon.mod` 增 `warnings = "@implicit_impl_as_method@deprecated_syntax"`——0079（A2 批 217 条全清）与 0027（A1 批 13 条全清）两类升错误防复发；**0020 deprecated 不锁**（余额 18 条为 inspect 系 Show→Debug 迁移期噪音，A3 带据豁免等 core 干净替代——升错误即误伤）。
+- **CI 接线零改动**：`moon.mod` 持久化即全队/CI 同口径——CI 的 `moon test` 步吃同一编译链，无需 ci.yml 显式 flag（比 B4 原案更少一面）。
+- **J9 双证红**：注入 `derive(Debug, Eq)` 无 extend 的临时类型 → `moon check` exit 127（`Error: [0079]`）、`moon test` exit 1（测试全过但命令红）——CI 会红的实证；还原复绿（默认 29 / `--target all` 34 / test 705 全绿）。
+- moonbit/AGENTS.md 发布流程段的过时豁免句连坐（「10 条」→ 余额 34 条带据明细 + @ 锁说明）。
+- **#54 至此销案**：Part A 542→29/34（豁免带据）+ Part B 两类上锁——issue 验收标准双达成。
+
 ### Fixed（issue #54 A2 批：0079 implicit_impl_as_method 全清——217 条 extend 显式提升声明，2026-10-10）
 
 - **清零**：`moon check` 246 → **29**（默认口径；`--target all` 251 → 34）——0079 的 217 条全消，剩 29 条为 A3 已带据豁免面（0020×18 + 0001×7 + 0002×4）。Part A 至此**真收官**：542 → 29/34（豁免带据）。

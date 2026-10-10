@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #50 批③：24 新图标接线 + catalog 扩容 77→102，2026-10-10，分支 issue50-alignment）
+
+- **口径**（owner 定）：语义族 ↔ svg **双射**——一个语义一张图、同族多码共享合法（static-linkage 挂 E3058+E3059、const-qual 挂 E3065+E3049、preproc-cond 挂 E1011/E1013/E1014）；反向「一码多图」禁止。
+- **两处修正（owner 核表驳回初稿）**：depth-limit 改指 **E1017/E1022**（E1007 声明复杂度保留本命 complex）；null-deref **维持预留**（E3021 类型层保留 deref；运行时空指针解引用码表无码——null-deref/number-literal/char-literal/uninit-read 四张超前预留图不入 catalog）。
+- **catalog 77→102**：新增 25 条教学条目（title/explanation/common_causes 按触发文案+C 语义拟写）——词法/预处理族清零（unknown-char/preproc-cond×3/include-cycle/include-missing/token-paste/static-assert/depth-limit×2/shadow/side-effect）+ 语义族补全（duplicate→E3001 三胞胎、const-qual→E3049/E3065、struct-member→E3072、buffer-overflow→E3070、pointer-compat→W3064、cond-assign→W3050、printf/scanf-format→W3062/W3063、static-linkage→E3058/E3059、type-expected/label-undefined/func-undefined 等）。
+- **既有 4 处 icon 精确化**（旧图留给族内本命码）：E1003 string→string-multiline（string 留 E1002）；E2007/E2008 bracket→paren-close/bracket-close（bracket 留 E2006）；E3036 call-target→func-undefined（call-target 留 E3066）。
+- 连坐：gen_diag 基线 77→102 + 再生；diag 包翻锚 4（coverage 137/102/35、E4 计数、E4 首条目 E1002→E1001、README doc test）；protocol_frames 基线刷新（帧 9 error_catalog/帧 11 contracts/帧 33-34 icons.get 为扩容预期漂移，人工令 --update-baseline）。
+- 验收：moon test 719/719 · icon_catalog 76 契约全绿 · gen_diag -check · demo smoke 168/168 · facts strict 漂移 0。
+
 ### Fixed（issue #50 对齐批①②：补报五真缺陷 + 级别对齐升降五码，2026-10-10，分支 issue50-alignment）
 
 - **批① 补报 5**（Vitro 零诊断、Clang 默认即报——对齐表缺口族）：E3003 同签名函数重定义（原型+定义合法、定义+定义报，对齐 Clang redefinition）；E3047 case 常量性（字面量判据——#define 宏预处理已展开，语料 5 处 case NUMBER: 零翻）；E3058/E3059 static 前向引用（first_decl_line 序检查，原型先行合法放行）；W3051 常数下标静态越界（对齐 -Warray-bounds；负下标同报；变量下标留运行时 E3070 族）。

@@ -2,6 +2,17 @@
   "source_sha": "7d1711d3",
   "entries": [
     {
+      "code": 1001,
+      "icon": "unknown-char",
+      "title": "未知字符",
+      "explanation": "源代码中出现了编译器不认识的字符。C 语言只允许特定的字符集合，超出范围的字符无法被解析。",
+      "common_causes": [
+        "使用了中文全角标点（如；，（））代替英文半角",
+        "复制粘贴时带入了不可见的特殊字符",
+        "变量名或注释中使用了非法字符"
+      ]
+    },
+    {
       "code": 1002,
       "icon": "string",
       "title": "字符串未闭合",
@@ -13,7 +24,7 @@
     },
     {
       "code": 1003,
-      "icon": "string",
+      "icon": "string-multiline",
       "title": "字符串跨行",
       "explanation": "C 语言的字符串不能直接在代码中换行。如果需要多行文本，请使用 \\n 转义或分成多个字符串拼接。",
       "common_causes": [
@@ -70,6 +81,138 @@
       ]
     },
     {
+      "code": 1011,
+      "icon": "preproc-cond",
+      "title": "条件指令无匹配",
+      "explanation": "出现了 #elif 指令，但前面没有与之匹配的 #if/#ifdef/#ifndef。条件编译指令必须成对出现。",
+      "common_causes": [
+        "删除了 #if 却保留了 #elif",
+        "#elif 误写在了 #if 之前",
+        "嵌套条件编译时配对错乱"
+      ]
+    },
+    {
+      "code": 1013,
+      "icon": "preproc-cond",
+      "title": "条件编译未闭合",
+      "explanation": "#if/#ifdef/#ifndef 开启的条件编译块没有用 #endif 结束。每个开启的条件都必须显式关闭。",
+      "common_causes": [
+        "忘记写 #endif",
+        "#endif 被误删",
+        "#if 与 #endif 数量不匹配"
+      ]
+    },
+    {
+      "code": 1014,
+      "icon": "preproc-cond",
+      "title": "条件表达式错误",
+      "explanation": "#if 后面的表达式无法求值。条件编译的表达式必须是能计算出整数值的常量表达式。",
+      "common_causes": [
+        "表达式中使用了未定义的宏",
+        "括号不匹配",
+        "在 #if 中使用了 C 函数调用（不被允许）"
+      ]
+    },
+    {
+      "code": 1015,
+      "icon": "include-cycle",
+      "title": "头文件循环包含",
+      "explanation": "头文件之间相互包含形成环。A 包含 B，B 又包含 A，编译器会陷入无限展开。",
+      "common_causes": [
+        "两个头文件互相 #include",
+        "缺少包含守卫（#ifndef/#define/#endif）",
+        "头文件职责划分不清导致互相依赖"
+      ]
+    },
+    {
+      "code": 1016,
+      "icon": "token-paste",
+      "title": "记号粘贴无效",
+      "explanation": "## 运算符的操作数不符合要求。## 只能用于宏定义中把两个记号粘贴成一个。",
+      "common_causes": [
+        "在宏定义外使用了 ##",
+        "## 前后缺少操作数",
+        "试图粘贴出不合法的记号"
+      ]
+    },
+    {
+      "code": 1017,
+      "icon": "depth-limit",
+      "title": "宏展开深度超限",
+      "explanation": "宏嵌套展开的层数超过了限制。宏展开自身会形成递归时，编译器会设置深度上限以避免无限展开。",
+      "common_causes": [
+        "宏 A 展开为宏 B，B 又展开为 A（递归宏）",
+        "宏展开链条过长",
+        "试图用宏递归模拟循环"
+      ]
+    },
+    {
+      "code": 1018,
+      "icon": "shadow",
+      "title": "宏名遮蔽",
+      "explanation": "宏定义的名字与代码中的变量或函数同名，宏展开会悄悄替换掉这些标识符，改变程序行为。",
+      "common_causes": [
+        "#define 的名字与局部变量同名",
+        "#define 的名字与函数同名",
+        "不知道某个名字已被头文件定义为宏"
+      ]
+    },
+    {
+      "code": 1019,
+      "icon": "side-effect",
+      "title": "宏参数副作用",
+      "explanation": "宏参数在展开中出现多次，带有副作用（如 a++）的实参会被求值多次，与函数调用的语义不同。",
+      "common_causes": [
+        "向宏传入 a++ / a-- 这类自增自减表达式",
+        "向宏传入函数调用等有副作用的表达式",
+        "期望宏参数像函数参数一样只求值一次"
+      ]
+    },
+    {
+      "code": 1020,
+      "icon": "static-assert",
+      "title": "静态断言失败",
+      "explanation": "_Static_assert 的条件在编译期求值为假。静态断言用于在编译时检查常量条件，失败即说明程序假设被违反。",
+      "common_causes": [
+        "断言的条件表达式写错",
+        "被检查的常量值与预期不符",
+        "用静态断言检查的约束实际不成立"
+      ]
+    },
+    {
+      "code": 1021,
+      "icon": "include-missing",
+      "title": "找不到头文件",
+      "explanation": "#include 指定的文件不存在或无法读取。编译器按路径查找头文件，找不到即报错。",
+      "common_causes": [
+        "文件名拼写错误",
+        "文件不在编译器搜索的路径下",
+        "项目配置中缺少该头文件所在目录"
+      ]
+    },
+    {
+      "code": 1022,
+      "icon": "depth-limit",
+      "title": "模板实例化超限",
+      "explanation": "模板实例化的嵌套层数超过了限制。每一层实例化都会产生新的模板，无限制递归会耗尽资源。",
+      "common_causes": [
+        "模板递归实例化自身",
+        "模板互相实例化形成环",
+        "缺少递归终止条件的特化"
+      ]
+    },
+    {
+      "code": 2001,
+      "icon": "type-expected",
+      "title": "缺少类型说明符",
+      "explanation": "声明中缺少类型。C 的每个声明都必须以类型（int、char、struct 等）开头。",
+      "common_causes": [
+        "直接写变量名忘记类型",
+        "误以为可以像某些语言一样省略类型",
+        "类型名拼写错误被当成了变量名"
+      ]
+    },
+    {
       "code": 2002,
       "icon": "array-size",
       "title": "预期数组大小",
@@ -121,7 +264,7 @@
     },
     {
       "code": 2007,
-      "icon": "bracket",
+      "icon": "paren-close",
       "title": "预期右圆括号",
       "explanation": "圆括号 ( ) 必须成对出现。常见于 if/while/for 的条件表达式或函数调用参数列表。",
       "common_causes": [
@@ -131,12 +274,23 @@
     },
     {
       "code": 2008,
-      "icon": "bracket",
+      "icon": "bracket-close",
       "title": "预期右方括号",
       "explanation": "方括号 [ ] 必须成对出现。常见于数组声明和数组索引访问。",
       "common_causes": [
         "数组声明时缺少 ]",
         "数组索引访问时缺少 ]"
+      ]
+    },
+    {
+      "code": 3001,
+      "icon": "duplicate",
+      "title": "变量重复声明",
+      "explanation": "同一个作用域内重复声明了同名变量。每个变量在一个作用域内只能声明一次。",
+      "common_causes": [
+        "复制粘贴代码后忘记修改变量名",
+        "在不同位置声明了同名变量但实际想要不同的变量",
+        "循环中或函数内重复声明了外层已有的变量"
       ]
     },
     {
@@ -476,7 +630,7 @@
     },
     {
       "code": 3036,
-      "icon": "call-target",
+      "icon": "func-undefined",
       "title": "调用了未定义的函数",
       "explanation": "调用函数前，编译器需要知道函数的签名。请在调用前添加函数原型声明（函数头加分号），或将函数定义移到调用之前。",
       "common_causes": [
@@ -611,6 +765,28 @@
       ]
     },
     {
+      "code": 3049,
+      "icon": "const-qual",
+      "title": "对常量赋值",
+      "explanation": "试图修改被 const 修饰的变量。const 变量在初始化后不可再被赋值。",
+      "common_causes": [
+        "忘记变量声明时加了 const",
+        "误以为函数内可以修改 const 参数",
+        "把只读配置变量误当作可修改状态"
+      ]
+    },
+    {
+      "code": 3050,
+      "icon": "cond-assign",
+      "title": "条件中的赋值",
+      "explanation": "if/while 的条件里使用了 =（赋值）而不是 ==（比较）。赋值结果几乎总为真，条件判断失去意义。",
+      "common_causes": [
+        "把 == 误写成 =",
+        "本意是比较两个值是否相等",
+        "打字遗漏了一个等号"
+      ]
+    },
+    {
       "code": 3051,
       "icon": "off-by-one",
       "title": "Off-by-One 错误",
@@ -681,6 +857,28 @@
       ]
     },
     {
+      "code": 3058,
+      "icon": "static-linkage",
+      "title": "static 函数前向使用",
+      "explanation": "static 函数在它的声明或定义之前被使用。static 函数只在本文件内可见，必须先声明（原型）再使用。",
+      "common_causes": [
+        "函数定义写在了调用点之后但没有前置原型",
+        "删除原型时没有调整定义位置",
+        "不了解 static 函数同样要求先声明后使用"
+      ]
+    },
+    {
+      "code": 3059,
+      "icon": "static-linkage",
+      "title": "static 全局变量前向使用",
+      "explanation": "static 全局变量在它的声明之前被使用。变量必须先声明再使用，与是否 static 无关。",
+      "common_causes": [
+        "变量定义写在了使用点之后",
+        "文件顶部的声明被误删",
+        "以为全局变量全文件可见就不需要声明顺序"
+      ]
+    },
+    {
       "code": 3060,
       "icon": "uaf",
       "title": "使用已释放的内存 (Use-After-Free)",
@@ -698,6 +896,50 @@
       "common_causes": [
         "free(p) 后没有置 NULL，再次 free(p)",
         "两个指针指向同一地址，都执行了 free"
+      ]
+    },
+    {
+      "code": 3062,
+      "icon": "printf-format",
+      "title": "printf 格式不匹配",
+      "explanation": "printf 的格式说明符与实际参数类型不一致。%d 对应 int、%f 对应 double、%s 对应字符串指针，错配会输出错误结果。",
+      "common_causes": [
+        "用 %d 输出 double 或指针",
+        "用 %s 输出 char 数组之外的类型",
+        "格式串中说明符个数与参数个数不对应"
+      ]
+    },
+    {
+      "code": 3063,
+      "icon": "scanf-format",
+      "title": "scanf 格式不匹配",
+      "explanation": "scanf 的格式说明符与实参类型不一致。scanf 的参数必须是对应类型变量的地址。",
+      "common_causes": [
+        "用 %d 读入 double 变量",
+        "忘记取地址（传了变量而不是 &变量）",
+        "%ld 与 %d 在 long 与 int 之间混用"
+      ]
+    },
+    {
+      "code": 3064,
+      "icon": "pointer-compat",
+      "title": "双重指针转换",
+      "explanation": "不同基类型的二级指针之间隐式转换。T** 与 S** 之间没有安全的隐式转换关系。",
+      "common_causes": [
+        "把 int** 直接赋给 double**",
+        "误以为指针的指针与指针一样灵活",
+        "函数参数类型写错了一层 *"
+      ]
+    },
+    {
+      "code": 3065,
+      "icon": "const-qual",
+      "title": "违反 const 限定",
+      "explanation": "试图通过指针修改 const 修饰的数据。指向 const 的指针不能用来修改所指向的内容。",
+      "common_causes": [
+        "把 const 数据的地址赋给非 const 指针后写入",
+        "函数参数是 const 指针却在函数内写入",
+        "const int* 与 int* 混用"
       ]
     },
     {
@@ -719,6 +961,39 @@
       "common_causes": [
         "向下转型未写 static_cast/dynamic_cast",
         "无关类型的指针互相赋值（如 int* ← double*）"
+      ]
+    },
+    {
+      "code": 3070,
+      "icon": "buffer-overflow",
+      "title": "缓冲区溢出",
+      "explanation": "写入超过了缓冲区的容量。数组、malloc 的内存块都有边界，越界写入会破坏相邻内存。",
+      "common_causes": [
+        "strcpy 目标缓冲区小于源字符串",
+        "循环写入次数超过数组长度",
+        "memcpy 的长度参数算错"
+      ]
+    },
+    {
+      "code": 3071,
+      "icon": "label-undefined",
+      "title": "标签未定义",
+      "explanation": "goto 跳转到的标签在函数内不存在。goto 与标签必须在同一个函数内配对。",
+      "common_causes": [
+        "标签名拼写错误",
+        "goto 写在了另一个函数里",
+        "标签被删除后 goto 没有清理"
+      ]
+    },
+    {
+      "code": 3072,
+      "icon": "struct-member",
+      "title": "结构体自包含",
+      "explanation": "结构体的成员包含了结构体自身。这样的类型大小无法计算（无限递归），应使用指针代替。",
+      "common_causes": [
+        "struct S 的成员写了 struct S 而不是 struct S*",
+        "链表/树节点忘记加指针符号",
+        "误以为结构体可以按值包含自身"
       ]
     },
     {

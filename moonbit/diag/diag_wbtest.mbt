@@ -1,11 +1,12 @@
 ///|
-/// T2 覆盖率断言基线：137 臂 / 77 卡片 / 60 无卡片（77 + 60 = 137，
+/// T2 覆盖率断言基线：137 臂 / 102 卡片 / 35 无卡片（102 + 35 = 137，
+/// #50 批③：77/60→102/35（图标接线批 +25 条目），
 /// 清单互斥互补）。源漂移由 gen_diag fail loud 兜底，本断言锁生成产物。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
   assert_eq(all.length(), 137)
-  assert_eq(catalog_codes().length(), 77)
-  assert_eq(codes_without_catalog().length(), 60)
+  assert_eq(catalog_codes().length(), 102) // #50 批③：77→102
+  assert_eq(codes_without_catalog().length(), 35) // #50 批③：60→35
   // 互补无交集
   let set : Map[Int, Bool] = Map([])
   for c in catalog_codes() {

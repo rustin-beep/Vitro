@@ -1,20 +1,21 @@
 ///|
-/// E4 出口形状：包裹结构 + 条目数 77（每条必含一个 common_causes 键）。
+/// E4 出口形状：包裹结构 + 条目数 102（每条必含一个 common_causes 键）。
+/// #50 批③：77→102（图标接线批 +25 条目）。
 test "e4_export_shape_and_count" {
   let json = export_catalog_json()
   assert_true(json.has_prefix("{\"catalog\":["))
   assert_true(json.has_suffix("]}"))
   let hits = json.split("common_causes").length() - 1
-  assert_eq(hits, 77)
+  assert_eq(hits, 102) // #50 批③：77→102
 }
 
 ///|
-/// E4 首条逐字节锚（E1002——Rust 侧 export_json 的同条目对照）：
-/// 字段序 / lang="c" / category="词法" / 转义形态。
+/// E4 首条逐字节锚（#50 批③后最小码 1001——原 1002 首位被新增 unknown-char
+/// 条目取代）：字段序 / lang="c" / category="词法" / 转义形态。
 test "e4_export_first_entry_bytes" {
   let json = export_catalog_json()
-  // 首条即最小码 1002（catalog_codes 升序首位）
-  let expect_head = "{\"catalog\":[{\"code\":1002,\"code_str\":\"E1002\",\"lang\":\"c\",\"category\":\"词法\",\"icon\":\"string\",\"title\":\"字符串未闭合\","
+  // 首条即最小码 1001（catalog_codes 升序首位；#50 批③新增）
+  let expect_head = "{\"catalog\":[{\"code\":1001,\"code_str\":\"E1001\",\"lang\":\"c\",\"category\":\"词法\",\"icon\":\"unknown-char\",\"title\":\"未知字符\","
   assert_true(json.has_prefix(expect_head))
 }
 

@@ -114,6 +114,7 @@
 | [`current/04-标准库与防线/标准库支持矩阵.md`](current/04-标准库与防线/标准库支持矩阵.md) | 标准库支持矩阵（头文件 × 函数 × 实现层 × 验证状态）（原 `SUPPORTED_LIBC.md`） |
 | [`current/04-标准库与防线/标准库架构与测试防线.md`](current/04-标准库与防线/标准库架构与测试防线.md) | 标准库四层架构（VM Builtin / Rust Host / Bytecode Libc）与测试设计（原 `STDLIB_AND_TEST_DESIGN.md`） |
 | [`current/04-标准库与防线/标准库单源与头文件多文件设计20261010.md`](current/04-标准库与防线/标准库单源与头文件多文件设计20261010.md) | **标准库单源与头文件 · 多文件编译设计（2026-10-10，设计稿）**：libc 面 10 个声明点收敛为**一个零依赖原生包**（kimicc `ctype` 式纯函数，落 L3，取代「libc L5 不能 import L6 ⇒ 只能对账」的死结）；头文件三层真相分离（surface=`.h` / binding=事实包 / behavior=libc_src·host）；多文件统一 `SourceGraph`（明确不做分离编译+链接）；对外新增 `capabilities.libraries` 出口（由真源生成，不手写）；方案 A 边界 = 内部原生包 + 对外生成 JSON，既有 `json.mbt` 体系不动 |
+| [`current/04-标准库与防线/标准库单源P0对照表20261010.md`](current/04-标准库与防线/标准库单源P0对照表20261010.md) | **标准库单源 P0 对照表（2026-10-10，待人工确认）**：十点盘点全实测（105 声明 / 57 表条 / 28 kinds / 88 索引 / 110 路由 / 遮蔽 17 名 / 宏两分 23+4 对 24）；必答三题收口（病 11 过渡 57 条零作废、遮蔽 17 名建议删死面、va_* 双定义盲区待探针）；P1 就绪判定 = 就绪、排 0.9.0 后 |
 | [`current/04-标准库与防线/Clang直拍门禁.md`](current/04-标准库与防线/Clang直拍门禁.md) | **Clang 直拍门禁（clang_direct，CI 硬门禁）**：真值源 = Clang 本尊、被测物 = MoonBit `cmd/run`，全量语料逐例对照；`known_direct.json` 白名单 digest 锁定；吸收 shadow 防线（2026-10-05 删区批，语料差量 0；前身已归档 [`ARCHIVE_影子验证框架.md`](archive/ARCHIVE_影子验证框架.md)） |
 | [`current/04-标准库与防线/学生错误用例集.md`](current/04-标准库与防线/学生错误用例集.md) | 学生常见错误测试用例集（⚠️ 人工整理的假想清单，未接防线；真实失败路径语料见裁定 G1）（原 `STUDENT_ERROR_TEST_CASES.md`） |
 | [`current/04-标准库与防线/TODO注释规范.md`](current/04-标准库与防线/TODO注释规范.md) | 代码内 TODO/FIXME/HACK/SAFETY 标签与 `#DXX` 编号约定（原 `TODO_CONVENTION.md`） |

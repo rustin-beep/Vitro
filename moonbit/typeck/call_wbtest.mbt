@@ -466,9 +466,9 @@ test "builtin_table_error_path_copy_anchor" {
 }
 
 ///|
-/// 病 15 批 A 红→绿锚（FILE* 位三态判定）：int 字面量 0/1/2 放行
-/// （stdin/stdout/stderr 宏展开通道——预处理后 stdout 与裸 1 同形，宁纵
-/// 勿枉）；其他 int（变量/其他常量）报 W3068；非指针非 int 维持 E3029；
+/// 病 15 批 A 红→绿锚（FILE* 位三态判定；批 A' 随病 15 收尾收紧）：
+/// int 一律报 W3068（批 A 初版曾放行字面量 0/1/2——宏体 cast 化后裸常量
+/// 无宏来源即收）；指针放行；非指针非 int 维持 E3029；
 /// fflush 补专臂（此前经存根签名检查——`fflush(stdout)` 展开后误吃 E3054）。
 test "file_pointer_arg_three_state_anchor" {
   let loc = @source.SourceLoc::new(2, 9)
@@ -504,19 +504,13 @@ test "file_pointer_arg_three_state_anchor" {
     let (_, errs, warns, _) = tc.check(prog_of([main], []))
     (errs, warns)
   }
-  // ① 字面量 0/1/2 放行（宏展开通道）：零 err 零 warn
+  // ① 裸字面量 1 报 W3068（批 A' 收紧锚，随病 15 收尾：宏体 cast 化后
+  // 裸常量无宏来源——stdout 现展开为 ((FILE *)1) 走指针分支零诊断，
+  // 由 lexer 锚 stdio_macro_cast_body_expansion 锁定）
   let (e1, w1) = run(
     [
       expr_stmt(
         call("fseek", [int_lit(1, loc), int_lit(0, loc), int_lit(0, loc)], loc),
-        loc,
-      ),
-      expr_stmt(
-        call("fseek", [int_lit(2, loc), int_lit(0, loc), int_lit(0, loc)], loc),
-        loc,
-      ),
-      expr_stmt(
-        call("fseek", [int_lit(0, loc), int_lit(0, loc), int_lit(0, loc)], loc),
         loc,
       ),
     ],
@@ -525,9 +519,14 @@ test "file_pointer_arg_three_state_anchor" {
   assert_eq(
     e1.length(),
     0,
-    msg="字面量 0/1/2 放行（stdout 等宏展开通道）",
+    msg="裸 int（含 0/1/2 字面量）不报错只报 W",
   )
-  assert_eq(w1.length(), 0, msg="宏值字面量不报 W3068")
+  assert_eq(
+    w1.length(),
+    1,
+    msg="裸字面量 1 报 W3068（批 A' 收紧锚）",
+  )
+  assert_true(w1[0].code == 3068)
   // ② 裸字面量 7：W3068（当前零诊断——红锚）
   let (e2, w2) = run(
     [
@@ -559,7 +558,7 @@ test "file_pointer_arg_three_state_anchor" {
   assert_eq(e3.length(), 0)
   assert_eq(w3.length(), 1, msg="int 变量传 FILE* 位报 W3068")
   assert_true(w3[0].code == 3068)
-  // ④ fflush(stdout 展开形=1) 零诊断（现状 E3036/E3054——红锚）
+  // ④ fflush(裸 1) 与 ① 同收紧（批 A'：W3068；真 stdout 走指针分支零诊断）
   let (e4, w4) = run(
     [expr_stmt(call("fflush", [int_lit(1, loc)], loc), loc)],
     loc,
@@ -567,9 +566,9 @@ test "file_pointer_arg_three_state_anchor" {
   assert_eq(
     e4.length(),
     0,
-    msg="fflush 专臂 + 宏值放行（原 E3054 误拦）",
+    msg="fflush 专臂不报错（原 E3054 误拦已修）",
   )
-  assert_eq(w4.length(), 0)
+  assert_eq(w4.length(), 1, msg="裸 1 报 W3068（批 A' 收紧）")
   // ⑤ fflush(int 变量)：W3068
   let (e5, w5) = run(
     [bad_var_decl(loc), expr_stmt(call("fflush", [bad_var(loc)], loc), loc)],

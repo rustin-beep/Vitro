@@ -252,13 +252,18 @@ test "fixgen_3050_no_equals_fallback_manual" {
 }
 
 ///|
-test "fixgen_3051_off_by_one" {
-  // "for(i=0;i<=n;i++)"：首现 "<=" 字节位 9 → (9,11) 替换为 "<"
-  let out = @diagnostics.generate_fix(3051, 1, 9, "", ["for(i=0;i<=n;i++)"])
+test "fixgen_3069_off_by_one" {
+  // "for(i=0;i<=n;i++)"：首现 "<=" 字节位 9 → (9,11) 替换为 "<"（病 19 转层
+  // 随码迁移：3069 承载循环 <= 提示的自动修复；3051 现为静态下标越界、无
+  // 「改 <」语义——3051 传参走兜底臂）
+  let out = @diagnostics.generate_fix(3069, 1, 9, "", ["for(i=0;i<=n;i++)"])
   inspect(out.fix_kind, content="1")
   inspect(out.start_col, content="9")
   inspect(out.end_col, content="11")
   inspect(out.text, content="<")
+  // 3051 退化兜底（无专属 fix）
+  let legacy = @diagnostics.generate_fix(3051, 1, 9, "", ["a[i] = 1;"])
+  inspect(legacy.fix_kind, content="0")
 }
 
 ///|

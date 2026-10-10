@@ -33,7 +33,7 @@ pub fn generate_fix(
     3035 => fix_3035_scanf_arg(message)
     3041 => fix_3041_member_access(message)
     3050 => fix_3050_assign_in_condition(line, line_text)
-    3051 => fix_3051_off_by_one(line, line_text)
+    3069 => fix_3051_off_by_one(line, line_text)
     _ =>
       // 静态载荷表（fix_payloads_gen）
       match fix_payload(code) {
@@ -211,7 +211,8 @@ fn fix_3050_assign_in_condition(line : Int, line_text : String) -> FixOutcome {
 }
 
 ///|
-/// 3051：循环 <= → <（Rust 列 301-323 照搬——行内找首现 "<=" 字节位）。
+/// 3069：循环 <= → <（行内找首现 "<=" 字节位；病 19 转层随码迁移——
+/// 3051 现承载静态常数下标越界，无「改 <」自动修复语义）。
 fn fix_3051_off_by_one(line : Int, line_text : String) -> FixOutcome {
   let bytes = @util.utf8_bytes(line_text)
   let mut pos : Int? = None

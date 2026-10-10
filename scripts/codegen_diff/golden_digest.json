@@ -294,6 +294,7 @@
         "scanf_printf.c": "67efa9e1",
         "scanf_return_value.c": "aa9f5496",
         "scanf_string.c": "0ff6e57f",
+        "scanf_u_sign_wrap.c": "a148f159",
         "seq_list.c": "6926c18e",
         "shell_sort.c": "d779018b",
         "shift_31.c": "31131417",
@@ -1285,6 +1286,9 @@
         },
         "scanf_string.c": {
           "result_sha": "113815af032940d5"
+        },
+        "scanf_u_sign_wrap.c": {
+          "result_sha": "359b30d4329e920e"
         },
         "seq_list.c": {
           "result_sha": "942c4c5c3cb8fbd0"

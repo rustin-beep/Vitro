@@ -336,6 +336,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/scanf_printf.c": Standard(Std::{ src_sha: "67efa9e1", exit_code: 0, stdout_sha: "73475cb40a568e8d", memory_sha: "15c57e88025ad99d" }),
     "baseline/scanf_return_value.c": Standard(Std::{ src_sha: "07f889cb", exit_code: 0, stdout_sha: "3b879acce9d2c67c", memory_sha: "d4eda8c3892b55c9" }),
     "baseline/scanf_string.c": Standard(Std::{ src_sha: "0ff6e57f", exit_code: 0, stdout_sha: "81d50b59cb0f2a19", memory_sha: "760f09408521aeab" }),
+    "baseline/scanf_u_sign_wrap.c": Standard(Std::{ src_sha: "a148f159", exit_code: 0, stdout_sha: "b17f71eef5b3cf4d", memory_sha: "1664cafa3b689f48" }),
     "baseline/seq_list.c": Standard(Std::{ src_sha: "6926c18e", exit_code: 0, stdout_sha: "557cd6e83ba2406c", memory_sha: "02603c2f0e7534a2" }),
     "baseline/shell_sort.c": Standard(Std::{ src_sha: "d779018b", exit_code: 0, stdout_sha: "b1e4766af851f4ca", memory_sha: "5d3727757d5b588e" }),
     "baseline/shift_31.c": Standard(Std::{ src_sha: "31131417", exit_code: 0, stdout_sha: "56bb3b3a6aa1747d", memory_sha: "74f081b24f1fa786" }),

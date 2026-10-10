@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（审阅处置批：7 笔审阅 P1×3 + P2×2 全清——#61 决策日后续轮，2026-10-10）
+
+- **P1-1 diff_ledger 台账连坐**（CI 红主因）：`engine_note_lookalike.c` 随病 15 批 C 转绿删 known 时，`DIFF-TOOL-EXTRACT-01.anchors.clang_direct_known` 未同步——台账随实况裁（clang 侧锚清空 + notes 补记 + subsystems/detectable 收窄为 vm_diff 单防线）；diff_ledger 32 条对账全绿。
+- **P1-2 testcount 连坐 + #45 裁定落地**：文档 722/719 → 724、native 841→846（实测）；`moonbit/README.md` 与 `README.mbt.md` 的 6642 字日期明细巨行按 #45 加强版 a 改写——**裸总数 + facts 指针（不带日期，落 CURRENT 桶漂移即红）+ testcount 三锚短形态（裸分解/native-only/全量）**，逐包批注明细外迁 CHANGELOG 即历史；docs 三份 722 连坐 + gen_svg 全量再生；facts `--run` 刷新真值。facts 与 testcount 正则打架的一处（`moon test` 字样与 native-only 数同行）以行拆解调和，零豁免条目。
+- **P1-3 scanf/sscanf `%u` 符号面两处分叉**：旧 u 臂不认 `-`（匹配失败）且 `+` 被吃后 token 交 parse_uint（不吃 `+` → 写 0 还计数）；修为 i/x/o 臂同款——+/- 记录、**负值无符号回绕**（strtoul 形态：`sscanf("-5","%u")` → 4294967291），病 13 失败语义保留；四臂同改。语料 `scanf_u_sign_wrap.c`（双侧逐字节一致）。审阅点名的「修复零锚」教训：本批语料即锚（+7/-5 全判别形态）。
+- **P2-1 病 19 教学机制层连坐**：fix 动态臂 3051→3069 对调（「行内找 <= 改 <」只适配循环提示；3051 静态下标越界无「改 <」语义——兜底臂负锚锁定）；gen_diagnostics 动态白名单双向同步（go map + fix_payloads.dynamic_codes）；concepts +3069→BoundaryCondition/Array（3051 保留——静态越界同属边界混淆归因，存量锚零翻）；patterns M01 codes 扩 [3021,3051,3069]；概念图基线 28→29。
+- **P2-2 W3068 字面量宽放收紧（批 A'）**：病 15 收尾把 std 流宏体 cast 化后裸常量无宏来源——`builtin_check_file_arg` 删「字面量 0/1/2 放行」分支，int 一律 W3068（`fclose(1)` 实测翻转）；**口径更正：Clang 22 msvc 目标对 int→FILE\* 实测 error 级 -Wint-conversion（批 A 原记「警告面」不准）**，Vitro 维持 W 系不拦运行演示。锚①/④ 随收紧翻转。
+- 验收：moon test 724/724（native 846）；clang_direct 727/8/0（735）；vm_diff 635/5/0（640）；lexer/typeck/codegen 全域 PASS（新语料四驱动入账）；testcount/diff_ledger/facts(0 漂移)/gen_diag/gen_diagnostics/surface/mbti/demo_smoke 全绿。
+- P3-1（7b93df72 自述「各 400 例」实测 codegen ADD 4）口径注记在案不修码。
+
 ### Fixed（病 15 残余收尾：stdin/stdout/stderr 宏体 cast 化——FILE\* 全语境一次干净，#61，2026-10-10）
 
 - 宏展开面根治（所有者方案 + 实测定体）：`builtins.mbt` 的 std 流宏从 Number 单 token（`stdout ⇒ 1`）改为**显式 cast 体** `((FILE *)n)`（`MacroDef::Object` 多 token，va_\* 先例）——`FILE *f = stdout`、`f = stderr`、用户函数 `emit(FILE*)` 形参传 `stdout`、`if (f == stdout)` 比较、fputc/fputs/fprintf/fgets 全语境**零诊断**（旧形态赋值/传参吃 E3054——`typedef void* FILE` 使 typeck 无法从类型识别 std 流宏，三态放行只盖 builtin 面）。宏体选 `((FILE *)1)` 而非 `((void *)1)`：后者赋 `FILE*` 多一条 H3057 hint（void\* → void\*\* 隐式转换）。host 层按值分流不变（cast 不改值）。

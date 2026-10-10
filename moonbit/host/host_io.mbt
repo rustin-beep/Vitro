@@ -761,7 +761,9 @@ pub fn host_scanf_n(
         Err(e) => return InputOutcome::Trap(access_fault_text(e))
       }
     } else if spec == SCANF_U {
-      // u（病 13 修复同 d 臂：无数字=匹配失败回退不写不计数）
+      // u（病 13 失败语义 + #61 审阅 P1-3 符号面对齐 i/x/o 臂：+/- 记录、
+      // 负值无符号回绕；旧臂不认 '-' 失败、'+' 被吃后 token 交
+      // parse_uint 不吃 '+' → 写 0 还计数）
       let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
@@ -770,31 +772,39 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
-      let start = pos
-      if chars[pos] == 43 {
+      let mut negative = false
+      if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
         pos = pos + 1
       }
+      let digits_start = pos
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
-      if pos == start || (pos == start + 1 && chars[start] == 43) {
+      if pos == digits_start {
         pos = entry_pos
         break
       }
       let token : Array[Byte] = []
-      let mut j = start
+      let mut j = digits_start
       while j < pos {
         token.push(chars[j])
         j = j + 1
       }
+      // 负值按无符号回绕（strtoul 形态，C11 §7.21.6.2——"-5" %u → 4294967291）
+      let uval = if negative {
+        0UL - parse_uint64_or_zero(token)
+      } else {
+        parse_uint64_or_zero(token)
+      }
       let f = if !sl.2 {
         if len_mod >= 2 {
-          mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+          mem.store_u64(map, ptr, uval)
         } else {
           mem.store_u32(
             map,
             ptr,
-            parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
+            @util.i64_to_i32_bits(uval.reinterpret_as_int64()).reinterpret_as_uint(),
           )
         }
       } else {
@@ -1130,7 +1140,9 @@ pub fn host_sscanf(
         matched = matched + 1
       }
     } else if spec == SCANF_U {
-      // u（病 13 修复同 d 臂：无数字=匹配失败回退不写不计数）
+      // u（病 13 失败语义 + #61 审阅 P1-3 符号面对齐 i/x/o 臂：+/- 记录、
+      // 负值无符号回绕；旧臂不认 '-' 失败、'+' 被吃后 token 交
+      // parse_uint 不吃 '+' → 写 0 还计数）
       let entry_pos = pos
       while pos < chars.length() && is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
@@ -1138,31 +1150,39 @@ pub fn host_sscanf(
       if pos >= chars.length() {
         break
       }
-      let start = pos
-      if chars[pos] == 43 {
+      let mut negative = false
+      if chars[pos] == 43 || chars[pos] == 45 {
+        negative = chars[pos] == 45
         pos = pos + 1
       }
+      let digits_start = pos
       while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
-      if pos == start || (pos == start + 1 && chars[start] == 43) {
+      if pos == digits_start {
         pos = entry_pos
         break
       }
       let token : Array[Byte] = []
-      let mut j = start
+      let mut j = digits_start
       while j < pos {
         token.push(chars[j])
         j = j + 1
       }
+      // 负值按无符号回绕（strtoul 形态，C11 §7.21.6.2——"-5" %u → 4294967291）
+      let uval = if negative {
+        0UL - parse_uint64_or_zero(token)
+      } else {
+        parse_uint64_or_zero(token)
+      }
       let f = if !sl.2 {
         if len_mod >= 2 {
-          mem.store_u64(map, ptr, parse_uint64_or_zero(token))
+          mem.store_u64(map, ptr, uval)
         } else {
           mem.store_u32(
             map,
             ptr,
-            parse_uint_or_zero(token).reinterpret_as_int().reinterpret_as_uint(),
+            @util.i64_to_i32_bits(uval.reinterpret_as_int64()).reinterpret_as_uint(),
           )
         }
       } else {

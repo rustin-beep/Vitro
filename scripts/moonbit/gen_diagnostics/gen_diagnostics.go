@@ -24,7 +24,7 @@
 //     sha256 前 8 位随产物落款——JSON 变则产物变，-check 漂移防线
 //     语义不变；
 //   - 数据/机制分列（勘察 §2.0 A3 拆分判据）：generate_fix 的**动态五码**
-//     （1004/3035/3041/3050/3051——含坐标回搜 / 消息分支）不入表，
+//     （1004/3035/3041/3050/3069——含坐标回搜 / 消息分支）不入表，
 //     由机制层 fix_gen.mbt 手写照搬；表只装纯静态载荷。动态码集合
 //     在 JSON 侧与白名单双向对账——增删动态码立即红。
 //
@@ -64,14 +64,14 @@ const (
 	expectedStaticCodes = 25 // 静态载荷码数（3060|3061 双码展开计 2）
 	expectedNodes       = 25
 	expectedEdges       = 25
-	expectedMapEntries  = 28
+	expectedMapEntries  = 29 // 病 19 连坐（#61）：+3069→BoundaryCondition/Array（3051 保留——静态越界同属边界混淆归因）
 	expectedPatterns    = 6
 	expectedPaths       = 6
 )
 
 // 动态码白名单（机制层 fix_gen.mbt 手写照搬——集合漂移即红）。
 var dynamicCodeWhitelist = map[int]bool{
-	1004: true, 3035: true, 3041: true, 3050: true, 3051: true,
+	1004: true, 3035: true, 3041: true, 3050: true, 3069: true,
 }
 
 type fixEntry struct {
@@ -432,7 +432,7 @@ func main() {
 	}
 	for c := range dynamic {
 		if !dynamicCodeWhitelist[c] {
-			fatalf("码 %d 不在动态白名单 {1004,3035,3041,3050,3051}——新形态臂出现，请先裁定其数据/机制归属", c)
+			fatalf("码 %d 不在动态白名单 {1004,3035,3041,3050,3069}——新形态臂出现，请先裁定其数据/机制归属", c)
 		}
 	}
 	if len(nodes) != expectedNodes || len(edges) != expectedEdges || len(conceptMap) != expectedMapEntries {

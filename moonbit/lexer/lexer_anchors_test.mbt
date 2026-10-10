@@ -472,8 +472,5 @@ test "stdio_macro_cast_body_expansion" {
   assert_eq(trace.length(), 1)
   inspect(trace[0].render(), content="stdout ⇒ ( ( FILE * ) 1 )")
   // 宏展开后 token 序：cast 体七 token 全量入流（非单 Number）
-  assert_true(
-    r.tokens.length() > 8,
-    msg="cast 宏体多 token 入流",
-  )
+  assert_true(r.tokens.length() > 8, msg="cast 宏体多 token 入流")
 }

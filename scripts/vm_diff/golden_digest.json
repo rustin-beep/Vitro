@@ -1746,6 +1746,12 @@
       "stdout_sha": "81d50b59cb0f2a19",
       "memory_sha": "760f09408521aeab"
     },
+    "baseline/scanf_u_sign_wrap.c": {
+      "src_sha": "a148f159",
+      "exit_code": 0,
+      "stdout_sha": "b17f71eef5b3cf4d",
+      "memory_sha": "1664cafa3b689f48"
+    },
     "baseline/seq_list.c": {
       "src_sha": "6926c18e",
       "exit_code": 0,

@@ -415,11 +415,13 @@ fn TypeChecker::builtin_check_pointer(
 }
 
 ///|
-/// FILE\* 参数位三态判定（病 15 批 A，#61，2026-10-10）：指针放行；int
-/// 字面量 0/1/2 放行——stdin/stdout/stderr 宏展开通道（预处理后 stdout
-/// 与裸 1 同形，宁纵勿枉）；其他 int（变量/其他常量）报 W3068（对齐
-/// Clang -Wint-conversion 警告面——int→FILE\* 在 C 是不兼容转换）；
-/// 非指针非 int 报 E3029（note = 调用方传入文案，外置真源优先）。
+/// FILE\* 参数位三态判定（病 15 批 A，#61，2026-10-10；批 A' 收紧随病 15
+/// 收尾）：指针放行；int 报 W3068；非指针非 int 报 E3029（note = 调用方
+/// 传入文案，外置真源优先）。批 A 初版曾放行 int 字面量 0/1/2（宏展开为
+/// 裸 1）——病 15 收尾批（5a139d30）把 std 流宏体改为 ((FILE *)n) cast 后
+/// 裸常量不再有宏来源，放行理由消失即收（Clang 22 msvc 目标对 fclose(1)
+/// 实测 **error** 级 -Wint-conversion；Vitro 取 W 系不拦运行演示，口径
+/// 以本注为准）。
 fn TypeChecker::builtin_check_file_arg(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -435,10 +437,6 @@ fn TypeChecker::builtin_check_file_arg(
     return
   }
   if kind is TK_Int {
-    match new_arg {
-      Literal(v, _, _) => if v == 0 || v == 1 || v == 2 { return }
-      _ => ()
-    }
     self.report_warning(
       "\{name} 第 \{idx + 1} 个参数是 int 而非文件指针（FILE*）；标准流请写 stdin/stdout/stderr",
       loc,

@@ -1,187 +1,187 @@
 {
-  "dynamic_codes": [
-    1004,
-    3035,
-    3041,
-    3050,
-    3051
-  ],
-  "entries": [
-    {
-      "code": 1002,
-      "suggestion": "字符串引号未闭合，建议在行末添加双引号",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": "\""
-    },
-    {
-      "code": 1007,
-      "suggestion": "建议将复杂声明拆分为 typedef 链：\n1. 先定义函数指针类型\n2. 用类型别名声明变量",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 2005,
-      "suggestion": "语句末尾缺少分号，建议添加 ';'",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": ";"
-    },
-    {
-      "code": 2006,
-      "suggestion": "代码块缺少右花括号，建议添加 '}'",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": "}"
-    },
-    {
-      "code": 2007,
-      "suggestion": "缺少右圆括号，建议添加 ')'",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": ")"
-    },
-    {
-      "code": 2008,
-      "suggestion": "缺少右方括号，建议添加 ']'",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": "]"
-    },
-    {
-      "code": 3013,
-      "suggestion": "非 void 函数缺少返回值，建议在函数末尾添加 'return 0;'",
-      "fix_kind": 2,
-      "anchor": "LineEnd",
-      "text": "return 0;"
-    },
-    {
-      "code": 3015,
-      "suggestion": "条件表达式不合法，建议检查是否误用 '=' 代替 '=='",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3023,
-      "suggestion": "变量未声明，建议先声明变量再使用",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3036,
-      "suggestion": "函数未声明，建议在调用前添加函数原型声明",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3043,
-      "suggestion": "不能给表达式或常量赋值，请确认左侧是可修改的变量",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3044,
-      "suggestion": "赋值两边类型不匹配，建议检查类型或使用强制类型转换",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3053,
-      "suggestion": "隐式类型转换可能导致数据截断，建议显式强制转换",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3054,
-      "suggestion": "整数直接转指针可能不安全，请确保地址有效",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3055,
-      "suggestion": "void* 转换是允许的，但建议显式写 (int*)malloc(...) 以增强可读性",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3056,
-      "suggestion": "unsigned 类型暂映射为 int，请确保数值在有符号范围内",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3057,
-      "suggestion": "隐式类型提升是安全的，如需更明确可添加显式强制转换",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3060,
-      "suggestion": "free(p) 后建议立即执行 p = NULL;，并检查是否还有其他指针指向这块内存。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3061,
-      "suggestion": "free(p) 后建议立即执行 p = NULL;，并检查是否还有其他指针指向这块内存。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 3067,
-      "suggestion": "指针类型不兼容，需要显式转换；向上转型（派生类指针 → 基类指针）本就不需要转换",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4100,
-      "suggestion": "new 与 delete 必须成对出现：构造函数中 new 的资源应在析构函数中 delete；必要时使用 unique_ptr 自动管理。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4101,
-      "suggestion": "避免返回局部变量的引用；如需返回引用，请确保被引用对象的生命周期覆盖引用的使用范围（如返回成员变量或全局对象）。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4102,
-      "suggestion": "把基类值对象改为基类指针/引用，或使用虚函数与多态；按值传递派生类时会发生对象切片。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4103,
-      "suggestion": "unique_ptr 不能被拷贝，只能被 move；move 后不要再访问原 unique_ptr，也不要手动 delete 其管理的对象。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4104,
-      "suggestion": "std::move 后把源对象视为'已释放'，除非显式重新赋值，否则不要再读取或使用它的原值。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    }
-  ],
-  "source_sha": "58c1a461"
+ "dynamic_codes": [
+  1004,
+  3035,
+  3041,
+  3050,
+  3069
+ ],
+ "entries": [
+  {
+   "code": 1002,
+   "suggestion": "字符串引号未闭合，建议在行末添加双引号",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": "\""
+  },
+  {
+   "code": 1007,
+   "suggestion": "建议将复杂声明拆分为 typedef 链：\n1. 先定义函数指针类型\n2. 用类型别名声明变量",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 2005,
+   "suggestion": "语句末尾缺少分号，建议添加 ';'",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": ";"
+  },
+  {
+   "code": 2006,
+   "suggestion": "代码块缺少右花括号，建议添加 '}'",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": "}"
+  },
+  {
+   "code": 2007,
+   "suggestion": "缺少右圆括号，建议添加 ')'",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": ")"
+  },
+  {
+   "code": 2008,
+   "suggestion": "缺少右方括号，建议添加 ']'",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": "]"
+  },
+  {
+   "code": 3013,
+   "suggestion": "非 void 函数缺少返回值，建议在函数末尾添加 'return 0;'",
+   "fix_kind": 2,
+   "anchor": "LineEnd",
+   "text": "return 0;"
+  },
+  {
+   "code": 3015,
+   "suggestion": "条件表达式不合法，建议检查是否误用 '=' 代替 '=='",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3023,
+   "suggestion": "变量未声明，建议先声明变量再使用",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3036,
+   "suggestion": "函数未声明，建议在调用前添加函数原型声明",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3043,
+   "suggestion": "不能给表达式或常量赋值，请确认左侧是可修改的变量",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3044,
+   "suggestion": "赋值两边类型不匹配，建议检查类型或使用强制类型转换",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3053,
+   "suggestion": "隐式类型转换可能导致数据截断，建议显式强制转换",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3054,
+   "suggestion": "整数直接转指针可能不安全，请确保地址有效",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3055,
+   "suggestion": "void* 转换是允许的，但建议显式写 (int*)malloc(...) 以增强可读性",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3056,
+   "suggestion": "unsigned 类型暂映射为 int，请确保数值在有符号范围内",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3057,
+   "suggestion": "隐式类型提升是安全的，如需更明确可添加显式强制转换",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3060,
+   "suggestion": "free(p) 后建议立即执行 p = NULL;，并检查是否还有其他指针指向这块内存。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3061,
+   "suggestion": "free(p) 后建议立即执行 p = NULL;，并检查是否还有其他指针指向这块内存。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 3067,
+   "suggestion": "指针类型不兼容，需要显式转换；向上转型（派生类指针 → 基类指针）本就不需要转换",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 4100,
+   "suggestion": "new 与 delete 必须成对出现：构造函数中 new 的资源应在析构函数中 delete；必要时使用 unique_ptr 自动管理。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 4101,
+   "suggestion": "避免返回局部变量的引用；如需返回引用，请确保被引用对象的生命周期覆盖引用的使用范围（如返回成员变量或全局对象）。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 4102,
+   "suggestion": "把基类值对象改为基类指针/引用，或使用虚函数与多态；按值传递派生类时会发生对象切片。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 4103,
+   "suggestion": "unique_ptr 不能被拷贝，只能被 move；move 后不要再访问原 unique_ptr，也不要手动 delete 其管理的对象。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
+   "code": 4104,
+   "suggestion": "std::move 后把源对象视为'已释放'，除非显式重新赋值，否则不要再读取或使用它的原值。",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  }
+ ],
+ "source_sha": "58c1a461"
 }

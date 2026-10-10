@@ -626,8 +626,7 @@
       "evidence": "anchor",
       "rationale": "驱动提取器已知限制登记不修；精确口径由 shadow 防线结构化输出通道承担（E-P1-5）",
       "subsystems": [
-        "scripts/vm_diff",
-        "scripts/clang_direct"
+        "scripts/vm_diff"
       ],
       "clang_verdict": "无 Clang 对应（工具层）",
       "source_docs": [
@@ -635,18 +634,15 @@
       ],
       "anchors": {
         "shadow_known": [],
-        "clang_direct_known": [
-          "engine_note_lookalike.c"
-        ],
+        "clang_direct_known": [],
         "vm_diff_known": [
           "engine_note_lookalike.c"
         ]
       },
       "detectable_by_defense": [
-        "clang_direct",
         "vm_diff"
       ],
-      "notes": "两防线 known 同例同因在册；baseline/engine_note_lookalike.c 固化该口径。〔P3-1 修复 2026-09-30：原误写 [\"shadow\"] 而锚全在 cd+vd——P3-2 闸断言上线前该笔误静默〕"
+      "notes": "两防线 known 同例同因在册；baseline/engine_note_lookalike.c 固化该口径。〔P3-1 修复 2026-09-30：原误写 [\"shadow\"] 而锚全在 cd+vd——P3-2 闸断言上线前该笔误静默〕〔2026-10-10 病 15 批 C（#61）：clang_direct 运行捕获改 stdout-only 分离（cacheSchema cd3）后该例转绿、known 条目删除——锚随删；vm_diff 侧提取器限制不受影响仍适用〕"
     },
     {
       "id": "DIFF-PREPROC-INCLUDE-DEPTH-01",

@@ -9,6 +9,8 @@
 
 本文档是 CLI 的**输出契约**：消费方按此解析，无需了解 MoonBit 内部。协议变更纪律与 StepPayload 同源：**标记行前缀与退出码语义只增不改**；新前缀/新事件 type 走追加。
 
+> **下游 MoonBit 参数命名映射（v1 冻结期声明，#46）**：NDJSON 帧的线上字段名 `"method"` 是 v0.1 冻结契约的一部分，不改线。但它与 MoonBit 保留字撞名——下游在 MoonBit 里按帧字段命名处理函数形参（`fn frame(method : String, ...)`）会吃 `reserved_keyword` 警告 0035（`--deny-warn` 口径下红）。**官方指引**：MoonBit 侧参数名用 `m` / `method_` / `frame_method` 等替代，JSON 层字段名原样 `"method"` 序列化/解析——两层名字本就解耦（序列化器按字段名字符串走，不取形参名）。
+
 ---
 
 ## 0. 出口形态与分派

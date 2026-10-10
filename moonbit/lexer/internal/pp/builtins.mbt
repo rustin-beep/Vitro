@@ -1,7 +1,8 @@
 ///|
 /// 内置宏表（照搬 `macros.rs` + `macro_table.rs::builtin` 全量语义）。
 /// 纯数据表驱动（勘察 ⑤-8：521 行手写 token 构造改表驱动）——对象宏以
-/// `(名, TokenType, text)` 三元组登记；`va_*` 三条函数式宏为显式 token 列表
+/// `(名, TokenType, text)` 三元组登记；`va_*` 四条函数式宏（va_start/va_arg/
+/// va_end/va_copy）为显式 token 列表
 ///（body token 的 `(ty, text)` 逐项照搬，宏体不经 number() 重扫——负号数字
 /// 如 INT_MIN 的 "-2147483648" 是**单个 Number token**，text 带负号，parser
 /// 直接按文本取值，`macros.rs:195` 口径注释）。

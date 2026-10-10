@@ -457,6 +457,10 @@ vitro/engine/vm vitro/engine/host StdioRead
 vitro/engine/vm vitro/engine/host host_fgetc_dispatch
 vitro/engine/vm vitro/engine/host host_fgets_dispatch
 vitro/engine/vm vitro/engine/host host_fread_dispatch
+vitro/engine/vm vitro/engine/host host_difftime
+vitro/engine/vm vitro/engine/host host_vfprintf_n
+vitro/engine/vm vitro/engine/host host_vprintf_n
+vitro/engine/vm vitro/engine/host host_vsnprintf
 vitro/engine/vm vitro/engine/host host_fputc
 vitro/engine/vm vitro/engine/host host_fputs
 vitro/engine/vm vitro/engine/host host_free

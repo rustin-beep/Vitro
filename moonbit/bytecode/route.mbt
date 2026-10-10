@@ -5,12 +5,13 @@
 /// 88 个 Bytecode Libc 名预注册进 `func_index`（只跳过 `strcpy`/`strcat`），调用点
 /// 先查 `func_index` 命中即发 `Call <固定索引>`，未命中才查 `by_user_name` 发
 /// `CallHost`。结果：**110 个 host handler 里有 20 个在"用户按名调用"路径上被
-/// 静默遮蔽**（两者各写一张表，无一处能列出这 20 个名字）。同族分裂也由此而来
+/// 静默遮蔽**（两者各写一张表，无一处能列出这 17 个名字——2026-10-06 三函数
+/// 改判出表后 20→17，名单锚 `shadowed_host_names_are_declared`）。同族分裂也由此而来
 /// （`atoi` 走 Bytecode 而 `atof/atol` 走 Host；`memcpy` 走 Bytecode 而 `memset` 走 Host）。
 ///
 /// **本表把隐式覆盖变成显式声明**：`call_route(name)` 对每个名字给出**唯一**形态，
-/// 派生规则只有一条 + 一个显式例外集，`shadowed_host_names()` 把那 20 个名字
-/// 列成可断言清单。
+/// 派生规则只有一条 + 一个显式例外集，`shadowed_host_names()` 把那 17 个名字
+/// 列成可断言清单（`SHADOWED_HOST_NAME_COUNT = 17` 双常量锚）。
 ///
 /// **落点裁定（与总计划 L7 行字面表述相左，已登记）**：总计划写"host(110 路由表
 /// 单源)"，但 §4 的硬约束"依赖严格单向"禁止 codegen(L6) → host(L7)，而 codegen

@@ -27,7 +27,11 @@ fn LoopInfo::new() -> LoopInfo {
 }
 
 ///|
-/// 子串首现位（码元单位；core String 无 find——自写字节序兼容扫描）。
+/// 子串首现位（码元单位）。core String 无 find——自写扫描；切片 `==` 走
+/// **码元序**（UInt16 域）而非字节字典序：本函数消费面全部是引擎自产的
+/// ASCII marker（"[timeline]"/"[cause]" 族），ASCII 域两序等价——**勿将
+/// 本函数复用到非 ASCII/跨类型比较域**（陷阱 #29 同族：String 内建比较
+/// 非字典序）。
 fn str_find(s : String, pat : String) -> Int? {
   let n = s.length()
   let m = pat.length()

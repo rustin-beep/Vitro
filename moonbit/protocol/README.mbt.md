@@ -69,3 +69,25 @@ test {
   inspect(@protocol.SCHEMA_VERSION, content="v0.1")
 }
 ```
+
+## 库消费三帧最小样例（判题器第一公里，#44）
+
+下游判题器（学生交 C 源码 → 编译 → 运行 → 收 stdout/返回码/诊断）的**门面是 gateway 包的 `invoke`**（`vitro/engine/gateway`——MoonBit 侧调用形如 `gateway.invoke(帧字符串)`（import 别名自定）：入参 = NDJSON 请求帧字符串，返回 = NDJSON 响应帧字符串；会话状态（编译产物/运行游标）由 gateway 内的 session 持有，调用方无状态。生命周期从 `session.create` 起到 `reset()` 清场。
+
+三帧主链（`id` 自增、响应同 id 回带）：
+
+```json
+{"id":1,"method":"session.create","params":{}}
+{"id":2,"method":"compile","params":{"source":"int main(){printf(\"hi\");return 0;}","filename":"a.c"}}
+{"id":3,"method":"run","params":{"argv":["a.c"],"input":"","batch_input":true}}
+{"id":4,"method":"output.delta","params":{"cursor":0,"stream":"stdout"}}
+```
+
+契约要点（实测自 serve 层，冻结于 v0.1）：
+
+- **compile**：`params.source`（单文件源码）或 `params.files[]`（多文件），`params.filename` 缺省会退化 include 的 base_dir；响应 `ok:true` 后才可 run。
+- **run**：未编译返回 `ok:true` 包裹的 not_compiled（不报协议错）；`input` 批注入整段文本、耗尽即 EOF（`batch_input:true`）；响应含 `status`（finished/trap/waiting_input）与 `return_value`。
+- **stdout 不在 run 响应里**——另发 `output.delta`（`cursor` 用上一响应的 `total` 回填推进）；`stream` 取 `stdout`/`stderr`/`note`/`display`（display = 全通道按写入序投影；stderr 走独立流，`fprintf(stderr,…)` 的输出不混入 stdout）。
+- 未知 method 的错误帧自报全部已接方法（自文档化）。
+
+**MoonBit 下游参数命名（#46）**：线上字段名 `"method"` 是 v0.1 冻结契约不改线，但它是 MoonBit 保留字——处理函数形参请写 `m`/`method_`/`frame_method`，JSON 序列化按字段名字符串走、不取形参名。

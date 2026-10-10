@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（小菜批：#46/#44 文档落地 + 注释陈旧两笔 + llabs 去重 + E3067 const 附注 + #10 批闸收尾账，2026-10-10）
+
+- **#46 关**：CLI_PROTOCOL_V1 头部补「下游 MoonBit 参数命名映射」声明（线上字段 `method` 冻结不改线，MoonBit 形参用 `m`/`method_`——保留字 0035 警告的官方规避）；同款随包落 protocol/README（下游可见）。
+- **#44 关**：protocol/README.mbt.md 新增「库消费三帧最小样例」节——invoke 门面 + session 生命周期 + compile/run/output.delta NDJSON 形状 + 四通道 stream 语义 + reset；判题器下游第一公里不再需要读 serve 源码。
+- **注释陈旧两笔**（#47 P1 批登记项）：route.mbt 头注「20 个静默遮蔽」→ 17（2026-10-06 三函数改判出表后未跟，双常量锚在案）；pp/builtins.mbt「va_* 三条」→ 四条（va_copy 在内，实测键集）。
+- **stdlib.h llabs 重复声明去重**：gen_stubs 上游源删第 20 行冗余 + stubs_gen.mbt 再生（sha 8042ab61）；连坐 lexer digest 三域重算 72 TSV、typeck digest 四域重算 637——`--refresh` 存量重算通道（7b93df72）实战第二单。
+- **E3067 文案 const 附注**（#61 遗留 5 轻项）：`const int* ← char*` 场景 `name()` 核心名渲染看不出差异点——目标 pointee 带 const 补渲（红→绿锚 `assign_mismatch_copy_renders_const`）。
+- **str_find 注释改写**（遗留 5）：码元序适用边界写明（消费面全 ASCII marker 两序等价，勿复用到非 ASCII 域——陷阱 #29 同族）。
+- **#10 批闸收尾账**（顺手）：surface_edges 补 vm→host 四边（difftime/vfprintf_n/vprintf_n/vsnprintf——该批提交漏登记）；lexer knr/leetcode/gap 三域 digest 重冻（stdio.h +3 行位移存量 hash）。
+- 验收：moon test 723/723；clang_direct 724/8/0；vm_diff 632/5/0；typeck 四域 PASS；lexer 四域 PASS；surface/mbti_sync/pkg_deps/gen_stubs/libc_single_source/facts 全绿。
+
 ### Fixed（病 15 FILE\* 族三批全链：编译层三态判定 + 运行层标准流句柄接线 + stderr 出口透出，#61，2026-10-10）
 
 探针拆出三层缺陷并同批修毕（`fseek(1,0,0)` 零诊断只是表层；全部实测留痕 `tmp/issue47_p15/`）：

@@ -459,3 +459,24 @@ test "case_const_expr_forms_pass" {
     msg="a[-1] 的 -1 须可求值（W3051 负值臂）",
   )
 }
+
+///|
+/// W3067→E3067 文案 const 附注锚（#61 遗留 5 轻项，2026-10-10）：name()
+/// 是照搬的核心名渲染（不含限定符），`const char* ← int*` 场景学生看不出
+/// 差异点——文案须渲出目标 const。
+test "assign_mismatch_copy_renders_const" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let tc = TypeChecker::new()
+  ignore(
+    tc.check_assignable(
+      @ast.Type::Pointer(@ast.Type::Char(false, true), false),
+      @ast.Type::Pointer(@ast.Type::Int(false, false), false),
+      loc,
+    ),
+  )
+  assert_eq(tc.errors.length(), 1)
+  assert_true(
+    tc.errors[0].message.contains("const char*"),
+    msg="目标 pointee 带 const 须渲出（差异点可见）",
+  )
+}

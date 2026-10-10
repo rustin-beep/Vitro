@@ -375,6 +375,18 @@ fn is_null_pointer_constant(e : @ast.Expr) -> Bool {
 }
 
 ///|
+/// E3067 文案的 const 附注（#61 遗留 5 轻项，2026-10-10）：`name()` 是
+/// 照搬的核心名渲染（不含限定符——不改本体），`const int* ← char*` 场景
+/// 目标侧补渲 const，学生才看得到差异点。
+fn pointee_name_with_const(t : @ast.Type) -> String {
+  if t.is_const() {
+    "const \{t.name()}"
+  } else {
+    t.name()
+  }
+}
+
+///|
 fn TypeChecker::check_pointer_assignable(
   self : TypeChecker,
   target : @ast.Type,
@@ -432,7 +444,7 @@ fn TypeChecker::check_pointer_assignable(
           !@ast.type_eq(strip_top_const(t_pointee), v_pointee) {
           // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
           self.report_error(
-            "指针类型不兼容：\{t_pointee.name()}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",
+            "指针类型不兼容：\{pointee_name_with_const(t_pointee)}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",
             loc,
             E3067_PointerTypeMismatch,
           )

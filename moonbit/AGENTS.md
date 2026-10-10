@@ -19,6 +19,7 @@
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
 | `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；depth 参数化防护；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ 已发布 |
 | `vitro/engine/names` | L3 | 名字单源：`__ctor__`/`__dtor__` 产名族唯一出口 + `type_mangle_suffix` 17 变体 + `method_mangled_name`；InstKey→InstId 派生随 S9 C++ 裁定 | ✅ |
+| `vitro/engine/stdlib` | L3 | 标准库事实包（方案 A P1 起，2026-10-10）：`headers()` 头文件清单唯一真源（gen_stubs 文本解析消费 + 目录集合对账）；sig/macro_def/binding 随 P2~P4 逐面接线落数据 | 🆕 P1 待发版 |
 | `vitro/engine/libc` | L5 | builtin 签名单表 57 条 + 放行名全集 175（= host 110 名 ∪ bytecode 88 名 − print_int）；**三表一致性由 `scripts/moonbit/libc_single_source -check` 机判**；「以本表为单源回填」在 L5/L6 依赖方向下不可派生，登记为对账 | ✅ |
 | `vitro/engine/typeck` | L5 | C 子集类型检查 + lowering（4 Pass；TypeKind 裁定入 ast；lowering 函数式重建：visitor 值进值出）；C++ 专属延后 S9（convert 的 Reference/RValueRef/is_upcast 分支剔除登记） | ✅ |
 | `vitro/engine/bytecode` | L6 | 产物 schema（CompileOutput 13 字段 + FuncMeta/LocalBuffer/Symbol）+ Bytecode Libc 固定索引（88 函数数组单源，索引=1000+下标派生+断言锚）+ R1 布局纯函数 + canonical dump emitter（Map 键码元字典序——**内置 String compare 非字典序**见陷阱 #29）+ **调用形态单一路由表**（`route.mbt`：`CallRoute` + `call_route` 派生 + 遮蔽集显式清单；`host_func_id_gen.mbt` 由 `gen_host_route` 自 `host_func_id.snapshot.rs` 快照生成）；落点裁定：路由表定义点 ≤L6（codegen 编译期即需 host id，L6→L7 反向依赖被 §4 禁止，详见生成器头注与 `route.mbt` 模块头） | ✅ |

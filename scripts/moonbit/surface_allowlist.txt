@@ -20,6 +20,12 @@
 #   故保留 pub；本仓内当前无跨包消费者。
 vitro/engine/diag codes_without_catalog
 #
+# stdlib headers（方案 A P1 批，2026-10-10）：标准库头文件清单唯一真源。
+#   当前消费者 = Go 侧 gen_stubs（文本解析，非 MoonBit import——surface 闸
+#   口径外的消费形态）；引擎内消费（lexer `<>` 判定、capabilities.libraries
+#   出口）随 P2~P4 逐面接线后即出现跨包消费边，届时本条撤销。
+vitro/engine/stdlib headers
+#
 # （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
 #  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
 #  曾于 176fbdf 误判死码删除，审阅批四恢复。）

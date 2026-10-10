@@ -21,18 +21,82 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
-
-// 与 Rust resolver.rs load_stub 的 match 顺序一致
-var stubNames = []string{
-	"stdio.h", "stdlib.h", "ctype.h", "math.h", "string.h", "stdarg.h",
-	"limits.h", "stdbool.h", "stddef.h", "stdint.h", "time.h",
-	"assert.h", "errno.h", "float.h",
-}
 
 // chdir moonbit/ 后的相对路径（moon fmt 是 workspace 命令，须自 workspace 根调用）
 const sourceRoot = "../scripts/moonbit/libc_src/include"
 const outFile = "lexer/internal/host/stubs_gen.mbt"
+
+// 头文件名单唯一真源 = vitro/engine/stdlib 的 headers()（moonbit/stdlib/stdlib.mbt，
+// 方案 A P1 批——设计稿《标准库单源与头文件多文件设计20261010》§3.6）。Go 不能
+// import MoonBit 包，故按文本解析 headers() 的数组字面量（moon fmt 只动空白，引号串
+// 稳定）；序 = Rust resolver.rs load_stub 的 match 序（历史序冻结，决定产物臂序与
+// sha256 拼接序）。解析不到 / 空清单 / 非 .h 项一律 fail loud。
+const stdlibSrc = "stdlib/stdlib.mbt"
+
+func loadHeaderNames() []string {
+	raw, err := os.ReadFile(stdlibSrc)
+	if err != nil {
+		fatalf("读取 stdlib 真源失败 %s: %v", stdlibSrc, err)
+	}
+	text := string(toLF(raw))
+	fnAt := strings.Index(text, "pub fn headers() -> Array[String]")
+	if fnAt < 0 {
+		fatalf("stdlib 真源缺少 pub fn headers() -> Array[String]（形态变更须同步本解析器）")
+	}
+	// 锚定从签名之后起找——首个 [..] 对是签名泛型 Array[String]，不是数组体
+	sigAt := strings.Index(text[fnAt:], "Array[String]")
+	body := text[fnAt+sigAt+len("Array[String]"):]
+	open := strings.Index(body, "[")
+	close_ := strings.Index(body, "]")
+	if open < 0 || close_ < open {
+		fatalf("stdlib headers() 数组字面量缺失")
+	}
+	var names []string
+	for _, m := range regexp.MustCompile(`"([^"\n]+)"`).FindAllStringSubmatch(body[open:close_], -1) {
+		names = append(names, m[1])
+	}
+	if len(names) == 0 {
+		fatalf("stdlib headers() 名单为空")
+	}
+	for _, n := range names {
+		if !strings.HasSuffix(n, ".h") {
+			fatalf("stdlib headers() 含非 .h 条目 %q", n)
+		}
+	}
+	return names
+}
+
+// 名单 ↔ include 目录双向集合对账（headers 三方一致闸的 P1 版：目录多出未登记头 /
+// 登记名无对应文件均红；第三面 = capabilities.libraries JSON 出口，P3 接线）。
+func crossCheckDir(names []string) {
+	entries, err := os.ReadDir(sourceRoot)
+	if err != nil {
+		fatalf("扫描存根目录失败 %s: %v", sourceRoot, err)
+	}
+	dirSet := map[string]bool{}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".h") {
+			dirSet[e.Name()] = true
+		}
+	}
+	nameSet := map[string]bool{}
+	for _, n := range names {
+		nameSet[n] = true
+	}
+	for n := range dirSet {
+		if !nameSet[n] {
+			fatalf("目录存在未登记头 %s（stdlib headers() 缺条目——加进 moonbit/stdlib/stdlib.mbt）", n)
+		}
+	}
+	for n := range nameSet {
+		if !dirSet[n] {
+			fatalf("headers() 登记 %s 在目录中不存在（libc_src/include/）", n)
+		}
+	}
+}
 
 func toLF(b []byte) []byte {
 	return bytes.ReplaceAll(b, []byte("\r\n"), []byte("\n"))
@@ -79,9 +143,12 @@ func main() {
 	check := flag.Bool("check", false, "只校验产物未漂移，不写入")
 	flag.Parse()
 
+	names := loadHeaderNames()
+	crossCheckDir(names)
+
 	var digestInput bytes.Buffer
 	var matchArms bytes.Buffer
-	for _, name := range stubNames {
+	for _, name := range names {
 		raw, err := os.ReadFile(filepath.Join(sourceRoot, name))
 		if err != nil {
 			fatalf("读取存根失败 %s: %v", name, err)

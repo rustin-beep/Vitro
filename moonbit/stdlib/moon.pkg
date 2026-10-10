@@ -1,0 +1,5 @@
+// L3 标准库事实包（方案 A · 设计稿《标准库单源与头文件多文件设计20261010》§3.2；
+// P1 批先落 headers() 单面，sig()/macro_def()/binding() 随 P2~P3 逐面接线落数据——
+// 「接线哪个面才落哪份数据」，不提前建无消费方的第二副本）。
+// 零依赖（不 import 任何包）；分层登记：scripts/moonbit/pkg_deps rules.json（L3，
+// 与 names 并列；L3 import L2 ast 合法留给 P2 的 sig() 接入）。

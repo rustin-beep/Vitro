@@ -44,6 +44,8 @@
 
 ### Added
 
+- **标准库事实包 P1（2026-10-10，方案 A 设计稿《标准库单源与头文件多文件设计20261010》）**——新包 `vitro/engine/stdlib`（L3 零依赖）：`headers()` 头文件清单**唯一真源**（14 头，序 = Rust `resolver.rs` match 序冻结）；`gen_stubs` 的 `stubNames` 硬编码**消灭**——改为文本解析 stdlib 真源 + 与 `libc_src/include/` 目录**双向集合对账**（未登记头/登记无文件均 fail loud，J9 双向注入证红）；验收 = `stubs_gen.mbt` 产物**逐字节一致**（sha256 `9df81a02` 前后相同）。引擎内消费（lexer `<>` 判定、sig/binding 数据面）随 P2~P4 逐面接线——「接线哪个面才落哪份数据」，不提前建无消费方的第二副本。连坐：pkg_deps levels（rules.json.mbt 真源 + jsonmbt 再生，40 包）/surface 白名单（headers 有意保留裁定项）/mbti_sync（28 接口面）/AGENTS 包清单。
+
 - **教学资产数据外置批一（2026-10-10，refs #60）**——43 算法文案**双出口架构**落地：`teaching/assets` 独立包，真源 `suggestions.json.mbt`（jsonmbt：43 带参枚举变体拼错写时红 + `#|` 多行）+ `suggestion_map` derive（**43 臂穷尽 match = 编译期名单闸**，J9 删臂证红）；**引擎消费 = steps 直接 import 查表（零生成器/零 JSON 中转——探针实证 pub let 跨包直取已类型化值）**；教师面 = build 出同目录 `suggestions.json` 入仓（改后 `import --fill` 回真源——类型头/注释保留 + round-trip 值闭环实测；CI git diff 同步闸）。中间形态（Go 生成器管线）当日撤除，三轮决策链路归档 #60 评论 6085532499。登记连坐：pkg_deps levels（rules.json.mbt 真源 + 再生）/surface 边表 + 白名单/AGENTS 包清单/脚本册。验收：行为零漂移（moon test 705/705、族级对拍逐条一致、vm_diff/typeck_diff/demo smoke 全绿）。
 
 - **CLI 出口总账三批（2026-10-04，refs #37）**——`cmd/lib/cli`（逻辑单包，

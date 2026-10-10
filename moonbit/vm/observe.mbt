@@ -31,6 +31,9 @@ pub(all) struct VariableSnapshotData {
 } derive(Debug)
 
 ///|
+pub extend VariableSnapshotData with Debug::{to_repr}
+
+///|
 /// 数组元素快照（Rust vitro_runtime::ArraySnapshotData 照搬）。
 pub(all) struct ArraySnapshotData {
   name : String

@@ -21,6 +21,9 @@ pub(all) struct LexError {
   loc : @source.SourceLoc
   code : @diag.ErrorCode
 } derive(Eq, @debug.Debug)
+pub fn LexError::equal(Self, Self) -> Bool
+pub fn LexError::not_equal(Self, Self) -> Bool
+pub fn LexError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LexResult {
   tokens : Array[Token]
@@ -29,17 +32,26 @@ pub(all) struct LexResult {
   trace : Array[TraceEntry]
   line_map : LineMap
 } derive(Eq, @debug.Debug)
+pub fn LexResult::equal(Self, Self) -> Bool
+pub fn LexResult::not_equal(Self, Self) -> Bool
+pub fn LexResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LexWarning {
   message : String
   loc : @source.SourceLoc
   code : @diag.ErrorCode
 } derive(Eq, @debug.Debug)
+pub fn LexWarning::equal(Self, Self) -> Bool
+pub fn LexWarning::not_equal(Self, Self) -> Bool
+pub fn LexWarning::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LineMap {
   spans : Array[LineSpan]
 } derive(Eq, @debug.Debug)
+pub fn LineMap::equal(Self, Self) -> Bool
 pub fn LineMap::lookup(Self, Int) -> (Int, Int)
+pub fn LineMap::not_equal(Self, Self) -> Bool
+pub fn LineMap::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LineSpan {
   main_first : Int
@@ -47,16 +59,25 @@ pub(all) struct LineSpan {
   file_id : Int
   file_line : Int
 } derive(Eq, @debug.Debug)
+pub fn LineSpan::equal(Self, Self) -> Bool
+pub fn LineSpan::not_equal(Self, Self) -> Bool
+pub fn LineSpan::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MacroDef {
   Object(body~ : Array[Token])
   Function(params~ : Array[String], body~ : Array[Token])
 } derive(Eq, @debug.Debug)
+pub fn MacroDef::equal(Self, Self) -> Bool
+pub fn MacroDef::not_equal(Self, Self) -> Bool
+pub fn MacroDef::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RawResult {
   tokens : Array[Token]
   errors : Array[LexError]
 } derive(Eq, @debug.Debug)
+pub fn RawResult::equal(Self, Self) -> Bool
+pub fn RawResult::not_equal(Self, Self) -> Bool
+pub fn RawResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Token {
   ty : TokenType
@@ -65,6 +86,9 @@ pub(all) struct Token {
   byte_off : Int
   real_line : Int
 } derive(Eq, @debug.Debug)
+pub fn Token::equal(Self, Self) -> Bool
+pub fn Token::not_equal(Self, Self) -> Bool
+pub fn Token::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TokenType {
   Int
@@ -184,13 +208,19 @@ pub(all) enum TokenType {
   Hash
   HashHash
 } derive(Eq, @debug.Debug)
+pub fn TokenType::equal(Self, Self) -> Bool
+pub fn TokenType::not_equal(Self, Self) -> Bool
 pub fn TokenType::to_name(Self) -> String
+pub fn TokenType::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TraceEntry {
   Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
 } derive(Eq, @debug.Debug)
+pub fn TraceEntry::equal(Self, Self) -> Bool
+pub fn TraceEntry::not_equal(Self, Self) -> Bool
 pub fn TraceEntry::render(Self) -> String
+pub fn TraceEntry::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

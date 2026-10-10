@@ -39,6 +39,14 @@ pub(all) enum AccessSpec {
   Private
   Protected
 } derive(Compare, Eq, @debug.Debug)
+pub fn AccessSpec::compare(Self, Self) -> Int
+pub fn AccessSpec::equal(Self, Self) -> Bool
+pub fn AccessSpec::not_equal(Self, Self) -> Bool
+pub fn AccessSpec::op_ge(Self, Self) -> Bool
+pub fn AccessSpec::op_gt(Self, Self) -> Bool
+pub fn AccessSpec::op_le(Self, Self) -> Bool
+pub fn AccessSpec::op_lt(Self, Self) -> Bool
+pub fn AccessSpec::to_repr(Self) -> @debug.Repr
 
 pub(all) enum AssignOp {
   Assign
@@ -53,6 +61,14 @@ pub(all) enum AssignOp {
   ShlAssign
   ShrAssign
 } derive(Compare, Eq, @debug.Debug)
+pub fn AssignOp::compare(Self, Self) -> Int
+pub fn AssignOp::equal(Self, Self) -> Bool
+pub fn AssignOp::not_equal(Self, Self) -> Bool
+pub fn AssignOp::op_ge(Self, Self) -> Bool
+pub fn AssignOp::op_gt(Self, Self) -> Bool
+pub fn AssignOp::op_le(Self, Self) -> Bool
+pub fn AssignOp::op_lt(Self, Self) -> Bool
+pub fn AssignOp::to_repr(Self) -> @debug.Repr
 
 pub(all) enum BinaryOp {
   Add
@@ -75,12 +91,28 @@ pub(all) enum BinaryOp {
   Shr
   Comma
 } derive(Compare, Eq, @debug.Debug)
+pub fn BinaryOp::compare(Self, Self) -> Int
+pub fn BinaryOp::equal(Self, Self) -> Bool
+pub fn BinaryOp::not_equal(Self, Self) -> Bool
+pub fn BinaryOp::op_ge(Self, Self) -> Bool
+pub fn BinaryOp::op_gt(Self, Self) -> Bool
+pub fn BinaryOp::op_le(Self, Self) -> Bool
+pub fn BinaryOp::op_lt(Self, Self) -> Bool
+pub fn BinaryOp::to_repr(Self) -> @debug.Repr
 
 pub(all) enum CaptureMode {
   ByValue(String)
   ByReference(String)
   Implicit
 } derive(Compare, Eq, @debug.Debug)
+pub fn CaptureMode::compare(Self, Self) -> Int
+pub fn CaptureMode::equal(Self, Self) -> Bool
+pub fn CaptureMode::not_equal(Self, Self) -> Bool
+pub fn CaptureMode::op_ge(Self, Self) -> Bool
+pub fn CaptureMode::op_gt(Self, Self) -> Bool
+pub fn CaptureMode::op_le(Self, Self) -> Bool
+pub fn CaptureMode::op_lt(Self, Self) -> Bool
+pub fn CaptureMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CatchClause {
   param_type : Type
@@ -88,6 +120,7 @@ pub(all) struct CatchClause {
   body : Stmt
   loc : @source.SourceLoc
 } derive(@debug.Debug)
+pub fn CatchClause::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ClassDecl {
   loc : @source.SourceLoc
@@ -96,6 +129,7 @@ pub(all) struct ClassDecl {
   members : Array[ClassMember]
   vtable : VTable?
 } derive(@debug.Debug)
+pub fn ClassDecl::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ClassMember {
   Field(String, Type, AccessSpec, Bool)
@@ -105,11 +139,13 @@ pub(all) enum ClassMember {
   NestedStruct(StructDecl, AccessSpec)
   NestedClass(ClassDecl, AccessSpec)
 } derive(@debug.Debug)
+pub fn ClassMember::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Designator {
   Field(String)
   Index(Expr)
 } derive(@debug.Debug)
+pub fn Designator::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr, @source.SourceLoc, Type)
@@ -140,6 +176,7 @@ pub(all) enum Expr {
   Move(Expr, @source.SourceLoc, Type)
 } derive(@debug.Debug)
 pub fn Expr::loc(Self) -> @source.SourceLoc
+pub fn Expr::to_repr(Self) -> @debug.Repr
 pub fn Expr::ty(Self) -> Type
 
 pub(all) struct FuncDecl {
@@ -153,6 +190,8 @@ pub(all) struct FuncDecl {
   source_file : String
   is_variadic : Bool
 } derive(Default, @debug.Debug)
+pub fn FuncDecl::default() -> Self
+pub fn FuncDecl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct GlobalDecl {
   loc : @source.SourceLoc
@@ -163,11 +202,14 @@ pub(all) struct GlobalDecl {
   is_extern : Bool
   source_file : String
 } derive(Default, @debug.Debug)
+pub fn GlobalDecl::default() -> Self
+pub fn GlobalDecl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct InitElement {
   designators : Array[Designator]
   value : Expr
 } derive(@debug.Debug)
+pub fn InitElement::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Param {
   ty : Type
@@ -175,6 +217,8 @@ pub(all) struct Param {
   loc : @source.SourceLoc
   default : Expr?
 } derive(Default, @debug.Debug)
+pub fn Param::default() -> Self
+pub fn Param::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ProgramNode {
   structs : Array[StructDecl]
@@ -186,6 +230,7 @@ pub(all) struct ProgramNode {
   template_instantiations : Array[TemplateInstantiation]
 } derive(@debug.Debug)
 pub fn ProgramNode::empty() -> Self
+pub fn ProgramNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Stmt {
   Block(Array[Stmt], @source.SourceLoc)
@@ -205,17 +250,21 @@ pub(all) enum Stmt {
   RangeFor(String, Type, Expr, Stmt, @source.SourceLoc)
   Try(Stmt, Array[CatchClause], @source.SourceLoc)
 } derive(@debug.Debug)
+pub fn Stmt::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StructDecl {
   loc : @source.SourceLoc
   name : String
   fields : Array[StructField]
 } derive(Default, @debug.Debug)
+pub fn StructDecl::default() -> Self
+pub fn StructDecl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StructField {
   ty : Type
   name : String
 } derive(@debug.Debug)
+pub fn StructField::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TemplateArg {
   TArg(Type)
@@ -223,28 +272,33 @@ pub(all) enum TemplateArg {
   TInt(Int)
 } derive(@debug.Debug)
 pub fn TemplateArg::mangle_name_into(Self, StringBuilder) -> Unit
+pub fn TemplateArg::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TemplateDecl {
   loc : @source.SourceLoc
   params : Array[TemplateParam]
   decl : Templateable
 } derive(@debug.Debug)
+pub fn TemplateDecl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct TemplateInstantiation {
   loc : @source.SourceLoc
   base : String
   args : Array[TemplateArg]
 } derive(@debug.Debug)
+pub fn TemplateInstantiation::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TemplateParam {
   TypeParam(String, @source.SourceLoc)
   NonType(String, Type, @source.SourceLoc)
 } derive(@debug.Debug)
+pub fn TemplateParam::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Templateable {
   TFunc(FuncDecl)
   TClass(ClassDecl)
 } derive(@debug.Debug)
+pub fn Templateable::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Type {
   Void(Bool)
@@ -270,6 +324,7 @@ pub fn Type::array_size(Self) -> Int
 pub fn Type::base_element_type(Self) -> Self
 pub fn Type::base_kind(Self) -> TypeKind
 pub fn Type::char() -> Self
+pub fn Type::default() -> Self
 pub fn Type::dims(Self) -> Array[Int]
 pub fn Type::double() -> Self
 pub fn Type::float() -> Self
@@ -290,6 +345,7 @@ pub fn Type::set_const(Self, Bool) -> Self
 pub fn Type::struct_type(String) -> Self
 pub fn Type::subscript_type(Self) -> Self
 pub fn Type::to_c_string(Self) -> String
+pub fn Type::to_repr(Self) -> @debug.Repr
 pub fn Type::total_elements(Self) -> Int
 pub fn Type::union_type(String) -> Self
 pub fn Type::unsigned_int() -> Self
@@ -314,6 +370,15 @@ pub enum TypeKind {
   TK_Auto
   TK_TemplateId
 } derive(Compare, Eq, Hash)
+pub fn TypeKind::compare(Self, Self) -> Int
+pub fn TypeKind::equal(Self, Self) -> Bool
+pub fn TypeKind::hash(Self) -> Int
+pub fn TypeKind::hash_combine(Self, Hasher) -> Unit
+pub fn TypeKind::not_equal(Self, Self) -> Bool
+pub fn TypeKind::op_ge(Self, Self) -> Bool
+pub fn TypeKind::op_gt(Self, Self) -> Bool
+pub fn TypeKind::op_le(Self, Self) -> Bool
+pub fn TypeKind::op_lt(Self, Self) -> Bool
 
 pub(all) enum UnaryOp {
   Neg
@@ -326,16 +391,26 @@ pub(all) enum UnaryOp {
   PostInc
   PostDec
 } derive(Compare, Eq, @debug.Debug)
+pub fn UnaryOp::compare(Self, Self) -> Int
+pub fn UnaryOp::equal(Self, Self) -> Bool
+pub fn UnaryOp::not_equal(Self, Self) -> Bool
+pub fn UnaryOp::op_ge(Self, Self) -> Bool
+pub fn UnaryOp::op_gt(Self, Self) -> Bool
+pub fn UnaryOp::op_le(Self, Self) -> Bool
+pub fn UnaryOp::op_lt(Self, Self) -> Bool
+pub fn UnaryOp::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VTable {
   entries : Array[(String, Type)]
 } derive(@debug.Debug)
+pub fn VTable::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VarDeclExtra {
   var_type : Type
   name : String
   init : Expr?
 } derive(@debug.Debug)
+pub fn VarDeclExtra::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

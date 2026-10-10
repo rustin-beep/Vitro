@@ -68,6 +68,9 @@ pub(all) enum CallRoute {
   BytecodeLibc(Int)
   Host(Int)
 } derive(Eq, @debug.Debug)
+pub fn CallRoute::equal(Self, Self) -> Bool
+pub fn CallRoute::not_equal(Self, Self) -> Bool
+pub fn CallRoute::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
@@ -84,6 +87,7 @@ pub(all) struct CompileOutput {
   i64_constants : Array[Int64]
   global_data_end : UInt
 } derive(@debug.Debug)
+pub fn CompileOutput::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FuncMeta {
   mut ip : Int
@@ -95,12 +99,16 @@ pub(all) struct FuncMeta {
   mut is_variadic : Bool
   local_buffers : Array[LocalBuffer]
 } derive(@debug.Debug)
+pub fn FuncMeta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LocalBuffer {
   offset : Int
   size : Int
   name : String
 } derive(Eq, @debug.Debug)
+pub fn LocalBuffer::equal(Self, Self) -> Bool
+pub fn LocalBuffer::not_equal(Self, Self) -> Bool
+pub fn LocalBuffer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Symbol {
   name : String
@@ -111,6 +119,7 @@ pub(all) struct Symbol {
   func_name : String
   decl_line : Int
 } derive(@debug.Debug)
+pub fn Symbol::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

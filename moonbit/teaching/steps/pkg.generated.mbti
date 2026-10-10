@@ -65,6 +65,7 @@ pub(all) struct InferEnv {
   caller_is_main : Bool
   lookahead : String
 } derive(@debug.Debug)
+pub fn InferEnv::to_repr(Self) -> @debug.Repr
 
 pub struct VarMap {
   vars : Array[VarSnapshot]
@@ -78,6 +79,7 @@ pub(all) struct VarSnapshot {
   name : String
   value : String
 } derive(@debug.Debug)
+pub fn VarSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

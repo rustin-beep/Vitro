@@ -17,6 +17,12 @@ pub(all) struct Pos {
 } derive(Debug, Eq)
 
 ///|
+pub extend Pos with Debug::{to_repr}
+
+///|
+pub extend Pos with Eq::{not_equal, equal}
+
+///|
 /// 从行内容与全文件偏移派生三坐标。
 ///
 /// `line_bytes` 为该行起点到目标位置（不含）的 UTF-8 字节序列；

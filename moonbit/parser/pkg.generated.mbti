@@ -13,7 +13,15 @@ pub fn parse(Array[@token.Token]) -> ParseResult
 // Errors
 
 // Types and methods
-type DeclaratorNode derive(@debug.Debug)
+pub enum DeclaratorNode {
+  Base
+  Pointer(DeclaratorNode)
+  Reference(DeclaratorNode, Bool)
+  RValueRef(DeclaratorNode)
+  Array(DeclaratorNode, @ast.Expr?)
+  Function(DeclaratorNode, Array[@ast.Param], Bool)
+} derive(@debug.Debug)
+pub fn DeclaratorNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ParseError {
   message : String
@@ -21,6 +29,9 @@ pub(all) struct ParseError {
   column : Int
   code : Int
 } derive(Eq, @debug.Debug)
+pub fn ParseError::equal(Self, Self) -> Bool
+pub fn ParseError::not_equal(Self, Self) -> Bool
+pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ParseResult {
   program : @ast.ProgramNode?

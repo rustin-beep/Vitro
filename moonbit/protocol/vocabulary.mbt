@@ -30,6 +30,9 @@ pub(all) struct SemanticLabelKind {
   since : String
 } derive(Debug)
 
+///|
+pub extend SemanticLabelKind with Debug::{to_repr}
+
 ///| semantic_label 受控词汇表（schema 附录 B 的机器可读单源）。
 
 ///|

@@ -151,6 +151,18 @@ pub(all) enum OpCode {
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
+pub extend OpCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend OpCode with Debug::{to_repr}
+
+///|
+pub extend OpCode with Eq::{not_equal, equal}
+
+///|
+pub extend OpCode with Hash::{hash, hash_combine}
+
+///|
 /// opcode 编号（穷尽 match，编号手工显式——照搬 Rust，不重排）。
 pub fn OpCode::code(self : OpCode) -> Int {
   match self {

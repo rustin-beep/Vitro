@@ -147,6 +147,18 @@ pub(all) enum ErrorCode {
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
+pub extend ErrorCode with Debug::{to_repr}
+
+///|
+pub extend ErrorCode with Eq::{not_equal, equal}
+
+///|
+pub extend ErrorCode with Hash::{hash, hash_combine}
+
+///|
+pub extend ErrorCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
 /// 编号（穷尽 match，无下划线兜底——增删臂即编译红）。
 pub fn ErrorCode::code(self : ErrorCode) -> Int {
   match self {

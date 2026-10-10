@@ -18,11 +18,13 @@ pub fn vfs_provider(files~ : Map[String, String]) -> VfsProvider
 pub enum StubsProvider {
   Stubs
 }
+pub fn StubsProvider::read(Self, String) -> String raise @token.SourceError
 pub impl @token.SourceProvider for StubsProvider
 
 pub(all) struct VfsProvider {
   files : Map[String, String]
 }
+pub fn VfsProvider::read(Self, String) -> String raise @token.SourceError
 pub impl @token.SourceProvider for VfsProvider
 
 // Type aliases

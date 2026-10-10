@@ -43,11 +43,17 @@ pub(all) struct CallFrame {
   caller_line : Int
   local_buffers : Array[@bytecode.LocalBuffer]
 } derive(Eq, @debug.Debug)
+pub fn CallFrame::equal(Self, Self) -> Bool
+pub fn CallFrame::not_equal(Self, Self) -> Bool
+pub fn CallFrame::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ExecMode {
   Running
   Unwinding
 } derive(Eq, @debug.Debug)
+pub fn ExecMode::equal(Self, Self) -> Bool
+pub fn ExecMode::not_equal(Self, Self) -> Bool
+pub fn ExecMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HandlerFrame {
   catch_ip : Int
@@ -55,6 +61,9 @@ pub(all) struct HandlerFrame {
   stack_depth : Int
   mem_stack_top : UInt
 } derive(Eq, @debug.Debug)
+pub fn HandlerFrame::equal(Self, Self) -> Bool
+pub fn HandlerFrame::not_equal(Self, Self) -> Bool
+pub fn HandlerFrame::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LibcArtifact {
   code : Array[@opcode.Instruction]
@@ -70,6 +79,9 @@ pub(all) enum MemoryImage {
   Delta(Int, Array[(Int, FixedArray[Byte])])
 } derive(Eq, @debug.Debug)
 pub fn MemoryImage::apply_to(Self, VitroVM) -> Unit
+pub fn MemoryImage::equal(Self, Self) -> Bool
+pub fn MemoryImage::not_equal(Self, Self) -> Bool
+pub fn MemoryImage::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StepResult {
   Ok
@@ -78,6 +90,9 @@ pub(all) enum StepResult {
   Trap
   WaitingInput
 } derive(Eq, @debug.Debug)
+pub fn StepResult::equal(Self, Self) -> Bool
+pub fn StepResult::not_equal(Self, Self) -> Bool
+pub fn StepResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VMSnapshot {
   memory : MemoryImage
@@ -118,6 +133,9 @@ pub(all) struct VariableAccess {
   name : String
   access_type : @memory.AccessKind
 } derive(Eq, @debug.Debug)
+pub fn VariableAccess::equal(Self, Self) -> Bool
+pub fn VariableAccess::not_equal(Self, Self) -> Bool
+pub fn VariableAccess::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VariableSnapshotData {
   name : String
@@ -126,6 +144,7 @@ pub(all) struct VariableSnapshotData {
   ty : @ast.Type
   value : Int64
 } derive(@debug.Debug)
+pub fn VariableSnapshotData::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VisEventData {
   ty : Int
@@ -135,6 +154,9 @@ pub(all) struct VisEventData {
   extra2 : Int
   context : String
 } derive(Eq, @debug.Debug)
+pub fn VisEventData::equal(Self, Self) -> Bool
+pub fn VisEventData::not_equal(Self, Self) -> Bool
+pub fn VisEventData::to_repr(Self) -> @debug.Repr
 
 pub struct VitroVM {
   code : Array[@opcode.Instruction]
@@ -188,6 +210,7 @@ pub struct VitroVM {
 pub fn VitroVM::accessed_at(Self, Int) -> VariableAccess
 pub fn VitroVM::accessed_len(Self) -> Int
 pub fn VitroVM::add_breakpoint(Self, Int) -> Unit
+pub fn VitroVM::breakpoints_sorted(Self) -> Array[Int]
 pub fn VitroVM::call_stack_at(Self, Int) -> CallFrame
 pub fn VitroVM::call_stack_len(Self) -> Int
 pub fn VitroVM::clear_breakpoints(Self) -> Unit

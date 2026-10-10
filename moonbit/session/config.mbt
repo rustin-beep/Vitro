@@ -19,6 +19,9 @@ pub(all) struct SessionConfig {
 } derive(Debug)
 
 ///|
+pub extend SessionConfig with Debug::{to_repr}
+
+///|
 /// 默认值 = VitroVM::new 的默认（1000 万步 / MAX_STACK_DEPTH /
 /// deterministic **关**）。deterministic 对齐 oracle：Rust 侧唯一宿主
 /// RuntimeState 是 #[derive(Default)] ⇒ false（CLI 手册同口径），Rust

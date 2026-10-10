@@ -43,6 +43,12 @@ pub(all) struct HostMemReply {
 } derive(Debug, Eq)
 
 ///|
+pub extend HostMemReply with Debug::{to_repr}
+
+///|
+pub extend HostMemReply with Eq::{not_equal, equal}
+
+///|
 /// 无事发生的回复（`free(NULL)` / 释放成功等）。
 fn no_reply() -> HostMemReply {
   HostMemReply::{ value: None, note: None, trap: None, }

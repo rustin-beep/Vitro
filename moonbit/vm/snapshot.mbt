@@ -36,6 +36,12 @@ pub(all) enum MemoryImage {
 } derive(Eq, Debug)
 
 ///|
+pub extend MemoryImage with Debug::{to_repr}
+
+///|
+pub extend MemoryImage with Eq::{not_equal, equal}
+
+///|
 /// VM 执行状态快照（全量真相；结构含 C# 异常三状态与宿主域三态）。
 pub(all) struct VMSnapshot {
   // ── 内存 ──

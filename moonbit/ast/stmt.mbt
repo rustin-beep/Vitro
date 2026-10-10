@@ -25,6 +25,9 @@ pub(all) enum Stmt {
 } derive(Debug)
 
 ///|
+pub extend Stmt with Debug::{to_repr}
+
+///|
 /// `VarDecl.extra_vars` 元素：`int a = 1, b = 2, c;` 的 b/c 尾随声明
 /// （Rust 侧为 (Type, String, Option<Expr>) 元组——MoonBit 具名结构化，
 /// 元组形态语义不变）。
@@ -35,6 +38,9 @@ pub(all) struct VarDeclExtra {
 } derive(Debug)
 
 ///|
+pub extend VarDeclExtra with Debug::{to_repr}
+
+///|
 /// catch 子句（Try 的保留配套）。
 pub(all) struct CatchClause {
   param_type : Type
@@ -42,3 +48,6 @@ pub(all) struct CatchClause {
   body : Stmt
   loc : @source.SourceLoc
 } derive(Debug)
+
+///|
+pub extend CatchClause with Debug::{to_repr}

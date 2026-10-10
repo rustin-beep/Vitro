@@ -15,16 +15,30 @@ pub(all) struct Pos {
   col_scalar : Int
   col_utf16 : Int
 } derive(Eq, @debug.Debug)
+pub fn Pos::equal(Self, Self) -> Bool
 pub fn Pos::from_byte_off(Bytes, Int, Int) -> Self
+pub fn Pos::not_equal(Self, Self) -> Bool
+pub fn Pos::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SourceLoc {
   line : Int
   column : Int
   file_id : Int
 } derive(Compare, Default, Eq, Hash, @debug.Debug)
+pub fn SourceLoc::compare(Self, Self) -> Int
+pub fn SourceLoc::default() -> Self
 pub fn SourceLoc::display(Self) -> String
+pub fn SourceLoc::equal(Self, Self) -> Bool
+pub fn SourceLoc::hash(Self) -> Int
+pub fn SourceLoc::hash_combine(Self, Hasher) -> Unit
 pub fn SourceLoc::is_user_file(Self) -> Bool
 pub fn SourceLoc::new(Int, Int) -> Self
+pub fn SourceLoc::not_equal(Self, Self) -> Bool
+pub fn SourceLoc::op_ge(Self, Self) -> Bool
+pub fn SourceLoc::op_gt(Self, Self) -> Bool
+pub fn SourceLoc::op_le(Self, Self) -> Bool
+pub fn SourceLoc::op_lt(Self, Self) -> Bool
+pub fn SourceLoc::to_repr(Self) -> @debug.Repr
 pub fn SourceLoc::with_file(Int, Int, Int) -> Self
 
 // Type aliases

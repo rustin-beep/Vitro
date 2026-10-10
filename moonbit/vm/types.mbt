@@ -34,6 +34,12 @@ pub(all) enum StepResult {
 } derive(Eq, Debug)
 
 ///|
+pub extend StepResult with Debug::{to_repr}
+
+///|
+pub extend StepResult with Eq::{not_equal, equal}
+
+///|
 /// 调用帧（照搬 Rust `CallFrame`，`core/state.rs:34-44`）。
 ///
 /// `return_ip` 的 `None` 即**宿主回调哨兵**：qsort/bsearch 的比较器经
@@ -58,6 +64,12 @@ pub(all) struct CallFrame {
 } derive(Eq, Debug)
 
 ///|
+pub extend CallFrame with Debug::{to_repr}
+
+///|
+pub extend CallFrame with Eq::{not_equal, equal}
+
+///|
 /// 可视化事件（照搬 Rust `VisEventData`，`runtime_state.rs:17-24`；
 /// S8 teaching/steps 消费——`StepPayload` 的词汇来源之一）。
 pub(all) struct VisEventData {
@@ -70,12 +82,24 @@ pub(all) struct VisEventData {
 } derive(Eq, Debug)
 
 ///|
+pub extend VisEventData with Debug::{to_repr}
+
+///|
+pub extend VisEventData with Eq::{not_equal, equal}
+
+///|
 /// 变量访问记录（每步的 `last_accessed_vars` 元素；访问类型复用
 /// `@memory.AccessKind`——同一 Read/Write 语义，不另立枚举）。
 pub(all) struct VariableAccess {
   name : String
   access_type : @memory.AccessKind
 } derive(Eq, Debug)
+
+///|
+pub extend VariableAccess with Debug::{to_repr}
+
+///|
+pub extend VariableAccess with Eq::{not_equal, equal}
 
 // ---------------------------------------------------------------------------
 // C# 异常三执行状态（CS 批硬前置——CSharp 前端引入计划 §4；C 前端零使用，
@@ -96,6 +120,12 @@ pub(all) enum ExecMode {
 } derive(Eq, Debug)
 
 ///|
+pub extend ExecMode with Debug::{to_repr}
+
+///|
+pub extend ExecMode with Eq::{not_equal, equal}
+
+///|
 /// 异常 handler 栈帧（三执行状态之一：handler 栈）。
 ///
 /// `TryBegin <catch_ip>` 压入、`TryEnd` 弹出；`Throw` 恢复
@@ -109,6 +139,12 @@ pub(all) struct HandlerFrame {
   stack_depth : Int
   mem_stack_top : UInt
 } derive(Eq, Debug)
+
+///|
+pub extend HandlerFrame with Debug::{to_repr}
+
+///|
+pub extend HandlerFrame with Eq::{not_equal, equal}
 
 ///|
 /// 当前异常寄存器（三执行状态之一）：异常对象引用（堆地址）。

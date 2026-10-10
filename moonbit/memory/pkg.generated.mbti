@@ -28,11 +28,17 @@ pub(all) enum AccessKind {
   Read
   Write
 } derive(Eq, @debug.Debug)
+pub fn AccessKind::equal(Self, Self) -> Bool
+pub fn AccessKind::not_equal(Self, Self) -> Bool
+pub fn AccessKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FreeBlock {
   mut addr : UInt
   mut size : Int
 } derive(Eq, @debug.Debug)
+pub fn FreeBlock::equal(Self, Self) -> Bool
+pub fn FreeBlock::not_equal(Self, Self) -> Bool
+pub fn FreeBlock::to_repr(Self) -> @debug.Repr
 
 pub struct FreedLogs {
   entries : Array[FreedRegionInfo]
@@ -58,6 +64,9 @@ pub(all) struct FreedRegionInfo {
   alloc_step : Int
   freed_step : Int
 } derive(Eq, @debug.Debug)
+pub fn FreedRegionInfo::equal(Self, Self) -> Bool
+pub fn FreedRegionInfo::not_equal(Self, Self) -> Bool
+pub fn FreedRegionInfo::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeapStatsData {
   heap_base : Int
@@ -66,12 +75,18 @@ pub(all) struct HeapStatsData {
   fragmented : Int
   fragmentation_rate : Int
 } derive(Eq, @debug.Debug)
+pub fn HeapStatsData::equal(Self, Self) -> Bool
+pub fn HeapStatsData::not_equal(Self, Self) -> Bool
+pub fn HeapStatsData::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MemFault {
   NullDeref(UInt, AccessKind)
   OutOfBounds(UInt, UInt)
   UseAfterFree(FreedRegionInfo, AccessKind)
 } derive(Eq, @debug.Debug)
+pub fn MemFault::equal(Self, Self) -> Bool
+pub fn MemFault::not_equal(Self, Self) -> Bool
+pub fn MemFault::to_repr(Self) -> @debug.Repr
 
 pub struct Memory {
   bytes : FixedArray[Byte]
@@ -157,7 +172,10 @@ pub(all) struct MemoryRegionData {
   mut kind : String
   mut refcount : Int
 } derive(Eq, @debug.Debug)
+pub fn MemoryRegionData::equal(Self, Self) -> Bool
 pub fn MemoryRegionData::heap_block(Int, String, String, Int, String) -> Self
+pub fn MemoryRegionData::not_equal(Self, Self) -> Bool
+pub fn MemoryRegionData::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemorySnapshot {
   regions : Array[(UInt, MemoryRegionData)]
@@ -170,6 +188,9 @@ pub(all) struct MemorySnapshot {
   alloc_counter : Int
   freed : Array[FreedRegionInfo]
 } derive(Eq, @debug.Debug)
+pub fn MemorySnapshot::equal(Self, Self) -> Bool
+pub fn MemorySnapshot::not_equal(Self, Self) -> Bool
+pub fn MemorySnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

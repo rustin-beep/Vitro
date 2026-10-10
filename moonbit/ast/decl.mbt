@@ -8,6 +8,12 @@ pub(all) struct Param {
 } derive(Debug, Default)
 
 ///|
+pub extend Param with Debug::{to_repr}
+
+///|
+pub extend Param with Default::{default}
+
+///|
 /// 函数声明。
 pub(all) struct FuncDecl {
   loc : @source.SourceLoc
@@ -22,11 +28,20 @@ pub(all) struct FuncDecl {
 } derive(Debug, Default)
 
 ///|
+pub extend FuncDecl with Debug::{to_repr}
+
+///|
+pub extend FuncDecl with Default::{default}
+
+///|
 /// struct 字段。
 pub(all) struct StructField {
   ty : Type
   name : String
 } derive(Debug)
+
+///|
+pub extend StructField with Debug::{to_repr}
 
 ///|
 /// struct 声明（union 复用本结构——Rust 侧同构，ProgramNode.unions
@@ -36,6 +51,12 @@ pub(all) struct StructDecl {
   name : String
   fields : Array[StructField]
 } derive(Debug, Default)
+
+///|
+pub extend StructDecl with Debug::{to_repr}
+
+///|
+pub extend StructDecl with Default::{default}
 
 ///|
 /// 全局变量声明。
@@ -48,6 +69,12 @@ pub(all) struct GlobalDecl {
   is_extern : Bool
   source_file : String
 } derive(Debug, Default)
+
+///|
+pub extend GlobalDecl with Debug::{to_repr}
+
+///|
+pub extend GlobalDecl with Default::{default}
 
 // ============================================================================
 // C++ 声明节点
@@ -62,6 +89,15 @@ pub(all) enum AccessSpec {
 } derive(Debug, Eq, Compare)
 
 ///|
+pub extend AccessSpec with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend AccessSpec with Debug::{to_repr}
+
+///|
+pub extend AccessSpec with Eq::{not_equal, equal}
+
+///|
 /// 类成员（6 变体，照搬 Rust ClassMember）。
 pub(all) enum ClassMember {
   Field(String, Type, AccessSpec, Bool) // name, ty, access, is_static
@@ -73,10 +109,16 @@ pub(all) enum ClassMember {
 } derive(Debug)
 
 ///|
+pub extend ClassMember with Debug::{to_repr}
+
+///|
 /// 虚表（(method_name, function_type) 条目表）。
 pub(all) struct VTable {
   entries : Array[(String, Type)]
 } derive(Debug)
+
+///|
+pub extend VTable with Debug::{to_repr}
 
 ///|
 /// 类声明。
@@ -89,11 +131,17 @@ pub(all) struct ClassDecl {
 } derive(Debug)
 
 ///|
+pub extend ClassDecl with Debug::{to_repr}
+
+///|
 /// 模板形参（类型形参 / 非类型形参）。
 pub(all) enum TemplateParam {
   TypeParam(String, @source.SourceLoc) // name（Type 为 MoonBit 类型名冲突，加 Param 后缀）
   NonType(String, Type, @source.SourceLoc) // name, ty
 } derive(Debug)
+
+///|
+pub extend TemplateParam with Debug::{to_repr}
 
 ///|
 /// 模板实参（3 变体；判等见 types_eq.mbt——Expr 形态不参与判等）。
@@ -104,11 +152,17 @@ pub(all) enum TemplateArg {
 } derive(Debug)
 
 ///|
+pub extend TemplateArg with Debug::{to_repr}
+
+///|
 /// 模板载体（函数模板 / 类模板）。
 pub(all) enum Templateable {
   TFunc(FuncDecl)
   TClass(ClassDecl)
 } derive(Debug)
+
+///|
+pub extend Templateable with Debug::{to_repr}
 
 ///|
 /// 模板声明。
@@ -119,6 +173,9 @@ pub(all) struct TemplateDecl {
 } derive(Debug)
 
 ///|
+pub extend TemplateDecl with Debug::{to_repr}
+
+///|
 /// 模板实例化点。
 pub(all) struct TemplateInstantiation {
   loc : @source.SourceLoc
@@ -127,12 +184,24 @@ pub(all) struct TemplateInstantiation {
 } derive(Debug)
 
 ///|
+pub extend TemplateInstantiation with Debug::{to_repr}
+
+///|
 /// lambda 捕获模式（3 变体）。
 pub(all) enum CaptureMode {
   ByValue(String)
   ByReference(String)
   Implicit
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend CaptureMode with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend CaptureMode with Debug::{to_repr}
+
+///|
+pub extend CaptureMode with Eq::{not_equal, equal}
 
 // ============================================================================
 // 程序根
@@ -150,6 +219,9 @@ pub(all) struct ProgramNode {
   templates : Array[TemplateDecl]
   template_instantiations : Array[TemplateInstantiation]
 } derive(Debug)
+
+///|
+pub extend ProgramNode with Debug::{to_repr}
 
 ///|
 /// 空程序根。

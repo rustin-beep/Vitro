@@ -27,11 +27,13 @@ pub(all) struct CompileState {
   mut preprocessor_trace : Array[String]
 } derive(@debug.Debug)
 pub fn CompileState::new() -> Self
+pub fn CompileState::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompileUnit {
   filename : String
   source : String
 } derive(@debug.Debug)
+pub fn CompileUnit::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Diagnostic {
   line : Int
@@ -48,12 +50,14 @@ pub(all) struct Diagnostic {
   replacement_text : String
   filename : String
 } derive(@debug.Debug)
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FileRange {
   filename : String
   start_line : Int
   end_line : Int
 } derive(@debug.Debug)
+pub fn FileRange::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeapStats {
   heap_base : Int
@@ -62,11 +66,13 @@ pub(all) struct HeapStats {
   fragmented : Int
   fragmentation_rate : Int
 } derive(@debug.Debug)
+pub fn HeapStats::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryFragment {
   addr : UInt
   size : Int
 } derive(@debug.Debug)
+pub fn MemoryFragment::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryRegion {
   addr : UInt
@@ -79,6 +85,7 @@ pub(all) struct MemoryRegion {
   alloc_by : String
   kind : String
 } derive(@debug.Debug)
+pub fn MemoryRegion::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Session {
   mut config : SessionConfig
@@ -105,6 +112,7 @@ pub(all) struct SessionConfig {
 pub fn SessionConfig::apply_to_vm(Self, @vm.VitroVM) -> Unit
 pub fn SessionConfig::default() -> Self
 pub fn SessionConfig::from_vm(@vm.VitroVM) -> Self
+pub fn SessionConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepResult {
   status : StepStatus
@@ -112,6 +120,7 @@ pub(all) struct StepResult {
   output : String
   waiting_input : Bool
 } derive(@debug.Debug)
+pub fn StepResult::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StepStatus {
   Paused
@@ -119,12 +128,21 @@ pub(all) enum StepStatus {
   Finished
   Trap
 } derive(Compare, Eq, @debug.Debug)
+pub fn StepStatus::compare(Self, Self) -> Int
+pub fn StepStatus::equal(Self, Self) -> Bool
+pub fn StepStatus::not_equal(Self, Self) -> Bool
+pub fn StepStatus::op_ge(Self, Self) -> Bool
+pub fn StepStatus::op_gt(Self, Self) -> Bool
+pub fn StepStatus::op_le(Self, Self) -> Bool
+pub fn StepStatus::op_lt(Self, Self) -> Bool
+pub fn StepStatus::to_repr(Self) -> @debug.Repr
 pub fn StepStatus::to_text(Self) -> String
 
 pub(all) struct TraceEntry {
   line : Int
   operation : String
 } derive(@debug.Debug)
+pub fn TraceEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VariableSnapshot {
   name : String
@@ -133,6 +151,7 @@ pub(all) struct VariableSnapshot {
   ty : @ast.Type
   value : Int64
 } derive(@debug.Debug)
+pub fn VariableSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

@@ -8,6 +8,9 @@ pub enum StubsProvider {
 }
 
 ///|
+pub extend StubsProvider with @token.SourceProvider::{read}
+
+///|
 pub impl @token.SourceProvider for StubsProvider with fn read(
   self,
   path : String,
@@ -32,6 +35,9 @@ pub impl @token.SourceProvider for StubsProvider with fn read(
 pub(all) struct VfsProvider {
   files : Map[String, String]
 }
+
+///|
+pub extend VfsProvider with @token.SourceProvider::{read}
 
 ///|
 pub impl @token.SourceProvider for VfsProvider with fn read(self, path : String) -> String raise @token.SourceError {

@@ -55,6 +55,9 @@ pub(all) struct SchemaFieldPlan {
 } derive(Debug)
 
 ///|
+pub extend SchemaFieldPlan with Debug::{to_repr}
+
+///|
 /// v0.2 字段台账（7 条照搬 contracts.rs V0_2_FIELD_LEDGER；第 8 条为
 /// MoonBit 侧增补——#27 emoji→icon 语义化，Rust 退役后本表即单源）。
 pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
@@ -131,6 +134,9 @@ pub(all) struct BehaviorContract {
 } derive(Debug)
 
 ///|
+pub extend BehaviorContract with Debug::{to_repr}
+
+///|
 /// 行为契约清单（5 条照搬 contracts.rs BEHAVIOR_CONTRACTS；第 6 条为
 /// MoonBit 侧增补——#27 图标资产通道）。
 pub fn behavior_contracts() -> Array[BehaviorContract] {
@@ -187,6 +193,15 @@ pub(all) struct UnwindSample {
   unwinding : Bool
   unwind_frames_left : Int
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend UnwindSample with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend UnwindSample with Debug::{to_repr}
+
+///|
+pub extend UnwindSample with Eq::{not_equal, equal}
 
 ///| 校验一批步数据是否违反 unwinding_step_granularity 契约。
 

@@ -23,6 +23,9 @@ pub(all) struct Diagnostic {
 } derive(Debug)
 
 ///|
+pub extend Diagnostic with Debug::{to_repr}
+
+///|
 /// 算法匹配（2026-10-01 批四号收拢至 protocol——session import
 /// time_travel 成环，time_travel/teaching 消费走 @protocol.AlgorithmMatch；
 /// 此处定义已删，session.algorithm_matches 字段类型随改）。
@@ -35,6 +38,9 @@ pub(all) struct TraceEntry {
 } derive(Debug)
 
 ///|
+pub extend TraceEntry with Debug::{to_repr}
+
+///|
 /// 变量快照（会话侧——ty 为渲染好的字符串形态时用 protocol 的
 /// ApiVariableSnapshot；本形态保留 Rust 的 i64 位模式版本，vm 互转
 /// 随 serve 批）。
@@ -45,6 +51,9 @@ pub(all) struct VariableSnapshot {
   ty : @ast.Type
   value : Int64
 } derive(Debug)
+
+///|
+pub extend VariableSnapshot with Debug::{to_repr}
 
 ///|
 /// 内存地图区域（C2 三段式——global/stack/heap）。
@@ -64,11 +73,17 @@ pub(all) struct MemoryRegion {
 } derive(Debug)
 
 ///|
+pub extend MemoryRegion with Debug::{to_repr}
+
+///|
 /// 空闲块（free_list 条目的协议形态）。
 pub(all) struct MemoryFragment {
   addr : UInt
   size : Int
 } derive(Debug)
+
+///|
+pub extend MemoryFragment with Debug::{to_repr}
 
 ///|
 /// 堆统计。
@@ -86,6 +101,9 @@ pub(all) struct HeapStats {
 } derive(Debug)
 
 ///|
+pub extend HeapStats with Debug::{to_repr}
+
+///|
 /// 单步执行结果。
 pub(all) struct StepResult {
   status : StepStatus
@@ -95,6 +113,9 @@ pub(all) struct StepResult {
 } derive(Debug)
 
 ///|
+pub extend StepResult with Debug::{to_repr}
+
+///|
 /// 步进状态四态。
 pub(all) enum StepStatus {
   Paused
@@ -102,6 +123,15 @@ pub(all) enum StepStatus {
   Finished
   Trap
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend StepStatus with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend StepStatus with Debug::{to_repr}
+
+///|
+pub extend StepStatus with Eq::{not_equal, equal}
 
 ///|
 /// StepStatus 的协议文本（serve JSON 出口用——Rust serde enum 裸字符串

@@ -22,7 +22,10 @@ pub(all) struct CatalogEntry {
   explanation : String
   common_causes : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CatalogEntry::equal(Self, Self) -> Bool
+pub fn CatalogEntry::not_equal(Self, Self) -> Bool
 pub fn CatalogEntry::of(Int, String, String, String, Array[String]) -> Self
+pub fn CatalogEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ErrorCode {
   Unknown
@@ -166,18 +169,36 @@ pub(all) enum ErrorCode {
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?
 pub fn ErrorCode::code(Self) -> Int
+pub fn ErrorCode::compare(Self, Self) -> Int
 pub fn ErrorCode::display_code(Self) -> String
+pub fn ErrorCode::equal(Self, Self) -> Bool
 pub fn ErrorCode::from_code(Int) -> Self?
+pub fn ErrorCode::hash(Self) -> Int
+pub fn ErrorCode::hash_combine(Self, Hasher) -> Unit
 pub fn ErrorCode::lang(Self) -> SourceLang
 pub fn ErrorCode::name(Self) -> String
+pub fn ErrorCode::not_equal(Self, Self) -> Bool
+pub fn ErrorCode::op_ge(Self, Self) -> Bool
+pub fn ErrorCode::op_gt(Self, Self) -> Bool
+pub fn ErrorCode::op_le(Self, Self) -> Bool
+pub fn ErrorCode::op_lt(Self, Self) -> Bool
 pub fn ErrorCode::severity(Self) -> Severity
+pub fn ErrorCode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Severity {
   Error
   Warning
   Hint
 } derive(Compare, Eq, @debug.Debug)
+pub fn Severity::compare(Self, Self) -> Int
+pub fn Severity::equal(Self, Self) -> Bool
+pub fn Severity::not_equal(Self, Self) -> Bool
+pub fn Severity::op_ge(Self, Self) -> Bool
+pub fn Severity::op_gt(Self, Self) -> Bool
+pub fn Severity::op_le(Self, Self) -> Bool
+pub fn Severity::op_lt(Self, Self) -> Bool
 pub fn Severity::prefix(Self) -> String
+pub fn Severity::to_repr(Self) -> @debug.Repr
 pub fn Severity::to_str(Self) -> String
 
 pub(all) enum SourceLang {
@@ -185,6 +206,14 @@ pub(all) enum SourceLang {
   Cpp
   CSharp
 } derive(Compare, Eq, @debug.Debug)
+pub fn SourceLang::compare(Self, Self) -> Int
+pub fn SourceLang::equal(Self, Self) -> Bool
+pub fn SourceLang::not_equal(Self, Self) -> Bool
+pub fn SourceLang::op_ge(Self, Self) -> Bool
+pub fn SourceLang::op_gt(Self, Self) -> Bool
+pub fn SourceLang::op_le(Self, Self) -> Bool
+pub fn SourceLang::op_lt(Self, Self) -> Bool
+pub fn SourceLang::to_repr(Self) -> @debug.Repr
 pub fn SourceLang::to_str(Self) -> String
 
 // Type aliases

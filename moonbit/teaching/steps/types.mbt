@@ -12,6 +12,9 @@ pub(all) struct VarSnapshot {
 } derive(Debug)
 
 ///|
+pub extend VarSnapshot with Debug::{to_repr}
+
+///|
 /// 帧上下文（U1#1 管道批：单行源码判据够不到的三类信息，由 collector
 /// 构造注入——`prev_vars` 行入口变量快照〔"展示运算过程"的 phase 用它
 /// 拼算式，行末帧的 b 已被本语句赋值〕/ `at_callee_entry`+`caller_is_main`
@@ -23,6 +26,9 @@ pub(all) struct InferEnv {
   caller_is_main : Bool
   lookahead : String
 } derive(Debug)
+
+///|
+pub extend InferEnv with Debug::{to_repr}
 
 ///|
 /// 变量名→值查找（Rust VarMap 同款三读口：整型解析失败视无值）。

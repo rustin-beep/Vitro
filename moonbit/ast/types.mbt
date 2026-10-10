@@ -35,6 +35,12 @@ pub(all) enum Type {
   Typeof(Expr, Bool, Bool) // expr, is_const, unqual（C23 typeof_unqual）
 } derive(Debug)
 
+///|
+pub extend Type with Debug::{to_repr}
+
+///|
+pub extend Type with Default::{default}
+
 ///| 默认类型 = Void(is_const=false)——照搬 Rust types.rs:185 的显式
 
 ///| `impl Default for Type`（G-2：AST Default 化基座；derive 对 17 变体

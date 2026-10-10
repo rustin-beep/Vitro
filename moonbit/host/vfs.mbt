@@ -21,23 +21,32 @@
 
 ///|
 /// 打开模式（穷尽三态——坑 13 的结构性预防）。
-enum VfsMode {
+pub enum VfsMode {
   Read
   Write
   Append
 } derive(Debug, Eq)
 
 ///|
+pub extend VfsMode with Debug::{to_repr}
+
+///|
+pub extend VfsMode with Eq::{not_equal, equal}
+
+///|
 /// 文件元数据（数据在 VM 堆 `heap_addr` 处）。
-struct VfsFileMeta {
+pub struct VfsFileMeta {
   mut heap_addr : UInt
   mut size : Int
   mut capacity : Int
 } derive(Debug)
 
 ///|
+pub extend VfsFileMeta with Debug::{to_repr}
+
+///|
 /// 文件描述符。
-struct VfsDesc {
+pub struct VfsDesc {
   mut file_name : String
   mode : VfsMode
   mut cursor : Int
@@ -45,6 +54,9 @@ struct VfsDesc {
   mut error : Bool
   is_text_mode : Bool
 } derive(Debug)
+
+///|
+pub extend VfsDesc with Debug::{to_repr}
 
 ///|
 pub struct VirtualFileSystem {

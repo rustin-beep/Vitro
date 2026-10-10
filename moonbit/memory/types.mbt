@@ -16,6 +16,12 @@ pub(all) enum AccessKind {
 } derive(Debug, Eq)
 
 ///|
+pub extend AccessKind with Debug::{to_repr}
+
+///|
+pub extend AccessKind with Eq::{not_equal, equal}
+
+///|
 /// 空闲内存块（`free_list` 元素；来源：隔离区 FIFO 驱逐归还，或首块分配）。
 ///
 /// `addr` 与 `size` 都可变：`take_from_free_list` 的 first-fit 切分把块
@@ -24,6 +30,12 @@ pub(all) struct FreeBlock {
   mut addr : UInt
   mut size : Int
 } derive(Debug, Eq)
+
+///|
+pub extend FreeBlock with Debug::{to_repr}
+
+///|
+pub extend FreeBlock with Eq::{not_equal, equal}
 
 ///|
 /// 已释放块登记（UAF / Double-Free 检测窗口条目）。
@@ -41,6 +53,12 @@ pub(all) struct FreedRegionInfo {
   alloc_step : Int
   freed_step : Int
 } derive(Debug, Eq)
+
+///|
+pub extend FreedRegionInfo with Debug::{to_repr}
+
+///|
+pub extend FreedRegionInfo with Eq::{not_equal, equal}
 
 ///|
 /// 受检访问失败的结构化事实。
@@ -63,6 +81,12 @@ pub(all) enum MemFault {
   /// Use-After-Free：命中 freed_logs 区间。
   UseAfterFree(FreedRegionInfo, AccessKind)
 } derive(Debug, Eq)
+
+///|
+pub extend MemFault with Debug::{to_repr}
+
+///|
+pub extend MemFault with Eq::{not_equal, equal}
 
 ///|
 /// 堆区域条目（三段式内存地图的堆段）。
@@ -95,6 +119,12 @@ pub(all) struct MemoryRegionData {
   /// 序列化（时间旅行免费安全，非事后扩快照结构）。
   mut refcount : Int
 } derive(Debug, Eq)
+
+///|
+pub extend MemoryRegionData with Debug::{to_repr}
+
+///|
+pub extend MemoryRegionData with Eq::{not_equal, equal}
 
 ///|
 /// 构造一条堆区域条目（host 分配路径的唯一构造点）。
@@ -136,3 +166,9 @@ pub(all) struct HeapStatsData {
   /// 碎片率（0~100）。
   fragmentation_rate : Int
 } derive(Debug, Eq)
+
+///|
+pub extend HeapStatsData with Debug::{to_repr}
+
+///|
+pub extend HeapStatsData with Eq::{not_equal, equal}

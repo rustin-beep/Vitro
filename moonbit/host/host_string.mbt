@@ -41,6 +41,12 @@ pub(all) struct StackBufferSpan {
 } derive(Debug, Eq)
 
 ///|
+pub extend StackBufferSpan with Debug::{to_repr}
+
+///|
+pub extend StackBufferSpan with Eq::{not_equal, equal}
+
+///|
 /// 受检读 C 字符串（到 NUL，不含 NUL）——oracle `read_cbytes` 的受检形态。
 ///
 /// oracle 裸读三缺口（NULL 静默零/UAF 静默读/越界当 0）在此全部转为

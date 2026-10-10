@@ -15,6 +15,9 @@ pub enum FixAnchor {
 } derive(Debug)
 
 ///|
+pub extend FixAnchor with Debug::{to_repr}
+
+///|
 /// 静态修复载荷（error_catalog.rs generate_fix 的纯静态码子集）。
 pub(all) struct FixPayload {
   suggestion : String
@@ -22,6 +25,9 @@ pub(all) struct FixPayload {
   anchor : FixAnchor
   text : String
 } derive(Debug)
+
+///|
+pub extend FixPayload with Debug::{to_repr}
 
 ///|
 /// 知识图谱概念节点（knowledge_graph.rs ConceptNode 照搬）。
@@ -37,6 +43,9 @@ pub(all) struct ConceptNode {
 } derive(Debug)
 
 ///|
+pub extend ConceptNode with Debug::{to_repr}
+
+///|
 /// 概念间有向边（knowledge_graph.rs ConceptEdge 照搬）。
 pub(all) struct ConceptEdge {
   from_id : String
@@ -50,6 +59,9 @@ pub(all) struct ConceptEdge {
 } derive(Debug)
 
 ///|
+pub extend ConceptEdge with Debug::{to_repr}
+
+///|
 /// 学生编译历史单条记录（misconception_patterns.rs CompileRecord 照搬）。
 pub(all) struct CompileRecord {
   /// Unix 毫秒时间戳（机制不消费，仅为记录保真）
@@ -58,6 +70,9 @@ pub(all) struct CompileRecord {
   error_codes : Array[Int]
   trap_message : String?
 } derive(Debug)
+
+///|
+pub extend CompileRecord with Debug::{to_repr}
 
 ///|
 /// 预置误区模式（misconception_patterns.rs MisconceptionPattern 照搬）。
@@ -72,6 +87,9 @@ pub(all) struct MisconceptionPattern {
 } derive(Debug)
 
 ///|
+pub extend MisconceptionPattern with Debug::{to_repr}
+
+///|
 /// 检出的误区（misconception_patterns.rs DetectedMisconception 照搬）。
 pub(all) struct DetectedMisconception {
   pattern_id : String
@@ -81,6 +99,9 @@ pub(all) struct DetectedMisconception {
   /// 0.0 ~ 1.0（occurrences / min(window, records)）
   confidence : Double
 } derive(Debug)
+
+///|
+pub extend DetectedMisconception with Debug::{to_repr}
 
 ///|
 /// 学习路径单步（learning_path.rs PathStep 照搬）。
@@ -96,6 +117,9 @@ pub(all) struct PathStep {
 } derive(Debug)
 
 ///|
+pub extend PathStep with Debug::{to_repr}
+
+///|
 /// 完整学习路径（learning_path.rs LearningPath 照搬）。
 pub(all) struct LearningPath {
   target_misconception_id : String
@@ -103,6 +127,9 @@ pub(all) struct LearningPath {
   estimated_time_minutes : Int
   steps : Array[PathStep]
 } derive(Debug)
+
+///|
+pub extend LearningPath with Debug::{to_repr}
 
 ///|
 /// 修复应用目标（auto_fix.rs 消费 session::Diagnostic 的坐标五件套 +
@@ -118,6 +145,9 @@ pub(all) struct FixTarget {
 } derive(Debug)
 
 ///|
+pub extend FixTarget with Debug::{to_repr}
+
+///|
 /// 修复生成结果（Rust generate_fix 七元组的 record 形态——勘察 R5
 /// 抛弃位置参数元组；字段序 = 七元组序）。
 pub(all) struct FixOutcome {
@@ -131,6 +161,9 @@ pub(all) struct FixOutcome {
 } derive(Debug)
 
 ///|
+pub extend FixOutcome with Debug::{to_repr}
+
+///|
 /// 激活子图的邻居概念（knowledge_graph.rs NeighborConcept 照搬）。
 pub(all) struct NeighborConcept {
   node : ConceptNode
@@ -140,6 +173,9 @@ pub(all) struct NeighborConcept {
 } derive(Debug)
 
 ///|
+pub extend NeighborConcept with Debug::{to_repr}
+
+///|
 /// 激活的概念及其 1-hop 邻居（knowledge_graph.rs ActivatedConcept 照搬）。
 pub(all) struct ActivatedConcept {
   node : ConceptNode
@@ -147,3 +183,6 @@ pub(all) struct ActivatedConcept {
   activated_by : String
   neighbors : Array[NeighborConcept]
 } derive(Debug)
+
+///|
+pub extend ActivatedConcept with Debug::{to_repr}

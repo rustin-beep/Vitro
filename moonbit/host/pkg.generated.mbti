@@ -229,6 +229,8 @@ pub fn invalid_free_message(@memory.MemoryMap, UInt) -> String
 
 pub fn malloc_zero_note() -> String
 
+pub fn realloc_invalid_message(@memory.MemoryMap, UInt) -> String
+
 pub fn scanf_spec_count(Array[Int]) -> Int
 
 // Errors
@@ -239,12 +241,18 @@ pub(all) struct HostMemReply {
   note : String?
   trap : String?
 } derive(Eq, @debug.Debug)
+pub fn HostMemReply::equal(Self, Self) -> Bool
+pub fn HostMemReply::not_equal(Self, Self) -> Bool
+pub fn HostMemReply::to_repr(Self) -> @debug.Repr
 
 pub(all) enum InputOutcome {
   Value(UInt64)
   Waiting
   Trap(String)
 } derive(Eq, @debug.Debug)
+pub fn InputOutcome::equal(Self, Self) -> Bool
+pub fn InputOutcome::not_equal(Self, Self) -> Bool
+pub fn InputOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct InputState {
   lines : Array[Bytes]
@@ -264,6 +272,9 @@ pub(all) struct OutputChunk {
   kind : OutputKind
   bytes : Bytes
 } derive(Eq, @debug.Debug)
+pub fn OutputChunk::equal(Self, Self) -> Bool
+pub fn OutputChunk::not_equal(Self, Self) -> Bool
+pub fn OutputChunk::to_repr(Self) -> @debug.Repr
 
 pub(all) enum OutputKind {
   Stdout
@@ -271,7 +282,10 @@ pub(all) enum OutputKind {
   Note
 } derive(Eq, @debug.Debug)
 pub fn OutputKind::as_str(Self) -> String
+pub fn OutputKind::equal(Self, Self) -> Bool
+pub fn OutputKind::not_equal(Self, Self) -> Bool
 pub fn OutputKind::parse(String) -> Self?
+pub fn OutputKind::to_repr(Self) -> @debug.Repr
 
 pub struct OutputLog {
   chunks : Array[OutputChunk]
@@ -314,15 +328,29 @@ pub fn OutputLog::total_bytes(Self) -> Int
 pub(all) struct RandState {
   mut seed : UInt
 } derive(Eq, @debug.Debug)
+pub fn RandState::equal(Self, Self) -> Bool
 pub fn RandState::new(UInt) -> Self
+pub fn RandState::not_equal(Self, Self) -> Bool
+pub fn RandState::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StackBufferSpan {
   base : UInt
   size : Int
   name : String
 } derive(Eq, @debug.Debug)
+pub fn StackBufferSpan::equal(Self, Self) -> Bool
+pub fn StackBufferSpan::not_equal(Self, Self) -> Bool
+pub fn StackBufferSpan::to_repr(Self) -> @debug.Repr
 
-type VfsDesc derive(@debug.Debug)
+pub struct VfsDesc {
+  mut file_name : String
+  mode : VfsMode
+  mut cursor : Int
+  mut eof : Bool
+  mut error : Bool
+  is_text_mode : Bool
+} derive(@debug.Debug)
+pub fn VfsDesc::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VfsDescSnapshot {
   mut file_name : String
@@ -332,22 +360,43 @@ pub(all) struct VfsDescSnapshot {
   mut error : Bool
   is_text_mode : Bool
 } derive(Eq, @debug.Debug)
+pub fn VfsDescSnapshot::equal(Self, Self) -> Bool
+pub fn VfsDescSnapshot::not_equal(Self, Self) -> Bool
+pub fn VfsDescSnapshot::to_repr(Self) -> @debug.Repr
 
-type VfsFileMeta derive(@debug.Debug)
+pub struct VfsFileMeta {
+  mut heap_addr : UInt
+  mut size : Int
+  mut capacity : Int
+} derive(@debug.Debug)
+pub fn VfsFileMeta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VfsFileSnapshot {
   mut heap_addr : UInt
   mut size : Int
   mut capacity : Int
 } derive(Eq, @debug.Debug)
+pub fn VfsFileSnapshot::equal(Self, Self) -> Bool
+pub fn VfsFileSnapshot::not_equal(Self, Self) -> Bool
+pub fn VfsFileSnapshot::to_repr(Self) -> @debug.Repr
 
-type VfsMode derive(Eq, @debug.Debug)
+pub enum VfsMode {
+  Read
+  Write
+  Append
+} derive(Eq, @debug.Debug)
+pub fn VfsMode::equal(Self, Self) -> Bool
+pub fn VfsMode::not_equal(Self, Self) -> Bool
+pub fn VfsMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VfsSnapshot {
   files : Array[(String, VfsFileSnapshot)]
   descriptors : Array[(UInt, VfsDescSnapshot)]
   next_fd : UInt
 } derive(Eq, @debug.Debug)
+pub fn VfsSnapshot::equal(Self, Self) -> Bool
+pub fn VfsSnapshot::not_equal(Self, Self) -> Bool
+pub fn VfsSnapshot::to_repr(Self) -> @debug.Repr
 
 pub struct VirtualFileSystem {
   files : Map[String, VfsFileMeta]

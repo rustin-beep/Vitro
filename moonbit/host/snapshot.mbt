@@ -74,6 +74,12 @@ pub(all) struct VfsFileSnapshot {
 } derive(Eq, Debug)
 
 ///|
+pub extend VfsFileSnapshot with Debug::{to_repr}
+
+///|
+pub extend VfsFileSnapshot with Eq::{not_equal, equal}
+
+///|
 /// VFS 描述符快照。`mode` 为 `VfsMode`（priv）的编号投影：
 /// 0=Read / 1=Write / 2=Append——restore 穷尽 match，越界 fail loud。
 pub(all) struct VfsDescSnapshot {
@@ -86,12 +92,24 @@ pub(all) struct VfsDescSnapshot {
 } derive(Eq, Debug)
 
 ///|
+pub extend VfsDescSnapshot with Debug::{to_repr}
+
+///|
+pub extend VfsDescSnapshot with Eq::{not_equal, equal}
+
+///|
 /// VFS 快照整体（文件表 + 描述符表 + fd 计数——「fd 元数据进快照」的落点）。
 pub(all) struct VfsSnapshot {
   files : Array[(String, VfsFileSnapshot)]
   descriptors : Array[(UInt, VfsDescSnapshot)]
   next_fd : UInt
 } derive(Eq, Debug)
+
+///|
+pub extend VfsSnapshot with Debug::{to_repr}
+
+///|
+pub extend VfsSnapshot with Eq::{not_equal, equal}
 
 ///|
 /// VFS 快照（插入序保持——core `Map` 迭代序即插入序，与运行态一致）。

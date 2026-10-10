@@ -46,6 +46,12 @@ pub(all) enum OutputKind {
 } derive(Debug, Eq)
 
 ///|
+pub extend OutputKind with Debug::{to_repr}
+
+///|
+pub extend OutputKind with Eq::{not_equal, equal}
+
+///|
 /// 通道的稳定字符串标识（JSON 出口与文档口径）。
 pub fn OutputKind::as_str(self : OutputKind) -> String {
   match self {
@@ -84,6 +90,12 @@ pub(all) struct OutputChunk {
   kind : OutputKind
   bytes : Bytes
 } derive(Debug, Eq)
+
+///|
+pub extend OutputChunk with Debug::{to_repr}
+
+///|
+pub extend OutputChunk with Eq::{not_equal, equal}
 
 ///|
 /// 输出日志默认总预算（16MB）。

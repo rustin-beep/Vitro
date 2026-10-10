@@ -21,6 +21,12 @@ pub(all) struct LocalBuffer {
 } derive(Eq, Debug)
 
 ///|
+pub extend LocalBuffer with Debug::{to_repr}
+
+///|
+pub extend LocalBuffer with Eq::{not_equal, equal}
+
+///|
 /// 函数元数据（Rust `vitro_runtime::FuncMeta` 照搬，字段序一致）。
 /// ip/arg_count/param_count/local_count/param_sizes/is_variadic 为 mut——
 /// codegen 两阶段回填（Pass 2 建骨架、enter_function 回填 param_sizes、
@@ -44,6 +50,9 @@ pub(all) struct FuncMeta {
 } derive(Debug)
 
 ///|
+pub extend FuncMeta with Debug::{to_repr}
+
+///|
 /// 符号表条目（Rust `vitro_runtime::Symbol` 照搬，字段序一致）。
 pub(all) struct Symbol {
   name : String
@@ -59,6 +68,9 @@ pub(all) struct Symbol {
   /// 不表达嵌套深度。
   decl_line : Int
 } derive(Debug)
+
+///|
+pub extend Symbol with Debug::{to_repr}
 
 ///|
 /// codegen 对外全部契约（Rust `vitro_codegen::CompileOutput` 13 字段照搬，
@@ -83,3 +95,6 @@ pub(all) struct CompileOutput {
   /// 堆起点 `max(HEAP_START, align4(global_data_end))`。
   global_data_end : UInt
 } derive(Debug)
+
+///|
+pub extend CompileOutput with Debug::{to_repr}

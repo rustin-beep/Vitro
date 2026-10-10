@@ -16,6 +16,9 @@ pub(all) struct CompileUnit {
 } derive(Debug)
 
 ///|
+pub extend CompileUnit with Debug::{to_repr}
+
+///|
 /// 多文件会话的全局行号 → 文件映射条目（merge_compile_units 产出；
 /// P0-4：合并编译后字节码行号是全局行号，单文件管线为空——此时全局
 /// 行号即文件内行号）。
@@ -24,6 +27,9 @@ pub(all) struct FileRange {
   start_line : Int
   end_line : Int
 } derive(Debug)
+
+///|
+pub extend FileRange with Debug::{to_repr}
 
 ///|
 /// 编译状态（Rust CompileState 的聚合重构形态）：编译产物整体持
@@ -51,6 +57,9 @@ pub(all) struct CompileState {
   /// E2 白箱教学层：预处理追踪（宏展开链 + `#if` 分支原因，容量封顶）。
   mut preprocessor_trace : Array[String]
 } derive(Debug)
+
+///|
+pub extend CompileState with Debug::{to_repr}
 
 ///|
 /// 会话（编译 + 执行 + 统一模式状态聚合）。

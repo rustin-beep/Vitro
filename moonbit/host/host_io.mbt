@@ -31,6 +31,12 @@ pub(all) enum InputOutcome {
 } derive(Debug, Eq)
 
 ///|
+pub extend InputOutcome with Debug::{to_repr}
+
+///|
+pub extend InputOutcome with Eq::{not_equal, equal}
+
+///|
 /// 会话输入态（oracle `RuntimeState` 输入域 + 模式）。
 pub(all) struct InputState {
   /// 输入行（oracle `input_lines : Vec<String>`——此处按字节承载）。

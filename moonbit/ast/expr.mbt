@@ -23,6 +23,15 @@ pub(all) enum BinaryOp {
 } derive(Debug, Eq, Compare)
 
 ///|
+pub extend BinaryOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend BinaryOp with Debug::{to_repr}
+
+///|
+pub extend BinaryOp with Eq::{not_equal, equal}
+
+///|
 /// 一元运算符（9 个，照搬 Rust UnaryOp）。
 pub(all) enum UnaryOp {
   Neg
@@ -35,6 +44,15 @@ pub(all) enum UnaryOp {
   PostInc
   PostDec
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend UnaryOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend UnaryOp with Debug::{to_repr}
+
+///|
+pub extend UnaryOp with Eq::{not_equal, equal}
 
 ///|
 /// 赋值运算符（11 个，照搬 Rust AssignOp）。
@@ -53,6 +71,15 @@ pub(all) enum AssignOp {
 } derive(Debug, Eq, Compare)
 
 ///|
+pub extend AssignOp with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend AssignOp with Debug::{to_repr}
+
+///|
+pub extend AssignOp with Eq::{not_equal, equal}
+
+///|
 /// 初始化器指派符（designated initializer）。
 pub(all) enum Designator {
   Field(String)
@@ -60,11 +87,17 @@ pub(all) enum Designator {
 } derive(Debug)
 
 ///|
+pub extend Designator with Debug::{to_repr}
+
+///|
 /// 初始化列表元素（指派符序列 + 值）。
 pub(all) struct InitElement {
   designators : Array[Designator]
   value : Expr
 } derive(Debug)
+
+///|
+pub extend InitElement with Debug::{to_repr}
 
 ///|
 /// 表达式节点（26 变体，照搬 Rust `vitro_ast/src/expr.rs`；每节点携带
@@ -103,6 +136,9 @@ pub(all) enum Expr {
   Lambda(Array[CaptureMode], Array[Param], Stmt, UInt, @source.SourceLoc, Type) // capture, params, body, unique_id
   Move(Expr, @source.SourceLoc, Type)
 } derive(Debug)
+
+///|
+pub extend Expr with Debug::{to_repr}
 
 ///|
 /// 表达式的源位置（Rust expr_field! 宏的单点等价）。

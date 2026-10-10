@@ -748,6 +748,13 @@ func renderErrorCode(arms []arm, w, h []int, entries []entry, srcHash string) st
 	}
 	b.WriteString("} derive(Debug, Eq, Hash, Compare)\n")
 
+	// #54 A2：0079 显式提升声明（implicit_impl_as_method 将被工具链移除——
+	// 短名形态零 moon.pkg 连坐；生成物侧由本模板单源）
+	b.WriteString("\npub extend ErrorCode with Debug::{to_repr}\n" +
+		"\npub extend ErrorCode with Eq::{not_equal, equal}\n" +
+		"\npub extend ErrorCode with Hash::{hash, hash_combine}\n" +
+		"\npub extend ErrorCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}\n")
+
 	b.WriteString("\n///|\n" +
 		"/// 编号（穷尽 match，无下划线兜底——增删臂即编译红）。\n" +
 		"pub fn ErrorCode::code(self : ErrorCode) -> Int {\n  match self {\n")

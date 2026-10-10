@@ -133,6 +133,12 @@ pub(all) enum TokenType {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend TokenType with Debug::{to_repr}
+
+///|
+pub extend TokenType with Eq::{not_equal, equal}
+
+///|
 /// 变体名——与 Rust `TokenType` 的 Debug 输出逐字节一致（L1/L2 TSV 的 Ty 字段）。
 pub fn TokenType::to_name(self : TokenType) -> String {
   match self {

@@ -13,6 +13,12 @@ pub(all) struct CatalogEntry {
 } derive(Debug, Eq)
 
 ///|
+pub extend CatalogEntry with Debug::{to_repr}
+
+///|
+pub extend CatalogEntry with Eq::{not_equal, equal}
+
+///|
 /// 构造（生成代码专用入口；外部构造走同一契约）。
 pub fn CatalogEntry::of(
   code : Int,

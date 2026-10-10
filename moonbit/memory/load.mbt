@@ -32,6 +32,12 @@ pub(all) struct MemorySnapshot {
 } derive(Eq, Debug)
 
 ///|
+pub extend MemorySnapshot with Debug::{to_repr}
+
+///|
+pub extend MemorySnapshot with Eq::{not_equal, equal}
+
+///|
 /// 抓快照（`dump`）：导出全部元数据的**深拷贝**（条目 struct 逐一复制，
 /// 不与运行态共享可变结构——拷贝即快照，时点明确）。
 pub fn MemoryMap::dump(self : MemoryMap) -> MemorySnapshot {

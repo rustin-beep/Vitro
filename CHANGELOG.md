@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #54 A2 批：0079 implicit_impl_as_method 全清——217 条 extend 显式提升声明，2026-10-10）
+
+- **清零**：`moon check` 246 → **29**（默认口径；`--target all` 251 → 34）——0079 的 217 条全消，剩 29 条为 A3 已带据豁免面（0020×18 + 0001×7 + 0002×4）。Part A 至此**真收官**：542 → 29/34（豁免带据）。
+- **处方来源**：每条 0079 的工具链提示自带 `pub extend X with Trait::{methods}` 完整文本——从警告输出提取 217 条处方半脚本化插入（类型定义 `} derive` 行后，按类型名定位非警告行号——警告位点不都在类型定义处）。
+- **写法两实证**：短名形态（`Debug::{to_repr}`）消警告且零新增（全路径 `@moonbitlang/core/debug.Debug::` 撞 0071 core_package_not_imported——须 moon.pkg 加 import，弃）；跨包 trait 用包别名（`@token.SourceProvider::{read}`——短名解析到错误符号致 4014）。
+- **生成物连坐**：`diag/error_code_gen.mbt` 的 4 条走 gen_diag 模板单源（derive 行后追加 4 条 extend，重新生成 + `-check` 绿）。
+- **4 包内类型升 pub**（VfsMode / VfsFileMeta / VfsDesc / DeclaratorNode）：工具链语义实证——**derive 恒产 pub impl、提升方法本就包外可见**（裸 extend 的 priv 方法不消警告，提示原文注明 "private methods exist but the impl is public"）；`priv extend` 语法不存在。pub extend 只是显式化既成事实，类型升 `pub` 使面与事实一致（`pub struct` 不带 `(all)` 字段仍 priv，纯类型名可见性）。mbti 15 文件连坐（提升方法正式进接口面）。
+- **事故与防御**：批量插入首轮 python universal newlines 吞掉 `vfs.mbt` 源里 `b'<真 CR 字节>'` 的字节（CRLF 展开逻辑变 LF+LF，`fprintf_custom_file_persists` fread 期望 4 实得 5 抓红）——全部还原后以 `newline=''` 二进制安全重做。**教训：批量改 MoonBit 源一律 `newline=''` 读写**（仓内存在真控制字节字面量）。
+- 复验绿盘：moon test 705/705 · native 827/827 · vm_diff 四语料零 DIFF · clang_direct SAME · typeck/parser/codegen/lexer digest 全 PASS · protocol_frames 47 帧 · serve_smoke/CLI smoke/demo smoke/facts strict/surface/mbti_sync/gofmt/gen_diag -check 全绿。
+
+
 ### Fixed（issue #56：W3054 空指针常量误报——NULL/字面量 0 转指针的 C11 6.3.2.3 豁免，2026-10-10）
 
 - **根因**：`check_pointer_assignable`（typeck/convert.mbt）对「指针 ← 整数」一律 W3054，缺「值为 0 的整型常量」豁免——`f(NULL)` / `char *p = NULL` / `time(0)` 惯用法全族误报（Clang -Wall -Wextra 干净；警告文案自己举「NULL = 0」作正面例子却对它触发）。

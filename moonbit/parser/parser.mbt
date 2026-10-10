@@ -34,6 +34,12 @@ pub(all) struct ParseError {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend ParseError with Debug::{to_repr}
+
+///|
+pub extend ParseError with Eq::{not_equal, equal}
+
+///|
 /// 解析结果（单值返回，S2 LexResult 同款惯例；对应 Rust
 /// `parse() -> (Option<ProgramNode>, Vec<ParseError>)`）。
 pub(all) struct ParseResult {
@@ -47,7 +53,7 @@ pub(all) struct ParseResult {
 
 ///|
 /// 声明符节点树（C 螺旋规则中间表示；照搬 Rust `DeclaratorNode`）。
-enum DeclaratorNode {
+pub enum DeclaratorNode {
   Base
   Pointer(DeclaratorNode)
   Reference(DeclaratorNode, Bool) // is_const
@@ -55,6 +61,9 @@ enum DeclaratorNode {
   Array(DeclaratorNode, @ast.Expr?) // size_expr
   Function(DeclaratorNode, Array[@ast.Param], Bool) // is_variadic
 } derive(@debug.Debug)
+
+///|
+pub extend DeclaratorNode with Debug::{to_repr}
 
 ///|
 priv enum DeclaratorSuffix {

@@ -15,6 +15,12 @@ pub(all) struct Instruction {
 } derive(Debug, Eq)
 
 ///|
+pub extend Instruction with Debug::{to_repr}
+
+///|
+pub extend Instruction with Eq::{not_equal, equal}
+
+///|
 /// 构造指令（与 Rust `Instruction::new` 同形）。
 ///
 /// ```mbt check

@@ -25,11 +25,17 @@ pub(all) struct ApiVarSnapshotRef {
 } derive(Debug)
 
 ///|
+pub extend ApiVarSnapshotRef with Debug::{to_repr}
+
+///|
 /// 差分变量：仅包含值发生变化的变量。
 pub(all) struct VarDelta {
   name_idx : SymIdx
   value : String
 } derive(Debug)
+
+///|
+pub extend VarDelta with Debug::{to_repr}
 
 ///|
 /// 使用符号表的指针快照。
@@ -41,6 +47,9 @@ pub(all) struct PointerSnapshotRef {
   target_name_idx : SymIdx
   status : PointerStatus
 } derive(Debug)
+
+///|
+pub extend PointerSnapshotRef with Debug::{to_repr}
 
 ///| 使用符号表的数组快照（旧流 truncated 缺省 false 向后兼容——serde
 
@@ -54,11 +63,17 @@ pub(all) struct ArraySnapshotRef {
 } derive(Debug)
 
 ///|
+pub extend ArraySnapshotRef with Debug::{to_repr}
+
+///|
 /// 使用符号表的访问变量。
 pub(all) struct AccessedVarRef {
   name_idx : SymIdx
   access_type_idx : SymIdx
 } derive(Debug)
+
+///|
+pub extend AccessedVarRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的调用帧。
@@ -68,6 +83,9 @@ pub(all) struct ApiFrameInfoRef {
 } derive(Debug)
 
 ///|
+pub extend ApiFrameInfoRef with Debug::{to_repr}
+
+///|
 /// 使用符号表的算法步骤。
 pub(all) struct AlgorithmStepSnapshotRef {
   algorithm_name_idx : SymIdx
@@ -75,6 +93,9 @@ pub(all) struct AlgorithmStepSnapshotRef {
   phase_idx : SymIdx
   description_idx : SymIdx
 } derive(Debug)
+
+///|
+pub extend AlgorithmStepSnapshotRef with Debug::{to_repr}
 
 ///|
 /// 使用符号表的 StepPayload（基准快照）。
@@ -94,6 +115,9 @@ pub(all) struct StepPayloadRef {
   pointer_snapshots : Array[PointerSnapshotRef]
   root_cause_hint : RootCauseHint?
 } derive(Debug)
+
+///|
+pub extend StepPayloadRef with Debug::{to_repr}
 
 ///|
 /// 差分 StepPayload（基于前一个 StepPayloadRef 或 StepPayloadDelta）。
@@ -128,6 +152,9 @@ pub(all) struct StepPayloadDelta {
   root_cause_hint : RootCauseHint?
 } derive(Debug)
 
+///|
+pub extend StepPayloadDelta with Debug::{to_repr}
+
 ///| Stream 批量传输单元（编码规则见模块头注；状态八字段由 gateway
 
 ///|
@@ -145,6 +172,9 @@ pub(all) struct StepStreamBatch {
   /// 当前 frame_cache 窗口起始步号，供前端同步窗口起点。
   cache_start_step : Int
 } derive(Debug)
+
+///|
+pub extend StepStreamBatch with Debug::{to_repr}
 
 ///|
 /// 去重字符串池（索引 0 预留空字符串；导出序 = 插入序）。

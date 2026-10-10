@@ -7,6 +7,15 @@ pub(all) enum Severity {
 } derive(Debug, Eq, Compare)
 
 ///|
+pub extend Severity with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend Severity with Debug::{to_repr}
+
+///|
+pub extend Severity with Eq::{not_equal, equal}
+
+///|
 /// serve 帧 / 显示用小写串（"error" / "warning" / "hint"）。
 ///
 /// ```mbt check
@@ -49,6 +58,15 @@ pub(all) enum SourceLang {
   Cpp
   CSharp
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend SourceLang with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend SourceLang with Debug::{to_repr}
+
+///|
+pub extend SourceLang with Eq::{not_equal, equal}
 
 ///|
 /// 显示串（"c" / "cpp"）。

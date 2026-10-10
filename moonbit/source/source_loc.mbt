@@ -26,6 +26,21 @@ pub(all) struct SourceLoc {
 } derive(Debug, Eq, Compare, Hash, Default) // 序列化归 vitro/engine/protocol（L8）——L0 零依赖不引 JSON
 
 ///|
+pub extend SourceLoc with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend SourceLoc with Debug::{to_repr}
+
+///|
+pub extend SourceLoc with Default::{default}
+
+///|
+pub extend SourceLoc with Eq::{not_equal, equal}
+
+///|
+pub extend SourceLoc with Hash::{hash, hash_combine}
+
+///|
 /// 用户主文件（file_id = 0）的源码位置。
 ///
 /// ```mbt check

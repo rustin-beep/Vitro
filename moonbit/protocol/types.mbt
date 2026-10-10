@@ -17,6 +17,9 @@ pub(all) struct VisEvent {
   context : String
 } derive(Debug)
 
+///|
+pub extend VisEvent with Debug::{to_repr}
+
 ///| 根因提示（认知推理层 P0；Rust 侧 unified/root_cause.rs）。
 
 ///|
@@ -40,6 +43,9 @@ pub(all) struct RootCauseHint {
 } derive(Debug)
 
 ///|
+pub extend RootCauseHint with Debug::{to_repr}
+
+///|
 /// 算法匹配（语义标注检测产物——2026-10-01 批四号自 session/dto.mbt 收拢
 /// 进本包：session import time_travel 成环约束下，time_travel/teaching 两侧
 /// 消费须走 protocol〔VisEvent/RootCauseHint 同款收编先例〕；Rust 侧该类型
@@ -55,6 +61,9 @@ pub(all) struct AlgorithmMatch {
 } derive(Debug)
 
 ///|
+pub extend AlgorithmMatch with Debug::{to_repr}
+
+///|
 /// 算法步骤语义快照（用于前端步骤标注）。
 pub(all) struct AlgorithmStepSnapshot {
   algorithm_name : String
@@ -62,6 +71,9 @@ pub(all) struct AlgorithmStepSnapshot {
   phase : String
   description : String
 } derive(Debug)
+
+///|
+pub extend AlgorithmStepSnapshot with Debug::{to_repr}
 
 ///| 指针状态。emitter 文本对齐 Rust serde enum 序列化（"Valid"/"Freed"/
 
@@ -73,6 +85,15 @@ pub(all) enum PointerStatus {
   Null // NULL 指针
   Dangling // 悬空指针（越界或未初始化）
 } derive(Debug, Eq, Compare)
+
+///|
+pub extend PointerStatus with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend PointerStatus with Debug::{to_repr}
+
+///|
+pub extend PointerStatus with Eq::{not_equal, equal}
 
 ///|
 /// 指针状态的 JSON 文本（serde enum 形态：裸字符串）。
@@ -98,6 +119,9 @@ pub(all) struct PointerSnapshot {
 } derive(Debug)
 
 ///|
+pub extend PointerSnapshot with Debug::{to_repr}
+
+///|
 /// 当前步访问的变量（用于变量级高亮）。
 pub(all) struct AccessedVar {
   name : String
@@ -105,6 +129,9 @@ pub(all) struct AccessedVar {
   /// mut：消费方 clone+mutate 使用形态
   mut access_type : String
 } derive(Debug)
+
+///|
+pub extend AccessedVar with Debug::{to_repr}
 
 ///|
 /// FRB 友好的变量快照（ty 已格式化为字符串）。
@@ -118,6 +145,9 @@ pub(all) struct ApiVariableSnapshot {
 } derive(Debug)
 
 ///|
+pub extend ApiVariableSnapshot with Debug::{to_repr}
+
+///|
 /// 数组变量快照（用于算法可视化条形图）。
 pub(all) struct ArraySnapshot {
   name : String
@@ -129,11 +159,17 @@ pub(all) struct ArraySnapshot {
 } derive(Debug)
 
 ///|
+pub extend ArraySnapshot with Debug::{to_repr}
+
+///|
 /// FRB 友好的调用帧信息。
 pub(all) struct ApiFrameInfo {
   func_name : String
   return_line : Int
 } derive(Debug)
+
+///|
+pub extend ApiFrameInfo with Debug::{to_repr}
 
 ///| 每步的轻量数据包，传输到 Flutter 前端作为 FrameCache。
 
@@ -157,6 +193,9 @@ pub(all) struct StepPayload {
 } derive(Debug)
 
 ///|
+pub extend StepPayload with Debug::{to_repr}
+
+///|
 /// 语义元数据（用于进度条标签和智能检查点）。
 pub(all) struct StepMeta {
   code_line : Int
@@ -164,6 +203,9 @@ pub(all) struct StepMeta {
   loop_depth : Int
   semantic_label : String
 } derive(Debug)
+
+///|
+pub extend StepMeta with Debug::{to_repr}
 
 ///|
 /// 调试摘要（悬浮球零延迟）。
@@ -174,11 +216,17 @@ pub(all) struct DebugSummary {
 } derive(Debug)
 
 ///|
+pub extend DebugSummary with Debug::{to_repr}
+
+///|
 /// 执行热力图增量。
 pub(all) struct HeatmapDelta {
   line : Int
   count : UInt64
 } derive(Debug)
+
+///|
+pub extend HeatmapDelta with Debug::{to_repr}
 
 ///|
 /// 编译并启动统一模式的返回结果。
@@ -188,6 +236,9 @@ pub(all) struct UnifiedRunResult {
   total_steps : Int
   finished : Bool
 } derive(Debug)
+
+///|
+pub extend UnifiedRunResult with Debug::{to_repr}
 
 ///|
 /// 批量自动执行的返回结果。
@@ -204,12 +255,18 @@ pub(all) struct AutoStepResult {
 } derive(Debug)
 
 ///|
+pub extend AutoStepResult with Debug::{to_repr}
+
+///|
 /// seek 到指定步的返回结果。
 pub(all) struct SeekResult {
   success : Bool
   payload : StepPayload?
   error : String?
 } derive(Debug)
+
+///|
+pub extend SeekResult with Debug::{to_repr}
 
 ///| 执行热力图数据。line_counts 保持 Rust 元组语义（serde 落二元数组
 
@@ -219,3 +276,6 @@ pub(all) struct HeatmapData {
   line_counts : Array[(Int, UInt64)]
   max_count : UInt64
 } derive(Debug)
+
+///|
+pub extend HeatmapData with Debug::{to_repr}

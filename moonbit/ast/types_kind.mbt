@@ -30,6 +30,15 @@ pub enum TypeKind {
 } derive(Eq, Compare, Hash)
 
 ///|
+pub extend TypeKind with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend TypeKind with Eq::{not_equal, equal}
+
+///|
+pub extend TypeKind with Hash::{hash, hash_combine}
+
+///|
 /// Type → TypeKind 投影（穷尽 17 臂无兜底——加 Type 变体必须表态 kind，
 /// 编译期强制；Rust kind() 同构，Typeof → TK_Auto）。
 pub fn Type::kind(self : Type) -> TypeKind {

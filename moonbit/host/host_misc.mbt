@@ -22,6 +22,12 @@ pub(all) struct RandState {
 } derive(Debug, Eq)
 
 ///|
+pub extend RandState with Debug::{to_repr}
+
+///|
+pub extend RandState with Eq::{not_equal, equal}
+
+///|
 /// 以指定种子构造（vm 接线用缺省种子调用）。
 pub fn RandState::new(seed : UInt) -> RandState {
   RandState::{ seed, }

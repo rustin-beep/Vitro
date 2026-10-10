@@ -42,6 +42,7 @@ pub(all) struct ActivatedConcept {
   activated_by : String
   neighbors : Array[NeighborConcept]
 } derive(@debug.Debug)
+pub fn ActivatedConcept::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompileRecord {
   timestamp_ms : Int64
@@ -49,6 +50,7 @@ pub(all) struct CompileRecord {
   error_codes : Array[Int]
   trap_message : String?
 } derive(@debug.Debug)
+pub fn CompileRecord::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConceptEdge {
   from_id : String
@@ -56,6 +58,7 @@ pub(all) struct ConceptEdge {
   relation : String
   strength : Double
 } derive(@debug.Debug)
+pub fn ConceptEdge::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ConceptNode {
   id : String
@@ -65,6 +68,7 @@ pub(all) struct ConceptNode {
   difficulty : Int
   related_card_ids : Array[String]
 } derive(@debug.Debug)
+pub fn ConceptNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct DetectedMisconception {
   pattern_id : String
@@ -73,11 +77,13 @@ pub(all) struct DetectedMisconception {
   occurrence_count : Int
   confidence : Double
 } derive(@debug.Debug)
+pub fn DetectedMisconception::to_repr(Self) -> @debug.Repr
 
 pub enum FixAnchor {
   Manual
   LineEnd
 } derive(@debug.Debug)
+pub fn FixAnchor::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FixOutcome {
   suggestion : String
@@ -88,6 +94,7 @@ pub(all) struct FixOutcome {
   end_col : Int
   text : String
 } derive(@debug.Debug)
+pub fn FixOutcome::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FixPayload {
   suggestion : String
@@ -95,6 +102,7 @@ pub(all) struct FixPayload {
   anchor : FixAnchor
   text : String
 } derive(@debug.Debug)
+pub fn FixPayload::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FixTarget {
   fix_kind : Int
@@ -104,6 +112,7 @@ pub(all) struct FixTarget {
   replace_end_column : Int
   replacement_text : String
 } derive(@debug.Debug)
+pub fn FixTarget::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LearningPath {
   target_misconception_id : String
@@ -111,6 +120,7 @@ pub(all) struct LearningPath {
   estimated_time_minutes : Int
   steps : Array[PathStep]
 } derive(@debug.Debug)
+pub fn LearningPath::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MisconceptionPattern {
   id : String
@@ -120,6 +130,7 @@ pub(all) struct MisconceptionPattern {
   min_occurrences : Int
   time_window : Int
 } derive(@debug.Debug)
+pub fn MisconceptionPattern::to_repr(Self) -> @debug.Repr
 
 pub(all) struct NeighborConcept {
   node : ConceptNode
@@ -127,6 +138,7 @@ pub(all) struct NeighborConcept {
   strength : Double
   is_prerequisite : Bool
 } derive(@debug.Debug)
+pub fn NeighborConcept::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PathStep {
   step_type : String
@@ -135,6 +147,7 @@ pub(all) struct PathStep {
   target_id : String
   highlight_lines : Array[Int]
 } derive(@debug.Debug)
+pub fn PathStep::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

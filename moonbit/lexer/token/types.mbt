@@ -20,6 +20,12 @@ pub(all) struct Token {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend Token with Debug::{to_repr}
+
+///|
+pub extend Token with Eq::{not_equal, equal}
+
+///|
 /// 词法错误（致命，收集不中断——与 Rust `LexerError` 同构）。
 /// `code` 为类型化错误码（diag 包 137 臂），`code()` 取数字与 Rust `code : i32` 对齐。
 pub(all) struct LexError {
@@ -27,6 +33,12 @@ pub(all) struct LexError {
   loc : @source.SourceLoc
   code : @diag.ErrorCode
 } derive(Eq, @debug.Debug)
+
+///|
+pub extend LexError with Debug::{to_repr}
+
+///|
+pub extend LexError with Eq::{not_equal, equal}
 
 ///|
 /// E2 白箱教学层：预处理阶段**非致命**提示（宏遮蔽 W1018 / 宏参数副作用 W1019）。
@@ -37,6 +49,12 @@ pub(all) struct LexWarning {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend LexWarning with Debug::{to_repr}
+
+///|
+pub extend LexWarning with Eq::{not_equal, equal}
+
+///|
 /// 宏定义。对象式与函数式**显式分型**（勘察 ⑥-9 修复：Rust `params : Vec<String>`
 /// 以 `is_empty()` 判对象宏，导致 `#define FOO() 42` 零参数函数式宏被误当对象宏）。
 pub(all) enum MacroDef {
@@ -45,12 +63,24 @@ pub(all) enum MacroDef {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend MacroDef with Debug::{to_repr}
+
+///|
+pub extend MacroDef with Eq::{not_equal, equal}
+
+///|
 /// 教学追踪（结构化——勘察 ⑤-6：Rust 侧是拼好的中文串；本侧结构化存储，
 /// `render` 输出与 Rust wire format 逐字一致的中文串，serve 出口契约不变）。
 pub(all) enum TraceEntry {
   Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
 } derive(Eq, @debug.Debug)
+
+///|
+pub extend TraceEntry with Debug::{to_repr}
+
+///|
+pub extend TraceEntry with Eq::{not_equal, equal}
 
 ///|
 /// 渲染为 Rust `preprocessor_trace` wire format（`session_api.rs` 消费的中文串）：
@@ -83,12 +113,24 @@ pub(all) struct LineSpan {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend LineSpan with Debug::{to_repr}
+
+///|
+pub extend LineSpan with Eq::{not_equal, equal}
+
+///|
 /// include 拼接后的行号映射（勘察 ⑤-1：预处理独立 pass 的结构性产物）。
 /// Rust oracle 因 `Vec::splice` 行号补偿缺陷（③-3）无法提供此信息——本侧
 /// token 的 `loc.line` 仍按仿古口径对拍，真实归属经 `lookup` 查询。
 pub(all) struct LineMap {
   spans : Array[LineSpan]
 } derive(Eq, @debug.Debug)
+
+///|
+pub extend LineMap with Debug::{to_repr}
+
+///|
+pub extend LineMap with Eq::{not_equal, equal}
 
 ///|
 /// 查主文件行号对应的真实文件坐标 `(file_id, 真实行号)`。
@@ -127,6 +169,12 @@ pub(all) struct RawResult {
 } derive(Eq, @debug.Debug)
 
 ///|
+pub extend RawResult with Debug::{to_repr}
+
+///|
+pub extend RawResult with Eq::{not_equal, equal}
+
+///|
 /// L2 结果：完整管线（行拼接 → 指令消费 → include → 宏展开）。
 /// 诊断与 token 流**单值同返**（勘察 8.3-1 硬约束：禁止"只看 tokens 不看 errors"
 /// 的调用形态；差分驱动对 `errors`/`warnings` 计数强比对）。
@@ -137,3 +185,9 @@ pub(all) struct LexResult {
   trace : Array[TraceEntry]
   line_map : LineMap
 } derive(Eq, @debug.Debug)
+
+///|
+pub extend LexResult with Debug::{to_repr}
+
+///|
+pub extend LexResult with Eq::{not_equal, equal}

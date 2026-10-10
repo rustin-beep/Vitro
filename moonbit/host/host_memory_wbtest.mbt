@@ -554,13 +554,17 @@ test "host_note_access_snapshot_before" {
     malloc_zero_note(),
     "[warning] malloc(0) 返回 NULL。在 C 标准中，malloc(0) 的行为是实现定义的，可能返回 NULL 也可能返回一个不可解引用的非空指针。",
   )
-  ignore(
+  assert_eq(
     access_fault_text(
       @memory.MemFault::NullDeref(0x10U, @memory.AccessKind::Read),
     ),
+    "访问了 NULL 指针区域（地址 0x10）。NULL 指针不能解引用。请确认指针已被正确初始化。",
   )
-  ignore(access_fault_text(@memory.MemFault::OutOfBounds(0x10U, 0)))
-  ignore(
+  assert_eq(
+    access_fault_text(@memory.MemFault::OutOfBounds(0x10U, 0)),
+    "内存访问越界（地址 0x10）。请检查数组下标或指针运算是否超出分配范围。",
+  )
+  assert_eq(
     access_fault_text(
       @memory.MemFault::UseAfterFree(
         @memory.FreedRegionInfo::{
@@ -574,5 +578,6 @@ test "host_note_access_snapshot_before" {
         @memory.AccessKind::Read,
       ),
     ),
+    "[uaf] Use-After-Free (E3060)：你正在向一块已经在第 2 行（第 3 步）被 free 的内存读取（由第 1 行的 malloc/realloc 分配）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。",
   )
 }

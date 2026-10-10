@@ -27,10 +27,11 @@
   {
     "case": "bTree_default.c",
     "digest": "f7c93a73",
-    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。UB 结局漂移史：Clang 侧 UB 恰好无害（输出 1）；引擎 kruskal 零填充修复（0c893ae）后 UB 走向 NULL 解引用受检 trap @71:32（ff228a13）；CI MSVC 构建形态=诊断行后 0xC0000005（65593255，双集兼容）；批五 ①表 9 号修复（2026-10-07：static 聚合字符串指针成员 Pass 3 回填 + scanf 抑制不写内存）再改布局——第三次漂移收敛为 f7c93a73（旧双集随旧布局退役，CI clang 构建同形态）。两侧结局不同是 UB 的正当形态，保留作安全检测教学示例",
+    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。UB 结局漂移史：Clang 侧 UB 恰好无害（输出 1）；引擎 kruskal 零填充修复（0c893ae）后 UB 走向 NULL 解引用受检 trap @71:32（ff228a13）；CI MSVC 构建形态=诊断行后 0xC0000005（65593255，双集兼容）；批五 ①表 9 号修复（2026-10-07：static 聚合字符串指针成员 Pass 3 回填 + scanf 抑制不写内存）再改布局——第三次漂移收敛为 f7c93a73（旧双集随旧布局退役，CI clang 构建同形态）。第四形态 4c8b994e（审阅处置 2026-10-10 实测归因）：trap 文案截断形态对产物二进制布局敏感而非链敏感——同一提交本机冷启动构建 MSVC/clang 两链同得 4c8b994e，主仓热增量构建与 CI（Windows runner 冷构建）落 f7c93a73；digest 值随构建环境漂属本条 UB 形态固有噪声面，CI 全量实测 DIFF=0（SAME=712 DIFF-KNOWN=7）不受影响。两侧结局不同是 UB 的正当形态，保留作安全检测教学示例",
     "digests": [
       "ff228a13",
-      "65593255"
+      "65593255",
+      "4c8b994e"
     ]
   },
   {

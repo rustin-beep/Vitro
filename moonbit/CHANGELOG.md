@@ -1,3 +1,33 @@
+## [Unreleased]
+
+### Fixed
+
+- **审阅处置批（2026-10-10，五提交审阅报告 P1/P2/P3 全销）**：
+  - **786e8102 PX 假码元事故修复（最高优先）**：该并发提交打包时卷入了
+    审阅处置中的 J9 注入态——libc 签名表 `strchr` 的 `param_kinds`
+    被提交为 `"PX"`（未知码元）。工作区本 diff（PX→PI）即修复，随本批
+    提交后 CI 复绿；同批落地的 `check_builtin_table` fail loud（未知
+    码元 abort 而非静默按 int 检查）正是唯一能当场拦住此类表手误的层。
+  - **demo_ui_lint toggle 过采集修复（P1-2）**：`classListArgs` 把
+    `classList.toggle("cls", v !== "off")` 第二参（force 布尔表达式）
+    里的比较字面量误当类名报红（4694205b 引入，CI 因 fail-fast 未及
+    暴露）。修为 toggle 只解析首个顶层实参（`firstTopArg` 跳过字符串
+    与括号内逗号）；selftest 双锚锁死（force 泄漏指纹红 + 首参未定义
+    红，J9 注入回退证红）。
+  - **clang_direct UB 语料第四形态登记（P2，归因反转）**：报告判
+    「CI 全量步会红」经 CI 实况（Windows runner，SAME=712 DIFF=0 全绿）
+    与双链冷构建对照证伪——bTree_default 的 trap 文案截断形态随产物
+    二进制布局漂（冷/热构建、链、runner clang 版本均为变量），本机
+    冷构建实测 4c8b994e 按 digests 集合语义（本地+CI 实测值）登记，
+    reason 补记归因；不动 CI 权威面。
+  - **表驱动臂错误支路文案锚（P3-1）+ fail loud（P3-2）**：病 11 两层
+    收编改了 count/D 位文案（中文数字→阿拉伯、加位号）且该支路零覆盖
+    ——补 `builtin_table_error_path_copy_anchor` 三形态直调锚（count/
+    D 位/P 位，J9 改文案证红）；`check_builtin_table` 未知 param_kinds
+    码元从静默按 int 改 abort（探针证红）。
+  - **测试数连坐**：两份 README 705→715（#60 批 +10 未连坐 + 本批
+    typeck +1）；native 827 口径待绿态实测重账。
+
 ## [0.8.0] - 2026-10-04（S8 收官版；发布实录待彩排+publish 后回填 08-发布档案/0.8.0.md）
 
 ### Fixed

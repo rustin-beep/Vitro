@@ -89,14 +89,47 @@ var reCSSVarUseNoFB = regexp.MustCompile(`var\((--[\w-]+)\s*\)`)
 var reJSInlineStyleVar = regexp.MustCompile(`style=\\?"[^"\\$]*?(--[\w-]+)`)
 
 // classListArgs 提取调用的类名实参：只认带引号的字面量串。
-// toggle("empty", expr) 的第二参（布尔表达式）自然被排除；
 // add("a", "b") 多类名照常展开；非字面量实参返回空（由调用方降级处理）。
-func classListArgs(s string) []string {
+// toggle(class, force) 的 force 是布尔表达式非类名——2026-10-10 审阅 P1-2
+// 实锤：force 里的比较字面量（v !== "off"）被整串抽取误当类名报红，
+// 故 toggle 只解析首个顶层实参（D8 抽取器过采集形态，selftest 双锚锁）。
+func classListArgs(kind, s string) []string {
+	if kind == "toggle" {
+		s = firstTopArg(s)
+	}
 	out := []string{}
 	for _, m := range reQuotedArgs.FindAllStringSubmatch(s, -1) {
 		out = append(out, m[1])
 	}
 	return out
+}
+
+// firstTopArg 截取实参串的首个顶层实参：跳过字符串字面量与括号/方括号
+// 内的逗号（嵌套调用 add(cls("a","b"), x) 首参不被腰斩）。
+func firstTopArg(s string) string {
+	depth, inStr := 0, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inStr {
+			if c == '"' {
+				inStr = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inStr = true
+		case '(', '[':
+			depth++
+		case ')', ']':
+			depth--
+		case ',':
+			if depth == 0 {
+				return s[:i]
+			}
+		}
+	}
+	return s
 }
 
 type compoundUnit struct {
@@ -306,14 +339,14 @@ func main() {
 		}
 		for _, m := range reJSClassListChain.FindAllStringSubmatch(js, -1) {
 			if m[1] == id && m[2] != "contains" {
-				for _, c := range classListArgs(m[3]) {
+				for _, c := range classListArgs(m[2], m[3]) {
 					set[c] = true
 				}
 			}
 		}
 		for _, m := range reJSClassListVar.FindAllStringSubmatch(js, -1) {
 			if varBind[m[1]] == id && m[2] != "contains" {
-				for _, c := range classListArgs(m[3]) {
+				for _, c := range classListArgs(m[2], m[3]) {
 					set[c] = true
 				}
 			}
@@ -337,12 +370,12 @@ func main() {
 		if kind == "contains" {
 			return // 读操作保守不查（恒 false 也算 bug，但避免误报面扩大）
 		}
-		if len(classListArgs(args)) == 0 {
+		if len(classListArgs(kind, args)) == 0 {
 			sitesUnresolved++
 			return
 		}
 		sitesClass++
-		for _, c := range classListArgs(args) {
+		for _, c := range classListArgs(kind, args) {
 			if !validClass(c, anchorID, candidate, cssUnits, jsGenClasses, htmlClassAll, rl) {
 				issues = append(issues, issue{"class", fmt.Sprintf("%s: %s 类名 %q 对元素 #%s 永不生效（无匹配 CSS 单元/生成面/白名单）", at, kind, c, anchorID)})
 			}
@@ -360,7 +393,7 @@ func main() {
 		// 类名须全局有定义
 		if _, ok := varBind[m[1]]; !ok || varAmbiguous[m[1]] {
 			if m[2] != "contains" {
-				for _, c := range classListArgs(m[3]) {
+				for _, c := range classListArgs(m[2], m[3]) {
 					if !classKnownAnywhere(c, cssUnits, jsGenClasses, htmlClassAll, rl) {
 						issues = append(issues, issue{"class", fmt.Sprintf("app.js classList: 类名 %q 全库无定义（未锚定元素，降级全局检查）", c)})
 					}
@@ -469,7 +502,7 @@ func main() {
 		allClassNames[c] = true
 	}
 	for _, m := range reJSClassListChain.FindAllStringSubmatch(js, -1) {
-		for _, c := range classListArgs(m[3]) {
+		for _, c := range classListArgs(m[2], m[3]) {
 			allClassNames[c] = true
 		}
 	}
@@ -554,6 +587,26 @@ func main() {
 		}
 		if !genericHit {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 泛型形态 $<T>(\"id\") 未被抓——泛型抽取分支失明复发（审阅 P2-1 回归锚）\n")
+			os.Exit(1)
+		}
+		// toggle 双参锚（2026-10-10 审阅 P1-2 / D8 形态）：force 布尔参里的
+		// 比较字面量被当类名抽取 = 事故指纹——classListArgs 过采集复发即红；
+		// 首参特判退化（toggle 首参也漏抽）同样红，两面一次锁死。
+		toggleHit, forceLeak := false, false
+		for _, i := range issues {
+			if strings.Contains(i.msg, `"phantom-toggle"`) {
+				toggleHit = true
+			}
+			if strings.Contains(i.msg, `类名 "off"`) {
+				forceLeak = true
+			}
+		}
+		if forceLeak {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest toggle force 参字面量 \"off\" 被当类名——classListArgs 过采集复发（D8）\n")
+			os.Exit(1)
+		}
+		if !toggleHit {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest toggle 首参未定义类未被抽到——首参特判退化\n")
 			os.Exit(1)
 		}
 		fmt.Printf("demo_ui_lint: -selftest 四类证红 OK + 泛型锚 OK（class=%d var=%d id=%d zombie=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
@@ -669,6 +722,7 @@ func selftestRules() rules {
 const selftestHTML = `<div id="box" class="tab"></div><div id="tab-result"></div>`
 const selftestCSS = `:root { --real: 1px; } .tab.on { color: red; }`
 const selftestJS = `$("box").classList.add("phantom-class");
+$("box").classList.toggle("phantom-toggle", seg.dataset.v === "off");
 document.getElementById("no-such-id").onclick = null;
 const g = $<HTMLTextAreaElement>("no-such-id-generic");
 const v = "var(--no-such-var)";`

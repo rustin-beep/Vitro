@@ -257,7 +257,7 @@ let libc_table : Array[LibcSig] = [
     return_type: char_ptr(),
     min_args: 2,
     max_args: 2,
-    param_kinds: "PX",
+    param_kinds: "PI",
   },
   {
     name: "strrchr",

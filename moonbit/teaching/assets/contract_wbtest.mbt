@@ -100,3 +100,25 @@ test "builtin_notes_contract" {
     )
   }
 }
+
+///|
+/// suggestions 键基数锚（审阅处置批二 2026-10-10 P3）：45/12 两族有
+/// assert_eq 基数锚、43 族此前只有 map.mbt 穷举 match（编译期名单闸，
+/// 性质不同——防漏臂不防多臂溢出），补数据面基数断言。
+test "suggestions_key_cardinality" {
+  assert_eq(suggestion_map.size(), 43, msg="43 算法键基线")
+}
+
+///|
+/// is_id_name 行为锚（审阅处置批二 2026-10-10 P3）：本函数与
+/// util/render.mbt 的 priv is_placeholder_name **手工同构**（两处须同步
+/// 改——开 pub 复用需 surface 连坐，登记待拍板）；此处至少落行为真值锚，
+/// 任一侧演化分叉时本锚守住占位符名合法集的既有语义。
+test "is_id_name_behavior_anchor" {
+  assert_true(is_id_name("addr"))
+  assert_true(is_id_name("_x1"))
+  assert_true(!is_id_name(""))
+  assert_true(!is_id_name("1abc"))
+  assert_true(!is_id_name("a-b"))
+  assert_true(!is_id_name("a b"))
+}

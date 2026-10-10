@@ -103,3 +103,22 @@ test "bytecode_libc_sig_c_face_returns" {
   let (r_srand, _) = bytecode_libc_sig("srand").unwrap()
   assert_true(r_srand is Void(_))
 }
+
+///|
+/// 表完整性静态锚（审阅处置批二 2026-10-10 P0-②）：libc_table 的
+/// param_kinds 字符集必须 ⊆ {P, I, D}——在**表加载层**就红，早于任何
+/// 语料跑（typeck 的运行时 abort 是第二层纵深；786e8102 的 "PX" 手误
+/// 曾同时引爆 vm_diff/typeck_diff/codegen_diff/clang_direct 四道防线
+/// 而单测全绿——本锚把这类手误的检出点从差分防线前移到包内单测）。
+/// 码元直比（UInt16——String 索引陷阱 #24，与 check_builtin_table 同式）。
+test "libc_table_param_kinds_charset" {
+  for entry in libc_table {
+    for i = 0; i < entry.param_kinds.length(); i = i + 1 {
+      let k = entry.param_kinds[i]
+      assert_true(
+        k == 80 || k == 73 || k == 68,
+        msg="\{entry.name} 的 param_kinds 第 \{i + 1} 位码元 \{k} 非法（合法集 P/I/D）",
+      )
+    }
+  }
+}

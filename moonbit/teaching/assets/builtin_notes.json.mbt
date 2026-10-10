@@ -7,6 +7,7 @@
 // 必须是 int」族）与检查逻辑强耦合，留代码；FILE*/字符串位的特判逻辑
 // 本身不可表驱动（病 11 收编边界 = 骨架 P/I/D 臂，异构臂维持专臂 +
 // 本处文案外置）。消费方 typeck（L5，同层依赖合法——层值 5 拍板）。
+
 ///|
 pub struct BuiltinNote {
   count_note : String

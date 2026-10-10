@@ -400,3 +400,67 @@ test "b3c_undef_func_callptr_single_error" {
     _ => fail("形态不符: body 非 Block")
   }
 }
+
+///|
+/// 病 11 两层收编的**错误支路文案锚**（审阅处置 2026-10-10 P3-1）：表驱动
+/// 臂（check_builtin_table @libc.sig_of）此前合法路径有 typeck_diff hash 锁、
+/// 错误支路文案零覆盖——实测改 count/D 位文案 moon test 35/35 全绿。本测试
+/// 锁三类形态：count 文案（第二层收编中文数字→阿拉伯数字）、math D 位带
+/// 位号文案（单参旧文案无位号已统一）、P 位文案（builtin_check_pointer 单源）。
+test "builtin_table_error_path_copy_anchor" {
+  let loc = @source.SourceLoc::new(2, 9)
+  fn call(
+    name : String,
+    args : Array[@ast.Expr],
+    loc : @source.SourceLoc,
+  ) -> @ast.Stmt {
+    @ast.Stmt::Expr(
+      @ast.Expr::Call(name, args, loc, @ast.Type::void_type()),
+      loc,
+    )
+  }
+  fn str_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::StringLiteral("hi", loc, @ast.Type::void_type())
+  }
+  fn dbl_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::FloatLiteral(1.0, loc, @ast.Type::double())
+  }
+  fn int_lit(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Literal(1, loc, @ast.Type::int())
+  }
+  let body : @ast.Stmt = @ast.Stmt::Block(
+    [
+      call("strchr", [str_lit(loc)], loc), // E3028：count 少参
+      call("fmod", [dbl_lit(loc)], loc), // E3028：count 少参（math 族）
+      call("tan", [str_lit(loc)], loc), // E3029：D 位类型错
+      call("strlen", [int_lit(loc)], loc), // E3029：P 位类型错
+    ],
+    loc,
+  )
+  let main = func_of("main", [], Some(body), loc)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(prog_of([main], []))
+  assert_eq(errs.length(), 4)
+  assert_true(errs[0].code == 3028)
+  assert_true(
+    errs[0].message.contains("strchr 需要2个参数"),
+    msg="count 文案（strchr——中文数字→阿拉伯数字随第二层收编统一）",
+  )
+  assert_true(errs[1].code == 3028)
+  assert_true(
+    errs[1].message.contains("fmod 需要2个参数"),
+    msg="count 文案（fmod）",
+  )
+  assert_true(errs[2].code == 3029)
+  assert_true(
+    errs[2].message.contains("tan 第 1 个参数必须是 double"),
+    msg="D 位带位号文案（单参旧文案无位号已统一）",
+  )
+  assert_true(errs[3].code == 3029)
+  assert_true(
+    errs[3].message.contains(
+      "strlen 的第 1 个参数必须是指针或数组",
+    ),
+    msg="P 位文案（builtin_check_pointer 单源复用）",
+  )
+}

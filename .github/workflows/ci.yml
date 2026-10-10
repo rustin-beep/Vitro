@@ -184,6 +184,21 @@ jobs:
             git diff -- moonbit/teaching/assets/suggestions.json | head -20
             exit 2
           fi
+          # 三张入仓 JSON 全量同步闸（审阅处置批二 2026-10-10 P3：本步原先
+          # 只盖 suggestions 一张，builtin_notes / trap_messages 两张入仓却
+          # 无闸——审阅实测三张当前均同步，闸补全防未来静默漂移）
+          "$JSONMBT_EXE" build moonbit/teaching/assets/builtin_notes.json.mbt
+          if ! git diff --quiet -- moonbit/teaching/assets/builtin_notes.json; then
+            echo "FATAL: builtin_notes.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
+            git diff -- moonbit/teaching/assets/builtin_notes.json | head -20
+            exit 2
+          fi
+          "$JSONMBT_EXE" build moonbit/teaching/assets/trap_messages.json.mbt
+          if ! git diff --quiet -- moonbit/teaching/assets/trap_messages.json; then
+            echo "FATAL: trap_messages.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
+            git diff -- moonbit/teaching/assets/trap_messages.json | head -20
+            exit 2
+          fi
 
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash

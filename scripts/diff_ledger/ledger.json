@@ -1,6 +1,6 @@
 {
   "schema": "vitro-diff-ledger-v1",
-  "as_of": "2026-10-04",
+  "as_of": "2026-10-10",
   "provenance": "初始 14 条 = MoonBit迁移蓝图v1 §⑦（2026-09-18 Rust 侧快照）迁入；capability_flags 17 项 = 知识沉淀勘察报告附录 A JSON 示例原数（'19 项'系摘要误传）。**批零号一段 b（2026-09-30）复核完成**：14 条逐条按 MoonBit 侧 0.7.0 现状实测/亲读复核（evidence 字段记方式：run=探针双对照实测 / code=源码亲读 / anchor=防线 known 在册 / doc=文档在册语义）；补录 10 条（已知限制①类销账对象 + 三防线 known 归因面 + 一段 b 新实锤的出口层缺陷）。行为探针留档 .shadow_tmp/diff_ledger_probe/（cmd/run = _build/native/debug 构建实跑；对照剥出口恒定尾注——空程序 stdout 恒 0d0a0d0a 出口形态偏移，Windows 文本模式 \\n→\\r\\n 两侧同构非差异）。守门规则：引擎行为与台账冲突时要么改行为要么改台账，禁止沉默漂移。",
   "status_vocab": "verified-run=探针双对照实测在案 / verified-code=源码亲读定值 / verified-anchor=防线 known 白名单在册 / verified-doc=文档在册语义（UB 域或无行为锚）/ resolved-verified=缺陷已修且行为+文档双确认 / open=缺陷确认未修 / open-unverified=差异面存在但本批探针未显现",
   "capability_flags_as_of": "2026-09-30",
@@ -804,6 +804,62 @@
         "bTree_default"
       ],
       "notes": "工序④删区连坐：vitro_e2e.rs + e2e_multi_file.rs + cases_golden/ 745 .out（936KB，无现役消费方——shadow/clang_direct 现场跑 Clang；git 历史可回取）随 Rust 区整体删除"
+    },
+    {
+      "id": "DIFF-CD-WNODECL-01",
+      "title": "clang_direct 标定参数 -Wno-implicit-function-declaration 关闭 C99+ 隐式声明默认 error——static 函数前向使用在直拍侧显「Clang 静默」假象（裸默认口径 Clang 同位报 error：call to undeclared function，实测 2026-10-10）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "闸标定面形态差（非引擎错）：直拍历史标定参数为兼容旧语料关闭了该检查，E3058 与 Clang 默认口径的对齐成立（#50 对齐批①实锤）；E3059 对照面（undeclared identifier）不受该 flag 影响、双侧等价不登记。去标定参数会翻旧语料大片——登记不动",
+      "subsystems": [
+        "scripts/clang_direct",
+        "typeck"
+      ],
+      "clang_verdict": "不一致（直拍标定口径）；默认口径一致",
+      "source_docs": [
+        "clang_direct known_direct.json（#50 审阅处置批登记 2026-10-10）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "static_forward_func.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "known reason 字段含完整归因；E3058 保留依据 = 裸口径三形态实测（static_forward_func/global/rc）"
+    },
+    {
+      "id": "DIFF-CD-TEACHTRAP-01",
+      "title": "教学白箱运行期受检 trap vs Clang 无 sanitizer 静默（array_bound_const_index.c：Vitro rc=2 [deny] 数组越界教学文案 vs Clang rc=0）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "运行期防护族既有同类形态（trap 文案形态差在 #50 对齐表已登记）；静态面 W3051 双侧警告对齐；白箱安全检测是教学核心能力而非缺陷（UB 域无 Clang 确定行为可对照，同 DIFF-UB-BTREE-01 谱系）",
+      "subsystems": [
+        "vm",
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "不一致（教学防护面）",
+      "source_docs": [
+        "clang_direct known_direct.json（#50 审阅处置批登记 2026-10-10）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "array_bound_const_index.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "known reason 字段含完整归因"
     }
   ]
 }

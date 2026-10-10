@@ -56,18 +56,18 @@ pub fn TypeChecker::check_struct_initializer(
         for i in 0..<elements.length() {
           let elem = elements[i]
           if elem.designators.length() == 0 {
-            self.report_error(
+            self.report_warning(
               "初始化列表中不能混合使用指定初始化和非指定初始化",
               loc,
-              E3005_ArrayInitTooMany,
+              W3005_ArrayInitTooMany,
             )
             continue
           }
           if elem.designators.length() != 1 {
-            self.report_error(
+            self.report_warning(
               "暂不支持多级 designated initializer",
               loc,
-              E3005_ArrayInitTooMany,
+              W3005_ArrayInitTooMany,
             )
             continue
           }
@@ -94,20 +94,20 @@ pub fn TypeChecker::check_struct_initializer(
               }
             }
             _ =>
-              self.report_error(
+              self.report_warning(
                 "结构体初始化只能使用 .field 形式的 designator",
                 loc,
-                E3005_ArrayInitTooMany,
+                W3005_ArrayInitTooMany,
               )
           }
         }
         return init
       }
       if elements.length() > fields.length() {
-        self.report_error(
+        self.report_warning(
           "初始化列表元素数量超过结构体字段数",
           loc,
-          E3005_ArrayInitTooMany,
+          W3005_ArrayInitTooMany,
         )
       }
       for i in 0..<elements.length() {
@@ -263,10 +263,10 @@ fn TypeChecker::validate_nested_init_list(
           elements.length()
         }
         if elements.length() > expected_count {
-          self.report_error(
+          self.report_warning(
             "初始化列表元素数量超过数组维度大小",
             loc,
-            E3005_ArrayInitTooMany,
+            W3005_ArrayInitTooMany,
           )
         }
         let sub_dims : Array[Int] = dims[1:].to_owned()
@@ -398,18 +398,18 @@ pub fn TypeChecker::check_array_initializer(
         for i in 0..<elements.length() {
           let elem = elements[i]
           if elem.designators.length() == 0 {
-            self.report_error(
+            self.report_warning(
               "初始化列表中不能混合使用指定初始化和非指定初始化",
               loc,
-              E3005_ArrayInitTooMany,
+              W3005_ArrayInitTooMany,
             )
             continue
           }
           if elem.designators.length() != 1 {
-            self.report_error(
+            self.report_warning(
               "暂不支持多级 designated initializer",
               loc,
-              E3005_ArrayInitTooMany,
+              W3005_ArrayInitTooMany,
             )
             continue
           }
@@ -455,10 +455,10 @@ pub fn TypeChecker::check_array_initializer(
               }
             }
             _ =>
-              self.report_error(
+              self.report_warning(
                 "数组初始化只能使用 [index] 形式的 designator",
                 loc,
-                E3005_ArrayInitTooMany,
+                W3005_ArrayInitTooMany,
               )
           }
         }
@@ -482,10 +482,10 @@ pub fn TypeChecker::check_array_initializer(
         arr_type
       }
       if elements.length() > expected_size {
-        self.report_error(
+        self.report_warning(
           "初始化列表元素数量超过数组大小",
           loc,
-          E3005_ArrayInitTooMany,
+          W3005_ArrayInitTooMany,
         )
       }
       for i in 0..<elements.length() {
@@ -524,10 +524,10 @@ pub fn TypeChecker::check_array_initializer(
           _ => (arr_type, init)
         }
       } else if str_len + 1 > arr_type.array_size() {
-        self.report_error(
+        self.report_warning(
           "字符串字面量长度超过数组大小",
           loc,
-          E3008_StringTooLong,
+          W3008_StringTooLong,
         )
         (arr_type, init)
       } else {

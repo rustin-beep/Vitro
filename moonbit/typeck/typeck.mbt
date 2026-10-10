@@ -48,6 +48,9 @@ pub struct TypeChecker {
   static_func_sigs : Map[String, FuncSymbol]
   static_func_files : Map[String, Array[String]]
   static_global_files : Map[String, Array[String]]
+  // #50 批①（2026-10-10）：static 全局首次声明行——E3059 前向序检查
+  //（使用点早于任何声明 = 对齐 Clang use-before-declaration）
+  static_global_decl_lines : Map[String, Int]
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   // 作用域栈
@@ -77,6 +80,7 @@ pub fn TypeChecker::new() -> TypeChecker {
     static_func_sigs: Map([]),
     static_func_files: Map([]),
     static_global_files: Map([]),
+    static_global_decl_lines: Map([]),
     structs: Map([]),
     unions: Map([]),
     scopes: [],
@@ -170,6 +174,8 @@ pub fn TypeChecker::check(
       param_types: f.params.map(p => p.ty),
       is_variadic: f.is_variadic,
       param_defaults: f.params.map(p => p.default),
+      is_definition: f.body is Some(_),
+      first_decl_line: f.loc.line,
     }
     if f.is_static {
       match self.static_func_sigs.get(f.name) {
@@ -178,9 +184,18 @@ pub fn TypeChecker::check(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-            !params_eq(existing.param_types, new_sym.param_types) {
+          !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          } else if existing.is_definition && new_sym.is_definition {
+            // #50 批①（2026-10-10）：同签名双完整定义 = 重定义——
+            // 对齐 Clang "redefinition of function"（默认 error；原型
+            // 声明 + 定义合法不报）
+            self.report_error(
+              "函数 '\{f.name}' 重复定义",
               f.loc,
               E3003_FuncRedeclared,
             )
@@ -198,9 +213,16 @@ pub fn TypeChecker::check(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-            !params_eq(existing.param_types, new_sym.param_types) {
+          !params_eq(existing.param_types, new_sym.param_types) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          } else if existing.is_definition && new_sym.is_definition {
+            // #50 批①：同上——非 static 函数同款重定义检查
+            self.report_error(
+              "函数 '\{f.name}' 重复定义",
               f.loc,
               E3003_FuncRedeclared,
             )
@@ -247,6 +269,10 @@ pub fn TypeChecker::check(
       match self.static_global_files.get(g.name) {
         Some(files) => files.push(g.source_file)
         None => self.static_global_files.set(g.name, [g.source_file])
+      }
+      // #50 批①：首次登记行（set 保持首值——原型/重复声明不刷新）
+      if !self.static_global_decl_lines.contains(g.name) {
+        self.static_global_decl_lines.set(g.name, g.loc.line)
       }
     }
   }
@@ -461,24 +487,24 @@ pub fn TypeChecker::check_array_dims_legality(
       }
       let first = if dims.length() > 0 { dims[0] } else { -1 }
       if first < -1 {
-        self.report_error(
+        self.report_warning(
           "数组大小不能为负数（\{first}）",
           loc,
-          E2002_ExpectedArraySize,
+          W2002_ExpectedArraySize,
         )
       } else if first == -1 && !has_init_list {
-        self.report_error(
+        self.report_warning(
           "数组缺少数组大小：需要显式大小或初始化器来推断（int a[N]; 或 int a[] = {...};）",
           loc,
-          E2002_ExpectedArraySize,
+          W2002_ExpectedArraySize,
         )
       } else if first == 0 {
         // 显式零尺寸（含带初始化器——{1,2} 曾被静默推断成 2 元素数组）；
         // 零长度数组不是标准 C，教学子集不支持
-        self.report_error(
+        self.report_warning(
           "数组大小不能为 0（零长度数组不在教学子集内）",
           loc,
-          E2002_ExpectedArraySize,
+          W2002_ExpectedArraySize,
         )
       }
     }

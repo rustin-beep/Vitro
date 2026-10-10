@@ -179,12 +179,13 @@ test "array_dims_legality_u1_12" {
   // 负尺寸
   let tc = TypeChecker::new()
   tc.check_array_dims_legality(dims_of(-5), false, loc)
-  assert_eq(tc.errors.length(), 1)
-  assert_true(tc.errors[0].code == 2002)
+  // #50 批②：E2002→W2002（Clang 默认 warning）
+  assert_eq(tc.warnings.length(), 1)
+  assert_true(tc.warnings[0].code == 2002)
   // -1 无初始化器
   let tc2 = TypeChecker::new()
   tc2.check_array_dims_legality(dims_of(-1), false, loc)
-  assert_eq(tc2.errors.length(), 1)
+  assert_eq(tc2.warnings.length(), 1)
   // -1 有初始化器（推断路径，合法）
   let tc3 = TypeChecker::new()
   tc3.check_array_dims_legality(dims_of(-1), true, loc)
@@ -192,7 +193,7 @@ test "array_dims_legality_u1_12" {
   // 显式零
   let tc4 = TypeChecker::new()
   tc4.check_array_dims_legality(dims_of(0), true, loc)
-  assert_eq(tc4.errors.length(), 1)
+  assert_eq(tc4.warnings.length(), 1)
   // VLA 豁免
   let tc5 = TypeChecker::new()
   match dims_of(0) {

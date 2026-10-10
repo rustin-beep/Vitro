@@ -90,7 +90,7 @@
       "code": 2001
     },
     {
-      "name": "E2002_ExpectedArraySize",
+      "name": "W2002_ExpectedArraySize",
       "code": 2002
     },
     {
@@ -134,7 +134,7 @@
       "code": 3004
     },
     {
-      "name": "E3005_ArrayInitTooMany",
+      "name": "W3005_ArrayInitTooMany",
       "code": 3005
     },
     {
@@ -146,7 +146,7 @@
       "code": 3007
     },
     {
-      "name": "E3008_StringTooLong",
+      "name": "W3008_StringTooLong",
       "code": 3008
     },
     {
@@ -330,7 +330,7 @@
       "code": 3053
     },
     {
-      "name": "W3054_IntToPointerCast",
+      "name": "E3054_IntToPointerCast",
       "code": 3054
     },
     {
@@ -382,7 +382,7 @@
       "code": 3066
     },
     {
-      "name": "W3067_PointerTypeMismatch",
+      "name": "E3067_PointerTypeMismatch",
       "code": 3067
     },
     {

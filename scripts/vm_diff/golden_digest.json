@@ -8,6 +8,12 @@
       "stdout_sha": "d4735e3a265e16ee",
       "memory_sha": "2835dd8cc655a3b8"
     },
+    "baseline/array_bound_const_index.c": {
+      "src_sha": "25cc0c64",
+      "exit_code": 0,
+      "stdout_sha": "358bd494742f4577",
+      "memory_sha": "6741f207505527ba"
+    },
     "baseline/array_bounds_safe.c": {
       "src_sha": "0f125842",
       "exit_code": 0,
@@ -187,6 +193,13 @@
       "exit_code": 0,
       "stdout_sha": "69c948ea032dbbb3",
       "memory_sha": "82592c32a63b63d3"
+    },
+    "baseline/case_not_constant.c": {
+      "src_sha": "eb2f33b2",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/cast_char_pointer.c": {
       "src_sha": "ed433b8a",
@@ -860,6 +873,13 @@
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
       "memory_sha": "1d9eb705e1bdc91f"
+    },
+    "baseline/func_redefinition.c": {
+      "src_sha": "a29681ba",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/func_return_as_arg.c": {
       "src_sha": "7801ab85",
@@ -1845,6 +1865,20 @@
       "exit_code": 0,
       "stdout_sha": "6e3d85c528538cac",
       "memory_sha": "0832d159943428cf"
+    },
+    "baseline/static_forward_func.c": {
+      "src_sha": "e82fdca6",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
+    "baseline/static_forward_global.c": {
+      "src_sha": "8fd6e158",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/static_global_basic.c": {
       "src_sha": "6e2264cf",

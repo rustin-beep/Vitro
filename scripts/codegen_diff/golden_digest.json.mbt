@@ -37,6 +37,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline": Section::{
       sources: {
         "array_address.c": "0ba37ef8",
+        "array_bound_const_index.c": "25cc0c64",
         "array_bounds_safe.c": "0f125842",
         "array_index.c": "a562c208",
         "array_index_increment.c": "d92fbb2c",
@@ -67,6 +68,7 @@ pub let golden_digest : Digest = Digest::{
         "c11_generic.c": "c22101e8",
         "calloc_basic.c": "efd7ccc6",
         "calloc_reuse_after_eviction.c": "773d72db",
+        "case_not_constant.c": "eb2f33b2",
         "cast_char_pointer.c": "ed433b8a",
         "cast_float_to_int.c": "fe7ab770",
         "cast_void_pointer.c": "5dd819b6",
@@ -179,6 +181,7 @@ pub let golden_digest : Digest = Digest::{
         "fprintf_persist.c": "631bd070",
         "func_many_params.c": "2ba219ee",
         "func_ptr_param_decay.c": "f6d41aad",
+        "func_redefinition.c": "a29681ba",
         "func_return_as_arg.c": "7801ab85",
         "function_call.c": "4e864050",
         "function_pointer_arg.c": "b93a77d0",
@@ -343,6 +346,8 @@ pub let golden_digest : Digest = Digest::{
         "srand_rand.c": "dfd66442",
         "sscanf_basic.c": "a6a32f5c",
         "static_assert_sizeof.c": "eaff46b4",
+        "static_forward_func.c": "e82fdca6",
+        "static_forward_global.c": "8fd6e158",
         "static_global_basic.c": "6e2264cf",
         "static_local_aggregate.c": "26d50ad9",
         "static_local_array.c": "b308a88f",
@@ -426,6 +431,9 @@ pub let golden_digest : Digest = Digest::{
       },
       cases: {
         "array_address.c": Ok(OkCase::{ result_sha: "f14c63ef2a74f625", }),
+        "array_bound_const_index.c": Ok(OkCase::{
+          result_sha: "82678171787515ee",
+        }),
         "array_bounds_safe.c": Ok(OkCase::{ result_sha: "23005defa221fd08", }),
         "array_index.c": Ok(OkCase::{ result_sha: "7f2bb1691769e541", }),
         "array_index_increment.c": Ok(OkCase::{
@@ -461,6 +469,10 @@ pub let golden_digest : Digest = Digest::{
         "calloc_basic.c": Ok(OkCase::{ result_sha: "3817bf94fa4ed076", }),
         "calloc_reuse_after_eviction.c": Ok(OkCase::{
           result_sha: "97f6b48d250d3d08",
+        }),
+        "case_not_constant.c": Fail(FailCase::{
+          fail: true,
+          fail_stage: "type",
         }),
         "cast_char_pointer.c": Ok(OkCase::{ result_sha: "23ce37c321b2b236", }),
         "cast_float_to_int.c": Ok(OkCase::{ result_sha: "ab5a883925bd91aa", }),
@@ -606,6 +618,10 @@ pub let golden_digest : Digest = Digest::{
         "fprintf_persist.c": Ok(OkCase::{ result_sha: "9d1dae11a99c0b18", }),
         "func_many_params.c": Ok(OkCase::{ result_sha: "da53f5ad31ff8e73", }),
         "func_ptr_param_decay.c": Ok(OkCase::{ result_sha: "6d6f401cd18d797b", }),
+        "func_redefinition.c": Fail(FailCase::{
+          fail: true,
+          fail_stage: "type",
+        }),
         "func_return_as_arg.c": Ok(OkCase::{ result_sha: "de71d979a5c74a0d", }),
         "function_call.c": Ok(OkCase::{ result_sha: "99a96f2a01b361f9", }),
         "function_pointer_arg.c": Ok(OkCase::{ result_sha: "5f9b392f72da3800", }),
@@ -837,6 +853,14 @@ pub let golden_digest : Digest = Digest::{
         "srand_rand.c": Ok(OkCase::{ result_sha: "7255780333098ad3", }),
         "sscanf_basic.c": Ok(OkCase::{ result_sha: "32a43b499471ee0a", }),
         "static_assert_sizeof.c": Ok(OkCase::{ result_sha: "f0e6092d7b44fbe5", }),
+        "static_forward_func.c": Fail(FailCase::{
+          fail: true,
+          fail_stage: "type",
+        }),
+        "static_forward_global.c": Fail(FailCase::{
+          fail: true,
+          fail_stage: "type",
+        }),
         "static_global_basic.c": Ok(OkCase::{ result_sha: "b193d6c6c0635343", }),
         "static_local_aggregate.c": Ok(OkCase::{
           result_sha: "7020db2b5ae9ab49",

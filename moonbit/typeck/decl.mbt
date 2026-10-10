@@ -188,7 +188,16 @@ fn TypeChecker::dispatch_stmt(
               Some(t) => t
               None => @ast.Type::int()
             }
-            if !self.check_assignable(expected, val_type, loc) {
+            // #56 补丁（#50 批②语料翻面时实锤）：return 语句的值检查传
+            // 表达式句柄——`return NULL`（返回指针函数）是高频惯用法，
+            // 原漏传致 NULL 被抹成 Int 后误报 W3054（13 调用点之外的第
+            // 14 处）
+            if !self.check_assignable(
+              expected,
+              val_type,
+              loc,
+              value_expr=new_v,
+            ) {
               let shown = match self.current_func_return {
                 Some(t) => t.to_c_string()
                 None => "int"
@@ -256,6 +265,18 @@ fn TypeChecker::dispatch_stmt(
           if !self.is_int(label_type) {
             self.report_error(
               "case 标签必须是整数常量",
+              loc,
+              E3047_CaseNotConstant,
+            )
+          } else if !(l is Literal(_, _, _)) {
+            // #50 批①（2026-10-10）：常量性检查——C11 §6.8.4.2 case
+            // 标签须为整型常量表达式；旧检查只查类型放行变量形态
+            // （`case n:` 静默，Clang "not an integer constant
+            // expression" error）。最小判据 = 字面量（#define 宏在预
+            // 处理已展开为字面量——语料 case NUMBER: 等 5 处不翻锚；
+            // enum 常量/常量表达式形态随常量求值批扩展）
+            self.report_error(
+              "case 标签必须是常量表达式，不能使用变量 '\{expr_name_of(l)}'",
               loc,
               E3047_CaseNotConstant,
             )
@@ -526,6 +547,15 @@ fn TypeChecker::check_user_func(
                   E3058_StaticFuncAccess,
                 )
                 return @ast.Type::void_type()
+              } else if loc.line < sym.first_decl_line {
+                // #50 批①（2026-10-10）：前向序——使用点早于任何声明/
+                // 定义（无前置原型）= 对齐 Clang use-before-declaration
+                //（同文件形态；原型先行则 first_decl_line 小、合法放行）
+                self.report_error(
+                  "static 函数 '\{name}' 在声明之前被使用（第 \{sym.first_decl_line} 行才声明）",
+                  loc,
+                  E3058_StaticFuncAccess,
+                )
               }
             None => ()
           }
@@ -821,5 +851,15 @@ fn TypeChecker::expr_involves_array_or_pointer(
       self.expr_involves_array_or_pointer(then_branch) ||
       self.expr_involves_array_or_pointer(else_branch)
     _ => false
+  }
+}
+
+///|
+/// 表达式简名提取（#50 批① E3047 文案用：case 非常量时点名变量；
+/// Identifier 取名、其余形态给形态名）。
+fn expr_name_of(e : @ast.Expr) -> String {
+  match e {
+    Identifier(n, _, _) => n
+    _ => "非常量表达式"
   }
 }

@@ -61,7 +61,8 @@ test "init_array_size_inference" {
   }
   let prog2 : @ast.ProgramNode = { ..prog, globals: [g2], }
   let tc2 = TypeChecker::new()
-  let (_, errs2, _, _) = tc2.check(prog2)
+  // #50 批②：E3005→W3005（Clang 默认 warning）——断言移 warnings 通道
+  let (_, _, errs2, _) = tc2.check(prog2)
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3005)
 }
@@ -108,7 +109,8 @@ test "init_string_literal_track" {
   }
   let prog2 : @ast.ProgramNode = { ..prog, globals: [t], }
   let tc2 = TypeChecker::new()
-  let (_, errs2, _, _) = tc2.check(prog2)
+  // #50 批②：E3008→W3008——断言移 warnings 通道
+  let (_, _, errs2, _) = tc2.check(prog2)
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3008)
 }
@@ -200,7 +202,7 @@ test "init_struct_tracks" {
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3042)
   let tc3 = TypeChecker::new()
-  let (_, errs3, _, _) = tc3.check({ ..prog, globals: [mix_g], })
+  let (_, _, errs3, _) = tc3.check({ ..prog, globals: [mix_g], })
   assert_eq(errs3.length(), 1)
   assert_true(errs3[0].code == 3005)
 }
@@ -246,7 +248,7 @@ test "init_multidim_flat_scalar" {
     init: Some(flat([1, 2, 3, 4, 5, 6, 7], loc)),
   }
   let tc2 = TypeChecker::new()
-  let (_, errs2, _, _) = tc2.check({ ..prog, globals: [m2], })
+  let (_, _, errs2, _) = tc2.check({ ..prog, globals: [m2], })
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3005)
 }

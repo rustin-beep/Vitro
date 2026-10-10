@@ -390,10 +390,10 @@ fn TypeChecker::check_pointer_assignable(
     // 「NULL = 0」作正面例子却对它触发；表达式句柄缺席（builtin 参数
     // 面等）时保守维持警告
     if !(value_expr is Some(e) && is_null_pointer_constant(e)) {
-      self.report_warning(
+      self.report_error(
         "整数被隐式转换为指针。建议确保这是有意义的地址值（如 NULL = 0）。",
         loc,
-        W3054_IntToPointerCast,
+        E3054_IntToPointerCast,
       )
     }
     return true
@@ -431,10 +431,10 @@ fn TypeChecker::check_pointer_assignable(
           // 非法）；反向（剥 const）仍由下方 W3053 管。
           !@ast.type_eq(strip_top_const(t_pointee), v_pointee) {
           // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
-          self.report_warning(
+          self.report_error(
             "指针类型不兼容：\{t_pointee.name()}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",
             loc,
-            W3067_PointerTypeMismatch,
+            E3067_PointerTypeMismatch,
           )
         }
         if v_const && !t_const {

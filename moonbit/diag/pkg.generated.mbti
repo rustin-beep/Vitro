@@ -50,7 +50,7 @@ pub(all) enum ErrorCode {
   E1021_IncludeNotFound
   E1022_TemplateInstantiationLimit
   E2001_ExpectedType
-  E2002_ExpectedArraySize
+  W2002_ExpectedArraySize
   E2003_ExpectedExpr
   E2004_ExpectedCaseOrDefault
   E2005_ExpectedSemicolon
@@ -61,10 +61,10 @@ pub(all) enum ErrorCode {
   E3002_StructRedeclared
   E3003_FuncRedeclared
   E3004_TypeMismatch
-  E3005_ArrayInitTooMany
+  W3005_ArrayInitTooMany
   E3006_ArrayInitTypeMismatch
   E3007_StringInitNonCharArray
-  E3008_StringTooLong
+  W3008_StringTooLong
   E3009_InvalidArrayInit
   E3010_BreakOutsideLoop
   E3011_ContinueOutsideLoop
@@ -110,7 +110,7 @@ pub(all) enum ErrorCode {
   W3051_ArrayBoundOffByOne
   W3052_ArrayToPointerDecay
   W3053_ImplicitScalarConversion
-  W3054_IntToPointerCast
+  E3054_IntToPointerCast
   W3055_VoidPointerCast
   W3056_UnsignedToInt
   H3057_ImplicitConversionHint
@@ -123,7 +123,7 @@ pub(all) enum ErrorCode {
   W3064_DoublePointerCast
   E3065_ConstViolation
   E3066_CallNonFunction
-  W3067_PointerTypeMismatch
+  E3067_PointerTypeMismatch
   E3070_BufferOverflow
   E3071_UndefinedLabel
   E3072_StructSelfContain

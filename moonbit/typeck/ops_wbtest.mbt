@@ -279,7 +279,7 @@ test "assign_const_gain_pointer_no_w3067" {
       loc,
     ),
   )
-  assert_eq(tc2.warnings.length(), 1, msg="base 类型不同须维持 W3067")
+  assert_eq(tc2.errors.length(), 1, msg="base 类型不同须维持 E3067（#50 批②升级）")
   // 负锚 2：char** → const char**（多级指针 const 增强，C 判非法）照报
   let tc3 = TypeChecker::new()
   ignore(
@@ -296,9 +296,9 @@ test "assign_const_gain_pointer_no_w3067" {
     ),
   )
   assert_eq(
-    tc3.warnings.length(),
+    tc3.errors.length(),
     1,
-    msg="多级 const 增强维持 W3067（C 标准）",
+    msg="多级 const 增强维持 E3067（C 标准；#50 批②升级）",
   )
 }
 
@@ -346,7 +346,7 @@ test "assign_null_pointer_constant_no_w3054" {
       value_expr=@ast.Expr::Literal(5, loc, @ast.Type::int()),
     ),
   )
-  assert_eq(tc3.warnings.length(), 1, msg="非零整数常量须维持 W3054")
+  assert_eq(tc3.errors.length(), 1, msg="非零整数常量须维持 E3054（#50 批②升级）")
   // 负锚 2：标识符（非常量整数表达式）照报
   let tc4 = TypeChecker::new()
   ignore(
@@ -358,17 +358,17 @@ test "assign_null_pointer_constant_no_w3054" {
     ),
   )
   assert_eq(
-    tc4.warnings.length(),
+    tc4.errors.length(),
     1,
-    msg="非常量整数表达式须维持 W3054",
+    msg="非常量整数表达式须维持 E3054（#50 批②升级）",
   )
   // 负锚 3：无表达式句柄（builtin 参数面等）保守照报
   let tc5 = TypeChecker::new()
   ignore(tc5.check_assignable(char_ptr, @ast.Type::int(), loc))
   assert_eq(
-    tc5.warnings.length(),
+    tc5.errors.length(),
     1,
-    msg="无表达式句柄时保守维持 W3054",
+    msg="无表达式句柄时保守维持 E3054（#50 批②升级）",
   )
 }
 

@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（issue #50 对齐批①②：补报五真缺陷 + 级别对齐升降五码，2026-10-10，分支 issue50-alignment）
+
+- **批① 补报 5**（Vitro 零诊断、Clang 默认即报——对齐表缺口族）：E3003 同签名函数重定义（原型+定义合法、定义+定义报，对齐 Clang redefinition）；E3047 case 常量性（字面量判据——#define 宏预处理已展开，语料 5 处 case NUMBER: 零翻）；E3058/E3059 static 前向引用（first_decl_line 序检查，原型先行合法放行）；W3051 常数下标静态越界（对齐 -Warray-bounds；负下标同报；变量下标留运行时 E3070 族）。
+- **#56 补丁（批②语料翻面实锤）**：`return NULL`（返回指针函数）漏传表达式句柄——13 调用点之外的第 14 处，语料 16 处误报全消（linked_stack + knr×2 + leetcode×7 等）。
+- **批② 级别对齐 5 码**（拍板：E/W 全面对齐 Clang 默认口径）：升 E——W3054→E3054（非零整数转指针）、W3067→E3067（不兼容指针赋值），Clang 默认 error；降 W——E2002→W2002（数组大小缺省）、E3005→W3005（初始化项过多）、E3008→W3008（字符串超长），Clang 默认 warning 不挡编译。**breaking**：码名前缀变（0.9.0 面变化清单项）；severity 白名单随名前缀自动（gen_diag）。
+- **语料转正 5 例**：func_redefinition / case_not_constant / static_forward_func / static_forward_global / array_bound_const_index——五套 digest 入账；linked_stack 等 10 例 digest 重冻（return NULL 误报消失，正确方向）；翻锚 9 处 wbtest（新通道/新前缀断言）。
+- 测试数连坐 719 / native 841（工作区含并发教学资产批测试 +14——真值优先如实连坐，并发批提交时自然携带）。
+
+
 ### Fixed（issue #54 Part B：警告严格度上锁——moon.mod warnings @ 升错误两类，2026-10-10）
 
 - **锁集**：`moon.mod` 增 `warnings = "@implicit_impl_as_method@deprecated_syntax"`——0079（A2 批 217 条全清）与 0027（A1 批 13 条全清）两类升错误防复发；**0020 deprecated 不锁**（余额 18 条为 inspect 系 Show→Debug 迁移期噪音，A3 带据豁免等 core 干净替代——升错误即误伤）。

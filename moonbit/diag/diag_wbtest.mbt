@@ -35,7 +35,7 @@ test "catalog_presence_per_code" {
 test "display_code_prefix_alignment" {
   assert_eq(W3053_ImplicitScalarConversion.display_code(), "W3053")
   assert_eq(W1018_MacroShadowing.display_code(), "W1018")
-  assert_eq(W3067_PointerTypeMismatch.display_code(), "W3067")
+  assert_eq(E3067_PointerTypeMismatch.display_code(), "E3067")
   assert_eq(H3057_ImplicitConversionHint.display_code(), "H3057")
   assert_eq(E1006_UnsupportedFeature.display_code(), "E1006")
   assert_eq(E3060_UseAfterFree.display_code(), "E3060")

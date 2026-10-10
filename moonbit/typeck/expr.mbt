@@ -163,6 +163,20 @@ fn TypeChecker::resolve_identifier(
                 loc,
                 E3059_StaticGlobalAccess,
               )
+            } else {
+              // #50 批①（2026-10-10）：前向序——同文件内使用点早于首次
+              // 声明 = 对齐 Clang use-before-declaration（E3058 同款）
+              match self.static_global_decl_lines.get(name) {
+                Some(dl) =>
+                  if loc.line < dl {
+                    self.report_error(
+                      "static 全局变量 '\{name}' 在声明之前被使用（第 \{dl} 行才声明）",
+                      loc,
+                      E3059_StaticGlobalAccess,
+                    )
+                  }
+                None => ()
+              }
             }
           None => ()
         }
@@ -240,6 +254,28 @@ fn TypeChecker::resolve_index(
     )
     @ast.Type::int()
   } else if arr_type.is_array() {
+    // #50 批①（2026-10-10）：常数下标静态越界——对齐 Clang -Warray-bounds
+    //（默认启）：字面量下标且尺寸已知（array_size ≥ 0 且非 VLA）时判定
+    // 值域；负值同报。变量下标/不定长数组留运行时检查（E3070 族）
+    match (new_index, arr_type) {
+      (Literal(v, _, _), Array(_, n, _, _, is_vla, _)) =>
+        if !is_vla && n >= 0 && (v < 0 || v >= n) {
+          if v < 0 {
+            self.report_warning(
+              "数组下标为负数 \{v}（有效索引从 0 开始）。",
+              loc,
+              W3051_ArrayBoundOffByOne,
+            )
+          } else {
+            self.report_warning(
+              "数组下标 \{v} 越界：数组只有 \{n} 个元素，有效索引是 0~\{n - 1}。",
+              loc,
+              W3051_ArrayBoundOffByOne,
+            )
+          }
+        }
+      _ => ()
+    }
     arr_type.subscript_type()
   } else {
     match arr_type {

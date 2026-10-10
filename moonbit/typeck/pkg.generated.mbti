@@ -22,6 +22,7 @@ pub struct TypeChecker {
   static_func_sigs : Map[String, FuncSymbol]
   static_func_files : Map[String, Array[String]]
   static_global_files : Map[String, Array[String]]
+  static_global_decl_lines : Map[String, Int]
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   scopes : Array[Map[String, VarSymbol]]

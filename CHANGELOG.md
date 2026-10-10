@@ -4034,6 +4034,8 @@ C23 锚定决议下的第一批语言能力（详细口径与差异见 `C_SUBSET
 - **新增回归测试防线** `native/tests/crash_regression_tests.rs`（12 个用例）：上述全部复现场景固化为断言，含 3 个反向回归（40 层合法嵌套、合法链表指针不误伤）。
 
 ### Added
+
+- **教学资产数据外置 #60 主体完成（2026-10-10，四批）**——**100 键教学文案**全部外置为 jsonmbt 真源（`teaching/assets` 包：43 算法文案 + 45 trap 诊断/root_cause_hint + 12 builtin 释义），教师面 JSON 全配（build 降级入仓 + `import --fill` 回流 + CI git diff 同步闸）。**双出口架构**：引擎直接 import 资产包（零生成器/零 JSON 中转——pub let 跨包直取探针实证）；`util.render_template` 渲染框架（`{key}` 占位符 + 标识符过滤〔字面花括号段透传〕+ 缺参保留原文/缺键 panic 失败分级）；契约锚（placeholders 声明×模板双向）+ 基线锚（改造前逐字节——两次抓到手推错自证价值）+ 漂移锁锚三层防线。**病 11 联动**：memset 收编（visit_call 55→28 臂，表驱动 28 臂 + 异构臂文案外置——收编边界定案「骨架 P/I/D」）；资产包层值三次裁定（8→7→5，「被谁消费放哪层」）。过程回流 jsonmbt #24（docs）/#25（bug：moon fmt 圆括号——已修复）；`#|` 多行 × moon fmt × jsonmbt 三方共存（#25 修复后）。行为零漂移全程实证（moon test 715/715、typeck_diff 386、vm_diff 619/5/0、smoke 168/168、族级对拍一致）。决策链路与四批评论归档 #60（6085532499 起）。
 - **C++ 扩展 Stage A/B/C**：默认参数、嵌套类实例化、类模板非类型模板参数（NTTP）
   - 默认参数：支持函数/方法参数 `int f(int a = 0)`，调用时可省略尾部实参；TypeChecker 在普通函数调用、方法调用、无限定方法调用中统一填充默认值；修复隐式移动构造被误选为 0 参默认构造的回归。
   - 嵌套类 `Outer::Inner` 实例化：Parser 将 `Outer::Inner` 解析为 `Outer__Inner` 限定类名，`TypeChecker` 按限定名注册/查找类布局；新增 `native/tests/cases/cpp/cpp_nested_class_instance.cpp` 回归用例。

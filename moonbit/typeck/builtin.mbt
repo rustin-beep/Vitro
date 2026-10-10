@@ -48,6 +48,7 @@ pub fn TypeChecker::visit_call(
     | "strncmp"
     | "strncat"
     | "memchr"
+    | "memset"
     | "memcmp"
     | "tan"
     | "log10"
@@ -61,7 +62,6 @@ pub fn TypeChecker::visit_call(
     "printf" => self.check_builtin_printf(args, loc)
     "scanf" => self.check_builtin_scanf(args, loc)
     "ungetc" => self.check_builtin_ungetc(args, loc)
-    "memset" => self.check_builtin_memset(args, loc)
     "fopen" => self.check_builtin_fopen(args, loc)
     "fread" => self.check_builtin_fread(args, loc)
     "fwrite" => self.check_builtin_fwrite(args, loc)
@@ -468,8 +468,16 @@ fn TypeChecker::check_builtin_table(
             } else {
               args[i] = insert_implicit_cast(new_arg, expected)
             }
-          } else {
+          } else if k == 73 {
+            // 'I'：int 可赋值位（builtin_check_int）
             self.builtin_check_int(args, i, name, loc)
+          } else {
+            // fail loud（审阅处置 2026-10-10 P3-2）：param_kinds 未知码元
+            // 此前静默落 builtin_check_int（纪律 8 同精神——禁止静默
+            // default）；libc 表手误须当场红，防错位检查假绿
+            abort(
+              "check_builtin_table：\{name} 的 param_kinds 第 \{i + 1} 位码元 \{k} 未注册（合法集 P/I/D）——libc 签名表手误，静默按 int 检查会错位假绿",
+            )
           }
         }
       }
@@ -833,7 +841,7 @@ fn TypeChecker::check_builtin_fgets(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        "fgets 第一个参数必须是指针或数组",
+        @assets.builtin_notes.get("fgets").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -842,7 +850,7 @@ fn TypeChecker::check_builtin_fgets(
     args[1] = new_a1
     if !self.check_assignable(@ast.Type::int(), n_type, loc) {
       self.report_error(
-        "fgets 第二个参数必须是 int",
+        @assets.builtin_notes.get("fgets").unwrap().param_notes[1],
         loc,
         E3029_BuiltInArgType,
       )
@@ -853,7 +861,7 @@ fn TypeChecker::check_builtin_fgets(
     args[2] = new_a2
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fgets 第三个参数必须是文件指针",
+        @assets.builtin_notes.get("fgets").unwrap().param_notes[2],
         loc,
         E3029_BuiltInArgType,
       )
@@ -874,7 +882,7 @@ fn TypeChecker::check_builtin_fputs(
     args[0] = new_a0
     if !(s_type.kind() is TK_Pointer) && !s_type.is_array() {
       self.report_error(
-        "fputs 第一个参数必须是字符串",
+        @assets.builtin_notes.get("fputs").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -883,7 +891,7 @@ fn TypeChecker::check_builtin_fputs(
     args[1] = new_a1
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fputs 第二个参数必须是文件指针",
+        @assets.builtin_notes.get("fputs").unwrap().param_notes[1],
         loc,
         E3029_BuiltInArgType,
       )
@@ -914,42 +922,6 @@ fn TypeChecker::check_builtin_malloc(
       self.report_error("malloc 参数必须是 int", loc, E3025_MallocArgType)
     } else {
       args[0] = insert_implicit_cast(new_arg, expected)
-    }
-  }
-  @ast.Type::pointer_to(@ast.Type::void_type())
-}
-
-///|
-/// memset（三参：指针 + 两 int）。
-fn TypeChecker::check_builtin_memset(
-  self : TypeChecker,
-  args : Array[@ast.Expr],
-  loc : @source.SourceLoc,
-) -> @ast.Type {
-  if args.length() != 3 {
-    self.report_error("memset 需要三个参数", loc, E3028_BuiltInArgCount)
-  } else {
-    let (ptr_type, new_a0) = self.resolve_expr_type(args[0])
-    args[0] = new_a0
-    if !(ptr_type.kind() is TK_Pointer) && !ptr_type.is_array() {
-      self.report_error(
-        "memset 第一个参数必须是指针",
-        loc,
-        E3029_BuiltInArgType,
-      )
-    }
-    for i in [1, 2] {
-      let expected = @ast.Type::int()
-      let (t, new_arg) = self.resolve_expr_type(args[i])
-      if !self.check_assignable(expected, t, loc) {
-        self.report_error(
-          "memset 的第 \{i + 1} 个参数必须是 int",
-          loc,
-          E3029_BuiltInArgType,
-        )
-      } else {
-        args[i] = insert_implicit_cast(new_arg, expected)
-      }
     }
   }
   @ast.Type::pointer_to(@ast.Type::void_type())
@@ -1017,7 +989,7 @@ fn TypeChecker::check_builtin_fopen(
 ) -> @ast.Type {
   if args.length() != 2 {
     self.report_error(
-      "fopen 需要两个参数（路径和模式）",
+      @assets.builtin_notes.get("fopen").unwrap().count_note,
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1046,7 +1018,7 @@ fn TypeChecker::check_builtin_fread(
 ) -> @ast.Type {
   if args.length() != 4 {
     self.report_error(
-      "fread 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
+      @assets.builtin_notes.get("fread").unwrap().count_note,
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1055,7 +1027,7 @@ fn TypeChecker::check_builtin_fread(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        "fread 第一个参数必须是指针或数组",
+        @assets.builtin_notes.get("fread").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1094,7 +1066,7 @@ fn TypeChecker::check_builtin_fwrite(
 ) -> @ast.Type {
   if args.length() != 4 {
     self.report_error(
-      "fwrite 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
+      @assets.builtin_notes.get("fwrite").unwrap().count_note,
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1103,7 +1075,7 @@ fn TypeChecker::check_builtin_fwrite(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        "fwrite 第一个参数必须是指针或数组",
+        @assets.builtin_notes.get("fwrite").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1124,7 +1096,7 @@ fn TypeChecker::check_builtin_fwrite(
     args[3] = new_a3
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fwrite 第四个参数必须是文件指针",
+        @assets.builtin_notes.get("fwrite").unwrap().param_notes[3],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1145,7 +1117,7 @@ fn TypeChecker::check_builtin_fclose(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fclose 参数必须是文件指针",
+        @assets.builtin_notes.get("fclose").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1166,7 +1138,7 @@ fn TypeChecker::check_builtin_feof(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "feof 参数必须是文件指针",
+        @assets.builtin_notes.get("feof").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1187,7 +1159,7 @@ fn TypeChecker::check_builtin_fgetc(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fgetc 参数必须是文件指针",
+        @assets.builtin_notes.get("fgetc").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1205,7 +1177,7 @@ fn TypeChecker::check_builtin_fputc(
 ) -> @ast.Type {
   if args.length() != 2 {
     self.report_error(
-      "fputc 需要两个参数（字符和文件指针）",
+      @assets.builtin_notes.get("fputc").unwrap().count_note,
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1214,7 +1186,7 @@ fn TypeChecker::check_builtin_fputc(
     args[0] = new_a0
     if !self.check_assignable(@ast.Type::int(), c_type, loc) {
       self.report_error(
-        "fputc 第一个参数必须是 int",
+        @assets.builtin_notes.get("fputc").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1225,7 +1197,7 @@ fn TypeChecker::check_builtin_fputc(
     args[1] = new_a1
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fputc 第二个参数必须是文件指针",
+        @assets.builtin_notes.get("fputc").unwrap().param_notes[1],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1243,7 +1215,7 @@ fn TypeChecker::check_builtin_fseek(
 ) -> @ast.Type {
   if args.length() != 3 {
     self.report_error(
-      "fseek 需要三个参数（文件指针、偏移量、起始位置）",
+      @assets.builtin_notes.get("fseek").unwrap().count_note,
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1252,7 +1224,7 @@ fn TypeChecker::check_builtin_fseek(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "fseek 第一个参数必须是文件指针",
+        @assets.builtin_notes.get("fseek").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1285,7 +1257,7 @@ fn TypeChecker::check_builtin_ftell(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "ftell 参数必须是文件指针",
+        @assets.builtin_notes.get("ftell").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )
@@ -1306,7 +1278,7 @@ fn TypeChecker::check_builtin_rewind(
     args[0] = new_a0
     if !(stream_type.kind() is TK_Pointer) && !(stream_type.kind() is TK_Int) {
       self.report_error(
-        "rewind 参数必须是文件指针",
+        @assets.builtin_notes.get("rewind").unwrap().param_notes[0],
         loc,
         E3029_BuiltInArgType,
       )

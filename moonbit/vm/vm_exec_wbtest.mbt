@@ -1766,3 +1766,19 @@ test "bounds_message_no_embedded_location" {
     msg="文案内不得内嵌 location 段",
   )
 }
+
+///|
+/// trap 文案资产漂移锁（#60 批二，2026-10-10）：div_zero/inf_loop 无变量
+/// 场景的逐字节输出——改资产模板（E_div_zero/E_inf_loop）即红（模板的
+/// golden 面；有变量段的等价由既有锚 + 契约锚覆盖）。
+test "trap_asset_template_drift_lock" {
+  let vm = VitroVM::new()
+  let div = vm.format_div_zero_error(10)
+  assert_eq(
+    div, "[divide-zero] 除零错误：你试图用 10 除以 0。\n\n[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
+  )
+  let loop_msg = vm.format_infinite_loop_error()
+  assert_eq(
+    loop_msg, "[step-limit] 程序执行步数超过限制（10000000 步），可能包含无限循环。\n\n[cause] 原因：程序执行了太多步数但没有结束。常见原因：\n  • 循环条件永远为真（如 while(1)）\n  • 循环变量没有更新（如忘了写 i++）\n  • 递归函数没有正确的终止条件\n[fix] 检查方法：确认循环体中有改变循环条件的语句。",
+  )
+}

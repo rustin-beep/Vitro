@@ -1,0 +1,7 @@
+// teaching/assets·教学资产数据包（issue #60 双出口架构，2026-10-10）：
+// 43 算法教学文案真源。本包 = 数据面（.json.mbt 真源是合法 MoonBit——
+// moon check 类型系统即写作闸：枚举拼错写时红）；消费侧 steps 包直接
+// import（零生成器/零 JSON 中转）；教师面走 jsonmbt build 降级
+// suggestions.json（同目录入仓——改后 `jsonmbt import --fill` 回真源，
+// CI 以 build+git diff 锁同步）。分层：与 teaching/steps 同层 L8。
+// 改文案只改 suggestions.json.mbt（或教师改 JSON 后 --fill 回流）。

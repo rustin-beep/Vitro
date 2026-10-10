@@ -224,6 +224,8 @@ vitro/engine/host vitro/engine/memory Memory
 vitro/engine/host vitro/engine/memory MemoryMap
 vitro/engine/host vitro/engine/util i64_to_i32_bits
 vitro/engine/host vitro/engine/util utf8_len
+vitro/engine/host vitro/engine/teaching/assets trap_messages
+vitro/engine/host vitro/engine/util render_template
 vitro/engine/lexer moonbitlang/core/encoding/utf8 encode
 vitro/engine/lexer vitro/engine/diag ErrorCode
 vitro/engine/lexer vitro/engine/lexer/internal/host StubsProvider
@@ -329,6 +331,7 @@ vitro/engine/session vitro/engine/vm DEFAULT_MAX_STEPS
 vitro/engine/session vitro/engine/vm MAX_STACK_DEPTH
 vitro/engine/session vitro/engine/vm VitroVM
 vitro/engine/teaching/steps vitro/engine/ast BinaryOp
+vitro/engine/teaching/steps vitro/engine/teaching/assets suggestion_map
 vitro/engine/teaching/steps vitro/engine/ast Expr
 vitro/engine/teaching/steps vitro/engine/ast FuncDecl
 vitro/engine/teaching/steps vitro/engine/ast ProgramNode
@@ -341,6 +344,8 @@ vitro/engine/teaching/steps vitro/engine/source SourceLoc
 vitro/engine/time_travel moonbitlang/core/deque Deque
 vitro/engine/time_travel moonbitlang/core/string parse_int
 vitro/engine/time_travel vitro/engine/ast Type
+vitro/engine/time_travel vitro/engine/teaching/assets trap_messages
+vitro/engine/time_travel vitro/engine/util render_template
 vitro/engine/time_travel vitro/engine/ast type_display_name
 vitro/engine/time_travel vitro/engine/bytecode MEM_SIZE
 vitro/engine/time_travel vitro/engine/bytecode NULL_TRAP_SIZE
@@ -393,6 +398,7 @@ vitro/engine/typeck vitro/engine/ast compute_type_size
 vitro/engine/typeck vitro/engine/ast type_eq
 vitro/engine/typeck vitro/engine/diag ErrorCode
 vitro/engine/typeck vitro/engine/libc bytecode_libc_sig
+vitro/engine/typeck vitro/engine/teaching/assets builtin_notes
 vitro/engine/typeck vitro/engine/libc is_libc_func
 vitro/engine/typeck vitro/engine/libc sig_of
 vitro/engine/typeck vitro/engine/source SourceLoc
@@ -537,6 +543,8 @@ vitro/engine/vm vitro/engine/opcode Instruction
 vitro/engine/vm vitro/engine/opcode OpCode
 vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/util utf8_len
+vitro/engine/vm vitro/engine/teaching/assets trap_messages
+vitro/engine/vm vitro/engine/util render_template
 vitro/engine/cmd/compile moonbitlang/core/env args
 vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/lib/cli vitro/engine/bytecode CompileOutput

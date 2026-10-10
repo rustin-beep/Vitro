@@ -7,6 +7,7 @@
 // 分发查它）+ memory（L7 同层：1MB 载体与堆状态机）。被 vm 消费，不反向依赖。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
 import {
+  "vitro/engine/teaching/assets",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/bigint",
   "moonbitlang/core/double",

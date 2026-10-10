@@ -289,12 +289,15 @@ fn analyze_null_deref(
       null_ptrs.push(p.name)
     }
   }
-  let mut one_liner = "试图解引用一个 NULL 指针。NULL 指针不指向任何有效内存。"
+  // #60 批三（2026-10-10）：one_liner 模板外置（hint_null_base +
+  // hint_null_ptrs/hint_null_history 段——拼接逻辑留代码）
+  let mut one_liner = @assets.trap_messages.get("hint_null_base").unwrap().template
   if null_ptrs.length() > 0 {
     one_liner = one_liner +
-      " 当前为 NULL 的指针: " +
-      str_join(null_ptrs, ", ") +
-      "。请在使用前确保指针已被正确初始化（如通过 malloc 或赋值）。"
+      @util.render_template(
+        @assets.trap_messages.get("hint_null_ptrs").unwrap().template,
+        [("ptrs", str_join(null_ptrs, ", "))],
+      )
   }
   // 首个 NULL 指针的历史切片：曾指向有效地址后被置 NULL 的形态提示
   let related_lines = [trap_payload.code_line]
@@ -304,11 +307,10 @@ fn analyze_null_deref(
     for h in history {
       if h.value != "0" && h.value != "0x0" && h.value != "NULL" {
         one_liner = one_liner +
-          " 注意：'" +
-          first +
-          "' 之前指向过地址 " +
-          h.value +
-          "，后来变成了 NULL。"
+          @util.render_template(
+            @assets.trap_messages.get("hint_null_history").unwrap().template,
+            [("name", first), ("addr", h.value)],
+          )
         break
       }
     }
@@ -319,7 +321,9 @@ fn analyze_null_deref(
     related_lines,
     suggested_fix_kind: "AddNullCheck",
     suggested_fix_line: Some(trap_payload.code_line),
-    suggested_fix_desc: Some("使用指针前检查是否为 NULL"),
+    suggested_fix_desc: Some(
+      @assets.trap_messages.get("hint_fix_null").unwrap().template,
+    ),
   })
 }
 
@@ -353,13 +357,20 @@ fn analyze_use_after_free(
       suspect.push(p.name)
     }
   }
-  let mut one_liner = "这块内存在第 " +
-    alloc_line.to_string() +
-    " 行被分配，在第 " +
-    freed_line.to_string() +
-    " 行被释放，现在又被访问了。free 后请立即将指针置为 NULL，避免继续使用。"
+  // #60 批三：one_liner 模板外置（hint_uaf + hint_uaf_ptrs 段）
+  let mut one_liner = @util.render_template(
+    @assets.trap_messages.get("hint_uaf").unwrap().template,
+    [
+      ("alloc_line", alloc_line.to_string()),
+      ("freed_line", freed_line.to_string()),
+    ],
+  )
   if suspect.length() > 0 {
-    one_liner = one_liner + " 相关指针: " + str_join(suspect, ", ") + "。"
+    one_liner = one_liner +
+      @util.render_template(
+        @assets.trap_messages.get("hint_uaf_ptrs").unwrap().template,
+        [("ptrs", str_join(suspect, ", "))],
+      )
   }
   let related = dedup_sorted([alloc_line, freed_line, trap_payload.code_line])
   Some({
@@ -368,7 +379,9 @@ fn analyze_use_after_free(
     related_lines: related,
     suggested_fix_kind: "SetNullAfterFree",
     suggested_fix_line: Some(freed_line),
-    suggested_fix_desc: Some("free 后执行 p = NULL"),
+    suggested_fix_desc: Some(
+      @assets.trap_messages.get("hint_fix_set_null").unwrap().template,
+    ),
   })
 }
 
@@ -385,13 +398,14 @@ fn analyze_double_free(
   guard trap_step < steps.length() else { return None }
   let trap_payload = steps[trap_step]
   // 病 4 修复（#47，2026-10-09）：行号语义改口——freed_line 是首次 free 行、
-  // code_line 是第二次 free 行（旧文案把 alloc_line 说成「第一次释放」，
-  // 与 analyze_use_after_free 的 alloc/free 分清口径对齐，系漏改）。
-  let one_liner = "同一块内存在第 " +
-    freed_line.to_string() +
-    " 行已被释放，现在第 " +
-    trap_payload.code_line.to_string() +
-    " 行又 free 了一次。每次 free(p) 后请立刻执行 p = NULL;，因为对 NULL 重复 free 是安全的。"
+  // code_line 是第二次 free 行。#60 批三：模板外置（hint_double_free）。
+  let one_liner = @util.render_template(
+    @assets.trap_messages.get("hint_double_free").unwrap().template,
+    [
+      ("freed_line", freed_line.to_string()),
+      ("code_line", trap_payload.code_line.to_string()),
+    ],
+  )
   let related = dedup_sorted([alloc_line, freed_line, trap_payload.code_line])
   Some({
     category: "DoubleFree",
@@ -399,7 +413,9 @@ fn analyze_double_free(
     related_lines: related,
     suggested_fix_kind: "SetNullAfterFree",
     suggested_fix_line: Some(freed_line),
-    suggested_fix_desc: Some("free 后执行 p = NULL"),
+    suggested_fix_desc: Some(
+      @assets.trap_messages.get("hint_fix_set_null").unwrap().template,
+    ),
   })
 }
 
@@ -417,7 +433,8 @@ fn analyze_div_zero(
     Some(s) => parse_int_opt(s)
     None => None
   }
-  let mut one_liner = "发生了除零错误。除数变成了 0，这在数学上没有定义。"
+  // #60 批三：模板外置（hint_div_base + zero_vars/dividend 段）
+  let mut one_liner = @assets.trap_messages.get("hint_div_base").unwrap().template
   let zero_vars : Array[String] = []
   for v in trap_payload.local_vars {
     if v.value == "0" && !is_likely_loop_var(v.name) {
@@ -426,14 +443,16 @@ fn analyze_div_zero(
   }
   if zero_vars.length() > 0 {
     one_liner = one_liner +
-      " 当前值为 0 的变量: " +
-      str_join(zero_vars, ", ") +
-      "。请检查这些变量是否在除法前被正确初始化或保护。"
+      @util.render_template(
+        @assets.trap_messages.get("hint_div_zero_vars").unwrap().template,
+        [("vars", str_join(zero_vars, ", "))],
+      )
   } else if dividend is Some(d) {
     one_liner = one_liner +
-      " 被除数是 " +
-      d.to_string() +
-      "，但除数变成了 0。请确认除法前检查了除数是否为零。"
+      @util.render_template(
+        @assets.trap_messages.get("hint_div_dividend").unwrap().template,
+        [("dividend", d.to_string())],
+      )
   }
   Some({
     category: "DivZero",
@@ -441,7 +460,9 @@ fn analyze_div_zero(
     related_lines: [trap_payload.code_line],
     suggested_fix_kind: "AvoidDivZero",
     suggested_fix_line: Some(trap_payload.code_line),
-    suggested_fix_desc: Some("除法前检查除数是否为 0"),
+    suggested_fix_desc: Some(
+      @assets.trap_messages.get("hint_fix_div_zero").unwrap().template,
+    ),
   })
 }
 
@@ -580,142 +601,110 @@ fn build_bounds_hint(
   loop_info : LoopInfo,
   hist_vals : Array[Int],
 ) -> (String, String, Int?, String?) {
+  // #60 批三段一b（2026-10-10）：五变体文案模板外置（hint_bounds_* +
+  // hint_fix_*）——带/无行号双形态各自成键，拼接逻辑留代码。
   let first_line = if loop_info.lines.length() > 0 {
     Some(loop_info.lines[0])
   } else {
     None
   }
+  fn tpl(key : String) -> String {
+    @assets.trap_messages.get(key).unwrap().template
+  }
+  fn rnd(key : String, params : Array[(String, String)]) -> String {
+    @util.render_template(tpl(key), params)
+  }
+  // 数组拼接（moon 无 spread 语法——显式复制）
+  fn with_pairs(
+    head : (String, String),
+    tail : Array[(String, String)],
+  ) -> Array[(String, String)] {
+    let out : Array[(String, String)] = [head]
+    for t in tail {
+      out.push(t)
+    }
+    out
+  }
   match category {
     OffByOne => {
       let last_ok = array_size - 1
+      let common : Array[(String, String)] = [
+        ("array", array_name),
+        ("size", array_size.to_string()),
+        ("last_ok", last_ok.to_string()),
+      ]
       let msg = match first_line {
         Some(l) =>
-          "数组越界是因为第 " +
-          l.to_string() +
-          " 行的循环条件使用了 '<='。数组 '" +
-          array_name +
-          "' 大小为 " +
-          array_size.to_string() +
-          "，最后一个有效索引是 " +
-          last_ok.to_string() +
-          "。建议将 '<=' 改为 '<'。"
-        None =>
-          "数组越界是因为循环条件使用了 '<='。数组 '" +
-          array_name +
-          "' 大小为 " +
-          array_size.to_string() +
-          "，最后一个有效索引是 " +
-          last_ok.to_string() +
-          "。建议将 '<=' 改为 '<'。"
+          rnd(
+            "hint_bounds_obe_line",
+            with_pairs(("line", l.to_string()), common),
+          )
+        None => rnd("hint_bounds_obe", common)
       }
-      (msg, "ChangeLeToLt", first_line, Some("将 <= 改为 <"))
+      (msg, "ChangeLeToLt", first_line, Some(tpl("hint_fix_change_le")))
     }
     WrongInit => {
       let start_val = if hist_vals.length() > 0 { hist_vals[0] } else { 0 }
+      let common : Array[(String, String)] = [
+        ("array", array_name),
+        ("index", accessed_index.to_string()),
+        ("var", var_name),
+        ("start_val", start_val.to_string()),
+      ]
       let msg = match first_line {
         Some(l) =>
-          "数组 '" +
-          array_name +
-          "' 访问了越界索引 " +
-          accessed_index.to_string() +
-          "。循环变量 '" +
-          var_name +
-          "' 从 " +
-          start_val.to_string() +
-          " 开始，导致最终访问到索引 " +
-          accessed_index.to_string() +
-          "。建议将第 " +
-          l.to_string() +
-          " 行的初始值改为 0。"
-        None =>
-          "数组 '" +
-          array_name +
-          "' 访问了越界索引 " +
-          accessed_index.to_string() +
-          "。循环变量 '" +
-          var_name +
-          "' 从 " +
-          start_val.to_string() +
-          " 开始，导致最终访问到索引 " +
-          accessed_index.to_string() +
-          "。建议将初始值改为 0。"
+          rnd(
+            "hint_bounds_wi_line",
+            with_pairs(("line", l.to_string()), common),
+          )
+        None => rnd("hint_bounds_wi", common)
       }
-      (
-        msg,
-        "FixLoopStart",
-        first_line,
-        Some(
-          "将 " +
-          var_name +
-          " 的初始值 " +
-          start_val.to_string() +
-          " 改为 0",
-        ),
-      )
+      let fix = rnd("hint_fix_wi", common)
+      (msg, "FixLoopStart", first_line, Some(fix))
     }
     WrongIncrement => {
       let step = match loop_info.increment {
         Some(s) => s
         None => 2
       }
+      let common : Array[(String, String)] = [
+        ("array", array_name),
+        ("index", accessed_index.to_string()),
+        ("var", var_name),
+        ("step", step.to_string()),
+      ]
       let msg = match first_line {
         Some(l) =>
-          "数组 '" +
-          array_name +
-          "' 访问了越界索引 " +
-          accessed_index.to_string() +
-          "。循环变量 '" +
-          var_name +
-          "' 的步长是 " +
-          step.to_string() +
-          "，导致跳过了边界检查。建议将第 " +
-          l.to_string() +
-          " 行的步长改为 1，或调整循环条件。"
-        None =>
-          "数组 '" +
-          array_name +
-          "' 访问了越界索引 " +
-          accessed_index.to_string() +
-          "。循环变量 '" +
-          var_name +
-          "' 的步长是 " +
-          step.to_string() +
-          "，导致跳过了边界检查。建议将步长改为 1，或调整循环条件。"
+          rnd(
+            "hint_bounds_winc_line",
+            with_pairs(("line", l.to_string()), common),
+          )
+        None => rnd("hint_bounds_winc", common)
       }
-      (
-        msg,
-        "FixLoopIncrement",
-        first_line,
-        Some("将步长 " + step.to_string() + " 改为 1"),
-      )
+      let fix = rnd("hint_fix_winc", [("step", step.to_string())])
+      (msg, "FixLoopIncrement", first_line, Some(fix))
     }
     UninitializedIndex => {
-      let msg = "索引变量 '" +
-        var_name +
-        "' 的值是 " +
-        accessed_index.to_string() +
-        "，但执行历史太短，可能是变量未初始化或从外部输入读取了非法值。建议在使用前初始化 '" +
-        var_name +
-        "'。"
-      (msg, "InitVariable", None, Some("初始化 '" + var_name + "'"))
+      let msg = rnd("hint_bounds_ui", [
+        ("var", var_name),
+        ("index", accessed_index.to_string()),
+      ])
+      let fix = rnd("hint_fix_ui", [("var", var_name)])
+      (msg, "InitVariable", None, Some(fix))
     }
     Generic => {
       let msg = if hist_vals.length() >= 2 {
-        "数组 '" +
-        array_name +
-        "' 访问了越界索引 " +
-        accessed_index.to_string() +
-        "。请检查 '" +
-        var_name +
-        "' 的最近变化：" +
-        format_history_vals(hist_vals) +
-        "。"
+        rnd("hint_bounds_gen_hist", [
+          ("array", array_name),
+          ("index", accessed_index.to_string()),
+          ("var", var_name),
+          ("hist", format_history_vals(hist_vals)),
+        ])
       } else {
-        "数组 '" +
-        array_name +
-        "' 访问了越界索引 " +
-        accessed_index.to_string() +
-        "。请检查循环边界或索引计算。"
+        rnd("hint_bounds_gen", [
+          ("array", array_name),
+          ("index", accessed_index.to_string()),
+        ])
       }
       (msg, "None", None, None)
     }

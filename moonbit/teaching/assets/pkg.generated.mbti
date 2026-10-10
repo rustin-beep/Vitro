@@ -1,0 +1,74 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/teaching/assets"
+
+// Values
+pub let builtin_notes : Map[String, BuiltinNote]
+
+pub let suggestion_map : Map[String, String]
+
+pub let suggestions : Array[AlgoSuggestion]
+
+pub let trap_messages : Map[String, TrapMessage]
+
+// Errors
+
+// Types and methods
+pub enum AlgoSuggestion {
+  BubbleSort(String)
+  SelectionSort(String)
+  InsertionSort(String)
+  QuickSort(String)
+  MergeSort(String)
+  BinarySearch(String)
+  HeapSort(String)
+  Bfs(String)
+  Dfs(String)
+  Dp(String)
+  ShellSort(String)
+  CountingSort(String)
+  LinkedListDelete(String)
+  BstInsert(String)
+  BstSearch(String)
+  BstDelete(String)
+  BstValidate(String)
+  StringReverse(String)
+  Gcd(String)
+  IsPrime(String)
+  Hanoi(String)
+  SeqList(String)
+  LinkedListAppend(String)
+  CircularQueue(String)
+  LinkedStack(String)
+  LinkedQueue(String)
+  LevelOrder(String)
+  HashTable(String)
+  Josephus(String)
+  CircularLinkedList(String)
+  StaticLinkedList(String)
+  StringMatchBf(String)
+  StringMatchKmp(String)
+  ThreadedBinaryTree(String)
+  HuffmanTree(String)
+  UnionFind(String)
+  AvlTree(String)
+  PrimMst(String)
+  KruskalMst(String)
+  Dijkstra(String)
+  Floyd(String)
+  TopologicalSort(String)
+  RadixSort(String)
+}
+
+pub struct BuiltinNote {
+  count_note : String
+  param_notes : Array[String]
+}
+
+pub struct TrapMessage {
+  template : String
+  placeholders : Array[String]
+}
+
+// Type aliases
+
+// Traits

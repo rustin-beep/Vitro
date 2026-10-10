@@ -14,6 +14,8 @@ pub fn le_u32_at(FixedArray[Byte], Int) -> UInt
 
 pub fn le_u64_at(FixedArray[Byte], Int) -> UInt64
 
+pub fn render_template(String, Array[(String, String)]) -> String
+
 pub fn str_cmp(String, String) -> Int
 
 pub fn utf8_bytes(String) -> Bytes

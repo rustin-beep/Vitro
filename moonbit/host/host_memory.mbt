@@ -117,13 +117,18 @@ fn hex_upper(v : UInt) -> String {
 pub fn heap_exhausted_note() -> String {
   let total_kb = @bytecode.MEM_SIZE.reinterpret_as_int() / 1024
   let quar_kb = @memory.DEFAULT_QUARANTINE_BUDGET / 1024
-  "[堆] 内存耗尽：malloc/calloc/realloc 返回 NULL（Vitro 堆上限 \{total_kb}KB，其中 \{quar_kb}KB 为隔离区预算）。常见原因是「只分配不释放」——请确认每条 malloc 路径都有对应的 free。\n"
+  // #60 批二：文案模板外置（键 note_heap_exhausted）
+  @util.render_template(
+    @assets.trap_messages.get("note_heap_exhausted").unwrap().template,
+    [("total_kb", total_kb.to_string()), ("quar_kb", quar_kb.to_string())],
+  )
 }
 
 ///|
 /// `malloc(0)` 的引擎附注（C 标准下实现定义，Vitro 取"返回 NULL + 提示"）。
 pub fn malloc_zero_note() -> String {
-  "[warning] malloc(0) 返回 NULL。在 C 标准中，malloc(0) 的行为是实现定义的，可能返回 NULL 也可能返回一个不可解引用的非空指针。"
+  // #60 批二：文案模板外置（键 note_malloc_zero，零参模板）
+  @assets.trap_messages.get("note_malloc_zero").unwrap().template
 }
 
 ///|
@@ -381,7 +386,15 @@ pub fn host_free(
 ///|
 /// Double-Free 教学文案（E3061，逐字照搬 Rust `host/memory.rs:67`）。
 pub fn double_free_message(info : @memory.FreedRegionInfo) -> String {
-  "[double-free] Double-Free (E3061)：你正在 free 一块已经在第 \{info.freed_line} 行被释放过的内存（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：同一块内存被释放了两次，这通常是因为 free(p) 后没有将 p 置为 NULL，或者两个指针指向同一块内存且都被释放了。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;。对 NULL 指针重复 free 是安全的。"
+  // #60 批二（2026-10-10）：文案模板外置 teaching/assets（键 E3061_double_free）
+  // ——渲染走 @util.render_template；缺键 unwrap panic（装配 bug，fail loud）。
+  @util.render_template(
+    @assets.trap_messages.get("E3061_double_free").unwrap().template,
+    [
+      ("freed_line", info.freed_line.to_string()),
+      ("alloc_line", info.alloc_line.to_string()),
+    ],
+  )
 }
 
 ///|
@@ -395,13 +408,30 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
     Some(block) => {
       let base = block.0
       let r = block.1
-      "[deny] 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 是第 \{r.alloc_line} 行 malloc 块（起始 0x\{hex_upper(base)}，\{r.size} 字节）的内部地址，不是起始地址。\n\n[cause] 原因：free 只能释放 malloc/calloc/realloc 返回的原始指针。\n[fix] 解决方法：保存分配返回的原始指针用于 free；需要偏移访问时使用单独的指针变量，不要 free 偏移后的指针。"
+      // #60 批二：文案模板外置（键 E3027_free_interior）
+      @util.render_template(
+        @assets.trap_messages.get("E3027_free_interior").unwrap().template,
+        [
+          ("addr", hex_upper(addr)),
+          ("alloc_line", r.alloc_line.to_string()),
+          ("base", hex_upper(base)),
+          ("size", r.size.to_string()),
+        ],
+      )
     }
     None =>
       match map.freed_logs_find_overlapping(addr, 1U) {
         Some(log) =>
           if log.addr != addr {
-            "[double-free] 无效 free (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。free 只能释放 malloc 返回的原始指针。"
+            // #60 批二：文案模板外置（键 E3061_free_freed_interior）
+            @util.render_template(
+              @assets.trap_messages.get("E3061_free_freed_interior").unwrap().template,
+              [
+                ("addr", hex_upper(addr)),
+                ("freed_line", log.freed_line.to_string()),
+                ("log_base", hex_upper(log.addr)),
+              ],
+            )
           } else {
             // 已释放块的**精确起点**：host_free 走不进这里（Double-Free 前置
             // 拦下）；但 `realloc(p, 0)` 走 release 单出口（无前置），oracle 的
@@ -422,18 +452,46 @@ pub fn realloc_invalid_message(map : @memory.MemoryMap, addr : UInt) -> String {
     Some(block) => {
       let base = block.0
       let r = block.1
-      "[deny] 无效 realloc (E3027)：realloc 的地址 0x\{hex_upper(addr)} 是第 \{r.alloc_line} 行 malloc 块（起始 0x\{hex_upper(base)}，\{r.size} 字节）的内部地址，不是起始地址。\n\n[cause] 原因：realloc 只接受 malloc/calloc/realloc 返回的原始指针，或 NULL（等价 malloc）。\n[fix] 解决方法：保存分配返回的原始指针用于 realloc；需要偏移访问时使用单独的指针变量，不要 realloc 偏移后的指针。"
+      // #60 批二：文案模板外置（键 E3027_realloc_interior）
+      @util.render_template(
+        @assets.trap_messages.get("E3027_realloc_interior").unwrap().template,
+        [
+          ("addr", hex_upper(addr)),
+          ("alloc_line", r.alloc_line.to_string()),
+          ("base", hex_upper(base)),
+          ("size", r.size.to_string()),
+        ],
+      )
     }
     None =>
       match map.freed_logs_find_overlapping(addr, 1U) {
         Some(log) =>
           if log.addr != addr {
-            "[double-free] 无效 realloc (E3061)：地址 0x\{hex_upper(addr)} 位于第 \{log.freed_line} 行已释放块（起始 0x\{hex_upper(log.addr)}）的内部。realloc 只接受 malloc/calloc/realloc 返回的原始指针。"
+            // #60 批二：文案模板外置（键 E3061_realloc_freed_interior）
+            @util.render_template(
+              @assets.trap_messages.get("E3061_realloc_freed_interior").unwrap().template,
+              [
+                ("addr", hex_upper(addr)),
+                ("freed_line", log.freed_line.to_string()),
+                ("log_base", hex_upper(log.addr)),
+              ],
+            )
           } else {
-            "[double-free] 无效 realloc (E3061)：你正在 realloc 一块已经在第 \{log.freed_line} 行被释放过的内存（由第 \{log.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：realloc 已释放的指针与 double-free 同族。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;，对 NULL 做 realloc 等价 malloc 是安全的。"
+            // #60 批二：文案模板外置（键 E3061_realloc_freed_exact）
+            @util.render_template(
+              @assets.trap_messages.get("E3061_realloc_freed_exact").unwrap().template,
+              [
+                ("freed_line", log.freed_line.to_string()),
+                ("alloc_line", log.alloc_line.to_string()),
+              ],
+            )
           }
         _ =>
-          "[deny] 无效 realloc (E3027)：realloc 的地址 0x\{hex_upper(addr)} 不指向任何已分配块的起始位置。\n\n[cause] 原因：可能是栈地址、全局变量地址或未初始化的垃圾值。\n[fix] 解决方法：只对 malloc/calloc/realloc 的返回值调用 realloc。"
+          // #60 批二：文案模板外置（键 E3027_realloc_unknown）
+          @util.render_template(
+            @assets.trap_messages.get("E3027_realloc_unknown").unwrap().template,
+            [("addr", hex_upper(addr))],
+          )
       }
   }
 }
@@ -441,7 +499,11 @@ pub fn realloc_invalid_message(map : @memory.MemoryMap, addr : UInt) -> String {
 ///|
 /// E3027 兜底文案（不指向任何分配块起始地址）。
 fn unknown_free_message(addr : UInt) -> String {
-  "[deny] 无效 free (E3027)：free 的地址 0x\{hex_upper(addr)} 不指向任何 malloc/calloc/realloc 分配的内存块起始地址（可能是栈地址、全局变量地址或未初始化指针的垃圾值）。\n\n[cause] 原因：只有 malloc 系列函数返回的指针才能被 free。\n[fix] 解决方法：检查该指针是否来自 malloc 分配，且未经过指针算术运算。"
+  // #60 批二：文案模板外置（键 E3027_free_unknown）
+  @util.render_template(
+    @assets.trap_messages.get("E3027_free_unknown").unwrap().template,
+    [("addr", hex_upper(addr))],
+  )
 }
 
 ///|
@@ -465,15 +527,32 @@ fn unknown_free_message(addr : UInt) -> String {
 fn access_fault_text(fault : @memory.MemFault) -> String {
   match fault {
     @memory.MemFault::NullDeref(addr, _) =>
-      "访问了 NULL 指针区域（地址 0x\{hex_upper(addr)}）。NULL 指针不能解引用。请确认指针已被正确初始化。"
+      // #60 批二：文案模板外置（键 E3060_null_deref）
+      @util.render_template(
+        @assets.trap_messages.get("E3060_null_deref").unwrap().template,
+        [("addr", hex_upper(addr))],
+      )
     @memory.MemFault::OutOfBounds(addr, _) =>
-      "内存访问越界（地址 0x\{hex_upper(addr)}）。请检查数组下标或指针运算是否超出分配范围。"
+      // #60 批二：文案模板外置（键 E3060_oob_host）
+      @util.render_template(
+        @assets.trap_messages.get("E3060_oob_host").unwrap().template,
+        [("addr", hex_upper(addr))],
+      )
     @memory.MemFault::UseAfterFree(info, kind) => {
       let action = match kind {
         @memory.AccessKind::Read => "读取"
         @memory.AccessKind::Write => "写入"
       }
-      "[uaf] Use-After-Free (E3060)：你正在向一块已经在第 \{info.freed_line} 行（第 \{info.freed_step} 步）被 free 的内存\{action}（由第 \{info.alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。"
+      // #60 批二：文案模板外置（键 E3060_uaf——action 动作词参数）
+      @util.render_template(
+        @assets.trap_messages.get("E3060_uaf").unwrap().template,
+        [
+          ("freed_line", info.freed_line.to_string()),
+          ("freed_step", info.freed_step.to_string()),
+          ("action", action),
+          ("alloc_line", info.alloc_line.to_string()),
+        ],
+      )
     }
   }
 }

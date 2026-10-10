@@ -169,6 +169,22 @@ jobs:
             "$JSONMBT_EXE" build --pretty "$m"
           done
 
+      - name: Teaching assets JSON sync gate (issue #60 双出口)
+        # 教师面 JSON（moonbit/teaching/assets/suggestions.json）入仓——与真源
+        # .json.mbt 的同步用「build 后 git diff --quiet」锁（教师改 JSON 后须
+        # jsonmbt import --fill 回真源再提交，否则本步红）。引擎消费不走此
+        # JSON（steps 包直接 import @assets——moon check 即写作闸 + 43 臂
+        # 穷尽 match 即名单闸）。
+        shell: bash
+        run: |
+          set -e
+          "$JSONMBT_EXE" build moonbit/teaching/assets/suggestions.json.mbt
+          if ! git diff --quiet -- moonbit/teaching/assets/suggestions.json; then
+            echo "FATAL: suggestions.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
+            git diff -- moonbit/teaching/assets/suggestions.json | head -20
+            exit 2
+          fi
+
       - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
         shell: bash
         run: |

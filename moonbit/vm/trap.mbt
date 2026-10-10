@@ -131,31 +131,29 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt) -> String {
     Some((sym, base)) => {
       let elem_size = elem_size_of(sym.ty)
       let index = ((addr.to_int64() - base.to_int64()) / elem_size.to_int64()).to_int()
-      "[deny] 数组越界：你访问了 " +
-      sym.name +
-      "[" +
-      index.to_string() +
-      "]，但数组 '" +
-      sym.name +
-      "' 只有 " +
-      sym.ty.array_size().to_string() +
-      " 个元素，有效索引是 0~" +
-      (sym.ty.array_size() - 1).to_string() +
-      // 病 10 修复（#47，2026-10-09）：删内嵌 [location] 段——location 统一
-      // 由 trap() 追加（带列）；内嵌段（无列）曾与 trap() 追加段并存出
-      // 双 [location]，违反「渲染单点纪律」，现与 exec_debug TrapBounds 臂同形。
-      "。\n\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 " +
-      (sym.ty.array_size() - 1).to_string() +
-      " 之间。"
+      // 病 10 修复（#47，2026-10-09）：location 统一由 trap() 追加（带列），
+      // 与 exec_debug TrapBounds 臂同形。#60 批二：文案模板外置（键
+      // bounds_array——{name} 双占位符同值渲染）。
+      @util.render_template(
+        @assets.trap_messages.get("bounds_array").unwrap().template,
+        [
+          ("name", sym.name),
+          ("index", index.to_string()),
+          ("count", sym.ty.array_size().to_string()),
+          ("max_index", (sym.ty.array_size() - 1).to_string()),
+        ],
+      )
     }
     None =>
-      "[deny] 内存访问越界：你访问了地址 0x" +
-      addr.reinterpret_as_int().to_string() +
-      "，但合法内存范围是 0x" +
-      @bytecode.NULL_TRAP_SIZE.reinterpret_as_int().to_string() +
-      " ~ 0x" +
-      @bytecode.MEM_SIZE.reinterpret_as_int().to_string() +
-      "。\n\n[fix] 检查方法：\n  • 确认数组索引小于数组大小\n  • 确认指针已经指向有效的内存地址\n  • 确认没有使用已经 free 的指针"
+      // #60 批二：文案模板外置（键 bounds_generic）
+      @util.render_template(
+        @assets.trap_messages.get("bounds_generic").unwrap().template,
+        [
+          ("addr", addr.reinterpret_as_int().to_string()),
+          ("min", @bytecode.NULL_TRAP_SIZE.reinterpret_as_int().to_string()),
+          ("max", @bytecode.MEM_SIZE.reinterpret_as_int().to_string()),
+        ],
+      )
   }
 }
 
@@ -175,9 +173,8 @@ fn elem_size_of(ty : @ast.Type) -> Int {
 /// 除零教学文案（照搬 Rust `format_div_zero_error`，`trap.rs:63-102`）：
 /// 扫当前作用域值为 0 的变量附进诊断。
 fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
-  let mut diag = "[divide-zero] 除零错误：你试图用 " +
-    a.to_string() +
-    " 除以 0。\n\n"
+  // #60 批二（2026-10-10）：文案骨架/段落外置资产（E_div_zero 主骨架 +
+  // E_div_zero_inspect 变量段——zero_section 占位），扫描/、连接逻辑留代码。
   let zero_vars : Array[String] = []
   for sym in self.symbols {
     guard !sym.ty.is_array() else { continue }
@@ -194,20 +191,26 @@ fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
       }
     }
   }
-  if !zero_vars.is_empty() {
-    diag = diag + "[inspect] 当前作用域内值为 0 的变量："
-    // 连接符照搬 Rust `join("、")`
+  let zero_section = if !zero_vars.is_empty() {
+    // 连接符「、」照搬 Rust join
+    let names = StringBuilder()
     for i, name in zero_vars {
       if i > 0 {
-        diag = diag + "、"
+        names.write_string("、")
       }
-      diag = diag + name
+      names.write_string(name)
     }
-    diag = diag +
-      "。请检查除法表达式中是否使用了这些变量。\n\n"
+    @util.render_template(
+      @assets.trap_messages.get("E_div_zero_inspect").unwrap().template,
+      [("vars", names.to_string())],
+    )
+  } else {
+    ""
   }
-  diag +
-  "[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }"
+  @util.render_template(
+    @assets.trap_messages.get("E_div_zero").unwrap().template,
+    [("a", a.to_string()), ("zero_section", zero_section)],
+  )
 }
 
 ///|
@@ -215,9 +218,9 @@ fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
 /// 对比 `snapshot_vars`（每 10 万步刷新）分「没变化 / 发生变化」两组变量，
 /// 各取前 6 / 前 4。
 fn VitroVM::format_infinite_loop_error(self : VitroVM) -> String {
-  let mut diag = "[step-limit] 程序执行步数超过限制（" +
-    self.max_steps.to_string() +
-    " 步），可能包含无限循环。\n\n"
+  // #60 批二（2026-10-10）：文案骨架/段落外置资产（E_inf_loop 主骨架 +
+  // E_inf_loop_stale/changed 变量段——section 占位），分组/截断（前 6/前 4
+  // +「等」尾巴）逻辑留代码。
   let stale_vars : Array[String] = []
   let changed_vars : Array[String] = []
   for sym in self.symbols {
@@ -233,39 +236,52 @@ fn VitroVM::format_infinite_loop_error(self : VitroVM) -> String {
       None => ()
     }
   }
-  if !stale_vars.is_empty() {
-    diag = diag +
-      "[inspect] 在最近 " +
-      SNAPSHOT_INTERVAL.to_string() +
-      " 步内没有变化的变量："
-    let shown = take_first(stale_vars, 6)
+  fn render_var_section(
+    tpl_key : String,
+    vars : Array[String],
+    cap : Int,
+    extra : Array[(String, String)],
+  ) -> String {
+    if vars.is_empty() {
+      return ""
+    }
+    let names = StringBuilder()
+    let shown = take_first(vars, cap)
     for i, name in shown {
       if i > 0 {
-        diag = diag + "，"
+        names.write_string("，")
       }
-      diag = diag + name
+      names.write_string(name)
     }
-    if stale_vars.length() > 6 {
-      diag = diag + " 等"
+    if vars.length() > cap {
+      names.write_string(" 等")
     }
-    diag = diag + "。\n\n"
+    let ps : Array[(String, String)] = [("vars", names.to_string())]
+    for e in extra {
+      ps.push(e)
+    }
+    @util.render_template(
+      @assets.trap_messages.get(tpl_key).unwrap().template,
+      ps,
+    )
   }
-  if !changed_vars.is_empty() {
-    diag = diag + "[inspect] 发生变化的变量："
-    let shown = take_first(changed_vars, 4)
-    for i, name in shown {
-      if i > 0 {
-        diag = diag + "，"
-      }
-      diag = diag + name
-    }
-    if changed_vars.length() > 4 {
-      diag = diag + " 等"
-    }
-    diag = diag + "。\n\n"
-  }
-  diag +
-  "[cause] 原因：程序执行了太多步数但没有结束。常见原因：\n  • 循环条件永远为真（如 while(1)）\n  • 循环变量没有更新（如忘了写 i++）\n  • 递归函数没有正确的终止条件\n[fix] 检查方法：确认循环体中有改变循环条件的语句。"
+  let stale_section = render_var_section("E_inf_loop_stale", stale_vars, 6, [
+    ("interval", SNAPSHOT_INTERVAL.to_string()),
+  ])
+  let changed_section = render_var_section(
+    "E_inf_loop_changed",
+    changed_vars,
+    4,
+    [],
+  )
+  @util.render_template(
+    @assets.trap_messages.get("E_inf_loop").unwrap().template,
+    [
+      ("max_steps", self.max_steps.to_string()),
+      ("stale_section", stale_section),
+      ("changed_section", changed_section),
+    ],
+  )
 }
 
 ///|

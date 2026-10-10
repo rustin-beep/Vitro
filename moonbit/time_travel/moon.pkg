@@ -23,6 +23,8 @@
 // 反转——成环硬约束）。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L9，总计划 §4）。
 import {
+  "vitro/engine/teaching/assets",
+  "vitro/engine/util",
   "moonbitlang/core/abort",
   "moonbitlang/core/string",
   "moonbitlang/core/deque",

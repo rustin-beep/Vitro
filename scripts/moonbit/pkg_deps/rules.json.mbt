@@ -47,6 +47,7 @@ pub let rules : Rules = Rules::{
     "time_travel": 8,
     "gateway/wasm": 8,
     "teaching/steps": 8,
+    "teaching/assets": 5,
     "diagnostics": 8,
     "icons": 0,
   },

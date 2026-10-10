@@ -48,3 +48,5 @@ vitro/engine/teaching/steps detect_search
 vitro/engine/teaching/steps detect_structures
 vitro/engine/teaching/steps detect_string
 vitro/engine/teaching/steps detect_tree
+vitro/engine/host realloc_invalid_message
+vitro/engine/teaching/assets suggestions

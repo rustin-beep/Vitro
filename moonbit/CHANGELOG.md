@@ -14,6 +14,8 @@
 
 ### Added
 
+- **教学资产数据外置批一（2026-10-10，refs #60）**——43 算法文案**双出口架构**落地：`teaching/assets` 独立包，真源 `suggestions.json.mbt`（jsonmbt：43 带参枚举变体拼错写时红 + `#|` 多行）+ `suggestion_map` derive（**43 臂穷尽 match = 编译期名单闸**，J9 删臂证红）；**引擎消费 = steps 直接 import 查表（零生成器/零 JSON 中转——探针实证 pub let 跨包直取已类型化值）**；教师面 = build 出同目录 `suggestions.json` 入仓（改后 `import --fill` 回真源——类型头/注释保留 + round-trip 值闭环实测；CI git diff 同步闸）。中间形态（Go 生成器管线）当日撤除，三轮决策链路归档 #60 评论 6085532499。登记连坐：pkg_deps levels（rules.json.mbt 真源 + 再生）/surface 边表 + 白名单/AGENTS 包清单/脚本册。验收：行为零漂移（moon test 705/705、族级对拍逐条一致、vm_diff/typeck_diff/demo smoke 全绿）。
+
 - **CLI 出口总账三批（2026-10-04，refs #37）**——`cmd/lib/cli`（逻辑单包，
   函数名=命令名）+ `cmd/vitro` 总入口 + `cmd/compile`/`cmd/step` 新薄壳：
   - `vitro run <f> [-i in] [--dump-memory out] [-- argv...] [--json]`：

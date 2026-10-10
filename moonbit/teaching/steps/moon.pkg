@@ -18,6 +18,7 @@
 // AlgorithmMatch.vis_events 的 compare_lines 投影本批照搬（protocol.
 // VisEvent 消费）。
 import {
+  "vitro/engine/teaching/assets",
   "vitro/engine/ast",
   "vitro/engine/protocol",
   // source 仅 wbtest 消费（features_wbtest @source.SourceLoc）——moonc

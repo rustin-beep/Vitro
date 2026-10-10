@@ -371,3 +371,30 @@ test "assign_null_pointer_constant_no_w3054" {
     msg="无表达式句柄时保守维持 W3054",
   )
 }
+
+///|
+/// builtin 释义文案外置等价锚（#60 批三段二，2026-10-10）：A/B 类臂
+/// count 释义句与参数位句——改造前逐字节基线（错误串取 tc.errors[0]）。
+test "builtin_notes_migration_snapshot_before" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // fread：count 释义（0 参触发）
+  let tc = TypeChecker::new()
+  ignore(tc.check_builtin_fread([], loc))
+  assert_true(tc.errors.length() > 0, msg="fread 0 参须报错")
+  assert_eq(
+    tc.errors[0].message,
+    "fread 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
+  )
+  // fseek：第一个参数 int（非 FILE*）触发参数位句
+  let tc2 = TypeChecker::new()
+  let dlit = @ast.Expr::FloatLiteral(2.0, loc, @ast.Type::double())
+  let ilot = @ast.Expr::Literal(1, loc, @ast.Type::int())
+  ignore(tc2.check_builtin_fseek([dlit, ilot, ilot], loc))
+  assert_true(tc2.errors.length() > 0, msg="fseek int 实参须报错")
+  assert_eq(tc2.errors[0].message, "fseek 第一个参数必须是文件指针")
+  // rewind：单参特判句
+  let tc3 = TypeChecker::new()
+  ignore(tc3.check_builtin_rewind([dlit], loc))
+  assert_true(tc3.errors.length() > 0, msg="rewind int 实参须报错")
+  assert_eq(tc3.errors[0].message, "rewind 参数必须是文件指针")
+}

@@ -474,3 +474,105 @@ test "realloc_invalid_ptr_reports_not_silent" {
   }
   assert_true(t2.contains("realloc"), msg="诊断须 realloc 语境")
 }
+
+///|
+/// trap 文案外置等价锚（#60 批二，2026-10-10）：改造前先立逐字节快照
+/// 基线（地址运行期不定 → 归一化 0xX 后比对）；改造（插值硬编码 →
+/// render_template 查 teaching/assets）后须仍绿——文案零漂移的证明。
+test "trap_messages_migration_snapshot_before" {
+  let (map, mem) = fresh()
+  // E3061_double_free：纯行号，整串
+  let df = double_free_message(@memory.FreedRegionInfo::{
+    addr: 0U,
+    size: 0,
+    alloc_line: 1,
+    freed_line: 2,
+    alloc_step: 0,
+    freed_step: 3,
+  })
+  assert_eq(
+    df, "[double-free] Double-Free (E3061)：你正在 free 一块已经在第 2 行被释放过的内存（由第 1 行的 malloc/realloc 分配）。\n\n[cause] 原因：同一块内存被释放了两次，这通常是因为 free(p) 后没有将 p 置为 NULL，或者两个指针指向同一块内存且都被释放了。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;。对 NULL 指针重复 free 是安全的。",
+  )
+  // 地址归一化 helper：0x[0-9A-F]+ → 0xX
+  fn norm(s : String) -> String {
+    let buf = StringBuilder()
+    let n = s.length()
+    let mut i = 0
+    while i < n {
+      if i + 1 < n && s[i] == 48 && s[i + 1] == 120 {
+        // "0x"：吞后续十六进制字符
+        buf.write_string("0xX")
+        i = i + 2
+        while i < n {
+          let c = s[i]
+          let hex = (c >= 48 && c <= 57) || (c >= 65 && c <= 70)
+          if hex {
+            i = i + 1
+          } else {
+            break
+          }
+        }
+      } else {
+        buf.write_char(s[i].to_char().unwrap())
+        i = i + 1
+      }
+    }
+    buf.to_string()
+  }
+  // E3027_free_interior：malloc(16,1) 的 p+8（块内部）
+  let p = host_malloc(map, 16, 1).value.unwrap().to_uint()
+  let fi = invalid_free_message(map, p + 8U)
+  assert_eq(
+    norm(fi),
+    "[deny] 无效 free (E3027)：free 的地址 0xX 是第 1 行 malloc 块（起始 0xX，16 字节）的内部地址，不是起始地址。\n\n[cause] 原因：free 只能释放 malloc/calloc/realloc 返回的原始指针。\n[fix] 解决方法：保存分配返回的原始指针用于 free；需要偏移访问时使用单独的指针变量，不要 free 偏移后的指针。",
+  )
+  // E3027_free_unknown：栈垃圾地址（不在任何块）
+  let fu = invalid_free_message(map, 0x90000U)
+  assert_eq(
+    norm(fu),
+    "[deny] 无效 free (E3027)：free 的地址 0xX 不指向任何 malloc/calloc/realloc 分配的内存块起始地址（可能是栈地址、全局变量地址或未初始化指针的垃圾值）。\n\n[cause] 原因：只有 malloc 系列函数返回的指针才能被 free。\n[fix] 解决方法：检查该指针是否来自 malloc 分配，且未经过指针算术运算。",
+  )
+  // E3027_realloc_unknown
+  let ru = realloc_invalid_message(map, 0x90000U)
+  assert_eq(
+    norm(ru),
+    "[deny] 无效 realloc (E3027)：realloc 的地址 0xX 不指向任何已分配块的起始位置。\n\n[cause] 原因：可能是栈地址、全局变量地址或未初始化的垃圾值。\n[fix] 解决方法：只对 malloc/calloc/realloc 的返回值调用 realloc。",
+  )
+  ignore(mem)
+}
+
+///|
+/// host note/access 族外置等价锚（#60 批二余面，2026-10-10）：改造前
+/// 逐字节基线（note 两函数纯值；access_fault_text 三态——MemFault 直接
+/// 构造，地址归一化）。
+test "host_note_access_snapshot_before" {
+  assert_eq(
+    heap_exhausted_note(),
+    "[堆] 内存耗尽：malloc/calloc/realloc 返回 NULL（Vitro 堆上限 1024KB，其中 256KB 为隔离区预算）。常见原因是「只分配不释放」——请确认每条 malloc 路径都有对应的 free。\n",
+  )
+  assert_eq(
+    malloc_zero_note(),
+    "[warning] malloc(0) 返回 NULL。在 C 标准中，malloc(0) 的行为是实现定义的，可能返回 NULL 也可能返回一个不可解引用的非空指针。",
+  )
+  ignore(
+    access_fault_text(
+      @memory.MemFault::NullDeref(0x10U, @memory.AccessKind::Read),
+    ),
+  )
+  ignore(access_fault_text(@memory.MemFault::OutOfBounds(0x10U, 0)))
+  ignore(
+    access_fault_text(
+      @memory.MemFault::UseAfterFree(
+        @memory.FreedRegionInfo::{
+          addr: 0U,
+          size: 0,
+          alloc_line: 1,
+          freed_line: 2,
+          alloc_step: 0,
+          freed_step: 3,
+        },
+        @memory.AccessKind::Read,
+      ),
+    ),
+  )
+}

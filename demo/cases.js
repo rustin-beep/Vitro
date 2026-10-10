@@ -146,7 +146,7 @@ int main() {
   {
     id: "e3061",
     label: "NULL 解引用（E3061）",
-    blurb: "编译期 W3054 警告 + 运行期受检 trap",
+    blurb: "运行期受检 trap（NULL 解引用；#56 后 NULL 初始化零编译期警告）",
     source: `#include <stdlib.h>
 
 int main() {

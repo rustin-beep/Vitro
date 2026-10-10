@@ -78,6 +78,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/c11_generic.c": Standard(Std::{ src_sha: "c22101e8", exit_code: 0, stdout_sha: "6c74e7fdbe8e3ba0", memory_sha: "1a3baeb726e4a334" }),
     "baseline/calloc_basic.c": Standard(Std::{ src_sha: "efd7ccc6", exit_code: 0, stdout_sha: "4a31f3538925bbcb", memory_sha: "aa39ab8c9f8da17e" }),
     "baseline/calloc_reuse_after_eviction.c": Standard(Std::{ src_sha: "773d72db", exit_code: 0, stdout_sha: "69c948ea032dbbb3", memory_sha: "82592c32a63b63d3" }),
+    "baseline/case_const_expr.c": Standard(Std::{ src_sha: "7c7c0820", exit_code: 0, stdout_sha: "e3b0c44298fc1c14", memory_sha: "b259554d84c82744" }),
     "baseline/case_not_constant.c": FailKnown(FailKnown::{ src_sha: "eb2f33b2", exit_code: 0, stdout_sha: "e3b0c44298fc1c14", memory_sha: "e3b0c44298fc1c14", compile_fail: true }),
     "baseline/cast_char_pointer.c": Standard(Std::{ src_sha: "ed433b8a", exit_code: 0, stdout_sha: "f5ca38f748a1d6ea", memory_sha: "fcb09f25424a5c3a" }),
     "baseline/cast_float_to_int.c": Standard(Std::{ src_sha: "fe7ab770", exit_code: 0, stdout_sha: "4e07408562bedb8b", memory_sha: "fe67b93df960f338" }),

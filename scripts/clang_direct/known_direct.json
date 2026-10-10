@@ -38,5 +38,15 @@
     "case": "printf_scanf_type_mismatch.c",
     "digest": "d70d6dd0",
     "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
+  },
+  {
+    "case": "static_forward_func.c",
+    "digest": "96ef11dc",
+    "reason": "闸标定面形态差（#50 审阅 P1-2 登记，非引擎错）：clang_direct 历史标定参数 -Wno-implicit-function-declaration 关闭了 C99+ 默认 error 的隐式声明检查；裸默认口径 Clang 同位亦 error（实测 error: call to undeclared function）——E3058 与 Clang 默认对齐成立，属参数口径差。E3059 对照面（undeclared identifier 不受该 flag 影响）双侧等价不登记"
+  },
+  {
+    "case": "array_bound_const_index.c",
+    "digest": "d07256b0",
+    "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
   }
 ]

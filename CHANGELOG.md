@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **处方**：芯点改由伪元素画（`.crs-ring::after` + `inset: 2.5px` + `opacity` 过渡），中缝**直接透出父级背景** ⇒ 实现与底色解耦、五主题形态一致；同批删除被 inset 阴影完全覆盖的死声明 `background: var(--ok-tint)`。
 - **验证**：Edge headless + CDP 逐主题（ice/rose/paper/glass/soft）截课程树同一区段对拍（修前仅 glass 实心，修后五主题一致）；`demo_ui_lint`（class=11 / id=160 / var=508 三路对账）、`demo_assemble_check`（16 项）、`tsc -p demo/tsconfig.json --noEmit` 全绿。探针留痕 `tmp/iconshot/`。
 
+### Fixed（#50 审阅处置批：P1×2 + P2×1 + P3×1——判据绑 AST 节点形态根因修复 + known 登记，2026-10-10）
+
+- **P1-1 E3047 常量性判据重写（根因=判据绑节点形态）**：`case -1:`/`case 1+2:` 是 Unary/Binary 包 Literal，原 `l is Literal` 单形态判据假阳性拒合法 C（Clang 零诊断）——avlTree 模板 6 处 `case -1:` 连坐三闸红（teaching_annotation_diff/demo_smoke/clang_direct）。修复 = `is_int_constant_expr` 结构递归判定（Literal / 一元 Neg·Not·BitNot / 二元算术·位·移位）；反向突变实证（分支禁用→三闸绿、还原→复红）。语料补 `case_const_expr.c`（负/算术/取反全族，双侧绿）；wbtest 判据直测锚。
+- **P1-2 clang_direct DIFF=3 处置（两例登记 known_direct）**：① `static_forward_func.c`——实锤**裸默认口径 Clang 同位亦 error**（C99+ 隐式声明默认 error 化，`-Wno-implicit-function-declaration` 标定参数将其关闭）⇒ **E3058 与 Clang 默认的对齐成立**，属闸标定面形态差，登记 known（不动历史标定参数——会翻旧语料大片）；E3059 对照面不受 flag 影响双侧等价。② `array_bound_const_index.c`——Vitro 运行期受检 trap vs Clang 无 sanitizer 静默，教学白箱族既有同类，登记。**口径更正：批① 提交信息「五例 SAME（双侧编译失败等等价）」不实——实测 2/5 为 DIFF（当时直拍桶判定行误读），以本条为准。**
+- **P2-3 W3051 负值臂死代码激活**：`a[-1]` 的 -1 是 Unary(Neg, Literal)，原 Literal 匹配使负值臂不可达（静态零警告 vs Clang -Warray-bounds 报）——`const_int_value` 求值（Literal/Neg/Not；Binary 结构放行不求值——除零面留白）。
+- **P3-4 文本面三处**：demo/cases.js e3061 blurb（「编译期 W3054 警告」双重过时——已升 E3054 且 #56 后 NULL 初始化零警告）、catalog.ts「77 卡」→102、init_wbtest 注释 E3005/E3008→W 级。
+- **新发现入 #50 尾账**：Clang 检查 **duplicate case 值重复**（case ~0 与 case -1 折叠同值即报）——Vitro 无此检查，对齐表探针盲区新形态。
+- 复验：moon test 722/722 · clang_direct baseline 392 零 DIFF（KNOWN=3）/ template_generated 82 零 DIFF · teaching_annotation_diff 双向一致 · demo smoke 全过 · 四语料 digest PASS · facts strict 漂移 0。
+
 ### Fixed（issue #50 批③：24 新图标接线 + catalog 扩容 77→102，2026-10-10，分支 issue50-alignment）
 
 - **口径**（owner 定）：语义族 ↔ svg **双射**——一个语义一张图、同族多码共享合法（static-linkage 挂 E3058+E3059、const-qual 挂 E3065+E3049、preproc-cond 挂 E1011/E1013/E1014）；反向「一码多图」禁止。

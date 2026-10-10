@@ -406,3 +406,56 @@ test "builtin_notes_migration_snapshot_before" {
   assert_true(tc3.errors.length() > 0, msg="rewind int 实参须报错")
   assert_eq(tc3.errors[0].message, "rewind 参数必须是文件指针")
 }
+
+///|
+/// #50 审阅 P1-1 锚：case 常量性判据按语义不绑节点形态——`case -1:`/
+/// `case 1+2:` 是 Unary/Binary 包 Literal（原 Literal 单形态判据假阳性拒
+/// 合法 C，avlTree 模板 6 处 case -1: 三闸连坐红）；变量 case 仍拒。
+test "case_const_expr_forms_pass" {
+  // 结构判据直测：负/取反/二元算术全放行
+  let loc = @source.SourceLoc::new(1, 1)
+  assert_true(
+    is_int_constant_expr(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+    msg="字面量",
+  )
+  assert_true(
+    is_int_constant_expr(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Neg,
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    msg="一元负（case -1: 形态）",
+  )
+  assert_true(
+    is_int_constant_expr(
+      @ast.Expr::Binary(
+        @ast.BinaryOp::Add,
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        @ast.Expr::Literal(2, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    msg="二元算术（case 1+2: 形态）",
+  )
+  assert_false(
+    is_int_constant_expr(@ast.Expr::Identifier("n", loc, @ast.Type::int())),
+    msg="变量 case 须拒",
+  )
+  // 求值域：Neg 折叠（P2-3 死臂激活）
+  assert_eq(
+    const_int_value(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Neg,
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    Some(-1),
+    msg="a[-1] 的 -1 须可求值（W3051 负值臂）",
+  )
+}

@@ -1,11 +1,11 @@
 ///|
 /// T5-d init 面白盒锚：数组尺寸推断（一维/字符串字面量两轨）/ 超量
-/// E3005 / E3008 / struct 初始化（位置 + designated + 嵌套）/ 多维
+/// W3005 / W3008（#50 批②降级，原 E3005/E3008）/ struct 初始化（位置 + designated + 嵌套）/ 多维
 /// 扁平标量填充。
 
 ///|
 /// 全局数组 `int a[] = {1,2,3}`：dims[0] 与 array_size 推断为 3；超量
-/// 元素报 E3005（推断后按 3 判）。
+/// 元素报 W3005（推断后按 3 判；#50 批②降级）。
 test "init_array_size_inference" {
   let loc = @source.SourceLoc::new(1, 1)
   fn elem(v : Int, loc : @source.SourceLoc) -> @ast.InitElement {
@@ -44,7 +44,7 @@ test "init_array_size_inference" {
     }
     _ => fail("应推断为数组")
   }
-  // 超量：int b[2] = {1,2,3} → E3005
+  // 超量：int b[2] = {1,2,3} → W3005（#50 批②降级）
   let g2 : @ast.GlobalDecl = {
     ..Default::default(),
     loc,

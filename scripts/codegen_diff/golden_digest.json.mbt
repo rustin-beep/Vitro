@@ -68,6 +68,7 @@ pub let golden_digest : Digest = Digest::{
         "c11_generic.c": "c22101e8",
         "calloc_basic.c": "efd7ccc6",
         "calloc_reuse_after_eviction.c": "773d72db",
+        "case_const_expr.c": "7c7c0820",
         "case_not_constant.c": "eb2f33b2",
         "cast_char_pointer.c": "ed433b8a",
         "cast_float_to_int.c": "fe7ab770",
@@ -470,6 +471,7 @@ pub let golden_digest : Digest = Digest::{
         "calloc_reuse_after_eviction.c": Ok(OkCase::{
           result_sha: "97f6b48d250d3d08",
         }),
+        "case_const_expr.c": Ok(OkCase::{ result_sha: "bc27605478490dc5", }),
         "case_not_constant.c": Fail(FailCase::{
           fail: true,
           fail_stage: "type",

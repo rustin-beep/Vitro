@@ -194,6 +194,12 @@
       "stdout_sha": "69c948ea032dbbb3",
       "memory_sha": "82592c32a63b63d3"
     },
+    "baseline/case_const_expr.c": {
+      "src_sha": "7c7c0820",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "b259554d84c82744"
+    },
     "baseline/case_not_constant.c": {
       "src_sha": "eb2f33b2",
       "exit_code": 0,

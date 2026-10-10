@@ -263,7 +263,7 @@ fn TypeChecker::dispatch_stmt(
               loc,
               E3047_CaseNotConstant,
             )
-          } else if !(l is Literal(_, _, _)) {
+          } else if !is_int_constant_expr(l) {
             // #50 批①（2026-10-10）：常量性检查——C11 §6.8.4.2 case
             // 标签须为整型常量表达式；旧检查只查类型放行变量形态
             // （`case n:` 静默，Clang "not an integer constant
@@ -856,5 +856,67 @@ fn expr_name_of(e : @ast.Expr) -> String {
   match e {
     Identifier(n, _, _) => n
     _ => "非常量表达式"
+  }
+}
+
+///|
+/// 整型常量表达式结构判定（#50 审阅 P1-1 修复：判据按语义不绑节点形态——
+/// `case -1:`/`case 1+2:` 是 Unary/Binary 包 Literal，原 Literal 单形态判据
+/// 假阳性拒合法 C〔Clang 干净〕）。结构递归不求值：字面量 / 一元
+/// Neg·Not·BitNot / 二元算术·位·移位（比较逻辑结果亦常量但 case 罕见，
+/// 从最小集）；变量引用不在其列。求值域（W3051 越界比较）另走
+/// const_int_value——Binary 结构不求值（除零面留白）。
+fn is_int_constant_expr(e : @ast.Expr) -> Bool {
+  match e {
+    Literal(_, _, _) => true
+    Unary(op, inner, _, _) =>
+      (op is Neg || op is Not || op is BitNot) && is_int_constant_expr(inner)
+    Binary(op, l, r, _, _) =>
+      is_const_int_binary_op(op) &&
+      is_int_constant_expr(l) &&
+      is_int_constant_expr(r)
+    _ => false
+  }
+}
+
+///|
+/// 常量整型二元算子集（is_int_constant_expr 的 Binary 臂）。
+fn is_const_int_binary_op(op : @ast.BinaryOp) -> Bool {
+  op is Add ||
+  op is Sub ||
+  op is Mul ||
+  op is Div ||
+  op is Mod ||
+  op is BitAnd ||
+  op is BitOr ||
+  op is BitXor ||
+  op is Shl ||
+  op is Shr
+}
+
+///|
+/// 常量下标求值（#50 审阅 P2-3 修复：`a[-1]` 的 -1 是 Unary(Neg, Literal)，
+/// 原仅匹配 Literal 使负值臂不可达）。Literal/Neg/Pos 三形求值；其余常量
+/// 结构（Binary 如 1+2）返回 None——常量性由 is_int_constant_expr 放行、
+/// 值域不比（渐进：求值面留白除零）。
+fn const_int_value(e : @ast.Expr) -> Int? {
+  match e {
+    Literal(v, _, _) => Some(v)
+    Unary(op, inner, _, _) =>
+      if op is Neg {
+        match const_int_value(inner) {
+          Some(v) => Some(-v)
+          None => None
+        }
+      } else if op is Not {
+        // ~（按位取反）一元常量：求值按 C 整型提升语义 ~v = -v - 1
+        match const_int_value(inner) {
+          Some(v) => Some(-v - 1)
+          None => None
+        }
+      } else {
+        None
+      }
+    _ => None
   }
 }

@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed（防线建设：CI 闸级 job 化 + freeze 语义统一——"改了又红/红遮红"根治批，2026-10-11）
+
+- **CI 拆分（core 单 job 60 步 → 七 job）**：一步红后续全 skip 的遮挡形态废除（16/20 红、失败步骤分布 fmt×4/TSV×3/直拍×3/台账×2 轮换实证）——`build-and-unit`（准入：vet/test/moon test/全量 native release/wasm 构建+产物 artifact）→ `gates-diff`（**matrix 六驱动独立红绿**：parser/lexer/typeck/codegen 自带 moon run 现场构建不依赖 artifact，vm/clang 读 release cmd/run 消费 artifact）+ `gates-native`（协议/平价族消费 exe）+ `gates-wasm`（wasm 臂族+cli smoke）+ `static-gates`（25 道纯对账闸与 build **并行**）+ `hygiene`（fmt/三 target test/工具链探针）+ `demo`（tsc/smoke/TS tests）。步骤集合差校验 71/72 零丢失（六差分进步骤矩阵、jsonmbt hygiene 副本去重、install 重复块归一）；fail-fast=false 闸级可见性全开。
+- **freeze 语义统一（消灭三套心智）**：五差分驱动 `--freeze-mb` **默认含存量重算**，`--refresh` 旗删除（出现即 fail loud 报"已删除"——旧心智立即暴露）；libc_boot_diff 同批并入（原"刷基线先删旧键重跑"手工绕道消灭，零漂移态 rc=0 不写盘）。J9 留证：`--refresh` 拒绝证红 ×5 家 + vm/codegen/parser/typeck 投毒→`--freeze-mb` 自愈→绿四连。背景：061b8bb7 CI 红=libc_boot string.c 投影漂移（codegen 批合法连坐漏冻结）——正是"清单刷新通道有三种心智"的直接代价。
+- **githooks 三分落地（msime 形态适配）**：`.githooks/` pre-commit 亚秒文本闸（冲突标记新增行扫描·排除 `=======` 误报 / moon fmt 漂移·staged 文件限定·幂等代格式化 / gofmt 单文件 / editorconfig）+ pre-push & pre-merge-commit = moon check 类型兜底；`git config core.hooksPath .githooks` 启用。J9 三连：marker 红 / fmt 红（包内探针）/ 绿路径。**顺带实锤新坑**：moon fmt 不扫包外散文件（moonbit/ 根无 moon.pkg 的 .mbt 逃 fmt——CI 同盲区，登记待裁定）。
+- **配套**：审阅批 P1-P3 全件（testcount 真值 736+124=860 / editorconfig+gen_api_help 接线 CI / E3023 判据子树扫描解绑形态 / 病 117 登记）随本批合入；msime 三机制评估留档（"存在即接入"注册表列入下批候选——ci_checklist 双向对账；known-failures 基线不采纳——与四层既有豁免面冲突；verify --quick 按改动面裁剪依赖注册表先行）。
+
+### Fixed（审阅批处置：testcount 必红收口 + 两闸接线 CI + E3023 判据解绑形态，2026-10-11）
+
+- **P1 testcount 必红**（审阅实锤，CI ci.yml:494 会红）：f0db7181/061b8bb7 两批只改裸数漏连坐全量分解——实跑真值修订（native-only 124 = fs 9 / gateway **101** / cli 14——gateway +2 系 #67 批漏连坐；`--target native` 全量 **860** = 736 + 124）；README 两份分解式同步，testcount PASS。
+- **P2 editorconfig_check 接线 CI**：脚本头注自称"升格为 CI 红"但 workflows 零引用（E6 历史复发 4 次全靠本地抓）——hygiene job 加步骤。
+- **P3 gen_api_help -check 接线 CI**：#67 产物对账闸此前只在 ci.yml 注释里出现——同批加步骤。
+- **P2 E3023 判据解绑节点形态**（#70 引入，审阅 C7）：`int a[N + 1];`（维度顶层 Binary）绕过 Identifier 形态判据 → 静默漏到 codegen 无码错误（clang 两形态同报一条）——判据改按语义扫子树（report_undeclared_dim_idents：Binary/Unary/Ternary/Cast/Index/Call 实参递归，Call 函数名 String 非节点由调用检查承接）；红→绿锚 check_array_dims_e3023_subtree_issue_p2（typeck 43/43，e2e 双形态同报 E3023 2:9）。
+- **病 117 登记**（P3 字面量定型既有缺陷，非本批引入）：`> INT_MAX` 的 u 后缀字面量定型 unsigned long long 而非 unsigned int（parser/expr.mbt:725，源 8085e819）⇒ `unsigned int x = 4294967295u;` 假阳性 W3053（clang 静默）；#71 unsigned 修复依赖该 64 位承载行为未受影响，修复需 parser 字面量定型面（挂 #71 台账待修）。
+- 防线：moon test 736/736 · native 860（真值实跑）· 四差分 16 路 · vm_diff 647 · clang_direct 742 · facts --strict（736 连坐 10 文档句）· testcount/smoke/editorconfig/gen_api_help -check 全绿。
+
 ### Fixed（#71 第二梯队：崩溃与静默吞代码四病批——病 36/40/41/43，2026-10-11）
 
 - **病 36（struct 返回值表达式语句栈泄漏）**：`make();` 语句循环 10001 次值栈溢出（MAX_STACK_DEPTH=10000）——根因是 struct 表达式栈形态不统一：Call 返回 struct 留 1 地址槽（sret 目标）、`gen_struct_copy` 赋值留 0。统一「struct 表达式留 1 地址槽」约定：gen_expr_stmt 对非 void 一律弹 + gen_struct_copy 尾部补压 dst 地址（赋值表达式值=左值地址）。新语料 struct_ret_stmt_leak.c（循环 10001 + 赋值/数组元素/struct 变量语句全形态，双臂对拍 clang 同）。

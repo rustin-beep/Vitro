@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Enable: git config core.hooksPath .githooks   Skip once: git commit --no-verify
+#
+# Commit-time checks are sub-second by design (hot-cache measured 2026-10-11:
+# fmt --check 0.16s / gofmt 0.19s / editorconfig 0.55s). Anything that compiles
+# belongs in pre-push; a hook that costs minutes is a hook people turn off, and
+# then none of them run. —— 形态照搬 D:\code\msime .githooks 三分（2026-10-11
+# 评估批），适配 Vitro 四文本闸。
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+status=0
+
+# ── 冲突标记：只查新增行 ──
+# -G 在「删除 marker」的提交上同样触发——修复反而提交不了；走 unified diff
+# 看 '+' 行。'=======' 排除：Markdown/文本标题下划线远多于 marker（msime
+# diff3 残留标记六次直达主线的教训形态）。
+staged_markers="$(git diff --cached --unified=0 --no-color --diff-filter=ACM |
+  awk '
+    /^\+\+\+ b\// { file = substr($0, 7); next }
+    /^\+(<{7}|\|{7}|>{7})( |$)/ { print "  " file ": " substr($0, 2) }
+  ')"
+if [ -n "$staged_markers" ]; then
+  echo "conflict markers added in staged changes:" >&2
+  echo "$staged_markers" >&2
+  status=1
+fi
+
+# ── moon fmt（staged 含 .mbt 时）──
+# CI Hygiene 的 fmt 闸历史红 4 次（2026-10-11 20 笔统计最高频）——本闸把
+# 那类红挡在提交前。moon 无 check-only flag（CI 的 "moon fmt --check" 步
+# 名是误称，实现即 fmt+git diff）——这里同口径：fmt 真跑（幂等），漂移判
+# 定**限定 staged 文件**：别会话未 staged 的在制品即使被 fmt 重排也不判
+# 红（并发分档纪律——不替别人的会话出红；fmt 幂等重排无破坏面）。
+staged_mbt="$(git diff --cached --name-only --diff-filter=ACM -- 'moonbit/*.mbt' 'moonbit/**/*.mbt' 'moonbit/*.mbt.md' 'moonbit/**/*.mbt.md' 'scripts/*.mbt' 'scripts/**/*.mbt')"
+if [ -n "$staged_mbt" ] && command -v moon >/dev/null 2>&1; then
+  (cd moonbit && moon fmt >/dev/null 2>&1)
+  fmt_drift=""
+  for f in $staged_mbt; do
+    git diff --quiet -- "$f" 2>/dev/null || fmt_drift="$fmt_drift  $f"$'
+'
+  done
+  if [ -n "$fmt_drift" ]; then
+    echo "moon fmt 漂移——已代为格式化，重新 git add 后再提交：" >&2
+    printf '%s' "$fmt_drift" >&2
+    status=1
+  fi
+fi
+
+# ── gofmt（staged .go 单文件 --check——精确形态，非全仓）──
+staged_go="$(git diff --cached --name-only --diff-filter=ACM -- 'scripts/*.go' 'scripts/**/*.go' '*.go')"
+if [ -n "$staged_go" ]; then
+  unformatted=""
+  for file in $staged_go; do
+    [ -f "$file" ] || continue
+    [ -n "$(gofmt -l "$file")" ] && unformatted="$unformatted  $file"$'\n'
+  done
+  if [ -n "$unformatted" ]; then
+    echo "not gofmt-clean（gofmt -w 后重新 add）:" >&2
+    printf '%s' "$unformatted" >&2
+    status=1
+  fi
+fi
+
+# ── editorconfig 硬性项（staged 含文本面时全仓快扫 0.5s——与 CI 同口径）──
+# E6（JSON 缩进/末行换行）历史复发 4 次全靠 CI 红——本闸前移。
+staged_text="$(git diff --cached --name-only --diff-filter=ACM -- '*.json' '*.json.mbt' '*.md' '*.yml' '*.yaml')"
+if [ -n "$staged_text" ] && command -v go >/dev/null 2>&1; then
+  if ! go run ./scripts/editorconfig_check >/dev/null 2>&1; then
+    echo "editorconfig 硬性项漂移（UTF-8/LF/末行换行/JSON 缩进）——go run ./scripts/editorconfig_check 看明细" >&2
+    status=1
+  fi
+fi
+
+exit "$status"

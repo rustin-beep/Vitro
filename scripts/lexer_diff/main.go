@@ -49,7 +49,8 @@ func main() {
 	var corpusArg string
 	freeze, againstGolden, selftest := false, false, false
 	freezeMB := false
-	refreshExisting := false
+	// 语义统一（2026-10-11）：--freeze-mb 默认含存量重算（原 --refresh 语义内置）
+	refreshExisting := true
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "--freeze":
@@ -59,9 +60,10 @@ func main() {
 			// 以 mb 侧归一 TSV hash 入账（见 freeze-mb 段）
 			freezeMB = true
 		case "--refresh":
-			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
-			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
-			refreshExisting = true
+			// 语义统一（2026-10-11 审阅批防线建设）：--freeze-mb 已默认含存量
+			// 重算，本旗删除（fail loud——旧心智立即暴露，消灭双旗双心智）。
+			fmt.Fprintln(os.Stderr, "lexer_diff: --refresh 已删除——--freeze-mb 默认含存量重算，直接去掉本旗重跑")
+			os.Exit(2)
 		case "--golden":
 			againstGolden = true
 		case "--selftest":
@@ -87,10 +89,6 @@ func main() {
 	}
 	if freeze && againstGolden {
 		fmt.Fprintln(os.Stderr, "lexer_diff: --freeze 与 --golden 互斥")
-		os.Exit(2)
-	}
-	if refreshExisting && !freezeMB {
-		fmt.Fprintln(os.Stderr, "lexer_diff: --refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 		os.Exit(2)
 	}
 	if freezeMB && (freeze || againstGolden) {
@@ -185,7 +183,7 @@ func main() {
 			if old, ok := src[name]; ok {
 				if old != sha {
 					if !refreshExisting {
-						fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: %s 已变更——存量重算用 --refresh（--freeze-mb --refresh）", name)
+						fmt.Fprintf(os.Stderr, "lexer_diff --freeze-mb: %s 已变更——存量重算已默认开启，本行不应出现（若见请报缺陷）", name)
 						os.Exit(1)
 					}
 					src[name] = sha

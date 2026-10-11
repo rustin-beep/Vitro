@@ -84,8 +84,10 @@ func main() {
 			// 以 mb 侧产物指纹入账（见 freezeMBRun）
 			freezeMBMode = true
 		case "--refresh":
-			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随现状
-			// 重算覆盖（存根注入/引擎重构的合法演化面；死通道 --freeze 需已删 oracle）。
+			// 语义统一（2026-10-11 审阅批防线建设）：--freeze-mb 已默认含存量
+			// 重算，本旗删除（fail loud——旧心智立即暴露，消灭双旗双心智）。
+			fmt.Fprintf(os.Stderr, "codegen_diff: --refresh 已删除——--freeze-mb 默认含存量重算，直接去掉本旗重跑\n")
+			os.Exit(2)
 			refreshExistingMode = true
 		case "--golden":
 			goldenMode = true
@@ -97,9 +99,6 @@ func main() {
 	selftestFlag = selftest
 	if freezeMode && goldenMode {
 		fail("--freeze 与 --golden 互斥")
-	}
-	if refreshExistingMode && !freezeMBMode {
-		fail("--refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 	}
 	if freezeMBMode && (freezeMode || goldenMode) {
 		fail("--freeze-mb 与 --freeze/--golden 互斥（入账 vs 固化/比对）")
@@ -130,7 +129,8 @@ var freezeMode, goldenMode bool
 // freezeMBMode：删区后新用例入账模式（--freeze-mb；与 vm_diff --freeze-mb 同族）。
 var freezeMBMode bool
 
-var refreshExistingMode bool
+// 语义统一（2026-10-11）：--freeze-mb 默认含存量重算（原 --refresh 语义内置）
+var refreshExistingMode = true
 
 // selftestFlag：golden 路径自证消费（main flag 解析后赋值——审阅 P3）。
 var selftestFlag bool

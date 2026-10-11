@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Enable: git config core.hooksPath .githooks   Skip once: git push --no-verify
+#
+# 类型面兜底：moon check（热缓存 1.1s，冷缓存最坏 ~30s——push 低频，可承受；
+# CI 全量 30 分钟不可承受，这就是它在 pre-push 而不在 pre-commit 的理由）。
+# merge 不构建结果直达主干是 msime 六编译断的教训形态——pre-merge-commit
+# 同款（本仓不做 --quick 改动面裁剪，2026-10-11 用户裁定：单仓耦合面切不准）。
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+if command -v moon >/dev/null 2>&1; then
+  if ! (cd moonbit && moon check >/dev/null 2>&1); then
+    echo "moon check 红——本地 cd moonbit && moon check 看明细（--no-verify 可跳过）" >&2
+    exit 1
+  fi
+fi
+exit 0

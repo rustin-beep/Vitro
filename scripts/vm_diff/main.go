@@ -198,7 +198,8 @@ func main() {
 	sample := 0
 	freeze := false
 	freezeMB := false
-	refreshExisting := false
+	// 语义统一（2026-10-11）：--freeze-mb 默认含存量重算（原 --refresh 语义内置）
+	refreshExisting := true
 	againstGolden := false
 	var explicit []string
 	args := os.Args[1:]
@@ -221,11 +222,10 @@ func main() {
 			// 侧已随工序④删区断源，本通道以 mb 侧产物入账（见 freezeMBDigest）。
 			freezeMB = true
 		case args[i] == "--refresh":
-			// 存量重算（2026-10-10 #10 P1 批）：--freeze-mb 伴生——存量例指纹随
-			// 现状重算覆盖（合法演化面：存根声明注入/引擎重构致产物漂移；死通道
-			// --freeze 需已删 oracle，存量漂移此前无活通道——#61 freeze-mb 时序
-			// 陷阱登记的工程解）。仅与 --freeze-mb 组合合法。
-			refreshExisting = true
+			// 语义统一（2026-10-11 审阅批防线建设）：--freeze-mb 已默认含存量
+			// 重算，本旗删除（fail loud——旧心智立即暴露，消灭双旗双心智）。
+			fmt.Fprintln(os.Stderr, "vm_diff: --refresh 已删除——--freeze-mb 默认含存量重算，直接去掉本旗重跑")
+			os.Exit(2)
 		case args[i] == "--selftest":
 			selftestFlag = true
 		case args[i] == "--backend" && i+1 < len(args):
@@ -248,10 +248,6 @@ func main() {
 	oracleBin := filepath.Join("native", "target", "release", "vitro_cli.exe")
 	if againstGolden && freeze {
 		fmt.Fprintln(os.Stderr, "vm_diff: --freeze 与 --golden 互斥（先 freeze 后 golden）")
-		os.Exit(2)
-	}
-	if refreshExisting && !freezeMB {
-		fmt.Fprintln(os.Stderr, "vm_diff: --refresh 仅与 --freeze-mb 组合合法（存量重算属入账面）")
 		os.Exit(2)
 	}
 	if freeze && freezeMB {

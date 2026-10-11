@@ -31,13 +31,29 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
+
+# ── 闸级 job 化（2026-10-11，防线建设批）────────────────────────────────
+# 此前 core 单 job 串 60 步——一步红后续全 skip，B 闸红遮 C 闸红（16/20 红
+# 步骤分布实证：fmt×4/TSV×3/直拍×3/台账×2/单发×6 轮换，"改了又红"根因）。
+# 拆分后闸与闸互不遮挡：build 红挡下游（产物无——合理依赖）；
+# 六实例差分矩阵逐驱动独立红绿。配合语义统一（--freeze-mb 默认含存量重算、
+# --refresh 删除 fail loud）消灭「入新键 vs 刷存量 vs 手删旧键」三套心智。
+#
+# 分类判据沿袭（红了是否意味着这批不能要）：
+#   build-and-unit = 准入（编译/单测坏）——下游全 needs 它
+#   gates-diff     = 行为差分（matrix 六实例独立）
+#   gates-native   = 消费 exe 的协议/冒烟族
+#   gates-wasm     = wasm 臂族 + cli smoke
+#   static-gates   = 纯对账/生成器闸（无产物依赖——与 build 并行）
+#   hygiene        = 记账型（fmt/三 target test/环境探针）
+
+
 jobs:
-  core:
-    name: Core gates (code & contract)
+  build-and-unit:
+    name: Build & unit tests (准入型基础)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Go vet (scripts)
         run: go vet ./scripts/...
 
@@ -56,30 +72,6 @@ jobs:
       # ⇒ 同一结果），跨 CI 运行复用可把 Shadow 从分钟级降到秒级。
       # key 含 clang 版本 —— 版本一变缓存自动失效，这就是"防版本漂移"的第一道闸；
       # 第二道闸是夜间 schedule 的 --refresh-clang 全量重算。
-      - name: Clang version (for cache key)
-        id: clangver
-        shell: bash
-        run: echo "value=$(clang --version | head -n1 | tr -d ' ' | cut -c1-48)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Clang golden results
-        uses: actions/cache@v4
-        with:
-          path: |
-            .clang_cache_cd
-          # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
-          # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/vm_diff/main.go', 'scripts/internal/**/*.go') }}
-          restore-keys: |
-            clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
-
-      # D5 语言迁移最后一站（2026-09-13）：C 影子验证主驱动 Python→Go。
-      # 双轨对账 PASS（663 用例集合/顺序/逐用例 diff_type/summary/category_frequency
-      # 全一致）后切换；Python 版 shadow_verify.py 已退役删除。
-      # === 工序④删区批（2026-10-05）：Rust 臂整体移除 ===
-      # 被删 = Rust 本体（build/test/clippy/coverage）+ 被测物为 Rust DLL 的防线（shadow ×2/
-      # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
-      # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
-      # 语义防线 = clang_direct（真值 Clang）+ moon test。
       - name: Install MoonBit toolchain (differential anchors)
         shell: pwsh
         run: |
@@ -108,6 +100,313 @@ jobs:
       # 刻意**不加** `moon fmt --check`：workspace 模式下它会 diff 全部成员，实测
       # 因 `moonbit/codegen/addr.mbt` 既存缩进未归一而 rc=127（与本批无关）。
       # 格式归一靠本地 `moon fmt scripts`（限定成员，不误伤 moonbit）。
+      - name: MoonBit unit tests (moon test)
+        # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
+        # --run 间接跑（采集失败只记 unavailable 不红），且 README 测试
+        # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
+        # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
+        shell: bash
+        # --target native：把 native-only 包的锚（fs 9 + gateway 91，2026-10-04
+        # 实测差值 741-641=100——原注「fs 9 + cmd/serve 14，差值 527-504=23」
+        # 系 2026-09-20 接线时点的 as-of 快照，CI 拆批搬运时未随刷，审阅 P3-⑧
+        # 勘正）纳入门禁——此前 CI 从不跑它们（默认 wasm target
+        # 不含 native-only 包，check --target all 只抓编译错不抓行为错），
+        # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
+        # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。
+        run: cd moonbit && moon test --target native
+
+      # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
+      - name: Full native release build gate (declared targets must build)
+        # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
+        # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
+        # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
+        # MOON_CC=clang（纪律 11 + 2026-10-05 审阅批）：被测物构建器与本地
+        # 一致（MSVC 构建的 cmd/run 在 UB 语料上结局可漂——bTree_default
+        # 0xC0000005 vs clang 构建受检 trap，known_direct 双集补录在案）；
+        # 且 MSVC 全量构建实测 12m51s，clang 显著更快（moon#2254）。
+        shell: bash
+        run: |
+          cd moonbit
+          MOON_CC=clang moon build --release --target native
+          echo "全量 native release 构建：通过（每个包都真的被构建过）"
+      - name: wasm-gc gateway build (artifact source)
+        # 自「wasm-gc gateway build + Node host smoke」拆出（2026-10-11）：
+        # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
+        shell: bash
+        run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
+      - name: Upload build products (native release exe set + wasm module)
+        # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
+        # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复
+        # 构建（此前 core 串行一步红全断；闸间遮挡即此形态）。download 侧
+        # path=moonbit/_build 还原相对布局（脚本内置路径零改动）。
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-products
+          path: |
+            moonbit/_build/native/release/build/**/*.exe
+            moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          retention-days: 3
+  gates-diff:
+    name: Diff gate (${{ matrix.driver }})
+    needs: build-and-unit
+    runs-on: windows-latest
+    strategy:
+      # 闸级可见性全开：六实例互不取消（一红不见其余）。
+      # exe 需求分两类（2026-10-11 校正）：parser/lexer/typeck/codegen 四家
+      # 驱动内部 `moon run --target native cmd/dump_*` 现场构建（只要 moon
+      # 在 PATH，自建增量 2-4 分钟并行无妨）；vm_diff / clang_direct 读
+      # release 路径 cmd/run exe（全量构建分钟级——消费 artifact 免重复）。
+      fail-fast: false
+      matrix:
+        include:
+          - driver: parser_diff
+            needs_artifact: false
+          - driver: lexer_diff
+            needs_artifact: false
+          - driver: typeck_diff
+            needs_artifact: false
+          - driver: codegen_diff
+            needs_artifact: false
+          - driver: vm_diff
+            needs_artifact: true
+          - driver: clang_direct
+            needs_artifact: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (driver-embedded moon run)
+        if: ${{ !matrix.needs_artifact }}
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+      - name: Clang version (for cache key)
+        id: clangver
+        shell: bash
+        run: echo "value=$(clang --version | head -n1 | tr -d ' ' | cut -c1-48)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Clang golden results
+        uses: actions/cache@v4
+        with:
+          path: |
+            .clang_cache_cd
+          # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
+          # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/vm_diff/main.go', 'scripts/internal/**/*.go') }}
+          restore-keys: |
+            clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
+
+      # D5 语言迁移最后一站（2026-09-13）：C 影子验证主驱动 Python→Go。
+      # 双轨对账 PASS（663 用例集合/顺序/逐用例 diff_type/summary/category_frequency
+      # 全一致）后切换；Python 版 shadow_verify.py 已退役删除。
+      # === 工序④删区批（2026-10-05）：Rust 臂整体移除 ===
+      # 被删 = Rust 本体（build/test/clippy/coverage）+ 被测物为 Rust DLL 的防线（shadow ×2/
+      # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
+      # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
+      # 语义防线 = clang_direct（真值 Clang）+ moon test。
+      - name: Run diff driver (full four corpora)
+        shell: bash
+        run: |
+          case "${{ matrix.driver }}" in
+            parser_diff|lexer_diff|typeck_diff|codegen_diff)
+              for d in baseline knr leetcode gap; do
+                go run ./scripts/${{ matrix.driver }} corpus/$d
+              done
+              ;;
+            vm_diff)
+              go run ./scripts/vm_diff
+              ;;
+            clang_direct)
+              go run ./scripts/clang_direct
+              ;;
+          esac
+  gates-native:
+    name: Native protocol & parity gates (consume exe)
+    needs: build-and-unit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      - name: Install MoonBit toolchain
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      - name: libc bootstrap parity (MoonBit library mode vs Rust export)
+        # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
+        # 自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」。两侧形态不
+        # 同（Rust export 11 键 / MoonBit dump 14 键），故以 stub main +
+        # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
+        # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
+        # 依赖 Rust release 二进制（与 codegen_diff 同）。
+        shell: bash
+        run: go run ./scripts/moonbit/libc_boot_diff
+
+      - name: Protocol first consumer (fields-level validation on real engine output)
+        # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
+        # 用**生成的**协议面（protocol/fields.mjs）消费**真实的**引擎输出
+        # （cmd/serve 的 step 流——MoonBit 侧同协议现役实现），逐字段校验 +
+        # 最小内容层渲染。
+        # 审阅 P1（2026-10-05）：本步此前零前置构建——consumer 缺省引擎路径
+        # 在干净检出上必红（本地被历史 release 产物掩盖，D1 问四+问五叠加）。
+        # 现自带 debug 构建（与 protocol_frames 同款产物形态与位置）。
+        # **限制（诚实登记）**：本环境无 npm/tsc，故只能验「生成物描述得了真实输出」，
+        # 验不了「字段名写错在 tsc 编译期即红」——后者是 TS 的核心收益，待 tsc 就绪。
+        shell: bash
+        run: |
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
+          node protocol/consumer.mjs
+
+      # serve 协议帧字段级冻结（S7 批四号交付物第三件，2026-10-04 兑现）：
+      # 固定请求序列 × 双宿主（release vitro_cli + cmd/serve）→ canonicalize
+      # → mask（已知分叉外置 rules.json）→ 与入库基线 baseline.jsonl 逐帧
+      # 比对。差分性质（消费 oracle 臂）——归 core 随 Rust 退役转单臂基线比
+      # （退役时删 rust 臂采集段即成）。前置：release vitro_cli（上一步）+
+      # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
+      - name: Protocol frames freeze (dual-host, canonicalized)
+        run: |
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
+          go run ./scripts/protocol_frames
+        shell: bash
+
+      # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
+      # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
+      - name: MoonBit serve smoke (dual-host, Exit 3)
+        run: |
+          cd moonbit && moon build --target native cmd/serve && cd ..
+          go run ./scripts/serve_smoke -moonbit
+        shell: bash
+
+      # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
+      # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
+      # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
+      # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
+      - name: replay S1-S5 protocol assertions (MoonBit arm)
+        run: go run ./scripts/replay -moonbit
+        shell: bash
+
+      # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
+      # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
+      # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
+      - name: Teaching annotation diff (family-incremental golden, Exit 1)
+        run: go run ./scripts/teaching_annotation_diff
+        shell: bash
+
+      # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
+      # S7 批五号（2026-09-29）：wasm-gc 单出口（F-5）——gateway 4 函数导出
+      # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
+      # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
+      # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
+      - name: MoonBit exemption audit (zombie detector, D19)
+        run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
+        shell: bash
+
+      # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
+      # cmd/serve 与 Rust golden（algorithm_annotations_v3.json）的首现序列
+      # 比对（compile→run→step.begin→step.next×4000；只比已迁移族——
+      # rules.json 外置迁移集+豁免面；双向模板集断言；serve exe 由上一步
+      # 构建）。J9 双路证红：golden desc 篡改 → exit 1（连锁红）；
+      # step_budget 40 → exit 1（首现缺失）。
+
+  gates-wasm:
+    name: wasm-arm gates & CLI smoke
+    needs: build-and-unit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      - name: wasm-gc gateway build + Node host smoke (Exit 2)
+        # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
+        # host.js 两段式实例化兼容 22 系但判定面在 25 上定版——pin 25。
+        # 体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚手工数字教训）
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+      - name: wasm-gc gateway build + Node host smoke (run)
+        run: |
+          cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
+          node scripts/wasm_gateway/host.js
+        shell: bash
+
+      # 统一 CLI 入口闸（#49 批一，2026-10-06）：wasm 壳（scripts/vitro_cli/
+      # main.js）四子命令 rc 契约 + **双臂同形对拍**（壳 vs native cmd/vitro
+      # exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize 特例；
+      # 唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
+      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = 上一步 gateway wasm
+      # 产物 + 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）+ Go
+      # （core job 天然）+ node 25（上方 setup-node）。
+      - name: unified CLI smoke (wasm shell vs native exe)
+        run: |
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
+          go run ./scripts/vitro_cli_smoke --corpus 30
+        shell: bash
+
+      # 防线 wasm 臂（#49 批二段三：实证面搬家——vm_diff/clang_direct 被测物
+      # 切统一入口壳消费 gateway wasm.wasm）：三联（stdout/退出码/1MB 映像）
+      # 与冻结 golden 全量对拍。前置 = 上方 gateway wasm 产物 + node 25 +
+      # Go（core 天然）；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
+      # 全量各 ~80s（本地实测 609/704 例）。
+      - name: vm_diff wasm arm (gateway product vs frozen golden)
+        run: go run ./scripts/vm_diff --backend wasm
+        shell: bash
+      - name: clang_direct wasm arm (gateway product vs Clang)
+        run: go run ./scripts/clang_direct --backend wasm
+        shell: bash
+
+      # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
+      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
+      # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置同上（gateway wasm + node 25）。
+      - name: replay wasm arm (shell serve)
+        run: go run ./scripts/replay --backend wasm
+        shell: bash
+      - name: serve_smoke wasm arm (shell serve)
+        run: go run ./scripts/serve_smoke --backend-wasm
+        shell: bash
+      - name: protocol_frames wasm arm (shell serve)
+        run: go run ./scripts/protocol_frames --backend-wasm
+        shell: bash
+      - name: teaching_annotation_diff wasm arm (shell serve)
+        run: go run ./scripts/teaching_annotation_diff --backend-wasm
+        shell: bash
+
+      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
+      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
+      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
+      # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
+      # TS 重写批（2026-10-04，refs #28）：demo/js 产物不入库——消费产物的
+      # 步骤一律前置发射（npm ci + tsc，发射即检查闸；本步的 method 消费面
+      # 扫描读 .ts 源不依赖产物，但运行依赖 wasm 与 cases 均在，故本步
+      # 排在下方发射步之后语义更清晰——实排见 lint 步后）。
+  static-gates:
+    name: Static contract & bookkeeping gates (no build products)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MoonBit toolchain (probe / fmt / facts --run)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      - name: Refresh MoonBit registry index
+        # toolchain_probe 的索引预检需要 registry 索引在位（fresh 环境同 core）
+        shell: bash
+        run: cd moonbit && moon update
+
       - name: ".json.mbt static gate (scripts 自立 workspace)"
         shell: bash
         run: cd scripts && moon check
@@ -202,165 +501,6 @@ jobs:
             exit 2
           fi
 
-      - name: MoonBit parser differential anchors (E3/E4/E3+ threshold)
-        shell: bash
-        run: |
-          go run ./scripts/parser_diff --pathological
-          go run ./scripts/parser_diff --legal-deep
-          go run ./scripts/parser_diff --threshold
-
-      - name: MoonBit lexer differential (L1/L2 TSV, full corpus)
-        # 2026-10-04 升格接线：lexer_diff 此前建册即定位「本地配套」（S2 词法
-        # 差分与 parser/typeck/codegen 三兄弟同族独漏 CI——三轮拍板悬置后销项）。
-        # 管线 = 双侧 dump-tokens 批量 TSV 逐字节比对（本地实测四语料 1206
-        # TSV 全绿）；依赖 Release vitro_cli（与 parser_diff 同前提）。
-        shell: bash
-        run: |
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/lexer_diff corpus/$d
-          done
-
-      - name: MoonBit typeck differential (E1-E4 full corpus)
-        # 2026-09-20 审阅补线：typeck_diff（S4 对拍防线）此前零 CI 接线
-        # （原排期"E1 全量对拍管道 CI 化待 S5 片后统一"，防线空窗期由
-        # 本步骤关闭）。四目录全量（**600 语料**，2026-09-22 实测；早期文档
-        # 的 597/598 为各片收官时的 as-of 快照，非当前真值）本地实测分钟级；
-        # 依赖上方
-        # Release 构建的 vitro_cli（serve 出口）+ MoonBit 工具链。
-        shell: bash
-        run: |
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/typeck_diff corpus/$d
-          done
-
-      - name: MoonBit codegen differential (A-grade, full corpus)
-        # 2026-09-21 S5 审阅批接线；同日扩展批四号后**放开四语料**——
-        # 原"只接 skeleton"的理由（one-sided 能力缺口）已不成立：四语料
-        # ONE-SIDED=0 / CONTENT-DIFF=0（SAME 585/600 含 2 例 union/指针
-        # 成员宽度形状锚）。骨架面保留（快失败冒烟）；本批 P1-1（union
-        # 成员赋值宽度）正是四语料外接前的探针漏网——门禁全覆盖后再无
-        # 形状盲区豁免。
-        # **依赖上方 Release 构建的 vitro_cli**（Rust 侧产物真值源）——与
-        # typeck_diff / libc_boot_diff 同一前提；缺 release 产物会 fail loud。
-        shell: bash
-        run: |
-          go run ./scripts/codegen_diff corpus/codegen_skeleton
-          for d in baseline knr leetcode gap; do
-            go run ./scripts/codegen_diff corpus/$d
-          done
-
-      - name: MoonBit VM runtime differential (D-grade stdout/exit/memory)
-        # 六轮审阅 P1-2 接线（2026-09-26）：vm_diff 此前不在 CI = 本地
-        # 工具——MoonBit VM 运行期回归无人拦。三通道口径见脚本头注
-        # （第三通道为 1MB 自包含性校验，oracle 映像出口待建）。
-        # **全量化（总计划 §7.1 层 1，2026-09-26 同日）**：默认四语料
-        # 全量（baseline+knr+leetcode+gap）+ verdict 三级（SAME /
-        # DIFF-known / DIFF-unexpected——known 白名单 scripts/vm_diff/
-        # known_diffs.json 按 case+digest 精确豁免，digest 漂移即降级红
-        # 防白名单腐化；skip 白名单空转条目跑例前秒红）。
-        # 依赖上方 Release 构建的 vitro_cli（oracle 真值源，与
-        # codegen_diff 同前提）+ moon build 产出 cmd/run exe（脚本自带
-        # 新鲜度门禁：exe 旧于任一 moonbit 源即红——本地 moon-lsp 后台
-        # 重建会静默删产物，构建失败照跑旧 exe 报假绿的事故形态由该
-        # 门禁封死）。
-        # **--release 必须带**（2026-09-26 e1_va_copy 缺陷批实测坑）：
-        # `moon build` 默认 debug，vm_diff 读的是 release 路径
-        # （moonbit/_build/native/release/...）——不带 --release 则
-        # release 产物不生成/不更新，门禁会红且构建目标错位。
-        shell: bash
-        run: |
-          cd moonbit && MOON_CC=clang moon build --release --target native cmd/run
-          cd .. && go run ./scripts/vm_diff
-
-      - name: Clang direct verify (layer 2, cmd/run vs Clang golden)
-        # §7.1 层 2 直拍防线（2026-09-26 提前落地——原排期 S7，用户拍板
-        # 前移）：真值源 = Clang 本尊（非 Rust oracle），cmd/run 的
-        # stdout+返回码 vs Clang golden。known_direct.json 按 case+digest
-        # 精确豁免（digest 漂移降级红防白名单腐化；条目转绿即红逼移除）。
-        # 与 vm_diff 分工：vm_diff 抓迁移偏差（引擎 vs oracle），本防线抓
-        # 两侧共同偏差（oracle 错而 Clang 对的形态）。重试判据 = shadow
-        # 同款（编译失败也重试——Windows 并发 Defender 锁目标文件首跑
-        # 127 例瞬态误判实锤）。Clang golden 缓存 .clang_cache_cd/ 随上方
-        # cache action 持久化（key 含 clang 版本）。
-        shell: bash
-        run: |
-          go run ./scripts/clang_direct --check-known
-          go run ./scripts/clang_direct
-
-      - name: Difference ledger reconciliation (known whitelists ↔ ledger)
-        # S8 批零号二段（2026-09-30）：差异台账守门规则机判化——
-        # 三防线 known 白名单（shadow/clang_direct/vm_diff）与
-        # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
-        # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
-        # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
-        # --selftest 五路注入证红（J9）；shadow 真值为闸内清单
-        # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
-        # 维护窗口——G-7 同族）。
-        shell: bash
-        run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
-
-      - name: libc bootstrap parity (MoonBit library mode vs Rust export)
-        # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
-        # 自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」。两侧形态不
-        # 同（Rust export 11 键 / MoonBit dump 14 键），故以 stub main +
-        # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
-        # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
-        # 依赖 Rust release 二进制（与 codegen_diff 同）。
-        shell: bash
-        run: go run ./scripts/moonbit/libc_boot_diff
-
-      - name: Protocol first consumer (fields-level validation on real engine output)
-        # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
-        # 用**生成的**协议面（protocol/fields.mjs）消费**真实的**引擎输出
-        # （cmd/serve 的 step 流——MoonBit 侧同协议现役实现），逐字段校验 +
-        # 最小内容层渲染。
-        # 审阅 P1（2026-10-05）：本步此前零前置构建——consumer 缺省引擎路径
-        # 在干净检出上必红（本地被历史 release 产物掩盖，D1 问四+问五叠加）。
-        # 现自带 debug 构建（与 protocol_frames 同款产物形态与位置）。
-        # **限制（诚实登记）**：本环境无 npm/tsc，故只能验「生成物描述得了真实输出」，
-        # 验不了「字段名写错在 tsc 编译期即红」——后者是 TS 的核心收益，待 tsc 就绪。
-        shell: bash
-        run: |
-          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
-          node protocol/consumer.mjs
-
-      # serve 协议帧字段级冻结（S7 批四号交付物第三件，2026-10-04 兑现）：
-      # 固定请求序列 × 双宿主（release vitro_cli + cmd/serve）→ canonicalize
-      # → mask（已知分叉外置 rules.json）→ 与入库基线 baseline.jsonl 逐帧
-      # 比对。差分性质（消费 oracle 臂）——归 core 随 Rust 退役转单臂基线比
-      # （退役时删 rust 臂采集段即成）。前置：release vitro_cli（上一步）+
-      # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
-      - name: Protocol frames freeze (dual-host, canonicalized)
-        run: |
-          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
-          go run ./scripts/protocol_frames
-        shell: bash
-
-      # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
-      # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
-      - name: Install MoonBit toolchain
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
-
-      - name: MoonBit unit tests (moon test)
-        # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
-        # --run 间接跑（采集失败只记 unavailable 不红），且 README 测试
-        # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
-        # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
-        shell: bash
-        # --target native：把 native-only 包的锚（fs 9 + gateway 91，2026-10-04
-        # 实测差值 741-641=100——原注「fs 9 + cmd/serve 14，差值 527-504=23」
-        # 系 2026-09-20 接线时点的 as-of 快照，CI 拆批搬运时未随刷，审阅 P3-⑧
-        # 勘正）纳入门禁——此前 CI 从不跑它们（默认 wasm target
-        # 不含 native-only 包，check --target all 只抓编译错不抓行为错），
-        # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
-        # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。
-        run: cd moonbit && moon test --target native
-
-      # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
       - name: Source hygiene (tracked files must be NUL-free)
         # P2-NUL 事故族（2026-09-23 修复批）：真 NUL 让 git 判二进制
         # （w/-text）——.gitattributes 行尾转换失效、diff/PR 审阅不可见
@@ -499,105 +639,196 @@ jobs:
       # 分叉 / quarantine_budget 欠账，14 断言 + 3 整批，PASS 也豁免防僵尸
       # 条目）。首跑战果：抓到 config.set 未包 serve_ok 帧的一段真缺陷。
       # J9 双路证红：删豁免表 → fail loud exit 2；删单条目 → 该断言真红。
-      - name: MoonBit serve smoke (dual-host, Exit 3)
+      - name: Difference ledger reconciliation (known whitelists ↔ ledger)
+        # S8 批零号二段（2026-09-30）：差异台账守门规则机判化——
+        # 三防线 known 白名单（shadow/clang_direct/vm_diff）与
+        # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
+        # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
+        # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
+        # --selftest 五路注入证红（J9）；shadow 真值为闸内清单
+        # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
+        # 维护窗口——G-7 同族）。
+        shell: bash
+        run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
+
+      - name: Check Bytecode Libc precompiled artifacts are up-to-date
+        # D5 后续批次第二站（2026-09-18）：precompile_bytecode_libc.py → Go。
+        # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
+        # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
+        # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
+        # 补 `go run ./scripts/precompile_bytecode_libc` + git add 即绿。
+        run: go run ./scripts/precompile_bytecode_libc --check
+        shell: bash
+
+      - name: Vendored upstream drift probe (moonbitlang/x fs)
+        # 2026-09-28 唯一依赖清除 B 路线批接线：moonbit/fs vendored 自
+        # moonbitlang/x@0.5.5，上游是活仓库且实证发生过「内容漂移而
+        # version 未 bump」（fs_native.mbt 的 utf8 迁移）——探针走内容哈希
+        # 口径盯上游 main 四文件（版本号仅报告）。归 hygiene：红 = 上游
+        # 漂移待人工评估（评估令非自动同步令——裁定权在人，处置流程见
+        # docs/current/01-定位与路线/唯一依赖清除路线.md §3B-4）；
+        # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
+        # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
+        shell: bash
+        run: go run ./scripts/moonbit/vendor_drift
+
+      # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
+      # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance
+      # 锚四道，防诊断文案透传即 GPL 渗漏），**不跑勘探本身**（维持拍板——
+      # 勘探需外部仓库+Clang，CI 不可复现；勘探 CI 化仍二期待拍板）。
+      # J9 三路证红：加 message 键 / 删 source_commit / 伪码形态 → exit 2。
+      - name: Realcode gold signatures compliance (scripts/realcode_diff -check)
+        shell: bash
+        run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+
+      # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
+      # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一
+      # 真源），但 job 间不共享工作区——core 的 Regenerate 步产物带不进本
+      # job，perf_budget -check 在干净检出下缺 rules.json 直接 FATAL（run
+      # 37765594479/37883006515 连续红）。本 job 唯一 rules 消费方就是
+      # perf_budget，故只再生这一张（编译 jsonmbt ~40s 是单 job 自洽的代价）。
+      - name: Performance-assumption budget (corpus scale premises)
+        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
+        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
+        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
+        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
+        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
+        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
+        # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
+        # 不指当下提交有问题。
+        shell: bash
+        run: go run ./scripts/perf_budget -check
+
+      - name: Editorconfig hard-rule check (charset/EOL/final-newline/JSON indent)
+        # 审阅批 P2 接线（2026-10-11）：脚本头注自称"升格为 CI 红"但此前
+        # 零接线——E6（JSON 缩进/末行换行漂移）历史复发 4 次全靠本地抓。
+        # 生成物（@generated 头注）按"产物面归生成器闸"排除；tmp/_build 剪枝。
+        shell: bash
+        run: go run ./scripts/editorconfig_check
+
+      - name: gen_api_help artifact check (-check)
+        # 审阅批 P3 接线（2026-10-11）：#67 生成器产物对账闸此前只在
+        # ci.yml 注释里出现——api_help 双产物漂移无 CI 强制。
+        shell: bash
+        run: go run ./scripts/gen_api_help -check
+
+      - name: Go format check (gofmt -l scripts)
+        # P3-3 修复批（2026-09-23）：scripts/** 此前无 eol 约定 + core.autocrlf
+        # 让工作区 CRLF——gofmt -l 本地恒红（24 项假阳性含真格式漂移 15 项），
+        # 无法作为自检；.gitattributes 补 scripts/** text eol=lf + 全量
+        # gofmt -w 后本步入 CI（格式账，归 hygiene）。
+        shell: bash
         run: |
-          cd moonbit && moon build --target native cmd/serve && cd ..
-          go run ./scripts/serve_smoke -moonbit
+          out=$(gofmt -l scripts/)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt 漂移——本地 gofmt -w scripts/ 后提交"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
+        # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：
+        # Manual 兜底层（整行无数字等于真值）自此进 CI 判红。合法误报面
+        # （里程碑未来值行等）经 scripts/facts/suspect_exemptions.json 显式
+        # 过闸——条目零命中判僵尸、无条件红（防腐化），go test 锚
+        # suspect_exemptions_test.go 五路 J9。
         shell: bash
+        run: go run ./scripts/facts --strict check
 
-      # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
-      # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
-      # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
-      # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
-      - name: replay S1-S5 protocol assertions (MoonBit arm)
-        run: go run ./scripts/replay -moonbit
+      - name: Docs SVG freshness (gen_svg -check)
+        # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成
+        # 不一致红不了，生成器源码过时（如包图徽标停在上个批次）更无人知，
+        # 2026-09-28 盘点实证：S6 收官 / S7 开工两个批次后包图仍写「S6 进行
+        # 中 / 未开工 / 截至 2026-09-24」。现双管齐下：建成状态改 facts 派生
+        # （moonbit_built_packages / moonbit_engine_version，上一 facts 步已
+        # 落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9 证红：手改
+        # 落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归 hygiene：红 =
+        # 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
         shell: bash
+        run: go run ./scripts/gen_svg -check
 
-      # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
-      # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
-      # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
-      - name: MoonBit exemption audit (zombie detector, D19)
-        run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
+      - name: Agent skills frontmatter audit (install_skills --list)
+        # 2026-09-29 skills 图批接线：.agents/skills/ 的 SKILL.md 此前只有本地
+        # 校验（脚本存在 ≠ 接线）。--list 对每个 skill 做 fail loud 校验：缺
+        # SKILL.md / frontmatter 缺 name 或 description / name 与目录名不一致
+        # → exit 1。与 gen_svg -check（skills 图失步即红）构成双闸——前者挡
+        # 结构坏，后者挡「AI 改了手册而清单图没跟上」。
+        # J9 证红：删任一 SKILL.md 的 name 行 → 必红。
         shell: bash
+        run: go run .agents/install_skills.go --list
 
-      # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
-      # cmd/serve 与 Rust golden（algorithm_annotations_v3.json）的首现序列
-      # 比对（compile→run→step.begin→step.next×4000；只比已迁移族——
-      # rules.json 外置迁移集+豁免面；双向模板集断言；serve exe 由上一步
-      # 构建）。J9 双路证红：golden desc 篡改 → exit 1（连锁红）；
-      # step_budget 40 → exit 1（首现缺失）。
-      - name: Teaching annotation diff (family-incremental golden, Exit 1)
-        run: go run ./scripts/teaching_annotation_diff
+      # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
+      # 报告上传 artifact；阈值门禁待阈值基线固化后启用
+      # 2026-10-05 修复：windows runner 上 unix.sh 报 Unsupported platform:
+      # MINGW64_NT-10.0-26100（runner 内核升级后 uname 形态被安装脚本拒绝；
+      # 此步未指定 shell 走 pwsh，curl|bash 撞平台检测）——改走 Windows 官方
+      # powershell 安装（与上方 differential anchors 步同款、shell 显式）
+  hygiene:
+    name: Hygiene (fmt & three-target tests & toolchain)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      - name: MoonBit toolchain health probe (A8 automation)
+        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
+        # F8 ICE 特征/退出码 fail loud）。归 hygiene（2026-09-23 用户裁定）：
+        # 工具链追新是既定策略（MoonBit 未到 1.0，breaking 跟着走），版本
+        # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
+        # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
         shell: bash
+        run: go run ./scripts/toolchain_probe
 
-      # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
-      # S7 批五号（2026-09-29）：wasm-gc 单出口（F-5）——gateway 4 函数导出
-      # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
-      # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
-      # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
+      - name: MoonBit format check (moon fmt --check)
+        # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
+        # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式
+        # 差异会在再生成路径持续产生噪声。归 hygiene（2026-09-23）：格式账。
+        shell: bash
+        run: |
+          cd moonbit
+          moon fmt
+          if ! git diff --exit-code -- .; then
+            echo "::error::moon fmt 漂移——本地 cd moonbit && moon fmt 后提交"
+            git diff --stat -- .
+            exit 1
+          fi
 
-      - name: wasm-gc gateway build + Node host smoke (Exit 2)
-        # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
-        # host.js 两段式实例化兼容 22 系但判定面在 25 上定版——pin 25。
-        # 体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚手工数字教训）
+      - name: MoonBit tests (three targets)
+        run: |
+          cd moonbit
+          moon test
+          moon test --target native
+          moon test --target wasm-gc
+
+      - name: Install Node 25
         uses: actions/setup-node@v4
         with:
           node-version: "25"
-      - name: wasm-gc gateway build + Node host smoke (run)
+
+      - name: wasm-gc gateway artifact + Node host smoke
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
           node scripts/wasm_gateway/host.js
-        shell: bash
 
-      # 统一 CLI 入口闸（#49 批一，2026-10-06）：wasm 壳（scripts/vitro_cli/
-      # main.js）四子命令 rc 契约 + **双臂同形对拍**（壳 vs native cmd/vitro
-      # exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize 特例；
-      # 唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
-      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = 上一步 gateway wasm
-      # 产物 + 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）+ Go
-      # （core job 天然）+ node 25（上方 setup-node）。
-      - name: unified CLI smoke (wasm shell vs native exe)
-        run: |
-          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
-          go run ./scripts/vitro_cli_smoke --corpus 30
-        shell: bash
-
-      # 防线 wasm 臂（#49 批二段三：实证面搬家——vm_diff/clang_direct 被测物
-      # 切统一入口壳消费 gateway wasm.wasm）：三联（stdout/退出码/1MB 映像）
-      # 与冻结 golden 全量对拍。前置 = 上方 gateway wasm 产物 + node 25 +
-      # Go（core 天然）；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
-      # 全量各 ~80s（本地实测 609/704 例）。
-      - name: vm_diff wasm arm (gateway product vs frozen golden)
-        run: go run ./scripts/vm_diff --backend wasm
-        shell: bash
-      - name: clang_direct wasm arm (gateway product vs Clang)
-        run: go run ./scripts/clang_direct --backend wasm
-        shell: bash
-
-      # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
-      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
-      # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置同上（gateway wasm + node 25）。
-      - name: replay wasm arm (shell serve)
-        run: go run ./scripts/replay --backend wasm
-        shell: bash
-      - name: serve_smoke wasm arm (shell serve)
-        run: go run ./scripts/serve_smoke --backend-wasm
-        shell: bash
-      - name: protocol_frames wasm arm (shell serve)
-        run: go run ./scripts/protocol_frames --backend-wasm
-        shell: bash
-      - name: teaching_annotation_diff wasm arm (shell serve)
-        run: go run ./scripts/teaching_annotation_diff --backend-wasm
-        shell: bash
-
-      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
-      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
-      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
-      # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
-      # TS 重写批（2026-10-04，refs #28）：demo/js 产物不入库——消费产物的
-      # 步骤一律前置发射（npm ci + tsc，发射即检查闸；本步的 method 消费面
-      # 扫描读 .ts 源不依赖产物，但运行依赖 wasm 与 cases 均在，故本步
-      # 排在下方发射步之后语义更清晰——实排见 lint 步后）。
+  demo:
+    name: Demo front-end gates (tsc / smoke / TS tests)
+    needs: build-and-unit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
       - name: demo TS build (tsc emit = type gate)
         run: |
           cd demo && npm ci && npx tsc -p tsconfig.json --noEmit && npx tsc -p tsconfig.json
@@ -669,216 +900,3 @@ jobs:
   # 夜间批量复绿（用户工作流裁定：白天不断推进、夜里花时间复绿）。
   # needs core（2026-10-05 删区批后）：facts 真值源已转 MoonBit/Clang 侧
   # （cargo/shadow/replay 随 Rust 退役——facts.go 连坐：相关键转 unavailable）。
-  hygiene:
-    name: Hygiene checks (bookkeeping)
-    needs: core
-    # 2026-10-03 拆批防连坐：core 红（准入型）时记账闸照跑——此前 gofmt
-    # 漂移因 needs 连坐 skip 而积压无人见（2026-10-03 本地绿盘实锤 5 文件）。
-    # core 失败时 cargo log / shadow 产物 artifact 缺失：download 步骤
-    # continue-on-error 放行，facts 对缺失 log 记 cached 沿用不红
-    # （2026-10-03 实测 exit=0），其余记账闸正常出红绿。
-    if: always()
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install MoonBit toolchain (probe / fmt / facts --run)
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
-
-      - name: Refresh MoonBit registry index
-        # toolchain_probe 的索引预检需要 registry 索引在位（fresh 环境同 core）
-        shell: bash
-        run: cd moonbit && moon update
-
-      - name: Check Bytecode Libc precompiled artifacts are up-to-date
-        # D5 后续批次第二站（2026-09-18）：precompile_bytecode_libc.py → Go。
-        # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
-        # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
-        # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
-        # 补 `go run ./scripts/precompile_bytecode_libc` + git add 即绿。
-        run: go run ./scripts/precompile_bytecode_libc --check
-        shell: bash
-
-      - name: MoonBit toolchain health probe (A8 automation)
-        # 2026-09-21 E-06 窄增量：工具链故障显式化（版本锁定/索引预检/
-        # F8 ICE 特征/退出码 fail loud）。归 hygiene（2026-09-23 用户裁定）：
-        # 工具链追新是既定策略（MoonBit 未到 1.0，breaking 跟着走），版本
-        # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
-        # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
-        shell: bash
-        run: go run ./scripts/toolchain_probe
-
-      - name: Vendored upstream drift probe (moonbitlang/x fs)
-        # 2026-09-28 唯一依赖清除 B 路线批接线：moonbit/fs vendored 自
-        # moonbitlang/x@0.5.5，上游是活仓库且实证发生过「内容漂移而
-        # version 未 bump」（fs_native.mbt 的 utf8 迁移）——探针走内容哈希
-        # 口径盯上游 main 四文件（版本号仅报告）。归 hygiene：红 = 上游
-        # 漂移待人工评估（评估令非自动同步令——裁定权在人，处置流程见
-        # docs/current/01-定位与路线/唯一依赖清除路线.md §3B-4）；
-        # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
-        # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
-        shell: bash
-        run: go run ./scripts/moonbit/vendor_drift
-
-      # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
-      # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance
-      # 锚四道，防诊断文案透传即 GPL 渗漏），**不跑勘探本身**（维持拍板——
-      # 勘探需外部仓库+Clang，CI 不可复现；勘探 CI 化仍二期待拍板）。
-      # J9 三路证红：加 message 键 / 删 source_commit / 伪码形态 → exit 2。
-      - name: Realcode gold signatures compliance (scripts/realcode_diff -check)
-        shell: bash
-        run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
-
-      # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
-      # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一
-      # 真源），但 job 间不共享工作区——core 的 Regenerate 步产物带不进本
-      # job，perf_budget -check 在干净检出下缺 rules.json 直接 FATAL（run
-      # 37765594479/37883006515 连续红）。本 job 唯一 rules 消费方就是
-      # perf_budget，故只再生这一张（编译 jsonmbt ~40s 是单 job 自洽的代价）。
-      - name: Build jsonmbt (hygiene-local regenerator)
-        shell: bash
-        run: |
-          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
-          cd "$RUNNER_TEMP/jsonmbt"
-          # 干净 runner registry index 未初始化时 build 必失败（rc=127，
-          # run 37733072522 实证；moon update 补 index——详见 core 同名步注释）
-          moon update
-          MOON_CC=clang moon build --target native --release
-          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
-
-      - name: Regenerate truth-source JSON (hygiene-local)
-        # 全量 13 张（与 core Regenerate 同清单），非只 perf_budget：2026-10-09
-        # run 37884966704 实证 Pages/hygiene 侧还有隐藏消费面——gen_svg 图 M
-        # 读 teaching/rules.json（Docs SVG freshness 步在本步之后），单张再生
-        # 会漏。枚举自维护 + 计数断言与 core 同款。
-        shell: bash
-        run: |
-          set -e
-          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
-          count=$(printf '%s\n' "$files" | grep -c .)
-          if [ "$count" -ne 14 ]; then
-            echo "FATAL: 期望 14 张规则真相源，实得 $count"
-            printf '%s\n' "$files"
-            exit 2
-          fi
-          for m in $files; do
-            "$JSONMBT_EXE" build --pretty "$m"
-          done
-
-      - name: Performance-assumption budget (corpus scale premises)
-        # 2026-09-22 S5 收尾批接线：把「某项优化为什么不做」所依赖的**规模
-        # 前提**变成机判红线。首条 = typeck O2 债（compute_type_size 每次
-        # 调用重建 struct/union 表）——裁决「不做缓存化」的依据是语料规模
-        # 不可测（实测 struct 定义 ≤2、成员访问 ≤37），但该前提会随语料
-        # 扩展过期且无人提醒。超预算即红并指出裁决所在，迫使重估。
-        # 规则外置 scripts/perf_budget/rules.json；J9 证红：预算压 0 必红。
-        # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
-        # 不指当下提交有问题。
-        shell: bash
-        run: go run ./scripts/perf_budget -check
-
-      - name: Go format check (gofmt -l scripts)
-        # P3-3 修复批（2026-09-23）：scripts/** 此前无 eol 约定 + core.autocrlf
-        # 让工作区 CRLF——gofmt -l 本地恒红（24 项假阳性含真格式漂移 15 项），
-        # 无法作为自检；.gitattributes 补 scripts/** text eol=lf + 全量
-        # gofmt -w 后本步入 CI（格式账，归 hygiene）。
-        shell: bash
-        run: |
-          out=$(gofmt -l scripts/)
-          if [ -n "$out" ]; then
-            echo "::error::gofmt 漂移——本地 gofmt -w scripts/ 后提交"
-            echo "$out"
-            exit 1
-          fi
-
-      - name: MoonBit format check (moon fmt --check)
-        # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
-        # ci.yml 零 fmt 步骤）；gen_* 生成器内置 fmt 与手工编辑的格式
-        # 差异会在再生成路径持续产生噪声。归 hygiene（2026-09-23）：格式账。
-        shell: bash
-        run: |
-          cd moonbit
-          moon fmt
-          if ! git diff --exit-code -- .; then
-            echo "::error::moon fmt 漂移——本地 cd moonbit && moon fmt 后提交"
-            git diff --stat -- .
-            exit 1
-          fi
-
-      - name: Full native release build gate (declared targets must build)
-        # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
-        # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
-        # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
-        # MOON_CC=clang（纪律 11 + 2026-10-05 审阅批）：被测物构建器与本地
-        # 一致（MSVC 构建的 cmd/run 在 UB 语料上结局可漂——bTree_default
-        # 0xC0000005 vs clang 构建受检 trap，known_direct 双集补录在案）；
-        # 且 MSVC 全量构建实测 12m51s，clang 显著更快（moon#2254）。
-        shell: bash
-        run: |
-          cd moonbit
-          MOON_CC=clang moon build --release --target native
-          echo "全量 native release 构建：通过（每个包都真的被构建过）"
-      - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
-        # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：
-        # Manual 兜底层（整行无数字等于真值）自此进 CI 判红。合法误报面
-        # （里程碑未来值行等）经 scripts/facts/suspect_exemptions.json 显式
-        # 过闸——条目零命中判僵尸、无条件红（防腐化），go test 锚
-        # suspect_exemptions_test.go 五路 J9。
-        shell: bash
-        run: go run ./scripts/facts --strict check
-
-      - name: Docs SVG freshness (gen_svg -check)
-        # 2026-09-28 防漂移批接线：入库 SVG 此前**不在任何闸里**——重生成
-        # 不一致红不了，生成器源码过时（如包图徽标停在上个批次）更无人知，
-        # 2026-09-28 盘点实证：S6 收官 / S7 开工两个批次后包图仍写「S6 进行
-        # 中 / 未开工 / 截至 2026-09-24」。现双管齐下：建成状态改 facts 派生
-        # （moonbit_built_packages / moonbit_engine_version，上一 facts 步已
-        # 落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9 证红：手改
-        # 落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归 hygiene：红 =
-        # 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
-        shell: bash
-        run: go run ./scripts/gen_svg -check
-
-      - name: Agent skills frontmatter audit (install_skills --list)
-        # 2026-09-29 skills 图批接线：.agents/skills/ 的 SKILL.md 此前只有本地
-        # 校验（脚本存在 ≠ 接线）。--list 对每个 skill 做 fail loud 校验：缺
-        # SKILL.md / frontmatter 缺 name 或 description / name 与目录名不一致
-        # → exit 1。与 gen_svg -check（skills 图失步即红）构成双闸——前者挡
-        # 结构坏，后者挡「AI 改了手册而清单图没跟上」。
-        # J9 证红：删任一 SKILL.md 的 name 行 → 必红。
-        shell: bash
-        run: go run .agents/install_skills.go --list
-
-      # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
-      # 报告上传 artifact；阈值门禁待阈值基线固化后启用
-      # 2026-10-05 修复：windows runner 上 unix.sh 报 Unsupported platform:
-      # MINGW64_NT-10.0-26100（runner 内核升级后 uname 形态被安装脚本拒绝；
-      # 此步未指定 shell 走 pwsh，curl|bash 撞平台检测）——改走 Windows 官方
-      # powershell 安装（与上方 differential anchors 步同款、shell 显式）
-      - name: Install MoonBit toolchain
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
-
-      - name: MoonBit tests (three targets)
-        run: |
-          cd moonbit
-          moon test
-          moon test --target native
-          moon test --target wasm-gc
-
-      - name: Install Node 25
-        uses: actions/setup-node@v4
-        with:
-          node-version: "25"
-
-      - name: wasm-gc gateway artifact + Node host smoke
-        run: |
-          cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
-          node scripts/wasm_gateway/host.js

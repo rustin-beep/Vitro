@@ -115,13 +115,9 @@ func main() {
 		moonDir := filepath.Join(work, "moon")
 		runMoon(stubDir, moonDir)
 		doc := loadBootDigest()
-		added, skipped := 0, 0
+		added, refreshed, unchanged := 0, 0, 0
 		for _, f := range files {
 			base := filepath.Base(f)
-			if _, ok := doc.Cases[base]; ok {
-				skipped++
-				continue
-			}
 			var md struct{ Dump json.RawMessage }
 			mb, err := os.ReadFile(filepath.Join(moonDir, base+".compile.json"))
 			if err != nil {
@@ -134,15 +130,30 @@ func main() {
 			if err != nil {
 				fatal("--freeze-mb 过滤失败 %s: %v", base, err)
 			}
-			doc.Cases[base] = bootEntry{SrcSHA: fileSHA8(f), ProjSHA: hash16(projectRaw(filtered, rd.CompareFields))}
+			entry := bootEntry{SrcSHA: fileSHA8(f), ProjSHA: hash16(projectRaw(filtered, rd.CompareFields))}
+			if old, ok := doc.Cases[base]; ok {
+				// 语义统一（2026-10-11 审阅批防线建设）：--freeze-mb 默认含
+				// 存量重算（原「刷基线先删旧键重跑」心智消灭）——引擎演化
+				// 致投影漂移时随现状刷新（与五差分 --freeze-mb 同语义）
+				if old == entry {
+					unchanged++
+				} else {
+					doc.Cases[base] = entry
+					fmt.Printf("REFRESH %s（proj %s → %s）\n", base, old.ProjSHA, entry.ProjSHA)
+					refreshed++
+				}
+				continue
+			}
+			doc.Cases[base] = entry
 			fmt.Printf("ADD %s\n", base)
 			added++
 		}
-		if added == 0 {
-			fatal("--freeze-mb: 无新例可入账（%d 例均已在清单；刷基线先删旧键重跑）", skipped)
+		if added == 0 && refreshed == 0 {
+			fmt.Printf("libc_boot_diff --freeze-mb: 零新增零漂移（%d 例均与现状一致）\n", unchanged)
+			os.Exit(0)
 		}
 		saveBootDigest(doc)
-		fmt.Printf("libc_boot_diff --freeze-mb: 新增 %d 例（跳过存量 %d）→ %s\n", added, skipped, bootDigestFile)
+		fmt.Printf("libc_boot_diff --freeze-mb: 新增 %d / 重算 %d / 一致 %d → %s\n", added, refreshed, unchanged, bootDigestFile)
 		os.Exit(0)
 	}
 	// 工序④固化（2026-10-05 面六）：oracle 缺失自动切 golden（删区后零改动存活）

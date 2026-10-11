@@ -9,7 +9,7 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 
 ## 黄金验证序列（按序全跑）
 1. **clang 实跑**取 stdout + exit code（golden 由实跑生成，**勿手写**）；
-2. **golden 不落盘 `.out` 文件**（**[Rust oracle 退役 2026-10-05]** 改写——原「`corpus/cases_golden/<suite>/<name>.out` + 82 个 `*_default.out`」形态已消亡，`corpus/` 下实测 0 个 `.out`）：期望值由 `clang_direct` **现跑** clang 取真值（缓存 `.clang_cache_cd/`，gitignore 域；行级归一内置）；结构面由各差分驱动随包固化的 `golden_digest.json` 对账（工序③形态）——**新用例入账跑 `go run ./scripts/codegen_diff <dir> --freeze-mb`**（mb 侧产物指纹入账）；
+2. **golden 不落盘 `.out` 文件**（**[Rust oracle 退役 2026-10-05]** 改写——原「`corpus/cases_golden/<suite>/<name>.out` + 82 个 `*_default.out`」形态已消亡，`corpus/` 下实测 0 个 `.out`）：期望值由 `clang_direct` **现跑** clang 取真值（缓存 `.clang_cache_cd/`，gitignore 域；行级归一内置）；结构面由各差分驱动随包固化的 `golden_digest.json` 对账（工序③形态）——**新用例入账跑 `go run ./scripts/codegen_diff <dir> --freeze-mb`**（mb 侧产物指纹入账；2026-10-11 语义统一：`--freeze-mb` 默认含存量重算，代码改动致存量漂移时同命令自动刷新——`--refresh` 已删，出现即说明心智过时）；
 3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
 4. ~~`cargo build --release` 重建后 `go run ./scripts/shadow_verify`~~（**[Rust oracle 退役 2026-10-05]**——`native/` 已整体删除，`scripts/shadow_verify` 同批消失；oracle 正确性底线职责由 clang golden + clang_direct 直拍承接）；
 5. `go run ./scripts/facts --strict check` 漂移 0（CI 现役完整形态，flag 在子命令之前）。

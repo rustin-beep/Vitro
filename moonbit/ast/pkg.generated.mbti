@@ -382,6 +382,7 @@ pub fn TypeKind::op_lt(Self, Self) -> Bool
 
 pub(all) enum UnaryOp {
   Neg
+  Pos
   Not
   BitNot
   Addr

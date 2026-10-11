@@ -323,11 +323,27 @@ fn VitroVM::read_variable(self : VitroVM, sym : @bytecode.Symbol) -> Int64 {
   } else {
     sym.addr
   }
-  // 布尔指针标志位（Rust：is_bool_ptr() 时取低 8 位判真假）——C 子集
-  // 布尔经 int 通道承载，此处直接 4 字节读（与 Rust 非 bool 路径同口径）。
-  match self.memory.load_u32(self.mem_map, vaddr) {
-    Ok(v) => v.reinterpret_as_int().to_int64()
-    Err(_) => 0L
+  // 病 54 修正（#71 病 91 A 档，2026-10-11）：8 字节族按实宽读——
+  // 此前恒 4 字节，double/long long 变量在无限循环诊断里错分组错值
+  //（「没变化的变量 x=0」——迁移分叉：oracle 有 Double/LongLong 分支）。
+  match sym.ty.kind() {
+    TK_Double =>
+      match self.memory.load_u64(self.mem_map, vaddr) {
+        Ok(v) => v.reinterpret_as_double().to_int64()
+        Err(_) => 0L
+      }
+    TK_LongLong =>
+      match self.memory.load_u64(self.mem_map, vaddr) {
+        Ok(v) => v.reinterpret_as_int64()
+        Err(_) => 0L
+      }
+    _ =>
+      // 布尔指针标志位（Rust：is_bool_ptr() 时取低 8 位判真假）——C 子集
+      // 布尔经 int 通道承载，其余 4 字节读（与 Rust 非 bool 路径同口径）。
+      match self.memory.load_u32(self.mem_map, vaddr) {
+        Ok(v) => v.reinterpret_as_int().to_int64()
+        Err(_) => 0L
+      }
   }
 }
 

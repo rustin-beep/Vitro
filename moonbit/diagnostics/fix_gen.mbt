@@ -76,8 +76,11 @@ pub fn generate_fix(
 }
 
 ///|
-/// 1004：条件中的单 | / & 回搜（Rust 列 92-138 照搬——错误位前 3 字节
+/// 1004：条件中的单 | / & 回搜（Rust 列 92-138 骨架——错误位前 3 字节
 /// 内找孤立位运算符，改写为逻辑运算符；找不到给 manual 提示）。
+/// 病 91 A 档修正（#71，2026-10-11）：替换区间从「运算符前一字符」改到
+/// 运算符本身（pos 是命中探测位=运算符前一字节——照搬位错；组合
+/// apply_fix 曾产 "if (a||| b)" 非法代码；连坐翻 diagnostics_test 291 锚）。
 fn fix_1004_unsupported_op(
   line : Int,
   col0 : Int,
@@ -116,9 +119,9 @@ fn fix_1004_unsupported_op(
         suggestion: "位运算符 '\{lone}' 在条件中很少使用，建议改为逻辑运算符 '\{replacement}'",
         fix_kind: 1,
         start_line: line,
-        start_col: pos,
+        start_col: pos + 1,
         end_line: line,
-        end_col: pos + 1,
+        end_col: pos + 2,
         text: replacement,
       }
     }

@@ -431,6 +431,30 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+      # CI 首跑补线（2026-10-11）：protocol_frames wasm 臂读 rules.json
+      #（13 张 jsonmbt 再生面之一——gates-native/demo 已有此前置，本 job
+      # 漏配同族断供）。build jsonmbt + regen 两步最小面。
+      - name: Build jsonmbt (rules regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          moon update
+          MOON_CC=clang moon build --target native --release
+          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
+      - name: Regenerate truth-source JSON (rules for protocol_frames)
+        shell: bash
+        run: |
+          set -e
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 14 ]; then
+            echo "FATAL: 期望 14 张规则真相源，实得 $count"
+            exit 2
+          fi
+          for m in $files; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
       - name: wasm-gc gateway build + Node host smoke (Exit 2)
         # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
         # host.js 两段式实例化兼容 22 系但判定面在 25 上定版——pin 25。

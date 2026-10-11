@@ -64,15 +64,9 @@ fn detect_in_func(
   // vis_events 恒空同形）。
   if features.has_dp_array &&
     (features.has_single_loop || features.has_nested_loops) {
-    matches.push({
-      name: "dp",
-      display_name: "动态规划",
-      func_name: func.name,
-      confidence: 85,
-      suggestion: "",
-      line: func.loc.line,
-      vis_events: [],
-    })
+    matches.push(
+      build_match("dp", "动态规划", func.name, func.loc.line, []),
+    )
   }
   matches
 }

@@ -7,15 +7,7 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 
 **适用场景**：往 `corpus/` 加（或改）C 用例；补/修 golden；加用例后 clang_direct / vm_diff / facts 红（原 `native/tests/cases/` 已随 2026-10-05 删区整体迁至 `corpus/`；shadow / e2e 驱动已随 Rust 区退役）。
 
-## 一键串联器（2026-10-11 起，首选入口）
-
-`scripts/bin/corpus` 把下面的黄金序列收成一条（**编排器非判定闸**——判定仍在各驱动，本脚本管顺序/参数/失败即停/收尾指引）：
-
-- `scripts/bin/corpus add <path.c>`——新用例全链：codegen_diff --freeze-mb 入账 → vm_diff --freeze-mb 入账 → clang_direct 直拍 → gap 台账特判 → gen_svg 连坐（漂移自动重生成+再生后复核）→ facts --strict check；
-- `scripts/bin/corpus check <path.c>`——存量复检：vm_diff --golden + clang_direct + SVG + facts，不入账；
-- `scripts/bin/corpus selftest`——J9 自证：四负路径 + 失败传播注入 + 干跑序列断言（零副作用）。
-
-退出码语义：**0**=全绿；**1**=机械面硬失败（停在那一步并打印可复制的单步重跑命令）；**2**=机械面绿、文档收尾面待办（facts 漂移 / gap 待登记——**预期内信号**，数字收尾是 agent 的活，收尾指引随输出给出）。`--dry-run` 只打印序列不执行。
+（2026-10-11 勘误：本段曾预写「一键串联器」——该脚本从未入库（CI skill_path_check 实锤悬空引用），段落回撤；编排器真入库时随件重写。）
 
 **参数语义陷阱**：vm_diff / clang_direct 的 `--corpus` 接 **suite 名**（如 `baseline`，内部自拼 `corpus/` 前缀）；codegen_diff 接**目录**（`corpus/baseline`）。手跑别混——串联器已内化此差异。
 

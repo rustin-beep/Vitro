@@ -290,10 +290,12 @@ test "fixgen_3035_message_branch" {
 ///|
 test "fixgen_1004_pipe_rewrite" {
   // "if (a | b)"：错误列 8（col0=7）回搜 3 字节命中 '|'（字节位 6）→ ||
+  // 病 91 A 档翻锚（#71，2026-10-11）：替换区间=运算符本身 [6,7)——旧锚
+  // 锁 [5,6)=空格位（apply_fix 产 "if (a||| b)" 非法代码，A3 锁死错形态）
   let out = @diagnostics.generate_fix(1004, 1, 8, "", ["if (a | b)"])
   inspect(out.fix_kind, content="1")
-  inspect(out.start_col, content="5")
-  inspect(out.end_col, content="6")
+  inspect(out.start_col, content="6")
+  inspect(out.end_col, content="7")
   inspect(out.text, content="||")
 }
 

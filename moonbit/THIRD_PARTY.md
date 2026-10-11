@@ -228,3 +228,13 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 ```
+
+## 已知上游缺陷（照搬原样，登记不修——#71 病 44，2026-10-11）
+
+- `fs_native.mbt` `write_bytes_to_file_internal`：`fopen_ffi` 失败（路径
+  不可写/不存在）返回 NULL 后**无护栏直传 `fwrite_ffi`** → C 侧
+  0xC0000409 崩进程（read 侧 `read_file_to_bytes_internal` 有
+  `guard is_null` 同款防护——同一文件内的不对称）。本地消费面：
+  cmd 族 `--dump-*` 输出路径错误即踩（零诊断崩）。处置：vendored
+  内容哈希锁死（`scripts/moonbit/vendor_drift`），本地不偏离；上游
+  issue 已提（链接随发布回填），上游修复后随 vendor 升级批次合入。

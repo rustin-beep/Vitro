@@ -413,6 +413,12 @@ pub fn host_fputs(
   s_addr : UInt,
   stream : UInt,
 ) -> HostMemReply {
+  // 病 91 A 档修正（#71，2026-10-11）：stdin(0) 不可写显式返 EOF——与
+  // fputc/fwrite（病 15 批 B）同族护栏；此前漏挡直落 read_fd_raise 读
+  // stdin 的 FILE 结构偏移（垃圾 fd/访存 trap——NULL 解引用形态）。
+  if stream == 0U {
+    return value_only((-1).to_int64().reinterpret_as_uint64())
+  }
   if stream == 1U || stream == 2U {
     let s = read_cstring_raise(mem, map, s_addr) catch {
       AccessFault::Fault(f~) => return fault_reply(f)

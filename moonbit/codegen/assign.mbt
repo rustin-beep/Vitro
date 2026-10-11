@@ -497,6 +497,10 @@ fn BytecodeGen::gen_struct_copy(
     self.emit(@opcode.OpCode::LoadMem, 0, loc)
     self.emit(@opcode.OpCode::StoreMem, 0, loc)
   }
+  // 病 36 连坐（#71 第二梯队）：struct 表达式统一「留 1 地址槽」约定
+  //（与 Call 返回 struct 的 sret 地址对齐）——赋值表达式值 = 左值地址；
+  // 表达式语句侧 gen_expr_stmt 统一弹。此前留 0 槽，与 Call 臂不一致。
+  self.emit(@opcode.OpCode::LoadLocal, dst_temp, loc)
 }
 
 ///|

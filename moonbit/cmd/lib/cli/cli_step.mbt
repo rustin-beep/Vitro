@@ -10,6 +10,7 @@ pub fn step(
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
 ) -> Int {
+  ensure_include_reader()
   let mut file = ""
   let mut json_mode = false
   // 默认 100_000 对齐 Rust unified（手册口径——2026-10-04 对照复核修正：

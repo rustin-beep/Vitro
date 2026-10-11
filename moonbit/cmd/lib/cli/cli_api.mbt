@@ -17,6 +17,7 @@
 
 ///|
 pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
+  ensure_include_reader()
   let mut method_name = ""
   let mut params = "{}"
   let mut batch = false

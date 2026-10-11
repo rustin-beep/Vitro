@@ -52,10 +52,8 @@ fn BytecodeGen::gen_binary(
   } else {
     // 结果类型 unsigned 位（含 ULL——病 34：d/3 的 ty 是 TK_LongLong
     // 此前漏判致走 DivQ 符号域）
-    (ty.kind() is TK_Int ||
-      ty.kind() is TK_Char ||
-      ty.kind() is TK_LongLong) &&
-      ty.is_unsigned()
+    (ty.kind() is TK_Int || ty.kind() is TK_Char || ty.kind() is TK_LongLong) &&
+    ty.is_unsigned()
   }
   // Q 域比较的无符号判据（病 34）：ULL 出现即无符号（i64 ⊇ u32，LL vs
   // uint 仍是有符号域）——LL/ULL 任一侧带 unsigned 位

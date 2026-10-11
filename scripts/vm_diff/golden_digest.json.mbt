@@ -396,6 +396,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/struct_member_array.c": Standard(Std::{ src_sha: "18213307", exit_code: 0, stdout_sha: "ef2d127de37b942b", memory_sha: "711a6ee0121e9bda" }),
     "baseline/struct_nested_init.c": Standard(Std::{ src_sha: "54c201ca", exit_code: 0, stdout_sha: "7c8f5059290305ce", memory_sha: "e9669fd576a3f70e" }),
     "baseline/struct_pointer_access.c": Standard(Std::{ src_sha: "ae064328", exit_code: 0, stdout_sha: "73475cb40a568e8d", memory_sha: "4241ee3641b43107" }),
+    "baseline/struct_ret_stmt_leak.c": Standard(Std::{ src_sha: "35ded490", exit_code: 0, stdout_sha: "df394c981b59e226", memory_sha: "1b15a14cdb28780d" }),
     "baseline/struct_return_by_value_as_arg.c": Standard(Std::{ src_sha: "093ac906", exit_code: 0, stdout_sha: "6b51d431df5d7f14", memory_sha: "4b0a56829e69d5f7" }),
     "baseline/struct_return_by_value_basic.c": Standard(Std::{ src_sha: "4160dc60", exit_code: 0, stdout_sha: "73475cb40a568e8d", memory_sha: "2368d474b67285bb" }),
     "baseline/struct_return_by_value_direct.c": Standard(Std::{ src_sha: "b81c9ac0", exit_code: 0, stdout_sha: "73475cb40a568e8d", memory_sha: "5cef1bf038c75819" }),

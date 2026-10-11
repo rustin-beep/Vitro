@@ -76,7 +76,6 @@ vitro/engine/cmd/dump_typeck vitro/engine/parser parse
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeChecker
 vitro/engine/cmd/dump_typeck vitro/engine/typeck TypeError
 vitro/engine/cmd/run moonbitlang/core/env args
-vitro/engine/cmd/run vitro/engine/fs read_file_to_string
 vitro/engine/cmd/serve moonbitlang/core/encoding/utf8 decode_lossy
 vitro/engine/cmd/serve vitro/engine/fs read_file_to_string
 vitro/engine/cmd/serve vitro/engine/gateway invoke
@@ -555,6 +554,7 @@ vitro/engine/vm vitro/engine/util render_template
 vitro/engine/cmd/compile moonbitlang/core/env args
 vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
+vitro/engine/cmd/lib/cli vitro/engine/gateway set_include_reader
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
 vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_detail
 vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_list
@@ -566,8 +566,6 @@ vitro/engine/cmd/run vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/step moonbitlang/core/env args
 vitro/engine/cmd/step vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro moonbitlang/core/env args
-vitro/engine/cmd/vitro vitro/engine/fs read_file_to_string
-vitro/engine/cmd/vitro vitro/engine/gateway set_include_reader
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step
@@ -586,4 +584,3 @@ vitro/engine/cmd/lib/cli vitro/engine/util json_escape
 vitro/engine/diag vitro/engine/util json_escape
 vitro/engine/gateway vitro/engine/util json_escape
 vitro/engine/gateway vitro/engine/util json_escape_into
-vitro/engine/cmd/run vitro/engine/gateway set_include_reader

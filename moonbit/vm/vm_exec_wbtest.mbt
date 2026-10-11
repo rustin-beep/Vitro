@@ -1794,15 +1794,10 @@ test "exec_u_series_duality_issue61" {
   vm.load_program(code_of([instr(PushConst, -1), instr(CastU2Q, 0)]))
   ignore(vm.step())
   ignore(vm.step())
-  assert_eq(
-    vm.stack[vm.stack.length() - 1].reinterpret_as_int64(),
-    4294967295L,
-  )
+  assert_eq(vm.stack[vm.stack.length() - 1].reinterpret_as_int64(), 4294967295L)
   // CastU2D：u32 位 0xEE6B2800（3000000000u）→ 3000000000.0 而非负值
   let vm2 = VitroVM::new()
-  vm2.load_program(
-    code_of([instr(PushConst, -1294967296), instr(CastU2D, 0)]),
-  )
+  vm2.load_program(code_of([instr(PushConst, -1294967296), instr(CastU2D, 0)]))
   ignore(vm2.step())
   ignore(vm2.step())
   assert_eq(

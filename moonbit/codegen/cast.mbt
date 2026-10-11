@@ -37,9 +37,7 @@ fn BytecodeGen::gen_cast_expr(
     }
   } else if tk is TK_LongLong && ik is TK_Double {
     self.emit(@opcode.OpCode::CastD2Q, 0, loc)
-  } else if tk is TK_LongLong &&
-    !(ik is TK_LongLong) &&
-    !(ik is TK_Float) {
+  } else if tk is TK_LongLong && !(ik is TK_LongLong) && !(ik is TK_Float) {
     if inner_u {
       self.emit(@opcode.OpCode::CastU2Q, 0, loc)
     } else {

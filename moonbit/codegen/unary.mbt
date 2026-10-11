@@ -263,12 +263,26 @@ fn BytecodeGen::gen_unary(
         Index(array, index, _, ty) => {
           let step = self.ptr_step_size(ty)
           self.gen_index(array, index, ty, loc, true)
-          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), ty.is_unsigned(), loc)
+          self.gen_mem_inc_dec(
+            is_inc,
+            is_pre,
+            step,
+            ty.kind(),
+            ty.is_unsigned(),
+            loc,
+          )
         }
         Member(object, mname, _, ty) => {
           let step = self.ptr_step_size(ty)
           self.gen_member_addr(object, mname, loc)
-          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), ty.is_unsigned(), loc)
+          self.gen_mem_inc_dec(
+            is_inc,
+            is_pre,
+            step,
+            ty.kind(),
+            ty.is_unsigned(),
+            loc,
+          )
         }
         Unary(@ast.UnaryOp::Deref, inner, _, _) => {
           // (*p)++ 是对 pointee 标量自增，步长恒 1（指针自身的 p++ 走

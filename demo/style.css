@@ -152,7 +152,7 @@ html[data-theme="glass"] .dd-list { backdrop-filter: var(--pane-blur); }
 }
 .dd-opt:hover { background: var(--accent-tint); }
 .dd-opt.on { background: var(--accent-fill); color: var(--on-accent); }
-button { background: var(--accent-grad); color: var(--on-accent); border: 0; border-radius: 7px; padding: 7px 16px; font-size: 13px; cursor: pointer; transition: filter var(--t-fast) var(--ease-out), transform .08s ease, box-shadow var(--t-base) var(--ease-out); }
+button { background: var(--accent-grad); color: var(--on-accent); border: 0; border-radius: 7px; padding: 7px 16px; font-size: 13px; cursor: pointer; transition: filter var(--t-fast) var(--ease-out), transform var(--t-inst) ease, box-shadow var(--t-base) var(--ease-out); }
 button:hover { filter: brightness(1.08); }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .5; cursor: default; filter: none; }
@@ -296,7 +296,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .stdout { background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; min-height: 46px; max-height: 360px; overflow: auto; font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 0; color: var(--code-text); }
 .stdout.empty { color: var(--t3); }
 /* 内容更新淡入（F-1b②：stdout/数字增量淡入——JS 在重渲染时重触发） */
-.flash-in { animation: flash-in .35s var(--ease-out); }
+.flash-in { animation: flash-in var(--t-slow) var(--ease-out); }
 @keyframes flash-in { from { opacity: 0; } }
 
 .trap { margin-top: 12px; padding: 12px 14px; background: var(--danger-tint); border: 1px solid var(--danger); border-radius: 8px; font: 13px/1.6 var(--mono); white-space: pre-wrap; color: var(--code-text); }
@@ -308,7 +308,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 #argv-box:hover, #argv-box:focus { border-color: var(--t3); }
 
 .diag-list { max-height: 40vh; overflow: auto; font-size: 12.5px; }
-.diag { padding: 4px 8px; border-left: 3px solid var(--num); margin-bottom: 4px; background: var(--field); border-radius: 0 6px 6px 0; animation: rise-in .25s var(--ease-out) backwards; animation-delay: min(calc(var(--i, 0) * var(--stagger)), 280ms); transition: background-color var(--t-fast) var(--ease-out); }
+.diag { padding: 4px 8px; border-left: 3px solid var(--num); margin-bottom: 4px; background: var(--field); border-radius: 0 6px 6px 0; animation: rise-in var(--t-base) var(--ease-out) backwards; animation-delay: min(calc(var(--i, 0) * var(--stagger)), 280ms); transition: background-color var(--t-fast) var(--ease-out); }
 @keyframes rise-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .diag.jumpy { cursor: pointer; }
 .diag.jumpy:hover { background: var(--accent-tint); }
@@ -326,18 +326,24 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .band-wrap { margin: 8px 0; }
 .band-label { font-size: 11.5px; color: var(--t3); margin-bottom: 3px; }
 .band { position: relative; height: 26px; background: var(--field); border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; }
-.blk { position: absolute; top: 0; height: 100%; min-width: 2px; opacity: .92; transition: left .45s var(--ease-out), width .45s var(--ease-out), background-color .45s var(--ease-out), border-color .45s var(--ease-out), opacity .15s ease; }
+.blk { position: absolute; top: 0; height: 100%; min-width: 2px; opacity: .92; animation: blk-in var(--t-base) var(--ease-out); transition: left var(--t-slow) var(--ease-out), width var(--t-slow) var(--ease-out), background-color var(--t-slow) var(--ease-out), border-color var(--t-slow) var(--ease-out), opacity var(--t-fast) ease; }
 /* 内存三段映射（tokens 头注约定）：global=accent / heap=ok / stack=num 暖橙 */
 .blk.global { background: var(--accent); }
 .blk.heap { background: var(--ok); }
 .blk.stack { background: var(--num); }
 .blk.freed { background: var(--delimiter); border: 1px solid var(--danger); box-sizing: border-box; }
 .blk:hover { opacity: 1; outline: 1px solid var(--t1); }
+/* 内存块进出场（2026-10-11 动效批）：新增 region 条块随元素创建播 blk-in
+   （透明度渐显）；消失的 key 由 memory.ts 加 .out 播 blk-out 后移除节点。
+   克制取值：只做透明度，不做位移/缩放/发光（工作台气质，非营销页动效）。 */
+@keyframes blk-in { from { opacity: 0; } }
+@keyframes blk-out { to { opacity: 0; } }
+.blk.out { animation: blk-out var(--t-fast) var(--ease-out) forwards; }
 .band .muted.center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 
 .quar { margin: 8px 0; }
 .quar-bar { height: 8px; background: var(--field); border: 1px solid var(--hairline); border-radius: 4px; overflow: hidden; }
-.quar-bar div { height: 100%; background: var(--danger); width: 0; transition: width .3s var(--ease-out); }
+.quar-bar div { height: 100%; background: var(--danger); width: 0; transition: width var(--t-base) var(--ease-out); }
 
 .mem-table { width: 100%; border-collapse: separate; border-spacing: 0; font: 12px/1.5 var(--mono); margin-top: 6px; border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; }
 .mem-table th { text-align: left; color: var(--t3); font-weight: normal; border-bottom: 1px solid var(--hairline); padding: 5px 8px; background: var(--field); }
@@ -359,7 +365,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .cat-head { font-size: 12px; color: var(--accent-strong); margin: 8px 0 4px; }
 .cat-card { border: 1px solid var(--hairline); border-radius: 6px; margin-bottom: 4px; background: var(--pane); transition: border-color var(--t-base) var(--ease-out); }
 .cat-card[open] { border-color: color-mix(in srgb, var(--accent) 45%, var(--hairline)); }
-.cat-card::details-content { height: 0; overflow: clip; transition: height .3s var(--ease-out), content-visibility .3s ease allow-discrete; }
+.cat-card::details-content { height: 0; overflow: clip; transition: height var(--t-slow) var(--ease-out), content-visibility var(--t-slow) ease allow-discrete; }
 .cat-card[open]::details-content { height: auto; }
 .cat-card summary { cursor: pointer; padding: 6px 10px; font-size: 13px; list-style-position: inside; color: var(--t1); }
 .cat-card summary:hover { color: var(--accent-strong); }

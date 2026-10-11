@@ -2108,6 +2108,12 @@
       "stdout_sha": "73475cb40a568e8d",
       "memory_sha": "4241ee3641b43107"
     },
+    "baseline/struct_ret_stmt_leak.c": {
+      "src_sha": "35ded490",
+      "exit_code": 0,
+      "stdout_sha": "df394c981b59e226",
+      "memory_sha": "1b15a14cdb28780d"
+    },
     "baseline/struct_return_by_value_as_arg.c": {
       "src_sha": "093ac906",
       "exit_code": 0,

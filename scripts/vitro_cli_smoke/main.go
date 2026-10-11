@@ -348,5 +348,32 @@ func main() {
 		fmt.Printf("vitro_cli_smoke: %d 失败\n", failures)
 		os.Exit(1)
 	}
-	fmt.Println("vitro_cli_smoke: 全绿（rc 契约 + 双臂同形对拍 + launcher）")
+	// ── D 组：薄壳 include 接线（病 43，#71 第二梯队 2026-10-11）────
+	// compile/step 薄壳不経 cmd/vitro——注册下沉 cmd/lib/cli 后，薄壳
+	// quote-include 必须过（修复前恒 E1021；防线此前三层全漏——薄壳不在
+	// 任何对拍面，round6 教训）。exe 来自全量 release 构建（CI 140 行）。
+	thinCompile := filepath.Join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "compile", "compile.exe")
+	thinStep := filepath.Join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "step", "step.exe")
+	if _, err := os.Stat(thinCompile); err == nil {
+		outTC, rcTC := runOut(thinCompile, incC)
+		if rcTC != 0 || strings.Contains(outTC, "E1021") {
+			fatalf("D[薄壳 compile] quote-include 断链 rc=%d：%s", rcTC, outTC)
+		} else {
+			fmt.Println("ok  D[薄壳 compile] quote-include 接线")
+		}
+	} else {
+		fmt.Println("skip D[薄壳 compile]（release exe 未构建——本地非全量态）")
+	}
+	if _, err := os.Stat(thinStep); err == nil {
+		outTS, rcTS := runOut(thinStep, incC)
+		if rcTS != 0 || strings.Contains(outTS, "E1021") {
+			fatalf("D[薄壳 step] quote-include 断链 rc=%d：%s", rcTS, outTS)
+		} else {
+			fmt.Println("ok  D[薄壳 step] quote-include 接线")
+		}
+	} else {
+		fmt.Println("skip D[薄壳 step]（release exe 未构建——本地非全量态）")
+	}
+
+	fmt.Println("vitro_cli_smoke: 全绿（rc 契约 + 双臂同形对拍 + launcher + 薄壳 include）")
 }

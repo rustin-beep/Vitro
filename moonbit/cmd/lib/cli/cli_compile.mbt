@@ -6,6 +6,7 @@
 
 ///|
 pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
+  ensure_include_reader()
   let mut file = ""
   let mut json_mode = false
   for a in args {

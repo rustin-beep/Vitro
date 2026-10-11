@@ -552,47 +552,83 @@ fn Parser::declarator_suffix_overflow(
 ///|
 /// 整型常量表达式求值（#64，2026-10-11）：C11 §6.6 常量表达式（字面量 /
 /// 一元负·位非 / 二元算术·位·移位）可作数组维度——**非 VLA**；折不出
-///（未定义标识符等非常量形态）仍走 VLA。递归结构求值与 #50 批①
+///（未定义标识符等非常量形态）仍走 VLA。求值结构与 #50 批①
 /// `is_int_constant_expr`（判真）同族，此处产出值。
+///
+/// 病 40 修正（#71 第二梯队，2026-10-11）：递归版在深链（嵌套二元/
+/// 一元 ~2 万层，wasm 更早）栈溢出——**显式栈后序迭代化**，形态对齐
+/// `eval_enum_const`（E 展开 / AppU·AppB 消费值栈；压栈逆序保证弹序 =
+/// 左、右、算子）。#64 引入时完整复刻了 eval_enum_const 已修掉的递归
+/// 病（成对漏改），本修与同族先例收口。
+priv enum ConstIntFrame {
+  E(@ast.Expr)
+  AppU(@ast.UnaryOp)
+  AppB(@ast.BinaryOp)
+}
+
+///|
 fn const_int_of(expr : @ast.Expr) -> Int? {
-  match expr {
-    Literal(v, _, _) => Some(v)
-    Unary(op, operand, _, _) =>
-      if op is @ast.UnaryOp::Neg {
-        match const_int_of(operand) {
-          Some(v) => Some(-v)
-          None => None
+  let st : Array[ConstIntFrame] = [E(expr)]
+  let vals : Array[Int] = []
+  while st.length() > 0 {
+    match st.pop() {
+      None => break
+      Some(AppU(op)) => {
+        let v = match vals.pop() {
+          Some(v) => v
+          None => return None
         }
-      } else if op is @ast.UnaryOp::BitNot {
-        // 位非无运算符——二补码代数式 -1*(v+1) 等价（Int 域）
-        match const_int_of(operand) {
-          Some(v) => Some(-1 * (v + 1))
-          None => None
+        if op is @ast.UnaryOp::Neg {
+          vals.push(-v)
+        } else if op is @ast.UnaryOp::BitNot {
+          // 位非无运算符——二补码代数式 -1*(v+1) 等价（Int 域）
+          vals.push(-1 * (v + 1))
+        } else {
+          return None
         }
-      } else {
-        None
       }
-    Binary(op, l, r, _, _) => {
-      let lv = const_int_of(l)
-      let rv = const_int_of(r)
-      match (lv, rv) {
-        (Some(a), Some(b)) =>
-          match op {
-            Add => Some(a + b)
-            Sub => Some(a - b)
-            Mul => Some(a * b)
-            Div => if b != 0 { Some(a / b) } else { None }
-            Mod => if b != 0 { Some(a % b) } else { None }
-            BitAnd => Some(a & b)
-            BitOr => Some(a | b)
-            BitXor => Some(a ^ b)
-            Shl => Some(a << b)
-            Shr => Some(a >> b)
-            _ => None
+      Some(AppB(op)) => {
+        let b = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        let a = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        match op {
+          Add => vals.push(a + b)
+          Sub => vals.push(a - b)
+          Mul => vals.push(a * b)
+          Div => if b != 0 { vals.push(a / b) } else { return None }
+          Mod => if b != 0 { vals.push(a % b) } else { return None }
+          BitAnd => vals.push(a & b)
+          BitOr => vals.push(a | b)
+          BitXor => vals.push(a ^ b)
+          Shl => vals.push(a << b)
+          Shr => vals.push(a >> b)
+          _ => return None
+        }
+      }
+      Some(E(e)) =>
+        match e {
+          Literal(v, _, _) => vals.push(v)
+          Unary(op, operand, _, _) => {
+            st.push(AppU(op))
+            st.push(E(operand))
           }
-        _ => None
-      }
+          Binary(op, l, r, _, _) => {
+            // 弹序 = 左、右、算子：压栈逆序（算子先入）
+            st.push(AppB(op))
+            st.push(E(r))
+            st.push(E(l))
+          }
+          _ => return None
+        }
     }
+  }
+  match vals.pop() {
+    Some(v) if vals.length() == 0 => Some(v)
     _ => None
   }
 }

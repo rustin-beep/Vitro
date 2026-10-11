@@ -81,6 +81,7 @@ pub fn run(
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
 ) -> Int {
+  ensure_include_reader()
   let ra = parse_run_args(args)
   if ra.file == "" {
     println(

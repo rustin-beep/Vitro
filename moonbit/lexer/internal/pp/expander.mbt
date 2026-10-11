@@ -153,6 +153,24 @@ fn expand_inner(
         let captured = capture_args(tokens, i)
         let args = captured.args
         let j = captured.end_index // RParen 位置
+        // 病 41 修复（#71 第二梯队，2026-10-11）：实参捕获扫到文件尾仍未
+        // 平衡（j 越界且 depth>0）——此前静默把后续全部 token 吞进末实参
+        // 继续展开（expander 零诊断，根因由 parser 级联错位兜底不可见；
+        // clang = "unterminated function-like macro invocation" 单诊断
+        // 病根位）。显式诊断 + fail-fast 跳尾（报错即文档——不再展开）。
+        if j >= tokens.length() {
+          ctx.errors.push({
+            message: "未闭合的函数式宏调用 '\{tok.text}'——缺少匹配的右括号（实参捕获扫到文件尾）。请补全调用括号。",
+            loc: {
+              line: tok.loc.line,
+              column: tok.loc.column,
+              file_id: tok.loc.file_id,
+            },
+            code: E1005_InvalidDefine,
+          })
+          i = tokens.length()
+          continue
+        }
         // C 语义：`FOO()`（唯一空实参）匹配零参数函数式宏（修复 ⑥-9 的
         // 配套捕获口径——空实参表归一为零实参）
         let arg_count = if args.length() == 1 &&

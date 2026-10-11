@@ -354,6 +354,7 @@
         "struct_member_array.c": "18213307",
         "struct_nested_init.c": "54c201ca",
         "struct_pointer_access.c": "ae064328",
+        "struct_ret_stmt_leak.c": "35ded490",
         "struct_return_by_value_as_arg.c": "093ac906",
         "struct_return_by_value_basic.c": "4160dc60",
         "struct_return_by_value_direct.c": "b81c9ac0",
@@ -424,7 +425,7 @@
           "result_sha": "23005defa221fd08"
         },
         "array_dim_const_expr.c": {
-          "result_sha": "1bf0088bee7741ce"
+          "result_sha": "a2de781bb504c81b"
         },
         "array_index.c": {
           "result_sha": "7f2bb1691769e541"
@@ -511,7 +512,7 @@
           "result_sha": "3817bf94fa4ed076"
         },
         "calloc_reuse_after_eviction.c": {
-          "result_sha": "97f6b48d250d3d08"
+          "result_sha": "8dc30983f1b6a946"
         },
         "case_const_expr.c": {
           "result_sha": "bc27605478490dc5"
@@ -536,19 +537,19 @@
           "result_sha": "6a907bebb5a1240f"
         },
         "char_init_no_false_positive.c": {
-          "result_sha": "bef9f08ba30053d1"
+          "result_sha": "47b53d3819995365"
         },
         "char_literal.c": {
-          "result_sha": "813b43a7937b8f24"
+          "result_sha": "50fedcefcf7a128c"
         },
         "char_signedness.c": {
-          "result_sha": "e9733c89168848e4"
+          "result_sha": "715104320ed9b421"
         },
         "circular_queue.c": {
           "result_sha": "20484b8bda02bfda"
         },
         "codegen_soundness_regression.c": {
-          "result_sha": "f1f04d6b5f40f202"
+          "result_sha": "d63c89ee21b84fbe"
         },
         "comma_operator.c": {
           "result_sha": "139d214037987b77"
@@ -1242,7 +1243,7 @@
           "result_sha": "5e525e0b1158ce75"
         },
         "ptr_member_widths.c": {
-          "result_sha": "1ede284e47555200"
+          "result_sha": "1f074025ce165c17"
         },
         "ptr_to_struct_member.c": {
           "result_sha": "0d8f1c92ea28958d"
@@ -1272,10 +1273,10 @@
           "result_sha": "0df45ce2cd061fb1"
         },
         "scanf_0x_behavior.c": {
-          "result_sha": "53c7d9ba03a8b600"
+          "result_sha": "ab9b68b4f2c6fb5c"
         },
         "scanf_digit_mismatch.c": {
-          "result_sha": "ef05a141bf72dd13"
+          "result_sha": "d6e53dfc8a966f9c"
         },
         "scanf_eof_after_exhaust.c": {
           "result_sha": "2daafa0daf244247"
@@ -1433,13 +1434,13 @@
           "result_sha": "6c83e1c77401e3a8"
         },
         "string_escape_octal_hex.c": {
-          "result_sha": "9e57652a7bea36e8"
+          "result_sha": "8dbda1e701fbd64f"
         },
         "string_literal.c": {
           "result_sha": "28efea5c42880532"
         },
         "string_reverse.c": {
-          "result_sha": "671fea9277729003"
+          "result_sha": "fd79ea32493a5c0b"
         },
         "string_strcmp.c": {
           "result_sha": "a95281c286de1960"
@@ -1473,6 +1474,9 @@
         },
         "struct_pointer_access.c": {
           "result_sha": "da968041cc80314a"
+        },
+        "struct_ret_stmt_leak.c": {
+          "result_sha": "6535d1a95db914bd"
         },
         "struct_return_by_value_as_arg.c": {
           "result_sha": "46442918c348ad80"
@@ -1547,7 +1551,7 @@
           "result_sha": "1fc93b542e43d441"
         },
         "union_member_widths.c": {
-          "result_sha": "fceae956600d1a9e"
+          "result_sha": "f7eb2a08813fadc7"
         },
         "union_size_access.c": {
           "result_sha": "6dd86f7b0c1f7193"
@@ -1744,7 +1748,7 @@
           "result_sha": "60f7f77f7605fdcc"
         },
         "file_fread.c": {
-          "result_sha": "c67bbbef9ab9e45b"
+          "result_sha": "c62622d918257aee"
         },
         "file_fwrite.c": {
           "result_sha": "9315e74eb2d67ed2"
@@ -1900,16 +1904,16 @@
           "result_sha": "e888f426ba1921c6"
         },
         "kr_1_16.c": {
-          "result_sha": "fd8584afd06963a7"
+          "result_sha": "c510d92c3f09aa98"
         },
         "kr_1_17.c": {
-          "result_sha": "006664dfa5aa5edc"
+          "result_sha": "6cf3e65867e6195b"
         },
         "kr_1_18.c": {
-          "result_sha": "09baf0ddc8e9fcbd"
+          "result_sha": "9d06095f8c56c925"
         },
         "kr_1_19.c": {
-          "result_sha": "681e2460bd029860"
+          "result_sha": "3909333631a3b1ef"
         },
         "kr_1_3.c": {
           "result_sha": "efe5ce769e19c79c"
@@ -1942,7 +1946,7 @@
           "result_sha": "50fed253218b9a21"
         },
         "kr_2_4.c": {
-          "result_sha": "0451c8ab148bb8a4"
+          "result_sha": "622695e3b043b168"
         },
         "kr_2_5.c": {
           "result_sha": "20aebb69cb6918ad"
@@ -1966,31 +1970,31 @@
           "result_sha": "f4413b213a9cf602"
         },
         "kr_3_2.c": {
-          "result_sha": "e9ca5523ab9b9b55"
+          "result_sha": "734ef0c307d351ac"
         },
         "kr_3_3.c": {
-          "result_sha": "943d134a7265537f"
+          "result_sha": "80e00348ae6dd167"
         },
         "kr_3_4.c": {
-          "result_sha": "0cfe3efc804dd462"
+          "result_sha": "401963acadaa27e3"
         },
         "kr_3_5.c": {
-          "result_sha": "38e26558e41688b3"
+          "result_sha": "17d30b83aad2edce"
         },
         "kr_3_6.c": {
-          "result_sha": "42789de77775fc4e"
+          "result_sha": "414f5e36deae2488"
         },
         "kr_3_7.c": {
-          "result_sha": "73d46126438349a2"
+          "result_sha": "01a582bc00d63c28"
         },
         "kr_3_8.c": {
-          "result_sha": "07668d032040a71f"
+          "result_sha": "43dd7e57ffbe6aa8"
         },
         "kr_4_1.c": {
           "result_sha": "a9b467a69daa44ea"
         },
         "kr_4_10.c": {
-          "result_sha": "a7808267031dca44"
+          "result_sha": "7ffa3cefcc2784ed"
         },
         "kr_4_11.c": {
           "result_sha": "1c21519ecf445cc5"
@@ -1999,7 +2003,7 @@
           "result_sha": "467fa04c30243270"
         },
         "kr_4_13.c": {
-          "result_sha": "5acb95216e1e33ac"
+          "result_sha": "162479c6be936fdb"
         },
         "kr_4_14.c": {
           "result_sha": "e5354073a9dcb97a"
@@ -2008,19 +2012,19 @@
           "result_sha": "5b0c073a4ee5a5c8"
         },
         "kr_4_3.c": {
-          "result_sha": "b3980456b4540e10"
+          "result_sha": "fea4ac796b7c1c4c"
         },
         "kr_4_4.c": {
-          "result_sha": "1a26c4220548a75a"
+          "result_sha": "078a678a2cb984db"
         },
         "kr_4_5.c": {
-          "result_sha": "2e1bb005bf9d9eaa"
+          "result_sha": "04cd5d556dcd4bc4"
         },
         "kr_4_6.c": {
-          "result_sha": "a257bf069234b3ab"
+          "result_sha": "9890257463f056c3"
         },
         "kr_4_7.c": {
-          "result_sha": "e48ea5b4d1da3e17"
+          "result_sha": "9519116347b8daef"
         },
         "kr_4_8.c": {
           "result_sha": "af819375cda1e840"
@@ -2038,40 +2042,40 @@
           "result_sha": "9a35c14f5dca8a4d"
         },
         "kr_5_11.c": {
-          "result_sha": "8e5fa82942c0aee7"
+          "result_sha": "27a01c305b781b2b"
         },
         "kr_5_12.c": {
-          "result_sha": "ccf0d8bd29ec9b8f"
+          "result_sha": "5d0464d390a49a88"
         },
         "kr_5_13.c": {
-          "result_sha": "b68af2f53a548f98"
+          "result_sha": "dece678faab4d4ed"
         },
         "kr_5_14.c": {
           "result_sha": "7ea39d7d9bf2b5de"
         },
         "kr_5_15.c": {
-          "result_sha": "c4725eea3beaf7f9"
+          "result_sha": "d9a318343bac0421"
         },
         "kr_5_16.c": {
-          "result_sha": "e72c290a03a13f66"
+          "result_sha": "2e06776d90213513"
         },
         "kr_5_2.c": {
           "result_sha": "23bbb72ea6208f5c"
         },
         "kr_5_3.c": {
-          "result_sha": "76f97f449552a092"
+          "result_sha": "d722853502d660b3"
         },
         "kr_5_4.c": {
           "result_sha": "b9133a48d159eb7e"
         },
         "kr_5_5.c": {
-          "result_sha": "8f82f1c556b79a6d"
+          "result_sha": "793d03f20b802bc4"
         },
         "kr_5_6.c": {
-          "result_sha": "12ef17b6e4c421f0"
+          "result_sha": "c2c0f142ad59d510"
         },
         "kr_5_7.c": {
-          "result_sha": "7b53d6967b465104"
+          "result_sha": "3602572fd099c314"
         },
         "kr_5_8.c": {
           "result_sha": "00d7bea54e8caa26"
@@ -2080,19 +2084,19 @@
           "result_sha": "c8f7d36f719a1bd4"
         },
         "kr_5_itoa.c": {
-          "result_sha": "45da1286cb093938"
+          "result_sha": "9269cb12d5fa9a97"
         },
         "kr_6_1.c": {
-          "result_sha": "39fc116e2544c9b2"
+          "result_sha": "6097ab3a62eb1d86"
         },
         "kr_6_2.c": {
-          "result_sha": "f315629e01338f61"
+          "result_sha": "1166c9c5c78b13c5"
         },
         "kr_6_3.c": {
-          "result_sha": "fa776cbcc9b3906b"
+          "result_sha": "0f1df023b98ca226"
         },
         "kr_6_4.c": {
-          "result_sha": "1f6ea0eba1020f04"
+          "result_sha": "ccab0e41321bc94c"
         },
         "kr_6_5.c": {
           "result_sha": "033cd8e858ecea02"
@@ -2101,7 +2105,7 @@
           "result_sha": "f04382cb88ef8dc1"
         },
         "kr_6_getword.c": {
-          "result_sha": "33a9bf4b05a14cf4"
+          "result_sha": "f369d59ee0e7fd82"
         },
         "kr_7_1.c": {
           "result_sha": "21125c19b071b1f5"
@@ -2311,7 +2315,7 @@
           "result_sha": "01648ee0aaa6567b"
         },
         "lc_125.c": {
-          "result_sha": "5819c924e43a8dff"
+          "result_sha": "ce62c0dc03e68c63"
         },
         "lc_13.c": {
           "result_sha": "4306b80f060b63ef"
@@ -2323,7 +2327,7 @@
           "result_sha": "45168d0c4a285c0d"
         },
         "lc_14.c": {
-          "result_sha": "5cff8d2098987408"
+          "result_sha": "029565caae28e840"
         },
         "lc_141.c": {
           "result_sha": "3775972b20055a5f"
@@ -2359,13 +2363,13 @@
           "result_sha": "86b6cb04f810e730"
         },
         "lc_168.c": {
-          "result_sha": "8e2c6ea883f44d71"
+          "result_sha": "b7f80f9aa124c090"
         },
         "lc_169.c": {
           "result_sha": "7fadc27962e689d3"
         },
         "lc_17.c": {
-          "result_sha": "67185db5a4fdcf50"
+          "result_sha": "ca2e08a54882708b"
         },
         "lc_189.c": {
           "result_sha": "3423f5392a39b8f2"
@@ -2389,10 +2393,10 @@
           "result_sha": "b824a5cb2ff68a65"
         },
         "lc_20.c": {
-          "result_sha": "453b0294f7839880"
+          "result_sha": "3750907113b82d46"
         },
         "lc_200.c": {
-          "result_sha": "edd642e3dd8414ef"
+          "result_sha": "379fae84fa7b820d"
         },
         "lc_202.c": {
           "result_sha": "518e65f614670b44"
@@ -2401,7 +2405,7 @@
           "result_sha": "83212699925e6f55"
         },
         "lc_205.c": {
-          "result_sha": "4f0b584588ba533a"
+          "result_sha": "42b692d25f97e7d3"
         },
         "lc_206.c": {
           "result_sha": "75155148821d494b"
@@ -2419,7 +2423,7 @@
           "result_sha": "01b0ab93f495b21d"
         },
         "lc_22.c": {
-          "result_sha": "ee443b5562ac7e9c"
+          "result_sha": "2e4aea405c276c55"
         },
         "lc_221.c": {
           "result_sha": "bf0284de7ac0d1a4"
@@ -2488,7 +2492,7 @@
           "result_sha": "7d2a96bd4e1c06fe"
         },
         "lc_3.c": {
-          "result_sha": "639c4a9b4880636b"
+          "result_sha": "b069a4850d868989"
         },
         "lc_300.c": {
           "result_sha": "fbd74b5307336fa7"
@@ -2509,10 +2513,10 @@
           "result_sha": "fbf114f447f57f15"
         },
         "lc_344.c": {
-          "result_sha": "21032ff57b0a89fb"
+          "result_sha": "0532a38889aa3ca9"
         },
         "lc_345.c": {
-          "result_sha": "3b02fd1869886c8c"
+          "result_sha": "6b9950c0ef95c71f"
         },
         "lc_349.c": {
           "result_sha": "333cc2a45b6ee4f2"
@@ -2521,13 +2525,13 @@
           "result_sha": "24aa5e45e9b4910b"
         },
         "lc_36.c": {
-          "result_sha": "62902420aad85cb4"
+          "result_sha": "2ea4d75634008d17"
         },
         "lc_367.c": {
           "result_sha": "01257dae932ac3f3"
         },
         "lc_38.c": {
-          "result_sha": "6eb5943c9af59f7f"
+          "result_sha": "6317dbce2a1a52f3"
         },
         "lc_383.c": {
           "result_sha": "22559eaccf0dac5c"
@@ -2536,7 +2540,7 @@
           "result_sha": "9c42d78f98b696bb"
         },
         "lc_389.c": {
-          "result_sha": "67634d6e8241ca96"
+          "result_sha": "a0e09d21358aee1d"
         },
         "lc_39.c": {
           "result_sha": "ad679ea68e9b80b7"
@@ -2545,7 +2549,7 @@
           "result_sha": "ab54a6ff6706bca6"
         },
         "lc_394.c": {
-          "result_sha": "8b6d6888f6572ec0"
+          "result_sha": "b36b9419cc1f4f04"
         },
         "lc_4.c": {
           "result_sha": "3e469ab32ac0df38"
@@ -2560,13 +2564,13 @@
           "result_sha": "f88136a1174de7c3"
         },
         "lc_409.c": {
-          "result_sha": "b7a9e6b8c5cabe3a"
+          "result_sha": "b95563e066047ad4"
         },
         "lc_412.c": {
           "result_sha": "c2011ff817049b56"
         },
         "lc_415.c": {
-          "result_sha": "20b26475f7be39fa"
+          "result_sha": "73044c03457ce390"
         },
         "lc_42.c": {
           "result_sha": "c98fc6ef51404b3b"
@@ -2629,7 +2633,7 @@
           "result_sha": "354990537797bbe3"
         },
         "lc_67.c": {
-          "result_sha": "6b6a44ff4ce25cdd"
+          "result_sha": "054ca0b9adc26aa8"
         },
         "lc_69.c": {
           "result_sha": "9120552cc5fba67a"
@@ -2653,7 +2657,7 @@
           "result_sha": "9cdeac2d1cd559e0"
         },
         "lc_76.c": {
-          "result_sha": "c496061d0f958d46"
+          "result_sha": "99ac6a492cc61e58"
         },
         "lc_78.c": {
           "result_sha": "bfb5835bad0a6b55"

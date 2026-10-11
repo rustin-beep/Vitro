@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 第二梯队：崩溃与静默吞代码四病批——病 36/40/41/43，2026-10-11）
+
+- **病 36（struct 返回值表达式语句栈泄漏）**：`make();` 语句循环 10001 次值栈溢出（MAX_STACK_DEPTH=10000）——根因是 struct 表达式栈形态不统一：Call 返回 struct 留 1 地址槽（sret 目标）、`gen_struct_copy` 赋值留 0。统一「struct 表达式留 1 地址槽」约定：gen_expr_stmt 对非 void 一律弹 + gen_struct_copy 尾部补压 dst 地址（赋值表达式值=左值地址）。新语料 struct_ret_stmt_leak.c（循环 10001 + 赋值/数组元素/struct 变量语句全形态，双臂对拍 clang 同）。
+- **病 40（const_int_of 深链栈溢出）**：2 万层嵌套数组维度表达式 wasm 测试运行时栈溢出（0xc00000fd 红证留档）——显式栈后序迭代化（E/AppU/AppB 三帧，形态对齐 eval_enum_const 先例；#64 引入时成对漏改）。parser wbtest +1 锚（2 万层二元+一元链双断言）。
+- **病 41（未闭合函数式宏调用静默吞尾）**：capture_args 扫到文件尾未平衡时把后续全部 token 吞进末实参继续展开（expander 零诊断、根因由 parser 级联错位兜底不可见）——显式诊断「未闭合的函数式宏调用」（E1005，病根=宏名位，对齐 clang unterminated invocation）+ fail-fast 跳尾。顶层形态 3 条级联 → 1 条根因诊断。lexer wbtest +1 锚（红→绿闭环）。
+- **病 43（compile/step 薄壳 quote-include 断链）**：薄壳漏调 set_include_reader 恒 E1021（spec「薄壳与总入口逐字节一致」破坏，防线三层全漏）——**处方二执行**：注册下沉 cmd/lib/cli 四入口（run/compile/step/api 首行 ensure_include_reader，幂等），壳层注册义务整体消灭（vitro/run 壳重复注册删除；serve 壳不经本包保留自有）。vitro_cli_smoke 新增 D 组薄壳臂（compile/step.exe 对 quote-include 不 E1021；J9 双臂证红留档）+ surface 边表五处连坐（4 过期边清理 + lib/cli 新边登记）。
+- 防线：moon test 735/735 · vm_diff 647（642/5/0）· clang_direct 742（732/10/0）· surface/pkg_deps/mbti/facts --strict/smoke 全绿。
+
 ### Fixed（#71 第一梯队：unsigned 语义五病批——病 30~34，opcode 138..150 U 系对偶段，2026-10-11）
 
 - **病 30（promote_type 违反 C 整型提升）**：lower 侧 unsigned 只在**同 rank** 时传播——unsigned char 先提升为 signed int（`(c-1)/2` 修复前 2147483647 → 0）；uint vs long long 因 i64 ⊇ u32 落 signed LL（`u-5000000000LL` 不再错 -5294967296）。wbtest 锚红→绿闭环（typeck 42/42）。

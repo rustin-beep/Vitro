@@ -291,3 +291,21 @@ test "tokenize stubs only provider rejects custom include explicitly" {
   assert_eq(r.errors.length(), 1)
   inspect(@diag.ErrorCode::code(r.errors[0].code), content="1021")
 }
+
+///|
+/// 病 41 锚（#71 第二梯队，2026-10-11）：未闭合函数式宏调用——实参
+/// 捕获扫到文件尾未平衡时，预处理层显式诊断（对齐 clang "unterminated
+/// function-like macro invocation"，病根=宏名位），不再静默吞尾展开。
+test "tokenize unterminated function-like macro call issue71_b41" {
+  // 转义经 Edit 直写（shell heredoc 会吃反斜杠层——坑 19）
+  let src = "#define M(x) ((x)+1)\nM(1\n"
+  let r = @lexer.tokenize(src)
+  // 病根诊断一条：宏名位（2:1）；修复前 expander 零诊断、后续 token
+  // 被吞进实参（级联错位由 parser 兜，根因不可见）
+  assert_eq(r.errors.length(), 1)
+  assert_eq(r.errors[0].code, E1005_InvalidDefine)
+  assert_true(r.errors[0].message.contains("未闭合"))
+  assert_eq(r.errors[0].loc.line, 2)
+  // 吞尾终止：宏调用段不再产出 token（fail-fast，clang 单诊断形态）
+  assert_true(r.tokens.length() <= 2)
+}

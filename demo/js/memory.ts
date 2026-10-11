@@ -78,7 +78,9 @@ export function renderMemory(mem: MemoryRegions): void {
 }
 
 // 条块 keyed 复用（F-1b②）：addr/size 过渡的前提是元素存活——同 key 只更新
-// 位置/尺寸/状态类，transition 才吃得到变化；本帧消失的 key 直接移除。
+// 位置/尺寸/状态类，transition 才吃得到变化；本帧消失的 key 加 .out 播 CSS
+// 淡出（blk-out）后移除节点（2026-10-11 动效批，此前为瞬删）。用 :not(.out)
+// 把退场中的块挡在复用查询外，避免与其退场动画冲突。
 // key 含 addr+size+name：同一位置复分配出的新块视为新块（瞬现，不跨会话漂移）。
 function bandRender(band: HTMLElement, entries: BandEntry[]): void {
   for (const n of Array.from(band.childNodes)) {
@@ -90,18 +92,30 @@ function bandRender(band: HTMLElement, entries: BandEntry[]): void {
   for (const { r, left, width } of entries) {
     const key = `${r.addr}:${r.size}:${r.name}`;
     seen.add(key);
-    let b = band.querySelector(`[data-key="${CSS.escape(key)}"]`) as HTMLElement | null;
-    if (!b) {
-      b = document.createElement("div");
-      b.dataset.key = key;
-      band.appendChild(b);
+    // :not(.out) —— 退场中的同 key 块不复用（其淡出未完，复用会与退场动画冲突），
+    // 等它自然移除后由后续帧按新块重建
+    let blkBox = band.querySelector(`[data-key="${CSS.escape(key)}"]:not(.out)`) as HTMLElement | null;
+    if (!blkBox) {
+      blkBox = document.createElement("div");
+      blkBox.dataset.key = key;
+      band.appendChild(blkBox);
     }
-    b.className = "blk " + r.kind + (r.is_freed ? " freed" : "");
-    b.style.left = `${Math.min(left * 100, 99.6)}%`;
-    b.style.width = `${width * 100}%`;
-    b.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
+    blkBox.className = "blk " + r.kind + (r.is_freed ? " freed" : "");
+    blkBox.style.left = `${Math.min(left * 100, 99.6)}%`;
+    blkBox.style.width = `${width * 100}%`;
+    blkBox.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
   }
-  for (const b of band.querySelectorAll(".blk")) {
-    if (!seen.has((b as HTMLElement).dataset.key as string)) b.remove();
+  // 本帧消失的 key：加 .out 走 CSS 淡出（.blk.out → blk-out）后移除节点；
+  // 兜底定时器（> --t-fast）防动画被禁用/覆盖时节点滞留。reduced-motion 下
+  // 全局把 animation-duration 压到 .01ms ⇒ animationend 立即触发，等价直接移除。
+  for (const n of band.querySelectorAll(".blk")) {
+    const stale = n as HTMLElement;
+    if (stale.classList.contains("out")) continue; // 已在退场，等 animationend
+    if (!seen.has(stale.dataset.key as string)) {
+      stale.classList.add("out");
+      const drop = (): void => stale.remove();
+      stale.addEventListener("animationend", drop, { once: true });
+      setTimeout(drop, 260);
+    }
   }
 }

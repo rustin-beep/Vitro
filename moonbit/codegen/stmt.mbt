@@ -84,6 +84,10 @@ fn BytecodeGen::gen_block(self : BytecodeGen, stmts : Array[@ast.Stmt]) -> Unit 
 ///|
 /// 表达式语句：值非 void 时弹栈（Rust expr_stmt.rs 照搬；is_class 随
 /// 砍 C++ 裁定剔除——C only 下 class 类型零出现）。
+/// 病 36 修正（#71 第二梯队，2026-10-11）：struct 表达式的栈形态是
+/// **一个地址槽**（调用侧 Call 后压 sret 目标地址作为表达式值——call.mbt
+/// ret_temp_offset 段；变量/赋值表达式同留地址），此前按「struct 无标量
+/// 值」跳过弹栈 → make(); 语句语句级泄漏、循环 10001 次值栈溢出。统一弹。
 fn BytecodeGen::gen_expr_stmt(
   self : BytecodeGen,
   expr : @ast.Expr,
@@ -91,7 +95,7 @@ fn BytecodeGen::gen_expr_stmt(
 ) -> Unit {
   self.gen_expr(expr)
   let ty = expr.ty()
-  if !(ty.kind() is TK_Void) && !(ty.kind() is TK_Struct) {
+  if !(ty.kind() is TK_Void) {
     self.emit(@opcode.OpCode::Pop, 0, loc)
   }
 }

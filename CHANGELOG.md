@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（「存在即接入」注册表闸——msime run-checks 形态 Vitro 化，2026-10-11）
+
+- **`scripts/ci_checklist`**：scripts 驱动集（文件系统单源：含 package main 的目录）↔ ci.yml 活行集（go run ./scripts/... 含 matrix 模板静态展开与单文件 .go 归一）**三向对账**——漏登记（驱动存在零活行=libc_boot 断供类红的事前形态）/ 悬空（活行引用不存在驱动）/ 僵尸例外（例外条目被活行引用=双向监控）全红；例外表 exceptions.json 每条 reason 必填（三类合法形态：库目录/本地工具/CLI 资产）。J9 三向证红在案（临时驱动目录/ghost 活行/vm_diff 假例外）。已接线 CI hygiene；AGENTS 纪律 8.5 连坐。
+
 ### Fixed（#71 第三梯队九病批 + 例外病 29 + DX P1/P3/P4/P5 顺手件，2026-10-11）
 
 - **病 21+22（printf %e/%E 无臂 / %g 负零丢符号）**：新增 `format_e`（尾数不去尾零+e±NN 恒符号指数+零特例含负零位模式判）；format_g 零特例按符号位返 "0"/"-0"。探针八行逐字节同 clang；host_wbtest +1 锚。

@@ -875,6 +875,14 @@ jobs:
         shell: bash
         run: go run ./scripts/gen_svg -check
 
+      - name: CI checklist (存在即接入注册表——scripts 驱动集 ↔ ci.yml 活行集双向对账)
+        # msime run-checks 形态 Vitro 化（2026-10-11 #71 防线续批）：
+        # 漏登记（驱动存在零活行——libc_boot 断供类红的事前形态）/ 悬空
+        #（活行引用不存在的驱动）/ 僵尸例外 三向红；例外表 exceptions.json
+        # 每条 reason 必填自证。J9 三向证红在案。
+        shell: bash
+        run: go run ./scripts/ci_checklist
+
       - name: Agent skills frontmatter audit (install_skills --list)
         # 2026-09-29 skills 图批接线：.agents/skills/ 的 SKILL.md 此前只有本地
         # 校验（脚本存在 ≠ 接线）。--list 对每个 skill 做 fail loud 校验：缺

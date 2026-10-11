@@ -20,17 +20,50 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
   let mut method_name = ""
   let mut params = "{}"
   let mut batch = false
+  // #67（2026-10-11）：help 的第二位置参数是目标方法名（非 params）——
+  // api help [method] 形态，单独抓取
+  let mut help_target = ""
   let mut i = 0
   while i < args.length() {
     if args[i] == "--batch" {
       batch = true
     } else if !args[i].has_prefix("-") && method_name == "" {
       method_name = args[i]
+    } else if method_name == "help" && !args[i].has_prefix("-") && help_target == "" {
+      help_target = args[i]
     } else if method_name != "" && params == "{}" && args[i] != "{}" {
       // 第二个非旗标参数 = params JSON（缺省 "{}"）
       params = args[i]
     }
     i += 1
+  }
+  // #67：api help——离线可发现性出口。help 是方法位保留字（不进 invoke）：
+  // 无 target 打印全方法清单、有 target 打印单方法详情（形状来自 #68
+  // serve_param_err 的 expected）；数据 = gateway 生成表 api_help_gen.mbt
+  //（权威源 dispatch+serve_param_err，scripts/gen_api_help -check 锁——禁
+  // 手抄）。wasm 臂同数据（api_help.json），双臂同形由 vitro_cli_smoke 锁。
+  if method_name == "help" && !batch {
+    if help_target == "" {
+      // 生成文本不带尾换行，println 补单尾——与 wasm 壳 write 加换行
+      // 逐字节同形（B 组零特例纪律）
+      println(@gateway.api_help_list())
+      return 0
+    }
+    return match @gateway.api_help_detail(help_target) {
+      Some(text) => {
+        println(text)
+        0
+      }
+      None => {
+        println(
+          "用法错: 未知方法 '\{help_target}'（api help 看方法清单；api help <method> 看详情）",
+        )
+        4
+      }
+    }
+  } else if method_name == "help" && batch {
+    println("用法错: --batch 不与 help 并用（help 是离线出口不进会话）")
+    return 4
   }
   // 批式：stdin 全量读入按行切（UTF-8 解码——帧是 JSON 文本域），逐帧
   // invoke——空行跳过（尾换行产物）；id 由 gateway 侧单源处理

@@ -195,6 +195,38 @@ func main() {
 		}
 	}
 
+	// B 组附 2：api help 三态双臂对拍（#67，2026-10-11）——离线可发现性
+	// 出口的双形锁：数据 = 生成器双产物（native api_help_gen.mbt / wasm
+	// api_help.json，gen_api_help -check 幂等），此处锁「双臂查表打印
+	// 逐字节同形」+ 三态 rc（0 清单 / 0 详情 / 4 未知）+ 内容锚（清单含
+	// 方法计数行、详情含 #68 expected 形状——形状漂移双闸之一）。
+	{
+		for _, c := range []struct {
+			name   string
+			args   []string
+			wantRc int
+			needle string
+		}{
+			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（27）"},
+			{"api help compile 详情", []string{"api", "help", "compile"}, 0, "params: files:[{filename?,source}] | source:string[,filename:string]"},
+			{"api help 未知方法", []string{"api", "help", "no.such"}, 4, "用法错: 未知方法 'no.such'"},
+		} {
+			wOut, wRc := runOut(nodeBin, append([]string{shell}, c.args...)...)
+			nOut, nRc := runOut(nativeExe, c.args...)
+			if wRc != c.wantRc || nRc != c.wantRc {
+				fatalf("B[api help] %s: rc 期望 %d，实得 wasm=%d native=%d", c.name, c.wantRc, wRc, nRc)
+			}
+			wOut, nOut = stripBackendLine(wOut), stripBackendLine(nOut)
+			if wOut != nOut {
+				fatalf("B[api help] %s: 双臂不同形\n--- wasm ---\n%s\n--- native ---\n%s", c.name, wOut, nOut)
+			}
+			if !strings.Contains(wOut, c.needle) {
+				fatalf("B[api help] %s: 内容锚缺失（期望含 %q）\n%s", c.name, c.needle, wOut)
+			}
+			fmt.Printf("ok  B[api help] %s（rc=%d 同形+内容锚）\n", c.name, c.wantRc)
+		}
+	}
+
 	// B 组附 1：note 去重语义锚（审阅 P3-1，2026-10-07）——note 通道语义
 	// 不在 vm_diff/clang_direct 比对面（vm_diff 只比 stdout/rc/映像，壳把
 	// note 写成 // NOTE 行被提取器剥掉），apply_reply 全量同文本去重此前

@@ -1,0 +1,32 @@
+{
+  "detail": {
+    "ast.dump": "ast.dump——AST 导出（静态 dump 族——无需会话）\n  params: source:string\n  例: vitro api ast.dump '{\"source\":\"int main(){return 0;}\"}'",
+    "breakpoints.set": "breakpoints.set——下发断点集合（行号数组）\n  params: 无必填（缺省 {}）\n  例: vitro api breakpoints.set '{\"lines\":[5,10]}'",
+    "capabilities": "capabilities——能力清单（语言/协议面）\n  params: 无必填（缺省 {}）\n  例: vitro api capabilities '{}'",
+    "compile": "compile——编译（覆盖式语义：files 数组=当前完整编译单元集合，非追加）\n  params: files:[{filename?,source}] | source:string[,filename:string]\n  例: vitro api compile '{\"files\":[{\"filename\":\"main.c\",\"source\":\"int main(){return 0;}\"}]}'",
+    "config.get": "config.get——读会话配置\n  params: 无必填（缺省 {}）\n  例: vitro api config.get '{}'",
+    "config.set": "config.set——写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget）\n  params: 无必填（缺省 {}）\n  例: vitro api config.set '{\"max_steps\":100000}'",
+    "contracts": "contracts——schema 契约与字段台账（StepPayload 冻结面）\n  params: 无必填（缺省 {}）\n  例: vitro api contracts '{}'",
+    "diagnostics_probe": "diagnostics_probe——诊断探针（补全/悬停位——M15 无实现面 fail loud）\n  params: source:string\n  例: vitro api diagnostics_probe '{\"source\":\"int main(){return 0;}\"}'",
+    "error_catalog": "error_catalog——错误码目录（E/W/H 码 + 教学文案 + icon id）\n  params: 无必填（缺省 {}）\n  例: vitro api error_catalog '{}'",
+    "icons.get": "icons.get——图标资产按 id 下发（缺省=全量；值域=icons/index.tsv）\n  params: ids:string[]\n  例: vitro api icons.get '{\"ids\":[\"uaf\"]}'",
+    "input.feed": "input.feed——交互续跑喂输入（waiting_input 时续跑）\n  params: 无必填（缺省 {}）\n  例: vitro api input.feed '{\"text\":\"42\\n\"}'",
+    "memory.dump": "memory.dump——1MB 内存映像 base64（--dump-memory 通道）\n  params: 无必填（缺省 {}）\n  例: vitro api memory.dump '{}'",
+    "memory.regions": "memory.regions——内存区域快照（堆/栈/全局）\n  params: 无必填（缺省 {}）\n  例: vitro api memory.regions '{}'",
+    "output.delta": "output.delta——拉增量输出（stream=display/stdout/stderr/note；判分取 stdout）\n  params: 无必填（缺省 {}）\n  例: vitro api output.delta '{\"cursor\":0,\"stream\":\"stdout\"}'",
+    "payload.get": "payload.get——取步载荷帧（游标式；回放/断点消费面）\n  params: 无必填（缺省 {}）\n  例: vitro api payload.get '{\"cursor\":0}'",
+    "ping": "ping——心跳连通性探针\n  params: 无必填（缺省 {}）\n  例: vitro api ping '{}'",
+    "run": "run——执行已编译单元（batch_input=输入耗尽即 EOF；argv 全量含 argv[0]）\n  params: 无必填（缺省 {}）\n  例: vitro api run '{\"argv\":[\"main.c\"]}'",
+    "seek": "seek——跳至目标步（会话须已 step.begin）\n  params: step:int\n  例: vitro api seek '{\"step\":3}'",
+    "semantic_labels": "semantic_labels——语义标签表（算法/事件中文标注）\n  params: 无必填（缺省 {}）\n  例: vitro api semantic_labels '{}'",
+    "session.create": "session.create——创建/重建会话（清空重建同一实例；argv/输入模式回默认）\n  params: 无必填（缺省 {}）\n  例: vitro api session.create '{}'",
+    "session.destroy": "session.destroy——销毁会话（进程存活；回收进程用 shutdown）\n  params: 无必填（缺省 {}）\n  例: vitro api session.destroy '{}'",
+    "session.reset": "session.reset——重置编译/运行状态（保留会话级配置：隔离预算/deterministic/argv）\n  params: 无必填（缺省 {}）\n  例: vitro api session.reset '{}'",
+    "shutdown": "shutdown——关停 serve 进程（响应帧携带 shutdown:true）\n  params: 无必填（缺省 {}）\n  例: vitro api shutdown '{}'",
+    "step.begin": "step.begin——开启步进会话（采集步帧；断点须 begin 后下发）\n  params: 无必填（缺省 {}）\n  例: vitro api step.begin '{}'",
+    "step.next": "step.next——推进 N 步（返回帧数组）\n  params: 无必填（缺省 {}）\n  例: vitro api step.next '{\"frames\":10}'",
+    "symbols.dump": "symbols.dump——符号表导出（静态 dump 族）\n  params: source:string\n  例: vitro api symbols.dump '{\"source\":\"int main(){return 0;}\"}'",
+    "typeck.dump": "typeck.dump——类型检查导出（静态 dump 族）\n  params: source:string\n  例: vitro api typeck.dump '{\"source\":\"int main(){return 0;}\"}'"
+  },
+  "list": "api 方法清单（27）——api help \u003cmethod\u003e 看单方法详情：\n  ast.dump             AST 导出（静态 dump 族——无需会话）\n  breakpoints.set      下发断点集合（行号数组）\n  capabilities         能力清单（语言/协议面）\n  compile              编译（覆盖式语义：files 数组=当前完整编译单元集合，非追加）\n  config.get           读会话配置\n  config.set           写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget）\n  contracts            schema 契约与字段台账（StepPayload 冻结面）\n  diagnostics_probe    诊断探针（补全/悬停位——M15 无实现面 fail loud）\n  error_catalog        错误码目录（E/W/H 码 + 教学文案 + icon id）\n  icons.get            图标资产按 id 下发（缺省=全量；值域=icons/index.tsv）\n  input.feed           交互续跑喂输入（waiting_input 时续跑）\n  memory.dump          1MB 内存映像 base64（--dump-memory 通道）\n  memory.regions       内存区域快照（堆/栈/全局）\n  output.delta         拉增量输出（stream=display/stdout/stderr/note；判分取 stdout）\n  payload.get          取步载荷帧（游标式；回放/断点消费面）\n  ping                 心跳连通性探针\n  run                  执行已编译单元（batch_input=输入耗尽即 EOF；argv 全量含 argv[0]）\n  seek                 跳至目标步（会话须已 step.begin）\n  semantic_labels      语义标签表（算法/事件中文标注）\n  session.create       创建/重建会话（清空重建同一实例；argv/输入模式回默认）\n  session.destroy      销毁会话（进程存活；回收进程用 shutdown）\n  session.reset        重置编译/运行状态（保留会话级配置：隔离预算/deterministic/argv）\n  shutdown             关停 serve 进程（响应帧携带 shutdown:true）\n  step.begin           开启步进会话（采集步帧；断点须 begin 后下发）\n  step.next            推进 N 步（返回帧数组）\n  symbols.dump         符号表导出（静态 dump 族）\n  typeck.dump          类型检查导出（静态 dump 族）\n"
+}

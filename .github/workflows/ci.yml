@@ -153,13 +153,15 @@ jobs:
         # 计数断言失败即红——增删真相源而未同步此处，不得静默通过
         #   （2026-10-09 run 37883006515 实证：两落批加 2 张未同步断言，
         #   本步 `期望 11 实得 13` FATAL——断言牙真实咬合）。
+        #   2026-10-11 #67：13→14（gen_api_help/rules.json.mbt——api help
+        #   生成器的简介/示例手写面）。
         shell: bash
         run: |
           set -e
           files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
           count=$(printf '%s\n' "$files" | grep -c .)
-          if [ "$count" -ne 13 ]; then
-            echo "FATAL: 期望 13 张规则真相源，实得 $count"
+          if [ "$count" -ne 14 ]; then
+            echo "FATAL: 期望 14 张规则真相源，实得 $count"
             printf '%s\n' "$files"
             exit 2
           fi

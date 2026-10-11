@@ -203,3 +203,4 @@ scripts/protocol_frames/rules.json
 scripts/skill_path_check/rules.json
 scripts/demo_ui_lint/rules.json
 scripts/teaching_annotation_diff/rules.json
+scripts/mbti_sync.exe

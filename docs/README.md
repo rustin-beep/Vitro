@@ -181,7 +181,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | StepPayload v0.1（**已冻结**，2026-09-12，S1–S5 签字回放 61/61）；§9 v0.2 激活轨道、附录 B 受控词汇表 |
-| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行六前缀 / 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
+| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行八前缀〔#69 勘正〕/ 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
 
 ---
 

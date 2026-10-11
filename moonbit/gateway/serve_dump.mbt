@@ -72,7 +72,8 @@ fn serve_ast_dump_frame(
 ) -> (String, Bool) {
   guard json_field(params, "source").as_string() is Some(source) else {
     return (
-      serve_err(id, "protocol", "ast.dump 需要 params.source").stringify(),
+      serve_param_err(id, "ast.dump 需要 params.source:string", "source:string")
+        .stringify(),
       false,
     )
   }
@@ -115,7 +116,8 @@ fn serve_typeck_dump_frame(
 ) -> (String, Bool) {
   guard json_field(params, "source").as_string() is Some(source) else {
     return (
-      serve_err(id, "protocol", "typeck.dump 需要 params.source").stringify(),
+      serve_param_err(id, "typeck.dump 需要 params.source:string", "source:string")
+        .stringify(),
       false,
     )
   }
@@ -172,7 +174,8 @@ fn serve_symbols_dump_frame(
 ) -> (String, Bool) {
   guard json_field(params, "source").as_string() is Some(source) else {
     return (
-      serve_err(id, "protocol", "symbols.dump 需要 params.source").stringify(),
+      serve_param_err(id, "symbols.dump 需要 params.source:string", "source:string")
+        .stringify(),
       false,
     )
   }

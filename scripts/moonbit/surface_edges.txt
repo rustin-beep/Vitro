@@ -167,6 +167,7 @@ vitro/engine/gateway vitro/engine/protocol SeekResult
 vitro/engine/gateway vitro/engine/protocol StepPayload
 vitro/engine/gateway vitro/engine/protocol behavior_contracts
 vitro/engine/gateway vitro/engine/protocol contracts_json
+vitro/engine/gateway vitro/engine/protocol error_frame_fields_v0_1
 vitro/engine/gateway vitro/engine/protocol reserved_fields_v0_2
 vitro/engine/gateway vitro/engine/protocol semantic_label_vocabulary
 vitro/engine/gateway vitro/engine/protocol v0_2_field_ledger
@@ -555,6 +556,8 @@ vitro/engine/cmd/compile moonbitlang/core/env args
 vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
+vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_detail
+vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_list
 vitro/engine/cmd/lib/cli vitro/engine/gateway invoke
 vitro/engine/cmd/lib/cli vitro/engine/gateway invoke_parsed
 vitro/engine/cmd/lib/cli vitro/engine/gateway set_clock_source

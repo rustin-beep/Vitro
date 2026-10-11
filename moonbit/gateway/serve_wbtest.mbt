@@ -44,6 +44,54 @@ test "serve_missing_method_rejected" {
   let s = @session.Session::new()
   let (resp, _) = serve_handle(s, "{\"id\":7}")
   assert_true(resp.contains("缺少 method"))
+  // #68（2026-10-11）：缺 method 帧也带形状（请求顶层字段非 params）
+  assert_true(
+    resp.contains("\"expected\":\"method:string\""),
+    msg="缺 method 帧 expected 字段",
+  )
+}
+
+///|
+test "serve_error_frame_keys_gated" {
+  // #68 键集闸（2026-10-11）：错误帧 error 对象键集 ⊆
+  // @protocol.error_frame_fields_v0_1()（protocol 包白名单，先建闸再上帧
+  // ——防野生键第二套手拼面）。白名单扩键须先改 schema 再上帧，本闸连坐。
+  let frame = serve_param_err(
+    Json::number(1),
+    "x 需要 params.y:string",
+    "y:string",
+  )
+  let j = json_parse(frame.stringify()) catch {
+    _ => {
+      fail("自产参数错误帧必须可解析")
+      return
+    }
+  }
+  match j {
+    Object(top) =>
+      match top.get("error") {
+        Some(Object(e)) => {
+          for k in e.keys() {
+            assert_true(
+              @protocol.error_frame_fields_v0_1().contains(k),
+              msg="错误帧野生键（须先进 error_frame_fields_v0_1() 白名单）: \{k}",
+            )
+          }
+          assert_true(
+            e.contains("expected"),
+            msg="参数错误帧必须携带 expected（机器可读形状）",
+          )
+        }
+        _ => {
+          fail("error 字段必须为对象")
+          return
+        }
+      }
+    _ => {
+      fail("帧必须为对象")
+      return
+    }
+  }
 }
 
 ///|

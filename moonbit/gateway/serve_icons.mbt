@@ -20,8 +20,10 @@ fn serve_icons_get_frame(id : Json, params : Json) -> (String, Bool) {
               Json::String(s) => ids.push(s)
               _ =>
                 return (
-                  serve_err(
-                    id, "protocol", "icons.get 的 ids 须为字符串数组",
+                  serve_param_err(
+                    id,
+                    "icons.get 的 ids 须为字符串数组（ids:string[]）",
+                    "ids:string[]",
                   ).stringify(),
                   false,
                 )
@@ -29,7 +31,11 @@ fn serve_icons_get_frame(id : Json, params : Json) -> (String, Bool) {
           }
         Some(_) =>
           return (
-            serve_err(id, "protocol", "icons.get 的 ids 须为字符串数组").stringify(),
+            serve_param_err(
+              id,
+              "icons.get 的 ids 须为字符串数组（ids:string[]）",
+              "ids:string[]",
+            ).stringify(),
             false,
           )
         None => ()

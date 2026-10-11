@@ -411,7 +411,7 @@ fn serve_seek_frame(
 ) -> (String, Bool) {
   guard json_field(params, "step").as_int() is Some(target) else {
     return (
-      serve_err(id, "protocol", "seek 需要 params.step").stringify(),
+      serve_param_err(id, "seek 需要 params.step:int", "step:int").stringify(),
       false,
     )
   }

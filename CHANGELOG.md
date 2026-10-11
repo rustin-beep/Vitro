@@ -12,6 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（CI 双闸互斥修复：editorconfig 尾换行 vs jsonmbt compact 再生——suggestions.json 一字节恒红，2026-10-11）
+
+- **定责**：fca6c063 建 editorconfig 闸时 `insert_final_newline` 全域规则咬 `suggestions.json`（jsonmbt compact 再生**无尾换行**），批内补尾换行令 editorconfig 绿——但 CI 的 Teaching assets sync gate 用 `jsonmbt build`（compact）再产后 `git diff --quiet` 比对，恰差一字节恒红（两闸对该文件互斥；本地复现同构）。
+- **裁定**：jsonmbt 是数据权威（纪律 13），漂移归 Teaching gate——`suggestions.json` 恢复 compact 再生**逐字节产物**（幂等验证）；`editorconfig_check` 白名单补第 10 前缀 `moonbit/teaching/assets/`（照既有 9 前缀同构）；`.editorconfig` 加 section 给该文件 `insert_final_newline = false`（防 IDE 自动补尾换行再打爆同步闸）。双闸本地实测同绿。
+- 排雷：新 14 张规则真源唯一 compact 产物即 suggestions.json（`--pretty` 族带尾换行），`gen_api_help/rules.json` 与 pretty 再生逐字节一致——无同款雷。
+- 随批收编 fca6c063 增量（远端 61057987 之上的分叉增量）：`.gitignore` +`scripts/mbti_sync.exe`、物理删除该 4.7MB 二进制残留。
+
+### Added（#67 api help 离线可发现性出口：生成器化双产物 + 双臂接线，2026-10-11）
+
+- **`vitro api help [method]`**：`help` 为方法位保留字（不进 invoke、不起会话）——无 method 打印 27 方法清单、有 method 打印单方法详情（params 形状 = #68 `serve_param_err` 的 `expected` 同源）、未知方法用法错 rc=4、`--batch` 与 `help` 并用 rc=4。**建议 2（错误帧带形状）即 #68 已先行落地**；本批 = 建议 1（api help）+ spec 连坐；建议 3（随包文档）合流 #44 另批。
+- **生成器 `scripts/gen_api_help`**（Go，gen_protocol_ts 四契约：权威源提取 / 双向对账 / `-check` 幂等 / `--selftest` 三路注入证红）：方法清单 = `protocol.mbt` dispatch 臂（段内正则，计数 27 断言）；形状 = serve_*.mbt 的 `serve_param_err` 调用点提取（代码即真值，rules 不复制只对账）；手写面（27 方法简介+示例）= `rules.json.mbt` 真源（jsonmbt build 再生 `.json`，CI 规则真相源计数 13→14）。**预渲染文本双产物**：native `moonbit/gateway/api_help_gen.mbt`（pub `api_help_list`/`api_help_detail`，形参 `m` 避保留字 0035）+ wasm 壳 `scripts/vitro_cli/api_help.json`——渲染单源在生成器，双臂只查表打印（文本不带尾换行、打印层补单尾——println 双写平台形态在源头消灭，B 组零特例纪律）。
+- **双臂接线**：`cli_api.mbt`（native）与 `main.js cmdApi`（wasm）同构拦截；surface 边登记 2 条（cmd/lib/cli→gateway）；spec `CLI_PROTOCOL_V1` §4.5 补 `api help` 行（协议追加面）；CLI 手册既有 spec 指针勘误注记（#67 评论「无指针」判断有误——手册第 4 行本就指向 spec 单一权威）；docs/README spec 行「六前缀」勘正为八（#69 连坐）。
+- **红→绿锚**：cli_wbtest 2 测（`api help` rc 三态——改前 help 走 invoke=未知方法帧 2 红证红）+ vitro_cli_smoke B 组附 2（api help 三态双臂对拍 + 内容锚：清单计数行 / compile 详情 expected 形状——形状漂移双闸之一）。
+- 验收：vitro_cli_smoke 全绿（双臂同形）；gen_api_help `-check`/`--selftest` 过；surface -check 绿；facts --strict 零红。
+
+### Fixed（#68 报错即文档批：参数错误帧带期望形状 + 错误帧字段白名单建闸，2026-10-11）
+
+- **`serve_param_err` 单源收编 9 处**（gateway）：6 处「需要 params.X」（compile/ast.dump/typeck.dump/symbols.dump/diagnostics_probe/seek）+ `protocol.mbt:112` 缺 method + `serve_icons.mbt` ids 形状 ×2——message 内嵌人类可读形状（如 `compile 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]`）、`error.expected` 机器可读字段（下游可程序化重试，省一次源码考古）。帧结构与形状语法禁逐处手拼，必须走 helper；expected 形状词汇表（`int`/`string` 原语、`T[]` 数组、`{f,f}` 对象、`?` 可省略、`A | B` 任一、`[,extra]` 附加项）**自本批冻结**——下游可编程面，改动属协议演化。
+- **错误帧字段白名单先建闸再上帧**（protocol 包 `error_frame_fields_v0_1()`——注意与 `v0_2_field_ledger` 分工：台账管 StepPayload 域、本表管错误帧域，两域不混表）：error 对象只许 `kind`/`message`/`expected` 三键，防野生键第二套手拼面；闸 = gateway wbtest `serve_error_frame_keys_gated`（逐帧键集断言，白名单扩键连坐）。
+- **红→绿锚**：`serve_compile_missing_params_error` 断言升级（message 含形状 + expected 存在——改前证红 gateway 1 红）+ `serve_missing_method_rejected` 补 expected 断言 + 新增键集闸测试。
+- **baseline 连坐**：`protocol_frames/baseline.jsonl` 重冻（47 帧不变，**只动 line 25 compile 空参帧**——`--update-baseline` 人工令）；surface 边表登记 `gateway→protocol error_frame_fields_v0_1`；mbti 接口面 +1 行（`moon info` 再生）。
+- 验收：moon test 729/729（wasm-gc）；serve_smoke 双臂（native 66/0、wasm 64/0）；protocol_frames 47 帧一致；facts --strict 零红；testcount PASS（729 两文档一致）；moonbit_surface -check 绿。
+
 ### Changed（#70 第二步：compile_and_report 旧管线拆除——CLI 出口帧单源化收官，2026-10-11）
 
 - **拆除**：`compile_and_report` 直调管线（lexer→parser→typeck→codegen 手拼 + println）与 vm setup 直驱段、`json_event_stream`（--json 手拼序列）、`dir_of`/`stdout_bytes_of`/`FsProvider` 死面全清（cli 包 import 收缩 11→3：fs/gateway/util）。run/compile 的文本与 json 两模式统一走 **`frame_pipeline`**（gateway 帧单源：同一 invoke 序列，文本模式帧→标记行渲染、json 模式 NDJSON 直透）——CLI_PROTOCOL_V1「帧单源」声明自此成真，#64「双臂不对账」的病根（双出口）结构性消灭。

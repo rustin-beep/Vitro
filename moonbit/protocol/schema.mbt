@@ -122,6 +122,18 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
 }
 
 ///|
+/// 错误帧字段白名单（#68，2026-10-11）：NDJSON 错误帧 `error` 对象只许
+/// 此三键。`expected`（机器可读期望形状——参数校验错误帧携带，下游可
+/// 程序化重试）为 #68 新增；白名单先行的目的 = 防野生字段：错误帧是
+/// 下游可编程面，任何新键须先入此表再上帧（闸 = gateway
+/// `serve_error_frame_keys_gated` wbtest 逐帧键集断言）。
+/// 注意与 v0_2_field_ledger 的分工：台账管 **StepPayload 域**（带
+/// status/batch 激活语义）；本表管 **错误帧域**——两域不混表。
+pub fn error_frame_fields_v0_1() -> Array[String] {
+  ["kind", "message", "expected"]
+}
+
+///|
 /// 行为契约：不得被性能优化破坏的可观测行为（CSharp前端引入计划 §6-B）。
 pub(all) struct BehaviorContract {
   id : String

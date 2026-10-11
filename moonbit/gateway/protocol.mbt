@@ -27,6 +27,27 @@ fn serve_err(id : Json, kind : String, message : String) -> Json {
 }
 
 ///|
+/// 参数校验错误帧（#68 报错即文档，2026-10-11）：message 内嵌期望形状、
+/// error 附机器可读 `expected` 字段——下游（agent/判分线）可程序化重试，
+/// 省一次源码考古。帧结构单源：error 键集 ⊆ @protocol.error_frame_fields_v0_1()
+/// （protocol 包白名单，gateway 键集闸锁——防野生键）。expected 形状
+/// 词汇表（**冻结面**——下游可编程面，改动属协议演化）：`int`/`string`/
+/// `bool` 原语；`T[]` 数组；`{field,field}` 对象（`field?` = 可省略）；
+/// `A | B` 任一；`expr[,extra]` 附加可选项。message 为自然语言（各处
+/// 自定语序），但帧结构与形状语法**禁逐处手拼**——必须走本函数。
+fn serve_param_err(id : Json, message : String, expected : String) -> Json {
+  let e : Map[String, Json] = Map([])
+  e.set("kind", Json::string("protocol"))
+  e.set("message", Json::string(message))
+  e.set("expected", Json::string(expected))
+  let m : Map[String, Json] = Map([])
+  m.set("id", id)
+  m.set("ok", Json::boolean(false))
+  m.set("error", Json::object(e))
+  Json::object(m)
+}
+
+///|
 /// 会话拓扑语义（下游需求清单 D2）：单 serve 进程 = 单活跃会话。
 fn serve_session_semantics() -> Json {
   let m : Map[String, Json] = Map([])
@@ -109,7 +130,9 @@ fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
     Some(m) => m
     None =>
       return (
-        serve_err(id, "protocol", "请求缺少 method 字段").stringify(),
+        serve_param_err(
+          id, "请求缺少 method 字段（method:string）", "method:string",
+        ).stringify(),
         false,
       )
   }

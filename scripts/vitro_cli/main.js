@@ -38,6 +38,8 @@ if (maj < MIN_NODE) {
 }
 
 const REPO = path.join(__dirname, "..", "..");
+// #67：api help 查表数据（生成器产物——与 native api_help_gen.mbt 同源）
+const API_HELP = require("./api_help.json");
 const WASM = path.join(
   REPO, "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm",
 );
@@ -427,10 +429,41 @@ async function cmdApi(args) {
   let method = "";
   let params = "{}";
   let batch = false;
+  // #67：help 的第二位置参数是目标方法名（非 params）
+  let helpTarget = "";
   for (const a of args) {
     if (a === "--batch") batch = true;
     else if (!a.startsWith("-") && method === "") method = a;
+    else if (method === "help" && !a.startsWith("-") && helpTarget === "") helpTarget = a;
     else if (method !== "" && params === "{}" && a !== "{}") params = a;
+  }
+  // #67 api help [method]：离线可发现性出口——不进 invoke，查生成表
+  // api_help.json（与 native api_help_gen.mbt 同源，scripts/gen_api_help
+  // -check 锁同形；权威源 = dispatch + serve_param_err 的 expected）。
+  // 用法错对齐 native println = stdout（非 die 的 stderr 通道）。
+  if (method === "help" && !batch) {
+    if (helpTarget === "") {
+      // 生成文本不带尾换行，write 加单尾——与 native println 逐字节同形
+      process.stdout.write(API_HELP.list + "\n");
+      process.exitCode = 0;
+      return;
+    }
+    const d = API_HELP.detail[helpTarget];
+    if (d === undefined) {
+      process.stdout.write(
+        `用法错: 未知方法 '${helpTarget}'（api help 看方法清单；api help <method> 看详情）\n`,
+      );
+      process.exitCode = 4;
+      return;
+    }
+    process.stdout.write(d + "\n");
+    process.exitCode = 0;
+    return;
+  }
+  if (method === "help" && batch) {
+    process.stdout.write("用法错: --batch 不与 help 并用（help 是离线出口不进会话）\n");
+    process.exitCode = 4;
+    return;
   }
   if (batch) {
     if (method !== "") die("用法错: --batch 不与 <method> 并用（帧序列从 stdin 读）", 4);

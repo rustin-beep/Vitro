@@ -95,7 +95,8 @@ vitro api <method> [params-json]
 - 退出码：0=帧 `ok:true` / **1=帧 `ok:false`（协议内错误统一——含编译错/trap 报错帧，api 是透传层不细分语义）** / 4=用法错；
 - **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；
 - 单帧形态会话态：每次 api 调用独立进程会话（跨调用不保留——会话场景走 --batch 或 serve 长会话）；
-- 例：`vitro api ping` / `vitro api compile '{"source":"int main(){return 0;}"}'` / `vitro api ast.dump '{"source":"…"}'`。
+- **`api help [method]`（#67，2026-10-11）**：离线可发现性出口——`help` 是方法位保留字（不进 invoke、不起会话）：无 method 打印全方法清单、有 method 打印单方法详情（params 形状 = `serve_param_err` 的 `expected` 字段同源，#68 词汇表）；数据 = `scripts/gen_api_help` 生成表（权威源 dispatch + serve_param_err，`-check` 幂等锁——禁手抄），双臂同形（native `api_help_gen.mbt` / wasm 壳 `api_help.json`）由 vitro_cli_smoke 对拍锁；rc：0=清单/详情 / 4=未知方法（stdout 用法错文案）；`--batch` 与 `help` 并用 = rc=4；
+- 例：`vitro api ping` / `vitro api compile '{"source":"int main(){return 0;}"}'` / `vitro api ast.dump '{"source":"…"}'` / `vitro api help compile`。
 
 ## 5. `step` 命令（有意分叉登记：Rust `step` 是交互 REPL，mb 是一次性——交互面归 serve）
 

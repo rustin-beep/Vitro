@@ -31,7 +31,10 @@ fn serve_diagnostics_probe_frame(
 ) -> (String, Bool) {
   guard json_field(params, "source").as_string() is Some(source) else {
     return (
-      serve_err(id, "protocol", "diagnostics_probe 需要 params.source").stringify(),
+      serve_param_err(
+          id, "diagnostics_probe 需要 params.source:string", "source:string",
+        )
+        .stringify(),
       false,
     )
   }

@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "expected_method_count": 27,
+  "methods": [
+    {
+      "method": "ping",
+      "brief": "心跳连通性探针",
+      "example": "{}"
+    },
+    {
+      "method": "session.create",
+      "brief": "创建/重建会话（清空重建同一实例；argv/输入模式回默认）",
+      "example": "{}"
+    },
+    {
+      "method": "session.reset",
+      "brief": "重置编译/运行状态（保留会话级配置：隔离预算/deterministic/argv）",
+      "example": "{}"
+    },
+    {
+      "method": "session.destroy",
+      "brief": "销毁会话（进程存活；回收进程用 shutdown）",
+      "example": "{}"
+    },
+    {
+      "method": "shutdown",
+      "brief": "关停 serve 进程（响应帧携带 shutdown:true）",
+      "example": "{}"
+    },
+    {
+      "method": "config.get",
+      "brief": "读会话配置",
+      "example": "{}"
+    },
+    {
+      "method": "config.set",
+      "brief": "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget）",
+      "example": "{\"max_steps\":100000}"
+    },
+    {
+      "method": "capabilities",
+      "brief": "能力清单（语言/协议面）",
+      "example": "{}"
+    },
+    {
+      "method": "error_catalog",
+      "brief": "错误码目录（E/W/H 码 + 教学文案 + icon id）",
+      "example": "{}"
+    },
+    {
+      "method": "semantic_labels",
+      "brief": "语义标签表（算法/事件中文标注）",
+      "example": "{}"
+    },
+    {
+      "method": "contracts",
+      "brief": "schema 契约与字段台账（StepPayload 冻结面）",
+      "example": "{}"
+    },
+    {
+      "method": "icons.get",
+      "brief": "图标资产按 id 下发（缺省=全量；值域=icons/index.tsv）",
+      "example": "{\"ids\":[\"uaf\"]}"
+    },
+    {
+      "method": "compile",
+      "brief": "编译（覆盖式语义：files 数组=当前完整编译单元集合，非追加）",
+      "example": "{\"files\":[{\"filename\":\"main.c\",\"source\":\"int main(){return 0;}\"}]}"
+    },
+    {
+      "method": "run",
+      "brief": "执行已编译单元（batch_input=输入耗尽即 EOF；argv 全量含 argv[0]）",
+      "example": "{\"argv\":[\"main.c\"]}"
+    },
+    {
+      "method": "input.feed",
+      "brief": "交互续跑喂输入（waiting_input 时续跑）",
+      "example": "{\"text\":\"42\\n\"}"
+    },
+    {
+      "method": "output.delta",
+      "brief": "拉增量输出（stream=display/stdout/stderr/note；判分取 stdout）",
+      "example": "{\"cursor\":0,\"stream\":\"stdout\"}"
+    },
+    {
+      "method": "memory.regions",
+      "brief": "内存区域快照（堆/栈/全局）",
+      "example": "{}"
+    },
+    {
+      "method": "memory.dump",
+      "brief": "1MB 内存映像 base64（--dump-memory 通道）",
+      "example": "{}"
+    },
+    {
+      "method": "step.begin",
+      "brief": "开启步进会话（采集步帧；断点须 begin 后下发）",
+      "example": "{}"
+    },
+    {
+      "method": "step.next",
+      "brief": "推进 N 步（返回帧数组）",
+      "example": "{\"frames\":10}"
+    },
+    {
+      "method": "payload.get",
+      "brief": "取步载荷帧（游标式；回放/断点消费面）",
+      "example": "{\"cursor\":0}"
+    },
+    {
+      "method": "seek",
+      "brief": "跳至目标步（会话须已 step.begin）",
+      "example": "{\"step\":3}"
+    },
+    {
+      "method": "breakpoints.set",
+      "brief": "下发断点集合（行号数组）",
+      "example": "{\"lines\":[5,10]}"
+    },
+    {
+      "method": "ast.dump",
+      "brief": "AST 导出（静态 dump 族——无需会话）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
+    },
+    {
+      "method": "typeck.dump",
+      "brief": "类型检查导出（静态 dump 族）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
+    },
+    {
+      "method": "symbols.dump",
+      "brief": "符号表导出（静态 dump 族）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
+    },
+    {
+      "method": "diagnostics_probe",
+      "brief": "诊断探针（补全/悬停位——M15 无实现面 fail loud）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
+    }
+  ]
+}

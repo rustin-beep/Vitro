@@ -50,3 +50,19 @@ test "parse_run_args_裸位置参数与__透传合流" {
   inspect(ra.argv_passthrough[0], content="a")
   inspect(ra.argv_passthrough[1], content="b")
 }
+
+///|
+test "cli_api_help_清单与详情_rc 三态" {
+  // #67 红→绿锚（2026-10-11）：api help 离线可发现性出口——改前 `help`
+  // 走 invoke 得「未知方法」帧（rc=1）、`help compile` 的 compile 被当
+  // params 非 JSON 对象（rc=4）。输出内容断言由 vitro_cli_smoke 双臂
+  // 对拍承担（逻辑层 println 无捕获面，这里锚 rc 语义）。
+  assert_eq(api(["help"], () => b""), 0) // 改前红位：help 走 invoke=未知方法帧 rc=1
+}
+
+///|
+test "cli_api_help_detail_单方法与未知方法" {
+  // 接线后：help compile → 0；help no.such → 4（用法错）
+  assert_eq(api(["help", "compile"], () => b""), 0)
+  assert_eq(api(["help", "no.such.method"], () => b""), 4)
+}

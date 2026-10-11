@@ -426,7 +426,12 @@ fn serve_compile_frame(
   }
   if units.is_empty() {
     return (
-      serve_err(id, "protocol", "compile 需要 params.files 或 params.source").stringify(),
+      serve_param_err(
+          id,
+          "compile 需要 params.files:[{filename?,source}] 或 params.source:string[,filename:string]",
+          "files:[{filename?,source}] | source:string[,filename:string]",
+        )
+        .stringify(),
       false,
     )
   }

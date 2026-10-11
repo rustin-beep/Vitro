@@ -67,20 +67,23 @@ test "serve_compile_multifile_file_ranges_produced" {
 
 ///|
 test "serve_compile_merge_empty_unit_no_range" {
-  // 空文件 0 行不产区间（Rust merge_compile_units 同语义）——三单元
-  // 中间空文件，区间仍 2 条且后续文件行号连续
+  // 病 42 锚翻转（#71 第三梯队，2026-10-11）：旧锚把「空文件 0 行不产
+  // 区间」错形态钉成预期（A3——补 \n 实占 1 行而行数计 0，后续文件
+  // start_line 偏小/行号落洞错报 main.c）。正确形态：空文件产 1 行区间
+  //（补行计入），三单元区间 3 条且后续文件行号 +1 连续。
   let s = @session.Session::new()
   let (_, _) = serve_handle(
     s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"files\":[{\"filename\":\"a.c\",\"source\":\"int g;\\n\"},{\"filename\":\"empty.c\",\"source\":\"\"},{\"filename\":\"b.c\",\"source\":\"int main() { return 0; }\\n\"}]}}",
   )
   let ranges = s.compile.file_ranges
-  assert_eq(ranges.length(), 2, msg="空文件不产区间")
+  assert_eq(ranges.length(), 3, msg="空文件也产 1 行区间")
   assert_eq(
-    ranges[1].start_line,
-    2,
-    msg="空文件占一行合并位（补 \\n）但行数 0",
+    ranges[2].start_line,
+    3,
+    msg="空文件占 1 行——b.c 从第 3 行起",
   )
-  assert_eq(ranges[1].filename, "b.c")
+  assert_eq(ranges[2].filename, "b.c")
+  assert_eq(ranges[1].filename, "empty.c")
 }
 
 ///|

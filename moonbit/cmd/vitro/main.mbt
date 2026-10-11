@@ -43,7 +43,7 @@ fn main {
 fn print_help() -> Unit {
   println("用法: vitro <cmd> [args]")
   println(
-    "  run <file.c> [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4）",
+    "  run <file.c> [--json] [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4；--json=事件流 NDJSON）",
   )
   println(
     "  compile <file.c | -> [--json]                             编译+诊断单出",
@@ -52,7 +52,7 @@ fn print_help() -> Unit {
     "  step <file.c | -> [--max-steps N] [--json|--summary]      一次性 step 流（交互调试走 serve）",
   )
   println(
-    "  api <method> [params-json] | api --batch < frames.ndjson  万能单帧 + 批式多帧（状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化；响应 NDJSON 直出；任一帧 ok:false → rc=1）",
+    "  api <method> [params-json] | api --batch < frames.ndjson  万能单帧 + 批式多帧（状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化；响应 NDJSON 直出；任一帧 ok:false → rc=1；api help <method> 看参数详情）",
   )
   println(
     "  help                                                      本帮助",

@@ -123,6 +123,20 @@ fn Parser::parse_base_type(self : Parser, depth : Int) -> @ast.Type {
   } else if self.match_token(Struct) {
     if self.check(Identifier) {
       let name_tok = self.advance()
+      // 病 38 修正（#71 第三梯队，2026-10-11）：定义带声明器形态
+      //（`struct Point {…} origin;`）——Identifier 后跟 LBrace 时先就地
+      // 解析体并注册（收集通道复用 anonymous_structs——decl.name 是具名，
+      // 下游按名灌表；此前 Identifier 直接返回把 { 体留给声明器 →
+      // E2005 假阳性级联 ×5；Union 臂 #7 的拦截同款对偶）。
+      if self.check(LBrace) {
+        let decl = self.parse_struct_body(
+          name_tok.text,
+          @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column),
+          depth,
+        )
+        self.anonymous_structs.push(decl)
+        return @ast.Type::struct_type(name_tok.text)
+      }
       // C++ 模式下，如果 struct 名字已注册为类型（class 或 struct），返回该类型
       if self.is_cpp_mode {
         match self.typedef_names.get(name_tok.text) {

@@ -133,3 +133,24 @@ test "math_log_zero_returns_neg_inf" {
   // -inf 位模式 0xFFF0000000000000（core 无 is_infinite——位判定）
   assert_eq(r, 0xFFF0000000000000UL, msg="log(0.0) 应 -inf")
 }
+
+///|
+/// #71 第三梯队病 21+22 锚（2026-10-11）：%e/%E 新臂 + %g 负零保符号。
+/// 真值 clang 实测（tmp/i71_t1/b21.c 八行逐字节同）；改判据此锚红。
+test "format_e_and_g_negzero_issue71_b21_b22" {
+  // %e：尾数去/不去尾零语义与 %g 相反（1.5 → "1.500000e+00"）
+  assert_eq(format_e(1.5, 6, false), "1.500000e+00")
+  assert_eq(format_e(1.5, 6, true), "1.500000E+00")
+  assert_eq(format_e(0.0, 6, false), "0.000000e+00")
+  assert_eq(format_e(-0.000025, 6, false), "-2.500000e-05")
+  assert_eq(format_e(123456789.0, 6, true), "1.234568E+08")
+  // %.0e 零精度形态
+  assert_eq(format_e(0.0, 0, false), "0e+00")
+  // %g 负零：位模式判符号（-0.0 == 0.0 拦不住——病 22 病根）
+  assert_eq(format_g(-0.0, 6, false), "-0")
+  assert_eq(format_g(-0.0, 6, true), "-0")
+  assert_eq(format_g(0.0, 6, false), "0")
+  // 回归面：%g 常规形态不回退（1e-05 / 100000）
+  assert_eq(format_g(0.00001, 6, false), "1e-05")
+  assert_eq(format_g(100000.0, 6, false), "100000")
+}

@@ -35,6 +35,8 @@ pub extend BinaryOp with Eq::{not_equal, equal}
 /// 一元运算符（9 个，照搬 Rust UnaryOp）。
 pub(all) enum UnaryOp {
   Neg
+  /// 一元 +（#71 病 39，2026-10-11——恒等操作数：类型/值原样，仅词法合法化）
+  Pos
   Not
   BitNot
   Addr

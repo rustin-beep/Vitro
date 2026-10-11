@@ -161,4 +161,18 @@ fn BytecodeGen::gen_struct_copy_to_local(
     self.emit(@opcode.OpCode::LoadMem, 0, loc)
     self.emit(@opcode.OpCode::StoreMem, 0, loc)
   }
+  // 病 35 修正（#71 第三梯队）：size%4 尾字节补拷（同 gen_struct_copy）
+  for b in 0..<(size % 4) {
+    let off = size / 4 * 4 + b
+    self.emit(@opcode.OpCode::GetFrameBase, 0, loc)
+    self.emit(@opcode.OpCode::PushConst, local_offset + off, loc)
+    self.emit(@opcode.OpCode::Add, 0, loc)
+    self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+    if off > 0 {
+      self.emit(@opcode.OpCode::PushConst, off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+  }
 }

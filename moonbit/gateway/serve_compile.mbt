@@ -44,7 +44,10 @@ fn merge_units(
       full.write_char('\n')
     }
     let line_count = if u.source.is_empty() {
-      0
+      // 病 42 修正（#71 第三梯队，2026-10-11）：空 source 上方补了换行
+      // 占 1 行——此前计 0 行（不进 ranges + current_line 不前进）→
+      // 后续文件 start_line 偏小、行号落洞错报 main.c
+      1
     } else {
       let mut newline_count = 0
       for i = 0; i < u.source.length(); i = i + 1 {
@@ -76,6 +79,22 @@ fn resolve_filename(line : Int, ranges : Array[@session.FileRange]) -> String? {
   for r in ranges {
     if line >= r.start_line && line <= r.end_line {
       return Some(r.filename)
+    }
+  }
+  None
+}
+
+///|
+/// 病 42 修正（#71 第三梯队，2026-10-11）：合并坐标 → (文件名, 文件内行号)。
+/// 此前诊断 line 直出合并坐标（多文件时=错值；单文件巧合正确掩盖）——
+/// filename 解析对了而行号没映射（resolve_filename 只回名）。
+fn resolve_location(
+  line : Int,
+  ranges : Array[@session.FileRange],
+) -> (String, Int)? {
+  for r in ranges {
+    if line >= r.start_line && line <= r.end_line {
+      return Some((r.filename, line - r.start_line + 1))
     }
   }
   None
@@ -135,12 +154,12 @@ fn push_one_diag(
   } else {
     fix.suggestion
   }
-  let filename = match resolve_filename(line, ranges) {
-    Some(f) => f
-    None => "main.c"
+  let (filename, mapped_line) = match resolve_location(line, ranges) {
+    Some((f, l)) => (f, l)
+    None => ("main.c", line)
   }
   s.compile.diagnostics.push(@session.Diagnostic::{
-    line,
+    line: mapped_line,
     column,
     error_code: code,
     severity,

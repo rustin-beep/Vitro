@@ -600,7 +600,8 @@
     "baseline/e2_angle_local_header.c": {
       "src_sha": "49471035",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_cond_if_elif.c": {
@@ -630,7 +631,8 @@
     "baseline/e2_include_cycle.c": {
       "src_sha": "edf98db3",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_include_guarded.c": {
@@ -642,13 +644,15 @@
     "baseline/e2_include_not_found_angle.c": {
       "src_sha": "d40ce468",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_include_not_found_quote.c": {
       "src_sha": "85c6bfc8",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_macro_nested_self.c": {
@@ -696,7 +700,8 @@
     "baseline/e3_static_assert_fail.c": {
       "src_sha": "2b882579",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e3_unreachable_dead.c": {
@@ -732,9 +737,8 @@
     "baseline/engine_note_lookalike.c": {
       "src_sha": "897ed136",
       "exit_code": 0,
-      "stdout_sha": "18ff9673f8ed7360",
-      "memory_sha": "a82bd0e64a6cf7a3",
-      "known_mb_digest": "2ba5d0ecbf70ee0c"
+      "stdout_sha": "dc7c8179c56e2cb8",
+      "memory_sha": "a82bd0e64a6cf7a3"
     },
     "baseline/enum.c": {
       "src_sha": "1dac9003",
@@ -1100,7 +1104,8 @@
     "baseline/j1_declarator_depth.c": {
       "src_sha": "3db16a2b",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/jit_nested_counting_loop.c": {
@@ -1433,6 +1438,18 @@
       "stdout_sha": "b2a7c750c2fc773e",
       "memory_sha": "96831022bdd66aad"
     },
+    "baseline/p71_tier3_scanf.c": {
+      "src_sha": "7cf64475",
+      "exit_code": 0,
+      "stdout_sha": "7d8a4c4ce48026f3",
+      "memory_sha": "c09066702feee870"
+    },
+    "baseline/p71_tier3_semantics.c": {
+      "src_sha": "c752b120",
+      "exit_code": 0,
+      "stdout_sha": "5cdb7ffcc9c29922",
+      "memory_sha": "a09da1a1039bc40c"
+    },
     "baseline/param_shadows_func.c": {
       "src_sha": "dbad2b64",
       "exit_code": 0,
@@ -1677,8 +1694,7 @@
       "src_sha": "484056da",
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
-      "memory_sha": "5c554cb16edd21cb",
-      "known_mb_digest": "f57d92f3e16d06f3"
+      "memory_sha": "5c554cb16edd21cb"
     },
     "baseline/realloc.c": {
       "src_sha": "d10f2cd4",
@@ -2465,7 +2481,8 @@
     "gap/complex_number.c": {
       "src_sha": "b5a7d055",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/failfast_chain.c": {
@@ -2508,7 +2525,8 @@
     "gap/implicit_int.c": {
       "src_sha": "ed15d81a",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/include_quote_sentinel.c": {
@@ -2575,7 +2593,8 @@
     "gap/variadic_macro.c": {
       "src_sha": "36f66bdb",
       "exit_code": 0,
-      "stdout_sha": "",
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "knr/kr_1_10.c": {
@@ -3200,8 +3219,7 @@
       "src_sha": "008e7d52",
       "exit_code": 0,
       "stdout_sha": "8207ec30e85c0ad4",
-      "memory_sha": "202b76ba7a772767",
-      "known_mb_digest": "f93fc233ae065f9a"
+      "memory_sha": "202b76ba7a772767"
     },
     "leetcode/lc_150.c": {
       "src_sha": "fa19410d",
@@ -3231,8 +3249,7 @@
       "src_sha": "48823dfb",
       "exit_code": 0,
       "stdout_sha": "f4264fa5a25ba11e",
-      "memory_sha": "2dacad20056a2333",
-      "known_mb_digest": "e3c8b8f9022feb06"
+      "memory_sha": "2dacad20056a2333"
     },
     "leetcode/lc_160.c": {
       "src_sha": "fb658564",
@@ -3358,8 +3375,7 @@
       "src_sha": "026e0c87",
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
-      "memory_sha": "8793f33033f2122b",
-      "known_mb_digest": "a83103aa6e6b2d2c"
+      "memory_sha": "8793f33033f2122b"
     },
     "leetcode/lc_219.c": {
       "src_sha": "362c9209",

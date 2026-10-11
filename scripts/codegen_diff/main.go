@@ -62,7 +62,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/codegen_diff <corpus_dir> [--baseline|--freeze|--golden|--selftest]")
+		fmt.Fprintln(os.Stderr, "用法: go run ./scripts/codegen_diff <corpus_dir> [--baseline|--freeze|--freeze-mb|--golden|--selftest]（--freeze-mb=删区后新用例入账，默认含存量重算）")
 		os.Exit(2)
 	}
 	corpus, err := filepath.Abs(os.Args[1])

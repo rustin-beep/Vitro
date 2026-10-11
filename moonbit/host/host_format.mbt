@@ -465,7 +465,11 @@ fn format_g(val : Double, prec : Int, upper : Bool) -> String {
     return if upper { "-INF" } else { "-inf" }
   }
   if val == 0.0 {
-    return "0"
+    // 病 22 修正（#71 第三梯队，2026-10-11）：负零保符号（%g -0.0 →
+    // "-0"，clang 同形；符号位按位模式判——`-0.0 == 0.0` 为 true 拦
+    // 不住）；format_fixed 的 -0.0 → "-0" 头注已证同族形态）
+    let neg = val.reinterpret_as_uint64() >> 63 == 1UL
+    return if neg { "-0" } else { "0" }
   }
   let prec = if prec < 1 { 1 } else { prec }
   let abs_val = if val < 0.0 { -val } else { val }
@@ -495,6 +499,46 @@ fn fmt_exp_signed(e : Int) -> String {
     d = "0" + d
   }
   sign + d
+}
+
+///|
+/// `%e`/`%E`（#71 第三梯队病 21，2026-10-11 新增——此前无臂输出字面
+/// "%e" 还消耗实参）。形态对齐 clang：尾数一位整数 + '.' + prec 位小数
+/// （**不去尾零**——与 %g 的 trim 语义相反）+ e/E + 恒符号两位补零指数
+/// （fmt_exp_signed 复用）。零特例 exp=0；符号含负零（位模式判）。
+fn format_e(val : Double, prec : Int, upper : Bool) -> String {
+  if val.is_nan() {
+    return if upper { "NAN" } else { "nan" }
+  }
+  if val.is_inf() {
+    if val > 0.0 {
+      return if upper { "INF" } else { "inf" }
+    }
+    return if upper { "-INF" } else { "-inf" }
+  }
+  let neg = val.reinterpret_as_uint64() >> 63 == 1UL
+  let sign = if neg { "-" } else { "" }
+  let e_char = if upper { "E" } else { "e" }
+  if val == 0.0 {
+    let pr = precision_default6(prec)
+    let frac = if pr > 0 { "." + "0".repeat(pr) } else { "" }
+    return "\{sign}0\{frac}\{e_char}+00"
+  }
+  let abs_val = if val < 0.0 { -val } else { val }
+  let exp = @math.floor(@math.log10(abs_val)).to_int()
+  let mantissa = abs_val / powi10(exp)
+  let pr = precision_default6(prec)
+  "\{sign}\{format_fixed(mantissa, pr)}\{e_char}\{fmt_exp_signed(exp)}"
+}
+
+///|
+/// %e 默认精度 6（与 f/g 同款内联口径的具名单源）。
+fn precision_default6(prec : Int) -> Int {
+  if prec < 0 {
+    6
+  } else {
+    prec
+  }
 }
 
 ///|
@@ -815,6 +859,36 @@ fn format_printf_string(
                       signed_pos=true,
                     ),
                   )
+                } else if spec == 101 {
+                  // e（#71 病 21：此前无臂落「未知说明符」输出字面 %e）
+                  let f = arg.reinterpret_as_double()
+                  let pr = match precision {
+                    Some(pr) => pr
+                    None => 6
+                  }
+                  push_str(
+                    apply_width(
+                      format_e(f, pr, false),
+                      width,
+                      flags,
+                      signed_pos=true,
+                    ),
+                  )
+                } else if spec == 69 {
+                  // E
+                  let f = arg.reinterpret_as_double()
+                  let pr = match precision {
+                    Some(pr) => pr
+                    None => 6
+                  }
+                  push_str(
+                    apply_width(
+                      format_e(f, pr, true),
+                      width,
+                      flags,
+                      signed_pos=true,
+                    ),
+                  )
                 } else if spec == 103 {
                   // g
                   let f = arg.reinterpret_as_double()
@@ -940,7 +1014,7 @@ pub fn scanf_spec_count(fmt : Array[Int]) -> Int {
   for it in parse_scanf_specs(fmt) {
     match it {
       // 赋值抑制（%*d 批四 2026-10-07）不消耗指针参数
-      ScanfItem::Spec(_, _, false) => count = count + 1
+      ScanfItem::Spec(_, _, false, _) => count = count + 1
       _ => ()
     }
   }

@@ -274,6 +274,8 @@ pub let golden_digest : Digest = Digest::{
         "null_pointer_constant.c": "3f600f45",
         "octal_literal.c": "64aa1f86",
         "offsetof_struct.c": "0d66de85",
+        "p71_tier3_scanf.c": "ebb09917",
+        "p71_tier3_semantics.c": "c752b120",
         "param_shadows_func.c": "dbad2b64",
         "parametric_macro_max.c": "959dd066",
         "parametric_macro_nested.c": "398f17d7",
@@ -772,6 +774,8 @@ pub let golden_digest : Digest = Digest::{
         }),
         "octal_literal.c": Ok(OkCase::{ result_sha: "30465c2b1ecaf3e0", }),
         "offsetof_struct.c": Ok(OkCase::{ result_sha: "50acb98fa1312f25", }),
+        "p71_tier3_scanf.c": Ok(OkCase::{ result_sha: "cf575dda0418398d", }),
+        "p71_tier3_semantics.c": Ok(OkCase::{ result_sha: "6404e1dc5496943b", }),
         "param_shadows_func.c": Ok(OkCase::{ result_sha: "0781080d4bd39d80", }),
         "parametric_macro_max.c": Ok(OkCase::{ result_sha: "9b0beed1223496a4", }),
         "parametric_macro_nested.c": Ok(OkCase::{

@@ -768,6 +768,8 @@ fn TypeChecker::deduce_auto_type(
     Call(_, _, _, ty) => ty
     Unary(op, operand, loc, _) =>
       match op {
+        // 病 39（#71）：一元 + 恒等——auto 推导透传操作数类型
+        Pos => self.deduce_auto_type(operand)
         Addr => @ast.Type::pointer_to(self.deduce_auto_type(operand))
         Deref => {
           let inner = self.deduce_auto_type(operand)

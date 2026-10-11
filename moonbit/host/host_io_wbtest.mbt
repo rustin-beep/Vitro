@@ -754,3 +754,34 @@ test "scanf_i_x_o_conversions" {
   // -0xff 的 u64 位模式（与 Clang strtoul 负值语义一致：补码）
   assert_eq(u6, 0xFFFFFFFFFFFFFF01UL)
 }
+
+///|
+/// #71 第三梯队病 23+24 锚（2026-10-11）：scanf 字段宽度（此前解析后
+/// 丢弃=%3d 读穿）+ %f token 指数/hex 形态（此前 "1e5" 读 1 游标停 'e'）。
+/// 真值 clang 实测（tmp/i71_t1/b23/b24 探针逐字节同）；改判据此锚红。
+test "scanf_width_and_float_token_issue71_b23_b24" {
+  // 宽度面（%3d%2d / %10s）由 e2e 探针锁（tmp/i71_t1/b23*.c clang 双绿，
+  // stdin 白盒驱动需 mem/ptrs 全套——不在此复制）；本锚锁 token 层：
+  // read_float_token 全形态（病 24）+ 宽度 max（病 23 的 f 通道）。
+  fn bytes_of(s : String) -> Array[Byte] {
+    let a : Array[Byte] = []
+    for c in s {
+      a.push(c.to_int().to_byte())
+    }
+    a
+  }
+  // "1e5" 整体为 token（指数合法——此前只读 "1" 游标停 'e'）
+  let chars = bytes_of("1e5 x")
+  let (tok, pos) = read_float_token(chars, 0, None)
+  assert_eq(tok.length(), 3, msg="1e5 整体为 token")
+  assert_eq(pos, 3)
+  // 悬空指数回退："1e" → "1"
+  let (tok2, _) = read_float_token(bytes_of("1e x"), 0, None)
+  assert_eq(tok2.length(), 1, msg="悬空指数截回")
+  // hexfloat："0x1.8p3" 整体
+  let (tok3, _) = read_float_token(bytes_of("0x1.8p3 x"), 0, None)
+  assert_eq(tok3.length(), 7, msg="hexfloat 全形态")
+  // 宽度 max："1e5" 限 2 → e 在界内但悬空 → 截回 "1"
+  let (tok4, _) = read_float_token(bytes_of("1e5"), 0, Some(2))
+  assert_eq(tok4.length(), 1, msg="宽度截断后悬空指数截回")
+}

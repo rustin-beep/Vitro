@@ -581,3 +581,31 @@ test "host_note_access_snapshot_before" {
     "[uaf] Use-After-Free (E3060)：你正在向一块已经在第 2 行（第 3 步）被 free 的内存读取（由第 1 行的 malloc/realloc 分配）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。",
   )
 }
+
+///|
+/// #71 病 29 锚（2026-10-11）：realloc 负 new_size = 分配失败保原块
+///（此前落「等价 free」分支误释放 → 后续读 UAF；glibc/UCRT 双实测
+/// tmp/i71_t1/b29m5：q=NULL p0=42）。oracle 同病已定责（round6 档案），
+/// 按「定责后按缺陷修」处置；零值等价 free 语义不变（既有锚在案）。
+test "realloc_negative_size_preserves_block_issue71_b29" {
+  let map = @memory.MemoryMap::new()
+  let mem = @memory.Memory::new()
+  // 先 malloc 一块并写字节
+  let r1 = host_malloc(map, 16, 4)
+  let addr = match r1.value {
+    Some(v) => v.to_uint()
+    None => fail("malloc 应成功")
+  }
+  ignore(mem.store_i8(map, addr, 42))
+  // 负 size realloc：返 NULL + 原块可读
+  let r2 = host_realloc(map, mem, addr, -1, 7, 7, 30)
+  assert_true(r2.value is Some(0UL), msg="负 size 返 NULL")
+  assert_true(r2.trap is None, msg="不 trap")
+  match mem.load_i8(map, addr) {
+    Ok(v) => assert_eq(v, 42, msg="原块保留可读")
+    Err(_) => fail("原块应仍可读")
+  }
+  // 原块此后仍可正常 free（无 UAF/Double-Free 假阳性）
+  let r3 = host_free(map, addr, 9, 40)
+  assert_true(r3.trap is None, msg="原块 free 不误报")
+}

@@ -269,7 +269,23 @@ pub fn host_realloc(
     if ptr == 0U {
       return null_silent()
     }
-    // 等价 free：**结果恒为 NULL**（Rust `:163-194` 在 free 之后无条件 push(0)）。
+    // 病 29 修正（#71 第三梯队，2026-10-11）：负 new_size（(size_t)-1 经
+    // 32 位截断成 i32 负值）此前落入本分支=「等价 free」误释放原块 →
+    // 后续读原块 UAF trap。C 语义（glibc 2.43/UCRT 双实测，tmp/i71_t1/
+    // b29m5 探针）：分配失败返 NULL 且**原块保留可读**（p0=42）。round6
+    // 档案定责坐实 oracle 同病（`new_size <= 0` 逐字同构），按「定责后
+    // 按缺陷修」收窄：**零值**维持等价 free（C11 明确语义），**负值**
+    // 走分配失败（返 NULL + note，不碰原块）。
+    if new_size < 0 {
+      return HostMemReply::{
+        value: Some(0UL),
+        note: Some(
+          "realloc 请求的 size 为负数（32 位截断后是 \{new_size}）——按分配失败处理返回 NULL，原内存块保持有效。",
+        ),
+        trap: None,
+      }
+    }
+    // 等价 free（new_size == 0）：**结果恒为 NULL**（Rust `:163-194` 在 free 之后无条件 push(0)）。
     // oracle 此分支是**内联**释放且不查 Double-Free（`host/memory.rs:166-192`）：
     // 对已释放指针，`trap_invalid_free` 的 freed_logs 分支被 `log.addr != addr`
     // 滤掉，落兜底 E3027（真机实测 2026-09-23）。故不走 `host_free`——它的

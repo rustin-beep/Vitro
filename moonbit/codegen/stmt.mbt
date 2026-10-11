@@ -139,6 +139,22 @@ fn BytecodeGen::gen_return(
             self.emit(@opcode.OpCode::LoadMem, 0, loc)
             self.emit(@opcode.OpCode::StoreMem, 0, loc)
           }
+          // 病 35 修正（#71 第三梯队）：size%4 尾字节补拷（同 gen_struct_copy）
+          for b in 0..<(size % 4) {
+            let off = size / 4 * 4 + b
+            self.emit(@opcode.OpCode::LoadLocal, ret_ptr_offset, loc)
+            if off > 0 {
+              self.emit(@opcode.OpCode::PushConst, off, loc)
+              self.emit(@opcode.OpCode::Add, 0, loc)
+            }
+            self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+            if off > 0 {
+              self.emit(@opcode.OpCode::PushConst, off, loc)
+              self.emit(@opcode.OpCode::Add, 0, loc)
+            }
+            self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+            self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+          }
         }
         self.emit(@opcode.OpCode::RetVoid, 0, loc)
       } else {
@@ -222,30 +238,6 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       // 挪到变量域（形参/局部/static/全局）之后——C 语义变量遮蔽函数名
       //（`int f(int f)` 体内 f 是形参；旧函数表优先致返回函数地址 2178）
       // C++ reference 自动解引用：C only 不迁移（Reference 类型零出现）
-      // static local 变量
-      match self.static_local_indices.get(name) {
-        Some(static_offset) => {
-          match self.static_local_types.get(name) {
-            Some(ty) =>
-              if ty.is_array() {
-                self.emit(
-                  @opcode.OpCode::PushConst,
-                  @bytecode.GLOBAL_START.reinterpret_as_int() + static_offset,
-                  loc,
-                )
-              } else if ty.kind() is TK_Double {
-                self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
-              } else if ty.kind() is TK_LongLong {
-                self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
-              } else {
-                self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
-              }
-            None => self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
-          }
-          return
-        }
-        None => ()
-      }
       let local_offset = self.resolve_local(name)
       if local_offset >= 0 {
         match self.local_types.get(name) {
@@ -293,13 +285,41 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
             None => self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
         } else {
-          // 变量域全 miss → 函数名作值（函数指针；从臂头挪来——issue #21）
-          match self.func_index.get(name) {
-            Some(idx) => self.emit(@opcode.OpCode::PushConst, idx, loc)
-            None => {
-              self.report_error("未声明的标识符 '\{name}'", loc)
-              self.emit(@opcode.OpCode::PushConst, 0, loc)
-            }
+          // static local 兜底（病 37 修正 #71 第三梯队，2026-10-11）：
+          // 读值序与 gen_addr 取址序对齐 = local → global → static →
+          // 函数名。此前 static 块在臂首=读值 static 优先，块内局部
+          // 遮蔽 static 时读值取 static、取址取局部（两序互斥——
+          // tmp/i71_t1/b37b 探针 inner_read=5/inner_addr=10 实锤）。
+          match self.static_local_indices.get(name) {
+            Some(static_offset) =>
+              match self.static_local_types.get(name) {
+                Some(ty) =>
+                  if ty.is_array() {
+                    self.emit(
+                      @opcode.OpCode::PushConst,
+                      @bytecode.GLOBAL_START.reinterpret_as_int() +
+                      static_offset,
+                      loc,
+                    )
+                  } else if ty.kind() is TK_Double {
+                    self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
+                  } else if ty.kind() is TK_LongLong {
+                    self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+                  } else {
+                    self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
+                  }
+                None =>
+                  self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
+              }
+            None =>
+              // 变量域全 miss → 函数名作值（函数指针；从臂头挪来——issue #21）
+              match self.func_index.get(name) {
+                Some(idx) => self.emit(@opcode.OpCode::PushConst, idx, loc)
+                None => {
+                  self.report_error("未声明的标识符 '\{name}'", loc)
+                  self.emit(@opcode.OpCode::PushConst, 0, loc)
+                }
+              }
           }
         }
       }

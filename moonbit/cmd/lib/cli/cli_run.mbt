@@ -19,6 +19,7 @@ pub(all) struct RunArgs {
   mut stdin_file : String
   mut json_mode : Bool // --json（批③：事件流 NDJSON——gateway 帧单源）
   argv_passthrough : Array[String] // `--` 之后的 argv 透传（Rust 口径）
+  mut unknown_flag : String? // DX P1：未知旗标/尾置缺值（fail loud rc=4）
 }
 
 ///|
@@ -31,7 +32,12 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
     stdin_file: "",
     json_mode: false,
     argv_passthrough: [],
+    unknown_flag: None,
   }
+  // DX P1（#71 顺手批，2026-10-11）：未知旗标/尾置缺值 fail loud——
+  // rc=4 语义现成（用法/IO 错），此前 7 项静默吞（病 87 面：用户以为
+  // 拿到结果实际参数被丢）；unknown_flag 置位由 run 主体统一报错退出
+  let mut unknown_flag : String? = None
   let mut i = 0
   let mut passthrough = false
   while i < args.length() {
@@ -45,10 +51,20 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       passthrough = true
     } else if a == "--json" {
       ra.json_mode = true
-    } else if a == "--dump-memory" && i + 1 < args.length() {
+    } else if a == "--dump-memory" {
+      if i + 1 >= args.length() {
+        unknown_flag = Some(
+          "--dump-memory 尾置缺值（须跟输出文件路径）",
+        )
+        break
+      }
       i += 1
       ra.dump_mem = args[i]
-    } else if a == "-i" && i + 1 < args.length() {
+    } else if a == "-i" {
+      if i + 1 >= args.length() {
+        unknown_flag = Some("-i 尾置缺值（须跟输入文件路径）")
+        break
+      }
       // stdin 注入（2026-09-29 层 2 遗留 stdin 34 例批）：文件 → host
       // 单源切行（行含尾换行）；Batch 模式（headless——输入耗尽即 EOF
       // 不交互，oracle CLI -i 同语义：while(scanf...)!=EOF 习语不挂起）
@@ -63,9 +79,13 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       } else if a != "-" {
         ra.argv_passthrough.push(a)
       }
+    } else {
+      unknown_flag = Some(a)
+      break
     }
     i += 1
   }
+  ra.unknown_flag = unknown_flag
   ra
 }
 
@@ -83,6 +103,13 @@ pub fn run(
 ) -> Int {
   ensure_include_reader()
   let ra = parse_run_args(args)
+  if ra.unknown_flag is Some(msg) {
+    println("vitro run: 未知旗标或缺值：\{msg}")
+    println(
+      "用法: run <file.c> [--dump-memory out.bin] [-i input.in] [-- <argv...>]",
+    )
+    return 4
+  }
   if ra.file == "" {
     println(
       "用法: run <file.c> [--dump-memory out.bin] [-i input.in] [-- <argv...>]",

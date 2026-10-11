@@ -79,48 +79,6 @@ fn BytecodeGen::gen_assign_inner(
   match left {
     Identifier(name, _, _) => {
       // reference 判定分支不迁移（C 零出现）
-      match self.static_local_indices.get(name) {
-        Some(static_offset) => {
-          if !(op is Assign) {
-            if left_is_double {
-              self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
-            } else if left_is_long_long {
-              self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
-            } else {
-              self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
-            }
-            self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-            self.emit_compound(
-              op,
-              left_is_double,
-              left_ty.kind() is TK_Float,
-              left_is_long_long,
-              left_is_unsigned,
-              ptr_step,
-              left_is_ptr,
-              loc,
-            )
-          } else {
-            self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-          }
-          if left_is_double {
-            self.emit(@opcode.OpCode::StoreGlobalD, static_offset, loc)
-          } else if left_is_long_long {
-            self.emit(@opcode.OpCode::StoreGlobalQ, static_offset, loc)
-          } else {
-            self.emit(@opcode.OpCode::StoreGlobal, static_offset, loc)
-          }
-          if left_is_double {
-            self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
-          } else if left_is_long_long {
-            self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
-          } else {
-            self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
-          }
-          return
-        }
-        None => ()
-      }
       let local_offset = self.resolve_local(name)
       if local_offset >= 0 {
         if !(op is Assign) {
@@ -200,6 +158,51 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
         }
         return
+      }
+      // static local 兜底（病 37 修正 #71：读/写左值序与 gen_addr 对齐
+      // local → global → static——此前 static 块在臂首，块内局部遮蔽
+      // static 时赋值写穿到 static（b37c 探针 inner=10 static=21 实锤））
+      match self.static_local_indices.get(name) {
+        Some(static_offset) => {
+          if !(op is Assign) {
+            if left_is_double {
+              self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
+            } else if left_is_long_long {
+              self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+            } else {
+              self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
+            }
+            self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+            self.emit_compound(
+              op,
+              left_is_double,
+              left_ty.kind() is TK_Float,
+              left_is_long_long,
+              left_is_unsigned,
+              ptr_step,
+              left_is_ptr,
+              loc,
+            )
+          } else {
+            self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+          }
+          if left_is_double {
+            self.emit(@opcode.OpCode::StoreGlobalD, static_offset, loc)
+          } else if left_is_long_long {
+            self.emit(@opcode.OpCode::StoreGlobalQ, static_offset, loc)
+          } else {
+            self.emit(@opcode.OpCode::StoreGlobal, static_offset, loc)
+          }
+          if left_is_double {
+            self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
+          } else if left_is_long_long {
+            self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+          } else {
+            self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
+          }
+          return
+        }
+        None => ()
       }
     }
     Index(array, index, _, result_ty) => {
@@ -496,6 +499,23 @@ fn BytecodeGen::gen_struct_copy(
     }
     self.emit(@opcode.OpCode::LoadMem, 0, loc)
     self.emit(@opcode.OpCode::StoreMem, 0, loc)
+  }
+  // 病 35 修正（#71 第三梯队，2026-10-11）：size%4 尾字节补拷——此前
+  // 纯 size/4 循环漏尾（size=1 整体零拷贝、size=5 丢第 5 字节）。
+  for b in 0..<(size % 4) {
+    let off = size / 4 * 4 + b
+    self.emit(@opcode.OpCode::LoadLocal, dst_temp, loc)
+    if off > 0 {
+      self.emit(@opcode.OpCode::PushConst, off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+    if off > 0 {
+      self.emit(@opcode.OpCode::PushConst, off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
   }
   // 病 36 连坐（#71 第二梯队）：struct 表达式统一「留 1 地址槽」约定
   //（与 Call 返回 struct 的 sret 地址对齐）——赋值表达式值 = 左值地址；

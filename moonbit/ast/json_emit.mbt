@@ -408,6 +408,7 @@ fn emit_binary_op(op : BinaryOp, buf : StringBuilder) -> Unit {
 fn emit_unary_op(op : UnaryOp, buf : StringBuilder) -> Unit {
   let s = match op {
     Neg => "Neg"
+    Pos => "Pos"
     Not => "Not"
     BitNot => "BitNot"
     Addr => "Addr"

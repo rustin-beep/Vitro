@@ -375,8 +375,10 @@ pub fn host_getchar(input : InputState) -> InputOutcome {
 /// scanf 格式串解析项（oracle `utils.rs:347-359` 的 `ScanfItem`）。
 priv enum ScanfItem {
   /// `%` 转换符：(格式字母码, 长度修饰级别 0=无 1=l/h 2=ll, 赋值抑制
-  /// ——width `*` 置位：读入丢弃、不消耗指针参数，%*d 批四 2026-10-07)
-  Spec(Int, Int, Bool)
+  /// ——width `*` 置位：读入丢弃、不消耗指针参数，%*d 批四 2026-10-07；
+  /// 字段宽度 #71 病 23 2026-10-11——Some(n) 限本转换符最多读 n 个
+  /// 输入字符（C11 §7.21.6.2，此前解析后丢弃=静默忽略）)
+  Spec(Int, Int, Bool, Int?)
   /// 空白指令：匹配任意数量（含零）空白
   Whitespace
   /// 普通字符指令（含 `%%` 展开的 `%`）：精确匹配
@@ -416,13 +418,18 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
                 None => break
               }
             }
-            // width：数字累计跳过；`*` = 赋值抑制（C §7.21.6.2——%*d 批四
-            // 2026-10-07：读入丢弃、不消耗指针参数）
+            // width：数字累计（#71 病 23 修复，2026-10-11——此前累计后
+            // 丢弃=静默忽略，%3d 读穿到下一个空白）；`*` = 赋值抑制
+            //（C §7.21.6.2——%*d 批四 2026-10-07：读入丢弃、不消耗指针参数）
             let mut suppress = false
+            let mut width_val = 0
+            let mut width_seen = false
             while true {
               match scan.peek() {
                 Some(c) =>
                   if c >= 48 && c <= 57 {
+                    width_val = width_val * 10 + (c - 48)
+                    width_seen = true
                     scan.advance()
                   } else if c == 42 {
                     suppress = true
@@ -432,6 +439,11 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
                   }
                 None => break
               }
+            }
+            let width_opt : Int? = if width_seen && width_val > 0 {
+              Some(width_val)
+            } else {
+              None
             }
             // 跳 precision
             match scan.peek() {
@@ -480,7 +492,7 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
             // 格式字母
             match scan.peek() {
               Some(spec) => {
-                specs.push(ScanfItem::Spec(spec, len_mod, suppress))
+                specs.push(ScanfItem::Spec(spec, len_mod, suppress, width_opt))
                 scan.advance()
               }
               None => ()
@@ -506,9 +518,17 @@ fn is_ws_code(c : Int) -> Bool {
 }
 
 ///|
-/// 读浮点 token（oracle `read_float_token` 照搬：自跳前导空白 → 可选符号
-/// → 数字/点连续段）。
-fn read_float_token(chars : Array[Byte], pos0 : Int) -> (Array[Byte], Int) {
+/// 读浮点 token（#71 病 23+24 重写，2026-10-11）：
+/// - 形态统一 host_convert `scan_float_token` 同款判定（十进制/eE 指数/
+///   hexfloat 0x…p…/悬空指数回退——此前只吃数字/点，"1e5" 读成 1 游标
+///   停 'e'；host_convert atof 侧 2026-10-05 已修，scanf 侧未同步）；
+/// - 字段宽度 max（病 23）：Some(w) 时 token 最多吃 w 个字符（前导空白
+///   不计宽——先跳空白再计界）。
+fn read_float_token(
+  chars : Array[Byte],
+  pos0 : Int,
+  max_chars : Int?,
+) -> (Array[Byte], Int) {
   let n = chars.length()
   let mut pos = pos0
   while pos < n && is_ascii_ws_byte(chars[pos]) {
@@ -517,16 +537,90 @@ fn read_float_token(chars : Array[Byte], pos0 : Int) -> (Array[Byte], Int) {
   if pos >= n {
     return ([], pos)
   }
+  let limit = match max_chars {
+    Some(w) => if pos + w < n { pos + w } else { n }
+    None => n
+  }
   let start = pos
   if chars[pos] == 43 || chars[pos] == 45 {
     pos = pos + 1
   }
-  while pos < n {
-    let c = chars[pos]
-    if (c >= 48 && c <= 57) || c == 46 {
+  // hex float 探测（scan_float_token 同款：0x 后 hex 数字或 .+hex）
+  let hex_probe = pos + 2 < limit &&
+    chars[pos] == 48 &&
+    (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
+    (
+      hex_digit_val(chars[pos + 2]) >= 0 ||
+      (
+        chars[pos + 2] == 46 &&
+        pos + 3 < limit &&
+        hex_digit_val(chars[pos + 3]) >= 0
+      )
+    )
+  if hex_probe {
+    pos = pos + 2
+    while pos < limit && hex_digit_val(chars[pos]) >= 0 {
       pos = pos + 1
-    } else {
-      break
+    }
+    if pos < limit &&
+      chars[pos] == 46 &&
+      pos + 1 < limit &&
+      hex_digit_val(chars[pos + 1]) >= 0 {
+      pos = pos + 1
+      while pos < limit && hex_digit_val(chars[pos]) >= 0 {
+        pos = pos + 1
+      }
+    }
+    if pos < limit && (chars[pos] == 112 || chars[pos] == 80) {
+      let exp_start = pos
+      pos = pos + 1
+      if pos < limit && (chars[pos] == 43 || chars[pos] == 45) {
+        pos = pos + 1
+      }
+      if pos < limit && chars[pos] >= 48 && chars[pos] <= 57 {
+        while pos < limit && chars[pos] >= 48 && chars[pos] <= 57 {
+          pos = pos + 1
+        }
+      } else {
+        pos = exp_start
+      }
+    }
+  } else {
+    // 十进制：数字/点（一次）/eE 指数（一次，悬空回退）
+    let mut has_dot = false
+    let mut exp_start = -1
+    while pos < limit {
+      let c = chars[pos]
+      if c >= 48 && c <= 57 {
+        pos = pos + 1
+      } else if c == 46 && !has_dot {
+        has_dot = true
+        pos = pos + 1
+      } else if (c == 101 || c == 69) && exp_start < 0 {
+        exp_start = pos
+        pos = pos + 1
+        if pos < limit && (chars[pos] == 43 || chars[pos] == 45) {
+          pos = pos + 1
+        }
+      } else {
+        break
+      }
+    }
+    if exp_start >= 0 {
+      // e(±) 后无数字 → 截回 e 前（"1e"/"1e+"→"1"；scan_float_token 同款）
+      let b = exp_start
+      let has_digit_after = (
+          b + 1 < limit && chars[b + 1] >= 48 && chars[b + 1] <= 57
+        ) ||
+        (
+          b + 2 < limit &&
+          (chars[b + 1] == 43 || chars[b + 1] == 45) &&
+          chars[b + 2] >= 48 &&
+          chars[b + 2] <= 57
+        )
+      if !has_digit_after {
+        pos = exp_start
+      }
     }
   }
   let token : Array[Byte] = []
@@ -624,7 +718,7 @@ pub fn host_scanf_n(
   for it in spec_types {
     match it {
       // 赋值抑制（%*d）不消耗指针参数——批四 2026-10-07
-      ScanfItem::Spec(_, _, false) => arg_count = arg_count + 1
+      ScanfItem::Spec(_, _, false, _) => arg_count = arg_count + 1
       _ => ()
     }
   }
@@ -702,7 +796,7 @@ pub fn host_scanf_n(
         pos = pos + 1
         continue
       }
-      ScanfItem::Spec(s, lm, sup) => (s, lm, sup)
+      ScanfItem::Spec(s, lm, sup, wopt) => (s, lm, sup, wopt)
     }
     let spec = sl.0
     let len_mod = sl.1
@@ -724,11 +818,21 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
+      // #71 病 23：字段宽度限本转换符最多读 w 个输入字符（sl.3 流转）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let start = pos
       if chars[pos] == 43 || chars[pos] == 45 {
         pos = pos + 1
       }
-      while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
+      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
       if pos == start ||
@@ -775,13 +879,24 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let mut negative = false
       if chars[pos] == 43 || chars[pos] == 45 {
         negative = chars[pos] == 45
         pos = pos + 1
       }
       let digits_start = pos
-      while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
+      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
       if pos == digits_start {
@@ -826,7 +941,18 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
-      let pair = read_float_token(chars, pos)
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
+      let pair = read_float_token(chars, pos, sl.3)
       let token = pair.0
       pos = pair.1
       if token.length() == 0 {
@@ -879,8 +1005,19 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let start = pos
-      while pos < chars.length() && !is_ascii_ws_byte(chars[pos]) {
+      while pos < lim && !is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
       let token : Array[Byte] = []
@@ -929,12 +1066,23 @@ pub fn host_scanf_n(
         exhausted = true
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let mut negative = false
       if chars[pos] == 43 || chars[pos] == 45 {
         negative = chars[pos] == 45
         pos = pos + 1
       }
-      if pos >= chars.length() {
+      if pos >= lim {
         exhausted = true
         break
       }
@@ -944,11 +1092,11 @@ pub fn host_scanf_n(
       // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
       // matched、不写、终止（返已配数，C11 §7.21.6.2）
       if (spec == SCANF_I || spec == SCANF_X) &&
-        pos < chars.length() &&
+        pos < lim &&
         chars[pos] == 48 &&
-        pos + 1 < chars.length() &&
+        pos + 1 < lim &&
         (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
-        !(pos + 2 < chars.length() && hex_digit_val(chars[pos + 2]) >= 0) {
+        !(pos + 2 < lim && hex_digit_val(chars[pos + 2]) >= 0) {
         pos = pos + 2
         break
       }
@@ -956,7 +1104,7 @@ pub fn host_scanf_n(
       if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
-        if pos + 2 < chars.length() &&
+        if pos + 2 < lim &&
           chars[pos] == 48 &&
           (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
           hex_digit_val(chars[pos + 2]) >= 0 {
@@ -967,7 +1115,7 @@ pub fn host_scanf_n(
       } else if chars[pos] == 48 {
         // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8（'0' 作为首个 oct
         // 数字由下方扫描自然消费）
-        if pos + 2 < chars.length() &&
+        if pos + 2 < lim &&
           (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
           hex_digit_val(chars[pos + 2]) >= 0 {
           base = 16
@@ -978,7 +1126,7 @@ pub fn host_scanf_n(
       }
       let mut val : UInt64 = 0UL
       let mut scanned = false
-      while pos < chars.length() {
+      while pos < lim {
         let d = hex_digit_val(chars[pos])
         if d < 0 || d >= base {
           break
@@ -1092,7 +1240,7 @@ pub fn host_sscanf(
         pos = pos + 1
         continue
       }
-      ScanfItem::Spec(s, lm, sup) => (s, lm, sup)
+      ScanfItem::Spec(s, lm, sup, wopt) => (s, lm, sup, wopt)
     }
     let spec = sl.0
     let len_mod = sl.1
@@ -1114,11 +1262,22 @@ pub fn host_sscanf(
       if pos >= chars.length() {
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let start = pos
       if chars[pos] == 43 || chars[pos] == 45 {
         pos = pos + 1
       }
-      while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
+      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
       if pos == start ||
@@ -1167,13 +1326,24 @@ pub fn host_sscanf(
       if pos >= chars.length() {
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let mut negative = false
       if chars[pos] == 43 || chars[pos] == 45 {
         negative = chars[pos] == 45
         pos = pos + 1
       }
       let digits_start = pos
-      while pos < chars.length() && chars[pos] >= 48 && chars[pos] <= 57 {
+      while pos < lim && chars[pos] >= 48 && chars[pos] <= 57 {
         pos = pos + 1
       }
       if pos == digits_start {
@@ -1227,12 +1397,22 @@ pub fn host_sscanf(
         pos = entry_pos
         break
       }
+      // #71 病 23：字段宽度（同第一循环臂——sl.3 经 Spec 第四参流转）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let mut negative = false
       if chars[pos] == 43 || chars[pos] == 45 {
         negative = chars[pos] == 45
         pos = pos + 1
       }
-      if pos >= chars.length() {
+      if pos >= lim {
         pos = entry_pos
         break
       }
@@ -1242,11 +1422,11 @@ pub fn host_sscanf(
       // 异构——那边失败时零消费故回退=未动，这边前缀已消费保留）、不计
       // matched、不写、终止（返已配数，C11 §7.21.6.2）
       if (spec == SCANF_I || spec == SCANF_X) &&
-        pos < chars.length() &&
+        pos < lim &&
         chars[pos] == 48 &&
-        pos + 1 < chars.length() &&
+        pos + 1 < lim &&
         (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
-        !(pos + 2 < chars.length() && hex_digit_val(chars[pos + 2]) >= 0) {
+        !(pos + 2 < lim && hex_digit_val(chars[pos + 2]) >= 0) {
         pos = pos + 2
         break
       }
@@ -1254,7 +1434,7 @@ pub fn host_sscanf(
       if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
-        if pos + 2 < chars.length() &&
+        if pos + 2 < lim &&
           chars[pos] == 48 &&
           (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
           hex_digit_val(chars[pos + 2]) >= 0 {
@@ -1264,7 +1444,7 @@ pub fn host_sscanf(
         base = 8
       } else if chars[pos] == 48 {
         // %i 的前缀探测：0x/0X+hex → 16；0 开头 → 8
-        if pos + 2 < chars.length() &&
+        if pos + 2 < lim &&
           (chars[pos + 1] == 120 || chars[pos + 1] == 88) &&
           hex_digit_val(chars[pos + 2]) >= 0 {
           base = 16
@@ -1275,7 +1455,7 @@ pub fn host_sscanf(
       }
       let mut val : UInt64 = 0UL
       let mut scanned = false
-      while pos < chars.length() {
+      while pos < lim {
         let d = hex_digit_val(chars[pos])
         if d < 0 || d >= base {
           break
@@ -1312,8 +1492,9 @@ pub fn host_sscanf(
         matched = matched + 1
       }
     } else if spec == SCANF_F {
-      // f
-      let pair = read_float_token(chars, pos)
+      // f（#71 病 23+24：宽度经 token 读取 max 承接；token 形态统一
+      // host_convert.scan_float_token——十进制/eE 指数/hexfloat/悬空回退）
+      let pair = read_float_token(chars, pos, sl.3)
       let token = pair.0
       pos = pair.1
       if token.length() == 0 {
@@ -1369,8 +1550,19 @@ pub fn host_sscanf(
       if pos >= chars.length() {
         break
       }
+      // #71 病 23（2026-10-11）：字段宽度限本转换符最多读 w 个输入字符
+      //（C11 §7.21.6.2——宽度不含前导空白；pos 此刻=跳空白后首字符位）
+      let lim = match sl.3 {
+        Some(w) =>
+          if pos + w < chars.length() {
+            pos + w
+          } else {
+            chars.length()
+          }
+        None => chars.length()
+      }
       let start = pos
-      while pos < chars.length() && !is_ascii_ws_byte(chars[pos]) {
+      while pos < lim && !is_ascii_ws_byte(chars[pos]) {
         pos = pos + 1
       }
       let token : Array[Byte] = []

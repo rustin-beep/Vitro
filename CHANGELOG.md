@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 第三梯队九病批 + 例外病 29 + DX P1/P3/P4/P5 顺手件，2026-10-11）
+
+- **病 21+22（printf %e/%E 无臂 / %g 负零丢符号）**：新增 `format_e`（尾数不去尾零+e±NN 恒符号指数+零特例含负零位模式判）；format_g 零特例按符号位返 "0"/"-0"。探针八行逐字节同 clang；host_wbtest +1 锚。
+- **病 23+24（scanf 字段宽度静默忽略 / %f token 缺指数与 hexfloat）**：宽度经 `ScanfItem::Spec` 第四参流转，五族转换符（d/u/i/x/o/f/s）×双实现（host_scanf_n/host_sscanf）统一 lim 界（宽度不含前导空白）；`read_float_token` 重写为 `scan_float_token` 同款判定（十进制/eE 指数/0x…p… hexfloat/悬空指数回退）+max_chars 宽度。三探针（%3d%2d/%10s/1e5→100000）clang 同；host_wbtest +1 锚。
+- **病 29（realloc 负 size 误释放原块 → UAF trap）**：`new_size < 0` 自「等价 free」收窄出——分配失败返 NULL+note 保原块（零值等价 free 语义不变）；oracle 同病已定责（round6 档案）按"定责后按缺陷修"处置。探针 UAF trap→p0=42 可读；host_memory_wbtest +1 锚。UCRT 真机坑顺带实锤：realloc 失败后 free 原块在 UCRT 上崩（探针 rc=127 三态锁定，b29m3/m4 对照）。
+- **病 35（struct 拷贝 size/4 漏尾）**：三处（gen_struct_copy/局部 init 拷贝/return __ret_ptr 拷贝）补 size%4 尾字节循环（LoadMemByte/StoreMemByte）——size=1 零拷、size=5 丢尾字节全修；四组值探针 clang 同。
+- **病 37（static/局部遮蔽查找序互斥）**：读值（gen_expr Identifier）、赋值（gen_assign_inner Identifier）、增减（gen_unary incdec）三处序统一对齐 gen_addr = local → global → static——此前 static-first 致块内局部遮蔽时读值取 static/赋值写穿/x++ 污染（b37b/b37c 探针六行全同 clang）。index_member 侧序已正确（登记第四处观察销案）。
+- **病 38（全局 `struct T {…} t;` 定义带声明器假阳性级联）**：parse_base_type Struct+Identifier 后跟 LBrace 时就地解析体并注册（收集通道复用）；E2005 级联 ×5 消除。
+- **病 39（一元 + 不支持）**：ast UnaryOp 加 Pos 变体（全仓穷尽 match 连坐：json_emit/render/deduce_auto/resolve_unary/codegen 六点）；codegen 恒等零指令。
+- **病 42（merge_units 空文件行号错位）**：空 source 计 1 行（补 
+ 占行进 ranges）+ `resolve_location` 行号映射回文件内坐标（此前直出合并坐标，多文件=错值；单文件巧合正确掩盖）；**A3 锚翻转**：`serve_compile_merge_empty_unit_no_range` 旧锚把错形态钉成预期（登记裁定），翻转为"空文件产 1 行区间"。
+- **DX P1/P3/P4/P5（顺手件）**：P1 未知旗标/尾置缺值 fail loud rc=4（RunArgs.unknown_flag）；P3 `-i` 不可读报错（原静默空串）；P4 `--dump-memory` 写盘失败报错（原静默吞）；P5 help 文案补 --json 与 api help（纯文案）。三形态 rc=4 实证。
+- **语料**：`p71_tier3_semantics.c`（六病形态）+ `p71_tier3_scanf.c`+.in（宽度/指数，stdin 配对）双侧逐字节同 clang 入账；五差分 freeze 入账。Defender 坑登记：含 malloc/realloc/free 的 exe 本地拦截 rc=127 非瞬态（批五同型），realloc 面由 wbtest 锚锁不进语料。
+- 防线：moon test 739/739 · 四差分 16 路+vm 649+clang 743 全绿 · facts/testcount（739/863）/smoke/fmt 全过。
+
 ### Changed（防线建设：CI 闸级 job 化 + freeze 语义统一——"改了又红/红遮红"根治批，2026-10-11）
 
 - **CI 拆分（core 单 job 60 步 → 七 job）**：一步红后续全 skip 的遮挡形态废除（16/20 红、失败步骤分布 fmt×4/TSV×3/直拍×3/台账×2 轮换实证）——`build-and-unit`（准入：vet/test/moon test/全量 native release/wasm 构建+产物 artifact）→ `gates-diff`（**matrix 六驱动独立红绿**：parser/lexer/typeck/codegen 自带 moon run 现场构建不依赖 artifact，vm/clang 读 release cmd/run 消费 artifact）+ `gates-native`（协议/平价族消费 exe）+ `gates-wasm`（wasm 臂族+cli smoke）+ `static-gates`（25 道纯对账闸与 build **并行**）+ `hygiene`（fmt/三 target test/工具链探针）+ `demo`（tsc/smoke/TS tests）。步骤集合差校验 71/72 零丢失（六差分进步骤矩阵、jsonmbt hygiene 副本去重、install 重复块归一）；fail-fast=false 闸级可见性全开。

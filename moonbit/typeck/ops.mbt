@@ -230,6 +230,9 @@ fn TypeChecker::resolve_unary(
 ) -> (@ast.Type, @ast.Expr) {
   let (operand_type, new_operand) = self.resolve_expr_type(operand)
   let ty : @ast.Type = match op {
+    // 病 39（#71 第三梯队）：一元 + 恒等——类型即操作数类型（C 语义
+    // 整型提升在算术消费侧由 binary/cast 收口，此处透传不重复提升）
+    Pos => operand_type
     Neg => {
       if !self.is_scalar(operand_type) {
         self.report_error(

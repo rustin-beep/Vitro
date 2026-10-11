@@ -187,7 +187,14 @@ fn frame_pipeline(
   // 默认 Interactive，空 stdin 的 scanf 变 waiting_input——cli_smoke 双臂
   // 对拍实锤）
   let input_json = if stdin_file != "" {
-    let mut text = @fs.read_file_to_string(stdin_file) catch { _ => "" }
+    // DX P3（#71 顺手批，2026-10-11）：读失败 fail loud（rc=4）——此前
+    // catch 静默空串，typo 文件名程序按 EOF「看似正常」跑完（病 83）
+    let mut text = @fs.read_file_to_string(stdin_file) catch {
+      _ => {
+        println("vitro run: -i 输入文件不可读：\{stdin_file}")
+        return 4
+      }
+    }
     if !text.has_suffix("\n") {
       text = text + "\n"
     }
@@ -271,8 +278,13 @@ fn frame_pipeline(
         match
           @util.base64_decode(jstr(jfield(jfield(f, "result"), "bytes_base64"))) {
           Some(bytes) =>
+            // DX P4（#71 顺手批，2026-10-11）：写失败 fail loud（rc=4）——
+            // 此前静默吞，用户以为落盘成功（病 83 双发面）
             @fs.write_bytes_to_file(dump_mem, bytes) catch {
-              _ => ()
+              _ => {
+                println("vitro run: --dump-memory 写盘失败：\{dump_mem}")
+                return 4
+              }
             }
           None => ()
         }

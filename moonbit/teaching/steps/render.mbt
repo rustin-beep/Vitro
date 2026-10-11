@@ -32,6 +32,7 @@ pub fn expr_to_string(expr : @ast.Expr) -> String {
     Unary(op, operand, _, _) => {
       let op_str = match op {
         Neg => "-"
+        Pos => "+"
         Not => "!"
         BitNot => "~"
         Addr => "&"

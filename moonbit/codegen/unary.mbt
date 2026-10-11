@@ -53,6 +53,8 @@ fn BytecodeGen::gen_unary(
   loc : @source.SourceLoc,
 ) -> Unit {
   match op {
+    // 病 39（#71 第三梯队）：一元 + = 恒等（值/类型原样，零指令）
+    Pos => self.gen_expr(operand)
     Neg => {
       self.gen_expr(operand)
       let ok = operand.ty().kind()
@@ -212,11 +214,27 @@ fn BytecodeGen::gen_unary(
           }
           // 统一序列：load →(float: CastF2D)→ postDup → ±step →
           // (float: CastD2F)→ preDup → store（Rust emit_seq 闭包展开）
-          match self.static_local_indices.get(name) {
-            Some(static_idx) =>
+          // 病 37 修正（#71 第三梯队，2026-10-11）：增减序对齐 gen_addr =
+          // local → global → static——此前 static-first，块内局部遮蔽
+          // static 的 x++ 写穿到 static（b37c 探针 inner2=20/static=6 实锤）。
+          let local_idx = self.resolve_local(name)
+          if local_idx >= 0 {
+            self.emit_incdec_seq(
+              load_op=incdec_local_load(incdec_kind_of(var_ty)),
+              idx=local_idx,
+              store_op=incdec_local_store(incdec_kind_of(var_ty)),
+              is_inc~,
+              is_pre~,
+              step~,
+              kind=incdec_kind_of(var_ty),
+              loc~,
+            )
+          } else {
+            let global_idx = self.resolve_global(name)
+            if global_idx >= 0 {
               self.emit_incdec_seq(
                 load_op=incdec_global_load(incdec_kind_of(var_ty)),
-                idx=static_idx,
+                idx=global_idx,
                 store_op=incdec_global_store(incdec_kind_of(var_ty)),
                 is_inc~,
                 is_pre~,
@@ -224,25 +242,12 @@ fn BytecodeGen::gen_unary(
                 kind=incdec_kind_of(var_ty),
                 loc~,
               )
-            None => {
-              let local_idx = self.resolve_local(name)
-              if local_idx >= 0 {
-                self.emit_incdec_seq(
-                  load_op=incdec_local_load(incdec_kind_of(var_ty)),
-                  idx=local_idx,
-                  store_op=incdec_local_store(incdec_kind_of(var_ty)),
-                  is_inc~,
-                  is_pre~,
-                  step~,
-                  kind=incdec_kind_of(var_ty),
-                  loc~,
-                )
-              } else {
-                let global_idx = self.resolve_global(name)
-                if global_idx >= 0 {
+            } else {
+              match self.static_local_indices.get(name) {
+                Some(static_idx) =>
                   self.emit_incdec_seq(
                     load_op=incdec_global_load(incdec_kind_of(var_ty)),
-                    idx=global_idx,
+                    idx=static_idx,
                     store_op=incdec_global_store(incdec_kind_of(var_ty)),
                     is_inc~,
                     is_pre~,
@@ -250,7 +255,7 @@ fn BytecodeGen::gen_unary(
                     kind=incdec_kind_of(var_ty),
                     loc~,
                   )
-                } else {
+                None => {
                   self.report_error(
                     "自增/自减暂只支持简单变量", loc,
                   )

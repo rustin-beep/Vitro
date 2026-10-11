@@ -430,6 +430,8 @@ fn Parser::parse_unary_body(self : Parser, depth : Int) -> @ast.Expr {
   }
   let unary_ops : Array[(@token.TokenType, @ast.UnaryOp)] = [
     (Minus, @ast.UnaryOp::Neg),
+    // 病 39（#71 第三梯队）：一元 + 此前零臂 → E2003+级联（clang 恒等）
+    (Plus, @ast.UnaryOp::Pos),
     (Not, @ast.UnaryOp::Not),
     (BitNot, @ast.UnaryOp::BitNot),
     (Ampersand, @ast.UnaryOp::Addr),

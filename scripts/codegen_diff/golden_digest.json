@@ -242,6 +242,8 @@
         "null_pointer_constant.c": "3f600f45",
         "octal_literal.c": "64aa1f86",
         "offsetof_struct.c": "0d66de85",
+        "p71_tier3_scanf.c": "ebb09917",
+        "p71_tier3_semantics.c": "c752b120",
         "param_shadows_func.c": "dbad2b64",
         "parametric_macro_max.c": "959dd066",
         "parametric_macro_nested.c": "398f17d7",
@@ -1136,6 +1138,12 @@
         },
         "offsetof_struct.c": {
           "result_sha": "50acb98fa1312f25"
+        },
+        "p71_tier3_scanf.c": {
+          "result_sha": "cf575dda0418398d"
+        },
+        "p71_tier3_semantics.c": {
+          "result_sha": "6404e1dc5496943b"
         },
         "param_shadows_func.c": {
           "result_sha": "0781080d4bd39d80"

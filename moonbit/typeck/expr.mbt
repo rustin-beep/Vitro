@@ -13,9 +13,14 @@
 /// 改写、Reference/RValueRef 脱糖、member 的 class 字段与访问控制。
 
 ///|
-/// C usual arithmetic conversions：两个标量提升到公共类型（rank：
-/// double 4 / float 3 / long long 2 / int 1 / char 0；unsigned 传播；
-/// char 提升为 int——Rust `promote_type` 同构）。
+/// C usual arithmetic conversions（C11 §6.3.1.8）：两个标量提升到公共
+/// 类型（rank：double 4 / float 3 / long long 2 / int 1 / char 0；
+/// char 提升为 int——Rust `promote_type` 骨架）。
+/// 病 30 修正（#61 第一梯队，2026-10-11）：lower 的 unsigned 只在
+/// **同 rank** 时传播——rank 低于 int 的小无符号（unsigned char）先整型
+/// 提升为 signed int（int 装得下其全值域），unsigned 位随之消失；
+/// signed 高 rank 能表示 unsigned 低 rank 全值域时取 signed（本仓类型面
+/// i64 ⊇ u32 恒成立，故 uint vs LL → signed LL）。
 fn promote_type(a : @ast.Type, b : @ast.Type) -> @ast.Type {
   fn rank(t : @ast.Type) -> Int {
     match t.kind() {
@@ -31,7 +36,9 @@ fn promote_type(a : @ast.Type, b : @ast.Type) -> @ast.Type {
   let rb = rank(b)
   let higher : @ast.Type = if ra >= rb { a } else { b }
   let lower : @ast.Type = if ra >= rb { b } else { a }
-  let is_unsigned = higher.is_unsigned() || lower.is_unsigned()
+  // 同 rank 才看 lower 的 unsigned（char 级提升丢；跨 rank 由 higher 定）
+  let is_unsigned = higher.is_unsigned() ||
+    (lower.is_unsigned() && rank(lower) == rank(higher))
   match higher.kind() {
     TK_Double => @ast.Type::double()
     TK_Float => @ast.Type::float()

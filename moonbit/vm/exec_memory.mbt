@@ -59,6 +59,13 @@ fn VitroVM::execute_memory(
       // load_i8 已符号扩展到 i32（Rust as i8 as i32）；压栈再符号扩展
       self.push_i32(val)
     }
+    LoadMemUByte => {
+      // u8 零扩展读（病 32：memset 0xAB 后 unsigned char 读应得 0xAB
+      // 而非 0xFFFFFFAB——对照 LoadMemByte 的 i8 符号扩展）
+      let addr = self.pop_addr()
+      let val = self.vm_load_i8(addr, line, column)
+      self.push_i32(val & 0xFF)
+    }
     StoreMemByte => {
       let val = self.pop_i32()
       let addr = self.pop_addr()

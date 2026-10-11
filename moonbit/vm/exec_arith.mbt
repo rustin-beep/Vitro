@@ -135,6 +135,18 @@ fn VitroVM::execute_arithmetic(
       let a = self.pop_addr()
       self.push((0U - a).to_uint64())
     }
+    TruncByte => {
+      // char 窄化截断（病 33）：低 8 位符号解释（char c=200 读回 -56）；
+      // 64 位来源由发射侧先 CastQ2I 再入本臂
+      let a = self.pop_i32()
+      let b = a & 0xFF
+      self.push_i32(if b >= 128 { b - 256 } else { b })
+    }
+    TruncUByte => {
+      // unsigned char 窄化截断（病 33 同族）：低 8 位零扩展（300 → 44）
+      let a = self.pop_i32()
+      self.push_i32(a & 0xFF)
+    }
     _ => ()
   }
 }

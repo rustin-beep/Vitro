@@ -45,11 +45,22 @@ fn BytecodeGen::gen_binary(
   }
   let any_op_fp = op_is_double || op_is_float
   let is_unsigned = if is_comparison {
-    ((lk is TK_Int || lk is TK_Char) && left.ty().is_unsigned()) ||
-    ((rk is TK_Int || rk is TK_Char) && right.ty().is_unsigned())
+    // 病 30 连坐（C 整型提升口径）：char 级 unsigned 不参与——提升为
+    // signed int 后消失；只有 TK_Int 级（uint）才决定无符号比较
+    (lk is TK_Int && left.ty().is_unsigned()) ||
+    (rk is TK_Int && right.ty().is_unsigned())
   } else {
-    (ty.kind() is TK_Int || ty.kind() is TK_Char) && ty.is_unsigned()
+    // 结果类型 unsigned 位（含 ULL——病 34：d/3 的 ty 是 TK_LongLong
+    // 此前漏判致走 DivQ 符号域）
+    (ty.kind() is TK_Int ||
+      ty.kind() is TK_Char ||
+      ty.kind() is TK_LongLong) &&
+      ty.is_unsigned()
   }
+  // Q 域比较的无符号判据（病 34）：ULL 出现即无符号（i64 ⊇ u32，LL vs
+  // uint 仍是有符号域）——LL/ULL 任一侧带 unsigned 位
+  let unsigned_q = (lk is TK_LongLong && left.ty().is_unsigned()) ||
+    (rk is TK_LongLong && right.ty().is_unsigned())
   // && / || 短路求值
   if op is And || op is Or {
     self.gen_expr(left)
@@ -94,14 +105,21 @@ fn BytecodeGen::gen_binary(
   } else {
     result_is_long_long
   }
-  // 左操作数隐式提升
+  // 左操作数隐式提升（u32 源零符号位——病 31：CastU2D/CastU2F）
+  let left_u = left.ty().is_unsigned()
   if any_fp_for_cast &&
     !left_is_ptr &&
     !(lk is TK_Float) &&
     !(lk is TK_Double) &&
     !(lk is TK_LongLong) {
     if cast_is_double {
-      self.emit(@opcode.OpCode::CastI2D, 0, loc)
+      if left_u {
+        self.emit(@opcode.OpCode::CastU2D, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastI2D, 0, loc)
+      }
+    } else if left_u {
+      self.emit(@opcode.OpCode::CastU2F, 0, loc)
     } else {
       self.emit(@opcode.OpCode::CastI2F, 0, loc)
     }
@@ -109,18 +127,29 @@ fn BytecodeGen::gen_binary(
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if cast_is_double && lk is TK_LongLong {
     self.emit(@opcode.OpCode::CastQ2D, 0, loc)
-  } else if cast_is_long_long && lk is TK_Int {
-    self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+  } else if cast_is_long_long && (lk is TK_Int || lk is TK_Char) {
+    if left_u {
+      self.emit(@opcode.OpCode::CastU2Q, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+    }
   }
   self.gen_expr(right)
-  // 右操作数隐式提升
+  // 右操作数隐式提升（u32 源零符号位——病 31 同左操作数）
+  let right_u = right.ty().is_unsigned()
   if any_fp_for_cast &&
     !right_is_ptr &&
     !(rk is TK_Float) &&
     !(rk is TK_Double) &&
     !(rk is TK_LongLong) {
     if cast_is_double {
-      self.emit(@opcode.OpCode::CastI2D, 0, loc)
+      if right_u {
+        self.emit(@opcode.OpCode::CastU2D, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::CastI2D, 0, loc)
+      }
+    } else if right_u {
+      self.emit(@opcode.OpCode::CastU2F, 0, loc)
     } else {
       self.emit(@opcode.OpCode::CastI2F, 0, loc)
     }
@@ -128,8 +157,12 @@ fn BytecodeGen::gen_binary(
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if cast_is_double && rk is TK_LongLong {
     self.emit(@opcode.OpCode::CastQ2D, 0, loc)
-  } else if cast_is_long_long && rk is TK_Int {
-    self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+  } else if cast_is_long_long && (rk is TK_Int || rk is TK_Char) {
+    if right_u {
+      self.emit(@opcode.OpCode::CastU2Q, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+    }
   }
   match op {
     Add =>
@@ -196,6 +229,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::DivD, 0, loc)
       } else if result_is_float {
         self.emit(@opcode.OpCode::DivF, 0, loc)
+      } else if result_is_long_long && is_unsigned {
+        // 病 34：ULL 除法走无符号 Q 域（2^63 域 DivQ 符号语义错值）
+        self.emit(@opcode.OpCode::UDivQ, 0, loc)
       } else if result_is_long_long {
         self.emit(@opcode.OpCode::DivQ, 0, loc)
       } else if is_unsigned {
@@ -204,7 +240,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::Div, 0, loc)
       }
     Mod =>
-      if result_is_long_long {
+      if result_is_long_long && is_unsigned {
+        self.emit(@opcode.OpCode::UModQ, 0, loc)
+      } else if result_is_long_long {
         self.emit(@opcode.OpCode::ModQ, 0, loc)
       } else if is_unsigned {
         self.emit(@opcode.OpCode::UMod, 0, loc)
@@ -236,6 +274,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::LtD, 0, loc)
       } else if op_is_float {
         self.emit(@opcode.OpCode::LtF, 0, loc)
+      } else if op_is_long_long && unsigned_q {
+        // 病 34：Q 域无符号比较（2^63 > 0 不再当负数）
+        self.emit(@opcode.OpCode::ULtQ, 0, loc)
       } else if op_is_long_long {
         self.emit(@opcode.OpCode::LtQ, 0, loc)
       } else if is_unsigned {
@@ -248,6 +289,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::LeD, 0, loc)
       } else if op_is_float {
         self.emit(@opcode.OpCode::LeF, 0, loc)
+      } else if op_is_long_long && unsigned_q {
+        // 病 34：Q 域无符号比较（2^63 > 0 不再当负数）
+        self.emit(@opcode.OpCode::ULeQ, 0, loc)
       } else if op_is_long_long {
         self.emit(@opcode.OpCode::LeQ, 0, loc)
       } else if is_unsigned {
@@ -260,6 +304,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::GtD, 0, loc)
       } else if op_is_float {
         self.emit(@opcode.OpCode::GtF, 0, loc)
+      } else if op_is_long_long && unsigned_q {
+        // 病 34：Q 域无符号比较（2^63 > 0 不再当负数）
+        self.emit(@opcode.OpCode::UGtQ, 0, loc)
       } else if op_is_long_long {
         self.emit(@opcode.OpCode::GtQ, 0, loc)
       } else if is_unsigned {
@@ -272,6 +319,9 @@ fn BytecodeGen::gen_binary(
         self.emit(@opcode.OpCode::GeD, 0, loc)
       } else if op_is_float {
         self.emit(@opcode.OpCode::GeF, 0, loc)
+      } else if op_is_long_long && unsigned_q {
+        // 病 34：Q 域无符号比较（2^63 > 0 不再当负数）
+        self.emit(@opcode.OpCode::UGeQ, 0, loc)
       } else if op_is_long_long {
         self.emit(@opcode.OpCode::GeQ, 0, loc)
       } else if is_unsigned {

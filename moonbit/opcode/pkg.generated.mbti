@@ -157,6 +157,19 @@ pub(all) enum OpCode {
   ShlQ
   ShrQ
   LShrQ
+  CastU2Q
+  CastU2D
+  CastU2F
+  LoadMemUByte
+  TruncByte
+  TruncUByte
+  UDivQ
+  UModQ
+  UNegQ
+  ULtQ
+  ULeQ
+  UGtQ
+  UGeQ
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn OpCode::code(Self) -> Int
 pub fn OpCode::compare(Self, Self) -> Int

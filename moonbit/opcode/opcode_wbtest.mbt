@@ -1,6 +1,7 @@
 ///|
-/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 135 个编号
-/// （132 原生 + C# 异常三件 44–46，S6 vm 批一号入位），且命中的编号与
+/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 148 个编号
+/// （132 原生 + C# 异常三件 44–46，S6 vm 批一号入位 + 138..150 自扩
+/// U 系对偶 13 条，#61 第一梯队 2026-10-11），且命中的编号与
 /// code() 互逆；其余全部 None。
 test "from_u8_full_space_0_to_255" {
   let mut hit = 0
@@ -13,7 +14,7 @@ test "from_u8_full_space_0_to_255" {
       None => ()
     }
   }
-  assert_eq(hit, 135)
+  assert_eq(hit, 148)
 }
 
 ///|
@@ -27,9 +28,10 @@ test "from_u8_holes_47_to_49" {
 }
 
 ///|
-/// 越界：>137 与负值 None（u8 表示域外的负值防御）。
+/// 越界：>150 与负值 None（u8 表示域外的负值防御；138..150 自扩段
+/// 入位后旧 >137 边界随之扩张——#61 第一梯队连坐）。
 test "from_u8_out_of_range" {
-  assert_true(OpCode::from_u8(138) is None)
+  assert_true(OpCode::from_u8(151) is None)
   assert_true(OpCode::from_u8(255) is None)
   assert_true(OpCode::from_u8(-1) is None)
 }
@@ -37,9 +39,9 @@ test "from_u8_out_of_range" {
 ///|
 /// 双向映射互逆：每个 opcode 的 name → from_name 恢复原值，
 /// 且名字唯一（from_name 不会两义）。
-test "name_from_name_roundtrip_all_135" {
+test "name_from_name_roundtrip_all_148" {
   let mut seen = 0
-  for v in 0..<=137 {
+  for v in 0..<=150 {
     match OpCode::from_u8(v) {
       Some(op) => {
         seen += 1
@@ -51,15 +53,16 @@ test "name_from_name_roundtrip_all_135" {
       None => ()
     }
   }
-  assert_eq(seen, 135)
+  assert_eq(seen, 148)
 }
 
 ///|
 /// 关键编号抽查（防整体漂移的定点锚，值亲验自 Rust 源）：
 /// Nop=0 / PushConst=1 / Jump=29 / Call=32 / Strlen=126（死码）/
-/// TrapBoundsVla=129（死码）/ LShrQ=137（末位）；
+/// TrapBoundsVla=129（死码）/ LShrQ=137（照搬段末位）；
 /// C# 异常三件占位锚：TryBegin=44 / TryEnd=45 / Throw=46
 /// （Rust 同段空号，零发射 reserved-for-csharp）。
+/// 自扩段定点锚（#61 第一梯队）：CastU2Q=138（自扩首位）/ UGeQ=150（末位）。
 test "landmark_codes_frozen" {
   assert_eq(Nop.code(), 0)
   assert_eq(PushConst.code(), 1)
@@ -71,6 +74,10 @@ test "landmark_codes_frozen" {
   assert_eq(Strlen.code(), 126)
   assert_eq(TrapBoundsVla.code(), 129)
   assert_eq(LShrQ.code(), 137)
+  assert_eq(CastU2Q.code(), 138)
+  assert_eq(LoadMemUByte.code(), 141)
+  assert_eq(UDivQ.code(), 144)
+  assert_eq(UGeQ.code(), 150)
 }
 
 ///|
@@ -112,5 +119,7 @@ test "opcode_hash_and_compare" {
   m[PushConst] = 2
   assert_eq(m.length(), 2)
   assert_true(Nop < LShrQ)
+  assert_true(LShrQ < CastU2Q)
+  assert_true(UGeQ > UDivQ)
   assert_true(Jump < Call)
 }

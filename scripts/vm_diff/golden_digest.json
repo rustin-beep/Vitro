@@ -2324,6 +2324,12 @@
       "stdout_sha": "096aa8510b0dc131",
       "memory_sha": "91214883087807fb"
     },
+    "baseline/unsigned_semantics.c": {
+      "src_sha": "6c3e660f",
+      "exit_code": 0,
+      "stdout_sha": "80512f202b1b0e45",
+      "memory_sha": "629514116afcfa27"
+    },
     "baseline/unsigned_type.c": {
       "src_sha": "3a7ad33d",
       "exit_code": 0,

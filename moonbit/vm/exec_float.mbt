@@ -75,6 +75,12 @@ fn VitroVM::execute_float(
       let r = Float::from_double(a.to_double())
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
+    CastU2F => {
+      // u32 零符号位转 f32（病 31 同族；对照 CastI2F）
+      let a = self.pop_addr()
+      let r = Float::from_double(a.to_double())
+      self.push(Float::reinterpret_as_uint(r).to_uint64())
+    }
     CastF2I => {
       let a = Float::reinterpret_from_uint(self.pop().to_uint())
       // 饱和语义（Rust as i32 = NaN→0 / inf→±MAX）
@@ -131,6 +137,12 @@ fn VitroVM::execute_double(
     }
     CastI2D => {
       let a = self.pop_i32()
+      self.push(a.to_double().reinterpret_as_uint64())
+    }
+    CastU2D => {
+      // u32 零符号位转 f64（病 31：(double)3000000000u → 3000000000.0
+      // 而非 -1294967296.0——对照 CastI2D 的符号语义）
+      let a = self.pop_addr()
       self.push(a.to_double().reinterpret_as_uint64())
     }
     CastF2D => {
@@ -238,6 +250,40 @@ fn VitroVM::execute_longlong(
       let a = self.pop_i32()
       self.push(a.to_int64().reinterpret_as_uint64())
     }
+    CastU2Q => {
+      // u32 零扩展进 i64（病 31：(long long)4294967295u → 4294967295
+      // 而非 -1——对照 CastI2Q 的符号扩展）
+      let a = self.pop_addr()
+      self.push(a.to_uint64())
+    }
+    UDivQ => {
+      // Q 族无符号除（病 34：ULL 走 DivQ 符号语义 2^63 域错值）；除零
+      // 文案走 u64 版（被除数无符号渲染——病 93 同族预防）
+      let b = self.pop()
+      let a = self.pop()
+      if b == 0UL {
+        let msg = self.format_div_zero_error_u64(a)
+        self.trap(msg, line, column)
+      } else {
+        self.push(a / b)
+      }
+    }
+    UModQ => {
+      // Q 族无符号模（无 LLONG_MIN % -1 面——u64 域不存在该溢出）
+      let b = self.pop()
+      let a = self.pop()
+      if b == 0UL {
+        let msg = self.format_div_zero_error_u64(a)
+        self.trap(msg, line, column)
+      } else {
+        self.push(a % b)
+      }
+    }
+    UNegQ => {
+      // 无符号取反 = 模 2^64 补码（回绕无 trap——对照 NegQ 的教学 trap）
+      let a = self.pop()
+      self.push(0UL - a)
+    }
     CastQ2I => {
       let a = self.pop_i64()
       // 低 32 位截断（Rust as i32；Int64::to_int 实证为截断语义）
@@ -262,6 +308,19 @@ fn VitroVM::execute_longlong(
         LeQ => a <= b
         GtQ => a > b
         GeQ => a >= b
+        _ => false
+      }
+      self.push(if r { 1UL } else { 0UL })
+    }
+    ULtQ | ULeQ | UGtQ | UGeQ => {
+      // Q 族无符号比较（病 34：2^63 > 0 走 LtQ 符号语义得 0）
+      let b = self.pop()
+      let a = self.pop()
+      let r : Bool = match op {
+        ULtQ => a < b
+        ULeQ => a <= b
+        UGtQ => a > b
+        UGeQ => a >= b
         _ => false
       }
       self.push(if r { 1UL } else { 0UL })

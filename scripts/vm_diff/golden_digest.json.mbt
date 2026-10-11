@@ -432,6 +432,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/unsigned_printf_o.c": Standard(Std::{ src_sha: "e83531ac", exit_code: 0, stdout_sha: "4a44dc15364204a8", memory_sha: "7f92ccb702a92609" }),
     "baseline/unsigned_printf_u.c": Standard(Std::{ src_sha: "715dca75", exit_code: 0, stdout_sha: "ad57366865126e55", memory_sha: "972fed5dcd0fa7bb" }),
     "baseline/unsigned_printf_x.c": Standard(Std::{ src_sha: "93f335b5", exit_code: 0, stdout_sha: "096aa8510b0dc131", memory_sha: "91214883087807fb" }),
+    "baseline/unsigned_semantics.c": Standard(Std::{ src_sha: "6c3e660f", exit_code: 0, stdout_sha: "80512f202b1b0e45", memory_sha: "629514116afcfa27" }),
     "baseline/unsigned_type.c": Standard(Std::{ src_sha: "3a7ad33d", exit_code: 0, stdout_sha: "ef2d127de37b942b", memory_sha: "fac2f047ce351d88" }),
     "baseline/utf8_latin1_output.c": Standard(Std::{ src_sha: "7c27a07f", exit_code: 0, stdout_sha: "e02f3a2eba0e8862", memory_sha: "2c89534290a18455" }),
     "baseline/variable_length_array.c": Standard(Std::{ src_sha: "08dc70e0", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "205ba61369b656b4" }),

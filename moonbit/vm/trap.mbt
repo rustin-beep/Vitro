@@ -175,6 +175,16 @@ fn elem_size_of(ty : @ast.Type) -> Int {
 fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
   // #60 批二（2026-10-10）：文案骨架/段落外置资产（E_div_zero 主骨架 +
   // E_div_zero_inspect 变量段——zero_section 占位），扫描/、连接逻辑留代码。
+  @util.render_template(
+    @assets.trap_messages.get("E_div_zero").unwrap().template,
+    [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],
+  )
+}
+
+///|
+/// 除零文案的零值变量扫描段（i32/u64 两版共用——#61 第一梯队病 34 批
+/// 自 format_div_zero_error 抽出；扫当前作用域值为 0 的变量附进诊断）。
+fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
   let zero_vars : Array[String] = []
   for sym in self.symbols {
     guard !sym.ty.is_array() else { continue }
@@ -191,7 +201,7 @@ fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
       }
     }
   }
-  let zero_section = if !zero_vars.is_empty() {
+  if !zero_vars.is_empty() {
     // 连接符「、」照搬 Rust join
     let names = StringBuilder()
     for i, name in zero_vars {
@@ -207,9 +217,16 @@ fn VitroVM::format_div_zero_error(self : VitroVM, a : Int) -> String {
   } else {
     ""
   }
+}
+
+///|
+/// 除零教学文案·u64 版（#61 第一梯队病 34，2026-10-11）：UDivQ/UModQ 消费
+/// ——被除数按**无符号**渲染（病 93 同族教训：U 系臂不得借 i32 版把
+/// 4000000000u 渲染成负数）。
+fn VitroVM::format_div_zero_error_u64(self : VitroVM, a : UInt64) -> String {
   @util.render_template(
     @assets.trap_messages.get("E_div_zero").unwrap().template,
-    [("a", a.to_string()), ("zero_section", zero_section)],
+    [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],
   )
 }
 

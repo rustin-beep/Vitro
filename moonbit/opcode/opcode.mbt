@@ -1,11 +1,16 @@
 ///|
-/// Vitro 字节码操作码（135 条，编号照搬 Rust oracle `vitro_runtime/src/opcode.rs`，不重排）。
+/// Vitro 字节码操作码（148 条；0..137 照搬 Rust oracle `vitro_runtime/src/opcode.rs` 不重排，
+/// 138..150 为本仓自扩 U 系对偶段——2026-10-11 #61 第一梯队病 31~34 批新增，非照搬编号）。
 ///
 /// 编号契约：0..137 区间，空号 47–49（历史浮点段位预留）；44/45/46 为
 /// **C# 异常三件**（`TryBegin`/`TryEnd`/`Throw`，CSharp 前端引入计划 §1 拍板进
 /// 历史空号——Rust 侧同段为空号，对拍面零扰动）。C 前端零发射（reserved-for-csharp，
 /// 与 `Strlen`/`TrapBoundsVla` 零发射死码同款保留）；executor 侧到达即 fail loud。
-/// `from_u8` 对空号与 >137 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
+/// **138..150 自扩段**（C unsigned 语义对偶，oracle 已退役无先验编号）：CastU2Q/
+/// CastU2D/CastU2F（u32 零扩展转宽）、LoadMemUByte（u8 零扩展读）、TruncByte/
+/// TruncUByte（char 窄化截断——低 8 位符号/零扩展回 i32）、UDivQ/UModQ/UNegQ/
+/// ULtQ/ULeQ/UGtQ/UGeQ（Q 族无符号对偶）。
+/// `from_u8` 对空号与 >150 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
 /// `Strlen` / `TrapBoundsVla` 为零发射死码——保留编号位（产物对拍依赖编号冻结），
 /// 不新增使用。
 ///
@@ -148,6 +153,19 @@ pub(all) enum OpCode {
   ShlQ
   ShrQ
   LShrQ
+  CastU2Q
+  CastU2D
+  CastU2F
+  LoadMemUByte
+  TruncByte
+  TruncUByte
+  UDivQ
+  UModQ
+  UNegQ
+  ULtQ
+  ULeQ
+  UGtQ
+  UGeQ
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
@@ -301,6 +319,19 @@ pub fn OpCode::code(self : OpCode) -> Int {
     ShlQ => 135
     ShrQ => 136
     LShrQ => 137
+    CastU2Q => 138
+    CastU2D => 139
+    CastU2F => 140
+    LoadMemUByte => 141
+    TruncByte => 142
+    TruncUByte => 143
+    UDivQ => 144
+    UModQ => 145
+    UNegQ => 146
+    ULtQ => 147
+    ULeQ => 148
+    UGtQ => 149
+    UGeQ => 150
   }
 }
 
@@ -443,6 +474,19 @@ pub fn OpCode::from_u8(value : Int) -> OpCode? {
     135 => Some(ShlQ)
     136 => Some(ShrQ)
     137 => Some(LShrQ)
+    138 => Some(CastU2Q)
+    139 => Some(CastU2D)
+    140 => Some(CastU2F)
+    141 => Some(LoadMemUByte)
+    142 => Some(TruncByte)
+    143 => Some(TruncUByte)
+    144 => Some(UDivQ)
+    145 => Some(UModQ)
+    146 => Some(UNegQ)
+    147 => Some(ULtQ)
+    148 => Some(ULeQ)
+    149 => Some(UGtQ)
+    150 => Some(UGeQ)
     _ => None
   }
 }
@@ -588,6 +632,19 @@ pub fn OpCode::name(self : OpCode) -> String {
     ShlQ => "ShlQ"
     ShrQ => "ShrQ"
     LShrQ => "LShrQ"
+    CastU2Q => "CastU2Q"
+    CastU2D => "CastU2D"
+    CastU2F => "CastU2F"
+    LoadMemUByte => "LoadMemUByte"
+    TruncByte => "TruncByte"
+    TruncUByte => "TruncUByte"
+    UDivQ => "UDivQ"
+    UModQ => "UModQ"
+    UNegQ => "UNegQ"
+    ULtQ => "ULtQ"
+    ULeQ => "ULeQ"
+    UGtQ => "UGtQ"
+    UGeQ => "UGeQ"
   }
 }
 
@@ -730,6 +787,19 @@ pub fn OpCode::from_name(s : String) -> OpCode? {
     "ShlQ" => Some(ShlQ)
     "ShrQ" => Some(ShrQ)
     "LShrQ" => Some(LShrQ)
+    "CastU2Q" => Some(CastU2Q)
+    "CastU2D" => Some(CastU2D)
+    "CastU2F" => Some(CastU2F)
+    "LoadMemUByte" => Some(LoadMemUByte)
+    "TruncByte" => Some(TruncByte)
+    "TruncUByte" => Some(TruncUByte)
+    "UDivQ" => Some(UDivQ)
+    "UModQ" => Some(UModQ)
+    "UNegQ" => Some(UNegQ)
+    "ULtQ" => Some(ULtQ)
+    "ULeQ" => Some(ULeQ)
+    "UGtQ" => Some(UGtQ)
+    "UGeQ" => Some(UGeQ)
     _ => None
   }
 }

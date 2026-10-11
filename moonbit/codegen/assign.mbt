@@ -221,7 +221,9 @@ fn BytecodeGen::gen_assign_inner(
       self.gen_expr(operand)
       if !(op is Assign) {
         self.emit(@opcode.OpCode::Dup, 0, loc)
-        if left_is_char {
+        if left_is_char && left_is_unsigned {
+          self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+        } else if left_is_char {
           self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
         } else if left_is_double {
           self.emit(@opcode.OpCode::LoadMemD, 0, loc)
@@ -256,7 +258,9 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::StoreMem, 0, loc)
         }
         self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
-        if left_is_char {
+        if left_is_char && left_is_unsigned {
+          self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+        } else if left_is_char {
           self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
         } else if left_is_double {
           self.emit(@opcode.OpCode::LoadMemD, 0, loc)
@@ -280,7 +284,9 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::StoreMem, 0, loc)
         }
         self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
-        if left_is_char {
+        if left_is_char && left_is_unsigned {
+          self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+        } else if left_is_char {
           self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
         } else if left_is_double {
           self.emit(@opcode.OpCode::LoadMemD, 0, loc)
@@ -398,6 +404,9 @@ fn BytecodeGen::emit_compound(
         self.emit(@opcode.OpCode::DivD, 0, loc)
       } else if is_float {
         self.emit(@opcode.OpCode::DivF, 0, loc)
+      } else if is_long_long && is_unsigned {
+        // 病 34：ULL 复合除走无符号 Q 域
+        self.emit(@opcode.OpCode::UDivQ, 0, loc)
       } else if is_long_long {
         self.emit(@opcode.OpCode::DivQ, 0, loc)
       } else if is_unsigned {
@@ -406,19 +415,47 @@ fn BytecodeGen::emit_compound(
         self.emit(@opcode.OpCode::Div, 0, loc)
       }
     ModAssign =>
-      if is_long_long {
+      if is_long_long && is_unsigned {
+        self.emit(@opcode.OpCode::UModQ, 0, loc)
+      } else if is_long_long {
         self.emit(@opcode.OpCode::ModQ, 0, loc)
       } else if is_unsigned {
         self.emit(@opcode.OpCode::UMod, 0, loc)
       } else {
         self.emit(@opcode.OpCode::Mod, 0, loc)
       }
-    AndAssign => self.emit(@opcode.OpCode::BitAnd, 0, loc)
-    OrAssign => self.emit(@opcode.OpCode::BitOr, 0, loc)
-    XorAssign => self.emit(@opcode.OpCode::BitXor, 0, loc)
-    ShlAssign => self.emit(@opcode.OpCode::Shl, 0, loc)
+    // 病 34：Q 域位运算/移位复合赋值此前恒走 32 位指令（x<<=40 trap /
+    // y&=…LL 高位丢）；按 is_long_long 分派 Q 版
+    AndAssign =>
+      if is_long_long {
+        self.emit(@opcode.OpCode::BitAndQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::BitAnd, 0, loc)
+      }
+    OrAssign =>
+      if is_long_long {
+        self.emit(@opcode.OpCode::BitOrQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::BitOr, 0, loc)
+      }
+    XorAssign =>
+      if is_long_long {
+        self.emit(@opcode.OpCode::BitXorQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::BitXor, 0, loc)
+      }
+    ShlAssign =>
+      if is_long_long {
+        self.emit(@opcode.OpCode::ShlQ, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::Shl, 0, loc)
+      }
     ShrAssign =>
-      if is_unsigned {
+      if is_long_long && is_unsigned {
+        self.emit(@opcode.OpCode::LShrQ, 0, loc)
+      } else if is_long_long {
+        self.emit(@opcode.OpCode::ShrQ, 0, loc)
+      } else if is_unsigned {
         self.emit(@opcode.OpCode::LShr, 0, loc)
       } else {
         self.emit(@opcode.OpCode::Shr, 0, loc)
@@ -485,7 +522,9 @@ fn BytecodeGen::assign_mem_op(
   let left_is_unsigned = left_ty.is_unsigned()
   if !(op is Assign) {
     self.emit(@opcode.OpCode::Dup, 0, loc)
-    if is_char {
+    if is_char && left_is_unsigned {
+      self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+    } else if is_char {
       self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
     } else if is_double {
       self.emit(@opcode.OpCode::LoadMemD, 0, loc)
@@ -520,7 +559,9 @@ fn BytecodeGen::assign_mem_op(
       self.emit(@opcode.OpCode::StoreMem, 0, loc)
     }
     self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
-    if is_char {
+    if is_char && left_is_unsigned {
+      self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+    } else if is_char {
       self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
     } else if is_double {
       self.emit(@opcode.OpCode::LoadMemD, 0, loc)

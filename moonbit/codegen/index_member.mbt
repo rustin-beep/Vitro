@@ -161,7 +161,9 @@ fn BytecodeGen::gen_member_expr(
   self.gen_member_addr(object, mname, loc)
   // lambda by-ref 捕获指针解引用段不迁移（C only）
   if !ty.is_array() {
-    if ty.kind() is TK_Char {
+    if ty.kind() is TK_Char && ty.is_unsigned() {
+      self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+    } else if ty.kind() is TK_Char {
       self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
     } else if ty.kind() is TK_Double {
       self.emit(@opcode.OpCode::LoadMemD, 0, loc)
@@ -301,7 +303,9 @@ fn BytecodeGen::gen_index(
   self.emit(@opcode.OpCode::Mul, 0, loc)
   self.emit(@opcode.OpCode::Add, 0, loc)
   if !is_assign && !result_ty.is_array() {
-    if result_ty.kind() is TK_Char {
+    if result_ty.kind() is TK_Char && result_ty.is_unsigned() {
+      self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+    } else if result_ty.kind() is TK_Char {
       self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
     } else if result_ty.kind() is TK_Double {
       self.emit(@opcode.OpCode::LoadMemD, 0, loc)

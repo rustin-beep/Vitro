@@ -426,23 +426,57 @@ fn BytecodeGen::emit_scalar_cast_store(
   loc : @source.SourceLoc,
 ) -> Unit {
   let ik = init.ty().kind()
+  // u32 源零符号位（病 31）+ char/int 窄化截断（病 33）——与
+  // gen_expr_with_cast 同口径（本函数是初始化声明的收口点）
+  let init_u = init.ty().is_unsigned()
   if vty.kind() is TK_Float &&
     !(ik is TK_Float) &&
     !(ik is TK_Double) &&
     !(ik is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    if init_u {
+      self.emit(@opcode.OpCode::CastU2F, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    }
   }
   if vty.kind() is TK_Double &&
     !(ik is TK_Float) &&
     !(ik is TK_Double) &&
     !(ik is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2D, 0, loc)
+    if init_u {
+      self.emit(@opcode.OpCode::CastU2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2D, 0, loc)
+    }
   }
   if vty.kind() is TK_LongLong &&
     !(ik is TK_LongLong) &&
     !(ik is TK_Double) &&
     !(ik is TK_Float) {
-    self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+    if init_u {
+      self.emit(@opcode.OpCode::CastU2Q, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+    }
+  }
+  if vty.kind() is TK_Char {
+    // char 窄化（病 33）：char c=200 读回 -56；fp/Q 源先归 i32
+    if ik is TK_LongLong {
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else if ik is TK_Double {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    } else if ik is TK_Float {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    }
+    if vty.is_unsigned() {
+      self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::TruncByte, 0, loc)
+    }
+  }
+  if vty.kind() is TK_Int && ik is TK_LongLong {
+    // int 窄化（病 33 同族）：int x = someLL 低 32 位截断
+    self.emit(@opcode.OpCode::CastQ2I, 0, loc)
   }
   if vty.kind() is TK_Double {
     self.emit(@opcode.OpCode::StoreLocalD, local_offset, loc)

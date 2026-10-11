@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 第一梯队：unsigned 语义五病批——病 30~34，opcode 138..150 U 系对偶段，2026-10-11）
+
+- **病 30（promote_type 违反 C 整型提升）**：lower 侧 unsigned 只在**同 rank** 时传播——unsigned char 先提升为 signed int（`(c-1)/2` 修复前 2147483647 → 0）；uint vs long long 因 i64 ⊇ u32 落 signed LL（`u-5000000000LL` 不再错 -5294967296）。wbtest 锚红→绿闭环（typeck 42/42）。
+- **病 31（u32→宽类型符号扩展污染）**：opcode 新增 `CastU2Q/CastU2D/CastU2F`（138-140）零符号位转换——`(long long)4294967295u` 修复前 -1 → 4294967295；`(double)3000000000u` 修复前 -1294967296.0 → 3000000000.0。发射面：cast.mbt 两收口函数 + binary.mbt fp 桥/Q 桥 + var_decl 初始化收口。
+- **病 32（unsigned char 读恒 i8 符号扩展）**：opcode 新增 `LoadMemUByte`（141）零扩展读——memset 0xAB 后读 修复前 FFFFFFAB → 000000AB。发射面六处连坐（解引用/数组元素/成员/复合赋值 RMW×2/gen_mem_inc_dec，按 pointee is_unsigned 分派）。
+- **病 33（char 窄化截断缺失）**：opcode 新增 `TruncByte/TruncUByte`（142/143）——`char c=200` 修复前读回 200 → -56；`signed char sc=300` → 44；int 目标 LL 源补 CastQ2I（int 窄化同族补齐）。发射面：cast.mbt 两函数 char 臂 + var_decl emit_scalar_cast_store。
+- **病 34（ULL 域走有符号 Q 指令）**：opcode 新增 `UDivQ/UModQ/UNegQ/ULtQ/ULeQ/UGtQ/UGeQ`（144-150）——`2^63>0` 修复前 0 → 1；`x<<=40` 修复前 TRAP 移位越界 → 1099511627776（ShlAssign 补 Q 域分派）；`y&=0xFFFFFFFF00000000LL` 修复前 0 → FFFFFFFF00000000（And/Or/Xor/Shl/Shr 复合赋值五臂补 Q 分派）；`d/3` 修复前 0 → 6148914691236517205（含 is_unsigned 判据补 TK_LongLong）。除零文案新增 u64 版（被除数无符号渲染——病 93 同族预防）。
+- **过程回归两起（同根因已修）**：cast.mbt 重构时 Float/Double 臂漏排同域源（f32/f64 位模式被二次转换），vm_diff 17 例 digest 漂移抓回（kr_2_celsius/lc_50/kr_4_2 等），补 `!(ek is TK_Float/TK_Double)` 零转换语义后全数收敛——**现有 645 语料净行为零变化**（反向印证 unsigned 面语料零覆盖）。
+- **防线连坐**：新语料 `corpus/baseline/unsigned_semantics.c`（五病 18 断言形态，双臂对拍 clang 逐字节同）；vm wbtest +3 锚（13 新臂值锚 + UDivQ 除零文案无符号渲染锚）；opcode_wbtest 全空间断言 135→148；facts 测试数 729→733（10 文档句连坐）；vm_diff 646 + clang_direct 741 + codegen_diff 408（freeze-mb 入账）。
+
 ### Fixed（moon fmt 漂移 7 文件收口 + gen_api_help 产物-fmt 互斥根治——生成器产出即合规，2026-10-11）
 
 - **定责**：d35874a8（#68+#67 两连批）引入时未跑 `moon fmt`，7 个 .mbt（cli_api / serve_compile×2 / serve_dump / serve_icons / serve_probe + 生成器产物 api_help_gen）带格式漂移入库，CI Hygiene 的 `moon fmt --check` 步骤红（Core gates 绿——fmt 只在 hygiene 闸）。

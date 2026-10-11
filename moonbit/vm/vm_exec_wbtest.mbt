@@ -1782,3 +1782,122 @@ test "trap_asset_template_drift_lock" {
     loop_msg, "[step-limit] 程序执行步数超过限制（10000000 步），可能包含无限循环。\n\n[cause] 原因：程序执行了太多步数但没有结束。常见原因：\n  • 循环条件永远为真（如 while(1)）\n  • 循环变量没有更新（如忘了写 i++）\n  • 递归函数没有正确的终止条件\n[fix] 检查方法：确认循环体中有改变循环条件的语句。",
   )
 }
+
+///|
+/// #61 第一梯队（2026-10-11）：U 系对偶段（opcode 138..150）执行语义
+/// 值锚——病 31~34 的直驱锁（CastU2Q/U2D/U2F 零符号位、Trunc 窄化、
+/// Q 族无符号除/模/取反/比较）；LoadMemUByte 的内存面由 e2e 语料锚
+/// （memset 0xAB 读 0xAB）承接不在此直驱。改判据此锚红。
+test "exec_u_series_duality_issue61" {
+  // CastU2Q：u32 位 0xFFFFFFFF 零扩展 → 4294967295L（病 31：(long long)4294967295u）
+  let vm = VitroVM::new()
+  vm.load_program(code_of([instr(PushConst, -1), instr(CastU2Q, 0)]))
+  ignore(vm.step())
+  ignore(vm.step())
+  assert_eq(
+    vm.stack[vm.stack.length() - 1].reinterpret_as_int64(),
+    4294967295L,
+  )
+  // CastU2D：u32 位 0xEE6B2800（3000000000u）→ 3000000000.0 而非负值
+  let vm2 = VitroVM::new()
+  vm2.load_program(
+    code_of([instr(PushConst, -1294967296), instr(CastU2D, 0)]),
+  )
+  ignore(vm2.step())
+  ignore(vm2.step())
+  assert_eq(
+    vm2.stack[vm2.stack.length() - 1].reinterpret_as_double(),
+    3000000000.0,
+  )
+  // CastU2F：4294967295u → f32 最近可表示 4294967296.0（24 位尾数舍入）
+  let vm3 = VitroVM::new()
+  vm3.load_program(code_of([instr(PushConst, -1), instr(CastU2F, 0)]))
+  ignore(vm3.step())
+  ignore(vm3.step())
+  assert_eq(
+    Float::reinterpret_from_uint(vm3.stack[vm3.stack.length() - 1].to_uint()),
+    Float::from_double(4294967296.0),
+  )
+  // TruncByte：200 → -56（病 33：char c=200）
+  let vm4 = VitroVM::new()
+  vm4.load_program(code_of([instr(PushConst, 200), instr(TruncByte, 0)]))
+  ignore(vm4.step())
+  ignore(vm4.step())
+  assert_eq(vm4.stack[vm4.stack.length() - 1].to_int(), -56)
+  // TruncUByte：300 → 44（unsigned char uc=300）
+  let vm5 = VitroVM::new()
+  vm5.load_program(code_of([instr(PushConst, 300), instr(TruncUByte, 0)]))
+  ignore(vm5.step())
+  ignore(vm5.step())
+  assert_eq(vm5.stack[vm5.stack.length() - 1].to_int(), 44)
+}
+
+///|
+/// #61 第一梯队：Q 族无符号四则/比较值锚（2^64-1 域——signed DivQ 会
+/// 把 -1 位当负数；病 34 的 d/3、d%7、d>3 三形态）。
+test "exec_q_unsigned_ops_issue61" {
+  let max_u64 : Int64 = -1L // 位模式 0xFFFFFFFFFFFFFFFF
+  // UDivQ / UModQ：(2^64-1)/3、(2^64-1)%7
+  let vm = VitroVM::new()
+  vm.set_i64_constants([max_u64, 3L, 7L])
+  vm.load_program(
+    code_of([
+      instr(PushConstQ, 0),
+      instr(PushConstQ, 1),
+      instr(UDivQ, 0),
+      instr(PushConstQ, 0),
+      instr(PushConstQ, 2),
+      instr(UModQ, 0),
+    ]),
+  )
+  for _i in 0..<6 {
+    ignore(vm.step())
+  }
+  assert_eq(
+    vm.stack[vm.stack.length() - 2].reinterpret_as_int64(),
+    6148914691236517205L,
+  )
+  assert_eq(vm.stack[vm.stack.length() - 1].reinterpret_as_int64(), 1L)
+  // UNegQ：模 2^64 补码（-1 → 1L；对照 NegQ 的 LLONG_MIN trap 不触发）
+  let vm2 = VitroVM::new()
+  vm2.set_i64_constants([max_u64])
+  vm2.load_program(code_of([instr(PushConstQ, 0), instr(UNegQ, 0)]))
+  ignore(vm2.step())
+  ignore(vm2.step())
+  assert_eq(vm2.stack[vm2.stack.length() - 1].reinterpret_as_int64(), 1L)
+  // ULtQ/UGeQ：2^63 位（signed 负数）在无符号域 > 1（病 34：a>0 得 0 的根）
+  let vm3 = VitroVM::new()
+  vm3.set_i64_constants([-9223372036854775808L, 1L]) // 2^63 位模式
+  vm3.load_program(
+    code_of([
+      instr(PushConstQ, 0),
+      instr(PushConstQ, 1),
+      instr(UGtQ, 0),
+      instr(PushConstQ, 0),
+      instr(PushConstQ, 1),
+      instr(ULeQ, 0),
+    ]),
+  )
+  for _i in 0..<6 {
+    ignore(vm3.step())
+  }
+  assert_eq(vm3.stack[vm3.stack.length() - 2].to_int(), 1)
+  assert_eq(vm3.stack[vm3.stack.length() - 1].to_int(), 0)
+}
+
+///|
+/// #61 第一梯队：UDivQ 除零文案 u64 版——被除数无符号渲染（4000000000
+/// 不得渲染成负数——病 93 同族预防锚）。
+test "exec_udivq_zero_diag_unsigned_render" {
+  let vm = VitroVM::new()
+  vm.set_i64_constants([4000000000L, 0L])
+  vm.load_program(
+    code_of([instr(PushConstQ, 0), instr(PushConstQ, 1), instr(UDivQ, 0)]),
+  )
+  ignore(vm.step())
+  ignore(vm.step())
+  let r = vm.step()
+  assert_true(r is Trap)
+  assert_true(vm.error.contains("4000000000"))
+  assert_false(vm.error.contains("-294967296"))
+}

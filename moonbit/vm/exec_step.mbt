@@ -142,6 +142,7 @@ fn VitroVM::dispatch_single(
     | StoreMemD
     | LoadMemByte
     | StoreMemByte
+    | LoadMemUByte
     | LoadMemQ
     | StoreMemQ
     | SplitD
@@ -162,7 +163,9 @@ fn VitroVM::dispatch_single(
     | USub
     | UNeg
     | UAdd
-    | UMul => self.execute_arithmetic(op, operand, line, column)
+    | UMul
+    | TruncByte
+    | TruncUByte => self.execute_arithmetic(op, operand, line, column)
     // ── 比较与逻辑 ──
     Eq | Ne | Lt | Le | Gt | Ge | And | Or | Not | ULt | ULe | UGt | UGe =>
       self.execute_comparison(op, operand, line, column)
@@ -189,6 +192,7 @@ fn VitroVM::dispatch_single(
     | DivF
     | NegF
     | CastI2F
+    | CastU2F
     | CastF2I
     | EqF
     | NeF
@@ -204,6 +208,7 @@ fn VitroVM::dispatch_single(
     | DivD
     | NegD
     | CastI2D
+    | CastU2D
     | CastF2D
     | CastD2I
     | CastD2F
@@ -230,7 +235,15 @@ fn VitroVM::dispatch_single(
     | LtQ
     | LeQ
     | GtQ
-    | GeQ => self.execute_longlong(op, operand, line, column)
+    | GeQ
+    | CastU2Q
+    | UDivQ
+    | UModQ
+    | UNegQ
+    | ULtQ
+    | ULeQ
+    | UGtQ
+    | UGeQ => self.execute_longlong(op, operand, line, column)
     // ── 控制流族（CallHost 的 host 分发随批三号——其臂内 fail loud）──
     Jump
     | JumpIfZero

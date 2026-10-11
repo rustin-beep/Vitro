@@ -13,29 +13,54 @@ fn BytecodeGen::gen_cast_expr(
   self.gen_expr(inner)
   let tk = target_type.kind()
   let ik = inner.ty().kind()
-  if tk is TK_Double &&
-    !(ik is TK_Float) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2D, 0, loc)
-  } else if tk is TK_Double && ik is TK_Float {
+  // u32 源零符号位（病 31）：unsigned int/char 转 Q/D/F 走 U 系对偶
+  let inner_u = inner.ty().is_unsigned()
+  if tk is TK_Double && ik is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if tk is TK_Double && ik is TK_LongLong {
     self.emit(@opcode.OpCode::CastQ2D, 0, loc)
-  } else if tk is TK_Float &&
-    !(ik is TK_Float) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2F, 0, loc)
+  } else if tk is TK_Double && !(ik is TK_Double) {
+    // ik ∈ {Int/Char/Pointer}：u32 源走 U 系；ik 已是 Double 则零转换
+    if inner_u {
+      self.emit(@opcode.OpCode::CastU2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2D, 0, loc)
+    }
   } else if tk is TK_Float && ik is TK_Double {
     self.emit(@opcode.OpCode::CastD2F, 0, loc)
-  } else if tk is TK_LongLong &&
-    !(ik is TK_LongLong) &&
-    !(ik is TK_Double) &&
-    !(ik is TK_Float) {
-    self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+  } else if tk is TK_Float && !(ik is TK_Float) {
+    // ik ∈ {Int/Char/Pointer}：u32 源走 U 系；ik 已是 Float 则零转换
+    if inner_u {
+      self.emit(@opcode.OpCode::CastU2F, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    }
   } else if tk is TK_LongLong && ik is TK_Double {
     self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+  } else if tk is TK_LongLong &&
+    !(ik is TK_LongLong) &&
+    !(ik is TK_Float) {
+    if inner_u {
+      self.emit(@opcode.OpCode::CastU2Q, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+    }
+  } else if tk is TK_Char {
+    // char 窄化（病 33）：低 8 位按目标 signedness 截断——任意更宽整型
+    // 源一律 Trunc（幂等：源 char 已按自身符号扩展，重复截断不变值；
+    // (char)200 与 (char)(unsigned char)200 都得 -56）；fp/Q 源先归 i32
+    if ik is TK_LongLong {
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else if ik is TK_Double {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    } else if ik is TK_Float {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    }
+    if target_type.is_unsigned() {
+      self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::TruncByte, 0, loc)
+    }
   } else if !(tk is TK_Float) &&
     !(tk is TK_Double) &&
     !(tk is TK_LongLong) &&
@@ -50,6 +75,7 @@ fn BytecodeGen::gen_cast_expr(
     !(tk is TK_Double) &&
     !(tk is TK_LongLong) &&
     ik is TK_LongLong {
+    // int/uint 目标：低 32 位截断（位模式对 signed/unsigned 通用）
     self.emit(@opcode.OpCode::CastQ2I, 0, loc)
   }
 }
@@ -266,25 +292,48 @@ fn BytecodeGen::gen_expr_with_cast(
   let tk = target_ty.kind()
   let ek = expr.ty().kind()
   let target_is_fp = tk is TK_Float || tk is TK_Double
-  if tk is TK_Double &&
-    !(ek is TK_Float) &&
-    !(ek is TK_Double) &&
-    !(ek is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2D, 0, loc)
-  } else if tk is TK_Double && ek is TK_Float {
+  // u32 源零符号位（病 31）：与 gen_cast_expr 同款 U 系桥
+  let expr_u = expr.ty().is_unsigned()
+  if tk is TK_Double && ek is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if tk is TK_Double && ek is TK_LongLong {
     self.emit(@opcode.OpCode::CastQ2D, 0, loc)
-  } else if target_is_fp &&
-    !(ek is TK_Float) &&
-    !(ek is TK_Double) &&
-    !(ek is TK_LongLong) {
-    self.emit(@opcode.OpCode::CastI2F, 0, loc)
+  } else if tk is TK_Double && !(ek is TK_Double) {
+    // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Double 则零转换
+    if expr_u {
+      self.emit(@opcode.OpCode::CastU2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2D, 0, loc)
+    }
+  } else if tk is TK_Float && ek is TK_Double {
+    self.emit(@opcode.OpCode::CastD2F, 0, loc)
+  } else if tk is TK_Float && !(ek is TK_Float) {
+    // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Float 则零转换
+    if expr_u {
+      self.emit(@opcode.OpCode::CastU2F, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    }
+  } else if tk is TK_Char {
+    // char 窄化（病 33）：赋值/传参收口同款 Trunc（fp/Q 源先归 i32）
+    if ek is TK_LongLong {
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    } else if ek is TK_Double {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    } else if ek is TK_Float {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    }
+    if target_ty.is_unsigned() {
+      self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::TruncByte, 0, loc)
+    }
   } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_Double {
     self.emit(@opcode.OpCode::CastD2I, 0, loc)
   } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_Float {
     self.emit(@opcode.OpCode::CastF2I, 0, loc)
   } else if !target_is_fp && !(tk is TK_LongLong) && ek is TK_LongLong {
+    // int/uint 目标：低 32 位截断
     self.emit(@opcode.OpCode::CastQ2I, 0, loc)
   }
 }

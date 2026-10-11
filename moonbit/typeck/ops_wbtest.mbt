@@ -522,3 +522,61 @@ test "assign_const_2d_array_param_widening" {
   )
   assert_eq(tc2.errors.length(), 1, msg="剥 const 方向维持 E3067")
 }
+
+///|
+/// 病 30 锚（#61 第一梯队，2026-10-11）：C 整型提升（C11 §6.3.1.8）
+/// ——rank 低于 int 的小无符号（unsigned char）提升为 **signed int**，
+/// unsigned 位不传播进结果；uint vs long long 时 i64 可表示 u32 全值域
+/// → signed long long（lower 的 unsigned 只在同 rank 时传播）。
+/// 锚先红后修（改判据此锚）。
+test "promote_usual_arithmetic_conversions_issue61_b30" {
+  let loc = @source.SourceLoc::new(1, 5)
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  tc.declare_var(
+    "uc",
+    @ast.Type::Char(true, false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc.declare_var(
+    "u",
+    @ast.Type::Int(true, false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  fn lit(v : Int) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::int())
+  }
+  // uchar - 1 → int（signed；(uc-1)/2 = 0 而非 2147483647 的定型根）
+  let ucid = @ast.Expr::Identifier("uc", loc, @ast.Type::void_type())
+  let (t1, _) = tc.resolve_binary(Sub, ucid, lit(1), loc)
+  assert_true(t1 is Int(_, _))
+  assert_false(t1.is_unsigned(), msg="uchar 提升后 unsigned 位不得传播")
+  // uint - 5LL → long long（signed；i64 装得下 u32 全域）
+  tc.declare_var(
+    "ll",
+    @ast.Type::LongLong(false, false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let uid = @ast.Expr::Identifier("u", loc, @ast.Type::void_type())
+  let llid = @ast.Expr::Identifier("ll", loc, @ast.Type::void_type())
+  let (t2, _) = tc.resolve_binary(Sub, uid, llid, loc)
+  assert_true(t2 is LongLong(false, _), msg="uint vs LL 应落 signed LL")
+  // 同 rank 双侧：uint vs int → unsigned int（unsigned 正常传播面）
+  let (t3, _) = tc.resolve_binary(Sub, uid, lit(1), loc)
+  assert_true(t3 is Int(true, _))
+  // ULL vs LL → unsigned long long（同 rank 传播 + higher 自身 unsigned）
+  let (t4, _) = tc.resolve_binary(
+    Sub,
+    @ast.Expr::Literal(1, loc, @ast.Type::LongLong(true, false)),
+    @ast.Expr::Literal(5, loc, @ast.Type::LongLong(false, false)),
+    loc,
+  )
+  assert_true(t4 is LongLong(true, _))
+  assert_eq(tc.errors.length(), 0)
+}

@@ -422,6 +422,7 @@ pub let golden_digest : Digest = Digest::{
         "unsigned_printf_o.c": "e83531ac",
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
+        "unsigned_semantics.c": "6c3e660f",
         "unsigned_type.c": "3a7ad33d",
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
@@ -970,6 +971,7 @@ pub let golden_digest : Digest = Digest::{
         "unsigned_printf_o.c": Ok(OkCase::{ result_sha: "330ca59daa90efdf", }),
         "unsigned_printf_u.c": Ok(OkCase::{ result_sha: "99f89cc244058e18", }),
         "unsigned_printf_x.c": Ok(OkCase::{ result_sha: "e7a5f4e8e94f219d", }),
+        "unsigned_semantics.c": Ok(OkCase::{ result_sha: "62469025b9064376", }),
         "unsigned_type.c": Ok(OkCase::{ result_sha: "b0e7ea07e13c980f", }),
         "utf8_latin1_output.c": Ok(OkCase::{ result_sha: "1e4e4472d2944a92", }),
         "variable_length_array.c": Ok(OkCase::{

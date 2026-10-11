@@ -60,6 +60,9 @@ fn BytecodeGen::gen_unary(
         self.emit(@opcode.OpCode::NegD, 0, loc)
       } else if ok is TK_Float {
         self.emit(@opcode.OpCode::NegF, 0, loc)
+      } else if ok is TK_LongLong && operand.ty().is_unsigned() {
+        // ULL 取反 = 模 2^64 补码（无溢出 trap——病 34 批连坐）
+        self.emit(@opcode.OpCode::UNegQ, 0, loc)
       } else if ok is TK_LongLong {
         self.emit(@opcode.OpCode::NegQ, 0, loc)
       } else if operand.ty().is_unsigned() {
@@ -169,10 +172,20 @@ fn BytecodeGen::gen_unary(
       } else {
         None
       }
+      // pointee 的 unsigned 位（病 32：unsigned char* 解引用零扩展）
+      let pointee_unsigned = match operand.ty() {
+        Pointer(pointee, _) => pointee.is_unsigned()
+        _ => false
+      }
       match base_kind {
         Some(TK_Function) => ()
         // 函数指针解引用：*fp 即函数本身，随即退化回同一指针——无 load
-        Some(TK_Char) => self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+        Some(TK_Char) =>
+          if pointee_unsigned {
+            self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+          } else {
+            self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+          }
         Some(TK_Double) => self.emit(@opcode.OpCode::LoadMemD, 0, loc)
         Some(TK_LongLong) => self.emit(@opcode.OpCode::LoadMemQ, 0, loc)
         _ => self.emit(@opcode.OpCode::LoadMem, 0, loc)
@@ -250,12 +263,12 @@ fn BytecodeGen::gen_unary(
         Index(array, index, _, ty) => {
           let step = self.ptr_step_size(ty)
           self.gen_index(array, index, ty, loc, true)
-          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), loc)
+          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), ty.is_unsigned(), loc)
         }
         Member(object, mname, _, ty) => {
           let step = self.ptr_step_size(ty)
           self.gen_member_addr(object, mname, loc)
-          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), loc)
+          self.gen_mem_inc_dec(is_inc, is_pre, step, ty.kind(), ty.is_unsigned(), loc)
         }
         Unary(@ast.UnaryOp::Deref, inner, _, _) => {
           // (*p)++ 是对 pointee 标量自增，步长恒 1（指针自身的 p++ 走
@@ -267,9 +280,14 @@ fn BytecodeGen::gen_unary(
           } else {
             None
           }
+          let elem_unsigned = match inner.ty() {
+            Pointer(pointee, _) => pointee.is_unsigned()
+            _ => false
+          }
           self.gen_expr(inner)
           match elem_kind {
-            Some(k) => self.gen_mem_inc_dec(is_inc, is_pre, 1, k, loc)
+            Some(k) =>
+              self.gen_mem_inc_dec(is_inc, is_pre, 1, k, elem_unsigned, loc)
             None => self.gen_mem_inc_dec_int(is_inc, is_pre, 1, loc)
           }
         }
@@ -402,7 +420,7 @@ fn BytecodeGen::gen_mem_inc_dec_int(
   loc : @source.SourceLoc,
 ) -> Unit {
   let int_kind = @ast.Type::int().kind()
-  self.gen_mem_inc_dec(is_inc, is_pre, step, int_kind, loc)
+  self.gen_mem_inc_dec(is_inc, is_pre, step, int_kind, false, loc)
 }
 
 ///|
@@ -414,6 +432,7 @@ fn BytecodeGen::gen_mem_inc_dec(
   is_pre : Bool,
   step : Int,
   elem_kind : @ast.TypeKind,
+  elem_unsigned : Bool,
   loc : @source.SourceLoc,
 ) -> Unit {
   // 栈顶：地址
@@ -424,7 +443,13 @@ fn BytecodeGen::gen_mem_inc_dec(
     // float 内存元素按 4 字节 f32 位模式存取，算术经 CastF2D/CastD2F
     TK_Float => @opcode.OpCode::LoadMem
     TK_LongLong => @opcode.OpCode::LoadMemQ
-    TK_Char => @opcode.OpCode::LoadMemByte
+    // unsigned char 内存元素零扩展读（病 32）
+    TK_Char =>
+      if elem_unsigned {
+        @opcode.OpCode::LoadMemUByte
+      } else {
+        @opcode.OpCode::LoadMemByte
+      }
     _ => @opcode.OpCode::LoadMem
   }
   let store_op = match elem_kind {

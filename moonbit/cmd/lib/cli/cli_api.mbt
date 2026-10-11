@@ -29,7 +29,9 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
       batch = true
     } else if !args[i].has_prefix("-") && method_name == "" {
       method_name = args[i]
-    } else if method_name == "help" && !args[i].has_prefix("-") && help_target == "" {
+    } else if method_name == "help" &&
+      !args[i].has_prefix("-") &&
+      help_target == "" {
       help_target = args[i]
     } else if method_name != "" && params == "{}" && args[i] != "{}" {
       // 第二个非旗标参数 = params JSON（缺省 "{}"）
@@ -62,7 +64,9 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
       }
     }
   } else if method_name == "help" && batch {
-    println("用法错: --batch 不与 help 并用（help 是离线出口不进会话）")
+    println(
+      "用法错: --batch 不与 help 并用（help 是离线出口不进会话）",
+    )
     return 4
   }
   // 批式：stdin 全量读入按行切（UTF-8 解码——帧是 JSON 文本域），逐帧

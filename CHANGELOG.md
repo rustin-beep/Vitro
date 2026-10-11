@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（moon fmt 漂移 7 文件收口 + gen_api_help 产物-fmt 互斥根治——生成器产出即合规，2026-10-11）
+
+- **定责**：d35874a8（#68+#67 两连批）引入时未跑 `moon fmt`，7 个 .mbt（cli_api / serve_compile×2 / serve_dump / serve_icons / serve_probe + 生成器产物 api_help_gen）带格式漂移入库，CI Hygiene 的 `moon fmt --check` 步骤红（Core gates 绿——fmt 只在 hygiene 闸）。
+- **互斥根治**：`api_help_gen.mbt` 是 @generated 产物，moon fmt 会把单行 `"k" => Some("...")` 拆为多行悬挂形态，与 `gen_api_help -check` 幂等锁互斥（editorconfig×jsonmbt 同款双闸互斥，D8 前科）。**正解 = 生成器产出即合规**：`renderMoonBit` 的 match 臂发射改为 fmt 期望形态（`=>` 换行 + `Some(` 多行悬挂 + 尾逗号），重生成后与 `moon fmt` 产物**逐字节一致**、`-check` 复绿、`scripts/vitro_cli/api_help.json`（wasm 臂产物）逐字节零变化。
+- **其余 6 个手写文件**：`moon fmt` 纯格式重排（悬挂参数缩进/方法链换行），`moon test` gateway wasm-gc 101/101 + cmd native 14/14 语义零变化。
+- 教训（补 04-A27 同族）：**生成器产物入库前必须过格式化器闸，或生成器直接产出合规形态**——「产物被 fmt 改 / -check 再生改回」两闸互斥，先红的永远是后提交的那道。
+
 ### Fixed（CI 双闸互斥修复：editorconfig 尾换行 vs jsonmbt compact 再生——suggestions.json 一字节恒红，2026-10-11）
 
 - **定责**：fca6c063 建 editorconfig 闸时 `insert_final_newline` 全域规则咬 `suggestions.json`（jsonmbt compact 再生**无尾换行**），批内补尾换行令 editorconfig 绿——但 CI 的 Teaching assets sync gate 用 `jsonmbt build`（compact）再产后 `git diff --quiet` 比对，恰差一字节恒红（两闸对该文件互斥；本地复现同构）。

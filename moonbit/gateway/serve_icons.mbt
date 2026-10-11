@@ -21,8 +21,7 @@ fn serve_icons_get_frame(id : Json, params : Json) -> (String, Bool) {
               _ =>
                 return (
                   serve_param_err(
-                    id,
-                    "icons.get 的 ids 须为字符串数组（ids:string[]）",
+                    id, "icons.get 的 ids 须为字符串数组（ids:string[]）",
                     "ids:string[]",
                   ).stringify(),
                   false,
@@ -32,9 +31,7 @@ fn serve_icons_get_frame(id : Json, params : Json) -> (String, Bool) {
         Some(_) =>
           return (
             serve_param_err(
-              id,
-              "icons.get 的 ids 须为字符串数组（ids:string[]）",
-              "ids:string[]",
+              id, "icons.get 的 ids 须为字符串数组（ids:string[]）", "ids:string[]",
             ).stringify(),
             false,
           )

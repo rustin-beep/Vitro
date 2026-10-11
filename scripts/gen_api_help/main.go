@@ -299,7 +299,9 @@ func renderMoonBit(list string, detail map[string]string) string {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		b.WriteString("    \"" + k + "\" => Some(\"" + mbtEscape(detail[k]) + "\")\n")
+		// match 臂体产出 moon fmt 合规形态（fmt 会把单行 Some("...") 拆为
+		// 多行悬挂 + 尾逗号）——产出即合规，避免「fmt 改产物 / -check 再生」互斥。
+		b.WriteString("    \"" + k + "\" =>\n      Some(\n        \"" + mbtEscape(detail[k]) + "\",\n      )\n")
 	}
 	b.WriteString("    _ => None\n  }\n}\n")
 	return b.String()

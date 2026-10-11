@@ -32,9 +32,8 @@ fn serve_diagnostics_probe_frame(
   guard json_field(params, "source").as_string() is Some(source) else {
     return (
       serve_param_err(
-          id, "diagnostics_probe 需要 params.source:string", "source:string",
-        )
-        .stringify(),
+        id, "diagnostics_probe 需要 params.source:string", "source:string",
+      ).stringify(),
       false,
     )
   }

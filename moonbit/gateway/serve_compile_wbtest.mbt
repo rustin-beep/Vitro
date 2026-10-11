@@ -23,9 +23,16 @@ test "serve_compile_missing_params_error" {
   // #68 红→绿锚（2026-10-11）：参数错误帧 message 内嵌期望形状 +
   // error.expected 机器可读字段（词汇表冻结：`?` 可省略 / `T[]` 数组 /
   // `{f,f}` 对象 / `A | B` 任一——下游可编程重试面）
-  assert_true(resp.contains("compile 需要 params.files:[{filename?,source}] 或 params.source:string"), msg="message 含形状")
   assert_true(
-    resp.contains("\"expected\":\"files:[{filename?,source}] | source:string[,filename:string]\""),
+    resp.contains(
+      "compile 需要 params.files:[{filename?,source}] 或 params.source:string",
+    ),
+    msg="message 含形状",
+  )
+  assert_true(
+    resp.contains(
+      "\"expected\":\"files:[{filename?,source}] | source:string[,filename:string]\"",
+    ),
     msg="expected 字段存在且为形状表达式",
   )
   assert_true(resp.contains("\"ok\":false"))

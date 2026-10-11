@@ -31,6 +31,18 @@ pub fn invoke(line : String) -> String {
 }
 
 ///|
+/// invoke 的结构化形态（#70 第二步，2026-10-11）：同一 NDJSON 帧通道，
+/// 返回解析后的 Json 树（响应由本包构造——json_parse 恒成功；解析失败
+/// 返回 None 供调用方 fail loud）。CLI 文本模式的帧→标记行渲染消费
+///（json_parse 升序裁定注记的「第二个消费者」——本函数即上提点，独占
+/// 导出、parse 本体仍居包内）。
+pub fn invoke_parsed(line : String) -> Json? {
+  let resp = invoke(line)
+  let v = json_parse(resp) catch { _ => return None }
+  Some(v)
+}
+
+///|
 /// 会话重置（R3 语义：清空编译/运行态，保留会话级配置——与
 /// session.reset 方法同语义，供宿主在无方法帧场景下直调）。
 pub fn reset() -> Unit {

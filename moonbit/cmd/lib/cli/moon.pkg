@@ -5,17 +5,11 @@
 // 共享函数单源（三包形态需三份复制连坐）。main 包 import warning 态的
 // 下沉纪律见各薄壳注释。
 import {
-  "vitro/engine/bytecode",
-  "vitro/engine/codegen",
+  // #70 第二步：帧单源化后引擎包直调全撤（lexer/parser/typeck/codegen/
+  // vm/bytecode/host——compile_and_report 与 vm setup 直驱段拆除）
   "vitro/engine/fs",
   "vitro/engine/gateway",
-  "vitro/engine/host",
-  "vitro/engine/lexer",
-  "vitro/engine/lexer/token",
-  "vitro/engine/parser",
-  "vitro/engine/typeck",
   "vitro/engine/util",
-  "vitro/engine/vm",
 }
 
 supported_targets = "native"

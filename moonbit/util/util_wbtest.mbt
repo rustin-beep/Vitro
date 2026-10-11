@@ -103,3 +103,15 @@ test "base64_encode_rfc4648_向量全集" {
   inspect(base64_encode(b"fooba"), content="Zm9vYmE=")
   inspect(base64_encode(b"foobar"), content="Zm9vYmFy")
 }
+
+///|
+/// base64_decode 对偶锚（#70 第二步）：encode→decode 往返 + 尾填充三形态。
+test "base64_decode_roundtrip" {
+  for payload in [b"hello", b"a", b"ab", b"abc", b""] {
+    let enc = base64_encode(payload)
+    let dec = base64_decode(enc)
+    assert_true(dec is Some(_), msg="往返可解")
+    assert_eq(dec.unwrap(), payload, msg="往返逐字节")
+  }
+  assert_true(base64_decode("!!!") is None, msg="非法字符 fail loud")
+}

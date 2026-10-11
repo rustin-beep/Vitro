@@ -157,3 +157,16 @@ test "serve_compile_struct_fields_populated" {
   assert_eq(ufields.length(), 2)
   assert_eq(ufields[1], ("y", 0), msg="union 字段全 0 偏移")
 }
+
+///|
+/// #70：codegen 错误文案行号提取
+test "extract_gen_error_line_shapes" {
+  assert_eq(extract_gen_error_line("第 3 行：未声明的标识符 'a'"), 3)
+  assert_eq(
+    extract_gen_error_line("全局作用域不支持变长数组(VLA) 'a'"),
+    0,
+  )
+  assert_eq(extract_gen_error_line("第 12 行：x"), 12)
+}
+
+///|

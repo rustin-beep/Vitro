@@ -129,7 +129,14 @@ function renderDiagnostics(result, out) {
   const w = out || process.stdout;
   for (const d of result.diagnostics || []) {
     if (d.severity === "error") {
-      w.write(`// COMPILE-ERROR ${d.code} ${d.line}:${d.column} ${d.message}\n`);
+      // #70：code=0（Unknown）是 codegen 错误过渡码——渲染为 spec 在册
+      // 的 codegen 无码形态（与 native 旧管线同形；#38 立码后统一）
+      // codegen 形态省坐标（对齐 native 旧管线 + spec 在册形态）
+      if (d.code === "E0") {
+        w.write(`// COMPILE-ERROR codegen ${d.message}\n`);
+      } else {
+        w.write(`// COMPILE-ERROR ${d.code} ${d.line}:${d.column} ${d.message}\n`);
+      }
     }
   }
   for (const d of result.diagnostics || []) {
@@ -316,7 +323,9 @@ async function cmdCompile(args) {
     return;
   }
   renderDiagnostics(comp.result || { diagnostics: [] });
-  if (hasErrors(comp.result || {})) { process.exitCode = 1; return; }
+  // #70：补 ok 字段判定——此前只查 hasErrors，codegen 失败（ok:false 但
+  // 诊断数组过渡期形态）被洗成 COMPILE-OK（#64 吞错链的壳侧缺口）
+  if (!comp.ok || !comp.result.ok || hasErrors(comp.result || {})) { process.exitCode = 1; return; }
   process.stdout.write("// COMPILE-OK\n");
   process.exitCode = 0;
   return;

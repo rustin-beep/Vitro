@@ -1,8 +1,8 @@
-// cmd/lib/compile：CLI `compile` 子命令（#37 批②）——只编译+诊断，
-// 不执行。文本模式：三级诊断行（与 run 同源——lib/run.compile_and_report）
-// + 成功标记 `// COMPILE-OK`。--json 模式（批③）：gateway compile 帧直透
-// （NDJSON 单行——含 fix_suggestion 七元组，比文本形态更富；帧单源与
-// demo/serve 同通道）。退出码：0=编译通过 / 1=编译错 / 4=用法/IO。
+// cmd/lib/compile：CLI `compile` 子命令（#37 批②；#70 第二步帧单源化
+// 2026-10-11）——只编译+诊断，不执行。文本/json 两模式共用 frame_pipeline
+// 的 compile_mode（gateway compile 帧单源；旧 compile_and_report 直调管线
+// 拆除——诊断行渲染与 COMPILE-OK 由管线出口统一）。退出码：0=编译通过 /
+// 1=编译错 / 4=用法/IO。
 
 ///|
 pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
@@ -32,38 +32,19 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
     println("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
     return 4
   }
-  if json_mode {
-    // escape_json 单源（定义在 cli_step.mbt，compile/run_json 裸名跨文件
-    // 消费——批五注释清理：旧「三份同源复制连坐」指向已收口的历史形态）
-    let mut id = 0
-    let inv = fn(method_name : String, params : String) -> String {
-      id += 1
-      @gateway.invoke(
-        "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
-      )
-    }
-    @gateway.reset()
-    ignore(inv("session.create", "{}"))
-    // filename 装配（BUG-A 修复，2026-10-05）：协议 compile 帧支持可选
-    // filename（gateway 侧 base_dir = dir_of(filename)，与文本模式
-    // compile_and_report 同语义）；此前只传 source 令 base_dir 退化为
-    // 缺省 "main.c" 所在目录，同目录 include 全断。stdin（"-"）无路径
-    // 语义不传。cli_run_json / cli_step 同款连坐
-    let compile_params = if file == "-" {
-      "{\"source\":\"\{@util.json_escape(src)}\"}"
-    } else {
-      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
-    }
-    let comp = inv("compile", compile_params)
-    println(comp)
-    if comp.contains("\"ok\":false") {
-      return 1
-    }
-    return 0
-  }
-  let (_, code) = compile_and_report(src, file)
-  if code == 0 {
-    println("// COMPILE-OK")
-  }
-  code
+  // compile 子命令无 clock/stdout 语义——占位注入（compile_mode 段不消费
+  // run 输出通道）
+  let zero_clock : () -> UInt64 = fn() { 0UL }
+  let drop_stdout : (Bytes) -> Unit = fn(_b) { () }
+  return frame_pipeline(
+    src,
+    file,
+    "",
+    [],
+    "",
+    zero_clock,
+    drop_stdout,
+    json_mode,
+    compile_mode=true,
+  )
 }

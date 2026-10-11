@@ -4,6 +4,14 @@
 
 ///|
 fn main {
+  // #70 第二步（2026-10-11）：run 全帧化后 include 走 gateway 通道——
+  // 必须注册 include_reader（旧文本模式 FsProvider 直调随管线拆除；此
+  // 前缺口仅被「防线全走文本模式」掩盖——native --json 跑 include 语料
+  // 一直是坏的，cmd/vitro/serve 自 2026-10-05 起已有注册、本壳漏）
+  @gateway.set_include_reader(fn(path : String) -> String? {
+    let s = @fs.read_file_to_string(path) catch { _ => return None }
+    Some(s)
+  })
   let args = @env.args()
   let rest : Array[String] = []
   for i = 1; i < args.length(); i = i + 1 {

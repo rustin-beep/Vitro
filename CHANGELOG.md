@@ -12,6 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed（#70 第二步：compile_and_report 旧管线拆除——CLI 出口帧单源化收官，2026-10-11）
+
+- **拆除**：`compile_and_report` 直调管线（lexer→parser→typeck→codegen 手拼 + println）与 vm setup 直驱段、`json_event_stream`（--json 手拼序列）、`dir_of`/`stdout_bytes_of`/`FsProvider` 死面全清（cli 包 import 收缩 11→3：fs/gateway/util）。run/compile 的文本与 json 两模式统一走 **`frame_pipeline`**（gateway 帧单源：同一 invoke 序列，文本模式帧→标记行渲染、json 模式 NDJSON 直透）——CLI_PROTOCOL_V1「帧单源」声明自此成真，#64「双臂不对账」的病根（双出口）结构性消灭。
+- **渲染契约逐字节**（vm_diff 645 全 SAME + clang_direct 740 全对 = 全量锚验证）：诊断行（E0→codegen 无码形态）、stdout 字节直写（Latin-1 折回还原 + 尾换行保形）、`// STDERR/NOTE/TRAP/EXIT` 行、`--dump-memory`（memory.dump 帧 base64 往返——util 新增 `base64_decode` + 往返锚）；**Note 通道 delta 是 UTF-8 原文**（serve_io 分叉口径——Latin-1 双重还原会 mojibake，e2_include 语料实锤修正）。
+- **headless 语义恢复**：run 帧恒发 `batch_input:true`（无 -i 注入时 scanf 耗尽即 EOF——旧文本模式 `set_input(from_stdin_text(_, true))` 同款；漏发则 gateway 会话默认 Interactive、空 stdin 变 waiting_input——cli_smoke 双臂对拍实锤）。
+- **连带修复（历史缺口）**：cmd/run 薄壳补注册 `set_include_reader`（cmd/vitro/serve 自 2026-10-05 已有、run 漏——旧文本模式走 FsProvider 不需要，帧化后暴露；**native --json 跑 include 语料一直是坏的**，被「防线全走文本模式」掩盖）。
+- **gateway pub 面 +1**：`invoke_parsed`（invoke 的结构化形态——json_parse 升序注记的「第二消费者」上提点）；surface 边表净置（cli 侧 -12 过期引擎边 +5 新帧边）。
+- 验收：moon test 729/729（native 851）；vm_diff 640/5/0；clang_direct 730/10/0；serve_smoke/replay/demo_smoke/cli_smoke（双臂）/surface/mbti/testcount(729/851)/facts(0)/diff_ledger 全绿。
+- 测试数 729/851 连坐；digest 零动（管线内部收敛、产物面零变）。
+
+### Fixed（#70 第一步：CLI compile 吞错链三件修——gateway 错误归属 + 壳判定补全 + 维度语义检查，2026-10-11）
+
+- **gateway gen_errors 归属**（serve_compile）：codegen 错误进 **diagnostics 数组**（旧形态塞 st.errors 字符串旁路、帧 ok:false 但无 error 级——壳判定把失败洗成 COMPILE-OK，#64 吞错链）。码位 Unknown(0) 过渡（codegen 无诊断码系 #38 在册、E4 号段被 C++ 预埋占死，立码拍板后换真码）；行号从文案「第 N 行：」提取（`extract_gen_error_line`——双侧空格形态实证：`第/空格/3/空格/行`）；st.errors 兼容保留（demo 网页消费面）。
+- **壳双修**（main.js）：cmdCompile 文本分支补 `ok` 字段判定（此前只查 hasErrors——run 分支三重判定的缺口）；`E0` 渲染为 spec 在册 codegen 无码形态 `// COMPILE-ERROR codegen <文案>`（省坐标，与 native 旧管线逐字节同形）。
+- **维度语义检查**（typeck，#64 v6 尾巴销案）：VLA 维度表达式里的**裸未声明标识符**（`UNDEF_MAC` 宏漏 define/拼写错）报 **E3023** 而非静默走到 codegen 判 VLA——真维度（已声明变量）不报维持运行时求值。v6 双出口（wasm/native）同形同位对账达成；真 VLA 全局形态双出口同报 codegen 错误逐字节一致。
+- **launcher fail loud**：`--backend` 尾置改用法错 rc=4（此前静默忽略——仅认 $1/$2 位，曾致「native 复测」实跑 wasm，#64 定责轮的方法错误根源）。
+- 验收：moon test 728/728（gateway 100 含 extract 锚）；vm_diff 640/5/0；clang_direct 730/10/0；testcount/facts(0)/diff_ledger/surface/mbti/demo_smoke/cli_smoke 全绿。
+- 第二步（compile_and_report 旧管线拆除）随本步合入后单独批。
+
+### Fixed（#69 裁定批：CLI 文本出口混流定性成文 + 冻结面计数勘正，2026-10-11）
+
+- `docs/spec/CLI_PROTOCOL_V1.md` §1 补**显式裁定**：诊断/STDERR/NOTE/TRAP/EXIT 标记行与程序输出混流是 display 流的**定义行为非缺陷**——机器取纯 stdout 走 `--json` 或 serve `output.delta stream:"stdout"`，文本对拍按 §1 闭集剥离契约过滤（契约非建议）；程序输出恰以闭集前缀逐字开头（`printf("// NOTE x")`）登记为已接受的窄碰撞面（闭集精确匹配，实践不可撞）。§8 冻结面前缀计数勘正六→八（NOTE〔10-04〕/STDERR〔10-10〕两度补登未跟账）。**协议内容零变更**——纯定性成文与勘误；issue #69 三选一按方案 3（spec 成文）定性，方案 1（stderr 分流）不采：v1 冻结纪律下属语义变更需版本化，且掏 vm_diff/clang_direct 双臂不对称 stderr 管道（wasm 臂 `io.Discard` vs native 并回 stdout 实锤）成本不抵收益。
+
 ### Fixed（#64 定责与修复：宏+二元维度判 VLA——CLI 双出口「假性双臂不对账」机制全揭，2026-10-11）
 
 - **机制（用户七文件矩阵 + 本轮定责）**：`vitro compile` 文本模式——壳（wasm 臂）走 gateway 帧、exe（native 臂）走 `compile_and_report` 旧管线，**backend 恰好代理了「壳 vs exe」两条出口**；两臂引擎同码同判 VLA（`array_dim_info` 对 Binary 一律判），分叉纯在出口（exe 打印 VLA 错误+级联、gateway 吞诊断为 ok=false 零诊断——后者即 #61 待办「compile 空诊断出口病」）。**非 wasm/native 后端差、非上游 moon 工具链问题**。

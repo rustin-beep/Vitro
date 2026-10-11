@@ -341,8 +341,15 @@ fn serve_compile_pipeline(
   let output = match output_opt {
     Some(o) => o
     None => {
+      // #70 第一步（2026-10-11）：gen_errors 进 diagnostics 数组——旧形态
+      // 塞 st.errors 字符串旁路、帧 ok:false 但 diagnostics 无 error 级，
+      // 壳 compile 判定（hasErrors）把失败洗成 COMPILE-OK（#64 吞错链）。
+      // 码位 Unknown(0) 过渡——codegen 错误体系无诊断码（#38 在册，E4 号段
+      // 被 C++ 预埋占死），立码段拍板后换真码；行号从文案「第 N 行：」提取。
+      // st.errors 兼容保留（demo 网页 errors 串消费面）
       for e in gen_errors {
         st.errors = st.errors + "生成错误: \{e}\n"
+        push_one_diag(s, 0, extract_gen_error_line(e), 1, e, 0, [], [])
       }
       st.errors = st.errors + "字节码生成错误\n"
       return false
@@ -504,4 +511,37 @@ fn project_vis_lines(
     }
   }
   lines
+}
+
+///|
+/// codegen 错误文案行号提取（#70 过渡——「第 N 行：」前缀手扫）。
+fn extract_gen_error_line(msg : String) -> Int {
+  let cs = msg.to_array()
+  let n = cs.length()
+  let mut i = 0
+  while i + 3 < n {
+    if cs[i] == '第' {
+      let mut j = i + 1
+      // 「第 3 行」含空格——先跳空白再扫数字
+      while j < n && (cs[j] == ' ' || cs[j] == '	') {
+        j = j + 1
+      }
+      let mut v = 0
+      let mut any = false
+      while j < n && cs[j] >= '0' && cs[j] <= '9' {
+        v = v * 10 + (cs[j].to_int() - '0'.to_int())
+        any = true
+        j = j + 1
+      }
+      // 数字后同样跳空白再对「行」（「第 3 行」两侧都有空格）
+      while j < n && (cs[j] == ' ' || cs[j] == '	') {
+        j = j + 1
+      }
+      if any && j < n && cs[j] == '行' {
+        return v
+      }
+    }
+    i = i + 1
+  }
+  0
 }

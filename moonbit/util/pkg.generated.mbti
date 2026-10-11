@@ -2,6 +2,8 @@
 package "vitro/engine/util"
 
 // Values
+pub fn base64_decode(String) -> Bytes?
+
 pub fn base64_encode(Bytes) -> String
 
 pub fn i64_to_i32_bits(Int64) -> Int

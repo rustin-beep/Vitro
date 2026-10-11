@@ -481,9 +481,26 @@ pub fn TypeChecker::check_array_dims_legality(
   loc : @source.SourceLoc,
 ) -> Unit {
   match ty {
-    Array(_, _, dims, _, is_vla, _) => {
+    Array(_, _, dims, _, is_vla, vla_dims) => {
       if is_vla {
-        return // VLA 维度运行时求值，另有边界检查
+        // #70 第一步（#64 v6 尾巴，2026-10-11）：VLA 维度表达式里的**裸
+        // 未声明标识符**（宏漏 define / 拼写错——const_int_of 折不出的
+        // Identifier）报 E3023 而非静默走到 codegen 判「不支持 VLA」——
+        // 真维度（已声明变量）不报，维持运行时求值路径
+        for dim_expr in vla_dims {
+          match dim_expr {
+            Identifier(name, dloc, _) =>
+              if self.lookup_var(name) is None && !self.funcs.contains(name) {
+                self.report_error(
+                  "未定义的标识符 '\{name}'（数组维度须为常量表达式或已声明的变量）",
+                  dloc,
+                  E3023_UndeclaredVar,
+                )
+              }
+            _ => ()
+          }
+        }
+        return // 其余 VLA 维度运行时求值，另有边界检查
       }
       let first = if dims.length() > 0 { dims[0] } else { -1 }
       if first < -1 {

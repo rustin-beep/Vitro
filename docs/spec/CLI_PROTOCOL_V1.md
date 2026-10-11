@@ -5,7 +5,7 @@
 > 归属：CLI 出口（`moonbit/cmd/*`——四薄壳 + `cmd/lib/cli` 逻辑层 + `cmd/vitro` 总入口）
 > 消费者：agent / shell 脚本 / 仓库防线（vm_diff、clang_direct 的标记行剥离器）/ 任何第三方
 > 关联规格：[`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md)——`--json` 模式的帧语义**引用不重复定义**（帧 = gateway 协议单源）
-> 最后核对日期：2026-10-04
+> 最后核对日期：2026-10-11（**#69 裁定批**——§1 补「混流是定义行为」显式裁定句；§8 冻结面前缀计数勘正六→八〔NOTE（10-04）/STDERR（10-10）两度补登未跟账〕。协议内容零变更，纯定性成文与勘误）
 
 本文档是 CLI 的**输出契约**：消费方按此解析，无需了解 MoonBit 内部。协议变更纪律与 StepPayload 同源：**标记行前缀与退出码语义只增不改**；新前缀/新事件 type 走追加。
 
@@ -47,6 +47,8 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 - **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
 - **文本模式 stdout 行尾为 CRLF**（Windows native 的 println 文本模式产物；`--json` 的 delta 为 LF）——仓库内消费方归一器已 `TrimRight(l,"\r")` 吸收；第三方按「程序输出原样」解析时须注意该平台差异（2026-10-04 二轮审 P3 登记）。
 - **note 通道内容经 stdout 同管道输出**（Latin-1 折回形态与程序 stdout 同族——中文在 Windows 控制台呈现 mojibake 属 stdout 通道已知形态；字节级归一由消费方处理）。
+
+**显式裁定（#69，2026-10-11）**：两类内容混流是 display 流的**定义行为，非缺陷**——`run`/`compile` 文本模式的 stdout 定位为人读展示流。下游需要纯程序 stdout 时走结构化出口：`--json`（§6——stdout/stderr/note 独立事件帧）或 serve `output.delta` 的 `stream:"stdout"` 通道；文本面对拍按下方剥离规则过滤，**该规则是契约而非建议**。程序输出恰以闭集前缀之一逐字开头（如 `printf("// NOTE x")`）在纯文本层不可分，属已接受的窄碰撞面（闭集精确匹配——实践上不可撞，但下游须知其存在）。
 
 **剥离规则（消费方实现要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。
 
@@ -124,6 +126,6 @@ Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_token
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀六种 / 退出码五值 / `--json` 事件 type 三种 + summary；
+- v1 冻结面：标记行前缀八种（NOTE〔10-04〕/STDERR〔10-10〕两度补登后本计数一度未跟，#69 勘正）/ 退出码五值 / `--json` 事件 type 三种 + summary；
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

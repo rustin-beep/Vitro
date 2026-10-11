@@ -41,6 +41,16 @@ if [ "$1" = "--backend" ] && [ -n "$2" ]; then
   fi
 fi
 
+# #70（2026-10-11）：--backend 尾置 fail loud——此前静默忽略（仅认 $1/$2
+# 位），尾置透传给子命令被当普通参数吞掉，曾致「native 复测」实跑 wasm
+# （#64 定责轮的方法错误根源）。rc=4 对齐协议用法错。
+for a in "$@"; do
+  if [ "$a" = "--backend" ]; then
+    echo "[vitro] 用法错: --backend 须紧随 vitro（如 vitro --backend native run …）——尾置会被子命令吞掉" >&2
+    exit 4
+  fi
+done
+
 if [ ! -f "$WASM_SHELL" ]; then
   run_native "wasm 壳不存在（scripts/vitro_cli/main.js）" "$@"
 fi

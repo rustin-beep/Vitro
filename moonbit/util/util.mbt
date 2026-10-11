@@ -181,3 +181,69 @@ pub fn utf8_text_partial(b : Bytes) -> String {
   }
   buf.to_string()
 }
+
+///|
+/// base64 标准字母表解码（#70 第二步，2026-10-11）：memory.dump 帧的
+/// bytes_base64 消费侧（CLI 文本模式 --dump-memory 走帧通路后需要）。
+/// 与 base64_encode 对偶；非法字符返 None（fail loud——帧数据自产，
+/// 出现非法即协议破损）。
+pub fn base64_decode(s : String) -> Bytes? {
+  fn val(c : Int) -> Int? {
+    if c >= 'A'.to_int() && c <= 'Z'.to_int() {
+      Some(c - 'A'.to_int())
+    } else if c >= 'a'.to_int() && c <= 'z'.to_int() {
+      Some(c - 'a'.to_int() + 26)
+    } else if c >= '0'.to_int() && c <= '9'.to_int() {
+      Some(c - '0'.to_int() + 52)
+    } else if c == '+'.to_int() {
+      Some(62)
+    } else if c == '/'.to_int() {
+      Some(63)
+    } else {
+      None
+    }
+  }
+  let n = s.length()
+  if n == 0 {
+    return Some(b"") // encode(b"") = "" 对偶（空映像）
+  }
+  if n % 4 != 0 {
+    return None
+  }
+  let cap = n / 4 * 3
+  let out : Array[Byte] = Array(capacity=cap)
+  let cs = s.to_array()
+  let mut i = 0
+  while i < n {
+    // 4 字符组（尾部 '=' 填充）
+    if i + 4 > n {
+      return None
+    }
+    let pad = if cs[i + 2] == '=' && cs[i + 3] == '=' {
+      2
+    } else if cs[i + 3] == '=' {
+      1
+    } else {
+      0
+    }
+    let v0 = val(cs[i].to_int())
+    let v1 = val(cs[i + 1].to_int())
+    let v2 = if pad == 2 { Some(0) } else { val(cs[i + 2].to_int()) }
+    let v3 = if pad >= 1 { Some(0) } else { val(cs[i + 3].to_int()) }
+    match (v0, v1, v2, v3) {
+      (Some(a), Some(b), Some(c), Some(d)) => {
+        let x = (a << 18) | (b << 12) | (c << 6) | d
+        out.push(((x >> 16) & 0xFF).to_byte())
+        if pad < 2 {
+          out.push(((x >> 8) & 0xFF).to_byte())
+        }
+        if pad < 1 {
+          out.push((x & 0xFF).to_byte())
+        }
+      }
+      _ => return None
+    }
+    i += 4
+  }
+  Some(Bytes::from_array(out))
+}

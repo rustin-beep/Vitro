@@ -85,8 +85,8 @@ jobs:
           set -e
           files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
           count=$(printf '%s\n' "$files" | grep -c .)
-          if [ "$count" -ne 13 ]; then
-            echo "FATAL: 期望 13 张规则真相源，实得 $count"
+          if [ "$count" -ne 14 ]; then
+            echo "FATAL: 期望 14 张规则真相源，实得 $count"
             printf '%s\n' "$files"
             exit 2
           fi

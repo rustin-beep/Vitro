@@ -67,5 +67,5 @@ trim_trailing_whitespace = false
 
 # jsonmbt 机器写回面（compact 再生无尾换行——AGENTS 纪律 13：漂移归
 # Teaching assets sync gate 管，本规则防 IDE 自动补尾换行再打爆同步闸）
-[moonbit/teaching/assets/suggestions.json]
+[moonbit/teaching/assets/*.json]
 insert_final_newline = false

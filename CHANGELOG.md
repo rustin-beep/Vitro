@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（审阅批处置：尾数进位归一 + Pos 常量折叠族三处 + protocol_frames 基线连坐，2026-10-11）
+
+- **尾数进位归一**（审阅 P1①）：format_e（本批引入）/format_g（既有）同病——format_fixed 四舍五入把尾数推上 10（9.999999→"10.000000"）未归一（999999.99→"10.000000e+05" 非 "1.000000e+06"）；判据在渲染后（结果以 "10" 打头 → exp+1 重算）；八行探针全同 clang；新边界锚+旧 A3 锚翻（999999.5 "1000000"→"1e+06"）。
+- **Pos 常量折叠族三处漏连坐**（审阅 P1②）：apply_unary_const（enum `+5` E1006 假阳性）/is_int_constant_expr（`case +7:` E3047）/const_int_value（下标，头注 E5 声称 Pos 实无顺修）；pconst.c 端到端双绿。
+- **protocol_frames 基线重冻**：DX③ truncated_bytes 字段的帧级连坐（本地验收清单漏该闸——CI 抓）；47 帧刷新三形态一致。
+- **病 118 登记**：E1004_UnsupportedOp 检查器 mb 侧零接线（全仓零 report_error）——fix_1004 修复在端到端不可达分支上，接线批激活。
+- **realloc (unsigned)-1 形态登记**：i32 域截断 vs clang size_t 64 位——32 位地址空间架构差（DIFF-PTR-4BYTE-01 同族）非缺陷；口径 743→744 勘正；ci.yml 14 张注同步。
+
 ### Added（DX 工具批——功能提案 6 条收口：P2/P4 尾/②/③，2026-10-11）
 
 - **P2 api 未知方法预检**：cli 层查 api_help 生成表（单源同 api help）→ rc=4 用法错（gateway 帧 rc=1 被 shell 误读编译错同码位）；双臂同形。

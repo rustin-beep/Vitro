@@ -41,7 +41,10 @@ test "format_g_oracle_truth" {
   assert_eq(format_g(0.00001, 6, false), "1e-05")
   assert_eq(format_g(1234567.0, 6, false), "1.23457e+06")
   assert_eq(format_g(1.5e-5, 6, false), "1.5e-05")
-  assert_eq(format_g(999999.5, 6, false), "1000000")
+  // 审阅 P1① 翻锚（2026-10-11）：舍入进位归一——999999.5 尾数被推上
+  // 10，exp 6≥prec 6 走指数段 → 1e+06（clang 真值；旧锚 "1000000"
+  // 锁的是进位未归一错形态，A3）
+  assert_eq(format_g(999999.5, 6, false), "1e+06")
   assert_eq(format_g(0.000123456, 6, false), "0.000123456")
   assert_eq(format_g(-1.5e-5, 6, false), "-1.5e-05")
   assert_eq(format_g(0.00001, 6, true), "1E-05", msg="大写 E")

@@ -868,14 +868,16 @@ fn expr_name_of(e : @ast.Expr) -> String {
 /// 整型常量表达式结构判定（#50 审阅 P1-1 修复：判据按语义不绑节点形态——
 /// `case -1:`/`case 1+2:` 是 Unary/Binary 包 Literal，原 Literal 单形态判据
 /// 假阳性拒合法 C〔Clang 干净〕）。结构递归不求值：字面量 / 一元
-/// Neg·Not·BitNot / 二元算术·位·移位（比较逻辑结果亦常量但 case 罕见，
+/// Neg·Not·BitNot·Pos（Pos 审阅 P1② 2026-10-11 补——一元 + 常量折叠
+/// 族漏连坐，`case +7:` 此前 E3047 假阳性）/ 二元算术·位·移位（比较逻辑结果亦常量但 case 罕见，
 /// 从最小集）；变量引用不在其列。求值域（W3051 越界比较）另走
 /// const_int_value——Binary 结构不求值（除零面留白）。
 fn is_int_constant_expr(e : @ast.Expr) -> Bool {
   match e {
     Literal(_, _, _) => true
     Unary(op, inner, _, _) =>
-      (op is Neg || op is Not || op is BitNot) && is_int_constant_expr(inner)
+      (op is Neg || op is Not || op is BitNot || op is Pos) &&
+      is_int_constant_expr(inner)
     Binary(op, l, r, _, _) =>
       is_const_int_binary_op(op) &&
       is_int_constant_expr(l) &&
@@ -913,6 +915,10 @@ fn const_int_value(e : @ast.Expr) -> Int? {
           Some(v) => Some(-v)
           None => None
         }
+      } else if op is Pos {
+        // 审阅 P1②/E5（#71，2026-10-11）：头注声称「Literal/Neg/Pos 三形」
+        // 实无 Pos 分支——补齐（恒等透传）
+        const_int_value(inner)
       } else if op is Not {
         // ~（按位取反）一元常量：求值按 C 整型提升语义 ~v = -v - 1
         match const_int_value(inner) {

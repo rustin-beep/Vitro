@@ -473,7 +473,14 @@ fn format_g(val : Double, prec : Int, upper : Bool) -> String {
   }
   let prec = if prec < 1 { 1 } else { prec }
   let abs_val = if val < 0.0 { -val } else { val }
-  let exp = @math.floor(@math.log10(abs_val)).to_int()
+  let exp0 = @math.floor(@math.log10(abs_val)).to_int()
+  // 审阅 P1①（#71）：舍入进位归一（同 format_e——尾数被 format_fixed
+  // 推上 10 时 exp+1 重算；%g 999999.99 → 1e+06 非 1000000）
+  // 进位归一（同 format_e——判渲染结果而非原始尾数）
+  let mantissa_probe = trim_trailing_zeros_and_dot(
+    format_fixed(abs_val / powi10(exp0), prec - 1),
+  )
+  let exp = if mantissa_probe.has_prefix("10") { exp0 + 1 } else { exp0 }
   let e_char = if upper { "E" } else { "e" }
   let result = if exp < -4 || exp >= prec {
     let mantissa = abs_val / powi10(exp)
@@ -525,10 +532,23 @@ fn format_e(val : Double, prec : Int, upper : Bool) -> String {
     return "\{sign}0\{frac}\{e_char}+00"
   }
   let abs_val = if val < 0.0 { -val } else { val }
-  let exp = @math.floor(@math.log10(abs_val)).to_int()
-  let mantissa = abs_val / powi10(exp)
+  let exp0 = @math.floor(@math.log10(abs_val)).to_int()
+  let mantissa0 = abs_val / powi10(exp0)
+  // 审阅 P1① 修正（#71，2026-10-11）：舍入后尾数 ≥10 的进位归一——
+  // 999999.99 的 log10 尾数落在边界下，format_fixed 四舍五入把尾数推上
+  // 10（"10.000000e+05"），须 exp+1 重算尾数（clang "1.000000e+06"）；
+  // format_g 同病同修（%g 999999.99 → "1000000" 非 "1e+06" 同根）。
   let pr = precision_default6(prec)
-  "\{sign}\{format_fixed(mantissa, pr)}\{e_char}\{fmt_exp_signed(exp)}"
+  let s0 = format_fixed(mantissa0, pr)
+  // 进位归一：四舍五入把尾数推上 10（9.999999→"10.000000"）时
+  // exp+1 重算（mantissa0 本身 <10——判据须在渲染后，审阅 P1① 处方）
+  if s0.has_prefix("10") {
+    let exp1 = exp0 + 1
+    let m1 = abs_val / powi10(exp1)
+    "\{sign}\{format_fixed(m1, pr)}\{e_char}\{fmt_exp_signed(exp1)}"
+  } else {
+    "\{sign}\{s0}\{e_char}\{fmt_exp_signed(exp0)}"
+  }
 }
 
 ///|

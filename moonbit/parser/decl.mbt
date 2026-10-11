@@ -940,6 +940,9 @@ fn apply_unary_const(op : @ast.UnaryOp, v : Int64) -> Int64? {
   match op {
     // U1#9：取负 checked——Int64::MIN 取负回绕成自身，溢出 None
     @ast.UnaryOp::Neg => if v == I64_MIN { None } else { Some(-v) }
+    // 审阅 P1②（#71，2026-10-11）：一元 + 常量恒等（enum { A = +5 } 此前
+    // E1006 假阳性——病 39 的常量求值族漏连坐）
+    @ast.UnaryOp::Pos => Some(v)
     @ast.UnaryOp::BitNot => Some(v.lnot())
     @ast.UnaryOp::Not => if v == 0 { Some(1) } else { Some(0) }
     _ => None

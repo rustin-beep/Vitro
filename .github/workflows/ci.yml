@@ -432,8 +432,8 @@ jobs:
           name: build-products
           path: moonbit/_build
       # CI 首跑补线（2026-10-11）：protocol_frames wasm 臂读 rules.json
-      #（13 张 jsonmbt 再生面之一——gates-native/demo 已有此前置，本 job
-      # 漏配同族断供）。build jsonmbt + regen 两步最小面。
+      #（14 张 jsonmbt 再生面之一〔#67 批 13→14——gen_api_help/rules〕
+      # ——gates-native/demo 已有此前置，本 job 漏配同族断供）。
       - name: Build jsonmbt (rules regenerator)
         shell: bash
         run: |

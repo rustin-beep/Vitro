@@ -138,8 +138,8 @@ Rust oracle 的实测数字：
 ## 验证
 
 ```bash
-moon check && moon test    # 739 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 739 + 根 README doc test 0）
-                           # native-only 包测试 124 个（fs 9 / gateway 101 / cli 14）；`--target native` 全量 863（CI 门禁口径）
+moon check && moon test    # 741 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 741 + 根 README doc test 0）
+                           # native-only 包测试 124 个（fs 9 / gateway 101 / cli 14）；`--target native` 全量 865（CI 门禁口径）
 moon info                  # .mbti 接口面（API 变更信号）
 moon info                  # .mbti 接口面（API 变更信号）
 moon info                  # .mbti 接口面（API 变更信号）

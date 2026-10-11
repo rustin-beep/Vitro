@@ -278,3 +278,39 @@ test "check_array_dims_e3023_subtree_issue_p2" {
   )
   assert_eq(tc3.errors.length(), 0, msg="已声明变量不误伤")
 }
+
+///|
+/// 审阅 P1② 锚（2026-10-11）：一元 + 的常量求值族三面——enum 初始化器
+///（parser apply_unary_const）/ case 标签常量性（is_int_constant_expr）/
+/// 常量下标求值（const_int_value）。修复前 `enum { A = +5 }` E1006、
+/// `case +7:` E3047 假阳性（clang 双过）；pconst.c 端到端双绿。
+test "unary_pos_constant_fold_review_p1b" {
+  let loc = @source.SourceLoc::new(1, 1)
+  fn pos_of(inner : @ast.Expr) -> @ast.Expr {
+    @ast.Expr::Unary(@ast.UnaryOp::Pos, inner, loc, @ast.Type::int())
+  }
+  // case 标签常量性：+7 与 -1/1+2 同列
+  assert_true(
+    is_int_constant_expr(pos_of(@ast.Expr::Literal(7, loc, @ast.Type::int()))),
+    msg="case +7: 须常量",
+  )
+  // 常量下标求值：a[+7] → Some(7)
+  assert_eq(
+    const_int_value(pos_of(@ast.Expr::Literal(7, loc, @ast.Type::int()))),
+    Some(7),
+  )
+  // 嵌套形态：+(-5)
+  assert_eq(
+    const_int_value(
+      pos_of(
+        @ast.Expr::Unary(
+          @ast.UnaryOp::Neg,
+          @ast.Expr::Literal(5, loc, @ast.Type::int()),
+          loc,
+          @ast.Type::int(),
+        ),
+      ),
+    ),
+    Some(-5),
+  )
+}

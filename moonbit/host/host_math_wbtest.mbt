@@ -154,3 +154,22 @@ test "format_e_and_g_negzero_issue71_b21_b22" {
   assert_eq(format_g(0.00001, 6, false), "1e-05")
   assert_eq(format_g(100000.0, 6, false), "100000")
 }
+
+///|
+/// 审阅 P1① 锚（2026-10-11）：尾数舍入进位归一——format_fixed 四舍五入
+/// 把尾数推上 10 时 exp+1 重算。真值 clang 实测（tmp/i71_t1/pfmt.c 八行
+/// 全同）；改判据此锚红（注入前 7/8 分叉、全量 154/154 仍绿=锚零覆盖）。
+test "format_e_g_carry_normalization_review_p1a" {
+  // 999999.99：尾数 9.9999999 → prec6 舍入上 10 → 归一 1.000000e+06
+  assert_eq(format_e(999999.99, 6, false), "1.000000e+06")
+  // %.0e 9.5：half-even 9.5→10 → 1e+01
+  assert_eq(format_e(9.5, 0, false), "1e+01")
+  // %.2e 999.999：9.99999→10.00 → 1.00e+03
+  assert_eq(format_e(999.999, 2, false), "1.00e+03")
+  // %g 同根：999999.99 → 1e+06（非 1000000）
+  assert_eq(format_g(999999.99, 6, false), "1e+06")
+  assert_eq(format_g(999.999, 3, false), "1e+03")
+  // 回归面：非边界形态不回退
+  assert_eq(format_e(1.5, 6, false), "1.500000e+00")
+  assert_eq(format_g(100000.0, 6, false), "100000")
+}

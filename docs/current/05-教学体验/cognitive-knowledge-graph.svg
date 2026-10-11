@@ -66,6 +66,6 @@
 <text class="t" x="1010" y="546" text-anchor="middle">递归 Recursion</text>
 <rect class="warn" x="160" y="660" width="880" height="100" rx="12"/>
 <text class="t" x="600" y="696" text-anchor="middle">学生遇错 / 浏览代码 → 动态激活相关概念子图，展示知识间关联</text>
-<text class="tc" x="600" y="722" text-anchor="middle">现有基础：error_catalog 中文解释 · 7 种 AST 模式识别 ·</text>
-<text class="tc" x="600" y="748" text-anchor="middle">模板 meta.yaml 的 knowledge_nodes 标注</text>
+<text class="tc" x="600" y="722" text-anchor="middle">现有基础：error_catalog 中文解释 · 7 种 AST 模式识别</text>
+<text class="tc" x="600" y="748" text-anchor="middle">（模板 knowledge_nodes 标注已随 #40 作废——如需概念标注走 diagnostics 域）</text>
 </svg>

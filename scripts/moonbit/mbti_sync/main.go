@@ -31,6 +31,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -292,11 +293,70 @@ func main() {
 	}
 
 	r, n := check(root, rd)
+
+	// #43（2026-10-11）：完备性断言——非 executable / foreign_library 的包
+	// 必须存在 pkg.generated.mbti。此前判据只有「跑 moon info 前后快照不变」，
+	// 对**从未生成过**的包永远绿（#43 实锤：gateway 因 canonical backend=wasm
+	// 且 supported_targets 不含 wasm 被 moon info 跳过——.mbti 从不存在而闸恒绿）。
+	// 豁免表：结构性不可生成的包在此显式登记（精确理由）。
+	var mbtiExempt = map[string]string{
+		"vitro/engine/gateway":     "moon info 跳过：canonical backend=wasm 而该包 supported_targets=+wasm-gc+native 不含 wasm——mbti 无生成通道，#43 豁免裁定",
+		"vitro/engine/cmd/lib/cli": "同病（完备性断言首跑抓出）：supported_targets=native + canonical backend=wasm 被 moon info 跳过。注：fs 同为 native-only 却有 .mbti（d29a3470 手工生成入库）——两形态并存印证通道缺失而非按 target 判定",
+	}
+	missing := mbtiCompleteness(root, mbtiExempt)
+	if len(missing) > 0 {
+		for _, m := range missing {
+			fmt.Println("mbti_sync: [完备性] 缺接口面: " + m)
+		}
+		fatal("非 executable/foreign_library 包缺 pkg.generated.mbti（从未生成——快照不变量对此恒绿；生成或登记豁免）")
+	}
+
 	if r.isEmpty() {
-		fmt.Printf("mbti_sync: PASS——%d 个接口面文件与实现同步（moon info 零变化）\n", n)
+		fmt.Printf("mbti_sync: PASS——%d 个接口面文件与实现同步（moon info 零变化）+ 完备性豁免 %d 包\n", n, len(mbtiExempt))
 		return
 	}
 	report(r)
 	fmt.Println("mbti_sync: FAIL——接口面与实现脱节；请跑 `cd moonbit && moon info` 并提交 .mbti 变更")
 	os.Exit(1)
+}
+
+// mbtiCompleteness：扫描 moonbit/ 下全部 moon.pkg——非 executable /
+// foreign_library 的包目录必须存在 pkg.generated.mbti（豁免表命中放行）。
+func mbtiCompleteness(root string, exempt map[string]string) []string {
+	var missing []string
+	base := filepath.Join(root, "moonbit")
+	filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(base, path)
+		for _, seg := range strings.Split(rel, string(filepath.Separator)) {
+			if seg == "_build" || seg == ".mooncakes" {
+				return filepath.SkipDir
+			}
+		}
+		if d.IsDir() || d.Name() != "moon.pkg" {
+			return nil
+		}
+		dir := filepath.Dir(path)
+		relDir, _ := filepath.Rel(base, dir)
+		pkgPath := "vitro/engine/" + filepath.ToSlash(relDir)
+		if _, ok := exempt[pkgPath]; ok {
+			return nil
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		s := string(raw)
+		if strings.Contains(s, "pkgtype(kind: \"executable\")") ||
+			strings.Contains(s, "pkgtype(kind: \"foreign_library\")") {
+			return nil
+		}
+		if _, err := os.Stat(filepath.Join(dir, "pkg.generated.mbti")); err != nil {
+			missing = append(missing, pkgPath+"（moon.pkg 无 .mbti 且不在豁免表）")
+		}
+		return nil
+	})
+	return missing
 }

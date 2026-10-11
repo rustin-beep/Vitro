@@ -658,7 +658,7 @@ pub fn VirtualFileSystem::write_direct(
     for b in data {
       if b == b'
 ' {
-        data_to_write.push(b'')
+        data_to_write.push(b'\x0d')
         data_to_write.push(b'
 ')
       } else {

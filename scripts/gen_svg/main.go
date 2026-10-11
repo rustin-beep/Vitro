@@ -421,8 +421,8 @@ func genKG(root string, _ factsDoc) {
 	P = append(P,
 		box(160, 660, 880, 100, "warn", 12),
 		textF(600, 696, "t", "学生遇错 / 浏览代码 → 动态激活相关概念子图，展示知识间关联", ""),
-		textF(600, 722, "tc", "现有基础：error_catalog 中文解释 · 7 种 AST 模式识别 ·", ""),
-		textF(600, 748, "tc", "模板 meta.yaml 的 knowledge_nodes 标注", ""),
+		textF(600, 722, "tc", "现有基础：error_catalog 中文解释 · 7 种 AST 模式识别", ""),
+		textF(600, 748, "tc", "（模板 knowledge_nodes 标注已随 #40 作废——如需概念标注走 diagnostics 域）", ""),
 	)
 	writeSVG(root, "docs/current/05-教学体验/cognitive-knowledge-graph.svg", P)
 }

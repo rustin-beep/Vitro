@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（DX 工具批——功能提案 6 条收口：P2/P4 尾/②/③，2026-10-11）
+
+- **P2 api 未知方法预检**：cli 层查 api_help 生成表（单源同 api help）→ rc=4 用法错（gateway 帧 rc=1 被 shell 误读编译错同码位）；双臂同形。
+- **② fix_suggestion 文本模式带出**：新标记行前缀 **`// FIX`**（warning/error 级非空即出紧随诊断行；spec 前缀计数 8→10）；此前仅 --json 帧可见，学生最常用面只能看不能修；双臂同形由 smoke 对拍锁。
+- **③ output.delta 截断显式位**：帧字段追加 **`truncated_bytes`**（按 stream 通道分域、display=两通道和）——环形丢最旧此前仅靠本身可被再丢的截断注记。
+- **P4 尾 spec 登记**：rc 表 4 号位 io 码位细分（-i 不可读/dump-memory 写失败/预检）+ api 预检语义；**P6 销案**（文本 warning 双臂已透——评估时点过时，协议版本化面不动）。
+- 连坐三笔：smoke A 组锚翻（bogus.method rc 1→4 旧形态）；vm_diff/clang_direct 标记行提取器补 `// FIX ` 前缀（97 例 known digest 假红——诊断伴生行不进程序输出对拍）；wasm 壳 error 臂 Edit 断锚由双臂对拍抓出。
+
 ### Added（「存在即接入」注册表闸——msime run-checks 形态 Vitro 化，2026-10-11）
 
 - **`scripts/ci_checklist`**：scripts 驱动集（文件系统单源：含 package main 的目录）↔ ci.yml 活行集（go run ./scripts/... 含 matrix 模板静态展开与单文件 .go 归一）**三向对账**——漏登记（驱动存在零活行=libc_boot 断供类红的事前形态）/ 悬空（活行引用不存在驱动）/ 僵尸例外（例外条目被活行引用=双向监控）全红；例外表 exceptions.json 每条 reason 必填（三类合法形态：库目录/本地工具/CLI 资产）。J9 三向证红在案（临时驱动目录/ghost 活行/vm_diff 假例外）。已接线 CI hygiene；AGENTS 纪律 8.5 连坐。

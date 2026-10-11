@@ -139,11 +139,15 @@ function renderDiagnostics(result, out) {
       } else {
         w.write(`// COMPILE-ERROR ${d.code} ${d.line}:${d.column} ${d.message}\n`);
       }
+      // DX ②（#71 工具批）：error 级 fix_suggestion 带出（与 native 同形）
+      if (d.fix_suggestion) w.write(`// FIX ${d.fix_suggestion}\n`);
     }
   }
   for (const d of result.diagnostics || []) {
     if (d.severity === "warning") {
       w.write(`// COMPILE-WARNING ${d.code} ${d.line}:${d.column} ${d.message}\n`);
+      // DX ②（#71 工具批）：fix_suggestion 带出（与 native render_diag_frame 同形）
+      if (d.fix_suggestion) w.write(`// FIX ${d.fix_suggestion}\n`);
     }
   }
   for (const d of result.diagnostics || []) {
@@ -490,6 +494,14 @@ async function cmdApi(args) {
   }
   if (!params.startsWith("{")) {
     die(`用法错: params 须为 JSON 对象字面量，得到 '${params}'`, 4);
+  }
+  // DX P2（#71 工具批）：未知方法预检 rc=4（native 同款——名单单源
+  // api_help.json，与 gateway dispatch 权威源同形锁）
+  if (API_HELP.detail[method] === undefined) {
+    die(
+      `用法错: 未知方法 '${method}'（rc=4 用法错，非协议内失败；api help 看方法清单）`,
+      4,
+    );
   }
   const resp = inv(method, JSON.parse(params));
   process.stdout.write(JSON.stringify(resp) + "\n");

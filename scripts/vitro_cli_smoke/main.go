@@ -134,7 +134,9 @@ func main() {
 		{"compile trap 源（编译面=0）", []string{"compile", trapC}, 0},
 		{"step 正常", []string{"step", plainC}, 0},
 		{"api 单帧 ok", []string{"api", "capabilities"}, 0},
-		{"api 单帧 ok:false", []string{"api", "bogus.method"}, 1},
+		// DX P2（2026-10-11）：未知方法 cli 预检 rc=4（用法错）——旧锚 1
+		// 是 gateway 帧协议内失败码位（shell 会误读编译错同码），翻锚
+		{"api 单帧 ok:false", []string{"api", "bogus.method"}, 4},
 	} {
 		_, rc := runOut(nodeBin, append([]string{shell}, c.argv...)...)
 		if rc != c.want {

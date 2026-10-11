@@ -114,6 +114,16 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
     )
     return 4
   }
+  // DX P2（#71 工具批，2026-10-11）：未知方法名 cli 层预检 rc=4——此前
+  // 落 gateway 报「未知方法」帧 rc=1，shell 脚本会把 rc=1 误读成协议内
+  // 失败（compile 错同码位）；名单单源 = gateway dispatch 权威源生成的
+  // api_help_detail（None=未知——与 api help 出口同表，禁第二份手抄）。
+  if @gateway.api_help_detail(method_name) is None {
+    println(
+      "用法错: 未知方法 '\{method_name}'（rc=4 用法错，非协议内失败；api help 看方法清单）",
+    )
+    return 4
+  }
   let resp = @gateway.invoke(
     "{\"id\":1,\"method\":\"\{method_name}\",\"params\":\{params}}",
   )

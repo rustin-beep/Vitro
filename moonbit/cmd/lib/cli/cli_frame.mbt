@@ -75,9 +75,22 @@ fn render_diag_frame(frame : Json) -> Bool {
             } else {
               println("// COMPILE-ERROR \{code} \{line}:\{col} \{msg}")
             }
+            // DX ②：同 warning 臂——error 级修复建议带出
+            let fix = jstr(jfield(d, "fix_suggestion"))
+            if fix != "" {
+              println("// FIX \{fix}")
+            }
           }
-          "warning" =>
+          "warning" => {
             println("// COMPILE-WARNING \{code} \{line}:\{col} \{msg}")
+            // DX ②（#71 工具批，2026-10-11）：fix_suggestion 文本模式带出
+            //（新前缀 FIX——协议「前缀只增不改」追加面；此前仅 --json 帧
+            // 可见，学生最常用面只能看不能修）
+            let fix = jstr(jfield(d, "fix_suggestion"))
+            if fix != "" {
+              println("// FIX \{fix}")
+            }
+          }
           "hint" => println("// COMPILE-HINT \{code} \{line}:\{col} \{msg}")
           _ => ()
         }

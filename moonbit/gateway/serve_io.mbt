@@ -124,5 +124,14 @@ fn serve_output_delta_frame(
   m.set("cursor", total.to_json())
   m.set("total", total.to_json())
   m.set("stream", Json::string(stream_name))
+  // DX ③（#71 工具批，2026-10-11）：环形丢弃显式位——16MB/8MB 预算触顶
+  // 丢最旧此前仅截断注记可见（注记本身可被再丢），帧级 dropped 计数
+  // 让消费方判「输出不完整」不靠猜。协议面=帧字段追加（只增不改纪律）。
+  let dropped = match kind_opt {
+    Some(@host.OutputKind::Note) => s.vm.output.note_dropped_bytes()
+    Some(_) => s.vm.output.dropped_bytes()
+    None => s.vm.output.dropped_bytes() + s.vm.output.note_dropped_bytes()
+  }
+  m.set("truncated_bytes", dropped.to_json())
   (serve_ok(id, Json::object(m)).stringify(), false)
 }

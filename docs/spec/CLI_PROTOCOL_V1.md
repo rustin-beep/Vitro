@@ -60,7 +60,7 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 | 1 | 编译错误（四阶段任一） |
 | 2 | trap（受检终止） |
 | 3 | 步数超限（trap 形态按步数事实判——`vm.step_count >= vm.max_steps`） |
-| 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误） |
+| 4 | 用法/IO 错（文件不存在、参数不合法、未知子命令；**未收拢命令**（`dump-*`/`serve`）的分派提示也归此类——命令名合法但本入口不承载，属用法指导非执行错误。**IO 码位细分登记（DX P4，2026-10-11）**：`run -i` 输入文件不可读、`--dump-memory` 写盘失败、api 未知方法名预检均落此码——fail loud 文案 + rc=4，不再静默吞/误归协议内失败） |
 
 历史注：Rust oracle CLI 的 trap 退出码 = 1（与编译错混淆）——本表为 mb 侧有意规范化（#37 超越项）。**步数超限判定口径（2026-10-04 审阅 P3 统一）**：`run` 文本 = 引擎事实（`vm.step_count >= vm.max_steps`）；`run --json` = 帧结构位（`steps_executed` 恰等 max_steps——实测超限到达即停）；`step` = trap_message 的引擎固定文案前缀「程序执行步数超过限制」（帧无结构化步数位——该文案是引擎格式字符串，变更连坐 cli_step 判定）。
 
@@ -92,6 +92,7 @@ vitro api <method> [params-json]
 
 - **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把 21+4 方法全部拉平为「一行命令」）；响应帧 stdout 原样直出；
 - params 缺省 `{}`；非 JSON 对象字面量 → 用法错 rc=4（fail loud）；
+- **未知方法名预检（DX P2，2026-10-11）**：cli 层先行查生成方法表（单源同 api help——`api_help_gen.mbt` / `api_help.json`），未知 → rc=4 用法错（不再落 gateway「未知方法」帧的 rc=1——shell 会把 1 误读为协议内失败/编译错同码位）；已知方法照常 invoke；
 - 退出码：0=帧 `ok:true` / **1=帧 `ok:false`（协议内错误统一——含编译错/trap 报错帧，api 是透传层不细分语义）** / 4=用法错；
 - **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；
 - 单帧形态会话态：每次 api 调用独立进程会话（跨调用不保留——会话场景走 --batch 或 serve 长会话）；
@@ -127,6 +128,7 @@ Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_token
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀八种（NOTE〔10-04〕/STDERR〔10-10〕两度补登后本计数一度未跟，#69 勘正）/ 退出码五值 / `--json` 事件 type 三种 + summary；
+- v1 冻结面：标记行前缀**十种**（NOTE〔10-04〕/STDERR〔10-10〕两度补登后本计数一度未跟，#69 勘正；**FIX〔10-11，DX ②**——诊断行后随修复建议行，warning/error 级 fix_suggestion 非空时输出**〕后再+1）/ 退出码五值 / `--json` 事件 type 三种 + summary；
+- **output.delta 帧字段追加（DX ③，2026-10-11）**：`truncated_bytes`（int，环形丢弃累计——16MB/8MB 预算触顶丢最旧的显式位，0=完整；按 stream 通道分域，display=两通道之和）。消费方判「输出不完整」不再依赖可被再丢的截断注记。
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

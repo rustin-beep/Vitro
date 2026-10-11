@@ -216,3 +216,65 @@ test "resolve_index_shapes" {
   assert_eq(tc.errors.length(), 2)
   assert_true(tc.errors[1].code == 3040)
 }
+
+///|
+/// 审阅批 P2 锚（2026-10-11，E3023 判据绑形态）：VLA 维度表达式的
+/// 未声明标识符检查须按**语义**扫子树——`int a[N + 1];`（顶层 Binary）
+/// 与 `int a[N];`（顶层 Identifier）同报 E3023，而非静默漏到 codegen
+/// 的无码错误。红→绿锚（修复前 Binary 形态零诊断）。
+test "check_array_dims_e3023_subtree_issue_p2" {
+  let loc = @source.SourceLoc::new(2, 9)
+  fn vla_ty(dim : @ast.Expr) -> @ast.Type {
+    @ast.Type::Array(@ast.Type::int(), 0, [0], false, true, [dim])
+  }
+  // 顶层 Identifier：基线形态（#70 已修——回归锚）
+  let tc1 = TypeChecker::new()
+  tc1.check_array_dims_legality(
+    vla_ty(@ast.Expr::Identifier("N", loc, @ast.Type::void_type())),
+    false,
+    loc,
+  )
+  assert_eq(tc1.errors.length(), 1)
+  assert_true(tc1.errors[0].code == 3023)
+  // 顶层 Binary（N + 1）：审阅 P2 红锚——修复前判据只 match Identifier
+  let tc2 = TypeChecker::new()
+  tc2.check_array_dims_legality(
+    vla_ty(
+      @ast.Expr::Binary(
+        Add,
+        @ast.Expr::Identifier("N", loc, @ast.Type::void_type()),
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    false,
+    loc,
+  )
+  assert_eq(tc2.errors.length(), 1, msg="Binary 维度须报 E3023")
+  assert_true(tc2.errors[0].code == 3023)
+  // 已声明变量维度：不误伤（真 VLA 运行时求值路径）
+  let tc3 = TypeChecker::new()
+  tc3.enter_scope()
+  tc3.declare_var(
+    "N",
+    @ast.Type::int(),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc3.check_array_dims_legality(
+    vla_ty(
+      @ast.Expr::Binary(
+        Add,
+        @ast.Expr::Identifier("N", loc, @ast.Type::void_type()),
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    false,
+    loc,
+  )
+  assert_eq(tc3.errors.length(), 0, msg="已声明变量不误伤")
+}

@@ -175,6 +175,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install MoonBit toolchain (driver-embedded moon run)
         if: ${{ !matrix.needs_artifact }}
+      - uses: actions/download-artifact@v4
+        if: ${{ matrix.needs_artifact }}
+        with:
+          name: build-products
+          path: moonbit/_build
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -226,6 +231,99 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      # 拆批修复（2026-10-11 CI 实锤）：rules.json 不入仓（jsonmbt 真源
+      # 纪律 13——.json 由本段再生），libc_boot 断供即此。regen 三步前置。
+      - name: Install MoonBit toolchain (differential anchors)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+
+      # ── .json.mbt 静态门禁（jsonmbt 批 C，2026-10-07；合流批改 scripts
+      # 自立 workspace——仓根 moon.work 会让 moonbit 产物搬仓根且路径加
+      # `vitro/engine/` 前缀，壳/防线消费面全断【实测亲历】，故 moonbit
+      # 保持原生单模块、scripts 自带 moon.work members=["."]）─────────
+      #
+      # scripts 侧 11 个包（各自带 moon.pkg）装着 .json.mbt 真相源——
+      # **这是 .json.mbt 的核心增量**：类型错 / 字段名错 / 字段缺失在编译期红
+      # （[4014] / [4044] / [4091]），而写坏的 .json 照样能通过下游 Go 闸门。
+      # 换言之：真相源选 .json.mbt 而非 .json 的 buying reason 就在这一步，
+      # 删掉它等于只换载体不换保护。
+      #
+      # 实测（2026-10-07，本地 Windows 复现，逐张注入验证 11/11 覆盖）：
+      #   moon build 不检查孤立包（注入类型错仍 rc=0）
+      #   moon check 覆盖 → 每张 .json.mbt 注入跨类型错误均 rc=127
+      # 已知非致命面：`module` 是 moon 保留字 → Warning（rc 仍 0），该字段名
+      # 来自 rules.json 的数据键，不可改（改了破坏 build 产物键名）。
+      #
+      # 刻意**不加** `moon fmt --check`：workspace 模式下它会 diff 全部成员，实测
+      # 因 `moonbit/codegen/addr.mbt` 既存缩进未归一而 rc=127（与本批无关）。
+      # 格式归一靠本地 `moon fmt scripts`（限定成员，不误伤 moonbit）。
+      - name: ".json.mbt static gate (scripts 自立 workspace)"
+        shell: bash
+        run: cd scripts && moon check
+
+      # ── jsonmbt 真相源再生（2026-10-07，.json.mbt 迁移批②）────────────
+      # 11 张 rules.json 已翻转为 .json.mbt 唯一真相源（原 .json 从索引删除 +
+      # .gitignore 遮蔽防误提交）；下游生成器闸门消费 .json，故在此统一再生
+      # ——**消费方零改动**。.json.mbt 非法即本步红（J1001 系），且 --pretty
+      # 是硬要求：原 .json 为 Go json.Encoder SetIndent 形态，紧凑输出会让
+      # 按字节锚定的对账漂移。
+      #
+      # exe 来源 = clone jsonmbt 仓现构建。这不是"未完成的过渡"而是**主动
+      # 选择**：工具捏在自己手里、Vitro 侧又是找问题的试验田，拉 master 即时
+      # 生效（改完 jsonmbt 推上去，本 CI 立刻用上）。代价是每次约 40 秒编译。
+      # 详见 docs/current/07-质量与裁定/20261007_jsonmbt真相源迁移.md
+      - name: Build jsonmbt (truth-source regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          # 干净 runner 上 registry index 未初始化时直接 build 必失败
+          # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
+          # moonbitlang/parser·lexer·x 全部 "module was not found in the
+          # registry"，stderr 另给三行 `you may need to run moon update`，
+          # 本步 rc=127）。Vitro 侧其余 moon 步骤踩不到是因为依赖面不同：
+          # scripts/moon.mod 只有 name（零依赖），moonbit 侧依赖 moonbitlang/core
+          # 已随工具链安装 bundle。moon update = 「Update the package registry
+          # index」，即补上本 runner 缺失的 index。
+          moon update
+          MOON_CC=clang moon build --target native --release
+          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
+
+      - name: Regenerate truth-source JSON (.json.mbt -> .json)
+        # 清单由索引自枚举，不再手抄：2026-10-08 run 37733072522 实证手抄清单
+        # 漏了 perf_budget（当时写 10 张，注释还把 perf_budget 算进 "core 下游
+        # 8 闸门"），hygiene 的 perf_budget -check 遂在缺 rules.json 时
+        # FATAL 读规则失败、整 run 红。
+        # 命中面 = 10 张 rules.json.mbt + 1 张 host_route_rules.json.mbt
+        #   + 手写面第二批两落（teaching_annotation_diff / demo_ui_lint，
+        #     2026-10-09 refs #47）= 13；另有 5 张 golden_digest.json.mbt，
+        #   其 .json 是入仓基线、不在此再生（故本清单按 `rules` 命名取面，
+        #   不用全量 *.json.mbt）。
+        # 计数断言失败即红——增删真相源而未同步此处，不得静默通过
+        #   （2026-10-09 run 37883006515 实证：两落批加 2 张未同步断言，
+        #   本步 `期望 11 实得 13` FATAL——断言牙真实咬合）。
+        #   2026-10-11 #67：13→14（gen_api_help/rules.json.mbt——api help
+        #   生成器的简介/示例手写面）。
+        shell: bash
+        run: |
+          set -e
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 14 ]; then
+            echo "FATAL: 期望 14 张规则真相源，实得 $count"
+            printf '%s\n' "$files"
+            exit 2
+          fi
+          # 路径无空格，刻意按空白词拆分：`printf | while` 会把循环放进子 shell，
+          # 循环内失败不会终止脚本；`for` + `set -e` 才是直接生效的 fail-loud 形态。
+          for m in $files; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
+
       - uses: actions/download-artifact@v4
         with:
           name: build-products
@@ -320,6 +418,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Node 25
+      - name: Install MoonBit toolchain
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
         uses: actions/setup-node@v4
         with:
           node-version: "25"
@@ -822,6 +926,97 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Node 25
+      - name: Install MoonBit toolchain (differential anchors)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+
+      # ── .json.mbt 静态门禁（jsonmbt 批 C，2026-10-07；合流批改 scripts
+      # 自立 workspace——仓根 moon.work 会让 moonbit 产物搬仓根且路径加
+      # `vitro/engine/` 前缀，壳/防线消费面全断【实测亲历】，故 moonbit
+      # 保持原生单模块、scripts 自带 moon.work members=["."]）─────────
+      #
+      # scripts 侧 11 个包（各自带 moon.pkg）装着 .json.mbt 真相源——
+      # **这是 .json.mbt 的核心增量**：类型错 / 字段名错 / 字段缺失在编译期红
+      # （[4014] / [4044] / [4091]），而写坏的 .json 照样能通过下游 Go 闸门。
+      # 换言之：真相源选 .json.mbt 而非 .json 的 buying reason 就在这一步，
+      # 删掉它等于只换载体不换保护。
+      #
+      # 实测（2026-10-07，本地 Windows 复现，逐张注入验证 11/11 覆盖）：
+      #   moon build 不检查孤立包（注入类型错仍 rc=0）
+      #   moon check 覆盖 → 每张 .json.mbt 注入跨类型错误均 rc=127
+      # 已知非致命面：`module` 是 moon 保留字 → Warning（rc 仍 0），该字段名
+      # 来自 rules.json 的数据键，不可改（改了破坏 build 产物键名）。
+      #
+      # 刻意**不加** `moon fmt --check`：workspace 模式下它会 diff 全部成员，实测
+      # 因 `moonbit/codegen/addr.mbt` 既存缩进未归一而 rc=127（与本批无关）。
+      # 格式归一靠本地 `moon fmt scripts`（限定成员，不误伤 moonbit）。
+      - name: ".json.mbt static gate (scripts 自立 workspace)"
+        shell: bash
+        run: cd scripts && moon check
+
+      # ── jsonmbt 真相源再生（2026-10-07，.json.mbt 迁移批②）────────────
+      # 11 张 rules.json 已翻转为 .json.mbt 唯一真相源（原 .json 从索引删除 +
+      # .gitignore 遮蔽防误提交）；下游生成器闸门消费 .json，故在此统一再生
+      # ——**消费方零改动**。.json.mbt 非法即本步红（J1001 系），且 --pretty
+      # 是硬要求：原 .json 为 Go json.Encoder SetIndent 形态，紧凑输出会让
+      # 按字节锚定的对账漂移。
+      #
+      # exe 来源 = clone jsonmbt 仓现构建。这不是"未完成的过渡"而是**主动
+      # 选择**：工具捏在自己手里、Vitro 侧又是找问题的试验田，拉 master 即时
+      # 生效（改完 jsonmbt 推上去，本 CI 立刻用上）。代价是每次约 40 秒编译。
+      # 详见 docs/current/07-质量与裁定/20261007_jsonmbt真相源迁移.md
+      - name: Build jsonmbt (truth-source regenerator)
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
+          cd "$RUNNER_TEMP/jsonmbt"
+          # 干净 runner 上 registry index 未初始化时直接 build 必失败
+          # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
+          # moonbitlang/parser·lexer·x 全部 "module was not found in the
+          # registry"，stderr 另给三行 `you may need to run moon update`，
+          # 本步 rc=127）。Vitro 侧其余 moon 步骤踩不到是因为依赖面不同：
+          # scripts/moon.mod 只有 name（零依赖），moonbit 侧依赖 moonbitlang/core
+          # 已随工具链安装 bundle。moon update = 「Update the package registry
+          # index」，即补上本 runner 缺失的 index。
+          moon update
+          MOON_CC=clang moon build --target native --release
+          echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
+
+      - name: Regenerate truth-source JSON (.json.mbt -> .json)
+        # 清单由索引自枚举，不再手抄：2026-10-08 run 37733072522 实证手抄清单
+        # 漏了 perf_budget（当时写 10 张，注释还把 perf_budget 算进 "core 下游
+        # 8 闸门"），hygiene 的 perf_budget -check 遂在缺 rules.json 时
+        # FATAL 读规则失败、整 run 红。
+        # 命中面 = 10 张 rules.json.mbt + 1 张 host_route_rules.json.mbt
+        #   + 手写面第二批两落（teaching_annotation_diff / demo_ui_lint，
+        #     2026-10-09 refs #47）= 13；另有 5 张 golden_digest.json.mbt，
+        #   其 .json 是入仓基线、不在此再生（故本清单按 `rules` 命名取面，
+        #   不用全量 *.json.mbt）。
+        # 计数断言失败即红——增删真相源而未同步此处，不得静默通过
+        #   （2026-10-09 run 37883006515 实证：两落批加 2 张未同步断言，
+        #   本步 `期望 11 实得 13` FATAL——断言牙真实咬合）。
+        #   2026-10-11 #67：13→14（gen_api_help/rules.json.mbt——api help
+        #   生成器的简介/示例手写面）。
+        shell: bash
+        run: |
+          set -e
+          files=$(git ls-files 'scripts/**/rules.json.mbt' 'scripts/**/host_route_rules.json.mbt')
+          count=$(printf '%s\n' "$files" | grep -c .)
+          if [ "$count" -ne 14 ]; then
+            echo "FATAL: 期望 14 张规则真相源，实得 $count"
+            printf '%s\n' "$files"
+            exit 2
+          fi
+          # 路径无空格，刻意按空白词拆分：`printf | while` 会把循环放进子 shell，
+          # 循环内失败不会终止脚本；`for` + `set -e` 才是直接生效的 fail-loud 形态。
+          for m in $files; do
+            "$JSONMBT_EXE" build --pretty "$m"
+          done
+
         uses: actions/setup-node@v4
         with:
           node-version: "25"

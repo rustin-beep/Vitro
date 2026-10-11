@@ -470,6 +470,49 @@ pub fn TypeChecker::report_hint(
 }
 
 ///|
+/// VLA 维度子树扫描（审阅批 P2，2026-10-11）：收集维度表达式全部
+/// Identifier 叶并对未声明者报 E3023（容器类变体递归——Binary/Unary/
+/// Ternary/Cast/Index/Call 实参；Call 的函数名是 String 非 Expr 节点，
+/// 未声明函数面由调用检查承接；Literal/Sizeof 等无标识符叶直接跳过）。
+/// 此前判据绑顶层 `Identifier` 形态，`int a[N + 1];`（顶层 Binary）
+/// 绕过、静默漏到 codegen 无码错误；clang 两形态同报一条。
+fn TypeChecker::report_undeclared_dim_idents(
+  self : TypeChecker,
+  expr : @ast.Expr,
+) -> Unit {
+  match expr {
+    Identifier(name, dloc, _) =>
+      if self.lookup_var(name) is None && !self.funcs.contains(name) {
+        self.report_error(
+          "未定义的标识符 '\{name}'（数组维度须为常量表达式或已声明的变量）",
+          dloc,
+          E3023_UndeclaredVar,
+        )
+      }
+    Binary(_, l, r, _, _) => {
+      self.report_undeclared_dim_idents(l)
+      self.report_undeclared_dim_idents(r)
+    }
+    Unary(_, operand, _, _) => self.report_undeclared_dim_idents(operand)
+    Ternary(c, t, f, _, _) => {
+      self.report_undeclared_dim_idents(c)
+      self.report_undeclared_dim_idents(t)
+      self.report_undeclared_dim_idents(f)
+    }
+    Cast(inner, _, _, _) => self.report_undeclared_dim_idents(inner)
+    Index(base, idx, _, _) => {
+      self.report_undeclared_dim_idents(base)
+      self.report_undeclared_dim_idents(idx)
+    }
+    Call(_, args, _, _) =>
+      for a in args {
+        self.report_undeclared_dim_idents(a)
+      }
+    _ => ()
+  }
+}
+
+///|
 /// U1#12：数组声明尺寸合法性（三形状：负尺寸 / -1 无初始化器 / 显式零）。
 /// 尺寸约定（parser）：`-1` = 未指定（哨兵）、`0` = VLA 或显式零（靠
 /// is_vla 区分）。不误伤：初始化器推断、VLA、形参退化（不经此检查）、
@@ -486,19 +529,12 @@ pub fn TypeChecker::check_array_dims_legality(
         // #70 第一步（#64 v6 尾巴，2026-10-11）：VLA 维度表达式里的**裸
         // 未声明标识符**（宏漏 define / 拼写错——const_int_of 折不出的
         // Identifier）报 E3023 而非静默走到 codegen 判「不支持 VLA」——
-        // 真维度（已声明变量）不报，维持运行时求值路径
+        // 真维度（已声明变量）不报，维持运行时求值路径。
+        // 审阅批 P2 修正（2026-10-11）：判据不绑顶层节点形态——按语义
+        // 扫**子树**全部 Identifier 叶（`int a[N + 1];` 顶层 Binary 此前
+        // 绕过判据，静默漏到 codegen 无码错误；clang 两形态同报一条）
         for dim_expr in vla_dims {
-          match dim_expr {
-            Identifier(name, dloc, _) =>
-              if self.lookup_var(name) is None && !self.funcs.contains(name) {
-                self.report_error(
-                  "未定义的标识符 '\{name}'（数组维度须为常量表达式或已声明的变量）",
-                  dloc,
-                  E3023_UndeclaredVar,
-                )
-              }
-            _ => ()
-          }
+          self.report_undeclared_dim_idents(dim_expr)
         }
         return // 其余 VLA 维度运行时求值，另有边界检查
       }

@@ -281,6 +281,12 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
           cd "$RUNNER_TEMP/jsonmbt"
+          # moon 20261012 拒 .mooncakes 缓存内旧 moon.mod.json（rustin-beep/jsonmbt#33）——
+          # install 后逐依赖包迁移（moon fmt 只管本项目不触缓存）
+          moon install || true
+          for pkg in .mooncakes/*/*/; do
+            if [ -f "$pkg/moon.mod.json" ]; then (cd "$pkg" && moon fmt); fi
+          done
           # 干净 runner 上 registry index 未初始化时直接 build 必失败
           # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
           # moonbitlang/parser·lexer·x 全部 "module was not found in the
@@ -439,6 +445,12 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
           cd "$RUNNER_TEMP/jsonmbt"
+          # moon 20261012 拒 .mooncakes 缓存内旧 moon.mod.json（rustin-beep/jsonmbt#33）——
+          # install 后逐依赖包迁移（moon fmt 只管本项目不触缓存）
+          moon install || true
+          for pkg in .mooncakes/*/*/; do
+            if [ -f "$pkg/moon.mod.json" ]; then (cd "$pkg" && moon fmt); fi
+          done
           moon update
           MOON_CC=clang moon build --target native --release
           echo "JSONMBT_EXE=$RUNNER_TEMP/jsonmbt/_build/native/release/build/cmd/jsonmbt/jsonmbt.exe" >> "$GITHUB_ENV"
@@ -555,6 +567,12 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
           cd "$RUNNER_TEMP/jsonmbt"
+          # moon 20261012 拒 .mooncakes 缓存内旧 moon.mod.json（rustin-beep/jsonmbt#33）——
+          # install 后逐依赖包迁移（moon fmt 只管本项目不触缓存）
+          moon install || true
+          for pkg in .mooncakes/*/*/; do
+            if [ -f "$pkg/moon.mod.json" ]; then (cd "$pkg" && moon fmt); fi
+          done
           # 干净 runner 上 registry index 未初始化时直接 build 必失败
           # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
           # moonbitlang/parser·lexer·x 全部 "module was not found in the
@@ -1009,6 +1027,12 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/rustin-beep/jsonmbt.git "$RUNNER_TEMP/jsonmbt"
           cd "$RUNNER_TEMP/jsonmbt"
+          # moon 20261012 拒 .mooncakes 缓存内旧 moon.mod.json（rustin-beep/jsonmbt#33）——
+          # install 后逐依赖包迁移（moon fmt 只管本项目不触缓存）
+          moon install || true
+          for pkg in .mooncakes/*/*/; do
+            if [ -f "$pkg/moon.mod.json" ]; then (cd "$pkg" && moon fmt); fi
+          done
           # 干净 runner 上 registry index 未初始化时直接 build 必失败
           # （2026-10-08 run 37733072522 实证：jsonmbt 三个直接依赖
           # moonbitlang/parser·lexer·x 全部 "module was not found in the

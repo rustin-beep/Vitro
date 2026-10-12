@@ -203,6 +203,7 @@
         "linked_list_tail.c": "f7662dcc",
         "linked_queue.c": "560447ef",
         "linked_stack.c": "a0e038b1",
+        "llm_corpus_rejects.c": "fed75e20",
         "logical_and.c": "d48c431d",
         "logical_and_var.c": "d48c431d",
         "logical_not.c": "6a9f88bf",
@@ -1021,6 +1022,9 @@
         },
         "linked_stack.c": {
           "result_sha": "6b67707c0a5ffd66"
+        },
+        "llm_corpus_rejects.c": {
+          "result_sha": "f962db3ca78b3c7e"
         },
         "logical_and.c": {
           "result_sha": "1b275b80ceb139b4"

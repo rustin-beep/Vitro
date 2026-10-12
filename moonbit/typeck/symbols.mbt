@@ -12,6 +12,9 @@ struct VarSymbol {
   _is_global : Bool
   is_extern : Bool
   is_static : Bool
+  /// #75 缺口 2：VarDecl 标量面的初始化器前置登记标记（同声明 final
+  /// 覆盖用——非重声明）
+  predeclared : Bool
 }
 
 ///|

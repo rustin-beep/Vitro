@@ -164,6 +164,16 @@ fn TypeChecker::check_field_value(
     // Rust `let mut sub_ty = field_ty.clone()` 局部可变，同语义）
     let (_, new_value) = self.check_array_initializer(field_ty, value, loc)
     new_value
+  } else if field_ty.is_array() &&
+    field_ty.base_element_type().kind() is TK_Char &&
+    value is StringLiteral(_, _, _) {
+    // #75 缺口 3（2026-10-12，C11 6.7.9p14）：char[] 成员的字符串字面量
+    // 初始化——`struct S { char s[64]; } a = {"Hi"}` 合法；此前落 else
+    // 兜底把 "Hi" 定型 char[3] 去比 char[64] 误报 E3006。复用顶层
+    // char[] 的 check_array_initializer 同款路径（长度校验/W3008/无尺寸
+    // 回写语义单源）。非 char 数组不进此臂（后面仍拒）。
+    let (_, new_value) = self.check_array_initializer(field_ty, value, loc)
+    new_value
   } else {
     let (e_type, new_value) = self.resolve_expr_type(value)
     if !self.check_assignable(field_ty, e_type, loc, value_expr=new_value) {

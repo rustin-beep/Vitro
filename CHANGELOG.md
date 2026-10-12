@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed（工具链漂移处置：moon 0.1.20261012 升级 + jsonmbt 传递依赖旧格式迁移，2026-10-12）
+
+- **moon 0.1.20260920→0.1.20261012（moonc v0.10.14→v0.10.15）**：A8 probe 红（设计行为）——baseline `--update-baseline` 迁移+全门禁复跑（746/746 绿）。
+- **新版拒装 `.mooncakes` 缓存内旧 `moon.mod.json` 包**（prettyprinter@0.4.10——jsonmbt 传递依赖）：五 job 断供（jsonmbt 是 13+1 张真源再生成器）。CI 四处 "Build jsonmbt" 步骤统一补 `moon install` + 逐依赖包 `moon fmt` 迁移（本地全链验证 EXE_OK）；上游 issue 已挂 [rustin-beep/jsonmbt#33](https://github.com/rustin-beep/jsonmbt/issues/33)（请求 prettyprinter 发新版/构建脚本内化缓解）。
+
+### Fixed（#75 三缺口：LLM 语料线系统性误拒——vitro_reject_clang_accept 桶，2026-10-12）
+
+- **缺口 1（E3039 宽整数下标假阳性）**：索引整型判定改宽版 `type_is_int_or_ll`（C11 6.5.2.1 整数类型含 LL）——`long long j; arr[j]` 冒泡排序 LLM 语料此前 E3039×6 且多级下标级联 E3040；红锚（LL 下标拒+double 下标仍拒+二级不级联三面）→修→48/48。
+- **缺口 3（E3006 struct char[] 成员字符串初始化）三层连动（=病 63 全销）**：typeck 层 check_field_value 补「char[] 成员←字符串字面量」臂（复用顶层 check_array_initializer——长度/W3008/尺寸推断语义单源）；codegen 局部层 emit_field_init 补逐字节直写（此前 gen_expr(字符串)=指针值 StoreMem 垃圾）；codegen 全局层 flatten_global_init 补字节直写（此前 pending_string_inits 池址当指针回填——`struct S a={"Hi"}` 的 a.s 变指针值）。五变体（含全局+局部并存/嵌套花括号/多字段）三方对拍全 SAME。
+- **缺口 2（E3023+E3021 sizeof *p 自身引用）**：VarDecl 标量面前置登记（C11 6.2.1p2 声明符作用域始于初始化器）——`int *p = malloc(n * sizeof *p)` C 社区惯用法；VarSymbol 加 predeclared 标记（final 覆盖非重声明）；数组/聚合维持后置（尺寸推断所需，init 引用自身数组本非合法 C）；真重声明（两语句）仍 E3001。
+- 三缺口主张全数独立验证（每缺口红锚先行——不照单全收 issue 断言）；综合语料 `llm_corpus_rejects.c` 入账（双臂对拍 clang 同）。
+- 防线：moon test 746/746（+3 锚）· vm 650 · clang 745 · 四差分 16 路 · smoke/facts/testcount 全绿。
+
 ### Fixed（#71 P1 四连：病 110/108/109 修 + 病 107 重建不复现销案，2026-10-12）
 
 - **病 110（struct 复合字面量作按值实参静默错值）**：call.mbt 两处「零填充」兜底（Identifier 深层 miss + 非 Identifier 臂——复合字面量主落点）改 CallPtr 同款逐字 LoadMem——`sum((struct P){3,4})` 1048568→7；该分支注释本就自认 latent（CallPtr 路修时留的第三路）。

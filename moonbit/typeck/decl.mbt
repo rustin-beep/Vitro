@@ -459,6 +459,25 @@ fn TypeChecker::process_var_decl(
       init is Some(StringLiteral(_, _, _))
     self.check_array_dims_legality(var_type_2, has_init_list, loc)
   }
+  // #75 缺口 2（2026-10-12）：`int *p = malloc(n * sizeof *p)`——C 标准
+  // 作用域规则（C11 6.2.1p2：声明符的作用域始于声明符结束=初始化器
+  // 开始处）允许初始化器引用**自身**。declare_var 后置是数组尺寸推断
+  // 所需（`int a[]={...}` 先算尺寸再登记），对标量声明无此约束——
+  // 标量面**前置登记**（final declare 仍随后覆盖，双写幂等）；
+  // 数组/聚合面维持后置（初始化器引用自身数组本就非合法 C）。
+  let predeclared = init is Some(_) &&
+    !var_type_2.is_array() &&
+    !(var_type_2.kind() is TK_Struct || var_type_2.kind() is TK_Union)
+  if predeclared {
+    self.declare_var(
+      name,
+      var_type_2,
+      is_global=false,
+      is_extern=false,
+      is_static~,
+      predeclared=true,
+    )
+  }
   // 初始化器四分支（Call-init 分支与 else 对 C 等价合并——文件头登记）
   let (final_ty, new_init) : (@ast.Type, @ast.Expr?) = match init {
     Some(init_expr) =>

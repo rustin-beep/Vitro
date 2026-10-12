@@ -22,6 +22,7 @@ pub fn TypeChecker::declare_var(
   is_global~ : Bool,
   is_extern~ : Bool,
   is_static~ : Bool,
+  predeclared? : Bool = false,
 ) -> Unit {
   if self.scopes.length() == 0 {
     self.scopes.push(Map([]))
@@ -35,12 +36,38 @@ pub fn TypeChecker::declare_var(
       }
       // 非 extern 定义可替换 extern 声明
       if existing.is_extern {
-        scope.set(name, { ty, _is_global: is_global, is_extern, is_static, })
+        scope.set(name, {
+          ty,
+          _is_global: is_global,
+          is_extern,
+          is_static,
+          predeclared,
+        })
+        return
+      }
+      // #75 缺口 2（2026-10-12）：**声明完成覆盖**——同批 VarDecl 的
+      // 前置登记（标量声明供初始化器引用自身，`sizeof *p` 惯用法）由
+      // 处理路径以 predeclared 预声明标记走 declare_var(~predeclared=
+      // true)；同名二次登记=同声明的 final 覆盖（类型定稿），非重声明。
+      if existing.predeclared && !is_extern {
+        scope.set(name, {
+          ty,
+          _is_global: is_global,
+          is_extern,
+          is_static,
+          predeclared: false,
+        })
         return
       }
       // 不同文件的同名 static 全局（内部链接）——保留最新，使用点检查
       if existing.is_static && is_static && is_global {
-        scope.set(name, { ty, _is_global: is_global, is_extern, is_static, })
+        scope.set(name, {
+          ty,
+          _is_global: is_global,
+          is_extern,
+          is_static,
+          predeclared,
+        })
         return
       }
       // O3 登记债照搬：重复声明诊断位置写死零
@@ -51,7 +78,13 @@ pub fn TypeChecker::declare_var(
       )
     }
     None =>
-      scope.set(name, { ty, _is_global: is_global, is_extern, is_static, })
+      scope.set(name, {
+        ty,
+        _is_global: is_global,
+        is_extern,
+        is_static,
+        predeclared,
+      })
   }
 }
 
@@ -88,6 +121,7 @@ pub fn TypeChecker::update_var_type(
           _is_global: sym._is_global,
           is_extern: sym.is_extern,
           is_static: sym.is_static,
+          predeclared: sym.predeclared,
         })
         return
       }

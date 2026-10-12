@@ -801,6 +801,31 @@ fn BytecodeGen::emit_field_init(
   if value is InitList(_, _, _) &&
     (field_ty.kind() is TK_Struct || field_ty.is_array()) {
     self.gen_nested_init(base_temp, offset, field_ty, value, loc)
+  } else if field_ty.is_array() &&
+    field_ty.base_element_type().kind() is TK_Char &&
+    value is StringLiteral(_, _, _) {
+    // #75 缺口 3 codegen 层（2026-10-12，C11 6.7.9p14；病 63 两层连动
+    // 尾巴）：char[] 成员的字符串字面量逐字节直写（与顶层
+    // emit_local_string_array_init 同款——base_temp 已是绝对地址，此处
+    // 加字段 offset）。此前落 else 兜底：gen_expr(字符串)=指针值
+    // StoreMem 4 字节垃圾（输出空格形态）。
+    match value {
+      StringLiteral(sval, _, _) => {
+        let bytes = @bytecode.cstring_bytes(sval)
+        let byte_count = field_ty.array_size()
+        for i in 0..<byte_count {
+          self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+          if offset + i > 0 {
+            self.emit(@opcode.OpCode::PushConst, offset + i, loc)
+            self.emit(@opcode.OpCode::Add, 0, loc)
+          }
+          let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
+          self.emit(@opcode.OpCode::PushConst, byte, loc)
+          self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+        }
+      }
+      _ => ()
+    }
   } else {
     self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
     if offset > 0 {

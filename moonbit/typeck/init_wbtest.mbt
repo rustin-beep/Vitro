@@ -252,3 +252,36 @@ test "init_multidim_flat_scalar" {
   assert_eq(errs2.length(), 1)
   assert_true(errs2[0].code == 3005)
 }
+
+///|
+/// #75 缺口 3 红锚（2026-10-12，C11 6.7.9p14）：char[] 成员的字符串字面量
+/// 初始化合法——`struct S { char s[64]; } a = {"Hi"};`（顶层 char[] 同形
+/// 能过、struct 成员被 E3006 误拒：check_field_value 落 else 兜底把
+/// "Hi" 定型 char[3] 去比 char[64]）。
+test "struct_char_array_member_string_init_issue75_g3" {
+  let loc = @source.SourceLoc::new(3, 20)
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  // char s[64] 字段 ← "Hi"
+  let field_ty = @ast.Type::array_of(@ast.Type::char(), [64])
+  let val = @ast.Expr::StringLiteral("Hi", loc, @ast.Type::void_type())
+  ignore(tc.check_field_value(field_ty, "s", val, loc))
+  assert_eq(
+    tc.errors.length(),
+    0,
+    msg="char[] 成员收字符串字面量合法（E3006 假阳性）",
+  )
+  // 溢出仍警（W3008 面）：char s[2] ← "Hi"（3 字节超 2）
+  let tc2 = TypeChecker::new()
+  tc2.enter_scope()
+  let small_ty = @ast.Type::array_of(@ast.Type::char(), [2])
+  ignore(tc2.check_field_value(small_ty, "s", val, loc))
+  assert_eq(tc2.errors.length(), 0, msg="超长不升 error")
+  assert_eq(tc2.warnings.length(), 1, msg="超长维持 W3008")
+  // 非 char 数组成员收字符串仍拒（int s[4] ← "Hi"）
+  let tc3 = TypeChecker::new()
+  tc3.enter_scope()
+  let int_arr = @ast.Type::array_of(@ast.Type::int(), [4])
+  ignore(tc3.check_field_value(int_arr, "s", val, loc))
+  assert_eq(tc3.errors.length(), 1, msg="非 char 数组收字符串维持拒")
+}

@@ -246,7 +246,10 @@ fn TypeChecker::resolve_index(
 ) -> (@ast.Type, @ast.Expr) {
   let (arr_type, new_array) = self.resolve_expr_type(array)
   let (idx_type, new_index) = self.resolve_expr_type(index)
-  let ty : @ast.Type = if !self.is_int(idx_type) {
+  // #75 缺口 1（2026-10-12）：索引整型判定用宽版（C11 6.5.2.1 整数类型
+  // 含 LL——旧窄版 is_int 排除 TK_LongLong 致 LL 下标 E3039 假阳性且
+  // 多级下标级联 E3040；type_is_int_or_ll 为同包既有宽版单源）
+  let ty : @ast.Type = if !type_is_int_or_ll(idx_type) {
     self.report_error(
       "数组索引必须是 int 类型",
       loc,

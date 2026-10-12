@@ -155,6 +155,24 @@ fn BytecodeGen::flatten_global_init(
       } else if elements.length() > 0 {
         self.flatten_global_init(target_ty, elements[0].value, base_offset)
       }
+    StringLiteral(value, _, _) =>
+      if target_ty.is_array() && target_ty.base_element_type().kind() is TK_Char {
+        // #75 缺口 3 全局层（2026-10-12，C11 6.7.9p14）：char[] 目标的
+        // 字符串字面量按**字节直写**入 globals_init（含尾 NUL 与零填）；
+        // 此前落 `_` 兜底 pending_string_inits 把池址当指针回填——
+        // `struct S a = {"Hi"}` 的 a.s 变指针值（printf %s 读垃圾）。
+        let bytes = @bytecode.cstring_bytes(value)
+        let total = target_ty.array_size()
+        for i in 0..<total {
+          let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
+          self.globals_init_32.push(
+            (base_offset + i.reinterpret_as_uint(), byte),
+          )
+        }
+      } else {
+        // 非 char[] 目标的字符串字面量：维持指针回填路径（char* 等）
+        self.pending_string_inits.push((base_offset, value))
+      }
     _ =>
       // T-P0-1/T-P0-2：标量字面量（含负字面量）统一按目标类型编码位模式
       if !self.push_literal_init(base_offset, init, target_ty) {

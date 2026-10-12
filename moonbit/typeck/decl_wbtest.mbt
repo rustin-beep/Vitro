@@ -333,3 +333,65 @@ test "cond_bitop_e1004_wiring_b118" {
   )
   assert_eq(tc5.errors.length(), 0, msg="|| 不误伤")
 }
+
+///|
+/// #75 缺口 2 锚（2026-10-12，C11 6.2.1p2）：声明符作用域始于初始化器
+/// ——`int *p = malloc(n * sizeof *p)` 的 init 引用自身合法。predeclared
+/// 前置登记（标量面）+ final 覆盖；真重声明（两语句）仍 E3001。
+test "init_self_reference_scope_issue75_g2" {
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  // `int n = 5; int *p = ... sizeof *p ...`（经 dispatch_stmt 直驱）
+  let n_decl = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "n",
+    Some(@ast.Expr::Literal(5, @source.SourceLoc::new(2, 9), @ast.Type::int())),
+    [],
+    false,
+    @source.SourceLoc::new(2, 5),
+  )
+  ignore(tc.dispatch_stmt(n_decl))
+  // p 声明：init = Cast(void*→int*) 内 Unary(Deref, p)——resolve 期
+  // p 已可见（predeclared）
+  let p_loc = @source.SourceLoc::new(3, 8)
+  let deref_p = @ast.Expr::Unary(
+    @ast.UnaryOp::Deref,
+    @ast.Expr::Identifier("p", p_loc, @ast.Type::void_type()),
+    p_loc,
+    @ast.Type::void_type(),
+  )
+  let p_init = @ast.Expr::Cast(
+    deref_p,
+    @ast.Type::pointer_to(@ast.Type::int()),
+    p_loc,
+    @ast.Type::pointer_to(@ast.Type::int()),
+  )
+  let p_decl = @ast.Stmt::VarDecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(p_init),
+    [],
+    false,
+    @source.SourceLoc::new(3, 8),
+  )
+  ignore(tc.dispatch_stmt(p_decl))
+  assert_eq(
+    tc.errors.length(),
+    0,
+    msg="sizeof *p 自身引用合法（E3023 假阳性）",
+  )
+  // 真重声明仍拦（两语句同名）
+  let dup = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "n",
+    Some(@ast.Expr::Literal(7, @source.SourceLoc::new(5, 9), @ast.Type::int())),
+    [],
+    false,
+    @source.SourceLoc::new(5, 5),
+  )
+  ignore(tc.dispatch_stmt(dup))
+  assert_true(
+    tc.errors.length() >= 1,
+    msg="真重声明维持 E3001（含级联）",
+  )
+}

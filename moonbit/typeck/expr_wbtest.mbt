@@ -314,3 +314,64 @@ test "unary_pos_constant_fold_review_p1b" {
     Some(-5),
   )
 }
+
+///|
+/// #75 缺口 1 红锚（2026-10-12）：`long long` 下标是合法 C（C11 6.5.2.1
+/// 数组下标须具整数类型——LL 在列）——LLM 语料冒泡形态 `arr[j]` j 为 LL
+/// 被 E3039 误拒 ×6 且多级下标级联 E3040。clang/gcc 双 ACCEPT 在案。
+test "index_longlong_wide_predicate_issue75_g1" {
+  let loc = @source.SourceLoc::new(2, 9)
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  tc.declare_var(
+    "arr",
+    @ast.Type::array_of(@ast.Type::int(), [8]),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc.declare_var(
+    "j",
+    @ast.Type::long_long(),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let (ty, e) = tc.resolve_index(
+    @ast.Expr::Identifier("arr", loc, @ast.Type::void_type()),
+    @ast.Expr::Identifier("j", loc, @ast.Type::void_type()),
+    loc,
+  )
+  assert_eq(tc.errors.length(), 0, msg="LL 下标不应报 E3039")
+  assert_true(ty is Int(_, _))
+  // 双层下标（int[3][4]，第二级 LL）不级联 E3040
+  tc.declare_var(
+    "m",
+    @ast.Type::array_of(@ast.Type::array_of(@ast.Type::int(), [4]), [3]),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let (ty2, _) = tc.resolve_index(
+    @ast.Expr::Identifier("m", loc, @ast.Type::void_type()),
+    @ast.Expr::Identifier("j", loc, @ast.Type::void_type()),
+    loc,
+  )
+  assert_eq(tc.errors.length(), 0, msg="二级 LL 下标不级联")
+  assert_true(ty2 is Array(_, _, _, _, _, _))
+  // 回归面：double 下标仍拒（真 E3039 面）
+  tc.declare_var(
+    "d",
+    @ast.Type::double(),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let _ = tc.resolve_index(
+    @ast.Expr::Identifier("arr", loc, @ast.Type::void_type()),
+    @ast.Expr::Identifier("d", loc, @ast.Type::void_type()),
+    loc,
+  )
+  assert_eq(tc.errors.length(), 1, msg="double 下标维持 E3039")
+  ignore(e)
+}

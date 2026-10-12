@@ -98,9 +98,21 @@ fn BytecodeGen::gen_call_ptr(
                           self.emit(@opcode.OpCode::LoadMem, 0, loc)
                         }
                       } else {
+                        // 病 110 修正（#71 P1 批，2026-10-12）：复合字面量等
+                        // 临时 struct 实参——旧「零填充」分支（gen_expr 压单个
+                        // 地址 + 补 words-1 个 0）令 callee 参数区读到地址值
+                        // 静默错值（sum((struct P){3,4})→1048568 实锤）。
+                        // 与 CallPtr 路同款：压地址存 temp 后逐字 LoadMem。
                         self.gen_expr(arg)
-                        for _ in 1..<words {
-                          self.emit(@opcode.OpCode::PushConst, 0, loc)
+                        let addr_temp = self.get_temp_slot(0)
+                        self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
+                        for w in 0..<words {
+                          self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
+                          if w > 0 {
+                            self.emit(@opcode.OpCode::PushConst, w * 4, loc)
+                            self.emit(@opcode.OpCode::Add, 0, loc)
+                          }
+                          self.emit(@opcode.OpCode::LoadMem, 0, loc)
                         }
                       }
                   }
@@ -121,9 +133,17 @@ fn BytecodeGen::gen_call_ptr(
               self.emit(@opcode.OpCode::LoadMem, 0, loc)
             }
           } else {
+            // 病 110 同款（非 Identifier 臂兜底——复合字面量主落点）
             self.gen_expr(arg)
-            for _ in 1..<words {
-              self.emit(@opcode.OpCode::PushConst, 0, loc)
+            let addr_temp = self.get_temp_slot(0)
+            self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
+            for w in 0..<words {
+              self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
+              if w > 0 {
+                self.emit(@opcode.OpCode::PushConst, w * 4, loc)
+                self.emit(@opcode.OpCode::Add, 0, loc)
+              }
+              self.emit(@opcode.OpCode::LoadMem, 0, loc)
             }
           }
       }

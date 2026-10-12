@@ -273,9 +273,8 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::LoadMem, 0, loc)
         }
       } else {
+        // 病 108 同款（Deref 臂内联纯 Assign 段——Dup 前置纯栈序）
         self.emit(@opcode.OpCode::Dup, 0, loc)
-        let addr_temp = self.get_assign_addr_slot()
-        self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
         self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
         if left_is_char {
           self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
@@ -286,7 +285,6 @@ fn BytecodeGen::gen_assign_inner(
         } else {
           self.emit(@opcode.OpCode::StoreMem, 0, loc)
         }
-        self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
         if left_is_char && left_is_unsigned {
           self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
         } else if left_is_char {
@@ -595,9 +593,12 @@ fn BytecodeGen::assign_mem_op(
       self.emit(@opcode.OpCode::LoadMem, 0, loc)
     }
   } else {
+    // 病 108 修正（#71 P1 批，2026-10-12）：纯赋值臂改 Dup 前置纯栈序
+    //——旧序 StoreLocal 暂存地址供 StoreMem 后回读，当写目标（p[i]=v
+    // 的 p+i）恰落暂存槽时地址被写入值污染（登记 pd_idx.c 假 trap 形态：
+    // 写 7 报「地址 0x7」）。Dup 前置后地址全程在值栈上，与内存槽零
+    // 交叠——同址冲突形态上不可能（回读经栈上保留份 LoadMem）。
     self.emit(@opcode.OpCode::Dup, 0, loc)
-    let addr_temp = self.get_assign_addr_slot()
-    self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
     self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
     if is_char {
       self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
@@ -608,8 +609,9 @@ fn BytecodeGen::assign_mem_op(
     } else {
       self.emit(@opcode.OpCode::StoreMem, 0, loc)
     }
-    self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
-    if is_char {
+    if is_char && left_is_unsigned {
+      self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
+    } else if is_char {
       self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
     } else if is_double {
       self.emit(@opcode.OpCode::LoadMemD, 0, loc)

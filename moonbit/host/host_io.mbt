@@ -1191,6 +1191,16 @@ pub fn host_scanf_n(
   if input.batch && exhausted {
     input.set_eof()
   }
+  // 病 109 修正（#71 P1 批，2026-10-12）：Interactive 中途流耗尽 →
+  // Waiting——旧判据仅查首转换符前（770 区），`scanf("%d %d")` 喂 "10"
+  // 后 %d1 配成、%d2 流尽走终判返 matched=1（静默丢参；客户端再 feed
+  // 因非等待态重跑清输出——serve 在册语义连带）。回退到本次 scanf
+  // 起点等输入，vm 侧 Waiting 协议（ip 回退+参数回推）接管重执行。
+  if !input.batch && exhausted {
+    input.index = start_idx
+    input.char_offset = start_off
+    return InputOutcome::Waiting
+  }
   InputOutcome::Value(matched.to_uint64())
 }
 

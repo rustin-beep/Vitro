@@ -270,3 +270,34 @@ test "serve_run_leak_report_rows_capped" {
     msg="报告段数有界（\{note_count} ≤ 1006）",
   )
 }
+
+///|
+/// #71 P1 病 109 锚（2026-10-12）：`scanf("%d %d")` 中途流耗尽 → waiting
+/// → feed 两个数分两轮喂 → 重跑全程从 scanf 起点重配 → got 10 20。
+/// 旧形态：首跑 matched=1 静默（判据仅查首转换符前）——e2e b109.ndjson
+/// 帧序列同形。
+test "serve_scanf_midstream_waiting_two_feeds_b109" {
+  let s = @session.Session::new()
+  let src = "#include <stdio.h>\nint main() { int a, b; int n = scanf(\"%d %d\", &a, &b); printf(\"got %d %d n=%d\", a, b, n); return 0; }\n"
+  let (_, _) = serve_handle(
+    s,
+    "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    @util.json_escape(src) +
+    "\"}}",
+  )
+  // 首跑带一半输入：run(input) 通道——%d1 配 10、%d2 流尽 → 中途耗尽
+  // Waiting（旧形态此处 finished + got 10 0 静默丢参）
+  let (resp1, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"run\",\"params\":{\"input\":\"10\\n\"}}",
+  )
+  assert_true(
+    resp1.contains("\"waiting_input\":true"),
+    msg="中途耗尽应 waiting",
+  )
+  // 补喂 20：feed 帧内续跑 → scanf 从回退起点全量重配 → finished
+  let (resp2, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"input.feed\",\"params\":{\"text\":\"20\\n\"}}",
+  )
+  assert_true(resp2.contains("\"status\":\"finished\""), msg="补喂后完成")
+  assert_true(stdout_text(s).contains("got 10 20 n=2"))
+}

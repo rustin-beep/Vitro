@@ -788,3 +788,50 @@ test "scanf_width_and_float_token_issue71_b23_b24" {
   let (tok4, _) = read_float_token(bytes_of("1e5"), 0, Some(2))
   assert_eq(tok4.length(), 1, msg="宽度截断后悬空指数截回")
 }
+
+///|
+/// #71 P1 批病 109 锚（2026-10-12）：Interactive 中途流耗尽 → Waiting
+///（回退到 scanf 起点）——feed 后重跑从起点全量重配。旧形态返 matched=1
+/// 静默丢参（判据仅查首转换符前）。e2e=b109.ndjson 帧（waiting→feed→续跑）。
+test "scanf_midstream_exhaust_waiting_b109" {
+  // Interactive：先只有 "10\n"
+  let input = InputState::new([b"10\n"], false)
+  let map = @memory.MemoryMap::new()
+  let mem = @memory.Memory::new()
+  // 模拟 vm 侧参数栈（fmt 串 + 两个 int* 指针）——写入内存取地址
+  // fmt 串落内存（put_cstr 先例通道——含建区）
+  let fmt_addr = 0x6000U
+  put_cstr(mem, map, fmt_addr, "%d %d")
+  let p1 = 0x6100U
+  let p2 = 0x6200U
+  put_cstr(mem, map, p1, "0")
+  put_cstr(mem, map, p2, "0")
+  let r1 = host_scanf_n(map, mem, input, [], fmt_addr, [p1, p2])
+  // 首跑：读到 10 后第二个 %d 流尽 → Waiting（非 Value(1)）
+  match r1 {
+    InputOutcome::Value(v) =>
+      fail(
+        "首跑应为 Waiting，实得 Value(" +
+        v.to_string() +
+        ")——中途耗尽未回退等待",
+      )
+    InputOutcome::Trap(t) =>
+      fail("首跑应为 Waiting，实得 Trap(" + t + ")")
+    InputOutcome::Waiting => ()
+  }
+  // feed 第二行 → 重跑（input 已回退到起点）→ 全配成功 matched=2
+  InputState::push_lines(input, [b"20\n"])
+  let r2 = host_scanf_n(map, mem, input, [], fmt_addr, [p1, p2])
+  match r2 {
+    InputOutcome::Value(v) => assert_eq(v, 2UL, msg="feed 后重跑全配")
+    _ => fail("重跑应 Value(2)")
+  }
+  match mem.load_u32(map, p1) {
+    Ok(v) => assert_eq(v.reinterpret_as_int(), 10)
+    Err(_) => fail("p1")
+  }
+  match mem.load_u32(map, p2) {
+    Ok(v) => assert_eq(v.reinterpret_as_int(), 20)
+    Err(_) => fail("p2")
+  }
+}

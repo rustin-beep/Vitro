@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 P1 四连：病 110/108/109 修 + 病 107 重建不复现销案，2026-10-12）
+
+- **病 110（struct 复合字面量作按值实参静默错值）**：call.mbt 两处「零填充」兜底（Identifier 深层 miss + 非 Identifier 臂——复合字面量主落点）改 CallPtr 同款逐字 LoadMem——`sum((struct P){3,4})` 1048568→7；该分支注释本就自认 latent（CallPtr 路修时留的第三路）。
+- **病 108（p[i]=v 地址暂存槽与写目标重叠假 trap）**：纯赋值臂改 **Dup 前置纯栈序**（assign_mem_op + Deref 臂内联两处）——旧序 StoreLocal 暂存地址供回读，写目标恰落暂存槽时地址被写入值污染；新序地址全程在值栈、回读用 Dup 底份，与内存槽零交叠（同址冲突形态上不可能）。触发矩阵三形态重建未复现（越界面被受检拦=白箱正确形态），按形态学根治；vm_diff 全量 memory digest 漂移=栈映像少一次 StoreLocal 写痕（stdout/exit 全同行为等价），freeze 刷新。
+- **病 109（scanf 中途流耗尽不触发 waiting→静默丢参）**：host_scanf_n 终判补 `!batch && exhausted → 回退起点 + Waiting`（旧判据仅查首转换符前）——`scanf("%d %d")` 喂 "10" 后 %d2 流尽不再返 matched=1；vm 侧 ip 回退+参数回推既有协议接管。e2e 双通道验证：run(input) 帧与 input.feed 帧内续跑均 `got 10 20 n=2`；wbtest 双层锚（host 直调 + gateway feed 序列）。**诊断插曲**：feed 帧在 feed 时即续跑完成——首验帧序列挑错 id 误判"恒 waiting"，全帧打印后澄清。
+- **病 107（变参透传栈下溢）重建不复现销案**：四矩阵（int 返回+二次调用+%s / void+文件 vfprintf+double 变参 / 变参实参内嵌调用 / %s 二次+隔断调用）探针全绿——疑已随某批（libc 接线族）修复，登记探针留档 tmp/i71_t1/b107*.c。
+- 连坐：vm_diff/codegen_diff freeze（病 108 指令序变化）；743/867 测试数十文档句。
+- 防线：moon test 743/743 · vm 649 · clang 744 · 四差分 16 路 · smoke/facts/testcount/hook 全绿。
+
 ### Added（examples/demo.mbtx 对外一键体验——mooncakes 发布版零脚手架入口，2026-10-12）
 
 - **`examples/demo.mbtx`**（用户亲写 ~170 行）：单文件 import prelude 声明 `vitro/engine/gateway` + `moonbitlang/core/json`，经 invoke 帧协议（与在线 demo 同一协议）走完白箱主线——编译冒泡排序 → 运行 645 步 → stdout → 逐步回放数组在内存的每次变化（初始化逐元素写入/交换撕裂中间态全程可见）。运行形态 `moon run examples/demo.mbtx --target wasm-gc`（仅需 moon 工具链零 clone；vitro/engine ≥0.8.0 首跑自动拉取缓存）。**对外验收实测通过**（mooncakes@0.8.0 + 195 帧回放全出）。

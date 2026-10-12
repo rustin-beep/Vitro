@@ -1,0 +1,163 @@
+// examples/demo.mbtx —— Vitro 一键体验脚本(mooncakes 发布版,零脚手架)。
+//
+// 运行(仅需 moon 工具链,无需 clone 本仓库):
+//   moon run examples/demo.mbtx --target wasm-gc
+//
+// 脚本经 gateway 包的 invoke 帧协议(与在线 demo 同一协议)走完一条
+// 白箱主线:编译一段冒泡排序 → 全速运行 → 取 stdout → 逐步回放数组
+// 在内存里的每次变化(初始化逐元素写入、交换的撕裂中间态全程可见)。
+// 依赖:vitro/engine ≥ 0.8.0(首次运行自动从 mooncakes 拉取并缓存)。
+
+import {
+  "moonbitlang/core/json",
+  "vitro/engine/gateway",
+}
+
+///|
+/// 发一帧协议请求(NDJSON 单行进单行出)。请求用 Json 构造——C 源码的
+/// 转义全交给 stringify,不手写。
+fn frame(
+  id : Int,
+  meth : String,
+  params~ : Json = Json::object(Map([])),
+) -> Json {
+  let req : Map[String, Json] = {
+    "id": Json::number(id.to_double()),
+    "method": Json::string(meth),
+    "params": params,
+  }
+  let line = Json::object(req).stringify()
+  @json.parse(@gateway.invoke(line)) catch { _ => Json::object(Map([])) }
+}
+
+///|
+/// 取对象字段(demo 只走 happy path,缺省 Null)。
+fn field(j : Json, key : String) -> Json {
+  if j is Object(m) {
+    match m.get(key) {
+      Some(v) => v
+      None => Json::null()
+    }
+  } else {
+    Json::null()
+  }
+}
+
+///|
+fn jstr(j : Json) -> String {
+  if j is String(s) {
+    s
+  } else {
+    ""
+  }
+}
+
+///|
+fn jint(j : Json) -> Int {
+  if j is Number(d, ..) {
+    d.to_int()
+  } else {
+    0
+  }
+}
+
+///|
+fn jbool(j : Json) -> String {
+  if j is True {
+    "true"
+  } else {
+    "false"
+  }
+}
+
+///|
+fn main {
+  println(
+    "=== Vitro 白箱 C 引擎 · vitro/engine@\{@gateway.engine_version()} ===",
+  )
+  let src =
+    #|#include <stdio.h>
+    #|int main() {
+    #|  int a[4] = {5, 3, 1, 4};
+    #|  for (int i = 0; i < 3; i++)
+    #|    for (int j = 0; j < 3 - i; j++)
+    #|      if (a[j] > a[j+1]) {
+    #|        int t = a[j];
+    #|        a[j] = a[j+1];
+    #|        a[j+1] = t;
+    #|      }
+    #|  for (int i = 0; i < 4; i++)
+    #|    printf("%d ", a[i]);
+    #|  return 0;
+    #|}
+  let params : Map[String, Json] = { "source": Json::string(src) }
+  let mut id = 0
+  // 1) 编译
+  id = id + 1
+  let resp = frame(id, "compile", params=Json::object(params))
+  println("[1] 编译:ok=\{jbool(field(resp, "ok"))}")
+  // 2) 全速运行
+  id = id + 1
+  let run = field(frame(id, "run"), "result")
+  println(
+    "[2] 运行:status=\{jstr(field(run, "status"))} steps=\{jint(field(run, "steps_executed"))}",
+  )
+  // 3) 程序输出(stdout 通道)
+  id = id + 1
+  let io : Map[String, Json] = {
+    "cursor": Json::number(0.0),
+    "stream": Json::string("stdout"),
+  }
+  let out = field(frame(id, "output.delta", params=Json::object(io)), "result")
+  println("[3] 输出:\"\{jstr(field(out, "delta"))}\"")
+  // 4) 白箱步进:重编译后逐帧推进,打印数组在内存里的每次变化
+  id = id + 1
+  let _ = frame(id, "compile", params=Json::object(params))
+  id = id + 1
+  let _ = frame(id, "step.begin")
+  println("[4] 步进回放——数组 a 的演化(每一帧都可见):")
+  let mut prev = ""
+  let mut shown = 0
+  let mut empty_streak = 0
+  let mut total_frames = 0
+  while shown < 8 && empty_streak < 2 && total_frames < 900 {
+    id = id + 1
+    let r = field(frame(id, "step.next"), "result")
+    if field(r, "payloads") is Array(arr) && arr.length() > 0 {
+      empty_streak = 0
+      for p in arr {
+        total_frames = total_frames + 1
+        if field(p, "array_snapshots") is Array(snaps) {
+          for sn in snaps {
+            if jstr(field(sn, "name")) == "a" {
+              let mut content = "{"
+              if field(sn, "elements") is Array(els) {
+                for k = 0; k < els.length(); k = k + 1 {
+                  if k > 0 {
+                    content = content + ", "
+                  }
+                  content = content + jstr(els[k])
+                }
+              }
+              content = content + "}"
+              if content != prev {
+                prev = content
+                if shown < 8 {
+                  println(
+                    "  step \{jint(field(p, "step_index"))} @line \{jint(field(p, "code_line"))}  a = \{content}",
+                  )
+                  shown = shown + 1
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      empty_streak = empty_streak + 1
+    }
+  }
+  println(
+    "全程 \{total_frames} 帧:每帧含行号/语义标签/局部变量/调用栈/热力计数,可回放任意帧。",
+  )
+}

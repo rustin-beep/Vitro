@@ -345,7 +345,7 @@ fn TypeChecker::check_condition(
         loc,
         W3050_AssignInCondition,
       )
-    Binary(_, left, right, _, _) =>
+    Binary(op, left, right, oploc, _) => {
       if left is Assign(@ast.AssignOp::Assign, _, _, _, _) ||
         right is Assign(@ast.AssignOp::Assign, _, _, _, _) {
         self.report_warning(
@@ -354,9 +354,44 @@ fn TypeChecker::check_condition(
           W3050_AssignInCondition,
         )
       }
+      // 病 118 接线（#71，2026-10-11）：条件顶层孤立位运算 | / & 且
+      // **任一操作数为比较/逻辑表达式**（bool 域——位运算作用于比较结果
+      // 必是 ||/&& 误写，零歧义）时报 E1004。裸 `exp & 1` 位测试习语
+      //（lc_50/lc_78 语料在案）不报——首版「顶层即报」被语料实锤误伤。
+      if (op is BitOr || op is BitAnd) &&
+        (is_bool_valued(left) || is_bool_valued(right)) {
+        let logical_op = if op is BitOr { "||" } else { "&&" }
+        let bit_op = if op is BitOr { "|" } else { "&" }
+        self.report_error(
+          "条件中的单个 '\{bit_op}' 是位运算符——如果你想要逻辑运算符 '\{logical_op}'（Clang 下两者结果常不同），请写 '\{logical_op}'",
+          oploc,
+          E1004_UnsupportedOp,
+        )
+      }
+    }
     _ => ()
   }
   new_cond
+}
+
+///|
+/// bool 值域判定（病 118 E1004 判据侧）：比较/逻辑/Not 表达式在 C 中
+/// 产出 int 0/1——位运算直接作用于它们必是 ||/&& 误写；字面量/裸变量/
+/// 移位（位掩码习语）不在其列。
+fn is_bool_valued(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(op, _, _, _, _) =>
+      op is Lt ||
+      op is Le ||
+      op is Gt ||
+      op is Ge ||
+      op is Eq ||
+      op is Ne ||
+      op is And ||
+      op is Or
+    Unary(@ast.UnaryOp::Not, _, _, _) => true
+    _ => false
+  }
 }
 
 ///|

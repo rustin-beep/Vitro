@@ -68,9 +68,15 @@ func TestLexerDiffParseFailLoud(t *testing.T) {
 // 此前 facts.go:548 注释声称"（J9 埋雷覆盖假输出）"但无任何测试。
 
 func TestParserDiffParseGreen(t *testing.T) {
-	n, ok := parseParserDiffPass("parser_diff: PASS——597 个样本 AST+诊断序列归一后逐字节一致（语料 x）")
+	// 2026-10-12 连坐翻锚：PASS 行形态 4e86d368 digest 化改「N hash 一致」
+	//（采集正则同批修——旧样本「N 个样本」为退役形态）
+	n, ok := parseParserDiffPass("parser_diff[golden:corpus-x]: PASS——597 hash 一致（fork 跳过 1）")
 	if !ok || n != 597 {
 		t.Fatalf("绿路径解析失败: n=%d ok=%v", n, ok)
+	}
+	// 旧形态不匹配（防倒退）
+	if _, ok := parseParserDiffPass("PASS——597 个样本"); ok {
+		t.Fatal("旧形态不应再匹配")
 	}
 }
 

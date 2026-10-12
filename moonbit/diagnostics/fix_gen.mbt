@@ -90,10 +90,13 @@ fn fix_1004_unsupported_op(
   let mut found_pos : Int? = None
   let mut replacement = ""
   if col0 >= 1 {
-    // Rust (0..=col0-1).rev().take(3)：i 自 col0-1 降序至多 3 个
+    // 回搜窗 3→10（病 118 接线连坐，2026-10-11）：AST Binary loc 指向
+    // 构造折叠位（右操作数附近）而非运算符位——`a > 2 | b < 1` 的 |
+    // 距错误列 6 字节，3 字节窗够不着恒落兜底；10 字节窗双形态实测命中
+    //（旧锚 if (a | b) 列 8 命中 6 不受影响）
     let mut i = col0 - 1
     let mut steps = 0
-    while i >= 0 && steps < 3 {
+    while i >= 0 && steps < 10 {
       if i + 1 < bytes.length() {
         let cur = bytes[i].to_int()
         let next = bytes[i + 1].to_int()

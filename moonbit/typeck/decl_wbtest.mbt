@@ -280,3 +280,56 @@ test "condition_warnings" {
   assert_eq(hints2.length(), 1)
   assert_true(hints2[0].code == 3069)
 }
+
+///|
+/// 病 118 锚（#71，2026-10-11）：E1004_UnsupportedOp 检查器接线——条件
+/// 表达式顶层的孤立位运算 `|`/`&`（常见 `||`/`&&` 误写）报教学错误码
+///（catalog 1004 文案在案、fix_1004 区间修复已就位，缺的只是 report 点
+/// ——审阅 P2 实锤全仓零调用）。红→绿锚。
+test "cond_bitop_e1004_wiring_b118" {
+  fn num(v : Int) -> @ast.Expr {
+    @ast.Expr::Literal(v, @source.SourceLoc::new(1, 5), @ast.Type::int())
+  }
+  fn bin(op : @ast.BinaryOp, l : @ast.Expr, r : @ast.Expr) -> @ast.Expr {
+    @ast.Expr::Binary(op, l, r, @source.SourceLoc::new(1, 5), @ast.Type::int())
+  }
+  let loc = @source.SourceLoc::new(1, 4)
+  // if (a > 0 | b > 0)：比较结果上的 | = || 误写（零歧义）应报 E1004
+  fn cmp(op : @ast.BinaryOp, l : @ast.Expr, r : @ast.Expr) -> @ast.Expr {
+    @ast.Expr::Binary(op, l, r, @source.SourceLoc::new(1, 5), @ast.Type::int())
+  }
+  let a_gt0 = cmp(Gt, num(1), num(0))
+  let tc1 = TypeChecker::new()
+  ignore(tc1.check_condition(bin(BitOr, a_gt0, num(2)), "if 条件", loc))
+  assert_eq(tc1.errors.length(), 1, msg="比较结果上的 | 须报 E1004")
+  assert_true(tc1.errors[0].code == 1004)
+  // & 同款
+  let tc2 = TypeChecker::new()
+  ignore(tc2.check_condition(bin(BitAnd, a_gt0, num(2)), "if 条件", loc))
+  assert_eq(tc2.errors.length(), 1, msg="比较结果上的 & 须报 E1004")
+  // 位测试习语不误伤（语料实锤回归锚：lc_50 `exp & 1` / lc_78 `mask&(1<<i)`）
+  let tc6 = TypeChecker::new()
+  ignore(tc6.check_condition(bin(BitAnd, num(1), num(1)), "if 条件", loc))
+  assert_eq(
+    tc6.errors.length(),
+    0,
+    msg="裸位测试（exp & 1 形态）不误伤",
+  )
+  // 不误伤：位运算在非条件位置合法（resolve 正常）；条件内比较/逻辑或零报
+  let tc3 = TypeChecker::new()
+  ignore(tc3)
+  // 条件内比较零报（回归面）
+  let tc4 = TypeChecker::new()
+  ignore(tc4.check_condition(bin(Lt, num(1), num(2)), "if 条件", loc))
+  assert_eq(tc4.errors.length(), 0, msg="比较不误伤")
+  // 逻辑或/与零报
+  let tc5 = TypeChecker::new()
+  ignore(
+    tc5.check_condition(
+      bin(Or, bin(Lt, num(1), num(2)), bin(Lt, num(3), num(4))),
+      "if 条件",
+      loc,
+    ),
+  )
+  assert_eq(tc5.errors.length(), 0, msg="|| 不误伤")
+}

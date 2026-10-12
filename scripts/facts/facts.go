@@ -440,23 +440,14 @@ func collectMoonbitFromOutput(out string, code int, facts map[string]Fact) {
 // 值 = 逐字节一致的 TSV 总数（L1+L2 双层）。任一路 FAIL 即 unavailable
 // （不兜底——fail loud 的差分驱动自身就是真值载体）。
 func collectMoonbitLexerDiff(root string, facts map[string]Fact) {
-	how := "scripts/lexer_diff/gen_corpus.mbtx 2400 例 + go run ./scripts/lexer_diff ×3"
-	tmp, err := os.MkdirTemp("", "facts_lexdiff_*")
-	if err != nil {
-		facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/lexer_diff", how, err.Error())
-		return
-	}
-	defer os.RemoveAll(tmp)
-	// 语料生成（确定性种子；.mbtx 从仓库根运行）
-	if _, code, ok := runCmd(root, 5*time.Minute, "moon", "run",
-		"scripts/lexer_diff/gen_corpus.mbtx", "--", tmp, "2400"); !ok || code != 0 {
-		facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/lexer_diff", how,
-			"语料生成失败（moon run gen_corpus.mbtx）")
-		return
-	}
+	// 2026-10-12 采集通道修复：随机生成语料路（gen_corpus.mbtx 2400 例 ×
+	// mktemp 目录）随 oracle 退役死亡——lexer_diff golden 模式要求语料节
+	// 在冻结清单，随机目录名恒 miss（as_of 停在 2026-10-05 超 168h 红的
+	// 根因）。真值面改四目录稳定语料（与冻结基线一致=可比语义保留）；
+	// 随机语料对拍语义已不可再生（无 oracle 侧），how 口径同步。
+	how := "go run ./scripts/lexer_diff ×4（四目录冻结基线）"
 	total := 0
 	for _, corpus := range []string{
-		tmp,
 		filepath.Join("corpus", "baseline"),
 		filepath.Join("corpus", "knr"),
 		filepath.Join("corpus", "leetcode"),
@@ -552,7 +543,10 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 
 // parseParserDiffPass 解析 parser_diff 的 PASS 行（J9 埋雷覆盖假输出）。
 func parseParserDiffPass(out string) (int, bool) {
-	m := regexp.MustCompile(`PASS——(\d+) 个样本`).FindStringSubmatch(out)
+	// 2026-10-05 4e86d368 工序③ digest 化改 PASS 行形态（「N 个样本」→
+	// 「N hash 一致（fork 跳过 K）」）漏连坐本正则——采集恒失败回退沿用，
+	// as_of 停在 10-05 超 168h 降级待采集（本地实测 2026-10-12 追因）
+	m := regexp.MustCompile(`PASS——(\d+) hash 一致`).FindStringSubmatch(out)
 	if m == nil {
 		return 0, false
 	}

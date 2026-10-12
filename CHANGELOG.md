@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added（examples/demo.mbtx 对外一键体验——mooncakes 发布版零脚手架入口，2026-10-12）
+
+- **`examples/demo.mbtx`**（用户亲写 ~170 行）：单文件 import prelude 声明 `vitro/engine/gateway` + `moonbitlang/core/json`，经 invoke 帧协议（与在线 demo 同一协议）走完白箱主线——编译冒泡排序 → 运行 645 步 → stdout → 逐步回放数组在内存的每次变化（初始化逐元素写入/交换撕裂中间态全程可见）。运行形态 `moon run examples/demo.mbtx --target wasm-gc`（仅需 moon 工具链零 clone；vitro/engine ≥0.8.0 首跑自动拉取缓存）。**对外验收实测通过**（mooncakes@0.8.0 + 195 帧回放全出）。
+- 忽略规则：`examples/_build/`（moon run 脚本级构建产物）入 .gitignore——本体入库、产物不入。
+
+### Fixed（病 118 E1004 检查器接线 + facts 双采集通道复活，2026-10-12）
+
+- **病 118 E1004_UnsupportedOp 接线**（审阅 P2 登记件当日销）：check_condition 内条件顶层孤立 | / & 且**任一操作数为比较/逻辑表达式**（bool 域零歧义）时报 E1004——首版「顶层即报」被语料实锤误伤（lc_50 `exp & 1`/lc_78 `mask&(1<<i)` 位测试习语合法），判据收紧；报错定位用运算符位（oploc）+ fix_1004 回搜窗 3→10 字节（AST Binary loc 指向折叠位距运算符 6 字节）——**fix_1004 区间版全链激活**（e2e：`if (a>2 | b<1)` 报 4:19 + FIX「位运算符 '|' 在条件中很少使用，建议改为逻辑运算符 '||'」精准文案，此前恒兜底）；红→绿锚（比较位误写报/裸位测试不误伤双面）+语料零翻转（vm 649 全 SAME）。
+- **facts 采集双通道复活**（追因「as_of 停在 10-05 超 168h 判红」）：① parser 正则 `PASS——N 个样本` 过期（4e86d368 digest 化改「N hash 一致」漏连坐采集器——修+翻 TestParserDiffParseGreen 锚）；② lexer 随机生成语料路（gen_corpus.mbtx 2400 例 × mktemp 目录）随 oracle 退役死亡——golden 清单不认临时目录名恒 miss，真值面改四目录冻结基线（1298=822+162+276+38）+带宽 5000-8000→1000-1600+测试锚连坐。两键 as_of 复活至今日，`--run --strict check` 0 漂移 0 待采集。
+
+### Added（mbtx 一键体验脚本，2026-10-12）
+
+- **`examples/demo.mbtx`**：零脚手架消费 mooncakes 发布版 `vitro/engine`——`.mbtx` 单文件以 import prelude 声明依赖（首次运行自动从 registry 拉取并缓存），经 gateway 包 `invoke` 帧协议走完白箱主线：编译冒泡排序 → 全速运行 → `output.delta` 取 stdout → step 族逐帧回放数组内存演化（初始化逐元素写入与交换撕裂中间态全程可见）。运行 `moon run examples/demo.mbtx --target wasm-gc`（wasm-gc 臂必需——gateway 不支持单文件默认的线性内存 wasm 臂）；README 快速开始新增第 0 步零克隆体验。
+
 ### Fixed（审阅批处置：尾数进位归一 + Pos 常量折叠族三处 + protocol_frames 基线连坐，2026-10-11）
 
 - **尾数进位归一**（审阅 P1①）：format_e（本批引入）/format_g（既有）同病——format_fixed 四舍五入把尾数推上 10（9.999999→"10.000000"）未归一（999999.99→"10.000000e+05" 非 "1.000000e+06"）；判据在渲染后（结果以 "10" 打头 → exp+1 重算）；八行探针全同 clang；新边界锚+旧 A3 锚翻（999999.5 "1000000"→"1e+06"）。

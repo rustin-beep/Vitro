@@ -204,3 +204,7 @@ scripts/skill_path_check/rules.json
 scripts/demo_ui_lint/rules.json
 scripts/teaching_annotation_diff/rules.json
 scripts/mbti_sync.exe
+
+# examples/ 一键体验（2026-10-12）：moon run 的脚本级构建产物——demo.mbtx
+# 是 mooncakes 发布版的对外体验入口（零 clone 零脚手架），运行即产 _build
+examples/_build/

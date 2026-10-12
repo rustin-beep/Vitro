@@ -42,6 +42,9 @@ type Rule struct {
 	Unit    string
 }
 
+// 2026-10-12 带宽 5000-8000→1000-1600：真值面随 oracle 退役改四目录
+// 稳定语料（随机 2400 例生成路死亡——golden 清单不认临时目录名），
+// 1298=822+162+276+38（四目录冻结基线）。
 func rules() []Rule {
 	mk := func(key, label, ctx, exc string, lo, hi int, unit string) Rule {
 		r := Rule{Key: key, Label: label, Context: regexp.MustCompile("(?i)" + ctx),
@@ -78,7 +81,7 @@ func rules() []Rule {
 		mk("moonbit_test_passed", "MoonBit 测试数", `moon\s*test|moonbit[^\n]*测试|测试[^\n]*moonbit`, ``, 40, 2000, "用例"),
 		// S2（2026-09-19）：词法差分 TSV 总数防漂移——随机 2400 例 ×2 层 +
 		// baseline 363×2 + K&R 81×2 = 5688；语料增删会移动真值，文档数字须随动。
-		mk("moonbit_lexer_diff_tsv", "词法差分 TSV 数", `差分[^\n]*TSV|TSV[^\n]*差分|逐字节一致[^\n]*TSV|词法差分`, ``, 5000, 8000, "个"),
+		mk("moonbit_lexer_diff_tsv", "词法差分 TSV 数", `差分[^\n]*TSV|TSV[^\n]*差分|逐字节一致[^\n]*TSV|词法差分`, ``, 1000, 1600, "个"),
 		// S3（2026-09-19）：解析差分样本总数防漂移——baseline 363 + K&R 81
 		// + leetcode 138 + gap 15 = 597；语料增删会移动真值，文档数字须随动。
 		mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\n]*样本|样本[^\n]*解析差分|AST[^\n]*诊断序列|parser_diff`, ``, 500, 700, "个"),

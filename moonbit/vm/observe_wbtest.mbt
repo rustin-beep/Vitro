@@ -284,3 +284,54 @@ test "observe_array_snapshots_pointer_array" {
   assert_eq(q.elements[0], "'A'")
   assert_eq(q.elements[1], "'0'")
 }
+
+///|
+/// 病 52 锚（2026-10-13）：elem_size_of 对 LL 数组 = 8（旧漏 TK_LongLong
+/// 反算除 4 → index 错倍 ×2）——单点锚（与 observe.mbt slot_covers 同族
+/// 表对齐；端到端触发形态被 TrapBounds 前置臂遮蔽，三层探测未复现在案）。
+test "elem_size_of_ll_array_b52" {
+  let ll_arr_ty = @ast.Type::array_of(@ast.Type::LongLong(true, false), [4])
+  let vm = VitroVM::new()
+  vm.set_symbols([mksym("g", 1024U, false, ll_arr_ty, "", 1)])
+  // g[6] 的字节 addr = base + 6*8 = 1072 → 反算 index 须为 6（旧 48/4=12）
+  let msg = vm.format_bounds_error(1024U + 48U)
+  assert_true(
+    msg.contains("g[6]"),
+    msg="LL 数组反算 index 须除 8：\{msg}",
+  )
+}
+
+///|
+/// 病 53 锚（2026-10-13）：除零零值扫描按当前帧 func_name 过滤——跨
+/// 函数局部变量（other 的 far_var）不得借当前帧 locals_base 错位列出。
+test "div_zero_zero_section_filters_by_frame_b53" {
+  let vm = VitroVM::new()
+  vm.set_symbols([
+    mksym("far_var", 0U, true, @ast.Type::int(), "other", 3),
+    mksym("divisor", 0U, true, @ast.Type::int(), "main", 8),
+    mksym("g_nonzero", 16384U, false, @ast.Type::int(), "", 1),
+  ])
+  // 当前帧 = main（locals_base=512）；far_var 只存在于 other 帧
+  vm.call_stack.push({
+    return_ip: Some(0),
+    locals_base: 8192U,
+    local_count: 2,
+    func_name: "main",
+    original_stack_top: 0U,
+    caller_line: 1,
+    local_buffers: [],
+  })
+  // main 帧 divisor@512=0；全局 g_nonzero@2048=7（非零不列）；far_var
+  // 在 main 帧的错位地址 512（=divisor 槽）旧实现读 0 错列——过滤后不列
+  ignore(vm.memory.store_u32(vm.mem_map, 8192U, 0U))
+  ignore(vm.memory.store_u32(vm.mem_map, 16384U, 7U))
+  let section = vm.div_zero_zero_section()
+  assert_true(
+    section.contains("divisor"),
+    msg="本帧零值变量须列出：\{section}",
+  )
+  assert_false(
+    section.contains("far_var"),
+    msg="跨函数局部不得错位列出：\{section}",
+  )
+}

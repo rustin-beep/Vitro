@@ -7,14 +7,30 @@
 ///|
 pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
   ensure_include_reader()
+  // 病 87 残留⑤（2026-10-13，方案 A 用户拍板）：未知旗标/多余位置参数
+  // fail loud——旧静默丢（extra.c 被吞只编译第一个，用户以为多文件编译）
   let mut file = ""
   let mut json_mode = false
+  let mut bad_arg : String? = None
   for a in args {
     if a == "--json" {
       json_mode = true
     } else if (!a.has_prefix("-") || a == "-") && file == "" {
       file = a
+    } else if !a.has_prefix("-") || a == "-" {
+      bad_arg = Some(
+        "多余位置参数 '\{a}'（compile 是单文件编译——多文件请用 serve/api 的 files 数组）",
+      )
+      break
+    } else {
+      bad_arg = Some(a)
+      break
     }
+  }
+  if bad_arg is Some(msg) {
+    println("vitro compile: 未知旗标或多余参数：\{msg}")
+    println("用法: compile <file.c> [--json]")
+    return 4
   }
   if file == "" {
     println("用法: compile <file.c> [--json]")

@@ -288,6 +288,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/p2a_host_semantics.c": Standard(Std::{ src_sha: "d22a05b8", exit_code: 0, stdout_sha: "dabcc0e8623f5312", memory_sha: "1b05a80471a22fd7" }),
     "baseline/p2b_typeck_false_positives.c": Standard(Std::{ src_sha: "60ce2b5e", exit_code: 0, stdout_sha: "355650b6601e63ac", memory_sha: "12a01685df28a803" }),
     "baseline/p2c_parser_lexer_batch.c": Standard(Std::{ src_sha: "2823aa75", exit_code: 0, stdout_sha: "8ee51a7a76d4a835", memory_sha: "006be7dc23354f65" }),
+    "baseline/p2e_div_zero_scope.c": Standard(Std::{ src_sha: "9fa05878", exit_code: 0, stdout_sha: "456913eba3ebdd28", memory_sha: "3afbbe6856c4aa53" }),
     "baseline/p71_tier3_scanf.c": Standard(Std::{ src_sha: "7cf64475", exit_code: 0, stdout_sha: "7d8a4c4ce48026f3", memory_sha: "8ce42b3c811067c7" }),
     "baseline/p71_tier3_semantics.c": Standard(Std::{ src_sha: "c752b120", exit_code: 0, stdout_sha: "5cdb7ffcc9c29922", memory_sha: "75efd7badf828e4c" }),
     "baseline/param_shadows_func.c": Standard(Std::{ src_sha: "dbad2b64", exit_code: 0, stdout_sha: "3d2f0fde839cff88", memory_sha: "bcafb38f9c26cc19" }),

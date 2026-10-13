@@ -306,11 +306,24 @@ async function cmdRun(args) {
 
 // ── compile ─────────────────────────────────────────────────────
 async function cmdCompile(args) {
+  // 病 87 残留⑤（2026-10-13 方案 A，与 MoonBit cli_compile 同款）：
+  // 未知旗标/多余位置参数 fail loud rc=4——旧静默丢
   let file = "";
   let jsonMode = false;
   for (const a of args) {
     if (a === "--json") jsonMode = true;
     else if ((!a.startsWith("-") || a === "-") && file === "") file = a;
+    else if (!a.startsWith("-") || a === "-") {
+      process.stderr.write(`vitro compile: 未知旗标或多余参数：多余位置参数 '${a}'（compile 是单文件编译——多文件请用 serve/api 的 files 数组）\n`);
+      process.stderr.write("用法: compile <file.c> [--json]\n");
+      process.exitCode = 4;
+      return;
+    } else {
+      process.stderr.write(`vitro compile: 未知旗标或多余参数：${a}\n`);
+      process.stderr.write("用法: compile <file.c> [--json]\n");
+      process.exitCode = 4;
+      return;
+    }
   }
   if (file === "") {
     process.stderr.write("用法: compile <file.c> [--json]\n");
@@ -352,6 +365,19 @@ async function cmdStep(args) {
       if (!/^[0-9]+$/.test(v)) die(`用法错: --max-steps 需要整数，得到 '${v}'`, 4);
       maxSteps = parseInt(v, 10);
     } else if ((!a.startsWith("-") || a === "-") && file === "") file = a;
+    else if (a.startsWith("-") && a !== "-") {
+      // 病 87 残留⑦（2026-10-13 方案 A，与 MoonBit cli_step 同款）：
+      // 未知旗标 fail loud——旧静默吞照常出帧
+      process.stderr.write(`vitro step: 未知旗标：${a}\n`);
+      process.stderr.write("用法: step <file.c> [--max-steps N] [--json|--summary]\n");
+      process.exitCode = 4;
+      return;
+    } else if (file !== "") {
+      process.stderr.write(`vitro step: 多余位置参数 '${a}'（step 是单文件命令）\n`);
+      process.stderr.write("用法: step <file.c> [--max-steps N] [--json|--summary]\n");
+      process.exitCode = 4;
+      return;
+    }
     i++;
   }
   if (file === "") {

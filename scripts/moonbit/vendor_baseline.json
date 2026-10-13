@@ -1,6 +1,6 @@
 {
   "_generated_by": "go run ./scripts/moonbit/vendor_drift --update-baseline",
-  "as_of": "2026-09-28",
+  "as_of": "2026-10-14",
   "repo": "moonbitlang/x",
   "ref": "main",
   "upstream_version": "0.5.5",
@@ -8,12 +8,12 @@
   "files": [
     {
       "path": "fs/fs.mbt",
-      "sha256": "41d895c76d4694aaa80b3f93cdb456aa99a480f997c3282aab78421458baaa0e",
+      "sha256": "0d0db364fad1cec2ddc23612662d752655468d9c6066b9aadaff54449b7c75c3",
       "vendored": "moonbit/fs/fs.mbt"
     },
     {
       "path": "fs/fs_native.mbt",
-      "sha256": "5f20626eac50967dbc88a2b5130e02a3f283dc41ddc1e5464b5debfd086a9ac9",
+      "sha256": "8569c5a7b2177b172ba2a8b64e21a941073bf59e3496523f1767dd1408269457",
       "vendored": "moonbit/fs/fs_native.mbt"
     },
     {

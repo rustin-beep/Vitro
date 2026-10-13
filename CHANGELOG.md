@@ -12,6 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed（CI 红根除：vendor_drift 上游追平性漂移——moonbitlang/x promote #337，2026-10-13）
+
+上游 `5c64953a`（promote #337）对 fs/fs.mbt 与 fs/fs_native.mbt 做了 `encoding? → encoding~` 与 FFI 签名 `Int → Int32` 迁移——**与 f4dee085 工具链批对 vendored 面的同向迁移完全一致**（vitro 侧已是等价形态）。全文 diff 定性：本地与上游差异仅剩已登记五项机械改造（头标注/pub→priv 收窄/guard 回补/前缀/utf8 内联）——**无关漂移（已等价），零代码跟进**；`vendor_drift --update-baseline` 刷新两文件基线 sha（as_of 2026-10-14）。本条是「上游漂移雷达」设计目的的首次正常触发：红=人工评估令而非自动同步令，评估结论留档。
+
+### Fixed（#71 病 87 收口：七项勘误——五项实销 + 残留②⑤方案 A 全面 fail loud，2026-10-13，用户拍板）
+
+- **实测勘误**：七项中五项已被历批修掉（①未知旗标 rc=4 / ②--backend 尾置专项文案〔#64 批〕/ ③-i 缺值 rc=4 / ④--max-steps 缺值 rc=4 / ⑥--dump-memory 缺值 rc=4〔DX P4 三项——spec §2 的 4 号码位注释即该批写入〕）——浓缩快照搬运时点早于修复，与病 15/13/14/19 同族陈旧。
+- **残留两项方案 A**（run 域已严格、step/compile 松的「子命令间不一致」尾巴）：⑤ compile 多余位置参数 → rc=4（文案指引多文件走 serve/api 的 files 数组）；⑦ step 未知旗标与多余位置参数 → rc=4。**MoonBit 侧（cli_compile/cli_step）+ node 壳（main.js cmdCompile/cmdStep）四路同步**——双臂同形（rc=4 双臂一致、合法路径四连 rc=0 回归）。
+- **零协议变更**：rc=4「参数不合法」语义已在 spec §2 契约表内——行为对齐非语义变更；与全域纪律 8（fail loud 禁静默 default）同构。
+- 锚 `b87_compile_step_strict_args`（合法路径回归走 stdin "-" 通道——wbtest 沙箱读不到磁盘文件，rc=4 会混入 IO 语义）；README 数字连坐 885/129。
+- 防线：moon test 756/756 · native 885 · wasm-gc 860 · clang_direct 739+11+0（750）· smoke · testcount/facts 0 漂移 全绿。
+
+
+### Fixed（#71 台账批D·教学文案组两病：52/53，2026-10-13）
+
+- **病 52**（LL 数组越界文案 index 错倍）：trap.mbt `elem_size_of` 补 TK_LongLong=8 臂（与 observe.mbt slot_covers 同族表对齐——LL 元素宽 8 反算除 4 → index 错倍 ×2，登记 p[6]→"a[12]" 形态）；端到端触发形态三层探测未复现（局部/全局/堆指针——疑被 TrapBounds 前置臂遮蔽），修复为同族对齐+防御，wbtest 单点锚 `elem_size_of_ll_array_b52`（构造 LL 符号直调反算 48/8=6）。
+- **病 53**（三文案跨函数变量错位展开）：除零 inspect 段 + 无限循环 stale/changed 段**双扫描点**补当前帧 func_name 过滤（空栈形态退化不过滤防崩）——`other` 的 far_var 不得借 main 帧 locals_base 错位读值列出（错作用域+错值双错，oracle 同病 S9 脱钩修正）。行为锚 `div_zero_zero_section_filters_by_frame_b53` + 语料 `p2e_div_zero_scope.c`（main 帧除零只列 divisor；**known_direct 登记** digest 5fd9b345——vitro 教学 trap vs clang SEH 崩，array_bound_const_index 同款）。探针插曲：首版探针除零落 other 帧（far_var 同帧列出是正确行为）——修正为 main 帧形态。
+- 防线：moon test 756/756 · native 884 · wasm-gc 860 · clang_direct 739 SAME+11 KNOWN+0 DIFF（750）· 五家 freeze · smoke · testcount/facts 0 漂移 全绿。
+
 ### Fixed（#71 台账批C-2·preproc/typeck/codegen 六病：69/70/73/74/56/61，2026-10-13）
 
 - **病 69**（悬空指数错位诊断）：`1e`/`1e+` 数字后 e/E 无数字——显式 E1006「浮点常量指数缺少数字」（消费 e[±] 局部化；旧 Number+Identifier 错位 → E2005「预期 ';'」离题；clang "exponent has no digits" 同位）。

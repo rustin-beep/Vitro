@@ -66,3 +66,33 @@ test "cli_api_help_detail_单方法与未知方法" {
   assert_eq(api(["help", "compile"], () => b""), 0)
   assert_eq(api(["help", "no.such.method"], () => b""), 4)
 }
+
+///|
+/// 病 87 残留⑤⑦锚（2026-10-13 方案 A，用户拍板）：compile 多余位置
+/// 参数 / step 未知旗标与多余位置参数 → rc=4 fail loud（run 域 DX P1
+/// 已严格——子命令间不一致尾巴收口；rc=4 语义在 spec §2 契约内零变更）。
+test "b87_compile_step_strict_args" {
+  // compile 多余位置参数（旧 rc=0 静默丢 extra）
+  let rc1 = compile(["tmp_probe.c", "extra.c"], () => b"int main(){return 0;}")
+  assert_eq(rc1, 4, msg="compile 多余位置参数须 rc=4")
+  // compile 未知旗标
+  let rc2 = compile(["--bogus", "a.c"], () => b"int main(){return 0;}")
+  assert_eq(rc2, 4, msg="compile 未知旗标须 rc=4")
+  // step 未知旗标（旧 rc=0 静默吞照常出帧）
+  let out3 = []
+  let rc3 = step(["a.c", "--xyz"], () => b"int main(){return 0;}", fn(b) {
+    out3.push(b)
+  })
+  assert_eq(rc3, 4, msg="step 未知旗标须 rc=4")
+  // 合法参数不受影响（回归面：--max-steps 正常路径；源走 stdin "-"
+  // 通道——wbtest 沙箱读不到磁盘 a.c，rc=4 会是 IO 语义混入参数断言）
+  let rc4 = step(["-", "--max-steps", "50"], () => b"int main(){return 0;}", fn(
+    _b,
+  ) {
+    ()
+  })
+  assert_true(
+    rc4 != 4,
+    msg="合法路径不因参数被拒（引擎态 rc 任意）",
+  )
+}

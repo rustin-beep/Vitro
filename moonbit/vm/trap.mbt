@@ -158,13 +158,15 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
 }
 
 ///|
-/// 数组元素步长（base_kind 单源：Char=1 / Double=8 / 其余 4——Rust
-/// `format_bounds_error` 内两处 match 的合并；Float 族走 f32 但 base_kind
-/// 落 TK_Float → 4，与 Rust `_ => 4` 同口径）。
+/// 数组元素步长（base_kind 单源：Char=1 / Double·LongLong=8 / 其余 4——
+/// 与 observe.mbt slot_covers:234 同族表对齐）。病 52（2026-10-13）：
+/// 旧漏 TK_LongLong（LL 数组元素宽 8 反算除 4 → index 错倍 ×2，登记
+/// p[6]→"a[12]" 形态）；端到端触发形态三层探测未复现（疑被 TrapBounds
+/// 前置臂遮蔽——修复为同族对齐+防御，wbtest 单点锚在案）。
 fn elem_size_of(ty : @ast.Type) -> Int32 {
   match ty.base_kind() {
     TK_Char => 1
-    TK_Double => 8
+    TK_Double | TK_LongLong => 8
     _ => 4
   }
 }
@@ -186,13 +188,26 @@ fn VitroVM::format_div_zero_error(self : VitroVM, a : Int32) -> String {
 /// 自 format_div_zero_error 抽出；扫当前作用域值为 0 的变量附进诊断）。
 fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
   let zero_vars : Array[String] = []
+  // 病 53（2026-10-13）：局部符号按**当前帧函数名**过滤——旧扫全符号
+  // 表且一律用栈顶帧 locals_base，跨函数局部变量（other 的 far_var 在
+  // main 帧错位读值）被错位列进「值为 0 的变量」（错作用域+错值双错；
+  // oracle 同病，S9 脱钩修正）。全局符号（func_name=""）不过滤。
+  // 空栈形态（wbtest 直调/宿主回调边界）退化为不过滤——局部符号由下方
+  // 既有 guard 栈空跳过，行为不崩。
+  let cur_frame : CallFrame? = if self.call_stack.length() > 0 {
+    Some(self.call_stack[self.call_stack.length() - 1])
+  } else {
+    None
+  }
   for sym in self.symbols {
     guard !sym.ty.is_array() else { continue }
     let mut vaddr = sym.addr
     if sym.is_local {
       guard self.call_stack.length() > 0 else { continue }
-      vaddr = self.call_stack[self.call_stack.length() - 1].locals_base +
-        sym.addr
+      guard cur_frame is Some(f) && sym.func_name == f.func_name else {
+        continue
+      }
+      vaddr = cur_frame.unwrap().locals_base + sym.addr
     }
     if vaddr + 4U <= @bytecode.MEM_SIZE && vaddr >= @bytecode.NULL_TRAP_SIZE {
       match self.memory.load_u32(self.mem_map, vaddr) {
@@ -240,8 +255,19 @@ fn VitroVM::format_infinite_loop_error(self : VitroVM) -> String {
   // +「等」尾巴）逻辑留代码。
   let stale_vars : Array[String] = []
   let changed_vars : Array[String] = []
+  // 病 53 同款（2026-10-13）：局部符号按当前帧过滤（跨函数变量在别的
+  // 帧，read_variable 用当前帧 base 读出的是错位值，stale/changed 分组
+  // 双双失真）。snapshot_vars 的键含跨函数同名变量时同样只比当前帧。
+  let inf_frame : CallFrame? = if self.call_stack.length() > 0 {
+    Some(self.call_stack[self.call_stack.length() - 1])
+  } else {
+    None
+  }
   for sym in self.symbols {
     guard !sym.ty.is_array() else { continue }
+    if sym.is_local && !(inf_frame is Some(f) && sym.func_name == f.func_name) {
+      continue
+    }
     let cur_val = self.read_variable(sym)
     match self.snapshot_vars.get(sym.name) {
       Some(old_val) =>

@@ -1462,6 +1462,12 @@
       "stdout_sha": "8ee51a7a76d4a835",
       "memory_sha": "006be7dc23354f65"
     },
+    "baseline/p2e_div_zero_scope.c": {
+      "src_sha": "9fa05878",
+      "exit_code": 0,
+      "stdout_sha": "456913eba3ebdd28",
+      "memory_sha": "3afbbe6856c4aa53"
+    },
     "baseline/p71_tier3_scanf.c": {
       "src_sha": "7cf64475",
       "exit_code": 0,

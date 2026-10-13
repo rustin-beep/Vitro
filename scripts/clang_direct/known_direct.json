@@ -53,5 +53,10 @@
     "case": "string_escape_octal_hex.c",
     "digest": "38dfc934",
     "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
+  },
+  {
+    "case": "p2e_div_zero_scope.c",
+    "digest": "5fd9b345",
+    "reason": "除零教学 trap vs Clang Windows SEH 崩（0xC0000142 域返回码 3221225620）——Vitro 白箱把除零转为结构化教学诊断（inspect 段列本帧零值变量），Clang 无 sanitizer 直接崩；array_bound_const_index.c 同款形态（教学 trap vs 无 sanitizer）。病 53 修复批：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）"
   }
 ]

@@ -35,6 +35,18 @@ pub fn step(
       }
     } else if (!args[i].has_prefix("-") || args[i] == "-") && file == "" {
       file = args[i]
+    } else if args[i].has_prefix("-") && args[i] != "-" {
+      // 病 87 残留⑦（2026-10-13，方案 A）：未知旗标 fail loud——
+      // run 已严格（DX P1）step 漏，旧 --xyz 被静默吞照常出帧
+      println("vitro step: 未知旗标：\{args[i]}")
+      println("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      return 4
+    } else if file != "" {
+      println(
+        "vitro step: 多余位置参数 '\{args[i]}'（step 是单文件命令）",
+      )
+      println("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      return 4
     }
     i += 1
   }

@@ -391,10 +391,12 @@ fn BytecodeGen::pass1_register_global(
         InitList(elements, _, _) => {
           let has_designators = elements.exists(e => e.designators.length() > 0)
           if has_designators {
-            self.report_error(
-              "全局变量的 designated initializer 暂不支持",
-              g.loc,
-            )
+            // #76 缺口 4（2026-10-13）：文件作用域指定初始化器——Index
+            // designator 标量数组按 C11 6.7.9 稀疏展开（块作用域同款写法
+            // 本就支持，仅全局路径缺）；Field designator/嵌套聚合形态
+            // 维持 fail loud（诚实收窄）。旧形态 fail loud 无诊断码出口
+            //（#38 登记的活体）。
+            self.flatten_designated_global(g, elements, offset)
             return
           }
           let is_char_array = match g.ty {
@@ -508,6 +510,112 @@ fn BytecodeGen::pass1_register_global(
     None => ()
   }
   self.push_symbol(g.name, offset, g.ty, g.loc.line)
+}
+
+///|
+/// #76 缺口 4（2026-10-13）：文件作用域指定初始化器稀疏展开——顶层
+/// Index designator 指位（C11 6.7.9：designator 定位后，后续无
+/// designator 的元素按 prev+1 续位），未提及位置保持静态零（不产生写
+/// 记录）。仅收标量元素数组（位模式经 literal_init_bits 单源，4/8 字节
+/// 两路与顺序路径同构）；Field designator（struct 成员指派）/嵌套
+/// InitList 元素/多维下标链维持 fail loud（诚实收窄——本批只销 #76
+/// 命中形态）。
+fn BytecodeGen::flatten_designated_global(
+  self : BytecodeGen,
+  g : @ast.GlobalDecl,
+  elements : Array[@ast.InitElement],
+  offset : Int32,
+) -> Unit {
+  guard g.ty.is_array() else {
+    self.report_error(
+      "designated initializer 仅支持数组目标（'\{g.name}' 为 \{g.ty.to_c_string()}）",
+      g.loc,
+    )
+    return
+  }
+  let elem_size = self.elem_type_size(g.ty)
+  let elem_ty_kind = g.ty.base_element_type().kind()
+  let mut next_index : Int32 = 0
+  for elem in elements {
+    // 单层 Index designator（[i][j] 链与 .field 形态收窄拒绝）
+    match elem.designators.length() {
+      0 => ()
+      1 =>
+        match elem.designators[0] {
+          Index(idx_expr) => {
+            // 下标常量求值复用 lit_num（Literal/LongLiteral/Neg/Cast 剥壳）
+            let idx = match lit_num(idx_expr) {
+              Some(LN_I(v)) =>
+                if v < -2147483648L || v > 2147483647L {
+                  None
+                } else {
+                  Some(v.to_int())
+                }
+              _ => None
+            }
+            match idx {
+              Some(v) =>
+                if v < 0 || v >= g.ty.total_elements() {
+                  self.report_error(
+                    "designated initializer 下标 \{v} 越界（'\{g.name}' 共 \{g.ty.total_elements()} 元素）",
+                    g.loc,
+                  )
+                  return
+                } else {
+                  next_index = v
+                }
+              None => {
+                self.report_error(
+                  "designated initializer 下标须为整型常量表达式",
+                  g.loc,
+                )
+                return
+              }
+            }
+          }
+          Field(_) => {
+            self.report_error(
+              "designated initializer 的成员指派（.field=）暂不支持（数组下标 [i]= 支持）",
+              g.loc,
+            )
+            return
+          }
+        }
+      _ => {
+        self.report_error(
+          "designated initializer 的多级指派链暂不支持（单级 [i]= 支持）",
+          g.loc,
+        )
+        return
+      }
+    }
+    if elem.value is InitList(_, _, _) {
+      self.report_error(
+        "designated initializer 的嵌套聚合元素暂不支持",
+        g.loc,
+      )
+      return
+    }
+    match literal_init_bits(elem.value, elem_ty_kind) {
+      Some((bits, _)) => {
+        let addr = offset.reinterpret_as_uint() +
+          next_index.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+        if elem_size == 8 {
+          self.globals_init_64.push((addr, bits))
+        } else {
+          self.globals_init_32.push(
+            (addr, bits.reinterpret_as_int64().to_int32_bits()),
+          )
+        }
+      }
+      None =>
+        self.report_error(
+          "designated initializer 元素须为标量常量（'\{g.name}'）",
+          g.loc,
+        )
+    }
+    next_index = next_index + 1
+  }
 }
 
 ///|

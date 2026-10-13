@@ -173,3 +173,26 @@ test "utf16_pair_inverse" {
   debug_inspect(char_to_utf16_pair('A'), content="None")
   debug_inspect(char_to_utf16_pair('😀'), content="Some((55357, 56832))")
 }
+
+///|
+/// 病 44 锚（2026-10-13）：写方向 fopen 失败须 raise IOError 而非 NULL
+/// 直传 fwrite 崩进程（0xC0000409）——上游 x@0.5.5 的
+/// write_bytes_to_file_internal 本有 guard is_null，vitro 搬迁批
+/// （d29a3470）单行丢失（上游 3 次 guard vs 搬迁版 2 次实测）；本锚
+/// 补回前为红（崩进程不可断言——以修复后 IOError 形态锚定），修复后
+/// 不可写路径（不存在目录下写）走 raise。
+test "write_to_unwritable_path_raises" {
+  // 目录不存在 ⇒ fopen 返回 NULL ⇒ 修复前 NULL 直传 fwrite 崩进程，
+  // 修复后 raise IOError
+  let bad = "tmp_vitro_no_such_dir/x.txt"
+  let mut raised = false
+  write_bytes_to_file(bad, b"hi") catch {
+    _ => raised = true
+  }
+  inspect(raised, content="true")
+  let mut raised2 = false
+  write_string_to_file(bad, "hi") catch {
+    _ => raised2 = true
+  }
+  inspect(raised2, content="true")
+}

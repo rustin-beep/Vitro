@@ -22,8 +22,13 @@
 // 改动：① unicode 包的 to_utf8_bytes / to_utf8_string 两函数改调本包
 //   utf8_compat.mbt 内联实现（原样搬自 x@0.5.5 的 unicode/utf8.mbt+basic.mbt）；
 //   ② C 符号前缀 moonbitlang_x_fs_* → vitro_engine_fs_*（防与任何同时链接
-//   的 x 版本符号撞名）；③ 文件头追加本标注。
-// 上游漂移监控：go run ./scripts/moonbit/vendor_drift。
+//   的 x 版本符号撞名）；③ 文件头追加本标注；④ FFI 签名 Int→Int32
+//   （f4dee085 工具链批 fmt 归一化扫及 vendored 面，语义零变化）；
+//   ⑤ write_bytes_to_file_internal 补回 fopen guard（病 44——该行在
+//   0.5.5 锁定版原样存在、搬迁批单行丢失，补回=向锁定版收敛非偏离）。
+// 上游漂移监控：go run ./scripts/moonbit/vendor_drift（注：该闸只监控
+// 上游 main 漂移，不做本文件↔锁定 tag 的保真对账——搬迁保真靠人工
+// diff 验收，病 44 即该盲区的实例）。
 
 ///|
 #external
@@ -144,6 +149,11 @@ fn write_bytes_to_file_internal(
   content : Bytes,
 ) -> Unit raise IOError {
   let file = fopen_ffi(OsString::from_string(path), OsString::from_string("wb"))
+  // 病 44（2026-10-13）：此 guard 在上游 x@0.5.5 锁定版原样存在（sha
+  // 29dbb4f9…与文件头标注一致、上游 3 次 guard vs 搬迁版 2 次实测），
+  // 搬迁批 d29a3470 单行丢失 ⇒ fopen 失败 NULL 直传 fwrite 崩进程
+  //（0xC0000409，红锚实测）——补回即恢复与锁定版一致（非本地偏离）。
+  guard is_null(file) == 0 else { raise IOError(get_error_message()) }
   let bytes_written = fwrite_ffi(content, 1, content.length(), file)
   guard bytes_written == content.length() else {
     raise IOError(get_error_message())

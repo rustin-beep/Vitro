@@ -245,7 +245,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/linked_list_tail.c": Standard(Std::{ src_sha: "f7662dcc", exit_code: 0, stdout_sha: "7c8f5059290305ce", memory_sha: "da1f808b6e9b502b" }),
     "baseline/linked_queue.c": Standard(Std::{ src_sha: "560447ef", exit_code: 0, stdout_sha: "d15909be6dfffd57", memory_sha: "64cbe62ee1484402" }),
     "baseline/linked_stack.c": Standard(Std::{ src_sha: "a0e038b1", exit_code: 0, stdout_sha: "c13c6ee09f69f5be", memory_sha: "8b674dfc1d0f7632" }),
-    "baseline/llm_corpus_rejects.c": Standard(Std::{ src_sha: "fed75e20", exit_code: 0, stdout_sha: "d86935e30767b1fa", memory_sha: "a091885c635502c7" }),
+    "baseline/llm_corpus_rejects.c": Standard(Std::{ src_sha: "e6988440", exit_code: 0, stdout_sha: "f3d31a6f16d55a02", memory_sha: "98a89fa0df72cd10" }),
     "baseline/logical_and.c": Standard(Std::{ src_sha: "d48c431d", exit_code: 0, stdout_sha: "5feceb66ffc86f38", memory_sha: "8c96826f250d714c" }),
     "baseline/logical_and_var.c": Standard(Std::{ src_sha: "d48c431d", exit_code: 0, stdout_sha: "5feceb66ffc86f38", memory_sha: "8c96826f250d714c" }),
     "baseline/logical_not.c": Standard(Std::{ src_sha: "6a9f88bf", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "74f081b24f1fa786" }),

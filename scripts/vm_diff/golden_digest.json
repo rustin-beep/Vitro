@@ -1205,10 +1205,10 @@
       "memory_sha": "8b674dfc1d0f7632"
     },
     "baseline/llm_corpus_rejects.c": {
-      "src_sha": "fed75e20",
+      "src_sha": "e6988440",
       "exit_code": 0,
-      "stdout_sha": "d86935e30767b1fa",
-      "memory_sha": "a091885c635502c7"
+      "stdout_sha": "f3d31a6f16d55a02",
+      "memory_sha": "98a89fa0df72cd10"
     },
     "baseline/logical_and.c": {
       "src_sha": "d48c431d",

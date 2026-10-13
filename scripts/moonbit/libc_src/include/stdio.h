@@ -1,4 +1,8 @@
 typedef unsigned int size_t;
+// #76 缺口 5（2026-10-13）：ptrdiff_t 随 stdio.h 传递——真 C 的 stdio.h
+// 因内部使用引入 <stddef.h>（clang/gcc「只 include stdio.h 用 ptrdiff_t」
+// 双 ACCEPT 佐证）；旧漏致 E2003，显式 include stddef.h 是绕法非正解
+typedef int ptrdiff_t;
 typedef void* FILE;
 
 int printf(const char* fmt);

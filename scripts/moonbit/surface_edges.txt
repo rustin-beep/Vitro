@@ -86,6 +86,7 @@ vitro/engine/codegen vitro/engine/ast BinaryOp
 vitro/engine/codegen vitro/engine/ast Expr
 vitro/engine/codegen vitro/engine/ast GlobalDecl
 vitro/engine/codegen vitro/engine/ast InitElement
+vitro/engine/codegen vitro/engine/ast Designator
 vitro/engine/codegen vitro/engine/ast Param
 vitro/engine/codegen vitro/engine/ast ProgramNode
 vitro/engine/codegen vitro/engine/ast Stmt

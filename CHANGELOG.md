@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（病 44 fs 写方向 guard 回补 + 病 15 台账勘误销案 + CI lexer knr 根除，2026-10-13）
+
+- **病 44 定性修正后修复（用户指令上游亲证）**：上游探查三证——moonbitlang/x 的 v0.5.5 tag 与 main 的 `write_bytes_to_file_internal` **本有** `guard is_null`；vitro 文件头标注的 0.5.5 锁定 sha（29dbb4f9…）与上游实测一致；上游 guard 3 次 vs **搬迁提交 d29a3470 从第一天起 2 次**——**搬迁单行丢失**（原登记「vendored 0.5.5 原样」不实，非上游缺陷）。修复=补回该行（向锁定版收敛非偏离）；红锚 `write_to_unwritable_path_raises` 以**进程 0xC0000409 崩溃**最强形态证红（NULL fwrite fast-fail），修复后 IOError 透出；文件头标注补 ④Int32 化（f4dee085 扫及 vendored 面的披露债）与 ⑤guard 回补两项。CLI 真坏路径（目录名被文件占位）从崩进程变为带栈 IOError。vendor_drift 闸结构性盲区在案：只监控上游 main 漂移、不做本地↔锁定 tag 保真对账（病 44 即该盲区实例，改进登记不强推）。
+- **病 15 台账勘误销案（浓缩快照第三次漏收，与病 13/14/19 同笔 5a139d30）**：三层探针实证全销——编译层（FILE* 赋值/传参/比较零诊断，5a139d30 宏体 cast 收尾）/ 运行层（fputc 按句柄分流、fgets stdin 通）/ stderr 出口（`// STDERR` 协议标记行透出）。三个裁定点随实销失去对象。
+- **CI 红根除（d1253f91 push 后 lexer_diff knr 13 处 TSV 漂）**：errno 宏值族变更（1/2/3→22/34/33）改变引用宏语料的 token 流——d1253f91 时 lexer 只刷了 baseline（当时「无新例」红被误判跳过）；本批 lexer 四 corpus 补刷（TSV 重算 127/81/138/4）+ CI 口径四 corpus 复验零 FAIL。**freeze 义务清单再+1 家：lexer_diff 的 TSV 面也吃语料**（此前教训只列了 parser/typeck/codegen 的指纹面）。
+- 防线：moon test 751/751 · native 879（fs 10/gateway 104/cli 14 分解实勘）· drift PASS · testcount/facts --strict 0 漂移/smoke 全绿。
+
+### Fixed（#76 两缺口：LLM 语料线第二批误拒——gpt-oss-120b 产出，2026-10-13）
+
+用户亲测（clang 22.1.4 + gcc 16.2.0 双 ACCEPT、vitro 双臂 REJECT）两缺口全销，红锚先行。
+
+- **缺口 5（ptrdiff_t 存根传递，一行）**：stdio.h 存根补 `typedef int ptrdiff_t;`（真 C 的 stdio.h 因内部使用引入 <stddef.h>——D 例双 ACCEPT 佐证；size_t 早已同款直写）。修复前 `只 include <stdio.h> 用 ptrdiff_t` 报 E2003（显式 include stddef.h 是绕法非正解）；gen_stubs 再生；双臂 COMPILE-OK + 运行值同 clang。
+- **缺口 4（文件作用域指定初始化器）**：codegen pass1 的 `has_designators` fail loud 拒绝改为 `flatten_designated_global` 稀疏展开——Index designator 定位 + C11 6.7.9 续位（designator 后无标记元素按 prev+1）+ 未提及位静态零（不产生写记录）；位模式经 literal_init_bits 单源（4/8 字节两路同顺序路径）；下标常量求值复用 lit_num（Literal/LongLiteral/Neg/Cast 剥壳）+ 越界/非整型常量/Field 指派/多级链/嵌套聚合均 fail loud（诚实收窄——只销 #76 命中形态）。红锚 `skeleton: global designated initializer index sparse fill`；扩展探针三向同值（`[2]=7,9,[5]=-3` 续位 / LL 8 字节 / double 位模式）。旧形态的 fail loud 无诊断码出口 = #38 登记的活体（E0 出口归属仍挂 #38 待裁定）。
+- **新病 121 登记（不修，块作用域残余面）**：块作用域 designated **混合**形态续位错值——`int a[8]={[2]=7,9}` 块内 a[3] 得 0 应 9（无 designator 元素被 init.mbt:412 的 continue 跳过）；伴随 W3005「不能混合」假阳性（C11 明允许混合，clang 零警告——文案在文件作用域已修对值后成误报，块作用域错值期反而「半真」）。随病 121 处置批一并收口。
+- 语料 `llm_corpus_rejects.c` 扩两缺口形态（designated 全局三态+续位+8 字节+ptrdiff_t 值断言），clang_direct SAME；五家差分 × 四 corpus freeze 全量重算（上批教训兑现）；`surface_edges.txt` 登记 codegen→ast Designator 新消费边（wbtest 锚构造 Designator 触发——surface 闸抓出即登记）。
+- 防线：moon test 751/751 · native 878 · wasm-gc 855 · clang_direct 735 SAME+10 KNOWN+0 DIFF（745）· smoke · testcount/facts --strict 0 漂移/frames 47 帧/mbti/surface/gen_stubs/libc_boot/libc_single_source/skill_path_check 全绿。
+
 ### Fixed（审阅处置批：P1 testcount 连坐 + P2 errno 端到端三修 + P2 E1004 降 W + P2/P3 strtol·atol 声明 long，2026-10-13）
 
 用户亲审阅 a4860bed（七防线自报 + clang 22.1.4 探针双臂对拍 + f4dee085 归一化复核）产六项发现，本批全处置。

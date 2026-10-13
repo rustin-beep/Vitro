@@ -805,3 +805,81 @@ test "control-flow: retired C++ stmt fails loud without in-flight wording" {
   assert_true(!errors[0].contains("未实现"))
   assert_true(errors[0].contains("退役"))
 }
+
+///|
+/// #76 缺口 4 锚（2026-10-13）：文件作用域指定初始化器——数组标量目标的
+/// Index designator 按 C11 6.7.9 稀疏展开（`int a[8] = {[2]=7,[5]=9}` →
+/// a[2]=7/a[5]=9 其余零初始化）。修复前 codegen fail loud 拒绝（无码出口
+/// ——#38 登记的「codegen 错误无诊断码」活体）；块作用域同写法本就通过。
+test "skeleton: global designated initializer index sparse fill" {
+  let gen = BytecodeGen::new()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [
+      {
+        ..Default::default(),
+        loc: loc(1),
+        ty: @ast.Type::array_of(@ast.Type::int(), [8]),
+        name: "a",
+        init: Some(
+          @ast.Expr::InitList(
+            [
+              {
+                designators: [
+                  @ast.Designator::Index(
+                    @ast.Expr::Literal(2, loc(1), @ast.Type::int()),
+                  ),
+                ],
+                value: @ast.Expr::Literal(7, loc(1), @ast.Type::int()),
+              },
+              {
+                designators: [
+                  @ast.Designator::Index(
+                    @ast.Expr::Literal(5, loc(1), @ast.Type::int()),
+                  ),
+                ],
+                value: @ast.Expr::Literal(9, loc(1), @ast.Type::int()),
+              },
+            ],
+            loc(1),
+            @ast.Type::void_type(),
+          ),
+        ),
+      },
+    ],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: loc(2),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())),
+                loc(2),
+              ),
+            ],
+            loc(2),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0, msg="designated 全局不应再 fail loud")
+  let o = output.unwrap()
+  // 稀疏填充（GLOBAL_START 预留 1024 后）：a[2]@1032=7 / a[5]@1044=9，
+  // 其余元素零初始化不产生写记录（静态零语义）
+  assert_eq(
+    o.globals_init_32,
+    [(1032U, 7), (1044U, 9)],
+    msg="Index designator 按下标稀疏落位",
+  )
+}

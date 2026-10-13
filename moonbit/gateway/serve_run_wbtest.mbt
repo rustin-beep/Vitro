@@ -301,3 +301,63 @@ test "serve_scanf_midstream_waiting_two_feeds_b109" {
   assert_true(resp2.contains("\"status\":\"finished\""), msg="补喂后完成")
   assert_true(stdout_text(s).contains("got 10 20 n=2"))
 }
+
+///|
+/// 审阅 P2 红锚（2026-10-13）：errno 端到端——strtol 溢出须置 ERANGE=34
+/// 且 C 源可读回（双存储空间错位根因：符号 addr 裸偏移未加 GLOBAL_START，
+/// host 受检写落代码区被吞 → errno 恒 0）；宏值族对齐 UCRT（EINVAL=22/
+/// ERANGE=34/EDOM=33——旧 stub 自定义连续编号 1/2/3 与 host 硬写值互不
+/// 一致，学生 if(errno==ERANGE) 永假）。
+test "serve_run_errno_end_to_end" {
+  let s = @session.Session::new()
+  // 段一：宏值族（ERANGE/EINVAL/EDOM）
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\n#include <errno.h>\\nint main() { printf(\\\"%d %d %d\\\", ERANGE, EINVAL, EDOM); return 0; }\\n\"}}",
+  )
+  let (resp, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(resp.contains("\"status\":\"finished\""), msg=resp)
+  assert_eq(
+    stdout_text(s),
+    "34 22 33",
+    msg="宏值族须为 UCRT 值（旧 stub 自定义 2/1/3）",
+  )
+  // 段二：strtol 溢出置位 errno 且 C 源读回
+  let s2 = @session.Session::new()
+  let (_, _) = serve_handle(
+    s2, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\n#include <stdlib.h>\\n#include <errno.h>\\nint main() { errno = 0; long v = strtol(\\\"999999999999999999\\\", 0, 10); printf(\\\"%d\\\", errno); return 0; }\\n\"}}",
+  )
+  let (resp2, _) = serve_handle(s2, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(resp2.contains("\"status\":\"finished\""), msg=resp2)
+  assert_eq(
+    stdout_text(s2),
+    "34",
+    msg="strtol 溢出后 errno 须可读回 ERANGE（旧恒 0）",
+  )
+}
+
+///|
+/// 审阅 P2/P3 红锚（2026-10-13）：strtol/atol 声明面——C 声明 long
+///（LLP64 32 位）而非 long long：sizeof(strtol(...))==4（旧 8，clang 真值
+/// 4）+ `long v = strtol(...)` 零警告（旧假阳性 W3053 long long→int）。
+test "serve_run_strtol_long_decl" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\n#include <stdlib.h>\\nint main() { printf(\\\"%d %d\\\", (int)sizeof(strtol(\\\"1\\\", 0, 10)), (int)sizeof(atol(\\\"1\\\"))); long v = strtol(\\\"5\\\", 0, 10); printf(\\\" %d\\\", (int)(v == 5)); return 0; }\\n\"}}",
+  )
+  let (resp, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(resp.contains("\"status\":\"finished\""), msg=resp)
+  assert_eq(
+    stdout_text(s),
+    "4 4 1",
+    msg="strtol/atol 声明 long=4 字节 + 值语义不变",
+  )
+  // 零警告（compile 帧诊断面）：long v = strtol(...) 不再触发 W3053
+  let s2 = @session.Session::new()
+  let (compile_resp, _) = serve_handle(
+    s2, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdlib.h>\\nint main() { long v = strtol(\\\"5\\\", 0, 10); return v == 5 ? 0 : 1; }\\n\"}}",
+  )
+  assert_true(
+    compile_resp.contains("3053") == false,
+    msg="long v=strtol(...) 不得再报 W3053 假阳性",
+  )
+}

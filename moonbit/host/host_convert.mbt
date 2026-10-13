@@ -406,10 +406,12 @@ pub fn host_strtol(
     pos = pos + 1
   }
   if pos == start_pos {
-    // EINVAL（写入失败照搬 oracle 静默忽略）
+    // EINVAL（写入失败照搬 oracle 静默忽略）——审阅 P2（2026-10-13）：
+    // 22 = UCRT EINVAL（与 errno.h stub 宏同值；旧 1 系自定义编号，
+    // 学生 if (errno == EINVAL) 永假）
     match errno_addr {
       Some(a) =>
-        match mem.store_u32(map, a, 1U) {
+        match mem.store_u32(map, a, 22U) {
           Ok(_) => ()
           Err(_) => ()
         }
@@ -476,9 +478,10 @@ pub fn host_strtod(
   let (token, pos) = scan_float_token(s)
   let val : Double = parse_float_token(token)
   if token.is_empty() {
+    // EINVAL = 22（UCRT，与 stub 宏同值——审阅 P2 同批对齐）
     match errno_addr {
       Some(a) =>
-        match mem.store_u32(map, a, 1U) {
+        match mem.store_u32(map, a, 22U) {
           Ok(_) => ()
           Err(_) => ()
         }

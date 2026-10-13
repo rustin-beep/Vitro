@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（审阅处置批：P1 testcount 连坐 + P2 errno 端到端三修 + P2 E1004 降 W + P2/P3 strtol·atol 声明 long，2026-10-13）
+
+用户亲审阅 a4860bed（七防线自报 + clang 22.1.4 探针双臂对拍 + f4dee085 归一化复核）产六项发现，本批全处置。
+
+- **P1 testcount 双行连坐**：a4860bed 改裸 746→750 时漏改相邻全量行（870 系旧和 746+124）——真值 874 已修后，本批 gateway +2 e2e 锚再推动 native-only 面（分解实勘 fs 9/gateway 104/cli 14=127），全量行按分 target 逐包实测改 877（testcount 闸只做算术自洽不实跑分解——分解数字须逐包 `moon test --target native` 实测，防「双行只改一行」复发）。
+- **P2 errno 端到端三修（真根因深于审阅推断）**：① `resolve_errno_addr` 补 `GLOBAL_START` 基址——符号表 addr 是相对偏移（gen push_symbol 存裸 offset，指令侧才加基址），旧版裸偏移直传 host 受检写落 libc 代码区被拒且静默吞 ⇒ errno 恒 0（审阅推断「stub extern 无符号」被探针修正：符号在〔VM.symbols 实有 addr=1024〕、addr 域错位才是真因）；② stub errno.h 宏值族对齐 UCRT（EINVAL 1→22、ERANGE 2→34、EDOM 3→33、ENOENT 4→2、EACCES 5→13——旧自定义连续编号与 host 硬写值互不一致，学生 `if(errno==ERANGE)` 永假）；③ host EINVAL 写值 1→22 同步对齐。e2e 锚 `serve_run_errno_end_to_end`（宏值族 + strtol 溢出置位读回，双段）；三向（clang/native/wasm）`34 22 33 / errno=34` 全同。
+- **P2 E1004 降 W（合法 C 不硬拒）**：`if (a > 2 | b < 1)` 是合法 C（位或作用于比较结果 0/1 域，clang -Wall -Wextra 静默）——E 级硬错与 #75 vitro_reject_clang_accept 桶清零方向冲突，`report_error` 降 `report_warning`（E1004 码位保持——severity 由 report 通道决定，catalog 文案本就「可能是误写」警告口吻）；病 118 锚翻面（errors→warnings 断言）；双臂 COMPILE-OK + W1004 透出。
+- **P2/P3 strtol/atol 声明 long**：stdlib.h 存根与 libc.mbt builtin 签名 `long long`→`long`（LLP64 32 位 ≡ Vitro int）——`sizeof(strtol(...))` 8→4（clang 真值 4）、`long v=strtol(...)` 假阳性 W3053 消除；host 64 位压栈 ABI 不变，值域经病 20 饱和（⊂ int32）无损互锁。e2e 锚 `serve_run_strtol_long_decl`（4 4 1 + 零 W3053）；三表/路由闸复绿。
+- **P3 convert.mbt:530 旧语法 `?`→`~` 残留：回退不迁（登记留下批）**——实测 `~` 是 required labeled 非可选语义，等价迁移须签名改 `~ : T? = None` + **13 个调用点**显式 Some 包装（纯语法机械面、diff 噪音与「顺手修」不成比例）；旧 `?` 语法当前工具链仍合法（check/test 双绿）。
+- **P3 f4dee085 提交面低估勘误（不改史，勘误评论挂 #71）**：按自称维度（Int32→Int）归一化后 23/184 文件不可归一——含 `?`→`~` 语法迁移约 76 行、`..=`→`..<=` 范围语法、多行签名重排（语义等价、moon check/test 双绿判非破坏，但「fmt Int32 规范化」标题漏披露语法迁移面）；文件数 184 vs 标题 183 差 1。
+- **CI 红根除（a4860bed push 后四 job 红，本批补口）**：① testcount 步 = P1 同病（工作区修复随本批提交）；② parser_diff 红 = **a4860bed 改两份语料漏刷第五家**（只 freeze 了 lexer/typeck/codegen/vm，parser_diff 的样本指纹不一致首跑即红）——补刷四 corpus；③ typeck/codegen 红 = `kr_2_9.c` 指纹漂（`0xFFFFFFFF` hex 无后缀 >INT_MAX 走 UnsignedLiteral token——a4860bed 定型修复的正当连带，clang_direct SAME 证实）——**freeze 只跑了 baseline 目录漏了 knr/leetcode/gap 三套**，补刷后 12/12（四差分×四 corpus）全绿。教训：改语料或定型面的 freeze 义务 = **五家差分 × 全部四 corpus**，缺一即 CI 红。
+- **演化落盘（审阅报告提名）**：`vitro-workspace-review` references 03 追加 E2 同族面「裸/全量双行计数只改一行」（机判 = testcount）+ 01 新增 §12「自称 fmt/机械的归一化复核」（逆变换后 diff + 跨语言生成器消费类型名放大面）+ 07 演化日志。
+- 防线：moon test 750/750 · native 877 · wasm-gc 854 · clang_direct 735 SAME+10 KNOWN+0 DIFF（745）· 四差分 freeze 重算 · smoke · testcount/facts --strict/frames 47 帧/mbti/surface/gen_stubs/libc_boot/skill_path_check 全绿。
+
 ### Fixed（收尾批：#67/#69 销案 + 病 117≡59/20 残余/#63 尾巴修 + 台账勘误×3，2026-10-13）
 
 - **病 117（≡病 59 撞号合并）u 后缀 >INT_MAX 定型 ULL**：parser UnsignedLiteral 臂补 UINT_MAX 域分支（C11 6.4.4.1 值域最小适配——`INT_MAX<x≤UINT_MAX` 定型 unsigned int，值由 LongLiteral i64 位模式承载）；typeck 两处 `LongLiteral` 一律重定型有符号 long_long 改保留节点类型（expr.mbt 定型 + decl.mbt auto 推导）。双缺陷同修：`unsigned int x = 3000000000u` W3053 假阳性（clang 零警告）+ `sizeof(3000000000u)` 8→4 错值（双臂实测与 clang 一致）；连带 `auto` 推导不再丢 unsigned。行为变化诚实记录：`int x = 3000000000u`（uint→int 真窄化）不再报 W3053——clang 默认口径本就不报（-Wall 才有 -Wimplicit-int-conversion），修后更对齐。语料 unsigned_semantics.c 加 sizeof+环回行；codegen digest 8 条翻动（u 后缀语料族产物指纹，clang_direct 全 SAME 证实为修复正形态）。

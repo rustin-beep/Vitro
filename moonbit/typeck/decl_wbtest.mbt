@@ -282,10 +282,13 @@ test "condition_warnings" {
 }
 
 ///|
-/// 病 118 锚（#71，2026-10-11）：E1004_UnsupportedOp 检查器接线——条件
-/// 表达式顶层的孤立位运算 `|`/`&`（常见 `||`/`&&` 误写）报教学错误码
-///（catalog 1004 文案在案、fix_1004 区间修复已就位，缺的只是 report 点
-/// ——审阅 P2 实锤全仓零调用）。红→绿锚。
+/// 病 118 锚（#71，2026-10-11；**审阅 P2 降级翻面 2026-10-13**）：条件
+/// 表达式顶层的孤立位运算 `|`/`&`（常见 `||`/`&&` 误写）报教学码
+///（catalog 1004 文案在案、fix_1004 区间修复已就位）。
+/// **降级缘由**：`if (a > 2 | b < 1)` 是合法 C（位或作用于比较结果 0/1
+/// 域）——clang 含 -Wall -Wextra 静默接受；E 级硬错拒合法 C 与 #75
+/// vitro_reject_clang_accept 桶清零方向冲突 → report_error 降
+/// report_warning（E1004 码位保持，severity 由 report 通道决定）。
 test "cond_bitop_e1004_wiring_b118" {
   fn num(v : Int32) -> @ast.Expr {
     @ast.Expr::Literal(v, @source.SourceLoc::new(1, 5), @ast.Type::int())
@@ -294,24 +297,38 @@ test "cond_bitop_e1004_wiring_b118" {
     @ast.Expr::Binary(op, l, r, @source.SourceLoc::new(1, 5), @ast.Type::int())
   }
   let loc = @source.SourceLoc::new(1, 4)
-  // if (a > 0 | b > 0)：比较结果上的 | = || 误写（零歧义）应报 E1004
+  // if (a > 0 | b > 0)：比较结果上的 | = || 误写（零歧义）应报 W 级 E1004
   fn cmp(op : @ast.BinaryOp, l : @ast.Expr, r : @ast.Expr) -> @ast.Expr {
     @ast.Expr::Binary(op, l, r, @source.SourceLoc::new(1, 5), @ast.Type::int())
   }
   let a_gt0 = cmp(Gt, num(1), num(0))
   let tc1 = TypeChecker::new()
   ignore(tc1.check_condition(bin(BitOr, a_gt0, num(2)), "if 条件", loc))
-  assert_eq(tc1.errors.length(), 1, msg="比较结果上的 | 须报 E1004")
-  assert_true(tc1.errors[0].code == 1004)
+  assert_eq(
+    tc1.errors.length(),
+    0,
+    msg="合法 C 不得硬错拒（审阅 P2）",
+  )
+  assert_eq(
+    tc1.warnings.length(),
+    1,
+    msg="比较结果上的 | 须报 W 级 E1004",
+  )
+  assert_true(tc1.warnings[0].code == 1004)
   // & 同款
   let tc2 = TypeChecker::new()
   ignore(tc2.check_condition(bin(BitAnd, a_gt0, num(2)), "if 条件", loc))
-  assert_eq(tc2.errors.length(), 1, msg="比较结果上的 & 须报 E1004")
+  assert_eq(tc2.errors.length(), 0, msg="& 同款不硬错拒")
+  assert_eq(
+    tc2.warnings.length(),
+    1,
+    msg="比较结果上的 & 须报 W 级 E1004",
+  )
   // 位测试习语不误伤（语料实锤回归锚：lc_50 `exp & 1` / lc_78 `mask&(1<<i)`）
   let tc6 = TypeChecker::new()
   ignore(tc6.check_condition(bin(BitAnd, num(1), num(1)), "if 条件", loc))
   assert_eq(
-    tc6.errors.length(),
+    tc6.errors.length() + tc6.warnings.length(),
     0,
     msg="裸位测试（exp & 1 形态）不误伤",
   )

@@ -281,12 +281,13 @@ test "strtol_base_endptr_errno" {
   assert_eq(host_strtol(mem, map, 0x6290U, 0U, 0, None).value, Some(15UL))
   put_cstr(mem, map, 0x6300U, "9")
   assert_eq(host_strtol(mem, map, 0x6300U, 0U, 0, None).value, Some(9UL))
-  // 无数字 → errno=1 + 停止位 = 起点
+  // 无数字 → errno=EINVAL(22) + 停止位 = 起点
+  //（审阅 P2 同批：EINVAL 对齐 UCRT=22，与 errno.h stub 宏同值；旧 1）
   ignore(mem.store_u32(map, errn, 0U))
   put_cstr(mem, map, 0x6400U, "zz")
   let r3 = host_strtol(mem, map, 0x6400U, endp, 10, Some(errn))
   assert_eq(r3.value, Some(0UL))
-  assert_eq(mem.load_u32(map, errn), Ok(1U))
+  assert_eq(mem.load_u32(map, errn), Ok(22U))
   assert_eq(mem.load_u32(map, endp), Ok(0x6400U))
   // errno_addr = None（无 errno 符号）→ 不写不炸
   assert_eq(host_strtol(mem, map, 0x6400U, 0U, 10, None).value, Some(0UL))

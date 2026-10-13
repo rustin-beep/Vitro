@@ -354,15 +354,19 @@ fn TypeChecker::check_condition(
           W3050_AssignInCondition,
         )
       }
-      // 病 118 接线（#71，2026-10-11）：条件顶层孤立位运算 | / & 且
-      // **任一操作数为比较/逻辑表达式**（bool 域——位运算作用于比较结果
-      // 必是 ||/&& 误写，零歧义）时报 E1004。裸 `exp & 1` 位测试习语
-      //（lc_50/lc_78 语料在案）不报——首版「顶层即报」被语料实锤误伤。
+      // 病 118 接线（#71，2026-10-11；**审阅 P2 降级 2026-10-13**）：条件
+      // 顶层孤立位运算 | / & 且**任一操作数为比较/逻辑表达式**（bool 域
+      // ——位运算作用于比较结果必是 ||/&& 误写，零歧义）时报 E1004。
+      // 裸 `exp & 1` 位测试习语（lc_50/lc_78 语料在案）不报——首版「顶层
+      // 即报」被语料实锤误伤。降级缘由：`if (a > 2 | b < 1)` 是合法 C
+      //（位或作用于比较结果 0/1 域，clang -Wall -Wextra 静默接受）——
+      // E 级硬错拒合法 C 与 #75 vitro_reject_clang_accept 桶清零方向冲突，
+      // severity 降 W（码位保持；severity 由 report 通道决定）。
       if (op is BitOr || op is BitAnd) &&
         (is_bool_valued(left) || is_bool_valued(right)) {
         let logical_op = if op is BitOr { "||" } else { "&&" }
         let bit_op = if op is BitOr { "|" } else { "&" }
-        self.report_error(
+        self.report_warning(
           "条件中的单个 '\{bit_op}' 是位运算符——如果你想要逻辑运算符 '\{logical_op}'（Clang 下两者结果常不同），请写 '\{logical_op}'",
           oploc,
           E1004_UnsupportedOp,

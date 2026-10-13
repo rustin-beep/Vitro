@@ -6,7 +6,7 @@ void free(void* ptr);
 void* realloc(void* ptr, int size);
 int atoi(const char* s);
 double atof(const char* s);
-long long atol(const char* s);
+long atol(const char* s);
 int abs(int n);
 int rand(void);
 void srand(int seed);
@@ -14,6 +14,6 @@ void qsort(void* base, int nmemb, int size, int (*compar)(const void*, const voi
 void* bsearch(const void* key, const void* base, int nmemb, int size, int (*compar)(const void*, const void*));
 void exit(int status);
 void abort(void);
-long long strtol(const char* str, char** endptr, int base);
+long strtol(const char* str, char** endptr, int base);
 double strtod(const char* str, char** endptr);
 long long llabs(long long n);

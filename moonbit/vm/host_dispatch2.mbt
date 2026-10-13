@@ -32,10 +32,14 @@ fn VitroVM::stack_buffer_spans(self : VitroVM) -> Array[@host.StackBufferSpan] {
 ///|
 /// 义务③：解析 `errno` 符号地址（全局符号表按名查；无则 None——host 侧
 /// 跳过 errno 写入，与 oracle「无符号则不写」同口径）。
+/// 审阅 P2 修复（2026-10-13）：符号表 addr 是**相对 GLOBAL_START 的偏移**
+///（gen push_symbol 存裸 offset；LoadGlobal/StoreGlobal 指令侧才加基址）
+/// ——旧版裸偏移直传 host 受检写，落到基址下的 libc 代码区被拒且静默吞
+/// （`let _ = store`），errno 端到端恒 0。此处补 `GLOBAL_START` 转绝对地址。
 fn VitroVM::resolve_errno_addr(self : VitroVM) -> UInt32? {
   for sym in self.symbols {
     if !sym.is_local && sym.name == "errno" {
-      return Some(sym.addr)
+      return Some(@bytecode.GLOBAL_START + sym.addr)
     }
   }
   None

@@ -289,7 +289,11 @@ let libc_table : Array[LibcSig] = [
   },
   {
     name: "atol",
-    return_type: long_long_ty(),
+    // 审阅 P2/P3（2026-10-13）：C 声明 long（LLP64 32 位 ≡ Vitro int）
+    //——旧 long long 声明致 sizeof(strtol/atol(...))=8（clang 4）+ long
+    // v=strtol(...) 假阳性 W3053；host 64 位压栈是 ABI 层不变，值域经
+    // 病 20 饱和（⊂ int32）无损。
+    return_type: int_ty(),
     min_args: 1,
     max_args: 1,
     param_kinds: "P",

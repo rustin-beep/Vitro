@@ -564,7 +564,11 @@ fn TypeChecker::check_array_elem_value(
   value : @ast.Expr,
   loc : @source.SourceLoc,
 ) -> @ast.Expr {
-  if elem_type.kind() is TK_Struct && value is InitList(_, _, _) {
+  // 病 55（2026-10-13）：union 元素的 InitList 接入——check_struct_initializer
+  // 已 union-aware（#19 批 unions 表分派），本臂漏扩致 union 数组元素
+  // `union U us[2] = {{1},{2}}` 落 else 定型 void → E3006 假阳性。
+  if (elem_type.kind() is TK_Struct || elem_type.kind() is TK_Union) &&
+    value is InitList(_, _, _) {
     self.check_struct_initializer(elem_type, value, loc)
   } else if elem_type.is_array() && value is InitList(_, _, _) {
     let (_, new_value) = self.check_array_initializer(elem_type, value, loc)

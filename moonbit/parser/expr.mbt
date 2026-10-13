@@ -725,8 +725,24 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int32) -> @ast.Expr {
     // 病 117（≡59）：INT_MAX<x≤UINT_MAX 按 C11 6.4.4.1 值域最小适配定型
     // unsigned int（值由 LongLiteral i64 位模式承载）——W3053 假阳性与
     // `sizeof(3000000000u)`=8 错值的共同根因（此前一律 LongLong=true）。
-    let uv = self.parse_uint64_or_report(prev, "unsigned 常量")
+    // 病 62（2026-10-13）：u+ll 后缀形态（token text 带 "ull" 尾——scanner
+    // 病 62 批写入）按 C11 **恒定** ULL 无值域适配——旧词法丢 ll 分量致
+    // `1ULL` 定型 uint → `1ULL<<63` Shl 越界 TRAP。
+    let is_ull = prev.text.has_suffix("ull")
+    let digits = if is_ull {
+      prev.text[0:prev.text.length() - 3].to_owned()
+    } else {
+      prev.text
+    }
+    let uv = self.parse_uint64_digits_or_report(digits, prev, "unsigned 常量")
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
+    if is_ull {
+      return @ast.Expr::LongLiteral(
+        uv.reinterpret_as_int64(),
+        loc,
+        @ast.Type::LongLong(true, false),
+      )
+    }
     if uv <= 2147483647 {
       return @ast.Expr::Literal(uv.to_int(), loc, @ast.Type::unsigned_int())
     }
@@ -923,6 +939,29 @@ fn Parser::parse_uint64_or_report(
   what : String,
 ) -> UInt64 {
   let v = @string.parse_uint64(tok.text) catch {
+    _ => {
+      self.errors.push({
+        message: "\{what} '\{tok.text}' 超出范围",
+        line: tok.loc.line,
+        column: tok.loc.column,
+        code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
+      })
+      return 0
+    }
+  }
+  v
+}
+
+///|
+/// 病 62（2026-10-13）：digits 形态（token text 带后缀剥除后的纯数字串）
+///——与 parse_uint64_or_report 同款报错，供 u+ll 后缀剥壳路径复用。
+fn Parser::parse_uint64_digits_or_report(
+  self : Parser,
+  digits : String,
+  tok : @token.Token,
+  what : String,
+) -> UInt64 {
+  let v = @string.parse_uint64(digits) catch {
     _ => {
       self.errors.push({
         message: "\{what} '\{tok.text}' 超出范围",

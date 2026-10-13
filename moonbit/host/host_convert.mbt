@@ -513,12 +513,17 @@ pub fn host_strerror(
   errnum : Int32,
   alloc_line : Int32,
 ) -> HostMemReply {
+  // 病 47（2026-10-13）：映射对齐 UCRT errnum 值域（与 errno.h stub 宏
+  // 同源——旧表 1/2/3/4/5 连续自定义编号系 d1253f91 宏族对齐批的漏
+  // 连坐面，errnum 与文案错位：strerror(1) 出 EINVAL 文案）。
   let msg : Bytes = match errnum {
-    1 => b"Invalid argument\x00"
-    2 => b"Numerical result out of range\x00"
-    3 => b"Domain error\x00"
-    4 => b"No such file or directory\x00"
-    5 => b"Permission denied\x00"
+    0 => b"No error\x00"
+    1 => b"Operation not permitted\x00"
+    2 => b"No such file or directory\x00"
+    13 => b"Permission denied\x00"
+    22 => b"Invalid argument\x00"
+    33 => b"Domain error\x00"
+    34 => b"Numerical result out of range\x00"
     _ => b"Unknown error\x00"
   }
   let size = msg.length()

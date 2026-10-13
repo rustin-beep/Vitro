@@ -551,8 +551,14 @@ fn BytecodeGen::emit_local_array_init(
       }
       let inner_ty = vty.subscript_type()
       let has_nested_init = elements.exists(e => e.value is InitList(_, _, _))
+      // 病 55 codegen 连坐（2026-10-13）：union 元素嵌套 InitList 同路径
+      //（typeck 侧 check_array_elem_value 同日扩 TK_Union——两层同漏）
       if has_nested_init &&
-        (inner_ty.kind() is TK_Struct || inner_ty.is_array()) {
+        (
+          inner_ty.kind() is TK_Struct ||
+          inner_ty.kind() is TK_Union ||
+          inner_ty.is_array()
+        ) {
         let elem_stride = self.type_size(inner_ty)
         for i, elem in elements {
           let addr_offset = i * elem_stride

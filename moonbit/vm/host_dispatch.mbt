@@ -279,12 +279,19 @@ fn VitroVM::execute_host_func(
     }
     // ── time/clock（deterministic 恒 0；否则宿主墙钟——无源恒 0）──
     123 => {
-      let _tloc = self.pop_addr()
+      let tloc = self.pop_addr()
       let now = match self.clock_source {
         Some(f) => f()
         None => 0UL
       }
-      self.push(@host.host_time(self.deterministic, now))
+      let v = @host.host_time(self.deterministic, now)
+      // 病 48（2026-10-13）：C11 §7.27.2.4 time(&t) 须写 *tloc（旧弹参
+      // 丢弃——t 保持未初始化；deterministic 域恒 0 也须写，语义面与
+      // 值域〔#58 注入时间源〕分离；NULL（time(0) 形态）不写）
+      if tloc != 0U {
+        ignore(self.memory.store_u32(self.mem_map, tloc, v.to_uint()))
+      }
+      self.push(v)
     }
     124 => {
       let now = match self.clock_source {

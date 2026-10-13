@@ -79,15 +79,15 @@ test "host_rerouted_exceptions" {
 test "shadowed_host_names_are_declared" {
   let shadowed = @bytecode.shadowed_host_names()
   assert_eq(shadowed.length(), @bytecode.SHADOWED_HOST_NAME_COUNT)
-  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 17)
+  assert_eq(@bytecode.SHADOWED_HOST_NAME_COUNT, 16)
   assert_eq(
     shadowed,
     [
       "isdigit", "isalpha", "islower", "isupper", "tolower", "toupper", "isspace",
       "isalnum", "isprint", "iscntrl", "isxdigit", "abs", "atoi", "srand", "rand",
-      "strlen", "strcmp",
+      "strlen",
     ],
-    msg="遮蔽名单必须与 route.mbt 显式清单逐字一致（2026-10-06 三函数改判出表）",
+    msg="遮蔽名单必须与 route.mbt 显式清单逐字一致（2026-10-06 三函数改判出表；2026-10-13 strcmp 改判出表——病 45）",
   )
   // 遮蔽名仍**登记在 host 表**（只是路由不选它）——这正是"隐式覆盖"要显式化的点
   for name in shadowed {
@@ -102,6 +102,7 @@ test "shadowed_host_names_are_declared" {
   assert_false(shadowed.contains("strncpy"))
   assert_false(shadowed.contains("memcpy"))
   assert_false(shadowed.contains("memmove"))
+  assert_false(shadowed.contains("strcmp"))
 }
 
 ///|

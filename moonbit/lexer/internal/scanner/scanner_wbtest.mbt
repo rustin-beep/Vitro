@@ -29,7 +29,7 @@ test "scan_raw hex float suffix dispatch" {
   inspect(
     summary,
     content=(
-      #|Number:255 FloatLiteral:3.14f FloatLiteral:.5 FloatLiteral:1e5 Number:10 Number:1000 UnsignedLiteral:42 LongLiteral:8000000000 Eof:
+      #|Number:255 FloatLiteral:3.14f FloatLiteral:.5 FloatLiteral:1e5 Number:10 Number:1000 UnsignedLiteral:42ull LongLiteral:8000000000 Eof:
     ),
   )
   assert_eq(r.errors.length(), 0)

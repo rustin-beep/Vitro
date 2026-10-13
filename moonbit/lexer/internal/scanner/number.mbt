@@ -256,15 +256,12 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
 
   let val_str = u64_to_string(val)
   if has_u && has_l {
-    // unsigned long (long)——按值域升级：u32 内 unsigned，i64 内 long long，
-    // (i64::MAX, u64::MAX] 以 64 位位模式承载为 unsigned long long（E1 B 档）
-    if fits_u32(val) {
-      self.make_token(UnsignedLiteral, val_str, start)
-    } else if fits_i64(val) {
-      self.make_token(LongLiteral, val_str, start)
-    } else {
-      self.make_token(UnsignedLiteral, val_str, start)
-    }
+    // unsigned long long（u+ll 后缀按 C11 6.4.4.1 **恒定** ULL——无值域
+    // 适配；病 62 2026-10-13：旧按值域三发（fits_u32→UnsignedLiteral 等）
+    // 丢 ll 分量，`1ULL` 定型 uint(32位) → `1ULL<<63` 走 Shl 越界 TRAP。
+    // token text 带 "ull" 后缀承载 ll 分量（parser UnsignedLiteral 臂剥
+    // 后缀识别；TSV/差分 digest 连坐 freeze）。
+    self.make_token(UnsignedLiteral, val_str + "ull", start)
   } else if has_u {
     if fits_u32(val) {
       self.make_token(UnsignedLiteral, val_str, start)

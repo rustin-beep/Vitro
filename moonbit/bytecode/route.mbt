@@ -48,7 +48,7 @@ pub const HOST_FUNC_NAME_COUNT : Int32 = 114
 /// iscntrl isxdigit abs atoi srand rand strlen strcmp`。
 ///（2026-10-06 strncpy/memcpy/memmove 改判 Host——负 n 越界写 trap 的
 /// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；改判集 5。）
-pub const SHADOWED_HOST_NAME_COUNT : Int32 = 17
+pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
 
 ///|
 /// 从固定索引段**改判回 Host** 的显式例外集。
@@ -67,7 +67,12 @@ pub fn is_host_rerouted(name : String) -> Bool {
   name == "strcat" ||
   name == "strncpy" ||
   name == "memcpy" ||
-  name == "memmove"
+  name == "memmove" ||
+  // 病 45（2026-10-13）：strcmp 改判 Host——Host 版已修 unsigned char
+  // 差（C11 §7.24.4）；Bytecode 预编译段是有符号差（*s1 - *s2），且该
+  // 段系 Rust oracle 冻结产物无法重产（precompile 闸 check-only）——
+  // 行为修复走 Host 侧单点。
+  name == "strcmp"
 }
 
 ///|

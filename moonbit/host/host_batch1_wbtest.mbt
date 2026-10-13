@@ -359,7 +359,7 @@ test "strtod_token_endptr" {
 ///|
 test "strerror_message_with_nul_and_region" {
   let (map, mem) = fresh()
-  let r = host_strerror(map, mem, 4, 9)
+  let r = host_strerror(map, mem, 2, 9) // 病 47 翻面：UCRT ENOENT=2
   let a = r.value.unwrap().to_uint()
   assert_eq(r.trap, None)
   assert_eq(peek(mem, map, a, 26), b"No such file or directory\x00")

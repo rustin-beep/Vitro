@@ -173,3 +173,28 @@ test "format_e_g_carry_normalization_review_p1a" {
   assert_eq(format_e(1.5, 6, false), "1.500000e+00")
   assert_eq(format_g(100000.0, 6, false), "100000")
 }
+
+///|
+/// 病 28 锚（2026-10-13）：round 的 x±0.5 中间加法在舍入域进位——
+/// `round(0.49999999999999994)`（0.5-1ulp）旧 `floor(x+0.5)` 的加法
+/// 先舍入成 1.0 → 1；C 真值 0.0。改 trunc+小数部判定后加法零扰动。
+test "round_half_ulp_boundary_b28" {
+  assert_eq(
+    host_round(0.49999999999999994.reinterpret_as_uint64()),
+    0.0.reinterpret_as_uint64(),
+    msg="0.5-1ulp 须舍 0.0（中间加法陷阱）",
+  )
+  // 回归面：half-away-from-zero 家族不回退
+  assert_eq(
+    host_round(0.5.reinterpret_as_uint64()),
+    1.0.reinterpret_as_uint64(),
+  )
+  assert_eq(
+    host_round(2.5.reinterpret_as_uint64()),
+    3.0.reinterpret_as_uint64(),
+  )
+  assert_eq(
+    host_round((-1.5).reinterpret_as_uint64()),
+    (-2.0).reinterpret_as_uint64(),
+  )
+}

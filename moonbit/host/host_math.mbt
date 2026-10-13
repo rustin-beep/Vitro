@@ -116,7 +116,13 @@ pub fn host_round(x_bits : UInt64) -> UInt64 {
   if x == 0.0 || x != x || x.abs() >= 4503599627370496.0 {
     return x_bits
   }
-  let r = if x > 0.0 { (x + 0.5).floor() } else { (x - 0.5).ceil() }
+  // 病 28（2026-10-13）：旧 `floor(x+0.5)`/`ceil(x-0.5)` 的中间加法在
+  // 舍入域进位——0.49999999999999994（0.5-1ulp）+0.5 先舍入成 1.0 → 1，
+  // C 真值 0.0；改 trunc+小数部判定（比较零扰动），
+  // half-away-from-zero 语义不变（0.5→1 / -1.5→-2）。
+  let t = x.trunc()
+  let f = x - t
+  let r = if f >= 0.5 { t + 1.0 } else if f <= -0.5 { t - 1.0 } else { t }
   r.reinterpret_as_uint64()
 }
 

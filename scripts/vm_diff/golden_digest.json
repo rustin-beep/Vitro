@@ -1444,6 +1444,18 @@
       "stdout_sha": "b2a7c750c2fc773e",
       "memory_sha": "96831022bdd66aad"
     },
+    "baseline/p2a_host_semantics.c": {
+      "src_sha": "d22a05b8",
+      "exit_code": 0,
+      "stdout_sha": "dabcc0e8623f5312",
+      "memory_sha": "1b05a80471a22fd7"
+    },
+    "baseline/p2b_typeck_false_positives.c": {
+      "src_sha": "60ce2b5e",
+      "exit_code": 0,
+      "stdout_sha": "355650b6601e63ac",
+      "memory_sha": "12a01685df28a803"
+    },
     "baseline/p71_tier3_scanf.c": {
       "src_sha": "7cf64475",
       "exit_code": 0,
@@ -2068,7 +2080,7 @@
       "src_sha": "08a19bfe",
       "exit_code": 0,
       "stdout_sha": "1bad6b8cf97131fc",
-      "memory_sha": "f40b0e7427d78e63"
+      "memory_sha": "3ac4626fe9ed0499"
     },
     "baseline/string_strcpy.c": {
       "src_sha": "badba1ab",
@@ -3009,7 +3021,7 @@
       "src_sha": "77fb1eb0",
       "exit_code": 0,
       "stdout_sha": "fe1480c526c84208",
-      "memory_sha": "8a50dc1f5d31d8f3"
+      "memory_sha": "6f79a7b1f9c62504"
     },
     "knr/kr_6_2.c": {
       "src_sha": "c4dfef97",
@@ -3027,19 +3039,19 @@
       "src_sha": "102d9580",
       "exit_code": 0,
       "stdout_sha": "3fbf557329f14fee",
-      "memory_sha": "dfc460c59a42c410"
+      "memory_sha": "f98e1ac4b6b8b90c"
     },
     "knr/kr_6_5.c": {
       "src_sha": "bc38918d",
       "exit_code": 0,
       "stdout_sha": "b9056e5ae919cfb6",
-      "memory_sha": "47e4e8de1f06377c"
+      "memory_sha": "52df341870a5d93d"
     },
     "knr/kr_6_6.c": {
       "src_sha": "067e2195",
       "exit_code": 0,
       "stdout_sha": "d028108d4bbbfb6d",
-      "memory_sha": "20f604e46329f8b3"
+      "memory_sha": "d67a34e2287a8a48"
     },
     "knr/kr_6_getword.c": {
       "src_sha": "7451c6ff",
@@ -3081,7 +3093,7 @@
       "src_sha": "0821440b",
       "exit_code": 0,
       "stdout_sha": "b47f957ec0dadc3d",
-      "memory_sha": "45f4051383acbbfa"
+      "memory_sha": "e2171aae47ed33e7"
     },
     "knr/kr_7_7.c": {
       "src_sha": "e392df61",
@@ -3519,7 +3531,7 @@
       "src_sha": "76f452f5",
       "exit_code": 0,
       "stdout_sha": "84b09a9f3473cf35",
-      "memory_sha": "34938af51e9e70cb"
+      "memory_sha": "ae55b572a4be2793"
     },
     "leetcode/lc_292.c": {
       "src_sha": "b6f10ee8",

@@ -161,15 +161,17 @@ test "printf_star_width_precision" {
 }
 
 ///|
+/// 未知说明符锚——**病 26 翻面（2026-10-13）**：clang 语义 q 非转换符
+/// （`%` 丢弃、q 原样、**不消耗实参**）；旧锚锁「消耗实参+透出 %q」
+/// 照搬形态（a%qb9c），探针 clang 真值 aqb7c 证伪——翻面。
 test "printf_unknown_spec_consumes_arg_and_passthrough" {
   let (map, mem) = fresh()
-  // 未知说明符 `%q`：原样输出且消耗实参（照搬）
   let (log, r) = printf_run(map, mem, "a%qb%dc", [
     (7).to_uint64(),
     (9).to_uint64(),
   ])
   assert_eq(r.trap, None)
-  assert_eq(log.join(OutputKind::Stdout), b"a%qb9c")
+  assert_eq(log.join(OutputKind::Stdout), b"aqb7c")
   // 行尾孤立 %：原样
   let (log2, _) = printf_run(map, mem, "x%", [])
   assert_eq(log2.join(OutputKind::Stdout), b"x%")
@@ -834,4 +836,16 @@ test "scanf_midstream_exhaust_waiting_b109" {
     Ok(v) => assert_eq(v.reinterpret_as_int(), 20)
     Err(_) => fail("p2")
   }
+}
+
+///|
+/// 病 26 锚（2026-10-13）：未知转换符（%q）不取参不计数——C 语义里 q
+/// 非转换符（clang 原样输出 q、不消耗参数）；旧计数器把任意尾字符当
+/// 转换符 → 说明符数 2 > 参数 1 → 假 TRAP。
+test "printf_unknown_conv_no_arg_b26" {
+  let (map, mem) = fresh()
+  let (log, r) = printf_run(map, mem, "A%qB|%d|", [(42).to_uint64()])
+  assert_eq(r.trap, None, msg="%q 不算说明符——不得假 TRAP")
+  let out = log.join(OutputKind::Stdout)
+  assert_eq(out, b"AqB|42|", msg="q 原样透出、%d 消耗唯一参数")
 }

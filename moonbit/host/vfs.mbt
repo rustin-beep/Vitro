@@ -738,7 +738,14 @@ pub fn VirtualFileSystem::fgetc(
     Ok(d) => d
     Err(_) => return -1
   }
-  let pair = read_text_byte(data, desc.cursor)
+  // 病 50（2026-10-13）：二进制模式不折叠 CR LF（旧 fgetc 恒走
+  // read_text_byte——二进制文件 0x0D 被吃、游标错位 1 字节；fgets/
+  // fread 族已按 is_text_mode 分流，fgetc 是同族漏网）。
+  let pair = if desc.is_text_mode {
+    read_text_byte(data, desc.cursor)
+  } else {
+    (data[desc.cursor], desc.cursor + 1)
+  }
   desc.cursor = pair.1
   if desc.cursor >= meta.size {
     desc.eof = true

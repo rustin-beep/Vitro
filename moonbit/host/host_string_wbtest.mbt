@@ -154,15 +154,17 @@ test "strcmp_diff_sign_extended" {
   assert_eq(
     host_strcmp(mem, map, 0x6000U, 0x6100U).value,
     Some(0xFFFFFFFFFFFFFFFFUL),
-    msg="'c'-'d' = -1 符号扩展",
+    msg="'c'-'d' = -1（ASCII 域差值不变）",
   )
   assert_eq(host_strcmp(mem, map, 0x6000U, 0x6000U).value, Some(0UL))
+  // 病 45 翻面（2026-10-13）：0x80 vs 0x7F 按 unsigned char 差 = +1
+  //（旧锚锁 -255 符号扩展照搬形态，clang 正差探针证伪）
   put_bytes(mem, map, 0x6200U, b"\x80\x00", false)
   put_bytes(mem, map, 0x6300U, b"\x7F\x00", false)
   assert_eq(
     host_strcmp(mem, map, 0x6200U, 0x6300U).value,
-    Some(0xFFFFFFFFFFFFFF01UL),
-    msg="-128 - 127 = -255 符号扩展",
+    Some(1UL),
+    msg="0x80-0x7F = +1（unsigned char 域）",
   )
 }
 
@@ -519,4 +521,25 @@ test "strchr_negative_c_char_conversion" {
   )
   let r2 = host_strrchr(mem, map, 0x6000U, -1)
   assert_eq(r2.value, Some(0x6003UL), msg="strrchr 同款 char 截断语义")
+}
+
+///|
+/// 病 45 锚（2026-10-13）：strcmp/strncmp/memcmp 字节比较按 unsigned char
+/// （C11 §7.24.4）——"\x80" vs "\x7F" 差须为正（旧 load_i8 符号扩展 →
+/// -1；clang +1）。
+test "cmp_family_unsigned_bytes_b45" {
+  let (map, mem) = fresh()
+  // C 域原始字节（put_cstr 走 UTF-8——U+0080 会成 C2 80 两字节）
+  ignore(mem.write_bytes(map, 0x7000U, b"\x80\x00"))
+  ignore(mem.write_bytes(map, 0x7100U, b"\x7F\x00"))
+  let r = host_strcmp(mem, map, 0x7000U, 0x7100U)
+  let v = r.value.unwrap().reinterpret_as_int64()
+  assert_true(v > 0L, msg="strcmp 0x80>0x7F 须正差：\{v}")
+  let r2 = host_strncmp(mem, map, 0x7000U, 0x7100U, 1)
+  assert_true(r2.value.unwrap().reinterpret_as_int64() > 0L, msg="strncmp 同")
+  let r3 = host_memcmp(mem, map, 0x7000U, 0x7100U, 1)
+  assert_true(r3.value.unwrap().reinterpret_as_int64() > 0L, msg="memcmp 同")
+  // 回归面：ASCII 域不变
+  let r4 = host_strcmp(mem, map, 0x7100U, 0x7000U)
+  assert_true(r4.value.unwrap().reinterpret_as_int64() < 0L, msg="反向负差")
 }

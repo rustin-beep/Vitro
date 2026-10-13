@@ -263,7 +263,8 @@ pub fn host_strcpy(
 }
 
 ///|
-/// `strcmp(s1, s2)`（oracle `string.rs:118-143`）——逐字节**有符号**差
+/// `strcmp(s1, s2)`——逐字节**无符号**差（病 45 转向：oracle 有符号差系照搬旧形态，
+/// clang 正差探针证伪；C11 unsigned char 语义）。
 /// （`(a as i8).wrapping_sub(b as i8) as i32 as u64`——负差符号扩展压栈）。
 pub fn host_strcmp(
   mem : @memory.Memory,
@@ -280,7 +281,11 @@ pub fn host_strcmp(
       AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
-      return value_only((a - b).to_int64().reinterpret_as_uint64())
+      // 病 45（2026-10-13）：字节比较按 unsigned char（C11 §7.24.4）
+      //——load_i8 符号扩展（0x80→-128）致 -255 负差；& 0xFF 还原无符号域。
+      return value_only(
+        ((a & 0xFF) - (b & 0xFF)).to_int64().reinterpret_as_uint64(),
+      )
     }
     if a == 0 {
       return value_only(0UL)
@@ -599,7 +604,11 @@ pub fn host_strncmp(
       AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
-      return value_only((a - b).to_int64().reinterpret_as_uint64())
+      // 病 45（2026-10-13）：字节比较按 unsigned char（C11 §7.24.4）
+      //——load_i8 符号扩展（0x80→-128）致 -255 负差；& 0xFF 还原无符号域。
+      return value_only(
+        ((a & 0xFF) - (b & 0xFF)).to_int64().reinterpret_as_uint64(),
+      )
     }
     if a == 0 {
       return value_only(0UL)
@@ -628,7 +637,11 @@ pub fn host_memcmp(
       AccessFault::Fault(f~) => return fault_reply(f)
     }
     if a != b {
-      return value_only((a - b).to_int64().reinterpret_as_uint64())
+      // 病 45（2026-10-13）：字节比较按 unsigned char（C11 §7.24.4）
+      //——load_i8 符号扩展（0x80→-128）致 -255 负差；& 0xFF 还原无符号域。
+      return value_only(
+        ((a & 0xFF) - (b & 0xFF)).to_int64().reinterpret_as_uint64(),
+      )
     }
     i = i + 1UL
   }

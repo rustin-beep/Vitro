@@ -298,6 +298,15 @@ fn TypeChecker::check_scalar_assignable(
       W3053_ImplicitScalarConversion,
     )
   }
+  // 病 60（2026-10-13）：窄化矩阵补 LongLong 行——`long long y = 3.14`
+  // 此前零诊断（int 行有、ll 行独缺；clang -Wliteral-conversion 同报）。
+  if tk is TK_LongLong && (vk is TK_Float || vk is TK_Double) {
+    self.report_warning(
+      "\{value.to_c_string()} 被隐式转换为 long long，可能会丢失精度。",
+      loc,
+      W3053_ImplicitScalarConversion,
+    )
+  }
   if tk is TK_Float && (vk is TK_Double || vk is TK_LongLong) {
     self.report_warning(
       "double 被隐式转换为 float，可能会丢失精度。",

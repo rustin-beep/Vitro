@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 台账 P1 残余 + P2 批A/B 十一条：host 语义组 + typeck 假阳性组，2026-10-13）
+
+台账对账后按档推进（31 销案已核、60 在册分五批）；本批 P1 残余三条 + P2 前两批，红锚先行全链。
+
+**P1 残余**：病 25（v 族 long 错位）**重建不复现销案**（vprintf 直调六形态三向全同——后续批已修）；病 26（未知转换符）三面修——计数器白名单（`parse_format_specs`）+ 弹参数数（`format_arg_count`）+ 输出侧（% 丢弃字母原样**不消耗实参**，clang `A%qB`→`AqB` 实测定形；旧锚「消耗实参」翻面）；病 28（round 边界）`floor(x±0.5)` 中间加法舍入域陷阱改 trunc+小数部判定（`round(0.5-1ulp)` 1.0→0.0）。
+
+**批A host 语义六病**：45 strcmp/strncmp/memcmp 无符号字节差（`& 0xFF` 还原；**strcmp 走预编译段系 oracle 冻结产物无法重产 → 改判 Host 第 6 名**——is_host_rerouted/SHADOWED 17→16/PURE 表摘 strcmp（快照+baselines 14→13）/三锚连坐）；47 strerror 表对齐 UCRT errnum（旧 1/2/3 连续自定义编号系 d1253f91 宏族批漏连坐）；48 time(&t) 写 *tloc（dispatch 弹参旧丢弃；deterministic 写 0，值域 #58 在案不锚）；49 perror=strerror(0)（"No error"）；50 fgetc 二进制模式不折叠 CR LF（is_text_mode 分流——fgets/fread 同族漏网）；51 fread/fwrite 乘 64 位防御（VFS 臂同款+1MB clamp）。
+
+**批B typeck 五病**：55 union 数组元素 E3006（**两层连动**：typeck check_array_elem_value 扩 TK_Union + codegen emit_local_array_init 嵌套臂同扩）；57 三目空指针常量豁免（C11 §6.5.15p5，赋值面 #56 同款）；58 `int x = x` 自引用零诊断；60 ll←double 窄化臂补（窄化矩阵独缺 LL 行，对齐 -Wliteral-conversion）；62 `1ULL<<63` TRAP——**真根因=词法 u+ll 丢 ll 分量**（`1ULL` fits_u32 发 UnsignedLiteral → 定型 uint → Shl 32 位域越界）：scanner u+ll 分支 text 带 "ull" 后缀 + parser 剥后缀恒定型 ULL（C11 后缀定死无值域适配）；scanner 锚翻面（text 含后缀）。
+
+语料 `p2a_host_semantics.c`（八病综合，time 用布尔断言避 #58 值域）+ `p2b_typeck_false_positives.c`（五病）clang_direct SAME；五家差分 × 四 corpus freeze 全量；防线路过（P1 四连前批）。
+
+- 防线：moon test 754/754 · native 882 · wasm-gc 858 · clang_direct 737 SAME+10 KNOWN+0 DIFF（747）· smoke · testcount/facts --strict 0 漂移 · mbti/surface/gen_stubs/libc_boot 全绿。
+
 ### Fixed（病 44 fs 写方向 guard 回补 + 病 15 台账勘误销案 + CI lexer knr 根除，2026-10-13）
 
 - **病 44 定性修正后修复（用户指令上游亲证）**：上游探查三证——moonbitlang/x 的 v0.5.5 tag 与 main 的 `write_bytes_to_file_internal` **本有** `guard is_null`；vitro 文件头标注的 0.5.5 锁定 sha（29dbb4f9…）与上游实测一致；上游 guard 3 次 vs **搬迁提交 d29a3470 从第一天起 2 次**——**搬迁单行丢失**（原登记「vendored 0.5.5 原样」不实，非上游缺陷）。修复=补回该行（向锁定版收敛非偏离）；红锚 `write_to_unwritable_path_raises` 以**进程 0xC0000409 崩溃**最强形态证红（NULL fwrite fast-fail），修复后 IOError 透出；文件头标注补 ④Int32 化（f4dee085 扫及 vendored 面的披露债）与 ⑤guard 回补两项。CLI 真坏路径（目录名被文件占位）从崩进程变为带栈 IOError。vendor_drift 闸结构性盲区在案：只监控上游 main 漂移、不做本地↔锁定 tag 保真对账（病 44 即该盲区实例，改进登记不强推）。

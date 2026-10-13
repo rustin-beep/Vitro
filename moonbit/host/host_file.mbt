@@ -212,7 +212,14 @@ fn host_fread_stdio(
   if size <= 0 || nmemb <= 0 {
     return StdioRead::Done(value_only(0UL))
   }
-  let total = size * nmemb
+  // 病 51（2026-10-13）：乘改 64 位（VFS 臂 vfs.mbt:359 同款——
+  // 65536×65536 在 i32 回绕 0，静默成功 0 元素吞请求）
+  let total64 = size.to_uint64() * nmemb.to_uint64()
+  let total = if total64 > 1048576UL {
+    1048576
+  } else {
+    total64.reinterpret_as_int64().to_int()
+  }
   match input.take_stdin_bytes(total) {
     None => StdioRead::StdioWaiting
     Some(b) => {
@@ -321,7 +328,17 @@ pub fn host_fwrite(
     if stream == 0U {
       return value_only(0UL)
     }
-    let total = if size > 0 && nmemb > 0 { size * nmemb } else { 0 }
+    // 病 51 同款：64 位乘 + 1MB 内存域 clamp
+    let t64 = size.to_uint64() * nmemb.to_uint64()
+    let total = if size > 0 && nmemb > 0 {
+      if t64 > 1048576UL {
+        1048576
+      } else {
+        t64.reinterpret_as_int64().to_int()
+      }
+    } else {
+      0
+    }
     if total <= 0 {
       return value_only(0UL)
     }
@@ -567,10 +584,13 @@ pub fn host_perror(
       AccessFault::Fault(f~) => return fault_reply(f)
     },
   )
+  // 病 49（2026-10-13）：perror 语义 = 输出 "s: strerror(errno)"（errno 0
+  // 域 → "No error"；UCRT perror("") 实测）——旧硬编码 "Error" 系照搬
+  // 形态，与 strerror 表（病 47 已对齐 UCRT）连坐修。
   if prefix == "" {
-    log.push_stderr(b"Error\n")
+    log.push_stderr(b"No error\n")
   } else {
-    log.push_stderr(@utf8.encode("\{prefix}: Error\n"))
+    log.push_stderr(@utf8.encode("\{prefix}: No error\n"))
   }
   no_reply()
 }

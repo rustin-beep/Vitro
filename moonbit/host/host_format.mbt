@@ -159,7 +159,33 @@ fn parse_format_spec(
 }
 
 ///|
-/// 格式字母序列（参数计数用——只数转换符，`%%` 不计）。
+/// 已知转换符码点集（病 26，2026-10-13）：d i o u x X f F e E g G a A
+/// c s p n——计数器只认此集（clang 一致：未知字母原样输出不取参）。
+fn is_known_conv_code(c : Int32) -> Bool {
+  c == 100 ||
+  c == 105 ||
+  c == 111 ||
+  c == 117 ||
+  c == 120 ||
+  c == 88 ||
+  c == 102 ||
+  c == 70 ||
+  c == 101 ||
+  c == 69 ||
+  c == 103 ||
+  c == 71 ||
+  c == 97 ||
+  c == 65 ||
+  c == 99 ||
+  c == 115 ||
+  c == 112 ||
+  c == 110
+}
+
+///|
+/// 格式字母序列（参数计数用——只数**已知**转换符，`%%` 不计；未知
+/// 字母（%q 等）不算说明符——病 26：旧计数把任意尾字符当转换符，
+/// 说明符数 > 参数数 → 假 TRAP，而 clang 对 q 原样输出不取参）。
 fn parse_format_specs(fmt : Array[Int32]) -> Array[Int32] {
   let specs : Array[Int32] = []
   let scan = FmtScan::{ s: fmt, i: 0, }
@@ -174,7 +200,12 @@ fn parse_format_specs(fmt : Array[Int32]) -> Array[Int32] {
                 scan.advance() // %%
               } else {
                 match parse_format_spec(scan) {
-                  Some(t) => specs.push(t.0)
+                  Some(t) =>
+                    if is_known_conv_code(t.0) {
+                      specs.push(t.0)
+                    } else {
+                      ()
+                    }
                   None => ()
                 }
               }
@@ -969,8 +1000,11 @@ fn format_printf_string(
                   let one = Bytes::make(1, (arg & 0xFFUL).to_int().to_byte())
                   push_bytes(apply_width_bytes(one, width, flags~))
                 } else {
-                  // 未知说明符：原样 `%` + 字母，但**消耗一个实参**
-                  push_str("%" + Int32::unsafe_to_char(spec).to_string())
+                  // 未知说明符（病 26）：**% 丢弃、字母原样、不消耗实参**
+                  //（clang 实测 "A%qB" → "AqB"；旧「透出 %q + 消耗一个」
+                  // 双错——照搬形态，探针证伪翻面）
+                  push_str(Int32::unsafe_to_char(spec).to_string())
+                  continue
                 }
                 used = used + 1
               }
@@ -1004,15 +1038,18 @@ pub fn format_arg_count(fmt : Array[Int32]) -> Int32 {
                 scan.advance() // %%
               } else {
                 match parse_format_spec(scan) {
-                  Some(t) => {
-                    n += 1
-                    if t.5 {
+                  Some(t) =>
+                    if is_known_conv_code(t.0) {
                       n += 1
+                      if t.5 {
+                        n += 1
+                      }
+                      if t.6 {
+                        n += 1
+                      }
+                    } else {
+                      () // 病 26：未知字母不取参（与计数器/输出侧同口径）
                     }
-                    if t.6 {
-                      n += 1
-                    }
-                  }
                   None => ()
                 }
               }

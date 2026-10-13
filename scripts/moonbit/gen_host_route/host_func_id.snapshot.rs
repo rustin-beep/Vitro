@@ -152,7 +152,11 @@ pub const VSNPRINTF: u32 = 148;
 /// 诊断敏感的函数（strcpy、printf、malloc 等）继续保留 Host Func 路径。
 pub const BYTECODE_LIBC_PURE_FUNCS: &[&str] = &[
     "isdigit", "isalpha", "islower", "isupper", "tolower", "toupper", "isspace", "isalnum", "isprint", "iscntrl",
-    "isxdigit", "abs", "strlen", "strcmp",
+    "isxdigit", "abs", "strlen",
+    // strcmp 摘除（2026-10-13 病 45）：改判 Host（is_host_rerouted 第 6 条）
+    // 后不再走固定索引——PURE 表=「走固定索引的纯函数集」语义连坐；本快照
+    // 系本地维护形态（Vitro 侧改判通道首次触及 PURE 成员，与快照照搬基线
+    // 的偏离已在 route.mbt 病 45 注释登记）。
 ];
 
 /// 判断函数是否已由 Bytecode Libc 覆盖（纯计算函数）。

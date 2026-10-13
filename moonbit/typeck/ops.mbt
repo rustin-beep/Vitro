@@ -187,10 +187,25 @@ fn TypeChecker::resolve_ternary(
   //（C11 §6.5.15——`x > 0 ? 2 : 3.5` 统一为 double；旧要求分支严格同型
   // 致混合数值三目全灭）。指针/数组分支与同型 struct 仍要求严格一致；
   // void/void 允许（副作用三目）。
+  // 病 57（2026-10-13）：空指针常量分支豁免（C11 §6.5.15p5——三目的
+  // 指针/空指针常量组合合法：`cond ? p : 0` / `cond ? 0 : p`；赋值面
+  // #56 已同款豁免，三目面漏接致 E3004 假阳性）。
+  let null_then = then_decayed.kind() is TK_Int &&
+    is_null_pointer_constant(new_then)
+  let null_else = else_decayed.kind() is TK_Int &&
+    is_null_pointer_constant(new_else)
   let result_type : @ast.Type = if @ast.type_eq(then_decayed, else_decayed) {
     then_decayed
   } else if then_decayed.kind() is TK_Void && else_decayed.kind() is TK_Void {
     @ast.Type::void_type()
+  } else if (then_decayed.kind() is TK_Pointer && null_else) ||
+    (else_decayed.kind() is TK_Pointer && null_then) {
+    // 指针分支 + 空指针常量 → 结果取指针侧（NULL 惯用法）
+    if then_decayed.kind() is TK_Pointer {
+      then_decayed
+    } else {
+      else_decayed
+    }
   } else if self.is_scalar(then_decayed) &&
     self.is_scalar(else_decayed) &&
     !(then_decayed.kind() is TK_Pointer) &&

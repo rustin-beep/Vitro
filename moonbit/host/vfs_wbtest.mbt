@@ -266,7 +266,7 @@ test "file_fputs_stdout_stderr_split_and_perror" {
   assert_eq(host_perror(map, mem, log, 0x6200U).value, None)
   assert_eq(
     log.join(OutputKind::Stderr),
-    b"to-erropen failed: Error\n",
+    b"to-erropen failed: No error\n",
     msg="stderr 追加",
   )
   // perror(NULL) 形态：空前缀（空串）→ "Error\n"

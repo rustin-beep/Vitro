@@ -34,11 +34,22 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
     "define" => if !self.is_skipping() { self.parse_define(after, line) }
     "undef" =>
       if !self.is_skipping() {
+        // 病 73（2026-10-13）：缺宏名显式诊断（clang "macro name missing"
+        // error；旧 read_ident("") 返回空串 → remove("") 静默 no-op）
         let name = read_ident(after)
+        if name == "" {
+          self.err("#undef 缺少宏名", line, code=E1006_UnsupportedFeature)
+        }
         ignore(self.macros.remove(name))
       }
     "ifdef" => {
       let ident = read_ident(after)
+      // 病 73（2026-10-13）：缺宏名显式诊断并按未定义处理（块内容跳过
+      // ——clang 同形：error 后该组按假分支走；旧 contains("") 恒假
+      // 静默吞掉整块代码，零诊断）
+      if ident == "" && !self.is_skipping() {
+        self.err("#ifdef 缺少宏名", line, code=E1006_UnsupportedFeature)
+      }
       let parent_skipping = self.is_skipping()
       let active = if parent_skipping {
         false
@@ -54,6 +65,10 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
     }
     "ifndef" => {
       let ident = read_ident(after)
+      // 病 73 同款：缺宏名显式诊断（旧静默按「未定义」取真分支吞代码）
+      if ident == "" && !self.is_skipping() {
+        self.err("#ifndef 缺少宏名", line, code=E1006_UnsupportedFeature)
+      }
       let parent_skipping = self.is_skipping()
       let active = if parent_skipping {
         false
@@ -309,6 +324,15 @@ fn[P : @token.SourceProvider] Pp::handle_include(
     return
   }
   let is_stub = @host.stub_lookup(path) is Some(_)
+  // 病 74（2026-10-13）：quote 形态本地目录优先（C11 §6.10.2p3/clang——
+  // 「include "stddef.h"」本地有同名头时不得被存根遮蔽；旧存根优先致
+  // 本地头静默失效）。angle 维持 H-3 存根-only 不搜文件系统。
+  let local_resolved : String? = if is_angle {
+    None
+  } else {
+    self.resolve_path(path)
+  }
+  let use_stub = is_stub && !(local_resolved is Some(_))
   // H-3（U1#11 收紧）：`<>` 只匹配标准库存根，不搜索文件系统（与 Clang 对齐；
   // 存量 655 处 `<>` include 全为标准头名，零存量依赖）
   if is_angle && !is_stub {
@@ -319,9 +343,16 @@ fn[P : @token.SourceProvider] Pp::handle_include(
     )
     return
   }
-  // include-once / 环检测
-  let resolved : String? = if is_stub { None } else { self.resolve_path(path) }
-  let key = if is_stub {
+  // include-once / 环检测（病 74：use_stub=quote 本地 miss 后才落存根）
+  let resolved : String? = if use_stub {
+    None
+  } else {
+    match local_resolved {
+      Some(r) => Some(r)
+      None => self.resolve_path(path) // angle 已早退；此处仅 quote 非 stub 路径
+    }
+  }
+  let key = if use_stub {
     "stub:\{path}"
   } else {
     match resolved {
@@ -340,7 +371,7 @@ fn[P : @token.SourceProvider] Pp::handle_include(
   if self.processed.contains(key) {
     return // include-once：静默跳过（守卫语义内置）
   }
-  if !is_stub {
+  if !use_stub {
     match self.detect_cycle(key) {
       Some(cycle) => {
         self.err(
@@ -355,7 +386,7 @@ fn[P : @token.SourceProvider] Pp::handle_include(
   }
   self.processed.add(key)
   // 内容读取（存根 or provider；缓存单源）
-  let content : String = if is_stub {
+  let content : String = if use_stub {
     @host.stub_lookup(path).unwrap()
   } else {
     match self.read_cached(key) {

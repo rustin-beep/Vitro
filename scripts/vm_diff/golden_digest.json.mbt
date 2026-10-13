@@ -473,6 +473,7 @@ pub let golden_digest : Digest = Digest::{
     "gap/inline_asm.c": Standard(Std::{ src_sha: "b4fdb8d1", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "6629896e6bcfd60d" }),
     "gap/keyword_compat.c": FailKnown(FailKnown::{ src_sha: "ce1212f3", exit_code: 0, stdout_sha: "e3b0c44298fc1c14", memory_sha: "e3b0c44298fc1c14", compile_fail: true }),
     "gap/loop_var_shadow.c": Standard(Std::{ src_sha: "67d2073f", exit_code: 0, stdout_sha: "9263fb97316b540a", memory_sha: "0f6796ebbbb6684d" }),
+    "gap/p2d_parser_preproc_batch.c": FailKnown(FailKnown::{ src_sha: "f629bffd", exit_code: 0, stdout_sha: "e3b0c44298fc1c14", memory_sha: "e3b0c44298fc1c14", compile_fail: true }),
     "gap/printf_scanf_type_mismatch.c": Standard(Std::{ src_sha: "6fb1cda5", exit_code: 0, stdout_sha: "3b4db141016d678f", memory_sha: "8b5416bc247e812f" }),
     "gap/scanf_0x_retval.c": Standard(Std::{ src_sha: "182a1281", exit_code: 0, stdout_sha: "8e6485ec4efd340a", memory_sha: "243e1b6e1714ad2d" }),
     "gap/sizeof_array_param.c": Standard(Std::{ src_sha: "34ee7a7e", exit_code: 0, stdout_sha: "4b227777d4dd1fc6", memory_sha: "f45e123a1651ff36" }),

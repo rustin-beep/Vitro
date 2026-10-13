@@ -2578,6 +2578,13 @@
       "stdout_sha": "9263fb97316b540a",
       "memory_sha": "0f6796ebbbb6684d"
     },
+    "gap/p2d_parser_preproc_batch.c": {
+      "src_sha": "f629bffd",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "gap/printf_scanf_type_mismatch.c": {
       "src_sha": "6fb1cda5",
       "exit_code": 0,

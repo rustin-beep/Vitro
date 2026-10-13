@@ -339,6 +339,23 @@ fn TypeChecker::resolve_unary(
               }
             None => ()
           }
+        // 病 56 同款：const 数组元素/成员的自增自减
+        @ast.Expr::Index(_, _, _, _) =>
+          if operand_type.is_const() {
+            self.report_error(
+              "不能修改常量数组的元素",
+              loc,
+              E3049_AssignToConst,
+            )
+          }
+        @ast.Expr::Member(_, _, _, _) =>
+          if operand_type.is_const() {
+            self.report_error(
+              "不能修改常量成员",
+              loc,
+              E3049_AssignToConst,
+            )
+          }
         _ => ()
       }
       // C 语义：++/-- 的结果是左值，类型与操作数相同（此前非指针一律
@@ -403,6 +420,22 @@ fn TypeChecker::resolve_assign(
             )
           }
         _ => ()
+      }
+    // 病 56（2026-10-13）：Index/Member 左值的 const 检查——`ca[0]=9`/
+    // `s.m=9`（const 数组元素/const 成员）clang 双 error；旧只接
+    // Identifier/Deref 两形态。类型节点的 const 位（元素/字段）parse
+    // 期保留，直接判 left_type。
+    Index(_, _, _, _) =>
+      if left_type.is_const() {
+        self.report_error(
+          "不能修改常量数组的元素",
+          loc,
+          E3049_AssignToConst,
+        )
+      }
+    Member(_, _, _, _) =>
+      if left_type.is_const() {
+        self.report_error("不能修改常量成员", loc, E3049_AssignToConst)
       }
     _ => ()
   }

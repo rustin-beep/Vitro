@@ -255,9 +255,18 @@ fn BytecodeGen::gen_index(
   let mut sym_idx = -1
   match array {
     Identifier(name, _, _) => {
+      // 病 61（2026-10-13）：补 static_local_types——static 局部数组
+      // （sa[10] 静默写穿 vs 普通数组 trap）运行期越界检测漏该表
+      //（登记原注「static 分支已补」实为取址侧 unary.mbt:206，本处
+      // 越界检测侧同族漏网）。同名遮蔽序：local 优先、static 次之、
+      // global 兜底（与 unary 臂一致）。
       let ty_opt = match self.local_types.get(name) {
         Some(t) => Some(t)
-        None => self.global_types.get(name)
+        None =>
+          match self.static_local_types.get(name) {
+            Some(t) => Some(t)
+            None => self.global_types.get(name)
+          }
       }
       match ty_opt {
         Some(ty) =>

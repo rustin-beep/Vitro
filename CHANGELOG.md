@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 台账批C-2·preproc/typeck/codegen 六病：69/70/73/74/56/61，2026-10-13）
+
+- **病 69**（悬空指数错位诊断）：`1e`/`1e+` 数字后 e/E 无数字——显式 E1006「浮点常量指数缺少数字」（消费 e[±] 局部化；旧 Number+Identifier 错位 → E2005「预期 ';'」离题；clang "exponent has no digits" 同位）。
+- **病 70**（hexfloat 静默拆碎）：`0x1.8p3` 显式 E1006 拒绝（clang 合法接受=12.0——**有意教学分歧**：显式拒绝优于静默拆成 `0x1 . 8 p3` 产错值；hexfloat 支持挂观察）；消费到词法边界局部化。
+- **病 73**（裸 #ifdef/#ifndef/#undef 吞代码）：缺宏名显式 E1006（clang "macro name missing"；ifdef/ifndef 缺名按未定义走假分支——clang 报错后跳过块同形；undef 静默 no-op）。
+- **病 74**（quote include 存根遮蔽）：include 解析序改 **quote 本地目录优先**（C11 §6.10.2p3——本地有同名头不被存根遮蔽；angle 维持 H-3 存根-only）。语料照 `include_quote_sentinel` 先例入 gap（防倒退监测——差分槽位不复制伴随 .h 的结构性限制在案；单用例双臂 local-ok 实证）。
+- **病 56**（const 左值漏检）：赋值臂补 Index/Member 两形态 + 自增臂同款——类型节点 const 位（元素/字段 parse 期保留）直接判；`s.m=9`/`ca[0]=9` 双 E3049（clang error 对齐）。
+- **病 61**（static 数组越界静默写穿）：codegen 越界检测补 static_local_types 表（登记原注「已补」实为取址侧 unary.mbt，检测侧同族漏网）——`sa[10]` 运行期 trap 双臂落位（静态 W3051 本就有）。
+- 语料 `p2d_parser_preproc_batch.c` + 伴随 `p2d_local_stddef.h` 入 **gap**（照先例防倒退监测）；五家差分 × 四 corpus freeze；测试数不变（754/882/858）。
+- 防线：moon test 754/754 · native 882 · wasm-gc 858 · clang_direct 739 SAME+10 KNOWN+0 DIFF（749）· smoke · testcount/facts 0 漂移 · mbti/surface 全绿。
+
 ### Fixed（#71 台账批C·parser/lexer 组六病：64/65/66/68/71/72，2026-10-13）
 
 台账批C 首批（余 69/70/73/74/56/61 顺延批C-2），红锚先行。

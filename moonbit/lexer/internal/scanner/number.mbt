@@ -80,6 +80,34 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
       self.err("十六进制数字格式错误", E1001_UnknownChar)
       return self.make_token(Unknown, "0x", start)
     }
+    // 病 70（2026-10-13）：hexfloat（0x1.8p3）显式拒绝——clang 合法接受
+    //（0x1.8p3=12.0），教学子集不支持；**有意教学分歧**（与静默拆碎成
+    // `0x1 . 8 p3` 零诊断产错值相比，显式 E1006 是诚实收窄；hexfloat
+    // 支持挂观察）。消费到词法边界使错误局部化。
+    if self.peek(0) == '.' ||
+      (
+        (self.peek(0) == 'p' || self.peek(0) == 'P') &&
+        (is_ascii_hexdigit(self.peek(-1)) || self.peek(-1) == '.')
+      ) {
+      self.err(
+        "十六进制浮点常量（hexfloat，如 0x1.8p3）教学子集暂不支持，请改用十进制浮点",
+        E1006_UnsupportedFeature,
+      )
+      while !self.at_end() {
+        let c = self.peek(0)
+        if is_ascii_hexdigit(c) ||
+          c == '.' ||
+          c == 'p' ||
+          c == 'P' ||
+          c == '+' ||
+          c == '-' {
+          ignore(self.advance())
+        } else {
+          break
+        }
+      }
+      return self.make_token(FloatLiteral, "0", start)
+    }
     let hex_str = filter_sep(slice_string(self.bytes, hex_start, self.pos))
     match parse_u64(hex_str, 16UL) {
       Some(v) => val = v
@@ -211,6 +239,24 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
     }
     let text = slice_string(self.bytes, start, self.pos)
     return self.make_token(FloatLiteral, text, start) // text = 源拼写（8.2-1 口径）
+  }
+
+  // 病 69（2026-10-13）：悬空指数——数字后紧跟 e/E 但指数部分不完整
+  //（`1e` / `1e+` / `2.5e-` 后无数字）。clang "exponent has no digits"
+  // error；旧落入整数路径 Number("1")+Identifier("e") 错位 → E2005
+  // 「预期 ';'」离题诊断。消费 e[+-]? 使错误局部化（hex/bin 前缀路径
+  // 已先行——此处 e 只可能是十进制指数意图）。
+  if !has_integer_prefix && (self.peek(0) == 'e' || self.peek(0) == 'E') {
+    self.err(
+      "浮点常量指数缺少数字（悬空的 'e'）",
+      E1006_UnsupportedFeature,
+    )
+    ignore(self.advance())
+    if self.peek(0) == '+' || self.peek(0) == '-' {
+      ignore(self.advance())
+    }
+    let text = slice_string(self.bytes, start, self.pos)
+    return self.make_token(FloatLiteral, text, start)
   }
 
   // Decimal 值在 suffix 解析前求出

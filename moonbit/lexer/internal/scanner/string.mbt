@@ -101,35 +101,26 @@ fn Scanner::string_literal(
         continue
       }
       if next == 'x' {
-        // P4：hex 1~2 位（对齐 char 侧 U1#7 与 clang）；第 3 位 hexdigit 报"超出范围"
-        let h1 = self.peek(2)
-        if !is_ascii_hexdigit(h1) {
-          self.err("字符串十六进制转义缺少数字", E1001_UnknownChar)
-          value <+ "x"
-          ignore(self.advance())
-          ignore(self.advance())
-          continue
+        // 病 71（2026-10-13）：hex 转义**全量消费 + 按值域判**（C11
+        // §6.4.4.4——hex 转义消耗尽可能多 hex 位、值判 char 域 0xFF；
+        // 旧「第 3 位即报」按位数收紧，`'\x004'`（值 4 合法）被误伤，
+        // clang 零诊断实证）。
+        let mut k = 2
+        while is_ascii_hexdigit(self.peek(k + 1)) {
+          k += 1
         }
-        let two = is_ascii_hexdigit(self.peek(3))
-        let after = if two { 4 } else { 3 }
-        if is_ascii_hexdigit(self.peek(after)) {
-          let mut k = after
-          while is_ascii_hexdigit(self.peek(k)) {
-            k += 1
-          }
+        let hex = slice_string(self.bytes, self.pos + 2, self.pos + k + 1)
+        let val = parse_hex_byte(hex)
+        if val > 0xFF {
           self.err(
-            "十六进制转义序列超出范围（教学子集最多 2 位 hex）",
+            "十六进制转义值 \\x\{hex} 超出 char 域（≤ 0xFF）",
             E1006_UnsupportedFeature,
           )
-          for _ in 0..<k {
-            ignore(self.advance())
-          }
-          continue
+          value <+ "\{char_from_code(val & 0xFF)}"
+        } else {
+          value <+ "\{char_from_code(val)}"
         }
-        let hex = slice_string(self.bytes, self.pos + 2, self.pos + after)
-        let byte = parse_hex_byte(hex)
-        value <+ "\{char_from_code(byte)}"
-        for _ in 0..<after {
+        for _ in 0..<(k + 1) {
           ignore(self.advance())
         }
         continue
@@ -215,9 +206,10 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
         ignore(self.advance())
       }
     } else if next == 'x' {
-      // U1#7：\x 后 1~2 位 hex；第 3 位 hexdigit 即"超范围"报错（clang 口径）
+      // 病 71（2026-10-13）：与字符串侧同款改**全量消费 + 按值域判**
+      //（U1#7 旧「第 3 位即报」按位数收紧——`'\x004'` 值 4 合法被误伤，
+      // clang 零诊断；char 域 > 0xFF 才报）
       let h1 = self.peek(2)
-      let h2 = self.peek(3)
       if !is_ascii_hexdigit(h1) {
         // Rust 口径：此处不消费字符（next=='x' 使 match 后的统一推进不触发），
         // 闭引号判定随因 peek 停在 '\\' 而报"未闭合"
@@ -228,26 +220,25 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
         valid = false
         value = 0
       } else {
-        let two = is_ascii_hexdigit(h2)
-        let after = if two { 4 } else { 3 }
-        if is_ascii_hexdigit(self.peek(after)) {
-          let mut k = after
-          while is_ascii_hexdigit(self.peek(k)) {
-            k += 1
-          }
-          for _ in 0..<k {
+        let mut k = 2
+        while is_ascii_hexdigit(self.peek(k + 1)) {
+          k += 1
+        }
+        let hex = slice_string(self.bytes, self.pos + 2, self.pos + k + 1)
+        let val = parse_hex_byte(hex)
+        if val > 0xFF {
+          for _ in 0..<(k + 1) {
             ignore(self.advance())
           }
           self.err(
-            "十六进制转义序列超出范围（教学子集最多 2 位 hex）",
+            "十六进制转义值超出 char 域（≤ 0xFF）",
             E1006_UnsupportedFeature,
           )
           valid = false
           value = 0
         } else {
-          let hex = slice_string(self.bytes, self.pos + 2, self.pos + after)
-          value = parse_hex_byte(hex)
-          for _ in 0..<after {
+          value = val
+          for _ in 0..<(k + 1) {
             ignore(self.advance())
           }
         }

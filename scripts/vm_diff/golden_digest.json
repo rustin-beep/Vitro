@@ -1456,6 +1456,12 @@
       "stdout_sha": "355650b6601e63ac",
       "memory_sha": "12a01685df28a803"
     },
+    "baseline/p2c_parser_lexer_batch.c": {
+      "src_sha": "2823aa75",
+      "exit_code": 0,
+      "stdout_sha": "8ee51a7a76d4a835",
+      "memory_sha": "006be7dc23354f65"
+    },
     "baseline/p71_tier3_scanf.c": {
       "src_sha": "7cf64475",
       "exit_code": 0,

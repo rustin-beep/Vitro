@@ -622,10 +622,28 @@ fn Parser::parse_typedef_struct_decl(
     "__anon_struct_\{self.pos}"
   }
   let decl = self.parse_struct_body(name, loc, depth)
-  let alias_tok = self.consume(Identifier, "typedef 后预期标识符名称")
+  // 病 65（2026-10-13）：typedef 多声明器——`typedef struct Node{…} Node,
+  // *NodePtr;` 链表教学高频习语；旧只吃单标识符（decl.mbt:622 同族）。
+  // 收窄面：Identifier 与 `*`Identifier 两形态循环（数组/函数指针 typedef
+  // 另案）；struct 名与别名同名合法（typedef struct Node{…} Node——
+  // tag 命名空间独立）。
+  let mut expect_more = true
+  while expect_more {
+    let is_ptr = self.match_token(Star)
+    let alias_tok = self.consume(Identifier, "typedef 后预期标识符名称")
+    let alias_ty = if is_ptr {
+      @ast.Type::pointer_to(@ast.Type::struct_type(name))
+    } else {
+      @ast.Type::struct_type(name)
+    }
+    self.typedef_names.set(alias_tok.text, alias_ty)
+    if self.match_token(Comma) {
+      continue
+    }
+    expect_more = false
+  }
   ignore(self.consume(Semicolon, "typedef 后预期 ';'"))
   program.structs.push(decl)
-  self.typedef_names.set(alias_tok.text, @ast.Type::struct_type(name))
 }
 
 ///|
@@ -1081,6 +1099,26 @@ fn eval_enum_const(
             st.push(AppB(op))
             st.push(E(right))
             st.push(E(left))
+          }
+          // 病 66（2026-10-13）：三目常量折叠（cond/a/b 全常量——
+          // `A = 1 ? 2 : 3` 形态；条件单独求值后选支续折叠）
+          Ternary(cond, then_e, else_e, _, _) =>
+            match
+              eval_enum_const(cond, structs_table~, unions_table~, var_types~) {
+              Some(c) => st.push(E(if c != 0 { then_e } else { else_e }))
+              None => return None
+            }
+          // 病 66：Cast 剥壳（`(int)4.0` 常量形态——教学域整型 cast）
+          Cast(inner, _, _, _) => st.push(E(inner))
+          // 病 66 配套：浮点字面量叶（Cast 剥壳后到 `(int)4.0` 的 4.0——
+          // 向零截断；C 域 enum 值恒整型，浮点只经 cast 进入）
+          FloatLiteral(v, _, _) => {
+            let t = v.trunc()
+            if t >= -9223372036854775808.0 && t <= 9223372036854775807.0 {
+              vals.push(t.to_int64())
+            } else {
+              return None
+            }
           }
           _ => return None
         }

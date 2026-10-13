@@ -47,7 +47,8 @@ fn keyword_type(text : String) -> @token.TokenType? {
     "alignof" => Some(Alignof)
     "_Alignof" => Some(Alignof)
     "NULL" => Some(Null)
-    "null" => Some(Null)
+    // 病 72（2026-10-13）：小写 null 摘出关键字表——它是普通标识符
+    //（int null = 5 合法 C；NULL 是宏、nullptr 是 C23 关键字，两者保留）
     // C23（E3）：空指针常量，与 NULL 同路径
     "nullptr" => Some(Null)
     // C23（E3）：constexpr 按 const 语义处理（差异入 spec §2.12）

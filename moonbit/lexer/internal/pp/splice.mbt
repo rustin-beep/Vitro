@@ -44,7 +44,25 @@ fn substitute_params_ext(
           Some(raw) => {
             let parts : Array[String] = []
             for x in raw {
-              parts.push(x.text)
+              // 病 68（2026-10-13）：C 规则 §6.10.3.2——字符串实参的
+              // 字面量边界须重建（外包引号 + 内部 " 与 \ 转义；
+              // STR("hi") → "\"hi\""）；旧直拼裸内容丢引号。String
+              // token 的 text 为去引号内容，需还原边界。
+              if x.ty is String {
+                let buf = StringBuilder()
+                buf.write_char('"')
+                for j = 0; j < x.text.length(); j = j + 1 {
+                  let c = x.text[j].unsafe_to_char()
+                  if c == '"' || c == '\\' {
+                    buf.write_char('\\')
+                  }
+                  buf.write_char(c)
+                }
+                buf.write_char('"')
+                parts.push(buf.to_string())
+              } else {
+                parts.push(x.text)
+              }
             }
             out.push({
               ty: String,

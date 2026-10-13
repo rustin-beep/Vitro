@@ -277,6 +277,7 @@ pub let golden_digest : Digest = Digest::{
         "offsetof_struct.c": "0d66de85",
         "p2a_host_semantics.c": "d22a05b8",
         "p2b_typeck_false_positives.c": "60ce2b5e",
+        "p2c_parser_lexer_batch.c": "2823aa75",
         "p71_tier3_scanf.c": "ebb09917",
         "p71_tier3_semantics.c": "c752b120",
         "param_shadows_func.c": "dbad2b64",
@@ -781,6 +782,9 @@ pub let golden_digest : Digest = Digest::{
         "p2a_host_semantics.c": Ok(OkCase::{ result_sha: "b1d58e10a73b2572", }),
         "p2b_typeck_false_positives.c": Ok(OkCase::{
           result_sha: "f6220c0647e19952",
+        }),
+        "p2c_parser_lexer_batch.c": Ok(OkCase::{
+          result_sha: "d378bc017de4c6b6",
         }),
         "p71_tier3_scanf.c": Ok(OkCase::{ result_sha: "b466586e55860432", }),
         "p71_tier3_semantics.c": Ok(OkCase::{ result_sha: "6e78560115718f76", }),

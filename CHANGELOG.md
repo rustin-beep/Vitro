@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#71 台账批C·parser/lexer 组六病：64/65/66/68/71/72，2026-10-13）
+
+台账批C 首批（余 69/70/73/74/56/61 顺延批C-2），红锚先行。
+
+- **病 64**（long long int 三连拼写）：LL 定型后吃掉可选 int 尾（旧提前 return 滞留 int → 声明符「预期标识符」级联）。
+- **病 65**（typedef 多声明器）：`typedef struct Node{…} Node, *NodePtr;` 链表教学高频习语——Identifier 与 `*`Identifier 两形态循环（数组/函数指针 typedef 收窄另案）；struct tag 与别名同名合法（命名空间独立）。
+- **病 66**（enum 三元/cast 初始化）：eval_enum_const 补 Ternary 常量折叠（条件单独求值选支）+ Cast 剥壳 + FloatLiteral 叶（`(int)4.0` 向零截断——浮点只经 cast 进 enum）。
+- **病 68**（# 字符串化丢引号）：C 规则 §6.10.3.2——字符串实参字面量边界重建（外包引号 + 内部 `"`/`\` 转义；`STR("hi")` → `"\"hi\""`）；旧直拼裸内容。
+- **病 71**（hex 转义按位数误伤）：字符串侧与 char 侧双修——全量消费 hex 位 + **按值域判**（>0xFF 报；`'\x004'` 值 4 合法，clang 零诊断；旧「第 3 位即报」位数收紧）。
+- **病 72**（null 拒合法标识符）：keyword 表摘小写 `null`（它是普通标识符；NULL 宏与 nullptr C23 关键字保留）——零语料消费零锚连坐。
+- 语料 `p2c_parser_lexer_batch.c`（六病综合）clang_direct SAME；五家差分 × 四 corpus freeze；README 测试数不变（754/882/858）。
+- **CI 补口（fd2d5be0 push 后 mbti_sync 红）**：批A 的 strcmp 改判动 bytecode pub 常量面漏跑 moon info（SHADOWED 17→16 一行差）——再生随本批提交；教训入档：pub 面变更 → moon info → mbti_sync 是提交义务链一环。
+- 防线：moon test 754/754 · native 882 · wasm-gc 858 · clang_direct 738 SAME+10 KNOWN+0 DIFF（748）· smoke · testcount/facts 0 漂移 · mbti/surface 全绿。
+
 ### Fixed（#71 台账 P1 残余 + P2 批A/B 十一条：host 语义组 + typeck 假阳性组，2026-10-13）
 
 台账对账后按档推进（31 销案已核、60 在册分五批）；本批 P1 残余三条 + P2 前两批，红锚先行全链。

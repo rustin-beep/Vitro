@@ -49,6 +49,12 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
       // Check for 'long long'
       if self.check(Long) {
         ignore(self.advance())
+        // 病 64（2026-10-13）：long long int 三连拼写——LL 定型后吃掉
+        // 可选 int 尾（合法 C；旧提前 return 滞留 int → 声明符解析
+        // 「预期标识符」级联）
+        if self.check(Int) {
+          ignore(self.advance())
+        }
         // F-P0-2：合成 unsigned/const 修饰，此前提前 return 丢弃
         //（unsigned long long 退化为有符号 long long）
         return @ast.Type::LongLong(is_unsigned, is_const)

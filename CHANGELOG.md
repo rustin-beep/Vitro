@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（收尾批：#67/#69 销案 + 病 117≡59/20 残余/#63 尾巴修 + 台账勘误×3，2026-10-13）
+
+- **病 117（≡病 59 撞号合并）u 后缀 >INT_MAX 定型 ULL**：parser UnsignedLiteral 臂补 UINT_MAX 域分支（C11 6.4.4.1 值域最小适配——`INT_MAX<x≤UINT_MAX` 定型 unsigned int，值由 LongLiteral i64 位模式承载）；typeck 两处 `LongLiteral` 一律重定型有符号 long_long 改保留节点类型（expr.mbt 定型 + decl.mbt auto 推导）。双缺陷同修：`unsigned int x = 3000000000u` W3053 假阳性（clang 零警告）+ `sizeof(3000000000u)` 8→4 错值（双臂实测与 clang 一致）；连带 `auto` 推导不再丢 unsigned。行为变化诚实记录：`int x = 3000000000u`（uint→int 真窄化）不再报 W3053——clang 默认口径本就不报（-Wall 才有 -Wimplicit-int-conversion），修后更对齐。语料 unsigned_semantics.c 加 sizeof+环回行；codegen digest 8 条翻动（u 后缀语料族产物指纹，clang_direct 全 SAME 证实为修复正形态）。
+- **病 20 残余面（strtol 值域外无饱和）**：host_strtol 按 C11 §7.22.1.4p8 补饱和——`LONG_MAX/LONG_MIN + errno=ERANGE(34)`（LLP64 long=32 位；旧 i64 位模式直通，`999999999999999999` 位截断回绕 `-1486618625`）；val 无符号累积按符号分支判域（避大值先溢 i64）；LONG_MIN 边界属域内不饱和。endptr 面（store_u64 全宽）已于 2026-10-10 批修——本批补值域面，病 20 全销。语料 strtol_prefix.c 加饱和四形态行（同源数组变量形态——重复字面量池合并行为两侧不同，见新病登记）。
+- **#63 尾巴（E3067 数组指针渲染压扁）**：文案组装改 `pointer_type_name`（pointee 为数组时 C 记法 `int (*)[9]` 与 clang 同款；`name()` 剥维度核心名设计不动）；旧 `char* ← int*` 压扁丢全部维度。const 附注（#61 遗留 5 轻项 pointee_name_with_const）并入新 helper；标量指针形态不变。
+- **台账勘误销案×3（浓缩快照漏 #61 关闭前末批 5a139d30）**：病 13（scanf 旧五符失败语义）+ 病 14（spec 魔数 15 处具名化）+ 病 19 尾巴（「循环<=」转 H3069）——#71 正文快照搬运自 #61 早期评论，漏 10-10 晚 21:15 末批；探针重建（scanf 失败六形态三向全同：clang/native/wasm）+ host_io.mbt SCANF_* 常量在场实证。
+- **issue 收尾**：#67（api help 三态出口已落地 d35874a8 + 建议 3 目标被建议 1 覆盖）/ #69（spec 裁定句已入库 + facts 零红）销案关闭。
+- **新病登记**：病 118→119 顺延——中段 u 后缀词法丢失（`UINT_MAX<x≤I64_MAX` 的 u 后缀 scanner 发 LongLiteral token，unsigned 信息词法层即丢，`5000000000u` 定型有符号 LL）+ 重复字符串字面量池不合并（clang 合并同址 vs vitro 逐次分配，`end - "同字面量"` 自反差值形态 -50 vs 18）——均登记不修（边角形态，修复面不成比例）。
+- **工具链连坐补口（f4dee085 漏网）**：scripts 自立 workspace 的 15 个 `.json.mbt` 被 moon fmt Int32 归一化首触（moonbit/ 183 文件批未覆盖 scripts workspace——CI 无 fmt --check 步不红，本地 freeze 内置 fmt 首踩）；jmemit emit 模板三处 `version : Int` → `Int32`（fmt 不动点稳定）；jsonmbt release exe 陈旧致 J3004（旧版 parse_type 无 Int32 双拼写识别，JTStruct 误吞——jsonmbt 仓 bb71808 已修，本机 exe 重建即愈，非 Vitro 缺陷）。
+- **CI 红根除（f4dee085 自批漏网第二处）**：`gen_protocol_ts -check` 红——Int32 化改了 protocol/types.mbt 字段类型名，TS 映射表只认 `Int/UInt` 不认规范形 `Int32/UInt32`（直通输出非法 TS 标识符）且产物未再生（CI static gates 步三连红）。映射表补 `Int32/UInt32` 折叠 `number`（JS number 无损容纳 32 位）；再生后产物与 HEAD 逐字节一致（diff 归零——映射修复进仓即可，产物零提交）；selftest 三路注入证红 + -check PASS。
+- 防线：moon test 750/750（+4 锚）· wasm-gc 852 · clang_direct 735 SAME+10 KNOWN+0 DIFF（745）· 四差分 freeze 重算绿 · smoke/facts(--strict 0 漂移)/protocol_frames 47 帧/fmt 全绿。
+
 ### Changed（工具链漂移处置：moon 0.1.20261012 升级 + jsonmbt 传递依赖旧格式迁移，2026-10-12）
 
 - **moon 0.1.20260920→0.1.20261012（moonc v0.10.14→v0.10.15）**：A8 probe 红（设计行为）——baseline `--update-baseline` 迁移+全门禁复跑（746/746 绿）。

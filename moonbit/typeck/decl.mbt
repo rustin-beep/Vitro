@@ -805,7 +805,8 @@ fn TypeChecker::deduce_auto_type(
       } else {
         @ast.Type::float()
       }
-    LongLiteral(_, _, _) => @ast.Type::long_long()
+    // 病 117（≡59）：auto 推导保留节点自带类型（u 后缀值域定型链）
+    LongLiteral(_, _, ty) => ty
     StringLiteral(_, _, _) => @ast.Type::pointer_to(@ast.Type::char())
     Identifier(name, loc, _) =>
       match self.lookup_var(name) {

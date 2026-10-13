@@ -325,3 +325,47 @@ test "wb interpret fnptr decay guard" {
     _ => fail("应为函数指针数组")
   }
 }
+
+///|
+/// 病 117（≡59）锚：u 后缀字面量定型按 C11 6.4.4.1 值域最小适配——
+/// INT_MAX<x≤UINT_MAX 定型 unsigned int（值由 LongLiteral i64 位模式承载）；
+/// ≤INT_MAX 维持 Literal+uint；>i64::MAX 维持 ULL。修复前中段形态被定型
+/// LongLong(true,false)——W3053 假阳性与 `sizeof(3000000000u)`=8 错值共同根因。
+/// token 形态对齐词法层（scanner/number.mbt 值域分派：fits_u32 →
+/// UnsignedLiteral〔text 纯数字〕、中段 fits_i64 → LongLiteral〔u 后缀词法层
+/// 丢失，另案登记〕、>i64::MAX → UnsignedLiteral）。
+test "u_suffix_literal_uint_domain_typing" {
+  // ≤INT_MAX：Literal + unsigned int
+  let q1 = Parser::with_mode(
+    [tok(UnsignedLiteral, "100", 1, 1), tok(Eof, "", 1, 6)],
+    false,
+  )
+  match q1.parse_expression(0) {
+    Literal(v, _, ty) => {
+      inspect(v, content="100")
+      assert_true(ty is Int(true, _))
+    }
+    _ => fail("100u 应为 Literal")
+  }
+  // INT_MAX<x≤UINT_MAX：LongLiteral + unsigned int（红锚——修复前 LongLong）
+  let q2 = Parser::with_mode(
+    [tok(UnsignedLiteral, "3000000000", 1, 1), tok(Eof, "", 1, 13)],
+    false,
+  )
+  match q2.parse_expression(0) {
+    LongLiteral(v, _, ty) => {
+      inspect(v, content="3000000000")
+      assert_true(ty is Int(true, _))
+    }
+    _ => fail("3000000000u 应为 LongLiteral")
+  }
+  // >i64::MAX（u64::MAX）：LongLiteral + ULL
+  let q3 = Parser::with_mode(
+    [tok(UnsignedLiteral, "18446744073709551615", 1, 1), tok(Eof, "", 1, 23)],
+    false,
+  )
+  match q3.parse_expression(0) {
+    LongLiteral(_, _, ty) => assert_true(ty is LongLong(true, _))
+    _ => fail("u64::MAX 应为 LongLiteral")
+  }
+}

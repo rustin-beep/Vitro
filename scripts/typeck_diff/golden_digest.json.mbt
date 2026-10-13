@@ -7,7 +7,7 @@ pub struct Section {
 
 ///|
 pub struct Digest {
-  version : Int
+  version : Int32
   note : String
   sections : Map[String, Section]
 }
@@ -364,7 +364,7 @@ pub let golden_digest : Digest = Digest::{
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
-        "strtol_prefix.c": "4a6bce23",
+        "strtol_prefix.c": "4ab8b53d",
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
@@ -409,7 +409,7 @@ pub let golden_digest : Digest = Digest::{
         "unsigned_printf_o.c": "e83531ac",
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
-        "unsigned_semantics.c": "6c3e660f",
+        "unsigned_semantics.c": "a0103e0f",
         "unsigned_type.c": "3a7ad33d",
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
@@ -477,7 +477,7 @@ pub let golden_digest : Digest = Digest::{
         "char_literal.c": "f9618c940a096b74",
         "char_signedness.c": "5f53ad4df86a42d5",
         "circular_queue.c": "fbb77f9345091e69",
-        "codegen_soundness_regression.c": "73fe4d4646bb5f96",
+        "codegen_soundness_regression.c": "7ab75e5f29985ccf",
         "comma_operator.c": "9a8f48a5ac291548",
         "compare_eq.c": "e117577312b2de38",
         "compare_gt_eq.c": "2d2d6cdc57301220",
@@ -528,7 +528,7 @@ pub let golden_digest : Digest = Digest::{
         "e1_float_literal_double.c": "570b6954303e3a85",
         "e1_float_macros.c": "5ab98a6e9f88f7e7",
         "e1_func_identifier.c": "e9f478da90aa3108",
-        "e1_limits_macros.c": "c8bccd06bdccdedf",
+        "e1_limits_macros.c": "bc79f6d7a85c453d",
         "e1_llong_bitwise.c": "d3d6e0605b53bbf0",
         "e1_string_concat.c": "3cbf145a564051e1",
         "e1_va_copy.c": "dab523a2e15e5754",
@@ -778,7 +778,7 @@ pub let golden_digest : Digest = Digest::{
         "string_strcmp.c": "ff4804247b1ae8d5",
         "string_strcpy.c": "31ad6dbcd4f8bc7d",
         "string_strlen.c": "c773e5f6391de960",
-        "strtol_prefix.c": "e853859d433bed2d",
+        "strtol_prefix.c": "6b2afb694f5ffd55",
         "struct_array_nested_init.c": "516a1a5d293a1bb6",
         "struct_assign.c": "ecc7da702b85d724",
         "struct_basic.c": "88829c1799acd8b6",
@@ -813,17 +813,17 @@ pub let golden_digest : Digest = Digest::{
         "union_int_member.c": "cb7ceae83f817ff5",
         "union_member_widths.c": "f622bb5cfbee32be",
         "union_size_access.c": "ebb6ffa681d4fcdb",
-        "unsigned_add_wrap.c": "6fba5f6f48a7fc87",
-        "unsigned_cmp_wrap.c": "1c3807293676a1e8",
-        "unsigned_compound_wrap.c": "0794b4cf6fdaf88d",
+        "unsigned_add_wrap.c": "38c940472bc401e8",
+        "unsigned_cmp_wrap.c": "284d7483d3bad294",
+        "unsigned_compound_wrap.c": "67dbb5dd4c9ad582",
         "unsigned_div_mod.c": "5e10ed9177b181f1",
-        "unsigned_lshr.c": "52b26fdd9f6f7cf4",
+        "unsigned_lshr.c": "7809bd1c0acc190e",
         "unsigned_mul_wrap.c": "ae3003185655f2ab",
         "unsigned_printf_lu.c": "9b2b9c8ecd367594",
         "unsigned_printf_o.c": "69923cbaa5fe51c8",
         "unsigned_printf_u.c": "63e943b92450080c",
         "unsigned_printf_x.c": "edfbb1782db410de",
-        "unsigned_semantics.c": "a7a8cd806c8c67b5",
+        "unsigned_semantics.c": "4d51c8a9026ad7f9",
         "unsigned_type.c": "c85b6da301c30f02",
         "utf8_latin1_output.c": "55008319a8f31cf4",
         "variable_length_array.c": "99465f0a9867ed75",

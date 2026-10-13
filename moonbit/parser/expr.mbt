@@ -722,10 +722,20 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int32) -> @ast.Expr {
     // F-P0-2：按值域分派——i32 内 → Literal，否则 → LongLiteral 保真
     //（> i64::MAX 的值如 ULLONG_MAX 按 64 位位模式承载为负——Rust `uv as i64`
     // 的 bitcast 语义，配一元负号即得 LLONG_MIN 位模式）
+    // 病 117（≡59）：INT_MAX<x≤UINT_MAX 按 C11 6.4.4.1 值域最小适配定型
+    // unsigned int（值由 LongLiteral i64 位模式承载）——W3053 假阳性与
+    // `sizeof(3000000000u)`=8 错值的共同根因（此前一律 LongLong=true）。
     let uv = self.parse_uint64_or_report(prev, "unsigned 常量")
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
     if uv <= 2147483647 {
       return @ast.Expr::Literal(uv.to_int(), loc, @ast.Type::unsigned_int())
+    }
+    if uv <= 4294967295 {
+      return @ast.Expr::LongLiteral(
+        uv.reinterpret_as_int64(),
+        loc,
+        @ast.Type::unsigned_int(),
+      )
     }
     return @ast.Expr::LongLiteral(
       uv.reinterpret_as_int64(),

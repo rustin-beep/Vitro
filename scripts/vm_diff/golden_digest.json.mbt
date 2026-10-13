@@ -37,7 +37,7 @@ enum Case {
 }
 
 pub struct Digest {
-  version : Int
+  version : Int32
   note : String
   cases : Map[String, Case]
 }
@@ -391,7 +391,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/string_strcmp.c": Standard(Std::{ src_sha: "08a19bfe", exit_code: 0, stdout_sha: "1bad6b8cf97131fc", memory_sha: "f40b0e7427d78e63" }),
     "baseline/string_strcpy.c": Standard(Std::{ src_sha: "badba1ab", exit_code: 0, stdout_sha: "8f434346648f6b96", memory_sha: "8090f6e2d7511b38" }),
     "baseline/string_strlen.c": Standard(Std::{ src_sha: "74038346", exit_code: 0, stdout_sha: "ef2d127de37b942b", memory_sha: "e83c783b2ff6c3df" }),
-    "baseline/strtol_prefix.c": Standard(Std::{ src_sha: "4a6bce23", exit_code: 0, stdout_sha: "6bbca5b7a148cb22", memory_sha: "28a8317d42968432" }),
+    "baseline/strtol_prefix.c": Standard(Std::{ src_sha: "4ab8b53d", exit_code: 0, stdout_sha: "975405ace1bf5352", memory_sha: "a2af38108d7a5c52" }),
     "baseline/struct_array_nested_init.c": Standard(Std::{ src_sha: "856da7ce", exit_code: 0, stdout_sha: "d695181821d16477", memory_sha: "8d58c9d3b17f1b85" }),
     "baseline/struct_assign.c": Standard(Std::{ src_sha: "f31b2b41", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "0ce88a0f0aa988e1" }),
     "baseline/struct_basic.c": Standard(Std::{ src_sha: "981e9927", exit_code: 0, stdout_sha: "73475cb40a568e8d", memory_sha: "15c57e88025ad99d" }),
@@ -436,7 +436,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/unsigned_printf_o.c": Standard(Std::{ src_sha: "e83531ac", exit_code: 0, stdout_sha: "4a44dc15364204a8", memory_sha: "7f92ccb702a92609" }),
     "baseline/unsigned_printf_u.c": Standard(Std::{ src_sha: "715dca75", exit_code: 0, stdout_sha: "ad57366865126e55", memory_sha: "972fed5dcd0fa7bb" }),
     "baseline/unsigned_printf_x.c": Standard(Std::{ src_sha: "93f335b5", exit_code: 0, stdout_sha: "096aa8510b0dc131", memory_sha: "91214883087807fb" }),
-    "baseline/unsigned_semantics.c": Standard(Std::{ src_sha: "6c3e660f", exit_code: 0, stdout_sha: "80512f202b1b0e45", memory_sha: "629514116afcfa27" }),
+    "baseline/unsigned_semantics.c": Standard(Std::{ src_sha: "a0103e0f", exit_code: 0, stdout_sha: "768d1aec80be04ea", memory_sha: "18ee81398cc5bd2c" }),
     "baseline/unsigned_type.c": Standard(Std::{ src_sha: "3a7ad33d", exit_code: 0, stdout_sha: "ef2d127de37b942b", memory_sha: "fac2f047ce351d88" }),
     "baseline/utf8_latin1_output.c": Standard(Std::{ src_sha: "7c27a07f", exit_code: 0, stdout_sha: "e02f3a2eba0e8862", memory_sha: "2c89534290a18455" }),
     "baseline/variable_length_array.c": Standard(Std::{ src_sha: "08dc70e0", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "715a163cfe312835" }),

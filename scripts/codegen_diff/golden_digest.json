@@ -349,7 +349,7 @@
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
-        "strtol_prefix.c": "4a6bce23",
+        "strtol_prefix.c": "4ab8b53d",
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
@@ -394,7 +394,7 @@
         "unsigned_printf_o.c": "e83531ac",
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
-        "unsigned_semantics.c": "6c3e660f",
+        "unsigned_semantics.c": "a0103e0f",
         "unsigned_type.c": "3a7ad33d",
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
@@ -552,7 +552,7 @@
           "result_sha": "0c65bd6f7c4eee3a"
         },
         "codegen_soundness_regression.c": {
-          "result_sha": "ba81b32835a1ed6d"
+          "result_sha": "cfc4f055a53f0fa0"
         },
         "comma_operator.c": {
           "result_sha": "139d214037987b77"
@@ -705,7 +705,7 @@
           "result_sha": "bb38b36a7e9c2539"
         },
         "e1_limits_macros.c": {
-          "result_sha": "363832864f298074"
+          "result_sha": "c87e08e473981ca8"
         },
         "e1_llong_bitwise.c": {
           "result_sha": "b70c92961ff3f721"
@@ -1464,7 +1464,7 @@
           "result_sha": "8976efae4d680de3"
         },
         "strtol_prefix.c": {
-          "result_sha": "cda28344dfbd6d1b"
+          "result_sha": "3cedf6780ce86286"
         },
         "struct_array_nested_init.c": {
           "result_sha": "3452e7940f05b601"
@@ -1569,19 +1569,19 @@
           "result_sha": "6dd86f7b0c1f7193"
         },
         "unsigned_add_wrap.c": {
-          "result_sha": "263c5e91f5a59636"
+          "result_sha": "d709a1137e6234af"
         },
         "unsigned_cmp_wrap.c": {
-          "result_sha": "32928652c1b0d028"
+          "result_sha": "4d8ba73dac593479"
         },
         "unsigned_compound_wrap.c": {
-          "result_sha": "c2ab9a86164ba1b8"
+          "result_sha": "e0d67425fe6e4b9b"
         },
         "unsigned_div_mod.c": {
           "result_sha": "5963fdf814641146"
         },
         "unsigned_lshr.c": {
-          "result_sha": "e0287ce73e40b0e8"
+          "result_sha": "e8b84d5f7ed55a57"
         },
         "unsigned_mul_wrap.c": {
           "result_sha": "15864885ddd8dc91"
@@ -1599,7 +1599,7 @@
           "result_sha": "e7a5f4e8e94f219d"
         },
         "unsigned_semantics.c": {
-          "result_sha": "62469025b9064376"
+          "result_sha": "977fac4a42fc3c92"
         },
         "unsigned_type.c": {
           "result_sha": "b0e7ea07e13c980f"

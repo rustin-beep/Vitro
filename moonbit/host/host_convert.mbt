@@ -426,7 +426,35 @@ pub fn host_strtol(
       (str_addr + pos.reinterpret_as_uint()).to_uint64(),
     )
   }
-  value_only((sign * val).reinterpret_as_uint64())
+  // 病 20 残余面（2026-10-13）：值域外饱和——C11 §7.22.1.4p8 返回
+  // LONG_MAX/LONG_MIN + errno=ERANGE(34)（LLP64 long=32 位；旧 i64 位
+  // 模式直通，999999999999999999 → -1486618625 位截断回绕）。val 无符号
+  // 累积恒非负，按符号分支判域（避 sign*val 在大 val 下先溢 i64）；
+  // LONG_MIN 边界（val=2^31 负号）属域内原值不饱和。
+  let mut range_overflow = false
+  let out : Int64 = if sign > 0L {
+    if val > 2147483647L {
+      range_overflow = true
+      2147483647L
+    } else {
+      val
+    }
+  } else if val > 2147483648L {
+    range_overflow = true
+    -2147483648L
+  } else {
+    -val
+  }
+  if range_overflow {
+    match errno_addr {
+      Some(a) => {
+        let _ = mem.store_u32(map, a, 34U) // ERANGE（UCRT 值）
+        ()
+      }
+      None => ()
+    }
+  }
+  value_only(out.reinterpret_as_uint64())
 }
 
 ///|

@@ -24,7 +24,7 @@ pub struct Section {
 
 ///|
 pub struct Digest {
-  version : Int
+  version : Int32
   note : String
   sections : Map[String, Section]
 }
@@ -381,7 +381,7 @@ pub let golden_digest : Digest = Digest::{
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
-        "strtol_prefix.c": "4a6bce23",
+        "strtol_prefix.c": "4ab8b53d",
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
@@ -426,7 +426,7 @@ pub let golden_digest : Digest = Digest::{
         "unsigned_printf_o.c": "e83531ac",
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
-        "unsigned_semantics.c": "6c3e660f",
+        "unsigned_semantics.c": "a0103e0f",
         "unsigned_type.c": "3a7ad33d",
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
@@ -508,7 +508,7 @@ pub let golden_digest : Digest = Digest::{
         "char_signedness.c": Ok(OkCase::{ result_sha: "715104320ed9b421", }),
         "circular_queue.c": Ok(OkCase::{ result_sha: "0c65bd6f7c4eee3a", }),
         "codegen_soundness_regression.c": Ok(OkCase::{
-          result_sha: "ba81b32835a1ed6d",
+          result_sha: "cfc4f055a53f0fa0",
         }),
         "comma_operator.c": Ok(OkCase::{ result_sha: "139d214037987b77", }),
         "compare_eq.c": Ok(OkCase::{ result_sha: "5a89386d2cf5342b", }),
@@ -572,7 +572,7 @@ pub let golden_digest : Digest = Digest::{
         }),
         "e1_float_macros.c": Ok(OkCase::{ result_sha: "1d65ef902a3d3264", }),
         "e1_func_identifier.c": Ok(OkCase::{ result_sha: "bb38b36a7e9c2539", }),
-        "e1_limits_macros.c": Ok(OkCase::{ result_sha: "363832864f298074", }),
+        "e1_limits_macros.c": Ok(OkCase::{ result_sha: "c87e08e473981ca8", }),
         "e1_llong_bitwise.c": Ok(OkCase::{ result_sha: "b70c92961ff3f721", }),
         "e1_string_concat.c": Ok(OkCase::{ result_sha: "b4d6a56fb68d73cf", }),
         "e1_va_copy.c": Ok(OkCase::{ result_sha: "dd1a0f0bc9e7abed", }),
@@ -922,7 +922,7 @@ pub let golden_digest : Digest = Digest::{
         "string_strcmp.c": Ok(OkCase::{ result_sha: "a95281c286de1960", }),
         "string_strcpy.c": Ok(OkCase::{ result_sha: "bd5ef15a209c44b0", }),
         "string_strlen.c": Ok(OkCase::{ result_sha: "8976efae4d680de3", }),
-        "strtol_prefix.c": Ok(OkCase::{ result_sha: "cda28344dfbd6d1b", }),
+        "strtol_prefix.c": Ok(OkCase::{ result_sha: "3cedf6780ce86286", }),
         "struct_array_nested_init.c": Ok(OkCase::{
           result_sha: "3452e7940f05b601",
         }),
@@ -967,19 +967,19 @@ pub let golden_digest : Digest = Digest::{
         "union_int_member.c": Ok(OkCase::{ result_sha: "077ef82cad9588cd", }),
         "union_member_widths.c": Ok(OkCase::{ result_sha: "2b8fd98b7d8d3d7c", }),
         "union_size_access.c": Ok(OkCase::{ result_sha: "6dd86f7b0c1f7193", }),
-        "unsigned_add_wrap.c": Ok(OkCase::{ result_sha: "263c5e91f5a59636", }),
-        "unsigned_cmp_wrap.c": Ok(OkCase::{ result_sha: "32928652c1b0d028", }),
+        "unsigned_add_wrap.c": Ok(OkCase::{ result_sha: "d709a1137e6234af", }),
+        "unsigned_cmp_wrap.c": Ok(OkCase::{ result_sha: "4d8ba73dac593479", }),
         "unsigned_compound_wrap.c": Ok(OkCase::{
-          result_sha: "c2ab9a86164ba1b8",
+          result_sha: "e0d67425fe6e4b9b",
         }),
         "unsigned_div_mod.c": Ok(OkCase::{ result_sha: "5963fdf814641146", }),
-        "unsigned_lshr.c": Ok(OkCase::{ result_sha: "e0287ce73e40b0e8", }),
+        "unsigned_lshr.c": Ok(OkCase::{ result_sha: "e8b84d5f7ed55a57", }),
         "unsigned_mul_wrap.c": Ok(OkCase::{ result_sha: "15864885ddd8dc91", }),
         "unsigned_printf_lu.c": Ok(OkCase::{ result_sha: "31a0c738cca0b59d", }),
         "unsigned_printf_o.c": Ok(OkCase::{ result_sha: "330ca59daa90efdf", }),
         "unsigned_printf_u.c": Ok(OkCase::{ result_sha: "99f89cc244058e18", }),
         "unsigned_printf_x.c": Ok(OkCase::{ result_sha: "e7a5f4e8e94f219d", }),
-        "unsigned_semantics.c": Ok(OkCase::{ result_sha: "62469025b9064376", }),
+        "unsigned_semantics.c": Ok(OkCase::{ result_sha: "977fac4a42fc3c92", }),
         "unsigned_type.c": Ok(OkCase::{ result_sha: "b0e7ea07e13c980f", }),
         "utf8_latin1_output.c": Ok(OkCase::{ result_sha: "1e4e4472d2944a92", }),
         "variable_length_array.c": Ok(OkCase::{

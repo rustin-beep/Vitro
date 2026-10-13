@@ -282,7 +282,10 @@ func parseDocFields(doc string, known map[string]bool) map[string]map[string]boo
 func tsTypeMB(rt string) string {
 	s := strings.TrimSpace(rt)
 	switch s {
-	case "Int", "UInt", "UInt64", "Int64", "Double":
+	// Int32/UInt32 = moon 0.1.20261012+ fmt 对类型位 Int/UInt 的归一化
+	// 拼写（同型别名，f4dee085 批 183 文件化后协议源为规范形）——TS 侧
+	// 与 Int/UInt 同折叠 number（JS number 双精度无损容纳 32 位）
+	case "Int", "Int32", "UInt", "UInt32", "UInt64", "Int64", "Double":
 		return "number"
 	case "String":
 		return "string"

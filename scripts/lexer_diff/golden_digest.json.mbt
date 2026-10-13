@@ -7,7 +7,7 @@ pub struct Section {
 
 ///|
 pub struct Digest {
-  version : Int
+  version : Int32
   tsvs : Map[String, String]
   sections : Map[String, Section]
 }
@@ -706,8 +706,8 @@ pub let golden_digest : Digest = Digest::{
     "baseline/string_strcpy.l2.tsv": "c9d076b0e6819228",
     "baseline/string_strlen.l1.tsv": "a7d76ea73af2fe7e",
     "baseline/string_strlen.l2.tsv": "20e19ab4ad3e81e5",
-    "baseline/strtol_prefix.l1.tsv": "82ee8d41ea798830",
-    "baseline/strtol_prefix.l2.tsv": "a8a719e780ec719c",
+    "baseline/strtol_prefix.l1.tsv": "ce68f85226e3c277",
+    "baseline/strtol_prefix.l2.tsv": "12403efbc625e0d3",
     "baseline/struct_array_nested_init.l1.tsv": "8eb8e0ec4868294e",
     "baseline/struct_array_nested_init.l2.tsv": "356c599921360435",
     "baseline/struct_assign.l1.tsv": "081c404602b4d8de",
@@ -796,8 +796,8 @@ pub let golden_digest : Digest = Digest::{
     "baseline/unsigned_printf_u.l2.tsv": "9b8d92a28faec1f8",
     "baseline/unsigned_printf_x.l1.tsv": "555e3e4462179b7a",
     "baseline/unsigned_printf_x.l2.tsv": "d4ee7211078dedf0",
-    "baseline/unsigned_semantics.l1.tsv": "c4e6e940dacec867",
-    "baseline/unsigned_semantics.l2.tsv": "5c0d1d0f11702981",
+    "baseline/unsigned_semantics.l1.tsv": "e28aed1909e27d44",
+    "baseline/unsigned_semantics.l2.tsv": "d6f1d501b89f85a4",
     "baseline/unsigned_type.l1.tsv": "707d73b432d6069a",
     "baseline/unsigned_type.l2.tsv": "330e35e0371b5920",
     "baseline/utf8_latin1_output.l1.tsv": "6881b0b62540a79d",
@@ -1682,7 +1682,7 @@ pub let golden_digest : Digest = Digest::{
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
-        "strtol_prefix.c": "4a6bce23",
+        "strtol_prefix.c": "4ab8b53d",
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
@@ -1727,7 +1727,7 @@ pub let golden_digest : Digest = Digest::{
         "unsigned_printf_o.c": "e83531ac",
         "unsigned_printf_u.c": "715dca75",
         "unsigned_printf_x.c": "93f335b5",
-        "unsigned_semantics.c": "6c3e660f",
+        "unsigned_semantics.c": "a0103e0f",
         "unsigned_type.c": "3a7ad33d",
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",

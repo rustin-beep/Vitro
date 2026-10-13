@@ -2083,10 +2083,10 @@
       "memory_sha": "e83c783b2ff6c3df"
     },
     "baseline/strtol_prefix.c": {
-      "src_sha": "4a6bce23",
+      "src_sha": "4ab8b53d",
       "exit_code": 0,
-      "stdout_sha": "6bbca5b7a148cb22",
-      "memory_sha": "28a8317d42968432"
+      "stdout_sha": "975405ace1bf5352",
+      "memory_sha": "a2af38108d7a5c52"
     },
     "baseline/struct_array_nested_init.c": {
       "src_sha": "856da7ce",
@@ -2353,10 +2353,10 @@
       "memory_sha": "91214883087807fb"
     },
     "baseline/unsigned_semantics.c": {
-      "src_sha": "6c3e660f",
+      "src_sha": "a0103e0f",
       "exit_code": 0,
-      "stdout_sha": "80512f202b1b0e45",
-      "memory_sha": "629514116afcfa27"
+      "stdout_sha": "768d1aec80be04ea",
+      "memory_sha": "18ee81398cc5bd2c"
     },
     "baseline/unsigned_type.c": {
       "src_sha": "3a7ad33d",

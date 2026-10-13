@@ -580,3 +580,44 @@ test "promote_usual_arithmetic_conversions_issue61_b30" {
   assert_true(t4 is LongLong(true, _))
   assert_eq(tc.errors.length(), 0)
 }
+
+///|
+/// #63 尾巴锚（2026-10-13）：E3067 数组指针渲染——pointee 为数组时用
+/// C 记法 `int (*)[9]`（clang 同款）；旧 `name()*` 组装压扁成 `int*`
+/// 丢全部维度（`char (*)[9] ← int (*)[9]` 曾显示 `char* ← int*`）。
+test "e3067_array_pointer_render" {
+  let loc = @source.SourceLoc::new(4, 10)
+  let tc = TypeChecker::new()
+  let t = tc.check_pointer_assignable(
+    @ast.Type::pointer_to(@ast.Type::array_of(@ast.Type::char(), [9])),
+    @ast.Type::pointer_to(@ast.Type::array_of(@ast.Type::int(), [9])),
+    loc,
+    None,
+  )
+  ignore(t)
+  assert_eq(tc.errors.length(), 1, msg="不兼容数组指针须报 E3067")
+  let msg = tc.errors[0].message
+  assert_true(
+    msg.contains("char (*)[9]"),
+    msg="目标侧应为数组指针记法：\{msg}",
+  )
+  assert_true(
+    msg.contains("int (*)[9]"),
+    msg="源侧应为数组指针记法：\{msg}",
+  )
+  // 标量 pointee 维持旧形态（char* ← int*）
+  let tc2 = TypeChecker::new()
+  ignore(
+    tc2.check_pointer_assignable(
+      @ast.Type::pointer_to(@ast.Type::char()),
+      @ast.Type::pointer_to(@ast.Type::int()),
+      loc,
+      None,
+    ),
+  )
+  assert_eq(tc2.errors.length(), 1)
+  assert_true(
+    tc2.errors[0].message.contains("char* ← int*"),
+    msg="标量指针形态不变：\{tc2.errors[0].message}",
+  )
+}

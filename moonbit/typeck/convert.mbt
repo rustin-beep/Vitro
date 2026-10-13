@@ -413,14 +413,26 @@ fn is_null_pointer_constant(e : @ast.Expr) -> Bool {
 }
 
 ///|
-/// E3067 文案的 const 附注（#61 遗留 5 轻项，2026-10-10）：`name()` 是
-/// 照搬的核心名渲染（不含限定符——不改本体），`const int* ← char*` 场景
-/// 目标侧补渲 const，学生才看得到差异点。
-fn pointee_name_with_const(t : @ast.Type) -> String {
-  if t.is_const() {
+/// E3067 文案的指针类型全形（#63 尾巴，2026-10-13）：pointee 为数组时
+/// C 记法 `int (*)[9]`（clang 同款）；`name()` 剥 `[n]`/`*` 的核心名
+/// 设计不动（照搬本体），装饰（(*) 与维度链、const 前缀）在本层组装
+///（const 附注承 #61 遗留 5 轻项 pointee_name_with_const，已并入）。
+/// 多维拼 `[3][9]`。
+fn pointer_type_name(t : @ast.Type, render_const : Bool) -> String {
+  let base = if render_const && t.is_const() {
     "const \{t.name()}"
   } else {
     t.name()
+  }
+  match t {
+    Array(_, _, dims, _, _, _) => {
+      let mut s = "\{base} (*)"
+      for d in dims {
+        s = "\{s}[\{d}]"
+      }
+      s
+    }
+    _ => "\{base}*"
   }
 }
 
@@ -484,8 +496,10 @@ fn TypeChecker::check_pointer_assignable(
           // 指针位非元素位，加宽判定与其一致。
           !qualifier_widens(v_pointee, t_pointee) {
           // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
+          // #63 尾巴（2026-10-13）：数组 pointee 用 (*)[n] 记法（旧
+          // `name()*` 压扁丢维度——char* ← int* 看不出 [9] 差异点）
           self.report_error(
-            "指针类型不兼容：\{pointee_name_with_const(t_pointee)}* ← \{v_pointee.name()}*，需要显式转换（向上转型 Derived* → Base* 除外）。",
+            "指针类型不兼容：\{pointer_type_name(t_pointee, true)} ← \{pointer_type_name(v_pointee, false)}，需要显式转换（向上转型 Derived* → Base* 除外）。",
             loc,
             E3067_PointerTypeMismatch,
           )

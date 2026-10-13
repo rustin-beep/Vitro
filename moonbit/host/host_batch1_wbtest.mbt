@@ -293,6 +293,51 @@ test "strtol_base_endptr_errno" {
 }
 
 ///|
+/// 病 20 残余面（2026-10-13）：值域外饱和——C11 §7.22.1.4p8 返回
+/// LONG_MAX/LONG_MIN + errno=ERANGE(34)（LLP64 long=32 位；旧按 i64
+/// 位模式直通，999999999999999999 → -1486618625 位截断回绕）。
+/// endptr 面（store_u64 全宽写回）已于 2026-10-10 批修，本锚锁值域面。
+test "strtol_range_saturation" {
+  let (map, mem) = fresh()
+  let endp = 0x7000U
+  let errn = 0x7100U
+  // 正向溢出 → LONG_MAX + ERANGE（endptr 仍指停止位，18 位数字后）
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6000U, "999999999999999999xyz")
+  let r = host_strtol(mem, map, 0x6000U, endp, 10, Some(errn))
+  assert_eq(r.value, Some(2147483647UL))
+  assert_eq(mem.load_u32(map, errn), Ok(34U))
+  assert_eq(mem.load_u32(map, endp), Ok(0x6012U))
+  // 负向溢出 → LONG_MIN + ERANGE
+  put_cstr(mem, map, 0x6200U, "-99999999999999999")
+  let r2 = host_strtol(mem, map, 0x6200U, 0U, 10, Some(errn))
+  assert_eq(r2.value, Some((-2147483648L).reinterpret_as_uint64()))
+  assert_eq(mem.load_u32(map, errn), Ok(34U))
+  // 域内边界原值（LONG_MAX / LONG_MIN 本身不饱和）
+  put_cstr(mem, map, 0x6300U, "2147483647")
+  assert_eq(
+    host_strtol(mem, map, 0x6300U, 0U, 10, None).value,
+    Some(2147483647UL),
+  )
+  put_cstr(mem, map, 0x6400U, "-2147483648")
+  assert_eq(
+    host_strtol(mem, map, 0x6400U, 0U, 10, None).value,
+    Some((-2147483648L).reinterpret_as_uint64()),
+  )
+  // 恰溢一位 → 饱和
+  put_cstr(mem, map, 0x6500U, "2147483648")
+  assert_eq(
+    host_strtol(mem, map, 0x6500U, 0U, 10, None).value,
+    Some(2147483647UL),
+  )
+  // 域内不设 ERANGE（errno 保持原值）
+  ignore(mem.store_u32(map, errn, 0U))
+  put_cstr(mem, map, 0x6600U, "123")
+  let _ = host_strtol(mem, map, 0x6600U, endp, 10, Some(errn))
+  assert_eq(mem.load_u32(map, errn), Ok(0U))
+}
+
+///|
 test "strtod_token_endptr" {
   let (map, mem) = fresh()
   let endp = 0x7000U

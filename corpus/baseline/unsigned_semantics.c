@@ -47,5 +47,8 @@ int main() {
     printf("%llu %llu\n", d / 3, d % 7);
     // 病 34：ULL 四关系（全无符号域）
     printf("%d %d %d %d\n", d > 3, d >= 18446744073709551615ULL, d < 3, d <= 1);
+    // 病 117（≡59）：u 后缀 INT_MAX<x≤UINT_MAX 按 C11 6.4.4.1 定型 unsigned int
+    // ——sizeof=4（修复前 ULL 定型错值 8）+ uint 域乘法环回 + W3053 假阳性清零
+    printf("%d %u\n", (int)sizeof(3000000000u), 3000000000u * 2u);
     return 0;
 }

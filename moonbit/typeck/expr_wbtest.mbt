@@ -375,3 +375,24 @@ test "index_longlong_wide_predicate_issue75_g1" {
   assert_eq(tc.errors.length(), 1, msg="double 下标维持 E3039")
   ignore(e)
 }
+
+///|
+/// 病 117（≡59）锚：typeck 对 LongLiteral 不再一律重定型有符号 long_long——
+/// 保留节点自带类型（u 后缀值域定型链的 typeck 半边；丢弃 unsigned 信息
+/// 是 W3053 假阳性的下游根因）。三形态：uint 域 / 无后缀 LL / >UINT_MAX ULL。
+test "longliteral_keeps_node_type" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let tc = TypeChecker::new()
+  let (ty1, _) = tc.resolve_expr_type(
+    @ast.Expr::LongLiteral(3000000000L, loc, @ast.Type::unsigned_int()),
+  )
+  assert_true(ty1 is Int(true, _))
+  let (ty2, _) = tc.resolve_expr_type(
+    @ast.Expr::LongLiteral(5000000000L, loc, @ast.Type::long_long()),
+  )
+  assert_true(ty2 is LongLong(false, _))
+  let (ty3, _) = tc.resolve_expr_type(
+    @ast.Expr::LongLiteral(8589934592L, loc, @ast.Type::LongLong(true, false)),
+  )
+  assert_true(ty3 is LongLong(true, _))
+}

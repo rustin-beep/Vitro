@@ -115,7 +115,9 @@ pub fn TypeChecker::resolve_expr_type(
       self.resolve_member(object, member_name, loc)
     Literal(_, _, ty) => (self.resolve_literal_ty(ty), expr)
     FloatLiteral(_, _, ty) => (self.resolve_float_literal_ty(ty), expr)
-    LongLiteral(_, _, _) => (@ast.Type::long_long(), expr)
+    // 病 117（≡59）：保留节点自带类型——u 后缀值域定型（uint 域/ULL）的
+    // typeck 半边；此前一律重定型有符号 long_long 丢 unsigned 信息。
+    LongLiteral(_, _, ty) => (ty, expr)
     StringLiteral(value, loc, _) => self.resolve_string_literal(value, loc)
     InitList(elements, loc, _) => self.resolve_init_list(elements, loc)
     Sizeof(target_type, operand, loc, _) =>

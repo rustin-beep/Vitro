@@ -19,7 +19,7 @@ pub struct Exemption {
 pub struct Rules {
   as_of : String
   migrated_algorithms : Array[String]
-  step_budget : Int
+  step_budget : Int32
   exemptions : Array[Exemption]
 }
 

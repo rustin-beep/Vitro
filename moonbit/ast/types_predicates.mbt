@@ -36,7 +36,7 @@ pub fn Type::name(self : Type) -> String {
 
 ///|
 /// 数组尺寸（非数组返回 0）。
-pub fn Type::array_size(self : Type) -> Int {
+pub fn Type::array_size(self : Type) -> Int32 {
   match self {
     Array(_, size, _, _, _, _) => size
     _ => 0
@@ -45,7 +45,7 @@ pub fn Type::array_size(self : Type) -> Int {
 
 ///|
 /// 维度表（非数组返回空）。
-pub fn Type::dims(self : Type) -> Array[Int] {
+pub fn Type::dims(self : Type) -> Array[Int32] {
   match self {
     Array(_, _, dims, _, _, _) => dims
     _ => []
@@ -134,7 +134,7 @@ pub fn Type::subscript_type(self : Type) -> Type {
       if dims.length() <= 1 {
         element
       } else {
-        let new_dims : Array[Int] = []
+        let new_dims : Array[Int32] = []
         for i in 1..<dims.length() {
           new_dims.push(dims[i])
         }
@@ -166,7 +166,7 @@ pub fn Type::base_element_type(self : Type) -> Type {
 ///|
 /// 元素总数（照搬 Rust `total_elements`：非数组 1；含负维且 size>0 时
 /// 返回 size；否则按维乘积（非正维按 1）；空维返回 size（>0）或 1）。
-pub fn Type::total_elements(self : Type) -> Int {
+pub fn Type::total_elements(self : Type) -> Int32 {
   if !self.is_array() {
     return 1
   }
@@ -199,8 +199,8 @@ pub fn compute_type_size(
   ty : Type,
   struct_defs : Map[String, Array[StructField]],
   union_defs : Map[String, Array[StructField]],
-  class_size_map : Map[String, Int],
-) -> Int {
+  class_size_map : Map[String, Int32],
+) -> Int32 {
   compute_type_size_impl(ty, struct_defs, union_defs, class_size_map, Set([]))
 }
 
@@ -209,9 +209,9 @@ fn compute_type_size_impl(
   ty : Type,
   struct_defs : Map[String, Array[StructField]],
   union_defs : Map[String, Array[StructField]],
-  class_size_map : Map[String, Int],
+  class_size_map : Map[String, Int32],
   visiting : Set[String],
-) -> Int {
+) -> Int32 {
   match ty {
     Void(_) => 0
     Int(_, _) => 4

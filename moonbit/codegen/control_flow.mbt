@@ -117,10 +117,10 @@ fn BytecodeGen::gen_for(
 /// base（Rust resize 语义 = pop 到 base 长度）。
 fn BytecodeGen::patch_loop_patches(
   self : BytecodeGen,
-  end_ip : Int,
-  continue_ip : Int,
-  break_base : Int,
-  continue_base : Int,
+  end_ip : Int32,
+  continue_ip : Int32,
+  break_base : Int32,
+  continue_base : Int32,
 ) -> Unit {
   let mut i = break_base
   while i < self.break_patches.length() {
@@ -187,7 +187,7 @@ fn BytecodeGen::gen_switch(
   self.gen_expr(cond)
   let cond_temp = self.get_temp_slot(0)
   self.emit(@opcode.OpCode::StoreLocal, cond_temp, loc)
-  let case_jump_ips : Array[Int] = []
+  let case_jump_ips : Array[Int32] = []
   for entry in cases {
     self.emit(@opcode.OpCode::LoadLocal, cond_temp, loc)
     match entry.0 {

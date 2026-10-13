@@ -32,7 +32,7 @@ pub fn cstring_bytes(s : String) -> Array[Byte] {
 ///|
 /// C 语义字节长度（不含结尾 NUL）——分配/对齐计算用。与 MoonBit
 /// `String::length()`（UTF-16 码元数）在含 `\xHH ≥ 0x80` 转义时不同（F2）。
-pub fn cstring_len(s : String) -> Int {
+pub fn cstring_len(s : String) -> Int32 {
   // #66：与 cstring_bytes 同口径（整串 UTF-8 长度）
   @util.utf8_len(s)
 }

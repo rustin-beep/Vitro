@@ -68,9 +68,9 @@ pub fn InputState::snapshot(self : InputState) -> InputState {
 /// 这里只快照元数据——勘察 §4.2-7「VFS 纳入快照」的口径，修复 Rust 侧
 /// 「时间旅行回退后文件状态来自未来」的 P1 缺陷）。
 pub(all) struct VfsFileSnapshot {
-  mut heap_addr : UInt
-  mut size : Int
-  mut capacity : Int
+  mut heap_addr : UInt32
+  mut size : Int32
+  mut capacity : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -84,8 +84,8 @@ pub extend VfsFileSnapshot with Eq::{not_equal, equal}
 /// 0=Read / 1=Write / 2=Append——restore 穷尽 match，越界 fail loud。
 pub(all) struct VfsDescSnapshot {
   mut file_name : String
-  mode : Int
-  mut cursor : Int
+  mode : Int32
+  mut cursor : Int32
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
@@ -101,8 +101,8 @@ pub extend VfsDescSnapshot with Eq::{not_equal, equal}
 /// VFS 快照整体（文件表 + 描述符表 + fd 计数——「fd 元数据进快照」的落点）。
 pub(all) struct VfsSnapshot {
   files : Array[(String, VfsFileSnapshot)]
-  descriptors : Array[(UInt, VfsDescSnapshot)]
-  next_fd : UInt
+  descriptors : Array[(UInt32, VfsDescSnapshot)]
+  next_fd : UInt32
 } derive(Eq, Debug)
 
 ///|
@@ -127,7 +127,7 @@ pub fn VirtualFileSystem::snapshot(self : VirtualFileSystem) -> VfsSnapshot {
       ),
     )
   }
-  let descriptors : Array[(UInt, VfsDescSnapshot)] = []
+  let descriptors : Array[(UInt32, VfsDescSnapshot)] = []
   for fd, desc in self.descriptors {
     descriptors.push(
       (
@@ -180,7 +180,7 @@ pub fn VirtualFileSystem::restore(
 }
 
 ///|
-fn vfs_mode_code(mode : VfsMode) -> Int {
+fn vfs_mode_code(mode : VfsMode) -> Int32 {
   match mode {
     Read => 0
     Write => 1
@@ -189,7 +189,7 @@ fn vfs_mode_code(mode : VfsMode) -> Int {
 }
 
 ///|
-fn vfs_mode_from_code(code : Int) -> VfsMode {
+fn vfs_mode_from_code(code : Int32) -> VfsMode {
   match code {
     0 => Read
     1 => Write

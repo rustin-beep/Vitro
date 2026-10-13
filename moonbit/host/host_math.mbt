@@ -18,7 +18,7 @@
 
 ///|
 /// `abs(n)`——`INT_MIN` 取反回绕（Rust `wrapping_neg`，位模式符号扩展后压栈）。
-pub fn host_abs(n : Int) -> UInt64 {
+pub fn host_abs(n : Int32) -> UInt64 {
   let v = if n < 0 { 0 - n } else { n }
   v.to_int64().reinterpret_as_uint64()
 }

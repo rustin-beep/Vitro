@@ -14,7 +14,7 @@ fn BytecodeGen::get_member_offset(
   self : BytecodeGen,
   object_type : @ast.Type,
   mname : String,
-) -> Int {
+) -> Int32 {
   match object_type.kind() {
     TK_Union => 0 // union 成员全在偏移 0
     TK_Struct => self.struct_field_offset_by_name(object_type.name(), mname)
@@ -39,7 +39,7 @@ fn BytecodeGen::struct_field_offset_by_name(
   self : BytecodeGen,
   struct_name : String,
   mname : String,
-) -> Int {
+) -> Int32 {
   match self.struct_defs.get(struct_name) {
     Some(fields) => self.struct_fields_offset_by_name(fields, mname)
     None => 0
@@ -54,7 +54,7 @@ fn BytecodeGen::struct_fields_offset_by_name(
   self : BytecodeGen,
   fields : Array[@ast.StructField],
   mname : String,
-) -> Int {
+) -> Int32 {
   for i, field in fields {
     if field.name == mname {
       return self.struct_fields_prefix_offset(fields, i)
@@ -74,8 +74,8 @@ fn BytecodeGen::anon_field_offset(
   self : BytecodeGen,
   fields : Array[@ast.StructField],
   mname : String,
-  depth : Int,
-) -> Int? {
+  depth : Int32,
+) -> Int32? {
   if depth >= 8 {
     return None
   }
@@ -124,8 +124,8 @@ fn BytecodeGen::struct_fields_offset_by_name_with_hit(
   self : BytecodeGen,
   fields : Array[@ast.StructField],
   mname : String,
-  depth : Int,
-) -> Int? {
+  depth : Int32,
+) -> Int32? {
   for i, field in fields {
     if field.name == mname {
       return Some(self.struct_fields_prefix_offset(fields, i))
@@ -139,8 +139,8 @@ fn BytecodeGen::struct_fields_offset_by_name_with_hit(
 fn BytecodeGen::struct_fields_prefix_offset(
   self : BytecodeGen,
   fields : Array[@ast.StructField],
-  index : Int,
-) -> Int {
+  index : Int32,
+) -> Int32 {
   let mut offset = 0
   for j in 0..<index {
     offset += self.type_size(fields[j].ty)

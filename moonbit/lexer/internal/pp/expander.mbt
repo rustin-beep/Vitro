@@ -1,21 +1,21 @@
 ///|
 /// 展开深度保险丝（U1#6：检查点在**每层递归入口**——不同名对象宏链
 /// `A0→A1→…→A5000` 不触发自引用查重，此前 5000 层实测栈溢出）。
-const EXPAND_DEPTH_FUSE : Int = 64
+const EXPAND_DEPTH_FUSE : Int32 = 64
 
 ///|
 /// 展开规模保险丝：深度限深不限宽（`REP(x) x x` 嵌套 64 层 = 2^64 token），
 /// 计费口径 = **累计字节数**（token 文本 UTF-8 字节长 +1 分隔；U1#6——
 /// 旧 token 个数口径下 4KB 字面量 ×14 层 = 16384 token 不触预算但实际 67MB）。
-const EXPAND_BYTE_BUDGET : Int = 16 * 1024 * 1024
+const EXPAND_BYTE_BUDGET : Int32 = 16 * 1024 * 1024
 
 ///|
 /// 展开链/分支原因教学记录的容量上限。
-const TEACHING_TRACE_CAP : Int = 64
+const TEACHING_TRACE_CAP : Int32 = 64
 
 ///|
 /// 单条教学追踪记录的长度上限（U1#6：条数封顶不防单条）。
-const TRACE_ENTRY_MAX_CHARS : Int = 2048
+const TRACE_ENTRY_MAX_CHARS : Int32 = 2048
 
 ///|
 /// 展开上下文（宏表 + 诊断/教学通道 + 双保险丝熔断记账）。
@@ -26,7 +26,7 @@ priv struct ExpandCtx {
   trace : Array[@token.TraceEntry]
   /// `#if` 表达式求值场景：展开链噪声不记录。
   expr_mode : Bool
-  mut emitted : Int
+  mut emitted : Int32
   mut budget_exhausted : Bool
   mut depth_exceeded : Bool
 }
@@ -54,7 +54,7 @@ fn[P] Pp::expand_tokens_all(
 fn expand_tokens(
   ctx : ExpandCtx,
   tokens : Array[@token.Token],
-  depth : Int,
+  depth : Int32,
 ) -> Array[@token.Token] {
   expand_inner(ctx, tokens, depth, [])
 }
@@ -70,7 +70,7 @@ fn expanding_contains(list : Array[String], name : String) -> Bool {
 fn expand_inner(
   ctx : ExpandCtx,
   tokens : Array[@token.Token],
-  depth : Int,
+  depth : Int32,
   expanding : Array[String],
 ) -> Array[@token.Token] {
   if budget_hit(ctx, tokens) {
@@ -293,12 +293,12 @@ fn @token.Token::pin(self : @token.Token, tok : @token.Token) -> @token.Token {
 ///|
 priv struct CapturedArgs {
   args : Array[Array[@token.Token]]
-  end_index : Int
+  end_index : Int32
 }
 
 ///|
 /// 捕获实参：从 `i+2`（跳过宏名与 `(`）到平衡 `)`；顶层逗号切分。
-fn capture_args(tokens : Array[@token.Token], i : Int) -> CapturedArgs {
+fn capture_args(tokens : Array[@token.Token], i : Int32) -> CapturedArgs {
   let args : Array[Array[@token.Token]] = []
   let mut current : Array[@token.Token] = []
   let mut depth_paren = 1
@@ -363,7 +363,7 @@ fn record_trace(
   name : String,
   args : Array[Array[@token.Token]]?,
   result : Array[@token.Token],
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   record_trace_ctx(ctx, name, args, result, depth)
 }
@@ -374,7 +374,7 @@ fn record_trace_ctx(
   name : String,
   args : Array[Array[@token.Token]]?,
   result : Array[@token.Token],
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   if depth != 0 || ctx.expr_mode {
     return
@@ -425,7 +425,7 @@ fn spelling(toks : Array[@token.Token]) -> String {
 
 ///|
 /// UTF-8 安全前缀截断（≤ limit 字节的最长合法前缀）。
-fn truncate_utf8(s : String, limit : Int) -> String {
+fn truncate_utf8(s : String, limit : Int32) -> String {
   let bytes = @utf8.encode(s)
   if bytes.length() <= limit {
     return s
@@ -441,7 +441,7 @@ fn truncate_utf8(s : String, limit : Int) -> String {
 
 ///|
 /// text 的 UTF-8 字节数（Rust `text.len()` 口径——预算计费/列号反推共用）。
-fn utf8_text_len(s : String) -> Int {
+fn utf8_text_len(s : String) -> Int32 {
   @util.utf8_len(s)
 }
 
@@ -495,7 +495,7 @@ fn warn_side_effects(
 }
 
 ///|
-fn count_param_occurrences(mdef : @token.MacroDef, param : String) -> Int {
+fn count_param_occurrences(mdef : @token.MacroDef, param : String) -> Int32 {
   let body = match mdef {
     Function(body~, ..) => body
     Object(body~) => body

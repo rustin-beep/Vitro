@@ -82,7 +82,7 @@ fn trap_only(text : String) -> HostMemReply {
 /// 32 位无符号饱和乘（尺寸链防溢出：勘察坑 9「`nmemb * size` 溢出致 ~32GB
 /// 申请后 OOM」在 64 位中间量下不可能回绕，饱和只是把"超大尺寸"统一成
 /// "必然超过 MEM_SIZE"，与 Rust 侧 `checked_mul` 在本域判定等价）。
-fn sat_mul_u32(a : UInt, b : UInt) -> UInt {
+fn sat_mul_u32(a : UInt32, b : UInt32) -> UInt32 {
   let p = a.to_uint64() * b.to_uint64()
   if p > 0xFFFFFFFFUL {
     0xFFFFFFFFU
@@ -93,7 +93,7 @@ fn sat_mul_u32(a : UInt, b : UInt) -> UInt {
 
 ///|
 /// 大写十六进制（`0x{:X}` 口径：无 `0x` 前缀、无前导零、A–F 大写）。
-fn hex_upper(v : UInt) -> String {
+fn hex_upper(v : UInt32) -> String {
   if v == 0U {
     return "0"
   }
@@ -139,8 +139,8 @@ pub fn malloc_zero_note() -> String {
 /// 教学附注（与决议 §5"教学 trap"措辞的差异，Rust 侧已诚实记录）。
 pub fn host_malloc(
   map : @memory.MemoryMap,
-  size : Int,
-  alloc_line : Int,
+  size : Int32,
+  alloc_line : Int32,
 ) -> HostMemReply {
   if size == 0 {
     return null_with_note(malloc_zero_note())
@@ -172,9 +172,9 @@ pub fn host_malloc(
 pub fn host_calloc(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  nmemb : Int,
-  size : Int,
-  alloc_line : Int,
+  nmemb : Int32,
+  size : Int32,
+  alloc_line : Int32,
 ) -> HostMemReply {
   if size <= 0 || nmemb <= 0 {
     return null_silent()
@@ -259,11 +259,11 @@ pub fn host_calloc(
 pub fn host_realloc(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  ptr : UInt,
-  new_size : Int,
-  alloc_line : Int,
-  freed_line : Int,
-  freed_step : Int,
+  ptr : UInt32,
+  new_size : Int32,
+  alloc_line : Int32,
+  freed_line : Int32,
+  freed_step : Int32,
 ) -> HostMemReply {
   if new_size <= 0 {
     if ptr == 0U {
@@ -381,9 +381,9 @@ pub fn host_realloc(
 /// "禁用 `free(NULL)` 守卫"与"折叠无效 free 三分支"两路取红。）
 pub fn host_free(
   map : @memory.MemoryMap,
-  addr : UInt,
-  freed_line : Int,
-  freed_step : Int,
+  addr : UInt32,
+  freed_line : Int32,
+  freed_step : Int32,
 ) -> HostMemReply {
   if addr == 0U {
     // C 标准：free(NULL) 是安全的空操作
@@ -419,7 +419,7 @@ pub fn double_free_message(info : @memory.FreedRegionInfo) -> String {
 /// ① 落在**存活**块内部的地址（E3027「不是起始地址」）；
 /// ② 落在**已释放**块内部的地址（E3061 变体）；
 /// ③ 不指向任何分配块起始地址（E3027 兜底：栈地址 / 全局地址 / 垃圾值）。
-pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
+pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt32) -> String {
   match map.find_live_region_containing(addr) {
     Some(block) => {
       let base = block.0
@@ -463,7 +463,10 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt) -> String {
 /// 无效 realloc 教学文案（病 6 修复，#47 2026-10-09）——三分支镜像
 /// `invalid_free_message`（存活块内部 E3027 变体 / 已释放块 E3061 变体 /
 /// 兜底 E3027），文案换 realloc 语境：realloc 需要原始分配指针或 NULL。
-pub fn realloc_invalid_message(map : @memory.MemoryMap, addr : UInt) -> String {
+pub fn realloc_invalid_message(
+  map : @memory.MemoryMap,
+  addr : UInt32,
+) -> String {
   match map.find_live_region_containing(addr) {
     Some(block) => {
       let base = block.0
@@ -514,7 +517,7 @@ pub fn realloc_invalid_message(map : @memory.MemoryMap, addr : UInt) -> String {
 
 ///|
 /// E3027 兜底文案（不指向任何分配块起始地址）。
-fn unknown_free_message(addr : UInt) -> String {
+fn unknown_free_message(addr : UInt32) -> String {
   // #60 批二：文案模板外置（键 E3027_free_unknown）
   @util.render_template(
     @assets.trap_messages.get("E3027_free_unknown").unwrap().template,

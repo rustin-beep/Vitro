@@ -110,7 +110,7 @@ pub extend InitElement with Debug::{to_repr}
 pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr, @source.SourceLoc, Type)
   Unary(UnaryOp, Expr, @source.SourceLoc, Type)
-  Literal(Int, @source.SourceLoc, Type) // value
+  Literal(Int32, @source.SourceLoc, Type) // value
   FloatLiteral(Double, @source.SourceLoc, Type) // value
   LongLiteral(Int64, @source.SourceLoc, Type) // value
   StringLiteral(String, @source.SourceLoc, Type) // value
@@ -135,7 +135,14 @@ pub(all) enum Expr {
   MemberCall(Expr, String, Array[Expr], Bool, String?, @source.SourceLoc, Type) // object, method, args, is_virtual, resolved_mangled
   New(Type, Expr?, Expr?, @source.SourceLoc, Type) // elem_type, size_expr, init
   Delete(Expr, Bool, @source.SourceLoc, Type) // expr, is_array
-  Lambda(Array[CaptureMode], Array[Param], Stmt, UInt, @source.SourceLoc, Type) // capture, params, body, unique_id
+  Lambda(
+    Array[CaptureMode],
+    Array[Param],
+    Stmt,
+    UInt32,
+    @source.SourceLoc,
+    Type
+  ) // capture, params, body, unique_id
   Move(Expr, @source.SourceLoc, Type)
 } derive(Debug)
 

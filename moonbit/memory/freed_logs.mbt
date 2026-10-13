@@ -32,7 +32,7 @@
 /// 地址域实际 ≤ 1MB 不会溢出，但区间判定的**边界算术**必须与 Rust 同语义：
 /// 现版用饱和加而非回绕，回绕会让"高地址 + 大 size"在判定中变成"低 end"，
 /// 于是重叠判定反转为"不重叠"——静默漏检。
-pub fn sat_u32_add(a : UInt, b : UInt) -> UInt {
+pub fn sat_u32_add(a : UInt32, b : UInt32) -> UInt32 {
   let s = a + b
   if s < a {
     0xFFFFFFFFU
@@ -43,7 +43,7 @@ pub fn sat_u32_add(a : UInt, b : UInt) -> UInt {
 
 ///|
 /// 32 位无符号饱和减（对齐 Rust `u32::saturating_sub`）。
-pub fn sat_u32_sub(a : UInt, b : UInt) -> UInt {
+pub fn sat_u32_sub(a : UInt32, b : UInt32) -> UInt32 {
   if a < b {
     0U
   } else {
@@ -59,8 +59,8 @@ pub fn sat_u32_sub(a : UInt, b : UInt) -> UInt {
 /// 也不依赖任何结构展开语义。
 fn FreedRegionInfo::with_range(
   self : FreedRegionInfo,
-  addr : UInt,
-  size : Int,
+  addr : UInt32,
+  size : Int32,
 ) -> FreedRegionInfo {
   FreedRegionInfo::{
     addr,
@@ -91,7 +91,7 @@ pub fn FreedLogs::new() -> FreedLogs {
 
 ///|
 /// 条目数。
-pub fn FreedLogs::length(self : FreedLogs) -> Int {
+pub fn FreedLogs::length(self : FreedLogs) -> Int32 {
   self.entries.length()
 }
 
@@ -103,7 +103,7 @@ pub fn FreedLogs::is_empty(self : FreedLogs) -> Bool {
 
 ///|
 /// 取第 `i` 条（升序；`0 <= i < length()`）。
-pub fn FreedLogs::at(self : FreedLogs, i : Int) -> FreedRegionInfo {
+pub fn FreedLogs::at(self : FreedLogs, i : Int32) -> FreedRegionInfo {
   self.entries[i]
 }
 
@@ -128,7 +128,7 @@ pub fn FreedLogs::to_array(self : FreedLogs) -> Array[FreedRegionInfo] {
 ///
 /// 这是本文件两个区间算法的共同原语——Rust 侧的对应物是
 /// `BTreeMap::range(..end)` 的游标，此处以数组下标显式化。
-fn FreedLogs::lower_bound(self : FreedLogs, x : UInt) -> Int {
+fn FreedLogs::lower_bound(self : FreedLogs, x : UInt32) -> Int32 {
   let mut lo = 0
   let mut hi = self.entries.length()
   while lo < hi {
@@ -151,8 +151,8 @@ fn FreedLogs::lower_bound(self : FreedLogs, x : UInt) -> Int {
 /// 否则它就是重叠块。
 pub fn FreedLogs::find_overlapping(
   self : FreedLogs,
-  addr : UInt,
-  size : UInt,
+  addr : UInt32,
+  size : UInt32,
 ) -> FreedRegionInfo? {
   let end = sat_u32_add(addr, size)
   let i = self.lower_bound(end) - 1
@@ -172,7 +172,7 @@ pub fn FreedLogs::find_overlapping(
 ///
 /// 注意口径与 `find_overlapping` 的区别：这里是"块**起点**恰为 addr"，
 /// Rust 侧对应 `freed_logs.contains_key(&addr)`（`host/memory.rs:66`）。
-pub fn FreedLogs::contains(self : FreedLogs, addr : UInt) -> Bool {
+pub fn FreedLogs::contains(self : FreedLogs, addr : UInt32) -> Bool {
   let i = self.lower_bound(addr)
   i < self.entries.length() && self.entries[i].addr == addr
 }
@@ -182,7 +182,7 @@ pub fn FreedLogs::contains(self : FreedLogs, addr : UInt) -> Bool {
 ///
 /// 与 `contains` 同源（同一二分 + 同键判定），区别是返回值而非布尔——host 的
 /// E3061 文案需要 `freed_line` / `alloc_line` 两个字段，光知道"命中"不够。
-pub fn FreedLogs::get(self : FreedLogs, addr : UInt) -> FreedRegionInfo? {
+pub fn FreedLogs::get(self : FreedLogs, addr : UInt32) -> FreedRegionInfo? {
   let i = self.lower_bound(addr)
   if i < self.entries.length() && self.entries[i].addr == addr {
     Some(self.entries[i])
@@ -220,8 +220,8 @@ pub fn FreedLogs::insert(self : FreedLogs, info : FreedRegionInfo) -> Unit {
 /// `[x+60, x+100)` 的 UAF 检测窗口随整条记录一起消失——**UAF 假阴性**。
 pub fn FreedLogs::remove_overlapping(
   self : FreedLogs,
-  start : UInt,
-  end : UInt,
+  start : UInt32,
+  end : UInt32,
 ) -> Unit {
   let mut i = self.lower_bound(end) - 1
   while i >= 0 {

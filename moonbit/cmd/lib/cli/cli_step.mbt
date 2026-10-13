@@ -9,7 +9,7 @@ pub fn step(
   args : Array[String],
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
-) -> Int {
+) -> Int32 {
   ensure_include_reader()
   let mut file = ""
   let mut json_mode = false
@@ -203,7 +203,7 @@ fn extract_json_string_field(json : String, key : String) -> String {
 ///|
 /// 批内帧计数（"payloads":[ 计数组元素——轻提取：数 `[` 后顶层对象数近似：
 /// 数 `"step_index":` 出现次数——每帧恰好一个）。
-fn count_payloads(batch_json : String) -> Int {
+fn count_payloads(batch_json : String) -> Int32 {
   let mut n = 0
   let pat = "\"step_index\":"
   let cs = batch_json.to_array()
@@ -222,7 +222,7 @@ fn count_payloads(batch_json : String) -> Int {
 ///|
 /// 整数解析（非数字/空 → None——调用方判用法错；2026-10-04 二轮审 P3
 /// 弃 parse_int_or 静默 default 形态）
-fn parse_int(s : String) -> Int? {
+fn parse_int(s : String) -> Int32? {
   if s.length() == 0 {
     return None
   }
@@ -270,7 +270,7 @@ fn decode_delta_stdout(frame : String) -> Bytes {
     }
     if c == '\\' && i + 1 < cs.length() {
       let n = cs[i + 1]
-      let b : Int = match n {
+      let b : Int32 = match n {
         '"' => 0x22
         '\\' => 0x5C
         '/' => 0x2F
@@ -325,8 +325,8 @@ fn decode_delta_stdout(frame : String) -> Bytes {
 ///|
 /// 四位十六进制解析（decode_delta_stdout 的 \uXXXX 臂；非法位 = 0——
 /// gateway emitter 只产合法序列，防御性兜底）。
-fn parse_hex4(a : Char, b : Char, c : Char, d : Char) -> Int {
-  let h = fn(ch : Char) -> Int {
+fn parse_hex4(a : Char, b : Char, c : Char, d : Char) -> Int32 {
+  let h = fn(ch : Char) -> Int32 {
     let v = ch.to_int()
     if v >= '0'.to_int() && v <= '9'.to_int() {
       v - '0'.to_int()

@@ -7,7 +7,7 @@
 
 ///|
 /// 运行时 libc_setup.mbt 组装为 Instruction）。
-let libc_code_flat : Array[Int] = [
+let libc_code_flat : Array[Int32] = [
   // 0
   0, 0, 0, 0, 0, 36, 3, 3, 20, 0, 36, 4, 4, 5, 0, 2, 0, 4, 12, 0, 1, 48, 4, 17, 0,
   25, 0, 4, 17, 0, 8, 0, 4, 29, 0, 30, 12, 4, 29, 0, 7, 0, 4, 29, 0, 2, 0, 4, 24,
@@ -1406,7 +1406,7 @@ let libc_func_names : Array[String] = [
 ]
 
 ///|
-let libc_func_index : Array[Int] = [
+let libc_func_index : Array[Int32] = [
   1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013,
   1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025, 1026, 1027,
   1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039, 1040, 1041,
@@ -1418,7 +1418,7 @@ let libc_func_index : Array[Int] = [
 
 ///|
 /// 每函数 meta 扁平（ip/arg_count/param_count/local_count/variadic + param_sizes 至 local_count 槽）。
-let libc_func_meta : Array[Int] = [
+let libc_func_meta : Array[Int32] = [
   1, 1, 1, 4, 0, 1, // isdigit
    1, 17, 1, 1, 4, 0, 1, // isalpha
    1, 49, 1, 1, 4, 0, 1, // islower
@@ -1511,10 +1511,10 @@ let libc_func_meta : Array[Int] = [
 ]
 
 ///|
-let libc_globals_32 : Array[(UInt, Int)] = [(0U, 1)]
+let libc_globals_32 : Array[(UInt32, Int32)] = [(0U, 1)]
 
 ///|
-let libc_globals_64 : Array[(UInt, UInt64)] = []
+let libc_globals_64 : Array[(UInt32, UInt64)] = []
 
 ///|
 let libc_f64_constants : Array[Double] = []
@@ -1523,4 +1523,4 @@ let libc_f64_constants : Array[Double] = []
 let libc_i64_constants : Array[Int64] = []
 
 ///|
-const LIBC_CODE_LEN : Int = 3485
+const LIBC_CODE_LEN : Int32 = 3485

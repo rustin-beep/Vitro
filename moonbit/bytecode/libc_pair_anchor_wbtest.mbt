@@ -5,7 +5,7 @@
 /// 对硬编码：MoonBit 侧数组/派生规则任一漂移即红。源头：
 /// native/crates/vitro_runtime/src/bytecode_libc_index.rs（源变须同步再生成）。
 test "libc index: hardcoded 88 pairs from Rust source" {
-  let pairs : Array[(String, Int)] = [
+  let pairs : Array[(String, Int32)] = [
     ("isdigit", 1000),
     ("isalpha", 1001),
     ("islower", 1002),

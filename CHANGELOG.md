@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **moon 0.1.20260920→0.1.20261012（moonc v0.10.14→v0.10.15）**：A8 probe 红（设计行为）——baseline `--update-baseline` 迁移+全门禁复跑（746/746 绿）。
 - **新版拒装 `.mooncakes` 缓存内旧 `moon.mod.json` 包**（prettyprinter@0.4.10——jsonmbt 传递依赖）：五 job 断供（jsonmbt 是 13+1 张真源再生成器）。CI 四处 "Build jsonmbt" 步骤统一补 `moon install` + 逐依赖包 `moon fmt` 迁移（本地全链验证 EXE_OK）；上游 issue 已挂 [rustin-beep/jsonmbt#33](https://github.com/rustin-beep/jsonmbt/issues/33)（请求 prettyprinter 发新版/构建脚本内化缓解）。
+- **新 moonc v0.10.15 三连坐收口**（第二轮 CI 实测）：① fmt 规范化 `Int` 别名显示为 `Int32`（183 文件 1779±行机械重排，moon fmt 收口+746/746 全绿=零语义）；② libc_boot string.c 投影 hash 漂（库自举产物随编译器变——proj_sha 重冻）；③ mbti 面 Int→Int32 渲染（moon info 再生）。三面均工具链升级合法演化，无引擎语义变化。
 
 ### Fixed（#75 三缺口：LLM 语料线系统性误拒——vitro_reject_clang_accept 桶，2026-10-12）
 

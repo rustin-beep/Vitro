@@ -22,7 +22,7 @@ pub fn TypeChecker::declare_var(
   is_global~ : Bool,
   is_extern~ : Bool,
   is_static~ : Bool,
-  predeclared? : Bool = false,
+  predeclared~ : Bool = false,
 ) -> Unit {
   if self.scopes.length() == 0 {
     self.scopes.push(Map([]))
@@ -151,7 +151,7 @@ pub fn TypeChecker::update_var_type(
 pub fn TypeChecker::compute_type_size(
   self : TypeChecker,
   ty : @ast.Type,
-) -> Int {
+) -> Int32 {
   let struct_defs : Map[String, Array[@ast.StructField]] = Map([])
   for name, sym in self.structs {
     struct_defs.set(name, sym.fields.map(pair => { ty: pair.0, name: pair.1, }))

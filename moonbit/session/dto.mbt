@@ -7,17 +7,17 @@
 ///|
 /// 编译诊断（协议形态——含修复建议字段族，E1 出口的消费侧形态）。
 pub(all) struct Diagnostic {
-  line : Int
-  column : Int
-  error_code : Int
-  severity : Int
+  line : Int32
+  column : Int32
+  error_code : Int32
+  severity : Int32
   message : String
   fix_suggestion : String
-  fix_kind : Int
-  replace_start_line : Int
-  replace_start_column : Int
-  replace_end_line : Int
-  replace_end_column : Int
+  fix_kind : Int32
+  replace_start_line : Int32
+  replace_start_column : Int32
+  replace_end_line : Int32
+  replace_end_column : Int32
   replacement_text : String
   filename : String
 } derive(Debug)
@@ -33,7 +33,7 @@ pub extend Diagnostic with Debug::{to_repr}
 ///|
 /// 执行追踪条目。
 pub(all) struct TraceEntry {
-  line : Int
+  line : Int32
   operation : String
 } derive(Debug)
 
@@ -46,7 +46,7 @@ pub extend TraceEntry with Debug::{to_repr}
 /// 随 serve 批）。
 pub(all) struct VariableSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64
@@ -58,14 +58,14 @@ pub extend VariableSnapshot with Debug::{to_repr}
 ///|
 /// 内存地图区域（C2 三段式——global/stack/heap）。
 pub(all) struct MemoryRegion {
-  addr : UInt
-  size : Int
+  addr : UInt32
+  size : Int32
   name : String
   ty : String
   is_heap : Bool
   is_freed : Bool
   /// 分配时的源码行号（教学用途）
-  alloc_line : Int
+  alloc_line : Int32
   /// 分配方式，如 "malloc" / "realloc" / "fopen"
   alloc_by : String
   /// 段标识："global" / "stack" / "heap"
@@ -78,8 +78,8 @@ pub extend MemoryRegion with Debug::{to_repr}
 ///|
 /// 空闲块（free_list 条目的协议形态）。
 pub(all) struct MemoryFragment {
-  addr : UInt
-  size : Int
+  addr : UInt32
+  size : Int32
 } derive(Debug)
 
 ///|
@@ -89,15 +89,15 @@ pub extend MemoryFragment with Debug::{to_repr}
 /// 堆统计。
 pub(all) struct HeapStats {
   /// 本次运行的堆起点（R1：动态堆起点）
-  heap_base : Int
+  heap_base : Int32
   /// 总堆空间（heap_offset - heap_base），字节
-  total_heap : Int
+  total_heap : Int32
   /// 已分配且未释放的堆内存，字节
-  allocated : Int
+  allocated : Int32
   /// 外部碎片（free_list 中所有块之和），字节
-  fragmented : Int
+  fragmented : Int32
   /// 碎片率（0~100）
-  fragmentation_rate : Int
+  fragmentation_rate : Int32
 } derive(Debug)
 
 ///|
@@ -107,7 +107,7 @@ pub extend HeapStats with Debug::{to_repr}
 /// 单步执行结果。
 pub(all) struct StepResult {
   status : StepStatus
-  current_line : Int
+  current_line : Int32
   output : String
   waiting_input : Bool
 } derive(Debug)

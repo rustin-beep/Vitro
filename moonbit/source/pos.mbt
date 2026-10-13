@@ -11,9 +11,9 @@
 /// 三值同源派生：任一列值可由 `byte_off` + 行首信息重算（见
 /// [Pos::from_byte_off]）。禁止互相直接换算（量纲混算禁令的落点）。
 pub(all) struct Pos {
-  byte_off : Int
-  col_scalar : Int
-  col_utf16 : Int
+  byte_off : Int32
+  col_scalar : Int32
+  col_utf16 : Int32
 } derive(Debug, Eq)
 
 ///|
@@ -41,8 +41,8 @@ pub extend Pos with Eq::{not_equal, equal}
 /// ```
 pub fn Pos::from_byte_off(
   line_bytes : Bytes,
-  line_start_off : Int,
-  byte_off : Int,
+  line_start_off : Int32,
+  byte_off : Int32,
 ) -> Pos {
   let rel = byte_off - line_start_off
   // 逐字节解码 UTF-8 统计 scalar 数与 UTF-16 code unit 数：

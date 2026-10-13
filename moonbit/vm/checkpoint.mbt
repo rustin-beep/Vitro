@@ -15,9 +15,9 @@
 /// 逐位枚举，命中的 4KB 页整页拷入 `pages`；其余字段与全量同集。
 pub fn VitroVM::snapshot_incremental(
   self : VitroVM,
-  base_step : Int,
+  base_step : Int32,
 ) -> VMSnapshot {
-  let pages : Array[(Int, FixedArray[Byte])] = []
+  let pages : Array[(Int32, FixedArray[Byte])] = []
   for word = 0; word < @memory.DIRTY_WORD_COUNT; word = word + 1 {
     let mut bitmap = self.memory.dirty_word(word)
     while bitmap != 0UL {

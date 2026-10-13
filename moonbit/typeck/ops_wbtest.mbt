@@ -5,7 +5,7 @@ test "resolve_binary_key_shapes" {
   let loc = @source.SourceLoc::new(1, 5)
   let tc = TypeChecker::new()
   tc.enter_scope()
-  fn lit(v : Int) -> @ast.Expr {
+  fn lit(v : Int32) -> @ast.Expr {
     @ast.Expr::Literal(v, loc, @ast.Type::int())
   }
   fn flit(v : Double) -> @ast.Expr {
@@ -547,7 +547,7 @@ test "promote_usual_arithmetic_conversions_issue61_b30" {
     is_extern=false,
     is_static=false,
   )
-  fn lit(v : Int) -> @ast.Expr {
+  fn lit(v : Int32) -> @ast.Expr {
     @ast.Expr::Literal(v, loc, @ast.Type::int())
   }
   // uchar - 1 → int（signed；(uc-1)/2 = 0 而非 2147483647 的定型根）

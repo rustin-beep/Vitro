@@ -960,7 +960,7 @@ fn is_const_int_binary_op(op : @ast.BinaryOp) -> Bool {
 /// 原仅匹配 Literal 使负值臂不可达）。Literal/Neg/Pos 三形求值；其余常量
 /// 结构（Binary 如 1+2）返回 None——常量性由 is_int_constant_expr 放行、
 /// 值域不比（渐进：求值面留白除零）。
-fn const_int_value(e : @ast.Expr) -> Int? {
+fn const_int_value(e : @ast.Expr) -> Int32? {
   match e {
     Literal(v, _, _) => Some(v)
     Unary(op, inner, _, _) =>

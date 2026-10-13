@@ -2,12 +2,12 @@
 /// include 嵌套深度上限（U1#11）：静态环检测 DFS 的深度封顶与动态拼接的
 /// 嵌套深度保险丝**共用**此值（两个口径分叉会重演"保险丝口径错"失效形态）。
 /// 量级对齐 clang `-fmax-include-depth=200` 的教学压缩。
-const MAX_INCLUDE_DEPTH : Int = 64
+const MAX_INCLUDE_DEPTH : Int32 = 64
 
 ///|
 /// 静态环检测 DFS 的访问节点数封顶（U1#11）：防病态依赖图拖垮编译；
 /// 覆盖教学项目级头文件群（20 文件环实测检出）。
-const MAX_INCLUDE_GRAPH_NODES : Int = 512
+const MAX_INCLUDE_GRAPH_NODES : Int32 = 512
 
 ///|
 /// quote-include 候选链：当前文件目录（include 栈顶）→ 源文件目录（base_dir）。
@@ -94,7 +94,7 @@ fn[P : @token.SourceProvider] Pp::walk_cycle(
   full : String,
   start_key : String,
   visited : Array[String],
-  depth : Int,
+  depth : Int32,
 ) -> String? {
   // DIFF-PREPROC-INCLUDE-DEPTH-01 终局（2026-10-05 批一曾改报环诊断，
   // 同日审阅 P2-2 修正回 None）：静态 DFS 封顶时**无法区分深环与无环深链**

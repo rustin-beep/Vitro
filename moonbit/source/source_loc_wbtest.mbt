@@ -33,7 +33,7 @@ test "sourceloc_ord_line_then_column_then_file" {
 ///|
 /// Hash：可作 Map 键（去重诊断位置的标准用法）。
 test "sourceloc_hash_map_key" {
-  let seen : Map[SourceLoc, Int] = Map([])
+  let seen : Map[SourceLoc, Int32] = Map([])
   let k1 = SourceLoc::new(1, 5)
   let k2 = SourceLoc::new(1, 5)
   seen[k1] = 1

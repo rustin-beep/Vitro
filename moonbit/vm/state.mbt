@@ -10,21 +10,21 @@
 ///|
 /// 函数表容量上限（U2#13 照搬）：恶意/损坏索引（如 u32::MAX）曾直接
 /// `resize(idx+1)` 致 4G 项 OOM；超上限索引拒绝（返回 false，表不扩）。
-pub const MAX_FUNCTIONS : Int = 65_536
+pub const MAX_FUNCTIONS : Int32 = 65_536
 
 ///|
 /// 调用深度上限默认值（照搬 Rust `MAX_STACK_DEPTH = 10_000`——零局部变量
 /// 递归使 `call_stack` 无限增长的结构性保险丝，坑 12）。
-pub const MAX_STACK_DEPTH : Int = 10_000
+pub const MAX_STACK_DEPTH : Int32 = 10_000
 
 ///|
 /// 默认步数预算（照搬 Rust `VitroVM::new` 的 1000 万——无限循环教学保险丝）。
-pub const DEFAULT_MAX_STEPS : Int = 10_000_000
+pub const DEFAULT_MAX_STEPS : Int32 = 10_000_000
 
 ///|
 /// 可视化事件队列环形上限（照搬 Rust `executor/debug.rs:6` 的 1024——
 /// U2#8 环形丢弃最老保最新）。
-pub const VIS_EVENT_LIMIT : Int = 1024
+pub const VIS_EVENT_LIMIT : Int32 = 1024
 
 ///|
 /// 执行器状态机。
@@ -39,7 +39,7 @@ pub const VIS_EVENT_LIMIT : Int = 1024
 pub struct VitroVM {
   // ── 指令流（编译期产物）──
   code : Array[@opcode.Instruction]
-  mut ip : Int
+  mut ip : Int32
   // ── 内存与堆 ──
   /// 1MB 载体 + 脏页位图（`bytes`/`dirty` priv——本包亦无裸字节出口，
   /// 受检读写一律经 memory 单入口）。
@@ -47,14 +47,14 @@ pub struct VitroVM {
   /// 堆元数据（regions / free_list / quarantine / freed_logs）；reset 整体重建。
   mut mem_map : @memory.MemoryMap
   /// 栈区游标（自 `STACK_START` 向下增长，局部帧编址基准）。
-  mut mem_stack_top : UInt
+  mut mem_stack_top : UInt32
   // ── 值栈与调用 ──
   /// 值栈（**位模式**：i32/f32 用低 32 位，i64/f64 用满——与 golden 位级
   /// 一致相关，禁改 `enum Value` 装箱形态，勘察 §5.3）。
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
   /// qsort/bsearch 回调深度（防递归比较器）。
-  mut qsort_depth : Int
+  mut qsort_depth : Int32
   // ── 编译期产物 ──
   /// 按索引稀疏的函数表（`None` = 未注册——Rust 是 Vec+resize+默认值占位，
   /// 此处 Option 数组免造默认 meta）。
@@ -66,50 +66,50 @@ pub struct VitroVM {
   /// **装载期派生索引**（坑 12 结构性消除）：函数名 → (局部偏移 → 变量名)。
   /// 从 `symbols` 一次构建；Call/Ret 帧切换 = 换 Map 查找键，O(1)——
   /// 取代 Rust 每次 Call/Ret 全量重建 `local_sym_map` 的热点。
-  locals_by_func : Map[String, Map[Int, String]]
+  locals_by_func : Map[String, Map[Int32, String]]
   /// 全局符号索引（offset/addr → 名字），同上装载期派生。
-  global_syms : Map[Int, String]
+  global_syms : Map[Int32, String]
   /// **ARC 帧退出清理机制占位**（CS 批接线，C 恒空；CS 计划 §4.6——
   /// 「帧退出清理列表」：函数名 → 该帧引用类型局部变量的 offset 列表，
   /// Ret / UNWINDING 弹帧时逐个读 u32 → release。机制 v1 入形，
   /// retain/release 的 host id 与发射侧随 CS 批落）。
-  arc_cleanup : Map[String, Array[Int]]
+  arc_cleanup : Map[String, Array[Int32]]
   // ── 运行控制（执行状态）──
-  mut step_count : Int
+  mut step_count : Int32
   /// 会话级配置（reset 保留；装载通道**不得**设置——Rust 曾在 setup 硬编码
   /// 10_000_000 抹掉用户配置的事故见 compile_pipeline.rs:334 注释）。
-  mut max_steps : Int
+  mut max_steps : Int32
   /// 会话级配置（reset 保留）。
-  mut call_depth_limit : Int
+  mut call_depth_limit : Int32
   mut finished : Bool
-  mut exit_code : Int
+  mut exit_code : Int32
   mut paused : Bool
   mut cancelled : Bool
   mut step_event_hit : Bool
   /// trap 文案（首错优先——执行器批二号扩展结构化事件，文案渲染单点）。
   mut error : String
-  mut current_line : Int
+  mut current_line : Int32
   /// `main(int argc, char *argv[])` 的 argc。
-  mut argc : Int
+  mut argc : Int32
   /// argv 指针数组起始地址（R1 ③：自 `GLOBAL_REGION_LIMIT` 向下分配）。
-  mut argv_addr : UInt
+  mut argv_addr : UInt32
   // ── 教学观测 ──
   /// 可视化事件队列（环形 `VIS_EVENT_LIMIT`——超限丢最老）。
   mut vis_event_queue : Array[VisEventData]
   /// 可视化事件行登记（**会话注入配置**，快照不含——Rust `VMSnapshot`
   /// 同口径；set_vis_event_lines 灌入）。
-  vis_event_lines : Array[(Int, Int, String)]
+  vis_event_lines : Array[(Int32, Int32, String)]
   /// 断点集合（行号；快照含——时间旅行不丢学生断点，Rust 同口径）。
-  breakpoints : Set[Int]
+  breakpoints : Set[Int32]
   /// 最近一步的变量访问记录（瞬时观测，快照不含；每步清空重记）。
   last_accessed_vars : Array[VariableAccess]
   /// 执行热力图（行 → 计数；每步一次增量——MoonBit 可变 Map 直更，
   /// 无 Rust `Arc::make_mut` 的 COW 克隆点，快照时整表拷贝）。
-  heatmap : Map[Int, UInt64]
+  heatmap : Map[Int32, UInt64]
   /// 无限循环诊断的变量快照（每 `SNAPSHOT_INTERVAL`(10 万) 步刷新；
   /// 与 CheckpointManager 的检查点间隔是两个频率，坑 14——口径独立保留）。
   snapshot_vars : Map[String, UInt64]
-  mut last_snapshot_step : Int
+  mut last_snapshot_step : Int32
   // ── 宿主域状态（L7 host 包；快照经各自快照通道）──
   mut output : @host.OutputLog
   mut input : @host.InputState
@@ -134,9 +134,9 @@ pub struct VitroVM {
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
   /// 当前异常寄存器（异常对象堆地址）。
-  mut exception_ref : UInt?
+  mut exception_ref : UInt32?
   /// UNWINDING 剩余待展开帧数。
-  mut unwind_remaining_frames : Int
+  mut unwind_remaining_frames : Int32
   /// UNWINDING 已锁定的目标 handler。
   mut unwind_target : HandlerFrame?
 }
@@ -300,7 +300,7 @@ pub fn VitroVM::load_program(
 /// U2#13 照搬；调用方静默跳过是编译器侧防御口径）。
 pub fn VitroVM::register_function(
   self : VitroVM,
-  idx : Int,
+  idx : Int32,
   meta : @bytecode.FuncMeta,
 ) -> Bool {
   if idx < 0 || idx >= MAX_FUNCTIONS {
@@ -317,7 +317,7 @@ pub fn VitroVM::register_function(
 /// 注册函数名到指定索引（与 `register_function` 同上限语义）。
 pub fn VitroVM::register_function_name(
   self : VitroVM,
-  idx : Int,
+  idx : Int32,
   name : String,
 ) -> Bool {
   if idx < 0 || idx >= MAX_FUNCTIONS {
@@ -348,7 +348,7 @@ pub fn VitroVM::set_symbols(
       let bucket = match self.locals_by_func.get(s.func_name) {
         Some(m) => m
         None => {
-          let m : Map[Int, String] = Map([])
+          let m : Map[Int32, String] = Map([])
           self.locals_by_func.set(s.func_name, m)
           m
         }
@@ -364,7 +364,7 @@ pub fn VitroVM::set_symbols(
 /// 装载可视化事件行登记（会话注入配置，快照不含）。
 pub fn VitroVM::set_vis_event_lines(
   self : VitroVM,
-  lines : Array[(Int, Int, String)],
+  lines : Array[(Int32, Int32, String)],
 ) -> Unit {
   self.vis_event_lines.clear()
   for l in lines {
@@ -376,7 +376,7 @@ pub fn VitroVM::set_vis_event_lines(
 /// 装载 32 位全局初始化表（offset 相对 `GLOBAL_START`；受检写入）。
 pub fn VitroVM::set_globals_32(
   self : VitroVM,
-  globals : Array[(UInt, Int)],
+  globals : Array[(UInt32, Int32)],
 ) -> Unit {
   for pair in globals {
     let addr = @bytecode.GLOBAL_START + pair.0
@@ -389,7 +389,7 @@ pub fn VitroVM::set_globals_32(
 /// 装载 64 位全局初始化表（offset 相对 `GLOBAL_START`；受检写入）。
 pub fn VitroVM::set_globals_64(
   self : VitroVM,
-  globals : Array[(UInt, UInt64)],
+  globals : Array[(UInt32, UInt64)],
 ) -> Unit {
   for pair in globals {
     let addr = @bytecode.GLOBAL_START + pair.0
@@ -428,7 +428,11 @@ pub fn VitroVM::set_i64_constants(
 /// 越界/NULL 区静默跳过（照搬 Rust `write_cstring`：装载期数据由 codegen
 /// 保证合法，越界属编译器 bug 不炸运行）；UAF 置 `error`（结构化 trap 与
 /// 文案渲染单点随批二号 executor 统一，此处登记占位）。
-pub fn VitroVM::write_cstring(self : VitroVM, addr : UInt, s : String) -> Unit {
+pub fn VitroVM::write_cstring(
+  self : VitroVM,
+  addr : UInt32,
+  s : String,
+) -> Unit {
   let bytes = @bytecode.cstring_bytes(s)
   let raw : Array[Byte] = Array(capacity=bytes.length() + 1)
   for b in bytes {
@@ -449,9 +453,9 @@ pub fn VitroVM::write_cstring(self : VitroVM, addr : UInt, s : String) -> Unit {
 /// 字符串数据向上排；与全局数据区冲突 / 超区则置 error 返回）。
 pub fn VitroVM::setup_argv(
   self : VitroVM,
-  argc : Int,
+  argc : Int32,
   argv : Array[String],
-  global_data_end : UInt,
+  global_data_end : UInt32,
 ) -> Unit {
   if argc <= 0 || argv.is_empty() {
     self.argc = 0
@@ -488,13 +492,13 @@ pub fn VitroVM::setup_argv(
 
 ///|
 /// 设置步数预算（会话级配置——reset 保留；装载通道禁设，见字段注释）。
-pub fn VitroVM::set_max_steps(self : VitroVM, max_steps : Int) -> Unit {
+pub fn VitroVM::set_max_steps(self : VitroVM, max_steps : Int32) -> Unit {
   self.max_steps = max_steps
 }
 
 ///|
 /// 设置调用深度上限（会话级配置）。
-pub fn VitroVM::set_call_depth_limit(self : VitroVM, limit : Int) -> Unit {
+pub fn VitroVM::set_call_depth_limit(self : VitroVM, limit : Int32) -> Unit {
   // V-P1-10 下限 16 层兜底（Rust state.rs:523 `limit.max(16)` 同形——
   // 过小配置不得把正常程序直接判死；2026-09-29 用户审阅 P2 补齐，
   // 此前裸赋值致 config.set 0/-5 分叉）

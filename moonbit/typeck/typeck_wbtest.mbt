@@ -173,7 +173,7 @@ test "pass1_cycle_uses_symbol_table_not_decl" {
 /// 显式零——修复前零诊断静默接受）+ 豁免面（VLA / 有初始化器）。
 test "array_dims_legality_u1_12" {
   let loc = @source.SourceLoc::new(1, 1)
-  fn dims_of(first : Int) -> @ast.Type {
+  fn dims_of(first : Int32) -> @ast.Type {
     @ast.Type::array_of(@ast.Type::int(), [first])
   }
   // 负尺寸

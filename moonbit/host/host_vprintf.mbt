@@ -28,7 +28,7 @@ pub fn host_difftime(a_bits : UInt64, b_bits : UInt64) -> UInt64 {
 /// 逐 spec 的变参字节宽度（与 vm 参数栈布局 / `host_va_arg` 步进一致）：
 /// d/i/o/u/x/X → int（4，`ll` 时 8）；c → int 提升（4）；
 /// f/e/E/g/G → double（8）；s/p → 指针（4）。
-fn va_spec_width(spec : Int, is_ll : Bool) -> Int? {
+fn va_spec_width(spec : Int32, is_ll : Bool) -> Int32? {
   match spec {
     100 | 105 | 111 | 117 | 120 | 88 => Some(if is_ll { 8 } else { 4 })
     // d i o u x X
@@ -47,8 +47,8 @@ fn va_spec_width(spec : Int, is_ll : Bool) -> Int? {
 fn va_read_word(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  w : Int,
+  addr : UInt32,
+  w : Int32,
 ) -> Result[UInt64, @memory.MemFault] {
   if w == 8 {
     mem.load_u64(map, addr)
@@ -67,8 +67,8 @@ fn va_read_word(
 fn va_args_from_cursor(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fmt : Array[Int],
-  cursor : UInt,
+  fmt : Array[Int32],
+  cursor : UInt32,
 ) -> Result[Array[UInt64], @memory.MemFault] {
   let args : Array[UInt64] = []
   let mut cur = cursor
@@ -131,8 +131,8 @@ fn va_args_from_cursor(
 fn vprintf_pipeline(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  fmt_addr : UInt,
-  ap_cursor : UInt,
+  fmt_addr : UInt32,
+  ap_cursor : UInt32,
 ) -> Result[Bytes, HostMemReply] {
   let fmt_bytes = match read_cstring(mem, map, fmt_addr) {
     Ok(b) => b
@@ -159,8 +159,8 @@ pub fn host_vprintf_n(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   log : OutputLog,
-  fmt_addr : UInt,
-  ap_cursor : UInt,
+  fmt_addr : UInt32,
+  ap_cursor : UInt32,
 ) -> HostMemReply {
   match vprintf_pipeline(map, mem, fmt_addr, ap_cursor) {
     Ok(out) => {
@@ -180,8 +180,8 @@ pub fn host_vfprintf_n(
   log : OutputLog,
   vfs : VirtualFileSystem,
   stream : UInt64,
-  fmt_addr : UInt,
-  ap_cursor : UInt,
+  fmt_addr : UInt32,
+  ap_cursor : UInt32,
 ) -> HostMemReply {
   match vprintf_pipeline(map, mem, fmt_addr, ap_cursor) {
     Ok(out) => {
@@ -212,10 +212,10 @@ pub fn host_vfprintf_n(
 pub fn host_vsnprintf(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  buf_addr : UInt,
-  size : Int,
-  fmt_addr : UInt,
-  ap_cursor : UInt,
+  buf_addr : UInt32,
+  size : Int32,
+  fmt_addr : UInt32,
+  ap_cursor : UInt32,
 ) -> HostMemReply {
   let bytes = match vprintf_pipeline(map, mem, fmt_addr, ap_cursor) {
     Ok(o) => o

@@ -81,9 +81,9 @@ fn normalize_note_bytes(n : String) -> Bytes {
 /// （`CallRoute::Host(id)`——codegen 发射侧已按名定轨）。
 fn VitroVM::execute_host_func(
   self : VitroVM,
-  id : Int,
-  line : Int,
-  column : Int,
+  id : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match id {
     // ── ctype 14（纯函数：pop int → push int）──

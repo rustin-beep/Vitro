@@ -18,7 +18,7 @@
 /// MoonBit `UInt` 四则静默回绕，F1）、取 `next & 0x7fff`。**初值由 vm
 /// 接线时对齐 oracle `RuntimeState` 缺省（vm 片义务）**。
 pub(all) struct RandState {
-  mut seed : UInt
+  mut seed : UInt32
 } derive(Debug, Eq)
 
 ///|
@@ -29,13 +29,13 @@ pub extend RandState with Eq::{not_equal, equal}
 
 ///|
 /// 以指定种子构造（vm 接线用缺省种子调用）。
-pub fn RandState::new(seed : UInt) -> RandState {
+pub fn RandState::new(seed : UInt32) -> RandState {
   RandState::{ seed, }
 }
 
 ///|
 /// `rand()`——推进种子并返回 `next & 0x7fff`。
-pub fn host_rand(state : RandState) -> Int {
+pub fn host_rand(state : RandState) -> Int32 {
   let next = state.seed * 1103515245U + 12345U
   state.seed = next
   (next & 0x7FFFU).reinterpret_as_int()
@@ -43,7 +43,7 @@ pub fn host_rand(state : RandState) -> Int {
 
 ///|
 /// `srand(seed)`——oracle 弹参后 `as u32` 截断，接线侧先截断再传入。
-pub fn host_srand(state : RandState, seed : UInt) -> Unit {
+pub fn host_srand(state : RandState, seed : UInt32) -> Unit {
   state.seed = seed
 }
 
@@ -84,9 +84,9 @@ pub fn host_unreachable() -> String {
 pub fn host_va_start(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  ap_addr : UInt,
-  last_addr : Int,
-  last_size : Int,
+  ap_addr : UInt32,
+  last_addr : Int32,
+  last_size : Int32,
 ) -> HostMemReply {
   let va_base = last_addr + last_size
   store_u32_raise(mem, map, ap_addr, va_base.reinterpret_as_uint()) catch {
@@ -101,8 +101,8 @@ pub fn host_va_start(
 pub fn host_va_arg(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  ap_addr : UInt,
-  size : Int,
+  ap_addr : UInt32,
+  size : Int32,
 ) -> HostMemReply {
   let cursor = load_u32_raise(mem, map, ap_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -116,7 +116,7 @@ pub fn host_va_arg(
 
 ///|
 /// `va_end(ap)`（oracle `misc.rs:587-590`）——无操作（接口完备性保留）。
-pub fn host_va_end(ap_addr : UInt) -> HostMemReply {
+pub fn host_va_end(ap_addr : UInt32) -> HostMemReply {
   let _ = ap_addr
   no_reply()
 }
@@ -127,8 +127,8 @@ pub fn host_va_end(ap_addr : UInt) -> HostMemReply {
 pub fn host_va_copy(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  dst_addr : UInt,
-  src_addr : UInt,
+  dst_addr : UInt32,
+  src_addr : UInt32,
 ) -> HostMemReply {
   let value = load_u32_raise(mem, map, src_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)

@@ -10,9 +10,9 @@
 fn VitroVM::execute_arithmetic(
   self : VitroVM,
   op : @opcode.OpCode,
-  _operand : Int,
-  line : Int,
-  column : Int,
+  _operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     Add => {
@@ -156,9 +156,9 @@ fn VitroVM::execute_arithmetic(
 fn VitroVM::execute_comparison(
   self : VitroVM,
   op : @opcode.OpCode,
-  _operand : Int,
-  _line : Int,
-  _column : Int,
+  _operand : Int32,
+  _line : Int32,
+  _column : Int32,
 ) -> Unit {
   match op {
     Eq => {
@@ -235,9 +235,9 @@ fn VitroVM::execute_comparison(
 fn VitroVM::execute_bitwise(
   self : VitroVM,
   op : @opcode.OpCode,
-  _operand : Int,
-  line : Int,
-  column : Int,
+  _operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     BitAnd => {

@@ -10,7 +10,7 @@
 /// P1 语义照搬：`suffix_count > MAX_DECLARATOR_SUFFIX` 在**收集期**拦截
 /// （`a[1]x1300` 类输入报 E1006 并吞剩余后缀），interpret 递归解释树深
 /// 因此封顶 1250（MoonBit 各后端余量内，勘察 7-S1：js ≈11k 帧预算）。
-fn Parser::parse_base_type(self : Parser, depth : Int) -> @ast.Type {
+fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
   // Collect type qualifiers/modifiers (const, signed, unsigned, long, short)
   let mut is_unsigned = false
   let mut is_const = false
@@ -282,7 +282,7 @@ fn Parser::parse_base_type(self : Parser, depth : Int) -> @ast.Type {
 fn Parser::parse_declarator(
   self : Parser,
   base_type : @ast.Type,
-  depth : Int,
+  depth : Int32,
 ) -> (@ast.Type, String) {
   let dguard = DeclaratorGuard::init()
   let r = self.parse_declarator_node(dguard, false, true, depth)
@@ -300,7 +300,7 @@ fn Parser::parse_declarator(
 fn Parser::parse_var_declarator(
   self : Parser,
   base_type : @ast.Type,
-  depth : Int,
+  depth : Int32,
 ) -> (@ast.Type, String) {
   let dguard = DeclaratorGuard::init()
   let r = self.parse_declarator_node(dguard, false, true, depth)
@@ -328,7 +328,7 @@ fn Parser::parse_declarator_node(
   dguard : DeclaratorGuard,
   is_abstract : Bool,
   allow_function_suffix : Bool,
-  depth : Int,
+  depth : Int32,
 ) -> (DeclaratorNode, String?) {
   let prefixes : Array[DeclPrefix] = []
   // F-P0-1：ptr_count 限深（10 万个 `*` 的嵌套 DeclaratorNode 会使后续
@@ -517,10 +517,10 @@ fn Parser::parse_declarator_node(
 /// 外层 match 消费的左括号——先补齐当前后缀的右半，再吞完整后缀。
 fn Parser::declarator_suffix_overflow(
   self : Parser,
-  limit : Int,
+  limit : Int32,
   allow_function_suffix : Bool,
   opened : @token.TokenType,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   let cur = self.current()
   self.errors.push({
@@ -581,9 +581,9 @@ priv enum ConstIntFrame {
 }
 
 ///|
-fn const_int_of(expr : @ast.Expr) -> Int? {
+fn const_int_of(expr : @ast.Expr) -> Int32? {
   let st : Array[ConstIntFrame] = [E(expr)]
-  let vals : Array[Int] = []
+  let vals : Array[Int32] = []
   while st.length() > 0 {
     match st.pop() {
       None => break
@@ -649,7 +649,7 @@ fn const_int_of(expr : @ast.Expr) -> Int? {
 
 ///|
 /// 返回 (array_size, is_vla, vla_dim)。
-fn array_dim_info(size_expr : @ast.Expr?) -> (Int, Bool, @ast.Expr?) {
+fn array_dim_info(size_expr : @ast.Expr?) -> (Int32, Bool, @ast.Expr?) {
   match size_expr {
     None => (-1, false, None)
     Some(expr) =>
@@ -688,7 +688,7 @@ fn Parser::interpret_declarator_node(
   _self : Parser,
   node : DeclaratorNode,
   base_type : @ast.Type,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.Type {
   ignore(depth)
   // F3-v2 修复（复审处方）：自顶向下累加器——外层节点先消费类型 T，T
@@ -713,8 +713,8 @@ fn Parser::interpret_declarator_node(
   //（E4 锚复跑验证）。
   let mut cur = node
   let mut t = base_type
-  let mut size_prod : Int = 0
-  let mut size_state : Int = 0 // 0=未启（无 Array 层）1=连乘中 2=遇 0 停 3=恒 0
+  let mut size_prod : Int32 = 0
+  let mut size_state : Int32 = 0 // 0=未启（无 Array 层）1=连乘中 2=遇 0 停 3=恒 0
   while true {
     match cur {
       Base => break
@@ -780,7 +780,7 @@ fn Parser::interpret_declarator_node(
 /// param_list 互递归通道）。
 fn Parser::parse_param_list(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> (Array[@ast.Param], Bool) {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("函数声明符")
@@ -792,7 +792,7 @@ fn Parser::parse_param_list(
 ///|
 fn Parser::parse_param_list_inner(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> (Array[@ast.Param], Bool) {
   let params : Array[@ast.Param] = []
   let mut is_variadic = false
@@ -869,7 +869,7 @@ fn Parser::parse_param_list_inner(
 /// Parse optional constructor member initializer list: `: field1(expr1), ...`
 fn Parser::parse_ctor_init_list(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> Array[(String, @ast.Expr)] {
   let init_list : Array[(String, @ast.Expr)] = []
   if !self.check(Colon) {
@@ -940,14 +940,14 @@ fn merge_ctor_init_into_body(
 /// 会把头插漏进已累积类型）。
 fn array_prepend_dim(
   t : @ast.Type,
-  d : Int,
-  total_size : Int,
+  d : Int32,
+  total_size : Int32,
   is_vla : Bool,
   vla_dim : @ast.Expr?,
 ) -> @ast.Type {
   match t {
     Array(element, _, dims, _, vla, vd) => {
-      let new_dims : Array[Int] = [d]
+      let new_dims : Array[Int32] = [d]
       for dd in dims {
         new_dims.push(dd)
       }

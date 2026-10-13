@@ -27,7 +27,7 @@ pub struct UnifiedEngine {
   /// 窗口不变量由类型保证）。
   frames : FrameWindow
   /// 最大步数预算（默认 100_000——防无限循环耗尽资源；协议锚定值）。
-  mut max_steps : Int
+  mut max_steps : Int32
   /// 暂停（断点/单步停——resume 复位）。
   mut is_paused : Bool
   /// 取消（长程序中断——粘性，reset 才清）。
@@ -51,7 +51,7 @@ pub fn UnifiedEngine::new() -> UnifiedEngine {
 
 ///|
 /// 自定义步数预算创建（教学长程序放宽入口——Rust with_max_steps 同名同义）。
-pub fn UnifiedEngine::with_max_steps(max_steps : Int) -> UnifiedEngine {
+pub fn UnifiedEngine::with_max_steps(max_steps : Int32) -> UnifiedEngine {
   guard max_steps > 0 else {
     abort(
       "UnifiedEngine::with_max_steps: max_steps 须 > 0，得到 \{max_steps}",
@@ -90,8 +90,8 @@ pub fn UnifiedEngine::set_algorithm_matches(
 /// 入口放大参数〔缺陷形态 A12 的补锚正解〕；会话级配置语义同
 /// FrameWindow::with_limits——教学长程序放宽）。
 pub fn UnifiedEngine::with_limits(
-  max_steps : Int,
-  window_size : Int,
+  max_steps : Int32,
+  window_size : Int32,
   trim_ratio : Double,
 ) -> UnifiedEngine {
   guard max_steps > 0 else {
@@ -121,14 +121,14 @@ pub fn UnifiedEngine::cancel(self : UnifiedEngine) -> Unit {
 }
 
 ///|
-pub fn UnifiedEngine::get_max_steps(self : UnifiedEngine) -> Int {
+pub fn UnifiedEngine::get_max_steps(self : UnifiedEngine) -> Int32 {
   self.max_steps
 }
 
 ///|
 /// 会话级配置写入口（CheckpointManager::set_smart_mode 同款字段只读纪律——
 /// wbtest/上层经此入口）。
-pub fn UnifiedEngine::set_max_steps(self : UnifiedEngine, n : Int) -> Unit {
+pub fn UnifiedEngine::set_max_steps(self : UnifiedEngine, n : Int32) -> Unit {
   guard n > 0 else {
     abort("UnifiedEngine::set_max_steps: n 须 > 0，得到 \{n}")
   }
@@ -180,7 +180,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
   self : UnifiedEngine,
   vm : @vm.VitroVM,
   src : P,
-  batch_size : Int,
+  batch_size : Int32,
 ) -> Result[@protocol.AutoStepResult, String] {
   // 坑 ⑥-6（§6-9）：已终结 → 不再 step/collect（Finished 每次调用都会
   // 重放同一帧，违反"每真实步恰投递一次"）。空 payloads + finished=true。
@@ -358,7 +358,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
           for p in payloads {
             history.push(p)
           }
-          let get_line = fn(line : Int) -> String {
+          let get_line = fn(line : Int32) -> String {
             match src.source_line_at(line) {
               Some(s) => s.trim().to_owned()
               None => ""
@@ -408,7 +408,7 @@ pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(
 fn UnifiedEngine::rollback_before_trap(
   self : UnifiedEngine,
   vm : @vm.VitroVM,
-  step : Int,
+  step : Int32,
 ) -> Bool {
   guard self.checkpoints.nearest(step) is Some((_, snap)) else { return false }
   vm.restore(snap)
@@ -430,7 +430,7 @@ fn UnifiedEngine::rollback_before_trap(
 /// STEP_PAYLOAD_SCHEMA §4.2）。
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   self : UnifiedEngine,
-  target : Int,
+  target : Int32,
   vm : @vm.VitroVM,
   src : P,
 ) -> @protocol.SeekResult {
@@ -557,15 +557,15 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
 /// 形态；钳位在 FrameWindow::slice）。
 pub fn UnifiedEngine::get_payloads(
   self : UnifiedEngine,
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
 ) -> Array[@protocol.StepPayload] {
   self.frames.slice(start, end)
 }
 
 ///|
 /// 当前窗口已收集的最大步数（engine.rs:509-515——空窗口返回 start-1）。
-pub fn UnifiedEngine::max_collected_step(self : UnifiedEngine) -> Int {
+pub fn UnifiedEngine::max_collected_step(self : UnifiedEngine) -> Int32 {
   let len = self.frames.length()
   if len == 0 {
     self.frames.start_step() - 1

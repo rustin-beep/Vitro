@@ -18,12 +18,12 @@ fn Parser::cur_loc(self : Parser) -> @source.SourceLoc {
 }
 
 ///|
-fn Parser::parse_expression(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_expression(self : Parser, depth : Int32) -> @ast.Expr {
   self.parse_comma(depth)
 }
 
 ///|
-fn Parser::parse_comma(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_comma(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_assign(depth)
   while self.match_token(Comma) {
     let right = self.parse_assign(depth)
@@ -44,7 +44,7 @@ fn Parser::parse_comma(self : Parser, depth : Int) -> @ast.Expr {
 // =========================================================================
 
 ///|
-fn Parser::parse_assign(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_assign(self : Parser, depth : Int32) -> @ast.Expr {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("赋值")
     return default_expr()
@@ -53,7 +53,7 @@ fn Parser::parse_assign(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_assign_body(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_assign_body(self : Parser, depth : Int32) -> @ast.Expr {
   let left = self.parse_ternary(depth)
   let loc = self.prev_loc()
   let ops : Array[(@token.TokenType, @ast.AssignOp)] = [
@@ -83,7 +83,7 @@ fn Parser::parse_assign_body(self : Parser, depth : Int) -> @ast.Expr {
 // =========================================================================
 
 ///|
-fn Parser::parse_ternary(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_ternary(self : Parser, depth : Int32) -> @ast.Expr {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("三目")
     return default_expr()
@@ -92,7 +92,7 @@ fn Parser::parse_ternary(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_ternary_body(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_ternary_body(self : Parser, depth : Int32) -> @ast.Expr {
   let cond = self.parse_or(depth)
   if self.match_token(Question) {
     let then_branch = self.parse_ternary(depth)
@@ -115,7 +115,7 @@ fn Parser::parse_ternary_body(self : Parser, depth : Int) -> @ast.Expr {
 // =========================================================================
 
 ///|
-fn Parser::parse_or(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_or(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_and(depth)
   while self.match_token(OrOr) {
     let right = self.parse_and(depth)
@@ -132,7 +132,7 @@ fn Parser::parse_or(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_and(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_and(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_bit_or(depth)
   while self.match_token(AndAnd) {
     let right = self.parse_bit_or(depth)
@@ -149,7 +149,7 @@ fn Parser::parse_and(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_bit_or(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_bit_or(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_bit_xor(depth)
   while self.match_token(BitOr) {
     let right = self.parse_bit_xor(depth)
@@ -166,7 +166,7 @@ fn Parser::parse_bit_or(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_bit_xor(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_bit_xor(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_bit_and(depth)
   while self.match_token(BitXor) {
     let right = self.parse_bit_and(depth)
@@ -183,7 +183,7 @@ fn Parser::parse_bit_xor(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_bit_and(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_bit_and(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_equality(depth)
   while self.match_token(Ampersand) {
     let right = self.parse_equality(depth)
@@ -200,7 +200,7 @@ fn Parser::parse_bit_and(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_equality(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_equality(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_relational(depth)
   while true {
     if self.match_token(Eq) {
@@ -231,7 +231,7 @@ fn Parser::parse_equality(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_relational(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_relational(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_shift(depth)
   while true {
     if self.match_token(Lt) {
@@ -282,7 +282,7 @@ fn Parser::parse_relational(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_shift(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_shift(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_additive(depth)
   while true {
     if self.match_token(Shl) {
@@ -313,7 +313,7 @@ fn Parser::parse_shift(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_additive(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_additive(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_multiplicative(depth)
   while true {
     if self.match_token(Plus) {
@@ -344,7 +344,7 @@ fn Parser::parse_additive(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_multiplicative(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_multiplicative(self : Parser, depth : Int32) -> @ast.Expr {
   let mut left = self.parse_unary(depth)
   while true {
     if self.match_token(Star) {
@@ -389,7 +389,7 @@ fn Parser::parse_multiplicative(self : Parser, depth : Int) -> @ast.Expr {
 // =========================================================================
 
 ///|
-fn Parser::parse_unary(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_unary(self : Parser, depth : Int32) -> @ast.Expr {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("一元")
     return default_expr()
@@ -398,7 +398,7 @@ fn Parser::parse_unary(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_unary_body(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_unary_body(self : Parser, depth : Int32) -> @ast.Expr {
   if self.match_token(Sizeof) {
     return self.parse_sizeof(depth)
   }
@@ -453,7 +453,7 @@ fn Parser::parse_unary_body(self : Parser, depth : Int) -> @ast.Expr {
 /// 抽象声明符（壳挂点；sizeof(int(*)(*)…) 深链防御）。
 fn Parser::parse_abstract_declarator(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> DeclaratorNode? {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("抽象声明符")
@@ -469,14 +469,14 @@ fn Parser::parse_abstract_declarator(
 ///|
 fn Parser::parse_abstract_declarator_body(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> DeclaratorNode {
   let dguard = DeclaratorGuard::init()
   self.parse_declarator_node(dguard, true, true, depth).0
 }
 
 ///|
-fn Parser::parse_sizeof(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_sizeof(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.prev_loc()
   if self.match_token(LParen) {
     let checkpoint = self.save()
@@ -509,7 +509,7 @@ fn Parser::parse_sizeof(self : Parser, depth : Int) -> @ast.Expr {
 /// C23 `_Alignof` / `alignof`：结构与 parse_sizeof 同构（类型名/表达式
 /// 双形态）；typedef 快照两侧形态不同（Rust 此处手工补快照，本实现
 /// restore 全量快照覆盖——等价性见包注释 2）。
-fn Parser::parse_alignof(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_alignof(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.prev_loc()
   if self.match_token(LParen) {
     let checkpoint = self.save()
@@ -542,7 +542,7 @@ fn Parser::parse_alignof(self : Parser, depth : Int) -> @ast.Expr {
 /// offsetof(type, member)：目标类型解析透传 depth（与 parse_sizeof/
 /// parse_alignof 同构——F1 修复：此前硬编码 0，嵌套 offsetof 链每层把
 /// 深度计数归零，护栏失效且深链栈溢出）。
-fn Parser::parse_offsetof(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_offsetof(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.prev_loc()
   ignore(self.consume(LParen, "offsetof 后预期 '('"))
   let target_type = self.parse_base_type(depth)
@@ -554,7 +554,7 @@ fn Parser::parse_offsetof(self : Parser, depth : Int) -> @ast.Expr {
 
 ///|
 /// 类型名解析（cast / sizeof(type) / _Generic 关联；照搬 parse_type_only）。
-fn Parser::parse_type_only(self : Parser, depth : Int) -> @ast.Type {
+fn Parser::parse_type_only(self : Parser, depth : Int32) -> @ast.Type {
   let base = self.parse_base_type(depth)
   match self.parse_abstract_declarator(depth) {
     Some(node) => self.interpret_declarator_node(node, base, depth)
@@ -567,7 +567,7 @@ fn Parser::parse_type_only(self : Parser, depth : Int) -> @ast.Type {
 // =========================================================================
 
 ///|
-fn Parser::parse_postfix(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_postfix(self : Parser, depth : Int32) -> @ast.Expr {
   let mut expr = self.parse_primary(depth)
   while true {
     if self.match_token(LBracket) {
@@ -631,7 +631,7 @@ fn Parser::parse_postfix(self : Parser, depth : Int) -> @ast.Expr {
 
 ///|
 /// 初始化列表（壳挂点；嵌套 `{...}` 递归）。
-fn Parser::parse_init_list(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_init_list(self : Parser, depth : Int32) -> @ast.Expr {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("初始化列表")
     return default_expr()
@@ -640,7 +640,7 @@ fn Parser::parse_init_list(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_init_list_body(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_init_list_body(self : Parser, depth : Int32) -> @ast.Expr {
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
   ignore(self.consume(LBrace, "初始化列表预期 '{'"))
@@ -682,7 +682,7 @@ fn Parser::parse_init_list_body(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_arg_list(self : Parser, depth : Int) -> Array[@ast.Expr] {
+fn Parser::parse_arg_list(self : Parser, depth : Int32) -> Array[@ast.Expr] {
   let args : Array[@ast.Expr] = []
   if self.check(RParen) {
     return args
@@ -701,7 +701,7 @@ fn Parser::parse_arg_list(self : Parser, depth : Int) -> Array[@ast.Expr] {
 // =========================================================================
 
 ///|
-fn Parser::parse_primary(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_primary(self : Parser, depth : Int32) -> @ast.Expr {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("表达式")
     return @ast.Expr::Literal(0, @source.SourceLoc::default(), @ast.Type::int())
@@ -710,7 +710,7 @@ fn Parser::parse_primary(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_primary_inner(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_primary_inner(self : Parser, depth : Int32) -> @ast.Expr {
   if self.match_token(Number) {
     let prev = self.previous()
     let value = self.parse_int_or_report(prev, "整数常量")
@@ -891,7 +891,7 @@ fn Parser::parse_int_or_report(
   self : Parser,
   tok : @token.Token,
   what : String,
-) -> Int {
+) -> Int32 {
   let v = @string.parse_int(tok.text) catch {
     _ => {
       self.errors.push({
@@ -1021,7 +1021,7 @@ fn is_float_literal_shape(text : String) -> Bool {
 // =========================================================================
 
 ///|
-fn Parser::parse_new_expr(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_new_expr(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.prev_loc()
   let elem_type = self.parse_base_type(depth)
   let mut final_type = elem_type
@@ -1076,7 +1076,7 @@ fn Parser::parse_new_expr(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_delete_expr(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_delete_expr(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.prev_loc()
   let mut is_array = false
   if self.check(LBracket) {
@@ -1093,7 +1093,7 @@ fn Parser::parse_delete_expr(self : Parser, depth : Int) -> @ast.Expr {
 }
 
 ///|
-fn Parser::parse_lambda_expr(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_lambda_expr(self : Parser, depth : Int32) -> @ast.Expr {
   let loc = self.cur_loc()
   ignore(self.consume(LBracket, "Lambda 预期 '['"))
   let capture : Array[@ast.CaptureMode] = []

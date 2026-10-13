@@ -23,8 +23,8 @@
 fn read_fd(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  stream : UInt,
-) -> Result[UInt, @memory.MemFault] {
+  stream : UInt32,
+) -> Result[UInt32, @memory.MemFault] {
   mem.load_u32(map, stream)
 }
 
@@ -33,7 +33,7 @@ fn read_fd(
 /// **None = 零消费等待**（Interactive 无可用字节——vm 参数回推 + ip 回退
 /// 后重试安全，scanf 虚拟流同款判据）；Some = 游标已一次性提交
 /// （空 = EOF〔Batch 置粘滞〕；短读 = 剩余拼接不足 n——read(2) 同款）。
-pub fn InputState::take_stdin_bytes(self : InputState, n : Int) -> Bytes? {
+pub fn InputState::take_stdin_bytes(self : InputState, n : Int32) -> Bytes? {
   if n <= 0 {
     return Some(b"")
   }
@@ -70,7 +70,7 @@ pub fn InputState::take_stdin_bytes(self : InputState, n : Int) -> Bytes? {
 /// fgets 的 stdin 原语（病 15 批 B）——**单行域**取 min(max, 当前行剩余)
 /// 字节（行数据含尾 \n，天然止于行尾；当前行无尾 \n 且未满额时不跨行
 /// 续读——与 C 字节流形态的边缘差登记，教学面〔feed 行粒度〕等价）。
-pub fn InputState::take_stdin_line(self : InputState, max : Int) -> Bytes? {
+pub fn InputState::take_stdin_line(self : InputState, max : Int32) -> Bytes? {
   if max <= 0 {
     return Some(b"")
   }
@@ -115,7 +115,7 @@ pub enum StdioRead {
 ///|
 /// `fgetc` 标准流分流：stdin 复用 getchar 全套（ungetc/EOF 粘滞/等待）；
 /// stdout/stderr 读取返 EOF。
-fn host_fgetc_stdio(input : InputState, stream : UInt) -> StdioRead {
+fn host_fgetc_stdio(input : InputState, stream : UInt32) -> StdioRead {
   if stream != 0U {
     return StdioRead::Done(value_only((-1).to_int64().reinterpret_as_uint64()))
   }
@@ -133,7 +133,7 @@ pub fn host_fgetc_dispatch(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   input : InputState,
-  stream : UInt,
+  stream : UInt32,
 ) -> StdioRead {
   if stream <= 2U {
     return host_fgetc_stdio(input, stream)
@@ -148,8 +148,8 @@ fn host_fgets_stdio(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   input : InputState,
-  buf : UInt,
-  n : Int,
+  buf : UInt32,
+  n : Int32,
 ) -> StdioRead {
   if n <= 0 {
     return StdioRead::Done(value_only(0UL))
@@ -185,9 +185,9 @@ pub fn host_fgets_dispatch(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   input : InputState,
-  buf : UInt,
-  n : Int,
-  stream : UInt,
+  buf : UInt32,
+  n : Int32,
+  stream : UInt32,
 ) -> StdioRead {
   if stream <= 2U {
     if stream == 0U {
@@ -205,9 +205,9 @@ fn host_fread_stdio(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   input : InputState,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
 ) -> StdioRead {
   if size <= 0 || nmemb <= 0 {
     return StdioRead::Done(value_only(0UL))
@@ -234,10 +234,10 @@ pub fn host_fread_dispatch(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   input : InputState,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
-  stream : UInt,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
+  stream : UInt32,
 ) -> StdioRead {
   if stream <= 2U {
     if stream == 0U {
@@ -255,9 +255,9 @@ pub fn host_fopen(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  path_addr : UInt,
-  mode_addr : UInt,
-  alloc_line : Int,
+  path_addr : UInt32,
+  mode_addr : UInt32,
+  alloc_line : Int32,
 ) -> HostMemReply {
   let path = @utf8.decode_lossy(
     read_cstring_raise(mem, map, path_addr) catch {
@@ -293,10 +293,10 @@ pub fn host_fread(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
-  stream : UInt,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
+  stream : UInt32,
 ) -> HostMemReply {
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -312,10 +312,10 @@ pub fn host_fwrite(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   log : OutputLog,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
-  stream : UInt,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     if stream == 0U {
@@ -350,9 +350,9 @@ pub fn host_fclose(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
-  freed_line : Int,
-  freed_step : Int,
+  stream : UInt32,
+  freed_line : Int32,
+  freed_step : Int32,
 ) -> HostMemReply {
   if stream <= 2U {
     // 标准流返 0 成功（C 语义合法；伪句柄不真关、流常驻——病 15 批 B 拍板）
@@ -374,7 +374,7 @@ pub fn host_feof(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   input : InputState,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     let v = if stream == 0U && input.eof { 1 } else { 0 }
@@ -392,9 +392,9 @@ pub fn host_fgets(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  buf : UInt,
-  n : Int,
-  stream : UInt,
+  buf : UInt32,
+  n : Int32,
+  stream : UInt32,
 ) -> HostMemReply {
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -410,8 +410,8 @@ pub fn host_fputs(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   log : OutputLog,
-  s_addr : UInt,
-  stream : UInt,
+  s_addr : UInt32,
+  stream : UInt32,
 ) -> HostMemReply {
   // 病 91 A 档修正（#71，2026-10-11）：stdin(0) 不可写显式返 EOF——与
   // fputc/fwrite（病 15 批 B）同族护栏；此前漏挡直落 read_fd_raise 读
@@ -443,7 +443,7 @@ pub fn host_fgetc(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   let fd = read_fd_raise(mem, map, stream) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -459,8 +459,8 @@ pub fn host_fputc(
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
   log : OutputLog,
-  c : Int,
-  stream : UInt,
+  c : Int32,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     if stream == 0U {
@@ -486,9 +486,9 @@ pub fn host_fseek(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
-  offset : Int,
-  whence : Int,
+  stream : UInt32,
+  offset : Int32,
+  whence : Int32,
 ) -> HostMemReply {
   if stream <= 2U {
     // 标准流非 seekable（C 管道/终端同款失败）
@@ -506,7 +506,7 @@ pub fn host_ftell(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     return value_only((-1).to_int64().reinterpret_as_uint64())
@@ -523,7 +523,7 @@ pub fn host_rewind(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     return no_reply() // 标准流 no-op
@@ -542,7 +542,7 @@ pub fn host_fflush(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     return value_only(0UL) // 标准流刷新成功
@@ -560,7 +560,7 @@ pub fn host_perror(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   log : OutputLog,
-  s_addr : UInt,
+  s_addr : UInt32,
 ) -> HostMemReply {
   let prefix = @utf8.decode_lossy(
     read_cstring_raise(mem, map, s_addr) catch {
@@ -581,7 +581,7 @@ pub fn host_clearerr(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  stream : UInt,
+  stream : UInt32,
 ) -> HostMemReply {
   if stream <= 2U {
     return no_reply() // 标准流 no-op（不清 stdin EOF 粘滞——教学价值低，登记）
@@ -599,7 +599,7 @@ pub fn host_remove(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  path_addr : UInt,
+  path_addr : UInt32,
 ) -> HostMemReply {
   let path = @utf8.decode_lossy(
     read_cstring_raise(mem, map, path_addr) catch {
@@ -615,8 +615,8 @@ pub fn host_rename(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   vfs : VirtualFileSystem,
-  old_addr : UInt,
-  new_addr : UInt,
+  old_addr : UInt32,
+  new_addr : UInt32,
 ) -> HostMemReply {
   let old_path = @utf8.decode_lossy(
     read_cstring_raise(mem, map, old_addr) catch {

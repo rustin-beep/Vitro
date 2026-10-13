@@ -20,14 +20,14 @@ pub using @token {
 ///|
 /// L1：字符级原始词法（无行拼接、无指令消费、无宏展开；`#` 产出 Hash/HashHash；
 /// BOM 不剥离——与 Rust oracle `tokenize_raw` 出口同构）。
-pub fn tokenize_raw(src : String, cpp_mode? : Bool = false) -> @token.RawResult {
+pub fn tokenize_raw(src : String, cpp_mode~ : Bool = false) -> @token.RawResult {
   @scanner.scan_raw(@utf8.encode(src), cpp_mode~, file_id=0)
 }
 
 ///|
 /// L2：完整管线（默认仅存根 provider——wasm-gc 单出口形态；自定义 include
 /// 显式报 `UnsupportedHost`，见 token 包 SourceProvider 注释）。
-pub fn tokenize(src : String, cpp_mode? : Bool = false) -> @token.LexResult {
+pub fn tokenize(src : String, cpp_mode~ : Bool = false) -> @token.LexResult {
   let pp_state : @pp.Pp[@host.StubsProvider] = @pp.Pp::new(
     provider=@host.stubs_provider(),
     cpp_mode~,
@@ -43,8 +43,8 @@ pub fn tokenize(src : String, cpp_mode? : Bool = false) -> @token.LexResult {
 pub fn[P : @token.SourceProvider] tokenize_with(
   src : String,
   provider~ : P,
-  cpp_mode? : Bool = false,
-  base_dir? : String = ".",
+  cpp_mode~ : Bool = false,
+  base_dir~ : String = ".",
 ) -> @token.LexResult {
   let pp_state : @pp.Pp[P] = @pp.Pp::new(provider~, cpp_mode~, base_dir~)
   let tokens = pp_state.run_pp(src, emit_eof=true)
@@ -58,8 +58,8 @@ pub fn[P : @token.SourceProvider] tokenize_with(
 pub fn tokenize_with_vfs(
   src : String,
   files~ : Map[String, String],
-  cpp_mode? : Bool = false,
-  base_dir? : String = ".",
+  cpp_mode~ : Bool = false,
+  base_dir~ : String = ".",
 ) -> @token.LexResult {
   let provider = @host.vfs_provider(files~)
   let pp_state : @pp.Pp[@host.VfsProvider] = @pp.Pp::new(

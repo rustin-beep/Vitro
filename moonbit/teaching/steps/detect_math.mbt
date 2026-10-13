@@ -9,7 +9,7 @@ pub fn detect_math(
   name_lower : String,
   features : FuncFeatures,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   // features 不消费（Rust `_features` 同款）——签名保留族统一形态
   ignore(features)

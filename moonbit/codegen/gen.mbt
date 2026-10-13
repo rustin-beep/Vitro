@@ -17,58 +17,58 @@
 /// v1 = 逐位兼容 Rust 现行策略（固定四槽惰性 bump，保 A 级 code 段
 /// 逐位 diff）；v2 = 作用域化 LIFO 池（勘察 §⑤-2 / U3#1 必做项，
 /// 切换时八条槽位事故回归必挂，diff 锚按本常量分档）。
-pub const SLOT_STRATEGY_VERSION : Int = 1
+pub const SLOT_STRATEGY_VERSION : Int32 = 1
 
 ///|
 priv struct BytecodeGen {
   code : Array[@opcode.Instruction]
   errors : Array[String]
   func_table : Map[String, @bytecode.FuncMeta]
-  func_index : Map[String, Int]
-  mut next_func_idx : Int
+  func_index : Map[String, Int32]
+  mut next_func_idx : Int32
   mut current_func : String
-  mut current_func_arg_bytes : Int
-  global_indices : Map[String, Int]
+  mut current_func_arg_bytes : Int32
+  global_indices : Map[String, Int32]
   global_types : Map[String, @ast.Type]
-  mut local_indices : Map[String, Int]
+  mut local_indices : Map[String, Int32]
   mut local_types : Map[String, @ast.Type]
-  mut static_local_indices : Map[String, Int]
+  mut static_local_indices : Map[String, Int32]
   mut static_local_types : Map[String, @ast.Type]
-  mut next_local_offset : Int
+  mut next_local_offset : Int32
   mut local_scope_stack : Array[ScopeFrame]
-  mut temp_slot0 : Int
-  mut temp_slot1 : Int
-  mut temp_slot2 : Int
-  mut temp_slot3 : Int
+  mut temp_slot0 : Int32
+  mut temp_slot1 : Int32
+  mut temp_slot2 : Int32
+  mut temp_slot3 : Int32
   /// 8 字节临时槽（double/long long 的读-改-写中间值）。普通槽位只有
   /// 4 字节空间，64 位位模式写入会踩踏相邻槽/局部变量。
-  mut temp_slot_64 : Int
+  mut temp_slot_64 : Int32
   /// 初始化路径专用基址槽（U1#3 止血）：数组/结构体初始化的基址独占
   /// 此槽，初始化列表元素的 gen_expr 不会覆盖它。
-  mut init_base_slot : Int
+  mut init_base_slot : Int32
   /// 赋值目标地址槽的嵌套深度计数（gen_assign 入口递增；T-P0-6）。
-  mut assign_nest_depth : Int
+  mut assign_nest_depth : Int32
   /// 按嵌套深度缓存分配的地址槽（下标 = 深度-1），同层顺序复用。
-  mut assign_addr_slots : Array[Int]
-  globals_init_32 : Array[(UInt, Int)]
-  globals_init_64 : Array[(UInt, UInt64)]
-  mut next_global_offset : Int
+  mut assign_addr_slots : Array[Int32]
+  globals_init_32 : Array[(UInt32, Int32)]
+  globals_init_64 : Array[(UInt32, UInt64)]
+  mut next_global_offset : Int32
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
   symbols : Array[@bytecode.Symbol]
-  sym_index : Map[String, Int]
+  sym_index : Map[String, Int32]
   struct_defs : Map[String, Array[@ast.StructField]]
   union_defs : Map[String, Array[@ast.StructField]]
-  string_data : Array[(UInt, String)]
+  string_data : Array[(UInt32, String)]
   /// 全局变量初始化中遇到的字符串字面量，Pass 1 结束后统一分配地址并
   /// 回填——避免字符串区与全局变量区重叠（事故 #12）。
-  mut pending_string_inits : Array[(UInt, String)]
-  source_map : Array[(UInt, @source.SourceLoc)]
-  break_patches : Array[Int]
-  continue_patches : Array[Int]
-  loop_start_ips : Array[Int]
-  mut goto_patches : Map[String, Array[Int]]
-  mut label_ips : Map[String, Int]
+  mut pending_string_inits : Array[(UInt32, String)]
+  source_map : Array[(UInt32, @source.SourceLoc)]
+  break_patches : Array[Int32]
+  continue_patches : Array[Int32]
+  loop_start_ips : Array[Int32]
+  mut goto_patches : Map[String, Array[Int32]]
+  mut label_ips : Map[String, Int32]
 }
 
 ///|
@@ -81,14 +81,14 @@ priv struct ScopeFrame {
 ///|
 priv struct ShadowEntry {
   name : String
-  old_offset : Int?
+  old_offset : Int32?
   old_type : @ast.Type?
-  old_sym_idx : Int?
+  old_sym_idx : Int32?
 }
 
 ///|
 fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
-  let func_index : Map[String, Int] = Map([])
+  let func_index : Map[String, Int32] = Map([])
   let next_func_idx = if is_library_mode {
     0
   } else {
@@ -356,7 +356,7 @@ fn BytecodeGen::flush_pending_string_inits(self : BytecodeGen) -> Unit {
 }
 
 ///|
-fn BytecodeGen::next_global_offset_clamped(self : BytecodeGen) -> Int {
+fn BytecodeGen::next_global_offset_clamped(self : BytecodeGen) -> Int32 {
   if self.next_global_offset > 0 {
     self.next_global_offset
   } else {
@@ -514,9 +514,9 @@ fn BytecodeGen::pass1_register_global(
 fn BytecodeGen::push_symbol(
   self : BytecodeGen,
   name : String,
-  offset : Int,
+  offset : Int32,
   ty : @ast.Type,
-  decl_line : Int,
+  decl_line : Int32,
 ) -> Unit {
   self.sym_index.set(name, self.symbols.length())
   self.symbols.push({
@@ -539,7 +539,7 @@ fn default_loc() -> @source.SourceLoc {
 fn BytecodeGen::emit(
   self : BytecodeGen,
   op : @opcode.OpCode,
-  operand : Int,
+  operand : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   let ip = self.code.length()
@@ -551,12 +551,16 @@ fn BytecodeGen::emit(
 }
 
 ///|
-fn BytecodeGen::current_ip(self : BytecodeGen) -> Int {
+fn BytecodeGen::current_ip(self : BytecodeGen) -> Int32 {
   self.code.length()
 }
 
 ///|
-fn BytecodeGen::patch_jump(self : BytecodeGen, ip : Int, target : Int) -> Unit {
+fn BytecodeGen::patch_jump(
+  self : BytecodeGen,
+  ip : Int32,
+  target : Int32,
+) -> Unit {
   if ip < self.code.length() {
     // Instruction.operand 不可变（opcode 包已发布契约）——整条替换等价改写
     let old_ins = self.code[ip]
@@ -580,10 +584,10 @@ fn BytecodeGen::report_error(
 /// （全局地址是行为锚，不顺手改变布局）。
 fn BytecodeGen::bump_global_offset(
   self : BytecodeGen,
-  size : Int,
+  size : Int32,
   what : String,
   loc : @source.SourceLoc,
-) -> Int? {
+) -> Int32? {
   let offset = self.next_global_offset
   let end = offset.to_int64() + size.to_int64()
   let limit = (@bytecode.GLOBAL_REGION_LIMIT - @bytecode.GLOBAL_START).to_int64()
@@ -641,7 +645,7 @@ fn BytecodeGen::record_scope_var(self : BytecodeGen, name : String) -> Unit {
 }
 
 ///|
-fn BytecodeGen::resolve_local(self : BytecodeGen, name : String) -> Int {
+fn BytecodeGen::resolve_local(self : BytecodeGen, name : String) -> Int32 {
   match self.local_indices.get(name) {
     Some(o) => o
     None => -1
@@ -649,7 +653,7 @@ fn BytecodeGen::resolve_local(self : BytecodeGen, name : String) -> Int {
 }
 
 ///|
-fn BytecodeGen::resolve_global(self : BytecodeGen, name : String) -> Int {
+fn BytecodeGen::resolve_global(self : BytecodeGen, name : String) -> Int32 {
   match self.global_indices.get(name) {
     Some(o) => o
     None => -1
@@ -657,7 +661,10 @@ fn BytecodeGen::resolve_global(self : BytecodeGen, name : String) -> Int {
 }
 
 ///|
-fn BytecodeGen::resolve_symbol_index(self : BytecodeGen, name : String) -> Int {
+fn BytecodeGen::resolve_symbol_index(
+  self : BytecodeGen,
+  name : String,
+) -> Int32 {
   match self.sym_index.get(name) {
     Some(o) => o
     None => -1

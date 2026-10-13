@@ -454,6 +454,6 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
 
 ///|
 /// Float 位模式 → i32（f32 通道的 PushConstF 立即数）。
-fn f32_bits_i32(f : Float) -> Int {
+fn f32_bits_i32(f : Float) -> Int32 {
   Float::reinterpret_as_uint(f).reinterpret_as_int()
 }

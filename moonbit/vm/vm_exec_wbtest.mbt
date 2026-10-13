@@ -1,6 +1,6 @@
 ///|
 fn codes_to_str(bytes : Bytes) -> String {
-  let codes : Array[Int] = []
+  let codes : Array[Int32] = []
   for i = 0; i < bytes.length(); i = i + 1 {
     codes.push(bytes[i].to_int())
   }
@@ -20,7 +20,7 @@ fn code_of(insts : Array[@opcode.Instruction]) -> Array[@opcode.Instruction] {
 }
 
 ///|
-fn instr(op : @opcode.OpCode, operand : Int) -> @opcode.Instruction {
+fn instr(op : @opcode.OpCode, operand : Int32) -> @opcode.Instruction {
   @opcode.Instruction::new(op, operand, @source.SourceLoc::new(1, 1))
 }
 

@@ -20,7 +20,7 @@ priv suberror AccessFault {
 fn read_cstring_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> Bytes raise AccessFault {
   match read_cstring(mem, map, addr) {
     Ok(s) => s
@@ -33,7 +33,7 @@ fn read_cstring_raise(
 fn write_bytes_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   bytes : Bytes,
 ) -> Unit raise AccessFault {
   match mem.write_bytes(map, addr, bytes) {
@@ -47,8 +47,8 @@ fn write_bytes_raise(
 fn store_i8_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  value : Int,
+  addr : UInt32,
+  value : Int32,
 ) -> Unit raise AccessFault {
   match mem.store_i8(map, addr, value) {
     Ok(_) => ()
@@ -61,8 +61,8 @@ fn store_i8_raise(
 fn store_u32_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  value : UInt,
+  addr : UInt32,
+  value : UInt32,
 ) -> Unit raise AccessFault {
   match mem.store_u32(map, addr, value) {
     Ok(_) => ()
@@ -75,8 +75,8 @@ fn store_u32_raise(
 fn load_i8_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-) -> Int raise AccessFault {
+  addr : UInt32,
+) -> Int32 raise AccessFault {
   match mem.load_i8(map, addr) {
     Ok(v) => v
     Err(f) => raise AccessFault::Fault(f~)
@@ -88,8 +88,8 @@ fn load_i8_raise(
 fn read_fd_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  stream : UInt,
-) -> UInt raise AccessFault {
+  stream : UInt32,
+) -> UInt32 raise AccessFault {
   match read_fd(mem, map, stream) {
     Ok(v) => v
     Err(f) => raise AccessFault::Fault(f~)
@@ -101,9 +101,9 @@ fn read_fd_raise(
 fn copy_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  dst : UInt,
-  src : UInt,
-  len : Int,
+  dst : UInt32,
+  src : UInt32,
+  len : Int32,
 ) -> Unit raise AccessFault {
   match mem.copy(map, dst, src, len) {
     Ok(_) => ()
@@ -116,8 +116,8 @@ fn copy_raise(
 fn load_u32_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-) -> UInt raise AccessFault {
+  addr : UInt32,
+) -> UInt32 raise AccessFault {
   match mem.load_u32(map, addr) {
     Ok(v) => v
     Err(f) => raise AccessFault::Fault(f~)
@@ -129,8 +129,8 @@ fn load_u32_raise(
 fn fill_raise(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  len : Int,
+  addr : UInt32,
+  len : Int32,
   byte : Byte,
 ) -> Unit raise AccessFault {
   match mem.fill(map, addr, len, byte) {

@@ -2,7 +2,7 @@
 // + 符号表边界锚（索引 0 预留空串 / 空输入形态）。
 
 ///|
-fn make_payload(step : Int, vars : Array[ApiVariableSnapshot]) -> StepPayload {
+fn make_payload(step : Int32, vars : Array[ApiVariableSnapshot]) -> StepPayload {
   {
     step_index: step,
     code_line: step + 1,

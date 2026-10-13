@@ -63,7 +63,7 @@ fn serve_diagnostics_probe_frame(
   match json_field(params, "records") {
     Array(arr) =>
       for r in arr {
-        let codes : Array[Int] = []
+        let codes : Array[Int32] = []
         match json_field(r, "codes") {
           Array(ca) =>
             for c in ca {
@@ -92,14 +92,14 @@ fn serve_diagnostics_probe_frame(
   let detected = @diagnostics.detect_misconceptions(records)
   let paths = @diagnostics.recommend_learning_paths(detected)
   // 知识图谱：error 级码排序去重后逐码激活（Rust 382-408 同形）
-  let error_codes : Array[Int] = []
+  let error_codes : Array[Int32] = []
   for d in diags {
     if d.severity == 0 {
       error_codes.push(d.error_code)
     }
   }
   error_codes.sort_by(fn(a, b) { a - b })
-  let dedup_codes : Array[Int] = []
+  let dedup_codes : Array[Int32] = []
   for c in error_codes {
     if dedup_codes.is_empty() || dedup_codes[dedup_codes.length() - 1] != c {
       dedup_codes.push(c)

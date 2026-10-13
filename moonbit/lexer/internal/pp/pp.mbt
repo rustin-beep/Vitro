@@ -4,7 +4,7 @@ priv struct CondState {
   mut active : Bool
   mut has_else : Bool
   mut taken : Bool
-  open_line : Int
+  open_line : Int32
 }
 
 ///|
@@ -12,8 +12,8 @@ priv struct CondState {
 /// 勘察 ③-2 抛弃项）。`cond_boundary` 承担 U1#11 的条件栈边界记账。
 priv struct IncludeFrame {
   dir : String
-  cond_boundary : Int
-  file_id : Int
+  cond_boundary : Int32
+  file_id : Int32
 }
 
 ///|
@@ -39,8 +39,8 @@ struct Pp[P] {
   /// include-once key 集合（`stub:<名>` 或规范路径）。
   processed : Set[String]
   /// 规范路径 → file_id（LineMap/诊断归属单源）。
-  file_ids : Map[String, Int]
-  mut next_file_id : Int
+  file_ids : Map[String, Int32]
+  mut next_file_id : Int32
   /// 文件内容缓存（环检测 DFS 与实际拼接共用一次读取）。
   content_cache : Map[String, String]
 }
@@ -49,7 +49,7 @@ struct Pp[P] {
 pub fn[P] Pp::new(
   provider~ : P,
   cpp_mode~ : Bool,
-  base_dir? : String = ".",
+  base_dir~ : String = ".",
 ) -> Pp[P] {
   {
     provider,
@@ -74,15 +74,15 @@ pub fn[P] Pp::new(
 ///（拼接后行内偏移按拼接文本计——续行形状不参与 L1/L2 对拍，口径自由）。
 priv struct LogicalLine {
   text : String
-  head_line : Int
-  byte_off : Int
+  head_line : Int32
+  byte_off : Int32
 }
 
 ///|
 fn[P] Pp::err(
   self : Pp[P],
   message : String,
-  line : Int,
+  line : Int32,
   code~ : @diag.ErrorCode,
 ) -> Unit {
   self.errors.push({
@@ -99,12 +99,12 @@ fn[P] Pp::err(
 pub fn[P : @token.SourceProvider] Pp::run_pp(
   self : Pp[P],
   src : String,
-  main_line_base? : Int = 1,
-  main_byte_base? : Int = 0,
-  main_file_id? : Int = 0,
-  span_main_first? : Int? = None,
-  span_file_line? : Int = 1,
-  emit_eof? : Bool = false,
+  main_line_base~ : Int32 = 1,
+  main_byte_base~ : Int32 = 0,
+  main_file_id~ : Int32 = 0,
+  span_main_first~ : Int32? = None,
+  span_file_line~ : Int32 = 1,
+  emit_eof~ : Bool = false,
 ) -> Array[@token.Token] {
   // BOM 剥离（修复 ⑥-8：Rust 把 BOM 当普通字符报 E1001；已知差异，L1 不剥保持可比）
   let src = strip_bom(src)
@@ -244,7 +244,7 @@ pub fn[P] Pp::finish_pp(
 }
 
 ///|
-fn[P] Pp::current_file_id(self : Pp[P]) -> Int {
+fn[P] Pp::current_file_id(self : Pp[P]) -> Int32 {
   if self.include_stack.length() > 0 {
     self.include_stack[self.include_stack.length() - 1].file_id
   } else {
@@ -286,7 +286,7 @@ fn strip_bom(src : String) -> String {
 
 ///|
 /// 物理行拆分（含 \r\n 的 \r 剥离；记录行起点偏移）。
-fn split_physical_lines(src : String, byte_base : Int) -> Array[LogicalLine] {
+fn split_physical_lines(src : String, byte_base : Int32) -> Array[LogicalLine] {
   let bytes = @utf8.encode(src)
   let lines : Array[LogicalLine] = []
   let mut start = 0
@@ -408,7 +408,7 @@ fn strip_comments_stateful(lines : Array[LogicalLine]) -> StrippedLines {
     let bytes = @utf8.encode(line.text)
     let buf : Array[Byte] = []
     let mut i = 0
-    let mut state : Int = 0 // 0 normal, 1 string, 2 char
+    let mut state : Int32 = 0 // 0 normal, 1 string, 2 char
     while i < bytes.length() {
       let c = bytes[i]
       if in_block {
@@ -468,7 +468,7 @@ fn strip_comments_stateful(lines : Array[LogicalLine]) -> StrippedLines {
 
 ///|
 /// 标量字符计数（Rust char 计数口径）。
-fn scalar_count(s : String) -> Int {
+fn scalar_count(s : String) -> Int32 {
   let mut n = 0
   for _ in s {
     n += 1

@@ -15,7 +15,7 @@ pub fn recommend_learning_paths(
         // steps 防御性深拷（表数据共享引用会被消费者改写——陷阱 #30）
         let steps : Array[PathStep] = []
         for s in p.steps {
-          let hl : Array[Int] = []
+          let hl : Array[Int32] = []
           for v in s.highlight_lines {
             hl.push(v)
           }

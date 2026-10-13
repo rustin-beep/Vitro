@@ -28,23 +28,23 @@ pub struct MemoryMap {
   /// 且既有键 `set` **保持原插入位**（`set_with_hash` 的等键分支只写 value）。
   /// 因此这里既没有 `region_index` 平行索引，也没有 `rebuild_region_index()`
   /// 的恢复义务——坑 6 点名的失配面归零。
-  regions : Map[UInt, MemoryRegionData]
+  regions : Map[UInt32, MemoryRegionData]
   /// 可复用空闲块（来源：隔离区驱逐归还）。`allocate_raw` 在此做 first-fit。
   free_list : Array[FreeBlock]
   /// 隔离区：已 free 但地址暂不复用的块，FIFO（队首最老）。
   quarantine : @deque.Deque[FreeBlock]
   /// 隔离区当前占用字节数（与 `quarantine` 同步维护，避免每次求和）。
-  mut quarantine_bytes : Int
+  mut quarantine_bytes : Int32
   /// 隔离区字节预算，超预算触发 FIFO 驱逐。**会话级配置**（Rust 侧
   /// `vitro_set_quarantine_budget` 直接映射本字段）。
-  mut quarantine_budget : Int
+  mut quarantine_budget : Int32
   /// 动态堆起点（R1 ①）：由全局数据上界与 argv 占用决定，运行重置时经
   /// `set_heap_base` 落位；统计口径统一以它为基准。
-  mut heap_base : UInt
+  mut heap_base : UInt32
   /// bump 游标（下一个未分配地址）。
-  mut heap_offset : UInt
+  mut heap_offset : UInt32
   /// 已登记分配次数（`heap_{n}` 命名用）。
-  mut alloc_counter : Int
+  mut alloc_counter : Int32
   /// 已释放块登记（UAF / Double-Free 检测窗口）。
   freed_logs : FreedLogs
 }
@@ -71,38 +71,38 @@ pub fn MemoryMap::new() -> MemoryMap {
 /// `heap_base` 与 `heap_offset` **必须同步落位**：Rust `set_heap_base`
 /// （`memory_state.rs:187-190`）是唯一入口，禁止各自直接写字段造成口径分裂
 /// （统计用 base、bump 用 offset，两者一旦分叉，`total_heap` 会算成负值）。
-pub fn MemoryMap::set_heap_base(self : MemoryMap, base : UInt) -> Unit {
+pub fn MemoryMap::set_heap_base(self : MemoryMap, base : UInt32) -> Unit {
   self.heap_base = base
   self.heap_offset = base
 }
 
 ///|
 /// 本次运行的堆起点。
-pub fn MemoryMap::heap_base(self : MemoryMap) -> UInt {
+pub fn MemoryMap::heap_base(self : MemoryMap) -> UInt32 {
   self.heap_base
 }
 
 ///|
 /// bump 游标（统计通道的口径基准之一）。
-pub fn MemoryMap::heap_offset(self : MemoryMap) -> UInt {
+pub fn MemoryMap::heap_offset(self : MemoryMap) -> UInt32 {
   self.heap_offset
 }
 
 ///|
 /// 已登记分配次数。
-pub fn MemoryMap::alloc_counter(self : MemoryMap) -> Int {
+pub fn MemoryMap::alloc_counter(self : MemoryMap) -> Int32 {
   self.alloc_counter
 }
 
 ///|
 /// 隔离区当前占用字节数。
-pub fn MemoryMap::quarantine_bytes(self : MemoryMap) -> Int {
+pub fn MemoryMap::quarantine_bytes(self : MemoryMap) -> Int32 {
   self.quarantine_bytes
 }
 
 ///|
 /// 隔离区字节预算。
-pub fn MemoryMap::quarantine_budget(self : MemoryMap) -> Int {
+pub fn MemoryMap::quarantine_budget(self : MemoryMap) -> Int32 {
   self.quarantine_budget
 }
 
@@ -111,37 +111,40 @@ pub fn MemoryMap::quarantine_budget(self : MemoryMap) -> Int {
 ///
 /// **不变量**：改小预算时**不立即驱逐**——驱逐只在 `allocate_raw` 入口按需
 /// 发生（Rust 同款）。这保证了"设预算"这个纯配置动作没有副作用顺序依赖。
-pub fn MemoryMap::set_quarantine_budget(self : MemoryMap, budget : Int) -> Unit {
+pub fn MemoryMap::set_quarantine_budget(
+  self : MemoryMap,
+  budget : Int32,
+) -> Unit {
   self.quarantine_budget = budget
 }
 
 ///|
 /// 隔离区块数。
-pub fn MemoryMap::quarantine_len(self : MemoryMap) -> Int {
+pub fn MemoryMap::quarantine_len(self : MemoryMap) -> Int32 {
   self.quarantine.length()
 }
 
 ///|
 /// 隔离区第 `i` 个块（`0` = 队首 = 最老）。
-pub fn MemoryMap::quarantine_at(self : MemoryMap, i : Int) -> FreeBlock {
+pub fn MemoryMap::quarantine_at(self : MemoryMap, i : Int32) -> FreeBlock {
   self.quarantine[i]
 }
 
 ///|
 /// 空闲块数。
-pub fn MemoryMap::free_list_len(self : MemoryMap) -> Int {
+pub fn MemoryMap::free_list_len(self : MemoryMap) -> Int32 {
   self.free_list.length()
 }
 
 ///|
 /// 空闲块第 `i` 个（顺序 = first-fit 扫描序，不保证 addr 有序）。
-pub fn MemoryMap::free_list_at(self : MemoryMap, i : Int) -> FreeBlock {
+pub fn MemoryMap::free_list_at(self : MemoryMap, i : Int32) -> FreeBlock {
   self.free_list[i]
 }
 
 ///|
 /// 已登记区域条目数。
-pub fn MemoryMap::regions_len(self : MemoryMap) -> Int {
+pub fn MemoryMap::regions_len(self : MemoryMap) -> Int32 {
   self.regions.length()
 }
 
@@ -149,13 +152,13 @@ pub fn MemoryMap::regions_len(self : MemoryMap) -> Int {
 /// 按 addr 取区域条目（O(1)）。**只看 addr，不看 `is_freed`**——语义判定
 /// （复用要求 freed、释放要求 live）在调用方做（Rust `find_region_mut`
 /// 的注释同款口径，`memory_state.rs:204-206`）。
-pub fn MemoryMap::region(self : MemoryMap, addr : UInt) -> MemoryRegionData? {
+pub fn MemoryMap::region(self : MemoryMap, addr : UInt32) -> MemoryRegionData? {
   self.regions.get(addr)
 }
 
 ///|
 /// 是否存在该 addr 的条目。
-pub fn MemoryMap::has_region(self : MemoryMap, addr : UInt) -> Bool {
+pub fn MemoryMap::has_region(self : MemoryMap, addr : UInt32) -> Bool {
   self.regions.contains(addr)
 }
 
@@ -163,8 +166,8 @@ pub fn MemoryMap::has_region(self : MemoryMap, addr : UInt) -> Bool {
 /// 区域条目列表（**插入序**，与 Rust `regions` Vec 的导出口径一致）。
 pub fn MemoryMap::regions_to_array(
   self : MemoryMap,
-) -> Array[(UInt, MemoryRegionData)] {
-  let out : Array[(UInt, MemoryRegionData)] = Array(
+) -> Array[(UInt32, MemoryRegionData)] {
+  let out : Array[(UInt32, MemoryRegionData)] = Array(
     capacity=self.regions.length(),
   )
   for addr, r in self.regions {
@@ -183,7 +186,7 @@ pub fn MemoryMap::regions_to_array(
 /// `Vec` + 平行索引。
 pub fn MemoryMap::set_region(
   self : MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   data : MemoryRegionData,
 ) -> Unit {
   self.regions.set(addr, data)
@@ -201,9 +204,9 @@ pub fn MemoryMap::set_region(
 ///   `heap_{n}` / `ty="int"`（`malloc`/`calloc` 取，`realloc` 的新块不取）。
 pub fn MemoryMap::register_alloc(
   self : MemoryMap,
-  addr : UInt,
-  size : Int,
-  alloc_line : Int,
+  addr : UInt32,
+  size : Int32,
+  alloc_line : Int32,
   alloc_by : String,
   auto_name : Bool,
 ) -> Unit {
@@ -244,10 +247,10 @@ pub fn MemoryMap::register_alloc(
 /// `freed_line` / `freed_step` 由调用方给（它们来自 VM 执行状态，不在本包）。
 pub fn MemoryMap::release(
   self : MemoryMap,
-  addr : UInt,
-  freed_line : Int,
-  freed_step : Int,
-) -> Int? {
+  addr : UInt32,
+  freed_line : Int32,
+  freed_step : Int32,
+) -> Int32? {
   match self.regions.get(addr) {
     Some(r) => {
       if r.is_freed {
@@ -310,8 +313,8 @@ fn MemoryMap::merge_free_list(self : MemoryMap) -> Unit {
   self.free_list.sort_by(fn(a, b) { a.addr.compare(b.addr) })
   let merged : Array[FreeBlock] = []
   let mut has_last = false
-  let mut last_addr : UInt = 0U
-  let mut last_size : Int = 0
+  let mut last_addr : UInt32 = 0U
+  let mut last_size : Int32 = 0
   for block in self.free_list {
     if has_last &&
       last_addr.to_uint64() + last_size.to_uint64() == block.addr.to_uint64() {
@@ -338,8 +341,8 @@ fn MemoryMap::merge_free_list(self : MemoryMap) -> Unit {
 /// `free_list` first-fit 取块；块大于请求时**切分**，余量留在表中。
 fn MemoryMap::take_from_free_list(
   self : MemoryMap,
-  aligned_size : UInt,
-) -> UInt? {
+  aligned_size : UInt32,
+) -> UInt32? {
   let mut idx = -1
   for i = 0; i < self.free_list.length(); i = i + 1 {
     if self.free_list[i].size.reinterpret_as_uint() >= aligned_size {
@@ -374,9 +377,9 @@ fn MemoryMap::take_from_free_list(
 /// NULL——**不 trap**，C 标准要求分配失败返回 NULL，Clang 同）。
 pub fn MemoryMap::allocate_raw(
   self : MemoryMap,
-  aligned_size : UInt,
-  mem_limit : UInt,
-) -> UInt? {
+  aligned_size : UInt32,
+  mem_limit : UInt32,
+) -> UInt32? {
   if aligned_size == 0U {
     // 病 8 修复（#47，2026-10-09）：拒绝而非返回 0（NULL 陷阱区地址）。
     // 合法零尺寸（host_malloc 的 malloc_zero_note / calloc 的尺寸链预检）
@@ -404,13 +407,13 @@ pub fn MemoryMap::allocate_raw(
 
 ///|
 /// 已释放登记条目数。
-pub fn MemoryMap::freed_logs_len(self : MemoryMap) -> Int {
+pub fn MemoryMap::freed_logs_len(self : MemoryMap) -> Int32 {
   self.freed_logs.length()
 }
 
 ///|
 /// 第 `i` 条已释放登记（升序）。
-pub fn MemoryMap::freed_logs_at(self : MemoryMap, i : Int) -> FreedRegionInfo {
+pub fn MemoryMap::freed_logs_at(self : MemoryMap, i : Int32) -> FreedRegionInfo {
   self.freed_logs.at(i)
 }
 
@@ -418,7 +421,7 @@ pub fn MemoryMap::freed_logs_at(self : MemoryMap, i : Int) -> FreedRegionInfo {
 /// 按 addr 精确取已释放登记（E3061 文案需要 `freed_line` / `alloc_line`）。
 pub fn MemoryMap::freed_logs_get(
   self : MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> FreedRegionInfo? {
   self.freed_logs.get(addr)
 }
@@ -431,8 +434,8 @@ pub fn MemoryMap::freed_logs_get(
 /// O(n) 线性扫（诊断路径，非热路径）。
 pub fn MemoryMap::find_live_region_containing(
   self : MemoryMap,
-  addr : UInt,
-) -> (UInt, MemoryRegionData)? {
+  addr : UInt32,
+) -> (UInt32, MemoryRegionData)? {
   for pa in self.regions_to_array() {
     let a = pa.0
     let r = pa.1
@@ -444,7 +447,7 @@ pub fn MemoryMap::find_live_region_containing(
 }
 
 ///|
-pub fn MemoryMap::freed_logs_contains(self : MemoryMap, addr : UInt) -> Bool {
+pub fn MemoryMap::freed_logs_contains(self : MemoryMap, addr : UInt32) -> Bool {
   self.freed_logs.contains(addr)
 }
 
@@ -452,8 +455,8 @@ pub fn MemoryMap::freed_logs_contains(self : MemoryMap, addr : UInt) -> Bool {
 /// 区间重叠查询（UAF 检测输入，E3060）。
 pub fn MemoryMap::freed_logs_find_overlapping(
   self : MemoryMap,
-  addr : UInt,
-  size : UInt,
+  addr : UInt32,
+  size : UInt32,
 ) -> FreedRegionInfo? {
   self.freed_logs.find_overlapping(addr, size)
 }
@@ -465,8 +468,8 @@ pub fn MemoryMap::freed_logs_find_overlapping(
 /// 误报 Use-After-Free（Rust `host/memory.rs:229-232` 有明文注释）。
 pub fn MemoryMap::freed_logs_remove_overlapping(
   self : MemoryMap,
-  start : UInt,
-  end : UInt,
+  start : UInt32,
+  end : UInt32,
 ) -> Unit {
   self.freed_logs.remove_overlapping(start, end)
 }
@@ -475,7 +478,7 @@ pub fn MemoryMap::freed_logs_remove_overlapping(
 
 ///|
 /// 当前已分配但未释放的堆内存总量（字节）。
-pub fn MemoryMap::total_allocated(self : MemoryMap) -> Int {
+pub fn MemoryMap::total_allocated(self : MemoryMap) -> Int32 {
   let mut sum = 0
   for _, r in self.regions {
     if !r.is_freed {
@@ -487,7 +490,7 @@ pub fn MemoryMap::total_allocated(self : MemoryMap) -> Int {
 
 ///|
 /// 外部碎片（`free_list` 总和，字节）。
-pub fn MemoryMap::total_fragmented(self : MemoryMap) -> Int {
+pub fn MemoryMap::total_fragmented(self : MemoryMap) -> Int32 {
   let mut sum = 0
   for b in self.free_list {
     sum = sum + b.size
@@ -497,7 +500,7 @@ pub fn MemoryMap::total_fragmented(self : MemoryMap) -> Int {
 
 ///|
 /// 碎片率（0~100）。`heap_total == 0` 时为 0（Rust 同）。
-pub fn MemoryMap::fragmentation_rate(self : MemoryMap) -> Int {
+pub fn MemoryMap::fragmentation_rate(self : MemoryMap) -> Int32 {
   let heap_total = self.heap_offset.to_uint64() - self.heap_base.to_uint64()
   if heap_total == 0UL {
     return 0
@@ -624,8 +627,8 @@ pub fn MemoryMap::verify(self : MemoryMap) -> Result[Unit, String] {
 ///    会 trap"，登记在案。
 pub fn MemoryMap::check_access(
   self : MemoryMap,
-  addr : UInt,
-  size : UInt,
+  addr : UInt32,
+  size : UInt32,
   kind : AccessKind,
 ) -> Result[Unit, MemFault] {
   if addr < @bytecode.NULL_TRAP_SIZE {

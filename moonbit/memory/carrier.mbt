@@ -38,7 +38,7 @@ pub fn Memory::new() -> Memory {
 
 ///|
 /// 载体字节数（= `MEM_SIZE`）。
-pub fn Memory::length(self : Memory) -> Int {
+pub fn Memory::length(self : Memory) -> Int32 {
   self.bytes.length()
 }
 
@@ -81,7 +81,7 @@ pub fn Memory::restore_raw(self : Memory, data : FixedArray[Byte]) -> Unit {
 
 ///|
 /// 单页字节快照（增量快照的页载体，Rust `memory[off..off+4096].to_vec()`）。
-pub fn Memory::page(self : Memory, page_idx : Int) -> FixedArray[Byte] {
+pub fn Memory::page(self : Memory, page_idx : Int32) -> FixedArray[Byte] {
   let off = page_idx * PAGE_SIZE
   let out : FixedArray[Byte] = FixedArray::make(PAGE_SIZE, b'\x00')
   out.unsafe_blit(0, self.bytes, off, PAGE_SIZE)
@@ -92,7 +92,7 @@ pub fn Memory::page(self : Memory, page_idx : Int) -> FixedArray[Byte] {
 /// 写回单页（增量快照 apply）。
 pub fn Memory::write_page(
   self : Memory,
-  page_idx : Int,
+  page_idx : Int32,
   data : FixedArray[Byte],
 ) -> Unit {
   if data.length() != PAGE_SIZE {
@@ -108,7 +108,7 @@ pub fn Memory::write_page(
 ///
 /// 页号 = `addr >> PAGE_SHIFT`（Rust 是 `/ PAGE_SIZE`）。`len == 0` 直接返回
 /// （Rust `mark_dirty_page` 同款守卫——否则 `addr + len - 1` 回绕到极大页号）。
-pub fn Memory::mark_dirty(self : Memory, addr : UInt, len : UInt) -> Unit {
+pub fn Memory::mark_dirty(self : Memory, addr : UInt32, len : UInt32) -> Unit {
   if len == 0U {
     return
   }
@@ -131,13 +131,13 @@ pub fn Memory::clear_dirty(self : Memory) -> Unit {
 
 ///|
 /// 脏页位图字数。
-pub fn Memory::dirty_word_count(self : Memory) -> Int {
+pub fn Memory::dirty_word_count(self : Memory) -> Int32 {
   self.dirty.length()
 }
 
 ///|
 /// 第 `w` 个脏页字（增量快照按位扫描的输入，Rust `dirty_pages[word]`）。
-pub fn Memory::dirty_word(self : Memory, w : Int) -> UInt64 {
+pub fn Memory::dirty_word(self : Memory, w : Int32) -> UInt64 {
   self.dirty[w]
 }
 
@@ -146,8 +146,8 @@ pub fn Memory::dirty_word(self : Memory, w : Int) -> UInt64 {
 /// `snapshot_incremental` 的双层扫描同序——快照页序影响 Delta 的确定性，
 /// 而 `Hasher` 种子在 wasm 与 native 下不同，任何依赖哈希迭代序的写法都是
 /// 非确定源，见总计划 F6）。
-pub fn Memory::dirty_pages(self : Memory) -> Array[Int] {
-  let out : Array[Int] = []
+pub fn Memory::dirty_pages(self : Memory) -> Array[Int32] {
+  let out : Array[Int32] = []
   for w = 0; w < DIRTY_WORD_COUNT; w = w + 1 {
     let bits = self.dirty[w]
     if bits == 0UL {
@@ -166,7 +166,7 @@ pub fn Memory::dirty_pages(self : Memory) -> Array[Int] {
 
 ///|
 /// 单字节的 i8 语义（Rust `b as i8 as i32`）。
-fn byte_to_i32(b : Byte) -> Int {
+fn byte_to_i32(b : Byte) -> Int32 {
   let v = b.to_int()
   if v >= 128 {
     v - 256
@@ -177,13 +177,13 @@ fn byte_to_i32(b : Byte) -> Int {
 
 ///|
 /// 尾部四字节的 u32 拼装（小端）。
-fn Memory::u32_at(self : Memory, off : Int) -> UInt {
+fn Memory::u32_at(self : Memory, off : Int32) -> UInt32 {
   @util.le_u32_at(self.bytes, off)
 }
 
 ///|
 /// 尾部八字节的 u64 拼装（小端）。
-fn Memory::u64_at(self : Memory, off : Int) -> UInt64 {
+fn Memory::u64_at(self : Memory, off : Int32) -> UInt64 {
   @util.le_u64_at(self.bytes, off)
 }
 
@@ -192,8 +192,8 @@ fn Memory::u64_at(self : Memory, off : Int) -> UInt64 {
 pub fn Memory::load_i8(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
-) -> Result[Int, MemFault] {
+  addr : UInt32,
+) -> Result[Int32, MemFault] {
   match map.check_access(addr, 1U, AccessKind::Read) {
     Ok(_) => Ok(byte_to_i32(self.bytes[addr.reinterpret_as_int()]))
     Err(e) => Err(e)
@@ -205,8 +205,8 @@ pub fn Memory::load_i8(
 pub fn Memory::store_i8(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
-  val : Int,
+  addr : UInt32,
+  val : Int32,
 ) -> Result[Unit, MemFault] {
   match map.check_access(addr, 1U, AccessKind::Write) {
     Ok(_) => {
@@ -223,8 +223,8 @@ pub fn Memory::store_i8(
 pub fn Memory::load_u32(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
-) -> Result[UInt, MemFault] {
+  addr : UInt32,
+) -> Result[UInt32, MemFault] {
   match map.check_access(addr, 4U, AccessKind::Read) {
     Ok(_) => Ok(self.u32_at(addr.reinterpret_as_int()))
     Err(e) => Err(e)
@@ -236,8 +236,8 @@ pub fn Memory::load_u32(
 pub fn Memory::store_u32(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
-  val : UInt,
+  addr : UInt32,
+  val : UInt32,
 ) -> Result[Unit, MemFault] {
   match map.check_access(addr, 4U, AccessKind::Write) {
     Ok(_) => {
@@ -258,7 +258,7 @@ pub fn Memory::store_u32(
 pub fn Memory::load_u64(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> Result[UInt64, MemFault] {
   match map.check_access(addr, 8U, AccessKind::Read) {
     Ok(_) => Ok(self.u64_at(addr.reinterpret_as_int()))
@@ -271,7 +271,7 @@ pub fn Memory::load_u64(
 pub fn Memory::store_u64(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   val : UInt64,
 ) -> Result[Unit, MemFault] {
   match map.check_access(addr, 8U, AccessKind::Write) {
@@ -305,7 +305,7 @@ pub fn Memory::store_u64(
 pub fn Memory::write_bytes(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   data : Bytes,
 ) -> Result[Unit, MemFault] {
   let len = data.length()
@@ -324,8 +324,8 @@ pub fn Memory::write_bytes(
 pub fn Memory::fill(
   self : Memory,
   map : MemoryMap,
-  addr : UInt,
-  len : Int,
+  addr : UInt32,
+  len : Int32,
   byte : Byte,
 ) -> Result[Unit, MemFault] {
   match map.check_access(addr, len.reinterpret_as_uint(), AccessKind::Write) {
@@ -348,9 +348,9 @@ pub fn Memory::fill(
 pub fn Memory::copy(
   self : Memory,
   map : MemoryMap,
-  dst : UInt,
-  src : UInt,
-  len : Int,
+  dst : UInt32,
+  src : UInt32,
+  len : Int32,
 ) -> Result[Unit, MemFault] {
   match map.check_access(dst, len.reinterpret_as_uint(), AccessKind::Write) {
     Ok(_) =>

@@ -36,9 +36,9 @@ pub extend VfsMode with Eq::{not_equal, equal}
 ///|
 /// 文件元数据（数据在 VM 堆 `heap_addr` 处）。
 pub struct VfsFileMeta {
-  mut heap_addr : UInt
-  mut size : Int
-  mut capacity : Int
+  mut heap_addr : UInt32
+  mut size : Int32
+  mut capacity : Int32
 } derive(Debug)
 
 ///|
@@ -49,7 +49,7 @@ pub extend VfsFileMeta with Debug::{to_repr}
 pub struct VfsDesc {
   mut file_name : String
   mode : VfsMode
-  mut cursor : Int
+  mut cursor : Int32
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
@@ -61,8 +61,8 @@ pub extend VfsDesc with Debug::{to_repr}
 ///|
 pub struct VirtualFileSystem {
   files : Map[String, VfsFileMeta]
-  descriptors : Map[UInt, VfsDesc]
-  mut next_fd : UInt
+  descriptors : Map[UInt32, VfsDesc]
+  mut next_fd : UInt32
 }
 
 ///|
@@ -72,7 +72,7 @@ pub fn VirtualFileSystem::new() -> VirtualFileSystem {
 
 ///|
 /// 文本模式：逻辑位置 → 物理字节偏移（`\r\n` 计一）。
-fn logical_to_physical(data : Array[Byte], logical_pos : Int) -> Int {
+fn logical_to_physical(data : Array[Byte], logical_pos : Int32) -> Int32 {
   let mut logical = 0
   let mut physical = 0
   let n = data.length()
@@ -92,7 +92,7 @@ fn logical_to_physical(data : Array[Byte], logical_pos : Int) -> Int {
 
 ///|
 /// 文本模式：物理偏移 → 逻辑位置。
-fn physical_to_logical(data : Array[Byte], physical_pos : Int) -> Int {
+fn physical_to_logical(data : Array[Byte], physical_pos : Int32) -> Int32 {
   let mut logical = 0
   let mut physical = 0
   let n = data.length()
@@ -113,7 +113,7 @@ fn physical_to_logical(data : Array[Byte], physical_pos : Int) -> Int {
 
 ///|
 /// 文本模式读一个逻辑字节：`\r\n` 压成 `\n`（跨二字节）。
-fn read_text_byte(data : Array[Byte], physical_pos : Int) -> (Byte, Int) {
+fn read_text_byte(data : Array[Byte], physical_pos : Int32) -> (Byte, Int32) {
   let n = data.length()
   if physical_pos >= n {
     return (b'\x00', physical_pos)
@@ -132,8 +132,8 @@ fn read_text_byte(data : Array[Byte], physical_pos : Int) -> (Byte, Int) {
 fn read_span(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  len : Int,
+  addr : UInt32,
+  len : Int32,
 ) -> Result[Array[Byte], @memory.MemFault] {
   let out : Array[Byte] = []
   let mut i = 0
@@ -149,7 +149,7 @@ fn read_span(
 
 ///|
 /// VFS 内部分配（oracle `malloc_raw`：不碰值栈；区域 `heap_N`/`alloc_by="vfs"`）。
-fn vfs_malloc_raw(map : @memory.MemoryMap, aligned : Int) -> UInt? {
+fn vfs_malloc_raw(map : @memory.MemoryMap, aligned : Int32) -> UInt32? {
   let addr = match
     map.allocate_raw(aligned.reinterpret_as_uint(), @bytecode.MEM_SIZE) {
     Some(a) => a
@@ -163,13 +163,13 @@ fn vfs_malloc_raw(map : @memory.MemoryMap, aligned : Int) -> UInt? {
 /// VFS 内部释放（oracle `free_region`——**不写 freed_logs 的缺口登记**：
 /// 此处走 memory 包 `release` 单出口，FILE*/文件区域进 UAF 窗口是受检化
 /// 增强，oracle 侧列两侧同修候选）。
-fn vfs_free_raw(map : @memory.MemoryMap, addr : UInt) -> Unit {
+fn vfs_free_raw(map : @memory.MemoryMap, addr : UInt32) -> Unit {
   ignore(map.release(addr, 0, 0))
 }
 
 ///|
 /// 区域改名（`vfs:<name>` / `FILE:<path>` 元数据）。
-fn rename_region(map : @memory.MemoryMap, addr : UInt, name : String) -> Unit {
+fn rename_region(map : @memory.MemoryMap, addr : UInt32, name : String) -> Unit {
   match map.region(addr) {
     Some(r) => {
       r.name = name
@@ -186,7 +186,7 @@ fn vfs_realloc_file(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   meta : VfsFileMeta,
-  new_cap : Int,
+  new_cap : Int32,
 ) -> Bool {
   if new_cap <= meta.capacity {
     return true
@@ -262,7 +262,7 @@ pub fn VirtualFileSystem::fopen(
   map : @memory.MemoryMap,
   path : String,
   mode : String,
-) -> UInt {
+) -> UInt32 {
   let mode_pair = if mode == "r" {
     Some((VfsMode::Read, true))
   } else if mode == "rb" {
@@ -348,11 +348,11 @@ pub fn VirtualFileSystem::fread(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
-) -> Int {
+  fd : UInt32,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
+) -> Int32 {
   if size <= 0 || nmemb <= 0 {
     return 0
   }
@@ -432,11 +432,11 @@ pub fn VirtualFileSystem::fwrite(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  buf : UInt,
-  size : Int,
-  nmemb : Int,
-) -> Int {
+  fd : UInt32,
+  buf : UInt32,
+  size : Int32,
+  nmemb : Int32,
+) -> Int32 {
   if size <= 0 || nmemb <= 0 {
     return 0
   }
@@ -503,7 +503,10 @@ pub fn VirtualFileSystem::fwrite(
 
 ///|
 /// `fclose(stream)` → 0/-1（描述符移除）。
-pub fn VirtualFileSystem::fclose(self : VirtualFileSystem, fd : UInt) -> Int {
+pub fn VirtualFileSystem::fclose(
+  self : VirtualFileSystem,
+  fd : UInt32,
+) -> Int32 {
   match self.descriptors.get(fd) {
     Some(_) => {
       ignore(self.descriptors.remove(fd))
@@ -515,7 +518,7 @@ pub fn VirtualFileSystem::fclose(self : VirtualFileSystem, fd : UInt) -> Int {
 
 ///|
 /// `feof(stream)` → 1/0。
-pub fn VirtualFileSystem::feof(self : VirtualFileSystem, fd : UInt) -> Int {
+pub fn VirtualFileSystem::feof(self : VirtualFileSystem, fd : UInt32) -> Int32 {
   match self.descriptors.get(fd) {
     Some(d) => if d.eof { 1 } else { 0 }
     None => 0
@@ -530,10 +533,10 @@ pub fn VirtualFileSystem::fgets(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  buf : UInt,
-  n : Int,
-) -> UInt {
+  fd : UInt32,
+  buf : UInt32,
+  n : Int32,
+) -> UInt32 {
   if n == 0 {
     return 0U
   }
@@ -597,9 +600,9 @@ pub fn VirtualFileSystem::fputs(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  s_addr : UInt,
-) -> Int {
+  fd : UInt32,
+  s_addr : UInt32,
+) -> Int32 {
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
     None => return -1
@@ -639,9 +642,9 @@ pub fn VirtualFileSystem::write_direct(
   self : VirtualFileSystem,
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  fd : UInt,
+  fd : UInt32,
   data : Bytes,
-) -> Int {
+) -> Int32 {
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
     None => return -1
@@ -685,7 +688,7 @@ fn vfs_append_bytes(
   meta : VfsFileMeta,
   desc : VfsDesc,
   data : Array[Byte],
-) -> Int {
+) -> Int32 {
   let write_len = data.length()
   let new_size = desc.cursor + write_len
   if new_size > meta.capacity {
@@ -717,8 +720,8 @@ pub fn VirtualFileSystem::fgetc(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-) -> Int {
+  fd : UInt32,
+) -> Int32 {
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
     None => return -1
@@ -749,9 +752,9 @@ pub fn VirtualFileSystem::fputc(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  c : Int,
-) -> Int {
+  fd : UInt32,
+  c : Int32,
+) -> Int32 {
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
     None => return -1
@@ -783,10 +786,10 @@ pub fn VirtualFileSystem::fseek(
   self : VirtualFileSystem,
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fd : UInt,
-  offset : Int,
-  whence : Int,
-) -> Int {
+  fd : UInt32,
+  offset : Int32,
+  whence : Int32,
+) -> Int32 {
   let desc = match self.descriptors.get(fd) {
     Some(d) => d
     None => return -1
@@ -795,7 +798,7 @@ pub fn VirtualFileSystem::fseek(
     Some(m) => m
     None => return -1
   }
-  let new_cursor : Int = if desc.is_text_mode {
+  let new_cursor : Int32 = if desc.is_text_mode {
     let data = match read_span(mem, map, meta.heap_addr, meta.size) {
       Ok(d) => d
       Err(_) => return -1
@@ -843,7 +846,7 @@ pub fn VirtualFileSystem::fseek(
 
 ///|
 /// `ftell(stream)` → 物理游标（Windows CRT 口径）或 -1。
-pub fn VirtualFileSystem::ftell(self : VirtualFileSystem, fd : UInt) -> Int {
+pub fn VirtualFileSystem::ftell(self : VirtualFileSystem, fd : UInt32) -> Int32 {
   match self.descriptors.get(fd) {
     Some(d) => d.cursor
     None => -1
@@ -852,7 +855,7 @@ pub fn VirtualFileSystem::ftell(self : VirtualFileSystem, fd : UInt) -> Int {
 
 ///|
 /// `rewind(stream)`——游标归零 + 清 EOF/错误位。
-pub fn VirtualFileSystem::rewind(self : VirtualFileSystem, fd : UInt) -> Unit {
+pub fn VirtualFileSystem::rewind(self : VirtualFileSystem, fd : UInt32) -> Unit {
   match self.descriptors.get(fd) {
     Some(d) => {
       d.cursor = 0
@@ -865,14 +868,20 @@ pub fn VirtualFileSystem::rewind(self : VirtualFileSystem, fd : UInt) -> Unit {
 
 ///|
 /// `fflush`——内存文件无底层缓冲，恒 0。
-pub fn VirtualFileSystem::fflush(self : VirtualFileSystem, fd : UInt) -> Int {
+pub fn VirtualFileSystem::fflush(
+  self : VirtualFileSystem,
+  fd : UInt32,
+) -> Int32 {
   let _ = (self, fd) // 内存文件无底层缓冲：无状态可查（oracle 同为空操作）
   0
 }
 
 ///|
 /// `clearerr(stream)`。
-pub fn VirtualFileSystem::clearerr(self : VirtualFileSystem, fd : UInt) -> Unit {
+pub fn VirtualFileSystem::clearerr(
+  self : VirtualFileSystem,
+  fd : UInt32,
+) -> Unit {
   match self.descriptors.get(fd) {
     Some(d) => {
       d.eof = false
@@ -888,7 +897,7 @@ pub fn VirtualFileSystem::remove(
   self : VirtualFileSystem,
   map : @memory.MemoryMap,
   path : String,
-) -> Int {
+) -> Int32 {
   let removed : VfsFileMeta? = match self.files.get(path) {
     Some(m) => {
       self.files.remove(path)
@@ -899,7 +908,7 @@ pub fn VirtualFileSystem::remove(
   match removed {
     Some(meta) => {
       vfs_free_raw(map, meta.heap_addr)
-      let to_close : Array[UInt] = []
+      let to_close : Array[UInt32] = []
       for fd, desc in self.descriptors {
         if desc.file_name == path {
           to_close.push(fd)
@@ -920,7 +929,7 @@ pub fn VirtualFileSystem::rename(
   self : VirtualFileSystem,
   old_path : String,
   new_path : String,
-) -> Int {
+) -> Int32 {
   let moved : VfsFileMeta? = match self.files.get(old_path) {
     Some(m) => {
       self.files.remove(old_path)
@@ -946,7 +955,7 @@ pub fn VirtualFileSystem::rename(
 /// fd → 文件名（调试/观测）。
 pub fn VirtualFileSystem::get_file_name(
   self : VirtualFileSystem,
-  fd : UInt,
+  fd : UInt32,
 ) -> String? {
   match self.descriptors.get(fd) {
     Some(d) => Some(d.file_name)

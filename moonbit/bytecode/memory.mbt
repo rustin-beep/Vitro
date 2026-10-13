@@ -12,19 +12,19 @@
 /// 总内存空间（1MB）。S6 起由 `vitro/engine/memory` 消费（载体尺寸/上界检查）；
 /// `STACK_START` 由 vm（栈顶初值）、`compute_heap_base`/`argv_region_footprint`
 /// 由 vm setup（动态堆起点）消费——0.6.0 起面扩张为 pub（minor）。
-pub const MEM_SIZE : UInt = 1024 * 1024
+pub const MEM_SIZE : UInt32 = 1024 * 1024
 
 ///|
 /// NULL 陷阱区大小。
-pub const NULL_TRAP_SIZE : UInt = 0x1000
+pub const NULL_TRAP_SIZE : UInt32 = 0x1000
 
 ///|
 /// 全局区起始地址。
-pub const GLOBAL_START : UInt = 0x1000
+pub const GLOBAL_START : UInt32 = 0x1000
 
 ///|
 /// 堆区默认起始地址（全局数据未越过时的堆起点下限）。
-pub const HEAP_START : UInt = 0x5000
+pub const HEAP_START : UInt32 = 0x5000
 
 ///|
 /// 全局数据区（全局变量/静态变量/vtable/字符串字面量）的编译期硬上限，
@@ -33,19 +33,19 @@ pub const HEAP_START : UInt = 0x5000
 /// R1 ② 判据单源化：所有"全局区还能不能长"的判断统一以本常量为界
 /// （取代 codegen 与 VM 的两套魔数）；取值与旧字符串字面量判据
 /// （MEM_SIZE / 16 = 64KB）一致，不收紧存量行为。
-pub const GLOBAL_REGION_LIMIT : UInt = MEM_SIZE / 16
+pub const GLOBAL_REGION_LIMIT : UInt32 = MEM_SIZE / 16
 
 ///|
 /// 栈区起始地址（从高地址向低地址增长）。vm 的 `mem_stack_top` 初值。
-pub const STACK_START : UInt = MEM_SIZE
+pub const STACK_START : UInt32 = MEM_SIZE
 
 ///|
 /// 4 字节对齐掩码（= !3 的 UInt 形态）。
-pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
+pub const ALIGN4_MASK : UInt32 = 0xFFFFFFFC
 
 ///|
 /// 4 字节向上对齐。
-pub fn align4(x : UInt) -> UInt {
+pub fn align4(x : UInt32) -> UInt32 {
   (x + 3) & ALIGN4_MASK
 }
 
@@ -54,7 +54,7 @@ pub fn align4(x : UInt) -> UInt {
 ///
 /// R1 ③：argv 自 `GLOBAL_REGION_LIMIT` 向下分配，本函数是占用的唯一计算
 /// 口径（VM `setup_argv` 的编址与 `compute_heap_base` 的堆起点都从它推导）。
-pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
+pub fn argv_region_footprint(argc : Int32, argv : Array[String]) -> UInt32 {
   if argc <= 0 {
     return 0
   }
@@ -76,10 +76,10 @@ pub fn argv_region_footprint(argc : Int, argv : Array[String]) -> UInt {
 /// `global_data_end` 为全局数据区末端的**绝对地址**（codegen 导出，含
 /// Bytecode Libc 预留段），未编译时传 0 即退化为静态 `HEAP_START`。
 pub fn compute_heap_base(
-  global_data_end : UInt,
-  argc : Int,
+  global_data_end : UInt32,
+  argc : Int32,
   argv : Array[String],
-) -> UInt {
+) -> UInt32 {
   let aligned = align4(global_data_end)
   let mut base = if HEAP_START > aligned { HEAP_START } else { aligned }
   if argc > 0 && argv.length() > 0 {

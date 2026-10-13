@@ -8,7 +8,7 @@
 /// `_Static_assert` / `static_assert`（C11/C23，E3：真求值）。
 /// 条件经编译期常量求值（与 enum 初始化器同一求值器）：为假即编译错误
 ///（携带消息），为真不产生任何代码。
-fn Parser::parse_static_assert(self : Parser, depth : Int) -> Unit {
+fn Parser::parse_static_assert(self : Parser, depth : Int32) -> Unit {
   ignore(self.advance()) // _Static_assert / static_assert
   ignore(self.consume(LParen, "static_assert 后预期 '('"))
   // parse_assign：不越过顶层逗号（逗号后是消息字符串，非逗号表达式）
@@ -83,7 +83,7 @@ fn Parser::skip_attributes(self : Parser) -> Unit {
 
 ///|
 /// 语句壳挂点（块/控制流互递归深度防护）。
-fn Parser::parse_statement(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_statement(self : Parser, depth : Int32) -> @ast.Stmt {
   if depth >= MAX_PARSE_DEPTH {
     self.depth_exceeded("语句")
     return @ast.Stmt::Block([], @source.SourceLoc::default())
@@ -92,7 +92,7 @@ fn Parser::parse_statement(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_statement_inner(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_statement_inner(self : Parser, depth : Int32) -> @ast.Stmt {
   // E3：[[属性]] 前缀——解析并忽略
   if self.check(LBracket) && self.peek(1).ty == LBracket {
     self.skip_attributes()
@@ -209,7 +209,7 @@ fn Parser::stall_synchronize(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::parse_block(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_block(self : Parser, depth : Int32) -> @ast.Stmt {
   // 审阅 P1-1（2026-10-07）：block 边界 = parsed_var_types 作用域屏障
   //（内层声明的 sizeof 折叠语义不出块）；函数体（parse_func_body 的
   // Block 形态）同样经此配对
@@ -244,7 +244,7 @@ fn Parser::parse_block(self : Parser, depth : Int) -> @ast.Stmt {
 fn Parser::parse_var_decl_stmt(
   self : Parser,
   is_static : Bool,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.Stmt {
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
@@ -385,7 +385,7 @@ fn Parser::parse_var_decl_from_base(
   self : Parser,
   base : @ast.Type,
   is_static : Bool,
-  depth : Int,
+  depth : Int32,
   loc : @source.SourceLoc,
 ) -> @ast.Stmt {
   let d = self.parse_var_declarator(base, depth)
@@ -421,7 +421,7 @@ fn Parser::parse_var_decl_from_base(
 }
 
 ///|
-fn Parser::parse_if_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_if_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.consume(If, "预期 'if'"))
   ignore(self.consume(LParen, "预期 '('"))
@@ -437,7 +437,7 @@ fn Parser::parse_if_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_while_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_while_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.consume(While, "预期 'while'"))
   ignore(self.consume(LParen, "预期 '('"))
@@ -448,7 +448,7 @@ fn Parser::parse_while_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_do_while_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_do_while_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.consume(Do, "预期 'do'"))
   let body = self.parse_statement(depth)
@@ -487,7 +487,7 @@ fn Parser::parse_goto_stmt(self : Parser) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_label_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_label_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   let label = self.current().text
   ignore(self.advance()) // consume identifier
@@ -497,7 +497,7 @@ fn Parser::parse_label_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_for_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_for_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.consume(For, "预期 'for'"))
   ignore(self.consume(LParen, "预期 '('"))
@@ -615,7 +615,7 @@ fn Parser::parse_for_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_return_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_return_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.consume(Return, "预期 'return'"))
   let value : @ast.Expr? = if !self.check(Semicolon) {
@@ -628,7 +628,7 @@ fn Parser::parse_return_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_expr_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_expr_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   let expr = self.parse_expression(depth)
   ignore(self.consume(Semicolon, "预期 ';'"))
@@ -636,7 +636,7 @@ fn Parser::parse_expr_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_switch_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_switch_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   ignore(self.advance())
   ignore(self.consume(LParen, "switch 后预期 '('"))
@@ -647,7 +647,7 @@ fn Parser::parse_switch_stmt(self : Parser, depth : Int) -> @ast.Stmt {
 }
 
 ///|
-fn Parser::parse_case_stmt(self : Parser, depth : Int) -> @ast.Stmt {
+fn Parser::parse_case_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   let label : @ast.Expr? = if self.match_token(Case) {
     Some(self.parse_expression(depth))

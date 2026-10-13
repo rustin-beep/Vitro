@@ -16,7 +16,7 @@
 /// Rust `#if` 迷你解析器无深度保护）。
 /// 值语义：Int64 wrapping（Rust `wrapping_*`）；`/` `%` 除零显式报错（MoonBit
 /// 整除零是 panic，必须前置检查——F1）。
-const COND_DEPTH_FUSE : Int = 128
+const COND_DEPTH_FUSE : Int32 = 128
 
 ///|
 /// 求值失败（checked error——由 `evaluate_cond` 统一转 E1014 诊断）。
@@ -29,7 +29,7 @@ priv suberror CondError {
 fn[P : @token.SourceProvider] Pp::evaluate_cond(
   self : Pp[P],
   raw : String,
-  line : Int,
+  line : Int32,
 ) -> Bool {
   let outcome : Result[Int64, CondError] = Ok(
     self.evaluate_cond_inner(raw, line),
@@ -58,7 +58,7 @@ fn[P : @token.SourceProvider] Pp::evaluate_cond(
 fn[P : @token.SourceProvider] Pp::evaluate_cond_inner(
   self : Pp[P],
   raw : String,
-  line : Int,
+  line : Int32,
 ) -> Int64 raise CondError {
   // 1. __has_include 文本级替换（与 #include 解析口径单源）
   let text = self.replace_has_include(raw)
@@ -287,8 +287,8 @@ fn extract_defined(
 
 priv struct CondParser {
   toks : Array[String]
-  mut pos : Int
-  mut depth : Int
+  mut pos : Int32
+  mut depth : Int32
 }
 
 ///|
@@ -728,7 +728,7 @@ fn parse_c_int(s : String) -> Int64? {
   if t.length() == 0 {
     return None
   }
-  let (body, radix) : (String, Int) = if t.length() >= 2 &&
+  let (body, radix) : (String, Int32) = if t.length() >= 2 &&
     t[0] == '0' &&
     (t[1] == 'x' || t[1] == 'X') {
     (t[2:].to_owned(), 16)
@@ -756,7 +756,7 @@ fn parse_c_int(s : String) -> Int64? {
   }
   for i in 0..<body.length() {
     let c = body[i].to_int()
-    let d : Int = if c >= '0' && c <= '9' {
+    let d : Int32 = if c >= '0' && c <= '9' {
       c - '0'
     } else if c >= 'a' && c <= 'f' {
       c - 'a' + 10

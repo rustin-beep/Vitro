@@ -299,7 +299,7 @@ fn Json::as_string(self : Json) -> String? {
 /// 整数文本超 i32 域丢弃（Double::to_int 溢出防护；错误码/协议参数域
 /// 远离边界——i64 内超 i32 的病态截断语义不照搬，此处收窄丢弃）。
 /// repr=None（手工构造）退值域判 n==n.floor()。
-fn Json::as_int(self : Json) -> Int? {
+fn Json::as_int(self : Json) -> Int32? {
   match self {
     Number(n, repr~) => {
       let float_form = match repr {

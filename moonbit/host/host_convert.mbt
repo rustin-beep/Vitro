@@ -27,7 +27,7 @@
 pub fn host_atoi(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -38,7 +38,7 @@ pub fn host_atoi(
 ///|
 /// 字节级 `atoi`：跳 ASCII 空白 → 可选符号 → 数字回绕累加（`atoi`/`atol`
 /// 共用，宽度由参数化乘法承载——见 `atol_bytes`）。
-fn atoi_bytes(s : Bytes) -> Int {
+fn atoi_bytes(s : Bytes) -> Int32 {
   let n = s.length()
   let mut pos = 0
   while pos < n && is_ascii_ws_byte(s[pos]) {
@@ -77,7 +77,7 @@ fn is_ascii_ws_byte(b : Byte) -> Bool {
 ///|
 /// hex 数字字节值（'0'-'9'/'a'-'f'/'A'-'F' → 0-15；非 hex → -1）。
 /// scanf %i/%x 扫描与 strtoul 前缀判定共用（病 9，#47 2026-10-09）。
-fn hex_digit_val(b : Byte) -> Int {
+fn hex_digit_val(b : Byte) -> Int32 {
   if b >= 48 && b <= 57 {
     b.to_int() - 48
   } else if b >= 97 && b <= 102 {
@@ -94,7 +94,7 @@ fn hex_digit_val(b : Byte) -> Int {
 pub fn host_atol(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -135,7 +135,7 @@ fn atol_bytes(s : Bytes) -> Int64 {
 
 ///|
 /// 字节 → 数字值（非字母数字 → -1；进位域判定由调用方负责）。
-fn digit_value(c : Byte) -> Int {
+fn digit_value(c : Byte) -> Int32 {
   let v = c.to_int()
   if v >= 48 && v <= 57 {
     v - 48
@@ -156,7 +156,7 @@ fn digit_value(c : Byte) -> Int {
 /// 前缀语义——审阅 P2-1 补强）；atof ≡ strtod(str, NULL)（C §7.22.1.1）
 /// 的公共扫描器；返回 (token 字节, 消费位数)。
 /// 2026-10-05 批二-a 自 strtod 内联体抽出；同日审阅处置补悬空回退+hex。
-fn scan_float_token(s : Bytes) -> (Array[Byte], Int) {
+fn scan_float_token(s : Bytes) -> (Array[Byte], Int32) {
   let n = s.length()
   let mut pos = 0
   while pos < n && is_ascii_ws_byte(s[pos]) {
@@ -318,7 +318,7 @@ fn is_hex_digit(c : Byte) -> Bool {
 pub fn host_atof(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -344,10 +344,10 @@ pub fn host_atof(
 pub fn host_strtol(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  str_addr : UInt,
-  endptr_addr : UInt,
-  base : Int,
-  errno_addr : UInt?,
+  str_addr : UInt32,
+  endptr_addr : UInt32,
+  base : Int32,
+  errno_addr : UInt32?,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, str_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -371,7 +371,7 @@ pub fn host_strtol(
   // 前缀探测（C §7.22.1.4 subject sequence；0x 后无有效数字不消费 x）。
   // digit_value 越界值 -1 不可当合法十六进制（审阅 P3-4：旧 `< 16` 把
   // "0x!" 的 '!' 探测成有效——is_hex_digit 单源判定）
-  let effective_base : Int = if base == 0 {
+  let effective_base : Int32 = if base == 0 {
     if pos + 1 < n &&
       s[pos] == b'0' &&
       (s[pos + 1] == b'x' || s[pos + 1] == b'X') &&
@@ -436,9 +436,9 @@ pub fn host_strtol(
 pub fn host_strtod(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  str_addr : UInt,
-  endptr_addr : UInt,
-  errno_addr : UInt?,
+  str_addr : UInt32,
+  endptr_addr : UInt32,
+  errno_addr : UInt32?,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, str_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -479,8 +479,8 @@ pub fn host_strtod(
 pub fn host_strerror(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  errnum : Int,
-  alloc_line : Int,
+  errnum : Int32,
+  alloc_line : Int32,
 ) -> HostMemReply {
   let msg : Bytes = match errnum {
     1 => b"Invalid argument\x00"

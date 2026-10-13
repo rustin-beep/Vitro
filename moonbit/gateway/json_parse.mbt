@@ -12,17 +12,17 @@
 
 ///|
 priv suberror JsonParseError {
-  Fail(message~ : String, offset~ : Int)
+  Fail(message~ : String, offset~ : Int32)
 }
 
 ///|
-const JSON_PARSE_DEPTH_LIMIT : Int = 128
+const JSON_PARSE_DEPTH_LIMIT : Int32 = 128
 
 ///|
 priv struct JsonCursor {
   src : String
-  mut pos : Int
-  mut depth : Int
+  mut pos : Int32
+  mut depth : Int32
 }
 
 ///|
@@ -39,7 +39,7 @@ fn json_parse(input : String) -> Json raise JsonParseError {
 }
 
 ///|
-fn peek(c : JsonCursor) -> Int {
+fn peek(c : JsonCursor) -> Int32 {
   if c.pos < c.src.length() {
     c.src[c.pos].to_int()
   } else {
@@ -48,7 +48,7 @@ fn peek(c : JsonCursor) -> Int {
 }
 
 ///|
-fn advance(c : JsonCursor) -> Int {
+fn advance(c : JsonCursor) -> Int32 {
   let ch = peek(c)
   c.pos += 1
   ch
@@ -65,7 +65,7 @@ fn skip_ws(c : JsonCursor) -> Unit {
 }
 
 ///|
-fn expect(c : JsonCursor, ch : Int) -> Unit raise JsonParseError {
+fn expect(c : JsonCursor, ch : Int32) -> Unit raise JsonParseError {
   if peek(c) != ch {
     raise JsonParseError::Fail(
       message="期望字符 '\{ch.unsafe_to_char()}'",
@@ -263,7 +263,7 @@ fn parse_number(c : JsonCursor) -> Json raise JsonParseError {
   }
   while true {
     match peek(c) {
-      48..=57 => c.pos += 1
+      48..<=57 => c.pos += 1
       _ => break
     }
   }
@@ -271,7 +271,7 @@ fn parse_number(c : JsonCursor) -> Json raise JsonParseError {
     ignore(advance(c)) // .
     while true {
       match peek(c) {
-        48..=57 => c.pos += 1
+        48..<=57 => c.pos += 1
         _ => break
       }
     }
@@ -283,7 +283,7 @@ fn parse_number(c : JsonCursor) -> Json raise JsonParseError {
     }
     while true {
       match peek(c) {
-        48..=57 => c.pos += 1
+        48..<=57 => c.pos += 1
         _ => break
       }
     }
@@ -343,7 +343,7 @@ fn accumulate_double(text : String) -> Double {
       i += 1
     }
   }
-  let mut exp : Int = 0
+  let mut exp : Int32 = 0
   if i < text.length() && (text[i] == 'e' || text[i] == 'E') {
     i += 1
     let mut exp_neg = false

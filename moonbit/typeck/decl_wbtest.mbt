@@ -287,7 +287,7 @@ test "condition_warnings" {
 ///（catalog 1004 文案在案、fix_1004 区间修复已就位，缺的只是 report 点
 /// ——审阅 P2 实锤全仓零调用）。红→绿锚。
 test "cond_bitop_e1004_wiring_b118" {
-  fn num(v : Int) -> @ast.Expr {
+  fn num(v : Int32) -> @ast.Expr {
     @ast.Expr::Literal(v, @source.SourceLoc::new(1, 5), @ast.Type::int())
   }
   fn bin(op : @ast.BinaryOp, l : @ast.Expr, r : @ast.Expr) -> @ast.Expr {

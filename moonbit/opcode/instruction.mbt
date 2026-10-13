@@ -10,7 +10,7 @@
 /// 行为分歧；序列化仍归上层。
 pub(all) struct Instruction {
   op : OpCode
-  operand : Int
+  operand : Int32
   loc : @source.SourceLoc
 } derive(Debug, Eq)
 
@@ -31,7 +31,7 @@ pub extend Instruction with Eq::{not_equal, equal}
 /// ```
 pub fn Instruction::new(
   op : OpCode,
-  operand : Int,
+  operand : Int32,
   loc : @source.SourceLoc,
 ) -> Instruction {
   { op, operand, loc, }

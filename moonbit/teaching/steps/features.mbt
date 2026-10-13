@@ -7,8 +7,8 @@
 ///|
 /// 函数级特征集合（供各算法判据消费——cfg_* 四项恒默认：分叉登记）。
 pub(all) struct FuncFeatures {
-  mut loop_depth : Int
-  mut max_loop_depth : Int
+  mut loop_depth : Int32
+  mut max_loop_depth : Int32
   mut has_nested_loops : Bool
   mut has_single_loop : Bool
   mut has_array_compare : Bool
@@ -28,7 +28,7 @@ pub(all) struct FuncFeatures {
   /// 结构（整名匹配，穿透包装层）。
   mut is_treenode_ctx : Bool
   /// (line, type, context) 比较行序（保序——VisEvent 投影源）。
-  mut compare_lines : Array[(Int, Int, String)]
+  mut compare_lines : Array[(Int32, Int32, String)]
 }
 
 ///|
@@ -56,7 +56,7 @@ pub fn FuncFeatures::default() -> FuncFeatures {
 }
 
 ///|
-const TEACHING_MAX_WALK_DEPTH : Int = 512
+const TEACHING_MAX_WALK_DEPTH : Int32 = 512
 
 ///|
 /// 词边界 + 驼峰感知的整词匹配（大小写不敏感；U1#1 P0-1 连续大写缩写
@@ -133,9 +133,9 @@ pub fn extract_features(func : @ast.FuncDecl, body : @ast.Stmt) -> FuncFeatures 
 fn walk_stmt(
   stmt : @ast.Stmt,
   f : FuncFeatures,
-  loop_depth : Int,
+  loop_depth : Int32,
   func_name : String,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   if depth > TEACHING_MAX_WALK_DEPTH {
     return
@@ -223,9 +223,9 @@ fn walk_stmt(
 fn walk_expr(
   expr : @ast.Expr,
   f : FuncFeatures,
-  loop_depth : Int,
+  loop_depth : Int32,
   func_name : String,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   if depth > TEACHING_MAX_WALK_DEPTH {
     return
@@ -330,7 +330,7 @@ fn call_pattern_flags(name : String, f : FuncFeatures) -> Unit {
 fn check_compare_expr(
   expr : @ast.Expr,
   f : FuncFeatures,
-  loop_depth : Int,
+  loop_depth : Int32,
 ) -> Unit {
   match expr {
     Binary(op, left, right, loc, _) => {
@@ -486,7 +486,7 @@ fn is_index_access(expr : @ast.Expr) -> Bool {
 }
 
 ///|
-fn is_literal_int(expr : @ast.Expr, val : Int) -> Bool {
+fn is_literal_int(expr : @ast.Expr, val : Int32) -> Bool {
   match expr {
     Literal(v, _, _) => v == val
     _ => false

@@ -80,7 +80,7 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
 
 ///|
 /// 完整运行（Rust `run` 砍 JIT fast path；宿主域内聚故无 session 参数）。
-pub fn VitroVM::run(self : VitroVM) -> Int {
+pub fn VitroVM::run(self : VitroVM) -> Int32 {
   while true {
     let result = self.step()
     match result {
@@ -112,9 +112,9 @@ pub fn VitroVM::run(self : VitroVM) -> Int {
 fn VitroVM::dispatch_single(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> StepResult? {
   match op {
     Nop => ()
@@ -274,4 +274,4 @@ fn VitroVM::dispatch_single(
 
 ///|
 /// 无限循环诊断的变量快照刷新间隔（照搬 Rust `SNAPSHOT_INTERVAL = 100_000`）。
-pub const SNAPSHOT_INTERVAL : Int = 100_000
+pub const SNAPSHOT_INTERVAL : Int32 = 100_000

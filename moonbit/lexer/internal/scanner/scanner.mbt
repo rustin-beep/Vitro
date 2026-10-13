@@ -14,26 +14,26 @@
 /// - 诊断收集不中断（错误 token 照常产出）。
 priv struct Scanner {
   bytes : Bytes
-  mut pos : Int
-  length : Int
-  mut line : Int
-  mut column : Int
-  mut real_line : Int
+  mut pos : Int32
+  length : Int32
+  mut line : Int32
+  mut column : Int32
+  mut real_line : Int32
   /// 行级 fragment 模式（L2）：源不可见行尾换行由调用方告知——未闭合
   /// 字符串在"行后有换行"时补报 E1003（复刻 Rust 整源扫描的两条诊断，
   /// S2 审阅 P2）
   mut line_mode : Bool
   mut line_has_newline : Bool
-  file_id : Int
+  file_id : Int32
   errors : Array[@token.LexError]
   cpp_mode : Bool
   /// 起始 byte_off / line / column 基准（fragment 扫描时非 0）。
-  base_byte_off : Int
+  base_byte_off : Int32
 }
 
 ///|
 /// UTF-8 序列首字节 → 序列长度（1~4；非法首字节按 1 处理不崩，扫描器只推进）。
-fn utf8_seq_len(b : Byte) -> Int {
+fn utf8_seq_len(b : Byte) -> Int32 {
   if b >= b'\xF0' {
     4
   } else if b >= b'\xE0' {
@@ -48,7 +48,7 @@ fn utf8_seq_len(b : Byte) -> Int {
 ///|
 /// 解码 `bytes[i]` 起的 UTF-8 码点（Int；越界/非法返回 -1）。
 /// 仅用于列计数与"是否某个 ASCII 字符"的判定，非法序列的返回值不参与 token 语义。
-fn decode_at(bytes : Bytes, i : Int) -> Int {
+fn decode_at(bytes : Bytes, i : Int32) -> Int32 {
   if i >= bytes.length() {
     return -1
   }
@@ -78,7 +78,7 @@ fn decode_at(bytes : Bytes, i : Int) -> Int {
 
 ///|
 /// Byte 区间 → String（合法 UTF-8 切片；词法 token 区间恒在字符边界）。
-fn slice_string(bytes : Bytes, start : Int, end_ : Int) -> String {
+fn slice_string(bytes : Bytes, start : Int32, end_ : Int32) -> String {
   @utf8.decode(bytes[start:end_]) catch {
     _ => ""
   } // 切片由扫描器保证在码点边界；防御性兜底空串（不可达路径）
@@ -88,7 +88,7 @@ fn slice_string(bytes : Bytes, start : Int, end_ : Int) -> String {
 /// C11 §6.4p3 white-space 全集：space / \t / \n / \v(0x0B) / \f(0x0C) / \r。
 /// 注意与 Rust `is_ascii_whitespace` 集合（无 \v）刻意不同——照搬期曾随
 /// Rust 集合漏掉 \v，导致合法 C 被拒（E1001，issue #55）。
-fn is_ascii_whitespace(c : Int) -> Bool {
+fn is_ascii_whitespace(c : Int32) -> Bool {
   c == ' ' ||
   c == '\t' ||
   c == '\n' ||
@@ -98,33 +98,33 @@ fn is_ascii_whitespace(c : Int) -> Bool {
 }
 
 ///|
-fn is_ascii_digit(c : Int) -> Bool {
+fn is_ascii_digit(c : Int32) -> Bool {
   c >= '0' && c <= '9'
 }
 
 ///|
-fn is_ascii_hexdigit(c : Int) -> Bool {
+fn is_ascii_hexdigit(c : Int32) -> Bool {
   is_ascii_digit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
 
 ///|
-fn is_ascii_alphabetic(c : Int) -> Bool {
+fn is_ascii_alphabetic(c : Int32) -> Bool {
   (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 ///|
-fn is_ascii_alphanumeric(c : Int) -> Bool {
+fn is_ascii_alphanumeric(c : Int32) -> Bool {
   is_ascii_alphabetic(c) || is_ascii_digit(c)
 }
 
 ///|
-fn is_octal_digit(c : Int) -> Bool {
+fn is_octal_digit(c : Int32) -> Bool {
   c >= '0' && c <= '7'
 }
 
 ///|
 /// text 的 UTF-8 字节数（Rust `text.len()` 口径——column 反推公式的被减数）。
-fn utf8_len(s : String) -> Int {
+fn utf8_len(s : String) -> Int32 {
   @util.utf8_len(s)
 }
 
@@ -134,8 +134,8 @@ fn utf8_len(s : String) -> Int {
 /// BOM **不剥离**（与 Rust raw 同构：BOM → E1001 + Unknown）。
 pub fn scan_raw(
   src : Bytes,
-  cpp_mode? : Bool = false,
-  file_id? : Int = 0,
+  cpp_mode~ : Bool = false,
+  file_id~ : Int32 = 0,
 ) -> @token.RawResult {
   let scanner = Scanner::new(
     src,
@@ -163,15 +163,15 @@ pub fn scan_raw(
 /// 返回 token 序列（**不含 Eof**——行/片段边界由调用方管理）。
 pub fn scan_fragment(
   text : String,
-  base_byte_off~ : Int,
-  base_line~ : Int,
-  base_real_line? : Int = base_line,
-  base_column~ : Int,
-  file_id~ : Int,
-  cpp_mode? : Bool = false,
-  body_mode? : Bool = true,
-  errors? : Array[@token.LexError] = [],
-  trailing_newline? : Bool = true,
+  base_byte_off~ : Int32,
+  base_line~ : Int32,
+  base_real_line~ : Int32 = base_line,
+  base_column~ : Int32,
+  file_id~ : Int32,
+  cpp_mode~ : Bool = false,
+  body_mode~ : Bool = true,
+  errors~ : Array[@token.LexError] = [],
+  trailing_newline~ : Bool = true,
 ) -> Array[@token.Token] {
   let scanner = Scanner::new(
     @utf8.encode(text),
@@ -203,11 +203,11 @@ pub fn scan_fragment(
 ///|
 fn Scanner::new(
   bytes : Bytes,
-  base_byte_off~ : Int,
-  base_line~ : Int,
-  base_column~ : Int,
-  base_real_line? : Int = base_line,
-  file_id~ : Int,
+  base_byte_off~ : Int32,
+  base_line~ : Int32,
+  base_column~ : Int32,
+  base_real_line~ : Int32 = base_line,
+  file_id~ : Int32,
   cpp_mode~ : Bool,
   body_mode~ : Bool,
 ) -> Scanner {
@@ -233,7 +233,7 @@ fn Scanner::new(
 /// 前瞻 `off` **字节**处的码点（越界返回 -1 = Rust 的 `'\0'` 哨兵语义）。
 /// 所有调用点只对 ASCII 字符做判定；非 ASCII 码点与任何 ASCII 判定均为 false，
 /// 与 Rust 按字符偏移的 peek 在这些判定上等价。
-fn Scanner::peek(self : Scanner, off : Int) -> Int {
+fn Scanner::peek(self : Scanner, off : Int32) -> Int32 {
   decode_at(self.bytes, self.pos + off)
 }
 
@@ -245,7 +245,7 @@ fn Scanner::at_end(self : Scanner) -> Bool {
 ///|
 /// 推进一个码点：ASCII 快路径；多字节按序列长度跳（列 +1——Rust char 计数）。
 /// 返回被消费的码点（越界返回 -1 且不推进）。
-fn Scanner::advance(self : Scanner) -> Int {
+fn Scanner::advance(self : Scanner) -> Int32 {
   if self.pos >= self.length {
     return -1
   }
@@ -268,7 +268,7 @@ fn Scanner::advance(self : Scanner) -> Int {
 
 ///|
 /// 匹配双字符：`peek(1) == expected` 时消费两字符返回 true（Rust `match_char`）。
-fn Scanner::match_char(self : Scanner, expected : Int) -> Bool {
+fn Scanner::match_char(self : Scanner, expected : Int32) -> Bool {
   if self.peek(1) != expected {
     return false
   }
@@ -285,7 +285,7 @@ fn Scanner::make_token_col_basis(
   self : Scanner,
   ty : @token.TokenType,
   text : String,
-  start : Int,
+  start : Int32,
   col_basis : String,
 ) -> @token.Token {
   {
@@ -307,7 +307,7 @@ fn Scanner::make_token(
   self : Scanner,
   ty : @token.TokenType,
   text : String,
-  start_byte : Int,
+  start_byte : Int32,
 ) -> @token.Token {
   {
     ty,
@@ -605,7 +605,7 @@ fn Scanner::next_token(self : Scanner, body_mode~ : Bool) -> @token.Token {
 }
 
 ///|
-fn char_from_code(c : Int) -> Char {
+fn char_from_code(c : Int32) -> Char {
   // 码点 → Char（Unicode 标量域内；-1 哨兵不可达——advance 前有 at_end 检查）
   match c.to_char() {
     Some(ch) => ch
@@ -619,7 +619,10 @@ fn char_to_string(c : Char) -> String {
 }
 
 ///|
-fn Scanner::identifier_or_keyword(self : Scanner, start : Int) -> @token.Token {
+fn Scanner::identifier_or_keyword(
+  self : Scanner,
+  start : Int32,
+) -> @token.Token {
   while !self.at_end() {
     let c = self.peek(0)
     if is_ascii_alphanumeric(c) || c == '_' {

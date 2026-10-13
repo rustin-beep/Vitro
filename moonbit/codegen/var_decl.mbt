@@ -125,7 +125,7 @@ fn BytecodeGen::emit_static_init(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  global_offset : Int,
+  global_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   match init {
@@ -254,7 +254,7 @@ fn BytecodeGen::emit_static_scalar_array_init(
   self : BytecodeGen,
   vty : @ast.Type,
   elements : Array[@ast.InitElement],
-  global_offset : Int,
+  global_offset : Int32,
   _loc : @source.SourceLoc,
 ) -> Unit {
   let elem_size = self.elem_type_size(vty)
@@ -330,7 +330,7 @@ fn BytecodeGen::emit_static_scalar_array_init(
 fn BytecodeGen::emit_vla_alloc(
   self : BytecodeGen,
   vty : @ast.Type,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   match vty {
@@ -374,7 +374,7 @@ fn BytecodeGen::emit_local_init(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   // class 并入 struct 同路径（C only 下 typeck 不产 class）；reference
@@ -422,7 +422,7 @@ fn BytecodeGen::emit_scalar_cast_store(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   let ik = init.ty().kind()
@@ -492,7 +492,7 @@ fn BytecodeGen::emit_local_string_array_init(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   match init {
@@ -522,7 +522,7 @@ fn BytecodeGen::emit_local_array_init(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   match init {
@@ -606,7 +606,7 @@ fn BytecodeGen::emit_flat_array_init(
   self : BytecodeGen,
   vty : @ast.Type,
   elements : Array[@ast.InitElement],
-  base_temp : Int,
+  base_temp : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   let elem_size = self.elem_type_size(vty)
@@ -690,7 +690,7 @@ fn BytecodeGen::emit_flat_array_init(
 ///|
 fn BytecodeGen::emit_zero_elem(
   self : BytecodeGen,
-  elem_size : Int,
+  elem_size : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   if elem_size == 8 {
@@ -708,7 +708,7 @@ fn BytecodeGen::emit_local_struct_init(
   self : BytecodeGen,
   vty : @ast.Type,
   init : @ast.Expr,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   match init {
@@ -792,8 +792,8 @@ fn BytecodeGen::emit_local_struct_init(
 ///|
 fn BytecodeGen::emit_field_init(
   self : BytecodeGen,
-  base_temp : Int,
-  offset : Int,
+  base_temp : Int32,
+  offset : Int32,
   field_ty : @ast.Type,
   value : @ast.Expr,
   loc : @source.SourceLoc,
@@ -850,7 +850,7 @@ fn BytecodeGen::emit_field_init(
 fn BytecodeGen::emit_zero_init(
   self : BytecodeGen,
   vty : @ast.Type,
-  local_offset : Int,
+  local_offset : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   let sz = self.type_size(vty)
@@ -880,6 +880,6 @@ fn BytecodeGen::emit_zero_init(
 
 ///|
 /// i32 → u32 位重解释（Rust `as u32`）。
-fn u32_of(v : Int) -> UInt {
+fn u32_of(v : Int32) -> UInt32 {
   v.reinterpret_as_uint()
 }

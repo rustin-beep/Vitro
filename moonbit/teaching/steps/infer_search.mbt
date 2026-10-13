@@ -267,7 +267,7 @@ fn parse_array_assign(
 }
 
 ///|
-fn find_sub(s : String, sub : String, from : Int) -> Int? {
+fn find_sub(s : String, sub : String, from : Int32) -> Int32? {
   let n = s.length()
   let m = sub.length()
   if m == 0 || n < m {
@@ -284,7 +284,7 @@ fn find_sub(s : String, sub : String, from : Int) -> Int? {
 }
 
 ///|
-fn find_char(s : String, c : Char, from : Int) -> Int? {
+fn find_char(s : String, c : Char, from : Int32) -> Int32? {
   let n = s.length()
   let mut i = if from < 0 { 0 } else { from }
   while i < n {
@@ -297,7 +297,7 @@ fn find_char(s : String, c : Char, from : Int) -> Int? {
 }
 
 ///|
-fn find_char_reverse(s : String, c : Char) -> Int? {
+fn find_char_reverse(s : String, c : Char) -> Int32? {
   let mut i = s.length() - 1
   while i >= 0 {
     if s[i].to_int() == c.to_int() {

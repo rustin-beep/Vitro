@@ -15,19 +15,19 @@
 ///|
 /// 页定位移位量。`PAGE_SIZE` 是 2 的幂 ⇒ **页号用移位而非除法**
 /// （勘察 §5.1：wasm-gc 无硬件除法指令；Rust 现版是 `addr as usize / PAGE_SIZE`）。
-pub const PAGE_SHIFT : Int = 12
+pub const PAGE_SHIFT : Int32 = 12
 
 ///|
 /// 载体页尺寸（字节）= 4096。Rust `snapshot.rs:46` `PAGE_SIZE`。
-pub const PAGE_SIZE : Int = 1 << PAGE_SHIFT
+pub const PAGE_SIZE : Int32 = 1 << PAGE_SHIFT
 
 ///|
 /// 页数（1MB / 4KB = 256）。Rust `snapshot.rs:47` `PAGE_COUNT`。
-pub const PAGE_COUNT : Int = 256
+pub const PAGE_COUNT : Int32 = 256
 
 ///|
 /// 脏页位图字数（256 页 / 64 位 = 4）。Rust `state.rs:128` `dirty_pages: [u64; 4]`。
-pub const DIRTY_WORD_COUNT : Int = 4
+pub const DIRTY_WORD_COUNT : Int32 = 4
 
 ///|
 /// 隔离区默认字节预算：堆上限的 1/4 = 256KB。
@@ -38,4 +38,4 @@ pub const DIRTY_WORD_COUNT : Int = 4
 /// 持续推进直至撞 1MB 墙（教学信号）。预算可按会话调整，**不是**编译期常量语义。
 ///
 /// [`堆有界隔离决议`]: ../../docs/current/06-出口与协议/堆有界隔离决议.md
-pub const DEFAULT_QUARANTINE_BUDGET : Int = 1024 * 1024 / 4
+pub const DEFAULT_QUARANTINE_BUDGET : Int32 = 1024 * 1024 / 4

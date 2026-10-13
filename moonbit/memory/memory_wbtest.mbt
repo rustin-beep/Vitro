@@ -20,10 +20,10 @@
 /// `host_malloc` 的内存侧最小复现（`host/memory.rs:5-58` 的次序）。
 fn alloc(
   map : MemoryMap,
-  size : Int,
+  size : Int32,
   alloc_by : String,
   auto_name : Bool,
-) -> UInt {
+) -> UInt32 {
   let aligned = @bytecode.align4(size.reinterpret_as_uint())
   let addr = match map.allocate_raw(aligned, @bytecode.MEM_SIZE) {
     Some(a) => a
@@ -37,7 +37,7 @@ fn alloc(
 
 ///|
 /// `host_free` 的内存侧最小复现（Double-Free 拦截在前，`host/memory.rs:60-97`）。
-fn free(map : MemoryMap, addr : UInt) -> Bool {
+fn free(map : MemoryMap, addr : UInt32) -> Bool {
   if map.freed_logs_contains(addr) {
     return false
   }
@@ -481,7 +481,7 @@ test "churn_leak_count_and_no_duplicate_entries" {
     msg="恰 1 块未释放（churn 全 free + 1 活块）",
   )
   // 地址唯一（由 Map 键保证，此处做健全性确认）
-  let addrs : Array[UInt] = []
+  let addrs : Array[UInt32] = []
   for t in map.regions_to_array() {
     addrs.push(t.0)
   }

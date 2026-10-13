@@ -8,7 +8,7 @@
 ///|
 /// 测试负载构造（14 字段全量——protocol 无 Default，一次封装多处用；
 /// 仅 step_index 变动，其余恒定）。
-fn mk_payload(step : Int) -> @protocol.StepPayload {
+fn mk_payload(step : Int32) -> @protocol.StepPayload {
   {
     step_index: step,
     code_line: 1,

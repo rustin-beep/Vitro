@@ -26,7 +26,7 @@ pub struct AlgoInferCtx {
   /// 行末帧的 b 已被本语句赋值）。
   mut row_entry_vars : Array[@steps.VarSnapshot]
   /// 上一帧行号（行变化检测）。
-  mut last_line : Int
+  mut last_line : Int32
   /// 上一帧变量快照（行末固化，供下一行的 row_entry_vars）。
   mut last_frame_vars : Array[@steps.VarSnapshot]
 }
@@ -61,7 +61,7 @@ fn find_algo_match(
 /// 行号 = 多文件全局行号〔P0-4 口径，映射由实现方携带〕）。
 pub(open) trait SourceLineProvider {
   /// 行号取源码行文本；越界/无映射返回 None。
-  fn source_line_at(Self, line : Int) -> String?
+  fn source_line_at(Self, line : Int32) -> String?
 }
 
 ///|
@@ -72,9 +72,9 @@ pub fn[P : SourceLineProvider] collect(
   vm : @vm.VitroVM,
   src : P,
   heatmap_count : UInt64,
-  step_index : Int,
+  step_index : Int32,
   algo : AlgoInferCtx,
-  code_line? : Int? = None,
+  code_line~ : Int32? = None,
 ) -> @protocol.StepPayload {
   // issue #34 销案（2026-10-06）：code_line 与语义 label 同源（engine
   // 循环顶的步进前行）——旧 vm.get_current_line()（步进后）与 label
@@ -317,7 +317,7 @@ fn collect_pointer_snapshots(
 ///|
 /// freed 堆命中（Rust is_freed_heap 等价——region(addr) 按址键查，
 /// Rust 的 `r.addr == addr` 条件内含于键查询）。
-fn is_freed_heap(vm : @vm.VitroVM, addr : UInt) -> Bool {
+fn is_freed_heap(vm : @vm.VitroVM, addr : UInt32) -> Bool {
   match vm.mem_map.region(addr) {
     Some(r) => r.is_heap && r.is_freed
     None => false
@@ -327,7 +327,7 @@ fn is_freed_heap(vm : @vm.VitroVM, addr : UInt) -> Bool {
 ///|
 fn find_var_name_in_frame(
   local_vars : Array[@protocol.ApiVariableSnapshot],
-  addr : UInt,
+  addr : UInt32,
 ) -> String {
   for v in local_vars {
     if v.addr == addr {
@@ -394,10 +394,10 @@ fn is_pointer_type(ty_name : String) -> Bool {
 /// 十六进制分支溢出 wrap（`n * 16U + d` 无检）。入参源 = 引擎文本化的
 /// 地址（≤1MB，probe 实测域内两种形态均不可达）——若未来入参来源变为
 /// 非引擎文本化（如宿主直传用户串），须复刻拒溢出语义。
-fn parse_addr(value : String) -> UInt? {
+fn parse_addr(value : String) -> UInt32? {
   if value.length() > 2 && (value.has_prefix("0x") || value.has_prefix("0X")) {
     let hex = value[2:].to_owned()
-    let mut n : UInt = 0U
+    let mut n : UInt32 = 0U
     for c in hex {
       let d = match c {
         '0' => 0
@@ -423,7 +423,7 @@ fn parse_addr(value : String) -> UInt? {
     return Some(n)
   }
   // 十进制（负值 None）
-  let mut n : UInt = 0U
+  let mut n : UInt32 = 0U
   if value.length() == 0 {
     return None
   }
@@ -443,7 +443,7 @@ fn parse_addr(value : String) -> UInt? {
 /// local_vars：Some = 全量形态（值敏感分支可用）；None = 降级形态
 /// （检查点保存路径——同词汇表同判定顺序，值敏感分支退化为行首形态）。
 pub fn infer_semantic_label(
-  code_line : Int,
+  code_line : Int32,
   local_vars : Array[@protocol.ApiVariableSnapshot]?,
   func_name : String,
   source_line : String,
@@ -456,7 +456,7 @@ pub fn infer_semantic_label(
   // 层的 trim 是幂等的第二道；判定链 starts_with 全部作用于去缩进行）
   let source_line = source_line.trim().to_owned()
   // 循环变量白名单（i/j/k/idx/index/m/n/left/right/mid/low/high/pivot/gap）
-  let loop_vars : Array[(String, Int)] = []
+  let loop_vars : Array[(String, Int32)] = []
   match local_vars {
     Some(vars) =>
       for v in vars {
@@ -569,7 +569,7 @@ fn is_loop_var_name(name : String) -> Bool {
 ///|
 /// 十进制整数解析（Rust value.parse::<i32>().ok()；负数也收——循环变量
 /// 值可为负）。
-fn parse_i32(s : String) -> Int? {
+fn parse_i32(s : String) -> Int32? {
   if s.length() == 0 {
     return None
   }
@@ -583,7 +583,7 @@ fn parse_i32(s : String) -> Int? {
       return None
     }
   }
-  let mut n : Int = 0
+  let mut n : Int32 = 0
   while idx < cs.length() {
     if cs[idx] < '0' || cs[idx] > '9' {
       return None
@@ -664,9 +664,9 @@ fn is_ident_char(c : Char) -> Bool {
 /// 当前最内层迭代变量值（P0-3）：源码行下标优先 → j/i/k/idx/index 命名
 /// 回退 → 列表末位；**不用 first()**（首位可能是 n/len 规模量）。
 fn pick_inner_index(
-  loop_vars : Array[(String, Int)],
+  loop_vars : Array[(String, Int32)],
   source_line : String,
-) -> Int {
+) -> Int32 {
   match array_index_var(source_line) {
     Some(name) =>
       for pair in loop_vars {

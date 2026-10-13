@@ -67,8 +67,8 @@ fn BytecodeGen::gen_addr(
 /// 嵌套初始化递归（Rust expr.rs:177 照搬；class 分支剔除——struct 同构）。
 fn BytecodeGen::gen_nested_init(
   self : BytecodeGen,
-  base_temp : Int,
-  offset : Int,
+  base_temp : Int32,
+  offset : Int32,
   target_ty : @ast.Type,
   init : @ast.Expr,
   loc : @source.SourceLoc,
@@ -138,7 +138,7 @@ fn BytecodeGen::gen_nested_init(
 /// dst_emit 闭包展开为 to_local 单形态（指令序等价）。
 fn BytecodeGen::gen_struct_copy_to_local(
   self : BytecodeGen,
-  local_offset : Int,
+  local_offset : Int32,
   right : @ast.Expr,
   loc : @source.SourceLoc,
 ) -> Unit {

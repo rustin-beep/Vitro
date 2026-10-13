@@ -11,8 +11,8 @@ pub fn build_match(
   name : String,
   display_name : String,
   func_name : String,
-  line : Int,
-  compare_lines : Array[(Int, Int, String)],
+  line : Int32,
+  compare_lines : Array[(Int32, Int32, String)],
 ) -> @protocol.AlgorithmMatch {
   let suggestion = @assets.suggestion_map.get(name).unwrap_or("")
   let vis : Array[@protocol.VisEvent] = []

@@ -79,7 +79,7 @@ test "argv_region_footprint (r1 #7 + F2 byte-unit anchor)" {
 
 ///|
 test "sorted_keys ascending (emitter determinism)" {
-  let m : Map[String, Int] = Map([])
+  let m : Map[String, Int32] = Map([])
   m.set("delta", 4)
   m.set("alpha", 1)
   m.set("charlie", 3)

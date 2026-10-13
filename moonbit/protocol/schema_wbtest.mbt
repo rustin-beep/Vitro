@@ -9,7 +9,7 @@
 // 生成器基线断言拦截（expectedV01=14 只增不改，v0.2 激活走 checklist）。
 
 ///|
-fn s(step_index : Int, unwinding : Bool, left : Int) -> UnwindSample {
+fn s(step_index : Int32, unwinding : Bool, left : Int32) -> UnwindSample {
   { step_index, unwinding, unwind_frames_left: left, }
 }
 

@@ -40,7 +40,7 @@ pub fn type_eq(a : Type, b : Type) -> Bool {
 }
 
 ///|
-fn int_array_eq(a : Array[Int], b : Array[Int]) -> Bool {
+fn int_array_eq(a : Array[Int32], b : Array[Int32]) -> Bool {
   if a.length() != b.length() {
     return false
   }

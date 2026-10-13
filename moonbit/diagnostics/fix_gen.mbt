@@ -13,9 +13,9 @@
 /// `code` 错误码 / `line` `column` 1-based 诊断坐标 / `message` 诊断文案
 /// （3035/3041 的分支判据）/ `source_lines` 源码行表。
 pub fn generate_fix(
-  code : Int,
-  line : Int,
-  column : Int,
+  code : Int32,
+  line : Int32,
+  column : Int32,
   message : String,
   source_lines : Array[String],
 ) -> FixOutcome {
@@ -82,12 +82,12 @@ pub fn generate_fix(
 /// 运算符本身（pos 是命中探测位=运算符前一字节——照搬位错；组合
 /// apply_fix 曾产 "if (a||| b)" 非法代码；连坐翻 diagnostics_test 291 锚）。
 fn fix_1004_unsupported_op(
-  line : Int,
-  col0 : Int,
+  line : Int32,
+  col0 : Int32,
   line_text : String,
 ) -> FixOutcome {
   let bytes = @util.utf8_bytes(line_text)
-  let mut found_pos : Int? = None
+  let mut found_pos : Int32? = None
   let mut replacement = ""
   if col0 >= 1 {
     // 回搜窗 3→10（病 118 接线连坐，2026-10-11）：AST Binary loc 指向
@@ -191,7 +191,7 @@ fn fix_3041_member_access(message : String) -> FixOutcome {
 
 ///|
 /// 3050：条件中赋值 = → ==（Rust 列 276-299 + find_single_equals 照搬）。
-fn fix_3050_assign_in_condition(line : Int, line_text : String) -> FixOutcome {
+fn fix_3050_assign_in_condition(line : Int32, line_text : String) -> FixOutcome {
   match find_single_equals_in_condition(line_text) {
     Some((start, end)) =>
       FixOutcome::{
@@ -219,9 +219,9 @@ fn fix_3050_assign_in_condition(line : Int, line_text : String) -> FixOutcome {
 ///|
 /// 3069：循环 <= → <（行内找首现 "<=" 字节位；病 19 转层随码迁移——
 /// 3051 现承载静态常数下标越界，无「改 <」自动修复语义）。
-fn fix_3051_off_by_one(line : Int, line_text : String) -> FixOutcome {
+fn fix_3051_off_by_one(line : Int32, line_text : String) -> FixOutcome {
   let bytes = @util.utf8_bytes(line_text)
-  let mut pos : Int? = None
+  let mut pos : Int32? = None
   for i = 0; i + 1 < bytes.length(); i = i + 1 {
     if bytes[i].to_int() == 0x3c && bytes[i + 1].to_int() == 0x3d {
       pos = Some(i)
@@ -255,13 +255,13 @@ fn fix_3051_off_by_one(line : Int, line_text : String) -> FixOutcome {
 ///|
 /// 找条件括号内的孤立 `=`（Rust find_single_equals_in_condition 照搬）：
 /// 返回其 (起始字节位, 结束字节位)。prev/next 排除 ==、!=、<=、>=。
-fn find_single_equals_in_condition(line : String) -> (Int, Int)? {
+fn find_single_equals_in_condition(line : String) -> (Int32, Int32)? {
   // 标量数组 + 平行字节偏移表（Rust char_indices 的等价物）
   let chars : Array[Char] = []
   for c in line {
     chars.push(c)
   }
-  let offsets : Array[Int] = []
+  let offsets : Array[Int32] = []
   let mut acc = 0
   for c in chars {
     offsets.push(acc)
@@ -303,7 +303,7 @@ fn find_single_equals_in_condition(line : String) -> (Int, Int)? {
 ///|
 /// 标量的 UTF-8 编码长度（码点判段——与 util 的 utf8 通道逐字符编码量
 /// 一致；`for c in` 迭代单位是标量〔代理对自动合并，探针实证 2026-10-02〕）。
-fn char_utf8_len(c : Char) -> Int {
+fn char_utf8_len(c : Char) -> Int32 {
   let cp = c.to_int()
   if cp < 0 {
     1
@@ -322,7 +322,7 @@ fn char_utf8_len(c : Char) -> Int {
 /// 行尾 trim 后的 UTF-8 字节长（Rust `line_text.trim_end().len()`）。
 /// 空白集 = 空格/\t/\r/\n（C 源码行尾可达域；全量 Unicode 空白简化
 /// 登记——见文件头分叉注）。
-fn trim_end_byte_len(s : String) -> Int {
+fn trim_end_byte_len(s : String) -> Int32 {
   let bytes = @util.utf8_bytes(s)
   let mut end = bytes.length()
   while end > 0 {

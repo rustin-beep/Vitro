@@ -9,8 +9,8 @@
 fn tok(
   ty : @token.TokenType,
   text : String,
-  line : Int,
-  col : Int,
+  line : Int32,
+  col : Int32,
 ) -> @token.Token {
   {
     ty,
@@ -22,7 +22,7 @@ fn tok(
 }
 
 ///|
-fn num_tokens(n : Int) -> Array[@token.Token] {
+fn num_tokens(n : Int32) -> Array[@token.Token] {
   let toks = []
   for i in 0..<n {
     toks.push(tok(Number, i.to_string(), 1, 1 + i * 2))
@@ -125,7 +125,7 @@ test "wb eval_enum_const deep chain iterative" {
 test "wb eval_enum_const semantics spot checks" {
   let loc = @source.SourceLoc::new(1, 1)
   let ty = @ast.Type::int()
-  let lit = fn(v : Int) -> @ast.Expr { @ast.Expr::Literal(v, loc, ty) }
+  let lit = fn(v : Int32) -> @ast.Expr { @ast.Expr::Literal(v, loc, ty) }
   // 2 + 3 * 4 = 14
   let e1 = @ast.Expr::Binary(
     @ast.BinaryOp::Add,
@@ -182,7 +182,7 @@ test "wb interpret arrptr multidim c semantics" {
 /// F3 对照锚：尾为 Base 的纯数组链折叠不变（dims 合并序与改造前一致）。
 test "wb interpret pure array chain unchanged" {
   let q = Parser::with_mode(num_tokens(1), false)
-  let mk = fn(v : Int) -> @ast.Expr? {
+  let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
   let node = Array(Array(Array(Base, mk(2)), mk(3)), mk(4))
@@ -219,7 +219,7 @@ test "wb stall breaker forces progress beyond limit" {
 /// （Clang `int (*[2])[3][4]`；此前补丁产出 Pointer(Array{[2,3,4]})）。
 test "wb interpret inner array dims c semantics" {
   let q = Parser::with_mode(num_tokens(1), false)
-  let mk = fn(v : Int) -> @ast.Expr? {
+  let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
   // (*p[2])[3][4] 的链：括号内 *p[2] → Pointer(Array(Base,2))（前缀最后
@@ -258,7 +258,7 @@ test "wb interpret inner array dims c semantics" {
 /// （Vitro 函数 decay 约定：Function 值语义 = 函数指针，吸收内层 `*`）。
 test "wb interpret fnret arrptr c semantics" {
   let q = Parser::with_mode(num_tokens(1), false)
-  let mk = fn(v : Int) -> @ast.Expr? {
+  let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
   // (*f(void))[2][3] 的链：Array(Array(Pointer(Function(Base,[])),2),3)
@@ -306,7 +306,7 @@ test "wb interpret fnptr decay guard" {
   }
   // (*fp[2])(void) 链：括号内 *fp[2] → Pointer(Array(Base,2))；括号外
   // 函数后缀 → Function(Pointer(Array(Base,2)), [])
-  let mk = fn(v : Int) -> @ast.Expr? {
+  let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
   match

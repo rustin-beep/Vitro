@@ -13,346 +13,346 @@
 // 臂（编译期选调用形态）与 host 的执行期分发。落点裁定见生成器头注。
 
 ///|
-const HOST_OUTPUT : Int = 0
+const HOST_OUTPUT : Int32 = 0
 
 ///|
-const HOST_STEP : Int = 1
+const HOST_STEP : Int32 = 1
 
 ///|
-const HOST_MALLOC : Int = 2
+const HOST_MALLOC : Int32 = 2
 
 ///|
-const HOST_FREE : Int = 3
+const HOST_FREE : Int32 = 3
 
 ///|
-const HOST_PRINTF_N : Int = 15
+const HOST_PRINTF_N : Int32 = 15
 
 ///|
-const HOST_SCANF_N : Int = 21
+const HOST_SCANF_N : Int32 = 21
 
 ///|
-const HOST_STRLEN : Int = 30
+const HOST_STRLEN : Int32 = 30
 
 ///|
-const HOST_STRCPY : Int = 31
+const HOST_STRCPY : Int32 = 31
 
 ///|
-const HOST_STRCMP : Int = 32
+const HOST_STRCMP : Int32 = 32
 
 ///|
-const HOST_GETCHAR : Int = 33
+const HOST_GETCHAR : Int32 = 33
 
 ///|
-const HOST_PUTCHAR : Int = 34
+const HOST_PUTCHAR : Int32 = 34
 
 ///|
-const HOST_RAND : Int = 35
+const HOST_RAND : Int32 = 35
 
 ///|
-const HOST_SRAND : Int = 36
+const HOST_SRAND : Int32 = 36
 
 ///|
-const HOST_MEMSET : Int = 37
+const HOST_MEMSET : Int32 = 37
 
 ///|
-const HOST_EXIT : Int = 38
+const HOST_EXIT : Int32 = 38
 
 ///|
-const HOST_STRCAT : Int = 39
+const HOST_STRCAT : Int32 = 39
 
 ///|
-const HOST_ATOI : Int = 40
+const HOST_ATOI : Int32 = 40
 
 ///|
-const HOST_ABS : Int = 41
+const HOST_ABS : Int32 = 41
 
 ///|
-const HOST_ISDIGIT : Int = 42
+const HOST_ISDIGIT : Int32 = 42
 
 ///|
-const HOST_ISALPHA : Int = 43
+const HOST_ISALPHA : Int32 = 43
 
 ///|
-const HOST_ISLOWER : Int = 44
+const HOST_ISLOWER : Int32 = 44
 
 ///|
-const HOST_ISUPPER : Int = 45
+const HOST_ISUPPER : Int32 = 45
 
 ///|
-const HOST_TOLOWER : Int = 46
+const HOST_TOLOWER : Int32 = 46
 
 ///|
-const HOST_TOUPPER : Int = 47
+const HOST_TOUPPER : Int32 = 47
 
 ///|
-const HOST_ISSPACE : Int = 48
+const HOST_ISSPACE : Int32 = 48
 
 ///|
-const HOST_ISALNUM : Int = 49
+const HOST_ISALNUM : Int32 = 49
 
 ///|
-const HOST_ISPRINT : Int = 53
+const HOST_ISPRINT : Int32 = 53
 
 ///|
-const HOST_ISCNTRL : Int = 54
+const HOST_ISCNTRL : Int32 = 54
 
 ///|
-const HOST_ISXDIGIT : Int = 55
+const HOST_ISXDIGIT : Int32 = 55
 
 ///|
-const HOST_STRNCPY : Int = 56
+const HOST_STRNCPY : Int32 = 56
 
 ///|
-const HOST_MEMCPY : Int = 57
+const HOST_MEMCPY : Int32 = 57
 
 ///|
-const HOST_MEMMOVE : Int = 58
+const HOST_MEMMOVE : Int32 = 58
 
 ///|
-const HOST_FPRINTF : Int = 50
+const HOST_FPRINTF : Int32 = 50
 
 ///|
-const HOST_REALLOC : Int = 51
+const HOST_REALLOC : Int32 = 51
 
 ///|
-const HOST_QSORT : Int = 52
+const HOST_QSORT : Int32 = 52
 
 ///|
-const HOST_FOPEN : Int = 60
+const HOST_FOPEN : Int32 = 60
 
 ///|
-const HOST_FREAD : Int = 61
+const HOST_FREAD : Int32 = 61
 
 ///|
-const HOST_FWRITE : Int = 62
+const HOST_FWRITE : Int32 = 62
 
 ///|
-const HOST_FCLOSE : Int = 63
+const HOST_FCLOSE : Int32 = 63
 
 ///|
-const HOST_FEOF : Int = 64
+const HOST_FEOF : Int32 = 64
 
 ///|
-const HOST_FGETS : Int = 65
+const HOST_FGETS : Int32 = 65
 
 ///|
-const HOST_FPUTS : Int = 66
+const HOST_FPUTS : Int32 = 66
 
 ///|
-const HOST_SIN : Int = 70
+const HOST_SIN : Int32 = 70
 
 ///|
-const HOST_COS : Int = 71
+const HOST_COS : Int32 = 71
 
 ///|
-const HOST_SQRT : Int = 72
+const HOST_SQRT : Int32 = 72
 
 ///|
-const HOST_POW : Int = 73
+const HOST_POW : Int32 = 73
 
 ///|
-const HOST_ATAN : Int = 74
+const HOST_ATAN : Int32 = 74
 
 ///|
-const HOST_LOG : Int = 75
+const HOST_LOG : Int32 = 75
 
 ///|
-const HOST_EXP : Int = 76
+const HOST_EXP : Int32 = 76
 
 ///|
-const HOST_STRDUP : Int = 77
+const HOST_STRDUP : Int32 = 77
 
 ///|
-const HOST_UNGETC : Int = 78
+const HOST_UNGETC : Int32 = 78
 
 ///|
-const HOST_PUTS : Int = 79
+const HOST_PUTS : Int32 = 79
 
 ///|
-const HOST_CALLOC : Int = 80
+const HOST_CALLOC : Int32 = 80
 
 ///|
-const HOST_BSEARCH : Int = 81
+const HOST_BSEARCH : Int32 = 81
 
 ///|
-const HOST_SPRINTF : Int = 82
+const HOST_SPRINTF : Int32 = 82
 
 ///|
-const HOST_SNPRINTF : Int = 83
+const HOST_SNPRINTF : Int32 = 83
 
 ///|
-const HOST_SSCANF : Int = 84
+const HOST_SSCANF : Int32 = 84
 
 ///|
-const HOST_FGETC : Int = 85
+const HOST_FGETC : Int32 = 85
 
 ///|
-const HOST_FPUTC : Int = 86
+const HOST_FPUTC : Int32 = 86
 
 ///|
-const HOST_FSEEK : Int = 87
+const HOST_FSEEK : Int32 = 87
 
 ///|
-const HOST_FTELL : Int = 88
+const HOST_FTELL : Int32 = 88
 
 ///|
-const HOST_REWIND : Int = 89
+const HOST_REWIND : Int32 = 89
 
 ///|
-const HOST_STRNCAT : Int = 90
+const HOST_STRNCAT : Int32 = 90
 
 ///|
-const HOST_STRNCMP : Int = 91
+const HOST_STRNCMP : Int32 = 91
 
 ///|
-const HOST_MEMCMP : Int = 92
+const HOST_MEMCMP : Int32 = 92
 
 ///|
-const HOST_STRCHR : Int = 93
+const HOST_STRCHR : Int32 = 93
 
 ///|
-const HOST_STRRCHR : Int = 94
+const HOST_STRRCHR : Int32 = 94
 
 ///|
-const HOST_STRSTR : Int = 95
+const HOST_STRSTR : Int32 = 95
 
 ///|
-const HOST_MEMCHR : Int = 96
+const HOST_MEMCHR : Int32 = 96
 
 ///|
-const HOST_ATOF : Int = 97
+const HOST_ATOF : Int32 = 97
 
 ///|
-const HOST_ATOL : Int = 98
+const HOST_ATOL : Int32 = 98
 
 ///|
-const HOST_TAN : Int = 99
+const HOST_TAN : Int32 = 99
 
 ///|
-const HOST_LOG10 : Int = 100
+const HOST_LOG10 : Int32 = 100
 
 ///|
-const HOST_FABS : Int = 101
+const HOST_FABS : Int32 = 101
 
 ///|
-const HOST_CEIL : Int = 102
+const HOST_CEIL : Int32 = 102
 
 ///|
-const HOST_FLOOR : Int = 103
+const HOST_FLOOR : Int32 = 103
 
 ///|
-const HOST_ROUND : Int = 104
+const HOST_ROUND : Int32 = 104
 
 ///|
-const HOST_FMOD : Int = 105
+const HOST_FMOD : Int32 = 105
 
 ///|
-const HOST_ISGRAPH : Int = 106
+const HOST_ISGRAPH : Int32 = 106
 
 ///|
-const HOST_ISPUNCT : Int = 107
+const HOST_ISPUNCT : Int32 = 107
 
 ///|
-const HOST_ISBLANK : Int = 108
+const HOST_ISBLANK : Int32 = 108
 
 ///|
-const HOST_ASIN : Int = 109
+const HOST_ASIN : Int32 = 109
 
 ///|
-const HOST_ACOS : Int = 110
+const HOST_ACOS : Int32 = 110
 
 ///|
-const HOST_ATAN2 : Int = 111
+const HOST_ATAN2 : Int32 = 111
 
 ///|
-const HOST_SINH : Int = 112
+const HOST_SINH : Int32 = 112
 
 ///|
-const HOST_COSH : Int = 113
+const HOST_COSH : Int32 = 113
 
 ///|
-const HOST_TANH : Int = 114
+const HOST_TANH : Int32 = 114
 
 ///|
-const HOST_LLABS : Int = 115
+const HOST_LLABS : Int32 = 115
 
 ///|
-const HOST_ABORT : Int = 116
+const HOST_ABORT : Int32 = 116
 
 ///|
-const HOST_STRTOL : Int = 117
+const HOST_STRTOL : Int32 = 117
 
 ///|
-const HOST_STRTOD : Int = 118
+const HOST_STRTOD : Int32 = 118
 
 ///|
-const HOST_STRERROR : Int = 119
+const HOST_STRERROR : Int32 = 119
 
 ///|
-const HOST_FFLUSH : Int = 120
+const HOST_FFLUSH : Int32 = 120
 
 ///|
-const HOST_PERROR : Int = 121
+const HOST_PERROR : Int32 = 121
 
 ///|
-const HOST_CLEARERR : Int = 122
+const HOST_CLEARERR : Int32 = 122
 
 ///|
-const HOST_TIME : Int = 123
+const HOST_TIME : Int32 = 123
 
 ///|
-const HOST_CLOCK : Int = 124
+const HOST_CLOCK : Int32 = 124
 
 ///|
-const HOST_ASSERT_FAIL : Int = 125
+const HOST_ASSERT_FAIL : Int32 = 125
 
 ///|
-const HOST_SET_ARRAY_GUARD : Int = 131
+const HOST_SET_ARRAY_GUARD : Int32 = 131
 
 ///|
-const HOST_CLEAR_ARRAY_GUARD : Int = 132
+const HOST_CLEAR_ARRAY_GUARD : Int32 = 132
 
 ///|
-const HOST_REMOVE : Int = 126
+const HOST_REMOVE : Int32 = 126
 
 ///|
-const HOST_RENAME : Int = 127
+const HOST_RENAME : Int32 = 127
 
 ///|
-const HOST_STRPBRK : Int = 128
+const HOST_STRPBRK : Int32 = 128
 
 ///|
-const HOST_STRSPN : Int = 129
+const HOST_STRSPN : Int32 = 129
 
 ///|
-const HOST_STRCSPN : Int = 130
+const HOST_STRCSPN : Int32 = 130
 
 ///|
-const HOST_VA_START : Int = 140
+const HOST_VA_START : Int32 = 140
 
 ///|
-const HOST_VA_ARG : Int = 141
+const HOST_VA_ARG : Int32 = 141
 
 ///|
-const HOST_VA_END : Int = 142
+const HOST_VA_END : Int32 = 142
 
 ///|
-const HOST_VA_COPY : Int = 143
+const HOST_VA_COPY : Int32 = 143
 
 ///|
-const HOST_UNREACHABLE : Int = 144
+const HOST_UNREACHABLE : Int32 = 144
 
 ///|
-const HOST_DIFFTIME : Int = 145
+const HOST_DIFFTIME : Int32 = 145
 
 ///|
-const HOST_VPRINTF : Int = 146
+const HOST_VPRINTF : Int32 = 146
 
 ///|
-const HOST_VFPRINTF : Int = 147
+const HOST_VFPRINTF : Int32 = 147
 
 ///|
-const HOST_VSNPRINTF : Int = 148
+const HOST_VSNPRINTF : Int32 = 148
 
 ///|
 /// 114 名 → host id **全表**（序 = Rust 源匹配臂序；含别名——如
@@ -362,7 +362,7 @@ const HOST_VSNPRINTF : Int = 148
 /// 函数照搬 Rust 语义，对 14 个 PURE 名**短路返回 None**（`by_user_name`
 /// 的第一条分支），因此无法回答"这个名字在不在 host 表里"。路由派生
 /// （`route.mbt`）要的是原始成员关系，故另出本表。
-let host_func_pairs : Array[(String, Int)] = [
+let host_func_pairs : Array[(String, Int32)] = [
   ("print_int", HOST_OUTPUT),
   ("__vitro_output", HOST_OUTPUT),
   ("__vitro_step", HOST_STEP),
@@ -494,7 +494,7 @@ fn is_bytecode_libc_pure(name : String) -> Bool {
 ///|
 /// 用户函数名 → host id（Rust `by_user_name` 逐对照搬；PURE 短路在
 /// match 之前——PURE 名的 Some 臂不可达，由锚的 None 断言覆盖）。
-pub fn host_func_id_by_user_name(name : String) -> Int? {
+pub fn host_func_id_by_user_name(name : String) -> Int32? {
   if is_bytecode_libc_pure(name) {
     return None
   }

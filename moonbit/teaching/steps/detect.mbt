@@ -77,7 +77,7 @@ pub fn detect_sorting(
   name_lower : String,
   features : FuncFeatures,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // 冒泡排序

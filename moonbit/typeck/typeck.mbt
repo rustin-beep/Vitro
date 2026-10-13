@@ -33,9 +33,9 @@
 /// file_id、无 span 是 O4 登记债，协议层不动）。
 pub(all) struct TypeError {
   message : String
-  line : Int
-  column : Int
-  code : Int
+  line : Int32
+  column : Int32
+  code : Int32
 }
 
 ///|
@@ -50,7 +50,7 @@ pub struct TypeChecker {
   static_global_files : Map[String, Array[String]]
   // #50 批①（2026-10-10）：static 全局首次声明行——E3059 前向序检查
   //（使用点早于任何声明 = 对齐 Clang use-before-declaration）
-  static_global_decl_lines : Map[String, Int]
+  static_global_decl_lines : Map[String, Int32]
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   // 作用域栈
@@ -58,8 +58,8 @@ pub struct TypeChecker {
   // 上下文标量（Rust 同名照搬——visitor 期间可变）
   mut current_func_return : @ast.Type?
   mut current_file : String
-  mut loop_depth : Int
-  mut switch_depth : Int
+  mut loop_depth : Int32
+  mut switch_depth : Int32
   // 当前函数形参名集合（sizeof 的数组形参退化 W3052 判据；visit_func_decl
   // 填充/清空——Rust lib.rs:45，骨架批漏项本批补）
   current_func_params : Set[String]

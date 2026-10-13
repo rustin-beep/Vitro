@@ -16,7 +16,7 @@
 // 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）。
 
 ///|
-pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int {
+pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
   ensure_include_reader()
   let mut method_name = ""
   let mut params = "{}"

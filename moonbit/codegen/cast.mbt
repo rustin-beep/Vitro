@@ -95,7 +95,7 @@ fn BytecodeGen::gen_sizeof_expr(
     })
   if is_vla {
     // VLA sizeof：运行时维度乘积展开（与 emit_vla_alloc 同构）
-    let array_info : (Array[Int], Array[@ast.Expr], Int)? = match operand {
+    let array_info : (Array[Int32], Array[@ast.Expr], Int32)? = match operand {
       Some(op) =>
         match op.ty() {
           Array(_, _, d2, _, _, vd2) =>
@@ -216,7 +216,7 @@ fn BytecodeGen::gen_offsetof_expr(
 ///|
 /// Rust `type_align_impl` 照搬：成员最大自然对齐，自含 struct（T-P0-8
 /// 同源环）以 visiting 集防递归。
-fn BytecodeGen::type_align(self : BytecodeGen, ty : @ast.Type) -> Int {
+fn BytecodeGen::type_align(self : BytecodeGen, ty : @ast.Type) -> Int32 {
   type_align_impl(ty, self.struct_defs, self.union_defs, Set([]))
 }
 
@@ -226,7 +226,7 @@ fn type_align_impl(
   struct_defs : Map[String, Array[@ast.StructField]],
   union_defs : Map[String, Array[@ast.StructField]],
   visiting : Set[String],
-) -> Int {
+) -> Int32 {
   match ty.kind() {
     TK_Char => 1
     TK_Double | TK_LongLong => 8

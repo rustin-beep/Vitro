@@ -12,9 +12,9 @@
 fn VitroVM::execute_debug(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> StepResult? {
   match op {
     StepEvent => {

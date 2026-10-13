@@ -32,7 +32,7 @@ struct FuncSymbol {
   is_variadic : Bool
   param_defaults : Array[@ast.Expr?]
   is_definition : Bool
-  first_decl_line : Int
+  first_decl_line : Int32
 }
 
 ///|

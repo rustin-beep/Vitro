@@ -351,7 +351,7 @@ fn BytecodeGen::emit_compound(
   is_float : Bool,
   is_long_long : Bool,
   is_unsigned : Bool,
-  ptr_step : Int,
+  ptr_step : Int32,
   left_is_ptr : Bool,
   loc : @source.SourceLoc,
 ) -> Unit {
@@ -532,7 +532,7 @@ fn BytecodeGen::assign_mem_op(
   left_ty : @ast.Type,
   left_is_ptr : Bool,
   is_ptr_compound : Bool,
-  ptr_step : Int,
+  ptr_step : Int32,
   loc : @source.SourceLoc,
   elem_kind : @ast.TypeKind,
 ) -> Unit {

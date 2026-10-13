@@ -60,7 +60,7 @@ fn print_help() -> Unit {
 }
 
 ///|
-extern "C" fn c_exit(code : Int) -> Unit = "exit"
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
 /// stdout 字节直写（stdout_stub.c 注入——≥0x80 字节原样落盘，绕开
@@ -69,10 +69,10 @@ extern "C" fn c_exit(code : Int) -> Unit = "exit"
 extern "C" fn write_stdout_stub(b : Bytes) -> Unit = "moonbit_vitro_write_stdout"
 
 ///|
-extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"
+extern "C" fn clock_secs_stub() -> Int32 = "moonbit_vitro_clock_secs"
 
 ///|
-extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac"
+extern "C" fn clock_millis_frac_stub() -> Int32 = "moonbit_vitro_clock_millis_frac"
 
 ///|
 fn make_clock() -> () -> UInt64 {

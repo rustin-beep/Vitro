@@ -9,7 +9,7 @@ pub fn detect_tree(
   name_lower : String,
   features : FuncFeatures,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // —— bst 家族（else-if 链：校验 > 插入 > 查找 > 删除）——

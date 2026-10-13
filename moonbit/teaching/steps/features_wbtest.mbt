@@ -6,7 +6,7 @@
 
 ///|
 /// AST 构造 helper（wbtest 专用——最简 SourceLoc/类型形态）。
-fn loc(line : Int) -> @source.SourceLoc {
+fn loc(line : Int32) -> @source.SourceLoc {
   @source.SourceLoc::new(line, 1)
 }
 

@@ -11,9 +11,9 @@
 /// 会话级配置（跨 run 存活；reset 保留）。
 pub(all) struct SessionConfig {
   /// 步数保险丝（会话级）——全速运行的总步数上限。
-  mut max_steps : Int
+  mut max_steps : Int32
   /// 调用深度保险丝（会话级）——栈帧深度上限。
-  mut call_depth_limit : Int
+  mut call_depth_limit : Int32
   /// 确定性模式（时钟恒 0 / LCG 固定种子——教学可回放前提）。
   mut deterministic : Bool
 } derive(Debug)

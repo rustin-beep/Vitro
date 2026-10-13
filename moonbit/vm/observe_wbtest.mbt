@@ -7,11 +7,11 @@
 ///|
 fn mksym(
   name : String,
-  addr : UInt,
+  addr : UInt32,
   is_local : Bool,
   ty : @ast.Type,
   func_name : String,
-  decl_line : Int,
+  decl_line : Int32,
 ) -> @bytecode.Symbol {
   {
     name,
@@ -31,8 +31,8 @@ fn mksym(
 ///|
 fn mkframe(
   func_name : String,
-  locals_base : UInt,
-  caller_line : Int,
+  locals_base : UInt32,
+  caller_line : Int32,
 ) -> CallFrame {
   {
     return_ip: Some(0),

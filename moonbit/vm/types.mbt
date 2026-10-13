@@ -48,17 +48,17 @@ pub extend StepResult with Eq::{not_equal, equal}
 /// （勘察 §2.1 调用约定条目的等价变换）。
 pub(all) struct CallFrame {
   /// 返回地址；`None` = 宿主回调帧（返回即回 host 分发点）。
-  return_ip : Int?
+  return_ip : Int32?
   /// 本帧局部变量区基址（线性内存编址）。
-  locals_base : UInt
+  locals_base : UInt32
   /// 本帧局部变量数。
-  local_count : Int
+  local_count : Int32
   /// 函数名（trap 文案 / 教学调用栈展示）。
   func_name : String
   /// 调用前值栈深度（返回时截回）。
-  original_stack_top : UInt
+  original_stack_top : UInt32
   /// 调用者行号（教学调用栈展示）。
-  caller_line : Int
+  caller_line : Int32
   /// 栈上局部数组缓冲区表（V-P1-6 栈缓冲容量校验；随函数 meta 克隆进帧）。
   local_buffers : Array[@bytecode.LocalBuffer]
 } derive(Eq, Debug)
@@ -73,11 +73,11 @@ pub extend CallFrame with Eq::{not_equal, equal}
 /// 可视化事件（照搬 Rust `VisEventData`，`runtime_state.rs:17-24`；
 /// S8 teaching/steps 消费——`StepPayload` 的词汇来源之一）。
 pub(all) struct VisEventData {
-  ty : Int
-  line : Int
-  extra0 : Int
-  extra1 : Int
-  extra2 : Int
+  ty : Int32
+  line : Int32
+  extra0 : Int32
+  extra1 : Int32
+  extra2 : Int32
   context : String
 } derive(Eq, Debug)
 
@@ -134,10 +134,10 @@ pub extend ExecMode with Eq::{not_equal, equal}
 /// `frame_idx` 记录压栈时的 `call_stack` 深度（跨帧展开时判断 handler
 /// 是否仍属于当前帧）。
 pub(all) struct HandlerFrame {
-  catch_ip : Int
-  frame_idx : Int
-  stack_depth : Int
-  mem_stack_top : UInt
+  catch_ip : Int32
+  frame_idx : Int32
+  stack_depth : Int32
+  mem_stack_top : UInt32
 } derive(Eq, Debug)
 
 ///|

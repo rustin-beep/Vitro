@@ -11,13 +11,13 @@
 
 ///|
 /// 符号表索引。
-pub type SymIdx = Int
+pub type SymIdx = Int32
 
 ///|
 /// 使用符号表的变量快照（不变数据 dedup）。
 pub(all) struct ApiVarSnapshotRef {
   name_idx : SymIdx
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty_name_idx : SymIdx
   /// mut：encode 差分累积应用（current_full_ref）使用形态
@@ -41,9 +41,9 @@ pub extend VarDelta with Debug::{to_repr}
 /// 使用符号表的指针快照。
 pub(all) struct PointerSnapshotRef {
   name_idx : SymIdx
-  addr : UInt
+  addr : UInt32
   ty_name_idx : SymIdx
-  target_addr : UInt
+  target_addr : UInt32
   target_name_idx : SymIdx
   status : PointerStatus
 } derive(Debug)
@@ -79,7 +79,7 @@ pub extend AccessedVarRef with Debug::{to_repr}
 /// 使用符号表的调用帧。
 pub(all) struct ApiFrameInfoRef {
   func_name_idx : SymIdx
-  return_line : Int
+  return_line : Int32
 } derive(Debug)
 
 ///|
@@ -100,15 +100,15 @@ pub extend AlgorithmStepSnapshotRef with Debug::{to_repr}
 ///|
 /// 使用符号表的 StepPayload（基准快照）。
 pub(all) struct StepPayloadRef {
-  step_index : Int
-  code_line : Int
+  step_index : Int32
+  code_line : Int32
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
   local_vars : Array[ApiVarSnapshotRef]
   call_stack : Array[ApiFrameInfoRef]
   vis_events : Array[VisEvent]
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   accessed_vars : Array[AccessedVarRef]
   array_snapshots : Array[ArraySnapshotRef]
@@ -122,8 +122,8 @@ pub extend StepPayloadRef with Debug::{to_repr}
 ///|
 /// 差分 StepPayload（基于前一个 StepPayloadRef 或 StepPayloadDelta）。
 pub(all) struct StepPayloadDelta {
-  step_index : Int
-  code_line : Int
+  step_index : Int32
+  code_line : Int32
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
@@ -137,7 +137,7 @@ pub(all) struct StepPayloadDelta {
   call_stack : Array[ApiFrameInfoRef]?
   /// None 表示当前步无可视化事件；Some(vec) 为当前步完整事件列表。
   vis_events : Array[VisEvent]?
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   /// None 表示访问变量集合无变化；Some(vec) 为完整新集合。
   accessed_vars : Array[AccessedVarRef]?
@@ -167,10 +167,10 @@ pub(all) struct StepStreamBatch {
   trapped : Bool
   waiting_input : Bool
   paused : Bool
-  current_line : Int
+  current_line : Int32
   trap_message : String?
   /// 当前 frame_cache 窗口起始步号，供前端同步窗口起点。
-  cache_start_step : Int
+  cache_start_step : Int32
 } derive(Debug)
 
 ///|
@@ -469,7 +469,7 @@ fn diff_pointer_snapshots(
 /// prev_vars，保证后续步差分基于累积状态而非相邻裸比较）。
 pub fn encode_payloads(
   payloads : Array[StepPayload],
-  cache_start_step : Int,
+  cache_start_step : Int32,
 ) -> StepStreamBatch {
   if payloads.is_empty() {
     return {

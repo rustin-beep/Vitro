@@ -11,9 +11,9 @@
 fn VitroVM::execute_stack(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     PushConst => self.push_i32(operand)
@@ -44,7 +44,7 @@ fn VitroVM::execute_stack(
 
 ///|
 /// 当前帧局部变量名（派生索引；缺名回退——Rust `local_{n}` 同款）。
-fn VitroVM::local_var_name(self : VitroVM, offset : Int) -> String {
+fn VitroVM::local_var_name(self : VitroVM, offset : Int32) -> String {
   if self.call_stack.length() > 0 {
     let frame = self.call_stack[self.call_stack.length() - 1]
     match self.locals_by_func.get(frame.func_name) {
@@ -61,7 +61,7 @@ fn VitroVM::local_var_name(self : VitroVM, offset : Int) -> String {
 
 ///|
 /// 全局变量名（派生索引；缺名回退 `global_{n}`）。
-fn VitroVM::global_var_name(self : VitroVM, offset : Int) -> String {
+fn VitroVM::global_var_name(self : VitroVM, offset : Int32) -> String {
   match self.global_syms.get(offset) {
     Some(n) => n
     None => "global_" + offset.to_string()
@@ -75,9 +75,9 @@ fn VitroVM::global_var_name(self : VitroVM, offset : Int) -> String {
 fn VitroVM::execute_local(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     LoadLocal => {
@@ -165,9 +165,9 @@ fn VitroVM::execute_local(
 fn VitroVM::execute_global(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   let addr = @bytecode.GLOBAL_START + operand.reinterpret_as_uint()
   match op {

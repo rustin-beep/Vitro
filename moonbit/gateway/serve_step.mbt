@@ -31,7 +31,7 @@ priv struct SessionLines {
 ///|
 impl @time_travel.SourceLineProvider for SessionLines with fn source_line_at(
   self : SessionLines,
-  line : Int,
+  line : Int32,
 ) -> String? {
   self.s.source_line_at(line)
 }
@@ -436,7 +436,7 @@ fn serve_breakpoints_set_frame(
   id : Json,
   params : Json,
 ) -> (String, Bool) {
-  let lines : Array[Int] = []
+  let lines : Array[Int32] = []
   match json_field(params, "lines") {
     Array(arr) =>
       for v in arr {

@@ -23,7 +23,7 @@
 /// ast 形态（文本化在消费方 collector：L9 可 import ast+protocol）。
 pub(all) struct VariableSnapshotData {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
   /// 位模式值（Rust `u64 as i64`：Double 按位重解释，其余按 i32 符号扩展）。
@@ -50,23 +50,23 @@ pub(all) struct ArraySnapshotData {
 ///|
 /// 数组快照元素上限（Rust MAX_ARRAY_SNAPSHOT_ELEMENTS = 256——`int
 /// a[50000]` × 2000 帧窗口 5~20GB 形态的截断锚，协议字段级标记）。
-const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int = 256
+const MAX_ARRAY_SNAPSHOT_ELEMENTS : Int32 = 256
 
 ///|
 /// 当前执行行（state.rs:566 照搬——读口）。
-pub fn VitroVM::get_current_line(self : VitroVM) -> Int {
+pub fn VitroVM::get_current_line(self : VitroVM) -> Int32 {
   self.current_line
 }
 
 ///|
 /// 调用栈深度（观测窄口之一）。
-pub fn VitroVM::call_stack_len(self : VitroVM) -> Int {
+pub fn VitroVM::call_stack_len(self : VitroVM) -> Int32 {
   self.call_stack.length()
 }
 
 ///|
 /// 调用栈按层读（观测窄口之二——0 = 最外层，len-1 = 当前帧）。
-pub fn VitroVM::call_stack_at(self : VitroVM, idx : Int) -> CallFrame {
+pub fn VitroVM::call_stack_at(self : VitroVM, idx : Int32) -> CallFrame {
   self.call_stack[idx]
 }
 
@@ -105,7 +105,7 @@ pub fn VitroVM::get_variable_snapshot(
   let current_line = self.get_current_line()
   let result : Array[VariableSnapshotData] = []
   // 名字 → (已选条目声明行, result 下标)
-  let chosen : Map[String, (Int, Int)] = Map([])
+  let chosen : Map[String, (Int32, Int32)] = Map([])
   for sym in self.symbols {
     if sym.func_name != "" && sym.func_name != current_func {
       continue
@@ -116,7 +116,7 @@ pub fn VitroVM::get_variable_snapshot(
     if sym.decl_line > 0 && current_line > 0 && sym.decl_line > current_line {
       continue
     }
-    let vaddr : UInt = if sym.is_local {
+    let vaddr : UInt32 = if sym.is_local {
       match frame {
         Some(f) => f.locals_base + sym.addr
         None => continue
@@ -174,7 +174,7 @@ pub fn VitroVM::get_variable_snapshot(
 /// 类型无布局信息只精确匹配（schema §2.5 已知限制）。
 pub fn VitroVM::find_variable_name_at_addr(
   self : VitroVM,
-  addr : UInt,
+  addr : UInt32,
 ) -> String? {
   // 全局先行（Rust 同序）
   for sym in self.symbols {
@@ -220,7 +220,7 @@ pub fn VitroVM::find_variable_name_at_addr(
 /// 2026-10-01：原误用 `sym.ty.kind()`——数组自身恒落默认臂 4，double/char
 /// 数组区间归属双向出错；oracle memory.rs:490 用 `base_kind`，与
 /// get_array_snapshots 取值口径同源——char 1 / double·long long 8 / 其余 4）。
-fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
+fn slot_covers(sym : @bytecode.Symbol, base : UInt32, addr : UInt32) -> Bool {
   if base == addr {
     return true
   }
@@ -231,7 +231,7 @@ fn slot_covers(sym : @bytecode.Symbol, base : UInt, addr : UInt) -> Bool {
   if count <= 0 {
     return false
   }
-  let elem_size : UInt = match sym.ty.base_kind() {
+  let elem_size : UInt32 = match sym.ty.base_kind() {
     TK_Char => 1U
     TK_Double | TK_LongLong => 8U
     _ => 4U
@@ -254,7 +254,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     if !(sym.ty.kind() is TK_Array) {
       continue
     }
-    let vaddr : UInt = if sym.is_local {
+    let vaddr : UInt32 = if sym.is_local {
       match frame {
         Some(f) => f.locals_base + sym.addr
         None => continue
@@ -271,7 +271,7 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     // `base_element_type`（只剥数组不解指针，oracle 显示层同款）。原误用
     // base_element_type 兼任语义宽度：int*[2] 落 "?"、char*[2] 步长 4。
     let bk = sym.ty.base_kind()
-    let elem_size : UInt = match bk {
+    let elem_size : UInt32 = match bk {
       TK_Char => 1U
       TK_Int | TK_Pointer | TK_Float => 4U
       TK_Double | TK_LongLong => 8U
@@ -347,20 +347,20 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
 
 ///|
 /// 最近访问变量条数（观测窄口——last_accessed_vars 每步重置、不随快照）。
-pub fn VitroVM::accessed_len(self : VitroVM) -> Int {
+pub fn VitroVM::accessed_len(self : VitroVM) -> Int32 {
   self.last_accessed_vars.length()
 }
 
 ///|
 /// 最近访问变量按序读（Rust get_last_accessed_vars → collector 消费面）。
-pub fn VitroVM::accessed_at(self : VitroVM, idx : Int) -> VariableAccess {
+pub fn VitroVM::accessed_at(self : VitroVM, idx : Int32) -> VariableAccess {
   self.last_accessed_vars[idx]
 }
 
 ///|
 /// 执行热力图读口（窄口——`heatmap` 是可变 Map，字段直读会泄漏可写句柄，
 /// call_stack_at 同款纪律）。行未命中返回 0（Rust `unwrap_or(0)` 同口径）。
-pub fn VitroVM::heatmap_count_at(self : VitroVM, line : Int) -> UInt64 {
+pub fn VitroVM::heatmap_count_at(self : VitroVM, line : Int32) -> UInt64 {
   match self.heatmap.get(line) {
     Some(v) => v
     None => 0UL
@@ -375,7 +375,7 @@ pub fn VitroVM::clear_breakpoints(self : VitroVM) -> Unit {
 
 ///|
 /// 加断点行号（Rust vm.add_breakpoint；非正行号由调用方过滤——serve 层口径）。
-pub fn VitroVM::add_breakpoint(self : VitroVM, line : Int) -> Unit {
+pub fn VitroVM::add_breakpoint(self : VitroVM, line : Int32) -> Unit {
   self.breakpoints.add(line)
 }
 
@@ -383,8 +383,8 @@ pub fn VitroVM::add_breakpoint(self : VitroVM, line : Int) -> Unit {
 /// 生效断点行号（升序读回——breakpoints.set 回显的真源；病 7 修复配套，
 /// #47 2026-10-09：回显须与实际生效集一致——过滤/去重后的 Set 视图，
 /// 而非请求原始数组）。
-pub fn VitroVM::breakpoints_sorted(self : VitroVM) -> Array[Int] {
-  let arr : Array[Int] = []
+pub fn VitroVM::breakpoints_sorted(self : VitroVM) -> Array[Int32] {
+  let arr : Array[Int32] = []
   for l in self.breakpoints {
     arr.push(l)
   }

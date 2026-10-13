@@ -178,7 +178,7 @@ fn[P] Pp::define_macro(
   self : Pp[P],
   name : String,
   def : @token.MacroDef,
-  line : Int,
+  line : Int32,
 ) -> Unit {
   match self.macros.get(name) {
     Some(existing) =>

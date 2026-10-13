@@ -5,7 +5,7 @@
 fn[P : @token.SourceProvider] Pp::handle_directive(
   self : Pp[P],
   rest : String,
-  line : Int,
+  line : Int32,
   out : Array[@token.Token],
 ) -> Unit {
   let rest = leading_trim(rest)
@@ -134,7 +134,7 @@ fn read_ident(s : String) -> String {
 fn[P : @token.SourceProvider] Pp::handle_if(
   self : Pp[P],
   raw : String,
-  line : Int,
+  line : Int32,
 ) -> Unit {
   let parent_skipping = self.is_skipping()
   let state : CondState = if parent_skipping {
@@ -151,7 +151,7 @@ fn[P : @token.SourceProvider] Pp::handle_if(
 fn[P : @token.SourceProvider] Pp::handle_elif(
   self : Pp[P],
   raw : String,
-  line : Int,
+  line : Int32,
 ) -> Unit {
   let parent_skipping = self.parent_skipping()
   let n = self.cond_stack.length()
@@ -181,7 +181,7 @@ fn[P : @token.SourceProvider] Pp::handle_elif(
 fn[P] Pp::handle_elifdef(
   self : Pp[P],
   after : String,
-  line : Int,
+  line : Int32,
   negated~ : Bool,
 ) -> Unit {
   let parent_skipping = self.parent_skipping()
@@ -214,7 +214,7 @@ fn[P] Pp::handle_elifdef(
 }
 
 ///|
-fn[P] Pp::handle_else(self : Pp[P], line : Int) -> Unit {
+fn[P] Pp::handle_else(self : Pp[P], line : Int32) -> Unit {
   let parent_skipping = self.parent_skipping()
   let n = self.cond_stack.length()
   if n == 0 {
@@ -236,7 +236,7 @@ fn[P] Pp::handle_else(self : Pp[P], line : Int) -> Unit {
 }
 
 ///|
-fn[P] Pp::handle_endif(self : Pp[P], line : Int) -> Unit {
+fn[P] Pp::handle_endif(self : Pp[P], line : Int32) -> Unit {
   // U1#11：include 边界记账——头文件内多余的 #endif 不得弹掉包含者的条件组
   if self.include_stack.length() > 0 {
     let boundary = self.include_stack[self.include_stack.length() - 1].cond_boundary
@@ -275,7 +275,7 @@ fn parse_include_path(after : String) -> (String, Bool)? {
   if delimiter != '<' && delimiter != '"' {
     return None
   }
-  let end_char : Int = if delimiter == '<' { '>' } else { '"' }
+  let end_char : Int32 = if delimiter == '<' { '>' } else { '"' }
   let mut i = 1
   while i < s.length() {
     if s[i].to_int() == end_char {
@@ -291,7 +291,7 @@ fn parse_include_path(after : String) -> (String, Bool)? {
 fn[P : @token.SourceProvider] Pp::handle_include(
   self : Pp[P],
   after : String,
-  line : Int,
+  line : Int32,
   out : Array[@token.Token],
 ) -> Unit {
   let path_info = parse_include_path(after)
@@ -446,7 +446,7 @@ fn[P] Pp::pop_include_frame(self : Pp[P]) -> IncludeFrame? {
 ///|
 // ---------- define ----------
 
-fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int) -> Unit {
+fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int32) -> Unit {
   let after = leading_trim(after)
   if after.length() == 0 {
     self.err("#define 后预期宏名称", line, code=E1005_InvalidDefine)
@@ -530,17 +530,17 @@ fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int) -> Unit {
 }
 
 ///|
-fn is_ident_start(c : Int) -> Bool {
+fn is_ident_start(c : Int32) -> Bool {
   (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
 }
 
 ///|
-fn is_ident_char(c : Int) -> Bool {
+fn is_ident_char(c : Int32) -> Bool {
   is_ident_start(c) || (c >= '0' && c <= '9')
 }
 
 ///|
-fn count_char(s : String, target : Char) -> Int {
+fn count_char(s : String, target : Char) -> Int32 {
   let mut n = 0
   for c in s {
     if c == target {
@@ -553,7 +553,7 @@ fn count_char(s : String, target : Char) -> Int {
 ///|
 /// 路径的目录部分（最后一个 '/' 之前；无 '/' 返回 ""——同目录相对语义）。
 fn dirname_of(path : String) -> String {
-  let mut last : Int? = None
+  let mut last : Int32? = None
   for i = 0; i < path.length(); i = i + 1 {
     if path[i] == '/' {
       last = Some(i)

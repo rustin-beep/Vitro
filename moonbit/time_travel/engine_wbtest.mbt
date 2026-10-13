@@ -89,8 +89,8 @@ test "engine_reset_clears_all" {
 /// 指令流 helper（行号可指定——帧 code_line 维度锚需要交错行号）。
 fn instr_at(
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
+  operand : Int32,
+  line : Int32,
 ) -> @opcode.Instruction {
   @opcode.Instruction::new(op, operand, @source.SourceLoc::new(line, 1))
 }
@@ -98,20 +98,20 @@ fn instr_at(
 ///|
 /// 源码行供给（FakeProvider——行文本只需非空即可走行号兜底标签）。
 struct FakeProvider {
-  lines : Map[Int, String]
+  lines : Map[Int32, String]
 }
 
 ///|
 impl SourceLineProvider for FakeProvider with fn source_line_at(
   self : FakeProvider,
-  line : Int,
+  line : Int32,
 ) -> String? {
   self.lines.get(line)
 }
 
 ///|
 fn fake_src() -> FakeProvider {
-  let m : Map[Int, String] = Map([])
+  let m : Map[Int32, String] = Map([])
   m.set(1, "int acc = 0;")
   m.set(2, "acc += 1;")
   m.set(3, "return acc;")
@@ -122,7 +122,7 @@ fn fake_src() -> FakeProvider {
 /// 程序：StepEvent/Nop 交替 ×n 步（行号 1/2 交错——vm 的 current_line
 /// 由 StepEvent 指令驱动〔编译器发射形态〕，纯 Nop 流恒 0；code_line 与
 /// 行末去重锚需要交错行号面）。
-fn nop_program(n : Int) -> Array[@opcode.Instruction] {
+fn nop_program(n : Int32) -> Array[@opcode.Instruction] {
   let out : Array[@opcode.Instruction] = []
   for i = 0; i < n; i = i + 1 {
     let line = 1 + i % 3

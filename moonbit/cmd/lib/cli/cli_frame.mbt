@@ -33,7 +33,7 @@ fn jstr(v : Json) -> String {
 }
 
 ///|
-fn jint(v : Json) -> Int {
+fn jint(v : Json) -> Int32 {
   // 协议字段（line/column/return_value/steps_executed）恒整型——Double
   // 截断无损（域 < 2^31）；浮点形态按 0 兜底（协议破损，渲染层自然退化）
   match v {
@@ -119,8 +119,8 @@ fn frame_pipeline(
   clock_millis : () -> UInt64,
   write_stdout : (Bytes) -> Unit,
   json_mode : Bool,
-  compile_mode? : Bool = false,
-) -> Int {
+  compile_mode~ : Bool = false,
+) -> Int32 {
   let mut id = 0
   let inv_raw = fn(method_name : String, params : String) -> String {
     id += 1

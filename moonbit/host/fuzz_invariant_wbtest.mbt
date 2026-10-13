@@ -15,28 +15,28 @@
 // ---- 随机源：LCG（与 @host host_rand 同族参数；seed 固定可复现） ----
 
 struct FRng {
-  mut state : Int
+  mut state : Int32
 }
 
 ///|
-fn FRng::new(seed : Int) -> FRng {
+fn FRng::new(seed : Int32) -> FRng {
   { state: seed, }
 }
 
 ///|
-fn FRng::next(self : FRng) -> Int {
+fn FRng::next(self : FRng) -> Int32 {
   self.state = (self.state * 1103515245 + 12345) & 0x7FFFFFFF
   self.state
 }
 
 ///|
 /// 高位取数：LCG 低位周期短（% 10 取低位实测 8 连不出现 free 分支——探针实锤），range/pick 一律用位 16..31。
-fn FRng::high(self : FRng) -> Int {
+fn FRng::high(self : FRng) -> Int32 {
   self.next() >> 16
 }
 
 ///|
-fn FRng::range(self : FRng, lo : Int, hi : Int) -> Int {
+fn FRng::range(self : FRng, lo : Int32, hi : Int32) -> Int32 {
   if hi <= lo {
     return lo
   }
@@ -44,7 +44,7 @@ fn FRng::range(self : FRng, lo : Int, hi : Int) -> Int {
 }
 
 ///|
-fn FRng::pick(self : FRng, addrs : Array[UInt]) -> UInt? {
+fn FRng::pick(self : FRng, addrs : Array[UInt32]) -> UInt32? {
   if addrs.length() == 0 {
     return None
   }
@@ -54,8 +54,8 @@ fn FRng::pick(self : FRng, addrs : Array[UInt]) -> UInt? {
 // ---- region 视图（MemoryMap 导出面单源消费） ----
 
 ///|
-fn active_heap_addrs(map : @memory.MemoryMap) -> Array[UInt] {
-  let out : Array[UInt] = []
+fn active_heap_addrs(map : @memory.MemoryMap) -> Array[UInt32] {
+  let out : Array[UInt32] = []
   for entry in map.regions_to_array() {
     let (addr, r) = entry
     if r.is_heap && r.is_freed == false && r.alloc_by != "vfs" {
@@ -68,7 +68,7 @@ fn active_heap_addrs(map : @memory.MemoryMap) -> Array[UInt] {
 ///|
 /// 注入用「已释放且未复用」判定：条目不存在（free 删条目——与 Rust 保留
 /// is_freed 历史的结构差异）或存在且 is_freed。
-fn is_freed_now(map : @memory.MemoryMap, addr : UInt) -> Bool {
+fn is_freed_now(map : @memory.MemoryMap, addr : UInt32) -> Bool {
   match map.region(addr) {
     Some(r) => r.is_freed
     None => true
@@ -80,7 +80,7 @@ fn is_freed_now(map : @memory.MemoryMap, addr : UInt) -> Bool {
 fn seed_cstring(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   s : String,
 ) -> Unit {
   let bytes = s.to_array() // Array[Char]
@@ -109,7 +109,7 @@ test "fuzz_round_a_malloc_free_invariants" {
   let (map, mem) = fresh()
   seed_cstring(mem, map, 0x7000U, "x")
   let rng = FRng::new(20261005)
-  let my_freed : Array[UInt] = []
+  let my_freed : Array[UInt32] = []
   let mut bad_legal_ops = 0
   let mut double_free_hits = 0
   let mut uaf_hits = 0
@@ -224,7 +224,7 @@ test "fuzz_round_d_mixed_stability" {
   let (map, mem) = fresh()
   seed_cstring(mem, map, 0x7000U, "zz")
   let rng = FRng::new(424242)
-  let my_freed : Array[UInt] = []
+  let my_freed : Array[UInt32] = []
   let mut e3060 = 0
   for op = 0; op < 120; op = op + 1 {
     let kind = rng.range(0, 3)

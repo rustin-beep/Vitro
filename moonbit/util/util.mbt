@@ -19,7 +19,7 @@
 ///
 /// 非法 UTF-8 的现状照 `@utf8.encode` 语义（静默产空串 ⇒ 长度 0），
 /// 本包不新增判定——「非法 UTF-8 怎么算」的审计点只有这里。
-pub fn utf8_len(s : String) -> Int {
+pub fn utf8_len(s : String) -> Int32 {
   @utf8.encode(s).length()
 }
 
@@ -29,7 +29,7 @@ pub fn utf8_len(s : String) -> Int {
 /// 优先；陷阱 #29），与 Go canonicalize 的键排序（sort.Strings，字节字典序）
 /// 不一致。本函数按 UTF-16 码元逐位比较 + 短者小——键域为 C 标识符
 /// （ASCII），与 UTF-8 字节字典序在此域等价。
-pub fn str_cmp(a : String, b : String) -> Int {
+pub fn str_cmp(a : String, b : String) -> Int32 {
   let n = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<n {
     let x = a[i].to_int()
@@ -50,7 +50,7 @@ pub fn str_cmp(a : String, b : String) -> Int {
 ///|
 /// Rust `as i32` 的 i64→i32 位截断（低 32 位符号解释）。照搬原
 /// parser/decl.mbt 实现——`Int64::to_int` 语义未文档化，不依赖（陷阱 #25）。
-pub fn i64_to_i32_bits(v : Int64) -> Int {
+pub fn i64_to_i32_bits(v : Int64) -> Int32 {
   let low = v & 0xFFFFFFFF
   if low >= 2147483648 {
     (low - 4294967296).to_int()
@@ -63,7 +63,7 @@ pub fn i64_to_i32_bits(v : Int64) -> Int {
 /// 小端四字节拼装读（`FixedArray[Byte]` 读侧无 LE 原语——陷阱 #35；与
 /// Rust `u32::from_le_bytes` 同形）。**越界不设防**：调用方负责区间
 /// （memory 包的受检读在 `check_access` 之后调用本件）。
-pub fn le_u32_at(bytes : FixedArray[Byte], off : Int) -> UInt {
+pub fn le_u32_at(bytes : FixedArray[Byte], off : Int32) -> UInt32 {
   bytes[off].to_uint() |
   (bytes[off + 1].to_uint() << 8) |
   (bytes[off + 2].to_uint() << 16) |
@@ -72,7 +72,7 @@ pub fn le_u32_at(bytes : FixedArray[Byte], off : Int) -> UInt {
 
 ///|
 /// 小端八字节拼装读（同 `le_u32_at`，u64 位宽）。
-pub fn le_u64_at(bytes : FixedArray[Byte], off : Int) -> UInt64 {
+pub fn le_u64_at(bytes : FixedArray[Byte], off : Int32) -> UInt64 {
   bytes[off].to_uint64() |
   (bytes[off + 1].to_uint64() << 8) |
   (bytes[off + 2].to_uint64() << 16) |
@@ -188,7 +188,7 @@ pub fn utf8_text_partial(b : Bytes) -> String {
 /// 与 base64_encode 对偶；非法字符返 None（fail loud——帧数据自产，
 /// 出现非法即协议破损）。
 pub fn base64_decode(s : String) -> Bytes? {
-  fn val(c : Int) -> Int? {
+  fn val(c : Int32) -> Int32? {
     if c >= 'A'.to_int() && c <= 'Z'.to_int() {
       Some(c - 'A'.to_int())
     } else if c >= 'a'.to_int() && c <= 'z'.to_int() {

@@ -7,13 +7,13 @@
 
 ///|
 /// 值栈弹出一个 u32 地址（截断到 32 位——Rust `pop() as u32`）。
-fn VitroVM::pop_addr(self : VitroVM) -> UInt {
+fn VitroVM::pop_addr(self : VitroVM) -> UInt32 {
   self.pop().to_uint()
 }
 
 ///|
 /// 值栈弹出一个 i32（低 32 位符号解释）。
-fn VitroVM::pop_i32(self : VitroVM) -> Int {
+fn VitroVM::pop_i32(self : VitroVM) -> Int32 {
   self.pop().to_int()
 }
 
@@ -27,9 +27,9 @@ fn VitroVM::pop_i64(self : VitroVM) -> Int64 {
 fn VitroVM::execute_memory(
   self : VitroVM,
   op : @opcode.OpCode,
-  _operand : Int,
-  line : Int,
-  column : Int,
+  _operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     LoadMem => {

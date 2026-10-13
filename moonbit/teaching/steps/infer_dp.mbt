@@ -137,7 +137,7 @@ fn lookahead_first_body_line(lookahead : String) -> String {
 
 ///|
 /// 子串出现次数（Rust `matches("dp[").count()`）。
-fn count_occurrences(s : String, sub : String) -> Int {
+fn count_occurrences(s : String, sub : String) -> Int32 {
   let mut cnt = 0
   let mut from = 0
   while true {

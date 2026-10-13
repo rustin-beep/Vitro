@@ -25,9 +25,9 @@ pub struct FrameWindow {
   /// 窗口内帧（队首 = 最老帧）。pub(all) 的 StepPayload 经 protocol 消费。
   frames : @deque.Deque[@protocol.StepPayload]
   /// 窗口首帧对应的全局步号（窗口外历史不可查——静默丢弃是设计）。
-  mut start_step : Int
+  mut start_step : Int32
   /// 窗口上限（协议锚定 2_000——改此值即改协议，见模块头注）。
-  window_size : Int
+  window_size : Int32
   /// 超窗丢弃比例（协议锚定 0.2）。
   trim_ratio : Double
 }
@@ -46,7 +46,7 @@ pub fn FrameWindow::new() -> FrameWindow {
 ///|
 /// 自定义窗口参数（会话级配置入口；教学长程序可放宽 window_size）。
 pub fn FrameWindow::with_limits(
-  window_size : Int,
+  window_size : Int32,
   trim_ratio : Double,
 ) -> FrameWindow {
   guard window_size > 0 else {
@@ -102,7 +102,7 @@ fn FrameWindow::trim(self : FrameWindow) -> Unit {
 
 ///|
 /// 窗口内帧数。
-pub fn FrameWindow::length(self : FrameWindow) -> Int {
+pub fn FrameWindow::length(self : FrameWindow) -> Int32 {
   self.frames.length()
 }
 
@@ -113,13 +113,13 @@ pub fn FrameWindow::is_empty(self : FrameWindow) -> Bool {
 
 ///|
 /// 窗口首帧步号（cache_start_step——serve 出口字段单源）。
-pub fn FrameWindow::start_step(self : FrameWindow) -> Int {
+pub fn FrameWindow::start_step(self : FrameWindow) -> Int32 {
   self.start_step
 }
 
 ///|
 /// 窗口上限（配置读口——U2#1 测试断言同款）。
-pub fn FrameWindow::window_limit(self : FrameWindow) -> Int {
+pub fn FrameWindow::window_limit(self : FrameWindow) -> Int32 {
   self.window_size
 }
 
@@ -142,8 +142,8 @@ pub fn FrameWindow::last(self : FrameWindow) -> @protocol.StepPayload? {
 /// 下标（坑 ⑥-1 的 usize 绕回 63.6GB 形态）。
 pub fn FrameWindow::slice(
   self : FrameWindow,
-  start : Int,
-  end : Int,
+  start : Int32,
+  end : Int32,
 ) -> Array[@protocol.StepPayload] {
   let len = self.frames.length()
   if len == 0 || start >= end {
@@ -187,7 +187,7 @@ pub fn FrameWindow::clear(self : FrameWindow) -> Unit {
 /// step < start_step 或 ≥ start_step + len → None）。
 pub fn FrameWindow::frame_at(
   self : FrameWindow,
-  step : Int,
+  step : Int32,
 ) -> @protocol.StepPayload? {
   if step < self.start_step {
     return None
@@ -244,7 +244,7 @@ pub fn FrameWindow::push_batch(
 /// 追加后对尾段行末标注降级（demote_row_annotations——teaching 就绪）。
 pub fn FrameWindow::push_or_replace_at(
   self : FrameWindow,
-  step : Int,
+  step : Int32,
   payload : @protocol.StepPayload,
 ) -> Unit {
   // 目标步早于窗口起点：越窗重放路径已 reset_to，此为防御分支（坑 ⑥-1
@@ -273,7 +273,7 @@ pub fn FrameWindow::push_or_replace_at(
 /// 尾段行末标注降级（engine.rs:426-432 demote_row_annotations 的 from=
 /// len-1 段——与前一帧同 code_line 的帧不是行末，前帧降级）。algorithm_step
 /// 当前恒 None（teaching 批接入），逻辑照搬为零开销 no-op。
-fn FrameWindow::demote_tail(self : FrameWindow, from : Int) -> Unit {
+fn FrameWindow::demote_tail(self : FrameWindow, from : Int32) -> Unit {
   let len = self.frames.length()
   if from >= 1 && from < len {
     let cur = self.frames[from]
@@ -288,7 +288,7 @@ fn FrameWindow::demote_tail(self : FrameWindow, from : Int) -> Unit {
 /// 越窗重放的窗口重置（engine.rs:299-300 照搬）：清窗 + 起点置检查点步。
 /// 不 reset_to 的旧窗口残留会让 step - start_step 为负（坑 2 的 63.6GB
 /// 事故形态）——reset_to 是 seek 越窗路径的强制前置。
-pub fn FrameWindow::reset_to(self : FrameWindow, step : Int) -> Unit {
+pub fn FrameWindow::reset_to(self : FrameWindow, step : Int32) -> Unit {
   while self.frames.length() > 0 {
     ignore(self.frames.pop_front())
   }
@@ -301,7 +301,7 @@ pub fn FrameWindow::reset_to(self : FrameWindow, step : Int) -> Unit {
 /// window_size + 1)`；discard 钳到实际长度（坑 ⑥-4：seek 目标远超已有
 /// 步数时理论 discard > len，直接切会越界——钳位后按实际推进量记账）；
 /// 再截断 target 之后的多余帧。
-pub fn FrameWindow::finish_replay(self : FrameWindow, target : Int) -> Unit {
+pub fn FrameWindow::finish_replay(self : FrameWindow, target : Int32) -> Unit {
   let want_start = target - self.window_size + 1
   let want_start = if want_start > 0 { want_start } else { 0 }
   let len = self.frames.length()
@@ -325,7 +325,7 @@ pub fn FrameWindow::finish_replay(self : FrameWindow, target : Int) -> Unit {
 
 ///|
 /// 空帧占位（push_or_replace_at 缺口防御——Rust 占位帧 14 字段全零形态）。
-fn blank_payload(step : Int) -> @protocol.StepPayload {
+fn blank_payload(step : Int32) -> @protocol.StepPayload {
   {
     step_index: step,
     code_line: 0,

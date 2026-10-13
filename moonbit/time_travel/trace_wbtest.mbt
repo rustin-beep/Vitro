@@ -5,8 +5,8 @@
 
 ///|
 fn make_step(
-  step_index : Int,
-  code_line : Int,
+  step_index : Int32,
+  code_line : Int32,
   vars : Array[(String, String)],
   ptrs : Array[(String, @protocol.PointerStatus)],
 ) -> @protocol.StepPayload {
@@ -50,7 +50,7 @@ fn make_step(
 }
 
 ///|
-fn no_line(_l : Int) -> String {
+fn no_line(_l : Int32) -> String {
   ""
 }
 
@@ -142,7 +142,7 @@ test "trace_analyze_bounds_off_by_one" {
     make_step(4, 2, [("i", "4")], []),
     make_step(5, 2, [("i", "5")], []),
   ]
-  let get_line = fn(l : Int) -> String {
+  let get_line = fn(l : Int32) -> String {
     if l == 2 {
       "for (i = 0; i <= n; i++) { sum += arr[i]; }"
     } else {
@@ -185,7 +185,7 @@ test "engine_run_batch_trap_root_cause_hint_divzero" {
 ///|
 test "trace_analyze_bounds_wrong_init" {
   // oracle test_infer_wrong_init 照搬：i 从 1 起单调 +1，accessed=5=size
-  let hist : Array[Int] = [1, 2, 3, 4, 5]
+  let hist : Array[Int32] = [1, 2, 3, 4, 5]
   let loop_info : LoopInfo = { lines: [3], has_le: false, increment: Some(1), }
   let cat = infer_bounds_category(hist, 5, 5, loop_info)
   assert_eq(cat.as_str(), "WrongInit")
@@ -202,7 +202,7 @@ test "trace_analyze_bounds_wrong_init" {
 ///|
 test "trace_analyze_bounds_wrong_increment" {
   // oracle test_infer_wrong_increment 照搬：步长 2 跳越，accessed=6>size=5
-  let hist : Array[Int] = [0, 2, 4, 6]
+  let hist : Array[Int32] = [0, 2, 4, 6]
   let loop_info : LoopInfo = {
     lines: [3, 5],
     has_le: false,
@@ -222,7 +222,7 @@ test "trace_analyze_bounds_wrong_increment" {
 ///|
 test "trace_analyze_bounds_uninitialized_index" {
   // oracle test_infer_uninitialized_index 照搬：历史过短（<2）
-  let hist : Array[Int] = []
+  let hist : Array[Int32] = []
   let loop_info = LoopInfo::new()
   let cat = infer_bounds_category(hist, 99, 5, loop_info)
   assert_eq(cat.as_str(), "UninitializedIndex")

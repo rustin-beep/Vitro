@@ -28,9 +28,9 @@
 /// MAX_AST_DEPTH=512 / MAX_DECLARATOR_SUFFIX=1250 / MAX_TYPE_DEPTH=1250。
 pub(all) struct ParseError {
   message : String
-  line : Int
-  column : Int
-  code : Int
+  line : Int32
+  column : Int32
+  code : Int32
 } derive(Eq, @debug.Debug)
 
 ///|
@@ -48,7 +48,7 @@ pub(all) struct ParseResult {
   /// 活性内部断言计数：主循环零推进次数（生产零消费；防线侧 dump 观测，
   /// 勘察 6-3 的 GC 语言观测义务——故障信号从"内存涨"弱化为"无诊断"，
   /// 必须显式记账）
-  stall_count : Int
+  stall_count : Int32
 }
 
 ///|
@@ -75,10 +75,10 @@ priv enum DeclaratorSuffix {
 /// 声明符复杂度保险丝组（照搬 Rust：paren_depth/ptr_count/suffix_count/
 /// cross_count——P1 后 suffix_count 已接上比较，非死字段）。
 priv struct DeclaratorGuard {
-  mut paren_depth : Int
-  mut ptr_count : Int
-  mut suffix_count : Int
-  mut cross_count : Int
+  mut paren_depth : Int32
+  mut ptr_count : Int32
+  mut suffix_count : Int32
+  mut cross_count : Int32
 }
 
 ///|
@@ -87,7 +87,7 @@ fn DeclaratorGuard::init() -> DeclaratorGuard {
 }
 
 ///|
-fn node_cross_count(node : DeclaratorNode) -> Int {
+fn node_cross_count(node : DeclaratorNode) -> Int32 {
   match node {
     Base => 0
     Pointer(inner) | Reference(inner, _) | RValueRef(inner) => {
@@ -106,19 +106,19 @@ fn node_cross_count(node : DeclaratorNode) -> Int {
 /// typedef_names / template_names 为可变哈希结构，快照 = 整表拷贝
 ///（教学程序的符号表小，O(n) 拷贝可接受；回滚即换引用）。
 priv struct Rollback {
-  pos : Int
-  errors_len : Int
-  anon_len : Int
+  pos : Int32
+  errors_len : Int32
+  anon_len : Int32
   /// 匿名/嵌套 union 回滚水位（issue #7）
-  anon_u_len : Int
+  anon_u_len : Int32
   /// 已解析聚合表回滚水位（issue #13）
-  agg_len : Int
+  agg_len : Int32
   /// 变量类型表回滚水位
-  var_types_len : Int
+  var_types_len : Int32
   typedef_names : Map[String, @ast.Type]
   template_names : Set[String]
-  current_class_len : Int
-  next_lambda_id : Int
+  current_class_len : Int32
+  next_lambda_id : Int32
 }
 
 ///|
@@ -126,25 +126,25 @@ priv struct Rollback {
 /// 余量充足）。计数口径 = 活跃壳数（每层括号嵌套 4 计数：assign+ternary+
 /// unary+primary 壳），与 Rust 共享计数器同构——阈值样本（62/63 层括号）
 /// 的触发边界逐位一致是 E3 对拍前提。
-const MAX_PARSE_DEPTH : Int = 256
+const MAX_PARSE_DEPTH : Int32 = 256
 
 ///|
 /// 后置 AST 深度预算（照搬 Rust 512；typeck/快照等递归遍历安全上界）。
-const MAX_AST_DEPTH : Int = 512
+const MAX_AST_DEPTH : Int32 = 512
 
 ///|
 /// 声明符后缀（数组/函数）链式层级上限（照搬 Rust P1 值 1250：release
 /// 1200 层存活 / 1300 层崩溃边界之下的防护位）。
-const MAX_DECLARATOR_SUFFIX : Int = 1250
+const MAX_DECLARATOR_SUFFIX : Int32 = 1250
 
 ///|
 /// 类型树深度预算（照搬 Rust P1 值 1250；深 Type 对 MAX_AST_DEPTH 隐身
 /// 的后置兜底）。
-const MAX_TYPE_DEPTH : Int = 1250
+const MAX_TYPE_DEPTH : Int32 = 1250
 
 ///|
 /// 声明符指针前缀上限（照搬 Rust 32）。
-const MAX_DECLARATOR_PTR : Int = 32
+const MAX_DECLARATOR_PTR : Int32 = 32
 
 ///|
 /// 零推进熔断轮数（G1 守卫，MoonBit 新增——Rust 无）：零进度保护三层
@@ -153,7 +153,7 @@ const MAX_DECLARATOR_PTR : Int = 32
 /// （Y5 病灶），理论死循环窗口仍在——熔断保证终止性下界：超限即出
 /// E1006 诊断并强推一个 token（真死循环可观测，不挂死）。597 真实
 /// 语料 stall=0 恒不触发。
-const MAX_STALL_ROUNDS : Int = 1000
+const MAX_STALL_ROUNDS : Int32 = 1000
 
 ///|
 /// G1 熔断：零推进超限——出诊断 + 强推一个 token，保证解析必然前进。
@@ -186,7 +186,7 @@ priv struct Parser {
   errors : Array[ParseError]
   mut typedef_names : Map[String, @ast.Type]
   mut template_names : Set[String]
-  mut pos : Int
+  mut pos : Int32
   anonymous_structs : Array[@ast.StructDecl]
   /// 匿名/嵌套 union 声明收集（issue #7——union 布局语义灌 program.unions）
   anonymous_unions : Array[@ast.StructDecl]
@@ -208,13 +208,13 @@ priv struct Parser {
   /// block 边界的 truncate 保证
   parsed_var_types : Array[(String, @ast.Type)]
   /// 变量类型表的 block 边界水位栈（enter/leave block 配对）
-  var_type_marks : Array[Int]
+  var_type_marks : Array[Int32]
   is_cpp_mode : Bool
-  mut next_lambda_id : Int
+  mut next_lambda_id : Int32
   /// C++ 嵌套类解析上下文：当前外层类名栈
   current_class : Array[String]
   /// 活性记账：主循环零推进次数（推进控制流照搬 Rust，此处仅观测）
-  mut stall_count : Int
+  mut stall_count : Int32
 }
 
 ///|
@@ -352,7 +352,7 @@ pub fn parse(tokens : Array[@token.Token]) -> ParseResult {
 // =========================================================================
 
 ///|
-fn program_max_depth(prog : @ast.ProgramNode) -> Int? {
+fn program_max_depth(prog : @ast.ProgramNode) -> Int32? {
   let mut max = 0
   for g in prog.globals {
     match g.init {
@@ -384,8 +384,8 @@ fn program_max_depth(prog : @ast.ProgramNode) -> Int? {
 }
 
 ///|
-fn program_max_type_depth(prog : @ast.ProgramNode) -> Int {
-  fn acc(t : @ast.Type, max : Int) -> Int {
+fn program_max_type_depth(prog : @ast.ProgramNode) -> Int32 {
+  fn acc(t : @ast.Type, max : Int32) -> Int32 {
     let d = @ast.type_depth(t)
     if d > max {
       d
@@ -393,7 +393,7 @@ fn program_max_type_depth(prog : @ast.ProgramNode) -> Int {
       max
     }
   }
-  fn acc_stmt_type(s : @ast.Stmt, max : Int) -> Int {
+  fn acc_stmt_type(s : @ast.Stmt, max : Int32) -> Int32 {
     let d = @ast.stmt_type_depth(s)
     if d > max {
       d
@@ -401,7 +401,7 @@ fn program_max_type_depth(prog : @ast.ProgramNode) -> Int {
       max
     }
   }
-  fn acc_body(b : @ast.Stmt?, max : Int) -> Int {
+  fn acc_body(b : @ast.Stmt?, max : Int32) -> Int32 {
     match b {
       Some(s) => acc_stmt_type(s, max)
       None => max
@@ -479,7 +479,7 @@ fn eof_token() -> @token.Token {
 }
 
 ///|
-fn Parser::peek(self : Parser, offset : Int) -> @token.Token {
+fn Parser::peek(self : Parser, offset : Int32) -> @token.Token {
   if self.pos + offset >= self.tokens.length() {
     return eof_token()
   }
@@ -552,7 +552,7 @@ fn Parser::consume(
   // E7 隐性口径，E2 位置列覆盖
   let cur = self.current()
   let prev = self.previous()
-  let tmp : (Int, Int) = if ty == Semicolon && self.pos > 0 {
+  let tmp : (Int32, Int32) = if ty == Semicolon && self.pos > 0 {
     (prev.loc.line, prev.loc.column)
   } else {
     (cur.loc.line, cur.loc.column)
@@ -697,7 +697,7 @@ priv enum TopLevelKind {
 /// （前瞻逻辑分散）就此收口）。优先序与原 else-if 链一致。
 fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
   let len = self.tokens.length()
-  let ty_at = fn(i : Int) -> @token.TokenType {
+  let ty_at = fn(i : Int32) -> @token.TokenType {
     if i < len {
       self.tokens[i].ty
     } else {
@@ -943,7 +943,7 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
 ///|
 /// 从当前位置前瞻，跳过连续的 `*` 指针前缀（C++ 模式含 &/&&），返回跳过
 /// 后的 token 索引。
-fn Parser::look_ahead_skip_stars(self : Parser) -> Int {
+fn Parser::look_ahead_skip_stars(self : Parser) -> Int32 {
   let mut lookahead = self.pos
   while lookahead < self.tokens.length() {
     match self.tokens[lookahead].ty {
@@ -1116,7 +1116,7 @@ fn Parser::skip_balanced_braces(self : Parser) -> Unit {
 /// 在模板实参列表中解析非类型表达式实参（照搬 X1 的显式视图等价形态：
 /// Rust `mem::take` + 切片替换 → 本实现保存 (start, end) 边界、用索引
 /// 偏移直接在原数组上解析——语义保持 `pos = saved_pos + consumed`）。
-fn Parser::parse_template_arg_expr(self : Parser, depth : Int) -> @ast.Expr {
+fn Parser::parse_template_arg_expr(self : Parser, depth : Int32) -> @ast.Expr {
   let found = self.find_template_arg_delimiter()
   let end_idx = found.0
   if end_idx <= self.pos {
@@ -1161,7 +1161,7 @@ fn Parser::parse_template_arg_expr(self : Parser, depth : Int) -> @ast.Expr {
 /// 与嵌套 <>）。返回索引指向分隔符，调用者负责消费。
 fn Parser::find_template_arg_delimiter(
   self : Parser,
-) -> (Int, @token.TokenType) {
+) -> (Int32, @token.TokenType) {
   let mut i = self.pos
   let mut template_depth = 1
   let mut paren = 0

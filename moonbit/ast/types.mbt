@@ -22,7 +22,7 @@ pub(all) enum Type {
   Double(Bool) // is_const
   LongLong(Bool, Bool) // is_unsigned, is_const
   Pointer(Type, Bool) // pointee, is_const
-  Array(Type, Int, Array[Int], Bool, Bool, Array[Expr]) // element, array_size, dims, is_const, is_vla, vla_dims
+  Array(Type, Int32, Array[Int32], Bool, Bool, Array[Expr]) // element, array_size, dims, is_const, is_vla, vla_dims
   Function(Type, Array[Type], Bool, Bool) // return_type, param_types, is_const, is_variadic
   Struct(String, Bool) // name, is_const
   Union(String, Bool) // name, is_const
@@ -102,7 +102,7 @@ pub fn Type::pointer_to(pointee : Type) -> Type {
 ///|
 /// element 的多维数组；`array_size` = 各维正值的乘积（空 dims 为 0，
 /// 非正维按 1 计）——dims→size 派生的**单点**，消费方禁自算。
-pub fn Type::array_of(element : Type, dims : Array[Int]) -> Type {
+pub fn Type::array_of(element : Type, dims : Array[Int32]) -> Type {
   let array_size = if dims.is_empty() {
     0
   } else {

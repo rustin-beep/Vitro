@@ -66,40 +66,44 @@ fn OsString::to_string(self : OsString) -> String {
 extern "C" fn fopen_ffi(path : OsString, mode : OsString) -> Handler = "vitro_engine_fs_fopen_ffi"
 
 ///|
-extern "C" fn is_null(ptr : Handler) -> Int = "vitro_engine_fs_is_null"
+extern "C" fn is_null(ptr : Handler) -> Int32 = "vitro_engine_fs_is_null"
 
 ///|
 #borrow(ptr)
 extern "C" fn fread_ffi(
   ptr : Bytes,
-  size : Int,
-  nitems : Int,
+  size : Int32,
+  nitems : Int32,
   stream : Handler,
-) -> Int = "vitro_engine_fs_fread_ffi"
+) -> Int32 = "vitro_engine_fs_fread_ffi"
 
 ///|
 #borrow(ptr)
 extern "C" fn fwrite_ffi(
   ptr : Bytes,
-  size : Int,
-  nitems : Int,
+  size : Int32,
+  nitems : Int32,
   stream : Handler,
-) -> Int = "vitro_engine_fs_fwrite_ffi"
+) -> Int32 = "vitro_engine_fs_fwrite_ffi"
 
 ///|
 extern "C" fn get_error_message_ffi() -> Bytes = "vitro_engine_fs_get_error_message"
 
 ///|
-extern "C" fn fseek_ffi(file : Handler, offset : Int, whence : Int) -> Int = "vitro_engine_fs_fseek_ffi"
+extern "C" fn fseek_ffi(
+  file : Handler,
+  offset : Int32,
+  whence : Int32,
+) -> Int32 = "vitro_engine_fs_fseek_ffi"
 
 ///|
-extern "C" fn ftell_ffi(file : Handler) -> Int = "vitro_engine_fs_ftell_ffi"
+extern "C" fn ftell_ffi(file : Handler) -> Int32 = "vitro_engine_fs_ftell_ffi"
 
 ///|
-extern "C" fn fflush_ffi(stream : Handler) -> Int = "vitro_engine_fs_fflush_ffi"
+extern "C" fn fflush_ffi(stream : Handler) -> Int32 = "vitro_engine_fs_fflush_ffi"
 
 ///|
-extern "C" fn fclose_ffi(file : Handler) -> Int = "vitro_engine_fs_fclose_ffi"
+extern "C" fn fclose_ffi(file : Handler) -> Int32 = "vitro_engine_fs_fclose_ffi"
 
 ///|
 fn get_error_message() -> String {
@@ -124,7 +128,7 @@ fn read_file_to_bytes_internal(path : String) -> Bytes raise IOError {
 ///|
 fn read_file_to_string_internal(
   path : String,
-  encoding? : String = "utf8",
+  encoding~ : String = "utf8",
 ) -> String raise IOError {
   guard encoding == "utf8" else {
     raise IOError(
@@ -152,7 +156,7 @@ fn write_bytes_to_file_internal(
 fn write_string_to_file_internal(
   path : String,
   content : String,
-  encoding? : String = "utf8",
+  encoding~ : String = "utf8",
 ) -> Unit raise IOError {
   guard encoding == "utf8" else {
     raise IOError(
@@ -165,7 +169,7 @@ fn write_string_to_file_internal(
 
 ///|
 #borrow(path)
-extern "C" fn stat_ffi(path : OsString) -> Int = "vitro_engine_fs_stat_ffi"
+extern "C" fn stat_ffi(path : OsString) -> Int32 = "vitro_engine_fs_stat_ffi"
 
 ///|
 fn path_exists_internal(path : String) -> Bool {
@@ -189,7 +193,7 @@ fn read_dir_internal(path : String) -> ArrayView[String] raise IOError {
 
 ///|
 #borrow(path)
-extern "C" fn create_dir_ffi(path : OsString) -> Int = "vitro_engine_fs_create_dir_ffi"
+extern "C" fn create_dir_ffi(path : OsString) -> Int32 = "vitro_engine_fs_create_dir_ffi"
 
 ///|
 fn create_dir_internal(path : String) -> Unit raise IOError {
@@ -200,7 +204,7 @@ fn create_dir_internal(path : String) -> Unit raise IOError {
 
 ///|
 #borrow(path)
-extern "C" fn is_dir_ffi(path : OsString) -> Int = "vitro_engine_fs_is_dir_ffi"
+extern "C" fn is_dir_ffi(path : OsString) -> Int32 = "vitro_engine_fs_is_dir_ffi"
 
 ///|
 fn is_dir_internal(path : String) -> Bool raise IOError {
@@ -211,7 +215,7 @@ fn is_dir_internal(path : String) -> Bool raise IOError {
 
 ///|
 #borrow(path)
-extern "C" fn is_file_ffi(path : OsString) -> Int = "vitro_engine_fs_is_file_ffi"
+extern "C" fn is_file_ffi(path : OsString) -> Int32 = "vitro_engine_fs_is_file_ffi"
 
 ///|
 fn is_file_internal(path : String) -> Bool raise IOError {
@@ -222,7 +226,7 @@ fn is_file_internal(path : String) -> Bool raise IOError {
 
 ///|
 #borrow(path)
-extern "C" fn remove_dir_ffi(path : OsString) -> Int = "vitro_engine_fs_remove_dir_ffi"
+extern "C" fn remove_dir_ffi(path : OsString) -> Int32 = "vitro_engine_fs_remove_dir_ffi"
 
 ///|
 fn remove_dir_internal(path : String) -> Unit raise IOError {
@@ -233,7 +237,7 @@ fn remove_dir_internal(path : String) -> Unit raise IOError {
 
 ///|
 #borrow(path)
-extern "C" fn remove_file_ffi(path : OsString) -> Int = "vitro_engine_fs_remove_file_ffi"
+extern "C" fn remove_file_ffi(path : OsString) -> Int32 = "vitro_engine_fs_remove_file_ffi"
 
 ///|
 fn remove_file_internal(path : String) -> Unit raise IOError {

@@ -20,14 +20,14 @@
 ///|
 /// 堆元数据快照（全字段；region 的 `refcount`〔CS 批 ARC 预留〕随条目自动随行）。
 pub(all) struct MemorySnapshot {
-  regions : Array[(UInt, MemoryRegionData)]
+  regions : Array[(UInt32, MemoryRegionData)]
   free_list : Array[FreeBlock]
   quarantine : Array[FreeBlock]
-  quarantine_bytes : Int
-  quarantine_budget : Int
-  heap_base : UInt
-  heap_offset : UInt
-  alloc_counter : Int
+  quarantine_bytes : Int32
+  quarantine_budget : Int32
+  heap_base : UInt32
+  heap_offset : UInt32
+  alloc_counter : Int32
   freed : Array[FreedRegionInfo]
 } derive(Eq, Debug)
 
@@ -41,7 +41,7 @@ pub extend MemorySnapshot with Eq::{not_equal, equal}
 /// 抓快照（`dump`）：导出全部元数据的**深拷贝**（条目 struct 逐一复制，
 /// 不与运行态共享可变结构——拷贝即快照，时点明确）。
 pub fn MemoryMap::dump(self : MemoryMap) -> MemorySnapshot {
-  let regions : Array[(UInt, MemoryRegionData)] = Array(
+  let regions : Array[(UInt32, MemoryRegionData)] = Array(
     capacity=self.regions.length(),
   )
   for addr, r in self.regions {
@@ -143,7 +143,7 @@ pub fn FreedLogs::load_entries(
   self : FreedLogs,
   items : Array[FreedRegionInfo],
 ) -> Result[Unit, String] {
-  let mut prev_addr : UInt = 0
+  let mut prev_addr : UInt32 = 0
   let mut first = true
   for item in items {
     // 升序契约校验（乱序灌入会让二分静默漏检 UAF）

@@ -309,7 +309,7 @@ fn scanf_run(
   mem : @memory.Memory,
   input : InputState,
   fmt : String,
-  ptrs : Array[UInt],
+  ptrs : Array[UInt32],
 ) -> InputOutcome raise {
   put_bytes(mem, map, 0x6000U, @utf8.encode(fmt), true)
   host_scanf_n(map, mem, input, [], 0x6000U, ptrs)
@@ -565,7 +565,7 @@ test "sscanf_i_x_o_conversions" {
 /// 路径与 oracle `10f64.powi` 逐位对齐——含 exp 平局（e=23）、已知偏离
 /// （e=126）、次正规（powi(-320..-323)）与 oracle 自身的泄漏形状
 /// （DBL_TRUE_MIN：powi(-324)=0 → `infe-324`，两侧照搬同形）。
-fn gf(lit : String, prec : Int) -> String {
+fn gf(lit : String, prec : Int32) -> String {
   let v : Double = @string.parse_double(lit) catch { _ => 0.0 }
   format_g(v, prec, false)
 }
@@ -655,8 +655,8 @@ test "from_stdin_text_crlf_fully_normalized" {
   // String::replace 只替换首个匹配——单次规整只消一个 CRLF，kr_1_19
   // 实测第二行起 \r 泄入程序（输出多 \r 分叉）。from_stdin_text 循环
   // 规整后全量：每行字节序列必须无 13（\r）
-  let cr = Int::unsafe_to_char(13).to_string()
-  let nl = Int::unsafe_to_char(10).to_string()
+  let cr = Int32::unsafe_to_char(13).to_string()
+  let nl = Int32::unsafe_to_char(10).to_string()
   let text = "hello" + cr + nl + "world" + cr + nl + "tail" + cr + nl
   let st = InputState::from_stdin_text(text, true)
   assert_eq(st.lines.length(), 3)

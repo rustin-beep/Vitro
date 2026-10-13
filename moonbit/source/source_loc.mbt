@@ -20,9 +20,9 @@
 /// 0 = 用户主文件（默认）；非 0 区分标准库 / 预编译字节码 / 头文件等
 /// 外部源码位置，避免外部行号污染覆盖率统计。
 pub(all) struct SourceLoc {
-  line : Int
-  column : Int
-  file_id : Int
+  line : Int32
+  column : Int32
+  file_id : Int32
 } derive(Debug, Eq, Compare, Hash, Default) // 序列化归 vitro/engine/protocol（L8）——L0 零依赖不引 JSON
 
 ///|
@@ -50,7 +50,7 @@ pub extend SourceLoc with Hash::{hash, hash_combine}
 ///   inspect(loc.file_id, content="0")
 /// }
 /// ```
-pub fn SourceLoc::new(line : Int, column : Int) -> SourceLoc {
+pub fn SourceLoc::new(line : Int32, column : Int32) -> SourceLoc {
   { line, column, file_id: 0, }
 }
 
@@ -64,9 +64,9 @@ pub fn SourceLoc::new(line : Int, column : Int) -> SourceLoc {
 /// }
 /// ```
 pub fn SourceLoc::with_file(
-  line : Int,
-  column : Int,
-  file_id : Int,
+  line : Int32,
+  column : Int32,
+  file_id : Int32,
 ) -> SourceLoc {
   { line, column, file_id, }
 }

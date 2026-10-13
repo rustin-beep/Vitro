@@ -12,7 +12,7 @@
 fn put_cstr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   s : String,
 ) -> Unit raise {
   put_bytes(mem, map, addr, @utf8.encode(s), true)
@@ -23,7 +23,7 @@ fn put_cstr(
 fn put_bytes(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   data : Bytes,
   nul : Bool,
 ) -> Unit raise {
@@ -48,8 +48,8 @@ fn put_bytes(
 fn peek(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  n : Int,
+  addr : UInt32,
+  n : Int32,
 ) -> Bytes raise {
   let arr : Array[Byte] = []
   let mut i = 0
@@ -452,7 +452,7 @@ test "negative_n_family_traps_not_clamps" {
 fn peek_str(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> String {
   let buf : Array[Byte] = []
   let mut p = addr

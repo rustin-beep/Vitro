@@ -4,8 +4,8 @@
 /// 转义产物按 Unicode 码点入串（Rust `value.push(byte as char)` 同构））。
 fn Scanner::string_literal(
   self : Scanner,
-  start : Int,
-  span_start? : Int = -1,
+  start : Int32,
+  span_start~ : Int32 = -1,
 ) -> @token.Token {
   // span_start：列号反推基准切片的起点（默认 = start）。u8 前缀分支的
   // Rust 语义：byte_off 记在 u8 起点（next_token 统一记账点），但
@@ -168,16 +168,16 @@ fn Scanner::string_literal(
 ///|
 /// 字符字面量（照搬 `string.rs` char 侧 U1#7/P4 语义；`text` 为**数值十进制**，
 /// invalid 时保留源拼写——Rust `if valid { tok.text = value.to_string() }` 同构）。
-fn Scanner::char_literal(self : Scanner, start : Int) -> @token.Token {
+fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
   ignore(self.advance()) // 开引号
-  let mut value : Int = 0
+  let mut value : Int32 = 0
   let mut valid = true
   if !self.at_end() && self.peek(0) == '\'' {
     self.err("空字符字面量", E1001_UnknownChar)
     valid = false
   } else if !self.at_end() && self.peek(0) == '\\' && self.pos + 1 < self.length {
     let next = self.peek(1)
-    let simple : Int? = match next {
+    let simple : Int32? = match next {
       'n' => Some('\n')
       't' => Some('\t')
       'r' => Some('\r')
@@ -286,11 +286,11 @@ fn Scanner::char_literal(self : Scanner, start : Int) -> @token.Token {
 
 ///|
 /// 两位以内 hex 文本 → 字节值（Rust `u8::from_str_radix(.., 16).unwrap_or(0)`）。
-fn parse_hex_byte(hex : String) -> Int {
-  let mut v : Int = 0
+fn parse_hex_byte(hex : String) -> Int32 {
+  let mut v : Int32 = 0
   for i = 0; i < hex.length(); i = i + 1 {
     let c = hex[i].to_int()
-    let d : Int = if c >= '0' && c <= '9' {
+    let d : Int32 = if c >= '0' && c <= '9' {
       c - '0'
     } else if c >= 'a' && c <= 'f' {
       c - 'a' + 10

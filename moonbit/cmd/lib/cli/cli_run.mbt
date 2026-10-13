@@ -100,7 +100,7 @@ pub fn run(
   clock_millis : () -> UInt64,
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
-) -> Int {
+) -> Int32 {
   ensure_include_reader()
   let ra = parse_run_args(args)
   if ra.unknown_flag is Some(msg) {

@@ -22,17 +22,17 @@
 ///|
 /// 宽度/精度预算（U2#9）：单转换上限 1MB——`printf("%999999999d",1)` 此前
 /// 单次 ~1GB `repeat` 分配。
-const PRINTF_FIELD_BUDGET : Int = 1 << 20
+const PRINTF_FIELD_BUDGET : Int32 = 1 << 20
 
 ///|
 /// 格式串游标（oracle 用 `chars.peekable()`；此处对码点数组）。
 priv struct FmtScan {
-  s : Array[Int]
-  mut i : Int
+  s : Array[Int32]
+  mut i : Int32
 }
 
 ///|
-fn FmtScan::peek(self : FmtScan) -> Int? {
+fn FmtScan::peek(self : FmtScan) -> Int32? {
   if self.i < self.s.length() {
     Some(self.s[self.i])
   } else {
@@ -50,14 +50,14 @@ fn FmtScan::advance(self : FmtScan) -> Unit {
 /// precision / 长度修饰（只记 `ll`）/ 格式字母。
 fn parse_format_spec(
   scan : FmtScan,
-) -> (Int, Bool, Int?, Int?, String, Bool, Bool)? {
+) -> (Int32, Bool, Int32?, Int32?, String, Bool, Bool)? {
   // flags：- + 空格 # 0（去重追加）
   let mut flags = ""
   while true {
     match scan.peek() {
       Some(c) =>
         if c == 45 || c == 43 || c == 32 || c == 35 || c == 48 {
-          let cs = Int::unsafe_to_char(c).to_string()
+          let cs = Int32::unsafe_to_char(c).to_string()
           if !flags.contains(cs) {
             flags = flags + cs
           }
@@ -77,7 +77,7 @@ fn parse_format_spec(
     match scan.peek() {
       Some(c) =>
         if c >= 48 && c <= 57 {
-          width_str = width_str + Int::unsafe_to_char(c).to_string()
+          width_str = width_str + Int32::unsafe_to_char(c).to_string()
           scan.advance()
         } else if c == 42 {
           star_w = true
@@ -89,7 +89,7 @@ fn parse_format_spec(
       None => break
     }
   }
-  let width : Int? = if width_str == "" {
+  let width : Int32? = if width_str == "" {
     None
   } else {
     Some(@string.parse_int(width_str)) catch {
@@ -97,7 +97,7 @@ fn parse_format_spec(
     }
   }
   // precision：`.` 开头，数字累计或 `*`（星号精度——参数组取值，批四）
-  let mut precision : Int? = None
+  let mut precision : Int32? = None
   let mut star_p = false
   match scan.peek() {
     Some(46) => {
@@ -107,7 +107,7 @@ fn parse_format_spec(
         match scan.peek() {
           Some(c) =>
             if c >= 48 && c <= 57 {
-              prec_str = prec_str + Int::unsafe_to_char(c).to_string()
+              prec_str = prec_str + Int32::unsafe_to_char(c).to_string()
               scan.advance()
             } else if c == 42 {
               star_p = true
@@ -160,8 +160,8 @@ fn parse_format_spec(
 
 ///|
 /// 格式字母序列（参数计数用——只数转换符，`%%` 不计）。
-fn parse_format_specs(fmt : Array[Int]) -> Array[Int] {
-  let specs : Array[Int] = []
+fn parse_format_specs(fmt : Array[Int32]) -> Array[Int32] {
+  let specs : Array[Int32] = []
   let scan = FmtScan::{ s: fmt, i: 0, }
   while true {
     match scan.peek() {
@@ -190,7 +190,7 @@ fn parse_format_specs(fmt : Array[Int]) -> Array[Int] {
 
 ///|
 /// U2#9 预算闸：全部宽度/精度 ≤ [`PRINTF_FIELD_BUDGET`]，超限返回教学文案。
-fn validate_format_field_budget(fmt : Array[Int]) -> String? {
+fn validate_format_field_budget(fmt : Array[Int32]) -> String? {
   let scan = FmtScan::{ s: fmt, i: 0, }
   while true {
     match scan.peek() {
@@ -246,9 +246,9 @@ fn validate_format_field_budget(fmt : Array[Int]) -> String? {
 /// （x/X/o 臂）加前缀，此函数不处理。
 fn apply_width(
   s : String,
-  width : Int?,
+  width : Int32?,
   flags : String,
-  signed_pos? : Bool = false,
+  signed_pos~ : Bool = false,
 ) -> String {
   // + / 空格旗标：正数带符号前缀（C：+ 优先于空格）
   let body = if signed_pos && !s.has_prefix("-") {
@@ -299,7 +299,7 @@ fn apply_width(
 
 ///|
 /// `%s`/`%c` 的字节域宽度填充（左/右对齐空格——C 对字节串不用零填）。
-fn apply_width_bytes(b : Bytes, width : Int?, flags? : String = "") -> Bytes {
+fn apply_width_bytes(b : Bytes, width : Int32?, flags~ : String = "") -> Bytes {
   let w = match width {
     Some(w) => w
     None => return b
@@ -374,7 +374,7 @@ fn trim_trailing_zeros_and_dot(s : String) -> String {
 /// 位模式全量对拍 —— e ∈ [-324, 308] 633 点仅 e=126 差异（已锁定）；
 /// `host_io_wbtest.mbt` 的 `powi10_bit_alignment` / `format_g_powi_oracle_alignment`
 /// 抽查 10 点锚 + oracle release 真机端到端 12 值锚。
-fn powi10(e : Int) -> Double {
+fn powi10(e : Int32) -> Double {
   if e == 0 {
     return 1.0
   }
@@ -426,7 +426,7 @@ fn powi10(e : Int) -> Double {
 
 ///|
 /// `round((num/den) × 2^s)`（平局向上——Rust std powi 的口径）。
-fn round_ratio(num : @bigint.BigInt, den : @bigint.BigInt, s : Int) -> UInt64 {
+fn round_ratio(num : @bigint.BigInt, den : @bigint.BigInt, s : Int32) -> UInt64 {
   let n2 = if s >= 0 { big_mul_pow2(num, s) } else { num }
   let d2 = if s >= 0 { den } else { big_mul_pow2(den, -s) }
   let q = n2.div(d2)
@@ -444,7 +444,7 @@ fn round_ratio(num : @bigint.BigInt, den : @bigint.BigInt, s : Int) -> UInt64 {
 
 ///|
 /// `x × 2^n`（BigInt 无移位原语——pow 构造 2^n 后相乘）。
-fn big_mul_pow2(x : @bigint.BigInt, n : Int) -> @bigint.BigInt {
+fn big_mul_pow2(x : @bigint.BigInt, n : Int32) -> @bigint.BigInt {
   if n == 0 {
     return x
   }
@@ -454,7 +454,7 @@ fn big_mul_pow2(x : @bigint.BigInt, n : Int) -> @bigint.BigInt {
 ///|
 /// `%g`/`%G`（Rust `format_g` 照搬）。指数段 `{:+#03}`：恒符号 + 两位
 /// 补零（oracle 实测 `1e-05` / `1.23457e+06`）。
-fn format_g(val : Double, prec : Int, upper : Bool) -> String {
+fn format_g(val : Double, prec : Int32, upper : Bool) -> String {
   if val.is_nan() {
     return if upper { "NAN" } else { "nan" }
   }
@@ -499,7 +499,7 @@ fn format_g(val : Double, prec : Int, upper : Bool) -> String {
 
 ///|
 /// `{:+#03}`：恒符号 + 补零到 3 字符总宽（含符号）。
-fn fmt_exp_signed(e : Int) -> String {
+fn fmt_exp_signed(e : Int32) -> String {
   let sign = if e < 0 { "-" } else { "+" }
   let mut d = if e < 0 { (-e).to_string() } else { e.to_string() }
   while sign.length() + d.length() < 3 {
@@ -513,7 +513,7 @@ fn fmt_exp_signed(e : Int) -> String {
 /// "%e" 还消耗实参）。形态对齐 clang：尾数一位整数 + '.' + prec 位小数
 /// （**不去尾零**——与 %g 的 trim 语义相反）+ e/E + 恒符号两位补零指数
 /// （fmt_exp_signed 复用）。零特例 exp=0；符号含负零（位模式判）。
-fn format_e(val : Double, prec : Int, upper : Bool) -> String {
+fn format_e(val : Double, prec : Int32, upper : Bool) -> String {
   if val.is_nan() {
     return if upper { "NAN" } else { "nan" }
   }
@@ -553,7 +553,7 @@ fn format_e(val : Double, prec : Int, upper : Bool) -> String {
 
 ///|
 /// %e 默认精度 6（与 f/g 同款内联口径的具名单源）。
-fn precision_default6(prec : Int) -> Int {
+fn precision_default6(prec : Int32) -> Int32 {
   if prec < 0 {
     6
   } else {
@@ -603,7 +603,7 @@ fn u64_radix(v : UInt64, digits : String) -> String {
 /// - `e = -k < 0`：`m × 5^k / 10^k`——`m × 5^k` 的十进制即精确展开（k 位
 ///   小数），`k ≤ prec` 补零，`k > prec` 在第 prec 位 half-even（比较
 ///   `2r` 与除数，相等取偶）。
-pub fn format_fixed(val : Double, prec : Int) -> String {
+pub fn format_fixed(val : Double, prec : Int32) -> String {
   if val.is_nan() {
     return "NaN"
   }
@@ -673,7 +673,7 @@ pub fn format_fixed(val : Double, prec : Int) -> String {
 }
 
 ///|
-fn big_pow10(n : Int) -> @bigint.BigInt {
+fn big_pow10(n : Int32) -> @bigint.BigInt {
   let mut r = @bigint.BigInt::from_int(1)
   let ten = @bigint.BigInt::from_int(10)
   let mut i = 0
@@ -686,7 +686,7 @@ fn big_pow10(n : Int) -> @bigint.BigInt {
 
 ///|
 /// q（= |val| × 10^prec）→ 定点字符串：整数段.小数段（prec 位；0 位无点）。
-fn big_fixed_to_string(q : @bigint.BigInt, prec : Int) -> String {
+fn big_fixed_to_string(q : @bigint.BigInt, prec : Int32) -> String {
   let s = q.to_string()
   if prec == 0 {
     return s
@@ -716,7 +716,7 @@ fn big_fixed_to_string(q : @bigint.BigInt, prec : Int) -> String {
 fn format_printf_string(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  fmt : Array[Int],
+  fmt : Array[Int32],
   args : Array[UInt64],
 ) -> Result[Bytes, @memory.MemFault] {
   let scan = FmtScan::{ s: fmt, i: 0, }
@@ -970,7 +970,7 @@ fn format_printf_string(
                   push_bytes(apply_width_bytes(one, width, flags~))
                 } else {
                   // 未知说明符：原样 `%` + 字母，但**消耗一个实参**
-                  push_str("%" + Int::unsafe_to_char(spec).to_string())
+                  push_str("%" + Int32::unsafe_to_char(spec).to_string())
                 }
                 used = used + 1
               }
@@ -980,7 +980,7 @@ fn format_printf_string(
         None => push_str("%") // 行尾孤立 %
       }
     } else {
-      push_str(Int::unsafe_to_char(ch).to_string())
+      push_str(Int32::unsafe_to_char(ch).to_string())
     }
   }
   Ok(Bytes::from_array(acc))
@@ -990,7 +990,7 @@ fn format_printf_string(
 /// printf 族参数消耗总数（vm 分发侧弹参数数用——%*d 批四 2026-10-07：
 /// 每 spec = 1 + 星号宽度 + 星号精度；dispatch 原按说明符个数弹参，
 /// 星号 spec 曾少弹导致栈失衡）。
-pub fn format_arg_count(fmt : Array[Int]) -> Int {
+pub fn format_arg_count(fmt : Array[Int32]) -> Int32 {
   let scan = FmtScan::{ s: fmt, i: 0, }
   let mut n = 0
   while true {
@@ -1029,7 +1029,7 @@ pub fn format_arg_count(fmt : Array[Int]) -> Int {
 ///|
 /// scanf 族指针参数计数（vm 分发侧用——只数 `%` 转换符，空白指令与
 /// 字面量不计；与 `parse_scanf_specs` 的 Spec 分支计数同口径）。
-pub fn scanf_spec_count(fmt : Array[Int]) -> Int {
+pub fn scanf_spec_count(fmt : Array[Int32]) -> Int32 {
   let mut count = 0
   for it in parse_scanf_specs(fmt) {
     match it {

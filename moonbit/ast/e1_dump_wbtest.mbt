@@ -4,7 +4,7 @@
 /// 本快照锁 emitter 输出的原始文本（未经 canonicalize）——emitter 任何
 /// 键名/嵌套/浮点文本化漂移即红。
 test "e1_dump_shape_int_main" {
-  let loc_of = (line : Int, col : Int) => @source.SourceLoc::new(line, col)
+  let loc_of = (line : Int32, col : Int32) => @source.SourceLoc::new(line, col)
   let lit = Literal(0, loc_of(1, 20), Type::int())
   let ret = Return(Some(lit), loc_of(1, 13))
   let blk = Block([ret], loc_of(1, 11))
@@ -40,7 +40,7 @@ test "e1_dump_shape_int_main" {
 /// E1 富样本锚（FloatLiteral 3.5 / StringLiteral（ty=char[3]）/ 全局 /
 /// While / Assign）——canonicalize 对拍通过的原始文本固化。
 test "e1_dump_shape_rich_sample" {
-  let loc_of = (line : Int, col : Int) => @source.SourceLoc::new(line, col)
+  let loc_of = (line : Int32, col : Int32) => @source.SourceLoc::new(line, col)
   let g : GlobalDecl = {
     loc: loc_of(1, 13),
     ty: Double(false),

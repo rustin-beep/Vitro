@@ -16,7 +16,7 @@ fn BytecodeGen::gen_call_ptr(
   ret_ty : @ast.Type,
   loc : @source.SourceLoc,
 ) -> Unit {
-  let ret_temp_offset : Int? = if ret_ty.kind() is TK_Struct {
+  let ret_temp_offset : Int32? = if ret_ty.kind() is TK_Struct {
     let sz = {
       let raw = self.type_size(ret_ty)
       if raw % 4 == 0 {

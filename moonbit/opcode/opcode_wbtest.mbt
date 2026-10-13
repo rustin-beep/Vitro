@@ -114,7 +114,7 @@ test "instruction_construct_and_equality" {
 ///|
 /// OpCode 可作 Map 键（Hash）且全序可用（Compare——编号序即声明序）。
 test "opcode_hash_and_compare" {
-  let m : Map[OpCode, Int] = Map([])
+  let m : Map[OpCode, Int32] = Map([])
   m[Nop] = 1
   m[PushConst] = 2
   assert_eq(m.length(), 2)

@@ -75,14 +75,14 @@ fn to_utf8_string(bytes : Bytes) -> String {
   while i < len {
     let mut c = bytes[i].to_int()
     if c < 0x80 {
-      res.push(Int::unsafe_to_char(c))
+      res.push(Int32::unsafe_to_char(c))
       i += 1
     } else if c < 0xE0 {
       if i + 1 >= len {
         break
       }
       c = ((c & 0x1F) << 6) | (bytes[i + 1].to_int() & 0x3F)
-      res.push(Int::unsafe_to_char(c))
+      res.push(Int32::unsafe_to_char(c))
       i += 2
     } else if c < 0xF0 {
       if i + 2 >= len {
@@ -91,7 +91,7 @@ fn to_utf8_string(bytes : Bytes) -> String {
       c = ((c & 0x0F) << 12) |
         ((bytes[i + 1].to_int() & 0x3F) << 6) |
         (bytes[i + 2].to_int() & 0x3F)
-      res.push(Int::unsafe_to_char(c))
+      res.push(Int32::unsafe_to_char(c))
       i += 3
     } else {
       if i + 3 >= len {
@@ -101,10 +101,10 @@ fn to_utf8_string(bytes : Bytes) -> String {
         ((bytes[i + 1].to_int() & 0x3F) << 12) |
         ((bytes[i + 2].to_int() & 0x3F) << 6) |
         (bytes[i + 3].to_int() & 0x3F)
-      match char_to_utf16_pair(Int::unsafe_to_char(c)) {
+      match char_to_utf16_pair(Int32::unsafe_to_char(c)) {
         Some((hi, lo)) => {
-          res.push(Int::unsafe_to_char(hi))
-          res.push(Int::unsafe_to_char(lo))
+          res.push(Int32::unsafe_to_char(hi))
+          res.push(Int32::unsafe_to_char(lo))
           i += 4
         }
         None => break
@@ -117,15 +117,15 @@ fn to_utf8_string(bytes : Bytes) -> String {
 ///|
 /// Combine a UTF-16 leading surrogate `hi` and trailing surrogate `lo` into
 /// a char, or `None` if the code units are not a valid surrogate pair.
-fn utf16_pair_to_char(hi : Int, lo : Int) -> Char? {
+fn utf16_pair_to_char(hi : Int32, lo : Int32) -> Char? {
   guard hi.is_leading_surrogate() && lo.is_trailing_surrogate() else { None }
-  Some(Int::unsafe_to_char((hi << 10) + lo - 0x35fdc00))
+  Some(Int32::unsafe_to_char((hi << 10) + lo - 0x35fdc00))
 }
 
 ///|
 /// Split a supplementary (astral) char into its UTF-16 leading and trailing
 /// surrogate code units, or `None` if the char fits in a single code unit.
-fn char_to_utf16_pair(ch : Char) -> (Int, Int)? {
+fn char_to_utf16_pair(ch : Char) -> (Int32, Int32)? {
   let c = ch.to_int()
   if c > 0xFFFF {
     let v = c - 0x10000

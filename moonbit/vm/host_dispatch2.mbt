@@ -32,7 +32,7 @@ fn VitroVM::stack_buffer_spans(self : VitroVM) -> Array[@host.StackBufferSpan] {
 ///|
 /// 义务③：解析 `errno` 符号地址（全局符号表按名查；无则 None——host 侧
 /// 跳过 errno 写入，与 oracle「无符号则不写」同口径）。
-fn VitroVM::resolve_errno_addr(self : VitroVM) -> UInt? {
+fn VitroVM::resolve_errno_addr(self : VitroVM) -> UInt32? {
   for sym in self.symbols {
     if !sym.is_local && sym.name == "errno" {
       return Some(sym.addr)
@@ -46,9 +46,9 @@ fn VitroVM::resolve_errno_addr(self : VitroVM) -> UInt? {
 /// oracle 同名 handler 的 pop 次序）。
 fn VitroVM::execute_host_func2(
   self : VitroVM,
-  id : Int,
-  line : Int,
-  column : Int,
+  id : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match id {
     // ── 字符串 / 内存族 19（大多：pop 两个地址 [+ n]）──

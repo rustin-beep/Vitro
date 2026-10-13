@@ -45,8 +45,8 @@
 priv struct LibcSig {
   name : String
   return_type : @ast.Type
-  min_args : Int
-  max_args : Int // -1 = 变参
+  min_args : Int32
+  max_args : Int32 // -1 = 变参
   // 参数位骨架（病 11 接线第一层，#47 2026-10-09）：P = 指针/数组位
   //（E3029 builtin_check_pointer）、I = int 可赋值位（builtin_check_int）、
   // 空串 = 零参。当前仅收编的 15 个纯骨架臂填真值，供 typeck
@@ -520,7 +520,7 @@ fn lookup(name : String) -> LibcSig? {
 /// 签名投影（病 11 接线，#47 2026-10-09）：typeck check_builtin_table 的
 /// 数据入口——返回 (min_args, param_kinds, return_type) 元组而非暴露
 /// priv struct（pub 面最小化）；仅 param_kinds 非空的行可被表驱动收编。
-pub fn sig_of(name : String) -> (Int, String, @ast.Type)? {
+pub fn sig_of(name : String) -> (Int32, String, @ast.Type)? {
   for sig in libc_table {
     if sig.name == name {
       return Some((sig.min_args, sig.param_kinds, sig.return_type))

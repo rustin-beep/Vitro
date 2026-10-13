@@ -13,7 +13,7 @@ fn parse_u64(text : String, radix : UInt64) -> UInt64? {
   let mut val : UInt64 = 0UL
   for i = 0; i < text.length(); i = i + 1 {
     let c = text[i].to_int()
-    let d : Int = if c >= '0' && c <= '9' {
+    let d : Int32 = if c >= '0' && c <= '9' {
       c - '0'
     } else if c >= 'a' && c <= 'f' {
       c - 'a' + 10
@@ -57,7 +57,7 @@ fn u64_to_string(val : UInt64) -> String {
 ///|
 /// 数字字面量（照搬 `number.rs` 全语义：hex/bin/octal/decimal + `'` 分隔符 +
 /// 前导点/指数浮点 + U/L 后缀值域分派；U1#7/P4 修复口径随源搬）。
-fn Scanner::number(self : Scanner, start : Int) -> @token.Token {
+fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
   let mut has_integer_prefix = false
   let mut val : UInt64 = 0UL
   // Hexadecimal: 0x + hexdigit，允许 ' 分隔符（C23）

@@ -10,7 +10,7 @@ pub fn detect_search(
   name_lower : String,
   features : FuncFeatures,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // 二分查找
@@ -39,7 +39,7 @@ pub fn detect_search(
 pub fn detect_string(
   name_lower : String,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // 字符串反转

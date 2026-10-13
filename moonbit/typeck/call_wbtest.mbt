@@ -479,7 +479,7 @@ test "file_pointer_arg_three_state_anchor" {
   ) -> @ast.Expr {
     @ast.Expr::Call(name, args, loc, @ast.Type::void_type())
   }
-  fn int_lit(v : Int, loc : @source.SourceLoc) -> @ast.Expr {
+  fn int_lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::Literal(v, loc, @ast.Type::int())
   }
   fn dbl_lit(loc : @source.SourceLoc) -> @ast.Expr {

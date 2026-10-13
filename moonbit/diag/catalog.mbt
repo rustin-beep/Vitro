@@ -5,7 +5,7 @@
 /// 数据由 scripts/gen_diag 从 diagnostics_data/catalog.json 生成
 /// （catalog_gen.mbt），本类型为手写契约。
 pub(all) struct CatalogEntry {
-  code : Int
+  code : Int32
   icon : String
   title : String
   explanation : String
@@ -21,7 +21,7 @@ pub extend CatalogEntry with Eq::{not_equal, equal}
 ///|
 /// 构造（生成代码专用入口；外部构造走同一契约）。
 pub fn CatalogEntry::of(
-  code : Int,
+  code : Int32,
   icon : String,
   title : String,
   explanation : String,

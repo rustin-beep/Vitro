@@ -76,7 +76,7 @@ pub fn OutputKind::parse(s : String) -> OutputKind? {
 
 ///|
 /// 通道在固定三元组里的下标（`kind_bytes` 用）。
-fn OutputKind::index(self : OutputKind) -> Int {
+fn OutputKind::index(self : OutputKind) -> Int32 {
   match self {
     OutputKind::Stdout => 0
     OutputKind::Stderr => 1
@@ -103,7 +103,7 @@ pub extend OutputChunk with Eq::{not_equal, equal}
 /// 真实教学/防线用例的输出最大仅几十 KB，16MB 内**完全保真**（shadow 比对不受
 /// 影响）；失控程序（如 10M 步上限内逐字符 `putchar`）超预算后丢最旧并附截断
 /// 注记——有界且截断可见，替代无界累积形态。
-pub const OUTPUT_LOG_BUDGET : Int = 16 * 1024 * 1024
+pub const OUTPUT_LOG_BUDGET : Int32 = 16 * 1024 * 1024
 
 ///|
 /// 引擎附注（note）通道的独立预算（批五 note 无界治理，2026-10-07）。
@@ -116,16 +116,16 @@ pub const OUTPUT_LOG_BUDGET : Int = 16 * 1024 * 1024
 /// + 省略汇总）；本预算是 OutputLog 单点的**兜底安全网**——覆盖合法极值
 ///（封顶后报告 ~80KB、全部附注文案 <2KB），未来新增 note 源再引入无界时
 /// 由它兜住，语义与程序输出同款：丢最旧保最新 + 截断注记可见。
-pub const NOTE_LOG_BUDGET : Int = 8 * 1024 * 1024
+pub const NOTE_LOG_BUDGET : Int32 = 8 * 1024 * 1024
 
 ///|
 /// stdout/stderr 连续小段合并阈值：写入 ≤ 此长度的程序片段与末尾同通道块拼接
 /// （`putchar` 逐字符分配合并）；大于此长度独立成段。
-pub const MERGE_THRESHOLD : Int = 64
+pub const MERGE_THRESHOLD : Int32 = 64
 
 ///|
 /// 合并后单块长度上限（防止合并本身无界）。
-pub const MERGE_LIMIT : Int = 4096
+pub const MERGE_LIMIT : Int32 = 4096
 
 ///|
 /// 带预算的输出日志。
@@ -141,15 +141,15 @@ pub struct OutputLog {
   /// 已封口的片段序列（写入序）。`Note` 永不参与合并。
   chunks : Array[OutputChunk]
   /// 累计字节总数（O(1) 展示视图长度；含未封口的 `pending`）。
-  mut total_bytes : Int
+  mut total_bytes : Int32
   /// 逐通道字节数（O(1)）。
-  kind_bytes : FixedArray[Int]
+  kind_bytes : FixedArray[Int32]
   /// 环形丢弃的累计字节数（诊断口径，`clear` 复位）。
-  mut dropped_bytes : Int
+  mut dropped_bytes : Int32
   /// 首次触发丢弃后置位，避免重复附截断注记。
   mut truncation_noted : Bool
   /// 总字节预算（运行配置）。
-  mut budget : Int
+  mut budget : Int32
   /// **未封口的尾块**累加缓冲（仅 stdout/stderr；`Bytes` 不可变故先攒后物化）。
   pending : Array[Byte]
   /// 未封口尾块的通道（`pending` 非空时有效）。
@@ -157,9 +157,9 @@ pub struct OutputLog {
   /// `pending` 是否有内容。
   mut has_pending : Bool
   /// note 通道独立预算（运行配置，`clear` 保留）。
-  mut note_budget : Int
+  mut note_budget : Int32
   /// note 通道环形丢弃的累计字节数（诊断口径，`clear` 复位）。
-  mut note_dropped_bytes : Int
+  mut note_dropped_bytes : Int32
   /// note 首次触发丢弃后置位，避免重复附截断注记。
   mut note_truncation_noted : Bool
 }
@@ -185,49 +185,49 @@ pub fn OutputLog::new() -> OutputLog {
 
 ///|
 /// 调整总预算（只影响后续写入的裁剪判定）。
-pub fn OutputLog::set_budget(self : OutputLog, budget : Int) -> Unit {
+pub fn OutputLog::set_budget(self : OutputLog, budget : Int32) -> Unit {
   self.budget = budget
 }
 
 ///|
 /// 当前预算。
-pub fn OutputLog::budget(self : OutputLog) -> Int {
+pub fn OutputLog::budget(self : OutputLog) -> Int32 {
   self.budget
 }
 
 ///|
 /// 调整 note 通道独立预算（只影响后续写入的裁剪判定；测试与诊断口径）。
-pub fn OutputLog::set_note_budget(self : OutputLog, budget : Int) -> Unit {
+pub fn OutputLog::set_note_budget(self : OutputLog, budget : Int32) -> Unit {
   self.note_budget = budget
 }
 
 ///|
 /// note 通道当前预算。
-pub fn OutputLog::note_budget(self : OutputLog) -> Int {
+pub fn OutputLog::note_budget(self : OutputLog) -> Int32 {
   self.note_budget
 }
 
 ///|
 /// note 通道环形丢弃的累计字节数。
-pub fn OutputLog::note_dropped_bytes(self : OutputLog) -> Int {
+pub fn OutputLog::note_dropped_bytes(self : OutputLog) -> Int32 {
   self.note_dropped_bytes
 }
 
 ///|
 /// 现存全部字节总数（O(1)）。
-pub fn OutputLog::total_bytes(self : OutputLog) -> Int {
+pub fn OutputLog::total_bytes(self : OutputLog) -> Int32 {
   self.total_bytes
 }
 
 ///|
 /// 指定通道现存字节数（O(1)）。
-pub fn OutputLog::len_of(self : OutputLog, kind : OutputKind) -> Int {
+pub fn OutputLog::len_of(self : OutputLog, kind : OutputKind) -> Int32 {
   self.kind_bytes[kind.index()]
 }
 
 ///|
 /// 环形丢弃的累计字节数。
-pub fn OutputLog::dropped_bytes(self : OutputLog) -> Int {
+pub fn OutputLog::dropped_bytes(self : OutputLog) -> Int32 {
   self.dropped_bytes
 }
 
@@ -239,21 +239,21 @@ pub fn OutputLog::is_empty(self : OutputLog) -> Bool {
 
 ///|
 /// 片段数（**纯读**：未封口尾块按一个片段计，口径与 Rust 的 `chunks.len()` 一致）。
-pub fn OutputLog::len(self : OutputLog) -> Int {
+pub fn OutputLog::len(self : OutputLog) -> Int32 {
   self.chunks.length() + (if self.has_pending { 1 } else { 0 })
 }
 
 ///|
 /// 程序输出（stdout+stderr）现存字节数——预算只约束程序输出，引擎附注不占
 /// 预算、不参与环形丢弃（截断提示被程序输出挤掉就失去意义）。
-fn OutputLog::program_bytes(self : OutputLog) -> Int {
+fn OutputLog::program_bytes(self : OutputLog) -> Int32 {
   self.total_bytes - self.kind_bytes[OutputKind::Note.index()]
 }
 
 ///|
 /// 把 `[off, off + len)` 切片复制为新的 `Bytes`（经 `FixedArray` 中转——读侧
 /// 没有 FixedArray 版原语，`BytesView::to_owned` 是 `Bytes` 侧的现成路径）。
-fn bytes_slice(src : Bytes, off : Int, len : Int) -> Bytes {
+fn bytes_slice(src : Bytes, off : Int32, len : Int32) -> Bytes {
   src.get_view(start=off, end=off + len).unwrap().to_owned()
 }
 
@@ -456,7 +456,7 @@ fn OutputLog::enforce_budget(self : OutputLog) -> Unit {
 fn OutputLog::on_bytes_removed(
   self : OutputLog,
   kind : OutputKind,
-  n : Int,
+  n : Int32,
 ) -> Unit {
   self.total_bytes = self.total_bytes - n
   let i = kind.index()
@@ -521,7 +521,7 @@ fn OutputLog::enforce_note_budget(self : OutputLog) -> Unit {
 ///|
 /// note 通道的移除记账（与 `on_bytes_removed` 分流——`dropped_bytes` 是程序
 /// 输出的诊断口径，note 的丢弃计 `note_dropped_bytes`，两者不混）。
-fn OutputLog::remove_note_bytes(self : OutputLog, n : Int) -> Unit {
+fn OutputLog::remove_note_bytes(self : OutputLog, n : Int32) -> Unit {
   self.total_bytes = self.total_bytes - n
   let i = OutputKind::Note.index()
   self.kind_bytes[i] = self.kind_bytes[i] - n

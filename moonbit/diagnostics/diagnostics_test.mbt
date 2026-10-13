@@ -69,7 +69,7 @@ test "graph_nodes_count" {
 
 ///|
 fn make_record(
-  codes : Array[Int],
+  codes : Array[Int32],
   trap : String?,
 ) -> @diagnostics.CompileRecord {
   @diagnostics.CompileRecord::{
@@ -168,8 +168,8 @@ test "path_recommend_empty" {
 
 ///|
 fn make_fix_target(
-  start_col : Int,
-  end_col : Int,
+  start_col : Int32,
+  end_col : Int32,
   text : String,
 ) -> @diagnostics.FixTarget {
   @diagnostics.FixTarget::{

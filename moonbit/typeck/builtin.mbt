@@ -194,13 +194,13 @@ pub fn TypeChecker::check_printf_format(
   fmt : String,
   args : Array[@ast.Expr],
   loc : @source.SourceLoc,
-  start : Int,
+  start : Int32,
 ) -> Unit {
   let specs = parse_format_specs(fmt)
   let arg_count = args.length() - start
   // %*d 批四（2026-10-07）：星号宽度/精度各消耗 1 个 int 参数——
   // 数量臂按「每 spec = 1 + 星号数」计消耗
-  let expected : Int = {
+  let expected : Int32 = {
     let mut e = 0
     for (_, _, ws, ps) in specs {
       e += 1
@@ -280,13 +280,13 @@ pub fn TypeChecker::check_scanf_format(
   fmt : String,
   args : Array[@ast.Expr],
   loc : @source.SourceLoc,
-  start : Int,
+  start : Int32,
 ) -> Unit {
   let specs = parse_format_specs(fmt)
   let arg_count = args.length() - start
   // %*d 批四（2026-10-07）：scanf width 星号 = 赋值抑制（C §7.21.6.2——
   // 读入丢弃、不消耗指针参数）——数量臂只计非抑制 spec
-  let expected : Int = {
+  let expected : Int32 = {
     let mut e = 0
     for (_, _, ws, _) in specs {
       if !ws {
@@ -378,7 +378,7 @@ pub fn TypeChecker::check_scanf_format(
 fn TypeChecker::builtin_check_count(
   self : TypeChecker,
   args : Array[@ast.Expr],
-  expected : Int,
+  expected : Int32,
   name : String,
   loc : @source.SourceLoc,
 ) -> Bool {
@@ -399,7 +399,7 @@ fn TypeChecker::builtin_check_count(
 fn TypeChecker::builtin_check_pointer(
   self : TypeChecker,
   args : Array[@ast.Expr],
-  idx : Int,
+  idx : Int32,
   name : String,
   loc : @source.SourceLoc,
 ) -> Unit {
@@ -425,7 +425,7 @@ fn TypeChecker::builtin_check_pointer(
 fn TypeChecker::builtin_check_file_arg(
   self : TypeChecker,
   args : Array[@ast.Expr],
-  idx : Int,
+  idx : Int32,
   name : String,
   note : String,
   loc : @source.SourceLoc,
@@ -452,7 +452,7 @@ fn TypeChecker::builtin_check_file_arg(
 fn TypeChecker::builtin_check_int(
   self : TypeChecker,
   args : Array[@ast.Expr],
-  idx : Int,
+  idx : Int32,
   name : String,
   loc : @source.SourceLoc,
 ) -> Unit {

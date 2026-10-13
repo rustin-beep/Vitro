@@ -162,7 +162,7 @@ pub extend ErrorCode with Compare::{op_lt, op_le, op_ge, compare, op_gt}
 
 ///|
 /// 编号（穷尽 match，无下划线兜底——增删臂即编译红）。
-pub fn ErrorCode::code(self : ErrorCode) -> Int {
+pub fn ErrorCode::code(self : ErrorCode) -> Int32 {
   match self {
     Unknown => 0
     E1001_UnknownChar => 1001
@@ -1046,7 +1046,7 @@ pub fn ErrorCode::all() -> Array[ErrorCode] {
 
 ///|
 /// 编号 → 码；未知编号返回 None。
-pub fn ErrorCode::from_code(value : Int) -> ErrorCode? {
+pub fn ErrorCode::from_code(value : Int32) -> ErrorCode? {
   match value {
     0 => Some(Unknown)
     1001 => Some(E1001_UnknownChar)
@@ -1193,7 +1193,7 @@ pub fn ErrorCode::from_code(value : Int) -> ErrorCode? {
 
 ///|
 /// 有教学卡片的码清单（升序）。
-pub fn catalog_codes() -> Array[Int] {
+pub fn catalog_codes() -> Array[Int32] {
   [
     1001, 1002, 1003, 1004, 1005, 1006, 1007, 1010, 1011, 1013, 1014, 1015, 1016,
     1017, 1018, 1019, 1020, 1021, 1022, 2001, 2002, 2003, 2004, 2005, 2006, 2007,
@@ -1208,7 +1208,7 @@ pub fn catalog_codes() -> Array[Int] {
 
 ///|
 /// 无卡片码清单（升序；含 Unknown=0）——「码无卡片」可断言清单（T2）。
-pub fn codes_without_catalog() -> Array[Int] {
+pub fn codes_without_catalog() -> Array[Int32] {
   [
     0, 1012, 4001, 4002, 4003, 4004, 4005, 4006, 4007, 4008, 4009, 4010, 4011, 4012,
     4013, 4014, 4015, 4016, 4017, 4018, 4019, 4020, 4021, 4022, 4023, 4024, 4025,

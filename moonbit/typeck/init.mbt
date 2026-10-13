@@ -215,7 +215,7 @@ fn TypeChecker::check_field_value(
 
 ///|
 /// 按字段名查位置。
-fn find_field(fields : Array[(@ast.Type, String)], name : String) -> Int? {
+fn find_field(fields : Array[(@ast.Type, String)], name : String) -> Int32? {
   for i in 0..<fields.length() {
     if fields[i].1 == name {
       return Some(i)
@@ -229,7 +229,7 @@ fn find_field(fields : Array[(@ast.Type, String)], name : String) -> Int? {
 /// 返回 (是否合法, 改写后 init)）。
 fn TypeChecker::validate_nested_init_list(
   self : TypeChecker,
-  dims : Array[Int],
+  dims : Array[Int32],
   init : @ast.Expr,
   loc : @source.SourceLoc,
   element_type : @ast.Type,
@@ -259,7 +259,7 @@ fn TypeChecker::validate_nested_init_list(
         // 若当前层级遇到纯扁平标量列表（如 int a[2][3] = {1,2,3,4,5,6}），
         // 允许元素数量达到当前子数组最深层元素总数，按行主序填充
         let is_flat_scalar = !elements.exists(e => e.value is InitList(_, _, _))
-        let expected_count : Int = if dims[0] > 0 {
+        let expected_count : Int32 = if dims[0] > 0 {
           if is_flat_scalar && dims.length() > 1 {
             let mut product = 1
             for d in dims {
@@ -279,7 +279,7 @@ fn TypeChecker::validate_nested_init_list(
             W3005_ArrayInitTooMany,
           )
         }
-        let sub_dims : Array[Int] = dims[1:].to_owned()
+        let sub_dims : Array[Int32] = dims[1:].to_owned()
         for i in 0..<elements.length() {
           let elem = elements[i]
           let (ok, new_value) = self.validate_nested_init_list(

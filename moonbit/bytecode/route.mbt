@@ -24,9 +24,9 @@
 /// 一个名字的调用形态。
 pub(all) enum CallRoute {
   /// 走 `Call <固定索引>`——Bytecode Libc 预编译产物（`libc_index.mbt` 的 88 名）。
-  BytecodeLibc(Int)
+  BytecodeLibc(Int32)
   /// 走 `CallHost <id>`——host handler（`host_func_id_gen.mbt` 的 110 名）。
-  Host(Int)
+  Host(Int32)
 } derive(Debug, Eq)
 
 ///|
@@ -38,7 +38,7 @@ pub extend CallRoute with Eq::{not_equal, equal}
 ///|
 /// host 名表规模（Rust `host_func_id.rs`：110 常量 / 110 名映射，**含别名**——
 /// `print_int`/`__vitro_output` 同指 OUTPUT、`labs` 同指 ABS）。
-pub const HOST_FUNC_NAME_COUNT : Int = 114
+pub const HOST_FUNC_NAME_COUNT : Int32 = 114
 
 ///|
 /// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 5）。
@@ -48,7 +48,7 @@ pub const HOST_FUNC_NAME_COUNT : Int = 114
 /// iscntrl isxdigit abs atoi srand rand strlen strcmp`。
 ///（2026-10-06 strncpy/memcpy/memmove 改判 Host——负 n 越界写 trap 的
 /// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；改判集 5。）
-pub const SHADOWED_HOST_NAME_COUNT : Int = 17
+pub const SHADOWED_HOST_NAME_COUNT : Int32 = 17
 
 ///|
 /// 从固定索引段**改判回 Host** 的显式例外集。
@@ -76,7 +76,7 @@ pub fn is_host_rerouted(name : String) -> Bool {
 /// 与 `host_func_id_by_user_name` 的区别是刻意的：后者照搬 Rust `by_user_name`
 /// 语义，对 14 个 PURE 名**短路返回 None**，因此**不能**用来回答"这个名字在不在
 /// host 表里"——路由派生要的正是原始成员关系。
-fn host_id_raw(name : String) -> Int? {
+fn host_id_raw(name : String) -> Int32? {
   for pair in host_func_pairs {
     if pair.0 == name {
       return Some(pair.1)

@@ -33,9 +33,9 @@
 /// oracle 空调用栈）。
 pub(all) struct StackBufferSpan {
   /// 缓冲区绝对地址（`frame.locals_base + buf.offset`）。
-  base : UInt
+  base : UInt32
   /// 缓冲区容量（字节）。
-  size : Int
+  size : Int32
   /// 源码里的缓冲区名（E3070 文案用）。
   name : String
 } derive(Debug, Eq)
@@ -55,7 +55,7 @@ pub extend StackBufferSpan with Eq::{not_equal, equal}
 fn read_cstring(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> Result[Bytes, @memory.MemFault] {
   let buf : Array[Byte] = []
   let mut i = 0
@@ -97,7 +97,7 @@ fn bytes_contains(hay : Bytes, b : Byte) -> Bool {
 
 ///|
 /// 4 位补零大写十六进制（memset 的 NULL trap 文案口径 `0x{:04X}`）。
-fn hex04_upper(v : UInt) -> String {
+fn hex04_upper(v : UInt32) -> String {
   let h = hex_upper(v)
   let mut out = "0x"
   let pad = 4 - h.length()
@@ -124,8 +124,8 @@ fn fault_reply(f : @memory.MemFault) -> HostMemReply {
 /// `find_live_region_containing` 的严格大于——那是 free 内部地址诊断口径）。
 fn live_region_at_or_containing(
   map : @memory.MemoryMap,
-  dest : UInt,
-) -> (UInt, Int, String)? {
+  dest : UInt32,
+) -> (UInt32, Int32, String)? {
   for pa in map.regions_to_array() {
     let base = pa.0
     let r = pa.1
@@ -143,8 +143,8 @@ fn live_region_at_or_containing(
 /// 说了算）。未命中任何缓冲区返回 `None` 继续。
 fn stack_buffer_check(
   stack_buffers : Array[StackBufferSpan],
-  dest : UInt,
-  needed : Int,
+  dest : UInt32,
+  needed : Int32,
   op : String,
 ) -> String? {
   for buf in stack_buffers {
@@ -167,7 +167,7 @@ fn stack_buffer_check(
 pub fn host_strlen(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
 ) -> HostMemReply {
   try {
     let s = read_cstring_raise(mem, map, addr)
@@ -186,8 +186,8 @@ pub fn host_strlen(
 pub fn host_strdup(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  src : UInt,
-  alloc_line : Int,
+  src : UInt32,
+  alloc_line : Int32,
 ) -> HostMemReply {
   let src_bytes = read_cstring_raise(mem, map, src) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -223,8 +223,8 @@ pub fn host_strdup(
 pub fn host_strcpy(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
+  dest : UInt32,
+  src : UInt32,
   stack_buffers : Array[StackBufferSpan],
 ) -> HostMemReply {
   let src_bytes = read_cstring_raise(mem, map, src) catch {
@@ -268,8 +268,8 @@ pub fn host_strcpy(
 pub fn host_strcmp(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr1 : UInt,
-  addr2 : UInt,
+  addr1 : UInt32,
+  addr2 : UInt32,
 ) -> HostMemReply {
   let mut i = 0
   while true {
@@ -300,7 +300,7 @@ pub fn host_strcmp(
 pub fn host_memset(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  ptr : UInt,
+  ptr : UInt32,
   value : UInt64,
   size : UInt64,
 ) -> HostMemReply {
@@ -338,8 +338,8 @@ pub fn host_memset(
 pub fn host_strcat(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
+  dest : UInt32,
+  src : UInt32,
   stack_buffers : Array[StackBufferSpan],
 ) -> HostMemReply {
   // 扫 dest 已有内容的末尾（NUL 前一字节；oracle 扫到内存尾兜底，此处
@@ -401,9 +401,9 @@ pub fn host_strcat(
 pub fn host_strncpy(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
-  n : Int,
+  dest : UInt32,
+  src : UInt32,
+  n : Int32,
 ) -> HostMemReply {
   let src_bytes = read_cstring_raise(mem, map, src) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -468,9 +468,9 @@ pub fn host_strncpy(
 pub fn host_memcpy(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
-  n : Int,
+  dest : UInt32,
+  src : UInt32,
+  n : Int32,
 ) -> HostMemReply {
   host_memmove(map, mem, dest, src, n)
 }
@@ -480,9 +480,9 @@ pub fn host_memcpy(
 pub fn host_memmove(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
-  n : Int,
+  dest : UInt32,
+  src : UInt32,
+  n : Int32,
 ) -> HostMemReply {
   // 负 n → 越界写 trap（同 host_strncpy——DIFF-LIB-STRNCPY-01 销案
   // 2026-10-05 批二-b；旧符号扩展截断系 oracle 照搬）
@@ -522,8 +522,8 @@ pub fn host_memmove(
 pub fn host_strncat(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  dest : UInt,
-  src : UInt,
+  dest : UInt32,
+  src : UInt32,
   n : UInt64,
 ) -> HostMemReply {
 
@@ -586,8 +586,8 @@ pub fn host_strncat(
 pub fn host_strncmp(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr1 : UInt,
-  addr2 : UInt,
+  addr1 : UInt32,
+  addr2 : UInt32,
   n : UInt64,
 ) -> HostMemReply {
   let mut i = 0UL
@@ -615,8 +615,8 @@ pub fn host_strncmp(
 pub fn host_memcmp(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr1 : UInt,
-  addr2 : UInt,
+  addr1 : UInt32,
+  addr2 : UInt32,
   n : UInt64,
 ) -> HostMemReply {
   let mut i = 0UL
@@ -643,8 +643,8 @@ pub fn host_memcmp(
 pub fn host_strchr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  c : Int,
+  addr : UInt32,
+  c : Int32,
 ) -> HostMemReply {
   let mut i = 0
   while true {
@@ -668,8 +668,8 @@ pub fn host_strchr(
 pub fn host_strrchr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  c : Int,
+  addr : UInt32,
+  c : Int32,
 ) -> HostMemReply {
   let mut result = 0U
   let mut i = 0
@@ -694,8 +694,8 @@ pub fn host_strrchr(
 pub fn host_strstr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  haystack : UInt,
-  needle : UInt,
+  haystack : UInt32,
+  needle : UInt32,
 ) -> HostMemReply {
   let hay = read_cstring_raise(mem, map, haystack) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -708,7 +708,7 @@ pub fn host_strstr(
   }
   let hl = hay.length()
   let nl = nd.length()
-  let mut pos : Int? = None
+  let mut pos : Int32? = None
   let mut i = 0
   while i + nl <= hl {
     let mut j = 0
@@ -741,8 +741,8 @@ pub fn host_strstr(
 pub fn host_memchr(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
-  c : Int,
+  addr : UInt32,
+  c : Int32,
   n : UInt64,
 ) -> HostMemReply {
   let mut i = 0UL
@@ -771,8 +771,8 @@ pub fn host_memchr(
 pub fn host_strpbrk(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  s_addr : UInt,
-  accept_addr : UInt,
+  s_addr : UInt32,
+  accept_addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, s_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -797,8 +797,8 @@ pub fn host_strpbrk(
 pub fn host_strspn(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  s_addr : UInt,
-  accept_addr : UInt,
+  s_addr : UInt32,
+  accept_addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, s_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -824,8 +824,8 @@ pub fn host_strspn(
 pub fn host_strcspn(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  s_addr : UInt,
-  reject_addr : UInt,
+  s_addr : UInt32,
+  reject_addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, s_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)

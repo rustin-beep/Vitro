@@ -141,7 +141,7 @@ fn round_to_f32(v : Double) -> Double {
 
 ///|
 /// 2 的整数幂（e 小负数域——confidence 规格化 |e| ≤ 4）。
-fn pow2i(e : Int) -> Double {
+fn pow2i(e : Int32) -> Double {
   let mut r = 1.0
   let mut k = e
   while k < 0 {

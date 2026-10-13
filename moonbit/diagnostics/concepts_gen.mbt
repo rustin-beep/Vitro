@@ -371,8 +371,8 @@ pub fn concept_edges() -> Array[ConceptEdge] {
 
 ///|
 /// 错误码 → 概念 id 列表（源 insert 序；LinkedHashMap 语义同源）。
-pub fn error_concept_map() -> Map[Int, Array[String]] {
-  let m : Map[Int, Array[String]] = Map([])
+pub fn error_concept_map() -> Map[Int32, Array[String]] {
+  let m : Map[Int32, Array[String]] = Map([])
   m.set(3023, ["VarDecl"])
   m.set(3004, ["TypeSystem", "ImplicitCast"])
   m.set(3053, ["ImplicitCast"])

@@ -459,7 +459,7 @@ fn TypeChecker::resolve_generic(
   }
   // 选中的关联（判等命中即止——未选中的**不解析**，Rust iter_mut 同构；
   // 选中的 resolve 后写回数组元素）
-  let mut hit : Int = -1
+  let mut hit : Int32 = -1
   for i in 0..<associations.length() {
     if @ast.type_eq(associations[i].0, control_decayed) {
       hit = i

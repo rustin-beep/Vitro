@@ -10,7 +10,7 @@ pub fn detect_graph(
   name_lower : String,
   features : FuncFeatures,
   func_name : String,
-  line : Int,
+  line : Int32,
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // BFS 广度优先搜索

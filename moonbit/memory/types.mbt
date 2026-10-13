@@ -27,8 +27,8 @@ pub extend AccessKind with Eq::{not_equal, equal}
 /// `addr` 与 `size` 都可变：`take_from_free_list` 的 first-fit 切分把块
 /// 起点前移并缩小余量（Rust `memory_state.rs:280-286`）。
 pub(all) struct FreeBlock {
-  mut addr : UInt
-  mut size : Int
+  mut addr : UInt32
+  mut size : Int32
 } derive(Debug, Eq)
 
 ///|
@@ -46,12 +46,12 @@ pub extend FreeBlock with Eq::{not_equal, equal}
 /// - 四个"行号 / 步号"字段喂教学时间轴（`alloc → free → 继续访问`），
 ///   照搬 Rust `FreedRegionInfo`（`state.rs:22-32`）。
 pub(all) struct FreedRegionInfo {
-  addr : UInt
-  mut size : Int
-  alloc_line : Int
-  freed_line : Int
-  alloc_step : Int
-  freed_step : Int
+  addr : UInt32
+  mut size : Int32
+  alloc_line : Int32
+  freed_line : Int32
+  alloc_step : Int32
+  freed_step : Int32
 } derive(Debug, Eq)
 
 ///|
@@ -75,9 +75,9 @@ pub extend FreedRegionInfo with Eq::{not_equal, equal}
 /// 后自行渲染（Rust `host/memory.rs:60-137`）。
 pub(all) enum MemFault {
   /// NULL 陷阱区（`addr < NULL_TRAP_SIZE`）。
-  NullDeref(UInt, AccessKind)
+  NullDeref(UInt32, AccessKind)
   /// 上界：`addr + size` 越过 `MEM_SIZE`。
-  OutOfBounds(UInt, UInt)
+  OutOfBounds(UInt32, UInt32)
   /// Use-After-Free：命中 freed_logs 区间。
   UseAfterFree(FreedRegionInfo, AccessKind)
 } derive(Debug, Eq)
@@ -104,12 +104,12 @@ pub extend MemFault with Eq::{not_equal, equal}
 /// Rust `memory_state.rs:66-70` 有明文）。保留该字段是为了不擅自改 L8
 /// 导出（`memory_regions`）的线格式与旧快照的向后兼容口径。
 pub(all) struct MemoryRegionData {
-  mut size : Int
+  mut size : Int32
   mut name : String
   mut ty : String
   is_heap : Bool
   mut is_freed : Bool
-  mut alloc_line : Int
+  mut alloc_line : Int32
   mut alloc_by : String
   mut kind : String
   /// **ARC 引用计数（CSharp 前端引入计划 §3——CS 硬前置，v1 入形非事后补丁）**：
@@ -117,7 +117,7 @@ pub(all) struct MemoryRegionData {
   /// host id，CS 批接线），计数归零立即确定性释放。**C 前端恒 0**——无 retain/
   /// release 发射，本字段对 C 语料行为零影响；随 `MemorySnapshot.regions` 自动
   /// 序列化（时间旅行免费安全，非事后扩快照结构）。
-  mut refcount : Int
+  mut refcount : Int32
 } derive(Debug, Eq)
 
 ///|
@@ -133,10 +133,10 @@ pub extend MemoryRegionData with Eq::{not_equal, equal}
 /// `heap_{alloc_counter}` 与 `"int"`，`realloc` 的新块两者皆空串
 /// （`host/memory.rs:44-54` vs `:296-306`）。
 pub fn MemoryRegionData::heap_block(
-  size : Int,
+  size : Int32,
   name : String,
   ty : String,
-  alloc_line : Int,
+  alloc_line : Int32,
   alloc_by : String,
 ) -> MemoryRegionData {
   MemoryRegionData::{
@@ -156,15 +156,15 @@ pub fn MemoryRegionData::heap_block(
 /// 堆统计（教学侧口径照搬 Rust `HeapStatsData`，`memory_state.rs:102-115`）。
 pub(all) struct HeapStatsData {
   /// 本次运行的堆起点（R1 动态堆起点；原为常量 `HEAP_START`）。
-  heap_base : Int
+  heap_base : Int32
   /// 总堆空间（`heap_offset - heap_base`），字节。
-  total_heap : Int
+  total_heap : Int32
   /// 已分配且未释放的堆内存，字节。
-  allocated : Int
+  allocated : Int32
   /// 外部碎片（`free_list` 中所有块之和），字节。
-  fragmented : Int
+  fragmented : Int32
   /// 碎片率（0~100）。
-  fragmentation_rate : Int
+  fragmentation_rate : Int32
 } derive(Debug, Eq)
 
 ///|

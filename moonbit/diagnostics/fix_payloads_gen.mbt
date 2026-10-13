@@ -6,7 +6,7 @@
 ///|
 /// 静态修复载荷表查询（generate_fix 的纯静态码子集；无下划线外的
 /// 兜底——未知码 None，机制层随后查动态五码）。
-pub fn fix_payload(code : Int) -> FixPayload? {
+pub fn fix_payload(code : Int32) -> FixPayload? {
   match code {
     1002 =>
       Some(FixPayload::{

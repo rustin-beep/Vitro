@@ -182,7 +182,7 @@ fn serve_run_frame(
 /// 计数足以定位泄漏模式）。
 pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   let leaks : Array[@memory.MemoryRegionData] = []
-  let addrs : Array[UInt] = []
+  let addrs : Array[UInt32] = []
   for addr, r in vm.mem_map.regions {
     if r.is_heap && !r.is_freed && r.alloc_by != "vfs" {
       leaks.push(r)
@@ -257,14 +257,14 @@ pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
 
 ///|
 /// 泄漏报告逐条明细行上限（计数与总字节数不受此限——见 `append_leak_report`）。
-let leak_report_max_rows : Int = 1000
+let leak_report_max_rows : Int32 = 1000
 
 ///|
 /// UInt → 大写十六进制，**最少 4 位**（oracle `{:04X}` 语义——不足 4 位
 /// 补前导零，超过原样不截不补；审阅 P1 修正 2026-10-04：首版恒 8 位与
 /// oracle 不符且被锚锁死）。仓内无 hex 单源，本函数 priv 自持——第二
 /// 消费者出现时上提 util 登记机械件。
-fn uint_to_hex4(v : UInt) -> String {
+fn uint_to_hex4(v : UInt32) -> String {
   let digits = "0123456789ABCDEF"
   // 最高非零 nibble 位置（0 值给 -1 → 由保底 4 位兜出 "0000"）
   let mut top = -1

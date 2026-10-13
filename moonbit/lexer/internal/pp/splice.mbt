@@ -158,7 +158,7 @@ fn arg_of(
     Some(s) => s
     None => return None
   }
-  let mut idx : Int? = None
+  let mut idx : Int32? = None
   for k in 0..<params.length() {
     if params[k] == name {
       idx = Some(k)

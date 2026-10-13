@@ -12,7 +12,7 @@ fn parse_src(src : String) -> @parser.ParseResult {
 
 ///|
 /// 错误码序列。
-fn codes_of(r : @parser.ParseResult) -> Array[Int] {
+fn codes_of(r : @parser.ParseResult) -> Array[Int32] {
   let cs = []
   for e in r.errors {
     cs.push(e.code)

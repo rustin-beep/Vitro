@@ -182,7 +182,7 @@ pub extend OpCode with Hash::{hash, hash_combine}
 
 ///|
 /// opcode 编号（穷尽 match，编号手工显式——照搬 Rust，不重排）。
-pub fn OpCode::code(self : OpCode) -> Int {
+pub fn OpCode::code(self : OpCode) -> Int32 {
   match self {
     Nop => 0
     PushConst => 1
@@ -337,7 +337,7 @@ pub fn OpCode::code(self : OpCode) -> Int {
 
 ///|
 /// 编号 → opcode；空号（44–49）与越界（>137 / <0）返回 None。
-pub fn OpCode::from_u8(value : Int) -> OpCode? {
+pub fn OpCode::from_u8(value : Int32) -> OpCode? {
   match value {
     0 => Some(Nop)
     1 => Some(PushConst)

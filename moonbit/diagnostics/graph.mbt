@@ -16,7 +16,7 @@ fn node_map() -> Map[String, ConceptNode] {
 ///|
 /// 按错误码激活概念（Rust activate_from_error 照搬：映射表 → 逐概念
 /// 带 1-hop 邻居；映射表无此码返回空）。
-pub fn activate_from_error(error_code : Int) -> Array[ActivatedConcept] {
+pub fn activate_from_error(error_code : Int32) -> Array[ActivatedConcept] {
   let result : Array[ActivatedConcept] = []
   let nmap = node_map()
   match error_concept_map().get(error_code) {

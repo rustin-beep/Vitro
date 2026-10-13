@@ -9,8 +9,8 @@ fn Parser::parse_struct_body(
   self : Parser,
   name : String,
   loc : @source.SourceLoc,
-  depth : Int,
-  is_union? : Bool = false,
+  depth : Int32,
+  is_union~ : Bool = false,
 ) -> @ast.StructDecl {
   ignore(self.consume(LBrace, "预期 '{'"))
   let fields : Array[@ast.StructField] = []
@@ -112,7 +112,7 @@ fn Parser::parse_struct_body(
 }
 
 ///|
-fn Parser::parse_struct_decl(self : Parser, depth : Int) -> @ast.StructDecl {
+fn Parser::parse_struct_decl(self : Parser, depth : Int32) -> @ast.StructDecl {
   ignore(self.consume(Struct, "预期 'struct'"))
   let name_tok = if self.check(Identifier) {
     self.advance()
@@ -151,7 +151,7 @@ fn Parser::parse_struct_decl(self : Parser, depth : Int) -> @ast.StructDecl {
 }
 
 ///|
-fn Parser::parse_union_decl(self : Parser, depth : Int) -> @ast.StructDecl {
+fn Parser::parse_union_decl(self : Parser, depth : Int32) -> @ast.StructDecl {
   ignore(self.consume(Union, "预期 'union'"))
   let name_tok = if self.check(Identifier) {
     self.advance()
@@ -192,7 +192,7 @@ fn Parser::parse_union_decl(self : Parser, depth : Int) -> @ast.StructDecl {
 // =========================================================================
 
 ///|
-fn Parser::parse_class_decl(self : Parser, depth : Int) -> @ast.ClassDecl {
+fn Parser::parse_class_decl(self : Parser, depth : Int32) -> @ast.ClassDecl {
   self.parse_class_decl_inner(false, depth)
 }
 
@@ -200,7 +200,7 @@ fn Parser::parse_class_decl(self : Parser, depth : Int) -> @ast.ClassDecl {
 fn Parser::parse_class_decl_inner(
   self : Parser,
   is_struct : Bool,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.ClassDecl {
   let loc = self.cur_loc()
   if is_struct {
@@ -504,7 +504,7 @@ fn Parser::is_template_explicit_instantiation(self : Parser) -> Bool {
 ///|
 fn Parser::parse_template_instantiation(
   self : Parser,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.TemplateInstantiation {
   let loc = self.cur_loc()
   ignore(self.consume(Template, "预期 'template'"))
@@ -529,7 +529,10 @@ fn Parser::parse_template_instantiation(
 }
 
 ///|
-fn Parser::parse_template_decl(self : Parser, depth : Int) -> @ast.TemplateDecl {
+fn Parser::parse_template_decl(
+  self : Parser,
+  depth : Int32,
+) -> @ast.TemplateDecl {
   let loc = self.cur_loc()
   ignore(self.consume(Template, "预期 'template'"))
   ignore(self.consume(Lt, "预期 '<'"))
@@ -607,7 +610,7 @@ fn Parser::parse_template_decl(self : Parser, depth : Int) -> @ast.TemplateDecl 
 fn Parser::parse_typedef_struct_decl(
   self : Parser,
   program : @ast.ProgramNode,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
@@ -629,7 +632,7 @@ fn Parser::parse_typedef_struct_decl(
 fn Parser::parse_typedef_enum_decl(
   self : Parser,
   program : @ast.ProgramNode,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   let cur0 = self.current()
   let loc = @source.SourceLoc::new(cur0.loc.line, cur0.loc.column)
@@ -738,7 +741,7 @@ fn Parser::parse_func_decl(
   self : Parser,
   is_static : Bool,
   is_extern : Bool,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.FuncDecl {
   let base_type = self.parse_base_type(depth)
   let mut ret_type = base_type
@@ -805,7 +808,7 @@ fn Parser::parse_func_decl(
 }
 
 ///|
-fn Parser::parse_typedef(self : Parser, depth : Int) -> Unit {
+fn Parser::parse_typedef(self : Parser, depth : Int32) -> Unit {
   ignore(self.advance())
   let base_type = self.parse_base_type(depth)
   let d = self.parse_declarator(base_type, depth)
@@ -817,7 +820,7 @@ fn Parser::parse_typedef(self : Parser, depth : Int) -> Unit {
 fn Parser::parse_enum_decl(
   self : Parser,
   program : @ast.ProgramNode,
-  depth : Int,
+  depth : Int32,
 ) -> Unit {
   let (enum_name, underlying) = self.parse_enum_core(depth)
   // #15 顶层形状（2026-10-06）：`enum [T] {...} var;` body 后声明器组 →
@@ -851,7 +854,7 @@ fn Parser::parse_enum_decl(
 /// enum 声明主体（tag + 可选底层类型 + 成员常量注册；不含收尾——
 /// #15 拆出：顶层形态与 struct 成员嵌套形态共用）。返回 (tag, 底层
 /// 类型)。常量注册经 program_sink（parse_program 注入）。
-fn Parser::parse_enum_core(self : Parser, depth : Int) -> (String, @ast.Type) {
+fn Parser::parse_enum_core(self : Parser, depth : Int32) -> (String, @ast.Type) {
   let cur0 = self.current()
   let loc = @source.SourceLoc::new(cur0.loc.line, cur0.loc.column)
   ignore(self.advance())
@@ -997,9 +1000,9 @@ fn apply_binary_const(op : @ast.BinaryOp, a : Int64, b : Int64) -> Int64? {
 ///|
 fn eval_enum_const(
   expr : @ast.Expr,
-  structs_table? : Map[String, Array[@ast.StructField]] = Map([]),
-  unions_table? : Map[String, Array[@ast.StructField]] = Map([]),
-  var_types? : Map[String, @ast.Type] = Map([]),
+  structs_table~ : Map[String, Array[@ast.StructField]] = Map([]),
+  unions_table~ : Map[String, Array[@ast.StructField]] = Map([]),
+  var_types~ : Map[String, @ast.Type] = Map([]),
 ) -> Int64? {
   // 显式栈后序求值：E(表达式) 展开、App*(算子) 消费值栈；叶子直接
   // 产值入 vals。压栈逆序保证弹序 = 左操作数、右操作数、算子（Rust
@@ -1047,7 +1050,7 @@ fn eval_enum_const(
           Sizeof(None, Some(Identifier(name, _, _)), _, _) =>
             match var_types.get(name) {
               Some(t) => {
-                let empty_cls : Map[String, Int] = Map([])
+                let empty_cls : Map[String, Int32] = Map([])
                 let sz = @ast.compute_type_size(
                   t, structs_table, unions_table, empty_cls,
                 )
@@ -1060,7 +1063,7 @@ fn eval_enum_const(
               None => return None
             }
           Sizeof(Some(t), _, _, _) => {
-            let empty_cls : Map[String, Int] = Map([])
+            let empty_cls : Map[String, Int32] = Map([])
             let sz = @ast.compute_type_size(
               t, structs_table, unions_table, empty_cls,
             )

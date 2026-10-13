@@ -17,9 +17,9 @@
 pub(all) struct LibcArtifact {
   code : Array[@opcode.Instruction]
   /// name → (固定索引, meta)
-  funcs : Array[(String, Int, @bytecode.FuncMeta)]
-  globals_32 : Array[(UInt, Int)]
-  globals_64 : Array[(UInt, UInt64)]
+  funcs : Array[(String, Int32, @bytecode.FuncMeta)]
+  globals_32 : Array[(UInt32, Int32)]
+  globals_64 : Array[(UInt32, UInt64)]
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
 }
@@ -52,7 +52,7 @@ pub fn load_libc_artifact() -> LibcArtifact {
     )
   }
   // func meta 组装（扁平 6 元头 + param_sizes 尾随；游标随 ps_count 前进）
-  let funcs : Array[(String, Int, @bytecode.FuncMeta)] = []
+  let funcs : Array[(String, Int32, @bytecode.FuncMeta)] = []
   let mut mi = 0
   for fi = 0; fi < libc_func_names.length(); fi = fi + 1 {
     let name = libc_func_names[fi]
@@ -63,7 +63,7 @@ pub fn load_libc_artifact() -> LibcArtifact {
     let local_count = libc_func_meta[mi + 3]
     let variadic = libc_func_meta[mi + 4] == 1
     let ps_count = libc_func_meta[mi + 5]
-    let param_sizes : Array[Int] = []
+    let param_sizes : Array[Int32] = []
     for k = 0; k < ps_count; k = k + 1 {
       param_sizes.push(libc_func_meta[mi + 6 + k])
     }
@@ -117,9 +117,9 @@ pub fn load_libc_artifact() -> LibcArtifact {
 pub fn VitroVM::setup_from_output(
   self : VitroVM,
   output : @bytecode.CompileOutput,
-  argc : Int,
+  argc : Int32,
   argv : Array[String],
-  vis_lines : Array[(Int, Int, String)],
+  vis_lines : Array[(Int32, Int32, String)],
 ) -> Unit {
   self.reset()
   // ── 1. 装载 libc ──

@@ -225,7 +225,7 @@ test "note_budget_ring_drops_oldest_keeps_tail" {
 
 ///|
 /// note 截断注记段的前缀匹配计数（`Bytes` 无 startsWith——逐字节比对）。
-fn note_truncation_marker_count(log : OutputLog) -> Int {
+fn note_truncation_marker_count(log : OutputLog) -> Int32 {
   let marker = @utf8.encode("[引擎] 引擎附注超出")
   let m = marker.length()
   let mut count = 0

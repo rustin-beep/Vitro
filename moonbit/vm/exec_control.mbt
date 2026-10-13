@@ -12,9 +12,9 @@
 ///|
 fn VitroVM::do_call(
   self : VitroVM,
-  func_idx : Int,
-  line : Int,
-  column : Int,
+  func_idx : Int32,
+  line : Int32,
+  column : Int32,
   op_name : String,
 ) -> Unit {
   // Option 数组：None = 未注册（Rust 侧是 Vec + ip==0 判定——Option 形态
@@ -33,10 +33,10 @@ fn VitroVM::do_call(
 ///|
 fn VitroVM::do_call_with_arg_count(
   self : VitroVM,
-  func_idx : Int,
-  arg_count : Int,
-  line : Int,
-  column : Int,
+  func_idx : Int32,
+  arg_count : Int32,
+  line : Int32,
+  column : Int32,
   op_name : String,
 ) -> Unit {
   match self.func_table.get(func_idx) {
@@ -53,10 +53,10 @@ fn VitroVM::do_call_with_arg_count(
 ///|
 fn VitroVM::do_call_inner(
   self : VitroVM,
-  func_idx : Int,
-  arg_count : Int,
-  line : Int,
-  column : Int,
+  func_idx : Int32,
+  arg_count : Int32,
+  line : Int32,
+  column : Int32,
   op_name : String,
 ) -> Unit {
   // Rust 此处 clone meta（借用检查器冲突的先 clone 再用 形态）——MoonBit
@@ -102,7 +102,7 @@ fn VitroVM::do_call_inner(
   let original_stack_top = self.mem_stack_top
   self.mem_stack_top = self.mem_stack_top - frame_size
   let locals_base = self.mem_stack_top
-  let mut word_offset : UInt = 0U
+  let mut word_offset : UInt32 = 0U
   // 先弹出命名参数（param_sizes 逐参 word 数；逆序逐 word 落局部区）
   for words in meta.param_sizes {
     let w = words.reinterpret_as_uint()
@@ -126,8 +126,8 @@ fn VitroVM::do_call_inner(
   }
   let arg_bytes = word_offset * 4U
   // 变参函数预留 64 字节变参区域，清零仅从实际局部变量开始（避免覆盖变参）
-  let zero_start : UInt = if meta.is_variadic {
-    let mut named_words : UInt = 0U
+  let zero_start : UInt32 = if meta.is_variadic {
+    let mut named_words : UInt32 = 0U
     for w in meta.param_sizes {
       named_words = named_words + w.reinterpret_as_uint()
     }
@@ -165,9 +165,9 @@ fn VitroVM::do_call_inner(
 fn VitroVM::execute_control_flow(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> StepResult? {
   match op {
     Jump => {

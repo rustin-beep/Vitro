@@ -11,7 +11,7 @@ fn main {
 }
 
 ///|
-extern "C" fn c_exit(code : Int) -> Unit = "exit"
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
 extern "C" fn read_stdin_bytes() -> Bytes = "moonbit_vitro_read_stdin_bytes"

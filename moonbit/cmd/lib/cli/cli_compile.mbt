@@ -5,7 +5,7 @@
 // 1=编译错 / 4=用法/IO。
 
 ///|
-pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int {
+pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
   ensure_include_reader()
   let mut file = ""
   let mut json_mode = false

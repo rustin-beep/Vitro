@@ -43,7 +43,7 @@ pub fn VarMap::new(vars : Array[VarSnapshot]) -> VarMap {
 
 ///|
 /// 整型读（首个同名；parse 失败 = None——Rust `parse::<i32>().ok()`）。
-pub fn VarMap::get_int(self : VarMap, name : String) -> Int? {
+pub fn VarMap::get_int(self : VarMap, name : String) -> Int32? {
   for v in self.vars {
     if v.name == name {
       return parse_int(v.value)
@@ -54,7 +54,7 @@ pub fn VarMap::get_int(self : VarMap, name : String) -> Int? {
 
 ///|
 /// 多别名整型读（按序首个命中——`["n","len","size","length"]` 族）。
-pub fn VarMap::get_int_any(self : VarMap, names : Array[String]) -> Int? {
+pub fn VarMap::get_int_any(self : VarMap, names : Array[String]) -> Int32? {
   for name in names {
     guard self.get_int(name) is Some(v) else { continue }
     return Some(v)
@@ -77,7 +77,7 @@ pub fn VarMap::get_str(self : VarMap, name : String) -> String? {
 /// 整数解析（Rust `str::parse::<i32>()`——首尾空白容忍度对齐：Rust
 /// parse **不容忍**空白，本侧同样严格；infer 消费面 value 均为引擎
 /// 格式化产物无空白）。可选正负号 + 数字序列；溢出/非数字 = None。
-fn parse_int(s : String) -> Int? {
+fn parse_int(s : String) -> Int32? {
   if s.length() == 0 {
     return None
   }
@@ -93,7 +93,7 @@ fn parse_int(s : String) -> Int? {
   if idx >= s.length() {
     return None
   }
-  let mut n : Int = 0
+  let mut n : Int32 = 0
   while idx < s.length() {
     let c = s[idx]
     if c < '0' || c > '9' {
@@ -175,7 +175,7 @@ fn is_signature_line(source_line : String) -> Bool {
 /// 步骤推断主口（Rust infer_algorithm_step——判据分派；批一号仅
 /// sorting 族九算法已迁移，其余族 `_ => None` 段登记进度随批补齐）。
 pub fn infer_algorithm_step(
-  code_line : Int,
+  code_line : Int32,
   local_vars : Array[VarSnapshot],
   func_name : String,
   source_line : String,

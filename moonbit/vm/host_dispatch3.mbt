@@ -18,7 +18,7 @@
 /// 直用 memory 单入口，NUL 直抵内存尾时最后一次越界读自然 fault）。
 fn VitroVM::read_cstring_checked(
   self : VitroVM,
-  addr : UInt,
+  addr : UInt32,
 ) -> Result[Bytes, @memory.MemFault] {
   let buf : Array[Byte] = []
   let mut i = 0
@@ -40,8 +40,8 @@ fn VitroVM::read_cstring_checked(
 ///|
 /// 逐字节 lossy 展开（格式解析的码元序列；与 host 包 lossy_codes 同口径
 /// ——String 码元直转 Int）。
-fn codes_of(bytes : Bytes) -> Array[Int] {
-  let out : Array[Int] = []
+fn codes_of(bytes : Bytes) -> Array[Int32] {
+  let out : Array[Int32] = []
   for i = 0; i < bytes.length(); i = i + 1 {
     out.push(bytes[i].to_int())
   }
@@ -67,10 +67,10 @@ fn concat_shapes(arr : Array[String]) -> String {
 /// rust-oracle-freeze 可回溯——比较器失败不中止排序的教学容错取舍〕）。
 fn VitroVM::call_user_function(
   self : VitroVM,
-  func_idx : Int,
-  args : Array[Int],
-  max_steps : Int,
-) -> Int? {
+  func_idx : Int32,
+  args : Array[Int32],
+  max_steps : Int32,
+) -> Int32? {
   let meta = match self.func_table.get(func_idx) {
     Some(Some(m)) => m
     _ => return None
@@ -135,7 +135,7 @@ fn VitroVM::call_user_function(
   for e in self.vis_event_queue {
     saved_vis.push(e)
   }
-  let saved_bps : Array[Int] = []
+  let saved_bps : Array[Int32] = []
   for bp in self.breakpoints {
     saved_bps.push(bp)
   }
@@ -183,7 +183,7 @@ fn VitroVM::call_user_function(
   })
   self.ip = meta.ip
   // ── 逐 step 执行至收尾 ──
-  let mut result : Int? = None
+  let mut result : Int32? = None
   while true {
     if self.step_count - start_step >= max_steps {
       break
@@ -233,16 +233,20 @@ fn VitroVM::call_user_function(
 /// 已随删区消失 tag rust-oracle-freeze 可回溯，数值基线现自主维持——
 /// 六轮审阅 P2：此前误写 64 且注释自称照搬；bsearch 的 `MAX_BSEARCH_DEPTH`
 /// 与本常量同值 8，共用 `qsort_depth` 计数器）。
-const MAX_QSORT_DEPTH : Int = 8
+const MAX_QSORT_DEPTH : Int32 = 8
 
 ///|
 /// 比较步数预算（单次 sort 内 call_user_function 总步数上限——照搬
 /// Rust MAX_COMPARE_STEPS）。
-const MAX_COMPARE_STEPS : Int = 1000
+const MAX_COMPARE_STEPS : Int32 = 1000
 
 ///|
 /// 受检段读（临时缓冲——qsort 重排的搬运前置）。
-fn VitroVM::read_block(self : VitroVM, addr : UInt, len : Int) -> Array[Byte]? {
+fn VitroVM::read_block(
+  self : VitroVM,
+  addr : UInt32,
+  len : Int32,
+) -> Array[Byte]? {
   match self.mem_map.check_access(addr, len.reinterpret_as_uint(), Read) {
     Err(_) => return None
     Ok(_) => ()
@@ -261,7 +265,7 @@ fn VitroVM::read_block(self : VitroVM, addr : UInt, len : Int) -> Array[Byte]? {
 /// 受检段写（qsort 写回）。
 fn VitroVM::write_block(
   self : VitroVM,
-  addr : UInt,
+  addr : UInt32,
   data : Array[Byte],
 ) -> Bool {
   match self.memory.write_bytes(self.mem_map, addr, Bytes::from_array(data)) {
@@ -274,9 +278,9 @@ fn VitroVM::write_block(
 /// 三段分发主体（id 与 Rust host_func_id 常量对齐）。
 fn VitroVM::execute_host_func3(
   self : VitroVM,
-  id : Int,
-  line : Int,
-  column : Int,
+  id : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match id {
     // ── printf/scanf 族 ──
@@ -366,7 +370,7 @@ fn VitroVM::execute_host_func3(
         )
         return
       }
-      let ptrs : Array[UInt] = []
+      let ptrs : Array[UInt32] = []
       for i = 0; i < arg_count; i = i + 1 {
         ptrs.push(self.pop_addr())
       }
@@ -403,7 +407,7 @@ fn VitroVM::execute_host_func3(
         }
       }
       let arg_count = @host.scanf_spec_count(codes_of(fmt))
-      let ptrs : Array[UInt] = []
+      let ptrs : Array[UInt32] = []
       for i = 0; i < arg_count; i = i + 1 {
         ptrs.push(self.pop_addr())
       }
@@ -541,7 +545,7 @@ fn VitroVM::execute_host_func3(
 ///|
 /// Bytes → String（lossy：非 UTF-8 序列按码元直转——puts 的输出文本口径）。
 fn lossy_string(bytes : Bytes) -> String {
-  let codes : Array[Int] = []
+  let codes : Array[Int32] = []
   for i = 0; i < bytes.length(); i = i + 1 {
     codes.push(bytes[i].to_int())
   }
@@ -553,10 +557,10 @@ fn lossy_string(bytes : Bytes) -> String {
 /// checked / 默认字节比较 / 比较器经 call_user_function / 临时缓冲重排）。
 fn VitroVM::host_qsort(
   self : VitroVM,
-  base : UInt,
+  base : UInt32,
   nmemb : UInt64,
   size : UInt64,
-  compar : UInt,
+  compar : UInt32,
 ) -> Unit {
   if self.qsort_depth >= MAX_QSORT_DEPTH {
     self.output.push_note_str(
@@ -575,7 +579,7 @@ fn VitroVM::host_qsort(
   let n = nmemb.to_uint().reinterpret_as_int()
   let sz = size.to_uint().reinterpret_as_int()
   self.qsort_depth = self.qsort_depth + 1
-  let indices : Array[Int] = []
+  let indices : Array[Int32] = []
   for i = 0; i < n; i = i + 1 {
     indices.push(i)
   }
@@ -648,11 +652,11 @@ fn VitroVM::host_qsort(
 /// 进出各 depth ±1。
 fn VitroVM::host_bsearch(
   self : VitroVM,
-  key : UInt,
-  base : UInt,
+  key : UInt32,
+  base : UInt32,
   nmemb : UInt64,
   size : UInt64,
-  compar : UInt,
+  compar : UInt32,
 ) -> Unit {
   if self.qsort_depth >= MAX_QSORT_DEPTH {
     self.output.push_note_str(
@@ -680,7 +684,7 @@ fn VitroVM::host_bsearch(
   let sz = size.to_uint().reinterpret_as_int()
   let mut lo = 0
   let mut hi = nmemb.to_uint().reinterpret_as_int()
-  let mut result_ptr : UInt = 0U
+  let mut result_ptr : UInt32 = 0U
   if compar == 0U {
     // 默认字节比较（compar==0——与 qsort 同款）
     let key_blk = self.read_block(key, sz)
@@ -735,7 +739,7 @@ fn VitroVM::host_bsearch(
 
 ///|
 /// 字节序列比较（qsort 默认比较器；字典序逐字节）。
-fn block_cmp(a : Array[Byte], b : Array[Byte]) -> Int {
+fn block_cmp(a : Array[Byte], b : Array[Byte]) -> Int32 {
   let n = if a.length() < b.length() { a.length() } else { b.length() }
   for i = 0; i < n; i = i + 1 {
     let x = a[i].to_int()

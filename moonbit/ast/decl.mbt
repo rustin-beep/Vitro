@@ -148,7 +148,7 @@ pub extend TemplateParam with Debug::{to_repr}
 pub(all) enum TemplateArg {
   TArg(Type)
   TExpr(Expr)
-  TInt(Int)
+  TInt(Int32)
 } derive(Debug)
 
 ///|

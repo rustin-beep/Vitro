@@ -577,7 +577,7 @@ fn starts_with(s : String, prefix : String) -> Bool {
 ///|
 /// prev_vars 行入口整型读（Rust `find + trim().parse()`——本侧 value
 /// 严格解析，trim 容忍 Rust trim 语义）。
-fn env_prev_int(env : InferEnv, name : String) -> Int? {
+fn env_prev_int(env : InferEnv, name : String) -> Int32? {
   for v in env.prev_vars {
     if v.name == name {
       return parse_int(v.value.trim().to_owned())

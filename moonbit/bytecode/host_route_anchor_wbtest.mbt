@@ -7,7 +7,7 @@
 
 ///|
 test "host route: hardcoded pairs from Rust source" {
-  let pairs : Array[(String, Int)] = [
+  let pairs : Array[(String, Int32)] = [
     ("print_int", 0),
     ("__vitro_output", 0),
     ("__vitro_step", 1),

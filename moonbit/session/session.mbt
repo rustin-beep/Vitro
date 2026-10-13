@@ -24,8 +24,8 @@ pub extend CompileUnit with Debug::{to_repr}
 /// 行号即文件内行号）。
 pub(all) struct FileRange {
   filename : String
-  start_line : Int
-  end_line : Int
+  start_line : Int32
+  end_line : Int32
 } derive(Debug)
 
 ///|
@@ -51,7 +51,7 @@ pub(all) struct CompileState {
   /// protocol，2026-10-01 批四号）。
   mut algorithm_matches : Array[@protocol.AlgorithmMatch]
   /// 结构体字段元数据（`名 → [(字段名, 偏移)]`——变量快照的 ty 渲染用）。
-  mut struct_fields : Map[String, Array[(String, Int)]]
+  mut struct_fields : Map[String, Array[(String, Int32)]]
   /// 多文件会话的全局行号映射（空 = 单文件）。
   mut file_ranges : Array[FileRange]
   /// E2 白箱教学层：预处理追踪（宏展开链 + `#if` 分支原因，容量封顶）。
@@ -82,7 +82,7 @@ pub(all) struct Session {
   mut unified_pending : @protocol.StepPayload?
   /// U1#1 管道批：上一帧 code_line（行变化时把上一行末帧的变量存入
   /// row_entry_vars——「展示运算过程」取语句执行前操作数）。
-  mut unified_last_line : Int
+  mut unified_last_line : Int32
   /// 行入口变量快照的维护状态（S8 时间旅行片深水区，字段先行照搬）。
   mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]
   mut unified_row_entry_vars : Array[@protocol.ApiVariableSnapshot]
@@ -136,7 +136,7 @@ pub fn CompileState::new() -> CompileState {
 /// 与 VM 是否已装载解耦（Rust 事故：编译前设置被静默丢弃，见
 /// session_config_test.rs 头注；本侧 vm 非 Option，配置永有所宿）。
 /// 下限 1（Rust `max.max(1)` 同）。
-pub fn Session::set_max_steps(self : Session, max : Int) -> Unit {
+pub fn Session::set_max_steps(self : Session, max : Int32) -> Unit {
   self.config.max_steps = if max < 1 { 1 } else { max }
   self.config.apply_to_vm(self.vm)
 }
@@ -148,7 +148,7 @@ pub fn Session::set_max_steps(self : Session, max : Int) -> Unit {
 /// SessionConfig——config 须直接持有 clamp 后值（否则回显与 vm 生效
 /// 值分叉：实测 oracle 0/-5 均回 16）；vm setter 的同款兜底保留为
 /// 双保险（直接调 vm 通道的路径）。
-pub fn Session::set_call_depth_limit(self : Session, limit : Int) -> Unit {
+pub fn Session::set_call_depth_limit(self : Session, limit : Int32) -> Unit {
   self.config.call_depth_limit = if limit < 16 { 16 } else { limit }
   self.config.apply_to_vm(self.vm)
 }
@@ -157,7 +157,7 @@ pub fn Session::set_call_depth_limit(self : Session, limit : Int) -> Unit {
 /// 按全局行号取源码行（P0-4 多文件安全——Rust source_line_at 照搬）：
 /// file_ranges 命中区间 → 定位对应编译单元取行；单文件（file_ranges
 /// 空）保持「全局行号 == 文件内行号」原语义。越界/非正数返回 None。
-pub fn Session::source_line_at(self : Session, global_line : Int) -> String? {
+pub fn Session::source_line_at(self : Session, global_line : Int32) -> String? {
   if global_line <= 0 {
     return None
   }
@@ -182,7 +182,7 @@ pub fn Session::source_line_at(self : Session, global_line : Int) -> String? {
 }
 
 ///|
-fn Session::find_file_range(self : Session, line : Int) -> FileRange? {
+fn Session::find_file_range(self : Session, line : Int32) -> FileRange? {
   for r in self.compile.file_ranges {
     if line >= r.start_line && line <= r.end_line {
       return Some(r)
@@ -205,7 +205,7 @@ fn Session::find_unit(self : Session, filename : String) -> CompileUnit? {
 /// 取源码串第 n 行（0 基；越界 None）。Rust `lines()` 语义：尾随 `\n`
 /// 不产生额外空行（split 会多出末空段——源以 `\n` 结尾且非空时弹掉；
 /// 中间空行合法保留）。
-fn nth_line(source : String, n : Int) -> String? {
+fn nth_line(source : String, n : Int32) -> String? {
   if n < 0 {
     return None
   }

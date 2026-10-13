@@ -13,20 +13,20 @@ priv enum DepthNode {
 
 ///|
 /// 表达式最大嵌套深度（叶子为 1）。
-pub fn expr_depth(e : Expr) -> Int {
-  let stack : Array[(DepthNode, Int)] = [(E(e), 1)]
+pub fn expr_depth(e : Expr) -> Int32 {
+  let stack : Array[(DepthNode, Int32)] = [(E(e), 1)]
   depth_of(stack)
 }
 
 ///|
 /// 语句最大嵌套深度（叶子为 1；函数体 Block 作为根传入）。
-pub fn stmt_depth(s : Stmt) -> Int {
-  let stack : Array[(DepthNode, Int)] = [(S(s), 1)]
+pub fn stmt_depth(s : Stmt) -> Int32 {
+  let stack : Array[(DepthNode, Int32)] = [(S(s), 1)]
   depth_of(stack)
 }
 
 ///|
-fn depth_of(stack : Array[(DepthNode, Int)]) -> Int {
+fn depth_of(stack : Array[(DepthNode, Int32)]) -> Int32 {
   let mut max = 0
   while stack.length() > 0 {
     let (node, d) = stack.pop().unwrap()
@@ -44,8 +44,8 @@ fn depth_of(stack : Array[(DepthNode, Int)]) -> Int {
 ///|
 fn push_expr_children(
   e : Expr,
-  d : Int,
-  stack : Array[(DepthNode, Int)],
+  d : Int32,
+  stack : Array[(DepthNode, Int32)],
 ) -> Unit {
   let dd = d + 1
   match e {
@@ -127,8 +127,8 @@ fn push_expr_children(
 ///|
 fn push_stmt_children(
   s : Stmt,
-  d : Int,
-  stack : Array[(DepthNode, Int)],
+  d : Int32,
+  stack : Array[(DepthNode, Int32)],
 ) -> Unit {
   let dd = d + 1
   match s {
@@ -223,8 +223,8 @@ fn push_stmt_children(
 /// 递归遍历点会随之栈溢出。显式栈测量，独立预算（parser
 /// `MAX_TYPE_DEPTH`），不并入 `MAX_AST_DEPTH=512`：合法深层声明
 /// （实测 release 1200 层存活）的余量与 Expr 安全线解耦。
-pub fn type_depth(t : Type) -> Int {
-  let stack : Array[(Type, Int)] = [(t, 1)]
+pub fn type_depth(t : Type) -> Int32 {
+  let stack : Array[(Type, Int32)] = [(t, 1)]
   let mut max = 0
   let work = stack
   while work.length() > 0 {
@@ -254,7 +254,7 @@ pub fn type_depth(t : Type) -> Int {
 /// 语句树内所有声明类型的最大深度（遍历嵌套语句找 VarDecl，取其
 /// var_type / extra_vars 类型的 type_depth 最大值；不钻 Expr——表达式内
 /// 出现的类型只引用已在声明点过检的类型）。
-pub fn stmt_type_depth(s : Stmt) -> Int {
+pub fn stmt_type_depth(s : Stmt) -> Int32 {
   let stack : Array[Stmt] = [s]
   let mut max = 0
   let work = stack

@@ -60,7 +60,7 @@ pub fn split_lines(source : String) -> Array[String] {
 
 ///|
 /// 字节序列的 [from, until) 段（Bytes 无 slice——Array 中转）。
-fn bytes_slice(bytes : Bytes, from : Int, until : Int) -> Bytes {
+fn bytes_slice(bytes : Bytes, from : Int32, until : Int32) -> Bytes {
   let out : Array[Byte] = []
   for i = from; i < until; i = i + 1 {
     out.push(bytes[i])
@@ -72,7 +72,7 @@ fn bytes_slice(bytes : Bytes, from : Int, until : Int) -> Bytes {
 /// 列号安全换算（Rust safe_byte_col 照搬）：优先按字节边界解释；
 /// 非边界（或越界/负值）回退按**标量序**第 col 个的字节起点；最终
 /// clamp 到行字节长。任何输入不 raise。
-fn safe_byte_col(line : String, col : Int) -> Int {
+fn safe_byte_col(line : String, col : Int32) -> Int32 {
   let bytes = @util.utf8_bytes(line)
   if col >= 0 && col <= bytes.length() && is_char_boundary(bytes, col) {
     return col
@@ -91,7 +91,7 @@ fn safe_byte_col(line : String, col : Int) -> Int {
 
 ///|
 /// 字节位是否标量边界（Rust is_char_boundary：位上或行尾、且非续字节）。
-fn is_char_boundary(bytes : Bytes, pos : Int) -> Bool {
+fn is_char_boundary(bytes : Bytes, pos : Int32) -> Bool {
   if pos == bytes.length() {
     return true
   }
@@ -101,7 +101,7 @@ fn is_char_boundary(bytes : Bytes, pos : Int) -> Bool {
 
 ///|
 /// 行字节序列的 [from, until) 段。
-fn line_bytes_between(line : String, from : Int, until : Int) -> Bytes {
+fn line_bytes_between(line : String, from : Int32, until : Int32) -> Bytes {
   bytes_slice(@util.utf8_bytes(line), from, until)
 }
 
@@ -183,8 +183,8 @@ fn apply_delete(source : String, t : FixTarget) -> String? {
 /// 行表 [start..=end] 区间替换为单行 + "\n" join（Rust drain+insert+join）。
 fn replace_line_range(
   lines : Array[String],
-  start_idx : Int,
-  end_idx : Int,
+  start_idx : Int32,
+  end_idx : Int32,
   new_line : String,
 ) -> String {
   let buf = StringBuilder()

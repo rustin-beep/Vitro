@@ -14,7 +14,7 @@
 
 ///|
 /// `isdigit(c)`
-pub fn host_isdigit(c : Int) -> Int {
+pub fn host_isdigit(c : Int32) -> Int32 {
   if c >= 48 && c <= 57 {
     1
   } else {
@@ -24,7 +24,7 @@ pub fn host_isdigit(c : Int) -> Int {
 
 ///|
 /// `isalpha(c)`
-pub fn host_isalpha(c : Int) -> Int {
+pub fn host_isalpha(c : Int32) -> Int32 {
   if (c >= 97 && c <= 122) || (c >= 65 && c <= 90) {
     1
   } else {
@@ -34,7 +34,7 @@ pub fn host_isalpha(c : Int) -> Int {
 
 ///|
 /// `islower(c)`
-pub fn host_islower(c : Int) -> Int {
+pub fn host_islower(c : Int32) -> Int32 {
   if c >= 97 && c <= 122 {
     1
   } else {
@@ -44,7 +44,7 @@ pub fn host_islower(c : Int) -> Int {
 
 ///|
 /// `isupper(c)`
-pub fn host_isupper(c : Int) -> Int {
+pub fn host_isupper(c : Int32) -> Int32 {
   if c >= 65 && c <= 90 {
     1
   } else {
@@ -54,7 +54,7 @@ pub fn host_isupper(c : Int) -> Int {
 
 ///|
 /// `tolower(c)`——非大写原样返回。
-pub fn host_tolower(c : Int) -> Int {
+pub fn host_tolower(c : Int32) -> Int32 {
   if c >= 65 && c <= 90 {
     c + 32
   } else {
@@ -64,7 +64,7 @@ pub fn host_tolower(c : Int) -> Int {
 
 ///|
 /// `toupper(c)`——非小写原样返回。
-pub fn host_toupper(c : Int) -> Int {
+pub fn host_toupper(c : Int32) -> Int32 {
   if c >= 97 && c <= 122 {
     c - 32
   } else {
@@ -74,7 +74,7 @@ pub fn host_toupper(c : Int) -> Int {
 
 ///|
 /// `isspace(c)`——C 空白集：`' ' '\t' '\n' '\r' '\x0C' '\x0B'`。
-pub fn host_isspace(c : Int) -> Int {
+pub fn host_isspace(c : Int32) -> Int32 {
   if c == 32 || c == 9 || c == 10 || c == 13 || c == 12 || c == 11 {
     1
   } else {
@@ -84,7 +84,7 @@ pub fn host_isspace(c : Int) -> Int {
 
 ///|
 /// `isalnum(c)`
-pub fn host_isalnum(c : Int) -> Int {
+pub fn host_isalnum(c : Int32) -> Int32 {
   if host_isalpha(c) == 1 || host_isdigit(c) == 1 {
     1
   } else {
@@ -94,7 +94,7 @@ pub fn host_isalnum(c : Int) -> Int {
 
 ///|
 /// `isprint(c)`——可打印区 `[0x20, 0x7E]`。
-pub fn host_isprint(c : Int) -> Int {
+pub fn host_isprint(c : Int32) -> Int32 {
   if c >= 32 && c <= 126 {
     1
   } else {
@@ -104,7 +104,7 @@ pub fn host_isprint(c : Int) -> Int {
 
 ///|
 /// `iscntrl(c)`——`[0,31] ∪ {127}`。
-pub fn host_iscntrl(c : Int) -> Int {
+pub fn host_iscntrl(c : Int32) -> Int32 {
   if (c >= 0 && c <= 31) || c == 127 {
     1
   } else {
@@ -114,7 +114,7 @@ pub fn host_iscntrl(c : Int) -> Int {
 
 ///|
 /// `isxdigit(c)`
-pub fn host_isxdigit(c : Int) -> Int {
+pub fn host_isxdigit(c : Int32) -> Int32 {
   if host_isdigit(c) == 1 || (c >= 97 && c <= 102) || (c >= 65 && c <= 70) {
     1
   } else {
@@ -124,7 +124,7 @@ pub fn host_isxdigit(c : Int) -> Int {
 
 ///|
 /// `isgraph(c)`——`isprint` 排除空格（`> 0x20`）。
-pub fn host_isgraph(c : Int) -> Int {
+pub fn host_isgraph(c : Int32) -> Int32 {
   if c > 32 && c <= 126 {
     1
   } else {
@@ -134,7 +134,7 @@ pub fn host_isgraph(c : Int) -> Int {
 
 ///|
 /// `ispunct(c)`——可打印且非字母数字非空格。
-pub fn host_ispunct(c : Int) -> Int {
+pub fn host_ispunct(c : Int32) -> Int32 {
   let is_print = c >= 32 && c <= 126
   let is_alnum = (c >= 97 && c <= 122) ||
     (c >= 65 && c <= 90) ||
@@ -148,7 +148,7 @@ pub fn host_ispunct(c : Int) -> Int {
 
 ///|
 /// `isblank(c)`——`' ' '\t'`。
-pub fn host_isblank(c : Int) -> Int {
+pub fn host_isblank(c : Int32) -> Int32 {
   if c == 32 || c == 9 {
     1
   } else {

@@ -33,7 +33,7 @@ pub fn ctor_def_name(class : String) -> String {
 /// parser 声明/表达式上下文的 ctor 调用改写（Rust parser stmt.rs /
 /// postfix.rs 现状口径逐字照搬）；与 typeck 非空参 ctor 定义名同构
 ///（constructor_mangled_name 的 arity 分支）。
-pub fn ctor_call_name(class : String, argc : Int) -> String {
+pub fn ctor_call_name(class : String, argc : Int32) -> String {
   "\{CTOR_PREFIX}\{class}__\{argc}"
 }
 

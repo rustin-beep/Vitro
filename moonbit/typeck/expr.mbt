@@ -22,7 +22,7 @@
 /// signed 高 rank 能表示 unsigned 低 rank 全值域时取 signed（本仓类型面
 /// i64 ⊇ u32 恒成立，故 uint vs LL → signed LL）。
 fn promote_type(a : @ast.Type, b : @ast.Type) -> @ast.Type {
-  fn rank(t : @ast.Type) -> Int {
+  fn rank(t : @ast.Type) -> Int32 {
     match t.kind() {
       TK_Double => 4
       TK_Float => 3
@@ -428,7 +428,7 @@ fn TypeChecker::resolve_string_literal(
 /// C 语义字节长度（不含结尾 NUL）——Rust `vitro_shared::cstring_len`
 /// 照搬（唯一真相源约定同源：码点 ≤ 0xFF 单字节，> 0xFF 按 UTF-8；
 /// 无歧义依据：源按 UTF-8 解码，多字节源字符码点必然 > 0xFF）。
-fn c_string_len(s : String) -> Int {
+fn c_string_len(s : String) -> Int32 {
   let mut n = 0
   for c in s {
     let cp = c.to_int()
@@ -553,7 +553,7 @@ fn TypeChecker::find_anonymous_member(
   type_name : String,
   is_union : Bool,
   member_name : String,
-  depth : Int,
+  depth : Int32,
 ) -> @ast.Type? {
   if depth >= 8 {
     return None

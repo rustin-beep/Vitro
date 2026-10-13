@@ -14,7 +14,7 @@ fn vfs_fresh() -> (@memory.MemoryMap, @memory.Memory, VirtualFileSystem) {
 fn put_str(
   mem : @memory.Memory,
   map : @memory.MemoryMap,
-  addr : UInt,
+  addr : UInt32,
   s : String,
 ) -> Unit raise {
   put_cstr(mem, map, addr, s)

@@ -106,7 +106,7 @@ fn basename_no_ext(path : String) -> String {
     }
     i -= 1
   }
-  let mut dot : Int? = None
+  let mut dot : Int32? = None
   let mut k = name.length() - 1
   while k >= 0 {
     if name[k] == '.' {

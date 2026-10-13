@@ -8,7 +8,7 @@
 /// 元素报 W3005（推断后按 3 判；#50 批②降级）。
 test "init_array_size_inference" {
   let loc = @source.SourceLoc::new(1, 1)
-  fn elem(v : Int, loc : @source.SourceLoc) -> @ast.InitElement {
+  fn elem(v : Int32, loc : @source.SourceLoc) -> @ast.InitElement {
     { designators: [], value: @ast.Expr::Literal(v, loc, @ast.Type::int()), }
   }
   let g : @ast.GlobalDecl = {
@@ -134,7 +134,7 @@ test "init_struct_tracks" {
   ) -> @ast.Expr {
     @ast.Expr::InitList(elems, loc, @ast.Type::void_type())
   }
-  fn lit(v : Int, loc : @source.SourceLoc) -> @ast.Expr {
+  fn lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::Literal(v, loc, @ast.Type::int())
   }
   // 合法定位初始化
@@ -212,10 +212,10 @@ test "init_struct_tracks" {
 /// 嵌套超维 E3005。
 test "init_multidim_flat_scalar" {
   let loc = @source.SourceLoc::new(1, 1)
-  fn lit(v : Int, loc : @source.SourceLoc) -> @ast.Expr {
+  fn lit(v : Int32, loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::Literal(v, loc, @ast.Type::int())
   }
-  fn flat(elems : Array[Int], loc : @source.SourceLoc) -> @ast.Expr {
+  fn flat(elems : Array[Int32], loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::InitList(
       elems.map(v => { designators: [], value: lit(v, loc), }),
       loc,

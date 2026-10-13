@@ -47,12 +47,12 @@ pub(all) struct InputState {
   /// getchar 逐字节读行数据自然对齐。无换行行〔直接构造/末行无换行〕
   /// 由 scanf 虚拟流的补位守卫兜底）。
   lines : Array[Bytes]
-  mut index : Int
-  mut char_offset : Int
+  mut index : Int32
+  mut char_offset : Int32
   /// stdin EOF 粘滞位（A1：置位后 getchar 恒 -1、scanf 恒 EOF）。
   mut eof : Bool
   /// ungetc 缓存（Some = 已回退一字节）。
-  mut ungetc : Int?
+  mut ungetc : Int32?
   /// true = Batch（判分/批量），false = Interactive（等待学生键入）。
   batch : Bool
 }
@@ -109,11 +109,11 @@ fn stream_has_content(stream : Array[Byte]) -> Bool {
 ///|
 /// fmt 字节 → 码点数组（lossy——与 oracle `read_cstring` 的 String 管道
 /// 同构；非 ASCII 字节经 U+FFFD，输出侧再编码回 UTF-8，字节守恒）。
-fn lossy_codes(bytes : Bytes) -> Array[Int] {
+fn lossy_codes(bytes : Bytes) -> Array[Int32] {
   // #66：落盘层已整串 UTF-8 直通（cstring_bytes）——decode_lossy 对合法
   // 序列无损；非法字节（旧 Latin-1 口径残留形态）按 FFFD 退化兜底。
   let s = @utf8.decode_lossy(bytes)
-  let codes : Array[Int] = []
+  let codes : Array[Int32] = []
   for c in s {
     codes.push(Char::to_int(c))
   }
@@ -127,7 +127,7 @@ fn lossy_codes(bytes : Bytes) -> Array[Int] {
 fn printf_pipeline(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  fmt_addr : UInt,
+  fmt_addr : UInt32,
   args : Array[UInt64],
   guard_name : String?,
 ) -> Result[Bytes, HostMemReply] {
@@ -165,7 +165,7 @@ pub fn host_printf_n(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   log : OutputLog,
-  fmt_addr : UInt,
+  fmt_addr : UInt32,
   args : Array[UInt64],
 ) -> HostMemReply {
   match printf_pipeline(map, mem, fmt_addr, args, Some("printf")) {
@@ -192,7 +192,7 @@ pub fn host_fprintf_n(
   log : OutputLog,
   vfs : VirtualFileSystem,
   stream : UInt64,
-  fmt_addr : UInt,
+  fmt_addr : UInt32,
   args : Array[UInt64],
 ) -> HostMemReply {
   match printf_pipeline(map, mem, fmt_addr, args, Some("fprintf")) {
@@ -225,8 +225,8 @@ pub fn host_fprintf_n(
 pub fn host_sprintf(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  buf_addr : UInt,
-  fmt_addr : UInt,
+  buf_addr : UInt32,
+  fmt_addr : UInt32,
   args : Array[UInt64],
 ) -> HostMemReply {
   let bytes = match printf_pipeline(map, mem, fmt_addr, args, None) {
@@ -248,9 +248,9 @@ pub fn host_sprintf(
 pub fn host_snprintf(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  buf_addr : UInt,
-  size : Int,
-  fmt_addr : UInt,
+  buf_addr : UInt32,
+  size : Int32,
+  fmt_addr : UInt32,
   args : Array[UInt64],
 ) -> HostMemReply {
   let bytes = match printf_pipeline(map, mem, fmt_addr, args, None) {
@@ -284,7 +284,7 @@ pub fn host_puts(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
   log : OutputLog,
-  s_addr : UInt,
+  s_addr : UInt32,
 ) -> HostMemReply {
   let s = read_cstring_raise(mem, map, s_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -314,7 +314,7 @@ pub fn host_putchar(log : OutputLog, val : UInt64) -> UInt64 {
 ///|
 /// `ungetc(c, stream)`（oracle `io.rs:279-284`）——缓存一字节（stream
 /// 实参不解析），返回 `c`（符号扩展压栈）。
-pub fn host_ungetc(input : InputState, ch : Int) -> UInt64 {
+pub fn host_ungetc(input : InputState, ch : Int32) -> UInt64 {
   input.ungetc = Some(ch)
   ch.to_int64().reinterpret_as_uint64()
 }
@@ -378,17 +378,17 @@ priv enum ScanfItem {
   /// ——width `*` 置位：读入丢弃、不消耗指针参数，%*d 批四 2026-10-07；
   /// 字段宽度 #71 病 23 2026-10-11——Some(n) 限本转换符最多读 n 个
   /// 输入字符（C11 §7.21.6.2，此前解析后丢弃=静默忽略）)
-  Spec(Int, Int, Bool, Int?)
+  Spec(Int32, Int32, Bool, Int32?)
   /// 空白指令：匹配任意数量（含零）空白
   Whitespace
   /// 普通字符指令（含 `%%` 展开的 `%`）：精确匹配
-  Literal(Int)
+  Literal(Int32)
 }
 
 ///|
 /// 解析 scanf 格式串（oracle `parse_scanf_specs` 照搬；非 ASCII 字面字符
 /// 忽略——oracle 同：`ch.is_ascii()` 才入 Literal）。
-fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
+fn parse_scanf_specs(fmt : Array[Int32]) -> Array[ScanfItem] {
   let specs : Array[ScanfItem] = []
   let scan = FmtScan::{ s: fmt, i: 0, }
   while true {
@@ -440,7 +440,7 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
                 None => break
               }
             }
-            let width_opt : Int? = if width_seen && width_val > 0 {
+            let width_opt : Int32? = if width_seen && width_val > 0 {
               Some(width_val)
             } else {
               None
@@ -513,7 +513,7 @@ fn parse_scanf_specs(fmt : Array[Int]) -> Array[ScanfItem] {
 ///|
 /// 码点空白判定（Rust `char::is_whitespace` 的 ASCII 子集；fmt 层非 ASCII
 /// 空白（NBSP 等）oracle 会入空白指令、此处忽略——登记微差）。
-fn is_ws_code(c : Int) -> Bool {
+fn is_ws_code(c : Int32) -> Bool {
   (c >= 9 && c <= 13) || c == 32
 }
 
@@ -526,9 +526,9 @@ fn is_ws_code(c : Int) -> Bool {
 ///   不计宽——先跳空白再计界）。
 fn read_float_token(
   chars : Array[Byte],
-  pos0 : Int,
-  max_chars : Int?,
-) -> (Array[Byte], Int) {
+  pos0 : Int32,
+  max_chars : Int32?,
+) -> (Array[Byte], Int32) {
   let n = chars.length()
   let mut pos = pos0
   while pos < n && is_ascii_ws_byte(chars[pos]) {
@@ -661,7 +661,7 @@ const SCANF_O = 111
 
 ///|
 /// token → Int（oracle `parse().unwrap_or(0)`：溢出/空/孤立符号 → 0）。
-fn parse_int_or_zero(token : Array[Byte]) -> Int {
+fn parse_int_or_zero(token : Array[Byte]) -> Int32 {
   @string.parse_int(@utf8.decode_lossy(Bytes::from_array(token))) catch {
     _ => 0
   }
@@ -682,7 +682,7 @@ fn parse_uint64_or_zero(token : Array[Byte]) -> UInt64 {
 }
 
 ///|
-fn parse_uint_or_zero(token : Array[Byte]) -> UInt {
+fn parse_uint_or_zero(token : Array[Byte]) -> UInt32 {
   @string.parse_uint(@utf8.decode_lossy(Bytes::from_array(token))) catch {
     _ => 0U
   }
@@ -706,8 +706,8 @@ pub fn host_scanf_n(
   mem : @memory.Memory,
   input : InputState,
   stack_buffers : Array[StackBufferSpan],
-  fmt_addr : UInt,
-  ptrs : Array[UInt],
+  fmt_addr : UInt32,
+  ptrs : Array[UInt32],
 ) -> InputOutcome {
   let fmt_bytes = match read_cstring(mem, map, fmt_addr) {
     Ok(b) => b
@@ -729,8 +729,8 @@ pub fn host_scanf_n(
   }
   // 虚拟字节流 + 映射表（V-P1-13）
   let stream : Array[Byte] = []
-  let map_line : Array[Int] = []
-  let map_off : Array[Int] = []
+  let map_line : Array[Int32] = []
+  let map_off : Array[Int32] = []
   let start_idx = input.index
   let start_off = input.char_offset
   let mut i = start_idx
@@ -1100,7 +1100,7 @@ pub fn host_scanf_n(
         pos = pos + 2
         break
       }
-      let mut base : Int = 10
+      let mut base : Int32 = 10
       if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）
@@ -1214,9 +1214,9 @@ pub fn host_scanf_n(
 pub fn host_sscanf(
   map : @memory.MemoryMap,
   mem : @memory.Memory,
-  str_addr : UInt,
-  fmt_addr : UInt,
-  ptrs : Array[UInt],
+  str_addr : UInt32,
+  fmt_addr : UInt32,
+  ptrs : Array[UInt32],
 ) -> HostMemReply {
   let fmt_bytes = read_cstring_raise(mem, map, fmt_addr) catch {
     AccessFault::Fault(f~) => return fault_reply(f)
@@ -1440,7 +1440,7 @@ pub fn host_sscanf(
         pos = pos + 2
         break
       }
-      let mut base : Int = 10
+      let mut base : Int32 = 10
       if spec == SCANF_X {
         base = 16
         // 可选 0x/0X 前缀（strtoul 语义：后随 hex 数字才构成前缀）

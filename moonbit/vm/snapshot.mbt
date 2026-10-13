@@ -32,7 +32,7 @@ pub(all) enum MemoryImage {
   Full(FixedArray[Byte])
   /// 脏页增量：(base_step, pages)——`base_step` 为所基于的最近 Full 快照
   /// 步号；`pages` 为 (页号, 页字节) 对（页号 0..255，`PAGE_SIZE` 4096）。
-  Delta(Int, Array[(Int, FixedArray[Byte])])
+  Delta(Int32, Array[(Int32, FixedArray[Byte])])
 } derive(Eq, Debug)
 
 ///|
@@ -52,39 +52,39 @@ pub(all) struct VMSnapshot {
   // ── 值栈与调用 ──
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
-  ip : Int
-  mem_stack_top : UInt
+  ip : Int32
+  mem_stack_top : UInt32
   // ── 运行控制 ──
-  step_count : Int
-  current_line : Int
+  step_count : Int32
+  current_line : Int32
   finished : Bool
-  exit_code : Int
+  exit_code : Int32
   error : String
   paused : Bool
   cancelled : Bool
   step_event_hit : Bool
   waiting_input : Bool
-  qsort_depth : Int
-  argc : Int
-  argv_addr : UInt
+  qsort_depth : Int32
+  argc : Int32
+  argv_addr : UInt32
   // ── 教学观测 ──
   vis_event_queue : Array[VisEventData]
   /// 断点（Set 无序 ⇒ 排序后存数组；restore 重建 Set）。
-  breakpoints : Array[Int]
+  breakpoints : Array[Int32]
   /// 执行热力图（行 → 计数）。
-  heatmap : Map[Int, UInt64]
+  heatmap : Map[Int32, UInt64]
   /// 无限循环诊断的变量快照。
   snapshot_vars : Map[String, UInt64]
-  last_snapshot_step : Int
+  last_snapshot_step : Int32
   // ── 宿主域三态（host 快照通道）──
   output : @host.OutputLog
   input : @host.InputState
-  rand_seed : UInt
+  rand_seed : UInt32
   vfs : @host.VfsSnapshot
   // ── C# 异常三执行状态（一等含入——展开中间态可快照，CS 计划 §4.5）──
   exec_mode : ExecMode
-  exception_ref : UInt?
-  unwind_remaining_frames : Int
+  exception_ref : UInt32?
+  unwind_remaining_frames : Int32
   unwind_target : HandlerFrame?
   handler_stack : Array[HandlerFrame]
 }
@@ -131,12 +131,12 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
       context: e.context,
     })
   }
-  let bps : Array[Int] = Array(capacity=self.breakpoints.length())
+  let bps : Array[Int32] = Array(capacity=self.breakpoints.length())
   for bp in self.breakpoints {
     bps.push(bp)
   }
   bps.sort_by(fn(a, b) { a.compare(b) })
-  let heatmap_copy : Map[Int, UInt64] = Map([])
+  let heatmap_copy : Map[Int32, UInt64] = Map([])
   for k, v in self.heatmap {
     heatmap_copy.set(k, v)
   }

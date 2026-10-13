@@ -75,7 +75,10 @@ fn merge_units(
 
 ///|
 /// 全局行号 → 文件名（Rust resolve_filename 照搬；未命中 None）。
-fn resolve_filename(line : Int, ranges : Array[@session.FileRange]) -> String? {
+fn resolve_filename(
+  line : Int32,
+  ranges : Array[@session.FileRange],
+) -> String? {
   for r in ranges {
     if line >= r.start_line && line <= r.end_line {
       return Some(r.filename)
@@ -89,9 +92,9 @@ fn resolve_filename(line : Int, ranges : Array[@session.FileRange]) -> String? {
 /// 此前诊断 line 直出合并坐标（多文件时=错值；单文件巧合正确掩盖）——
 /// filename 解析对了而行号没映射（resolve_filename 只回名）。
 fn resolve_location(
-  line : Int,
+  line : Int32,
   ranges : Array[@session.FileRange],
-) -> (String, Int)? {
+) -> (String, Int32)? {
   for r in ranges {
     if line >= r.start_line && line <= r.end_line {
       return Some((r.filename, line - r.start_line + 1))
@@ -103,7 +106,7 @@ fn resolve_location(
 ///|
 /// severity 协议名（Rust session_api::severity_name 同形照搬——Int 输入
 /// 4 臂；diag 包 Severity::to_str 是 enum 输入的平行单源，形态不同不互替）。
-fn severity_name(severity : Int) -> String {
+fn severity_name(severity : Int32) -> String {
   match severity {
     0 => "error"
     1 => "warning"
@@ -114,7 +117,7 @@ fn severity_name(severity : Int) -> String {
 
 ///|
 /// severity 前缀（Rust session_api::severity_prefix 同形：E/W/H/I）。
-fn severity_prefix(severity : Int) -> String {
+fn severity_prefix(severity : Int32) -> String {
   match severity {
     0 => "E"
     1 => "W"
@@ -133,11 +136,11 @@ fn severity_prefix(severity : Int) -> String {
 /// @diagnostics.split_lines（Rust source.lines() 语义）。
 fn push_one_diag(
   s : @session.Session,
-  code : Int,
-  line : Int,
-  column : Int,
+  code : Int32,
+  line : Int32,
+  column : Int32,
   message : String,
-  severity : Int,
+  severity : Int32,
   ranges : Array[@session.FileRange],
   source_lines : Array[String],
 ) -> Unit {
@@ -229,8 +232,8 @@ fn push_lex_warnings(
 /// 解析/类型错误推送（ParseError/TypeError 同构 Int code——统一入口）。
 fn push_code_errors(
   s : @session.Session,
-  errors : Array[(Int, Int, Int, String)],
-  severity : Int,
+  errors : Array[(Int32, Int32, Int32, String)],
+  severity : Int32,
   ranges : Array[@session.FileRange],
   source_lines : Array[String],
 ) -> Unit {
@@ -303,7 +306,7 @@ fn serve_compile_pipeline(
   // ── 2. Parser ──
   let r = @parser.parse(lexed.tokens)
   if !r.errors.is_empty() {
-    let rows : Array[(Int, Int, Int, String)] = []
+    let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in r.errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
@@ -322,7 +325,7 @@ fn serve_compile_pipeline(
   let tc = @typeck.TypeChecker::new()
   let (typed, type_errors, type_warnings, type_hints) = tc.check(program)
   if !type_errors.is_empty() {
-    let rows : Array[(Int, Int, Int, String)] = []
+    let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in type_errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
@@ -331,7 +334,7 @@ fn serve_compile_pipeline(
     // ——native cli_run 的 typeck-error 分支显式输出 warns，壳逐帧渲染即
     // 拿不到；「错误 + 警告」同出对齐 native 失败路径形态。帧序 [lexW,
     // typeckE, typeckW] 与壳三轮渲染（E→W）合成 native 同序）
-    let wrows : Array[(Int, Int, Int, String)] = []
+    let wrows : Array[(Int32, Int32, Int32, String)] = []
     for w in type_warnings {
       wrows.push((w.code, w.line, w.column, w.message))
     }
@@ -342,14 +345,14 @@ fn serve_compile_pipeline(
     return false
   }
   if !type_warnings.is_empty() {
-    let rows : Array[(Int, Int, Int, String)] = []
+    let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in type_warnings {
       rows.push((e.code, e.line, e.column, e.message))
     }
     push_code_errors(s, rows, 1, ranges, source_lines)
   }
   if !type_hints.is_empty() {
-    let rows : Array[(Int, Int, Int, String)] = []
+    let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in type_hints {
       rows.push((e.code, e.line, e.column, e.message))
     }
@@ -378,9 +381,9 @@ fn serve_compile_pipeline(
   st.output = Some(output)
   // struct_fields：struct 逐字段偏移累加 + union 全 0（Rust 同形——
   // compute_type_size 以产物 struct/union 表自引用迭代）
-  let empty_class_map : Map[String, Int] = Map([])
+  let empty_class_map : Map[String, Int32] = Map([])
   for k, v in output.struct_defs {
-    let fields : Array[(String, Int)] = []
+    let fields : Array[(String, Int32)] = []
     let mut offset = 0
     for f in v {
       fields.push((f.name, offset))
@@ -395,7 +398,7 @@ fn serve_compile_pipeline(
     st.struct_fields.set(k, fields)
   }
   for k, v in output.union_defs {
-    let fields : Array[(String, Int)] = []
+    let fields : Array[(String, Int32)] = []
     for f in v {
       fields.push((f.name, 0))
     }
@@ -525,8 +528,8 @@ fn compile_result_json(s : @session.Session) -> Json {
 /// 投影在编排层完成（oracle 在 engine 层做同款展平，分层同构）。
 fn project_vis_lines(
   matches : Array[@protocol.AlgorithmMatch],
-) -> Array[(Int, Int, String)] {
-  let lines : Array[(Int, Int, String)] = []
+) -> Array[(Int32, Int32, String)] {
+  let lines : Array[(Int32, Int32, String)] = []
   for m in matches {
     for ev in m.vis_events {
       lines.push((ev.line, ev.ty, ev.context))
@@ -537,7 +540,7 @@ fn project_vis_lines(
 
 ///|
 /// codegen 错误文案行号提取（#70 过渡——「第 N 行：」前缀手扫）。
-fn extract_gen_error_line(msg : String) -> Int {
+fn extract_gen_error_line(msg : String) -> Int32 {
   let cs = msg.to_array()
   let n = cs.length()
   let mut i = 0

@@ -20,9 +20,9 @@
 fn VitroVM::execute_float(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     PushConstF =>
@@ -94,9 +94,9 @@ fn VitroVM::execute_float(
 fn VitroVM::execute_double(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     PushConstD =>
@@ -180,9 +180,9 @@ fn VitroVM::execute_double(
 fn VitroVM::execute_longlong(
   self : VitroVM,
   op : @opcode.OpCode,
-  operand : Int,
-  line : Int,
-  column : Int,
+  operand : Int32,
+  line : Int32,
+  column : Int32,
 ) -> Unit {
   match op {
     PushConstQ =>

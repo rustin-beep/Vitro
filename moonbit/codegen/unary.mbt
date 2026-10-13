@@ -363,11 +363,11 @@ fn incdec_global_store(kind : IncDecKind) -> @opcode.OpCode {
 fn BytecodeGen::emit_incdec_seq(
   self : BytecodeGen,
   load_op~ : @opcode.OpCode,
-  idx~ : Int,
+  idx~ : Int32,
   store_op~ : @opcode.OpCode,
   is_inc~ : Bool,
   is_pre~ : Bool,
-  step~ : Int,
+  step~ : Int32,
   kind~ : IncDecKind,
   loc~ : @source.SourceLoc,
 ) -> Unit {
@@ -435,7 +435,7 @@ fn BytecodeGen::gen_mem_inc_dec_int(
   self : BytecodeGen,
   is_inc : Bool,
   is_pre : Bool,
-  step : Int,
+  step : Int32,
   loc : @source.SourceLoc,
 ) -> Unit {
   let int_kind = @ast.Type::int().kind()
@@ -449,7 +449,7 @@ fn BytecodeGen::gen_mem_inc_dec(
   self : BytecodeGen,
   is_inc : Bool,
   is_pre : Bool,
-  step : Int,
+  step : Int32,
   elem_kind : @ast.TypeKind,
   elem_unsigned : Bool,
   loc : @source.SourceLoc,

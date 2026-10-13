@@ -3,15 +3,15 @@
 
 ///|
 #borrow(buf)
-extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int) -> Int = "moonbit_vitro_serve_read_line"
+extern "C" fn serve_read_line_stub(buf : Bytes, cap : Int32) -> Int32 = "moonbit_vitro_serve_read_line"
 
 ///|
 /// 墙钟源（deterministic=false 时 time/clock 的真值通道——两个 int 组
 /// millis；stub 见 cmd/host_clock_stub.c，通道选型注记在其文件头）。
-extern "C" fn clock_secs_stub() -> Int = "moonbit_vitro_clock_secs"
+extern "C" fn clock_secs_stub() -> Int32 = "moonbit_vitro_clock_secs"
 
 ///|
-extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac"
+extern "C" fn clock_millis_frac_stub() -> Int32 = "moonbit_vitro_clock_millis_frac"
 
 ///|
 /// 响应行显式 flush（交互死锁修复——见 serve_stdio.c 头注：stdout 管道
@@ -19,7 +19,7 @@ extern "C" fn clock_millis_frac_stub() -> Int = "moonbit_vitro_clock_millis_frac
 extern "C" fn serve_flush_stdout() -> Unit = "moonbit_vitro_serve_flush"
 
 ///|
-const SERVE_LINE_CAP : Int = 65536
+const SERVE_LINE_CAP : Int32 = 65536
 
 ///|
 /// serve 主循环：stdin 逐行 → gateway.invoke → stdout 响应；shutdown 停。

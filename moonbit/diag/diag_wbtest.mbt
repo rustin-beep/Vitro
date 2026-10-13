@@ -8,7 +8,7 @@ test "coverage_baseline_137_77_60" {
   assert_eq(catalog_codes().length(), 104) // 病 19：103→104
   assert_eq(codes_without_catalog().length(), 35)
   // 互补无交集
-  let set : Map[Int, Bool] = Map([])
+  let set : Map[Int32, Bool] = Map([])
   for c in catalog_codes() {
     set[c] = true
   }
@@ -99,7 +99,7 @@ test "from_code_roundtrip_all" {
 /// 编号升序与唯一（all() 顺序契约——差分遍历确定性）。
 test "all_codes_sorted_unique" {
   let mut prev = -1
-  let seen : Map[Int, Bool] = Map([])
+  let seen : Map[Int32, Bool] = Map([])
   for code in ErrorCode::all() {
     assert_true(code.code() > prev)
     assert_false(seen.contains(code.code()))

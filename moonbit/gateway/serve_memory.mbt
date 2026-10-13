@@ -15,13 +15,13 @@
 ///|
 /// 区域条目 emitter（Rust MemoryRegionData 的 serde 字段序照搬）。
 fn region_json(
-  addr : UInt,
-  size : Int,
+  addr : UInt32,
+  size : Int32,
   name : String,
   ty : String,
   is_heap : Bool,
   is_freed : Bool,
-  alloc_line : Int,
+  alloc_line : Int32,
   alloc_by : String,
   kind : String,
 ) -> Json {
@@ -44,7 +44,7 @@ fn region_json(
 /// 与 codegen 实际分配一致含填充）；末位符号退化为 compute_type_size
 /// （空布局表 = 只算标量与数组——struct/union 返 0 再退化 1 字节）。
 /// `alloc_line` 取声明行。
-fn global_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
+fn global_region_entries(s : @session.Session) -> Array[(UInt32, Json)] {
   // 全局符号（is_local == false）按 addr 升序
   let globals : Array[@bytecode.Symbol] = []
   for sym in s.vm.symbols {
@@ -55,8 +55,8 @@ fn global_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
   globals.sort_by(fn(a, b) { a.addr.compare(b.addr) })
   let empty_structs : Map[String, Array[@ast.StructField]] = Map([])
   let empty_unions : Map[String, Array[@ast.StructField]] = Map([])
-  let empty_class : Map[String, Int] = Map([])
-  let out : Array[(UInt, Json)] = []
+  let empty_class : Map[String, Int32] = Map([])
+  let out : Array[(UInt32, Json)] = []
   for i, sym in globals {
     let addr = @bytecode.GLOBAL_START + sym.addr
     let size = if i + 1 < globals.length() {
@@ -97,8 +97,8 @@ fn global_size_fallback(
   sym : @bytecode.Symbol,
   structs : Map[String, Array[@ast.StructField]],
   unions : Map[String, Array[@ast.StructField]],
-  class_sizes : Map[String, Int],
-) -> Int {
+  class_sizes : Map[String, Int32],
+) -> Int32 {
   let n = @ast.compute_type_size(sym.ty, structs, unions, class_sizes)
   if n == 0 {
     1
@@ -112,8 +112,8 @@ fn global_size_fallback(
 /// `name` = 函数名；`alloc_line` = 进入该帧的调用行（caller_line；
 /// main 的帧为 0——它不是被调用出来的）；`size` = 帧跨度
 /// （original_stack_top − locals_base，与 VM 的 mem_stack_top 同源）。
-fn stack_region_entries(s : @session.Session) -> Array[(UInt, Json)] {
-  let out : Array[(UInt, Json)] = []
+fn stack_region_entries(s : @session.Session) -> Array[(UInt32, Json)] {
+  let out : Array[(UInt32, Json)] = []
   for f in s.vm.call_stack {
     let size = if f.original_stack_top > f.locals_base {
       (f.original_stack_top - f.locals_base).reinterpret_as_int()
@@ -148,7 +148,7 @@ fn serve_memory_regions_frame(
   s : @session.Session,
   id : Json,
 ) -> (String, Bool) {
-  let entries : Array[(UInt, Json)] = []
+  let entries : Array[(UInt32, Json)] = []
   let heap_count = s.vm.mem_map.regions_len()
   for pair in s.vm.mem_map.regions_to_array() {
     let (addr, r) = pair

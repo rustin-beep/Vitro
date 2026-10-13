@@ -20,7 +20,7 @@ fn BytecodeGen::enter_function(
   self.local_scope_stack = []
   self.next_local_offset = 0
   let mut offset = 0
-  let param_sizes : Array[Int] = []
+  let param_sizes : Array[Int32] = []
   let returns_struct = match self.func_table.get(name) {
     Some(m) => m.return_type.kind() is TK_Struct
     None => false
@@ -107,7 +107,7 @@ fn BytecodeGen::exit_function(self : BytecodeGen) -> Unit {
 /// Rust `_ => &mut self.temp_slot0` 的静默回退（勘察 §⑥ 静默失败模式）
 /// 不继承：合法调用域只有 0..=3（四槽机制的天花板是 8 条槽位事故的
 /// 根因），越界即缺陷，报错优于静默共享 slot0。
-fn BytecodeGen::get_temp_slot(self : BytecodeGen, index : Int) -> Int {
+fn BytecodeGen::get_temp_slot(self : BytecodeGen, index : Int32) -> Int32 {
   let mut idx = index
   if idx < 0 || idx > 3 {
     self.report_error(
@@ -140,7 +140,7 @@ fn BytecodeGen::get_temp_slot(self : BytecodeGen, index : Int) -> Int {
 ///|
 /// 8 字节临时槽：double/long long 位模式读写必须独占 8 字节空间，
 /// 复用 4 字节槽会踩踏相邻槽/局部变量（曾致 9 个 baseline 链表用例回归）。
-fn BytecodeGen::get_temp_slot_64(self : BytecodeGen) -> Int {
+fn BytecodeGen::get_temp_slot_64(self : BytecodeGen) -> Int32 {
   if self.temp_slot_64 < 0 {
     self.temp_slot_64 = self.next_local_offset
     // 保持后续 4 字节槽 8 字节对齐，避免非对齐 64 位访问
@@ -152,7 +152,7 @@ fn BytecodeGen::get_temp_slot_64(self : BytecodeGen) -> Int {
 ///|
 /// 初始化路径专用基址槽（U1#3 止血）：数组/结构体初始化的写入基址
 /// 独占此槽。惰性分配，enter_function 时重置（与 temp_slot0~3 同生命周期）。
-fn BytecodeGen::get_init_base_slot(self : BytecodeGen) -> Int {
+fn BytecodeGen::get_init_base_slot(self : BytecodeGen) -> Int32 {
   if self.init_base_slot < 0 {
     self.init_base_slot = self.next_local_offset
     self.next_local_offset += 4
@@ -163,7 +163,7 @@ fn BytecodeGen::get_init_base_slot(self : BytecodeGen) -> Int {
 ///|
 /// T-P0-6：按当前赋值嵌套深度分配"赋值目标地址"槽。同层顺序复用，
 /// 更深一层拿不同槽位（`a[0] += (b[0] = 5)` 内外层地址不互相覆盖）。
-fn BytecodeGen::get_assign_addr_slot(self : BytecodeGen) -> Int {
+fn BytecodeGen::get_assign_addr_slot(self : BytecodeGen) -> Int32 {
   let depth = if self.assign_nest_depth > 1 {
     self.assign_nest_depth
   } else {
@@ -179,7 +179,7 @@ fn BytecodeGen::get_assign_addr_slot(self : BytecodeGen) -> Int {
 
 ///|
 /// f64 常量池：位模式去重（Rust `to_bits()` 比较；F9——f64 池化语义）。
-fn BytecodeGen::push_f64_constant(self : BytecodeGen, val : Double) -> Int {
+fn BytecodeGen::push_f64_constant(self : BytecodeGen, val : Double) -> Int32 {
   let val_bits = val.reinterpret_as_uint64()
   for i, v in self.f64_constants {
     if v.reinterpret_as_uint64() == val_bits {
@@ -193,7 +193,7 @@ fn BytecodeGen::push_f64_constant(self : BytecodeGen, val : Double) -> Int {
 
 ///|
 /// i64 常量池：值比较去重（与 f64 的位模式口径不同——Rust 照搬）。
-fn BytecodeGen::push_i64_constant(self : BytecodeGen, val : Int64) -> Int {
+fn BytecodeGen::push_i64_constant(self : BytecodeGen, val : Int64) -> Int32 {
   for i, v in self.i64_constants {
     if v == val {
       return i
@@ -207,13 +207,16 @@ fn BytecodeGen::push_i64_constant(self : BytecodeGen, val : Int64) -> Int {
 ///|
 /// 类型尺寸（`@ast.compute_type_size` 单源——S4 已迁；class_sizes 在
 /// C only 下恒空表）。
-fn BytecodeGen::type_size(self : BytecodeGen, ty : @ast.Type) -> Int {
+fn BytecodeGen::type_size(self : BytecodeGen, ty : @ast.Type) -> Int32 {
   @ast.compute_type_size(ty, self.struct_defs, self.union_defs, {})
 }
 
 ///|
 /// 数组元素尺寸（Rust lib.rs:842-865 照搬）。
-fn BytecodeGen::elem_type_size(self : BytecodeGen, arr_type : @ast.Type) -> Int {
+fn BytecodeGen::elem_type_size(
+  self : BytecodeGen,
+  arr_type : @ast.Type,
+) -> Int32 {
   let (elem_kind, elem_type) = match arr_type {
     Array(element, _, _, _, _, _) => (element.kind(), element)
     _ => (@ast.Type::base_kind(arr_type), arr_type)
@@ -267,7 +270,7 @@ fn BytecodeGen::elem_type_size(self : BytecodeGen, arr_type : @ast.Type) -> Int 
 
 ///|
 /// 指针步长（Rust lib.rs:828-840 照搬）。
-fn BytecodeGen::ptr_step_size(self : BytecodeGen, ty : @ast.Type) -> Int {
+fn BytecodeGen::ptr_step_size(self : BytecodeGen, ty : @ast.Type) -> Int32 {
   match ty.kind() {
     TK_Pointer =>
       match ty {

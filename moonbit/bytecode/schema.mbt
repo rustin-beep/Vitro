@@ -13,9 +13,9 @@
 /// 编译期登记的栈上数组（如 `char buf[4]`），offset 相对帧 locals_base。
 pub(all) struct LocalBuffer {
   /// 相对 locals_base 的字节偏移。
-  offset : Int
+  offset : Int32
   /// 缓冲区总字节数。
-  size : Int
+  size : Int32
   /// 变量名（教学诊断用）。
   name : String
 } derive(Eq, Debug)
@@ -32,13 +32,13 @@ pub extend LocalBuffer with Eq::{not_equal, equal}
 /// codegen 两阶段回填（Pass 2 建骨架、enter_function 回填 param_sizes、
 /// exit_function 回填 local_count/计数），消费侧（dump/VM）只读。
 pub(all) struct FuncMeta {
-  mut ip : Int
+  mut ip : Int32
   /// 参数总 word 数（以 4-byte words 计），供 Call 指令弹栈使用。
-  mut arg_count : Int
+  mut arg_count : Int32
   /// 参数个数（供 call_user_function 使用，与总 word 数不同）。
-  mut param_count : Int
-  mut local_count : Int
-  mut param_sizes : Array[Int]
+  mut param_count : Int32
+  mut local_count : Int32
+  mut param_sizes : Array[Int32]
   /// 函数返回类型（codegen 使用；session/vm 中保持默认 Void 即可）。
   return_type : @ast.Type
   /// 是否为变参函数。
@@ -56,17 +56,17 @@ pub extend FuncMeta with Debug::{to_repr}
 /// 符号表条目（Rust `vitro_runtime::Symbol` 照搬，字段序一致）。
 pub(all) struct Symbol {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
-  scope_depth : Int
+  scope_depth : Int32
   func_name : String
   /// 声明处的源码行号（0 = 未知/不适用）。
   ///
   /// 用途：VM `get_variable_snapshot` 据此判定"该符号在当前执行点是否已进入
   /// 作用域"。`scope_depth` 在所有构造点都是常量（1 = 局部 / 0 = 静态），
   /// 不表达嵌套深度。
-  decl_line : Int
+  decl_line : Int32
 } derive(Debug)
 
 ///|
@@ -79,12 +79,12 @@ pub extend Symbol with Debug::{to_repr}
 /// 契约的部分（S5 起 dump-compile 全量对拍）。
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
-  globals_init_32 : Array[(UInt, Int)]
-  globals_init_64 : Array[(UInt, UInt64)]
+  globals_init_32 : Array[(UInt32, Int32)]
+  globals_init_64 : Array[(UInt32, UInt64)]
   func_table : Map[String, FuncMeta]
-  func_index : Map[String, Int]
-  string_data : Array[(UInt, String)]
-  source_map : Array[(UInt, @source.SourceLoc)]
+  func_index : Map[String, Int32]
+  string_data : Array[(UInt32, String)]
+  source_map : Array[(UInt32, @source.SourceLoc)]
   symbols : Array[Symbol]
   struct_defs : Map[String, Array[@ast.StructField]]
   union_defs : Map[String, Array[@ast.StructField]]
@@ -93,7 +93,7 @@ pub(all) struct CompileOutput {
   /// 全局数据区末端的**绝对地址**（R1：`GLOBAL_START + align4(
   /// next_global_offset)`，含 Bytecode Libc 预留段）。运行层据此计算动态
   /// 堆起点 `max(HEAP_START, align4(global_data_end))`。
-  global_data_end : UInt
+  global_data_end : UInt32
 } derive(Debug)
 
 ///|

@@ -12,11 +12,11 @@ pub(all) struct Token {
   ty : TokenType
   text : String
   loc : @source.SourceLoc
-  byte_off : Int
+  byte_off : Int32
   /// token 在**自身所属文件内**的真实行号（主文件 = loc.line；头文件 = 文件内
   /// 行号——与仿古 loc.line 的主坐标系解耦；宏展开产物钉调用点的 real_line）。
   /// S2 审阅 P1-6 修复：真实归属的权威通道（LineMap 对重叠仿古区间只能尽力）。
-  real_line : Int
+  real_line : Int32
 } derive(Eq, @debug.Debug)
 
 ///|
@@ -72,7 +72,7 @@ pub extend MacroDef with Eq::{not_equal, equal}
 /// 教学追踪（结构化——勘察 ⑤-6：Rust 侧是拼好的中文串；本侧结构化存储，
 /// `render` 输出与 Rust wire format 逐字一致的中文串，serve 出口契约不变）。
 pub(all) enum TraceEntry {
-  Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int)
+  Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int32)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
 } derive(Eq, @debug.Debug)
 
@@ -106,10 +106,10 @@ pub fn TraceEntry::render(self : TraceEntry) -> String {
 /// LineMap 区间：主文件行号区间 `[main_first, main_last]` 映射到真实文件坐标。
 /// 区间按拼接顺序单调递增、首尾相接铺满全源。
 pub(all) struct LineSpan {
-  main_first : Int
-  main_last : Int
-  file_id : Int
-  file_line : Int
+  main_first : Int32
+  main_last : Int32
+  file_id : Int32
+  file_line : Int32
 } derive(Eq, @debug.Debug)
 
 ///|
@@ -135,12 +135,12 @@ pub extend LineMap with Eq::{not_equal, equal}
 ///|
 /// 查主文件行号对应的真实文件坐标 `(file_id, 真实行号)`。
 /// 未命中（区间缝隙）返回最近的左侧区间——区间铺满设计下不应发生，防御性兜底。
-pub fn LineMap::lookup(self : LineMap, main_line : Int) -> (Int, Int) {
+pub fn LineMap::lookup(self : LineMap, main_line : Int32) -> (Int32, Int32) {
   // S2 审阅 P1-6 修正：仿古主坐标下主/头文件段区间重叠是行号补偿缺陷的
   // 固有信息丢失——尾向扫描取"最近拼接段"（include 段晚于主文件铺底段插入，
   // 后记录者优先）；**权威归属请用 Token.loc.file_id + Token.real_line**
   //（本查找仅为行号级尽力）
-  let mut best : (Int, Int)? = None
+  let mut best : (Int32, Int32)? = None
   let mut hit = false
   for span in self.spans {
     if main_line >= span.main_first && main_line <= span.main_last {

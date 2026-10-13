@@ -21,7 +21,7 @@ pub extend FixAnchor with Debug::{to_repr}
 /// 静态修复载荷（error_catalog.rs generate_fix 的纯静态码子集）。
 pub(all) struct FixPayload {
   suggestion : String
-  fix_kind : Int
+  fix_kind : Int32
   anchor : FixAnchor
   text : String
 } derive(Debug)
@@ -38,7 +38,7 @@ pub(all) struct ConceptNode {
   title : String
   description : String
   /// 1-5
-  difficulty : Int
+  difficulty : Int32
   related_card_ids : Array[String]
 } derive(Debug)
 
@@ -67,7 +67,7 @@ pub(all) struct CompileRecord {
   /// Unix 毫秒时间戳（机制不消费，仅为记录保真）
   timestamp_ms : Int64
   success : Bool
-  error_codes : Array[Int]
+  error_codes : Array[Int32]
   trap_message : String?
 } derive(Debug)
 
@@ -81,9 +81,9 @@ pub(all) struct MisconceptionPattern {
   name : String
   description : String
   /// 触发本模式的错误码集合（空 = 仅 trap 关键词匹配，如 M05）
-  error_codes : Array[Int]
-  min_occurrences : Int
-  time_window : Int
+  error_codes : Array[Int32]
+  min_occurrences : Int32
+  time_window : Int32
 } derive(Debug)
 
 ///|
@@ -95,7 +95,7 @@ pub(all) struct DetectedMisconception {
   pattern_id : String
   pattern_name : String
   description : String
-  occurrence_count : Int
+  occurrence_count : Int32
   /// 0.0 ~ 1.0（occurrences / min(window, records)）
   confidence : Double
 } derive(Debug)
@@ -113,7 +113,7 @@ pub(all) struct PathStep {
   /// 卡片/模板/练习 id（oracle 现状存在悬空引用——照搬不修，登记在案）
   target_id : String
   /// 1-based 高亮行（StudyTemplate 用）
-  highlight_lines : Array[Int]
+  highlight_lines : Array[Int32]
 } derive(Debug)
 
 ///|
@@ -124,7 +124,7 @@ pub extend PathStep with Debug::{to_repr}
 pub(all) struct LearningPath {
   target_misconception_id : String
   target_misconception_name : String
-  estimated_time_minutes : Int
+  estimated_time_minutes : Int32
   steps : Array[PathStep]
 } derive(Debug)
 
@@ -136,11 +136,11 @@ pub extend LearningPath with Debug::{to_repr}
 /// fix_kind 的自持形态——本包不依赖 session，gateway 调用处转装）。
 pub(all) struct FixTarget {
   /// 0=None 1=ReplaceText 2=InsertText 3=DeleteText 4=ManualHint
-  fix_kind : Int
-  replace_start_line : Int
-  replace_start_column : Int
-  replace_end_line : Int
-  replace_end_column : Int
+  fix_kind : Int32
+  replace_start_line : Int32
+  replace_start_column : Int32
+  replace_end_line : Int32
+  replace_end_column : Int32
   replacement_text : String
 } derive(Debug)
 
@@ -152,11 +152,11 @@ pub extend FixTarget with Debug::{to_repr}
 /// 抛弃位置参数元组；字段序 = 七元组序）。
 pub(all) struct FixOutcome {
   suggestion : String
-  fix_kind : Int
-  start_line : Int
-  start_col : Int
-  end_line : Int
-  end_col : Int
+  fix_kind : Int32
+  start_line : Int32
+  start_col : Int32
+  end_line : Int32
+  end_col : Int32
   text : String
 } derive(Debug)
 

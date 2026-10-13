@@ -9,11 +9,11 @@
 ///|
 /// 字段自持收拢至此——落点裁定见 moon.pkg 头注）。
 pub(all) struct VisEvent {
-  ty : Int
-  line : Int
-  extra0 : Int
-  extra1 : Int
-  extra2 : Int
+  ty : Int32
+  line : Int32
+  extra0 : Int32
+  extra1 : Int32
+  extra2 : Int32
   context : String
 } derive(Debug)
 
@@ -31,13 +31,13 @@ pub(all) struct RootCauseHint {
   /// 给学生看的一句话自然语言解释
   one_liner : String
   /// 与根因相关的源码行（IDE 内可点击）
-  related_lines : Array[Int]
+  related_lines : Array[Int32]
   /// 建议修复类型（对齐既有 auto-fix 标识）："ChangeLeToLt"/"AddNullCheck"/
   ///| "InitVariable"/"FixLoopStart"/"FixArraySize"/"SetNullAfterFree"/
   ///| "AvoidDivZero"/"None"
   suggested_fix_kind : String
   /// 建议修复应用的具体行号（若已知）
-  suggested_fix_line : Int?
+  suggested_fix_line : Int32?
   /// 修复的可读描述（如「将 <= 改为 <」）
   suggested_fix_desc : String?
 } derive(Debug)
@@ -54,9 +54,9 @@ pub(all) struct AlgorithmMatch {
   name : String
   display_name : String
   func_name : String
-  confidence : Int
+  confidence : Int32
   suggestion : String
-  line : Int
+  line : Int32
   vis_events : Array[VisEvent]
 } derive(Debug)
 
@@ -110,10 +110,10 @@ pub fn PointerStatus::to_json_text(self : PointerStatus) -> String {
 /// 指针变量快照（用于指针追踪动画）。
 pub(all) struct PointerSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   ty_name : String
   /// mut：消费方 clone+mutate 使用形态
-  mut target_addr : UInt
+  mut target_addr : UInt32
   target_name : String
   status : PointerStatus
 } derive(Debug)
@@ -137,7 +137,7 @@ pub extend AccessedVar with Debug::{to_repr}
 /// FRB 友好的变量快照（ty 已格式化为字符串）。
 pub(all) struct ApiVariableSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty_name : String
   /// mut：decode 差分应用与消费方 clone+mutate 使用形态（Rust 同构）
@@ -165,7 +165,7 @@ pub extend ArraySnapshot with Debug::{to_repr}
 /// FRB 友好的调用帧信息。
 pub(all) struct ApiFrameInfo {
   func_name : String
-  return_line : Int
+  return_line : Int32
 } derive(Debug)
 
 ///|
@@ -176,15 +176,15 @@ pub extend ApiFrameInfo with Debug::{to_repr}
 ///|
 /// 14 字段 = step_payload_fields_v0_1() 白名单（v0.1 冻结，只增不改）。
 pub(all) struct StepPayload {
-  step_index : Int
-  code_line : Int
+  step_index : Int32
+  code_line : Int32
   func_name : String
   semantic_label : String
   algorithm_step : AlgorithmStepSnapshot?
   local_vars : Array[ApiVariableSnapshot]
   mut call_stack : Array[ApiFrameInfo]
   mut vis_events : Array[VisEvent]
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   mut accessed_vars : Array[AccessedVar]
   mut array_snapshots : Array[ArraySnapshot]
@@ -198,9 +198,9 @@ pub extend StepPayload with Debug::{to_repr}
 ///|
 /// 语义元数据（用于进度条标签和智能检查点）。
 pub(all) struct StepMeta {
-  code_line : Int
+  code_line : Int32
   func_name : String
-  loop_depth : Int
+  loop_depth : Int32
   semantic_label : String
 } derive(Debug)
 
@@ -212,7 +212,7 @@ pub extend StepMeta with Debug::{to_repr}
 pub(all) struct DebugSummary {
   local_vars : Array[ApiVariableSnapshot]
   call_stack : Array[ApiFrameInfo]
-  output_len : Int
+  output_len : Int32
 } derive(Debug)
 
 ///|
@@ -221,7 +221,7 @@ pub extend DebugSummary with Debug::{to_repr}
 ///|
 /// 执行热力图增量。
 pub(all) struct HeatmapDelta {
-  line : Int
+  line : Int32
   count : UInt64
 } derive(Debug)
 
@@ -233,7 +233,7 @@ pub extend HeatmapDelta with Debug::{to_repr}
 pub(all) struct UnifiedRunResult {
   success : Bool
   error : String?
-  total_steps : Int
+  total_steps : Int32
   finished : Bool
 } derive(Debug)
 
@@ -248,10 +248,10 @@ pub(all) struct AutoStepResult {
   trapped : Bool
   waiting_input : Bool
   paused : Bool
-  current_line : Int
+  current_line : Int32
   trap_message : String?
   /// 当前 frame_cache 窗口起始步号，供前端同步窗口起点
-  cache_start_step : Int
+  cache_start_step : Int32
 } derive(Debug)
 
 ///|
@@ -273,7 +273,7 @@ pub extend SeekResult with Debug::{to_repr}
 ///|
 /// [line, count]，emitter 随 gateway serve 批对齐——moon.pkg 头注登记）。
 pub(all) struct HeatmapData {
-  line_counts : Array[(Int, UInt64)]
+  line_counts : Array[(Int32, UInt64)]
   max_count : UInt64
 } derive(Debug)
 

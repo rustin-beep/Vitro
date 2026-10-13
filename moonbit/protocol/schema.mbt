@@ -201,9 +201,9 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
 ///|
 /// 展开步样本（"UNWINDING 不得合并单步"判据的输入）。
 pub(all) struct UnwindSample {
-  step_index : Int
+  step_index : Int32
   unwinding : Bool
-  unwind_frames_left : Int
+  unwind_frames_left : Int32
 } derive(Debug, Eq, Compare)
 
 ///|

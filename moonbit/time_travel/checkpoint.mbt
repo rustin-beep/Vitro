@@ -17,19 +17,19 @@
 /// 检查点管理器。
 pub struct CheckpointManager {
   /// (step, snapshot) 序列。
-  checkpoints : Array[(Int, @vm.VMSnapshot)]
+  checkpoints : Array[(Int32, @vm.VMSnapshot)]
   /// 固定间隔（步数）保底策略。
-  interval : Int
+  interval : Int32
   /// 智能检查点：控制流边界（调用/返回/循环/交换/内存操作）额外保存。
   mut smart_mode : Bool
   /// 最大检查点数量（防长程序内存无限增长）。
-  mut max_checkpoints : Int
+  mut max_checkpoints : Int32
   /// 每 N 个检查点强制一个全量基准。
-  full_every : Int
+  full_every : Int32
 }
 
 ///|
-pub fn CheckpointManager::new(interval : Int) -> CheckpointManager {
+pub fn CheckpointManager::new(interval : Int32) -> CheckpointManager {
   {
     checkpoints: [],
     interval,
@@ -45,7 +45,7 @@ pub fn CheckpointManager::new(interval : Int) -> CheckpointManager {
 /// collector 批走红→绿——迁移与改形分离）。
 pub fn CheckpointManager::should_checkpoint(
   self : CheckpointManager,
-  step : Int,
+  step : Int32,
   semantic_label : String,
 ) -> Bool {
   if step % self.interval == 0 {
@@ -78,7 +78,7 @@ pub fn CheckpointManager::should_checkpoint(
 /// 取全量（清脏页后 snapshot），否则增量（基于链中最近 Full）。
 pub fn CheckpointManager::save(
   self : CheckpointManager,
-  step : Int,
+  step : Int32,
   vm : @vm.VitroVM,
 ) -> Unit {
   let is_full = self.checkpoints.is_empty() ||
@@ -141,8 +141,8 @@ fn CheckpointManager::evict_over_limit(self : CheckpointManager) -> Unit {
 /// 找不超过 target 的最近检查点，Delta 链重建为可直接恢复的全量快照。
 pub fn CheckpointManager::nearest(
   self : CheckpointManager,
-  target : Int,
-) -> (Int, @vm.VMSnapshot)? {
+  target : Int32,
+) -> (Int32, @vm.VMSnapshot)? {
   let idx = match last_le(self.checkpoints, target) {
     Some(i) => i
     None => return None
@@ -157,7 +157,7 @@ pub fn CheckpointManager::nearest(
     }
     @vm.Delta(base_step, _) => {
       // 找 base_step 之前最近的 Full（倒序找）
-      let mut base_idx : Int? = None
+      let mut base_idx : Int32? = None
       for i = idx; i >= 0; i = i - 1 {
         if self.checkpoints[i].0 <= base_step &&
           self.checkpoints[i].1.memory is @vm.Full(_) {
@@ -191,9 +191,9 @@ pub fn CheckpointManager::nearest(
 /// 从 base Full + Delta 链重建全量内存。
 fn rebuild_full_from_base(
   base : FixedArray[Byte],
-  checkpoints : Array[(Int, @vm.VMSnapshot)],
-  base_idx : Int,
-  target_idx : Int,
+  checkpoints : Array[(Int32, @vm.VMSnapshot)],
+  base_idx : Int32,
+  target_idx : Int32,
 ) -> FixedArray[Byte] {
   let mem = clone_byte_array(base)
   for i = base_idx + 1; i <= target_idx; i = i + 1 {
@@ -210,8 +210,11 @@ fn rebuild_full_from_base(
 
 ///|
 /// last_le： checkpoints 中最后一个 step <= target 的下标。
-fn last_le(checkpoints : Array[(Int, @vm.VMSnapshot)], target : Int) -> Int? {
-  let mut found : Int? = None
+fn last_le(
+  checkpoints : Array[(Int32, @vm.VMSnapshot)],
+  target : Int32,
+) -> Int32? {
+  let mut found : Int32? = None
   for i = 0; i < checkpoints.length(); i = i + 1 {
     if checkpoints[i].0 <= target {
       found = Some(i)
@@ -245,7 +248,7 @@ fn clone_byte_array(src : FixedArray[Byte]) -> FixedArray[Byte] {
 /// 页写入内存数组（nearest 重建专用——直接 FixedArray 层）。
 fn write_page_into(
   mem : FixedArray[Byte],
-  page_idx : Int,
+  page_idx : Int32,
   page : FixedArray[Byte],
 ) -> Unit {
   let offset = page_idx * @memory.PAGE_SIZE
@@ -260,7 +263,7 @@ pub fn CheckpointManager::clear(self : CheckpointManager) -> Unit {
 }
 
 ///|
-pub fn CheckpointManager::length(self : CheckpointManager) -> Int {
+pub fn CheckpointManager::length(self : CheckpointManager) -> Int32 {
   self.checkpoints.length()
 }
 
@@ -282,12 +285,12 @@ pub fn CheckpointManager::set_smart_mode(
 /// 设置最大检查点数（同上）。
 pub fn CheckpointManager::set_max_checkpoints(
   self : CheckpointManager,
-  n : Int,
+  n : Int32,
 ) -> Unit {
   self.max_checkpoints = n
 }
 
 ///|
-pub fn CheckpointManager::get_interval(self : CheckpointManager) -> Int {
+pub fn CheckpointManager::get_interval(self : CheckpointManager) -> Int32 {
   self.interval
 }

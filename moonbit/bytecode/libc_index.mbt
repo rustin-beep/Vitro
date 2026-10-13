@@ -21,19 +21,19 @@
 ///|
 /// 预编译产物指令条数（`bytecode_libc_data.json` code 段长度）——S6 libc
 /// 自举消费（加载产物校验 code 段长度），当前包内无读点属预期。
-const BYTECODE_LIBC_CODE_LEN : Int = 3485
+const BYTECODE_LIBC_CODE_LEN : Int32 = 3485
 
 ///|
 /// 固定索引段基址。
-pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
+pub const BYTECODE_LIBC_BASE_INDEX : Int32 = 1000
 
 ///|
 /// 用户侧全局区预留（用户全局变量自此之后分配；library mode 自 0 起算）。
-pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt = 1024
+pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt32 = 1024
 
 ///|
 /// 函数总数。
-pub const BYTECODE_LIBC_FUNC_COUNT : Int = 88
+pub const BYTECODE_LIBC_FUNC_COUNT : Int32 = 88
 
 ///|
 /// Bytecode Libc 全部函数名（序 = 固定索引序）。并非所有函数都默认走
@@ -66,7 +66,7 @@ pub let bytecode_libc_all_funcs : Array[String] = [
 
 ///|
 /// 函数名 → 固定索引（不在表中返回 None）。穷尽查表无兜底值。
-pub fn bytecode_libc_index(name : String) -> Int? {
+pub fn bytecode_libc_index(name : String) -> Int32? {
   for i, n in bytecode_libc_all_funcs {
     if n == name {
       return Some(BYTECODE_LIBC_BASE_INDEX + i)

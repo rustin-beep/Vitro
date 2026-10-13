@@ -4,7 +4,7 @@
 /// Pass 1 全局布局（libc 预留段起点 / 标量位模式 / 字符串回填）、
 /// Pass 2/3 函数元数据回填、入口 wrapper 形态、global_data_end 口径。
 /// 语句/表达式族扩展批接线后逐批补对应锚（红→绿纪律）。
-fn loc(line : Int) -> @source.SourceLoc {
+fn loc(line : Int32) -> @source.SourceLoc {
   @source.SourceLoc::new(line, 1)
 }
 

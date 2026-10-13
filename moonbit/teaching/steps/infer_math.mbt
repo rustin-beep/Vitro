@@ -7,7 +7,7 @@
 ///|
 /// prev_vars 按名取整（Rust `prev_vars.iter().find(|v| v.name == n)
 /// .and_then(|v| v.value.parse::<i32>().ok())`——裸数组直查）。
-fn prev_get_int(prev_vars : Array[VarSnapshot], name : String) -> Int? {
+fn prev_get_int(prev_vars : Array[VarSnapshot], name : String) -> Int32? {
   for v in prev_vars {
     if v.name == name {
       return parse_int(v.value)

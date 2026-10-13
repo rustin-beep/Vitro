@@ -14,9 +14,9 @@
 ///|
 /// 循环构造信息（源码扫描产物——utils.rs LoopInfo 照搬）。
 priv struct LoopInfo {
-  lines : Array[Int]
+  lines : Array[Int32]
   mut has_le : Bool
-  mut increment : Int?
+  mut increment : Int32?
 }
 
 ///|
@@ -32,7 +32,7 @@ fn LoopInfo::new() -> LoopInfo {
 /// ASCII marker（"[timeline]"/"[cause]" 族），ASCII 域两序等价——**勿将
 /// 本函数复用到非 ASCII/跨类型比较域**（陷阱 #29 同族：String 内建比较
 /// 非字典序）。
-fn str_find(s : String, pat : String) -> Int? {
+fn str_find(s : String, pat : String) -> Int32? {
   let n = s.length()
   let m = pat.length()
   if m == 0 || m > n {
@@ -67,7 +67,7 @@ fn between_markers(
 
 ///|
 /// 数字解析（"5"/"-3" → Int；空/非数字 → None）。
-fn parse_int_opt(s : String) -> Int? {
+fn parse_int_opt(s : String) -> Int32? {
   let t = s.trim()
   if t == "" {
     return None
@@ -83,8 +83,8 @@ fn parse_int_opt(s : String) -> Int? {
 fn slice_variable_history(
   steps : Array[@protocol.StepPayload],
   var_name : String,
-  trap_step : Int,
-  lookback : Int,
+  trap_step : Int32,
+  lookback : Int32,
 ) -> Array[@protocol.ApiVariableSnapshot] {
   let start = if trap_step - lookback > 0 { trap_step - lookback } else { 0 }
   let result : Array[@protocol.ApiVariableSnapshot] = []
@@ -104,7 +104,7 @@ fn slice_variable_history(
 ///|
 /// 越界文案解析（utils.rs parse_bounds_message）："你访问了 arr[5]" →
 /// (数组名, 下标)。
-fn parse_bounds_message(msg : String) -> (String, Int)? {
+fn parse_bounds_message(msg : String) -> (String, Int32)? {
   guard after_marker(msg, "你访问了 ") is Some(rest) else { return None }
   guard str_find(rest, "[") is Some(bo) else { return None }
   guard str_find(rest, "]") is Some(bc) else { return None }
@@ -120,7 +120,7 @@ fn parse_bounds_message(msg : String) -> (String, Int)? {
 
 ///|
 /// 数组大小抽取（utils.rs extract_array_size）："只有 N 个元素"。
-fn extract_array_size(msg : String) -> Int? {
+fn extract_array_size(msg : String) -> Int32? {
   guard between_markers(msg, "只有 ", " 个元素") is Some(s) else {
     return None
   }
@@ -131,7 +131,7 @@ fn extract_array_size(msg : String) -> Int? {
 /// UAF/Double-Free 文案的 (alloc_line, freed_line) 抽取（utils.rs
 /// parse_alloc_freed_lines）： freed = 首个「第 N 行」（被 free 处），
 /// alloc =「由第 N 行的 malloc」。
-fn parse_alloc_freed_lines(msg : String) -> (Int, Int)? {
+fn parse_alloc_freed_lines(msg : String) -> (Int32, Int32)? {
   guard between_markers(msg, "第 ", " 行") is Some(fs) else { return None }
   guard parse_int_opt(fs) is Some(freed_line) else { return None }
   guard between_markers(msg, "由第 ", " 行的") is Some(as_) else {
@@ -145,7 +145,7 @@ fn parse_alloc_freed_lines(msg : String) -> (Int, Int)? {
 
 ///|
 /// 步长抽取（utils.rs extract_increment）："i++"/"i += 2"/"i = i + 2"。
-fn extract_increment(line : String, v : String) -> Int? {
+fn extract_increment(line : String, v : String) -> Int32? {
   let t = line.trim().to_owned()
   if t == v + "++;" || t == "++" + v + ";" {
     return Some(1)
@@ -160,7 +160,7 @@ fn extract_increment(line : String, v : String) -> Int? {
 }
 
 ///|
-fn take_digits(s : String) -> Int? {
+fn take_digits(s : String) -> Int32? {
   let buf = StringBuilder()
   for c in s {
     if c >= '0' && c <= '9' {
@@ -175,8 +175,8 @@ fn take_digits(s : String) -> Int? {
 ///|
 /// trap 行 ±6 行的循环构造扫描（utils.rs scan_loop_info 照搬）。
 fn scan_loop_info(
-  get_line : (Int) -> String,
-  trap_line : Int,
+  get_line : (Int32) -> String,
+  trap_line : Int32,
   var_name : String,
   array_name : String,
 ) -> LoopInfo {
@@ -217,7 +217,7 @@ fn scan_loop_info(
 
 ///|
 /// 变量历史短串（utils.rs format_history_vals）：≤4 全列，否则首尾省略。
-fn format_history_vals(vals : Array[Int]) -> String {
+fn format_history_vals(vals : Array[Int32]) -> String {
   let n = vals.length()
   if n == 0 {
     return ""
@@ -240,7 +240,7 @@ fn format_history_vals(vals : Array[Int]) -> String {
 }
 
 ///|
-fn buf_write_int(buf : StringBuilder, v : Int) -> Unit {
+fn buf_write_int(buf : StringBuilder, v : Int32) -> Unit {
   buf.write_string(v.to_string())
 }
 
@@ -283,7 +283,7 @@ fn BoundsCategory::as_str(self : BoundsCategory) -> String {
 fn analyze_null_deref(
   _trap_message : String,
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
+  trap_step : Int32,
 ) -> @protocol.RootCauseHint? {
   guard trap_step < steps.length() else { return None }
   let trap_payload = steps[trap_step]
@@ -348,7 +348,7 @@ fn str_join(parts : Array[String], sep : String) -> String {
 fn analyze_use_after_free(
   trap_message : String,
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
+  trap_step : Int32,
 ) -> @protocol.RootCauseHint? {
   guard parse_alloc_freed_lines(trap_message) is Some((alloc_line, freed_line)) else {
     return None
@@ -394,7 +394,7 @@ fn analyze_use_after_free(
 fn analyze_double_free(
   trap_message : String,
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
+  trap_step : Int32,
 ) -> @protocol.RootCauseHint? {
   guard parse_alloc_freed_lines(trap_message) is Some((alloc_line, freed_line)) else {
     return None
@@ -428,7 +428,7 @@ fn analyze_double_free(
 fn analyze_div_zero(
   trap_message : String,
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
+  trap_step : Int32,
 ) -> @protocol.RootCauseHint? {
   guard trap_step < steps.length() else { return None }
   let trap_payload = steps[trap_step]
@@ -473,9 +473,9 @@ fn analyze_div_zero(
 ///|
 /// 越界细分类推断（bounds.rs infer_bounds_category 照搬）。
 fn infer_bounds_category(
-  hist_vals : Array[Int],
-  accessed_index : Int,
-  array_size : Int,
+  hist_vals : Array[Int32],
+  accessed_index : Int32,
+  array_size : Int32,
   loop_info : LoopInfo,
 ) -> BoundsCategory {
   if hist_vals.length() < 2 {
@@ -517,8 +517,8 @@ fn infer_bounds_category(
 fn analyze_bounds(
   trap_message : String,
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
-  get_line : (Int) -> String,
+  trap_step : Int32,
+  get_line : (Int32) -> String,
 ) -> @protocol.RootCauseHint? {
   guard parse_bounds_message(trap_message) is Some((array_name, accessed_index)) else {
     return None
@@ -541,10 +541,10 @@ fn analyze_bounds(
       }
     }
   }
-  let related : Array[Int] = []
+  let related : Array[Int32] = []
   if suspect_var is Some(var_name) {
     let history = slice_variable_history(steps, var_name, trap_step, 20)
-    let hist_vals : Array[Int] = []
+    let hist_vals : Array[Int32] = []
     for h in history {
       if parse_int_opt(h.value) is Some(x) {
         hist_vals.push(x)
@@ -600,11 +600,11 @@ fn build_bounds_hint(
   category : BoundsCategory,
   var_name : String,
   array_name : String,
-  accessed_index : Int,
-  array_size : Int,
+  accessed_index : Int32,
+  array_size : Int32,
   loop_info : LoopInfo,
-  hist_vals : Array[Int],
-) -> (String, String, Int?, String?) {
+  hist_vals : Array[Int32],
+) -> (String, String, Int32?, String?) {
   // #60 批三段一b（2026-10-10）：五变体文案模板外置（hint_bounds_* +
   // hint_fix_*）——带/无行号双形态各自成键，拼接逻辑留代码。
   let first_line = if loop_info.lines.length() > 0 {
@@ -717,13 +717,13 @@ fn build_bounds_hint(
 
 ///|
 /// 三元组去重排序（Rust sort+dedup 对应物）。
-fn dedup_sorted(arr : Array[Int]) -> Array[Int] {
-  let a : Array[Int] = []
+fn dedup_sorted(arr : Array[Int32]) -> Array[Int32] {
+  let a : Array[Int32] = []
   for v in arr {
     a.push(v)
   }
   a.sort_by(fn(x, y) { x - y })
-  let out : Array[Int] = []
+  let out : Array[Int32] = []
   for v in a {
     if out.length() == 0 || out[out.length() - 1] != v {
       out.push(v)
@@ -737,9 +737,9 @@ fn dedup_sorted(arr : Array[Int]) -> Array[Int] {
 /// 按 trap_message 文案子串分流。steps = 全历史（含 trap 帧）。
 fn analyze_trap(
   steps : Array[@protocol.StepPayload],
-  trap_step : Int,
+  trap_step : Int32,
   trap_message : String,
-  get_line : (Int) -> String,
+  get_line : (Int32) -> String,
 ) -> @protocol.RootCauseHint? {
   if trap_message.contains("数组越界") {
     return analyze_bounds(trap_message, steps, trap_step, get_line)

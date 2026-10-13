@@ -70,7 +70,7 @@ fn f32_bits_u64(f : Float) -> UInt64 {
 ///|
 /// Int64 → 低 32 位 i32 截断（符号解释）——parser/decl.mbt `i64_to_i32_bits`
 /// 同款语义；Rust `v as i32`。位模式：先重解释为 UInt64 取低 32 位。
-fn Int64::to_int32_bits(v : Int64) -> Int {
+fn Int64::to_int32_bits(v : Int64) -> Int32 {
   let low = v.reinterpret_as_uint64() & 0xFFFFFFFFUL
   if low >= 0x80000000UL {
     (low.reinterpret_as_int64() - 0x100000000L).to_int()
@@ -87,7 +87,7 @@ fn Int64::to_int32_bits(v : Int64) -> Int {
 ///|
 fn BytecodeGen::push_literal_init(
   self : BytecodeGen,
-  offset : UInt,
+  offset : UInt32,
   expr : @ast.Expr,
   target_ty : @ast.Type,
 ) -> Bool {
@@ -114,7 +114,7 @@ fn BytecodeGen::flatten_global_init(
   self : BytecodeGen,
   target_ty : @ast.Type,
   init : @ast.Expr,
-  base_offset : UInt,
+  base_offset : UInt32,
 ) -> Unit {
   match init {
     InitList(elements, _, _) =>
@@ -198,8 +198,8 @@ fn BytecodeGen::flatten_global_init(
 fn flatten_init_list(
   elements : Array[@ast.InitElement],
   errors : Array[String],
-) -> Array[Int] {
-  let result : Array[Int] = []
+) -> Array[Int32] {
+  let result : Array[Int32] = []
   for elem in elements {
     if elem.designators.length() > 0 {
       errors.push("Designated initializer 不支持在此上下文中扁平化")
@@ -219,7 +219,7 @@ fn flatten_init_list(
         result.push(
           Float::from_double(value)
           |> Float::reinterpret_as_uint
-          |> UInt::reinterpret_as_int,
+          |> UInt32::reinterpret_as_int,
         )
       InitList(inner, _, _) => {
         let sub = flatten_init_list(inner, errors)
@@ -249,7 +249,7 @@ fn flatten_init_list(
 
 ///|
 /// 数组 stride 计算（Rust init.rs:200 照搬：i32 溢出返 0 哨兵）。
-fn compute_stride(arr_type : @ast.Type, elem_size : Int) -> Int {
+fn compute_stride(arr_type : @ast.Type, elem_size : Int32) -> Int32 {
   if arr_type.is_array() && arr_type.dims().length() > 0 {
     let mut stride = elem_size
     let dims = arr_type.dims()

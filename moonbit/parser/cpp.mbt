@@ -196,7 +196,7 @@ fn Parser::parse_cpp_template_decl(
 
 ///|
 /// 首个 "__" 的字节偏移（Rust split_once("__") 的定位半边）。
-fn find_first_dbl_underscore(s : String) -> Int? {
+fn find_first_dbl_underscore(s : String) -> Int32? {
   // '_' = U+005F；按 UTF-16 码元扫（字节位置与码元位置在 ASCII 段一致，
   // 类名/方法名不含非 ASCII——mangle 面同前提）
   let mut i = 0

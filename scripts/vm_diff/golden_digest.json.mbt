@@ -70,6 +70,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/bitwise_not.c": Standard(Std::{ src_sha: "715d1d7f", exit_code: 0, stdout_sha: "03b26944890929ff", memory_sha: "74f081b24f1fa786" }),
     "baseline/bitwise_shift.c": Standard(Std::{ src_sha: "84cc3209", exit_code: 0, stdout_sha: "1bfc2634ba2cc2e9", memory_sha: "96831022bdd66aad" }),
     "baseline/block_comment.c": Standard(Std::{ src_sha: "b9576079", exit_code: 0, stdout_sha: "2689367b205c16ce", memory_sha: "fa469c12e9f69c55" }),
+    "baseline/block_enum_definition.c": Standard(Std::{ src_sha: "b8d32ec8", exit_code: 0, stdout_sha: "0e4613eb3fdffc33", memory_sha: "e970fe8eccef4b5e" }),
     "baseline/block_static_typedef.c": Standard(Std::{ src_sha: "9da603c0", exit_code: 0, stdout_sha: "dec98bdedb6bd080", memory_sha: "0fbe6da22b7c3f1d" }),
     "baseline/bool_from_compare.c": Standard(Std::{ src_sha: "eaba9b4d", exit_code: 0, stdout_sha: "6b86b273ff34fce1", memory_sha: "6629896e6bcfd60d" }),
     "baseline/break_continue.c": Standard(Std::{ src_sha: "cc946821", exit_code: 0, stdout_sha: "a953f09a1b6b6725", memory_sha: "bb44d3d4bc92389a" }),

@@ -49,8 +49,50 @@ concurrency:
 
 
 jobs:
+  # ── docs-only 快速通道（2026-10-14 建，用户痛点：全跑并发近一小时）──────
+  # 纯记账面 push（docs/**、*.md、.agents/**）跳过五个重 job（build/三 gates/
+  # demo），只跑 static-gates + hygiene（本就是记账闸域）。分类器手写
+  # git diff（零第三方 action，对齐防线层零依赖纪律）；PR / schedule /
+  # dispatch 恒全量（保守——PR 的 merge-base 精确 diff 需深 fetch 不值当，
+  # 仓主工作流是直推）。应急逃生门：提交信息含 [skip ci] GitHub 原生全跳。
+  changes:
+    name: Change classifier (docs-only fast path)
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.cls.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Classify changed paths
+        id: cls
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 记账面豁免集：docs/、.agents/、任意层 *.md（含根 README/CHANGELOG/
+          # AGENTS）、SVG 生成物、.gitattributes/.editorconfig 文本配置。
+          # quotepath=off：中文文件名默认八进制转义形态（"docs/current/01-\345..)
+          # 令 docs/ 前缀匹配失效——本仓 docs 全中文文件名，实测实锤
+          FILES=$(git -c core.quotepath=off diff --name-only HEAD^ HEAD || true)
+          if [ -z "$FILES" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HEAVY=$(echo "$FILES" | grep -vE '^(\.agents/|docs/|.*\.md$|.*\.svg$|\.gitattributes$|\.editorconfig$)' || true)
+          if [ -z "$HEAVY" ]; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-unit:
     name: Build & unit tests (准入型基础)
+    needs: changes
+    if: needs.changes.outputs.docs_only == 'false'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -148,7 +190,8 @@ jobs:
           retention-days: 3
   gates-diff:
     name: Diff gate (${{ matrix.driver }})
-    needs: build-and-unit
+    needs: [changes, build-and-unit]
+    if: needs.changes.outputs.docs_only == 'false'
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：六实例互不取消（一红不见其余）。
@@ -227,7 +270,8 @@ jobs:
           esac
   gates-native:
     name: Native protocol & parity gates (consume exe)
-    needs: build-and-unit
+    needs: [changes, build-and-unit]
+    if: needs.changes.outputs.docs_only == 'false'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -419,7 +463,8 @@ jobs:
 
   gates-wasm:
     name: wasm-arm gates & CLI smoke
-    needs: build-and-unit
+    needs: [changes, build-and-unit]
+    if: needs.changes.outputs.docs_only == 'false'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -971,7 +1016,8 @@ jobs:
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)
-    needs: build-and-unit
+    needs: [changes, build-and-unit]
+    if: needs.changes.outputs.docs_only == 'false'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

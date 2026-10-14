@@ -225,31 +225,6 @@ jobs:
               go run ./scripts/clang_direct
               ;;
           esac
-
-      # #71 台账挂账深挖（2026-10-14 建，**临时件——p2f CI 分叉归因完成后撤**）：
-      # p2f_review_regression_guards 的 known digest 在 CI 稳定复现 a08efe4a
-      # （归一 6 行 + rc 524288）vs 本地全构建形态 9a329ad2（同 6 行 + rc 2）。
-      # 矛盾面：6 行属 trap 分支（cli_frame 文本模式必返 rc 2/3）、524288 非
-      # CLI 出口域（0-4）；本地冷/热/单/全量/clang 全组合不复现。本步骤常驻
-      # dump 该例 moonbit 侧原始 stdout/stderr/rc + exe 哈希 + 链接 clang 版本
-      # ——push 后首跑取证（归因候选：runner clang 链接布局 / native stub CRT
-      # 交互下的 c_exit 传参或退出路径）。
-      - name: p2f digest divergence diagnostic (temp, #71)
-        if: matrix.driver == 'clang_direct'
-        shell: bash
-        run: |
-          EXE=moonbit/_build/native/release/build/cmd/run/run.exe
-          echo "== exe sha256 =="; sha256sum "$EXE" || true
-          echo "== linker clang =="; clang --version | head -n1
-          echo "== p2f raw run (stdout/stderr split + rc) =="
-          "$EXE" corpus/baseline/p2f_review_regression_guards.c > /tmp/p2f_out.txt 2> /tmp/p2f_err.txt
-          echo "rc=$?"
-          echo "-- stdout bytes=$(wc -c < /tmp/p2f_out.txt) lines=$(wc -l < /tmp/p2f_out.txt) --"
-          cat /tmp/p2f_out.txt
-          echo "-- stderr bytes=$(wc -c < /tmp/p2f_err.txt) --"
-          cat /tmp/p2f_err.txt
-          echo "== hexdump tail of stdout (exit-path evidence) =="
-          tail -c 64 /tmp/p2f_out.txt | od -A x -t x1z | head -n 8
   gates-native:
     name: Native protocol & parity gates (consume exe)
     needs: build-and-unit

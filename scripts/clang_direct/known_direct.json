@@ -62,7 +62,7 @@
   {
     "case": "p2f_review_regression_guards.c",
     "digest": "9a329ad2",
-    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因（2026-10-14 CI 处置批）：CI（windows-latest runner clang 链接）稳定复现 a08efe4a=归一 stdout 6 行 + rc 524288；本地 全构建形态（冷/热增量/单目标/全量/MOON_CC=clang×全组合）均 9a329ad2=同 6 行 + rc 2。矛盾面：6 行形态属 trap 分支（cli_frame 文本模式 trap 必返 rc 2/3）、524288 非 CLI 出口域（0-4）——真因未收敛（嫌疑=runner clang 链接布局或 native stub CRT 交互下的 c_exit 传参/退出路径；同 trap 路径他例 p2e/array_bound 在 CI rc=2 正常）。双集为解 CI 阻断的临时收口，真因待 CI 侧深挖（#71 台账挂账——受检 trap 的 rc 传递在 CI 构建上异常的真缺陷嫌疑）",
+    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因勘误（2026-10-14 CI 首跑取证后定案）：digest 差异**全在 Clang 侧**——a[10] 越界读（C 侧 UB）的垃圾值随环境漂（本地 exit 0 / CI runner exit 524288=0x80000 栈残留），与 bTree_default 同族「UB 结局随构建/运行环境漂移属正当形态」；MoonBit 侧恒定 trap rc=2（CI 直跑取证步实锤，#71 挂账销案）。首次归因误读报文「返回码 524288 != 0」的 o/m 次序（o=Clang 侧、m=MoonBit 侧 // EXIT 行解析值，trap 时无该行为 0）——教训：digest 差异定位先分侧。",
     "digests": [
       "9a329ad2",
       "a08efe4a"

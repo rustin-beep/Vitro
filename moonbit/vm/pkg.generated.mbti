@@ -216,6 +216,7 @@ pub fn VitroVM::call_stack_len(Self) -> Int
 pub fn VitroVM::clear_breakpoints(Self) -> Unit
 pub fn VitroVM::clear_waiting_input(Self) -> Unit
 pub fn VitroVM::dump_memory_raw(Self) -> Bytes
+pub fn VitroVM::final_return_value(Self) -> Int
 pub fn VitroVM::find_variable_name_at_addr(Self, UInt) -> String?
 pub fn VitroVM::get_array_snapshots(Self) -> Array[ArraySnapshotData]
 pub fn VitroVM::get_current_line(Self) -> Int

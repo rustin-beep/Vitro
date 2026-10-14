@@ -283,6 +283,20 @@ pub fn VitroVM::clear_waiting_input(self : VitroVM) -> Unit {
 }
 
 ///|
+/// 终态后的返回值投影（`run()` 的 Finished 取值单源抽出，#86 2026-10-14）
+/// ——gateway 的 engine 通道续跑（input.feed 步进会话）六字段出口复用：
+/// finished 取 exit_code（exit 系 host 写入），否则栈顶低 32 位，空栈 0。
+pub fn VitroVM::final_return_value(self : VitroVM) -> Int32 {
+  if self.finished {
+    self.exit_code
+  } else if self.stack.length() > 0 {
+    self.stack[self.stack.length() - 1].to_int()
+  } else {
+    0
+  }
+}
+
+///|
 /// 装载指令流（ip 归零）。
 pub fn VitroVM::load_program(
   self : VitroVM,

@@ -35,9 +35,14 @@
 //    锁现状。
 
 ///|
-/// input.feed 方法帧（Rust input_feed 照搬）：params.text 缺省 "" 等价
-/// 「续推进一步」；text 非空追加（非覆盖，游标保留 + EOF 粘滞清除）；
-// 出口与 run 同构六字段。
+/// input.feed 方法帧（Rust input_feed 照搬 + #86/#88 扩展）：params.text
+/// 缺省 "" 等价「续推进一步」；text 非空追加（非覆盖，游标保留 + EOF 粘滞
+/// 清除）；params.eof=true 置 InputState EOF 粘滞（#88——交互模式 EOF 口，
+/// scanf 族返回 -1，while(scanf!=EOF) 可收尾；set_eof 单源：游标推底 +
+/// 粘滞）；出口与 run 同构六字段。**#86**：步进会话活跃（step.begin 后）
+/// 时改走 engine 通道续跑（run_batch 循环到终态——帧进 engine.frames，
+/// 续跑指令不丢帧、帧流 step_index 连续；旧走 vm.run() 全速绕过 engine，
+/// 续跑段零帧 + 尾帧越界跳号）。
 fn serve_input_feed_frame(
   s : @session.Session,
   id : Json,
@@ -55,10 +60,81 @@ fn serve_input_feed_frame(
     // 取行数组（模式与 EOF 清除由 push_lines 承担）
     s.vm.input.push_lines(@host.InputState::from_stdin_text(text, true).lines)
   }
-  // resume 语义：waiting_input 由 serve_execute_run 的 is_resume 承担
-  // （参数回推 + ip 回退已就位；二段锚 serve_run_waiting_then_input_resumes
-  // 已锁行为——本帧是同一机制的独立方法入口）
-  (serve_ok(id, serve_execute_run(s)).stringify(), false)
+  // #88：EOF 口——置位后本次续跑内 scanf 族读输入即 -1
+  match json_field(params, "eof").as_bool() {
+    Some(true) => s.vm.input.set_eof()
+    _ => ()
+  }
+  // #86：步进会话活跃走 engine 通道（帧流连续）；否则原 run 通道
+  guard s.unified is Some(engine) else {
+    // resume 语义：waiting_input 由 serve_execute_run 的 is_resume 承担
+    // （参数回推 + ip 回退已就位；二段锚 serve_run_waiting_then_input_resumes
+    // 已锁行为——本帧是同一机制的独立方法入口）
+    return (serve_ok(id, serve_execute_run(s)).stringify(), false)
+  }
+  (serve_ok(id, serve_execute_run_via_engine(s, engine)).stringify(), false)
+}
+
+///|
+/// engine 通道续跑（#86）：run_batch 循环到终态（waiting/finished/trap）
+/// ——帧由 engine 收集（payload.get/seek 后续可取）；六字段出口与
+/// serve_execute_run 同构（return_value 经 vm.final_return_value 投影）。
+fn serve_execute_run_via_engine(
+  s : @session.Session,
+  engine : @time_travel.UnifiedEngine,
+) -> Json {
+  // waiting 旗清位（与 serve_execute_run 的 is_resume 后清位同源——出口
+  // 字段只反映本次结果；重执行 CallHost 内部按需重置）
+  let was_waiting = s.vm.waiting_input
+  ignore(was_waiting)
+  s.vm.clear_waiting_input()
+  let mut err_msg = ""
+  while true {
+    match engine.run_batch(s.vm, SessionLines::{ s, }, s.config.max_steps) {
+      Err(msg) => {
+        err_msg = msg
+        break
+      }
+      Ok(r) => {
+        if r.waiting_input || r.finished || r.trapped {
+          break
+        }
+        // 批跑满未终态（预算内继续——batch_size 已是会话 max_steps）
+        ()
+      }
+    }
+  }
+  let trap = if !err_msg.is_empty() { err_msg } else { s.vm.error }
+  let waiting = s.vm.waiting_input
+  let ret = if trap.is_empty() && !waiting {
+    let v = s.vm.final_return_value()
+    s.vm.output.push_note_str("程序运行完成，返回值：\{v}\n")
+    append_leak_report(s.vm)
+    v
+  } else {
+    0
+  }
+  let status = if !trap.is_empty() {
+    "trap"
+  } else if waiting {
+    "waiting_input"
+  } else {
+    "finished"
+  }
+  let m : Map[String, Json] = Map([])
+  m.set("ok", trap.is_empty().to_json())
+  m.set("status", Json::string(status))
+  m.set("return_value", ret.to_json())
+  m.set("trap", Json::string(trap))
+  m.set("waiting_input", waiting.to_json())
+  m.set("steps_executed", s.vm.step_count.to_json())
+  // #91：output_truncated 位（serve_execute_run 同款——feed 与 run 出口
+  // 字段面同构）
+  m.set(
+    "output_truncated",
+    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
+  )
+  Json::object(m)
 }
 
 ///|

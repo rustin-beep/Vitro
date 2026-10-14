@@ -84,14 +84,7 @@ pub fn VitroVM::run(self : VitroVM) -> Int32 {
   while true {
     let result = self.step()
     match result {
-      Finished =>
-        return if self.finished {
-          self.exit_code
-        } else if self.stack.length() > 0 {
-          self.stack[self.stack.length() - 1].to_int()
-        } else {
-          0
-        }
+      Finished => return self.final_return_value()
       Trap => return 0
       Paused => {
         self.trap(

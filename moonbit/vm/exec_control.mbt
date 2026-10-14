@@ -235,6 +235,11 @@ fn VitroVM::execute_control_flow(
       // Interactive 输入未就绪：ip 回退一步（可续跑——重执行本指令重新弹参）
       if self.waiting_input {
         self.ip = self.ip - 1
+        // #85（2026-10-14 报/修）：步数同步回退——本指令未完成（参数
+        // 回推 + ip 回退为重执行做准备），step_count 不回退则 resume 重
+        // 执行时同一 CallHost 双计（steps_executed = 真实指令数 + 续跑
+        // 次数，喂法不同面板数字漂移）
+        self.step_count = self.step_count - 1
         return Some(WaitingInput)
       }
       None

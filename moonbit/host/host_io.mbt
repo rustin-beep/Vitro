@@ -332,10 +332,10 @@ pub fn host_getchar(input : InputState) -> InputOutcome {
     None => ()
   }
   if input.eof {
-    if input.batch {
-      return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
-    }
-    return InputOutcome::Waiting
+    // #88（2026-10-14）：eof 粘滞 = 流终结（batch 耗尽自动置位或 feed
+    // {eof:true} 显式置位）——与模式无关恒 EOF 值；旧 Interactive 形态
+    // 恒 Waiting，显式 EOF 口无生效路径
+    return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
   }
   // 可用性检查（跨行扫描）
   let mut idx = input.index
@@ -761,15 +761,14 @@ pub fn host_scanf_n(
     }
     i = i + 1
   }
+  // #88（2026-10-14）：eof 粘滞 = 流终结（batch 耗尽自动置位或 feed
+  // {eof:true} 显式置位）——检查先于一切（含无内容判定）：Interactive
+  // 模式下置位后旧先撞「无内容 → Waiting」死等，显式 EOF 口无生效路径
+  if input.eof {
+    return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
+  }
   // 首转换符前流已无可用内容（Batch → EOF；Interactive → 等待）
   if !stream_has_content(stream) {
-    if input.batch {
-      input.set_eof()
-      return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
-    }
-    return InputOutcome::Waiting
-  }
-  if input.eof {
     if input.batch {
       input.set_eof()
       return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)

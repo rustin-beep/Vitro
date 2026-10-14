@@ -110,6 +110,13 @@ fn serve_execute_run(s : @session.Session) -> Json {
   m.set("trap", Json::string(trap))
   m.set("waiting_input", waiting.to_json())
   m.set("steps_executed", s.vm.step_count.to_json())
+  // #91（2026-10-14）：输出截断显式位——16MB 预算触顶丢最旧此前仅
+  // note 注记 + output.delta 的 truncated_bytes 可见，判分方不拉不见
+  //（run 报 finished 而输出残缺的静默骗人形态）；协议「只增不改」追加
+  m.set(
+    "output_truncated",
+    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
+  )
   Json::object(m)
 }
 

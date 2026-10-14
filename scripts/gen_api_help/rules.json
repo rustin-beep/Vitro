@@ -34,7 +34,7 @@
     },
     {
       "method": "config.set",
-      "brief": "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget）",
+      "brief": "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch；未知键 fail loud，#105）",
       "example": "{\"max_steps\":100000}"
     },
     {
@@ -69,12 +69,12 @@
     },
     {
       "method": "run",
-      "brief": "执行已编译单元（batch_input=输入耗尽即 EOF；argv 全量含 argv[0]）",
+      "brief": "执行已编译单元（batch_input=输入耗尽即 EOF；返回七字段含 output_truncated——输出预算触顶=true，#91）",
       "example": "{\"argv\":[\"main.c\"]}"
     },
     {
       "method": "input.feed",
-      "brief": "交互续跑喂输入（waiting_input 时续跑）",
+      "brief": "交互续跑喂输入（text 追加；eof=true 置 EOF 收尾口，#88；步进会话活跃时走 engine 帧流，#86）",
       "example": "{\"text\":\"42\\n\"}"
     },
     {

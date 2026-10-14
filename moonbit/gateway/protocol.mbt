@@ -91,6 +91,8 @@ fn serve_config(s : @session.Session) -> Json {
   m.set("compiled", s.compile.compiled.to_json())
   m.set("max_steps", s.config.max_steps.to_json())
   m.set("call_depth_limit", s.config.call_depth_limit.to_json())
+  // #91（2026-10-14）：输出预算现值（判分方提前判断天花板——issue 建议①）
+  m.set("output_budget", s.vm.output.budget().to_json())
   Json::object(m)
 }
 
@@ -195,7 +197,23 @@ fn dispatch(
       // config 对象回串（无 id/ok 包装），serve_smoke 双宿主对拍实锤
       // （响应 id 一一对应 + 帧同构两断言红）；既有锚只 contains 数字
       // 未锁帧结构故未暴露
-      (serve_ok(id, serve_apply_config(s, params)).stringify(), false)
+      // #105（2026-10-14）：未知键 fail loud——config.set 是纯配置通道，
+      // 旧对未知键静默丢弃（input_mode_batch 实测被吞）；白名单先行 +
+      // serve_param_err 报错即文档（#68 单源）。run 帧内联的
+      // serve_apply_config 不做白名单（混合域宽进）
+      match config_set_unknown_key(params) {
+        Err(unknown) =>
+          (
+            serve_param_err(
+              id,
+              "config.set 收到未知配置键 '\{unknown}'（合法键：deterministic / quarantine_budget / max_steps / call_depth_limit / output_budget / input_mode_batch）",
+              "{deterministic?:bool, quarantine_budget?:int, max_steps?:int, call_depth_limit?:int, output_budget?:int, input_mode_batch?:bool}",
+            ).stringify(),
+            false,
+          )
+        Ok(_) =>
+          (serve_ok(id, serve_apply_config(s, params)).stringify(), false)
+      }
     // 静态元数据族（三段）
     "capabilities" => serve_capabilities_frame(id)
     "error_catalog" => serve_error_catalog_frame(id)
@@ -235,6 +253,28 @@ fn dispatch(
 }
 
 ///|
+/// #105：config.set 白名单校验——params 里首个不在合法键集内的键名
+/// （Err(键名)）；全部合法返回 Ok。空/非对象 params 视为合法（键为零）。
+fn config_set_unknown_key(params : Json) -> Result[Unit, String] {
+  let legal = [
+    "deterministic", "quarantine_budget", "max_steps", "call_depth_limit", "output_budget",
+    "input_mode_batch",
+  ]
+  match params {
+    Object(m) => {
+      for k, _ in m {
+        let known = legal.exists(l => l == k)
+        if !known {
+          return Err(k)
+        }
+      }
+      Ok(())
+    }
+    _ => Ok(())
+  }
+}
+
+///|
 /// config.set（与 Rust serve_apply_config 同批字段）。quarantine_budget：
 /// clamp 0..1MB（Rust 同形）直写 MemoryMap 定义点（memory 包——capi
 /// `vitro_set_quarantine_budget` 直映射字段；vm reset 跨重建保留 ⇒
@@ -259,6 +299,32 @@ fn serve_apply_config(s : @session.Session, params : Json) -> Json {
     Some(v) => {
       s.config.deterministic = v
       s.config.apply_to_vm(s.vm)
+    }
+    None => ()
+  }
+  // #105（2026-10-14）：input_mode_batch 真支持——写会话态 + 即时应用
+  // InputState（run 帧 batch_input 同款形态；#88 实测三条失效路径之一
+  // 的 config 通道自此打通）
+  match json_field(params, "input_mode_batch").as_bool() {
+    Some(v) => {
+      s.runtime_batch = v
+      s.vm.set_input(@host.InputState::new(s.vm.input.lines, v))
+    }
+    None => ()
+  }
+  // #91（2026-10-14）：输出预算会话级可调——判分/下游可控小预算快测
+  // 截断行为；clamp [4KB, 16MB]（下限防诊断通道自吞、上限=默认防调大
+  // 绕安全网）
+  match json_field(params, "output_budget").as_int() {
+    Some(v) => {
+      let clamped = if v < 4096 {
+        4096
+      } else if v > 16777216 {
+        16777216
+      } else {
+        v
+      }
+      s.vm.output.set_budget(clamped)
     }
     None => ()
   }

@@ -187,3 +187,30 @@ test "extract_gen_error_line_shapes" {
 }
 
 ///|
+
+///|
+/// #92（2026-10-14 报/修）：codegen 错误（E0 无码——#38 立码段拍板前的
+/// 过渡形态）与 typeck 警告共存时 W 在 E 前——下游按首条/严重级分流把
+/// 阻断态显示成黄色提示（issue 实测 UI 形态）。修复：gen 失败路径对
+/// diagnostics 全数组 stable partition（error 前、W/hint 后——含 lex 段
+/// 警告，实测 W3053 来自 lexed.warnings），对齐 native cli 三轮渲染
+/// （E→W）合成序。
+test "issue92_gen_error_orders_before_warnings" {
+  let s = @session.Session::new()
+  let (r, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"char g[524288];\\nint main(void) { g[0] = 1; return 0; }\\n\"}}",
+  )
+  assert_true(r.contains("\"ok\":false"), msg="容量超限应阻断")
+  let e_pos = r.find("\"severity\":\"error\"")
+  let w_pos = r.find("\"severity\":\"warning\"")
+  let ordered = match (e_pos, w_pos) {
+    (Some(e), Some(w)) => e < w
+    (Some(_), None) => true
+    _ => false
+  }
+  assert_true(ordered, msg="error 级须先于 warning 级出现")
+  assert_true(
+    r.contains("全局数据区容量不足"),
+    msg="容量文案在列",
+  )
+}

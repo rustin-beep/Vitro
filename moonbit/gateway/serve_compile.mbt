@@ -369,9 +369,31 @@ fn serve_compile_pipeline(
       // 码位 Unknown(0) 过渡——codegen 错误体系无诊断码（#38 在册，E4 号段
       // 被 C++ 预埋占死），立码段拍板后换真码；行号从文案「第 N 行：」提取。
       // st.errors 兼容保留（demo 网页 errors 串消费面）
+      // #92：gen 失败路径的 error 前置——到达本分支的前提 = typeck
+      // errors 空 ⇒ 数组只含 lexW/typeckW/hint + 本批 genE。全数组
+      // stable partition（error 级在前、W/hint 在后、同级保序），对齐
+      // native cli 三轮渲染（E→W）合成序——旧形态 W 占首条，下游按
+      // 首条/严重级分流把阻断态显示成黄色提示（issue #92 实测）
+      let diags = s.compile.diagnostics
+      let errors_part : Array[@session.Diagnostic] = []
+      let others_part : Array[@session.Diagnostic] = []
+      for d in diags {
+        if d.severity == 0 {
+          errors_part.push(d)
+        } else {
+          others_part.push(d)
+        }
+      }
+      diags.truncate(0)
       for e in gen_errors {
         st.errors = st.errors + "生成错误: \{e}\n"
         push_one_diag(s, 0, extract_gen_error_line(e), 1, e, 0, [], [])
+      }
+      for d in errors_part {
+        diags.push(d)
+      }
+      for d in others_part {
+        diags.push(d)
       }
       st.errors = st.errors + "字节码生成错误\n"
       return false

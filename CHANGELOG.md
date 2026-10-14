@@ -12,6 +12,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#105 config.set 未知键静默丢弃：白名单 fail loud + input_mode_batch 真支持，2026-10-14）
+
+「静默骗人」族收官件（#91/#92/#105 三连全清）——config.set 对未知配置键静默丢弃（#88 实测三条失效路径之一：input_mode_batch 写入被吞、get 回显恒 false）：
+
+- **白名单 fail loud**：config.set 帧分派处前置校验（六个合法键：deterministic/quarantine_budget/max_steps/call_depth_limit/output_budget/input_mode_batch），未知键 serve_param_err 报错即文档（#68 单源，expected 形状含全键清单）；run 帧内联的 serve_apply_config 不做白名单（run params 混合域宽进——input/argv/batch_input 等合法共存）。
+- **input_mode_batch 真支持**：serve_apply_config 写 runtime_batch + 即时应用 InputState（run 帧 batch_input 同款形态）——config 通道自此打通，get 回显真值。
+- **api help 连坐**：config.set brief 更新（键清单 + fail loud 提示）；jsonmbt → gen_api_help 双产物再生。
+- 锚：gateway wbtest issue105 四断言（batch 写入回显 + scanf 耗尽即 EOF 收尾 + 未知键报错点名 + 合法键反例）；110/110 双目标。
+- 防线：moon test 763/763 · gateway 110/110 · smoke 双臂同形 · gen_api_help -check · facts --strict 0 漂移。
+
+### Fixed（#91 stdout 16MiB 硬顶显式化 + #92 收尾件：output_truncated 位 + output_budget 键，2026-10-14）
+
+「静默骗人」族收口（#91/#92/#105 三连的 #91 件）——16MB 预算触顶此前仅 note 注记 + output.delta 的 truncated_bytes 可见，判分方不拉不见（run 报 finished 而输出残缺）：
+
+- **run/feed 帧追加 `output_truncated` 位**（dropped>0 || note_dropped>0；协议「只增不改」追加——DX ③ truncated_bytes 先例同款）：六字段→七字段，run 响应直接可见「输出被截断」。CLI 两模式单源同步（cmd/lib/cli 经 inv_tree 走 gateway 帧）。
+- **config 通道 `output_budget` 键**（issue 建议①的现值暴露 + 会话级可调）：config.get 回显现值；config.set 可调（clamp [4KB, 16MB]——下限防诊断通道自吞、上限=默认防调大绕安全网）。锚与判分方可小预算快测截断行为。
+- **api help 连坐**：gen_api_help 真源 rules.json.mbt 三条 brief 更新（config.set 键清单 / run 七字段 / input.feed 的 eof 口与 engine 帧流——#86/#88 语义同步）；jsonmbt build --pretty 再生 + gen 双产物再生（过程事故一次：先手改了生成物 api_help_gen.mbt 被 gen_api_help 再生打回——生成物纪律：改 .mbt 真源）。
+- **双臂端到端**：config 回显 4096 → run finished + output_truncated=true → stdout total=4096（dropped 19904）→ 恢复预算后 truncated=false（计数随 clear 复位）——wasm/native 一致。
+- 锚：gateway wbtest issue91（config 回显新键 + truncated 位 + 预算封顶三断言）；109/109 双目标。
+- 防线：moon test 763/763 · native 897 · wasm-gc 872 · gateway 双目标 109/109 · smoke 双臂同形全绿（api help 表同步后）· gen_api_help -check · facts --strict 0 漂移。
+
+### Fixed（#92 诊断排序 + 上限文档化：gen 失败路径 error 前置，2026-10-14）
+
+复现勘误先行：issue 报「W3053 标 warning 但阻断」——实测 W3053 是 `g[0]=1` 的 char 窄化警告（合法且不阻断），**真正阻断的是无码 E0「全局数据区容量不足」**（#38 立码段拍板前的过渡形态）；痛点在 W 占 diagnostics 首条，下游按首条/严重级分流把阻断态显示成黄色提示。
+
+- **诊断排序**：gen 失败路径对 diagnostics 全数组 stable partition（error 级前置、W/hint 在后、同级保序）——对齐 native cli 三轮渲染（E→W）合成序。实测 W3053 来自 lexed.warnings（lex 段），故水位法失效改全量 partition。双臂端到端：severity 序 [error, error, warning]。typeckE 早退路径的既有帧序（native 同序设计）不动。
+- **上限文档化**：全局数据区上限 61440 字节（60KB = GLOBAL_REGION_LIMIT − GLOBAL_START，1MB 载体全局段）写入 C语言子集规范 §堆隔离表——含「不随 quarantine_budget 变化」口径（issue 实测疑问的正面回答）。
+- 锚：gateway wbtest issue92（ok=false + error 先于 warning + 容量文案在列）；108/108 双目标。
+- 防线：moon test 763/763 · gateway native/wasm-gc 108/108 · smoke · facts --strict 0 漂移（vm/clang 对拍不涉 gateway 改动）。
+
+### Fixed（#85+#86+#88 gateway 交互三连：续跑计数双计 + 步进帧流断档 + EOF 口，2026-10-14）
+
+B 桶 gateway 帧流完整性三病（同一续跑逻辑的三张脸 + 一个协议能力缺口）：
+
+- **#85 steps_executed 双计**：CallHost waiting 中断时 ip 回退但 step_count 不回退——resume 重执行同一指令双计，面板 = 真实指令数 + 续跑次数（喂法不同数字漂移）。修：waiting 臂 step_count 同步回退（该步未完成，重执行时再计）。等价锚：同程序同输入一次喂 vs 分两次喂（run→feed）面板数字必须相同。
+- **#86 步进会话 feed 续跑帧流断档**：input.feed 旧走 vm.run() 全速绕过 UnifiedEngine——续跑段零帧 + 尾帧 step_index 越界（帧流 [0..11, 23]）。修：feed 在步进会话活跃时走 engine 通道（run_batch 循环到终态，帧进 engine.frames——payload.get/seek 后续可取）；六字段出口同构（vm.final_return_value 单源抽出，run() 的 Finished 取值改用）。帧流 [0..11, 11, 12..21]：11 重复一帧 = 同一 CallHost 的 waiting/完成两次状态投影（合法语义，锚按去重连续断言）。CLI 双臂端到端：feed finished(22)、去重后 0..21 连续。
+- **#88 交互模式 EOF 口**：feed{eof:true} 置 InputState EOF 粘滞（set_eof 单源）；scanf/getchar 的 eof 检查**提到一切之前**且与 batch 模式解绑（旧 Interactive 形态下 eof 置位仍先撞「无内容 → Waiting」死等——显式 EOF 口无生效路径）。CLI 双臂端到端：run waiting(13) → feed "10 20" waiting(47) → feed eof **finished(60)**、stdout=sum 30——while(scanf!=EOF) 模式自此可收尾。
+- **锚**：gateway wbtest +3（issue85 等价/issue86 帧流连续/issue88 EOF 三段）；vm/host 改动零存量漂移（vm_diff 665 SAME + clang_direct 748 SAME+12 KNOWN 全量实证——step_count 回退与 eof 前提不影响 stdout/rc 对拍面）。
+- 防线：moon test 763/763 · native 895 · wasm-gc 870 · vm_diff 665 SAME · clang_direct 748+12 KNOWN+0 DIFF（760）· smoke · facts --strict 0 漂移。
+
+### Fixed（#84 指向 VLA 的行指针双层病：decay 误拒 + 索引步长 E0，2026-10-14）
+
+LLM 语料长程序剥壳勘探产物（编译器缺陷面收官条）——`int (*dp)[n+1]` 双层病：
+
+- **decay 层（E3004 误拒，比 issue 原报更靠前）**：二维 VLA 数组 decay 给行指针（`int (*dp)[n+2] = t;`）——`subscript_type` 对 VLA 维（0 哨兵）派生 size 按 1 乘积（=1），与声明符侧「最外维 0 → size_prod 恒 0」不一致，type_eq 的 `asize == bsize` 判等假阴性。修：subscript_type VLA 维 size 归 0 对齐声明侧（ast 单测锚含非 VLA 反例——int[4]≠int[5] 判等不受影响）。
+- **步长层（E0 误拒，issue 原报）**：行指针索引 `dp[1][x]` 报「数组索引步长计算失败：存在无效维度」——compute_stride 对 VLA 维返 0 哨兵后，gen_index 的判定/分派/运行期求值三处均漏 Pointer(Array(VLA)) 形态。修：`vla_row_ptr` 判定放行 + `gen_vla_stride` 新增 Pointer 臂（步长 = pointee **全部维度**运行期乘积 × 元素尺寸——与数组本体臂「首维不计」的差别即行指针跨完整 pointee 数组；元素尺寸取 pointee 元素，修正 base_kind 把 Pointer 当 4 字节标量的错位）。
+- **红锚与语料**：ast wbtest `issue84_subscript_type_vla_size_zero`（size=0 + 与声明 pointee 判等 + 非 VLA 反例）；语料 `vla_row_pointer.c`——运行期步长验证面 `dp[1][n2]` 跨行读 t[1][n2]=104（行步长 n2+2=6，步长错则读他值），clang/wasm/native 三方逐字节同；issue 原样 v1（malloc+sizeof VLA 类型）compile 绿（仅 H3057 void\* 桥接 hint）。
+- **防线**：moon test 763/763 · native 892 · wasm-gc 867 · clang_direct 748 SAME+12 KNOWN+0 DIFF（760）· 四 digest freeze 纯新增（subscript_type 语义改动经 425 存量重算零漂移实证）· smoke · facts --strict 0 漂移（连坐 11 处）· surface/mbti/gen_svg/skill_path_check 全绿。
+
 ### Fixed（CI 两红根除：skill_path_check 反例路径豁免 + p2f digest CI 分叉双集，2026-10-14）
 
 3b21ee7b 批 CI 三 job 红（连红三笔中的最新笔；前两笔红因 diff_ledger 收编/skill_path_check 撞名已随该批 P1-a 修复）：

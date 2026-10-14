@@ -825,7 +825,7 @@ int main() { return 0; }
 - [x] **多级指针** — 已支持 `int**` / `struct Node**`，含解引用、取地址、数组索引、指针算术、显式 cast
 - [x] **VLA（变长数组）** — 已支持局部一维/多维 VLA、`sizeof` 运行时求值、函数参数退化；全局/静态 VLA 编译期拒绝
 - [x] **通用逗号运算符** — 已支持 `(a, b)` 表达式，左值求值后丢弃，返回右操作数类型
-- [x] **Designated Initializer** — 已支持 `.field = val`（结构体）和 `[i] = val`（一维数组），局部变量上下文；全局/静态变量 designated init 暂不支持
+- [x] **Designated Initializer** — 已支持 `.field = val`（结构体）和 `[i] = val`（一维数组）。作用域：局部与全局（文件作用域 Index designator 稀疏展开——#76 缺口 4 批 2026-10-13，含 C11 §6.7.9p17 混合续位语义）；Field designator/嵌套聚合/多维下标链仍收窄 fail loud（审阅 P2 连坐更新 2026-10-14——原「全局暂不支持」表述随实现过期）
 - [x] **`offsetof(struct S, field)`** — 已支持编译期常量计算（结构体/联合体）
 - [x] **`__asm__("...")`（GCC 内联汇编占位）** — 已支持语法消费，不生成真实机器码
 - [x] **`_Static_assert(expr, "msg")`** — 已支持语法消费；当前不执行编译期求值，仅保证兼容

@@ -887,6 +887,62 @@
         "clang_direct"
       ],
       "notes": "baseline/scanf_0x_behavior.c 严拍行为面（不写/消费不退回/正常前缀保留）；本条目只锁返回值派系差。〔2026-10-10 随 #59 修复批入账〕"
+    },
+    {
+      "id": "DIFF-CD-TEACHTRAP-02",
+      "title": "教学白箱运行期受检 trap vs Clang SEH 崩（p2e_div_zero_scope.c：Vitro rc=2 [divide-zero] 教学文案含本帧零值变量段 vs Clang rc=3221225620 SEH 崩）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "除零教学 trap 族（DIFF-CD-TEACHTRAP-01 谱系第二例）——病 53 修复批（2026-10-13）语料锚：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）；Clang Windows 无 sanitizer 直接 SEH 崩不可对拍",
+      "subsystems": [
+        "vm",
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "不一致（教学防护面）",
+      "source_docs": [
+        "clang_direct known_direct.json（病 53 修复批登记 2026-10-13）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "p2e_div_zero_scope.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "known reason 字段含完整归因（digest 5fd9b345）"
+    },
+    {
+      "id": "DIFF-CD-TEACHTRAP-03",
+      "title": "教学白箱运行期受检 trap vs Clang 无 sanitizer（p2f_review_regression_guards.c：designated 全局越界 [deny] 文案含变量名 vs Clang 静默越界）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "TEACHTRAP 族第三例——审阅 2026-10-14 回归锚（P1-b 修复验证：designated 全局进 symbols 表后文案恢复变量名形态）；同文件锁 UL/ULL 宽度与混合续位",
+      "subsystems": [
+        "vm",
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "不一致（教学防护面）",
+      "source_docs": [
+        "clang_direct known_direct.json（审阅 2026-10-14 登记）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "p2f_review_regression_guards.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "digest 9a329ad2"
     }
   ]
 }

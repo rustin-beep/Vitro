@@ -1108,18 +1108,22 @@ fn eval_enum_const(
               Some(c) => st.push(E(if c != 0 { then_e } else { else_e }))
               None => return None
             }
-          // 病 66：Cast 剥壳（`(int)4.0` 常量形态——教学域整型 cast）
-          Cast(inner, _, _, _) => st.push(E(inner))
-          // 病 66 配套：浮点字面量叶（Cast 剥壳后到 `(int)4.0` 的 4.0——
-          // 向零截断；C 域 enum 值恒整型，浮点只经 cast 进入）
-          FloatLiteral(v, _, _) => {
-            let t = v.trunc()
-            if t >= -9223372036854775808.0 && t <= 9223372036854775807.0 {
-              vals.push(t.to_int64())
-            } else {
-              return None
+          // 病 66（审阅 P1-c② 2026-10-14 修正）：浮点**必须经 cast**进入
+          // enum 域——`(int)4.0` 合法（剥壳后就地向零截断），裸 `A=4.5`
+          // 落 _ => None 报 E1006（clang "integer constant expression"
+          // error；旧 FloatLiteral 独立叶让裸浮点也静默收下=误收）。
+          Cast(inner, _, _, _) =>
+            match inner {
+              FloatLiteral(v, _, _) => {
+                let t = v.trunc()
+                if t >= -9223372036854775808.0 && t <= 9223372036854775807.0 {
+                  vals.push(t.to_int64())
+                } else {
+                  return None
+                }
+              }
+              _ => st.push(E(inner))
             }
-          }
           _ => return None
         }
     }

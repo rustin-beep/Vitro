@@ -23,5 +23,9 @@ int main() {
   char h = '\x004';
   int null = 5;
   printf("%d %d\n", h, null);
+  // 审阅 P1-c① 回归锚（2026-10-14）：超域 hex 转义双侧编译失败等价
+  //（旧 vitro 静默回绕值 4 被接受——parse_hex_byte 无限位 i32 回绕）
+  char bad = '\x100000004';
+  printf("%d\n", bad);
   return 0;
 }

@@ -1457,16 +1457,30 @@
       "memory_sha": "12a01685df28a803"
     },
     "baseline/p2c_parser_lexer_batch.c": {
-      "src_sha": "2823aa75",
+      "src_sha": "e81fe59e",
       "exit_code": 0,
-      "stdout_sha": "8ee51a7a76d4a835",
-      "memory_sha": "006be7dc23354f65"
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/p2e_div_zero_scope.c": {
       "src_sha": "9fa05878",
       "exit_code": 0,
       "stdout_sha": "456913eba3ebdd28",
       "memory_sha": "3afbbe6856c4aa53"
+    },
+    "baseline/p2f_review_regression_guards.c": {
+      "src_sha": "75cc81b0",
+      "exit_code": 0,
+      "stdout_sha": "1fa8c8228abbeb65",
+      "memory_sha": "55e2ce4d118c10e5"
+    },
+    "baseline/p2g_enum_float_reject.c": {
+      "src_sha": "330f99b3",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/p71_tier3_scanf.c": {
       "src_sha": "7cf64475",

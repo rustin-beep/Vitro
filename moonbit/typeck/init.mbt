@@ -408,11 +408,11 @@ pub fn TypeChecker::check_array_initializer(
         for i in 0..<elements.length() {
           let elem = elements[i]
           if elem.designators.length() == 0 {
-            self.report_warning(
-              "初始化列表中不能混合使用指定初始化和非指定初始化",
-              loc,
-              W3005_ArrayInitTooMany,
-            )
+            // 审阅 P2（2026-10-14）：C11 §6.7.9p17 明确允许混合
+            //（designator 定位后无标记元素按 prev+1 续位——codegen
+            // flatten_designated_global 已实现续位；块作用域病 121
+            // 修复时连坐撤）。旧警告+错码 W3005_ArrayInitTooMany
+            //（fix_suggestion 张冠李戴讲"元素过多"）双假阳性。
             continue
           }
           if elem.designators.length() != 1 {

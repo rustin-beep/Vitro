@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（用户审阅处置批：P1-a 三闸 + P1-b symbols + P1-c 三误收 + P2 全清，2026-10-14）
+
+用户亲审阅六个提交（门禁实测+18 探针+双臂对拍+反向突变验证锚有牙），全项处置：
+
+**P1-a 三条 CI 闸**：① diff_ledger 收编 p2e_div_zero_scope（TEACHTRAP-02 条目——病 53 批加 known 漏台账连坐，D10 同族面）；② skill_path_check 撞名假红修复（闸对根解析 miss 回退按引用文件所在目录再试——#73 线新增 skill 的 assets/ 与仓库根一级目录撞名，D8 同族面）；③ gen_svg 重生成（agent-skills-overview 7→9 skill——#73 线新增两个 skill 未连坐概览图，D10 同族面）。
+
+**P1-b designated 全局缺 symbols**：flatten_designated_global 后 return 跳过函数尾 push_symbol——sym_index 缺项→运行期越界教学文案降级为无变量名形态。改 else 分支落尾部统一 push；双臂文案恢复「你访问了 a[10]，但数组 'a' 只有 5 个元素」（审阅者反向注入证锚有牙）。
+
+**P1-c 三误收（语料形状单一的 A2-b 教训直修）**：① hex 转义无限位回绕（parse_hex_byte 改 Int32? 溢出返 None——"0000004" 旧静默变 4；病 71 全量消费改造时引入的回归，双侧字符串/char 两路径同修）；② enum 裸浮点（FloatLiteral 独立叶撤——cast 形态 (int)4.0 剥壳后就地截断合法、裸 4.5 落 None 报 E1006 对齐 clang "integer constant expression"）；③ const struct 对象整体位（resolve_member 给 const 对象的成员访问继承 const 位——C11 §6.5.2.5p5；`const struct S s={1}; s.m=9` 双 E3049）。
+
+**P2**：sizeof(1UL) 4→8 回归（scanner l_count 区分 UL/ULL——单 l 维持值域分派=旧正确行为，双 ll 恒 ULL；sizeof 三连 4/4/8 与 clang 同）；文件作用域 designated 混合 W3005 假阳性撤（C11 §6.7.9p17 允许混合+续位已实现——code 也错配 W3005_ArrayInitTooMany）；codegen_skeleton 漏刷 636 指纹补刷（freeze 口径「四 corpus」结构性排除它——批E 时入清单）；规范文档 designated 句连坐更新（「全局暂不支持」随实现过期）。
+
+**语料负例锚**（A2-b 教训）：p2c 扩 hex 溢出形态（双侧编译失败等价）+ p2f 回归锚族（known TEACHTRAP-03：symbols 文案+UL 宽度+续位）+ p2g enum 裸浮点（双侧拒）。
+
+- 防线：moon test 756/756 · native 885 · wasm-gc 860 · clang_direct 740 SAME+12 KNOWN+0 DIFF（752）· 五家×四 corpus+skeleton freeze · smoke · testcount/facts 0 漂移 · diff_ledger/skill_path_check/gen_svg/vendor_drift/mbti/surface 全绿。
+
+
 ### Changed（CI 红根除：vendor_drift 上游追平性漂移——moonbitlang/x promote #337，2026-10-13）
 
 上游 `5c64953a`（promote #337）对 fs/fs.mbt 与 fs/fs_native.mbt 做了 `encoding? → encoding~` 与 FFI 签名 `Int → Int32` 迁移——**与 f4dee085 工具链批对 vendored 面的同向迁移完全一致**（vitro 侧已是等价形态）。全文 diff 定性：本地与上游差异仅剩已登记五项机械改造（头标注/pub→priv 收窄/guard 回补/前缀/utf8 内联）——**无关漂移（已等价），零代码跟进**；`vendor_drift --update-baseline` 刷新两文件基线 sha（as_of 2026-10-14）。本条是「上游漂移雷达」设计目的的首次正常触发：红=人工评估令而非自动同步令，评估结论留档。

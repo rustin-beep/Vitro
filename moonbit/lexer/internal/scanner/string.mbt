@@ -110,15 +110,23 @@ fn Scanner::string_literal(
           k += 1
         }
         let hex = slice_string(self.bytes, self.pos + 2, self.pos + k + 1)
-        let val = parse_hex_byte(hex)
-        if val > 0xFF {
-          self.err(
-            "十六进制转义值 \\x\{hex} 超出 char 域（≤ 0xFF）",
-            E1006_UnsupportedFeature,
-          )
-          value <+ "\{char_from_code(val & 0xFF)}"
-        } else {
-          value <+ "\{char_from_code(val)}"
+        // 审阅 P1-c①（2026-10-14）：溢出/超域双错误面（溢出=回绕旧病）
+        match parse_hex_byte(hex) {
+          Some(v) =>
+            if v > 0xFF {
+              self.err(
+                "十六进制转义值超出 char 域（≤ 0xFF）",
+                E1006_UnsupportedFeature,
+              )
+              value <+ "\{char_from_code(v & 0xFF)}"
+            } else {
+              value <+ "\{char_from_code(v)}"
+            }
+          None =>
+            self.err(
+              "十六进制转义值溢出（超出可表示范围）",
+              E1006_UnsupportedFeature,
+            )
         }
         for _ in 0..<(k + 1) {
           ignore(self.advance())
@@ -225,21 +233,35 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
           k += 1
         }
         let hex = slice_string(self.bytes, self.pos + 2, self.pos + k + 1)
-        let val = parse_hex_byte(hex)
-        if val > 0xFF {
-          for _ in 0..<(k + 1) {
-            ignore(self.advance())
-          }
-          self.err(
-            "十六进制转义值超出 char 域（≤ 0xFF）",
-            E1006_UnsupportedFeature,
-          )
-          valid = false
-          value = 0
-        } else {
-          value = val
-          for _ in 0..<(k + 1) {
-            ignore(self.advance())
+        // 审阅 P1-c① 同款：溢出面（char 常量路径）
+        match parse_hex_byte(hex) {
+          Some(v) =>
+            if v > 0xFF {
+              for _ in 0..<(k + 1) {
+                ignore(self.advance())
+              }
+              self.err(
+                "十六进制转义值超出 char 域（≤ 0xFF）",
+                E1006_UnsupportedFeature,
+              )
+              valid = false
+              value = 0
+            } else {
+              value = v
+              for _ in 0..<(k + 1) {
+                ignore(self.advance())
+              }
+            }
+          None => {
+            for _ in 0..<(k + 1) {
+              ignore(self.advance())
+            }
+            self.err(
+              "十六进制转义值溢出（超出可表示范围）",
+              E1006_UnsupportedFeature,
+            )
+            valid = false
+            value = 0
           }
         }
       }
@@ -276,8 +298,11 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
 }
 
 ///|
-/// 两位以内 hex 文本 → 字节值（Rust `u8::from_str_radix(.., 16).unwrap_or(0)`）。
-fn parse_hex_byte(hex : String) -> Int32 {
+/// hex 文本 → 值；溢出返 None（审阅 P1-c① 2026-10-14：旧无限位 v*16+d
+/// 在 i32 回绕——"\x100000004" 静默变 4 被接受，clang "hex escape out
+/// of range" error；病 71 全量消费改造时引入的回归，旧「第3位即报」
+/// 反而拦得住）。
+fn parse_hex_byte(hex : String) -> Int32? {
   let mut v : Int32 = 0
   for i = 0; i < hex.length(); i = i + 1 {
     let c = hex[i].to_int()
@@ -288,9 +313,13 @@ fn parse_hex_byte(hex : String) -> Int32 {
     } else if c >= 'A' && c <= 'F' {
       c - 'A' + 10
     } else {
-      return 0
+      return None
+    }
+    // 预判溢出（v*16+d 可能超 i32）：v > (i32::MAX-d)/16 即回绕
+    if v > 134217727 {
+      return None
     }
     v = v * 16 + d
   }
-  v
+  Some(v)
 }

@@ -373,7 +373,31 @@ fn TypeChecker::resolve_member(
       @ast.Type::int()
     }
   }
+  // 审阅 P1-c③（2026-10-14）：const 对象的成员访问继承 const 位
+  //（C11 6.5.2.5p5——const struct S s 的 s.m 也是不可修改左值；
+  // `const struct S s={1}; s.m=9;` 旧只判成员自身 const 位=漏检）。
+  // 指针形态 const 已在 pointee 位上天然覆盖。
+  let ty : @ast.Type = if obj_type.is_const() && !ty.is_const() {
+    mark_member_const(ty)
+  } else {
+    ty
+  }
   (ty, Member(new_object, member_name, loc, ty))
+}
+
+///|
+/// 顶层标 const 位（审阅 P1-c③——值域不变只置限定符）。
+fn mark_member_const(t : @ast.Type) -> @ast.Type {
+  match t {
+    Void(_) => Void(true)
+    Int(u, _) => Int(u, true)
+    Char(u, _) => Char(u, true)
+    Float(_) => Float(true)
+    Double(_) => Double(true)
+    LongLong(u, _) => LongLong(u, true)
+    Pointer(p, _) => Pointer(p, true)
+    _ => t
+  }
 }
 
 ///|

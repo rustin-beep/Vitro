@@ -275,23 +275,22 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
     }
   }
 
-  // Suffix: [Uu][Ll]? or [Ll][Uu]?
+  // Suffix: [Uu][Ll]? or [Ll][Uu]?——l 计数区分 UL/ULL（审阅 P2 2026-10-14：
+  // 病 62 修复把 u+单 l（UL=unsigned long=LLP64 4 字节）也发 "ull" 恒定型
+  // ULL 8 字节——sizeof(1UL) 4→8 回归；单 l 维持值域分派〔=旧正确行为〕，
+  // 双 ll 恒 ULL）
   let mut has_u = false
-  let mut has_l = false
+  let mut l_count = 0
   if self.peek(0) == 'U' || self.peek(0) == 'u' {
     has_u = true
     ignore(self.advance())
-    if self.peek(0) == 'L' || self.peek(0) == 'l' {
-      has_l = true
+    while (self.peek(0) == 'L' || self.peek(0) == 'l') && l_count < 2 {
+      l_count += 1
       ignore(self.advance())
-      if self.peek(0) == 'L' || self.peek(0) == 'l' {
-        ignore(self.advance())
-      }
     }
   } else if self.peek(0) == 'L' || self.peek(0) == 'l' {
-    has_l = true
-    ignore(self.advance())
-    if self.peek(0) == 'L' || self.peek(0) == 'l' {
+    while (self.peek(0) == 'L' || self.peek(0) == 'l') && l_count < 2 {
+      l_count += 1
       ignore(self.advance())
     }
     if self.peek(0) == 'U' || self.peek(0) == 'u' {
@@ -301,7 +300,7 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
   }
 
   let val_str = u64_to_string(val)
-  if has_u && has_l {
+  if has_u && l_count >= 2 {
     // unsigned long long（u+ll 后缀按 C11 6.4.4.1 **恒定** ULL——无值域
     // 适配；病 62 2026-10-13：旧按值域三发（fits_u32→UnsignedLiteral 等）
     // 丢 ll 分量，`1ULL` 定型 uint(32位) → `1ULL<<63` 走 Shl 越界 TRAP。
@@ -316,7 +315,7 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
     } else {
       self.make_token(UnsignedLiteral, val_str, start)
     }
-  } else if has_l {
+  } else if l_count >= 1 {
     if !fits_i64(val) {
       // C 标准十进制常量溢出有符号域时转 unsigned long long（LLONG_MIN 量值
       // 9223372036854775808LL；配合一元负号即得 LLONG_MIN 位模式）

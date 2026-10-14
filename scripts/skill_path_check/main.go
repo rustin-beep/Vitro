@@ -157,6 +157,14 @@ func scanFile(path string, r rules) ([]hit, int, int, error) {
 				}
 				repoHits++ // 走到 stat 的都是「仓库路径引用」，无论存在与否都计数
 				if _, err := os.Stat(filepath.Join(repoRoot, filepath.FromSlash(missing))); err != nil {
+					// 审阅 P1-a②（2026-10-14）：skill 内相对引用（assets/xx.py）
+					// 按仓库根解析 miss 时，回退按**引用文件所在目录**再试——
+					// 仓库根恰有同名一级目录（assets/）时按根解析是假红（撞名
+					// 形态：仅该 skill 的资产目录名与根一级目录同名才触发）。
+					refDir := filepath.Dir(path)
+					if _, err2 := os.Stat(filepath.Join(refDir, filepath.FromSlash(missing))); err2 == nil {
+						continue // 相对引用实存于本 skill 目录——合法
+					}
 					hits = append(hits, hit{File: rel, Line: i + 1, Path: missing})
 				}
 			}

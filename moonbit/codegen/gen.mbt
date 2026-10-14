@@ -396,65 +396,68 @@ fn BytecodeGen::pass1_register_global(
             // 本就支持，仅全局路径缺）；Field designator/嵌套聚合形态
             // 维持 fail loud（诚实收窄）。旧形态 fail loud 无诊断码出口
             //（#38 登记的活体）。
+            // 审阅 P1-b（2026-10-14）：return 跳过函数尾 push_symbol——
+            // designated 全局不进 symbols 表（sym_index 缺项 → 运行期越界
+            // 教学文案降级为无变量名形态）；改走尾部统一 push。
             self.flatten_designated_global(g, elements, offset)
-            return
-          }
-          let is_char_array = match g.ty {
-            Array(element, _, _, _, _, _) => element.kind() is TK_Char
-            _ => false
-          }
-          if is_char_array {
-            let values = flatten_init_list(elements, self.errors)
-            for i in 0..<sz {
-              let v = if i < values.length() { values[i] } else { 0 }
-              self.globals_init_32.push(
-                (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
-              )
-            }
-          } else if g.ty.kind() is TK_Struct ||
-            (
-              g.ty.is_array() &&
-              elements.exists(e => e.value is InitList(_, _, _))
-            ) ||
-            // P2：含字符串字面量元素的数组（`char *arr[2] = {"a","b"}`）
-            // 同走递归展开——元素级路径对字面量取不到值（NULL 指针静默）。
-            (
-              g.ty.is_array() &&
-              elements.exists(e => e.value is StringLiteral(_, _, _))
-            ) {
-            // struct / 嵌套数组 / 字符串元素数组：递归展开
-            self.flatten_global_init(g.ty, init, offset.reinterpret_as_uint())
           } else {
-            // 非字符数组：逐元素
-            let elem_size = self.elem_type_size(g.ty)
-            let count = g.ty.total_elements()
-            if elem_size == 8 {
-              // T-P0-2：8 字节元素按元素类型编码位模式
-              let elem_ty = g.ty.base_element_type()
-              for i in 0..<count {
-                let addr = offset.reinterpret_as_uint() +
-                  i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
-                let val64 = match elements.get(i) {
-                  Some(elem) =>
-                    match literal_init_bits(elem.value, elem_ty.kind()) {
-                      Some(pair) => pair.0
-                      None => 0
-                    }
-                  None => 0
-                }
-                self.globals_init_64.push((addr, val64))
-              }
-            } else {
+            let is_char_array = match g.ty {
+              Array(element, _, _, _, _, _) => element.kind() is TK_Char
+              _ => false
+            }
+            if is_char_array {
               let values = flatten_init_list(elements, self.errors)
-              for i in 0..<count {
-                let addr = offset.reinterpret_as_uint() +
-                  i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+              for i in 0..<sz {
                 let v = if i < values.length() { values[i] } else { 0 }
-                self.globals_init_32.push((addr, v))
+                self.globals_init_32.push(
+                  (offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
+                )
+              }
+            } else if g.ty.kind() is TK_Struct ||
+              (
+                g.ty.is_array() &&
+                elements.exists(e => e.value is InitList(_, _, _))
+              ) ||
+              // P2：含字符串字面量元素的数组（`char *arr[2] = {"a","b"}`）
+              // 同走递归展开——元素级路径对字面量取不到值（NULL 指针静默）。
+              (
+                g.ty.is_array() &&
+                elements.exists(e => e.value is StringLiteral(_, _, _))
+              ) {
+              // struct / 嵌套数组 / 字符串元素数组：递归展开
+              self.flatten_global_init(g.ty, init, offset.reinterpret_as_uint())
+            } else {
+              // 非字符数组：逐元素
+              let elem_size = self.elem_type_size(g.ty)
+              let count = g.ty.total_elements()
+              if elem_size == 8 {
+                // T-P0-2：8 字节元素按元素类型编码位模式
+                let elem_ty = g.ty.base_element_type()
+                for i in 0..<count {
+                  let addr = offset.reinterpret_as_uint() +
+                    i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+                  let val64 = match elements.get(i) {
+                    Some(elem) =>
+                      match literal_init_bits(elem.value, elem_ty.kind()) {
+                        Some(pair) => pair.0
+                        None => 0
+                      }
+                    None => 0
+                  }
+                  self.globals_init_64.push((addr, val64))
+                }
+              } else {
+                let values = flatten_init_list(elements, self.errors)
+                for i in 0..<count {
+                  let addr = offset.reinterpret_as_uint() +
+                    i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
+                  let v = if i < values.length() { values[i] } else { 0 }
+                  self.globals_init_32.push((addr, v))
+                }
               }
             }
           }
-        }
+        } // else 臂闭（审阅 P1-b：非 designated 原逻辑）
         StringLiteral(value, _, _) => {
           // P2：char 数组目标保持字节直写；其余走 pending_string_inits
           // 取址路径（Pass 1 结束后回填）。此前无条件按 sz 逐字节写，

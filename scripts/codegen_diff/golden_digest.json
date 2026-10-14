@@ -245,8 +245,10 @@
         "offsetof_struct.c": "0d66de85",
         "p2a_host_semantics.c": "d22a05b8",
         "p2b_typeck_false_positives.c": "60ce2b5e",
-        "p2c_parser_lexer_batch.c": "2823aa75",
+        "p2c_parser_lexer_batch.c": "e81fe59e",
         "p2e_div_zero_scope.c": "9fa05878",
+        "p2f_review_regression_guards.c": "75cc81b0",
+        "p2g_enum_float_reject.c": "330f99b3",
         "p71_tier3_scanf.c": "ebb09917",
         "p71_tier3_semantics.c": "c752b120",
         "param_shadows_func.c": "dbad2b64",
@@ -1028,7 +1030,7 @@
           "result_sha": "b172192ec7b02372"
         },
         "llm_corpus_rejects.c": {
-          "result_sha": "a0c610358af506d4"
+          "result_sha": "ca2a080af61d785c"
         },
         "logical_and.c": {
           "result_sha": "1ea2b5ac8d8fd767"
@@ -1154,10 +1156,18 @@
           "result_sha": "f6220c0647e19952"
         },
         "p2c_parser_lexer_batch.c": {
-          "result_sha": "d378bc017de4c6b6"
+          "fail": true,
+          "fail_stage": "lex"
         },
         "p2e_div_zero_scope.c": {
           "result_sha": "52985b5f776bd6dd"
+        },
+        "p2f_review_regression_guards.c": {
+          "result_sha": "f1bbadf5383a096a"
+        },
+        "p2g_enum_float_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
         },
         "p71_tier3_scanf.c": {
           "result_sha": "b466586e55860432"
@@ -1700,40 +1710,40 @@
       },
       "cases": {
         "float_inf_literal.c": {
-          "result_sha": "e9a7f428680ff72e"
+          "result_sha": "00808c96e00a5244"
         },
         "func_identifier.c": {
-          "result_sha": "bc9282a96f4aaf29"
+          "result_sha": "4d7df05b75557642"
         },
         "mini_char_array.c": {
-          "result_sha": "a2180e54a397caae"
+          "result_sha": "3d48baa53aa32dff"
         },
         "mini_floats.c": {
-          "result_sha": "4cfb156ee9238dbd"
+          "result_sha": "45456fcbc5f71354"
         },
         "mini_global_array.c": {
-          "result_sha": "10b6b98864fab5a9"
+          "result_sha": "d647ce3af419c390"
         },
         "mini_global_double.c": {
-          "result_sha": "0a4f0c09c4bbe339"
+          "result_sha": "76671c742a9a9e48"
         },
         "mini_global_int.c": {
-          "result_sha": "3beaa3a399c55960"
+          "result_sha": "d256b750b0c6c642"
         },
         "mini_goto.c": {
-          "result_sha": "3332162675949adb"
+          "result_sha": "3a4a0404440a3095"
         },
         "mini_long.c": {
-          "result_sha": "21af2053d594badb"
+          "result_sha": "4fe095c2d68243c5"
         },
         "mini_string.c": {
-          "result_sha": "04435234b9f07530"
+          "result_sha": "c7b42d24f11b60ce"
         },
         "mini_struct.c": {
-          "result_sha": "a30da1c5addb8554"
+          "result_sha": "2b1c37ff26bb7fdb"
         },
         "mini_two_funcs.c": {
-          "result_sha": "e687b17e0e94cade"
+          "result_sha": "a16306a2ea846465"
         },
         "ull_overflow_2p64.c": {
           "fail": true,

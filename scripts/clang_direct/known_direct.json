@@ -58,5 +58,10 @@
     "case": "p2e_div_zero_scope.c",
     "digest": "5fd9b345",
     "reason": "除零教学 trap vs Clang Windows SEH 崩（0xC0000142 域返回码 3221225620）——Vitro 白箱把除零转为结构化教学诊断（inspect 段列本帧零值变量），Clang 无 sanitizer 直接崩；array_bound_const_index.c 同款形态（教学 trap vs 无 sanitizer）。病 53 修复批：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）"
+  },
+  {
+    "case": "p2f_review_regression_guards.c",
+    "digest": "9a329ad2",
+    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面"
   }
 ]

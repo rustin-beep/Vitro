@@ -2487,6 +2487,12 @@
       "stdout_sha": "e7f6c011776e8db7",
       "memory_sha": "db008c309500d8aa"
     },
+    "baseline/vla_row_pointer.c": {
+      "src_sha": "88a14347",
+      "exit_code": 0,
+      "stdout_sha": "5ef6fdf32513aa7c",
+      "memory_sha": "ce29bdd37c8221cf"
+    },
     "baseline/vla_sizeof.c": {
       "src_sha": "64b20771",
       "exit_code": 0,

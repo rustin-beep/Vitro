@@ -458,6 +458,7 @@ pub let golden_digest : Digest = Digest::{
     "baseline/vla_2d.c": Standard(Std::{ src_sha: "5f19f2c9", exit_code: 0, stdout_sha: "7bd7df1a31049cd7", memory_sha: "fc300efa67d39c01" }),
     "baseline/vla_bounds.c": Standard(Std::{ src_sha: "19eeabf2", exit_code: 0, stdout_sha: "14d8fb16aa282e37", memory_sha: "e8766e0d8ce47d4e" }),
     "baseline/vla_param_decay.c": Standard(Std::{ src_sha: "b74164d1", exit_code: 0, stdout_sha: "e7f6c011776e8db7", memory_sha: "db008c309500d8aa" }),
+    "baseline/vla_row_pointer.c": Standard(Std::{ src_sha: "88a14347", exit_code: 0, stdout_sha: "5ef6fdf32513aa7c", memory_sha: "ce29bdd37c8221cf" }),
     "baseline/vla_sizeof.c": Standard(Std::{ src_sha: "64b20771", exit_code: 0, stdout_sha: "b17ef6d19c7a5b1e", memory_sha: "47032b005091888d" }),
     "baseline/vla_sizeof_type.c": Standard(Std::{ src_sha: "ea52606c", exit_code: 0, stdout_sha: "ebd2e53ec42b96f5", memory_sha: "3904ce52baf3a7a5" }),
     "baseline/void_func.c": Standard(Std::{ src_sha: "e66e98ed", exit_code: 0, stdout_sha: "2689367b205c16ce", memory_sha: "fa469c12e9f69c55" }),

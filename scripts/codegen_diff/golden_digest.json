@@ -416,6 +416,7 @@
         "vla_2d.c": "5f19f2c9",
         "vla_bounds.c": "19eeabf2",
         "vla_param_decay.c": "b74164d1",
+        "vla_row_pointer.c": "88a14347",
         "vla_sizeof.c": "64b20771",
         "vla_sizeof_type.c": "ea52606c",
         "void_func.c": "e66e98ed",
@@ -1679,6 +1680,9 @@
         },
         "vla_param_decay.c": {
           "result_sha": "2f24d6398f397e9d"
+        },
+        "vla_row_pointer.c": {
+          "result_sha": "53beef2431cf7b3b"
         },
         "vla_sizeof.c": {
           "result_sha": "38c40fcc71ec6e22"

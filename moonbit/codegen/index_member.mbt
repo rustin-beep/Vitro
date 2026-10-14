@@ -288,7 +288,15 @@ fn BytecodeGen::gen_index(
     _ => ()
   }
   let stride = compute_stride(array.ty(), self.elem_type_size(array.ty()))
-  if stride == 0 && !array.ty().is_vla() {
+  // #84（2026-10-13 报 / 2026-10-14 修）：指向 VLA 数组的行指针
+  //（int (*dp)[n+1]）索引走运行期步长通道——静态 compute_stride 对 VLA
+  // 维返 0 哨兵，须与数组本体 VLA 同款放行（旧仅 is_vla() 判定漏
+  // Pointer 形态 → E0「无效维度」误拒 clang 合法程序）
+  let vla_row_ptr = match array.ty() {
+    Pointer(pointee, _) => pointee.is_array() && pointee.is_vla()
+    _ => false
+  }
+  if stride == 0 && !array.ty().is_vla() && !vla_row_ptr {
     self.report_error(
       "数组索引步长计算失败：存在无效维度", loc,
     )
@@ -304,7 +312,7 @@ fn BytecodeGen::gen_index(
   }
   if stride > 0 {
     self.emit(@opcode.OpCode::PushConst, stride, loc)
-  } else if array.ty().is_vla() {
+  } else if array.ty().is_vla() || vla_row_ptr {
     self.gen_vla_stride(array.ty(), loc)
   } else {
     self.emit(@opcode.OpCode::PushConst, self.elem_type_size(array.ty()), loc)
@@ -369,6 +377,53 @@ fn BytecodeGen::gen_vla_stride(
         self.emit(@opcode.OpCode::Mul, 0, loc)
       }
     }
+    // #84（2026-10-13 报 / 2026-10-14 修）：指向 VLA 数组的行指针
+    //（int (*dp)[n+1]）——dp[i] 步长 = 跨一个完整 pointee 数组 =
+    // pointee **全部维度**乘积（VLA 维走 vla_dims 运行期求值）× 元素
+    // 尺寸。与数组本体臂的差别：本体不含首维（t[i] 跨一个首维元素）、
+    // 行指针含全部维度（dp[i] 跨 pointee 整个数组）
+    Pointer(pointee, _) =>
+      match pointee {
+        Array(pe, _, pdims, _, _, pvla_dims) => {
+          let mut vla_idx = 0
+          let mut first = true
+          for k in 0..<pdims.length() {
+            if !first {
+              self.emit(@opcode.OpCode::Mul, 0, loc)
+            }
+            if pdims[k] > 0 {
+              self.emit(@opcode.OpCode::PushConst, pdims[k], loc)
+            } else {
+              match pvla_dims.get(vla_idx) {
+                Some(dim_expr) => {
+                  self.gen_expr(dim_expr)
+                  vla_idx += 1
+                }
+                None => self.emit(@opcode.OpCode::PushConst, 0, loc)
+              }
+            }
+            first = false
+          }
+          // 元素尺寸取 pointee 的 element（arr_type 传入时 base_kind 会
+          // 把 Pointer 当 4 字节标量——那是错的：行指针步长的单位是
+          // pointee 元素）
+          let elem_size = self.elem_type_size(
+            @ast.Type::Array(pe, 0, [], false, false, []),
+          )
+          if first {
+            self.emit(@opcode.OpCode::PushConst, elem_size, loc)
+          } else {
+            self.emit(@opcode.OpCode::PushConst, elem_size, loc)
+            self.emit(@opcode.OpCode::Mul, 0, loc)
+          }
+        }
+        _ =>
+          self.emit(
+            @opcode.OpCode::PushConst,
+            self.elem_type_size(arr_type),
+            loc,
+          )
+      }
     _ =>
       self.emit(@opcode.OpCode::PushConst, self.elem_type_size(arr_type), loc)
   }

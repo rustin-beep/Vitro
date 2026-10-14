@@ -138,9 +138,13 @@ pub fn Type::subscript_type(self : Type) -> Type {
         for i in 1..<dims.length() {
           new_dims.push(dims[i])
         }
+        // #84（2026-10-13 报 / 2026-10-14 修）：VLA 维（0 哨兵）的派生
+        // size 归 0——与声明符侧「最外维 0 → size_prod 恒 0」对齐；旧
+        // 「0 维按 1 乘」令 subscript 产物 size=1 与声明 pointee 的 0
+        // 判等假阴性（`int (*dp)[n+2] = t;` 二维 VLA decay 误拒 E3004）
         let mut new_size = 1
         for d in new_dims {
-          new_size *= if d > 0 { d } else { 1 }
+          new_size *= if d > 0 { d } else { 0 }
         }
         let new_vla_dims : Array[Expr] = []
         if !vla_dims.is_empty() {

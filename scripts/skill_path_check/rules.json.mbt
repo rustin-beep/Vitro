@@ -14,7 +14,12 @@ pub let rules : Rules = Rules::{
   whitelist_prefixes: [
     "tmp/", "moonbit/_build/", ".clang_cache_cd/", ".shadow_tmp/", "native/", "node_modules/",
   ],
-  dead_paths: ["scripts/shadow_verify", "corpus/cases_golden", "corpus/cases"],
+  // dead_paths = 退役/反例语境合法引用（CI 处置批 2026-10-14 增第四条：
+  // references/03 D8 案例文档引用的虚构示例名 assets/xxx.py——「闸的修复
+  // 案例文档自身引用示例路径」是 D8 撞名假红的第二形态，两处解析均 miss）
+  dead_paths: [
+    "scripts/shadow_verify", "corpus/cases_golden", "corpus/cases", "assets/xxx.py",
+  ],
   skip_files: ["vitro-workspace-review/references/07-演化日志.md"],
   min_hits: 45,
 }

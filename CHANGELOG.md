@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（CI 两红根除：skill_path_check 反例路径豁免 + p2f digest CI 分叉双集，2026-10-14）
+
+3b21ee7b 批 CI 三 job 红（连红三笔中的最新笔；前两笔红因 diff_ledger 收编/skill_path_check 撞名已随该批 P1-a 修复）：
+
+- **Demo/wasm-arm job：skill_path_check 假红**——references/03 缺陷形态清单 D8 条目（该批落盘的演化记录）引用虚构示例路径 `assets/xxx.py`，闸按根解析 miss、fallback（按引用文件所在目录）也不存在（本就是虚构名）→ MISSING 红。修：rules.json `dead_paths` 补 `assets/xxx.py`（反例语境合法引用通道——与 scripts/shadow_verify 等退役路径同款语义）。
+- **clang_direct/wasm-arm job：p2f_review_regression_guards digest「形状已变」**——CI（windows-latest runner clang 链接 artifact）稳定复现 a08efe4a=归一 stdout 6 行 + rc 524288；本地全构建形态（冷/热增量/单目标/全量/MOON_CC=clang 全组合）均 9a329ad2=同 6 行 + rc 2。矛盾面：6 行属 trap 分支（cli_frame 文本模式 trap 必返 rc 2/3）、524288 非 CLI 出口域（0-4）——真因未收敛（嫌疑=runner clang 链接布局或 native stub CRT 交互；同 trap 路径他例 p2e/array_bound 在 CI rc=2 正常）。处置对齐 bTree_default 双集先例：digests 补录 a08efe4a 解 CI 阻断，归因段全文记录矛盾面与嫌疑面，真因待 CI 侧深挖（#71 台账挂账——受检 trap rc 传递在 CI 构建上异常的真缺陷嫌疑）。
+
 ### Fixed（#82+#79 两病：printf %% 折叠翻面 + print_int 保留名劫持，2026-10-14）
 
 LLM 语料探针产物——#82 系 **Rust oracle 照搬面既有偏差翻面**（oracle 真机不折叠、2026-09-23 照搬时加锚固化）；#79 系本仓 typeck 分派面漏判（qsort 有用户优先特判、print_int 无）：

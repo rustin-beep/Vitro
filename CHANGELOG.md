@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed（#82+#79 两病：printf %% 折叠翻面 + print_int 保留名劫持，2026-10-14）
+
+LLM 语料探针产物——#82 系 **Rust oracle 照搬面既有偏差翻面**（oracle 真机不折叠、2026-09-23 照搬时加锚固化）；#79 系本仓 typeck 分派面漏判（qsort 有用户优先特判、print_int 无）：
+
+- **#82 printf %% 折叠被参数门住**：输出侧主循环 `used < args.length() && ch == 37` 把 %% 折叠一并门住——`printf("%%")` 输出 "%%"、`printf("%d %%",50)` 输出 "50 %%"（clang/gcc 零参与参数耗尽位均折叠，C11 §7.21.6.1 %% 不消耗实参）。修法：门条件放行「% 后跟 %」形态（`(used < args.length() || scan.peek() == Some(37)) && ch == 37`）；%d 参数耗尽（原样透出）与行尾孤立 % 既有行为不变。**旧锚翻转**：wbtest `printf_percent_percent_semantics` 四断言按新行为翻面（原「oracle 既有偏差照搬」注释改写为 #82 定责翻面记录——oracle 真机旧值作废）。
+- **#79 print_int 保留名劫持（误收+误拒双面）**：typeck `visit_call` 对 print_int 无条件走内置签名检查（print_int(int)），用户重定义被静默无视——误收面（issue 原报）：`print_int(v)` 传 int 给用户 `int\*` 形参零诊断放行（clang error）；误拒面（本批实测新发现）：正确调用 `print_int(&v)` 被 E3029「参数必须是 int」拒收。修复对齐 qsort 先例：`funcs.contains` 命中用户定义优先 `check_user_func`；`__vitro_\*` 内部名维持直通（双下划线名用户不定义）。codegen 侧经查无劫持（print_int 不在 libc 预注册表，用户定义走 CallFunc）——run 输出 `user fn: 7` 与 clang 逐字节同。
+- **红锚与语料**：host 黑盒 issue82 锚四形态（零参/耗尽位/中段对照/多组——证红 `25 25`≠`25` 后转绿）+ typeck wbtest issue79 锚三形态（用户签名正确零诊断/错误 E3054/无用户定义内置照旧——证红 E3029×2 后转绿）；语料 +3（`printf_percent_fold.c` clang=`%|50 %|1 % 2|%%` / `print_int_user_redefine.c`=`user fn: 7` 双臂逐字节同 + `print_int_user_redefine_bad.c` 双侧编译失败等价）；四 digest freeze 纯新增（存量零漂移）。
+- 防线：moon test 762/762 · native 891 · wasm-gc 866 · clang_direct 747 SAME+12 KNOWN+0 DIFF（759）· parser/typeck/codegen/vm_diff 四 digest freeze+全 PASS · smoke · facts --strict 0 漂移（测试数连坐 10 处 760→762 + 直拍 756→759 + native 889→891）· surface/mbti/gen_svg 全绿。
+
 ### Fixed（用户审阅处置批：P1-a 三闸 + P1-b symbols + P1-c 三误收 + P2 全清，2026-10-14）
 
 用户亲审阅六个提交（门禁实测+18 探针+双臂对拍+反向突变验证锚有牙），全项处置：
@@ -27,6 +36,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **语料负例锚**（A2-b 教训）：p2c 扩 hex 溢出形态（双侧编译失败等价）+ p2f 回归锚族（known TEACHTRAP-03：symbols 文案+UL 宽度+续位）+ p2g enum 裸浮点（双侧拒）。
 
 - 防线：moon test 756/756 · native 885 · wasm-gc 860 · clang_direct 740 SAME+12 KNOWN+0 DIFF（752）· 五家×四 corpus+skeleton freeze · smoke · testcount/facts 0 漂移 · diff_ledger/skill_path_check/gen_svg/vendor_drift/mbti/surface 全绿。
+
+
+### Fixed（#77+#83 声明说明符任意序两病：限定符反序 + 块作用域 static·typedef，2026-10-14）
+
+LLM 语料探针产出（#77：250 例中 25 例命中、5 模型桶分布一致——系统性；#83：50 份长程序命中 1 份）——clang 22.1.4 / gcc 16.2.0 双收、vitro 双臂一致误拒：
+
+- **#77 限定符反序**：C11 §6.7.1 声明说明符任意序（`const static int B` ≡ `static const int`、参数 `int const x` ≡ `const int x`）。旧 parse_base_type 限定符循环只收前置 const、不识 static 文本词（lexer 无关键字表）→ 声明器把 static 当变量名在类型 token 处炸 E2005 级联。修复：限定符循环 + 新增类型说明符**尾部**限定符循环双点吞 static 记入 `pending_static`（不进 Rollback——re-parse 幂等），global/func/local 三声明入口收割合并 is_static；参数列表收割即诊断（C11 §6.7.1p5 禁参数存储类，新诊断 E1006 对齐 clang storage class specified for parameter）。
+- **#83 块作用域 static+typedef**：`static size_t 计数` 类写法被 stmt「标识符 标识符」未定义类型名诊断（issue #12 通道）误诊——static 是 Identifier 形态的存储类文本词且非 typedef，三条件全中报 E2003。修复：static 后随已注册 typedef 名时排除该诊断放行声明分支（其余两标识符形态维持原诊断——黑盒负例锚 `NoSuchType v` 仍 [2003]）。
+- **红锚**：parser 黑盒 +2（`issue77_qualifier_order_free` 七形状 / `issue83_block_static_typedef` 三形状+负例——证红 [2005]/[2003] 后修复转绿）；语料 +2（`qualifier_order_static.c` / `block_static_typedef.c`——clang 实跑 51 与 `4 1 1 40 6` 双臂逐字节同）；四 digest freeze 纯新增 28 行（存量 657+418×3 例 hash 零漂移——git diff 0 删除侧佐证）。
+- 同族登记不修：`const extern int` 交错 extern（Extern 关键字不在限定符循环，形态未命中语料）；尾部限定符提前 return 分支（LongLong/Typeof/struct 定义形态）const 尾不覆盖。
+- 防线：moon test 758/758 · native 887 · wasm-gc 862 · clang_direct 742 SAME+12 KNOWN+0 DIFF（754）· parser/typeck/codegen/vm_diff 四 digest freeze+全 PASS · smoke · facts --strict 0 漂移（测试数连坐 9 处 756→758 + 直拍 745→754 + native 885→887）· surface/mbti/gen_svg 全绿。
+
+
+### Fixed（#78+#80 两病 + #63 验收销案：enum 常量维度 + const 丢弃降警告，2026-10-14）
+
+LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 / gcc 16.2.0 双收、vitro 双臂一致误拒；#63 主例与增补面经 #75 批（E3039 宽谓词 + qualifier_widens 三层连动）顺销——本批验收销案：
+
+- **#78 enum 常量作数组尺寸误判 VLA**：C11 §6.4.4.3 枚举常量是整型常量表达式——`t[N]` 非 VLA。旧 `const_int_of` 叶子只认 Literal/Unary/Binary，Ident 落 None → 判 VLA → codegen 报「全局不支持 VLA」E0 + 级联（const/非 const、块作用域、无初始化列表全中）。修复：Parser 持 `enum_const_values` 表（两处 enum 声明注册；Rollback 与 typedef_names 同款整表快照），const_int_of/array_dim_info 沿声明符解释链传表、Ident 叶子查表折叠（超 i32 的 long long 成员维持 VLA 判定不谎报）；`eval_enum_const` 同批接 Ident 叶子（`B = A + 1` 引用前成员）。
+- **#80 const 丢弃方向降警告**：`const int[3]` decay 给 `int*`（赋值位旧 E3044/初始化位旧 E3004）与 `const int\*` 给 `int\*`（pointee 丢弃旧 E3067）——clang/gcc 默认 -Wincompatible-pointer-types-discards-qualifiers 仅警告。新增 `const_discard_eq` 单层判等（unqualified 相等只差 const 位）→ W3053 警告放行；真不兼容（int\* ← double\*）与安全加宽方向维持原判。深层 char\*\* 族同判 warning 属登记扩面。
+- **#63 验收销案**：probe2d.c 主例（const 二维数组形参）与增补面（`double \*rowA = \*A + i\*C` 指针算术赋值，旧 E3067）双臂 compile ok/run 输出与 clang 逐字节一致（`7 0`）——#75 批顺销实证，issue 留档待关。
+- **回归事故与修复**：本批 Edit 事故一次——parse_typedef_enum_decl 逗号循环的 `!` 被 Edit 吞掉（`if !self.match_token(Comma)` → `if self.match_token(Comma)`），多成员 typedef enum 在第二成员处炸 E2006/E2005 级联，clang_direct 抓红（threadedBinaryTree_default.c 单侧编译失败）即修即锚（b7/b8 回归锚补面）。
+- **新登记缺口**：块作用域 enum 定义体（`int main(void){ enum { M = 3 }; … }`）parse_base_type Enum 臂不解析定义体——stash 实证系既有病非本批引入（探针 blk_enum.c 在案），另案处理。
+- **红锚与语料**：parser 黑盒 issue78 锚（b1~b8 + 真 VLA 反例——证红 is_vla=true 后转绿）+ typeck wbtest issue80 锚（三形态 W3053×2 + E3067/加宽两反例——证红 E3044 后转绿）；语料 +2（`enum_const_array_dim.c` clang=`1 9 5 7` / `const_array_decay_warn.c` clang=`1 4 1`，双臂逐字节同）；四 digest freeze 纯新增（存量零漂移，git diff 零删除侧佐证）。
+- 防线：moon test 760/760 · native 889 · wasm-gc 864 · clang_direct 744 SAME+12 KNOWN+0 DIFF（756）· parser/typeck/codegen/vm_diff 四 digest freeze+全 PASS · smoke · facts --strict 0 漂移（测试数连坐 10 处 758→760 + 直拍 754→756 + native 887→889）· surface/mbti/gen_svg 全绿。
 
 
 ### Changed（CI 红根除：vendor_drift 上游追平性漂移——moonbitlang/x promote #337，2026-10-13）

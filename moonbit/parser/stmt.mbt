@@ -125,9 +125,15 @@ fn Parser::parse_statement_inner(self : Parser, depth : Int32) -> @ast.Stmt {
       // issue #12 销案（2026-10-06）：`A B;`（A 为未注册标识符）形态——
       // 旧走表达式路径报「预期 ';'」误导（真因：A 是未定义类型名，Clang
       // 报 use of undeclared identifier 直指真因）；在此前置专门诊断
+      // #83（2026-10-13）：static 是存储类文本词（lexer 无关键字表），
+      // `static <typedef名> x` 后随已注册类型名时是块作用域声明——排除
+      // 本诊断放行到下方声明分支（clang 收）；其余 `标识符 标识符` 形态
+      // 维持「未定义类型名」诊断不变
       if self.check(Identifier) &&
         self.peek(1).ty == Identifier &&
-        !(self.typedef_names.get(self.current().text) is Some(_)) {
+        !(self.typedef_names.get(self.current().text) is Some(_)) &&
+        !(self.current().text == "static" &&
+        self.typedef_names.get(self.peek(1).text) is Some(_)) {
         let cur = self.current()
         self.errors.push({
           message: "未定义的标识符 '\{cur.text}'（作类型名使用——C 子集未收录该类型或缺少声明/include）",
@@ -291,6 +297,9 @@ fn Parser::parse_var_decl_stmt(
     }
   }
   let base_type = self.parse_base_type(depth)
+  // #77（2026-10-13）：块内交错存储类（const static int y）收割——
+  // shadowing 参数合并 is_static
+  let is_static = is_static || self.take_pending_static()
   // Detect C++ constructor initialization syntax: `Type name(args);`
   // 仅当声明符是裸标识符（无指针/引用/函数指针后缀）时才当构造调用；
   // `int (*fp)(int);` 类函数指针声明走 parse_var_declarator。

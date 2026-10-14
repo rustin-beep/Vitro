@@ -135,14 +135,24 @@ pub fn TypeChecker::is_comparable(
 }
 
 ///|
+/// #80（2026-10-13）：const 限定符**丢弃方向**判等——value 顶层带 const、
+/// target 不带且 unqualified 相等（`const int*` → `int*`、`const int[3]`
+/// 的 element 面 → `int*`）。C11 §6.5.16.1 约束违反但 clang/gcc 默认
+/// -Wincompatible-pointer-types-discards-qualifiers 仅警告；单层语义
+///（pointee/element 顶层），深层 char** 族同判 warning 属登记扩面
+fn const_discard_eq(v : @ast.Type, t : @ast.Type) -> Bool {
+  v.is_const() && !t.is_const() && @ast.type_eq(v.set_const(false), t)
+}
+
+///|
 /// 数组/指针赋值兼容（多维数组 decay、元素类型一致、dims 前缀兼容——
 /// 仅 target 正数维须相等）。
 fn TypeChecker::check_array_pointer_assignable(
   self : TypeChecker,
   target : @ast.Type,
   value : @ast.Type,
+  loc : @source.SourceLoc,
 ) -> Bool {
-  ignore(self)
   match (target, value) {
     (Pointer(t_pointee, _), Array(v_element, _, _, _, _, _)) => {
       if @ast.type_eq(t_pointee, v_element) {
@@ -164,6 +174,18 @@ fn TypeChecker::check_array_pointer_assignable(
       // 数组限定符传导元素（C11 §6.7.3/§6.7.6.2），qualifier_widens 递归
       // 只增判定（Pointer 层不递归——char\*\* → const char\*\* 维持非法）
       if qualifier_widens(value.subscript_type(), t_pointee) {
+        return true
+      }
+      // #80（2026-10-13）：限定符丢弃方向（const T[] decay 给 T*）——
+      // 降 W3053 警告放行（clang/gcc 默认
+      // -Wincompatible-pointer-types-discards-qualifiers 同判 warning；
+      // 旧落 false → E3044/E3004 误拒合法 C）
+      if const_discard_eq(v_element, t_pointee) {
+        self.report_warning(
+          "将 const 数组赋值给非 const 指针，可能通过后者修改 const 数据。",
+          loc,
+          W3053_ImplicitScalarConversion,
+        )
         return true
       }
       false
@@ -504,14 +526,26 @@ fn TypeChecker::check_pointer_assignable(
           // 对 Pointer(pointee) 层的 const 同样要求只增，char** 的第二层是
           // 指针位非元素位，加宽判定与其一致。
           !qualifier_widens(v_pointee, t_pointee) {
-          // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
-          // #63 尾巴（2026-10-13）：数组 pointee 用 (*)[n] 记法（旧
-          // `name()*` 压扁丢维度——char* ← int* 看不出 [9] 差异点）
-          self.report_error(
-            "指针类型不兼容：\{pointer_type_name(t_pointee, true)} ← \{pointer_type_name(v_pointee, false)}，需要显式转换（向上转型 Derived* → Base* 除外）。",
-            loc,
-            E3067_PointerTypeMismatch,
-          )
+          // #80（2026-10-13）：pointee 顶层 const 丢弃方向（const int\* →
+          // int\*，unqualified 相等只差 const 位）降 W3053 警告——clang/gcc
+          // 默认 -Wincompatible-pointer-types-discards-qualifiers 同判
+          // warning；真不兼容维持 E3067
+          if const_discard_eq(v_pointee, t_pointee) {
+            self.report_warning(
+              "将 const 指针赋值给非 const 指针，可能通过后者修改 const 数据。",
+              loc,
+              W3053_ImplicitScalarConversion,
+            )
+          } else {
+            // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
+            // #63 尾巴（2026-10-13）：数组 pointee 用 (*)[n] 记法（旧
+            // `name()*` 压扁丢维度——char* ← int* 看不出 [9] 差异点）
+            self.report_error(
+              "指针类型不兼容：\{pointer_type_name(t_pointee, true)} ← \{pointer_type_name(v_pointee, false)}，需要显式转换（向上转型 Derived* → Base* 除外）。",
+              loc,
+              E3067_PointerTypeMismatch,
+            )
+          }
         }
         if v_const && !t_const {
           self.report_warning(
@@ -552,7 +586,7 @@ pub fn TypeChecker::check_assignable(
       return true
     }
   }
-  if self.check_array_pointer_assignable(target, value) {
+  if self.check_array_pointer_assignable(target, value, loc) {
     return true
   }
   if self.check_function_pointer_assignable(target, value, loc) {

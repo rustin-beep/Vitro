@@ -691,6 +691,7 @@ fn Parser::parse_typedef_enum_decl(
           structs_table=self.snapshot_structs_table(),
           unions_table=self.snapshot_unions_table(),
           var_types=self.snapshot_var_types(),
+          enum_vals=self.enum_const_values,
         ) {
         Some(v) => next_value = v
         None =>
@@ -703,6 +704,8 @@ fn Parser::parse_typedef_enum_decl(
       }
     }
     push_enum_member_global(program, loc, member_tok, next_value, underlying)
+    // #78：枚举常量入表（const_int_of/eval_enum_const 的 Ident 叶子折叠）
+    self.enum_const_values.set(member_tok.text, next_value)
     next_value += 1
     if !self.match_token(Comma) {
       break
@@ -762,6 +765,9 @@ fn Parser::parse_func_decl(
   depth : Int32,
 ) -> @ast.FuncDecl {
   let base_type = self.parse_base_type(depth)
+  // #77（2026-10-13）：限定符循环吞到的交错存储类 static 收割（幂等——
+  // parse_global_var_or_func 已收割合并传入时，此处 re-parse 再置位）
+  let is_static = is_static || self.take_pending_static()
   let mut ret_type = base_type
   while self.match_token(Star) {
     ret_type = @ast.Type::pointer_to(ret_type)
@@ -910,6 +916,7 @@ fn Parser::parse_enum_core(self : Parser, depth : Int32) -> (String, @ast.Type) 
           structs_table=self.snapshot_structs_table(),
           unions_table=self.snapshot_unions_table(),
           var_types=self.snapshot_var_types(),
+          enum_vals=self.enum_const_values,
         ) {
         Some(v) => next_value = v
         None =>
@@ -926,6 +933,9 @@ fn Parser::parse_enum_core(self : Parser, depth : Int32) -> (String, @ast.Type) 
         push_enum_member_global(prog, loc, member_tok, next_value, underlying)
       None => ()
     }
+    // #78：枚举常量入表（与 parse_typedef_enum_decl 同步——表跟符号走，
+    // 与成员是否落全局无关）
+    self.enum_const_values.set(member_tok.text, next_value)
     next_value += 1
     if !self.match_token(Comma) {
       break
@@ -1021,6 +1031,7 @@ fn eval_enum_const(
   structs_table~ : Map[String, Array[@ast.StructField]] = Map([]),
   unions_table~ : Map[String, Array[@ast.StructField]] = Map([]),
   var_types~ : Map[String, @ast.Type] = Map([]),
+  enum_vals~ : Map[String, Int64] = Map([]),
 ) -> Int64? {
   // 显式栈后序求值：E(表达式) 展开、App*(算子) 消费值栈；叶子直接
   // 产值入 vals。压栈逆序保证弹序 = 左操作数、右操作数、算子（Rust
@@ -1058,6 +1069,13 @@ fn eval_enum_const(
         match e {
           Literal(value, _, _) => vals.push(value.to_int64())
           LongLiteral(value, _, _) => vals.push(value)
+          // #78（2026-10-13）：枚举常量引用（C11 §6.4.4.3 整型常量表达式）
+          // ——`enum { A = 5, B = A + 1 }` 引用前成员；clang/gcc 同收
+          Identifier(name, _, _) =>
+            match enum_vals.get(name) {
+              Some(v) => vals.push(v)
+              None => return None
+            }
           // E3：static_assert 的 sizeof（教学最高频用法）
           // issue #13 销案（2026-10-06）：sizeof(聚合) 折叠用真实表
           //（parse 期已解析聚合——旧空表致 sizeof(struct P) 恒 None →
@@ -1104,7 +1122,13 @@ fn eval_enum_const(
           // `A = 1 ? 2 : 3` 形态；条件单独求值后选支续折叠）
           Ternary(cond, then_e, else_e, _, _) =>
             match
-              eval_enum_const(cond, structs_table~, unions_table~, var_types~) {
+              eval_enum_const(
+                cond,
+                structs_table~,
+                unions_table~,
+                var_types~,
+                enum_vals~,
+              ) {
               Some(c) => st.push(E(if c != 0 { then_e } else { else_e }))
               None => return None
             }

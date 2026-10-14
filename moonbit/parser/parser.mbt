@@ -117,6 +117,8 @@ priv struct Rollback {
   var_types_len : Int32
   typedef_names : Map[String, @ast.Type]
   template_names : Set[String]
+  /// #78：枚举常量表快照（enum 成员与 typedef 名同为符号面）
+  enum_const_values : Map[String, Int64]
   current_class_len : Int32
   next_lambda_id : Int32
 }
@@ -215,6 +217,18 @@ priv struct Parser {
   current_class : Array[String]
   /// 活性记账：主循环零推进次数（推进控制流照搬 Rust，此处仅观测）
   mut stall_count : Int32
+  /// #77（2026-10-13）：parse_base_type 限定符循环吞到的交错存储类
+  /// static（`const static int` —— C11 §6.7.1 声明说明符任意序）。
+  /// 声明入口（global/func/local var）收割合并进 is_static；参数列表
+  /// 收割即报错（C 禁止参数存储类）。不进 Rollback：试探路径 re-parse
+  /// 幂等置位无害，读点收割即复位；parse_program 每轮兜底清防跨声明残留
+  mut pending_static : Bool
+  /// #78（2026-10-13）：枚举常量表（成员名 → 值）——enum 声明注册，
+  /// const_int_of/array_dim_info/eval_enum_const 的 Ident 叶子查表折叠
+  /// （C11 §6.4.4.3 枚举常量是整型常量表达式——`t[N]` 非 VLA）。
+  /// 进 Rollback（typedef_names 同款整表拷贝）：enum 成员与 typedef 名
+  /// 同为符号面，试探路径回滚须一致回滚
+  mut enum_const_values : Map[String, Int64]
 }
 
 ///|
@@ -228,6 +242,7 @@ fn Parser::save(self : Parser) -> Rollback {
     var_types_len: self.parsed_var_types.length(),
     typedef_names: self.typedef_names.copy(),
     template_names: self.template_names.copy(),
+    enum_const_values: self.enum_const_values.copy(),
     current_class_len: self.current_class.length(),
     next_lambda_id: self.next_lambda_id,
   }
@@ -243,6 +258,7 @@ fn Parser::restore(self : Parser, rb : Rollback) -> Unit {
   self.parsed_var_types.truncate(rb.var_types_len)
   self.typedef_names = rb.typedef_names
   self.template_names = rb.template_names
+  self.enum_const_values = rb.enum_const_values
   self.current_class.truncate(rb.current_class_len)
   self.next_lambda_id = rb.next_lambda_id
 }
@@ -277,7 +293,17 @@ fn Parser::with_mode(
     next_lambda_id: 0,
     current_class: [],
     stall_count: 0,
+    pending_static: false,
+    enum_const_values: Map([]),
   }
+}
+
+///|
+/// #77：收割 parse_base_type 吞到的交错存储类 static（读即复位）。
+fn Parser::take_pending_static(self : Parser) -> Bool {
+  let v = self.pending_static
+  self.pending_static = false
+  v
 }
 
 ///|
@@ -921,6 +947,9 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
   let program = @ast.ProgramNode::empty()
   self.program_sink = Some(program)
   while !self.is_at_end() {
+    // #77：轮次兜底清交错存储类残留（非法输入如 cast 里的 static 触发
+    // 置位后无声明入口收割——残留不跨顶层声明传播）
+    self.pending_static = false
     let round_start = self.pos
     // 跳过函数前缀修饰符 inline（可能出现在 static/extern 之前或之后）
     while self.check(Inline) {
@@ -969,6 +998,11 @@ fn Parser::parse_global_var_or_func(
 ) -> Unit {
   let checkpoint = self.save()
   let base_type = self.parse_base_type(0)
+  // #77（2026-10-13）：限定符循环吞到的交错存储类 static（const static
+  // int）在此收割——收割须在 restore 之前：pending 不进 Rollback，restore
+  // 回退 pos 后 parse_func_decl 内 re-parse 会重新置位（幂等），合并值
+  // 已由本次收割定形并随参数下传
+  let is_static = is_static || self.take_pending_static()
   // C++ 构造函数类外定义：Counter::Counter() { ... }
   if self.try_parse_cpp_ctor_out_of_line(
       program, base_type, is_static, is_extern,

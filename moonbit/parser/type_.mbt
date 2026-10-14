@@ -67,6 +67,16 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
     // GCC 扩展 typeof：在类型限定符循环中直接解析并返回
     if self.check(Identifier) {
       let name = self.current().text
+      // #77（2026-10-13）：交错存储类 static（const static int ≡
+      // static const int，C11 §6.7.1 说明符任意序；clang/gcc 双收）。
+      // static 是 Identifier 文本词，在这里吞掉并记入 pending，声明
+      // 入口（global/func/local）收割合并 is_static；参数列表收割即
+      // 诊断（C 禁止参数存储类）
+      if name == "static" {
+        ignore(self.advance())
+        self.pending_static = true
+        continue
+      }
       if name == "typeof" ||
         name == "__typeof__" ||
         name == "__typeof" ||
@@ -255,6 +265,29 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
     @ast.Type::unsigned_int()
   } else {
     @ast.Type::int()
+  }
+  // #77（2026-10-13）：C11 §6.7.1 声明说明符任意序——限定符也可出现在
+  // 类型说明符之后（`int const x` ≡ `const int x`，clang/gcc 双收）。
+  // 旧限定符循环只在说明符之前跑，后置 const 落给声明器当名字 →
+  // E2005/E2007 级联。提前 return 的分支（LongLong/Typeof/struct 定义
+  // 形态）不覆盖——那些形态 const 尾罕见，clang 对拍负例不含
+  while true {
+    if self.match_token(Const) {
+      is_const = true
+      continue
+    }
+    if self.match_token(Volatile) {
+      continue
+    }
+    if self.match_token(Restrict) {
+      continue
+    }
+    if self.check(Identifier) && self.current().text == "static" {
+      ignore(self.advance())
+      self.pending_static = true
+      continue
+    }
+    break
   }
   if is_unsigned {
     let bad = match t {
@@ -587,7 +620,10 @@ priv enum ConstIntFrame {
 }
 
 ///|
-fn const_int_of(expr : @ast.Expr) -> Int32? {
+fn const_int_of(
+  expr : @ast.Expr,
+  enum_vals~ : Map[String, Int64] = Map([]),
+) -> Int32? {
   let st : Array[ConstIntFrame] = [E(expr)]
   let vals : Array[Int32] = []
   while st.length() > 0 {
@@ -633,6 +669,20 @@ fn const_int_of(expr : @ast.Expr) -> Int32? {
       Some(E(e)) =>
         match e {
           Literal(v, _, _) => vals.push(v)
+          // #78（2026-10-13）：枚举常量 Ident 叶子（C11 §6.4.4.3 整型
+          // 常量表达式——`t[N]` 非 VLA；旧落 None 判 VLA → codegen 报
+          // 「全局不支持 VLA」E0）。表值 Int64：i32 维度装不下（enum
+          // Big : long long 超界成员）落 None 维持 VLA 判定不谎报
+          Identifier(name, _, _) =>
+            match enum_vals.get(name) {
+              Some(v) =>
+                if v >= -2147483648 && v <= 2147483647 {
+                  vals.push(@util.i64_to_i32_bits(v))
+                } else {
+                  return None
+                }
+              None => return None
+            }
           Unary(op, operand, _, _) => {
             st.push(AppU(op))
             st.push(E(operand))
@@ -655,7 +705,10 @@ fn const_int_of(expr : @ast.Expr) -> Int32? {
 
 ///|
 /// 返回 (array_size, is_vla, vla_dim)。
-fn array_dim_info(size_expr : @ast.Expr?) -> (Int32, Bool, @ast.Expr?) {
+fn array_dim_info(
+  size_expr : @ast.Expr?,
+  enum_vals~ : Map[String, Int64] = Map([]),
+) -> (Int32, Bool, @ast.Expr?) {
   match size_expr {
     None => (-1, false, None)
     Some(expr) =>
@@ -664,7 +717,7 @@ fn array_dim_info(size_expr : @ast.Expr?) -> (Int32, Bool, @ast.Expr?) {
       // compile_and_report 管线报「全局不支持 VLA」+级联、gateway 管线
       // ok=false 零诊断（CLI 双入口同病灶——backend 恰好代理了壳/exe 两
       // 条入口，非 wasm/native 后端差）
-      match const_int_of(expr) {
+      match const_int_of(expr, enum_vals~) {
         Some(v) => (v, false, None)
         None =>
           match expr {
@@ -691,7 +744,7 @@ fn array_dim_info(size_expr : @ast.Expr?) -> (Int32, Bool, @ast.Expr?) {
 /// 递归深度由 MAX_DECLARATOR_SUFFIX（收集期）封顶 1250——不加 depth
 /// 参数（Rust 同；该上限在 MoonBit 各后端栈预算内）。
 fn Parser::interpret_declarator_node(
-  _self : Parser,
+  self : Parser,
   node : DeclaratorNode,
   base_type : @ast.Type,
   depth : Int32,
@@ -740,7 +793,8 @@ fn Parser::interpret_declarator_node(
         cur = inner
       }
       Array(inner, size_expr) => {
-        let info = array_dim_info(size_expr)
+        // #78：枚举常量表透传（Ident 叶子折叠）
+        let info = array_dim_info(size_expr, enum_vals=self.enum_const_values)
         let d = info.0
         match size_state {
           0 => {
@@ -817,6 +871,18 @@ fn Parser::parse_param_list_inner(
       break
     }
     let base_type = self.parse_base_type(depth)
+    // #77：参数声明不允许存储类说明符（C11 §6.7.1p5 函数定义参数仅
+    // register）——限定符循环吞到的 static 在此收割并诊断（clang 同
+    // 判 storage class specified for parameter）
+    if self.take_pending_static() {
+      let cur = self.current()
+      self.errors.push({
+        message: "参数声明不允许存储类说明符 'static'",
+        line: cur.loc.line,
+        column: cur.loc.column,
+        code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
+      })
+    }
     let np : (@ast.Type, String) = if self.check(Comma) || self.check(RParen) {
       // 无名参数（函数原型声明）：int foo(int);
       (base_type, "")

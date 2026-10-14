@@ -772,7 +772,11 @@ fn format_printf_string(
       }
       None => break
     }
-    if used < args.length() && ch == 37 {
+    // #82（2026-10-13 报 / 2026-10-14 修）：%% 折叠不消耗实参、判定与
+    // 参数组无关——门条件放行「% 后跟 %」形态（零参 printf("%%") 与参数
+    // 耗尽位 "%d %%" 旧输出 "%%" vs clang/gcc 折叠 "%"）。%d 参数耗尽
+    // （原样透出）与行尾孤立 % 的既有行为不变
+    if (used < args.length() || scan.peek() == Some(37)) && ch == 37 {
       match scan.peek() {
         Some(n) =>
           if n == 37 {

@@ -28,6 +28,7 @@
         "bitwise_not.c": "715d1d7f",
         "bitwise_shift.c": "84cc3209",
         "block_comment.c": "b9576079",
+        "block_static_typedef.c": "9da603c0",
         "bool_from_compare.c": "eaba9b4d",
         "break_continue.c": "cc946821",
         "break_in_nested_loop.c": "7f8a63a2",
@@ -67,6 +68,7 @@
         "conditional_compile.c": "6c65dc3e",
         "const.c": "b97fa1c4",
         "const_2d_array_param.c": "70d43963",
+        "const_array_decay_warn.c": "20cd4f44",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
         "decrement_var.c": "629e3563",
@@ -128,6 +130,7 @@
         "engine_note_lookalike.c": "897ed136",
         "enum.c": "1dac9003",
         "enum_arith.c": "b26960b5",
+        "enum_const_array_dim.c": "ffd00a73",
         "enum_non_continuous.c": "bd182341",
         "equal_var.c": "674d6f88",
         "escape_tab.c": "6eca02c4",
@@ -274,8 +277,11 @@
         "pre_decrement.c": "c4c36fe5",
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
+        "print_int_user_redefine.c": "c6d73ef4",
+        "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
         "printf_flags.c": "7db9bc67",
+        "printf_percent_fold.c": "b6cb4e3b",
         "printf_retval.c": "4659d3b4",
         "printf_star_family.c": "6c4cf6f8",
         "ptr_arith_char.c": "e459e224",
@@ -292,6 +298,7 @@
         "putchar_range.c": "d399594b",
         "puts_basic.c": "70220385",
         "qsort.c": "484056da",
+        "qualifier_order_static.c": "fe576714",
         "realloc.c": "d10f2cd4",
         "realloc_shrink.c": "d7cb943b",
         "recursive_function.c": "7ef6ad96",
@@ -496,6 +503,9 @@
         "block_comment.c": {
           "result_sha": "f5eece7a8d62b756"
         },
+        "block_static_typedef.c": {
+          "result_sha": "6988b052316da514"
+        },
         "bool_from_compare.c": {
           "result_sha": "479f543823d7bb46"
         },
@@ -613,6 +623,9 @@
         },
         "const_2d_array_param.c": {
           "result_sha": "33c909406d32525c"
+        },
+        "const_array_decay_warn.c": {
+          "result_sha": "f909327c845ba516"
         },
         "continue_while.c": {
           "result_sha": "8b4227ff886e9496"
@@ -801,6 +814,9 @@
         },
         "enum_arith.c": {
           "result_sha": "56a1b831fb8a3014"
+        },
+        "enum_const_array_dim.c": {
+          "result_sha": "824b2d0b639e5e2a"
         },
         "enum_non_continuous.c": {
           "result_sha": "5b0d9c3a84fafcbe"
@@ -1244,11 +1260,21 @@
         "precedence.c": {
           "result_sha": "e61c7c3ab5cdeb8b"
         },
+        "print_int_user_redefine.c": {
+          "result_sha": "6295ef49e92b9724"
+        },
+        "print_int_user_redefine_bad.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
         "printf_char.c": {
           "result_sha": "b0ca83946bb91d63"
         },
         "printf_flags.c": {
           "result_sha": "0d5505f77174a45f"
+        },
+        "printf_percent_fold.c": {
+          "result_sha": "bf41f07afbfd7cb5"
         },
         "printf_retval.c": {
           "result_sha": "a0ac59516ba05328"
@@ -1297,6 +1323,9 @@
         },
         "qsort.c": {
           "result_sha": "d41219a98bb8e9fd"
+        },
+        "qualifier_order_static.c": {
+          "result_sha": "0af3659f4cddbcc2"
         },
         "realloc.c": {
           "result_sha": "fe73a535c0b7247c"

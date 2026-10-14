@@ -146,6 +146,12 @@
       "stdout_sha": "2689367b205c16ce",
       "memory_sha": "fa469c12e9f69c55"
     },
+    "baseline/block_static_typedef.c": {
+      "src_sha": "9da603c0",
+      "exit_code": 0,
+      "stdout_sha": "dec98bdedb6bd080",
+      "memory_sha": "0fbe6da22b7c3f1d"
+    },
     "baseline/bool_from_compare.c": {
       "src_sha": "eaba9b4d",
       "exit_code": 0,
@@ -380,6 +386,12 @@
       "exit_code": 0,
       "stdout_sha": "9fc5a7d9f8ce0cd9",
       "memory_sha": "e5f1dda3dff4e4ea"
+    },
+    "baseline/const_array_decay_warn.c": {
+      "src_sha": "20cd4f44",
+      "exit_code": 0,
+      "stdout_sha": "80d3350ee319d6ea",
+      "memory_sha": "c18a2cd6be9c182c"
     },
     "baseline/continue_while.c": {
       "src_sha": "f12c98b8",
@@ -751,6 +763,12 @@
       "exit_code": 0,
       "stdout_sha": "d4735e3a265e16ee",
       "memory_sha": "cab29b7b89b64a00"
+    },
+    "baseline/enum_const_array_dim.c": {
+      "src_sha": "ffd00a73",
+      "exit_code": 0,
+      "stdout_sha": "9b05b056a42ce90c",
+      "memory_sha": "3ec42b95c8631a4a"
     },
     "baseline/enum_non_continuous.c": {
       "src_sha": "bd182341",
@@ -1632,6 +1650,19 @@
       "stdout_sha": "8527a891e2241369",
       "memory_sha": "74f081b24f1fa786"
     },
+    "baseline/print_int_user_redefine.c": {
+      "src_sha": "c6d73ef4",
+      "exit_code": 0,
+      "stdout_sha": "467ba1e6a748e632",
+      "memory_sha": "c4a7569e0d582a54"
+    },
+    "baseline/print_int_user_redefine_bad.c": {
+      "src_sha": "794a7c6a",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "baseline/printf_char.c": {
       "src_sha": "af37cd32",
       "exit_code": 0,
@@ -1643,6 +1674,12 @@
       "exit_code": 0,
       "stdout_sha": "f1829524c1d7c28e",
       "memory_sha": "500de7e8cb1ec530"
+    },
+    "baseline/printf_percent_fold.c": {
+      "src_sha": "b6cb4e3b",
+      "exit_code": 0,
+      "stdout_sha": "cc18fa80a71d305d",
+      "memory_sha": "2dc012bfa02b2837"
     },
     "baseline/printf_retval.c": {
       "src_sha": "4659d3b4",
@@ -1739,6 +1776,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "5c554cb16edd21cb"
+    },
+    "baseline/qualifier_order_static.c": {
+      "src_sha": "fe576714",
+      "exit_code": 0,
+      "stdout_sha": "031b4af5197ec30a",
+      "memory_sha": "1d895debea9713a9"
     },
     "baseline/realloc.c": {
       "src_sha": "d10f2cd4",

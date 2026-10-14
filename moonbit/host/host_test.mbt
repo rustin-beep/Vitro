@@ -439,3 +439,37 @@ test "scanf_0x_prefix_incomplete_matching_failure" {
   let v2 = mem.load_u32(map, pa)
   assert_true(v2 is Ok(31U), msg="0x1f 正常前缀匹配 31")
 }
+
+///|
+/// #82（2026-10-13 报 / 2026-10-14 修）：printf 的 %% 折叠被
+/// `used < args.length()` 门住——零参与参数耗尽位输出 "%%"（clang/gcc
+/// 均折叠为 "%"，%% 不消耗实参、判定与参数组无关）。红锚四形态：
+/// 零参 %% / 参数耗尽位 %d %% / 有参对照（现有绿防回归）/ 零参多组 %%。
+test "issue82_percent_escape_fold" {
+  let map = @memory.MemoryMap::new()
+  let mem = @memory.Memory::new()
+  let log : @host.OutputLog = @host.OutputLog::new()
+  ignore(mem.write_bytes(map, 0x6000U, b"%%\x00"))
+  ignore(@host.host_printf_n(map, mem, log, 0x6000U, []))
+  assert_eq(log.join(@host.OutputKind::Stdout), b"%")
+  // 参数耗尽位：%% 位于已消耗完实参的格式段
+  let log2 : @host.OutputLog = @host.OutputLog::new()
+  ignore(mem.write_bytes(map, 0x6100U, b"%d %%\x00"))
+  ignore(@host.host_printf_n(map, mem, log2, 0x6100U, [(50).to_uint64()]))
+  assert_eq(log2.join(@host.OutputKind::Stdout), b"50 %")
+  // 有参对照（折叠中段——现有绿，防回归）
+  let log3 : @host.OutputLog = @host.OutputLog::new()
+  ignore(mem.write_bytes(map, 0x6200U, b"%d %% %d\x00"))
+  ignore(
+    @host.host_printf_n(map, mem, log3, 0x6200U, [
+      (1).to_uint64(),
+      (2).to_uint64(),
+    ]),
+  )
+  assert_eq(log3.join(@host.OutputKind::Stdout), b"1 % 2")
+  // 零参多组 %%
+  let log4 : @host.OutputLog = @host.OutputLog::new()
+  ignore(mem.write_bytes(map, 0x6300U, b"%%%%\x00"))
+  ignore(@host.host_printf_n(map, mem, log4, 0x6300U, []))
+  assert_eq(log4.join(@host.OutputKind::Stdout), b"%%")
+}

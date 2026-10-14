@@ -618,20 +618,22 @@ test "powi10_bit_alignment" {
 /// `parse_format_specs` 不跳 `%%` / 输出分支失效都不红）。
 test "printf_percent_percent_semantics" {
   let (map, mem) = fresh()
-  // **oracle 既有偏差（实测 2026-09-23，照搬）**：`%%` 展开带
-  // `used < args.len()` 守卫——**实参耗尽后 %% 原样输出**（C 语义会展开）。
-  // oracle 真机：printf("100%%") → "100%%"、printf("%d%%",42) → "42%%"
+  // **#82 修正翻面（2026-10-14）**：`%%` 折叠不消耗实参、与参数组无关
+  //（C11 §7.21.6.1：转换 %% 展开单个 %，无实参参与）——clang/gcc 零参与
+  // 耗尽位均折叠。旧「used < args.len() 守卫」系 Rust oracle 既有偏差
+  //（2026-09-23 实测照搬），issue #82（LLM 语料探针 NDJSON 实测）定责
+  // 后翻面；oracle 真机旧值 printf("100%%")→"100%%" 作废。
   let (log, r) = printf_run(map, mem, "100%%", [])
   assert_eq(r.trap, None)
-  assert_eq(log.join(OutputKind::Stdout), b"100%%")
+  assert_eq(log.join(OutputKind::Stdout), b"100%")
   let (log0, _) = printf_run(map, mem, "%d%%", [(42).to_uint64()])
-  assert_eq(log0.join(OutputKind::Stdout), b"42%%")
+  assert_eq(log0.join(OutputKind::Stdout), b"42%")
   // 有实参剩余时 %% 正常展开（oracle 真机：a%%b%dc + 7 → "a%b7c"）
   let (loga, _) = printf_run(map, mem, "a%%b%dc", [(7).to_uint64()])
   assert_eq(loga.join(OutputKind::Stdout), b"a%b7c")
-  // 零实参纯双百分号（oracle 真机已验：输出原样两字符）
+  // 零实参纯双百分号（#82 翻面：折叠为单个 %——clang 同）
   let (log2, _) = printf_run(map, mem, "%%", [])
-  assert_eq(log2.join(OutputKind::Stdout), b"%%")
+  assert_eq(log2.join(OutputKind::Stdout), b"%")
   // 注：`"x%"` 尾孤立 % 形状的 typeck 层口径随批四降级（W3032 warning
   // 放行——旧 error 拒收形态已退役）——host 层行为见下（parity 由同构
   // 代码保证，无端到端真值）

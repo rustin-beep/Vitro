@@ -57,7 +57,17 @@ pub fn TypeChecker::visit_call(
     | "floor"
     | "round"
     | "fmod" => self.check_builtin_table(name, args, loc)
-    "print_int" | "__vitro_output" | "__vitro_step" =>
+    // #79（2026-10-13 报 / 2026-10-14 修）：print_int 用户重定义优先
+    //（qsort 先例对齐）——旧无条件内置检查令用户自有 print_int(int\*)
+    // 的正确调用被 E3029 误拒、错误调用（int 给 int\*）零诊断误收；
+    // __vitro_\* 内部名不适用（双下划线名用户不定义）
+    "print_int" =>
+      if self.funcs.contains(name) {
+        self.check_user_func(name, args, loc)
+      } else {
+        self.check_builtin_print_int(args, loc, name)
+      }
+    "__vitro_output" | "__vitro_step" =>
       self.check_builtin_print_int(args, loc, name)
     "printf" => self.check_builtin_printf(args, loc)
     "scanf" => self.check_builtin_scanf(args, loc)

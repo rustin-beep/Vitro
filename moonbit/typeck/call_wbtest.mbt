@@ -591,3 +591,60 @@ test "file_pointer_arg_three_state_anchor" {
   assert_true(e6[0].code == 3029)
   assert_eq(w6.length(), 0)
 }
+
+///|
+/// #79（2026-10-13 报 / 2026-10-14 修）：`print_int` 保留名劫持——
+/// visit_call 对 print_int 无条件走内置签名检查（print_int(int)），用户
+/// 重定义被静默无视：正确调用自有 print_int(int\*) 被误拒 E3029、传参
+/// 类型不匹配（int 给 int\*）被零诊断误收。修复对齐 qsort 先例（funcs
+/// 命中用户定义优先 check_user_func）；__vitro_\* 内部名不适用（用户不
+/// 会定义双下划线名）。
+test "issue79_print_int_user_redefine_priority" {
+  let loc = @source.SourceLoc::new(3, 5)
+  // ① 用户签名（int\* 形参）正确调用（取址实参）：零诊断（旧 E3029 误拒）
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  tc.declare_var(
+    "v",
+    @ast.Type::int(),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc.funcs.set("print_int", {
+    return_type: @ast.Type::void_type(),
+    param_types: [@ast.Type::Pointer(@ast.Type::int(), false)],
+    is_variadic: false,
+    param_defaults: [None],
+    is_definition: true,
+    first_decl_line: 1,
+  })
+  let addr_of_v = @ast.Expr::Unary(
+    @ast.UnaryOp::Addr,
+    @ast.Expr::Identifier("v", loc, @ast.Type::int()),
+    loc,
+    @ast.Type::Pointer(@ast.Type::int(), false),
+  )
+  let args1 : Array[@ast.Expr] = [addr_of_v]
+  ignore(tc.visit_call("print_int", args1, loc))
+  inspect(tc.errors.length(), content="0")
+  // ② 用户签名错误调用（int 实参给 int\* 形参）：E3054（旧零诊断误收）
+  let tc2 = TypeChecker::new()
+  tc2.funcs.set("print_int", {
+    return_type: @ast.Type::void_type(),
+    param_types: [@ast.Type::Pointer(@ast.Type::int(), false)],
+    is_variadic: false,
+    param_defaults: [None],
+    is_definition: true,
+    first_decl_line: 1,
+  })
+  let args2 : Array[@ast.Expr] = [@ast.Expr::Literal(42, loc, @ast.Type::int())]
+  ignore(tc2.visit_call("print_int", args2, loc))
+  inspect(tc2.errors.length(), content="1")
+  inspect(tc2.errors[0].code, content="3054")
+  // ③ 反例锚：无用户定义时内置签名照旧（print_int(int) 收 int 实参）
+  let tc3 = TypeChecker::new()
+  let args3 : Array[@ast.Expr] = [@ast.Expr::Literal(7, loc, @ast.Type::int())]
+  ignore(tc3.visit_call("print_int", args3, loc))
+  inspect(tc3.errors.length(), content="0")
+}

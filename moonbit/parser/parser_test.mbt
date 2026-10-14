@@ -410,3 +410,158 @@ test "array_dim_const_expr_not_vla" {
     None => fail("program 应为 Some")
   }
 }
+
+///|
+/// #77（2026-10-13）：C11 §6.7.1 声明说明符任意序——`const static int` /
+/// `int const x` 与正序书写等价（clang 22.1.4 / gcc 16.2.0 双收，旧限定符
+/// 循环只收前置 const、不识 static 文本词 → E2005 级联误拒合法 C）。
+test "issue77_qualifier_order_free" {
+  // a2 文件作用域反序：const static int B
+  let a2 = parse_src("const static int B = 22; int main(void) { return B; }")
+  inspect(codes_of(a2), content="[]")
+  let p2 = a2.program.unwrap()
+  inspect(p2.globals[0].name, content="B")
+  inspect(p2.globals[0].is_static, content="true")
+  // a1 正序对照（防回归）
+  let a1 = parse_src("static const int A = 11; int main(void) { return A; }")
+  inspect(codes_of(a1), content="[]")
+  inspect(a1.program.unwrap().globals[0].is_static, content="true")
+  // 函数定义反序：const static int f(void)
+  let f2 = parse_src(
+    "const static int f(void) { return 3; } int main(void) { return f(); }",
+  )
+  inspect(codes_of(f2), content="[]")
+  inspect(f2.program.unwrap().funcs[0].is_static, content="true")
+  // a4 参数限定符后置：int const x ≡ const int x
+  let a4 = parse_src(
+    "static int g(int const x) { return x; } int main(void) { return g(1); }",
+  )
+  inspect(codes_of(a4), content="[]")
+  // a3 参数正序对照
+  let a3 = parse_src(
+    "static int f(const int x) { return x; } int main(void) { return f(1); }",
+  )
+  inspect(codes_of(a3), content="[]")
+  // 块内反序：const static int y
+  let b1 = parse_src("int main(void) { const static int y = 5; return y; }")
+  inspect(codes_of(b1), content="[]")
+  // 尾部限定符 + typedef 名：myint const z
+  let b2 = parse_src(
+    "typedef int myint; int main(void) { myint const z = 7; return z; }",
+  )
+  inspect(codes_of(b2), content="[]")
+}
+
+///|
+/// #83（2026-10-13）：块作用域 static + typedef 类型名——旧「标识符
+/// 标识符」未定义类型名诊断（issue #12 通道）把存储类文本词 static 误作
+/// 类型名报 E2003；static 后随已注册 typedef 名应走声明分支（clang 收）。
+test "issue83_block_static_typedef" {
+  // q1 自定义 typedef
+  let q1 = parse_src(
+    "typedef int myint; int main(void) { static myint x = 0; return x; }",
+  )
+  inspect(codes_of(q1), content="[]")
+  // q2 struct typedef 形态
+  let q2 = parse_src(
+    "typedef struct { int a; } S; int main(void) { static S s; return s.a; }",
+  )
+  inspect(codes_of(q2), content="[]")
+  // q5 对照：块作用域 static + 内置类型（现有绿，防回归）
+  let q5 = parse_src(
+    "int main(void) { static unsigned int x = 0; return (int)x; }",
+  )
+  inspect(codes_of(q5), content="[]")
+  // 反例锚：真正的未定义类型名两标识符形态仍报 E2003（static 排除不得
+  // 放宽成漏诊）
+  let bad = parse_src("int main(void) { NoSuchType v = 1; return v; }")
+  inspect(codes_of(bad), content="[2003]")
+}
+
+///|
+/// 按名查全局（enum 成员与数组同名共存时避免下标耦合）。
+fn find_global(p : @ast.ProgramNode, name : String) -> @ast.Type? {
+  for g in p.globals {
+    if g.name == name {
+      return Some(g.ty)
+    }
+  }
+  None
+}
+
+///|
+/// #78（2026-10-13 报 / 2026-10-14 修）：enum 常量是 C11 §6.4.4.3 整型
+/// 常量表达式——`t[N]`（N 为枚举成员）是普通数组非 VLA（clang/gcc 双收）。
+/// 旧 const_int_of 叶子只认 Literal/Unary/Binary，Ident 落 None → 判 VLA
+/// → codegen 报「全局作用域不支持变长数组」E0 + 级联。修复：Parser 持
+/// 枚举常量表（enum 声明注册），const_int_of/array_dim_info 沿声明符解释
+/// 链传表，Ident 叶子查表折叠；eval_enum_const 同批接 Ident 叶子
+/// （`B = A + 1` 引用前成员——clang 同收）。
+test "issue78_enum_const_array_dim" {
+  // b1 文件作用域：enum 常量尺寸 + designated 初始化
+  let b1 = parse_src(
+    "enum { N = 5 }; static const int t[N] = { [0] = 1, [4] = 9 }; int main(void) { return t[0]; }",
+  )
+  inspect(codes_of(b1), content="[]")
+  match find_global(b1.program.unwrap(), "t") {
+    None => fail("全局 t 不存在")
+    Some(Array(_, size, _, _, is_vla, _)) => {
+      inspect(is_vla, content="false")
+      inspect(size, content="5")
+    }
+    Some(_) => fail("应为数组类型")
+  }
+  // b2 块作用域 + 初始化列表
+  let b2 = parse_src(
+    "enum { N = 5 }; int main(void) { int t[N] = { [0] = 1 }; return t[0]; }",
+  )
+  inspect(codes_of(b2), content="[]")
+  // b4 无初始化列表（非 const）
+  let b4 = parse_src(
+    "enum { N = 5 }; static int t[N]; int main(void) { return t[0]; }",
+  )
+  inspect(codes_of(b4), content="[]")
+  // enum 常量参与二元表达式维度（N+1）
+  let b5 = parse_src(
+    "enum { N = 4 }; static int t[N + 1]; int main(void) { return t[0]; }",
+  )
+  inspect(codes_of(b5), content="[]")
+  match find_global(b5.program.unwrap(), "t") {
+    None => fail("全局 t 不存在")
+    Some(Array(_, size, _, _, is_vla, _)) => {
+      inspect(is_vla, content="false")
+      inspect(size, content="5")
+    }
+    Some(_) => fail("应为数组类型")
+  }
+  // 枚举成员初始化器引用前成员（B = A + 1）
+  let b6 = parse_src("enum { A = 5, B = A + 1 }; int main(void) { return B; }")
+  inspect(codes_of(b6), content="[]")
+  // typedef enum 多成员形态（threadedBinaryTree_default.c 回归锚——
+  // 2026-10-14 本批 Edit 吞 `!` 事故的漏网面：逗号循环条件一旦反转
+  // 即在第二成员处炸 E2006/E2005 级联）
+  let b7 = parse_src(
+    "typedef enum { Link, Thread } PointerTag; int main(void) { PointerTag t = Link; return (int)t; }",
+  )
+  inspect(codes_of(b7), content="[]")
+  let b8 = parse_src(
+    "typedef enum { A = 3, B = A + 2, C } T; int main(void) { T t = C; return (int)t; }",
+  )
+  inspect(codes_of(b8), content="[]")
+  // 反例锚：真 VLA（参数尺寸）仍判 VLA（enum 表折叠不得吞掉真 VLA）
+  let v1 = parse_src(
+    "int f(int n) { int t[n]; return t[0]; } int main(void) { return f(3); }",
+  )
+  match v1.program.unwrap().funcs[0].body {
+    Some(Block(stmts, _)) =>
+      match stmts[0] {
+        VarDecl(ty, _, _, _, _, _) =>
+          match ty {
+            Array(_, _, _, _, is_vla, _) => inspect(is_vla, content="true")
+            _ => fail("应为数组类型")
+          }
+        _ => fail("首语句应为 VarDecl")
+      }
+    _ => fail("body 应为 Some")
+  }
+}

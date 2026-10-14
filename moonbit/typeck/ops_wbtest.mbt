@@ -621,3 +621,40 @@ test "e3067_array_pointer_render" {
     msg="标量指针形态不变：\{tc2.errors[0].message}",
   )
 }
+
+///|
+/// #80（2026-10-13 报 / 2026-10-14 修）：const 限定符**丢弃方向**降警告——
+/// `const int[3]` decay 给 `int*`（赋值位 E3044 / 初始化位 E3004）与
+/// `const int*` 给 `int*`（pointee 丢弃 E3067），clang/gcc 默认仅警告
+/// （-Wincompatible-pointer-types-discards-qualifiers），旧一律 error
+/// 误拒合法 C。单层语义（pointee/element 顶层 const 位）；深层 char** 族
+/// 不覆盖（登记扩面）。
+test "issue80_const_discard_warning" {
+  let tc = TypeChecker::new()
+  let loc = @source.SourceLoc::new(2, 10)
+  let loc2 = @source.SourceLoc::new(3, 10)
+  let const_int = @ast.Type::Int(false, true)
+  let int_ptr = @ast.Type::Pointer(@ast.Type::int(), false)
+  // f2/f3 形态：const int[3] → int*（赋值/初始化同一判定链）
+  let const_arr = @ast.Type::Array(const_int, 3, [3], false, false, [])
+  assert_true(tc.check_assignable(int_ptr, const_arr, loc))
+  // pp 形态：const int* → int*（pointee 顶层 const 丢弃）
+  let const_int_ptr = @ast.Type::Pointer(const_int, false)
+  assert_true(tc.check_assignable(int_ptr, const_int_ptr, loc2))
+  // 核心：零 error + 每形态一条 W3053
+  inspect(tc.errors.length(), content="0")
+  inspect(tc.warnings.length(), content="2")
+  // 反例锚：真不兼容（int* ← double*）维持 E3067
+  let tc2 = TypeChecker::new()
+  let double_ptr = @ast.Type::Pointer(@ast.Type::double(), false)
+  assert_true(tc2.check_assignable(int_ptr, double_ptr, loc))
+  inspect(tc2.errors.length(), content="1")
+  inspect(tc2.errors[0].code, content="3067")
+  // 反例锚：安全加宽方向（int[] → const int*）维持零 error 零警告
+  let tc3 = TypeChecker::new()
+  let const_int_ptr_t = @ast.Type::Pointer(const_int, false)
+  let plain_arr = @ast.Type::Array(@ast.Type::int(), 3, [3], false, false, [])
+  assert_true(tc3.check_assignable(const_int_ptr_t, plain_arr, loc))
+  inspect(tc3.errors.length(), content="0")
+  inspect(tc3.warnings.length(), content="0")
+}

@@ -7,10 +7,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsc -p tsconfig.json --watch"
+    "dev": "tsc -p tsconfig.json --watch",
+    "pilot:dev": "vite",
+    "pilot:build": "vite build",
+    "pilot:check": "svelte-check --tsconfig ./tsconfig.pilot.json"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/node": "^25.9.9",
-    "typescript": "^5.9.3"
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "typescript": "^5.9.3",
+    "vite": "8.3.4"
   }
 }

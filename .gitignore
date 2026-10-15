@@ -125,6 +125,9 @@ native/tests/shadow_verification/.shadow_tmp/
 # 临时探针/复现脚本（2026-09-11 清理轮起明确忽略）：
 # 审查复核与修复验证用的探针统一放这里，禁止入库（历史上有 56 个误入，已清除）
 /tmp/
+# scripts 下任意层级的 tmp/（docs_preview 等生成器的默认输出即 cwd 下 tmp/——
+# 2026-10-15 实测 scripts/tmp/ 渲染产物透传工作区，根级 /tmp/ 规则盖不住子目录）
+scripts/tmp/
 tmp_threaded*.exe
 # 探针临时目录（E 系列 batch 探针，勿提交）
 .e2_probe/
@@ -208,3 +211,9 @@ scripts/mbti_sync.exe
 # examples/ 一键体验（2026-10-12）：moon run 的脚本级构建产物——demo.mbtx
 # 是 mooncakes 发布版的对外体验入口（零 clone 零脚手架），运行即产 _build
 examples/_build/
+
+# demo 前端试点（F1）：vite 产物不入库（与 tsc 发射产物对称）
+demo/dist-pilot/
+
+# 课程叙述层生成物（#120 内容管线）：CI 现场发射，不入库（对齐 algorithms.js 形态）
+demo/src/data/lessons.ts

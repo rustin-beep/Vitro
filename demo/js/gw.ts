@@ -31,8 +31,8 @@ export function gateway(): GatewayExports {
 }
 
 // ── wasm 装载 ─────────────────────────────────────────────
-export async function loadGateway(): Promise<GatewayExports> {
-  const buf = await (await fetch("wasm.wasm")).arrayBuffer();
+export async function loadGateway(wasmUrl: string = "wasm.wasm"): Promise<GatewayExports> {
+  const buf = await (await fetch(wasmUrl)).arrayBuffer();
   // 与 host.js 同契约：js-string builtins + "_" 字符串常量模块（V8 扩展
   // 编译选项不在 DOM lib 的 ModuleOptions 签名里——@ts-expect-error 注明；
   // 未来 lib 补齐签名后本指令「未使用」即红，双向监控语义）

@@ -10,6 +10,7 @@
 
 import { loadGateway, setGateway, invoke, bodyOf, type GatewayExports } from "../../js/gw.ts";
 import type { Frame } from "../../js/types.ts";
+import { latin1ToUtf8 } from "../../js/util.ts";
 import type { StepPayload, StepNextResult } from "../../js/types.ts";
 
 let gw: GatewayExports | null = null;
@@ -35,6 +36,7 @@ function must<T>(resp: Frame<T>): T {
 export interface CollectResult {
   frames: StepPayload[];
   stopped: string;
+  outputs: { stdout: string; stderr: string; note: string }; // 四通道视图（note = 引擎文本域）
   ms: number; // 采集墙钟（含编译+run+step 循环）
   versions: { engine: string; protocol: string };
 }
@@ -72,13 +74,33 @@ async function collect(source: string, cap: number): Promise<CollectResult> {
   // 预算**而非引擎能力——到顶显式说明引擎未截断，可调大重采；彻底解法
   // （稀疏/事件采集）挂 F2 的 #89。
   if (frames.length >= cap) stopped = stopped || `已达采集上限 ${cap} 帧（引擎未截断）——可调大上限重采`;
+  // 输出四通道收集（照旧栈 finishRun 的 pull 形态：output.delta 分页拉到 total）；
+  // stdin 喂入（waiting_input 场景）暂不在采集循环内——挂 F4 工作区批。
+  const outputs = { stdout: "", stderr: "", note: "" };
+  for (const stream of ["stdout", "stderr", "note"] as const) {
+    let cursor = 0;
+    for (;;) {
+      const o = must<{ delta: string; cursor: number; total: number }>(
+        invoke({ method: "output.delta", params: { cursor, stream } }),
+      );
+      if (stream === "stdout") outputs.stdout += latin1ToUtf8(o.delta);
+      else if (stream === "stderr") outputs.stderr += latin1ToUtf8(o.delta);
+      else outputs.note += o.delta; // note = 引擎文本域真 UTF-8 直传（旧栈分域解码同款：还原会截 >0xFF 码点必乱码）
+      if (o.cursor >= o.total || !o.delta) break;
+      cursor = o.cursor;
+    }
+  }
   return {
     frames,
     stopped,
+    outputs,
     ms: Math.round(performance.now() - t0),
     versions: { engine: g.engine_version(), protocol: g.protocol_version() },
   };
 }
+
+/** wire 侧 Latin-1 折回 → UTF-8 还原：物理保留 util.ts 同名纯函数
+ *  （TextDecoder 正确组合多字节序列；中文输出 mojibake 的既有解法）。 */
 
 self.onmessage = async (e: MessageEvent) => {
   const { id, op, source, cap, method, params } = e.data as {

@@ -11,6 +11,7 @@
 import type { StepPayload } from "../js/types.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
+import { buildCallTree } from "../js/calltree.ts";
 
 // 共享状态 = 官方推荐形态（best practices：classes with $state fields）——
 // $state.raw 只能作声明初始化器/类字段，不可嵌在 $state({}) 字面量里
@@ -43,9 +44,16 @@ class SessionState {
   stopped = $state("");
   versions = $state({ engine: "", protocol: "" });
   perf = $state({ collectMs: 0, replayPerFrameUs: 0 });
+  outputs = $state({ stdout: "", stderr: "", note: "" }); // 四通道输出（采集时一次性拉齐）
   /** 诊断目录（error_catalog 协议数据归 session 层；组件纯展示）。
    *  不代理——加载后只读。 */
   catalog = $state.raw([] as CatalogCard[]);
+  /** 调用树（帧全集 buildCallTree 产物 + frameNode 帧→节点映射；采集完成时构建）。
+   *  树模型含 parent 互相引用——raw 不代理防循环引用代理开销。 */
+  tree = $state.raw<import("../js/calltree.ts").CallTree | null>(null);
+  /** 内存地图（memory.regions = 会话当前态快照，非帧级——旧栈同语义；
+   *  采集完成时拉取，UAF/泄漏教学看结束态 freed 块与隔离区）。 */
+  memory = $state.raw<import("../js/types.ts").MemoryRegions | null>(null);
 }
 
 // ── 持久化初值（读有兜底，写有兜底——persisted 层统一）────────────────
@@ -140,7 +148,7 @@ export async function collect(source: string): Promise<void> {
   stopTimer();
   session.status = "Worker 采集中（编译 + run + step 闭环）…";
   try {
-    const r = await rpc<{ frames: StepPayload[]; stopped: string; ms: number; versions: { engine: string; protocol: string } }>({
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string } }>({
       op: "collect",
       source,
       cap: session.cap,
@@ -149,6 +157,12 @@ export async function collect(source: string): Promise<void> {
     session.frames = r.frames;
     session.idx = 0;
     session.stopped = r.stopped;
+    session.outputs = r.outputs;
+    session.tree = buildCallTree(r.frames); // 调用树（帧全集 → trie；物理保留 js/calltree.ts 纯函数）
+    try {
+      const mem = await call<{ [k: string]: unknown }>("memory.regions");
+      session.memory = mem as unknown as import("../js/types.ts").MemoryRegions;
+    } catch { session.memory = null; } // memory.regions 失败不阻塞帧回放
     session.perf.collectMs = r.ms;
     session.versions = r.versions;
     session.status = r.frames.length

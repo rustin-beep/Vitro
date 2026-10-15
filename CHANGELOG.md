@@ -62,6 +62,67 @@ vendor_drift/mbti/testcount/facts 全绿 · smoke 全绿（C 组三臂矩阵）�
 
 Refs #94~#118（双臂分叉族的架构级根治）
 
+### Fixed（#96 libc 缺口诊断路由 + #94 clamped 显式化 + #100/#103/#111 收尾件，2026-10-15）
+
+【#96 E3073 标准库不支持独立分流】libc 缺口（getenv/system 等）原走 E3036
+「未定义函数」路径——fix_suggestion「添加原型声明」无效（引擎没实现，加了
+原型照样编译不过），且 int 兜底返回类型级联出 E3054/E3004 假阳性（issue
+实测三条诊断只有第一条与真因相关）。修：**新码 E3073_UnsupportedLibcFunc**
+（140 臂基线）+ libc `unsupported_libc_sig` 真实签名表（首批 8 名：getenv/
+system/strtok/atexit/frexp/ldexp/modf/scalbn——支持矩阵 §5.5 排除项中签名
+可表达者；div 族返 struct、setjmp 需 jmp_buf 留 #10）+ check_user_func 第四级
+分流返回真实签名类型（级联自然消失，#8 单错口径延伸）。数据链三件连坐
+（error_codes/catalog/fix_payloads → gen_diag 基线 139→140）+ diag 四处基线锚
+同步 + mbti 两包再生。教学文案明示「添加原型无法修复」+ 替代方案。
+
+【#96 附带顺销：三目分支指针复合（C11 §6.5.15）】`p ? p : "null"`（const
+char* vs 字面量 char*）曾被 E3004 误拒（clang -fsyntax-only rc=0 实证合法）。
+修：tern_pointer_composite——pointee 剥 const 判等、结果取更 const 侧
+（限定符并）；深层 char** vs const char** 维持拒绝（C 同判）。
+
+【#94 config.set 越界钳制显式化】issue 剩余面收窄：未知键 fail loud 与
+input_mode_batch 已随 #105 批修；本批补「静默钳制无标记」——serve_apply_config
+返回被钳制键名数组，config.set 回包 result 追加 `clamped` 键名数组（恒带，
+空=无钳制；协议「只增不改」，config.get 面零变更）。钳制面四处全显式：
+quarantine_budget [0,1MB] / output_budget [4KB,16MB] / max_steps ≥1 /
+call_depth_limit ≥16。run 帧七字段冻结面不带（登记在案，扩面属协议变更）。
+api help 文案同步（rules.json.mbt 真源 → jsonmbt 再生 → gen_api_help 双产物）。
+
+【#100 launcher 缺产物 fail loud】run_native 裸 exec 撞 rc=127 + shell 原文
+（无构建指引，node<25 降级路径高发）。修：sh/cmd 双形态前置检查 + 构建指引
+（MOON_CC=clang + moon#2254 提示），cmd 四 fallback 点统一 :no_native。
+
+【smoke 两连坐（用户审阅 P2/P3）】① node 版本前置闸：宿主 node<25 时 wasm 壳
+恒退 rc=5 哨兵，旧形态把版本不足误报成整片「输出不一致」（node 22 实录 92
+条误导红）——前置 fail loud；② js 臂进语料级对拍：--corpus N 原只比
+wasm↔native（js 仅内置 3 fixture——缺省臂语料零覆盖），扩为三臂同形。
+③ launcher 头注「js 比 wasm 快 2.7×」方向修正（实测 js 585/wasm 546/
+native 486 中位，wasm 略快 ~7%，任务书 §4 基线同向互证）。
+
+【CI 红处置 + js 测试目标接线 + 指纹门禁（2026-10-15 尾批）】① CI 红 =
+p2f_review_regression_guards.c 已知差异形状第三漂（Clang 侧 32768 崩溃 +
+stdout 2 vs 6 行）——本地复跑 digest 9a329ad2 未漂，分侧归因维持（Clang
+UB 结局随环境漂移族第三集：本地 0 / CI 上次 0x80000 / 本次 32768），
+3e3edab5 入 digests 集重冻。② ci.yml hygiene 接线 `moon test --target js`
+（三后端批漏接——js 入口只做产物，行为锚零 CI 覆盖；本地 907/907 实证
+后接线，job 名 three→four targets）。**根因闸补向**：ci_checklist 加第④向
+「moon test 目标面」——前三向防「Go 驱动接线」，不防「裸 moon 命令的目
+标面随架构演进」（js 漏接裸奔一个 CI 周期无人红的防线盲区）；现对账
+ci.yml 全部 moon test 活行的目标并集必须覆盖 {js, native, wasm,
+wasm-gc} 四目标，J9 双向证红（去 js 行即红）证绿。③ launcher 新鲜度
+门禁 v2：mtime 触发
++ 源内容指纹（非测试 .mbt 稳定序 sha256）复核——git 操作 touch mtime 不
+改内容时假阳性大字告警根除（实测 moon 报 no work to do 而 launcher 告警
+陈旧的判据分叉）；真变才告警、exe 重建后自动重记基准；三态验证（假阳
+性静默/真变告警/还原回静默）。
+
+【防线】moon test 776/776（+6 新锚）· 四目标（默认/native/wasm-gc/js =
+776/776/907/907）· smoke 全绿（三臂语料 30 例）·
+serve_smoke 双臂 68 断言 0 FAIL · facts --strict 绿 · 双臂端到端
+（getenv E3073 单错 / clamped 回包 / 三目复合）js+native 同形。
+
+Refs #96 #94 #100
+
 ### Fixed（#105 config.set 未知键静默丢弃：白名单 fail loud + input_mode_batch 真支持，2026-10-14）
 
 「静默骗人」族收官件（#91/#92/#105 三连全清）——config.set 对未知配置键静默丢弃（#88 实测三条失效路径之一：input_mode_batch 写入被吞、get 回显恒 false）：

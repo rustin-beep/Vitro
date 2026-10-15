@@ -45,7 +45,7 @@ concurrency:
 #   gates-native   = 消费 exe 的协议/冒烟族
 #   gates-wasm     = wasm 臂族 + cli smoke
 #   static-gates   = 纯对账/生成器闸（无产物依赖——与 build 并行）
-#   hygiene        = 记账型（fmt/三 target test/环境探针）
+#   hygiene        = 记账型（fmt/四 target test/环境探针）
 #
 # ── 主 CI 恒全量裁定（2026-10-15，CI 全跳事故后）──────────────────────────
 # 本文件**无任何条件跳过**（不做 changes 分类器/不做 docs-only 快车道）——
@@ -932,7 +932,7 @@ jobs:
       # 此步未指定 shell 走 pwsh，curl|bash 撞平台检测）——改走 Windows 官方
       # powershell 安装（与上方 differential anchors 步同款、shell 显式）
   hygiene:
-    name: Hygiene (fmt & three-target tests & toolchain)
+    name: Hygiene (fmt & four-target tests & toolchain)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -966,12 +966,17 @@ jobs:
             exit 1
           fi
 
-      - name: MoonBit tests (three targets)
+      - name: MoonBit tests (four targets)
+        # js 目标接线（2026-10-15）：三后端批落地 js 后端（38f63d42）但测试
+        # 面漏接——js 入口只做产物（build-and-unit 的 artifact 源），行为锚
+        # （fs_js 等 js 后端专属文件的锚，全量 907 例）零 CI 覆盖，与三臂
+        # 强制纪律（AGENTS §14）不符。本地实证 907/907 全绿后接线。
         run: |
           cd moonbit
           moon test
           moon test --target native
           moon test --target wasm-gc
+          moon test --target js
 
       - name: Install Node 25
         uses: actions/setup-node@v4
@@ -1105,6 +1110,19 @@ jobs:
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
         run: go run ./scripts/gen_demo_algorithms
+        shell: bash
+
+      # 课程内容管线（#120 补充，2026-10-15）：真源 course/**/*.md → 叙述层
+      # lessons.ts。两步分立：-check 管「真源已改未再生」（digest 同步）；
+      # course_catalog 管叙述→课目对账 + lesson.c 双臂对拍（vitro ≡ clang，
+      # 独立于 corpus/ 语料线）。schema 校验单源在 gen_course（先 -check 后
+      # 对账的顺序即依赖序）。
+      - name: course lessons digest gate (gen_course -check)
+        run: go run ./scripts/gen_course -check
+        shell: bash
+
+      - name: course catalog gate (reconcile + lesson.c dual-arm diff)
+        run: go run ./scripts/course_catalog
         shell: bash
 
       # 2026-10-04 审阅 P3-②：组装自检原先只在 push-master 的 pages.yml——PR

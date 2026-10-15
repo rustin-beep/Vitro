@@ -406,6 +406,10 @@
       "code": 3072
     },
     {
+      "name": "E3073_UnsupportedLibcFunc",
+      "code": 3073
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

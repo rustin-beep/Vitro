@@ -148,6 +148,13 @@
    "text": ""
   },
   {
+   "code": 3073,
+   "suggestion": "该标准库函数在 vitro 支持面之外（添加原型声明无法修复——引擎未实现）；请查阅标准库支持矩阵排除清单，改用支持面内的替代写法",
+   "fix_kind": 4,
+   "anchor": "Manual",
+   "text": ""
+  },
+  {
    "code": 4100,
    "suggestion": "new 与 delete 必须成对出现：构造函数中 new 的资源应在析构函数中 delete；必要时使用 unique_ptr 自动管理。",
    "fix_kind": 4,

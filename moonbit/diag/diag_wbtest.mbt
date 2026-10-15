@@ -1,11 +1,11 @@
 ///|
-/// T2 覆盖率断言基线：139 臂 / 104 卡片 / 35 无卡片（104 + 35 = 139，
-/// #50 批③：77/60→102/35（+25）；病 15 批 A：+W3068（#61）；病 19：+H3069，
-/// 清单互斥互补）。源漂移由 gen_diag fail loud 兜底，本断言锁生成产物。
+/// T2 覆盖率断言基线：140 臂 / 105 卡片 / 35 无卡片（105 + 35 = 140，
+/// #50 批③：77/60→102/35（+25）；病 15：+W3068；病 19：+H3069；#96：
+/// +E3073（105 卡，清单互斥互补）。源漂移由 gen_diag fail loud 兜底。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
-  assert_eq(all.length(), 139)
-  assert_eq(catalog_codes().length(), 104) // 病 19：103→104
+  assert_eq(all.length(), 140) // #96：139→140（E3073）
+  assert_eq(catalog_codes().length(), 105) // #96：104→105
   assert_eq(codes_without_catalog().length(), 35)
   // 互补无交集
   let set : Map[Int32, Bool] = Map([])
@@ -79,7 +79,7 @@ test "lang_segment_4xxx_cpp" {
     }
   }
   assert_eq(cpp, 38)
-  assert_eq(c_lang, 101) // 病 19：+H3069（C 段 3xxx）
+  assert_eq(c_lang, 102) // 病 19 +H3069；#96 +E3073（C 段 3xxx）
   assert_eq(csharp, 0) // 5xxx 段空置（CSharp 变体先行落位——P2-3）
   assert_eq(SourceLang::CSharp.to_str(), "csharp")
 }

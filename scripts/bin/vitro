@@ -4,7 +4,11 @@
 # 三臂（C 方案裁定：单壳三后端，真相源 = cmd/lib/cli 单源）：
 #   --backend js     = moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
 #                      （MoonBit 壳直编 JS，node 直跑——CLI 默认臂；免 wasm
-#                       实例化层，端到端实测比 wasm 臂快 2.7×）
+#                       实例化层。性能方向注（P3，2026-10-15 实测修正）：
+#                       会话内 5 轮中位 js≈585ms / wasm≈546ms / native≈486ms
+#                       ——wasm 臂略快 ~7%（任务书 §4 基线 1.262 vs 1.577 同向
+#                       互证）；js 臂当选缺省的依据是零实例化层与更低 node
+#                       门槛（无 js-string builtins 依赖），非性能）
 #   --backend wasm   = scripts/vitro_cli/main.js 拉 gateway wasm-gc（旧 wasm 臂，
 #                      浏览器分发同源产物；保留兼容 + demo 同源验证）
 #   --backend native = cmd/vitro exe（防线基线臂——vm_diff/clang_direct 消费面）
@@ -18,20 +22,50 @@ NATIVE_EXE="$REPO/moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
 run_native() {
   reason="$1"
   shift
-  # 新鲜度门禁（2026-10-06 审阅 P2-3——vm_diff/clang_direct 同款）：
-  # native exe 不随源码自动重建，陈旧制品会对着旧代码下结论。检测
-  # cmd/ 与 host/ 源 mtime 晚于 exe 时 stderr 大字警告（不阻断——构建
-  # 需 MOON_CC=clang 且分钟级，降级场景常在探针中途）
-  if [ -f "$NATIVE_EXE" ]; then
-    exe_mtime=$(cd "$(dirname "$NATIVE_EXE")" && ls -l --time-style=+%s "$(basename "$NATIVE_EXE")" 2>/dev/null | awk '{print $6}')
-    if [ -n "$exe_mtime" ]; then
-      # 陈旧检测面 = moonbit/ 全部 .mbt（#57-2：原七目录枚举漏 gateway/
-      # time_travel/teaching/protocol/session/memory/diag/ast/util 九包——
-      # #35 排障时改 serve_step/engine 零告警连环假阴性；剪枝 _build 与
-      # .mooncakes，新包零维护自动入面）
-      newer_src=$(find "$REPO/moonbit" -type d \( -name '_build' -o -name '.mooncakes' \) -prune -o -type f -name '*.mbt' -newermt "@$exe_mtime" -print 2>/dev/null | head -1)
-      if [ -n "$newer_src" ]; then
-        echo "[vitro] ⚠ native exe 陈旧（源已改：${newer_src##*/} 等）——结论可能来自旧代码；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro" >&2
+  # #100（2026-10-15）：缺产物前置 fail loud——旧形态 exec 裸撞 rc=127 +
+  # shell 原文（command not found 类），无构建指引（node<25 降级路径高发：
+  # js 臂不可用降级 native 而产物从未构建过）
+  if [ ! -f "$NATIVE_EXE" ]; then
+    echo "[vitro] native exe 缺失：$NATIVE_EXE" >&2
+    echo "[vitro] 重建（Windows 下 MOON_CC=clang 必需——moon#2254 构建悬崖）：cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro" >&2
+    exit 127
+  fi
+  # 新鲜度门禁 v2（2026-10-15 低危修复）：mtime 触发 + **内容指纹复核**。
+  # v1 纯 mtime（find -newermt）与 moon 增量（内容指纹）判据不同——git
+  # checkout/merge touch 源文件 mtime 但内容未变时假阳性大字告警（实测
+  # moon 报 no work to do 而 launcher 告警陈旧）。v2 两级：mtime 晚于 exe
+  # 先触发，再比对源指纹（moonbit/ 全部**非测试** .mbt 稳定序拼接的
+  # sha256——*_test/_wbtest/README.mbt.md 不参与 exe 构建，含入会把「改
+  # 测试不改源」误判陈旧）——内容未变静默放行（假阳性根除），内容真变
+  # 才告警。exe 重建后（mtime 新于指纹文件）自动重记基准。cmd 版
+  # （vitro.cmd）无此门禁（仅产物存在检查），指纹逻辑单源在本 sh 版。
+  FP_FILE="$REPO/moonbit/_build/.vitro_native_src.fp"
+  fp_of_sources() {
+    find "$REPO/moonbit" -type d \( -name '_build' -o -name '.mooncakes' \) -prune -o -type f -name '*.mbt' ! -name '*_test.mbt' ! -name '*_wbtest.mbt' ! -name 'README.mbt.md' -print0 2>/dev/null \
+      | sort -z | xargs -0 cat 2>/dev/null | sha256sum | cut -c1-16
+  }
+  exe_mtime=$(cd "$(dirname "$NATIVE_EXE")" && ls -l --time-style=+%s "$(basename "$NATIVE_EXE")" 2>/dev/null | awk '{print $6}')
+  if [ -n "$exe_mtime" ]; then
+    # 陈旧检测面 = moonbit/ 全部非测试 .mbt（#57-2：原七目录枚举漏 gateway/
+    # time_travel/teaching/protocol/session/memory/diag/ast/util 九包——
+    # #35 排障时改 serve_step/engine 零告警连环假阴性；剪枝 _build 与
+    # .mooncakes，新包零维护自动入面）
+    newer_src=$(find "$REPO/moonbit" -type d \( -name '_build' -o -name '.mooncakes' \) -prune -o -type f -name '*.mbt' ! -name '*_test.mbt' ! -name '*_wbtest.mbt' ! -name 'README.mbt.md' -newermt "@$exe_mtime" -print 2>/dev/null | head -1)
+    if [ -n "$newer_src" ]; then
+      fp_mtime=""
+      if [ -f "$FP_FILE" ]; then
+        fp_mtime=$(cd "$(dirname "$FP_FILE")" && ls -l --time-style=+%s "$(basename "$FP_FILE")" 2>/dev/null | awk '{print $6}')
+      fi
+      if [ -z "$fp_mtime" ] || [ "$fp_mtime" -lt "$exe_mtime" ]; then
+        # 指纹缺失或 exe 已重建（晚于上次记录）——重记基准后静默
+        fp_of_sources > "$FP_FILE"
+      else
+        cur_fp=$(fp_of_sources)
+        old_fp=$(cat "$FP_FILE" 2>/dev/null)
+        if [ "$cur_fp" != "$old_fp" ]; then
+          echo "[vitro] ⚠ native exe 陈旧（源内容已变：${newer_src##*/} 等）——结论可能来自旧代码；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro" >&2
+        fi
+        # 内容未变（mtime 假阳性）——静默放行
       fi
     fi
   fi

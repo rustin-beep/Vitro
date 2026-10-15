@@ -129,6 +129,7 @@ pub(all) enum ErrorCode {
   E3070_BufferOverflow
   E3071_UndefinedLabel
   E3072_StructSelfContain
+  E3073_UnsupportedLibcFunc
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

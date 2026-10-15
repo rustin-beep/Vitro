@@ -154,6 +154,27 @@ fn TypeChecker::resolve_binary(
 }
 
 ///|
+/// 三目分支的指针复合类型（C11 §6.5.15——#96）：两 pointee 剥 const 后
+/// 相等 → 返回复合（取更 const 的 pointee、指针位不带 const）；深层
+/// 嵌套的 const 差异（`char**` vs `const char**`）不在此豁免面——pointee
+/// 是指针时 set_const 只剥自身位、嵌套递归严格，C 同判不兼容。
+fn tern_pointer_composite(a : @ast.Type, b : @ast.Type) -> @ast.Type? {
+  match (a, b) {
+    (Pointer(ap, _), Pointer(bp, _)) => {
+      let ap_nc = ap.set_const(false)
+      if @ast.type_eq(ap_nc, bp.set_const(false)) {
+        // 两 pointee 除 const 位外全同——取带 const 侧（限定符并）
+        let pointee = if ap.is_const() { ap } else { bp }
+        Some(Pointer(pointee, false))
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 /// 三目（条件标量/指针 E3020；分支 decay 后三判据一致——kind/name/
 /// 判等，任一不一致 E3004；`" "` 与 `""` 统一 char* 的 decay 语义）。
 fn TypeChecker::resolve_ternary(
@@ -205,6 +226,24 @@ fn TypeChecker::resolve_ternary(
       then_decayed
     } else {
       else_decayed
+    }
+  } else if then_decayed.kind() is TK_Pointer &&
+    else_decayed.kind() is TK_Pointer {
+    // #96（2026-10-15）：指向同一 unqualified 类型的指针复合（C11
+    // §6.5.15p5——pointee 限定符差异不参与分支匹配；`p ? p : "null"`
+    // const char* vs 字面量 char* 在 clang 合法，vitro 曾 E3004 误拒）。
+    // 结果取更 const 侧（限定符并——安全方向合并）。pointee 之外的
+    // 差异（unsigned/深层嵌套）维持严格判等不收。
+    match tern_pointer_composite(then_decayed, else_decayed) {
+      Some(composite) => composite
+      None => {
+        self.report_error(
+          "三目运算符分支类型不匹配",
+          loc,
+          E3004_TypeMismatch,
+        )
+        then_decayed
+      }
     }
   } else if self.is_scalar(then_decayed) &&
     self.is_scalar(else_decayed) &&

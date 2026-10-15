@@ -21,6 +21,7 @@ goto run_default_js
 
 :force_native
 echo [vitro] backend=native ^(explicit --backend^) 1>&2
+if not exist "%NATIVE_EXE%" goto no_native
 for /f "tokens=2,*" %%a in ("%*") do set "REST=%%b"
 "%NATIVE_EXE%" %REST%
 exit /b %errorlevel%
@@ -65,20 +66,30 @@ exit /b %RC%
 
 :no_shell
 echo [vitro] backend=native ^(fallback: wasm shell missing^) 1>&2
+if not exist "%NATIVE_EXE%" goto no_native
 "%NATIVE_EXE%" %*
 exit /b %errorlevel%
 
 :no_node
 echo [vitro] backend=native ^(fallback: node not in PATH^) 1>&2
+if not exist "%NATIVE_EXE%" goto no_native
 "%NATIVE_EXE%" %*
 exit /b %errorlevel%
 
 :no_js_entry
 echo [vitro] backend=native ^(fallback: js entry missing - build: cd moonbit ^&^& moon build --release --target js cmd/vitro_js^) 1>&2
+if not exist "%NATIVE_EXE%" goto no_native
 "%NATIVE_EXE%" %*
 exit /b %errorlevel%
 
 :old_node
 echo [vitro] backend=native ^(fallback: node too old^) 1>&2
+if not exist "%NATIVE_EXE%" goto no_native
 "%NATIVE_EXE%" %*
 exit /b %errorlevel%
+
+:no_native
+rem #100 (2026-10-15): fail loud with build hint instead of bare rc=127
+echo [vitro] native exe missing: %NATIVE_EXE% 1>&2
+echo [vitro] rebuild ^(Windows requires MOON_CC=clang - moon issue 2254^): cd moonbit ^&^& MOON_CC=clang moon build --release --target native cmd/vitro 1>&2
+exit /b 127

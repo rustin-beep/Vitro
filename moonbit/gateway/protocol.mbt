@@ -211,8 +211,22 @@ fn dispatch(
             ).stringify(),
             false,
           )
-        Ok(_) =>
-          (serve_ok(id, serve_apply_config(s, params)).stringify(), false)
+        Ok(_) => {
+          // #94（2026-10-15）：回包 result 追加 clamped 键名数组（恒带；
+          // 空数组=无钳制）——协议「只增不改」。config.get 面零变更。
+          let (cfg, clamped_keys) = serve_apply_config(s, params)
+          match cfg {
+            Object(m) => {
+              let arr : Array[Json] = []
+              for k in clamped_keys {
+                arr.push(Json::string(k))
+              }
+              m.set("clamped", Json::array(arr))
+              (serve_ok(id, Json::object(m)).stringify(), false)
+            }
+            _ => (serve_ok(id, cfg).stringify(), false)
+          }
+        }
       }
     // 静态元数据族（三段）
     "capabilities" => serve_capabilities_frame(id)
@@ -279,20 +293,40 @@ fn config_set_unknown_key(params : Json) -> Result[Unit, String] {
 /// clamp 0..1MB（Rust 同形）直写 MemoryMap 定义点（memory 包——capi
 /// `vitro_set_quarantine_budget` 直映射字段；vm reset 跨重建保留 ⇒
 /// 会话级语义由 reset 纪律承担，无需 SessionConfig 双写）。
-fn serve_apply_config(s : @session.Session, params : Json) -> Json {
+/// 返回 (生效后配置, 被钳制键名数组)——#94：钳制须对下游显式（静默
+/// 钳制 = 引擎替下游做决定却不告知，issue 实测 4MiB 压回 1MiB 判题
+/// 缓冲在半路受检）；数组按本函数判定序收集。
+fn serve_apply_config(
+  s : @session.Session,
+  params : Json,
+) -> (Json, Array[String]) {
+  let clamped_keys : Array[String] = []
   match json_field(params, "quarantine_budget").as_int() {
     Some(v) => {
       let clamped = if v < 0 { 0 } else if v > 1048576 { 1048576 } else { v }
+      if clamped != v {
+        clamped_keys.push("quarantine_budget")
+      }
       s.vm.mem_map.set_quarantine_budget(clamped)
     }
     None => ()
   }
   match json_field(params, "max_steps").as_int() {
-    Some(v) => s.set_max_steps(v)
+    Some(v) => {
+      if v < 1 {
+        clamped_keys.push("max_steps")
+      }
+      s.set_max_steps(v)
+    }
     None => ()
   }
   match json_field(params, "call_depth_limit").as_int() {
-    Some(v) => s.set_call_depth_limit(v)
+    Some(v) => {
+      if v < 16 {
+        clamped_keys.push("call_depth_limit")
+      }
+      s.set_call_depth_limit(v)
+    }
     None => ()
   }
   match json_field(params, "deterministic").as_bool() {
@@ -324,11 +358,14 @@ fn serve_apply_config(s : @session.Session, params : Json) -> Json {
       } else {
         v
       }
+      if clamped != v {
+        clamped_keys.push("output_budget")
+      }
       s.vm.output.set_budget(clamped)
     }
     None => ()
   }
-  serve_config(s)
+  (serve_config(s), clamped_keys)
 }
 
 ///|

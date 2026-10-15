@@ -1017,6 +1017,17 @@
       ]
     },
     {
+      "code": 3073,
+      "icon": "unsupported",
+      "title": "标准库函数未实现",
+      "explanation": "你调用的函数是 C 标准库函数，但它在 vitro 的教学子集支持面之外（沙盒环境不提供其依赖的系统能力，或教学价值有限被明确排除）。这不是「忘了声明」——添加函数原型无法修复，因为引擎没有实现这个函数。请查阅标准库支持矩阵的排除清单，改用支持面内的替代方案（如 strtok 可用 strchr/strcspn 组合替代）。",
+      "common_causes": [
+        "调用了 getenv/system 等沙盒无意义的系统接口",
+        "调用了被教学子集排除的函数（strtok/atexit/math 高级函数）",
+        "误以为加原型声明能解决"
+      ]
+    },
+    {
       "code": 4100,
       "icon": "leak",
       "title": "C++ 内存泄漏 (Memory Leak)",

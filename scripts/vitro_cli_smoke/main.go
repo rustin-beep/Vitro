@@ -10,7 +10,8 @@
 //	C. launcher 语义：backend 标注行（stderr）+ --backend 覆盖转发。
 //
 // --corpus N：B 组语料级扩面（#49 批二）——corpus/baseline 按稳定序取前 N
-// 例双臂对拍（同 B 组判定口径）。缺省 0 = 只跑内置三 fixture；CI 接 30 例。
+// 例三臂对拍（wasm+js+native 同判定口径；js 臂连坐 2026-10-15）。缺省
+// 0 = 只跑内置三 fixture；CI 接 30 例。
 //
 // 前置：moonbit/_build 两产物在位（wasm-gc release gateway + native release
 // cmd/vitro）——CI 步骤先建；缺产物即红（fail loud）。
@@ -25,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -89,7 +91,7 @@ func firstDiff(a, b []byte) int {
 }
 
 func main() {
-	corpusN := flag.Int("corpus", 0, "B 组语料级扩面：corpus/baseline 取前 N 例双臂对拍（CI=30）")
+	corpusN := flag.Int("corpus", 0, "B 组语料级扩面：corpus/baseline 取前 N 例三臂对拍 wasm+js+native（CI=30）")
 	flag.Parse()
 	// cwd = 仓库根（防线惯例——vm_diff 等同款相对路径约定）
 	repoRoot = "."
@@ -108,6 +110,19 @@ func main() {
 	if err != nil {
 		fmt.Println("vitro_cli_smoke: node 不在 PATH（wasm 臂宿主）")
 		os.Exit(1)
+	}
+	// node 版本前置闸（P2，2026-10-15 用户审阅提醒）：main.js 的 MIN_NODE=25
+	// 以下 wasm 壳恒退 rc=5 哨兵（#106）——不前置拦截会把宿主版本不足
+	// 误报成整片「输出不一致」（node 22 下 92 条误导红的实录），真因被
+	// 埋。版本不足即红，不静默跳过（fail loud）。门槛数字与 main.js
+	// MIN_NODE 同步维护。
+	if vout, verr := exec.Command(nodeBin, "--version").Output(); verr == nil {
+		v := strings.TrimPrefix(strings.TrimSpace(string(vout)), "v")
+		if major, aerr := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); aerr == nil && major < 25 {
+			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 25（wasm 臂 js-string builtins 需要——main.js MIN_NODE 同源门槛）。\n"+
+				"wasm 臂将恒退 rc=5 降级哨兵，后续对拍会整片误报「输出不一致」。先升级 node ≥ 25 再跑本闸。\n", v)
+			os.Exit(1)
+		}
 	}
 
 	// fixture：trap 用例 + quote-include 双文件（B 组对拍用）
@@ -314,12 +329,23 @@ func main() {
 			wasmOut, natOut = stripBackendLine(wasmOut), stripBackendLine(natOut)
 			if wasmOut != natOut {
 				fatalf("B[语料对拍] %s: 输出不一致\n--- wasm ---\n%s\n--- native ---\n%s", name, wasmOut, natOut)
-			} else {
-				pass++
 			}
+			// js 臂语料级连坐（P2，2026-10-15 用户审阅提醒）：原 --corpus N
+			// 只比 wasm↔native，js 臂仅内置 fixture 三例——缺省臂反而语料
+			// 零覆盖（曾致 js 臂分派表缺 7 子命令的盲区靠内置例侥幸不红）。
+			// 判定口径同上：rc 等值 + stripBackendLine 后同形。
+			jsOut, jsRc := runOut(nodeBin, jsEntry, "run", rel)
+			if jsRc != natRc {
+				fatalf("B[语料对拍] %s: rc 不一致 js=%d native=%d", name, jsRc, natRc)
+			}
+			jsOut = stripBackendLine(jsOut)
+			if jsOut != natOut {
+				fatalf("B[语料对拍] %s: js 与 native 不同形\n--- js ---\n%s\n--- native ---\n%s", name, jsOut, natOut)
+			}
+			pass++
 		}
 		if failures == 0 {
-			fmt.Printf("ok  B[语料对拍] 前 %d 例（字典序）双臂同形\n", pass)
+			fmt.Printf("ok  B[语料对拍] 前 %d 例（字典序）三臂同形（wasm+js+native）\n", pass)
 		}
 	}
 

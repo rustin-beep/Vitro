@@ -29,7 +29,7 @@ pub let rules : Rules = Rules::{
     MethodHelp::{method: "session.destroy", brief: "销毁会话（进程存活；回收进程用 shutdown）", example: "{}"},
     MethodHelp::{method: "shutdown", brief: "关停 serve 进程（响应帧携带 shutdown:true）", example: "{}"},
     MethodHelp::{method: "config.get", brief: "读会话配置", example: "{}"},
-    MethodHelp::{method: "config.set", brief: "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch；未知键 fail loud，#105）", example: "{\"max_steps\":100000}"},
+    MethodHelp::{method: "config.set", brief: "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch；未知键 fail loud，#105；越界值钳制回包带 clamped 键名数组，#94）", example: "{\"max_steps\":100000}"},
     MethodHelp::{method: "capabilities", brief: "能力清单（语言/协议面）", example: "{}"},
     MethodHelp::{method: "error_catalog", brief: "错误码目录（E/W/H 码 + 教学文案 + icon id）", example: "{}"},
     MethodHelp::{method: "semantic_labels", brief: "语义标签表（算法/事件中文标注）", example: "{}"},

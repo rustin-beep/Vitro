@@ -184,7 +184,9 @@ fn serve_run_frame(
   if s.vm.input.batch != s.runtime_batch {
     s.vm.set_input(@host.InputState::new(s.vm.input.lines, s.runtime_batch))
   }
-  ignore(serve_apply_config(s, params))
+  // run 帧七字段冻结面（#91）不带 clamped——run 内联配置的钳制静默
+  // 登记在案（config.set 通道已显式化；run 帧扩面属协议变更另案）
+  let (_cfg, _clamped) = serve_apply_config(s, params)
   (serve_ok(id, serve_execute_run(s)).stringify(), false)
 }
 

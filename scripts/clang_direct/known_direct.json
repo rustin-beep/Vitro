@@ -62,10 +62,11 @@
   {
     "case": "p2f_review_regression_guards.c",
     "digest": "9a329ad2",
-    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因勘误（2026-10-14 CI 首跑取证后定案）：digest 差异**全在 Clang 侧**——a[10] 越界读（C 侧 UB）的垃圾值随环境漂（本地 exit 0 / CI runner exit 524288=0x80000 栈残留），与 bTree_default 同族「UB 结局随构建/运行环境漂移属正当形态」；MoonBit 侧恒定 trap rc=2（CI 直跑取证步实锤，#71 挂账销案）。首次归因误读报文「返回码 524288 != 0」的 o/m 次序（o=Clang 侧、m=MoonBit 侧 // EXIT 行解析值，trap 时无该行为 0）——教训：digest 差异定位先分侧。",
+    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因勘误（2026-10-14 CI 首跑取证后定案）：digest 差异**全在 Clang 侧**——a[10] 越界读（C 侧 UB）的垃圾值随环境漂（本地 exit 0 / CI runner exit 524288=0x80000 栈残留），与 bTree_default 同族「UB 结局随构建/运行环境漂移属正当形态」；MoonBit 侧恒定 trap rc=2（CI 直跑取证步实锤，#71 挂账销案）。首次归因误读报文「返回码 524288 != 0」的 o/m 次序（o=Clang 侧、m=MoonBit 侧 // EXIT 行解析值，trap 时无该行为 0）——教训：digest 差异定位先分侧。第三形态（2026-10-15 CI run 38678958859 取证重冻）：Clang 侧 32768 崩溃 + stdout 提前截断（2 vs 6 行）——同族 UB 结局漂移第三集，本地复跑 digest 9a329ad2 未漂（分侧归因维持），仅 CI 环境新形态入集。",
     "digests": [
       "9a329ad2",
-      "a08efe4a"
+      "a08efe4a",
+      "3e3edab5"
     ]
   }
 ]

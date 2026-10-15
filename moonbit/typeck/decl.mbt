@@ -669,17 +669,35 @@ fn TypeChecker::check_user_func(
               }
               ret_ty
             }
-            None => {
-              self.report_error(
-                "未定义的函数 '\{name}'",
-                loc,
-                E3036_UndefinedFunc,
-              )
-              // 审阅 P1-2（2026-10-07）：返回 int 兜底（C 隐式 int 口径）
-              // ——void 会让  级联 E3014「返回类型不匹配」
-              //（#8 修复的 E3036 单错目标被次级错误破坏；Clang 单错）
-              @ast.Type::int()
-            }
+            None =>
+              // #96（2026-10-15）：引擎已知不支持的标准库函数（支持矩阵
+              // §5.5 排除项）独立分流——E3036 的「未定义函数」措辞 +
+              // fix_suggestion「添加原型声明」对该类缺口是无效建议（加
+              // 了原型照样编译不过），且 int 兜底返回类型会级联出与真因
+              // 无关的假阳性（issue 实测 getenv 例 E3054/E3004 两条）。
+              // 返回真实签名类型：E3073 之后的类型链正常走（#8 单错口径
+              // 延伸）；参数不查（单错原则——clang 对真未定义调用也单错）
+              match @libc.unsupported_libc_sig(name) {
+                Some((ret_ty, _param_types)) => {
+                  self.report_error(
+                    "本引擎未实现标准库函数 '\{name}'（vitro 教学子集不支持——添加原型声明无效，见标准库支持矩阵排除清单）",
+                    loc,
+                    E3073_UnsupportedLibcFunc,
+                  )
+                  ret_ty
+                }
+                None => {
+                  self.report_error(
+                    "未定义的函数 '\{name}'",
+                    loc,
+                    E3036_UndefinedFunc,
+                  )
+                  // 审阅 P1-2（2026-10-07）：返回 int 兜底（C 隐式 int 口径）
+                  // ——void 会让  级联 E3014「返回类型不匹配」
+                  //（#8 修复的 E3036 单错目标被次级错误破坏；Clang 单错）
+                  @ast.Type::int()
+                }
+              }
           }
       }
   }

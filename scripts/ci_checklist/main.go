@@ -16,6 +16,11 @@
 // sh/js launcher 资产非 go run 目标）。例外条目若同时被 ci.yml 活行引用 =
 // 僵尸（红——双向监控，known_direct 同哲学）。
 //
+// ④ moon test 目标面（2026-10-15 补向，js 后端漏接实锤）：ci.yml 全部
+// moon test 活行的目标并集必须覆盖 moon 四目标 {js, native, wasm,
+// wasm-gc}——后端集加员连坐测试面（AGENTS §14）。前三向防「Go 驱动
+// 接线」，本向防「裸 moon 命令的目标面随架构演进滞后」。
+//
 // 判定型 fail loud（全域纪律 8/12）：不做环境探测、不静默跳过；rc 0=对账
 // 一致，rc 1=任一向红。
 package main
@@ -167,11 +172,36 @@ func main() {
 			failed = true
 		}
 	}
+	// ④ moon test 目标面（2026-10-15 实锤补向：三后端批落地 js 后端但
+	// 测试目标漏接，hygiene 裸奔一个 CI 周期无人红——本闸 ①②③ 防「Go
+	// 驱动接线」，不防「裸 moon 命令的目标面随架构演进」。后端集加员
+	// 必须连坐测试面（AGENTS §14 三臂强制），机判化于此。
+	// 目标全集 = moon 工具链四目标 {js, native, wasm, wasm-gc}（低频演进；
+	// 工具链加目标时本清单随 toolchain_probe 基线同步）。对账语义 =
+	// ci.yml 全部 moon test 活行的目标**并集**覆盖全集（单步骤故意单
+	// 目标合法——如 build-and-unit 的 --target native 只纳 native-only 包）。
+	moonTestRe := regexp.MustCompile(`(?m)^\s*moon test\b[^\n]*`)
+	targetUnion := map[string]bool{}
+	for _, line := range moonTestRe.FindAllString(string(ciBytes), -1) {
+		if strings.Contains(line, "--target ") {
+			for _, t := range regexp.MustCompile(`--target (\S+)`).FindAllStringSubmatch(line, -1) {
+				targetUnion[t[1]] = true
+			}
+		} else {
+			targetUnion["wasm"] = true // 裸 moon test 默认目标 = wasm
+		}
+	}
+	for _, want := range []string{"js", "native", "wasm", "wasm-gc"} {
+		if !targetUnion[want] {
+			fmt.Printf("目标面缺口: ci.yml 全部 moon test 活行的目标并集缺 --target %s（后端集加员须连坐测试面——AGENTS §14 三臂强制）\n", want)
+			failed = true
+		}
+	}
 
 	if failed {
 		fmt.Println("ci_checklist: FAIL——存在即接入对账不符")
 		os.Exit(1)
 	}
-	fmt.Printf("ci_checklist: PASS——驱动 %d / 活行 %d / 例外 %d 三向对账一致\n",
-		len(drivers), len(liveSet), len(exceptions))
+	fmt.Printf("ci_checklist: PASS——驱动 %d / 活行 %d / 例外 %d 三向对账 + moon test 目标面（%d 目标齐）一致\n",
+		len(drivers), len(liveSet), len(exceptions), len(targetUnion))
 }

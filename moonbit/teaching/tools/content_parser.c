@@ -1,8 +1,11 @@
 /* content_parser.c —— 教学内容真源解析器（#125 批 A，2026-10-15）。
  *
  * 地位：本文件是**随包发布的引擎侧资产**（moonbit/** 入 mooncakes），
- * 由 Vitro 自己编译运行——自己吃自己狗粮；兼作常驻语料：CI 以
- * vitro ≡ clang 双臂对拍本文件，即编译器常驻自测（AGENTS #14 同款）。
+ * 由 Vitro 自己编译运行——自己吃自己狗粮。CI 现役覆盖 =
+ * teaching_gen_check 三臂产物对拍（happy path）+ teaching_reconcile 键集
+ * 对账——clang 侧亲编译对拍为**离线审阅动作**非常驻闸（2026-10-15 审阅
+ * 勘正：头注旧句「CI 以 vitro ≡ clang 双臂对拍本文件」名不副实；
+ * 常驻化与否随 #129/#20 处置批另议）。
  *
  * 三 schema 模式（argv[1] 选，缺省/未知 = 红）：
  *   trap          stdin=content/trap_messages.md  → assets/trap_messages_gen.mbt
@@ -21,12 +24,16 @@
  *       sugg     （无头部字段；正文 v0 单行，空行 = 红）
  *   - 正文：trap = 模板原样（空行=文案里空行；尾部空行至多 1 行=节间分隔）。
  *
- * 产出（stdout）：@generated 的 .mbt；验收判据 = 与 #60 双出口期
- * .json.mbt **除头注外逐字节一致**（载体迁移判据语义零变化）。
+ * 产出（stdout）：@generated 的 .mbt；验收判据 = 输出经 moon fmt 后与
+ * 入库 assets/*_gen.mbt 逐字节一致（teaching_gen_check 三臂锁；#125 批 B
+ * 后 .json.mbt 载体已退役，旧「双出口期逐字节一致」判据随转）。
  * 注意：数组换行形态以 moon fmt 为准——驱动管线 = 本输出 → moon fmt →
  * 与入库产物比对（生成器契约第 2 条；trap 实测 fmt 恒等）。
  *
- * 用法：
+ * 用法（再生一律走正规管线）：
+ *   go run ./scripts/teaching_gen_check -write
+ * （勿走下方裸跑形态——vitro run 文本模式 stdout 混引擎标记行（W3053
+ * 警告/NOTE/STDERR），人手重定向必得污染产物（#129 在档未修）：
  *   scripts/bin/vitro run moonbit/teaching/tools/content_parser.c \
  *     -i moonbit/teaching/content/trap_messages.md -- trap > out.mbt
  *
@@ -250,15 +257,26 @@ static int try_head_line(void) {
             const char *p = line_buf + strlen("param_notes[");
             const char *close = strchr(p, ']');
             const char *v;
-            int idx = 0;
+            long idx = 0;
+            int digits = 0;
             if (close == NULL || close[1] != ':') {
                 fail("param_notes 须形如 param_notes[<i>]: <整句>");
+            }
+            if (close == p) {
+                fail("param_notes 槽位为空（param_notes[] 非法——须显式 <i>）");
             }
             while (p < close) {
                 if (*p < '0' || *p > '9') {
                     fail("param_notes 槽位非数字");
                 }
                 idx = idx * 10 + (*p - '0');
+                digits++;
+                if (digits > 6) {
+                    fail("param_notes 槽位位数超限（>6 位必超上限，提前拒绝防累加溢出 UB）");
+                }
+                if (idx > MAX_SLOTS) {
+                    fail("param_notes 槽位超上限");
+                }
                 p++;
             }
             if (idx >= MAX_SLOTS) {
@@ -303,6 +321,12 @@ static void check_key_charset(const char *k, size_t len) {
         if (!ok) {
             fail("节标题含非法字符");
         }
+    }
+    /* P3②（2026-10-15 审阅批）：suggestions 键转 MoonBit 枚举臂名
+     * （snake_case → CamelCase）——首段以数字起（如 2fast_sort → 2FastSort）
+     * 产非法标识符，此前仅靠 moon test match 非穷尽间接兜，前置拒绝。 */
+    if (g_mode == MODE_SUGG && k[0] >= '0' && k[0] <= '9') {
+        fail("suggestions 节标题不能以数字起（臂名须合法标识符）");
     }
 }
 
@@ -444,7 +468,7 @@ static void flush_entry(void) {
     }
     if (g_mode == MODE_TRAP) {
         for (k = 0; k < trailing_nl; k++) {
-            txt_append_ch('\n');
+            txt_append_ch((char)'\n');
         }
         emit_entry();
     } else if (g_mode == MODE_SUGG) {
@@ -579,11 +603,11 @@ int main(int argc, char **argv) {
                 int j;
                 if (pending_blank > 0) {
                     for (j = 0; j < pending_blank + 1; j++) {
-                        txt_append_ch('\n');
+                        txt_append_ch((char)'\n');
                     }
                     pending_blank = 0;
                 } else if (started) {
-                    txt_append_ch('\n');
+                    txt_append_ch((char)'\n');
                 }
                 txt_append(line_buf);
                 started = 1;

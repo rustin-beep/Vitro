@@ -118,6 +118,85 @@ func runMoonFmt(rel string) {
 	}
 }
 
+// ── 负例组（P2-3，2026-10-15 审阅批）──────────────────────────────────
+// 此前闸只喂三个 happy-path 真源——突变「废除节标题重复检查」两闸全绿
+// （审阅实锤负路径零覆盖）。每项 = 恶意真源 + 期望 FAIL 关键词；断言
+// 解析器 fail loud：程序 rc != 0 且 stderr 重建文本命中关键词。文案锚
+// 同时锁错误信息本身（改文案不改断言 = 红）。
+var negatives = []struct {
+	name, mode, src, wantFail string
+}{
+	{"节标题重复", "builtin_notes", "<!-- t -->\n\n## abs\n\ncount_note: a\n\n## abs\n\ncount_note: b\n", "节标题重复"},
+	{"param_notes 索引溢出（B18 面：2^31 段错误 → fail loud）", "builtin_notes", "<!-- t -->\n\n## abs\n\nparam_notes[2147483648]: x\n", "槽位超上限"},
+	{"param_notes 空索引（静默落槽 0 → fail loud）", "builtin_notes", "<!-- t -->\n\n## abs\n\nparam_notes[]: x\n", "槽位为空"},
+	{"param_notes 非数字", "builtin_notes", "<!-- t -->\n\n## abs\n\nparam_notes[ab]: x\n", "槽位非数字"},
+	{"param_notes 槽位重复", "builtin_notes", "<!-- t -->\n\n## good\n\ncount_note: a\nparam_notes[0]: x\nparam_notes[0]: y\n", "槽位重复"},
+	{"builtin 节不应有正文", "builtin_notes", "<!-- t -->\n\n## abs\n\nunknown_field: x\n", "不应有正文"},
+	{"suggestions 臂名数字起（P3②）", "suggestions", "<!-- t -->\n\n## 2fast_sort\n\nbody\n", "不能以数字起"},
+}
+
+// runNegative：写临时真源 → 跑解析器（--json）→ 重建 stderr（stderr 型
+// delta 帧 Latin-1 折回）→ 断言 rc != 0 + 关键词命中。
+func runNegative(n struct{ name, mode, src, wantFail string }) {
+	tmp, err := os.CreateTemp("", "tgcheck_neg_*.md")
+	if err != nil {
+		die("负例临时件失败: %v", err)
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.WriteString(n.src); err != nil {
+		die("负例写入失败: %v", err)
+	}
+	tmp.Close()
+
+	cmd := exec.Command("bash", "scripts/bin/vitro")
+	if *backend != "js" {
+		cmd.Args = append(cmd.Args, "--backend", *backend)
+	}
+	cmd.Args = append(cmd.Args, "run", "--json", "moonbit/teaching/tools/content_parser.c",
+		"-i", tmp.Name(), "--", n.mode)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		die("vitro 启动失败（%s 臂）: %v\n%s", *backend, err, stderr.String())
+	}
+	progRC := 0
+	if m := reNoteRC.FindSubmatch(stdout.Bytes()); m != nil {
+		fmt.Sscanf(string(m[1]), "%d", &progRC)
+	}
+	var errText bytes.Buffer
+	for _, line := range bytes.Split(stdout.Bytes(), []byte("\n")) {
+		if !bytes.Contains(line, []byte(`"delta"`)) {
+			continue
+		}
+		var frame struct {
+			Type  string `json:"type"`
+			Frame struct {
+				Result struct {
+					Delta string `json:"delta"`
+				} `json:"result"`
+			} `json:"frame"`
+		}
+		if json.Unmarshal(line, &frame) != nil || frame.Type != "stderr" {
+			continue
+		}
+		for _, ch := range frame.Frame.Result.Delta {
+			if ch <= 0xFF {
+				errText.WriteByte(byte(ch))
+			} else {
+				errText.WriteString(string(ch))
+			}
+		}
+	}
+	if progRC == 0 {
+		die("负例 %s 未 fail loud（程序 rc=0——fail 路径回归）", n.name)
+	}
+	if !bytes.Contains(errText.Bytes(), []byte(n.wantFail)) {
+		die("负例 %s 的 stderr 未含期望文案 %q（实得: %s）", n.name, n.wantFail, errText.String())
+	}
+	fmt.Printf("[teaching_gen_check] ✓ 负例「%s」fail loud（文案锚: %s）\n", n.name, n.wantFail)
+}
+
 func main() {
 	flag.Parse()
 	tmpRel := "teaching/assets/_gencheck_tmp.mbt"
@@ -162,5 +241,8 @@ func main() {
 		die("产物漂移 %s——真源已改未再生（go run ./scripts/teaching_gen_check -write）",
 			strings.Join(drifted, ", "))
 	}
-	fmt.Println("[teaching_gen_check] 全部通过：三 schema 产物 ≡ 解析器输出（fmt 后）")
+	for _, n := range negatives {
+		runNegative(n)
+	}
+	fmt.Println("[teaching_gen_check] 全部通过：三 schema 产物 ≡ 解析器输出（fmt 后）+ 负例 fail-loud ×7")
 }

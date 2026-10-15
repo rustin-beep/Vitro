@@ -52,7 +52,7 @@ var (
 	reCaseID  = regexp.MustCompile(`(?m)^\s*id: "([a-z_0-9]+)"`)
 	reAlgoID  = regexp.MustCompile(`\{\s*id: "([A-Za-z_0-9]+)", name:`)
 	reVarTpl  = regexp.MustCompile(`tpl: "([A-Za-z_0-9]+)"`)
-	reLessonM = regexp.MustCompile(`(?m)^---\n((?:.*\n)*?)---\n`)
+	reLessonM = regexp.MustCompile(`(?m)^---\r?\n((?:.*\r?\n)*?)---\r?\n`)
 	reFmID    = regexp.MustCompile(`(?m)^id:\s*"?([A-Za-z_0-9-]+)"?\s*$`)
 	reFmKind  = regexp.MustCompile(`(?m)^kind:\s*"?([a-z]+)"?\s*$`)
 	reFmStdin = regexp.MustCompile(`(?m)^stdin:\s*"?([^"\n]*)"?`)

@@ -142,11 +142,16 @@ jobs:
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
-      - name: js CLI entry build (artifact source)
+      - name: Full js target build gate (all packages) + CLI entry (artifact source)
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
-        # 产物检查消费（cmd/vitro_js/vitro_js.js）
+        # 产物检查消费（cmd/vitro_js/vitro_js.js）。
+        # 全量 js 编译闸（2026-10-15 补——审阅指出缺口）：此前只编
+        # cmd/vitro_js 单入口树，其余包的 js 目标编译错（如 gateway 改
+        # extern "js" 面）只有 moon test --target js 的测试遍历能抓——
+        # 零测试包 js 编译坏不红。全量形态与 Full native release build
+        # gate 同构（js 无 C 链，冷态成本远低于 native 全量）。
         shell: bash
-        run: cd moonbit && moon build --release --target js cmd/vitro_js
+        run: cd moonbit && moon build --release --target js
       - name: Upload build products (native release exe set + wasm module + js entry)
         # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
         # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复

@@ -630,36 +630,19 @@ jobs:
             "$JSONMBT_EXE" build --pretty "$m"
           done
 
-      - name: Teaching assets JSON sync gate (issue #60 双出口)
-        # 教师面 JSON（moonbit/teaching/assets/suggestions.json）入仓——与真源
-        # .json.mbt 的同步用「build 后 git diff --quiet」锁（教师改 JSON 后须
-        # jsonmbt import --fill 回真源再提交，否则本步红）。引擎消费不走此
-        # JSON（steps 包直接 import @assets——moon check 即写作闸 + 43 臂
-        # 穷尽 match 即名单闸）。
+      - name: Teaching assets gen gate (#125 批 A——C 解析器自举)
+        # 真源 = moonbit/teaching/content/*.md（md+.c 唯一真源入包）；
+        # content_parser.c 由 vitro 编译运行（自己吃自己狗粮——引擎侧资产链
+        # 自举，#128 裁定确认此即「生成器产 .mbt」实现路径）。产物经 moon fmt
+        # 后与入库 _gen.mbt 逐字节比对（数组换行形态以 fmt 为准）。
+        # 旧「Teaching assets JSON sync gate」（jsonmbt build + 教师 .json 同步）
+        # 随批 A 出库退役——jsonmbt 对教学三张的调用归零。
         shell: bash
         run: |
           set -e
-          "$JSONMBT_EXE" build moonbit/teaching/assets/suggestions.json.mbt
-          if ! git diff --quiet -- moonbit/teaching/assets/suggestions.json; then
-            echo "FATAL: suggestions.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
-            git diff -- moonbit/teaching/assets/suggestions.json | head -20
-            exit 2
-          fi
-          # 三张入仓 JSON 全量同步闸（审阅处置批二 2026-10-10 P3：本步原先
-          # 只盖 suggestions 一张，builtin_notes / trap_messages 两张入仓却
-          # 无闸——审阅实测三张当前均同步，闸补全防未来静默漂移）
-          "$JSONMBT_EXE" build moonbit/teaching/assets/builtin_notes.json.mbt
-          if ! git diff --quiet -- moonbit/teaching/assets/builtin_notes.json; then
-            echo "FATAL: builtin_notes.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
-            git diff -- moonbit/teaching/assets/builtin_notes.json | head -20
-            exit 2
-          fi
-          "$JSONMBT_EXE" build moonbit/teaching/assets/trap_messages.json.mbt
-          if ! git diff --quiet -- moonbit/teaching/assets/trap_messages.json; then
-            echo "FATAL: trap_messages.json 与真源不同步——教师改 JSON 后请跑 jsonmbt import --fill 回真源"
-            git diff -- moonbit/teaching/assets/trap_messages.json | head -20
-            exit 2
-          fi
+          cd moonbit && moon build --release --target js cmd/vitro_js && cd ..
+          go run ./scripts/teaching_gen_check
+          go run ./scripts/teaching_reconcile
 
       - name: Source hygiene (tracked files must be NUL-free)
         # P2-NUL 事故族（2026-09-23 修复批）：真 NUL 让 git 判二进制

@@ -110,7 +110,10 @@ func main() {
 		// ② 实测样本库（用户采集样本保真优先——末行换行改写属内容改写）
 		// ③ reports/（shadow 时代一次性产物，非活跃手写面）
 		if strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".json.mbt") {
-			// jsonmbt 真源族按前缀豁免缩进项（末行换行等通用项仍管）
+			// jsonmbt 真源族按前缀豁免缩进项（末行换行等通用项仍管）。
+			// 注：moonbit/teaching/assets 曾整目录豁免（#60 双出口的教师面
+			// .json 无尾换行与同步闸互斥，2026-10-11 实锤）——#125 批 A 出库
+			// 后该目录无 .json/.json.mbt，豁免随之摘除（2026-10-15）。
 			if strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"moonbit"+string(filepath.Separator)+"diagnostics_data") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"teaching_annotation_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"vm_diff") ||
@@ -119,15 +122,7 @@ func main() {
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"typeck_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"codegen_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"protocol_frames") ||
-				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"parser_diff") ||
-				// 教师面 suggestions.json（#60 双出口）：jsonmbt compact 再生
-				// 产物**无尾换行**——本闸的 insert_final_newline 与 CI 的
-				// Teaching assets sync gate（build 后 diff --quiet）对此文件
-				// 互斥打架（fca6c063 补尾换行令 editorconfig 绿、CI 同步闸
-				// 恒红，2026-10-11 实锤）。裁定：jsonmbt 是数据权威（AGENTS
-				// 纪律 13 禁手改再生 .json），漂移归 Teaching gate 管——
-				// 本文件整体豁免（.editorconfig 同步加 section 防 IDE 补尾换行）
-				strings.HasPrefix(rel, "moonbit"+string(filepath.Separator)+"teaching"+string(filepath.Separator)+"assets") {
+				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"parser_diff") {
 				return nil // 机器写回面：整体豁免（生成器 -check / sync 闸管漂移）
 			}
 		}

@@ -4,10 +4,6 @@
     "reason": "库目录：各差分驱动进程内 import（canonicalize 函数库），main.go 仅 CLI 壳（手册登记的可执行壳，无 CI 判定面）"
   },
   {
-    "driver": "scripts/internal/jmemit",
-    "reason": "库：五差分 --freeze-mb 内部调用（.json.mbt 真源 emit），非独立 go run 闸"
-  },
-  {
     "driver": "scripts/docs_preview",
     "reason": "本地工具：docs 站预览服务（开发时本地起服），CI 无消费面"
   },

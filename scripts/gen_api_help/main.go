@@ -25,8 +25,8 @@
 //	moonbit/gateway/api_help_gen.mbt   （native 臂——cmd/lib/cli 查表）
 //	scripts/vitro_cli/api_help.json    （wasm 壳——main.js 查表）
 //
-// 规则外置 scripts/gen_api_help/rules.json（jsonmbt 真源 rules.json.mbt
-// 再生——CI jsonmbt 步骤覆盖，禁手改 .json）。
+// 规则外置 scripts/gen_api_help/rules.json（#125 批 B 后 = 入库真源手改面；
+// .json.mbt 类型锚待其内容批收敛后出库）。
 package main
 
 import (
@@ -92,7 +92,7 @@ func main() {
 	var rules Rules
 	readJSON(rulesPath, &rules)
 	if len(rules.Methods) == 0 {
-		fatal("rules.methods 空集不得绿（jsonmbt 再生失败？）")
+		fatal("rules.methods 空集不得绿")
 	}
 	shapes, errs2 := extractShapes()
 	if len(errs2) > 0 {
@@ -213,7 +213,7 @@ func reconcile(methods []string, rules Rules, shapes map[string]string) []string
 	}
 	for _, m := range methods {
 		if _, ok := ruleSet[m]; !ok {
-			errs = append(errs, fmt.Sprintf("dispatch 方法 '%s' 缺 rules 简介（补 rules.json.mbt → jsonmbt build）", m))
+			errs = append(errs, fmt.Sprintf("dispatch 方法 '%s' 缺 rules 简介（补 rules.json）", m))
 		}
 	}
 	for name := range ruleSet {

@@ -318,7 +318,6 @@ func freezeMBRun(corpus string, refresh bool) int {
 	}
 	saveCgDigest(doc)
 	fmt.Printf("codegen_diff --freeze-mb[%s]: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）"+string(rune(10)), corpusName, added, refreshed, skipped, cgDigestFile)
-	emitCgMbt(doc)
 	return 0
 }
 

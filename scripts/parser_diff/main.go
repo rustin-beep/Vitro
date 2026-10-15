@@ -297,7 +297,6 @@ func freezeMBRun(files []string, mode string, corpusDir string, refresh bool) in
 		fail("无新例可入账（%d 例均已在清单）", skipped)
 	}
 	saveParserDigest(doc)
-	emitParserMbt(doc)
 	fmt.Printf("parser_diff --freeze-mb[%s]: 新增 %d 例 / 重算 %d 例（跳过存量 %d）→ %s（背书 = clang_direct + moon test）\n", mode, added, refreshed, skipped, parserDigestFile)
 	return 0
 }

@@ -60,6 +60,7 @@ pub let golden_digest : Digest = Digest::{
         "bitwise_not.c": "715d1d7f",
         "bitwise_shift.c": "84cc3209",
         "block_comment.c": "b9576079",
+        "block_enum_definition.c": "b8d32ec8",
         "block_static_typedef.c": "9da603c0",
         "bool_from_compare.c": "eaba9b4d",
         "break_continue.c": "cc946821",
@@ -494,6 +495,9 @@ pub let golden_digest : Digest = Digest::{
         "bitwise_not.c": Ok(OkCase::{ result_sha: "253370a87740b0d9", }),
         "bitwise_shift.c": Ok(OkCase::{ result_sha: "29d66a35b432a523", }),
         "block_comment.c": Ok(OkCase::{ result_sha: "f5eece7a8d62b756", }),
+        "block_enum_definition.c": Ok(OkCase::{
+          result_sha: "de8c9f71c3c07dfc",
+        }),
         "block_static_typedef.c": Ok(OkCase::{ result_sha: "6988b052316da514", }),
         "bool_from_compare.c": Ok(OkCase::{ result_sha: "479f543823d7bb46", }),
         "break_continue.c": Ok(OkCase::{ result_sha: "04d6a781dbedb1e2", }),

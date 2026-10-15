@@ -297,6 +297,13 @@ fn Parser::parse_var_decl_stmt(
     }
   }
   let base_type = self.parse_base_type(depth)
+  // #93（2026-10-14）：无名声明器形态——`enum { M = 3 };`（纯定义，成员
+  // 已在 parse_base_type 的 Enum 定义体分支落表/落全局）与 struct 同款
+  // 占位收尾（struct 分支的匿名体在上方同形态）
+  if self.check(Semicolon) {
+    ignore(self.advance())
+    return @ast.Stmt::Block([], loc)
+  }
   // #77（2026-10-13）：块内交错存储类（const static int y）收割——
   // shadowing 参数合并 is_static
   let is_static = is_static || self.take_pending_static()

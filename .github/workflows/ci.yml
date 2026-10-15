@@ -142,7 +142,12 @@ jobs:
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
-      - name: Upload build products (native release exe set + wasm module)
+      - name: js CLI entry build (artifact source)
+        # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
+        # 产物检查消费（cmd/vitro_js/vitro_js.js）
+        shell: bash
+        run: cd moonbit && moon build --release --target js cmd/vitro_js
+      - name: Upload build products (native release exe set + wasm module + js entry)
         # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
         # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复
         # 构建（此前 core 串行一步红全断；闸间遮挡即此形态）。download 侧
@@ -153,6 +158,7 @@ jobs:
           path: |
             moonbit/_build/native/release/build/**/*.exe
             moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+            moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
           retention-days: 3
   gates-diff:
     name: Diff gate (${{ matrix.driver }})

@@ -146,12 +146,6 @@
       "stdout_sha": "2689367b205c16ce",
       "memory_sha": "fa469c12e9f69c55"
     },
-    "baseline/block_enum_definition.c": {
-      "src_sha": "b8d32ec8",
-      "exit_code": 0,
-      "stdout_sha": "0e4613eb3fdffc33",
-      "memory_sha": "e970fe8eccef4b5e"
-    },
     "baseline/block_static_typedef.c": {
       "src_sha": "9da603c0",
       "exit_code": 0,

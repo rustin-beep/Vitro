@@ -1,9 +1,17 @@
 #!/bin/sh
-# vitro 统一入口 launcher（sh 形态，#49 批一）——默认 wasm 壳，node 缺失或
-# 版本不足（壳 exit 3 哨兵）降级 native exe；`--backend native|wasm` 显式
-# 选边（排查用）。降级必 stderr 明示（禁静默——两臂行为偶有微差时排查
-# 不精神分裂）。
+# vitro 统一入口 launcher（sh 形态，#49 批一；三后端批 2026-10-15 重设计）。
+#
+# 三臂（C 方案裁定：单壳三后端，真相源 = cmd/lib/cli 单源）：
+#   --backend js     = moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
+#                      （MoonBit 壳直编 JS，node 直跑——CLI 默认臂；免 wasm
+#                       实例化层，端到端实测比 wasm 臂快 2.7×）
+#   --backend wasm   = scripts/vitro_cli/main.js 拉 gateway wasm-gc（旧 wasm 臂，
+#                      浏览器分发同源产物；保留兼容 + demo 同源验证）
+#   --backend native = cmd/vitro exe（防线基线臂——vm_diff/clang_direct 消费面）
+# 缺省 = js；node 缺失/版本不足（rc=5 哨兵——#106：3 与步数超限撞号）降级 native（降级必 stderr 明示，
+# 禁静默）。行为一致性由 vitro_cli_smoke 三臂对拍把守。
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+JS_ENTRY="$REPO/moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js"
 WASM_SHELL="$REPO/scripts/vitro_cli/main.js"
 NATIVE_EXE="$REPO/moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
 
@@ -31,13 +39,39 @@ run_native() {
   exec "$NATIVE_EXE" "$@"
 }
 
+run_js() {
+  reason="$1"
+  shift
+  echo "[vitro] backend=js（$reason）" >&2
+  exec node "$JS_ENTRY" "$@"
+}
+
+run_wasm() {
+  echo "[vitro] backend=wasm（node 拉 gateway wasm-gc）" >&2
+  "$NODE_BIN" "$WASM_SHELL" "$@"
+  rc=$?
+  if [ $rc -eq 5 ]; then
+    run_native "node 版本不足（壳 rc=5 哨兵）" "$@"
+  fi
+  exit $rc
+}
+
 # --backend 覆盖（首参位；剥掉后透传）
 if [ "$1" = "--backend" ] && [ -n "$2" ]; then
   if [ "$2" = "native" ]; then
     shift 2
     run_native "--backend 显式指定" "$@"
+  elif [ "$2" = "js" ]; then
+    shift 2
+    run_js "--backend 显式指定" "$@"
   elif [ "$2" = "wasm" ]; then
     shift 2
+    # 落到下方 wasm 流程（需 node 检测）
+    NODE_BIN="$(command -v node 2>/dev/null)"
+    if [ -z "$NODE_BIN" ]; then
+      run_native "node 不在 PATH" "$@"
+    fi
+    run_wasm "$@"
   fi
 fi
 
@@ -51,18 +85,12 @@ for a in "$@"; do
   fi
 done
 
-if [ ! -f "$WASM_SHELL" ]; then
-  run_native "wasm 壳不存在（scripts/vitro_cli/main.js）" "$@"
-fi
-
+# 缺省臂 = js（node 前置检测；缺失/异常降级 native——降级明示）
 NODE_BIN="$(command -v node 2>/dev/null)"
 if [ -z "$NODE_BIN" ]; then
-  run_native "node 不在 PATH" "$@"
+  run_native "node 不在 PATH（js 臂不可用）" "$@"
 fi
-
-"$NODE_BIN" "$WASM_SHELL" "$@"
-rc=$?
-if [ $rc -eq 3 ]; then
-  run_native "node 版本不足（壳 rc=3）" "$@"
+if [ ! -f "$JS_ENTRY" ]; then
+  run_native "js 入口产物不存在（$JS_ENTRY——构建：cd moonbit && moon build --release --target js cmd/vitro_js）" "$@"
 fi
-exit $rc
+run_js "缺省臂" "$@"

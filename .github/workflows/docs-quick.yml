@@ -1,0 +1,38 @@
+# docs 快速反馈（2026-10-15 建，三后端批 CI 重设计）：
+# 与主 CI（ci.yml 恒全量）完全解耦的**增量**薄通道——纯记账面 push 时
+# GitHub 原生 paths 过滤只在**本 workflow** 触发（主 CI 照常全跑，无
+# changes-job 单点——10da06a6 的 changes 分类器形态已废：分类器误判/
+# skip 字样误伤即全防线蒸发，moonbitlang 生态考察证实主流形态是
+# on.paths 原生过滤或干脆恒全量）。
+#
+# 本文件只含文档记账闸（facts/doc 预览类），快通道 ~2 分钟；代码面
+# push 由 ci.yml 全量承接。**这个文件红不阻塞主 CI**（两 workflow 独立）。
+name: docs-quick
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - '.agents/**'
+      - '**.svg'
+      - '.editorconfig'
+  workflow_dispatch:
+
+jobs:
+  docs-gates:
+    name: Docs bookkeeping gates (fast path)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Go (facts gate)
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
+        run: go run ./scripts/facts check
+      - name: Docs SVG freshness (gen_svg -check)
+        run: go run ./scripts/gen_svg -check
+      - name: Agent skills frontmatter audit (install_skills --list)
+        run: go run .agents/install_skills.go --list

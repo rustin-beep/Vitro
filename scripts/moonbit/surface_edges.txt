@@ -569,6 +569,10 @@ vitro/engine/cmd/step vitro/engine/cmd/lib/cli step
 vitro/engine/cmd/vitro moonbitlang/core/env args
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step
 vitro/engine/gateway vitro/engine/vm VitroVM
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli api

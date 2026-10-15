@@ -4,7 +4,7 @@
 // 形态：gateway wasm-gc 产物的 Node 宿主壳。四子命令（run/compile/step/api）
 // 参数面与 rc 五值表对齐 native vitro.exe（CLI_PROTOCOL_V1 spec 单源）；
 // launcher（scripts/bin/vitro|.cmd）默认调本壳，node 缺失/版本不足
-// （本文件 exit 3）降级 native exe。
+// （本文件 exit 5 哨兵——#106 修：3 与步数超限撞号）降级 native exe。
 //
 // 通道契约（与 native 的同形基础——差异消灭在源头，非 canonicalize）：
 //   - stdout：output.delta stdout 的 delta 是 Latin-1 折回形态（字节域
@@ -33,7 +33,9 @@ if (maj < MIN_NODE) {
   process.stderr.write(
     `[vitro] node ${process.versions.node} < ${MIN_NODE}（js-string builtins 需要）\n`,
   );
-  process.exitCode = 3;
+  // #106（2026-10-15）：降级哨兵 3→5——3 与协议表「步数超限」撞号，
+  // launcher 收到 3 无法区分「该降级」还是「程序合法超限」
+  process.exitCode = 5;
   return;
 }
 

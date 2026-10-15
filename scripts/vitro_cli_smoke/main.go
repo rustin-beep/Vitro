@@ -97,9 +97,10 @@ func main() {
 	shell := filepath.Join(repoRoot, "scripts", "vitro_cli", "main.js")
 	nativeExe := filepath.Join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "vitro", "vitro.exe")
 	wasmMod := filepath.Join(repoRoot, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
-	for _, p := range []string{shell, nativeExe, wasmMod} {
+	jsEntry := filepath.Join(repoRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js")
+	for _, p := range []string{shell, nativeExe, wasmMod, jsEntry} {
 		if _, err := os.Stat(p); err != nil {
-			fmt.Printf("vitro_cli_smoke: 前置产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm 与 MOON_CC=clang moon build --release --target native cmd/vitro）\n", p)
+			fmt.Printf("vitro_cli_smoke: 前置产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm + MOON_CC=clang moon build --release --target native cmd/vitro + moon build --release --target js cmd/vitro_js）\n", p)
 			os.Exit(1)
 		}
 	}
@@ -319,8 +320,8 @@ func main() {
 	outL, rcL := runOut("sh", shLauncher, "run", "corpus/baseline/array_sum_loop.c")
 	if rcL != 0 {
 		fatalf("C[launcher sh] 默认臂 rc=%d", rcL)
-	} else if !strings.Contains(outL, "backend=wasm") {
-		fatalf("C[launcher sh] 默认臂缺 backend=wasm 标注：%s", outL)
+	} else if !strings.Contains(outL, "backend=js") {
+		fatalf("C[launcher sh] 默认臂缺 backend=js 标注（三后端批 2026-10-15 缺省臂=js）：%s", outL)
 	} else {
 		fmt.Println("ok  C[launcher sh] 默认臂 backend 标注")
 	}
@@ -334,13 +335,22 @@ func main() {
 		fmt.Println("ok  C[launcher sh] --backend native 转发")
 	}
 
+	outW, rcW := runOut("sh", shLauncher, "--backend", "wasm", "run", "corpus/baseline/array_sum_loop.c")
+	if rcW != 0 {
+		fatalf("C[launcher sh] --backend wasm rc=%d", rcW)
+	} else if !strings.Contains(outW, "backend=wasm") {
+		fatalf("C[launcher sh] --backend wasm 标注缺失：%s", outW)
+	} else {
+		fmt.Println("ok  C[launcher sh] --backend wasm 转发")
+	}
+
 	// cmd 形态仅 Windows 断言（CI 双 runner 覆盖；sh 版全平台）
 	if runtime.GOOS == "windows" {
 		outC, rcC := runOut("cmd.exe", "/c", filepath.Join(repoRoot, "scripts", "bin", "vitro.cmd"), "run", "corpus/baseline/array_sum_loop.c")
 		if rcC != 0 {
 			fatalf("C[launcher cmd] 默认臂 rc=%d：%s", rcC, outC)
-		} else if !strings.Contains(outC, "backend=wasm") {
-			fatalf("C[launcher cmd] 默认臂缺 backend 标注：%s", outC)
+		} else if !strings.Contains(outC, "backend=js") {
+			fatalf("C[launcher cmd] 默认臂缺 backend=js 标注：%s", outC)
 		} else {
 			fmt.Println("ok  C[launcher cmd] 默认臂（Windows）")
 		}

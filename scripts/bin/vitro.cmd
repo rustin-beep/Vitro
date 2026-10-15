@@ -1,18 +1,23 @@
 @echo off
-rem Unified vitro launcher (cmd form) - default wasm shell via node; rc=3 falls
-rem back to native exe. ASCII-only: cmd.exe parses this file in the OEM codepage,
-rem UTF-8 bytes corrupt commands. Chinese messages live in the node shell.
+rem Unified vitro launcher (cmd form) - three-backend edition (2026-10-15):
+rem default = js entry (MoonBit shell compiled to JS, node runs it directly);
+rem --backend wasm = legacy gateway wasm-gc shell; --backend native = exe.
+rem rc=3 from wasm shell falls back to native. ASCII-only: cmd.exe parses this
+rem file in the OEM codepage, UTF-8 bytes corrupt commands. Chinese messages
+rem live in the node shell / sh launcher.
 rem goto-form (no parenthesized blocks): %errorlevel% expands at parse time
 rem inside ( ) blocks and keeps its stale value - a classic cmd pitfall.
 setlocal
 set "REPO=%~dp0..\.."
+set "JS_ENTRY=%REPO%\moonbit\_build\js\release\build\cmd\vitro_js\vitro_js.js"
 set "WASM_SHELL=%REPO%\scripts\vitro_cli\main.js"
 set "NATIVE_EXE=%REPO%\moonbit\_build\native\release\build\cmd\vitro\vitro.exe"
 
-if not "%~1"=="--backend" goto run_default
+if not "%~1"=="--backend" goto run_default_js
 if "%~2"=="native" goto force_native
 if "%~2"=="wasm" goto strip_wasm
-goto run_default
+if "%~2"=="js" goto strip_js
+goto run_default_js
 
 :force_native
 echo [vitro] backend=native ^(explicit --backend^) 1>&2
@@ -22,19 +27,40 @@ exit /b %errorlevel%
 
 :strip_wasm
 for /f "tokens=2,*" %%a in ("%*") do set "REST=%%b"
+goto run_wasm
 
-:run_default
+:strip_js
+for /f "tokens=2,*" %%a in ("%*") do set "REST=%%b"
+goto run_js_explicit
+
+:run_default_js
+if not exist "%JS_ENTRY%" goto no_js_entry
+where node >nul 2>nul
+if errorlevel 1 goto no_node
+echo [vitro] backend=js ^(default^) 1>&2
+if defined REST (
+  node "%JS_ENTRY%" %REST%
+) else (
+  node "%JS_ENTRY%" %*
+)
+exit /b %errorlevel%
+
+:run_js_explicit
+if not exist "%JS_ENTRY%" goto no_js_entry
+where node >nul 2>nul
+if errorlevel 1 goto no_node
+echo [vitro] backend=js ^(explicit --backend^) 1>&2
+node "%JS_ENTRY%" %REST%
+exit /b %errorlevel%
+
+:run_wasm
 if not exist "%WASM_SHELL%" goto no_shell
 where node >nul 2>nul
 if errorlevel 1 goto no_node
-
-if defined REST (
-  node "%WASM_SHELL%" %REST%
-) else (
-  node "%WASM_SHELL%" %*
-)
+echo [vitro] backend=wasm ^(gateway wasm-gc shell^) 1>&2
+node "%WASM_SHELL%" %REST%
 set "RC=%errorlevel%"
-if "%RC%"=="3" goto old_node
+if "%RC%"=="5" goto old_node
 exit /b %RC%
 
 :no_shell
@@ -44,6 +70,11 @@ exit /b %errorlevel%
 
 :no_node
 echo [vitro] backend=native ^(fallback: node not in PATH^) 1>&2
+"%NATIVE_EXE%" %*
+exit /b %errorlevel%
+
+:no_js_entry
+echo [vitro] backend=native ^(fallback: js entry missing - build: cd moonbit ^&^& moon build --release --target js cmd/vitro_js^) 1>&2
 "%NATIVE_EXE%" %*
 exit /b %errorlevel%
 

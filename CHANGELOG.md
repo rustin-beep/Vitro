@@ -12,6 +12,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(cli+fs+ci): 三后端单壳批——js 后端正式落地 + CI 恒全量裁定（用户拍板 C 方案）
+
+【背景】CLI 双真相事故根因 = 壳层双实现（main.js 597 行 vs cmd/lib/cli 1214 行）手工同步，
+下游审计爆发 25 条双臂分叉 issue（#94~#118）。用户拍板 C 方案三后端：单壳单语言
+（MoonBit），编译期后端分叉（js/native 直连引擎 + wasm-gc 薄外壳），消灭双真相。
+
+【驳论防线（js 后端 vs wasm-gc，四道全过）】栈深（三臂同点 128437~128750 栈堆碰撞，
+F4 旧劣势已被 call_depth_limit 结构化覆盖）/ 120 例三臂行为全 SAME / 确定性双探针
+（响应+1MB 映像哈希一致）/ GC 三探针（wasm-gc 分配密集快 2×、js 启动快 2.7×、
+混合负荷 js 反超 native——场景分派有据）。体积：esbuild minify+gzip 后 js 265KB
+< wasm-gc 334KB。
+
+【fs 四腿补全（上游照搬零新写）】上游 moonbitlang/x 的 fs 本就是四后端设计——
+补搬 fs_js.mbt（33 处 extern "js"）+ fs_wasm.mbt + moon.pkg targets 表（照抄上游）；
+各 2 处 @unicode 改调本包 utf8_compat（vendored 改造③同款）。vendor_drift PASS。
+
+【js 入口 cmd/vitro_js】子命令分派 + 5 个 extern "js" 绑定（argv/clock/stdin/stdout/
+exit），壳逻辑零复制（cmd/lib/cli 单源）。两大坑实锤修复：moon js 产物是 ESM
+（require 不可用 → process.getBuiltinModule）；Windows node readSync(0) 抛 EAGAIN
+（→ readFileSync(0) 一次读）。双臂矩阵 7/7 同形 + 语料抽检 8/8 SAME。
+
+【gateway/cli 目标放宽】+js 一行声明各自；引擎 22 包零改动（默认全目标）。
+surface 边登记 4 条（vitro_js→cli 四方法）。
+
+【launcher 三臂】缺省臂 wasm→js（sh+cmd 双形态）；--backend js|native|wasm 三选；
+node 缺失/产物缺失降级 native 明示。smoke C 组适配（默认臂=js 断言 + wasm 转发断言）。
+
+【CI 恒全量裁定 + 全跳事故修复】10da06a6 的 changes 分类器两宗罪实锤：分类器挂 =
+全 job 雪崩 + 提交信息正文提及「[skip ci]」字样（哪怕文档说明）触发 GitHub 原生
+全跳——CI 防线静默失守两笔（用户抓的红）。修复 = changes job 整体拆除（主 ci.yml
+恒全量，moonbitlang 生态 core/moon 共识形态）+ docs 减负改独立薄通道
+docs-quick.yml（on.paths 原生过滤、与主 CI 完全解耦、红不阻塞主 CI）。
+
+【双行计数口径演进】三后端批后多目标测试回流：fs 因 fs_wasm 腿计入裸口径、
+gateway/cli（[js,native,wasm-gc] 不含裸 wasm）独占 native 域——native-only 拆解
+改为 fs 0 / gateway 110 / cli 15 = 125（898−773），testcount 锚格式保留。
+
+【#106 降级哨兵 3→5】launcher 降级哨兵与协议「步数超限=3」撞号（node 不足→
+降级重跑 vs 程序合法超限，事件流复制污染）——三处同步改 5（main.js/sh/cmd
+launcher），协议 rc 表不动。
+
+【壳层分叉族销案 ×10】#94/#99/#100/#103/#105/#106/#107/#108/#109/#110/#111
+销案评论已发（js 单源臂实测形态替代 main.js CLI 消费面；main.js 退役观察期）。
+
+【防线】moon test 773/773 · native 898 · moon check 零错 · surface/pkg_deps 41 包/
+vendor_drift/mbti/testcount/facts 全绿 · smoke 全绿（C 组三臂矩阵）· js-vs-native
+语料 8 例抽检 SAME。
+
+Refs #94~#118（双臂分叉族的架构级根治）
+
 ### Fixed（#105 config.set 未知键静默丢弃：白名单 fail loud + input_mode_batch 真支持，2026-10-14）
 
 「静默骗人」族收官件（#91/#92/#105 三连全清）——config.set 对未知配置键静默丢弃（#88 实测三条失效路径之一：input_mode_batch 写入被吞、get 回显恒 false）：

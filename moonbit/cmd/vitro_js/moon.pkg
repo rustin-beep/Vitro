@@ -1,0 +1,12 @@
+// js 后端 CLI 入口（C 方案三后端批）：与 cmd/vitro（native）同一壳逻辑
+//（cmd/lib/cli），js 目标产物 = node 直跑单文件。stdin NDJSON 帧序列 →
+// 逐行 @gateway.invoke → stdout NDJSON（exit code 与 native 同表——
+// CLI_PROTOCOL_V1 §2）。launchers/CI 接线随批。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "vitro/engine/fs",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+js"

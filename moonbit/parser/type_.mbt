@@ -179,80 +179,16 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
       @ast.Type::int()
     }
   } else if self.match_token(Enum) {
-    // #93（2026-10-14 报/修）：块作用域 enum **定义体**——`enum {M};` /
-    // `enum Tag {..} x;` 形态。旧只处理「已声明类型引用」（enum Color c），
-    // Identifier 后跟 LBrace 或裸 LBrace 时体留给声明器 → E2005 级联
-    // 炸穿（文件作用域正常——顶层 parse_enum_decl 专用路径独享）。
-    // 成员解析对齐顶层循环：eval_enum_const 求值 + enum_const_values
-    // 注册 + 经 program_sink 落全局（枚举常量是外层作用域标识符）。
-    let enum_def_body = (tag : String) => {
-      ignore(self.consume(LBrace, "enum 后预期 '{'"))
-      let mut next_value : Int64 = 0
-      while !self.check(RBrace) && !self.is_at_end() {
-        let member_tok = self.consume(Identifier, "enum 成员预期标识符")
-        if self.match_token(Assign) {
-          let val_expr = self.parse_assign(depth)
-          match
-            eval_enum_const(
-              val_expr,
-              structs_table=self.snapshot_structs_table(),
-              unions_table=self.snapshot_unions_table(),
-              var_types=self.snapshot_var_types(),
-              enum_vals=self.enum_const_values,
-            ) {
-            Some(v) => next_value = v
-            None =>
-              self.errors.push({
-                message: "enum 初始化器必须是编译期整数常量（支持负数与四则/位运算）",
-                line: member_tok.loc.line,
-                column: member_tok.loc.column,
-                code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
-              })
-          }
-        }
-        match self.program_sink {
-          Some(prog) => {
-            push_enum_member_global(
-              prog,
-              @source.SourceLoc::new(member_tok.loc.line, member_tok.loc.column),
-              member_tok,
-              next_value,
-              @ast.Type::int(),
-            )
-            // #78：枚举常量入表（与顶层两注册点同步）
-            self.enum_const_values.set(member_tok.text, next_value)
-          }
-          None => self.enum_const_values.set(member_tok.text, next_value)
-        }
-        next_value += 1
-        if !self.match_token(Comma) {
-          break
-        }
-      }
-      ignore(self.consume(RBrace, "enum 成员后预期 '}'"))
-      if tag != "" {
-        self.typedef_names.set(tag, @ast.Type::int())
-      }
-      @ast.Type::int()
-    }
-    if self.check(LBrace) {
-      enum_def_body("")
-    } else if self.check(Identifier) {
+    if self.check(Identifier) {
       let name_tok = self.advance()
-      if self.check(LBrace) {
-        enum_def_body(name_tok.text)
-      } else {
-        // C23 enum : T：已声明的具名 enum 返回其底层类型；未声明的按 int
-        // 登记并返回
-        match self.typedef_names.get(name_tok.text) {
-          Some(t) => return t
-          None => self.typedef_names.set(name_tok.text, @ast.Type::int())
-        }
-        @ast.Type::int()
+      // C23 enum : T：已声明的具名 enum 返回其底层类型；未声明的按 int
+      // 登记并返回
+      match self.typedef_names.get(name_tok.text) {
+        Some(t) => return t
+        None => self.typedef_names.set(name_tok.text, @ast.Type::int())
       }
-    } else {
-      @ast.Type::int()
     }
+    @ast.Type::int()
   } else if self.match_token(Bool) {
     @ast.Type::int()
   } else if self.check(Identifier) {

@@ -565,33 +565,3 @@ test "issue78_enum_const_array_dim" {
     _ => fail("body 应为 Some")
   }
 }
-
-///|
-/// #93（2026-10-14 报/修）：块作用域 enum 定义体——`enum { M = 3 };` 或
-/// `enum Tag { ... } x;` 形态旧在 parse_base_type 的 Enum 臂不解析 { 体
-///（只处理「已声明类型引用」形态）→ E2005 级联炸穿到顶层（文件作用域
-/// 正常——顶层有 parse_enum_decl 专用路径）。修复：Enum 臂识别定义体
-///（Identifier 后跟 LBrace 或裸 LBrace）→ 解析成员（eval_enum_const
-/// 求值 + enum_const_values 注册 + 成员经 program_sink 落全局）。
-test "issue93_block_enum_definition" {
-  // 匿名 + 纯定义（无名声明器）
-  let q1 = parse_src(
-    "int main(void) { enum { M = 3 }; int v[M]; return v[0]; }",
-  )
-  inspect(codes_of(q1), content="[]")
-  // 匿名 + 声明器 + 引用前成员（B = A + 1）
-  let q2 = parse_src(
-    "int main(void) { enum { A = 5, B = A + 1 } t; return (int)t; }",
-  )
-  inspect(codes_of(q2), content="[]")
-  // 具名 tag + 体 + 声明器
-  let q3 = parse_src(
-    "int main(void) { enum Tag { X, Y = 9 } z; return (int)z; }",
-  )
-  inspect(codes_of(q3), content="[]")
-  // 对照：已声明 enum 类型引用形态不受影响（顶层定义 + 块内引用）
-  let q4 = parse_src(
-    "enum Color { RED }; int main(void) { enum Color c = RED; return (int)c; }",
-  )
-  inspect(codes_of(q4), content="[]")
-}

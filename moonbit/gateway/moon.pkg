@@ -35,4 +35,4 @@ import {
   "moonbitlang/core/encoding/utf8",
 }
 
-supported_targets = "+wasm-gc +native"
+supported_targets = "+wasm-gc +native +js"

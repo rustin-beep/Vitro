@@ -574,3 +574,19 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
 .crs-chip3 { --chip: var(--chip-3); }
 .crs-chip4 { --chip: var(--chip-4); }
 .crs-chip5 { --chip: var(--chip-5); }
+
+/* #121①：关连字——渲染出的符号必须等于敲进去的符号（<= 不许渲染成 ≤）。
+   两条硬约束实测坐实（2026-10-15）：① `font:` 简写会把 font-variant-ligatures /
+   font-feature-settings 重置回 normal，body 级继承在每个 font 简写消费面上被打断；
+   ② 同特异性层叠后者赢——本规则必须排在全部 font 简写规则之后（故置于文件末尾）。
+   下列为 style.css 内 `var(--mono)` 消费面全量 30 处（机械枚举）——**新增 mono 面
+   必须连坐本规则**，否则该面连字复活（教学硬伤复发）。 */
+.ws-chip, .share-out, #editor-hl, #editor, .config-grid input[type=number],
+.config-grid .cfg-argv, #stdin-row label, #stdin-box, .stat b, .stdout, .trap,
+.note, .stderr, #argv-box, .diag .code, .pp-line, .mem-table, #cat-search,
+.cat-card .code, .method .m-name, .ledger .code, .anim-phase, .step-stack,
+.step-tree .nd text, #array-viz .av-name, #array-viz .av-num, .node-card p,
+.node-card .nc-codebox, .ref-pre, .eng-seek input[type="number"] {
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}

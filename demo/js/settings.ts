@@ -66,7 +66,8 @@ export function initSettings() {
   if (!THEMES.includes(saved)) saved = "glass";
   setTheme(saved);
   const savedFont = storeGet("vitro-ed-font");
-  applyEdFont(savedFont === "12px" || savedFont === "15px" ? savedFont : "13px");
+  // #121②：档位 13/14/16（默认 14px）；旧存档 12px/15px 不在新白名单，回落默认
+  applyEdFont(savedFont === "13px" || savedFont === "16px" ? savedFont : "14px");
   applyMotion(storeGet("vitro-motion") === "off" ? "off" : "on");
   applyReplayWide(storeGet("vitro-replay-wide") === "on" ? "on" : "off"); // 默认关（2026-10-09 用户拍板反转：功能可选，不默认改变布局）
   syncSeg("set-gran", granularity());

@@ -44,7 +44,7 @@
    ════════════════════════════════════════════════════════════════ */
 
 :root {
-  --mono: ui-monospace, "Cascadia Code", Consolas, "Microsoft YaHei UI", monospace;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "Microsoft YaHei UI", monospace; /* #121④：Mono 变体不带连字，双保险 */
   --font-ui: -apple-system, "Segoe UI", "Microsoft YaHei UI", sans-serif;
 
   /* ── 动效规格（全主题共享；WPF 侧以 KeySpline 等价映射）── */

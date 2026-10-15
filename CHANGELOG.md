@@ -40,7 +40,7 @@ surface 边登记 4 条（vitro_js→cli 四方法）。
 node 缺失/产物缺失降级 native 明示。smoke C 组适配（默认臂=js 断言 + wasm 转发断言）。
 
 【CI 恒全量裁定 + 全跳事故修复】10da06a6 的 changes 分类器两宗罪实锤：分类器挂 =
-全 job 雪崩 + 提交信息正文提及「[skip ci]」字样（哪怕文档说明）触发 GitHub 原生
+全 job 雪崩 + 提交信息正文提及 GitHub 跳过指令方括号字样（哪怕文档说明里只是引用它）触发原生
 全跳——CI 防线静默失守两笔（用户抓的红）。修复 = changes job 整体拆除（主 ci.yml
 恒全量，moonbitlang 生态 core/moon 共识形态）+ docs 减负改独立薄通道
 docs-quick.yml（on.paths 原生过滤、与主 CI 完全解耦、红不阻塞主 CI）。

@@ -34,7 +34,7 @@
 > 05 目录 golden 主册回填 113 键全 ✅ 并给三份过程记录加闭环横幅；
 > 06 目录 U2 拍板取代注记与 S1 双坐标待办勾销；07 目录统一整备路线图头部补让位声明）
 
-> **沿革增补：2026-09-27 新增 01 目录《唯一依赖清除路线》**（唯一外部依赖 `moonbitlang/x@0.5.5` 形状实测：
+> **沿革增补：2026-09-27 新增 01 目录《唯一依赖清除路线》〔已归档 2026-10-15——路线 B 执行完毕，见 archive〕**（唯一外部依赖 `moonbitlang/x@0.5.5` 形状实测：
 > 消费面 = 5 个 cmd 包 × 7 函数、引擎核心零消费；五条路线（自写 / vendor+漂移探针〔推荐〕/ 拆模块 /
 > 保留 / 等 core 收敛）+ 探针双层口径设计（内容哈希主 + 版本号辅）+ 落地清单；**实测新发现**：上游
 > `fs_native.mbt` 已漂移而 version 未 bump（版本号口径探针会漏报）；未拍板，待用户裁定）
@@ -69,8 +69,6 @@
 
 | 文档 | 说明 |
 |------|------|
-| [`current/01-定位与路线/后端定位与白箱计划.md`](current/01-定位与路线/后端定位与白箱计划.md) | **后端定位主计划**：前端切割决策、三出口一核心架构、协议先行、Phase 0~3 路线（原 `VITRO_BACKEND_SPLIT_WASM_WHITEBOX_PLAN.md`） |
-| [`current/01-定位与路线/项目更名记录.md`](current/01-定位与路线/项目更名记录.md) | **项目更名记录**：Cide → Vitro 决策依据、命名映射、ABI 2.0.0 迁移指引、诚实边界与验证记录（2026-09-14） |
 | [`current/01-定位与路线/MoonBit迁移总计划.md`](current/01-定位与路线/MoonBit迁移总计划.md) | **MoonBit 迁移总计划（2026-09-18 定稿，当前工作排期权威）**：唯一存活计划——形态裁定（同仓绞杀者/v1=C only〔C++ 已裁砍〕/JIT 倾向不搬/Go 驱动保留/wasm-gc 单出口）；**四门终局 0 红**（门0 弱通过、门1 通过 快于现役解释器 3.3×、门2 有条件 -W gc、门3 通过）；9 条一手语言事实；L0-L9 包切分总图；P1-P7 止血+按目标架构+放弃三清单；A/B/C/D 四级差分锚点；裸奔期最小防线 24 例；差异台账 v0（17 capability_flags）；风险登记册；S0.5-S9+全量切换里程碑（**实测进度：S2–S8 已全部收官；0.8.0 已于 2026-10-05 线上发布（tag `vitro-engine-0.8.0`，线上验收三件全绿）；0.7.0 已于 2026-09-30 线上发布；当前阶段 = S9 修复批——脱钩工序①~④已全部完成〔2026-10-05，native/ 物理删除〕，修复面 22 条已销 20（批一~批五，剩 #10/#20），#47 母跟踪收尾中；单侧演化 #32/#33 待排；2026-10-04 排期改写含 #39 真值源迁移前置；§10.5 G 系列已全闭环**）；探测档案取回指南（提交 `917251e`，16 份文档全量入 git 历史） |
 | [`current/07-质量与裁定/moonbit生态参考调研20261005.md`](current/07-质量与裁定/moonbit生态参考调研20261005.md) | **MoonBit 生态参考调研（2026-10-05）**：GitHub 全量扫描（2,995 仓）+ 6 仓 clone 亲读——**Tier 1 事实：moonc 源码已开源**（前端+中端+wasm 后端〔native 后端未开源〕；relaxed SSPL + **非商业修改条款** + **编译产物 license 自选例外**〔vitro/engine 产物无传染〕；moon/core/async 均 Apache-2.0）——**停更应急预案经裁定不做**（判定书 §3.3：真停更即 fork OCaml 维护 wasm 后端链）；Tier 2 模式参考：minimoonbit-public（官方课程 MoonBit 子集编译器〔KNF/RISC-V〕）/ MoonbitNES（wasm 内存特化+多 target 条件编译）/ MoonLLVM（执行加速远期对照）；**零采纳零新增依赖** |
 | [`current/07-质量与裁定/S9脱钩与裁定批判定书.md`](current/07-质量与裁定/S9脱钩与裁定批判定书.md) | **S9 脱钩与裁定批判定书（2026-10-05 终稿，十项全裁）**：三裁定实测终判输入——**JIT = wasm-gc 物理无处可放**（制品功能性 imports 仅 js-string ×6，零执行面 API）/ **libc = 单一路由表已落**（86 Bytecode + 2 改判 + 108 Host，遮蔽病结构性消除；**实锤 #39 漏登记第四生成链 gen_libc_data→bytecode_libc_data.json**，已评论登记）/ **Wasmtime 实测不成立**（.NET 绑定 48 编译期拒 non-externref + js-string 两侧无支持；CLI 引擎核心可编译——差距在绑定层，.NET 通道 = serve sidecar 或 WebView2）+ S4 期三欠账补收（names 二选一 / containers 归档〔实测从未建包〕/ decl 散拼重挂）+ **工序③升格冻结资产清单**（四层中间产物 diff〔vm_diff 无基线文件删即失效〕+ e2e 275 三路映射 + trap 锚面〔无 Clang 真值面须逐锚证红〕）+ **工序④准出升级**（替代建成才许移除；MoonBit 侧 fuzz 现状为零）；**§6 裁定表含「不做会怎样/默认值」分级列**（清扫组默认动作直接推进 / 风险防线组硬准出）；工序③④硬准出已改写总计划原文 |
@@ -79,15 +77,10 @@
 | [`current/07-质量与裁定/语料生成防线方案——五路防线与三段管道.md`](current/07-质量与裁定/语料生成防线方案——五路防线与三段管道.md) | **语料生成防线方案（2026-10-12，方案拍板批次未开工，[#74](https://github.com/rustin-beep/Vitro/issues/74)）**：五路防线全景（真实语料在役 / **路 B 合法随机** / 路 A 白盒在役 / **路 D·E 错误随机+痛点定向** / 单元防线在役）+ **三段管道**（基底 S1 yarpgen 黑盒 pin `1adb290` + S3 既有语料 744 份 → 变换引擎 corpus_engine 三模式〔trim/random/misconception〕策略表 JSON 外置 → 驱动**四裁判**〔clang+gcc+vitro 双臂〕分桶：误收/panic/arm_divergence 并列最高）+ 已定裁定四条（**永不移植**〔反目标+S2 已建〕/ 方向库单源两消费端〔A 册 238 条→LLM 分发与定向突变〕/ 双端强制〔AGENTS.md #14〕/ gcc 正式纳入）+ 六批计划（批 0 gap 重采→批 1 修 E3039→批 2 引擎 MVP→批 6 挂既有夜间 schedule）；与 #25 前件（管收）分工 = 本件管造，LLM 线 #73 为 S2 通道 |
 | [`current/07-质量与裁定/已知限制与差异.md`](current/07-质量与裁定/已知限制与差异.md) | **已知限制与差异（as-of S9 修复批 2026-10-07，主动披露）**：四分类清单——**①已知缺陷已清零**（9 条全部随 S9 修复批销案划线留档）/ 教学语义设计 6 条（受检访存·E3070 栈缓冲校验——有意的产品语义，Clang 同输入下是 UB）/ 与 C 标准·Clang 架构差异 8 条（32 位指针 4 字节模型等）/ 路线图缺口（单侧演化批候选等）/ 教学语义设计 6 条（受检访存·E3070 栈缓冲校验——有意的产品语义，Clang 同输入下是 UB）/ 与 C 标准·Clang 架构差异 8 条（32 位指针 4 字节模型等）/ 路线图缺口（S8 各项已落、S9 排期）；每条标注 Clang 对照状态；根 README 与 moonbit/README 双落点链接；差异台账机器单源 = `scripts/diff_ledger/ledger.json`（30 条，resolved-verified 12），本清单为台账人工导读层 |
 | [`current/07-质量与裁定/demo实测样本库20261001/`](current/07-质量与裁定/demo实测样本库20261001/README.md) | **Demo 实测样本库（2026-10-01）**：九批真实 C 代码实测的**用户原码归档**（19 份逐字保留），每份均三方对拍（Clang 绿 / 引擎红 / Rust oracle 同病〔oracle 臂已随删区退役——历史时点事实〕），命中 issue **#3~#9（已全部随 S9 修复批销案关闭，转正待义务链执行——2026-10-07 状态回灌）**——const char\* decay 加宽 / 初始化列表尾逗号 / static 函数名作值 / long long 比较 / union 内联 body / E3036 不可达 / 三目类型统一；**暂不入测试体系**（语料扫描域外），转正条件与逐份映射见库内 README；全部两侧同病存量，修复挂 Rust 退役后单侧执行批 |
-| [`current/07-质量与裁定/20260919_S2词法器执行记录.md`](current/07-质量与裁定/20260919_S2词法器执行记录.md) | **S2 词法器执行记录（2026-09-19）**：vitro/engine/lexer 收官——独立预处理 pass（续行拼接/注释剥离/指令/展开）+ LineMap + 宿主 IO（SourceProvider/Vfs）；L1/L2 双层 token TSV 差分逐字节一致（随机 2400 例 4800 TSV + 真实语料 444 例）；已知差异清单 13 条（MoonBit 修复项）+ 故意复刻的 oracle 缺陷 3 项登记；vitro/engine@0.2.0 上架 |
-| [`current/07-质量与裁定/20260919_S3解析器执行记录.md`](current/07-质量与裁定/20260919_S3解析器执行记录.md) | **S3 解析器执行记录（2026-09-19）**：vitro/engine/parser 收官——六文件平移（瀑布/声明符螺旋/语句/声明/C++）；防护形态改造（depth 参数化 8 壳同构 + 声明符 Array 链迭代化 1250 层存活 + 回滚七字段全量快照 + stall_count 活性观测）；E1/E2 差分 597 样本逐字节一致 + E3 病态 12 样本同等拒绝 + E4 反向锚；差异驱动 parser_diff（--selftest J9）；未发布（随 0.4.0）；**§7 审阅修复批（09-20）**：offsetof depth 透传 + enum 常量求值迭代化 + 声明符折叠按 C 语义（有意分叉登记）+ --threshold 阈值锚 + 熔断守卫 + 顶层前瞻判定收口 + CI 接线 |
-| [`current/07-质量与裁定/20260922_性能探究实录.md`](current/07-质量与裁定/20260922_性能探究实录.md) | **性能探究实录（2026-09-22 首轮四轮 §1–§4；其后 §8/§9 复跑与归因、§10 遗留、§11 S6 后复跑、§12 S7 wasm-gc 单出口后复跑、§13 S8 收官批全量复跑 + HEAD vs 0.7.0 同时段 A/B〔2026-10-04，判「无回归」〕、§14 时间旅行优化现状 + JIT 正交性、§15 S8 交付面全量实测（CLI 口径 + 库级对照，2026-10-04）、§16 wasm-gc 出口全场景实测（Node 宿主 + gateway；与 native CLI 同请求对照）、§17 跨实现执行对照（Clang/CPython/V8）**：①native 管线基线（四层 dump baseline 365 例全跑 1.2s/单文件 12.3ms/冷构建 6.2s）；②用户场景 + Rust oracle 对比（compile/run 中位 8–10ms；同层 1.4–1.6×；压力 6 维度随规模恶化至 ~3×，locals 最差；设计性拒绝两侧同构——expr 深度 512/全局区 60KB，**moon dump rc=0 须查产物 ok 字段**）；③时间旅行性能裁定（**累赘实锤**：每步全量快照 21μs=全速 320×、vs CPython 慢 3–4 数量级、bubble/nested 60s 跑不完；病灶=每步 CPU 非内存〔曾误判 OOM 已修正〕；优化=按需物化+checkpoint+写集 undo，StepPayload 协议冻结不动）；④wasm-gc 全面测试（**6/7 场景持平或反超 native**：lexer 1.7×/GC 2.3×；体积 -54%；唯一弱项=大批量超线性）+ 路线裁定（**bytecode→wasm 生成器为全速正解**〔栈式→栈式/1MB→memory 16 页/trap 白送〕，**模板超级指令搬运退役**）。含方法学坑 6 条与探针资产清单（`tmp/perf_probe/` 忽略区） |
 | [`current/07-质量与裁定/20261007_jsonmbt真相源迁移.md`](current/07-质量与裁定/20261007_jsonmbt真相源迁移.md) | **.json.mbt 真相源迁移（jsonmbt 批②，2026-10-07；2026-10-08 合流勘正 + CI 复绿）**：11 张 `rules.json` 翻转为 `.json.mbt` 唯一真相源（`.json` 由 `jsonmbt build --pretty` 在 CI 再生、不入仓，**消费方零改动**）+ **moon 静态门禁**（类型/字段错编译期红——写坏的 `.json` 照样过下游 Go 闸门，"不接 moon = 只换载体不换保护"）；含 11 张消费方闸门表 / 本地三步纪律（`moon fmt scripts` → `cd scripts && moon check` → 再生）/ 逐张注入覆盖度与红牙证据；**勘正**：仓根 `moon.work` → `scripts/` 自立 workspace（根级会让 moonbit 产物搬仓根、`vitro/engine/` 前缀致消费面全断）；**复绿**（run 37733072522）：CI 补 `moon update`（干净 runner registry index 未初始化 ⇒ parser·lexer·x not found rc=127）、再生清单改自枚举 + 计数断言 11（原手抄 10 张漏 `perf_budget`） |
 | [`current/01-定位与路线/架构设计.md`](current/01-定位与路线/架构设计.md) | 架构总纲（编译器管线 / VitroVM / 内存模型 / 时间旅行 / 诊断 / 协议 / 关键决策）——**主体描述删区前的 Rust 实现〔2026-10-05 退役〕，语义章节仍为 MoonBit 侧同语义参照，头部有现状横幅；按 MoonBit 目标架构重写已列待办**（原 `DESIGN.md`） |
 | [`current/01-定位与路线/项目路线图.md`](current/01-定位与路线/项目路线图.md) | 项目路线图：当前状态、已完成里程碑、下一步、已知缺口 G1~G13（诚实记录）（原 `ROADMAP.md`） |
-| [`current/01-定位与路线/结构重构与C23锚定决议.md`](current/01-定位与路线/结构重构与C23锚定决议.md) | 结构重构决议（R1~R4，已全部交付）+ C23 语言锚定 + E2 模块化预处理器 + E3 C23 语义级（原 `VITRO_RESTRUCTURE_PLAN.md`） |
 | [`current/01-定位与路线/工程债务维护方案.md`](current/01-定位与路线/工程债务维护方案.md) | 工程债务偿还与长期维护方案（`#DXX` 债务编号体系的事实源）（原 `MAINTENANCE_PLAN.md`） |
-| [`current/01-定位与路线/唯一依赖清除路线.md`](current/01-定位与路线/唯一依赖清除路线.md) | **唯一依赖清除路线（2026-09-27 实测；**✅ 路线 B 已拍板执行并落地〔2026-09-28 批〕**——vendor 搬迁 + 漂移探针 + moon.mod 依赖块清空）**：`moonbitlang/x@0.5.5` 形状实测（消费面 = 5 个 cmd 包 × 7 函数，引擎核心零消费）+ 四条结构性成本 + 七条硬约束 + 五条路线对比 + 探针双层口径（内容哈希主 + 版本号辅，`toolchain_probe` 同构）；**实测新发现**：上游 `fs_native.mbt` 曾漂移而版本号未 bump（版本号口径探针会漏报——探针设计直接动因） |
 | [`current/01-定位与路线/内存安全规范.md`](current/01-定位与路线/内存安全规范.md) | 内存安全规范（Rust 边界、线性内存、堆隔离与检查清单）（原 `MEMORY_SAFETY.md`） |
 
 #### 构建与上手
@@ -138,8 +131,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | **StepPayload v0.1 语言中立协议 schema**（已冻结，S1–S5 签字回放 61/61；§9 v0.2 激活轨道、附录 B 受控词汇表） |
-| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行六前缀 + 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
-| [`current/06-出口与协议/下游需求处置回执.md`](current/06-出口与协议/下游需求处置回执.md) | 下游需求清单处置与窗口表态（A/B/C/D 逐项回执；第二批 capi 窗口、三段式内存地图、会话语义；capi 后续已由 U2 拍板裁不做）（原 `VITRO_DOWNSTREAM_REQUESTS_RESPONSE.md`） |
+| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行前缀【枚举权威=spec §1 白名单表，索引不写数】+ 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
 | [`current/06-出口与协议/堆有界隔离决议.md`](current/06-出口与协议/堆有界隔离决议.md) | 堆内存决议：bump 分配 + 有界隔离（三道墙；已拍板已实施，U2 不可破坏项）（原 `VITRO_HEAP_QUARANTINE_DECISION.md`） |
 | [`current/06-出口与协议/wasm多实例并发模型与U2拍板.md`](current/06-出口与协议/wasm多实例并发模型与U2拍板.md) | 宿主并发模型裁定：N 线程 × N 实例构造性隔离（三宿主形态 + 1实例=1线程=1会话铁律）+ U2 拍板（19 声明冻结现状、第二批 capi 裁不做、下游改道 wasm/serve）（2026-09-19） |
 | [`current/06-出口与协议/出口分档与宿主策略.md`](current/06-出口与协议/出口分档与宿主策略.md) | **出口承诺面口径契约 + 宿主接入策略**（F-5 展开）：三分档（承诺=wasm-gc 制品/冻结协议/生成 SDK/.mbti ｜ 可用不承诺=native/js ｜ **不提供=C ABI** 三条硬理由+触发线）、四通道宿主矩阵（WebView=图形宿主首选/协议 sidecar/mooncakes 源码级/生成 SDK）、数据源单源论（引擎画数据、下游画像素）、SharpTutor 三段迁移路径、**§6 TS 层职责三层拆解 + 待命时序 + 语言版图终态**（双核 MoonBit+Go、TS 待命、UI 主体=下游/社区，2026-09-25） |
@@ -148,15 +140,10 @@
 
 | 文档 | 说明 |
 |------|------|
-| [`current/07-质量与裁定/统一整备路线图.md`](current/07-质量与裁定/统一整备路线图.md) | **统一整备路线图 U0~U7**〔**排期权威已让位**：2026-09-18 起实际排期载体为 [MoonBit 迁移总计划](current/01-定位与路线/MoonBit迁移总计划.md) 的 S 系列；本表保留为 U 批次历史口径与未闭环项索引〕：三语化 S 系列与重构评估 Phase 系列的合并执行方案（波次总览 / CS 硬门禁 / 防伪绿机制）（原 `VITRO_OVERHAUL_ROADMAP.md`） |
-| [`current/07-质量与裁定/核心资产重构裁定.md`](current/07-质量与裁定/核心资产重构裁定.md) | **核心资产重构裁定 v1（独立裁定）+ 重构执行方案**：分区裁定 / 判据 J1~J10 / 候选对比 / 中止条件 / §13 五域执行方案（D1 防线自身、D5 工具链语言 Python→Go 迁移边界与双轨纪律）；**§14 JIT trace 路径 P0 静默错值**（嵌套纯计数循环被外层 trace 穿透；**归因修正为与 `long long` 无关**；根因 = JIT fast path 在录制期间未禁用；含四组双向验证实验与 `vm_bench` 两处方法学缺陷）；**§14.11 对重构范围的影响**：新增子域 **D6（JIT 加速器存废重裁：先校正 `vm_bench` 重测加速比 → 删 JIT 或收缩作用域）**、D1b 形状对抗生成、J10 前置到 W1。**现状注记（2026-10-04）**：裁定①已被 MoonBit 绞杀者迁移实践超越、D5 已收官、D6 已由总计划 F-3 承接——本文保留为裁定过程与判据体系档案（native 冻结区防线仍引用）。实测脚本与证据 JSON 原在 `scripts/core_asset_verdict/`——**已随 2026-10-05 删区退役**（探针对象为 Rust 冻结区；git 历史 / tag `rust-oracle-freeze` 可回溯）（原 `VITRO_CORE_ASSET_RECONSTRUCTION_VERDICT.md`） |
-| [`current/07-质量与裁定/Vitro架构审阅报告v2.md`](current/07-质量与裁定/Vitro架构审阅报告v2.md) | **Vitro 架构审阅报告 v2·整合版（2026-09-21，含修正批 b）**：12+ 轮对话收敛——技术终局（一门语言做核心 + 协议做契约 + 主进程掌控实例边界 + 任意语言做插件两档隔离）/ 15 处认知修正台账 / 对外面实测 200 符号 vs "只暴露三面"硬约束（收窄路径：未发布包零成本窗口 + 签名闭包单位 + 白名单 -check 先证红）/ SLOT_STRATEGY_VERSION 三态分档方案（含 global_data_end 交叉点）/ 插件架构终局裁决 / 最紧三条待办与依赖排序（v1 时序累积版已归档） |
-| [`current/07-质量与裁定/kimicc外部参考调查报告20260926.md`](current/07-质量与裁定/kimicc外部参考调查报告20260926.md) | **kimicc 外部参考调查报告（2026-09-26）**：moonbitlang 官方 MoonBit C 编译器（bobzhang 主理，1467 commits 极活跃，SQLite 3.49.1 conformance 水平）五维度深挖（预处理器/解析器 AST/MIR ctype/后端 JIT/测试防线）+ 主会话亲读交叉验证，全部结论带 file:line 证据；**总裁定 = 参考方法学/惯用法/防线形态/架构决策样本，不搬实现**（kimicc 不能当 oracle、bobzhang/cfront 依赖禁入核心链、覆盖面是上界非追赶目标）；**Vitro 自查三产出**（codegen 成员偏移两份 inline 拷贝 / printf 事实三处分居 / BytecodeGen 不依赖 typeck——前两项已排版进总计划 §10.5 G-5/G-6）；后续工作项排版：§10.5 增补 G-5/G-6、§7.1 层 2 参照注记+防线增量五件、§10 S9 JIT 复核 W^X 先例注记 |
 | [`current/07-质量与裁定/列号口径冻结.md`](current/07-质量与裁定/列号口径冻结.md) | 列号现状口径冻结（词法 +1 / 解析非 ASCII −4 / make_token 量纲混算根因）+ MoonBit vitro/source 双坐标契约输入 + 10 形状防漂移锚（2026-09-19） |
 | [`current/07-质量与裁定/脚本埋雷验证记录.md`](current/07-质量与裁定/脚本埋雷验证记录.md) | **J9 台账**：五个判定型脚本（shadow_verify / ci_three_tier_check / serve_smoke / facts / precompile_bytecode_libc）的"注入→必须红"埋雷实证台账——判定型脚本埋雷记录 = 0 时其全绿不得作为结论依据（W0-1 / U0#8 验收达成）；MoonBit 迁移期新增闸（diff_ledger / teaching_annotation_diff / protocol_frames 等 20+）的证红以各脚本头注与提交为权威源（覆盖面演化注记） |
 | [`current/07-质量与裁定/INCIDENTS/README.md`](current/07-质量与裁定/INCIDENTS/README.md) | **事故归档制度与索引**（模板 + 归档规则：任何 GB 级资源事故必须归档，与 CHANGELOG 分工；在档：[seek 重放泄漏](current/07-质量与裁定/INCIDENTS/事故202609_Seek重放泄漏.md)） |
 | [`current/07-质量与裁定/协作纪律与事故档案.md`](current/07-质量与裁定/协作纪律与事故档案.md) | **协作纪律与事故档案（as_of 2026-10-09）**：回答"**这条纪律是哪次事故换来的**"——①审阅方式（突变测试 3/3 检出起源、**渗出证据链**〔09-06~09-12 九次"防线加压照出存量"：门禁化 4 例 / 外部审查 12 项全成立 / **保险丝从未生效** / **29 个 `.in` 从未使用致虚假 match** / 浮点语义错存活全部防线 / 词汇闭合首日 3 条不可达〕、J9 防线的防线、**人审位置在机器盲区**〔两次公开实锤：覆盖面质询照出 4 条注释 Rust 病入 [#47](https://github.com/rustin-beep/Vitro/issues/47)、`int main{` 抓出 parse error recovery 缺失立案 [#48](https://github.com/rustin-beep/Vitro/issues/48)〕）②**纪律 ↔ 来源事故对照表**（AGENTS 13 条逐条溯源 + 事故留痕 / 规模 realism / 保险丝可触发性 / 合成靶料效力边界 / 双向对账防僵尸条目等来自事故但按"不堆时点事实"留在本档者）③权限与授权（AI 无独立落案权、授权逐次且可细分）④**否决与撤回档案**（整体 C 重写多轮驳回 / 分而自治降级"已评估暂不采纳" / 语言选型三条结论全撤回 / 独立成仓立项当日改判废弃 / 3D 截图方案否决）⑤查证指引 + **残留缺口**（素材主要来自不入库的工作日志，已诚实登记）——与 `04-工具链与踩坑`（确定性坑）/ `INCIDENTS/`（GB 级资源事故）/ `统一整备路线图.md` §4（机制表）三处归口互补不重复 |
-| [`current/07-质量与裁定/moonc警告全表20261009.md`](current/07-质量与裁定/moonc警告全表20261009.md) | **moonc 警告全表（2026-10-09 留档）**：`moonc check -warn-help` 官方 93 项警告 id/mnemonic/三态（warn/error/off）对照表——警告债清理与严格度开启总账 [#54](https://github.com/rustin-beep/Vitro/issues/54) 的 Part B `@<spec>` 升错误配方的查表底册；含 `--warn-list` 语法五形态与 A1 批后基线快照（--target all 310 条分布） |
 
 #### 发布档案（mooncakes 版本史）
 
@@ -182,7 +169,7 @@
 | 文档 | 说明 |
 |------|------|
 | [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | StepPayload v0.1（**已冻结**，2026-09-12，S1–S5 签字回放 61/61）；§9 v0.2 激活轨道、附录 B 受控词汇表 |
-| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行八前缀〔#69 勘正〕/ 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
+| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行前缀枚举权威=spec §1 表〔索引不写数——四说并存归一，#114〕/ 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
 
 ---
 
@@ -260,6 +247,19 @@
 | `ARCHIVE_SHADOW_VS_CI.md` | 立论前提（特性缺失期）已消失 |
 | `ARCHIVE_WEB_DEPLOYMENT_CLOUDFLARE_AND_WASM_INTEGRATION.md` | Flutter Web 部署路径作废 |
 | `ARCHIVE_WEB_DEPLOYMENT_GITHUB_AND_GITEE_PAGES.md` | 双 Pages 部署围绕已删除产物构建 |
+| [`ARCHIVE_ARCHIVE_下游需求处置回执202609.md`](archive/ARCHIVE_ARCHIVE_下游需求处置回执202609.md) | `06-出口与协议/下游需求处置回执.md` | 下游需求清单逐条闭环（签字回放 61/61）——回执使命已尽 |
+| [`ARCHIVE_ARCHIVE_kimicc外部参考调查报告20260926.md`](archive/ARCHIVE_ARCHIVE_kimicc外部参考调查报告20260926.md) | `07-质量与裁定/kimicc外部参考调查报告20260926.md` | 参考价值裁定已消化入纪律（红线：依赖禁入核心链） |
+| [`ARCHIVE_ARCHIVE_统一整备路线图U系列20260912.md`](archive/ARCHIVE_ARCHIVE_统一整备路线图U系列20260912.md) | `07-质量与裁定/统一整备路线图.md` | 排期权威已让位总计划 §10；U 批次历史口径索引 |
+| [`ARCHIVE_ARCHIVE_核心资产重构裁定20260912.md`](archive/ARCHIVE_ARCHIVE_核心资产重构裁定20260912.md) | `07-质量与裁定/核心资产重构裁定.md` | 裁定①/D5/D6 均被后续演进承接；判据体系（J1~J10）档案 |
+| [`ARCHIVE_ARCHIVE_Vitro架构审阅报告v2_20260929.md`](archive/ARCHIVE_ARCHIVE_Vitro架构审阅报告v2_20260929.md) | `07-质量与裁定/Vitro架构审阅报告v2.md` | 断言复验属实并处置销账——审阅使命已尽 |
+| [`ARCHIVE_ARCHIVE_后端定位与白箱计划20260911.md`](archive/ARCHIVE_ARCHIVE_后端定位与白箱计划20260911.md) | `01-定位与路线/后端定位与白箱计划.md` | 定位转型决策档案：Phase 0 已执行、wasm-gc 落地、U2 裁不做、Rust 已删区 |
+| [`ARCHIVE_唯一依赖清除路线20260927.md`](archive/ARCHIVE_唯一依赖清除路线20260927.md) | `01-定位与路线/唯一依赖清除路线.md` | 唯一依赖清除路线 B 已执行落地（2026-09-28 批）——执行使命已尽 |
+| [`ARCHIVE_结构重构与C23锚定决议20260911.md`](archive/ARCHIVE_结构重构与C23锚定决议20260911.md) | `01-定位与路线/结构重构与C23锚定决议.md` | R1~R4 全部交付 + C23 锚定落规范；排期权威已让位总计划 §10 |
+| [`ARCHIVE_项目更名记录20260914.md`](archive/ARCHIVE_项目更名记录20260914.md) | `01-定位与路线/项目更名记录.md` | Cide → Vitro 更名一次性事件记录，消费期已过 |
+| [`ARCHIVE_S2词法器执行记录20260919.md`](archive/ARCHIVE_S2词法器执行记录20260919.md) | `07-质量与裁定/20260919_S2词法器执行记录.md` | S2 lexer 批收官执行记录（0.2.0 上架） |
+| [`ARCHIVE_S3解析器执行记录20260919.md`](archive/ARCHIVE_S3解析器执行记录20260919.md) | `07-质量与裁定/20260919_S3解析器执行记录.md` | S3 parser 批收官执行记录（0.4.0 随批） |
+| [`ARCHIVE_性能探究实录20260922.md`](archive/ARCHIVE_性能探究实录20260922.md) | `07-质量与裁定/20260922_性能探究实录.md` | §1~§17 六轮复跑结论已沉淀进防线基线与总计划，实录使命已尽 |
+| [`ARCHIVE_moonc警告全表20261009.md`](archive/ARCHIVE_moonc警告全表20261009.md) | `07-质量与裁定/moonc警告全表20261009.md` | 警告债 #54 已收官，查表底册使命随闭；警告 id 现值以 moonc -warn-help 实跑为准 |
 
 > ⚠️ **archive/ 中的文档仅供追溯参考，内容可能已严重过时，且不再维护。**
 > 英文文档（`README_EN.md` / `BUILD_EN.md` / `VITRO_CLI_EN.md` / `QUICKSTART_EN.md` 等）已于 2026-09-11 删除，

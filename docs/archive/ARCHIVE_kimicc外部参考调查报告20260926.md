@@ -1,5 +1,9 @@
 # kimicc 外部参考调查报告（2026-09-26）
 
+> **已归档（2026-10-15）**：kimicc 仓参考价值调查（惯用法范本/防线形态高参考、汇编与 JIT 低参考、依赖禁入核心链红线已裁定入纪律）——调查结论已消化，报告为时点快照。
+> 本文件仅作历史追溯保留，内容不再维护；当前有效文档见 `docs/current/`。
+
+
 > 调查对象：`D:\code\kimicc`（GitHub `moonbitlang/kimicc`，MoonBit 官方组织仓库）
 > 调查方法：主会话亲读（README×2 / AGENTS.md / docs×6 / git 历史 / mooncakes 状态 / LICENSE）+ 五个并行探索代理分维度深挖（预处理器 / 解析器与 AST / MIR 与 ctype / codegen 与 JIT / 测试防线与工程纪律），全部结论带 `文件:行号` 证据
 > **总裁定：有实质参考价值，但价值维度不在实现复用**——参考面是方法学、惯用法、防线形态与架构决策样本；kimicc 不能当 oracle（真值仍是 Clang），bobzhang/cfront 依赖禁入 Vitro 核心链

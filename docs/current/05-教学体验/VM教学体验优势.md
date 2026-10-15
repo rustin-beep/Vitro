@@ -1,5 +1,7 @@
 # Vitro 自研 VM 体验优势设计文档
 
+> **实现载体沿革总注（2026-10-15 翻新批）**：文中 `native/src/unified/{types,collector}.rs` 实现锚均为**历史锚**（Rust 区已删）。MoonBit 现役实现 = `vitro/engine/teaching`（`infer_semantic_label` 语义标签推断）+ StepPayload 帧 `meta` 字段（现役字段 = `{code_line, func_name, loop_depth, semantic_label}`——文中所记五个未实现字段仍为设计稿，schema 冻结面为准）。对比论据（快照 21μs / CPython 对照）为时点实测，复测以《性能探究实录》档案（已归档）与防线为据。
+
 > **核心理念**：自研 VM 的优势不是省内存，而是做通用 IDE/可视化工具做不出来的教学体验。  
 > **性能原则**：中端手机 50MB 内存换零延迟交互，完全可接受。拒绝为省 47.5MB 做过度工程化。
 >

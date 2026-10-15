@@ -1,5 +1,9 @@
 # moonc 警告全表（2026-10-09 留档）
 
+> **已归档（2026-10-15）**：moonc 警告 id 对照底册：警告债清理 [#54](https://github.com/rustin-beep/Vitro/issues/54) 已收官（A1/A2/B 全落地、issue 已关）——查表使命随 #54 闭合；警告 id 值域随 moon 工具链升级漂移，现值以 `moonc check -warn-help` 实跑为准。
+> 本文件仅作历史追溯保留，内容不再维护；当前有效文档见 `docs/current/`。
+
+
 > 来源：`moonc check -warn-help`（moonbit 工具链官方输出，93 项 + `all` 汇总项）。
 > 再生：`cd moonbit && moonc check -warn-help`。若工具链升级后表变，以再生命令输出为准并更新本档。
 > 三态：`warn` = 默认启用 · `error` = 默认即强制 · `off` = 默认关闭（`+`/`@`/`-` 可改）。

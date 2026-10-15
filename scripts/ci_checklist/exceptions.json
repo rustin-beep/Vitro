@@ -22,5 +22,9 @@
   {
     "driver": "scripts/vitro_cli",
     "reason": "CLI 资产：wasm 臂 node 壳（main.js）+api_help.json 产物目录；CI 消费形态是 node 执行与 -check，非 go run"
+  },
+  {
+    "driver": "scripts/gen_course",
+    "reason": "回退预案（#125 批 A 形态修正 2026-10-15）：资产链自举判据驳回 Go 进资产链，lessons.ts 渲染角色退役；本体保留作 content.json 静态发射失败回退（宿主运行时方案 parser.c 落地失败时启用），非 CI 判定面"
   }
 ]

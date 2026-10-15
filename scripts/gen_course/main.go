@@ -1,5 +1,12 @@
 // gen_course —— 课程叙述层生成器（#120 课程内容管线，2026-10-15）。
 //
+// **【2026-10-15 退役标注】lessons.ts 渲染角色退役（#125 批 A 形态修正）**：
+// 「资产链自举」判据（下游不装额外工具链能否再生资产）驳回 Go 进资产链
+// ——本生成器为 Go、且 HTML 预渲染进资产，两者均被判据排除。保留本体
+// 作为**失败回退预案**（content.json 静态发射形态，宿主运行时方案
+// （parser.c + demo 运行时喂引擎解析）失败时可用）；CI/pages 接线已摘。
+// course_catalog（防线）不受影响继续在役。
+//
 // 真源 = course/<chap>/<id>/lesson.md（frontmatter + 正文，教师手写面）；
 // 产物 = demo/src/data/lessons.ts（类型化 ESM，demo 侧按 id 与 cases.js /
 // algorithms.js 课目集 join——本生成器不消费代码链，代码真源仍为

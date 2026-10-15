@@ -1112,15 +1112,13 @@ jobs:
         run: go run ./scripts/gen_demo_algorithms
         shell: bash
 
-      # 课程内容管线（#120 补充，2026-10-15）：真源 course/**/*.md → 叙述层
-      # lessons.ts。两步分立：-check 管「真源已改未再生」（digest 同步）；
-      # course_catalog 管叙述→课目对账 + lesson.c 双臂对拍（vitro ≡ clang，
-      # 独立于 corpus/ 语料线）。schema 校验单源在 gen_course（先 -check 后
-      # 对账的顺序即依赖序）。
-      - name: course lessons digest gate (gen_course -check)
-        run: go run ./scripts/gen_course -check
-        shell: bash
-
+      # 课程内容防线（#120 补充 + #125 批 A 形态修正，2026-10-15）：
+      # course_catalog = 叙述→课目对账 + lesson.c 双臂对拍（vitro ≡ clang，
+      # 独立于 corpus/ 语料线）。**gen_course -check 步已摘**——#125 补充
+      # 「资产链自举」判据驳回 Go 进资产链（Go 只许当防线），gen_course 的
+      # lessons.ts 渲染角色退役为失败回退预案（本体保留，头注标注）；
+      # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
+      # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
         run: go run ./scripts/course_catalog
         shell: bash

@@ -1,12 +1,25 @@
 <!doctype html>
 <html lang="zh" data-theme="glass">
-  <!-- data-theme 必设：tokens.css 主题变量挂在 [data-theme=...] 选择器下，
-       缺属性则 --win-bg 等全部不生效（2026-10-15 截图实测黑底裸样式即此因；
-       F4 全量迁移时接 index.html 同款 localStorage 主题脚本） -->
+  <!-- data-theme 必设：tokens.css 主题变量挂在 [data-theme=...] 选择器下。
+       防闪脚本 = index.html 同款逐字移植（五键 + 旧值迁移规则与
+       persisted.svelte.ts 逐字一致，改任一侧须对表另一侧——防闪必须在
+       DOM 解析期执行，无法共享模块）。 -->
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vitro 前端试点 · Svelte 5（F1）</title>
+    <script>
+      try {
+        var _t = localStorage.getItem("vitro-theme");
+        if (_t === "light") _t = "ice";
+        else if (!_t || _t === "dark") _t = "glass";
+        document.documentElement.setAttribute("data-theme", _t);
+        document.documentElement.setAttribute("data-shade", _t === "glass" || _t === "soft" ? "night" : "day");
+        var _f = localStorage.getItem("vitro-ed-font");
+        if (_f === "13px" || _f === "16px") document.documentElement.style.setProperty("--ed-fs", _f);
+        if (localStorage.getItem("vitro-motion") === "off") document.documentElement.setAttribute("data-motion", "off");
+      } catch (e) {}
+    </script>
     <!-- 令牌 CSS 经 src/app.css 的 @import 打包引入（public 资产 link 会被 vite 丢弃） -->
   </head>
   <body>

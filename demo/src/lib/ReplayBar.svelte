@@ -1,7 +1,7 @@
 <script lang="ts">
   // 重放条——播放/暂停/单步/滑条 seek/帧计数/播放帧率档位/采集预算。
   // 全部状态与动作来自 session 层，本组件零私有状态。
-  import { session, seek, step, togglePlay, setFps } from "../session.svelte.ts";
+  import { session, seek, step, togglePlay, setFps, setCap } from "../session.svelte.ts";
 
   const FPS_STEPS = [8, 30, 60, 240];
 </script>
@@ -29,7 +29,7 @@
 
 <label class="cap-row">
   采集帧预算
-  <input type="number" min="100" max="200000" step="1000" value={session.cap} onchange={(e) => (session.cap = Number(e.currentTarget.value) || 20000)} />
+  <input type="number" min="100" max="200000" step="1000" value={session.cap} onchange={(e) => setCap(Number(e.currentTarget.value))} />
   （原 demo 硬上限 4000 已改可配——引擎侧无此上限；到顶只提示不静默截断）
 </label>
 

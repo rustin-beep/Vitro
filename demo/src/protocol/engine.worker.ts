@@ -9,6 +9,7 @@
 "use strict";
 
 import { loadGateway, setGateway, invoke, bodyOf, type GatewayExports } from "../../js/gw.ts";
+import type { Frame } from "../../js/types.ts";
 import type { StepPayload, StepNextResult } from "../../js/types.ts";
 
 let gw: GatewayExports | null = null;
@@ -23,6 +24,14 @@ async function ensureGw(): Promise<GatewayExports> {
   return gw;
 }
 
+/** must = 错误帧不折叠：顶层 ok:false 即抛（旧栈 bodyOf 把错误帧折叠成
+ *  {}，静默假态一路传到 UI——审阅 A-P1 实锤 run.ts:208 pill 显示字面量
+ *  "undefined"。session 层第一天生效「ok:false 即异常、异常必可渲染」）。 */
+function must<T>(resp: Frame<T>): T {
+  if (!resp.ok) throw new Error(String(resp.error ?? "协议错误帧（无错误文本）"));
+  return bodyOf(resp);
+}
+
 export interface CollectResult {
   frames: StepPayload[];
   stopped: string;
@@ -34,22 +43,27 @@ async function collect(source: string, cap: number): Promise<CollectResult> {
   const g = await ensureGw();
   const t0 = performance.now();
   g.reset();
-  bodyOf(invoke({ method: "session.create", params: {} }));
+  must(invoke({ method: "session.create", params: {} }));
   // config.set 基准（与 demo run.ts buildBaseConfig 同值，fw_pilot 实证）——
   // **漏此步快照面整个缺失**（array_snapshots/local_vars 恒空，2026-10-15
   // 浏览器实测踩坑），帧粒度与 config 挂钩
-  bodyOf(invoke({
+  must(invoke({
     method: "config.set",
     params: { max_steps: 10000000, call_depth_limit: 10000, deterministic: false, quarantine_budget: 262144 },
   }));
-  bodyOf(invoke({ method: "compile", params: { source } }));
-  bodyOf(invoke({ method: "run", params: {} }));
-  bodyOf(invoke({ method: "step.begin", params: {} }));
+  const comp = must(invoke<{ ok: boolean; diagnostics?: { message?: string }[] }>({ method: "compile", params: { source } }));
+  if (!comp.ok) {
+    // 编译失败 = 业务域 ok（result.ok，非顶层帧 ok）——取首条诊断给可渲染原因
+    const first = comp.diagnostics?.[0]?.message ?? "编译失败（无诊断文本）";
+    throw new Error("编译失败：" + String(first).split("\n")[0]);
+  }
+  must(invoke({ method: "run", params: {} }));
+  must(invoke({ method: "step.begin", params: {} }));
   const frames: StepPayload[] = [];
   let stopped = "";
   let batch;
   do {
-    batch = bodyOf<StepNextResult>(invoke({ method: "step.next", params: {} }));
+    batch = must<StepNextResult>(invoke({ method: "step.next", params: {} }));
     if (batch.payloads) frames.push(...batch.payloads);
     if (batch.waiting_input) { stopped = "程序等待输入（scanf）——回放到暂停点为止"; break; }
     if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || "").split("\n")[0]; break; }
@@ -67,13 +81,21 @@ async function collect(source: string, cap: number): Promise<CollectResult> {
 }
 
 self.onmessage = async (e: MessageEvent) => {
-  const { id, op, source, cap } = e.data as { id: number; op: string; source?: string; cap?: number };
+  const { id, op, source, cap, method, params } = e.data as {
+    id: number; op: string; source?: string; cap?: number; method?: string; params?: Record<string, unknown>;
+  };
   try {
     if (op === "boot") {
       const g = await ensureGw();
       postMessage({ id, ok: true, data: { engine: g.engine_version(), protocol: g.protocol_version() } });
     } else if (op === "collect") {
       postMessage({ id, ok: true, data: await collect(source ?? "", cap ?? 20000) });
+    } else if (op === "invoke") {
+      // 通用 RPC 转发（catalog/协议面等模块数据通道）：错误帧不折叠——
+      // 顶层 ok:false 原样回传，session 层拆帧抛 RpcError（must 同语义）。
+      await ensureGw();
+      const resp = invoke({ method: method ?? "", params: params ?? {} });
+      postMessage({ id, ok: true, data: resp });
     } else {
       postMessage({ id, ok: false, error: `未知 op: ${String(op)}` });
     }

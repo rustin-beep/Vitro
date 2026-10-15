@@ -1,4 +1,4 @@
-package main
+package mdrender
 
 // inline.go —— 行内级解析（CommonMark 子集 + GFM 删除线 / 自动链接）。
 //
@@ -30,24 +30,24 @@ type stashEntry struct {
 	last  byte
 }
 
-// inlineCtx 承载一次文档渲染期间共享的占位符池、标题 id 去重表与链接改写上下文。
-type inlineCtx struct {
-	stash []stashEntry
-	slugs map[string]int
-	rw    *rewriter // 链接改写器（在解析期按 token 改写，不做渲染后正则扫描）
-	rel   string    // 当前文档的 docs 相对路径
+// Ctx 承载一次文档渲染期间共享的占位符池、标题 id 去重表与链接改写上下文。
+type Ctx struct {
+	stash    []stashEntry
+	slugs    map[string]int
+	Rewriter Rewriter // 链接改写器（宿主注入；nil = 链接目标原样保留——片段模式形态）
+	Rel      string   // 当前文档相对路径（宿主语境，供改写器消费）
 }
 
 // mapHref 把 markdown 里的链接目标改写成预览页地址；无改写器时原样返回。
-func (c *inlineCtx) mapHref(dest string) string {
-	if c.rw == nil {
+func (c *Ctx) mapHref(dest string) string {
+	if c.Rewriter == nil {
 		return dest
 	}
-	return c.rw.mapHref(dest, c.rel)
+	return c.Rewriter.MapHref(dest, c.Rel)
 }
 
 // put 登记一个替换片段（含源码首尾字符，供侧翼判定使用）。
-func (c *inlineCtx) put(src, html string) string {
+func (c *Ctx) put(src, html string) string {
 	first, last := byte('A'), byte('A')
 	if len(src) > 0 {
 		first, last = src[0], src[len(src)-1]
@@ -57,9 +57,9 @@ func (c *inlineCtx) put(src, html string) string {
 }
 
 // putSynthetic 登记一个由渲染器自己生成的片段（如强调标签）；其首尾字符不参与侧翼判定。
-func (c *inlineCtx) putSynthetic(html string) string { return c.put("", html) }
+func (c *Ctx) putSynthetic(html string) string { return c.put("", html) }
 
-func (c *inlineCtx) stashAt(i int) (stashEntry, bool) {
+func (c *Ctx) stashAt(i int) (stashEntry, bool) {
 	if i < 0 || i >= len(c.stash) {
 		return stashEntry{}, false
 	}
@@ -67,7 +67,7 @@ func (c *inlineCtx) stashAt(i int) (stashEntry, bool) {
 }
 
 // renderInline 渲染一段行内文本。
-func (c *inlineCtx) render(src string) string {
+func (c *Ctx) render(src string) string {
 	if src == "" {
 		return ""
 	}
@@ -88,7 +88,7 @@ func (c *inlineCtx) render(src string) string {
 
 func isBacktick(b byte) bool { return b == '`' }
 
-func (c *inlineCtx) extractCodeAndEscapes(src string) string {
+func (c *Ctx) extractCodeAndEscapes(src string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(src) {
@@ -102,7 +102,7 @@ func (c *inlineCtx) extractCodeAndEscapes(src string) string {
 				continue
 			}
 			if isASCIIPunct(next) {
-				b.WriteString(c.put(string(next), escHTML(string(next))))
+				b.WriteString(c.put(string(next), EscHTML(string(next))))
 				i += 2
 				continue
 			}
@@ -145,7 +145,7 @@ func (c *inlineCtx) extractCodeAndEscapes(src string) string {
 			strings.TrimSpace(content) != "" {
 			content = content[1 : len(content)-1]
 		}
-		b.WriteString(c.put(src[i:closeAt+runLen], "<code>"+escHTML(content)+"</code>"))
+		b.WriteString(c.put(src[i:closeAt+runLen], "<code>"+EscHTML(content)+"</code>"))
 		i = closeAt + runLen
 	}
 	return b.String()
@@ -287,17 +287,17 @@ func scanAutolink(s string, i int) (int, string) {
 				}
 			}
 			if ok {
-				return end + 1, `<a href="` + escAttr(inner) + `">` + escHTML(inner) + `</a>`
+				return end + 1, `<a href="` + EscAttr(inner) + `">` + EscHTML(inner) + `</a>`
 			}
 		}
 	} else if at := strings.IndexByte(inner, '@'); at > 0 && at < len(inner)-1 &&
 		!strings.ContainsAny(inner, "@:<>") && !strings.HasPrefix(inner, "@") {
-		return end + 1, `<a href="mailto:` + escAttr(inner) + `">` + escHTML(inner) + `</a>`
+		return end + 1, `<a href="mailto:` + EscAttr(inner) + `">` + EscHTML(inner) + `</a>`
 	}
 	return -1, ""
 }
 
-func (c *inlineCtx) extractRawHTML(src string) string {
+func (c *Ctx) extractRawHTML(src string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(src) {
@@ -338,7 +338,7 @@ func tagName(frag string) string {
 // ③ 链接与图片
 // ---------------------------------------------------------------------------
 
-func (c *inlineCtx) extractLinks(src string) string {
+func (c *Ctx) extractLinks(src string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(src) {
@@ -369,10 +369,10 @@ func (c *inlineCtx) extractLinks(src string) string {
 		srcSpan := src[i:end]
 		if isImage {
 			alt := stripPlaceholders(label)
-			b.WriteString(c.put(srcSpan, `<img src="`+escAttr(dest)+`" alt="`+escAttr(alt)+`"`+
+			b.WriteString(c.put(srcSpan, `<img src="`+EscAttr(dest)+`" alt="`+EscAttr(alt)+`"`+
 				titleAttr(title)+`>`))
 		} else {
-			b.WriteString(c.put(srcSpan, `<a href="`+escAttr(dest)+`"`+titleAttr(title)+`>`+
+			b.WriteString(c.put(srcSpan, `<a href="`+EscAttr(dest)+`"`+titleAttr(title)+`>`+
 				c.render(label)+`</a>`))
 		}
 		i = end
@@ -384,7 +384,7 @@ func titleAttr(title string) string {
 	if title == "" {
 		return ""
 	}
-	return ` title="` + escAttr(title) + `"`
+	return ` title="` + EscAttr(title) + `"`
 }
 
 // matchBracket 返回与 s[open]（'['）配对的 ']' 位置；跳过代码跨度与转义。
@@ -542,7 +542,7 @@ func stripPlaceholders(s string) string {
 }
 
 // 裸 URL 自动链接（GFM linkify 的常见形态；不含裸域名）。只在占位符之外的文本上工作。
-func (c *inlineCtx) linkifyBareExcludingPlaceholders(s string) string {
+func (c *Ctx) linkifyBareExcludingPlaceholders(s string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(s) {
@@ -578,7 +578,7 @@ type piece struct {
 	post        []string
 }
 
-func (c *inlineCtx) processEmphasis(src string) string {
+func (c *Ctx) processEmphasis(src string) string {
 	// 先把裸 URL 链接化（在纯文本段内，且处于保护文本之外）
 	src = c.linkifyBareExcludingPlaceholders(src)
 
@@ -687,7 +687,7 @@ func (c *inlineCtx) processEmphasis(src string) string {
 	return out.String()
 }
 
-func (c *inlineCtx) linkifyChunk(s string) string {
+func (c *Ctx) linkifyChunk(s string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(s) {
@@ -702,8 +702,8 @@ func (c *inlineCtx) linkifyChunk(s string) string {
 			for strings.HasSuffix(trimmed, ")") && strings.Count(trimmed, ")") > strings.Count(trimmed, "(") {
 				trimmed = trimmed[:len(trimmed)-1]
 			}
-			b.WriteString(c.put(trimmed, `<a href="`+escAttr(trimmed)+`">`+escHTML(trimmed)+`</a>`))
-			b.WriteString(escHTML(url[len(trimmed):]))
+			b.WriteString(c.put(trimmed, `<a href="`+EscAttr(trimmed)+`">`+EscHTML(trimmed)+`</a>`))
+			b.WriteString(EscHTML(url[len(trimmed):]))
 			i = j
 			continue
 		}
@@ -735,7 +735,7 @@ func isPunctForFlank(r rune) bool {
 // runeBefore 取 s[i] 之前用于侧翼判定的字符。
 // 紧邻占位符时，用的是**被替换掉的源码末字符**（代码跨度 → 反引号＝标点），
 // 而不是占位符本身——否则 `注意**`null`…**` 这类写法会被误判成可以开合。
-func (c *inlineCtx) runeBefore(s string, i int) rune {
+func (c *Ctx) runeBefore(s string, i int) rune {
 	if i <= 0 {
 		return '\n'
 	}
@@ -761,7 +761,7 @@ func (c *inlineCtx) runeBefore(s string, i int) rune {
 	return r
 }
 
-func (c *inlineCtx) runeAfter(s string, i int) rune {
+func (c *Ctx) runeAfter(s string, i int) rune {
 	if i >= len(s) {
 		return '\n'
 	}
@@ -785,7 +785,7 @@ func (c *inlineCtx) runeAfter(s string, i int) rune {
 // ⑤ 收尾
 // ---------------------------------------------------------------------------
 
-func (c *inlineCtx) finalize(s string) string {
+func (c *Ctx) finalize(s string) string {
 	var b strings.Builder
 	i := 0
 	for i < len(s) {
@@ -897,7 +897,7 @@ func isHex(b byte) bool {
 // 转义与文本提取
 // ---------------------------------------------------------------------------
 
-func escHTML(s string) string {
+func EscHTML(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
@@ -914,7 +914,7 @@ func escHTML(s string) string {
 	return b.String()
 }
 
-func escAttr(s string) string {
+func EscAttr(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
@@ -931,4 +931,17 @@ func escAttr(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// Rewriter 是宿主注入的链接改写器（docs 站把文档间链接改写为预览页地址）。
+// 结构化接口：宿主侧具体类型只需实现 MapHref；nil = 片段模式（链接目标原样保留）。
+type Rewriter interface {
+	MapHref(dest, rel string) string
+}
+
+// Fragment 是零配置片段渲染入口（课程管线等非 docs 站消费方使用）：
+// 无链接改写、无文档语境，只出正文 HTML。
+func Fragment(src string) string {
+	ctx := &Ctx{}
+	return RenderMarkdown(ctx, src)
 }

@@ -1,4 +1,4 @@
-package main
+package mdrender
 
 // highlight.go —— 轻量语法高亮（零第三方依赖，按 docs/ 实际出现的语言裁剪）。
 //
@@ -129,7 +129,7 @@ func isIdentByte(b byte) bool {
 func isDigitByte(b byte) bool { return b >= '0' && b <= '9' }
 
 func span(class, text string) string {
-	return `<span class="` + class + `">` + escHTML(text) + `</span>`
+	return `<span class="` + class + `">` + EscHTML(text) + `</span>`
 }
 
 // writeRawByte 写出未着色的普通字节：必须转义，否则代码里的 `<u32>`、`<class T>`
@@ -151,7 +151,7 @@ func writeRawByte(b *strings.Builder, c byte) {
 func highlightCode(lang, code string) string {
 	def := langDefFor(lang)
 	if def == nil {
-		return escHTML(code)
+		return EscHTML(code)
 	}
 	if def.markup {
 		return highlightMarkup(def, code)
@@ -445,7 +445,7 @@ func highlightDiff(code string) string {
 		case strings.HasPrefix(line, "@@"):
 			b.WriteString(span("tok-v", line))
 		default:
-			b.WriteString(escHTML(line))
+			b.WriteString(EscHTML(line))
 		}
 		b.WriteByte('\n')
 	}

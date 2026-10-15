@@ -1,4 +1,4 @@
-package main
+package mdrender
 
 // markdown_test.go —— 渲染器回归用例。
 //
@@ -15,9 +15,9 @@ const bt = "\x60"
 
 func render(t *testing.T, src string) string {
 	t.Helper()
-	ctx := &inlineCtx{}
+	ctx := &Ctx{}
 	if strings.HasPrefix(src, "BLOCK:") {
-		return renderMarkdown(ctx, strings.TrimPrefix(src, "BLOCK:"))
+		return RenderMarkdown(ctx, strings.TrimPrefix(src, "BLOCK:"))
 	}
 	return ctx.render(src)
 }

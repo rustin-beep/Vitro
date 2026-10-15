@@ -1,4 +1,4 @@
-package main
+package mdrender
 
 // markdown.go —— 块级解析（CommonMark 子集 + GFM 表格 / 任务列表 / 删除线）。
 //
@@ -43,11 +43,11 @@ func stripIndent(s string, n int) string {
 // 块级入口
 // ---------------------------------------------------------------------------
 
-func renderMarkdown(ctx *inlineCtx, src string) string {
+func RenderMarkdown(ctx *Ctx, src string) string {
 	return parseBlocks(ctx, splitLines(src))
 }
 
-func parseBlocks(ctx *inlineCtx, lines []string) string {
+func parseBlocks(ctx *Ctx, lines []string) string {
 	var out strings.Builder
 	i := 0
 	for i < len(lines) {
@@ -93,7 +93,7 @@ func parseBlocks(ctx *inlineCtx, lines []string) string {
 		}
 		if indentOf(line) >= 4 {
 			body, next := consumeIndentedCode(lines, i)
-			out.WriteString(`<pre class="code-plain"><code>` + escHTML(body) + "</code></pre>\n")
+			out.WriteString(`<pre class="code-plain"><code>` + EscHTML(body) + "</code></pre>\n")
 			i = next
 			continue
 		}
@@ -113,7 +113,7 @@ func parseBlocks(ctx *inlineCtx, lines []string) string {
 }
 
 // consumeParagraph 收集一个段落；若被 setext 下划线收尾则直接按标题输出。
-func consumeParagraph(ctx *inlineCtx, lines []string, start int, out *strings.Builder) (string, int) {
+func consumeParagraph(ctx *Ctx, lines []string, start int, out *strings.Builder) (string, int) {
 	buf := []string{lines[start]}
 	i := start + 1
 	for i < len(lines) {
@@ -249,17 +249,17 @@ func isHR(line string) bool {
 	return c != 0 && count >= 3
 }
 
-func headingHTML(ctx *inlineCtx, level int, text string) string {
+func headingHTML(ctx *Ctx, level int, text string) string {
 	slug := ctx.slug(slugify(plainInline(text)))
 	if slug == "" {
 		slug = "section"
 	}
 	tag := "h" + itoa(level)
-	return "<" + tag + ` id="` + escAttr(slug) + `">` + ctx.render(text) + "</" + tag + ">\n"
+	return "<" + tag + ` id="` + EscAttr(slug) + `">` + ctx.render(text) + "</" + tag + ">\n"
 }
 
 // slug 保证同页标题 id 唯一（GitHub 的 -1/-2 去重规则）。
-func (c *inlineCtx) slug(base string) string {
+func (c *Ctx) slug(base string) string {
 	if c.slugs == nil {
 		c.slugs = map[string]int{}
 	}
@@ -438,9 +438,9 @@ func consumeFence(lines []string, start int, f fenceInfo) (string, int) {
 
 func renderCodeBlock(lang, body string) string {
 	if lang == "" {
-		return `<pre class="code-plain"><code>` + escHTML(body) + "</code></pre>\n"
+		return `<pre class="code-plain"><code>` + EscHTML(body) + "</code></pre>\n"
 	}
-	return `<pre class="code-hl" data-lang="` + escAttr(lang) + `"><code class="hl">` +
+	return `<pre class="code-hl" data-lang="` + EscAttr(lang) + `"><code class="hl">` +
 		highlightCode(lang, body) + "</code></pre>\n"
 }
 
@@ -709,7 +709,7 @@ func splitRow(line string) []string {
 	return cells
 }
 
-func parseTable(ctx *inlineCtx, lines []string, start int) (string, int) {
+func parseTable(ctx *Ctx, lines []string, start int) (string, int) {
 	aligns, ok := tableDelimiter(lines, start)
 	if !ok {
 		return "", start
@@ -908,7 +908,7 @@ func collectList(lines []string, start int) (listRun, bool) {
 	return run, true
 }
 
-func parseList(ctx *inlineCtx, lines []string, start int) (string, int) {
+func parseList(ctx *Ctx, lines []string, start int) (string, int) {
 	run, ok := collectList(lines, start)
 	if !ok || len(run.items) == 0 {
 		return "", start

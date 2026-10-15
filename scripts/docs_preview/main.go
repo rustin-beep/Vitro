@@ -56,6 +56,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -63,6 +64,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"vitro/scripts/internal/mdrender"
 )
 
 //go:embed assets/style.css assets/app.js
@@ -296,7 +298,7 @@ type rewriter struct {
 }
 
 // mapHref 返回改写后的链接目标。
-func (r *rewriter) mapHref(value, docRel string) string {
+func (r *rewriter) MapHref(value, docRel string) string {
 	docDir := path.Dir(docRel)
 	if docDir == "." {
 		docDir = ""
@@ -494,8 +496,8 @@ func build(outDir string, doOpen, force, quiet bool) error {
 			continue
 		}
 		rw.missing = nil
-		ctx := &inlineCtx{rw: rw, rel: d.rel}
-		body := renderMarkdown(ctx, d.source)
+		ctx := &mdrender.Ctx{Rewriter: rw, Rel: d.rel}
+		body := mdrender.RenderMarkdown(ctx, d.source)
 		d.html = body
 		d.outline = extractOutline(body, 3)
 		d.text = htmlToText(body)

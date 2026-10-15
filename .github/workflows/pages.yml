@@ -110,6 +110,9 @@ jobs:
           # 算法侧栏数据同形态（2026-10-04 发射化）：algorithms.js 不入库，
           # 组装前现场发射（生成器完备性断言即闸；ubuntu runner 自带 Go）
           go run ./scripts/gen_demo_algorithms
+          # 课程叙述层同形态（#120 内容管线，2026-10-15）：lessons.ts 不入库，
+          # 组装前现场发射（F4 起 demo 组件消费；当前无消费者时此步为空发射）
+          go run ./scripts/gen_course -check
           cp demo/*.html demo/*.css demo/*.js demo-dist/
           cp -r demo/js demo-dist/
           rm -f demo-dist/js/*.ts

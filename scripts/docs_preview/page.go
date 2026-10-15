@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"vitro/scripts/internal/mdrender"
 )
 
 const pageTemplate = `<!DOCTYPE html>
@@ -93,18 +94,18 @@ func renderPage(d pageTemplateData) string {
 		docTitleBlock = `<h1 class="doc-title">` + d.docTitle + `</h1>`
 	}
 	r := strings.NewReplacer(
-		"__TITLE__", escHTML(d.title),
-		"__SOURCE__", escHTML(d.source),
+		"__TITLE__", mdrender.EscHTML(d.title),
+		"__SOURCE__", mdrender.EscHTML(d.source),
 		"__ASSETS__", d.assets,
 		"__NAV__", d.nav,
 		"__CHIPS__", d.chips,
-		"__MTIME__", escHTML(d.mtime),
+		"__MTIME__", mdrender.EscHTML(d.mtime),
 		"__LINES__", d.lines,
 		"__SIZE__", d.size,
 		"__BODY__", d.body,
 		"__OUTLINE__", d.outline,
 		"__GHURL__", d.ghURL,
-		"__CRUMBS__", escHTML(d.crumbs),
+		"__CRUMBS__", mdrender.EscHTML(d.crumbs),
 		"__BREADCRUMBS__", d.breadcrumbs,
 		"__DOCTITLE_BLOCK__", docTitleBlock,
 		"__WORDS__", d.words,
@@ -158,7 +159,7 @@ func renderNav(docs []*doc, dirs []string, dirMap map[string]string, pageDir, ac
 			class += " is-active"
 		}
 		b.WriteString(`<li><a class="` + class + `" href="` + relHref(pageDir, d.out) + `">` +
-			escHTML(d.title) + `</a></li>`)
+			mdrender.EscHTML(d.title) + `</a></li>`)
 	}
 	names := append([]string(nil), root.order...)
 	sort.Slice(names, func(i, j int) bool {
@@ -199,12 +200,12 @@ func writeNavNode(b *strings.Builder, n *navNode, dirMap map[string]string, page
 	if open {
 		b.WriteString(` open`)
 	}
-	b.WriteString(` data-group="` + escAttr(n.rel) + `"><summary>`)
+	b.WriteString(` data-group="` + mdrender.EscAttr(n.rel) + `"><summary>`)
 	if page, ok := dirMap[n.rel]; ok {
 		b.WriteString(`<a class="nav-dir-a" href="` + relHref(pageDir, page) + `">` +
-			escHTML(dirLabel(n.rel)) + `</a>`)
+			mdrender.EscHTML(dirLabel(n.rel)) + `</a>`)
 	} else {
-		b.WriteString(`<span class="nav-dir-a">` + escHTML(dirLabel(n.rel)) + `</span>`)
+		b.WriteString(`<span class="nav-dir-a">` + mdrender.EscHTML(dirLabel(n.rel)) + `</span>`)
 	}
 	b.WriteString(`<span class="nav-cnt">` + strconvItoa(countNav(n)) + `</span></summary><ul class="nav-list">`)
 
@@ -221,7 +222,7 @@ func writeNavNode(b *strings.Builder, n *navNode, dirMap map[string]string, page
 		}
 		title := d.rel + "（" + d.mtime.Format("2006-01-02 15:04") + "）"
 		b.WriteString(`<li><a class="` + class + `" href="` + relHref(pageDir, d.out) + `" title="` +
-			escAttr(title) + `">` + escHTML(d.title) + `</a></li>`)
+			mdrender.EscAttr(title) + `">` + mdrender.EscHTML(d.title) + `</a></li>`)
 	}
 	names := append([]string(nil), n.order...)
 	sort.Slice(names, func(i, j int) bool { return naturalLess(names[i], names[j]) })
@@ -280,7 +281,7 @@ func chipsFor(rel string) string {
 		return `<span class="chip chip-archive">历史归档</span>` +
 			`<span class="chip chip-warn">内容可能已过时 · 不再维护</span>`
 	default:
-		return `<span class="chip chip-other">` + escHTML(top) + `</span>`
+		return `<span class="chip chip-other">` + mdrender.EscHTML(top) + `</span>`
 	}
 }
 
@@ -297,14 +298,14 @@ func breadcrumbsFor(rel, pageDir string, dirMap map[string]string) string {
 		b.WriteString(`<span class="crumb-sep">›</span>`)
 		if i == len(parts)-1 {
 			name := strings.TrimSuffix(seg, ".md")
-			b.WriteString(`<span class="crumb is-here">` + escHTML(name) + `</span>`)
+			b.WriteString(`<span class="crumb is-here">` + mdrender.EscHTML(name) + `</span>`)
 			continue
 		}
 		dirRel := strings.Join(parts[:i+1], "/")
 		if page, ok := dirMap[dirRel]; ok {
-			b.WriteString(`<a class="crumb" href="` + relHref(pageDir, page) + `">` + escHTML(seg) + `</a>`)
+			b.WriteString(`<a class="crumb" href="` + relHref(pageDir, page) + `">` + mdrender.EscHTML(seg) + `</a>`)
 		} else {
-			b.WriteString(`<span class="crumb">` + escHTML(seg) + `</span>`)
+			b.WriteString(`<span class="crumb">` + mdrender.EscHTML(seg) + `</span>`)
 		}
 	}
 	return b.String()
@@ -406,8 +407,8 @@ func renderOutline(items []outlineItem) string {
 	}
 	var b strings.Builder
 	for _, it := range items {
-		b.WriteString(`<a class="lv` + strconvItoa(it.Level) + `" href="#` + escAttr(it.ID) + `">` +
-			escHTML(it.Text) + `</a>`)
+		b.WriteString(`<a class="lv` + strconvItoa(it.Level) + `" href="#` + mdrender.EscAttr(it.ID) + `">` +
+			mdrender.EscHTML(it.Text) + `</a>`)
 	}
 	return b.String()
 }
@@ -444,7 +445,7 @@ func firstHeadingText(html string) string {
 
 func renderDirPage(docs []*doc, subdirs []string, rel string) string {
 	var b strings.Builder
-	b.WriteString(`<h1 id="dir-index">` + escHTML(dirLabel(rel)) + `/ 目录</h1>` + "\n")
+	b.WriteString(`<h1 id="dir-index">` + mdrender.EscHTML(dirLabel(rel)) + `/ 目录</h1>` + "\n")
 	b.WriteString(`<p>本目录共 ` + strconvItoa(len(docs)) + ` 篇文档`)
 	if len(subdirs) > 0 {
 		b.WriteString(`、` + strconvItoa(len(subdirs)) + ` 个子目录`)
@@ -453,7 +454,7 @@ func renderDirPage(docs []*doc, subdirs []string, rel string) string {
 	b.WriteString(`<div class="table-wrap"><table><thead><tr><th>文件</th><th>标题</th><th>修改时间</th><th>大小</th></tr></thead><tbody>`)
 	for _, d := range subdirs {
 		b.WriteString(`<tr><td class="col-n"><a href="` + encodeSegment(dirLabel(d)) + `/index.html">` +
-			escHTML(dirLabel(d)) + `/</a></td><td class="col-t">目录</td><td class="col-m">—</td><td class="col-m">—</td></tr>`)
+			mdrender.EscHTML(dirLabel(d)) + `/</a></td><td class="col-t">目录</td><td class="col-m">—</td><td class="col-m">—</td></tr>`)
 	}
 	sort.Slice(docs, func(i, j int) bool {
 		return naturalLess(strings.ToLower(docs[i].rel), strings.ToLower(docs[j].rel))
@@ -461,7 +462,7 @@ func renderDirPage(docs []*doc, subdirs []string, rel string) string {
 	for _, d := range docs {
 		name := pathBase(d.rel)
 		b.WriteString(`<tr><td class="col-n"><a href="` + encodeSegment(strings.TrimSuffix(name, ".md")) + `.html">` +
-			escHTML(name) + `</a></td><td class="col-t">` + escHTML(d.title) +
+			mdrender.EscHTML(name) + `</a></td><td class="col-t">` + mdrender.EscHTML(d.title) +
 			`</td><td class="col-m">` + d.mtime.Format("2006-01-02 15:04") +
 			`</td><td class="col-m">` + humanSize(d.size) + `</td></tr>`)
 	}

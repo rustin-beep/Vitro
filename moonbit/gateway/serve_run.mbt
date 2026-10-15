@@ -38,6 +38,45 @@ fn not_compiled_json() -> Json {
 /// execute_run 等价公共段（run / input.feed 共用）：is_resume 判定 →
 /// 非 resume 五步（输出清 + vfs 重建 + setup + 动态堆起点 + 预设注入）
 /// → vm.run → 六字段出口。
+
+///|
+/// run/feed 七字段出口组装（审阅 P3 下沉，2026-10-15）——原
+/// serve_execute_run 与 serve_execute_run_via_engine 两份手写组装，
+/// 下一次改一侧就是静默分叉（C5 形态）。ret 为已完成计算的返回值；
+/// 完成/泄漏附注由调用方在 trap 空且非 waiting 时触发（run_one_outcome
+/// 内聚完成附注 + 出口组装）。
+fn run_outcome_json(s : @session.Session, trap : String) -> Json {
+  let waiting = s.vm.waiting_input
+  let ret = if trap.is_empty() && !waiting {
+    let v = s.vm.final_return_value()
+    s.vm.output.push_note_str("程序运行完成，返回值：\{v}\n")
+    append_leak_report(s.vm)
+    v
+  } else {
+    0
+  }
+  let status = if !trap.is_empty() {
+    "trap"
+  } else if waiting {
+    "waiting_input"
+  } else {
+    "finished"
+  }
+  let m : Map[String, Json] = Map([])
+  m.set("ok", trap.is_empty().to_json())
+  m.set("status", Json::string(status))
+  m.set("return_value", ret.to_json())
+  m.set("trap", Json::string(trap))
+  m.set("waiting_input", waiting.to_json())
+  m.set("steps_executed", s.vm.step_count.to_json())
+  m.set(
+    "output_truncated",
+    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
+  )
+  Json::object(m)
+}
+
+///|
 fn serve_execute_run(s : @session.Session) -> Json {
   let is_resume = s.vm.waiting_input
   s.vm.clear_waiting_input()
@@ -87,37 +126,11 @@ fn serve_execute_run(s : @session.Session) -> Json {
     // 直接再 run 即续跑；无 input 时重跑会立刻再 waiting（同 Rust）
     ()
   }
-  let ret = s.vm.run()
-  let trap = s.vm.error
-  let waiting = s.vm.waiting_input
-  if trap.is_empty() && !waiting {
-    // E-P1-5：运行完成提示是引擎附注（note 通道）；堆教学附注同通道
-    //（oracle session_ops.rs:152-153 同序：完成提示 → 泄漏报告）
-    s.vm.output.push_note_str("程序运行完成，返回值：\{ret}\n")
-    append_leak_report(s.vm)
-  }
-  let status = if !trap.is_empty() {
-    "trap"
-  } else if waiting {
-    "waiting_input"
-  } else {
-    "finished"
-  }
-  let m : Map[String, Json] = Map([])
-  m.set("ok", trap.is_empty().to_json())
-  m.set("status", Json::string(status))
-  m.set("return_value", ret.to_json())
-  m.set("trap", Json::string(trap))
-  m.set("waiting_input", waiting.to_json())
-  m.set("steps_executed", s.vm.step_count.to_json())
-  // #91（2026-10-14）：输出截断显式位——16MB 预算触顶丢最旧此前仅
-  // note 注记 + output.delta 的 truncated_bytes 可见，判分方不拉不见
-  //（run 报 finished 而输出残缺的静默骗人形态）；协议「只增不改」追加
-  m.set(
-    "output_truncated",
-    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
-  )
-  Json::object(m)
+  let _ = s.vm.run()
+  // 审阅 P3 下沉（2026-10-15）：七字段出口 + 完成附注统一走
+  // run_outcome_json——原与 serve_execute_run_via_engine 两份手写组装，
+  // 下一次改一侧就是静默分叉（C5 形态）
+  run_outcome_json(s, s.vm.error)
 }
 
 ///|

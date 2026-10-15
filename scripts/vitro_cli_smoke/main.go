@@ -193,9 +193,18 @@ func main() {
 		wasmOut, natOut = stripBackendLine(wasmOut), stripBackendLine(natOut)
 		if wasmOut != natOut {
 			fatalf("B[双臂对拍] %s: stdout/stderr 不一致\n--- wasm ---\n%s\n--- native ---\n%s", c.name, wasmOut, natOut)
-		} else {
-			fmt.Printf("ok  B[双臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
 		}
+		// 审阅 P1-②（2026-10-15）：js 臂进语义对拍面——此前只在前置产物
+		// 检查出现（grep 7 处无一对拍），分派表缺 7 子命令零防线
+		jsOut, jsRc := runOut(nodeBin, jsEntry, "run", relPath)
+		if jsRc != natRc {
+			fatalf("B[三臂对拍] %s: rc 不一致 js=%d native=%d", c.name, jsRc, natRc)
+		}
+		jsOut = stripBackendLine(jsOut)
+		if jsOut != natOut {
+			fatalf("B[三臂对拍] %s: js 与 native 不同形\n--- js ---\n%s\n--- native ---\n%s", c.name, jsOut, natOut)
+		}
+		fmt.Printf("ok  B[三臂对拍] %s（rc=%d 同形）\n", c.name, wasmRc)
 	}
 
 	// B 组附 2：api help 三态双臂对拍（#67，2026-10-11）——离线可发现性

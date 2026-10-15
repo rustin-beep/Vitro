@@ -249,3 +249,33 @@ test "issue105_config_set_unknown_key_fail_loud" {
   assert_true(r4.contains("\"ok\":true"), msg="合法键照常")
   assert_true(r4.contains("\"max_steps\":123"), msg="现值回显")
 }
+
+///|
+/// #88 审阅 P2 补锚（2026-10-15）：同批改了 scanf 与 getchar 两处 eof
+/// 前置，锚只埋 scanf——getchar eof 前置整段删 110/110 假绿（审阅突变
+/// 实证：突变态 waiting 死等）。本锚锁 getchar 形态。**getchar 语义与
+/// scanf 分叉**：空流（Interactive 无输入）不等待——可用性检查耗尽即
+/// EOF（host_getchar 跨行扫描 None 分支）；eof 粘滞锚用「先喂文本再
+/// eof」续跑形态。
+test "issue88_getchar_eof_anchor" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main() { int c, n = 0; while ((c = getchar()) != EOF) { if (c >= 48 && c <= 57) n++; } printf(\\\"digits %d\\\", n); return 0; }\\n\"}}",
+  )
+  let (_, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  let (r2, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"input.feed\",\"params\":{\"text\":\"a1b2\\n\"}}",
+  )
+  let (r3, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"input.feed\",\"params\":{\"eof\":true}}",
+  )
+  assert_true(
+    r3.contains("\"status\":\"finished\""),
+    msg="getchar EOF 后收尾（旧 eof 前置缺失时死等）",
+  )
+  assert_true(
+    stdout_text(s).contains("digits 2"),
+    msg="计数正确（a1b2 恰 2 数字——getchar 的 eof 前置参与收尾）",
+  )
+  ignore(r2)
+}

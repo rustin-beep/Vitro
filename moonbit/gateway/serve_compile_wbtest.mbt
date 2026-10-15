@@ -214,3 +214,39 @@ test "issue92_gen_error_orders_before_warnings" {
     msg="容量文案在列",
   )
 }
+
+///|
+/// #92 审阅 P1-① 扩面锚（2026-10-15）：E 前置 partition 原只挂 gen 失败
+/// 分支——四条早退路径（词法/语法/AST 失败/类型）W 仍占首条。审阅突变
+/// 实证：partition 反序 110/110 假绿（锚唯一样本只落 gen 分支）。本锚
+/// 锁两条早退形态：宏遮蔽 W1018（词法警告 + 语法错误共存）与类型错误
+/// 形态——error 级必须先于 warning 级。
+test "issue92_early_exit_paths_ordered" {
+  // 词法警告 + 语法错误（语法早退路径——审阅探针原样形态）
+  let s1 = @session.Session::new()
+  let (r1, _) = serve_handle(
+    s1, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#define M 1\\n#define M 2\\nint main(void) { return 1 +; }\\n\"}}",
+  )
+  let e1 = r1.find("\"severity\":\"error\"")
+  let w1 = r1.find("\"severity\":\"warning\"")
+  let ok1 = match (e1, w1) {
+    (Some(e), Some(w)) => e < w
+    _ => false
+  }
+  assert_true(ok1, msg="语法早退：W1018 宏遮蔽不得占首条")
+  assert_true(r1.contains("E2003"), msg="语法错误在列")
+  // 类型错误早退路径
+  let s2 = @session.Session::new()
+  let (r2, _) = serve_handle(
+    s2, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) { undeclared_fn(); return 0; }\\n\"}}",
+  )
+  assert_true(r2.contains("\"ok\":false"), msg="类型错误阻断")
+  let e2 = r2.find("\"severity\":\"error\"")
+  let w2 = r2.find("\"severity\":\"warning\"")
+  let ok2 = match (e2, w2) {
+    (Some(e), Some(w)) => e < w
+    (Some(_), None) => true
+    _ => false
+  }
+  assert_true(ok2, msg="类型早退：error 前置")
+}

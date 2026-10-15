@@ -256,6 +256,33 @@ fn is_header_unit(filename : String) -> Bool {
 ///|
 /// 多文件编译管线主体（Rust run_multi_file_pipeline 照搬）。返回是否
 /// 编译成功；诊断/错误串/产物状态沿途写入 session.compile。
+
+///|
+/// #92（2026-10-15 审阅 P1-① 扩面）：诊断 E 前置 partition——**全部早退
+/// 路径共用**（词法/语法/AST 失败/类型四条早退 + gen 失败收尾，原实现只
+/// 挂 gen 分支——审阅突变实证：partition 反序 110/110 假绿）。stable：
+/// error 级（severity==0）在前、W/hint 在后、同级保序。
+fn reorder_errors_before_warnings(s : @session.Session) -> Unit {
+  let diags = s.compile.diagnostics
+  let errors_part : Array[@session.Diagnostic] = []
+  let others_part : Array[@session.Diagnostic] = []
+  for d in diags {
+    if d.severity == 0 {
+      errors_part.push(d)
+    } else {
+      others_part.push(d)
+    }
+  }
+  diags.truncate(0)
+  for d in errors_part {
+    diags.push(d)
+  }
+  for d in others_part {
+    diags.push(d)
+  }
+}
+
+///|
 fn serve_compile_pipeline(
   s : @session.Session,
   units : Array[@session.CompileUnit],
@@ -301,6 +328,7 @@ fn serve_compile_pipeline(
   if !lexed.errors.is_empty() {
     push_lex_errors(s, lexed.errors, ranges, source_lines)
     st.errors = st.errors + "词法错误\n"
+    reorder_errors_before_warnings(s)
     return false
   }
   // ── 2. Parser ──
@@ -312,12 +340,14 @@ fn serve_compile_pipeline(
     }
     push_code_errors(s, rows, 0, ranges, source_lines)
     st.errors = st.errors + "语法错误\n"
+    reorder_errors_before_warnings(s)
     return false
   }
   let program = match r.program {
     Some(p) => p
     None => {
       st.errors = "解析失败：无法生成 AST"
+      reorder_errors_before_warnings(s)
       return false
     }
   }
@@ -342,6 +372,7 @@ fn serve_compile_pipeline(
       push_code_errors(s, wrows, 1, ranges, source_lines)
     }
     st.errors = st.errors + "类型错误\n"
+    reorder_errors_before_warnings(s)
     return false
   }
   if !type_warnings.is_empty() {
@@ -369,32 +400,13 @@ fn serve_compile_pipeline(
       // 码位 Unknown(0) 过渡——codegen 错误体系无诊断码（#38 在册，E4 号段
       // 被 C++ 预埋占死），立码段拍板后换真码；行号从文案「第 N 行：」提取。
       // st.errors 兼容保留（demo 网页 errors 串消费面）
-      // #92：gen 失败路径的 error 前置——到达本分支的前提 = typeck
-      // errors 空 ⇒ 数组只含 lexW/typeckW/hint + 本批 genE。全数组
-      // stable partition（error 级在前、W/hint 在后、同级保序），对齐
-      // native cli 三轮渲染（E→W）合成序——旧形态 W 占首条，下游按
-      // 首条/严重级分流把阻断态显示成黄色提示（issue #92 实测）
-      let diags = s.compile.diagnostics
-      let errors_part : Array[@session.Diagnostic] = []
-      let others_part : Array[@session.Diagnostic] = []
-      for d in diags {
-        if d.severity == 0 {
-          errors_part.push(d)
-        } else {
-          others_part.push(d)
-        }
-      }
-      diags.truncate(0)
+      // #92：gen 失败路径的 error 前置（partition 抽为
+      // reorder_errors_before_warnings——四条早退路径共用，审阅 P1-①）
       for e in gen_errors {
         st.errors = st.errors + "生成错误: \{e}\n"
         push_one_diag(s, 0, extract_gen_error_line(e), 1, e, 0, [], [])
       }
-      for d in errors_part {
-        diags.push(d)
-      }
-      for d in others_part {
-        diags.push(d)
-      }
+      reorder_errors_before_warnings(s)
       st.errors = st.errors + "字节码生成错误\n"
       return false
     }

@@ -85,8 +85,6 @@ fn serve_execute_run_via_engine(
 ) -> Json {
   // waiting 旗清位（与 serve_execute_run 的 is_resume 后清位同源——出口
   // 字段只反映本次结果；重执行 CallHost 内部按需重置）
-  let was_waiting = s.vm.waiting_input
-  ignore(was_waiting)
   s.vm.clear_waiting_input()
   let mut err_msg = ""
   while true {
@@ -105,36 +103,9 @@ fn serve_execute_run_via_engine(
     }
   }
   let trap = if !err_msg.is_empty() { err_msg } else { s.vm.error }
-  let waiting = s.vm.waiting_input
-  let ret = if trap.is_empty() && !waiting {
-    let v = s.vm.final_return_value()
-    s.vm.output.push_note_str("程序运行完成，返回值：\{v}\n")
-    append_leak_report(s.vm)
-    v
-  } else {
-    0
-  }
-  let status = if !trap.is_empty() {
-    "trap"
-  } else if waiting {
-    "waiting_input"
-  } else {
-    "finished"
-  }
-  let m : Map[String, Json] = Map([])
-  m.set("ok", trap.is_empty().to_json())
-  m.set("status", Json::string(status))
-  m.set("return_value", ret.to_json())
-  m.set("trap", Json::string(trap))
-  m.set("waiting_input", waiting.to_json())
-  m.set("steps_executed", s.vm.step_count.to_json())
-  // #91：output_truncated 位（serve_execute_run 同款——feed 与 run 出口
-  // 字段面同构）
-  m.set(
-    "output_truncated",
-    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
-  )
-  Json::object(m)
+  // 审阅 P3 下沉（2026-10-15）：与 serve_execute_run 共用 run_outcome_json
+  //（双出口单源——七字段组装/完成附注/#91 output_truncated 位只此一份）
+  run_outcome_json(s, trap)
 }
 
 ///|

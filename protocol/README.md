@@ -2,8 +2,18 @@
 
 Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScript 类型定义。
 
-**本包的类型不是手写的**——由 `scripts/gen_protocol_ts` 从权威 Rust 源生成，
+**本包的类型不是手写的**——由 `scripts/gen_protocol_ts` 从权威 MoonBit 源（`moonbit/protocol/types.mbt`）生成，
 并与 `docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` **双向对账**。手抄就是又一处分叉温床。
+
+> **真源沿革（#118 勘正，2026-10-15）**：初版生成链读 Rust 对照区结构体（`native/src/…`，
+> 当时受 Rust 字段冻结测试守护）；Rust 区已随 2026-10-05 工序④**物理删除**（档案 tag
+> `rust-oracle-freeze`），真源随 #39 迁移收拢至 MoonBit 侧 protocol 包（编译期受 wbtest
+> 锚守护）。本节旧「权威 Rust 源」表述已过时——生成器 `-check` 的对账面以 MoonBit 生成源
+> ↔ schema 文档为准（`go run ./scripts/gen_protocol_ts -check` 即验）。
+
+**投放状态（#118 勘正）**：`@vitro/protocol` **尚未发布到 npm**（`npm view` 404 属预期）——
+消费形态现阶段 = 仓内 `protocol/` 目录直接引用（`index.d.ts`/`fields.mjs` 生成物 +
+`consumer.mjs` 消费者），npm 投放待下游需求出现时随批（勿按已上架接入）。
 
 ## 文件
 
@@ -16,15 +26,11 @@ Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScrip
 
 ## 权威源（谁说了算）
 
-生成器读的是 **Rust 结构体**，不是 schema 文档：
-
-- `native/src/unified/types.rs` — `StepPayload` 及多数子结构
-- `native/src/unified/root_cause.rs` — `RootCauseHint`
-- `native/src/session.rs` — `VisEvent`
-
-理由：这些结构体是**编译期受字段冻结测试守护**的真实源
-（`native/tests/step_payload_schema_v0_1_test.rs`）；schema 文档是人工维护的表述层。
+生成器读的是 **MoonBit 结构体**（`moonbit/protocol/types.mbt`——protocol 包零依赖自持），
+不是 schema 文档。理由：该结构体是**编译期受 wbtest 字段锚守护**的真实源（字段数/词汇表
+长度断言在 `protocol` 包测试面）；schema 文档是人工维护的表述层。
 故采用「**从实现生成 + 与文档双向对账**」——任一方向不同步都判红。
+（初版真源为 Rust 结构体，2026-10-05 删区后随 #39 迁移收拢 MoonBit 侧——见上方沿革注。）
 
 ## 用法
 
@@ -38,8 +44,8 @@ go run ./scripts/gen_protocol_ts -check
 # 判据证红（三路内存注入）
 go run ./scripts/gen_protocol_ts --selftest
 
-# 第一个消费者：消费真实引擎输出（需先构建 debug serve——rust 臂已随
-# 2026-10-05 删区退役，现役 MoonBit 产物）
+# 第一个消费者：消费真实引擎输出（现役 MoonBit 产物——初版的 rust 臂
+# debug serve 已随 2026-10-05 删区退役）
 cd moonbit && moon build --target native cmd/serve && cd ..
 node protocol/consumer.mjs            # 字段级校验 + 最小渲染
 node protocol/consumer.mjs --selftest # 消费者判据证红（含正向）

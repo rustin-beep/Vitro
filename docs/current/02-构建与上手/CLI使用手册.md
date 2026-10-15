@@ -70,7 +70,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | 重置语义 | `session.reset` 清空编译/运行状态，**保留会话级配置**（隔离预算、判分确定性、argv） |
 | **会话拓扑** | **单 serve 进程 = 单活跃会话**：方法表无并发句柄参数，`session.create`/`destroy` 都是"清空重建同一实例"；需要并发逻辑会话（如"长寿命诊断进程 + 瞬态运行进程"）时**起多个 serve 进程**——这是当前唯一受支持的并发形态（下游需求清单 D2）|
 
-方法一览：
+方法一览（**枚举权威 = `vitro api help` 生成物**〔gen_api_help 双产物单源，gateway dispatch 双向对账锁〕——本表为导览，方法扩张以 api help 为准，#113 归一）：
 
 | 方法 | 参数 | 说明 |
 |---|---|---|
@@ -78,12 +78,15 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `compile` | `source`（或 `files:[{filename,source}]`） | 覆盖式编译当前单元集合，返回诊断 JSON |
 | `run` | `input` / `argv` / `batch_input` / `max_steps` / `deterministic` | 全速运行，返回 `status`/`return_value`/`steps_executed` |
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
-| `output.delta` | `cursor` | 增量取输出（字节游标，UTF-8 边界安全） |
+| `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
 | `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
 | `step.next` | — | 单步推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
-| `breakpoints.set` | `lines:[int]` | 设置断点行集合（应在 `step.begin` 之后） |
+| `ast.dump` / `typeck.dump` / `symbols.dump` | — | 静态 dump 族（AST / 类型检查 / 符号表导出——无需会话，只读语义不碰会话态） |
+| `diagnostics_probe` | 位置参数 | 诊断探针（补全/悬停位——M15 无实现面，fail loud） |
+| `memory.dump` | — | 1MB 内存映像 base64（与 CLI `--dump-memory` 同通道） |
+| `breakpoints.set` | `lines:[int]` | 设置断点行集合（应在 `step.begin` 之后；**传 `[]` 清空断点 = 恢复执行**——命中暂停后的唯一"continue"口，见下方恢复语义） |
 | `memory.regions` | — | **三段式内存地图**（`kind` = `global`/`stack`/`heap`，见下方说明）+ 隔离区统计 |
 | `config.get` / `config.set` | 同上配置项 | 读写会话级配置 |
 | `error_catalog` | — | 错误码表机器可读导出（`{catalog:[{code,code_str,lang,category,icon,title,explanation,common_causes[]}]}`，按 code 升序；`icon` = 语义图标 id（#27 方案 C——原 `emoji` 码点字段已退役），字形经 `icons.get` 单通道下发） |
@@ -114,19 +117,40 @@ $ ./_build/native/release/build/cmd/serve/serve.exe <<'EOF'
 {"id":3,"method":"output.delta","params":{"cursor":0}}
 {"id":4,"method":"step.begin"}
 {"id":5,"method":"step.next"}
-{"id":6,"method":"session.reset"}
-{"id":7,"method":"shutdown"}
+{"id":6,"method":"step.next"}
+{"id":7,"method":"session.reset"}
+{"id":8,"method":"shutdown"}
 EOF
-{"id":1,"ok":true,"result":{"diagnostics":[],"ok":true}}
+{"id":1,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[],"algorithm_matches":[]}}
 {"id":2,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","waiting_input":false}}
 {"id":3,"ok":true,"result":{"cursor":36,"delta":"3程序运行完成，返回值：0\n","stream":"display","total":36}}
 {"id":4,"ok":true,"result":{"max_collected_step":-1,"ready":true}}
-{"id":5,"ok":true,"result":{"cache_start_step":0,"current_line":0,"finished":false,"paused":false,"payloads":[{"accessed_vars":[],"algorithm_step":null,"array_snapshots":[],"call_stack":[],"code_line":0,"func_name":"","heatmap_count":0,"heatmap_line":0,"local_vars":[],"pointer_snapshots":[],"root_cause_hint":null,"semantic_label":"","step_index":0,"vis_events":[]}],"trapped":false,"waiting_input":false}}
-{"id":6,"ok":true,"result":{"config":{"compiled":false,"deterministic":false,"input_mode_batch":false,"quarantine_budget":262144},"reset":true}}
-{"id":7,"ok":true,"result":{"shutdown":true}}
+{"id":5,"ok":true,"result":{"payloads":[],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}
+{"id":6,"ok":true,"result":{"payloads":[{"step_index":0,"code_line":0,"func_name":"","semantic_label":"","algorithm_step":null,"local_vars":[],"call_stack":[],"vis_events":[],"heatmap_line":0,"heatmap_count":0,"accessed_vars":[],"array_snapshots":[],"pointer_snapshots":[],"root_cause_hint":null}],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}
+{"id":7,"ok":true,"result":{"reset":true,"session":{"model":"single-active-session","active_sessions":1,"concurrent_sessions":false,"handle_parameter":false,"create_semantics":"clear-and-rebuild（清空重建同一实例）","reset_semantics":"清空编译/运行状态，保留会话级配置（隔离预算/deterministic/argv）","destroy_semantics":"清空重建（进程存活；如需回收进程请用 shutdown）","concurrency_recommendation":"并发场景起多个 serve 进程"},"config":{"deterministic":false,"quarantine_budget":262144,"input_mode_batch":false,"compiled":false,"max_steps":10000000,"call_depth_limit":10000,"output_budget":16777216}}}
+{"id":8,"ok":true,"result":{"shutdown":true}}
 ```
 
-> 上述输出为 2026-09-11 实测（Rust 侧 oracle 时代记录；MoonBit 侧同一请求表经 serve_smoke 对拍锁定同一帧形状——字段顺序由 JSON 对象语义决定，消费方不应依赖顺序）。
+> 上述输出为 2026-10-15 实测（MoonBit 侧；替换 Rust oracle 时代旧示例——旧 id5 响应带
+> `step_index:0` payload，早于「一帧发布缓冲」语义冻结日 2026-09-14）。**注意 id5**：
+> `step.begin` 后**首次 `step.next` 恒返回 `"payloads": []`**（缓冲建立，尚无帧可发——
+> spec STEP_PAYLOAD_SCHEMA「一帧发布缓冲」冻结契约第 1 条），第二次调用才吐出
+> `step_index:0` 的帧；下游消费方不得假设首调有帧（#98 实测勘正）。字段顺序由 JSON
+> 对象语义决定，消费方不应依赖顺序。
+>
+> **断点命中后的恢复语义（#101，2026-10-15 实测成文——两条路径，无专用 resume 方法）**：
+> 断点命中后 `step.next` 恒返回 `paused:true` 且不推进——方法表**没有** `resume`/`continue`
+> 方法，恢复走以下两条路径之一：
+>
+> 1. **清空断点续跑**（"continue" 语义）：`breakpoints.set {"lines":[]}` 后，下一次
+>    `step.next` 起恢复推进（实测：命中行 line=5 paused 连续 7 帧 → 清空 → 下一帧
+>    `paused:false`，此后正常出帧直至 finished）；
+> 2. **`seek` 跳转**（"jump" 语义）：`seek {"step":N}` 落点即解除暂停，后续 `step.next`
+>    正常推进。
+>
+> spec STEP_PAYLOAD_SCHEMA 的「恢复后缓冲重建——首个恢复响应为空 payloads（同首调）」
+> 中的"恢复"即指上述两路径的触发，无隐式第三入口。IDE 实现方按路径 1 做 continue、
+> 按路径 2 做 jump-to-line；每帧轮询 `paused` 位判断是否命中。
 >
 > **E-P1-5（输出通道）**：`output.delta` 默认返回 `stream:"display"` —— 即展示视图，除程序输出外
 > 还含 Vitro 追加的"程序运行完成"提示与（有泄漏时的）泄漏报告，供 UI 原样显示。
@@ -139,6 +163,27 @@ EOF
 > 可用取值：`display`（默认）/ `stdout` / `stderr` / `note`（引擎附注）。引擎内部按
 > `OutputKind` 给每段输出打标，消费方**不得**再对文本做正则清洗——此前散落十余处的
 > "程序运行完成"清洗规则已在 E-P1-5 中全部废除（程序自己打印同类文本时会被误删）。
+>
+> **字节语义（#112，2026-10-15 成文——判分必读）**：所有通道的 `delta` 字符串都是
+> **程序输出字节流的逐字节 Latin-1 折回**（每字节 → 一个 U+0000~U+00FF 字符），`cursor`/
+> `total` 按字节计。这是**设计行为而非缺陷**：学生程序可能输出任意字节（含非法 UTF-8
+> 的 GBK 中文），Latin-1 是唯一能无损过 JSON 字符串的单字节全字节域编码。**判分与
+> Clang golden（UTF-8 文本）比对前必须先还原字节**：
+>
+> ```js
+> // node：Latin-1 折回 → 原始字节 → UTF-8 文本
+> const text = Buffer.from(frame.result.delta, "latin1").toString("utf8");
+> ```
+>
+> ```python
+> # python：同语义
+> text = bytes(frame["result"]["delta"], "latin1").decode("utf-8")
+> ```
+>
+> 若源程序输出非 UTF-8 编码（如 GBK），第二次 decode 换对应编码即可——字节在 `delta`
+> 里始终无损。直接拿 `delta` 字符串与 golden 比对，中文程序必 mismatch。
+> 同语义覆盖三出口：serve NDJSON 帧 / `vitro api output.delta` / `vitro run --json`
+> 的 stdout/stderr/note 事件帧（见 CLI_PROTOCOL_V1 §6 通道总则）。
 >
 > 与 `jq` 配合：`serve < session.ndjson | jq -c 'select(.ok|not)'` 可只筛错误帧。
 >

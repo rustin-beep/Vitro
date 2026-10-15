@@ -5,11 +5,13 @@
 // **字段级错误**（字段名写错 / 字段缺失 / 版本不匹配）本可在编译期即红——前提是
 // TS 侧有**从权威源生成**的类型，而不是手抄。手抄就是又一处分叉温床。
 //
-// 权威源选谁（关键设计决定）：
+// 权威源选谁（关键设计决定；2026-10-05 删区后勘正——#118）：
 //
-//	`native/src/unified/{types,root_cause}.rs` + `native/src/session.rs` 的 Rust
-//	结构体——它们是**编译期受字段冻结测试守护**的真实源
-//	（`native/tests/step_payload_schema_v0_1_test.rs`）。
+//	**moonbit/protocol/types.mbt**（MoonBit 结构体，protocol 包零依赖自持——
+//	编译期受 wbtest 字段数锚守护）。初版读 Rust 侧
+//	`native/src/unified/{types,root_cause}.rs + native/src/session.rs`
+//	（当时有编译期字段冻结测试守护）——Rust 对照区已物理删除，真源随
+//	#39 迁移收拢 MoonBit 侧。
 //	`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` 是**表述层**（人工维护的 markdown 表格）。
 //	故取「**从实现生成 + 与文档双向对账**」：任一方向不同步都判红——这同时把
 //	「文档与实现是否一致」这个此前无人守的问题变成了机器判据。

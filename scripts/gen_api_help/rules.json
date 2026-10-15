@@ -79,7 +79,7 @@
     },
     {
       "method": "output.delta",
-      "brief": "拉增量输出（stream=display/stdout/stderr/note；判分取 stdout）",
+      "brief": "拉增量输出（stream=display/stdout/stderr/note；判分取 stdout；delta=逐字节 Latin-1 折回、cursor 按字节——比对前 Buffer.from(delta,latin1) 还原，#112）",
       "example": "{\"cursor\":0,\"stream\":\"stdout\"}"
     },
     {
@@ -114,7 +114,7 @@
     },
     {
       "method": "breakpoints.set",
-      "brief": "下发断点集合（行号数组）",
+      "brief": "下发断点集合（行号数组；传 [] 清空断点即恢复执行——命中暂停后无专用 resume 方法，恢复走清空断点或 seek 跳转，#101）",
       "example": "{\"lines\":[5,10]}"
     },
     {

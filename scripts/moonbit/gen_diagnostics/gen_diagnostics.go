@@ -61,7 +61,7 @@ import (
 
 // ---- 基线（对源实测 2026-10-02；源冻结期漂移即红，人工核对后更新并登记） ----
 const (
-	expectedStaticCodes = 25 // 静态载荷码数（3060|3061 双码展开计 2）
+	expectedStaticCodes = 26 // 静态载荷码数（3060|3061 双码展开计 2；#96 +3073）
 	expectedNodes       = 25
 	expectedEdges       = 25
 	expectedMapEntries  = 29 // 病 19 连坐（#61）：+3069→BoundaryCondition/Array（3051 保留——静态越界同属边界混淆归因）

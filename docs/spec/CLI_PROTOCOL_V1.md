@@ -5,7 +5,7 @@
 > 归属：CLI 出口（`moonbit/cmd/*`——四薄壳 + `cmd/lib/cli` 逻辑层 + `cmd/vitro` 总入口）
 > 消费者：agent / shell 脚本 / 仓库防线（vm_diff、clang_direct 的标记行剥离器）/ 任何第三方
 > 关联规格：[`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md)——`--json` 模式的帧语义**引用不重复定义**（帧 = gateway 协议单源）
-> 最后核对日期：2026-10-11（**#69 裁定批**——§1 补「混流是定义行为」显式裁定句；§8 冻结面前缀计数勘正六→八〔NOTE（10-04）/STDERR（10-10）两度补登未跟账〕。协议内容零变更，纯定性成文与勘误）
+> 最后核对日期：2026-10-15（**#112 成文批**——§6 补「通道字节语义总则」（delta 逐字节 Latin-1/游标按字节，从 §1 文本面提升为协议级并覆盖 serve/api/--json 三出口）+ §1 加总则指引句。协议行为零变更，纯定性成文）
 
 本文档是 CLI 的**输出契约**：消费方按此解析，无需了解 MoonBit 内部。协议变更纪律与 StepPayload 同源：**标记行前缀与退出码语义只增不改**；新前缀/新事件 type 走追加。
 
@@ -26,26 +26,28 @@
 
 ## 1. 文本模式输出协议（标记行）
 
-stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理）与**引擎标记行**。标记行前缀白名单：
+stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理；此规则是 §6 通道字节语义总则在文本面的投影，NDJSON/serve 帧的 `delta` 字段同语义）与**引擎标记行**。标记行前缀白名单：
 
 | 前缀 | 语义 | 示例 |
 |---|---|---|
 | `// COMPILE-ERROR ` | 错误诊断（带码） | `// COMPILE-ERROR E3004 2:14 类型不匹配：无法将 'char*' 赋值给 'int'` |
 | `// COMPILE-WARNING ` | 警告诊断 | `// COMPILE-WARNING W1018 -1:0 宏 'va_arg' 被重复定义…` |
 | `// COMPILE-HINT ` | 提示 | `// COMPILE-HINT H3054 3:1 …` |
+| `// FIX ` | 诊断随行修复建议（warning/error 级且 fix_suggestion 非空时，紧跟对应诊断行后输出；与诊断行剥离**连坐**——剥离器只剥诊断行不剥 FIX 行会把建议当程序输出留下，与 golden 比对必差行。#114 补录：10-11 落地输出时只进了 §8 计数未进本表——第三次「补登不跟账」同形〔NOTE 10-04 / STDERR 10-10 先例〕，下游照本表实现漏剥实锤） | `// FIX 语句末尾缺少分号，建议添加 ';'` |
 | `// COMPILE-OK ` | 编译通过标记（仅 `compile` 命令） | `// COMPILE-OK` |
 | `// TRAP ` | 受检终止附注 | `// TRAP [uaf] Use-After-Free (E3060)：…` |
 | `// NOTE ` | note 通道（完成附注「程序运行完成，返回值：N」+ 内存泄漏检测报告——2026-10-04 二轮审 P2 补，此前 CLI 整段丢失；内容可多行） | `// NOTE 程序运行完成，返回值：0` |
 | `// STDERR ` | stderr 通道（`fprintf(stderr,…)`/`fputc(c,stderr)`/`perror` 落点——病 15 批 C 补，2026-10-10；与 stdout 分流标记行呈现，剥离器两处连坐；stderr 不进对拍 digest） | `// STDERR to-stderr` |
 | `// EXIT ` | **末行**返回码（ret=0 时省略） | `// EXIT 7` |
 
-诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。
+诊断行格式：`// COMPILE-<级别> <码> <line:col> <文案>`——码与 serve 帧 `code` 字段同源（`E`/`W`/`H` + 数字；lexer 行 `line:col` 可为 `-1:0`——预处理层无位置态）。错误早退前也输出已收集的警告（agent 修错不丢信息）。`// FIX` 行无码无位，紧跟其所属诊断行（见上表），剥离时与诊断行同剥。
 
 **例外登记（2026-10-04 性能实测复核）**：
 - **codegen 段暂无 E 码**——行形态 `// COMPILE-ERROR codegen <文案>`（无码无位）：根因 = codegen 错误体系无诊断码（三出口三形态：Rust compile 零诊断 / mb CLI 出文案 / serve 进 errors 串不进 diagnostics——均照搬分叉④在案），且 E4 号段已被 C++ 预埋码占死（E4001~E4031/E4100+——砍 C++ 后死码但号段语义占用）；立码段与三出口统一挂 issue（退役后或码段拍板时）。
 - **`// TRAP ` 标记可跨多行**（trap 教学文案：首行 `[语义 id]` 徽章 + `[timeline]`/`[cause]`/`[fix]`/`[location]` 附注行——**#27 方案 C（2026-10-07）：原 emoji 码点已退役为语义图标 id**，字形由下游按 id 经 serve `icons.get` 自取，文本消费方按方括号 id 归一比对不受影响）——消费方剥离按首行前缀 + 后续无前缀行与 oracle 同形（归一比对不受影响）。
 - **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
 - **文本模式 stdout 行尾为 CRLF**（Windows native 的 println 文本模式产物；`--json` 的 delta 为 LF）——仓库内消费方归一器已 `TrimRight(l,"\r")` 吸收；第三方按「程序输出原样」解析时须注意该平台差异（2026-10-04 二轮审 P3 登记）。
+- **`// TRAP ` 标记行前有一行前导空行**（run 路径程序 stdout 与 TRAP 块之间：native 臂为空 `\r\n`、js/wasm 臂为空 `\n`——println 尾换行与 TRAP 输出拼接的产物形态，#103 实测登记：native 为 CRLF、js 为 LF 干净）。例外未登记时下游剥离器按「标记行首前缀」过滤不受影响，但逐字节比对 golden 时需知此空行属协议面；`compile` 路径无此形态。
 - **note 通道内容经 stdout 同管道输出**（Latin-1 折回形态与程序 stdout 同族——中文在 Windows 控制台呈现 mojibake 属 stdout 通道已知形态；字节级归一由消费方处理）。
 
 **显式裁定（#69，2026-10-11）**：两类内容混流是 display 流的**定义行为，非缺陷**——`run`/`compile` 文本模式的 stdout 定位为人读展示流。下游需要纯程序 stdout 时走结构化出口：`--json`（§6——stdout/stderr/note 独立事件帧）或 serve `output.delta` 的 `stream:"stdout"` 通道；文本面对拍按下方剥离规则过滤，**该规则是契约而非建议**。程序输出恰以闭集前缀之一逐字开头（如 `printf("// NOTE x")`）在纯文本层不可分，属已接受的窄碰撞面（闭集精确匹配——实践上不可撞，但下游须知其存在）。
@@ -122,13 +124,15 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。
 
+**通道字节语义总则（#112，2026-10-15 成文）**：凡携带程序输出文本的字段（`--json` 事件帧的 `delta`、serve/api `output.delta` 的 `delta`）一律为**输出字节流的逐字节 Latin-1 折回**（每字节 → 一个 U+0000~U+00FF 字符；`cursor`/`total` 按字节计）。这是设计行为而非缺陷：程序可输出任意字节（含非法 UTF-8 的 GBK 中文），Latin-1 是唯一无损过 JSON 字符串的单字节全字节域编码。§1 文本模式的「非 UTF-8 字节按 Latin-1 落文本」是同一总则在文本面的投影。判分消费方先还原字节（`Buffer.from(delta,"latin1")`〔node〕/ `bytes(delta,"latin1")`〔python〕）再按源程序编码 decode——直接拿 `delta` 字符串与 Clang golden 比对，中文程序必 mismatch。`memory.dump` 不受影响（本就是 base64 形态）。
+
 ## 7. dump 族语法（有意分叉，登记保留）
 
 Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_tokens <dir|file> <out_dir> <raw|pp|both>` 等）——消费者是仓库内 Go 防线（调用面稳定优先），不收敛（#37 B1/B3）。
 
 ## 8. 版本与演进
 
-- v1 冻结面：标记行前缀**十种**（NOTE〔10-04〕/STDERR〔10-10〕两度补登后本计数一度未跟，#69 勘正；**FIX〔10-11，DX ②**——诊断行后随修复建议行，warning/error 级 fix_suggestion 非空时输出**〕后再+1）/ 退出码五值 / `--json` 事件 type 三种 + summary；
+- v1 冻结面：标记行前缀**九种**（§1 白名单表**单源**——本计数为表的行数，加前缀须两处连坐；历史三次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕）/ 退出码五值 / `--json` 事件 type 三种 + summary；
 - **output.delta 帧字段追加（DX ③，2026-10-11）**：`truncated_bytes`（int，环形丢弃累计——16MB/8MB 预算触顶丢最旧的显式位，0=完整；按 stream 通道分域，display=两通道之和）。消费方判「输出不完整」不再依赖可被再丢的截断注记。
 - 演进纪律：只增不改（新前缀、新事件 type、新子命令走追加；语义变更需版本化）；
 - 历史分叉登记：Rust oracle CLI 与本协议的差异（trap 退出码 / dump 语法 / step 形态）随 Rust 退役自然消失。

@@ -62,6 +62,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      # #132 声明层：go 版本走 go.mod toolchain 单点（此前随 runner 预装漂移）
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum，缓存无意义
       - name: Go vet (scripts)
         run: go vet ./scripts/...
 
@@ -84,6 +89,10 @@ jobs:
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -173,11 +182,19 @@ jobs:
             needs_artifact: true
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum
       - name: Install MoonBit toolchain (driver-embedded moon run)
         if: ${{ !matrix.needs_artifact }}
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
       - uses: actions/download-artifact@v4
@@ -231,12 +248,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum
       # 拆批修复（2026-10-11 CI 实锤）：rules.json 不入仓（jsonmbt 真源
       # 纪律 13——.json 由本段再生），libc_boot 断供即此。regen 三步前置。
       - name: Install MoonBit toolchain (differential anchors)
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -256,6 +281,10 @@ jobs:
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -341,14 +370,22 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum
       - name: Install Node 25
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
+          node-version-file: .node-version
       - name: Install MoonBit toolchain
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
       - uses: actions/download-artifact@v4
@@ -364,7 +401,7 @@ jobs:
         # 体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚手工数字教训）
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
+          node-version-file: .node-version
       - name: wasm-gc gateway build + Node host smoke (run)
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
@@ -434,11 +471,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum
 
       - name: Install MoonBit toolchain (probe / fmt / facts --run)
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -743,10 +788,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum
       - name: Install MoonBit toolchain
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -788,12 +841,39 @@ jobs:
       - name: Install Node 25
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
+          node-version-file: .node-version
 
       - name: wasm-gc gateway artifact + Node host smoke
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
           node scripts/wasm_gateway/host.js
+
+
+  # ── toolchain-latest-sentinel（#132 追新哨兵，2026-10-16）────────────────
+  # 主线八处 pin .moonbit-version（可复现、不被上游发布劫持——2026-10-16
+  # 三笔连红 4021 教训）；追新职能由本 job 独立承载：夜间裸 latest 跑核心面，
+  # 红 = 上游新版有兼容面变化，走 vitro-toolchain-upgrade 流程（修警告 →
+  # --update-baseline → bump .moonbit-version 推进主线）。刻意不设
+  # MOONBIT_INSTALL_VERSION = latest；仅 schedule 触发，无下游 needs——
+  # 红不阻塞任何主线 job。
+  toolchain-latest-sentinel:
+    name: Toolchain latest sentinel (nightly chase-new)
+    runs-on: windows-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (latest — sentinel deliberately unpinned)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+      - name: moon check (latest compatibility probe)
+        run: cd moonbit && moon check
+        shell: bash
+      - name: moon test (latest compatibility probe)
+        run: cd moonbit && moon test
+        shell: bash
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)
@@ -804,11 +884,15 @@ jobs:
       - name: Install Node 25
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
+          node-version-file: .node-version
       - name: Install MoonBit toolchain (differential anchors)
         shell: pwsh
         run: |
           Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+          # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+          # 全闸背书，禁止裸 latest。
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
@@ -862,8 +946,28 @@ jobs:
         run: cd demo && npm run pilot:check
         shell: bash
 
+      # #132 能力层（2026-10-16）：oxlint 1.88.0 零 error 门（实测 5 warn 不
+      # 阻塞；devDep 精确 pin + npm ci 锁定链）。CallTree.svelte:150/156 两处
+      # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
+      - name: F4 oxlint (zero-error gate)
+        run: cd demo && npm run lint
+        shell: bash
+
       - name: F4 vite build (build success gate)
         run: cd demo && npm run pilot:build
+        shell: bash
+
+      # E-08 快照闸（#122 闸门批，2026-10-16）：《出口分档与宿主策略》§6.2
+      # 末条防线义务「golden payload → 渲染输出」快照测试——UI 重建启动时
+      # 立即生效。vite --ssr 编译纯展示组件 bundle（dist-e08/ 不入库）→
+      # node --test 对冻结 golden（demo/e08/golden/*.html）逐字节比对；
+      # 刷新走 tests/e08-update.mts 显式人工令（E-04：快照不得测试内动态
+      # 生成）。组件面↔用例表↔golden 目录三方全等锚防快照僵死。覆盖面
+      # 边界（动画/交互/浏览器态不入快照语义）见 demo/src/e08/entry.ts 头注。
+      - name: F4 E-08 snapshot gate (SSR render vs frozen golden)
+        run: |
+          cd demo && npx vite build --ssr src/e08/entry.ts --outDir dist-e08
+          cd .. && node --test demo/tests/e08.test.mts
         shell: bash
 
       - name: demo page smoke (protocol-level, cases golden + field keys)

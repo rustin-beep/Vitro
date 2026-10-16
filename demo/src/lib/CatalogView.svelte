@@ -76,7 +76,8 @@
   details.cat-card summary { cursor: pointer; font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
   .ic { display: inline-flex; width: 16px; height: 16px; }
   .ic :global(svg) { width: 100%; height: 100%; }
-  .ic :global(.icon-missing) { font: 10px var(--mono); color: var(--t3); }
+  /* icon-missing 徽章 mono 面连字关闭（#121①——demo_ui_lint 检查 D 机判） */
+  .ic :global(.icon-missing) { font: 10px var(--mono); color: var(--t3); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .code { font-family: var(--mono); color: var(--warn, var(--num)); font-variant-ligatures: none; }
   .cat-body { margin-top: 6px; font-size: 12.5px; color: var(--t2); }
   .cat-body p { margin: 4px 0; }

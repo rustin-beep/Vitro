@@ -1,0 +1,169 @@
+{
+  "frames": [
+    {
+      "step_index": 0,
+      "code_line": 3,
+      "func_name": "main",
+      "semantic_label": "decl",
+      "algorithm_step": null,
+      "local_vars": [
+        { "name": "a", "addr": 4096, "is_local": true, "ty_name": "int[4]", "value": "{5, 2, 8, 1}" },
+        { "name": "n", "addr": 4112, "is_local": true, "ty_name": "int", "value": "4" }
+      ],
+      "call_stack": [{ "func_name": "main", "return_line": 0 }],
+      "vis_events": [],
+      "heatmap_line": 0,
+      "heatmap_count": 0,
+      "accessed_vars": [],
+      "array_snapshots": [],
+      "pointer_snapshots": [],
+      "root_cause_hint": null
+    },
+    {
+      "step_index": 1,
+      "code_line": 7,
+      "func_name": "bubbleSort",
+      "semantic_label": "compare",
+      "algorithm_step": {
+        "algorithm_name": "bubble_sort",
+        "display_name": "冒泡排序",
+        "phase": "比较",
+        "description": "比较 a[0] 与 a[1]：5 > 2，交换"
+      },
+      "local_vars": [
+        { "name": "a", "addr": 4096, "is_local": false, "ty_name": "int*", "value": "0x1000" },
+        { "name": "i", "addr": 8192, "is_local": true, "ty_name": "int", "value": "0" },
+        { "name": "j", "addr": 8196, "is_local": true, "ty_name": "int", "value": "1" },
+        { "name": "tmp", "addr": 8200, "is_local": true, "ty_name": "int", "value": "5" }
+      ],
+      "call_stack": [
+        { "func_name": "main", "return_line": 12 },
+        { "func_name": "bubbleSort", "return_line": 9 }
+      ],
+      "vis_events": [],
+      "heatmap_line": 7,
+      "heatmap_count": 2,
+      "accessed_vars": [],
+      "array_snapshots": [
+        { "name": "a", "element_ty": "int", "elements": ["5", "2", "8", "1"] },
+        { "name": "b", "element_ty": "int", "elements": ["1", "2", "5", "8"] }
+      ],
+      "pointer_snapshots": [],
+      "root_cause_hint": null
+    },
+    {
+      "step_index": 2,
+      "code_line": 8,
+      "func_name": "bubbleSort",
+      "semantic_label": "swap",
+      "algorithm_step": {
+        "algorithm_name": "bubble_sort",
+        "display_name": "冒泡排序",
+        "phase": "交换",
+        "description": "tmp 暂存 a[j]，a[j] ← a[j+1]"
+      },
+      "local_vars": [
+        { "name": "a", "addr": 4096, "is_local": false, "ty_name": "int*", "value": "0x1000" },
+        { "name": "i", "addr": 8192, "is_local": true, "ty_name": "int", "value": "0" },
+        { "name": "j", "addr": 8196, "is_local": true, "ty_name": "int", "value": "2" },
+        { "name": "tmp", "addr": 8200, "is_local": true, "ty_name": "int", "value": "8" }
+      ],
+      "call_stack": [
+        { "func_name": "main", "return_line": 12 },
+        { "func_name": "bubbleSort", "return_line": 9 }
+      ],
+      "vis_events": [],
+      "heatmap_line": 8,
+      "heatmap_count": 3,
+      "accessed_vars": [],
+      "array_snapshots": [
+        { "name": "a", "element_ty": "int", "elements": ["2", "5", "8", "1"] },
+        { "name": "b", "element_ty": "int", "elements": ["1", "2", "5", "8"] }
+      ],
+      "pointer_snapshots": [],
+      "root_cause_hint": null
+    }
+  ],
+  "idx": 1,
+  "outputs": {
+    "stdout": "1 2 5 8\n",
+    "stderr": "warning: array 'b' declared but unused\n",
+    "note": "交换次数 5，比较次数 6（n=4 的满三角轮次）"
+  },
+  "memory": {
+    "region_counts": { "global": 2, "heap": 4, "stack": 3 },
+    "alloc_counter": 4,
+    "free_list": [],
+    "quarantine": { "bytes": 40, "budget": 256, "blocks": 2 },
+    "regions": [
+      { "addr": 16384, "size": 64, "is_heap": false, "is_freed": false, "alloc_line": 1, "alloc_by": "global", "ty": "int", "name": "g_table", "kind": "global" },
+      { "addr": 16448, "size": 16, "is_heap": false, "is_freed": false, "alloc_line": 2, "alloc_by": "global", "ty": "char", "name": "g_name", "kind": "global" },
+      { "addr": 65536, "size": 32, "is_heap": true, "is_freed": false, "alloc_line": 5, "alloc_by": "malloc", "ty": "int", "name": "p", "kind": "heap" },
+      { "addr": 65568, "size": 24, "is_heap": true, "is_freed": false, "alloc_line": 6, "alloc_by": "malloc", "ty": "char", "name": "s", "kind": "heap" },
+      { "addr": 65600, "size": 32, "is_heap": true, "is_freed": true, "alloc_line": 4, "alloc_by": "malloc", "ty": "int", "name": "q", "kind": "heap" },
+      { "addr": 65632, "size": 8, "is_heap": true, "is_freed": true, "alloc_line": 4, "alloc_by": "malloc", "ty": "int", "name": "r", "kind": "heap" },
+      { "addr": 32752, "size": 4, "is_heap": false, "is_freed": false, "alloc_line": 7, "alloc_by": "stack", "ty": "int", "name": "x", "kind": "stack" },
+      { "addr": 32744, "size": 8, "is_heap": false, "is_freed": false, "alloc_line": 8, "alloc_by": "stack", "ty": "double", "name": "d", "kind": "stack" },
+      { "addr": 32736, "size": 4, "is_heap": false, "is_freed": false, "alloc_line": 9, "alloc_by": "stack", "ty": "int", "name": "y", "kind": "stack" }
+    ],
+    "heap_base": 65536,
+    "heap_offset": 104
+  },
+  "catalog": [
+    {
+      "lang": "c",
+      "category": "数组与指针",
+      "code_str": "E3001",
+      "title": "数组越界读",
+      "explanation": "下标超出数组声明范围。C 不检查边界，读到的将是相邻内存的内容。",
+      "icon": "array-decay",
+      "common_causes": ["循环条件写成 <=", "把元素个数当成最大下标"]
+    },
+    {
+      "lang": "c",
+      "category": "指针与内存",
+      "code_str": "E3005",
+      "title": "解引用空指针",
+      "explanation": "对值为 0 的指针做 * 解引用。空指针不指向任何合法对象。",
+      "icon": "assign-readonly",
+      "common_causes": ["malloc 失败未检查", "指针初始化遗漏"]
+    },
+    {
+      "lang": "c",
+      "category": "声明与类型",
+      "code_str": "E2003",
+      "title": "预期表达式",
+      "explanation": "这里需要一个表达式（如变量、数字、计算式）。",
+      "icon": "no-such-icon-on-purpose",
+      "common_causes": ["操作数遗漏", "运算符误用"]
+    }
+  ],
+  "capabilities": {
+    "engine": "vitro-engine 0.8.0",
+    "protocol": "0.1",
+    "wasm_gc": true
+  },
+  "labels": ["decl", "assign", "compare", "call"],
+  "lesson": {
+    "title": "冒泡排序",
+    "blocks": [
+      { "type": "p", "text": "相邻元素两两比较，较大者向后交换——每一轮把当前最大值「冒泡」到末尾。" },
+      { "type": "h2", "text": "核心代码" },
+      {
+        "type": "code",
+        "lang": "c",
+        "text": "for (int i = 0; i < n - 1; i++)\n  for (int j = 0; j < n - 1 - i; j++)\n    if (a[j] > a[j+1]) {\n      int t = a[j]; a[j] = a[j+1]; a[j+1] = t;\n    }"
+      },
+      { "type": "ul", "items": ["外层 i 控制轮数：n-1 轮", "内层 j 相邻比较：随 i 递减（有序尾不再参与）"] },
+      {
+        "type": "table",
+        "rows": [
+          ["轮次", "比较次数", "有序尾长"],
+          ["1", "3", "1"],
+          ["2", "2", "2"],
+          ["3", "1", "3"]
+        ]
+      }
+    ]
+  }
+}

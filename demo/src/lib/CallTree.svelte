@@ -207,7 +207,8 @@
   .edge { stroke: var(--delimiter); stroke-width: 1.5; fill: none; opacity: 0.55; vector-effect: non-scaling-stroke; }
   .edge.walked { stroke: var(--accent); stroke-width: 2; opacity: 1; }
   .nd rect { fill: var(--pane); stroke: var(--hairline); stroke-width: 1.2; transition: fill var(--t-fast) var(--ease-out), stroke var(--t-fast) var(--ease-out); }
-  .nd text { text-anchor: middle; font-family: var(--mono); }
+  /* mono 面连字关闭（#121①——demo_ui_lint 检查 D 机判；树节点文本含 <= 等教学符号，连字替换即教学硬伤） */
+  .nd text { text-anchor: middle; font-family: var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .nd .tname { fill: var(--t1); font-size: 11.5px; font-weight: 600; }
   .nd .targ { fill: var(--t3); font-size: 10px; }
   .nd.cur rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-tint); }

@@ -13,13 +13,26 @@
 //	   $("stdin-row").classList.add("active") 只有 .tab.active 定义，
 //	   #stdin-row 永远没有 tab 类，行永不显示）。
 //	C. getElementById 字面量 id ⊆ html id 集 ∪ 动态前缀白名单（防静默 null）。
+//	D. mono 连字对账（2026-10-16 #122 闸门批，#121① 债的机判）：凡 var(--mono)
+//	   字体面消费规则，须**规则体内自带 font-variant-ligatures 关闭**（新栈
+//	   组件同行声明形态）**或选择器 ∈ style.css 末尾枚举块**（旧栈形态——
+//	   注释锚「新增 mono 面必须连坐本规则」）。`font:` 简写重置连字 +
+//	   同特异性层叠后者赢两条实测约束（style.css 尾注）使「新面忘了关」
+//	   静默发生——CallTree.svelte SVG 树节点 text 的实锤（闸落地当日抓到）
+//	   即此形态：教学文本 `<=` 渲染成 `≤`（#121① 教学硬伤同族）。
+//
+// 扫描面（2026-10-16 扩）：旧栈三件套（index.html + app.ts + js/*.ts +
+// *.css）∪ 新栈 F4 面（src/**/*.svelte 模板段并入 html 面、<style> 块并入
+// css 面、src/**/*.ts 并入 js 面——排除 src/data/ 生成物）。新栈组件态
+// 走 Svelte class:xxx 指令（非 classList），class 写操作位点不增、CSS
+// 变量引用位点大幅入账。
 //
 // 规则外置 rules.json：动态 className 拼接簇（"pill " + kind 一类静态不可
 // 提取的写操作，显式登记合法类集）、动态 id 前缀、显式白名单；**僵尸条目
 // （登记的类/id 已无任何引用或定义）无条件红**。
 //
 // 判定型脚本纪律：Go 零第三方依赖、fail loud（exit 1 列出全部未命中）、
-// -selftest 内存注入四类证红（class/var/id/zombie 各≥1，不落盘）。
+// -selftest 内存注入证红（class/var/id/zombie/mono 各≥1，不落盘）。
 // 抽取面下限（D8 族防线，2026-10-02 审阅 P2-2）：真跑时各路有效检查
 // 位点数低于硬编码下限即红——字面量改变量等抽取器不认的形态会让闸
 // 静默失能（同一 bug 字面量红、变量绿，实测实锤）。class 位点口径 =
@@ -34,6 +47,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -65,6 +79,7 @@ type rules struct {
 
 var reCSSComment = regexp.MustCompile(`/\*[\s\S]*?\*/`)
 var reCSSRule = regexp.MustCompile(`([^{}]+)\{`)
+var reCSSFullRule = regexp.MustCompile(`([^{}]+)\{([^{}]*)\}`)
 var reCSSCompound = regexp.MustCompile(`[#.][A-Za-z_][\w-]*`)
 var reCSSVarDef = regexp.MustCompile(`(--[\w-]+)\s*:`)
 var reCSSVarUse = regexp.MustCompile(`var\((--[\w-]+)`)
@@ -72,6 +87,11 @@ var reCSSVarUse = regexp.MustCompile(`var\((--[\w-]+)`)
 var reHTMLTag = regexp.MustCompile(`<([a-z]+)[^>]*>`)
 var reAttrID = regexp.MustCompile(`\bid="([\w-]+)"`)
 var reAttrClass = regexp.MustCompile(`\bclass="([^"]*)"`)
+
+// Svelte 组件 <style> 块拆分（#122 闸门批扩面）：style 块并入 css 面、
+// 模板段并入 html 面。非贪婪到第一个 </style>——组件单 style 块形态
+// （11 个组件全部单块，walk 顺序合并多块亦安全）。
+var reSvelteStyleBlock = regexp.MustCompile(`<style[^>]*>[\s\S]*?</style>`)
 
 // 泛型实参分支 \$<[^>()]*>\(（2026-10-04 审阅 P2-1）：TS 源面 $<T>("id")
 // 形态裸 \( 侧正则全漏——注入泛型 ghost id 闸绿实锤（位点 26→21 静默塌缩）；
@@ -102,6 +122,12 @@ func classListArgs(kind, s string) []string {
 		out = append(out, m[1])
 	}
 	return out
+}
+
+// normSel 选择器比对形态归一：去首尾空白 + 内部空白折叠（同一规则块内
+// 手写空格差异不产生假红）。
+func normSel(s string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(s)), " ")
 }
 
 // firstTopArg 截取实参串的首个顶层实参：跳过字符串字面量与括号/方括号
@@ -254,6 +280,47 @@ func main() {
 			sb.Write(b)
 		}
 		css = sb.String()
+	}
+
+	// ── 新栈面并入（F4 Svelte，#122 闸门批）：src/**/*.svelte 的 <style> 块
+	// 并入 css 面、模板段并入 html 面；src/**/*.ts 并入 js 面。src/data/ 排除
+	// （lessons.ts = pages.yml 现场发射的生成物，不在库、Demo job 不产——
+	// 入扫则本地/CI 抽取面漂移）。新栈组件态走 class:xxx 指令（非
+	// classList），class 写位点不增；组件 <style> 的 var() 引用大幅入账。
+	newStackSrc := selftestSvelte
+	if !*selftest {
+		var b strings.Builder
+		err := filepath.WalkDir(filepath.Join(*demoDir, "src"), func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if d.Name() == "data" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if strings.HasSuffix(p, ".svelte") || strings.HasSuffix(p, ".ts") {
+				mb, err := os.ReadFile(p)
+				if err != nil {
+					return err
+				}
+				b.WriteByte('\n')
+				b.Write(mb)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: demo/src/ 不可扫: %v\n", err)
+			os.Exit(2)
+		}
+		newStackSrc = b.String()
+	}
+	{
+		for _, blk := range reSvelteStyleBlock.FindAllString(newStackSrc, -1) {
+			css += "\n" + blk
+		}
+		html += "\n" + reSvelteStyleBlock.ReplaceAllString(newStackSrc, "\n")
 	}
 
 	var issues []issue
@@ -488,6 +555,47 @@ func main() {
 		}
 	}
 
+	// ── 检查 D：mono 连字对账（#121① 债机判，2026-10-16）──
+	// 凡 var(--mono) 字体面消费规则：规则体内自带 font-variant-ligatures
+	// （新栈组件同行声明形态）或选择器 ∈ css 面连字豁免集（旧栈 = style.css
+	// 末尾枚举块，含 font-variant-ligatures 声明的规则块选择器即豁免——
+	// 豁免集从合并 css 面收集，两形态一视同仁）。`font:` 简写重置连字 +
+	// 同特异性层叠后者赢（style.css 尾注两条实测约束）使「新面忘了关」
+	// 静默发生；CallTree.svelte SVG text 的实锤即首战果。
+	// ⚠️ 规则提取前必须剥 CSS 注释——块前注释（如「/* #121① */」）混进
+	// 选择器串使豁免比对恒假红（首跑 6 红中 4 红即此抽取缺陷）。
+	cssBare := reCSSComment.ReplaceAllString(css, "")
+	monoExempt := map[string]bool{}
+	for _, m := range reCSSFullRule.FindAllStringSubmatch(cssBare, -1) {
+		if strings.Contains(m[2], "font-variant-ligatures") {
+			for _, one := range strings.Split(m[1], ",") {
+				if sel := normSel(one); sel != "" {
+					monoExempt[sel] = true
+				}
+			}
+		}
+	}
+	sitesMono := 0
+	for _, m := range reCSSFullRule.FindAllStringSubmatch(cssBare, -1) {
+		if !strings.Contains(m[2], "var(--mono)") {
+			continue
+		}
+		if strings.Contains(m[2], "font-variant-ligatures") {
+			sitesMono++
+			continue
+		}
+		for _, one := range strings.Split(m[1], ",") {
+			sel := normSel(one)
+			if sel == "" || strings.HasPrefix(sel, "@") {
+				continue
+			}
+			sitesMono++
+			if !monoExempt[sel] {
+				issues = append(issues, issue{"mono", fmt.Sprintf("mono 连字对账: %s 消费 var(--mono) 但规则体无 font-variant-ligatures 关闭、也未连坐 style.css 末尾枚举块——连字复活（#121① 教学硬伤同族；新面在组件内同行声明，旧面连坐枚举块）", sel)})
+			}
+		}
+	}
+
 	// ── 僵尸条目：白名单/动态簇登记的类与 id 必须仍有真实引用或定义 ──
 	allClassNames := map[string]bool{}
 	for c := range htmlClassAll {
@@ -573,8 +681,8 @@ func main() {
 		}
 		// zombie 下限 2 = 僵尸两张表（dynamic_class_assigns/var_whitelist）雷各一
 		// ——单表判定失能时另一表撑不住，表粒度打坏即红
-		if kinds["class"] < 1 || kinds["var"] < 1 || kinds["id"] < 1 || kinds["zombie"] < 2 {
-			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 未达到四类证红（class=%d var=%d id=%d zombie=%d）——闸失效\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
+		if kinds["class"] < 1 || kinds["var"] < 1 || kinds["id"] < 1 || kinds["zombie"] < 2 || kinds["mono"] < 1 {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 未达到五类证红（class=%d var=%d id=%d zombie=%d mono=%d）——闸失效\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
 			os.Exit(1)
 		}
 		// 泛型回归锚（2026-10-04 审阅 P2-1）：$<T>("ghost") 形态必须被抓——
@@ -609,7 +717,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest toggle 首参未定义类未被抽到——首参特判退化\n")
 			os.Exit(1)
 		}
-		fmt.Printf("demo_ui_lint: -selftest 四类证红 OK + 泛型锚 OK（class=%d var=%d id=%d zombie=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"])
+		fmt.Printf("demo_ui_lint: -selftest 五类证红 OK + 泛型锚 OK（class=%d var=%d id=%d zombie=%d mono=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
 		return
 	}
 
@@ -638,7 +746,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "demo_ui_lint: %d 条未命中——字符串契约对账红\n", len(issues))
 		os.Exit(1)
 	}
-	fmt.Printf("demo_ui_lint: 类名/CSS 变量/id 三路对账全部通过（位点 class=%d〔不可解析 %d〕/ id=%d / var=%d）\n", sitesClass, sitesUnresolved, sitesID, sitesVar)
+	fmt.Printf("demo_ui_lint: 类名/CSS 变量/id/mono 连字对账全部通过（位点 class=%d〔不可解析 %d〕/ id=%d / var=%d / mono=%d）\n", sitesClass, sitesUnresolved, sitesID, sitesVar, sitesMono)
 }
 
 func validClass(c, anchorID string, candidate func(string) map[string]bool, units []compoundUnit, gen, htmlAll map[string]bool, rl rules) bool {
@@ -726,3 +834,13 @@ $("box").classList.toggle("phantom-toggle", seg.dataset.v === "off");
 document.getElementById("no-such-id").onclick = null;
 const g = $<HTMLTextAreaElement>("no-such-id-generic");
 const v = "var(--no-such-var)";`
+
+// selftestSvelte：mono 路（检查 D）注入雷——.mono-face 消费 var(--mono)
+// 无连字关闭亦无枚举连坐（selftestCSS 无 font-variant-ligatures 规则，
+// 豁免集空）必红；.mono-ok 同行声明为绿对照。var 路顺带多一条 --mono
+// 未定义红（现有 --ghost-var 雷外增量，≥1 断言无碍）。
+const selftestSvelte = `<div class="mono-face">x</div>
+<style>
+.mono-face { font: 12px var(--mono); }
+.mono-ok { font: 12px var(--mono); font-variant-ligatures: none; }
+</style>`

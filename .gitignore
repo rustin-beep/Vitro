@@ -197,6 +197,8 @@ examples/_build/
 
 # demo 前端试点（F1）：vite 产物不入库（与 tsc 发射产物对称）
 demo/dist-pilot/
+# E-08 快照闸 SSR 渲染 bundle（#122 闸门批）：同 vite 产物形态不入库
+demo/dist-e08/
 
 # 课程叙述层生成物（#120 内容管线）：CI 现场发射，不入库（对齐 algorithms.js 形态）
 demo/src/data/lessons.ts

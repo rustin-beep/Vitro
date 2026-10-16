@@ -93,9 +93,11 @@ func loadRules(root, relPath string) rulesDoc {
 	if err := json.Unmarshal(raw, &rd); err != nil {
 		fatal("解析规则失败: %v", err)
 	}
+	// rust_cli 自 S9 删区起降级为**可选**：Rust oracle 永久消失，仅 compare 模式需要它
+	// （缺失时 all 模式跳过 compare 并记 ModeErrs，不再 fatal 整个工具）。
 	if rd.CorpusRoot == "" || len(rd.Corpora) == 0 || len(rd.DumpTools) == 0 ||
-		rd.MoonCmdRoot == "" || rd.RustCLI == "" || rd.OutRoot == "" || rd.ReportPath == "" {
-		fatal("规则缺必需字段（corpus_root / corpora / dump_tools / moon_cmd_root / rust_cli / out_root / report_path）")
+		rd.MoonCmdRoot == "" || rd.OutRoot == "" || rd.ReportPath == "" {
+		fatal("规则缺必需字段（corpus_root / corpora / dump_tools / moon_cmd_root / out_root / report_path）")
 	}
 	if rd.Rounds <= 0 {
 		rd.Rounds = 5
@@ -282,10 +284,9 @@ type launchResult struct {
 func runLaunch(root string, rd rulesDoc, self, outRoot string) (launchResult, error) {
 	var res launchResult
 
-	rust := filepath.Join(root, filepath.FromSlash(rd.RustCLI))
-	if _, err := os.Stat(rust); err != nil {
-		return res, fmt.Errorf("缺 Rust oracle: %s", rust)
-	}
+	// Rust oracle 已于 S9 删区退役（native/target/release/vitro_cli.exe 永久消失）。
+	// 它原先充当的「零负载启动探针」改由本工具自带的 __stamp 自 spawn 通道承担
+	// （只打时间戳即退，零工作负载 ⇒ 与 rust usage 同性质，20ms 阈值判据仍成立）。
 
 	// MoonBit 侧用最小语料走正常路径（缺参 fail 路径有 backtrace 假象）。
 	paths, _ := corpusFiles(corpusDir(root, rd, rd.Compare.Corpus))
@@ -310,7 +311,7 @@ func runLaunch(root string, rd rulesDoc, self, outRoot string) (launchResult, er
 		exe  string
 		args []string
 	}{
-		{"rust vitro_cli(usage)", rust, nil},
+		{"self __stamp(零负载启动探针)", self, []string{"__stamp"}},
 		{"moon " + rd.Compare.MoonTool + "(最小语料)", moonExe, []string{small, moonDir}},
 	}
 	for _, t := range targets {
@@ -329,10 +330,10 @@ func runLaunch(root string, rd rulesDoc, self, outRoot string) (launchResult, er
 		})
 	}
 
-	// 拆分段（取 min 以去掉尖峰）
-	c, w := spawnSplit(rust, nil)
+	// 拆分段（取 min 以去掉尖峰）——同样改用零负载自 spawn 探针
+	c, w := spawnSplit(self, []string{"__stamp"})
 	for i := 1; i < rd.LaunchReps; i++ {
-		c2, w2 := spawnSplit(rust, nil)
+		c2, w2 := spawnSplit(self, []string{"__stamp"})
 		if c2 < c {
 			c = c2
 		}
@@ -628,7 +629,7 @@ func buildReport(in reportInput) string {
 			fmt.Fprintf(&b, "| %s | %.1f | %.1f | %.1f |\n", r.Name, r.Min, r.Med, r.Max)
 		}
 		if in.Launch.Rows[0].Create > 0 {
-			fmt.Fprintf(&b, "\n- 拆分（rust oracle，取 min）：CreateProcess 本身 %.1fms / 运行+退出 %.1fms\n",
+			fmt.Fprintf(&b, "\n- 拆分（零负载自 spawn 探针，取 min）：CreateProcess 本身 %.1fms / 运行+退出 %.1fms\n",
 				in.Launch.Rows[0].Create, in.Launch.Rows[0].Run)
 		}
 		fmt.Fprintf(&b, "- 分段（自 spawn 时间戳探针）：**进 main 之前 %.1fms** / 退 main 之后 %.1fms\n", in.Launch.Pre, in.Launch.Post)
@@ -831,12 +832,22 @@ func main() {
 			in.Pipe = rows
 		}
 		if *mode == "all" || *mode == "compare" {
-			in.Modes = append(in.Modes, "compare")
-			cr, err := runCompare(root, rd, outRoot)
-			if err != nil {
-				fatal("%v", err)
+			rustExe := filepath.Join(root, filepath.FromSlash(rd.RustCLI))
+			_, statErr := os.Stat(rustExe)
+			if statErr != nil && *mode == "all" {
+				// Rust oracle 已随 S9 删区退役 ⇒ compare 的 Moon/Rust 比值语义永久失效。
+				// all 模式跳过（记 ❌ 供人看），显式 -mode compare 仍 fatal（用户点名要它）。
+				in.Modes = append(in.Modes, "compare(跳过)")
+				in.ModeErrs = append(in.ModeErrs,
+					"compare 跳过：Rust oracle 已随 S9 删区退役（"+filepath.ToSlash(rd.RustCLI)+" 不存在），Moon/Rust 比值语义永久失效")
+			} else {
+				in.Modes = append(in.Modes, "compare")
+				cr, err := runCompare(root, rd, outRoot)
+				if err != nil {
+					fatal("%v", err)
+				}
+				in.Compare = &cr
 			}
-			in.Compare = &cr
 		}
 	default:
 		fatal("未知 -mode %q（可选 all|launch|pipeline|compare|ab）", *mode)

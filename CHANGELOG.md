@@ -12,6 +12,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### docs: 全库文档翻新第六轮——三臂口径对齐 + 下游接入配方 + 协议字段版本表 + 宿主可达性矩阵（#115/#116/#124/#127，2026-10-16）
+
+【三 issue 文档面落地】① 快速入门新增《下游接入（MoonBit 宿主）》节（#115）：
+`moon add vitro/engine` + `moon.pkg` 三件套（import 块 / `pkgtype(kind:"executable")`
+/ `supported_targets`——`.mbt` 顶写 import 报 [3001] 与 `is-main` 旧语法两坑
+点名）+ gateway 四导出 + `.mbtx` 脚本形态与包形态差异 + 下游 `MOON_CC=clang-cl`
+边界（#117）。② CLI使用手册 serve 节与 STEP_PAYLOAD spec §9.4 双落点新增
+「字段 ↔ 最低版本」表（#116）：`output_truncated` / `truncated_bytes` /
+`error_catalog[].icon` / `icons.get` / `memory.dump` / 错误帧 `error.expected`
+/ `step.next` 的 `frames` 七条全部 **HEAD（未发布）**——经 tag
+`vitro-engine-0.8.0` 逐条实证在架不携带（`memory.dump` 系 #49 批二补查；
+手册 run 帧示例补 `output_truncated` 位，`serve_run.mbt` 恒携带）；维护
+义务入表：新字段上帧必须登记版本归属，「HEAD」随发版转实版号。③ 出口分档
+新增 §3.5 宿主可达性矩阵（#124 调查 + #127 勘正）：js-string builtins 双
+门槛版本表（Safari 26.2+ 可达）、三臂宿主门槛、Safari 26.2
+`instantiateStreaming` 禁令（WebKit bug 308136——demo 两步装载天然规避，
+禁以「少一次拷贝」改 streaming）+ 失效源勿引清单。
+
+【三臂口径全库对齐】快速入门 / 构建指南 / CLI使用手册 / 脚本总清单 /
+项目路线图 / docs README 六册统一：launcher 缺省臂 wasm→js、node ≥25 哨兵
+勘正为 wasm 壳 MIN_NODE=22（js 臂零 builtins 门槛、node 24 CI pin）、构建
+节补 js 臂与 wasm 两件产物、`scripts/vitro_cli/main.js` 行随退役批改写、
+`vitro_cli_smoke` 行改三臂多臂对拍、CI §1.1 job 分类对 ci.yml 现行八 job
+重写（指针式不锚步数）、「本仓库不含任何前端」改 demo/ 现役（#122 前端批
+进行中）。
+
+【退役连坐与死链清零】脚本总清单 §1.1 划除 `.json.mbt` 静态门禁 / jsonmbt
+再生 / jmemit 三死条目（#125 三批退役连坐，纪律 13）；jsonmbt 真相源迁移档
+加退役横幅转历史档案态。死链七处清零：docs README 六处 `ARCHIVE_` 双前缀
++ spec 头部归属链；STEP_PAYLOAD spec 头部实现锚/消费者改「冻结时点 Rust 锚
++ 现役 MoonBit 锚」双轨、§9 单源死路径勘正（contracts.rs→protocol/schema.mbt）。
+
+【验证】gen_protocol_ts -check PASS（spec §9.4 新节不炸 MoonBit↔schema 双向
+对账——解析器按 TypeName 标题取表、无名表跳过）；facts --strict 0 漂移；
+九文件相对链接存在性全通；测试数句对 facts 真值 782 对齐。
+
 ### fix(ast+vm+teaching): #71 渲染零暴露族收官——病 80 Function 臂绑正 + 病 81 struct/union 数组步长按真实布局 + 病 79 勘正（2026-10-16）
 
 【病 80】type_display_name 的 Function 臂模式 `Function(rt, pts,

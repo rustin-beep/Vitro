@@ -4,9 +4,9 @@
 > 字段冻结测试、出口形状一致性、serve 冒烟与 clippy 零警告全部就位。
 > 冻结日期：2026-09-12　|　冻结锚点：`10591ad`
 > 后续演进走 **§9 v0.2 激活轨道**（预留位激活 / 新增字段），纪律不变：**字段只增不改语义**。
-> 归属：主计划 [`后端定位与白箱计划.md`](../current/01-定位与路线/后端定位与白箱计划.md) §3.2 协议层
-> 实现锚点：`native/src/unified/types.rs`（类型定义）、`collector.rs`（字段来源）、`engine.rs`（窗口与 seek）、`stream.rs`（差分编码）、`contracts.rs`（版本轨道与行为契约）、`vocabulary.rs`（受控词汇表）、`native/src/capi/first_batch.rs`（出口序列化）
-> 消费者：capi 第一批（`vitro_step_next_json` / `vitro_get_step_payloads_json`）、`vitro_cli serve`、wasm 绑定、任何第三方语言
+> 归属：主计划 [ARCHIVE_后端定位与白箱计划20260911.md](../archive/ARCHIVE_后端定位与白箱计划20260911.md)（已归档）§3.2 协议层
+> 实现锚点（冻结时点 = Rust 区，2026-09-12；该区已随 2026-10-05 删区退役，tag `rust-oracle-freeze` 可回溯）：`native/src/unified/types.rs`（类型定义）、`collector.rs`（字段来源）、`engine.rs`（窗口与 seek）、`stream.rs`（差分编码）、`contracts.rs`（版本轨道与行为契约）、`vocabulary.rs`（受控词汇表）、`native/src/capi/first_batch.rs`（出口序列化）。**现役 MoonBit 锚**：`moonbit/protocol/`（types.mbt 权威生成源 + schema.mbt 台账/契约 + vocabulary）、`moonbit/time_travel/engine.mbt`（窗口与 seek）、`moonbit/gateway/serve_step.mbt`（出口装配）——TS 类型生成链 gen_protocol_ts 的双向对账随批在役
+> 消费者（冻结时点）：capi 第一批（`vitro_step_next_json` / `vitro_get_step_payloads_json`）、`vitro_cli serve`（均已随删区退役）。**现役消费者**：serve `step.next`/`payload.get` 帧族（`cmd/serve` / `vitro api` / 三臂 CLI 的 step 流）、`@vitro/protocol` TS 包、demo 前端、任何第三方语言
 > 最后核对日期：2026-09-14
 > 修订说明（2026-09-14，U2#10）：§2.4 `ArraySnapshot` 新增 `truncated`（bool，
 > serde default 缺省 false——旧流/旧消费方零影响，字段只增不改语义纪律内）；
@@ -517,9 +517,10 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 ## 9. v0.2 激活轨道（预留位 → 激活的既定轨道，2026-09-12）
 
 > 下游需求清单 B2 的落地：把"字段只增不改 + 消费方容忍缺省"从文字共识固化成
-> **有机器防线的轨道**。机器可读单源：`native/src/unified/contracts.rs`
-> （`RESERVED_FIELDS_V0_2` / `V0_2_ACTIVATION_CHECKLIST` / `V0_2_FIELD_LEDGER` /
-> `BEHAVIOR_CONTRACTS`），出口：serve `contracts` 方法 + `capabilities.schema`。
+> **有机器防线的轨道**。机器可读单源：`moonbit/protocol/schema.mbt`
+> （`RESERVED_FIELDS_V0_2` / 激活清单 / `V0_2_FIELD_LEDGER` /
+> 行为契约表；历史出处 `native/src/unified/contracts.rs` 已随 2026-10-05 删区消失——
+> 台账内容现为本仓自主维护基线，tag `rust-oracle-freeze` 可回溯），出口：serve `contracts` 方法 + `capabilities.schema`。
 
 ### 9.1 激活清单（**激活提交必须逐条走完**）
 
@@ -560,6 +561,29 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 `check_unwinding_granularity` 的判据（对相邻两步）：展开区间内 `unwind_frames_left`
 **下降幅度 ≤ 1**（一次弹多帧 = 合并单步 = 违规）；允许为 0（`finally` 步不弹帧）；
 回增为违规；进入展开时 ≥ 1，离开展开时必须为 0。
+
+### 9.4 字段 ↔ 最低版本对照（#116，2026-10-16）
+
+> 「字段只增不改」的**版本归属**落点：下游按在架 mooncakes 版本写消费代码前先查此表。
+> 在架最新 = **0.8.0**（2026-10-14 `moon add --upgrade` 实测口径）；标「HEAD」的条目
+> **在架版不携带**，随下一版发布转正后改写实版号。分工：StepPayload **域内**的
+> 预留位/激活语义见 §9.2 台账；本表覆盖**帧面全域**（StepPayload 之外的 run/delta/
+> error_catalog/错误帧字段与方法）——同 `schema.mbt` 里 v0.2 字段台账与错误帧
+> 白名单的两域分工，不混表。
+
+| 字段 / 方法 / 参数 | 载体帧 | 最低版本 | 出处 |
+|---|---|---|---|
+| `run` 响应 `output_truncated` | run | **HEAD（未发布）** | #91 截断位（`serve_run.mbt` 恒携带） |
+| `output.delta` 响应 `truncated_bytes` | output.delta | **HEAD（未发布）** | CLI_PROTOCOL_V1 §8 DX ③（2026-10-11 追加） |
+| `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog | **HEAD（未发布）** | #27 语义图标（v0.2 台账第 8 条） |
+| `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
+| `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（tag `vitro-engine-0.8.0` 实证无此方法） |
+| 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
+| `step.next` 参数 `frames` | step.next | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
+
+> 维护义务：**新字段上帧时必须在此登记版本归属**；「HEAD」条目随发版改为实版号。
+> 导览版同步维护于 [CLI使用手册.md](../current/02-构建与上手/CLI使用手册.md)
+> serve 节（两表同源，手册为下游导览形态、本节为 spec 形态）。
 
 ---
 

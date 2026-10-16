@@ -1,22 +1,27 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-10-07（**图标语义批〔#27〕**——协议面两变：`error_catalog` 的 `emoji` 字段退役为 **`icon`**〔语义图标 id，业务帧只携带 id 不携带字形〕；新接 **`icons.get`** 方法帧〔图标资产单通道下发，digest 与真源一致；protocol_frames 基线 31→33 帧〕。前一沿革 2026-10-06 统一入口批〔#49 批一〕——`scripts/bin/vitro` launcher 落地：默认 **wasm 臂**〔node 壳 `scripts/vitro_cli/main.js` 消费 `gateway/wasm/wasm.wasm`，需 node ≥25〕，node 缺失/过旧自动降级 native exe〔stderr 明示 `backend=` 行〕，`--backend native|wasm` 显式选边；双臂输出同形由 CI 闸 `scripts/vitro_cli_smoke` 对拍锁定。wasm 臂 `--dump-memory` 已支持（#49 批二：gateway `memory.dump` 帧——1MB 映像 base64 承载，双臂落盘逐字节一致由 CI 闸锁；`--json` 模式下不适用与 native 同口径〔spec §3〕）。更前一沿革 2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现）
+> 最后核对日期：2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。前一沿革 2026-10-07（**图标语义批〔#27〕**——协议面两变：`error_catalog` 的 `emoji` 字段退役为 **`icon`**〔语义图标 id，业务帧只携带 id 不携带字形〕；新接 **`icons.get`** 方法帧〔图标资产单通道下发，digest 与真源一致；protocol_frames 基线 31→33 帧〕。前一沿革 2026-10-06 统一入口批〔#49 批一〕——`scripts/bin/vitro` launcher 落地：默认 **wasm 臂**〔node 壳 `scripts/vitro_cli/main.js` 消费 `gateway/wasm/wasm.wasm`，需 node ≥25〕，node 缺失/过旧自动降级 native exe〔stderr 明示 `backend=` 行〕，`--backend native|wasm` 显式选边；双臂输出同形由 CI 闸 `scripts/vitro_cli_smoke` 对拍锁定。wasm 臂 `--dump-memory` 已支持（#49 批二：gateway `memory.dump` 帧——1MB 映像 base64 承载，双臂落盘逐字节一致由 CI 闸锁；`--json` 模式下不适用与 native 同口径〔spec §3〕）。更前一沿革 2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
 
 ```bash
 # sh 形态（Git Bash / Linux / macOS；Windows cmd 用 scripts\bin\vitro.cmd）
-scripts/bin/vitro run corpus/baseline/array_sum_loop.c     # 默认 wasm 臂
+scripts/bin/vitro run corpus/baseline/array_sum_loop.c     # 缺省 js 臂
 scripts/bin/vitro --backend native run <f>                 # 显式 native
-# 前置产物（缺哪个臂构建哪个）：
-cd moonbit && moon build --release --target wasm-gc gateway/wasm            # wasm 臂
-MOON_CC=clang moon build --release --target native cmd/vitro                # native 臂
+scripts/bin/vitro --backend wasm   run <f>                 # 显式 wasm（node ≥22）
+# 产物在位时零构建直跑；缺哪个臂构建哪个：
+cd moonbit && moon build --release --target js cmd/vitro_js              # js 臂（缺省）
+MOON_CC=clang moon build --release --target native cmd/vitro             # native 臂（防线基线）
+cd moonbit && moon build --release --target wasm-gc gateway/wasm         # wasm 臂两件之一：wasm-gc 引擎
+cd moonbit && moon build --release --target js cmd/vitro_wasm            # wasm 臂两件之二：MoonBit 胶水壳
 ```
 
-降级链：node 不在 PATH 或版本 <25（壳 exit 3 哨兵）→ 自动 fallback native exe，stderr 明示原因；任何形态 stderr 恒一行 `[vitro] backend=…` 标注（脚本可断言所在臂）。
+臂语义（2026-10-15 三后端单壳批——三臂壳全 MoonBit，真相源 = `cmd/lib/cli` 单源）：**js** = `cmd/vitro_js` 直编 JS、node 直跑，免 wasm 实例化层，CLI 缺省臂；**native** = `cmd/vitro` exe，防线基线臂（vm_diff / clang_direct 消费面）；**wasm** = `cmd/vitro_wasm` 胶水拉 gateway wasm-gc，与浏览器分发同源。
 
-防线插座（#49 批二）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）——wasm 臂被测物 = 统一入口壳（gateway wasm.wasm 主出口产物的实证面）；两臂 CI 并行全量。批三扩：壳 `serve` 子命令（NDJSON 会话——与 cmd/serve 同形：shutdown 判停/EOF/空行回错误帧；行长无上限对齐 oracle）；replay / serve_smoke / protocol_frames / teaching_annotation_diff wasm 臂同款插座（CI 并行）；codegen_diff/host_contract_map/diff_ledger 裁定不迁（#49 批三评论在案）。
+降级链：node 不在 PATH 或 js 产物缺失 → 自动 fallback native exe，stderr 明示原因；wasm 壳 node <22 报 rc=5 哨兵降级（js-string builtins 的 V8 下界，node 24 实测全通）。任何形态 stderr 恒一行 `[vitro] backend=…` 标注（脚本可断言所在臂）；`--backend` 尾置 fail loud rc=4（#70）。三臂同形性由 CI 闸 `scripts/vitro_cli_smoke` 多臂对拍锁定（js/native/wasm 逐行一致）。
+
+防线插座（#49 批二起，三后端批续扩）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）；壳 `serve` 子命令（NDJSON 会话——与 cmd/serve 同形：shutdown 判停/EOF/空行回错误帧）；replay / serve_smoke / protocol_frames / teaching_annotation_diff wasm 臂同款插座（CI 并行）；codegen_diff/host_contract_map/diff_ledger 裁定不迁（#49 批三评论在案）。
 
 ## MoonBit 侧 CLI（agent 主入口）
 
@@ -80,7 +85,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
 | `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
-| `step.next` | — | 单步推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)） |
+| `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0 fail loud、上限钳 `config.max_steps`（病 76 实现化——**在架 0.8.0 无此参数**，见下表） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
 | `ast.dump` / `typeck.dump` / `symbols.dump` | — | 静态 dump 族（AST / 类型检查 / 符号表导出——无需会话，只读语义不碰会话态） |
@@ -96,6 +101,20 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `capabilities` | — | 机器可读能力清单（`engine_version`（含构建期 git 短哈希，可用于产物自检）、版本宏名义锚点、语言子集、内存模型常量、schema 轨道、行为契约） |
 | `session.create` / `session.reset` / `session.destroy` | — | 会话生命周期（响应带 `session` 拓扑语义字段，见上表"会话拓扑"）|
 | `shutdown` | — | 结束 serve 进程（EOF 亦可） |
+
+**字段 ↔ 最低版本（#116，2026-10-16 起）**：协议纪律「只增不改」的版本归属落点——下游按在架版写消费代码前先查此表。在架 mooncakes 最新版 = **0.8.0**（`moon add --upgrade vitro/engine` 实测口径，2026-10-14）；标「HEAD」的条目**在架版尚不携带**，随下一版发布转正：
+
+| 字段 / 方法 / 参数 | 载体 | 最低版本 | 出处 |
+|---|---|---|---|
+| `run` 响应 `output_truncated` | run 帧 | **HEAD（未发布）** | #91 截断位 |
+| `output.delta` 响应 `truncated_bytes` | delta 帧 | **HEAD（未发布）** | [CLI_PROTOCOL_V1](../../spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
+| `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **HEAD（未发布）** | #27 语义图标 |
+| `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
+| `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |
+| 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
+| `step.next` 参数 `frames` | 方法参数 | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
+
+> 本表人工维护、以 `vitro api help` 生成物与 protocol_frames 基线为行为权威；**新字段上帧时必须在此登记版本归属**（#116），「HEAD」条目随发版改为实版号。表中未列出 = 0.8.0 在架已携带。
 
 **`memory.regions` 的三段式（2026-09-12，下游需求清单 C2）**：`regions` 是统一数组，
 每项带 `kind`，数组按地址升序；响应另带 `region_counts{global,stack,heap}`。
@@ -122,7 +141,7 @@ $ ./_build/native/release/build/cmd/serve/serve.exe <<'EOF'
 {"id":8,"method":"shutdown"}
 EOF
 {"id":1,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[],"algorithm_matches":[]}}
-{"id":2,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","waiting_input":false}}
+{"id":2,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","waiting_input":false,"output_truncated":false}}
 {"id":3,"ok":true,"result":{"cursor":36,"delta":"3程序运行完成，返回值：0\n","stream":"display","total":36}}
 {"id":4,"ok":true,"result":{"max_collected_step":-1,"ready":true}}
 {"id":5,"ok":true,"result":{"payloads":[],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}
@@ -131,7 +150,9 @@ EOF
 {"id":8,"ok":true,"result":{"shutdown":true}}
 ```
 
-> 上述输出为 2026-10-15 实测（MoonBit 侧；替换 Rust oracle 时代旧示例——旧 id5 响应带
+> 上述输出为 2026-10-15 实测（MoonBit 侧；2026-10-16 文档批按 `serve_run.mbt` 现行
+> 字段面补 id2 的 `output_truncated` 位——#91 字段恒携带，与快速入门同形示例一致；
+> 替换 Rust oracle 时代旧示例——旧 id5 响应带
 > `step_index:0` payload，早于「一帧发布缓冲」语义冻结日 2026-09-14）。**注意 id5**：
 > `step.begin` 后**首次 `step.next` 恒返回 `"payloads": []`**（缓冲建立，尚无帧可发——
 > spec STEP_PAYLOAD_SCHEMA「一帧发布缓冲」冻结契约第 1 条），第二次调用才吐出

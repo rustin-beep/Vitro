@@ -9,7 +9,7 @@ test "probe_frame_structure_and_fix_wiring" {
   let (r, _) = serve_handle(
     s, "{\"id\":1,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int x = 1\"}}",
   )
-  let j = json_parse(r) catch { _ => abort("帧非 JSON") }
+  let j = @util.json_parse(r) catch { _ => abort("帧非 JSON") }
   let result = json_field(j, "result")
   // 八段键全在
   for
@@ -66,7 +66,7 @@ test "probe_records_misconception_flow" {
   // 三条 3051 记录 → M01 检出（3/4 = 0.75）+ 学习路径三步
   let req = "{\"id\":2,\"method\":\"diagnostics_probe\",\"params\":{\"source\":\"int main(){return 0;}\",\"records\":[{\"ts\":0,\"ok\":false,\"codes\":[3051]},{\"ts\":1,\"ok\":false,\"codes\":[3021]},{\"ts\":2,\"ok\":false,\"codes\":[3051]},{\"ts\":3,\"ok\":true,\"codes\":[]}]}}"
   let (r, _) = serve_handle(s, req)
-  let j = json_parse(r) catch { _ => abort("帧非 JSON") }
+  let j = @util.json_parse(r) catch { _ => abort("帧非 JSON") }
   let result = json_field(j, "result")
   match json_field(result, "misconceptions") {
     Array(ms) => {

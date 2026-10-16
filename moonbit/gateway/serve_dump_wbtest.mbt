@@ -87,6 +87,8 @@ test "serve_dump_missing_source_protocol_error" {
     let (r, _) = serve_handle(s, "{\"id\":1,\"method\":\"\{m}\"}")
     assert_true(r.contains("\"kind\":\"protocol\""))
     assert_true(r.contains("需要 params.source"))
+    // #68 连坐：expected 字段存在断言（dump 族形状 = source:string）
+    assert_true(r.contains("\"expected\":\"source:string\""))
   }
 }
 

@@ -38,7 +38,12 @@ test {
 ///|
 test {
   // 名字 → 固定索引（Bytecode Libc 段 1000..1087；用户函数起点 1089）
-  inspect(@bytecode.bytecode_libc_index("strcmp"), content="Some(1016)")
+  debug_inspect(
+    @bytecode.bytecode_libc_index("strcmp"),
+    content=(
+      #|Some(1016)
+    ),
+  )
   inspect(@bytecode.BYTECODE_LIBC_FUNC_COUNT, content="88")
   inspect(@bytecode.BYTECODE_LIBC_BASE_INDEX, content="1000")
   // 地址布局常量：执行层（memory/host/vm）从这里消费，不复制数字

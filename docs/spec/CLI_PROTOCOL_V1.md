@@ -119,7 +119,7 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 | 命令 | 事件 |
 |---|---|
 | `run --json` | `{"type":"diag",...}` → `{"type":"run",...}` → `{"type":"stdout",...}` → `{"type":"stderr",...}` → `{"type":"note",...}`（stderr 帧：stderr 通道 delta——病 15 批 C 补 2026-10-10，此前整段丢失；note 通道：完成附注+泄漏报告——二轮审 P2 补） |
-| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富） |
+| `compile --json` | `<compile 帧>` 单行直透（含 `fix_suggestion` 七元组 + `algorithm_matches`〔teaching detect wire 出口——2026-10-04 补，#36 最小路径〕——比文本形态富。识别判据 = 函数名关键词或典型结构特征二选一〔#104 登记〕：非典型命名且结构特征不足时为空数组，非缺陷） |
 | `step --json` | `<step.next 完整响应帧 {id,ok,result}>` × N + `{"type":"summary",…}` |
 
 `<帧>` = gateway 协议响应（`{id, ok, result…}`）**单源引用**——帧内字段语义一律见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](STEP_PAYLOAD_SCHEMA_V0_1.md) 与 gateway 协议文档，本规格不重复定义。

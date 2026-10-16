@@ -121,8 +121,8 @@ func main() {
 	// MIN_NODE 同步维护。
 	if vout, verr := exec.Command(nodeBin, "--version").Output(); verr == nil {
 		v := strings.TrimPrefix(strings.TrimSpace(string(vout)), "v")
-		if major, aerr := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); aerr == nil && major < 25 {
-			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 25（wasm 臂 js-string builtins 需要——vitro_wasm MIN_NODE 同源门槛）。\n"+
+		if major, aerr := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); aerr == nil && major < 22 {
+			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 22（wasm 臂 js-string builtins 需要——vitro_wasm MIN_NODE=22 同源门槛，f49794f6 降 LTS 批同步）。\n"+
 				"wasm 臂将恒退 rc=5 降级哨兵，后续对拍会整片误报「输出不一致」。先升级 node ≥ 25 再跑本闸。\n", v)
 			os.Exit(1)
 		}
@@ -190,7 +190,10 @@ func main() {
 	// serve_compile typeck-error 分支〕；scanf 用例：审阅 P3 补——--corpus 30
 	// 字典序不含 scanf，批一段一修的 headless 分叉族无 CI 回归锚）
 	warnC := filepath.Join(tmpDir, "warn_case.c")
-	os.WriteFile(warnC, []byte("int main(){ int *p; char *c = p; int y = c; return y; }\n"), 0o644)
+	// 病 85 修（2026-10-16）：旧 fixture 实产出 2E+0W（用例名「类型警告」名实
+	// 不符）——补 double→int 窄化（W3053）成真 E+W 混合，失败路径的 warning
+	// 行渲染自此有双臂对拍锚（#129 分立后诊断走 stderr——runOut 合并口径）
+	os.WriteFile(warnC, []byte("int main(){ int *p; char *c = p; int y = c; double d = 3.14; int z = d; return y + z; }\n"), 0o644)
 	for _, c := range []struct {
 		name string
 		file string

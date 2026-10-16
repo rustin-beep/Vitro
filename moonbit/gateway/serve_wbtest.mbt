@@ -61,7 +61,7 @@ test "serve_error_frame_keys_gated" {
     "x 需要 params.y:string",
     "y:string",
   )
-  let j = json_parse(frame.stringify()) catch {
+  let j = @util.json_parse(frame.stringify()) catch {
     _ => {
       fail("自产参数错误帧必须可解析")
       return
@@ -156,17 +156,17 @@ test "serve_shutdown_stops" {
 test "json_parse_roundtrip_value_family" {
   // 值全族往返：对象/数组/字符串/数字（repr 保真）/布尔/null/嵌套
   let src = "{\"id\":42,\"method\":\"ping\",\"params\":{\"a\":[1,-2.5,3e2],\"b\":\"hi\\n\",\"c\":true,\"d\":false,\"e\":null}}"
-  let v = json_parse(src)
+  let v = @util.json_parse(src)
   let out = v.stringify()
   // 再解析回等值（往返稳定性）
-  let v2 = json_parse(out)
+  let v2 = @util.json_parse(out)
   assert_true(v == v2, msg="parse→stringify→parse 必须等值")
 }
 
 ///|
 test "json_parse_number_repr_fidelity" {
   // repr 保真：42 不 stringify 成 42.0（core Json repr~ 通道）
-  let v = json_parse("{\"n\":42}")
+  let v = @util.json_parse("{\"n\":42}")
   match v {
     Object(m) =>
       match m.get("n") {
@@ -194,7 +194,7 @@ test "json_parse_string_escapes" {
     bs +
     bs +
     "\"/\"}"
-  let v = json_parse(json_in)
+  let v = @util.json_parse(json_in)
   match v {
     Object(m) =>
       match m.get("s") {
@@ -214,7 +214,7 @@ test "json_parse_error_surface" {
   // 错误面：尾随内容/未闭合串/非法字面量/空对象数组合法
   fn fails(s : String) -> Bool {
     try {
-      ignore(json_parse(s))
+      ignore(@util.json_parse(s))
       false
     } catch {
       _ => true
@@ -234,7 +234,7 @@ test "json_parse_error_surface" {
 
 ///|
 test "json_parse_negative_and_exp" {
-  let v = json_parse("[-0,1e-3,2E+4,3.14]")
+  let v = @util.json_parse("[-0,1e-3,2E+4,3.14]")
   match v {
     Array(a) => {
       assert_eq(a.length(), 4)
@@ -261,7 +261,7 @@ test "json_parse_depth_limit_128" {
   for _ in 0..<200 {
     deep = deep + "]"
   }
-  let r : Result[Json, JsonParseError] = Ok(json_parse(deep)) catch {
+  let r : Result[Json, @util.JsonParseError] = Ok(@util.json_parse(deep)) catch {
     e => Err(e)
   }
   assert_true(r is Err(_), msg="200 层深嵌套必须被拒（超 128 限）")
@@ -272,7 +272,7 @@ test "json_parse_number_grammar_rfc8259" {
   // RFC 8259 禁止形态：前导零（01）/ 裸点（.5 / 1.）/ 悬空指数（1e / 1e+）
   fn rejects(s : String) -> Bool {
     try {
-      ignore(json_parse(s))
+      ignore(@util.json_parse(s))
       false
     } catch {
       _ => true
@@ -322,5 +322,94 @@ test "serve_err_frame_golden_shape" {
     frame.stringify(),
     "{\"id\":null,\"ok\":false,\"error\":{\"kind\":\"protocol\",\"message\":\"未知方法：x\"}}",
     msg="serve_err 帧 golden（kind/message 字段序 + null id 形态）",
+  )
+}
+
+///|
+/// #133 止血包锚（2026-10-16）：preset 三档语义——algo 档展开值、显式键
+/// 覆盖（custom 推断）、非法档名 fail loud、max_steps 超域 fail loud
+/// （静默跳过旧 bug——as_int()=None 走缺省分支响应 ok 配置不变）。
+test "config_preset_algo_expands" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"preset\":\"algo\"}}",
+  )
+  assert_true(resp.contains("\"ok\":true"), msg="algo 档应 ok")
+  let (g, _) = serve_handle(s, "{\"id\":2,\"method\":\"config.get\"}")
+  assert_true(g.contains("\"max_steps\":2000000000"), msg="algo 档步数 2e9")
+  assert_true(
+    g.contains("\"call_depth_limit\":100000"),
+    msg="algo 档深度 100K",
+  )
+  assert_true(
+    g.contains("\"preset\":\"algo\""),
+    msg="config.get 回显 algo 档",
+  )
+}
+
+///|
+test "config_preset_explicit_key_overrides_to_custom" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"preset\":\"algo\",\"max_steps\":500000000}}",
+  )
+  let (g, _) = serve_handle(s, "{\"id\":2,\"method\":\"config.get\"}")
+  assert_true(
+    g.contains("\"max_steps\":500000000"),
+    msg="显式键覆盖 preset 值",
+  )
+  assert_true(
+    g.contains("\"preset\":\"custom\""),
+    msg="覆盖后档名诚实推断 custom（非记名）",
+  )
+  assert_true(
+    g.contains("\"call_depth_limit\":100000"),
+    msg="未覆盖键保持档值",
+  )
+}
+
+///|
+test "config_preset_unknown_name_fails_loud" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"preset\":\"bogus\"}}",
+  )
+  assert_true(
+    resp.contains("\"ok\":false") &&
+    resp.contains("preset 值 'bogus' 不存在"),
+    msg="非法档名 param_err（静默忽略=开关形同虚设）",
+  )
+}
+
+///|
+test "config_max_steps_overflow_fails_loud" {
+  let s = @session.Session::new()
+  // #131 实锤形态：3e9 超 Int32 域曾静默跳过（响应 ok 配置不变）
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"max_steps\":3000000000}}",
+  )
+  assert_true(resp.contains("\"ok\":false"), msg="超域必须 fail loud")
+  assert_true(
+    resp.contains("值 3000000000 超出可表示上限"),
+    msg="报错含值与范围（报错即文档）",
+  )
+  // 配置保持原值（未被静默改动）
+  let (g, _) = serve_handle(s, "{\"id\":2,\"method\":\"config.get\"}")
+  assert_true(g.contains("\"max_steps\":10000000"), msg="配置未被改动")
+}
+
+///|
+test "config_preset_default_resets" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"preset\":\"algo\"}}",
+  )
+  let (_, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"config.set\",\"params\":{\"preset\":\"default\"}}",
+  )
+  let (g, _) = serve_handle(s, "{\"id\":3,\"method\":\"config.get\"}")
+  assert_true(
+    g.contains("\"max_steps\":10000000") && g.contains("\"preset\":\"default\""),
+    msg="default 档拉回缺省（档内显式展开非空操作）",
   )
 }

@@ -246,7 +246,9 @@ test "exec_max_steps_fuse" {
     }
   }
   assert_true(trapped)
-  assert_true(vm.error.contains("[step-limit] 程序执行步数超过限制"))
+  assert_true(
+    vm.error.contains("[step-limit] 程序执行步数达到预算上限"),
+  )
 }
 
 ///|
@@ -1778,8 +1780,10 @@ test "trap_asset_template_drift_lock" {
     div, "[divide-zero] 除零错误：你试图用 10 除以 0。\n\n[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
   )
   let loop_msg = vm.format_infinite_loop_error()
+  // #133 止血包翻新（2026-10-16）：资源墙/死循环分家——指引先分辨两种
+  // 可能（提预算命令给全），死循环退为次因
   assert_eq(
-    loop_msg, "[step-limit] 程序执行步数超过限制（10000000 步），可能包含无限循环。\n\n[cause] 原因：程序执行了太多步数但没有结束。常见原因：\n  • 循环条件永远为真（如 while(1)）\n  • 循环变量没有更新（如忘了写 i++）\n  • 递归函数没有正确的终止条件\n[fix] 检查方法：确认循环体中有改变循环条件的语句。",
+    loop_msg, "[step-limit] 程序执行步数达到预算上限（10000000 步）被安全截断——这是资源墙，不一定是你程序的错误。\n\n[cause] 两种可能，先分辨你是哪种：\n  • 计算量确实大（大循环/大搜索的合法负载——算法作业常见）：预算不够，不是 bug。提高预算再跑：serve/api 用 config.set（preset:\"algo\" 一键到 20 亿步，或 max_steps 单调），CLI 用 run --max-steps N\n  • 真无限循环（预算怎么加都不够）：循环条件永远为真（如 while(1)）、循环变量没有更新（如忘了写 i++）、递归函数没有终止条件\n[fix] 先加预算重跑一次：跑完了就是计算量问题；同样位置再撞墙，检查循环体中是否有改变循环条件的语句。",
   )
 }
 

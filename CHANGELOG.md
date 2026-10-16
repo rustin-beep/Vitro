@@ -12,6 +12,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(gateway+cli+vm): #133 止血包——preset 档位开关 + 资源墙报错分家 + run --max-steps（学生实测驱动，2026-10-16）
+
+【背景】#131 学生 A* 压测撞三道墙（全局 64KB/堆 ~960KB/步数 10M——约束
+随规模翻转）+ 资源墙报错与死循环不可区分（学生无从归因）。用户拍板方案
+B（同解释器载体可增长——扩展段主体批单独立项 #133）；本批 = 不碰内存
+结构的止血包。
+
+【preset 档位开关（config.set 新键）】default（=缺省值显式展开，拉回
+缺省态）/ algo（步数 2e9·深度 100K·隔离 1M·输出 64M——#131 实测 1.56e9
+步负载承接档；7.6 亿步程序端到端实证 finished）/ tiny（10 万步微演示）。
+同帧显式键覆盖单项；config.get 回显档名（按值推断——覆盖后诚实呈现
+custom 非记名）；非法档名 fail loud。协议「只增不改」：帧基线重冻 4 帧
+（preset 新键预期漂移）。
+
+【报错分家】step-limit trap 文案翻新（真源 md→teaching_gen_check 再生）：
+「资源墙，不一定是你程序的错误」+ 两种可能的分辨指引（计算量大→给全
+提预算命令 preset:algo/--max-steps；真死循环→怎么加都不够再查循环体）。
+旧文案把合法大负载直接指控为无限循环——实测人最痛点。连坐：vm 漂移锁
+锚翻新 + demo cases.js 文案锚 + fuse 锚前缀。
+
+【run --max-steps N 旗标】CLI 命令行直调预算（撞墙学生的第一直觉出口）；
+值域 1..=2147483647 fail loud；尾置缺值/非整数 fail loud；rc=3 判定与
+config.set 下发同源覆盖值（frame_pipeline max_steps_override 参数贯通）。
+
+【顺带修复】① config.set max_steps 超域静默 bug（3e9 → as_int()=None
+走缺省分支响应 ok 配置不变——#131 实锤）：超上界 fail loud（含 expected
+与处置指引）；**只查上界**——低下界钳制语义（#94 clamped）保留。②
+parse_int 溢出防护（Int32 静默回绕使 --max-steps 9999999999 回绕值恰好
+落合法域——step/run 两消费面同病）。
+
+【验证】moon test 783/783（+5 preset 锚，J9 突变证红）；vm_diff 666
+SAME / clang_direct 749 SAME 双全量零漂移（golden 零重冻——语料无步数
+墙用例）；smoke 三闸 + demo_smoke + facts/checklist 全绿。
+
+### fix(gateway+parser+typeck): #71 对账批——P2 状态面程序化清洗 + 病 67 修复 + 病 76 实现（frames 参数落地，2026-10-16）
+
+【P2 状态面清洗（19 探针批量对拍 clang）】43 条 P2 表中实测：病 45/47/
+49/50/51/57/58/59/60/62/63/64/66/69/70/71/72/73 共 18 条**已修或非病**
+（多为 10-13 批连带清掉——悬空指数/hexfloat/裸 #ifdef/三连拼写/enum 三
+元/ULL 移位等全部有显式诊断或与 clang 一致；病 45 的 strcmp 三函数主臂
+已修，其字面量探针红系 #66 落池口径的既定换位呈现非回归）。真活口 2 条
+各修。**病 24 顺带勘误**（前批 CHANGELOG 已记）。
+
+【病 67 修复：offsetof 嵌套成员链】C11 §7.19 member-designator——
+parser 支持 `offsetof(T, inner.name)` 点链（拼进字段名），typeck lowering
+逐段解析（struct 段累加偏移/union 段恒 0/未知段 E3042）。对照 clang：
+`offsetof(struct T, inner)`=0 / `.inner.name`=0 / `.inner.n`=4 三值逐字
+节一致。突变证红（段名断链 rc=1）。
+
+【病 76 实现：step.next frames 参数】api help 一直宣称「推进 N 步」
+（example {"frames":10}）实现恒 1 步（_params 弃置——文案与实现脱节）。
+实现化：缺省 1（旧调用方零变化——protocol_frames 47 帧基线零重冻实证）；
+≤0 fail loud param_err（含 expected 字段）；上限钳 config.max_steps。
+实证：frames=500 单次调用推进 398 步到 finished（发布 398 帧——frames
+是推进量，发布仍按行末一帧缓冲语义，两者正交）；突变证红（恒 1 →
+finished=False）。rules.json brief 同步真实化 + api_help_gen 再生（双臂
+同形由 smoke 复验）。
+
+【陷阱实录】产物验证踩 moonbit 陷阱 41（增量缓存毒化——js 产物"no work
+to do"实为旧代码；vitro_wasm 的引擎改动在 **wasm.wasm** 不在 js 胶水，
+两件产物都要刷）+ smoke 三红连锁（改 rules 后 native exe 的 api_help_
+gen 未重建 → 双臂不同形红；删产物后前置缺失红）——三臂产物齐刷才验收。
+
+【验证】moon test 781/781；vitro_cli_smoke 全绿（双臂 api help 同形）；
+replay 61/serve_smoke 68/protocol_frames 47 帧基线零重冻；vm_diff 666
+SAME；facts --strict / ci_checklist / moonbit_surface 全绿。
+
+### fix(host): #71 病 46——scanf 流头消费 ungetc 缓存（与 getchar 的 ungetc 优先语义对齐，2026-10-16）
+
+【病】`ungetc('9', stdin)` 后 `scanf("%d")` 直接读管道下一字节（'9' 被跳过）——scanf 的虚拟字节流拼装（V-P1-13 流式游标）无视 `input.ungetc` 槽，仅 getchar 走 ungetc 优先。clang 对照：`ungetc('9')` + 输入 "7" → %d 读 "97"。
+
+【修】流拼装头部插入缓存字节（映射锚 = (start_idx, start_off-1)——游标推进算法对 off+1=start_off 恰落 start_off，消费后位置不动；start_off=0 时 off=-1 走补位锚分支归 (start_idx,0) 同样正确）；pos>0（已消费）清槽——ungetc 字节只吐一次（C §7.21.6.10）。
+
+【锚】旧 `host_io_surface` 锚「scanf 匹配 1 项（读到 2）」恰好锁死病行为——修复即红（J9 证红天然留痕），翻锚为 matching failure 0 项语义（clang 逐字节复核：ungetc('a')+scanf → c=49 n=0 x=0 两侧一致）；新增 `scanf_consumes_ungetc_buffer`（消费+清槽+零消费保留三断言）。
+
+【验证】moon test 781/781（+1）；vm_diff/clang_direct native 双全量零漂移（knr 族 ungetc 语料均配 getchar、不踩 scanf 组合——666 SAME / 749 SAME+12 KNOWN+0 DIFF）；wasm 臂对拍随批。附带：病 24（scanf %f token）探针勘误——10-11 批已修（-i 注入下 %f/%lf/%d 与 clang 全对；此前"复现"系裸 pipe 探针姿势错误，vitro 的 stdin 注入通道是 -i/api input 参数）。
+
+
 ### feat(cli+scripts+spec): #129 通道分立——文本模式 stdout 只承载程序输出（#69 混流裁定翻案，用户拍板 2026-10-16）
 
 【翻案】#69（2026-10-11「混流是 display 流定义行为」）被 #129 推翻：

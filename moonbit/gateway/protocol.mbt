@@ -93,6 +93,23 @@ fn serve_config(s : @session.Session) -> Json {
   m.set("call_depth_limit", s.config.call_depth_limit.to_json())
   // #91（2026-10-14）：输出预算现值（判分方提前判断天花板——issue 建议①）
   m.set("output_budget", s.vm.output.budget().to_json())
+  // #133（2026-10-16）：preset 档位回显——按当前配置值**推断**（显式
+  // 单键覆盖后档名可能与逐项值不一致，推断口径 = 四键全等于某档的
+  // 展开值才认档，否则 "custom"——诚实呈现而非记名）。config.get 面
+  // 是只读回显（协议「只增不改」），消费方可忽略。
+  let ms = s.config.max_steps
+  let cd = s.config.call_depth_limit
+  let ob = s.vm.output.budget()
+  let preset = if ms == 10000000 && cd == 10000 && ob == 16777216 {
+    "default"
+  } else if ms == 2000000000 && cd == 100000 && ob == 67108864 {
+    "algo"
+  } else if ms == 100000 && cd == 1000 && ob == 4194304 {
+    "tiny"
+  } else {
+    "custom"
+  }
+  m.set("preset", Json::string(preset))
   Json::object(m)
 }
 
@@ -201,32 +218,63 @@ fn dispatch(
       // 旧对未知键静默丢弃（input_mode_batch 实测被吞）；白名单先行 +
       // serve_param_err 报错即文档（#68 单源）。run 帧内联的
       // serve_apply_config 不做白名单（混合域宽进）
+      // #131/#133 处置（2026-10-16）：int 域配置键「在场但值不可解析」
+      // fail loud——超 Int32 域（如 max_steps=3e9——A* 大搜索真实撞面）、
+      // 浮点形态（1e9 写成 1.5e9）曾静默跳过（as_int()=None 走缺省分支，
+      // 响应 ok:true 配置保持旧值——clamped 空 = 下游零感知）。白名单后、
+      // apply 前统一预检（单点 helper，禁逐键手拼——#68 单编码者原则）。
+      // run 帧内联的 serve_apply_config 不做本预检（run 是宽进域，历史
+      // 行为冻结——protocol_frames 基线零重冻）。
       match config_set_unknown_key(params) {
         Err(unknown) =>
           (
             serve_param_err(
               id,
-              "config.set 收到未知配置键 '\{unknown}'（合法键：deterministic / quarantine_budget / max_steps / call_depth_limit / output_budget / input_mode_batch）",
-              "{deterministic?:bool, quarantine_budget?:int, max_steps?:int, call_depth_limit?:int, output_budget?:int, input_mode_batch?:bool}",
+              "config.set 收到未知配置键 '\{unknown}'（合法键：deterministic / quarantine_budget / max_steps / call_depth_limit / output_budget / input_mode_batch / preset〔default|algo|tiny——#133 档位开关〕）",
+              "{preset?:\"default|algo|tiny\", deterministic?:bool, quarantine_budget?:int, max_steps?:int, call_depth_limit?:int, output_budget?:int, input_mode_batch?:bool}",
             ).stringify(),
             false,
           )
-        Ok(_) => {
-          // #94（2026-10-15）：回包 result 追加 clamped 键名数组（恒带；
-          // 空数组=无钳制）——协议「只增不改」。config.get 面零变更。
-          let (cfg, clamped_keys) = serve_apply_config(s, params)
-          match cfg {
-            Object(m) => {
-              let arr : Array[Json] = []
-              for k in clamped_keys {
-                arr.push(Json::string(k))
+        // #133：非法档名 fail loud（静默忽略 = 档位开关形同虚设）
+        Ok(_) if json_field(params, "preset") is String(bad) &&
+          !(bad == "default" || bad == "algo" || bad == "tiny") =>
+          (
+            serve_param_err(
+              id,
+              "config.set 的 preset 值 '\{bad}' 不存在（合法档：default=语法教学缺省 / algo=算法作业大搜索〔步数 2e9+深度 100K+输出 64M〕 / tiny=微演示〔10 万步〕——同帧显式键可覆盖单项）",
+              "preset:\"default\"|\"algo\"|\"tiny\"",
+            ).stringify(),
+            false,
+          )
+        Ok(_) =>
+          // 值域预检：max_steps 1..=2147483647（引擎步数计数 Int32 顶）
+          match config_int_field_overflow(params, "max_steps", 2147483647) {
+            Err(msg) =>
+              (
+                serve_param_err(
+                  id,
+                  "config.set 的 max_steps 值不可用：\{msg}（步数计数上限 2147483647——更大负载请分批推进或减小问题规模；内存上限归 1MB 白箱模型，见 #133 扩展段方案）",
+                  "max_steps:int(1..=2147483647)",
+                ).stringify(),
+                false,
+              )
+            Ok(_) => {
+              // #94（2026-10-15）：回包 result 追加 clamped 键名数组（恒带；
+              // 空数组=无钳制）——协议「只增不改」。config.get 面零变更。
+              let (cfg, clamped_keys) = serve_apply_config(s, params)
+              match cfg {
+                Object(m) => {
+                  let arr : Array[Json] = []
+                  for k in clamped_keys {
+                    arr.push(Json::string(k))
+                  }
+                  m.set("clamped", Json::array(arr))
+                  (serve_ok(id, Json::object(m)).stringify(), false)
+                }
+                _ => (serve_ok(id, cfg).stringify(), false)
               }
-              m.set("clamped", Json::array(arr))
-              (serve_ok(id, Json::object(m)).stringify(), false)
             }
-            _ => (serve_ok(id, cfg).stringify(), false)
           }
-        }
       }
     // 静态元数据族（三段）
     "capabilities" => serve_capabilities_frame(id)
@@ -269,12 +317,45 @@ fn dispatch(
 }
 
 ///|
+/// #133 止血包（2026-10-16）：int 域配置键的值域预检——键在场但
+/// `as_int()` 不可解析（超 Int32 域 / 浮点形态 / 非数值）时 Err(人类可读
+/// 原因)，键不在场或值合法返回 Ok。单源 helper（#68 禁逐键手拼）。
+fn config_int_field_overflow(
+  params : Json,
+  key : String,
+  hi : Int32,
+) -> Result[Unit, String] {
+  match json_field(params, key) {
+    // 键不在场（json_field 缺省 Null）——不适用值域检查
+    Null => Ok(())
+    Number(n, repr~) => {
+      let float_form = match repr {
+        Some(t) => t.contains(".") || t.contains("e") || t.contains("E")
+        None => n != n.floor()
+      }
+      if float_form {
+        return Err("浮点形态 '\{n}' 不是整数")
+      }
+      // 只查上界（超 Int32 域的不可表示值——as_int() 丢失即静默 bug 面）；
+      // 下界不动：低下界的钳制语义（#94 的 clamped 显式化）保留在
+      // serve_apply_config（0/-1 → 钳 1 + clamped 标记，非报错）
+      if n > hi.to_double() {
+        return Err("值 \{n} 超出可表示上限 \{hi}")
+      }
+      Ok(())
+    }
+    String(s) => Err("收到字符串 '\{s}'——须为 JSON 数值")
+    other => Err("类型不可用（\{other}）——须为 JSON 整数")
+  }
+}
+
+///|
 /// #105：config.set 白名单校验——params 里首个不在合法键集内的键名
 /// （Err(键名)）；全部合法返回 Ok。空/非对象 params 视为合法（键为零）。
 fn config_set_unknown_key(params : Json) -> Result[Unit, String] {
   let legal = [
     "deterministic", "quarantine_budget", "max_steps", "call_depth_limit", "output_budget",
-    "input_mode_batch",
+    "input_mode_batch", "preset",
   ]
   match params {
     Object(m) => {
@@ -303,6 +384,37 @@ fn serve_apply_config(
   params : Json,
 ) -> (Json, Array[String]) {
   let clamped_keys : Array[String] = []
+  // #133 止血包（2026-10-16）：preset 档位开关——「algo」（算法作业档：
+  // 步数 2e9/深度 100K/隔离 1M/输出 64M——#131 学生 A* 实测合法负载
+  // 1.56e9 步的承接档）先展开为显式键，同帧显式键再覆盖单项（组合
+  // 直观：{"preset":"algo","max_steps":5e8}）。default 档 = 全缺省值
+  // 显式展开（值同现状——非空操作：把档内的会话拉回缺省）。内存上限
+  // 不做键（1MB 白箱模型——扩展段归 #133 主体批）。
+  match json_field(params, "preset") {
+    String(p) =>
+      match p {
+        "default" => {
+          s.set_max_steps(10000000)
+          s.set_call_depth_limit(10000)
+          s.vm.mem_map.set_quarantine_budget(262144)
+          s.vm.output.set_budget(16777216)
+        }
+        "algo" => {
+          s.set_max_steps(2000000000)
+          s.set_call_depth_limit(100000)
+          s.vm.mem_map.set_quarantine_budget(1048576)
+          s.vm.output.set_budget(67108864)
+        }
+        "tiny" => {
+          s.set_max_steps(100000)
+          s.set_call_depth_limit(1000)
+          s.vm.mem_map.set_quarantine_budget(65536)
+          s.vm.output.set_budget(4194304)
+        }
+        _ => ()
+      }
+    _ => ()
+  }
   match json_field(params, "quarantine_budget").as_int() {
     Some(v) => {
       let clamped = if v < 0 { 0 } else if v > 1048576 { 1048576 } else { v }

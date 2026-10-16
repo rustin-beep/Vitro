@@ -122,7 +122,11 @@ fn frame_pipeline(
   json_mode : Bool,
   compile_mode~ : Bool = false,
   channel~ : EngineChannel,
+  max_steps_override~ : Int32? = None,
 ) -> Int32 {
+  // #133 止血包：--max-steps 覆盖值（缺省 10M）——config.set 下发与
+  // rc=3 步数超限判定（两处）同源此值
+  let ms_cap = max_steps_override.unwrap_or(10000000)
   let mut id = 0
   let inv_raw = fn(method_name : String, params : String) -> String {
     id += 1
@@ -144,7 +148,8 @@ fn frame_pipeline(
   ignore(inv_raw("session.create", "{}"))
   ignore(
     inv_raw(
-      "config.set", "{\"max_steps\":10000000,\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
+      "config.set",
+      "{\"max_steps\":\{ms_cap},\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
     ),
   )
   // compile params 装配走通道（直连 = source+filename；wasm = files 多
@@ -226,7 +231,7 @@ fn frame_pipeline(
     let note = inv_raw("output.delta", "{\"cursor\":0,\"stream\":\"note\"}")
     println("{\"type\":\"note\",\"frame\":\{note}}")
     if run.contains("\"status\":\"trap\"") {
-      if run.contains("\"steps_executed\":10000000") {
+      if run.contains("\"steps_executed\":\{ms_cap}") {
         return 3
       }
       return 2
@@ -306,7 +311,7 @@ fn frame_pipeline(
   // trap / EXIT 行 + 退出码（与拆除前 vm 事实同源——帧字段等价投影）
   if jstr(jfield(run_result, "status")) == "trap" {
     say("// TRAP \{jstr(jfield(run_result, "trap"))}")
-    if jint(jfield(run_result, "steps_executed")) == 10000000 {
+    if jint(jfield(run_result, "steps_executed")) == ms_cap {
       return 3
     }
     return 2

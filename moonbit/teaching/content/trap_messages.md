@@ -159,13 +159,12 @@ ends_with_newline: 2
 
 placeholders: max_steps, stale_section, changed_section
 
-[step-limit] 程序执行步数超过限制（{max_steps} 步），可能包含无限循环。
+[step-limit] 程序执行步数达到预算上限（{max_steps} 步）被安全截断——这是资源墙，不一定是你程序的错误。
 
-{stale_section}{changed_section}[cause] 原因：程序执行了太多步数但没有结束。常见原因：
-  • 循环条件永远为真（如 while(1)）
-  • 循环变量没有更新（如忘了写 i++）
-  • 递归函数没有正确的终止条件
-[fix] 检查方法：确认循环体中有改变循环条件的语句。
+{stale_section}{changed_section}[cause] 两种可能，先分辨你是哪种：
+  • 计算量确实大（大循环/大搜索的合法负载——算法作业常见）：预算不够，不是 bug。提高预算再跑：serve/api 用 config.set（preset:"algo" 一键到 20 亿步，或 max_steps 单调），CLI 用 run --max-steps N
+  • 真无限循环（预算怎么加都不够）：循环条件永远为真（如 while(1)）、循环变量没有更新（如忘了写 i++）、递归函数没有终止条件
+[fix] 先加预算重跑一次：跑完了就是计算量问题；同样位置再撞墙，检查循环体中是否有改变循环条件的语句。
 
 ## E_inf_loop_stale
 

@@ -17,6 +17,8 @@ pub(all) struct RunArgs {
   mut file : String
   mut dump_mem : String
   mut stdin_file : String
+  mut max_steps : Int32? // --max-steps（#133 止血包：预算墙教学刚需——
+  // 撞 TRAP step-limit 的学生命令行直调出口；显式键覆盖 preset 同款语义）
   mut json_mode : Bool // --json（批③：事件流 NDJSON——gateway 帧单源）
   argv_passthrough : Array[String] // `--` 之后的 argv 透传（Rust 口径）
   mut unknown_flag : String? // DX P1：未知旗标/尾置缺值（fail loud rc=4）
@@ -30,6 +32,7 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
     file: "",
     dump_mem: "",
     stdin_file: "",
+    max_steps: None,
     json_mode: false,
     argv_passthrough: [],
     unknown_flag: None,
@@ -60,6 +63,27 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       }
       i += 1
       ra.dump_mem = args[i]
+    } else if a == "--max-steps" {
+      if i + 1 >= args.length() {
+        unknown_flag = Some("--max-steps 尾置缺值（须跟正整数）")
+        break
+      }
+      i += 1
+      match parse_int(args[i]) {
+        Some(v) =>
+          if v < 1 || v > 2147483647 {
+            unknown_flag = Some(
+              "--max-steps 值 '\{args[i]}' 超范围（1..=2147483647——更大负载用 serve/api 的 config.set preset:algo）",
+            )
+            break
+          } else {
+            ra.max_steps = Some(v)
+          }
+        None => {
+          unknown_flag = Some("--max-steps 需要整数，得到 '\{args[i]}'")
+          break
+        }
+      }
     } else if a == "-i" {
       if i + 1 >= args.length() {
         unknown_flag = Some("-i 尾置缺值（须跟输入文件路径）")
@@ -145,5 +169,6 @@ pub fn run(
     write_stdout,
     ra.json_mode,
     channel~,
+    max_steps_override=ra.max_steps,
   )
 }

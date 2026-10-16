@@ -173,7 +173,7 @@ int main() {
 }
 `,
     configHint: { max_steps: 20000 },
-    referenceTrap: "步数超过限制",
+    referenceTrap: "步数达到预算上限",
     referenceKind: "trap",
   },
   {

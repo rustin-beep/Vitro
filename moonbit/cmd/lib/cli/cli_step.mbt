@@ -242,7 +242,14 @@ fn parse_int(s : String) -> Int32? {
   let mut v = 0
   for c in s {
     if c >= '0' && c <= '9' {
-      v = v * 10 + (c.to_int() - '0'.to_int())
+      // #133 止血包（2026-10-16）：溢出防护——Int32 静默回绕使
+      // `--max-steps 9999999999` 回绕值恰好落合法域被静默接受
+      //（step/run 两消费面同病）。进位前预检（v*10+d 超 Int32 顶即 None）
+      let d = c.to_int() - '0'.to_int()
+      if v > 214748364 || (v == 214748364 && d > 7) {
+        return None
+      }
+      v = v * 10 + d
     } else {
       return None
     }

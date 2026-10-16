@@ -71,27 +71,27 @@ fn render_diag_frame(frame : Json) -> Bool {
           "error" => {
             has_error = true
             if code == "E0" {
-              println("// COMPILE-ERROR codegen \{msg}")
+              say("// COMPILE-ERROR codegen \{msg}")
             } else {
-              println("// COMPILE-ERROR \{code} \{line}:\{col} \{msg}")
+              say("// COMPILE-ERROR \{code} \{line}:\{col} \{msg}")
             }
             // DX ②：同 warning 臂——error 级修复建议带出
             let fix = jstr(jfield(d, "fix_suggestion"))
             if fix != "" {
-              println("// FIX \{fix}")
+              say("// FIX \{fix}")
             }
           }
           "warning" => {
-            println("// COMPILE-WARNING \{code} \{line}:\{col} \{msg}")
+            say("// COMPILE-WARNING \{code} \{line}:\{col} \{msg}")
             // DX ②（#71 工具批，2026-10-11）：fix_suggestion 文本模式带出
             //（新前缀 FIX——协议「前缀只增不改」追加面；此前仅 --json 帧
             // 可见，学生最常用面只能看不能修）
             let fix = jstr(jfield(d, "fix_suggestion"))
             if fix != "" {
-              println("// FIX \{fix}")
+              say("// FIX \{fix}")
             }
           }
-          "hint" => println("// COMPILE-HINT \{code} \{line}:\{col} \{msg}")
+          "hint" => say("// COMPILE-HINT \{code} \{line}:\{col} \{msg}")
           _ => ()
         }
       }
@@ -100,7 +100,7 @@ fn render_diag_frame(frame : Json) -> Bool {
   // 帧 ok:false 但诊断零 error（结构性破损形态）按失败处理——fail loud
   if jfield(result, "ok") is False && !has_error {
     has_error = true
-    println(
+    say(
       "// COMPILE-ERROR codegen 编译失败但诊断通道为空（协议破损形态）",
     )
   }
@@ -167,7 +167,7 @@ fn frame_pipeline(
         }
       }
       None => {
-        println(
+        say(
           "// COMPILE-ERROR codegen compile 帧解析失败（协议破损形态）",
         )
         return 1
@@ -180,7 +180,7 @@ fn frame_pipeline(
     if json_mode {
       return 0
     }
-    println("// COMPILE-OK")
+    say("// COMPILE-OK")
     return 0
   }
   // ── run 段 ──
@@ -203,7 +203,7 @@ fn frame_pipeline(
     // catch 静默空串，typo 文件名程序按 EOF「看似正常」跑完（病 83）
     let mut text = @fs.read_file_to_string(stdin_file) catch {
       _ => {
-        println("vitro run: -i 输入文件不可读：\{stdin_file}")
+        say("vitro run: -i 输入文件不可读：\{stdin_file}")
         return 4
       }
     }
@@ -238,7 +238,7 @@ fn frame_pipeline(
   let run_result = match run_frame {
     Some(f) => jfield(f, "result")
     None => {
-      println(
+      say(
         "// COMPILE-ERROR codegen run 帧解析失败（协议破损形态）",
       )
       return 1
@@ -263,7 +263,7 @@ fn frame_pipeline(
   if !etext.is_empty() {
     for line in etext.split("\n") {
       if !line.is_empty() {
-        println("// STDERR \{line}")
+        say("// STDERR \{line}")
       }
     }
   }
@@ -278,7 +278,7 @@ fn frame_pipeline(
   if !ntext.is_empty() {
     for line in ntext.split("\n") {
       if !line.is_empty() {
-        println("// NOTE \{line}")
+        say("// NOTE \{line}")
       }
     }
   }
@@ -294,7 +294,7 @@ fn frame_pipeline(
             // 此前静默吞，用户以为落盘成功（病 83 双发面）
             @fs.write_bytes_to_file(dump_mem, bytes) catch {
               _ => {
-                println("vitro run: --dump-memory 写盘失败：\{dump_mem}")
+                say("vitro run: --dump-memory 写盘失败：\{dump_mem}")
                 return 4
               }
             }
@@ -305,7 +305,7 @@ fn frame_pipeline(
   }
   // trap / EXIT 行 + 退出码（与拆除前 vm 事实同源——帧字段等价投影）
   if jstr(jfield(run_result, "status")) == "trap" {
-    println("// TRAP \{jstr(jfield(run_result, "trap"))}")
+    say("// TRAP \{jstr(jfield(run_result, "trap"))}")
     if jint(jfield(run_result, "steps_executed")) == 10000000 {
       return 3
     }
@@ -313,7 +313,7 @@ fn frame_pipeline(
   }
   let ret = jint(jfield(run_result, "return_value"))
   if ret != 0 {
-    println("// EXIT \{ret}")
+    say("// EXIT \{ret}")
   }
   0
 }

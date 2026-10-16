@@ -46,7 +46,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -664,22 +663,26 @@ func runMoon(c caseRef) *moonResult {
 		args = append(args, "-i", in)
 	}
 	args = append(args, "--dump-memory", tmp.Name())
-	// 插座（#49 批二段三，与 vm_diff 同款）：wasm 臂 stderr 丢弃——backend
-	// 标注行非协议面，并入会污染 stdout 归一比对。
+	// 插座（#49 批二段三，与 vm_diff 同款；#129 通道分立 2026-10-16 修
+	// 正）：标记行（诊断/EXIT）走 stderr——两臂 stderr 都收集，提取面 =
+	// stdout+stderr 合并（backend 标注行剥除），digest 面 = extractMoon
+	// Stdout 剥标记行后纯程序输出（与改前等价）。
 	var cmd *exec.Cmd
 	if backend == "wasm" {
 		cmd = exec.Command("node", append([]string{wasmShell, "run"}, args...)...)
 	} else {
 		cmd = exec.Command(filepath.FromSlash(runnerExe), args...)
 	}
+	var se bytes.Buffer
 	cmd.Stdout = &out
-	if backend == "wasm" {
-		cmd.Stderr = io.Discard
-	} else {
-		cmd.Stderr = &out
-	}
+	cmd.Stderr = &se
 	_ = cmd.Run()
 	s := out.String()
+	for _, l := range strings.Split(se.String(), "\n") {
+		if !strings.HasPrefix(l, "[vitro] backend=") {
+			s += l + "\n"
+		}
+	}
 	r := &moonResult{stdout: s, memoryPath: tmp.Name()}
 	if strings.Contains(s, "// COMPILE-ERROR") {
 		r.compileFail = true

@@ -75,7 +75,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -778,23 +777,29 @@ func runMoonBit(path string) *result {
 	margs = append(margs, "--dump-memory", tmp.Name())
 	// 被测物插座（#49 批二段三）：native = cmd/run exe 直跑；wasm = 统一
 	// 入口壳（node 消费 gateway wasm.wasm——壳输出协议与 exe 同形，解析
-	// 零分支）。wasm 臂 stderr **不并入** stdout：壳的 backend 标注行走
-	// stderr（设计差异非协议面），并入会污染 digest（首跑 73 DIFF 的唯一
-	// 根因——exit/memory digest 逐位一致实证）。
+	// 零分支）。#129 通道分立（2026-10-16）后标记行（诊断/note/EXIT）走
+	// stderr：两臂 stderr 都收集——提取面（compileFail/EXIT）取
+	// stdout+stderr 合并文本（剥离链按前缀逐行剥、不控行序），digest 面
+	// = extractMoonBitStdout 剥标记行后的纯程序输出（改前 stdout 含标记
+	// 行被剥 / 改后纯输出零剥——两侧等价，golden 零重冻）。wasm 臂的
+	// backend 标注行（设计差异非协议面）剥除后再并入。
 	var cmd *exec.Cmd
 	if backend == "wasm" {
 		cmd = exec.Command("node", append([]string{wasmShell, "run"}, margs...)...)
 	} else {
 		cmd = exec.Command(filepath.FromSlash(runnerExe), margs...)
 	}
+	var se bytes.Buffer
 	cmd.Stdout = &out
-	if backend == "wasm" {
-		cmd.Stderr = io.Discard
-	} else {
-		cmd.Stderr = &out
-	}
+	cmd.Stderr = &se
 	_ = cmd.Run()
-	r := &result{stdout: out.String(), memoryPath: tmp.Name()}
+	combined := out.String()
+	for _, l := range strings.Split(se.String(), "\n") {
+		if !strings.HasPrefix(l, "[vitro] backend=") {
+			combined += l + "\n"
+		}
+	}
+	r := &result{stdout: combined, memoryPath: tmp.Name()}
 	if strings.Contains(r.stdout, "// COMPILE-ERROR") {
 		r.compileFail = true
 	}

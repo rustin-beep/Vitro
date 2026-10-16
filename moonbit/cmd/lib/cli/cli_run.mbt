@@ -105,14 +105,14 @@ pub fn run(
   ensure_include_reader(channel)
   let ra = parse_run_args(args)
   if ra.unknown_flag is Some(msg) {
-    println("vitro run: 未知旗标或缺值：\{msg}")
-    println(
+    say("vitro run: 未知旗标或缺值：\{msg}")
+    say(
       "用法: run <file.c> [--dump-memory out.bin] [-i input.in] [-- <argv...>]",
     )
     return 4
   }
   if ra.file == "" {
-    println(
+    say(
       "用法: run <file.c> [--dump-memory out.bin] [-i input.in] [-- <argv...>]",
     )
     return 4
@@ -128,7 +128,7 @@ pub fn run(
     }
   }
   guard src != "" else {
-    println("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{ra.file}")
+    say("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{ra.file}")
     return 4
   }
   // #70 第二步（2026-10-11）：run 全帧单源管线——文本/json 两模式共用

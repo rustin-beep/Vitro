@@ -30,7 +30,7 @@ pub fn step(
       match parse_int(args[i]) {
         Some(v) => max_steps = v
         None => {
-          println("用法错: --max-steps 需要整数，得到 '\{args[i]}'")
+          say("用法错: --max-steps 需要整数，得到 '\{args[i]}'")
           return 4
         }
       }
@@ -39,20 +39,20 @@ pub fn step(
     } else if args[i].has_prefix("-") && args[i] != "-" {
       // 病 87 残留⑦（2026-10-13，方案 A）：未知旗标 fail loud——
       // run 已严格（DX P1）step 漏，旧 --xyz 被静默吞照常出帧
-      println("vitro step: 未知旗标：\{args[i]}")
-      println("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      say("vitro step: 未知旗标：\{args[i]}")
+      say("用法: step <file.c> [--max-steps N] [--json|--summary]")
       return 4
     } else if file != "" {
-      println(
+      say(
         "vitro step: 多余位置参数 '\{args[i]}'（step 是单文件命令）",
       )
-      println("用法: step <file.c> [--max-steps N] [--json|--summary]")
+      say("用法: step <file.c> [--max-steps N] [--json|--summary]")
       return 4
     }
     i += 1
   }
   if file == "" {
-    println("用法: step <file.c> [--max-steps N] [--json|--summary]")
+    say("用法: step <file.c> [--max-steps N] [--json|--summary]")
     return 4
   }
   // `-` = 源码走 stdin（B2 全命令品类——同 compile 修正）
@@ -64,7 +64,7 @@ pub fn step(
     }
   }
   guard src != "" else {
-    println("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
+    say("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
     return 4
   }
   // gateway.invoke 通道（协议单源；id 单调即可）
@@ -87,9 +87,14 @@ pub fn step(
   let compile_params = (channel.compile_params)(file, src)
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
-    // 诊断在 compile 帧——文本模式透传 JSON 行（agent 可解析）；json 模式
-    // 同样透传（type 语义由行内 ok:false 自明）
-    println(comp)
+    // 诊断在 compile 帧——json 模式透传 stdout（事件流，type 语义由行内
+    // ok:false 自明）；文本模式走 stderr（#129 通道分立：stdout 只承载
+    // 程序输出）
+    if json_mode {
+      println(comp)
+    } else {
+      say(comp)
+    }
     return 1
   }
   // run 帧带 argv [file]（2026-10-04 二轮审 P1-A 同根：step 无 argv 面但
@@ -129,13 +134,13 @@ pub fn step(
       "{\"type\":\"summary\",\"frames\":\{frames},\"finished\":\{finished},\"trapped\":\{trapped}}",
     )
   } else {
-    println("帧数: \{frames}")
-    println(
+    say("帧数: \{frames}")
+    say(
       "终态: \{if finished { "finished" } else if trapped { "trap" } else { "waiting_input/截断" }}",
     )
     if trapped {
       // trap 死因（轻提取：trap_message 字段串段——summary 模式够用）
-      println("死因: \{extract_json_string_field(last, "trap_message")}")
+      say("死因: \{extract_json_string_field(last, "trap_message")}")
     }
     // 程序 stdout 原样直写（#57-1：终态行后——文本模式消费面 = shell 管道
     // 拿原文，与 run 文本模式同契约；delta 为 Latin-1 折回文本，反折回字

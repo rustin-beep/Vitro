@@ -12,6 +12,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(cli+scripts+spec): #129 通道分立——文本模式 stdout 只承载程序输出（#69 混流裁定翻案，用户拍板 2026-10-16）
+
+【翻案】#69（2026-10-11「混流是 display 流定义行为」）被 #129 推翻：
+#128 裁定书实证「逐字节一致需剥离后才成立」——每个裸跑消费方重复付
+剥离税；分立后窄碰撞面（程序输出以闭集前缀开头不可分）消灭。gcc/
+clang 先例（诊断走 stderr、stdout 只承载程序产物）。
+
+【实现】lib/cli 新增 say（stderr 文本出口——UTF-8 + 尾换行）：cli_
+stderr_write 多目标三件（js = extern "js" process.stderr.write / native
+= stderr_stub.c fwrite Bytes 直写〔#borrow 注解——skill 载入后定形〕/
+wasm = fail loud 占位）+ moon.pkg targets 分文件过滤。替换面：run/
+compile/step 文本模式的诊断三级行 + FIX + COMPILE-OK + STDERR/NOTE/
+TRAP/EXIT 标记行 + 用法错/IO 错文案 + step 帧数/终态/死因行（json 模式
+事件流与 api 子命令帧输出保持 stdout——机器读协议面，spec §4/§6 在册
+承诺不动；step 的 compile 失败帧按模式分流）。
+
+【红锚（J9 证红留痕）】vitro_cli_smoke G 组：三臂各断言「stdout 无
+// 前缀行 + stderr 含 H3057/NOTE」——改前三臂全红（stdout 含标记行）、
+改后三臂全绿。
+
+【消费方连坐（golden 零重冻实证）】vm_diff/clang_direct 的标记行提取
+（compileFail/EXIT）改走 stdout+stderr 合并文本（wasm 臂 stderr 不再
+Discard、backend 标注行剥除后并入；剥离链按前缀逐行剥不控行序）——
+stdout 对拍 digest 经剥离器等价：vm_diff 双臂 666 SAME / clang_direct
+双臂 749 SAME+12 KNOWN+0 DIFF，全部 known digest 与 golden 零重冻。
+spec §1 通道定义改写 + #69 原文存档翻案登记 + 例外注记三条标注
+「分立后适用面消失/消失」（CRLF/TRAP 前导空行/note mojibake）；§4.5
+api_help 载体句更新（三臂同表单产物）。
+
+【验证】moon test 780/780；vitro_cli_smoke 全绿（含 G 组新锚 + 三臂
+对拍 30 例）；demo_smoke 168/168；serve 族三闸（serve_smoke/replay/
+protocol_frames）全绿——serve/api 协议面零影响。
+
 ### refactor(cli+scripts+ci): main.js 退役——三臂壳全 MoonBit 化（统一真相来源收官，2026-10-16）
 
 【背景与用户拍板】main.js（597 行手写 Node 宿主壳）是三后端统一进程的

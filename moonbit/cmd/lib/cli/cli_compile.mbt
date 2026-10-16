@@ -32,12 +32,12 @@ pub fn compile(
     }
   }
   if bad_arg is Some(msg) {
-    println("vitro compile: 未知旗标或多余参数：\{msg}")
-    println("用法: compile <file.c> [--json]")
+    say("vitro compile: 未知旗标或多余参数：\{msg}")
+    say("用法: compile <file.c> [--json]")
     return 4
   }
   if file == "" {
-    println("用法: compile <file.c> [--json]")
+    say("用法: compile <file.c> [--json]")
     return 4
   }
   // `-` = 源码走 stdin（Rust read_source 全命令通用品类——B2；2026-10-04
@@ -50,7 +50,7 @@ pub fn compile(
     }
   }
   guard src != "" else {
-    println("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
+    say("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
     return 4
   }
   // compile 子命令无 clock/stdout 语义——占位注入（compile_mode 段不消费

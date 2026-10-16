@@ -4,11 +4,25 @@
 // 别名撞名（moon.pkg 无 as 语法——surface 闸实锤）；②escape_json 等
 // 共享函数单源（三包形态需三份复制连坐）。main 包 import warning 态的
 // 下沉纪律见各薄壳注释。
+// #129 通道分立批（2026-10-16）：stderr 出口多目标化（say → cli_stderr_
+// write——js 走 extern "js"、native 走 stub stderr_stub.c；wasm-gc 目标
+// 无 CLI 面（壳不编译该目标）但包声明保留——cli_stderr_write 的 wasm
+// 臂绑定暂缺，若未来 wasm-gc 壳需要文本面再补 fs_wasm 同款）。
 import {
   // #70 第二步：帧单源化后引擎包直调全撤（lexer/parser/typeck/codegen/
   // vm/bytecode/host——compile_and_report 与 vm setup 直驱段拆除）
   "vitro/engine/fs",
   "vitro/engine/util",
+  "moonbitlang/core/encoding/utf8",
 }
 
 supported_targets = "+js +native +wasm-gc"
+
+options(
+  "native-stub": [ "stderr_stub.c" ],
+  targets: {
+    "stderr_js.mbt": [ "js" ],
+    "stderr_native.mbt": [ "native", "llvm" ],
+    "stderr_wasm.mbt": [ "wasm", "wasm-gc" ],
+  },
+)

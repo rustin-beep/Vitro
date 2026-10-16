@@ -398,6 +398,53 @@ func main() {
 		fmt.Printf("vitro_cli_smoke: %d 失败\n", failures)
 		os.Exit(1)
 	}
+	// ── G 组：#129 通道分立（2026-10-16 用户拍板，推翻 #69 混流裁定）──
+	// 文本模式 stdout 只承载被测程序输出（无 // 标记行——字节精确）；
+	// 诊断行/note/EXIT 标记行/用法错走 stderr（gcc/clang 先例）。
+	// J9：本断言先于实现存在——改前三臂 stdout 含标记行即红（证红留痕）。
+	{
+		hintC := filepath.Join(repoRoot, "corpus", "baseline", "bsearch_basic.c")
+		type gArm struct {
+			name string
+			argv []string
+		}
+		for _, g := range []gArm{
+			{"wasm", []string{nodeBin, wasmGlue}},
+			{"js", []string{nodeBin, jsEntry}},
+			{"native", nil},
+		} {
+			argv := append([]string{}, g.argv...)
+			if g.name == "native" {
+				argv = []string{nativeExe}
+			}
+			argv = append(argv, "run", hintC)
+			cmd := exec.Command(argv[0], argv[1:]...)
+			cmd.Dir = repoRoot
+			var so, se bytes.Buffer
+			cmd.Stdout = &so
+			cmd.Stderr = &se
+			if err := cmd.Run(); err == nil {
+				// stdout：不得有任何 "// " 前缀行
+				for _, line := range strings.Split(so.String(), "\n") {
+					if strings.HasPrefix(line, "// ") {
+						fatalf("G[#129 通道分立] %s: stdout 含标记行 %q（#69 翻案后 stdout 只承载程序输出）", g.name, line)
+					}
+				}
+				// stderr：必含 hint 诊断行与 note 行（bsearch_basic 带 H3057 + 完成附注）
+				if !strings.Contains(se.String(), "// COMPILE-HINT") || !strings.Contains(se.String(), "// NOTE ") {
+					seHead := se.String()
+					if len(seHead) > 200 {
+						seHead = seHead[:200]
+					}
+					fatalf("G[#129 通道分立] %s: stderr 缺诊断/note 标记行（应走 stderr）——stderr=%q", g.name, seHead)
+				}
+				fmt.Printf("ok  G[#129 通道分立] %s 臂：stdout 纯程序输出 + stderr 标记行\n", g.name)
+			} else {
+				fatalf("G[#129 通道分立] %s: 执行失败 %v", g.name, err)
+			}
+		}
+	}
+
 	// ── D 组：薄壳 include 接线（病 43，#71 第二梯队 2026-10-11）────
 	// compile/step 薄壳不経 cmd/vitro——注册下沉 cmd/lib/cli 后，薄壳
 	// quote-include 必须过（修复前恒 E1021；防线此前三层全漏——薄壳不在

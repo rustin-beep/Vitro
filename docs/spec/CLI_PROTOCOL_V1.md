@@ -26,7 +26,7 @@
 
 ## 1. 文本模式输出协议（标记行）
 
-stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理；此规则是 §6 通道字节语义总则在文本面的投影，NDJSON/serve 帧的 `delta` 字段同语义）与**引擎标记行**。标记行前缀白名单：
+**通道分立（#129，2026-10-16 用户拍板——推翻 #69 混流裁定）**：stdout **只承载程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理；此规则是 §6 通道字节语义总则在文本面的投影，NDJSON/serve 帧的 `delta` 字段同语义）——**字节精确**，下游管道/重定向/diff 无需剥离。引擎标记行（诊断/note/TRAP/EXIT 等）与用法错文案全部走 **stderr**（gcc/clang 先例）。标记行前缀白名单（均在 stderr 通道）：
 
 | 前缀 | 语义 | 示例 |
 |---|---|---|
@@ -46,13 +46,13 @@ stdout 由两类内容按序混合：**程序输出**（C 层 printf 原样，�
 - **codegen 段暂无 E 码**——行形态 `// COMPILE-ERROR codegen <文案>`（无码无位）：根因 = codegen 错误体系无诊断码（三出口三形态：Rust compile 零诊断 / mb CLI 出文案 / serve 进 errors 串不进 diagnostics——均照搬分叉④在案），且 E4 号段已被 C++ 预埋码占死（E4001~E4031/E4100+——砍 C++ 后死码但号段语义占用）；立码段与三出口统一挂 issue（退役后或码段拍板时）。
 - **`// TRAP ` 标记可跨多行**（trap 教学文案：首行 `[语义 id]` 徽章 + `[timeline]`/`[cause]`/`[fix]`/`[location]` 附注行——**#27 方案 C（2026-10-07）：原 emoji 码点已退役为语义图标 id**，字形由下游按 id 经 serve `icons.get` 自取，文本消费方按方括号 id 归一比对不受影响）——消费方剥离按首行前缀 + 后续无前缀行与 oracle 同形（归一比对不受影响）。
 - **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
-- **文本模式 stdout 行尾为 CRLF**（Windows native 的 println 文本模式产物；`--json` 的 delta 为 LF）——仓库内消费方归一器已 `TrimRight(l,"\r")` 吸收；第三方按「程序输出原样」解析时须注意该平台差异（2026-10-04 二轮审 P3 登记）。
-- **`// TRAP ` 标记行前有一行前导空行**（run 路径程序 stdout 与 TRAP 块之间：native 臂为空 `\r\n`、js/wasm 臂为空 `\n`——println 尾换行与 TRAP 输出拼接的产物形态，#103 实测登记：native 为 CRLF、js 为 LF 干净）。例外未登记时下游剥离器按「标记行首前缀」过滤不受影响，但逐字节比对 golden 时需知此空行属协议面；`compile` 路径无此形态。
-- **note 通道内容经 stdout 同管道输出**（Latin-1 折回形态与程序 stdout 同族——中文在 Windows 控制台呈现 mojibake 属 stdout 通道已知形态；字节级归一由消费方处理）。
+- **文本模式 stdout 行尾 CRLF 注记（#129 分立后适用面消失）**：程序输出走 write_stdout 字节直写（fwrite/Buffer——无 CRLF 转换）；标记行迁移 stderr（UTF-8 文本域 LF）。原注记存档（Windows native 的 println 文本模式产物，消费方归一器 `TrimRight(l,"\r")` 吸收——2026-10-04 二轮审 P3 登记）；旧 golden 经归一器吸收不受影响。
+- **`// TRAP ` 前导空行注记（#129 分立后消失）**：TRAP 行走 stderr 与 stdout 分流，跨流前导空行不复存在。原注记存档（println 尾换行与 TRAP 输出拼接形态——#103 实测登记）；旧 golden 经归一器吸收不受影响。
+- **note 管道注记（#129 分立后适用面消失）**：note 标记行走 stderr（UTF-8 文本域）——Windows 控制台 mojibake 形态随之消灭。原注记存档（Latin-1 折回与 stdout 同管道）。
 
-**显式裁定（#69，2026-10-11）**：两类内容混流是 display 流的**定义行为，非缺陷**——`run`/`compile` 文本模式的 stdout 定位为人读展示流。下游需要纯程序 stdout 时走结构化出口：`--json`（§6——stdout/stderr/note 独立事件帧）或 serve `output.delta` 的 `stream:"stdout"` 通道；文本面对拍按下方剥离规则过滤，**该规则是契约而非建议**。程序输出恰以闭集前缀之一逐字开头（如 `printf("// NOTE x")`）在纯文本层不可分，属已接受的窄碰撞面（闭集精确匹配——实践上不可撞，但下游须知其存在）。
+**历史裁定（#69，2026-10-11；已于 2026-10-16 被 #129 翻案——原文存档）**：~~两类内容混流是 display 流的定义行为，非缺陷~~。翻案理由（用户拍板）：#128 裁定书实证「P1 的逐字节一致需剥离后才成立」——每个裸跑消费方重复付剥离税；混流形态下程序输出以闭集前缀开头（如 `printf("// NOTE x")`）不可分属已接受的窄碰撞面，分立后该碰撞面消灭。**改前旧形态的消费方**（按剥离规则过滤标记行）在分立后剥离器空转——提取结果等价、golden 零重冻（vm_diff/clang_direct 双臂全量实证 2026-10-16）。
 
-**剥离规则（消费方实现要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。
+**剥离规则（旧形态消费方兼容要点，仓库内两处同构剥离器为参考实现**：`scripts/vm_diff` `extractMoonBitStdout` / `scripts/clang_direct` `extractMoonStdout`）：按精确前缀剥整行 + 末行 `// EXIT `；程序输出 `printf("// hi")` 是合法输出，**不得按 `// ` 前缀整行剥**。新消费方在 #129 分立后**无需剥离**（stdout 已纯）。
 
 ## 2. 进程退出码（唯一消费方 = shell/agent——防线全部读标记行）
 
@@ -94,11 +94,11 @@ vitro api <method> [params-json]
 
 - **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把 21+4 方法全部拉平为「一行命令」）；响应帧 stdout 原样直出；
 - params 缺省 `{}`；非 JSON 对象字面量 → 用法错 rc=4（fail loud）；
-- **未知方法名预检（DX P2，2026-10-11）**：cli 层先行查生成方法表（单源同 api help——`api_help_gen.mbt` / `api_help.json`），未知 → rc=4 用法错（不再落 gateway「未知方法」帧的 rc=1——shell 会把 1 误读为协议内失败/编译错同码位）；已知方法照常 invoke；
+- **未知方法名预检（DX P2，2026-10-11）**：cli 层先行查生成方法表（单源同 api help——`api_help_gen.mbt`，main.js 退役批 2026-10-16 起三臂同表单产物），未知 → rc=4 用法错（不再落 gateway「未知方法」帧的 rc=1——shell 会把 1 误读为协议内失败/编译错同码位）；已知方法照常 invoke；
 - 退出码：0=帧 `ok:true` / **1=帧 `ok:false`（协议内错误统一——含编译错/trap 报错帧，api 是透传层不细分语义）** / 4=用法错；
 - **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；
 - 单帧形态会话态：每次 api 调用独立进程会话（跨调用不保留——会话场景走 --batch 或 serve 长会话）；
-- **`api help [method]`（#67，2026-10-11）**：离线可发现性出口——`help` 是方法位保留字（不进 invoke、不起会话）：无 method 打印全方法清单、有 method 打印单方法详情（params 形状 = `serve_param_err` 的 `expected` 字段同源，#68 词汇表）；数据 = `scripts/gen_api_help` 生成表（权威源 dispatch + serve_param_err，`-check` 幂等锁——禁手抄），双臂同形（native `api_help_gen.mbt` / wasm 壳 `api_help.json`）由 vitro_cli_smoke 对拍锁；rc：0=清单/详情 / 4=未知方法（stdout 用法错文案）；`--batch` 与 `help` 并用 = rc=4；
+- **`api help [method]`（#67，2026-10-11）**：离线可发现性出口——`help` 是方法位保留字（不进 invoke、不起会话）：无 method 打印全方法清单、有 method 打印单方法详情（params 形状 = `serve_param_err` 的 `expected` 字段同源，#68 词汇表）；数据 = `scripts/gen_api_help` 生成表（权威源 dispatch + serve_param_err，`-check` 幂等锁——禁手抄），三臂同表（`cmd/lib/cli/api_help_gen.mbt` 单产物——main.js 退役批 2026-10-16 起）由 vitro_cli_smoke 对拍锁；rc：0=清单/详情 / 4=未知方法（stdout 用法错文案）；`--batch` 与 `help` 并用 = rc=4；
 - 例：`vitro api ping` / `vitro api compile '{"source":"int main(){return 0;}"}'` / `vitro api ast.dump '{"source":"…"}'` / `vitro api help compile`。
 
 ## 5. `step` 命令（有意分叉登记：Rust `step` 是交互 REPL，mb 是一次性——交互面归 serve）

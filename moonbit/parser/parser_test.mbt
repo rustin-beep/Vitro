@@ -49,7 +49,7 @@ test "depth boundary paren 62 passes and 63 rejects" {
     ")".repeat(62) +
     "; }"
   let ok_r = parse_src(ok_src)
-  inspect(codes_of(ok_r), content="[]")
+  debug_inspect(codes_of(ok_r), content="[]")
   let bad_src = "int main() { return " +
     "(".repeat(63) +
     "1" +
@@ -153,7 +153,7 @@ test "unsigned literal value range dispatch" {
 ///|
 test "static assert true passes false fails" {
   let ok = parse_src("int main() { _Static_assert(1 == 1); return 0; }")
-  inspect(codes_of(ok), content="[]")
+  debug_inspect(codes_of(ok), content="[]")
   let bad = parse_src(
     "int main() { _Static_assert(1 == 2, \"mismatch\"); return 0; }",
   )
@@ -170,7 +170,7 @@ test "enum const evaluator checked semantics" {
   let ok = parse_src(
     "enum E { NEG = -1, BIG = 1 + 2 }; int main() { return 0; }",
   )
-  inspect(codes_of(ok), content="[]")
+  debug_inspect(codes_of(ok), content="[]")
   let p = ok.program.unwrap()
   inspect(p.globals.length(), content="2")
   match p.globals[0].init {
@@ -444,12 +444,12 @@ test "issue77_qualifier_order_free" {
   inspect(codes_of(a3), content="[]")
   // 块内反序：const static int y
   let b1 = parse_src("int main(void) { const static int y = 5; return y; }")
-  inspect(codes_of(b1), content="[]")
+  debug_inspect(codes_of(b1), content="[]")
   // 尾部限定符 + typedef 名：myint const z
   let b2 = parse_src(
     "typedef int myint; int main(void) { myint const z = 7; return z; }",
   )
-  inspect(codes_of(b2), content="[]")
+  debug_inspect(codes_of(b2), content="[]")
 }
 
 ///|
@@ -471,11 +471,11 @@ test "issue83_block_static_typedef" {
   let q5 = parse_src(
     "int main(void) { static unsigned int x = 0; return (int)x; }",
   )
-  inspect(codes_of(q5), content="[]")
+  debug_inspect(codes_of(q5), content="[]")
   // 反例锚：真正的未定义类型名两标识符形态仍报 E2003（static 排除不得
   // 放宽成漏诊）
   let bad = parse_src("int main(void) { NoSuchType v = 1; return v; }")
-  inspect(codes_of(bad), content="[2003]")
+  debug_inspect(codes_of(bad), content="[2003]")
 }
 
 ///|
@@ -543,11 +543,11 @@ test "issue78_enum_const_array_dim" {
   let b7 = parse_src(
     "typedef enum { Link, Thread } PointerTag; int main(void) { PointerTag t = Link; return (int)t; }",
   )
-  inspect(codes_of(b7), content="[]")
+  debug_inspect(codes_of(b7), content="[]")
   let b8 = parse_src(
     "typedef enum { A = 3, B = A + 2, C } T; int main(void) { T t = C; return (int)t; }",
   )
-  inspect(codes_of(b8), content="[]")
+  debug_inspect(codes_of(b8), content="[]")
   // 反例锚：真 VLA（参数尺寸）仍判 VLA（enum 表折叠不得吞掉真 VLA）
   let v1 = parse_src(
     "int f(int n) { int t[n]; return t[0]; } int main(void) { return f(3); }",
@@ -588,10 +588,10 @@ test "issue93_block_enum_definition" {
   let q3 = parse_src(
     "int main(void) { enum Tag { X, Y = 9 } z; return (int)z; }",
   )
-  inspect(codes_of(q3), content="[]")
+  debug_inspect(codes_of(q3), content="[]")
   // 对照：已声明 enum 类型引用形态不受影响（顶层定义 + 块内引用）
   let q4 = parse_src(
     "enum Color { RED }; int main(void) { enum Color c = RED; return (int)c; }",
   )
-  inspect(codes_of(q4), content="[]")
+  debug_inspect(codes_of(q4), content="[]")
 }

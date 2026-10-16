@@ -49,7 +49,12 @@ test "graph_prerequisite_path" {
   for n in path {
     ids.push(n.id)
   }
-  inspect(ids, content="[VarDecl, TypeSystem, ImplicitCast]")
+  debug_inspect(
+    ids,
+    content=(
+      #|["VarDecl", "TypeSystem", "ImplicitCast"]
+    ),
+  )
 }
 
 ///|
@@ -189,7 +194,12 @@ test "autofix_chinese_line_byte_boundary_valid" {
   // [10,17) = "变量 " 段替换）
   let source = "int 中文变量 = 1;"
   let r = @diagnostics.apply_fix(source, make_fix_target(6, 9, "X"))
-  inspect(r, content="Some(int 中文X= 1;)")
+  debug_inspect(
+    r,
+    content=(
+      #|Some("int 中文X= 1;")
+    ),
+  )
 }
 
 ///|
@@ -197,7 +207,12 @@ test "autofix_chinese_line_mid_char_fallback" {
   // 列 3（"int " 空格位，合法边界）到列 9（回退 17）：[3,17) 整段替换
   let source = "int 中文变量 = 1;"
   let r = @diagnostics.apply_fix(source, make_fix_target(3, 9, "X"))
-  inspect(r, content="Some(intX= 1;)")
+  debug_inspect(
+    r,
+    content=(
+      #|Some("intX= 1;")
+    ),
+  )
 }
 
 ///|
@@ -205,7 +220,12 @@ test "autofix_chinese_line_char_semantic_cols" {
   // 列 4/10 双双为合法字节边界（「中」/「变」起点）：[4,10) = 中文
   let source = "int 中文变量 = 1;"
   let r = @diagnostics.apply_fix(source, make_fix_target(4, 10, "X"))
-  inspect(r, content="Some(int X变量 = 1;)")
+  debug_inspect(
+    r,
+    content=(
+      #|Some("int X变量 = 1;")
+    ),
+  )
 }
 
 // ============ M1 generate_fix 行为锚（Rust 侧 0 单测——对拍前置行为锁） ============

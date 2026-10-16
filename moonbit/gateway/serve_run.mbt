@@ -63,15 +63,17 @@ fn run_outcome_json(s : @session.Session, trap : String) -> Json {
     "finished"
   }
   let m : Map[String, Json] = Map([])
-  m.set("ok", trap.is_empty().to_json())
+  m.set("ok", Json(trap.is_empty()))
   m.set("status", Json::string(status))
-  m.set("return_value", ret.to_json())
+  m.set("return_value", Json(ret))
   m.set("trap", Json::string(trap))
-  m.set("waiting_input", waiting.to_json())
-  m.set("steps_executed", s.vm.step_count.to_json())
+  m.set("waiting_input", Json(waiting))
+  m.set("steps_executed", Json(s.vm.step_count))
   m.set(
     "output_truncated",
-    (s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0).to_json(),
+    Json(
+      s.vm.output.dropped_bytes() > 0 || s.vm.output.note_dropped_bytes() > 0,
+    ),
   )
   Json::object(m)
 }

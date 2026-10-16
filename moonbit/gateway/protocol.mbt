@@ -86,13 +86,13 @@ fn serve_session_semantics() -> Json {
 fn serve_config(s : @session.Session) -> Json {
   let m : Map[String, Json] = Map([])
   m.set("deterministic", s.config.deterministic.to_json())
-  m.set("quarantine_budget", s.vm.mem_map.quarantine_budget().to_json())
-  m.set("input_mode_batch", s.runtime_batch.to_json())
-  m.set("compiled", s.compile.compiled.to_json())
-  m.set("max_steps", s.config.max_steps.to_json())
-  m.set("call_depth_limit", s.config.call_depth_limit.to_json())
+  m.set("quarantine_budget", Json(s.vm.mem_map.quarantine_budget()))
+  m.set("input_mode_batch", Json(s.runtime_batch))
+  m.set("compiled", Json(s.compile.compiled))
+  m.set("max_steps", Json(s.config.max_steps))
+  m.set("call_depth_limit", Json(s.config.call_depth_limit))
   // #91（2026-10-14）：输出预算现值（判分方提前判断天花板——issue 建议①）
-  m.set("output_budget", s.vm.output.budget().to_json())
+  m.set("output_budget", Json(s.vm.output.budget()))
   // #133（2026-10-16）：preset 档位回显——按当前配置值**推断**（显式
   // 单键覆盖后档名可能与逐项值不一致，推断口径 = 四键全等于某档的
   // 展开值才认档，否则 "custom"——诚实呈现而非记名）。config.get 面

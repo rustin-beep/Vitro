@@ -41,19 +41,19 @@ impl @time_travel.SourceLineProvider for SessionLines with fn source_line_at(
 /// 序/Option 形态逐位对齐 unified/types.rs:16-31）。
 fn step_payload_json(p : @protocol.StepPayload) -> Json {
   let m : Map[String, Json] = Map([])
-  m.set("step_index", p.step_index.to_json())
-  m.set("code_line", p.code_line.to_json())
-  m.set("func_name", p.func_name.to_json())
-  m.set("semantic_label", p.semantic_label.to_json())
+  m.set("step_index", Json(p.step_index))
+  m.set("code_line", Json(p.code_line))
+  m.set("func_name", Json(p.func_name))
+  m.set("semantic_label", Json(p.semantic_label))
   m.set(
     "algorithm_step",
     match p.algorithm_step {
       Some(a) => {
         let am : Map[String, Json] = Map([])
-        am.set("algorithm_name", a.algorithm_name.to_json())
-        am.set("display_name", a.display_name.to_json())
-        am.set("phase", a.phase.to_json())
-        am.set("description", a.description.to_json())
+        am.set("algorithm_name", Json(a.algorithm_name))
+        am.set("display_name", Json(a.display_name))
+        am.set("phase", Json(a.phase))
+        am.set("description", Json(a.description))
         Json::object(am)
       }
       None => Json::null()
@@ -62,68 +62,68 @@ fn step_payload_json(p : @protocol.StepPayload) -> Json {
   let lvars : Array[Json] = []
   for v in p.local_vars {
     let vm_ : Map[String, Json] = Map([])
-    vm_.set("name", v.name.to_json())
+    vm_.set("name", Json(v.name))
     vm_.set("addr", Json::number(v.addr.to_double()))
-    vm_.set("is_local", v.is_local.to_json())
-    vm_.set("ty_name", v.ty_name.to_json())
-    vm_.set("value", v.value.to_json())
+    vm_.set("is_local", Json(v.is_local))
+    vm_.set("ty_name", Json(v.ty_name))
+    vm_.set("value", Json(v.value))
     lvars.push(Json::object(vm_))
   }
   m.set("local_vars", Json::array(lvars))
   let cs : Array[Json] = []
   for f in p.call_stack {
     let fm : Map[String, Json] = Map([])
-    fm.set("func_name", f.func_name.to_json())
-    fm.set("return_line", f.return_line.to_json())
+    fm.set("func_name", Json(f.func_name))
+    fm.set("return_line", Json(f.return_line))
     cs.push(Json::object(fm))
   }
   m.set("call_stack", Json::array(cs))
   let ves : Array[Json] = []
   for v in p.vis_events {
     let em : Map[String, Json] = Map([])
-    em.set("ty", v.ty.to_json())
-    em.set("line", v.line.to_json())
-    em.set("extra0", v.extra0.to_json())
-    em.set("extra1", v.extra1.to_json())
-    em.set("extra2", v.extra2.to_json())
-    em.set("context", v.context.to_json())
+    em.set("ty", Json(v.ty))
+    em.set("line", Json(v.line))
+    em.set("extra0", Json(v.extra0))
+    em.set("extra1", Json(v.extra1))
+    em.set("extra2", Json(v.extra2))
+    em.set("context", Json(v.context))
     ves.push(Json::object(em))
   }
   m.set("vis_events", Json::array(ves))
-  m.set("heatmap_line", p.heatmap_line.to_json())
+  m.set("heatmap_line", Json(p.heatmap_line))
   // serde u64 → number（core UInt64::to_json 出字符串——分叉修正；域内
   // 计数 ≤ 步数 < 2^31，to_int 无损〔超界域不可达，登记〕）
   m.set("heatmap_count", Json::number(p.heatmap_count.to_double()))
   let accs : Array[Json] = []
   for a in p.accessed_vars {
     let am : Map[String, Json] = Map([])
-    am.set("name", a.name.to_json())
-    am.set("access_type", a.access_type.to_json())
+    am.set("name", Json(a.name))
+    am.set("access_type", Json(a.access_type))
     accs.push(Json::object(am))
   }
   m.set("accessed_vars", Json::array(accs))
   let arrs : Array[Json] = []
   for a in p.array_snapshots {
     let am : Map[String, Json] = Map([])
-    am.set("name", a.name.to_json())
-    am.set("element_ty", a.element_ty.to_json())
+    am.set("name", Json(a.name))
+    am.set("element_ty", Json(a.element_ty))
     let elems : Array[Json] = []
     for e in a.elements {
-      elems.push(e.to_json())
+      elems.push(Json(e))
     }
     am.set("elements", Json::array(elems))
-    am.set("truncated", a.truncated.to_json())
+    am.set("truncated", Json(a.truncated))
     arrs.push(Json::object(am))
   }
   m.set("array_snapshots", Json::array(arrs))
   let ptrs : Array[Json] = []
   for a in p.pointer_snapshots {
     let am : Map[String, Json] = Map([])
-    am.set("name", a.name.to_json())
+    am.set("name", Json(a.name))
     am.set("addr", Json::number(a.addr.to_double()))
-    am.set("ty_name", a.ty_name.to_json())
+    am.set("ty_name", Json(a.ty_name))
     am.set("target_addr", Json::number(a.target_addr.to_double()))
-    am.set("target_name", a.target_name.to_json())
+    am.set("target_name", Json(a.target_name))
     am.set("status", Json::string(a.status.to_json_text()))
     ptrs.push(Json::object(am))
   }
@@ -133,25 +133,25 @@ fn step_payload_json(p : @protocol.StepPayload) -> Json {
     match p.root_cause_hint {
       Some(h) => {
         let hm : Map[String, Json] = Map([])
-        hm.set("category", h.category.to_json())
-        hm.set("one_liner", h.one_liner.to_json())
+        hm.set("category", Json(h.category))
+        hm.set("one_liner", Json(h.one_liner))
         let rl : Array[Json] = []
         for l in h.related_lines {
-          rl.push(l.to_json())
+          rl.push(Json(l))
         }
         hm.set("related_lines", Json::array(rl))
-        hm.set("suggested_fix_kind", h.suggested_fix_kind.to_json())
+        hm.set("suggested_fix_kind", Json(h.suggested_fix_kind))
         hm.set(
           "suggested_fix_line",
           match h.suggested_fix_line {
-            Some(l) => l.to_json()
+            Some(l) => Json(l)
             None => Json::null()
           },
         )
         hm.set(
           "suggested_fix_desc",
           match h.suggested_fix_desc {
-            Some(d) => d.to_json()
+            Some(d) => Json(d)
             None => Json::null()
           },
         )
@@ -172,19 +172,19 @@ fn auto_step_result_json(r : @protocol.AutoStepResult) -> Json {
   }
   let m : Map[String, Json] = Map([])
   m.set("payloads", Json::array(payloads))
-  m.set("finished", r.finished.to_json())
-  m.set("trapped", r.trapped.to_json())
-  m.set("waiting_input", r.waiting_input.to_json())
-  m.set("paused", r.paused.to_json())
-  m.set("current_line", r.current_line.to_json())
+  m.set("finished", Json(r.finished))
+  m.set("trapped", Json(r.trapped))
+  m.set("waiting_input", Json(r.waiting_input))
+  m.set("paused", Json(r.paused))
+  m.set("current_line", Json(r.current_line))
   m.set(
     "trap_message",
     match r.trap_message {
-      Some(t) => t.to_json()
+      Some(t) => Json(t)
       None => Json::null()
     },
   )
-  m.set("cache_start_step", r.cache_start_step.to_json())
+  m.set("cache_start_step", Json(r.cache_start_step))
   Json::object(m)
 }
 
@@ -192,7 +192,7 @@ fn auto_step_result_json(r : @protocol.AutoStepResult) -> Json {
 /// SeekResult → Json（serde 序 3 字段）。
 fn seek_result_json(r : @protocol.SeekResult) -> Json {
   let m : Map[String, Json] = Map([])
-  m.set("success", r.success.to_json())
+  m.set("success", Json(r.success))
   m.set(
     "payload",
     match r.payload {
@@ -203,7 +203,7 @@ fn seek_result_json(r : @protocol.SeekResult) -> Json {
   m.set(
     "error",
     match r.error {
-      Some(e) => e.to_json()
+      Some(e) => Json(e)
       None => Json::null()
     },
   )
@@ -415,8 +415,8 @@ fn serve_payload_get_frame(
   }
   let m : Map[String, Json] = Map([])
   m.set("payloads", Json::array(arr))
-  m.set("cache_start_step", engine.frames.start_step().to_json())
-  m.set("max_collected_step", engine.max_collected_step().to_json())
+  m.set("cache_start_step", Json(engine.frames.start_step()))
+  m.set("max_collected_step", Json(engine.max_collected_step()))
   (serve_ok(id, Json::object(m)).stringify(), false)
 }
 
@@ -484,7 +484,7 @@ fn serve_breakpoints_set_frame(
   // 与实际断点不一致——协议面撒谎，demo 断点 UI 显示错）。
   let arr : Array[Json] = []
   for l in s.vm.breakpoints_sorted() {
-    arr.push(l.to_json())
+    arr.push(Json(l))
   }
   let m : Map[String, Json] = Map([])
   m.set("lines", Json::array(arr))

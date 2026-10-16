@@ -106,7 +106,7 @@ test "builtin_notes_contract" {
 /// assert_eq 基数锚、43 族此前只有 map.mbt 穷举 match（编译期名单闸，
 /// 性质不同——防漏臂不防多臂溢出），补数据面基数断言。
 test "suggestions_key_cardinality" {
-  assert_eq(suggestion_map.size(), 43, msg="43 算法键基线")
+  assert_eq(suggestion_map.length(), 43, msg="43 算法键基线")
 }
 
 ///|

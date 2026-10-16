@@ -169,7 +169,7 @@ test "wb interpret arrptr multidim c semantics" {
     @ast.Type::Pointer(pointee, _) =>
       match pointee {
         @ast.Type::Array(_, sz, dims, _, _, _) => {
-          inspect(dims, content="[2, 3]")
+          debug_inspect(dims, content="[2, 3]")
           inspect(sz, content="6")
         }
         _ => fail("pointee 应为数组")
@@ -188,7 +188,7 @@ test "wb interpret pure array chain unchanged" {
   let node = Array(Array(Array(Base, mk(2)), mk(3)), mk(4))
   match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
     @ast.Type::Array(_, sz, dims, _, _, _) => {
-      inspect(dims, content="[2, 3, 4]")
+      debug_inspect(dims, content="[2, 3, 4]")
       inspect(sz, content="24")
     }
     _ => fail("纯数组链应折叠为数组")
@@ -235,7 +235,7 @@ test "wb interpret inner array dims c semantics" {
             @ast.Type::Pointer(pointee, _) =>
               match pointee {
                 @ast.Type::Array(_, psz, pdims, _, _, _) => {
-                  inspect(pdims, content="[3, 4]")
+                  debug_inspect(pdims, content="[3, 4]")
                   inspect(psz, content="12")
                 }
                 _ => fail("pointee 应为数组")
@@ -271,7 +271,7 @@ test "wb interpret fnret arrptr c semantics" {
             @ast.Type::Pointer(p2, _) =>
               match p2 {
                 @ast.Type::Array(_, sz, dims, _, _, _) => {
-                  inspect(dims, content="[2, 3]")
+                  debug_inspect(dims, content="[2, 3]")
                   inspect(sz, content="6")
                 }
                 _ => fail("返回类型应指向数组")
@@ -316,7 +316,7 @@ test "wb interpret fnptr decay guard" {
       0,
     ) {
     @ast.Type::Array(elem, _, dims, _, _, _) => {
-      inspect(dims, content="[2]")
+      debug_inspect(dims, content="[2]")
       match elem {
         @ast.Type::Pointer(_, _) => ()
         _ => fail("元素应为函数指针")

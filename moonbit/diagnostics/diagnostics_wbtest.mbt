@@ -27,7 +27,12 @@ test "wb_split_lines_rust_semantics" {
   assert_eq(split_lines("\n").length(), 1)
   assert_true(split_lines("\n")[0].is_empty())
   // \r\n 剥 \r
-  inspect(split_lines("a\r\nb"), content="[a, b]")
+  debug_inspect(
+    split_lines("a\r\nb"),
+    content=(
+      #|["a", "b"]
+    ),
+  )
 }
 
 ///|
@@ -55,9 +60,12 @@ test "wb_find_single_equals_edge_forms" {
   // <= 不命中（prev_char == '<'）
   inspect(find_single_equals_in_condition("while (i <= n)"), content="None")
   // 括号外不命中
-  inspect(find_single_equals_in_condition("a = b; if (c)"), content="None")
+  debug_inspect(
+    find_single_equals_in_condition("a = b; if (c)"),
+    content="None",
+  )
   // 中文偏移：括号内 = 的字节位累计（设=3 字节，在=3 字节；x = y 的 = 在 17）
-  inspect(
+  debug_inspect(
     find_single_equals_in_condition("设 a = 1 在 (x = y)"),
     content="Some((17, 18))",
   )

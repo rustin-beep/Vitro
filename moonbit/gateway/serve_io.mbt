@@ -168,8 +168,8 @@ fn serve_output_delta_frame(
   }
   let m : Map[String, Json] = Map([])
   m.set("delta", Json::string(delta))
-  m.set("cursor", total.to_json())
-  m.set("total", total.to_json())
+  m.set("cursor", Json(total))
+  m.set("total", Json(total))
   m.set("stream", Json::string(stream_name))
   // DX ③（#71 工具批，2026-10-11）：环形丢弃显式位——16MB/8MB 预算触顶
   // 丢最旧此前仅截断注记可见（注记本身可被再丢），帧级 dropped 计数
@@ -179,6 +179,6 @@ fn serve_output_delta_frame(
     Some(_) => s.vm.output.dropped_bytes()
     None => s.vm.output.dropped_bytes() + s.vm.output.note_dropped_bytes()
   }
-  m.set("truncated_bytes", dropped.to_json())
+  m.set("truncated_bytes", Json(dropped))
   (serve_ok(id, Json::object(m)).stringify(), false)
 }

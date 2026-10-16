@@ -222,15 +222,15 @@ fn serve_symbols_dump_frame(
   let arr : Array[Json] = []
   for sym in symbols {
     let m : Map[String, Json] = Map([])
-    m.set("name", sym.name.to_json())
+    m.set("name", Json(sym.name))
     m.set("addr", Json::number(sym.addr.to_double()))
-    m.set("is_local", sym.is_local.to_json())
-    m.set("decl_line", sym.decl_line.to_json())
+    m.set("is_local", Json(sym.is_local))
+    m.set("decl_line", Json(sym.decl_line))
     arr.push(Json::object(m))
   }
   let m : Map[String, Json] = Map([])
-  m.set("ok", compiled.to_json())
+  m.set("ok", Json(compiled))
   m.set("symbols", Json::array(arr))
-  m.set("count", symbols.length().to_json())
+  m.set("count", Json(symbols.length()))
   (serve_ok(id, Json::object(m)).stringify(), false)
 }

@@ -417,7 +417,7 @@ fn qualifier_widens(v : @ast.Type, t : @ast.Type) -> Bool {
       // 传导元素的语义只属 Array 分支。char\*\* → const char\*\* 因此维持
       // 非法，经典 FAQ 写穿通道）
       @ast.type_eq(v, t) || (@ast.type_eq(vp, tp) && (!vc || tc))
-    (Array(ve, vn, vd, vc, vvl, vvd), Array(te, tn, td, tc, tvl, tvd)) =>
+    (Array(ve, vn, vd, vc, vvl, _), Array(te, tn, td, tc, tvl, _)) =>
       vn == tn &&
       vd == td &&
       vvl == tvl &&

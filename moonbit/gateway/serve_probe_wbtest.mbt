@@ -21,7 +21,7 @@ test "probe_frame_structure_and_fix_wiring" {
       fail("缺段 \{key}")
     }
   }
-  inspect(json_field(result, "ok").as_bool(), content="Some(false)")
+  debug_inspect(json_field(result, "ok").as_bool(), content="Some(false)")
   // E2005 诊断行 + fix 七元组真值（LineEnd：start==end==行末 8 字节）
   match json_field(result, "diagnostics") {
     Array(diags) => {

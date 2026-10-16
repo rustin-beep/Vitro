@@ -86,12 +86,6 @@ fn void_ty() -> @ast.Type {
 }
 
 ///|
-/// long long 便捷构造。
-fn long_long_ty() -> @ast.Type {
-  LongLong(false, false)
-}
-
-///|
 /// 签名单表（57 条 = visit_call 58 臂去 `std__move`——C++ 语义臂不入表，
 /// S9 C++ 片裁定；print_int/__vitro_output/__vitro_step 三名共享一臂）。
 let libc_table : Array[LibcSig] = [

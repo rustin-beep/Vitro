@@ -543,16 +543,6 @@ fn VitroVM::execute_host_func3(
 }
 
 ///|
-/// Bytes → String（lossy：非 UTF-8 序列按码元直转——puts 的输出文本口径）。
-fn lossy_string(bytes : Bytes) -> String {
-  let codes : Array[Int32] = []
-  for i = 0; i < bytes.length(); i = i + 1 {
-    codes.push(bytes[i].to_int())
-  }
-  String::from_array(codes.map(fn(c) { c.unsafe_to_char() }))
-}
-
-///|
 /// qsort（照搬 Rust `host/misc.rs:153-231`：深度限 / 平凡短路 / 尺寸链
 /// checked / 默认字节比较 / 比较器经 call_user_function / 临时缓冲重排）。
 fn VitroVM::host_qsort(

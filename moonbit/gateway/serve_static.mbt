@@ -97,14 +97,11 @@ fn serve_capabilities_frame(id : Json) -> (String, Bool) {
   languages.set("c", Json::object(c_lang))
   // 内存模型（1MB 白箱布局常量单源 @bytecode）
   let memory_model : Map[String, Json] = Map([])
-  memory_model.set("mem_size", @bytecode.MEM_SIZE.to_json())
-  memory_model.set("null_trap_size", @bytecode.NULL_TRAP_SIZE.to_json())
-  memory_model.set("global_start", @bytecode.GLOBAL_START.to_json())
-  memory_model.set(
-    "global_region_limit",
-    @bytecode.GLOBAL_REGION_LIMIT.to_json(),
-  )
-  memory_model.set("heap_start_default", @bytecode.HEAP_START.to_json())
+  memory_model.set("mem_size", Json(@bytecode.MEM_SIZE))
+  memory_model.set("null_trap_size", Json(@bytecode.NULL_TRAP_SIZE))
+  memory_model.set("global_start", Json(@bytecode.GLOBAL_START))
+  memory_model.set("global_region_limit", Json(@bytecode.GLOBAL_REGION_LIMIT))
+  memory_model.set("heap_start_default", Json(@bytecode.HEAP_START))
   memory_model.set(
     "heap_start",
     Json::string("动态：max(HEAP_START, align4(global_data_end))"),

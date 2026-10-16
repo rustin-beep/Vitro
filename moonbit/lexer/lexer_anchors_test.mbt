@@ -375,7 +375,7 @@ test "linemap and real line attribution" {
   inspect(x.loc.file_id, content="0")
   inspect(x.real_line, content="2")
   // ③ LineMap：主文件行号归属主文件（铺底段）
-  inspect(r.line_map.lookup(2), content="(0, 2)")
+  debug_inspect(r.line_map.lookup(2), content="(0, 2)")
 }
 
 ///|

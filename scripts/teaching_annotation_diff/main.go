@@ -392,7 +392,7 @@ func main() {
 	}
 	exe := resolveServeExe()
 	if backendWasmOn {
-		shell := filepath.Join(root, "scripts", "vitro_cli", "main.js")
+		shell := filepath.Join(root, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js")
 		wasmMod := filepath.Join(root, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
 		if _, err := os.Stat(shell); err != nil {
 			fmt.Printf("错误: wasm 臂产物缺失 %s（统一入口壳）\n", shell)
@@ -401,6 +401,8 @@ func main() {
 		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
 		freshness.EnsureFresh("teaching_annotation_diff", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("teaching_annotation_diff_glue", shell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 		exe = shell
 	} else {
 		// serve exe 新鲜度门禁（批五 P2-5 销案：此前「按文件在位即用」——

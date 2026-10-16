@@ -62,9 +62,8 @@ description: 用本地 LLM 批量生成 C 语料并四裁判对拍，从产物�
 ```
 <judge_dir>/
   vitro.exe                                                        ← native 臂（导入仅系统 DLL，自足，任意 cwd 可跑）
-  scripts/vitro_cli/{main.js, api_help.json}                       ← wasm 壳
-  moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm      ← ★ 必须按原相对布局：
-                                                                      main.js 用 REPO=__dirname/../.. 找 wasm
+  moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js      ← wasm 壳（main.js 退役批后为 MoonBit 胶水）
+  moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm      ← gateway wasm-gc 引擎（壳经编译期注入 URL 定位）
   judge_fingerprint.json    ← 各产物 sha256 + repo_head + dirty 计数
 ```
 

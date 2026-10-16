@@ -300,8 +300,9 @@ func main() {
 	// 且 supported_targets 不含 wasm 被 moon info 跳过——.mbti 从不存在而闸恒绿）。
 	// 豁免表：结构性不可生成的包在此显式登记（精确理由）。
 	var mbtiExempt = map[string]string{
-		"vitro/engine/gateway":     "moon info 跳过：canonical backend=wasm 而该包 supported_targets=+wasm-gc+native 不含 wasm——mbti 无生成通道，#43 豁免裁定",
-		"vitro/engine/cmd/lib/cli": "同病（完备性断言首跑抓出）：supported_targets=native + canonical backend=wasm 被 moon info 跳过。注：fs 同为 native-only 却有 .mbti（d29a3470 手工生成入库）——两形态并存印证通道缺失而非按 target 判定",
+		"vitro/engine/gateway":               "moon info 跳过：canonical backend=wasm 而该包 supported_targets=+wasm-gc+native 不含 wasm——mbti 无生成通道，#43 豁免裁定",
+		"vitro/engine/cmd/lib/cli":           "同病（完备性断言首跑抓出）：supported_targets=native + canonical backend=wasm 被 moon info 跳过。注：fs 同为 native-only 却有 .mbti（d29a3470 手工生成入库）——两形态并存印证通道缺失而非按 target 判定",
+		"vitro/engine/cmd/lib/engine_direct": "同病（完备性断言 pin 修复首跑抓出）：supported_targets=+js+native 不含 canonical wasm——moon info 跳过无生成通道（main.js 退役批新包建时漏登，被 108fc42d 的 pin 语法错 Install Failed 掩盖至 .moonbit-version 修复首跑暴露）",
 	}
 	missing := mbtiCompleteness(root, mbtiExempt)
 	if len(missing) > 0 {

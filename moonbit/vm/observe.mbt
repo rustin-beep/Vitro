@@ -181,7 +181,7 @@ pub fn VitroVM::find_variable_name_at_addr(
     if sym.is_local {
       continue
     }
-    if slot_covers(sym, @bytecode.GLOBAL_START + sym.addr, addr) {
+    if slot_covers(self, sym, @bytecode.GLOBAL_START + sym.addr, addr) {
       return Some(sym.name)
     }
   }
@@ -204,7 +204,7 @@ pub fn VitroVM::find_variable_name_at_addr(
       if sym.decl_line > 0 && frame_line > 0 && sym.decl_line > frame_line {
         continue
       }
-      if slot_covers(sym, frame.locals_base + sym.addr, addr) {
+      if slot_covers(self, sym, frame.locals_base + sym.addr, addr) {
         return Some(sym.name)
       }
     }
@@ -220,7 +220,12 @@ pub fn VitroVM::find_variable_name_at_addr(
 /// 2026-10-01：原误用 `sym.ty.kind()`——数组自身恒落默认臂 4，double/char
 /// 数组区间归属双向出错；oracle memory.rs:490 用 `base_kind`，与
 /// get_array_snapshots 取值口径同源——char 1 / double·long long 8 / 其余 4）。
-fn slot_covers(sym : @bytecode.Symbol, base : UInt32, addr : UInt32) -> Bool {
+fn slot_covers(
+  vm : VitroVM,
+  sym : @bytecode.Symbol,
+  base : UInt32,
+  addr : UInt32,
+) -> Bool {
   if base == addr {
     return true
   }
@@ -231,11 +236,9 @@ fn slot_covers(sym : @bytecode.Symbol, base : UInt32, addr : UInt32) -> Bool {
   if count <= 0 {
     return false
   }
-  let elem_size : UInt32 = match sym.ty.base_kind() {
-    TK_Char => 1U
-    TK_Double | TK_LongLong => 8U
-    _ => 4U
-  }
+  // 病 81：struct/union 数组按真实布局步长（原兜底 4——struct 数组
+  // 尾部地址变量归属判定失败/误归属）
+  let elem_size : UInt32 = vm.elem_size_of_kind(sym.ty)
   addr > base && addr < base + count.reinterpret_as_uint() * elem_size
 }
 
@@ -270,13 +273,10 @@ pub fn VitroVM::get_array_snapshots(self : VitroVM) -> Array[ArraySnapshotData] 
     // 数组递归剥层——oracle memory.rs:398 同源）；element_ty 显示名仍走
     // `base_element_type`（只剥数组不解指针，oracle 显示层同款）。原误用
     // base_element_type 兼任语义宽度：int*[2] 落 "?"、char*[2] 步长 4。
+    // 病 81：struct/union 元素按真实布局步长（原兜底 4）
+    let elem_size : UInt32 = self.elem_size_of_kind(sym.ty)
+    // 元素类型判定（显示与取值分支——宽度已由上面 helper 决定）
     let bk = sym.ty.base_kind()
-    let elem_size : UInt32 = match bk {
-      TK_Char => 1U
-      TK_Int | TK_Pointer | TK_Float => 4U
-      TK_Double | TK_LongLong => 8U
-      _ => 4U
-    }
     // U2#10：声明长度超 256 → 截断 + 标记
     let truncated = array_size > MAX_ARRAY_SNAPSHOT_ELEMENTS
     let take_elems = if array_size > MAX_ARRAY_SNAPSHOT_ELEMENTS {
@@ -397,4 +397,19 @@ pub fn VitroVM::breakpoints_sorted(self : VitroVM) -> Array[Int32] {
 /// engine 侧 unpause 先例避免保留字）。
 pub fn VitroVM::unpause(self : VitroVM) -> Unit {
   self.paused = false
+}
+
+///|
+/// 病 81 修（#71，2026-10-16）：vm 侧元素步长——base_kind 表对
+/// Struct/Union 不再落兜底 4，按真实布局算（struct=Σ字段 / union=max，
+/// @ast.compute_type_size 与 codegen/typeck 同源语义；定义缺失退 4 =
+/// 装载缺口防御）。
+fn VitroVM::elem_size_of_kind(self : VitroVM, ty : @ast.Type) -> UInt32 {
+  match ty.base_kind() {
+    TK_Char => 1U
+    TK_Double | TK_LongLong => 8U
+    TK_Struct | TK_Union =>
+      @ast.compute_type_size(ty, self.struct_defs, self.union_defs, Map([])).reinterpret_as_uint()
+    _ => 4U
+  }
 }

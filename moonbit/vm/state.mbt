@@ -69,6 +69,11 @@ pub struct VitroVM {
   locals_by_func : Map[String, Map[Int32, String]]
   /// 全局符号索引（offset/addr → 名字），同上装载期派生。
   global_syms : Map[Int32, String]
+  /// struct/union 定义表（病 81 修，2026-10-16：装载期自 CompileOutput
+  /// 填充——vm 侧数组步长按真实布局算 struct=Σ字段/union=max，不再落
+  /// 兜底 4；与 codegen/typeck 的 compute_type_size 同源语义）。
+  mut struct_defs : Map[String, Array[@ast.StructField]]
+  mut union_defs : Map[String, Array[@ast.StructField]]
   /// **ARC 帧退出清理机制占位**（CS 批接线，C 恒空；CS 计划 §4.6——
   /// 「帧退出清理列表」：函数名 → 该帧引用类型局部变量的 offset 列表，
   /// Ret / UNWINDING 弹帧时逐个读 u32 → release。机制 v1 入形，
@@ -161,6 +166,8 @@ pub fn VitroVM::new() -> VitroVM {
     i64_constants: [],
     locals_by_func: Map([]),
     global_syms: Map([]),
+    struct_defs: Map([]),
+    union_defs: Map([]),
     arc_cleanup: Map([]),
     step_count: 0,
     max_steps: DEFAULT_MAX_STEPS,

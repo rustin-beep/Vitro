@@ -1,6 +1,10 @@
 // teaching/steps·render（S8 teaching 批一号）：表达式近似文本化——
 // 结构比较的稳定键（features.rs:540-644 expr_to_string 照搬；穷尽 27
 // 变体无兜底——新增变体编译红）。C++ 六变体照 Rust "<cpp-expr>" 占位。
+// 病 79 勘正（#71，2026-10-16）：Alignof/_Generic/CompoundLiteral 三臂
+// 是 C 可达变体的近似渲染（非 C++ 占位——头注旧称「六变体」漏计）；
+// C 子集当前不解析三者（typeck 前不可达），渲染文本为防御形态，语料
+// 零暴露——待三者入子集时按 oracle 档案对拍复核渲染文本。
 
 ///|
 pub fn expr_to_string(expr : @ast.Expr) -> String {

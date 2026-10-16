@@ -107,7 +107,7 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
       base = self.call_stack[self.call_stack.length() - 1].locals_base +
         sym.addr
     }
-    let elem_size = elem_size_of(sym.ty)
+    let elem_size = self.elem_size_of_vm(sym.ty)
     let size = (sym.ty.array_size().to_uint64() * elem_size.to_uint64()).to_uint()
     // 首尾各 64 字素的「近似归属窗口」（遗留 7 补注，#47 2026-10-09）：
     // 越界地址落在数组尾/首邻近 64 字节内仍归因到该数组（`a[3]` 写偏 1
@@ -129,7 +129,7 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
   }
   match best {
     Some((sym, base)) => {
-      let elem_size = elem_size_of(sym.ty)
+      let elem_size = self.elem_size_of_vm(sym.ty)
       let index = ((addr.to_int64() - base.to_int64()) / elem_size.to_int64()).to_int()
       // 病 10 修复（#47，2026-10-09）：location 统一由 trap() 追加（带列），
       // 与 exec_debug TrapBounds 臂同形。#60 批二：文案模板外置（键
@@ -163,12 +163,10 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
 /// 旧漏 TK_LongLong（LL 数组元素宽 8 反算除 4 → index 错倍 ×2，登记
 /// p[6]→"a[12]" 形态）；端到端触发形态三层探测未复现（疑被 TrapBounds
 /// 前置臂遮蔽——修复为同族对齐+防御，wbtest 单点锚在案）。
-fn elem_size_of(ty : @ast.Type) -> Int32 {
-  match ty.base_kind() {
-    TK_Char => 1
-    TK_Double | TK_LongLong => 8
-    _ => 4
-  }
+fn VitroVM::elem_size_of_vm(self : VitroVM, ty : @ast.Type) -> Int32 {
+  // 病 81（2026-10-16）：struct/union 按真实布局（method 化拿
+  // struct_defs；原独立函数落兜底 4——越界文案 index 错倍同族）
+  self.elem_size_of_kind(ty).reinterpret_as_int()
 }
 
 ///|

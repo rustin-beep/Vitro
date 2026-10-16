@@ -204,6 +204,10 @@ pub fn VitroVM::setup_from_output(
   // （max_steps 不设——会话配置由调用方 set_max_steps）
   // ── 8. 符号表 ──
   self.set_symbols(output.symbols)
+  // 病 81 修（2026-10-16）：struct/union 定义表装载（vm 侧数组步长按
+  // 真实布局算——observe/trap 的 base_kind 表 Struct/Union 不再落兜底 4）
+  self.struct_defs = output.struct_defs
+  self.union_defs = output.union_defs
   // ── 9. vis 行（issue #29 #4 接线 2026-10-04：compile_pipeline.rs:357-364
   // 第 9 步对应物——algorithm_matches.vis_events 的投影；此前恒空分叉销案。
   // snapshot 不含 vis_event_lines（装载期注入配置，reset 清）——本调用在

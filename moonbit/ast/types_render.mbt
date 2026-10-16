@@ -160,7 +160,10 @@ pub fn type_display_name(ty : Type) -> String {
         "\{base}[\{array_size}]"
       }
     }
-    Function(return_type, param_types, is_variadic, _) => {
+    // 病 80 修（#71，2026-10-16）：变体字段序 (return, params, is_const,
+    // is_variadic)——旧绑定第三位（is_const）当 is_variadic 用：const 函
+    // 数指针显示假 "..."、真变参丢 "..."。改绑第四位。
+    Function(return_type, param_types, _, is_variadic) => {
       let buf = StringBuilder()
       buf.write_string(type_display_name(return_type))
       buf.write_string(" (*)(")

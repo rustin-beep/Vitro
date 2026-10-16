@@ -27,3 +27,17 @@ test "issue84_subscript_type_vla_size_zero" {
     ),
   )
 }
+
+///|
+/// 病 80 锚（#71，2026-10-16）：type_display_name 的 Function 臂字段序
+/// 绑定——变体序 (return, params, is_const, is_variadic)。旧形态第三位
+/// （is_const）被绑成 is_variadic：const 函数指针显假 "..."、真变参丢。
+test "type_display_function_arity_binding_locked" {
+  let variadic = Type::Function(Type::int(), [Type::int()], false, true)
+  let plain = Type::Function(Type::int(), [Type::int()], false, false)
+  let const_fn = Type::Function(Type::int(), [Type::int()], true, false)
+  assert_eq(type_display_name(variadic), "int (*)(int, ...)")
+  assert_eq(type_display_name(plain), "int (*)(int)")
+  // const 位不再被误读为变参（假 "..." 消灭）
+  assert_eq(type_display_name(const_fn), "int (*)(int)")
+}

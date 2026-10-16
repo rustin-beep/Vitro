@@ -12,6 +12,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ast+vm+teaching): #71 渲染零暴露族收官——病 80 Function 臂绑正 + 病 81 struct/union 数组步长按真实布局 + 病 79 勘正（2026-10-16）
+
+【病 80】type_display_name 的 Function 臂模式 `Function(rt, pts,
+is_variadic, _)` 绑错位——变体序是 (rt, pts, **is_const, is_variadic**)：
+第三位 is_const 被当变参用（const 函数指针显示假 "..."）、第四位真变参
+被丢弃（变参函数丢 "..."）。改绑第四位 + wbtest 三态锚（变参/普通/
+const 函数指针——const 位不再误读）。
+
+【病 81】vm 三张 base_kind 消费表（observe slot_covers /
+get_array_snapshots / trap elem_size_of）对 Struct/Union 落兜底 4——
+struct 数组尾部地址变量归属判定失败/误归属（codegen 侧是 struct=Σ字段
+/union=max）。修：VitroVM 装载 struct_defs/union_defs（setup_from_output
+第 8 步连坐）+ vm 侧 elem_size_of_kind helper（@ast.compute_type_size
+同源语义，定义缺失退 4 防御）；slot_covers 改 method 签名传 vm。端到端
+实证：struct P pts[3] 的 &pts[2]/&pts[1].x 观测归属与输出与 clang 一致。
+
+【病 79 勘正】expr_to_string 的 Alignof/_Generic/CompoundLiteral 三臂
+是 C 可达变体的近似渲染（头注旧称「C++ 六变体」漏计）；C 子集当前不
+解析三者（不可达）、语料零暴露——头注勘正 + 待三者入子集时按 oracle
+档案对拍复核（登记不修行为）。
+
+【验证】moon test 782/782（+病 80 锚）；vm_diff 668 / demo_smoke /
+smoke 三臂全绿（D/Q 等值锚随 demo_smoke 复验）。
+
 ### fix(codegen): #71 登记不修翻案——病 120 字面量驻留池 + 病 121 混合续位双臂（用户拍板「发现了就修」，2026-10-16）
 
 【翻案】119/120/121 三条「登记不修」按用户拍板全部处置：**病 119 复核

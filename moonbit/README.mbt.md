@@ -47,7 +47,7 @@ native CLI 1.5–6.3×**。诚实短板：全速执行慢 CPython 9.6–19.8×�
 ## 验证
 
 ```bash
-moon check && moon test    # 781 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 776 + 根 README doc test 0 + catalog 4〔#36 批〕）
+moon check && moon test    # 782 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 776 + 根 README doc test 0 + catalog 4〔#36 批〕）
                            # native-only 包测试 131 个（fs 0 / gateway 116 / cli 15——2026-10-15 审阅批重采：gateway 110→116（4afb30c5 +6 锚）；三后端批 2026-10-15：fs 因 fs_wasm 腿回流多目标〔裸 774 已含 fs 10——9ca98258 时点历史口径〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 907（CI 门禁口径；2026-10-15 审阅批实测重采——901 为按旧分量重算的和数，事实漂移）
 moon info                  # .mbti 接口面（API 变更信号）
 moon info                  # .mbti 接口面（API 变更信号）

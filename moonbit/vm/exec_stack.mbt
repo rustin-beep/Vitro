@@ -118,7 +118,16 @@ fn VitroVM::execute_local(
         self.trap("StoreLocal: 无调用帧", line, column)
       }
     }
-    LoadLocalD | LoadLocalQ =>
+    LoadLocalD | LoadLocalQ => {
+      // 病 91 观测缺失修（#71，2026-10-16）：D/Q 八字节族与 4 字节族同推
+      // last_accessed_vars——此前 8 臂零观测，double/long long 变量的访问
+      // 记录在 observe/时间旅行面静默缺失（oracle 同源缺失，Rust 已退役
+      // 无对侧——单侧修）
+      let var_name = self.local_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Read,
+      })
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -133,7 +142,14 @@ fn VitroVM::execute_local(
         let nm = if op is LoadLocalD { "LoadLocalD" } else { "LoadLocalQ" }
         self.trap("\{nm}: 无调用帧", line, column)
       }
-    StoreLocalD | StoreLocalQ =>
+    }
+    StoreLocalD | StoreLocalQ => {
+      // 病 91 观测缺失修（同上）——写侧同推
+      let var_name = self.local_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Write,
+      })
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -148,6 +164,7 @@ fn VitroVM::execute_local(
         let nm = if op is StoreLocalD { "StoreLocalD" } else { "StoreLocalQ" }
         self.trap("\{nm}: 无调用帧", line, column)
       }
+    }
     GetFrameBase =>
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
@@ -198,6 +215,12 @@ fn VitroVM::execute_global(
       }
     }
     LoadGlobalD | LoadGlobalQ => {
+      // 病 91 观测缺失修（#71，2026-10-16）：全局 D/Q 同推观测
+      let var_name = self.global_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Read,
+      })
       let nm = if op is LoadGlobalD { "LoadGlobalD" } else { "LoadGlobalQ" }
       if addr + 8U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("\{nm}: 地址越界", line, column)
@@ -207,6 +230,12 @@ fn VitroVM::execute_global(
       }
     }
     StoreGlobalD | StoreGlobalQ => {
+      // 病 91 观测缺失修（同上）——写侧同推
+      let var_name = self.global_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Write,
+      })
       let nm = if op is StoreGlobalD { "StoreGlobalD" } else { "StoreGlobalQ" }
       if addr + 8U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("\{nm}: 地址越界", line, column)

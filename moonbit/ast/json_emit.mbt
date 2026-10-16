@@ -97,8 +97,9 @@ fn emit_json_str(s : String, buf : StringBuilder) -> Unit {
 /// 1. 0 <= e10 && kk <= 16 → 定点整数补 .0（1e15 → 1000000000000000.0）；
 /// 2. 0 < kk <= 16 → 定点小数（123.45）；
 /// 3. -5 < kk <= 0 → 0.000x（1e-5 → 0.00001）；
-/// 4. 其余 → 指数 d.ddde±n（1e16 → 1e+16；1e-6 → 1e-6，负指数无 + 号、
-///    不补零——serve 原始字节实测，非 Python 重排形态）。
+/// 4. 其余 → 指数 d.ddde±n（1e16 → 1e16、1e-6 → 1e-6——**正指数不写 +
+///    号**〔病 82 修，2026-10-16：对齐 ryu/serde_json，往返文本稳定〕，
+///    负指数带 -、不补零）。
 /// 边界实证：kk=16 定点 / kk=17 指数；kk=-4 定点 / kk=-5 指数。
 ///
 /// 非有限（±Infinity / NaN）→ null（serde_json 对 non-finite f64 的序列化
@@ -215,12 +216,13 @@ pub fn double_to_json_text(v : Double) -> String {
     }
     out.write_string("e")
     let e = kk - 1
-    if e >= 0 {
-      out.write_string("+")
-      out.write_string("\{e}")
-    } else {
-      out.write_string("\{e}")
-    }
+    // 病 82（#71 P2，2026-10-16）：正指数不写 + 号——对齐 ryu/serde_json
+    // 口径（源码实证：ryu 的 d2s 正指数只写数字；serde_json 用 ryu）。旧
+    // 形态 1e+30 vs 下游 JSON 库解析后再序列化得 1e30——两端往返文本不
+    // 稳定。头注「serve 原始字节实测 1e+16」系当时 serve 链路复用本函数
+    // 的循环论证（实测的是自己的输出）；负指数带 - 不变。corpus 无
+    // ≥1e16 浮点常量（结构性零覆盖）——修后零漂移，锚另立 wbtest。
+    out.write_string("\{e}")
     out.to_string()
   }
 }

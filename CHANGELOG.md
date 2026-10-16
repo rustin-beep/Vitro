@@ -12,6 +12,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(codegen): #71 登记不修翻案——病 120 字面量驻留池 + 病 121 混合续位双臂（用户拍板「发现了就修」，2026-10-16）
+
+【翻案】119/120/121 三条「登记不修」按用户拍板全部处置：**病 119 复核
+已修**（u 后缀定型链随病 59/117 落地——三种符号分叉形态实测与 clang
+一致，销案）；120/121 本批修。
+
+【病 120：字符串字面量驻留池】同内容字面量合并同址（clang 实测合并——
+`char *a="twin"; a==b` 两侧 1；C 标准不要求但主流实现全合）。此前七处
+bump 分配点互不知情——新增单源 `intern_string_literal`（池查/bump/
+string_data 登记一体），gen_expr 主路径 + flush_pending + var_decl 两
+static 臂收编；init.mbt 两处经 pending（flush 已池化）天然覆盖。
+
+【病 121：混合续位（C11 6.7.9 current object）】`{.a=1, 2, 3}` 的
+裸项从 designated 位续位——旧形态裸项一律 continue 跳过（2、3 静默
+丢）。修：struct 臂 + 数组臂同款游标续位（designated 项设当前位到
+下一位，裸项续位写并推进）；`{[2]=22, 33, 44}` 数组形态同修。clang
+对照逐字节一致。
+
+【语料锚】corpus/baseline 新增 designated_mixed_cont.c +
+string_pool_intern.c（端到端含红锚历史：修复前 vitro 输出 1 0 0 /
+22 0 0 / 0）；vm_diff freeze-mb 入账（668）+ codegen freeze-mb
+（428）+ clang_direct 全量（763，新例 SAME）。
+
+【布局重冻披露】驻留池改变全局区布局（同内容字面量共享地址）——
+memory digest 与 codegen 指纹全量重算（行为零变化：stdout/exit 全
+量 SAME 实证，clang_direct 749→751 SAME+12 KNOWN+0 DIFF）。
+
+【验证】moon test 781/781；三臂产物重建后语料双例全通；smoke/
+demo_smoke(178)/facts/checklist 全绿。
+
+### fix(vm+demo): #71 双侧候选清算——病 91 D/Q 八字节族访问观测补齐（用户拍板：Rust 已退役单侧直修，2026-10-16）
+
+【清算结论】oracle 同病登记面全部实测复核：病 48（*tloc 写入）/52
+（越界文案）/53（作用域过滤）/54（8 字节读）与病 91 杂项的 dp
+suggestion/fputs(stdin)/fopen 失败路径/fseek 字面量 **均已修**（多为
+10-11 A 档批连带）；唯一活口 = **D/Q 八字节族变量访问观测缺失**
+（LoadLocalD/Q、StoreLocalD/Q、LoadGlobalD/Q、StoreGlobalD/Q 八臂
+零推送 last_accessed_vars——double/long long 变量在 accessed_vars/
+时间旅行面静默缺失）。
+
+【修】八臂补推送（与 4 字节族同形：局部走 local_var_name、全局走
+global_var_name；Read/Write 按 opcode 语义）。字节码实证 double_avg
+fixture 全链：a/b/total（局部 D/Q）+ g_scale（全局 D）读写全进
+payloads.accessed_vars。
+
+【锚】demo_smoke 新增 double_avg case（double 局部×2 + long long +
+double 全局——clang 参考输出 4.0 3）+ 计数等值锚（a.R1/W1 b.R1/W1
+g_scale.R1 total.R7/W4——三次实测确定；比存在性强：单侧缺失也红）。
+**J9 证红三坑实录**：①存在性锚被 Write 侧补救（删 Read push 仍
+PASS——升等值锚解决）；②python 模式匹配打偏 4 字节臂（同文本
+push——注释行锚定解决）；③增量缓存三连（改源后 wasm 产物报
+up-to-date 不重编——rm 强清解决）。**事故自纠**：中途误用
+git checkout -- 抹掉未提交修复（散弹枪禁令违例），按对话历史重写
+恢复后全链复验。
+
+【验证】moon test 781/781；vm_diff 666 / clang_direct 749 双全量零
+漂移（D/Q 观测是新增字段记录、不影响既有输出）；smoke/frames/
+demo_smoke(178) /facts 全绿。
+
+### fix(ast+gateway+scripts): #71 续批——病 82 修正指数文本 + 病 78 severity 锚 + 病 85 fixture 翻正 + 病 86 文案真化（2026-10-16）
+
+【病 82：f64 JSON 正指数不写 + 号】`double_to_json_text` 区间 4 正指数
+臂 `1e+30` → `1e30`（对齐 ryu/serde_json 源码口径——正指数只写数字；
+往返文本稳定）。头注「serve 原始字节实测 1e+16」系循环论证（实测的是
+自己输出）已改写。corpus 无 ≥1e16 浮点常量（结构性零覆盖）——vm_diff/
+clang_direct 双全量零漂移实证。**并发合流披露**：wbtest 期望值
+（1e+16→1e16 多行形态）系另一会话同向改动，与本批实现侧改动恰好合流
+自洽（ast 15/15）。
+
+【病 78：severity wire 零锚封口】severity_name/severity_prefix 四臂
+直锚 + 端到端 W3053（double→int 窄化真 warning 场景——初版锚用例
+`int* p=0` 实无警告，勘误换 `int x=3.14`）/E 码两场景 severity 字段
+断言。突变证红：交换 0/1 臂 5 测试红（「突变零检测」自此封口）。
+
+【病 85：smoke fixture 名实翻正】「编译错+类型警告」用例旧 fixture
+实产出 2E+0W（名实不符——登记实锤复核成立）——补 double→int 窄化
+成真 E+W 混合，失败路径 warning 行渲染自此有双臂对拍锚。
+
+【病 86：payload.get 文案真化】api help 从教错参数（cursor 游标）改
+真签名（start/end 区间 + 缺省语义）——rules.json + api_help_gen 再生
++ 胶水重建实测。病 77 复核半销（非数组 fail loud + 字符串元素有诊断
+非静默）；病 83/84/87 复核确认已修（fail loud 历史批 + #129 通道分立）。
+
+【验证】moon test 781/781；vm_diff 666 / clang_direct 749 双全量零
+漂移；smoke/frames/demo_smoke/facts 全绿。
+
 ### feat(gateway+cli+vm): #133 止血包——preset 档位开关 + 资源墙报错分家 + run --max-steps（学生实测驱动，2026-10-16）
 
 【背景】#131 学生 A* 压测撞三道墙（全局 64KB/堆 ~960KB/步数 10M——约束

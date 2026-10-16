@@ -63,6 +63,10 @@ priv struct BytecodeGen {
   /// 全局变量初始化中遇到的字符串字面量，Pass 1 结束后统一分配地址并
   /// 回填——避免字符串区与全局变量区重叠（事故 #12）。
   mut pending_string_inits : Array[(UInt32, String)]
+  /// 字面量池（value → 已分配地址；病 120 修，2026-10-16）：相同内容
+  /// 的字符串字面量合并同址（clang 实测合并——`a=="twin" && b=="twin"`
+  /// 的指针相等形态；C 标准不要求合但主流实现全合，教学对照避免分叉）
+  string_pool : Map[String, UInt32]
   source_map : Array[(UInt32, @source.SourceLoc)]
   break_patches : Array[Int32]
   continue_patches : Array[Int32]
@@ -154,6 +158,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     union_defs: {},
     string_data: [],
     pending_string_inits: [],
+    string_pool: Map([]),
     source_map: [],
     break_patches: [],
     continue_patches: [],
@@ -337,20 +342,66 @@ fn BytecodeGen::flush_pending_string_inits(self : BytecodeGen) -> Unit {
   self.pending_string_inits = []
   for entry in pending {
     let (base_offset, value) = entry
-    let aligned = ((@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3) &
-      @bytecode.ALIGN4_MASK
-    match
-      self.bump_global_offset(
-        aligned.reinterpret_as_int(),
-        "全局初始化字符串",
-        default_loc(),
-      ) {
-      Some(str_offset) => {
-        let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
-        self.string_data.push((str_addr, value))
+    // 病 120 修（2026-10-16）：池命中复用同址（clang 同款合并——同内容
+    // 字面量指针相等；未命中才分配入池）
+    match self.string_pool.get(value) {
+      Some(str_addr) =>
         self.globals_init_32.push((base_offset, str_addr.reinterpret_as_int()))
+      None => {
+        let aligned = (
+            (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
+          ) &
+          @bytecode.ALIGN4_MASK
+        match
+          self.bump_global_offset(
+            aligned.reinterpret_as_int(),
+            "全局初始化字符串",
+            default_loc(),
+          ) {
+          Some(str_offset) => {
+            let str_addr = @bytecode.GLOBAL_START +
+              str_offset.reinterpret_as_uint()
+            self.string_data.push((str_addr, value))
+            self.string_pool.set(value, str_addr)
+            self.globals_init_32.push(
+              (base_offset, str_addr.reinterpret_as_int()),
+            )
+          }
+          None => ()
+        }
       }
-      None => ()
+    }
+  }
+}
+
+///|
+/// 字符串字面量驻留（病 120 修，2026-10-16）：同内容字面量合并同址
+///（clang 实测合并——`a=="twin" && b=="twin"` 指针相等；C 标准不要求
+/// 但主流实现全合）。全仓字面量分配单源（此前七处各自 bump 互不知情）
+/// ——池命中返回既有地址；未命中 bump + 登记 string_data + 入池。
+fn BytecodeGen::intern_string_literal(
+  self : BytecodeGen,
+  value : String,
+  region : String,
+  loc : @source.SourceLoc,
+) -> UInt32? {
+  match self.string_pool.get(value) {
+    Some(addr) => Some(addr)
+    None => {
+      let aligned = (
+          (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
+        ) &
+        @bytecode.ALIGN4_MASK
+      match self.bump_global_offset(aligned.reinterpret_as_int(), region, loc) {
+        Some(str_offset) => {
+          let str_addr = @bytecode.GLOBAL_START +
+            str_offset.reinterpret_as_uint()
+          self.string_data.push((str_addr, value))
+          self.string_pool.set(value, str_addr)
+          Some(str_addr)
+        }
+        None => None
+      }
     }
   }
 }

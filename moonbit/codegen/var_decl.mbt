@@ -190,24 +190,18 @@ fn BytecodeGen::emit_static_init(
           )
         }
       } else {
-        let aligned = (
-            (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
-          ) &
-          @bytecode.ALIGN4_MASK
-        let str_offset = match
-          self.bump_global_offset(
-            aligned.reinterpret_as_int(),
-            "静态初始化字符串",
-            loc,
-          ) {
-          Some(o) => o
+        // 病 120：驻留池（同内容合并同址）
+        match
+          self.intern_string_literal(value, "静态初始化字符串", loc) {
+          Some(str_addr) =>
+            self.globals_init_32.push(
+              (
+                global_offset.reinterpret_as_uint(),
+                str_addr.reinterpret_as_int(),
+              ),
+            )
           None => return
         }
-        let str_addr = @bytecode.GLOBAL_START + str_offset.reinterpret_as_uint()
-        self.string_data.push((str_addr, value))
-        self.globals_init_32.push(
-          (global_offset.reinterpret_as_uint(), str_addr.reinterpret_as_int()),
-        )
       }
     }
     Literal(_, _, _) | LongLiteral(_, _, _) | FloatLiteral(_, _, _) => {
@@ -281,22 +275,13 @@ fn BytecodeGen::emit_static_scalar_array_init(
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
       match elem.value {
         StringLiteral(value, _, _) => {
-          let aligned = (
-              (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
-            ) &
-            @bytecode.ALIGN4_MASK
-          let str_offset = match
-            self.bump_global_offset(
-              aligned.reinterpret_as_int(),
-              "静态初始化字符串",
-              _loc,
-            ) {
-            Some(o) => o
+          // 病 120：驻留池（同内容合并同址）
+          let str_addr = match
+            self.intern_string_literal(value, "静态初始化字符串", _loc) {
+            Some(a) => a
             None => continue
           }
-          let str_addr = @bytecode.GLOBAL_START +
-            str_offset.reinterpret_as_uint()
-          self.string_data.push((str_addr, value))
+          ignore(str_addr)
           self.globals_init_32.push((addr, str_addr.reinterpret_as_int()))
         }
         FloatLiteral(value, _, _) =>
@@ -624,27 +609,36 @@ fn BytecodeGen::emit_flat_array_init(
     self.emit(@opcode.OpCode::PushConst, 0, loc)
     self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
     self.emit(@opcode.OpCode::Memset, 0, loc)
+    // 病 121 修（#71，2026-10-16）：数组混合续位（struct 臂同款——
+    // designated 项设当前位到下一位，裸项续位写并推进）
+    let mut cursor = 0
     for elem in elements {
-      if elem.designators.length() == 0 {
-        continue
-      }
-      let idx = match elem.designators[0] {
-        Index(idx_expr) =>
-          match idx_expr {
-            Literal(value, _, _) => value
-            _ => {
-              self.report_error(
-                "数组 designated initializer 的索引必须是编译期常量",
-                loc,
-              )
-              continue
-            }
-          }
-        Field(_) => {
-          self.report_error(
-            "数组初始化只能使用 [index] 形式的 designator", loc,
-          )
+      let idx = if elem.designators.length() == 0 {
+        if cursor >= count {
           continue
+        }
+        let cur = cursor
+        cursor = cur + 1
+        cur
+      } else {
+        match elem.designators[0] {
+          Index(idx_expr) =>
+            match idx_expr {
+              Literal(value, _, _) => value
+              _ => {
+                self.report_error(
+                  "数组 designated initializer 的索引必须是编译期常量",
+                  loc,
+                )
+                continue
+              }
+            }
+          Field(_) => {
+            self.report_error(
+              "数组初始化只能使用 [index] 形式的 designator", loc,
+            )
+            continue
+          }
         }
       }
       if idx < 0 || idx >= count {
@@ -653,6 +647,7 @@ fn BytecodeGen::emit_flat_array_init(
         )
         continue
       }
+      cursor = idx + 1
       let addr_offset = idx * elem_size
       self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
       if addr_offset > 0 {
@@ -740,34 +735,46 @@ fn BytecodeGen::emit_local_struct_init(
         self.emit(@opcode.OpCode::PushConst, 0, loc)
         self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
         self.emit(@opcode.OpCode::Memset, 0, loc)
+        // 病 121 修（#71，2026-10-16）：混合续位（C11 6.7.9 current
+        // object）——designated 项把当前位置设到该字段下一位，裸项从
+        // 当前位续位写并推进。旧形态裸项一律 continue 跳过——
+        // `{.a=1, 2, 3}` 的 2、3 静默丢失
+        let mut cursor = 0
         for elem in elements {
-          if elem.designators.length() == 0 {
-            continue
-          }
-          let field_idx = match elem.designators[0] {
-            Field(fname) => {
-              let mut found = -1
-              for j, f in fields {
-                if f.name == fname {
-                  found = j
-                  break
+          let field_idx = if elem.designators.length() == 0 {
+            if cursor >= fields.length() {
+              continue
+            }
+            let cur = cursor
+            cursor = cur + 1
+            cur
+          } else {
+            match elem.designators[0] {
+              Field(fname) => {
+                let mut found = -1
+                for j, f in fields {
+                  if f.name == fname {
+                    found = j
+                    break
+                  }
+                }
+                if found >= 0 && found < fields.length() {
+                  cursor = found + 1
+                  found
+                } else {
+                  continue
                 }
               }
-              if found >= 0 && found < fields.length() {
-                found
-              } else {
+              _ => {
+                self.report_error(
+                  "结构体初始化只能使用 .field 形式的 designator", loc,
+                )
                 continue
               }
             }
-            _ => {
-              self.report_error(
-                "结构体初始化只能使用 .field 形式的 designator", loc,
-              )
-              continue
-            }
           }
           let mut offset = 0
-          for j in 0..<field_idx {
+          for j = 0; j < field_idx; j = j + 1 {
             offset += self.type_size(fields[j].ty)
           }
           self.emit_field_init(

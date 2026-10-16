@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### fix(cli/vitro_wasm): #71 病 111——wasm 臂 quote-include 的 `./` 段键归一 + 三代台账终盘实测（2026-10-16）
+
+【病 111】vitro_wasm 胶水的 collect 登记名用 include 原文（`./x.h`）作
+vfs 键，gateway resolver 归一查找键失配 → E1021（native 臂经 fs reader
+无此问题）。修：登记前剥 `.` 段（strip_dot_segments——gateway resolver
+同款归一，键/查找两侧对齐）。实测 `#include "./x.h"` 三臂全通（42）。
+
+【三代台账终盘实测（#47/#61/#71 全病号逐一探针对拍 clang）】可实测面
+**全部已修或非病**：P1 24 条（21~44，三梯队批清）/ P2 43 条（45~87，
+历史批 + 本两日批：46/67/76/78/82/85/86 + 111）/ 补充轮 107~116（含
+P1 双雄 107 变参组合、110 struct 复合字面量传参——实测 SAME）。
+**剩余真活口（终态清单）**：①渲染零暴露族 79/80/81（expr_to_string
+变体渲染 / type_display_name Function 臂字段错位 / base_kind 三消费表
+Struct/Union——零语料零锚、读码定态修复）;②P3 清单 88~92（死面/注释
+失实/锚缺口/oracle 同病——88 死面正在并发批处理）;③补登 93~106（P3
+为主：文案/排序序/守卫类）;④115/116（include 展开坐标协议面/帧合成
+坐标——观察项）;⑤119/120/121（三轮登记不修）。详见 #71 收尾评论。
+
+【验证】moon test 781/781；smoke 三臂全绿（薄壳 include 双文件含）；
+demo_smoke 178 全绿。
+
 ### Fixed
 
 - **审阅处置批（2026-10-10，五提交审阅报告 P1/P2/P3 全销）**：

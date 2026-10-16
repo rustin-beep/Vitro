@@ -202,25 +202,14 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
       let idx = self.push_i64_constant(value)
       self.emit(@opcode.OpCode::PushConstQ, idx, loc)
     }
-    StringLiteral(value, _, _) => {
-      // 字符串字面量：全局区 bump 分配 + 地址入栈（Rust literal.rs:22-31）
-      let aligned = (
-          (@bytecode.cstring_len(value) + 1).reinterpret_as_uint() + 3
-        ) &
-        @bytecode.ALIGN4_MASK
-      let addr = @bytecode.GLOBAL_START +
-        self.next_global_offset.reinterpret_as_uint()
-      match
-        self.bump_global_offset(
-          aligned.reinterpret_as_int(),
-          "字符串字面量",
-          loc,
-        ) {
-        Some(_) => self.string_data.push((addr, value))
+    StringLiteral(value, _, _) =>
+      // 字符串字面量：驻留池分配 + 地址入栈（病 120：同内容合并同址——
+      // clang 实测合并；原 Rust literal.rs:22-31 独立 bump 照搬形态）
+      match self.intern_string_literal(value, "字符串字面量", loc) {
+        Some(addr) =>
+          self.emit(@opcode.OpCode::PushConst, addr.reinterpret_as_int(), loc)
         None => ()
       }
-      self.emit(@opcode.OpCode::PushConst, addr.reinterpret_as_int(), loc)
-    }
     Identifier(name, _, _) => {
       // C99 __func__（E1 B 档）：预定义标识符 → 当前函数名字符串字面量
       // （Rust expr.rs 同臂照搬；typeck/expr.mbt 已支持其定型）

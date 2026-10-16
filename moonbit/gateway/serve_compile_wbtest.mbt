@@ -250,3 +250,36 @@ test "issue92_early_exit_paths_ordered" {
   }
   assert_true(ok2, msg="类型早退：error 前置")
 }
+
+///|
+/// 病 78 锚（#71 P2，2026-10-16）：severity wire 值域四臂映射——突变
+/// 实锤零检测（交换 0/1 臂后全闸绿——severity 直接误导判分线/教学 UI）。
+/// 直锚 severity_name/severity_prefix 全臂 + 端到端 compile 帧 warning
+/// 场景的 severity 字段值。
+test "severity_wire_mapping_locked" {
+  assert_eq(severity_name(0), "error")
+  assert_eq(severity_name(1), "warning")
+  assert_eq(severity_name(2), "hint")
+  assert_eq(severity_name(3), "info")
+  assert_eq(severity_prefix(0), "E")
+  assert_eq(severity_prefix(1), "W")
+  assert_eq(severity_prefix(2), "H")
+  assert_eq(severity_prefix(3), "I")
+  // 端到端：double→int 窄化警告（W3053）——severity 字段必为 "warning"
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(){ int x = 3.14; return x; }\"}}",
+  )
+  assert_true(
+    resp.contains("\"severity\":\"warning\""),
+    msg="W3053 场景 severity 字段须为 warning（突变交换臂即红）",
+  )
+  // 端到端：编译错（E 码）——severity 字段必为 "error"
+  let (resp2, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"compile\",\"params\":{\"source\":\"int main(){ return x; }\"}}",
+  )
+  assert_true(
+    resp2.contains("\"severity\":\"error\""),
+    msg="E 码场景 severity 字段须为 error",
+  )
+}

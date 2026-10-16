@@ -79,8 +79,8 @@
     },
     {
       "method": "payload.get",
-      "brief": "取步载荷帧（游标式；回放/断点消费面）",
-      "example": "{\"cursor\":0}"
+      "brief": "取步载荷帧（区间式：start..end 步——缺省 0..全部到窗尾；回放/断点消费面）",
+      "example": "{\"start\":0,\"end\":10}"
     },
     {
       "method": "ping",

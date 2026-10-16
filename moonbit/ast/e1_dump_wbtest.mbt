@@ -80,15 +80,42 @@ test "double_to_json_text_alignment" {
   inspect(double_to_json_text(1.0), content="1.0")
   inspect(double_to_json_text(1000000000000000.0), content="1000000000000000.0") // 1e15, kk=16 边界
   // 区间 4：kk >= 17 指数形（正指数带 +）
-  inspect(double_to_json_text(10000000000000000.0), content="1e+16") // kk=17 边界
-  inspect(double_to_json_text(15000000000000000.0), content="1.5e+16")
-  inspect(double_to_json_text(100000000000000000.0), content="1e+17")
-  inspect(double_to_json_text(150000000000000000.0), content="1.5e+17")
+  inspect(
+    double_to_json_text(10000000000000000.0),
+    content=(
+      #|1e16
+    ),
+  ) // kk=17 边界
+  inspect(
+    double_to_json_text(15000000000000000.0),
+    content=(
+      #|1.5e16
+    ),
+  )
+  inspect(
+    double_to_json_text(100000000000000000.0),
+    content=(
+      #|1e17
+    ),
+  )
+  inspect(
+    double_to_json_text(150000000000000000.0),
+    content=(
+      #|1.5e17
+    ),
+  )
   inspect(
     double_to_json_text(123456789012345680.0),
-    content="1.2345678901234568e+17",
+    content=(
+      #|1.2345678901234568e17
+    ),
   )
-  inspect(double_to_json_text(1000000000000000000000.0), content="1e+21")
+  inspect(
+    double_to_json_text(1000000000000000000000.0),
+    content=(
+      #|1e21
+    ),
+  )
   // 区间 3：-5 < kk <= 0 定点 0.000x
   inspect(double_to_json_text(0.1), content="0.1")
   inspect(double_to_json_text(0.00001), content="0.00001") // 1e-5, kk=-4 边界

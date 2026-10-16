@@ -21,6 +21,26 @@ int main() {
     referenceKind: "stdout",
   },
   {
+    id: "double_avg",
+    label: "浮点平均与长整型求和",
+    blurb: "double/long long 变量（D/Q 八字节族访问观测锚——病 91 修，2026-10-16）",
+    source: `#include <stdio.h>
+
+double g_scale = 2.0;
+
+int main() {
+  double a = 1.5, b = 2.5;
+  long long total = 0;
+  for (int i = 0; i < 3; i++) { total = total + i; }
+  double avg = (a + b) / 2.0 * g_scale;
+  printf("%.1f %lld\\n", avg, total);
+  return 0;
+}
+`,
+    referenceOutput: "4.0 3\n",
+    referenceKind: "stdout",
+  },
+  {
     id: "bubble",
     label: "冒泡排序",
     blurb: "数组 + 循环 + 函数级语义（1012 步 VM 指令）",

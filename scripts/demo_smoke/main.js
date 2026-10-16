@@ -207,6 +207,51 @@ function assertKeys(obj, keys, label) {
           check(f in withVars.local_vars[0], `LocalVar 字段 ${f}`, "缺键");
         }
       }
+
+      // 病 91 观测缺失锚（#71，2026-10-16，独立会话——主 case bubble 无
+      // D/Q 变量且 12 帧上限会截早）：D/Q 八字节族的变量访问须进
+      // accessed_vars（Read/Write 任一）；旧形态 8 臂零推送（double/
+      // long long 变量在访问观测面静默缺失）
+      {
+        const dqCase = cases.find((c) => c.id === "double_avg");
+        if (dqCase) {
+          g.reset();
+          body(inv({ method: "session.create" }));
+          body(inv({ method: "config.set", params: { max_steps: 10000000, deterministic: true } }));
+          body(inv({ method: "compile", params: { source: dqCase.source } }));
+          body(inv({ method: "step.begin", params: {} }));
+          // frames 单批推到终态（60×1 步窗口会截在 g_scale 访问前——
+          // 程序总长 >60 步；病 76 的 frames 参数派上用场）
+          const dqBatch = body(inv({ method: "step.next", params: { frames: 500 } }));
+          const dqPayloads = (dqBatch && dqBatch.payloads) || [];
+          // 等值锚（比存在性强——单侧 Read/Write 缺失也红；计数三次实测
+          // 确定确定）：fixture 固定 ⇒ 每 D/Q 变量的读写计数确定
+          const dqCounts = {};
+          for (const p of dqPayloads) {
+            for (const lv of p.local_vars || []) {
+              if (lv.ty_name === "double" || lv.ty_name === "long long") dqCounts[lv.name] = dqCounts[lv.name] || {};
+            }
+            for (const a of p.accessed_vars || []) {
+              if (dqCounts[a.name]) {
+                const k = a.access_type === "Read" ? "R" : "W";
+                dqCounts[a.name][k] = (dqCounts[a.name][k] || 0) + 1;
+              }
+            }
+          }
+          const want = { a: { R: 1, W: 1 }, b: { R: 1, W: 1 }, g_scale: { R: 1 }, total: { R: 7, W: 4 } };
+          const parts = [];
+          for (const [name, w] of Object.entries(want)) {
+            const got = dqCounts[name] || {};
+            for (const [k, v] of Object.entries(w)) {
+              parts.push([name, k, v, got[k] || 0]);
+            }
+          }
+          const bad = parts.filter(([, , w, g]) => w !== g);
+          check(bad.length === 0,
+            "D/Q 变量访问计数等值（病 91 修——读/写双侧逐项）",
+            "不符: " + bad.map(([n, k, w, g]) => n + "." + k + " 期望" + w + " 实得" + g).join(", "));
+        }
+      }
       const withStack = payloads.find((p) => p.call_stack && p.call_stack.length);
       if (withStack) {
         for (const f of ["func_name", "return_line"]) {

@@ -41,7 +41,7 @@ export interface CollectResult {
   versions: { engine: string; protocol: string };
 }
 
-async function collect(source: string, cap: number): Promise<CollectResult> {
+async function collect(source: string, cap: number, bpLines: number[]): Promise<CollectResult> {
   const g = await ensureGw();
   const t0 = performance.now();
   g.reset();
@@ -103,15 +103,15 @@ async function collect(source: string, cap: number): Promise<CollectResult> {
  *  （TextDecoder 正确组合多字节序列；中文输出 mojibake 的既有解法）。 */
 
 self.onmessage = async (e: MessageEvent) => {
-  const { id, op, source, cap, method, params } = e.data as {
-    id: number; op: string; source?: string; cap?: number; method?: string; params?: Record<string, unknown>;
+  const { id, op, source, cap, method, params, bpLines } = e.data as {
+    id: number; op: string; source?: string; cap?: number; method?: string; params?: Record<string, unknown>; bpLines?: number[];
   };
   try {
     if (op === "boot") {
       const g = await ensureGw();
       postMessage({ id, ok: true, data: { engine: g.engine_version(), protocol: g.protocol_version() } });
     } else if (op === "collect") {
-      postMessage({ id, ok: true, data: await collect(source ?? "", cap ?? 20000) });
+      postMessage({ id, ok: true, data: await collect(source ?? "", cap ?? 20000, bpLines ?? []) });
     } else if (op === "invoke") {
       // 通用 RPC 转发（catalog/协议面等模块数据通道）：错误帧不折叠——
       // 顶层 ok:false 原样回传，session 层拆帧抛 RpcError（must 同语义）。

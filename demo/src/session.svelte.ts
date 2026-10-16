@@ -12,6 +12,7 @@ import type { StepPayload } from "../js/types.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
+import { annotateGroups } from "../js/util.ts";
 
 // 共享状态 = 官方推荐形态（best practices：classes with $state fields）——
 // $state.raw 只能作声明初始化器/类字段，不可嵌在 $state({}) 字面量里
@@ -45,6 +46,23 @@ class SessionState {
   versions = $state({ engine: "", protocol: "" });
   perf = $state({ collectMs: 0, replayPerFrameUs: 0 });
   outputs = $state({ stdout: "", stderr: "", note: "" }); // 四通道输出（采集时一次性拉齐）
+  gran = $state<"stmt" | "insn">(initGran()); // 粒度：insn=指令级（帧全集）/ stmt=语句级（按行合并组尾帧）
+  /** 播放帧序列（粒度派生——审阅 A-P2-12 处方：派生生成不 mutate 真源）。
+   *  语句级 = 按行合并组尾帧（coalesceStmt 物理保留 util.ts，tests 锚零改动）。 */
+  /** 当前帧的 vis_events 行集（编辑器左缘事件标记装饰消费）。 */
+  visLines = $derived.by(() => {
+    const s = new Set<number>();
+    for (const ev of this.viewFrames[session.idx]?.vis_events ?? []) s.add(ev.line);
+    return s;
+  });
+  viewFrames = $derived.by(() => {
+    const raw = this.frames;
+    if (this.gran === "stmt") return annotateGroups(raw).filter((g) => g.m === g.k).map((g) => g.f);
+    return raw;
+  });
+  capabilities = $state.raw<Record<string, unknown> | null>(null);
+  contracts = $state.raw<Record<string, unknown> | null>(null);
+  labels = $state.raw<string[]>([]);
   /** 诊断目录（error_catalog 协议数据归 session 层；组件纯展示）。
    *  不代理——加载后只读。 */
   catalog = $state.raw([] as CatalogCard[]);
@@ -54,6 +72,9 @@ class SessionState {
   /** 内存地图（memory.regions = 会话当前态快照，非帧级——旧栈同语义；
    *  采集完成时拉取，UAF/泄漏教学看结束态 freed 块与隔离区）。 */
   memory = $state.raw<import("../js/types.ts").MemoryRegions | null>(null);
+  /** 断点行集合（SvelteSet 响应式；编辑器行号点击 toggle、采集时下发给
+   *  breakpoints.set——旧栈模块级单例跨用例渗入的病在会话单点关死）。 */
+  breakpoints = $state<number[]>([]); // 断点行数组（普通 $state 深响应——SvelteSet 在此链三轮异常后弃用）
 }
 
 // ── 持久化初值（读有兜底，写有兜底——persisted 层统一）────────────────
@@ -63,6 +84,10 @@ const FPS_STEPS = [8, 30, 60, 240];
 function initFps(): number {
   const v = Number(storeGet(KEYS.playbackFps));
   return FPS_STEPS.includes(v) ? v : 30;
+}
+function initGran(): "stmt" | "insn" {
+  const v = storeGet(KEYS.stepGran);
+  return v === "stmt" ? "stmt" : "insn";
 }
 function initCap(): number {
   const v = Number(storeGet(KEYS.cap));
@@ -76,6 +101,12 @@ export function frameAt(i: number): StepPayload | undefined {
 }
 
 /** 作废在途采集（切用例/切课时调用）：epoch 递增，迟到的采集回传整体丢弃。 */
+export function toggleBreakpoint(line: number): void {
+  const i = session.breakpoints.indexOf(line);
+  if (i >= 0) session.breakpoints.splice(i, 1);
+  else session.breakpoints.push(line);
+}
+
 export function invalidate(): void {
   session.epoch += 1;
 }
@@ -131,6 +162,21 @@ export async function boot(): Promise<void> {
 }
 
 /** 诊断目录拉取（引擎就绪后调一次；失败留空不阻塞页面，错误走 toast）。 */
+export async function loadProto(): Promise<void> {
+  try {
+    const [cap, contracts, labels] = await Promise.all([
+      call<Record<string, unknown>>("capabilities"),
+      call<Record<string, unknown>>("contracts"),
+      call<{ labels?: string[] }>("semantic_labels"),
+    ]);
+    session.capabilities = cap;
+    session.contracts = contracts;
+    session.labels = labels.labels ?? [];
+  } catch (err) {
+    toast("err", "协议面加载失败：" + String((err as Error).message).slice(0, 60));
+  }
+}
+
 export async function loadCatalog(): Promise<void> {
   try {
     const r = await call<{ catalog?: CatalogCard[] }>("error_catalog");
@@ -140,7 +186,7 @@ export async function loadCatalog(): Promise<void> {
   }
 }
 
-export async function collect(source: string): Promise<void> {
+export async function collect(source: string, bpLines: number[] = []): Promise<void> {
   if (session.collecting) return;
   const my = ++session.epoch;
   session.collecting = true;
@@ -152,6 +198,7 @@ export async function collect(source: string): Promise<void> {
       op: "collect",
       source,
       cap: session.cap,
+      bpLines: [...session.breakpoints],
     });
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
@@ -181,7 +228,7 @@ export async function collect(source: string): Promise<void> {
 }
 
 export function seek(i: number): void {
-  session.idx = Math.max(0, Math.min(i, session.frames.length - 1));
+  session.idx = Math.max(0, Math.min(i, session.viewFrames.length - 1));
 }
 
 export function step(delta: number): void {
@@ -202,10 +249,10 @@ export function togglePlay(): void {
     stopTimer();
     return;
   }
-  if (!session.frames.length) return;
+  if (!session.viewFrames.length) return;
   session.playing = true;
   timer = setInterval(() => {
-    if (session.idx >= session.frames.length - 1) {
+    if (session.idx >= session.viewFrames.length - 1) {
       togglePlay(); // 播完即停
       return;
     }
@@ -219,6 +266,15 @@ export function setFps(f: number): void {
   session.fps = f;
   if (was) togglePlay();
   storeSet(KEYS.playbackFps, String(f));
+}
+
+export function setGran(g: "stmt" | "insn"): void {
+  const was = session.playing;
+  if (was) togglePlay();
+  session.gran = g;
+  session.idx = Math.min(session.idx, session.viewFrames.length - 1);
+  if (was) togglePlay();
+  storeSet(KEYS.stepGran, g);
 }
 
 export function setCap(v: number): void {

@@ -4,7 +4,7 @@
   // 浮层）/ 两栏 grid（左=pane-head 按钮排+blurb+编辑器+偏好折叠段；
   // 右=下划线 tab 条[内容/运行/内存地图/诊断手册/引擎与协议]+tabpage）/
   // footer 白箱声明。tab 集合与命名逐字对齐 index.html data-tab。
-  import { boot, collect, frameAt, loadCatalog, session } from "./session.svelte.ts";
+  import { boot, collect, frameAt, loadCatalog, loadProto, session } from "./session.svelte.ts";
   import { DEFAULT_PROGRAM } from "./program.ts";
   import { themeState, applyTheme } from "./theme.svelte.ts";
   import { KEYS, storeGet, storeSet, migrateTheme } from "./persisted.svelte.ts";
@@ -19,13 +19,16 @@
   import CourseTree from "./lib/CourseTree.svelte";
   import CourseNote from "./lib/CourseNote.svelte";
   import SettingsView from "./lib/SettingsView.svelte";
+  import Editor from "./lib/Editor.svelte";
   import CatalogView from "./lib/CatalogView.svelte";
+  import ProtoView from "./lib/ProtoView.svelte";
   import Toasts from "./lib/Toasts.svelte";
   import type { TreeLesson } from "./lib/courseTypes.ts";
   import { toast } from "./toasts.svelte.ts";
   import { LESSON_NOTES } from "./lib/lessonNotes.ts";
 
   let source = $state(DEFAULT_PROGRAM);
+  let editorRef: Editor | null = $state(null);
   let blurb = $state("");
   let note = $state<{ title: string; blocks: import("./lib/lessonMd.ts").Block[] } | null>(null);
   let settingsOpen = $state(false);
@@ -58,7 +61,7 @@
   }
 
   boot()
-    .then(() => loadCatalog())
+    .then(() => Promise.all([loadCatalog(), loadProto()]))
     .then(async () => {
       const parsed = parseFragment(location.hash.slice(1));
       if (parsed.kind === "payload") {
@@ -110,7 +113,7 @@
 <main class="pilot-grid">
   <section class="pane editor-pane">
     <div class="pane-head">
-      <button type="button" class="btn" onclick={() => collect(source)} disabled={session.collecting}>
+      <button type="button" class="btn" onclick={() => collect(source, editorRef?.getBpLines() ?? [])} disabled={session.collecting}>
         {session.collecting ? "采集中…" : "▶ 采集帧流"}
       </button>
       <button type="button" class="btn ghost" onclick={share} disabled={session.collecting}>分享链接</button>
@@ -120,7 +123,7 @@
     </div>
     {#if blurb}<p class="blurb">{blurb}</p>{/if}
     <div class="editor-wrap">
-      <textarea id="src-box" bind:value={source} spellcheck="false" aria-label="C 源码"></textarea>
+      <Editor bind:source bind:this={editorRef} disabled={session.collecting} />
     </div>
     <p class="perf-line">
       采集 {session.perf.collectMs}ms
@@ -182,7 +185,8 @@
     {:else if activeTab.current === "proto"}
       <div class="tabpage">
         <h2 class="tab-h">引擎与协议</h2>
-        <p class="proto-line">engine <b>{session.versions.engine}</b> · protocol <b>{session.versions.protocol}</b> —— wtparams：wasm-gc 单出口，invoke 字符串通道（canonicalize 口径）；capabilities/contracts 面板随 F4 后续刀接入。</p>
+        <p class="proto-line">engine <b>{session.versions.engine}</b> · protocol <b>{session.versions.protocol}</b> —— wasm-gc 单出口，invoke 字符串通道（canonicalize 口径）。</p>
+        <ProtoView />
       </div>
     {/if}
   </section>

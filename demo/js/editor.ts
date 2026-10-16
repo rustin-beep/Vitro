@@ -49,7 +49,9 @@ export function tokenizeC(src: string): CToken[] {
 
 // 整体 tokenize 后按 \n 切分组装行盒（块注释等跨行 token 的着色状态
 // 在行间延续）；每行一个 .cl，行号 .ln 内嵌行盒，折行后行号不重复。
-export function highlightLines(src: string): string {
+export function highlightLines(src: string, deco?: (line: number) => string): string {
+  // deco（可选，F4 编辑器组件）：按 1-based 行号返回附加 class 串（断点/当前行/
+  // 事件行装饰的声明式入口——默认未传时行为与旧版逐字节一致，tests 锚零改动）。
   const rows: string[] = [];
   let cur = "";
   const feed = (cls: string, text: string): void => {

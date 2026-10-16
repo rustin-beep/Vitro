@@ -125,7 +125,7 @@ func newServe(cliPath string) *Serve {
 	// os.Stderr（backend 标注行不进断言通道——stdout 管道是唯一响应面）。
 	var cmd *exec.Cmd
 	if backendWasm {
-		shell := filepath.Join("scripts", "vitro_cli", "main.js")
+		shell := filepath.Join("moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js")
 		cmd = exec.Command("node", shell, "serve")
 	} else {
 		cmd = exec.Command(cliPath, "serve")
@@ -1128,7 +1128,7 @@ func main() {
 		// #49 批三：wasm 臂 = 统一入口壳 serve 子命令（node 消费 gateway
 		// wasm.wasm）；同一断言集零改动——壳 serve 协议与 cmd/serve 同构
 		//（shutdown 判停/EOF 退出/请求行原文直传 invoke）。前置 fail loud。
-		shell := filepath.Join("scripts", "vitro_cli", "main.js")
+		shell := filepath.Join("moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js")
 		wasmMod := filepath.Join("moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
 		if _, err := exec.LookPath("node"); err != nil {
 			fmt.Println("错误: wasm 臂需要 node（统一入口壳宿主）")
@@ -1141,6 +1141,8 @@ func main() {
 		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
 		freshness.EnsureFresh("replay", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("replay_glue", shell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 		loadMBExemptions()
 		backendWasm = true
 		cliPath = shell

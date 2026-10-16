@@ -9,14 +9,14 @@
 #                       ——wasm 臂略快 ~7%（任务书 §4 基线 1.262 vs 1.577 同向
 #                       互证）；js 臂当选缺省的依据是零实例化层与更低 node
 #                       门槛（无 js-string builtins 依赖），非性能）
-#   --backend wasm   = scripts/vitro_cli/main.js 拉 gateway wasm-gc（旧 wasm 臂，
+#   --backend wasm   = cmd/vitro_wasm js 胶水拉 gateway wasm-gc（MoonBit 宿主壳，
 #                      浏览器分发同源产物；保留兼容 + demo 同源验证）
 #   --backend native = cmd/vitro exe（防线基线臂——vm_diff/clang_direct 消费面）
 # 缺省 = js；node 缺失/版本不足（rc=5 哨兵——#106：3 与步数超限撞号）降级 native（降级必 stderr 明示，
 # 禁静默）。行为一致性由 vitro_cli_smoke 三臂对拍把守。
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 JS_ENTRY="$REPO/moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js"
-WASM_SHELL="$REPO/scripts/vitro_cli/main.js"
+WASM_SHELL="$REPO/moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js"
 NATIVE_EXE="$REPO/moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
 
 run_native() {

@@ -109,7 +109,8 @@ fn render_diag_frame(frame : Json) -> Bool {
 
 ///|
 /// 帧单源管线主体。json_mode=false 走文本渲染；true 走 NDJSON 事件流
-///（原 json_event_stream 行为原样）。
+///（原 json_event_stream 行为原样）。channel 默认直连（native/js）；
+/// wasm 壳注入 wasm 产物 invoke 通道（main.js 退役批）。
 fn frame_pipeline(
   src : String,
   file : String,
@@ -120,37 +121,35 @@ fn frame_pipeline(
   write_stdout : (Bytes) -> Unit,
   json_mode : Bool,
   compile_mode~ : Bool = false,
+  channel~ : EngineChannel,
 ) -> Int32 {
   let mut id = 0
   let inv_raw = fn(method_name : String, params : String) -> String {
     id += 1
-    @gateway.invoke(
+    (channel.invoke)(
       "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
     )
   }
   let inv_tree = fn(method_name : String, params : String) -> Json? {
     id += 1
-    @gateway.invoke_parsed(
+    (channel.invoke_parsed)(
       "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
     )
   }
-  @gateway.reset()
+  (channel.reset)()
   // 墙钟注入（gateway 侧口——原文本模式 vm.set_clock_source 同源；json
-  // 模式此前未注入系遗漏，随单源化统一补齐）
-  @gateway.set_clock_source(clock_millis)
+  // 模式此前未注入系遗漏，随单源化统一补齐；wasm 臂 no-op 恒 0——分臂
+  // 登记形态）
+  (channel.set_clock)(clock_millis)
   ignore(inv_raw("session.create", "{}"))
   ignore(
     inv_raw(
       "config.set", "{\"max_steps\":10000000,\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
     ),
   )
-  // filename 装配（BUG-A 修复语义保留）：`-`（stdin 源）不传 filename；
-  // 其余传全路径——gateway 侧 base_dir 语义（同目录 include）
-  let compile_params = if file == "-" {
-    "{\"source\":\"\{@util.json_escape(src)}\"}"
-  } else {
-    "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
-  }
+  // compile params 装配走通道（直连 = source+filename；wasm = files 多
+  // 文件——quote-include 的 wasm 语义）
+  let compile_params = (channel.compile_params)(file, src)
   // ── compile 帧 ──
   if json_mode {
     let comp = inv_raw("compile", compile_params)

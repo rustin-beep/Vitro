@@ -178,6 +178,7 @@ vitro/engine/gateway vitro/engine/session Diagnostic
 vitro/engine/gateway vitro/engine/session FileRange
 vitro/engine/gateway vitro/engine/session Session
 vitro/engine/gateway vitro/engine/teaching/steps detect_algorithms
+vitro/engine/gateway vitro/engine/teaching/steps export_algorithms_catalog_json
 vitro/engine/gateway vitro/engine/time_travel SourceLineProvider
 vitro/engine/gateway vitro/engine/time_travel UnifiedEngine
 vitro/engine/gateway vitro/engine/typeck TypeChecker
@@ -343,6 +344,7 @@ vitro/engine/teaching/steps vitro/engine/protocol AlgorithmMatch
 vitro/engine/teaching/steps vitro/engine/protocol AlgorithmStepSnapshot
 vitro/engine/teaching/steps vitro/engine/protocol VisEvent
 vitro/engine/teaching/steps vitro/engine/source SourceLoc
+vitro/engine/teaching/steps vitro/engine/util json_escape
 vitro/engine/time_travel moonbitlang/core/deque Deque
 vitro/engine/time_travel moonbitlang/core/string parse_int
 vitro/engine/time_travel vitro/engine/ast Type
@@ -556,14 +558,7 @@ vitro/engine/vm vitro/engine/util render_template
 vitro/engine/cmd/compile moonbitlang/core/env args
 vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
-vitro/engine/cmd/lib/cli vitro/engine/gateway set_include_reader
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
-vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_detail
-vitro/engine/cmd/lib/cli vitro/engine/gateway api_help_list
-vitro/engine/cmd/lib/cli vitro/engine/gateway invoke
-vitro/engine/cmd/lib/cli vitro/engine/gateway invoke_parsed
-vitro/engine/cmd/lib/cli vitro/engine/gateway set_clock_source
-vitro/engine/cmd/lib/cli vitro/engine/gateway reset
 vitro/engine/cmd/run vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/step moonbitlang/core/env args
 vitro/engine/cmd/step vitro/engine/cmd/lib/cli step
@@ -589,4 +584,27 @@ vitro/engine/cmd/dump_typeck vitro/engine/ast json_escape_string
 vitro/engine/cmd/lib/cli vitro/engine/util json_escape
 vitro/engine/diag vitro/engine/util json_escape
 vitro/engine/gateway vitro/engine/util json_escape
+vitro/engine/gateway vitro/engine/util json_parse
 vitro/engine/gateway vitro/engine/util json_escape_into
+
+# main.js 退役批（2026-10-16）：engine_direct 拆包（lib/cli 纯逻辑化）+ vitro_wasm 胶水新边
+vitro/engine/cmd/compile vitro/engine/cmd/lib/engine_direct direct_channel
+vitro/engine/cmd/lib/engine_direct vitro/engine/cmd/lib/cli EngineChannel
+vitro/engine/cmd/lib/engine_direct vitro/engine/gateway invoke
+vitro/engine/cmd/lib/engine_direct vitro/engine/gateway invoke_parsed
+vitro/engine/cmd/lib/engine_direct vitro/engine/gateway reset
+vitro/engine/cmd/lib/engine_direct vitro/engine/gateway set_clock_source
+vitro/engine/cmd/lib/engine_direct vitro/engine/gateway set_include_reader
+vitro/engine/cmd/lib/engine_direct vitro/engine/util json_escape
+vitro/engine/cmd/run vitro/engine/cmd/lib/engine_direct direct_channel
+vitro/engine/cmd/step vitro/engine/cmd/lib/engine_direct direct_channel
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/engine_direct direct_channel
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/engine_direct direct_channel
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli api
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli run
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro_wasm vitro/engine/fs read_file_to_string
+vitro/engine/cmd/vitro_wasm vitro/engine/util json_parse
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli EngineChannel
+vitro/engine/cmd/vitro_wasm vitro/engine/util json_escape

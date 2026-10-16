@@ -16,8 +16,12 @@
 // 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）。
 
 ///|
-pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
-  ensure_include_reader()
+pub fn api(
+  args : Array[String],
+  read_stdin : () -> Bytes,
+  channel~ : EngineChannel,
+) -> Int32 {
+  ensure_include_reader(channel)
   let mut method_name = ""
   let mut params = "{}"
   let mut batch = false
@@ -49,10 +53,10 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
     if help_target == "" {
       // 生成文本不带尾换行，println 补单尾——与 wasm 壳 write 加换行
       // 逐字节同形（B 组零特例纪律）
-      println(@gateway.api_help_list())
+      println(api_help_list())
       return 0
     }
-    return match @gateway.api_help_detail(help_target) {
+    return match api_help_detail(help_target) {
       Some(text) => {
         println(text)
         0
@@ -92,7 +96,7 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
       if l.is_empty() {
         continue
       }
-      let resp = @gateway.invoke(l)
+      let resp = (channel.invoke)(l)
       println(resp)
       if resp.contains("\"ok\":false") {
         rc = 1
@@ -118,13 +122,13 @@ pub fn api(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
   // 落 gateway 报「未知方法」帧 rc=1，shell 脚本会把 rc=1 误读成协议内
   // 失败（compile 错同码位）；名单单源 = gateway dispatch 权威源生成的
   // api_help_detail（None=未知——与 api help 出口同表，禁第二份手抄）。
-  if @gateway.api_help_detail(method_name) is None {
+  if api_help_detail(method_name) is None {
     println(
       "用法错: 未知方法 '\{method_name}'（rc=4 用法错，非协议内失败；api help 看方法清单）",
     )
     return 4
   }
-  let resp = @gateway.invoke(
+  let resp = (channel.invoke)(
     "{\"id\":1,\"method\":\"\{method_name}\",\"params\":\{params}}",
   )
   println(resp)

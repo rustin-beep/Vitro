@@ -4,6 +4,7 @@
 // CLI_PROTOCOL_V1 §2）。launchers/CI 接线随批。
 import {
   "vitro/engine/cmd/lib/cli",
+  "vitro/engine/cmd/lib/engine_direct",
   "vitro/engine/fs",
 }
 

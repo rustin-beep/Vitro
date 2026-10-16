@@ -10,7 +10,7 @@ rem inside ( ) blocks and keeps its stale value - a classic cmd pitfall.
 setlocal
 set "REPO=%~dp0..\.."
 set "JS_ENTRY=%REPO%\moonbit\_build\js\release\build\cmd\vitro_js\vitro_js.js"
-set "WASM_SHELL=%REPO%\scripts\vitro_cli\main.js"
+set "WASM_SHELL=%REPO%\moonbit\_build\js\release\build\cmd\vitro_wasm\vitro_wasm.js"
 set "NATIVE_EXE=%REPO%\moonbit\_build\native\release\build\cmd\vitro\vitro.exe"
 
 if not "%~1"=="--backend" goto run_default_js

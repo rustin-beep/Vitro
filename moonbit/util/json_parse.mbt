@@ -7,11 +7,12 @@
 // 往返保真关键：数字捕获**原文 repr**（"42" 不 stringify 成 "42.0"——
 // core Json::Number 的 repr~ 参数）；键序=插入序（与构造侧 Map 对称，
 // 协议响应构造方可控）。
-// 升序裁定：暂居 cmd/serve 内部 priv；第二个消费者出现时上提（G-1
+// 升序裁定履行（main.js 退役批 2026-10-16）：第二个消费者 = cmd/vitro_wasm
+// wasm 壳的 invoke_parsed 组合——自 gateway 上提至 L0 util（G-1
 // util 的「新件入包先登记 G 表」纪律同款——届时挂 §10.5）。
 
 ///|
-priv suberror JsonParseError {
+pub suberror JsonParseError {
   Fail(message~ : String, offset~ : Int32)
 }
 
@@ -27,7 +28,7 @@ priv struct JsonCursor {
 
 ///|
 /// 入口：一行请求 → Json 值（失败 raise JsonParseError）。
-fn json_parse(input : String) -> Json raise JsonParseError {
+pub fn json_parse(input : String) -> Json raise JsonParseError {
   let c = { src: input, pos: 0, depth: 0, }
   skip_ws(c)
   let v = parse_value(c)

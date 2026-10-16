@@ -48,7 +48,7 @@ fn serve_icons_get_frame(id : Json, params : Json) -> (String, Bool) {
         false,
       )
     Some(text) => {
-      let parsed = json_parse(text) catch {
+      let parsed = @util.json_parse(text) catch {
         _ =>
           return (
             serve_err(id, "internal", "icons.get 导出解析失败").stringify(),

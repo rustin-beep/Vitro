@@ -12,6 +12,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(cli+scripts+ci): main.js 退役——三臂壳全 MoonBit 化（统一真相来源收官，2026-10-16）
+
+【背景与用户拍板】main.js（597 行手写 Node 宿主壳）是三后端统一进程的
+对照评估件——#94~#118 双臂分叉 25 条销案后使命完成，用户拍板删除、统一
+真相来源。先立后破：MoonBit 胶水就位并全量同形验证后才删。
+
+【lib/cli 通道化】引擎调用面收口 EngineChannel（invoke/invoke_parsed/
+reset/set_clock/set_include_reader/compile_params 六口）。lib/cli **纯
+逻辑化**（gateway 静态依赖出走 cmd/lib/engine_direct 新包——否则
+vitro_wasm import lib/cli 会把整引擎编进 js 产物，wasm.wasm 不再是唯一
+被测引擎）；五壳（cmd/vitro、run、compile、step、vitro_js）显式传
+direct_channel（行为零变化）；wbtest 改 fake channel（method-aware 桩
+——测试与引擎隔离）。json_parse 自 gateway 上提 util（升序裁定履行
+——「第二个消费者出现时上提」，wbtest 顺带修复 decode_delta_stdout
+对缺失 delta 字段负索引崩的桩形态）；api_help_gen 搬 lib/cli（CLI 层
+资产归位），api_help.json 双载体随 main.js 退役消灭（gen_api_help 单
+产物化）。
+
+【cmd/vitro_wasm 新包】js 目标薄壳：extern "js" 同步 WebAssembly.Instance
+装载 gateway wasm 产物（"_" 常量显式供给 = #126 形态，清单从无选项裸
+编译枚举）+ MIN_NODE=25 哨兵（rc=5）+ backend 标注 stderr 行 + 分派表
+与 cmd/vitro_js 整表同构 + serve 走 node readline 流式（MoonBit 闭包进
+JS 回调——探针实证）+ quote-include 走 compile{files} 多文件通道
+（main.js collectFiles 的 MoonBit 复刻——basename 登记/递归/守卫环，
+include 族 6 例首轮对拍实锤「主文件名带路径致 include 键错位」后修正）。
+墙钟/include_reader no-op（F-5 四导出面——分臂登记形态，time() 恒 0
+与 main.js 时代同款）。
+
+【同形验证（全量）】run 子命令四语料 460 例新胶水 vs main.js 零分歧
+（含 e2e include 族）；serve 六帧序列（含 shutdown）逐字节一致；
+vitro_cli_smoke 三臂对拍全绿；防线五闸 wasm 臂全绿（vm_diff 666
+SAME / clang_direct 749 SAME+12 KNOWN+0 DIFF / replay 61 断言 /
+serve_smoke 68 断言 / protocol_frames 47 帧）——被测物统一切新胶水 +
+EnsureFresh 新鲜度连坐（js 胶水产物入闸）。
+
+【删除与连坐】scripts/vitro_cli/（main.js + api_help.json）整体退役；
+launcher（sh+cmd）--backend wasm 切新胶水；CI artifact 清单 +
+smoke 步注释；exceptions.json 条目清理（checklist 三向对账 PASS）；
+AGENTS 纪律 12/14 产物重建句更新（wasm 臂两件：wasm-gc 引擎 + js
+胶水）。json 模式 backend 字段随 main.js 消失（三臂 json 同形——
+spec 本无此字段承诺，纯统一零协议变更）；#110 的 usage 通道/文案分叉
+随之消灭（三臂同 stdout 同文案）。moon test 780/780。
+
+### feat(teaching/steps+gateway+scripts): #126 wasm 臂「_」常量供给收口 + #36 algorithms.catalog 引擎静态导出（2026-10-16）
+
+【#126：wasm 装载「_」字符串常量显式供给（统一装载器）】真因 = 产物的
+import 段含「_」模块字符串字面量常量（importedStringConstants 外置形态，
+4055+ 条），node≥23（V8 13+）自动容错供给（Module.imports() 报空即其表
+现）、node 22 严格校验即 LinkError（Import #0 "_"）——MIN_NODE=25 哨兵把
+真因盖住。修：scripts/wasm_load.js 统一装载器（常量清单从**无选项裸编译**
+枚举——标准行为不依赖 V8 版本差异；供给 = name→name 映射，import 名即
+常量值）。三消费方接线：vitro_cli/main.js、wasm_gateway/host.js（旧两段
+式 Proxy 兜底删除——返回函数 = illegal cast 真因，2026-09-29 勘误「Node
+22 不工作」系供给形态错误）、demo_smoke/main.js。host.js 新增供给面锚
+（枚举条数 > 0）+「零功能性 imports」检查改裸编译口径（原选项编译口径在
+node≥23 恒空数组 = 恒绿弱断言）。验证：node 25 行为矩阵四象限 + patched
+vs HEAD 语料输出逐字符一致 + host 17/17 + demo_smoke 168/168 +
+vitro_cli_smoke 全绿。**CI 边界（诚实登记）**：CI node 恒 25，node 22 侧
+红无法在 CI 复现（V8 自动供给掩盖）——红证 = node 25 矩阵 C 形态
+（LinkError 与 #126 在 node 22.22.2 实测逐字一致）+ issue 实测记录。
+MIN_NODE 哨兵保持 25（下调另立拍板，涉 #124 宿主矩阵）。
+
+【#36：algorithms.catalog 第 28 个协议方法】43 族算法目录（family/
+display_name/group/vis_events）从 gen_demo_algorithms 三源拼装收编为引擎
+静态导出——判据源码即数据源。teaching/steps 新增 catalog.mbt（43 条表 +
+显式 emitter，json_escape 单点）+ 4 锚 wbtest（键集 ↔ suggestion_map 43、
+groups 覆盖、family 唯一、emitter 冒烟——突变证红实测有牙）；gateway
+dispatch 注册 + 未知方法自报清单连坐；api help 27→28（rules.json
+expected_method_count + gen_api_help 双产物再生）；demo_smoke 错误帧自报
+方法数 23→24 + demo/index.html 页面计数句连坐；is_prime 分组分歧登记
+（判据属 math、呈现归 search——跟 demo 现役分组，切换消费面零呈现变化）。
+新闸：teaching_annotation_diff --catalog-check（三方对账：build_match
+源码提取物 ↔ 双臂引擎导出互拍 ↔ rules.json ↔ demo 分组表；括号平衡扫描
+提取；--catalog-selftest 两路内存注入证红）+ ci.yml gates-wasm 步接线。
+surface 边登记 2 条（steps→util json_escape、gateway→steps
+export_algorithms_catalog_json）；moonbit_surface「漏收」整改：catalog 表
+成员降 priv（导出面走 emitter 单口）。验证：moon test 780/780（+4 锚）+
+vitro_cli_smoke/serve_smoke/ci_checklist/moonbit_surface 全绿。
+
 ### feat(cli+fs+ci): 三后端单壳批——js 后端正式落地 + CI 恒全量裁定（用户拍板 C 方案）
 
 【背景】CLI 双真相事故根因 = 壳层双实现（main.js 597 行 vs cmd/lib/cli 1214 行）手工同步，

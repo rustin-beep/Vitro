@@ -144,6 +144,7 @@ jobs:
             moonbit/_build/native/release/build/**/*.exe
             moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
             moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
+            moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js
           retention-days: 3
   gates-diff:
     name: Diff gate (${{ matrix.driver }})
@@ -381,6 +382,15 @@ jobs:
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
           go run ./scripts/vitro_cli_smoke --corpus 30
+        shell: bash
+
+      # algorithms.catalog 三方对账（#36，2026-10-16）：判据源码 build_match
+      # 提取物 ↔ 引擎导出（native vitro.exe + js vitro_js.js 双臂互拍）↔
+      # rules.json 43 族 ↔ gen_demo_algorithms 分组表。J9：--catalog-selftest
+      # 两路内存注入证红。前置：node（上方）+ native vitro（上一步）+ js
+      # 产物 EnsureFresh 自建。
+      - name: algorithms.catalog three-way check (dual-arm)
+        run: go run ./scripts/teaching_annotation_diff --catalog-check
         shell: bash
 
       # 防线 wasm 臂（#49 批二段三：实证面搬家——vm_diff/clang_direct 被测物
@@ -843,6 +853,17 @@ jobs:
       # 原地发射后的 demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
         run: node scripts/demo_assemble_check/main.js demo
+        shell: bash
+
+      # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，
+      # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
+      # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
+      - name: F4 svelte-check (type + a11y gate)
+        run: cd demo && npm run pilot:check
+        shell: bash
+
+      - name: F4 vite build (build success gate)
+        run: cd demo && npm run pilot:build
         shell: bash
 
       - name: demo page smoke (protocol-level, cases golden + field keys)

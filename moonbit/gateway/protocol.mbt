@@ -120,7 +120,7 @@ fn reset_session_preserving_config(s : @session.Session) -> Unit {
 /// 单行请求处理（纯函数——白盒直测协议层）。
 /// 返回 (响应 JSON 串, 是否继续)。
 fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
-  let req : Json = json_parse(line) catch {
+  let req : Json = @util.json_parse(line) catch {
     _ =>
       return (
         serve_err(Json::null(), "protocol", "非法 JSON 请求").stringify(),
@@ -233,6 +233,8 @@ fn dispatch(
     "error_catalog" => serve_error_catalog_frame(id)
     "semantic_labels" => serve_semantic_labels_frame(id)
     "contracts" => serve_contracts_frame(id)
+    // 43 族算法目录（#36——判据源码即数据源的静态导出）
+    "algorithms.catalog" => serve_algorithms_catalog_frame(id)
     // 图标资产通道（#27 方案 C——业务帧只带语义 id，资产经此按 digest 下发）
     "icons.get" => serve_icons_get_frame(id, params)
     // 引擎方法族（二段起）
@@ -259,7 +261,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
         ).stringify(),
         false,
       )

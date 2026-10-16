@@ -96,13 +96,16 @@ func main() {
 	// cwd = 仓库根（防线惯例——vm_diff 等同款相对路径约定）
 	repoRoot = "."
 
-	shell := filepath.Join(repoRoot, "scripts", "vitro_cli", "main.js")
+	// main.js 退役批（2026-10-16）：wasm 臂被测物 = cmd/vitro_wasm js 产物
+	// （MoonBit 胶水——gateway wasm 产物的宿主壳；main.js 已删）
+	shell := filepath.Join(repoRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js")
 	nativeExe := filepath.Join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "vitro", "vitro.exe")
 	wasmMod := filepath.Join(repoRoot, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
 	jsEntry := filepath.Join(repoRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js")
-	for _, p := range []string{shell, nativeExe, wasmMod, jsEntry} {
+	wasmGlue := shell
+	for _, p := range []string{wasmGlue, nativeExe, wasmMod, jsEntry} {
 		if _, err := os.Stat(p); err != nil {
-			fmt.Printf("vitro_cli_smoke: 前置产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm + MOON_CC=clang moon build --release --target native cmd/vitro + moon build --release --target js cmd/vitro_js）\n", p)
+			fmt.Printf("vitro_cli_smoke: 前置产物缺失 %s（先构建：moon build --release --target wasm-gc gateway/wasm + MOON_CC=clang moon build --release --target native cmd/vitro + moon build --release --target js cmd/vitro_js + moon build --release --target js cmd/vitro_wasm）\n", p)
 			os.Exit(1)
 		}
 	}
@@ -111,7 +114,7 @@ func main() {
 		fmt.Println("vitro_cli_smoke: node 不在 PATH（wasm 臂宿主）")
 		os.Exit(1)
 	}
-	// node 版本前置闸（P2，2026-10-15 用户审阅提醒）：main.js 的 MIN_NODE=25
+	// node 版本前置闸（P2，2026-10-15 用户审阅提醒）：vitro_wasm 的 MIN_NODE=25
 	// 以下 wasm 壳恒退 rc=5 哨兵（#106）——不前置拦截会把宿主版本不足
 	// 误报成整片「输出不一致」（node 22 下 92 条误导红的实录），真因被
 	// 埋。版本不足即红，不静默跳过（fail loud）。门槛数字与 main.js
@@ -119,7 +122,7 @@ func main() {
 	if vout, verr := exec.Command(nodeBin, "--version").Output(); verr == nil {
 		v := strings.TrimPrefix(strings.TrimSpace(string(vout)), "v")
 		if major, aerr := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); aerr == nil && major < 25 {
-			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 25（wasm 臂 js-string builtins 需要——main.js MIN_NODE 同源门槛）。\n"+
+			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 25（wasm 臂 js-string builtins 需要——vitro_wasm MIN_NODE 同源门槛）。\n"+
 				"wasm 臂将恒退 rc=5 降级哨兵，后续对拍会整片误报「输出不一致」。先升级 node ≥ 25 再跑本闸。\n", v)
 			os.Exit(1)
 		}
@@ -234,7 +237,7 @@ func main() {
 			wantRc int
 			needle string
 		}{
-			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（27）"},
+			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（28）"},
 			{"api help compile 详情", []string{"api", "help", "compile"}, 0, "params: files:[{filename?,source}] | source:string[,filename:string]"},
 			{"api help 未知方法", []string{"api", "help", "no.such"}, 4, "用法错: 未知方法 'no.such'"},
 		} {

@@ -16,10 +16,25 @@ fn main {
     rest.push(args[i])
   }
   let code = match cmd {
-    "run" => @cli.run(rest, js_clock_millis, js_read_stdin, js_write_stdout)
-    "compile" => @cli.compile(rest, js_read_stdin)
-    "step" => @cli.step(rest, js_read_stdin, js_write_stdout)
-    "api" => @cli.api(rest, js_read_stdin)
+    "run" =>
+      @cli.run(
+        rest,
+        js_clock_millis,
+        js_read_stdin,
+        js_write_stdout,
+        channel=@engine_direct.direct_channel(),
+      )
+    "compile" =>
+      @cli.compile(rest, js_read_stdin, channel=@engine_direct.direct_channel())
+    "step" =>
+      @cli.step(
+        rest,
+        js_read_stdin,
+        js_write_stdout,
+        channel=@engine_direct.direct_channel(),
+      )
+    "api" =>
+      @cli.api(rest, js_read_stdin, channel=@engine_direct.direct_channel())
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       println(
         "vitro: '\{cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；见 issue #37 B1）；一次性脚本化用 'vitro api <method> <params>' 覆盖全部协议方法",

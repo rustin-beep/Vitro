@@ -8,7 +8,6 @@ import {
   // #70 第二步：帧单源化后引擎包直调全撤（lexer/parser/typeck/codegen/
   // vm/bytecode/host——compile_and_report 与 vm setup 直驱段拆除）
   "vitro/engine/fs",
-  "vitro/engine/gateway",
   "vitro/engine/util",
 }
 

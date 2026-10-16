@@ -12,6 +12,8 @@ pub fn json_escape(String) -> String
 
 pub fn json_escape_into(String, StringBuilder) -> Unit
 
+pub fn json_parse(String) -> Json raise JsonParseError
+
 pub fn le_u32_at(FixedArray[Byte], Int) -> UInt
 
 pub fn le_u64_at(FixedArray[Byte], Int) -> UInt64
@@ -29,6 +31,9 @@ pub fn utf8_text(Bytes) -> String
 pub fn utf8_text_partial(Bytes) -> String
 
 // Errors
+pub suberror JsonParseError {
+  Fail(message~ : String, offset~ : Int)
+}
 
 // Types and methods
 

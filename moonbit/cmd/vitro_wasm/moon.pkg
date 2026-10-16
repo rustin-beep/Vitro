@@ -1,0 +1,16 @@
+// wasm 臂 CLI 胶水入口（main.js 退役批，2026-10-16）：gateway wasm-gc
+// 产物的 MoonBit 宿主壳（js 目标）——IO/装载全走 extern "js"（node），
+// 子命令逻辑复用 cmd/lib/cli 单源（EngineChannel 注入 wasm 产物 invoke
+// 导出——**本包禁 import gateway**：那会把整引擎编进 js 产物，wasm.wasm
+// 就不再是唯一被测引擎）。产物路径：moonbit/_build/js/release/build/
+// cmd/vitro_wasm/vitro_wasm.js（node 直跑——被测 wasm 产物路径从本产物
+// 位置推导，VITRO_WASM_MOD 可覆盖）。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "vitro/engine/fs",
+  "vitro/engine/util",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+js"

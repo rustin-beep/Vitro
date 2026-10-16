@@ -7,7 +7,9 @@ fn main {
   for i = 1; i < args.length(); i = i + 1 {
     rest.push(args[i])
   }
-  c_exit(@cli.compile(rest, make_stdin()))
+  c_exit(
+    @cli.compile(rest, make_stdin(), channel=@engine_direct.direct_channel()),
+  )
 }
 
 ///|

@@ -1,0 +1,14 @@
+// 引擎直连通道构造（main.js 退役批，2026-10-16）：lib/cli 纯逻辑化（去
+// gateway 静态依赖）后的直连臂装配点——native/js 五壳（cmd/vitro、run、
+// compile、step、vitro_js）经本包取 channel；wasm 壳（cmd/vitro_wasm）
+// 不经本包（自己构造 wasm 产物 invoke 通道——import 本包会把引擎编进
+// js 产物）。分层登记：scripts/moonbit/pkg_deps rules.json（L9 cmd 层）。
+import {
+  "vitro/engine/cmd/lib/cli",
+  "vitro/engine/gateway",
+  "vitro/engine/util",
+}
+
+pkgtype(kind: "library")
+
+supported_targets = "+js +native"

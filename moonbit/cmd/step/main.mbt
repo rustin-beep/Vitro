@@ -7,7 +7,14 @@ fn main {
   for i = 1; i < args.length(); i = i + 1 {
     rest.push(args[i])
   }
-  c_exit(@cli.step(rest, make_stdin(), write_stdout_stub))
+  c_exit(
+    @cli.step(
+      rest,
+      make_stdin(),
+      write_stdout_stub,
+      channel=@engine_direct.direct_channel(),
+    ),
+  )
 }
 
 ///|

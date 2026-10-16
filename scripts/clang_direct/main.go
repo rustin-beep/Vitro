@@ -64,7 +64,7 @@ const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
 
 // #49 批二段三：被测物后端（"native" cmd/run exe | "wasm" 统一入口壳——
 // 与 vm_diff 同款插座）。
-const wasmShell = "scripts/vitro_cli/main.js"
+const wasmShell = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js"
 
 const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"
 
@@ -216,6 +216,8 @@ func main() {
 		}
 		freshness.EnsureFresh("clang_direct", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("clang_direct_wasm_glue", wasmShell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 	} else {
 		freshness.EnsureFresh("clang_direct", runnerExe,
 			"build", "--release", "--target", "native", "cmd/run")

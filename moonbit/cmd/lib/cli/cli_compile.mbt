@@ -5,8 +5,12 @@
 // 1=编译错 / 4=用法/IO。
 
 ///|
-pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
-  ensure_include_reader()
+pub fn compile(
+  args : Array[String],
+  read_stdin : () -> Bytes,
+  channel~ : EngineChannel,
+) -> Int32 {
+  ensure_include_reader(channel)
   // 病 87 残留⑤（2026-10-13，方案 A 用户拍板）：未知旗标/多余位置参数
   // fail loud——旧静默丢（extra.c 被吞只编译第一个，用户以为多文件编译）
   let mut file = ""
@@ -63,5 +67,6 @@ pub fn compile(args : Array[String], read_stdin : () -> Bytes) -> Int32 {
     drop_stdout,
     json_mode,
     compile_mode=true,
+    channel~,
   )
 }

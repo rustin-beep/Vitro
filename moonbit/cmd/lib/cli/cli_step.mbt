@@ -9,8 +9,9 @@ pub fn step(
   args : Array[String],
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
+  channel~ : EngineChannel,
 ) -> Int32 {
-  ensure_include_reader()
+  ensure_include_reader(channel)
   let mut file = ""
   let mut json_mode = false
   // 默认 100_000 对齐 Rust unified（手册口径——2026-10-04 对照复核修正：
@@ -70,11 +71,11 @@ pub fn step(
   let mut id = 0
   let inv = fn(method_name : String, params : String) -> String {
     id += 1
-    @gateway.invoke(
+    (channel.invoke)(
       "{\"id\":\{id},\"method\":\"\{method_name}\",\"params\":\{params}}",
     )
   }
-  @gateway.reset()
+  (channel.reset)()
   ignore(inv("session.create", "{}"))
   ignore(
     inv(
@@ -82,13 +83,8 @@ pub fn step(
       "{\"max_steps\":\{max_steps},\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
     ),
   )
-  // filename 装配（BUG-A 修复，2026-10-05）：同 cli_compile——丢 filename
-  // 则 base_dir 退化、同目录 include 断；stdin（"-"）不传
-  let compile_params = if file == "-" {
-    "{\"source\":\"\{@util.json_escape(src)}\"}"
-  } else {
-    "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
-  }
+  // compile params 装配走通道（直连 = source+filename；wasm = files 多文件）
+  let compile_params = (channel.compile_params)(file, src)
   let comp = inv("compile", compile_params)
   if comp.contains("\"ok\":false") {
     // 诊断在 compile 帧——文本模式透传 JSON 行（agent 可解析）；json 模式

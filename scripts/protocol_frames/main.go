@@ -318,7 +318,7 @@ func main() {
 	flag.Parse()
 	if *backendWasmFlag {
 		backendWasm = true
-		shell := filepath.Join(projectRoot(), "scripts", "vitro_cli", "main.js")
+		shell := filepath.Join(projectRoot(), "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js")
 		wasmMod := filepath.Join(projectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
 		if _, err := os.Stat(shell); err != nil {
 			fatal("wasm 臂产物缺失 %s（统一入口壳）", shell)
@@ -326,6 +326,8 @@ func main() {
 		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
 		freshness.EnsureFresh("protocol_frames", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("protocol_frames_glue", shell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 		if _, err := exec.LookPath("node"); err != nil {
 			fatal("wasm 臂需要 node（统一入口壳宿主）")
 		}

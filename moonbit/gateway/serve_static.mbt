@@ -10,7 +10,7 @@
 // ② `languages.cpp` 节不出——F-2 终局已裁 C++（cpp 子集规范文档随
 //    Rust 冻结区退役）。
 //
-// error_catalog/semantic_labels/contracts 三方法走 json_parse(emitter
+// error_catalog/semantic_labels/contracts 三方法走 @util.json_parse(emitter
 // String) 通道：emitter 是已对齐 Rust serde 的单源（批一号双显式
 // emitter + diag gen_diag 三件套），parse 后对象内嵌 serve 帧——字段
 // 序 = emitter 序 = Rust serde 序（对拍一致的前提不变）。
@@ -126,7 +126,7 @@ fn serve_capabilities_frame(id : Json) -> (String, Bool) {
 /// error_catalog 方法帧（B1：错误码表机器可读导出——gen_diag 三件套
 /// 的 catalog 出口 parse 通道）。
 fn serve_error_catalog_frame(id : Json) -> (String, Bool) {
-  let parsed = json_parse(@diag.export_catalog_json()) catch {
+  let parsed = @util.json_parse(@diag.export_catalog_json()) catch {
     _ =>
       return (
         serve_err(id, "internal", "error_catalog 导出解析失败").stringify(),
@@ -140,7 +140,7 @@ fn serve_error_catalog_frame(id : Json) -> (String, Bool) {
 /// semantic_labels 方法帧（B2-3：受控词汇表——protocol vocabulary emitter
 /// 的 parse 通道）。
 fn serve_semantic_labels_frame(id : Json) -> (String, Bool) {
-  let parsed = json_parse(@protocol.vocabulary_json()) catch {
+  let parsed = @util.json_parse(@protocol.vocabulary_json()) catch {
     _ =>
       return (
         serve_err(id, "internal", "semantic_labels 导出解析失败").stringify(),
@@ -151,10 +151,24 @@ fn serve_semantic_labels_frame(id : Json) -> (String, Bool) {
 }
 
 ///|
+/// algorithms.catalog 方法帧（#36：43 族目录静态导出——steps catalog
+/// emitter 的 parse 通道；判据源码即数据源，demo 侧栏 boot 直取）。
+fn serve_algorithms_catalog_frame(id : Json) -> (String, Bool) {
+  let parsed = @util.json_parse(@steps.export_algorithms_catalog_json()) catch {
+    _ =>
+      return (
+        serve_err(id, "internal", "algorithms.catalog 导出解析失败").stringify(),
+        false,
+      )
+  }
+  (serve_ok(id, parsed).stringify(), false)
+}
+
+///|
 /// contracts 方法帧（B2-1/2：schema 轨道 + 行为契约——protocol contracts
 /// emitter 的 parse 通道）。
 fn serve_contracts_frame(id : Json) -> (String, Bool) {
-  let parsed = json_parse(@protocol.contracts_json()) catch {
+  let parsed = @util.json_parse(@protocol.contracts_json()) catch {
     _ =>
       return (
         serve_err(id, "internal", "contracts 导出解析失败").stringify(),

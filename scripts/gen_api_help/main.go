@@ -23,7 +23,6 @@
 // 产物：
 //
 //	moonbit/gateway/api_help_gen.mbt   （native 臂——cmd/lib/cli 查表）
-//	scripts/vitro_cli/api_help.json    （wasm 壳——main.js 查表）
 //
 // 规则外置 scripts/gen_api_help/rules.json（#125 批 B 后 = 入库真源手改面；
 // .json.mbt 类型锚待其内容批收敛后出库）。
@@ -45,8 +44,7 @@ const (
 	rulesPath    = "scripts/gen_api_help/rules.json"
 	dispatchPath = "moonbit/gateway/protocol.mbt"
 	gatewayDir   = "moonbit/gateway"
-	outMbt       = "moonbit/gateway/api_help_gen.mbt"
-	outJSON      = "scripts/vitro_cli/api_help.json"
+	outMbt       = "moonbit/cmd/lib/cli/api_help_gen.mbt"
 )
 
 type Rules struct {
@@ -101,17 +99,15 @@ func main() {
 	if errs := reconcile(methods, rules, shapes); len(errs) > 0 {
 		fatal("双向对账不符:\n  %s", strings.Join(errs, "\n  "))
 	}
-	mbtSrc, jsonSrc := render(methods, rules, shapes)
+	mbtSrc, _ := render(methods, rules, shapes)
 
 	if *check {
 		checkFile(outMbt, mbtSrc)
-		checkFile(outJSON, jsonSrc)
-		fmt.Println("gen_api_help: check OK（双产物与现场生成逐字节一致）")
+		fmt.Println("gen_api_help: check OK（产物与现场生成逐字节一致）")
 		return
 	}
 	writeFile(outMbt, mbtSrc)
-	writeFile(outJSON, jsonSrc)
-	fmt.Printf("gen_api_help: 双产物已再生（%d 方法）→ %s / %s\n", len(methods), outMbt, outJSON)
+	fmt.Printf("gen_api_help: 产物已再生（%d 方法）→ %s\n", len(methods), outMbt)
 }
 
 // extractDispatch 提取 dispatch 段的方法臂——段边界 = `fn dispatch(` 起、

@@ -26,6 +26,8 @@ pub fn detect_structures(String, FuncFeatures, String, Int) -> Array[@protocol.A
 
 pub fn detect_tree(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
 
+pub fn export_algorithms_catalog_json() -> String
+
 pub fn expr_to_string(@ast.Expr) -> String
 
 pub fn extract_features(@ast.FuncDecl, @ast.Stmt) -> FuncFeatures
@@ -37,6 +39,8 @@ pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.A
 // Errors
 
 // Types and methods
+type AlgoCatalogEntry
+
 pub(all) struct FuncFeatures {
   mut loop_depth : Int
   mut max_loop_depth : Int

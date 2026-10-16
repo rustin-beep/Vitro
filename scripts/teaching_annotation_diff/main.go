@@ -345,8 +345,17 @@ var backendWasmOn bool
 func main() {
 	only := flag.String("only", "", "逗号分隔的模板名子集（试水用；空=全量）")
 	backendWasm := flag.Bool("backend-wasm", false, "#49 批三：被测物换统一入口壳 serve（node 消费 gateway wasm.wasm）")
+	catalogCheck := flag.Bool("catalog-check", false, "#36：引擎 algorithms.catalog 导出 ↔ 判据源码 build_match 提取物 ↔ rules.json ↔ demo 分组表三方对账（双臂 native+js）")
+	catalogSelftest := flag.Bool("catalog-selftest", false, "#36：--catalog-check 的 J9 证红模式（内存注入两路，不落盘）")
 	flag.Parse()
 	backendWasmOn = *backendWasm
+	if *catalogCheck || *catalogSelftest {
+		if err := runCatalogCheck(capi.ProjectRoot(), *catalogSelftest); err != nil {
+			fmt.Println("错误:", err)
+			os.Exit(2)
+		}
+		return
+	}
 
 	root := capi.ProjectRoot()
 	rulesPath := filepath.Join(root, "scripts", "teaching_annotation_diff", "rules.json")

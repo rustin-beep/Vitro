@@ -20,6 +20,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
+const { compileGateway, stringConstsOf, instantiateGateway } = require("../wasm_load.js");
 
 const args = process.argv.slice(2);
 let wasmPath = "";
@@ -50,7 +51,7 @@ function check(cond, label, detail) {
   console.log(`产物: ${wasmPath}（${buf.length} bytes, ${isRelease ? "release" : "debug"}）`);
 
   // ── 4 导出面（F-5）──
-  const mod = new WebAssembly.Module(buf, { builtins: ["js-string"], importedStringConstants: "_" });
+  const mod = compileGateway(buf);
   const exportNames = WebAssembly.Module.exports(mod).map(e => e.name);
   check(exportNames.includes("invoke") && exportNames.includes("reset") &&
         exportNames.includes("protocol_version") && exportNames.includes("engine_version"),
@@ -58,30 +59,22 @@ function check(cond, label, detail) {
   // 「零 imports」在字节层不成立（2026-09-29 审阅 P3 勘误）：import 段含
   // "_" 模块的字符串字面量常量（新版 V8 的高层 API 不计入，旧版/字节层
   // 可见）——正确口径 = 零**功能性** imports（除 "_" 外无任何模块依赖，
-  // js-string 内建由宿主编译选项供给）
-  const functionalImports = WebAssembly.Module.imports(mod).filter(i => i.module !== "_");
+  // js-string 内建由宿主编译选项供给）。#126 起口径走裸编译枚举（选项
+  // 编译下 node>=23 的 imports() 报空——恒绿弱断言；裸编译列出全量条目
+  // 后再滤，真断言）
+  const functionalImports = WebAssembly.Module.imports(new WebAssembly.Module(buf))
+    .filter(i => i.module !== "_" && i.module !== "wasm:js-string");
   check(functionalImports.length === 0,
-        "零功能性 imports（除字符串常量模块 _ 外无依赖）",
+        "零功能性 imports（除字符串常量/内建外无依赖）",
         JSON.stringify(functionalImports));
-
-  // 两段式实例化：先无参（Node 25 走编译选项消化 "_" 常量 import）；
-  // 失败再带 Proxy 尝试。**注意（2026-09-29 审阅勘误）：Node 22 实测
-  // 此兜底不工作（illegal cast——V8 层面 string 常量 import 形态不兼容），
-  // 留作清晰报错路径而非兼容承诺；本闸的判定面在 Node 25（CI pin）
-  let inst;
-  try {
-    inst = await WebAssembly.instantiate(mod, {});
-  } catch (e) {
-    const stringConstFallback = new Proxy({}, {
-      get: (_t, prop) => { if (typeof prop === "string") return () => prop; }
-    });
-    try {
-      inst = await WebAssembly.instantiate(mod, { "_": stringConstFallback });
-    } catch (e2) {
-      console.error("[wasm-gateway] 实例化失败（Node 版本过旧不支持 js-string？）:", e2.message);
-      process.exit(2);
-    }
-  }
+  // #126 供给面锚：常量枚举非空（产物形态在意外联回归——如 import 段被
+  // 剥离则此处红，提示装载层与产物形态失配）+ 显式供给实例化成功
+  const consts = stringConstsOf(buf);
+  check(Object.keys(consts).length > 0,
+        '"_" 常量供给面存在（枚举 ' + Object.keys(consts).length + " 条）");
+  // 统一装载器实例化（#126：显式 name→name 供给——node 22 严格校验的
+  // 真因修复；旧两段式 Proxy 兜底（返回函数 = illegal cast）已删勿回退）
+  const inst = await instantiateGateway(buf);
   const g = inst.exports;
 
   check(g.protocol_version() === "v0.1", "protocol_version = v0.1", g.protocol_version());

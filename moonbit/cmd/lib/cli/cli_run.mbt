@@ -100,8 +100,9 @@ pub fn run(
   clock_millis : () -> UInt64,
   read_stdin : () -> Bytes,
   write_stdout : (Bytes) -> Unit,
+  channel~ : EngineChannel,
 ) -> Int32 {
-  ensure_include_reader()
+  ensure_include_reader(channel)
   let ra = parse_run_args(args)
   if ra.unknown_flag is Some(msg) {
     println("vitro run: 未知旗标或缺值：\{msg}")
@@ -143,5 +144,6 @@ pub fn run(
     clock_millis,
     write_stdout,
     ra.json_mode,
+    channel~,
   )
 }

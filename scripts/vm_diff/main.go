@@ -88,7 +88,7 @@ import (
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe"
 
 // #49 批二段三：被测物后端（"native" cmd/run exe | "wasm" 统一入口壳）。
-const wasmShell = "scripts/vitro_cli/main.js"
+const wasmShell = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js"
 
 const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"
 
@@ -279,6 +279,8 @@ func main() {
 		// 的机判兜底）——单源 freshness 包（批五 P2-5 五家共用）。
 		freshness.EnsureFresh("vm_diff", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("vm_diff_wasm_glue", wasmShell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 	} else {
 		// native runner 门禁（2026-09-26 批改形态：mtime 触发 + 构建复核——
 		// moon 内容 hash 增量下 mtime 落后≠内容陈旧，硬红会反复假阳性；

@@ -23,7 +23,7 @@ fn dump_json_escape(s : String) -> String {
 ///|
 /// 拼装串转 Json（串由本文件 emitter 拼装——解析失败即拼装 bug，fail loud）。
 fn dump_parse_or_abort(s : String) -> Json {
-  json_parse(s) catch {
+  @util.json_parse(s) catch {
     _ =>
       abort("dump JSON 拼装失败（emitter bug）：\{s[0:80].to_owned()}")
   }

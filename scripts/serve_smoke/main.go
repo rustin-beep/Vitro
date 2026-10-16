@@ -356,7 +356,7 @@ func run() int {
 			fmt.Printf("审计轮：%d 条断言豁免全部失效真跑（PASS/未触达 = 僵尸）\n", len(auditNames))
 			mbExempt = map[string]string{}
 		}
-		shell := filepath.Join(capi.ProjectRoot(), "scripts", "vitro_cli", "main.js")
+		shell := filepath.Join(capi.ProjectRoot(), "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js")
 		wasmMod := filepath.Join(capi.ProjectRoot(), "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm")
 		if _, err := os.Stat(shell); err != nil {
 			fmt.Printf("错误: wasm 臂产物缺失 %s（统一入口壳）\n", shell)
@@ -365,6 +365,8 @@ func run() int {
 		// wasm 产物新鲜度门禁（批五 P2-5：存在性 + mtime 触发 + 构建复核）
 		freshness.EnsureFresh("serve_smoke", wasmMod,
 			"build", "--release", "--target", "wasm-gc", "gateway/wasm")
+		freshness.EnsureFresh("serve_smoke_glue", shell,
+			"build", "--release", "--target", "js", "cmd/vitro_wasm")
 		exe = shell
 		fmt.Printf("wasm 臂 serve: node %s serve（豁免 %d 断言 + %d 整批）\n", shell, len(mbExempt), len(mbBatches))
 	} else if mbMode {

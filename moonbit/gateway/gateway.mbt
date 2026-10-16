@@ -38,7 +38,7 @@ pub fn invoke(line : String) -> String {
 /// 导出、parse 本体仍居包内）。
 pub fn invoke_parsed(line : String) -> Json? {
   let resp = invoke(line)
-  let v = json_parse(resp) catch { _ => return None }
+  let v = @util.json_parse(resp) catch { _ => return None }
   Some(v)
 }
 

@@ -548,8 +548,18 @@ fn Parser::parse_offsetof(self : Parser, depth : Int32) -> @ast.Expr {
   let target_type = self.parse_base_type(depth)
   ignore(self.consume(Comma, "offsetof 参数之间预期 ','"))
   let field_tok = self.consume(Identifier, "offsetof 预期字段名")
+  // 病 67（#71 P2，2026-10-16）：member-designator 点链（C11 §7.19——
+  // offsetof(T, inner.name) 合法；教学嵌套 struct 高频）。链以 '.' 拼进
+  // 字段名（typeck lowering 侧逐段解析）；下标形态 arr[2].x 登记不支持
+  // （E1006 fail loud 非静默）。
+  let mut field = field_tok.text
+  while self.check(Dot) {
+    ignore(self.advance())
+    let seg = self.consume(Identifier, "offsetof 成员链预期字段名")
+    field = field + "." + seg.text
+  }
   ignore(self.consume(RParen, "offsetof 后预期 ')'"))
-  @ast.Expr::Offsetof(target_type, field_tok.text, loc, @ast.Type::int())
+  @ast.Expr::Offsetof(target_type, field, loc, @ast.Type::int())
 }
 
 ///|
@@ -922,26 +932,6 @@ fn Parser::parse_int_or_report(
     _ => {
       self.errors.push({
         message: "\{what} '\{tok.text}' 超出 int 表示范围",
-        line: tok.loc.line,
-        column: tok.loc.column,
-        code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
-      })
-      return 0
-    }
-  }
-  v
-}
-
-///|
-fn Parser::parse_uint64_or_report(
-  self : Parser,
-  tok : @token.Token,
-  what : String,
-) -> UInt64 {
-  let v = @string.parse_uint64(tok.text) catch {
-    _ => {
-      self.errors.push({
-        message: "\{what} '\{tok.text}' 超出范围",
         line: tok.loc.line,
         column: tok.loc.column,
         code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),

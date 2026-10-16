@@ -111,6 +111,8 @@ test "serve_step_seek_missing_step_param" {
   let (resp, _) = serve_handle(s, "{\"id\":1,\"method\":\"seek\"}")
   assert_true(resp.contains("\"kind\":\"protocol\""))
   assert_true(resp.contains("seek 需要 params.step"))
+  // #68 连坐：expected 字段（机器可读形状——下游可编程重试面）存在断言
+  assert_true(resp.contains("\"expected\":\"step:int\""))
 }
 
 ///|

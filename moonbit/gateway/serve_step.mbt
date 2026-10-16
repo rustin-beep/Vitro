@@ -303,7 +303,7 @@ fn serve_step_begin_frame(
 fn serve_step_next_frame(
   s : @session.Session,
   id : Json,
-  _params : Json,
+  params : Json,
 ) -> (String, Bool) {
   guard s.unified is Some(engine) else {
     return (
@@ -313,7 +313,26 @@ fn serve_step_next_frame(
       false,
     )
   }
-  let outcome = engine.run_batch(s.vm, SessionLines::{ s, }, 1)
+  // 病 76（#71 P2，2026-10-16）：frames 参数实现化——api help 一直宣称
+  // 「推进 N 步」（rules.json example {"frames":10}），实现恒 1 步
+  //（_params 弃置——手写例与实现脱节）。缺省 1 = 旧调用方零变化；负值/
+  // 零 fail loud（param_err——静默取 1 会把「想推进 100」的手滑变成单步
+  // 慢放）。上限钳到 max_steps 配置（防一次推进吞满预算无诊断）。
+  let frames : Int32 = match json_field(params, "frames").as_int() {
+    Some(v) => v
+    None => 1
+  }
+  if frames <= 0 {
+    return (
+      serve_param_err(
+        id, "step.next 的 params.frames 须为正整数", "frames:int>=1",
+      ).stringify(),
+      false,
+    )
+  }
+  let budget = s.config.max_steps
+  let n = if frames > budget { budget } else { frames }
+  let outcome = engine.run_batch(s.vm, SessionLines::{ s, }, n)
   guard outcome is Ok(result) else {
     guard outcome is Err(msg) else { abort("unreachable") }
     return (serve_err(id, "state", msg).stringify(), false)

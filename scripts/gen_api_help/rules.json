@@ -34,8 +34,8 @@
     },
     {
       "method": "config.set",
-      "brief": "写会话配置（max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch；未知键 fail loud，#105；越界值钳制回包带 clamped 键名数组，#94）",
-      "example": "{\"max_steps\":100000}"
+      "brief": "写会话配置（preset 档位一键：default|algo|tiny——#133；max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch 同帧可覆盖单项；未知键 fail loud #105；超上界 fail loud（可表示域）；低下界钳制回包带 clamped #94）",
+      "example": "{\"preset\":\"algo\"}"
     },
     {
       "method": "contracts",
@@ -129,7 +129,7 @@
     },
     {
       "method": "step.next",
-      "brief": "推进 N 步（返回帧数组）",
+      "brief": "推进 frames 步（缺省 1；返回帧数组——发布按行末对齐一帧缓冲语义，frames 是推进量非发布量）",
       "example": "{\"frames\":10}"
     },
     {

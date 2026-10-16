@@ -733,6 +733,17 @@ pub fn host_scanf_n(
   let map_off : Array[Int32] = []
   let start_idx = input.index
   let start_off = input.char_offset
+  // 病 46（#71 P2 表，2026-10-16）：ungetc 缓存优先吐——scanf 流式游标
+  // 与 getchar 的 ungetc 优先语义对齐（旧形态流拼装无视槽，'9' 回退后
+  // scanf 直接读管道下字节）。映射锚 = (start_idx, start_off-1)：游标
+  // 推进算法对 off+1=start_off 恰落 start_off（消费后位置不动=ungetc
+  // 字节逻辑前置于游标）；start_off=0 时 off=-1 走补位锚分支归
+  // (start_idx, 0) 同样正确
+  if input.ungetc is Some(c) {
+    stream.push(c.to_byte())
+    map_line.push(start_idx)
+    map_off.push(start_off - 1)
+  }
   let mut i = start_idx
   while i < input.lines.length() {
     let line = input.lines[i]
@@ -1171,6 +1182,11 @@ pub fn host_scanf_n(
   }
   // 游标推进（映射表；未消费部分留给后续输入函数）
   if pos > 0 && pos - 1 < map_line.length() {
+    // 病 46 连坐：pos>0 = 流头 ungetc 字节（若有）已消费——清槽防
+    // getchar 二次吐（C 语义 ungetc 字节只吐一次）
+    if input.ungetc is Some(_) {
+      input.ungetc = None
+    }
     let idx = map_line[pos - 1]
     let off = map_off[pos - 1]
     if off < 0 {

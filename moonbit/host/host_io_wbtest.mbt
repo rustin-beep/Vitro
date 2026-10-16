@@ -318,6 +318,37 @@ fn scanf_run(
 }
 
 ///|
+/// 病 46 锚（#71 P2 表，2026-10-16）：ungetc 缓存优先吐——scanf 流头
+/// 消费回退字节（与 getchar 的 ungetc 优先语义对齐；端到端对照 clang：
+/// ungetc('9') + 输入 "7" → %d 读 "97"）+ 消费清槽（ungetc 字节只吐
+/// 一次——C §7.21.6.10）；零消费（首字面量不匹配）不清槽。
+test "scanf_consumes_ungetc_buffer" {
+  let (map, mem) = fresh()
+  let x_addr = 0x7000U
+  let input = InputState::new([b"7"], true)
+  ignore(host_ungetc(input, 57)) // '9'
+  let r = scanf_run(map, mem, input, "%d", [x_addr])
+  guard r is InputOutcome::Value(n) else { fail("应匹配 1 项") }
+  assert_eq(n, 1UL, msg="ungetc+管道相邻数字应一次匹配")
+  assert_eq(
+    mem.load_u32(map, x_addr),
+    Ok(97U),
+    msg="%d 应读 97（'9'+'7' 相邻拼接）",
+  )
+  guard input.ungetc is None else {
+    fail("scanf 消费后 ungetc 槽未清——getchar 会二次吐")
+  }
+  // 零消费（首字面量 'z' 与流头 '5' 不匹配即断）不清槽——getchar 照常吐
+  let input2 = InputState::new([b"x"], true)
+  ignore(host_ungetc(input2, 53)) // '5'
+  let r2 = scanf_run(map, mem, input2, "z%d", [x_addr])
+  guard r2 is InputOutcome::Value(0UL) else {
+    fail("首字面量不匹配——0 匹配")
+  }
+  guard input2.ungetc is Some(53) else { fail("零消费不应清槽") }
+}
+
+///|
 /// %*d 赋值抑制锚（批四 2026-10-07）：`%*d%d` 读两 token 只写第二个
 /// 指针（抑制 spec 消费输入不消耗参数——C §7.21.6.2；端到端
 /// `printf('7 9')` 双侧 == Clang 输出 9）。

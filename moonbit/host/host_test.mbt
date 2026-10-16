@@ -322,7 +322,11 @@ test "host_io_surface" {
   ignore(mem.write_bytes(map, 0x6100U, b"%d\x00"))
   let pa = 0x8000U
   let sc = @host.host_scanf_n(map, mem, input, [], 0x6100U, [pa])
-  guard sc is @host.InputOutcome::Value(1UL) else { fail("scanf 匹配 1 项") }
+  // 病 46（#71，2026-10-16）后语义：scanf 流头优先消费 ungetc 的 'a'
+  // ——%d 跳空白后遇非数字即 matching failure 返回 0（旧锚「匹配 1 项
+  // 读到 2」恰好锁死病行为：流拼装无视 ungetc 槽）。clang 同款对照：
+  // ungetc('a') 后 scanf("%d") 返回 0
+  guard sc is @host.InputOutcome::Value(0UL) else { fail("scanf 匹配 0 项") }
   ignore(mem.write_bytes(map, 0x6800U, b"5\x00"))
   ignore(mem.write_bytes(map, 0x6200U, b"%d\x00"))
   let ss = @host.host_sscanf(map, mem, 0x6800U, 0x6200U, [pa])

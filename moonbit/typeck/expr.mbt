@@ -61,18 +61,25 @@ pub fn TypeChecker::resolve_expr_type(
       let type_name = target_type.name()
       let mut offset = 0
       let mut found = false
+      // 病 67（#71 P2，2026-10-16）：member-designator 点链逐段解析——
+      // "inner.name" 先按首段在 struct 字段表定位子类型、再对子类型解析
+      // 余段（union 段偏移 0）。下标形态（arr[2].x）parser 侧不支持。
+      let segs = field.split(".").collect()
+      let first : String = segs[0].to_owned()
+      let mut cur_ty : @ast.Type? = None
       match self.structs.get(type_name) {
         Some(struct_sym) => {
           for pair in struct_sym.fields {
-            if pair.1 == field {
+            if pair.1 == first {
               found = true
+              cur_ty = Some(pair.0)
               break
             }
             offset += self.compute_type_size(pair.0)
           }
           if !found {
             self.report_error(
-              "结构体 '\{type_name}' 没有字段 '\{field}'",
+              "结构体 '\{type_name}' 没有字段 '\{first}'",
               loc,
               E3042_UnknownMember,
             )
@@ -84,14 +91,15 @@ pub fn TypeChecker::resolve_expr_type(
               // union：所有字段偏移 0
               let mut hit = false
               for pair in union_sym.fields {
-                if pair.1 == field {
+                if pair.1 == first {
                   hit = true
+                  cur_ty = Some(pair.0)
                   break
                 }
               }
               if !hit {
                 self.report_error(
-                  "联合体 '\{type_name}' 没有字段 '\{field}'",
+                  "联合体 '\{type_name}' 没有字段 '\{first}'",
                   loc,
                   E3042_UnknownMember,
                 )
@@ -105,6 +113,46 @@ pub fn TypeChecker::resolve_expr_type(
                 E3004_TypeMismatch,
               )
           }
+      }
+      // 余段沿子类型链（struct 段累加偏移、union 段恒 0）
+      if found && segs.length() > 1 {
+        for k = 1; k < segs.length(); k = k + 1 {
+          let seg : String = segs[k].to_owned()
+          guard cur_ty is Some(t) else { break }
+          let base = t.name()
+          let mut seg_found = false
+          match self.structs.get(base) {
+            Some(st) =>
+              for pair in st.fields {
+                if pair.1 == seg {
+                  seg_found = true
+                  cur_ty = Some(pair.0)
+                  break
+                }
+                offset += self.compute_type_size(pair.0)
+              }
+            None =>
+              match self.unions.get(base) {
+                Some(un) =>
+                  for pair in un.fields {
+                    if pair.1 == seg {
+                      seg_found = true
+                      cur_ty = Some(pair.0)
+                      break
+                    }
+                  }
+                None => ()
+              }
+          }
+          if !seg_found {
+            self.report_error(
+              "offsetof 成员链 '\{field}' 在段 '\{seg}' 处解析失败",
+              loc,
+              E3042_UnknownMember,
+            )
+            break
+          }
+        }
       }
       let ty = @ast.Type::int()
       (ty, Literal(offset, loc, ty))

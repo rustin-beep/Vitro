@@ -2,7 +2,9 @@
 // main.js（597 行手写 Node 宿主壳——三后端统一进程的对照评估件，双臂
 // 分叉 issue #94~#118 销案后使命完成）。承载面逐项迁移：
 //
-//   - MIN_NODE=25 哨兵（rc=5，#106：3 与步数超限撞号）+ backend 标注
+//   - MIN_NODE=22 哨兵（rc=5，#106：3 与步数超限撞号；22 = V8 wasm-gc/
+//     js-string builtins 支持下界——#132 降版批实测 node 24.22 全通，
+//     #126 修后 25 的硬依赖已不存在）+ backend 标注
 //     stderr 行（`[vitro] backend=wasm (node <ver>)`——downstream 判臂
 //     通道，launcher 降级臂对称发 backend=native）；
 //   - wasm 装载：同步 `new WebAssembly.Instance` + "_" 常量显式供给
@@ -28,7 +30,7 @@ fn main {
   // MIN_NODE 哨兵（main.js:30 语义照搬——js-string builtins 的 V8 下界）
   if !js_node_ok() {
     js_write_stderr(
-      "[vitro] node \{js_node_version()} < 25（js-string builtins 需要）\n",
+      "[vitro] node \{js_node_version()} < 22（js-string builtins 需要）\n",
     )
     js_exit(5)
   }
@@ -162,9 +164,39 @@ fn collect_walk(
     let inc_path = join_dir(dir_of(p), inc)
     let inc_src = @fs.read_file_to_string(inc_path) catch { _ => "" }
     if inc_src != "" {
-      collect_walk(inc_path, inc, inc_src, entries, seen)
+      // 病 111（#71，2026-10-16）：登记名归一——gateway resolver 对
+      // include 键剥 `./` 段后查找，include 原文（`./x.h`）作 vfs 键即
+      // 失配 E1021（native 臂经 fs reader 无此问题）
+      collect_walk(inc_path, strip_dot_segments(inc), inc_src, entries, seen)
     }
   }
+}
+
+///|
+/// 剥路径的 `.` 段（"./x.h"→"x.h"、"a/./b.h"→"a/b.h"——gateway resolver
+/// 同款归一，键/查找两侧对齐）。
+fn strip_dot_segments(p : String) -> String {
+  if !p.contains("./") {
+    return p
+  }
+  let parts : Array[String] = []
+  for seg in p.split("/") {
+    let s : String = seg.to_owned()
+    if s != "." && s != "" {
+      parts.push(s)
+    }
+  }
+  if parts.is_empty() {
+    return p
+  }
+  let b = StringBuilder()
+  for i, seg in parts {
+    if i > 0 {
+      b.write_string("/")
+    }
+    b.write_string(seg)
+  }
+  b.to_string()
 }
 
 ///|
@@ -294,7 +326,7 @@ struct JsGateway {
 ///|
 extern "js" fn js_node_ok() -> Bool =
   #| function() {
-  #|   return Number(process.versions.node.split(".")[0]) >= 25;
+  #|   return Number(process.versions.node.split(".")[0]) >= 22;
   #| }
 
 ///|

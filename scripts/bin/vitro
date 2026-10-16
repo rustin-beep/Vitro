@@ -23,7 +23,7 @@ run_native() {
   reason="$1"
   shift
   # #100（2026-10-15）：缺产物前置 fail loud——旧形态 exec 裸撞 rc=127 +
-  # shell 原文（command not found 类），无构建指引（node<25 降级路径高发：
+  # shell 原文（command not found 类），无构建指引（node<22 降级路径高发：
   # js 臂不可用降级 native 而产物从未构建过）
   if [ ! -f "$NATIVE_EXE" ]; then
     echo "[vitro] native exe 缺失：$NATIVE_EXE" >&2

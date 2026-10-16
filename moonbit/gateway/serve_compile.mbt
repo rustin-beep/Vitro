@@ -509,7 +509,7 @@ fn compile_result_json(s : @session.Session) -> Json {
   for d in s.compile.diagnostics {
     let m : Map[String, Json] = Map([])
     m.set("code", Json::string("\{severity_prefix(d.severity)}\{d.error_code}"))
-    m.set("error_code", d.error_code.to_json())
+    m.set("error_code", Json(d.error_code))
     m.set("severity", Json::string(severity_name(d.severity)))
     m.set("line", Json(d.line))
     m.set("column", Json(d.column))

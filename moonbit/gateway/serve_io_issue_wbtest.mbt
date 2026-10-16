@@ -40,7 +40,7 @@ fn steps_of(resp : String) -> Int32 {
 /// 在 s[offs..] 中找 key，返回（offs + key 起位 + key 长度）——即数字
 /// 期望起始位；未找到 None。
 fn find_key(s : String, key : String, offs : Int32) -> Int32? {
-  let tail = s.substring(start=offs)
+  let tail = s[offs:]
   match tail.find(key) {
     Some(p) => Some(offs + p + key.length())
     None => None

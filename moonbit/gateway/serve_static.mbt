@@ -112,7 +112,7 @@ fn serve_capabilities_frame(id : Json) -> (String, Bool) {
   m.set("behavior_contracts", Json::array(contracts))
   m.set(
     "semantic_label_kinds",
-    @protocol.semantic_label_vocabulary().length().to_json(),
+    Json(@protocol.semantic_label_vocabulary().length()),
   )
   m.set("languages", Json::object(languages))
   m.set("memory_model", Json::object(memory_model))

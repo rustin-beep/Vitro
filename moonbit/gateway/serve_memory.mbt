@@ -26,7 +26,7 @@ fn region_json(
   kind : String,
 ) -> Json {
   let m : Map[String, Json] = Map([])
-  m.set("addr", addr.to_json())
+  m.set("addr", Json(addr))
   m.set("size", Json(size))
   m.set("name", Json::string(name))
   m.set("ty", Json::string(ty))

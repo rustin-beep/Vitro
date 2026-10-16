@@ -227,7 +227,7 @@ test "wb interpret inner array dims c semantics" {
   let node = Array(Array(Pointer(Array(Base, mk(2))), mk(3)), mk(4))
   match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
     @ast.Type::Array(_, sz, dims, _, _, _) => {
-      inspect(dims, content="[2]")
+      debug_inspect(dims, content="[2]")
       inspect(sz, content="2")
       match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
         @ast.Type::Array(elem, _, _, _, _, _) =>

@@ -85,7 +85,7 @@ fn serve_session_semantics() -> Json {
 /// 回显直读；input_mode_batch 回显 runtime_batch）。
 fn serve_config(s : @session.Session) -> Json {
   let m : Map[String, Json] = Map([])
-  m.set("deterministic", s.config.deterministic.to_json())
+  m.set("deterministic", Json(s.config.deterministic))
   m.set("quarantine_budget", Json(s.vm.mem_map.quarantine_budget()))
   m.set("input_mode_batch", Json(s.runtime_batch))
   m.set("compiled", Json(s.compile.compiled))

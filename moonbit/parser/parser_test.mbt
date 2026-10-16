@@ -441,7 +441,7 @@ test "issue77_qualifier_order_free" {
   let a3 = parse_src(
     "static int f(const int x) { return x; } int main(void) { return f(1); }",
   )
-  inspect(codes_of(a3), content="[]")
+  debug_inspect(codes_of(a3), content="[]")
   // 块内反序：const static int y
   let b1 = parse_src("int main(void) { const static int y = 5; return y; }")
   debug_inspect(codes_of(b1), content="[]")
@@ -466,7 +466,7 @@ test "issue83_block_static_typedef" {
   let q2 = parse_src(
     "typedef struct { int a; } S; int main(void) { static S s; return s.a; }",
   )
-  inspect(codes_of(q2), content="[]")
+  debug_inspect(codes_of(q2), content="[]")
   // q5 对照：块作用域 static + 内置类型（现有绿，防回归）
   let q5 = parse_src(
     "int main(void) { static unsigned int x = 0; return (int)x; }",
@@ -536,7 +536,7 @@ test "issue78_enum_const_array_dim" {
   }
   // 枚举成员初始化器引用前成员（B = A + 1）
   let b6 = parse_src("enum { A = 5, B = A + 1 }; int main(void) { return B; }")
-  inspect(codes_of(b6), content="[]")
+  debug_inspect(codes_of(b6), content="[]")
   // typedef enum 多成员形态（threadedBinaryTree_default.c 回归锚——
   // 2026-10-14 本批 Edit 吞 `!` 事故的漏网面：逗号循环条件一旦反转
   // 即在第二成员处炸 E2006/E2005 级联）
@@ -583,7 +583,7 @@ test "issue93_block_enum_definition" {
   let q2 = parse_src(
     "int main(void) { enum { A = 5, B = A + 1 } t; return (int)t; }",
   )
-  inspect(codes_of(q2), content="[]")
+  debug_inspect(codes_of(q2), content="[]")
   // 具名 tag + 体 + 声明器
   let q3 = parse_src(
     "int main(void) { enum Tag { X, Y = 9 } z; return (int)z; }",

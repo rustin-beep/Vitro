@@ -62,6 +62,9 @@ fn find_algo_match(
 pub(open) trait SourceLineProvider {
   /// 行号取源码行文本；越界/无映射返回 None。
   fn source_line_at(Self, line : Int32) -> String?
+  /// 全局行号 → 所属编译单元文件名（#90 v0.2 首批：多文件帧归属；
+  ///  单文件编译同样给值恒 "main.c"；无映射返回 None）。
+  fn source_file_at(Self, line : Int32) -> String?
 }
 
 ///|
@@ -75,6 +78,7 @@ pub fn[P : SourceLineProvider] collect(
   step_index : Int32,
   algo : AlgoInferCtx,
   code_line~ : Int32? = None,
+  code_file~ : String? = None,
 ) -> @protocol.StepPayload {
   // issue #34 销案（2026-10-06）：code_line 与语义 label 同源（engine
   // 循环顶的步进前行）——旧 vm.get_current_line()（步进后）与 label
@@ -83,6 +87,13 @@ pub fn[P : SourceLineProvider] collect(
   let code_line = match code_line {
     Some(l) => l
     None => vm.get_current_line()
+  }
+  // #90（2026-10-17）：帧文件归属与 code_line 同源解析——None 时经
+  // provider 自取（source_line_at 的 file 对偶，编排层携带 file_ranges
+  // 映射）；显式传入优先（调用方已知归属的形态）
+  let code_file = match code_file {
+    Some(f) => Some(f)
+    None => src.source_file_at(code_line)
   }
   let cs_len = vm.call_stack_len()
   let func_name : String = if cs_len > 0 {
@@ -248,6 +259,7 @@ pub fn[P : SourceLineProvider] collect(
   {
     step_index,
     code_line,
+    code_file,
     func_name,
     semantic_label,
     algorithm_step,

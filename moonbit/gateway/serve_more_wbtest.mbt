@@ -9,7 +9,7 @@ test "serve_capabilities_static_tracks" {
   let s = @session.Session::new()
   let (resp, _) = serve_handle(s, "{\"id\":1,\"method\":\"capabilities\"}")
   assert_true(resp.contains("\"engine\":\"vitro\""))
-  assert_true(resp.contains("\"version\":\"v0.1\""))
+  assert_true(resp.contains("\"version\":\"v0.2\"")) // #90 v0.2 首批激活
   assert_true(resp.contains("\"frozen_at\":\"2026-09-12\""))
   assert_true(resp.contains("\"behavior_contracts\""))
   assert_true(resp.contains("\"semantic_label_kinds\":14"))

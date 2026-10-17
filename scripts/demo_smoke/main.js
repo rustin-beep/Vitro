@@ -170,7 +170,8 @@ function assertKeys(obj, keys, label) {
 
   // ── step 族字段契约（2026-10-04 审阅 P2-3：demo_smoke 原先零触 step 族，
   // types.ts 的 wire 声明无任何机判——探针留 tmp/review_20261004/ 本批固化）。
-  // 断言口径：StepPayload 顶层 = 协议 v0.1 十四字段白名单键集全等（多键少键
+  // 断言口径：StepPayload 顶层 = 协议 v0.1 十四字段 + v0.2 激活 code_file 键集全等（多键少键
+  // （#90 激活，2026-10-17；v0.1 冻结表不回改，激活项 additive）
   // 都红，突变 heatmap_line→linee 已证红）；嵌套结构 = 必备键在
   // （array_snapshots 实测多一个未声明 truncated，属「只声明消费面」合法
   // 形态，不做键集全等）。累积推批形态 = 探针 probe2 同款（U1#1 一帧发布
@@ -196,11 +197,23 @@ function assertKeys(obj, keys, label) {
       for (const f of ["payloads", "finished", "trapped", "trap_message"]) {
         check(f in lastBatch, `step.next 批字段 ${f}`, "缺键");
       }
-      const want14 = ["accessed_vars", "algorithm_step", "array_snapshots", "call_stack", "code_line",
+      // v0.2 首批激活（#90，2026-10-17）：键集 = v0.1 十四字段冻结表 +
+      // v0.2 激活字段（code_file）并集——additive-only 纪律的 smoke 侧判据。
+      // 单源 = scripts/replay/v01_payload_fields.json（v01_payload_fields
+      // + v02_payload_fields 两表；gen_protocol_fields 生成期联动）。
+      const want15 = ["accessed_vars", "algorithm_step", "array_snapshots", "call_stack", "code_file", "code_line",
         "func_name", "heatmap_count", "heatmap_line", "local_vars", "pointer_snapshots",
         "root_cause_hint", "semantic_label", "step_index", "vis_events"].sort().join(",");
-      check(Object.keys(payloads[0]).sort().join(",") === want14,
-        "StepPayload 顶层键集 = 协议 v0.1 十四字段白名单", "实得 " + Object.keys(payloads[0]).sort().join(","));
+      check(Object.keys(payloads[0]).sort().join(",") === want15,
+        "StepPayload 顶层键集 = v0.1 十四字段 + v0.2 激活 code_file（#90）", "实得 " + Object.keys(payloads[0]).sort().join(","));
+      // code_file 值域抽查（#90）：单文件用例恒 "main.c"（merge_units 对单
+      // unit 也产 range）。取首个有正行号的帧——序幕帧 code_line=0（首个
+      // StepEvent 前）按语义无归属（source_file_at(0)=None），code_file=null
+      // 是诚实空态非缺陷；正行号帧必须带文件名。
+      const withLine = payloads.find((p) => p.code_line > 0);
+      check(!!withLine && withLine.code_file === "main.c",
+        "code_file 值 = main.c（单文件编译恒给首单元文件名）",
+        withLine ? "实得 " + JSON.stringify(withLine.code_file) + "（line=" + withLine.code_line + "）" : "无正行号帧");
       const withVars = payloads.find((p) => p.local_vars && p.local_vars.length);
       if (withVars) {
         for (const f of ["name", "addr", "is_local", "ty_name", "value"]) {
@@ -267,6 +280,62 @@ function assertKeys(obj, keys, label) {
         check(false, "array_snapshots 帧可采（数组柱状图消费面）", "累积帧未见非空数组快照——用例或引擎面变更？");
       }
     }
+  }
+
+  // ── #89 稀疏出帧（2026-10-17，v0.2 供数批）──────────────────────
+  // step.next {every:N}：执行仍逐条（指令级语义不变），仅每 N 条采一帧。
+  // 断言：① 参数校验 fail loud（every=0 → protocol 错误帧，非静默退化）；
+  // ② 发布帧的步距 = N（一帧发布缓冲延迟不改变采样点；末帧为终态帧，
+  // 允许最后一段步距不等于 N）。确定性程序：bubble 用例 every=50。
+  {
+    const kk = cases.find((c) => c.id === "bubble");
+    g.reset();
+    body(inv({ method: "session.create" }));
+    body(inv({ method: "config.set", params: { max_steps: 10000000, call_depth_limit: 10000, deterministic: true } }));
+    body(inv({ method: "compile", params: { source: kk.source } }));
+    body(inv({ method: "run" }));
+    body(inv({ method: "step.begin" }));
+    const bad = inv({ method: "step.next", params: { every: 0 } });
+    check(!!bad.error && bad.error.kind === "protocol",
+      "step.next every=0 → protocol 错误帧（fail loud 非静默退化）",
+      JSON.stringify(bad).slice(0, 120));
+    const every = 50;
+    let sparse = [];
+    for (let i = 0; i < 40 && sparse.length < 60; i++) {
+      const b = body(inv({ method: "step.next", params: { every } }));
+      if (b.payloads) sparse = sparse.concat(b.payloads);
+      if (b.finished || b.trapped) break;
+    }
+    check(sparse.length >= 3, "step.next{50} 稀疏帧产出", "实得 " + sparse.length + " 帧");
+    // 相邻发布帧步距（末帧除外）恒 = every
+    let gapBad = null;
+    for (let i = 1; i < sparse.length - 1; i++) {
+      const gap = sparse[i].step_index - sparse[i - 1].step_index;
+      if (gap !== every) { gapBad = { i, gap, prev: sparse[i - 1].step_index, cur: sparse[i].step_index }; break; }
+    }
+    check(gapBad === null, "step.next{50} 帧距恒 50（末帧除外）", JSON.stringify(gapBad));
+  }
+
+  // ── #52 结构面①（2026-10-17）：codegen.dump 出口接线 ────────────────
+  // 编译产物转储（字节码跳转图 + 每指令源码行号 = 流程图原料）。断言：
+  // ① ok 帧且 result = 单源 emitter 的 14 键产物形状（version=1 + code 指令
+  // 数组，指令 = {op, operand, loc{line,...}}——流程图边原料）；
+  // ② 转储与 compile 的字节码口径一致（code 非空且每条含行号 loc）；
+  // ③ 缺 source 参数 fail loud。
+  {
+    const kk = cases.find((c) => c.id === "bubble");
+    const d = body(inv({ method: "codegen.dump", params: { source: kk.source } }));
+    // body() 已剥 result 外层——ok 断言看 version 存在性（错误帧无 version）
+    check(d.version === 1, "codegen.dump 返回 14 键产物（version=1）", JSON.stringify(d).slice(0, 100));
+    check(Array.isArray(d.code) && d.code.length > 0, "codegen.dump code 指令数组非空", "实得 " + (Array.isArray(d.code) ? d.code.length : typeof d.code));
+    const withLoc = Array.isArray(d.code) ? d.code.find((i) => i.loc && typeof i.loc.line === "number") : null;
+    check(!!withLoc, "codegen.dump 每条指令带源码行号 loc（流程图行级折叠原料）", JSON.stringify((d.code || [])[0]).slice(0, 100));
+    // 关键键齐（14 键形状抽查——键集本身由 codegen_diff 对拍锁定）
+    for (const k of ["code", "func_table", "func_index", "struct_defs", "source_map", "symbols", "globals_init_32"]) {
+      check(k in d, "codegen.dump 顶层键 " + k, "缺键");
+    }
+    const noSrc = inv({ method: "codegen.dump", params: {} });
+    check(!!noSrc.error && noSrc.error.kind === "protocol", "codegen.dump 缺 source → protocol 错误帧", JSON.stringify(noSrc).slice(0, 100));
   }
 
   // ── 算法侧栏数据契约（2026-10-04，refs #28）─────────────────────

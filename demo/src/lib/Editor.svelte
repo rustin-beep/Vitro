@@ -12,7 +12,7 @@
   //   不内滚——对齐 field-sizing 诉求）。
   // 高亮面注意：clike 是 legacy 正则 mode（用户指定）——非 Lezer 语法树高亮。
   import { EditorState, StateEffect, StateField } from "@codemirror/state";
-  import { EditorView, gutter, GutterMarker, keymap, highlightActiveLine, highlightActiveLineGutter, lineNumbers } from "@codemirror/view";
+  import { EditorView, gutter, GutterMarker, keymap, highlightActiveLine, highlightActiveLineGutter, lineNumbers, Decoration, type DecorationSet } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap, insertNewlineAndIndent, indentMore, indentLess } from "@codemirror/commands";
   import { StreamLanguage, syntaxHighlighting, defaultHighlightStyle, foldGutter } from "@codemirror/language";
   import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap } from "@codemirror/autocomplete";
@@ -27,6 +27,9 @@
 
   // ── 断点 gutter（CM6 官方 breakpoint example 形态）────────────────
   const setBpEffect = StateEffect.define<number[]>(); // 全量替换断点行集
+  // ⚠️ Map value 恒 null（Set 化用法）——lineMarker 必须用 .has() 判在否；
+  // 曾写 .get() 真值判断：get 命中也返回 null（falsy）→ 点永不渲染
+  // （2026-10-16 E2E S4 四层连抓的最后一层）。
   const bpField = StateField.define<Map<number, null>>({
     create: () => new Map(),
     update(bps, tr) {
@@ -51,25 +54,98 @@
   const bpMarker = new BpMarker();
   const bpGutter = gutter({
     class: "cm-bpgutter",
+    // ⚠️ lineMarker 的 line 是 BlockInfo（行块，无 .number——TS 类型面
+    // 2026-10-16 svelte-check 实锤；运行时取 .number 得 undefined 致点
+    // 不渲染）。行号须经 doc.lineAt(line.from).number 换算；bpField 键 =
+    // 行号（session.breakpoints 语义，曾错用 line.from 字符位置查表）。
     lineMarker(view, line) {
-      return view.state.field(bpField, false)?.get(line.from) ? bpMarker : null;
+      return view.state.field(bpField, false)?.has(view.state.doc.lineAt(line.from).number) ? bpMarker : null;
     },
     initialSpacer: () => bpMarker,
+    // ⚠️ lineMarker 形态必须配 lineMarkerChange——否则 gutter 只认 markers
+    // RangeSet 变化（我们用 bpField + lineMarker，markers 恒空），断点状态
+    // 变化永不触发重排（E2E S4 实锤：点有反应、装饰有反应、gutter 点不渲染）。
+    // 判据 = bpField 引用变化（每次 setBpEffect 全量替换 Map——引用比较即够，
+    // 同行号 gutter 的 facet 恒等判据同形态）。
+    lineMarkerChange: (u) => u.startState.field(bpField, false) !== u.state.field(bpField, false),
     domEventHandlers: {
       mousedown(view, line) {
-        const ln = line.from + 1;
-        toggleBreakpoint(ln);
-        view.dispatch({ effects: setBpEffect.of([...session.breakpoints]) });
+        // ⚠️ 本回调的 line 是 lineBlockAtHeight 的 LineBlock——只有 .from
+        // （字符位置）没有 .number；行号须经 doc.lineAt(from).number 换算
+        // （曾错写 line.from + 1：仅第 1 行碰巧正确，其余行全飘）。
+        // 只改单源（session.breakpoints）——视图同步统一走下方 $effect
+        // （F4 残留④：双通道易互相掩盖不同步问题，单源单通道可证伪）
+        toggleBreakpoint(view.state.doc.lineAt(line.from).number);
         return true;
       },
     },
   });
 
+  // ── 断点行装饰（F4 残留④：旧栈 #editor-hl .cl.bp-on 的新栈等价）─────
+  // 旧栈 hl 层对断点行 = danger 粗体行号 + 左侧点；CM6 栈的行装饰语言：
+  // 行底淡染 cm-bpline（仅 --danger-tint 无 inset 边）+ bp gutter 点。
+  // 与诊断跳转行 cm-diagline 的区分：诊断 = 瞬时指引（tint + inset danger
+  // 边），断点 = 持久标记（仅 tint）——同色系不同形，两态不混。
+  //
+  // **原 F4-10 挂账的架构性消解**：挂账形态 = 旧栈 deco 生成回调经跨模块
+  // 普通函数间接读断点单源，Svelte 5 对该嵌套回调内的信号读取不跟踪
+  // （四形态复现、mutations=0 铁证）。CM6 化后 deco 回调形态不复存在；
+  // 同步改走 $effect **直接在 effect 体内读 session.breakpoints**（教科书
+  // 式可跟踪读法——非嵌套回调间接读），全量 dispatch 两个字段。原「兜底」
+  // 升正：外部变更（清空/分享还原/未来批量面）同样触发，不再依赖 gutter
+  // mousedown 单通道。
+  const setBpLinesEffect = StateEffect.define<number[]>();
+  const bpLineField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(decos, tr) {
+      decos = decos.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setBpLinesEffect)) {
+          const ranges = e.value
+            .filter((ln) => ln >= 1 && ln <= tr.state.doc.lines)
+            .map((ln) => Decoration.line({ class: "cm-bpline" }).range(tr.state.doc.line(ln).from));
+          decos = Decoration.set(ranges, true);
+        }
+      }
+      return decos;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
+  // ── 诊断跳转行高亮（F4 残留①：诊断卡 jumpy 行 click → revealLine）─────
+  // StateField 持行装饰集（cm-diagline 类 = 左侧 danger 边 + 淡底），经
+  // setDiagLineEffect 全量替换；与断点 bpField 同形态、互不干涉。
+  const setDiagLineEffect = StateEffect.define<number[]>();
+  const diagLineField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(decos, tr) {
+      decos = decos.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setDiagLineEffect)) {
+          const ranges = e.value.map((ln) => {
+            const n = Math.min(Math.max(ln, 1), tr.state.doc.lines);
+            return Decoration.line({ class: "cm-diagline" }).range(tr.state.doc.line(n).from);
+          });
+          decos = Decoration.set(ranges, true);
+        }
+      }
+      return decos;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
   // ── 扩展集 ──────────────────────────────────────────────────────────
+  // ⚠️ 每个 StateField 都必须在此登记才存在——bpField 曾漏登记（gutter 里
+  // field(bpField, false) 静默取 undefined，断点never渲染；E2E S4 2026-10-16
+  // 实锤）。字段：bpField（gutter 点）/ bpLineField（断点行染）/
+  // diagLineField（诊断跳转行染）。
   function buildExtensions(): any[] {
     return [
       lineNumbers(),
+      bpField,
       bpGutter,
+      bpLineField,
+      diagLineField,
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
@@ -112,11 +188,32 @@
     }
   });
 
+  // ── 断点单源 → 视图（F4 残留④）：$effect 直接读 session.breakpoints
+  // （可跟踪），全量替换 gutter 点字段 + 行装饰字段。首挂载/外部变更/
+  // gutter 点击同一通道——单源单通道，不同步即可证伪。 ──
+  $effect(() => {
+    if (!view) return;
+    const bps = [...session.breakpoints];
+    view.dispatch({ effects: [setBpEffect.of(bps), setBpLinesEffect.of(bps)] });
+  });
+
   export function getDoc(): string {
     return view?.state.doc.toString() ?? "";
   }
   export function getBpLines(): number[] {
     return view ? [...view.state.field(bpField, false)?.keys() ?? []] : [];
+  }
+  /** 诊断跳转（F4 残留①）：高亮目标行 + 光标落行首 + 滚动居中。行号越界
+   *  钳制；编辑器未挂载时空操作（组件卸载窗口）。 */
+  export function revealLine(line: number): void {
+    if (!view) return;
+    const n = Math.min(Math.max(Math.round(line), 1), view.state.doc.lines);
+    const pos = view.state.doc.line(n).from;
+    view.dispatch({
+      selection: { anchor: pos },
+      effects: [setDiagLineEffect.of([n]), EditorView.scrollIntoView(pos, { y: "center" })],
+    });
+    view.focus();
   }
 </script>
 
@@ -133,4 +230,8 @@
   .editor-stack :global(.cm-activeLine) { background: var(--accent-tint); }
   .editor-stack :global(.cm-bpgutter) { width: 14px; }
   .editor-stack :global(.bp-dot) { color: var(--danger); font-size: 10px; }
+  /* 断点行（F4 残留④）：行底淡染仅 tint——与 cm-diagline（tint + inset 边）区分形 */
+  .editor-stack :global(.cm-bpline) { background: var(--danger-tint); }
+  /* 诊断跳转行（F4 残留①）：左侧 danger 边 + 令牌淡底——与 bp-dot 同色系不同形 */
+  .editor-stack :global(.cm-diagline) { background: var(--danger-tint); box-shadow: inset 3px 0 0 var(--danger); }
 </style>

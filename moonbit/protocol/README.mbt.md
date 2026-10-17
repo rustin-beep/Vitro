@@ -1,6 +1,6 @@
 # vitro/engine/protocol — StepPayload schema 契约与协议演化纪律
 
-C 教学引擎的**协议冻结层**（L8）：StepPayload v0.1 十四字段白名单（冻结于 2026-09-12）+ v0.2 预留位与字段台账 + semantic_label 受控词汇表 + 协议 DTO 族（StepPayload/快照/帧数据，**零依赖自持**——协议冻结的意义即不随引擎内部类型漂移）+ 展开粒度可执行判据。L8 session/gateway 与 cmd/serve 消费本包，本包不依赖任何引擎包。
+C 教学引擎的**协议冻结层**（L8）：StepPayload v0.1 十四字段白名单（冻结于 2026-09-12，历史基线不动）+ v0.2 预留位与字段台账（**v0.2 首批已激活 code_file——#90，2026-10-17；当前 schema = v0.2 = v0.1 十四字段 + 激活字段并集**）+ semantic_label 受控词汇表 + 协议 DTO 族（StepPayload/快照/帧数据，**零依赖自持**——协议冻结的意义即不随引擎内部类型漂移）+ 展开粒度可执行判据。L8 session/gateway 与 cmd/serve 消费本包，本包不依赖任何引擎包。
 
 ## 安装
 
@@ -65,8 +65,11 @@ test {
   inspect(@protocol.step_payload_fields_v0_1().length(), content="14")
   // 词汇表 14 条 = 10 active c 域 + 4 reserved csharp 域（只增不改）
   inspect(@protocol.semantic_label_vocabulary().length(), content="14")
-  // schema 版本轨道（v0.1 冻结日期是协议事实，不是文档装饰）
-  inspect(@protocol.SCHEMA_VERSION, content="v0.1")
+  // schema 版本轨道（v0.1 冻结日期是协议事实，不是文档装饰；版本串随
+  // v0.2 首批激活 #90 升格——2026-10-17）
+  inspect(@protocol.SCHEMA_VERSION, content="v0.2")
+  // v0.2 已激活字段（#90 首批 = code_file；与 v0.1 十四字段冻结表并存）
+  inspect(@protocol.step_payload_fields_v0_2().length(), content="1")
 }
 ```
 

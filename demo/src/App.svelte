@@ -22,10 +22,13 @@
   import Editor from "./lib/Editor.svelte";
   import CatalogView from "./lib/CatalogView.svelte";
   import ProtoView from "./lib/ProtoView.svelte";
+  import DiagnosticsCard from "./lib/DiagnosticsCard.svelte";
+  import WorkspaceBar from "./lib/WorkspaceBar.svelte";
+  import { ensureClosedForLesson, saveActiveFile, syncSource, workspace } from "./lib/workspace.svelte.ts";
   import Toasts from "./lib/Toasts.svelte";
   import type { TreeLesson } from "./lib/courseTypes.ts";
   import { toast } from "./toasts.svelte.ts";
-  import { LESSON_NOTES } from "./lib/lessonNotes.ts";
+  import { loadLessonNote } from "./lib/lessonNotes.ts";
 
   let source = $state(DEFAULT_PROGRAM);
   let editorRef: Editor | null = $state(null);
@@ -33,10 +36,15 @@
   let note = $state<{ title: string; blocks: import("./lib/lessonMd.ts").Block[] } | null>(null);
   let settingsOpen = $state(false);
 
-  function onPickLesson(l: TreeLesson, chapId: string): void {
+  async function onPickLesson(l: TreeLesson, chapId: string): Promise<void> {
+    // 点课 = 离开工作区（旧栈 ensureClosedForLesson 语义）：dirty 时 confirm
+    // 保存后关闭；用户取消则整个选课动作中止
+    if (!(await ensureClosedForLesson())) return;
     source = l.source; // 课源码载入编辑器（旧栈 setEditorSource 语义）
     blurb = l.blurb;
-    const doc = LESSON_NOTES[chapId + "/" + l.id];
+    // 叙述懒加载（import.meta.glob ?url 交付格式——全量课程不压首屏包）；
+    // 无此课叙述 = null 不渲染面板（诚实空态）
+    const doc = await loadLessonNote(chapId + "/" + l.id);
     note = doc ? { title: l.title, blocks: doc.blocks } : null;
     switchTab("run"); // 点课即切运行视图（旧栈 collectCurrentEditor+切 tab 语义）
     void collect(source); // 点课自动采集（旧栈 collectCurrentEditor 语义）
@@ -78,6 +86,34 @@
   function tabSwitch(id: TabId): void {
     switchTab(id);
   }
+
+  // 工作区缓冲同步（F4 残留②）：编辑器 source 任何变化（键入/点课/分享还原/
+  // 文件切换）都落进 active 文件缓冲——dirty 追踪的单一同步点
+  $effect(() => {
+    syncSource(source);
+  });
+
+  // Ctrl+S 保存当前文件（工作区开时才劫持——旧栈 initWorkspace 语义）
+  $effect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!workspace.active) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveActiveFile();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  // 关页兜底：dirty 时浏览器原生「离开页面？」提示（用户拍板的退出防护形态）
+  $effect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent): void => {
+      if (workspace.dirty) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  });
 </script>
 
 <svelte:document onclick={(e) => {
@@ -122,6 +158,7 @@
       </span>
     </div>
     {#if blurb}<p class="blurb">{blurb}</p>{/if}
+    <WorkspaceBar onswitch={(_path, src) => (source = src)} />
     <div class="editor-wrap">
       <Editor bind:source bind:this={editorRef} disabled={session.collecting} />
     </div>
@@ -129,6 +166,7 @@
       采集 {session.perf.collectMs}ms
       {#if session.perf.replayPerFrameUs}· 回放 {session.perf.replayPerFrameUs}µs/帧（flushSync 口径）{/if}
     </p>
+    <p class="status-line">{session.status}</p>
     {#if session.stopped}
       <div class="stopped-note">{session.stopped}</div>
     {/if}
@@ -155,6 +193,7 @@
       </div>
     {:else if activeTab.current === "run"}
       <div class="tabpage">
+        <DiagnosticsCard onjump={(ln) => editorRef?.revealLine(ln)} />
         <h2 class="tab-h">数组可视化（keyed FLIP · 多数组）</h2>
         {#each frameAt(session.idx)?.array_snapshots ?? [] as s (s.name)}
           <div class="av-item">

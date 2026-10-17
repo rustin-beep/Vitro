@@ -473,3 +473,54 @@ test "serve_step_uaf_root_cause_hint_wire" {
   )
   assert_true(trap_resp.contains("\"category\":\"UseAfterFree\""))
 }
+
+///|
+/// #89 稀疏出帧（2026-10-17）：params.every 参数面——① 越界/非整数
+/// fail loud（参数错误帧 + expected 形状，禁静默退化 1）；② every=3
+/// 时采样帧数 ≈ 步数/3（稀疏生效；全量形态帧数 = 步数+1）。
+/// 帧内容断言不在此解析文本——走 engine 公开查询面 get_payloads。
+test "serve_step_next_every_param" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 1; a = a + 1; a = a + 2; return a; }\\n\"}}",
+  )
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // ① 参数校验 fail loud
+  let (bad, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"step.next\",\"params\":{\"every\":0}}",
+  )
+  assert_true(
+    bad.contains("\"kind\":\"protocol\""),
+    msg="every=0 须参数错误帧",
+  )
+  assert_true(bad.contains("every:int"))
+  let (bad2, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"step.next\",\"params\":{\"every\":\"x\"}}",
+  )
+  assert_true(
+    bad2.contains("\"kind\":\"protocol\""),
+    msg="every 非整数须参数错误帧",
+  )
+  // ② every=3 稀疏节奏
+  for i = 0; i < 5; i = i + 1 {
+    ignore(
+      serve_handle(
+        s, "{\"id\":5,\"method\":\"step.next\",\"params\":{\"every\":3}}",
+      ),
+    )
+  }
+  guard s.unified is Some(engine) else { fail("step.begin 后 engine 必在") }
+  let steps = s.vm.step_count
+  let frames = engine.get_payloads(0, 2147483647)
+  assert_true(
+    steps >= 9,
+    msg="every=3 须真执行 3 条/次（已执行 \{steps}）",
+  )
+  assert_true(frames.length() >= 1, msg="采样帧须有产出")
+  // 稀疏判据：帧数显著小于步数（全量 = 步数+1；采样 ≈ 步数/3 + 终帧）
+  assert_true(
+    frames.length() <= steps / 3 + 2,
+    msg="采样帧数须 ≈ 步数/3（实得 \{frames.length()} 帧 / \{steps} 步）",
+  )
+}

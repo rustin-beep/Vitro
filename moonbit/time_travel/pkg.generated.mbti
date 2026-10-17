@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx, code_line? : Int?) -> @protocol.StepPayload
+pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx, code_line? : Int?, code_file? : String?) -> @protocol.StepPayload
 
 pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String
 
@@ -82,7 +82,7 @@ pub fn UnifiedEngine::max_collected_step(Self) -> Int
 pub fn UnifiedEngine::new() -> Self
 pub fn UnifiedEngine::pause(Self) -> Unit
 pub fn UnifiedEngine::reset(Self) -> Unit
-pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(Self, @vm.VitroVM, P, Int) -> Result[@protocol.AutoStepResult, String]
+pub fn[P : SourceLineProvider] UnifiedEngine::run_batch(Self, @vm.VitroVM, P, Int, every? : Int) -> Result[@protocol.AutoStepResult, String]
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(Self, Int, @vm.VitroVM, P) -> @protocol.SeekResult
 pub fn UnifiedEngine::set_algorithm_matches(Self, Array[@protocol.AlgorithmMatch]) -> Unit
 pub fn UnifiedEngine::set_max_steps(Self, Int) -> Unit
@@ -95,4 +95,5 @@ pub fn UnifiedEngine::with_max_steps(Int) -> Self
 // Traits
 pub(open) trait SourceLineProvider {
   fn source_line_at(Self, Int) -> String?
+  fn source_file_at(Self, Int) -> String?
 }

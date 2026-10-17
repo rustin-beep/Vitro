@@ -102,6 +102,9 @@ pub extend AlgorithmStepSnapshotRef with Debug::{to_repr}
 pub(all) struct StepPayloadRef {
   step_index : Int32
   code_line : Int32
+  /// #90（2026-10-17）：帧文件归属的符号表索引；None = payload.code_file
+  /// 为 null（结构性不可达的防御态——单文件编译恒给文件名）。
+  code_file_idx : SymIdx?
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
@@ -124,6 +127,11 @@ pub extend StepPayloadRef with Debug::{to_repr}
 pub(all) struct StepPayloadDelta {
   step_index : Int32
   code_line : Int32
+  /// #90（2026-10-17）：帧文件归属差分层——None = 与上一步相同（含同为
+  /// null）；Some(idx) = 新文件名。值→null 迁移不可表达（结构不可达：
+  /// 行→文件映射在同一次编译内稳定，不存在有归属变无归属的帧），若发生
+  /// 退化为 None（解码侧视为未变）——登记为已知边界非静默缺陷。
+  code_file_idx : SymIdx?
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
@@ -218,6 +226,10 @@ pub fn encode_step_payload(
   {
     step_index: payload.step_index,
     code_line: payload.code_line,
+    code_file_idx: match payload.code_file {
+      Some(f) => Some(sym.insert(f))
+      None => None
+    },
     func_name_idx: sym.insert(payload.func_name),
     semantic_label_idx: sym.insert(payload.semantic_label),
     algorithm_step: encode_algo_step(payload.algorithm_step, sym),
@@ -361,9 +373,21 @@ pub fn encode_step_delta(
     curr.pointer_snapshots,
     sym,
   )
+  // code_file 差分（#90）：相同（含同为 null）→ None；不同 → Some(idx)。
+  // 值→null 迁移结构不可达（见 StepPayloadDelta.code_file_idx 注），退化
+  // 为 None 不丢真实语义。
+  let code_file_idx : SymIdx? = if prev.code_file == curr.code_file {
+    None
+  } else {
+    match curr.code_file {
+      Some(f) => Some(sym.insert(f))
+      None => None
+    }
+  }
   {
     step_index: curr.step_index,
     code_line: curr.code_line,
+    code_file_idx,
     func_name_idx: sym.insert(curr.func_name),
     semantic_label_idx: sym.insert(curr.semantic_label),
     algorithm_step: encode_algo_step(curr.algorithm_step, sym),
@@ -564,6 +588,7 @@ fn clone_ref(base : StepPayloadRef) -> StepPayloadRef {
   {
     step_index: base.step_index,
     code_line: base.code_line,
+    code_file_idx: base.code_file_idx,
     func_name_idx: base.func_name_idx,
     semantic_label_idx: base.semantic_label_idx,
     algorithm_step: base.algorithm_step,

@@ -102,6 +102,7 @@ pub(all) struct Session {
 pub fn Session::new() -> Self
 pub fn Session::set_call_depth_limit(Self, Int) -> Unit
 pub fn Session::set_max_steps(Self, Int) -> Unit
+pub fn Session::source_file_at(Self, Int) -> String?
 pub fn Session::source_line_at(Self, Int) -> String?
 
 pub(all) struct SessionConfig {

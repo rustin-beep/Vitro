@@ -14,7 +14,12 @@
 
 ///|
 /// 当前已冻结的 schema 版本。
-pub const SCHEMA_VERSION : String = "v0.1"
+/// v0.2 首批激活（#90，2026-10-17）：code_file 落地——payload 顶层键集 =
+/// v0.1 十四字段（step_payload_fields_v0_1，冻结不动）+ v0.2 激活字段
+/// （step_payload_fields_v0_2）。additive-only 纪律见 v0_2_activation_
+/// checklist①；单源 = scripts/replay/v01_payload_fields.json（schema 键
+/// 与 v02_payload_fields 数组，gen_protocol_fields 生成期联动）。
+pub const SCHEMA_VERSION : String = "v0.2"
 
 ///|
 /// v0.1 冻结时间与签字依据（S1–S5 签字回放 61/61）。
@@ -93,9 +98,9 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
     {
       field: "code_file",
       kind: "add",
-      status: "pending",
+      status: "active",
       batch: "v0.2",
-      note: "多文件行号归位（§8 #9）：code_line 保持全局行号语义，另附文件名，避免破坏断点/heatmap 口径",
+      note: "多文件行号归位（§8 #9）：code_line 保持全局行号语义，另附文件名，避免破坏断点/heatmap 口径。2026-10-17 #90 激活（F2 供数批①）：collect 经 SourceLineProvider.source_file_at 同源解析，gateway step_payload_json 插在 code_line 之后；单文件编译恒给首单元文件名，null 仅结构性无映射的防御态；stream 差分格式同步扩 code_file_idx（None=未变）",
     },
     {
       field: "call_stack[].return_line",

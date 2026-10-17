@@ -175,9 +175,16 @@ pub extend ApiFrameInfo with Debug::{to_repr}
 
 ///|
 /// 14 字段 = step_payload_fields_v0_1() 白名单（v0.1 冻结，只增不改）。
+/// v0.2 首批激活字段（#90，2026-10-17）：code_file——多文件编译时本帧
+/// code_line（全局行号）所属的编译单元文件名；单文件编译同样给值（恒
+/// "main.c"——merge_units 对单 unit 也产 range）。null 仅当行号落不进
+/// 任何 file_range（结构性不可达的防御形态）。语义：additive-only，
+/// 消费方忽略未知字段；下游多文件当前行高亮据此归位，不再自行累加
+/// 前面文件行数反推（#90 现象段的未文档化拼接语义依赖在此切断）。
 pub(all) struct StepPayload {
   step_index : Int32
   code_line : Int32
+  code_file : String?
   func_name : String
   semantic_label : String
   algorithm_step : AlgorithmStepSnapshot?

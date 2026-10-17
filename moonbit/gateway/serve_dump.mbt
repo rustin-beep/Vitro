@@ -234,3 +234,84 @@ fn serve_symbols_dump_frame(
   m.set("count", Json(symbols.length()))
   (serve_ok(id, Json::object(m)).stringify(), false)
 }
+
+///|
+/// codegen.dump（#52 结构面①，2026-10-17）：编译产物转储出口——字节码
+/// 跳转图 + 每指令源码行号（流程图原料）。**复用既有单源 emitter**
+/// `@bytecode.compile_output_dump_json`（codegen_diff 逐字节对拍锁定的
+/// 同一份 14 键产物形状，B 级锚），不造第二份转储器；wire 侧把 emitter
+/// 文本 parse 回 Json 嵌入 result（协议帧结构要求，非二次发射）。
+/// 只读语义：独立单遍管线（params.source），零会话态写入——dump 族纪律。
+/// 命名：对齐 dump 族形态（ast/typeck/symbols/diagnostics_probe 同族），
+/// issue #52 建议命名即 codegen.dump（不另设 codegen_dump 别名）。
+fn serve_codegen_dump_frame(
+  _s : @session.Session,
+  id : Json,
+  params : Json,
+) -> (String, Bool) {
+  guard json_field(params, "source").as_string() is Some(source) else {
+    return (
+      serve_param_err(
+        id, "codegen.dump 需要 params.source:string", "source:string",
+      ).stringify(),
+      false,
+    )
+  }
+  let filename = match json_field(params, "filename").as_string() {
+    Some(f) => f
+    None => "main.c"
+  }
+  let units : Array[@session.CompileUnit] = [{ filename, source, }]
+  let (full_source, _) = merge_units(units)
+  let lexed = lex_full_source(full_source, units)
+  if !lexed.errors.is_empty() {
+    return (
+      serve_err(
+        id, "compile", "codegen.dump：词法错误，无产物可转储",
+      ).stringify(),
+      false,
+    )
+  }
+  let r = @parser.parse(lexed.tokens)
+  guard r.program is Some(program) else {
+    return (
+      serve_err(
+        id, "compile", "codegen.dump：语法错误，无产物可转储",
+      ).stringify(),
+      false,
+    )
+  }
+  if !r.errors.is_empty() {
+    return (
+      serve_err(
+        id, "compile", "codegen.dump：语法错误，无产物可转储",
+      ).stringify(),
+      false,
+    )
+  }
+  let tc = @typeck.TypeChecker::new()
+  let (typed, type_errors, _w, _h) = tc.check(program)
+  if !type_errors.is_empty() {
+    return (
+      serve_err(
+        id, "compile", "codegen.dump：类型错误，无产物可转储",
+      ).stringify(),
+      false,
+    )
+  }
+  match @codegen.compile(typed).0 {
+    Some(output) => {
+      let dump_text = @bytecode.compile_output_dump_json(output)
+      // emitter 文本 → Json（协议帧 result 须为 Json 对象；文本内容不变）
+      let dump_json = @util.json_parse(dump_text) catch { _ => Json::null() }
+      (serve_ok(id, dump_json).stringify(), false)
+    }
+    None =>
+      (
+        serve_err(
+          id, "compile", "codegen.dump：字节码生成失败，无产物可转储",
+        ).stringify(),
+        false,
+      )
+  }
+}

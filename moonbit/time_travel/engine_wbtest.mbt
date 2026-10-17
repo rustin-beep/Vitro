@@ -50,6 +50,7 @@ test "engine_reset_clears_all" {
     e.frames.push({
       step_index: s,
       code_line: 1,
+      code_file: None,
       func_name: "main",
       semantic_label: "",
       algorithm_step: None,
@@ -110,6 +111,16 @@ impl SourceLineProvider for FakeProvider with fn source_line_at(
 }
 
 ///|
+/// #90：帧文件归属——白盒假供给恒 "main.c"（单文件合成程序形态）。
+impl SourceLineProvider for FakeProvider with fn source_file_at(
+  self : FakeProvider,
+  line : Int32,
+) -> String? {
+  ignore(line)
+  Some("main.c")
+}
+
+///|
 fn fake_src() -> FakeProvider {
   let m : Map[Int32, String] = Map([])
   m.set(1, "int acc = 0;")
@@ -165,6 +176,37 @@ test "engine_run_batch_basic_flow" {
     guard e.frames.frame_at(k) is Some(p) else { fail("帧 \{k} 必在窗口") }
     assert_eq(p.step_index, k)
   }
+}
+
+///|
+/// 锚 A2（#89，2026-10-17）：every 采样步长——10 指令程序 every=3：
+/// 仅第 3/6/9 条执行完采帧（step_index 2/5/8，帧口径 = 执行前步数）
+/// + 终帧 step_index 10；总帧 4（全量形态 11）。指令级语义不变（执行
+/// 仍逐条——heatmap 累计/检查点/断点判定不受采样影响）。
+test "engine_run_batch_every_stride" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(10))
+  let e = UnifiedEngine::new()
+  let src = fake_src()
+  let idxs : Array[Int32] = []
+  for i = 0; i < 2; i = i + 1 {
+    guard e.run_batch(vm, src, 10, every=3) is Ok(r) else {
+      fail("批 \{i} 不应 Err")
+    }
+    for p in r.payloads {
+      idxs.push(p.step_index)
+    }
+    if r.finished {
+      break
+    }
+  }
+  assert_eq(idxs.length(), 4, msg="#89 采样帧数 3 + 终帧 1")
+  assert_eq(idxs[0], 2)
+  assert_eq(idxs[1], 5)
+  assert_eq(idxs[2], 8)
+  assert_eq(idxs[3], 10)
+  // 终态帧不受采样门控（Finished 臂恒采）
+  assert_true(e.is_finished)
 }
 
 ///|

@@ -908,15 +908,17 @@ func runS3A16(cliPath string, rep *Report, p3Src string) {
 
 // ---------------------------------------------------------------- S5：预留位缺省语义
 
-// v01PayloadFields / reservedFields：v0.1 字段白名单，单源资产
+// v01PayloadFields / v02PayloadFields / reservedFields：字段白名单，单源资产
 // v01_payload_fields.json（与 replay_s1_s5.py 共读同一份）。语义快照随该文件
 // git 版本化——加载失败/为空/schema 不符一律 fail loud：白名单是 S5 断言的
 // 判据，静默降级等于拔掉防线 5 的牙。
+// v0.2 首批激活（#90，2026-10-17）：schema 键 v0.1→v0.2 + v02_payload_fields
+// = [code_file]；A1 未知键判据 = v0.1 冻结表 ∪ v0.2 激活表（见 runS5）。
 var (
-	v01PayloadFields, reservedFields = loadV01Fields()
+	v01PayloadFields, v02PayloadFields, reservedFields = loadV01Fields()
 )
 
-func loadV01Fields() (v01, reserved map[string]bool) {
+func loadV01Fields() (v01, v02, reserved map[string]bool) {
 	path := filepath.Join(capi.ProjectRoot(), "scripts", "replay", "v01_payload_fields.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -926,11 +928,16 @@ func loadV01Fields() (v01, reserved map[string]bool) {
 		Schema           string   `json:"schema"`
 		V01PayloadFields []string `json:"v01_payload_fields"`
 		ReservedFields   []string `json:"reserved_fields"`
+		V02PayloadFields []string `json:"v02_payload_fields"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		capi.Fatal("字段白名单 JSON 非法 %s: %v", path, err)
 	}
-	if parsed.Schema != "v0.1" || len(parsed.V01PayloadFields) == 0 || len(parsed.ReservedFields) == 0 {
+	// schema 轨道：v0.1（历史冻结）或 v0.2（#90 激活后当前轨）——回放驱动
+	// 只消费字段表集合，不锁死单一版本串；版本锁死在 gen_protocol_fields 的
+	// baselines.json（expected_schema），双闸分工。
+	if (parsed.Schema != "v0.1" && parsed.Schema != "v0.2") ||
+		len(parsed.V01PayloadFields) == 0 || len(parsed.ReservedFields) == 0 {
 		capi.Fatal("字段白名单 %s schema/内容不合法（schema=%q, v0.1 字段 %d, 预留字段 %d）",
 			path, parsed.Schema, len(parsed.V01PayloadFields), len(parsed.ReservedFields))
 	}
@@ -938,11 +945,15 @@ func loadV01Fields() (v01, reserved map[string]bool) {
 	for _, f := range parsed.V01PayloadFields {
 		v01[f] = true
 	}
+	v02 = map[string]bool{}
+	for _, f := range parsed.V02PayloadFields {
+		v02[f] = true
+	}
 	reserved = map[string]bool{}
 	for _, f := range parsed.ReservedFields {
 		reserved[f] = true
 	}
-	return v01, reserved
+	return v01, v02, reserved
 }
 
 func runS5(s *Serve, rep *Report, payloads []map[string]any) {
@@ -950,7 +961,9 @@ func runS5(s *Serve, rep *Report, payloads []map[string]any) {
 	for _, p := range payloads {
 		var unknown, reserved []string
 		for k := range p {
-			if !v01PayloadFields[k] {
+			// 已知字段 = v0.1 冻结表 ∪ v0.2 激活表（#90：code_file 激活后
+			// 不再是 unknown——additive-only 的两驱动跟随面）
+			if !v01PayloadFields[k] && !v02PayloadFields[k] {
 				unknown = append(unknown, k)
 			}
 			if reservedFields[k] {

@@ -329,6 +329,7 @@ fn blank_payload(step : Int32) -> @protocol.StepPayload {
   {
     step_index: step,
     code_line: 0,
+    code_file: None,
     func_name: "",
     semantic_label: "",
     algorithm_step: None,

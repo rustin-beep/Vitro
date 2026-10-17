@@ -6,7 +6,10 @@
 // 属边界反向污染，故解析不走 parser.c）。
 //
 // schema（与 course/ 真源对齐，version 字段留演进空间）：
-//   frontmatter：--- 围栏 key: value（id/kind/order 必填语义由消费方校验）
+//   frontmatter：--- 围栏 key: value（id/kind/order 必填语义由消费方校验；
+//     title 也入 meta——2026-10-16 E-08 换真值批补收：真源 frontmatter 事实
+//     携带 title（basic/bubble 等试点课实证），此前按「正文承载」不读是缺口，
+//     消费端（E-08 golden / lessonNotes）需要全链真源化的标题）
 //   正文：## / ### 标题、段落、- 无序列表、1. 有序列表、``` 围栏代码、
 //         GFM 表格——行内样式（粗体/行内码）v1 保持原样文本，token 化留 v2
 //         （version 字段即为此留）。
@@ -15,6 +18,7 @@ export interface LessonMeta {
   id: string;
   kind: string;
   order: number;
+  title?: string;
   famId?: string;
   stdin?: string;
 }
@@ -51,9 +55,10 @@ export function parseLessonMd(src: string): LessonDoc {
     if (k === "id") meta.id = v;
     else if (k === "kind") meta.kind = v;
     else if (k === "order") meta.order = Number.parseInt(v, 10) || 0;
+    else if (k === "title") meta.title = v; // 2026-10-16 补收（见头注 schema 说明）
     else if (k === "famId") meta.famId = v;
     else if (k === "stdin") meta.stdin = v;
-    // title 等展示字段不进 meta（正文承载）；未知字段静默跳过（宽容读取——
+    // 其余展示字段不进 meta；未知字段静默跳过（宽容读取——
     // 与 gen_course 的 fail loud 生成期校验分属两道：读取宽容、生成严格）
   }
   if (!meta.id || !meta.kind) throw new LessonParseError("frontmatter 缺 id 或 kind");

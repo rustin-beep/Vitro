@@ -37,12 +37,33 @@ impl @time_travel.SourceLineProvider for SessionLines with fn source_line_at(
 }
 
 ///|
+/// #90（2026-10-17）：帧文件归属适配器——Session.source_file_at 直通
+/// （file_ranges 映射在 session 侧，编排层只做依赖反转接线）。
+impl @time_travel.SourceLineProvider for SessionLines with fn source_file_at(
+  self : SessionLines,
+  line : Int32,
+) -> String? {
+  self.s.source_file_at(line)
+}
+
+///|
 /// StepPayload → Json（Rust serde 序 14 字段——显式 emitter 纪律，字段
 /// 序/Option 形态逐位对齐 unified/types.rs:16-31）。
+/// v0.2 首批（#90，2026-10-17）：code_file 插在 code_line 之后（语义
+/// 相邻——「这行属于哪个文件」紧跟「这行是哪行」）；additive-only，
+/// v0.1 既有 14 键名/序不动。null 形态 = JSON null（结构性无映射的
+/// 防御态——实测见 #90：单文件编译恒给文件名）。
 fn step_payload_json(p : @protocol.StepPayload) -> Json {
   let m : Map[String, Json] = Map([])
   m.set("step_index", Json(p.step_index))
   m.set("code_line", Json(p.code_line))
+  m.set(
+    "code_file",
+    match p.code_file {
+      Some(f) => Json(f)
+      None => Json::null()
+    },
+  )
   m.set("func_name", Json(p.func_name))
   m.set("semantic_label", Json(p.semantic_label))
   m.set(
@@ -318,9 +339,22 @@ fn serve_step_next_frame(
   //（_params 弃置——手写例与实现脱节）。缺省 1 = 旧调用方零变化；负值/
   // 零 fail loud（param_err——静默取 1 会把「想推进 100」的手滑变成单步
   // 慢放）。上限钳到 max_steps 配置（防一次推进吞满预算无诊断）。
-  let frames : Int32 = match json_field(params, "frames").as_int() {
-    Some(v) => v
-    None => 1
+  //
+  // #89 稀疏出帧（2026-10-17，v0.2 供数批）：every = 采样步长——每 N 条
+  // 指令采 1 帧（一次调用推进 N、发布 1；采样语义见 run_batch 头注）。
+  // **frames 与 every 语义互斥**（N 步 N 帧 vs N 步 1 帧），双给 fail loud
+  // （参数错误帧带 expected 形状）——不静默择一。
+  let frames_json = json_field(params, "frames")
+  let every_json = json_field(params, "every")
+  // 缺省（键缺省/null）取 1；存在且非整数 → 0 哨兵（0 同时落在下方
+  // 正数校验的非法面，类型错与越界共用同一条 fail loud 路径）
+  let frames : Int32 = match frames_json {
+    Null => 1
+    _ => frames_json.as_int().unwrap_or(0)
+  }
+  let every : Int32 = match every_json {
+    Null => 1
+    _ => every_json.as_int().unwrap_or(0)
   }
   if frames <= 0 {
     return (
@@ -330,9 +364,39 @@ fn serve_step_next_frame(
       false,
     )
   }
+  if every <= 0 || every > 100000 {
+    return (
+      serve_param_err(
+        id,
+        "step.next 的 params.every 须为 1..100000 的整数（采样步长）",
+        "every:int in [1,100000]",
+      ).stringify(),
+      false,
+    )
+  }
+  if frames > 1 && every > 1 {
+    return (
+      serve_param_err(
+        id,
+        "step.next 的 params.frames 与 every 互斥（frames=N 步 N 帧；every=N 步 1 帧）",
+        "frames:int>=1 XOR every:int in [1,100000]",
+      ).stringify(),
+      false,
+    )
+  }
+  let advance = if every > 1 {
+    every
+  } else {
+    frames
+  }
+  let stride = if every > 1 {
+    every
+  } else {
+    1
+  }
   let budget = s.config.max_steps
-  let n = if frames > budget { budget } else { frames }
-  let outcome = engine.run_batch(s.vm, SessionLines::{ s, }, n)
+  let n = if advance > budget { budget } else { advance }
+  let outcome = engine.run_batch(s.vm, SessionLines::{ s, }, n, every=stride)
   guard outcome is Ok(result) else {
     guard outcome is Err(msg) else { abort("unreachable") }
     return (serve_err(id, "state", msg).stringify(), false)

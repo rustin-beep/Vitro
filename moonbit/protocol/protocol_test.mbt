@@ -4,7 +4,10 @@
 ///|
 test "blackbox_schema_surface" {
   // 常量 + 白名单 + 台账
-  assert_eq(@protocol.SCHEMA_VERSION, "v0.1")
+  assert_eq(@protocol.SCHEMA_VERSION, "v0.2") // #90 v0.2 首批激活（2026-10-17）
+  let v02 = @protocol.step_payload_fields_v0_2()
+  assert_eq(v02.length(), 1)
+  assert_eq(v02[0], "code_file")
   assert_eq(@protocol.SCHEMA_V0_1_FROZEN_AT, "2026-09-12")
   let fields = @protocol.step_payload_fields_v0_1()
   assert_eq(fields.length(), 14)
@@ -17,11 +20,16 @@ test "blackbox_schema_surface" {
   assert_eq(checklist.length(), 5)
   let ledger : Array[@protocol.SchemaFieldPlan] = @protocol.v0_2_field_ledger()
   assert_eq(ledger.length(), 8) // 7 Rust 照搬 + error_catalog[].icon（#27 增补）
+  // #90 激活复核：code_file 台账条 status=active（激活即单源登记）
+  let cf = ledger.filter(p => p.field == "code_file")
+  assert_eq(cf.length(), 1)
+  assert_eq(cf[0].status, "active")
+  assert_eq(cf[0].kind, "add")
   let contracts : Array[@protocol.BehaviorContract] = @protocol.behavior_contracts()
   assert_eq(contracts.length(), 6) // 5 Rust 照搬 + icons_asset_channel（#27 增补）
   // emitter
   let json = @protocol.contracts_json()
-  assert_true(json.contains("\"schema\":\"v0.1\""))
+  assert_true(json.contains("\"schema\":\"v0.2\"")) // #90 激活升格
 }
 
 ///|
@@ -103,6 +111,7 @@ test "blackbox_dto_surface" {
   let payload : @protocol.StepPayload = {
     step_index: 1,
     code_line: 1,
+    code_file: None,
     func_name: "main",
     semantic_label: "返回",
     algorithm_step: Some(algo),
@@ -167,6 +176,7 @@ test "blackbox_stream_surface" {
   let p0 : @protocol.StepPayload = {
     step_index: 0,
     code_line: 1,
+    code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "返回",
     algorithm_step: None,
@@ -186,6 +196,7 @@ test "blackbox_stream_surface" {
   let p1 : @protocol.StepPayload = {
     step_index: 1,
     code_line: 2,
+    code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "返回",
     algorithm_step: None,

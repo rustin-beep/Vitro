@@ -8,7 +8,7 @@ import {
 // Values
 pub const SCHEMA_V0_1_FROZEN_AT : String = "2026-09-12"
 
-pub const SCHEMA_VERSION : String = "v0.1"
+pub const SCHEMA_VERSION : String = "v0.2"
 
 pub fn behavior_contracts() -> Array[BehaviorContract]
 
@@ -37,6 +37,8 @@ pub fn reserved_fields_v0_2() -> Array[String]
 pub fn semantic_label_vocabulary() -> Array[SemanticLabelKind]
 
 pub fn step_payload_fields_v0_1() -> Array[String]
+
+pub fn step_payload_fields_v0_2() -> Array[String]
 
 pub fn v0_2_activation_checklist() -> Array[String]
 
@@ -255,6 +257,7 @@ pub fn StepMeta::to_repr(Self) -> @debug.Repr
 pub(all) struct StepPayload {
   step_index : Int
   code_line : Int
+  code_file : String?
   func_name : String
   semantic_label : String
   algorithm_step : AlgorithmStepSnapshot?
@@ -273,6 +276,7 @@ pub fn StepPayload::to_repr(Self) -> @debug.Repr
 pub(all) struct StepPayloadDelta {
   step_index : Int
   code_line : Int
+  code_file_idx : Int?
   func_name_idx : Int
   semantic_label_idx : Int
   algorithm_step : AlgorithmStepSnapshotRef?
@@ -295,6 +299,7 @@ pub fn StepPayloadDelta::to_repr(Self) -> @debug.Repr
 pub(all) struct StepPayloadRef {
   step_index : Int
   code_line : Int
+  code_file_idx : Int?
   func_name_idx : Int
   semantic_label_idx : Int
   algorithm_step : AlgorithmStepSnapshotRef?

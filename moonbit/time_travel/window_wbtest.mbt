@@ -12,6 +12,7 @@ fn mk_payload(step : Int32) -> @protocol.StepPayload {
   {
     step_index: step,
     code_line: 1,
+    code_file: None,
     func_name: "main",
     semantic_label: "",
     algorithm_step: None,

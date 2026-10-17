@@ -12,6 +12,15 @@
 // 锚注释跨版本漂移不属语义面）；动画指令（flip/fade）、事件 handler、浏览器态
 // （Editor 的 CM6 视图 / CallTree 的 rAF 相机 / CourseTree 折叠交互 / bind
 // 之后的用户输入态）不产生渲染语义差异，维持浏览器实测纪律。
+//
+// 课程叙述真源链（2026-10-16 #122 裁定三小件①「E-08 换真值」落地）：payload
+// 手写 lesson 段退役——coursenote 用例改吃 course/*.md 真源（?raw 内联经
+// parseLessonMd 解析），golden 锚「课程真源 → 解析 → 渲染 HTML」全链。
+// **块型覆盖矩阵**（lessonMd 七块型 × 两课试点真源，golden 逐型锚定）：
+//   h2 / p / ol / code ← coursenote-blocks（course/basic/bubble/lesson.md）
+//   ul / table        ← coursenote-sorting（course/sorting/bubble_sort/lesson.md）
+//   h3                ← coursenote-h3 冻结样本块（真源缺口——两试点课均无
+//                       ### 标题；在全量课程铺开后复核是否可改吃真源）
 "use strict";
 
 import { render } from "svelte/server";
@@ -24,12 +33,22 @@ import ProtoView from "../lib/ProtoView.svelte";
 import ReplayBar from "../lib/ReplayBar.svelte";
 import VarsList from "../lib/VarsList.svelte";
 import { frameAt, session } from "../session.svelte.ts";
-import type { Block } from "../lib/lessonMd.ts";
+import { parseLessonMd, type Block, type LessonDoc } from "../lib/lessonMd.ts";
+import bubbleMd from "../../../course/basic/bubble/lesson.md?raw";
+import bubbleSortMd from "../../../course/sorting/bubble_sort/lesson.md?raw";
 import type { MemoryRegions, StepPayload } from "../../js/types.ts";
 import type { CatalogCard } from "../session.svelte.ts";
 
+// 课程真源（?raw 内联——E-08 是 node 侧 SSR 闸，无 fetch 面，内联即真源直读；
+// 运行时的懒加载交付格式另走 lessonNotes.ts 的 import.meta.glob ?url，两处
+// 消费同一真源、形态各随场景）。
+const BUBBLE: LessonDoc = parseLessonMd(bubbleMd);
+const BUBBLE_SORT: LessonDoc = parseLessonMd(bubbleSortMd);
+
 // core.json 冻结数据的读面文档——段结构对齐 wire DTO（js/types.ts），段缺省
 // 走空兜底（loadPayload 清场保证用例间零串染）。
+// 注：lesson 段已退役（2026-10-16 换真值）——coursenote 用例直读 course/*.md
+// 真源，不再经 payload 手写块。
 export interface CorePayload {
   frames?: StepPayload[];
   idx?: number;
@@ -38,7 +57,6 @@ export interface CorePayload {
   catalog?: CatalogCard[];
   capabilities?: Record<string, unknown>;
   labels?: string[];
-  lesson?: { title: string; blocks: Block[] };
 }
 
 export interface CaseResult {
@@ -95,9 +113,24 @@ const CASES: Record<string, (p: CorePayload) => string> = {
   "outputview-empty": () => render(OutputView).body,
   "catalogview-diagnostics": () => render(CatalogView).body,
   "protoview-caps": () => render(ProtoView).body,
-  "coursenote-blocks": (p) =>
+  // 课程叙述 × 真源链（换真值）：title 与 blocks 全部来自 course/*.md 解析
+  "coursenote-blocks": () =>
     render(CourseNote, {
-      props: { title: p.lesson?.title ?? "", blocks: p.lesson?.blocks ?? [] },
+      props: { title: BUBBLE.meta.title ?? "", blocks: BUBBLE.blocks },
+    }).body,
+  // sorting 真源（覆盖矩阵：ul / table 块型的真源锚——basic/bubble 无此两型）
+  "coursenote-sorting": () =>
+    render(CourseNote, {
+      props: { title: BUBBLE_SORT.meta.title ?? "", blocks: BUBBLE_SORT.blocks },
+    }).body,
+  // h3 块型覆盖（冻结样本块——真源缺口登记见头注覆盖矩阵；样本块文案明标
+  // 「冻结样本」防与真源内容混淆）
+  "coursenote-h3": () =>
+    render(CourseNote, {
+      props: {
+        title: BUBBLE.meta.title ?? "",
+        blocks: [...BUBBLE.blocks, { type: "h3", text: "（冻结样本块）真源 h3 缺口占位——两试点课无 ### 标题" } as Block],
+      },
     }).body,
 };
 

@@ -6,6 +6,7 @@ fn make_payload(step : Int32, vars : Array[ApiVariableSnapshot]) -> StepPayload 
   {
     step_index: step,
     code_line: step + 1,
+    code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "step \{step}",
     algorithm_step: None,
@@ -36,6 +37,7 @@ fn clone_payload(p : StepPayload) -> StepPayload {
   {
     step_index: p.step_index,
     code_line: p.code_line,
+    code_file: p.code_file,
     func_name: p.func_name,
     semantic_label: p.semantic_label,
     algorithm_step: match p.algorithm_step {
@@ -340,6 +342,7 @@ test "stream_symbol_table_full_content_anchor" {
   let p : StepPayload = {
     step_index: 0,
     code_line: 1,
+    code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "step 0",
     algorithm_step: Some({
@@ -359,8 +362,10 @@ test "stream_symbol_table_full_content_anchor" {
     root_cause_hint: None,
   }
   let batch = encode_payloads([p], 0)
+  // #90（2026-10-17）：code_file 符号插在 code_line 之后、func_name 之前
+  // （encode_step_payload 字面量书写序）——"main.c" 恒占 index 1。
   let expected : Array[String] = [
-    "", "main", "step 0", "ALGO", "DISPLAY", "PHASE", "DESC", "i", "int",
+    "", "main.c", "main", "step 0", "ALGO", "DISPLAY", "PHASE", "DESC", "i", "int",
   ]
   assert_eq(batch.symbol_table.length(), expected.length())
   for i, want in expected {

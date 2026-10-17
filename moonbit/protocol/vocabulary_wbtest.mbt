@@ -94,13 +94,13 @@ test "vocabulary_json_shape" {
   // 键序 = serde 字典序（discipline 首键、条目 domain/example/id/...）
   let json = vocabulary_json()
   assert_false(json.contains(": "), msg="紧凑形态不得含键值空格")
-  assert_true(json.contains("\"schema\":\"v0.1\""))
+  assert_true(json.contains("\"schema\":\"v0.2\"")) // #90 激活升格
   assert_true(
     json.has_prefix("{\"discipline\":\"词汇只增不改"),
     msg="顶层首键 = discipline（serde 字典序）",
   )
   assert_true(
-    json.has_suffix("\"schema\":\"v0.1\"}"),
+    json.has_suffix("\"schema\":\"v0.2\"}"),
     msg="顶层末键 = schema 段收尾",
   )
   assert_true(
@@ -148,7 +148,7 @@ test "vocabulary_json_byte_exact_rust_truth" {
     "3b\",\"status\":\"reserved\",\"template\":\"栈展开\"},{\"domain\":\"csharp\",\"example\":\"",
     "进入 catch\",\"id\":\"catch_enter\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template",
     "\":\"进入 catch\"},{\"domain\":\"csharp\",\"example\":\"finally 执行\",\"id\":\"finally\",\"",
-    "since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"finally 执行\"}],\"schema\":\"v0.1",
+    "since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"finally 执行\"}],\"schema\":\"v0.2",
     "\"}",
   ]
   let buf = StringBuilder()

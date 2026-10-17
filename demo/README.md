@@ -66,6 +66,24 @@ Firefox 134+），加载失败页面会显示降级提示。
    share 七锚：base64url 往返·三形态 fail loud·片段解析三态·shareUrlFrom
    剥旧片段·压缩往返·**截断必被解压失败兜住**·长度告警边界；**须 node 25**，
    type stripping 直跑 .ts）。DOM 交互层不硬测，维持浏览器实测纪律。
+7. **E-08 快照闸**（`ci.yml` 已接）——`vite build --ssr src/e08/entry.ts` 产
+   node bundle 后 `node --test demo/tests/e08.test.mts`：13 锚 = 12 组件用例
+   × 冻结 golden（`demo/e08/golden/*.html`）逐字节比对 + 用例表↔golden 目录
+   全等锚；刷新只走 `tests/e08-update.mts` 显式人工令（E-04：快照禁测试内
+   动态生成）。**课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
+   （blocks/sorting/h3）直读 `course/*.md` 真源解析渲染，payload 手写 lesson
+   段已退役；块型覆盖矩阵登记在 `src/e08/entry.ts` 头注（h3 为冻结样本块——
+   两试点课真源无 ### 标题的真源缺口）。
+8. **E2E 浏览器实测（本地资产，CI 无 Edge 不进流水线）**——`demo/tests/
+   e2e_diagcard.mjs`（F4 残留①④：编译诊断卡 + 断点链 17 锚）+
+   `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 主题持久化 + 分享往返 19 锚，
+   mock FSA 注入跑全链）。跑法：vite build 产物 → `node tests/serve_static.mjs
+   8931` → Edge `--headless=new --remote-debugging-port=9222
+   --no-proxy-server` → `node tests/e2e_*.mjs http://127.0.0.1:8931/`
+   （**node 25**；环境带 HTTP_PROXY，CDP 与页面都禁走代理——脚本内
+   /json/list 走 node:http 直连，Edge 加 --no-proxy-server）。前置：
+   `moonbit/_build` 的 wasm-gc 产物须已 cp 到 `demo/wasm.wasm`（新鲜度
+   闸缺口见 issue #123①——本地手 cp 无门禁，仍是已知缺口）。
 
 ## 链接分享（2026-10-09）
 
@@ -104,6 +122,24 @@ HTTP 请求，代码不出本机（不上传、不经第三方）。
 原文件。**不自动保存**：dirty 文件以 chip 圆点标记，关页由浏览器原生
 beforeunload 提示兜底；点课离开时 confirm 后保存并关闭工作区。仅桌面
 Chromium（Chrome/Edge）支持；移动端（≤960px）入口整体隐藏，不做降级。
+
+> F4 前端批状态：上述能力已随 `src/` 新栈（Svelte 5）迁移落地——store 在
+> `src/lib/workspace.svelte.ts`（纯函数物理保留 import `js/workspace.ts`，
+> pure.test 四锚零改动），UI 在 `src/lib/WorkspaceBar.svelte`；采集通道经
+> `session.collect` 自动带 `compile.files`（单一源，对齐旧栈
+> buildCompileParams 纪律）。mock FSA E2E 15 锚见门禁第 8 条。
+
+## 课程叙述消费（2026-10-16 glob 懒加载格式）
+
+`course/*/lesson.md` 真源由 `src/lib/lessonNotes.ts` 经
+`import.meta.glob("../../../course/**/lesson.md", { query: "?url", eager: false })`
+**按文件懒加载**（每课一枚 base64 data-URL 小块，不进首屏包——试点期 2 课
+`?raw` 内联是全量 110 课即爆的过渡形态，裁定见 #122 末条）。运行时
+`loadLessonNote("<chap>/<id>")` fetch + `lessonMd.ts` 解析；解析失败 /
+无此课叙述 = 不渲染面板 + 控制台 fail loud（宽容于用户）。E-08 快照闸的
+coursenote 用例走同一真源（SSR 侧 `?raw` 内联——node 无 fetch 面），
+两形态同源联动，改真源两边一起验。切分线：`course/*.md` 是 demo 自家资产，
+消费端 TS 解析自家格式合规（parser.c 不加 demo 模式）。
 
 ## 诚实边界
 

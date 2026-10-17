@@ -182,6 +182,29 @@ pub fn Session::source_line_at(self : Session, global_line : Int32) -> String? {
 }
 
 ///|
+/// 按全局行号取所属编译单元文件名（#90 v0.2 首批：帧文件归属——
+/// source_line_at 的 file 对偶，同 file_ranges 映射）。单文件编译
+/// （file_ranges 单区间）同样给值恒首单元文件名（"main.c"——下游
+/// 多文件当前行高亮据此归位，单文件时与编辑器缓冲同名可直接匹配）。
+/// 越界/非正数/结构性无映射返回 None。
+pub fn Session::source_file_at(self : Session, global_line : Int32) -> String? {
+  if global_line <= 0 {
+    return None
+  }
+  match self.find_file_range(global_line) {
+    Some(range) => Some(range.filename)
+    None =>
+      // 单文件会话兜底：file_ranges 空 → 首单元（与 source_line_at 同形）
+      if self.compile.file_ranges.is_empty() &&
+        self.compile.compile_units.length() > 0 {
+        Some(self.compile.compile_units[0].filename)
+      } else {
+        None
+      }
+  }
+}
+
+///|
 fn Session::find_file_range(self : Session, line : Int32) -> FileRange? {
   for r in self.compile.file_ranges {
     if line >= r.start_line && line <= r.end_line {

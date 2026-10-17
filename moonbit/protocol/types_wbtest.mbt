@@ -1,11 +1,14 @@
 // DTO 族白盒锚（S7 批一号）：StepPayload 全 14 字段构造与读取锚
 // （字段名/类型语义逐一对齐 Rust types.rs）+ PointerStatus 序列化文本。
+// v0.2 首批（#90，2026-10-17）：+code_file 可空字段——本锚随激活扩为
+// 15 字段（v0.1 十四字段白名单不变，新增字段 additive-only）。
 
 ///|
 test "step_payload_all_fourteen_fields_constructible" {
   let payload : StepPayload = {
     step_index: 42,
     code_line: 12,
+    code_file: Some("util.c"),
     func_name: "main",
     semantic_label: "调用 printf",
     algorithm_step: Some({
@@ -57,6 +60,7 @@ test "step_payload_all_fourteen_fields_constructible" {
   // 读取锚：14 字段逐一（字段名语义与 Rust 侧逐一对齐）
   assert_eq(payload.step_index, 42)
   assert_eq(payload.code_line, 12)
+  assert_eq(payload.code_file, Some("util.c")) // #90 v0.2 首批新增字段
   assert_eq(payload.func_name, "main")
   assert_eq(payload.semantic_label, "调用 printf")
   match payload.algorithm_step {
@@ -94,6 +98,7 @@ test "step_payload_optional_fields_default_none" {
   let payload : StepPayload = {
     step_index: 0,
     code_line: -1,
+    code_file: None,
     func_name: "",
     semantic_label: "",
     algorithm_step: None,
@@ -109,6 +114,7 @@ test "step_payload_optional_fields_default_none" {
   }
   assert_true(payload.algorithm_step is None)
   assert_true(payload.root_cause_hint is None)
+  assert_true(payload.code_file is None) // #90：可空字段缺省 null
   assert_eq(payload.local_vars.length(), 0)
 }
 

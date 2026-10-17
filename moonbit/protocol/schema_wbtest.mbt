@@ -91,9 +91,30 @@ test "empty_and_single_samples_pass" {
 
 ///|
 test "schema_constants_frozen" {
-  // v0.1 冻结锚：版本串与冻结日期逐字对齐 Rust contracts.rs
-  assert_eq(SCHEMA_VERSION, "v0.1")
+  // v0.1 冻结日期逐字对齐 Rust contracts.rs（历史基线不动）；版本串随
+  // v0.2 首批激活（#90，2026-10-17）升格 v0.1→v0.2——SCHEMA_VERSION 在
+  // wire 上（gateway/wasm 出口），须诚实反映已激活字段集
+  assert_eq(SCHEMA_VERSION, "v0.2")
   assert_eq(SCHEMA_V0_1_FROZEN_AT, "2026-09-12")
+}
+
+///|
+test "v0_2_active_fields_match_single_source" {
+  // #90 激活对账锚：v0.2 已激活字段 = gen_protocol_fields 生成物（JSON
+  // 单源 v02_payload_fields）——激活项只增不改，与 v0.1 冻结表/预留位
+  // 三表互斥（生成期查重，本锚复核测试期）
+  let v02 = step_payload_fields_v0_2()
+  assert_eq(
+    v02.length(),
+    1,
+    msg="v0.2 激活字段必须恰 1 条（#90 首批）",
+  )
+  assert_eq(v02[0], "code_file")
+  for f in step_payload_fields_v0_1() {
+    if f == "code_file" {
+      fail("code_file 不得同时出现在 v0.1 冻结表")
+    }
+  }
 }
 
 ///|
@@ -162,7 +183,7 @@ test "contracts_json_shape" {
   // （BTreeMap：behavior_contracts 首键、条目内 batch 首键——见函数头注）
   let json = contracts_json()
   assert_false(json.contains(": "), msg="紧凑形态不得含键值空格")
-  assert_true(json.contains("\"schema\":\"v0.1\""))
+  assert_true(json.contains("\"schema\":\"v0.2\""))
   assert_true(json.contains("\"frozen_at\":\"2026-09-12\""))
   assert_true(
     json.has_prefix("{\"behavior_contracts\":["),
@@ -209,7 +230,7 @@ test "contracts_json_byte_exact_rust_truth" {
     "s/gen_icons -check（digest 双产物一致，CI 生成器", "闸组）\",\"id\":\"icons_asset_channel\",\"statement\":\"图标资",
     "产经 icons.get 单通道下发（digest 与真源一致）", "；业务帧（error_catalog.icon / trap 文案装饰位）",
     "只携带语义 id 不携带字形\",\"status\":\"active\"}],\"fro", "zen_at\":\"2026-09-12\",\"reserved_fields_v0_2\":[\"handler_depth\"",
-    ",\"unwinding\",\"unwind_frames_left\",\"current_exception\"],\"sche", "ma\":\"v0.1\",\"v0_2_activation_checklist\":[\"① 只增事件：",
+    ",\"unwinding\",\"unwind_frames_left\",\"current_exception\"],\"sche", "ma\":\"v0.2\",\"v0_2_activation_checklist\":[\"① 只增事件：",
     "不得改动 v0.1 既有 14 字段的名称/类型/语义；", "预留位激活一律以新增字段形态落地（消费方",
     "须忽略未知字段）\",\"② 同步更新 docs/spec/STEP_P", "AYLOAD_SCHEMA_V0_1.md：§9 台账状态 active + §7 校验",
     "表追加 v0.2 历史行\",\"③ 重跑引擎侧 C1–C3：car", "go test --test step_payload_schema_v0_1_test / --test unifie",
@@ -223,14 +244,17 @@ test "contracts_json_byte_exact_rust_truth" {
     "b\",\"field\":\"unwind_frames_left\",\"kind\":\"reserve\",\"note\":\"剩", "余待展开帧数，展开动画驱动字段\",\"status\":\"pen",
     "ding\"},{\"batch\":\"CS3b\",\"field\":\"current_exception\",\"kind\":\"r", "eserve\",\"note\":\"{type_name, message, addr, origin_line}|null",
     "；origin_line 为原始抛点（`throw;` 保留 / `throw e;", "` 改写）\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"field\":\"co",
-    "de_file\",\"kind\":\"add\",\"note\":\"多文件行号归位（§8 #9", "）：code_line 保持全局行号语义，另附文件名",
-    "，避免破坏断点/heatmap 口径\",\"status\":\"pending\"},{\"", "batch\":\"v0.2\",\"field\":\"call_stack[].return_line\",\"kind\":\"add",
-    "\",\"note\":\"补全既有字段值（§8 #1）：字段已在 v", "0.1 中恒为 0，激活 = 记录 VM 帧返回行，属**补",
-    "值不改字段**\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"fiel", "d\":\"func_display_name / func_mangled_name\",\"kind\":\"add\",\"not",
-    "e\":\"§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可", "读名双字段，保留 func_name 作 display 语义\",\"stat",
-    "us\":\"pending\"},{\"batch\":\"#27\",\"field\":\"error_catalog[].icon\"", ",\"kind\":\"add\",\"note\":\"emoji 码点退役为语义图标 id",
-    "（值域 = moonbit/icons/index.tsv 76 id，icon_catalog 闸", "锁值域；无兼容别名，0.9 一步切换）\",\"status\":",
-    "\"active\"}]}",
+    "de_file\",\"kind\":\"add\",\"note\":\"多文件行号归位（§8 #9", "）：code_line 保持全局行号语义，另附文件名，避免破坏断点/heatmap 口",
+    "径。2026-10-17 #90 激活（F2 供数批①）：collect 经 SourceLineProvider.",
+    "source_file_at 同源解析，gateway step_payload_json 插在 code_line 之",
+    "后；单文件编译恒给首单元文件名，null 仅结构性无映射的防御态；stream",
+    " 差分格式同步扩 code_file_idx（None=未变）\",\"status\":\"active\"},{\"",
+    "batch\":\"v0.2\",\"field\":\"call_stack[].return_line\",\"kind\":\"add", "\",\"note\":\"补全既有字段值（§8 #1）：字段已在 v",
+    "0.1 中恒为 0，激活 = 记录 VM 帧返回行，属**补", "值不改字段**\",\"status\":\"pending\"},{\"batch\":\"v0.2\",\"fiel",
+    "d\":\"func_display_name / func_mangled_name\",\"kind\":\"add\",\"not", "e\":\"§8 #2：C++/C# 内部名（`__ctor__Vec`）与源码可",
+    "读名双字段，保留 func_name 作 display 语义\",\"stat", "us\":\"pending\"},{\"batch\":\"#27\",\"field\":\"error_catalog[].icon\"",
+    ",\"kind\":\"add\",\"note\":\"emoji 码点退役为语义图标 id", "（值域 = moonbit/icons/index.tsv 76 id，icon_catalog 闸",
+    "锁值域；无兼容别名，0.9 一步切换）\",\"status\":", "\"active\"}]}",
   ]
   let buf = StringBuilder()
   for p in truth {

@@ -132,6 +132,7 @@ vitro/engine/gateway vitro/engine/bytecode HEAP_START
 vitro/engine/gateway vitro/engine/bytecode MEM_SIZE
 vitro/engine/gateway vitro/engine/bytecode NULL_TRAP_SIZE
 vitro/engine/gateway vitro/engine/bytecode Symbol
+vitro/engine/gateway vitro/engine/bytecode compile_output_dump_json
 vitro/engine/gateway vitro/engine/bytecode compute_heap_base
 vitro/engine/gateway vitro/engine/codegen compile
 vitro/engine/gateway vitro/engine/icons export_icons_json

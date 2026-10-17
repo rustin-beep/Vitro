@@ -8,11 +8,13 @@
 //     $derived 经 frameAt() 读它时依赖跟踪照常生效。
 "use strict";
 
-import type { StepPayload } from "../js/types.ts";
+import type { Diagnostic, StepPayload } from "../js/types.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { annotateGroups } from "../js/util.ts";
+import { switchTab } from "./tabs.svelte.ts";
+import { workspace, workspaceFilesForCompile } from "./lib/workspace.svelte.ts";
 
 // 共享状态 = 官方推荐形态（best practices：classes with $state fields）——
 // $state.raw 只能作声明初始化器/类字段，不可嵌在 $state({}) 字面量里
@@ -46,6 +48,14 @@ class SessionState {
   versions = $state({ engine: "", protocol: "" });
   perf = $state({ collectMs: 0, replayPerFrameUs: 0 });
   outputs = $state({ stdout: "", stderr: "", note: "" }); // 四通道输出（采集时一次性拉齐）
+  /** 编译期诊断全集（F4 残留①：worker 回传全集——含 warning/hint；run 视图
+   *  诊断卡渲染。raw 不代理：加载后只读）。 */
+  diagnostics = $state.raw([] as Diagnostic[]);
+  /** 预处理宏展开轨迹（诊断卡折叠次块——旧栈 renderPpTrace 语义）。 */
+  ppTrace = $state.raw([] as string[]);
+  /** 编译业务域 ok——false = 零帧，诊断卡是主反馈面（stopped 留空不走
+   *  trap pill 语义：编译失败不是「受检终止」）。 */
+  compileOk = $state(true);
   gran = $state<"stmt" | "insn">(initGran()); // 粒度：insn=指令级（帧全集）/ stmt=语句级（按行合并组尾帧）
   /** 播放帧序列（粒度派生——审阅 A-P2-12 处方：派生生成不 mutate 真源）。
    *  语句级 = 按行合并组尾帧（coalesceStmt 物理保留 util.ts，tests 锚零改动）。 */
@@ -193,19 +203,49 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
   session.playing = false;
   stopTimer();
   session.status = "Worker 采集中（编译 + run + step 闭环）…";
+  // 开采即清陈旧诊断（上次失败卡片不得滞留冒充本次结果）
+  session.diagnostics = [];
+  session.ppTrace = [];
+  session.compileOk = true;
   try {
-    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string } }>({
+    // 工作区模式（F4 残留②）：全量打包 compile.files——active 文件 = 编辑器
+    // 当前内容（liveSource 显式传，禁读 DOM）；单一源在 workspaceFilesForCompile
+    // （旧栈 buildCompileParams 同语义，两条通道同口径）
+    const files = workspace.active ? workspaceFilesForCompile(source) : undefined;
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string }; diagnostics: Diagnostic[]; ppTrace: string[]; compileOk: boolean }>({
       op: "collect",
       source,
       cap: session.cap,
       bpLines: [...session.breakpoints],
+      files,
     });
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
     session.idx = 0;
     session.stopped = r.stopped;
     session.outputs = r.outputs;
+    session.diagnostics = r.diagnostics ?? [];
+    session.ppTrace = r.ppTrace ?? [];
+    session.compileOk = r.compileOk;
+    if (!r.compileOk) {
+      // 编译失败（F4 残留①）：零帧 + 树/内存清空；诊断卡是主反馈面，
+      // stopped 留空（编译失败 ≠ trap pill「受检终止」——两态不得混显）
+      session.tree = null;
+      session.memory = null;
+      session.perf.collectMs = r.ms;
+      session.versions = r.versions;
+      const errs = session.diagnostics.filter((d) => d.severity === "error").length;
+      session.status = `编译失败——${session.diagnostics.length} 条诊断（${errs} 错误）见「运行」视图`;
+      // 诊断卡在 run tab——编译失败即切过去，卡片是保证可见的反馈面
+      // （旧栈单页形态 diag-list 恒可见；新栈 tab 化后的等价语义）
+      switchTab("run");
+      toast("err", session.status);
+      return;
+    }
     session.tree = buildCallTree(r.frames); // 调用树（帧全集 → trie；物理保留 js/calltree.ts 纯函数）
+    // 采集成功即切运行 tab（旧栈单页形态「结果立即可见」的 tab 化等价——
+    // 与点课切运行同语义；用户在内存/手册 tab 点采集不该扑空）
+    switchTab("run");
     try {
       const mem = await call<{ [k: string]: unknown }>("memory.regions");
       session.memory = mem as unknown as import("../js/types.ts").MemoryRegions;
@@ -214,7 +254,7 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
     session.versions = r.versions;
     session.status = r.frames.length
       ? `采集 ${r.frames.length} 帧 · 耗时 ${r.ms}ms`
-      : "零帧——编译失败或程序无步进";
+      : "零帧——程序无步进（空 main 或立即返回）";
     // 反馈分域：会话态走 status 行；操作结果走 toast（失败/到顶才弹，成功不扰）
     if (r.stopped) toast("err", r.stopped);
   } catch (err) {

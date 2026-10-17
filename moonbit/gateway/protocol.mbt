@@ -304,12 +304,15 @@ fn dispatch(
     "typeck.dump" => serve_typeck_dump_frame(s, id, params)
     "symbols.dump" => serve_symbols_dump_frame(s, id, params)
     "diagnostics_probe" => serve_diagnostics_probe_frame(s, id, params)
+    // #52 结构面①（2026-10-17）：编译产物转储（字节码跳转图 + 每指令
+    // 源码行号——流程图原料；复用 codegen_diff 锁定的单源 emitter）
+    "codegen.dump" => serve_codegen_dump_frame(s, id, params)
     _ =>
       (
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
         ).stringify(),
         false,
       )

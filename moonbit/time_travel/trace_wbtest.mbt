@@ -34,6 +34,7 @@ fn make_step(
   {
     step_index,
     code_line,
+    code_file: None,
     func_name: "main",
     semantic_label: "active",
     algorithm_step: None,

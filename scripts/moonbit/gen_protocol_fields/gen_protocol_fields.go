@@ -44,6 +44,9 @@ type baselinesFile struct {
 	ExpectedSchema    string `json:"expected_schema"`
 	ExpectedV01Fields int    `json:"expected_v01_fields"`
 	ExpectedReserved  int    `json:"expected_reserved"`
+	// v0.2 已激活字段数（#90 首批 = 1；v0.2 无激活字段时为 0——零值合法，
+	// 故校验用 >= 0 而非 > 0，与其余两条的正数校验区分）
+	ExpectedV02Fields int `json:"expected_v02_fields"`
 }
 
 func loadBaselines(path string) baselinesFile {
@@ -56,8 +59,8 @@ func loadBaselines(path string) baselinesFile {
 	if err := json.Unmarshal(raw, &b); err != nil {
 		fatalf("基线 JSON 非法 %s: %v", path, err)
 	}
-	if b.ExpectedSchema == "" || b.ExpectedV01Fields <= 0 || b.ExpectedReserved <= 0 {
-		fatalf("基线 JSON 字段缺失 %s（expected_schema/expected_v01_fields/expected_reserved）", path)
+	if b.ExpectedSchema == "" || b.ExpectedV01Fields <= 0 || b.ExpectedReserved <= 0 || b.ExpectedV02Fields < 0 {
+		fatalf("基线 JSON 字段缺失/非法 %s（expected_schema/expected_v01_fields/expected_reserved/expected_v02_fields>=0）", path)
 	}
 	return b
 }
@@ -66,6 +69,9 @@ type fieldsFile struct {
 	Schema           string   `json:"schema"`
 	V01PayloadFields []string `json:"v01_payload_fields"`
 	ReservedFields   []string `json:"reserved_fields"`
+	// v0.2 已激活字段（#90 首批：code_file）。与 v0.1 冻结表/预留位三表并列，
+	// 互斥查重（激活字段不得与冻结表或预留位重名——重名 = 单源内部矛盾）。
+	V02PayloadFields []string `json:"v02_payload_fields"`
 }
 
 func main() {
@@ -100,11 +106,14 @@ func main() {
 	if len(f.ReservedFields) != base.ExpectedReserved {
 		fatalf("reserved_fields 数 %d ≠ 基线 %d——源已变更，请人工核对后更新 baselines.json 的 expected_reserved", len(f.ReservedFields), base.ExpectedReserved)
 	}
-	// 白名单自身查重（重复字段 = 单源内部矛盾，生成期拒绝）
+	if len(f.V02PayloadFields) != base.ExpectedV02Fields {
+		fatalf("v02_payload_fields 数 %d ≠ 基线 %d——源已变更：激活表只增不改，请人工核对后更新 baselines.json 的 expected_v02_fields 并登记（#90 激活批次）", len(f.V02PayloadFields), base.ExpectedV02Fields)
+	}
+	// 三表互斥查重（重复字段 = 单源内部矛盾，生成期拒绝）
 	seen := map[string]bool{}
-	for _, name := range append(append([]string{}, f.V01PayloadFields...), f.ReservedFields...) {
+	for _, name := range append(append(append([]string{}, f.V01PayloadFields...), f.ReservedFields...), f.V02PayloadFields...) {
 		if seen[name] {
-			fatalf("字段 %q 在白名单内重复", name)
+			fatalf("字段 %q 在 v0.1 冻结表/预留位/v0.2 激活表间重复", name)
 		}
 		seen[name] = true
 	}
@@ -149,6 +158,14 @@ func render(f fieldsFile, srcHash string) string {
 	w("///| 单源 = v01_payload_fields.json 的 reserved_fields（本文件为其生成物）。")
 	w("pub fn reserved_fields_v0_2() -> Array[String] {")
 	w("  [" + strings.Join(quoteAll(f.ReservedFields), ",") + "]")
+	w("}")
+	w("")
+	w("///| v0.2 已激活字段（#90 首批 = code_file；additive-only——v0.1 十四字段")
+	w("///| 冻结不动，本表只收激活项）。消费方 = 协议版本对账/gateway 键集冻结断言")
+	w("///| 的 v0.2 侧判据（v0.1 判据见 step_payload_fields_v0_1，两者并存不互斥）。")
+	w("///| 单源 = v01_payload_fields.json 的 v02_payload_fields（本文件为其生成物）。")
+	w("pub fn step_payload_fields_v0_2() -> Array[String] {")
+	w("  [" + strings.Join(quoteAll(f.V02PayloadFields), ",") + "]")
 	w("}")
 	return b.String()
 }

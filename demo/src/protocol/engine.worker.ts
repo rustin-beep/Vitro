@@ -9,7 +9,7 @@
 "use strict";
 
 import { loadGateway, setGateway, invoke, bodyOf, type GatewayExports } from "../../js/gw.ts";
-import type { Frame } from "../../js/types.ts";
+import type { Diagnostic, Frame } from "../../js/types.ts";
 import { latin1ToUtf8 } from "../../js/util.ts";
 import type { StepPayload, StepNextResult } from "../../js/types.ts";
 
@@ -39,9 +39,16 @@ export interface CollectResult {
   outputs: { stdout: string; stderr: string; note: string }; // 四通道视图（note = 引擎文本域）
   ms: number; // 采集墙钟（含编译+run+step 循环）
   versions: { engine: string; protocol: string };
+  /** 编译期诊断全集（F4 残留① run 视图诊断卡：旧栈 renderDiagnostics 语义——
+   *  compile.ok=false 时回传列表供卡片渲染，不再只抛首条 message）。 */
+  diagnostics: Diagnostic[];
+  /** 预处理宏展开轨迹（旧栈 renderPpTrace 同源）。 */
+  ppTrace: string[];
+  /** 编译业务域 ok（result.ok）——false 时 frames 为空、诊断卡是主反馈面。 */
+  compileOk: boolean;
 }
 
-async function collect(source: string, cap: number, bpLines: number[]): Promise<CollectResult> {
+async function collect(source: string, cap: number, bpLines: number[], files?: Array<{ filename: string; source: string }>): Promise<CollectResult> {
   const g = await ensureGw();
   const t0 = performance.now();
   g.reset();
@@ -53,11 +60,27 @@ async function collect(source: string, cap: number, bpLines: number[]): Promise<
     method: "config.set",
     params: { max_steps: 10000000, call_depth_limit: 10000, deterministic: false, quarantine_budget: 262144 },
   }));
-  const comp = must(invoke<{ ok: boolean; diagnostics?: { message?: string }[] }>({ method: "compile", params: { source } }));
+  // 工作区模式（F4 残留②）：全量打包 compile.files（引擎 vfs 解析集合内
+  // quote-include；active 文件居首 = base_dir 锚，orderForCompile 保证）——
+  // 旧栈 buildCompileParams 单一源语义，两条通道同口径
+  const comp = files && files.length > 0
+    ? must(invoke<{ ok: boolean; diagnostics?: Diagnostic[]; preprocessor_trace?: string[] }>({ method: "compile", params: { files } }))
+    : must(invoke<{ ok: boolean; diagnostics?: Diagnostic[]; preprocessor_trace?: string[] }>({ method: "compile", params: { source } }));
   if (!comp.ok) {
-    // 编译失败 = 业务域 ok（result.ok，非顶层帧 ok）——取首条诊断给可渲染原因
-    const first = comp.diagnostics?.[0]?.message ?? "编译失败（无诊断文本）";
-    throw new Error("编译失败：" + String(first).split("\n")[0]);
+    // 编译失败 = 业务域 ok（result.ok，非顶层帧 ok）——F4 残留①：不再只抛
+    // 首条 message，回传诊断全集 + pp 轨迹，由 run 视图诊断卡渲染（旧栈
+    // renderDiagnostics / renderPpTrace 语义平移）。零帧 + 输出清空
+    // （禁陈旧输出滞留造成「失败却见旧 stdout」假态）。
+    return {
+      frames: [],
+      stopped: "编译失败——诊断见「运行」视图",
+      outputs: { stdout: "", stderr: "", note: "" },
+      ms: Math.round(performance.now() - t0),
+      versions: { engine: g.engine_version(), protocol: g.protocol_version() },
+      diagnostics: comp.diagnostics ?? [],
+      ppTrace: comp.preprocessor_trace ?? [],
+      compileOk: false,
+    };
   }
   must(invoke({ method: "run", params: {} }));
   must(invoke({ method: "step.begin", params: {} }));
@@ -96,6 +119,11 @@ async function collect(source: string, cap: number, bpLines: number[]): Promise<
     outputs,
     ms: Math.round(performance.now() - t0),
     versions: { engine: g.engine_version(), protocol: g.protocol_version() },
+    // 编译成功也回传诊断（warning/hint 级——旧栈 renderDiagnostics 在 ok
+    // 检查前调用，警告随成功一并展示；零诊断 = 空列表）
+    diagnostics: comp.diagnostics ?? [],
+    ppTrace: comp.preprocessor_trace ?? [],
+    compileOk: true,
   };
 }
 
@@ -103,15 +131,15 @@ async function collect(source: string, cap: number, bpLines: number[]): Promise<
  *  （TextDecoder 正确组合多字节序列；中文输出 mojibake 的既有解法）。 */
 
 self.onmessage = async (e: MessageEvent) => {
-  const { id, op, source, cap, method, params, bpLines } = e.data as {
-    id: number; op: string; source?: string; cap?: number; method?: string; params?: Record<string, unknown>; bpLines?: number[];
+  const { id, op, source, cap, method, params, bpLines, files } = e.data as {
+    id: number; op: string; source?: string; cap?: number; method?: string; params?: Record<string, unknown>; bpLines?: number[]; files?: Array<{ filename: string; source: string }>;
   };
   try {
     if (op === "boot") {
       const g = await ensureGw();
       postMessage({ id, ok: true, data: { engine: g.engine_version(), protocol: g.protocol_version() } });
     } else if (op === "collect") {
-      postMessage({ id, ok: true, data: await collect(source ?? "", cap ?? 20000, bpLines ?? []) });
+      postMessage({ id, ok: true, data: await collect(source ?? "", cap ?? 20000, bpLines ?? [], files) });
     } else if (op === "invoke") {
       // 通用 RPC 转发（catalog/协议面等模块数据通道）：错误帧不折叠——
       // 顶层 ok:false 原样回传，session 层拆帧抛 RpcError（must 同语义）。

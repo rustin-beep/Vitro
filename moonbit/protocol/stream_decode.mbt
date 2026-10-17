@@ -26,6 +26,11 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
   }
   // 维护变量出现顺序（base 顺序 + 后续新增追加到末尾）
   let var_order : Array[SymIdx] = base.local_vars.map(v => v.name_idx)
+  // #90：帧文件归属的当前态（差分层 None = 未变——与 call_stack 同形态）
+  let mut current_code_file : String? = match base.code_file_idx {
+    Some(idx) => Some(get_sym(batch.symbol_table, idx))
+    None => None
+  }
   // 维护其他快照的当前状态，用于应用差分
   let current_call_stack : Array[ApiFrameInfo] = base.call_stack.map(f => {
     func_name: get_sym(batch.symbol_table, f.func_name_idx),
@@ -210,6 +215,14 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
     result.push({
       step_index: delta.step_index,
       code_line: delta.code_line,
+      code_file: match delta.code_file_idx {
+        Some(idx) => {
+          let f = get_sym(batch.symbol_table, idx)
+          current_code_file = Some(f)
+          Some(f)
+        }
+        None => current_code_file
+      },
       func_name: get_sym(batch.symbol_table, delta.func_name_idx),
       semantic_label: get_sym(batch.symbol_table, delta.semantic_label_idx),
       algorithm_step: decode_algo_step(delta.algorithm_step, batch.symbol_table),
@@ -260,6 +273,10 @@ fn decode_step_payload_ref(
   {
     step_index: base.step_index,
     code_line: base.code_line,
+    code_file: match base.code_file_idx {
+      Some(idx) => Some(get_sym(sym, idx))
+      None => None
+    },
     func_name: get_sym(sym, base.func_name_idx),
     semantic_label: get_sym(sym, base.semantic_label_idx),
     algorithm_step: decode_algo_step(base.algorithm_step, sym),

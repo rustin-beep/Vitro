@@ -387,7 +387,17 @@ NDJSON；请求带 `id`，响应回填同一 `id`；错误帧与成功帧**同�
 | 静态检查 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | ✅ 无警告（exit 0） |
 | S1–S3 | — | ⏳ **未执行**：SharpTutor 场景由对端提供，本轮无对端输入。已在表内标注为待办，避免"文档宣称已校验"的失真 |
 
-> 字段冻结的工程意义：`step_payload_schema_v0_1_test.rs` 断言的是 **capi 出口 JSON 的键集合与枚举字面量**。任何字段改名/增删都会让该测试失败，从而强制走版本化流程（而不是让 schema 文档悄悄过期）。
+#### 7.2.1 v0.2 首批激活历史行（2026-10-17，#90 `code_file`）
+
+| 项 | 载体（可复现命令） | 结果 |
+|---|---|---|
+| 键集冻结（v0.1 十四字段 + v0.2 激活并集） | `cd moonbit && moon test`（`contracts_json_byte_exact_rust_truth` 重铸 + `v0_2_active_fields_match_single_source` 新锚） | ✅ 781/781 |
+| 出口形状 + 值域（单文件） | `go run ./scripts/demo_smoke`（StepPayload 键集 15 键全等 + `code_file=="main.c"` 抽查） | ✅ 169/169 |
+| 多文件归属（#90 原实测场景复跑） | wasm 臂探针：`compile{files:[util.c(7 行), main.c(7 行)]}` → step 帧 | ✅ `util.c` 帧 code_line∈1-7 / `main.c` 帧 code_line≥8（callee 入口帧归调用点行 → main.c）；stdout=「55」 |
+| 帧基线（mb 单臂） | `go run ./scripts/protocol_frames`（`--update-baseline` 重生后） | ✅ 47 帧全部一致（15 个 step 帧各增 `code_file`，其余逐字节不变） |
+| 差分往返（null/[]/新增键） | `moon test` 的 `stream_wbtest` 全锚（符号表全内容锚已含 `main.c`@index1） | ✅ |
+
+> 字段冻结的工程意义：`step_payload_schema_v0_1_test` 断言的是 **capi 出口 JSON 的键集合与枚举字面量**。任何字段改名/增删都会让该测试失败，从而强制走版本化流程（而不是让 schema 文档悄悄过期）。
 
 ### 7.3 对端接入前的预备结论
 
@@ -509,7 +519,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | 6 | 窗口外的历史 payload 不可查询 | 消费方须自行落地持久化（或依赖 seek 重放）；`payload.get` 对越窗区间静默返回子集 | 设计如此（内存有界）；消费方契约已在 §4.1 写明 |
 | 7 | ~~`ty_name` 为 Rust `Debug` 表示~~ | 拼写随内部重构变化，且把内部枚举结构（`Int { is_unsigned: false, … }`）泄漏到教学输出 | **✅ 已修复（2026-09-11）**：改为 C 风格稳定可读名（单一来源 `vitro_runtime::type_display_name`），消费方可直接显示。指针识别规则不变（含 `*`） |
 | 8 | `local_vars` 曾含**跨函数**变量与同名重复 | 消费方看到 `helper` 的局部变量出现在 `main` 的 payload（且用错 `locals_base` 读出垃圾值），两个 `for` 各声明一个 `i` 时无法区分 | **✅ 已修复（2026-09-11）**：按函数归属 + 声明行（新增 `Symbol::decl_line`）过滤，同名取"已进入作用域且最晚声明"者；无有效执行位置（`code_line == 0`）时不输出局部变量 |
-| 9 | `code_line` 是**合并源码的全局行号**，payload 未携带文件名 | 多文件会话中消费方无法自行把 `code_line` 映射回"哪个文件的第几行"（引擎内部已按 `file_ranges` 正确映射，语义标注不再串文件）。**消费方可见后果（前端期现场实测）**：若按"主文件行数"做比例计算，覆盖率会显示 **>100%**；`heatmap_line` 恒等于 `code_line`（§1）且 `heatmap_count` 按 `code_line` 索引（`unified/collector.rs`），故热力图在多文件 / 含头文件时按全局行号着色而错位。**这不是前端独有问题**：前端只是第一个把该协议缺口显示出来的消费方 | **已排入 v0.2（§9 台账：`code_file`）**：只增不改——`code_line` 保持全局行号语义，避免破坏既有断点/heatmap 口径。现场留痕：`docs/current/工程债务维护方案.md`（2026-09-11 条目"`code_line` 是跨文件全局偏移行号"） |
+| 9 | `code_line` 是**合并源码的全局行号**，payload 未携带文件名 | 多文件会话中消费方无法自行把 `code_line` 映射回"哪个文件的第几行"（引擎内部已按 `file_ranges` 正确映射，语义标注不再串文件）。**消费方可见后果（前端期现场实测）**：若按"主文件行数"做比例计算，覆盖率会显示 **>100%**；`heatmap_line` 恒等于 `code_line`（§1）且 `heatmap_count` 按 `code_line` 索引（`unified/collector.rs`），故热力图在多文件 / 含头文件时按全局行号着色而错位。**这不是前端独有问题**：前端只是第一个把该协议缺口显示出来的消费方 | **已激活 v0.2（§9 台账：`code_file`，2026-10-17 #90）**：只增不改——`code_line` 保持全局行号语义，避免破坏既有断点/heatmap 口径。现场留痕：`docs/current/工程债务维护方案.md`（2026-09-11 条目"`code_line` 是跨文件全局偏移行号"） |
 | 10 | 函数定义行判定为递归调用 | 仅当左花括号与函数签名**同行**时被排除；`int f(...)` 换行写 `{` 时仍可能把定义行标成"递归调用 f" | 需要多行签名识别（教学子集内少见）；已知限制 |
 
 ---
@@ -520,7 +530,11 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 > **有机器防线的轨道**。机器可读单源：`moonbit/protocol/schema.mbt`
 > （`RESERVED_FIELDS_V0_2` / 激活清单 / `V0_2_FIELD_LEDGER` /
 > 行为契约表；历史出处 `native/src/unified/contracts.rs` 已随 2026-10-05 删区消失——
-> 台账内容现为本仓自主维护基线，tag `rust-oracle-freeze` 可回溯），出口：serve `contracts` 方法 + `capabilities.schema`。
+> 台账内容现为本仓自主维护基线，tag `rust-oracle-freeze` 可回溯；v0.2 起
+> **字段表单源 = `scripts/replay/v01_payload_fields.json`**〔`v01_payload_fields` /
+> `reserved_fields` / `v02_payload_fields` 三表〕，经 `gen_protocol_fields` 生成
+> `schema_fields_gen.mbt`，`-check` 幂等闸锁产物与单源同步），出口：serve
+> `contracts` 方法 + `capabilities.schema`。
 
 ### 9.1 激活清单（**激活提交必须逐条走完**）
 
@@ -544,7 +558,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | `unwinding` | reserve | pending | CS3b | 展开态显式标记；**每帧一 step，不得合并**（见 §9.3） |
 | `unwind_frames_left` | reserve | pending | CS3b | 剩余待展开帧数（展开动画驱动字段） |
 | `current_exception` | reserve | pending | CS3b | `{type_name, message, addr, origin_line} \| null`；`origin_line` 为原始抛点（`throw;` 保留 / `throw e;` 改写） |
-| `code_file` | add | pending | v0.2 | 多文件行号归位（§8 #9） |
+| `code_file` | add | **active** | v0.2 | 多文件行号归位（§8 #9）。**2026-10-17 #90 激活**：`code_line` 保持全局行号语义不变，`code_file` = 该行所属编译单元文件名（单文件恒 `main.c`；`code_line<=0` 的序幕帧为 `null`——诚实空态非缺陷）；`collect` 经 `SourceLineProvider.source_file_at` 同源解析；stream 差分格式同步扩 `code_file_idx`（None=未变） |
 | `call_stack[].return_line` | add | pending | v0.2 | 补值不改字段（§8 #1）：字段已在 v0.1，激活 = 记录 VM 帧返回行 |
 | `func_display_name / func_mangled_name` | add | pending | v0.2 | §8 #2：内部名与源码可读名双字段，保留 `func_name` 作 display 语义 |
 

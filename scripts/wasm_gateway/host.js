@@ -77,7 +77,9 @@ function check(cond, label, detail) {
   const inst = await instantiateGateway(buf);
   const g = inst.exports;
 
-  check(g.protocol_version() === "v0.1", "protocol_version = v0.1", g.protocol_version());
+  // protocol_version 锚：#90 v0.2 首批激活（code_file）升格（2026-10-17
+  // 云端 CI 红收口——原锚 v0.1 在 #90 后陈旧）；单源 = @protocol.SCHEMA_VERSION
+  check(g.protocol_version() === "v0.2", "protocol_version = v0.2", g.protocol_version());
   // ENGINE_VERSION ↔ moon.mod 版本失联锚（2026-09-29 审阅 P3-5）：
   // 读 moon.mod 的 version 逐字对比——发版忘 bump 即红
   const modText = fs.readFileSync(path.join(repoRoot, "moonbit/moon.mod"), "utf8");

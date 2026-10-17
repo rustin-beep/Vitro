@@ -71,14 +71,17 @@ jobs:
       - name: Assemble demo artifact (F4 收尾 2026-10-17：vite 唯一构建)
         run: |
           mkdir -p demo-dist/assets/logo
+          # 算法侧栏数据（2026-10-04 发射化）：algorithms.js 不入库，**构建前**
+          # 现场发射——F4 新栈 vite/rolldown 把 demo/algorithms.js 当构建期
+          # import 解析（旧栈运行时 <script> 加载，发射序无谓；2026-10-17
+          # 云端 Deploy 红收口：构建后再发射 = ENOENT）。生成器完备性断言
+          # 即闸；ubuntu runner 自带 Go。
+          go run ./scripts/gen_demo_algorithms
           # 新栈 = vite 唯一构建（demo/index.html + src/ → dist/）——旧栈
           # （app.ts/style.css/js 十一模块）已退役；base=./ 相对路径适配
           # Pages 项目页子路径。
           (cd demo && npm ci && npx vite build)
           cp -r demo/dist/* demo-dist/
-          # 算法侧栏数据同形态（2026-10-04 发射化）：algorithms.js 不入库，
-          # 组装前现场发射（生成器完备性断言即闸；ubuntu runner 自带 Go）
-          go run ./scripts/gen_demo_algorithms
           # 品牌 logo 三枚（favicon 自适应版 + 昼/夜 header 变体；来源 assets/logo/）
           cp assets/logo/vitro-icon.svg assets/logo/vitro-icon-light.svg assets/logo/vitro-icon-dark.svg demo-dist/assets/logo/
           cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo-dist/wasm.wasm

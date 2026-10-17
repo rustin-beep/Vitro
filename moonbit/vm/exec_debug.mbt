@@ -25,12 +25,19 @@ fn VitroVM::execute_debug(
       self.step_event_hit = true
       for entry in self.vis_event_lines {
         if entry.0 == operand {
+          // #51 批②首片（2026-10-17）：ty=2（相邻交换）带运行期 extras
+          // （j/j+1/-1——swap_event_extras）；其余 ty 维持 0,0,0 冻结面
+          let (e0, e1, e2) = if entry.1 == 2 {
+            self.swap_event_extras()
+          } else {
+            (0, 0, 0)
+          }
           self.vis_event_queue.push(VisEventData::{
             ty: entry.1,
             line: operand,
-            extra0: 0,
-            extra1: 0,
-            extra2: 0,
+            extra0: e0,
+            extra1: e1,
+            extra2: e2,
             context: entry.2,
           })
         }
@@ -102,4 +109,28 @@ fn VitroVM::execute_debug(
     }
     _ => None
   }
+}
+
+///|
+/// #51 批②首片（2026-10-17）：ty=2（相邻交换）事件的运行期 extras——按
+/// 教学模板约定读**当前帧**局部 int 变量 `j`（infer_sorting 的 swap 判据
+/// 同款约定），extra0=j、extra1=j+1、extra2 恒 -1；无帧/无该局部/读失败
+/// 落全 -1 哨兵（「无值 -1 不许 0」——诚实空态非 0）。
+fn VitroVM::swap_event_extras(self : VitroVM) -> (Int32, Int32, Int32) {
+  let top = self.call_stack.length()
+  guard top > 0 else { return (-1, -1, -1) }
+  let frame = self.call_stack[top - 1]
+  for sym in self.symbols {
+    if sym.name == "j" && sym.is_local && sym.func_name == frame.func_name {
+      let addr = frame.locals_base + sym.addr
+      match self.memory.load_u32(self.mem_map, addr) {
+        Ok(bits) => {
+          let j = bits.reinterpret_as_int()
+          return (j, j + 1, -1)
+        }
+        Err(_) => return (-1, -1, -1)
+      }
+    }
+  }
+  (-1, -1, -1)
 }

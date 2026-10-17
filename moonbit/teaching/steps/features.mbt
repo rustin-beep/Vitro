@@ -275,13 +275,25 @@ fn walk_expr(
     }
     Member(object, _, _, _) =>
       walk_expr(object, f, loop_depth, func_name, depth + 1)
-    Assign(op, left, right, _, _) => {
+    Assign(op, left, right, loc, _) => {
       walk_expr(left, f, loop_depth, func_name, depth + 1)
       walk_expr(right, f, loop_depth, func_name, depth + 1)
       // 交换模式：两侧都是下标访问
       if is_index_access(left) && is_index_access(right) {
         if loop_depth >= 2 {
           f.has_swap_in_inner_loop = true
+          // #51 批②首片（2026-10-17）：**相邻下标**交换行（a[j]=a[j+1] 形，
+          // 两侧判 is_adjacent_compare）登记 ty=2（vis_events 事件码——
+          // 此前全项目只产 ty=1 compare，schema §8 #3 已知限制首片收口）。
+          // 只收相邻形：ty=2 语义 = 相邻交换（运行期 extras 读局部 j 填
+          // j/j+1），非相邻交换（快排 a[i]=a[j] 等）不冒充——留待批②后续
+          // 按族扩。compare_lines 即 vis 投影单源（build_match 直投）。
+          if is_adjacent_compare(left, right) ||
+            is_adjacent_compare(right, left) {
+            f.compare_lines.push(
+              (loc.line, 2, format_compare_context(left, right)),
+            )
+          }
         }
         f.has_swap = true
       }

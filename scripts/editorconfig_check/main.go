@@ -91,14 +91,16 @@ func main() {
 		}
 		rel, _ := filepath.Rel(base, path)
 		for _, seg := range strings.Split(rel, string(filepath.Separator)) {
-			// dist-pilot/dist-e08 = vite 构建产物（gitignored，产物面归生成器闸，
-			// 与 _build/build 同族）；.workbuddy = 用户本机工具私有目录（git 未
-			// 跟踪）。不豁免则本地钩子恒红、与提交内容无关——逼 --no-verify 的
-			// 环境盲区（2026-10-16 E-08 提交实锤，并发会话同款绕过的真因）。
+			// dist-pilot/dist-e08/dist = vite 构建产物（gitignored，产物面归
+			// 生成器闸，与 _build/build 同族；dist = F4 收官批 outDir 迁移后
+			// 的现役形态，2026-10-17 连坐）；.workbuddy = 用户本机工具私有
+			// 目录（git 未跟踪）。不豁免则本地钩子恒红、与提交内容无关——
+			// 逼 --no-verify 的环境盲区（2026-10-16 E-08 提交实锤，并发会话
+			// 同款绕过的真因）。
 			if seg == ".git" || seg == "_build" || seg == ".mooncakes" ||
 				seg == "node_modules" || seg == "tmp" || seg == ".clang_cache_cd" ||
 				seg == ".shadow_tmp" || seg == "tmp_vitro_fs_bb_roundtrip" || seg == ".vscode" || seg == "build" ||
-				seg == "dist-pilot" || seg == "dist-e08" || seg == ".workbuddy" {
+				seg == "dist-pilot" || seg == "dist-e08" || seg == "dist" || seg == ".workbuddy" {
 				return filepath.SkipDir
 			}
 		}

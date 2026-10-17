@@ -12,6 +12,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(teaching+vm+scripts): #51 批①词表闸 + 批②首片 ty=2 交换事件——前端 F4 两处未入库交付物补齐（2026-10-17）
+
+【批②首片：`vis_events` ty=2（相邻交换）产出（#51 §已知限制 #3 收口）】
+features 侧：相邻下标交换行（`a[j]=a[j+1]` 形，`is_adjacent_compare` 判两侧
+索引）登记 `ty=2` 进 vis 投影单源（compare_lines）——只收相邻形，非相邻
+交换（快排 `a[i]=a[j]`）不冒充、留批②后续按族扩。vm 侧：`StepEvent` 命中
+ty=2 行时按教学模板约定读**当前帧**局部 `int j`（infer_sorting 判据同款），
+`extra0=j`、`extra1=j+1`、`extra2=-1`；读不到落全 `-1` 哨兵（「无值 -1
+不许 0」）；ty=1 维持 0,0,0 冻结面（#29 接线锚行为零变化）。红锚先行
+（`swap_event_runtime_extras_b51`：当前实现恒 0,0,0 证红后修）。schema
+§2.7/§3.3/§8#3 三处连坐（ty 码表 + extras 语义 + 已知限制划线收口）。
+demo_smoke #51② 四断言全绿（197/197）。
+
+【批①：`teaching_phase_vocab` phase 受控词表冻结闸（CI 接线交付物补齐）】
+前端 F4 批在 ci.yml 接了闸线但驱动未入库（悬空必红）。落地：扫
+`teaching/steps/infer_*.mbt` 的 `build_step(algorithm, "phase", …)` 字面量
+（跨行形态全量 176 处）↔ `rules.json` 受控词表（91 phase × 归属函数集）
+双向全等；四路判红——未登记扩张 / 僵尸条目 / family 漂移 / 非字面量
+调用（`build_step(` 出现数 vs 字面量命中数的差值面），另有抽取面下限
+防正则失能；`-selftest` 四路内存注入证红（J9）。
+
+【连坐】`editorconfig_check` 跳过表补 `dist` 段（F4 把 vite outDir 迁
+`demo/dist/` 后未连坐——本地有构建产物即假红）；`wasm_gateway` 冒烟
+protocol_version 锚升 v0.2（#90 激活后陈旧——云端 Hygiene/wasm-arm 两 job
+红的收口）；pages.yml 组装步序修正：`gen_demo_algorithms` 提到 vite build
+**之前**（F4 新栈 rolldown 把 algorithms.js 当构建期 import，构建后再发射
+= ENOENT，云端 Deploy 红的收口）；测试数 787/926 连坐（README×2 + 文档×6）。
+
 ### fix(moonbit+gateway+scripts): 用户两份审阅报告处置批 + F4 合并收编——病 81 取值勘误 / 病 67·76 补锚 / 五闸修复 / 卫生五件（2026-10-17）
 
 【审阅 P1 五件（云端 CI 双红的根因面）】①病 81 勘误：vm `elem_size_of_kind`

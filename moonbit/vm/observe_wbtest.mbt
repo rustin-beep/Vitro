@@ -366,3 +366,47 @@ test "div_zero_zero_section_filters_by_frame_b53" {
     msg="跨函数局部不得错位列出：\{section}",
   )
 }
+
+///|
+/// #51 批②首片（2026-10-17）：ty=2（相邻交换）事件的**运行期 extras**——
+/// 读当前帧局部 int 变量 j（教学模板约定，infer_sorting 判据同款），
+/// extra0=j、extra1=j+1、extra2 恒 -1（「无值 -1 不许 0」哨兵铁律）；
+/// 无帧/无符号/读失败落全 -1（诚实空态）。红锚先行：当前实现恒 0,0,0。
+test "swap_event_runtime_extras_b51" {
+  // 命中形态：bubble_sort 帧内局部 j=3 → extras (3, 4, -1)
+  let vm = VitroVM::new()
+  vm.set_vis_event_lines([(7, 2, "a[j]:a[j + 1]")])
+  vm.call_stack.push(mkframe("bubble_sort", 0x5000U, 0))
+  vm.set_symbols([mksym("j", 4U, true, @ast.Type::int(), "bubble_sort", 3)])
+  ignore(vm.memory.store_u32(vm.mem_map, 0x5000U + 4U, 3U))
+  ignore(vm.execute_debug(StepEvent, 7, 7, 1))
+  assert_eq(vm.vis_event_queue.length(), 1)
+  assert_eq(vm.vis_event_queue[0].ty, 2)
+  assert_eq(vm.vis_event_queue[0].extra0, 3)
+  assert_eq(vm.vis_event_queue[0].extra1, 4)
+  assert_eq(vm.vis_event_queue[0].extra2, -1)
+  // 读不到 j（当前帧函数无该局部）：全 -1 哨兵（诚实空态，非 0）
+  let vm2 = VitroVM::new()
+  vm2.set_vis_event_lines([(7, 2, "a[j]:a[j + 1]")])
+  vm2.call_stack.push(mkframe("other_fn", 0x5000U, 0))
+  ignore(vm2.execute_debug(StepEvent, 7, 7, 1))
+  assert_eq(vm2.vis_event_queue.length(), 1)
+  assert_eq(vm2.vis_event_queue[0].extra0, -1)
+  assert_eq(vm2.vis_event_queue[0].extra1, -1)
+  assert_eq(vm2.vis_event_queue[0].extra2, -1)
+  // 无帧（main 序幕形态）：同样全 -1
+  let vm3 = VitroVM::new()
+  vm3.set_vis_event_lines([(7, 2, "a[j]:a[j + 1]")])
+  ignore(vm3.execute_debug(StepEvent, 7, 7, 1))
+  assert_eq(vm3.vis_event_queue[0].extra0, -1)
+  // ty=1（compare）维持 0,0,0 冻结面（#29 接线锚的行为零变化）
+  let vm4 = VitroVM::new()
+  vm4.set_vis_event_lines([(5, 1, "a[j]:a[j + 1]")])
+  vm4.call_stack.push(mkframe("bubble_sort", 0x5000U, 0))
+  vm4.set_symbols([mksym("j", 4U, true, @ast.Type::int(), "bubble_sort", 3)])
+  ignore(vm4.memory.store_u32(vm4.mem_map, 0x5000U + 4U, 3U))
+  ignore(vm4.execute_debug(StepEvent, 5, 5, 1))
+  assert_eq(vm4.vis_event_queue[0].extra0, 0)
+  assert_eq(vm4.vis_event_queue[0].extra1, 0)
+  assert_eq(vm4.vis_event_queue[0].extra2, 0)
+}

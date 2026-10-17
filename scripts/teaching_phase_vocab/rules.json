@@ -1,0 +1,625 @@
+{
+  "schema": 1,
+  "min_call_sites": 176,
+  "phases": [
+    {
+      "phase": "add_edge",
+      "families": [
+        "infer_kruskal_mst"
+      ]
+    },
+    {
+      "phase": "add_vertex",
+      "families": [
+        "infer_prim_mst"
+      ]
+    },
+    {
+      "phase": "backtrack",
+      "families": [
+        "infer_string_match_bf"
+      ]
+    },
+    {
+      "phase": "balance",
+      "families": [
+        "infer_avl_tree"
+      ]
+    },
+    {
+      "phase": "base",
+      "families": [
+        "infer_hanoi"
+      ]
+    },
+    {
+      "phase": "build_heap",
+      "families": [
+        "infer_heap_sort"
+      ]
+    },
+    {
+      "phase": "build_next",
+      "families": [
+        "infer_string_match_kmp"
+      ]
+    },
+    {
+      "phase": "build_nextval",
+      "families": [
+        "infer_string_match_kmp"
+      ]
+    },
+    {
+      "phase": "check",
+      "families": [
+        "infer_circular_queue",
+        "infer_seq_list"
+      ]
+    },
+    {
+      "phase": "check_cycle",
+      "families": [
+        "infer_kruskal_mst"
+      ]
+    },
+    {
+      "phase": "check_small",
+      "families": [
+        "infer_is_prime"
+      ]
+    },
+    {
+      "phase": "collect",
+      "families": [
+        "infer_counting_sort"
+      ]
+    },
+    {
+      "phase": "compare",
+      "families": [
+        "infer_binary_search",
+        "infer_bst_delete",
+        "infer_bst_insert",
+        "infer_bst_search",
+        "infer_bubble_sort",
+        "infer_insertion_sort",
+        "infer_selection_sort",
+        "infer_string_match_bf",
+        "infer_string_match_kmp"
+      ]
+    },
+    {
+      "phase": "compress",
+      "families": [
+        "infer_union_find"
+      ]
+    },
+    {
+      "phase": "confirm",
+      "families": [
+        "infer_dijkstra"
+      ]
+    },
+    {
+      "phase": "count",
+      "families": [
+        "infer_counting_sort",
+        "infer_radix_sort"
+      ]
+    },
+    {
+      "phase": "create",
+      "families": [
+        "infer_bst_insert"
+      ]
+    },
+    {
+      "phase": "decrease",
+      "families": [
+        "infer_topological_sort"
+      ]
+    },
+    {
+      "phase": "delete_head",
+      "families": [
+        "infer_linked_list_delete"
+      ]
+    },
+    {
+      "phase": "dequeue",
+      "families": [
+        "infer_bfs",
+        "infer_circular_queue",
+        "infer_level_order",
+        "infer_linked_queue",
+        "infer_topological_sort"
+      ]
+    },
+    {
+      "phase": "digit_loop",
+      "families": [
+        "infer_radix_sort"
+      ]
+    },
+    {
+      "phase": "eliminate",
+      "families": [
+        "infer_josephus"
+      ]
+    },
+    {
+      "phase": "empty_valid",
+      "families": [
+        "infer_bst_validate"
+      ]
+    },
+    {
+      "phase": "enqueue",
+      "families": [
+        "infer_bfs",
+        "infer_circular_queue",
+        "infer_level_order",
+        "infer_linked_queue",
+        "infer_topological_sort"
+      ]
+    },
+    {
+      "phase": "enqueue_left",
+      "families": [
+        "infer_level_order"
+      ]
+    },
+    {
+      "phase": "enqueue_right",
+      "families": [
+        "infer_level_order"
+      ]
+    },
+    {
+      "phase": "extract",
+      "families": [
+        "infer_heap_sort"
+      ]
+    },
+    {
+      "phase": "find",
+      "families": [
+        "infer_union_find"
+      ]
+    },
+    {
+      "phase": "find_leftmost",
+      "families": [
+        "infer_threaded_binary_tree"
+      ]
+    },
+    {
+      "phase": "find_successor",
+      "families": [
+        "infer_bst_delete"
+      ]
+    },
+    {
+      "phase": "find_tail",
+      "families": [
+        "infer_linked_list_append"
+      ]
+    },
+    {
+      "phase": "finish",
+      "families": [
+        "infer_bfs",
+        "infer_bst_insert",
+        "infer_bubble_sort",
+        "infer_circular_linked_list",
+        "infer_counting_sort",
+        "infer_dfs",
+        "infer_dp",
+        "infer_gcd",
+        "infer_hanoi",
+        "infer_heap_sort",
+        "infer_insertion_sort",
+        "infer_is_prime",
+        "infer_josephus",
+        "infer_linked_list_delete",
+        "infer_merge_sort",
+        "infer_quick_sort",
+        "infer_selection_sort",
+        "infer_seq_list",
+        "infer_shell_sort",
+        "infer_string_reverse"
+      ]
+    },
+    {
+      "phase": "follow_thread",
+      "families": [
+        "infer_threaded_binary_tree"
+      ]
+    },
+    {
+      "phase": "found",
+      "families": [
+        "infer_binary_search"
+      ]
+    },
+    {
+      "phase": "found_factor",
+      "families": [
+        "infer_is_prime"
+      ]
+    },
+    {
+      "phase": "free",
+      "families": [
+        "infer_bst_delete",
+        "infer_linked_list_delete",
+        "infer_linked_queue",
+        "infer_static_linked_list"
+      ]
+    },
+    {
+      "phase": "hash",
+      "families": [
+        "infer_hash_table"
+      ]
+    },
+    {
+      "phase": "heapify",
+      "families": [
+        "infer_heap_sort"
+      ]
+    },
+    {
+      "phase": "hit",
+      "families": [
+        "infer_bst_search",
+        "infer_hash_table"
+      ]
+    },
+    {
+      "phase": "init",
+      "families": [
+        "infer_josephus",
+        "infer_static_linked_list"
+      ]
+    },
+    {
+      "phase": "inner_loop",
+      "families": [
+        "infer_bubble_sort",
+        "infer_dp",
+        "infer_insertion_sort",
+        "infer_selection_sort",
+        "infer_shell_sort"
+      ]
+    },
+    {
+      "phase": "insert",
+      "families": [
+        "infer_insertion_sort",
+        "infer_shell_sort"
+      ]
+    },
+    {
+      "phase": "link",
+      "families": [
+        "infer_circular_linked_list",
+        "infer_linked_list_append"
+      ]
+    },
+    {
+      "phase": "loop",
+      "families": [
+        "infer_bfs",
+        "infer_binary_search",
+        "infer_gcd"
+      ]
+    },
+    {
+      "phase": "malloc",
+      "families": [
+        "infer_static_linked_list"
+      ]
+    },
+    {
+      "phase": "measure",
+      "families": [
+        "infer_string_reverse"
+      ]
+    },
+    {
+      "phase": "merge",
+      "families": [
+        "infer_huffman_tree",
+        "infer_merge_sort"
+      ]
+    },
+    {
+      "phase": "mid_calc",
+      "families": [
+        "infer_binary_search"
+      ]
+    },
+    {
+      "phase": "miss",
+      "families": [
+        "infer_bst_search"
+      ]
+    },
+    {
+      "phase": "mod",
+      "families": [
+        "infer_gcd"
+      ]
+    },
+    {
+      "phase": "move",
+      "families": [
+        "infer_hanoi"
+      ]
+    },
+    {
+      "phase": "narrow_left",
+      "families": [
+        "infer_binary_search"
+      ]
+    },
+    {
+      "phase": "narrow_right",
+      "families": [
+        "infer_binary_search"
+      ]
+    },
+    {
+      "phase": "not_found",
+      "families": [
+        "infer_binary_search",
+        "infer_bst_delete",
+        "infer_string_match_bf"
+      ]
+    },
+    {
+      "phase": "outer_loop",
+      "families": [
+        "infer_bubble_sort",
+        "infer_dp",
+        "infer_floyd",
+        "infer_insertion_sort",
+        "infer_selection_sort",
+        "infer_shell_sort"
+      ]
+    },
+    {
+      "phase": "output",
+      "families": [
+        "infer_topological_sort"
+      ]
+    },
+    {
+      "phase": "partition_init",
+      "families": [
+        "infer_quick_sort"
+      ]
+    },
+    {
+      "phase": "partition_scan",
+      "families": [
+        "infer_quick_sort"
+      ]
+    },
+    {
+      "phase": "partition_swap",
+      "families": [
+        "infer_quick_sort"
+      ]
+    },
+    {
+      "phase": "place",
+      "families": [
+        "infer_counting_sort",
+        "infer_radix_sort",
+        "infer_seq_list"
+      ]
+    },
+    {
+      "phase": "pop",
+      "families": [
+        "infer_linked_stack"
+      ]
+    },
+    {
+      "phase": "prefix",
+      "families": [
+        "infer_radix_sort"
+      ]
+    },
+    {
+      "phase": "probe",
+      "families": [
+        "infer_hash_table"
+      ]
+    },
+    {
+      "phase": "push",
+      "families": [
+        "infer_linked_stack"
+      ]
+    },
+    {
+      "phase": "range_check",
+      "families": [
+        "infer_bst_validate"
+      ]
+    },
+    {
+      "phase": "recursive",
+      "families": [
+        "infer_bst_delete",
+        "infer_bst_insert",
+        "infer_bst_search",
+        "infer_bst_validate",
+        "infer_dfs",
+        "infer_hanoi",
+        "infer_quick_sort"
+      ]
+    },
+    {
+      "phase": "recursive_split",
+      "families": [
+        "infer_merge_sort"
+      ]
+    },
+    {
+      "phase": "relax",
+      "families": [
+        "infer_dijkstra",
+        "infer_floyd"
+      ]
+    },
+    {
+      "phase": "replace",
+      "families": [
+        "infer_bst_delete"
+      ]
+    },
+    {
+      "phase": "rotate",
+      "families": [
+        "infer_avl_tree",
+        "infer_josephus"
+      ]
+    },
+    {
+      "phase": "scan",
+      "families": [
+        "infer_dfs"
+      ]
+    },
+    {
+      "phase": "search",
+      "families": [
+        "infer_linked_list_delete"
+      ]
+    },
+    {
+      "phase": "select",
+      "families": [
+        "infer_dijkstra",
+        "infer_huffman_tree"
+      ]
+    },
+    {
+      "phase": "select_min",
+      "families": [
+        "infer_prim_mst"
+      ]
+    },
+    {
+      "phase": "shift",
+      "families": [
+        "infer_seq_list"
+      ]
+    },
+    {
+      "phase": "single_child",
+      "families": [
+        "infer_bst_delete"
+      ]
+    },
+    {
+      "phase": "skip",
+      "families": [
+        "infer_string_match_kmp"
+      ]
+    },
+    {
+      "phase": "sort",
+      "families": [
+        "infer_kruskal_mst"
+      ]
+    },
+    {
+      "phase": "swap",
+      "families": [
+        "infer_bubble_sort",
+        "infer_heap_sort",
+        "infer_selection_sort",
+        "infer_string_reverse"
+      ]
+    },
+    {
+      "phase": "test_divisor",
+      "families": [
+        "infer_is_prime"
+      ]
+    },
+    {
+      "phase": "thread_left",
+      "families": [
+        "infer_threaded_binary_tree"
+      ]
+    },
+    {
+      "phase": "thread_right",
+      "families": [
+        "infer_threaded_binary_tree"
+      ]
+    },
+    {
+      "phase": "transition",
+      "families": [
+        "infer_dp"
+      ]
+    },
+    {
+      "phase": "traverse",
+      "families": [
+        "infer_circular_linked_list"
+      ]
+    },
+    {
+      "phase": "union",
+      "families": [
+        "infer_union_find"
+      ]
+    },
+    {
+      "phase": "unlink",
+      "families": [
+        "infer_linked_list_delete"
+      ]
+    },
+    {
+      "phase": "update",
+      "families": [
+        "infer_prim_mst"
+      ]
+    },
+    {
+      "phase": "update_bf",
+      "families": [
+        "infer_avl_tree"
+      ]
+    },
+    {
+      "phase": "update_len",
+      "families": [
+        "infer_seq_list"
+      ]
+    },
+    {
+      "phase": "visit",
+      "families": [
+        "infer_bfs",
+        "infer_dfs"
+      ]
+    },
+    {
+      "phase": "wrap",
+      "families": [
+        "infer_circular_queue"
+      ]
+    }
+  ]
+}

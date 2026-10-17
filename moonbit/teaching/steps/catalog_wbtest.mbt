@@ -1,5 +1,8 @@
-// catalog 键集对账（#36）：algo_catalog ↔ suggestion_map 43 键互含 +
-// groups 覆盖 + family 无重复。与 build_match 调用点的对账（源码正则
+// catalog 键集对账（#36）：algo_catalog ↔ known_suggestion_keys 43 键
+// 互含 + groups 覆盖 + family 无重复。#130 批③a 起对账对象从烘焙表改
+// 引擎侧值域名单（catalog ≡ known〔本锚〕+ known ≡ 烘焙表〔content_data
+// wbtest〕分层证明——wbtest 不可 import content_data，直查烘焙表会
+// 在 lean 引擎测试态恒空）。与 build_match 调用点的对账（源码正则
 // 提取 ↔ 引擎导出）在 Go 闸 teaching_annotation_diff --catalog-check
 //（wbtest 拿不到源码文本，分层锁）。
 
@@ -7,17 +10,17 @@
 test "catalog_keys_match_suggestion_map" {
   let mut ok = true
   for e in algo_catalog {
-    if @assets.suggestion_map.get(e.family) is None {
+    if !@assets.known_suggestion_keys.contains(e.family) {
       ok = false
       println("catalog 族无文案：\{e.family}")
     }
   }
-  // 反向：suggestion_map 43 键每键都在 catalog
+  // 反向：43 名单每键都在 catalog
   let fams : Set[String] = Set([])
   for e in algo_catalog {
     fams.add(e.family)
   }
-  for k, _v in @assets.suggestion_map {
+  for k in @assets.known_suggestion_keys {
     if !fams.contains(k) {
       ok = false
       println("文案键不在 catalog：\{k}")

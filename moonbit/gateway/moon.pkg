@@ -25,6 +25,7 @@ import {
   "vitro/engine/parser",
   "vitro/engine/protocol",
   "vitro/engine/session",
+  "vitro/engine/teaching/assets",
   "vitro/engine/teaching/steps",
   "vitro/engine/time_travel",
   "vitro/engine/typeck",

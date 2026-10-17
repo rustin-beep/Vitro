@@ -40,14 +40,15 @@ var writeMode = flag.Bool("write", false, "再生模式：产物落正式路径�
 type spec struct {
 	mode     string // parser argv[1]
 	src      string // 真源（content/ 下）
-	product  string // 产物（assets/ 下）
+	dir      string // 产物目录（#130 批③a：trap 留 assets，另两表拆 content_data）
+	product  string // 产物文件名
 	expected int    // 基线条数（解析器自校，此处仅报告）
 }
 
 var specs = []spec{
-	{"trap", "trap_messages.md", "trap_messages_gen.mbt", 45},
-	{"suggestions", "suggestions.md", "suggestions_gen.mbt", 43},
-	{"builtin_notes", "builtin_notes.md", "builtin_notes_gen.mbt", 12},
+	{"trap", "trap_messages.md", "teaching/assets", "trap_messages_gen.mbt", 45},
+	{"suggestions", "suggestions.md", "teaching/content_data", "suggestions_gen.mbt", 43},
+	{"builtin_notes", "builtin_notes.md", "teaching/content_data", "builtin_notes_gen.mbt", 12},
 }
 
 var reNoteRC = regexp.MustCompile(`程序运行完成，返回值：(\d+)`)
@@ -206,11 +207,11 @@ func main() {
 	for _, s := range specs {
 		out := runParser(s)
 		if *writeMode {
-			real := filepath.Join("moonbit", "teaching", "assets", s.product)
+			real := filepath.Join("moonbit", filepath.FromSlash(s.dir), s.product)
 			if err := os.WriteFile(real, out, 0o644); err != nil {
 				die("写产物失败 %s: %v", real, err)
 			}
-			runMoonFmt("teaching/assets/" + s.product)
+			runMoonFmt(s.dir + "/" + s.product)
 			fmt.Printf("[teaching_gen_check] 再生 %s（fmt 后 %d B）\n", s.product, len(out))
 			continue
 		}
@@ -224,7 +225,7 @@ func main() {
 			die("回读临时件失败: %v", err)
 		}
 		os.Remove(tmpAbs)
-		committed, err := os.ReadFile(filepath.Join("moonbit", "teaching", "assets", s.product))
+		committed, err := os.ReadFile(filepath.Join("moonbit", filepath.FromSlash(s.dir), s.product))
 		if err != nil {
 			die("读入库产物失败 %s: %v（先 -write 再生）", s.product, err)
 		}

@@ -878,7 +878,7 @@ fn TypeChecker::check_builtin_fgets(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        @assets.builtin_notes.get("fgets").unwrap().param_notes[0],
+        note_param("fgets", 0, "fgets 第 1 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -887,7 +887,7 @@ fn TypeChecker::check_builtin_fgets(
     args[1] = new_a1
     if !self.check_assignable(@ast.Type::int(), n_type, loc) {
       self.report_error(
-        @assets.builtin_notes.get("fgets").unwrap().param_notes[1],
+        note_param("fgets", 1, "fgets 第 2 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -898,7 +898,7 @@ fn TypeChecker::check_builtin_fgets(
       args,
       2,
       "fgets",
-      @assets.builtin_notes.get("fgets").unwrap().param_notes[2],
+      note_param("fgets", 2, "fgets 第 3 个参数类型不符"),
       loc,
     )
   }
@@ -917,7 +917,7 @@ fn TypeChecker::check_builtin_fputs(
     args[0] = new_a0
     if !(s_type.kind() is TK_Pointer) && !s_type.is_array() {
       self.report_error(
-        @assets.builtin_notes.get("fputs").unwrap().param_notes[0],
+        note_param("fputs", 0, "fputs 第 1 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -926,7 +926,7 @@ fn TypeChecker::check_builtin_fputs(
       args,
       1,
       "fputs",
-      @assets.builtin_notes.get("fputs").unwrap().param_notes[1],
+      note_param("fputs", 1, "fputs 第 2 个参数类型不符"),
       loc,
     )
   }
@@ -1022,7 +1022,7 @@ fn TypeChecker::check_builtin_fopen(
 ) -> @ast.Type {
   if args.length() != 2 {
     self.report_error(
-      @assets.builtin_notes.get("fopen").unwrap().count_note,
+      note_count("fopen", "fopen 参数个数不符"),
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1043,6 +1043,30 @@ fn TypeChecker::check_builtin_fopen(
 }
 
 ///|
+/// builtin_notes 查表助手（#130 批③a lean 化）：装载缺表（浏览器 lean
+/// 引擎未注入时）降级为通用文案——E 码与诊断行为不变，教学提示缺席
+/// （空文案诚实暴露）；旧 `.get().unwrap()` 在空表上 panic。
+fn note_count(name : String, fallback : String) -> String {
+  match @assets.builtin_notes.get(name) {
+    Some(n) => n.count_note
+    None => fallback
+  }
+}
+
+///|
+fn note_param(name : String, idx : Int32, fallback : String) -> String {
+  match @assets.builtin_notes.get(name) {
+    Some(n) =>
+      if idx >= 0 && idx < n.param_notes.length() {
+        n.param_notes[idx]
+      } else {
+        fallback
+      }
+    None => fallback
+  }
+}
+
+///|
 /// fread（四参：buf / 两 int / 文件指针）。
 fn TypeChecker::check_builtin_fread(
   self : TypeChecker,
@@ -1051,7 +1075,7 @@ fn TypeChecker::check_builtin_fread(
 ) -> @ast.Type {
   if args.length() != 4 {
     self.report_error(
-      @assets.builtin_notes.get("fread").unwrap().count_note,
+      note_count("fread", "fread 参数个数不符"),
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1060,7 +1084,7 @@ fn TypeChecker::check_builtin_fread(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        @assets.builtin_notes.get("fread").unwrap().param_notes[0],
+        note_param("fread", 0, "fread 第 1 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -1093,7 +1117,7 @@ fn TypeChecker::check_builtin_fwrite(
 ) -> @ast.Type {
   if args.length() != 4 {
     self.report_error(
-      @assets.builtin_notes.get("fwrite").unwrap().count_note,
+      note_count("fwrite", "fwrite 参数个数不符"),
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1102,7 +1126,7 @@ fn TypeChecker::check_builtin_fwrite(
     args[0] = new_a0
     if !(buf_type.kind() is TK_Pointer) && !buf_type.is_array() {
       self.report_error(
-        @assets.builtin_notes.get("fwrite").unwrap().param_notes[0],
+        note_param("fwrite", 0, "fwrite 第 1 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -1123,7 +1147,7 @@ fn TypeChecker::check_builtin_fwrite(
       args,
       3,
       "fwrite",
-      @assets.builtin_notes.get("fwrite").unwrap().param_notes[3],
+      note_param("fwrite", 3, "fwrite 第 4 个参数类型不符"),
       loc,
     )
   }
@@ -1142,7 +1166,7 @@ fn TypeChecker::check_builtin_fclose(
       args,
       0,
       "fclose",
-      @assets.builtin_notes.get("fclose").unwrap().param_notes[0],
+      note_param("fclose", 0, "fclose 第 1 个参数类型不符"),
       loc,
     )
   }
@@ -1161,7 +1185,7 @@ fn TypeChecker::check_builtin_feof(
       args,
       0,
       "feof",
-      @assets.builtin_notes.get("feof").unwrap().param_notes[0],
+      note_param("feof", 0, "feof 第 1 个参数类型不符"),
       loc,
     )
   }
@@ -1180,7 +1204,7 @@ fn TypeChecker::check_builtin_fgetc(
       args,
       0,
       "fgetc",
-      @assets.builtin_notes.get("fgetc").unwrap().param_notes[0],
+      note_param("fgetc", 0, "fgetc 第 1 个参数类型不符"),
       loc,
     )
   }
@@ -1196,7 +1220,7 @@ fn TypeChecker::check_builtin_fputc(
 ) -> @ast.Type {
   if args.length() != 2 {
     self.report_error(
-      @assets.builtin_notes.get("fputc").unwrap().count_note,
+      note_count("fputc", "fputc 参数个数不符"),
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1205,7 +1229,7 @@ fn TypeChecker::check_builtin_fputc(
     args[0] = new_a0
     if !self.check_assignable(@ast.Type::int(), c_type, loc) {
       self.report_error(
-        @assets.builtin_notes.get("fputc").unwrap().param_notes[0],
+        note_param("fputc", 0, "fputc 第 1 个参数类型不符"),
         loc,
         E3029_BuiltInArgType,
       )
@@ -1216,7 +1240,7 @@ fn TypeChecker::check_builtin_fputc(
       args,
       1,
       "fputc",
-      @assets.builtin_notes.get("fputc").unwrap().param_notes[1],
+      note_param("fputc", 1, "fputc 第 2 个参数类型不符"),
       loc,
     )
   }
@@ -1232,7 +1256,7 @@ fn TypeChecker::check_builtin_fseek(
 ) -> @ast.Type {
   if args.length() != 3 {
     self.report_error(
-      @assets.builtin_notes.get("fseek").unwrap().count_note,
+      note_count("fseek", "fseek 参数个数不符"),
       loc,
       E3028_BuiltInArgCount,
     )
@@ -1241,7 +1265,7 @@ fn TypeChecker::check_builtin_fseek(
       args,
       0,
       "fseek",
-      @assets.builtin_notes.get("fseek").unwrap().param_notes[0],
+      note_param("fseek", 0, "fseek 第 1 个参数类型不符"),
       loc,
     )
     for i in [1, 2] {
@@ -1272,7 +1296,7 @@ fn TypeChecker::check_builtin_ftell(
       args,
       0,
       "ftell",
-      @assets.builtin_notes.get("ftell").unwrap().param_notes[0],
+      note_param("ftell", 0, "ftell 第 1 个参数类型不符"),
       loc,
     )
   }
@@ -1291,7 +1315,7 @@ fn TypeChecker::check_builtin_rewind(
       args,
       0,
       "rewind",
-      @assets.builtin_notes.get("rewind").unwrap().param_notes[0],
+      note_param("rewind", 0, "rewind 第 1 个参数类型不符"),
       loc,
     )
   }

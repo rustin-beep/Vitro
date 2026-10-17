@@ -24,6 +24,7 @@ const SERVE_LINE_CAP : Int32 = 65536
 ///|
 /// serve 主循环：stdin 逐行 → gateway.invoke → stdout 响应；shutdown 停。
 fn main {
+  @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   // quote-include 的文件系统读取注册（2026-09-29 审阅 P2 修复——
   // native 形态恢复；gateway 侧经 include_reader 分叉，wasm-gc 不
   // 注册走 E1021 教学诊断）

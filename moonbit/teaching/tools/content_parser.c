@@ -390,9 +390,10 @@ static void emit_prologue(void) {
               "  placeholders : Array[String]\n}\n\n///|\n", stdout);
         fputs("pub let trap_messages : Map[String, TrapMessage] = {\n", stdout);
     } else if (g_mode == MODE_BUILTIN) {
-        fputs("///|\npub struct BuiltinNote {\n  count_note : String\n"
-              "  param_notes : Array[String]\n}\n\n///|\n", stdout);
-        fputs("pub let builtin_notes : Map[String, BuiltinNote] = {\n", stdout);
+        /* #130 批③a（2026-10-17）：BuiltinNote 类型留 assets 载体包
+           （pub(all) 手写），数据产物落 content_data——跨包构造走
+           @assets. 前缀；struct 不再随产物发射（避免双类型定义） */
+        fputs("pub let builtin_notes : Map[String, @assets.BuiltinNote] = {\n", stdout);
     }
     /* MODE_SUGG：枚举收齐后于 epilogue 发射（枚举先于数组，两段形态） */
 }
@@ -415,7 +416,7 @@ static void emit_entry(void) {
         }
         fputs("],\n  },\n", stdout);
     } else {
-        fputs("\": BuiltinNote::{\n    count_note: \"", stdout);
+        fputs("\": @assets.BuiltinNote::{\n    count_note: \"", stdout);
         emit_escaped(count_note);
         fputs("\",\n    param_notes: [", stdout);
         for (i = 0; i <= slot_max; i++) {

@@ -1,0 +1,16 @@
+// teaching/content_data·教学表数据包（#130 批③a，2026-10-17）：
+// suggestions（43 族文案）+ builtin_notes（12 臂参数教学提示）的烘焙
+// 数据真源产物——自 teaching/assets 拆出（lean 形态：浏览器 wasm 引擎
+// 不链接本包 = 两表字符串不进产物；native/CLI 与语言包链接并经
+// install_baked 装载）。真源 = teaching/content/*.md（md+.c 唯一真源，
+// 经 tools/content_parser.c 产 *_gen.mbt @generated——管线不变，产物
+// 落点随拆包改本目录，驱动 teaching_gen_check 路径表同步）。
+// trap_messages 留 assets（#120 切分线裁定：trap 帧即时渲染）。
+// install_baked = 装载门（assets.install_texts 的烘焙数据半边：
+// 43 臂穷尽 match 名单闸在此——编译期对生成枚举）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L6）。
+import {
+  "vitro/engine/diag",
+  "vitro/engine/teaching/assets",
+  "vitro/engine/util",
+}

@@ -1,5 +1,6 @@
 // cmd/compile：CLI `compile` 薄壳（#37 批②——编译+诊断单出，不执行）。
 import {
+  "vitro/engine/teaching/content_data",
   "vitro/engine/cmd/lib/cli",
   "vitro/engine/cmd/lib/engine_direct",
   "moonbitlang/core/env",

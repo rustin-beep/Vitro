@@ -8,11 +8,20 @@ import {
 // Values
 pub fn catalog_codes() -> Array[Int]
 
+pub let catalog_texts : Map[Int, CatalogEntry]
+
+pub fn catalog_texts_json() -> String
+
 pub fn codes_without_catalog() -> Array[Int]
 
 pub fn export_catalog_json() -> String
 
+pub fn install_catalog_texts(String) -> Unit raise InstallCatalogTextsError
+
 // Errors
+pub suberror InstallCatalogTextsError {
+  SchemaFail(message~ : String)
+}
 
 // Types and methods
 pub(all) struct CatalogEntry {

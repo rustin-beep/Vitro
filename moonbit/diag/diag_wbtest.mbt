@@ -18,17 +18,9 @@ test "coverage_baseline_137_77_60" {
 }
 
 ///|
-/// 无卡片码全部 None；有卡片码全部 Some 且内容非空。
-test "catalog_presence_per_code" {
-  for c in codes_without_catalog() {
-    assert_true(ErrorCode::from_code(c).unwrap().catalog() is None)
-  }
-  for c in catalog_codes() {
-    let e = ErrorCode::from_code(c).unwrap().catalog().unwrap()
-    assert_true(e.title.length() > 0)
-    assert_true(e.explanation.length() > 0)
-  }
-}
+/// catalog_presence_per_code / catalog_content_escape_probe 已随
+/// #130 批③b 拆包迁 content_data/contract_wbtest.mbt（数据面测试随
+/// 数据包走；本包 lean 载体默认空表）。
 
 ///|
 /// P3 段位前缀红锚同形（Rust test_code_prefix_* 的 MoonBit 侧镜像）：
@@ -106,16 +98,6 @@ test "all_codes_sorted_unique" {
     seen[code.code()] = true
     prev = code.code()
   }
-}
-
-///|
-/// 卡片内容抽查（转义正确性锚）：E1002 卡片中文与 icon 语义 id 原样。
-test "catalog_content_escape_probe" {
-  let e2 = E1002_UnterminatedString.catalog().unwrap()
-  assert_eq(e2.title, "字符串未闭合")
-  assert_eq(e2.icon, "string")
-  let e3007 = E3007_StringInitNonCharArray.catalog().unwrap()
-  assert_true(e3007.explanation.contains("char"))
 }
 
 ///|

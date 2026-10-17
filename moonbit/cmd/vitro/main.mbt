@@ -5,6 +5,7 @@
 
 ///|
 fn main {
+  @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   if args.length() < 2 {
     print_help()

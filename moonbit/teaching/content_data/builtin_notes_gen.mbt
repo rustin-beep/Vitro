@@ -4,67 +4,61 @@
 // 数组换行形态以 moon fmt 为准（驱动管线：本输出 → moon fmt → 比对）。
 
 ///|
-pub struct BuiltinNote {
-  count_note : String
-  param_notes : Array[String]
-}
-
-///|
-pub let builtin_notes : Map[String, BuiltinNote] = {
-  "fread": BuiltinNote::{
+pub let builtin_notes : Map[String, @assets.BuiltinNote] = {
+  "fread": @assets.BuiltinNote::{
     count_note: "fread 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
     param_notes: ["fread 第一个参数必须是指针或数组"],
   },
-  "fwrite": BuiltinNote::{
+  "fwrite": @assets.BuiltinNote::{
     count_note: "fwrite 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
     param_notes: [
       "fwrite 第一个参数必须是指针或数组", "", "", "fwrite 第四个参数必须是文件指针",
     ],
   },
-  "fseek": BuiltinNote::{
+  "fseek": @assets.BuiltinNote::{
     count_note: "fseek 需要三个参数（文件指针、偏移量、起始位置）",
     param_notes: ["fseek 第一个参数必须是文件指针"],
   },
-  "fgets": BuiltinNote::{
+  "fgets": @assets.BuiltinNote::{
     count_note: "",
     param_notes: [
       "fgets 第一个参数必须是指针或数组", "fgets 第二个参数必须是 int",
       "fgets 第三个参数必须是文件指针",
     ],
   },
-  "fputc": BuiltinNote::{
+  "fputc": @assets.BuiltinNote::{
     count_note: "fputc 需要两个参数（字符和文件指针）",
     param_notes: [
       "fputc 第一个参数必须是 int", "fputc 第二个参数必须是文件指针",
     ],
   },
-  "fputs": BuiltinNote::{
+  "fputs": @assets.BuiltinNote::{
     count_note: "",
     param_notes: [
       "fputs 第一个参数必须是字符串", "fputs 第二个参数必须是文件指针",
     ],
   },
-  "fopen": BuiltinNote::{
+  "fopen": @assets.BuiltinNote::{
     count_note: "fopen 需要两个参数（路径和模式）",
     param_notes: [],
   },
-  "fclose": BuiltinNote::{
+  "fclose": @assets.BuiltinNote::{
     count_note: "",
     param_notes: ["fclose 参数必须是文件指针"],
   },
-  "feof": BuiltinNote::{
+  "feof": @assets.BuiltinNote::{
     count_note: "",
     param_notes: ["feof 参数必须是文件指针"],
   },
-  "fgetc": BuiltinNote::{
+  "fgetc": @assets.BuiltinNote::{
     count_note: "",
     param_notes: ["fgetc 参数必须是文件指针"],
   },
-  "ftell": BuiltinNote::{
+  "ftell": @assets.BuiltinNote::{
     count_note: "",
     param_notes: ["ftell 参数必须是文件指针"],
   },
-  "rewind": BuiltinNote::{
+  "rewind": @assets.BuiltinNote::{
     count_note: "",
     param_notes: ["rewind 参数必须是文件指针"],
   },

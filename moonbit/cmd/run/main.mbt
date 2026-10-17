@@ -4,6 +4,7 @@
 
 ///|
 fn main {
+  @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   // 病 43（#71 第二梯队，2026-10-11）：include_reader 注册下沉
   // cmd/lib/cli 四入口（ensure_include_reader）——壳层注册义务消灭
   //（compile/step 薄壳此前漏调致 quote-include 恒 E1021）。

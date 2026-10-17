@@ -7,3 +7,7 @@
 // （suggestions 另有 map.mbt 43 臂穷尽 match 名单闸）。分层：与
 // teaching/steps 同层 L8。#60 双出口（.json.mbt 真源 + jsonmbt 教师
 // 面 .json）随批 A 出库退役。
+
+import {
+  "vitro/engine/util",
+}

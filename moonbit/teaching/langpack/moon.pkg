@@ -1,0 +1,21 @@
+// teaching/langpack·语言包 js 出口壳（#130 批①，2026-10-17）：
+// teaching/assets 以 foreign_library --target js 出 texts_json——浏览器
+// 懒加载注入的载体（宿主动态 import() 本产物 → texts_json() → 引擎
+// install_texts 装载门）。壳零逻辑（gateway/wasm 同款拆包配方：只持
+// #export_name 转发，改语义动 teaching/assets，勿在此加实现）。
+// 单目标 +js（foreign_library 的 native 走 exe 链接 ⇒ LNK1561，
+// gateway/wasm 拆包同因）。实测：88.6KB 模块 / payload 17.9KB UTF-8
+//（gzip 6.4KB / brotli 5.3KB）。分层登记：L8 出口壳
+//（scripts/moonbit/pkg_deps rules.json）。
+import {
+  "vitro/engine/teaching/assets",
+  "vitro/engine/teaching/content_data",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+js"
+
+options(
+  link: { "js": { "exports": [ "texts_json" ] } },
+)

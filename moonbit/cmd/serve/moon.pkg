@@ -2,6 +2,7 @@
 // cmd 层 pkg_deps 豁免方向）。帧语义/方法表/豁免面见 gateway 与
 // scripts/serve_smoke/moonbit_exemptions.json。
 import {
+  "vitro/engine/teaching/content_data",
   "moonbitlang/core/encoding/utf8",
   "vitro/engine/fs",
   "vitro/engine/gateway",

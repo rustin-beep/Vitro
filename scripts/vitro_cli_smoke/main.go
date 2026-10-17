@@ -243,7 +243,7 @@ func main() {
 		}{
 			// 方法计数随 gen_api_help rules.json 走（#52 codegen.dump 29，
 			// 2026-10-17 合并批连坐）——漂移即本锚红，改数须连坐 rules.json
-			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（29）"},
+			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（30）"},
 			{"api help compile 详情", []string{"api", "help", "compile"}, 0, "params: files:[{filename?,source}] | source:string[,filename:string]"},
 			{"api help 未知方法", []string{"api", "help", "no.such"}, 4, "用法错: 未知方法 'no.such'"},
 		} {

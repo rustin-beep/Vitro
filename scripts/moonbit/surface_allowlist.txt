@@ -1,58 +1,58 @@
-# moonbit_surface 白名单：**允许保持 pub 但当前无跨包消费**的符号（格式 `包全名 sym`）。
-# -check 双向对账：实际可收清单多出白名单 → 漏收（红）；白名单条目不在
-# 可收清单 → 过期（红，须清理）。
 #
-# **2026-09-22 重构**：闸门新增**类型闭包自动识别**（见 moonbit_surface.go
-# 第二遍：pub 类型若被 pub fn/const 签名、pub(all) struct 字段、enum 变体载荷
-# 引用 → 自动归入「签名闭包·非收面」，**不再需要手工登记**）。故本表现在只
-# 承载「**技术上可收、但有意保留**」的符号——纯人工裁定项。
-# 此前手工登记的 parser ParseError / bytecode LocalBuffer / diag 三类型 /
-# source Pos / ast CatchClause / ast VTable 已全部由脚本自动识别并移出。
 #
-# 发布状态（2026-09-22 核实）：0.4.0（2026-09-21）起本 module 全部对外包已
-# 进架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更；0.x 阶段
-# minor 可带 breaking，须在 CHANGELOG 明示。
-# 键形态（S6 批一段，2026-09-23）：`包全名 sym`（原 `pkg 末段 sym`）。
 #
-# --- 有意保留（人工裁定项）---
-# diag codes_without_catalog：教学卡片（catalog）的**覆盖率断言清单**（T2 口径
+#
+#
+#
+#   compute_heap_base      → vm 的 setup 动态堆起点（再喂 MemoryMap::set_heap_base）
 #   ——"哪些码无卡片"是登记在案的缺口而非异常）。语义属对外可核对的教学契约，
-#   故保留 pub；本仓内当前无跨包消费者。
-vitro/engine/diag codes_without_catalog
-#
-# stdlib headers（方案 A P1 批，2026-10-10）：标准库头文件清单唯一真源。
-#   当前消费者 = Go 侧 gen_stubs（文本解析，非 MoonBit import——surface 闸
-#   口径外的消费形态）；引擎内消费（lexer `<>` 判定、capabilities.libraries
 #   出口）随 P2~P4 逐面接线后即出现跨包消费边，届时本条撤销。
-vitro/engine/stdlib headers
-#
-# （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
+#   口径外的消费形态）；引擎内消费（lexer `<>` 判定、capabilities.libraries
+#   当前消费者 = Go 侧 gen_stubs（文本解析，非 MoonBit import——surface 闸
+#   故保留 pub；本仓内当前无跨包消费者。
 #  N3/N4 漂移登记锚（S6/S8 单源收编），priv 不在 pub 审计面，无需登记。
 #  曾于 176fbdf 误判死码删除，审阅批四恢复。）
-#
+# **2026-09-22 重构**：闸门新增**类型闭包自动识别**（见 moonbit_surface.go
 # --- S6 前置 pub 化（memory 建包批，2026-09-23）---
+# --- 有意保留（人工裁定项）---
+# -check 双向对账：实际可收清单多出白名单 → 漏收（红）；白名单条目不在
+# S7 段二：两个 encode 细粒度出口的签名含 priv SymbolTable（跨包不可构造，
+# diag codes_without_catalog：教学卡片（catalog）的**覆盖率断言清单**（T2 口径
 # memory 包**不复制** L6 的地址布局常量（`@bytecode.` 前缀引用，单源不双写），
+# minor 可带 breaking，须在 CHANGELOG 明示。
+# moonbit_surface 白名单：**允许保持 pub 但当前无跨包消费**的符号（格式 `包全名 sym`）。
+# source Pos / ast CatchClause / ast VTable 已全部由脚本自动识别并移出。
+# stdlib headers（方案 A P1 批，2026-10-10）：标准库头文件清单唯一真源。
+# 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
 # 但它只消费其中 4 个：MEM_SIZE / NULL_TRAP_SIZE / HEAP_START / align4。
 # 余下 3 个是 vm 片的消费面（S6 同批后续片，包尚未建）：
-#   compute_heap_base      → vm 的 setup 动态堆起点（再喂 MemoryMap::set_heap_base）
-# 三个都已按 S5 预留注释 pub（0.6.0 的面扩张，minor）；vm 建包接线后**须清理
+# 发布状态（2026-09-22 核实）：0.4.0（2026-09-21）起本 module 全部对外包已
+# 可收清单 → 过期（红，须清理）。
+# 引用 → 自动归入「签名闭包·非收面」，**不再需要手工登记**）。故本表现在只
+# 承载「**技术上可收、但有意保留**」的符号——纯人工裁定项。
 # 本节登记**（届时转由 surface_edges.txt 的真实消费边覆盖）。
-vitro/engine/vm load_libc_artifact
-# S7 段二：两个 encode 细粒度出口的签名含 priv SymbolTable（跨包不可构造，
+# 此前手工登记的 parser ParseError / bytecode LocalBuffer / diag 三类型 /
 # 照搬 Rust pub+priv 形态）；真消费面 = encode_payloads 内部。
-vitro/engine/protocol encode_step_payload
+# 第二遍：pub 类型若被 pub fn/const 签名、pub(all) struct 字段、enum 变体载荷
+# 进架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更；0.x 阶段
+# 键形态（S6 批一段，2026-09-23）：`包全名 sym`（原 `pkg 末段 sym`）。
+# （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
+vitro/engine/host realloc_invalid_message
 vitro/engine/protocol encode_step_delta
-vitro/engine/time_travel infer_semantic_label
+vitro/engine/protocol encode_step_payload
+vitro/engine/stdlib headers
+vitro/engine/teaching/content_data builtin_notes
+vitro/engine/teaching/content_data suggestions
 vitro/engine/teaching/steps build_match
 vitro/engine/teaching/steps detect_graph
 vitro/engine/teaching/steps detect_math
+vitro/engine/teaching/steps detect_search
 vitro/engine/teaching/steps detect_sorting
+vitro/engine/teaching/steps detect_string
+vitro/engine/teaching/steps detect_structures
+vitro/engine/teaching/steps detect_tree
 vitro/engine/teaching/steps expr_to_string
 vitro/engine/teaching/steps extract_features
 vitro/engine/teaching/steps has_word
-vitro/engine/teaching/steps detect_search
-vitro/engine/teaching/steps detect_structures
-vitro/engine/teaching/steps detect_string
-vitro/engine/teaching/steps detect_tree
-vitro/engine/host realloc_invalid_message
-vitro/engine/teaching/assets suggestions
+vitro/engine/time_travel infer_semantic_label
+vitro/engine/vm load_libc_artifact

@@ -1,8 +1,25 @@
 ///|
-/// 43 算法文案查表 Map（包初始化求值一次——build_match 的 get(name) 形态）。
-/// match 全臂穷尽 = 名单对账的**编译期形态**（新增 AlgoSuggestion 变体
-/// 不更新此 match 即红）；`#|` 前导空格（moon 原生语义，排版习惯）在此剥。
-pub let suggestion_map : Map[String, String] = build_suggestion_map()
+/// #130 批③a（2026-10-17）：烘焙数据装载——map.mbt（原 assets）的
+/// 43 臂穷尽 match 名单闸随数据包搬迁：build_suggestion_map 对生成枚举
+/// 穷尽（新增 AlgoSuggestion 变体不更新此 match 即红）；install_baked
+/// 把两表装进 assets 载体（原地 clear+fill，幂等——native/CLI mains
+/// 启动调用、语言包（langpack）经 texts_json 导出前调用）。
+pub fn install_baked() -> Unit {
+  let m : Map[String, String] = build_suggestion_map()
+  @assets.suggestion_map.clear()
+  for k, v in m {
+    @assets.suggestion_map.set(k, v)
+  }
+  @assets.builtin_notes.clear()
+  for k, v in builtin_notes {
+    @assets.builtin_notes.set(k, v)
+  }
+  // #130 批③b：诊断卡片数据装载（diag 载体——105 卡）
+  @diag.catalog_texts.clear()
+  for k, v in catalog_data {
+    @diag.catalog_texts.set(k, v)
+  }
+}
 
 ///|
 fn build_suggestion_map() -> Map[String, String] {
@@ -70,5 +87,28 @@ fn trim_hash_pipe_space(s : String) -> String {
     s[1:].to_owned()
   } else {
     s
+  }
+}
+
+///|
+/// 烘焙全量 payload（#130 批③b：四段并装单源——teaching 三段 +
+/// error_catalog 段）。langpack（texts_json 导出）与 cmd/vitro_wasm
+/// （启动注入）共用；gateway texts.install 按段分发。
+pub fn baked_payload_json() -> String {
+  install_baked()
+  let top = @util.json_parse(@assets.texts_json()) catch {
+    _ => return @assets.texts_json()
+  }
+  match top {
+    Object(m) => {
+      m.set(
+        "error_catalog",
+        @util.json_parse(@diag.catalog_texts_json()) catch {
+          _ => Json::object(Map([]))
+        },
+      )
+      Json::object(m).stringify()
+    }
+    _ => @assets.texts_json()
   }
 }

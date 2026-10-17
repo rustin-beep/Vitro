@@ -33,10 +33,13 @@ import (
 )
 
 var (
-	reHeading   = regexp.MustCompile(`^## ([A-Za-z_0-9]+)\s*$`)
-	reTrapGet   = regexp.MustCompile(`trap_messages\.get\("([A-Za-z_0-9]+)"\)`)
-	reSuggSet   = regexp.MustCompile(`m\.set\("([a-z_0-9]+)",`)
-	reBuiltin   = regexp.MustCompile(`builtin_notes\.get\("([A-Za-z_0-9]+)"\)`)
+	reHeading = regexp.MustCompile(`^## ([A-Za-z_0-9]+)\s*$`)
+	reTrapGet = regexp.MustCompile(`trap_messages\.get\("([A-Za-z_0-9]+)"\)`)
+	reSuggSet = regexp.MustCompile(`m\.set\("([a-z_0-9]+)",`)
+	// #130 批③a：typeck 消费面 graceful 化后形态 = note_count("KEY"/
+	// note_param("KEY"（原 @assets.builtin_notes.get("KEY").unwrap() 直查
+	// 不再在场——提取器随装配形态同步，键集判据不变）
+	reBuiltin   = regexp.MustCompile(`(?:builtin_notes\.get|note_count|note_param)\("([A-Za-z_0-9]+)"`)
 	reRenderVar = regexp.MustCompile(`render_var_section\("([A-Za-z_0-9]+)"`)
 	reTpl       = regexp.MustCompile(`\btpl\("([A-Za-z_0-9]+)"`)
 	reRnd       = regexp.MustCompile(`\brnd\("([A-Za-z_0-9]+)"`)
@@ -72,7 +75,7 @@ func pairs() []pair {
 		{
 			md: "moonbit/teaching/content/suggestions.md", label: "suggestions", base: 43,
 			sites: []site{{
-				paths: []string{"moonbit/teaching/assets/map.mbt"},
+				paths: []string{"moonbit/teaching/content_data/map_install.mbt"},
 				res:   []*regexp.Regexp{reSuggSet},
 			}},
 		},

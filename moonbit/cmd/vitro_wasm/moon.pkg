@@ -8,6 +8,8 @@
 import {
   "vitro/engine/cmd/lib/cli",
   "vitro/engine/fs",
+  "vitro/engine/teaching/assets",
+  "vitro/engine/teaching/content_data",
   "vitro/engine/util",
 }
 

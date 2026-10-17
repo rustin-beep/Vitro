@@ -29,6 +29,12 @@ test "serve_capabilities_static_tracks" {
 
 ///|
 test "serve_static_catalogs_parse_channels" {
+  // #130 批③b：catalog lean 载体默认空——fixture 装载后验条目字段
+  @diag.install_catalog_texts(
+    "{\"1001\":{\"icon\":\"x\",\"title\":\"t\",\"explanation\":\"e\",\"common_causes\":[]}}",
+  ) catch {
+    _ => fail("fixture 装载失败")
+  }
   let s = @session.Session::new()
   let (r1, _) = serve_handle(s, "{\"id\":1,\"method\":\"error_catalog\"}")
   assert_true(r1.contains("\"ok\":true"))
@@ -45,6 +51,9 @@ test "serve_static_catalogs_parse_channels" {
     r3.contains("v0.2") || r3.contains("reserved"),
     msg="预留位台账在表",
   )
+  @diag.install_catalog_texts("{}") catch {
+    _ => ()
+  }
 }
 
 // ── input.feed 族（A2：增量喂入续跑）──

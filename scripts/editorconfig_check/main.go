@@ -90,6 +90,11 @@ func main() {
 			return nil
 		}
 		rel, _ := filepath.Rel(base, path)
+		// tools/cache = wasmopt 供给缓存（钉版本下载物，gitignored——
+		// #120 批①：包内容不归仓规管辖，同 node_modules 族）
+		if strings.HasPrefix(rel, "tools"+string(filepath.Separator)+"cache") {
+			return filepath.SkipDir
+		}
 		for _, seg := range strings.Split(rel, string(filepath.Separator)) {
 			// dist-pilot/dist-e08/dist = vite 构建产物（gitignored，产物面归
 			// 生成器闸，与 _build/build 同族；dist = F4 收官批 outDir 迁移后

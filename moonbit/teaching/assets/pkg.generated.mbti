@@ -4,62 +4,23 @@ package "vitro/engine/teaching/assets"
 // Values
 pub let builtin_notes : Map[String, BuiltinNote]
 
+pub fn install_texts(String) -> Unit raise InstallTextsError
+
+pub let known_suggestion_keys : Array[String]
+
 pub let suggestion_map : Map[String, String]
 
-pub let suggestions : Array[AlgoSuggestion]
+pub fn texts_json() -> String
 
 pub let trap_messages : Map[String, TrapMessage]
 
 // Errors
-
-// Types and methods
-pub enum AlgoSuggestion {
-  BubbleSort(String)
-  SelectionSort(String)
-  InsertionSort(String)
-  QuickSort(String)
-  MergeSort(String)
-  BinarySearch(String)
-  HeapSort(String)
-  Bfs(String)
-  Dfs(String)
-  Dp(String)
-  ShellSort(String)
-  CountingSort(String)
-  LinkedListDelete(String)
-  BstInsert(String)
-  BstSearch(String)
-  BstDelete(String)
-  BstValidate(String)
-  StringReverse(String)
-  Gcd(String)
-  IsPrime(String)
-  Hanoi(String)
-  SeqList(String)
-  LinkedListAppend(String)
-  CircularQueue(String)
-  LinkedStack(String)
-  LinkedQueue(String)
-  LevelOrder(String)
-  HashTable(String)
-  Josephus(String)
-  CircularLinkedList(String)
-  StaticLinkedList(String)
-  StringMatchBf(String)
-  StringMatchKmp(String)
-  ThreadedBinaryTree(String)
-  HuffmanTree(String)
-  UnionFind(String)
-  AvlTree(String)
-  PrimMst(String)
-  KruskalMst(String)
-  Dijkstra(String)
-  Floyd(String)
-  TopologicalSort(String)
-  RadixSort(String)
+pub suberror InstallTextsError {
+  SchemaFail(message~ : String)
 }
 
-pub struct BuiltinNote {
+// Types and methods
+pub(all) struct BuiltinNote {
   count_note : String
   param_notes : Array[String]
 }

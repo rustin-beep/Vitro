@@ -96,6 +96,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `config.get` / `config.set` | 同上配置项 | 读写会话级配置 |
 | `error_catalog` | — | 错误码表机器可读导出（`{catalog:[{code,code_str,lang,category,icon,title,explanation,common_causes[]}]}`，按 code 升序；`icon` = 语义图标 id（#27 方案 C——原 `emoji` 码点字段已退役），字形经 `icons.get` 单通道下发） |
 | `icons.get` | `ids:[string]`（可选，缺省/空 = 全量） | **图标资产帧（#27 方案 C，2026-10-07）**：响应 `{schema,digest,viewBox,stroke_width,stroke_linecap,stroke_linejoin,fill,icons:{<id>:{paths:[…]}}}`——SVG path 数据 + 统一渲染参数按 digest 锁定下发；值域 = `moonbit/icons/index.tsv` 单源（icon_catalog 闸锁）；按请求序输出、重复 id 去重、含未知 id 整帧拒绝（fail loud 不静默缩水） |
+| `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时覆盖装载——批③b 扩诊断卡片段（105 卡，码值域闸=catalog_codes）——校验（suggestions/builtin_notes 两必到键 + trap_messages 可选段〔批③a：缺席=不碰引擎烘焙 trap，在场=校验后替换〕/suggestions 值域 43 名单/trap 占位符双向契约）全过后原子换装，失败 error 帧不落半装；成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持） |
 | `semantic_labels` | — | `semantic_label` 受控词汇表导出（`{schema,discipline,labels:[{id,domain,template,example,status,since}]}`；词汇只增不改） |
 | `contracts` | — | schema 版本轨道与行为契约（预留位字段名、v0.2 激活清单与字段台账、行为契约表） |
 | `capabilities` | — | 机器可读能力清单（`engine_version`（含构建期 git 短哈希，可用于产物自检）、版本宏名义锚点、语言子集、内存模型常量、schema 轨道、行为契约） |
@@ -113,6 +114,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |
 | 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
 | `step.next` 参数 `frames` | 方法参数 | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
+| `texts.install` 方法帧 | 方法表 | **HEAD（未发布）** | #130 装载门（protocol_frames 基线 47 帧内容位更新） |
 
 > 本表人工维护、以 `vitro api help` 生成物与 protocol_frames 基线为行为权威；**新字段上帧时必须在此登记版本归属**（#116），「HEAD」条目随发版改为实版号。表中未列出 = 0.8.0 在架已携带。
 

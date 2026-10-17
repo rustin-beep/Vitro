@@ -383,7 +383,37 @@ test "assign_null_pointer_constant_no_w3054" {
 ///|
 /// builtin 释义文案外置等价锚（#60 批三段二，2026-10-10）：A/B 类臂
 /// count 释义句与参数位句——改造前逐字节基线（错误串取 tc.errors[0]）。
+/// #130 批③a 起 builtin_notes 拆 content_data（wbtest 不可跨包 import
+/// ——fixture-install 技法：装载内联载荷后断言，测试自此与烘焙数据
+/// 解耦且更 hermetic）。测尾回装空表（lean 初始态，不污染同包后续）。
 test "builtin_notes_migration_snapshot_before" {
+  let fixture = Json::object({
+    "suggestions": Json::object({}),
+    "builtin_notes": Json::object({
+      "fread": Json::object({
+        "count_note": Json::string(
+          "fread 需要四个参数（缓冲区、元素大小、元素数量、文件指针）",
+        ),
+        "param_notes": Json::array([]),
+      }),
+      "fseek": Json::object({
+        "count_note": Json::string(""),
+        "param_notes": Json::array([
+          Json::string("fseek 第一个参数必须是文件指针"),
+        ]),
+      }),
+      "rewind": Json::object({
+        "count_note": Json::string(""),
+        "param_notes": Json::array([
+          Json::string("rewind 参数必须是文件指针"),
+        ]),
+      }),
+    }),
+    "trap_messages": Json::object({}),
+  })
+  @assets.install_texts(fixture.stringify()) catch {
+    _ => fail("fixture 装载失败")
+  }
   let loc = @source.SourceLoc::new(1, 1)
   // fread：count 释义（0 参触发）
   let tc = TypeChecker::new()
@@ -405,6 +435,12 @@ test "builtin_notes_migration_snapshot_before" {
   ignore(tc3.check_builtin_rewind([dlit], loc))
   assert_true(tc3.errors.length() > 0, msg="rewind int 实参须报错")
   assert_eq(tc3.errors[0].message, "rewind 参数必须是文件指针")
+  // 回装空表（lean 初始态）
+  @assets.install_texts(
+    "{\"suggestions\":{},\"builtin_notes\":{},\"trap_messages\":{}}",
+  ) catch {
+    _ => ()
+  }
 }
 
 ///|

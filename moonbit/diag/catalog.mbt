@@ -29,3 +29,12 @@ pub fn CatalogEntry::of(
 ) -> CatalogEntry {
   { code, icon, title, explanation, common_causes, }
 }
+
+///|
+/// 卡片查询（#130 批③b：139 臂穷尽 match 退查表——catalog_texts 载体
+/// 经装载门填充；miss = None 与「无卡片码登记缺口
+/// codes_without_catalog」同语义。编译期臂-卡对齐闸随拆包转
+/// gen_diag -check 幂等 + content_data 对账锚）。
+pub fn ErrorCode::catalog(self : ErrorCode) -> CatalogEntry? {
+  catalog_texts.get(self.code())
+}

@@ -1,18 +1,42 @@
 ///|
+/// #130 批③b fixture（lean 载体默认空——wbtest 不可 import
+/// content_data）：三条已知卡（1001 首位字节锚 / 3051 W 前缀 / 4100
+/// C++ 段），内容 = 真源逐字节；测尾回装空段恢复 lean 态。
+fn e4_install_fixture() -> Unit raise {
+  install_catalog_texts(
+    "{\"1001\":{\"icon\":\"unknown-char\",\"title\":\"未知字符\",\"explanation\":\"探针\",\"common_causes\":[]},\"3051\":{\"icon\":\"x\",\"title\":\"W 前缀探针\",\"explanation\":\"探针\",\"common_causes\":[]},\"4100\":{\"icon\":\"x\",\"title\":\"C++ 段探针\",\"explanation\":\"探针\",\"common_causes\":[]}}",
+  ) catch {
+    _ => fail("fixture 装载失败")
+  }
+}
+
+///|
+fn e4_restore_lean() -> Unit raise {
+  install_catalog_texts("{}") catch {
+    _ => ()
+  }
+}
+
+///|
 /// E4 出口形状：包裹结构 + 条目数（每条必含一个 common_causes 键）。
-/// #50 批③：77→102；病 15：+W3068→103；病 19：→104；#96：→105。
+/// 批③b 起 = fixture 三条（全量 105 计数锚随数据迁 content_data）。
 test "e4_export_shape_and_count" {
+  e4_install_fixture()
   let json = export_catalog_json()
   assert_true(json.has_prefix("{\"catalog\":["))
   assert_true(json.has_suffix("]}"))
   let hits = json.split("common_causes").count() - 1
-  assert_eq(hits, 105) // #96：104→105
+  assert_eq(hits, 3)
+  e4_restore_lean() catch {
+    _ => ()
+  }
 }
 
 ///|
 /// E4 首条逐字节锚（#50 批③后最小码 1001——原 1002 首位被新增 unknown-char
 /// 条目取代）：字段序 / lang="c" / category="词法" / 转义形态。
 test "e4_export_first_entry_bytes" {
+  e4_install_fixture()
   let json = export_catalog_json()
   // 首条即最小码 1001（catalog_codes 升序首位；#50 批③新增）
   let expect_head = "{\"catalog\":[{\"code\":1001,\"code_str\":\"E1001\",\"lang\":\"c\",\"category\":\"词法\",\"icon\":\"unknown-char\",\"title\":\"未知字符\","
@@ -22,6 +46,7 @@ test "e4_export_first_entry_bytes" {
 ///|
 /// E4 4xxx 段 lang="c++"、category="C++"（语言段位对齐锚）。
 test "e4_export_cpp_segment" {
+  e4_install_fixture()
   let json = export_catalog_json()
   let probe = ErrorCode::from_code(4100).unwrap()
   assert_true(probe.catalog() is Some(_))
@@ -34,6 +59,7 @@ test "e4_export_cpp_segment" {
 /// W/H 码卡片码串前缀（P3 段位单源在 E4 出口的体现）：
 /// W3051 有卡片（ArrayBoundOffByOne 在 catalog_codes 内），导出 code_str="W3051"。
 test "e4_export_warn_prefix" {
+  e4_install_fixture()
   let json = export_catalog_json()
   assert_true(catalog_codes().contains(3051))
   let frag = "\"code\":3051,\"code_str\":\"W3051\""
@@ -45,6 +71,7 @@ test "e4_export_warn_prefix" {
 /// U+0000–001F 裸控制字节（控制字符必须已是 \u00XX 转义文本——转义单源
 /// @util.json_escape，原本地副本只转五字符的缺口由此在出口面钉死）。
 test "e4_export_no_raw_control_bytes" {
+  e4_install_fixture()
   let json = export_catalog_json()
   for c in json {
     if c.to_int() < 0x20 {

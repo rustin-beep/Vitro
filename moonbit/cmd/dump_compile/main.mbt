@@ -21,6 +21,7 @@
 /// 族 fail loud（`…未实现（S5 在途）`错误文本）。语料大面积 gen 失败
 /// 属预期红面基线期（同 S4 typeck_diff 模式），扩展批逐族收敛。
 fn main raise {
+  @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   // --library：library mode（预编译 Bytecode Libc 自身——不预注册固定索引段、
   // 全局偏移自 0 起；见 @codegen.compile_library）。**main 检查不豁免**，与

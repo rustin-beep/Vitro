@@ -36,6 +36,12 @@ fn main {
   }
   js_write_stderr("[vitro] backend=wasm (node \{js_node_version()})\n")
   let g = js_load_gateway()
+  // #130 批②（2026-10-17）：语言包启动注入——烘焙内容经 texts.install
+  // 协议方法装载进 wasm 引擎（浏览器宿主同一条注入路径；CLI 臂烘焙
+  // 语义保持）。今日与产物内烘焙幂等（内容相同零行为差），批③ lean
+  // 拆包后本通道承重。失败 stderr 明示不阻断（lean 语义=空文案诚实暴露）
+  @content_data.install_baked() // #130 批③a：壳本地烘焙表装载（inject payload 源头）
+  ignore(inject_texts_at_startup(g))
   let channel : @cli.EngineChannel = wasm_channel(g)
   let args = js_args()
   if args.length() < 1 {
@@ -76,6 +82,39 @@ fn main {
     }
   }
   js_exit(code)
+}
+
+///|
+/// 语言包启动注入（#130 批②）：assets 烘焙内容 → texts.install 协议帧
+/// → ok 则静默；error 帧 stderr 明示（不阻断——表保持产物内现状）。
+fn inject_texts_at_startup(g : JsGateway) -> Bool {
+  let params : Map[String, Json] = Map([])
+  params.set("payload", Json::string(@content_data.baked_payload_json()))
+  let req : Map[String, Json] = Map([])
+  req.set("id", Json::number(0.0))
+  req.set("method", Json::string("texts.install"))
+  req.set("params", Json::object(params))
+  let resp = (g.invoke)(Json::object(req).stringify())
+  let parsed : Json? = match (try? @util.json_parse(resp)) {
+    Ok(v) => Some(v)
+    Err(_) => None
+  }
+  match parsed {
+    Some(Object(top)) =>
+      match top.get("ok") {
+        Some(Json::True) => true
+        _ => {
+          js_write_stderr(
+            "[vitro] 语言包注入失败（引擎表保持产物内现状）：\{resp}\n",
+          )
+          false
+        }
+      }
+    _ => {
+      js_write_stderr("[vitro] 语言包注入响应不可解析：\{resp}\n")
+      false
+    }
+  }
 }
 
 ///|

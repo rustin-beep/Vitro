@@ -1,4 +1,5 @@
 import {
+  "vitro/engine/teaching/content_data",
   "vitro/engine/ast",
   "vitro/engine/lexer",
   "vitro/engine/parser",

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "expected_method_count": 29,
+  "expected_method_count": 30,
   "methods": [
     {
       "method": "algorithms.catalog",
@@ -21,6 +21,11 @@
       "method": "capabilities",
       "brief": "能力清单（语言/协议面）",
       "example": "{}"
+    },
+    {
+      "method": "codegen.dump",
+      "brief": "编译产物转储（字节码跳转图 + 每指令源码行号——流程图原料；复用 codegen_diff 逐字节对拍锁定的单源 emitter，只读零会话态，#52）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
     },
     {
       "method": "compile",
@@ -138,13 +143,13 @@
       "example": "{\"source\":\"int main(){return 0;}\"}"
     },
     {
-      "method": "typeck.dump",
-      "brief": "类型检查导出（静态 dump 族）",
-      "example": "{\"source\":\"int main(){return 0;}\"}"
+      "method": "texts.install",
+      "brief": "语言包装载（payload 顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——批③b 扩诊断卡片段；浏览器宿主懒加载注入通道，#130）",
+      "example": "{\"payload\":\"{\"suggestions\":{},\"builtin_notes\":{},\"error_catalog\":{}}\"}"
     },
     {
-      "method": "codegen.dump",
-      "brief": "编译产物转储（字节码跳转图 + 每指令源码行号——流程图原料；复用 codegen_diff 逐字节对拍锁定的单源 emitter，只读零会话态，#52）",
+      "method": "typeck.dump",
+      "brief": "类型检查导出（静态 dump 族）",
       "example": "{\"source\":\"int main(){return 0;}\"}"
     }
   ],

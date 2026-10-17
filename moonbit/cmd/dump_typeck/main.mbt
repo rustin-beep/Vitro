@@ -29,6 +29,7 @@
 /// sentinel.c 已翻转并随 golden 重刷（哨兵设计兑现：任一侧 vfs 行为
 /// 独立变化即红）。
 fn main raise {
+  @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   if args.length() < 3 {
     println("用法: dump_typeck <corpus_dir|file.c> <out_dir>")

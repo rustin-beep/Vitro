@@ -25,12 +25,19 @@ pub fn export_catalog_json() -> String {
   let buf = StringBuilder()
   buf.write_string("{\"catalog\":[")
   let codes = catalog_codes()
-  for i, code in codes {
-    if i > 0 {
+  // #130 批③b：lean 未装载段跳过（导出面=已装载卡片；空载体 →
+  // {"catalog":[]}——宿主经 texts.install error_catalog 段装载后全量）
+  let mut first = true
+  for code in codes {
+    let op = ErrorCode::from_code(code).unwrap()
+    let e = match op.catalog() {
+      Some(c) => c
+      None => continue
+    }
+    if !first {
       buf.write_string(",")
     }
-    let op = ErrorCode::from_code(code).unwrap()
-    let e = op.catalog().unwrap()
+    first = false
     buf.write_string("{\"code\":\{e.code}")
     buf.write_string(",\"code_str\":\"\{op.display_code()}\"")
     buf.write_string(",\"lang\":\"\{export_lang_of(e.code)}\"")

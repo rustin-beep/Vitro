@@ -764,18 +764,6 @@ func runOracle(path string) *result {
 }
 
 func runMoonBit(path string) *result {
-	tmp, err := os.CreateTemp("", "vmem_*.bin")
-	if err != nil {
-		return &result{stdout: "// TMPFAIL"}
-	}
-	tmp.Close()
-
-	var out bytes.Buffer
-	margs := []string{path}
-	if in := stdinFor(path); in != "" {
-		margs = append(margs, "-i", in)
-	}
-	margs = append(margs, "--dump-memory", tmp.Name())
 	// 被测物插座（#49 批二段三）：native = cmd/run exe 直跑；wasm = 统一
 	// 入口壳（node 消费 gateway wasm.wasm——壳输出协议与 exe 同形，解析
 	// 零分支）。#129 通道分立（2026-10-16）后标记行（诊断/note/EXIT）走
@@ -784,46 +772,78 @@ func runMoonBit(path string) *result {
 	// = extractMoonBitStdout 剥标记行后的纯程序输出（改前 stdout 含标记
 	// 行被剥 / 改后纯输出零剥——两侧等价，golden 零重冻）。wasm 臂的
 	// backend 标注行（设计差异非协议面）剥除后再并入。
-	var cmd *exec.Cmd
-	if backend == "wasm" {
-		cmd = exec.Command("node", append([]string{wasmShell, "run"}, margs...)...)
-	} else {
-		cmd = exec.Command(filepath.FromSlash(runnerExe), margs...)
-	}
-	var se bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &se
-	// 运行期看门狗（2026-10-17，与 clang_direct moonRunTimeout 同款收口）：
+	var res *result
+	// 运行期看门狗 + 瞬态重试（2026-10-17，看门狗与 clang_direct
+	// moonRunTimeout 同款收口；重试判据 clang_direct 瞬态重试同款）：
 	// 裸 `_ = cmd.Run()` 下单例子进程卡死 = 全闸永挂（云端 clang_direct
-	// wasm 臂实发 26 分钟：node 壳不退、无杀钟）。120s 超时 → // RUN-TIMEOUT
-	// 进 stdout → digest 差异响亮红，闸跑完非永等。
-	moonTimedOut := false
-	timer := time.AfterFunc(120*time.Second, func() {
-		moonTimedOut = true
-		_ = cmd.Process.Kill()
-	})
-	_ = cmd.Run()
-	timer.Stop()
-	if moonTimedOut {
-		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧运行超时（120s）：%s\n", path)
-		return &result{stdout: "// RUN-TIMEOUT"}
-	}
-	combined := out.String()
-	for _, l := range strings.Split(se.String(), "\n") {
-		if !strings.HasPrefix(l, "[vitro] backend=") {
-			combined += l + "\n"
+	// wasm 臂实发 26 分钟：node 壳不退、无杀钟）。120s 超时 → 杀进程。
+	// 超时属瞬态异常——云端两 run 各卡**不同**用例（cast_float_to_int /
+	// array_bound_const_index + scanf_float，同 RUN-TIMEOUT digest、本机
+	// 同代码 worktree 均不复现）= runner 实例级 node 壳瞬态挂死非确定性
+	// 代码病；重试 3 次（500ms×attempt 递增）仍全超时才落 // RUN-TIMEOUT
+	// 红（真死循环该红，重试只是多花墙钟）。
+	const moonRunAttempts = 3
+	for attempt := 1; ; attempt++ {
+		moonTimedOut := false
+		func() {
+			tmp, err := os.CreateTemp("", "vmem_*.bin")
+			if err != nil {
+				res = &result{stdout: "// TMPFAIL"}
+				return
+			}
+			defer tmp.Close()
+			var out bytes.Buffer
+			margs := []string{path}
+			if in := stdinFor(path); in != "" {
+				margs = append(margs, "-i", in)
+			}
+			margs = append(margs, "--dump-memory", tmp.Name())
+			var cmd *exec.Cmd
+			if backend == "wasm" {
+				cmd = exec.Command("node", append([]string{wasmShell, "run"}, margs...)...)
+			} else {
+				cmd = exec.Command(filepath.FromSlash(runnerExe), margs...)
+			}
+			var se bytes.Buffer
+			cmd.Stdout = &out
+			cmd.Stderr = &se
+			timer := time.AfterFunc(120*time.Second, func() {
+				moonTimedOut = true
+				_ = cmd.Process.Kill()
+			})
+			_ = cmd.Run()
+			timer.Stop()
+			if moonTimedOut {
+				return
+			}
+			combined := out.String()
+			for _, l := range strings.Split(se.String(), "\n") {
+				if !strings.HasPrefix(l, "[vitro] backend=") {
+					combined += l + "\n"
+				}
+			}
+			r := &result{stdout: combined, memoryPath: tmp.Name()}
+			if strings.Contains(r.stdout, "// COMPILE-ERROR") {
+				r.compileFail = true
+			}
+			for _, line := range strings.Split(strings.TrimSpace(r.stdout), "\n") {
+				if strings.HasPrefix(line, "// EXIT ") {
+					fmt.Sscanf(line, "// EXIT %d", &r.exitCode)
+				}
+			}
+			res = r
+		}()
+		if res != nil || attempt >= moonRunAttempts {
+			break
 		}
+		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧超时，重试 %d/%d：%s\n", attempt, moonRunAttempts-1, path)
+		time.Sleep(time.Duration(500*attempt) * time.Millisecond)
 	}
-	r := &result{stdout: combined, memoryPath: tmp.Name()}
-	if strings.Contains(r.stdout, "// COMPILE-ERROR") {
-		r.compileFail = true
+	if res == nil {
+		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧运行超时（120s×%d 次）：%s\n", moonRunAttempts, path)
+		res = &result{stdout: "// RUN-TIMEOUT"}
 	}
-	for _, line := range strings.Split(strings.TrimSpace(r.stdout), "\n") {
-		if strings.HasPrefix(line, "// EXIT ") {
-			fmt.Sscanf(line, "// EXIT %d", &r.exitCode)
-		}
-	}
-	return r
+	return res
 }
 
 // summarizeStdout：stdout 差异摘要（首个差异行 + 两侧长度）。

@@ -35,10 +35,17 @@ function demoGlobals(): Plugin {
 export default defineConfig({
   plugins: [svelte(), demoGlobals()],
   base: "./",
-  publicDir: false, // 无 public/；wasm.wasm 经 new URL(..., import.meta.url) 由打包器 emit
+  publicDir: false, // 无 public/；wasm.wasm 经 ?url 由打包器 emit（#139 同款构建期资产）
   build: {
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: { input: "index.html" },
+    // #130 批② 形态裁定（2026-10-17 实测）：语言包被内联进 **worker chunk**
+    // （engine.worker 2.9→87KB——vite worker bundle 默认 inlineDynamicImports，
+    // advancedChunks 对 worker 不生效）。形态判定 = 可接受且语义吻合：主包
+    // 无污染（622KB 为收口批代码自然增量），langpack 随 worker 装载与
+    // 「texts.install 在引擎装载后立即注入」的 startup 语义一致。若未来要
+    // 独立懒 chunk 需 worker.format="es" + worker 内 advancedChunks，收益
+    // （worker 首载省 ~40KB gzip）不抵复杂度。
   },
 });

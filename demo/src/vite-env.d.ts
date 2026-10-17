@@ -12,3 +12,10 @@ declare module "*?url" {
   export default src;
 }
 
+// 语言包懒加载模块（#130 批② demo 接线：MoonBit js target 构建产物，
+// texts_json() 返回 payload JSON 文本——texts.install params.payload 同
+// schema 的 string）
+declare module "*/teaching/langpack/langpack.js" {
+  export function texts_json(): string;
+}
+

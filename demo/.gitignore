@@ -1,0 +1,4 @@
+
+# 语言包懒加载产物（#130 批② demo 接线）：MoonBit js target 构建产物不入库
+# （CI/pages/本地三处构建现场 cp——与 wasm.wasm 同形态）
+teaching/langpack/

@@ -15,16 +15,39 @@ import type { StepPayload, StepNextResult } from "../../js/types.ts";
 import wasmUrl from "../../wasm.wasm?url";
 
 let gw: GatewayExports | null = null;
+let textsInstalled = false;
 // wasm 资产走打包器 emit（publicDir=false，见 vite.config.ts）。?url 显式
 // 资产形态（#139）：构建期源缺失 = build 直接红；此前 new URL 形态在 CI
 // 裸检出（wasm 不入库、构建后才拷）下静默保留相对路径，Pages 运行时
 // 404 且 boot 无 catch 全程无提示。
 const WASM_URL = wasmUrl;
 
+/** #130 批② demo 接线（三步，CLI inject_texts_at_startup 同构 fail-soft）：
+ *  ①动态懒加载语言包（vite 懒 chunk，产物 moonbit js target 构建期 cp 到
+ *  demo/teaching/langpack/——与 wasm.wasm 同发射产物纪律）②texts_json()
+ *  取 payload 文本 ③texts.install 注入引擎——之后建议文案/诊断卡文案全量
+ *  可用。注入失败不阻断（引擎表保持产物内现状，console 明示）。幂等。 */
+async function installTexts(): Promise<void> {
+  if (textsInstalled) return;
+  textsInstalled = true;
+  try {
+    const m = await import("../../teaching/langpack/langpack.js");
+    const payload = m.texts_json();
+    const resp = invoke({ method: "texts.install", params: { payload } });
+    if (!resp.ok) {
+      // 错误帧不折叠（must 同语义）——但语言包注入失败不阻断 boot
+      console.warn("[vitro] 语言包注入失败（引擎表保持产物内现状）：", String(resp.error ?? "").slice(0, 120));
+    }
+  } catch (err) {
+    console.warn("[vitro] 语言包懒加载失败（引擎表保持产物内现状）：", String((err as Error)?.message ?? err).slice(0, 120));
+  }
+}
+
 async function ensureGw(): Promise<GatewayExports> {
   if (!gw) {
     gw = await loadGateway(WASM_URL);
     setGateway(gw); // invoke() 读 gw.ts 模块内单例——装载后必须注册
+    await installTexts(); // #130 批②：语言包启动注入（boot 链内完成，先于任何 compile）
   }
   return gw;
 }

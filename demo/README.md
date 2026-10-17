@@ -25,8 +25,11 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 # 1. 构建 wasm（或已有产物可跳过）
 cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
 
-# 2. 拷产物到 demo/
+# 2. 拷产物到 demo/（wasm 引擎 + 语言包懒加载两件，#130 批②）
 cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/
+moon build --release --target js teaching/langpack
+mkdir -p demo/teaching/langpack
+cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js
 
 # 3. 构建前端（vite 唯一构建；dist/ 不入库，不构建 404 白屏）
 cd demo && npm ci && npx vite build && cd ..

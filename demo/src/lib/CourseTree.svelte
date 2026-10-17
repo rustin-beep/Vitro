@@ -10,6 +10,7 @@
   import type { DemoCase, AlgoGroup } from "virtual:demo-globals";
   import { DEMO_CASES, DEMO_ALGORITHMS } from "virtual:demo-globals";
   import { SvelteSet } from "svelte/reactivity";
+  import { KEYS, storeGet, storeSet } from "../persisted.svelte.ts";
   import type { TreeLesson, TreeChapter } from "./courseTypes.ts";
 
   let query = $state("");
@@ -17,6 +18,17 @@
   // 基础课默认展开——对齐旧栈 course.ts 初始折叠形态（此前全展开 = 长树
   // 不可扫读）。折叠集合仍进 store：搜索清空不复位（迁移红利保留）。
   let collapsed = new SvelteSet<string>((DEMO_ALGORITHMS.groups ?? []).map((g: AlgoGroup) => g.id));
+  // A16（#140）：课程完成打勾——localStorage 持久（键复用旧栈
+  // vitro-course-done，两栈数据互通）；点课即 markDone（旧栈同语义：
+  // 状态环标记「已读过」，页头说明文案的「已完成」口径）。
+  let done = new SvelteSet<string>((() => {
+    try { return JSON.parse(storeGet(KEYS.courseDone) || "[]") as string[]; } catch { return []; }
+  })());
+  function markDone(id: string): void {
+    if (done.has(id)) return;
+    done.add(id);
+    storeSet(KEYS.courseDone, JSON.stringify([...done]));
+  }
   let selectedId = $state("");
 
   const chapters: TreeChapter[] = $derived.by(() => {
@@ -68,6 +80,7 @@
 
   function pickLesson(l: TreeLesson, chapId: string): void {
     selectedId = l.id;
+    markDone(l.id); // A16：点课即标完成（旧栈 course.ts 同语义）
     // 课源码载入编辑器的通道（setSource）由 App 注入 prop——组件不含
     // DOM 写权（旧栈 editor.value 直写 + 手工跟渲染的反模式不带入新栈）
     onpick?.(l, chapId);
@@ -85,14 +98,16 @@
     {@const isCollapsed = collapsed.has(ch.id)}
     <div class="chap" class:collapsed={isCollapsed}>
       <button type="button" class="chap-head" onclick={() => toggleChap(ch.id)} aria-expanded={!isCollapsed}>
+        <i class="cchip chip{(chapters.indexOf(ch) % 5) + 1}" aria-hidden="true"></i>
         <span class="tri">{isCollapsed ? "▸" : "▾"}</span>
         {ch.label}
-        <span class="cnt">({ch.lessons.length})</span>
+        <span class="cnt">({ch.lessons.filter((l) => done.has(l.id)).length}/{ch.lessons.length})</span>
       </button>
       {#if !isCollapsed}
         <div class="lessons">
           {#each ch.lessons as l (ch.id + "/" + l.kind + "/" + l.id)}
-            <button type="button" class="lesson" class:selected={selectedId === l.id} onclick={() => pickLesson(l, ch.id)} title={l.blurb}>
+            <button type="button" class="lesson" class:selected={selectedId === l.id} class:done={done.has(l.id)} onclick={() => pickLesson(l, ch.id)} title={l.blurb}>
+              <i class="ring" class:on={done.has(l.id)} aria-hidden="true"></i>
               <span class="lid">{l.id}</span>
               <span class="ltitle">{l.title}</span>
             </button>
@@ -110,12 +125,28 @@
   .chap { margin: 2px 0; }
   .chap-head { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; border: 0; color: var(--t1); font: 12.5px var(--font-ui); padding: 5px 6px; cursor: pointer; border-radius: 6px; }
   .chap-head:hover { background: var(--accent-tint); }
+  /* 章 chip 五色（旧栈 crs-cchip/crs-chip1..5 同款——类形态避免模板内联 style
+     被 lint 静态抽取器截断出未定义变量假红；tokens --chip-1..5 随主题） */
+  .cchip { width: 8px; height: 8px; border-radius: 50%; background: var(--chip, var(--accent)); flex: none; }
+  .chip1 { --chip: var(--chip-1); }
+  .chip2 { --chip: var(--chip-2); }
+  .chip3 { --chip: var(--chip-3); }
+  .chip4 { --chip: var(--chip-4); }
+  .chip5 { --chip: var(--chip-5); }
   .tri { color: var(--t3); width: 12px; }
   .cnt { color: var(--t3); font-size: 11px; }
   .lessons { padding-left: 14px; }
-  .lesson { display: flex; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: var(--t2); font: 12px var(--font-ui); padding: 4px 6px; cursor: pointer; border-radius: 5px; }
+  .lesson { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: var(--t2); font: 12px var(--font-ui); padding: 4px 6px; cursor: pointer; border-radius: 5px; }
   .lesson:hover { background: var(--accent-tint); }
   .lesson.selected { background: var(--accent-tint); color: var(--accent-strong); }
+  /* A16 状态环：旧栈 crs-ring 三层形态（外环 + 中缝 + 芯点）。芯点用伪元素
+     画、中缝透出父级背景——不得用 box-shadow inset 拿 --pane 当遮挡色
+     （glass 主题 --pane 半透明挡不住 --ok，缝消失糊成实心点的旧实锤）。 */
+  .ring { position: relative; flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--hairline); transition: border-color var(--t-fast) var(--ease-out); }
+  .ring::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--ok); opacity: 0; transition: opacity var(--t-fast) var(--ease-out); }
+  .ring.on { border-color: var(--ok); }
+  .ring.on::after { opacity: 1; }
+  .lesson.done .ltitle { color: var(--t1); }
   .lid { font-family: var(--mono); color: var(--t3); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; min-width: 0; }
   .ltitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .muted { color: var(--t3); font-size: 12.5px; }

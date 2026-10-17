@@ -9,10 +9,12 @@
 // 用法（仓库根）：
 //
 //	go run ./scripts/wasmopt <file.wasm>        # 原地优化（两次运行 digest 一致才落盘）
-//	go run ./scripts/wasmopt -check <file.wasm> # 幂等校验：产物已优化（再优化不变）
+//	go run ./scripts/wasmopt -check <file.wasm> # 新鲜度校验：产物 digest == sidecar 标记（moon 重建覆盖即红）
 //
 // fail loud：下载失败 / sha256 不符 / 解包缺件 / 优化产物非法（wasm
-// magic 头）/ 二次运行不确定（binaryen 确定性破坏）/ -check 非 fixpoint。
+// magic 头）/ 二次运行不确定（binaryen 确定性破坏）/ -check digest 失配
+// 或 sidecar 为空（二轮审阅 P3 勘正：-check 语义=指纹比对非 fixpoint——
+// binaryen 非 fixpoint 在案）。
 // 缓存：tools/cache/binaryen-<ver>/（gitignore——本地与 CI 同版本钉死，
 // 冷缓存自动下载 ~23MB 一次）。
 package main
@@ -107,6 +109,11 @@ func extractTarGz(data []byte, dest string) error {
 			}
 		case tar.TypeReg:
 			p := filepath.Join(dest, filepath.FromSlash(hdr.Name))
+			// 二轮审阅 P3：路径穿越防护（tar 条目名逃逸 dest 即拒——
+			// 钉版本包形态固定，越界=供给异常 fail loud）
+			if rel, err := filepath.Rel(dest, p); err != nil || strings.HasPrefix(rel, "..") {
+				return fmt.Errorf("tar 条目路径越界: %s", hdr.Name)
+			}
 			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 				return err
 			}
@@ -178,6 +185,10 @@ func main() {
 		}
 		got, _ := fileSHA256(target)
 		wantS := strings.TrimRight(string(want), "\n")
+		// 二轮审阅 P2：空 sidecar 走 wantS[:12] 会 panic——fail loud
+		if wantS == "" {
+			die("-check sidecar 为空（%s）——先跑优化生成标记", sidecar)
+		}
 		if wantS != got {
 			die("-check digest 失配：现产物 %s ≠ 标记 %s——moon 重建已覆盖优化产物，重跑 go run ./scripts/wasmopt", got[:12], wantS[:12])
 		}

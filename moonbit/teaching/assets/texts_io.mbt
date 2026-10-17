@@ -218,11 +218,20 @@ pub fn install_texts(payload : String) -> Unit raise InstallTextsError {
   }
   // schema 严格：两必到键 + trap 段可选（批③a 语义：trap 模板留引擎
   // 烘焙——#120 切分线；段缺席 = 不碰引擎烘焙 trap，在场 = 校验后整体
-  // 替换。host 侧 trap 消费是 .unwrap() 语义，缺席段防语言包误清空）
+  // 替换）。**键名白名单**（二轮审阅 P2：旧只判键数 2||3——junk 键顶位
+  // 静默通过）与 **trap 键集全等闸**（host 侧 20+ 处 unwrap 消费——
+  // 部分条目替换 = 运行期 panic 面；语言包全量段天然全等）
   if top_map.length() != 2 && top_map.length() != 3 {
     raise InstallTextsError::SchemaFail(
       message="顶层须含 suggestions/builtin_notes（trap_messages 可选），实得 \{top_map.length()} 键",
     )
+  }
+  for k, _v in top_map {
+    if k != "suggestions" && k != "builtin_notes" && k != "trap_messages" {
+      raise InstallTextsError::SchemaFail(
+        message="顶层未知键 '\{k}'（键域 = suggestions/builtin_notes/trap_messages）",
+      )
+    }
   }
   let sugg_j = get_object_field(top_map, "suggestions")
   let note_j = get_object_field(top_map, "builtin_notes")
@@ -233,6 +242,26 @@ pub fn install_texts(payload : String) -> Unit raise InstallTextsError {
         message="顶层 'trap_messages' 须为对象",
       )
     None => None
+  }
+  // trap 键集全等闸：在场段须与现表键集**双向全等**（替换语义 = 整表，
+  // 不收部分表——防宿主 unwrap 消费面被打崩；空表起始态〔lean 测试
+  // 环境〕时现表为空、空段亦全等）
+  match trap_j {
+    Some(tj) => {
+      if tj.length() != trap_messages.length() {
+        raise InstallTextsError::SchemaFail(
+          message="trap_messages 段键集不全等（段 \{tj.length()} 键 vs 现表 \{trap_messages.length()} 键）——整表替换语义，拒绝部分表",
+        )
+      }
+      for k, _v in tj {
+        if !(trap_messages.get(k) is Some(_)) {
+          raise InstallTextsError::SchemaFail(
+            message="trap_messages 段含现表没有的键 '\{k}'（整表替换语义）",
+          )
+        }
+      }
+    }
+    None => ()
   }
   // —— 收集与校验（未动表）——
   let new_suggestions : Map[String, String] = Map([])

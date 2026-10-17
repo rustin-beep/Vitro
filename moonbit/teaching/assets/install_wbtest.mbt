@@ -40,12 +40,23 @@ test "install_texts_override_visible_and_restorable" {
       )
     _ => fail("suggestions 形态异常")
   }
-  // 删 trap 条目（值形态合法即可，删的是渲染面最重的码位）
+  // 改写 trap 条目（二轮审阅 P2 起 trap 段为整表替换语义——键集须
+  // 全等，删键形态迁 rejects 测试负向锚；此处改写 E3061_double_free
+  // 模板文本、占位符集原样保持 {freed_line}{alloc_line}）
   match top.get("trap_messages") {
-    Some(Object(traps)) => {
-      ignore(traps.remove("E3061_double_free"))
-      ()
-    }
+    Some(Object(traps)) =>
+      match traps.get("E3061_double_free") {
+        Some(Object(entry)) => {
+          entry.set(
+            "template",
+            Json::string(
+              "覆盖探针 {freed_line} 行 {alloc_line} 行（占位符集原样）",
+            ),
+          )
+          traps.set("E3061_double_free", Json::object(entry))
+        }
+        _ => fail("E3061_double_free 条目形态异常")
+      }
     _ => fail("trap_messages 形态异常")
   }
   install_texts(j.stringify())
@@ -54,14 +65,52 @@ test "install_texts_override_visible_and_restorable" {
     suggestion_map.get("bubble_sort"),
     Some("覆盖语义探针——若可见即装载门生效"),
   )
-  // 覆盖负向：剔除键查空
-  assert_true(trap_messages.get("E3061_double_free") is None)
+  // trap 改写可见（整表替换后键仍在、文本已换）
+  assert_eq(
+    trap_messages.get("E3061_double_free").unwrap().template,
+    "覆盖探针 {freed_line} 行 {alloc_line} 行（占位符集原样）",
+  )
   // 其余键不受连坐（抽检一枚未动 trap 键——lean 基态建议表为空）
   assert_true(trap_messages.get("hint_uaf") is Some(_))
-  // 恢复：原载荷回装 → 基态回位（建议表回空、trap 回全量）
+  // 恢复：原载荷回装 → 基态回位（建议表回空、trap 回全量原文）
   install_texts(saved)
   assert_true(suggestion_map.get("bubble_sort") is None)
   assert_true(trap_messages.get("E3061_double_free") is Some(_))
+}
+
+///|
+/// 审阅 P2（2026-10-17 二轮）：两类坏载荷加固证红——
+/// ① 顶层未知键（junk 键须拒——旧只判键数 2||3，junk 顶替 trap 段位
+///   静默通过）；② trap 段部分条目（键集须与现表全等——host 侧 20+ 处
+///   unwrap 消费，部分替换 = 运行期 panic 面；语言包 texts_json 全量
+///   段天然全等不受影响）。
+test "install_texts_rejects_unknown_key_and_partial_trap" {
+  let saved = texts_json()
+  // ① 顶层未知键：junk 顶位
+  let bad1 = "{\"suggestions\":{},\"builtin_notes\":{},\"junk\":{}}"
+  let r1 = try? install_texts(bad1)
+  assert_true(r1 is Err(_), msg="顶层未知键须 raise")
+  // ② trap 段部分条目：删任一现表键（E3061_double_free）→ 键集不全等
+  let j = @util.json_parse(saved) catch { _ => fail("原载荷解析失败") }
+  match j {
+    Object(top) =>
+      match top.get("trap_messages") {
+        Some(Object(traps)) => {
+          ignore(traps.remove("E3061_double_free"))
+          let r2 = try? install_texts(j.stringify())
+          assert_true(
+            r2 is Err(_),
+            msg="trap 部分条目须 raise（host unwrap 消费面）",
+          )
+        }
+        _ => fail("trap 段形态异常")
+      }
+    _ => fail("顶层形态异常")
+  }
+  // 空表装载（合法 lean 态）不受连坐：trap 段缺席路径
+  let r3 = try? install_texts("{\"suggestions\":{},\"builtin_notes\":{}}")
+  assert_true(r3 is Ok(_), msg="两键合法载荷不受新闸误伤")
+  install_texts(saved)
 }
 
 ///|

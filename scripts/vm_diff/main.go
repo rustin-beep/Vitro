@@ -763,6 +763,11 @@ func runOracle(path string) *result {
 	return r
 }
 
+// 二轮审阅 P2：连续超时熔断——runner 级挂死成片发作时 440 例 ×3×120s
+// 不收敛（6min/例）；连续 5 例 RUN-TIMEOUT 即整闸放弃（fail loud 报
+// 环境级故障非逐例病，重跑换 runner 而非等死）。
+var consecutiveTimeouts = 0
+
 func runMoonBit(path string) *result {
 	// 被测物插座（#49 批二段三）：native = cmd/run exe 直跑；wasm = 统一
 	// 入口壳（node 消费 gateway wasm.wasm——壳输出协议与 exe 同形，解析
@@ -840,9 +845,16 @@ func runMoonBit(path string) *result {
 		time.Sleep(time.Duration(500*attempt) * time.Millisecond)
 	}
 	if res == nil {
-		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧运行超时（120s×%d 次）：%s\n", moonRunAttempts, path)
+		consecutiveTimeouts++
+		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧运行超时（120s×%d 次，连续第 %d 例）：%s\n", moonRunAttempts, consecutiveTimeouts, path)
+		if consecutiveTimeouts >= 5 {
+			fmt.Fprintf(os.Stderr, "vm_diff: 连续 %d 例 RUN-TIMEOUT——环境级挂死（非逐例病），整闸放弃；请重跑（换 runner 实例）\n", consecutiveTimeouts)
+			os.Exit(3)
+		}
 		res = &result{stdout: "// RUN-TIMEOUT"}
+		return res
 	}
+	consecutiveTimeouts = 0
 	return res
 }
 

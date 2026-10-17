@@ -92,6 +92,11 @@ func main() {
 		rel, _ := filepath.Rel(base, path)
 		// tools/cache = wasmopt 供给缓存（钉版本下载物，gitignored——
 		// #120 批①：包内容不归仓规管辖，同 node_modules 族）
+		// demo-evidence = 审阅过程证据目录（用户私有，git 未跟踪——
+		// .workbuddy 同族；2026-10-17 二轮审阅批实碰）
+		if strings.HasPrefix(rel, "demo-evidence"+string(filepath.Separator)) || rel == "demo-evidence" {
+			return filepath.SkipDir
+		}
 		if strings.HasPrefix(rel, "tools"+string(filepath.Separator)+"cache") {
 			return filepath.SkipDir
 		}

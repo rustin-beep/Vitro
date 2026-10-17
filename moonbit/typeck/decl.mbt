@@ -484,7 +484,11 @@ fn TypeChecker::process_var_decl(
   let predeclared = init is Some(_) &&
     !var_type_2.is_array() &&
     !(var_type_2.kind() is TK_Struct || var_type_2.kind() is TK_Union)
-  if predeclared {
+  // 二轮审阅 P2（2026-10-17）：前置登记仅当符号**缺席**——同名已存在
+  // （重声明/参数同名）时跳过，让尾部 final declare 单点报 E3001。
+  // 旧形态此处先报一次（declare_var 对非 predeclared existing 报错
+  // 且不清 predeclared 态）+ final 再报一次 = 双报（clang 单报）。
+  if predeclared && !(self.lookup_var(name) is Some(_)) {
     self.declare_var(
       name,
       var_type_2,

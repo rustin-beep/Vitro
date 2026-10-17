@@ -409,7 +409,8 @@ test "builtin_notes_migration_snapshot_before" {
         ]),
       }),
     }),
-    "trap_messages": Json::object({}),
+    // trap_messages 段缺席（二轮审阅 P2 起在场段须与烘焙表键集全等——
+    // 本 fixture 只装 builtin 两键，trap 不碰）
   })
   @assets.install_texts(fixture.stringify()) catch {
     _ => fail("fixture 装载失败")

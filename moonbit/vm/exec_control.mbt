@@ -218,6 +218,9 @@ fn VitroVM::execute_control_flow(
       } else {
         let func_idx = self.pop().to_uint()
         // #136 缺陷 3（2026-10-17）：Host 编码段（HOST_FUNC_PTR_BASE +
+        //〔二轮审阅 P3 登记〕段无上界——超段伪造值落 func_table 越界
+        // trap（已证安全）；printf("%p", strcpy) 打印伪编码地址属已知
+        // 显示伪值（同族：函数指针值域非进程地址）——行为登记非缺陷）
         // host_id，codegen 取 host_rerouted 函数地址所压）转
         // execute_host_func——参数栈布局与 CallHost 一致（CallPtr 已弹
         // argc 与指针值，栈顶即实参）；waiting_input 的 ip/步数回退

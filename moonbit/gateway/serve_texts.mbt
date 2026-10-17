@@ -2,7 +2,7 @@
 /// texts.install 方法帧（#130 批② 注入通道，2026-10-17；批③b 扩第四段）：
 /// 语言包装载门的协议半边——浏览器宿主懒加载语言包 js 模块
 /// （teaching/langpack）后经本方法注入引擎。payload 顶层键 ⊆
-/// {suggestions, builtin_notes, trap_messages, error_catalog} 且至少一段：
+/// {suggestions, builtin_notes, trap_messages, error_catalog}（全部可选段——
 /// 前三段整发 @assets.install_texts（域内原子），error_catalog 段
 /// （批③b：{<code>:{icon,title,explanation,common_causes}}）剥出整发
 /// @diag.install_catalog_texts。段序 = assets 先 diag 后，任一段失败

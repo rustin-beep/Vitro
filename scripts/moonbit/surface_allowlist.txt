@@ -42,6 +42,7 @@ vitro/engine/protocol encode_step_delta
 vitro/engine/protocol encode_step_payload
 vitro/engine/stdlib headers
 vitro/engine/teaching/content_data builtin_notes
+vitro/engine/teaching/content_data catalog_data
 vitro/engine/teaching/content_data suggestions
 vitro/engine/teaching/steps build_match
 vitro/engine/teaching/steps detect_graph

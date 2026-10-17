@@ -1858,14 +1858,14 @@
           "fail_stage": "parse"
         },
         "loop_var_shadow.c": {
-          "result_sha": "cad13f821af7f16b"
+          "result_sha": "fd20dbb1564d863d"
         },
         "p2d_parser_preproc_batch.c": {
           "fail": true,
           "fail_stage": "lex"
         },
         "printf_scanf_type_mismatch.c": {
-          "result_sha": "f64921e55c204ead"
+          "result_sha": "dc466b18d737320f"
         },
         "scanf_0x_retval.c": {
           "result_sha": "29397552f5d34930"
@@ -2028,16 +2028,16 @@
           "result_sha": "688b79eaa92e20d8"
         },
         "kr_2_10.c": {
-          "result_sha": "f89939c6fe2736e3"
+          "result_sha": "d39cd2202a9719c3"
         },
         "kr_2_3.c": {
-          "result_sha": "960f6ed12d307897"
+          "result_sha": "fc3c5ea0d75945d6"
         },
         "kr_2_4.c": {
           "result_sha": "7ad35a284a288361"
         },
         "kr_2_5.c": {
-          "result_sha": "f1d176cd784de7aa"
+          "result_sha": "cf2645842c503db2"
         },
         "kr_2_6.c": {
           "result_sha": "9c896bc8487f5d19"
@@ -2049,13 +2049,13 @@
           "result_sha": "587568c11c05a6cf"
         },
         "kr_2_9.c": {
-          "result_sha": "ed7f82974b0e0a3a"
+          "result_sha": "c48d9b92fdea91b6"
         },
         "kr_2_celsius.c": {
           "result_sha": "e8931f167eb926d4"
         },
         "kr_3_1.c": {
-          "result_sha": "fbcd05df7bad98a5"
+          "result_sha": "83c9bbd962ff78bf"
         },
         "kr_3_2.c": {
           "result_sha": "4d00cecf099c4e43"
@@ -2064,13 +2064,13 @@
           "result_sha": "45877d8eb9352436"
         },
         "kr_3_4.c": {
-          "result_sha": "baf8edc4665e9b94"
+          "result_sha": "f377607b3fd9ab06"
         },
         "kr_3_5.c": {
-          "result_sha": "3224c70805c035bf"
+          "result_sha": "574c126b5f4910a9"
         },
         "kr_3_6.c": {
-          "result_sha": "afc750b32616f880"
+          "result_sha": "83dcdcf7267e825e"
         },
         "kr_3_7.c": {
           "result_sha": "3dd61296d5b9ac87"
@@ -2079,7 +2079,7 @@
           "result_sha": "d4425546ae1b9458"
         },
         "kr_4_1.c": {
-          "result_sha": "31fc2299d165f360"
+          "result_sha": "b50c0860375cfea3"
         },
         "kr_4_10.c": {
           "result_sha": "295c2fc9d335be95"
@@ -2097,7 +2097,7 @@
           "result_sha": "7814332c8929bf84"
         },
         "kr_4_2.c": {
-          "result_sha": "5beb46709d848e36"
+          "result_sha": "a904ddbe2c5078c5"
         },
         "kr_4_3.c": {
           "result_sha": "de27594fa07bb537"
@@ -2121,7 +2121,7 @@
           "result_sha": "04557c7ea3360046"
         },
         "kr_4_atoi.c": {
-          "result_sha": "f0b248d10f0dad67"
+          "result_sha": "3f61241ce0f8bb40"
         },
         "kr_5_1.c": {
           "result_sha": "1d7f7f75aa7f4e3f"
@@ -2130,7 +2130,7 @@
           "result_sha": "30bd070e6cbff0d4"
         },
         "kr_5_11.c": {
-          "result_sha": "585a15973b08114b"
+          "result_sha": "0d5fcff138add88a"
         },
         "kr_5_12.c": {
           "result_sha": "772f2ffa5e189954"
@@ -2139,7 +2139,7 @@
           "result_sha": "3cc104590f234417"
         },
         "kr_5_14.c": {
-          "result_sha": "01b59ee07cf1c160"
+          "result_sha": "ea212b15308a5cb1"
         },
         "kr_5_15.c": {
           "result_sha": "363410c612cd7128"
@@ -2154,13 +2154,13 @@
           "result_sha": "07c603b518a9c540"
         },
         "kr_5_4.c": {
-          "result_sha": "bdad2a8eae4354c3"
+          "result_sha": "58e1b78ae9da60f7"
         },
         "kr_5_5.c": {
           "result_sha": "00a32a646d5b05a2"
         },
         "kr_5_6.c": {
-          "result_sha": "2c8a74331522f163"
+          "result_sha": "17f14ca34ebaa2e8"
         },
         "kr_5_7.c": {
           "result_sha": "ac7acecda86bc2ea"
@@ -2172,7 +2172,7 @@
           "result_sha": "bd09673fd91dd826"
         },
         "kr_5_itoa.c": {
-          "result_sha": "942661980726590a"
+          "result_sha": "b0a6941fd0fec039"
         },
         "kr_6_1.c": {
           "result_sha": "a9c3ee023d39ef00"
@@ -2187,10 +2187,10 @@
           "result_sha": "e6ea7811c93690c2"
         },
         "kr_6_5.c": {
-          "result_sha": "5017c8ec45b85b76"
+          "result_sha": "c70e01c14b99694e"
         },
         "kr_6_6.c": {
-          "result_sha": "b9a369deb7c2847f"
+          "result_sha": "831b35690536af95"
         },
         "kr_6_getword.c": {
           "result_sha": "4bffef32ff5badbd"
@@ -2199,19 +2199,19 @@
           "result_sha": "435297b2717c56ec"
         },
         "kr_7_2.c": {
-          "result_sha": "596e5db282455b21"
+          "result_sha": "c8634899d74ef996"
         },
         "kr_7_3.c": {
           "result_sha": "19fbc0ccb7fa5782"
         },
         "kr_7_4.c": {
-          "result_sha": "f5d158b6c623ac39"
+          "result_sha": "bcc8e6fb146ac15c"
         },
         "kr_7_5.c": {
-          "result_sha": "11d9f00964843370"
+          "result_sha": "8c19298aab5604bf"
         },
         "kr_7_6.c": {
-          "result_sha": "8f227d98c3de9004"
+          "result_sha": "113482c969582b68"
         },
         "kr_7_7.c": {
           "result_sha": "1635499b77ac9c1e"
@@ -2361,163 +2361,163 @@
       },
       "cases": {
         "lc_1.c": {
-          "result_sha": "b7d5d3e75213bcda"
+          "result_sha": "2904d6438c285b64"
         },
         "lc_100.c": {
-          "result_sha": "c8ebaef9c3b4656b"
+          "result_sha": "28fb7451f240c07a"
         },
         "lc_101.c": {
-          "result_sha": "f4cc4d80c7aa0970"
+          "result_sha": "211d1adb9da51dab"
         },
         "lc_102.c": {
           "result_sha": "8129b18723209bda"
         },
         "lc_104.c": {
-          "result_sha": "7886570745ff11fd"
+          "result_sha": "21446cfeef70a5d9"
         },
         "lc_108.c": {
           "result_sha": "b6f7b5b3c6b92008"
         },
         "lc_11.c": {
-          "result_sha": "a40fc5e92da25e67"
+          "result_sha": "ce5ff4f1300dc5b2"
         },
         "lc_110.c": {
-          "result_sha": "f5d95da5cee01649"
+          "result_sha": "c45fbdad4afec78b"
         },
         "lc_111.c": {
-          "result_sha": "1dd9969996464265"
+          "result_sha": "20bb838baae9dfc4"
         },
         "lc_112.c": {
-          "result_sha": "8d030bc8bfb98ac0"
+          "result_sha": "458a13f6b6eed500"
         },
         "lc_118.c": {
           "result_sha": "eabfdb03f6560d71"
         },
         "lc_119.c": {
-          "result_sha": "df9bf524966ac796"
+          "result_sha": "a9f64a28854e6c1b"
         },
         "lc_121.c": {
-          "result_sha": "b02397a6384950e3"
+          "result_sha": "a991a397190929aa"
         },
         "lc_124.c": {
-          "result_sha": "134339221c970f02"
+          "result_sha": "b3b098adf3fa567e"
         },
         "lc_125.c": {
-          "result_sha": "8eb74e01459ebc37"
+          "result_sha": "0108a06bb67c0393"
         },
         "lc_13.c": {
-          "result_sha": "99224eb4c64b9390"
+          "result_sha": "86acd78a5593c4de"
         },
         "lc_136.c": {
-          "result_sha": "559bb771b618e584"
+          "result_sha": "cc455dd3d21c50b6"
         },
         "lc_139.c": {
-          "result_sha": "dba7bac71535ce94"
+          "result_sha": "513963017495957e"
         },
         "lc_14.c": {
-          "result_sha": "5979c9d85c598faa"
+          "result_sha": "49d70fd3dc4a672c"
         },
         "lc_141.c": {
-          "result_sha": "da1bf23dbad54978"
+          "result_sha": "ea1923226119aad7"
         },
         "lc_142.c": {
-          "result_sha": "0bc34ddbf0f1665c"
+          "result_sha": "71d81fde7c0b4838"
         },
         "lc_146.c": {
-          "result_sha": "7818f32a23c5ebc5"
+          "result_sha": "cffbc517371ade67"
         },
         "lc_15.c": {
           "result_sha": "95cbb4c05098310e"
         },
         "lc_150.c": {
-          "result_sha": "907bba90b73f2746"
+          "result_sha": "53b84d0716b3f54c"
         },
         "lc_152.c": {
-          "result_sha": "b588e128631f54a5"
+          "result_sha": "e5522ac193fff3a0"
         },
         "lc_153.c": {
-          "result_sha": "e5dbedcd17139c82"
+          "result_sha": "23647ced31c55297"
         },
         "lc_155.c": {
-          "result_sha": "461805e6fcc70f4d"
+          "result_sha": "dbbeede6e0ff0219"
         },
         "lc_16.c": {
-          "result_sha": "5049f067e1fdae75"
+          "result_sha": "178a89fa7acf88d6"
         },
         "lc_160.c": {
-          "result_sha": "7493d8faf119a397"
+          "result_sha": "9ed47f5a98a02850"
         },
         "lc_162.c": {
-          "result_sha": "fba6fb6cffa79984"
+          "result_sha": "bdc7e99022791e85"
         },
         "lc_168.c": {
-          "result_sha": "742411f78df630aa"
+          "result_sha": "013e0718c32b9643"
         },
         "lc_169.c": {
-          "result_sha": "6fa690bea6d4390b"
+          "result_sha": "61b069f7c71db828"
         },
         "lc_17.c": {
           "result_sha": "c7632474a100f87a"
         },
         "lc_189.c": {
-          "result_sha": "3a6908aff8aab393"
+          "result_sha": "39183ea631ec9148"
         },
         "lc_19.c": {
           "result_sha": "3add831a177b490f"
         },
         "lc_190.c": {
-          "result_sha": "dbf229c7861f4f6c"
+          "result_sha": "95323e1409f3417c"
         },
         "lc_191.c": {
-          "result_sha": "414b36748a036adf"
+          "result_sha": "66b25e39f9068aca"
         },
         "lc_198.c": {
-          "result_sha": "712d0ab0003c40c7"
+          "result_sha": "6606482c835254b7"
         },
         "lc_199.c": {
-          "result_sha": "575ccc5db701e872"
+          "result_sha": "1024e1e184583b41"
         },
         "lc_2.c": {
           "result_sha": "b2e221578fcd8751"
         },
         "lc_20.c": {
-          "result_sha": "183192bdcd7e8836"
+          "result_sha": "9962a80c25ece624"
         },
         "lc_200.c": {
-          "result_sha": "ea0793ca56e147bb"
+          "result_sha": "83cca6cf822fb6ed"
         },
         "lc_202.c": {
-          "result_sha": "37916d9dc35f5576"
+          "result_sha": "8ce75570f115e547"
         },
         "lc_203.c": {
           "result_sha": "17a07de4d8d2ba46"
         },
         "lc_205.c": {
-          "result_sha": "3a316c0f08cdf460"
+          "result_sha": "1a2a6f07efc662c6"
         },
         "lc_206.c": {
           "result_sha": "c338586ea196a6cb"
         },
         "lc_207.c": {
-          "result_sha": "21dc3aa4ed89e562"
+          "result_sha": "a42e1f12ae972780"
         },
         "lc_21.c": {
           "result_sha": "86f9824eeecb2033"
         },
         "lc_217.c": {
-          "result_sha": "666eaf048eb6e7f7"
+          "result_sha": "847c418cc6a27821"
         },
         "lc_219.c": {
-          "result_sha": "6c386c839a33789f"
+          "result_sha": "adbc86602ccd5b11"
         },
         "lc_22.c": {
           "result_sha": "52d4de8b6cd3797f"
         },
         "lc_221.c": {
-          "result_sha": "232123a88d609432"
+          "result_sha": "b14116c580d009bb"
         },
         "lc_225.c": {
-          "result_sha": "5ea526c248cf51f7"
+          "result_sha": "0f6420c8169f7aae"
         },
         "lc_226.c": {
           "result_sha": "2ed59fbe7447c60b"
@@ -2526,121 +2526,121 @@
           "result_sha": "de0076fc8074eb1a"
         },
         "lc_231.c": {
-          "result_sha": "4e127cf6b34129f8"
+          "result_sha": "84f3bf578c8fac68"
         },
         "lc_232.c": {
-          "result_sha": "a5842721a517ca69"
+          "result_sha": "7376023ef0649852"
         },
         "lc_234.c": {
-          "result_sha": "12922746ca7f60dd"
+          "result_sha": "aa0dd944436b277e"
         },
         "lc_237.c": {
           "result_sha": "af4fa6b06651d89a"
         },
         "lc_238.c": {
-          "result_sha": "7f5b3d6827a03c2f"
+          "result_sha": "c9088128458a3ccb"
         },
         "lc_24.c": {
           "result_sha": "c0fd460ad942ce7c"
         },
         "lc_242.c": {
-          "result_sha": "b4a1893b8e1f1216"
+          "result_sha": "41e4dafd4caa1e0c"
         },
         "lc_25.c": {
           "result_sha": "2d5c672b1b47770b"
         },
         "lc_257.c": {
-          "result_sha": "f504c98cb2772208"
+          "result_sha": "0b71a73f2c9230f3"
         },
         "lc_26.c": {
-          "result_sha": "7d5645c325b93018"
+          "result_sha": "b053ea55ee60e0f8"
         },
         "lc_263.c": {
-          "result_sha": "e0f1510256d93342"
+          "result_sha": "ae52b5fb8e2c3681"
         },
         "lc_268.c": {
-          "result_sha": "568e49283416cde1"
+          "result_sha": "98af3d76b66a1b89"
         },
         "lc_27.c": {
-          "result_sha": "d0b5f4e1549da0d7"
+          "result_sha": "6d633c35757d3ff6"
         },
         "lc_28.c": {
-          "result_sha": "850bfc048ad0e9b9"
+          "result_sha": "a9b6c4e2b62cd1d6"
         },
         "lc_283.c": {
-          "result_sha": "8b8768ef004044aa"
+          "result_sha": "bb3b5d1cdec47178"
         },
         "lc_29.c": {
-          "result_sha": "c6e63b5549f9e1a8"
+          "result_sha": "8db5bac70fc0baff"
         },
         "lc_290.c": {
-          "result_sha": "c92acfcf91cf2c2e"
+          "result_sha": "e64ee542f74c24f2"
         },
         "lc_292.c": {
-          "result_sha": "648391d8da251e37"
+          "result_sha": "8eb738b667a40b3e"
         },
         "lc_3.c": {
-          "result_sha": "3d091605067549a3"
+          "result_sha": "de22f5ed81777e73"
         },
         "lc_300.c": {
-          "result_sha": "f59ee686e45670c9"
+          "result_sha": "182c43b9a1763459"
         },
         "lc_31.c": {
           "result_sha": "30142f7c8ae673ce"
         },
         "lc_322.c": {
-          "result_sha": "eb28cf7b336bd4d7"
+          "result_sha": "9e940a1a561079a4"
         },
         "lc_326.c": {
-          "result_sha": "dddc877c8832c38c"
+          "result_sha": "db0bc1ea521422c0"
         },
         "lc_33.c": {
-          "result_sha": "0264efc3388be016"
+          "result_sha": "dc37159d58f6a012"
         },
         "lc_34.c": {
           "result_sha": "4945f8fd699c27bb"
         },
         "lc_344.c": {
-          "result_sha": "6801995df3632b3e"
+          "result_sha": "8d3e6f857d465d8e"
         },
         "lc_345.c": {
-          "result_sha": "67e6830ab6ebc984"
+          "result_sha": "9f1203f5a72cd7f0"
         },
         "lc_349.c": {
           "result_sha": "2fc5b8eef5f5cd3d"
         },
         "lc_35.c": {
-          "result_sha": "a5c2b377d04bfa19"
+          "result_sha": "7434a375dcfc4e40"
         },
         "lc_36.c": {
-          "result_sha": "9b896f56124cc768"
+          "result_sha": "f47caa603e1ddcea"
         },
         "lc_367.c": {
-          "result_sha": "7e17b6f82520f58b"
+          "result_sha": "93deddd66948343e"
         },
         "lc_38.c": {
-          "result_sha": "b874926af2309261"
+          "result_sha": "8e30d24dddacf4c0"
         },
         "lc_383.c": {
-          "result_sha": "486e6c57b1fc5acd"
+          "result_sha": "5c21ac35d59f355c"
         },
         "lc_387.c": {
-          "result_sha": "16addb6ee7599417"
+          "result_sha": "5f7036eb3d35b5bf"
         },
         "lc_389.c": {
-          "result_sha": "756d9e935277c08e"
+          "result_sha": "44cfe2de6b304848"
         },
         "lc_39.c": {
           "result_sha": "32a6fdfaa8980914"
         },
         "lc_392.c": {
-          "result_sha": "d05b349bd4c2ff3c"
+          "result_sha": "4b2b4aec7e78d694"
         },
         "lc_394.c": {
           "result_sha": "5317017892b84e88"
         },
         "lc_4.c": {
-          "result_sha": "a6dd9aca11614d76"
+          "result_sha": "9117716fd2be89be"
         },
         "lc_40.c": {
           "result_sha": "1b7576c51766eb41"
@@ -2649,103 +2649,103 @@
           "result_sha": "e8242d99f83b962c"
         },
         "lc_404.c": {
-          "result_sha": "10070fe9ed768e9d"
+          "result_sha": "64e6c090ba24f0cf"
         },
         "lc_409.c": {
-          "result_sha": "be54c3894f5b4dfb"
+          "result_sha": "8b086ada032db945"
         },
         "lc_412.c": {
           "result_sha": "c4fd333f9043bc1f"
         },
         "lc_415.c": {
-          "result_sha": "ccb5054954f939ef"
+          "result_sha": "330217b70c12c949"
         },
         "lc_42.c": {
-          "result_sha": "3e3af8ca9bc7d4e3"
+          "result_sha": "29b3e3c9f45f601f"
         },
         "lc_448.c": {
-          "result_sha": "fb1abcab28efde4f"
+          "result_sha": "276bdc0849ead287"
         },
         "lc_45.c": {
-          "result_sha": "a4ac4a024c4c3dab"
+          "result_sha": "4263b19eb03bccc3"
         },
         "lc_46.c": {
           "result_sha": "99b38ac3bdf515fe"
         },
         "lc_48.c": {
-          "result_sha": "c86e44fc005a322c"
+          "result_sha": "1e0d30e4c3e4ebc1"
         },
         "lc_49.c": {
           "result_sha": "420061dc4e9a72bd"
         },
         "lc_496.c": {
-          "result_sha": "fc68405c9be9a826"
+          "result_sha": "51c75c71d7a76013"
         },
         "lc_50.c": {
-          "result_sha": "d8e6c49a76544001"
+          "result_sha": "f98e52e773448572"
         },
         "lc_509.c": {
-          "result_sha": "1796186158604b28"
+          "result_sha": "043d1e5547084b99"
         },
         "lc_53.c": {
-          "result_sha": "6dcb710c0b472c5b"
+          "result_sha": "633afd40d4e7991e"
         },
         "lc_54.c": {
           "result_sha": "c0349a2621f45766"
         },
         "lc_55.c": {
-          "result_sha": "1d57a2ea3bcb44dc"
+          "result_sha": "84c0fa6c1e2d42b3"
         },
         "lc_56.c": {
           "result_sha": "adea38b10bd5ea4c"
         },
         "lc_560.c": {
-          "result_sha": "154829740fefe424"
+          "result_sha": "502107854039384c"
         },
         "lc_572.c": {
-          "result_sha": "e1a938a8aeda866e"
+          "result_sha": "53017c4d8378d8dd"
         },
         "lc_58.c": {
-          "result_sha": "c8f0c585b86a2890"
+          "result_sha": "2c9feb72c08a9879"
         },
         "lc_617.c": {
           "result_sha": "e6047a1cf1e84f50"
         },
         "lc_62.c": {
-          "result_sha": "0d835260471ef37a"
+          "result_sha": "729b3261069aa705"
         },
         "lc_64.c": {
-          "result_sha": "2bae47c2d15654a9"
+          "result_sha": "377e60dc35d7697e"
         },
         "lc_66.c": {
-          "result_sha": "37a729752333d035"
+          "result_sha": "1413882d9f094904"
         },
         "lc_67.c": {
-          "result_sha": "6c97b1c7b71ced61"
+          "result_sha": "f0a96c0cfbb2cd5c"
         },
         "lc_69.c": {
-          "result_sha": "c6fa267d6964a3be"
+          "result_sha": "28ec0350bcb1cf2b"
         },
         "lc_7.c": {
-          "result_sha": "3132a9abc9d66705"
+          "result_sha": "b3f9e6a23960ad2c"
         },
         "lc_70.c": {
-          "result_sha": "45d2bcd5aa40c614"
+          "result_sha": "2fdca86d3488fb57"
         },
         "lc_704.c": {
-          "result_sha": "09ec16a4fe35414a"
+          "result_sha": "e7ce431af84ee312"
         },
         "lc_73.c": {
           "result_sha": "ffdcf7af0e4bdca2"
         },
         "lc_746.c": {
-          "result_sha": "b2069c045105d1ff"
+          "result_sha": "85e0b7d77170515d"
         },
         "lc_75.c": {
           "result_sha": "9ef6375952e131aa"
         },
         "lc_76.c": {
-          "result_sha": "4270f622975cb429"
+          "result_sha": "f94c3209ab2da8f7"
         },
         "lc_78.c": {
           "result_sha": "acb5b9d244c40856"
@@ -2754,25 +2754,25 @@
           "result_sha": "5e6369632f88fb50"
         },
         "lc_84.c": {
-          "result_sha": "eedadfcb8eba0ae0"
+          "result_sha": "091c9353f8098c89"
         },
         "lc_876.c": {
           "result_sha": "2220f5f6cb15fb8b"
         },
         "lc_88.c": {
-          "result_sha": "b9b1ec3c17b2355c"
+          "result_sha": "e92c93de58174d39"
         },
         "lc_9.c": {
-          "result_sha": "f893dd8daa85f25b"
+          "result_sha": "9495ac59d9f526a0"
         },
         "lc_91.c": {
-          "result_sha": "ea1ec915f0ddf433"
+          "result_sha": "7c08e089ef83ba74"
         },
         "lc_977.c": {
           "result_sha": "c8d28a5f0b391fd2"
         },
         "lc_98.c": {
-          "result_sha": "eac1de46ac259293"
+          "result_sha": "7478007c94bf362b"
         }
       }
     }

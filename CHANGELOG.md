@@ -12,6 +12,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(moonbit+gateway+scripts): 用户两份审阅报告处置批 + F4 合并收编——病 81 取值勘误 / 病 67·76 补锚 / 五闸修复 / 卫生五件（2026-10-17）
+
+【审阅 P1 五件（云端 CI 双红的根因面）】①病 81 勘误：vm `elem_size_of_kind`
+原修把整个数组类型传 `compute_type_size`（Array 臂 = 总长）⇒ 元素步长被放大
+count 倍（struct P[3] 得 24 应 8）——改传 `base_element_type()`（保留 base_kind
+表，`char*[2]` 解指针步长 1 的 oracle 冻结口径由锚六锁定不动），缺定义显式护 4；
+红锚「真尾之内/之外」双侧入库。②codegen_diff 四语料 digest 重冻（病 120 布局
+重冻只刷了 baseline——knr 21/81、leetcode 103/138、gap 2/20 三语料红的收口），
+五语料全 PASS。③`surface_edges.txt` 补登 vm→ast 两消费边（StructField /
+compute_type_size）。④vm `pkg.generated.mbti` 再生（VitroVM 新增
+struct_defs/union_defs 两字段）。⑤testcount 对账：逐包双目标重采——裸 786 /
+native-only 139（gateway 124 + cli 15）/ `--target native` 全量 925，两 README
+`moon info` 三重复行清理，六处文档测试数连坐。
+
+【审阅 P2 两件】病 67：offsetof 嵌套 member-designator 补双杀点锚（多段偏移
+值 + 段名断链 E3042——突变证红后还原入库）。病 76：`step.next` frames 在场
+非整数（浮点/字符串/超 Int32 域）由静默回落 1 改 **fail loud**（#133 单源
+`config_int_field_overflow` 复用，every 键同款双键预检；#89 的 0 哨兵保留为
+第二道防线），超 `max_steps` 预算钳制口径写进 api help rules.json brief 与
+CLI 手册；frames 三面锚（值域分类文案 / 批量一调跑完 / 预算钳制）+ 突变两发
+证牙入库。
+
+【审阅 P3 卫生五件】`vitro_cli_smoke` node 门槛文案勘正（≥25→≥22）+ CI 三处
+步名 `Install Node 25→24`；`gen_api_help` 新增 `shape_skip_allow` 豁免闸
+（非规范形态 serve_param_err 未豁免红 + 僵尸豁免红——config.set 未知键错误
+原被静默跳过，selftest 四路）；`demo_ui_lint` 检查 D 改**值判据**（`normal`
+= 连字开启不算关闭，须 none / no-common-ligatures；selftest mono=2）；
+`teaching_annotation_diff --catalog-check` 补 D 反向（demo 生成器幽灵族 /
+归属分叉，selftest 四路）；`serve_smoke` B2 断言升 v0.2（schema version +
+`v0_2_field_ledger` 含 code_file active 锚——#90 激活后原 v0.1 锚陈旧红）。
+
+【F4 合并收编（并发会话两笔的漏网三件）】`gen_api_help` 补 `codegen.dump`
+条目（dispatch 29 方法 ↔ rules.json 对账恢复绿）+ step.next brief 补 every
+口径；`vitro_cli_smoke` api help 方法计数锚 28→29；`gen_protocol_ts` 补
+schema 文档字段表 `code_file` 行（#90 加字段漏连坐表格）+ TS 产物再生；
+skill 参考 demo/style.css 失效路径引用改退役件表述。
+
 ### feat(demo): F4 收官——发布面切换，Svelte 5 + Vite 唯一构建（试点页升格 index.html，旧栈退役，2026-10-17）
 
 【入口与构建】`src/pilot.html` 升格为 `index.html`（唯一入口），`vite.config.ts`

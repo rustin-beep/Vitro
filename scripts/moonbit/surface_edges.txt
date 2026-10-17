@@ -411,8 +411,10 @@ vitro/engine/typeck vitro/engine/source SourceLoc
 vitro/engine/util moonbitlang/core/encoding/utf8 decode
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
+vitro/engine/vm vitro/engine/ast StructField
 vitro/engine/vm vitro/engine/ast Type
 vitro/engine/vm vitro/engine/ast base_element_type
+vitro/engine/vm vitro/engine/ast compute_type_size
 vitro/engine/vm vitro/engine/ast type_display_name
 vitro/engine/vm vitro/engine/bytecode CompileOutput
 vitro/engine/vm vitro/engine/bytecode FuncMeta

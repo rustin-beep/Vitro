@@ -85,7 +85,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
 | `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
-| `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0 fail loud、上限钳 `config.max_steps`（病 76 实现化——**在架 0.8.0 无此参数**，见下表） |
+| `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0/在场非整数（浮点·字符串·超 Int32 域）fail loud、超上限钳 `config.max_steps`（病 76 实现化 + 2026-10-17 审阅批值域补严——**在架 0.8.0 无此参数**，见下表） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
 | `ast.dump` / `typeck.dump` / `symbols.dump` | — | 静态 dump 族（AST / 类型检查 / 符号表导出——无需会话，只读语义不碰会话态） |

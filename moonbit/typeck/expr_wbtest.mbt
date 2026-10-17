@@ -65,6 +65,77 @@ test "resolve_expr_offsetof_lowering" {
 }
 
 ///|
+/// 病 67 补锚（2026-10-17 审阅 P2：修复时的突变证红是一次性手工动作未
+/// 入库——`found && segs.length()>1` 整臂旁路后既有锚全绿，端到端
+/// offsetof(Outer, in.name) 静默 33→32）。嵌套 member-designator 两杀点：
+/// ①多段链偏移值（首段 + 余段逐段累加、union 段恒 0）②段名断链报错
+/// 路径（旁路突变下不报 E3042）。
+test "resolve_expr_offsetof_nested_designator_b67" {
+  let loc = @source.SourceLoc::new(2, 10)
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  // struct Inner { char tag; int val; }（packed：tag@0、val@1）
+  // struct Outer { int pad; struct Inner in; char tail; }（pad@0、in@4）
+  tc.structs.set("Inner", {
+    fields: [(@ast.Type::char(), "tag"), (int2(), "val")],
+  })
+  tc.structs.set("Outer", {
+    fields: [
+      (int2(), "pad"),
+      (@ast.Type::struct_type("Inner"), "in"),
+      (@ast.Type::char(), "tail"),
+    ],
+  })
+  // offsetof(Outer, in.val) = 4（pad）+ 1（Inner.tag）= 5——突变旁路态只算
+  // 首段得 4
+  let (_, e) = tc.resolve_expr_type(
+    @ast.Expr::Offsetof(
+      @ast.Type::struct_type("Outer"),
+      "in.val",
+      loc,
+      @ast.Type::int(),
+    ),
+  )
+  match e {
+    Literal(v, _, _) => assert_eq(v, 5)
+    _ => fail("嵌套 offsetof 应 lowering 为 Literal")
+  }
+  assert_eq(tc.errors.length(), 0)
+  // 第二段断链须报 E3042——旁路突变下此路径整段被跳过、不报错
+  let _ = tc.resolve_expr_type(
+    @ast.Expr::Offsetof(
+      @ast.Type::struct_type("Outer"),
+      "in.zz",
+      loc,
+      @ast.Type::int(),
+    ),
+  )
+  assert_eq(
+    tc.errors.length(),
+    1,
+    msg="段名断链须报 E3042（多段链被旁路时不报——杀点）",
+  )
+  // union 中段恒 0：struct UWrap { int p; union UB u; }、UB { int x; char y; }
+  // offsetof(UWrap, u.y) = 4（p）+ 0（union 段）= 4
+  tc.unions.set("UB", { fields: [(int2(), "x"), (@ast.Type::char(), "y")], })
+  tc.structs.set("UWrap", {
+    fields: [(int2(), "p"), (@ast.Type::union_type("UB"), "u")],
+  })
+  let (_, e2) = tc.resolve_expr_type(
+    @ast.Expr::Offsetof(
+      @ast.Type::struct_type("UWrap"),
+      "u.y",
+      loc,
+      @ast.Type::int(),
+    ),
+  )
+  match e2 {
+    Literal(v, _, _) => assert_eq(v, 4)
+    _ => fail("union 段 offsetof 应 lowering 为 Literal")
+  }
+}
+
+///|
 fn int2() -> @ast.Type {
   @ast.Type::int()
 }

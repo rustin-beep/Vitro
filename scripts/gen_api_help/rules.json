@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "expected_method_count": 28,
+  "expected_method_count": 29,
   "methods": [
     {
       "method": "algorithms.catalog",
@@ -129,7 +129,7 @@
     },
     {
       "method": "step.next",
-      "brief": "推进 frames 步（缺省 1；返回帧数组——发布按行末对齐一帧缓冲语义，frames 是推进量非发布量）",
+      "brief": "推进 frames 步（缺省 1；须为正整数——零/负/浮点/字符串等非法值报 protocol 错；超过会话 max_steps 预算按预算推进；every=N 稀疏采样=每 N 步 1 帧〔1..100000，与 frames 互斥双给报错，#89〕；返回帧数组——发布按行末对齐一帧缓冲语义，frames 是推进量非发布量）",
       "example": "{\"frames\":10}"
     },
     {
@@ -141,6 +141,17 @@
       "method": "typeck.dump",
       "brief": "类型检查导出（静态 dump 族）",
       "example": "{\"source\":\"int main(){return 0;}\"}"
+    },
+    {
+      "method": "codegen.dump",
+      "brief": "编译产物转储（字节码跳转图 + 每指令源码行号——流程图原料；复用 codegen_diff 逐字节对拍锁定的单源 emitter，只读零会话态，#52）",
+      "example": "{\"source\":\"int main(){return 0;}\"}"
+    }
+  ],
+  "shape_skip_allow": [
+    {
+      "prefix": "config.set 收到未知配置键",
+      "reason": "#105 键白名单错误——非参数形状（该方法的 params 行由 preset/max_steps 值域臂与 brief 承载）"
     }
   ]
 }

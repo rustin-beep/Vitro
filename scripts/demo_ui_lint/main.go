@@ -130,6 +130,21 @@ func normSel(s string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(s)), " ")
 }
 
+// ligClosed：font-variant-ligatures 的**值**判据（2026-10-17 审阅 P3-⑦）——
+// 关闭态 = 值恰为 none / no-common-ligatures（trim 后整值比对；复合值红，
+// 逼规范形态）。原检查只认声明在场：`normal`（=连字开启的缺省值）同样
+// 豁免 ⇒ 假绿（检查 D 的判别面塌缩）。
+var reLigValue = regexp.MustCompile(`font-variant-ligatures:\s*([^;}]+)`)
+
+func ligClosed(body string) bool {
+	m := reLigValue.FindStringSubmatch(body)
+	if m == nil {
+		return false
+	}
+	v := strings.TrimSpace(m[1])
+	return v == "none" || v == "no-common-ligatures"
+}
+
 // firstTopArg 截取实参串的首个顶层实参：跳过字符串字面量与括号/方括号
 // 内的逗号（嵌套调用 add(cls("a","b"), x) 首参不被腰斩）。
 func firstTopArg(s string) string {
@@ -582,7 +597,7 @@ func main() {
 	cssBare := reCSSComment.ReplaceAllString(css, "")
 	monoExempt := map[string]bool{}
 	for _, m := range reCSSFullRule.FindAllStringSubmatch(cssBare, -1) {
-		if strings.Contains(m[2], "font-variant-ligatures") {
+		if ligClosed(m[2]) {
 			for _, one := range strings.Split(m[1], ",") {
 				if sel := normSel(one); sel != "" {
 					monoExempt[sel] = true
@@ -597,6 +612,15 @@ func main() {
 		}
 		if strings.Contains(m[2], "font-variant-ligatures") {
 			sitesMono++
+			if !ligClosed(m[2]) {
+				// 2026-10-17 审阅 P3-⑦：原检查只认声明在场——normal（=连字
+				// 开启的缺省值）同样豁免 ⇒ 假绿；值判据收严后分叉报错。
+				for _, one := range strings.Split(m[1], ",") {
+					if sel := normSel(one); sel != "" {
+						issues = append(issues, issue{"mono", fmt.Sprintf("mono 连字对账: %s 的 font-variant-ligatures 值非关闭态（须 none / no-common-ligatures——normal 与缺省=连字开启，#121①）", sel)})
+					}
+				}
+			}
 			continue
 		}
 		for _, one := range strings.Split(m[1], ",") {
@@ -853,10 +877,13 @@ const v = "var(--no-such-var)";`
 
 // selftestSvelte：mono 路（检查 D）注入雷——.mono-face 消费 var(--mono)
 // 无连字关闭亦无枚举连坐（selftestCSS 无 font-variant-ligatures 规则，
-// 豁免集空）必红；.mono-ok 同行声明为绿对照。var 路顺带多一条 --mono
+// 豁免集空）必红；.mono-ok 同行声明为绿对照。.mono-normal 声明在场但值
+// = normal（连字开启缺省）——值判据收严（2026-10-17 审阅 P3-⑦）后必红
+// （原只认声明在场的形态下它是假绿）。var 路顺带多一条 --mono
 // 未定义红（现有 --ghost-var 雷外增量，≥1 断言无碍）。
 const selftestSvelte = `<div class="mono-face">x</div>
 <style>
 .mono-face { font: 12px var(--mono); }
 .mono-ok { font: 12px var(--mono); font-variant-ligatures: none; }
+.mono-normal { font: 12px var(--mono); font-variant-ligatures: normal; }
 </style>`

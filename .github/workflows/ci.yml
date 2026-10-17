@@ -374,7 +374,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum
-      - name: Install Node 25
+      - name: Install Node 24
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -838,7 +838,7 @@ jobs:
           moon test --target wasm-gc
           moon test --target js
 
-      - name: Install Node 25
+      - name: Install Node 24
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -881,7 +881,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Node 25
+      - name: Install Node 24
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version

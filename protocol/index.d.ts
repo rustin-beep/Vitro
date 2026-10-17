@@ -80,6 +80,7 @@ export interface RootCauseHint {
 export interface StepPayload {
   step_index: number;
   code_line: number;
+  code_file: string | null;
   func_name: string;
   semantic_label: string;
   algorithm_step: AlgorithmStepSnapshot | null;

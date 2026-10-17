@@ -44,6 +44,7 @@
 |---|---|---|---|
 | `step_index` | int32 | 否 | 步号（0 起） |
 | `code_line` | int32 | 否 | 当前源码行号（1 起；0 = 无源码行）；**多文件 / 含头文件会话中为合并源码的全局行号**（见 §8 #9） |
+| `code_file` | string | **是** | 本帧 `code_line` 所属编译单元文件名（v0.2 首批激活，见 §7.2.1）；单文件编译恒 `"main.c"`；`null` = 行号不落任何 file_range（序幕帧 code_line=0 的诚实空态） |
 | `func_name` | string | 否 | 当前函数名（教学可读名，如 `main` / `bubble_sort`）；未知时为空串 |
 | `semantic_label` | string | 否 | 教学语义标签，由源码行 + 变量值推断（如 `循环 i=0, j=1`、`交换 arr[1]↔arr[2]`、`调用 printf`、`内存分配`） |
 | `algorithm_step` | object | **是** | 算法步骤语义快照（§2.6）；未命中算法模板时为 `null` |

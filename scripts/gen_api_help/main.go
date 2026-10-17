@@ -48,15 +48,24 @@ const (
 )
 
 type Rules struct {
-	Schema              int          `json:"schema"`
-	ExpectedMethodCount int          `json:"expected_method_count"`
-	Methods             []MethodHelp `json:"methods"`
+	Schema              int              `json:"schema"`
+	ExpectedMethodCount int              `json:"expected_method_count"`
+	Methods             []MethodHelp     `json:"methods"`
+	ShapeSkipAllow      []ShapeSkipAllow `json:"shape_skip_allow"`
 }
 
 type MethodHelp struct {
 	Method  string `json:"method"`
 	Brief   string `json:"brief"`
 	Example string `json:"example"`
+}
+
+// ShapeSkipAllow（2026-10-17 审阅 P3-⑥）：非规范形态（不带「<method> 需要/
+// <method> 的」前缀）serve_param_err 的显式豁免——前缀匹配 + 理由在档；
+// 未豁免的静默跳过红、未命中的僵尸豁免红（双向对账，#68 形状面收口）。
+type ShapeSkipAllow struct {
+	Prefix string `json:"prefix"`
+	Reason string `json:"reason"`
 }
 
 // paramErr 提取形态：serve_param_err(id, "message", "expected")——跨行、
@@ -92,12 +101,15 @@ func main() {
 	if len(rules.Methods) == 0 {
 		fatal("rules.methods 空集不得绿")
 	}
-	shapes, errs2 := extractShapes()
+	shapes, skipped, errs2 := extractShapes()
 	if len(errs2) > 0 {
 		fatal("serve_param_err 提取失败: %v", errs2)
 	}
 	if errs := reconcile(methods, rules, shapes); len(errs) > 0 {
 		fatal("双向对账不符:\n  %s", strings.Join(errs, "\n  "))
+	}
+	if errs := checkShapeSkips(rules, skipped); len(errs) > 0 {
+		fatal("形状面豁免对账不符（静默塌缩闸）:\n  %s", strings.Join(errs, "\n  "))
 	}
 	mbtSrc, _ := render(methods, rules, shapes)
 
@@ -142,10 +154,10 @@ func extractDispatch() ([]string, []string) {
 }
 
 // extractShapes 扫 gateway 包源（排除 wbtest）提取 serve_param_err 调用点。
-func extractShapes() (map[string]string, []string) {
+func extractShapes() (map[string]string, []paramErr, []string) {
 	entries, err := os.ReadDir(gatewayDir)
 	if err != nil {
-		return nil, []string{err.Error()}
+		return nil, nil, []string{err.Error()}
 	}
 	var found []paramErr
 	for _, e := range entries {
@@ -159,17 +171,20 @@ func extractShapes() (map[string]string, []string) {
 		}
 	}
 	if len(found) == 0 {
-		return nil, []string{"零 serve_param_err 调用点（#68 收编面被删？）"}
+		return nil, nil, []string{"零 serve_param_err 调用点（#68 收编面被删？）"}
 	}
-	return shapeByMethod(found), nil
+	shapes, skipped := shapeByMethod(found)
+	return shapes, skipped, nil
 }
 
 // shapeByMethod 按 message 前缀归位方法（长方法名先试防短名误配）。
 // 「请求缺少 method 字段」不匹配任何方法 → 显式跳过（请求顶层要求）。
-func shapeByMethod(found []paramErr) map[string]string {
+// 返回 (归位表, 静默跳过清单)——非规范形态不吞（2026-10-17 审阅 P3-⑥：
+// 原样 return 只归位、未知形态 continue 无计数无告警，config.set 未知键
+// 错误整条静默塌缩）。
+func shapeByMethod(found []paramErr) (map[string]string, []paramErr) {
 	out := map[string]string{}
-	var methods []string // 归位用方法清单由调用方给——这里用 message 自带前缀
-	_ = methods
+	var skipped []paramErr
 	for _, p := range found {
 		if strings.HasPrefix(p.Message, "请求缺少") {
 			continue // 请求顶层（非方法级 params）
@@ -182,7 +197,8 @@ func shapeByMethod(found []paramErr) map[string]string {
 			name = p.Message[:i]
 		}
 		if name == "" {
-			continue // 未知形态——留给 reconcile 的方向 B 咬（调用方校验）
+			skipped = append(skipped, p) // 未知形态——须过 shape_skip_allow 显式豁免
+			continue
 		}
 		if _, dup := out[name]; dup {
 			out[name] = "" // 同方法多形状（如 icons 两分支同形）——空标记合并
@@ -192,7 +208,37 @@ func shapeByMethod(found []paramErr) map[string]string {
 		out[name] = p.Expected
 	}
 	// 去空值（不该出现——同方法多形状若不同字面量说明手拼分叉，reconcile 咬）
-	return out
+	return out, skipped
+}
+
+// checkShapeSkips 静默跳过双向闸：每条非规范形态须命中一条豁免前缀，
+// 每条豁免须被命中（僵尸豁免红——例外清单不养死条目）。
+func checkShapeSkips(rules Rules, skipped []paramErr) []string {
+	var errs []string
+	used := map[int]bool{}
+	for _, p := range skipped {
+		hit := false
+		for i, a := range rules.ShapeSkipAllow {
+			if strings.HasPrefix(p.Message, a.Prefix) {
+				hit = true
+				used[i] = true
+				break
+			}
+		}
+		if !hit {
+			errs = append(errs, fmt.Sprintf(
+				"serve_param_err 非规范形态未豁免（message=%q expected=%q）——改规范形态（<method> 需要…/<method> 的…）或在 rules.json shape_skip_allow 登记前缀+理由",
+				p.Message, p.Expected))
+		}
+	}
+	for i, a := range rules.ShapeSkipAllow {
+		if !used[i] {
+			errs = append(errs, fmt.Sprintf(
+				"shape_skip_allow 僵尸豁免（prefix=%q reason=%q）——无命中条目，删或改",
+				a.Prefix, a.Reason))
+		}
+	}
+	return errs
 }
 
 // reconcile 双向对账：dispatch↔rules（多/缺都红）+ 形状面完整性。
@@ -329,7 +375,7 @@ func selftestAll() {
 		}
 	}
 	// 路 2：形状字面量篡改（serve_param_err expected 改字 → 归位/对账面变化）
-	shapes, _ := extractShapes()
+	shapes, _, _ := extractShapes()
 	if len(shapes) == 0 {
 		fmt.Println("selftest 路 2 跳过（形状面空）")
 	} else {
@@ -344,6 +390,28 @@ func selftestAll() {
 		fail++
 	} else {
 		fmt.Printf("selftest 路 3 OK（简介缺失红：%v）\n", errs[0])
+	}
+	// 路 4（2026-10-17 审阅 P3-⑥）：非规范形态静默塌缩闸——未豁免跳过红
+	// + 僵尸豁免红（双向）
+	var rules4 Rules
+	readJSON(rulesPath, &rules4)
+	rules4.ShapeSkipAllow = nil
+	if errs := checkShapeSkips(rules4, []paramErr{
+		{Message: "config.set 收到未知配置键 'zzz'", Expected: "keys:白名单"},
+	}); len(errs) == 0 {
+		fmt.Println("selftest 路 4 FAIL：未豁免跳过未红")
+		fail++
+	} else {
+		fmt.Printf("selftest 路 4 OK（未豁免跳过红：%v）\n", errs[0])
+	}
+	if errs := checkShapeSkips(
+		Rules{ShapeSkipAllow: []ShapeSkipAllow{{Prefix: "zzz 前缀", Reason: "r"}}},
+		nil,
+	); len(errs) == 0 {
+		fmt.Println("selftest 路 4 FAIL：僵尸豁免未红")
+		fail++
+	} else {
+		fmt.Printf("selftest 路 4 OK（僵尸豁免红：%v）\n", errs[0])
 	}
 	if fail > 0 {
 		os.Exit(2)

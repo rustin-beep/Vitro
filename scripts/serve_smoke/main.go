@@ -668,10 +668,13 @@ func run() int {
 	check(numEq(memModel["global_region_limit"], float64(expectMemoryGlobalRegionLimit)), "capabilities 内存模型常量（单源 vitro_runtime）", "")
 
 	// B2：schema 轨道与行为契约进能力清单（消费方可直读版本协商信息）
+	// v0.2 首批激活（#90，2026-10-17）：SCHEMA_VERSION v0.1→v0.2 + code_file
+	// 进 v0_2_field_ledger（status=active）——断言连坐（原锚 v0.1 在 F4
+	// 合并批后陈旧红）。
 	schema := asObj(caps["schema"])
 	reserved, _ := schema["reserved_fields_v0_2"].([]any)
 	reservedWant := []string{"handler_depth", "unwinding", "unwind_frames_left", "current_exception"}
-	reservedEq := strOf(schema["version"]) == "v0.1" && len(reserved) == len(reservedWant)
+	reservedEq := strOf(schema["version"]) == "v0.2" && len(reserved) == len(reservedWant)
 	if reservedEq {
 		for i, s := range reservedWant {
 			if strOf(reserved[i]) != s {
@@ -681,6 +684,15 @@ func run() int {
 		}
 	}
 	check(reservedEq, "capabilities 携带 schema 轨道与预留位（B2）", tailMap(schema))
+	schemaLedger, _ := schema["v0_2_field_ledger"].([]any)
+	codeFileActive := false
+	for _, e := range schemaLedger {
+		eo := asObj(e)
+		if strOf(eo["field"]) == "code_file" && strOf(eo["status"]) == "active" {
+			codeFileActive = true
+		}
+	}
+	check(codeFileActive, "v0.2 激活台账含 code_file(active)（#90）", fmt.Sprint(schemaLedger))
 
 	contractsList, _ := caps["behavior_contracts"].([]any)
 	hasUnwindContract := false

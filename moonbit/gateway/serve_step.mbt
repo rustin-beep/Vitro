@@ -344,6 +344,37 @@ fn serve_step_next_frame(
   // 指令采 1 帧（一次调用推进 N、发布 1；采样语义见 run_batch 头注）。
   // **frames 与 every 语义互斥**（N 步 N 帧 vs N 步 1 帧），双给 fail loud
   // （参数错误帧带 expected 形状）——不静默择一。
+  //
+  // 病 76 勘误（2026-10-17 审阅 P2-⑤，合并批连坐 every）：在场但非整数
+  // （浮点/字符串/超 Int32 域）只有 0 哨兵的笼统「须为正整数」，与
+  // config.set 的分类文案口径不一致——前置 #133 单源值域预检
+  // （config_int_field_overflow：在场判断 + 浮点/字符串/超域分类文案，
+  // frames/every 双键同款）。下方 unwrap_or(0) 哨兵保留为第二道防线
+  // （预检已拦截的前提下理论不可达——防御纵深非冗余裁决）。
+  match config_int_field_overflow(params, "frames", 2147483647) {
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id,
+          "step.next 的 params.frames 须为正整数：\{msg}",
+          "frames:int>=1",
+        ).stringify(),
+        false,
+      )
+    Ok(_) => ()
+  }
+  match config_int_field_overflow(params, "every", 2147483647) {
+    Err(msg) =>
+      return (
+        serve_param_err(
+          id,
+          "step.next 的 params.every 须为 1..100000 的整数（采样步长）：\{msg}",
+          "every:int in [1,100000]",
+        ).stringify(),
+        false,
+      )
+    Ok(_) => ()
+  }
   let frames_json = json_field(params, "frames")
   let every_json = json_field(params, "every")
   // 缺省（键缺省/null）取 1；存在且非整数 → 0 哨兵（0 同时落在下方
@@ -367,8 +398,7 @@ fn serve_step_next_frame(
   if every <= 0 || every > 100000 {
     return (
       serve_param_err(
-        id,
-        "step.next 的 params.every 须为 1..100000 的整数（采样步长）",
+        id, "step.next 的 params.every 须为 1..100000 的整数（采样步长）",
         "every:int in [1,100000]",
       ).stringify(),
       false,
@@ -377,23 +407,14 @@ fn serve_step_next_frame(
   if frames > 1 && every > 1 {
     return (
       serve_param_err(
-        id,
-        "step.next 的 params.frames 与 every 互斥（frames=N 步 N 帧；every=N 步 1 帧）",
+        id, "step.next 的 params.frames 与 every 互斥（frames=N 步 N 帧；every=N 步 1 帧）",
         "frames:int>=1 XOR every:int in [1,100000]",
       ).stringify(),
       false,
     )
   }
-  let advance = if every > 1 {
-    every
-  } else {
-    frames
-  }
-  let stride = if every > 1 {
-    every
-  } else {
-    1
-  }
+  let advance = if every > 1 { every } else { frames }
+  let stride = if every > 1 { every } else { 1 }
   let budget = s.config.max_steps
   let n = if advance > budget { budget } else { advance }
   let outcome = engine.run_batch(s.vm, SessionLines::{ s, }, n, every=stride)

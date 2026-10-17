@@ -524,3 +524,78 @@ test "serve_step_next_every_param" {
     msg="采样帧数须 ≈ 步数/3（实得 \{frames.length()} 帧 / \{steps} 步）",
   )
 }
+
+///|
+/// 病 76 frames 三面锚（2026-10-17 审阅 P2-⑤ 补锚；合并批随 #89 对齐）：
+/// ①在场非整数（浮点/字符串/超 Int32 域）fail loud 且带**分类文案**
+/// （#133 单源预检——config.set 口径同款；#89 的 0 哨兵是第二道防线，
+/// 分类文案归预检层）②frames=20 批量推进（一批跑完小程序——突变回
+/// 「恒 1 步」时一调跑不完，本断言红）③超会话 max_steps 预算钳到预算
+/// （frames=1000 配 max_steps=3，长程序两调内不得 finished——钳制口径
+/// 已写入 api help rules.json brief）。缺省 1 = 既有锚的恒单步形态。
+test "serve_step_next_frames_domain_b76" {
+  let s = @session.Session::new()
+  let (cresp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 1; a = a + 1; return a; }\\n\"}}",
+  )
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  // ①在场非整数 fail loud——三形态各带分类文案（#133 单源预检复用）
+  let bads : Array[(String, String)] = [
+    ("1.5", "浮点形态"),
+    ("\"3\"", "收到字符串"),
+    ("2147483648", "超出可表示上限"),
+  ]
+  for t in bads {
+    let (r, _) = serve_handle(
+      s,
+      "{\"id\":3,\"method\":\"step.next\",\"params\":{\"frames\":" + t.0 + "}}",
+    )
+    assert_true(
+      r.contains("\"kind\":\"protocol\""),
+      msg="frames=\{t.0} 须 param_err",
+    )
+    assert_true(r.contains("须为正整数"), msg="frames=\{t.0} 文案")
+    assert_true(r.contains(t.1), msg="frames=\{t.0} 分类：\{r}")
+    assert_true(r.contains("\"expected\":\"frames:int>=1\""))
+  }
+  // every 同款分类（预检双键）
+  let (er, _) = serve_handle(
+    s, "{\"id\":4,\"method\":\"step.next\",\"params\":{\"every\":2.5}}",
+  )
+  assert_true(er.contains("浮点形态"), msg="every=2.5 分类文案：\{er}")
+  // ②合法批量：frames=20 一批跑完小程序——首调即冲刷 finished（批量
+  // 跑完走 finished 冲刷臂非空帧缓冲臂；突变回「恒 1 步」时一调跑不完）
+  let (r1, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"step.next\",\"params\":{\"frames\":20}}",
+  )
+  assert_true(
+    r1.contains("\"finished\":true"),
+    msg="frames=20 须一调跑完程序：\{r1}",
+  )
+  // 终结后粘性空帧（恒带 finished:true——坑 ⑥-6 同款）
+  let (r2, _) = serve_handle(
+    s, "{\"id\":6,\"method\":\"step.next\",\"params\":{\"frames\":20}}",
+  )
+  assert_true(r2.contains("\"payloads\":[]"), msg="终结后须粘性空帧")
+  // ③超预算钳制：max_steps=3 + frames=1000，~250 步长程序两调仅 ~6 步
+  let s2 = @session.Session::new()
+  let (c2, _) = serve_handle(
+    s2, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 0; while (a < 50) { a = a + 1; } return a; }\\n\"}}",
+  )
+  assert_true(c2.contains("\"ok\":true"), msg="长程序编译须成功")
+  let _ = serve_handle(
+    s2, "{\"id\":2,\"method\":\"config.set\",\"params\":{\"max_steps\":3}}",
+  )
+  let _ = serve_handle(s2, "{\"id\":3,\"method\":\"step.begin\"}")
+  let _ = serve_handle(
+    s2, "{\"id\":4,\"method\":\"step.next\",\"params\":{\"frames\":1000}}",
+  )
+  let (r4, _) = serve_handle(
+    s2, "{\"id\":5,\"method\":\"step.next\",\"params\":{\"frames\":1000}}",
+  )
+  assert_true(
+    r4.contains("\"finished\":false"),
+    msg="frames=1000 须钳到预算 3（两调 ~6 步，长程序不得 finished）：\{r4}",
+  )
+}

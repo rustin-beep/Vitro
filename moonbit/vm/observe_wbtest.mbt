@@ -302,6 +302,37 @@ test "elem_size_of_ll_array_b52" {
 }
 
 ///|
+/// 病 81 勘误锚（2026-10-17 审阅 P1-①，红→绿）：struct/union 数组的元素
+/// 步长 = **元素**尺寸（codegen elem_type_size 口径——先解一层 element），
+/// 不是数组总长。13e10ca5 修把整个数组类型传 compute_type_size，其
+/// Array 臂 = total_elements × 基元素尺寸，步长被放大 count 倍
+/// （struct P[3] 得 24 应 8、union U[4] 得 32 应 8）——slot_covers 区间
+/// 随之放大，真尾之后的地址被误归属（病 81 原形态「误归属」的第二春）。
+test "elem_size_of_kind_struct_union_elem_not_total_b81" {
+  let vm = VitroVM::new()
+  // struct P { int a; int b; }——元素 8 字节
+  vm.struct_defs.set("P", [
+    { ty: @ast.Type::int(), name: "a", },
+    { ty: @ast.Type::int(), name: "b", },
+  ])
+  // union U { int a; double b; }——max = 8
+  vm.union_defs.set("U", [
+    { ty: @ast.Type::int(), name: "a", },
+    { ty: @ast.Type::Double(false), name: "b", },
+  ])
+  let pts_ty : @ast.Type = Array(Struct("P", false), 3, [3], false, false, [])
+  let us_ty : @ast.Type = Array(Union("U", false), 4, [4], false, false, [])
+  assert_eq(vm.elem_size_of_kind(pts_ty), 8U)
+  assert_eq(vm.elem_size_of_kind(us_ty), 8U)
+  // 真尾之内（base+23 < base+3×8）命中；真尾之外（base+24 起）不归属
+  // （缺陷形态：步长 24 → 区间放大到 base+72，base+24 误报 Some("pts")）
+  vm.set_symbols([mksym("pts", 0U, false, pts_ty, "", 0)])
+  let base = @bytecode.GLOBAL_START
+  assert_eq(vm.find_variable_name_at_addr(base + 23U), Some("pts"))
+  assert_eq(vm.find_variable_name_at_addr(base + 24U), None)
+}
+
+///|
 /// 病 53 锚（2026-10-13）：除零零值扫描按当前帧 func_name 过滤——跨
 /// 函数局部变量（other 的 far_var）不得借当前帧 locals_base 错位列出。
 test "div_zero_zero_section_filters_by_frame_b53" {

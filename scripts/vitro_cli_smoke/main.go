@@ -114,16 +114,17 @@ func main() {
 		fmt.Println("vitro_cli_smoke: node 不在 PATH（wasm 臂宿主）")
 		os.Exit(1)
 	}
-	// node 版本前置闸（P2，2026-10-15 用户审阅提醒）：vitro_wasm 的 MIN_NODE=25
+	// node 版本前置闸（P2，2026-10-15 用户审阅提醒；2026-10-17 审阅处置批
+	// 勘正文案）：vitro_wasm 的 MIN_NODE=22（f49794f6 降 LTS 批——原 25）
 	// 以下 wasm 壳恒退 rc=5 哨兵（#106）——不前置拦截会把宿主版本不足
 	// 误报成整片「输出不一致」（node 22 下 92 条误导红的实录），真因被
-	// 埋。版本不足即红，不静默跳过（fail loud）。门槛数字与 main.js
-	// MIN_NODE 同步维护。
+	// 埋。版本不足即红，不静默跳过（fail loud）。门槛数字与 cmd/vitro_wasm
+	// 的 MIN_NODE 同步维护（main.js 已随退役批删除）。
 	if vout, verr := exec.Command(nodeBin, "--version").Output(); verr == nil {
 		v := strings.TrimPrefix(strings.TrimSpace(string(vout)), "v")
 		if major, aerr := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); aerr == nil && major < 22 {
 			fmt.Printf("vitro_cli_smoke: 宿主 node %s < 22（wasm 臂 js-string builtins 需要——vitro_wasm MIN_NODE=22 同源门槛，f49794f6 降 LTS 批同步）。\n"+
-				"wasm 臂将恒退 rc=5 降级哨兵，后续对拍会整片误报「输出不一致」。先升级 node ≥ 25 再跑本闸。\n", v)
+				"wasm 臂将恒退 rc=5 降级哨兵，后续对拍会整片误报「输出不一致」。先升级 node ≥ 22 再跑本闸。\n", v)
 			os.Exit(1)
 		}
 	}
@@ -240,7 +241,9 @@ func main() {
 			wantRc int
 			needle string
 		}{
-			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（28）"},
+			// 方法计数随 gen_api_help rules.json 走（#52 codegen.dump 29，
+			// 2026-10-17 合并批连坐）——漂移即本锚红，改数须连坐 rules.json
+			{"api help 清单", []string{"api", "help"}, 0, "api 方法清单（29）"},
 			{"api help compile 详情", []string{"api", "help", "compile"}, 0, "params: files:[{filename?,source}] | source:string[,filename:string]"},
 			{"api help 未知方法", []string{"api", "help", "no.such"}, 4, "用法错: 未知方法 'no.such'"},
 		} {

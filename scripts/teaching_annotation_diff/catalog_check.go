@@ -240,6 +240,25 @@ func compareCatalogs(a []buildMatchSource, b catalogExport, migrated map[string]
 			}
 		}
 	}
+	// D 反向（2026-10-17 审阅 P3-⑧）：demo 生成器表多列的族不捕——幽灵条目
+	// （不在引擎导出）与归属分叉（demo 列在 A 组、引擎归 B 组）原先双向
+	// 只查了引擎→demo 一边。
+	engineGroupByFamily := map[string]string{}
+	for _, e := range b.Algorithms {
+		engineGroupByFamily[e.Family] = e.Group
+	}
+	for _, g := range demoGroups {
+		for _, f := range g.Algos {
+			eg, ok := engineGroupByFamily[f]
+			if !ok {
+				errs = append(errs, fmt.Sprintf("demo 生成器组 %q 列族 %q 不在引擎导出（僵尸/拼写）", g.ID, f))
+				continue
+			}
+			if eg != g.ID {
+				errs = append(errs, fmt.Sprintf("demo 生成器组 %q 列族 %q 引擎归组为 %q（归属分叉）", g.ID, f, eg))
+			}
+		}
+	}
 	return errs
 }
 
@@ -339,7 +358,9 @@ func runCatalogCheck(root string, selftest bool) error {
 
 	errs := compareCatalogs(a, bNative, migrated, demoGroups)
 	if selftest {
-		// J9 两路内存注入证红
+		// J9 四路内存注入证红（路 3/4 = 2026-10-17 审阅 P3-⑧ 补：D 反向
+		// 双形态；双臂不一致为主路径硬等值比对——selftest 每跑即真比一次，
+		// 不做套套式注入）
 		spoiled := append([]buildMatchSource(nil), a...)
 		spoiled[0].DisplayName = "篡改名"
 		if e := compareCatalogs(spoiled, bNative, migrated, demoGroups); len(e) == 0 {
@@ -356,7 +377,22 @@ func runCatalogCheck(root string, selftest bool) error {
 		if e := compareCatalogs(a, bNative, dropOne, demoGroups); len(e) == 0 {
 			return fmt.Errorf("selftest：rules 缺键未红（锚无牙）")
 		}
-		fmt.Println("teaching_annotation_diff --catalog-check selftest: 两路注入均红（锚有牙）")
+		ghost := append([]demoGroup(nil), demoGroups...)
+		ghost[0].Algos = append([]string(nil), ghost[0].Algos...)
+		ghost[0].Algos = append(ghost[0].Algos, "phantom_family_zz")
+		if e := compareCatalogs(a, bNative, migrated, ghost); len(e) == 0 {
+			return fmt.Errorf("selftest：demo 幽灵族未红（D 反向无牙）")
+		}
+		misfile := append([]demoGroup(nil), demoGroups...)
+		misfile[0].Algos = append([]string(nil), misfile[0].Algos...)
+		if len(misfile) < 2 || len(misfile[0].Algos) == 0 {
+			return fmt.Errorf("selftest：分组表形态不足（<2 组或空组）——注入前提缺失")
+		}
+		misfile[1].Algos = append(misfile[1].Algos, misfile[0].Algos[0])
+		if e := compareCatalogs(a, bNative, migrated, misfile); len(e) == 0 {
+			return fmt.Errorf("selftest：demo 归属分叉未红（D 反向无牙）")
+		}
+		fmt.Println("teaching_annotation_diff --catalog-check selftest: 四路注入均红（锚有牙）")
 		return nil
 	}
 	if len(errs) > 0 {

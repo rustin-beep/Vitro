@@ -400,16 +400,37 @@ pub fn VitroVM::unpause(self : VitroVM) -> Unit {
 }
 
 ///|
-/// 病 81 修（#71，2026-10-16）：vm 侧元素步长——base_kind 表对
-/// Struct/Union 不再落兜底 4，按真实布局算（struct=Σ字段 / union=max，
-/// @ast.compute_type_size 与 codegen/typeck 同源语义；定义缺失退 4 =
-/// 装载缺口防御）。
+/// 病 81 修（#71，2026-10-16）+ 勘误（2026-10-17 审阅 P1-①）：vm 侧
+/// 元素步长——base_kind 表对 Struct/Union 不再落兜底 4，按真实布局算
+/// （struct=Σ字段 / union=max，@ast.compute_type_size 与 codegen/typeck
+/// 同源语义）。**尺寸输入 = 基元素类型**：调用方传的是数组类型，整型
+/// 直入 compute_type_size 会走其 Array 臂（total_elements × 基元素）得
+/// **数组总长**，步长被放大 count 倍（struct P[3] 得 24 应 8）；定义
+/// 缺失退 4 = 装载缺口防御（compute_type_size 缺定义得 0，会令区间
+/// 塌缩，须显式护住）。其余 kind 维持 base_kind 表（char*[2] 解一层
+/// 指针按 1——oracle memory.rs 观测层冻结口径，锚六在案）。
 fn VitroVM::elem_size_of_kind(self : VitroVM, ty : @ast.Type) -> UInt32 {
   match ty.base_kind() {
     TK_Char => 1U
     TK_Double | TK_LongLong => 8U
-    TK_Struct | TK_Union =>
-      @ast.compute_type_size(ty, self.struct_defs, self.union_defs, Map([])).reinterpret_as_uint()
+    TK_Struct | TK_Union => {
+      let elem = ty.base_element_type()
+      let defs = if ty.base_kind() is TK_Struct {
+        self.struct_defs
+      } else {
+        self.union_defs
+      }
+      match defs.get(elem.name()) {
+        Some(_) =>
+          @ast.compute_type_size(
+            elem,
+            self.struct_defs,
+            self.union_defs,
+            Map([]),
+          ).reinterpret_as_uint()
+        None => 4U
+      }
+    }
     _ => 4U
   }
 }

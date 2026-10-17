@@ -16,5 +16,5 @@ export const FIELDS = {
   PointerSnapshot: ["name", "addr", "ty_name", "target_addr", "target_name", "status"],
   VisEvent: ["ty", "line", "extra0", "extra1", "extra2", "context"],
   RootCauseHint: ["category", "one_liner", "related_lines", "suggested_fix_kind", "suggested_fix_line", "suggested_fix_desc"],
-  StepPayload: ["step_index", "code_line", "func_name", "semantic_label", "algorithm_step", "local_vars", "call_stack", "vis_events", "heatmap_line", "heatmap_count", "accessed_vars", "array_snapshots", "pointer_snapshots", "root_cause_hint"],
+  StepPayload: ["step_index", "code_line", "code_file", "func_name", "semantic_label", "algorithm_step", "local_vars", "call_stack", "vis_events", "heatmap_line", "heatmap_count", "accessed_vars", "array_snapshots", "pointer_snapshots", "root_cause_hint"],
 };

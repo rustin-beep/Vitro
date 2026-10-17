@@ -908,9 +908,11 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
-      - name: demo TS build (tsc emit = type gate)
+      - name: demo TS check (tsc --noEmit = js/ 模块类型面)
+        # F4 收尾（2026-10-17）：app.ts 退役 → emit 无对象，只留 --noEmit
+        # （js/ 八个物理保留模块的类型面；src/ 由 svelte-check 覆盖）
         run: |
-          cd demo && npm ci && npx tsc -p tsconfig.json --noEmit && npx tsc -p tsconfig.json
+          cd demo && npm ci && npx tsc -p tsconfig.json --noEmit
         shell: bash
 
       # 算法侧栏数据发射（2026-10-04 refs #28 建，同日发射化）：产物不入库
@@ -934,7 +936,8 @@ jobs:
 
       # 2026-10-04 审阅 P3-②：组装自检原先只在 push-master 的 pages.yml——PR
       # 侧拷贝面缺口（历史白屏同类）无闸。单源脚本（demo_assemble_check）对
-      # 原地发射后的 demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法）。
+      # demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法；F4 收尾后断言
+      # index.html 入口 = src/main.ts + 本地资源面）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
         run: node scripts/demo_assemble_check/main.js demo
         shell: bash
@@ -998,6 +1001,16 @@ jobs:
         run: |
           go run ./scripts/demo_ui_lint -selftest
           go run ./scripts/demo_ui_lint
+        shell: bash
+
+      # #51 批①（2026-10-17，refs #122 F3）：phase 受控词表冻结闸——
+      # teaching/steps/infer_*.mbt 的 build_step 字面量 ↔ rules.json 双向全等
+      # （未登记扩张红 / 僵尸条目红 / family 漂移红 / 非字面量调用红）；
+      # 抽取面下限防正则失能，-selftest 内存注入四路证红（J9）。
+      - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
+        run: |
+          go run ./scripts/teaching_phase_vocab -selftest
+          go run ./scripts/teaching_phase_vocab
         shell: bash
 
       # 拆分批（2026-10-04，refs #28）→ TS 重写批：纯函数层 node --test——

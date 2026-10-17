@@ -12,6 +12,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): F4 收官——发布面切换，Svelte 5 + Vite 唯一构建（试点页升格 index.html，旧栈退役，2026-10-17）
+
+【入口与构建】`src/pilot.html` 升格为 `index.html`（唯一入口），`vite.config.ts`
+input/outDir 相应切 `index.html`/`dist/`；旧栈 `app.ts`/`style.css`/`js/` 十一
+模块（catalog/course/editor/icon/run/settings/state/timetravel 等）退役删除，
+`js/` 物理保留八个纯函数模块（types/util/icons/calltree/memory/gw/share/
+workspace——DOM 胶水面裁净，`pure.test` 十八锚全保）。`package.json` build/
+dev/check 三脚本与 `tsconfig.json` include 面同步收口；`demo/dist/` 入
+`.gitignore`（与 wasm.wasm 对称不入库）。
+
+【E2E 扩面】`e2e_workspace.mjs` 19→31 锚：W13 回放交互五锚（单步 ±1/播放推
+进/暂停停走/滑条 seek/粒度切换帧口径——播放探测窗口 80ms，首跑实测 600ms
+必假红因 7 帧@30fps≈233ms 已播完回弹）+ W14 设置面板六锚（五主题逐个生效/
+昼夜 shade 跟随/字号 --ed-fs/动效 off/重载三持久化）；`e2e_diagcard.mjs`
+入口随升格改写，字面 NUL 哨兵转义化（git 二进制误判根除）。
+
+【闸面连坐】`demo_smoke` 消费面扫描改 `src/**/*.ts+svelte`（旧栈模块退役后
+不产 method 字面量）；`demo_ui_lint` CSS 面并入 `src/*.css`、rules.json 两类
+动态类名与 tab- 前缀 id 僵尸登记清除（min_class_sites 显式归 0，回落值 3
+会误判「重构后归零」为塌缩）；`demo_assemble_check` 适配单模块入口（script
+下限 2→1 + favicon link href 面 + 源目录断言 `src/main.ts`）；`ci.yml` tsc
+步收 `--noEmit`（emit 无对象）；`pages.yml` 组装改 `vite build`（Pages 发布
+面同源）。
+
 ### docs: 全库文档翻新第六轮——三臂口径对齐 + 下游接入配方 + 协议字段版本表 + 宿主可达性矩阵（#115/#116/#124/#127，2026-10-16）
 
 【三 issue 文档面落地】① 快速入门新增《下游接入（MoonBit 宿主）》节（#115）：

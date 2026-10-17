@@ -196,6 +196,7 @@ scripts/mbti_sync.exe
 examples/_build/
 
 # demo 前端试点（F1）：vite 产物不入库（与 tsc 发射产物对称）
+demo/dist/
 demo/dist-pilot/
 # E-08 快照闸 SSR 渲染 bundle（#122 闸门批）：同 vite 产物形态不入库
 demo/dist-e08/

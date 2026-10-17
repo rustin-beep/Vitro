@@ -1,11 +1,11 @@
-// 一次性静态服（F4 E2E 实测用）：serve dist-pilot，application/wasm 修正 MIME。
+// 一次性静态服（F4 E2E 实测用）：serve dist（vite 唯一构建产物），application/wasm 修正 MIME。
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(here, "../dist-pilot");
+const ROOT = resolve(here, "../dist");
 const PORT = Number(process.argv[2] ?? 8931);
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
 

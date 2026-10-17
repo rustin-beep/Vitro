@@ -1,37 +1,8 @@
 {
-  "_comment": "demo UI 契约：动态类名/ID 与静态白名单的对账基准（scripts/demo_ui_lint 判定闸消费）",
-  "dynamic_class_assigns": [
-    {
-      "where": "setStatus: el.className = \"pill \" + kind（kind 为状态字面量）",
-      "classes": [
-        "idle",
-        "busy",
-        "ok",
-        "err",
-        "wait"
-      ]
-    },
-    {
-      "where": "bandRender: b.className = \"blk \" + r.kind（引擎 region.kind 枚举）",
-      "classes": [
-        "global",
-        "heap",
-        "stack",
-        "freed"
-      ]
-    }
-  ],
-  "dynamic_id_prefixes": [
-    {
-      "prefix": "tab-",
-      "ids": [
-        "tab-result",
-        "tab-memory",
-        "tab-catalog",
-        "tab-proto"
-      ]
-    }
-  ],
+  "_comment": "demo UI 契约：动态类名/ID 与静态白名单的对账基准（scripts/demo_ui_lint 判定闸消费） **F4 收尾（2026-10-17）**：旧栈退役——setStatus/bandRender 两类动态类名与 tab- 前缀 id 全部删除（僵尸）；新栈走 Svelte class: 指令与组件本地状态，无 classList/id 字面量面，min_class_sites 置 0（class/id 面转由 svelte-check a11y + E-08 快照守护）。",
+  "dynamic_class_assigns": [],
+  "dynamic_id_prefixes": [],
   "class_whitelist": [],
-  "var_whitelist": []
+  "var_whitelist": [],
+  "min_class_sites": 0
 }

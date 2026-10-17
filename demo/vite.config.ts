@@ -1,7 +1,6 @@
-// Vitro demo · Svelte 5 试点构建（F1，refs #119/#122）。root=demo：试点与
-// 现役 demo 共根（dev 时可 import js/types.ts 等 TS 源）；正式入口 index.html
-// 仍走 tsc 原地发射（零构建纪律），试点入口 src/pilot.html 单独打包——F4 全量
-// 替换时本配置升格为唯一构建（input 换 index.html、outDir 换 dist）。
+// Vitro demo · 唯一构建（F4 收尾，2026-10-17，refs #122）。root=demo：
+// 入口 index.html（试点页升格）+ src/；tsc 原地发射与旧栈（app.ts/style.css/
+// 旧 js 模块）已退役——本配置是唯一构建（npm run build → dist/）。
 import { defineConfig, type Plugin } from "vite";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -38,8 +37,8 @@ export default defineConfig({
   base: "./",
   publicDir: false, // 无 public/；wasm.wasm 经 new URL(..., import.meta.url) 由打包器 emit
   build: {
-    outDir: "dist-pilot",
+    outDir: "dist",
     emptyOutDir: true,
-    rollupOptions: { input: "src/pilot.html" },
+    rollupOptions: { input: "index.html" },
   },
 });

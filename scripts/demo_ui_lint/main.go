@@ -238,8 +238,11 @@ func main() {
 	// 拆分批（2026-10-04，refs #28）：app.js → 入口 + js/ 十一模块 ESM——
 	// JS 扫描面 = 入口 + js/*.js 排序合并（冻结区防线维护通道；位点下限
 	// 随扫描面扩大自然满足）。
-	js := read("app.ts", selftestJS)
+	// F4 收尾（2026-10-17，refs #122）：旧栈入口 app.ts 退役——js 面 = 物理
+	// 保留的纯函数模块（js/*.ts，现 8 个）+ 新栈 src/**/*.ts（下节并入）。
+	js := selftestJS
 	if !*selftest {
+		js = ""
 		mods, err := filepath.Glob(filepath.Join(*demoDir, "js", "*.ts"))
 		if err != nil || len(mods) == 0 {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: demo/js/ 无模块文件（拆分后形态预期）\n")
@@ -271,6 +274,18 @@ func main() {
 		sort.Strings(files)
 		var sb strings.Builder
 		for _, f := range files {
+			b, err := os.ReadFile(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
+				os.Exit(2)
+			}
+			sb.WriteByte('\n')
+			sb.Write(b)
+		}
+		// 新栈主样式 src/*.css（app.css）——style.css 退役后并入 css 面
+		srcCSS, _ := filepath.Glob(filepath.Join(*demoDir, "src", "*.css"))
+		sort.Strings(srcCSS)
+		for _, f := range srcCSS {
 			b, err := os.ReadFile(f)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
@@ -727,11 +742,12 @@ func main() {
 	// 缺省非静默 default；2026-10-03 审阅 P2-1 接线：字段此前声明即死置，
 	// 配 99 闸照绿 = D18-b 守护变量空转）。id/var 下限维持硬编码（无配置
 	// 诉求，不加孤儿旋钮）。
+	// F4 收尾（2026-10-17）：旧栈退役后 class/id 字面量面归零（新栈 = Svelte
+	// class: 指令 + 组件本地状态，无 classList/$() 面）——下限随重构归 0；
+	// rules.json 的 min_class_sites 显式登记（0 = 合法，不再回落 3：回落值
+	// 会把「重构后归零」误判成塌缩）。var 面仍由 60 兜住（令牌引用未变）。
 	minClassSites := rl.MinClassSites
-	if minClassSites <= 0 {
-		minClassSites = 3
-	}
-	const minIDSites, minVarSites = 30, 60
+	const minIDSites, minVarSites = 0, 60
 	if sitesClass < minClassSites || sitesID < minIDSites || sitesVar < minVarSites {
 		issues = append(issues, issue{"coverage", fmt.Sprintf(
 			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",

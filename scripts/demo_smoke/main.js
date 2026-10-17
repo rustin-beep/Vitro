@@ -157,15 +157,22 @@ function assertKeys(obj, keys, label) {
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(!!claim && Number(claim[1]) === methodCount, "页面方法面计数与 gateway 一致",
     claim ? "页面写 " + claim[1] + " / 实际 " + methodCount : "页面未找到方法面计数句");
-  // 拆分批（2026-10-04，refs #28）：app.js → 入口 + demo/js/ 十一模块 ESM——
-  // method 消费面扫入口 + 全部模块（逐字迁移，散布面等价）
-  const jsDir = path.join(repoRoot, "demo/js");
-  const appSrc = [path.join(repoRoot, "demo/app.ts")]
-    .concat(fs.readdirSync(jsDir).filter((f) => f.endsWith(".ts")).sort().map((f) => path.join(jsDir, f)))
-    .map((f) => fs.readFileSync(f, "utf8"))
-    .join("\n");
+  // F4 收尾（2026-10-17，refs #122）：消费面扫描源 = 新栈 src/**/*.ts +
+  // src/**/*.svelte（旧栈 app.ts/js 十一模块已退役——物理保留的 8 个纯函数
+  // 模块不产 method 字面量，不扫）。
+  const srcRoot = path.join(repoRoot, "demo/src");
+  const srcFiles = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(ts|svelte)$/.test(e.name)) srcFiles.push(p);
+    }
+  };
+  walk(srcRoot);
+  const appSrc = srcFiles.sort().map((f) => fs.readFileSync(f, "utf8")).join("\n");
   const consumed = new Set([...appSrc.matchAll(/method: "([a-z._]+)"/g)].map((m) => m[1]));
-  check(!!claim && Number(claim[2]) === consumed.size, "页面消费计数与 app.js 实消费一致",
+  check(!!claim && Number(claim[2]) === consumed.size, "页面消费计数与 src/ 实消费一致",
     claim ? "页面写 " + claim[2] + " / 实际 " + consumed.size : "—");
 
   // ── step 族字段契约（2026-10-04 审阅 P2-3：demo_smoke 原先零触 step 族，
@@ -336,6 +343,52 @@ function assertKeys(obj, keys, label) {
     }
     const noSrc = inv({ method: "codegen.dump", params: {} });
     check(!!noSrc.error && noSrc.error.kind === "protocol", "codegen.dump 缺 source → protocol 错误帧", JSON.stringify(noSrc).slice(0, 100));
+  }
+
+  // ── #51 批②（2026-10-17）：事件码派生（ty≥2 动作事件）──────────────
+  // 断言：① bubble 帧流出现 ty=2（swap）；② reserved 码 6–9 零产出
+  // （MAX_ACTIVE_EVENT_TY=5）；③ swap extras = 相邻下标对（j/j+1 口径）；
+  // ④ 非 swap 动作条目 extra2 恒 -1（哨兵铁律：无值 -1 不许 0）。
+  // 注：内联源用 `temp`（infer_sorting 的 swap 判据约定——demo 的 bubble
+  // 案例用 `t`，属教学模板差异，登记不改判据）。
+  {
+    const src = [
+      "void bubble_sort(int *a, int n) {",
+      "  for (int i = 0; i < n - 1; i++)",
+      "    for (int j = 0; j < n - 1 - i; j++)",
+      "      if (a[j] > a[j + 1]) {",
+      "        int temp = a[j];",
+      "        a[j] = a[j + 1];",
+      "        a[j + 1] = temp;",
+      "      }",
+      "}",
+      "int main(void) {",
+      "  int a[5] = {5, 3, 8, 1, 2};",
+      "  bubble_sort(a, 5);",
+      "  return 0;",
+      "}",
+    ].join("\n") + "\n";
+    g.reset();
+    body(inv({ method: "session.create" }));
+    body(inv({ method: "config.set", params: { max_steps: 1000000, call_depth_limit: 1000, deterministic: true } }));
+    body(inv({ method: "compile", params: { source: src } }));
+    body(inv({ method: "run" }));
+    body(inv({ method: "step.begin" }));
+    let ps = [];
+    for (let i = 0; i < 300 && ps.length < 400; i++) {
+      const b = body(inv({ method: "step.next", params: {} }));
+      if (b.payloads) ps = ps.concat(b.payloads);
+      if (b.finished || b.trapped) break;
+    }
+    const ev = [];
+    for (const pl of ps) for (const e of (pl.vis_events || [])) ev.push(e);
+    check(ev.some((e) => e.ty === 2), "#51② bubble 帧流出现 ty=2 swap 动作事件", "实得 " + ev.length + " 条事件");
+    check(ev.every((e) => e.ty >= 1 && e.ty <= 5), "#51② reserved 码 6–9 零产出", JSON.stringify([...new Set(ev.map((e) => e.ty))]));
+    const sw = ev.filter((e) => e.ty === 2);
+    check(sw.length > 0 && sw.every((e) => e.extra1 === e.extra0 + 1),
+      "#51② swap extras = 相邻下标对（bubble j/j+1）", JSON.stringify([...new Set(sw.map((e) => e.extra0 + "," + e.extra1))]));
+    check(ev.filter((e) => e.ty >= 2 && e.ty !== 2).every((e) => e.extra2 === -1),
+      "#51② 非 swap 动作条目 extra2 = -1（哨兵铁律）", "");
   }
 
   // ── 算法侧栏数据契约（2026-10-04，refs #28）─────────────────────

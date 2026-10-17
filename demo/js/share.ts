@@ -16,8 +16,6 @@
 // - **不自动运行**：链接内容是不可信输入，只填编辑器，点了「运行」才编译。
 "use strict";
 
-import { $, setStatus } from "./util.ts";
-import { renderEditorDecor } from "./editor.ts";
 
 /** 载荷版本 tag（片段最前面）。不认识的版本明确拒绝——禁静默退回默认示例。 */
 export const SHARE_VERSION = "z1";
@@ -149,94 +147,4 @@ export async function inflateRaw(bytes: Uint8Array<ArrayBuffer>): Promise<string
 /** 是否具备所需浏览器能力（本页底线浏览器必然有；缺失时 fail loud 不静默）。 */
 export function shareSupported(): boolean {
   return typeof CompressionStream === "function" && typeof DecompressionStream === "function";
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    /* 权限被拒 / 非安全上下文 → 落回手动复制（链接条常驻可见） */
-  }
-  return false;
-}
-
-function showShareRow(url: string, sourceLen: number): void {
-  $<HTMLInputElement>("share-url").value = url;
-  $("share-len").textContent = `${sourceLen} 字符源码 → 链接 ${url.length} 字符`;
-  $("share-row").classList.remove("hidden");
-}
-
-/** 复制当前链接条内容（复制按钮入口——不重新编码）。 */
-async function copyCurrent(): Promise<void> {
-  const out = $<HTMLInputElement>("share-url");
-  if (!out.value) return;
-  out.focus();
-  out.select();
-  const ok = await copyText(out.value);
-  setStatus(ok ? "ok" : "busy", ok
-    ? `链接已复制（${out.value.length} 字符）`
-    : `剪贴板不可用——链接已选中，按 Ctrl+C 复制`);
-}
-
-/** 分享：编辑器当前内容 → 压缩 → 链接（写剪贴板 + 常驻链接条）。 */
-export async function doShare(): Promise<void> {
-  const src = $<HTMLTextAreaElement>("editor").value;
-  if (!src.trim()) {
-    setStatus("err", "编辑器是空的——没有可分享的代码");
-    return;
-  }
-  if (!shareSupported()) {
-    setStatus("err", "本浏览器不支持 CompressionStream —— 无法生成分享链接");
-    return;
-  }
-  let url: string;
-  try {
-    url = shareUrlFrom(location.href, await packSource(src));
-  } catch (e) {
-    setStatus("err", "生成分享链接失败：" + (e instanceof Error ? e.message : String(e)));
-    return;
-  }
-  showShareRow(url, src.length);
-  const warn = urlLenWarning(url.length);
-  const ok = await copyText(url);
-  if (!ok) {
-    const out = $<HTMLInputElement>("share-url");
-    out.focus();
-    out.select();
-  }
-  const head = ok ? "分享链接已复制" : "链接已生成，剪贴板不可用——按 Ctrl+C 复制链接条内容";
-  const kind = ok ? (warn ? "err" : "ok") : "busy";
-  setStatus(kind, `${head}（${url.length} 字符）${warn}`);
-}
-
-/** 消费 # 片段（boot 调用）：命中则填编辑器并返回 true。
- *  **不自动运行**——链接内容是不可信输入，只落到编辑器，点了「运行」才编译。 */
-export async function applySharedSource(): Promise<boolean> {
-  const parsed = parseFragment(location.hash.replace(/^#/, ""));
-  if (parsed.kind === "none") return false;
-  if (parsed.kind === "bad") {
-    setStatus("err", `分享链接不完整（${parsed.reason}）——请让朋友重新复制一次完整链接`);
-    return false;
-  }
-  let src: string;
-  try {
-    src = await unpackSource(parsed.payload);
-  } catch {
-    setStatus("err", "分享链接不完整（载荷解压失败）——请让朋友重新复制一次完整链接");
-    return false;
-  }
-  $<HTMLTextAreaElement>("editor").value = src;
-  renderEditorDecor();
-  $("case-blurb").textContent = "已从分享链接载入代码（链接只带源码，不带任何运行上下文）";
-  setStatus("ok", `已载入分享代码（${src.length} 字符）`);
-  return true;
-}
-
-/** 挂接（app boot 调用一次）。 */
-export function initShare(): void {
-  $("share-btn").onclick = () => void doShare();
-  $("share-copy").onclick = () => void copyCurrent();
 }

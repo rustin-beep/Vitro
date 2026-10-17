@@ -24,7 +24,6 @@
     "strictNullChecks": false
   },
   "include": [
-    "app.ts",
     "js/**/*.ts",
     "*.d.ts"
   ]

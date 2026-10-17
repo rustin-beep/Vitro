@@ -2,14 +2,15 @@
 // 锚位对历史 bug 窝点：buildCallTree 的 trie 增量语义（renderCallTree 参数
 // 错位事故的函数层）、isArrayAnimCase 声明形态（下标访问不误标 + 紧凑声明
 // 存量 bug 修复锁）、latin1ToUtf8 字节还原（delta 通道 mojibake 坑）、
-// tokenizeC/highlightLines 编辑器双层、heapSpanOf 内存跨度、esc 转义。
+// heapSpanOf 内存跨度、esc 转义。
+// （F4 收尾 2026-10-17：tokenizeC/highlightLines 锚随旧栈编辑器退役删除——
+//  新栈用 CM6，无该模块；js/editor.ts 一并退役。）
 // 【锚驱动战果记录】首批锚抓到三真问题：editor 漏 import esc（拆分接线
 // 遗漏）、calltree 漏 import esc、isArrayAnimCase 紧凑声明不命中（存量 bug）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
-import { tokenizeC, highlightLines } from "../js/editor.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { heapSpanOf } from "../js/memory.ts";
 import { toPosix, isSourceFile, shouldSkipDir, orderForCompile } from "../js/workspace.ts";
@@ -74,26 +75,6 @@ test("latin1ToUtf8：中文 UTF-8 折回还原", () => {
   assert.equal(latin1ToUtf8(folded), text);
   assert.equal(latin1ToUtf8("plain ascii"), "plain ascii");
   assert.equal(latin1ToUtf8(""), "");
-});
-
-// ── tokenizeC：对象数组 {cls, text}，五类 cls 覆盖
-test("tokenizeC：关键字/数字/注释/字符串边界", () => {
-  const toks = tokenizeC('int x = 1; // 注释\n"str"');
-  const clsSet = new Set(toks.filter((t) => t.cls).map((t) => t.cls));
-  assert.ok(clsSet.has("syn-key"), "int → syn-key");
-  assert.ok(clsSet.has("syn-num"), "1 → syn-num");
-  assert.ok(clsSet.has("syn-com"), "// 注释 → syn-com");
-  assert.ok(clsSet.has("syn-str"), '"str" → syn-str');
-  assert.equal(toks.map((t) => t.text).join(""), 'int x = 1; // 注释\n"str"');
-});
-
-// ── highlightLines：返回 HTML 行盒串（.cl div 计数 = 行数；含行号 span）
-test("highlightLines：行盒 HTML 产出", () => {
-  const html = highlightLines("int a;\nint b;");
-  const lineCount = (html.match(/class="cl"/g) || []).length;
-  assert.equal(lineCount, 2);
-  assert.ok(html.includes('class="ln">1</span>'), "行号 1 存在");
-  assert.ok(html.includes("syn-key"), "关键字着色存在");
 });
 
 // ── heapSpanOf：堆跨度（heap_base → heap_end 的正跨度）

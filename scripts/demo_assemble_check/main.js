@@ -36,25 +36,33 @@ const indexPath = path.join(dir, "index.html");
 if (!fs.existsSync(indexPath)) die(`缺 index.html: ${indexPath}`);
 const html = fs.readFileSync(indexPath, "utf8");
 
-// ── ① script src 抽取面哨兵 ───────────────────────────────
+// ── ① script src 抽取面哨兵（F4 收尾 2026-10-17：旧栈 3 个经典 script →
+//   新栈单模块 script + vite 产物 assets/*.js；下限 1，防正则退化恒 0）──
 const scriptRefs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
-if (scriptRefs.length < 2) {
+if (scriptRefs.length < 1) {
   die(
-    `HTML <script src> 抽取面 ${scriptRefs.length} < 2——正则退化或 index.html 结构变更` +
+    `HTML <script src> 抽取面 ${scriptRefs.length} < 1——正则退化或 index.html 结构变更` +
       `（审阅 P2-2 形态：src 无 ./ 前缀曾致本路恒 0 命中不报）`
   );
 }
 
-// ── ② 收集全部本地资源 ref ────────────────────────────────
+// ── ② 收集全部本地资源 ref（script/img src + favicon link href——新栈
+//    index.html 带 ./assets/logo 图标，缺了页面无图标但闸要拦）──
 const isExternal = (s) => /^(https?:)?\/\//.test(s) || s.startsWith("data:");
 const refs = new Set();
 for (const m of html.matchAll(/<(script|img)[^>]+src="([^"]+)"/g)) {
   if (!isExternal(m[2])) refs.add(m[2]);
 }
-const appJsPath = path.join(dir, "app.js");
-if (!fs.existsSync(appJsPath)) die(`缺入口产物 app.js: ${appJsPath}（先发射：cd demo && npx tsc -p tsconfig.json）`);
-for (const m of fs.readFileSync(appJsPath, "utf8").matchAll(/from "(\.\/[^"]+)"/g)) {
-  refs.add(m[1]);
+for (const m of html.matchAll(/<link[^>]+rel="icon"[^>]+href="([^"]+)"/g)) {
+  if (!isExternal(m[1])) refs.add(m[1]);
+}
+if (noTs) {
+  // 发布面（vite 产物）：入口 JS 由 html 的 assets/*.js 引用覆盖，无需 app.js
+} else {
+  // 源目录面：入口必须是 src/main.ts（vite 的唯一入口）
+  const entry = path.join(dir, "src", "main.ts");
+  if (!fs.existsSync(entry)) die(`缺入口源 src/main.ts: ${entry}`);
+  refs.delete("/src/main.ts");
 }
 
 const missing = [];

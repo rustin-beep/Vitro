@@ -1,12 +1,13 @@
 # demo 页（浏览器直调 wasm-gc gateway）
 
 本目录是 Vitro 引擎的静态单页展示面——**零后端、零运行时依赖**（页面本体不发
-网络请求到第三方、不跑构建器），浏览器内直接调
+网络请求到第三方），浏览器内直接调
 [`vitro/engine/gateway`](../moonbit/gateway/) 的 wasm-gc 产物（NDJSON 帧协议
-v0.1）。**开发期工具有 npm devDependencies**（typescript + @types/node——仅
-类型检查/发射用，不进页面）；源码形态 = TS（`app.ts` + `js/*.ts` 十六模块），
-发射产物 `app.js`/`js/*.js` **不入库**（与 `wasm.wasm` 对称，`.gitignore`
-在案）。
+v0.2）。**F4 收尾（2026-10-17）：Svelte 5 + Vite 为唯一构建**——入口
+`index.html` + `src/`（组件 + `js/` 八个物理保留纯函数模块），构建产物
+`dist/` **不入库**（与 `wasm.wasm` 对称，`.gitignore` 在案）；旧栈
+（`app.ts`/`style.css`/旧 js 模块）已退役。开发期工具有 npm devDependencies
+（vite + svelte + typescript——构建/检查用，不进页面产物）。
 
 ## 在线版
 
@@ -27,7 +28,8 @@ cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
 # 2. 拷产物到 demo/
 cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/
 
-# 3. 发射 JS 产物（TS 源 → 原地发射；不发射页面 404 app.js 白屏）
+# 3. 构建前端（vite 唯一构建；dist/ 不入库，不构建 404 白屏）
+cd demo && npm ci && npx vite build && cd ..
 cd demo && npm ci && npx tsc -p tsconfig.json && cd ..
 
 # 4. 起静态服务器（任选其一）
@@ -61,8 +63,8 @@ Firefox 134+），加载失败页面会显示降级提示。
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
 6. `node --test demo/tests/pure.test.mts`——纯函数十八锚（buildCallTree trie /
-   isArrayAnimCase / latin1ToUtf8 / tokenizeC / highlightLines / heapSpanOf /
-   esc / workspace 四锚：toPosix·isSourceFile·shouldSkipDir·orderForCompile /
+   isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四锚：
+   toPosix·isSourceFile·shouldSkipDir·orderForCompile /
    share 七锚：base64url 往返·三形态 fail loud·片段解析三态·shareUrlFrom
    剥旧片段·压缩往返·**截断必被解压失败兜住**·长度告警边界；**须 node 25**，
    type stripping 直跑 .ts）。DOM 交互层不硬测，维持浏览器实测纪律。
@@ -76,7 +78,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    两试点课真源无 ### 标题的真源缺口）。
 8. **E2E 浏览器实测（本地资产，CI 无 Edge 不进流水线）**——`demo/tests/
    e2e_diagcard.mjs`（F4 残留①④：编译诊断卡 + 断点链 17 锚）+
-   `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 主题持久化 + 分享往返 19 锚，
+   `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置面板 + 主题持久化 + 分享往返 31 锚，
    mock FSA 注入跑全链）。跑法：vite build 产物 → `node tests/serve_static.mjs
    8931` → Edge `--headless=new --remote-debugging-port=9222
    --no-proxy-server` → `node tests/e2e_*.mjs http://127.0.0.1:8931/`

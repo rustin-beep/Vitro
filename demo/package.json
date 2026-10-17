@@ -3,12 +3,12 @@
   "private": true,
   "version": "0.7.0",
   "type": "module",
-  "description": "Vitro 引擎浏览器单页 demo（TS 源 + tsc 原地发射；发射产物不入库，与 wasm.wasm 对称）",
+  "description": "Vitro 引擎浏览器单页 demo（Svelte 5 + Vite 唯一构建；src/ 源，dist/ 产物不入库）",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.pilot.json",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.pilot.json",
     "lint": "oxlint src/",
-    "dev": "tsc -p tsconfig.json --watch",
+    "dev": "vite",
     "pilot:dev": "vite",
     "pilot:build": "vite build",
     "pilot:check": "svelte-check --tsconfig ./tsconfig.pilot.json"

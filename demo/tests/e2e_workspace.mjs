@@ -5,7 +5,7 @@
 import http from "node:http";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
-const PAGE = BASE + "src/pilot.html";
+const PAGE = BASE + "index.html";
 
 const MAIN_C = '#include <stdio.h>\n#include "util.h"\n\nint main(void) {\n  printf("%d\\n", add(2, 3));\n  return 0;\n}\n';
 const UTIL_H = "int add(int a, int b);\n";
@@ -49,7 +49,7 @@ async function run() {
     }).on("error", reject);
   });
   const pages = targets.filter((t) => t.type === "page");
-  const page = pages.find((t) => t.url.includes("pilot.html")) ?? pages[pages.length - 1];
+  const page = pages.find((t) => t.url.includes("index.html")) ?? pages[pages.length - 1];
   if (!page) throw new Error("CDP 无 page target");
   ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
@@ -282,6 +282,89 @@ async function run() {
   await sleep(800);
   const restored = await evaluate("document.querySelector('.cm-content')?.textContent ?? ''");
   check("W12 重载后编辑器还原分享代码（unpackSource 链）", restored.includes("return 7"), JSON.stringify(restored).slice(0, 70));
+
+  // ── W13 回放交互（播放/单步/seek/粒度——此前只有快照与帧数文本）──
+  {
+    // 当前编辑器是 W12 还原的分享代码——直接采集（自足场景，不依赖前面帧）
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('采集帧流'))?.click()");
+    await waitFor("document.querySelector('.frame-count')?.textContent?.includes('/')", 25000);
+    const parseCount = (t) => { const m = /帧 (\d+)\/(\d+)/.exec(t || ""); return m ? { at: +m[1], total: +m[2] } : null; };
+    const c0 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 采集后帧计数可见", !!c0 && c0.total > 1, JSON.stringify(c0));
+    // 单步 ±1
+    await evaluate("document.querySelector('[aria-label=\"下一帧\"]')?.click()");
+    await sleep(200);
+    const c1 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 下一帧 +1", !!c1 && c1.at === c0.at + 1, JSON.stringify([c0, c1]));
+    await evaluate("document.querySelector('[aria-label=\"上一帧\"]')?.click()");
+    await sleep(200);
+    const c2 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 上一帧 -1", !!c2 && c2.at === c0.at, JSON.stringify([c1, c2]));
+    // 播放 → 帧推进 → 暂停
+    // 注意：7 帧 @30fps ≈ 233ms——探测窗口必须小于播放总时长，否则读到的
+    // 已是"播完回弹"状态（首跑实测 600ms 必假红）；80ms ≈ 2-3 帧。
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('播放'))?.click()");
+    await sleep(80);
+    const playing = await evaluate("[...document.querySelectorAll('button')].some(b => b.textContent.includes('暂停'))");
+    const c3 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 播放推进帧", !!playing && !!c3 && c3.at > c2.at, playing + " " + JSON.stringify(c3));
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('暂停'))?.click()");
+    await sleep(300);
+    const c4 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    await sleep(300);
+    const c5 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 暂停后帧不再推进", !!c4 && !!c5 && c4.at === c5.at, JSON.stringify([c4, c5]));
+    // 滑条 seek 到末帧
+    await evaluate(`(() => { const r = document.querySelector('input[aria-label="帧滑条"]'); if (!r) return; r.value = r.max; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await sleep(300);
+    const c6 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
+    check("W13 滑条 seek 到末帧", !!c6 && c6.at === c6.total, JSON.stringify(c6));
+    // 粒度切换：指令级帧数 > 语句级帧数
+    const totalOf = async () => parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"))?.total ?? -1;
+    await evaluate("[...document.querySelectorAll('.gran button')].find(b => b.textContent.includes('指令级'))?.click()");
+    await sleep(500);
+    const tInsn = await totalOf();
+    await evaluate("[...document.querySelectorAll('.gran button')].find(b => b.textContent.includes('语句级'))?.click()");
+    await sleep(500);
+    const tStmt = await totalOf();
+    check("W13 粒度切换改变帧口径（指令级 > 语句级）", tInsn > tStmt && tStmt > 0, `insn=${tInsn} stmt=${tStmt}`);
+  }
+
+  // ── W14 设置面板（五主题 / 字号 / 动效 + 持久化）──
+  {
+    await evaluate("document.querySelector('[data-settings]')?.click()");
+    await waitFor("!!document.querySelector('.settings-float')", 5000);
+    // 五主题逐个点：data-theme 跟随；glass/soft 为夜（data-shade=night）
+    const themes = ["ice", "rose", "paper", "glass", "soft"];
+    let themeOk = true, shadeOk = true;
+    for (const t of themes) {
+      await evaluate(`[...document.querySelectorAll('.settings-float .seg[aria-label="主题"] button')].find(b => b.textContent.trim() === '${t}')?.click()`);
+      await sleep(120);
+      const st = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-shade') })");
+      if (st.t !== t) themeOk = false;
+      const wantShade = (t === "glass" || t === "soft") ? "night" : "day";
+      if (st.s !== wantShade) shadeOk = false;
+    }
+    check("W14 五主题逐个生效", themeOk, "");
+    check("W14 昼夜 shade 跟随主题族", shadeOk, "");
+    // 字号 16 → --ed-fs
+    await evaluate("[...document.querySelectorAll('.settings-float .seg[aria-label=\"编辑器字号\"] button')].find(b => b.textContent.trim() === '16')?.click()");
+    await sleep(120);
+    const fs = await evaluate("document.documentElement.style.getPropertyValue('--ed-fs')");
+    check("W14 编辑器字号 16px 生效", fs.trim() === "16px", fs);
+    // 动效关 → data-motion=off
+    await evaluate("[...document.querySelectorAll(\".settings-float .seg[aria-label='界面动效'] button\")].find(b => b.textContent.trim() === '关')?.click()");
+    await sleep(120);
+    const motion = await evaluate("document.documentElement.getAttribute('data-motion')");
+    check("W14 动效关闭 → data-motion=off", motion === "off", String(motion));
+    // 持久化：重载后 主题/字号/动效 三者保持
+    const before = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), fs: document.documentElement.style.getPropertyValue('--ed-fs'), m: document.documentElement.getAttribute('data-motion') })");
+    await send("Page.navigate", { url: PAGE });
+    await waitFor("document.querySelector('.pilot-head .badge b')?.textContent?.length > 3", 30000);
+    await sleep(500);
+    const after = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), fs: document.documentElement.style.getPropertyValue('--ed-fs'), m: document.documentElement.getAttribute('data-motion') })");
+    check("W14 重载后主题/字号/动效三持久化", JSON.stringify(before) === JSON.stringify(after), JSON.stringify([before, after]));
+  }
 
   const fails = results.filter((r) => !r.ok).length;
   console.log(`\n===== ${results.length - fails}/${results.length} 通过${fails ? "，失败 " + fails + " 项" : ""} =====`);

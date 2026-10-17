@@ -1,10 +1,8 @@
-// Vitro demo · 内存地图（app.js 拆分批 2026-10-04，refs #28：单体 1370 行 →
-// 模块化 ESM——零构建纪律不变，<script type="module"> 静态直开兼容；内容自
-// app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
+// Vitro demo · 内存跨度纯函数面（2026-10-17 F4 收尾：地图渲染随旧栈退役，
+// 新栈 MemoryView.svelte 自绘；本文件只留 heapSpanOf——pure.test 锚定面不变）。
 "use strict";
 
-import { MEM_TOTAL, $, esc } from "./util.ts";
-import type { MemoryRegions, HeapRegion } from "./types.ts";
+import type { HeapRegion } from "./types.ts";
 
 export interface HeapSpan {
   heapBase: number;
@@ -28,94 +26,4 @@ export function heapSpanOf(mem: HeapSpanInput): HeapSpan {
     mem.heap_base + 64
   );
   return { heapBase: mem.heap_base, heapEnd, span: heapEnd - mem.heap_base };
-}
-
-interface BandEntry {
-  r: HeapRegion;
-  left: number;
-  width: number;
-}
-
-export function renderMemory(mem: MemoryRegions): void {
-  $("mem-stats").innerHTML =
-    `<span>全局 ${mem.region_counts.global}</span>` +
-    `<span>堆 ${mem.region_counts.heap}</span>` +
-    `<span>栈 ${mem.region_counts.stack}</span>` +
-    `<span>分配计数 ${mem.alloc_counter}</span>` +
-    `<span>free_list ${mem.free_list.length}</span>` +
-    `<span>隔离区 ${mem.quarantine.bytes} / ${mem.quarantine.budget} 字节（${mem.quarantine.blocks} 块）</span>`;
-
-  const band = $("mem-band-full");
-  bandRender(
-    band,
-    mem.regions.map((r) => ({ r, left: r.addr / MEM_TOTAL, width: Math.max(r.size / MEM_TOTAL, 0.004) }))
-  );
-  const { heapBase, span: heapSpan } = heapSpanOf(mem);
-  const zoom = $("mem-band-heap");
-  bandRender(
-    zoom,
-    mem.regions
-      .filter((r) => r.is_heap)
-      .map((r) => ({ r, left: (r.addr - heapBase) / heapSpan, width: Math.max(r.size / heapSpan, 0.02) }))
-  );
-  $("mem-zoom-label").textContent =
-    `堆区放大 0x${heapBase.toString(16)} – 0x${heapSpanOf(mem).heapEnd.toString(16)}（span ${heapSpan} B）`;
-
-  const q = mem.quarantine;
-  $("quar-bar-fill").style.width = `${Math.min((q.bytes / q.budget) * 100, 100)}%`;
-  $("quar-label").textContent = `quarantine（UAF 检测窗）：${q.blocks} 块 / ${q.bytes} B，预算 ${q.budget} B`;
-
-  $("mem-table").innerHTML =
-    "<tr><th>地址</th><th>大小</th><th>名称</th><th>类型</th><th>段</th><th>状态</th><th>分配行</th><th>来源</th></tr>" +
-    mem.regions
-      .map(
-        (r) =>
-          `<tr class="${r.is_freed ? "freed" : ""}"><td>0x${r.addr.toString(16)}</td><td>${r.size} B</td>` +
-          `<td>${esc(r.name)}</td><td>${esc(r.ty)}</td><td>${esc(r.kind)}</td>` +
-          `<td>${r.is_freed ? "freed（隔离中）" : "活跃"}</td><td>${r.alloc_line || "—"}</td><td>${esc(r.alloc_by)}</td></tr>`
-      )
-      .join("");
-}
-
-// 条块 keyed 复用（F-1b②）：addr/size 过渡的前提是元素存活——同 key 只更新
-// 位置/尺寸/状态类，transition 才吃得到变化；本帧消失的 key 加 .out 播 CSS
-// 淡出（blk-out）后移除节点（2026-10-11 动效批，此前为瞬删）。用 :not(.out)
-// 把退场中的块挡在复用查询外，避免与其退场动画冲突。
-// key 含 addr+size+name：同一位置复分配出的新块视为新块（瞬现，不跨会话漂移）。
-function bandRender(band: HTMLElement, entries: BandEntry[]): void {
-  for (const n of Array.from(band.childNodes)) {
-    // 占位提示（HTML 静态 .muted.center 与 selectCase 重置的 .muted 两种）一律清，
-    // 条块本体（.blk）是复用对象，不能动
-    if (!(n.nodeType === 1 && (n as HTMLElement).classList.contains("blk"))) n.remove();
-  }
-  const seen = new Set<string>();
-  for (const { r, left, width } of entries) {
-    const key = `${r.addr}:${r.size}:${r.name}`;
-    seen.add(key);
-    // :not(.out) —— 退场中的同 key 块不复用（其淡出未完，复用会与退场动画冲突），
-    // 等它自然移除后由后续帧按新块重建
-    let blkBox = band.querySelector(`[data-key="${CSS.escape(key)}"]:not(.out)`) as HTMLElement | null;
-    if (!blkBox) {
-      blkBox = document.createElement("div");
-      blkBox.dataset.key = key;
-      band.appendChild(blkBox);
-    }
-    blkBox.className = "blk " + r.kind + (r.is_freed ? " freed" : "");
-    blkBox.style.left = `${Math.min(left * 100, 99.6)}%`;
-    blkBox.style.width = `${width * 100}%`;
-    blkBox.title = `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed" : ""}`;
-  }
-  // 本帧消失的 key：加 .out 走 CSS 淡出（.blk.out → blk-out）后移除节点；
-  // 兜底定时器（> --t-fast）防动画被禁用/覆盖时节点滞留。reduced-motion 下
-  // 全局把 animation-duration 压到 .01ms ⇒ animationend 立即触发，等价直接移除。
-  for (const n of band.querySelectorAll(".blk")) {
-    const stale = n as HTMLElement;
-    if (stale.classList.contains("out")) continue; // 已在退场，等 animationend
-    if (!seen.has(stale.dataset.key as string)) {
-      stale.classList.add("out");
-      const drop = (): void => stale.remove();
-      stale.addEventListener("animationend", drop, { once: true });
-      setTimeout(drop, 260);
-    }
-  }
 }

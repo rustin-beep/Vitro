@@ -152,7 +152,7 @@ function assertKeys(obj, keys, label) {
   const methodCount = mListMatch
     ? mListMatch[1].split(/[；;]/)[0].split(/[、/]/).map((x) => x.trim()).filter(Boolean).length
     : 0;
-  check(methodCount === 24, "gateway 方法面 = 24（错误帧自报，algorithms.catalog 随 #36 上线）", "实得 " + methodCount);
+  check(methodCount === 25, "gateway 方法面 = 25（错误帧自报；algorithms.catalog 随 #36 上线计入）", "实得 " + methodCount);
   const pageTitle = fs.readFileSync(path.join(repoRoot, "demo/index.html"), "utf8");
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(!!claim && Number(claim[1]) === methodCount, "页面方法面计数与 gateway 一致",

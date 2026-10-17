@@ -291,6 +291,12 @@ async function run() {
     // 当前编辑器是 W12 还原的分享代码——直接采集（自足场景，不依赖前面帧）
     await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('采集帧流'))?.click()");
     await waitFor("document.querySelector('.frame-count')?.textContent?.includes('/')", 25000);
+    // 采集完自动播放（行为拍板 2026-10-17）——单步断言前先暂停并归零
+    // （短程序播放极快，暂停时往往已停在末帧）
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('暂停'))?.click()");
+    await sleep(150);
+    await evaluate("window.__pilot.seek(0)");
+    await sleep(150);
     const parseCount = (t) => { const m = /帧 (\d+)\/(\d+)/.exec(t || ""); return m ? { at: +m[1], total: +m[2] } : null; };
     const c0 = parseCount(await evaluate("document.querySelector('.frame-count')?.textContent"));
     check("W13 采集后帧计数可见", !!c0 && c0.total > 1, JSON.stringify(c0));
@@ -338,10 +344,11 @@ async function run() {
     await evaluate("document.querySelector('[data-settings]')?.click()");
     await waitFor("!!document.querySelector('.settings-float')", 5000);
     // 五主题逐个点：data-theme 跟随；glass/soft 为夜（data-shade=night）
-    const themes = ["ice", "rose", "paper", "glass", "soft"];
+    // （V3 质感批后主题选择器 = 三色点卡 .tcard，按中文名定位）
+    const themes = [["ice", "明亮实验室"], ["rose", "奶油手账"], ["paper", "牛皮档案"], ["glass", "深夜书房"], ["soft", "绒面深蓝"]];
     let themeOk = true, shadeOk = true;
-    for (const t of themes) {
-      await evaluate(`[...document.querySelectorAll('.settings-float .seg[aria-label="主题"] button')].find(b => b.textContent.trim() === '${t}')?.click()`);
+    for (const [t, name] of themes) {
+      await evaluate(`[...document.querySelectorAll('.settings-float .theme-cards .tcard')].find(b => b.querySelector('.tc-name')?.textContent.trim() === '${name}')?.click()`);
       await sleep(120);
       const st = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-shade') })");
       if (st.t !== t) themeOk = false;
@@ -350,8 +357,8 @@ async function run() {
     }
     check("W14 五主题逐个生效", themeOk, "");
     check("W14 昼夜 shade 跟随主题族", shadeOk, "");
-    // 字号 16 → --ed-fs
-    await evaluate("[...document.querySelectorAll('.settings-float .seg[aria-label=\"编辑器字号\"] button')].find(b => b.textContent.trim() === '16')?.click()");
+    // 字号 16（档文案「大」）→ --ed-fs
+    await evaluate("[...document.querySelectorAll('.settings-float .seg[aria-label=\"编辑器字号\"] button')].find(b => b.textContent.trim() === '大')?.click()");
     await sleep(120);
     const fs = await evaluate("document.documentElement.style.getPropertyValue('--ed-fs')");
     check("W14 编辑器字号 16px 生效", fs.trim() === "16px", fs);

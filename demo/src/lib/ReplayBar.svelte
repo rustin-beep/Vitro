@@ -8,7 +8,7 @@
 
   const GRAN_STEPS: Array<{ id: "stmt" | "insn"; label: string }> = [{ id: "stmt", label: "语句级" }, { id: "insn", label: "指令级" }];
 
-  const FPS_STEPS = [8, 30, 60, 240];
+  const FPS_STEPS = [2, 8, 30, 60, 120, 240]; // A24（#140）：六档同旧栈
 
   let seekStep = $state("");
   function doSeek(): void {
@@ -77,5 +77,5 @@
   .cap-row { display: block; margin-top: 10px; font-size: 12px; color: var(--t3); }
   .cap-row input { width: 90px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 3px 7px; font: 12px var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; margin: 0 4px; }
   .eng-seek { display: inline-flex; align-items: center; gap: 4px; }
-  .eng-seek input { width: 72px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 3px 7px; font: 12px var(--mono); }
+  .eng-seek input { width: 72px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 3px 7px; font: 12px var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 </style>

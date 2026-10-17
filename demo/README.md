@@ -42,50 +42,58 @@ Firefox 134+），加载失败页面会显示降级提示。
 
 ## 门禁
 
-本页有五路判定闸（全部已接 CI）：
+本页判定闸全部已接 CI（ci.yml `demo` job，与本地命令一一对应）：
 
 1. **tsc 类型检查**——`cd demo && npx tsc -p tsconfig.json --noEmit`（strict，
-   `strictNullChecks` 单档收窄——裁定见 tsconfig 注释）；`tests/` 另有独立
-   tsconfig（`@types/node` 面）。
-2. `node scripts/demo_smoke/main.js`——对 `cases.js` 每个预置用例实跑协议链并
-   逐字节比对 golden，断言渲染所需的响应字段存在，并含 **step 族字段契约**
-   （StepPayload 顶层 = 协议 v0.1 十四字段白名单键集全等；LocalVar/CallFrame/
-   ArraySnapshot 必备键）。篡改 golden、页面引用字段名漂移、wire 键集漂移即红。
-3. `go run ./scripts/demo_ui_lint`——JS↔CSS 字符串契约三路对账：`classList`
-   写操作的类名对「CSS 复合单元 ∪ JS 生成面 ∪ 元素候选闭包 ∪ rules.json
-   白名单」对账、`var(--x)` 引用对定义面对账、`$("id")` 对 html id 集对账
-   （**含 TS 泛型形态 `$<T>("id")`**；动态 className 拼接簇与动态 id 前缀在
-   rules.json 显式登记，僵尸条目无条件红）。抓「操作永不生效的类」「引用不存
-   在的 CSS 变量」形态——2026-10-02 批的 stdin-row 死类与 `--fg-muted` 幽灵变
-   量两实锤即其证红锚。
-4. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
-5. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
+   `strictNullChecks` 单档收窄——裁定见 tsconfig 注释；覆盖 `js/` 八个物理
+   保留纯函数模块的类型面）；`tests/` 另有独立 tsconfig（`@types/node` 面）。
+2. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入
+   库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全
+   集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
+3. `go run ./scripts/course_catalog`——课程目录闸（reconcile + lesson.c 双
+   臂 diff）。
+4. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
-6. `node --test demo/tests/pure.test.mts`——纯函数十八锚（buildCallTree trie /
-   isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四锚：
-   toPosix·isSourceFile·shouldSkipDir·orderForCompile /
-   share 七锚：base64url 往返·三形态 fail loud·片段解析三态·shareUrlFrom
-   剥旧片段·压缩往返·**截断必被解压失败兜住**·长度告警边界；**须 node 25**，
-   type stripping 直跑 .ts）。DOM 交互层不硬测，维持浏览器实测纪律。
-7. **E-08 快照闸**（`ci.yml` 已接）——`vite build --ssr src/e08/entry.ts` 产
-   node bundle 后 `node --test demo/tests/e08.test.mts`：13 锚 = 12 组件用例
-   × 冻结 golden（`demo/e08/golden/*.html`）逐字节比对 + 用例表↔golden 目录
-   全等锚；刷新只走 `tests/e08-update.mts` 显式人工令（E-04：快照禁测试内
-   动态生成）。**课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
-   （blocks/sorting/h3）直读 `course/*.md` 真源解析渲染，payload 手写 lesson
-   段已退役；块型覆盖矩阵登记在 `src/e08/entry.ts` 头注（h3 为冻结样本块——
-   两试点课真源无 ### 标题的真源缺口）。
-8. **E2E 浏览器实测（本地资产，CI 无 Edge 不进流水线）**——`demo/tests/
-   e2e_diagcard.mjs`（F4 残留①④：编译诊断卡 + 断点链 17 锚）+
-   `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置面板 + 主题持久化 + 分享往返 31 锚，
-   mock FSA 注入跑全链）。跑法：vite build 产物 → `node tests/serve_static.mjs
-   8931` → Edge `--headless=new --remote-debugging-port=9222
-   --no-proxy-server` → `node tests/e2e_*.mjs http://127.0.0.1:8931/`
-   （**node 25**；环境带 HTTP_PROXY，CDP 与页面都禁走代理——脚本内
-   /json/list 走 node:http 直连，Edge 加 --no-proxy-server）。前置：
-   `moonbit/_build` 的 wasm-gc 产物须已 cp 到 `demo/wasm.wasm`（新鲜度
-   闸缺口见 issue #123①——本地手 cp 无门禁，仍是已知缺口）。
+5. `npm run check`——F4 svelte-check（type + a11y gate，零错零警）。
+6. `npm run lint`——F4 oxlint（零错误 gate）。
+7. `npm run build`——F4 vite build（构建成功 gate；产物 `dist/` 不入库）。
+8. **E-08 快照闸**——`vite build --ssr src/e08/entry.ts` 产 node bundle 后
+   `node --test demo/tests/e08.test.mts`：13 锚 = 12 组件用例 × 冻结 golden
+   （`demo/e08/golden/*.html`）逐字节比对 + 用例表↔golden 目录全等锚；刷新
+   只走 `tests/e08-update.mts` 显式人工令（E-04：快照禁测试内动态生成）。
+   **课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
+   （blocks/sorting/h3）直读 `course/*.md` 真源解析渲染；块型覆盖矩阵登记
+   在 `src/e08/entry.ts` 头注。
+9. `node scripts/demo_smoke/main.js`——**协议层实跑闸**：对 `cases.js` 每个
+   预置用例经 wasm gateway 实跑协议链并逐字节比对 golden，断言渲染所需的
+   响应字段存在，含 **step 族字段契约**（StepPayload 顶层 = 协议 v0.1 十四
+   字段白名单键集全等）与 **方法面计数对账**（gateway 错误帧自报清单 ==
+   index.html 宣称数 == src/ `method:` 字面量去重数，三方法面单源对账）。
+   篡改 golden、页面引用字段名漂移、wire 键集漂移即红。
+10. `go run ./scripts/demo_ui_lint`——JS↔CSS 字符串契约对账：`classList`
+   写操作的类名对「CSS 复合单元 ∪ JS 生成面 ∪ 元素候选闭包 ∪ rules.json
+   白名单」对账、`var(--x)` 引用对定义面对账、`$("id")` 对 html id 集对账、
+   **mono 连字对账**（`var(--mono)` 消费面必须同行关闭连字——#121① 教学
+   硬伤防线）。抓「操作永不生效的类」「引用不存在的 CSS 变量」「连字复活」
+   形态。
+11. `go run ./scripts/teaching_phase_vocab`——教学阶段词表冻结闸。
+12. `node --test demo/tests/pure.test.mts`——纯函数十八锚（buildCallTree
+    trie / isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四
+    锚 / share 七锚 / **decorateBadges·formatTrap 徽章码表**；须 node 25，
+    type stripping 直跑 .ts）。DOM 交互层不硬测，走第 13 条浏览器 E2E。
+13. **浏览器 E2E（已进 CI，2026-10-17 收口）**——`demo/tests/
+    e2e_diagcard.mjs`（编译诊断卡 + 断点行为链 S1-S5，18 锚）+
+    `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置
+    面板 + 主题持久化 + 分享往返 + **stdin 喂入/golden 对照/统计卡**
+    W1-W17，35 锚）。CI 步用 ubuntu runner 预装 Google Chrome headless
+    CDP（与 Edge 同协议，脚本零改动）；本地跑法：vite build 产物 →
+    `node tests/serve_static.mjs 8931` → Edge/Chrome `--headless=new
+    --remote-debugging-port=9222 --no-proxy-server` → `node tests/e2e_*.mjs
+    http://127.0.0.1:8931/`（**node 25**；环境带 HTTP_PROXY 时 CDP 与页面
+    都禁走代理）。前置：`moonbit/_build` 的 wasm-gc 产物须已 cp 到
+    `demo/wasm.wasm`（新鲜度闸缺口见 issue #123①——本地手 cp 无门禁，
+    仍是已知缺口）。
 
 ## 链接分享（2026-10-09）
 

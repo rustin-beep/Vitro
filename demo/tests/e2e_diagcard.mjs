@@ -1,6 +1,6 @@
 // E2E 实测（F4 残留① 诊断卡）：CDP 驱动 Edge 无头，对 vite 产物做真页面验证。
 // 用法（三步，本地资产——CI 无 Edge 不进流水线）：
-//   1. cd demo && node node_modules/vite/bin/vite.js build        （产物 dist-pilot）
+//   1. cd demo && node node_modules/vite/bin/vite.js build        （产物 dist/）
 //   2. node tests/serve_static.mjs 8931                            （静态服，后台）
 //   3. msedge --headless=new --remote-debugging-port=9222 --user-data-dir=<tmp> \
 //        --no-proxy-server http://127.0.0.1:8931/index.html    （后台）
@@ -177,7 +177,8 @@ async function run() {
   })()`);
   check("S2 非失败态 + 警告徽章", s2.failed === false && JSON.stringify(s2.badges).includes("1 警告"), JSON.stringify({ failed: s2.failed, badges: s2.badges }));
   check("S2 W1019 渲染", s2.codes[0] === "W1019", JSON.stringify(s2.codes));
-  check("S2 采集照常（帧数 > 1）", /帧 1\/\d+/.test(s2.frameCount) && !s2.frameCount.endsWith("/1"), s2.frameCount);
+  // 帧计数口径放宽（采集完自动播放拍板后 at 不恒为 1）——断言总帧数 > 1
+  check("S2 采集照常（帧数 > 1）", /帧 \d+\/(\d+)/.test(s2.frameCount) && Number(/帧 \d+\/(\d+)/.exec(s2.frameCount)[1]) > 1, s2.frameCount);
   check("S2 pp 轨迹折叠钮", s2.traceToggle.includes("宏展开轨迹") && s2.traceToggle.includes("1 条"), s2.traceToggle);
 
   // 展开 pp 轨迹

@@ -5,7 +5,7 @@
    会被 vite 视作 public 资产而在 publicDir=false 下静默丢弃（2026-10-15 实测坑）。 */
 @import "../tokens.css";
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--win-bg); color: var(--t1); font: 14px/1.55 var(--font-ui); }
+body { margin: 0; background: var(--win-bg); background-attachment: fixed; /* glass 光斑钉视口（旧栈同款分叉适配） */ color: var(--t1); font: 14px/1.55 var(--font-ui); }
 /* V8（#141）：撤 1080px 钳死——旧栈 body 全宽 + 内容栅格 1560 上限；
    此前 #app 1080 使 pilot-head/pilot-grid 自己写的 1560 失效（1920 屏
    两侧各空 420px，「PC 端像缩水」的直接根因） */
@@ -35,9 +35,17 @@ header.pilot-head .badge b { color: var(--accent-strong); }
 .pilot-grid { display: grid; grid-template-columns: minmax(360px, 5fr) 7fr; gap: 18px; padding: 6px 24px 16px; max-width: 1560px; margin: 0 auto; align-items: start; }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 900px) { .pilot-grid { grid-template-columns: 1fr; } }
-.pane { background: var(--pane); border: 1px solid var(--hairline); border-radius: 10px; padding: 12px; min-width: 0; }
+/* pane 面板（旧栈 .pane 同款：pane-border/radius/shadow/blur 五件套 + 主题
+   切换平滑过渡 + 左右栏 rise-in 交错入场） */
+.pane { background: var(--pane); border: var(--pane-border); border-radius: var(--radius); box-shadow: var(--pane-shadow); backdrop-filter: var(--pane-blur); padding: 14px; min-width: 0; align-self: start; transition: background-color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out); animation: rise-in var(--t-slow) var(--ease-out) backwards; }
+main.pilot-grid > section:nth-of-type(2) .pane, .editor-pane { animation-delay: var(--t-fast); }
+@keyframes rise-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes tab-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .pane h2 { margin: 0 0 8px; font-size: 13px; color: var(--t3); font-weight: normal; }
 .tab-h { font-size: 12.5px; margin-top: 16px; }
+/* A12：调用树标题行 + 执行信息卡并排（卡靠右，窄屏折行） */
+.tree-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tree-head .tab-h { margin-top: 16px; }
 
 /* pane-head 按钮排 + 状态 pill（现役形态） */
 .pane-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
@@ -45,8 +53,11 @@ header.pilot-head .badge b { color: var(--accent-strong); }
 .pill.busy { color: var(--accent-strong); border-color: var(--accent); }
 /* pane-head 按钮排 + 状态 pill（现役形态） */
 .pane-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
-.pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); display: inline-flex; align-items: center; gap: 6px; color: var(--t3); }
-.pill.busy { color: var(--accent-strong); border-color: var(--accent); }
+.pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); display: inline-flex; align-items: center; gap: 6px; color: var(--t3); transition: color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out); }
+/* 状态灯点（旧栈 .pill::before 同款：currentColor 圆点，busy/wait 闪烁） */
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.pill.busy::before { animation: pill-blink 1s ease-in-out infinite; }
+@keyframes pill-blink { 50% { opacity: .25; } }
 .pill.err { color: var(--danger); border-color: var(--danger); }
 .blurb { font-size: 12px; color: var(--t3); margin: 0 0 8px; }
 
@@ -72,9 +83,64 @@ header.pilot-head .badge b { color: var(--accent-strong); }
 details summary { transition: color var(--t-fast) var(--ease-out); }
 details summary:hover { color: var(--t1); }
 
+/* ── 旧栈全局体验面平移（#141 V3/V7 彻底版）────────────────── */
+/* 公共交互态（旧栈全局 button 规则的安全子集——只加态不加底色，散装
+   button 底色由各自类定义，规避组件产物顺序的覆盖风险） */
+button:disabled { opacity: .5; cursor: default; }
+/* 统计卡升级为旧栈 .stat 形态：field 底 + hover accent 边 + 大号 mono 数字 */
+.stat-card { flex: 0 1 180px; background: var(--field); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 16px 12px; transition: border-color var(--t-base) var(--ease-out); }
+.stat-card:hover { border-color: var(--accent); }
+.stat-card .stat-label { display: block; font-size: 11px; color: var(--t3); letter-spacing: .04em; }
+.stat-card .stat-value { font-size: 24px; font-family: var(--mono); line-height: 1.3; color: var(--t1); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+/* 大数值输入原生步进箭头：暗色下刺眼且无用——隐藏（旧栈同款） */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+/* 键盘可达性：焦点环统一走 focus-visible（旧栈同款） */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 滑条跟随主题色（用户拍板 2026-10-17：原生黑 thumb 刺眼——accent-color
+   一行随五主题切换，旧栈 #anim-seek 同款） */
+input[type="range"] { accent-color: var(--accent); cursor: pointer; }
+/* 主题切换平滑：大面元素底/边/字三路过渡（旧栈全局体验段同款） */
+body, header, .pane, .stdout, input, select, .seg, .tcard { transition: background-color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out), color var(--t-base) var(--ease-out); }
+/* 动效降级：系统减少动态效果或设置关闭时全部动画瞬时（旧栈双通道同款） */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important;
+}
+/* ── rose 新拟物质感层（#141 用户点名恢复——「奶油手账」的精髓 = 色板
+   之外的凹陷/凸起手感：输入件与仪表槽内凹（inset-soft 双影）、面板子卡
+   外凸（neu-raised 双影）。只对 rose 生效；其余四主题形态零变化。 */
+html[data-theme="rose"] input,
+html[data-theme="rose"] select,
+html[data-theme="rose"] .stdin-box,
+html[data-theme="rose"] .scfg-item input,
+html[data-theme="rose"] .eng-seek input,
+html[data-theme="rose"] .ct-search { box-shadow: var(--inset-soft); }
+html[data-theme="rose"] .stat-card,
+html[data-theme="rose"] .tcard,
+html[data-theme="rose"] .seg,
+html[data-theme="rose"] .pill { box-shadow: var(--neu-raised); }
+
 /* boot 失败横幅（#139：引擎加载失败必须可感知——对齐旧栈 boot-error 形态） */
 .boot-error { margin: 10px 24px 0; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font-size: 13px; line-height: 1.6; }
 .boot-error b { font-weight: 700; }
+/* trap 详报框（行为拍板 2026-10-17）：死因报告全文常驻——红边醒目块 */
+.trap-note { margin: 6px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+
+/* A23 分享链接条（旧栈 share-row 同语义：生成后常驻——剪贴板被拒时唯一
+   手动复制出口；长度提示在前供判断这条链接值不值得发） */
+.share-row { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
+.share-out { flex: 1 1 auto; min-width: 0; background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); border-radius: 8px; padding: 4px 8px; font-family: var(--mono); font-size: 12px; font-variant-ligatures: none; }
+.share-out:focus { border-color: var(--accent); outline: none; }
+.share-len { font-size: 12px; color: var(--t3); flex: none; white-space: nowrap; }
+/* 语义徽章（A17）：note/trap 文本内联 SVG 对齐 */
+.icon-svg svg { width: 14px; height: 14px; vertical-align: -2px; }
+/* A15 回放全宽：播放中 + 设置开 = 单栏独占（旧栈 body.replaying.replay-wide 同语义） */
+main.replaying-wide { grid-template-columns: 1fr; }
+main.replaying-wide .editor-pane { display: none; }
 
 /* 下划线 tab 条（现役 .tabs/.tab 同语义：::after scaleX 动画） */
 .tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--hairline); margin-bottom: 8px; }

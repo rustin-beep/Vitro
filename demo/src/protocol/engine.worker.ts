@@ -90,7 +90,7 @@ async function drainSteps(cap: number): Promise<{ frames: StepPayload[]; stopped
     // paused = 引擎推进到断点行的批次暂停（breakpoints.set 语义）——停采
     // 但**保留已采帧**：回放条可走到暂停点观察现场（旧栈同文案）
     if (batch.paused) { stopped = "⏸ 已到断点（引擎暂停）——清除断点后 ↻ 重新采集可继续"; break; }
-    if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || "").split("\n")[0]; break; }
+    if (batch.trapped) { stopped = "受检终止：" + String(batch.trap_message || ""); break; } // 全文保留（trap 详报框——死因报告是白箱课核心内容，不截首行）
   } while (!batch.finished && frames.length < cap);
   return { frames, stopped };
 }

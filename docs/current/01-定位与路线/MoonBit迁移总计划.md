@@ -199,7 +199,7 @@ S4 期坑登记（2026-09-20 审阅，S9 裁定批输入）：① parser/decl.mb
 | 批次 | 内容 | 验收锚 | 状态 |
 |---|---|---|---|
 | F-0 | demo 单页 + Pages 部署 + demo_smoke 闸 | 三资源 200 + J9 双向证红 + ci.yml 接线 | ✅ 2026-09-30（023ee42） |
-| F-1 | 无后端分享（源码编码进 URL hash，打开即复现）+ 诊断卡片点击跳编辑器行；顺带两个 P3 微优化：app.js 升级 `instantiateStreaming`（线上实测 MIME=`application/wasm`，Pages 已具备流式编译条件）+ demo/README 补「Pages 是静态托管、跑 wasm-gc 的是访问者浏览器」的概念说明 | 手机动线实测：出错程序链接可发可开；跳行命中 `line:column` | 待开工（周级） |
+| F-1 | 无后端分享（源码编码进 URL hash，打开即复现）+ 诊断卡片点击跳编辑器行；顺带两个 P3 微优化：app.js 升级 `instantiateStreaming`（2026-10-17 注：app.js 已随 F4 前端栈切换退役，流式编译由 vite 构建产物形态消解，本项不再需要）（线上实测 MIME=`application/wasm`，Pages 已具备流式编译条件）+ demo/README 补「Pages 是静态托管、跑 wasm-gc 的是访问者浏览器」的概念说明 | 手机动线实测：出错程序链接可发可开；跳行命中 `line:column` | 待开工（周级） |
 | F-1b | **呈现层体验批（web 栈效果与动效）**：① C 语法高亮——textarea 透明前景 + 背后高亮层叠加（零依赖自写小型 C 着色器：关键字/字符串/注释/数字/预处理指令分色；与引擎 lexer 无契约绑定，页面侧独立实现）；② 动效——CSS transition 性价比之王（既定拍板）：内存条块 addr/size 过渡、诊断卡与手册卡展开渐变、行跳转高亮闪烁定位、tab 切换过渡、stdout 增量淡入——**动效语义随渲染层走**：F-2a SVG 包接管后 transition 原样保留（SVG 元素同样吃 CSS） | 移动视口/真机无卡顿（60fps 级）；高亮零第三方依赖；动效在 F-2a 迁移后无重做 | 待开工（随 F-1 同窗） |
 | F-2a | MoonBit SVG 渲染纯函数包建包——内存地图/诊断卡片/条块图三类渲染自页面 JS 迁入（native CI 快照，E-08 不开浏览器） | `moon test` 快照锚 + 页面渲染视觉等价（native 快照 diff） | 待开工（第一刀照旧） |
 | F-3 | S8 衔接：step 流落地后时间旅行回放进 demo（`semantic_labels` 14 类词表已消费展示为呈现层词汇） | S8 协议预留位激活后回放可用 | 随 S8 |

@@ -946,7 +946,7 @@ jobs:
       # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
       # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
       - name: F4 svelte-check (type + a11y gate)
-        run: cd demo && npm run pilot:check
+        run: cd demo && npm run check
         shell: bash
 
       # #132 能力层（2026-10-16）：oxlint 1.88.0 零 error 门（实测 5 warn 不
@@ -957,7 +957,7 @@ jobs:
         shell: bash
 
       - name: F4 vite build (build success gate)
-        run: cd demo && npm run pilot:build
+        run: cd demo && npm run build
         shell: bash
 
       # E-08 快照闸（#122 闸门批，2026-10-16）：《出口分档与宿主策略》§6.2
@@ -975,6 +975,19 @@ jobs:
 
       - name: demo page smoke (protocol-level, cases golden + field keys)
         run: node scripts/demo_smoke/main.js
+        shell: bash
+
+      # F4 浏览器 E2E（53 锚：诊断卡 S1-S5 + 工作区 W1-W17，含断点行为链/
+      # stdin 喂入/golden 对照/统计卡）——「CI 无 Edge 不进流水线」的旧既定
+      # 收口（2026-10-17 收口批）：ubuntu runner 预装 Google Chrome，CDP 协议
+      # 与 Edge 同源，脚本零改动直连；vite build 产物起本地静态服。
+      - name: F4 browser E2E (headless chrome, 53 anchors)
+        run: |
+          (google-chrome --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
+          (cd demo && node tests/serve_static.mjs 8931 &)
+          sleep 4
+          node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
+          node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

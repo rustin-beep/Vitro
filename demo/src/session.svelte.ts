@@ -13,6 +13,7 @@ import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { annotateGroups } from "../js/util.ts";
+import { ICONS_DIGEST } from "../js/icons.ts";
 import { switchTab } from "./tabs.svelte.ts";
 import { workspace, workspaceFilesForCompile } from "./lib/workspace.svelte.ts";
 
@@ -72,7 +73,9 @@ class SessionState {
   });
   capabilities = $state.raw<Record<string, unknown> | null>(null);
   contracts = $state.raw<Record<string, unknown> | null>(null);
-  labels = $state.raw<string[]>([]);
+  /** semantic_labels 词表（A19：引擎帧为对象数组 {id,domain,status,template,
+   *  example}——此前误声明 string[] 只留 id 串，协议页全字段渲染的面丢了）。 */
+  labels = $state.raw<unknown[]>([]);
   /** 诊断目录（error_catalog 协议数据归 session 层；组件纯展示）。
    *  不代理——加载后只读。 */
   catalog = $state.raw([] as CatalogCard[]);
@@ -95,22 +98,28 @@ class SessionState {
   runStats = $state<{ status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null>(null);
   stdinDraft = $state("42"); // A2：stdin 输入草稿（旧栈默认 42）
   /** 当前用例（A7 golden 对照 + configHint/argv 的单源锚）：点课时设置，
-   *  null = 无预置真值（golden 区诚实缺席）。 */
-  currentCase = $state<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[] } | null>(null);
+   *  null = 无预置真值（golden 区诚实缺席）。files = A9 multi_file 用例的
+   *  多编译单元（非工作区模式下 collect 的 compile.files 来源）。 */
+  currentCase = $state<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[]; files?: Array<{ filename: string; source: string }> } | null>(null);
   appliedCfg = $state.raw<Record<string, unknown> | null>(null); // A5：config.get 回读视图
+  /** A15：回放全宽（播放中隐藏左栏，可视化独占整行——旧栈 replay-wide
+   *  同语义；设置态由本层单点管理，与 playing 相与生效）。 */
+  replayWide = $state(storeGet(KEYS.replayWide) === "on");
 }
 
 // ── 持久化初值（读有兜底，写有兜底——persisted 层统一）────────────────
 // ⚠️ 必须先于 new SessionState()：类字段初始化器立即调用 initFps/initCap，
 // const 声明不提升（TDZ，2026-10-15 浏览器实测抓过 TypeError）。
-const FPS_STEPS = [8, 30, 60, 240];
+const FPS_STEPS = [2, 8, 30, 60, 120, 240]; // A24（#140）：恢复旧栈六档
 function initFps(): number {
   const v = Number(storeGet(KEYS.playbackFps));
   return FPS_STEPS.includes(v) ? v : 30;
 }
 function initGran(): "stmt" | "insn" {
   const v = storeGet(KEYS.stepGran);
-  return v === "stmt" ? "stmt" : "insn";
+  // 默认语句级（行为拍板 2026-10-17：教学首屏按语句读，指令级是深挖档）；
+  // 显式选过 insn 的用户保持
+  return v === "insn" ? "insn" : "stmt";
 }
 function initCap(): number {
   const v = Number(storeGet(KEYS.cap));
@@ -190,7 +199,7 @@ export async function loadProto(): Promise<void> {
     const [cap, contracts, labels] = await Promise.all([
       call<Record<string, unknown>>("capabilities"),
       call<Record<string, unknown>>("contracts"),
-      call<{ labels?: string[] }>("semantic_labels"),
+      call<{ labels?: unknown[] }>("semantic_labels"),
     ]);
     session.capabilities = cap;
     session.contracts = contracts;
@@ -203,7 +212,18 @@ export async function loadProto(): Promise<void> {
 export async function loadCatalog(): Promise<void> {
   try {
     const r = await call<{ catalog?: CatalogCard[] }>("error_catalog");
-    session.catalog = (r.catalog ?? []).slice().sort((a, b) => a.code_str.localeCompare(b.code_str));
+    // A18（#140）：C 卡 lang 过滤（C++ 历史卡不展示——旧栈 catalog.ts 同语义）
+    session.catalog = (r.catalog ?? [])
+      .filter((c) => String(c.lang ?? "C").toLowerCase() === "c")
+      .sort((a, b) => a.code_str.localeCompare(b.code_str));
+    // A18：icons digest 对拍（本地 icons.ts 表 vs 引擎 icons.get——漂移即
+    // 告警；抽样单 id 轻量探测，失败不阻塞手册）
+    try {
+      const ig = await call<{ digest?: string }>("icons.get", { ids: ["uaf"] });
+      if (ig?.digest && ig.digest !== ICONS_DIGEST) {
+        toast("err", "图标表 digest 与引擎不一致——本地 icons.ts 需再生成");
+      }
+    } catch { /* icons.get 不可用不阻塞 */ }
   } catch (err) {
     toast("err", "诊断目录加载失败：" + String((err as Error).message).slice(0, 60));
   }
@@ -223,8 +243,23 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
   try {
     // 工作区模式（F4 残留②）：全量打包 compile.files——active 文件 = 编辑器
     // 当前内容（liveSource 显式传，禁读 DOM）；单一源在 workspaceFilesForCompile
-    // （旧栈 buildCompileParams 同语义，两条通道同口径）
-    const files = workspace.active ? workspaceFilesForCompile(source) : undefined;
+    // （旧栈 buildCompileParams 同语义，两条通道同口径）。
+    // A9（#140）：非工作区下 multi_file 用例的 files 通道（用例声明多编译
+    // 单元——编辑器内容即首单元 main.c，跨文件链接跑通）。
+    let files = workspace.active
+      ? workspaceFilesForCompile(source)
+      : ((session.currentCase?.files as Array<{ filename: string; source: string }> | undefined));
+    // 编辑器内容若已被用户改动，用例 files 的 main.c 副本会与编辑器脱节——
+    // 此检测面：currentCase.files 存在且 source ≠ files[0].source 时以编辑器
+    // 内容为准回写首单元（旧栈 buildCompileParams「编辑器内容即 main.c」同语义）。
+    // ⚠️ currentCase.files 是 $state 深代理——postMessage structured clone
+    // 不收 Proxy，必须 map 纯化为普通对象（工作区模式返回新建对象故无此坑）。
+    if (!workspace.active && files && files.length > 0) {
+      files = files.map((f) => ({ filename: f.filename, source: f.source }));
+      if (files[0].source !== source) {
+        files = [{ filename: files[0].filename, source }, ...files.slice(1)];
+      }
+    }
     // A4/A6（#140）：config = UI 基准 + 用例 configHint 一次性合并（hint 不
     // 写回基准——下一用例自动恢复，旧栈 cfg-msg 语义）
     const hint = session.currentCase?.configHint as Record<string, unknown> | undefined;
@@ -284,6 +319,9 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
     session.status = r.frames.length
       ? `采集 ${r.frames.length} 帧 · 耗时 ${r.ms}ms`
       : "零帧——程序无步进（空 main 或立即返回）";
+    // 采集完自动播放（行为拍板 2026-10-17，恢复旧栈 stepRecollect 末尾
+    // stepPlay 语义——采集即回放的教学节奏）
+    if (r.frames.length > 0) togglePlay();
     // 反馈分域：会话态走 status 行；操作结果走 toast（失败/到顶才弹，成功不扰）
     if (r.stopped) toast("err", r.stopped);
   } catch (err) {
@@ -364,6 +402,7 @@ export function step(delta: number): void {
 }
 
 let timer: ReturnType<typeof setInterval> | undefined;
+let lastTick = 0;
 function stopTimer(): void {
   if (timer !== undefined) {
     clearInterval(timer);
@@ -379,12 +418,19 @@ export function togglePlay(): void {
   }
   if (!session.viewFrames.length) return;
   session.playing = true;
+  lastTick = performance.now();
   timer = setInterval(() => {
+    const now = performance.now();
+    const interval = 1000 / session.fps;
+    // A26（#140）：时间戳驱动合成跳帧——定时器/渲染跟不上节奏时按实际
+    // 耗时补推进帧数（慢渲染下节奏不失真；钳 1..6 防雪崩跳穿）。
+    const n = Math.max(1, Math.min(6, Math.round((now - lastTick) / interval)));
+    lastTick = now;
     if (session.idx >= session.viewFrames.length - 1) {
       togglePlay(); // 播完即停
       return;
     }
-    step(1);
+    step(Math.min(n, session.viewFrames.length - 1 - session.idx));
   }, Math.round(1000 / session.fps));
 }
 
@@ -408,4 +454,10 @@ export function setGran(g: "stmt" | "insn"): void {
 export function setCap(v: number): void {
   session.cap = v >= 100 && v <= 200000 ? Math.round(v) : 20000;
   storeSet(KEYS.cap, String(session.cap));
+}
+
+/** A15：回放全宽开关（设置面板消费；持久化 replayWide 键）。 */
+export function setReplayWide(on: boolean): void {
+  session.replayWide = on;
+  storeSet(KEYS.replayWide, on ? "on" : "off");
 }

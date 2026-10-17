@@ -174,11 +174,33 @@
     provide: (f) => EditorView.decorations.from(f),
   });
 
+  // ── vis_events 左缘标记（A14，#140）：当前帧 vis_events 行集 → 行左缘
+  // accent 竖条（旧栈 .cl.vis-on::before 同形态）。session.visLines 派生
+  // 驱动（此前死派生——呈现面在此接线）。
+  const setVisLinesEffect = StateEffect.define<number[]>();
+  const visLineField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(decos, tr) {
+      decos = decos.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setVisLinesEffect)) {
+          const ranges = e.value
+            .filter((ln) => ln >= 1 && ln <= tr.state.doc.lines)
+            .map((ln) => Decoration.line({ class: "cm-visline" }).range(tr.state.doc.line(ln).from));
+          decos = Decoration.set(ranges, true);
+        }
+      }
+      return decos;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
   // ── 扩展集 ──────────────────────────────────────────────────────────
   // ⚠️ 每个 StateField 都必须在此登记才存在——bpField 曾漏登记（gutter 里
   // field(bpField, false) 静默取 undefined，断点never渲染；E2E S4 2026-10-16
   // 实锤）。字段：bpField（gutter 点）/ bpLineField（断点行染）/
-  // diagLineField（诊断跳转行染）/ followLineField（回放跟随行染）。
+  // diagLineField（诊断跳转行染）/ followLineField（回放跟随行染）/
+  // visLineField（vis_events 左缘标记）。
   function buildExtensions(): any[] {
     return [
       lineNumbers(),
@@ -187,6 +209,7 @@
       bpLineField,
       diagLineField,
       followLineField,
+      visLineField,
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
@@ -247,8 +270,9 @@
   export function getBpLines(): number[] {
     return view ? [...view.state.field(bpField, false)?.keys() ?? []] : [];
   }
-  /** 诊断跳转（F4 残留①）：高亮目标行 + 光标落行首 + 滚动居中。行号越界
-   *  钳制；编辑器未挂载时空操作（组件卸载窗口）。 */
+  /** 诊断跳转（F4 残留①）：高亮目标行 + 光标落行首 + 滚动居中 + 1.2s
+   *  闪烁后自动清除（A27，#140——旧栈 line-flash 同语义：瞬时指引非持久
+   *  标记；行号越界钳制；编辑器未挂载时空操作）。 */
   export function revealLine(line: number): void {
     if (!view) return;
     const n = Math.min(Math.max(Math.round(line), 1), view.state.doc.lines);
@@ -258,6 +282,13 @@
       effects: [setDiagLineEffect.of([n]), EditorView.scrollIntoView(pos, { y: "center" })],
     });
     view.focus();
+    window.setTimeout(() => {
+      // 只清自己发起的那次（若期间有新跳转，新 effect 全量替换后此处再清
+      // 会闪断——比对当前行集是否仍是本行）
+      if (view && view.state.field(diagLineField, false)?.size === 1) {
+        view.dispatch({ effects: [setDiagLineEffect.of([])] });
+      }
+    }, 1200);
   }
 
   /** 回放跟随（A13，#140）：帧 code_line 驱动——中性 accent 淡染 + 行出
@@ -269,6 +300,13 @@
     view.dispatch({
       effects: [setFollowLineEffect.of([n]), EditorView.scrollIntoView(pos, { y: "nearest" })],
     });
+  }
+
+  /** vis_events 左缘标记（A14，#140）：当前帧事件行集全量替换（session
+   *  visLines 派生经 App $effect 下发）。 */
+  export function setVisLines(lines: number[]): void {
+    if (!view) return;
+    view.dispatch({ effects: [setVisLinesEffect.of(lines)] });
   }
 </script>
 
@@ -287,8 +325,12 @@
   .editor-stack :global(.bp-dot) { color: var(--danger); font-size: 10px; }
   /* 断点行（F4 残留④）：行底淡染仅 tint——与 cm-diagline（tint + inset 边）区分形 */
   .editor-stack :global(.cm-bpline) { background: var(--danger-tint); }
-  /* 诊断跳转行（F4 残留①）：左侧 danger 边 + 令牌淡底——与 bp-dot 同色系不同形 */
-  .editor-stack :global(.cm-diagline) { background: var(--danger-tint); box-shadow: inset 3px 0 0 var(--danger); }
+  /* 诊断跳转行（F4 残留①）：左侧 danger 边 + 令牌淡底 + 1.2s 闪烁（A27
+     旧栈 line-flash 同款节奏）——与 bp-dot 同色系不同形 */
+  .editor-stack :global(.cm-diagline) { background: var(--danger-tint); box-shadow: inset 3px 0 0 var(--danger); animation: diag-flash 1.2s ease-out; }
+  @keyframes diag-flash { 0% { background: transparent; } 12%, 45% { background: var(--accent-tint); } 70% { background: var(--danger-tint); } 82% { background: var(--accent-tint); } 100% { background: var(--danger-tint); } }
   /* 回放跟随行（A13）：中性 accent 淡染——与断点/诊断的 danger 系区分 */
   .editor-stack :global(.cm-followline) { background: var(--accent-tint); }
+  /* vis_events 左缘标记（A14）：行左缘 accent 竖条（旧栈 vis-on::before 同形态） */
+  .editor-stack :global(.cm-visline) { box-shadow: inset 3px 0 0 var(--accent); }
 </style>

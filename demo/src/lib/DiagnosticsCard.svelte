@@ -50,14 +50,14 @@
         {#each session.diagnostics as d, i (i)}
           <li>
             {#if d.line > 0 && onjump}
-              <button type="button" class="diag {d.severity} jumpy" onclick={() => onjump(d.line)} title="跳到 {d.filename || 'main.c'} 第 {d.line} 行">
+              <button type="button" class="diag {d.severity} jumpy" style:--i={i} onclick={() => onjump(d.line)} title="跳到 {d.filename || 'main.c'} 第 {d.line} 行">
                 <span class="code">{d.code}</span>
                 <span class="loc">{d.filename || "main.c"} 行 {d.line}:{d.column}</span>
                 <span class="msg">{d.message}</span>
                 {#if d.fix_suggestion}<span class="fix">✚ {d.fix_suggestion}</span>{/if}
               </button>
             {:else}
-              <div class="diag {d.severity}">
+              <div class="diag {d.severity}" style:--i={i}>
                 <span class="code">{d.code}</span>
                 <span class="loc">{d.filename || "main.c"} 行 {d.line}:{d.column}</span>
                 <span class="msg">{d.message}</span>
@@ -96,7 +96,8 @@
   .dc-badge.warn { color: var(--num); border-color: var(--num); }
   .dc-list { list-style: none; margin: 0; padding: 6px; max-height: 40vh; overflow: auto; }
   .dc-list li { margin: 0; }
-  .diag { display: block; width: 100%; text-align: left; padding: 5px 10px; border-left: 3px solid var(--num); margin-bottom: 4px; background: var(--pane); border-radius: 0 6px 6px 0; border-top: 0; border-right: 0; border-bottom: 0; font: inherit; color: var(--t1); cursor: default; }
+  .diag { display: block; width: 100%; text-align: left; padding: 5px 10px; border-left: 3px solid var(--num); margin-bottom: 4px; background: var(--field, var(--pane)); border-radius: 0 6px 6px 0; border-top: 0; border-right: 0; border-bottom: 0; font: inherit; color: var(--t1); cursor: default; animation: dc-rise var(--t-base) var(--ease-out) backwards; animation-delay: min(calc(var(--i, 0) * 40ms), 280ms); }
+  @keyframes dc-rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
   .diag.jumpy { cursor: pointer; transition: background-color var(--t-fast) var(--ease-out); }
   .diag.jumpy:hover { background: var(--accent-tint); }
   .diag.jumpy .loc { text-decoration: underline dotted; text-underline-offset: 2px; }
@@ -113,6 +114,6 @@
   .dc-empty.err { color: var(--danger); }
   .dc-idle { font-size: 12.5px; color: var(--t3); margin: 4px 0 10px; }
   .dc-trace-toggle { background: none; border: 0; color: var(--t3); font: 12px var(--mono); cursor: pointer; padding: 6px 12px; text-align: left; font-variant-ligatures: none; }
-  .pp-trace { padding: 0 12px 10px; }
+  .pp-trace { margin: 0 12px 10px; padding: 6px 8px; background: var(--editor-bg); border: 1px dashed var(--hairline); border-radius: 6px; }
   .pp-line { font: 11.5px/1.6 var(--mono); color: var(--t3); white-space: pre-wrap; font-variant-ligatures: none; }
 </style>

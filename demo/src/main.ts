@@ -6,7 +6,7 @@ import { mount, flushSync } from "svelte";
 import "./app.css";
 import App from "./App.svelte";
 import { boot, collect, frameAt, seek, session } from "./session.svelte.ts";
-import { DEFAULT_PROGRAM } from "./program.ts";
+import { BENCH_PROGRAM, DEFAULT_PROGRAM } from "./program.ts";
 
 const app = mount(App, { target: document.getElementById("app")! });
 
@@ -16,7 +16,7 @@ const app = mount(App, { target: document.getElementById("app")! });
 const q = new URLSearchParams(location.search);
 if (q.has("autorun") || q.has("bench")) {
   boot()
-    .then(() => collect(DEFAULT_PROGRAM))
+    .then(() => collect(BENCH_PROGRAM)) // 基准钩子固定跑冒泡基准（与指引文案首屏解耦）
     .then(() => {
       if (!q.has("bench")) return;
       session.batching = true; // 批量推进：FLIP 等交互动画关闭（见 ArrayBars 注）

@@ -23,6 +23,8 @@
   import CatalogView from "./lib/CatalogView.svelte";
   import ProtoView from "./lib/ProtoView.svelte";
   import DiagnosticsCard from "./lib/DiagnosticsCard.svelte";
+  import StepInfoCard from "./lib/StepInfoCard.svelte";
+  import CallStackChain from "./lib/CallStackChain.svelte";
   import WorkspaceBar from "./lib/WorkspaceBar.svelte";
   import { ensureClosedForLesson, saveActiveFile, syncSource, workspace } from "./lib/workspace.svelte.ts";
   import SessionConfig from "./lib/SessionConfig.svelte";
@@ -65,6 +67,7 @@
           referenceKind: base.referenceKind as string | undefined,
           configHint: base.configHint as Record<string, unknown> | undefined,
           argv: base.argv as string[] | undefined,
+          files: base.files as Array<{ filename: string; source: string }> | undefined,
         }
       : { id: l.id, label: l.title, source: l.source };
     // 叙述懒加载（import.meta.glob ?url 交付格式——全量课程不压首屏包）；
@@ -86,6 +89,7 @@
       const frag = await packSource(source);
       const url = location.href.split("#")[0] + "#" + frag;
       history.replaceState(null, "", url);
+      shareUrl = url; // A23：链接条常驻（含长度提示与复制钮）
       if (url.length > SHARE_URL_WARN) toast("info", urlLenWarning(url.length));
       else toast("ok", "分享链接已生成（地址栏复制即可）");
     } catch (err) {
@@ -152,6 +156,33 @@
     const line = frameAt(session.idx)?.code_line;
     if (line && line > 0 && !session.collecting) editorRef?.followLine(line);
   });
+
+  // vis_events 左缘标记（A14，#140）：当前帧事件行集 → 编辑器 accent 竖条
+  // （visLines 派生此前零消费——死派生在此接线）。
+  $effect(() => {
+    if (session.collecting) return;
+    editorRef?.setVisLines([...session.visLines]);
+  });
+
+  // A20（#140）：schema 冻结徽章（旧栈 cap-badge 同语义——title 挂受控词
+  // 表 kind 数）。capabilities 未载时不渲染。
+  const schemaInfo = $derived.by(() => {
+    const schema = ((session.capabilities ?? {}) as Record<string, unknown>).schema as Record<string, unknown> | undefined;
+    if (!schema) return null;
+    return { version: String(schema.version ?? "—"), frozen: String(schema.frozen_at ?? "—") };
+  });
+  const labelKinds = $derived(String(((session.capabilities ?? {}) as Record<string, unknown>).semantic_label_kinds ?? "—"));
+
+  // A23（#140）：分享链接条（生成后常驻——剪贴板被拒时它是唯一手动复制出口）
+  let shareUrl = $state("");
+  async function copyShare(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast("ok", "已复制到剪贴板");
+    } catch {
+      toast("err", "剪贴板不可用——请在链接条中手动全选复制");
+    }
+  }
 </script>
 
 <svelte:document onclick={(e) => {
@@ -171,10 +202,23 @@
     <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span>
   </div>
   <div class="head-right">
+    <!-- A21（#140）：文档站 / GitHub 外链（旧栈 .links .icon-link 同款图标） -->
+    <a class="icon-btn" href="./docs/current/02-构建与上手/快速入门.html" target="_blank" rel="noopener" title="文档站（快速入门）">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1.2-1.6-3.1-2.5-5.2-2.5H3.5V18h4.3c1.9 0 3.3.7 4.2 2 1-1.3 2.3-2 4.2-2h4.3V4.5h-3.3C15.1 4.5 13.2 5.4 12 7z"/><path d="M12 7v13"/></svg>
+    </a>
+    <a class="icon-btn" href="https://github.com/rustin-beep/Vitro" target="_blank" rel="noopener" title="GitHub 仓库">
+      <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    </a>
     <span class="badge">engine <b>{session.versions.engine || "…"}</b></span>
     <span class="badge">protocol <b>{session.versions.protocol || "…"}</b></span>
+    {#if schemaInfo}
+      <span class="badge" title={`semantic_label_kinds=${labelKinds}`}>schema <b>{schemaInfo.version}</b>（冻结于 {schemaInfo.frozen}）</span>
+    {/if}
     <button type="button" class="icon-btn" onclick={cycleTheme} title="切换主题">◐</button>
-    <button type="button" class="icon-btn" data-settings class:on={settingsOpen} onclick={() => (settingsOpen = !settingsOpen)} title="设置">⚙</button>
+    <button type="button" class="icon-btn" data-settings class:on={settingsOpen} onclick={() => (settingsOpen = !settingsOpen)} title="界面设置" aria-haspopup="true" aria-expanded={settingsOpen}>
+      <!-- V3 质感批（#141）：⚙ 文本字符 → 旧栈滑杆 SVG（style.css settings-toggle 同款） -->
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/></svg>
+    </button>
   </div>
 </header>
 
@@ -191,7 +235,7 @@
   </div>
 {/if}
 
-<main class="pilot-grid">
+<main class="pilot-grid" class:replaying-wide={session.playing && session.replayWide}>
   <section class="pane editor-pane">
     <div class="pane-head">
       <button type="button" class="btn" onclick={() => collect(source, editorRef?.getBpLines() ?? [])} disabled={session.collecting || !!bootError} title={bootError ? "引擎未加载——见上方提示" : ""}>
@@ -203,6 +247,13 @@
       </span>
     </div>
     {#if blurb}<p class="blurb">{blurb}</p>{/if}
+    {#if shareUrl}
+      <div class="share-row">
+        <input class="share-out" readonly value={shareUrl} onfocus={(e) => e.currentTarget.select()} aria-label="分享链接" />
+        <span class="share-len">{shareUrl.length} 字符</span>
+        <button type="button" class="btn ghost" onclick={copyShare}>复制</button>
+      </div>
+    {/if}
     <WorkspaceBar onswitch={(_path, src) => (source = src)} />
     <div class="editor-wrap">
       <Editor bind:source bind:this={editorRef} disabled={session.collecting} />
@@ -213,7 +264,11 @@
     </p>
     <p class="status-line">{session.status}</p>
     {#if session.stopped}
-      <div class="stopped-note">{session.stopped}</div>
+      <!-- 位置拍板 2026-10-17：死因全文详报框归位「运行」视图（RunMeta 顶部
+           pane 框内）——左栏只留单行摘要指引，不再撑爆编辑器区 -->
+      <div class="stopped-note">
+        {session.stopped.split("\n")[0]}{session.stopped.includes("\n") ? "……" : ""}——{session.stopped.startsWith("受检终止") ? "死因详报见「运行」视图" : ""}
+      </div>
     {/if}
     <SessionConfig />
   </section>
@@ -247,10 +302,15 @@
           <p class="muted">（此帧无数组快照）</p>
         {/each}
         <ReplayBar />
-        <h2 class="tab-h">调用树（visited = 当前帧已走路径）</h2>
+        <div class="tree-head">
+          <h2 class="tab-h">调用树（visited = 当前帧已走路径）</h2>
+          <StepInfoCard source={source} />
+        </div>
         <CallTree tree={session.tree} idx={session.idx} />
         <h2 class="tab-h">局部变量</h2>
         <VarsList />
+        <h2 class="tab-h">调用栈</h2>
+        <CallStackChain />
         <h2 class="tab-h">运行输出（stdout / stderr / note）</h2>
         <OutputView />
       </div>

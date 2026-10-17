@@ -143,6 +143,36 @@
   function onPointerUp(): void {
     dragging = false;
   }
+  // A25（#140）：双指 pinch 缩放（触屏）——两指距离比驱动 k，双指中点为
+  // 内容锚点；双指接管时退出单指拖拽。手势双写 cam+target（跟手，同 wheel）。
+  let pinchFrom: { dist: number; k: number } | null = null;
+  function onTouchStart(e: TouchEvent): void {
+    if (e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      pinchFrom = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), k: cam.k };
+      dragging = false;
+    } else if (e.touches.length === 1) {
+      pinchFrom = null;
+    }
+  }
+  function onTouchMove(e: TouchEvent): void {
+    if (!pinchFrom || e.touches.length !== 2) return;
+    e.preventDefault();
+    const [a, b] = [e.touches[0], e.touches[1]];
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const rect = wrapEl!.getBoundingClientRect();
+    const mx = (a.clientX + b.clientX) / 2 - rect.left;
+    const my = (a.clientY + b.clientY) / 2 - rect.top;
+    const contentX = cam.cx + (mx - wrapW / 2) / cam.k;
+    const contentY = cam.cy + (my - WRAP_H / 2) / cam.k;
+    const k2 = Math.max(0.15, Math.min(3, pinchFrom.k * (dist / pinchFrom.dist)));
+    target = { k: k2, cx: contentX - (mx - wrapW / 2) / k2, cy: contentY - (my - WRAP_H / 2) / k2 };
+    cam = { ...target };
+    follow = false;
+  }
+  function onTouchEnd(): void {
+    pinchFrom = null;
+  }
   function onDblClick(): void {
     fitAll();
     if (follow) {
@@ -173,6 +203,10 @@
       onpointermove={onPointerMove}
       onpointerup={onPointerUp}
       onpointercancel={onPointerUp}
+      ontouchstart={onTouchStart}
+      ontouchmove={onTouchMove}
+      ontouchend={onTouchEnd}
+      ontouchcancel={onTouchEnd}
       ondblclick={onDblClick}
       role="img"
       aria-label="调用树画布（滚轮缩放、拖拽平移、双击恢复跟随）"
@@ -201,7 +235,7 @@
   .tool { background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); border-radius: 6px; padding: 3px 10px; font: 12px var(--font-ui); cursor: pointer; }
   .tool.on { color: var(--accent-strong); border-color: var(--accent); }
   .hint { font-size: 11px; color: var(--t3); }
-  .tree-viewport { height: 300px; overflow: hidden; touch-action: none; cursor: grab; }
+  .tree-viewport { height: 300px; overflow: hidden; touch-action: none; cursor: grab; background-color: var(--field); background-image: linear-gradient(var(--grid, var(--hairline)) 1px, transparent 1px), linear-gradient(90deg, var(--grid, var(--hairline)) 1px, transparent 1px); background-size: 18px 18px; border: 1px solid var(--hairline); border-radius: 8px; }
   .tree-viewport.grabbing { cursor: grabbing; }
   .tree-viewport svg { display: block; /* 视口尺寸 = width/height 属性（相机窗口），内容坐标由 viewBox 映射——CSS 尺寸覆盖会造成双重变换（2026-10-16 空画布实锤） */ }
   .edge { stroke: var(--delimiter); stroke-width: 1.5; fill: none; opacity: 0.55; vector-effect: non-scaling-stroke; }
@@ -211,7 +245,8 @@
   .nd text { text-anchor: middle; font-family: var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .nd .tname { fill: var(--t1); font-size: 11.5px; font-weight: 600; }
   .nd .targ { fill: var(--t3); font-size: 10px; }
-  .nd.cur rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-tint); }
+  .nd.cur rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-tint); filter: drop-shadow(0 0 7px var(--accent-tint)); }
+  .nd.cur .tname { fill: var(--accent-strong); }
   .nd.visited rect { stroke: var(--accent); }
   .muted { color: var(--t3); font-size: 12.5px; }
 </style>

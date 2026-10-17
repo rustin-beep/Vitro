@@ -8,10 +8,7 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.pilot.json",
     "lint": "oxlint src/",
-    "dev": "vite",
-    "pilot:dev": "vite",
-    "pilot:build": "vite build",
-    "pilot:check": "svelte-check --tsconfig ./tsconfig.pilot.json"
+    "dev": "vite"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

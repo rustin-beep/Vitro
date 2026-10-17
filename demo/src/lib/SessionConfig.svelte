@@ -38,11 +38,11 @@
   .scfg summary { cursor: pointer; color: var(--t2); user-select: none; }
   .scfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 8px; }
   .scfg-item { display: flex; align-items: center; gap: 6px; color: var(--t2); }
-  .scfg-item input[type="number"] { width: 100%; min-width: 0; font: 12px var(--mono); color: var(--t1); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 6px; }
+  .scfg-item input[type="number"] { width: 100%; min-width: 0; font: 12px var(--mono); color: var(--t1); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 6px; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .scfg-item input[type="checkbox"] { accent-color: var(--accent); }
   .scfg-apply { justify-self: start; }
   .scfg-argv { margin-top: 8px; }
-  .scfg-argv input { flex: 1 1 auto; min-width: 0; font: 12px var(--mono); color: var(--t1); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 8px; }
+  .scfg-argv input { flex: 1 1 auto; min-width: 0; font: 12px var(--mono); color: var(--t1); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; padding: 4px 8px; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .scfg-msg { margin: 8px 0 0; font-size: 12px; color: var(--accent-strong); }
-  .scfg-view { margin: 8px 0 0; padding: 8px 10px; font: 11.5px var(--mono); color: var(--t2); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; overflow: auto; max-height: 180px; }
+  .scfg-view { margin: 8px 0 0; padding: 8px 10px; font: 11.5px var(--mono); color: var(--t2); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; overflow: auto; max-height: 180px; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
 </style>

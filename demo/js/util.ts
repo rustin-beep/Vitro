@@ -3,6 +3,8 @@
 // app.js 逐字迁移，仅增 import/export。TS 重写批：签名类型化。）
 "use strict";
 
+import { ICONS } from "./icons.ts";
+
 export const MEM_TOTAL = 1024 * 1024; // 1MB 内存映射（引擎口径）
 
 // 中文等 UTF-8 多字节序列在此形态下是 mojibake——按字节还原为文本。
@@ -50,4 +52,24 @@ export function coalesceStmt<F extends { code_line: number }>(frames: F[]): F[] 
 
 export function esc(s: string): string {
   return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+}
+
+/** A17（#140）：[语义id] → 内联 SVG 徽章（旧栈 icon.ts decorateBadges 同
+ *  语义，白名单 = icons.ts ICONS 表）。**输入必须先 esc**——本函数只做
+ *  表替换不引入转义义务（{@html} 消费面的转义责任在调用方）。 */
+export function decorateBadges(escaped: string): string {
+  return escaped.replace(/\[([a-z0-9_-]+)\]/gi, (m, id: string) => {
+    const svg = ICONS[id];
+    return svg ? `<span class="icon-svg">${svg}</span>` : m;
+  });
+}
+
+/** trap 详报格式化（#140 收口批：语义徽章 + E 码 mono 徽章 + 结构标签加粗）。
+ *  输入必须先 esc（同 decorateBadges 契约）。[cause]/[fix]/[location] 是
+ *  结构化字段标记（非语义 id，不在 ICONS 表——保留文本只做视觉区分）；
+ *  E 码（E3xxx 族）渲染为等宽徽章「码表」样式。 */
+export function formatTrap(escaped: string): string {
+  return decorateBadges(escaped)
+    .replace(/\[(cause|fix|location)\]/g, '<b class="tp-tag">[$1]</b>')
+    .replace(/\b(E[1-9][0-9]{3})\b/g, '<code class="tp-code">$1</code>');
 }

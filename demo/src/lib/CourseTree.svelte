@@ -13,7 +13,10 @@
   import type { TreeLesson, TreeChapter } from "./courseTypes.ts";
 
   let query = $state("");
-  let collapsed = new SvelteSet<string>(); // 折叠章集合（响应式 Set——add/delete 直接触发更新）
+  // V5（#141）：初始折叠 = 全部算法章 + 扩展章（groups 的 id 集），第〇章
+  // 基础课默认展开——对齐旧栈 course.ts 初始折叠形态（此前全展开 = 长树
+  // 不可扫读）。折叠集合仍进 store：搜索清空不复位（迁移红利保留）。
+  let collapsed = new SvelteSet<string>((DEMO_ALGORITHMS.groups ?? []).map((g: AlgoGroup) => g.id));
   let selectedId = $state("");
 
   const chapters: TreeChapter[] = $derived.by(() => {

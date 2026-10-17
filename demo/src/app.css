@@ -6,7 +6,10 @@
 @import "../tokens.css";
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--win-bg); color: var(--t1); font: 14px/1.55 var(--font-ui); }
-#app { max-width: 1080px; margin: 0 auto; padding: 16px 20px 48px; }
+/* V8（#141）：撤 1080px 钳死——旧栈 body 全宽 + 内容栅格 1560 上限；
+   此前 #app 1080 使 pilot-head/pilot-grid 自己写的 1560 失效（1920 屏
+   两侧各空 420px，「PC 端像缩水」的直接根因） */
+#app { margin: 0 auto; padding: 16px 20px 48px; }
 
 header.pilot-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--hairline); padding-bottom: 10px; }
 header.pilot-head h1 { margin: 0; font-size: 17px; }
@@ -19,7 +22,8 @@ header.pilot-head .badge b { color: var(--accent-strong); }
    下划线 tab 条（::after scaleX 动画）/ footer 白箱声明。 */
 .pilot-head { display: flex; align-items: center; gap: 10px; padding: 14px 24px 10px; max-width: 1560px; margin: 0 auto; flex-wrap: wrap; }
 .pilot-head .brand { display: flex; align-items: baseline; gap: 8px; }
-.pilot-head .logo { color: var(--accent); font-size: 18px; }
+/* V10：品牌位真 logo（昼夜双变体 img 随主题族切换；baseline 对齐文字） */
+.pilot-head .logo { width: 22px; height: 22px; align-self: center; }
 .pilot-head b { font-size: 19px; letter-spacing: 0.01em; }
 .pilot-head .sub { font-size: 12px; color: var(--t3); }
 .head-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -39,8 +43,38 @@ header.pilot-head .badge b { color: var(--accent-strong); }
 .pane-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
 .pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); display: inline-flex; align-items: center; gap: 6px; color: var(--t3); }
 .pill.busy { color: var(--accent-strong); border-color: var(--accent); }
+/* pane-head 按钮排 + 状态 pill（现役形态） */
+.pane-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
+.pill { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--pane); display: inline-flex; align-items: center; gap: 6px; color: var(--t3); }
+.pill.busy { color: var(--accent-strong); border-color: var(--accent); }
 .pill.err { color: var(--danger); border-color: var(--danger); }
 .blurb { font-size: 12px; color: var(--t3); margin: 0 0 8px; }
+
+/* ── V3/V7 质感回补（#141，规格对齐旧栈 style.css 全局 button/交互态）── */
+/* 主按钮：accent 渐变底 + hover 提亮 + active 下沉（旧栈 button 全局同款） */
+.btn { background: var(--accent-grad); color: var(--on-accent); transition: filter var(--t-fast) var(--ease-out), transform var(--t-inst) ease, box-shadow var(--t-base) var(--ease-out); }
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.ghost { background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), transform var(--t-inst) ease; }
+.btn.ghost:hover:not(:disabled) { color: var(--t1); border-color: var(--t3); background: var(--accent-tint); }
+.btn.ghost:active:not(:disabled) { transform: translateY(1px); }
+.btn.selected { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-tint); }
+/* 顶栏图标钮：hover 浮起态（旧栈 icon-link 同语义） */
+.icon-btn { transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out); cursor: pointer; }
+.icon-btn:hover { color: var(--t1); border-color: var(--t3); background: var(--pane); }
+/* 卡片层次：pane 柔影（V3——旧栈 16 处 box-shadow 的主面；tokens 阴影令牌） */
+.pane { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 14px rgba(0, 0, 0, 0.05); }
+/* 设置浮层弹出微动效（V7——面板类过渡） */
+.settings-float { animation: float-in var(--t-base) var(--ease-out); }
+@keyframes float-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .settings-float { animation: none; } }
+/* 课程行 hover（CourseTree 组件内已有 accent-tint——此处补计数徽章/搜索框同款统一） */
+details summary { transition: color var(--t-fast) var(--ease-out); }
+details summary:hover { color: var(--t1); }
+
+/* boot 失败横幅（#139：引擎加载失败必须可感知——对齐旧栈 boot-error 形态） */
+.boot-error { margin: 10px 24px 0; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font-size: 13px; line-height: 1.6; }
+.boot-error b { font-weight: 700; }
 
 /* 下划线 tab 条（现役 .tabs/.tab 同语义：::after scaleX 动画） */
 .tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--hairline); margin-bottom: 8px; }

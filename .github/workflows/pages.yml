@@ -77,6 +77,11 @@ jobs:
           # 云端 Deploy 红收口：构建后再发射 = ENOENT）。生成器完备性断言
           # 即闸；ubuntu runner 自带 Go。
           go run ./scripts/gen_demo_algorithms
+          # wasm 同为构建期资产（engine.worker.ts ?url import 触发 vite
+          # emit）——**vite build 前必须就位**（同上 ENOENT 坑型：构建后
+          # 才拷 = 资产化缺失，Pages 404 且 boot 静默，#139）。产物经
+          # hashed assets/ 分发，不再向 demo-dist 根裸拷。
+          cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
           # 新栈 = vite 唯一构建（demo/index.html + src/ → dist/）——旧栈
           # （app.ts/style.css/js 十一模块）已退役；base=./ 相对路径适配
           # Pages 项目页子路径。
@@ -84,7 +89,6 @@ jobs:
           cp -r demo/dist/* demo-dist/
           # 品牌 logo 三枚（favicon 自适应版 + 昼/夜 header 变体；来源 assets/logo/）
           cp assets/logo/vitro-icon.svg assets/logo/vitro-icon-light.svg assets/logo/vitro-icon-dark.svg demo-dist/assets/logo/
-          cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo-dist/wasm.wasm
           # 组装自检（对 index.html+入口的本地资源做存在性断言，缺即红；
           # --no-ts 禁源发布——与 ci.yml PR 侧共用同一脚本）
           node scripts/demo_assemble_check/main.js demo-dist --no-ts

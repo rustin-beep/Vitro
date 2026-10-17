@@ -226,6 +226,9 @@ async function run() {
   await evaluate("window.__confirmAnswer = false");
   await evaluate("[...document.querySelectorAll('.tab')].find(t => t.textContent.trim() === '内容')?.click()");
   await sleep(200);
+  // V5 课程树默认收起算法章——点算法课前先展开「排序」章（用户路径如实反映）
+  await evaluate("[...document.querySelectorAll('button.chap-head')].find(b => b.textContent.includes('排序'))?.click()");
+  await sleep(300);
   await evaluate("[...document.querySelectorAll('button.lesson')].find(b => b.querySelector('.lid')?.textContent === 'bubble_sort')?.click()");
   await sleep(400);
   const w10a = await evaluate(`(() => ({
@@ -365,6 +368,50 @@ async function run() {
     const after = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), fs: document.documentElement.style.getPropertyValue('--ed-fs'), m: document.documentElement.getAttribute('data-motion') })");
     check("W14 重载后主题/字号/动效三持久化", JSON.stringify(before) === JSON.stringify(after), JSON.stringify([before, after]));
   }
+
+  // ── W15-W17 主链面（A2/A7/A8，#140）：统计卡 / stdin 喂入 / golden 对照 ──
+  // W15 点 hello（golden "Hello\n"）→ 返回码 0 / VM 步数 > 0 / 对照 ✓
+  await evaluate("[...document.querySelectorAll('.tab')].find(t => t.textContent.trim() === '内容')?.click()");
+  await sleep(300);
+  await evaluate("[...document.querySelectorAll('button.lesson')].find(b => b.querySelector('.lid')?.textContent === 'hello')?.click()");
+  await waitFor("window.__pilot?.session?.frames?.length > 0", 20000);
+  await sleep(300);
+  const w15 = await evaluate(`(() => {
+    const cards = [...document.querySelectorAll('.stat-card .stat-value')].map(e => e.textContent.trim());
+    const verdict = document.querySelector('.verdict')?.textContent?.trim() ?? '';
+    return { ret: cards[0], steps: cards[1], verdict };
+  })()`);
+  check("W15 统计卡 + golden 对照（hello：ret 0/步数>0/✓）", w15.ret === "0" && Number(w15.steps) > 0 && w15.verdict.startsWith("✓"), JSON.stringify(w15));
+
+  // W16 scanf 课：waiting_input → stdin 行（默认 42）→ 喂入续跑 → got 42
+  // （W15 点课已自动切运行 tab——课程树条件渲染卸载，须先切回内容 tab）
+  await evaluate("[...document.querySelectorAll('.tab')].find(t => t.textContent.trim() === '内容')?.click()");
+  await sleep(300);
+  await evaluate("[...document.querySelectorAll('button.lesson')].find(b => b.querySelector('.lid')?.textContent === 'scanf')?.click()");
+  await waitFor("document.querySelector('.stdin-row')", 20000);
+  const w16a = await evaluate(`(() => ({
+    draft: document.querySelector('.stdin-box')?.value ?? '',
+    ret: [...document.querySelectorAll('.stat-card .stat-value')][0]?.textContent.trim(),
+  }))()`);
+  check("W16a waiting 态 stdin 行出现（默认 42 + 返回码 —）", w16a.draft === "42" && w16a.ret === "—", JSON.stringify(w16a));
+  await evaluate("document.querySelector('.stdin-row .btn')?.click()");
+  await waitFor("!window.__pilot?.session?.runStats?.waiting_input", 20000);
+  await sleep(300);
+  const w16b = await evaluate(`(() => ({
+    stdout: window.__pilot?.session?.outputs?.stdout ?? '',
+    ret: [...document.querySelectorAll('.stat-card .stat-value')][0]?.textContent.trim(),
+    verdict: document.querySelector('.verdict')?.textContent?.trim() ?? '',
+  }))()`);
+  check("W16b 喂入续跑（stdout got 42 + 返回码 0 + golden ✓）", w16b.stdout === "got 42" && w16b.ret === "0" && w16b.verdict.startsWith("✓"), JSON.stringify(w16b));
+
+  // W17 golden 失效态（诚实边界）：编辑器键入后不拿旧预期比新代码
+  const edBox = await evaluate(`(() => { const r = document.querySelector('.cm-content').getBoundingClientRect(); return { x: Math.round(r.x + 40), y: Math.round(r.y + 10) }; })()`);
+  await send("Input.dispatchMouseEvent", { type: "mousePressed", x: edBox.x, y: edBox.y, button: "left", clickCount: 1 });
+  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: edBox.x, y: edBox.y, button: "left", clickCount: 1 });
+  await send("Input.insertText", { text: " " });
+  await sleep(500);
+  const w17 = await evaluate(`document.querySelector('.ref-box .muted')?.textContent?.trim() ?? ''`);
+  check("W17 golden 失效文案（编辑器修改后）", w17.includes("已修改"), w17);
 
   const fails = results.filter((r) => !r.ok).length;
   console.log(`\n===== ${results.length - fails}/${results.length} 通过${fails ? "，失败 " + fails + " 项" : ""} =====`);

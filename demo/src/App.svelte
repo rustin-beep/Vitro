@@ -6,7 +6,7 @@
   // footer 白箱声明。tab 集合与命名逐字对齐 index.html data-tab。
   import { boot, collect, frameAt, loadCatalog, loadProto, session } from "./session.svelte.ts";
   import { DEFAULT_PROGRAM } from "./program.ts";
-  import { themeState, applyTheme } from "./theme.svelte.ts";
+  import { themeState, applyTheme, NIGHT_THEMES } from "./theme.svelte.ts";
   import { KEYS, storeGet, storeSet, migrateTheme } from "./persisted.svelte.ts";
   import { packSource, parseFragment, unpackSource, urlLenWarning, SHARE_URL_WARN } from "../js/share.ts";
   import { activeTab, switchTab, TAB_DEFS, type TabId } from "./tabs.svelte.ts";
@@ -25,16 +25,25 @@
   import DiagnosticsCard from "./lib/DiagnosticsCard.svelte";
   import WorkspaceBar from "./lib/WorkspaceBar.svelte";
   import { ensureClosedForLesson, saveActiveFile, syncSource, workspace } from "./lib/workspace.svelte.ts";
+  import SessionConfig from "./lib/SessionConfig.svelte";
+  import RunMeta from "./lib/RunMeta.svelte";
   import Toasts from "./lib/Toasts.svelte";
   import type { TreeLesson } from "./lib/courseTypes.ts";
   import { toast } from "./toasts.svelte.ts";
   import { loadLessonNote } from "./lib/lessonNotes.ts";
+  import { DEMO_CASES } from "virtual:demo-globals";
+  // V10（#141）：品牌位真 logo（昼夜双变体随主题族切换——替代「◎」文本点）
+  import iconDark from "../assets/logo/vitro-icon-dark.svg?url";
+  import iconLight from "../assets/logo/vitro-icon-light.svg?url";
 
   let source = $state(DEFAULT_PROGRAM);
   let editorRef: Editor | null = $state(null);
   let blurb = $state("");
   let note = $state<{ title: string; blocks: import("./lib/lessonMd.ts").Block[] } | null>(null);
   let settingsOpen = $state(false);
+  // 引擎加载失败面（#139）：旧栈 boot-error 红横幅形态——失败必须可感知，
+  // 禁止徽章停在「…」占位的静默假态
+  let bootError = $state("");
 
   async function onPickLesson(l: TreeLesson, chapId: string): Promise<void> {
     // 点课 = 离开工作区（旧栈 ensureClosedForLesson 语义）：dirty 时 confirm
@@ -42,6 +51,22 @@
     if (!(await ensureClosedForLesson())) return;
     source = l.source; // 课源码载入编辑器（旧栈 setEditorSource 语义）
     blurb = l.blurb;
+    // A7/A6/A3 单源锚（#140）：从 DEMO_CASES 反查原用例（golden 预置真值 /
+    // configHint / argv）；算法课无 case 记录 → 退化形态（无 ref，source
+    // 锚仍在——修改失效逻辑照常工作）
+    const base = DEMO_CASES.find((k) => k.id === l.id);
+    session.currentCase = base
+      ? {
+          id: base.id,
+          label: base.label,
+          source: base.source,
+          referenceOutput: base.referenceOutput as string | undefined,
+          referenceTrap: base.referenceTrap as string | undefined,
+          referenceKind: base.referenceKind as string | undefined,
+          configHint: base.configHint as Record<string, unknown> | undefined,
+          argv: base.argv as string[] | undefined,
+        }
+      : { id: l.id, label: l.title, source: l.source };
     // 叙述懒加载（import.meta.glob ?url 交付格式——全量课程不压首屏包）；
     // 无此课叙述 = null 不渲染面板（诚实空态）
     const doc = await loadLessonNote(chapId + "/" + l.id);
@@ -80,6 +105,11 @@
           toast("err", "分享链接不完整——" + String((err as Error).message).slice(0, 60));
         }
       }
+    })
+    .catch((err: unknown) => {
+      // #139：boot 链必须有失败面——横幅 + 采集禁用（对齐旧栈 boot-error
+      // 形态：失败原因 + wasm-gc 浏览器支持指引）
+      bootError = (err instanceof Error ? err.message : String(err)).slice(0, 200);
     });
   applyTheme(migrateTheme(storeGet(KEYS.theme)) || "glass");
 
@@ -114,6 +144,14 @@
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   });
+
+  // 回放跟随当前行（A13，#140）：帧 code_line 驱动编辑器中性 accent 行染
+  // + 就近滚动（不居中不抢焦——播放节奏不被打断）。采集期不跟随（源码
+  // 可能正被替换）。
+  $effect(() => {
+    const line = frameAt(session.idx)?.code_line;
+    if (line && line > 0 && !session.collecting) editorRef?.followLine(line);
+  });
 </script>
 
 <svelte:document onclick={(e) => {
@@ -128,7 +166,7 @@
 
 <header class="pilot-head">
   <div class="brand">
-    <span class="logo">◎</span>
+    <img class="logo" src={NIGHT_THEMES.has(themeState.current) ? iconDark : iconLight} alt="Vitro" width="22" height="22" />
     <b>Vitro</b>
     <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span>
   </div>
@@ -146,10 +184,17 @@
   </div>
 {/if}
 
+{#if bootError}
+  <div class="boot-error" role="alert">
+    <b>引擎加载失败</b>——{bootError}。本页需要支持 wasm-gc 与 js-string builtins
+    的现代浏览器（Chrome/Edge 130+、Firefox 134+）；请检查网络后刷新重试。
+  </div>
+{/if}
+
 <main class="pilot-grid">
   <section class="pane editor-pane">
     <div class="pane-head">
-      <button type="button" class="btn" onclick={() => collect(source, editorRef?.getBpLines() ?? [])} disabled={session.collecting}>
+      <button type="button" class="btn" onclick={() => collect(source, editorRef?.getBpLines() ?? [])} disabled={session.collecting || !!bootError} title={bootError ? "引擎未加载——见上方提示" : ""}>
         {session.collecting ? "采集中…" : "▶ 采集帧流"}
       </button>
       <button type="button" class="btn ghost" onclick={share} disabled={session.collecting}>分享链接</button>
@@ -170,10 +215,7 @@
     {#if session.stopped}
       <div class="stopped-note">{session.stopped}</div>
     {/if}
-    <details class="pref">
-      <summary>偏好（主题 / 字号 / 动效 / 采集预算）</summary>
-      <SettingsView />
-    </details>
+    <SessionConfig />
   </section>
 
   <section class="pane">
@@ -194,6 +236,7 @@
     {:else if activeTab.current === "run"}
       <div class="tabpage">
         <DiagnosticsCard onjump={(ln) => editorRef?.revealLine(ln)} />
+        <RunMeta source={source} />
         <h2 class="tab-h">数组可视化（keyed FLIP · 多数组）</h2>
         {#each frameAt(session.idx)?.array_snapshots ?? [] as s (s.name)}
           <div class="av-item">

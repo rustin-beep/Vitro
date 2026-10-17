@@ -14,10 +14,11 @@
   import { EditorState, StateEffect, StateField } from "@codemirror/state";
   import { EditorView, gutter, GutterMarker, keymap, highlightActiveLine, highlightActiveLineGutter, lineNumbers, Decoration, type DecorationSet } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap, insertNewlineAndIndent, indentMore, indentLess } from "@codemirror/commands";
-  import { StreamLanguage, syntaxHighlighting, defaultHighlightStyle, foldGutter } from "@codemirror/language";
+  import { StreamLanguage, syntaxHighlighting, HighlightStyle, foldGutter } from "@codemirror/language";
+  import { tags } from "@lezer/highlight";
   import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap } from "@codemirror/autocomplete";
   import { highlightSelectionMatches, searchKeymap, search } from "@codemirror/search";
-  import { clike } from "@codemirror/legacy-modes/mode/clike";
+  import { c as clikeC } from "@codemirror/legacy-modes/mode/clike";
   import { session, toggleBreakpoint } from "../session.svelte.ts";
 
   let { source = $bindable(""), disabled = false }: { source?: string; disabled?: boolean } = $props();
@@ -134,11 +135,50 @@
     provide: (f) => EditorView.decorations.from(f),
   });
 
+  // ── 语法高亮（V1/V2，#141）：token→tokens.css 主题变量——五主题语法色
+  // 随 data-theme 切换，规格对齐旧栈 style.css:221-225 五类映射（关键词/
+  // 类型并入 --kw；字符串 --str；数字 --num；注释 --cmt 斜体；预处理行
+  // meta 并入 --num 暖橙）。替代 CM6 内置 defaultHighlightStyle 固定色板
+  // （其 keyword 在 Vitro 深底上对比度不足且恒不随主题——「关键字零着色」
+  // 用户实测根因）。
+  const vitroHighlight = HighlightStyle.define([
+    { tag: tags.keyword, color: "var(--kw)" },
+    { tag: tags.atom, color: "var(--kw)" },
+    { tag: tags.typeName, color: "var(--kw)" },
+    { tag: tags.number, color: "var(--num)" },
+    { tag: tags.string, color: "var(--str)" },
+    { tag: tags.comment, color: "var(--cmt)", fontStyle: "italic" },
+    { tag: tags.meta, color: "var(--num)" },
+    { tag: tags.operator, color: "var(--t1)" },
+    { tag: tags.punctuation, color: "var(--t1)" },
+  ]);
+
+  // ── 回放跟随行染（A13，#140）：帧 code_line 驱动的中性 accent 淡染——
+  // 与诊断跳转（danger 边 + tint）和断点行（danger tint）同构不同色，三态
+  // 不混。scrollIntoView nearest：行在视口内不滚动（播放时不晕）。
+  const setFollowLineEffect = StateEffect.define<number[]>();
+  const followLineField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(decos, tr) {
+      decos = decos.map(tr.changes);
+      for (const e of tr.effects) {
+        if (e.is(setFollowLineEffect)) {
+          const ranges = e.value
+            .filter((ln) => ln >= 1 && ln <= tr.state.doc.lines)
+            .map((ln) => Decoration.line({ class: "cm-followline" }).range(tr.state.doc.line(ln).from));
+          decos = Decoration.set(ranges, true);
+        }
+      }
+      return decos;
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+
   // ── 扩展集 ──────────────────────────────────────────────────────────
   // ⚠️ 每个 StateField 都必须在此登记才存在——bpField 曾漏登记（gutter 里
   // field(bpField, false) 静默取 undefined，断点never渲染；E2E S4 2026-10-16
   // 实锤）。字段：bpField（gutter 点）/ bpLineField（断点行染）/
-  // diagLineField（诊断跳转行染）。
+  // diagLineField（诊断跳转行染）/ followLineField（回放跟随行染）。
   function buildExtensions(): any[] {
     return [
       lineNumbers(),
@@ -146,12 +186,16 @@
       bpGutter,
       bpLineField,
       diagLineField,
+      followLineField,
       highlightActiveLineGutter(),
       highlightActiveLine(),
       history(),
       keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap]),
-      StreamLanguage.define(clike({ name: "text/x-csrc" })),
-      syntaxHighlighting(defaultHighlightStyle),
+      // ⚠️ 必须用预配置导出 c——此前误写 clike({ name: "text/x-csrc" })：工厂
+      // 拿到空配置，keywords/types 词表全 undefined，关键字/类型永不产出
+      // token（裸文本，语法高亮名存实亡的直接根因，V1 #141）。
+      StreamLanguage.define(clikeC),
+      syntaxHighlighting(vitroHighlight),
       keymap.of([{ key: "Enter", run: insertNewlineAndIndent }, { key: "Tab", run: indentMore, shift: indentLess }]),
       foldGutter(),
       closeBrackets(),
@@ -215,6 +259,17 @@
     });
     view.focus();
   }
+
+  /** 回放跟随（A13，#140）：帧 code_line 驱动——中性 accent 淡染 + 行出
+   *  视口时就近滚动（不强制居中、不抢焦点——播放节奏不被打断）。 */
+  export function followLine(line: number): void {
+    if (!view) return;
+    const n = Math.min(Math.max(Math.round(line), 1), view.state.doc.lines);
+    const pos = view.state.doc.line(n).from;
+    view.dispatch({
+      effects: [setFollowLineEffect.of([n]), EditorView.scrollIntoView(pos, { y: "nearest" })],
+    });
+  }
 </script>
 
 <div class="editor-stack" bind:this={hostEl}></div>
@@ -234,4 +289,6 @@
   .editor-stack :global(.cm-bpline) { background: var(--danger-tint); }
   /* 诊断跳转行（F4 残留①）：左侧 danger 边 + 令牌淡底——与 bp-dot 同色系不同形 */
   .editor-stack :global(.cm-diagline) { background: var(--danger-tint); box-shadow: inset 3px 0 0 var(--danger); }
+  /* 回放跟随行（A13）：中性 accent 淡染——与断点/诊断的 danger 系区分 */
+  .editor-stack :global(.cm-followline) { background: var(--accent-tint); }
 </style>

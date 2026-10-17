@@ -1,0 +1,74 @@
+<script lang="ts">
+  // 运行元信息面（A2/A7/A8，#140——旧栈 ret-value/steps-value 统计位、
+  // stdin-row、ref-box 三块语义平移）：
+  //  - 统计卡：返回码（finished 才显，否则 —）/ VM 步数（run 六字段出口）；
+  //  - stdin 行：waiting_input 态出现（默认 42——旧栈 stdin-box 同值），
+  //    喂入 = input.feed + 全量重采（feed 后回放从头可播，含喂入后半段）；
+  //  - golden 对照：Clang golden 预置真值（CI shadow 防线对拍口径）三态 =
+  //    未预置 / 编辑器已修改失效（不拿旧预期比新代码——诚实边界）/
+  //    stdout·trap 对照 ✓✗。
+  import { session, feedStdin } from "../session.svelte.ts";
+
+  let { source }: { source: string } = $props();
+
+  const kase = $derived(session.currentCase);
+  const hasRef = $derived(!!kase && (!!kase.referenceOutput || !!kase.referenceTrap));
+  const stale = $derived(!!kase && source !== kase.source);
+  const goldMatch = $derived.by(() => {
+    if (!kase) return false;
+    if (kase.referenceKind === "stdout") return session.outputs.stdout === kase.referenceOutput;
+    return (session.stopped || "").includes(kase.referenceTrap ?? "\u0000");
+  });
+</script>
+
+<div class="rmeta">
+  <div class="stat-row">
+    <div class="stat-card"><span class="stat-label">返回码</span><b class="stat-value">{session.runStats && session.runStats.status === "finished" ? String(session.runStats.return_value) : "—"}</b></div>
+    <div class="stat-card"><span class="stat-label">VM 步数</span><b class="stat-value">{session.runStats ? String(session.runStats.steps_executed) : "—"}</b></div>
+  </div>
+
+  {#if session.runStats?.waiting_input}
+    <div class="stdin-row">
+      <label class="stdin-label" for="stdin-box">stdin</label>
+      <textarea id="stdin-box" class="stdin-box" bind:value={session.stdinDraft} rows="1"></textarea>
+      <button type="button" class="btn ghost" onclick={feedStdin} disabled={session.collecting}>
+        {session.collecting ? "续跑中…" : "喂入并续跑"}
+      </button>
+    </div>
+  {/if}
+
+  {#if kase}
+    <div class="ref-box">
+      <h3 class="ref-h">与 CLANG GOLDEN 对照</h3>
+      {#if !hasRef}
+        <p class="muted">（本用例未预置参考值）</p>
+      {:else if stale}
+        <p class="muted">（编辑器内容已修改——Clang golden 对照仅对未修改的预置用例有效；可切回用例重新比对）</p>
+      {:else if kase.referenceKind === "stdout"}
+        <div class={goldMatch ? "verdict match" : "verdict mismatch"}>{goldMatch ? "✓ 一致" : "✗ 不一致"}</div>
+        <pre class="ref-pre">Clang golden（预置真值）: {JSON.stringify(kase.referenceOutput ?? "")}
+Vitro 实跑 stdout      : {JSON.stringify(session.outputs.stdout)}</pre>
+      {:else}
+        <div class={goldMatch ? "verdict match" : "verdict mismatch"}>{goldMatch ? `✓ 诊断类别一致（含 ${kase.referenceTrap}）` : "✗ 未复现预期诊断"}</div>
+        <pre class="ref-pre">参考真值：CI 防线对该诊断类别的断言（由 wasm 宿主冒烟与 shadow 防线持续对拍）</pre>
+      {/if}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .rmeta { display: flex; flex-direction: column; gap: 10px; }
+  .stat-row { display: flex; gap: 12px; }
+  .stat-card { flex: 0 0 auto; min-width: 120px; padding: 8px 14px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--pane); display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-size: 11.5px; color: var(--t3); }
+  .stat-value { font: 16px var(--mono); color: var(--t1); }
+  .stdin-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--num); border-radius: 8px; background: var(--pane); }
+  .stdin-label { font: 12px var(--mono); color: var(--num); }
+  .stdin-box { flex: 1 1 auto; min-width: 0; font: 12.5px var(--mono); color: var(--t1); background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 6px; padding: 5px 8px; resize: vertical; }
+  .ref-box { border-top: 1px solid var(--hairline); padding-top: 8px; }
+  .ref-h { font-size: 12.5px; margin: 0 0 6px; }
+  .verdict { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .verdict.match { color: var(--ok); }
+  .verdict.mismatch { color: var(--danger); }
+  .ref-pre { margin: 0; padding: 8px 10px; font: 11.5px var(--mono); color: var(--t2); background: var(--pane); border: 1px solid var(--hairline); border-radius: 6px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+</style>

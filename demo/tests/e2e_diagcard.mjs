@@ -230,6 +230,24 @@ async function run() {
   })()`);
   check("S4 断点关闭（再点全清）", s4b.visible === 0 && s4b.bpline === false, JSON.stringify(s4b));
 
+  // ── S5 断点采集行为（A1，#140）：挂断点后采集必须停在断点——修复前
+  // worker 收 bpLines 后零使用（无 breakpoints.set、循环无 paused 分支），
+  // 采集全程跑完不停。判据走 window.__pilot 单源（stopped 文案 + 帧数
+  // 双判据），是 S4 纯 UI 锚之外的行为面补强。
+  const BPLOOP = 'int main(void) {\n  int s = 0;\n  for (int i = 0; i < 10; i = i + 1)\n    s = s + i;\n  return s;\n}\n';
+  await setEditor(BPLOOP); // 行 4 = 循环体首执行行
+  await clickBp();
+  await clickCollect();
+  let s5 = null;
+  for (let i = 0; i < 60; i++) {
+    s5 = await evaluate(`({ stopped: window.__pilot?.session?.stopped ?? '', frames: window.__pilot?.session?.frames?.length ?? -1 })`);
+    if (s5.stopped) break;
+    await sleep(500);
+  }
+  check("S5 断点采集停在断点（paused 停止 + 文案）",
+    !!s5 && /断点/.test(s5.stopped) && s5.frames > 0, JSON.stringify(s5));
+  await clickBp(); // 清断点还场
+
   const fails = results.filter((r) => !r.ok).length;
   console.log(`\n===== ${results.length - fails}/${results.length} 通过${fails ? "，失败 " + fails + " 项" : ""} =====`);
   ws.close();

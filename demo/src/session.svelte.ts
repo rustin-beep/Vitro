@@ -85,6 +85,19 @@ class SessionState {
   /** 断点行集合（SvelteSet 响应式；编辑器行号点击 toggle、采集时下发给
    *  breakpoints.set——旧栈模块级单例跨用例渗入的病在会话单点关死）。 */
   breakpoints = $state<number[]>([]); // 断点行数组（普通 $state 深响应——SvelteSet 在此链三轮异常后弃用）
+  // ── A2-A8 主链面（#140）─────────────────────────────────────
+  /** 会话配置基准（A4：UI 可写四字段；collect 时 config.set——configHint
+   *  只合并不写回，「下一用例自动恢复基准」旧栈语义）。 */
+  cfg = $state({ deterministic: false, max_steps: 10000000, call_depth_limit: 10000, quarantine_budget: 262144 });
+  argvText = $state(""); // A3：argv 输入框（空格分隔；空则回落用例 argv）
+  cfgMsg = $state(""); // A6：配置应用/覆盖反馈文案（旧栈 cfg-msg 语义）
+  /** A8：run 六字段出口统计（返回码/VM 步数统计卡；编译失败 = null）。 */
+  runStats = $state<{ status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null>(null);
+  stdinDraft = $state("42"); // A2：stdin 输入草稿（旧栈默认 42）
+  /** 当前用例（A7 golden 对照 + configHint/argv 的单源锚）：点课时设置，
+   *  null = 无预置真值（golden 区诚实缺席）。 */
+  currentCase = $state<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[] } | null>(null);
+  appliedCfg = $state.raw<Record<string, unknown> | null>(null); // A5：config.get 回读视图
 }
 
 // ── 持久化初值（读有兜底，写有兜底——persisted 层统一）────────────────
@@ -212,12 +225,26 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
     // 当前内容（liveSource 显式传，禁读 DOM）；单一源在 workspaceFilesForCompile
     // （旧栈 buildCompileParams 同语义，两条通道同口径）
     const files = workspace.active ? workspaceFilesForCompile(source) : undefined;
-    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string }; diagnostics: Diagnostic[]; ppTrace: string[]; compileOk: boolean }>({
+    // A4/A6（#140）：config = UI 基准 + 用例 configHint 一次性合并（hint 不
+    // 写回基准——下一用例自动恢复，旧栈 cfg-msg 语义）
+    const hint = session.currentCase?.configHint as Record<string, unknown> | undefined;
+    const cfg: Record<string, unknown> = { ...session.cfg, ...(hint ?? {}) };
+    if (hint && Object.keys(hint).length > 0) {
+      session.cfgMsg = `本用例临时覆盖 config：${Object.entries(hint).map(([k, v]) => `${k}=${String(v)}`).join("，")}（下一用例自动恢复基准）`;
+    } else {
+      session.cfgMsg = "";
+    }
+    // A3：argv 用户输入优先，空则回落用例声明（旧栈 runParams 同语义）
+    const argvText = session.argvText.trim();
+    const argv = argvText ? argvText.split(/\s+/) : (session.currentCase?.argv as string[] | undefined);
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; versions: { engine: string; protocol: string }; diagnostics: Diagnostic[]; ppTrace: string[]; compileOk: boolean; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null }>({
       op: "collect",
       source,
       cap: session.cap,
       bpLines: [...session.breakpoints],
       files,
+      cfg,
+      argv,
     });
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
@@ -232,6 +259,7 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
       // stopped 留空（编译失败 ≠ trap pill「受检终止」——两态不得混显）
       session.tree = null;
       session.memory = null;
+      session.runStats = null;
       session.perf.collectMs = r.ms;
       session.versions = r.versions;
       const errs = session.diagnostics.filter((d) => d.severity === "error").length;
@@ -243,6 +271,7 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
       return;
     }
     session.tree = buildCallTree(r.frames); // 调用树（帧全集 → trie；物理保留 js/calltree.ts 纯函数）
+    session.runStats = r.run; // A8：返回码/VM 步数统计卡数据源
     // 采集成功即切运行 tab（旧栈单页形态「结果立即可见」的 tab 化等价——
     // 与点课切运行同语义；用户在内存/手册 tab 点采集不该扑空）
     switchTab("run");
@@ -269,6 +298,65 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
 
 export function seek(i: number): void {
   session.idx = Math.max(0, Math.min(i, session.viewFrames.length - 1));
+}
+
+/** A2（#140）：stdin 喂入续跑——waiting_input 态把门；worker 侧 input.feed
+ *  延续 run 后**重建 step 会话全量重采**（feed 改变执行轨迹，前段帧流
+ *  过期），状态写回同 collect 形态。 */
+export async function feedStdin(): Promise<void> {
+  if (session.collecting || !session.runStats?.waiting_input) return;
+  const my = session.epoch;
+  session.collecting = true;
+  session.playing = false;
+  stopTimer();
+  session.status = "喂入续跑中（input.feed + 全量重采）…";
+  try {
+    const r = await rpc<{ frames: StepPayload[]; stopped: string; outputs: { stdout: string; stderr: string; note: string }; ms: number; run: { status: string; return_value: number; steps_executed: number; waiting_input: boolean } | null }>({
+      op: "feed",
+      text: session.stdinDraft,
+      cap: session.cap,
+    });
+    if (my !== session.epoch) return;
+    session.frames = r.frames;
+    session.idx = 0;
+    session.stopped = r.stopped;
+    session.outputs = r.outputs;
+    session.runStats = r.run;
+    session.tree = buildCallTree(r.frames);
+    session.perf.collectMs = r.ms;
+    session.status = r.frames.length
+      ? `喂入后续采 ${r.frames.length} 帧 · 耗时 ${r.ms}ms`
+      : "零帧——程序无步进";
+    if (r.stopped) toast("err", r.stopped);
+    try {
+      const mem = await call<{ [k: string]: unknown }>("memory.regions");
+      session.memory = mem as unknown as import("../js/types.ts").MemoryRegions;
+    } catch { session.memory = null; }
+  } catch (err) {
+    if (my !== session.epoch) return;
+    const msg = "喂入失败：" + String((err as Error).message);
+    session.status = msg;
+    toast("err", msg);
+  } finally {
+    if (my === session.epoch) session.collecting = false;
+  }
+}
+
+/** A4/A5（#140）：config 应用 + config.get 回读。config 在 collect 的
+ *  g.reset()+session.create 后由 collect 显式 config.set——本动作的设置
+ *  作用于当前 gateway 会话（回读即所见），采集始终以 session.cfg 基准
+ *  (+hint) 重设，两条通道不打架。 */
+export async function applyCfg(): Promise<void> {
+  try {
+    await call("config.set", { ...session.cfg });
+    const c = await call<Record<string, unknown>>("config.get");
+    session.appliedCfg = c;
+    session.cfgMsg = `已应用 ✓（deterministic=${String(c.deterministic)}，max_steps=${String(c.max_steps)}，call_depth=${String(c.call_depth_limit)}）`;
+    toast("ok", "会话配置已应用");
+  } catch (err) {
+    session.cfgMsg = "应用失败：" + String((err as Error).message).slice(0, 80);
+    toast("err", session.cfgMsg);
+  }
 }
 
 export function step(delta: number): void {

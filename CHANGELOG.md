@@ -12,6 +12,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(scripts+ci): #120 批① wasm-opt 构建后置——-19.3% raw / -20.4% gzip
+
+- **scripts/wasmopt**（Go 驱动 + wasmopt.mjs 执行器）：binaryen 132
+  npm tarball 钉版本下载（sha256=6543…8618 校验，tools/cache 缓存
+  gitignore，Go 标准库解包零三方依赖）；特征位 = #120 实测可用组合
+  （GC|ReferenceTypes|Strings|BulkMemory|SignExt|MutableGlobals——
+  Features.All 撞 V8 exact-heap-type 在案）；fail loud = 下载/sha256/
+  解包/wasm magic/二跑确定性；sidecar 指纹（<file>.wasmopt.sha256）=
+  跳过依据 + `-check` 新鲜度校验（moon 重建覆盖即红——#123 新鲜度
+  闸的 wasm 面）。binaryen 非 fixpoint（每轮微压 ~17B）——不收敛循环，
+  单轮 + sidecar 即验收形态（J9 篡改证红过）。
+- **接线**：ci.yml build job 产物步后置优化（artifact 即优化版，
+  gates-wasm 四 slice 消费即等价背书）；pages.yml demo 组装同款。
+  moon 增量缓存对产物外部替换无感知（up-to-date 不重建）——下游
+  EnsureFresh 复核不回退，源变更重建后须重跑优化（sidecar -check 抓）。
+- **实测（lean 产物）**：957,906 → 773,015 B（-19.3%）/ gzip 351.6 →
+  278.2 KB（-20.4%）；等价 = vm_diff wasm 全量 440 SAME + cli_smoke
+  三臂 + protocol_frames 47 帧 + serve_smoke 全绿；**demo 部署全量
+  gzip 574.8 → 504.8 KB**（8 文件；langpack 接线后约 +34KB 全功能）。
+
+### feat(diag+gateway+content_data): #130 批③b 诊断卡片拆包——catalog id 化 + 注入通道扩第四段
+
+105 张诊断卡片文本（~23.2KB 中文：title/explanation/common_causes +
+icon id）拆出引擎（lean——catalog 独有文本 wasm 缺席实测；title 短串
+与 parser 内联消息同文属预期重叠）。**wasm 体积 A/B：983,428 →
+957,906 B（-25.5KB）**；langpack js 92.8KB → 200KB（四段全量）。
+
+- **diag 自建装载门**（L1 合法：import util L0）：catalog_texts 空载体
+  + catalog_texts_json 段发射 + install_catalog_texts 段装载（值域闸
+  = catalog_codes——防幽灵码；四字段恰）；ErrorCode::catalog() 由 139
+  臂穷尽 match 退查表（miss=None 与 codes_without_catalog 同语义，
+  push_one/error_catalog 消费面天然 None-safe）；e4_export lean 跳空。
+- **gen_diag 双产物**：catalog_gen.mbt（match+文本）退役，数据产物落
+  content_data/catalog_data_gen.mbt（Map[Int32, CatalogEntry] 字面量，
+  跨包构造经 CatalogEntry::of 契约口）；编译期臂-卡对齐闸转 gen_diag
+  -check 幂等 + content_data 对账锚（105 卡基线 + presence + 内容抽查）。
+- **payload 第四段**：texts.install 顶层键 ⊆ 四段可选集——error_catalog
+  段剥出独立走 diag 装载门（段序 assets 先 diag 后；跨域不回滚=幂等
+  重试语义，登记边界）；ok 帧四表计数。
+- **并段单源**：content_data.baked_payload_json()（install_baked + 四段
+  并装）——langpack texts_json 导出与 wasm 壳启动注入共用。
+- 测试迁移：diag/e4/export README doc 测试全 fixture-install 化（lean
+  载体默认空）；数据面测试（presence/内容抽查/105 基线）迁 content_data。
+
+vm_diff 双臂 440 SAME（装载语义等价）；五闸/smoke/protocol_frames 47
+帧/surface（+14 边-3 过期）/pkg_deps/gen_diag -check/facts 全绿。
+
+### feat(teaching+gateway+cmd): #130 批③a 教学表物理拆包——lean 引擎落地 + DCE 实证
+
+suggestions（43 族 5.0KB）+ builtin_notes（12 臂 1.5KB）拆出引擎
+（teaching/content_data 数据包）；trap_messages 留 assets 烘焙
+（#120 切分线裁定：trap 帧即时渲染、{name} 引擎填）。
+
+- **content_data 新包（L6）**：两表 @generated 产物 + install_baked()
+  （43 臂穷尽 match 名单闸随数据走）+ 契约锚四条（12 臂/43 键基数 +
+  名单↔烘焙表对账 + 装载功能性）。管线路径连坐：teaching_gen_check
+  spec 表分流 / teaching_reconcile 装配点路径与提取正则
+  （builtin_notes.get → note_count/note_param graceful 新形态）。
+- **assets 载体化**：两表空 Map 载体 + BuiltinNote pub(all)（生成物跨包
+  构造，parser 发射 @assets. 前缀、struct 出 gen）；install_texts 的
+  trap 段改**可选**（缺席=不碰烘焙——host 侧 trap 消费是 unwrap 语义，
+  防语言包误清空致运行期 panic）。
+- **typeck graceful**：21 处 .unwrap() → note_count/note_param 助手
+  （lean 空表降级通用文案，E 码与诊断行为不变——空文案诚实暴露）。
+- **八路 exe main 接 install_baked**（vitro/vitro_js/vitro_wasm/serve/
+  run/compile/step/dump_typeck/dump_compile）+ langpack 导出前装载。
+- **对账链重构**：steps catalog 锚改对 known_suggestion_keys（catalog ≡
+  名单〔steps〕+ 名单 ≡ 烘焙表〔content_data〕链式证明——wbtest 不可
+  import content_data 且 gateway 禁 import〔否则烘焙数据进浏览器 wasm，
+  lean 失效〕，fixture-install 技法解 typeck/gateway 测试态）。
+- **DCE 实证**：wasm 产物 builtin note 文本缺席、suggestion 真源正文
+  4/4 缺席、trap 模板与 display_name 在场（结构事实留引擎）——lean
+  链路端到端成立；语言包 js 92.8KB 携带全部数据。
+
+vm_diff 双臂 440 SAME（native 壳内装载 + wasm 壳协议注入——烘焙语义
+等价实证）；五闸/smoke/surface（+17 边）/pkg_deps（45 包）/reconcile
+（J9 自检过）/facts 全绿。
+
+### feat(gateway+cmd/vitro_wasm): #130 批② 注入通道——texts.install 协议方法 + CLI wasm 壳启动注入
+
+语言包装载门的协议半边（批① install_texts 单源的消费接线）：
+
+- **`texts.install` 协议方法**：`{payload:string}`（texts_json 同 schema）
+  → install_texts 单源装载；成功 ok 帧带三表装后计数，失败 error 帧
+  （kind=texts）不落半装。红锚三条先行（ok 帧往返幂等/坏载荷 error
+  帧表保持原状/缺参 error 帧）。浏览器宿主与 CLI wasm 臂同一条注入
+  路径（不另设 wasm 导出面——invoke 通道承载，面更小）。
+- **CLI wasm 壳启动注入**（cmd/vitro_wasm）：装载后 invoke texts.install
+  ——今日与产物内烘焙幂等（内容相同零行为差，vm_diff wasm 臂 440 SAME
+  实证），批③ lean 拆包后本通道承重；失败 stderr 明示不阻断。
+- **api 面连坐**：gen_api_help rules +30 方法（texts.install）再生；
+  protocol_frames 基线 47 帧内容位更新（--update-baseline）；CLI 手册
+  方法表 + 字段↔最低版本表（HEAD 未发布）+ 计数 21+4→30。
+- surface 边表：gateway→assets 六边 + cmd/vitro_wasm→assets 一边登记；
+  install_texts 白名单条目退役（已有消费者）。
+
+### feat(teaching/assets+langpack): #130 批① 装载门——三表可覆盖化 + 语言包 js 载体
+
+引擎侧半边（红锚先行，#130 七轮收敛裁定 + #120 补充节切分线的落地件）：
+
+- **`texts_json()`**：三表（suggestions/builtin_notes/trap_messages）现值
+  → 规范 JSON（键 str_cmp 字典序、字段序固定、compact）——语言包 js
+  模块的导出载体，浏览器懒加载注入的内容形态。
+- **`install_texts(payload)`**：装载门——解析 + 三段校验（schema 严格
+  恰三键 / suggestions 值域闸 43 名单 / trap 占位符双向契约）全过后
+  **原子换装**：三 Map 原地 clear+refill（`pub let` 对象同一性保持——
+  steps/typeck/trace_analyzer 全部消费面零改动即见覆盖）。拒绝即整体
+  不装（禁半装）；空对象合法（lean/空文案诚实暴露的装载通道）。
+- **`known_suggestion_keys`**：43 族算法 id 名单——引擎侧结构事实
+  （非文案，切分线留引擎），lean 形态下仍约束装载键域。
+- **`teaching/langpack`**：语言包 js 出口壳（foreign_library 单目标
+  +js，gateway/wasm 同款拆包配方）——宿主动态 `import()` 本产物 →
+  `texts_json()` → 引擎 `install_texts`。实测：模块 88.6KB / payload
+  17.9KB UTF-8（gzip 6.4KB / brotli 5.3KB）。
+- **契约单源收编**：contract_wbtest 的占位符提取器收编为
+  texts_io.mbt 单源（契约锚与装载校验同一判据，分叉即互红）。
+
+红锚四条（install_wbtest）：往返幂等（texts_json→install→逐字节
+不变）/ 覆盖可见+可恢复（改一条 suggestion、删一条 trap → 即时反映
+→ 原载荷回装全量回位）/ fail loud 三态（坏 JSON、未知键、占位符不符
+均 raise 且不落半装）/ 名单↔烘焙表双向对账。
+
+烘焙启动态不变（native/CLI 零变化）；lean 双形态拆包（数据包分离 +
+DCE）与 gateway 协议接线（texts.install）随后续批。
+
 ### fix(parser+typeck+codegen+vm+bytecode): LLM 语料探针批修复——#134/#135/#136/#137/#138 十病全清（2026-10-17）
 
 四模型语料探针批（4 模型 × 提示词 × 采样，双臂一致判定）产出的五条 issue

@@ -43,7 +43,8 @@ concurrency:
 #   build-and-unit = 准入（编译/单测坏）——下游全 needs 它
 #   gates-diff     = 行为差分（matrix 六实例独立）
 #   gates-native   = 消费 exe 的协议/冒烟族
-#   gates-wasm     = wasm 臂族 + cli smoke
+#   gates-wasm     = wasm 臂族 + cli smoke（matrix 四实例独立，2026-10-17
+#                    拆分——原单 job 串行链红遮红实锤后收口）
 #   static-gates   = 纯对账/生成器闸（无产物依赖——与 build 并行）
 #   hygiene        = 记账型（fmt/四 target test/环境探针）
 #
@@ -131,6 +132,21 @@ jobs:
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
+      - name: Install Node (wasmopt supply)
+        # #120 批①（2026-10-17）：wasm-opt 构建后置——binaryen JS API 经
+        # node 执行（供给钉版本下载到 tools/cache，sha256 校验）。
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: wasm-opt post-build (artifact source)
+        # 产物出口后置优化（#120 批①）：-19.3% raw / -20.4% gzip（lean
+        # 产物实测）；等价性背书 = 下游 gates-wasm 四 slice（vm_diff wasm
+        # 全量 440 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
+        # 消费本优化产物。二跑确定性自检内置；sidecar 指纹随产物进
+        # artifact（wasmopt -check 可验）。moon 增量缓存对产物外部替换
+        # 无感知（判 up-to-date 不重建）——下游 EnsureFresh 复核不回退。
+        shell: bash
+        run: go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
         # 产物检查消费（cmd/vitro_js/vitro_js.js）。
@@ -365,16 +381,32 @@ jobs:
       # step_budget 40 → exit 1（首现缺失）。
 
   gates-wasm:
-    name: wasm-arm gates & CLI smoke
+    name: wasm-arm gate (${{ matrix.slice }})
     needs: build-and-unit
     runs-on: windows-latest
+    strategy:
+      # 闸级可见性全开：四实例互不取消（一红不见其余）——gates-diff 同款
+      # 治理线收口（2026-10-17）：原单 job 串行十步，实锤 clang_direct wasm
+      # 臂红 → serve 通道四臂全 skipped（红被前面的红吞掉）。拆分后各臂
+      # 独立红绿；墙钟从串行和降为最重实例封顶（vm_diff wasm 全语料）。
+      fail-fast: false
+      matrix:
+        include:
+          - slice: vm_diff
+          - slice: clang_direct
+          - slice: cli_smoke
+          - slice: serve_channel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum
-      - name: Install Node 24
+      # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
+      # host.js 判定面在 25 上定版——版本走 .node-version 单点（#132 批
+      # 降 LTS 24）。体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚
+      # 手工数字教训）。
+      - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -394,28 +426,52 @@ jobs:
           path: moonbit/_build
       # protocol_frames wasm 臂读 rules.json——已随 #125 批 B 入库为真源
       # （.json.mbt 出库），本 job 的 jsonmbt clone/build/再生步随之摘除。
+      # 四 slice 共享 build-products（wasm.wasm + native exe 集 +
+      # vitro_js.js）；vitro_wasm.js 壳不在 artifact——由各驱动自带
+      # EnsureFresh 现场建（freshness 单源，#41 毒化机判）。
 
-      - name: wasm-gc gateway build + Node host smoke (Exit 2)
-        # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
-        # host.js 两段式实例化兼容 22 系但判定面在 25 上定版——pin 25。
-        # 体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚手工数字教训）
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      - name: wasm-gc gateway build + Node host smoke (run)
+      # ── slice serve_channel = host.js 冒烟（G2）+ serve 通道 wasm 臂 ──
+      # host.js 冒烟（R4：出口 2 守护——wasm32 ABI 导出 + capi 全链路，
+      # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）归本
+      # 实例：wasm 产物本身健康的最直接哨兵，serve 四臂同消费 gateway
+      # 产物（重建步保持原语义）。
+      - name: wasm-gc gateway build + Node host smoke
+        if: matrix.slice == 'serve_channel'
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
           node scripts/wasm_gateway/host.js
         shell: bash
 
+      # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
+      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
+      # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
+      - name: replay wasm arm (shell serve)
+        if: matrix.slice == 'serve_channel'
+        run: go run ./scripts/replay --backend wasm
+        shell: bash
+      - name: serve_smoke wasm arm (shell serve)
+        if: matrix.slice == 'serve_channel'
+        run: go run ./scripts/serve_smoke --backend-wasm
+        shell: bash
+      - name: protocol_frames wasm arm (shell serve)
+        if: matrix.slice == 'serve_channel'
+        run: go run ./scripts/protocol_frames --backend-wasm
+        shell: bash
+      - name: teaching_annotation_diff wasm arm (shell serve)
+        if: matrix.slice == 'serve_channel'
+        run: go run ./scripts/teaching_annotation_diff --backend-wasm
+        shell: bash
+
+      # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──
       # 统一 CLI 入口闸（#49 批一，2026-10-06）：wasm 壳（scripts/vitro_cli/
       # main.js）四子命令 rc 契约 + **双臂同形对拍**（壳 vs native cmd/vitro
       # exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize 特例；
       # 唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
-      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = 上一步 gateway wasm
-      # 产物 + 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）+ Go
-      # （core job 天然）+ node 25（上方 setup-node）。
+      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = gateway wasm 产物
+      # （artifact）+ 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）
+      # + Go + node（上方公共步）。
       - name: unified CLI smoke (wasm shell vs native exe)
+        if: matrix.slice == 'cli_smoke'
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
           go run ./scripts/vitro_cli_smoke --corpus 30
@@ -427,45 +483,24 @@ jobs:
       # 两路内存注入证红。前置：node（上方）+ native vitro（上一步）+ js
       # 产物 EnsureFresh 自建。
       - name: algorithms.catalog three-way check (dual-arm)
+        if: matrix.slice == 'cli_smoke'
         run: go run ./scripts/teaching_annotation_diff --catalog-check
         shell: bash
 
+      # ── slice vm_diff / clang_direct = 差分双闸 wasm 臂（全语料）───────
       # 防线 wasm 臂（#49 批二段三：实证面搬家——vm_diff/clang_direct 被测物
       # 切统一入口壳消费 gateway wasm.wasm）：三联（stdout/退出码/1MB 映像）
-      # 与冻结 golden 全量对拍。前置 = 上方 gateway wasm 产物 + node 25 +
-      # Go（core 天然）；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
+      # 与冻结 golden 全量对拍。前置 = gateway wasm 产物（artifact）+ node +
+      # 工具链；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
       # 全量各 ~80s（本地实测 609/704 例）。
       - name: vm_diff wasm arm (gateway product vs frozen golden)
+        if: matrix.slice == 'vm_diff'
         run: go run ./scripts/vm_diff --backend wasm
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
+        if: matrix.slice == 'clang_direct'
         run: go run ./scripts/clang_direct --backend wasm
         shell: bash
-
-      # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
-      # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
-      # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置同上（gateway wasm + node 25）。
-      - name: replay wasm arm (shell serve)
-        run: go run ./scripts/replay --backend wasm
-        shell: bash
-      - name: serve_smoke wasm arm (shell serve)
-        run: go run ./scripts/serve_smoke --backend-wasm
-        shell: bash
-      - name: protocol_frames wasm arm (shell serve)
-        run: go run ./scripts/protocol_frames --backend-wasm
-        shell: bash
-      - name: teaching_annotation_diff wasm arm (shell serve)
-        run: go run ./scripts/teaching_annotation_diff --backend-wasm
-        shell: bash
-
-      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
-      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
-      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。复用上方
-      # wasm-gc 构建产物；J9 证红：篡改 cases.js golden 即红（已留痕）。
-      # TS 重写批（2026-10-04，refs #28）：demo/js 产物不入库——消费产物的
-      # 步骤一律前置发射（npm ci + tsc，发射即检查闸；本步的 method 消费面
-      # 扫描读 .ts 源不依赖产物，但运行依赖 wasm 与 cases 均在，故本步
-      # 排在下方发射步之后语义更清晰——实排见 lint 步后）。
   static-gates:
     name: Static contract & bookkeeping gates (no build products)
     runs-on: windows-latest
@@ -956,6 +991,24 @@ jobs:
         run: cd demo && npm run lint
         shell: bash
 
+      # wasm 是构建期资产（engine.worker.ts ?url——#139 同款 fail loud）：
+      # build-products artifact 已含 wasm-gc 产物，vite build 前就位。
+      # 此前漏本 job 的 cp → CI vite build 红；Pages job 因有前置 cp 而绿
+      # ——同坑两处只堵一处的教训（62f75d3d CI 首跑实锤）。
+      - name: demo wasm asset in place (build-time asset)
+        shell: bash
+        run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+
+      # 语言包懒加载产物（#130 批② demo 接线）：engine.worker 动态 import
+      # demo/teaching/langpack/langpack.js（vite 懒 chunk，缺失即 build 红
+      # ——与 wasm 同款 fail loud），moon js target 现场构建后 cp。
+      - name: demo langpack asset (moon js target → cp)
+        shell: bash
+        run: |
+          cd moonbit && moon build --release --target js teaching/langpack
+          mkdir -p ../demo/teaching/langpack
+          cp _build/js/release/build/teaching/langpack/langpack.js ../demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
+
       - name: F4 vite build (build success gate)
         run: cd demo && npm run build
         shell: bash
@@ -973,6 +1026,11 @@ jobs:
           cd .. && node --test demo/tests/e08.test.mts
         shell: bash
 
+      # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
+      # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
+      # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。J9 证红：篡改
+      # cases.js golden 即红（已留痕）。（原注释随 gates-wasm 拆分批从该
+      # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
       - name: demo page smoke (protocol-level, cases golden + field keys)
         run: node scripts/demo_smoke/main.js
         shell: bash

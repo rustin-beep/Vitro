@@ -60,6 +60,17 @@ jobs:
 
       - name: Build wasm-gc gateway (release)
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
+      - name: wasm-opt post-build
+        # #120 批①（2026-10-17）：与 ci.yml build job 同款构建后置优化
+        # （binaryen 132 钉版本 + sha256；-19.3% raw 实测）——demo 资产
+        # 与 CI 防线消费同一优化形态产物。
+        run: go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+
+      # 语言包懒加载产物（#130 批② demo 接线）：engine.worker 动态 import
+      # demo/teaching/langpack/langpack.js——vite 懒 chunk 缺失即 build 红，
+      # 与 wasm 同款前置 cp。
+      - name: Build langpack (moon js target)
+        run: cd moonbit && moon build --release --target js teaching/langpack
 
       # gen_demo_algorithms 读 scripts/teaching_annotation_diff/rules.json——
       # 已随 #125 批 B 入库为真源（.json.mbt 出库），本 job 的 jsonmbt
@@ -82,6 +93,8 @@ jobs:
           # 才拷 = 资产化缺失，Pages 404 且 boot 静默，#139）。产物经
           # hashed assets/ 分发，不再向 demo-dist 根裸拷。
           cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js  # 仅 .js（d.ts 相对引用不拷）
           # 新栈 = vite 唯一构建（demo/index.html + src/ → dist/）——旧栈
           # （app.ts/style.css/js 十一模块）已退役；base=./ 相对路径适配
           # Pages 项目页子路径。

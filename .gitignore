@@ -203,3 +203,6 @@ demo/dist-e08/
 
 # 课程叙述层生成物（#120 内容管线）：CI 现场发射，不入库（对齐 algorithms.js 形态）
 demo/src/data/lessons.ts
+
+# wasmopt 供给缓存（钉版本下载物——不入库）
+tools/cache/

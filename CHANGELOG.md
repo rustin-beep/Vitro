@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts): 差分双闸 Moon 侧运行看门狗——云端 wasm 臂永挂收口（2026-10-17）
+
+`clang_direct`/`vm_diff` 的 MoonBit 侧单例调用原为裸 `cmd.Run()`（Clang 侧
+素有 10s 杀钟 + 防毒化语义，Moon 侧无）——单例子进程卡死即全闸永挂。云端
+实发：run 39011732904 的 `clang_direct wasm arm` 步 26 分钟不退（同 run 的
+vm_diff wasm 臂 3m13s 正常、native 臂 94s 正常、本地同提交两次复跑全绿
+不可复现——runner 实例级单例 node 壳卡死）。收口：两闸同位点加 120s
+看门狗（AfterFunc + Kill），超时 → `// RUN-TIMEOUT` 进 stdout + memoryPath
+空 → 比对层双证（digest 差异 + 映像缺失）响亮红、闸跑完非永等
+（fail loud 非 fail forever）。注入死循环壳仿真实证：恰 120s 杀钟生效、
+闸 rc=1 完成。挂死 run 已取消。
+
 ### feat(teaching+vm+scripts): #51 批①词表闸 + 批②首片 ty=2 交换事件——前端 F4 两处未入库交付物补齐（2026-10-17）
 
 【批②首片：`vis_events` ty=2（相邻交换）产出（#51 §已知限制 #3 收口）】

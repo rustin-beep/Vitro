@@ -81,6 +81,7 @@ import (
 	"sort"
 	"strings"
 
+	"time"
 	"vitro/scripts/internal/freshness"
 )
 
@@ -792,7 +793,21 @@ func runMoonBit(path string) *result {
 	var se bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &se
+	// 运行期看门狗（2026-10-17，与 clang_direct moonRunTimeout 同款收口）：
+	// 裸 `_ = cmd.Run()` 下单例子进程卡死 = 全闸永挂（云端 clang_direct
+	// wasm 臂实发 26 分钟：node 壳不退、无杀钟）。120s 超时 → // RUN-TIMEOUT
+	// 进 stdout → digest 差异响亮红，闸跑完非永等。
+	moonTimedOut := false
+	timer := time.AfterFunc(120*time.Second, func() {
+		moonTimedOut = true
+		_ = cmd.Process.Kill()
+	})
 	_ = cmd.Run()
+	timer.Stop()
+	if moonTimedOut {
+		fmt.Fprintf(os.Stderr, "vm_diff: Moon 侧运行超时（120s）：%s\n", path)
+		return &result{stdout: "// RUN-TIMEOUT"}
+	}
 	combined := out.String()
 	for _, l := range strings.Split(se.String(), "\n") {
 		if !strings.HasPrefix(l, "[vitro] backend=") {

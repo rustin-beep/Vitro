@@ -82,6 +82,11 @@ const clangRetry = 3
 
 const clangRunTimeout = 10 * time.Second
 
+// moonRunTimeout：MoonBit 侧（native exe / node 壳）单例运行杀钟——引擎
+// corpus run 毫秒级，120s 已容 runner 尖峰；超时非确定结果，不落缓存
+// （Moon 侧本无缓存，比对层双证红）。
+const moonRunTimeout = 120 * time.Second
+
 // 语料集（2026-09-27 扩容：+codegen_skeleton 13〔原 codegen_diff 专用，可运行 C
 // 顺手纳入〕+cases_template_generated 82〔shadow 五目录差值，用户调查缺口〕；
 // 元素为相对仓库根路径——含路径分隔符时原样使用，裸名仍拼 cases/ 前缀兼容
@@ -676,7 +681,24 @@ func runMoon(c caseRef) *moonResult {
 	var se bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &se
+	// 运行期看门狗（2026-10-17 云端 wasm 臂挂死收口，run 39011732904）：
+	// Clang 侧有 clangRunTimeout 杀钟，Moon 侧原样 `_ = cmd.Run()` 裸等——
+	// 单例子进程卡死（CI runner 实发：node 壳 26 分钟不退，本地两次复跑
+	// 同提交全绿不可复现）= 全闸永挂。120s 极宽（引擎单例 corpus run 毫秒
+	// 级 + node 壳启动 ~0.3s）；超时 → // RUN-TIMEOUT 进 stdout（非标记
+	// 剥除面 → 比对 DIFF 响亮红）+ memoryPath 空 → 「映像缺失」双证——
+	// 闸继续跑完而非永等（fail loud 非 fail forever）。
+	moonTimedOut := false
+	timer := time.AfterFunc(moonRunTimeout, func() {
+		moonTimedOut = true
+		_ = cmd.Process.Kill()
+	})
 	_ = cmd.Run()
+	timer.Stop()
+	if moonTimedOut {
+		fmt.Fprintf(os.Stderr, "clang_direct: Moon 侧运行超时（%v）：%v\n", moonRunTimeout, c.rel)
+		return &moonResult{stdout: "// RUN-TIMEOUT"}
+	}
 	s := out.String()
 	for _, l := range strings.Split(se.String(), "\n") {
 		if !strings.HasPrefix(l, "[vitro] backend=") {

@@ -137,8 +137,12 @@ fn BytecodeGen::emit_static_init(
         )
         return
       }
+      // #137 缺陷 1 连坐（2026-10-17）：一维 char 限定——二维 char
+      // （static char t[2][8] = {"xy","zw"}）走下方 flatten_global_init
+      //（StringLiteral char[] 臂字节直写）；旧无维数限定 flatten 静默 0
       let is_char_array = match vty {
-        Array(element, _, _, _, _, _) => element.kind() is TK_Char
+        Array(element, _, dims, _, _, _) =>
+          element.kind() is TK_Char && dims.length() == 1
         _ => false
       }
       if is_char_array {
@@ -149,6 +153,10 @@ fn BytecodeGen::emit_static_init(
             (global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
           )
         }
+      } else if vty.is_array() &&
+        vty.base_element_type().kind() is TK_Char &&
+        vty.dims().length() > 1 {
+        self.flatten_global_init(vty, init, global_offset.reinterpret_as_uint())
       } else if vty.kind() is TK_Struct ||
         vty.kind() is TK_Union ||
         (
@@ -517,8 +525,14 @@ fn BytecodeGen::emit_local_array_init(
       self.emit(@opcode.OpCode::PushConst, local_offset, loc)
       self.emit(@opcode.OpCode::Add, 0, loc)
       self.emit(@opcode.OpCode::StoreLocal, base_temp, loc)
+      // #137 缺陷 1（2026-10-17）：一维 char 限定 dims.length()==1——
+      // Array 的 element 字段是最内元素类型（char t[2][8] 也是
+      // element=Char + array_size=16 扁平数），旧判定对二维也命中，
+      // 提前走 flatten_init_list 把 StringLiteral 落静默 0 兜底写满
+      // 零字节（[%s] 读空串实锤）；二维 char 行分发到下方嵌套轨
       let is_char_array = match vty {
-        Array(element, _, _, _, _, _) => element.kind() is TK_Char
+        Array(element, _, dims, _, _, _) =>
+          element.kind() is TK_Char && dims.length() == 1
         _ => false
       }
       if is_char_array {
@@ -536,9 +550,16 @@ fn BytecodeGen::emit_local_array_init(
       }
       let inner_ty = vty.subscript_type()
       let has_nested_init = elements.exists(e => e.value is InitList(_, _, _))
+      // #137 缺陷 1（2026-10-17）：元素含字符串字面量（char t[][8] =
+      // {"Alice","Bob"}，C11 §6.7.9p14）同走嵌套分发行——gen_nested_init
+      // 的 char[N] 直写臂承接；旧落 emit_flat_array_init 的 gen_expr 把
+      // 字面量当指针值 StoreMem（垃圾）
+      let has_string_elem = elements.exists(e => {
+        e.value is StringLiteral(_, _, _)
+      })
       // 病 55 codegen 连坐（2026-10-13）：union 元素嵌套 InitList 同路径
       //（typeck 侧 check_array_elem_value 同日扩 TK_Union——两层同漏）
-      if has_nested_init &&
+      if (has_nested_init || has_string_elem) &&
         (
           inner_ty.kind() is TK_Struct ||
           inner_ty.kind() is TK_Union ||

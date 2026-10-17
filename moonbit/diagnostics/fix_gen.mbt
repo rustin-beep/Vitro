@@ -178,7 +178,15 @@ fn fix_3041_member_access(message : String) -> FixOutcome {
       text: "",
     }
   }
-  if message.contains("->") {
+  // #134（2026-10-17）：运算符一致性错误两新形态按特征词分向——
+  // 旧 contains("->") 判据对新形态失效（'.' 误用文案同样含 "->" 字样）
+  if message.contains("要求指针左操作数") {
+    manual(
+      "结构体变量应使用 '.' 而不是 '->'，建议将 '->' 改为 '.'",
+    )
+  } else if message.contains("要求结构体/联合体左操作数") {
+    manual("指针应使用 '->' 而不是 '.'，建议将 '.' 改为 '->'")
+  } else if message.contains("->") {
     manual(
       "结构体变量应使用 '.' 而不是 '->'，建议将 '->' 改为 '.'",
     )

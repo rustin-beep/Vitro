@@ -118,7 +118,7 @@ pub(all) enum Expr {
   Call(String, Array[Expr], @source.SourceLoc, Type) // name, args
   CallPtr(Expr, Array[Expr], @source.SourceLoc, Type) // callee, args
   Index(Expr, Expr, @source.SourceLoc, Type) // array, index
-  Member(Expr, String, @source.SourceLoc, Type) // object, member
+  Member(Expr, String, Bool, @source.SourceLoc, Type) // object, member, is_arrow（#134：. 与 -> 运算符位）
   Assign(AssignOp, Expr, Expr, @source.SourceLoc, Type)
   Ternary(Expr, Expr, Expr, @source.SourceLoc, Type) // cond, then, else
   Sizeof(Type?, Expr?, @source.SourceLoc, Type) // target_type, operand
@@ -163,7 +163,7 @@ pub fn Expr::loc(self : Expr) -> @source.SourceLoc {
     | Call(_, _, loc, _)
     | CallPtr(_, _, loc, _)
     | Index(_, _, loc, _)
-    | Member(_, _, loc, _)
+    | Member(_, _, _, loc, _)
     | Assign(_, _, _, loc, _)
     | Ternary(_, _, _, loc, _)
     | Sizeof(_, _, loc, _)
@@ -196,7 +196,7 @@ pub fn Expr::ty(self : Expr) -> Type {
     | Call(_, _, _, ty)
     | CallPtr(_, _, _, ty)
     | Index(_, _, _, ty)
-    | Member(_, _, _, ty)
+    | Member(_, _, _, _, ty)
     | Assign(_, _, _, _, ty)
     | Ternary(_, _, _, _, ty)
     | Sizeof(_, _, _, ty)

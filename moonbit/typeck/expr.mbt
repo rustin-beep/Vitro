@@ -159,8 +159,8 @@ pub fn TypeChecker::resolve_expr_type(
     }
     Identifier(name, loc, id_ty) => self.resolve_identifier(name, loc, id_ty)
     Index(array, index, loc, _) => self.resolve_index(array, index, loc)
-    Member(object, member_name, loc, _) =>
-      self.resolve_member(object, member_name, loc)
+    Member(object, member_name, is_arrow, loc, _) =>
+      self.resolve_member(object, member_name, is_arrow, loc)
     Literal(_, _, ty) => (self.resolve_literal_ty(ty), expr)
     FloatLiteral(_, _, ty) => (self.resolve_float_literal_ty(ty), expr)
     // 病 117（≡59）：保留节点自带类型——u 后缀值域定型（uint 域/ULL）的
@@ -356,14 +356,40 @@ fn TypeChecker::resolve_index(
 ///|
 /// 成员访问（struct/union 字段查表 + 指针自动解引；E3041/E3042；
 /// class 字段与访问控制为 C++ 剔除登记）。
+/// #134（2026-10-17）：运算符一致性检查——`->` 要求指针左操作数、
+/// `.` 要求 struct/union 左操作数；旧两运算符同落 Member 无标记，
+/// `r->id`（r 非指针）按 `.` 处理、`p.id`（p 指针）按 `->` 处理，
+/// 双向零诊断放行（clang 均 error：member reference type ... is not
+/// a pointer / not a structure）。报错后按 int 定型继续（E3041 同构）。
 fn TypeChecker::resolve_member(
   self : TypeChecker,
   object : @ast.Expr,
   member_name : String,
+  is_arrow : Bool,
   loc : @source.SourceLoc,
 ) -> (@ast.Type, @ast.Expr) {
   let (obj_type, new_object) = self.resolve_expr_type(object)
   let obj_kind = obj_type.kind()
+  // #134 运算符一致性：先于目标判定报（E3041）——is_arrow 与左操作数
+  // 指针性必须一致；报错后仍走既有 target 判定降级路径（int 定型续检）
+  if is_arrow && !(obj_kind is TK_Pointer) {
+    let kind_str = if obj_kind is TK_Struct || obj_kind is TK_Union {
+      "结构体/联合体"
+    } else {
+      "非指针"
+    }
+    self.report_error(
+      "'->' 要求指针左操作数，但左侧是\{kind_str}类型（是否要用 '.'？）",
+      loc,
+      E3041_MemberNonStruct,
+    )
+  } else if !is_arrow && obj_kind is TK_Pointer {
+    self.report_error(
+      "'.' 要求结构体/联合体左操作数，但左侧是指针（是否要用 '->'？）",
+      loc,
+      E3041_MemberNonStruct,
+    )
+  }
   // 目标类型名 + struct/union 判定（含指针解引；Reference 解引为 C++ 剔除；
   // E3041 报错后按 int 定型继续——Rust 同构）
   let target : (String, Bool)? = if obj_kind is TK_Struct ||
@@ -394,7 +420,13 @@ fn TypeChecker::resolve_member(
       )
       return (
         @ast.Type::int(),
-        @ast.Expr::Member(new_object, member_name, loc, @ast.Type::int()),
+        @ast.Expr::Member(
+          new_object,
+          member_name,
+          is_arrow,
+          loc,
+          @ast.Type::int(),
+        ),
       )
     }
   }
@@ -430,7 +462,7 @@ fn TypeChecker::resolve_member(
   } else {
     ty
   }
-  (ty, Member(new_object, member_name, loc, ty))
+  (ty, Member(new_object, member_name, is_arrow, loc, ty))
 }
 
 ///|

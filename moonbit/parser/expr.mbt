@@ -591,7 +591,12 @@ fn Parser::parse_postfix(self : Parser, depth : Int32) -> @ast.Expr {
       ignore(self.consume(RParen, "预期 ')'"))
       let loc = self.prev_loc()
       expr = @ast.Expr::CallPtr(expr, args, loc, @ast.Type::void_type())
-    } else if self.match_token(Dot) || self.match_token(Arrow) {
+    } else if self.check(Dot) || self.check(Arrow) {
+      // #134（2026-10-17）：运算符位落 AST（is_arrow）——旧两 token 同落
+      // Member 无标记，typeck 无从判 `r->id`（r 非指针）/`p.id`（p 指针）
+      // 的运算符误用，双双零诊断放行（clang 均 error）
+      let is_arrow = self.check(Arrow)
+      ignore(self.advance())
       let member_tok = self.consume(Identifier, "预期成员名称")
       let loc = self.prev_loc()
       // C++ 模式下检查是否是方法调用：obj.method(args)
@@ -612,6 +617,7 @@ fn Parser::parse_postfix(self : Parser, depth : Int32) -> @ast.Expr {
         expr = @ast.Expr::Member(
           expr,
           member_tok.text,
+          is_arrow,
           loc,
           @ast.Type::void_type(),
         )

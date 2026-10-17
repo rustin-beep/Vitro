@@ -304,10 +304,24 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
               // 变量域全 miss → 函数名作值（函数指针；从臂头挪来——issue #21）
               match self.func_index.get(name) {
                 Some(idx) => self.emit(@opcode.OpCode::PushConst, idx, loc)
-                None => {
-                  self.report_error("未声明的标识符 '\{name}'", loc)
-                  self.emit(@opcode.OpCode::PushConst, 0, loc)
-                }
+                None =>
+                  // #136 缺陷 3（2026-10-17）：host_rerouted 六函数
+                  //（strcmp/strcpy/strcat/strncpy/memcpy/memmove）不进
+                  // func_index（病 45 改判 Host），取地址压 Host 编码段
+                  //（HOST_FUNC_PTR_BASE + host_id）；VM CallPtr 对该段
+                  // 转 execute_host_func——旧落「未声明的标识符」误拒
+                  match @bytecode.host_func_id_by_user_name(name) {
+                    Some(host_id) =>
+                      self.emit(
+                        @opcode.OpCode::PushConst,
+                        @bytecode.HOST_FUNC_PTR_BASE + host_id,
+                        loc,
+                      )
+                    None => {
+                      self.report_error("未声明的标识符 '\{name}'", loc)
+                      self.emit(@opcode.OpCode::PushConst, 0, loc)
+                    }
+                  }
               }
           }
         }
@@ -327,7 +341,7 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
     CallPtr(callee, args, _, ret_ty) =>
       self.gen_call_ptr(callee, args, ret_ty, loc)
     Index(array, index, _, ty) => self.gen_index(array, index, ty, loc, false)
-    Member(object, member_name, _, ty) =>
+    Member(object, member_name, _, _, ty) =>
       self.gen_member_expr(object, member_name, ty, loc)
     Ternary(cond, then_branch, else_branch, _, _) =>
       self.gen_ternary_expr(cond, then_branch, else_branch, loc)

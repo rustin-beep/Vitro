@@ -217,6 +217,24 @@ fn VitroVM::execute_control_flow(
         self.trap("CallPtr: 栈下溢（缺少函数索引）", line, column)
       } else {
         let func_idx = self.pop().to_uint()
+        // #136 缺陷 3（2026-10-17）：Host 编码段（HOST_FUNC_PTR_BASE +
+        // host_id，codegen 取 host_rerouted 函数地址所压）转
+        // execute_host_func——参数栈布局与 CallHost 一致（CallPtr 已弹
+        // argc 与指针值，栈顶即实参）；waiting_input 的 ip/步数回退
+        // 对齐 CallHost 臂同款语义
+        if func_idx.reinterpret_as_int() >= @bytecode.HOST_FUNC_PTR_BASE {
+          self.execute_host_func(
+            func_idx.reinterpret_as_int() - @bytecode.HOST_FUNC_PTR_BASE,
+            line,
+            column,
+          )
+          if self.waiting_input {
+            self.ip = self.ip - 1
+            self.step_count = self.step_count - 1
+            return Some(WaitingInput)
+          }
+          return None
+        }
         match self.func_table.get(func_idx.reinterpret_as_int()) {
           Some(Some(_)) =>
             self.do_call(func_idx.reinterpret_as_int(), line, column, "CallPtr")

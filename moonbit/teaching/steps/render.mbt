@@ -63,7 +63,7 @@ pub fn expr_to_string(expr : @ast.Expr) -> String {
     CallPtr(_, _, _, _) => "fp(...)"
     Index(array, index, _, _) =>
       "\{expr_to_string(array)}[\{expr_to_string(index)}]"
-    Member(object, member_name, _, _) =>
+    Member(object, member_name, _, _, _) =>
       "\{expr_to_string(object)}.\{member_name}"
     Assign(op, left, right, _, _) => {
       let op_str = match op {

@@ -666,7 +666,36 @@ fn Parser::parse_switch_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
 fn Parser::parse_case_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
   let loc = self.cur_loc()
   let label : @ast.Expr? = if self.match_token(Case) {
-    Some(self.parse_expression(depth))
+    let e = self.parse_expression(depth)
+    // #135（2026-10-17）：case 标签的枚举常量折叠——C11 §6.8.4.2 case
+    // 标签须为整型常量表达式，枚举常量（C11 §6.4.4.3）是其中之一。
+    // typeck 的常量性判定（is_int_constant_expr）是纯结构判定、查不了
+    // 枚举常量表（枚举常量落全局 VarDecl 与普通 int 全局在 AST 上同
+    // 形、不可区分——普通全局进 case 必须仍拒），故在此折成 Literal。
+    // **只折纯 Ident 叶子**：字面量/一元/二元常量结构 typeck 本就放行
+    //（#50 批①），压平会翻既有 E1 形态锚（case_const_expr.c 的
+    // Unary/Binary 族、char 字面量族——实测翻锚后收窄）；复合形态
+    // `case A+1:` 仍拒，登记渐进（与 #78 数组尺寸面同走 const_int_of
+    // 求值通道，取值越界维持原样不谎折）。
+    match e {
+      Identifier(name, _, _) =>
+        match self.enum_const_values.get(name) {
+          Some(v) =>
+            if v >= -2147483648 && v <= 2147483647 {
+              Some(
+                @ast.Expr::Literal(
+                  @util.i64_to_i32_bits(v),
+                  e.loc(),
+                  @ast.Type::int(),
+                ),
+              )
+            } else {
+              Some(e)
+            }
+          None => Some(e)
+        }
+      _ => Some(e)
+    }
   } else if self.match_token(Default) {
     None
   } else {

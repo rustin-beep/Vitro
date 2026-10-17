@@ -158,7 +158,7 @@ pub(all) enum Expr {
   Call(String, Array[Expr], @source.SourceLoc, Type)
   CallPtr(Expr, Array[Expr], @source.SourceLoc, Type)
   Index(Expr, Expr, @source.SourceLoc, Type)
-  Member(Expr, String, @source.SourceLoc, Type)
+  Member(Expr, String, Bool, @source.SourceLoc, Type)
   Assign(AssignOp, Expr, Expr, @source.SourceLoc, Type)
   Ternary(Expr, Expr, Expr, @source.SourceLoc, Type)
   Sizeof(Type?, Expr?, @source.SourceLoc, Type)

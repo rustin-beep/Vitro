@@ -52,7 +52,7 @@ test "e1_dump_all_variants_covered" {
       Int(false, false),
     ),
     Index(i_, i_, loc, Int(false, false)),
-    Member(i_, "m", loc, Int(false, false)),
+    Member(i_, "m", false, loc, Int(false, false)),
     Expr::Assign(AssignOp::Assign, i_, i_, loc, Int(false, false)),
     Ternary(i_, i_, i_, loc, Int(false, false)),
     Sizeof(Some(Int(false, false)), None, loc, Int(false, false)),

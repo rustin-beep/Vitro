@@ -191,7 +191,7 @@ fn BytecodeGen::gen_member_addr(
     match object {
       Index(array, index, _, result_ty) =>
         self.gen_index(array, index, result_ty, loc, true)
-      Member(inner, m, _, _) => self.gen_member_addr(inner, m, loc)
+      Member(inner, m, _, _, _) => self.gen_member_addr(inner, m, loc)
       Identifier(name, _, _) =>
         match self.local_indices.get(name) {
           Some(offset) => {

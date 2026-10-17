@@ -387,7 +387,7 @@ fn TypeChecker::resolve_unary(
               E3049_AssignToConst,
             )
           }
-        @ast.Expr::Member(_, _, _, _) =>
+        @ast.Expr::Member(_, _, _, _, _) =>
           if operand_type.is_const() {
             self.report_error(
               "不能修改常量成员",
@@ -421,7 +421,7 @@ fn TypeChecker::resolve_assign(
   let is_lvalue = match new_left {
     Identifier(_, _, _) => true
     Index(_, _, _, _) => true
-    Member(_, _, _, _) => true
+    Member(_, _, _, _, _) => true
     Unary(Deref, _, _, _) => true
     _ => false
   }
@@ -472,7 +472,7 @@ fn TypeChecker::resolve_assign(
           E3049_AssignToConst,
         )
       }
-    Member(_, _, _, _) =>
+    Member(_, _, _, _, _) =>
       if left_type.is_const() {
         self.report_error("不能修改常量成员", loc, E3049_AssignToConst)
       }

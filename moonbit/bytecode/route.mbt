@@ -62,6 +62,14 @@ pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
 /// codegen 的消费点是 `with_mode` 预注册跳过（`gen.mbt` 调本函数），新增例外
 /// 只改这里——预注册自动跳过、`call.mbt` 的 func_index 判定自动落 CallHost、
 /// `shadowed_host_names()` 清单与锚随之变红逼登记。
+/// 函数指针值的 Host 函数编码段基址（#136 缺陷 3，2026-10-17）：
+/// host_rerouted 六函数不进 func_index（病 45 改判 Host），取地址压
+/// `BASE + host_id` 编码；VM CallPtr 对 >= BASE 的指针值转
+/// execute_host_func（与 CallHost 同通道同语义）。取值远超函数索引域
+///（MAX_FUNCTIONS=65536）永不混淆。
+pub const HOST_FUNC_PTR_BASE : Int32 = 1_000_000
+
+///|
 pub fn is_host_rerouted(name : String) -> Bool {
   name == "strcpy" ||
   name == "strcat" ||

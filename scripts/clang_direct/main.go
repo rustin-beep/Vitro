@@ -38,7 +38,7 @@
 //
 // 用法：go run ./scripts/clang_direct [--sample N | --corpus dir | --cases f1.c,...] [--jobs N]
 //
-//	（默认四语料全量 baseline+knr+leetcode+gap = 601 例；--jobs 默认 min(CPU,8)）
+//	（默认四语料全量 baseline+knr+leetcode+gap = 774 例；--jobs 默认 min(CPU,8)）
 package main
 
 import (

@@ -40,7 +40,19 @@ fn TypeChecker::visit_func_decl(
     )
   }
   let new_body : @ast.Stmt? = match node.body {
-    Some(body) => Some(self.dispatch_stmt(body))
+    // #138（2026-10-17）：参数作用域 = 函数体（C11 §6.2.1p4，clang
+    // redefinition 口径）——函数体最外层 block 不再另开 scope，其声明
+    // 与参数同层：`void f(int x) { int x = 200; }` 旧两 scope 分层致
+    // declare_var 的 E3001 检查扑空零诊断（误收，LLM 语料批三模型命中
+    // clang 均 error）；内层 block shadowing 照旧合法（clang 同）。
+    // 非 block 函数体 C 语法不产，兜底照旧 dispatch。
+    Some(Block(stmts, bloc)) => {
+      for i in 0..<stmts.length() {
+        stmts[i] = self.dispatch_stmt(stmts[i])
+      }
+      Some(Block(stmts, bloc))
+    }
+    Some(other) => Some(self.dispatch_stmt(other))
     None => None
   }
   let unresolved : Array[(String, @source.SourceLoc)] = []
@@ -881,7 +893,7 @@ fn TypeChecker::deduce_auto_type(
     }
     Cast(_, target_type, _, _) => target_type
     Ternary(_, then_branch, _, _, _) => self.deduce_auto_type(then_branch)
-    Member(_, _, _, ty) => ty
+    Member(_, _, _, _, ty) => ty
     Index(_, _, _, ty) => ty
     InitList(_, loc, _) => {
       self.report_error(

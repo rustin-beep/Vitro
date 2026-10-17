@@ -295,6 +295,34 @@ fn TypeChecker::validate_nested_init_list(
         }
         (true, InitList(elements, iloc, ity))
       }
+      StringLiteral(value, _, _) =>
+        // #137 缺陷 1（2026-10-17，C11 §6.7.9p14）：char[N] 子数组的
+        // 字符串字面量初始化——`char t[][8] = {"Alice","Bob"}` 每行
+        // 逐字节拷入 + '\0' + 零填充。旧落 _ 臂按 char* 对 char[8] 判
+        // assignable 失败报 E3009 误拒（四模型 8/8 命中，clang/gcc 均
+        // ACCEPT）。越界对齐一维轨 W3008 警告（截断语义 clang 同）；
+        // 非 char 子数组层（罕见）维持 E3009（clang 同判 error）。
+        // 剩余维臂内自算（sub_dims 是 InitList 臂内局部量）。
+        // 注意本臂的 dims 参数已是本子数组层维度（InitList 臂递归时
+        // 已剥过外层）——char[N] 层即 dims=[N] 本身
+        if dims.length() == 1 && element_type.kind() is TK_Char {
+          let str_len = c_string_len(value)
+          if str_len + 1 > dims[0] {
+            self.report_warning(
+              "字符串字面量长度超过数组大小",
+              loc,
+              W3008_StringTooLong,
+            )
+          }
+          (true, init)
+        } else {
+          self.report_error(
+            "多维数组初始化需要嵌套初始化列表",
+            loc,
+            E3009_InvalidArrayInit,
+          )
+          (false, init)
+        }
       _ => {
         // C/C++ 允许括号省略：标量可用于初始化当前子数组的第一个元素，
         // 其余零填充。例如 int a[5][5] = {0}; int b[2][3] = {1, 2};

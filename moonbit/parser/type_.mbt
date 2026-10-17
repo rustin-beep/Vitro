@@ -1049,6 +1049,7 @@ fn merge_ctor_init_into_body(
           @ast.Expr::Member(
             @ast.Expr::This(expr_loc, @ast.Type::void_type()),
             field,
+            false,
             expr_loc,
             @ast.Type::void_type(),
           ),

@@ -12,6 +12,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(parser+typeck+codegen+vm+bytecode): LLM 语料探针批修复——#134/#135/#136/#137/#138 十病全清（2026-10-17）
+
+四模型语料探针批（4 模型 × 提示词 × 采样，双臂一致判定）产出的五条 issue
+十病，红锚先行逐条修复、双臂（js/native）对拍 + clang 逐字节对齐：
+
+- **#135** enum 常量作 case 标签误拒 E3047（#78 case 面漏修）：parser
+  `parse_case_stmt` 在 case 标签位把枚举常量 Ident 折叠 Literal（与数组
+  尺寸面同表 `enum_const_values`）；只折纯 Ident 叶——压平常量表达式
+  （`case -1:`/`case 'I':`）实测翻 E1 形态锚后收窄，既有 428 例零翻。
+- **#134 缺陷 1** 函数指针签名不兼容 W3053 warning 升 E3044 error
+  （clang/gcc 均 error；exact 判等含 enum↔int 宽化零误拒，灰区语料锚）。
+- **#134 缺陷 2** 成员访问运算符一致性：ast `Member` 节点加 `is_arrow`
+  位（E1/E4 投影 emitter 不输出该位，golden 零翻），typeck 双向检查
+  `->` 须指针/`.` 须 struct（旧双向零诊断），E3041 + fix_3041 分向文案。
+- **#138** 参数作用域 = 函数体（C11 §6.2.1p4）：函数体最外层 block 不再
+  另开 scope，与参数同名声明报 E3001（clang redefinition 口径）；内层
+  block shadowing / for-init 照旧合法。
+- **#137 缺陷 1** 二维 char 数组字符串初始化误拒 E3009（C11 §6.7.9p14）：
+  typeck `validate_nested_init_list` 接 char[N] 子数组 StringLiteral
+  轨（越界 W3008 截断语义对齐 clang）；codegen 嵌套直写臂 +
+  `is_char_array` 一维限定（`Array.element` 是最内元素类型，二维 char
+  旧误入 flatten 静默 0 兜底）；static 局部面连坐 flatten_global_init。
+- **#137 缺陷 2** typedef 别名聚合声明后失效 E2005：真因 =
+  `parse_aggregate_trailing_globals` 贪吃（trailing 声明器名单没排除
+  typedef 名，`ll` 被吞成 struct 变量名）；enum 无 trailing、函数体不走
+  顶层路径等七边界全部自解释。
+- **#136 缺陷 1** struct 数组 char[] 成员聚合初始化失效：同一根因被
+  gen_nested_init StringLiteral 直写臂顺带治愈。
+- **#136 缺陷 2** struct 内 union 成员按值赋值丢数据：assign 分发扩
+  TK_Union（旧只判 TK_Struct，union 成员落标量路径半拷）。
+- **#136 缺陷 3** libc 函数名取地址报未声明：host_rerouted 六函数
+  （strcmp/strcpy/strcat/strncpy/memcpy/memmove，病 45 改判 Host 不进
+  func_index）取地址压 `HOST_FUNC_PTR_BASE + host_id` 编码段（route.mbt
+  新常量），VM CallPtr 对该段转 execute_host_func（waiting_input 回退
+  对齐 CallHost 臂）；bytecode 段纯函数（strlen）既有预注册索引直通。
+
+语料 +11 例入 `corpus/baseline/`（clang 实跑全 SAME，429→440）；诊断负
+锚 4 条进 gateway wbtest（E3044/E3041 双向/E3001/E3047 变量 case）；
+五闸全绿（parser/typeck/codegen diff 428 一致、vm_diff 440 SAME、
+clang_direct 774 例 DIFF=0）；facts 漂移 0；三臂 smoke 全绿。
+
 ### fix(scripts): 差分双闸 Moon 侧运行看门狗——云端 wasm 臂永挂收口（2026-10-17）
 
 `clang_direct`/`vm_diff` 的 MoonBit 侧单例调用原为裸 `cmd.Run()`（Clang 侧

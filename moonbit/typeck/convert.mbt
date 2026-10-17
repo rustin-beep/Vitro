@@ -248,10 +248,16 @@ fn TypeChecker::check_function_pointer_assignable(
     if exact {
       return true
     }
-    self.report_warning(
-      "函数指针类型不完全匹配，赋值可能存在风险",
+    // #134（2026-10-17）：签名不完全匹配由 W3053 警告放行升为 E3044
+    // error——clang/gcc 均判 error（incompatible function pointer
+    // types；LLM 语料批三模型独立命中：vitro 已检出却降级 warning，属
+    // 诊断级别错非检查缺失）。exact 判等含 enum↔int 宽化（type_eq 既有
+    // 语义，clang 兼容口径实测一致），升 error 零误拒面。报错后放行
+    // 续检不叠通用 E3044（resolve_member E3041 报错续检同款风格）
+    self.report_error(
+      "函数指针类型不兼容（签名或返回类型不匹配）",
       loc,
-      W3053_ImplicitScalarConversion,
+      E3044_AssignTypeMismatch,
     )
     return true
   }

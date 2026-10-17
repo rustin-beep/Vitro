@@ -283,3 +283,58 @@ test "severity_wire_mapping_locked" {
     msg="E 码场景 severity 字段须为 error",
   )
 }
+
+///|
+/// #134 缺陷 1 负锚（2026-10-17）：函数指针签名不兼容升 E3044 error
+///（clang/gcc 均 error；旧 W3053 warning 放行）。enum↔int exact 宽化
+/// 正例由语料 fnptr_enum_int_param.c 锚。
+test "serve_compile_fnptr_incompatible_error_issue134" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"typedef int (*fn_t)(int, int);\\nvoid bad(int a, int b, int c) { (void)a; (void)b; (void)c; }\\nint main(void) { fn_t p = bad; return 0; }\\n\"}}",
+  )
+  assert_true(
+    resp.contains("\"code\":\"E3044\""),
+    msg="须 E3044，实际 resp=\{resp}",
+  )
+  assert_false(s.compile.compiled)
+}
+
+///|
+/// #134 缺陷 2 负锚（2026-10-17）：成员访问运算符一致性双向——`->` 用于
+/// 非 struct 变量、`.` 用于指针，均 E3041（clang 均 error；旧零诊断放行）。
+test "serve_compile_member_op_misuse_issue134" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"struct R { int id; };\\nint main(void) { struct R r; r.id = 7; struct R *p = &r; int a = r->id; int b = p.id; return a + b; }\\n\"}}",
+  )
+  assert_true(resp.contains("\"code\":\"E3041\""), msg="须 E3041")
+  assert_false(s.compile.compiled)
+}
+
+///|
+/// #138 负锚（2026-10-17）：函数体最外层声明与参数同名 = E3001 重声明
+///（C11 §6.2.1p4 参数作用域 = 函数体；clang redefinition 口径；旧两
+/// scope 分层零诊断）。内层 block shadowing 合法形态由语料
+/// scope_shadowing_legal.c 锚。
+test "serve_compile_param_redeclare_error_issue138" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"void f(int x) { int x = 200; (void)x; }\\nint main(void) { f(1); return 0; }\\n\"}}",
+  )
+  assert_true(resp.contains("\"code\":\"E3001\""), msg="须 E3001")
+  assert_false(s.compile.compiled)
+}
+
+///|
+/// #135 负锚（2026-10-17）：普通全局/局部变量进 case 标签维持 E3047
+///（枚举常量放行的反面——parser 折叠只折枚举表内 Ident，普通全局
+/// 不折）。合法形态由语料 case_enum_constant.c 锚。
+test "serve_compile_case_variable_label_issue135" {
+  let s = @session.Session::new()
+  let (resp, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main(void) { int x = 2; int g = 5; switch (x) { case g: break; } return 0; }\\n\"}}",
+  )
+  assert_true(resp.contains("\"code\":\"E3047\""), msg="须 E3047")
+  assert_false(s.compile.compiled)
+}

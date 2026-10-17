@@ -78,7 +78,7 @@ fn push_expr_children(
       stack.push((E(array), dd))
       stack.push((E(index), dd))
     }
-    Member(object, _, _, _) => stack.push((E(object), dd))
+    Member(object, _, _, _, _) => stack.push((E(object), dd))
     Ternary(cond, then_branch, else_branch, _, _) => {
       stack.push((E(cond), dd))
       stack.push((E(then_branch), dd))

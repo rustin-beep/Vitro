@@ -25,6 +25,8 @@ pub const HEAP_START : UInt = 0x5000
 
 pub const HOST_FUNC_NAME_COUNT : Int = 114
 
+pub const HOST_FUNC_PTR_BASE : Int = 1_000_000
+
 pub const MEM_SIZE : UInt = 1048576
 
 pub const NULL_TRAP_SIZE : UInt = 0x1000

@@ -71,8 +71,11 @@ fn BytecodeGen::gen_assign_inner(
   } else {
     0
   }
-  // struct 整体赋值（s1 = s2）走拷贝循环
-  if left_ty.kind() is TK_Struct && op is Assign {
+  // struct/union 整体赋值（s1 = s2）走拷贝循环——#136 缺陷 2（2026-10-17）：
+  // 旧只判 TK_Struct，union 类型的成员整体赋值（c.data = arr[0]）落标量
+  // 路径半拷/丢数据（读回 0 实锤）；C11 §6.5.16.3 同类型 union 赋值语义
+  // = 成员存储逐字节拷贝
+  if (left_ty.kind() is TK_Struct || left_ty.kind() is TK_Union) && op is Assign {
     self.gen_struct_copy(left, right, loc)
     return
   }
@@ -299,7 +302,7 @@ fn BytecodeGen::gen_assign_inner(
       }
       return
     }
-    Member(object, mname, _, _) => {
+    Member(object, mname, _, _, _) => {
       self.gen_member_addr(object, mname, loc)
       // lambda by-ref 捕获指针解引用段不迁移（C only）
       // P1-1：left.ty() 即成员类型（typeck 后 Member 携带结果类型），

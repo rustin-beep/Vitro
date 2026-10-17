@@ -101,7 +101,7 @@ fn emit_expr(e : Expr, buf : StringBuilder) -> Unit {
       emit_type(ty, buf)
       buf.write_string("}}")
     }
-    Member(object, member_name, loc, ty) => {
+    Member(object, member_name, _, loc, ty) => {
       buf.write_string("{\"Member\":{\"object\":")
       emit_expr(object, buf)
       buf.write_string(",\"member\":")

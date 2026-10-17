@@ -49,7 +49,7 @@ fn BytecodeGen::gen_addr(
       }
     Unary(@ast.UnaryOp::Deref, operand, _, _) => self.gen_expr(operand)
     Index(array, index, _, ty) => self.gen_index(array, index, ty, loc, true)
-    Member(object, member_name, _, _) =>
+    Member(object, member_name, _, _, _) =>
       self.gen_member_addr(object, member_name, loc)
     // 函数按值返回结构体 / 复合字面量：gen_expr 已在栈顶留下地址
     CallPtr(_, _, _, ty) =>
@@ -74,6 +74,36 @@ fn BytecodeGen::gen_nested_init(
   loc : @source.SourceLoc,
 ) -> Unit {
   match init {
+    // #137 缺陷 1（2026-10-17，C11 §6.7.9p14）：char[N] 子数组层的
+    // 字符串字面量字节直写（含尾 NUL 与零填）——旧落 _ 臂 gen_expr
+    // 发字符串池址再 StoreMem（把指针当行数据）。offset 基址 + i 字节
+    // 推进与全局层 flatten_global_init 的 char[] 臂同口径
+    StringLiteral(value, _, _) =>
+      // guard 不能换行（MoonBit match guard 同行约束）——条件收进臂体
+      if target_ty.is_array() && target_ty.base_element_type().kind() is TK_Char {
+        let byte_count = target_ty.array_size()
+        let bytes = @bytecode.cstring_bytes(value)
+        for i in 0..<byte_count {
+          self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+          let addr = offset + i
+          if addr != 0 {
+            self.emit(@opcode.OpCode::PushConst, addr, loc)
+            self.emit(@opcode.OpCode::Add, 0, loc)
+          }
+          let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
+          self.emit(@opcode.OpCode::PushConst, byte, loc)
+          self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+        }
+      } else {
+        // 非 char[] 目标的字符串（罕见嵌套层）：维持 _ 臂指针语义
+        self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+        if offset != 0 {
+          self.emit(@opcode.OpCode::PushConst, offset, loc)
+          self.emit(@opcode.OpCode::Add, 0, loc)
+        }
+        self.gen_expr(init)
+        self.emit(@opcode.OpCode::StoreMem, 0, loc)
+      }
     InitList(elements, _, _) =>
       if target_ty.kind() is TK_Struct {
         let fields = match self.struct_defs.get(target_ty.name()) {

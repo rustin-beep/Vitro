@@ -273,7 +273,7 @@ fn walk_expr(
       walk_expr(array, f, loop_depth, func_name, depth + 1)
       walk_expr(index, f, loop_depth, func_name, depth + 1)
     }
-    Member(object, _, _, _) =>
+    Member(object, _, _, _, _) =>
       walk_expr(object, f, loop_depth, func_name, depth + 1)
     Assign(op, left, right, loc, _) => {
       walk_expr(left, f, loop_depth, func_name, depth + 1)
@@ -374,7 +374,7 @@ fn check_compare_expr(
       check_compare_expr(array, f, loop_depth)
       check_compare_expr(index, f, loop_depth)
     }
-    Member(object, _, _, _) => check_compare_expr(object, f, loop_depth)
+    Member(object, _, _, _, _) => check_compare_expr(object, f, loop_depth)
     Ternary(cond, then_branch, else_branch, _, _) => {
       check_compare_expr(cond, f, loop_depth)
       check_compare_expr(then_branch, f, loop_depth)
@@ -477,7 +477,7 @@ fn expr_has_min_max_assign(expr : @ast.Expr) -> Bool {
     }
     Index(array, index, _, _) =>
       expr_has_min_max_assign(array) || expr_has_min_max_assign(index)
-    Member(object, _, _, _) => expr_has_min_max_assign(object)
+    Member(object, _, _, _, _) => expr_has_min_max_assign(object)
     Cast(e, _, _, _) => expr_has_min_max_assign(e)
     Sizeof(_, Some(e), _, _) => expr_has_min_max_assign(e)
     InitList(elements, _, _) => {

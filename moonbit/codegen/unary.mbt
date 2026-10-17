@@ -128,7 +128,8 @@ fn BytecodeGen::gen_unary(
           }
         Index(array, index, _, ty) =>
           self.gen_index(array, index, ty, loc, true)
-        Member(object, mname, _, _) => self.gen_member_addr(object, mname, loc)
+        Member(object, mname, _, _, _) =>
+          self.gen_member_addr(object, mname, loc)
         Unary(@ast.UnaryOp::Deref, inner, _, _) =>
           // &*p === p
           self.gen_expr(inner)
@@ -277,7 +278,7 @@ fn BytecodeGen::gen_unary(
             loc,
           )
         }
-        Member(object, mname, _, ty) => {
+        Member(object, mname, _, _, ty) => {
           let step = self.ptr_step_size(ty)
           self.gen_member_addr(object, mname, loc)
           self.gen_mem_inc_dec(

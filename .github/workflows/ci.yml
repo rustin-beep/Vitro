@@ -1177,6 +1177,9 @@ jobs:
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_session.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_editor.mjs http://127.0.0.1:8931/
+          # bootfail 末位跑：临时改名 dist wasm 产物造装载失败（finally 还原），
+          # 串行步骤内安全；若前置步骤红，本步不执行无遗留改名。
+          node demo/tests/e2e_bootfail.mjs http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

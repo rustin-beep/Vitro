@@ -245,6 +245,32 @@ async function run() {
     f7chapters >= 9 && f7rows.every((n) => n > 0) && f7errs.every((e) => !e.includes("each_key_duplicate")),
     JSON.stringify({ chapters: f7chapters, rows: f7rows, errs: f7errs.slice(0, 2) }));
 
+  // ── F8 首访 shell 先行（#首开性能批 A 红锚，2026-10-19 用户拍板）──
+  // 修前：startBoot 的 ui.ready 被 openInitial 的 await collect 挡住——载入
+  // 遮罩要等首课采集完成才撤（弱网/移动端首开「巨慢」的主构成段；老框架
+  // 「点开即显、采集页面内转」的体感回归目标）。锚 = fresh 首访轮询捕捉
+  // (ui.ready=true && frames=0) 组合：修后 shell 先行该窗口必然存在；
+  // 修前 ready 与 frames 同时就绪、组合永不存在。CPU 6x 节流放大窗口。
+  {
+    await send("Emulation.setCPUThrottlingRate", { rate: 6 });
+    await send("Page.navigate", { url: PAGE + "?f8=" + Date.now() });
+    let caught = false;
+    let sawReady = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 30000) {
+      const st = await evaluate("({ ready: window.__pilot?.ui?.ready ?? null, frames: window.__pilot?.session?.frames?.length ?? null })").catch(() => null);
+      if (st) {
+        if (st.ready === true) sawReady = true;
+        if (st.ready === true && st.frames === 0) { caught = true; break; }
+      }
+      await sleep(25);
+    }
+    await send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    check("F8 首访 shell 先行（ui.ready 不等首课采集）", caught, `捕捉到 ready&&frames=0=${caught}（sawReady=${sawReady}）`);
+    await waitFor("window.__pilot?.ui?.ready === true", 30000);
+    await sleep(600);
+  }
+
   const fails = results.filter((r) => !r.ok);
   console.log(`===== ${results.length - fails.length}/${results.length} 通过 =====`);
   ws.close();

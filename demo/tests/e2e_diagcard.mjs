@@ -151,7 +151,19 @@ async function run() {
   const check = (name, ok, detail) => { results.push({ name, ok, detail }); console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail); };
 
   // 2. 导航 + 等 boot（版本徽章就绪）
+  // 先清「继续上次」再重载——progress.last 留下的可能是 scanf 课：#189 起
+  // 等待态编辑器锁定会让本套件的 setEditor 写入红（锁定是正确行为，套件
+  // 开场态不可依赖上次运行残留）。⚠️ 清除必须等 boot 完整落定（bootWait
+  // 而非仅 __pilot 出现）：openInitial 的 rememberLesson 在 lesson.md 懒加载
+  // await 之后才写——清早了会被回写（曾竞态红）。
   await send("Page.navigate", { url: PAGE });
+  await bootWait();
+  await evaluate("localStorage.clear()");
+  // ⚠️ 两次 clear 夹住 700ms 去抖：WorkScreen「继续上次记帧」是 setTimeout(700)
+  // 写入——bootWait 后立即 clear 会被 timer 复脏（写回当前课），reload 又恢复。
+  await sleep(800);
+  await evaluate("localStorage.clear()");
+  await send("Page.navigate", { url: PAGE + "?fresh=1" });
   await bootWait();
   check("boot 版本徽章", true, await evaluate("document.querySelector('.vr-engine b')?.textContent ?? ''"));
 

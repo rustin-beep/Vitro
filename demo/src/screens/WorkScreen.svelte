@@ -108,16 +108,26 @@
     resetSession();
     toast("info", "已重置：帧流清空，源码回到本课原文");
   }
-  async function share(): Promise<void> {
+  // ⚠️ 浮层开关必须在 await 之前同步置位（#184）：onDocClick（document 冒泡）
+  // 的设计假设是「触发器先 toggle，冒泡判定在后」——真实点击时 Svelte 委托
+  //（#app）回调栈清空后有微任务检查点，packSource 载荷小、压缩在微任务内
+  // 完成，await 续体在 document 冒泡【之前】就跑——浮层开关若写在 await 后，
+  // 会被随后的 onDocClick 当「点外」关掉（合成 click 单栈同步派发无检查点，
+  // 故 E2E/合成事件测不出——真实输入路径盲区）。async 段只负责算 URL。
+  function share(): void {
+    ui.shareOpen = true;
+    void doShare();
+  }
+  async function doShare(): Promise<void> {
     try {
       const frag = await packSource(source);
       const url = location.href.split("#")[0] + "#" + frag;
       history.replaceState(null, "", url);
       shareUrl = url;
-      ui.shareOpen = true;
       if (url.length > SHARE_URL_WARN) toast("info", urlLenWarning(url.length));
     } catch (err) {
       toast("err", "分享失败：" + String((err as Error).message));
+      ui.shareOpen = false; // 打开失败不留空浮层
     }
   }
   async function copyShare(): Promise<void> {
@@ -209,14 +219,14 @@
           class="vr-btn vr-primary"
           data-act="run"
           onclick={run}
-          disabled={session.collecting}
-          title="从头采集帧流（编译 + run + step 闭环）"
+          disabled={session.collecting || !session.booted}
+          title={session.booted ? "从头采集帧流（编译 + run + step 闭环）" : "引擎未就绪——装载失败，见顶部横幅"}
         >
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
           {session.collecting ? "采集中…" : "运行"}
         </button>
 
-        <div class="vr-wrap">
+        <div class="vr-wrap" data-share-wrap>
           <button type="button" class="vr-btn" data-act="share" aria-haspopup="dialog" aria-expanded={ui.shareOpen} onclick={share} disabled={session.collecting}>分享</button>
           {#if ui.shareOpen}
             <div class="vr-popover" role="dialog" aria-label="分享链接">
@@ -253,7 +263,7 @@
           <span><span class="vr-dot {codeDotCls}"></span>{codeStatus}</span>
         </div>
         <div class="vr-codebody">
-          <Editor bind:source bind:this={editorRef} disabled={session.collecting} />
+          <Editor bind:source bind:this={editorRef} disabled={session.collecting || waiting} />
         </div>
       </div>
 

@@ -11,6 +11,7 @@
   // 高度：theme height auto + scroller overflow hidden（随代码自动增高，
   //   不内滚——对齐 field-sizing 诉求）。
   // 高亮面注意：clike 是 legacy 正则 mode（用户指定）——非 Lezer 语法树高亮。
+  import { untrack } from "svelte";
   import { Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
   import { EditorView, gutter, GutterMarker, keymap, highlightActiveLine, highlightActiveLineGutter, lineNumbers, Decoration, type DecorationSet } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap, insertNewlineAndIndent, indentMore, indentLess } from "@codemirror/commands";
@@ -215,7 +216,17 @@
       // 断点 gutter 在行号左侧（设计稿「空心琥珀点」在行号槽外缘）
       bpField,
       bpGutter,
-      lineNumbers(),
+      // 行号数字区点击同设/清断点（#185 拍板组合案①）：教学用户直觉是点行号
+      // 数字，13px 无提示窄列 3 次自然尝试全失败——行号槽整列统一交互。
+      // ⚠️ line 同为 BlockInfo（只 .from），行号经 doc.lineAt 换算（同上坑注）。
+      lineNumbers({
+        domEventHandlers: {
+          mousedown(view, line) {
+            toggleBreakpoint(view.state.doc.lineAt(line.from).number);
+            return true;
+          },
+        },
+      }),
       bpLineField,
       diagLineField,
       followLineField,
@@ -245,10 +256,17 @@
   }
 
   // ── 挂载 / 销毁 ─────────────────────────────────────────────────────
+  // ⚠️ 本 effect 的重跑依据只有 hostEl——source 与 disabled 的初值读取必须
+  // untrack（#190 根因）：曾直接读取致 effect 依赖 source+disabled，每次键入
+  //（updateListener 回写 source）与每次采集翻态（disabled 翻转）都销毁重建
+  // 整个 EditorView——CM6 destroy 先 blur content 再移除 DOM：焦点丢（后续
+  // 逐键全落 BODY 丢失，实测首字符落地后 3ms 焦点即被赶走）+ history 随销毁
+  // 清零（撤销/重做全废）+ selection 重置（光标跳变）。doc 后续同步走下方
+  // 外部设码 effect、readOnly 重配走 readOnlyComp effect，职责各归其位。
   $effect(() => {
     if (!hostEl) return;
     const v = new EditorView({
-      state: EditorState.create({ doc: source ?? "", extensions: buildExtensions() }),
+      state: EditorState.create({ doc: untrack(() => source) ?? "", extensions: untrack(() => buildExtensions()) }),
       parent: hostEl,
     });
     view = v;

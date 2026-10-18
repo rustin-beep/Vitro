@@ -200,11 +200,15 @@
   --vr-hatch: rgba(116, 107, 90, .42);
   --vr-r: 3px;
   --vr-shadow: 0 14px 34px rgba(30, 24, 12, .16), 0 2px 6px rgba(30, 24, 12, .08);
-  /* 教科书：单色排版（关键字字重 / 类型斜体 / 注释弱化） */
-  --vr-kw: #1d1a15;
-  --vr-ty: #514a3c;
-  --vr-str: #514a3c;
-  --vr-num: #514a3c;
+  /* 教科书批注色系（2026-10-19 改）：原「单色排版」（kw≡ink 同墨色）被线上
+     首访实测证伪——用户体感「完全没高亮」（默认主题即 paper）。改用传统印
+     刷批注色：朱批=关键字（=--vr-red）、青碧=类型、墨绿=字符串（=--vr-green）、
+     赭石=数字（=--vr-amber）——色系与主题信号色统一，对纸底对比度均 ≥5:1，
+     色度（RGB 极差）74~140（e2e_editor N9 锚 ≥40）。注释保持 ink-3 弱化。 */
+  --vr-kw: #9b3a2a;
+  --vr-ty: #2a6b74;
+  --vr-str: #4c6338;
+  --vr-num: #96520a;
   --vr-cmt: #6b6252;
 }
 
@@ -835,6 +839,20 @@ code, pre, kbd, samp, .vr-mono {
 .vr-editor .cm-bpgutter .cm-gutterElement { display: flex; align-items: center; justify-content: center; }
 .vr-editor .bp-dot { color: var(--vr-amber-2); font-size: 9px; line-height: 21px; }
 .vr-editor .cm-lineNumbers .cm-gutterElement { padding: 0 9px 0 0; min-width: 30px; text-align: right; font-family: var(--vr-mono); font-size: 10.5px; line-height: 21px; font-variant-ligatures: none; }
+/* #185 断点可发现性（拍板组合案②）：hover 行号区任意位置 → 空心琥珀点占位
+   （实心 = 已设断点，设计稿「空心琥珀点」语义）；cursor pointer 同步提示可点。
+   点在各自列内流式显示（行号列为数字左侧）；:not(:has(.bp-dot)) 避免与实心
+   点叠显。:has 支持面 Chrome/Edge 105+（demo 底线 130+）。 */
+.vr-editor .cm-bpgutter .cm-gutterElement:not(:has(.bp-dot)):hover::before,
+.vr-editor .cm-lineNumbers .cm-gutterElement:hover::before {
+  content: "○";
+  color: var(--vr-amber-2);
+  font-size: 9px;
+  line-height: 21px;
+  margin-right: 2px;
+}
+.vr-editor .cm-bpgutter .cm-gutterElement:not(:has(.bp-dot)):hover,
+.vr-editor .cm-lineNumbers .cm-gutterElement:hover { cursor: pointer; }
 .vr-editor .cm-foldGutter { width: 10px; }
 .vr-editor .cm-foldGutter .cm-gutterElement { color: var(--vr-ink-3); opacity: .5; line-height: 21px; }
 .vr-editor .cm-activeLineGutter { background: transparent; color: var(--vr-amber); }

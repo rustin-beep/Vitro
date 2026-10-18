@@ -31,16 +31,29 @@ export function gateway(): GatewayExports {
 }
 
 // ── wasm 装载 ─────────────────────────────────────────────
+// 流式编译（2026-10-19 首开性能批）：原 `new WebAssembly.Module(bytes)` 同步
+// 编译会在编译期冻住整个 worker——弱网/移动端首开「流量已停、页面还在转」
+// 的主要构成段（773KB wasm-gc 模块）。compileStreaming 下载与编译重叠且全
+// 程异步；MIME 已验证 Pages 为 application/wasm。fallback 保留给 MIME 不合规
+// 的其他静态托管（streaming 对非 application/wasm 响应直接 reject）。
 export async function loadGateway(wasmUrl: string = "wasm.wasm"): Promise<GatewayExports> {
-  const buf = await (await fetch(wasmUrl)).arrayBuffer();
   // 与 host.js 同契约：js-string builtins + "_" 字符串常量模块（V8 扩展
-  // 编译选项不在 DOM lib 的 ModuleOptions 签名里——@ts-expect-error 注明；
-  // 未来 lib 补齐签名后本指令「未使用」即红，双向监控语义）
-  // @ts-expect-error V8 js-string builtins 扩展（第二参不在 DOM lib 签名）
-  const mod = new WebAssembly.Module(buf, {
+  // 编译选项不在 DOM lib 的 ModuleOptions 签名里——调用点 @ts-expect-error
+  // 注明；未来 lib 补齐签名后指令「未使用」即红，双向监控语义）
+  const compileOptions = {
     builtins: ["js-string"],
     importedStringConstants: "_",
-  });
+  };
+  let mod: WebAssembly.Module;
+  try {
+    // @ts-expect-error V8 js-string builtins 扩展（compileStreaming 第二参不在 DOM lib 签名）
+    mod = await WebAssembly.compileStreaming(fetch(wasmUrl), compileOptions);
+  } catch {
+    // MIME 非 application/wasm 的托管环境回退整块同步编译（形态同旧实现）
+    const buf = await (await fetch(wasmUrl)).arrayBuffer();
+    // @ts-expect-error 同上：builtins 编译选项不在 DOM lib 签名
+    mod = new WebAssembly.Module(buf, compileOptions);
+  }
   const inst = await WebAssembly.instantiate(mod, {});
   return inst.exports as GatewayExports;
 }

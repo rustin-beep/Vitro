@@ -320,6 +320,30 @@ async function run() {
   const restored = await edText();
   check("W12 重载后编辑器还原分享代码（unpackSource 链）", restored.includes("return 7"), JSON.stringify(restored).slice(0, 70));
 
+  // ── W18 分享真实输入路径（#184 红锚，2026-10-18）：真实 CDP 鼠标点击 ──
+  // #184 实锤：share 的浮层开关曾写在 await 之后——真实点击时 #app 委托回调
+  // 栈清空后有微任务检查点，packSource 载荷小、压缩在微任务内完成，续体跑在
+  // document 冒泡【之前】，随后 onDocClick 因 [data-share-wrap] 缺失把浮层当
+  // 「点外」关掉；合成 click 单栈同步派发全程无检查点，W12 的合成路径测不出。
+  {
+    await waitFor("(() => { const b = document.querySelector('[data-act=\"share\"]'); return !!b && !b.disabled; })()", 20000);
+    const sb = await evaluate("(() => { const r = document.querySelector('[data-act=\"share\"]')?.getBoundingClientRect(); return r ? {x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2)} : null; })()");
+    if (!sb) throw new Error("找不到分享按钮");
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: sb.x, y: sb.y, button: "left", clickCount: 1 });
+    await sleep(40);
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: sb.x, y: sb.y, button: "left", clickCount: 1 });
+    await sleep(500);
+    const w18a = await evaluate("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
+    check("W18a 真实点击分享 → 浮层出现（#184）", w18a.pop === true && w18a.aria === "true", JSON.stringify(w18a));
+    const vw = await evaluate("({x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight - 60)})");
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: vw.x, y: vw.y, button: "left", clickCount: 1 });
+    await sleep(40);
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: vw.x, y: vw.y, button: "left", clickCount: 1 });
+    await sleep(300);
+    const w18b = await evaluate("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
+    check("W18b 真实点击浮层外 → 浮层关闭", w18b.pop === false && w18b.aria === "false", JSON.stringify(w18b));
+  }
+
   // ── W13 回放交互（播放/单步/seek/粒度）──
   {
     // 分享还原**不自动运行**（不可信输入边界）——此处显式点「运行」
@@ -432,6 +456,17 @@ async function run() {
     statline: document.querySelector('.vr-statline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
   }))()`);
   check("W16a waiting 态 stdin 行出现（默认 42 + 返回码 —）", w16a.draft === "42" && w16a.statline.includes("返回码 —"), JSON.stringify(w16a));
+  // W16a2 等待态编辑器锁定（#189 红锚，2026-10-19 拍板 A）：waiting_input 期
+  // 源码与在跑帧流已绑定，改稿再喂入 = 按另一份程序续跑（golden stale 只诚实
+  // 不解体验）——等待态必须 readOnly（disabled={collecting || waiting}）。
+  {
+    const lenW = await evaluate("document.querySelector('.cm-content')?.textContent.length ?? -1");
+    await clickCm();
+    await send("Input.insertText", { text: "X" });
+    await sleep(300);
+    const lenW2 = await evaluate("document.querySelector('.cm-content')?.textContent.length ?? -1");
+    check("W16a2 等待态编辑器锁定（真实键入不落地）", lenW2 === lenW, `长度 ${lenW} → ${lenW2}（期望不变）`);
+  }
   await evaluate("document.querySelector('.vr-stdin-row .vr-btn')?.click()");
   await waitFor("!window.__pilot.session.runStats?.waiting_input", 20000);
   await sleep(400);

@@ -25,6 +25,8 @@ export interface OpenOpts {
   autoplay?: boolean;
   /** 采集后定位帧（继续上次）。 */
   frame?: number;
+  /** 采集完成后回调（首访中段帧定位用——帧流就绪前 frames=0 无从定位）。 */
+  onCollected?: () => void;
 }
 
 class LessonSessionState {
@@ -71,8 +73,18 @@ class LessonSessionState {
     ui.mode = "exec";
     progress.markDone(l.id);
     progress.rememberLesson(l.id, l.chapId, l.title);
-    await collect(this.source, [], { autoplay: opts.autoplay !== false });
-    if (opts.frame != null && opts.frame > 0) seek(opts.frame);
+    // 采集后台化（2026-10-19 首开性能批 A，用户拍板）：老框架「点开即显、
+    // 采集页面内转」的体感回归——曾 await collect 挡住 App 首访的 ui.ready
+    //（载入遮罩等首课采集完成才撤，弱网/移动端首开巨慢的主构成段）。现在
+    // 元数据+源码就位即返回，帧流后台渐进填充（状态行「采集中…」诚实可见）。
+    // collect 自带 epoch 迟到丢弃与诊断带错误面，后台化不引入新竞态面；
+    // 完成后动作（定位帧/onCollected）链在完成点。
+    void collect(this.source, [], { autoplay: opts.autoplay !== false })
+      .then(() => {
+        if (opts.frame != null && opts.frame > 0) seek(opts.frame);
+        opts.onCollected?.();
+      })
+      .catch(() => { /* collect 错误已进诊断带/status；此处兜底防 unhandled rejection */ });
     return true;
   }
 
@@ -82,14 +94,20 @@ class LessonSessionState {
     const hit = last ? findLesson(last.lessonId, last.chapId) : null;
     const target = hit ?? defaultLesson();
     if (!target) return;
-    await this.open(target.lesson, { autoplay: false, frame: hit ? last.frame : 0 });
     // 真首访（无上次记录）：采集后停在**中段帧**——设计说明 §2.3 的首访动线
     // 要求「第一眼就看到代码 + 数组 + 时间轴」，帧 0 往往还在序言（数组全 0、
     // 变量表空）。中段帧是真实执行状态，状态行明示「已暂停 · 第 N / M 帧」。
-    if (!hit) {
-      const n = session.viewFrames.length;
-      if (n > 2) seek(Math.round((n - 1) / 2));
-    }
+    // （采集后台化后本函数不再被采集挡住；中段帧定位链在采集完成点。）
+    await this.open(target.lesson, {
+      autoplay: false,
+      frame: hit ? last.frame : 0,
+      onCollected: hit
+        ? undefined
+        : () => {
+            const n = session.viewFrames.length;
+            if (n > 2) seek(Math.round((n - 1) / 2));
+          },
+    });
   }
 
   /** 「继续上次」卡：回到上次课与帧（不自动播放）。 */

@@ -4,8 +4,10 @@
 // - **零后端**：代码只活在链接的 # 片段里（# 不参与 HTTP 请求）⇒ 不破
 //   README 既有的「零后端 / 页面本体不发第三方请求」声明。
 // - **压缩用浏览器原生** CompressionStream/DecompressionStream("deflate-raw")
-//   ——本页浏览器底线（Chrome/Edge 130+、Firefox 134+）远超过该 API 可用点
-//   （103/113+），零新依赖、零 polyfill；实测源码 deflate 后 base64url 只有
+//   ——CompressionStream 可用点（Chrome/Edge 103+、Firefox 113+）远低于本页
+//   浏览器底线（Chrome/Edge 130+、Firefox 134+、Safari 26.2+——wasm-gc +
+//   js-string builtins 双门槛，#127；Safari/iOS 18.2–26.1 已知不可达），零新
+//   依赖、零 polyfill；实测源码 deflate 后 base64url 只有
 //   源码的 0.4~0.9 倍（<300 字符的小片段才会更长，见 README 表格）。
 // - **载荷只装源码**：版本 tag + base64url(deflate-raw(utf8(source)))，不含
 //   步号/断点/课程 id 等运行上下文——2026-10-09 用户拍板「那是无关信息」，

@@ -9,6 +9,11 @@
   3. Windows 找 exe 用当前进程 PATH ⇒ clang/gcc/node/被测 exe 全用绝对路径
   4. vitro 的 rc 是编译结果，判据必须解析 stdout 的 JSON 帧
   5. 帧两种 ok（外层=命令成功 / frame.result.ok=编译结果），三种形状都认
+
+★ 本模板只含**编译轨**。要加**运行对拍轨**（clang golden vs vitro stdout），
+必须先读 SKILL.md「判据八铁律」第 6/7 条：golden 用 clang **-O0**（-O2 常量折叠
+走 MPFR 精确中间值，制造方向级假 run_mismatch）；两侧比对前做地址掩码 +
+latin-1 折回归一（#112）+ CRLF rstrip。参考实现见 tmp/llm_probe_20261018/gen_and_judge7.py。
 """
 import json, os, re, subprocess, time, urllib.error, urllib.request
 

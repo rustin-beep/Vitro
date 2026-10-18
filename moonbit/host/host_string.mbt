@@ -748,6 +748,9 @@ pub fn host_strstr(
 ///|
 /// `memchr(s, c, n)`（oracle `string.rs:426-442`）——**无符号字节**在
 /// `[addr, addr+n)` 内首次出现的地址；未命中返 0；`n` 取原始 u64 栈字。
+/// `c` 按 C11 §7.24.5.1「转换为 unsigned char 后比较」取低 8 位（#166
+/// 2026-10-18——旧 `b & 0xFF == c` 裸比使负 c 恒不中，病 1 修 strchr
+/// 时漏连坐；oracle 病行为曾在 wbtest 固化，随锚翻转）。
 ///
 /// **登记分叉**：oracle 扫描越过内存尾时静默 break，此处受检读 trap
 /// （读侧受检化同族，批一号口径）。
@@ -763,7 +766,7 @@ pub fn host_memchr(
     let b = load_i8_raise(mem, map, addr + i.to_uint()) catch {
       AccessFault::Fault(f~) => return fault_reply(f)
     }
-    if (b & 0xFF) == c {
+    if (b & 0xFF) == (c & 0xFF) {
       return value_only((addr + i.to_uint()).to_uint64())
     }
     i = i + 1UL

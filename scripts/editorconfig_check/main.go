@@ -14,11 +14,52 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 var rootFlag = flag.String("root", ".", "仓库根")
+
+// gitignored 面自动豁免（2026-10-18 审阅批根治）：豁免清单曾为硬编码
+// 追认制——demo/design 等新增 gitignored 目录每碰一次就逼一轮
+// --no-verify（2026-10-16 E-08 提交 + 2026-10-18 demo/design 两实锤）。
+// git 可用时以 .gitignore 为单源：预热 `git ls-files --ignored
+// --exclude-standard --others --directory` 的目录/文件集合，walk 命中
+// 即剪枝。git 不可用（非 git 环境）时降级走下方硬编码清单并向 stderr
+// 明示（多检不漏检，方向安全）。
+var gitIgnoredSet = loadGitIgnored()
+
+func loadGitIgnored() map[string]bool {
+	out, err := exec.Command("git", "ls-files", "--ignored",
+		"--exclude-standard", "--others", "--directory").Output()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "editorconfig_check: git 不可用（%v）——gitignored 豁免降级为硬编码清单\n", err)
+		return nil
+	}
+	set := map[string]bool{}
+	for _, ln := range strings.Split(string(out), "\n") {
+		ln = strings.TrimRight(ln, "/")
+		if ln != "" {
+			set[filepath.ToSlash(ln)] = true
+		}
+	}
+	return set
+}
+
+func gitIgnored(rel string) bool {
+	if gitIgnoredSet == nil {
+		return false
+	}
+	rel = filepath.ToSlash(rel)
+	segs := strings.Split(rel, "/")
+	for i := range segs {
+		if gitIgnoredSet[strings.Join(segs[:i+1], "/")] {
+			return true
+		}
+	}
+	return false
+}
 
 func isText(raw []byte) bool {
 	return bytes.IndexByte(raw, 0) < 0
@@ -90,6 +131,14 @@ func main() {
 			return nil
 		}
 		rel, _ := filepath.Rel(base, path)
+		// gitignored 自动豁免（前缀命中即剪枝——.gitignore 单源，见
+		// loadGitIgnored 头注；在硬编码清单之前判定）
+		if gitIgnored(rel) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		// tools/cache = wasmopt 供给缓存（钉版本下载物，gitignored——
 		// #120 批①：包内容不归仓规管辖，同 node_modules 族）
 		// demo-evidence = 审阅过程证据目录（用户私有，git 未跟踪——

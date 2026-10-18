@@ -371,7 +371,7 @@ test "strpbrk_strspn_strcspn" {
 
 ///|
 /// P2 修复锚：`memchr`（110 路由中唯一未登记缺口——oracle `string.rs:426-442`）。
-/// 语义照搬：无符号字节与 c 匹配（负 c 恒不中）、未命中返 0、n 取原始 u64。
+/// 语义：无符号字节与 c 匹配、未命中返 0、n 取原始 u64。
 /// 登记分叉：oracle 越界静默 break，此处受检 trap（读侧口径同族）。
 test "memchr_scan_unsigned_and_bounds" {
   let (map, mem) = fresh()
@@ -383,10 +383,13 @@ test "memchr_scan_unsigned_and_bounds" {
     msg="无符号字节 0xC8 ↔ c=200",
   )
   assert_eq(host_memchr(mem, map, 0x6000U, 122, 5UL).value, Some(0UL))
+  // 负 c（-56 ≡ 0xC8）：C11 §7.24.5.1「c 转换为 unsigned char 后比较」
+  // 必命中（#166 翻转锚，2026-10-18——旧「恒不中」系 oracle 病行为固化
+  // 锚，病 1 修 strchr 时漏连坐；clang 对拍同值）。
   assert_eq(
     host_memchr(mem, map, 0x6000U, -56, 5UL).value,
-    Some(0UL),
-    msg="负 c 恒不中（oracle 同）",
+    Some(0x6003UL),
+    msg="负 c 转 unsigned char 命中（C11 §7.24.5.1）",
   )
   assert_eq(host_memchr(mem, map, 0x6000U, 97, 0UL).value, Some(0UL))
   // 受检化分叉锚：n 超内存尾 → trap（oracle 静默 break）

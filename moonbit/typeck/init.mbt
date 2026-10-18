@@ -134,7 +134,12 @@ pub fn TypeChecker::check_struct_initializer(
       }
       // #157（2026-10-18，C23 §6.7.2.1p23）：柔性数组成员不可初始化
       //（clang "initialization of flexible array member" / gcc "non-
-      // static initialization…"；仅初始化固定成员合法——柔性成员缺省）
+      // static initialization…"；仅初始化固定成员合法——柔性成员缺省）。
+      // **已知分叉登记（2026-10-18 审阅批 P2-3）**：clang 22.1.4 默认
+      // **接受**该形态（GNU 扩展 -Wgnu-flexible-array-initializer 默认
+      // warning 级，-pedantic-errors 才 error）；vitro 教学口径从严恒
+      // error——降 W 放行须先补柔性成员初始化的运行语义（额外空间
+      // 分配 + 越界写面），独立批处理，分叉在 #157 登记在案
       let flex_idx : Int32 = if fields.length() > 0 &&
         is_flexible_array_member(fields[fields.length() - 1].0) {
         fields.length() - 1

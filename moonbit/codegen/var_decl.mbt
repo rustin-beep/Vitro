@@ -252,6 +252,34 @@ fn BytecodeGen::emit_static_init(
 }
 
 ///|
+/// #171（2026-10-18 审阅批修）：函数内 static 数组初始化器的**表达式级**
+/// 扁平化——嵌套大括号（`{{1,2,3},{4,5,6}}`）递归归一为叶表达式序列，
+/// 保留 StringLiteral/FloatLiteral 节点形态（4 字节臂的 intern 路径与
+/// 8 字节臂的位模式编码都依赖节点而非 Int 位模式——flatten_init_list
+/// 的 Int32 序列会吃掉这两形态）。designators 上报口径与它同款。
+fn flatten_init_exprs(
+  elements : Array[@ast.InitElement],
+  errors : Array[String],
+) -> Array[@ast.Expr] {
+  let result : Array[@ast.Expr] = []
+  for elem in elements {
+    if elem.designators.length() > 0 {
+      errors.push("Designated initializer 不支持在此上下文中扁平化")
+    }
+    match elem.value {
+      InitList(inner, _, _) => {
+        let sub = flatten_init_exprs(inner, errors)
+        for e in sub {
+          result.push(e)
+        }
+      }
+      other => result.push(other)
+    }
+  }
+  result
+}
+
+///|
 fn BytecodeGen::emit_static_scalar_array_init(
   self : BytecodeGen,
   vty : @ast.Type,
@@ -261,15 +289,20 @@ fn BytecodeGen::emit_static_scalar_array_init(
 ) -> Unit {
   let elem_size = self.elem_type_size(vty)
   let count = vty.total_elements()
+  // #171：入口先表达式级拍平——嵌套子初始化器递归展开，两臂共用扁平
+  // 序列按位定位（旧 4 字节臂 flatten([elem])[0] 只取子列表首元素、
+  // 8 字节臂 literal_init_bits(InitList) 恒 None，{{...},{...}} 形态
+  // 只写首元素/全 0）
+  let flat = flatten_init_exprs(elements, self.errors)
   if elem_size == 8 {
     // T-P0-2 同构修复：按元素类型编码 8 字节位模式
     let elem_ty = vty.base_element_type()
     for i in 0..<count {
       let addr = global_offset.reinterpret_as_uint() +
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
-      let val64 = match elements.get(i) {
-        Some(elem) =>
-          match literal_init_bits(elem.value, elem_ty.kind()) {
+      let val64 = match flat.get(i) {
+        Some(e) =>
+          match literal_init_bits(e, elem_ty.kind()) {
             Some(pair) => pair.0
             None => 0
           }
@@ -278,10 +311,10 @@ fn BytecodeGen::emit_static_scalar_array_init(
       self.globals_init_64.push((addr, val64))
     }
   } else {
-    for i, elem in elements {
+    for i, e in flat {
       let addr = global_offset.reinterpret_as_uint() +
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
-      match elem.value {
+      match e {
         StringLiteral(value, _, _) => {
           // 病 120：驻留池（同内容合并同址）
           let str_addr = match
@@ -304,14 +337,10 @@ fn BytecodeGen::emit_static_scalar_array_init(
             Literal(value, _, _) => self.globals_init_32.push((addr, -value))
             _ => self.globals_init_32.push((addr, 0))
           }
-        _ => {
-          let sub = flatten_init_list([elem], self.errors)
-          let val = if sub.length() > 0 { sub[0] } else { 0 }
-          self.globals_init_32.push((addr, val))
-        }
+        _ => self.globals_init_32.push((addr, 0))
       }
     }
-    for i in elements.length()..<count {
+    for i in flat.length()..<count {
       let addr = global_offset.reinterpret_as_uint() +
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
       self.globals_init_32.push((addr, 0))

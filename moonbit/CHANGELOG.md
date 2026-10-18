@@ -1,5 +1,86 @@
 ## [Unreleased]
 
+### fix(parser+typeck+codegen+scripts): 用户审阅批处置——P1×3 全修（static 枚举折漏接线 / 常量折叠符号性 / #171 多维嵌套）+ 锚补齐 + 钩子 gitignore 根治（红锚先行）
+
+【P1-1 函数内 static + 枚举常量误拒（回归）】fold_enum_in_static_init
+只接 parse_var_decl_from_base（聚合定义带声明器形态），普通局部声明
+主路径（stmt.mbt）不折 → `static int s = K;` 报 E3075 误拒（clang 放
+行）。修：主路径单/多声明符两处补 fold 接线。语料 +1
+`static_local_enum_init.c`（单/多声明符/数组/表达式叶/遮蔽五形态）。
+
+【P1-2 常量折叠忽略符号性（零锚新错值）】const_eval 的 CVal 纯值域
+无符号位——比较/除法/右移静默走 Int64 有符号域、整↔整 Cast 恒等丢
+unsigned：`(0u-1u)>0`/`(unsigned)-1>0`/`-1<1u` 折 0/0/1（clang
+1/1/0）。修：CE_AppB 携带左右操作数/结果类型，任一 unsigned 即
+UInt64 域比较/除法/逻辑右移 + 算术后按结果类型宽度归一
+（ce_normalize）；CE_AppU/CE_Cast 同款归一。wbtest
+`const_fold_unsigned_semantics` 红锚先行；typeck 73/73 存量零翻转。
+语料 +1 `const_fold_unsigned.c`（七形态含 u8 零扩展/浮截断）。
+
+【P1-3 = #171 函数内 static 多维数组嵌套大括号静默错值】
+emit_static_scalar_array_init 4 字节臂 flatten([elem])[0] 只取子列表
+首元素、8 字节臂 literal_init_bits(InitList) 恒 None——{{1,2,3},
+{4,5,6}} 只写 1,4,0,0,0,0、double 全 0。修：新增表达式级
+flatten_init_exprs（保留 String/Float 节点形态），两臂共用扁平序列
+按位定位（intern 路径/位模式编码不丢）。语料 +1
+`static_nested_2d_init.c`（int/double/char 二维 + 文件作用域/一维
+对照组）。
+
+【锚补齐（P3×2，突变验证区分力）】#162 补 codegen wbtest
+（struct 元素实参 LoadMem 计数=words——还原旧判定立红）；#161 补
+非字面量 fmt 分支锚（回写 no-op 化立红）。
+
+【其余处置】P2-1 fmt 落盘 / P2-2 testcount 分解和双行连坐 / P2-3
+#157 E3079 与 clang 默认口径分叉登记（降 W 须先配柔性初始化运行
+语义——盲降=静默踩踏，评论在案）/ P3-1 路线图现值句连坐（785/687/
+448·81·138·20）/ 探针 skill P14「0x85 ⇒ stdout 归零」断言按四通道
+复测推翻改写（#146/#172 全空子族根因待复核）/ review skill 03 演化
+两条（A1-g 多语法路径接线覆盖面 + B17 常量折叠层缺对偶）/
+editorconfig_check 豁免从硬编码追认制根治为 gitignored 自动豁免
+（git ls-files 单源 + J9 双向验证：ignored 脏文件跳过、非 ignored
+同款脏文件仍红）。
+
+【验证】裸 moon test 822/822、native 968/968、check --target all
+0 errors；三新语料 js+native 双臂与 clang 逐字一致；五家 digest
+freeze（baseline +3、typeck 四套件连坐零漂移）；clang_direct
+SAME=773 KNOWN=12 共 785；vm_diff 四套件 451+81+138+20 全 SAME；
+facts --strict --run 零漂移；testcount PASS（822）。
+
+### fix(host+typeck+codegen): #166/#161/#162 三修——memchr 负 c 连坐 + sscanf 尾参定型缺口 + struct Index/Member 实参通道（红锚先行）
+
+【#166 现象一 host_memchr 负 c 恒不中】`b & 0xFF == c` 裸 i32 比较——
+c 未像 host_strchr（病 1）那样取低 8 位，C11 §7.24.5.1「c 转换为
+unsigned char 后比较」下 -1≡0xFF 必命中。修 `(c & 0xFF)`；wbtest 锚
+翻转先行证红（旧锚系 oracle 病行为固化锚——病 1 修 strchr 漏连坐）。
+语料 +1 `memchr_negative_c.c`。**现象二勘误**：0xFF 串错位 +1 非
+memchr 游标病——实为字符串字面量 `\xFF` 按 UTF-8 双字节写出（#66
+拍板的已知差异面换位，String 载体下两面二选一数学无解），且危害
+升级实锤（char[N] 截断丢 NUL → strlen 越界 trap）；重开拍板挂
+issue 评论（字节旁路载体 / 全链 Bytes 两选项）。
+
+【#161 sscanf 变参尾参定型缺口（typeck）】check_builtin_sscanf 只查
+前两参，尾参 `&r.cls` 的 Member(object) 零 resolve 零回写、保持 Void
+占位——codegen 取址 get_member_offset 按 object.ty 落 0，成员偏移
+全丢（任何 struct 成员地址作 sscanf 尾参都写偏基址）。修：收编
+check_builtin_scanf 同款双路径（字面量 fmt 走 check_scanf_format
+格式感知 start=2 / 否则逐参 resolve 回写 + 非指针 W3035）。wbtest
+红锚 `sscanf_variadic_tail_member_typed` 首跑红证（Void）→ 绿。
+issue 原「实参通道分叉」定责勘误详见 #161 评论；连带挖出 char 全局
+读写字节粒度独立病 → #177 立账。语料 +1
+`sscanf_struct_member_addr.c`（局部/全局/连发/四转换链/%d 六段）。
+
+【#162 struct Index/Member 实参通道（codegen）】gen_index/gen_member_expr
+对 struct/union 结果照发 4 字节 LoadMem（留首字段值），gen_call_ptr
+struct 实参兜底臂把它当地址逐字拷贝 → `asum(arr2[0])` TRAP 0x1。
+修：load 判定补 struct/union 不 load 留地址（对齐兜底臂与 struct
+返回透传既有契约）。vm_diff 四套件 446+81+138+20 全 SAME 零回归；
+语料 +1 `struct_array_elem_byval.c`（七段形态）。
+
+【验证】裸 moon test 819/819、native 965/965；三新语料 js+native
+双臂与 clang 22.1.4 逐字一致；五家 digest freeze（baseline +2+1、
+typeck 四套件连坐重算零漂移）；facts --strict --run 零漂移（测试数
+818→819 连坐 8 处、native 964→965 实测）。
+
 ### fix(cli/vitro_wasm): #71 病 111——wasm 臂 quote-include 的 `./` 段键归一 + 三代台账终盘实测（2026-10-16）
 
 【病 111】vitro_wasm 胶水的 collect 登记名用 include 原文（`./x.h`）作

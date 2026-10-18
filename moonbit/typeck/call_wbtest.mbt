@@ -657,3 +657,226 @@ test "issue79_print_int_user_redefine_priority" {
   ignore(tc3.visit_call("print_int", args3, loc))
   inspect(tc3.errors.length(), content="0")
 }
+
+///|
+/// #161（2026-10-18）：sscanf 变参尾参定型缺口——check_builtin_sscanf
+/// 旧只查前两参，尾参（&r.cls 形态的 Addr(Member)）零 resolve 零回写，
+/// Member 的 object 保持 Void 占位（codegen 取址 get_member_offset 按
+/// object.ty 判型 → Void 落 0 → 成员偏移丢失、sscanf 写偏基址）。
+/// 修复后尾参逐参 resolve 回写——本锚断言定型树里 args[2] 的
+/// Member(object=r) 的 ty 被回写为 struct Row。
+test "sscanf_variadic_tail_member_typed" {
+  let loc = @source.SourceLoc::new(5, 5)
+  // struct Row { int id; char cls; };
+  let row : @ast.StructDecl = {
+    ..Default::default(),
+    loc,
+    name: "Row",
+    fields: [
+      { ty: @ast.Type::int(), name: "id", },
+      { ty: @ast.Type::char(), name: "cls", },
+    ],
+  }
+  // &r.cls：object 故意给 Void 占位（parser 初值形态——定型回写是本锚被测面）
+  let addr_of_cls : @ast.Expr = @ast.Expr::Unary(
+    @ast.UnaryOp::Addr,
+    @ast.Expr::Member(
+      @ast.Expr::Identifier("r", loc, @ast.Type::void_type()),
+      "cls",
+      false,
+      loc,
+      @ast.Type::void_type(),
+    ),
+    loc,
+    @ast.Type::void_type(),
+  )
+  let sscanf_call : @ast.Expr = @ast.Expr::CallPtr(
+    @ast.Expr::Identifier("sscanf", loc, @ast.Type::void_type()),
+    [
+      @ast.Expr::StringLiteral("A", loc, @ast.Type::void_type()),
+      @ast.Expr::StringLiteral("%c", loc, @ast.Type::void_type()),
+      addr_of_cls,
+    ],
+    loc,
+    @ast.Type::void_type(),
+  )
+  // main：Row r; sscanf("A", "%c", &r.cls);
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::struct_type("Row"),
+            "r",
+            None,
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Expr(sscanf_call, loc),
+        ],
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check({
+    structs: [row],
+    unions: [],
+    globals: [],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errs.filter(e => e.code >= 3000 && e.code < 4000).length(), 0)
+  // 定型树回查：main 体里 sscanf 调用 args[2] = Unary(Addr, Member(object=r))
+  guard typed.funcs[0].body is Some(@ast.Stmt::Block(stmts, _)) else {
+    fail("main body 缺失")
+  }
+  guard stmts[1] is @ast.Stmt::Expr(@ast.Expr::CallPtr(_, args, _, _), _) else {
+    fail("sscanf 调用语句形态不符")
+  }
+  guard args[2]
+    is @ast.Expr::Unary(
+      @ast.UnaryOp::Addr,
+      @ast.Expr::Member(object, "cls", _, _, _),
+      _,
+      _
+    ) else {
+    fail("args[2] 非 &r.cls 形态")
+  }
+  // 核心断言：object（r）的 ty 已回写为 struct Row（旧缺口 = Void）
+  assert_true(
+    object.ty().kind() is TK_Struct && object.ty().name() == "Row",
+    msg="sscanf 尾参 &r.cls 的 Member object 须定型为 struct Row（#161：旧零回写留 Void → 取址偏移丢失）",
+  )
+}
+
+///|
+/// #161 补锚（2026-10-18 审阅批 P3-3）：sscanf 双路径的**非字面量 fmt**
+/// 分支——fmt 为变量时走逐参 resolve 回写 + 非指针 W3035 口径。突变
+/// no-op 化该循环（resolve 不回写）后此锚立红（字面量锚不覆盖此分支）。
+test "sscanf_nonliteral_fmt_tail_args_resolved" {
+  let loc = @source.SourceLoc::new(5, 5)
+  let row : @ast.StructDecl = {
+    ..Default::default(),
+    loc,
+    name: "Row",
+    fields: [
+      { ty: @ast.Type::int(), name: "id", },
+      { ty: @ast.Type::char(), name: "cls", },
+    ],
+  }
+  let addr_of_cls : @ast.Expr = @ast.Expr::Unary(
+    @ast.UnaryOp::Addr,
+    @ast.Expr::Member(
+      @ast.Expr::Identifier("r", loc, @ast.Type::void_type()),
+      "cls",
+      false,
+      loc,
+      @ast.Type::void_type(),
+    ),
+    loc,
+    @ast.Type::void_type(),
+  )
+  // fmt 是局部 char 数组变量（非字面量 → else 分支逐参 resolve）
+  let sscanf_call : @ast.Expr = @ast.Expr::CallPtr(
+    @ast.Expr::Identifier("sscanf", loc, @ast.Type::void_type()),
+    [
+      @ast.Expr::Identifier(
+        "src",
+        loc,
+        @ast.Type::array_of(@ast.Type::char(), [4]),
+      ),
+      @ast.Expr::Identifier(
+        "fmt",
+        loc,
+        @ast.Type::array_of(@ast.Type::char(), [4]),
+      ),
+      addr_of_cls,
+    ],
+    loc,
+    @ast.Type::void_type(),
+  )
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::struct_type("Row"),
+            "r",
+            None,
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::VarDecl(
+            @ast.Type::array_of(@ast.Type::char(), [4]),
+            "fmt",
+            None,
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::VarDecl(
+            @ast.Type::array_of(@ast.Type::char(), [4]),
+            "src",
+            None,
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Expr(sscanf_call, loc),
+        ],
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check({
+    structs: [row],
+    unions: [],
+    globals: [],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errs.length(), 0)
+  guard typed.funcs[0].body is Some(@ast.Stmt::Block(stmts, _)) else {
+    fail("main body 缺失")
+  }
+  guard stmts[3] is @ast.Stmt::Expr(@ast.Expr::CallPtr(_, args, _, _), _) else {
+    fail("sscanf 调用语句形态不符")
+  }
+  guard args[2]
+    is @ast.Expr::Unary(
+      @ast.UnaryOp::Addr,
+      @ast.Expr::Member(object, "cls", _, _, _),
+      _,
+      _
+    ) else {
+    fail("args[2] 非 &r.cls 形态")
+  }
+  assert_true(
+    object.ty().kind() is TK_Struct && object.ty().name() == "Row",
+    msg="非字面量 fmt 分支的尾参 &r.cls 须回写定型（#161 else 分支）",
+  )
+}

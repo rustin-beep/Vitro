@@ -361,3 +361,76 @@ test "fwd_after_complete_and_sig_faces" {
     msg="参数/返回值/成员三面各报一处 E3076",
   )
 }
+
+///|
+/// P1-2（2026-10-18 审阅批）：常量折叠的符号性对偶——CVal 纯值域无符号
+/// 位，比较/除法全走 Int64 有符号域、CE_Cast 整型恒等丢 unsigned。
+/// 三形态锚（clang 22.1.4 实测 1/1/0）：`(0u-1u)>0`（u32 回绕巨值为真）、
+/// `(unsigned)-1>0`（cast 无符号域为真）、`-1<1u`（usual conversions 升
+/// 无符号域，-1 位模式巨值不小于 1u → 假）。
+test "const_fold_unsigned_semantics" {
+  let loc = @source.SourceLoc::new(1, 1)
+  fn uint_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::unsigned_int())
+  }
+  fn int_lit(v : Int32) -> @ast.Expr {
+    @ast.Expr::Literal(v, loc, @ast.Type::int())
+  }
+  fn neg_int(v : Int32) -> @ast.Expr {
+    @ast.Expr::Unary(@ast.UnaryOp::Neg, int_lit(v), loc, @ast.Type::int())
+  }
+  // a = (0u - 1u) > 0  —— clang: 1
+  let expr_a : @ast.Expr = @ast.Expr::Binary(
+    @ast.BinaryOp::Gt,
+    @ast.Expr::Binary(
+      @ast.BinaryOp::Sub,
+      uint_lit(0),
+      uint_lit(1),
+      loc,
+      @ast.Type::unsigned_int(),
+    ),
+    int_lit(0),
+    loc,
+    @ast.Type::int(),
+  )
+  // b = (unsigned)-1 > 0  —— clang: 1
+  let expr_b : @ast.Expr = @ast.Expr::Binary(
+    @ast.BinaryOp::Gt,
+    @ast.Expr::Cast(
+      neg_int(1),
+      @ast.Type::unsigned_int(),
+      loc,
+      @ast.Type::unsigned_int(),
+    ),
+    int_lit(0),
+    loc,
+    @ast.Type::int(),
+  )
+  // c = -1 < 1u  —— clang: 0
+  let expr_c : @ast.Expr = @ast.Expr::Binary(
+    @ast.BinaryOp::Lt,
+    neg_int(1),
+    uint_lit(1),
+    loc,
+    @ast.Type::int(),
+  )
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check(
+    gprog([
+      gdecl(@ast.Type::int(), "a", Some(expr_a)),
+      gdecl(@ast.Type::int(), "b", Some(expr_b)),
+      gdecl(@ast.Type::int(), "c", Some(expr_c)),
+    ]),
+  )
+  assert_eq(errs.length(), 0, msg="三形态均合法常量表达式")
+  fn folded_v(g : @ast.GlobalDecl, want : String) -> Unit raise {
+    match g.init {
+      Some(@ast.Expr::Literal(v, _, _)) =>
+        assert_eq(v, if want == "a" { 1 } else if want == "b" { 1 } else { 0 })
+      _ => fail("\{want} 应折叠为 Literal（clang 值 1/1/0）")
+    }
+  }
+  folded_v(typed.globals[0], "a")
+  folded_v(typed.globals[1], "b")
+  folded_v(typed.globals[2], "c")
+}

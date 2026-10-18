@@ -347,7 +347,11 @@ fn Parser::parse_var_decl_stmt(
     } else {
       None
     }
-    (d.0, d.1, init)
+    // P1-1（2026-10-18 审阅批）：主路径与 parse_var_decl_from_base 的
+    // fold 接线对齐——旧只折聚合定义带声明器形态（stmt.mbt:426），普通
+    // 局部 `static int s = K;` 的枚举常量叶不折 → typeck 见 Ident 报
+    // E3075 误拒（clang 放行）。
+    (d.0, d.1, self.fold_enum_in_static_init(init, is_static))
   }
   let var_type = triple.0
   let name = triple.1
@@ -388,7 +392,12 @@ fn Parser::parse_var_decl_stmt(
       } else {
         None
       }
-      extra_vars.push({ var_type: ex.0, name: ex.1, init: extra_init, })
+      extra_vars.push({
+        var_type: ex.0,
+        name: ex.1,
+        // P1-1 同款：主路径多声明符 extra 的 static 初始化器同折
+        init: self.fold_enum_in_static_init(extra_init, is_static),
+      })
     }
   }
   ignore(self.consume(Semicolon, "变量声明后预期 ';'"))

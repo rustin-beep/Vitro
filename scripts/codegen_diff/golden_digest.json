@@ -73,6 +73,7 @@
         "const.c": "b97fa1c4",
         "const_2d_array_param.c": "70d43963",
         "const_array_decay_warn.c": "20cd4f44",
+        "const_fold_unsigned.c": "2b257ffd",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
         "decrement_var.c": "629e3563",
@@ -227,6 +228,7 @@
         "malloc_free.c": "a67dcb26",
         "matrix_trace.c": "effa73e3",
         "member_access_both_ops.c": "4370f0f6",
+        "memchr_negative_c.c": "2e2e83d0",
         "memcpy_manual.c": "7b594bdc",
         "memset_basic.c": "354dda06",
         "memset_struct.c": "1e918104",
@@ -352,6 +354,7 @@
         "srand_rand.c": "dfd66442",
         "sscanf_basic.c": "a6a32f5c",
         "sscanf_scanset.c": "5050f21f",
+        "sscanf_struct_member_addr.c": "e73214b2",
         "static_assert_sizeof.c": "eaff46b4",
         "static_forward_func.c": "e82fdca6",
         "static_forward_global.c": "8fd6e158",
@@ -360,7 +363,9 @@
         "static_local_aggregate.c": "26d50ad9",
         "static_local_array.c": "b308a88f",
         "static_local_counter.c": "5bdd1dc8",
+        "static_local_enum_init.c": "909a33eb",
         "static_local_init_once.c": "b5cb2f12",
+        "static_nested_2d_init.c": "0dbd4f4c",
         "static_str_member.c": "e8f0723b",
         "static_string_pointer.c": "daf1e8be",
         "stdio_fgets_stdin.c": "9571f6af",
@@ -379,6 +384,7 @@
         "string_strlen.c": "74038346",
         "strtol_prefix.c": "4ab8b53d",
         "struct_array_char_member_init.c": "1a085aa9",
+        "struct_array_elem_byval.c": "30917e63",
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
@@ -658,6 +664,9 @@
         },
         "const_array_decay_warn.c": {
           "result_sha": "f909327c845ba516"
+        },
+        "const_fold_unsigned.c": {
+          "result_sha": "bfce8adbdda009e1"
         },
         "continue_while.c": {
           "result_sha": "8b4227ff886e9496"
@@ -1128,6 +1137,9 @@
         "member_access_both_ops.c": {
           "result_sha": "5b239495a31c1ec2"
         },
+        "memchr_negative_c.c": {
+          "result_sha": "a26e5025b8aea6a2"
+        },
         "memcpy_manual.c": {
           "result_sha": "7cfb8ac1f514495a"
         },
@@ -1506,6 +1518,9 @@
         "sscanf_scanset.c": {
           "result_sha": "0ff860c326d9204e"
         },
+        "sscanf_struct_member_addr.c": {
+          "result_sha": "019edee26fabeeb0"
+        },
         "static_assert_sizeof.c": {
           "result_sha": "c443b6f24cbc9aa9"
         },
@@ -1532,8 +1547,14 @@
         "static_local_counter.c": {
           "result_sha": "072b425d544f3f7c"
         },
+        "static_local_enum_init.c": {
+          "result_sha": "fd7a711698d48196"
+        },
         "static_local_init_once.c": {
           "result_sha": "3c52b4b532c5325f"
+        },
+        "static_nested_2d_init.c": {
+          "result_sha": "06297264c4a40465"
         },
         "static_str_member.c": {
           "result_sha": "9fe8ee8a7cfbc789"
@@ -1588,6 +1609,9 @@
         },
         "struct_array_char_member_init.c": {
           "result_sha": "a69d9ad71e27ec94"
+        },
+        "struct_array_elem_byval.c": {
+          "result_sha": "d930720b52fd8df1"
         },
         "struct_array_nested_init.c": {
           "result_sha": "cadc981969203486"

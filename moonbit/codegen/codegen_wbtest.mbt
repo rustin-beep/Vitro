@@ -931,3 +931,101 @@ test "flatten_init_list_no_int_range_reject" {
   assert_eq(values[0], -1, msg="4294967295 的 i32 位模式是 -1")
   assert_eq(values[1], 1, msg="-4294967295 模 2^32 = 1")
 }
+
+///|
+/// #162（2026-10-18 审阅批 P3-2 补锚）：struct 数组元素按值实参——
+/// gen_index 对 struct 结果**不 load 留地址**，gen_call_ptr 兜底臂从
+/// 地址逐字拷贝。突变区分锚：main 里 `asum(arr2[0])` 的 LoadMem 计数
+/// 恰 = struct 字数（16B=4 words 的逐字 LoadMem）；旧病（gen_index 对
+/// struct 照发 4 字节 LoadMem 留首字段值）多 1 个 = 5，反向突变立红。
+test "skeleton: struct array elem byval arg leaves address (#162)" {
+  let loc = @source.SourceLoc::new(2, 5)
+  // struct A { int arr[3]; int n; }
+  let decl_a : @ast.StructDecl = {
+    ..Default::default(),
+    loc,
+    name: "A",
+    fields: [
+      { ty: @ast.Type::array_of(@ast.Type::int(), [3]), name: "arr", },
+      { ty: @ast.Type::int(), name: "n", },
+    ],
+  }
+  // int asum(struct A a) —— 存根（签名进 func_table 即可）
+  let asum : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "asum",
+    params: [
+      { ty: @ast.Type::struct_type("A"), name: "a", loc, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([], loc)),
+    source_file: "t.c",
+  }
+  // struct A arr2[2]; —— 全局（数组元素 struct 形态）
+  let arr2 : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::array_of(@ast.Type::struct_type("A"), [2]),
+    name: "arr2",
+  }
+  // main：asum(arr2[0]);
+  let call : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier("asum", loc, @ast.Type::void_type()),
+      [
+        @ast.Expr::Index(
+          @ast.Expr::Identifier(
+            "arr2",
+            loc,
+            @ast.Type::array_of(@ast.Type::struct_type("A"), [2]),
+          ),
+          @ast.Expr::Literal(0, loc, @ast.Type::int()),
+          loc,
+          @ast.Type::struct_type("A"),
+        ),
+      ],
+      loc,
+      @ast.Type::int(),
+    ),
+    loc,
+  )
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([call, @ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [decl_a],
+    unions: [],
+    globals: [arr2],
+    funcs: [asum, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // main 体（含 asume 调用）的 LoadMem 计数：struct A = 16B = 4 words
+  // ——恰好兜底臂的 4 个逐字 LoadMem；gen_index 若对 struct 结果多发
+  // 一个 LoadMem（旧病）= 5
+  let main_meta = o.func_table.get("main").unwrap()
+  let body_ip = main_meta.ip
+  let body_len = 32 // Block+Expr+Return 段（防御上界——计数遍历窗口）
+  let mut loadmem_count = 0
+  for i in body_ip..<(body_ip + body_len) {
+    if i < o.code.length() && o.code[i].op is @opcode.OpCode::LoadMem {
+      loadmem_count += 1
+    }
+  }
+  assert_eq(
+    loadmem_count,
+    4,
+    msg="struct 元素实参 = 4 words 逐字 LoadMem（gen_index 对 struct 不 load——多 1 即旧病复发）",
+  )
+}

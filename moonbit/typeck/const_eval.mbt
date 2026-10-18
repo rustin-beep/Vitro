@@ -26,11 +26,35 @@ priv enum CVal {
 /// 对齐 parser const_int_of 的显式栈后序）。
 priv enum CEvalFrame {
   CE_E(@ast.Expr)
-  CE_AppU(@ast.UnaryOp)
-  CE_AppB(@ast.BinaryOp)
+  /// ty = 一元结果类型（P1-2：Neg/BitNot 后按类型归一）
+  CE_AppU(@ast.UnaryOp, @ast.Type)
+  /// lty/rty = 左右操作数类型（比较/除法/右移的符号域判定），
+  /// resty = 结果类型（算术后按宽度归一）——P1-2 符号性对偶
+  CE_AppB(@ast.BinaryOp, @ast.Type, @ast.Type, @ast.Type)
   /// Ternary 条件值已弹后按真值压选中分支
   CE_TernSel(@ast.Expr, @ast.Expr)
   CE_Cast(@ast.Type)
+}
+
+///|
+/// 整类型的 unsigned 位（浮点/其他非整型恒 false——浮点无符号域）。
+fn ce_is_unsigned(ty : @ast.Type) -> Bool {
+  match ty.kind() {
+    TK_Char | TK_Int | TK_LongLong => ty.is_unsigned()
+    _ => false
+  }
+}
+
+///|
+/// 值按类型宽度/符号性归一（P1-2）：u32 → 低 32 位零扩展（位模式语义
+/// 值 4294967295 域）、i32 → 32 位符号扩展、char 同款 8 位、64 位类型
+/// 不动。64 位容器内保持位模式一致是算术可先算后归一的依据。
+fn ce_normalize(i : Int64, ty : @ast.Type) -> Int64 {
+  match ty.kind() {
+    TK_Char => if ty.is_unsigned() { i & 0xFFL } else { i << 56 >> 56 }
+    TK_Int => if ty.is_unsigned() { i & 0xFFFFFFFFL } else { i << 32 >> 32 }
+    _ => i
+  }
 }
 
 ///|
@@ -45,21 +69,21 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
   while st.length() > 0 {
     match st.pop() {
       None => break
-      Some(CE_AppU(op)) => {
+      Some(CE_AppU(op, ty)) => {
         let v = match vals.pop() {
           Some(v) => v
           None => return None
         }
         match (op, v) {
-          (Neg, CI(i)) => vals.push(CI(i.neg()))
+          (Neg, CI(i)) => vals.push(CI(ce_normalize(i.neg(), ty)))
           (Neg, CF(f)) => vals.push(CF(-f))
           (Pos, v) => vals.push(v) // 恒等（#71 病 39）
           (Not, CI(i)) => vals.push(CI(if i == 0 { 1L } else { 0L }))
-          (BitNot, CI(i)) => vals.push(CI(-1L * (i + 1L))) // 二补码代数式
+          (BitNot, CI(i)) => vals.push(CI(ce_normalize(-1L * (i + 1L), ty))) // 二补码代数式
           _ => return None // 位非/逻辑非的浮点操作数：教学域罕见，不折
         }
       }
-      Some(CE_AppB(op)) => {
+      Some(CE_AppB(op, lty, rty, resty)) => {
         let b = match vals.pop() {
           Some(v) => v
           None => return None
@@ -70,38 +94,100 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
         }
         // 任一侧浮点 → double 域（C usual arithmetic promotions 简化）
         match (a, b) {
-          (CI(x), CI(y)) =>
+          (CI(x), CI(y)) => {
+            // P1-2：整型混合符号——usual conversions 任一侧 unsigned 即
+            // 升无符号域（位模式按 UInt64 重解释比较/除法/右移）
+            let u_domain = ce_is_unsigned(lty) || ce_is_unsigned(rty)
+            let xu = x.reinterpret_as_uint64()
+            let yu = y.reinterpret_as_uint64()
             match op {
-              Add => vals.push(CI(x + y))
-              Sub => vals.push(CI(x - y))
-              Mul => vals.push(CI(x * y))
-              Div => if y != 0 { vals.push(CI(x / y)) } else { return None }
-              Mod => if y != 0 { vals.push(CI(x % y)) } else { return None }
-              BitAnd => vals.push(CI(x & y))
-              BitOr => vals.push(CI(x | y))
-              BitXor => vals.push(CI(x ^ y))
+              Add => vals.push(CI(ce_normalize(x + y, resty)))
+              Sub => vals.push(CI(ce_normalize(x - y, resty)))
+              Mul => vals.push(CI(ce_normalize(x * y, resty)))
+              Div =>
+                if y != 0 {
+                  vals.push(
+                    CI(
+                      ce_normalize(
+                        if u_domain {
+                          (xu / yu).reinterpret_as_int64()
+                        } else {
+                          x / y
+                        },
+                        resty,
+                      ),
+                    ),
+                  )
+                } else {
+                  return None
+                }
+              Mod =>
+                if y != 0 {
+                  vals.push(
+                    CI(
+                      ce_normalize(
+                        if u_domain {
+                          (xu % yu).reinterpret_as_int64()
+                        } else {
+                          x % y
+                        },
+                        resty,
+                      ),
+                    ),
+                  )
+                } else {
+                  return None
+                }
+              BitAnd => vals.push(CI(ce_normalize(x & y, resty)))
+              BitOr => vals.push(CI(ce_normalize(x | y, resty)))
+              BitXor => vals.push(CI(ce_normalize(x ^ y, resty)))
               Shl =>
                 if y >= 0 && y <= 63 {
-                  vals.push(CI(x << y.to_int()))
+                  vals.push(CI(ce_normalize(x << y.to_int(), resty)))
                 } else {
                   return None
                 }
               Shr =>
                 if y >= 0 && y <= 63 {
-                  vals.push(CI(x >> y.to_int()))
+                  // 逻辑右移（u_domain）/ 算术右移（signed）
+                  vals.push(
+                    CI(
+                      ce_normalize(
+                        if u_domain {
+                          (xu >> y.to_int()).reinterpret_as_int64()
+                        } else {
+                          x >> y.to_int()
+                        },
+                        resty,
+                      ),
+                    ),
+                  )
                 } else {
                   return None
                 }
-              Lt => vals.push(CI(if x < y { 1L } else { 0L }))
-              Le => vals.push(CI(if x <= y { 1L } else { 0L }))
-              Gt => vals.push(CI(if x > y { 1L } else { 0L }))
-              Ge => vals.push(CI(if x >= y { 1L } else { 0L }))
+              Lt => {
+                let hit = if u_domain { xu < yu } else { x < y }
+                vals.push(CI(if hit { 1L } else { 0L }))
+              }
+              Le => {
+                let hit = if u_domain { xu <= yu } else { x <= y }
+                vals.push(CI(if hit { 1L } else { 0L }))
+              }
+              Gt => {
+                let hit = if u_domain { xu > yu } else { x > y }
+                vals.push(CI(if hit { 1L } else { 0L }))
+              }
+              Ge => {
+                let hit = if u_domain { xu >= yu } else { x >= y }
+                vals.push(CI(if hit { 1L } else { 0L }))
+              }
               Eq => vals.push(CI(if x == y { 1L } else { 0L }))
               Ne => vals.push(CI(if x != y { 1L } else { 0L }))
               And => vals.push(CI(if x != 0 && y != 0 { 1L } else { 0L }))
               Or => vals.push(CI(if x != 0 || y != 0 { 1L } else { 0L }))
               _ => return None
             }
+          }
           _ => {
             // 浮点域（至少一侧 CF）
             let xf = to_f64(a)
@@ -145,8 +231,10 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             match v {
               // 截断语义（C 浮→整转换；超界环绕与 clang 常量折叠口径
               // 差异由对拍暴露再登记）
-              CF(f) => vals.push(CI(f.to_int64()))
-              CI(i) => vals.push(CI(i))
+              CF(f) => vals.push(CI(ce_normalize(f.to_int64(), target)))
+              // P1-2：整→整 cast 按目标宽度/符号性归一——旧恒等臂丢
+              // unsigned 位（`(unsigned)-1` 值域该 4294967295）
+              CI(i) => vals.push(CI(ce_normalize(i, target)))
             }
         }
       }
@@ -155,12 +243,12 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
           Literal(v, _, _) => vals.push(CI(v.to_int64()))
           LongLiteral(v, _, _) => vals.push(CI(v))
           FloatLiteral(v, _, _) => vals.push(CF(v))
-          Unary(op, inner, _, _) => {
-            st.push(CE_AppU(op))
+          Unary(op, inner, _, ty) => {
+            st.push(CE_AppU(op, ty))
             st.push(CE_E(inner))
           }
-          Binary(op, l, r, _, _) => {
-            st.push(CE_AppB(op))
+          Binary(op, l, r, _, ty) => {
+            st.push(CE_AppB(op, l.ty(), r.ty(), ty))
             st.push(CE_E(r))
             st.push(CE_E(l))
           }

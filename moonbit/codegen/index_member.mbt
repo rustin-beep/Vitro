@@ -150,7 +150,10 @@ fn BytecodeGen::struct_fields_prefix_offset(
 
 ///|
 /// 成员访问表达式（读）：地址 + 按成员类型 load（数组成员不 load——
-/// 地址即值，供后续索引）。
+/// 地址即值，供后续索引；**struct/union 成员同不 load 留地址**——#162
+/// 2026-10-18：gen_call_ptr 的 struct 实参兜底臂与 gen_member_addr 的
+/// struct 返回透传契约均为「gen_expr 对 struct 留地址」，旧此处对 struct
+/// 成员照发 4 字节 LoadMem 留下首字段值，`asum(s.inner)` 形态崩）。
 fn BytecodeGen::gen_member_expr(
   self : BytecodeGen,
   object : @ast.Expr,
@@ -160,7 +163,7 @@ fn BytecodeGen::gen_member_expr(
 ) -> Unit {
   self.gen_member_addr(object, mname, loc)
   // lambda by-ref 捕获指针解引用段不迁移（C only）
-  if !ty.is_array() {
+  if !ty.is_array() && !(ty.kind() is TK_Struct) && !(ty.kind() is TK_Union) {
     if ty.kind() is TK_Char && ty.is_unsigned() {
       self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
     } else if ty.kind() is TK_Char {
@@ -242,7 +245,10 @@ fn BytecodeGen::gen_member_addr(
 
 ///|
 /// 数组索引：边界检查（TrapBounds 携符号索引或负界）+ 步长缩放 + 地址
-/// 加法；is_assign=true 时留地址不 load（赋值左值/取址共用）。
+/// 加法；is_assign=true 时留地址不 load（赋值左值/取址共用）；**struct/
+/// union 元素同不 load 留地址**（#162 2026-10-18——`asum(arr2[0])` 的
+/// struct 数组元素按值实参走 gen_call_ptr 兜底臂的「留地址逐字拷贝」
+/// 契约，旧照标量 LoadMem 4 字节留下首字段值被当地址解引用 → TRAP 0x1）。
 fn BytecodeGen::gen_index(
   self : BytecodeGen,
   array : @ast.Expr,
@@ -319,7 +325,10 @@ fn BytecodeGen::gen_index(
   }
   self.emit(@opcode.OpCode::Mul, 0, loc)
   self.emit(@opcode.OpCode::Add, 0, loc)
-  if !is_assign && !result_ty.is_array() {
+  if !is_assign &&
+    !result_ty.is_array() &&
+    !(result_ty.kind() is TK_Struct) &&
+    !(result_ty.kind() is TK_Union) {
     if result_ty.kind() is TK_Char && result_ty.is_unsigned() {
       self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)
     } else if result_ty.kind() is TK_Char {

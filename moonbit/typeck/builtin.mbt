@@ -848,6 +848,12 @@ fn TypeChecker::check_builtin_snprintf(
 
 ///|
 /// sscanf（≥2 参：str 指针 + fmt 指针）。
+/// #161（2026-10-18）：变参尾参（第 3 参起，`&s.f` 形态的 Addr(Member)）
+/// 必须逐参 resolve 回写——旧只查前两参，尾参 Member 的 object 保持
+/// parser 的 Void 占位，codegen 取址 get_member_offset 按 object.ty 判型
+/// 落 0，成员偏移丢失（`sscanf("A","%c",&r.cls)` 写偏基址）。双路径与
+/// check_builtin_scanf 同构：fmt 为字面量走 check_scanf_format 格式感知
+/// （数量/对位类型），否则逐参指针性 W 口径。
 fn TypeChecker::check_builtin_sscanf(
   self : TypeChecker,
   args : Array[@ast.Expr],
@@ -862,6 +868,21 @@ fn TypeChecker::check_builtin_sscanf(
   } else {
     self.builtin_check_pointer(args, 0, "sscanf", loc)
     self.builtin_check_pointer(args, 1, "sscanf", loc)
+    match args[1] {
+      StringLiteral(value, _, _) => self.check_scanf_format(value, args, loc, 2)
+      _ =>
+        for i in 2..<args.length() {
+          let (arg_type, new_arg) = self.resolve_expr_type(args[i])
+          args[i] = new_arg
+          if !(arg_type.kind() is TK_Pointer) && !arg_type.is_array() {
+            self.report_warning(
+              "sscanf 的第 \{i + 1} 个参数必须是指针",
+              loc,
+              W3035_ScanfArgType,
+            )
+          }
+        }
+    }
   }
   @ast.Type::int()
 }

@@ -75,6 +75,7 @@ test "wb rollback covers class stack and lambda id" {
     loc: @source.SourceLoc::new(1, 1),
     name: "S",
     fields: [],
+    is_forward: false,
   })
   q.restore(rb)
   inspect(q.current_class.length(), content="0")

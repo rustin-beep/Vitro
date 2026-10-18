@@ -29,6 +29,7 @@ test "resolve_expr_offsetof_lowering" {
   // 手工注册 struct S { char a; int b; char c; }（packed 布局下 1+4+1）
   tc.structs.set("S", {
     fields: [(@ast.Type::char(), "a"), (int2(), "b"), (@ast.Type::char(), "c")],
+    is_complete: true,
   })
   // offsetof(S, c) = sizeof(char) + sizeof(int) + 0 = 5
   let (_, e) = tc.resolve_expr_type(
@@ -43,7 +44,10 @@ test "resolve_expr_offsetof_lowering" {
   }
   assert_eq(tc.errors.length(), 0)
   // union 恒 0
-  tc.unions.set("U", { fields: [(int2(), "x"), (@ast.Type::char(), "y")], })
+  tc.unions.set("U", {
+    fields: [(int2(), "x"), (@ast.Type::char(), "y")],
+    is_complete: true,
+  })
   let (_, e2) = tc.resolve_expr_type(
     @ast.Expr::Offsetof(@ast.Type::union_type("U"), "y", loc, @ast.Type::int()),
   )
@@ -78,6 +82,7 @@ test "resolve_expr_offsetof_nested_designator_b67" {
   // struct Outer { int pad; struct Inner in; char tail; }（pad@0、in@4）
   tc.structs.set("Inner", {
     fields: [(@ast.Type::char(), "tag"), (int2(), "val")],
+    is_complete: true,
   })
   tc.structs.set("Outer", {
     fields: [
@@ -85,6 +90,7 @@ test "resolve_expr_offsetof_nested_designator_b67" {
       (@ast.Type::struct_type("Inner"), "in"),
       (@ast.Type::char(), "tail"),
     ],
+    is_complete: true,
   })
   // offsetof(Outer, in.val) = 4（pad）+ 1（Inner.tag）= 5——突变旁路态只算
   // 首段得 4
@@ -117,9 +123,13 @@ test "resolve_expr_offsetof_nested_designator_b67" {
   )
   // union 中段恒 0：struct UWrap { int p; union UB u; }、UB { int x; char y; }
   // offsetof(UWrap, u.y) = 4（p）+ 0（union 段）= 4
-  tc.unions.set("UB", { fields: [(int2(), "x"), (@ast.Type::char(), "y")], })
+  tc.unions.set("UB", {
+    fields: [(int2(), "x"), (@ast.Type::char(), "y")],
+    is_complete: true,
+  })
   tc.structs.set("UWrap", {
     fields: [(int2(), "p"), (@ast.Type::union_type("UB"), "u")],
+    is_complete: true,
   })
   let (_, e2) = tc.resolve_expr_type(
     @ast.Expr::Offsetof(

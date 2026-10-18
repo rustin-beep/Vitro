@@ -106,27 +106,78 @@ pub fn TypeChecker::check(
   program : @ast.ProgramNode,
 ) -> (@ast.ProgramNode, Array[TypeError], Array[TypeError], Array[TypeError]) {
   // Pass 1: struct/union 注册
+  // #145（2026-10-18）：前向声明（is_forward）与完整定义分轨——
+  // ①重复前向合法（不覆盖既有条目）；②前向后完整定义=合法升级（旧
+  // 形态前向被当零字段完整定义，后续定义误报 E3002）；③完整+完整
+  // 仍 E3002（照旧）。
   for s in program.structs {
-    if self.structs.contains(s.name) {
-      self.report_error(
-        "结构体 '\{s.name}' 重复定义",
-        s.loc,
-        E3002_StructRedeclared,
-      )
+    if s.is_forward {
+      if !self.structs.contains(s.name) {
+        self.structs.set(s.name, { fields: [], is_complete: false, })
+      }
       continue
     }
-    self.structs.set(s.name, { fields: s.fields.map(f => (f.ty, f.name)), })
+    match self.structs.get(s.name) {
+      Some(existing) =>
+        if existing.is_complete {
+          self.report_error(
+            "结构体 '\{s.name}' 重复定义",
+            s.loc,
+            E3002_StructRedeclared,
+          )
+        } else {
+          // 前向 → 完整：合法升级
+          self.structs.set(s.name, {
+            fields: s.fields.map(f => (f.ty, f.name)),
+            is_complete: true,
+          })
+        }
+      None =>
+        self.structs.set(s.name, {
+          fields: s.fields.map(f => (f.ty, f.name)),
+          is_complete: true,
+        })
+    }
+    // #145 对抗补面：值成员类型须完整（clang "field has incomplete
+    // type"——指针成员豁免〔check_type_complete 头注〕；StructField
+    // 无 loc，用声明位置；自引用值成员由 E3072 环检测另行承载）
+    match self.structs.get(s.name) {
+      Some(sym) =>
+        if sym.is_complete {
+          for f in s.fields {
+            self.check_type_complete(f.ty, s.loc)
+          }
+        }
+      None => ()
+    }
   }
   for u in program.unions {
-    if self.unions.contains(u.name) {
-      self.report_error(
-        "联合体 '\{u.name}' 重复定义",
-        u.loc,
-        E3002_StructRedeclared,
-      )
+    if u.is_forward {
+      if !self.unions.contains(u.name) {
+        self.unions.set(u.name, { fields: [], is_complete: false, })
+      }
       continue
     }
-    self.unions.set(u.name, { fields: u.fields.map(f => (f.ty, f.name)), })
+    match self.unions.get(u.name) {
+      Some(existing) =>
+        if existing.is_complete {
+          self.report_error(
+            "联合体 '\{u.name}' 重复定义",
+            u.loc,
+            E3002_StructRedeclared,
+          )
+        } else {
+          self.unions.set(u.name, {
+            fields: u.fields.map(f => (f.ty, f.name)),
+            is_complete: true,
+          })
+        }
+      None =>
+        self.unions.set(u.name, {
+          fields: u.fields.map(f => (f.ty, f.name)),
+          is_complete: true,
+        })
+    }
   }
   // T-P0-8：struct/union 值成员循环包含检测（学生写链表节点漏 `*` 的
   // 经典错误，曾致 compute_type_size 无限递归栈溢出）。
@@ -166,6 +217,41 @@ pub fn TypeChecker::check(
       }
       None => ()
     }
+  }
+  // #145 连坐（对抗测试实锤）：净化 structs/unions 数组——同名完整
+  // 定义存在时的前向条目**移除**。否则 codegen 逐条注册 struct_defs
+  // 会用最后的零字段前向条目**反向覆盖**完整定义（`struct S{...};
+  // struct S;` 后 struct 按值传参字段错位——min_f3 探针 1048572）。
+  let cleaned_structs : Array[@ast.StructDecl] = []
+  for s in program.structs {
+    if s.is_forward {
+      match self.structs.get(s.name) {
+        Some(sym) =>
+          if sym.is_complete {
+            continue // 完整定义在册——前向条目出列
+          }
+        None => ()
+      }
+    }
+    cleaned_structs.push(s)
+  }
+  program.structs.clear()
+  for s in cleaned_structs {
+    program.structs.push(s)
+  }
+  let cleaned_unions : Array[@ast.StructDecl] = []
+  for u in program.unions {
+    if u.is_forward {
+      match self.unions.get(u.name) {
+        Some(sym) => if sym.is_complete { continue }
+        None => ()
+      }
+    }
+    cleaned_unions.push(u)
+  }
+  program.unions.clear()
+  for u in cleaned_unions {
+    program.unions.push(u)
   }
   // Pass 2: 函数签名注册
   for f in program.funcs {
@@ -264,6 +350,7 @@ pub fn TypeChecker::check(
       is_global=true,
       is_extern=g.is_extern,
       is_static=g.is_static,
+      loc=g.loc,
     )
     if g.is_static {
       match self.static_global_files.get(g.name) {
@@ -285,17 +372,25 @@ pub fn TypeChecker::check(
         g.init is Some(StringLiteral(_, _, _))
       self.check_array_dims_legality(g.ty, has_init_list, g.loc)
     }
+    // #145：全局值形态完整性——extern 声明豁免（`extern struct S x;`
+    // 合法 tentative 声明，C11 §6.9.2p3；定义形态才要求完整）
+    if !g.is_extern {
+      self.check_type_complete(g.ty, g.loc)
+    }
     if g.init is Some(init) {
       if g.ty.is_array() {
         let (new_ty, new_init) = self.check_array_initializer(g.ty, init, g.loc)
         // P4：`char g[] = "str"` 的尺寸推断发生在 declare_var 之后——
         // 回写符号表，否则 sizeof(g) 用推断前快照恒 1
         self.update_var_type(g.name, new_ty)
-        program.globals[i] = { ..g, ty: new_ty, init: Some(new_init), }
+        // #142/#151：静态初始化器常量折叠（元素级）+ 非常量诊断
+        let folded = self.fold_static_aggregate(new_ty, new_init)
+        program.globals[i] = { ..g, ty: new_ty, init: Some(folded), }
       } else if (g.ty.kind() is TK_Struct || g.ty.kind() is TK_Union) &&
         init is InitList(_, _, _) {
         let new_init = self.check_struct_initializer(g.ty, init, g.loc)
-        program.globals[i] = { ..g, init: Some(new_init), }
+        let folded = self.fold_static_aggregate(g.ty, new_init)
+        program.globals[i] = { ..g, init: Some(folded), }
       } else {
         // precomputed 命中者取缓存类型（init 已在首段解析改写）；未命中
         // 现场解析（改写存回）——Rust `resolve_expr_type(&mut init)` 的
@@ -331,6 +426,16 @@ pub fn TypeChecker::check(
             g.loc,
             E3004_TypeMismatch,
           )
+        }
+        // #142/#151：标量静态初始化器折叠（成功→字面量交 codegen 既有
+        // 路径；失败→E3075 诊断）
+        match program.globals[i].init {
+          Some(ie_now) =>
+            program.globals[i] = {
+              ..program.globals[i],
+              init: Some(self.fold_static_init(new_ty, ie_now)),
+            }
+          None => ()
         }
       }
     }

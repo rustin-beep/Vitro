@@ -37,7 +37,10 @@ struct FuncSymbol {
 
 ///|
 /// struct/union 共用符号（只有 fields，无 size/offset——布局在
-/// compute_type_size 查表路径）。
+/// compute_type_size 查表路径）。`is_complete`：#145（2026-10-18）——
+/// false = 仅前向声明（`struct S;`），值形态使用（声明变量/sizeof）须报
+/// E3076；前向→完整定义在 Pass 1 合法升级。
 struct StructSymbol {
   fields : Array[(@ast.Type, String)]
+  is_complete : Bool
 }

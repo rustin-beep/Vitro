@@ -410,6 +410,18 @@
       "code": 3073
     },
     {
+      "name": "E3074_DuplicateCase",
+      "code": 3074
+    },
+    {
+      "name": "E3075_StaticInitNotConstant",
+      "code": 3075
+    },
+    {
+      "name": "E3076_IncompleteType",
+      "code": 3076
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

@@ -138,8 +138,8 @@ Rust oracle 的实测数字：
 ## 验证
 
 ```bash
-moon check && moon test    # 796 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 796 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕）
-                           # native-only 包测试 146 个（fs 0 / gateway 131 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 942（CI 门禁口径；796+146=942 逐包实测自洽）
+moon check && moon test    # 806 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 806 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕）
+                           # native-only 包测试 146 个（fs 0 / gateway 131 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 952（CI 门禁口径；806+146=952 逐包实测自洽）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

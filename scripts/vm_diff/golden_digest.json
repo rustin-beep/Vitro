@@ -447,6 +447,12 @@
       "stdout_sha": "00a65ddfbc8b5891",
       "memory_sha": "bf05860724963e17"
     },
+    "baseline/designated_struct_copy.c": {
+      "src_sha": "2ea3f5f3",
+      "exit_code": 0,
+      "stdout_sha": "a2e665e2403048e3",
+      "memory_sha": "fcc8cc74b93539f0"
+    },
     "baseline/dfs_graph.c": {
       "src_sha": "7ec6a1df",
       "exit_code": 0,
@@ -925,6 +931,12 @@
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
       "memory_sha": "fac2f047ce351d88"
+    },
+    "baseline/forward_decl_usage.c": {
+      "src_sha": "34b5bf79",
+      "exit_code": 0,
+      "stdout_sha": "801e1a812a891fec",
+      "memory_sha": "94c63d84f164994e"
     },
     "baseline/fprintf_basic.c": {
       "src_sha": "853d5fe4",
@@ -2083,6 +2095,12 @@
       "stdout_sha": "3de6ef1be5dfb491",
       "memory_sha": "f28461cca4a9cc7c"
     },
+    "baseline/sscanf_scanset.c": {
+      "src_sha": "5050f21f",
+      "exit_code": 0,
+      "stdout_sha": "3a27a86e240b18dc",
+      "memory_sha": "5389fd8dff3c4e0b"
+    },
     "baseline/static_assert_sizeof.c": {
       "src_sha": "eaff46b4",
       "exit_code": 0,
@@ -2108,6 +2126,12 @@
       "exit_code": 0,
       "stdout_sha": "ad53e8806d17c82d",
       "memory_sha": "abc76ab43b366e42"
+    },
+    "baseline/static_init_expr.c": {
+      "src_sha": "81f09bf5",
+      "exit_code": 0,
+      "stdout_sha": "1f5aca77af5b4ad1",
+      "memory_sha": "a23f43164e5dadf6"
     },
     "baseline/static_local_aggregate.c": {
       "src_sha": "26d50ad9",

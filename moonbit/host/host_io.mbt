@@ -379,6 +379,10 @@ priv enum ScanfItem {
   /// 字段宽度 #71 病 23 2026-10-11——Some(n) 限本转换符最多读 n 个
   /// 输入字符（C11 §7.21.6.2，此前解析后丢弃=静默忽略）)
   Spec(Int32, Int32, Bool, Int32?)
+  /// scanset 转换 `%[...]`（#149，2026-10-18，C11 §7.21.6.2p12）：
+  /// (否定 `^` 置位, 集合字节表——首位 `]` 字面规则已并入, 赋值抑制,
+  /// 字段宽度)。width/`*` 与 Spec 同语义。
+  Scanset(Bool, Array[Byte], Bool, Int32?)
   /// 空白指令：匹配任意数量（含零）空白
   Whitespace
   /// 普通字符指令（含 `%%` 展开的 `%`）：精确匹配
@@ -490,7 +494,82 @@ fn parse_scanf_specs(fmt : Array[Int32]) -> Array[ScanfItem] {
               None => ()
             }
             // 格式字母
+            // #149（2026-10-18）：`[`（91）不是格式字母——scanset 转换
+            //（C11 §7.21.6.2p12）：`^` 否定位 + 字符集到 `]`（`]` 紧跟
+            // `[` 或 `[^` 时是集合成员）；width/`*` 前缀同 Spec 语义。
+            // 旧形态 `[` 落格式字母臂 + 集合内容被当字面字符 → 首字符
+            // 即失配，四模型 7/8 采样全中的 SSCANF 族根因。
             match scan.peek() {
+              Some(91) => {
+                scan.advance()
+                let negated = if scan.peek() == Some(94) {
+                  scan.advance()
+                  true
+                } else {
+                  false
+                }
+                let set : Array[Byte] = []
+                // 首位 `]` 是集合成员（C11 规则）
+                if scan.peek() == Some(93) {
+                  set.push(Int32::to_byte(93))
+                  scan.advance()
+                }
+                // 到终止 `]`。**未闭合（EOF）= 该转换失败**（对抗探针
+                // adv_c n4 实测：clang 对 `%[abc`（无 ]）返回 0——收
+                // raw 后按 closed 位决定产正常集合还是必失败形态）。
+                // 先收原始 token（`-` 位置保留——范围判定要看邻位）
+                let mut closed = false
+                let raw : Array[Int32] = []
+                while true {
+                  match scan.peek() {
+                    Some(93) => {
+                      scan.advance()
+                      closed = true
+                      break
+                    }
+                    Some(c) => {
+                      raw.push(c)
+                      scan.advance()
+                    }
+                    None => break
+                  }
+                }
+                // `-` 范围展开（实现定义域：glibc/clang 一致——**中缀**位
+                // `-` 表范围（a-z）；首/末位 = 字面；降序（z-a）= 字面
+                // 三字符。展开只补中间字符，两端由自身位置 push（无重复）。
+                let mut k = 0
+                while k < raw.length() {
+                  let c = raw[k]
+                  if c == 45 &&
+                    k > 0 &&
+                    k + 1 < raw.length() &&
+                    raw[k - 1] < raw[k + 1] {
+                    // 升序中缀 `-` = 范围：raw[k-1] 已 push（k-1 迭代），
+                    // 补 (lo, hi) 开区间段；raw[k+1] 由其自身迭代 push
+                    let lo = raw[k - 1]
+                    let hi = raw[k + 1]
+                    let mut m = lo + 1
+                    while m < hi {
+                      set.push(Int32::to_byte(m))
+                      m = m + 1
+                    }
+                  } else {
+                    // 普通字符 / 首末位 `-` / 降序范围（z-a）与怪形：字面
+                    set.push(Int32::to_byte(c))
+                  }
+                  k = k + 1
+                }
+                // 未闭合：产「空正集合」——任意首字符都不在集 → 零长度
+                // 匹配失败（adv_c n4 对齐 clang 的 n=0）；合法空集 `%[]`
+                //（closed 且零字符）同语义
+                if closed {
+                  specs.push(
+                    ScanfItem::Scanset(negated, set, suppress, width_opt),
+                  )
+                } else {
+                  specs.push(ScanfItem::Scanset(false, [], suppress, width_opt))
+                }
+              }
               Some(spec) => {
                 specs.push(ScanfItem::Spec(spec, len_mod, suppress, width_opt))
                 scan.advance()
@@ -807,6 +886,79 @@ pub fn host_scanf_n(
         continue
       }
       ScanfItem::Spec(s, lm, sup, wopt) => (s, lm, sup, wopt)
+      // #149：scanset 执行（%s 同款 token 收集 + write_bytes + NUL；
+      // 带 V-P1-6 栈缓冲校验——与 %s 同族写目标风险）。匹配规则：不跳
+      // 前导空白（集合含空白才消费）；零长度 = 匹配失败（回退/不写/
+      // 不计/终止——与 d/i/x/o 臂同语义）。
+      ScanfItem::Scanset(neg, set, sup, wopt) => {
+        if arg_idx >= ptrs.length() && !sup {
+          break
+        }
+        let ptr = if sup { fmt_addr } else { ptrs[arg_idx] }
+        if !sup {
+          arg_idx = arg_idx + 1
+        }
+        let entry_pos = pos
+        let lim = match wopt {
+          Some(w) =>
+            if pos + w < chars.length() {
+              pos + w
+            } else {
+              chars.length()
+            }
+          None => chars.length()
+        }
+        let start = pos
+        while pos < lim {
+          let c = chars[pos]
+          let in_set = set.contains(c)
+          let take = if neg { !in_set } else { in_set }
+          if take {
+            pos = pos + 1
+          } else {
+            break
+          }
+        }
+        if pos == start {
+          pos = entry_pos
+          break
+        }
+        let token : Array[Byte] = []
+        let mut j = start
+        while j < pos {
+          token.push(chars[j])
+          j = j + 1
+        }
+        if !sup {
+          match
+            stack_buffer_check(
+              stack_buffers,
+              ptr,
+              token.length() + 1,
+              "scanf(\"%[\")",
+            ) {
+            Some(t) => return InputOutcome::Trap(t)
+            None => ()
+          }
+        }
+        if !sup {
+          match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
+            Ok(_) => ()
+            Err(e) => return InputOutcome::Trap(access_fault_text(e))
+          }
+        }
+        if !sup {
+          match
+            mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
+            Ok(_) => ()
+            Err(e) => return InputOutcome::Trap(access_fault_text(e))
+          }
+        }
+        if !sup {
+          matched = matched + 1
+        }
+        continue
+      }
     }
     let spec = sl.0
     let len_mod = sl.1
@@ -1266,6 +1418,66 @@ pub fn host_sscanf(
         continue
       }
       ScanfItem::Spec(s, lm, sup, wopt) => (s, lm, sup, wopt)
+      // #149：scanset 执行（host_sscanf 版——fault_reply 形态；写调用
+      // 者缓冲无栈缓冲校验，与本函数 %s 臂注释口径一致）。匹配规则与
+      // host_scanf_n 版逐字同款：不跳空白 / 零长度=匹配失败回退终止。
+      ScanfItem::Scanset(neg, set, sup, wopt) => {
+        if arg_idx >= ptrs.length() && !sup {
+          break
+        }
+        let ptr = if sup { fmt_addr } else { ptrs[arg_idx] }
+        if !sup {
+          arg_idx = arg_idx + 1
+        }
+        let entry_pos = pos
+        let lim = match wopt {
+          Some(w) =>
+            if pos + w < chars.length() {
+              pos + w
+            } else {
+              chars.length()
+            }
+          None => chars.length()
+        }
+        let start = pos
+        while pos < lim {
+          let c = chars[pos]
+          let in_set = set.contains(c)
+          let take = if neg { !in_set } else { in_set }
+          if take {
+            pos = pos + 1
+          } else {
+            break
+          }
+        }
+        if pos == start {
+          pos = entry_pos
+          break
+        }
+        let token : Array[Byte] = []
+        let mut j = start
+        while j < pos {
+          token.push(chars[j])
+          j = j + 1
+        }
+        if !sup {
+          match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
+            Ok(_) => ()
+            Err(e) => return fault_reply(e)
+          }
+        }
+        if !sup {
+          match
+            mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
+            Ok(_) => ()
+            Err(e) => return fault_reply(e)
+          }
+        }
+        if !sup {
+          matched = matched + 1
+        }
+        continue
+      }
     }
     let spec = sl.0
     let len_mod = sl.1

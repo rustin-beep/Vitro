@@ -108,7 +108,7 @@ fn Parser::parse_struct_body(
   // issue #13（2026-10-06）：聚合表单点收口（全路径经此——tag/匿名/
   // 嵌套/typedef），供 static_assert 的 sizeof 折叠
   self.parsed_aggregates.push((name, is_union, fields))
-  { loc, name, fields, }
+  { loc, name, fields, is_forward: false, }
 }
 
 ///|
@@ -127,12 +127,14 @@ fn Parser::parse_struct_decl(self : Parser, depth : Int32) -> @ast.StructDecl {
     }
   }
   // 审阅 P2-6（2026-10-07）：`struct S;` 前向声明——tag 后直接 ; 跳过
-  // body（同 parse_union_decl；Clang 合法）
+  // body（同 parse_union_decl；Clang 合法）。#145（2026-10-18）：置
+  // is_forward 位——前向≠零字段完整定义（旧形态进 structs 表后：
+  // ①后续完整定义误报 E3002 重复；②前向直接声明变量静默放行）
   if self.check(Semicolon) {
     let loc = @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column)
     ignore(self.advance())
     self.parsed_aggregates.push((name_tok.text, false, []))
-    return { loc, name: name_tok.text, fields: [], }
+    return { loc, name: name_tok.text, fields: [], is_forward: true, }
   }
   let decl = self.parse_struct_body(
     name_tok.text,
@@ -166,13 +168,13 @@ fn Parser::parse_union_decl(self : Parser, depth : Int32) -> @ast.StructDecl {
     }
   }
   // 审阅 P2-6（2026-10-07）：`union U;` 前向声明——tag 后直接 ; 时
-  // 跳过 body 解析（空字段表声明——Clang 合法）；parse_union_decl 尾部
-  // 的 Semicolon 条件消费兼容此形态
+  // 跳过 body 解析（Clang 合法）；parse_union_decl 尾部的 Semicolon
+  // 条件消费兼容此形态。#145：置 is_forward 位（struct 面同款）
   if self.check(Semicolon) {
     let loc = @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column)
     ignore(self.advance()) // 消费前向声明的 ;
     self.parsed_aggregates.push((name_tok.text, true, []))
-    return { loc, name: name_tok.text, fields: [], }
+    return { loc, name: name_tok.text, fields: [], is_forward: true, }
   }
   let decl = self.parse_struct_body(
     name_tok.text,

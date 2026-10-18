@@ -146,6 +146,15 @@ fn BytecodeGen::gen_nested_init(
         )
       }
     _ => {
+      // #143 连坐：嵌套层（数组元素/深层字段）的 struct 变量值——与
+      // emit_field_init 同款整体拷贝（旧形态落本兜底臂：gen_expr 压首
+      // 字段 StoreMem 4 字节，`pts[1] = my_pt` 只拷 (7,0)）
+      if target_ty.kind() is TK_Struct &&
+        init.ty().kind() is TK_Struct &&
+        !(init is InitList(_, _, _)) {
+        self.emit_struct_value_copy(base_temp, offset, init, target_ty, loc)
+        return
+      }
       self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
       if offset != 0 {
         self.emit(@opcode.OpCode::PushConst, offset, loc)
@@ -159,6 +168,59 @@ fn BytecodeGen::gen_nested_init(
         _ => self.emit(@opcode.OpCode::StoreMem, 0, loc)
       }
     }
+  }
+}
+
+///|
+/// #143（2026-10-18）：struct 变量值整体拷贝到 base_temp+offset 目标
+///（逐 4 字节 + 尾字节——gen_struct_copy_to_local 的字段偏移形态；
+/// emit_field_init 与 gen_nested_init 两消费点共用）。
+fn BytecodeGen::emit_struct_value_copy(
+  self : BytecodeGen,
+  base_temp : Int32,
+  offset : Int32,
+  src : @ast.Expr,
+  field_ty : @ast.Type,
+  loc : @source.SourceLoc,
+) -> Unit {
+  let size = self.type_size(field_ty)
+  if size <= 0 {
+    return
+  }
+  let src_temp = self.get_temp_slot(0)
+  self.gen_addr(src, loc)
+  self.emit(@opcode.OpCode::StoreLocal, src_temp, loc)
+  for i in 0..<(size / 4) {
+    self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+    let dst_off = offset + i * 4
+    if dst_off > 0 {
+      self.emit(@opcode.OpCode::PushConst, dst_off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+    if i > 0 {
+      self.emit(@opcode.OpCode::PushConst, i * 4, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadMem, 0, loc)
+    self.emit(@opcode.OpCode::StoreMem, 0, loc)
+  }
+  // 尾字节（size%4）——同 gen_struct_copy_to_local 病 35 修正
+  for b in 0..<(size % 4) {
+    let dst_off = offset + size / 4 * 4 + b
+    let src_off = size / 4 * 4 + b
+    self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+    if dst_off > 0 {
+      self.emit(@opcode.OpCode::PushConst, dst_off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadLocal, src_temp, loc)
+    if src_off > 0 {
+      self.emit(@opcode.OpCode::PushConst, src_off, loc)
+      self.emit(@opcode.OpCode::Add, 0, loc)
+    }
+    self.emit(@opcode.OpCode::LoadMemByte, 0, loc)
+    self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
   }
 }
 

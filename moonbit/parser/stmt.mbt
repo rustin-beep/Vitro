@@ -414,6 +414,9 @@ fn Parser::parse_var_decl_from_base(
   } else {
     None
   }
+  // #142 连坐：函数内 static 初始化器折枚举常量叶（is_static 才折；
+  // parsed_var_types 遮蔽判定在 fold 内）
+  let init = self.fold_enum_in_static_init(init, is_static)
   let extra_vars : Array[@ast.VarDeclExtra] = []
   while self.match_token(Comma) {
     let ex = self.parse_var_declarator(base, depth)
@@ -426,7 +429,11 @@ fn Parser::parse_var_decl_from_base(
     } else {
       None
     }
-    extra_vars.push({ var_type: ex.0, name: ex.1, init: extra_init, })
+    extra_vars.push({
+      var_type: ex.0,
+      name: ex.1,
+      init: self.fold_enum_in_static_init(extra_init, is_static),
+    })
   }
   ignore(self.consume(Semicolon, "变量声明后预期 ';'"))
   self.parsed_var_types.push((d.1, d.0))

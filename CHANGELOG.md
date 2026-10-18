@@ -12,6 +12,136 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(typeck+host): 对抗批四分叉修复——extern 数组兼容/前向净化/完整性三面/scanset 未闭合（2026-10-18）
+
+- **背景**：用户挑战「随机分叉测试还能过吗」——七批对抗探针（常量域
+  变形/诊断变形/scanset 边界/extern 组合/跨层 case/前向组合）抓到
+  **4 分叉**，全部修复并复验：
+- **extern 不完整数组误报**（adv_d）：`extern int arr[]; extern int
+  arr[10];` 是 C11 §6.2.7p2 合法兼容形态，旧判等 type_eq 严格比维度
+  → E3001 三误报。修 = `declare_var` extern 族换 `extern_type_compat`
+  （第一维不完整通融/其余维须等/指针递归）+ 符号升级完整侧（sizeof
+  取 40）。误报路径修回新类型登记（mismatch_report 不兼容时返回
+  new_ty——wbtest `sym.ty is Double` 锚抓出返回 existing 的劣化）。
+- **完整后再前向声明致 struct 错位**（adv_f 值错 1048572）：`struct
+  S{...}; struct S;` 的前向条目被 codegen 逐条注册**反向覆盖**完整
+  定义（struct 按值传参字段错位）。修 = typeck Pass 1 收尾净化
+  structs/unions 数组（同名完整在册时前向条目出列）。
+- **#145 三面漏报**（adv_g）：函数**定义**签名（参数/返回值——原型
+  豁免，C11 §6.7.6.3p12）与 struct **值成员**面补 check_type_complete；
+  `None` 分支收窄不报（匿名内联 union/typedef 形态在表内缺席是合法
+  通道——首版误报 `nested_anon_union.c`/`union_member_struct_assign.c`
+  两存量翻红后收窄，对抗四形态全中且存量零误报）。
+- **scanset 未闭合语义**（adv_c n4）：`%[abc`（EOF 无 `]`）clang 转换
+  失败 n=0，旧容错吃到串尾 n=1。修 = closed 位 + 未闭合产「空正集
+  合」必失败形态。
+- **对抗复验**：七批三侧（clang/js/native）全对齐；再挖批 H（前向×
+  静态表达式×designated×extern 补维度×union 全混合）逐字一致、批 I
+  挖出**存量缺陷** `&r.cls` 作 %c 实参写偏（master 基线复现，登记
+  **#161** 非本批面）；超额元素内非法表达式口径分叉（vitro E3075 拒
+  编译 vs clang 警告丢弃——从严可辩护，登记不改）。
+- **锚与防线**：wbtest +3（净化+签名三面/scanset 未闭合）；四 digest
+  freeze（forward_decl_usage 预期翻——净化改变 E4 hash）；clang_direct
+  439 SAME / vm_diff 四 suite全 SAME / 三 diff 绿 / moon test **806/806**
+  / native 全量 **952/952** 实测 / 五闸绿 / facts 806 连坐。
+
+### fix(parser+typeck+host+diag+corpus): LLM 语料探针批修复三——#145/#149 两病 + 前向声明误拒连坐（2026-10-18）
+
+- **#145 不完整 struct 类型使用零诊断**（误收→E3076）+ **前向声明误
+  报 E3002 重复定义**（误拒连坐——issue 未记、修复 incomplete 判定的
+  前置）：根因 = parser 把 `struct S;` 前向声明当**零字段完整定义**推
+  入。修法三层：①ast `StructDecl` 加 `is_forward` 位（E1/E4 emitter
+  不输出——#134 is_arrow 同款 golden 零翻）；②typeck `StructSymbol`
+  加 `is_complete`，Pass 1 分轨（重复前向合法共存/前向→完整=合法升
+  级/完整+完整仍 E3002）；③新码 **E3076_IncompleteType** 三检查点
+  （局部与全局变量声明〔数组下钻 base_element_type、指针豁免——
+  `struct Opq *` 不透明指针惯用法、extern 声明豁免——tentative 合法〕
+  + `sizeof(struct S)` 显式类型形态；`sizeof(s)` 表达式形态不查——
+  声明处已报不双报，clang error recovery 同口径）。union 同款。
+- **#149 sscanf scanset `%[...]` 完全失效**（四模型 7/8 采样）→ 全
+  通：三层修复——①`parse_scanf_specs` 加 `[` 分支（`^` 否定位、字符
+  集到 `]`、首位 `]` 字面成员规则 C11 §7.21.6.2p12、**中缀 `-` 范围
+  语义**〔`%[a-z]` 展开 a..z——clang/glibc 实现定义域实测对齐；首/
+  末位 `-` 字面、降序字面〕），`ScanfItem` 加 `Scanset` 变体；
+  ②`host_sscanf`/`host_scanf_n` 两执行循环加臂（不跳前导空白/零长度
+  =匹配失败回退终止〔d/i/x/o 同语义〕/width 限制/%s 同款 write_bytes
+  +NUL；scanf 版带 V-P1-6 栈缓冲校验）；③**`scanf_spec_count` 漏数
+  Scanset**（VM 弹指针参数按它计数——漏数致 ptrs 短缺、scanset 臂
+  arg_idx 越界提前断链，n=0 假象的分诊实锤）。探针 `"id=%d;name=
+  %[^;];score=%lf"` → `matched=3 id=1001 name=Alice score=95.5` 与
+  clang 逐字一致；边界五形态（正向集/`]` 首位/width/`%*[^;]` 抑制/
+  scanf stdin 版）全对。
+- **过程实锤**：js 臂增量缓存毒化二次实锤（`moon build` no work to
+  do 但产物是旧代码——清 `_build/js` 全量重建即愈，与上批 native 同
+  款陷阱 41）；shell printf 写探针文件 `\n` 被吃成真换行——锚文件
+  一律 Write 直写（踩坑清单既有教训）。
+- **红锚与防线**：wbtest 三锚（#145 双面：incomplete 报/前向+完整
+  不误报；#149 解析层分诊 + 端到端值锚）；corpus +2 例（`forward_
+  decl_usage.c` 合法链 / `sscanf_scanset.c` 五形态，clang 真值）；
+  diag 基线 143 臂连坐；clang_direct baseline **439 SAME / 0 DIFF**；
+  vm_diff 四 suite 全 SAME（444+81+138+20）；三 diff freeze 全绿；
+  moon test **804/804** + native 全量 **950/950**（README 口径实测
+  自洽）；全闸绿；facts 连坐 804 六文件。
+- **遗留登记**：`%[a--z]` 类连续 `-` 怪形的展开语义未对拍（罕见形
+  态，教学域不管）；scanset 集合仅 ASCII 字节域（多字节字符集合
+  同 clang 教学子集边界）。
+
+### fix(parser+typeck+codegen+diag+corpus): LLM 语料探针批修复二——#142/#143/#144/#150/#151 五病（2026-10-18）
+
+- **#142 文件作用域/static 初始化器表达式求值**（静默置 0 → 正确求值）：
+  typeck 新增 `const_eval.mbt` 常量表达式求值器（迭代化显式栈——病 40
+  深栈教训；整/浮双域、一元·二元·三元·Cast·sizeof 全族），静态初始化器
+  （全局 Pass 2.5 三分支 + 函数内 static `process_var_decl`）统一折叠为
+  字面量节点交 codegen 既有 `literal_init_bits` 路径；聚合（数组/struct/
+  union）元素级递归折叠。`int g=3+5` / `static int s=2*3` /
+  `int t[]={1+1,2*2,3*3}` / 宏 / `sizeof` 比值全修（探针 m142 系双臂
+  实证 g=8 s=6 t=2,4,9）。
+- **#142 连坐——enum 常量参与静态初始化**：`int g = EB + 1` 此前同置 0。
+  parser 新增 `fold_enum.mbt`（解析时点折枚举常量 Ident 叶为字面量——
+  enum 物化全局与普通 int 全局 AST 同形不可区分〔#135 case 面同结论〕，
+  typeck 求值器查不了表）；两接线点 = 函数内 static（`parse_var_decl_
+  from_base`，非 static 不折——局部运行时求值现状已正确）+ 文件作用域
+  （`parse_program` 收尾统一 walk）。遮蔽防误折：`parsed_var_types`
+  同名（局部变量遮蔽 enum 名）不折，E3075 与 clang 同口径。
+- **#151 静态初始化器非常量形态零诊断**（误收 → E3075）：`int n=5;
+  int table[3]={n,n+1,n+2}` / `int g=f()`（C11 §6.7.9p4 必须诊断）。
+  折叠失败路径 diagnose：CallPtr（C 调用统一臂）报「含函数调用」、
+  Identifier 命中普通变量报「引用变量」；函数名（地址常量族 `int(*pf)
+  (void)=f`）与 `&g` 取址族合法放行；Index/Member 裸用保守不报（渐进
+  登记）。新码 **E3075_StaticInitNotConstant**（码位盘点修正：3050/3051
+  已被 W3050/W3051 占用，E/W 共码空间，改用 3074/3075 空位段）。
+- **#144 switch 重复 case 值零诊断**（本批最强系统性误收，四模型 7/8
+  采样）→ 新码 **E3074_DuplicateCase**：typeck Switch 臂收集直层 case
+  标签（`const_eval` 折 Int64 查重；嵌套 Switch 停——内层归内层）+ 多
+  default 标签同族报（clang "duplicate case value"/"multiple default
+  labels" 对齐）。
+- **#150 extern 再声明类型冲突零诊断**（四模型 7/8）→ E3001 复用：
+  `declare_var` extern 共存/覆盖两分支加类型判等（顶层 const 剥离
+  `type_eq`）；`extern int x; extern double x;` 报「声明类型与之前的
+  声明不一致」；同型 extern 重声明不误报。存量锚 `declare_var_
+  semantics` 翻新（extern int y; double y; 旧锚「无新错」是照搬
+  Rust 不查类型现状，随修复有意翻锚）。
+- **#143 designated init 的 struct 变量值只拷首字段**（静默错值）：
+  `struct Poly p = { .box = my_rect, ... }` 旧形态 gen_expr 压首字段
+  4 字节 StoreMem。修法 = 新 helper `emit_struct_value_copy`（逐 4
+  字节 + 尾字节，`gen_struct_copy_to_local` 的字段偏移形态），
+  `emit_field_init`（struct 字段路径）与 `gen_nested_init`（数组元素
+  路径——`.pts = {{0,1}, my_pt}` 连坐补面）两消费点共用。
+- **红锚与防线**：wbtest 五断言先行证红（J9：dup case / extern 冲突 /
+  值折叠 / call 拒 / var 拒全红后修）；corpus +2 例（`static_init_
+  expr.c` / `designated_struct_copy.c`，clang 实跑真值）；diag 基线
+  142 臂连坐；clang_direct baseline **437 SAME / 0 DIFF**（存量零翻
+  转——文件作用域表达式初始化在语料中原为零覆盖盲区，本批补面）；
+  vm_diff 四 suite 全 SAME（442+20+81+138）；parser/typeck/codegen
+  三 diff freeze 入账全绿；moon test **801/801**；gen_diag/surface/
+  pkg_deps/mbti/libc/single_source/facts 全闸绿；typeck→util 新消费
+  边登记 surface_edges。
+- **遗留登记（#142 评论）**：①静态地址常量 `int *p = &g;` 现状 TRAP
+  NULL（回填缺陷，另一缺陷线非本批面）；②`sizeof(int)` 作数组维度仍
+  判 VLA（parser 维度折叠器 `const_int_of` 无 Sizeof 臂——新语料用例
+  已收窄避让）；③case 标签求不出值（变量形态）不参与查重（E3047
+  常量性检查已报，不双报）。
+
 ### feat(scripts+ci): #120 批① wasm-opt 构建后置——-19.3% raw / -20.4% gzip
 
 - **scripts/wasmopt**（Go 驱动 + wasmopt.mjs 执行器）：binaryen 132

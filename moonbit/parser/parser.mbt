@@ -964,6 +964,17 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
       ignore(self.stall_breaker())
     }
   }
+  // #142 连坐：文件作用域初始化器折枚举常量叶（收尾统一 walk——比
+  // 六处 globals.push 前折收敛；此点 parsed_var_types 含全部普通全局名
+  // =天然遮蔽集，enum 物化名不入其中不自我遮蔽）
+  for i in 0..<program.globals.length() {
+    let g = program.globals[i]
+    match g.init {
+      Some(e) =>
+        program.globals[i] = { ..g, init: Some(self.fold_enum_leaves(e)), }
+      None => ()
+    }
+  }
   Some(program)
 }
 

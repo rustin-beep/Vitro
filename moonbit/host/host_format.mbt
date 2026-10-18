@@ -1075,7 +1075,10 @@ pub fn scanf_spec_count(fmt : Array[Int32]) -> Int32 {
   for it in parse_scanf_specs(fmt) {
     match it {
       // 赋值抑制（%*d 批四 2026-10-07）不消耗指针参数
-      ScanfItem::Spec(_, _, false, _) => count = count + 1
+      Spec(_, _, false, _) => count = count + 1
+      // #149（2026-10-18）：scanset 同消耗一个指针参数（VM 弹栈按本
+      // 计数——漏数致 ptrs 短缺，scanset 臂 arg_idx 越界提前断链）
+      Scanset(_, _, false, _) => count = count + 1
       _ => ()
     }
   }

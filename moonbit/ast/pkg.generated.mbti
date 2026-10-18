@@ -256,6 +256,7 @@ pub(all) struct StructDecl {
   loc : @source.SourceLoc
   name : String
   fields : Array[StructField]
+  is_forward : Bool
 } derive(Default, @debug.Debug)
 pub fn StructDecl::default() -> Self
 pub fn StructDecl::to_repr(Self) -> @debug.Repr

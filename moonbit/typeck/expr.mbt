@@ -570,12 +570,20 @@ fn TypeChecker::resolve_init_list(
 ///|
 /// sizeof（操作数解析定型 + int 结果；数组形参退化 W3052——依赖
 /// current_func_params 形参名集合）。
+/// #145（2026-10-18）：`sizeof(struct S)` 显式类型形态查完整性报
+/// E3076（clang "invalid application of 'sizeof' to an incomplete
+/// type"）；`sizeof(s)` 表达式形态不查——变量声明处已报（clang
+/// error recovery 后不双报，同口径）。
 fn TypeChecker::resolve_sizeof(
   self : TypeChecker,
   target_type : @ast.Type?,
   operand : @ast.Expr?,
   loc : @source.SourceLoc,
 ) -> (@ast.Type, @ast.Expr) {
+  match target_type {
+    Some(t) => self.check_type_complete(t, loc)
+    None => ()
+  }
   match operand {
     Some(op) => {
       let (_, new_op) = self.resolve_expr_type(op)

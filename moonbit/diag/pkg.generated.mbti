@@ -139,6 +139,9 @@ pub(all) enum ErrorCode {
   E3071_UndefinedLabel
   E3072_StructSelfContain
   E3073_UnsupportedLibcFunc
+  E3074_DuplicateCase
+  E3075_StaticInitNotConstant
+  E3076_IncompleteType
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

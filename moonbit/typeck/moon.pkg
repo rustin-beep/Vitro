@@ -4,4 +4,5 @@ import {
   "vitro/engine/diag",
   "vitro/engine/libc",
   "vitro/engine/source",
+  "vitro/engine/util",
 }

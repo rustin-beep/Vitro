@@ -28,6 +28,16 @@ fn TypeChecker::visit_func_decl(
   self.current_func_params.clear()
   self.func_labels.clear()
   self.pending_gotos.clear()
+  // #145 对抗补面（2026-10-18，clang 三面同口径）：**定义**（非原型）
+  // 的形参值类型与返回值类型须完整——原型（body None）允许不完整
+  //（C11 §6.7.6.3p12 参数不完整合法，定义处 clang 报 variable has
+  // incomplete type / incomplete result type）
+  if node.body is Some(_) {
+    for p in node.params {
+      self.check_type_complete(p.ty, p.loc)
+    }
+    self.check_type_complete(node.return_type, node.loc)
+  }
   self.enter_scope()
   for p in node.params {
     self.current_func_params.add(p.name)
@@ -264,6 +274,32 @@ fn TypeChecker::dispatch_stmt(
           E3046_SwitchCondType,
         )
       }
+      // #144（2026-10-18）：重复 case 值查重（C11 §6.8.4.2 constraint：
+      // 同 switch 内两 case 常量值相同必须诊断——clang/gcc 均 error
+      // "duplicate case value"）。收集遇嵌套 Switch 停（内层归内层自查）；
+      // 求不出值的标签（变量形态）跳过——E3047 常量性检查已报。
+      // 多个 default 标签同族报（clang "multiple default labels"）。
+      let labels : Array[(Int64, @source.SourceLoc)] = []
+      let default_count = collect_case_labels(self, body, labels)
+      if default_count > 1 {
+        self.report_error(
+          "switch 内出现多个 default 标签（C 标准不允许）",
+          loc,
+          E3074_DuplicateCase,
+        )
+      }
+      let seen_cases : Map[Int64, @source.SourceLoc] = Map([])
+      for pair in labels {
+        match seen_cases.get(pair.0) {
+          Some(first_loc) =>
+            self.report_error(
+              "重复的 case 值 \{pair.0}（该值已出现在第 \{first_loc.line} 行）",
+              pair.1,
+              E3074_DuplicateCase,
+            )
+          None => seen_cases.set(pair.0, pair.1)
+        }
+      }
       let new_body = self.dispatch_stmt(body)
       self.switch_depth -= 1
       Switch(new_cond, new_body, loc)
@@ -475,6 +511,9 @@ fn TypeChecker::process_var_decl(
       init is Some(StringLiteral(_, _, _))
     self.check_array_dims_legality(var_type_2, has_init_list, loc)
   }
+  // #145：值形态 struct/union 完整性（前向声明后声明变量 → E3076；
+  // 数组下钻、指针豁免——check_type_complete 头注）
+  self.check_type_complete(var_type_2, loc)
   // #75 缺口 2（2026-10-12）：`int *p = malloc(n * sizeof *p)`——C 标准
   // 作用域规则（C11 6.2.1p2：声明符的作用域始于声明符结束=初始化器
   // 开始处）允许初始化器引用**自身**。declare_var 后置是数组尺寸推断
@@ -541,8 +580,33 @@ fn TypeChecker::process_var_decl(
       }
     None => (var_type_2, None)
   }
-  self.declare_var(name, final_ty, is_global=false, is_extern=false, is_static~)
-  (final_ty, new_init)
+  // #142/#151：函数内 static 初始化器是常量表达式域（C11 §6.6）——
+  // 与文件作用域同款折叠+诊断（codegen 静态初始化路径只认字面量，
+  // 表达式形态静默置 0 / 非常量形态零诊断均在此修）
+  let final_init : @ast.Expr? = if is_static {
+    match new_init {
+      Some(ie) =>
+        if final_ty.is_array() ||
+          final_ty.kind() is TK_Struct ||
+          final_ty.kind() is TK_Union {
+          Some(self.fold_static_aggregate(final_ty, ie))
+        } else {
+          Some(self.fold_static_init(final_ty, ie))
+        }
+      None => None
+    }
+  } else {
+    new_init
+  }
+  self.declare_var(
+    name,
+    final_ty,
+    is_global=false,
+    is_extern=false,
+    is_static~,
+    loc~,
+  )
+  (final_ty, final_init)
 }
 
 ///|

@@ -832,6 +832,16 @@ fn BytecodeGen::emit_field_init(
   value : @ast.Expr,
   loc : @source.SourceLoc,
 ) -> Unit {
+  // #143（2026-10-18）：struct 变量作初始化元素值（`.box = my_rect` /
+  // 位置序同形）——旧形态落 else 兜底：gen_expr(变量) 压首字段 4 字节
+  // StoreMem，只拷首个标量字段其余静默留 0（issue 探针 m3b 实锤）。
+  // 拷贝序列与嵌套层共用 emit_struct_value_copy（addr.mbt）。
+  if field_ty.kind() is TK_Struct &&
+    value.ty().kind() is TK_Struct &&
+    !(value is InitList(_, _, _)) {
+    self.emit_struct_value_copy(base_temp, offset, value, field_ty, loc)
+    return
+  }
   if value is InitList(_, _, _) &&
     (field_ty.kind() is TK_Struct || field_ty.is_array()) {
     self.gen_nested_init(base_temp, offset, field_ty, value, loc)

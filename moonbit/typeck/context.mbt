@@ -15,6 +15,10 @@ pub fn TypeChecker::exit_scope(self : TypeChecker) -> Unit {
 ///|
 /// 声明变量（同名语义四层：extern 声明共存 / 非 extern 覆盖 extern /
 /// 双 static 全局允许（内部链接，取最新）/ 其余报 E3001）。
+/// #150（2026-10-18）：extern 再声明与「非 extern 定义替换 extern 声明」
+/// 两分支加**类型判等**（顶层 const 剥离后 type_eq）——不等报 E3001
+/// （clang "redeclaration of 'x' with a different type"）。loc 可选参
+/// 数默认零位置（O3 登记债同族；带位置的调用点渐进传入）。
 pub fn TypeChecker::declare_var(
   self : TypeChecker,
   name : String,
@@ -23,7 +27,70 @@ pub fn TypeChecker::declare_var(
   is_extern~ : Bool,
   is_static~ : Bool,
   predeclared~ : Bool = false,
+  loc~ : @source.SourceLoc = @source.SourceLoc::new(0, 0),
 ) -> Unit {
+  // #150 对抗补（2026-10-18）：extern 族类型判等——type_eq 之外加
+  // **不完整数组兼容**（C11 §6.2.7p2：`extern int arr[];` 与 `extern
+  // int arr[10];` / 后续定义兼容——第一维未知即兼容，其余维须等；
+  // asize 由 dims 派生随之）。type_eq 全域严格比维度，不动它——本特
+  // 判仅 extern 声明语境（对抗探针 adv_d 三误报根因）。
+  fn extern_type_compat(a : @ast.Type, b : @ast.Type) -> Bool {
+    if @ast.type_eq(strip_top_const(a), strip_top_const(b)) {
+      return true
+    }
+    match (a, b) {
+      (Array(ae, _, adims, _, _, _), Array(be, _, bdims, _, _, _)) => {
+        // 维度兼容：维数等 + 逐维「相等或一方 -1（不完整）」
+        if adims.length() != bdims.length() {
+          return false
+        }
+        for i in 0..<adims.length() {
+          let x = adims[i]
+          let y = bdims[i]
+          if x != y && x != -1 && y != -1 {
+            return false // 互斥维度——不兼容
+          }
+        }
+        extern_type_compat(ae, be)
+      }
+      (Pointer(ap, _), Pointer(bp, _)) => extern_type_compat(ap, bp)
+      _ => false
+    }
+  }
+  // 维度更完整侧判定：新声明带实际维度而已有是不完整数组 → 采用新
+  fn more_complete(existing : @ast.Type, incoming : @ast.Type) -> @ast.Type {
+    match (existing, incoming) {
+      (Array(ee, es, _ed, ec, ev, ea), Array(_, _, bd, _, _, _)) =>
+        if es == -1 && bd.length() > 0 && bd[0] != -1 {
+          // 用 incoming 的维度重建元素类型一致的完整形态
+          Array(ee, if bd[0] > 0 { bd[0] } else { es }, bd, ec, ev, ea)
+        } else {
+          existing
+        }
+      _ => existing
+    }
+  }
+  // #150：extern 族两分支的类型冲突报错（兼容判等 + 不完整数组升级）。
+  // 不兼容时返回 new_ty——报错后登记新声明类型（clang error recovery
+  // 口径 + 旧代码行为；返回 existing 会把 y 钉死在旧类型，wbtest
+  // declare_var_semantics 的 `sym.ty is Double` 锚实测抓出）
+  fn mismatch_report(
+    tc : TypeChecker,
+    existing_ty : @ast.Type,
+    new_ty : @ast.Type,
+    vname : String,
+    vloc : @source.SourceLoc,
+  ) -> @ast.Type {
+    if extern_type_compat(existing_ty, new_ty) {
+      return more_complete(existing_ty, new_ty)
+    }
+    tc.report_error(
+      "变量 '\{vname}' 的声明类型与之前的声明不一致（'\{existing_ty.to_c_string()}' vs '\{new_ty.to_c_string()}'）",
+      vloc,
+      E3001_VarRedeclared,
+    )
+    new_ty
+  }
   if self.scopes.length() == 0 {
     self.scopes.push(Map([]))
   }
@@ -31,13 +98,25 @@ pub fn TypeChecker::declare_var(
   match scope.get(name) {
     Some(existing) => {
       if is_extern {
-        // extern 声明与既有符号共存
+        // extern 声明与既有符号共存——类型须兼容（#150 + 不完整数组
+        // 升级：`extern int a[]; extern int a[10];` 后 sizeof 取完整侧）
+        let effective = mismatch_report(self, existing.ty, ty, name, loc)
+        if !@ast.type_eq(effective, existing.ty) {
+          scope.set(name, {
+            ty: effective,
+            _is_global: existing._is_global,
+            is_extern: existing.is_extern,
+            is_static: existing.is_static,
+            predeclared: existing.predeclared,
+          })
+        }
         return
       }
-      // 非 extern 定义可替换 extern 声明
+      // 非 extern 定义可替换 extern 声明——类型须兼容（#150）
       if existing.is_extern {
+        let effective = mismatch_report(self, existing.ty, ty, name, loc)
         scope.set(name, {
-          ty,
+          ty: effective,
           _is_global: is_global,
           is_extern,
           is_static,
@@ -85,6 +164,48 @@ pub fn TypeChecker::declare_var(
         is_static,
         predeclared,
       })
+  }
+}
+
+///|
+/// #145（2026-10-18）：值形态类型完整性检查——struct/union 仅有前向
+/// 声明（在册 is_complete=false）时，声明该类型变量 / sizeof / 函数
+/// 定义签名 / 值成员是约束违反（C11 §6.7.2.2p7），报 E3076。**查无
+/// 定义（None）不报**——匿名内联 union 与 typedef 形态在表内的缺席
+/// 是合法通道（对抗复跑实锤收窄）。数组下钻到
+/// base_element_type（`struct S arr[3]` 同报——元素必须完整）；指针
+/// 不受限（`struct Opq *p` 前向即可，C 链表/不透明指针惯用法）。
+fn TypeChecker::check_type_complete(
+  self : TypeChecker,
+  ty : @ast.Type,
+  loc : @source.SourceLoc,
+) -> Unit {
+  let value_ty = if ty.is_array() { ty.base_element_type() } else { ty }
+  let kind = value_ty.kind()
+  if kind is TK_Struct {
+    match self.structs.get(value_ty.name()) {
+      Some(sym) =>
+        if !sym.is_complete {
+          self.report_error(
+            "使用了不完整类型 'struct \{value_ty.name()}'（只有前向声明，缺少字段定义）——声明该类型的变量或取 sizeof 前必须给出完整定义",
+            loc,
+            E3076_IncompleteType,
+          )
+        }
+      None => ()
+    }
+  } else if kind is TK_Union {
+    match self.unions.get(value_ty.name()) {
+      Some(sym) =>
+        if !sym.is_complete {
+          self.report_error(
+            "使用了不完整类型 'union \{value_ty.name()}'（只有前向声明，缺少字段定义）",
+            loc,
+            E3076_IncompleteType,
+          )
+        }
+      None => ()
+    }
   }
 }
 

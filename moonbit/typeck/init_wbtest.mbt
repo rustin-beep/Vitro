@@ -127,6 +127,7 @@ test "init_struct_tracks" {
       { ty: @ast.Type::int(), name: "x", },
       { ty: @ast.Type::int(), name: "y", },
     ],
+    is_forward: false,
   }
   fn init_list(
     elems : Array[@ast.InitElement],

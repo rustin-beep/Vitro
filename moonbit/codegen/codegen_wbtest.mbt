@@ -548,6 +548,7 @@ test "callptr: struct arg from call return loads via temp (P1)" {
           { ty: @ast.Type::int(), name: "a", },
           { ty: @ast.Type::int(), name: "b", },
         ],
+        is_forward: false,
       },
     ],
     unions: [],

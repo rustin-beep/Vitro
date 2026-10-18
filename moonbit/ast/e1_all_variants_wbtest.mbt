@@ -150,7 +150,12 @@ test "e1_dump_all_variants_covered" {
       Constructor([param], Some(Block([], loc)), true, Protected, true),
       Destructor(Some(Block([], loc)), Public, true),
       NestedStruct(
-        { loc, name: "N", fields: [{ ty: Int(false, false), name: "nf", }], },
+        {
+          loc,
+          name: "N",
+          fields: [{ ty: Int(false, false), name: "nf", }],
+          is_forward: false,
+        },
         Public,
       ),
       NestedClass(
@@ -210,9 +215,14 @@ test "e1_dump_all_variants_covered" {
   }
   let prog : ProgramNode = {
     structs: [
-      { loc, name: "S0", fields: [{ ty: Int(false, false), name: "a", }], },
+      {
+        loc,
+        name: "S0",
+        fields: [{ ty: Int(false, false), name: "a", }],
+        is_forward: false,
+      },
     ],
-    unions: [{ loc, name: "U0", fields: [], }],
+    unions: [{ loc, name: "U0", fields: [], is_forward: false, }],
     globals: [
       {
         loc,

@@ -56,6 +56,7 @@ test "pass1_struct_cycle" {
     name: "Node",
     fields: [{ ty: @ast.Type::struct_type("Node"), name: "next", }],
     loc,
+    is_forward: false,
   }
   let prog : @ast.ProgramNode = {
     structs: [node],
@@ -80,6 +81,7 @@ test "pass1_struct_cycle" {
       },
     ],
     loc,
+    is_forward: false,
   }
   let prog2 : @ast.ProgramNode = {
     structs: [node_ptr],
@@ -115,6 +117,7 @@ test "pass1_cycle_uses_symbol_table_not_decl" {
         },
       ],
       loc,
+      is_forward: false,
     }
   }
   // 对抗 1：首版无环 + 次版自环（重复定义）——只报 E3002，
@@ -257,7 +260,11 @@ test "declare_var_semantics" {
     is_extern=false,
     is_static=false,
   )
-  assert_eq(tc.errors.length(), 1) // 无新错
+  // #150（2026-10-18）翻转：非 extern 定义替换 extern 声明时类型不一致
+  // （int vs double）→ E3001（clang "redeclaration with a different type"）；
+  // 旧锚「无新错」是照搬 Rust 的不查类型现状，随 #150 修复翻新
+  assert_eq(tc.errors.length(), 2)
+  assert_true(tc.errors[1].code == 3001)
   match tc.lookup_var("y") {
     Some(sym) => assert_true(sym.ty is Double(_))
     None => fail("y 应已登记")
@@ -277,7 +284,7 @@ test "declare_var_semantics" {
     is_extern=false,
     is_static=true,
   )
-  assert_eq(tc.errors.length(), 1)
+  assert_eq(tc.errors.length(), 2) // #150 翻转后基线：双 static 覆盖仍不报
   // 作用域栈查名：内层遮蔽外层
   tc.declare_var(
     "w",

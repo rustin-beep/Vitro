@@ -45,11 +45,14 @@ pub extend StructField with Debug::{to_repr}
 
 ///|
 /// struct 声明（union 复用本结构——Rust 侧同构，ProgramNode.unions
-/// 同承载 StructDecl）。
+/// 同承载 StructDecl）。`is_forward`：`struct S;` 前向声明位（#145，
+/// 2026-10-18）——parser 前向分支置 true、完整定义 false；E1/E4
+/// 投影 emitter 不输出该位（#134 is_arrow 同款——golden 零翻）。
 pub(all) struct StructDecl {
   loc : @source.SourceLoc
   name : String
   fields : Array[StructField]
+  is_forward : Bool
 } derive(Debug, Default)
 
 ///|

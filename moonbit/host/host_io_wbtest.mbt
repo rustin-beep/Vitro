@@ -882,3 +882,50 @@ test "printf_unknown_conv_no_arg_b26" {
   let out = log.join(OutputKind::Stdout)
   assert_eq(out, b"AqB|42|", msg="q 原样透出、%d 消耗唯一参数")
 }
+
+///|
+/// #149 分诊锚：`%[^,],%[^,]` 的规格列表（Scanset/字面逗号/Scanset）。
+test "scanf_scanset_spec_parse_probe" {
+  let specs = parse_scanf_specs(lossy_codes(@utf8.encode("%[^,],%[^,]")))
+  assert_eq(specs.length(), 3, msg="应解析出 3 项")
+  guard specs[0] is Scanset(n0, s0, _, _) else { fail("第 1 项应 Scanset") }
+  assert_true(n0, msg="第 1 个 scanset 应否定")
+  assert_eq(s0.length(), 1, msg="集合应只含 ,")
+  guard specs[1] is Literal(44) else { fail("第 2 项应字面 ,") }
+  guard specs[2] is Scanset(n2, s2, _, _) else { fail("第 3 项应 Scanset") }
+  assert_true(n2, msg="第 2 个 scanset 应否定")
+  assert_eq(s2.length(), 1, msg="集合应只含 ,")
+}
+
+///|
+/// #149 红锚：scanset 端到端——`%[^;]` 取到分隔符 / `%[a-z]` 中缀范围
+/// 语义（abc123 → abc）。修复前 `[` 落格式字母臂、集合内容当字面字符，
+/// 首字符即失配（matched 停 0/1）。
+test "sscanf_scanset_end_to_end" {
+  let (map, mem) = fresh()
+  let ps = 0x8100U
+  // %[^;]：Alice;Bob → "Alice"
+  put_cstr(mem, map, 0x6800U, "Alice;Bob")
+  put_cstr(mem, map, 0x6000U, "%[^;]")
+  let r = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
+  assert_eq(r.value, Some(1UL))
+  assert_eq(peek(mem, map, ps, 6), b"Alice ")
+  // %[a-z]：abc123 → "abc"（范围展开）
+  put_cstr(mem, map, 0x6800U, "abc123")
+  put_cstr(mem, map, 0x6000U, "%[a-z]")
+  let r2 = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
+  assert_eq(r2.value, Some(1UL))
+  assert_eq(peek(mem, map, ps, 4), b"abc ")
+}
+
+///|
+/// 对抗批红锚（2026-10-18）：scanset 未闭合（EOF 无 `]`）= 转换失败
+/// 返回 0（clang adv_c n4 对齐；旧容错吃到串尾错配 n=1）。
+test "sscanf_scanset_unclosed_fails" {
+  let (map, mem) = fresh()
+  let ps = 0x8100U
+  put_cstr(mem, map, 0x6800U, "abc")
+  put_cstr(mem, map, 0x6000U, "%[abc")
+  let r = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
+  assert_eq(r.value, Some(0UL), msg="未闭合 scanset 应匹配失败返回 0")
+}

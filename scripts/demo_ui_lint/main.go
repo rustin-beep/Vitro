@@ -13,7 +13,7 @@
 //	   $("stdin-row").classList.add("active") 只有 .tab.active 定义，
 //	   #stdin-row 永远没有 tab 类，行永不显示）。
 //	C. getElementById 字面量 id ⊆ html id 集 ∪ 动态前缀白名单（防静默 null）。
-//	D. mono 连字对账（2026-10-16 #122 闸门批，#121① 债的机判）：凡 var(--mono)
+//	D. mono 连字对账（2026-10-16 #122 闸门批，#121① 债的机判；2026-10-18 前端改造批扩面到 --vr-mono 五主题令牌）：凡 var(--mono) / var(--vr-mono)
 //	   字体面消费规则，须**规则体内自带 font-variant-ligatures 关闭**（新栈
 //	   组件同行声明形态）**或选择器 ∈ style.css 末尾枚举块**（旧栈形态——
 //	   注释锚「新增 mono 面必须连坐本规则」）。`font:` 简写重置连字 +
@@ -277,30 +277,27 @@ func main() {
 		}
 		js = b.String()
 	}
-	// css = demo 目录下全部 .css 合并解析（tokens.css 令牌定义面 +
+	// css = demo 目录下全部 .css 合并解析（app.css 五主题令牌定义面 +
 	// style.css 消费面——2026-10-03 换肤批拆两文件后定义跨文件）
 	css := selftestCSS
 	if !*selftest {
+		// 2026-10-18 前端改造批：旧 five-theme `tokens.css` 退役（五主题令牌
+		// 内联进 `src/app.css`）——根目录可以没有 .css；但整片 css 面必须非空，
+		// 否则下方的定义面/连字对账会静默全绿。
 		files, err := filepath.Glob(filepath.Join(*demoDir, "*.css"))
-		if err != nil || len(files) == 0 {
-			fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 下无 .css 可扫: %v\n", *demoDir, err)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: %s/*.css 枚举失败: %v\n", *demoDir, err)
 			os.Exit(2)
 		}
-		sort.Strings(files)
-		var sb strings.Builder
-		for _, f := range files {
-			b, err := os.ReadFile(f)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
-				os.Exit(2)
-			}
-			sb.WriteByte('\n')
-			sb.Write(b)
-		}
-		// 新栈主样式 src/*.css（app.css）——style.css 退役后并入 css 面
 		srcCSS, _ := filepath.Glob(filepath.Join(*demoDir, "src", "*.css"))
+		sort.Strings(files)
 		sort.Strings(srcCSS)
-		for _, f := range srcCSS {
+		if len(files) == 0 && len(srcCSS) == 0 {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 下（含 src/）无 .css 可扫\n", *demoDir)
+			os.Exit(2)
+		}
+		var sb strings.Builder
+		for _, f := range append(files, srcCSS...) {
 			b, err := os.ReadFile(f)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "demo_ui_lint: %s 不可读: %v\n", f, err)
@@ -586,7 +583,7 @@ func main() {
 	}
 
 	// ── 检查 D：mono 连字对账（#121① 债机判，2026-10-16）──
-	// 凡 var(--mono) 字体面消费规则：规则体内自带 font-variant-ligatures
+	// 凡 var(--mono) / var(--vr-mono) 字体面消费规则：规则体内自带 font-variant-ligatures
 	// （新栈组件同行声明形态）或选择器 ∈ css 面连字豁免集（旧栈 = style.css
 	// 末尾枚举块，含 font-variant-ligatures 声明的规则块选择器即豁免——
 	// 豁免集从合并 css 面收集，两形态一视同仁）。`font:` 简写重置连字 +
@@ -607,7 +604,7 @@ func main() {
 	}
 	sitesMono := 0
 	for _, m := range reCSSFullRule.FindAllStringSubmatch(cssBare, -1) {
-		if !strings.Contains(m[2], "var(--mono)") {
+		if !strings.Contains(m[2], "var(--mono)") && !strings.Contains(m[2], "var(--vr-mono)") {
 			continue
 		}
 		if strings.Contains(m[2], "font-variant-ligatures") {
@@ -630,7 +627,7 @@ func main() {
 			}
 			sitesMono++
 			if !monoExempt[sel] {
-				issues = append(issues, issue{"mono", fmt.Sprintf("mono 连字对账: %s 消费 var(--mono) 但规则体无 font-variant-ligatures 关闭、也未连坐 style.css 末尾枚举块——连字复活（#121① 教学硬伤同族；新面在组件内同行声明，旧面连坐枚举块）", sel)})
+				issues = append(issues, issue{"mono", fmt.Sprintf("mono 连字对账: %s 消费 var(--mono)/var(--vr-mono) 但规则体无 font-variant-ligatures 关闭、也未连坐 style.css 末尾枚举块——连字复活（#121① 教学硬伤同族；新面在组件内同行声明，旧面连坐枚举块）", sel)})
 			}
 		}
 	}
@@ -769,13 +766,15 @@ func main() {
 	// F4 收尾（2026-10-17）：旧栈退役后 class/id 字面量面归零（新栈 = Svelte
 	// class: 指令 + 组件本地状态，无 classList/$() 面）——下限随重构归 0；
 	// rules.json 的 min_class_sites 显式登记（0 = 合法，不再回落 3：回落值
-	// 会把「重构后归零」误判成塌缩）。var 面仍由 60 兜住（令牌引用未变）。
+	// 会把「重构后归零」误判成塌缩）。var 面仍由 60 兜住（令牌引用未变）；
+	// mono 面 2026-10-18 扩面（--vr-mono）后由 40 兜住——抽取器只认旧令牌
+	// 时位点会从 ~100 塌到 0，此下限即红。
 	minClassSites := rl.MinClassSites
-	const minIDSites, minVarSites = 0, 60
-	if sitesClass < minClassSites || sitesID < minIDSites || sitesVar < minVarSites {
+	const minIDSites, minVarSites, minMonoSites = 0, 60, 40
+	if sitesClass < minClassSites || sitesID < minIDSites || sitesVar < minVarSites || sitesMono < minMonoSites {
 		issues = append(issues, issue{"coverage", fmt.Sprintf(
-			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",
-			sitesClass, minClassSites, sitesID, minIDSites, sitesVar, minVarSites)})
+			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）/ mono=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",
+			sitesClass, minClassSites, sitesID, minIDSites, sitesVar, minVarSites, sitesMono, minMonoSites)})
 	}
 
 	if len(issues) > 0 {
@@ -886,4 +885,6 @@ const selftestSvelte = `<div class="mono-face">x</div>
 .mono-face { font: 12px var(--mono); }
 .mono-ok { font: 12px var(--mono); font-variant-ligatures: none; }
 .mono-normal { font: 12px var(--mono); font-variant-ligatures: normal; }
+.mono-vr-face { font: 12px var(--vr-mono); }
+.mono-vr-ok { font: 12px var(--vr-mono); font-variant-ligatures: none; }
 </style>`

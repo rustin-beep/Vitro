@@ -14,7 +14,8 @@ import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
 import { annotateGroups } from "../js/util.ts";
 import { ICONS_DIGEST } from "../js/icons.ts";
-import { switchTab } from "./tabs.svelte.ts";
+import { ui } from "./ui.svelte.ts";
+import { goldenOf, type GoldenState } from "./lib/golden.ts";
 import { workspace, workspaceFilesForCompile } from "./lib/workspace.svelte.ts";
 
 // 共享状态 = 官方推荐形态（best practices：classes with $state fields）——
@@ -109,6 +110,42 @@ class SessionState {
   /** A15：回放全宽（播放中隐藏左栏，可视化独占整行——旧栈 replay-wide
    *  同语义；设置态由本层单点管理，与 playing 相与生效）。 */
   replayWide = $state(storeGet(KEYS.replayWide) === "on");
+  /** 编辑器当前源码（golden「已改稿」判定的活值——currentCase.source 是课稿
+   *  原文，不能拿它自比；工作态 / 采集 / 分享还原三处写入）。 */
+  liveSource = $state("");
+  /** Clang golden 对照态（输出块徽章 / 诊断摘要 / 参考态同一投影）。
+   *  设计说明 §12.2：未到末帧只报「自动对照」，末帧才判 ✓/✗，改过源码
+   *  诚实失效（stale）——不拿旧预期比新代码。 */
+  golden = $derived.by<GoldenState>(() =>
+    goldenOf({
+      kase: this.currentCase,
+      source: this.liveSource,
+      outputs: this.outputs,
+      stopped: this.stopped,
+      waiting: !!this.runStats?.waiting_input,
+      paused: this.bpPaused,
+      idx: this.idx,
+      total: this.viewFrames.length,
+    }),
+  );
+  /** 编译期错误的单行摘要（一句话诊断条 / 参考态跳转种子）。 */
+  firstError = $derived(this.diagnostics.find((d) => d.severity === "error") ?? null);
+  /** 运行期 trap（stopped 头部为受检终止——编译失败 ≠ trap，两态不混）。 */
+  trapped = $derived(this.stopped.startsWith("受检终止"));
+  /** 断点暂停（引擎 paused 批次——采集停在断点行）。 */
+  bpPaused = $derived(this.stopped.startsWith("⏸"));
+  /** 仪器数据面的显示帧：末帧常是程序收尾的 prog 帧（无数组快照、无局部
+   *  变量、空调用栈），直接渲染会让「末帧终态」读成「数据丢了」。此处**只**
+   *  给数组/变量面沿用最近一帧有数据的帧，并在块头标注「沿用第 N 帧」；
+   *  时间轴/状态行/当前行染仍报真实帧号（读数不得张冠李戴）。 */
+  displayIdx = $derived.by(() => {
+    const vs = this.viewFrames;
+    if (!vs.length) return 0;
+    const hasData = (f: StepPayload): boolean => (f.array_snapshots?.length ?? 0) > 0 || (f.local_vars?.length ?? 0) > 0;
+    if (hasData(vs[this.idx])) return this.idx;
+    for (let i = this.idx - 1; i >= 0; i -= 1) if (hasData(vs[i])) return i;
+    return this.idx;
+  });
 }
 
 // ── 持久化初值（读有兜底，写有兜底——persisted 层统一）────────────────
@@ -117,7 +154,9 @@ class SessionState {
 const FPS_STEPS = [2, 8, 30, 60, 120, 240]; // A24（#140）：恢复旧栈六档
 function initFps(): number {
   const v = Number(storeGet(KEYS.playbackFps));
-  return FPS_STEPS.includes(v) ? v : 30;
+  // 默认 8 帧/秒（2026-10-18 改造：设计稿速度档「8 帧/秒 · 默认」——
+  // 教学节奏宁慢勿快；显式选过档位的用户保持）
+  return FPS_STEPS.includes(v) ? v : 8;
 }
 function initGran(): "stmt" | "insn" {
   const v = storeGet(KEYS.stepGran);
@@ -238,7 +277,7 @@ export async function loadCatalog(): Promise<void> {
   }
 }
 
-export async function collect(source: string, bpLines: number[] = []): Promise<void> {
+export async function collect(source: string, bpLines: number[] = [], opts: { autoplay?: boolean } = {}): Promise<void> {
   if (session.collecting) return;
   const my = ++session.epoch;
   session.collecting = true;
@@ -281,7 +320,7 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
     // A4/A6（#140）：config = UI 基准 + 用例 configHint 一次性合并（hint 不
     // 写回基准——下一用例自动恢复，旧栈 cfg-msg 语义）
     const hint = session.currentCase?.configHint as Record<string, unknown> | undefined;
-    const cfg: Record<string, unknown> = { ...session.cfg, ...(hint ?? {}) };
+    const cfg: Record<string, unknown> = { ...session.cfg, ...hint };
     if (hint && Object.keys(hint).length > 0) {
       session.cfgMsg = `本用例临时覆盖 config：${Object.entries(hint).map(([k, v]) => `${k}=${String(v)}`).join("，")}（下一用例自动恢复基准）`;
     } else {
@@ -302,7 +341,9 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
     session.idx = 0;
-    session.stopped = r.stopped;
+    // 编译失败时网关可能回传上一轮的 stopped（引擎侧滞留）——按 compileOk
+    // 截断，否则旧 trap 会挂在新代码上冒充本次死因（2026-10-18 实测）。
+    session.stopped = r.compileOk ? r.stopped : "";
     session.outputs = r.outputs;
     session.diagnostics = r.diagnostics ?? [];
     session.ppTrace = r.ppTrace ?? [];
@@ -316,18 +357,20 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
       session.perf.collectMs = r.ms;
       session.versions = r.versions;
       const errs = session.diagnostics.filter((d) => d.severity === "error").length;
-      session.status = `编译失败——${session.diagnostics.length} 条诊断（${errs} 错误）见「运行」视图`;
-      // 诊断卡在 run tab——编译失败即切过去，卡片是保证可见的反馈面
-      // （旧栈单页形态 diag-list 恒可见；新栈 tab 化后的等价语义）
-      switchTab("run");
+      session.status = `编译失败——${session.diagnostics.length} 条诊断（${errs} 错误）见诊断带`;
+      // 编译失败即回工作态执行模式——诊断带（一句话 + 明细）是保证可见的
+      // 反馈面（单页形态下不再有「切到运行 tab」这一步）
+      ui.screen = "work";
+      ui.mode = "exec";
       toast("err", session.status);
       return;
     }
     session.tree = buildCallTree(r.frames); // 调用树（帧全集 → trie；物理保留 js/calltree.ts 纯函数）
     session.runStats = r.run; // A8：返回码/VM 步数统计卡数据源
-    // 采集成功即切运行 tab（旧栈单页形态「结果立即可见」的 tab 化等价——
-    // 与点课切运行同语义；用户在内存/手册 tab 点采集不该扑空）
-    switchTab("run");
+    // 采集成功即回工作态执行模式（单页形态「结果立即可见」的等价：
+    // 在内存/手册页点采集不该扑空）
+    ui.screen = "work";
+    ui.mode = "exec";
     try {
       const mem = await call<{ [k: string]: unknown }>("memory.regions");
       session.memory = mem as unknown as import("../js/types.ts").MemoryRegions;
@@ -338,8 +381,9 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
       ? `采集 ${r.frames.length} 帧 · 耗时 ${r.ms}ms`
       : "零帧——程序无步进（空 main 或立即返回）";
     // 采集完自动播放（行为拍板 2026-10-17，恢复旧栈 stepRecollect 末尾
-    // stepPlay 语义——采集即回放的教学节奏）
-    if (r.frames.length > 0) togglePlay();
+    // stepPlay 语义——采集即回放的教学节奏）。首访/继续上次的落地采集传
+    // autoplay:false（设计稿首访动线：已预载一帧、暂停，不自动播放）。
+    if (r.frames.length > 0 && opts.autoplay !== false) togglePlay();
     // 反馈分域：会话态走 status 行；操作结果走 toast（失败/到顶才弹，成功不扰）
     if (r.stopped) toast("err", r.stopped);
   } catch (err) {
@@ -484,4 +528,25 @@ export function setCap(v: number): void {
 export function setReplayWide(on: boolean): void {
   session.replayWide = on;
   storeSet(KEYS.replayWide, on ? "on" : "off");
+}
+
+/** 重置回放视图（工作态运行条「重置」）：停播 + 清帧/诊断/树/内存/输出，
+ *  源码不动（重置的是仪器，不是编辑器——改代码后点「运行」重采）。
+ *  清场范围与 collect 开采清场同口径，防旧画面冒充新会话。 */
+export function resetSession(): void {
+  stopTimer();
+  session.playing = false;
+  session.collecting = false;
+  session.frames = [];
+  session.idx = 0;
+  session.stopped = "";
+  session.diagnostics = [];
+  session.ppTrace = [];
+  session.compileOk = true;
+  session.outputs = { stdout: "", stderr: "", note: "" };
+  session.runStats = null;
+  session.tree = null;
+  session.memory = null;
+  session.perf.collectMs = 0;
+  session.status = "未采集——点「运行」从头采集帧流";
 }

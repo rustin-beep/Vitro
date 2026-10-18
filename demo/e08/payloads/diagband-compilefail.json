@@ -1,0 +1,43 @@
+{
+  "catalog": [
+    {
+      "lang": "c",
+      "category": "声明与类型",
+      "code_str": "E3023",
+      "title": "变量未声明",
+      "explanation": "在使用变量之前，必须先声明它的类型（如 int x）。C 语言不会自动创建变量。",
+      "icon": "undeclared",
+      "common_causes": [
+        "忘记写 int/char 等类型声明",
+        "变量名拼写错误",
+        "变量声明在使用之后且没有前向声明"
+      ]
+    }
+  ],
+  "frames": [],
+  "idx": 0,
+  "compileOk": false,
+  "stopped": "编译失败——诊断见诊断带",
+  "diagnostics": [
+    {
+      "code": "E3023",
+      "error_code": "E3023",
+      "severity": "error",
+      "line": 3,
+      "column": 14,
+      "message": "未声明的变量 'z'",
+      "fix_suggestion": "先声明 z，或检查拼写/作用域/头文件",
+      "filename": "main.c"
+    },
+    {
+      "code": "W1019",
+      "error_code": "W1019",
+      "severity": "warning",
+      "line": 3,
+      "column": 14,
+      "message": "宏参数含副作用",
+      "fix_suggestion": "把参数存进临时变量再传入",
+      "filename": "main.c"
+    }
+  ]
+}

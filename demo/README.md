@@ -15,6 +15,20 @@ push 到 master 后由 [pages.yml](../.github/workflows/pages.yml) 自动部署�
 <https://rustin-beep.github.io/Vitro/>（首次发布前需在仓库 Settings → Pages 把
 Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）。
 
+## 界面（2026-10-18 前端改造）
+
+信息架构与视觉语言按设计档案 `demo/design/2026-10-18-redesign/`（v4 定稿；本地档案，`.gitignore` 忽略）落地：
+
+- **三态**：工作态（默认，**左仪右书**：左仪器三模式 / 右课页与编辑器——2026-10-18 用户反馈④对调）／课程目录（顶栏「课程」）／诊断手册（顶栏「诊断手册」或一句话诊断跳转）。
+- **仪器三模式**：执行（诊断带 / 时间轴 / 数组索引格 / 调用树 / 局部变量 / 输出）· 内存（`memory.regions` 三段轨道 + freed/quarantine）· 协议（capabilities / contracts / labels 只读事实）。
+- **五主题**（用户 2026-10-18 拍板）：明亮实验室 / 奶油手账 / 绒面深蓝（旧色板原样保留）+ 白天（纸）/ 夜航图（设计稿新增）。**奶油手账保留旧主题的新拟物双阴影**（面板/按钮/字段浮起，输出/搜索凹入；2026-10-18 反馈①）；旧键迁移：`light→ice`、`dark→paper`、`glass→blueprint`（深夜书房退役，由夜航图接替）；字号档 13/14/16、动效开关照旧持久化。
+- **首访动线**：落地即载入上次课（无记录 = bubble）并采集到中段帧**暂停**（不自动播）；入口态「继续上次」回到上次课与帧。
+- **保留能力**：运行条（运行 / 分享 / 重置）、实验参数（argv / stdin / 文件 / 打开文件夹）、断点、stdin 喂入续跑、Clang golden 末帧对照、课程叙述真源。
+- **就地诊断卡**（2026-10-18 反馈③）：运行期 trap 与编译期首错都在仪器里直接给「**码表图标 + 码 + 标题**（点击进详情）→ 说明 → 常见原因」，引擎原文折叠在下一行——不用先跳手册；图标来自 `moonbit/icons/<id>.svg`（生成 `demo/js/icons.ts`）。
+- **参考态覆盖**：左侧码表是 `error_catalog` 的**全部** 100 条 C 卡（**每条带码表 SVG 图标** + 按 catalog 自报 `category` 分组 + 搜索 + 粘性滚动）；右侧每条都有统一详情模板（标题 / 说明 / 常见原因 / 相关课 / 返回）。其中 E3060 另有 trap 三幕图，E3060·E3023·E3070·E3061·E3027·W1019 六条附「示例 / 怎么修」插图；其余条目只呈现 catalog 真字段，不手写第二份错误文案。对表纠正：E3061 按 catalog 是 Double-Free（cases 的 `e3061` 实为 NULL 解引用且无 E 码，旧标签已改「运行期 trap」）、E3027 是 free 参数类型错误（设计稿的「NULL 解引用 / 堆耗尽」是 mock，未沿用）。
+- **键盘仪表盘**：空格播放/暂停、←/→ 单步、Home/End 首末帧、`[`/`]` 速度档（输入框与编辑器内不劫持）。
+- **「此刻」读数**（实现层小巧思，设计稿未画）：时间轴悬停读数 + 点击跳帧、数组快照变化帧的交换刻度、按当前行 `a[j]` 与局部变量求值自动指认比较格、末帧收尾帧沿用最近一帧数据并在块头标注沿用来源。
+
 ## 本地预览
 
 `wasm.wasm` 与 JS 发射产物都是构建产物，**不入库**——本地起服务前须先备齐两
@@ -62,7 +76,7 @@ Firefox 134+），加载失败页面会显示降级提示。
 6. `npm run lint`——F4 oxlint（零错误 gate）。
 7. `npm run build`——F4 vite build（构建成功 gate；产物 `dist/` 不入库）。
 8. **E-08 快照闸**——`vite build --ssr src/e08/entry.ts` 产 node bundle 后
-   `node --test demo/tests/e08.test.mts`：13 锚 = 12 组件用例 × 冻结 golden
+   `node --test demo/tests/e08.test.mts`：17 锚 = 16 组件用例 × 冻结 golden
    （`demo/e08/golden/*.html`）逐字节比对 + 用例表↔golden 目录全等锚；刷新
    只走 `tests/e08-update.mts` 显式人工令（E-04：快照禁测试内动态生成）。
    **课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
@@ -77,22 +91,28 @@ Firefox 134+），加载失败页面会显示降级提示。
 10. `go run ./scripts/demo_ui_lint`——JS↔CSS 字符串契约对账：`classList`
    写操作的类名对「CSS 复合单元 ∪ JS 生成面 ∪ 元素候选闭包 ∪ rules.json
    白名单」对账、`var(--x)` 引用对定义面对账、`$("id")` 对 html id 集对账、
-   **mono 连字对账**（`var(--mono)` 消费面必须同行关闭连字——#121① 教学
-   硬伤防线）。抓「操作永不生效的类」「引用不存在的 CSS 变量」「连字复活」
-   形态。
+   **mono 连字对账**（`var(--mono)` / `var(--vr-mono)` 消费面必须同行关闭
+   连字——2026-10-18 扩面到五主题令牌，位点下限 40 兜抽取面塌缩；#121①
+   教学硬伤防线）。抓「操作永不生效的类」「引用不存在的 CSS 变量」「连字
+   复活」形态。
 11. `go run ./scripts/teaching_phase_vocab`——教学阶段词表冻结闸。
 12. `node --test demo/tests/pure.test.mts`——纯函数十八锚（buildCallTree
     trie / isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四
     锚 / share 七锚 / **decorateBadges·formatTrap 徽章码表**；须 node 25，
     type stripping 直跑 .ts）。DOM 交互层不硬测，走第 13 条浏览器 E2E。
 13. **浏览器 E2E（已进 CI，2026-10-17 收口）**——`demo/tests/
-    e2e_diagcard.mjs`（编译诊断卡 + 断点行为链 S1-S5，18 锚）+
+    e2e_diagcard.mjs`（诊断带 + 断点行为链 S1-S5，18 锚）+
     `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置
     面板 + 主题持久化 + 分享往返 + **stdin 喂入/golden 对照/统计卡**
     W1-W17，35 锚）+ `demo/tests/e2e_session.mjs`（会话/回放/分享族
-    F1-F6，6 锚——2026-10-18 实测立账批防线锚：坏分享 hash 横幅 /
+    F1-F7 + F4b 末帧状态行，8 锚——2026-10-18 实测立账批防线锚：坏分享 hash 横幅 /
     argv 采集零克隆崩 / 语句级 frameAt 口径〔突变证红留痕〕/ 播完
-    status 提示 / char 数组零 each_key_duplicate / trap E 码联动手册）。
+    status 提示 / char 数组**全帧 sweep** 零 each_key_duplicate /
+    trap E 码联动手册 / **课程目录全章渲染**〔重名课 id 防护，
+    structures/josephus 实测〕）。共 61 锚。
+    ⚠️ 旧锚点（`.pilot-head` / `.tab` / `button.lesson` / `.bars`）随五 tab
+    旧 DOM 在 2026-10-18 改造批退役；仍跑旧脚本会在 boot 等待即超时
+    （`.pilot-head .badge` 永不出现）——请以当前 `tests/e2e_*.mjs` 为准。
     CI 步用 ubuntu runner 预装 Google Chrome headless
     CDP（与 Edge 同协议，脚本零改动）；本地跑法：vite build 产物 →
     `node tests/serve_static.mjs 8931` → Edge/Chrome `--headless=new
@@ -144,7 +164,7 @@ Chromium（Chrome/Edge）支持；移动端（≤960px）入口整体隐藏，�
 > `src/lib/workspace.svelte.ts`（纯函数物理保留 import `js/workspace.ts`，
 > pure.test 四锚零改动），UI 在 `src/lib/WorkspaceBar.svelte`；采集通道经
 > `session.collect` 自动带 `compile.files`（单一源，对齐旧栈
-> buildCompileParams 纪律）。mock FSA E2E 15 锚见门禁第 8 条。
+> buildCompileParams 纪律）。mock FSA E2E（W1-W10）见门禁第 13 条。
 
 ## 课程叙述消费（2026-10-16 glob 懒加载格式）
 
@@ -164,7 +184,7 @@ coursenote 用例走同一真源（SSR 侧 `?raw` 内联——node 无 fetch 面
   落地后由其接管（总计划既定路线）。
 - Clang golden 参考值为预置真值（CI shadow 防线持续对拍），页面内无实时
   交叉编译。
-- 时间旅行（step 流采集-回放）与算法可视化（「内容」页课程树：43 算法族
+- 时间旅行（step 流采集-回放）与算法可视化（课程目录：43 算法族
   + 变体 + 82 模板全量）均已接 gateway 通道（step.begin/step.next/seek/
   breakpoints.set）；引擎侧行号偏移两族标注边界见 issue #34。
 - 链接分享**只带编辑器当前文件**（工作区模式下不打包整个工程）——多文件
@@ -179,3 +199,13 @@ coursenote 用例走同一真源（SSR 侧 `?raw` 内联——node 无 fetch 面
   不是压缩率，是「URL 里要塞下整个程序」**；真要百字符量级必须把代码存到
   别处（= 引入后端/第三方存放点），与「零后端」定位冲突，故 2026-10-09 用户
   拍板**不做**，先保证前端功能全可用。
+- **Safari/iOS 装载硬约束（#127）**：`WebAssembly.compileStreaming` /
+  `instantiateStreaming` 在 Safari 26.2 上对 js-string builtins **不工作**
+  （WebKit bug 308136，报 `TypeError: import wasm:js-string:fromCharCode
+  must be an object`）——本仓装载（`js/gw.ts` + `src/protocol/engine.worker.ts`）
+  走 `fetch → new WebAssembly.Module(buf, { builtins }) → instantiate` 两步，
+  **天然规避**。禁令：任何人不得以「少一次拷贝」为由把 demo 改成 streaming
+  形态，否则 Safari 26.2 直接失效；JS 侧 polyfill 亦不可行（`fromCharCodeArray`
+  入参为 wasm GC array，宿主不可索引读取），兜底只能在引擎内部实现。
+  浏览器底线 = Chrome/Edge 130+、Firefox 134+、**Safari 26.2+/iOS 26.2+**
+  （18.2–26.1 因 js-string builtins 缺失已知不可达）。

@@ -1,30 +1,75 @@
 <script lang="ts">
-  // 运行输出四通道视图（F4 组件迁移：对齐旧栈 renderOutput 分域形态）——
-  // stdout 主通道、stderr/note 次通道；V3 质感批恢复常驻分域框；A17（#140）
-  // note 通道接 [语义id]→SVG 徽章装饰（decorateBadges 白名单表，输入先 esc）。
-  import { session } from "../session.svelte.ts";
+  // 运行输出块（工作态仪器最后一块）——stdout / stderr / note 三通道分域 +
+  // Clang golden 徽章 + stdin 喂入行 + 返回码/步数/采集耗时统计行。
+  //
+  // 数据全部来自 session 层（outputs / golden / runStats / perf）；golden 判定
+  // 在 lib/golden.ts 纯函数（末帧才判、改稿诚实失效）。
+  // A17：note 通道的 [语义id] 徽章经 decorateBadges 装饰（输入先 esc）。
+  import { feedStdin, session } from "../session.svelte.ts";
   import { decorateBadges, esc } from "../../js/util.ts";
+
+  let showGolden = $state(false);
+
+  const out = $derived(session.outputs);
+  const bytes = (s: string): number => (s ? new TextEncoder().encode(s).length : 0);
+  const emptyText = $derived(
+    !session.compileOk
+      ? "（编译失败——无运行输出）"
+      : session.frames.length === 0 && session.perf.collectMs > 0
+        ? "（零帧：程序无步进）"
+        : "（尚未运行到 printf）",
+  );
+  const badgeClass = $derived(
+    session.golden.kind === "ok" ? "is-ok" : session.golden.kind === "bad" ? "is-bad" : session.golden.kind === "pending" ? "is-warn" : "",
+  );
+  const ret = $derived(session.runStats && session.runStats.status === "finished" ? String(session.runStats.return_value) : "—");
 </script>
 
-<div class="out">
-  {#if session.outputs.stdout}
-    <pre class="ch stdout">{session.outputs.stdout}</pre>
-  {:else}
-    <p class="muted">（stdout 无输出）</p>
-  {/if}
-  {#if session.outputs.stderr}
-    <pre class="ch stderr">{session.outputs.stderr}</pre>
-  {/if}
-  {#if session.outputs.note}
-    <pre class="ch note">{@html decorateBadges(esc(session.outputs.note))}</pre>
-  {/if}
-</div>
+<section class="vr-block" aria-label="运行输出">
+  <div class="vr-blockhead">
+    <h2 class="vr-label">输出</h2>
+    <span class="vr-badge {badgeClass}" title="运行到末帧自动对照 Clang golden">{session.golden.label}</span>
+    <span class="vr-spacer"></span>
+    <span class="vr-meta">Clang golden 预置真值</span>
+  </div>
 
-<style>
-  .out { min-width: 0; }
-  .ch { background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; min-height: 46px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; font: 12.5px/1.6 var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-  .ch.stdout { color: var(--code-text); }
-  .ch.stderr { margin-top: 10px; background: var(--danger-tint); border: 1px dashed var(--danger); color: var(--danger); }
-  .ch.note { margin-top: 10px; background: var(--accent-tint); border: 1px dashed var(--accent); color: var(--accent-strong); }
-  .muted { color: var(--t3); font-size: 12.5px; }
-</style>
+  <pre class="vr-out" class:is-empty={!out.stdout}>{out.stdout || emptyText}</pre>
+  {#if out.stderr}
+    <pre class="vr-out is-stderr">{out.stderr}</pre>
+  {/if}
+  {#if out.note}
+    <pre class="vr-out is-note">{@html decorateBadges(esc(out.note))}</pre>
+  {/if}
+
+  <div class="vr-channels">
+    <span>stdout <b>{bytes(out.stdout)} B</b></span>
+    <span>stderr <b>{bytes(out.stderr)} B</b></span>
+    <span>note <b>{bytes(out.note)} B</b></span>
+  </div>
+
+  {#if session.runStats?.waiting_input}
+    <div class="vr-stdin-row">
+      <label for="vr-stdin">stdin</label>
+      <input id="vr-stdin" type="text" bind:value={session.stdinDraft} aria-label="标准输入（喂给 scanf）" />
+      <button type="button" class="vr-btn vr-tiny" onclick={feedStdin} disabled={session.collecting}>
+        {session.collecting ? "续跑中…" : "喂入并续跑"}
+      </button>
+      <span class="vr-meta">waiting_input = true · 喂入后全量重采</span>
+    </div>
+  {/if}
+
+  {#if session.golden.detail}
+    <div class="vr-golden">
+      <button type="button" class="vr-golden-toggle" aria-expanded={showGolden} onclick={() => (showGolden = !showGolden)}>
+        {showGolden ? "收起对照真值" : "对照真值（Clang golden / Vitro stdout）"}
+      </button>
+      {#if showGolden}
+        <pre class="vr-golden-pre">{session.golden.detail}</pre>
+      {/if}
+    </div>
+  {/if}
+
+  <div class="vr-statline">
+    返回码 <b>{ret}</b> · VM 步 <b>{session.runStats ? String(session.runStats.steps_executed) : "—"}</b>{#if session.perf.collectMs}{" · "}采集 <b>{session.perf.collectMs} ms</b>{/if}
+  </div>
+</section>

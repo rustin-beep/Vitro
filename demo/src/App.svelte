@@ -1,142 +1,122 @@
 <script lang="ts">
-  // Vitro 前端试点 App（F4 布局对齐版，2026-10-16 用户拍板「布局一样即可，
-  // 控件细节后续按优」）：骨架对齐现役 demo——header（品牌+徽章+齿轮设置
-  // 浮层）/ 两栏 grid（左=pane-head 按钮排+blurb+编辑器+偏好折叠段；
-  // 右=下划线 tab 条[内容/运行/内存地图/诊断手册/引擎与协议]+tabpage）/
-  // footer 白箱声明。tab 集合与命名逐字对齐 index.html data-tab。
-  import { boot, collect, frameAt, loadCatalog, loadProto, session } from "./session.svelte.ts";
-  import { DEFAULT_PROGRAM } from "./program.ts";
-  import { themeState, applyTheme, NIGHT_THEMES } from "./theme.svelte.ts";
-  import { KEYS, storeGet, storeSet, migrateTheme } from "./persisted.svelte.ts";
-  import { packSource, parseFragment, unpackSource, urlLenWarning, SHARE_URL_WARN } from "../js/share.ts";
-  import { activeTab, switchTab, TAB_DEFS, type TabId } from "./tabs.svelte.ts";
-  import ArrayBars from "./lib/ArrayBars.svelte";
-  import ReplayBar from "./lib/ReplayBar.svelte";
-  import VarsList from "./lib/VarsList.svelte";
-  import OutputView from "./lib/OutputView.svelte";
-  import CallTree from "./lib/CallTree.svelte";
-  import MemoryView from "./lib/MemoryView.svelte";
-  import CourseTree from "./lib/CourseTree.svelte";
-  import CourseNote from "./lib/CourseNote.svelte";
-  import SettingsView from "./lib/SettingsView.svelte";
-  import Editor from "./lib/Editor.svelte";
-  import CatalogView from "./lib/CatalogView.svelte";
-  import ProtoView from "./lib/ProtoView.svelte";
-  import DiagnosticsCard from "./lib/DiagnosticsCard.svelte";
-  import StepInfoCard from "./lib/StepInfoCard.svelte";
-  import CallStackChain from "./lib/CallStackChain.svelte";
-  import WorkspaceBar from "./lib/WorkspaceBar.svelte";
-  import { ensureClosedForLesson, saveActiveFile, syncSource, workspace } from "./lib/workspace.svelte.ts";
-  import SessionConfig from "./lib/SessionConfig.svelte";
-  import RunMeta from "./lib/RunMeta.svelte";
-  import Toasts from "./lib/Toasts.svelte";
-  import type { TreeLesson } from "./lib/courseTypes.ts";
+  // Vitro · C 执行观察台（2026-10-18 前端改造，设计稿 v4 落地）
+  //
+  // 信息架构（设计说明 §2）：三态 + 一手册 + 一目录——
+  //   工作态（默认）/ 入口态（课程）/ 参考态（诊断手册）；
+  //   顶栏任何页面都能切课程、进手册、换主题、开设置。
+  // 本文件只做外壳：顶栏 / 加载态 / 横幅 / 页脚 / 键盘仪表盘 / 首访动线。
+  // 屏幕内容在 screens/，课与源码在 lib/lessonSession。
+  import { boot, loadCatalog, loadProto, seek, session, setFps, step, togglePlay } from "./session.svelte.ts";
+  import { parseFragment, unpackSource } from "../js/share.ts";
   import { toast } from "./toasts.svelte.ts";
-  import { loadLessonNote } from "./lib/lessonNotes.ts";
-  import { DEMO_CASES } from "virtual:demo-globals";
-  // V10（#141）：品牌位真 logo（昼夜双变体随主题族切换——替代「◎」文本点）
+  import { progress } from "./lib/progress.svelte.ts";
+  import { lessonSession } from "./lib/lessonSession.svelte.ts";
+  import { saveActiveFile, workspace } from "./lib/workspace.svelte.ts";
+  import { showEntry, showRef, showWork, ui } from "./ui.svelte.ts";
+  import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
+  import { NIGHT_THEMES, cycleTheme, initTheme, themeState } from "./theme.svelte.ts";
+  import WorkScreen from "./screens/WorkScreen.svelte";
+  import EntryScreen from "./screens/EntryScreen.svelte";
+  import RefScreen from "./screens/RefScreen.svelte";
+  import SettingsPopover from "./lib/SettingsPopover.svelte";
+  import Toasts from "./lib/Toasts.svelte";
+  // 品牌真 logo（V10 双变体随主题族切换；设计稿的方形 glyph 只是占位）
   import iconDark from "../assets/logo/vitro-icon-dark.svg?url";
   import iconLight from "../assets/logo/vitro-icon-light.svg?url";
 
-  let source = $state(DEFAULT_PROGRAM);
-  let editorRef: Editor | null = $state(null);
-  let blurb = $state("");
-  let note = $state<{ title: string; blocks: import("./lib/lessonMd.ts").Block[] } | null>(null);
-  let settingsOpen = $state(false);
-  // 引擎加载失败面（#139）：旧栈 boot-error 红横幅形态——失败必须可感知，
-  // 禁止徽章停在「…」占位的静默假态
   let bootError = $state("");
-  // P1-3：分享坏载荷报错面——toast 4.2s 自动过期后页面无痕回默认示例，
-  // 用户（或其朋友）错过 toast 即「静默降级」，README「明确报错」承诺被
-  // 破坏。坏链接走持久横幅（可手关）；kind:"bad"（版本不识别/缺载荷）
-  // 此前零处理路径也在此收口。
   let shareError = $state("");
 
-  async function onPickLesson(l: TreeLesson, chapId: string): Promise<void> {
-    // 点课 = 离开工作区（旧栈 ensureClosedForLesson 语义）：dirty 时 confirm
-    // 保存后关闭；用户取消则整个选课动作中止
-    if (!(await ensureClosedForLesson())) return;
-    source = l.source; // 课源码载入编辑器（旧栈 setEditorSource 语义）
-    blurb = l.blurb;
-    // A7/A6/A3 单源锚（#140）：从 DEMO_CASES 反查原用例（golden 预置真值 /
-    // configHint / argv）；算法课无 case 记录 → 退化形态（无 ref，source
-    // 锚仍在——修改失效逻辑照常工作）
-    const base = DEMO_CASES.find((k) => k.id === l.id);
-    session.currentCase = base
-      ? {
-          id: base.id,
-          label: base.label,
-          source: base.source,
-          referenceOutput: base.referenceOutput as string | undefined,
-          referenceTrap: base.referenceTrap as string | undefined,
-          referenceKind: base.referenceKind as string | undefined,
-          configHint: base.configHint as Record<string, unknown> | undefined,
-          argv: base.argv as string[] | undefined,
-          files: base.files as Array<{ filename: string; source: string }> | undefined,
+  // 主题/字号/动效引导（旧值迁移 + 落盘规范化）。旧 glass 用户收到一次说明。
+  const rawTheme = storeGet(KEYS.theme);
+  initTheme();
+  if (rawTheme && rawTheme !== themeState.current && storeGet("vitro-theme-migrated") !== "1") {
+    storeSet("vitro-theme-migrated", "1");
+    const from = rawTheme === "glass" ? "深夜书房" : rawTheme === "light" ? "明亮" : rawTheme;
+    const to = themeState.current === "blueprint" ? "夜航图" : themeState.current === "paper" ? "白天（纸）" : themeState.current;
+    toast("info", `主题已迁移：旧「${from}」→「${to}」`);
+  }
+
+  const chapterLabel = $derived(lessonSession.lesson?.chapLabel ?? "");
+  const lessonId = $derived(lessonSession.lesson?.id ?? "分享代码");
+  const ctxRef = $derived(ui.refCode || session.catalog[0]?.code_str || "");
+
+  function startBoot(): void {
+    bootError = "";
+    ui.ready = false;
+    boot()
+      .then(() => Promise.all([loadCatalog(), loadProto()]))
+      .then(async () => {
+        const parsed = parseFragment(location.hash.slice(1));
+        if (parsed.kind === "bad") {
+          shareError = `${parsed.reason}——链接多半被聊天工具截断或手动改坏。已载入默认示例；当前内容未被覆盖。`;
+          return;
         }
-      : { id: l.id, label: l.title, source: l.source };
-    // 叙述懒加载（import.meta.glob ?url 交付格式——全量课程不压首屏包）；
-    // 无此课叙述 = null 不渲染面板（诚实空态）
-    const doc = await loadLessonNote(chapId + "/" + l.id);
-    note = doc ? { title: l.title, blocks: doc.blocks } : null;
-    switchTab("run"); // 点课即切运行视图（旧栈 collectCurrentEditor+切 tab 语义）
-    void collect(source); // 点课自动采集（旧栈 collectCurrentEditor 语义）
+        if (parsed.kind === "payload") {
+          try {
+            lessonSession.setShared(await unpackSource(parsed.payload));
+            toast("ok", "已从分享链接还原代码");
+          } catch (err) {
+            shareError = `载荷无法解压（${String((err as Error).message).slice(0, 80)}）——链接多半被截断。已载入默认示例。`;
+          }
+          return;
+        }
+        // ?autorun / ?bench 由 main.ts 的验收钩子接管（此处不抢跑）
+        const q = new URLSearchParams(location.search);
+        if (q.has("autorun") || q.has("bench")) return;
+        // 首访动线：继续上次（同课）/ 默认 bubble，采到一帧后**暂停**（不自动播）
+        await lessonSession.openInitial();
+      })
+      .finally(() => {
+        ui.ready = true;
+      })
+      .catch((err: unknown) => {
+        bootError = (err instanceof Error ? err.message : String(err)).slice(0, 200);
+      });
   }
+  startBoot();
 
-  function cycleTheme(): void {
-    const next = themeState.current === "glass" || themeState.current === "soft" ? "ice" : "glass";
-    applyTheme(next);
-    storeSet(KEYS.theme, next);
+  // ── 键盘仪表盘（工作态专用；输入框/编辑器内不劫持） ──────────────
+  const FPS_STEPS = [2, 8, 30, 60, 120, 240];
+  function typingIn(t: HTMLElement | null): boolean {
+    if (!t) return false;
+    return !!t.closest(".cm-editor, input, textarea, select, [contenteditable='true'], .vr-popover");
   }
-
-  async function share(): Promise<void> {
-    try {
-      const frag = await packSource(source);
-      const url = location.href.split("#")[0] + "#" + frag;
-      history.replaceState(null, "", url);
-      shareUrl = url; // A23：链接条常驻（含长度提示与复制钮）
-      if (url.length > SHARE_URL_WARN) toast("info", urlLenWarning(url.length));
-      else toast("ok", "分享链接已生成（地址栏复制即可）");
-    } catch (err) {
-      toast("err", "分享失败：" + String((err as Error).message));
+  function onKey(e: KeyboardEvent): void {
+    if (e.key === "Escape") {
+      ui.settingsOpen = false;
+      ui.shareOpen = false;
+      return;
+    }
+    if (ui.screen !== "work" || ui.mode !== "exec") return;
+    if (typingIn(e.target as HTMLElement | null)) return;
+    if (session.viewFrames.length === 0) return;
+    const last = session.viewFrames.length - 1;
+    if (e.key === " ") {
+      e.preventDefault();
+      if (!session.playing && session.idx >= last) seek(0);
+      togglePlay();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      step(-1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      step(1);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      seek(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      seek(last);
+    } else if (e.key === "[" || e.key === "]") {
+      e.preventDefault();
+      const i = Math.max(0, FPS_STEPS.indexOf(session.fps));
+      setFps(FPS_STEPS[Math.max(0, Math.min(FPS_STEPS.length - 1, i + (e.key === "]" ? 1 : -1)))]);
     }
   }
 
-  boot()
-    .then(() => Promise.all([loadCatalog(), loadProto()]))
-    .then(async () => {
-      const parsed = parseFragment(location.hash.slice(1));
-      if (parsed.kind === "bad") {
-        shareError = `${parsed.reason}——链接多半被聊天工具截断或手动改坏。已载入默认示例。`;
-        return;
-      }
-      if (parsed.kind === "payload") {
-        try {
-          source = await unpackSource(parsed.payload);
-          toast("ok", "已从分享链接还原代码");
-        } catch (err) {
-          shareError = `载荷无法解压（${String((err as Error).message).slice(0, 80)}）——链接多半被截断。已载入默认示例。`;
-        }
-      }
-    })
-    .catch((err: unknown) => {
-      // #139：boot 链必须有失败面——横幅 + 采集禁用（对齐旧栈 boot-error
-      // 形态：失败原因 + wasm-gc 浏览器支持指引）
-      bootError = (err instanceof Error ? err.message : String(err)).slice(0, 200);
-    });
-  applyTheme(migrateTheme(storeGet(KEYS.theme)) || "glass");
-
-  function tabSwitch(id: TabId): void {
-    switchTab(id);
-  }
-
-  // 工作区缓冲同步（F4 残留②）：编辑器 source 任何变化（键入/点课/分享还原/
-  // 文件切换）都落进 active 文件缓冲——dirty 追踪的单一同步点
-  $effect(() => {
-    syncSource(source);
-  });
-
-  // Ctrl+S 保存当前文件（工作区开时才劫持——旧栈 initWorkspace 语义）
+  // 工作区快捷键 / 关页兜底（2026-10-18 改造批从旧 App 迁回：Ctrl+S 保存、
+  // dirty 时浏览器原生离开提示——E2E W6/W7 依赖此单点）。
   $effect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!workspace.active) return;
@@ -145,222 +125,183 @@
         void saveActiveFile();
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  });
-
-  // 关页兜底：dirty 时浏览器原生「离开页面？」提示（用户拍板的退出防护形态）
-  $effect(() => {
-    const onBeforeUnload = (e: BeforeUnloadEvent): void => {
+    const onUnload = (e: BeforeUnloadEvent): void => {
       if (workspace.dirty) { e.preventDefault(); e.returnValue = ""; }
     };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("beforeunload", onUnload);
+    };
   });
 
-  // 回放跟随当前行（A13，#140）：帧 code_line 驱动编辑器中性 accent 行染
-  // + 就近滚动（不居中不抢焦——播放节奏不被打断）。采集期不跟随（源码
-  // 可能正被替换）。
-  $effect(() => {
-    const line = frameAt(session.idx)?.code_line;
-    if (line && line > 0 && !session.collecting) editorRef?.followLine(line);
-  });
-
-  // vis_events 左缘标记（A14，#140）：当前帧事件行集 → 编辑器 accent 竖条
-  // （visLines 派生此前零消费——死派生在此接线）。
-  $effect(() => {
-    if (session.collecting) return;
-    editorRef?.setVisLines([...session.visLines]);
-  });
-
-  // A20（#140）：schema 冻结徽章（旧栈 cap-badge 同语义——title 挂受控词
-  // 表 kind 数）。capabilities 未载时不渲染。
-  const schemaInfo = $derived.by(() => {
-    const schema = ((session.capabilities ?? {}) as Record<string, unknown>).schema as Record<string, unknown> | undefined;
-    if (!schema) return null;
-    return { version: String(schema.version ?? "—"), frozen: String(schema.frozen_at ?? "—") };
-  });
-  const labelKinds = $derived(String(((session.capabilities ?? {}) as Record<string, unknown>).semantic_label_kinds ?? "—"));
-
-  // A23（#140）：分享链接条（生成后常驻——剪贴板被拒时它是唯一手动复制出口）
-  let shareUrl = $state("");
-  async function copyShare(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast("ok", "已复制到剪贴板");
-    } catch {
-      toast("err", "剪贴板不可用——请在链接条中手动全选复制");
-    }
+  // 离开前落盘「上次看到哪」（去抖 effect 来不及跑）
+  function persistFrame(): void {
+    const l = lessonSession.lesson;
+    if (!l) return;
+    progress.rememberFrame(l.id, l.chapId, session.idx, session.viewFrames.length);
   }
+  $effect(() => {
+    const onHide = (): void => { if (document.visibilityState === "hidden") persistFrame(); };
+    window.addEventListener("beforeunload", persistFrame);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("beforeunload", persistFrame);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  });
+
+  // 点浮层外关闭（齿轮/分享触发器先 toggle，document 冒泡在后只做判定）
+  function onDocClick(e: MouseEvent): void {
+    const t = e.target as HTMLElement | null;
+    if (ui.settingsOpen && !t?.closest("[data-settings-wrap]")) ui.settingsOpen = false;
+    if (ui.shareOpen && !t?.closest("[data-share-wrap]")) ui.shareOpen = false;
+  }
+
+  // 诊断手册深链：组件内已落到首条；此处仅保证 refCode 有值
+  $effect(() => {
+    if (ui.screen === "ref" && !ui.refCode && session.catalog.length) ui.refCode = session.catalog[0].code_str;
+  });
 </script>
 
-<svelte:document onclick={(e) => {
-  // 点浮层外关闭（齿轮与浮层本体豁免——齿轮 onclick 先 toggle，document 冒泡在后只做判定）
-  if (!settingsOpen) return;
-  const t = e.target as HTMLElement | null;
-  if (!t?.closest(".settings-float") && !t.closest("[data-settings]")) settingsOpen = false;
-}} />
-<svelte:window onkeydown={(e) => {
-  if (e.key === "Escape") settingsOpen = false;
-}} />
+<svelte:document onclick={onDocClick} />
+<svelte:window onkeydown={onKey} />
 
-<header class="pilot-head">
-  <div class="brand">
-    <img class="logo" src={NIGHT_THEMES.has(themeState.current) ? iconDark : iconLight} alt="Vitro" width="22" height="22" />
-    <b>Vitro</b>
-    <span class="sub">教学 C 子集引擎 · 全 MoonBit · wasm-gc 单出口</span>
-  </div>
-  <div class="head-right">
-    <!-- A21（#140）：文档站 / GitHub 外链（旧栈 .links .icon-link 同款图标） -->
-    <a class="icon-btn" href="./docs/current/02-构建与上手/快速入门.html" target="_blank" rel="noopener" title="文档站（快速入门）">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-1.2-1.6-3.1-2.5-5.2-2.5H3.5V18h4.3c1.9 0 3.3.7 4.2 2 1-1.3 2.3-2 4.2-2h4.3V4.5h-3.3C15.1 4.5 13.2 5.4 12 7z"/><path d="M12 7v13"/></svg>
-    </a>
-    <a class="icon-btn" href="https://github.com/rustin-beep/Vitro" target="_blank" rel="noopener" title="GitHub 仓库">
-      <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-    </a>
-    <span class="badge">engine <b>{session.versions.engine || "…"}</b></span>
-    <span class="badge">protocol <b>{session.versions.protocol || "…"}</b></span>
-    {#if schemaInfo}
-      <span class="badge" title={`semantic_label_kinds=${labelKinds}`}>schema <b>{schemaInfo.version}</b>（冻结于 {schemaInfo.frozen}）</span>
-    {/if}
-    <button type="button" class="icon-btn" onclick={cycleTheme} title="切换主题">◐</button>
-    <button type="button" class="icon-btn" data-settings class:on={settingsOpen} onclick={() => (settingsOpen = !settingsOpen)} title="界面设置" aria-haspopup="true" aria-expanded={settingsOpen}>
-      <!-- V3 质感批（#141）：⚙ 文本字符 → 旧栈滑杆 SVG（style.css settings-toggle 同款） -->
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/></svg>
-    </button>
-  </div>
-</header>
-
-{#if settingsOpen}
-  <div class="settings-float">
-    <SettingsView />
-  </div>
-{/if}
-
-{#if bootError}
-  <div class="boot-error" role="alert">
-    <b>引擎加载失败</b>——{bootError}。本页需要支持 wasm-gc 与 js-string builtins
-    的现代浏览器（Chrome/Edge 130+、Firefox 134+）；请检查网络后刷新重试。
-  </div>
-{:else if !session.booted}
-  <!-- P2-3：wasm 实例化握手期（bundle 已载、徽章仍 "…"）的第二段白屏窗口
-       也须有指示——三态闭环：加载中（本条）/ 失败（bootError）/ 就绪（徽章落值） -->
-  <div class="boot-loading" role="status">
-    <span class="boot-spin" aria-hidden="true"></span>引擎实例化中——wasm-gc 编译 + 协议握手…
-  </div>
-{/if}
-
-{#if shareError}
-  <!-- P1-3：坏分享链接持久横幅（toast 会过期，此条不自动消失——坏链接是
-       稀释信任的一等事件，用户或其朋友必须能看到） -->
-  <div class="boot-error share-error" role="alert">
-    <span><b>分享链接无法还原</b>——{shareError}</span>
-    <button type="button" class="share-err-close" onclick={() => (shareError = "")} aria-label="关闭提示">✕</button>
-  </div>
-{/if}
-
-<main class="pilot-grid" class:replaying-wide={session.playing && session.replayWide}>
-  <section class="pane editor-pane">
-    <div class="pane-head">
-      <button type="button" class="btn" onclick={() => collect(source, editorRef?.getBpLines() ?? [])} disabled={session.collecting || !!bootError} title={bootError ? "引擎未加载——见上方提示" : ""}>
-        {session.collecting ? "采集中…" : "▶ 采集帧流"}
-      </button>
-      <button type="button" class="btn ghost" onclick={share} disabled={session.collecting}>分享链接</button>
-      <span class="pill" class:busy={session.collecting} class:err={!!session.stopped}>
-        {session.collecting ? "采集中" : session.stopped ? "受检终止" : "就绪"}
-      </span>
-    </div>
-    {#if blurb}<p class="blurb">{blurb}</p>{/if}
-    {#if shareUrl}
-      <div class="share-row">
-        <input class="share-out" readonly value={shareUrl} onfocus={(e) => e.currentTarget.select()} aria-label="分享链接" />
-        <span class="share-len">{shareUrl.length} 字符</span>
-        <button type="button" class="btn ghost" onclick={copyShare}>复制</button>
+<div class="vr-shell">
+  <div class="vr-app">
+    <header class="vr-masthead">
+      <div class="vr-brand">
+        <!-- 品牌真 logo（项目自有资产，昼夜双变体随主题族切换）——设计稿里的
+             方形 V 字形只是占位 glyph，不替代品牌资产。 -->
+        <img class="vr-logo" src={NIGHT_THEMES.has(themeState.current) ? iconDark : iconLight} alt="Vitro" width="26" height="26" />
+        <span class="vr-wordmark">Vitro</span>
+        <span class="vr-tagline">C 执行观察台</span>
+        <span class="vr-context">
+          {#if ui.screen === "work"}
+            <span class="vr-sep">/</span><b>{chapterLabel || "自由代码"}</b><span class="vr-sep">/</span><span>{lessonId}</span>
+          {:else if ui.screen === "entry"}
+            <span class="vr-sep">/</span><b>课程目录</b>
+          {:else}
+            <span class="vr-sep">/</span><b>诊断手册</b><span class="vr-sep">/</span><span>{ctxRef}</span>
+          {/if}
+        </span>
       </div>
-    {/if}
-    <WorkspaceBar onswitch={(_path, src) => (source = src)} />
-    <div class="editor-wrap">
-      <Editor bind:source bind:this={editorRef} disabled={session.collecting} />
-    </div>
-    <p class="perf-line">
-      采集 {session.perf.collectMs}ms
-      {#if session.perf.replayPerFrameUs}· 回放 {session.perf.replayPerFrameUs}µs/帧（flushSync 口径）{/if}
-    </p>
-    <p class="status-line">{session.status}</p>
-    {#if session.stopped}
-      <!-- 位置拍板 2026-10-17：死因全文详报框归位「运行」视图（RunMeta 顶部
-           pane 框内）——左栏只留单行摘要指引，不再撑爆编辑器区 -->
-      <div class="stopped-note">
-        {session.stopped.split("\n")[0]}{session.stopped.includes("\n") ? "……" : ""}——{session.stopped.startsWith("受检终止") ? "死因详报见「运行」视图" : ""}
-      </div>
-    {/if}
-    <SessionConfig />
-  </section>
 
-  <section class="pane">
-    <div class="tabs" role="tablist" aria-label="内容区">
-      {#each TAB_DEFS as t (t.id)}
-        <button type="button" role="tab" aria-selected={activeTab.current === t.id} class="tab" class:active={activeTab.current === t.id} onclick={() => tabSwitch(t.id)}>{t.label}</button>
-      {/each}
-    </div>
-
-    {#if activeTab.current === "content"}
-      <div class="tabpage">
-        <p class="tab-desc">课程档案——章节树导航。点击课程载入示例并自动采集回放；状态环标记已完成，数据全部引擎侧机判产物。</p>
-        <CourseTree onpick={onPickLesson} />
-        {#if note}
-          <CourseNote title={note.title} blocks={note.blocks} />
-        {/if}
-      </div>
-    {:else if activeTab.current === "run"}
-      <div class="tabpage">
-        <DiagnosticsCard onjump={(ln) => editorRef?.revealLine(ln)} />
-        <RunMeta source={source} />
-        <h2 class="tab-h">数组可视化（keyed FLIP · 多数组）</h2>
-        {#each frameAt(session.idx)?.array_snapshots ?? [] as s (s.name)}
-          <div class="av-item">
-            <div class="av-name">{s.name} : {s.element_ty}</div>
-            <ArrayBars snap={s} />
-          </div>
-        {:else}
-          <p class="muted">（此帧无数组快照）</p>
-        {/each}
-        <ReplayBar />
-        <div class="tree-head">
-          <h2 class="tab-h">调用树（visited = 当前帧已走路径）</h2>
-          <StepInfoCard source={source} />
+      <div class="vr-head-right">
+        <div class="vr-engine" aria-label="引擎状态">
+          <span><span class="vr-live"></span>引擎 <b>{session.versions.engine || "…"}</b></span>
+          <span class="vr-hide-sm">协议 <b>{session.versions.protocol || "…"}</b></span>
+          {#if session.catalog.length}<span class="vr-hide-sm">目录 <b>{session.catalog.length}</b></span>{/if}
         </div>
-        <CallTree tree={session.tree} idx={session.idx} />
-        <h2 class="tab-h">局部变量</h2>
-        <VarsList />
-        <h2 class="tab-h">调用栈</h2>
-        <CallStackChain />
-        <h2 class="tab-h">运行输出（stdout / stderr / note）</h2>
-        <OutputView />
+
+        {#if ui.screen === "work"}
+          <button type="button" class="vr-coursebtn" onclick={showEntry} title="课程目录（任何页面都能换课）" aria-label="课程目录">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v18H6.5A2.5 2.5 0 0 1 4 18.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></svg>
+            <span>课程</span>
+          </button>
+          <button type="button" class="vr-manual" onclick={() => showRef("")} title="诊断手册（E 码 / trap 详报）">
+            <span class="vr-manual-full">诊断手册</span><span class="vr-manual-mini">诊断</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </button>
+        {:else}
+          <button type="button" class="vr-coursebtn" onclick={showWork} title="返回实验台" aria-label="返回实验台">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M15 6l-7 6 7 6"/></svg>
+            <span>返回实验台</span>
+          </button>
+          {#if ui.screen === "entry"}
+            <button type="button" class="vr-manual" onclick={() => showRef("")} title="诊断手册">
+              <span class="vr-manual-full">诊断手册</span><span class="vr-manual-mini">诊断</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+            </button>
+          {:else}
+            <button type="button" class="vr-manual" onclick={showEntry} title="课程目录">
+              <span class="vr-manual-full">课程目录</span><span class="vr-manual-mini">课程</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+            </button>
+          {/if}
+        {/if}
+
+        <button
+          type="button"
+          class="vr-iconbtn"
+          data-theme-toggle
+          onclick={() => { void cycleTheme(); }}
+          title="切换主题（五套：明亮实验室 / 奶油手账 / 绒面深蓝 / 白天（纸） / 夜航图）"
+          aria-label="切换主题"
+        >
+          {#if NIGHT_THEMES.has(themeState.current)}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M4.8 4.8l1.4 1.4M17.8 17.8l1.4 1.4M19.2 4.8l-1.4 1.4M6.2 17.8l-1.4 1.4"/></svg>
+          {:else}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg>
+          {/if}
+        </button>
+
+        <div class="vr-wrap" data-settings-wrap>
+          <button
+            type="button"
+            class="vr-iconbtn"
+            data-settings
+            class:is-on={ui.settingsOpen}
+            title="界面设置"
+            aria-haspopup="dialog"
+            aria-expanded={ui.settingsOpen}
+            onclick={() => (ui.settingsOpen = !ui.settingsOpen)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h11M18 6h3M3 12h4M11 12h10M3 18h9M16 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+          </button>
+          {#if ui.settingsOpen}
+            <SettingsPopover />
+          {/if}
+        </div>
       </div>
-    {:else if activeTab.current === "mem"}
-      <div class="tabpage">
-        <h2 class="tab-h">内存地图（会话结束态 · malloc/free/UAF）</h2>
-        <MemoryView />
-      </div>
-    {:else if activeTab.current === "cat"}
-      <div class="tabpage">
-        <h2 class="tab-h">诊断手册</h2>
-        <CatalogView />
-      </div>
-    {:else if activeTab.current === "proto"}
-      <div class="tabpage">
-        <h2 class="tab-h">引擎与协议</h2>
-        <p class="proto-line">engine <b>{session.versions.engine}</b> · protocol <b>{session.versions.protocol}</b> —— wasm-gc 单出口，invoke 字符串通道（canonicalize 口径）。</p>
-        <ProtoView />
+    </header>
+
+    {#if bootError}
+      <div class="vr-banner" role="alert">
+        <div>
+          <b>引擎加载失败</b>
+          <span>{bootError}。本页需要支持 wasm-gc 与 js-string builtins 的现代浏览器（Chrome/Edge 130+、Firefox 134+）；采集已禁用。</span>
+        </div>
+        <button type="button" class="vr-btn vr-tiny" onclick={startBoot}>重试</button>
       </div>
     {/if}
-  </section>
-</main>
 
-<footer class="pilot-foot">
-  <p>白箱引擎：内存映射、freed/隔离区、VM 步数、诊断全部来自引擎真实数据（memory.regions / output.delta / error_catalog / trap 帧），非装饰性 mock。</p>
-  <p>参考输出为 Clang golden 预置真值；时间旅行（step 流回放 + 调用树 + 数组动画）已上线「运行」视图——trap 类程序与结构可视化的引擎能力缺口见 issue 台账。</p>
-</footer>
+    {#if shareError}
+      <div class="vr-banner" role="alert">
+        <div><b>分享链接无法还原</b><span>{shareError}</span></div>
+        <button type="button" class="vr-btn vr-tiny" onclick={() => (shareError = "")}>知道了</button>
+      </div>
+    {/if}
+
+    {#if ui.screen === "work"}
+      <WorkScreen bind:source={lessonSession.source} />
+    {:else if ui.screen === "entry"}
+      <EntryScreen />
+    {:else}
+      <RefScreen />
+    {/if}
+
+    <footer class="vr-foot">
+      <p>白箱引擎：内存映射、freed 隔离区、VM 步数、诊断全部来自引擎真实数据（memory.regions / output.delta / error_catalog / trap 帧），非装饰性 mock。</p>
+      <p>课程叙述真源：<b>course/**/lesson.md</b>；课目与计数由同一数据源渲染，不在页面里手写。</p>
+    </footer>
+  </div>
+</div>
+
+{#if (!session.booted || !ui.ready) && !bootError}
+  <div class="vr-boot" role="status" aria-live="polite">
+    <div class="vr-boot-inner">
+      <div class="vr-boot-brand">
+        <img class="vr-logo" src={NIGHT_THEMES.has(themeState.current) ? iconDark : iconLight} alt="Vitro" width="26" height="26" />
+        <span class="vr-wordmark">Vitro</span>
+      </div>
+      <p class="vr-boot-title">正在装载实验台</p>
+      <p class="vr-boot-sub">wasm 引擎约 0.9 MB · 协议握手 · 课程叙述按需加载</p>
+      <div class="vr-boot-bar"><i></i></div>
+      <div class="vr-boot-skel"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+{/if}
 
 <Toasts />

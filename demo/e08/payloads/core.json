@@ -368,5 +368,11 @@
     "assign",
     "compare",
     "call"
-  ]
+  ],
+  "currentCase": {
+    "id": "bubble",
+    "label": "冒泡排序",
+    "source": "",
+    "referenceOutput": "1 2 5 8 \n"
+  }
 }

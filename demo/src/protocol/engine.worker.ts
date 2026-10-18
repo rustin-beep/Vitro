@@ -136,12 +136,13 @@ async function collect(source: string, cap: number, bpLines: number[], files: Ar
     : must(invoke<{ ok: boolean; diagnostics?: Diagnostic[]; preprocessor_trace?: string[] }>({ method: "compile", params: { source } }));
   if (!comp.ok) {
     // 编译失败 = 业务域 ok（result.ok，非顶层帧 ok）——F4 残留①：不再只抛
-    // 首条 message，回传诊断全集 + pp 轨迹，由 run 视图诊断卡渲染（旧栈
-    // renderDiagnostics / renderPpTrace 语义平移）。零帧 + 输出清空
+    // 首条 message，回传诊断全集 + pp 轨迹，由诊断带渲染。零帧 + 输出清空
     // （禁陈旧输出滞留造成「失败却见旧 stdout」假态）。
+    // stopped 契约：编译失败不是「受检终止」，必须留空（session 侧按
+    // compileOk 分支渲染诊断卡；2026-10-18 对表修正旧「运行视图」文案）。
     return {
       frames: [],
-      stopped: "编译失败——诊断见「运行」视图",
+      stopped: "",
       outputs: { stdout: "", stderr: "", note: "" },
       ms: Math.round(performance.now() - t0),
       versions: { engine: g.engine_version(), protocol: g.protocol_version() },

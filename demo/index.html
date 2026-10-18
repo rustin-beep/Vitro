@@ -1,42 +1,53 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="glass">
-  <!-- F4 收尾（2026-10-17，refs #122）：试点页升格为唯一入口——
-       旧栈（index.html+style.css+app.ts）退役，vite 为唯一构建
-       （npm run pilot:build → dist/）。方法面声明由 demo_smoke 机判对账：
-       主方法面 25（错误帧自报单源；algorithms.catalog 随 #36 上线计入），本页消费数 = src/ 的 method: 字面量
-       去重数（dump 族 5 个不计入主面——与错误帧分号分段同口径）。 -->
-  <!-- 方法面（25 个，本页消费 10 个）——消费数 = src/ 的 method: 字面量去重数（demo_smoke 对账；2026-10-18 修正：#130 批② texts.install 注入通道加入后注释未连坐）-->
-  <!-- data-theme 必设：tokens.css 主题变量挂在 [data-theme=...] 选择器下。
-       防闪脚本 = 五键 + 旧值迁移规则与 persisted.svelte.ts 逐字一致，改任一
-       侧须对表另一侧——防闪必须在 DOM 解析期执行，无法共享模块）。 -->
+<html lang="zh-CN" data-theme="paper" data-size="14">
+  <!-- Vitro · C 执行观察台（2026-10-18 前端改造）——vite 为唯一构建
+       （npm run build → dist/）。信息架构 = 工作态 / 课程目录 / 诊断手册。 -->
+  <!-- 方法面（25 个，本页消费 10 个）——消费数 = src/ 的 method: 字面量去重数（demo_smoke 对账） -->
+  <!-- data-theme 必设：五主题变量挂在 [data-theme=...] 选择器下（app.css）。
+       防闪脚本 = 旧键迁移规则与 persisted.svelte.ts 的 migrateTheme/migrateSize
+       逐字一致，改任一侧须对表另一侧——防闪必须在 DOM 解析期执行，无法共享模块。 -->
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vitro 引擎 · 白箱 C 教学引擎（wasm-gc 直调 demo）</title>
+    <title>Vitro · C 执行观察台</title>
     <link rel="icon" type="image/svg+xml" href="./assets/logo/vitro-icon.svg" />
     <script>
       try {
         var _t = localStorage.getItem("vitro-theme");
+        // 五主题：ice 明亮实验室 / rose 奶油手账 / soft 绒面深蓝 /
+        //        paper 白天（纸） / blueprint 夜航图（接替退役的 glass 深夜书房）
         if (_t === "light") _t = "ice";
-        else if (!_t || _t === "dark") _t = "glass";
+        else if (_t === "glass") _t = "blueprint";
+        else if (!_t || _t === "dark") _t = "paper";
+        else if (["ice", "rose", "soft", "paper", "blueprint"].indexOf(_t) < 0) _t = "paper";
         document.documentElement.setAttribute("data-theme", _t);
-        document.documentElement.setAttribute("data-shade", _t === "glass" || _t === "soft" ? "night" : "day");
-        var _f = localStorage.getItem("vitro-ed-font");
-        if (_f === "13px" || _f === "16px") document.documentElement.style.setProperty("--ed-fs", _f);
+        var _s = localStorage.getItem("vitro-size") || localStorage.getItem("vitro-ed-font") || "14";
+        if (_s === "13px") _s = "13";
+        else if (_s === "16px") _s = "16";
+        if (_s !== "13" && _s !== "16") _s = "14";
+        document.documentElement.setAttribute("data-size", _s);
         if (localStorage.getItem("vitro-motion") === "off") document.documentElement.setAttribute("data-motion", "off");
       } catch (e) {}
     </script>
-    <!-- 令牌 CSS 经 src/app.css 的 @import 打包引入（public 资产 link 会被 vite 丢弃） -->
+    <!-- 首帧底色（app.css 尚未加载时的防闪）：五主题各一条，与 app.css 的
+         --vr-bg 同值；Svelte mount 时 #app 被接管，此节点随之消失。 -->
+    <style>
+      html[data-theme="ice"] body { background: #eaf2fc; color: #1a2740; }
+      html[data-theme="rose"] body { background: #f9f1f4; color: #2e2428; }
+      html[data-theme="soft"] body { background: #0d1428; color: #e6ebf7; }
+      html[data-theme="paper"] body { background: #efe7d8; color: #1d1a15; }
+      html[data-theme="blueprint"] body { background: #08111a; color: #dbe8f4; }
+      #boot-hint { max-width: 420px; margin: 18vh auto 0; padding: 0 22px; text-align: center; font: 12px/1.9 ui-monospace, Consolas, monospace; letter-spacing: .02em; opacity: .8; }
+      #boot-hint b { display: block; font: 600 26px/1.2 Georgia, "Songti SC", serif; letter-spacing: .01em; margin-bottom: 10px; opacity: 1; }
+    </style>
   </head>
   <body>
     <div id="app">
-      <!-- P2-3：首访白屏无加载指示——bundle 下载执行期（生产首访几百 KB）
-           此处是唯一可见面。内联样式：本阶段 app.css/tokens.css 尚未加载，
-           主题变量不可用，取 glass 默认底同族中性色写死；Svelte mount 时
-           #app 被接管，此节点随之消失，无卸载代码。 -->
-      <div id="boot-hint" style="max-width:560px;margin:18vh auto 0;padding:16px 22px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(22,31,63,.55);color:#c9d4f5;font:13px/1.7 system-ui,sans-serif;text-align:center;">
-        Vitro 引擎加载中……首次访问需下载并实例化 wasm-gc 引擎（约数秒）<br />
-        <span style="font-size:11.5px;color:#8b97c1;">需要支持 wasm-gc 的现代浏览器（Chrome / Edge 130+、Firefox 134+）</span>
+      <!-- 首访白屏面（bundle 下载执行期）：品牌 + 装载说明 + 浏览器要求 -->
+      <div id="boot-hint">
+        <b>Vitro</b>
+        正在装载实验台……首次访问需下载并实例化 wasm-gc 引擎（约 0.9 MB）<br />
+        需要支持 wasm-gc 与 js-string builtins 的浏览器（Chrome / Edge 130+、Firefox 134+）
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

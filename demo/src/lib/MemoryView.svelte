@@ -1,89 +1,104 @@
 <script lang="ts">
-  // 内存地图（F4 组件迁移，审阅 C-P2-6 处方）：keyed each + animate:flip +
-  // out:fade——旧栈 bandRender 手写 keyed（data-key :not(.out) 查询）+
-  // animationend + 260ms 魔数定时器三件套（全在重造框架免费给的东西；
-  // 定时器与 CSS 时长双源的漂移面在此消失，退场时长 = 单一常量）。
-  // 纯变换在 memoryView.ts（heapSpanOf 物理保留 js/memory.ts，E-08 落点）。
-  import { flip } from "svelte/animate";
-  import { fade } from "svelte/transition";
+  // 内存地图（设计稿「内存」模式 + P2-10）：形态先于数字——stack / heap /
+  // global 三条轨道，块宽按真实 size 比例；freed 块用红色虚线 + 隔离区语义
+  // （真数据 memory.regions，不展示假地址/假字节数）。
+  // 明细表收进折叠段（白箱证据仍在，不抢首屏）。
   import { session } from "../session.svelte.ts";
-  import { fullBandEntries, heapBandEntries, heapZoomLabel, memStats, quarPct, tableRows } from "./memoryView.ts";
-
-  const OUT_MS = 140; // 退场时长单一常量（旧栈 260 魔数 = CSS --t-fast 手抄副本的漂移面）
+  import { showRef } from "../ui.svelte.ts";
+  import { memStats, quarPct, tableRows } from "./memoryView.ts";
+  import type { HeapRegion } from "../../js/types.ts";
 
   const mem = $derived(session.memory);
-  const full = $derived(mem ? fullBandEntries(mem) : []);
-  const heap = $derived(mem ? heapBandEntries(mem) : []);
   const stats = $derived(mem ? memStats(mem) : []);
-  const rows = $derived(mem ? tableRows(mem) : []);
-  const zoomLabel = $derived(mem ? heapZoomLabel(mem) : "");
   const quar = $derived(mem ? quarPct(mem) : 0);
+  const rows = $derived(mem ? tableRows(mem) : []);
+  const freed = $derived(mem ? mem.regions.filter((r) => r.is_freed) : []);
+
+  type Track = { id: "stack" | "heap" | "global"; label: string; regions: HeapRegion[]; total: number };
+  const tracks = $derived.by((): Track[] => {
+    if (!mem) return [];
+    const pick = (kind: string): HeapRegion[] => mem.regions.filter((r) => r.kind === kind);
+    return [
+      { id: "stack", label: "stack", regions: pick("stack"), total: pick("stack").reduce((s, r) => s + r.size, 0) },
+      { id: "heap", label: "heap", regions: pick("heap"), total: pick("heap").reduce((s, r) => s + r.size, 0) },
+      { id: "global", label: "global", regions: pick("global"), total: pick("global").reduce((s, r) => s + r.size, 0) },
+    ];
+  });
+  function segClass(t: Track, r: HeapRegion): string {
+    if (r.is_freed) return "is-freed";
+    return t.id === "heap" ? "is-alloc" : t.id === "global" ? "is-global" : "is-stack";
+  }
+  function segLabel(t: Track, r: HeapRegion): string {
+    if (r.is_freed) return `${r.name || r.ty} · freed`;
+    return t.id === "heap" ? `${r.name || r.ty} · ${r.size} B` : `${r.name || r.ty} · ${r.size} B`;
+  }
 </script>
 
-{#if mem}
-  <div class="mstats">
-    {#each stats as s (s.label)}
-      <span><b>{s.label}</b> {s.value}</span>
-    {/each}
+<section class="vr-block" aria-label="内存地图">
+  <div class="vr-blockhead">
+    <h2 class="vr-label">内存地图</h2>
+    <span class="vr-spacer"></span>
+    <span class="vr-meta">memory.regions · 会话结束态</span>
   </div>
 
-  <div class="band full">
-    {#each full as e (e.key)}
-      <div class="blk {e.cls}" style="left:{e.left * 100}%; width:{e.width * 100}%" title={e.title}
-        animate:flip={{ duration: OUT_MS }}
-        out:fade={{ duration: OUT_MS }}></div>
-    {/each}
-  </div>
+  {#if mem}
+    <div class="vr-mem-stats">
+      {#each stats as s (s.label)}<span>{s.label} <b>{s.value}</b></span>{/each}
+    </div>
 
-  <div class="zoom-label">{zoomLabel}</div>
-  <div class="band heap">
-    {#each heap as e (e.key)}
-      <div class="blk {e.cls}" style="left:{e.left * 100}%; width:{e.width * 100}%" title={e.title}
-        animate:flip={{ duration: OUT_MS }}
-        out:fade={{ duration: OUT_MS }}></div>
-    {/each}
-  </div>
-
-  <div class="quar">
-    <div class="quar-fill" style="width:{quar}%" ></div>
-  </div>
-  <p class="quar-label">quarantine（UAF 检测窗）：{mem.quarantine.blocks} 块 / {mem.quarantine.bytes} B，预算 {mem.quarantine.budget} B</p>
-
-  <table class="mtable">
-    <thead>
-      <tr><th>地址</th><th>大小</th><th>名称</th><th>类型</th><th>段</th><th>状态</th><th>分配行</th><th>来源</th></tr>
-    </thead>
-    <tbody>
-      {#each rows as r (r.addrHex + ":" + r.name)}
-        <tr class:freed={r.freed}>
-          <td>{r.addrHex}</td><td>{r.size}</td><td>{r.name}</td><td>{r.ty}</td><td>{r.kind}</td>
-          <td>{r.freed ? "freed（隔离中）" : "活跃"}</td><td>{r.allocLine}</td><td>{r.allocBy}</td>
-        </tr>
+    <div class="vr-mem">
+      {#each tracks as t (t.id)}
+        <div class="vr-mem-row">
+          <span>{t.label}</span>
+          <div class="vr-mem-track" aria-label="{t.label} 段">
+            {#if t.regions.length === 0}
+              <div class="vr-mem-seg is-empty" style:flex="1">{t.id === "heap" ? "0 次 malloc" : "（空）"}</div>
+            {:else}
+              {#each t.regions.slice(0, 8) as r, ri (`${r.addr}:${r.name}#${ri}`)}
+                <div class="vr-mem-seg {segClass(t, r)}" style:flex="{Math.max(r.size, 1)}" title="{r.name || r.ty} · {r.size} B @0x{r.addr.toString(16)}{r.is_freed ? ' · freed（隔离中）' : ''}">
+                  {segLabel(t, r)}
+                </div>
+              {/each}
+              {#if t.regions.length > 8}
+                <div class="vr-mem-seg is-empty" style:flex="1">+{t.regions.length - 8} 块</div>
+              {/if}
+            {/if}
+          </div>
+        </div>
       {/each}
-    </tbody>
-  </table>
-{:else}
-  <p class="muted">（采集后显示内存地图——malloc/free/UAF 课点在此观察 freed 块与隔离区）</p>
-{/if}
+    </div>
 
-<style>
-  .mstats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--t3); margin-bottom: 8px; }
-  .mstats b { color: var(--t2); font-weight: normal; }
-  .band { position: relative; height: 34px; background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; margin: 4px 0; }
-  .band.heap { height: 44px; }
-  .blk { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; font-size: 9px; overflow: hidden; }
-  .blk.k-global { background: var(--accent-tint); border: 1px solid var(--accent); }
-  .blk.k-heap { background: color-mix(in srgb, var(--ok) 30%, transparent); border: 1px solid var(--ok); }
-  .blk.k-stack { background: color-mix(in srgb, var(--num) 30%, transparent); border: 1px solid var(--num); }
-  .blk.k-unknown { background: var(--hairline); border: 1px dashed var(--t3); }
-  .blk.freed { opacity: 0.45; border-style: dashed; }
-  .zoom-label { font: 11px var(--mono); color: var(--t3); margin: 4px 0 2px; font-variant-ligatures: none; }
-  .quar { height: 8px; background: var(--field); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
-  .quar-fill { height: 100%; background: var(--num); transition: width var(--t-fast) var(--ease-out); }
-  .quar-label { font-size: 11.5px; color: var(--t3); margin: 2px 0 8px; }
-  .mtable { width: 100%; border-collapse: collapse; font: 12px/1.5 var(--mono); margin-top: 6px; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-  .mtable th, .mtable td { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--hairline); }
-  .mtable th { color: var(--t3); font-weight: normal; }
-  .mtable tr.freed td { color: var(--t3); }
-  .muted { color: var(--t3); font-size: 12.5px; }
-</style>
+    {#if freed.length > 0}
+      <div class="vr-mem-row" style="margin-top:7px">
+        <span></span>
+        <p class="vr-mem-ptr">别名 ──▶ freed 块（{freed.map((r) => r.name || r.ty).join(" / ")}）· 再次访问触发 E3060</p>
+      </div>
+      <button type="button" class="vr-state-link" onclick={() => showRef("E3060")}>查看 E3060 详情 ↗</button>
+    {/if}
+
+    <div class="vr-mem-row is-quar" style="margin-top:8px">
+      <span>隔离区</span>
+      <div>
+        <div class="vr-quar"><div class="vr-quar-fill" style:width="{quar}%"></div></div>
+        <span class="vr-meta">{mem.quarantine.blocks} 块 / {mem.quarantine.bytes} B，预算 {mem.quarantine.budget} B（UAF 检测窗）</span>
+      </div>
+    </div>
+
+    <details class="scfg">
+      <summary>区域明细（{rows.length} 块 · 真地址）</summary>
+      <table class="vr-mem-table">
+        <thead><tr><th>地址</th><th>大小</th><th>名称</th><th>类型</th><th>段</th><th>状态</th><th>分配行</th><th>来源</th></tr></thead>
+        <tbody>
+          {#each rows as r, ri (`${r.addrHex}:${r.name}#${ri}`)}
+            <tr class:is-freed={r.freed}>
+              <td>{r.addrHex}</td><td>{r.size}</td><td>{r.name}</td><td>{r.ty}</td><td>{r.kind}</td>
+              <td>{r.freed ? "freed（隔离中）" : "活跃"}</td><td>{r.allocLine}</td><td>{r.allocBy}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </details>
+  {:else}
+    <p class="vr-empty">（采集后显示内存地图——malloc / free / UAF 课在这里看 freed 块与隔离区）</p>
+  {/if}
+</section>

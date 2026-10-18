@@ -1,0 +1,46 @@
+{
+  "catalog": [
+    {
+      "lang": "c",
+      "category": "指针与内存",
+      "code_str": "E3060",
+      "title": "使用已释放的内存 (Use-After-Free)",
+      "explanation": "你正在读取或写入一块已经被 free() 的内存。这块内存可能还保留着旧数据，但它已经不再属于你。继续使用它会导致不可预测的行为。",
+      "icon": "uaf",
+      "common_causes": [
+        "指针在 free 后没有置为 NULL，后续又解引用",
+        "多个指针指向同一块内存，其中一个释放了，另一个还在用"
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "step_index": 12,
+      "code_line": 10,
+      "code_file": "main.c",
+      "func_name": "main",
+      "semantic_label": "执行",
+      "algorithm_step": null,
+      "local_vars": [{ "name": "p", "addr": 4096, "is_local": true, "ty_name": "int*", "value": "0x1000" }],
+      "call_stack": [{ "func_name": "main", "return_line": 0 }],
+      "vis_events": [],
+      "heatmap_line": 10,
+      "heatmap_count": 1,
+      "accessed_vars": [],
+      "array_snapshots": [],
+      "pointer_snapshots": [],
+      "root_cause_hint": {
+        "category": "memory",
+        "one_liner": "访问已释放的堆块",
+        "related_lines": [8, 10],
+        "suggested_fix_kind": "reset_pointer",
+        "suggested_fix_line": 8,
+        "suggested_fix_desc": "free(p) 后立即 p = NULL"
+      }
+    }
+  ],
+  "idx": 0,
+  "compileOk": true,
+  "stopped": "受检终止：E3060 访问已释放的堆内存 p[0]（分配于 line 6，释放于 line 8）",
+  "runStats": { "status": "trap", "return_value": 0, "steps_executed": 13, "waiting_input": false }
+}

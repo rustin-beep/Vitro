@@ -11,7 +11,7 @@
   // 高度：theme height auto + scroller overflow hidden（随代码自动增高，
   //   不内滚——对齐 field-sizing 诉求）。
   // 高亮面注意：clike 是 legacy 正则 mode（用户指定）——非 Lezer 语法树高亮。
-  import { EditorState, StateEffect, StateField } from "@codemirror/state";
+  import { Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
   import { EditorView, gutter, GutterMarker, keymap, highlightActiveLine, highlightActiveLineGutter, lineNumbers, Decoration, type DecorationSet } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap, insertNewlineAndIndent, indentMore, indentLess } from "@codemirror/commands";
   import { StreamLanguage, syntaxHighlighting, HighlightStyle, foldGutter } from "@codemirror/language";
@@ -135,22 +135,22 @@
     provide: (f) => EditorView.decorations.from(f),
   });
 
-  // ── 语法高亮（V1/V2，#141）：token→tokens.css 主题变量——五主题语法色
+  // ── 语法高亮（V1/V2，#141）：token→app.css 的 --vr-* 主题变量——五主题语法色
   // 随 data-theme 切换，规格对齐旧栈 style.css:221-225 五类映射（关键词/
   // 类型并入 --kw；字符串 --str；数字 --num；注释 --cmt 斜体；预处理行
   // meta 并入 --num 暖橙）。替代 CM6 内置 defaultHighlightStyle 固定色板
   // （其 keyword 在 Vitro 深底上对比度不足且恒不随主题——「关键字零着色」
   // 用户实测根因）。
   const vitroHighlight = HighlightStyle.define([
-    { tag: tags.keyword, color: "var(--kw)" },
-    { tag: tags.atom, color: "var(--kw)" },
-    { tag: tags.typeName, color: "var(--kw)" },
-    { tag: tags.number, color: "var(--num)" },
-    { tag: tags.string, color: "var(--str)" },
-    { tag: tags.comment, color: "var(--cmt)", fontStyle: "italic" },
-    { tag: tags.meta, color: "var(--num)" },
-    { tag: tags.operator, color: "var(--t1)" },
-    { tag: tags.punctuation, color: "var(--t1)" },
+    { tag: tags.keyword, color: "var(--vr-kw)", fontWeight: "600" },
+    { tag: tags.atom, color: "var(--vr-kw)" },
+    { tag: tags.typeName, color: "var(--vr-ty)", fontStyle: "italic" },
+    { tag: tags.number, color: "var(--vr-num)" },
+    { tag: tags.string, color: "var(--vr-str)" },
+    { tag: tags.comment, color: "var(--vr-cmt)", fontStyle: "italic" },
+    { tag: tags.meta, color: "var(--vr-num)" },
+    { tag: tags.operator, color: "var(--vr-ink)" },
+    { tag: tags.punctuation, color: "var(--vr-ink)" },
   ]);
 
   // ── 回放跟随行染（A13，#140）：帧 code_line 驱动的中性 accent 淡染——
@@ -165,7 +165,7 @@
         if (e.is(setFollowLineEffect)) {
           const ranges = e.value
             .filter((ln) => ln >= 1 && ln <= tr.state.doc.lines)
-            .map((ln) => Decoration.line({ class: "cm-followline" }).range(tr.state.doc.line(ln).from));
+            .map((ln) => Decoration.line({ class: "cm-vrline" }).range(tr.state.doc.line(ln).from));
           decos = Decoration.set(ranges, true);
         }
       }
@@ -201,11 +201,21 @@
   // 实锤）。字段：bpField（gutter 点）/ bpLineField（断点行染）/
   // diagLineField（诊断跳转行染）/ followLineField（回放跟随行染）/
   // visLineField（vis_events 左缘标记）。
+  // 采集期只读（2026-10-18 改造批补）：CM6 的 readOnly 只在创建时生效——原实现
+  // 把 disabled 写进 create 状态，属性后续变化不重配（首访自动采集期间仍可编辑）。
+  // Compartment 让 disabled 真正成为可重配面。
+  const readOnlyComp = new Compartment();
+  $effect(() => {
+    if (!view) return;
+    view.dispatch({ effects: readOnlyComp.reconfigure(EditorState.readOnly.of(disabled)) });
+  });
+
   function buildExtensions(): any[] {
     return [
-      lineNumbers(),
+      // 断点 gutter 在行号左侧（设计稿「空心琥珀点」在行号槽外缘）
       bpField,
       bpGutter,
+      lineNumbers(),
       bpLineField,
       diagLineField,
       followLineField,
@@ -225,11 +235,12 @@
       autocompletion({ activateOnTyping: false }),
       highlightSelectionMatches(),
       search({ top: true }),
-      EditorView.lineWrapping,
+      // 设计说明 §9-6：390 代码横向滚动而不换行（保行号与语句边界）——
+      // 不挂 EditorView.lineWrapping；横向滚动条在 app.css 显式可感知。
       EditorView.updateListener.of((u) => {
         if (u.docChanged) source = u.state.doc.toString();
       }),
-      EditorState.readOnly.of(disabled),
+      readOnlyComp.of(EditorState.readOnly.of(disabled)),
     ];
   }
 
@@ -291,8 +302,8 @@
     }, 1200);
   }
 
-  /** 回放跟随（A13，#140）：帧 code_line 驱动——中性 accent 淡染 + 行出
-   *  视口时就近滚动（不强制居中、不抢焦点——播放节奏不被打断）。 */
+  /** 回放跟随（A13，#140）：帧 code_line 驱动——琥珀行染 + 左缘竖条，
+   *  行出视口时就近滚动（不强制居中、不抢焦点——播放节奏不被打断）。 */
   export function followLine(line: number): void {
     if (!view) return;
     const n = Math.min(Math.max(Math.round(line), 1), view.state.doc.lines);
@@ -310,27 +321,4 @@
   }
 </script>
 
-<div class="editor-stack" bind:this={hostEl}></div>
-
-<style>
-  .editor-stack { background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; }
-  /* CM6 主题：tokens 变量适配五主题；高度自适应（随代码自动增高，不内滚） */
-  .editor-stack :global(.cm-editor) { background: var(--editor-bg); color: var(--code-text); font: var(--ed-fs, 14px)/1.5 var(--mono); height: auto; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-  .editor-stack :global(.cm-editor.cm-focused) { outline: none; }
-  .editor-stack :global(.cm-scroller) { overflow: visible; font-family: inherit; line-height: 1.5; }
-  .editor-stack :global(.cm-gutters) { background: var(--editor-bg); border-right: 1px solid var(--hairline); color: var(--t3); }
-  .editor-stack :global(.cm-activeLineGutter) { background: var(--accent-tint); color: var(--accent-strong); }
-  .editor-stack :global(.cm-activeLine) { background: var(--accent-tint); }
-  .editor-stack :global(.cm-bpgutter) { width: 14px; }
-  .editor-stack :global(.bp-dot) { color: var(--danger); font-size: 10px; }
-  /* 断点行（F4 残留④）：行底淡染仅 tint——与 cm-diagline（tint + inset 边）区分形 */
-  .editor-stack :global(.cm-bpline) { background: var(--danger-tint); }
-  /* 诊断跳转行（F4 残留①）：左侧 danger 边 + 令牌淡底 + 1.2s 闪烁（A27
-     旧栈 line-flash 同款节奏）——与 bp-dot 同色系不同形 */
-  .editor-stack :global(.cm-diagline) { background: var(--danger-tint); box-shadow: inset 3px 0 0 var(--danger); animation: diag-flash 1.2s ease-out; }
-  @keyframes diag-flash { 0% { background: transparent; } 12%, 45% { background: var(--accent-tint); } 70% { background: var(--danger-tint); } 82% { background: var(--accent-tint); } 100% { background: var(--danger-tint); } }
-  /* 回放跟随行（A13）：中性 accent 淡染——与断点/诊断的 danger 系区分 */
-  .editor-stack :global(.cm-followline) { background: var(--accent-tint); }
-  /* vis_events 左缘标记（A14）：行左缘 accent 竖条（旧栈 vis-on::before 同形态） */
-  .editor-stack :global(.cm-visline) { box-shadow: inset 3px 0 0 var(--accent); }
-</style>
+<div class="vr-editor" bind:this={hostEl}></div>

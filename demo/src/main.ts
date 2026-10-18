@@ -1,25 +1,38 @@
-// Vitro 前端试点入口（F1）。对拍钩子只在带 query 时生效，正常访问零副作用：
+// Vitro 前端入口（2026-10-18 前端改造）。验收/对拍钩子只在带 query 时生效，
+// 正常访问零副作用：
 //   ?autorun=1  启动即采默认程序
-//   ?bench=1    autorun + 1925 帧回放计时（flushSync 同步口径，与 #119 spike
-//               同口径可对表；结果挂 window.__pilotBench 与 console）
+//   ?bench=1    autorun + 帧回放计时（flushSync 同步口径，与 #119 spike 同口径）
+// 新增 window.__pilot 暴露面：session / ui / lessonSession / progress——浏览器
+// 实测（CDP）直接读状态，不靠 DOM 猜。
 import { mount, flushSync } from "svelte";
 import "./app.css";
 import App from "./App.svelte";
 import { boot, collect, frameAt, seek, session } from "./session.svelte.ts";
+import { ui } from "./ui.svelte.ts";
+import { lessonSession } from "./lib/lessonSession.svelte.ts";
+import { progress } from "./lib/progress.svelte.ts";
+import { workspace } from "./lib/workspace.svelte.ts";
 import { BENCH_PROGRAM, DEFAULT_PROGRAM } from "./program.ts";
 
-const app = mount(App, { target: document.getElementById("app")! });
+const app = mount(App, { target: (() => {
+  const target = document.getElementById("app")!;
+  // index.html 的 #boot-hint 是 bundle 下载期的首帧面；Svelte 5 mount 是
+  // **追加**而非替换（实测：不清理则装载提示永久留在页面顶端），此处显式清场。
+  target.replaceChildren();
+  return target;
+})() });
 
-// 验收/对拍钩子（延续 fw_pilot 形态）：浏览器实测经 window.__pilot 操作
-(window as unknown as Record<string, unknown>).__pilot = { session, seek, collect, frameAt, DEFAULT_PROGRAM };
+(window as unknown as Record<string, unknown>).__pilot = {
+  session, seek, collect, frameAt, DEFAULT_PROGRAM, ui, lessonSession, progress, workspace,
+};
 
 const q = new URLSearchParams(location.search);
 if (q.has("autorun") || q.has("bench")) {
   boot()
-    .then(() => collect(BENCH_PROGRAM)) // 基准钩子固定跑冒泡基准（与指引文案首屏解耦）
+    .then(() => collect(BENCH_PROGRAM)) // 基准钩子固定跑冒泡基准
     .then(() => {
       if (!q.has("bench")) return;
-      session.batching = true; // 批量推进：FLIP 等交互动画关闭（见 ArrayBars 注）
+      session.batching = true; // 批量推进：FLIP 等交互动画关闭
       const t0 = performance.now();
       for (let i = 0; i < session.frames.length; i += 1) {
         session.idx = i;

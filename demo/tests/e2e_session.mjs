@@ -1,19 +1,15 @@
-// E2E 实测（会话/回放/分享族——2026-10-18 前端实测立账批的防线锚）：
-// CDP 驱动 Edge 无头，对 vite 产物做真页面验证。锚 ↔ 修复一一对应（红→绿
-// 纪律：每锚先证会红——frameAt 突变回 raw 版跑本脚本 F3 即红，突变法见
-// 各锚注释）：
-//   F1 坏分享 hash 持久横幅（P1-3：toast 会过期，横幅必须常驻；kind:"bad" 同收口）
-//   F2 argv 用例采集成功（P1-2：currentCase 深代理 postMessage 克隆崩——
-//      崩时 status=采集失败+outputs 残留；修后 stdout 正常零 clone 错）
-//   F3 语句级帧口径（P1-1：frameAt 返回 raw 帧致画面全面错位——突变回
-//      frames[i] 本锚即红）
-//   F4 播完 status 提示（P2-9：播完静默回正零提示）
-//   F5 char 数组可视化零崩溃（P1-5：元素 "'a'" Number 化 NaN → key 全撞
-//      NaN#0 → each_key_duplicate 每帧崩）
+// E2E 实测（会话/回放/分享族——2026-10-18 前端改造批重定向）：
+// CDP 驱动 Edge 无头，对 vite 产物做真页面验证。锚 ↔ 修复一一对应：
+//   F1 坏分享 hash 持久横幅（P1-3：toast 会过期，横幅必须常驻）
+//   F2 argv 用例采集成功（P1-2：currentCase 深代理 postMessage 克隆崩）
+//   F3 语句级帧口径（P1-1：frameAt 返回 raw 帧致画面全面错位）
+//   F4 播完 status 提示（P2-9：播完静默回正零提示）；F4b 末帧状态行
+//   F5 char 数组**全帧 sweep** 零 each_key_duplicate（P1-5；2026-10-18 加固）
 //   F6 trap E 码 → 手册联动（P2-10：伪下划线变真通道）
+//   F7 课程目录全章渲染（重名课 id 防护：structures/josephus 实测 2026-10-18）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
-// 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http
-// 直连（环境代理会拦本地 CDP——Edge 侧须 --no-proxy-server）。
+// ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
+// 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
 import http from "node:http";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
@@ -58,33 +54,42 @@ const ERR_COLLECTOR = `(() => {
 })()`;
 const errs = () => evaluate("JSON.stringify(window.__errs ?? [\"收集器未挂\"])");
 
-/** 点课（内容 tab → 展开全部章节 → 定位 lesson lid → 点击）并等**本课**采集
- *  完成：epoch 判据（点课触发 collect 开头 ++epoch——「collecting=false 且
- *  frames>0」在点课同步空窗会被上一课残留帧骗过，2026-10-18 首跑实锤）。 */
-async function pickLesson(lid, waitMs = 25000) {
-  await evaluate(`(() => {
-    const tabs = [...document.querySelectorAll("button.tab")];
-    tabs.find((b) => b.textContent.trim() === "内容")?.click();
-    return tabs.length;
-  })()`);
-  await sleep(350);
-  await evaluate(`(() => {
-    [...document.querySelectorAll("button.chap-head")].forEach((h) => { if (h.getAttribute("aria-expanded") === "false") h.click(); });
-  })()`);
-  await sleep(300);
+/** 打开课程目录（若已在目录态则跳过；参考态先返回实验台——顶栏「课程」
+ *  只在工作态渲染，参考态只有「返回实验台 + 课程目录」链接）。 */
+async function openEntry() {
+  if (await evaluate("window.__pilot.ui.screen === 'entry'")) return;
+  if (await evaluate("window.__pilot.ui.screen !== 'work'")) {
+    await evaluate(`[...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === '返回实验台')?.click()`);
+    await waitFor("window.__pilot.ui.screen === 'work'");
+    await sleep(200);
+  }
+  await evaluate(`document.querySelector('[aria-label="课程目录"]')?.click()`);
+  await waitFor("window.__pilot.ui.screen === 'entry'");
+  await sleep(250);
+}
+
+/** 目录选课 → 预览 → 在实验台打开 → 等本课采集完成（epoch 判据，防上一课
+ *  残留帧骗过 collecting=false 的空窗）。课程可能不在当前章：逐章扫描。 */
+async function pickLesson(id, waitMs = 30000) {
+  await openEntry();
+  await waitFor("!window.__pilot.session.collecting", 30000); // 首访自动采集可能仍在跑
+  const chapters = await evaluate("document.querySelectorAll('.vr-chapter').length");
+  let found = false;
+  for (let i = 0; i < chapters; i++) {
+    await evaluate(`document.querySelectorAll('.vr-chapter')[${i}]?.click()`);
+    await sleep(120);
+    found = await evaluate(`!![...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})`);
+    if (found) break;
+  }
+  if (!found) throw new Error(`找不到课程 ${id}`);
+  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
+  await sleep(200);
   const e0 = await evaluate("window.__pilot.session.epoch");
-  const clicked = await evaluate(`(() => {
-    const hit = [...document.querySelectorAll("button.lesson")].find((b) => b.querySelector(".lid")?.textContent === ${JSON.stringify(lid)});
-    if (!hit) return false;
-    hit.click();
-    return true;
-  })()`);
-  if (!clicked) throw new Error(`找不到课程 ${lid}`);
-  await waitFor(`(() => { const s = window.__pilot.session; return s.epoch > ${e0} && !s.collecting && s.frames.length > 0; })()`, waitMs);
+  await evaluate("document.querySelector('.vr-preview .vr-open')?.click()");
+  await waitFor(`window.__pilot.ui.screen === 'work' && window.__pilot.lessonSession.lesson?.id === ${JSON.stringify(id)} && window.__pilot.session.epoch > ${e0} && !window.__pilot.session.collecting`, waitMs);
 }
 
 async function run() {
-  // 1. 发现 page target 并 attach
   const targets = await new Promise((resolve, reject) => {
     http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
       let body = "";
@@ -107,30 +112,33 @@ async function run() {
     }
   };
   await send("Page.enable");
+  // 固定桌面视口（2026-10-18 布局对调后，窗口默认 800×600 会让编辑器落到
+  // 视口外，鼠标点击无效——所有 E2E 统一 1440×900，与工作区脚本同口径）
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Runtime.enable");
 
   const results = [];
   const check = (name, ok, detail) => { results.push({ name, ok, detail }); console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail); };
 
-  // ── F1 坏分享 hash → 持久横幅（P1-3）——cache-bust 强制完整导航：
-  // 同路径仅变 hash 是 hashchange 不重载、boot 链不重跑（首跑实锤）──
+  // ── F1 坏分享 hash → 持久横幅（P1-3）——cache-bust 强制完整导航 ──
   await send("Page.navigate", { url: PAGE + "?cb=" + Date.now() + "#z1.BROKEN" });
-  await waitFor("document.querySelector('.pilot-head .badge b')?.textContent?.length > 3", 30000);
-  await sleep(600); // boot 链的 hash 解析在 boot+协议面之后
-  const f1 = await evaluate(`(() => ({
-    banner: document.querySelector(".share-error")?.textContent?.trim().slice(0, 40) ?? "",
-    closed: !!document.querySelector(".share-err-close"),
-  }))()`);
-  check("F1 坏 hash 持久横幅（P1-3）", f1.banner.includes("无法还原") && f1.closed, JSON.stringify(f1));
+  await waitFor("window.__pilot && window.__pilot.session.booted", 30000);
+  await waitFor("document.querySelector('.vr-banner b')?.textContent?.includes('无法还原')", 20000);
+  const f1 = await evaluate(`(() => {
+    const b = document.querySelector('.vr-banner');
+    return { banner: b?.textContent?.replace(/\\s+/g, ' ').trim().slice(0, 50) ?? '', close: !!b?.querySelector('.vr-btn') };
+  })()`);
+  check("F1 坏 hash 持久横幅（P1-3）", f1.banner.includes("无法还原") && f1.close, JSON.stringify(f1));
 
-  // ── 干净加载 → 后续锚共用会话 ──
+  // ── 干净加载 → 后续锚共用会话（等首访落地采集**完成**）──
   await send("Page.navigate", { url: PAGE });
-  await waitFor("document.querySelector('.pilot-head .badge b')?.textContent?.length > 3", 30000);
-  await waitFor("window.__pilot && window.__pilot.session.booted", 15000);
+  await waitFor("window.__pilot && window.__pilot.session.booted", 30000);
+  // 只等 !collecting 会撞上「boot 完成但 openInitial 尚未开采」的空窗
+  await waitFor("window.__pilot.lessonSession.lesson && !window.__pilot.session.collecting && window.__pilot.session.frames.length > 0", 40000);
+  await sleep(400);
   await evaluate(ERR_COLLECTOR);
 
-  // ── F2 argv 用例采集成功（P1-2）——断言走 stdout/runStats/零 clone 错；
-  // status 不参与（采集完自动播放，status 终态=「回放完毕」属预期）──
+  // ── F2 argv 用例采集成功（P1-2）──
   await pickLesson("argv_prog");
   const f2 = await evaluate(`(() => {
     const s = window.__pilot.session;
@@ -141,54 +149,93 @@ async function run() {
     f2.stdout.includes("hello-arg") && f2.stats && f2.frames > 0 && !f2errs.some((e) => e.includes("could not be cloned")),
     JSON.stringify(f2) + " errs=" + f2errs.length);
 
-  // ── F3+F4 语句级口径 + 播完 status（P1-1 / P2-9）──
-  // bubble 采集后自动播放（2026-10-17 拍板）——等播完（playing=false 且 idx 到末帧）
+  // ── F3+F4 语句级口径 + 播完提示（P1-1 / P2-9）──
   await pickLesson("bubble");
-  await waitFor("(() => { const s = window.__pilot.session; return !s.playing && s.idx === s.viewFrames.length - 1; })()", 30000);
+  await waitFor("(() => { const s = window.__pilot.session; return !s.playing && s.idx === s.viewFrames.length - 1; })()", 40000);
   const f3 = await evaluate(`(() => {
     const p = window.__pilot, s = p.session;
     return {
       gran: s.gran, view: s.viewFrames.length, raw: s.frames.length,
       same: p.frameAt(s.idx) === s.viewFrames[s.idx],
       status: s.status.slice(0, 12),
+      statusLine: document.querySelector('.vr-status')?.textContent?.trim() ?? '',
     };
   })()`);
   check("F3 语句级 frameAt 口径（P1-1）", f3.gran === "stmt" && f3.view < f3.raw && f3.same, JSON.stringify(f3));
   check("F4 播完 status 提示（P2-9）", f3.status.includes("回放完毕"), "status=" + f3.status);
+  check("F4b 末帧状态行（末帧 · 可拖回任意帧）", f3.statusLine.includes("末帧"), f3.statusLine);
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
-  await evaluate("window.__errs = []"); // 分桶：只看本步新增
+  // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃
+  // 会漏抓）。char 课 146 帧 × 每帧一次数组格/变量/树渲染。
+  await evaluate("window.__errs = []");
   await pickLesson("string_match_bf");
-  await sleep(800); // 播放中每帧更新 ArrayBars——崩溃在更新期抛
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(120);
+  }
+  const f5total = await evaluate("window.__pilot.session.viewFrames.length");
+  const f5arr = await evaluate(`window.__pilot.session.viewFrames.findIndex((f) => (f.array_snapshots?.length ?? 0) > 0)`);
+  for (let i = 0; i < f5total; i++) {
+    await evaluate(`window.__pilot.seek(${i})`);
+    await sleep(3);
+  }
+  if (f5arr >= 0) {
+    await evaluate(`window.__pilot.seek(${f5arr})`);
+    await sleep(200);
+  }
   const f5 = await evaluate(`(() => ({
-    bars: document.querySelectorAll(".bars").length,
+    cells: document.querySelectorAll(".vr-cell").length,
     frames: window.__pilot.session.frames.length,
+    view: window.__pilot.session.viewFrames.length,
+    snapAt: window.__pilot.session.viewFrames[window.__pilot.session.idx]?.array_snapshots?.length ?? 0,
   }))()`);
   const f5errs = JSON.parse(await errs());
-  check("F5 char 数组零 each_key_duplicate（P1-5）",
-    f5.frames > 0 && f5errs.every((e) => !e.includes("each_key_duplicate")),
-    JSON.stringify(f5) + " errs=" + JSON.stringify(f5errs.slice(0, 2)));
+  check("F5 char 数组全帧零 each_key_duplicate（P1-5）",
+    f5.frames > 0 && f5.view === f5total && f5arr >= 0 && f5.cells > 0 && f5errs.every((e) => !e.includes("each_key_duplicate")),
+    JSON.stringify(f5) + " sweep=" + f5total + " errs=" + JSON.stringify(f5errs.slice(0, 2)));
 
   // ── F6 trap E 码 → 手册联动（P2-10）──
   await pickLesson("uaf");
   await sleep(600);
-  const hasCode = await waitFor("!!document.querySelector('.tp-code[data-ecode]')", 10000).catch(() => false);
+  const hasCode = await waitFor("!!document.querySelector('.vr-trap-body .tp-code[data-ecode]')", 10000).catch(() => false);
   if (hasCode) {
-    const code = await evaluate("document.querySelector('.tp-code[data-ecode]').getAttribute('data-ecode')");
-    await evaluate("document.querySelector('.tp-code[data-ecode]').click()");
-    await sleep(500);
+    const code = await evaluate("document.querySelector('.vr-trap-body .tp-code[data-ecode]').getAttribute('data-ecode')");
+    await evaluate("document.querySelector('.vr-trap-body .tp-code[data-ecode]').click()");
+    await waitFor("window.__pilot.ui.screen === 'ref'", 10000);
+    await sleep(400);
     const f6 = await evaluate(`(() => ({
-      tab: document.querySelector(".tab.active")?.textContent?.trim(),
-      search: document.querySelector(".cat-search")?.value ?? "",
-      count: document.querySelector(".cat-count")?.textContent?.trim() ?? "",
+      screen: window.__pilot.ui.screen,
+      refCode: window.__pilot.ui.refCode,
+      active: document.querySelector('.vr-ref-item.is-active .vr-code-id')?.textContent?.trim() ?? '',
+      h1: document.querySelector('.vr-ref-detail h1')?.textContent?.trim() ?? '',
     }))()`);
-    check("F6 trap E 码联动手册（P2-10）", f6.tab === "诊断手册" && f6.search === code, JSON.stringify({ code, ...f6 }));
+    check("F6 trap E 码联动手册（P2-10）", f6.screen === "ref" && f6.refCode === code && f6.active === code && !!f6.h1, JSON.stringify({ code, ...f6 }));
   } else {
     check("F6 trap E 码联动手册（P2-10）", false, "uaf 课未产出 trap 详报 E 码徽章");
   }
 
+  // ── F7 课程目录全章可渲染（重名课 id 防护）──
+  // 实测形态（2026-10-18）：structures 章同时有 algo `josephus` 与 variant
+  // tpl `josephus`——目录 each 若按裸 id keying，扫到该章即 each_key_duplicate
+  // 整页崩。此锚逐章点击渲染并要求每章都有课目行。
+  await openEntry();
+  await evaluate("window.__errs = []");
+  const f7chapters = await evaluate("document.querySelectorAll('.vr-chapter').length");
+  const f7rows = [];
+  for (let i = 0; i < f7chapters; i++) {
+    await evaluate(`document.querySelectorAll('.vr-chapter')[${i}]?.click()`);
+    await sleep(160);
+    f7rows.push(await evaluate("document.querySelectorAll('.vr-lesson-row').length"));
+  }
+  const f7errs = JSON.parse(await errs());
+  check("F7 目录全章可渲染（重名 id each_key_duplicate 防护）",
+    f7chapters >= 9 && f7rows.every((n) => n > 0) && f7errs.every((e) => !e.includes("each_key_duplicate")),
+    JSON.stringify({ chapters: f7chapters, rows: f7rows, errs: f7errs.slice(0, 2) }));
+
   const fails = results.filter((r) => !r.ok);
   console.log(`===== ${results.length - fails.length}/${results.length} 通过 =====`);
+  ws.close();
   process.exit(fails.length ? 1 : 0);
 }
 

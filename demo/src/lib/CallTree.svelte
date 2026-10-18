@@ -1,40 +1,46 @@
 <script lang="ts">
-  // 调用树（F4 组件迁移，审阅 C 处方）：keyed SVG——每帧只翻 cur/visited
-  // class。visited 语义修正：旧栈 lastStep!==undefined 恒真（时间通道死码）——
-  // 新栈 = 当前帧 frameNode 沿 parent 上溯祖先集（随帧真生长）。
-  //
-  // 窗口跟踪 = **viewBox 当相机**（2026-10-16 第三版）：CSS transform 与
-  // viewBox 相乘产生双重变换歧义（前两版空画布/位置漂移，坐标推演三轮无
-  // 区分性证据——按收敛速率纪律换架构）。viewBox 是相机唯一真相：
-  //   zoom（缩放）+ center（内容坐标焦点）→ viewBox 派生，无叠加变换类。
-  //   初始化：小树（fit ≥ 0.75）完整居中不跟随；大树固定 0.75 + 跟随当前帧。
-  //   交互：滚轮锚点缩放 [0.15, 3]、拖拽平移（内容坐标随缩放折算）、
-  //   双击恢复、跟随按钮。数据流不改 follow（旧栈病不带入）。
+  // 调用树（设计稿 P1-4 / P2-7 / P2-8 / B-2 / B-4）：
+  //   - **fit-first**：整树可容纳（fit ≥ 0.95）时保持全览 + 当前节点高亮；
+  //     只有大树（fib/dfs）才以当前节点为中心 1.22× 取景——跟随即取景，
+  //     不再把可容纳的小树放大裁边（A-1 的病）；
+  //   - 执行信息内嵌在树容器左栏（rail）：L{n} + 当前语句 + 帧/函数/局部变量
+  //     + 3 行源码片段（可展开到 7 行）——便签不再悬空在树外；
+  //   - 390：SVG 隐藏，改渲染调用路径链（同一棵树数据推导，不写第二份）；
+  //   - 滚轮锚点缩放 / 拖拽平移 / 双击复位（保留旧栈手势能力，相机单一真相）。
   import type { CallTree } from "../../js/calltree.ts";
+  import { session, frameAt } from "../session.svelte.ts";
   import { layoutCallTree } from "./calltreeLayout.ts";
   import { SvelteSet } from "svelte/reactivity";
+  import { ui } from "../ui.svelte.ts";
 
-  let { tree, idx }: { tree: CallTree | null; idx: number } = $props();
+  let { tree, idx, source }: { tree: CallTree | null; idx: number; source: string } = $props();
 
+  const H = 214;
   let wrapEl: HTMLDivElement | undefined = $state();
-  let wrapW = $state(0); // bind:clientWidth
-  const WRAP_H = 300;
-  // 相机双层（2026-10-16 用户诉求「瞬移改过渡动画」）：viewBox 是属性无法
-  // CSS transition——**逻辑目标态（target）与渲染相机（cam）分离**，rAF
-  // 指数趋近（rate 14/s ≈ 260ms 到位 95%）；手势直接双写（跟手无动画）。
-  // 播放跟随：target 每帧跳、cam 指数追——天然平滑跟随（旧栈 CSS transition
-  // 同效果，viewBox 相机下的等价实现）。
-  let target = $state({ k: 0.75, cx: 0, cy: 0 });
-  let cam = $state({ k: 0.75, cx: 0, cy: 0 });
-  let follow = $state(true);
-  let dragging = $state(false);
-  let initedFor = $state("");
+  let wrapW = $state(0);
 
   const layout = $derived(layoutCallTree(tree?.root ?? null));
+  const frame = $derived(frameAt(idx));
   const curNode = $derived(tree && tree.frameNode[idx] ? tree.frameNode[idx] : null);
-  const curPos: { x: number; y: number; node: object } | null = $derived(
-    curNode && layout ? layout.nodes.find((n) => n.node === curNode) ?? null : null,
-  );
+  const curPos = $derived(curNode && layout ? (layout.nodes.find((n) => n.node === curNode) ?? null) : null);
+
+  /** DFS 序里同名节点出现次数（节点标签 `printf #3` 与 footer `×5` 同源）。 */
+  const nameCount = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const n of layout?.nodes ?? []) m.set(n.label, (m.get(n.label) ?? 0) + 1);
+    return m;
+  });
+  const nameSeq = $derived.by(() => {
+    const seq = new Map<string, number>();
+    const out = new Map<string, number>();
+    for (const n of layout?.nodes ?? []) {
+      const k = (seq.get(n.label) ?? 0) + 1;
+      seq.set(n.label, k);
+      out.set(n.id, k);
+    }
+    return out;
+  });
+
   const visitedSet = $derived.by(() => {
     const s = new SvelteSet<object>();
     let n: typeof curNode = curNode;
@@ -46,219 +52,192 @@
   });
   const isVisited = (n: object): boolean => visitedSet.has(n);
 
+  /** 当前节点祖先链（footer 路径 / 390 路径链 / 面包屑）。 */
+  const pathNames = $derived.by(() => {
+    const out: string[] = [];
+    let n: typeof curNode = curNode;
+    while (n) {
+      out.unshift(n.name);
+      n = n.parent;
+    }
+    return out;
+  });
+  const pathText = $derived.by(() => {
+    if (!pathNames.length) return "";
+    return pathNames
+      .map((name, i) => {
+        const count = nameCount.get(name) ?? 1;
+        // 末段重复出现（如 5 次 printf）标 ×N——一眼看出「这是第几个调用」
+        return i === pathNames.length - 1 && count > 1 ? `${name} ×${count}` : name;
+      })
+      .join(" → ");
+  });
+
+  // ── 相机 ─────────────────────────────────────────────────
+  const fit = $derived(layout && wrapW > 0 ? Math.min(wrapW / layout.width, H / layout.height) : 1);
+  let mode = $state<"follow" | "overview">("follow");
+  let manual = $state<{ k: number; cx: number; cy: number } | null>(null);
+  let dragging = $state(false);
+
+  // fit-first：可容纳时按 1:1（≤1）整树居中——放大会让 2 节点树的字比设计稿大；
+  // 大树才以当前节点为中心 1.22× 取景。
+  const autoK = $derived(fit >= 0.95 ? Math.min(fit, 1) : 1.22);
+  const k = $derived(manual?.k ?? (mode === "overview" ? fit : autoK));
+
+  function clampCam(cx: number, cy: number, kk: number): { cx: number; cy: number } {
+    if (!layout) return { cx, cy };
+    const vw = wrapW / kk;
+    const vh = H / kk;
+    return {
+      cx: layout.width <= vw ? layout.width / 2 : Math.max(vw / 2, Math.min(layout.width - vw / 2, cx)),
+      cy: layout.height <= vh ? layout.height / 2 : Math.max(vh / 2, Math.min(layout.height - vh / 2, cy)),
+    };
+  }
+  const cam = $derived.by(() => {
+    if (!layout) return { k: 1, cx: 0, cy: 0 };
+    const kk = k;
+    const wantX = manual ? manual.cx : mode === "overview" ? layout.width / 2 : (curPos?.x ?? layout.width / 2);
+    const wantY = manual ? manual.cy : mode === "overview" ? layout.height / 2 : (curPos?.y ?? layout.height / 2);
+    const c = clampCam(wantX, wantY, kk);
+    return { k: kk, cx: c.cx, cy: c.cy };
+  });
   const viewBox = $derived.by(() => {
-    if (!layout || !wrapW) return null;
+    if (!layout || wrapW <= 0) return null;
     const vw = wrapW / cam.k;
-    const vh = WRAP_H / cam.k;
+    const vh = H / cam.k;
     return `${cam.cx - vw / 2} ${cam.cy - vh / 2} ${vw} ${vh}`;
   });
 
-  // rAF 指数趋近循环（cam → target）：挂载启动、组件销毁取消
-  $effect(() => {
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number): void => {
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-      const f = 1 - Math.exp(-14 * dt); // rate 14/s
-      const dx = target.cx - cam.cx;
-      const dy = target.cy - cam.cy;
-      const dk = target.k - cam.k;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || Math.abs(dk) > 0.002) {
-        cam.cx += dx * f;
-        cam.cy += dy * f;
-        cam.k += dk * f;
-      } else if (dx || dy || dk) {
-        cam.cx = target.cx;
-        cam.cy = target.cy;
-        cam.k = target.k;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  });
-
-  // 新采集（布局换引用）→ 初始化相机：小树完整居中不跟随；大树 0.75 + 跟随当前帧
-  $effect(() => {
-    if (!layout || !wrapW) return;
-    const key = `${layout.width}x${layout.height}#${layout.nodes.length}`;
-    if (initedFor === key) return;
-    initedFor = key;
-    const fit = Math.min(wrapW / layout.width, WRAP_H / layout.height);
-    if (fit >= 0.75) {
-      target = { k: fit, cx: layout.width / 2, cy: layout.height / 2 };
-      follow = false;
-    } else {
-      target = { k: 0.75, cx: 0, cy: 0 };
-      const cp = layout.nodes.find((n) => n.node === (tree?.frameNode[idx] ?? null));
-      if (cp) target.cx = cp.x, (target.cy = cp.y);
-      follow = true;
-    }
-  });
-
-  // 跟随（follow=true）：相机目标焦点移到当前帧节点（cam 由 rAF 趋近——平滑跟随）
-  $effect(() => {
-    void idx;
-    if (!follow || !curPos) return;
-    target.cx = curPos.x;
-    target.cy = curPos.y;
-  });
-
-  function fitAll(): void {
-    if (!layout || !wrapW) return;
-    const fit = Math.min(wrapW / layout.width, WRAP_H / layout.height);
-    target = { k: fit, cx: layout.width / 2, cy: layout.height / 2 };
-    // 全览 = 用户主动看全景，必须断跟随：旧写法 `follow && fit < 0.75` 对
-    // 大树恒真——跟随 effect 在下一次 idx 变化把 target 拉回节点，全览
-    // 被即时撤销（2026-10-18 实测「全览→跟随往返后相机卡全树域」的根因
-    // 之一）；想恢复跟随有「跟随」按钮，语义单向不打架。
-    follow = false;
+  function overview(): void {
+    mode = "overview";
+    manual = null;
   }
-
+  function followCur(): void {
+    mode = "follow";
+    manual = null;
+  }
+  function zoomBy(factor: number): void {
+    const nx = Math.max(Math.min(fit * 0.85, 1), Math.min(3, cam.k * factor));
+    manual = { k: nx, cx: cam.cx, cy: cam.cy };
+  }
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
     const rect = wrapEl!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    // 鼠标位置的内容坐标（缩放前）——缩放后保持不动（锚点）；手势双写 cam+target（跟手）
     const contentX = cam.cx + (mx - wrapW / 2) / cam.k;
-    const contentY = cam.cy + (my - WRAP_H / 2) / cam.k;
-    const k2 = Math.max(0.15, Math.min(3, cam.k * (1 - e.deltaY * 0.0012)));
-    target = { k: k2, cx: contentX - (mx - wrapW / 2) / k2, cy: contentY - (my - WRAP_H / 2) / k2 };
-    cam = { ...target };
-    follow = false;
+    const contentY = cam.cy + (my - H / 2) / cam.k;
+    const nk = Math.max(Math.min(fit * 0.85, 1), Math.min(3, cam.k * (1 - e.deltaY * 0.0012)));
+    const next = clampCam(contentX - (mx - wrapW / 2) / nk, contentY - (my - H / 2) / nk, nk);
+    manual = { k: nk, cx: next.cx, cy: next.cy };
   }
-
   let dragFrom = { x: 0, y: 0, cx: 0, cy: 0 };
-  function onPointerDown(e: PointerEvent): void {
+  function down(e: PointerEvent): void {
+    if (!layout) return;
     dragging = true;
-    dragFrom = { x: e.clientX, y: e.clientY, cx: target.cx, cy: target.cy };
+    dragFrom = { x: e.clientX, y: e.clientY, cx: cam.cx, cy: cam.cy };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   }
-  function onPointerMove(e: PointerEvent): void {
-    if (!dragging) return;
-    follow = false;
-    const cx = dragFrom.cx - (e.clientX - dragFrom.x) / cam.k;
-    const cy = dragFrom.cy - (e.clientY - dragFrom.y) / cam.k;
-    target = { k: cam.k, cx, cy };
-    cam = { k: cam.k, cx, cy };
+  function move(e: PointerEvent): void {
+    if (!dragging || !layout) return;
+    const nx = dragFrom.cx - (e.clientX - dragFrom.x) / cam.k;
+    const ny = dragFrom.cy - (e.clientY - dragFrom.y) / cam.k;
+    const c = clampCam(nx, ny, cam.k);
+    manual = { k: cam.k, cx: c.cx, cy: c.cy };
   }
-  function onPointerUp(): void {
+  function up(): void {
     dragging = false;
   }
-  // A25（#140）：双指 pinch 缩放（触屏）——两指距离比驱动 k，双指中点为
-  // 内容锚点；双指接管时退出单指拖拽。手势双写 cam+target（跟手，同 wheel）。
-  let pinchFrom: { dist: number; k: number } | null = null;
-  function onTouchStart(e: TouchEvent): void {
-    if (e.touches.length === 2) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      pinchFrom = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), k: cam.k };
-      dragging = false;
-    } else if (e.touches.length === 1) {
-      pinchFrom = null;
-    }
-  }
-  function onTouchMove(e: TouchEvent): void {
-    if (!pinchFrom || e.touches.length !== 2) return;
-    e.preventDefault();
-    const [a, b] = [e.touches[0], e.touches[1]];
-    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    const rect = wrapEl!.getBoundingClientRect();
-    const mx = (a.clientX + b.clientX) / 2 - rect.left;
-    const my = (a.clientY + b.clientY) / 2 - rect.top;
-    const contentX = cam.cx + (mx - wrapW / 2) / cam.k;
-    const contentY = cam.cy + (my - WRAP_H / 2) / cam.k;
-    const k2 = Math.max(0.15, Math.min(3, pinchFrom.k * (dist / pinchFrom.dist)));
-    target = { k: k2, cx: contentX - (mx - wrapW / 2) / k2, cy: contentY - (my - WRAP_H / 2) / k2 };
-    cam = { ...target };
-    follow = false;
-  }
-  function onTouchEnd(): void {
-    pinchFrom = null;
-  }
-  function onDblClick(): void {
-    fitAll();
-    if (follow) {
-      const cp = curPos;
-      if (cp) target.cx = cp.x, (target.cy = cp.y);
-    }
-  }
-  function enableFollow(): void {
-    follow = true;
-    const cp = curPos;
-    if (cp) {
-      // P1-4（2026-10-18 大树 CDP 实测定案）：跟随必须同时恢复可读缩放——
-      // 全览（k=fit≈0.07）后点跟随，旧代码只平移 cx/cy，k 停 0.07 节点恒
-      // 8px，画面几乎无变化 = 用户感知「跟随失效、卡全树域」。跟随态的
-      // 相机 = 0.75 可读基准；已放大（>0.75）则不缩小。
-      target.k = Math.max(target.k, 0.75);
-      target.cx = cp.x;
-      target.cy = cp.y;
-    }
-  }
+
+  // ── rail：源码片段 ──────────────────────────────────────────
+  const line = $derived(frame?.code_line ?? 0);
+  const curText = $derived(line > 0 ? (source.split("\n")[line - 1] ?? "").trim() : "");
+  const railVars = $derived((frame?.local_vars ?? []).slice(0, 2).map((v) => `${v.name} = ${v.value}`).join(" · "));
+  const srcLines = $derived.by(() => {
+    if (line <= 0 || !source) return [] as Array<{ n: number; t: string; cur: boolean }>;
+    const all = source.split("\n");
+    const span = ui.railExpanded ? 3 : 1;
+    const lo = Math.max(0, line - 1 - span);
+    const hi = Math.min(all.length, line + span);
+    return all.slice(lo, hi).map((t, i) => ({ n: lo + i + 1, t, cur: lo + i + 1 === line }));
+  });
+  const railed = $derived(!!frame);
+  const followNote = $derived(mode === "overview" ? "全览 · fit" : manual ? "手工 · 取景" : fit >= 0.95 ? "跟随 · 节点高亮" : "跟随 · 节点居中");
+  const zoomPct = $derived(Math.round(cam.k * 100));
 </script>
 
-<div class="tree-wrap" bind:this={wrapEl} bind:clientWidth={wrapW}>
-  {#if layout && viewBox}
-    <div class="toolbar">
-      <button type="button" class="tool" class:on={follow} onclick={enableFollow} title="跟随当前帧节点">◉ 跟随{follow ? "中" : ""}</button>
-      <button type="button" class="tool" onclick={fitAll} title="整树适应窗口">⤢ 全览</button>
-      <span class="hint">滚轮缩放 · 拖拽平移 · 双击恢复</span>
+<section class="vr-block" aria-label="调用树">
+  <div class="vr-blockhead">
+    <h2 class="vr-label">调用树</h2>
+    <div class="vr-seg" role="group" aria-label="取景">
+      <button type="button" class:is-active={mode === "follow" && !manual} onclick={followCur}>跟随</button>
+      <button type="button" class:is-active={mode === "overview"} onclick={overview}>全览</button>
     </div>
-    <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-    <div
-      class="tree-viewport"
-      class:grabbing={dragging}
-      onwheel={onWheel}
-      onpointerdown={onPointerDown}
-      onpointermove={onPointerMove}
-      onpointerup={onPointerUp}
-      onpointercancel={onPointerUp}
-      ontouchstart={onTouchStart}
-      ontouchmove={onTouchMove}
-      ontouchend={onTouchEnd}
-      ontouchcancel={onTouchEnd}
-      ondblclick={onDblClick}
-      role="img"
-      aria-label="调用树画布（滚轮缩放、拖拽平移、双击恢复跟随）"
-    >
-      <svg viewBox={viewBox} width={wrapW} height={WRAP_H}>
-        {#each layout.edges as e (e.id)}
-          <path class="edge" class:walked={isVisited(e.from) && isVisited(e.to)} d={e.path} />
-        {/each}
-        {#each layout.nodes as n (n.id)}
-          <g class="nd" class:cur={n.node === curNode} class:visited={isVisited(n.node)}>
-            <rect x={n.x - 39} y={n.y - 18} width="78" height="36" rx="9" />
-            <text class="tname" x={n.x} y={n.y - 1}>{n.label}</text>
-            {#if n.arg}<text class="targ" x={n.x} y={n.y + 12}>{n.arg}</text>{/if}
-          </g>
-        {/each}
-      </svg>
+    <div class="vr-zoom">
+      <button type="button" onclick={() => zoomBy(1 / 1.18)} aria-label="缩小">−</button>
+      <span>{zoomPct}%</span>
+      <button type="button" onclick={() => zoomBy(1.18)} aria-label="放大">+</button>
     </div>
-  {:else}
-    <p class="muted">（采集后显示调用树）</p>
-  {/if}
-</div>
+    <span class="vr-spacer"></span>
+    <span class="vr-meta">{layout ? `${layout.nodes.length} 个节点` : "未采集"}</span>
+  </div>
 
-<style>
-  .tree-wrap { border: 1px solid var(--hairline); border-radius: 8px; background: var(--editor-bg); overflow: hidden; }
-  .toolbar { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-bottom: 1px solid var(--hairline); }
-  .tool { background: var(--pane); color: var(--t2); border: 1px solid var(--hairline); border-radius: 6px; padding: 3px 10px; font: 12px var(--font-ui); cursor: pointer; }
-  .tool.on { color: var(--accent-strong); border-color: var(--accent); }
-  .hint { font-size: 11px; color: var(--t3); }
-  .tree-viewport { height: 300px; overflow: hidden; touch-action: none; cursor: grab; background-color: var(--field); background-image: linear-gradient(var(--grid, var(--hairline)) 1px, transparent 1px), linear-gradient(90deg, var(--grid, var(--hairline)) 1px, transparent 1px); background-size: 18px 18px; border: 1px solid var(--hairline); border-radius: 8px; }
-  .tree-viewport.grabbing { cursor: grabbing; }
-  .tree-viewport svg { display: block; /* 视口尺寸 = width/height 属性（相机窗口），内容坐标由 viewBox 映射——CSS 尺寸覆盖会造成双重变换（2026-10-16 空画布实锤） */ }
-  .edge { stroke: var(--delimiter); stroke-width: 1.5; fill: none; opacity: 0.55; vector-effect: non-scaling-stroke; }
-  .edge.walked { stroke: var(--accent); stroke-width: 2; opacity: 1; }
-  .nd rect { fill: var(--pane); stroke: var(--hairline); stroke-width: 1.2; transition: fill var(--t-fast) var(--ease-out), stroke var(--t-fast) var(--ease-out); }
-  /* mono 面连字关闭（#121①——demo_ui_lint 检查 D 机判；树节点文本含 <= 等教学符号，连字替换即教学硬伤） */
-  .nd text { text-anchor: middle; font-family: var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
-  .nd .tname { fill: var(--t1); font-size: 11.5px; font-weight: 600; }
-  .nd .targ { fill: var(--t3); font-size: 10px; }
-  .nd.cur rect { stroke: var(--accent); stroke-width: 2; fill: var(--accent-tint); filter: drop-shadow(0 0 7px var(--accent-tint)); }
-  .nd.cur .tname { fill: var(--accent-strong); }
-  .nd.visited rect { stroke: var(--accent); }
-  .muted { color: var(--t3); font-size: 12.5px; }
-</style>
+  <div class="vr-treebox">
+    <aside class="vr-rail" aria-label="当前执行">
+      <span class="vr-rail-kicker">当前执行</span>
+      <div class="vr-rail-line">{line > 0 ? `L${line}` : railed ? "收尾" : "—"}</div>
+      <code class="vr-rail-code">{curText || (railed ? "程序已退出（末帧收尾）" : "（未采集帧流）")}</code>
+      <div class="vr-rail-meta">
+        {#if railed}第 {idx + 1} / {session.viewFrames.length} 帧 · <b>{frame?.func_name}</b>{#if railVars} · {railVars}{/if}{:else}采集后显示当前语句{/if}
+      </div>
+      {#if srcLines.length > 0}
+        <pre class="vr-rail-src" aria-label="当前行附近的源码">{#each srcLines as s (s.n)}<span class="vr-src-line" class:is-cur={s.cur}><span class="ln">{String(s.n).padStart(3)}</span><span class="src">{s.t}</span></span>{/each}</pre>
+        <button type="button" class="vr-rail-more" aria-expanded={ui.railExpanded} onclick={() => (ui.railExpanded = !ui.railExpanded)}>
+          {ui.railExpanded ? "收起源码" : "展开源码"}
+        </button>
+      {/if}
+    </aside>
+
+    <div class="vr-canvas" class:is-dragging={dragging} bind:this={wrapEl} bind:clientWidth={wrapW}
+      role="img" aria-label="调用树画布（滚轮缩放、拖拽平移）"
+      onwheel={onWheel} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} ondblclick={followCur}
+    >
+      {#if layout && viewBox}
+        <svg viewBox={viewBox} width={wrapW} height={H}>
+          {#each layout.edges as e (e.id)}
+            <path class="vr-edge" class:is-visited={isVisited(e.from) && isVisited(e.to)} d={e.path} />
+          {/each}
+          {#each layout.nodes as nd (nd.id)}
+            <g class="vr-node" class:is-current={nd.node === curNode} class:is-visited={isVisited(nd.node)}>
+              <rect x={nd.x - 39} y={nd.y - 14} width="78" height="28" rx="2" />
+              <text x={nd.x} y={nd.y + 3.5}>{(nameCount.get(nd.label) ?? 0) > 1 ? `${nd.label} #${nameSeq.get(nd.id) ?? 1}` : nd.label}</text>
+            </g>
+          {/each}
+        </svg>
+        <div class="vr-tree-mobile" aria-label="调用路径">
+          {#each pathNames as p, i (i)}
+            <div class="vr-nodechip" class:is-current={i === pathNames.length - 1}>
+              <span class="vr-conn"></span>
+              <b>{p}</b>
+              {#if i === pathNames.length - 1}<span class="vr-now">当前</span>{/if}
+            </div>
+          {/each}
+        </div>
+        {#if layout.nodes.length <= 3}
+          <p class="vr-canvas-note">本课调用树只有 prog → main：printf 属库函数，不产生用户调用节点；递归课（如 global_struct 的 fib）才会长出大树。</p>
+        {/if}
+      {:else}
+        <p class="vr-empty">（采集后显示调用树）</p>
+      {/if}
+    </div>
+  </div>
+
+  <div class="vr-treefoot">
+    <span class="vr-path">{layout ? pathText || "prog" : "—"}</span>
+    <span title="整树可容纳时保持全览；大树以当前节点为中心">{followNote}</span>
+    <span class="vr-spacer"></span>
+    {#if layout}
+      <span>{session.breakpoints.length ? `断点 ${session.breakpoints.length} 处` : "无断点"}</span>
+    {/if}
+  </div>
+</section>

@@ -165,7 +165,7 @@ int main() {
   },
   {
     id: "e3061",
-    label: "NULL 解引用（E3061）",
+    label: "NULL 解引用（运行期 trap）", // 对表纠正 2026-10-18：error_catalog 的 E3061 = Double-Free；本用例 trap 无 E 码
     blurb: "运行期受检 trap（NULL 解引用；#56 后 NULL 初始化零编译期警告）",
     source: `#include <stdlib.h>
 

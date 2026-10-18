@@ -7,9 +7,11 @@
 import type { TreeNode } from "../../js/calltree.ts";
 
 export const NW = 78;
-export const NH = 36;
-export const VGAP = 42;
-export const PAD = 26;
+// 2026-10-18 前端改造：节点高/层距按设计稿 214px 画布收紧（28/28），
+// 让 7 节点本课树在默认画布内完整 fit（fit-first 的物理前提）。
+export const NH = 28;
+export const VGAP = 28;
+export const PAD = 18;
 
 export interface LayoutNode {
   id: string; // DFS 序（keyed each 的 key）

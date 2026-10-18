@@ -20,19 +20,24 @@ header.pilot-head .badge b { color: var(--accent-strong); }
 /* 布局对齐现役 demo（2026-10-16 用户拍板「布局一样即可，控件细节后续按优」）：
    header 品牌+徽章+图标组 / 两栏 grid（minmax(360px,5fr) 7fr 同现役）/ 右栏
    下划线 tab 条（::after scaleX 动画）/ footer 白箱声明。 */
-.pilot-head { display: flex; align-items: center; gap: 10px; padding: 14px 24px 10px; max-width: 1560px; margin: 0 auto; flex-wrap: wrap; }
+.pilot-head { display: flex; align-items: center; gap: 10px; padding: 14px 24px 10px; max-width: var(--page-max); margin: 0 auto; flex-wrap: wrap; }
 .pilot-head .brand { display: flex; align-items: baseline; gap: 8px; }
 /* V10：品牌位真 logo（昼夜双变体 img 随主题族切换；baseline 对齐文字） */
 .pilot-head .logo { width: 22px; height: 22px; align-self: center; }
 .pilot-head b { font-size: 19px; letter-spacing: 0.01em; }
 .pilot-head .sub { font-size: 12px; color: var(--t3); }
-.head-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--hairline); background: var(--pane); color: var(--t2); cursor: pointer; font-size: 15px; }
+.head-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; /* P3-1（2026-10-18 实测）：390px 下徽章排不换行横向溢出 7px */ justify-content: flex-end; }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--hairline); background: var(--pane); color: var(--t2); cursor: pointer; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; padding: 0; flex: none; /* P2-4：内联 svg 按 inline 基线落位导致图标中心偏 (-5,-5)px——flex 居中归位 */ }
 .icon-btn.on { color: var(--accent-strong); border-color: var(--accent); }
 
-.settings-float { position: fixed; top: 60px; right: 20px; width: min(340px, calc(100vw - 40px)); background: var(--pane); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 14px; z-index: 70; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); }
+/* P2-1：宽视口下 fixed right:20 贴视口而内容栅格有 1560 上限——浮层与
+   齿轮断连（2560 实测 gap 480px+）。right 取「视口边距 vs 栅格右缘」较大
+   者，浮层恒锚在齿轮下方。--page-max 与 .pilot-head/.pilot-grid 的
+   max-width 单源。 */
+:root { --page-max: 1560px; }
+.settings-float { position: fixed; top: 58px; right: max(20px, calc((100vw - var(--page-max)) / 2 + 24px)); width: min(340px, calc(100vw - 40px)); background: var(--glass); /* P2-5：glass 主题 --pane 是 rgba(255,255,255,.065) 近全透明——浮层按 tokens 契约用 --glass 预混实底 + --pane-blur */ backdrop-filter: var(--pane-blur); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 14px; z-index: 70; box-shadow: var(--float-shadow, 0 8px 30px rgb(0 0 0 / 0.35)); }
 
-.pilot-grid { display: grid; grid-template-columns: minmax(360px, 5fr) 7fr; gap: 18px; padding: 6px 24px 16px; max-width: 1560px; margin: 0 auto; align-items: start; }
+.pilot-grid { display: grid; grid-template-columns: minmax(360px, 5fr) 7fr; gap: 18px; padding: 6px 24px 16px; max-width: var(--page-max); margin: 0 auto; align-items: start; }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 900px) { .pilot-grid { grid-template-columns: 1fr; } }
 /* pane 面板（旧栈 .pane 同款：pane-border/radius/shadow/blur 五件套 + 主题
@@ -43,9 +48,10 @@ main.pilot-grid > section:nth-of-type(2) .pane, .editor-pane { animation-delay: 
 @keyframes tab-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .pane h2 { margin: 0 0 8px; font-size: 13px; color: var(--t3); font-weight: normal; }
 .tab-h { font-size: 12.5px; margin-top: 16px; }
-/* A12：调用树标题行 + 执行信息卡并排（卡靠右，窄屏折行） */
-.tree-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.tree-head .tab-h { margin-top: 16px; }
+/* A12：调用树标题行 + 执行信息卡并排（卡靠右，窄屏折行）。P2-8：旧版
+   flex-start + h2 独享 margin-top 16px 使卡片相对标题悬空——居中对齐。 */
+.tree-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tree-head .tab-h { margin-top: 16px; margin-bottom: 0; }
 
 /* pane-head 按钮排 + 状态 pill（现役形态） */
 .pane-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
@@ -127,6 +133,14 @@ html[data-theme="rose"] .pill { box-shadow: var(--neu-raised); }
 /* boot 失败横幅（#139：引擎加载失败必须可感知——对齐旧栈 boot-error 形态） */
 .boot-error { margin: 10px 24px 0; padding: 10px 14px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font-size: 13px; line-height: 1.6; }
 .boot-error b { font-weight: 700; }
+/* boot 握手期指示（P2-3：三态闭环的「加载中」态——徽章 "…" 之外的可读反馈） */
+.boot-loading { margin: 10px auto 0; max-width: var(--page-max); padding: 12px 16px; display: flex; align-items: center; gap: 10px; color: var(--t3); font-size: 13px; }
+.boot-spin { width: 14px; height: 14px; border: 2px solid var(--hairline); border-top-color: var(--accent); border-radius: 50%; animation: boot-spin 0.9s linear infinite; flex: none; }
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .boot-spin { animation-duration: 3s; } }
+/* P1-3：坏分享链接横幅（boot-error 同底色，加关闭钮布局） */
+.share-error { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.share-err-close { background: none; border: 0; color: inherit; font-size: 14px; cursor: pointer; padding: 0 2px; line-height: 1.4; flex: none; }
 /* trap 详报框（行为拍板 2026-10-17）：死因报告全文常驻——红边醒目块 */
 .trap-note { margin: 6px 0 0; padding: 10px 12px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 

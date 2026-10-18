@@ -99,8 +99,12 @@ class SessionState {
   stdinDraft = $state("42"); // A2：stdin 输入草稿（旧栈默认 42）
   /** 当前用例（A7 golden 对照 + configHint/argv 的单源锚）：点课时设置，
    *  null = 无预置真值（golden 区诚实缺席）。files = A9 multi_file 用例的
-   *  多编译单元（非工作区模式下 collect 的 compile.files 来源）。 */
-  currentCase = $state<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[]; files?: Array<{ filename: string; source: string }> } | null>(null);
+   *  多编译单元（非工作区模式下 collect 的 compile.files 来源）。
+   *  raw 不代理：本对象经 postMessage 直传 Worker（argv/files/configHint
+   *  三通道）——$state 深代理进 structured clone 必炸
+   *  「could not be cloned」（2026-10-18 argv_prog 100% 复现）；用例是
+   *  只读快照、点课整体替换写入，raw 语义恰配。 */
+  currentCase = $state.raw<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[]; files?: Array<{ filename: string; source: string }> } | null>(null);
   appliedCfg = $state.raw<Record<string, unknown> | null>(null); // A5：config.get 回读视图
   /** A15：回放全宽（播放中隐藏左栏，可视化独占整行——旧栈 replay-wide
    *  同语义；设置态由本层单点管理，与 playing 相与生效）。 */
@@ -128,8 +132,13 @@ function initCap(): number {
 
 export const session = new SessionState();
 
+/** 当前帧 = 粒度派生序列（viewFrames）的第 i 帧——UI 的帧计数/滑条/idx 全
+ *  走 viewFrames 口径（语句级 = 组尾帧），此处必须同口径：返回 raw 帧
+ *  frames[i] 会让行染/数组可视化/变量表/调用栈在语句级全面错位
+ *  （2026-10-18 实测：末帧 i=34 渲染 raw[34].code_line=13 而非组尾帧）。
+ *  指令级两序列同长，行为不变。 */
 export function frameAt(i: number): StepPayload | undefined {
-  return session.frames[i];
+  return session.viewFrames[i];
 }
 
 /** 作废在途采集（切用例/切课时调用）：epoch 递增，迟到的采集回传整体丢弃。 */
@@ -236,10 +245,19 @@ export async function collect(source: string, bpLines: number[] = []): Promise<v
   session.playing = false;
   stopTimer();
   session.status = "Worker 采集中（编译 + run + step 闭环）…";
-  // 开采即清陈旧诊断（上次失败卡片不得滞留冒充本次结果）
+  // 开采即清陈旧结果（上次课的输出/统计/死因/树不得滞留冒充本次结果——
+  // 采集失败时 catch 不写任何域，不清就会残留上一课数据伪装成本课结果
+  // （2026-10-18 argv_prog 崩溃时 outputs/runStats 残留链表课实测）
   session.diagnostics = [];
   session.ppTrace = [];
   session.compileOk = true;
+  session.outputs = { stdout: "", stderr: "", note: "" };
+  session.runStats = null;
+  session.stopped = "";
+  session.tree = null;
+  session.memory = null;
+  session.frames = []; // 旧帧流同清：编辑器已是新课源码，回放旧帧 = 行染/画面张冠李戴
+  session.idx = 0;
   try {
     // 工作区模式（F4 残留②）：全量打包 compile.files——active 文件 = 编辑器
     // 当前内容（liveSource 显式传，禁读 DOM）；单一源在 workspaceFilesForCompile
@@ -428,6 +446,12 @@ export function togglePlay(): void {
     lastTick = now;
     if (session.idx >= session.viewFrames.length - 1) {
       togglePlay(); // 播完即停
+      // 播完必须可感知（2026-10-18 实测：240fps 播完零提示，短程序 30fps
+      // 零点几秒播完，用户只见「动几帧突然停」不知是完毕还是卡死）。
+      // 走 status 行不走 toast：回放态属会话域状态（toasts 头注分域契约）；
+      // 且 toast 悬浮条在此场景实测有焦点副作用（E2E W7 排障记录——
+      // toast 存活期内 CM 聚焦被夺，机制未穷尽，回避面见 Toasts.svelte 注）。
+      session.status = `回放完毕——共 ${session.viewFrames.length} 帧，已停在末帧（拖滑条或 ◀| 回看）`;
       return;
     }
     step(Math.min(n, session.viewFrames.length - 1 - session.idx));

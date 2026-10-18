@@ -30,7 +30,8 @@
       <div class="ic-line ic-label">【{frame.semantic_label || "执行"}】第 {frame.code_line} 行 · {frame.func_name}</div>
       <div class="ic-line">{mergeText}</div>
       {#if frame.algorithm_step}
-        <div class="ic-line ic-algo">🧭 {frame.algorithm_step.display_name} · {frame.algorithm_step.phase}</div>
+        <!-- P3-4（2026-10-18 用户截图）：🧭 emoji 装饰被记病——改纯文字标签 -->
+        <div class="ic-line ic-algo">算法步 {frame.algorithm_step.display_name} · {frame.algorithm_step.phase}</div>
       {/if}
       <div class="ic-line ic-step">第 {frame.step_index} 步</div>
       {#if preview.length > 0}

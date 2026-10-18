@@ -36,6 +36,15 @@ export default defineConfig({
   plugins: [svelte(), demoGlobals()],
   base: "./",
   publicDir: false, // 无 public/；wasm.wasm 经 ?url 由打包器 emit（#139 同款构建期资产）
+  server: {
+    fs: {
+      // course/（课程叙述真源）在 demo root 之外——dev 的 ?url 动态 import 走
+      // /@fs/ 路径，默认 allow 表只放行 root 内文件 → loadLessonNote 全 404
+      // 「Failed to fetch dynamically imported module」（2026-10-18 dev 实测；
+      // 生产构建不受影响——build 把 md 发射为哈希资产不走 @fs）。
+      allow: [".."],
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

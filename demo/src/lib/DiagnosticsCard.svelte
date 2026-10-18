@@ -13,6 +13,7 @@
   // Editor.revealLine（组件不直摸编辑器实例——审阅 B-P2-11 store 正解的
   // 组件级形态：父层持有 editorRef，回调下发）。
   import { session } from "../session.svelte.ts";
+  import { jumpToCatalog } from "../tabs.svelte.ts";
 
   let { onjump }: { onjump?: (line: number) => void } = $props();
 
@@ -42,6 +43,10 @@
     {#if session.diagnostics.length === 0}
       {#if !session.compileOk}
         <p class="dc-empty err">编译失败（引擎未给出诊断文本——fail loud 于状态行）</p>
+      {:else if session.stopped.startsWith("受检终止")}
+        <!-- P3-5：uaf 等运行期 trap 课「无编译期诊断」与下方死因红框并存读起来
+             像矛盾——补语境说明两态各管一段 -->
+        <p class="dc-empty">无编译期诊断（编译通过；程序在运行期受检终止——死因详报见下方运行信息区）</p>
       {:else}
         <p class="dc-empty">无编译期诊断</p>
       {/if}
@@ -51,14 +56,15 @@
           <li>
             {#if d.line > 0 && onjump}
               <button type="button" class="diag {d.severity} jumpy" style:--i={i} onclick={() => onjump(d.line)} title="跳到 {d.filename || 'main.c'} 第 {d.line} 行">
-                <span class="code">{d.code}</span>
+                <!-- P2-10：E 码可点跳手册（stopPropagation 防误触外层跳行） -->
+                <span class="code clickable" role="button" tabindex="0" title="在诊断手册中查看 {d.code}" onclick={(e) => { e.stopPropagation(); jumpToCatalog(d.code); }} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); jumpToCatalog(d.code); } }}>{d.code}</span>
                 <span class="loc">{d.filename || "main.c"} 行 {d.line}:{d.column}</span>
                 <span class="msg">{d.message}</span>
                 {#if d.fix_suggestion}<span class="fix">✚ {d.fix_suggestion}</span>{/if}
               </button>
             {:else}
               <div class="diag {d.severity}" style:--i={i}>
-                <span class="code">{d.code}</span>
+                <span class="code clickable" role="button" tabindex="0" title="在诊断手册中查看 {d.code}" onclick={() => jumpToCatalog(d.code)} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); jumpToCatalog(d.code); } }}>{d.code}</span>
                 <span class="loc">{d.filename || "main.c"} 行 {d.line}:{d.column}</span>
                 <span class="msg">{d.message}</span>
                 {#if d.fix_suggestion}<span class="fix">✚ {d.fix_suggestion}</span>{/if}
@@ -105,6 +111,8 @@
   .diag.warning { border-left-color: var(--num); }
   .diag.hint, .diag.info { border-left-color: var(--t3); }
   .diag .code { font-family: var(--mono); color: var(--num); margin-right: 8px; font-size: 12px; font-variant-ligatures: none; }
+  .diag .code.clickable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+  .diag .code.clickable:hover { text-decoration: underline; }
   .diag.error .code { color: var(--danger); }
   .diag.hint .code, .diag.info .code { color: var(--t3); }
   .diag .loc { color: var(--t3); margin-right: 8px; font-size: 11.5px; font-family: var(--mono); font-variant-ligatures: none; }

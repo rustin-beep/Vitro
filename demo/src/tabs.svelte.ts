@@ -15,6 +15,16 @@ export const TAB_DEFS: Array<{ id: TabId; label: string }> = [
 
 export const activeTab = $state<{ current: TabId }>({ current: "content" });
 
+/** P2-10 轻量联动（2026-10-18）：E 码 → 诊断手册跳转种子。诊断卡/trap 详报
+ *  的 E 码点击后置种子并切 cat tab，CatalogView 消费后清空（一次性种子，
+ *  防用户手动清搜索后被回跳覆盖）。 */
+export const catalogSeed = $state<{ q: string }>({ q: "" });
+
+export function jumpToCatalog(code: string): void {
+  catalogSeed.q = code;
+  activeTab.current = "cat";
+}
+
 export function switchTab(id: TabId): void {
   activeTab.current = id;
 }

@@ -109,7 +109,11 @@
     if (!layout || !wrapW) return;
     const fit = Math.min(wrapW / layout.width, WRAP_H / layout.height);
     target = { k: fit, cx: layout.width / 2, cy: layout.height / 2 };
-    follow = follow && fit < 0.75;
+    // 全览 = 用户主动看全景，必须断跟随：旧写法 `follow && fit < 0.75` 对
+    // 大树恒真——跟随 effect 在下一次 idx 变化把 target 拉回节点，全览
+    // 被即时撤销（2026-10-18 实测「全览→跟随往返后相机卡全树域」的根因
+    // 之一）；想恢复跟随有「跟随」按钮，语义单向不打架。
+    follow = false;
   }
 
   function onWheel(e: WheelEvent): void {
@@ -183,7 +187,15 @@
   function enableFollow(): void {
     follow = true;
     const cp = curPos;
-    if (cp) target.cx = cp.x, (target.cy = cp.y);
+    if (cp) {
+      // P1-4（2026-10-18 大树 CDP 实测定案）：跟随必须同时恢复可读缩放——
+      // 全览（k=fit≈0.07）后点跟随，旧代码只平移 cx/cy，k 停 0.07 节点恒
+      // 8px，画面几乎无变化 = 用户感知「跟随失效、卡全树域」。跟随态的
+      // 相机 = 0.75 可读基准；已放大（>0.75）则不缩小。
+      target.k = Math.max(target.k, 0.75);
+      target.cx = cp.x;
+      target.cy = cp.y;
+    }
   }
 </script>
 

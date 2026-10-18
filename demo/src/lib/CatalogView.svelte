@@ -6,9 +6,19 @@
   // 展开态即丢）；文本插值自动转义。图标消费收编为 @html 仅限生成表
   // 可信体（icons.ts @generated）+ [id] 文本徽章 fallback（审阅 C-#9 处方）。
   import { session } from "../session.svelte.ts";
+  import { catalogSeed } from "../tabs.svelte.ts";
   import { ICONS } from "../../js/icons.ts";
 
   let query = $state("");
+
+  // P2-10：诊断卡/trap 详报的 E 码跳转种子——一次性消费后清空（防用户
+  // 手动清空搜索框后被旧种子回跳覆盖）。
+  $effect(() => {
+    if (catalogSeed.q) {
+      query = catalogSeed.q;
+      catalogSeed.q = "";
+    }
+  });
 
   const groups = $derived.by(() => {
     const q = query.trim().toLowerCase();

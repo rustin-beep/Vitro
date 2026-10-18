@@ -67,9 +67,10 @@ export function decorateBadges(escaped: string): string {
 /** trap 详报格式化（#140 收口批：语义徽章 + E 码 mono 徽章 + 结构标签加粗）。
  *  输入必须先 esc（同 decorateBadges 契约）。[cause]/[fix]/[location] 是
  *  结构化字段标记（非语义 id，不在 ICONS 表——保留文本只做视觉区分）；
- *  E 码（E3xxx 族）渲染为等宽徽章「码表」样式。 */
+ *  E 码（E3xxx 族）渲染为等宽徽章「码表」样式，data-ecode 供 RunMeta 事件
+ *  委托跳诊断手册（P2-10 轻量联动）。 */
 export function formatTrap(escaped: string): string {
   return decorateBadges(escaped)
     .replace(/\[(cause|fix|location)\]/g, '<b class="tp-tag">[$1]</b>')
-    .replace(/\b(E[1-9][0-9]{3})\b/g, '<code class="tp-code">$1</code>');
+    .replace(/\b(E[1-9][0-9]{3})\b/g, '<code class="tp-code" data-ecode="$1">$1</code>');
 }

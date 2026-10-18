@@ -89,7 +89,11 @@ Firefox 134+），加载失败页面会显示降级提示。
     e2e_diagcard.mjs`（编译诊断卡 + 断点行为链 S1-S5，18 锚）+
     `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置
     面板 + 主题持久化 + 分享往返 + **stdin 喂入/golden 对照/统计卡**
-    W1-W17，35 锚）。CI 步用 ubuntu runner 预装 Google Chrome headless
+    W1-W17，35 锚）+ `demo/tests/e2e_session.mjs`（会话/回放/分享族
+    F1-F6，6 锚——2026-10-18 实测立账批防线锚：坏分享 hash 横幅 /
+    argv 采集零克隆崩 / 语句级 frameAt 口径〔突变证红留痕〕/ 播完
+    status 提示 / char 数组零 each_key_duplicate / trap E 码联动手册）。
+    CI 步用 ubuntu runner 预装 Google Chrome headless
     CDP（与 Edge 同协议，脚本零改动）；本地跑法：vite build 产物 →
     `node tests/serve_static.mjs 8931` → Edge/Chrome `--headless=new
     --remote-debugging-port=9222 --no-proxy-server` → `node tests/e2e_*.mjs

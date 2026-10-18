@@ -2,33 +2,40 @@
   // 课程叙述渲染（F4 course 组件批）——块模型 keyed 渲染，无 innerHTML
   // （#125 宿主侧方案的 XSS 归零原则在此兑现）；代码块等宽 + 关连字
   // （#121 纪律），语法高亮（tokenizeC）留后续刀。
+  // P2-2（2026-10-18）：行内 **粗体** / `行内码` 经 parseInline token 化
+  // 后 Svelte 分支渲染（snippet 复用）——此前原样文本把 ** 当字面量。
   import type { Block } from "./lessonMd.ts";
+  import { parseInline } from "./lessonMd.ts";
 
   let { title, blocks }: { title: string; blocks: Block[] } = $props();
 </script>
+
+{#snippet inline(text: string)}
+  {#each parseInline(text) as seg, j (j)}{#if seg.t === "bold"}<b>{seg.s}</b>{:else if seg.t === "code"}<code>{seg.s}</code>{:else}{seg.s}{/if}{/each}
+{/snippet}
 
 <article class="cnote">
   <h1>{title}</h1>
   {#each blocks as b, i (i)}
     {#if b.type === "h2"}
-      <h2>{b.text}</h2>
+      <h2>{@render inline(b.text)}</h2>
     {:else if b.type === "h3"}
-      <h3>{b.text}</h3>
+      <h3>{@render inline(b.text)}</h3>
     {:else if b.type === "p"}
-      <p>{b.text}</p>
+      <p>{@render inline(b.text)}</p>
     {:else if b.type === "ul"}
-      <ul>{#each b.items as it (it)}<li>{it}</li>{/each}</ul>
+      <ul>{#each b.items as it (it)}<li>{@render inline(it)}</li>{/each}</ul>
     {:else if b.type === "ol"}
-      <ol>{#each b.items as it (it)}<li>{it}</li>{/each}</ol>
+      <ol>{#each b.items as it (it)}<li>{@render inline(it)}</li>{/each}</ol>
     {:else if b.type === "code"}
       <pre class="cn-code" data-lang={b.lang}><code>{b.text}</code></pre>
     {:else if b.type === "table"}
       <div class="cn-table">
         <table>
-          <thead><tr>{#each b.rows[0] as c (c)}<th>{c}</th>{/each}</tr></thead>
+          <thead><tr>{#each b.rows[0] as c (c)}<th>{@render inline(c)}</th>{/each}</tr></thead>
           <tbody>
             {#each b.rows.slice(1) as row, ri (ri)}
-              <tr>{#each row as c (c)}<td>{c}</td>{/each}</tr>
+              <tr>{#each row as c (c)}<td>{@render inline(c)}</td>{/each}</tr>
             {/each}
           </tbody>
         </table>
@@ -43,6 +50,7 @@
   .cnote h3 { font-size: 13px; margin: 10px 0 4px; color: var(--t1); }
   .cnote p { font-size: 13px; line-height: 1.65; color: var(--t2); margin: 6px 0; }
   .cnote ul, .cnote ol { font-size: 13px; line-height: 1.6; color: var(--t2); margin: 6px 0; padding-left: 20px; }
+  .cnote code { background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 4px; padding: 0 4px; font-family: var(--mono); font-size: 0.92em; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .cn-code { background: var(--editor-bg); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font: var(--ed-fs, 14px)/1.5 var(--mono); color: var(--code-text); margin: 8px 0; white-space: pre; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .cn-table { overflow-x: auto; margin: 8px 0; }
   .cn-table table { border-collapse: collapse; font-size: 12.5px; width: 100%; }

@@ -46,6 +46,11 @@
   // 引擎加载失败面（#139）：旧栈 boot-error 红横幅形态——失败必须可感知，
   // 禁止徽章停在「…」占位的静默假态
   let bootError = $state("");
+  // P1-3：分享坏载荷报错面——toast 4.2s 自动过期后页面无痕回默认示例，
+  // 用户（或其朋友）错过 toast 即「静默降级」，README「明确报错」承诺被
+  // 破坏。坏链接走持久横幅（可手关）；kind:"bad"（版本不识别/缺载荷）
+  // 此前零处理路径也在此收口。
+  let shareError = $state("");
 
   async function onPickLesson(l: TreeLesson, chapId: string): Promise<void> {
     // 点课 = 离开工作区（旧栈 ensureClosedForLesson 语义）：dirty 时 confirm
@@ -101,12 +106,16 @@
     .then(() => Promise.all([loadCatalog(), loadProto()]))
     .then(async () => {
       const parsed = parseFragment(location.hash.slice(1));
+      if (parsed.kind === "bad") {
+        shareError = `${parsed.reason}——链接多半被聊天工具截断或手动改坏。已载入默认示例。`;
+        return;
+      }
       if (parsed.kind === "payload") {
         try {
           source = await unpackSource(parsed.payload);
           toast("ok", "已从分享链接还原代码");
         } catch (err) {
-          toast("err", "分享链接不完整——" + String((err as Error).message).slice(0, 60));
+          shareError = `载荷无法解压（${String((err as Error).message).slice(0, 80)}）——链接多半被截断。已载入默认示例。`;
         }
       }
     })
@@ -232,6 +241,21 @@
   <div class="boot-error" role="alert">
     <b>引擎加载失败</b>——{bootError}。本页需要支持 wasm-gc 与 js-string builtins
     的现代浏览器（Chrome/Edge 130+、Firefox 134+）；请检查网络后刷新重试。
+  </div>
+{:else if !session.booted}
+  <!-- P2-3：wasm 实例化握手期（bundle 已载、徽章仍 "…"）的第二段白屏窗口
+       也须有指示——三态闭环：加载中（本条）/ 失败（bootError）/ 就绪（徽章落值） -->
+  <div class="boot-loading" role="status">
+    <span class="boot-spin" aria-hidden="true"></span>引擎实例化中——wasm-gc 编译 + 协议握手…
+  </div>
+{/if}
+
+{#if shareError}
+  <!-- P1-3：坏分享链接持久横幅（toast 会过期，此条不自动消失——坏链接是
+       稀释信任的一等事件，用户或其朋友必须能看到） -->
+  <div class="boot-error share-error" role="alert">
+    <span><b>分享链接无法还原</b>——{shareError}</span>
+    <button type="button" class="share-err-close" onclick={() => (shareError = "")} aria-label="关闭提示">✕</button>
   </div>
 {/if}
 

@@ -12,6 +12,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(demo): 前端实测立账批——P1×5 全修 + P2/P3 十五项 + workspace E2E 焦点回归根除（2026-10-18）
+
+- **P1×5**（2026-10-18 线上实测终账）：①`frameAt()` 返回 raw 帧致语句级
+  画面全面错位（行染/数组柱/变量表/调用栈渲染 raw[0..n] 而非组尾帧）→
+  改取 `viewFrames[i]`；②`currentCase` $state 深代理进 postMessage 克隆崩
+  （argv_prog 100% 复现「could not be cloned」+ outputs/runStats 残留上一
+  课）→ 改 `$state.raw` + collect 开头清陈旧结果面；③分享坏载荷 4.2s
+  toast 过期后静默回默认（`kind:"bad"` 零处理）→ 持久横幅 + bad 分支收口；
+  ④调用树「全览→跟随」失效——`fitAll` 的 `follow && fit<0.75` 对大树恒真
+  （全览被跟随 effect 拉回）+ `enableFollow` 只平移不恢复缩放（k 停 fit
+  0.07 节点恒 8px）→ 前者断跟随、后者 `target.k=max(k,0.75)`，CDP 大树
+  （global_struct 8596 逻辑宽）序列三态全验；⑤数组可视化 keyed each
+  `each_key_duplicate` 崩——char 数组元素 `"'a'"` 文本 `Number()` 化 NaN，
+  `NaN===NaN` 恒假致同值序号恒 0、key 全撞 `NaN#0`（string_match_bf ×11
+  实测）→ key 改原始文本+序号，数值/非数值数组形态分流（int=柱高含 0 值
+  6% 底高；char=等高字符格）。
+- **P2/P3**：设置浮层 `--page-max` 锚定（2560 宽 gap 480→8px）+ glass
+  主题按 tokens 契约用 `--glass`+`--pane-blur`；叙述面板行内
+  `**bold**`/`` `code` `` token 化渲染（lessonMd v2 兑现，零 innerHTML）；
+  首访两段白屏加载指示（index.html 静态 boot-hint + 握手期 boot-loading）；
+  图标 flex 居中（偏移 -5,-5→0,0）；`.head-right` wrap（390px 溢出 7→0）；
+  帧计数 0/0 诚实态；fps 档带单位；🧭 emoji 改文字标签；uaf「无编译期
+  诊断」补运行期终止语境；E 码→手册联动（诊断卡/trap 详报可点，
+  `catalogSeed` 一次性种子 + 事件委托）。
+- **dev 侧**：vite `server.fs.allow` 放行 `../course`（叙述 ?url 动态
+  import 走 /@fs 被 404——生产构建不受影响）；`demo_smoke` 消费计数注释
+  9→10 连坐（#130 批② texts.install 漏更）。
+- **E2E 回归根除**：播完提示初版走 toast 引出非确定性焦点丢失（toast
+  存活期内 CM 聚焦被夺、W6/W7 抖红；基线 3/3 绿对照定责）——播完提示
+  改走 status 行（分域契约正解）+ Toasts 容器 `pointer-events:none`（条
+  目本体 auto）。终态 workspace 35 锚 ×3 + diagcard 18 锚 + E-08 快照
+  13 项（golden 按流程刷新）+ demo_smoke 197 项 + svelte-check 0/0 全绿。
+
 ### fix(typeck+host): 对抗批四分叉修复——extern 数组兼容/前向净化/完整性三面/scanset 未闭合（2026-10-18）
 
 - **背景**：用户挑战「随机分叉测试还能过吗」——七批对抗探针（常量域

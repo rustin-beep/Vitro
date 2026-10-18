@@ -34,13 +34,15 @@
   <input
     type="range"
     min="0"
-    max={Math.max(session.frames.length - 1, 0)}
-    value={session.idx}
+    max={Math.max(session.viewFrames.length - 1, 0)}
+    value={Math.min(session.idx, Math.max(session.viewFrames.length - 1, 0))}
     oninput={(e) => seek(Number(e.currentTarget.value))}
-    disabled={session.collecting || session.frames.length === 0}
+    disabled={session.collecting || session.viewFrames.length === 0}
     aria-label="帧滑条"
   />
-  <span class="frame-count">帧 {session.idx + 1}/{session.viewFrames.length}</span>
+  <!-- 帧计数与滑条 max 同走 viewFrames 口径（P1-1 同族口径病）；零帧显
+       示 0/0（P3-2：旧版 idx+1 在采集失败后渲染「帧 1/0」假象） -->
+  <span class="frame-count">帧 {session.viewFrames.length ? session.idx + 1 : 0}/{session.viewFrames.length}</span>
   <span class="eng-seek">
     <input
       type="number"
@@ -59,7 +61,8 @@
     {/each}
   </div>
   {#each FPS_STEPS as f (f)}
-    <button type="button" class="btn ghost" class:selected={session.fps === f} onclick={() => setFps(f)}>{f}</button>
+    <!-- P3-3：裸数字无单位（实测「2」不知是何量）——档位值带小号 fps 单位 -->
+    <button type="button" class="btn ghost fps-btn" class:selected={session.fps === f} onclick={() => setFps(f)} title="每秒 {f} 帧">{f}<i>fps</i></button>
   {/each}
 </div>
 
@@ -78,4 +81,6 @@
   .cap-row input { width: 90px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 3px 7px; font: 12px var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; margin: 0 4px; }
   .eng-seek { display: inline-flex; align-items: center; gap: 4px; }
   .eng-seek input { width: 72px; background: var(--field); color: var(--t1); border: 1px solid var(--hairline); border-radius: 5px; padding: 3px 7px; font: 12px var(--mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+  .fps-btn i { font-style: normal; font-size: 9.5px; color: var(--t3); margin-left: 2px; }
+  .fps-btn.selected i { color: inherit; opacity: 0.75; }
 </style>

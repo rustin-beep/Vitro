@@ -14,8 +14,11 @@
 </div>
 
 <style>
-  .toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); }
-  .toast { display: flex; align-items: baseline; gap: 10px; background: var(--pane); border: 1px solid var(--hairline); border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; box-shadow: var(--inset-soft, none); animation: t-in var(--t-fast) var(--ease-out); }
+  /* toast 容器 pointer-events 关闭：容器盒覆盖到的页面空白区不得拦截点击
+     （headless 750×485 实测：多条堆叠时挡住编辑器点击坐标 → insertText
+     落空——E2E W6/W7 非确定性抖动的根因）；条目本体恢复 auto（手关钮可点）。 */
+  .toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+  .toast { pointer-events: auto; display: flex; align-items: baseline; gap: 10px; background: var(--pane); border: 1px solid var(--hairline); border-left: 3px solid var(--accent); border-radius: 8px; padding: 9px 12px; box-shadow: var(--inset-soft, none); animation: t-in var(--t-fast) var(--ease-out); }
   .toast.ok { border-left-color: var(--ok); }
   .toast.err { border-left-color: var(--danger); }
   .t-text { font-size: 12.5px; color: var(--t1); white-space: pre-wrap; word-break: break-word; }

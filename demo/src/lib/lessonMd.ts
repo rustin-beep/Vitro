@@ -35,6 +35,30 @@ export interface LessonDoc {
   blocks: Block[];
 }
 
+// ── 行内样式 token（v2 兑现——头注 schema 留的演进位）──────────────
+// 支持 **粗体** 与 `行内码` 两种（课程真源实际使用的全集）；嵌套/转义不
+// 支持（教学文案不需要）。消费端（CourseNote）用 Svelte 分支渲染，零
+// innerHTML——XSS 面与块级同源（#125 归零原则不因 token 化回退）。
+export type Inline =
+  | { t: "text"; s: string }
+  | { t: "bold"; s: string }
+  | { t: "code"; s: string };
+
+const INLINE_RE = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+
+/** 行内文本 → token 序列。无任何标记时返回单 text 段（零开销快路径）。 */
+export function parseInline(text: string): Inline[] {
+  if (!text.includes("**") && !text.includes("`")) return [{ t: "text", s: text }];
+  return text
+    .split(INLINE_RE)
+    .filter((seg) => seg !== "")
+    .map((seg): Inline => {
+      if (seg.startsWith("**") && seg.endsWith("**") && seg.length > 4) return { t: "bold", s: seg.slice(2, -2) };
+      if (seg.startsWith("`") && seg.endsWith("`") && seg.length > 2) return { t: "code", s: seg.slice(1, -1) };
+      return { t: "text", s: seg };
+    });
+}
+
 export class LessonParseError extends Error {}
 
 /** 解析 lesson.md 全文。fail loud：缺 frontmatter 围栏 / 缺必填字段直接抛。 */

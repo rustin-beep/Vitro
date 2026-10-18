@@ -8,7 +8,15 @@
   //    未预置 / 编辑器已修改失效（不拿旧预期比新代码——诚实边界）/
   //    stdout·trap 对照 ✓✗。
   import { session, feedStdin } from "../session.svelte.ts";
+  import { jumpToCatalog } from "../tabs.svelte.ts";
   import { formatTrap, esc } from "../../js/util.ts";
+
+  // P2-10：trap 详报里 formatTrap 产出的 E 码徽章（@html 产物）经事件委托
+  // 跳诊断手册——下划线伪链接变真通道。
+  function onTrapClick(e: MouseEvent): void {
+    const t = (e.target as HTMLElement).closest("[data-ecode]");
+    if (t) jumpToCatalog(t.getAttribute("data-ecode")!);
+  }
 
   let { source }: { source: string } = $props();
 
@@ -28,7 +36,8 @@
        视图 pane 框内——左栏放全文会撑爆编辑器区；语义徽章 + E 码码表 + 结构
        标签加粗经 formatTrap） -->
   {#if isTrap}
-    <div class="trap-full">{@html formatTrap(esc(session.stopped))}</div>
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div class="trap-full" onclick={onTrapClick} title="点击 E 码可在诊断手册中查看">{@html formatTrap(esc(session.stopped))}</div>
   {/if}
   <div class="stat-row">
     <div class="stat-card"><span class="stat-label">返回码</span><b class="stat-value">{session.runStats && session.runStats.status === "finished" ? String(session.runStats.return_value) : "—"}</b></div>
@@ -83,5 +92,6 @@ Vitro 实跑 stdout      : {JSON.stringify(session.outputs.stdout)}</pre>
   .trap-full { padding: 10px 12px; border: 1px solid var(--danger); border-radius: 8px; background: var(--danger-tint); color: var(--danger); font: 12.5px/1.7 var(--mono); white-space: pre-wrap; word-break: break-word; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .trap-full :global(.icon-svg svg) { width: 14px; height: 14px; vertical-align: -2px; }
   .trap-full :global(.tp-tag) { color: var(--t1); }
-  .trap-full :global(.tp-code) { font: 11.5px var(--mono); background: var(--pane); border: 1px solid var(--danger); border-radius: 4px; padding: 0 4px; color: var(--danger); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+  .trap-full :global(.tp-code) { font: 11.5px var(--mono); background: var(--pane); border: 1px solid var(--danger); border-radius: 4px; padding: 0 4px; color: var(--danger); cursor: pointer; font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+  .trap-full :global(.tp-code:hover) { background: var(--danger-tint); }
 </style>

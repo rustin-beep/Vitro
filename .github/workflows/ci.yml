@@ -842,6 +842,17 @@ jobs:
         shell: bash
         run: go run ./scripts/facts --strict check
 
+      - name: Facts collect for gen_svg (slice 内自足落盘)
+        # 2026-10-18 CI 红处置：c5f01fff 拆 matrix 三片时 gen_svg 与 facts
+        # 分家——旧单 job 里 facts check 步顺带落盘 facts.json 喂 gen_svg
+        #（main.go 写盘在子命令分派前的公共段），拆后 gen slice 断供，
+        # gen_svg -check「读不到 reports/facts.json」必红（39052444299/
+        # 39064277885 两 run 同根因）。修 = slice 内自足：前置纯采集落盘
+        #（`facts facts` 子命令不判红——文档对账仍归 bookkeeping 单点）。
+        if: matrix.slice == 'gen'
+        shell: bash
+        run: go run ./scripts/facts facts
+
       - name: Docs SVG freshness (gen_svg -check)
 
         if: matrix.slice == 'gen'
@@ -849,10 +860,10 @@ jobs:
         # 不一致红不了，生成器源码过时（如包图徽标停在上个批次）更无人知，
         # 2026-09-28 盘点实证：S6 收官 / S7 开工两个批次后包图仍写「S6 进行
         # 中 / 未开工 / 截至 2026-09-24」。现双管齐下：建成状态改 facts 派生
-        # （moonbit_built_packages / moonbit_engine_version，上一 facts 步已
-        # 落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9 证红：手改
-        # 落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归 hygiene：红 =
-        # 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
+        # （moonbit_built_packages / moonbit_engine_version，上一步 facts
+        # facts 已落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9
+        # 证红：手改落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归
+        # hygiene：红 = 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
         shell: bash
         run: go run ./scripts/gen_svg -check
 
@@ -1101,17 +1112,20 @@ jobs:
         run: node scripts/demo_smoke/main.js
         shell: bash
 
-      # F4 浏览器 E2E（53 锚：诊断卡 S1-S5 + 工作区 W1-W17，含断点行为链/
-      # stdin 喂入/golden 对照/统计卡）——「CI 无 Edge 不进流水线」的旧既定
-      # 收口（2026-10-17 收口批）：ubuntu runner 预装 Google Chrome，CDP 协议
-      # 与 Edge 同源，脚本零改动直连；vite build 产物起本地静态服。
-      - name: F4 browser E2E (headless chrome, 53 anchors)
+      # F4 浏览器 E2E（59 锚：诊断卡 S1-S5 + 工作区 W1-W17 + 会话族 F1-F6
+      # 〔2026-10-18 实测立账批防线锚：坏 hash 横幅/argv 克隆崩/语句级口径/
+      # 播完 status/char 数组崩溃/E 码联动〕，含断点行为链/stdin 喂入/golden
+      # 对照/统计卡）——「CI 无 Edge 不进流水线」的旧既定收口（2026-10-17
+      # 收口批）：ubuntu runner 预装 Google Chrome，CDP 协议与 Edge 同源，
+      # 脚本零改动直连；vite build 产物起本地静态服。
+      - name: F4 browser E2E (headless chrome, 59 anchors)
         run: |
           (google-chrome --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
           (cd demo && node tests/serve_static.mjs 8931 &)
           sleep 4
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
+          node demo/tests/e2e_session.mjs http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

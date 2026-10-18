@@ -12,6 +12,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ci+scripts+docs): CI 连红处置——demo E2E 浏览器启动修复 + 套件级红遮红治理 + 五家 digest 断供补冻（2026-10-18）
+
+- **demo E2E 闸 8 连红根因**（62f75d3d 进 CI 起**从未绿过**）：F4 browser
+  E2E 步按 ubuntu runner 设计写死 `google-chrome` 命令名，job 实跑
+  windows-latest → command not found → Chrome 未起 → CDP 9222
+  ECONNREFUSED → exit 2，且红遮挡其后 4 个合法闸（skill 路径存在性/UI
+  string-contract/phase vocabulary/pure-function tests）。修法=探测链
+  （PATH google-chrome → Windows Chrome 标准路径 → Edge 兜底〔CDP 同源
+  ——注释既定口径〕+ fail loud 无浏览器即退），本机 Edge 兜底臂实测
+  e2e_diagcard 18/18 全 PASS。
+- **diff gate 套件级红遮红治理**：四套件 for 循环 `set -e` 下首套件红
+  即断，其余套件健康面全盲（lexer_diff 断供轮 knr/leetcode/gap 三套件
+  skipped 实锤）——改累计失败（`|| rc=1` 全跑完再 exit），单套件红仍
+  job 红闸强度不变，多套件红一屏尽收。
+- **五家 digest 断供补冻**（lexer 457→462 / parser 444 / typeck knr
+  kr_4_6 重算 + baseline 新例 / codegen、vm 已随批冻）：kr_4_6 的
+  `-1` 折叠（cbe7757b 静态初始化器常量折叠的有意 E4 形态改进，
+  worktree 双时点 diff 实证唯一差异）knr 套件未连坐重冻致 typeck_diff
+  连红两轮。
+- **指引文档根治**：vitro-baseline-corpus-workflow SKILL.md 黄金序列
+  只写了 codegen 一家 freeze——10-17/10-18 两批语料各断供 2~3 家
+  （lexer_diff 不在任何连坐清单）。改写为**五家全冻清单**（lexer/
+  parser/typeck/codegen/vm 各自断供形态 + 本地验证须四 suite 全跑
+  教训）+ as_of 更新。
+- **gitignore**：补 `.chrome-e2e*/`（浏览器 E2E headless profile 运行
+  时生成物——本地验证实测产出混进工作区，用户提醒补规则）。
+- **CI skipped 审计结论**（本轮全量核过）：sentinel 整 job skip=
+  `if: schedule` 设计内；Static gates 三 job 的 10/18/24 skipped=
+  matrix.slice 步骤级路由设计内（红遮红治理产物）；唯一不健康形态
+  =三个失败 job 内的套件/步骤遮挡（本轮两处治理已覆盖）。
+
 ### fix(parser+typeck+codegen+diag+corpus): LLM 探针批四修复——#153 误拒 + #154/#156/#157 三误收 + #155 销案（2026-10-18，红锚先行）
 
 - **#153 聚合初始化器 unsigned 常量误拒**（codegen/init.mbt）：

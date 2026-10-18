@@ -251,9 +251,15 @@ jobs:
         run: |
           case "${{ matrix.driver }}" in
             parser_diff|lexer_diff|typeck_diff|codegen_diff)
+              # 套件级红遮红治理（2026-10-18）：set -e 下 for 首套件红即断，
+              # 其余套件健康面全盲（lexer_diff baseline 断供轮 knr/leetcode/
+              # gap 三套件 skipped 实锤）。改累计失败：四套件全跑完再退出
+              # 非零——单套件红仍 job 红（闸强度不变），多套件红一屏尽收。
+              rc=0
               for d in baseline knr leetcode gap; do
-                go run ./scripts/${{ matrix.driver }} corpus/$d
+                go run ./scripts/${{ matrix.driver }} corpus/$d || rc=1
               done
+              exit $rc
               ;;
             vm_diff)
               go run ./scripts/vm_diff
@@ -1112,15 +1118,33 @@ jobs:
         run: node scripts/demo_smoke/main.js
         shell: bash
 
-      # F4 浏览器 E2E（59 锚：诊断卡 S1-S5 + 工作区 W1-W17 + 会话族 F1-F6
-      # 〔2026-10-18 实测立账批防线锚：坏 hash 横幅/argv 克隆崩/语句级口径/
-      # 播完 status/char 数组崩溃/E 码联动〕，含断点行为链/stdin 喂入/golden
-      # 对照/统计卡）——「CI 无 Edge 不进流水线」的旧既定收口（2026-10-17
-      # 收口批）：ubuntu runner 预装 Google Chrome，CDP 协议与 Edge 同源，
-      # 脚本零改动直连；vite build 产物起本地静态服。
+      # F4 浏览器 E2E（60 锚：诊断带 S1-S5（18）+ 工作区/回放/设置/主链面
+      # W1-W17（35）+ 会话族 F1-F6 + F4b（7）〔2026-10-18 实测立账批防线锚：
+      # 坏 hash 横幅/argv 克隆崩/语句级口径/播完 status/char 数组崩溃/E 码
+      # 联动〕，含断点行为链/stdin 喂入/golden 对照/统计卡）——2026-10-18
+      # 前端改造批按新 IA（三态 + vr-* 类名）重定向选择器，锚语义不变；
+      # 「CI 无 Edge 不进流水线」的旧既定收口（2026-10-17 收口批）：runner
+      # 预装浏览器 CDP 直连，脚本零改动；vite build 产物起本地静态服。
+      # 2026-10-18 连红处置：本 job runs-on windows-latest 而启动命令写死
+      # ubuntu 命令名 google-chrome——command not found → Chrome 未起 →
+      # CDP 9222 ECONNREFUSED，该闸自 62f75d3d 进 CI 起从未绿过。改为
+      # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
+      # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
+      # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
       - name: F4 browser E2E (headless chrome, 59 anchors)
         run: |
-          (google-chrome --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
+          CHROME_BIN="$(command -v google-chrome || true)"
+          if [ -z "$CHROME_BIN" ]; then
+            for p in "/c/Program Files/Google/Chrome/Application/chrome.exe" "/c/Program Files (x86)/Google/Chrome/Application/chrome.exe" "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"; do
+              if [ -f "$p" ]; then CHROME_BIN="$p"; break; fi
+            done
+          fi
+          if [ -z "$CHROME_BIN" ]; then
+            echo "E2E 闸 fail loud：runner 无 Chrome/Edge 可用" >&2
+            exit 1
+          fi
+          echo "E2E browser: $CHROME_BIN"
+          ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
           (cd demo && node tests/serve_static.mjs 8931 &)
           sleep 4
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/

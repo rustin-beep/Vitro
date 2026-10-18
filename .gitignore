@@ -212,3 +212,7 @@ package-lock.json
 # demo 实测存证与设计稿工作区（#148 实测截图/JSON 状态 + 2026-10-18-redesign 设计稿，本地保留不入库）
 demo-evidence/
 demo/design/
+
+# 浏览器 E2E 本地启动的 headless user-data-dir（CI 同款目录名 .chrome-e2e / 本地验证 .chrome-e2e-local——Chromium profile 是纯运行时生成物）
+.chrome-e2e/
+.chrome-e2e-local/

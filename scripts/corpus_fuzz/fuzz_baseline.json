@@ -1,0 +1,777 @@
+{
+  "entries": {
+    "baseline/array_param_decay.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/array_param_decay.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/block_static_typedef.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/block_static_typedef.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/block_static_typedef.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/bool_from_compare.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/bool_from_compare.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/bool_from_compare.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/break_in_nested_loop.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/break_in_nested_loop.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/break_in_nested_loop.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/double_arith.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/double_arith.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/double_arith.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/goto_basic.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/goto_basic.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/goto_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/jit_nested_counting_loop.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/jit_nested_counting_loop.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/jit_nested_counting_loop.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_difftime.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_difftime.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_difftime.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/linear_search.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/linear_search.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/linear_search.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/long_type.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/long_type.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/long_type.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/p2e_div_zero_scope.c|char_escape": {
+      "bucket": "VITRO_TRAP",
+      "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "baseline/p2e_div_zero_scope.c|div2shift": {
+      "bucket": "VITRO_TRAP",
+      "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "baseline/p2e_div_zero_scope.c|nested2flat": {
+      "bucket": "VITRO_TRAP",
+      "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "baseline/puts_basic.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/puts_basic.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/puts_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_u_sign_wrap.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_u_sign_wrap.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_u_sign_wrap.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_local_aggregate.c|init_partial": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/static_local_aggregate.c|nested2flat": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/static_local_aggregate.c|paren_wrap": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/string_literal.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/string_literal.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/string_literal.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/struct_return_by_value_as_arg.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/struct_return_by_value_as_arg.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/struct_return_by_value_as_arg.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "baseline/struct_return_by_value_basic.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/struct_return_by_value_basic.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/struct_return_by_value_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/typedef_after_struct_decl.c|brace_wrap": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/typedef_after_struct_decl.c|char_escape": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/typedef_after_struct_decl.c|static_inject": {
+      "bucket": "WRONG_VALUE",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/union_member_struct_assign.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/union_member_struct_assign.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/union_member_struct_assign.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_param_decay.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/vla_param_decay.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/vla_param_decay.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
+    },
+    "gap/complex_number.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/complex_number.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "gap/complex_number.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "gap/failfast_chain.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/failfast_chain.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "gap/failfast_chain.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "gap/file_fopen.c|cmp_swap": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fopen.c|memset_zero": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fopen.c|static_inject": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fread.c|cmp_swap": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fread.c|memset_zero": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fread.c|static_inject": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/file_fwrite.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "gap/file_fwrite.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "gap/file_fwrite.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "gap/function_pointer_sizeof.c|char_escape": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/function_pointer_sizeof.c|div2shift": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/function_pointer_sizeof.c|nested2flat": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/goto_basic.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/goto_basic.c|memset_zero": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/goto_basic.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/implicit_int.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "gap/implicit_int.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "gap/implicit_int.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "gap/include_quote_sentinel.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/include_quote_sentinel.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/include_quote_sentinel.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "gap/inline_asm.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/inline_asm.c|memset_zero": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/inline_asm.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/keyword_compat.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/keyword_compat.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "gap/keyword_compat.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "gap/loop_var_shadow.c|brace_wrap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/loop_var_shadow.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/loop_var_shadow.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "gap/p2d_parser_preproc_batch.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/p2d_parser_preproc_batch.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "gap/p2d_parser_preproc_batch.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "gap/printf_scanf_type_mismatch.c|brace_wrap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/printf_scanf_type_mismatch.c|init_partial": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/printf_scanf_type_mismatch.c|nested2flat": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/scanf_0x_retval.c|brace_wrap": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/scanf_0x_retval.c|cmp_swap": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/scanf_0x_retval.c|init_partial": {
+      "bucket": "WRONG_VALUE",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/sizeof_array_param.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/sizeof_array_param.c|cast_strip": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/sizeof_array_param.c|div2shift": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/static_assert.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/static_assert.c|char_escape": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/static_assert.c|memset_zero": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/string_len_manual.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/string_len_manual.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/string_len_manual.c|paren_wrap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/typeof_operator.c|brace_wrap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/typeof_operator.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
+    },
+    "gap/typeof_operator.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "gap/variadic_macro.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "gap/variadic_macro.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "gap/variadic_macro.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_15.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_15.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_15.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_17.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_17.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_17.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_19.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_19.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_19.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_4.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_4.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_1_4.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_4.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_4.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_4.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_7.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_7.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_7.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_8.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_8.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_2_8.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_1.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_1.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_1.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_6.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_6.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_3_6.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_2.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_2.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_2.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_3.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_3.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_3.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_atoi.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_atoi.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_4_atoi.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_11.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_11.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_11.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_13.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "knr/kr_5_13.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
+    },
+    "knr/kr_5_13.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "knr/kr_5_15.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_15.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_15.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_16.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_16.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_16.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_4.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_4.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_5_4.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_4.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_4.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_4.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_5.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_5.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_6_5.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_7_3.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_7_3.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "knr/kr_7_3.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_13.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_13.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_13.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_17.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_17.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_17.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_2.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_2.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_2.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_21.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_21.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_21.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_231.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_231.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_231.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_27.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_27.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_27.c|static_inject": {
+      "bucket": "VITRO_TRAP",
+      "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "leetcode/lc_283.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_283.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_283.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_290.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_290.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_290.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_326.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_326.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_326.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_345.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_345.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_345.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_404.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_404.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_404.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_448.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_448.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_448.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_46.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_46.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_46.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_64.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_64.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_64.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_66.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_66.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_66.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_67.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_67.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_67.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_704.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_704.c|div2shift": {
+      "bucket": "VITRO_TRAP",
+      "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "leetcode/lc_704.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_746.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_746.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_746.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_83.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_83.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_83.c|static_inject": {
+      "bucket": "CLANG_REJECT",
+      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+    },
+    "leetcode/lc_84.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_84.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "leetcode/lc_84.c|static_inject": {
+      "bucket": "VITRO_REJECT",
+      "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/array_param_decay.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    }
+  }
+}

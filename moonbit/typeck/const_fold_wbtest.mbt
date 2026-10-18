@@ -434,3 +434,121 @@ test "const_fold_unsigned_semantics" {
   folded_v(typed.globals[1], "b")
   folded_v(typed.globals[2], "c")
 }
+
+///|
+/// #183（2026-10-18 深挖批）：标量初始化器的大括号包裹（C11 6.7.9p11）
+/// ——`int x = {5}` ≡ 5、多余元素 W3005 取首。四收口面（全局/局部/
+/// 标量字段/数组标量元素）断言零 E3004/E3006 + 定型正确（聚合目标的
+/// InitList 不受解包扰动）。
+test "scalar_brace_unwrap_four_sites" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // 全局：int g = {42}（≡ 42）；int g2 = {7,8}（excess 取首 7）
+  let g_decl = gdecl(
+    @ast.Type::int(),
+    "g",
+    Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Literal(42, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+  )
+  let g2_decl = gdecl(
+    @ast.Type::int(),
+    "g2",
+    Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Literal(7, loc, @ast.Type::int()),
+          },
+          {
+            designators: [],
+            value: @ast.Expr::Literal(8, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+  )
+  // main：int x = {5};（局部）+ int a[2] = {{1},2};（数组标量元素）
+  let x_decl : @ast.Stmt = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "x",
+    Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Literal(5, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let a_decl : @ast.Stmt = @ast.Stmt::VarDecl(
+    @ast.Type::array_of(@ast.Type::int(), [2]),
+    "a",
+    Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::InitList(
+              [
+                {
+                  designators: [],
+                  value: @ast.Expr::Literal(1, loc, @ast.Type::int()),
+                },
+              ],
+              loc,
+              @ast.Type::void_type(),
+            ),
+          },
+          {
+            designators: [],
+            value: @ast.Expr::Literal(2, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let ret = @ast.Stmt::Return(
+    Some(@ast.Expr::Identifier("x", loc, @ast.Type::int())),
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (typed, errs, warns, _) = tc.check(
+    gprog([g_decl, g2_decl])
+    |> with_main(@ast.Stmt::Block([x_decl, a_decl, ret], loc)),
+  )
+  // 四面零 error（旧：E3004×2 全局 + E3004 局部 + E3006 数组元素）
+  assert_eq(errs.length(), 0, msg="括号包裹四面零误拒（#183）")
+  // excess 一条 W3005（g2 的 {7,8}）
+  assert_eq(warns.filter(w => w.code == 3005).length(), 1)
+  // 全局折值：g ≡ 42
+  match typed.globals[0].init {
+    Some(@ast.Expr::Literal(v, _, _)) => assert_eq(v, 42)
+    _ => fail("g={42} 应解包折叠为 Literal(42)")
+  }
+}

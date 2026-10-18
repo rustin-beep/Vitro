@@ -268,6 +268,30 @@ jobs:
               go run ./scripts/clang_direct
               ;;
           esac
+  corpus-fuzz:
+    name: Adversarial corpus fuzz (mutated corpus vs clang, baseline-locked)
+    needs: build-and-unit
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # ── 对抗分叉防线（2026-10-18 立项，用户拍板制度化）──────────
+      # 存量语料 × 语义靶制变异算子（rules.json 单源；等价变换类 + 已修复
+      # 面定向类——机械数值盲改类已按用户拍板剔除）三方对拍（clang × js ×
+      # native）。指纹基线 fuzz_baseline.json 入库锁定：新指纹/桶恶化红，
+      # 已知未修病条目带 issue 标注归档。CI 动态生成变体不落库（本地缓存
+      # .corpus_fuzz_cache/ gitignored）。js 臂依赖 runner 预装 node。
+      - name: Run corpus fuzz gate (baseline check)
+        shell: bash
+        run: go run ./scripts/corpus_fuzz
+
   gates-native:
     name: Native protocol & parity gates (consume exe)
     needs: build-and-unit
@@ -1152,6 +1176,7 @@ jobs:
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_session.mjs http://127.0.0.1:8931/
+          node demo/tests/e2e_editor.mjs http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

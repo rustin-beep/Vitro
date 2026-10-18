@@ -407,6 +407,17 @@ pub fn TypeChecker::check(
         let folded = self.fold_static_aggregate(g.ty, new_init)
         program.globals[i] = { ..g, init: Some(folded), }
       } else {
+        // 深挖批（2026-10-18，C11 6.7.9p11）：全局标量的大括号包裹解包
+        //（`int g = {42}` ≡ 裸形态；多余元素 W3005 取首——clang -Wexcess
+        // 口径）。聚合/数组已在前两分支分流；解包改写存回后走既有
+        // resolve/assignable/静态折叠链
+        let init = match self.unwrap_scalar_braces(init, g.loc) {
+          Some(u) => {
+            program.globals[i] = { ..g, init: Some(u), }
+            u
+          }
+          None => init
+        }
         // precomputed 命中者取缓存类型（init 已在首段解析改写）；未命中
         // 现场解析（改写存回）——Rust `resolve_expr_type(&mut init)` 的
         // 就地改写语义

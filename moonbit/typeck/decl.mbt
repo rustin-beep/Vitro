@@ -557,6 +557,13 @@ fn TypeChecker::process_var_decl(
         let i = self.check_struct_initializer(var_type_2, init_expr, loc)
         (var_type_2, Some(i))
       } else {
+        // 深挖批（2026-10-18，C11 6.7.9p11）：标量目标的初始化器大括号
+        // 包裹解包——`int x = {5}` ≡ `int x = 5`（多余元素 W3005 取首，
+        // clang -Wexcess 口径）；聚合目标已在前两分支分流，此处安全
+        let init_expr = match self.unwrap_scalar_braces(init_expr, loc) {
+          Some(u) => u
+          None => init_expr
+        }
         // W0-4：char 变量的字符常量/值域内整常量初始化是 C 惯用写法，豁免窄化警告
         let (init_type, resolved) = self.resolve_expr_type(init_expr)
         let suppress = var_type_2.kind() is TK_Char &&

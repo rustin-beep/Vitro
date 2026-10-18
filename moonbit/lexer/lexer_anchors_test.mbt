@@ -474,3 +474,24 @@ test "stdio_macro_cast_body_expansion" {
   // 宏展开后 token 序：cast 体七 token 全量入流（非单 Number）
   assert_true(r.tokens.length() > 8, msg="cast 宏体多 token 入流")
 }
+
+///|
+/// #181（2026-10-18 探针第七批）：字符常量的转义双引号 '\"' ——
+/// C11 §6.4.4.4 简单转义序列（字符串侧早有，char 侧 simple 表漏）。
+/// 旧落「未知字符转义」E1001；修后 text（数值十进制）= 34（'"'）。
+test "char literal escaped double quote" {
+  let r = @lexer.tokenize("int main(){char e = '\u{5c}\"';return 0;}\n")
+  let errs = r.errors
+  assert_eq(
+    errs.length(),
+    0,
+    msg="'\\\"' 是合法简单转义（E1001 零报）",
+  )
+  let c_tok = r.tokens.filter(t => t.ty is CharLiteral)[0]
+  inspect(c_tok.text, content="34")
+  // 对照：转义单引号 '\''（既有臂）同零报错
+  let r2 = @lexer.tokenize("int main(){char q = '\u{5c}\u{27}';return 0;}\n")
+  assert_eq(r2.errors.length(), 0)
+  let q_tok = r2.tokens.filter(t => t.ty is CharLiteral)[0]
+  inspect(q_tok.text, content="39")
+}

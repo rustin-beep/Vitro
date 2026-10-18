@@ -1,5 +1,124 @@
 ## [Unreleased]
 
+### fix(ci+scripts+demo): 云端 CI 双红处置——surface 边漏登记 + E2E DevTools 端口竞态
+
+【surface audit 红（71c658ad run 39127326546）】#162 codegen wbtest
+锚手写 AST 新增 codegen→ast FuncDecl/StructDecl 两条消费边漏登记
+（纪律 11 连坐面）——surface_edges.txt 按字母序补齐，
+moonbit_surface -check 本地复绿。
+
+【Demo E2E 红】E2E 异常 connect ECONNREFUSED 127.0.0.1:9222——
+chrome DevTools 端口就绪前连接（"DevTools listening" 日志出现在
+异常之后 = sleep 4 固定等待竞态实锤）。五个 e2e 脚本
+（diagcard/session/workspace/bootfail/editor）的 /json/list 连接段
+统一加就绪重试（ECONNREFUSED 退避 10×500ms）；node --check 全过、
+本地 Edge 实跑 diagcard 连接链通。**bootfail/editor 为工作区未跟踪
+新文件（用户 #184 demo 在途批）**——同款修复顺带应用，与用户改动
+（W18 锚等）无冲突。
+
+
+### feat(scripts+ci): 对抗分叉防线制度化——scripts/corpus_fuzz（用户拍板：CI 动态生成不落库 + 指纹基线锁定 + 本地缓存）
+
+【形态】存量语料（四 suite 确定性抽样 20×4 种子）× 语义靶制变异
+算子（11 个：等价变换类 cmp_swap/paren_wrap/cast_strip/nested2flat/
+brace_strip + 已修复面定向类 static_inject(#171/#179)/brace_wrap
+(#183)/char_escape(#181)/init_partial/memset_zero(#19)/div2shift）
+→ clang -O0 × js × native 三方对拍分桶（六桶，ARM_DIVERGENCE 最优
+先）。**机械数值盲改类算子（u 后缀/类型互换/常量改写等九个）按用户
+拍板剔除**——对抗要有语义意义，盲改产出随机程序只有噪声。
+
+【指纹基线制】指纹 = (suite/seed, mutator) → bucket；fuzz_baseline.json
+入库（240 条 + 定性 note：gap 族 UB/arch_diff 域、static 运行时初始
+化误收面候选、等价变换真病候选待挖）；新指纹/桶恶化 fail loud rc=1
+（J9 验证：抽基线条目 rc=1 红）；变体 CI 动态生成不落库（本地
+.corpus_fuzz_cache/ gitignored 缓存）。
+
+【CI】corpus-fuzz job（windows，消费 build-products artifact——
+native exe + js 产物 + 预装 node），~4min。
+
+【首跑定性线索（留下批）】CLANG_REJECT×60（static 局部运行时初始化
+vitro 收 clang 拒——误收面候选）；WRONG_VALUE×15（等价变换分叉真病
+候选）；VITRO_TRAP×5（受检 vs UB 崩溃域）。
+
+【管道坑实录】变体必须带 .c 后缀（clang 按扩展名识别——无后缀
+84% 假 CLANG_REJECT）；spawn 必须显式空 stdin（Windows nil 继承终
+端句柄 scanf 族挂死）；native 臂 spawn 漏 --json = 文本模式解析不
+出 → 59% 假 ARM_DIVERGENCE；单例 20s 硬超时兜底。
+
+
+### fix(typeck): 深挖批大货——#183 标量初始化器大括号包裹全线误拒（C11 6.7.9p11 零支持，对抗 excess 形态定性反转）
+
+【定性反转】对抗批 3 例 excess 形态原判「宽容度差异登记不修」——深
+挖 clang 行为（w=4,0,7 恰拟合「{K,M} 作 g 扁平 + {M,K} 给标量 n 取
+首 + 末元素 excess」）后反转：根子是**独立合法语法面全线缺失**——
+C11 §6.7.9p11「标量初始化器为可选大括号包裹的表达式」：`int x={5}`
+≡ 5、`int y={9,10}` 取首 9（clang -Wexcess 警告口径）、标量字段
+`{{7},{'b'}}`、数组标量元素 `{1,{2},3}`、全局 `int g={42}`——九形态
+矩阵全部误拒（报错文案还是误导性 void 错）。
+
+【修】unwrap_scalar_braces 单源（InitList 非空取首 + 多余 W3005；
+空 {} 不解包——C11 空初始化器只给聚合；仅初始化器语境——赋值不吃
+brace）+ 四收口点接线（局部 VarDecl / 全局标量 / check_field_value
+标量字段 / check_array_elem_value 数组元素）。AST 改写单源交既有
+resolve/fold 链——codegen 零改动。
+
+【锚与验收】wbtest scalar_brace_unwrap_four_sites（突变 unwrap
+no-op 化立红验证区分力）；九形态矩阵 + 对抗 H_049/052/055 逐字对齐
+clang（js+native 双臂）；对抗 126 例重拍误拒清零；typeck 74/74、
+vm_diff 四套件 696 全 SAME、裸 824/824、native 970/970。语料 +1
+scalar_brace_init.c；#183 立档（excess「宽容度差异」登记就此销案）。
+
+### fix(typeck): 随机分叉对抗批——elision 域两邻面虫（字符串行部分填充 / 变量扁平流）随挖随修
+
+【对抗面】本轮对话全部修复面随机分叉（生成器 126 例 = elision/char
+变量/转义三域 70 + memchr/sscanf 尾参/struct 实参/符号性折叠/静态
+枚举多维四域 56；clang × js × native 三方对拍分桶）。
+
+【虫 α】struct MD{char d[2][4];} v={"ab"}——多维 char 字符串行部分
+填充（C11 6.7.9p14 当前子对象），clang 零警告接受；旧多维 `_ =>` 臂
+一律拒。修 = StringLiteral + char 基类型放行（codegen #137 臂承接）。
+
+【虫 β】struct S2{char u[2][3];} fv={c,d,0,c,0,0}——#180 首版收紧面
+（全字面量）排除变量流致 E3006。修 = 启用面改「resolve 定型后非聚合」
+（is_scalar_init_expr——变量/算术式可组、聚合值元素仍排除 #143
+形态；顺带回写定型）。
+
+【非虫残余（登记）】excess+深 elision 混合（clang -Wexcess 警告接受/
+vitro 从严拒）——次规范形态维持差异；无终止 %s 越界读 UB 域。
+
+【语料 +1】struct_char_row_partial_init（四段）；vm_diff 四套件 694
+全 SAME、typeck 73/73、裸 823/823；修复后对抗重拍误拒清零。
+
+### fix(codegen+typeck+lexer): 探针六/七批处置——#179/#180 局部初始化双病 + #173 char 变量初始化 + #181 转义双引号（红锚先行）
+
+【#179 struct 成员多维嵌套错位】gen_nested_init 数组臂步长旧用
+elem_type_size（base 元素 4）而 subscript_type() 是子数组（行 12）——
+{{1,2,3},{4,5,6}} 第二行 4 字节步进写穿覆盖前行尾得 1,4,5,6,0,0。
+修 = 步长改 type_size(subscript_type())；与 #171（static 裸数组）、
+emit_field_init（静态 struct）三路径互补归位。
+
+【#180 struct 成员数组 brace elision（C99 6.7.9p20）】typeck 位置
+路径新增纯字面量标量流重组（标量字段吃 1、聚合字段按叶标量总数
+流式消耗，余零填——agg_scalar_leaf_count 递归计量；启用面收紧为
+字面量类叶子防 #143 锚 Member 元素误伤）+ codegen 扁平标量流按
+base 步进（与 #179 行步长互斥两形态；字符串元素仍按行 #137 臂）。
+`{1,2,3,4,5,6}` 旧 E3006+W3005 误拒，现四形态（单聚合/标量前置/
+struct 字段/部分填充）与 clang 逐字一致。
+
+【#173 char 局部数组变量初始化写 0】一维 char 快径 flatten_init_list
+对变量元素落 _=>0 兜底（{c,'\0'} 整串 0 变空串——LONG7 词法器
+op_buf 形态）。修 = 全字面量才走快径，含变量分流 flat 路径；
+flat 的 char 元素（elem_size==1）改 TruncByte+StoreMemByte（旧
+4 字节越权覆盖相邻元素，#177 同族局部症状顺治）。
+
+【#181 字符常量转义双引号】lexer char 侧 simple 表漏 '"' 臂
+（字符串侧早有——C11 6.4.4.4 不对称）。锚 +1（lexer 59/59）。
+
+【语料 +3】struct_nested_2d_member_init（#179/#180 六段）、
+char_escape_quote、char_array_var_init（五段）。【验证】裸 823/823、
+native 969/969；三语料双臂与 clang 逐字一致；五家 freeze + typeck
+四套件连坐零漂移；vm_diff 四套件 691 全 SAME；testcount/facts 全绿。
+
 ### fix(parser+typeck+codegen+scripts): 用户审阅批处置——P1×3 全修（static 枚举折漏接线 / 常量折叠符号性 / #171 多维嵌套）+ 锚补齐 + 钩子 gitignore 根治（红锚先行）
 
 【P1-1 函数内 static + 枚举常量误拒（回归）】fold_enum_in_static_init

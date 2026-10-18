@@ -124,17 +124,44 @@ fn BytecodeGen::gen_nested_init(
           )
         }
       } else if target_ty.is_array() {
-        let elem_size = self.elem_type_size(target_ty)
         let inner_ty = target_ty.subscript_type()
-        for i, elem in elements {
-          let elem_offset = offset + i * elem_size
-          self.gen_nested_init(
-            base_temp,
-            elem_offset,
-            inner_ty,
-            elem.value,
-            loc,
-          )
+        // #180（2026-10-18 探针第七批，C99 §6.7.9p20）：扁平标量流
+        //（无子 InitList）对多维数组按 **base 元素步进**——与 #179 的
+        // 行步长（type_size(subscript_type)）互斥两形态：嵌套子列表走
+        // 行步长、扁平标量流逐元素排布
+        // 字符串字面量元素按「行」处理（char[N] 子数组整体——#137 臂），
+        // 不算扁平标量流
+        let has_sub_list = elements.exists(e => {
+          e.value is InitList(_, _, _) || e.value is StringLiteral(_, _, _)
+        })
+        if inner_ty.is_array() && !has_sub_list {
+          let base_ty = target_ty.base_element_type()
+          let base_size = self.type_size(base_ty)
+          for i, elem in elements {
+            self.gen_nested_init(
+              base_temp,
+              offset + i * base_size,
+              base_ty,
+              elem.value,
+              loc,
+            )
+          }
+        } else {
+          // #179：步长 = 下标一次后的**完整子数组尺寸**（int[2][3] 的
+          // 行 = 12）——旧用 elem_type_size（base 元素 4），第二行起的
+          // 子初始化器写穿覆盖前行尾（实测 {{1,2,3},{4,5,6}} 得
+          // 1,4,5,6,0,0）
+          let elem_size = self.type_size(inner_ty)
+          for i, elem in elements {
+            let elem_offset = offset + i * elem_size
+            self.gen_nested_init(
+              base_temp,
+              elem_offset,
+              inner_ty,
+              elem.value,
+              loc,
+            )
+          }
         }
       } else if elements.length() > 0 {
         self.gen_nested_init(

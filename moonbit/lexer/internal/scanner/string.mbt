@@ -186,6 +186,10 @@ fn Scanner::char_literal(self : Scanner, start : Int32) -> @token.Token {
       'v' => Some(0x0B)
       '\\' => Some('\\')
       '\'' => Some('\'')
+      // #181（2026-10-18 探针第七批）：字符常量里的转义双引号
+      // '\''（C11 §6.4.4.4 简单转义序列表全七对 + 可选双引号；字符串
+      // 侧臂 72 行早有 '\"'——char 侧漏）——旧落「未知字符转义」E1001
+      '"' => Some('"')
       _ => None
     }
     if simple is Some(v) {

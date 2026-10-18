@@ -273,6 +273,18 @@
       "stdout_sha": "2cf24dba5fb0a30e",
       "memory_sha": "c902b06db90f3e2c"
     },
+    "baseline/char_array_var_init.c": {
+      "src_sha": "12219bf5",
+      "exit_code": 0,
+      "stdout_sha": "e62a158f24de9ce2",
+      "memory_sha": "35acc15e914efe78"
+    },
+    "baseline/char_escape_quote.c": {
+      "src_sha": "db09bffd",
+      "exit_code": 0,
+      "stdout_sha": "673f097ea19bd4a9",
+      "memory_sha": "1e1b1947de53465a"
+    },
     "baseline/char_init_no_false_positive.c": {
       "src_sha": "c559bd1e",
       "exit_code": 0,
@@ -1885,6 +1897,12 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "d0d35a757aba8f54"
     },
+    "baseline/scalar_brace_init.c": {
+      "src_sha": "2f45a293",
+      "exit_code": 0,
+      "stdout_sha": "8e6481e97e5d520a",
+      "memory_sha": "815cafb6d2ad3b59"
+    },
     "baseline/scanf_0x_behavior.c": {
       "src_sha": "5a7c0856",
       "exit_code": 0,
@@ -2319,6 +2337,12 @@
       "stdout_sha": "73475cb40a568e8d",
       "memory_sha": "15c57e88025ad99d"
     },
+    "baseline/struct_char_row_partial_init.c": {
+      "src_sha": "ec132f4e",
+      "exit_code": 0,
+      "stdout_sha": "9667fd0503980795",
+      "memory_sha": "0f81448767d4064d"
+    },
     "baseline/struct_copy.c": {
       "src_sha": "c4a785bf",
       "exit_code": 0,
@@ -2330,6 +2354,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "0de051c1d63395aa"
+    },
+    "baseline/struct_nested_2d_member_init.c": {
+      "src_sha": "f16d2ba5",
+      "exit_code": 0,
+      "stdout_sha": "c5336682c25bd1cc",
+      "memory_sha": "21b298254c84be62"
     },
     "baseline/struct_nested_init.c": {
       "src_sha": "54c201ca",

@@ -142,11 +142,13 @@ vitro/engine/codegen vitro/engine/ast AssignOp
 vitro/engine/codegen vitro/engine/ast BinaryOp
 vitro/engine/codegen vitro/engine/ast Designator
 vitro/engine/codegen vitro/engine/ast Expr
+vitro/engine/codegen vitro/engine/ast FuncDecl
 vitro/engine/codegen vitro/engine/ast GlobalDecl
 vitro/engine/codegen vitro/engine/ast InitElement
 vitro/engine/codegen vitro/engine/ast Param
 vitro/engine/codegen vitro/engine/ast ProgramNode
 vitro/engine/codegen vitro/engine/ast Stmt
+vitro/engine/codegen vitro/engine/ast StructDecl
 vitro/engine/codegen vitro/engine/ast StructField
 vitro/engine/codegen vitro/engine/ast Type
 vitro/engine/codegen vitro/engine/ast TypeKind

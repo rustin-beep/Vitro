@@ -132,6 +132,76 @@ pub fn TypeChecker::check_struct_initializer(
           W3005_ArrayInitTooMany,
         )
       }
+      // #180（2026-10-18 探针第七批，C99 §6.7.9p20 brace elision）：
+      // 纯标量扁平流（无子 InitList / 无 designator / 无字符串字面量）且
+      // 存在聚合字段时，按字段序重组——标量字段吃 1 个、聚合字段按
+      // 「叶标量总数」吃满（包成子 InitList 交既有嵌套校验路径）。
+      // clang/gcc 均接受 `struct M{int d[2][3];} m = {1,2,3,4,5,6};`
+      // （LLM 产出高频简洁写法）；旧按位置逐字段比对报 E3006+W3005
+      // 误拒。字符串字面量不进（char[] 成员的 {"Hi"} 形态走 #75 既有
+      // 路径）；带子列表/设计器不进（既有嵌套语义不受扰）。
+      // 启用面（对抗批虫 β 放宽，2026-10-18）：元素 **resolve 定型后
+      // 非聚合**即可组——字面量/变量/算术式（`{c,d,0,c,0,0}` 填
+      // char u[2][3] 的 LLM 高频形态）；聚合值元素（#143 锚的
+      // `{my_rect.tl, my_rect.br}`）仍排除。resolve 幂等且顺带回写
+      // 定型（重组组内用回写后节点）。
+      let can_elide = !has_designators &&
+        !elements.exists(e => {
+          e.value is InitList(_, _, _) ||
+          e.value is StringLiteral(_, _, _) ||
+          !self.is_scalar_init_expr(e.value)
+        }) &&
+        fields.exists(f => f.0.is_array() || f.0.kind() is TK_Struct)
+      if can_elide && elements.length() > 1 {
+        // 顺带回写：组内元素用 resolve 后的定型节点
+        for i = 0; i < elements.length(); i = i + 1 {
+          let (_, nv) = self.resolve_expr_type(elements[i].value)
+          elements[i] = { ..elements[i], value: nv, }
+        }
+        let rebuilt : Array[@ast.InitElement] = []
+        let mut pos = 0
+        for f in fields {
+          if pos >= elements.length() {
+            break
+          }
+          let need = self.agg_scalar_leaf_count(f.0)
+          let remaining = elements.length() - pos
+          // C99 流式消耗：吃满或流尽（部分填充余下零填）——
+          // min(need, 剩余)
+          let take = if need > 0 && need < remaining { need } else { remaining }
+          let is_aggregate = f.0.is_array() || f.0.kind() is TK_Struct
+          if !is_aggregate {
+            // 标量字段原样（包 InitList 会被 else 臂按 void 误报）
+            rebuilt.push(elements[pos])
+            pos += 1
+          } else {
+            let group : Array[@ast.InitElement] = []
+            for k = 0; k < take; k = k + 1 {
+              group.push(elements[pos + k])
+            }
+            pos += take
+            rebuilt.push({
+              designators: [],
+              value: @ast.Expr::InitList(group, loc, f.0),
+            })
+          }
+        }
+        if pos < elements.length() {
+          // 字段吃满后仍有剩余——保留原序（下方既有数量/逐字段检查
+          // 会按超量报 W3005；重组位不吞超量形态）
+          while pos < elements.length() {
+            rebuilt.push(elements[pos])
+            pos += 1
+          }
+        }
+        for i = 0; i < rebuilt.length(); i = i + 1 {
+          elements[i] = rebuilt[i]
+        }
+        let drop_n = elements.length() - rebuilt.length()
+        for k = 0; k < drop_n; k = k + 1 {
+          ignore(elements.pop())
+        }
+      }
       // #157（2026-10-18，C23 §6.7.2.1p23）：柔性数组成员不可初始化
       //（clang "initialization of flexible array member" / gcc "non-
       // static initialization…"；仅初始化固定成员合法——柔性成员缺省）。
@@ -219,6 +289,13 @@ fn TypeChecker::check_field_value(
     let (_, new_value) = self.check_array_initializer(field_ty, value, loc)
     new_value
   } else {
+    // 深挖批（2026-10-18，C11 6.7.9p11）：标量字段的括号包裹解包
+    //（`struct S{int n;} s = {{7}}`——{7} ≡ 7；H_049 对抗形态的
+    // `{M,K}` 给标量 n 取首 M + excess W）
+    let value = match self.unwrap_scalar_braces(value, loc) {
+      Some(u) => u
+      None => value
+    }
     let (e_type, new_value) = self.resolve_expr_type(value)
     if !self.check_assignable(field_ty, e_type, loc, value_expr=new_value) {
       // issue #19 销案（2026-10-06）：C11 §6.7.9 花括号省略/零初始化——
@@ -266,6 +343,82 @@ fn find_field(fields : Array[(@ast.Type, String)], name : String) -> Int32? {
     }
   }
   None
+}
+
+///|
+/// 初始化器元素是否标量表达式（#180 elision 启用面判定，对抗批虫 β
+/// 2026-10-18）：resolve 定型后非 struct/union/array 即可参与扁平流
+/// 重组——覆盖变量/算术式（LLM 高频 `{c,d,0,...}` 形态）；聚合值元素
+/// （#143 锚的 struct Member）返回 false 排除。resolve 幂等可重复调。
+fn TypeChecker::is_scalar_init_expr(self : TypeChecker, e : @ast.Expr) -> Bool {
+  let (ety, _) = self.resolve_expr_type(e)
+  !(ety.kind() is TK_Struct) && !(ety.kind() is TK_Union) && !ety.is_array()
+}
+
+///|
+/// 标量初始化器的大括号解包（深挖批 2026-10-18，C11 §6.7.9p11：
+/// 「标量的初始化器应为可选大括号包裹的表达式」——`int x = {5}` ≡
+/// `int x = 5`；多余元素对齐 clang `-Wexcess`（warning + 取首元素，
+/// `int y = {9,10}` → 9）。**仅初始化器语境接线**（赋值表达式不吃
+/// brace——C 赋值无此形态）；空 `{}` 不解包（C11 空初始化器只给聚合，
+/// 维持原路径报错）。返回 Some(解包表达式) / None(非包裹形态)。
+fn TypeChecker::unwrap_scalar_braces(
+  self : TypeChecker,
+  init : @ast.Expr,
+  loc : @source.SourceLoc,
+) -> @ast.Expr? {
+  match init {
+    InitList(elems, _, _) =>
+      if elems.length() == 0 {
+        None
+      } else {
+        if elems.length() > 1 {
+          self.report_warning(
+            "标量初始化器多余元素已忽略（取首元素——C11 6.7.9p11 包裹形态）",
+            loc,
+            W3005_ArrayInitTooMany,
+          )
+        }
+        Some(elems[0].value)
+      }
+    _ => None
+  }
+}
+
+///|
+/// 聚合类型的「叶标量总数」（#180 brace elision 重组的消耗计量）：
+/// 标量 1；数组 = 全维积（total_elements 已是 base 叶数）；struct =
+/// 递归各字段之和；union 取 1（C 语义 union 初始化只填第一成员——
+/// 教学近似）；其余（函数/void 等）按 1 计。
+fn TypeChecker::agg_scalar_leaf_count(
+  self : TypeChecker,
+  ty : @ast.Type,
+) -> Int32 {
+  if ty.is_array() {
+    let n = ty.total_elements()
+    if n > 0 {
+      n
+    } else {
+      1
+    }
+  } else if ty.kind() is TK_Struct {
+    match self.structs.get(ty.name()) {
+      Some(sym) => {
+        let mut total = 0
+        for pair in sym.fields {
+          total += self.agg_scalar_leaf_count(pair.0)
+        }
+        if total > 0 {
+          total
+        } else {
+          1
+        }
+      }
+      None => 1
+    }
+  } else {
+    1
+  }
 }
 
 ///|
@@ -462,6 +615,15 @@ pub fn TypeChecker::check_array_initializer(
       }
       _ => {
         let (init_type, new_init) = self.resolve_expr_type(init)
+        // 对抗批虫 α（2026-10-18）：`struct MD{char d[2][4];} v = {"ab"}`
+        // ——字符串字面量初始化多维 char 数组的**当前子对象**（首行，
+        // C11 §6.7.9p14——clang 零警告接受 `[ab][]`）；旧一律按「非嵌套
+        // 列表」拒。codegen gen_nested_init 的 #137 char[N] 直写臂 +
+        // 行步长分派已承接，typeck 放行即可（非 char 基类型不进此路径
+        //——#75 臂已限定）。
+        if init is StringLiteral(_, _, _) && elem_type.kind() is TK_Char {
+          return (arr_type, new_init)
+        }
         self.report_error(
           "多维数组初始化必须使用嵌套初始化列表，不能是 '\{init_type.to_c_string()}'",
           loc,
@@ -646,6 +808,12 @@ fn TypeChecker::check_array_elem_value(
     let (_, new_value) = self.check_array_initializer(elem_type, value, loc)
     new_value
   } else {
+    // 深挖批（2026-10-18，C11 6.7.9p11）：数组标量元素的括号包裹解包
+    //（`int a[3] = {1,{2},3}`——`{2}` ≡ 2）
+    let value = match self.unwrap_scalar_braces(value, loc) {
+      Some(u) => u
+      None => value
+    }
     let (e_type, new_value) = self.resolve_expr_type(value)
     // W0-4：char 元素的字符常量/值域内整常量初始化是 C 惯用写法，豁免窄化警告
     let suppress = elem_type.kind() is TK_Char &&

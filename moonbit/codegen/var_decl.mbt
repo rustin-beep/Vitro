@@ -565,17 +565,32 @@ fn BytecodeGen::emit_local_array_init(
         _ => false
       }
       if is_char_array {
-        let values = flatten_init_list(elements, self.errors)
-        let byte_count = vty.array_size()
-        for i in 0..<byte_count {
-          self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
-          self.emit(@opcode.OpCode::PushConst, i, loc)
-          self.emit(@opcode.OpCode::Add, 0, loc)
-          let byte = if i < values.length() { values[i] } else { 0 }
-          self.emit(@opcode.OpCode::PushConst, byte, loc)
-          self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+        // #173（2026-10-18 探针第六批）：flatten 快径只认字面量形态
+        //（变量/表达式元素在 flatten_init_list 落 `_ => 0` 兜底——
+        // `char b[2]={c,'\0'}` 整串写 0 变空串）；含非字面量元素时
+        // 分流 flat 通用路径（gen_expr 运行时求值——U1#2 形态）
+        fn is_const_elem(e : @ast.InitElement) -> Bool {
+          match e.value {
+            Literal(_, _, _) | LongLiteral(_, _, _) | FloatLiteral(_, _, _) =>
+              true
+            Unary(@ast.UnaryOp::Neg, Literal(_, _, _), _, _) => true
+            _ => false
+          }
         }
-        return
+        let all_const = !elements.exists(e => !is_const_elem(e))
+        if all_const {
+          let values = flatten_init_list(elements, self.errors)
+          let byte_count = vty.array_size()
+          for i in 0..<byte_count {
+            self.emit(@opcode.OpCode::LoadLocal, base_temp, loc)
+            self.emit(@opcode.OpCode::PushConst, i, loc)
+            self.emit(@opcode.OpCode::Add, 0, loc)
+            let byte = if i < values.length() { values[i] } else { 0 }
+            self.emit(@opcode.OpCode::PushConst, byte, loc)
+            self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+          }
+          return
+        }
       }
       let inner_ty = vty.subscript_type()
       let has_nested_init = elements.exists(e => e.value is InitList(_, _, _))
@@ -726,7 +741,13 @@ fn BytecodeGen::emit_flat_array_init(
       match elements.get(i) {
         Some(elem) => {
           self.gen_expr(elem.value)
-          if elem_size == 8 {
+          // #173 连坐：char 数组元素按 1 字节 store（TruncByte 先截——
+          // int 域表达式赋 char 元素的 C 窄化；旧 4 字节 StoreMem 越权
+          // 覆盖相邻元素）
+          if elem_size == 1 {
+            self.emit(@opcode.OpCode::TruncByte, 0, loc)
+            self.emit(@opcode.OpCode::StoreMemByte, 0, loc)
+          } else if elem_size == 8 {
             self.emit(@opcode.OpCode::StoreMemD, 0, loc)
           } else {
             self.emit(@opcode.OpCode::StoreMem, 0, loc)

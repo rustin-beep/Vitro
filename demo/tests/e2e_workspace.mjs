@@ -101,11 +101,22 @@ async function pickLesson(id, waitMs = 30000) {
 }
 
 async function run() {
-  const targets = await new Promise((resolve, reject) => {
-    http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
-      let b = ""; res.on("data", (c) => (b += c)); res.on("end", () => { try { resolve(JSON.parse(b)); } catch (e) { reject(e); } });
-    }).on("error", reject);
-  });
+  const targets = await (async () => {
+    // CI 竞态修复（2026-10-18）：chrome DevTools 端口就绪前连接会
+    // ECONNREFUSED（sleep 固定等待竞态）——拒绝即退避重试（10×500ms）
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await new Promise((resolve, reject) => {
+          http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
+    let b = ""; res.on("data", (c) => (b += c)); res.on("end", () => { try { resolve(JSON.parse(b)); } catch (e) { reject(e); } });
+          }).on("error", reject);
+        });
+        } catch (e) {
+          if (attempt >= 9 || !String(e).includes("ECONNREFUSED")) throw e;
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+  })();
   const pages = targets.filter((t) => t.type === "page");
   const page = pages.find((t) => t.url.includes("index.html")) ?? pages[pages.length - 1];
   if (!page) throw new Error("CDP 无 page target");

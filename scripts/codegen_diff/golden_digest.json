@@ -49,6 +49,8 @@
         "char2d_string_init.c": "bd6c3c9b",
         "char_arr_no_size.c": "3886e7ed",
         "char_array_init.c": "a9a7459f",
+        "char_array_var_init.c": "12219bf5",
+        "char_escape_quote.c": "db09bffd",
         "char_init_no_false_positive.c": "c559bd1e",
         "char_literal.c": "66ec14b0",
         "char_signedness.c": "558096f8",
@@ -316,6 +318,7 @@
         "realloc_shrink.c": "d7cb943b",
         "recursive_function.c": "7ef6ad96",
         "reverse_array.c": "afd801dd",
+        "scalar_brace_init.c": "2f45a293",
         "scanf_0x_behavior.c": "d808487a",
         "scanf_digit_mismatch.c": "bf658db3",
         "scanf_eof_after_exhaust.c": "b3b8767a",
@@ -388,8 +391,10 @@
         "struct_array_nested_init.c": "856da7ce",
         "struct_assign.c": "f31b2b41",
         "struct_basic.c": "981e9927",
+        "struct_char_row_partial_init.c": "ec132f4e",
         "struct_copy.c": "c4a785bf",
         "struct_member_array.c": "18213307",
+        "struct_nested_2d_member_init.c": "f16d2ba5",
         "struct_nested_init.c": "54c201ca",
         "struct_pointer_access.c": "ae064328",
         "struct_ret_stmt_leak.c": "35ded490",
@@ -592,6 +597,12 @@
         },
         "char_array_init.c": {
           "result_sha": "e2eedd04c9eaeb5c"
+        },
+        "char_array_var_init.c": {
+          "result_sha": "ac2033a87a55f777"
+        },
+        "char_escape_quote.c": {
+          "result_sha": "96eb78d3b1ffa91c"
         },
         "char_init_no_false_positive.c": {
           "result_sha": "7a68f17130020183"
@@ -1404,6 +1415,9 @@
         "reverse_array.c": {
           "result_sha": "86ae574cbcb8067a"
         },
+        "scalar_brace_init.c": {
+          "result_sha": "2c78ec0c4974c5ed"
+        },
         "scanf_0x_behavior.c": {
           "result_sha": "3c971c671cf5b60d"
         },
@@ -1622,11 +1636,17 @@
         "struct_basic.c": {
           "result_sha": "239a2297e5fcfbb2"
         },
+        "struct_char_row_partial_init.c": {
+          "result_sha": "0bc87bd3d187f2bc"
+        },
         "struct_copy.c": {
           "result_sha": "28492e156dbf0184"
         },
         "struct_member_array.c": {
           "result_sha": "0be2704f6b8f510d"
+        },
+        "struct_nested_2d_member_init.c": {
+          "result_sha": "d99e5e262f672525"
         },
         "struct_nested_init.c": {
           "result_sha": "0bbdbc4ede0953cd"

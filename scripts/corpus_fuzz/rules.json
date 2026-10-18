@@ -1,0 +1,25 @@
+{
+  "_comment": "corpus_fuzz 规则单源（2026-10-18 立项）。算子语义靶制（用户拍板：对抗要有意义、非机械数值改动——机械类盲改算子已删）：等价变换类 = cmp_swap/paren_wrap/cast_strip/nested2flat/brace_strip（两侧应同值，任何分叉=引擎病）；域定向类 = static_inject(#171/#179)/brace_wrap(#183)/char_escape(#181)/init_partial(部分填充)/memset_zero(#19 零初始化族)/div2shift(负数除移位 C 语义)。算子名与 main.go 强契约（未知名 fail loud）。规模：4 suite × 20 种子 × 3 算子 = 240 变体。",
+  "seeds_per_suite": 20,
+  "mutators_per_seed": 3,
+  "seed": 20261018,
+  "mutators": [
+    "static_inject",
+    "brace_wrap",
+    "brace_strip",
+    "char_escape",
+    "init_partial",
+    "memset_zero",
+    "div2shift",
+    "cmp_swap",
+    "paren_wrap",
+    "cast_strip",
+    "nested2flat"
+  ],
+  "suites": [
+    "baseline",
+    "knr",
+    "leetcode",
+    "gap"
+  ]
+}

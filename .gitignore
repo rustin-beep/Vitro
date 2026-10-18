@@ -216,3 +216,6 @@ demo/design/
 # 浏览器 E2E 本地启动的 headless user-data-dir（CI 同款目录名 .chrome-e2e / 本地验证 .chrome-e2e-local——Chromium profile 是纯运行时生成物）
 .chrome-e2e/
 .chrome-e2e-local/
+
+# corpus_fuzz 对抗分叉缓存（CI 动态生成不落库——scripts/corpus_fuzz）
+.corpus_fuzz_cache/

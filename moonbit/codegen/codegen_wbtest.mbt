@@ -425,6 +425,7 @@ test "vardecl: scalar int init instruction sequence" {
                 Some(@ast.Expr::Literal(3, loc(2), @ast.Type::int())),
                 [],
                 false,
+                false,
                 loc(2),
               ),
               @ast.Stmt::Return(
@@ -679,6 +680,7 @@ test "expr-core: int add + implicit promotion chain" {
                 ),
                 [],
                 false,
+                false,
                 loc(2),
               ),
               @ast.Stmt::Return(
@@ -885,4 +887,47 @@ test "skeleton: global designated initializer index sparse fill" {
     [(1032U, 7), (1044U, 9)],
     msg="Index designator 按下标稀疏落位",
   )
+}
+
+///|
+/// #153：flatten_init_list 对超 int32 的常量不再上报——范围判断发生在
+/// 无目标类型上下文里（long long → unsigned int 的隐式转换合法，
+/// typeck check_assignable 已放行），上报与全局标量路径 LongLiteral
+/// `value.to_int()` 位模式截断语义（var_decl.mbt:300）自相矛盾。
+/// i32 位模式断言：4294967295 → -1、-4294967295 → 1（模 2^32 = C 转换语义）。
+test "flatten_init_list_no_int_range_reject" {
+  let lloc = @source.SourceLoc::new(1, 1)
+  let elems : Array[@ast.InitElement] = [
+    {
+      designators: [],
+      value: @ast.Expr::LongLiteral(
+        4294967295L,
+        lloc,
+        @ast.Type::unsigned_int(),
+      ),
+    },
+    {
+      designators: [],
+      value: @ast.Expr::Unary(
+        @ast.UnaryOp::Neg,
+        @ast.Expr::LongLiteral(
+          4294967295L,
+          lloc,
+          @ast.Type::LongLong(false, false),
+        ),
+        lloc,
+        @ast.Type::LongLong(false, false),
+      ),
+    },
+  ]
+  let errors : Array[String] = []
+  let values = flatten_init_list(elems, errors)
+  assert_eq(
+    errors.length(),
+    0,
+    msg="unsigned 域常量不应在无类型上下文被拒",
+  )
+  assert_eq(values.length(), 2, msg="两元素均应落值")
+  assert_eq(values[0], -1, msg="4294967295 的 i32 位模式是 -1")
+  assert_eq(values[1], 1, msg="-4294967295 模 2^32 = 1")
 }

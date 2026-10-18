@@ -79,7 +79,7 @@ test "call_user_func_four_level_fallback" {
   )
   let body : @ast.Stmt = @ast.Stmt::Block(
     [
-      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, loc),
+      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, false, loc),
       call("f", None, loc),
       call("f", Some(x_ptr), loc),
       call("g", Some(@ast.Expr::Literal(1, loc, @ast.Type::int())), loc),
@@ -219,7 +219,7 @@ test "call_printf_scanf_arg_index_ordinal" {
     [
       call1("printf", "%f", int_lit(loc), loc), // W3062：第 2 个参数 'int'
       call1("printf", "%d", dbl_lit(loc), loc), // W3062：第 2 个参数 'double'
-      @ast.Stmt::VarDecl(@ast.Type::double(), "d", None, [], false, loc),
+      @ast.Stmt::VarDecl(@ast.Type::double(), "d", None, [], false, false, loc),
       call1("scanf", "%d", addr_of_d(loc), loc), // E3063：第 2 个参数
     ],
     loc,
@@ -267,6 +267,7 @@ test "call_ptr_three_tracks" {
     Some(@ast.Expr::Identifier("add", loc, @ast.Type::void_type())),
     [],
     false,
+    false,
     loc,
   )
   fn var_init(
@@ -274,7 +275,15 @@ test "call_ptr_three_tracks" {
     init : @ast.Expr,
     loc : @source.SourceLoc,
   ) -> @ast.Stmt {
-    @ast.Stmt::VarDecl(@ast.Type::int(), name, Some(init), [], false, loc)
+    @ast.Stmt::VarDecl(
+      @ast.Type::int(),
+      name,
+      Some(init),
+      [],
+      false,
+      false,
+      loc,
+    )
   }
   let fp_call : @ast.Expr = @ast.Expr::CallPtr(
     @ast.Expr::Identifier("fp", loc, @ast.Type::void_type()),
@@ -299,7 +308,7 @@ test "call_ptr_three_tracks" {
       fp_decl,
       var_init("r1", fp_call, loc),
       var_init("r2", add_call, loc),
-      @ast.Stmt::VarDecl(@ast.Type::int(), "q", None, [], false, loc),
+      @ast.Stmt::VarDecl(@ast.Type::int(), "q", None, [], false, false, loc),
       @ast.Stmt::Expr(q_call, loc),
     ],
     loc,
@@ -315,7 +324,7 @@ test "call_ptr_three_tracks" {
   match typed.funcs[1].body {
     Some(Block(stmts, _)) =>
       match stmts[1] {
-        VarDecl(_, "r1", Some(CallPtr(_, _, _, ty)), _, _, _) =>
+        VarDecl(_, "r1", Some(CallPtr(_, _, _, ty)), _, _, _, _) =>
           assert_true(ty is Int(_, _))
         _ => fail("r1 应为 CallPtr init")
       }
@@ -486,7 +495,7 @@ test "file_pointer_arg_three_state_anchor" {
     @ast.Expr::FloatLiteral(1.5, loc, @ast.Type::double())
   }
   fn bad_var_decl(loc : @source.SourceLoc) -> @ast.Stmt {
-    @ast.Stmt::VarDecl(@ast.Type::int(), "bad", None, [], false, loc)
+    @ast.Stmt::VarDecl(@ast.Type::int(), "bad", None, [], false, false, loc)
   }
   fn bad_var(loc : @source.SourceLoc) -> @ast.Expr {
     @ast.Expr::Identifier("bad", loc, @ast.Type::void_type())

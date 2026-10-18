@@ -66,7 +66,15 @@ test "stmt_return_checks" {
       main_of(
         @ast.Stmt::Block(
           [
-            @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, loc),
+            @ast.Stmt::VarDecl(
+              @ast.Type::int(),
+              "x",
+              None,
+              [],
+              false,
+              false,
+              loc,
+            ),
             @ast.Stmt::Return(Some(addr), loc),
           ],
           loc,
@@ -180,12 +188,13 @@ test "var_typeof_deduce" {
   )
   let body : @ast.Stmt = @ast.Stmt::Block(
     [
-      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, loc),
+      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, false, loc),
       @ast.Stmt::VarDecl(
         typeof_int,
         "y",
         Some(@ast.Expr::Identifier("x", loc, @ast.Type::void_type())),
         [],
+        false,
         false,
         loc,
       ),
@@ -198,7 +207,7 @@ test "var_typeof_deduce" {
   match typed.funcs[0].body {
     Some(Block(stmts, _)) =>
       match stmts[1] {
-        VarDecl(ty, "y", _, _, _, _) => assert_true(ty is Int(_, _)) // typeof(x) → int 替换
+        VarDecl(ty, "y", _, _, _, _, _) => assert_true(ty is Int(_, _)) // typeof(x) → int 替换
         _ => fail("y 声明")
       }
     _ => fail("body")
@@ -221,7 +230,7 @@ test "condition_warnings" {
   )
   let body : @ast.Stmt = @ast.Stmt::Block(
     [
-      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, loc),
+      @ast.Stmt::VarDecl(@ast.Type::int(), "x", None, [], false, false, loc),
       @ast.Stmt::If(assign_cond, @ast.Stmt::Block([], loc), None, loc),
     ],
     loc,
@@ -252,7 +261,7 @@ test "condition_warnings" {
     @ast.Type::void_type(),
   )
   let for_stmt : @ast.Stmt = @ast.Stmt::For(
-    Some(@ast.Stmt::VarDecl(@ast.Type::int(), "i", None, [], false, loc)),
+    Some(@ast.Stmt::VarDecl(@ast.Type::int(), "i", None, [], false, false, loc)),
     Some(le),
     [],
     @ast.Stmt::Expr(idx, loc),
@@ -265,6 +274,7 @@ test "condition_warnings" {
         "a",
         None,
         [],
+        false,
         false,
         loc,
       ),
@@ -365,6 +375,7 @@ test "init_self_reference_scope_issue75_g2" {
     Some(@ast.Expr::Literal(5, @source.SourceLoc::new(2, 9), @ast.Type::int())),
     [],
     false,
+    false,
     @source.SourceLoc::new(2, 5),
   )
   ignore(tc.dispatch_stmt(n_decl))
@@ -389,6 +400,7 @@ test "init_self_reference_scope_issue75_g2" {
     Some(p_init),
     [],
     false,
+    false,
     @source.SourceLoc::new(3, 8),
   )
   ignore(tc.dispatch_stmt(p_decl))
@@ -404,11 +416,279 @@ test "init_self_reference_scope_issue75_g2" {
     Some(@ast.Expr::Literal(7, @source.SourceLoc::new(5, 9), @ast.Type::int())),
     [],
     false,
+    false,
     @source.SourceLoc::new(5, 5),
   )
   ignore(tc.dispatch_stmt(dup))
   assert_true(
     tc.errors.length() >= 1,
     msg="真重声明维持 E3001（含级联）",
+  )
+}
+
+///|
+/// #156：register 变量取地址 → E3078（clang "address of register variable
+/// requested"，C11 §6.7.1p4 约束）。裸 Identifier 操作数形态；非 register
+/// 取地址零报反向锚。
+test "register_addr_of_rejected" {
+  let loc = @source.SourceLoc::new(2, 5)
+  // register int x = 5; int *p = &x;
+  let reg_decl = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "x",
+    Some(@ast.Expr::Literal(5, loc, @ast.Type::int())),
+    [],
+    false,
+    true,
+    loc,
+  )
+  let addr = @ast.Stmt::VarDecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("x", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    empty_prog([main_of(@ast.Stmt::Block([reg_decl, addr], loc))]),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3078),
+    msg="register 变量取地址应报 E3078",
+  )
+}
+
+///|
+/// #156 反向：普通变量取地址零报（E3078 不得误伤常规 &x）。
+test "plain_addr_of_allowed" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let decl = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "x",
+    Some(@ast.Expr::Literal(5, loc, @ast.Type::int())),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let addr = @ast.Stmt::VarDecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("x", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    empty_prog([main_of(@ast.Stmt::Block([decl, addr], loc))]),
+  )
+  assert_false(
+    errs.exists(e => e.code == 3078),
+    msg="普通变量取地址不应报 E3078",
+  )
+}
+
+///|
+/// #156 作用域遮蔽：外层普通 x + 内层 register x，内层 &x 报、退层后
+/// 外层 &x 不报（VarSymbol 随 scope 栈天然感知）。
+test "register_shadowing_scope_aware" {
+  let loc = @source.SourceLoc::new(2, 5)
+  fn addr_stmt() -> @ast.Stmt {
+    @ast.Stmt::Expr(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("x", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+      loc,
+    )
+  }
+  let plain_decl = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "x",
+    None,
+    [],
+    false,
+    false,
+    loc,
+  )
+  let reg_decl = @ast.Stmt::VarDecl(
+    @ast.Type::int(),
+    "x",
+    None,
+    [],
+    false,
+    true,
+    loc,
+  )
+  // { int x; { register int x; &x; } &x; }
+  let body = @ast.Stmt::Block(
+    [plain_decl, @ast.Stmt::Block([reg_decl, addr_stmt()], loc), addr_stmt()],
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(empty_prog([main_of(body)]))
+  let hits = errs.filter(e => e.code == 3078)
+  assert_eq(hits.length(), 1, msg="仅内层 register x 的取址报一次")
+}
+
+///|
+/// #156：register 数组下标使用 → E3078（下标隐含退化 = 取址；clang 22 /
+/// gcc 对 `register int a[3]; a[0] = 5;` 一律 error——退化语义实测）。
+test "register_array_index_rejected" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let reg_arr = @ast.Stmt::VarDecl(
+    @ast.Type::Array(@ast.Type::int(), 3, [3], false, false, []),
+    "a",
+    None,
+    [],
+    false,
+    true,
+    loc,
+  )
+  let use_idx = @ast.Stmt::Expr(
+    @ast.Expr::Index(
+      @ast.Expr::Identifier("a", loc, @ast.Type::int()),
+      @ast.Expr::Literal(0, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::int(),
+    ),
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    empty_prog([main_of(@ast.Stmt::Block([reg_arr, use_idx], loc))]),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3078),
+    msg="register 数组下标应报 E3078",
+  )
+}
+
+///|
+/// #157：柔性数组成员聚合初始化 → E3079（C23 §6.7.2.1p23：含柔性数组
+/// 成员的结构体该成员不可初始化；clang "initialization of flexible
+/// array member" / gcc "non-static initialization of a flexible array
+/// member"）。`struct Flex {int n; int d[];}` + `{2, {10,20}}` 报；
+/// 仅初始化固定成员 `{2}` 合法零报。
+fn flex_prog(init_elems : Array[@ast.InitElement]) -> @ast.ProgramNode {
+  let loc = @source.SourceLoc::new(1, 1)
+  let flex_struct : @ast.StructDecl = {
+    loc,
+    name: "Flex",
+    fields: [
+      { ty: @ast.Type::int(), name: "n", },
+      {
+        ty: @ast.Type::Array(@ast.Type::int(), -1, [-1], false, false, []),
+        name: "d",
+      },
+    ],
+    is_forward: false,
+  }
+  let f_decl = @ast.Stmt::VarDecl(
+    @ast.Type::struct_type("Flex"),
+    "f",
+    Some(@ast.Expr::InitList(init_elems, loc, @ast.Type::void_type())),
+    [],
+    false,
+    false,
+    loc,
+  )
+  let prog = empty_prog([main_of(@ast.Stmt::Block([f_decl], loc))])
+  prog.structs.push(flex_struct)
+  prog
+}
+
+///|
+test "flexible_array_member_init_rejected" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let elems : Array[@ast.InitElement] = [
+    { designators: [], value: @ast.Expr::Literal(2, loc, @ast.Type::int()), },
+    {
+      designators: [],
+      value: @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Literal(10, loc, @ast.Type::int()),
+          },
+          {
+            designators: [],
+            value: @ast.Expr::Literal(20, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    },
+  ]
+  let tc = TypeChecker::new()
+  let (prog, errs, _, _) = tc.check(flex_prog(elems))
+  ignore(prog)
+  assert_true(
+    errs.exists(e => e.code == 3079),
+    msg="柔性数组成员初始化应报 E3079",
+  )
+}
+
+///|
+/// #157 反向：仅初始化固定成员（柔性成员缺省）合法零报。
+test "flexible_array_member_fixed_only_allowed" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let elems : Array[@ast.InitElement] = [
+    { designators: [], value: @ast.Expr::Literal(2, loc, @ast.Type::int()), },
+  ]
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(flex_prog(elems))
+  assert_false(
+    errs.exists(e => e.code == 3079),
+    msg="仅初始化固定成员不应报 E3079",
+  )
+}
+
+///|
+/// #157 定义面：柔性数组成员不在末位 → E3079（clang "flexible array
+/// member is not at the end of struct"）。
+test "flexible_member_not_last_rejected" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let bad_struct : @ast.StructDecl = {
+    loc,
+    name: "Bad",
+    fields: [
+      {
+        ty: @ast.Type::Array(@ast.Type::int(), -1, [-1], false, false, []),
+        name: "d",
+      },
+      { ty: @ast.Type::int(), name: "n", },
+    ],
+    is_forward: false,
+  }
+  let prog = empty_prog([])
+  prog.structs.push(bad_struct)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(prog)
+  assert_true(
+    errs.exists(e => e.code == 3079),
+    msg="柔性成员非末位应报 E3079",
   )
 }

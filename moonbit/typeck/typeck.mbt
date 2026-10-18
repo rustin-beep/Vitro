@@ -150,6 +150,21 @@ pub fn TypeChecker::check(
         }
       None => ()
     }
+    // #157（2026-10-18，C23 §6.7.2.1p23 约束）：柔性数组成员（首维
+    // 未知的数组成员 `int d[]`，dims[0] == -1）只允许出现在最后一个
+    // 成员位且须有另一命名成员——非末位 / 孤立柔性均报 E3079（clang
+    // "flexible array member is not at the end of struct" /
+    // "flexible array member in otherwise empty struct"）
+    for i, f in s.fields {
+      if is_flexible_array_member(f.ty) &&
+        (i != s.fields.length() - 1 || s.fields.length() < 2) {
+        self.report_error(
+          "柔性数组成员 '\{f.name}' 必须是结构体的最后一个成员且须有其他命名成员（C23 约束）",
+          s.loc,
+          E3079_FlexibleArrayInit,
+        )
+      }
+    }
   }
   for u in program.unions {
     if u.is_forward {

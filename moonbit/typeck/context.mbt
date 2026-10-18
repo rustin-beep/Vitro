@@ -27,6 +27,7 @@ pub fn TypeChecker::declare_var(
   is_extern~ : Bool,
   is_static~ : Bool,
   predeclared~ : Bool = false,
+  is_register~ : Bool = false,
   loc~ : @source.SourceLoc = @source.SourceLoc::new(0, 0),
 ) -> Unit {
   // #150 对抗补（2026-10-18）：extern 族类型判等——type_eq 之外加
@@ -108,6 +109,7 @@ pub fn TypeChecker::declare_var(
             is_extern: existing.is_extern,
             is_static: existing.is_static,
             predeclared: existing.predeclared,
+            is_register: existing.is_register,
           })
         }
         return
@@ -121,6 +123,7 @@ pub fn TypeChecker::declare_var(
           is_extern,
           is_static,
           predeclared,
+          is_register,
         })
         return
       }
@@ -135,6 +138,7 @@ pub fn TypeChecker::declare_var(
           is_extern,
           is_static,
           predeclared: false,
+          is_register,
         })
         return
       }
@@ -146,6 +150,7 @@ pub fn TypeChecker::declare_var(
           is_extern,
           is_static,
           predeclared,
+          is_register,
         })
         return
       }
@@ -163,6 +168,7 @@ pub fn TypeChecker::declare_var(
         is_extern,
         is_static,
         predeclared,
+        is_register,
       })
   }
 }
@@ -243,6 +249,7 @@ pub fn TypeChecker::update_var_type(
           is_extern: sym.is_extern,
           is_static: sym.is_static,
           predeclared: sym.predeclared,
+          is_register: sym.is_register,
         })
         return
       }

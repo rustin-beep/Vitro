@@ -223,12 +223,22 @@ priv struct Parser {
   /// 收割即报错（C 禁止参数存储类）。不进 Rollback：试探路径 re-parse
   /// 幂等置位无害，读点收割即复位；parse_program 每轮兜底清防跨声明残留
   mut pending_static : Bool
+  /// #156（2026-10-18）：parse_base_type 限定符循环 / 声明入口预吞吞到的
+  /// register 存储类（`register int x = 5; &x` 应拒）。pending_static
+  /// 同款：读点收割即复位，parse_program 每轮兜底清防跨声明残留，
+  /// 不进 Rollback（试探路径 re-parse 幂等置位无害）
+  mut pending_register : Bool
   /// #78（2026-10-13）：枚举常量表（成员名 → 值）——enum 声明注册，
   /// const_int_of/array_dim_info/eval_enum_const 的 Ident 叶子查表折叠
   /// （C11 §6.4.4.3 枚举常量是整型常量表达式——`t[N]` 非 VLA）。
   /// 进 Rollback（typedef_names 同款整表拷贝）：enum 成员与 typedef 名
   /// 同为符号面，试探路径回滚须一致回滚
   mut enum_const_values : Map[String, Int64]
+  /// #154（2026-10-18）：构造期预置 typedef 名集（with_mode 的 FILE）——
+  /// 预置是「伪 include」实现细节非用户声明，declare_typedef 判重跳过
+  /// （否则内置头 `typedef void* FILE` 对预置 void 升级被误报 E3077）。
+  /// 构造期定死、只读，不进 Rollback
+  builtin_typedefs : Set[String]
 }
 
 ///|
@@ -273,6 +283,8 @@ fn Parser::with_mode(
   let template_names : Set[String] = Set([])
   // 预定义 FILE 类型（stdio.h 中的不透明结构体指针）
   typedef_names.set("FILE", @ast.Type::void_type())
+  let builtin_typedefs : Set[String] = Set([])
+  builtin_typedefs.add("FILE")
   // 预注册 C++ 内置容器类型名
   if is_cpp_mode {
     register_cpp_builtin_types(typedef_names, template_names)
@@ -282,6 +294,7 @@ fn Parser::with_mode(
     errors: [],
     typedef_names,
     template_names,
+    builtin_typedefs,
     pos: 0,
     anonymous_structs: [],
     anonymous_unions: [],
@@ -294,6 +307,7 @@ fn Parser::with_mode(
     current_class: [],
     stall_count: 0,
     pending_static: false,
+    pending_register: false,
     enum_const_values: Map([]),
   }
 }
@@ -303,6 +317,14 @@ fn Parser::with_mode(
 fn Parser::take_pending_static(self : Parser) -> Bool {
   let v = self.pending_static
   self.pending_static = false
+  v
+}
+
+///|
+/// #156：收割 register 存储类（pending_static 同款读即复位）。
+fn Parser::take_pending_register(self : Parser) -> Bool {
+  let v = self.pending_register
+  self.pending_register = false
   v
 }
 
@@ -948,8 +970,9 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
   self.program_sink = Some(program)
   while !self.is_at_end() {
     // #77：轮次兜底清交错存储类残留（非法输入如 cast 里的 static 触发
-    // 置位后无声明入口收割——残留不跨顶层声明传播）
+    // 置位后无声明入口收割——残留不跨顶层声明传播）；#156 register 同款
     self.pending_static = false
+    self.pending_register = false
     let round_start = self.pos
     // 跳过函数前缀修饰符 inline（可能出现在 static/extern 之前或之后）
     while self.check(Inline) {

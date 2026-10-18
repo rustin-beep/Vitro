@@ -163,6 +163,10 @@ fn Parser::parse_statement_inner(self : Parser, depth : Int32) -> @ast.Stmt {
         while self.check(Register) ||
               (!self.is_cpp_mode && self.check(Auto)) ||
               self.check(Inline) {
+          // #156：register 置位（声明入口预吞通道）
+          if self.check(Register) {
+            self.pending_register = true
+          }
           ignore(self.advance())
         }
         self.parse_var_decl_stmt(is_static, depth)
@@ -305,8 +309,9 @@ fn Parser::parse_var_decl_stmt(
     return @ast.Stmt::Block([], loc)
   }
   // #77（2026-10-13）：块内交错存储类（const static int y）收割——
-  // shadowing 参数合并 is_static
+  // shadowing 参数合并 is_static；#156 register 同款收割
   let is_static = is_static || self.take_pending_static()
+  let is_register = self.take_pending_register()
   // Detect C++ constructor initialization syntax: `Type name(args);`
   // 仅当声明符是裸标识符（无指针/引用/函数指针后缀）时才当构造调用；
   // `int (*fp)(int);` 类函数指针声明走 parse_var_declarator。
@@ -391,7 +396,9 @@ fn Parser::parse_var_decl_stmt(
   for ev in extra_vars {
     self.parsed_var_types.push((ev.name, ev.var_type))
   }
-  @ast.Stmt::VarDecl(var_type, name, init, extra_vars, is_static, loc)
+  @ast.Stmt::VarDecl(
+    var_type, name, init, extra_vars, is_static, is_register, loc,
+  )
 }
 
 ///|
@@ -440,7 +447,16 @@ fn Parser::parse_var_decl_from_base(
   for ev in extra_vars {
     self.parsed_var_types.push((ev.name, ev.var_type))
   }
-  @ast.Stmt::VarDecl(d.0, d.1, init, extra_vars, is_static, loc)
+  // #156：register 收割（经 parse_var_decl_stmt 转发或直接调双路径均覆盖）
+  @ast.Stmt::VarDecl(
+    d.0,
+    d.1,
+    init,
+    extra_vars,
+    is_static,
+    self.take_pending_register(),
+    loc,
+  )
 }
 
 ///|
@@ -598,7 +614,18 @@ fn Parser::parse_for_stmt(self : Parser, depth : Int32) -> @ast.Stmt {
       }
       extra_vars.push({ var_type: ex.0, name: ex.1, init: extra_init, })
     }
-    Some(@ast.Stmt::VarDecl(d.0, d.1, init_expr, extra_vars, false, var_loc))
+    // #156：for-init 声明同属块作用域（for (register int i = 0; …) 合法 C）
+    Some(
+      @ast.Stmt::VarDecl(
+        d.0,
+        d.1,
+        init_expr,
+        extra_vars,
+        false,
+        self.take_pending_register(),
+        var_loc,
+      ),
+    )
   } else if !self.check(Semicolon) {
     let cur = self.current()
     let es_loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)

@@ -62,6 +62,48 @@ test "dup_case_labels_rejected" {
 }
 
 ///|
+/// #155：switch 多个 default 标签 → E3074（clang "multiple default labels
+/// in one switch"）。判据基线 62f75d3d 在 #144 修复批（cbe7757b）之前，
+/// 实测当前 HEAD 已拒——本锚锁行为防回归（cbe7757b 实现时 wbtest 只锚了
+/// dup case 面，多 default 面零锚）。
+test "multiple_default_labels_rejected" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let sw = @ast.Stmt::Switch(
+    @ast.Expr::Literal(1, loc, @ast.Type::int()),
+    @ast.Stmt::Block(
+      [
+        @ast.Stmt::Case(
+          None,
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+            loc,
+          ),
+          loc,
+        ),
+        @ast.Stmt::Case(
+          None,
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+            loc,
+          ),
+          loc,
+        ),
+      ],
+      loc,
+    ),
+    loc,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    gprog([]) |> with_main(@ast.Stmt::Block([sw], loc)),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3074),
+    msg="多个 default 标签应报 E3074",
+  )
+}
+
+///|
 /// #150：extern 变量两次声明类型冲突 → E3001（clang "redeclaration of
 /// 'shared' with a different type"）。
 test "extern_redecl_type_conflict" {
@@ -193,7 +235,15 @@ test "incomplete_type_two_sides" {
   let (_, errs, _, _) = tc.check(
     with_main(
       gprog([]),
-      @ast.Stmt::VarDecl(@ast.Type::struct_type("S"), "s", None, [], false, loc),
+      @ast.Stmt::VarDecl(
+        @ast.Type::struct_type("S"),
+        "s",
+        None,
+        [],
+        false,
+        false,
+        loc,
+      ),
     )
     |> prog_with_structs([fwd_decl("S")]),
   )
@@ -212,7 +262,15 @@ test "incomplete_type_two_sides" {
   let (_, errs2, _, _) = tc2.check(
     with_main(
       gprog([]),
-      @ast.Stmt::VarDecl(@ast.Type::struct_type("N"), "n", None, [], false, loc),
+      @ast.Stmt::VarDecl(
+        @ast.Type::struct_type("N"),
+        "n",
+        None,
+        [],
+        false,
+        false,
+        loc,
+      ),
     )
     |> prog_with_structs([fwd_decl("N"), full]),
   )

@@ -164,7 +164,7 @@ test "type_depth_and_budget_decoupling" {
   // VarDecl{array×3} 语句深 1（无 init），类型深 4
   let loc = @source.SourceLoc::new(1, 1)
   let deep_ty = Array(Type::array_of(Type::int(), [1]), 1, [1], false, false, [])
-  let vd = VarDecl(deep_ty, "a", None, [], false, loc)
+  let vd = VarDecl(deep_ty, "a", None, [], false, false, loc)
   assert_eq(stmt_depth(vd), 1)
   // deep_ty = Array(array_of(int,[1])) 双层嵌套：类型深 3、语句深 1（解耦锚）
   assert_eq(stmt_type_depth(vd), 3)

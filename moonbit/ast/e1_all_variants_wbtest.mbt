@@ -96,6 +96,7 @@ test "e1_dump_all_variants_covered" {
       Some(i_),
       [{ var_type: Int(false, false), name: "w", init: Some(i_), }],
       true,
+      false,
       loc,
     ),
     Expr(i_, loc),

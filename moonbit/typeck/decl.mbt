@@ -101,15 +101,17 @@ fn TypeChecker::dispatch_stmt(
       self.exit_scope()
       Block(stmts, loc)
     }
-    VarDecl(var_type, name, init, extra_vars, is_static, loc) => {
+    VarDecl(var_type, name, init, extra_vars, is_static, is_register, loc) => {
       let (new_ty, new_init) = self.process_var_decl(
         var_type,
         name,
         init,
         loc,
         is_static~,
+        is_register~,
       )
-      // extra_vars 逐个处理（同主路径；declare 无 static 轨——Rust 同形）
+      // extra_vars 逐个处理（同主路径；declare 无 static 轨——Rust 同形）；
+      // #156：extra 同属一句声明，register 存储类随整句
       let processed_extras : Array[@ast.VarDeclExtra] = []
       for extra in extra_vars {
         let (ety, einit) = self.process_var_decl(
@@ -118,10 +120,13 @@ fn TypeChecker::dispatch_stmt(
           extra.init,
           loc,
           is_static=false,
+          is_register~,
         )
         processed_extras.push({ var_type: ety, name: extra.name, init: einit, })
       }
-      VarDecl(new_ty, name, new_init, processed_extras, is_static, loc)
+      VarDecl(
+        new_ty, name, new_init, processed_extras, is_static, is_register, loc,
+      )
     }
     Expr(expr, loc) => {
       let (_, new_expr) = self.resolve_expr_type(expr)
@@ -457,6 +462,7 @@ fn TypeChecker::process_var_decl(
   init : @ast.Expr?,
   loc : @source.SourceLoc,
   is_static~ : Bool,
+  is_register~ : Bool = false,
 ) -> (@ast.Type, @ast.Expr?) {
   ignore(name)
   // Auto type deduction（C++ auto / C 语法兼容路径照搬）
@@ -535,6 +541,7 @@ fn TypeChecker::process_var_decl(
       is_extern=false,
       is_static~,
       predeclared=true,
+      is_register~,
     )
   }
   // 初始化器四分支（Call-init 分支与 else 对 C 等价合并——文件头登记）
@@ -604,6 +611,7 @@ fn TypeChecker::process_var_decl(
     is_global=false,
     is_extern=false,
     is_static~,
+    is_register~,
     loc~,
   )
   (final_ty, final_init)

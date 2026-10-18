@@ -26,6 +26,8 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
       continue
     }
     if self.match_token(Register) {
+      // #156：register 存储类置位（收割即复位——take_pending_register）
+      self.pending_register = true
       continue
     }
     if self.match_token(Auto) {

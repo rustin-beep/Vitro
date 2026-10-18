@@ -14,7 +14,7 @@ fn BytecodeGen::gen_stmt(self : BytecodeGen, stmt : @ast.Stmt) -> Unit {
     Block(stmts, _) => self.gen_block(stmts)
     Expr(expr, _) => self.gen_expr_stmt(expr, loc)
     Return(value, ret_loc) => self.gen_return(value, ret_loc)
-    VarDecl(var_type, name, init, extra_vars, is_static, _) =>
+    VarDecl(var_type, name, init, extra_vars, is_static, _, _) =>
       self.gen_var_decl(var_type, name, init, extra_vars, is_static, loc)
     If(cond, then_stmt, else_stmt, _) =>
       self.gen_if(cond, then_stmt, else_stmt, loc)

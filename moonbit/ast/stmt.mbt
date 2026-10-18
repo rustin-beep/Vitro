@@ -5,7 +5,18 @@
 /// 节点形态保留给 C# 批次——禁删除禁改语义（总计划 §5 拍板）。
 pub(all) enum Stmt {
   Block(Array[Stmt], @source.SourceLoc) // stmts
-  VarDecl(Type, String, Expr?, Array[VarDeclExtra], Bool, @source.SourceLoc) // var_type, name, init, extra_vars, is_static
+  /// #156（2026-10-18）：is_register——register 存储类声明位（C 禁取
+  /// 地址 §6.7.1p4）。**不进 E1/E4 投影**（json_emit 显式字段面，照
+  /// #145 is_forward 先例——golden 零翻）
+  VarDecl(
+    Type,
+    String,
+    Expr?,
+    Array[VarDeclExtra],
+    Bool,
+    Bool,
+    @source.SourceLoc
+  ) // var_type, name, init, extra_vars, is_static, is_register
   Expr(Expr, @source.SourceLoc)
   If(Expr, Stmt, Stmt?, @source.SourceLoc) // cond, then, else
   While(Expr, Stmt, @source.SourceLoc)

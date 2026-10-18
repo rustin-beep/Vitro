@@ -2505,6 +2505,12 @@
       "stdout_sha": "c64b40bd6b04f739",
       "memory_sha": "0578eeb2154ba7d3"
     },
+    "baseline/unsigned_int_domain_init.c": {
+      "src_sha": "3087a8e4",
+      "exit_code": 0,
+      "stdout_sha": "f6ab6b0b8896451e",
+      "memory_sha": "c400fe1ebe189072"
+    },
     "baseline/unsigned_lshr.c": {
       "src_sha": "869bf491",
       "exit_code": 0,

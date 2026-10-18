@@ -638,7 +638,11 @@ fn Parser::parse_typedef_struct_decl(
     } else {
       @ast.Type::struct_type(name)
     }
-    self.typedef_names.set(alias_tok.text, alias_ty)
+    self.declare_typedef(
+      alias_tok.text,
+      alias_ty,
+      @source.SourceLoc::new(alias_tok.loc.line, alias_tok.loc.column),
+    )
     if self.match_token(Comma) {
       continue
     }
@@ -716,7 +720,11 @@ fn Parser::parse_typedef_enum_decl(
   ignore(self.consume(RBrace, "enum 成员后预期 '}'"))
   let alias_tok = self.consume(Identifier, "typedef 后预期标识符名称")
   ignore(self.consume(Semicolon, "typedef 后预期 ';'"))
-  self.typedef_names.set(alias_tok.text, @ast.Type::int())
+  self.declare_typedef(
+    alias_tok.text,
+    @ast.Type::int(),
+    @source.SourceLoc::new(alias_tok.loc.line, alias_tok.loc.column),
+  )
   if enum_name != "" {
     self.typedef_names.set(enum_name, underlying)
   }
@@ -834,12 +842,43 @@ fn Parser::parse_func_decl(
 }
 
 ///|
+/// #154（2026-10-18）：typedef 名重定义注册收口——C23 §6.7p3 同名
+/// typedef 仅当指向同一类型才合法；type_eq 判等，不同类型报
+/// E3077_TypedefRedefTypeMismatch（clang "typedef redefinition with
+/// different type" / gcc "conflicting types"）。报错后仍登记新类型
+/// （不登记会钉死旧类型——#150 extern 冲突对抗批同款教训）。
+/// 仅挂 typedef 声明语句的产名点；enum/struct tag 注册（tag 命名
+/// 空间，C 里与 typedef 名空间独立）与 C++ 面（cpp.mbt）不走此口。
+fn Parser::declare_typedef(
+  self : Parser,
+  name : String,
+  ty : @ast.Type,
+  loc : @source.SourceLoc,
+) -> Unit {
+  match self.typedef_names.get(name) {
+    Some(old) =>
+      if !self.builtin_typedefs.contains(name) && !@ast.type_eq(old, ty) {
+        self.errors.push({
+          message: "typedef '\{name}' 重定义为不同类型（旧 '\{old.to_c_string()}'，新 '\{ty.to_c_string()}'）——C 要求同名 typedef 指向同一类型",
+          line: loc.line,
+          column: loc.column,
+          code: @diag.ErrorCode::E3077_TypedefRedefTypeMismatch.code(),
+        })
+      }
+    None => ()
+  }
+  self.typedef_names.set(name, ty)
+}
+
+///|
 fn Parser::parse_typedef(self : Parser, depth : Int32) -> Unit {
+  let cur = self.current()
+  let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
   ignore(self.advance())
   let base_type = self.parse_base_type(depth)
   let d = self.parse_declarator(base_type, depth)
   ignore(self.consume(Semicolon, "typedef 后预期 ';'"))
-  self.typedef_names.set(d.1, d.0)
+  self.declare_typedef(d.1, d.0, loc)
 }
 
 ///|

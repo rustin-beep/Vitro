@@ -206,15 +206,12 @@ fn flatten_init_list(
     }
     match elem.value {
       Literal(value, _, _) => result.push(value)
-      LongLiteral(value, _, _) =>
-        if value < -2147483648L || value > 2147483647L {
-          errors.push(
-            "初始化列表中的 long long 常量 \{value} 超出 int 范围，无法用于此上下文",
-          )
-          result.push(0)
-        } else {
-          result.push(value.to_int())
-        }
+      // #153（2026-10-18）：超 int32 常量不再上报拒绝——范围判断发生在
+      // 无目标类型上下文（long long → unsigned int 隐式转换合法，typeck
+      // check_assignable 已放行），上报与全局标量路径 LongLiteral
+      // `value.to_int()` 位模式截断（var_decl.mbt）自相矛盾；此处同款
+      // 截断 = 模 2^32 的 C 转换语义
+      LongLiteral(value, _, _) => result.push(value.to_int())
       FloatLiteral(value, _, _) =>
         result.push(
           Float::from_double(value)
@@ -230,15 +227,7 @@ fn flatten_init_list(
       Unary(@ast.UnaryOp::Neg, operand, _, _) =>
         match operand {
           Literal(value, _, _) => result.push(-value)
-          LongLiteral(value, _, _) =>
-            if value < -2147483648L || value > 2147483647L {
-              errors.push(
-                "初始化列表中的 long long 常量 \{value} 超出 int 范围，无法用于此上下文",
-              )
-              result.push(0)
-            } else {
-              result.push((-value).to_int())
-            }
+          LongLiteral(value, _, _) => result.push((-value).to_int())
           _ => result.push(0)
         }
       _ => result.push(0)
@@ -297,7 +286,7 @@ fn compute_stride(arr_type : @ast.Type, elem_size : Int32) -> Int32 {
 fn stmt_loc(stmt : @ast.Stmt) -> @source.SourceLoc {
   match stmt {
     Block(_, loc) => loc
-    VarDecl(_, _, _, _, _, loc) => loc
+    VarDecl(_, _, _, _, _, _, loc) => loc
     Expr(_, loc) => loc
     If(_, _, _, loc) => loc
     While(_, _, loc) => loc

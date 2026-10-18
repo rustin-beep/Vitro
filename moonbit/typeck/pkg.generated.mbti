@@ -46,7 +46,7 @@ pub fn TypeChecker::check_printf_format(Self, String, Array[@ast.Expr], @source.
 pub fn TypeChecker::check_scanf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
 pub fn TypeChecker::check_struct_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> @ast.Expr
 pub fn TypeChecker::compute_type_size(Self, @ast.Type) -> Int
-pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool, predeclared? : Bool, loc? : @source.SourceLoc) -> Unit
+pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool, predeclared? : Bool, is_register? : Bool, loc? : @source.SourceLoc) -> Unit
 pub fn TypeChecker::enter_scope(Self) -> Unit
 pub fn TypeChecker::exit_scope(Self) -> Unit
 pub fn TypeChecker::get_struct_field_type(Self, String, String) -> @ast.Type?

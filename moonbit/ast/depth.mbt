@@ -136,7 +136,7 @@ fn push_stmt_children(
       for st in stmts {
         stack.push((S(st), dd))
       }
-    VarDecl(_, _, init, extra_vars, _, _) => {
+    VarDecl(_, _, init, extra_vars, _, _, _) => {
       match init {
         Some(i) => stack.push((E(i), dd))
         None => ()
@@ -261,7 +261,7 @@ pub fn stmt_type_depth(s : Stmt) -> Int32 {
   while work.length() > 0 {
     let stmt = work.pop().unwrap()
     match stmt {
-      VarDecl(var_type, _, _, extra_vars, _, _) => {
+      VarDecl(var_type, _, _, extra_vars, _, _, _) => {
         let d = type_depth(var_type)
         if d > max {
           max = d

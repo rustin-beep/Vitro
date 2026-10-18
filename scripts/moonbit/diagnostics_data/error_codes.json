@@ -422,6 +422,18 @@
       "code": 3076
     },
     {
+      "name": "E3077_TypedefRedefTypeMismatch",
+      "code": 3077
+    },
+    {
+      "name": "E3078_RegisterAddrOf",
+      "code": 3078
+    },
+    {
+      "name": "E3079_FlexibleArrayInit",
+      "code": 3079
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

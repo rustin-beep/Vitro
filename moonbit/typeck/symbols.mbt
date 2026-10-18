@@ -15,6 +15,9 @@ struct VarSymbol {
   /// #75 缺口 2：VarDecl 标量面的初始化器前置登记标记（同声明 final
   /// 覆盖用——非重声明）
   predeclared : Bool
+  /// #156（2026-10-18）：register 存储类（§6.7.1p4 禁取地址）——Addr
+  /// 臂查裸 Identifier 操作数读此位（scope 栈天然感知遮蔽）
+  is_register : Bool
 }
 
 ///|

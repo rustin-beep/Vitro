@@ -11,6 +11,19 @@
 ///|
 /// struct 初始化器检查：designators（.field）与位置初始化两轨 +
 /// 嵌套 struct/数组字段递归。返回改写后的 init（元素插 Cast）。
+
+///|
+/// #157（2026-10-18）：柔性数组成员判定——首维未知的数组成员
+///（`int d[]`，dims[0] == -1 哨兵；array_prepend_dim 总落位至少一维，
+/// dims 空数组形态不出现于声明符解释产物）。
+fn is_flexible_array_member(ty : @ast.Type) -> Bool {
+  match ty {
+    Array(_, _, dims, _, _, _) => dims.length() > 0 && dims[0] == -1
+    _ => false
+  }
+}
+
+///|
 pub fn TypeChecker::check_struct_initializer(
   self : TypeChecker,
   struct_type : @ast.Type,
@@ -76,6 +89,15 @@ pub fn TypeChecker::check_struct_initializer(
               let field_idx = find_field(fields, field_name)
               match field_idx {
                 Some(idx) => {
+                  // #157：designated 指名柔性成员同报（位置路径对称面）
+                  if is_flexible_array_member(fields[idx].0) {
+                    self.report_error(
+                      "柔性数组成员 '\{field_name}' 不可初始化（C23 约束——该成员只能通过运行时分配/写入使用）",
+                      loc,
+                      E3079_FlexibleArrayInit,
+                    )
+                    continue
+                  }
                   let field_ty = fields[idx].0
                   let new_value = self.check_field_value(
                     field_ty,
@@ -110,8 +132,25 @@ pub fn TypeChecker::check_struct_initializer(
           W3005_ArrayInitTooMany,
         )
       }
+      // #157（2026-10-18，C23 §6.7.2.1p23）：柔性数组成员不可初始化
+      //（clang "initialization of flexible array member" / gcc "non-
+      // static initialization…"；仅初始化固定成员合法——柔性成员缺省）
+      let flex_idx : Int32 = if fields.length() > 0 &&
+        is_flexible_array_member(fields[fields.length() - 1].0) {
+        fields.length() - 1
+      } else {
+        -1
+      }
       for i in 0..<elements.length() {
         if i >= fields.length() {
+          break
+        }
+        if i == flex_idx {
+          self.report_error(
+            "柔性数组成员 '\{fields[i].1}' 不可初始化（C23 约束——该成员只能通过运行时分配/写入使用）",
+            loc,
+            E3079_FlexibleArrayInit,
+          )
           break
         }
         let elem = elements[i]

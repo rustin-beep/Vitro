@@ -250,7 +250,7 @@ test "vla propagation through chain" {
   match p.funcs[0].body {
     Some(Block(stmts, _)) =>
       match stmts[1] {
-        VarDecl(ty, _, _, _, _, _) =>
+        VarDecl(ty, _, _, _, _, _, _) =>
           match ty {
             Array(_, _, dims, _, is_vla, vla_dims) => {
               inspect(is_vla, content="true")
@@ -555,7 +555,7 @@ test "issue78_enum_const_array_dim" {
   match v1.program.unwrap().funcs[0].body {
     Some(Block(stmts, _)) =>
       match stmts[0] {
-        VarDecl(ty, _, _, _, _, _) =>
+        VarDecl(ty, _, _, _, _, _, _) =>
           match ty {
             Array(_, _, _, _, is_vla, _) => inspect(is_vla, content="true")
             _ => fail("应为数组类型")

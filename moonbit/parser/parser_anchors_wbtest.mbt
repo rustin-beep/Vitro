@@ -370,3 +370,88 @@ test "u_suffix_literal_uint_domain_typing" {
     _ => fail("u64::MAX 应为 LongLiteral")
   }
 }
+
+///|
+/// #154：typedef 不同类型重定义 → E3077（clang "typedef redefinition
+/// with different type"、gcc "conflicting types for 'T'"）。同型重定义
+/// C23 §6.7p3 合法（零新增错误）；报错后登记新类型（不钉死旧类型——
+/// #150 extern 冲突对抗批同款教训）。
+test "typedef_redef_different_type_rejected" {
+  let toks = [
+    tok(Typedef, "typedef", 1, 1),
+    tok(Int, "int", 1, 9),
+    tok(Identifier, "T", 1, 13),
+    tok(Semicolon, ";", 1, 14),
+    tok(Typedef, "typedef", 2, 1),
+    tok(Double, "double", 2, 9),
+    tok(Identifier, "T", 2, 16),
+    tok(Semicolon, ";", 2, 17),
+    tok(Eof, "", 3, 1),
+  ]
+  let q = Parser::with_mode(toks, false)
+  ignore(q.parse_typedef(0))
+  ignore(q.parse_typedef(0))
+  assert_true(
+    q.errors.exists(e => e.code == 3077),
+    msg="typedef 不同类型重定义应报 E3077",
+  )
+  // 报错后新类型生效（T 此后按 double 解析）
+  assert_true(
+    q.typedef_names.get("T") is Some(t) && t.kind() is @ast.TK_Double,
+    msg="冲突报错后应登记新类型 double",
+  )
+}
+
+///|
+/// #154 反向锚：同型重定义（typedef int T; typedef int T;）合法零报。
+test "typedef_redef_same_type_allowed" {
+  let toks = [
+    tok(Typedef, "typedef", 1, 1),
+    tok(Int, "int", 1, 9),
+    tok(Identifier, "T", 1, 13),
+    tok(Semicolon, ";", 1, 14),
+    tok(Typedef, "typedef", 2, 1),
+    tok(Int, "int", 2, 9),
+    tok(Identifier, "T", 2, 13),
+    tok(Semicolon, ";", 2, 14),
+    tok(Eof, "", 3, 1),
+  ]
+  let q = Parser::with_mode(toks, false)
+  ignore(q.parse_typedef(0))
+  ignore(q.parse_typedef(0))
+  assert_eq(q.errors.length(), 0, msg="同型 typedef 重定义合法零报")
+}
+
+///|
+/// #156：register 存储类入 AST 位——`register int x = 5;` 产
+/// VarDecl.is_register=true（pending_register 收割）；`int y;` 零残留。
+test "register_flag_parsed_into_vardecl" {
+  let toks = [
+    tok(Register, "register", 1, 1),
+    tok(Int, "int", 1, 10),
+    tok(Identifier, "x", 1, 14),
+    tok(Assign, "=", 1, 16),
+    tok(Number, "5", 1, 18),
+    tok(Semicolon, ";", 1, 19),
+    tok(Int, "int", 2, 1),
+    tok(Identifier, "y", 2, 5),
+    tok(Semicolon, ";", 2, 6),
+    tok(Eof, "", 3, 1),
+  ]
+  let q = Parser::with_mode(toks, false)
+  let s1 = q.parse_statement(0)
+  let s2 = q.parse_statement(0)
+  let reg_hit = match s1 {
+    VarDecl(_, _, _, _, _, is_register, _) => is_register
+    _ => false
+  }
+  assert_true(reg_hit, msg="register 声明应置 is_register 位")
+  let plain_hit = match s2 {
+    VarDecl(_, _, _, _, _, is_register, _) => is_register
+    _ => true
+  }
+  assert_false(
+    plain_hit,
+    msg="后续普通声明零 register 残留（收割即复位）",
+  )
+}

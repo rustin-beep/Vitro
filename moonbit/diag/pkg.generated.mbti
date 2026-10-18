@@ -142,6 +142,9 @@ pub(all) enum ErrorCode {
   E3074_DuplicateCase
   E3075_StaticInitNotConstant
   E3076_IncompleteType
+  E3077_TypedefRedefTypeMismatch
+  E3078_RegisterAddrOf
+  E3079_FlexibleArrayInit
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

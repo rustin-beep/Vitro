@@ -380,7 +380,7 @@ fn emit_stmt(s : Stmt, buf : StringBuilder) -> Unit {
       emit_loc(loc, buf)
       buf.write_string("}}")
     }
-    VarDecl(var_type, name, init, extra_vars, is_static, loc) => {
+    VarDecl(var_type, name, init, extra_vars, is_static, _is_register, loc) => {
       buf.write_string("{\"VarDecl\":{\"var_type\":")
       emit_type(var_type, buf)
       buf.write_string(",\"name\":")

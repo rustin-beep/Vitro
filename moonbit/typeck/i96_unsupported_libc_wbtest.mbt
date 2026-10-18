@@ -24,6 +24,7 @@ test "i96_unsupported_libc_env_getenv_single_error" {
     Some(call_getenv),
     [],
     false,
+    false,
     loc,
   )
   let cond : @ast.Expr = @ast.Expr::Ternary(

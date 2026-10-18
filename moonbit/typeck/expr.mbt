@@ -294,6 +294,26 @@ fn TypeChecker::resolve_index(
   index : @ast.Expr,
   loc : @source.SourceLoc,
 ) -> (@ast.Type, @ast.Expr) {
+  // #156（2026-10-18，gcc/clang 同口径实测）：register 数组的任何下标
+  // 使用都隐含数组退化 = 对 register 对象取址（clang 22 / gcc 对
+  // `register int a[3]; a[0] = 5;` 一律 error "address of register
+  // variable requested"）。隐式退化到指针赋值（q = a）在 convert 层，
+  // 登记为已知边界（issue #156 评论）
+  match array {
+    Identifier(name, iloc, _) =>
+      match self.lookup_var(name) {
+        Some(sym) =>
+          if sym.is_register {
+            self.report_error(
+              "不能对 register 数组 '\{name}' 使用下标（下标隐含数组退化 = 对 register 对象取地址，C 标准禁止）",
+              iloc,
+              E3078_RegisterAddrOf,
+            )
+          }
+        None => ()
+      }
+    _ => ()
+  }
   let (arr_type, new_array) = self.resolve_expr_type(array)
   let (idx_type, new_index) = self.resolve_expr_type(index)
   // #75 缺口 1（2026-10-12）：索引整型判定用宽版（C11 6.5.2.1 整数类型

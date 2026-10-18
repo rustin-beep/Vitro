@@ -234,7 +234,7 @@ pub fn ProgramNode::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Stmt {
   Block(Array[Stmt], @source.SourceLoc)
-  VarDecl(Type, String, Expr?, Array[VarDeclExtra], Bool, @source.SourceLoc)
+  VarDecl(Type, String, Expr?, Array[VarDeclExtra], Bool, Bool, @source.SourceLoc)
   Expr(Expr, @source.SourceLoc)
   If(Expr, Stmt, Stmt?, @source.SourceLoc)
   While(Expr, Stmt, @source.SourceLoc)

@@ -419,6 +419,7 @@
         "unsigned_cmp_wrap.c": "f72f16ff",
         "unsigned_compound_wrap.c": "21459c6d",
         "unsigned_div_mod.c": "6d0f715c",
+        "unsigned_int_domain_init.c": "3087a8e4",
         "unsigned_lshr.c": "869bf491",
         "unsigned_mul_wrap.c": "7b99292d",
         "unsigned_printf_lu.c": "0b5f1dd1",
@@ -1707,6 +1708,9 @@
         },
         "unsigned_div_mod.c": {
           "result_sha": "6d128f034aedb485"
+        },
+        "unsigned_int_domain_init.c": {
+          "result_sha": "023ec0bd85762669"
         },
         "unsigned_lshr.c": {
           "result_sha": "044905a20706d4c8"

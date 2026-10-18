@@ -35,6 +35,7 @@ fn mk_count_for(
     Some(Literal(0, loc(1), int_ty())),
     [],
     false,
+    false,
     loc(1),
   )
   let cond : @ast.Expr = Binary(
@@ -163,6 +164,7 @@ test "teaching_features_bubble_structural_branch" {
     Some(Literal(0, loc(1), int_ty())),
     [],
     false,
+    false,
     loc(1),
   )
   let inner : @ast.Stmt = For(
@@ -234,6 +236,7 @@ test "teaching_features_binary_structural_branch" {
     ),
     [],
     false,
+    false,
     loc(1),
   )
   // right = mid - 1（索引含 mid 的赋值——walk 的 has_left_right_update）
@@ -288,6 +291,7 @@ test "teaching_features_binary_structural_branch" {
           Some(Literal(0, loc(1), int_ty())),
           [],
           false,
+          false,
           loc(1),
         ),
         Binary(Lt, mk_ident_expr("i"), mk_ident_expr("n"), loc(1), int_ty()),
@@ -326,6 +330,7 @@ test "teaching_features_insertion_structural_branch" {
       "j",
       Some(Literal(0, loc(1), int_ty())),
       [],
+      false,
       false,
       loc(1),
     ),

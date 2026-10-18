@@ -12,6 +12,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(parser+typeck+codegen+diag+corpus): LLM 探针批四修复——#153 误拒 + #154/#156/#157 三误收 + #155 销案（2026-10-18，红锚先行）
+
+- **#153 聚合初始化器 unsigned 常量误拒**（codegen/init.mbt）：
+  `flatten_init_list` 的 LongLiteral 范围上报发生在**无目标类型上下文**
+  （`unsigned int t[]={0xFFFFFFFF}` 的 long long→unsigned int 隐式转换
+  合法、typeck check_assignable 已放行），且与全局标量路径
+  LongLiteral `value.to_int()` 位模式截断语义自相矛盾——删两处上报
+  （含 Unary Neg 臂），改统一 `to_int()` 模 2^32 截断（= C 转换语义）。
+  修复后 clang 逐字一致（`0 1 255 1023 4294967295 2863311530`），全局
+  /局部/负值位模式（`unsigned neg=-1`→4294967295）全验。wbtest 锚
+  `flatten_init_list_no_int_range_reject`（4294967295→-1、
+  -4294967295→1 位模式断言）证红先行；语料 +1
+  （baseline/unsigned_int_domain_init.c，digest 两家入账 444→445）。
+- **#154 typedef 不同类型重定义零诊断**（parser）：`declare_typedef`
+  收口三个 typedef 声明产名点（plain/struct 别名/enum 别名），旧值
+  `@ast.type_eq` 判等，不同报新码 E3077（C23 §6.7p3）；报错后仍登记
+  新类型（#150 extern 对抗批「不钉死旧类型」同款）。构造期预置表
+  （FILE）以 `builtin_typedefs` 集豁免——内置头 `typedef void* FILE`
+  对预置 void 的升级是内部实现细节非用户冲突（wbtest 双锚：不同型
+  拒 + 新类型生效；同型合法零报；`typedef struct Node{…} Node` tag
+  同名/多声明器零误报实跑验证）。
+- **#156 register 取地址零诊断**（ast+parser+typeck 三层）：Stmt::VarDecl
+  加 `is_register` 位（parser `pending_register` 收割——#77 pending_static
+  同款：读即复位/parse_program 兜底清/不进 Rollback；**不进 E1/E4 投影**
+  照 #145 is_forward 先例 golden 零翻，全仓构造/解构点 ~70 处连坐）；
+  VarSymbol 加位随 scope 栈天然感知遮蔽。检查两点：resolve_unary 的
+  Addr 臂查裸 Identifier（`&x`）；resolve_index 入口查 base Identifier
+  （`a[0]` 读写——下标隐含数组退化=取址，**gcc/clang 双实测同口径**
+  连 register 数组下标读写也一律 error；隐式退化到指针赋值 `q = a`
+  在 convert 层，登记已知边界）。新码 E3078。锚四枚（typeck 红证：
+  短路检查 2 红→还原 66 绿；遮蔽锚断言「仅内层报一次」）。
+- **#157 柔性数组成员聚合初始化零诊断**（typeck）：`int d[]` 首维哨兵
+  dims[0]==-1 判定柔性成员。两面检查——Pass 1 定义面（非末位/孤立
+  柔性报 E3079，对齐 clang "not at the end"/"otherwise empty"）+
+  check_struct_initializer 初始化面（位置路径到柔性位/designated 指名
+  均报；仅初始化固定成员 `{2}` 合法）。新码 E3079。合法面
+  （malloc 柔性写入 `{2}`+`p->d[0..2]`）js/native 双臂与 clang 逐字一致。
+- **#155 销案**：判据基线 62f75d3d 在 #144 修复批（cbe7757b）之前，
+  E3074 实现时已同族覆盖多 default——实测当前 HEAD 已拒；补 wbtest 锚
+  `multiple_default_labels_rejected` 锁行为（该批 wbtest 只锚了 dup case
+  面，多 default 零锚）。
+- **防线连坐**：diag 基线 143→146 臂（E3077/E3078/E3079 均无卡）+ 137
+  →140 C 段；surface 边表 +2（parser→ast `type_eq`/`TK_Double`）；
+  moon test 806→818 / native 952→964（README 五处 + moonbit/README 两处
+  facts 连坐）；防线五闸全绿（parser/typeck/codegen 443 hash 一致 +
+  vm 445 SAME/0 DIFF + clang_direct 440 SAME+5 known/0 unexpected）。
+
 ### fix(demo): 前端实测立账批——P1×5 全修 + P2/P3 十五项 + workspace E2E 焦点回归根除（2026-10-18）
 
 - **P1×5**（2026-10-18 线上实测终账）：①`frameAt()` 返回 raw 帧致语句级

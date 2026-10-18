@@ -334,7 +334,29 @@ fn TypeChecker::resolve_unary(
         @ast.Type::int()
       }
     }
-    Addr => @ast.Type::pointer_to(operand_type)
+    // #156（2026-10-18，C11 §6.7.1p4 约束）：register 存储类变量禁取
+    // 地址（clang "address of register variable requested"）。仅查裸
+    // Identifier 操作数——`&arr[0]`（register 数组元素地址）/ `&s.f`（
+    // 成员地址）不是对 register 对象本身取址，clang 放行同款。查无符号
+    // （undeclared）不在此报（E2003 族职责）
+    Addr => {
+      match new_operand {
+        Identifier(name, iloc, _) =>
+          match self.lookup_var(name) {
+            Some(sym) =>
+              if sym.is_register {
+                self.report_error(
+                  "不能对 register 变量 '\{name}' 取地址（C 标准禁止——register 声明的对象无地址语义）",
+                  iloc,
+                  E3078_RegisterAddrOf,
+                )
+              }
+            None => ()
+          }
+        _ => ()
+      }
+      @ast.Type::pointer_to(operand_type)
+    }
     Deref =>
       if !(operand_type.kind() is TK_Pointer) && !operand_type.is_array() {
         self.report_error(

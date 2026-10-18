@@ -386,11 +386,13 @@ vitro/engine/parser vitro/engine/ast Templateable
 vitro/engine/parser vitro/engine/ast Type
 vitro/engine/parser vitro/engine/ast UnaryOp
 vitro/engine/parser vitro/engine/ast VarDeclExtra
+vitro/engine/parser vitro/engine/ast TK_Double
 vitro/engine/parser vitro/engine/ast compute_type_size
 vitro/engine/parser vitro/engine/ast expr_depth
 vitro/engine/parser vitro/engine/ast stmt_depth
 vitro/engine/parser vitro/engine/ast stmt_type_depth
 vitro/engine/parser vitro/engine/ast type_depth
+vitro/engine/parser vitro/engine/ast type_eq
 vitro/engine/parser vitro/engine/diag ErrorCode
 vitro/engine/parser vitro/engine/lexer tokenize
 vitro/engine/parser vitro/engine/lexer/token Token

@@ -196,7 +196,7 @@ fn walk_stmt(
       }
       walk_stmt(body, f, new_depth, func_name, depth + 1)
     }
-    VarDecl(_, _, init, extra_vars, _, _) => {
+    VarDecl(_, _, init, extra_vars, _, _, _) => {
       match init {
         Some(e) => walk_expr(e, f, loop_depth, func_name, depth + 1)
         None => ()
@@ -415,7 +415,7 @@ fn stmt_has_min_max_assign(stmt : @ast.Stmt) -> Bool {
       false
     }
     Expr(expr, _) => expr_has_min_max_assign(expr)
-    VarDecl(_, _, init, extra_vars, _, _) => {
+    VarDecl(_, _, init, extra_vars, _, _, _) => {
       let mut hit = false
       match init {
         Some(e) => hit = expr_has_min_max_assign(e)

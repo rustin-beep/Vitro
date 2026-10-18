@@ -909,13 +909,13 @@ test "sscanf_scanset_end_to_end" {
   put_cstr(mem, map, 0x6000U, "%[^;]")
   let r = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
   assert_eq(r.value, Some(1UL))
-  assert_eq(peek(mem, map, ps, 6), b"Alice ")
+  assert_eq(peek(mem, map, ps, 6), b"Alice\x00")
   // %[a-z]：abc123 → "abc"（范围展开）
   put_cstr(mem, map, 0x6800U, "abc123")
   put_cstr(mem, map, 0x6000U, "%[a-z]")
   let r2 = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
   assert_eq(r2.value, Some(1UL))
-  assert_eq(peek(mem, map, ps, 4), b"abc ")
+  assert_eq(peek(mem, map, ps, 4), b"abc\x00")
 }
 
 ///|

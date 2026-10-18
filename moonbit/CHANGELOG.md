@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### chore(scripts): jsonmbt 空壳清退——39 个无主 moon.pkg + moon.mod + moon.work 删除（用户审计发现）
+
+【定性】scripts/ 下 39 个 moon.pkg（含根 scripts/moon.pkg 空块 + 
+scripts/moonbit/moon.pkg）+ moon.mod + moon.work = jsonmbt 合流批
+（7c9c7e6d，2026-10-08「11 目录 moon.pkg」）的遗留物——.json.mbt
+随 #125 批 C 退役后文件未清；实测 find scripts -name "*.mbt"
+（_build 外）= 0、全部驱动均为 Go（README 载明「scripts/moonbit/
+下全为 Go」）。风险 = 「MoonBit 化脚本在推进」的假证据 + 假接线雷
+（cd scripts && moon check 静默绿 rc=0——ci.yml 两步已注释暂未炸，
+有人接闸即永久假绿）。
+
+【处置】git rm 39 moon.pkg + moon.mod + moon.work；删后审计：
+moon check 显式报「not in a Moon project」（静默假绿 → 显式错，
+语义归位）；go build ./scripts/... 全绿；ci_checklist / 
+moonbit_surface / source_hygiene / facts / testcount 五闸复验全绿。
+清前审计：worktree 无依赖、闸内代码零引用（历史文档 
+docs/current/07-质量与裁定/20261007_jsonmbt真相源迁移.md 的记载
+按归档纪律不改写——它记录的是当时形态）。
+
+【教训登记】退役批的「文件清退义务」缺闸——.json.mbt 有翻转闸盯
+真源翻转，但翻译过来的空 moon.pkg 无死文件侦测；后续若再立
+「X 退役」批，退出清单应含「中间态脚手架回收」项。
+
+
 ### fix(ci+scripts+demo): 云端 CI 双红处置——surface 边漏登记 + E2E DevTools 端口竞态
 
 【surface audit 红（71c658ad run 39127326546）】#162 codegen wbtest

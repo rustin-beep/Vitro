@@ -438,6 +438,18 @@
       "code": 3080
     },
     {
+      "name": "E3081_NegativeArraySize",
+      "code": 3081
+    },
+    {
+      "name": "E3082_FuncTypeField",
+      "code": 3082
+    },
+    {
+      "name": "E3083_NullDeref",
+      "code": 3083
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

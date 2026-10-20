@@ -1,5 +1,5 @@
 {
-  "_comment": "corpus_fuzz 规则单源（2026-10-18 立项）。算子语义靶制（用户拍板：对抗要有意义、非机械数值改动——机械类盲改算子已删）：等价变换类 = cmp_swap/paren_wrap/cast_strip/nested2flat/brace_strip（两侧应同值，任何分叉=引擎病）；域定向类 = static_inject(#171/#179)/brace_wrap(#183)/char_escape(#181)/init_partial(部分填充)/memset_zero(#19 零初始化族)/div2shift(负数除移位 C 语义)。算子名与 main.go 强契约（未知名 fail loud）。规模：4 suite × 20 种子 × 3 算子 = 240 变体。",
+  "_comment": "corpus_fuzz 规则单源（2026-10-18 立项）。算子语义靶制（用户拍板：对抗要有意义、非机械数值改动——机械类盲改算子已删）：等价变换类 = cmp_swap/paren_wrap/cast_strip/nested2flat/brace_strip（两侧应同值，任何分叉=引擎病）；域定向类 = static_inject(#171/#179)/brace_wrap(#183)/char_escape(#181)/init_partial(部分填充)/memset_zero(#19 零初始化族)/div2shift(负数除移位 C 语义)。算子名与 main.go 强契约（未知名 fail loud）。规模：4 suite × 20 种子 × 3 算子 = 240 变体。｜generators 段（2026-10-19 收编）：域生成器凭空造域对抗（用户令）——char_arith（#177/#198 char 算术字节域：边界值×作用域×运算族×邻接排布）+ diag_legal（六诊断面合法邻域防误伤）——与算子段互补，覆盖修复域无存量语料的盲区；键空间 gen:<域名>/<序号>。",
   "seeds_per_suite": 20,
   "mutators_per_seed": 3,
   "seed": 20261018,
@@ -21,5 +21,15 @@
     "knr",
     "leetcode",
     "gap"
+  ],
+  "generators": [
+    {
+      "name": "char_arith",
+      "count": 40
+    },
+    {
+      "name": "diag_legal",
+      "count": 20
+    }
   ]
 }

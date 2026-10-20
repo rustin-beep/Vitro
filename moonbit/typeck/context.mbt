@@ -185,9 +185,22 @@ fn TypeChecker::check_type_complete(
   self : TypeChecker,
   ty : @ast.Type,
   loc : @source.SourceLoc,
+  void_ok~ : Bool = false,
 ) -> Unit {
   let value_ty = if ty.is_array() { ty.base_element_type() } else { ty }
   let kind = value_ty.kind()
+  // #182 D-1（2026-10-19，C11 §6.7.6p6 约束）：void 是不完整类型，
+  // 不能定义该类型的对象——clang "variable has incomplete type 'void'"。
+  // 函数返回值与无名参数（f(void) 形态）合法用 void，两消费点传
+  // void_ok=true 豁免；有名 void 参数（void x）极罕见形态随参数路径
+  // 豁免登记为边界（clang 报、此处不误伤优先）
+  if kind is TK_Void && !void_ok {
+    self.report_error(
+      "不能定义 void 类型的变量——void 是不完整类型，只可用于函数返回值/参数表（void f(void)）或经 void* 指针",
+      loc,
+      E3076_IncompleteType,
+    )
+  }
   if kind is TK_Struct {
     match self.structs.get(value_ty.name()) {
       Some(sym) =>

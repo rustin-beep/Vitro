@@ -92,13 +92,71 @@ fn Parser::parse_struct_body(
     }
     let field_checkpoint = self.pos
     let base_type = self.parse_base_type(depth)
-    let d = self.parse_declarator(base_type, depth)
+    // #182 D-5（2026-10-19，C11 §6.7.2.1p5 约束）：成员位置的裸函数
+    // 声明器（`int f(void);`——非 `int (*f)(void);` 显式指针形态）是
+    // 约束违反，clang/gcc 双 error "field declared as a function"。
+    // 判定须在声明器树层：interpret 层把函数声明器统一 decay 成
+    // Pointer(Function) 后与显式函数指针同形不可分。树头 Function 且
+    // inner 首 node 非 Pointer = 裸形态（Pointer = 显式 `(*f)` decay
+    // 层；Array(Pointer) = `(*f[2])` 指针数组族）
+    let dguard5 = DeclaratorGuard::init()
+    let r5 = self.parse_declarator_node(dguard5, false, true, depth)
+    match r5.0 {
+      Function(inner, _, _) =>
+        match inner {
+          Pointer(_) => ()
+          Array(inner2, _) =>
+            match inner2 {
+              Pointer(_) => ()
+              _ =>
+                self.errors.push({
+                  message: "结构体成员不能是函数类型或函数数组——C 不支持成员函数；要存函数请用函数指针成员，如 `int (*f)(void);`",
+                  line: self.current().loc.line,
+                  column: self.current().loc.column,
+                  code: @diag.ErrorCode::E3082_FuncTypeField.code(),
+                })
+            }
+          _ =>
+            self.errors.push({
+              message: "结构体成员不能是函数类型——C 不支持成员函数；要存函数请用函数指针成员，如 `int (*f)(void);`",
+              line: self.current().loc.line,
+              column: self.current().loc.column,
+              code: @diag.ErrorCode::E3082_FuncTypeField.code(),
+            })
+        }
+      _ => ()
+    }
+    let field_name = match r5.1 {
+      Some(n) => n
+      None => ""
+    }
+    let field_ty = self.interpret_declarator_node(r5.0, base_type, depth)
+    let d = (field_ty, field_name)
     if self.pos == field_checkpoint {
       ignore(self.advance())
       break
     }
     fields.push({ ty: d.0, name: d.1, })
     while self.match_token(Comma) {
+      // 对抗批挖出（2026-10-19）：逗号后只能是声明器（`int a, b;`）；
+      // 出现类型关键字 = 重复声明说明符（`int a, int b`）非法 C，clang
+      // "expected ';' / member name"——旧形态被当声明器名误收
+      if self.is_type_token() {
+        self.errors.push({
+          message: "成员声明里的逗号后不能跟类型名——同一声明写多个成员请省略重复类型（`int a, b;`），或用分号分开两条声明",
+          line: self.current().loc.line,
+          column: self.current().loc.column,
+          code: @diag.ErrorCode::E2005_ExpectedSemicolon.code(),
+        })
+        // 恢复对齐：跳到分号/右花括号，继续解析后续成员
+        while !self.check(Semicolon) && !self.check(RBrace) && !self.is_at_end() {
+          ignore(self.advance())
+        }
+        if self.check(Semicolon) {
+          ignore(self.advance())
+        }
+        continue
+      }
       let ex = self.parse_declarator(base_type, depth)
       fields.push({ ty: ex.0, name: ex.1, })
     }
@@ -685,6 +743,9 @@ fn Parser::parse_typedef_enum_decl(
     }
   }
   ignore(self.consume(LBrace, "enum 后预期 '{'"))
+  // #182 D-4：enum tag 重复定义查重（核心形态——typedef enum 走
+  // parse_typedef_enum_decl 的同款调用，共用 enum_tags 符号面）
+  self.check_enum_tag_dup(enum_name, loc)
   let mut next_value : Int64 = 0
   while !self.check(RBrace) && !self.is_at_end() {
     let member_tok = self.consume(Identifier, "enum 成员预期标识符")
@@ -946,6 +1007,9 @@ fn Parser::parse_enum_core(self : Parser, depth : Int32) -> (String, @ast.Type) 
     }
   }
   ignore(self.consume(LBrace, "enum 后预期 '{'"))
+  // #182 D-4：enum tag 重复定义查重（parse_enum_core 真身——parse_enum_decl
+  // 与 typedef enum 两路径的共用核心；enum_tags 是 Rollback 符号面）
+  self.check_enum_tag_dup(enum_name, loc)
   let mut next_value : Int64 = 0
   while !self.check(RBrace) && !self.is_at_end() {
     let member_tok = self.consume(Identifier, "enum 成员预期标识符")
@@ -1248,5 +1312,30 @@ fn checked_mul64(a : Int64, b : Int64) -> Int64? {
     None
   } else {
     Some(r)
+  }
+}
+
+///|
+/// #182 D-4（2026-10-19，C11 §6.7.2.3p3 约束）：enum tag 重复定义查重
+//——clang "redefinition of 'E'" / gcc "redeclaration of 'enum E'"。
+// parse_enum_core 与 parse_typedef_enum_decl 两形态共用（enum_tags 是
+// Rollback 符号面之一，试探路径一致回滚）；匿名 enum（tag 空）不查。
+fn Parser::check_enum_tag_dup(
+  self : Parser,
+  enum_name : String,
+  loc : @source.SourceLoc,
+) -> Unit {
+  if enum_name == "" {
+    return
+  }
+  if self.enum_tags.contains(enum_name) {
+    self.errors.push({
+      message: "枚举 '\{enum_name}' 重复定义——同名 enum 只能定义一次（enum 无前向声明形态，重复 tag 即重定义）",
+      line: loc.line,
+      column: loc.column,
+      code: @diag.ErrorCode::E3002_StructRedeclared.code(),
+    })
+  } else {
+    self.enum_tags.add(enum_name)
   }
 }

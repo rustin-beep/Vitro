@@ -1028,6 +1028,17 @@
       ]
     },
     {
+      "code": 3083,
+      "icon": "null-deref",
+      "title": "NULL 指针解引用 (Null Dereference)",
+      "explanation": "程序通过 NULL 指针（地址 0x0）读写了内存。NULL 是「不指向任何对象」的哨兵值，解引用它没有合法的内存可访问。这是 C 初学者最常见的运行期错误。",
+      "common_causes": [
+        "指针声明后未初始化就被解引用（局部指针默认不是 NULL，但教学沙盒零初始化为 NULL）",
+        "malloc 返回 NULL（内存耗尽）未检查就使用",
+        "free(p) 后继续通过 p 访问（应立即置 NULL）"
+      ]
+    },
+    {
       "code": 4100,
       "icon": "leak",
       "title": "C++ 内存泄漏 (Memory Leak)",

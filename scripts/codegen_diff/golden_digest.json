@@ -155,6 +155,7 @@
         "fclose_leak.c": "858d7156",
         "fgets_fputs_basic.c": "68b0a7bd",
         "fibonacci.c": "0fafa920",
+        "flexible_array_static_init_reject.c": "d9432565",
         "float_basic.c": "3016d3e3",
         "float_compare.c": "fb3b35b5",
         "float_func_return.c": "e0a67f44",
@@ -204,6 +205,11 @@
         "int_arith.c": "6836149d",
         "int_div.c": "7f71c527",
         "int_div_neg.c": "8788553d",
+        "invalid_enum_redefine_reject.c": "d8e77367",
+        "invalid_func_field_reject.c": "bd0cf611",
+        "invalid_negative_array_reject.c": "e0160fe3",
+        "invalid_two_symbol_kinds_reject.c": "addb814c",
+        "invalid_void_var_reject.c": "3f5b522e",
         "is_prime.c": "48f67633",
         "j1_declarator_depth.c": "3db16a2b",
         "jit_nested_counting_loop.c": "ab1a4a6e",
@@ -261,6 +267,7 @@
         "not_equal.c": "d14a5e7d",
         "not_equal_var.c": "f3f6e9dd",
         "not_zero.c": "ecad3441",
+        "null_deref_trap_e3083.c": "e58e4a9c",
         "null_keyword.c": "eee2e083",
         "null_pointer_constant.c": "3f600f45",
         "octal_literal.c": "64aa1f86",
@@ -322,6 +329,7 @@
         "realloc.c": "d10f2cd4",
         "realloc_shrink.c": "d7cb943b",
         "recursive_function.c": "7ef6ad96",
+        "register_addr_of_reject.c": "63383dac",
         "reverse_array.c": "afd801dd",
         "scalar_brace_init.c": "2f45a293",
         "scanf_0x_behavior.c": "d808487a",
@@ -401,6 +409,7 @@
         "struct_copy.c": "c4a785bf",
         "struct_dup_member_reject.c": "8f90f95b",
         "struct_member_array.c": "18213307",
+        "struct_member_dup_specifier_reject.c": "d0cb430a",
         "struct_nested_2d_member_init.c": "f16d2ba5",
         "struct_nested_init.c": "54c201ca",
         "struct_pointer_access.c": "ae064328",
@@ -426,6 +435,7 @@
         "typedef_after_struct_decl.c": "f94c679e",
         "typedef_chain.c": "8653824b",
         "typedef_pointer.c": "024b6b1a",
+        "typedef_redefine_reject.c": "24d2feff",
         "typedef_struct_anon.c": "2061a8b7",
         "union_array.c": "eb30623a",
         "union_basic.c": "d0a842c6",
@@ -929,6 +939,10 @@
         "fibonacci.c": {
           "result_sha": "d4b772e247fb30c9"
         },
+        "flexible_array_static_init_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
         "float_basic.c": {
           "result_sha": "0827de9edd50ddaa"
         },
@@ -1076,6 +1090,26 @@
         },
         "int_div_neg.c": {
           "result_sha": "af963a3ec247073f"
+        },
+        "invalid_enum_redefine_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
+        },
+        "invalid_func_field_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
+        },
+        "invalid_negative_array_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
+        "invalid_two_symbol_kinds_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
+        "invalid_void_var_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "is_prime.c": {
           "result_sha": "3fb9aafd4bbeebca"
@@ -1248,6 +1282,9 @@
         },
         "not_zero.c": {
           "result_sha": "3ac13ccf5f43eb4d"
+        },
+        "null_deref_trap_e3083.c": {
+          "result_sha": "d533281c1c06fa90"
         },
         "null_keyword.c": {
           "result_sha": "38e4ab1c9443db01"
@@ -1434,6 +1471,10 @@
         },
         "recursive_function.c": {
           "result_sha": "2421cd2431f4813b"
+        },
+        "register_addr_of_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "reverse_array.c": {
           "result_sha": "86ae574cbcb8067a"
@@ -1675,6 +1716,10 @@
         "struct_member_array.c": {
           "result_sha": "0be2704f6b8f510d"
         },
+        "struct_member_dup_specifier_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
+        },
         "struct_nested_2d_member_init.c": {
           "result_sha": "d99e5e262f672525"
         },
@@ -1749,6 +1794,10 @@
         },
         "typedef_pointer.c": {
           "result_sha": "076b776da3928c0a"
+        },
+        "typedef_redefine_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
         },
         "typedef_struct_anon.c": {
           "result_sha": "d8fedced81164240"
@@ -2139,7 +2188,7 @@
           "result_sha": "dd285af775ea1e4d"
         },
         "kr_1_19.c": {
-          "result_sha": "e222c75522b62491"
+          "result_sha": "bdd53f49d799585b"
         },
         "kr_1_3.c": {
           "result_sha": "fb62c9f64badbc53"
@@ -2202,19 +2251,19 @@
           "result_sha": "45877d8eb9352436"
         },
         "kr_3_4.c": {
-          "result_sha": "f377607b3fd9ab06"
+          "result_sha": "81474b26cd3def71"
         },
         "kr_3_5.c": {
-          "result_sha": "574c126b5f4910a9"
+          "result_sha": "7de3ec78beab8923"
         },
         "kr_3_6.c": {
-          "result_sha": "83dcdcf7267e825e"
+          "result_sha": "3d23ab724f42ba18"
         },
         "kr_3_7.c": {
           "result_sha": "3dd61296d5b9ac87"
         },
         "kr_3_8.c": {
-          "result_sha": "d4425546ae1b9458"
+          "result_sha": "b02659b2e747a0a7"
         },
         "kr_4_1.c": {
           "result_sha": "b50c0860375cfea3"
@@ -2298,7 +2347,7 @@
           "result_sha": "00a32a646d5b05a2"
         },
         "kr_5_6.c": {
-          "result_sha": "17f14ca34ebaa2e8"
+          "result_sha": "f52b5bd78f59ed14"
         },
         "kr_5_7.c": {
           "result_sha": "ac7acecda86bc2ea"
@@ -2310,7 +2359,7 @@
           "result_sha": "bd09673fd91dd826"
         },
         "kr_5_itoa.c": {
-          "result_sha": "b0a6941fd0fec039"
+          "result_sha": "a391f76749ae8390"
         },
         "kr_6_1.c": {
           "result_sha": "a9c3ee023d39ef00"
@@ -2541,7 +2590,7 @@
           "result_sha": "b3b098adf3fa567e"
         },
         "lc_125.c": {
-          "result_sha": "0108a06bb67c0393"
+          "result_sha": "29a4b28539caa20d"
         },
         "lc_13.c": {
           "result_sha": "86acd78a5593c4de"

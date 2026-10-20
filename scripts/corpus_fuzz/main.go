@@ -50,11 +50,17 @@ import (
 // ── 规则（rules.json 单源）──
 
 type Rules struct {
-	SeedsPerSuite   int      `json:"seeds_per_suite"`   // 每 suite 抽样种子数
-	MutatorsPerSeed int      `json:"mutators_per_seed"` // 每种子应用算子数
-	Seed            int64    `json:"seed"`              // 抽样种子（确定性复现）
-	Mutators        []string `json:"mutators"`
-	Suites          []string `json:"suites"`
+	SeedsPerSuite   int             `json:"seeds_per_suite"`   // 每 suite 抽样种子数
+	MutatorsPerSeed int             `json:"mutators_per_seed"` // 每种子应用算子数
+	Seed            int64           `json:"seed"`              // 抽样种子（确定性复现）
+	Mutators        []string        `json:"mutators"`
+	Suites          []string        `json:"suites"`
+	Generators      []GeneratorRule `json:"generators"` // 域生成器（2026-10-19：凭空造域对抗，与算子互补）
+}
+
+type GeneratorRule struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 type BaselineEntry struct {
@@ -774,6 +780,51 @@ func main() {
 			}
 			if *freeze {
 				// 合并语义：只更新桶，保留人工定性标注（issue/note）
+				old := base.Entries[fp]
+				base.Entries[fp] = BaselineEntry{
+					Bucket: bucket, Issue: old.Issue, Note: old.Note,
+				}
+				continue
+			}
+			ent, ok := base.Entries[fp]
+			if !ok {
+				newFp++
+				report = append(report, fmt.Sprintf("  新指纹 %s → %s", fp, bucket))
+				continue
+			}
+			if bucketRank[bucket] > bucketRank[ent.Bucket] {
+				worsened++
+				report = append(report, fmt.Sprintf("  桶恶化 %s：%s → %s", fp, ent.Bucket, bucket))
+			}
+		}
+	}
+
+	// ── 域生成器段（2026-10-19 收编）：凭空造域 × 确定性随机参数——
+	// 覆盖「修复域无存量语料」的对抗盲区。键空间 gen:<域名>/<序号> 与
+	// 算子段互斥；对拍/桶/收编路径与算子段完全共用。
+	for _, gr := range rules.Generators {
+		gen, ok := generatorByName(gr.Name)
+		if !ok {
+			die("未知生成器名 %q（规则与实现失配——fail loud）", gr.Name)
+		}
+		for i := 0; i < gr.Count; i++ {
+			// 域内独立确定性：同规则 hash 同产物（缓存键掺 ruleBytes 已含）
+			r := &detRand{uint64(rules.Seed)*0x9e3779b9 + uint64(len(gr.Name))*31 + uint64(i)}
+			src := gen.fn(r, i)
+			total++
+			fp := fmt.Sprintf("gen:%s/%03d", gr.Name, i)
+			variant := filepath.Join(cacheDir, fmt.Sprintf("gen_%s_%03d.c", gr.Name, i))
+			if err := os.WriteFile(variant, []byte(src), 0o644); err != nil {
+				die("写生成变体失败：%v", err)
+			}
+			c := clangOutcome(variant, cacheDir)
+			nj := vitroJs(variant)
+			na := vitroNative(variant)
+			bucket := bucketOf(c, nj, na)
+			if bucket == "AGREE" {
+				agree++
+			}
+			if *freeze {
 				old := base.Entries[fp]
 				base.Entries[fp] = BaselineEntry{
 					Bucket: bucket, Issue: old.Issue, Note: old.Note,

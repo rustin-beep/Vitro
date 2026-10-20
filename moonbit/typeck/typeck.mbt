@@ -365,6 +365,18 @@ pub fn TypeChecker::check(
   }
   for i in 0..<program.globals.length() {
     let g = program.globals[i]
+    // #182 D-2（2026-10-19，C11 §6.2.7p1）：文件作用域内函数名与变量名
+    // 同名 = 不同类符号重定义——clang "redefinition of 'g' as different
+    // kind of symbol"（Pass 2 函数注册先行，此处查交叉；static 函数在
+    // static_func_sigs、普通函数在 funcs——同文件普通标识符命名空间
+    // 合一，两表都查且不分 static 侧别）
+    if self.funcs.contains(g.name) || self.static_func_sigs.contains(g.name) {
+      self.report_error(
+        "变量 '\{g.name}' 与已声明的函数同名——同一作用域内函数名与变量名不能重复（C 的普通标识符命名空间合一）",
+        g.loc,
+        E3003_FuncRedeclared,
+      )
+    }
     self.declare_var(
       g.name,
       g.ty,
@@ -676,17 +688,22 @@ pub fn TypeChecker::check_array_dims_legality(
         return // 其余 VLA 维度运行时求值，另有边界检查
       }
       let first = if dims.length() > 0 { dims[0] } else { -1 }
+      // #182 D-3（2026-10-19，C11 §6.7.6.2p1 约束）：负尺寸是约束违反，
+      // clang/gcc 双 error "array size is negative"——旧 W2002 警告误收；
+      // 无尺寸且无初始化器（含 `int a[-1]` 显式负——dims 哨兵与 [] 同值
+      // 不可分，两形态 clang 均 error）同升 error。零尺寸维持 W（GNU
+      // 零长数组扩展域，gcc 默认仅警告）
       if first < -1 {
-        self.report_warning(
+        self.report_error(
           "数组大小不能为负数（\{first}）",
           loc,
-          W2002_ExpectedArraySize,
+          E3081_NegativeArraySize,
         )
       } else if first == -1 && !has_init_list {
-        self.report_warning(
+        self.report_error(
           "数组缺少数组大小：需要显式大小或初始化器来推断（int a[N]; 或 int a[] = {...};）",
           loc,
-          W2002_ExpectedArraySize,
+          E3081_NegativeArraySize,
         )
       } else if first == 0 {
         // 显式零尺寸（含带初始化器——{1,2} 曾被静默推断成 2 元素数组）；

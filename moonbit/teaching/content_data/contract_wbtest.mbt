@@ -76,10 +76,10 @@ test "catalog_presence_per_code" {
 
 ///|
 /// 卡片内容抽查（转义正确性锚——原 diag_wbtest 锚迁入）：E1002 中文
-/// 与 icon 语义 id 原样 + 基数 105。
+/// 与 icon 语义 id 原样 + 基数 106（#178 +E3083）。
 test "catalog_content_escape_probe" {
   install_baked()
-  assert_eq(@diag.catalog_texts.length(), 105, msg="105 卡基线")
+  assert_eq(@diag.catalog_texts.length(), 106, msg="106 卡基线")
   let e2 = @diag.ErrorCode::from_code(1002).unwrap().catalog().unwrap()
   assert_eq(e2.title, "字符串未闭合")
   assert_eq(e2.icon, "string")

@@ -384,14 +384,18 @@ fn VitroVM::render_mem_fault(
 ) -> Unit {
   match fault {
     NullDeref(addr, kind) => {
+      // #178（2026-10-19）：NULL 解引用 trap 补 E3083 码位（对齐 E3060
+      // uaf 直写形态——vm 层不 import teaching/assets〔分层〕，文案
+      // 直写；error_catalog 有卡片条目，demo 码表卡可渲染）
+      let addr_dec = addr.reinterpret_as_int().to_string()
       let msg = if kind is Write {
-        "向 NULL 指针区域写入（地址 0x" +
-        addr.reinterpret_as_int().to_string() +
-        "）。请确认指针已被正确初始化。"
+        "[null-deref] NULL 指针解引用 (E3083)：你正在向 NULL 指针区域写入（地址 0x" +
+        addr_dec +
+        "）。\n\n[cause] 原因：指针的值是 NULL（不指向任何对象），常见于声明后未初始化、malloc 返回 NULL 未检查、或 free 后未置 NULL。\n[fix] 解决方法：解引用前检查指针非空，如 `if (p != NULL) { *p = 1; }`；malloc 后检查返回值。"
       } else {
-        "访问了 NULL 指针区域（地址 0x" +
-        addr.reinterpret_as_int().to_string() +
-        "）。NULL 指针不能解引用。请确认指针已被正确初始化。"
+        "[null-deref] NULL 指针解引用 (E3083)：你正在通过 NULL 指针读取（地址 0x" +
+        addr_dec +
+        "）。NULL 指针不能解引用。\n\n[cause] 原因：指针的值是 NULL（不指向任何对象），常见于声明后未初始化、malloc 返回 NULL 未检查、或 free 后未置 NULL。\n[fix] 解决方法：解引用前检查指针非空，如 `if (p != NULL) { x = *p; }`；malloc 后检查返回值。"
       }
       self.trap(msg, line, column)
     }

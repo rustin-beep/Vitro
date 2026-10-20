@@ -116,6 +116,8 @@ priv struct Rollback {
   /// 变量类型表回滚水位
   var_types_len : Int32
   typedef_names : Map[String, @ast.Type]
+  /// #182 D-4：enum tag 集（重复定义检查——Rollback 同款整表拷贝）
+  enum_tags : Set[String]
   template_names : Set[String]
   /// #78：枚举常量表快照（enum 成员与 typedef 名同为符号面）
   enum_const_values : Map[String, Int64]
@@ -187,6 +189,8 @@ priv struct Parser {
   tokens : Array[@token.Token]
   errors : Array[ParseError]
   mut typedef_names : Map[String, @ast.Type]
+  /// #182 D-4：enum tag 集（Rollback 符号面之一——试探路径一致回滚）
+  mut enum_tags : Set[String]
   mut template_names : Set[String]
   mut pos : Int32
   anonymous_structs : Array[@ast.StructDecl]
@@ -251,6 +255,7 @@ fn Parser::save(self : Parser) -> Rollback {
     agg_len: self.parsed_aggregates.length(),
     var_types_len: self.parsed_var_types.length(),
     typedef_names: self.typedef_names.copy(),
+    enum_tags: self.enum_tags.copy(),
     template_names: self.template_names.copy(),
     enum_const_values: self.enum_const_values.copy(),
     current_class_len: self.current_class.length(),
@@ -267,6 +272,7 @@ fn Parser::restore(self : Parser, rb : Rollback) -> Unit {
   self.parsed_aggregates.truncate(rb.agg_len)
   self.parsed_var_types.truncate(rb.var_types_len)
   self.typedef_names = rb.typedef_names
+  self.enum_tags = rb.enum_tags
   self.template_names = rb.template_names
   self.enum_const_values = rb.enum_const_values
   self.current_class.truncate(rb.current_class_len)
@@ -309,6 +315,7 @@ fn Parser::with_mode(
     pending_static: false,
     pending_register: false,
     enum_const_values: Map([]),
+    enum_tags: Set([]),
   }
 }
 

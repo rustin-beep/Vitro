@@ -182,13 +182,16 @@ test "array_dims_legality_u1_12" {
   // 负尺寸
   let tc = TypeChecker::new()
   tc.check_array_dims_legality(dims_of(-5), false, loc)
-  // #50 批②：E2002→W2002（Clang 默认 warning）
-  assert_eq(tc.warnings.length(), 1)
-  assert_true(tc.warnings[0].code == 2002)
+  // #182 D-3（2026-10-19）：W2002→E3081 升格（clang/gcc 约束违反双
+  // error "array size is negative"；旧锚系 W2002 病行为固化，随批翻转）
+  assert_eq(tc.errors.length(), 1)
+  assert_true(tc.errors[0].code == 3081)
   // -1 无初始化器
   let tc2 = TypeChecker::new()
   tc2.check_array_dims_legality(dims_of(-1), false, loc)
-  assert_eq(tc2.warnings.length(), 1)
+  // 同批升格：`int a[];` 与 `int a[-1]`（哨兵不可分）双侧 clang 均 error
+  assert_eq(tc2.errors.length(), 1)
+  assert_true(tc2.errors[0].code == 3081)
   // -1 有初始化器（推断路径，合法）
   let tc3 = TypeChecker::new()
   tc3.check_array_dims_legality(dims_of(-1), true, loc)

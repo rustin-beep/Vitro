@@ -34,9 +34,11 @@ fn TypeChecker::visit_func_decl(
   // incomplete type / incomplete result type）
   if node.body is Some(_) {
     for p in node.params {
-      self.check_type_complete(p.ty, p.loc)
+      // #182 D-1：void_ok 豁免 f(void) 无名形态（有名 void x 罕见形态
+      // 随此豁免，登记边界——不误伤优先）
+      self.check_type_complete(p.ty, p.loc, void_ok=true)
     }
-    self.check_type_complete(node.return_type, node.loc)
+    self.check_type_complete(node.return_type, node.loc, void_ok=true)
   }
   self.enter_scope()
   for p in node.params {

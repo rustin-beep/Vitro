@@ -1,23 +1,8 @@
 [
   {
-    "case": "file_fread.c",
-    "digest": "79c7c561",
-    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
-  },
-  {
-    "case": "function_pointer_sizeof.c",
-    "digest": "097c5e9f",
-    "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "sizeof_array_param.c",
-    "digest": "fea933cd",
-    "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "file_fopen.c",
-    "digest": "5d175f95",
-    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
+    "case": "array_bound_const_index.c",
+    "digest": "d07256b0",
+    "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
   },
   {
     "case": "bTree_default.c",
@@ -30,29 +15,24 @@
     ]
   },
   {
-    "case": "printf_scanf_type_mismatch.c",
-    "digest": "d70d6dd0",
-    "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
+    "case": "file_fopen.c",
+    "digest": "5d175f95",
+    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
   },
   {
-    "case": "static_forward_func.c",
-    "digest": "96ef11dc",
-    "reason": "闸标定面形态差（#50 审阅 P1-2 登记，非引擎错）：clang_direct 历史标定参数 -Wno-implicit-function-declaration 关闭了 C99+ 默认 error 的隐式声明检查；裸默认口径 Clang 同位亦 error（实测 error: call to undeclared function）——E3058 与 Clang 默认对齐成立，属参数口径差。E3059 对照面（undeclared identifier 不受该 flag 影响）双侧等价不登记"
+    "case": "file_fread.c",
+    "digest": "79c7c561",
+    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
   },
   {
-    "case": "array_bound_const_index.c",
-    "digest": "d07256b0",
-    "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
+    "case": "function_pointer_sizeof.c",
+    "digest": "097c5e9f",
+    "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
   },
   {
-    "case": "scanf_0x_retval.c",
-    "digest": "71b4b08d",
-    "reason": "sscanf 0x 残缺前缀返回值派系差（#59 题 1 裁定 2026-10-10）：UCRT 把匹配冲突当 EOF 返 -1；Vitro 按 C11 §7.21.6.2 匹配失败返已配数 0（glibc 2.43 实测同判 0）。行为面（不写/游标消费不退回/正常前缀）双侧一致，由 baseline/scanf_0x_behavior.c 严拍；本例只锁返回值派系差"
-  },
-  {
-    "case": "string_escape_octal_hex.c",
-    "digest": "38dfc934",
-    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
+    "case": "null_deref_trap_e3083.c",
+    "digest": "1a42137c",
+    "reason": "#178（2026-10-19）E3083 码位锁面锚：NULL 写 trap（vitro 教学 trap rc=2、stdout『guard-ok』——trap 前已产出）vs Clang SIGSEGV 3221225477 且 stdio 缓冲崩溃吞掉 stdout（空）——UB 崩溃域与受检 trap 的正当形态差异（p2e_div_zero_scope 同款：报告返回码 X != Y 的 o=Clang/m=MoonBit，trap 时 m 侧 // EXIT 行缺失记 0）。对照组判空分支 guard-ok 双侧语义一致。"
   },
   {
     "case": "p2e_div_zero_scope.c",
@@ -68,5 +48,30 @@
       "a08efe4a",
       "3e3edab5"
     ]
+  },
+  {
+    "case": "printf_scanf_type_mismatch.c",
+    "digest": "d70d6dd0",
+    "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
+  },
+  {
+    "case": "scanf_0x_retval.c",
+    "digest": "71b4b08d",
+    "reason": "sscanf 0x 残缺前缀返回值派系差（#59 题 1 裁定 2026-10-10）：UCRT 把匹配冲突当 EOF 返 -1；Vitro 按 C11 §7.21.6.2 匹配失败返已配数 0（glibc 2.43 实测同判 0）。行为面（不写/游标消费不退回/正常前缀）双侧一致，由 baseline/scanf_0x_behavior.c 严拍；本例只锁返回值派系差"
+  },
+  {
+    "case": "sizeof_array_param.c",
+    "digest": "fea933cd",
+    "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
+  },
+  {
+    "case": "static_forward_func.c",
+    "digest": "96ef11dc",
+    "reason": "闸标定面形态差（#50 审阅 P1-2 登记，非引擎错）：clang_direct 历史标定参数 -Wno-implicit-function-declaration 关闭了 C99+ 默认 error 的隐式声明检查；裸默认口径 Clang 同位亦 error（实测 error: call to undeclared function）——E3058 与 Clang 默认对齐成立，属参数口径差。E3059 对照面（undeclared identifier 不受该 flag 影响）双侧等价不登记"
+  },
+  {
+    "case": "string_escape_octal_hex.c",
+    "digest": "38dfc934",
+    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
   }
 ]

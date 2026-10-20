@@ -20,12 +20,16 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
    - `go run ./scripts/lexer_diff corpus/baseline --freeze-mb`（语料文件数闸 + 样本 TSV——断供形态「现 N ≠ 落盘 M」）
    - `go run ./scripts/parser_diff corpus/baseline --freeze-mb`（样本级 hash 校验——新样本不在清单报「与 freeze 时不一致」，CI 上该 job 才红、本地不跑不报）
    - `go run ./scripts/typeck_diff corpus/baseline --freeze-mb`（逐 suite；**代码改动（含 typeck 行为改进）致存量 hash 漂移时 knr/leetcode/gap 三套件也要重跑**——kr_4_6 实锤：折叠改进只冻了 baseline，knr 旧 hash 连红两轮）
-   - `go run ./scripts/codegen_diff <dir> --freeze-mb`（mb 侧产物指纹入账）
+   - `go run ./scripts/codegen_diff <dir> --freeze-mb`（mb 侧产物指纹入账；**dir 须四套件各跑一次**——codegen 改指令发射面必漂存量：2026-10-20 CI 红实锤，只冻 baseline 漏 knr/leetcode 8 例 char 指令漂移）
    - `go run ./scripts/vm_diff --corpus <suite> --freeze-mb`（接 **suite 名**非目录）
    语义统一（2026-10-11）：`--freeze-mb` 默认含存量重算，代码改动致存量漂移时同命令自动刷新——`--refresh` 已删，出现即说明心智过时。**本地验证面必须四 suite 全跑**（baseline 绿 ≠ knr/leetcode/gap 绿——CI 是四套件全量，kr_4_6 教训）；
 3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
 4. ~~`cargo build --release` 重建后 `go run ./scripts/shadow_verify`~~（**[Rust oracle 退役 2026-10-05]**——`native/` 已整体删除，`scripts/shadow_verify` 同批消失；oracle 正确性底线职责由 clang golden + clang_direct 直拍承接）；
 5. `go run ./scripts/facts --strict check` 漂移 0（CI 现役完整形态，flag 在子命令之前）。
+
+## corpus_fuzz 基线 freeze 的语料集一致性（2026-10-20 CI 红教训）
+
+`-freeze` 的抽样种子吃**磁盘语料文件集合**（非提交集）——工作区躺着未提交语料时 freeze，基线按「含未来语料」的抽样入账，而 CI 检出集更小 → 轮换差异 → 桶恶化假红（gap/file_fopen 族 VFS 预置差异面延迟两批才在 CI 轮到）。**freeze 前核 `git status --short corpus/` 为空**（未提交语料先提交或 stash 再 freeze）；口径级变更（如 clangOutcome 判定修复）会改变存量桶，须主动全量重算而非等抽样轮到。
 
 ## golden 规则
 - **stdout 为空的用例，golden 就是 0 字节文件，合法**（比对按 trim 后非空行）。

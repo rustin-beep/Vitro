@@ -170,6 +170,9 @@ pub(all) enum OpCode {
   ULeQ
   UGtQ
   UGeQ
+  StoreGlobalByte
+  LoadGlobalByte
+  LoadGlobalUByte
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn OpCode::code(Self) -> Int
 pub fn OpCode::compare(Self, Self) -> Int

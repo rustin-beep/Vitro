@@ -2,13 +2,13 @@
 /// T2 覆盖率断言基线：146 臂 / 105 卡片 / 41 无卡片（105 + 41 = 146，
 /// #50 批③：77/60→102/35（+25）；病 15：+W3068；病 19：+H3069；#96：
 /// +E3073（105 卡，清单互斥互补）；#144/#151：+E3074/E3075；#145：+E3076；
-/// #154/#156/#157：+E3077/E3078/E3079（均无卡）。
+/// #154/#156/#157：+E3077/E3078/E3079（均无卡）；#174：+E3080（无卡）。
 /// 源漂移由 gen_diag fail loud 兜底。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
-  assert_eq(all.length(), 146) // #157：145→146（E3079）
+  assert_eq(all.length(), 147) // #174：146→147（E3080）
   assert_eq(catalog_codes().length(), 105) // #96：104→105
-  assert_eq(codes_without_catalog().length(), 41)
+  assert_eq(codes_without_catalog().length(), 42)
   // 互补无交集
   let set : Map[Int32, Bool] = Map([])
   for c in catalog_codes() {
@@ -73,7 +73,7 @@ test "lang_segment_4xxx_cpp" {
     }
   }
   assert_eq(cpp, 38)
-  assert_eq(c_lang, 108) // 病 19 +H3069；#96 +E3073；#144/#151 +E3074/E3075；#145 +E3076；#154/#156/#157 +E3077/E3078/E3079（C 段 3xxx）
+  assert_eq(c_lang, 109) // #174 +E3080（C 段 3xxx）；前史见 CHANGELOG
   assert_eq(csharp, 0) // 5xxx 段空置（CSharp 变体先行落位——P2-3）
   assert_eq(SourceLang::CSharp.to_str(), "csharp")
 }

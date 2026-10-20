@@ -165,6 +165,10 @@ pub fn TypeChecker::check(
         )
       }
     }
+    // #174（2026-10-19，C11 §6.7.2.1p7 约束）：同一 struct 内成员名唯一
+    //——clang/gcc 双 error "duplicate member"；旧零诊断误收（异类型重复
+    // 同约束；typedef struct 匿名体与嵌套字段类型里的定义走同一注册路径）
+    self.check_duplicate_member_names(s, "结构体")
   }
   for u in program.unions {
     if u.is_forward {
@@ -193,6 +197,8 @@ pub fn TypeChecker::check(
           is_complete: true,
         })
     }
+    // #174 同约束（C11 §6.7.2.1p7 对 union 同样适用）
+    self.check_duplicate_member_names(u, "联合体")
   }
   // T-P0-8：struct/union 值成员循环包含检测（学生写链表节点漏 `*` 的
   // 经典错误，曾致 compute_type_size 无限递归栈溢出）。
@@ -704,5 +710,29 @@ fn is_char_safe_initializer(expr : @ast.Expr) -> Bool {
       ty.kind() is TK_Char || (value >= -128 && value <= 127)
     LongLiteral(value, _, _) => value >= -128 && value <= 127
     _ => false
+  }
+}
+
+///|
+/// #174（2026-10-19）：同一 struct/union 内成员名唯一性检查（C11
+/// §6.7.2.1p7 约束）。插入序去重报首个重复对（clang "duplicate member"
+/// 对齐：报重复名本身；异类型重复同约束）。kind_label 区分结构体/联合体
+/// 文案。
+fn TypeChecker::check_duplicate_member_names(
+  self : TypeChecker,
+  decl : @ast.StructDecl,
+  kind_label : String,
+) -> Unit {
+  let seen : Set[String] = Set([])
+  for f in decl.fields {
+    if seen.contains(f.name) {
+      self.report_error(
+        "\{kind_label} '\{decl.name}' 的成员 '\{f.name}' 重复定义——同一结构体内的成员名必须唯一",
+        decl.loc,
+        E3080_StructDuplicateMember,
+      )
+    } else {
+      seen.add(f.name)
+    }
   }
 }

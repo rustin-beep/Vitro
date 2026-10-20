@@ -434,6 +434,10 @@
       "code": 3079
     },
     {
+      "name": "E3080_StructDuplicateMember",
+      "code": 3080
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

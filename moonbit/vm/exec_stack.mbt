@@ -244,6 +244,40 @@ fn VitroVM::execute_global(
         self.vm_store_u64(addr, val, line, column)
       }
     }
+    LoadGlobalByte | LoadGlobalUByte => {
+      // #177：char 全局 1 字节读——i8 符号扩展 / u8 零扩展
+      //（语义对齐 LoadMemByte/LoadMemUByte）
+      let var_name = self.global_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Read,
+      })
+      let nm = if op is LoadGlobalByte {
+        "LoadGlobalByte"
+      } else {
+        "LoadGlobalUByte"
+      }
+      if addr + 1U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
+        self.trap("\{nm}: 地址越界", line, column)
+      } else {
+        let val = self.vm_load_i8(addr, line, column)
+        self.push_i32(if op is LoadGlobalByte { val } else { val & 0xFF })
+      }
+    }
+    StoreGlobalByte => {
+      // #177：char 全局 1 字节写——只落低 8 位，不越权抹右侧邻居
+      let var_name = self.global_var_name(operand)
+      self.last_accessed_vars.push(VariableAccess::{
+        name: var_name,
+        access_type: Write,
+      })
+      if addr + 1U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
+        self.trap("StoreGlobalByte: 地址越界", line, column)
+      } else {
+        let val = self.pop_i32()
+        self.vm_store_i8(addr, val, line, column)
+      }
+    }
     _ => ()
   }
 }

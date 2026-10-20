@@ -19,6 +19,8 @@ priv enum IncDecKind {
   IDD_Float
   IDD_Double
   IDD_LongLong
+  IDD_Char
+  IDD_UChar
 }
 
 ///|
@@ -29,6 +31,9 @@ fn incdec_kind_of(ty : @ast.Type?) -> IncDecKind {
         TK_Float => IDD_Float
         TK_Double => IDD_Double
         TK_LongLong => IDD_LongLong
+        // #177：char 全局 ++/-- 走字节粒度对（局部仍 4 字节槽形态——
+        // 局部存槽未回窄是独立既有缺陷，本批不对齐登记不修）
+        TK_Char => if t.is_unsigned() { IDD_UChar } else { IDD_Char }
         _ => IDD_Int
       }
     None => IDD_Int
@@ -344,6 +349,9 @@ fn incdec_global_load(kind : IncDecKind) -> @opcode.OpCode {
   match kind {
     IDD_Double => @opcode.OpCode::LoadGlobalD
     IDD_LongLong => @opcode.OpCode::LoadGlobalQ
+    // #177：全局 char 字节粒度读写（1 字节紧排布局）
+    IDD_Char => @opcode.OpCode::LoadGlobalByte
+    IDD_UChar => @opcode.OpCode::LoadGlobalUByte
     _ => @opcode.OpCode::LoadGlobal
   }
 }
@@ -353,6 +361,7 @@ fn incdec_global_store(kind : IncDecKind) -> @opcode.OpCode {
   match kind {
     IDD_Double => @opcode.OpCode::StoreGlobalD
     IDD_LongLong => @opcode.OpCode::StoreGlobalQ
+    IDD_Char | IDD_UChar => @opcode.OpCode::StoreGlobalByte
     _ => @opcode.OpCode::StoreGlobal
   }
 }
@@ -373,6 +382,14 @@ fn BytecodeGen::emit_incdec_seq(
   loc~ : @source.SourceLoc,
 ) -> Unit {
   self.emit(load_op, idx, loc)
+  // #198：char 局部 4 字节槽可能残留未窄化值（上次 ++ 存回的 128 类），
+  // load 后立即归位字节域——post-Dup 的返回值即 C 语义的 char 旧值；
+  // 幂等（全局臂 LoadGlobalByte 已窄化，重复截断不变值）
+  match kind {
+    IDD_Char => self.emit(@opcode.OpCode::TruncByte, 0, loc)
+    IDD_UChar => self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+    _ => ()
+  }
   if kind is IDD_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   }
@@ -421,6 +438,13 @@ fn BytecodeGen::emit_incdec_seq(
   }
   if kind is IDD_Float {
     self.emit(@opcode.OpCode::CastD2F, 0, loc)
+  }
+  // #198：算术结果回窄字节域再入槽/Dup——pre 表达式值与槽内值都是
+  // C 语义的 char 值（127+1 → -128；255uc+1 → 0）
+  match kind {
+    IDD_Char => self.emit(@opcode.OpCode::TruncByte, 0, loc)
+    IDD_UChar => self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+    _ => ()
   }
   if is_pre {
     self.emit(@opcode.OpCode::Dup, 0, loc)

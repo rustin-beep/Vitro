@@ -268,6 +268,13 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
                 self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
               } else if ty.kind() is TK_LongLong {
                 self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
+              } else if ty.kind() is TK_Char {
+                // #177：char 全局 1 字节紧排，32 位读卷右侧邻居字节
+                if ty.is_unsigned() {
+                  self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
+                } else {
+                  self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
+                }
               } else {
                 self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
               }
@@ -294,6 +301,20 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
                     self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
                   } else if ty.kind() is TK_LongLong {
                     self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+                  } else if ty.kind() is TK_Char {
+                    if ty.is_unsigned() {
+                      self.emit(
+                        @opcode.OpCode::LoadGlobalUByte,
+                        static_offset,
+                        loc,
+                      )
+                    } else {
+                      self.emit(
+                        @opcode.OpCode::LoadGlobalByte,
+                        static_offset,
+                        loc,
+                      )
+                    }
                   } else {
                     self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
                   }

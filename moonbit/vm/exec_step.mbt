@@ -127,7 +127,10 @@ fn VitroVM::dispatch_single(
     | LoadGlobalD
     | StoreGlobalD
     | LoadGlobalQ
-    | StoreGlobalQ => self.execute_global(op, operand, line, column)
+    | StoreGlobalQ
+    | LoadGlobalByte
+    | LoadGlobalUByte
+    | StoreGlobalByte => self.execute_global(op, operand, line, column)
     // ── 内存 ──
     LoadMem
     | StoreMem

@@ -104,7 +104,9 @@ def verdict(rc, tool):
 
 def parse_vitro(so, rc=None):
     """★ 铁律 5：三种帧形状都认。"""
-    for line in so.splitlines():
+    # ★ 只按 \n 分行：splitlines() 会把 stdout delta 里的 U+0085（0x85 字节
+    # Latin-1 折回）当行界拆碎 JSON 帧 → 「输出整段消失」假象（#172 定案）
+    for line in so.split("\n"):
         line = line.strip()
         if not line.startswith("{"): continue
         try: d = json.loads(line)

@@ -131,12 +131,12 @@ description: 用本地 LLM 批量生成 C 语料并四裁判对拍，从产物�
 | `references/02-提示词与工作点.md` | 关思考两开关（`enable_thinking` vs `reasoning_effort`）、参数表、模板、C23 口径、方向族、回归锚 |
 | `references/03-分桶与定型.md` | 分桶实现 + **定型三问** + 三条实锤反例（文件作用域指定初始化 / `int→pointer` / `print_int` 保留名）+ 误拒稳定族 |
 | `references/04-最小复现与二分法.md` | 二分流程、两点验证、`print_int` 二分实例、反模式 |
-| `references/05-踩坑清单.md` | P1~P19 症状 → 根因 → 修法（按"会静默产生假结果"排序；P14 0x85 吞输出、P15 GNU 扩展假误拒、P16 变体矩阵、P17 存储期×容器矩阵、P18 brace elision 与 `'\"'`、P19 N 组产出率下降该换靶） |
+| `references/05-踩坑清单.md` | P1~P22 症状 → 根因 → 修法（按"会静默产生假结果"排序；P14 0x85 吞输出、P15 GNU 扩展假误拒、P16 变体矩阵、P17 存储期×容器矩阵、P18 brace elision 与 `'\"'`、P19 N 组产出率下降该换靶、P20 四类固定答案、P21 golden 被模型弄脏、P22 二维数组形参 char/int 差异） |
 | `assets/gen_corpus_template.py` | 生成 + 四裁判 + 分桶 + 续跑 + 判据冻结的**可直接改用的模板**（五铁律内嵌为注释） |
 | `assets/freeze_judge.ps1` | 一键冻判据快照（含自足目录布局与指纹记录） |
 | `assets/peel_shell.py` | **剥壳探测器**（§二 的工具）——常量标识符→字面量的机械等价变换 + 复跑。**内置「变换计数为 0 即 NO_TRANSFORM」断言**，防把「没变换」误读成「没有下一层」 |
 
-as_of: 2026-10-18（96 例×6 批实跑蒸馏；判据八铁律——新增 #6 clang golden -O0、#7 运行轨三噪声；判据快照 `_judge_v2` `vitro.exe` sha256[:12]=`aea78efe7c69`；已挂 issue #142-#147/#149-#152、#171-#175、#179-#182）
+as_of: 2026-10-19（96 例×9 批实跑蒸馏；判据八铁律——新增 #6 clang golden -O0、#7 运行轨三噪声；判据快照 `_judge_v2` `vitro.exe` sha256[:12]=`aea78efe7c69`；已挂 issue #142-#147/#149-#152、#171-#175、#179-#182、#192-#195；#172 定案——判据第 9 条改写为「NDJSON 禁 splitlines」）
 
 **2026-10-18 第六批补充（判据九铁律候选，待下批固化）**
 
@@ -144,3 +144,16 @@ as_of: 2026-10-18（96 例×6 批实跑蒸馏；判据八铁律——新增 #6 c
    命中即判 #172 同族，**不要**写成「中文输出缺陷」。部分截断（非全空）才是另一案。
 10. **`vitro_reject_clang_accept` 先看诊断消息**：若 vitro 拒的是「C 标准禁止、clang/gcc 用 GNU 扩展放行」
    的构造（VLA 初始化、零长数组等），**不计缺陷**（P15）。
+
+**2026-10-19 #172 定案改写（第 9 条根因收编——引擎无罪，探针碎帧）**
+
+9.（改写）**NDJSON 消费只按 `\n` 分行，禁用 `splitlines()`**：引擎 stdout 帧的 `delta` 对
+   ≥0x20 字节裸放不转义（RFC 8259 合法），其中 `0x85` 字节经 Latin-1 折回即 U+0085——
+   Python `splitlines()` 把它当 Unicode 行界**拆碎帧行** → `json.loads` 失败 → 判据表观
+   「stdout 整段消失 + run finished」（#172 全案即此：`putchar(0x85)` 引擎双臂输出字节
+   与 clang 逐位一致，`split('\n')` 路径 stdout 帧完好）。自洽面：`0x0b`/`0x0c` 因 <0x20
+   被 json_escape 强制转义不触发；UTF-8 序列 `E2 80 A8`（U+2028）折回后是三字符
+   不含 U+2028 本身也不触发——**唯一命中 = 原始输出字节含 85**。第 9 条旧文的
+   「先数 0x85」判法保留（作为碎帧症状的快速识别），但处置改为**修判据脚本**
+   （`split('\n')`），不再当引擎缺陷立案。assets 两处（peel_shell.py / gen_corpus_template.py
+   的 parse_vitro/judge）已随批改净；今后新判据脚本一律 `split("\n")`。

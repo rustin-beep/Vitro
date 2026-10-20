@@ -91,6 +91,15 @@ fn BytecodeGen::gen_assign_inner(
             self.emit(@opcode.OpCode::LoadLocalQ, local_offset, loc)
           } else {
             self.emit(@opcode.OpCode::LoadLocal, local_offset, loc)
+            // #198：复合赋值运算基值归位字节域（局部 char 4 字节槽可能
+            // 残留未窄化值）；幂等
+            if left_is_char {
+              if left_is_unsigned {
+                self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+              } else {
+                self.emit(@opcode.OpCode::TruncByte, 0, loc)
+              }
+            }
           }
           self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
           self.emit_compound(
@@ -111,6 +120,15 @@ fn BytecodeGen::gen_assign_inner(
         } else if left_is_long_long {
           self.emit(@opcode.OpCode::StoreLocalQ, local_offset, loc)
         } else {
+          // #198：算术结果回窄字节域再入槽（b=127;b+=1 → -128）；
+          // 普通 Assign 路径 gen_right 已带 char 窄化链，此处幂等
+          if left_is_char {
+            if left_is_unsigned {
+              self.emit(@opcode.OpCode::TruncUByte, 0, loc)
+            } else {
+              self.emit(@opcode.OpCode::TruncByte, 0, loc)
+            }
+          }
           self.emit(@opcode.OpCode::StoreLocal, local_offset, loc)
         }
         if left_is_double {
@@ -129,6 +147,13 @@ fn BytecodeGen::gen_assign_inner(
             self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
           } else if left_is_long_long {
             self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
+          } else if left_is_char {
+            // #177：char 全局 1 字节紧排，32 位读卷右侧邻居
+            if left_is_unsigned {
+              self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
+            } else {
+              self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
+            }
           } else {
             self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
@@ -150,6 +175,9 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::StoreGlobalD, global_offset, loc)
         } else if left_is_long_long {
           self.emit(@opcode.OpCode::StoreGlobalQ, global_offset, loc)
+        } else if left_is_char {
+          // #177：char 全局 1 字节紧排，4 字节写越权抹右侧池串/变量
+          self.emit(@opcode.OpCode::StoreGlobalByte, global_offset, loc)
         } else {
           self.emit(@opcode.OpCode::StoreGlobal, global_offset, loc)
         }
@@ -157,6 +185,12 @@ fn BytecodeGen::gen_assign_inner(
           self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
         } else if left_is_long_long {
           self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
+        } else if left_is_char {
+          if left_is_unsigned {
+            self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
+          } else {
+            self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
+          }
         } else {
           self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
         }
@@ -172,6 +206,12 @@ fn BytecodeGen::gen_assign_inner(
               self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
             } else if left_is_long_long {
               self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+            } else if left_is_char {
+              if left_is_unsigned {
+                self.emit(@opcode.OpCode::LoadGlobalUByte, static_offset, loc)
+              } else {
+                self.emit(@opcode.OpCode::LoadGlobalByte, static_offset, loc)
+              }
             } else {
               self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
             }
@@ -193,6 +233,8 @@ fn BytecodeGen::gen_assign_inner(
             self.emit(@opcode.OpCode::StoreGlobalD, static_offset, loc)
           } else if left_is_long_long {
             self.emit(@opcode.OpCode::StoreGlobalQ, static_offset, loc)
+          } else if left_is_char {
+            self.emit(@opcode.OpCode::StoreGlobalByte, static_offset, loc)
           } else {
             self.emit(@opcode.OpCode::StoreGlobal, static_offset, loc)
           }
@@ -200,6 +242,12 @@ fn BytecodeGen::gen_assign_inner(
             self.emit(@opcode.OpCode::LoadGlobalD, static_offset, loc)
           } else if left_is_long_long {
             self.emit(@opcode.OpCode::LoadGlobalQ, static_offset, loc)
+          } else if left_is_char {
+            if left_is_unsigned {
+              self.emit(@opcode.OpCode::LoadGlobalUByte, static_offset, loc)
+            } else {
+              self.emit(@opcode.OpCode::LoadGlobalByte, static_offset, loc)
+            }
           } else {
             self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
           }

@@ -151,6 +151,42 @@ test "exec_global_store_load" {
 }
 
 ///|
+/// #177 执行语义锚：全局字节粒度三指令——StoreGlobalByte 只落低 8 位
+/// 不越权写相邻字节；LoadGlobalByte i8 符号扩展；LoadGlobalUByte u8
+/// 零扩展（对齐 LoadMemByte/LoadMemUByte）。
+test "exec_global_byte_ops_extents_and_bounds" {
+  let vm = VitroVM::new()
+  // 相邻字节预置哨兵 0xC8（offset 1）与 0x7F（offset 5）
+  let base = @bytecode.GLOBAL_START
+  vm.vm_store_i8(base + 1U, 0xC8, 1, 1)
+  vm.vm_store_i8(base + 5U, 0x7F, 1, 1)
+  vm.load_program(
+    code_of([
+      // g0 = 0x130 → 只落低 8 位 0x30；g1 读 0xC8 → 符号扩展 -56
+      instr(PushConst, 0x130),
+      instr(StoreGlobalByte, 0),
+      instr(LoadGlobalByte, 1),
+    ]),
+  )
+  let ret = vm.run()
+  // 最后一步 LoadGlobalByte(0xC8) → -56（i8 符号扩展）
+  assert_eq(ret, -56)
+  // 写侧：g0 只写 1 字节 0x30，g1 的 0xC8 哨兵不被 4 字节写窗抹掉
+  assert_eq(vm.vm_load_i8(base + 0U, 1, 1), 0x30)
+  assert_eq(vm.vm_load_i8(base + 1U, 1, 1), -56)
+  // g5 哨兵完好（StoreGlobalByte(offset 0) 越权面外）
+  assert_eq(vm.vm_load_i8(base + 5U, 1, 1), 0x7F)
+  // 读侧：LoadGlobalUByte 对同一字节零扩展 → 200
+  let vm2 = VitroVM::new()
+  vm2.vm_store_i8(base + 1U, -56, 1, 1)
+  vm2.load_program(code_of([instr(LoadGlobalUByte, 1)]))
+  assert_eq(vm2.run(), 200)
+  // 观测面（last_accessed_vars 每步重置）：最后一步 LoadGlobalByte 推 Read
+  assert_eq(vm.last_accessed_vars.length(), 1)
+  assert_eq(vm.last_accessed_vars[0].access_type is Read, true)
+}
+
+///|
 /// StepEvent：断点暂停（Paused）+ vis 事件行命中 + 环形上限。
 test "exec_step_event_breakpoint_and_vis" {
   let vm = VitroVM::new()

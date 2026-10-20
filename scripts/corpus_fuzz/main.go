@@ -508,8 +508,15 @@ func clangOutcome(src string, workdir string) outcome {
 	out, _, rc2 := runCmd([]string{exe}, ".")
 	os.Remove(exe)
 	if rc2 != 0 {
-		// 编译过但运行崩（UB 域）——按 clang 真值处理：vitro 须同崩才算 AGREE
-		return outcome{"OK", "EXIT:" + strconv.Itoa(rc2)}
+		// 崩溃域（Windows 异常码，如 0xC0000005≈3.2e9）与合法非零 return
+		//（main 返回 0..255）区分——合法 return 保留 stdout 并入比对（与
+		// vitro 口径对齐：退出码本就不进比对）。此前一切非零都丢 stdout
+		// 只留 EXIT 码，合法 `return 3` 的程序被误判 WRONG_VALUE（假阳性
+		// 实锤：strcpy_retval_chain|init_partial 三方 stdout 实为逐字节一致）。
+		if rc2 > 255 || rc2 < 0 {
+			return outcome{"OK", "EXIT:" + strconv.Itoa(rc2)}
+		}
+		return outcome{"OK", norm(out)}
 	}
 	return outcome{"OK", norm(out)}
 }
@@ -712,16 +719,17 @@ func main() {
 	}
 
 	// 生成（或复用）+ 对拍 + 基线比对
+	// 基线载入（freeze 同样读旧——合并语义：#177/#198 两批 freeze 整文件
+	// 重写冲掉 43 条人工定性标注实锤；抽样集随语料数轮换，未抽到的历史
+	// 条目必须留存，否则轮换回来又成「新指纹」且标注永久丢失）
 	var base Baseline
 	base.Entries = map[string]BaselineEntry{}
-	if !*freeze {
-		bb, err := os.ReadFile(*basePath)
-		if err != nil {
-			die("基线缺失（首跑用 -freeze 生成）：%v", err)
-		}
+	if bb, err := os.ReadFile(*basePath); err == nil {
 		if err := json.Unmarshal(bb, &base); err != nil {
 			die("基线 JSON 解析失败：%v", err)
 		}
+	} else if !*freeze {
+		die("基线缺失（首跑用 -freeze 生成）：%v", err)
 	}
 
 	newFp, worsened, agree, total := 0, 0, 0, 0
@@ -765,7 +773,11 @@ func main() {
 				agree++
 			}
 			if *freeze {
-				base.Entries[fp] = BaselineEntry{Bucket: bucket}
+				// 合并语义：只更新桶，保留人工定性标注（issue/note）
+				old := base.Entries[fp]
+				base.Entries[fp] = BaselineEntry{
+					Bucket: bucket, Issue: old.Issue, Note: old.Note,
+				}
 				continue
 			}
 			ent, ok := base.Entries[fp]

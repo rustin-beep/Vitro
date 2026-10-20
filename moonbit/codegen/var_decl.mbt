@@ -244,6 +244,9 @@ fn BytecodeGen::emit_static_init(
         self.emit(@opcode.OpCode::StoreGlobalD, global_offset, loc)
       } else if vty.kind() is TK_LongLong {
         self.emit(@opcode.OpCode::StoreGlobalQ, global_offset, loc)
+      } else if vty.kind() is TK_Char {
+        // #177：char 全局初始化 1 字节写（不越权抹相邻全局/池串）
+        self.emit(@opcode.OpCode::StoreGlobalByte, global_offset, loc)
       } else {
         self.emit(@opcode.OpCode::StoreGlobal, global_offset, loc)
       }

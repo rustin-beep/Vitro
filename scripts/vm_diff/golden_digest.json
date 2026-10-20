@@ -8,6 +8,13 @@
       "stdout_sha": "d4735e3a265e16ee",
       "memory_sha": "2835dd8cc655a3b8"
     },
+    "baseline/array_assign_lvalue_reject.c": {
+      "src_sha": "3bbc778e",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "baseline/array_bound_const_index.c": {
       "src_sha": "25cc0c64",
       "exit_code": 0,
@@ -285,6 +292,24 @@
       "stdout_sha": "673f097ea19bd4a9",
       "memory_sha": "1e1b1947de53465a"
     },
+    "baseline/char_global_adjacent_byte.c": {
+      "src_sha": "c80d6d19",
+      "exit_code": 0,
+      "stdout_sha": "f73680cf6fa8a295",
+      "memory_sha": "fbfd5acc8aa5ff46"
+    },
+    "baseline/char_global_read_extents.c": {
+      "src_sha": "6f664292",
+      "exit_code": 0,
+      "stdout_sha": "beeac210e3bb3360",
+      "memory_sha": "037cb2f7ce127882"
+    },
+    "baseline/char_global_sscanf_fmt.c": {
+      "src_sha": "828744d2",
+      "exit_code": 0,
+      "stdout_sha": "f192c9b0a8a607e2",
+      "memory_sha": "a069bd42de4db9c8"
+    },
     "baseline/char_init_no_false_positive.c": {
       "src_sha": "c559bd1e",
       "exit_code": 0,
@@ -296,6 +321,12 @@
       "exit_code": 0,
       "stdout_sha": "108c995b953c8a35",
       "memory_sha": "45a4cc430352349c"
+    },
+    "baseline/char_local_narrow_matrix.c": {
+      "src_sha": "13f4aba5",
+      "exit_code": 0,
+      "stdout_sha": "b26142d1802cb3df",
+      "memory_sha": "d0ca06bc0f83b559"
     },
     "baseline/char_signedness.c": {
       "src_sha": "558096f8",
@@ -2241,6 +2272,12 @@
       "stdout_sha": "a2fe2445b7acc519",
       "memory_sha": "dd3a76ed98cdeafd"
     },
+    "baseline/stdout_c1_byte_0x85.c": {
+      "src_sha": "55751ce6",
+      "exit_code": 0,
+      "stdout_sha": "3ef1fa170663eb88",
+      "memory_sha": "b3561ab4afd32063"
+    },
     "baseline/strcat_empty.c": {
       "src_sha": "fba688cf",
       "exit_code": 0,
@@ -2348,6 +2385,13 @@
       "exit_code": 0,
       "stdout_sha": "f71998fe363b9c29",
       "memory_sha": "27e722743b9e3d81"
+    },
+    "baseline/struct_dup_member_reject.c": {
+      "src_sha": "8f90f95b",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
     },
     "baseline/struct_member_array.c": {
       "src_sha": "18213307",

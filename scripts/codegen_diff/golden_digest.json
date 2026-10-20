@@ -5,6 +5,7 @@
     "baseline": {
       "sources": {
         "array_address.c": "0ba37ef8",
+        "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
         "array_bounds_safe.c": "0f125842",
         "array_dim_const_expr.c": "8820e906",
@@ -51,8 +52,12 @@
         "char_array_init.c": "a9a7459f",
         "char_array_var_init.c": "12219bf5",
         "char_escape_quote.c": "db09bffd",
+        "char_global_adjacent_byte.c": "c80d6d19",
+        "char_global_read_extents.c": "6f664292",
+        "char_global_sscanf_fmt.c": "828744d2",
         "char_init_no_false_positive.c": "c559bd1e",
         "char_literal.c": "66ec14b0",
+        "char_local_narrow_matrix.c": "13f4aba5",
         "char_signedness.c": "558096f8",
         "circular_queue.c": "e85826b6",
         "codegen_soundness_regression.c": "f6946525",
@@ -375,6 +380,7 @@
         "stdio_fputc_stdout.c": "5c4d507b",
         "stdio_fseek_macro.c": "082a0f54",
         "stdio_macro_file_ptr.c": "79a07309",
+        "stdout_c1_byte_0x85.c": "55751ce6",
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
@@ -393,6 +399,7 @@
         "struct_basic.c": "981e9927",
         "struct_char_row_partial_init.c": "ec132f4e",
         "struct_copy.c": "c4a785bf",
+        "struct_dup_member_reject.c": "8f90f95b",
         "struct_member_array.c": "18213307",
         "struct_nested_2d_member_init.c": "f16d2ba5",
         "struct_nested_init.c": "54c201ca",
@@ -464,6 +471,10 @@
       "cases": {
         "array_address.c": {
           "result_sha": "37ce0c5a8f992ea5"
+        },
+        "array_assign_lvalue_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "array_bound_const_index.c": {
           "result_sha": "0d0c2def1a98f54f"
@@ -604,11 +615,23 @@
         "char_escape_quote.c": {
           "result_sha": "96eb78d3b1ffa91c"
         },
+        "char_global_adjacent_byte.c": {
+          "result_sha": "352b5aadd636241e"
+        },
+        "char_global_read_extents.c": {
+          "result_sha": "3d69073e3b5127ed"
+        },
+        "char_global_sscanf_fmt.c": {
+          "result_sha": "8664ab7ae0f234c2"
+        },
         "char_init_no_false_positive.c": {
           "result_sha": "7a68f17130020183"
         },
         "char_literal.c": {
           "result_sha": "1c86b6207d84d657"
+        },
+        "char_local_narrow_matrix.c": {
+          "result_sha": "0235397b2fc6528b"
         },
         "char_signedness.c": {
           "result_sha": "ae495b56270091ff"
@@ -1588,6 +1611,9 @@
         "stdio_macro_file_ptr.c": {
           "result_sha": "f8cfd77f646d524b"
         },
+        "stdout_c1_byte_0x85.c": {
+          "result_sha": "527a040c5a6f9e7c"
+        },
         "strcat_empty.c": {
           "result_sha": "7d3bc7ee2bf55aed"
         },
@@ -1641,6 +1667,10 @@
         },
         "struct_copy.c": {
           "result_sha": "28492e156dbf0184"
+        },
+        "struct_dup_member_reject.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "struct_member_array.c": {
           "result_sha": "0be2704f6b8f510d"

@@ -1,6 +1,7 @@
 ///|
-/// Vitro 字节码操作码（148 条；0..137 照搬 Rust oracle `vitro_runtime/src/opcode.rs` 不重排，
-/// 138..150 为本仓自扩 U 系对偶段——2026-10-11 #61 第一梯队病 31~34 批新增，非照搬编号）。
+/// Vitro 字节码操作码（151 条；0..137 照搬 Rust oracle `vitro_runtime/src/opcode.rs` 不重排，
+/// 138..150 为本仓自扩 U 系对偶段——2026-10-11 #61 第一梯队病 31~34 批新增，非照搬编号；
+/// 151..153 为全局 char 字节粒度段——2026-10-19 #177 批新增，非照搬编号）。
 ///
 /// 编号契约：0..137 区间，空号 47–49（历史浮点段位预留）；44/45/46 为
 /// **C# 异常三件**（`TryBegin`/`TryEnd`/`Throw`，CSharp 前端引入计划 §1 拍板进
@@ -10,7 +11,11 @@
 /// CastU2D/CastU2F（u32 零扩展转宽）、LoadMemUByte（u8 零扩展读）、TruncByte/
 /// TruncUByte（char 窄化截断——低 8 位符号/零扩展回 i32）、UDivQ/UModQ/UNegQ/
 /// ULtQ/ULeQ/UGtQ/UGeQ（Q 族无符号对偶）。
-/// `from_u8` 对空号与 >150 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
+/// **151..153 自扩段**（#177：char 全局 1 字节紧排、StoreGlobal 恒 4 字节
+/// 越权写抹相邻字面量池串/LoadGlobal 32 位读卷邻居——StoreGlobalByte 写低
+/// 8 位、LoadGlobalByte i8 符号扩展读、LoadGlobalUByte u8 零扩展读；
+/// 语义对齐 LoadMemByte/LoadMemUByte/StoreMemByte）。
+/// `from_u8` 对空号与 >153 越界值返回 None（0..255 全空间断言见 opcode_wbtest）。
 /// `Strlen` / `TrapBoundsVla` 为零发射死码——保留编号位（产物对拍依赖编号冻结），
 /// 不新增使用。
 ///
@@ -166,6 +171,9 @@ pub(all) enum OpCode {
   ULeQ
   UGtQ
   UGeQ
+  StoreGlobalByte
+  LoadGlobalByte
+  LoadGlobalUByte
 } derive(Debug, Eq, Hash, Compare)
 
 ///|
@@ -332,11 +340,14 @@ pub fn OpCode::code(self : OpCode) -> Int32 {
     ULeQ => 148
     UGtQ => 149
     UGeQ => 150
+    StoreGlobalByte => 151
+    LoadGlobalByte => 152
+    LoadGlobalUByte => 153
   }
 }
 
 ///|
-/// 编号 → opcode；空号（44–49）与越界（>137 / <0）返回 None。
+/// 编号 → opcode；空号（44–49）与越界（>153 / <0）返回 None。
 pub fn OpCode::from_u8(value : Int32) -> OpCode? {
   match value {
     0 => Some(Nop)
@@ -487,6 +498,9 @@ pub fn OpCode::from_u8(value : Int32) -> OpCode? {
     148 => Some(ULeQ)
     149 => Some(UGtQ)
     150 => Some(UGeQ)
+    151 => Some(StoreGlobalByte)
+    152 => Some(LoadGlobalByte)
+    153 => Some(LoadGlobalUByte)
     _ => None
   }
 }
@@ -501,6 +515,9 @@ pub fn OpCode::name(self : OpCode) -> String {
     StoreLocal => "StoreLocal"
     LoadGlobal => "LoadGlobal"
     StoreGlobal => "StoreGlobal"
+    StoreGlobalByte => "StoreGlobalByte"
+    LoadGlobalByte => "LoadGlobalByte"
+    LoadGlobalUByte => "LoadGlobalUByte"
     GetFrameBase => "GetFrameBase"
     Pop => "Pop"
     Dup => "Dup"
@@ -733,6 +750,9 @@ pub fn OpCode::from_name(s : String) -> OpCode? {
     "StoreLocalD" => Some(StoreLocalD)
     "LoadGlobalD" => Some(LoadGlobalD)
     "StoreGlobalD" => Some(StoreGlobalD)
+    "StoreGlobalByte" => Some(StoreGlobalByte)
+    "LoadGlobalByte" => Some(LoadGlobalByte)
+    "LoadGlobalUByte" => Some(LoadGlobalUByte)
     "LoadMemD" => Some(LoadMemD)
     "StoreMemD" => Some(StoreMemD)
     "SplitD" => Some(SplitD)

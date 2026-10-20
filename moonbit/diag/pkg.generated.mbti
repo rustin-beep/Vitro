@@ -145,6 +145,7 @@ pub(all) enum ErrorCode {
   E3077_TypedefRedefTypeMismatch
   E3078_RegisterAddrOf
   E3079_FlexibleArrayInit
+  E3080_StructDuplicateMember
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

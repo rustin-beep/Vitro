@@ -35,7 +35,9 @@ def judge(path):
         p = subprocess.run([JUDGE, "compile", path, "--json"], capture_output=True, timeout=180)
     except Exception as e:
         return "ERR", []
-    for l in p.stdout.decode("utf-8", "replace").splitlines():
+    # 铁律：NDJSON 只按 \n 分行——splitlines() 把 U+0085（0x85 字节 Latin-1
+    # 折回所得字符）当行界拆碎 stdout 帧，判据表观「输出整段消失」（#172 实锤）
+    for l in p.stdout.decode("utf-8", "replace").split("\n"):
         l = l.strip()
         if not l.startswith("{"):
             continue

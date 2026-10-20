@@ -454,6 +454,16 @@ fn TypeChecker::resolve_assign(
       E3043_AssignToRValue,
     )
   }
+  // #175（2026-10-19）：数组名不是可修改左值（C11 6.5.16p2 约束）——
+  // `a = p` / `a = b` clang/gcc 双 error；旧零诊断误收（上面四形态判定
+  // 只管左值形状，类型的可修改性由此查补）
+  if left_type.is_array() {
+    self.report_error(
+      "不能给数组整体赋值——数组名不是可修改的左值；要拷贝内容请逐元素赋值或用 memcpy",
+      loc,
+      E3043_AssignToRValue,
+    )
+  }
   match new_left {
     @ast.Expr::Identifier(name, _, _) =>
       match self.lookup_var(name) {

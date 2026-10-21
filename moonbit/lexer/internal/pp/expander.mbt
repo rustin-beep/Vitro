@@ -250,12 +250,17 @@ fn expand_inner(
           let va_sub : Array[@token.Token] = []
           for k = params.length(); k < args.length(); k = k + 1 {
             if k > params.length() {
+              // 切出 args[k] 的顶层逗号原件（seps[k-1]，#164 补）——
+              // byte_off/loc 用真实源码位置：`#__VA_ARGS__` 字符串化按
+              // 源码空白拼空格（`SV(1 , 2)` → `1 , 2`）；合成逗号钉调用
+              // 点会丢逗号前空白
+              let sep_tok = captured.seps.get(k - 1).unwrap_or(tok)
               va_raw.push(@token.Token::{
                 ty: Comma,
                 text: ",",
                 loc: (if args[k].length() > 0 { args[k][0] } else { tok }).loc,
-                byte_off: tok.byte_off,
-                real_line: tok.real_line,
+                byte_off: sep_tok.byte_off,
+                real_line: sep_tok.real_line,
               })
               va_sub.push(@token.Token::{
                 ty: Comma,
@@ -265,8 +270,8 @@ fn expand_inner(
                 } else {
                   tok
                 }).loc,
-                byte_off: tok.byte_off,
-                real_line: tok.real_line,
+                byte_off: sep_tok.byte_off,
+                real_line: sep_tok.real_line,
               })
             }
             for t in args[k] {
@@ -364,12 +369,16 @@ fn @token.Token::pin(self : @token.Token, tok : @token.Token) -> @token.Token {
 priv struct CapturedArgs {
   args : Array[Array[@token.Token]]
   end_index : Int32
+  /// 顶层切分逗号原件（与 args 段一一对应：seps[k] 切出 args[k+1]）——
+  /// `#__VA_ARGS__` 字符串化按源码空白拼空格（#164 补），byte_off 须真实
+  seps : Array[@token.Token]
 }
 
 ///|
 /// 捕获实参：从 `i+2`（跳过宏名与 `(`）到平衡 `)`；顶层逗号切分。
 fn capture_args(tokens : Array[@token.Token], i : Int32) -> CapturedArgs {
   let args : Array[Array[@token.Token]] = []
+  let seps : Array[@token.Token] = []
   let mut current : Array[@token.Token] = []
   let mut depth_paren = 1
   let mut j = i + 2
@@ -388,6 +397,7 @@ fn capture_args(tokens : Array[@token.Token], i : Int32) -> CapturedArgs {
       }
       Comma =>
         if depth_paren == 1 {
+          seps.push(tokens[j])
           args.push(current)
           current = [] // 换新数组（push 的是引用，clear 会连带清空已存实参）
         } else {
@@ -398,7 +408,7 @@ fn capture_args(tokens : Array[@token.Token], i : Int32) -> CapturedArgs {
     j += 1
   }
   args.push(current)
-  { args, end_index: j, }
+  { args, end_index: j, seps, }
 }
 
 ///|

@@ -391,7 +391,7 @@ func goldenRun(corpus string) int {
 	}
 	moonDir := moonDump(corpus)
 	goldenVerifySelftestHit(moonDir, files)
-	failures, forkN, matched := 0, 0, 0
+	failures, forkN, matched, verifyRed := 0, 0, 0, 0
 	for _, f := range files {
 		name := filepath.Base(f)
 		if _, isFork := knownForkFiles[name]; isFork {
@@ -409,6 +409,9 @@ func goldenRun(corpus string) int {
 		gd := parseMoonDoc(raw)
 		mok, dump := gd.ok, gd.dump
 		if mok && !checkVerify(gd, name) {
+			// verify 违约单列口径（旧 VERIFY-RED 计数只在 runCorpus 汇总，
+			// golden 路径混入 failures 不分桶——审阅 P3-a 补）
+			verifyRed++
 			failures++
 			continue
 		}
@@ -439,10 +442,10 @@ func goldenRun(corpus string) int {
 		}
 	}
 	if failures > 0 {
-		fmt.Printf("codegen_diff[golden:%s]: FAIL——%d/%d 差异"+string(rune(10)), corpusName, failures, len(files))
+		fmt.Printf("codegen_diff[golden:%s]: FAIL——%d/%d 差异（VERIFY-RED=%d）"+string(rune(10)), corpusName, failures, len(files), verifyRed)
 		return 1
 	}
-	fmt.Printf("codegen_diff[golden:%s]: PASS——%d 指纹一致（fork 跳过 %d）"+string(rune(10)), corpusName, matched, forkN)
+	fmt.Printf("codegen_diff[golden:%s]: PASS——%d 指纹一致（fork 跳过 %d，VERIFY-RED=%d）"+string(rune(10)), corpusName, matched, forkN, verifyRed)
 	return 0
 }
 func cgSrcSHAs(files []string) map[string]string {

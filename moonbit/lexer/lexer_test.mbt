@@ -236,6 +236,26 @@ test "tokenize stringize and paste" {
 }
 
 ///|
+/// `#` 字符串化空白语义（clang 17 矩阵实测 2026-10-21）：token 间空格按
+/// **源码空白**定——有空白处缩为单空格、无空白处紧贴（`SV(1, 2, 3)` →
+/// `1, 2, 3`；`SV(1 , 2)` → `1 , 2`——逗号前空格保留）；实参首尾空白删。
+/// 旧 `parts.join(" ")` 无条件加空格产出 `1 , 2 , 3`。
+test "stringize whitespace follows source spelling (clang matrix)" {
+  fn sv(src_args : String) -> String raise {
+    let r = @lexer.tokenize(
+      "#define SV(...) #__VA_ARGS__\nint x = \{src_args};\n",
+    )
+    let strs = r.tokens.filter(t => t.ty is String)
+    assert_eq(strs.length(), 1)
+    strs[0].text
+  }
+  inspect(sv("SV(1, 2, 3)"), content="1, 2, 3")
+  inspect(sv("SV(1 , 2)"), content="1 , 2")
+  inspect(sv("SV()"), content="")
+  inspect(sv("SV(a + b, c)"), content="a + b, c")
+}
+
+///|
 test "tokenize has include" {
   let r = @lexer.tokenize(
     "#if __has_include(<stdio.h>)\nint a;\n#else\nint b;\n#endif\n",

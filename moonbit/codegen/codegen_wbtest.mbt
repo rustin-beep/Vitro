@@ -1029,3 +1029,117 @@ test "skeleton: struct array elem byval arg leaves address (#162)" {
     msg="struct 元素实参 = 4 words 逐字 LoadMem（gen_index 对 struct 不 load——多 1 即旧病复发）",
   )
 }
+
+///|
+/// #193 回归锚（2026-10-21 审阅补）：`elem_type_size` 返回的是**基元宽度**
+/// （stride = 基元宽 × 维度数）——`char (*p)[8]` 必须是 1，不是 `_ => 4`
+/// 兜底下的 4（后者乘 8 维得 stride 32，实测指令流 PushConst 32）。
+///
+/// 为何要单独立锚：把 `TK_Array => self.elem_type_size(elem_type)` 还原成
+/// 缺陷版 `TK_Array => 4` 后，本包单测 18/18 与 codegen_diff 四套件
+/// （472/80/138/20）全绿——语料只有 `int(*)[N]`（基元 4 碰巧正确），
+/// `char(*)[N]` 零覆盖，五家 digest 与运行期对拍都抓不到该回退。
+test "elem_type_size_pointer_to_array_stride_issue193" {
+  let gen = BytecodeGen::new()
+  // char (*p)[8] —— 本条修复的原始形态；基元 = char 1 字节
+  let char_row = @ast.Type::array_of(@ast.Type::char(), [8])
+  assert_eq(
+    gen.elem_type_size(@ast.Type::pointer_to(char_row)),
+    1,
+    msg="char(*)[8] 基元应为 1（缺陷版落 4 → stride 32）",
+  )
+  // int (*p)[3] —— 旧版碰巧正确（基元 4 → stride 12），锁住不回归
+  let int_row = @ast.Type::array_of(@ast.Type::int(), [3])
+  assert_eq(
+    gen.elem_type_size(@ast.Type::pointer_to(int_row)),
+    4,
+    msg="int(*)[3] 基元应为 4",
+  )
+  // char **p —— pointee 是指针（4 字节），不得继续下钻成 1
+  assert_eq(
+    gen.elem_type_size(
+      @ast.Type::pointer_to(@ast.Type::pointer_to(@ast.Type::char())),
+    ),
+    4,
+    msg="char** 基元应是指针宽 4（误下钻会落 1）",
+  )
+  // char *p —— pointee 是标量 char
+  assert_eq(
+    gen.elem_type_size(@ast.Type::pointer_to(@ast.Type::char())),
+    1,
+    msg="char* 基元应为 1",
+  )
+}
+
+///|
+/// #193 端到端产物锚：`char (*p)[8]` 的 `p[1]` 索引——gen_index 以
+/// compute_stride(char[8], elem_type_size=1) 发 PushConst 8；缺陷版
+/// （`TK_Array => 4` 兜底）发 PushConst 32（4×8）。单元锚锁函数语义，
+/// 本锚锁 gen_index→elem_type_size 的接线面（防调用点换道绕过单元锚）。
+test "skeleton: char-ptr-to-array index stride emits 8 (#193 end-to-end)" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let row_ty = @ast.Type::array_of(@ast.Type::char(), [8])
+  let p_idx : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::Index(
+      @ast.Expr::Identifier("p", loc, @ast.Type::pointer_to(row_ty)),
+      @ast.Expr::Literal(1, loc, @ast.Type::int()),
+      loc,
+      row_ty,
+    ),
+    loc,
+  )
+  let f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::void_type(),
+    name: "f",
+    params: [
+      { ty: @ast.Type::pointer_to(row_ty), name: "p", loc, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([p_idx, @ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let f_meta = o.func_table.get("f").unwrap()
+  let body_len = 32 // 防御上界——计数遍历窗口（#162 同款形态）
+  let mut has_stride8 = false
+  let mut has_stride32 = false
+  for i in f_meta.ip..<(f_meta.ip + body_len) {
+    if i < o.code.length() && o.code[i].op is @opcode.OpCode::PushConst {
+      if o.code[i].operand == 8 {
+        has_stride8 = true
+      }
+      if o.code[i].operand == 32 {
+        has_stride32 = true
+      }
+    }
+  }
+  assert_true(
+    has_stride8,
+    msg="char(*)[8] 的 p[1] 索引须发 stride=8（基元 1×维度 8）",
+  )
+  assert_true(
+    !has_stride32,
+    msg="出现 stride=32 即缺陷版复发（TK_Array 兜底 4 → 4×8）",
+  )
+}

@@ -12,6 +12,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ci+codegen+docs): 审阅批——js 臂 `try?` 迁移类型错根除 + E3083 known 台账收编 + #193 stride 回归锚（2026-10-21）
+
+- **js 目标全量构建红根治（P1）**：`moon check/build --target js` 2 errors @
+  `cmd/vitro_wasm/main.mbt`——`try?` 语法迁移时只换了求值形式
+  （`Some(…) catch {…}`）未换分支模式，`Json?` 与 `Ok/Err` 构造器类型不匹配；
+  `ci.yml` 的 Full js target build gate 因此整 job 红（该 job 是全部下游 job
+  的 needs）。修 = 直落 Option（`let parsed : Json? = Some(…) catch { _ => None }`），
+  行为不变（成功 Some / 抛错 None）。
+- **E3083 known 台账收编（P1）**：`diff_ledger` 反向对账红 1 条——c2cb5be1
+  往 `clang_direct/known_direct.json` 加的 `null_deref_trap_e3083.c` 未进
+  `scripts/diff_ledger/ledger.json`（沉默漂移）。补 `DIFF-CD-TEACHTRAP-04`
+  （TEACHTRAP 族第四例：受检 trap vs Clang UB 崩溃），36 条 / selftest 六路仍全红。
+- **#193 stride 回归锚（审阅 P2：修复曾零覆盖）**：`elem_type_size` 的
+  `char(*)[N]` 基元宽度修复在单测 18/18 与 codegen_diff 四套件（语料只有
+  `int(*)[N]`，基元 4 碰巧正确）下全无红——还原成缺陷版 `TK_Array => 4`
+  后所有闸仍绿，只有端到端才误 trap。新增
+  `elem_type_size_pointer_to_array_stride_issue193`（char(*)[8]→1 /
+  int(*)[3]→4 / char**→4 / char*→1 四形态）。
+- **测试数连坐**：裸 850→**851**、`--target native` **998**（gateway 132 +
+  cli 15 = native-only 147，逐包实测；旧文档记 146/996 为陈旧值，本次按实测校正）；
+  README×3 + 快速入门 + 标准库架构 + facts 重采；台账条数 30→36。
+
+### fix(ci+pp+codegen): 审阅批二段——surface 边漏登记第三红根 + 字符串化空白语义对齐 clang + #193 端到端锚（2026-10-21）
+
+- **surface 边表漏登记（远端 CI 第三红根，一段审阅未覆盖）**：
+  `Static gates (contract)` job 实际红在 `moonbit_surface -check`（非
+  diff_ledger）——82412516 在 `gateway/serve_compile_wbtest.mbt` 引入
+  `ast::json_escape_string` 消费未登记边表（「新出口面须连坐 surface 边表」
+  纪律面）。`surface_edges.txt` 按字母序补 1 边；剩余 4 条红边全部来自
+  未提交批外包 `gateway/wasm_nojs`（不吸入）。
+- **`#` 字符串化空白语义对齐 clang（#164 残留，clang 17 矩阵实测）**：
+  旧 `parts.join(" ")` 无条件加空格，`SV(1, 2, 3)` 串化成 `"1 , 2 , 3"`
+  （clang 为 `"1, 2, 3"`）。clang 语义 = token 间空格**按源码空白**定
+  （有空白缩单空格、无空白紧贴、首尾删；`SV(1 , 2)` → `"1 , 2"` 保留逗号
+  前空格）。修 = `splice.mbt` 按 `byte_off` 差值推断源码空白 + 变参 join
+  逗号改用真实分隔符原件（`capture_args` 新增 `seps` 记录顶层切分逗号——
+  旧合成逗号钉调用点 `byte_off`，丢逗号前空白）。红锚先行
+  （`stringize whitespace follows source spelling (clang matrix)` 四形态，
+  证红 `1 , 2 , 3` 后修）；五家 digest 零翻转（语料无 `#` 字符串化用例）。
+- **#193 端到端产物锚（一段单元锚补接线面）**：新增
+  `char-ptr-to-array index stride emits 8 (#193 end-to-end)`——手写 AST
+  编译 `char (*p)[8]` 的 `p[1]`，扫 f 体指令窗口断言 PushConst 8 存在 /
+  32 不存在；与单元锚双锚同红实证（注入 `TK_Array => 4` 后 18/20 两锚
+  精确红，还原复绿）。单元锚锁函数语义，本锚锁
+  gen_index→elem_type_size 接线（防调用点换道绕过单元锚）。
+- **codegen_diff golden 路径 VERIFY-RED 口径补全（审阅 P3）**：旧
+  `VERIFY-RED=%d` 计数只在 `runCorpus`（oracle 退役后不达）打印，golden
+  路径 verify 违约混入 failures 不分桶。goldenRun 补独立计数，PASS/FAIL
+  汇总行均带 `VERIFY-RED=N`（实测 baseline 472 指纹 PASS，VERIFY-RED=0）。
+- **verify.mbt 死参删除（审阅 P3）**：`verify_operand_range` 的
+  `library_mode` 形参接收后 `ignore` 丢弃（library_mode 在 verify.mbt
+  其余四处有真实用途，唯此函数不用）——删参 + 调用点连坐，零行为变化。
+- **#167 残留面登记 [#203]**：include 头文件函数体语句的 StepEvent
+  整体错归属（`code_file` 恒主文件、`code_line`/heatmap 恒调用点行——
+  `impl.h` 的 `return x*2` 四帧全挂 `main.c:3` 假热度）；根因 =
+  `file_id == 1` 魔数判据依赖「codegen 恰好不传播 file_id」隐含事实 +
+  StepEvent 无显式来源通道。处方方向 = 显式来源标记（协议面连坐
+  protocol_frames + 前端）。
+- **测试数连坐**：裸 851→**853**（+2 = #193 端到端锚 + 字符串化矩阵锚）、
+  `--target native` 998→**1000**（853+147 逐包实测自洽）；README×3 +
+  facts `--run` 重采。
+
 ### fix(ci): 远端 CI 七 job 红五根处置——bTree known 新形态入账 + 帧 9 重冻 + demo 单引号 typo + try? 全量迁移 + mbti 连坐补齐（2026-10-21）
 
 - **clang_direct（Diff gate + wasm-arm 两 job 同根）**：`SAME=794

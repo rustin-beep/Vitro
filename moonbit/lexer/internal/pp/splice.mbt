@@ -42,31 +42,49 @@ fn substitute_params_ext(
         let n = body[i + 1]
         match arg_of(n.text, params, raw_args) {
           Some(raw) => {
-            let parts : Array[String] = []
+            // clang 语义（§6.10.3.2，2026-10-21 矩阵实测）：token 间空格按
+            // 源码空白定——有空白处缩为单空格、无空白处紧贴（`SV(1, 2, 3)`
+            // → `1, 2, 3`；`SV(1 , 2)` → `1 , 2`）；首 token 前不加。旧
+            // join(" ") 无条件加空格产出 `1 , 2 , 3`。空白由 byte_off 差值
+            // 推断（同实参 token 出自同一调用点文件，坐标系一致）。
+            let buf = StringBuilder()
+            let mut prev_end : Int32? = None
             for x in raw {
               // 病 68（2026-10-13）：C 规则 §6.10.3.2——字符串实参的
               // 字面量边界须重建（外包引号 + 内部 " 与 \ 转义；
               // STR("hi") → "\"hi\""）；旧直拼裸内容丢引号。String
               // token 的 text 为去引号内容，需还原边界。
-              if x.ty is String {
-                let buf = StringBuilder()
-                buf.write_char('"')
+              let rebuilt : String? = if x.ty is String {
+                let sb = StringBuilder()
+                sb.write_char('"')
                 for j = 0; j < x.text.length(); j = j + 1 {
                   let c = x.text[j].unsafe_to_char()
                   if c == '"' || c == '\\' {
-                    buf.write_char('\\')
+                    sb.write_char('\\')
                   }
-                  buf.write_char(c)
+                  sb.write_char(c)
                 }
-                buf.write_char('"')
-                parts.push(buf.to_string())
+                sb.write_char('"')
+                Some(sb.to_string())
               } else {
-                parts.push(x.text)
+                None
               }
+              let piece : String = rebuilt.unwrap_or(x.text)
+              // 源码长度近似：text + 两引号（text 保留源码转义序列时
+              // 精确；转义膨胀差异只在 String 后紧跟无空白 token 的罕见
+              // 形态下多判一个空格，不影响主修面）
+              let src_len : Int32 = x.text.length() +
+                (if rebuilt is Some(_) { 2 } else { 0 })
+              match prev_end {
+                Some(e) => if x.byte_off > e { buf.write_char(' ') }
+                None => ()
+              }
+              buf.write_string(piece)
+              prev_end = Some(x.byte_off + src_len)
             }
             out.push({
               ty: String,
-              text: parts.join(" "),
+              text: buf.to_string(),
               loc: t.loc,
               byte_off: t.byte_off,
               real_line: t.real_line,

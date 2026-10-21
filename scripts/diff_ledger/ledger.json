@@ -943,6 +943,35 @@
         "clang_direct"
       ],
       "notes": "digest 9a329ad2"
+    },
+    {
+      "id": "DIFF-CD-TEACHTRAP-04",
+      "title": "教学白箱运行期受检 trap vs Clang UB 崩溃（null_deref_trap_e3083.c：#178 E3083 码链——Vitro NULL 写 trap rc=2 且 trap 前 stdout『guard-ok』已产出 vs Clang SIGSEGV 3221225477 且 stdio 缓冲崩溃吞掉 stdout）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "TEACHTRAP 族第四例（#178 定案，2026-10-19）：NULL 解引用是 UB 域，Clang 无可对拍的确定行为——白箱受检 trap 是教学核心能力而非缺陷；与 p2e_div_zero_scope 同款配方（trap 时 m 侧 // EXIT 行缺失记 0）",
+      "subsystems": [
+        "vm",
+        "scripts/clang_direct"
+      ],
+      "clang_verdict": "不一致（UB 崩溃域 vs 受检 trap）",
+      "source_docs": [
+        "clang_direct known_direct.json（#178 登记 2026-10-19）",
+        "error_codes.json E3083_NullDeref"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "null_deref_trap_e3083.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "digest 1a42137c；对照组 guard-ok 分支双侧语义一致（非空指针路径不作差异面）"
     }
   ]
 }

@@ -569,7 +569,7 @@ fn verify_function_segment(
       })
     }
     // 引用域检查（类 4）
-    verify_operand_range(o, fname, meta, ip, op, ins.operand, library_mode, v)
+    verify_operand_range(o, fname, meta, ip, op, ins.operand, v)
     // 跳转目标域 + 段隔离（类 2；汇合深度登记在效应应用后——JumpIfZero
     // 到达目标的深是弹条件值之后的深）
     let is_jump = op is Jump || op is JumpIfZero || op is JumpIfNotZero
@@ -736,10 +736,8 @@ fn verify_operand_range(
   ip : Int32,
   op : @opcode.OpCode,
   operand : Int32,
-  library_mode : Bool,
   v : Array[VerifyViolation],
 ) -> Unit {
-  ignore(library_mode)
   match op {
     PushConstD =>
       // （PushConstF 是 f32 位模式立即数非索引——exec_float PushConstF 臂，

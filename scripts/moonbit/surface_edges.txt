@@ -190,6 +190,7 @@ vitro/engine/gateway vitro/engine/ast Type
 vitro/engine/gateway vitro/engine/ast ast_dump_json
 vitro/engine/gateway vitro/engine/ast compute_type_size
 vitro/engine/gateway vitro/engine/ast double_to_json_text
+vitro/engine/gateway vitro/engine/ast json_escape_string
 vitro/engine/gateway vitro/engine/ast type_display_name
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_REGION_LIMIT
 vitro/engine/gateway vitro/engine/bytecode GLOBAL_START

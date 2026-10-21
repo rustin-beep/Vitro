@@ -95,11 +95,10 @@ fn inject_texts_at_startup(g : JsGateway) -> Bool {
   req.set("method", Json::string("texts.install"))
   req.set("params", Json::object(params))
   let resp = (g.invoke)(Json::object(req).stringify())
-  let parsed : Json? = match
-    (Some(@util.json_parse(resp)) catch { _ => None }) {
-    Ok(v) => Some(v)
-    Err(_) => None
-  }
+  // 「抛错即不可解析」直落 Option（原 `try?` + `match Ok/Err` 形态已随
+  // moonc nightly 删 try? 迁移；迁移时曾误留 Ok/Err 分支 → Json? 与
+  // Result 构造器类型不匹配，js target 编译红 2 错）
+  let parsed : Json? = Some(@util.json_parse(resp)) catch { _ => None }
   match parsed {
     Some(Object(top)) =>
       match top.get("ok") {

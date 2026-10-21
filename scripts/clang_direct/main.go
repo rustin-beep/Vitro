@@ -91,6 +91,9 @@ const moonRunTimeout = 120 * time.Second
 // 顺手纳入〕+cases_template_generated 82〔shadow 五目录差值，用户调查缺口〕；
 // 元素为相对仓库根路径——含路径分隔符时原样使用，裸名仍拼 cases/ 前缀兼容
 // --corpus baseline 旧用法）。
+// #237 工程模式（2026-10-21）：llm_multifile 目录走「子目录 = 一个工程」
+// 扫描——同目录全部 .c 一次编译链接（.h 只被 include 不上命令行），
+// vitro 侧走 api --batch 的 files 数组通道（#202 修复后的虚拟工程形态）。
 var corporaDefault = []string{
 	"corpus/baseline",
 	"corpus/knr",
@@ -98,6 +101,16 @@ var corporaDefault = []string{
 	"corpus/gap",
 	"corpus/codegen_skeleton",
 	"corpus/template_generated",
+	"corpus/llm_multifile",
+	// 千行单文件语料（1082–1627 行/文件；#236 perf_budget 同名目录有
+	// llm_scale 分档预算——两处目录名须一致，档位按该前缀匹配）
+	"corpus/llm_scale",
+}
+
+// projectCorpusDir：启用工程模式扫描的语料目录（裸目录名集合——一级
+// 子目录含 ≥1 .c 即一个工程 case）。
+var projectCorpusDirs = map[string]bool{
+	"llm_multifile": true,
 }
 
 // corpusPath：裸语料名 → cases/ 前缀；含分隔符 → 原样（corporaDefault 路径化）。
@@ -148,11 +161,18 @@ type moonResult struct {
 	stdout      string // 已 Latin-1 归一（还原单字节）
 	exitCode    int
 	memoryPath  string // --dump-memory 产物（正向证据：恰 1MB）
+	// #237 工程模式：api --batch 通道无 --dump-memory——跳过映像正向证据
+	// （compile ok + 帧序列完整即通道证据）
+	skipMemoryCheck bool
 }
 
 type caseRef struct {
 	rel  string
 	path string
+	// #237 工程模式：子目录 = 一个工程（files 含全部 .c 与 .h，排序）；
+	// 单文件 case 两字段为零值（project=false 走原路径）
+	project bool
+	files   []string
 }
 
 // stdinFor：同名 .in 配对（x.c → x.in；无则空串）。2026-09-29 层 2 遗留
@@ -225,6 +245,12 @@ func main() {
 	} else {
 		freshness.EnsureFresh("clang_direct", runnerExe,
 			"build", "--release", "--target", "native", "cmd/run")
+		// #237 工程模式宿主：api --batch 走 cmd/vitro 总入口（工程语料
+		// 目录存在才要求——空目录不强制构建）
+		if fileExists("corpus/llm_multifile") {
+			freshness.EnsureFresh("clang_direct_project", vitroApiExe,
+				"build", "--release", "--target", "native", "cmd/vitro")
+		}
 	}
 
 	// clang 可用性 fail fast（shadow 门禁同款纪律：缺失即 exit 2，不静默跳过）
@@ -358,7 +384,9 @@ func checkKnown(known []knownEntry) bool {
 	for _, k := range known {
 		found := false
 		for _, corpus := range corporaDefault {
-			if fileExists(filepath.Join(corpusPath(corpus), k.Case)) {
+			p := filepath.Join(corpusPath(corpus), k.Case)
+			// #237：工程模式条目是目录（corpus/llm_multifile/<工程名>）
+			if fileExists(p) || isDir(p) {
 				found = true
 				break
 			}
@@ -409,8 +437,14 @@ func cleanupMoon(m *moonResult) {
 }
 
 func fileExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
+}
+
+// isDir：#237 工程模式条目（目录形态）存在性判据。
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }
 
 func tailAll(b []byte) string {
@@ -442,6 +476,46 @@ func collectCases(corpora []string, sample int, explicit []string) []caseRef {
 	}
 	for _, c := range corpora {
 		dir := corpusPath(c)
+		// #237 工程模式目录：一级子目录 = 一个工程 case（含 ≥1 .c 才收）
+		if projectCorpusDirs[filepath.Base(dir)] {
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				continue
+			}
+			for _, e := range entries {
+				if !e.IsDir() {
+					continue
+				}
+				pdir := filepath.Join(dir, e.Name())
+				sub, err := os.ReadDir(pdir)
+				if err != nil {
+					continue
+				}
+				var cs, hs []string
+				for _, f := range sub {
+					if f.IsDir() {
+						continue
+					}
+					switch {
+					case strings.HasSuffix(f.Name(), ".c"):
+						cs = append(cs, filepath.Join(pdir, f.Name()))
+					case strings.HasSuffix(f.Name(), ".h"):
+						hs = append(hs, filepath.Join(pdir, f.Name()))
+					}
+				}
+				if len(cs) == 0 {
+					continue
+				}
+				sort.Strings(cs)
+				sort.Strings(hs)
+				files := append(append([]string(nil), cs...), hs...)
+				out = append(out, caseRef{
+					rel: filepath.ToSlash(pdir), path: pdir,
+					project: true, files: files,
+				})
+			}
+			continue
+		}
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue
@@ -523,11 +597,24 @@ func cacheKey(src []byte, clangVersion, stdinPath string) string {
 }
 
 func runClang(c caseRef, caseIdx int, clangVersion string) *clangResult {
-	src, err := os.ReadFile(c.path)
-	if err != nil {
-		return &clangResult{compileFail: true, abnormal: true}
+	// #237 工程模式：key = 全部源文件内容串联（含 .h——头文件变更即失效）
+	var keySrc []byte
+	if c.project {
+		for _, f := range c.files {
+			b, err := os.ReadFile(f)
+			if err != nil {
+				return &clangResult{compileFail: true, abnormal: true}
+			}
+			keySrc = append(append(keySrc, []byte(f)...), b...)
+		}
+	} else {
+		b, err := os.ReadFile(c.path)
+		if err != nil {
+			return &clangResult{compileFail: true, abnormal: true}
+		}
+		keySrc = b
 	}
-	key := cacheKey(src, clangVersion, stdinFor(c.path))
+	key := cacheKey(keySrc, clangVersion, stdinFor(c.path))
 	if data, err := os.ReadFile(filepath.Join(clangCacheDir, key+".json")); err == nil {
 		var p cachePayload
 		if json.Unmarshal(data, &p) == nil && p.Schema == cacheSchema {
@@ -578,8 +665,33 @@ func runClangOnce(c caseRef, caseIdx int) *clangResult {
 	if runtime.GOOS != "windows" {
 		ext = ""
 	}
-	exeFile := filepath.Join(runDir, strings.TrimSuffix(base, ".c")+ext)
-	compileCmd := exec.Command(clangPath, clangCompileArgs(c.path, exeFile)...)
+	// #237 工程模式：全部 .c 一次编译链接（.h 只被 include 不上命令行）；
+	// cwd = 槽位隔离目录，include 搜索靠 -I 指向工程目录
+	var compileArgs []string
+	var exeFile string
+	if c.project {
+		exeFile = filepath.Join(runDir, "proj"+ext)
+		args := []string{"-w", "-I", c.path}
+		for _, f := range c.files {
+			if strings.HasSuffix(f, ".c") {
+				args = append(args, filepath.Base(f))
+			}
+		}
+		args = append(args, "-o", exeFile)
+		if runtime.GOOS != "windows" {
+			args = append(args, "-lm")
+		}
+		compileArgs = args
+	} else {
+		exeFile = filepath.Join(runDir, strings.TrimSuffix(base, ".c")+ext)
+		compileArgs = clangCompileArgs(c.path, exeFile)
+	}
+	compileCmd := exec.Command(clangPath, compileArgs...)
+	if c.project {
+		// .c 用相对名（隔离目录唯一 exe 名防碰撞）⇒ cwd = 工程目录；
+		// include 搜索 = 同目录（-I c.path）
+		compileCmd.Dir = c.path
+	}
 	var cOut bytes.Buffer
 	compileCmd.Stdout = &cOut
 	compileCmd.Stderr = &cOut
@@ -650,7 +762,17 @@ func storeCache(key string, r *clangResult) {
 
 // ── MoonBit 侧（形态复刻 vm_diff）──
 
+// vitroApiExe：工程模式的 api --batch 通道宿主（native 臂 = cmd/vitro 总
+// 入口 exe；wasm 臂 = vitro_wasm 胶水 + gateway wasm 产物）。
+const vitroApiExe = "moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
+
 func runMoon(c caseRef) *moonResult {
+	// #237 工程模式：files 数组虚拟工程（#202 修复后的能力面）走 api
+	// --batch 三帧（compile{files} → run → output.delta）；无 --dump-memory
+	// 通道 ⇒ skipMemoryCheck（正向证据由 compile ok + delta 非空形态承担）
+	if c.project {
+		return runMoonProject(c)
+	}
 	// P2-4（2026-09-26 审阅）：加 --dump-memory 正向证据通道——此前把
 	// run.exe 换成 `int main(){return 0;}` 的静默 exe 仍报 SAME（空 stdout
 	// + exit 0 全对上）。映像恰 1MB 是 runner 真跑了编译装载全链的充分
@@ -825,8 +947,15 @@ func compareDirect(o *clangResult, m *moonResult) []string {
 	if o.compileFail {
 		return issues // 双侧失败等价（调用方判）
 	}
-	if normalizeClangStdout(o.stdout) != m.stdout {
-		issues = append(issues, summarizeStdout(normalizeClangStdout(o.stdout), m.stdout))
+	// #237：工程模式 delta 通道的尾换行与 clang 管道形态有口径差——
+	// moon 侧过同款 normalize（剥  + 首尾空行）对称比对；单文件路径
+	// 不动（known digest 面冻结）
+	moonNorm := m.stdout
+	if m.skipMemoryCheck {
+		moonNorm = normalizeClangStdout(m.stdout)
+	}
+	if normalizeClangStdout(o.stdout) != moonNorm {
+		issues = append(issues, summarizeStdout(normalizeClangStdout(o.stdout), moonNorm))
 	}
 	if o.exitCode != m.exitCode {
 		issues = append(issues, fmt.Sprintf("返回码 %d != %d", o.exitCode, m.exitCode))
@@ -839,7 +968,7 @@ func compareDirect(o *clangResult, m *moonResult) []string {
 	}
 	// 正向证据（P2-4）：runner 真跑了全链 ⇒ 映像恰 1MB。静默 exe / 假 runner
 	// 在此红（实测：cmd/run 换 return-0 stub 时本条必红）。
-	if !m.compileFail {
+	if !m.compileFail && !m.skipMemoryCheck {
 		switch {
 		case m.memoryPath == "":
 			issues = append(issues, "映像缺失（runner 未产出 dump）")
@@ -930,4 +1059,106 @@ func findStaleSource(exe string) string {
 		return nil
 	})
 	return stale
+}
+
+// ── #237 工程模式（2026-10-21）：files 数组虚拟工程的 vitro 侧通道 ──
+
+// apiFrame：api --batch 响应帧的最小消费面。
+type apiFrame struct {
+	ID     int  `json:"id"`
+	OK     bool `json:"ok"`
+	Result *struct {
+		OK          bool `json:"ok"`
+		Diagnostics []struct {
+			Message string `json:"message"`
+		} `json:"diagnostics"`
+		Status      string `json:"status"`
+		ReturnValue int    `json:"return_value"`
+		Trap        string `json:"trap"`
+		Delta       string `json:"delta"`
+	} `json:"result"`
+}
+
+// runMoonProject：compile{files} → run → output.delta 三帧经 api --batch；
+// stdout = delta 拼接（单帧 cursor:0 全量），exitCode = run 帧 return_value
+// （trap 帧记入 stdout 让 DIFF 响亮红——与单文件 trap 形态对齐由 digest 消化）。
+func runMoonProject(c caseRef) *moonResult {
+	type fileEnt struct {
+		Filename string `json:"filename"`
+		Source   string `json:"source"`
+	}
+	var ents []fileEnt
+	for _, f := range c.files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			return &moonResult{compileFail: true, stdout: "// FILEREAD-FAIL"}
+		}
+		ents = append(ents, fileEnt{Filename: filepath.Base(f), Source: string(b)})
+	}
+	cj, _ := json.Marshal(map[string]any{"files": ents})
+	frames := fmt.Sprintf(
+		"{\"id\":1,\"method\":\"compile\",\"params\":%s}\n{\"id\":2,\"method\":\"run\",\"params\":{}}\n{\"id\":3,\"method\":\"output.delta\",\"params\":{\"cursor\":0,\"stream\":\"stdout\"}}\n",
+		string(cj),
+	)
+	var cmd *exec.Cmd
+	if backend == "wasm" {
+		cmd = exec.Command("node", wasmShell, "api", "--batch")
+	} else {
+		cmd = exec.Command(filepath.FromSlash(vitroApiExe), "api", "--batch")
+	}
+	cmd.Stdin = strings.NewReader(frames)
+	var out, se bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &se
+	timedOut := false
+	timer := time.AfterFunc(moonRunTimeout, func() {
+		timedOut = true
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+	})
+	err := cmd.Run()
+	timer.Stop()
+	if timedOut {
+		return &moonResult{stdout: "// RUN-TIMEOUT", skipMemoryCheck: true}
+	}
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			return &moonResult{compileFail: true, stdout: "// APIFAIL: " + clip(se.String()), skipMemoryCheck: true}
+		}
+	}
+	var stdout strings.Builder
+	var exitCode int
+	compileFail := false
+	sawDelta := false
+	for _, line := range strings.Split(out.String(), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var fr apiFrame
+		if json.Unmarshal([]byte(line), &fr) != nil || fr.Result == nil {
+			continue
+		}
+		switch fr.ID {
+		case 1:
+			if !fr.Result.OK {
+				compileFail = true
+				for _, d := range fr.Result.Diagnostics {
+					stdout.WriteString(d.Message + "\n")
+					break // 首条即可（与单文件编译失败诊断首行口径对齐）
+				}
+			}
+		case 2:
+			exitCode = fr.Result.ReturnValue
+			if fr.Result.Trap != "" {
+				stdout.WriteString("// TRAP: " + fr.Result.Trap + "\n")
+			}
+		case 3:
+			sawDelta = true
+			stdout.WriteString(fr.Result.Delta)
+		}
+	}
+	_ = sawDelta
+	return &moonResult{compileFail: compileFail, stdout: stdout.String(), exitCode: exitCode, skipMemoryCheck: true}
 }

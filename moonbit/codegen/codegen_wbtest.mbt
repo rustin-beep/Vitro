@@ -1326,3 +1326,67 @@ test "skeleton: call to declared-but-undefined fn reports honest error (#205)" {
     msg="完全未声明的 g 维持「未声明的标识符」类别（对照臂）",
   )
 }
+
+///|
+/// #238 红锚（2026-10-21 千行语料 llm_scale_shell.c 暴露）：`(void)expr;`
+/// 表达式语句栈泄漏——`gen_cast_expr` 对 TK_Void 目标求值后不弹栈，而
+/// `gen_expr_stmt` 按 `ty.kind() is TK_Void` 判「无需 Pop」⇒ 值永久留在
+/// 栈上。函数栈不守恒（#200 验证器 stack-unbalanced-ret 实测净增 = (void)
+/// 个数）；循环体内则无界涨栈。千行语料三次命中（ls/env/exit 三函数 2+2+4）。
+test "skeleton: cast-to-void expr stmt keeps stack balanced (#238)" {
+  let void_ty = @ast.Type::void_type()
+  let param_ty = @ast.Type::pointer_to(@ast.Type::char())
+  // 函数体：(void)p; (void)p; return 0;
+  let discard : @ast.Expr = @ast.Expr::Cast(
+    @ast.Expr::Identifier("p", loc(2), param_ty),
+    void_ty,
+    loc(2),
+    void_ty,
+  )
+  let body : @ast.Stmt = @ast.Stmt::Block(
+    [
+      @ast.Stmt::Expr(discard, loc(2)),
+      @ast.Stmt::Expr(discard, loc(3)),
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(0, loc(4), @ast.Type::int())),
+        loc(4),
+      ),
+    ],
+    loc(2),
+  )
+  let f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [{ ty: param_ty, name: "p", loc: loc(1), default: None, }],
+    body: Some(body),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(5),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, loc(5))], loc(5))),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let violations = @bytecode.verify_compile_output(o, false)
+  assert_true(
+    violations.is_empty(),
+    msg="(void)expr; 不得泄漏栈（#200 验证器：\{violations.length()} 条违约——首条 \{@bytecode.verify_violations_json(violations)}）",
+  )
+}

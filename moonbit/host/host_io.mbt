@@ -96,6 +96,14 @@ pub fn InputState::set_eof(self : InputState) -> Unit {
 }
 
 ///|
+/// EOF 粘滞不推底（#210，2026-10-21）：feed 单帧 text+eof 同帧时已喂
+/// 内容仍可读（stdio close 语义——close 后缓冲内容可读、耗尽返回 EOF），
+/// 耗尽判定由读取路径承担（eof 把耗尽后的 Waiting 变 EOF 值）。
+pub fn InputState::set_eof_sticky(self : InputState) -> Unit {
+  self.eof = true
+}
+
+///|
 /// 字节流首非空白字节是否存在（scanf 的"流已无可用内容"判据）。
 fn stream_has_content(stream : Array[Byte]) -> Bool {
   for b in stream {
@@ -331,12 +339,9 @@ pub fn host_getchar(input : InputState) -> InputOutcome {
     }
     None => ()
   }
-  if input.eof {
-    // #88（2026-10-14）：eof 粘滞 = 流终结（batch 耗尽自动置位或 feed
-    // {eof:true} 显式置位）——与模式无关恒 EOF 值；旧 Interactive 形态
-    // 恒 Waiting，显式 EOF 口无生效路径
-    return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
-  }
+  // #210（2026-10-21）：eof 前置「先于一切」会吞掉剩余可读内容——改为
+  // eof 只把「耗尽后的 Waiting」变 EOF 值（stdio close 语义：置位后已
+  // 喂内容仍可读）。#88 收尾语义不变（耗尽即 EOF）。
   // 可用性检查（跨行扫描）
   let mut idx = input.index
   let mut off = input.char_offset
@@ -350,7 +355,7 @@ pub fn host_getchar(input : InputState) -> InputOutcome {
     off = 0
   }
   if !found {
-    if input.batch {
+    if input.batch || input.eof {
       input.set_eof()
       return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
     }
@@ -851,10 +856,10 @@ pub fn host_scanf_n(
     }
     i = i + 1
   }
-  // #88（2026-10-14）：eof 粘滞 = 流终结（batch 耗尽自动置位或 feed
-  // {eof:true} 显式置位）——检查先于一切（含无内容判定）：Interactive
-  // 模式下置位后旧先撞「无内容 → Waiting」死等，显式 EOF 口无生效路径
-  if input.eof {
+  // #210（2026-10-21）：eof 前置联合「无可用内容」判定——置位后已喂
+  // 内容仍可读（#88 的「显式 EOF 口生效」由本分支与 1366 区 exhausted
+  // 共同承担：耗尽 + eof → EOF 值而非 Waiting）
+  if input.eof && !stream_has_content(stream) {
     return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
   }
   // 首转换符前流已无可用内容（Batch → EOF；Interactive → 等待）
@@ -1363,7 +1368,12 @@ pub fn host_scanf_n(
   // 后 %d1 配成、%d2 流尽走终判返 matched=1（静默丢参；客户端再 feed
   // 因非等待态重跑清输出——serve 在册语义连带）。回退到本次 scanf
   // 起点等输入，vm 侧 Waiting 协议（ip 回退+参数回推）接管重执行。
+  // #210（2026-10-21）：eof 粘滞已置时不再回退等待——流已被调用方
+  // 显式收尾，返回 EOF 哨兵（scanf 读输入即 -1 的 #88 承诺）
   if !input.batch && exhausted {
+    if input.eof {
+      return InputOutcome::Value(0xFFFFFFFFFFFFFFFFUL)
+    }
     input.index = start_idx
     input.char_offset = start_off
     return InputOutcome::Waiting

@@ -32,10 +32,20 @@ import (
 
 const rulesPath = "scripts/perf_budget/rules.json"
 
+// dirTier：counter 的按目录预算档（#236 分档预算，2026-10-21）——文件按
+// 所属 corpus_dir 前缀匹配档位（未匹配用顶层 max_per_file）；每档独立
+// 判红。档位语义 = 显式建模新规模面（如千行压力语料），不允许全局抬
+// 上限稀释存量裁决前提（_tier_note 在 rules.json）。
+type dirTier struct {
+	Dirs       []string `json:"dirs"`
+	MaxPerFile int      `json:"max_per_file"`
+}
+
 type counter struct {
-	ID         string `json:"id"`
-	Pattern    string `json:"pattern"`
-	MaxPerFile int    `json:"max_per_file"`
+	ID         string    `json:"id"`
+	Pattern    string    `json:"pattern"`
+	MaxPerFile int       `json:"max_per_file"`
+	DirTiers   []dirTier `json:"dir_tiers"`
 }
 
 type metric struct {
@@ -139,10 +149,23 @@ func collectFiles(root string, rd rulesDoc) []string {
 type finding struct {
 	Metric   string
 	Counter  string
+	Tier     string // 档位标签（""=顶层默认档；否则 corpus_dir 名）
 	MaxCount int
 	MaxFile  string
 	Limit    int
 	Exceed   bool
+}
+
+// tierOf：文件所属档位（counter 的 dir_tiers 首个前缀命中；无命中顶层档）。
+func tierOf(c counter, f string) (dirTier, string) {
+	for _, t := range c.DirTiers {
+		for _, d := range t.Dirs {
+			if strings.HasPrefix(f, "corpus/"+d+"/") {
+				return t, d
+			}
+		}
+	}
+	return dirTier{MaxPerFile: c.MaxPerFile}, ""
 }
 
 func scan(root string, rd rulesDoc) ([]finding, int) {
@@ -157,21 +180,53 @@ func scan(root string, rd rulesDoc) ([]finding, int) {
 			if err != nil {
 				fatal("counter %q 的 pattern 非法: %v", c.ID, err)
 			}
-			maxN, maxF := 0, ""
+			// 分档聚合：档位 → (maxN, maxF)；每档一条 finding（#236）
+			type agg struct {
+				n int
+				f string
+			}
+			byTier := map[string]agg{}
+			tierOfKey := map[string]int{} // 档 key → 该档 max_per_file
 			for _, f := range files {
 				b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
 				if err != nil {
 					fatal("读语料 %s 失败: %v", f, err)
 				}
 				n := len(re.FindAllString(stripComments(string(b)), -1))
-				if n > maxN {
-					maxN, maxF = n, f
+				t, label := tierOf(c, f)
+				key := label
+				if label == "" {
+					key = "(default)"
+				}
+				cur := byTier[key]
+				if n > cur.n {
+					byTier[key] = agg{n, f}
+				}
+				tierOfKey[key] = t.MaxPerFile
+			}
+			// 输出序稳定：default 档在前，其余按名
+			keys := make([]string, 0, len(byTier))
+			for k := range byTier {
+				if k != "(default)" {
+					keys = append(keys, k)
 				}
 			}
-			out = append(out, finding{
-				Metric: m.ID, Counter: c.ID, MaxCount: maxN, MaxFile: maxF,
-				Limit: c.MaxPerFile, Exceed: maxN > c.MaxPerFile,
-			})
+			sort.Strings(keys)
+			if _, ok := byTier["(default)"]; ok {
+				keys = append([]string{"(default)"}, keys...)
+			}
+			for _, k := range keys {
+				a := byTier[k]
+				label := ""
+				if k != "(default)" {
+					label = k
+				}
+				out = append(out, finding{
+					Metric: m.ID, Counter: c.ID, Tier: label,
+					MaxCount: a.n, MaxFile: a.f,
+					Limit: tierOfKey[k], Exceed: a.n > tierOfKey[k],
+				})
+			}
 		}
 	}
 	return out, len(files)
@@ -189,7 +244,7 @@ func report(root string, rd rulesDoc, fs []finding, nFiles int) {
 		if f.Exceed {
 			mark = "OVER"
 		}
-		fmt.Printf("  %s %-26s max=%-6d limit=%-6d @ %s\n", mark, f.Counter, f.MaxCount, f.Limit, f.MaxFile)
+		fmt.Printf("  %s %-26s [tier %-9s] max=%-6d limit=%-6d @ %s\n", mark, f.Counter, f.Tier, f.MaxCount, f.Limit, f.MaxFile)
 	}
 }
 

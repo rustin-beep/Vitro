@@ -256,7 +256,12 @@ jobs:
               # gap 三套件 skipped 实锤）。改累计失败：四套件全跑完再退出
               # 非零——单套件红仍 job 红（闸强度不变），多套件红一屏尽收。
               rc=0
-              for d in baseline knr leetcode gap; do
+              # llm_scale（2026-10-21 接线）：千行单文件语料——结构面规模
+              # 压力源（1082–1627 行/文件；#193/#201/#238 类缺陷正是小语料
+              # 写不出的形态）。llm_multifile 不进本循环——多文件工程的跨
+              # 文件引用对逐文件结构面无意义，其覆盖面归 clang_direct 工程
+              # 模式（#237）。
+              for d in baseline knr leetcode gap llm_scale; do
                 go run ./scripts/${{ matrix.driver }} corpus/$d || rc=1
               done
               exit $rc
@@ -1170,9 +1175,32 @@ jobs:
             exit 1
           fi
           echo "E2E browser: $CHROME_BIN"
-          ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
+          # 2026-10-21 连红处置（run 39612543937：chrome 进程存活但 CDP 9222
+          # 全程 ECONNREFUSED）：①profile 遗留——同 runner 的 workspace 跨
+          # run 保留 .chrome-e2e，浏览器版本自动升级后旧 profile 可能令
+          # 新实例启动即退（进程残留可见、端口从未 listen）；每次清空。
+          # ②启动日志落盘并在失败时回显——此前静默后台启动，异常唯一
+          # 表现是脚本层 ECONNREFUSED，根因不可诊断。
+          rm -rf "$PWD/.chrome-e2e"
+          ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank >"$PWD/.chrome-e2e.log" 2>&1 &)
           (cd demo && node tests/serve_static.mjs 8931 &)
-          sleep 4
+          # CDP 就绪门（fail loud 且可诊断）：最多等 30s，超时回显浏览器
+          # 日志 + 进程态后红——不把「浏览器没起来」伪装成脚本断言失败。
+          cdp_ready=""
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+              cdp_ready="yes"; break
+            fi
+            sleep 1
+          done
+          if [ -z "$cdp_ready" ]; then
+            echo "E2E 闸 fail loud：CDP 9222 在 30s 内未就绪（浏览器 $CHROME_BIN）" >&2
+            echo "---- .chrome-e2e.log ----" >&2
+            tail -40 "$PWD/.chrome-e2e.log" >&2 || true
+            echo "---- chrome 进程 ----" >&2
+            (tasklist //FI "IMAGENAME eq chrome.exe" 2>/dev/null || ps aux | grep -i chrome | grep -v grep) >&2 || true
+            exit 1
+          fi
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_session.mjs http://127.0.0.1:8931/

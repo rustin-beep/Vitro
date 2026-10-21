@@ -60,9 +60,11 @@ fn serve_input_feed_frame(
     // 取行数组（模式与 EOF 清除由 push_lines 承担）
     s.vm.input.push_lines(@host.InputState::from_stdin_text(text, true).lines)
   }
-  // #88：EOF 口——置位后本次续跑内 scanf 族读输入即 -1
+  // #88：EOF 口——置位后本次续跑内 scanf 族读输入即 -1。#210：sticky
+  // 形态（不推底）——同帧 text 先行 push 的行仍可读（耗尽后 EOF），旧
+  // set_eof 推底把刚喂的行瞬间跳过 = 同帧 text 被吞
   match json_field(params, "eof").as_bool() {
-    Some(true) => s.vm.input.set_eof()
+    Some(true) => s.vm.input.set_eof_sticky()
     _ => ()
   }
   // #86：步进会话活跃走 engine 通道（帧流连续）；否则原 run 通道

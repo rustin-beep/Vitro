@@ -1373,6 +1373,36 @@
       "stdout_sha": "f3d31a6f16d55a02",
       "memory_sha": "4c5b087c1b807bc5"
     },
+    "baseline/llm_fnptr_callback.c": {
+      "src_sha": "9f4d30b6",
+      "exit_code": 0,
+      "stdout_sha": "931211c38a457f34",
+      "memory_sha": "e2c7272721e515e2"
+    },
+    "baseline/llm_fnptr_dispatch.c": {
+      "src_sha": "ba320198",
+      "exit_code": 0,
+      "stdout_sha": "de369ecc39eedef8",
+      "memory_sha": "536bfeb1085b5019"
+    },
+    "baseline/llm_snprintf_struct_member.c": {
+      "src_sha": "dde9552c",
+      "exit_code": 0,
+      "stdout_sha": "3f0ad5fc7c266f84",
+      "memory_sha": "d05edf2a32323a77"
+    },
+    "baseline/llm_struct_arg_sched2.c": {
+      "src_sha": "0dad2954",
+      "exit_code": 0,
+      "stdout_sha": "fb59462f0c667e4f",
+      "memory_sha": "8a61df8934d37ce6"
+    },
+    "baseline/llm_struct_nested_2d_init.c": {
+      "src_sha": "3a72245a",
+      "exit_code": 0,
+      "stdout_sha": "5ab04e898e4701b1",
+      "memory_sha": "dc54d4ca0032e1fa"
+    },
     "baseline/logical_and.c": {
       "src_sha": "d48c431d",
       "exit_code": 0,
@@ -4303,6 +4333,42 @@
       "exit_code": 0,
       "stdout_sha": "3e68dd4a742b51bc",
       "memory_sha": "86b914f821eb519f"
+    },
+    "llm_scale/llm_scale_compiler.c": {
+      "src_sha": "47c72868",
+      "exit_code": 0,
+      "stdout_sha": "dfaf0cb67bc6be6d",
+      "memory_sha": "4b1ce5bdae49ea8a"
+    },
+    "llm_scale/llm_scale_db.c": {
+      "src_sha": "decd7cac",
+      "exit_code": 0,
+      "stdout_sha": "92d3f05e2b044d7d",
+      "memory_sha": "c4ce50b9cb1cb9bb"
+    },
+    "llm_scale/llm_scale_db_join.c": {
+      "src_sha": "266f31c4",
+      "exit_code": 0,
+      "stdout_sha": "db60047af4a8d193",
+      "memory_sha": "e963bfb513b9e68e"
+    },
+    "llm_scale/llm_scale_editor.c": {
+      "src_sha": "e53bd505",
+      "exit_code": 0,
+      "stdout_sha": "ff021ac8fd854e6c",
+      "memory_sha": "09c669946a8ca63d"
+    },
+    "llm_scale/llm_scale_os.c": {
+      "src_sha": "804169da",
+      "exit_code": 0,
+      "stdout_sha": "fdf7c18cf8ad1ade",
+      "memory_sha": "fb3b3a25f13f4e8b"
+    },
+    "llm_scale/llm_scale_shell.c": {
+      "src_sha": "ada74685",
+      "exit_code": 0,
+      "stdout_sha": "9a826265ce4a2ac6",
+      "memory_sha": "90563b88a7e5a07b"
     }
   }
 }

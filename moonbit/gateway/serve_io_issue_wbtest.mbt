@@ -279,3 +279,30 @@ test "issue88_getchar_eof_anchor" {
   )
   ignore(r2)
 }
+
+///|
+/// #210（2026-10-21 报）：input.feed 单帧 text+eof 同帧时 text 被静默
+/// 丢弃（程序直接收到 EOF，最后一行输入消失且无错误帧）。根因两层：
+/// ①set_eof「游标推底」把刚 push 的行瞬间跳过；②getchar/scanf 的 eof
+/// 前置检查「先于一切」把剩余可读内容一并吞掉。修复语义 = stdio close：
+/// eof 置位后已喂内容仍可读，耗尽后返回 EOF（不再 Waiting）。
+test "issue210_feed_text_plus_eof_same_frame_keeps_text" {
+  let s = @session.Session::new()
+  let (_, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main() { int n, s = 0; while (scanf(\\\"%d\\\", &n) != EOF) { s += n; } printf(\\\"sum %d\\\", s); return 0; }\\n\"}}",
+  )
+  let (r1, _) = serve_handle(s, "{\"id\":2,\"method\":\"run\"}")
+  assert_true(r1.contains("\"waiting_input\":true"), msg="scanf 等待")
+  // 同帧 text + eof：文本须被读到（sum 30），读尽后 EOF 收尾 finished
+  let (r2, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"input.feed\",\"params\":{\"text\":\"10 20\\n\",\"eof\":true}}",
+  )
+  assert_true(
+    r2.contains("\"status\":\"finished\""),
+    msg="同帧收尾 finished（EOF 生效）",
+  )
+  assert_true(
+    stdout_text(s).contains("sum 30"),
+    msg="同帧 text 不得被吞（#210 修前 sum 0）",
+  )
+}

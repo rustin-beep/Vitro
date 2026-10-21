@@ -20,7 +20,8 @@
     "baseline",
     "knr",
     "leetcode",
-    "gap"
+    "gap",
+    "llm_scale"
   ],
   "generators": [
     {

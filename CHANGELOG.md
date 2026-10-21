@@ -12,6 +12,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(corpus): llm_scale/llm_multifile 全域接线 + #238 (void) 栈泄漏修复（2026-10-21）
+
+- **接线面**（用户令「有语料入库 你进行接线」）：`corpus/llm_scale`（6 个
+  千行单文件，1082–1627 行）接入七处——clang_direct corporaDefault（八
+  目录）、vm_diff corporaDefault、CI diff 四族循环（baseline knr leetcode
+  gap **+ llm_scale**）、perf_budget（llm_scale 档已 + 补 llm_multifile
+  目录，max 161/328）、corpus_fuzz suites（+60 变体，新指纹 18 全 AGREE
+  已收编 798 条基线）；llm_multifile 的跨文件引用对逐文件结构面无意义，
+  其覆盖面归 clang_direct 工程模式。
+- **冻结**：五家 digest 各建 llm_scale 段（首建空段 + `--freeze-mb`
+  填充：lexer Sources+6/TSV+12、parser/typeck/codegen 各 +6、vm_diff +6）；
+  baseline 三族顺带补登并发线 5 例 untracked 语料（clang_direct 全量
+  826 例 SAME 背书后冻结）。
+- **[#238] `(void)expr;` 栈泄漏**（#200 验证器首个真实战果，千行语料
+  首抓）：`gen_cast_expr` 对 TK_Void 目标求值后不弹栈 + `gen_expr_stmt`
+  按 `ty is TK_Void` 判无需 Pop ⇒ 值永久留栈（三函数净增 2/2/4 = (void)
+  个数；循环体内无界涨栈）。修 = cast 对 void 目标求值后 Pop；红锚
+  `cast-to-void expr stmt keeps stack balanced (#238)`（verify 零违约）
+  修前证红。执行行为零变化（clang_direct 826 SAME / vm_diff 723 SAME /
+  fuzz 桶恶化 0）⇒ 纯内部状态修复，正是验证器独有的抓取面。
+- 两 docs（Clang 直拍门禁八目录 / 脚本总清单）口径同步。
+
+
+### fix(ci): Demo E2E CDP 9222 连红处置——profile 清理 + 启动日志 + 就绪门 fail loud（2026-10-21）
+
+- **红因**（run 39612543937，master c246ef00）：`F4 browser E2E` 步骤
+  9 秒内 CDP 端口全程 ECONNREFUSED 而 chrome 进程存活（cleanup 可见
+  两个 chrome pid）——前序 15 步全绿（svelte-check 0 错 / smoke
+  197/197），非本批代码引入（上一 run 23a4d872 同步骤绿、本批零 demo
+  改动）。
+- **修复三面**：①`rm -rf .chrome-e2e`——同 runner 的 workspace 跨 run
+  保留 profile，浏览器自动升级后旧 profile 可令新实例启动即退；②启动
+  日志落 `.chrome-e2e.log` 并在就绪门失败时回显 + chrome 进程态——
+  此前静默后台启动，异常唯一表现是脚本层 ECONNREFUSED 不可诊断；
+  ③**CDP 就绪门**：curl /json/version 轮询最多 30s，超时 fail loud
+  红（不再把「浏览器没起来」伪装成脚本断言失败）；④五个 e2e 脚本
+  连接重试 10×500ms → 20×1s（CI runner 冷启动窗口）。
+- **本地验证**：Edge 兜底 + 新就绪门 CDP 第 1s 就绪，五脚本全过
+  （18+38+15+10+3 = 84 项）；清理时 Edge 占用 profile 的 rm 报错在
+  本地复现了同款「文件被占用」形态（佐证 profile 清理必要性）。
+
+
+### feat(corpus+gate): #236/#237 落地——perf_budget 分档预算 + clang_direct 工程模式（千行与多文件语料入库解锁）（2026-10-21）
+
+- **#236 分档预算**：perf_budget counter 新增 `dir_tiers`（按 corpus 子目录
+  单列 `max_per_file`，每档独立判红）——`llm_scale` 千行档 member_accesses
+  400（实测 249–344）；语义边界 = 档位显式建模新规模面、不允许全局抬上限
+  稀释存量裁决前提（O2 债缓存化 = 方案 B 单独立项）。种子
+  `corpus/llm_scale/huge_db2.c`（1136 行/297 次）红→绿验证 + 超档红证 +
+  selftest 仍立。
+- **#237 工程模式**：clang_direct 七目录——`corpus/llm_multifile/` 一级
+  子目录 = 一个多文件工程：clang 侧全部 .c 一次编译链接（-I 工程目录）、
+  vitro 侧 `api --batch` files 数组三帧（#202 修复通道）；缓存 key = 全部
+  源文件内容哈希；known 认目录条目；比对尾换行双侧对称 normalize（仅工程
+  case，单文件口径冻结）。种子 MF-CONFIG 三文件工程 SAME；J9 单侧注入
+  红证；全量 813 例 DIFF=0 零翻转。
+- 两 docs（脚本总清单/Clang 直拍门禁）口径同步。
+
+
+### fix(host+gateway+time_travel): #210/#220 修复 + #204 销案——学生错误集新批一段（2026-10-21）
+
+- **#210 input.feed 同帧 text+eof 吞文本**：根因两层——set_eof「游标
+  推底」跳过刚 push 的行 + getchar/scanf 的 eof 前置「先于一切」吞剩余
+  可读内容。修复语义 = stdio close（已喂内容可读、耗尽返回 EOF）：
+  新原语 set_eof_sticky（feed eof 口改用）；两处 eof 前置改联合「无剩余」
+  判定（#88 收尾语义不变，旧锚零翻转）；scanf 中途耗尽在 eof 置位时返
+  EOF 哨兵。红锚先行；三 target gateway 135/135 + serve exe 端到端
+  `sum 7`（修前 delta 空）。
+- **#220 for 语义标签误标「函数调用」**：关键字前缀排除对无空格形态
+  `for(` 失配（落 is_func_call 抽不出名 → 兜底「函数调用」）；do-while
+  行（`do` 不在排除表）同族；「调用 while」= 尾随关键字被 extract 抽出。
+  修 = 前缀补 for(/while(/if(/do 形态 + extract 控制流关键字黑名单。
+  红锚五断言 + 反向突变证牙 + 端到端 for(→「循环 i=0」。
+- **#204 销案（不可复现）**：api --batch 的 output.delta 帧合法性双臂
+  五通道 + 字节级（105 处 \n 两字符转义序列）全合法——MoonBit
+  stringify 转义完备（裸 UTF-8 高位为 RFC 8259 合法形态）；判据脚本
+  latin-1 读 UTF-8 管道是 mojibake 嫌疑面，附字节级复验路径销案。
+
+
 ### fix(codegen): #205 纯原型声明被调用的错误类别如实化（勘误定性 + declared_only 表）（2026-10-21）
 
 - **勘误**：#205 原定性「include 展开的函数声明不进 typeck」两层误判——

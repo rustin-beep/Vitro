@@ -13,6 +13,17 @@ fn BytecodeGen::gen_cast_expr(
   self.gen_expr(inner)
   let tk = target_type.kind()
   let ik = inner.ty().kind()
+  // #238（2026-10-21 千行语料 llm_scale_shell.c 暴露）：`(void)expr` 显式
+  // 丢弃值——inner 求值已压栈 1 值，而 gen_expr_stmt 按 `ty is TK_Void`
+  // 判「无需 Pop」⇒ 值永久留栈（函数栈不守恒，循环体内无界增长；#200
+  // 验证器在 3 个函数上抓到净增 2+2+4 = (void) 个数）。此处求值后立即弹
+  // 栈（inner 本身 void 时无值可弹）。
+  if tk is TK_Void {
+    if !(ik is TK_Void) {
+      self.emit(@opcode.OpCode::Pop, 0, loc)
+    }
+    return
+  }
   // u32 源零符号位（病 31）：unsigned int/char 转 Q/D/F 走 U 系对偶
   let inner_u = inner.ty().is_unsigned()
   if tk is TK_Double && ik is TK_Float {

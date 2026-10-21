@@ -162,3 +162,57 @@ test "semantic_trim_trailing_zeros" {
   assert_eq(trim_trailing_zeros("20"), "20")
   assert_eq(trim_trailing_zeros("1.501"), "1.501")
 }
+
+///|
+/// #220（2026-10-21 报）：for 语句语义标签误标「函数调用」——前缀排除
+/// `has_prefix("for ")` 对 `for(int i=0;...)` **无空格形态**失配，行落
+/// is_func_call → extract_called_func 抽不出 → 「函数调用」；行首**缩进**
+/// 同样让全部关键字前缀排除失效（「调用 while」来源：缩进 while 行被
+/// 当普通调用抽出 "while"）。
+test "semantic_for_and_indented_while_not_func_call_220" {
+  // for 无空格形态（vars 缺席的降级形态）——不得「函数调用」
+  assert_eq(
+    infer_semantic_label(4, None, "main", "for(int i = 0; i < 3; i++)", false),
+    "循环",
+  )
+  // for 无空格形态（vars 在场：i=0 已初始化）——循环上下文
+  assert_eq(
+    infer_semantic_label(
+      4,
+      Some([mkvar("i", "0")]),
+      "main",
+      "for(int i = 0; i < 3; i++)",
+      false,
+    ),
+    "循环 i=0",
+  )
+  // 缩进 while（关键字前有空格）——不得「调用 while」
+  assert_eq(
+    infer_semantic_label(6, None, "main", "  while (i < 3)", false),
+    "循环",
+  )
+  // 缩进 for（双盲叠加：缩进 + 无空格）
+  assert_eq(
+    infer_semantic_label(
+      4,
+      None,
+      "main",
+      "    for(int i = 0; i < n; i++)",
+      false,
+    ),
+    "循环",
+  )
+  // do-while 尾随形态（`} while (...)`）——前缀排除漏网后 extract 曾抽
+  // 出 "while" 产出「调用 while」（issue 原报告 L6 形态）
+  let dowhile = infer_semantic_label(
+    6,
+    Some([mkvar("i", "3")]),
+    "main",
+    "} while (i < 3);",
+    false,
+  )
+  assert_true(
+    dowhile != "调用 while",
+    msg="do-while 尾不得标「调用 while」（得：\{dowhile}）",
+  )
+}

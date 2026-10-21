@@ -94,7 +94,15 @@ const wasmMod = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"
 
 var backend = "native"
 
-var corporaDefault = []string{"baseline", "knr", "leetcode", "gap"}
+var corporaDefault = []string{
+	"baseline",
+	"knr",
+	"leetcode",
+	"gap",
+	// 千行单文件语料（#236 llm_scale 档；1082–1627 行/文件——语义对拍面
+	// 的规模压力源，#193/#201 类缺陷正是小语料写不出的形态）
+	"llm_scale",
+}
 
 // skipEntry：SKIP 白名单（cmd 工具层豁免等非 VM 面用例）。
 type skipEntry struct {

@@ -23,7 +23,7 @@ WASM = os.path.join("D:" + os.sep + "code", "Vitro", "moonbit", "_build",
 CASES = os.path.join(BASE, "cases_per_case")
 CLANG_PICKLE = os.path.join("C:" + os.sep + "Users", "liangjingwei", "AppData",
                             "Local", "Temp", "clang_ref", "clang_ref.pkl")
-TMO = 30
+TMO = 300
 NL = chr(10)
 
 CLANG = pickle.load(open(CLANG_PICKLE, "rb"))

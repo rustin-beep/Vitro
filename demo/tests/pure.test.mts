@@ -28,7 +28,8 @@ import {
   SHARE_URL_WARN,
   SHARE_VERSION,
 } from "../js/share.ts";
-import { LessonParseError, parseLessonMd } from "../src/lib/lessonMd.ts";
+import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
+import { sceneBand, sceneIndexAt, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -293,6 +294,55 @@ title: 坏课
 -->
 `;
   assert.throws(() => parseLessonMd(md), LessonParseError);
+});
+
+// ── scenes：帧 → 幕定位（时间轴分幕 / 分镜条共用单点，P1 第二片）
+test("scenes：sceneIndexAt 边界（首帧/幕尾/幕缝/幕外/空表），先红后绿", () => {
+  const scenes: Scene[] = [
+    { id: "01", title: "甲", from: 0, to: 4, lines: [3, 4], note: "" },
+    { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" },
+    { id: "03", title: "丙", from: 21, to: 29, lines: [6, 10], note: "" },
+  ];
+  assert.equal(sceneIndexAt([], 0), -1); // 无 scene 老课：回退长文，无幕
+  assert.equal(sceneIndexAt(scenes, 0), 0); // 首帧 = 第一幕 from
+  assert.equal(sceneIndexAt(scenes, 4), 0); // 幕尾含（闭区间）
+  assert.equal(sceneIndexAt(scenes, 5), 1); // 幕缝 = 下一幕 from
+  assert.equal(sceneIndexAt(scenes, 20), 1);
+  assert.equal(sceneIndexAt(scenes, 29), 2);
+  assert.equal(sceneIndexAt(scenes, -1), -1); // 未采集（idx 负数）
+  assert.equal(sceneIndexAt(scenes, 30), -1); // 超出末幕（帧数变化/旧存档帧号）
+});
+
+test("scenes：sceneProgress 幕内进度与单帧幕（0/0 不得 NaN），先红后绿", () => {
+  const s: Scene = { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" };
+  assert.equal(sceneProgress(s, 5), 0);
+  assert.equal(sceneProgress(s, 20), 1);
+  assert.ok(Math.abs(sceneProgress(s, 12) - 7 / 15) < 1e-9);
+  const one: Scene = { ...s, from: 7, to: 7 };
+  assert.equal(sceneProgress(one, 7), 1); // 单帧幕：到即满
+  assert.equal(sceneProgress(one, 6), 0); // 幕外钳制
+});
+
+test("scenes：sceneRangeLabel 单帧/多帧形态", () => {
+  const s: Scene = { id: "01", title: "", from: 0, to: 4, lines: [1, 2], note: "" };
+  assert.equal(sceneRangeLabel(s), "帧 0–4");
+  assert.equal(sceneRangeLabel({ ...s, from: 7, to: 7 }), "帧 7");
+});
+
+test("scenes：sceneBand 百分比几何（帧数变化/末幕越界/未采集），先红后绿", () => {
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+  const s: Scene = { id: "02", title: "", from: 5, to: 20, lines: [1, 2], note: "" };
+  const b = sceneBand(s, 42);
+  assert.ok(near(b.left, (5 / 42) * 100));
+  assert.ok(near(b.width, (16 / 42) * 100));
+  // 末幕越界（旧存档 frame 41，但当前只采到 30 帧）→ 宽度按现存帧钳制，不溢出轴
+  const tail = sceneBand({ ...s, from: 21, to: 41 }, 30);
+  assert.ok(near(tail.left, (21 / 30) * 100));
+  assert.ok(near(tail.width, (9 / 30) * 100));
+  // 未采集（n=0）→ 零宽，绝不出 NaN（NaN% 会让整条轴静默消失）
+  assert.deepEqual(sceneBand(s, 0), { left: 0, width: 0 });
+  // 单帧幕 = 一格宽
+  assert.ok(near(sceneBand({ ...s, from: 7, to: 7 }, 10).width, 10));
 });
 
 test("lessonMd：bubble scene 覆盖 0..41（内容锚，先红后绿）", () => {

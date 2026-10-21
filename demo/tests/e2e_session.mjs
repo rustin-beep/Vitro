@@ -7,6 +7,7 @@
 //   F5 char 数组**全帧 sweep** 零 each_key_duplicate（P1-5；2026-10-18 加固）
 //   F6 trap E 码 → 手册联动（P2-10：伪下划线变真通道）
 //   F7 课程目录全章渲染（重名课 id 防护：structures/josephus 实测 2026-10-18）
+//   B0 未迁移课无分镜条 / B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -161,6 +162,15 @@ async function run() {
     f2.stdout.includes("hello-arg") && f2.stats && f2.frames > 0 && !f2errs.some((e) => e.includes("could not be cloned")),
     JSON.stringify(f2) + " errs=" + f2errs.length);
 
+  // ── B0 未迁移课无分镜条（#222 P1 第二片：scene 真源 = lesson.md；无元数据
+  //    的课 scenes=[] → 分镜条整段不渲染，回退现有长文）──
+  const b0 = await evaluate(`(() => ({
+    beats: document.querySelectorAll('.vr-beat').length,
+    bands: document.querySelectorAll('.vr-band').length,
+    note: document.querySelector('.vr-beats-note') !== null,
+  }))()`);
+  check("B0 未迁移课无分镜条（#222）", b0.beats === 0 && b0.bands === 0 && !b0.note, JSON.stringify(b0));
+
   // ── F3+F4 语句级口径 + 播完提示（P1-1 / P2-9）──
   await pickLesson("bubble");
   await waitFor("(() => { const s = window.__pilot.session; return !s.playing && s.idx === s.viewFrames.length - 1; })()", 40000);
@@ -176,6 +186,26 @@ async function run() {
   check("F3 语句级 frameAt 口径（P1-1）", f3.gran === "stmt" && f3.view < f3.raw && f3.same, JSON.stringify(f3));
   check("F4 播完 status 提示（P2-9）", f3.status.includes("回放完毕"), "status=" + f3.status);
   check("F4b 末帧状态行（末帧 · 可拖回任意帧）", f3.statusLine.includes("末帧"), f3.statusLine);
+
+  // ── B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片）：bubble 4 幕、4 条分幕带，
+  //    点第 1 幕 → idx 归 0、当前幕/注记同步（幕 = 一段文字 = 一组帧）──
+  const b1before = await evaluate(`(() => ({
+    beats: document.querySelectorAll('.vr-beat').length,
+    bands: document.querySelectorAll('.vr-band').length,
+    active: document.querySelector('.vr-beat.is-active')?.textContent?.trim() ?? '',
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-beat')[0]?.click(); true");
+  await sleep(250);
+  const b1after = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    active: document.querySelector('.vr-beat.is-active')?.textContent?.trim() ?? '',
+    note: document.querySelector('.vr-beats-note')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+    bandsActive: document.querySelectorAll('.vr-band.is-active').length,
+  }))()`);
+  check("B1 分镜条点幕 = 跳幕首帧（#222）",
+    b1before.beats === 4 && b1before.bands === 4 && b1before.active.includes("04") &&
+      b1after.idx === 0 && b1after.active.includes("01") && b1after.note.includes("帧 0–4") && b1after.bandsActive === 1,
+    JSON.stringify({ b1before, b1after }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

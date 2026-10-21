@@ -41,6 +41,7 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 
 - 解析在 `src/lib/lessonMd.ts`（demo 自家消费端，不走 `content_parser.c`）：`from..to` 是 `viewFrames` 闭区间，`lines` 是源码行范围；注释块解析时从 `blocks` 剥离，`CourseNote` / E-08 golden 逐字节不变。
 - 无 scene 的课 = `scenes: []`，回退现有长文；scene 范围重叠 / 格式错误 fail loud。锚在 `tests/pure.test.mts`（解析 / 无 scene / 格式错误 / bubble 0..41 覆盖）。
+- **消费面（P1 第二片，2026-10-21）**：`Timeline` 顶部是**分镜条**（点幕 = 跳到幕首帧；当前幕高亮 + 一句本幕要点 + 帧范围），时间轴上方是按帧格等分的**分幕带**（当前幕高亮）。样式走既有 `--vr-*` token，不新增主题变量。定位单点在 `src/lib/scenes.ts`（`sceneIndexAt` / `sceneProgress` / `sceneBand`，纯函数，锚在 `tests/pure.test.mts`）；交互锚 `B0`（未迁移课无分镜条）/ `B1`（点幕跳首帧 + 当前幕/注记同步）在 `tests/e2e_session.mjs`。
 
 ## 本地预览
 

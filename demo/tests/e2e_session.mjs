@@ -10,6 +10,7 @@
 //   B0 未迁移课无分镜条 / B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片，2026-10-21）
 //   B2 幕头随帧更新 + 浅树压扁（#222 P1 第三片，2026-10-21）
 //   B3 三栏 + 底栏时间轴 + 首屏（#222 P1 第四片，2026-10-21）
+//   B4 逐行注记（#222 P1 第五片，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -169,9 +170,9 @@ async function run() {
   const b0 = await evaluate(`(() => ({
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
-    note: document.querySelector('.vr-beats-note') !== null,
+    annots: document.querySelectorAll('.cm-line[data-annot]').length,
   }))()`);
-  check("B0 未迁移课无分镜条（#222）", b0.beats === 0 && b0.bands === 0 && !b0.note, JSON.stringify(b0));
+  check("B0 未迁移课无分镜条/无注记（#222）", b0.beats === 0 && b0.bands === 0 && b0.annots === 0, JSON.stringify(b0));
 
   // ── F3+F4 语句级口径 + 播完提示（P1-1 / P2-9）──
   await pickLesson("bubble");
@@ -248,6 +249,19 @@ async function run() {
       b3.railW >= 240 && b3.nowW >= 340 && b3.dockW > b3.benchW * 0.95 &&
       b3.codeTop < 900 && b3.cellsTop < 900 && b3.dockTop < 900,
     JSON.stringify(b3));
+  // ── B4 逐行注记（#222 P1 第五片）：帧 12 的三行注记 = 拍板稿 08/09/10 形态；
+  //    注记走行属性 + CSS 伪元素（不进 .cm-content 文本面——E2E docLen 不被污染） ──
+  await evaluate(`(() => { const s = document.querySelector('.vr-seek'); s.value = 12; s.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await sleep(300);
+  const b4 = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    attrs: [...document.querySelectorAll('.cm-line[data-annot]')].map((l) => l.getAttribute('data-annot')),
+    inText: (document.querySelector('.cm-content')?.textContent ?? '').includes('←'),
+  }))()`);
+  check("B4 逐行注记（#222 P1 第五片）",
+    b4.idx === 12 && b4.attrs.length === 3 && b4.attrs.includes("t ← 5") && b4.attrs.includes("a[1] ← 1") &&
+      b4.attrs.includes("a[2] ← 5") && b4.inText === false,
+    JSON.stringify(b4));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

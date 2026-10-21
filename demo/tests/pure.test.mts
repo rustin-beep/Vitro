@@ -30,6 +30,7 @@ import {
 } from "../js/share.ts";
 import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
 import { sceneBand, sceneIndexAt, sceneKicker, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
+import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -294,6 +295,64 @@ title: 坏课
 -->
 `;
   assert.throws(() => parseLessonMd(md), LessonParseError);
+});
+
+// ── annotations：本幕逐行注记（#222 P1 第五片：08 t ← 5 / 09 a[1] ← 1）
+test("annotations：只记本幕内的变化（局部量 + 数组元素），首帧无前态不猜", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },
+    { code_line: 8, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "t", value: "5" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },
+    { code_line: 9, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "t", value: "5" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "3", "4", "2", "5"] }] },
+  ];
+  const a = sceneAnnotations(frames, 0, 2);
+  assert.deepEqual(
+    a.map((x) => [x.line, x.text]),
+    [[8, "t ← 5"], [9, "a[1] ← 3"]],
+  );
+  // 第一帧（无前态）不产出注记；数组整体值（int[5]）不进 local 面
+  assert.equal(a.some((x) => x.text.includes("{3, 1")), false);
+});
+
+test("annotations：每行取最近一次执行的差分（随帧更新，不叠整幕迭代）", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "j", value: "0" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "1" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "2" }, { name: "t", value: "5" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "3" }, { name: "t", value: "5" }] },
+    { code_line: 9, func_name: "swap", local_vars: [{ name: "j", value: "9" }] },
+  ];
+  // 截至第 2 帧：line 7 最近一次是 j ← 2（同帧 t 也新 → 两条，不被前一帧的 j ← 1 污染）
+  const at2 = sceneAnnotations(frames, 0, 4, 2);
+  assert.deepEqual(at2.map((x) => [x.line, x.text]), [[7, "j ← 2 · t ← 5"]]);
+  // 截至第 3 帧：line 7 只留最近一次 j ← 3（旧注记被替换，不叠成 j ← 1 · j ← 2）
+  const at3 = sceneAnnotations(frames, 0, 4, 3);
+  assert.deepEqual(at3.map((x) => [x.line, x.text]), [[7, "j ← 3"]]);
+  // 第 4 帧换函数（swap）：不与 main 的 j 比，不产出注记
+  assert.equal(sceneAnnotations(frames, 0, 4, 4).some((x) => x.line === 9), false);
+});
+
+test("annotations：归行校验——不写该变量的行不贴注记（for 自增并进末行实锤）", () => {
+  const frames: StepLike[] = [
+    { code_line: 8, func_name: "main", local_vars: [{ name: "j", value: "0" }, { name: "t", value: "5" }], array_snapshots: [{ name: "a", elements: ["5", "3", "1"] }] },
+    { code_line: 10, func_name: "main", local_vars: [{ name: "j", value: "1" }, { name: "t", value: "5" }], array_snapshots: [{ name: "a", elements: ["3", "5", "1"] }] },
+  ];
+  const src = ["", "", "", "", "", "", "", "", "  int t = a[j];", "  a[j] = a[j + 1];", "  a[j + 1] = t;"];
+  const a = sceneAnnotations(frames, 0, 1, 1, src);
+  // line 10 帧：j 确实变了（语句边界把 j++ 并进末行），但该行源码不写 j → 只留数组注记
+  assert.deepEqual(a.map((x) => [x.line, x.text]), [[10, "a[0] ← 3 · a[1] ← 5"]]);
+  // 写入判定：a[j] = v 不算写 a；j++ / j = / --j 算；j == 0 不算
+  assert.equal(writesName("  a[j] = a[j + 1];", "j"), false);
+  assert.equal(writesName("  a[j] = a[j + 1];", "a"), false);
+  assert.equal(writesName("  for (int j = 0; j < 4; j++)", "j"), true);
+  assert.equal(writesName("  --j;", "j"), true);
+  assert.equal(writesName("  if (j == 0) {", "j"), false);
+});
+test("annotations：at 在幕前 = 空表（未走到本幕不出旧注记）", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "j", value: "0" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "1" }] },
+  ];
+  assert.deepEqual(sceneAnnotations(frames, 1, 1, 0), []);
 });
 
 // ── scenes：帧 → 幕定位（时间轴分幕 / 分镜条共用单点，P1 第二片）

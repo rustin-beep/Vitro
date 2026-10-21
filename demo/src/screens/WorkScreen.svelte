@@ -13,6 +13,7 @@
   import { packSource, urlLenWarning, SHARE_URL_WARN } from "../../js/share.ts";
   import { toast } from "../toasts.svelte.ts";
   import { ui, setMode } from "../ui.svelte.ts";
+  import { untrack } from "svelte";
   import { lessonSession } from "../lib/lessonSession.svelte.ts";
   import { progress } from "../lib/progress.svelte.ts";
   import { syncSource, workspace } from "../lib/workspace.svelte.ts";
@@ -27,6 +28,8 @@
   import ProtoView from "../lib/ProtoView.svelte";
   import CourseNote from "../lib/CourseNote.svelte";
   import StageHead from "../lib/StageHead.svelte";
+  import { sceneAnnotations } from "../lib/annotations.ts";
+  import { sceneIndexAt } from "../lib/scenes.ts";
   import BeatRail from "../lib/BeatRail.svelte";
   import WorkspaceBar from "../lib/WorkspaceBar.svelte";
   import SessionConfig from "../lib/SessionConfig.svelte";
@@ -60,6 +63,17 @@
       : "从分享链接还原的自由代码——没有预置 golden；可编辑后点「运行」重新采集。",
   );
   const elementCount = $derived(snaps.reduce((s, x) => s + x.elements.length, 0));
+
+  // 本幕逐行注记（#222 P1 第五片）：当前幕内「哪一行改了什么」→ 编辑器行尾 widget。
+  // 无幕/未采集/帧落在幕外 → 空表（编辑器即时清空，不留旧行号注记）。
+  const annotations = $derived.by(() => {
+    const scenes = lessonSession.note?.scenes ?? [];
+    const frames = session.viewFrames;
+    if (!scenes.length || !frames.length) return [] as Array<{ line: number; text: string }>;
+    const i = sceneIndexAt(scenes, session.idx);
+    if (i < 0) return [] as Array<{ line: number; text: string }>;
+    return sceneAnnotations(frames, scenes[i].from, scenes[i].to, session.idx, untrack(() => source.split("\n"))).map((a) => ({ line: a.line, text: a.text }));
+  });
 
   const statusText = $derived(
     session.collecting
@@ -241,7 +255,7 @@
         <span><span class="vr-dot {codeDotCls}"></span>{codeStatus}</span>
       </div>
       <div class="vr-codebody">
-        <Editor bind:source bind:this={editorRef} disabled={session.collecting || waiting} />
+        <Editor bind:source bind:this={editorRef} disabled={session.collecting || waiting} {annotations} />
       </div>
     </div>
 

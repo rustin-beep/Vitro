@@ -903,6 +903,8 @@ code, pre, kbd, samp, .vr-mono {
 .vr-editor .cm-scroller::-webkit-scrollbar-thumb { background: var(--vr-rule-2); }
 .vr-editor .cm-scroller::-webkit-scrollbar-track { background: transparent; }
 .vr-editor .cm-content { padding: 10px 0 10px 12px; caret-color: var(--vr-amber-2); }
+/* 逐行注记（P1 第五片）：行尾伪元素（文本不进 DOM textContent——E2E docLen 不被污染） */
+.vr-editor .cm-line[data-annot]::after { content: attr(data-annot); margin-left: 14px; padding: 0 5px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); background: var(--vr-amber-tint); border-left: 1px solid var(--vr-amber-2); white-space: pre; user-select: none; }
 .vr-editor .cm-line { padding: 0 12px 0 0; }
 .vr-editor .cm-gutters { background: transparent; border-right: 1px solid var(--vr-rule); color: var(--vr-ink-3); }
 .vr-editor .cm-bpgutter { width: 13px; }

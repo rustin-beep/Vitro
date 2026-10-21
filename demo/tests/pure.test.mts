@@ -29,7 +29,7 @@ import {
   SHARE_VERSION,
 } from "../js/share.ts";
 import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
-import { sceneBand, sceneIndexAt, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
+import { sceneBand, sceneIndexAt, sceneKicker, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -327,6 +327,12 @@ test("scenes：sceneRangeLabel 单帧/多帧形态", () => {
   const s: Scene = { id: "01", title: "", from: 0, to: 4, lines: [1, 2], note: "" };
   assert.equal(sceneRangeLabel(s), "帧 0–4");
   assert.equal(sceneRangeLabel({ ...s, from: 7, to: 7 }), "帧 7");
+});
+
+test("scenes：sceneKicker 幕号/帧范围文案（幕头用），先红后绿", () => {
+  const s: Scene = { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" };
+  assert.equal(sceneKicker(s, 1, 4), "第 2 幕 / 共 4 幕 · 帧 5–20");
+  assert.equal(sceneKicker({ ...s, from: 7, to: 7 }, 0, 1), "第 1 幕 / 共 1 幕 · 帧 7");
 });
 
 test("scenes：sceneBand 百分比几何（帧数变化/末幕越界/未采集），先红后绿", () => {

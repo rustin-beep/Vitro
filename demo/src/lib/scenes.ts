@@ -31,6 +31,11 @@ export function sceneRangeLabel(s: Scene): string {
   return s.from === s.to ? `帧 ${s.from}` : `帧 ${s.from}–${s.to}`;
 }
 
+/** 幕头文案："第 2 幕 / 共 4 幕 · 帧 5–20"（幕号从 1 起，与分镜条 id 视觉一致）。 */
+export function sceneKicker(s: Scene, i: number, total: number): string {
+  return `第 ${i + 1} 幕 / 共 ${total} 幕 · ${sceneRangeLabel(s)}`;
+}
+
 /** 分幕条几何：按**帧格**（frameCount 等分轴宽）给 left/width 百分比。
  *  未采集（frameCount ≤ 0）→ 零宽而不是 NaN——`NaN%` 会让整条轴静默消失；
  *  `to` 越过现存帧（旧存档 / 帧数变化）→ 钳到末帧，条不出轴。 */

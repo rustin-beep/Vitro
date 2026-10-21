@@ -24,6 +24,7 @@
   import MemoryView from "../lib/MemoryView.svelte";
   import ProtoView from "../lib/ProtoView.svelte";
   import CourseNote from "../lib/CourseNote.svelte";
+  import StageHead from "../lib/StageHead.svelte";
   import WorkspaceBar from "../lib/WorkspaceBar.svelte";
   import SessionConfig from "../lib/SessionConfig.svelte";
 
@@ -256,6 +257,8 @@
           <button type="button" class="vr-btn vr-tiny" onclick={clearBpAndRun}>清除断点并重采</button>
         </div>
       {/if}
+
+      <StageHead />
 
       <div class="vr-code">
         <div class="vr-codehead">

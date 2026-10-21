@@ -556,6 +556,16 @@ code, pre, kbd, samp, .vr-mono {
 .vr-ref-item.is-active .vr-codeicon { color: var(--vr-amber); }
 .vr-ref-kicker .vr-codeicon { vertical-align: -2px; margin-right: 3px; }
 
+/* ---------- 幕头（P1 第三片，2026-10-21） ---------- */
+/* 当前幕钉在代码上方：幕号/帧范围/源码行 + 标题 + 一句要点 + 上一幕/下一幕。
+   无 scene 的课不渲染（回退长文）；未采集不出幕头。 */
+.vr-stagehead { display: flex; align-items: flex-start; gap: 16px; margin: 14px 0 12px; padding: 10px 12px; border: 1px solid var(--vr-rule); border-left: 3px solid var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-stagehead-text { min-width: 0; }
+.vr-stagehead-kicker { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-stagehead-title { margin: 3px 0 2px; font-family: var(--vr-serif); font-size: 17px; line-height: 1.35; font-weight: 600; color: var(--vr-ink); }
+.vr-stagehead-note { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--vr-ink-2); }
+.vr-stagehead-nav { display: flex; gap: 6px; margin-left: auto; flex: 0 0 auto; }
+
 /* ---------- 本课分镜条（P1 第二片，2026-10-21） ---------- */
 /* scene 真源 = course/…/lesson.md 的 vitri-scenes 块（lessonMd 解析、demo/README
    口径）；点一幕 = 跳到幕首帧。未迁移课 scenes=[] → 整段不渲染（回退长文）。 */
@@ -677,6 +687,14 @@ code, pre, kbd, samp, .vr-mono {
 .vr-zoom { display: inline-flex; align-items: center; gap: 2px; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-zoom button { width: 20px; height: 20px; border: 1px solid var(--vr-rule); background: transparent; color: var(--vr-ink-2); line-height: 1; }
 .vr-zoom button:hover { border-color: var(--vr-rule-2); }
+/* 浅树压扁（P1 第三片，2026-10-21）：节点 ≤3 的课不占 214px 画布，压成一行
+   面包屑 + 当前语句；深树（递归）仍走画布。 */
+.vr-tree-compact { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--vr-rule); background: var(--vr-panel-2); }
+.vr-tree-compact .vr-tree-path { font-family: var(--vr-mono); font-size: 11px; font-variant-ligatures: none; color: var(--vr-ink); }
+.vr-tree-compact .vr-tree-line { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-amber); }
+.vr-tree-compact .vr-tree-code { flex: 1 1 220px; min-width: 0; font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-2); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.vr-tree-compact .vr-tree-vars { margin-left: auto; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-tree-note { margin: 6px 0 0; font-family: var(--vr-mono); font-size: 9.5px; line-height: 1.6; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-zoom span { min-width: 34px; text-align: center; }
 
 /* ---------- 变量 / 输出 ---------- */

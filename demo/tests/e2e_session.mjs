@@ -8,6 +8,7 @@
 //   F6 trap E 码 → 手册联动（P2-10：伪下划线变真通道）
 //   F7 课程目录全章渲染（重名课 id 防护：structures/josephus 实测 2026-10-18）
 //   B0 未迁移课无分镜条 / B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片，2026-10-21）
+//   B2 幕头随帧更新 + 浅树压扁（#222 P1 第三片，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -206,6 +207,27 @@ async function run() {
     b1before.beats === 4 && b1before.bands === 4 && b1before.active.includes("04") &&
       b1after.idx === 0 && b1after.active.includes("01") && b1after.note.includes("帧 0–4") && b1after.bandsActive === 1,
     JSON.stringify({ b1before, b1after }));
+
+  // ── B2 幕头 + 浅树压扁（#222 P1 第三片）：当前幕随帧更新、上一幕/下一幕能跳；
+  //    bubble 只有 prog → main（2 节点）→ 不画 214px 画布，压成一行面包屑 ──
+  const b2 = await evaluate(`(() => ({
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+    title: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+    prevDisabled: document.querySelectorAll('.vr-stagehead-nav button')[0]?.disabled,
+    compact: !!document.querySelector('.vr-tree-compact'),
+    canvas: !!document.querySelector('.vr-canvas'),
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-stagehead-nav button')[1]?.click(); true");
+  await sleep(250);
+  const b2after = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+    title: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+  }))()`);
+  check("B2 幕头随帧更新 + 浅树压扁（#222）",
+    b2.title.includes("起点") && b2.prevDisabled === true && b2.compact === true && b2.canvas === false &&
+      b2after.idx === 5 && b2after.title.includes("交换") && b2after.kicker.includes("帧 5–20"),
+    JSON.stringify({ b2, b2after }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

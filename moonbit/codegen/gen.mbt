@@ -453,7 +453,14 @@ fn BytecodeGen::pass1_register_global(
             self.flatten_designated_global(g, elements, offset)
           } else {
             let is_char_array = match g.ty {
-              Array(element, _, _, _, _, _) => element.kind() is TK_Char
+              // #193 a10（2026-10-21）：一维限定——多维 char（dims=[3,8]
+              // 单节点 element=char）误进本路径后 flatten_init_list 对
+              // StringLiteral 元素静默 0（全局静默错值实锤）；多维落到
+              // 下方「字符串元素数组」分支走 flatten_global_init 字节
+              // 直写（static 局部路径 #137 连坐当年已加同款限定，全局
+              // 路径漏了连坐）
+              Array(element, _, dims, _, _, _) =>
+                element.kind() is TK_Char && dims.length() == 1
               _ => false
             }
             if is_char_array {

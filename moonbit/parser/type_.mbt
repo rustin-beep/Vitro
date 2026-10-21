@@ -419,7 +419,7 @@ fn Parser::parse_var_declarator(
 
 ///|
 priv enum DeclPrefix {
-  PtrPrefix
+  PtrPrefix(Bool) // is_const（#194 N-2：`* const` 的指针自身限定位）
   RefPrefix(Bool) // is_const
   RValPrefix
 }
@@ -456,13 +456,20 @@ fn Parser::parse_declarator_node(
         break
       }
     }
-    prefixes.push(PtrPrefix)
-    // 跳过指针限定符（const/volatile/restrict），教学 VM 中无特殊语义
-    while self.match_token(Const) ||
-          self.match_token(Volatile) ||
-          self.match_token(Restrict) {
-      ()
+    // #194 N-2（2026-10-21）：`* const` 的 const 不再丢弃——落该层指针
+    // 自身位（const 指针不可重绑 / const 指针数组元素不可写，clang 均
+    // error）。volatile/restrict 仍无语义位跳过（教学面维持）
+    let mut ptr_is_const = false
+    while true {
+      if self.match_token(Const) {
+        ptr_is_const = true
+      } else if self.match_token(Volatile) || self.match_token(Restrict) {
+        ()
+      } else {
+        break
+      }
     }
+    prefixes.push(PtrPrefix(ptr_is_const))
   }
   if self.is_cpp_mode {
     while self.match_token(Ampersand) {
@@ -594,7 +601,7 @@ fn Parser::parse_declarator_node(
   // 再应用前缀（从外到内，但解释时从内到外）
   for prefix in prefixes {
     match prefix {
-      PtrPrefix => node = Pointer(node)
+      PtrPrefix(is_const) => node = Pointer(node, is_const)
       RefPrefix(is_const) => node = Reference(node, is_const)
       RValPrefix => node = RValueRef(node)
     }
@@ -843,8 +850,12 @@ fn Parser::interpret_declarator_node(
   while true {
     match cur {
       Base => break
-      Pointer(inner) => {
-        t = @ast.Type::pointer_to(t)
+      Pointer(inner, is_const) => {
+        t = if is_const {
+          @ast.Type::Pointer(t, true)
+        } else {
+          @ast.Type::pointer_to(t)
+        }
         size_state = 0 // 维度链打断：跨指针的维度分属不同数组对象
         cur = inner
       }
@@ -892,7 +903,7 @@ fn Parser::interpret_declarator_node(
         size_state = 0
         match inner {
           // 函数指针的 `*` 即 decay 层本身——吸收，不再额外包指针
-          Pointer(rest) => cur = rest
+          Pointer(rest, _) => cur = rest
           _ => cur = inner
         }
       }

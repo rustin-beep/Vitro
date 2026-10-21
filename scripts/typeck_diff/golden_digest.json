@@ -997,7 +997,7 @@
         "static_assert.c": "c1dfab1030ccb868",
         "string_len_manual.c": "0f93dfbc0cac82d9",
         "typeof_operator.c": "024db6150253d1ef",
-        "variadic_macro.c": "c21dff365bd299d3"
+        "variadic_macro.c": "fa27e5a622e58d00"
       }
     },
     "corpus-knr": {
@@ -1373,7 +1373,7 @@
         "lc_24.c": "288ce4285a310307",
         "lc_242.c": "a904cd6f8a189afb",
         "lc_25.c": "d03336ed0d710d19",
-        "lc_257.c": "1b00dcfa1ac02f71",
+        "lc_257.c": "f0fa4db562285290",
         "lc_26.c": "0ce3413e76557489",
         "lc_263.c": "b3cbc581eb716f4e",
         "lc_268.c": "1e253679fc56c097",

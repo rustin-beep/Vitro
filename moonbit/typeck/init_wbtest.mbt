@@ -286,3 +286,105 @@ test "struct_char_array_member_string_init_issue75_g3" {
   ignore(tc3.check_field_value(int_arr, "s", val, loc))
   assert_eq(tc3.errors.length(), 1, msg="非 char 数组收字符串维持拒")
 }
+
+///|
+/// #196B（2026-10-21，C11 §6.7.9p11 括号包裹 + p14 字符串初始化）：
+/// `char s[2] = {"abc"}` ≡ 裸字符串 `char s[2] = "abc"`——单元素花括号
+/// 字符串走 StringLiteral 同款路径（长度校验/W3008），不再按元素循环
+/// 把 "abc" 定型 char[4] 误报 E3006。红锚：修复前 errs 含 3006。
+test "char_array_braced_string_init_issue196b" {
+  let loc = @source.SourceLoc::new(1, 1)
+  fn ok_case(arr : @ast.Type, lit : String) -> @ast.ProgramNode {
+    let g : @ast.GlobalDecl = {
+      ..Default::default(),
+      loc,
+      ty: arr,
+      name: "s",
+      init: Some(
+        @ast.Expr::InitList(
+          [
+            {
+              designators: [],
+              value: @ast.Expr::StringLiteral(
+                lit,
+                loc,
+                @ast.Type::array_of(@ast.Type::char(), [3]),
+              ),
+            },
+          ],
+          loc,
+          @ast.Type::void_type(),
+        ),
+      ),
+      source_file: "t.c",
+    }
+    {
+      structs: [],
+      unions: [],
+      globals: [g],
+      funcs: [],
+      classes: [],
+      templates: [],
+      template_instantiations: [],
+    }
+  }
+  // char s[2] = {"abc"}：恰含 \0 超长 1——W3008 警告非错误（clang 同款
+  // warning: initializer-string too long），errors 必须 0
+  let tc = TypeChecker::new()
+  let (_, errs, warns, _) = tc.check(
+    ok_case(@ast.Type::array_of(@ast.Type::char(), [2]), "abc"),
+  )
+  assert_eq(
+    errs.length(),
+    0,
+    msg="花括号字符串不得报 E3006：\{errs.length()}",
+  )
+  // 超长警告面：与裸字符串同款 W3008
+  assert_true(
+    warns.length() == 1 && warns[0].code == 3008,
+    msg="超长应走 W3008（实得 \{warns.length()} 条）",
+  )
+  // char s[4] = {"abc"}：恰好放下（含 \0）——零错误零警告
+  let tc2 = TypeChecker::new()
+  let (_, errs2, warns2, _) = tc2.check(
+    ok_case(@ast.Type::array_of(@ast.Type::char(), [4]), "abc"),
+  )
+  assert_eq(errs2.length(), 0)
+  assert_eq(warns2.length(), 0)
+  // int a[2] = {"x"}：非 char 基类型不进新路径——仍按元素循环语义
+  //（字符串对 int 元素的既有拒绝面不变，走 E3006）
+  let g3 : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::array_of(@ast.Type::int(), [2]),
+    name: "a",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::StringLiteral(
+              "x",
+              loc,
+              @ast.Type::array_of(@ast.Type::char(), [2]),
+            ),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc3 = TypeChecker::new()
+  let (_, errs3, _, _) = tc3.check({
+    structs: [],
+    unions: [],
+    globals: [g3],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_true(errs3.length() > 0, msg="int 数组收字符串仍须拒绝")
+}

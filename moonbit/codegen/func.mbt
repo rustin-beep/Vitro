@@ -219,6 +219,10 @@ fn BytecodeGen::elem_type_size(
 ) -> Int32 {
   let (elem_kind, elem_type) = match arr_type {
     Array(element, _, _, _, _, _) => (element.kind(), element)
+    // #193：指针步长基元按 pointee 下钻（`char(*)[8]` → TK_Array →
+    // 再递归数组元素）；旧走 base_kind 落 TK_Array 兜底 4——int(*)[3]
+    // 碰巧对、char(*)[8] 错 4 倍
+    Pointer(pointee, _) => (pointee.kind(), pointee)
     _ => (@ast.Type::base_kind(arr_type), arr_type)
   }
   match elem_kind {
@@ -264,6 +268,12 @@ fn BytecodeGen::elem_type_size(
         }
         None => 4
       }
+    // #193（2026-10-21）：指针指向数组的步长基元（`char (*)[8]` 形参的
+    // gen_index stride 路径）——base_kind(Pointer(Array)) 下钻到 TK_Array
+    // 后旧落 `_ => 4` 兜底：`int(*)[3]` 碰巧对（4×3=12）而 `char(*)[8]`
+    // 错 4 倍（4×8=32，实测指令流 PushConst 32）。按 pointee 数组的元素
+    // 尺寸递归（Array 输入走顶部分支取 element.kind）。
+    TK_Array => self.elem_type_size(elem_type)
     _ => 4
   }
 }

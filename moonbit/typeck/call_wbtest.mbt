@@ -880,3 +880,117 @@ test "sscanf_nonliteral_fmt_tail_args_resolved" {
     msg="非字面量 fmt 分支的尾参 &r.cls 须回写定型（#161 else 分支）",
   )
 }
+
+///|
+/// #197（2026-10-21）：snprintf/sprintf 变参尾参 resolve 回写——旧只查
+/// 前 2/3 参，尾参 Member 保持 parser Void 占位，codegen 按 object.ty
+/// 判型落 0 读垃圾（`snprintf(buf,n,"%.2f",a->b)` 的成员值变地址）。
+/// 红锚：修复前尾参 expr 保持 Void 占位（ty 非 Double）；修后 resolve
+/// 回写定型。#161（sscanf 尾参）同族——printf 族两兄弟当年漏连坐。
+test "snprintf_sprintf_tail_args_resolved_issue197" {
+  let loc = @source.SourceLoc::new(2, 9)
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  tc.structs.set("A", {
+    fields: [(@ast.Type::double(), "b")],
+    is_complete: true,
+  })
+  tc.declare_var(
+    "a",
+    @ast.Type::Pointer(@ast.Type::struct_type("A"), false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc.declare_var(
+    "buf",
+    @ast.Type::pointer_to(@ast.Type::char()),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  // a->b（未 resolve 形态——object/ty 均 Void 占位）
+  fn raw_member(loc : @source.SourceLoc) -> @ast.Expr {
+    @ast.Expr::Member(
+      @ast.Expr::Identifier("a", loc, @ast.Type::void_type()),
+      "b",
+      true,
+      loc,
+      @ast.Type::void_type(),
+    )
+  }
+  // snprintf(buf, 64, "%.2f", a->b)
+  let call1 = @ast.Expr::Call(
+    "snprintf",
+    [
+      @ast.Expr::Identifier("buf", loc, @ast.Type::void_type()),
+      @ast.Expr::Literal(64, loc, @ast.Type::int()),
+      @ast.Expr::StringLiteral("%.2f", loc, @ast.Type::void_type()),
+      raw_member(loc),
+    ],
+    loc,
+    @ast.Type::void_type(),
+  )
+  let _ = tc.resolve_expr_type(call1)
+  match call1 {
+    Call(_, args, _, _) =>
+      match args[3] {
+        Member(_, _, _, _, mty) =>
+          assert_true(
+            mty.kind() is TK_Double,
+            msg="snprintf 尾参 a->b 须 resolve 定型 double（实得 \{mty.to_c_string()}）",
+          )
+        _ => fail("尾参形态坏")
+      }
+    _ => fail("调用形态坏")
+  }
+  assert_eq(tc.errors.length(), 0, msg="合法调用零诊断")
+  // sprintf(buf, "%d", a->b)——b 是 double 对 %d：W3062 对位警告（不 error）
+  let tc2 = TypeChecker::new()
+  tc2.enter_scope()
+  tc2.structs.set("A", { fields: [(@ast.Type::int(), "n")], is_complete: true, })
+  tc2.declare_var(
+    "a",
+    @ast.Type::Pointer(@ast.Type::struct_type("A"), false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  tc2.declare_var(
+    "buf",
+    @ast.Type::pointer_to(@ast.Type::char()),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let call2 = @ast.Expr::Call(
+    "sprintf",
+    [
+      @ast.Expr::Identifier("buf", loc, @ast.Type::void_type()),
+      @ast.Expr::StringLiteral("%d", loc, @ast.Type::void_type()),
+      @ast.Expr::Member(
+        @ast.Expr::Identifier("a", loc, @ast.Type::void_type()),
+        "n",
+        true,
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ],
+    loc,
+    @ast.Type::void_type(),
+  )
+  let _ = tc2.resolve_expr_type(call2)
+  match call2 {
+    Call(_, args, _, _) =>
+      match args[2] {
+        Member(_, _, _, _, mty) =>
+          assert_true(
+            mty.kind() is TK_Int,
+            msg="sprintf 尾参 a->n 须 resolve 定型 int（实得 \{mty.to_c_string()}）",
+          )
+        _ => fail("尾参形态坏")
+      }
+    _ => fail("调用形态坏")
+  }
+  assert_eq(tc2.errors.length(), 0)
+}

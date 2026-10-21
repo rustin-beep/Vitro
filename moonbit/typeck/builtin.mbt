@@ -821,6 +821,29 @@ fn TypeChecker::check_builtin_sprintf(
   } else {
     self.builtin_check_pointer(args, 0, "sprintf", loc)
     self.builtin_check_pointer(args, 1, "sprintf", loc)
+    // #197（2026-10-21）：变参尾参（第 3 起）逐参 resolve 回写——旧零
+    // resolve，Member 尾参保持 parser Void 占位，codegen 按 object.ty
+    // 判型落 0 读垃圾（`sprintf(buf,"%d",a->n)` 成员值变地址）。与
+    // printf 双路径同构（#161 sscanf 尾参同族）：字面量 fmt 走
+    // check_printf_format 格式感知，非字面量粗检
+    match args[1] {
+      StringLiteral(value, _, _) =>
+        self.check_printf_format(value, args, loc, 2)
+      _ =>
+        for i in 2..<args.length() {
+          let (arg_type, new_arg) = self.resolve_expr_type(args[i])
+          args[i] = new_arg
+          if !self.is_scalar(arg_type) &&
+            !(arg_type.kind() is TK_Pointer) &&
+            !arg_type.is_array() {
+            self.report_warning(
+              "sprintf 的第 \{i + 1} 个参数必须是 int、float、char 或指针",
+              loc,
+              W3032_PrintfArgType,
+            )
+          }
+        }
+    }
   }
   @ast.Type::int()
 }
@@ -842,6 +865,26 @@ fn TypeChecker::check_builtin_snprintf(
     self.builtin_check_pointer(args, 0, "snprintf", loc)
     self.builtin_check_int(args, 1, "snprintf", loc)
     self.builtin_check_pointer(args, 2, "snprintf", loc)
+    // #197（2026-10-21）：尾参 resolve 回写（同 sprintf 臂——双路径与
+    // printf 同构）
+    match args[2] {
+      StringLiteral(value, _, _) =>
+        self.check_printf_format(value, args, loc, 3)
+      _ =>
+        for i in 3..<args.length() {
+          let (arg_type, new_arg) = self.resolve_expr_type(args[i])
+          args[i] = new_arg
+          if !self.is_scalar(arg_type) &&
+            !(arg_type.kind() is TK_Pointer) &&
+            !arg_type.is_array() {
+            self.report_warning(
+              "snprintf 的第 \{i + 1} 个参数必须是 int、float、char 或指针",
+              loc,
+              W3032_PrintfArgType,
+            )
+          }
+        }
+    }
   }
   @ast.Type::int()
 }

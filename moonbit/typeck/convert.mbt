@@ -262,6 +262,19 @@ fn TypeChecker::check_function_pointer_assignable(
     return true
   }
   if target.kind() is TK_Pointer && v_fp {
+    // #192 N-3（2026-10-21，clang "incompatible pointer types" 口径）：
+    // 函数指针 → 数据指针按 pointee 细分——void* 桥接（J.5.7 common
+    // extension，clang 默认接受）放行；其余数据指针（`int *p = f;`）
+    // 报 E3044（旧无条件放行 = 四模型 8/8 误收实锤）
+    match target {
+      Pointer(pointee, _) => if pointee.kind() is TK_Void { return true }
+      _ => ()
+    }
+    self.report_error(
+      "函数指针类型不兼容（不能初始化/赋值给非 void 的数据指针）",
+      loc,
+      E3044_AssignTypeMismatch,
+    )
     return true
   }
   if t_fp && value.kind() is TK_Pointer {

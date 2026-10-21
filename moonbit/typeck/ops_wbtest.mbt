@@ -695,3 +695,155 @@ test "issue80_const_discard_warning" {
   inspect(tc3.errors.length(), content="0")
   inspect(tc3.warnings.length(), content="0")
 }
+
+///|
+/// #192 N-3（2026-10-21，clang "incompatible pointer types" 口径）：
+/// 函数指针 → 数据指针（`int *p = f;`）报 E3044——旧无条件放行（双端
+/// ACCEPT 零诊断，四模型 8/8）。void* 桥接（J.5.7 common extension）
+/// 保留放行零 error。红锚：修复前 ok=true 且 errors 空。
+test "func_to_data_pointer_assign_issue192n3" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let fp = @ast.Type::function_pointer(@ast.Type::int(), [])
+  // int *p = f;：数据指针 ← 函数指针 —— E3044
+  let tc = TypeChecker::new()
+  ignore(tc.check_assignable(@ast.Type::pointer_to(@ast.Type::int()), fp, loc))
+  assert_true(
+    tc.errors.length() == 1 && tc.errors[0].code == 3044,
+    msg="函数名赋数据指针须报 E3044（实得 \{tc.errors.length()} 条）",
+  )
+  // void *p = f;：通用指针桥接放行（common extension——clang 默认接受）
+  let tc2 = TypeChecker::new()
+  let ok2 = tc2.check_assignable(
+    @ast.Type::pointer_to(@ast.Type::void_type()),
+    fp,
+    loc,
+  )
+  assert_true(ok2, msg="void* ← 函数指针桥接须放行")
+  assert_eq(tc2.errors.length(), 0, msg="void* 桥接零 error")
+}
+
+///|
+/// #194（2026-10-21，clang "cannot assign to variable with
+/// const-qualified type" 口径）：const 间接层两条误收路径的负锚 +
+/// 合法面防误拒。红锚：修复前两负锚均零诊断（四模型 8/8 误收实锤）。
+/// N-1 修复 = resolve_member 的 const 继承下钻 pointee（P1-c③ 空声明
+/// 补码）；N-2 修复 = parser 声明器 `* const` 限定位保留（此处在
+/// typeck 层锁消费面：const 指针数组的元素写 E3049）。
+test "const_indirect_assign_issue194" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // N-1：const struct S *p; p->x = 9; —— E3049（成员类型继承 const 位）
+  let tc = TypeChecker::new()
+  tc.enter_scope()
+  tc.structs.set("S", { fields: [(@ast.Type::int(), "x")], is_complete: true, })
+  tc.declare_var(
+    "p",
+    @ast.Type::Pointer(@ast.Type::Struct("S", true), false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let lhs = @ast.Expr::Member(
+    @ast.Expr::Identifier("p", loc, @ast.Type::void_type()),
+    "x",
+    true,
+    loc,
+    @ast.Type::void_type(),
+  )
+  let rhs = @ast.Expr::Literal(9, loc, @ast.Type::int())
+  let _ = tc.resolve_assign(Assign, lhs, rhs, loc)
+  assert_true(
+    tc.errors.length() == 1 && tc.errors[0].code == 3049,
+    msg="const 指针成员写须报 E3049（实得 \{tc.errors.length()} 条）",
+  )
+  // 合法面：struct S *p（非 const）成员写——零诊断
+  let tc2 = TypeChecker::new()
+  tc2.enter_scope()
+  tc2.structs.set("S", { fields: [(@ast.Type::int(), "x")], is_complete: true, })
+  tc2.declare_var(
+    "p",
+    @ast.Type::Pointer(@ast.Type::struct_type("S"), false),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let _ = tc2.resolve_assign(
+    Assign,
+    @ast.Expr::Member(
+      @ast.Expr::Identifier("p", loc, @ast.Type::void_type()),
+      "x",
+      true,
+      loc,
+      @ast.Type::void_type(),
+    ),
+    @ast.Expr::Literal(9, loc, @ast.Type::int()),
+    loc,
+  )
+  assert_eq(tc2.errors.length(), 0, msg="非 const 指针成员写不得误拒")
+  // N-2：const char *const names[2]; names[0] = "c"; —— 元素类型
+  // char*const（指针自身位）→ Index 左值 E3049
+  let tc3 = TypeChecker::new()
+  tc3.enter_scope()
+  tc3.declare_var(
+    "names",
+    // const char *const [2]：元素 = Pointer(pointee=const char, is_const=true)
+    @ast.Type::Array(
+      @ast.Type::Pointer(@ast.Type::Char(false, true), true),
+      -1,
+      [2],
+      false,
+      false,
+      [],
+    ),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let _ = tc3.resolve_assign(
+    Assign,
+    @ast.Expr::Index(
+      @ast.Expr::Identifier("names", loc, @ast.Type::void_type()),
+      @ast.Expr::Literal(0, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::void_type(),
+    ),
+    @ast.Expr::StringLiteral("c", loc, @ast.Type::void_type()),
+    loc,
+  )
+  assert_true(
+    tc3.errors.length() == 1 && tc3.errors[0].code == 3049,
+    msg="const 指针数组元素写须报 E3049（实得 \{tc3.errors.length()} 条）",
+  )
+  // 合法面：const char *names[2]（元素指针自身非 const）——重绑元素零诊断
+  let tc4 = TypeChecker::new()
+  tc4.enter_scope()
+  tc4.declare_var(
+    "names",
+    @ast.Type::Array(
+      @ast.Type::Pointer(@ast.Type::Char(false, true), false),
+      -1,
+      [2],
+      false,
+      false,
+      [],
+    ),
+    is_global=false,
+    is_extern=false,
+    is_static=false,
+  )
+  let _ = tc4.resolve_assign(
+    Assign,
+    @ast.Expr::Index(
+      @ast.Expr::Identifier("names", loc, @ast.Type::void_type()),
+      @ast.Expr::Literal(0, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::void_type(),
+    ),
+    @ast.Expr::StringLiteral("c", loc, @ast.Type::void_type()),
+    loc,
+  )
+  assert_eq(
+    tc4.errors.length(),
+    0,
+    msg="非 const 指针数组元素写不得误拒",
+  )
+}

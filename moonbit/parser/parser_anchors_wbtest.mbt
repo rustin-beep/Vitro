@@ -155,7 +155,7 @@ test "wb eval_enum_const semantics spot checks" {
 
 ///|
 /// F3 锚：声明符 Array 链尾为 Pointer 的 C 语义折叠——
-/// Array[3](Array[2](Pointer(Base))) 应产出 Pointer(Array{dims:[2,3]})
+/// Array[3](Array[2](Pointer(Base, false))) 应产出 Pointer(Array{dims:[2,3]})
 /// （裁定 b；修复前为撕裂的 Array{dims:[2,3], element:Pointer(Int)}）。
 test "wb interpret arrptr multidim c semantics" {
   let q = Parser::with_mode(num_tokens(1), false)
@@ -165,7 +165,7 @@ test "wb interpret arrptr multidim c semantics" {
   let size3 : @ast.Expr? = Some(
     @ast.Expr::Literal(3, @source.SourceLoc::new(1, 1), @ast.Type::int()),
   )
-  let node = Array(Array(Pointer(Base), size2), size3)
+  let node = Array(Array(Pointer(Base, false), size2), size3)
   match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
     @ast.Type::Pointer(pointee, _) =>
       match pointee {
@@ -223,9 +223,9 @@ test "wb interpret inner array dims c semantics" {
   let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
-  // (*p[2])[3][4] 的链：括号内 *p[2] → Pointer(Array(Base,2))（前缀最后
-  // 包最外）；括号外 [3][4] 逐层包 → Array(Array(Pointer(Array(Base,2)),3),4)
-  let node = Array(Array(Pointer(Array(Base, mk(2))), mk(3)), mk(4))
+  // (*p[2])[3][4] 的链：括号内 *p[2] → Pointer(Array(Base,2), false)（前缀最后
+  // 包最外）；括号外 [3][4] 逐层包 → Array(Array(Pointer(Array(Base,2), false),3),4)
+  let node = Array(Array(Pointer(Array(Base, mk(2)), false), mk(3)), mk(4))
   match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
     @ast.Type::Array(_, sz, dims, _, _, _) => {
       debug_inspect(dims, content="[2]")
@@ -262,8 +262,11 @@ test "wb interpret fnret arrptr c semantics" {
   let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
-  // (*f(void))[2][3] 的链：Array(Array(Pointer(Function(Base,[])),2),3)
-  let node = Array(Array(Pointer(Function(Base, [], false)), mk(2)), mk(3))
+  // (*f(void))[2][3] 的链：Array(Array(Pointer(Function(Base,[]), false),2),3)
+  let node = Array(
+    Array(Pointer(Function(Base, [], false), false), mk(2)),
+    mk(3),
+  )
   match q.interpret_declarator_node(node, @ast.Type::int(), 0) {
     @ast.Type::Pointer(pointee, _) =>
       match pointee {
@@ -291,10 +294,10 @@ test "wb interpret fnret arrptr c semantics" {
 /// Pointer(Function)}（decay 吸收内层 `*`，不双包）。
 test "wb interpret fnptr decay guard" {
   let q = Parser::with_mode(num_tokens(1), false)
-  // (*fp)(void) 链：Function(Pointer(Base), [])
+  // (*fp)(void) 链：Function(Pointer(Base, false), [])
   match
     q.interpret_declarator_node(
-      Function(Pointer(Base), [], false),
+      Function(Pointer(Base, false), [], false),
       @ast.Type::int(),
       0,
     ) {
@@ -305,14 +308,14 @@ test "wb interpret fnptr decay guard" {
       }
     _ => fail("应为函数指针")
   }
-  // (*fp[2])(void) 链：括号内 *fp[2] → Pointer(Array(Base,2))；括号外
-  // 函数后缀 → Function(Pointer(Array(Base,2)), [])
+  // (*fp[2])(void) 链：括号内 *fp[2] → Pointer(Array(Base,2), false)；括号外
+  // 函数后缀 → Function(Pointer(Array(Base,2), false), [])
   let mk = fn(v : Int32) -> @ast.Expr? {
     Some(@ast.Expr::Literal(v, @source.SourceLoc::new(1, 1), @ast.Type::int()))
   }
   match
     q.interpret_declarator_node(
-      Function(Pointer(Array(Base, mk(2))), [], false),
+      Function(Pointer(Array(Base, mk(2)), false), [], false),
       @ast.Type::int(),
       0,
     ) {

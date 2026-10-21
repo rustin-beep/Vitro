@@ -637,6 +637,17 @@ pub fn TypeChecker::check_array_initializer(
   // 一维
   match init {
     InitList(elements, iloc, ity) => {
+      // #196B（2026-10-21，C11 §6.7.9p11 括号包裹 + p14 字符串初始化）：
+      // `char s[N] = {"abc"}` ≡ 裸字符串——单元素花括号字符串且基类型
+      // char 时递归走 StringLiteral 同款路径（长度校验/W3008/无尺寸回写
+      // 语义单源），不再按元素循环把 "abc" 定型 char[4] 误报 E3006。
+      // 多元素/带 designator/非 char 基类型不进此臂（既有语义不变）。
+      if elements.length() == 1 &&
+        elements[0].designators.length() == 0 &&
+        elements[0].value is StringLiteral(_, _, _) &&
+        elem_type.kind() is TK_Char {
+        return self.check_array_initializer(arr_type, elements[0].value, loc)
+      }
       let has_designators = elements.exists(e => e.designators.length() > 0)
       if has_designators {
         for i in 0..<elements.length() {

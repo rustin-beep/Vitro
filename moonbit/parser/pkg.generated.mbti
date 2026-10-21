@@ -15,7 +15,7 @@ pub fn parse(Array[@token.Token]) -> ParseResult
 // Types and methods
 pub enum DeclaratorNode {
   Base
-  Pointer(DeclaratorNode)
+  Pointer(DeclaratorNode, Bool)
   Reference(DeclaratorNode, Bool)
   RValueRef(DeclaratorNode)
   Array(DeclaratorNode, @ast.Expr?)

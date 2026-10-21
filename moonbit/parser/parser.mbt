@@ -55,7 +55,7 @@ pub(all) struct ParseResult {
 /// 声明符节点树（C 螺旋规则中间表示；照搬 Rust `DeclaratorNode`）。
 pub enum DeclaratorNode {
   Base
-  Pointer(DeclaratorNode)
+  Pointer(DeclaratorNode, Bool) // is_const（#194 N-2）
   Reference(DeclaratorNode, Bool) // is_const
   RValueRef(DeclaratorNode)
   Array(DeclaratorNode, @ast.Expr?) // size_expr
@@ -90,7 +90,7 @@ fn DeclaratorGuard::init() -> DeclaratorGuard {
 fn node_cross_count(node : DeclaratorNode) -> Int32 {
   match node {
     Base => 0
-    Pointer(inner) | Reference(inner, _) | RValueRef(inner) => {
+    Pointer(inner, _) | Reference(inner, _) | RValueRef(inner) => {
       let add = match inner {
         Array(_, _) | Function(_, _, _) => 1
         _ => 0

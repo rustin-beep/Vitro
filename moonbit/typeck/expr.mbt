@@ -476,8 +476,20 @@ fn TypeChecker::resolve_member(
   // 审阅 P1-c③（2026-10-14）：const 对象的成员访问继承 const 位
   //（C11 6.5.2.5p5——const struct S s 的 s.m 也是不可修改左值；
   // `const struct S s={1}; s.m=9;` 旧只判成员自身 const 位=漏检）。
-  // 指针形态 const 已在 pointee 位上天然覆盖。
-  let ty : @ast.Type = if obj_type.is_const() && !ty.is_const() {
+  // #194 N-1（2026-10-21）：const 继承补指针形态——`const struct S *p`
+  // 的 p->x 同为不可修改左值（clang "cannot assign ... with
+  // const-qualified type"）。P1-c③ 当年注「指针形态已在 pointee 位上
+  // 天然覆盖」实为无代码的空声明（is_const 查的是指针自身位）——本条
+  // 补 pointee 下钻。
+  let base_is_const = if obj_type.is_const() {
+    true
+  } else {
+    match obj_type {
+      Pointer(pointee, _) => pointee.is_const()
+      _ => false
+    }
+  }
+  let ty : @ast.Type = if base_is_const && !ty.is_const() {
     mark_member_const(ty)
   } else {
     ty

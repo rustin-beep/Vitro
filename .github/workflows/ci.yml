@@ -1084,6 +1084,16 @@ jobs:
         run: node scripts/demo_assemble_check/main.js demo
         shell: bash
 
+      # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = demo/tokens.json，
+      # 产物 demo/src/tokens.css 由 scripts/gen_demo_tokens 生成（@generated 禁手改，
+      # app.css 只 @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
+      # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
+      - name: demo tokens gate (tokens.json → tokens.css, -check)
+        run: |
+          go run ./scripts/gen_demo_tokens -selftest
+          go run ./scripts/gen_demo_tokens -check
+        shell: bash
+
       # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，
       # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
       # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。

@@ -47,6 +47,12 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 - **逐行注记（P1 第五片，2026-10-21）**：src/lib/annotations.ts 从帧流差分出「本幕每行最近一次执行改了什么」——局部量 	 ← 5、数组元素 [1] ← 1；只取当前帧及之前、跨函数不比较、首帧无前态不猜；**归行校验**（该行源码不写这个变量就不贴注记——语句级帧会把 for 的 j++ 并进循环体末行，实测 [j+1] = t 帧里 j 已递增）。渲染走 CM6 **行装饰属性 + CSS ::after**（注记不进 .cm-content 文本面，E2E docLen 不被污染），源码编辑（docChanged）即整体作废。锚 B4（帧 12 的三行注记 = 拍板稿 08/09/10 形态）在 	ests/e2e_session.mjs。
 - **本幕讲解 + 展开全文（P1 第六片，2026-10-21）**：scene 课程的课文改为「当前幕卡片（幕号/帧范围/源码行 + 标题 + 一句要点）+ 默认折叠的全文」（src/lib/SceneNote.svelte）——本幕卡片只读 lesson.md 真源字段，不手写第二份讲解；无 scene 的课 100% 回退现有长文。全文走 details（内容始终在 DOM，E-08/W9 锚不受折叠影响），换课自动回折叠。锚 B5（默认折叠 + 本幕跟随 + 可展开）在 	ests/e2e_session.mjs。
 
+## 设计契约与主题 token（P0 契约批，2026-10-21）
+
+- **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{, }`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
+- 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `go run ./scripts/gen_demo_tokens` → `-check` 绿 → 五主题截图对比（零视觉变化口径 = 同帧同尺寸 PNG 逐字节一致）。
+- 门：`go run ./scripts/gen_demo_tokens -check`（逐字节，CRLF 归一）+ `-selftest`（内存篡改注入证红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
+- 本批迁移实测：五主题 1440×900 截图**迁移前后逐字节一致**（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）。
 ## 本地预览
 
 `wasm.wasm` 与 JS 发射产物都是构建产物，**不入库**——本地起服务前须先备齐两

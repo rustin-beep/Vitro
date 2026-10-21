@@ -80,6 +80,7 @@ generated: src/tokens.css（@generated，禁手改）
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
 | 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套 |
+| 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令） |
 | 画面语义 | **待建**：截图闸（CI Ubuntu + Chrome，8 状态 × 3 视口 × 主题，diff ≤ 0.1%）——本批只留位，不假装已有 |
 
 ## 8. 本文件的边界

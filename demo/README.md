@@ -49,10 +49,12 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 
 ## 设计契约与主题 token（P0 契约批，2026-10-21）
 
-- **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{, }`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
+- **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{$value, $type}`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
 - 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `go run ./scripts/gen_demo_tokens` → `-check` 绿 → 五主题截图对比（零视觉变化口径 = 同帧同尺寸 PNG 逐字节一致）。
 - 门：`go run ./scripts/gen_demo_tokens -check`（逐字节，CRLF 归一）+ `-selftest`（内存篡改注入证红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
 - 本批迁移实测：五主题 1440×900 截图**迁移前后逐字节一致**（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）。
+- **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mjs http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。像素闸仍待建（需 CI Ubuntu + Chrome 生成基线）。
+
 ## 本地预览
 
 `wasm.wasm` 与 JS 发射产物都是构建产物，**不入库**——本地起服务前须先备齐两

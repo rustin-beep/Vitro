@@ -1183,6 +1183,11 @@ jobs:
           ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank &)
           (cd demo && node tests/serve_static.mjs 8931 &)
           sleep 4
+          # 样式契约闸（#222 P0 第二批，2026-10-21）：五主题 × 19 选择器 × 9
+          # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
+          # （不经栅格化），基线 demo/tests/style_contract.json 入库；像素闸仍
+          # 待建（需 Ubuntu + Chrome 生成基线，DESIGN.md §7 已标注）。
+          node demo/tests/style_contract.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_session.mjs http://127.0.0.1:8931/

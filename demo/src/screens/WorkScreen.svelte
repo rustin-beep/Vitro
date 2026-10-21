@@ -26,8 +26,8 @@
   import DiagBand from "../lib/DiagBand.svelte";
   import MemoryView from "../lib/MemoryView.svelte";
   import ProtoView from "../lib/ProtoView.svelte";
-  import CourseNote from "../lib/CourseNote.svelte";
   import StageHead from "../lib/StageHead.svelte";
+  import SceneNote from "../lib/SceneNote.svelte";
   import { sceneAnnotations } from "../lib/annotations.ts";
   import { sceneIndexAt } from "../lib/scenes.ts";
   import BeatRail from "../lib/BeatRail.svelte";
@@ -308,13 +308,15 @@
     {/if}
   </section>
 
-  <article class="vr-note vr-note-page" aria-label="课文">
+  <section class="vr-notearea" aria-label="讲解与课文">
     {#if lessonSession.note}
-      <CourseNote title={lessonSession.note.title} blocks={lessonSession.note.blocks} page />
+      <SceneNote />
     {:else}
-      <p class="vr-note-empty">
-        {lesson ? `此课尚无叙述真源（course/${lesson.chapId}/${lesson.id}/lesson.md 未入库）——源码可直接运行；叙述入库后此处自动出现课文。` : "分享的代码没有课文——它是别人写好的一段 C，直接运行读帧流即可。"}
-      </p>
+      <article class="vr-note vr-note-page" aria-label="课文">
+        <p class="vr-note-empty">
+          {lesson ? `此课尚无叙述真源（course/${lesson.chapId}/${lesson.id}/lesson.md 未入库）——源码可直接运行；叙述入库后此处自动出现课文。` : "分享的代码没有课文——它是别人写好的一段 C，直接运行读帧流即可。"}
+        </p>
+      </article>
     {/if}
-  </article>
+  </section>
 </main>

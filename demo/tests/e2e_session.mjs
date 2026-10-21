@@ -11,6 +11,7 @@
 //   B2 幕头随帧更新 + 浅树压扁（#222 P1 第三片，2026-10-21）
 //   B3 三栏 + 底栏时间轴 + 首屏（#222 P1 第四片，2026-10-21）
 //   B4 逐行注记（#222 P1 第五片，2026-10-21）
+//   B5 本幕讲解 + 展开全文（#222 P1 第六片，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -171,8 +172,10 @@ async function run() {
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
     annots: document.querySelectorAll('.cm-line[data-annot]').length,
+    sceneNote: !!document.querySelector('.vr-scenenote'),
+    notePage: !!document.querySelector('.vr-note-page'),
   }))()`);
-  check("B0 未迁移课无分镜条/无注记（#222）", b0.beats === 0 && b0.bands === 0 && b0.annots === 0, JSON.stringify(b0));
+  check("B0 未迁移课：无分镜条/无注记/无本幕卡（回退长文）", b0.beats === 0 && b0.bands === 0 && b0.annots === 0 && b0.sceneNote === false && b0.notePage === true, JSON.stringify(b0));
 
   // ── F3+F4 语句级口径 + 播完提示（P1-1 / P2-9）──
   await pickLesson("bubble");
@@ -262,6 +265,19 @@ async function run() {
     b4.idx === 12 && b4.attrs.length === 3 && b4.attrs.includes("t ← 5") && b4.attrs.includes("a[1] ← 1") &&
       b4.attrs.includes("a[2] ← 5") && b4.inText === false,
     JSON.stringify(b4));
+  // ── B5 本幕讲解 + 展开全文（#222 P1 第六片）：scene 课默认折叠、本幕卡片随幕更新，
+  //    全文在 DOM（折叠不丢内容——W9 锚不受影响）；点 summary 可展开 ──
+  const b5 = await evaluate(`(() => ({
+    card: document.querySelector('.vr-scenenote')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+    open: document.querySelector('details.vr-notefull')?.open ?? null,
+    fullInDom: (document.querySelector('.vr-note-page')?.textContent ?? '').includes('这门课在做什么'),
+  }))()`);
+  await evaluate("document.querySelector('details.vr-notefull > summary')?.click(); true");
+  await sleep(200);
+  const b5open = await evaluate("document.querySelector('details.vr-notefull')?.open === true");
+  check("B5 本幕讲解 + 展开全文（#222）",
+    b5.card.includes("本幕讲解") && b5.card.includes("交换不是瞬间完成的") && b5.open === false && b5.fullInDom === true && b5open === true,
+    JSON.stringify({ b5, b5open }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

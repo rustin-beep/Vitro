@@ -460,7 +460,7 @@ code, pre, kbd, samp, .vr-mono {
      1440×900 不滚动见代码+数组+时间轴+幕头；output 至少露出 strip） */
   .vr-colnow .vr-block { padding: 8px 0 10px; }
   .vr-colstage .vr-stagehead { margin: 8px 0 10px; }
-  .vr-note-page { grid-area: note; margin: 0 0 40px; padding-top: 20px; max-width: 78ch; }
+  .vr-notearea { grid-area: note; margin: 0 0 40px; max-width: 78ch; }
 }
 .vr-kicker { font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; letter-spacing: .11em; color: var(--vr-ink-3); }
 .vr-title { font-family: var(--vr-serif); font-size: 31px; line-height: 1.18; font-weight: 600; margin: 8px 0 6px; letter-spacing: .005em; }
@@ -484,7 +484,8 @@ code, pre, kbd, samp, .vr-mono {
 
 /* 课文（行内 markdown 真渲染） */
 .vr-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--vr-rule); max-width: 64ch; min-width: 0; }
-.vr-note-page { margin: 0 0 40px; padding-top: 20px; min-width: 0; }
+.vr-notearea { margin: 0 0 40px; min-width: 0; }
+.vr-note-page { margin: 0; padding-top: 20px; min-width: 0; }
 .vr-note h2 { font-family: var(--vr-serif); font-size: 20px; line-height: 1.3; font-weight: 600; margin: 24px 0 8px; }
 .vr-note h2:first-child { margin-top: 0; }
 .vr-note h3 { font-size: 15px; margin: 18px 0 6px; }
@@ -499,6 +500,18 @@ code, pre, kbd, samp, .vr-mono {
 .vr-note th, .vr-note td { text-align: left; padding: 4px 10px; border: 1px solid var(--vr-rule); color: var(--vr-ink-2); }
 .vr-note th { background: var(--vr-panel-2); color: var(--vr-ink-3); font-weight: 500; }
 .vr-note-empty { margin: 6px 0 0; color: var(--vr-ink-3); font-size: 12.5px; }
+/* 本幕讲解 + 展开全文（P1 第六片，2026-10-21）：scene 课默认折叠长文，
+   本幕卡片只读 lesson.md 的 scene 字段（不手写第二份讲解） */
+.vr-scenenote { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--vr-rule); border-left: 3px solid var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-scenenote-head { display: flex; align-items: baseline; gap: 10px; }
+.vr-scenenote-head .vr-meta { margin-left: auto; text-align: right; }
+.vr-note .vr-scenenote-title { margin: 6px 0 4px; font-family: var(--vr-serif); font-size: 21px; line-height: 1.35; font-weight: 600; }
+.vr-scenenote-note { margin: 0; font-size: 14px; line-height: 1.8; color: var(--vr-ink-2); }
+.vr-scenenote-hint { margin: 0 0 12px; font-size: 12.5px; line-height: 1.7; color: var(--vr-ink-3); }
+.vr-notefull { margin-top: 4px; }
+.vr-notefull > summary { cursor: pointer; padding: 4px 0; font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-notefull > summary:hover { color: var(--vr-ink); }
+.vr-notefull[open] > summary { margin-bottom: 10px; }
 
 /* ---------- 仪器：模式条与块 ---------- */
 .vr-modes { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid var(--vr-rule); margin-bottom: 0; }

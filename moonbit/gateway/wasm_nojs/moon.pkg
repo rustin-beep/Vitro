@@ -1,0 +1,18 @@
+// gateway/wasm_nojs：wasm-gc 零导入风味外壳（#199 双风味批，2026-10-20）。
+// 与 gateway/wasm 同一 4 函数 #export_name 转发面（实现全在 gateway 本体），
+// 唯一差别是 use-js-builtin-string=false：字符串走 wasm 侧 GC array 降级，
+// import 段为 0——产物可进任意 wasm-gc 运行时（wasmtime/wasmoon 实测），
+// 供 corpus_fuzz 五方对拍的 wasmtime/wasmoon 两臂消费。
+// JS 风味（gateway/wasm）仍是浏览器/Node/Electron 分发的现役产物，勿混用。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L8，总计划 §4）。
+import {
+  "vitro/engine/gateway",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm-gc"
+
+options(
+  link: { "wasm-gc": { "use-js-builtin-string": false } },
+)

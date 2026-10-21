@@ -1,0 +1,11 @@
+import {
+  "Milky2018/wasmoon/runtime",
+  "Milky2018/wasmoon/executor",
+  "Milky2018/wasm_core/types",
+  "moonbitlang/x/fs",
+  "moonbitlang/core/env",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/string",
+}
+
+pkgtype(kind: "executable")

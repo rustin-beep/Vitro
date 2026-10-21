@@ -1,0 +1,12 @@
+_build/
+.mooncakes/
+moon.work
+__pycache__/
+*.exe
+*.o
+*.log
+_wm_ping.*
+_ping.ndjson
+duel/cases_per_case/
+duel/cases_baseline.ndjson
+duel/cases_baseline.index

@@ -12,6 +12,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(codegen): #205 纯原型声明被调用的错误类别如实化（勘误定性 + declared_only 表）（2026-10-21）
+
+- **勘误**：#205 原定性「include 展开的函数声明不进 typeck」两层误判——
+  ①带定义的多文件标准形态（a.h 声明 + util.c 定义 + main.c 调用）实测
+  一直正常；②纯声明无定义时 include 无辜（声明直写文本同病，clang -c
+  对照接受纯声明）。真病 = codegen 三 Pass 对 body=None 裸原型三连
+  `continue` 不进 func_index，调用点落「未声明的标识符」谎报。
+- **修复**：`declared_only` 表收集裸声明名；取值路径最终 miss（调用/
+  函数指针取值共用）分叉——命中报「函数 'f' 已声明但未定义——缺少
+  函数体，调用无法生成」，未声明维持旧文案。红锚先行（三断言含对照
+  臂）修前证红；D/F 案双臂端到端（F 案声明+定义回归无伤）。
+
+### fix(gateway): #202 api compile 的 files 数组进 include 解析（宿主臂 mem 优先 + 磁盘回落）（2026-10-21）
+
+- **修复**：`lex_full_source` 宿主/分叉不对称——wasm 臂 files 注入内存 vfs
+  语义一直正确，宿主臂（js/native CLI）`HostIncludeProvider` 只查磁盘 →
+  files 虚拟头文件被忽略（E1021）。修 = provider 带内存表（units 规范
+  posix key，两臂共用构建），查找 = files 内存表优先 → 磁盘 reader 回落
+  （虚拟工程自足语义；集合外宿主可读盘为天然超集，wasm 臂 E1021 教学
+  诊断不变）。
+- **验证**：双红锚先行（宿主形态解析 + mem 优先级锁——磁盘 reader 放
+  include 炸弹、files 版合法）修前 132/134 证红、修后 134/134；三臂
+  （js/wasm-gc/native）gateway 锚全绿零翻转；端到端双臂 issue 原 payload
+  `ok:true` 零诊断（修复前 E1021）。
+- **顺带暴露 [#205]**：include 展开的函数声明不进 typeck 作用域（宏
+  形态正常，双臂一致）——单病单 issue 另案。
+- **测试数连坐**：裸 854 不变（gateway 不在裸 wasm target 域）、
+  native 1001→**1003**（gateway 132→134，双锚进三 target 域；
+  854+149=1003 逐包实测自洽）。
+
+### fix(codegen): #201-B 全局函数指针数组初始化器落 0 + #153 销案 + #201-A 定性（2026-10-21）
+
+- **#201-B 修复**：全局函数指针数组初始化器（`static AF fns[3] = {a1,…}`）
+  元素静默落 0——判空恒假 + `CallPtr`「索引 0 越界」TRAP（表驱动 FSM 全灭）。
+  形状矩阵三对一错（全局标量/局部数组/局部标量全对，唯全局数组坏）：
+  数组逐元素路径 `flatten_init_list` 只折叠字面量，函数名元素丢值；全局
+  **标量**臂走 `func_index` 编码一直正确。修 = 数组路径与标量臂同源查
+  `func_index`（codegen/gen.mbt）。红锚先行（wbtest 断言三槽非零一致，
+  修前证红）；修后 js/native 双臂 `1 1 1` + 调用正常与 clang 一致。
+- **#153 销案**：聚合初始化器 unsigned 常量（`{0xFFFFFFFF}`）实测已被
+  前批类型判断改造修复，双臂输出与 clang 一致——探针登记至修复的时滞。
+- **#201-A 定性不改**：`sizeof(含函数指针成员 struct)` 12 vs clang x64 24
+  = 32 位指针模型（4 字节指针无 padding）vs 64 位 ABI 的字长模型差异；
+  模型内 sizeof/成员偏移/数组 stride 实测自洽（act 在中间的成员读取
+  逐值一致）。「表格第 2 行起错乱」实为 B 案落 0 次生。
+- **测试数连坐**：裸 853→**854**（+1 = #201-B 锚）；六文档 + facts 重采。
+
 ### fix(ci+codegen+docs): 审阅批——js 臂 `try?` 迁移类型错根除 + E3083 known 台账收编 + #193 stride 回归锚（2026-10-21）
 
 - **js 目标全量构建红根治（P1）**：`moon check/build --target js` 2 errors @

@@ -25,6 +25,9 @@ priv struct BytecodeGen {
   errors : Array[String]
   func_table : Map[String, @bytecode.FuncMeta]
   func_index : Map[String, Int32]
+  /// 纯原型声明名（body=None，无定义体）——调用/取值 miss func_index
+  /// 后据此区分「已声明但未定义」（如实文案）vs「未声明」（#205）
+  declared_only : Map[String, Bool]
   mut next_func_idx : Int32
   mut current_func : String
   mut current_func_arg_bytes : Int32
@@ -121,6 +124,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     errors: [],
     func_table: {},
     func_index,
+    declared_only: Map([]),
     next_func_idx,
     current_func: "",
     current_func_arg_bytes: 0,
@@ -194,8 +198,12 @@ fn BytecodeGen::generate(
   // C++ 类注册/尺寸拓扑/builtin 容器映射：砍 C++ 裁定后零活跃（F-2），
   // 不迁移（Rust lib.rs:220-313 对应段）。
   // 预填 func_index：全局初始化器可解析函数名（函数指针初始化）。
+  // #205（2026-10-21）：纯原型声明（body=None）收集进 declared_only——
+  // 调用点 miss 后区分「已声明但未定义」（C 语义：声明合法、定义缺席
+  // 是链接期错；Vitro 一体化如实报）vs「未声明」。
   for f in program.funcs {
     if f.body is None {
+      self.declared_only.set(f.name, true)
       continue
     }
     self.func_index.set(f.name, self.next_func_idx)
@@ -509,7 +517,28 @@ fn BytecodeGen::pass1_register_global(
                 for i in 0..<count {
                   let addr = offset.reinterpret_as_uint() +
                     i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
-                  let v = if i < values.length() { values[i] } else { 0 }
+                  // #201-B（2026-10-21）：函数指针元素（`AF fns[3] = {a1,
+                  // a2}`）——flatten_init_list 只折叠字面量，函数名元素
+                  // 静默落 0（判空恒假 + CallPtr「索引 0 越界」TRAP；
+                  // 全局标量臂 `AF g = a1` 走 func_index 编码一直正确）。
+                  // 与标量臂同源查 func_index，非函数名元素照旧取折叠值。
+                  let v = match elements.get(i) {
+                    Some(e) =>
+                      match e.value {
+                        Identifier(name, _, _) =>
+                          match self.func_index.get(name) {
+                            Some(idx) => idx
+                            None =>
+                              if i < values.length() {
+                                values[i]
+                              } else {
+                                0
+                              }
+                          }
+                        _ => if i < values.length() { values[i] } else { 0 }
+                      }
+                    None => 0
+                  }
                   self.globals_init_32.push((addr, v))
                 }
               }

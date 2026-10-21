@@ -339,7 +339,23 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
                         loc,
                       )
                     None => {
-                      self.report_error("未声明的标识符 '\{name}'", loc)
+                      // #205（2026-10-21）：纯原型声明（`int f(void);` 无
+                      // 定义体）被调用/取值——clang -c 接受声明（链接期才报
+                      // undefined），Vitro 一体化如实报「已声明但未定义」；
+                      // 旧文案「未声明的标识符」是谎报（声明明明在场，#202
+                      // 修复验收时曾被误读为 include 缺口——include 无辜：
+                      // 磁盘/文本直写同病）。
+                      if self.declared_only.contains(name) {
+                        self.report_error(
+                          "函数 '\{name}' 已声明但未定义——缺少函数体，调用无法生成（原型声明须有定义或由链接提供）",
+                          loc,
+                        )
+                      } else {
+                        self.report_error(
+                          "未声明的标识符 '\{name}'",
+                          loc,
+                        )
+                      }
                       self.emit(@opcode.OpCode::PushConst, 0, loc)
                     }
                   }

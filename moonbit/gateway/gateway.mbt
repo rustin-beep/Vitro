@@ -88,23 +88,31 @@ pub fn set_clock_source(f : () -> UInt64) -> Unit {
 }
 
 ///|
-/// include 读取 provider（把注入回调包装成 SourceProvider）。
-priv enum HostIncludeProvider {
-  P
+/// include 读取 provider（宿主形态）：files 内存表优先（#202，2026-10-21
+/// ——`api compile` 的 files 数组是调用方显式声明的虚拟工程，须与 wasm 臂
+/// 同语义可互相 quote-include；此前只查磁盘 ⇒ 空目录下 E1021），磁盘
+/// reader 回落（宿主天然超集——集合外文件 wasm 臂 E1021、宿主可读盘）。
+priv struct HostIncludeProvider {
+  mem : Map[String, String]
 }
 
 ///|
 impl @token.SourceProvider for HostIncludeProvider with fn read(
-  _self : HostIncludeProvider,
+  self : HostIncludeProvider,
   path : String,
 ) -> String raise @token.SourceError {
-  match include_reader.val {
-    Some(read) =>
-      match read(path) {
-        Some(s) => s
+  let key = path.replace(old="\\", new="/")
+  match self.mem.get(key) {
+    Some(s) => s
+    None =>
+      match include_reader.val {
+        Some(read) =>
+          match read(path) {
+            Some(s) => s
+            None => raise @token.SourceError::NotFound(path~)
+          }
         None => raise @token.SourceError::NotFound(path~)
       }
-    None => raise @token.SourceError::NotFound(path~)
   }
 }
 
@@ -123,28 +131,29 @@ fn lex_full_source(
       break
     }
   }
+  // units → 内存 vfs 表（两臂共用构建；wasm 臂唯一查找源、宿主臂优先源
+  // ——key 为规范 posix 相对路径：`\` → `/`，resolver.normalize_path
+  // 语义的前置对齐）
+  let files : Map[String, String] = Map([])
+  for u in units {
+    let key = u.filename.replace(old="\\", new="/")
+    if !key.is_empty() {
+      files[key] = u.source
+    }
+  }
   match include_reader.val {
     Some(_) =>
       @lexer.tokenize_with(
         full_source,
-        provider=HostIncludeProvider::P,
+        provider=HostIncludeProvider::{ mem: files, },
         base_dir~,
       )
-    None => {
+    None =>
       // wasm-gc：units 全量注入内存 vfs（打开本地文件夹批 2026-10-05
       // 前置）——集合内文件互相 quote-include 可解析（浏览器端多文件
       // include 的能力载体，tokenize_with_vfs 头注的既定语义）；集合外
-      // 仍 E1021（无 fs，宁诊断不静默——勘察 H-5）。key 为规范 posix
-      // 相对路径：`\` → `/`（resolver.normalize_path 语义的前置对齐）
-      let files : Map[String, String] = Map([])
-      for u in units {
-        let key = u.filename.replace(old="\\", new="/")
-        if !key.is_empty() {
-          files[key] = u.source
-        }
-      }
+      // 仍 E1021（无 fs，宁诊断不静默——勘察 H-5）
       @lexer.tokenize_with_vfs(full_source, files~, base_dir~)
-    }
   }
 }
 

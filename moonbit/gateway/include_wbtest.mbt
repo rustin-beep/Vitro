@@ -123,3 +123,50 @@ test "wasm_files_vfs_subdir_base_dir_chain" {
   )
   assert_true(session.compile.compiled)
 }
+
+///|
+test "host_reader_files_vheader_resolves_issue202" {
+  // #202 红锚（2026-10-21）：宿主形态（reader 已注册——js/native CLI 壳
+  // 经 ensure_include_reader 都注册）下 files 数组内的虚拟头文件须可被
+  // quote-include 解析。修前 HostIncludeProvider 只查磁盘 ⇒ E1021
+  //（空目录对照实验：磁盘无 a.h 即红，files 声明被完全忽略）。
+  set_include_reader(fn(_path : String) -> String? { None })
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":7,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"a.h\",\"source\":\"#define V 7\\n\"}," +
+    "{\"filename\":\"main.c\",\"source\":\"#include \\\"a.h\\\"\\nint main(void){ return V; }\\n\"}]}}",
+  )
+  assert_true(
+    resp.contains("\"ok\":true"),
+    msg="files 内虚拟头文件宿主形态可解析（#202：修前 E1021）",
+  )
+  assert_true(session.compile.compiled)
+  // 自恢复：None-reader 等效未注册（后续锚不受全局状态污染）
+  set_include_reader(fn(_path : String) -> String? { None })
+}
+
+///|
+test "host_reader_mem_table_takes_precedence_issue202" {
+  // #202 语义锚：files 内存表优先于磁盘 reader——磁盘版 a.h 是 include
+  // 炸弹（引用不存在的 bomb.h），files 版 a.h 合法；mem 优先则编译过，
+  // 磁盘优先/只查磁盘则 E1021。
+  set_include_reader(fn(path : String) -> String? {
+    if path.has_suffix("a.h") {
+      Some("#include \"bomb.h\"\n")
+    } else {
+      None
+    }
+  })
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":8,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"a.h\",\"source\":\"#define F 7\\n\"}," +
+    "{\"filename\":\"main.c\",\"source\":\"#include \\\"a.h\\\"\\nint main(void){ return F; }\\n\"}]}}",
+  )
+  assert_true(
+    resp.contains("\"ok\":true"),
+    msg="files 内存表优先于磁盘 reader（虚拟工程自足语义）",
+  )
+  set_include_reader(fn(_path : String) -> String? { None })
+}

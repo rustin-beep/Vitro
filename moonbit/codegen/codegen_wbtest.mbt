@@ -1143,3 +1143,186 @@ test "skeleton: char-ptr-to-array index stride emits 8 (#193 end-to-end)" {
     msg="出现 stride=32 即缺陷版复发（TK_Array 兜底 4 → 4×8）",
   )
 }
+
+///|
+/// #201-B 回归锚（2026-10-21）：全局函数指针数组初始化器（`static AF
+/// fns[3] = {a1, a1, a1}`）——数组逐元素路径的 flatten_init_list 只折叠
+/// 字面量，函数名元素静默落 0（判空恒假 + CallPtr「索引 0 越界」TRAP；
+/// 全局标量臂 `AF g = a1` 走 func_index 编码一直正确——形状矩阵三对一
+/// 错）。锚断言 fns 三槽写入非零函数索引。
+test "skeleton: global fn-ptr array init resolves func index (#201)" {
+  let a1 : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(2),
+    return_type: @ast.Type::void_type(),
+    name: "a1",
+    params: [],
+    body: Some(@ast.Stmt::Block([], loc(3))),
+    source_file: "t.c",
+  }
+  let af_ty = @ast.Type::pointer_to(
+    @ast.Type::function(@ast.Type::void_type(), []),
+  )
+  let fns : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc: loc(4),
+    ty: @ast.Type::array_of(af_ty, [3]),
+    name: "fns",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Identifier("a1", loc(4), af_ty),
+          },
+          {
+            designators: [],
+            value: @ast.Expr::Identifier("a1", loc(4), af_ty),
+          },
+          {
+            designators: [],
+            value: @ast.Expr::Identifier("a1", loc(4), af_ty),
+          },
+        ],
+        loc(4),
+        af_ty,
+      ),
+    ),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(5),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(0, loc(5), @ast.Type::int())),
+            loc(5),
+          ),
+        ],
+        loc(5),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [],
+    globals: [fns],
+    funcs: [a1, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  // fns 槽从全局区首（1024）起，3 元素 × 4 字节；每槽须为非零函数索引
+  //（a1 编码值与函数表布局相关，锁「非零且一致」两性质）
+  let slots = o.globals_init_32.filter(e => e.0 >= 1024U && e.0 < 1024U + 12U)
+  assert_eq(
+    slots.length(),
+    3,
+    msg="fns 三槽各须恰有一条全局初始化写记录",
+  )
+  for s in slots {
+    assert_true(
+      s.1 != 0,
+      msg="函数指针元素不得落 0（#201-B：判空恒假 + CallPtr 越界）",
+    )
+  }
+  assert_eq(slots[0].1, slots[1].1)
+  assert_eq(slots[1].1, slots[2].1)
+}
+
+///|
+/// #205 定性勘误后的残留面（2026-10-21）：纯函数原型声明（无定义体）
+/// 被调用时的错误类别。clang `-c` 接受声明（链接才报 undefined）；Vitro
+/// 一体化编译的如实形态 = 「已声明但未定义」——旧文案「未声明的标识符」
+/// 是谎报（声明明明在场，#202 修复验收时被误读为 include 缺口，实为
+/// 本缺口与 include 无关：磁盘/文本直写同病）。
+test "skeleton: call to declared-but-undefined fn reports honest error (#205)" {
+  let decl_f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: None, // 纯原型声明（`int f(void);`）
+    source_file: "t.c",
+  }
+  let call_f : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier(
+        "f",
+        loc(2),
+        @ast.Type::function(@ast.Type::int(), []),
+      ),
+      [],
+      loc(2),
+      @ast.Type::int(),
+    ),
+    loc(2),
+  )
+  let call_g : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::CallPtr(
+      @ast.Expr::Identifier(
+        "g",
+        loc(2),
+        @ast.Type::function(@ast.Type::int(), []),
+      ),
+      [],
+      loc(2),
+      @ast.Type::int(),
+    ),
+    loc(2),
+  )
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: loc(2),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          call_f,
+          call_g,
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(0, loc(2), @ast.Type::int())),
+            loc(2),
+          ),
+        ],
+        loc(2),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (_, errors) = gen.generate({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [decl_f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  let joined = errors.join("\n")
+  assert_true(
+    joined.contains("已声明但未定义"),
+    msg="裸原型被调用须报「已声明但未定义」（旧文案谎报「未声明的标识符」）",
+  )
+  assert_true(
+    !joined.contains("'f' 未声明") &&
+    !joined.contains("未声明的标识符 'f'"),
+    msg="f 有声明在场，不得再报「未声明的标识符」",
+  )
+  assert_true(
+    joined.contains("未声明的标识符 'g'"),
+    msg="完全未声明的 g 维持「未声明的标识符」类别（对照臂）",
+  )
+}

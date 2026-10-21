@@ -309,3 +309,23 @@ test "tokenize unterminated function-like macro call issue71_b41" {
   // 吞尾终止：宏调用段不再产出 token（fail-fast，clang 单诊断形态）
   assert_true(r.tokens.length() <= 2)
 }
+
+///|
+test "tokenize variadic macro va_args issue164" {
+  let r = @lexer.tokenize(
+    "#define LOG(fmt, ...) printf(\"[log] \" fmt \"\\n\", __VA_ARGS__)\nint main(void) {\n    LOG(\"a=%d %s\", 2, \"t\");\n    return 0;\n}\n",
+  )
+  let summary = r.tokens
+    .map(t => {
+      "\{t.ty.to_name()}:\{t.text.replace(old="\n", new="\\n")}@\{t.loc.line}:\{t.loc.column}"
+    })
+    .join(" ")
+  inspect(
+    summary,
+    content=(
+      // 三段字符串拼接在 token 流保持三段（phase 6 合并归 parser）；@2:1 为宏展开钉调用点
+      #|Int:int@2:1 Identifier:main@2:5 LParen:(@2:9 Void:void@2:10 RParen:)@2:14 LBrace:{@2:16 Identifier:printf@3:5 LParen:(@3:5 String:[log] @3:5 String:a=%d %s@3:5 String:\n@3:5 Comma:,@3:5 Number:2@3:5 Comma:,@3:5 String:t@3:5 RParen:)@3:5 Semicolon:;@3:27 Return:return@4:5 Number:0@4:12 Semicolon:;@4:13 RBrace:}@5:1 Eof:@6:1
+    ),
+  )
+  assert_eq(r.errors.length(), 0)
+}

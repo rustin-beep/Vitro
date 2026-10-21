@@ -65,7 +65,7 @@ pub fn LineSpan::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MacroDef {
   Object(body~ : Array[Token])
-  Function(params~ : Array[String], body~ : Array[Token])
+  Function(params~ : Array[String], body~ : Array[Token], variadic~ : Bool)
 } derive(Eq, @debug.Debug)
 pub fn MacroDef::equal(Self, Self) -> Bool
 pub fn MacroDef::not_equal(Self, Self) -> Bool

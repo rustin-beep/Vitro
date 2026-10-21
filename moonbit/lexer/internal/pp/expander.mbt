@@ -180,12 +180,25 @@ fn expand_inner(
         } else {
           args.length()
         }
-        if arg_count != params.length() {
+        // #164（2026-10-21，C99 §6.10.3）：变参宏——多余实参绑定到隐式
+        // `__VA_ARGS__`（join 逗号）；命名实参数不足仍报错（变参下限 =
+        // 命名形参数，文案区分「期望 N」vs「期望至少 N」）
+        let variadic = match mdef {
+          Function(variadic~, ..) => variadic
+          Object(_) => false
+        }
+        if (!variadic && arg_count != params.length()) ||
+          (variadic && arg_count < params.length()) {
           // 修复 ⑥-10：Rust 静默保留（后续 E3023"未声明的变量"错位到使用点，
           // 真因在宏定义处）——改为预处理阶段显式诊断 + fail-soft 保留原 token。
           // 差异登记：与 Rust 的 L2 token 流一致（fail-soft 行为同），仅多一条诊断
+          let expect = if variadic {
+            "至少 \{params.length()}"
+          } else {
+            "\{params.length()}"
+          }
           ctx.errors.push({
-            message: "宏 '\{tok.text}' 调用参数个数不匹配（期望 \{params.length()}，实得 \{arg_count}）",
+            message: "宏 '\{tok.text}' 调用参数个数不匹配（期望 \{expect}，实得 \{arg_count}）",
             loc: {
               line: tok.loc.line,
               column: tok.loc.column,
@@ -216,12 +229,69 @@ fn expand_inner(
             subst_args.push(expand_inner(ctx, a, depth + 1, expanding))
           }
         }
+        // #164：变参绑定——eff 参数表追加 __VA_ARGS__；命名段截断后
+        // 变参段（raw 与已展开两轨）以调用点定位的逗号 token join 成单段
+        //（旧全量段 + push(join) 段数错位：arg_of 按 params 下标取到第二
+        // 实参段，第三实参起全丢——ADD3(1,2,3,4) 展开成 add4(1,2) 实锤）
+        let eff_params : Array[String] = params.copy()
+        let eff_args : Array[Array[@token.Token]] = []
+        let eff_subst : Array[Array[@token.Token]] = []
+        for k = 0; k < params.length(); k = k + 1 {
+          if k < args.length() {
+            eff_args.push(args[k])
+          }
+          if k < subst_args.length() {
+            eff_subst.push(subst_args[k])
+          }
+        }
+        if variadic && arg_count > params.length() {
+          eff_params.push("__VA_ARGS__")
+          let va_raw : Array[@token.Token] = []
+          let va_sub : Array[@token.Token] = []
+          for k = params.length(); k < args.length(); k = k + 1 {
+            if k > params.length() {
+              va_raw.push(@token.Token::{
+                ty: Comma,
+                text: ",",
+                loc: (if args[k].length() > 0 { args[k][0] } else { tok }).loc,
+                byte_off: tok.byte_off,
+                real_line: tok.real_line,
+              })
+              va_sub.push(@token.Token::{
+                ty: Comma,
+                text: ",",
+                loc: (if subst_args[k].length() > 0 {
+                  subst_args[k][0]
+                } else {
+                  tok
+                }).loc,
+                byte_off: tok.byte_off,
+                real_line: tok.real_line,
+              })
+            }
+            for t in args[k] {
+              va_raw.push(t)
+            }
+            for t in subst_args[k] {
+              va_sub.push(t)
+            }
+          }
+          eff_args.push(va_raw)
+          eff_subst.push(va_sub)
+        } else if variadic {
+          // 零变参实参：__VA_ARGS__ 绑定空序列（标准 C 下 `LOG("x")` 的
+          // `fmt, __VA_ARGS__` 残留逗号是已知语法坑——GNU `, ##__VA_ARGS__`
+          // 扩展不支持，P0 不做）
+          eff_params.push("__VA_ARGS__")
+          eff_args.push([])
+          eff_subst.push([])
+        }
         expanding.push(tok.text)
         let sub = substitute_params_ext(
           body,
-          params,
-          Some(args),
-          Some(subst_args),
+          eff_params,
+          Some(eff_args),
+          Some(eff_subst),
         )
         if sub.paste_err is Some(msg) {
           ctx.errors.push({

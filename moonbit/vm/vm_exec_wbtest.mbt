@@ -547,7 +547,8 @@ test "exec_float_family_arith_and_divzero" {
   // 2.75f 位 = 0x40300000 = 1076887552（python struct.pack 实算）；run 返回低 32 位符号解释（正数同值）
   assert_eq(r, 1076887552)
   assert_eq(vm.stack[0], 1076887552UL)
-  // 除零 → 教学 trap
+  // 除零 → IEEE +inf（#163 2026-10-21：Annex F 定义行为，旧教学 trap
+  // 系照搬 oracle 退役后收编——1.0f/0.0f 位 = 0x7F800000 = 2139095040）
   let vm2 = VitroVM::new()
   vm2.load_program(
     code_of([
@@ -559,8 +560,8 @@ test "exec_float_family_arith_and_divzero" {
   ignore(vm2.step())
   ignore(vm2.step())
   let r2 = vm2.step()
-  assert_true(r2 is Trap)
-  assert_true(vm2.error.contains("浮点数除以零"))
+  assert_true(r2 is Ok, msg="1.0f/0.0f 不得 Trap（Annex F = +inf）")
+  assert_eq(vm2.stack[0], 2139095040UL, msg="应压 +inf(f32) 位 0x7F800000")
 }
 
 ///|
@@ -1935,4 +1936,60 @@ test "exec_udivq_zero_diag_unsigned_render" {
   assert_true(r is Trap)
   assert_true(vm.error.contains("4000000000"))
   assert_false(vm.error.contains("-294967296"))
+}
+
+///|
+/// #163（2026-10-21，C11 Annex F / IEC 60559）：浮点除零走 IEEE 语义
+/// （±inf / NaN）不再 trap——整数除零 trap 是受检设计（int 域 UB 面），
+/// 浮点域 Annex F 下 1.0/0.0=+inf 是**定义行为**（clang/gcc 默认）；
+/// 旧 DivF/DivD 显式 trap 系迁移期照搬 oracle（头注在案），oracle
+/// 退役后该语义失去锚，按 clang 真值收编。红锚：修复前 r is Trap。
+test "exec_float_div_zero_ieee_issue163" {
+  // 1.0 / 0.0 = +inf（位模式 0x7FF0000000000000）
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([instr(PushConstD, 1), instr(PushConstD, 0), instr(DivD, 0)]),
+  )
+  vm.set_f64_constants([0.0, 1.0])
+  ignore(vm.step())
+  ignore(vm.step())
+  let r = vm.step()
+  assert_true(r is Ok, msg="1.0/0.0 不得 Trap（Annex F = +inf）")
+  match vm.stack.length() {
+    1 =>
+      assert_eq(
+        vm.stack[0],
+        9218868437227405312UL,
+        msg="应压 +inf 位模式 0x7FF0000000000000",
+      )
+    _ => fail("栈形态坏")
+  }
+  // 0.0 / 0.0 = NaN（指域非零）
+  let vm2 = VitroVM::new()
+  vm2.load_program(
+    code_of([instr(PushConstD, 0), instr(PushConstD, 0), instr(DivD, 0)]),
+  )
+  vm2.set_f64_constants([0.0])
+  ignore(vm2.step())
+  ignore(vm2.step())
+  let r2 = vm2.step()
+  assert_true(r2 is Ok, msg="0.0/0.0 不得 Trap（Annex F = NaN）")
+  let bits = vm2.stack[0]
+  let exp_bits = bits & 0x7FF0000000000000UL
+  assert_eq(
+    exp_bits,
+    0x7FF0000000000000UL,
+    msg="NaN 指数域应全 1（实得 0x\{bits.reinterpret_as_int64().to_string()}）",
+  )
+  // -1.0 / 0.0 = -inf（符号位）
+  let vm3 = VitroVM::new()
+  vm3.load_program(
+    code_of([instr(PushConstD, 1), instr(PushConstD, 0), instr(DivD, 0)]),
+  )
+  vm3.set_f64_constants([0.0, -1.0])
+  ignore(vm3.step())
+  ignore(vm3.step())
+  let r3 = vm3.step()
+  assert_true(r3 is Ok, msg="-1.0/0.0 不得 Trap（= -inf）")
+  assert_eq(vm3.stack[0], 18442240474082181120UL, msg="应压 -inf 位模式")
 }

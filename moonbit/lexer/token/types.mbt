@@ -59,7 +59,9 @@ pub extend LexWarning with Eq::{not_equal, equal}
 /// 以 `is_empty()` 判对象宏，导致 `#define FOO() 42` 零参数函数式宏被误当对象宏）。
 pub(all) enum MacroDef {
   Object(body~ : Array[Token])
-  Function(params~ : Array[String], body~ : Array[Token])
+  Function(params~ : Array[String], body~ : Array[Token], variadic~ : Bool)
+  // ^ #164（2026-10-21，C99 §6.10.3）：`...` 变参宏位——true 时 params 只
+  // 含命名形参，`__VA_ARGS__` 为隐式附加名（调用时多余实参 join 逗号绑定）
 } derive(Eq, @debug.Debug)
 
 ///|

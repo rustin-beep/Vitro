@@ -338,3 +338,30 @@ test "serve_compile_case_variable_label_issue135" {
   assert_true(resp.contains("\"code\":\"E3047\""), msg="须 E3047")
   assert_false(s.compile.compiled)
 }
+
+///|
+/// #164 连坐复现锚（2026-10-21）：include + 变参宏共存——`#include <stdio.h>`
+/// 后的 `#define LOG(fmt, ...)` 在 serve/gateway 链展开（无 include 版
+/// 已由 lexer 层锚覆盖；此锚锁「stdio stub 注入后主文件宏表」路径）。
+test "serve_compile_include_variadic_macro_issue164" {
+  let s = @session.Session::new()
+  // src 逐行数组拼（换行真值），JSON 转义经 json_escape 单源——
+  // 变参宏体不含字符串字面量（避开嵌套转义），覆盖「stdio include 后
+  // 定义变参宏」的 stub 注入与主文件宏表共存路径
+  let srclines = [
+    "#include <stdio.h>", "#define ADD3(a, ...) add4(a, __VA_ARGS__)", "int add4(int a, int b, int c, int d) { return a + b + c + d; }",
+    "int main(void) {", "    int r = ADD3(1, 2, 3, 4);", "    printf(\"%d\", r);",
+    "    return 0;", "}",
+  ]
+  let src = srclines.join("\n") + "\n"
+  let src_json = @ast.json_escape_string(src)
+  let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":" +
+    src_json +
+    "}}"
+  let (resp, _) = serve_handle(s, req)
+  assert_true(
+    resp.contains("\"ok\":true"),
+    msg="include+变参宏须编译成功（实得诊断面见 resp）",
+  )
+  assert_true(resp.contains("\"diagnostics\":[]"), msg="零诊断")
+}

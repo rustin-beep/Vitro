@@ -997,7 +997,7 @@
         "static_assert.c": "7129ca789d9cf229",
         "string_len_manual.c": "5af1ea8394c5aaaa",
         "typeof_operator.c": "4b01e46980ce8787",
-        "variadic_macro.c": "08efa57778de85d1"
+        "variadic_macro.c": "1e8ff719adfd2d2b"
       }
     },
     "corpus-knr": {

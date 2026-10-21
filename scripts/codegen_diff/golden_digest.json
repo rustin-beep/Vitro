@@ -2071,7 +2071,7 @@
         },
         "variadic_macro.c": {
           "fail": true,
-          "fail_stage": "lex"
+          "fail_stage": "gen"
         }
       }
     },

@@ -7,8 +7,11 @@
 /// `UInt::reinterpret_as_float` / `Float::reinterpret_as_uint`；f64 位模式经
 /// `reinterpret_as_double` / `reinterpret_as_uint64`（host 包同款）。
 ///
-/// **除零 trap 照搬**（Rust：DivF/DivD 显式检查 `b == 0.0` → 教学 trap，
-/// 不是 IEEE inf——浮点除零在教学子集里是错误而非无穷大）；比较族 IEEE
+/// **浮点除零 IEEE 语义（#163，2026-10-21）**：DivF/DivD 不再 trap——
+/// ±inf / NaN 是 C11 Annex F（IEC 60559）的**定义行为**（clang/gcc 默认，
+/// 真值锚）；旧显式 `b == 0.0` → 教学 trap 系迁移期照搬 oracle，oracle
+/// 退役后失去锚收编。整数除零 trap 维持（int 域 UB 与浮点域 Annex F 是
+/// 两个域的标准语义分划，教学护栏不冲突）。比较族 IEEE
 /// 精确语义（E1：无 epsilon 容差——容差使 0.1+0.2==0.3 判真，与 Clang
 /// golden 矛盾）。
 ///
@@ -42,12 +45,9 @@ fn VitroVM::execute_float(
     DivF => {
       let b = Float::reinterpret_from_uint(self.pop().to_uint())
       let a = Float::reinterpret_from_uint(self.pop().to_uint())
-      if b == Float::from_double(0.0) {
-        self.trap("浮点数除以零", line, column)
-      } else {
-        let r = a / b
-        self.push(Float::reinterpret_as_uint(r).to_uint64())
-      }
+      // #163：IEEE 语义（除零 = ±inf/NaN，头注）
+      let r = a / b
+      self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
     NegF => {
       let a = Float::reinterpret_from_uint(self.pop().to_uint())
@@ -123,12 +123,9 @@ fn VitroVM::execute_double(
     DivD => {
       let b = self.pop().reinterpret_as_double()
       let a = self.pop().reinterpret_as_double()
-      if b == 0.0 {
-        self.trap("double 除以零", line, column)
-      } else {
-        let r = a / b
-        self.push(r.reinterpret_as_uint64())
-      }
+      // #163：IEEE 语义（除零 = ±inf/NaN，头注）
+      let r = a / b
+      self.push(r.reinterpret_as_uint64())
     }
     NegD => {
       let a = self.pop().reinterpret_as_double()

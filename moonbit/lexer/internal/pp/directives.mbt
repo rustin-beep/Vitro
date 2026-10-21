@@ -492,6 +492,7 @@ fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int32) -> Unit {
   let rest = after[name.length():].to_owned()
   // 参数列表：宏名后**紧跟** '('（中间无空白——C 标准）
   let params : Array[String] = []
+  let mut variadic = false
   let mut body_text = rest
   if rest.length() > 0 && rest[0].to_int() == '(' {
     let mut i = 1
@@ -505,6 +506,29 @@ fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int32) -> Unit {
         i += 1
         ok = true
         break
+      }
+      // #164（2026-10-21，C99 §6.10.3）：`...` 变参形参位——必须是最后一个
+      // 形参（后随仅许 `)`）；`__VA_ARGS__` 为隐式附加名由 expander 绑定
+      if i + 2 < rest.length() &&
+        rest[i] == '.' &&
+        rest[i + 1] == '.' &&
+        rest[i + 2] == '.' {
+        i += 3
+        while i < rest.length() && (rest[i] == ' ' || rest[i] == '	') {
+          i += 1
+        }
+        if i < rest.length() && rest[i].to_int() == ')' {
+          i += 1
+          variadic = true
+          ok = true
+          break
+        }
+        self.err(
+          "`...` 必须是宏的最后一个参数（C99 变参宏）",
+          line,
+          code=E1005_InvalidDefine,
+        )
+        return
       }
       if i >= rest.length() || !is_ident_start(rest[i].to_int()) {
         self.err("宏参数必须是标识符", line, code=E1005_InvalidDefine)
@@ -553,7 +577,7 @@ fn[P] Pp::parse_define(self : Pp[P], after : String, line : Int32) -> Unit {
   // 宏名后紧跟 `(` = 函数式（含零参数 `FOO()`——修复 ⑥-9：Rust `params.is_empty()`
   // 无法区分两者，`#define FOO() 42` 被误当对象宏，调用报 E3066 错位到 typeck）
   let def : @token.MacroDef = if rest.length() > 0 && rest[0].to_int() == '(' {
-    Function(params~, body~)
+    Function(params~, body~, variadic~)
   } else {
     Object(body~)
   }

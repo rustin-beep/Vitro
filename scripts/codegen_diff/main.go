@@ -291,7 +291,8 @@ func freezeMBRun(corpus string, refresh bool) int {
 			continue
 		}
 		raw := moonRawOf(moonDir, f)
-		mok, dump, stage, _ := parseMoonDoc(raw)
+		fd := parseMoonDoc(raw)
+		mok, dump, stage := fd.ok, fd.dump, fd.stage
 		e := cgDigestEntry{}
 		if mok {
 			e.ResultSHA = hash16(canonicalize(dump))
@@ -325,6 +326,34 @@ func freezeMBRun(corpus string, refresh bool) int {
 // fork 例跳过（清单存 oracle hash 仅供溯源）。
 
 type cgSelftestEntry = cgDigestEntry
+
+// goldenVerifySelftestHit：--selftest 的 verify 面自证（#200 P0 J9）——
+// 篡改 MoonBit 侧首个 ok 例产物的 verify.ok（临时目录内改写，不污染工作
+// 区），随后 goldenRun 的 checkVerify 必须红（红即证——exit 1 与 digest
+// 篡改 selftest 同契约，人工看 DIFF 行确认锚触发）。
+func goldenVerifySelftestHit(moonDir string, files []string) {
+	if !selftestFlag {
+		return
+	}
+	for _, f := range files {
+		stem := stemOf(f)
+		p := filepath.Join(moonDir, stem+".c.compile.json")
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		if !bytes.Contains(b, []byte(`"verify":{"ok":true`)) {
+			continue
+		}
+		tampered := bytes.Replace(b, []byte(`"verify":{"ok":true`), []byte(`"verify":{"ok":false`), 1)
+		if err := os.WriteFile(p, tampered, 0o644); err != nil {
+			fail("verify selftest 篡改写回失败 %s: %v", p, err)
+		}
+		fmt.Printf("[selftest][verify] 已篡改产物 verify.ok: %s——随后 checkVerify 必须 FAIL\n", filepath.Base(f))
+		return
+	}
+	fail("verify selftest 未找到可篡改样本（ok 例且 verify.ok=true）")
+}
 
 // goldenSelftestHit：--selftest 的 golden 路径自证——篡改当前节首值（ResultSHA），随后比对必红（审阅 P3）。
 func goldenSelftestHit(m map[string]cgDigestEntry) {
@@ -361,6 +390,7 @@ func goldenRun(corpus string) int {
 		}
 	}
 	moonDir := moonDump(corpus)
+	goldenVerifySelftestHit(moonDir, files)
 	failures, forkN, matched := 0, 0, 0
 	for _, f := range files {
 		name := filepath.Base(f)
@@ -376,15 +406,20 @@ func goldenRun(corpus string) int {
 			continue
 		}
 		raw := moonRawOf(moonDir, f)
-		mok, dump, _, _ := parseMoonDoc(raw)
+		gd := parseMoonDoc(raw)
+		mok, dump := gd.ok, gd.dump
+		if mok && !checkVerify(gd, name) {
+			failures++
+			continue
+		}
 		if e.Fail {
 			if mok {
 				fmt.Printf("DIFF %s: 冻结基线为编译失败，mb 现 ok——行为漂移（全文对照见 frozen-oracle-snapshot 分支）"+string(rune(10)), name)
 				failures++
 				continue
 			}
-			if _, _, mStage, _ := parseMoonDoc(raw); mStage != e.FailStage {
-				fmt.Printf("DIFF %s: 失败层漂移 mb=%s ≠ 冻结 %s（AGREE-ERROR 语义面）"+string(rune(10)), name, mStage, e.FailStage)
+			if gd.stage != e.FailStage {
+				fmt.Printf("DIFF %s: 失败层漂移 mb=%s ≠ 冻结 %s（AGREE-ERROR 语义面）"+string(rune(10)), name, gd.stage, e.FailStage)
 				failures++
 			} else {
 				matched++
@@ -491,6 +526,7 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 	}
 	sides := make([][2]side, len(files))
 	moonSlots := map[int]int{} // 槽位策略版本 → 成功样本数（-1 = 字段缺失）
+	nVerifyRed := 0            // bytecode 结构验证违约数（#200 P0）
 	for i, f := range files {
 		stem := stemOf(f)
 		moonRaw, err := os.ReadFile(filepath.Join(moonDir, stem+".c.compile.json"))
@@ -501,7 +537,8 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 			}
 		}
 		rustOK := len(rustOuts[i]) > 0
-		moonOK, moonDumpRaw, moonStage, moonSlot := parseMoonDoc(moonRaw)
+		md := parseMoonDoc(moonRaw)
+		moonOK, moonDumpRaw, moonStage, moonSlot := md.ok, md.dump, md.stage, md.slot
 		if moonOK {
 			moonSlots[moonSlot]++
 		}
@@ -512,6 +549,9 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 		sides[i][1] = side{moonOK, nil, moonStage}
 		if moonOK {
 			sides[i][1].dump = canonicalize(moonDumpRaw)
+		}
+		if !checkVerify(md, filepath.Base(f)) {
+			nVerifyRed++
 		}
 	}
 	injectIdx := -1
@@ -576,8 +616,8 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 		fail("selftest 未证红——注入样本 %s 未判 DIFF-CONTENT，锚失效", filepath.Base(files[injectIdx]))
 	}
 	slotOK := checkSlotStrategy(moonSlots)
-	fmt.Printf("codegen_diff: SAME=%d AGREE-ERROR=%d ONE-SIDED=%d CONTENT-DIFF=%d（语料 %s, %d 文件）\n",
-		nSame, nAgree, nOneSided, nContent, corpus, len(files))
+	fmt.Printf("codegen_diff: SAME=%d AGREE-ERROR=%d ONE-SIDED=%d CONTENT-DIFF=%d VERIFY-RED=%d（语料 %s, %d 文件）\n",
+		nSame, nAgree, nOneSided, nContent, nVerifyRed, corpus, len(files))
 	if nContent > 0 {
 		fmt.Println("codegen_diff: FAIL——产物层差异（真红）")
 		return 1
@@ -588,6 +628,10 @@ func runCorpus(corpus string, baseline bool, selftest bool) int {
 	}
 	if !slotOK {
 		fmt.Println("codegen_diff: FAIL——槽位策略版本未过闸（见上方 slot_strategy 行）")
+		return 1
+	}
+	if nVerifyRed > 0 {
+		fmt.Println("codegen_diff: FAIL——bytecode 结构验证违约（#200 P0 verify）")
 		return 1
 	}
 	fmt.Println("codegen_diff: PASS")
@@ -674,28 +718,75 @@ func rustFailStage(stderrRaw []byte, f string) string {
 	return "infra"
 }
 
+// moonDoc：MoonBit 侧 dump_compile 输出的解析结果。
+type moonDoc struct {
+	ok    bool
+	dump  []byte // ok=true 时为 14 键 dump 原始字节
+	stage string // ok=false 时的失败层（lex/parse/type/gen）
+	slot  int    // 槽位策略版本（-1 = 字段缺失）
+	// verify（#200 P0 bytecode 结构验证器）：ok 例必携带；VerifyOK 为 nil
+	// = 字段缺失（协议缺位红）；VerifyRaw 为违约清单原样字节
+	VerifyOK  *bool
+	VerifyRaw json.RawMessage
+}
+
 // parseMoonDoc：解析 MoonBit 侧输出——ok 与 .dump 原始字节与失败 stage。
 // **必须走 json.RawMessage**：map[string]any 往返会把 u64 位模式
 // （globals_init_64 第二元，> 2^53）重编为 float64 最短十进制（末位漂移，
 // 实测 4609434218613702656 → 4609434218613702700）——产物字节失真。
-func parseMoonDoc(raw []byte) (bool, []byte, string, int) {
+func parseMoonDoc(raw []byte) moonDoc {
 	var doc struct {
 		OK           bool            `json:"ok"`
 		Stage        string          `json:"stage"`
 		SlotStrategy *int            `json:"slot_strategy"`
+		Verify       json.RawMessage `json:"verify"`
 		Dump         json.RawMessage `json:"dump"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		fail("MoonBit 输出解析失败: %v (%s)", err, preview(raw))
 	}
 	if !doc.OK {
-		return false, nil, doc.Stage, -1
+		return moonDoc{ok: false, stage: doc.Stage, slot: -1}
 	}
 	slot := -1
 	if doc.SlotStrategy != nil {
 		slot = *doc.SlotStrategy
 	}
-	return true, doc.Dump, "", slot
+	// verify 是嵌套对象 {"ok":bool,"violations":[...]}——抽 ok 与清单字节
+	vOK := (*bool)(nil)
+	vRaw := json.RawMessage(nil)
+	if doc.Verify != nil {
+		var v struct {
+			OK         bool            `json:"ok"`
+			Violations json.RawMessage `json:"violations"`
+		}
+		if err := json.Unmarshal(doc.Verify, &v); err != nil {
+			fail("verify 字段解析失败: %v (%s)", err, preview(doc.Verify))
+		}
+		vOK = &v.OK
+		vRaw = v.Violations
+	}
+	return moonDoc{ok: true, dump: doc.Dump, slot: slot, VerifyOK: vOK, VerifyRaw: vRaw}
+}
+
+// checkVerify：verify 字段消费（#200 P0 接线）——返回 false 即红：
+//   - ok 例缺 verify 字段 = 协议缺位（出口契约变更不得静默通过——与
+//     slot_strategy 空集红同款逻辑）；
+//   - verify.ok=false = 结构验证器报违约（真红——digest 抓「变没变」，
+//     verify 抓「对不对」）。
+func checkVerify(m moonDoc, name string) bool {
+	if !m.ok {
+		return true // 编译失败例无 verify 面
+	}
+	if m.VerifyOK == nil {
+		fmt.Printf("DIFF %s: ok 例缺 verify 字段——dump_compile 出口协议缺位（#200 P0）\n", name)
+		return false
+	}
+	if !*m.VerifyOK {
+		fmt.Printf("DIFF %s: bytecode 结构验证违约（#200 P0 verify）——violations: %s\n", name, string(m.VerifyRaw))
+		return false
+	}
+	return true
 }
 
 // selftestInject：Rust 侧产物 code[1].operand +1。RawMessage 分段重组——

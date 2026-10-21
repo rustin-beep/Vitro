@@ -63,6 +63,10 @@ pub fn is_host_rerouted(String) -> Bool
 
 pub fn shadowed_host_names() -> Array[String]
 
+pub fn verify_compile_output(CompileOutput, Bool) -> Array[VerifyViolation]
+
+pub fn verify_violations_json(Array[VerifyViolation]) -> String
+
 // Errors
 
 // Types and methods
@@ -122,6 +126,16 @@ pub(all) struct Symbol {
   decl_line : Int
 } derive(@debug.Debug)
 pub fn Symbol::to_repr(Self) -> @debug.Repr
+
+pub(all) struct VerifyViolation {
+  kind : String
+  func : String
+  ip : Int
+  detail : String
+} derive(Eq, @debug.Debug)
+pub fn VerifyViolation::equal(Self, Self) -> Bool
+pub fn VerifyViolation::not_equal(Self, Self) -> Bool
+pub fn VerifyViolation::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

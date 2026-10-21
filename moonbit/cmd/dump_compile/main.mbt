@@ -6,9 +6,11 @@
 ///
 /// 输出（每输入 <name>.c）：
 /// - <name>.c.compile.json：
-///   成功 → {"ok":true,"dump":{...14 键（version+13 字段）...}}
+///   成功 → {"ok":true,"slot_strategy":N,"verify":{...},"dump":{...14 键（version+13 字段）...}}
 ///   （dump 键内的形态与 Rust `vitro_cli dump-compile` 的 CompileDump
-///   逐字段同构——`@bytecode.compile_output_dump_json` emitter）
+///   逐字段同构——`@bytecode.compile_output_dump_json` emitter；外层
+///   slot_strategy/verify 为本侧包装层附加，不参与 14 键比对——verify 是
+///   #200 P0 bytecode 结构验证器的出口面）
 ///   失败 → {"ok":false,"stage":"lex|parse|type|gen","errors":[...]}
 ///
 /// 管线语义对齐 Rust dump-compile（Lexer→Parser→TypeChecker→BytecodeGen，
@@ -139,11 +141,25 @@ fn dump_one(lexed : @lexer.LexResult, library : Bool) -> String {
     @codegen.compile(typed)
   }
   match output {
-    // 包装层携带 slot_strategy（槽位策略版本进产物出口——§6"版本化"
-    // 的消费点；对拍面只取 .dump，本字段不参与 14 键比对，v2 切换时
-    // codegen_diff 可按此分档）
-    Some(o) =>
-      "{\"ok\":true,\"slot_strategy\":\{@codegen.SLOT_STRATEGY_VERSION},\"dump\":\{@bytecode.compile_output_dump_json(o)}}"
+    // 包装层携带 slot_strategy + verify（#200 P0：bytecode 结构验证器——
+    // 每例产物编译即过验，违约结构化外发；两字段都不参与 14 键 dump 对拍
+    // 面（零 digest 扰动），codegen_diff 按外层字段计红：verify 失败 =
+    // CONTENT 级真红、字段缺失 = 协议缺位红）
+    Some(o) => {
+      let violations = @bytecode.verify_compile_output(o, library)
+      // 插值嵌套转义引号撑爆 lexer（陷阱 #12 同族）——buf 拼接
+      let buf = StringBuilder()
+      buf.write_string("{\"ok\":true,\"slot_strategy\":")
+      buf.write_string(@codegen.SLOT_STRATEGY_VERSION.to_string())
+      buf.write_string(",\"verify\":{\"ok\":")
+      buf.write_string(violations.is_empty().to_string())
+      buf.write_string(",\"violations\":")
+      buf.write_string(@bytecode.verify_violations_json(violations))
+      buf.write_string("},\"dump\":")
+      buf.write_string(@bytecode.compile_output_dump_json(o))
+      buf.write_string("}")
+      buf.to_string()
+    }
     None => fail_json("gen", gen_errors.join("\n"))
   }
 }

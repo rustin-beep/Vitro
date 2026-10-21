@@ -47,6 +47,8 @@ vitro/engine/cmd/dump_ast vitro/engine/parser parse
 vitro/engine/cmd/dump_compile moonbitlang/core/env args
 vitro/engine/cmd/dump_compile vitro/engine/ast json_escape_string
 vitro/engine/cmd/dump_compile vitro/engine/bytecode compile_output_dump_json
+vitro/engine/cmd/dump_compile vitro/engine/bytecode verify_compile_output
+vitro/engine/cmd/dump_compile vitro/engine/bytecode verify_violations_json
 vitro/engine/cmd/dump_compile vitro/engine/codegen SLOT_STRATEGY_VERSION
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile
 vitro/engine/cmd/dump_compile vitro/engine/codegen compile_library

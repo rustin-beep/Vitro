@@ -84,7 +84,9 @@ func rules() []Rule {
 		mk("moonbit_lexer_diff_tsv", "词法差分 TSV 数", `差分[^\n]*TSV|TSV[^\n]*差分|逐字节一致[^\n]*TSV|词法差分`, ``, 1000, 1600, "个"),
 		// S3（2026-09-19）：解析差分样本总数防漂移——baseline 363 + K&R 81
 		// + leetcode 138 + gap 15 = 597；语料增删会移动真值，文档数字须随动。
-		mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\n]*样本|样本[^\n]*解析差分|AST[^\n]*诊断序列|parser_diff`, ``, 500, 700, "个"),
+		// 2026-10-21 连坐：对抗生成域批（c2cb5be1）语料增长至真值 710，
+		// 带宽上限 700→750（机械放宽，非语义变更）。
+		mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\n]*样本|样本[^\n]*解析差分|AST[^\n]*诊断序列|parser_diff`, ``, 500, 750, "个"),
 	}
 }
 

@@ -8,6 +8,9 @@
 // 【锚驱动战果记录】首批锚抓到三真问题：editor 漏 import esc（拆分接线
 // 遗漏）、calltree 漏 import esc、isArrayAnimCase 紧凑声明不命中（存量 bug）。
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
@@ -25,6 +28,7 @@ import {
   SHARE_URL_WARN,
   SHARE_VERSION,
 } from "../js/share.ts";
+import { LessonParseError, parseLessonMd } from "../src/lib/lessonMd.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -224,4 +228,81 @@ test("粒度分组：空数组 / 单帧 / 全同行边界", () => {
   const same = [1, 1, 1, 1].map((code_line, i) => ({ code_line, step_index: i }));
   assert.equal(coalesceStmt(same).length, 1); // 全同行压成 1 帧
   assert.equal(annotateGroups(same).length, 4);
+});
+
+// ── lessonMd：scene metadata（2026-10-21 拍板：lesson.md 单源，不建 beats.ts）
+test("lessonMd：scene 元数据解析 + 从 blocks 剥离（E-08 渲染面不变）", () => {
+  const md = `---
+id: fixture
+kind: case
+order: 1
+title: 夹具
+---
+
+<!-- vitri-scenes v1
+01 | 起点：数组与循环 | 0..4 | 3..4 | 数组初始化，i / j 还是 0。
+02 | 交换不是瞬间完成的 | 5..20 | 8..10 | a[1] 刚被覆盖，旧值 5 还在 t 里。
+-->
+
+## 正文
+
+段落。
+`;
+  const doc = parseLessonMd(md);
+  assert.equal(doc.scenes.length, 2);
+  assert.deepEqual(doc.scenes[0], {
+    id: "01",
+    title: "起点：数组与循环",
+    from: 0,
+    to: 4,
+    lines: [3, 4],
+    note: "数组初始化，i / j 还是 0。",
+  });
+  assert.equal(doc.scenes[1].note, "a[1] 刚被覆盖，旧值 5 还在 t 里。");
+  // 注释块必须剥离：第一块仍是正文 h2，不能把 metadata 当段落渲染
+  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(doc.blocks[0].text, "正文");
+  assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
+});
+
+test("lessonMd：无 scene 元数据 = 空数组（老课回退长文）", () => {
+  const md = `---
+id: old
+kind: case
+order: 1
+title: 老课
+---
+
+## 正文
+`;
+  const doc = parseLessonMd(md);
+  assert.deepEqual(doc.scenes, []);
+  assert.equal(doc.blocks[0].type, "h2");
+});
+
+test("lessonMd：scene 元数据格式错误 fail loud（先红后绿）", () => {
+  const md = `---
+id: bad
+kind: case
+order: 1
+title: 坏课
+---
+
+<!-- vitri-scenes v1
+01 | 起点 | 0..4 | 3..4
+-->
+`;
+  assert.throws(() => parseLessonMd(md), LessonParseError);
+});
+
+test("lessonMd：bubble scene 覆盖 0..41（内容锚，先红后绿）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/basic/bubble/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 4);
+  assert.equal(doc.scenes[0].from, 0);
+  assert.equal(doc.scenes[doc.scenes.length - 1].to, 41);
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
 });

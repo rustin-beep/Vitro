@@ -29,6 +29,19 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 - **键盘仪表盘**：空格播放/暂停、←/→ 单步、Home/End 首末帧、`[`/`]` 速度档（输入框与编辑器内不劫持）。
 - **「此刻」读数**（实现层小巧思，设计稿未画）：时间轴悬停读数 + 点击跳帧、数组快照变化帧的交换刻度、按当前行 `a[j]` 与局部变量求值自动指认比较格、末帧收尾帧沿用最近一帧数据并在块头标注沿用来源。
 
+## 课程叙述与分镜（2026-10-21 拍板）
+
+- **唯一真源 = `course/**/lesson.md`**。分镜（scene）写在 body 顶部的可选注释块里，不新建前端 `beats.ts`：
+
+  ```md
+  <!-- vitri-scenes v1
+  01 | 起点：数组与循环 | 0..4 | 3..4 | 数组初始化，i / j 还是 0。
+  -->
+  ```
+
+- 解析在 `src/lib/lessonMd.ts`（demo 自家消费端，不走 `content_parser.c`）：`from..to` 是 `viewFrames` 闭区间，`lines` 是源码行范围；注释块解析时从 `blocks` 剥离，`CourseNote` / E-08 golden 逐字节不变。
+- 无 scene 的课 = `scenes: []`，回退现有长文；scene 范围重叠 / 格式错误 fail loud。锚在 `tests/pure.test.mts`（解析 / 无 scene / 格式错误 / bubble 0..41 覆盖）。
+
 ## 本地预览
 
 `wasm.wasm` 与 JS 发射产物都是构建产物，**不入库**——本地起服务前须先备齐两

@@ -41,8 +41,9 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 
 - 解析在 `src/lib/lessonMd.ts`（demo 自家消费端，不走 `content_parser.c`）：`from..to` 是 `viewFrames` 闭区间，`lines` 是源码行范围；注释块解析时从 `blocks` 剥离，`CourseNote` / E-08 golden 逐字节不变。
 - 无 scene 的课 = `scenes: []`，回退现有长文；scene 范围重叠 / 格式错误 fail loud。锚在 `tests/pure.test.mts`（解析 / 无 scene / 格式错误 / bubble 0..41 覆盖）。
-- **消费面（P1 第二片，2026-10-21）**：`Timeline` 顶部是**分镜条**（点幕 = 跳到幕首帧；当前幕高亮 + 一句本幕要点 + 帧范围），时间轴上方是按帧格等分的**分幕带**（当前幕高亮）。样式走既有 `--vr-*` token，不新增主题变量。定位单点在 `src/lib/scenes.ts`（`sceneIndexAt` / `sceneProgress` / `sceneBand`，纯函数，锚在 `tests/pure.test.mts`）；交互锚 `B0`（未迁移课无分镜条）/ `B1`（点幕跳首帧 + 当前幕/注记同步）在 `tests/e2e_session.mjs`。
+- **消费面（P1 第二/四片，2026-10-21）**：左栏是**竖向分镜轨**（`src/lib/BeatRail.svelte`：点幕 = 跳到幕首帧；当前幕高亮 + 一句本幕要点 + 帧范围 + 幕内进度），时间轴上方是按帧格等分的**分幕带**（当前幕高亮）。样式走既有 `--vr-*` token，不新增主题变量。定位单点在 `src/lib/scenes.ts`（`sceneIndexAt` / `sceneProgress` / `sceneBand` / `sceneKicker`，纯函数，锚在 `tests/pure.test.mts`）；交互锚 `B0`（未迁移课无分镜条）/ `B1`（点幕跳首帧 + 当前幕/注记同步）在 `tests/e2e_session.mjs`。
 - **幕头与浅树压扁（P1 第三片，2026-10-21）**：代码上方是**幕头**（`src/lib/StageHead.svelte`：幕号 / 帧范围 / 源码行 + 标题 + 一句要点 + 上一幕/下一幕）；调用树节点 ≤3（`prog → main` 一族）时**不画 214px 画布**，压成一行面包屑 + 当前语句（深树仍走画布）——把首屏让给局部变量与输出。锚 `B2` 在 `tests/e2e_session.mjs`。
+- **三栏布局（P1 第四片，2026-10-21）**：工作台 = 左 rail（课头 + 运行条 + 分镜轨）/ 中 stage（幕头 + 代码 + 参数）/ 右 now（仪器三模式）+ 底栏 **dock**（时间轴 + 输出 strip，横跨三栏）+ 课文殿后；容器 ≥1180px 走三栏，窄容器回落单列（DOM 序即阅读序，无 `order` 重排）。1440×900 首屏量测：代码 187 / 数组 191 / 局部变量 487 / 时间轴 648–847 / 输出 strip 874。锚 `B3`（三栏几何 + 底栏通栏 + 首屏）在 `tests/e2e_session.mjs`。
 
 ## 本地预览
 

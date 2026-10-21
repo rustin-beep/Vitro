@@ -11,7 +11,7 @@
   //     处理在 App，本块只给提示）。
   import { seek, session, setFps, setGran, step, togglePlay } from "../session.svelte.ts";
   import { lessonSession } from "./lessonSession.svelte.ts";
-  import { sceneBand, sceneIndexAt, sceneRangeLabel } from "./scenes.ts";
+  import { sceneBand, sceneIndexAt } from "./scenes.ts";
 
   const FPS_STEPS = [2, 8, 30, 60, 120, 240];
   const FPS_NOTE: Record<number, string> = { 2: " · 很慢", 8: " · 默认", 30: " · 快", 60: " · 高速", 120: " · 极快", 240: " · 极快" };
@@ -117,32 +117,6 @@
       </select>
     </div>
   </div>
-
-  {#if scenes.length > 0}
-    <div class="vr-beats" role="group" aria-label="本课分镜">
-      {#each scenes as s, i (s.id)}
-        <button
-          type="button"
-          class="vr-beat"
-          class:is-active={i === cur}
-          class:is-done={i < cur}
-          onclick={() => seek(s.from)}
-          disabled={n === 0}
-          title="{s.title} · {sceneRangeLabel(s)}"
-          aria-current={i === cur ? "step" : undefined}
-        >
-          <span class="vr-beat-no">{s.id}</span>{s.title}
-        </button>
-      {/each}
-    </div>
-    {#if cur >= 0}
-      <p class="vr-beats-note">
-        <b>{scenes[cur].title}</b>
-        {#if scenes[cur].note} · {scenes[cur].note}{/if}
-        <span class="vr-beat-range">{sceneRangeLabel(scenes[cur])}</span>
-      </p>
-    {/if}
-  {/if}
 
   {#if n > 0 && bands.length > 0}
     <div class="vr-bands" aria-hidden="true">

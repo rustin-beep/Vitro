@@ -9,6 +9,7 @@
 //   F7 课程目录全章渲染（重名课 id 防护：structures/josephus 实测 2026-10-18）
 //   B0 未迁移课无分镜条 / B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片，2026-10-21）
 //   B2 幕头随帧更新 + 浅树压扁（#222 P1 第三片，2026-10-21）
+//   B3 三栏 + 底栏时间轴 + 首屏（#222 P1 第四片，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -188,8 +189,8 @@ async function run() {
   check("F4 播完 status 提示（P2-9）", f3.status.includes("回放完毕"), "status=" + f3.status);
   check("F4b 末帧状态行（末帧 · 可拖回任意帧）", f3.statusLine.includes("末帧"), f3.statusLine);
 
-  // ── B1 分镜条点幕 = 跳幕首帧（#222 P1 第二片）：bubble 4 幕、4 条分幕带，
-  //    点第 1 幕 → idx 归 0、当前幕/注记同步（幕 = 一段文字 = 一组帧）──
+  // ── B1 分镜轨点幕 = 跳幕首帧（#222 P1 第四片把分镜条移进左栏竖排）：
+  //    bubble 4 幕、4 条分幕带，点第 1 幕 → idx 归 0、当前幕/注记同步 ──
   const b1before = await evaluate(`(() => ({
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
@@ -200,12 +201,12 @@ async function run() {
   const b1after = await evaluate(`(() => ({
     idx: window.__pilot.session.idx,
     active: document.querySelector('.vr-beat.is-active')?.textContent?.trim() ?? '',
-    note: document.querySelector('.vr-beats-note')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+    note: document.querySelector('.vr-beat.is-active .vr-beat-note')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
     bandsActive: document.querySelectorAll('.vr-band.is-active').length,
   }))()`);
-  check("B1 分镜条点幕 = 跳幕首帧（#222）",
+  check("B1 分镜轨点幕 = 跳幕首帧（#222）",
     b1before.beats === 4 && b1before.bands === 4 && b1before.active.includes("04") &&
-      b1after.idx === 0 && b1after.active.includes("01") && b1after.note.includes("帧 0–4") && b1after.bandsActive === 1,
+      b1after.idx === 0 && b1after.active.includes("01") && b1after.note.includes("数组初始化") && b1after.bandsActive === 1,
     JSON.stringify({ b1before, b1after }));
 
   // ── B2 幕头 + 浅树压扁（#222 P1 第三片）：当前幕随帧更新、上一幕/下一幕能跳；
@@ -228,6 +229,25 @@ async function run() {
     b2.title.includes("起点") && b2.prevDisabled === true && b2.compact === true && b2.canvas === false &&
       b2after.idx === 5 && b2after.title.includes("交换") && b2after.kicker.includes("帧 5–20"),
     JSON.stringify({ b2, b2after }));
+
+  // ── B3 三栏 + 底栏时间轴（#222 P1 第四片）：1440 下 rail / stage / now 左中右
+  //    并排、时间轴横跨三栏；代码/数组/时间轴都落在 900px 首屏内 ──
+  const b3 = await evaluate(`(() => {
+    const box = (sel) => document.querySelector(sel)?.getBoundingClientRect() ?? null;
+    const rail = box('.vr-colrail'), stage = box('.vr-colstage'), now = box('.vr-colnow'), dock = box('.vr-coldock');
+    const code = box('.vr-code'), cells = box('.vr-cells');
+    return {
+      railLeft: rail && Math.round(rail.left), stageLeft: stage && Math.round(stage.left), nowLeft: now && Math.round(now.left),
+      railW: rail && Math.round(rail.width), nowW: now && Math.round(now.width),
+      dockW: dock && Math.round(dock.width), benchW: Math.round(box('.vr-bench').width),
+      codeTop: code && Math.round(code.top), cellsTop: cells && Math.round(cells.top), dockTop: dock && Math.round(dock.top),
+    };
+  })()`);
+  check("B3 三栏 + 底栏时间轴（#222）",
+    b3.railLeft < b3.stageLeft && b3.stageLeft < b3.nowLeft &&
+      b3.railW >= 240 && b3.nowW >= 340 && b3.dockW > b3.benchW * 0.95 &&
+      b3.codeTop < 900 && b3.cellsTop < 900 && b3.dockTop < 900,
+    JSON.stringify(b3));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

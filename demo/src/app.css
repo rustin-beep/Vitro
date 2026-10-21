@@ -432,11 +432,36 @@ code, pre, kbd, samp, .vr-mono {
 .vr-banner.is-amber { border-color: var(--vr-amber-2); border-left-color: var(--vr-amber-2); background: var(--vr-amber-tint); }
 .vr-banner.is-amber b { color: var(--vr-amber); }
 
-/* ---------- 工作态：两页 ---------- */
-.vr-bench { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr); align-items: start; }
-.vr-left { min-width: 0; }
-.vr-page { padding: 30px 0 0 34px; min-width: 0; }
-.vr-instrument { border-right: 1px solid var(--vr-rule); padding: 24px 34px 40px 0; min-width: 0; }
+/* ---------- 工作态：三栏 + 底栏时间轴（#222 P1 第四片，2026-10-21） ---------- */
+/* 宽容器（≥1180）：rail / stage / now 三栏，时间轴横跨三栏做底栏，课文殿后；
+   窄容器：单列 rail → stage → now → dock → note（与 DOM 序一致）。 */
+.vr-bench { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.vr-colrail, .vr-colstage, .vr-colnow, .vr-coldock { min-width: 0; }
+.vr-colrail { padding: 20px 0 0; }
+.vr-colstage { padding: 16px 0 0; }
+.vr-colnow { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding: 16px 0 0; }
+.vr-coldock { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding-top: 4px; }
+@container vitro (min-width: 1180px) {
+  .vr-bench {
+    grid-template-columns: 264px minmax(0, 1fr) 372px;
+    grid-template-areas:
+      "rail stage now"
+      "dock dock dock"
+      "note note note";
+    column-gap: 30px;
+  }
+  .vr-colrail { grid-area: rail; border-right: 1px solid var(--vr-rule); padding: 24px 22px 30px 0; }
+  .vr-colstage { grid-area: stage; padding: 16px 0 0; }
+  .vr-colnow { grid-area: now; border-left: 1px solid var(--vr-rule); border-top: 0; margin-top: 0; padding: 14px 0 16px 22px; }
+  .vr-coldock { grid-area: dock; margin-top: 16px; padding-top: 4px; }
+  .vr-coldock .vr-block { padding: 10px 0 12px; }
+  .vr-colstage .vr-params { margin-top: 6px; }
+  /* 三栏同屏预算：now/stage 的块间距收窄，把首屏让给底栏时间轴（#222 验收：
+     1440×900 不滚动见代码+数组+时间轴+幕头；output 至少露出 strip） */
+  .vr-colnow .vr-block { padding: 8px 0 10px; }
+  .vr-colstage .vr-stagehead { margin: 8px 0 10px; }
+  .vr-note-page { grid-area: note; margin: 0 0 40px; padding-top: 20px; max-width: 78ch; }
+}
 .vr-kicker { font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; letter-spacing: .11em; color: var(--vr-ink-3); }
 .vr-title { font-family: var(--vr-serif); font-size: 31px; line-height: 1.18; font-weight: 600; margin: 8px 0 6px; letter-spacing: .005em; }
 .vr-lede { margin: 0; color: var(--vr-ink-2); font-size: 13.5px; line-height: 1.75; }
@@ -459,7 +484,7 @@ code, pre, kbd, samp, .vr-mono {
 
 /* 课文（行内 markdown 真渲染） */
 .vr-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--vr-rule); max-width: 64ch; min-width: 0; }
-.vr-note-page { margin: 0 0 40px 34px; padding-top: 20px; min-width: 0; }
+.vr-note-page { margin: 0 0 40px; padding-top: 20px; min-width: 0; }
 .vr-note h2 { font-family: var(--vr-serif); font-size: 20px; line-height: 1.3; font-weight: 600; margin: 24px 0 8px; }
 .vr-note h2:first-child { margin-top: 0; }
 .vr-note h3 { font-size: 15px; margin: 18px 0 6px; }
@@ -566,20 +591,27 @@ code, pre, kbd, samp, .vr-mono {
 .vr-stagehead-note { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--vr-ink-2); }
 .vr-stagehead-nav { display: flex; gap: 6px; margin-left: auto; flex: 0 0 auto; }
 
-/* ---------- 本课分镜条（P1 第二片，2026-10-21） ---------- */
+/* ---------- 本课分镜轨（P1 第四片，2026-10-21：左栏竖排） ---------- */
 /* scene 真源 = course/…/lesson.md 的 vitri-scenes 块（lessonMd 解析、demo/README
    口径）；点一幕 = 跳到幕首帧。未迁移课 scenes=[] → 整段不渲染（回退长文）。 */
-.vr-beats { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
-.vr-beat { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--vr-rule); background: var(--vr-panel); color: var(--vr-ink-3); font-size: 11.5px; line-height: 1.5; text-align: left; }
-.vr-beat:hover { color: var(--vr-ink); border-color: var(--vr-rule-2); }
+.vr-beatrail { margin-top: 22px; border-top: 1px solid var(--vr-rule); padding-top: 12px; }
+.vr-beatrail-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.vr-beatrail-head .vr-meta { margin-left: auto; }
+.vr-beatlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.vr-beat { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 7px 8px 8px; border: 0; border-left: 2px solid transparent; background: transparent; color: var(--vr-ink-3); text-align: left; }
+.vr-beat:hover { background: var(--vr-panel-2); color: var(--vr-ink-2); }
 .vr-beat.is-done { color: var(--vr-ink-2); }
-.vr-beat.is-active { color: var(--vr-ink); border-color: var(--vr-amber-2); background: var(--vr-amber-tint); font-weight: 600; }
+.vr-beat.is-active { color: var(--vr-ink); border-left-color: var(--vr-amber-2); background: var(--vr-amber-tint); }
 .vr-beat:disabled { opacity: .6; cursor: default; }
-.vr-beat-no { font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-beat-no { flex: 0 0 auto; padding-top: 2px; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-beat.is-active .vr-beat-no { color: var(--vr-amber); }
-.vr-beats-note { margin: 0 0 8px; font-size: 12px; line-height: 1.7; color: var(--vr-ink-2); }
-.vr-beats-note b { color: var(--vr-ink); font-weight: 600; }
-.vr-beat-range { margin-left: 8px; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-beat-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vr-beat-title { font-size: 12.5px; line-height: 1.5; }
+.vr-beat.is-active .vr-beat-title { font-weight: 600; }
+.vr-beat-note { font-size: 11.5px; line-height: 1.6; color: var(--vr-ink-2); }
+.vr-beat-range { font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-beat-prog { display: block; height: 2px; margin-top: 3px; background: var(--vr-rule); }
+.vr-beat-prog > span { display: block; height: 100%; background: var(--vr-amber-2); }
 /* 分幕条：按帧格等分轴宽，落在时间轴上方；越界已由 sceneBand 钳制 */
 .vr-bands { position: relative; height: 5px; margin: 4px 0 3px; }
 .vr-band { position: absolute; top: 0; bottom: 0; background: var(--vr-rule); border-right: 1px solid var(--vr-panel); }
@@ -960,11 +992,7 @@ code, pre, kbd, samp, .vr-mono {
   .vr-timeline .vr-timeline-tools { grid-column: 1 / -1; margin-left: 0; width: 100%; justify-content: space-between; }
 }
 @container vitro (max-width: 980px) {
-  .vr-bench { grid-template-columns: minmax(0, 1fr); }
-  .vr-left { display: contents; }
-  .vr-page { order: 1; padding-left: 0; padding-bottom: 0; }
-  .vr-instrument { order: 2; border-right: 0; border-top: 1px solid var(--vr-rule); padding-right: 0; padding-top: 18px; }
-  .vr-note-page { order: 3; margin: 0 0 40px; padding-top: 20px; }
+  /* 三栏（≥1180）收成单列时不再需要 order 重排：DOM 序 = rail → stage → now → dock → note */
   .vr-entry-grid { grid-template-columns: 200px minmax(0, 1fr); }
   .vr-preview { grid-column: 1 / -1; border-top: 1px solid var(--vr-rule); position: static; padding: 18px 0 30px; }
   .vr-ref-main { grid-template-columns: 240px minmax(0, 1fr); }
@@ -982,7 +1010,7 @@ code, pre, kbd, samp, .vr-mono {
   .vr-coursebtn { padding: 5px 8px; }
   .vr-coursebtn span { display: none; }
   .vr-title { font-size: 25px; }
-  .vr-page { padding-top: 20px; }
+  .vr-colstage { padding-top: 14px; }
   .vr-runbar { gap: 6px; }
   .vr-status { width: 100%; margin-left: 0; }
   .vr-codehead { flex-wrap: wrap; }

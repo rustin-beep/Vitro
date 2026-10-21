@@ -45,17 +45,25 @@ test "catalog_texts_install_and_lookup" {
 /// fail loud 三态：坏 JSON / 值域外码 / 字段形态错——拒绝且不落半装。
 test "catalog_texts_rejects_bad_payloads" {
   // ① 坏 JSON
-  let r1 = try? install_catalog_texts("{not json")
+  let r1 = Ok(install_catalog_texts("{not json")) catch { e => Err(e) }
   assert_true(r1 is Err(_), msg="坏 JSON 须拒")
   // ② 值域外码（9999 不在 catalog_codes——码域闸）
-  let r2 = try? install_catalog_texts(
-    "{\"9999\":{\"icon\":\"x\",\"title\":\"t\",\"explanation\":\"e\",\"common_causes\":[]}}",
-  )
+  let r2 = Ok(
+    install_catalog_texts(
+      "{\"9999\":{\"icon\":\"x\",\"title\":\"t\",\"explanation\":\"e\",\"common_causes\":[]}}",
+    ),
+  ) catch {
+    e => Err(e)
+  }
   assert_true(r2 is Err(_), msg="值域外码须拒")
   // ③ 字段形态错（title 非字符串）
-  let r3 = try? install_catalog_texts(
-    "{\"1001\":{\"icon\":\"x\",\"title\":42,\"explanation\":\"e\",\"common_causes\":[]}}",
-  )
+  let r3 = Ok(
+    install_catalog_texts(
+      "{\"1001\":{\"icon\":\"x\",\"title\":42,\"explanation\":\"e\",\"common_causes\":[]}}",
+    ),
+  ) catch {
+    e => Err(e)
+  }
   assert_true(r3 is Err(_), msg="字段形态错须拒")
   // 不落半装：表保持空
   assert_eq(catalog_texts.length(), 0)

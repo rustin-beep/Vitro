@@ -146,6 +146,9 @@ pub(all) enum ErrorCode {
   E3078_RegisterAddrOf
   E3079_FlexibleArrayInit
   E3080_StructDuplicateMember
+  E3081_NegativeArraySize
+  E3082_FuncTypeField
+  E3083_NullDeref
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

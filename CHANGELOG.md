@@ -12,6 +12,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ci): 远端 CI 七 job 红五根处置——bTree known 新形态入账 + 帧 9 重冻 + demo 单引号 typo + try? 全量迁移 + mbti 连坐补齐（2026-10-21）
+
+- **clang_direct（Diff gate + wasm-arm 两 job 同根）**：`SAME=794
+  DIFF-KNOWN=12 DIFF=1` 的 1 条 = bTree_default.c 已知差异**形状已变**
+  （a1d62714，本地+CI 双环境同值非噪声）——归因 c2cb5be1 的 E3083
+  trap 码链改版 NULL 解引用教学文案（stdout 首行 [cause] 前缀）。
+  known_direct.json 主位换新 + digests 集保历史五形态。四桶复跑 DIFF=0。
+- **protocol 帧 9（Native parity + wasm serve_channel 两 job 同根）**：
+  `[DRIFT] moonbit 帧 9（error_catalog）`——c2cb5be1 的 E3081~3083
+  三码教学文案进 catalog 帧而 baseline 未重冻。--update-baseline 重建
+  （47 帧全一致，jsonl 单行变化）。
+- **demo（catalogDetail.ts 60 错）**：注释起始多一个**单引号**
+  （`'/**`）把 JSDoc 注释变字符串字面量级联 60 错——c2cb5be1 的
+  typo，一字符修复。svelte-check 0 错 0 警、oxlint 0 错。
+- **sentinel（nightly chase-new）**：moonc nightly 删除 `try?` 语法
+  （9 Error 全在 wbtest + vitro_wasm 主代码）——按官方迁移式全量适配
+  10 处：Result 语义 `try Ok(f(x)) catch { e => Err(e) }` /
+  Option 语义 `try Some(f(x)) catch { _ => None }`（锁定版与 nightly
+  两版兼容）。
+- **mbti（Static gates）**：c2cb5be1 漏 add 的 diag mbti + 本日批的
+  bytecode/lexer-token/parser 三 mbti 连坐——mbti_sync 自愈全同步
+  后 PASS（29 文件）。
+
+### fix(vm): #167/#168——libc StepEvent 三面分流（错行高亮/断点假暂停/vis 误触发同根源根治）（2026-10-21）
+
+- **根**：libc 段 StepEvent 行号是 libc C 源自家坐标（464 条、域
+  3~536），与用户行号共用无文件域编号空间。`execute_debug` 的
+  StepEvent 臂对 libc（装载 file_id==1）短路：①跳断点判定（用户断点
+  89~95 行 + strlen 内部同号 = 假暂停）；②不改写 current_line（UI
+  把 libc 行号错染到用户源文件——错行高亮根源）；③vis 事件同号不
+  触发。热力图 `file_id == 0` 口径同族先例。
+- **实测**（js+native 双臂）：7 行探针 step 全帧——修复前 libc 段
+  26 帧全染 89~95；修后 libc 段几十步全部停驻用户行 4（调用行），
+  零帧错染。「走进 libc 高亮停在调用点」教学语义成立。
+- **红锚**：`libc_step_event_no_user_breakpoint_hit_issue168`
+  （vm_wbtest；修复前 vm.paused 假暂停证红留痕 + current_line 污染
+  断言）。多单元 code_file 协议通道登记为独立增强（#167 留档）。
+- **勘误连坐**：上批测试数 996 系口径误采（`--target js` 显式面混入
+  裸口径）——本批实测裸值 **850** 纠正（facts 重采 + 五文档同步）。
+
+### fix(vm+lexer+pp): 探针批三案——#163 浮点除零 IEEE 语义 + #164 变参宏全链 + #165 改判（2026-10-21）
+
+- **#163（DivF/DivD 除零改 IEEE）**：±inf/NaN 是 C11 Annex F（IEC
+  60559）的**定义行为**（clang/gcc 默认）——旧显式 trap 系迁移期照搬
+  oracle（头注在案），oracle 退役后失去锚按 clang 真值收编。整数除零
+  trap 维持（int 域 UB 与浮点域 Annex F 是两个域的标准语义分划）。
+  变体验证：`1.0/0.0`=inf、`-1.0/0.0`=-inf、`0.0/0.0`=NaN、
+  `x/x != x` NaN 检测惯用法可用；js+native 双臂一致；printf `%f`
+  对 inf/NaN 输出 `inf/-inf/NaN`（clang 同款）零连坐。
+- **#164（变参宏 `__VA_ARGS__` 全链）**：三段落地——①parser `...`
+  形参位（MacroDef::Function 加 variadic 位，`...` 必须末位）；
+  ②expander 变参绑定（多余实参 join 逗号绑定到隐式 `__VA_ARGS__`，
+  raw/已展开双轨；命名实参数不足文案区分「期望至少 N」）；③eff 段
+  **截断修**（全量段+join 段错位使 arg_of 取到第二实参段——第三实参
+  起全丢，`ADD3(1,2,3,4)`→`add4(1,2)` 实锤，靠 DBG 分段打印定位）。
+  连带验证：宏内字符串字面量拼接（phase 6）既有支持零改动；
+  `LOG("a=%d s=%s", 2, "t")` 输出 `[log] a=2 s=t` = clang。
+- **#165 改判**：病 B（全局定义带声明器）/病 C（offsetof 尾对齐）
+  重测已修（后续批顺带）；病 A（strchr 负 c）追根到词法层 `\xFF`
+  落 UTF-8 双字节（C3 BF）——**#66（2026-10-10）已裁定的已知差异面**
+  （源字符面优先于转义字节面），非独立缺陷不修。
+- **连坐**：四家 digest 各重冻 1 条（gap/variadic_macro.c——变参宏
+  从 E1005 拒推进到 gen 阶段的合法行为跃迁）；clang_direct SAME；
+  测试数 847→996（gateway/cli 多 target 面入裸跑口径）+ facts 重采 +
+  五文档同步。
+
+### fix(parser+typeck+codegen): 探针批六案修复——#192 N-3 函数指针误收 + #193 二维 char stride 双病 + #194 const 间接层 + #196B 花括号字符串 + #197 snprintf 尾参（2026-10-21）
+
+- **重测定态先行**：六条 issue 判据基线 62f75d3d 早于后续修复批——
+  当前 HEAD 实测 **3.5 案已被顺带修掉**（#195 全销：#145 前向分轨覆盖；
+  #192 N-1/N-2：E3075 静态初始化器校验；#196A：标量括号解包），剩
+  6 活案本批修。
+- **#192 N-3**（`int *p = f;` 四模型 8/8 误收）：convert 的「数据指针 ←
+  函数指针」无条件放行收窄——void* 桥接（J.5.7）保留，其余报 E3044。
+  四桶 digest 零扰动。
+- **#193 双病根**：①`elem_type_size` 对「指向数组的指针」落 TK_Array
+  兜底 4——`int(*)[3]` 碰巧对、`char(*)[8]` 错 4 倍（实测指令流
+  PushConst 32→8）；②全局 `char g[3][8]={"xx",...}` 误进一维逐字节
+  路径（is_char_array 缺一维限定——static 局部 #137 连坐当年已加、
+  全局漏），flatten_init_list 对 StringLiteral 静默 0 → **a10 全局静默
+  错值**（最危险形态）修为字节直写。a1/a5/a9/a10 全变体转绿。
+- **#194 const 间接层**（8/8 双误收）：①resolve_member 的 const 继承
+  补 pointee 下钻（P1-c③「指针形态天然覆盖」注释实为无代码空声明）；
+  ②parser 声明器 `* const` 限定位不再丢弃（DeclaratorNode::Pointer 带
+  is_const 位）——const 指针重绑/const 指针数组元素写均 E3049。
+  合法面（`int *const q` 的 `*q=7`、`const char *s` 重绑）零误拒。
+- **#196B**（`char s[2]={"abc"}` 误拒 E3006）：check_array_initializer
+  一维分支补「单元素花括号字符串 ≡ 裸字符串」（C11 §6.7.9p11+p14）
+  ——递归走 StringLiteral 轨（W3008/无尺寸回写单源）。
+- **#197**（snprintf/sprintf 的 struct 成员可变参读垃圾，`%.2f` 得
+  0.00/`%d` 得地址值）：`check_builtin_sprintf/snprintf` **变参尾参零
+  resolve**——Member 保持 parser Void 占位，codegen 按 object.ty 判型
+  落 0。#161（sscanf 尾参 2026-10-18）同族，printf 族两兄弟当年漏
+  连坐；修为与 printf 双路径同构（字面量 fmt 走 check_printf_format
+  格式感知/非字面量粗检 W）。k1/k4/k5/k6/k7/k8/k9 全变体转绿。
+- **连坐**：typeck digest 重冻 1 条（lc_257——sprintf 尾参 resolve 的
+  typed AST 合法变化，git diff 单条实证）；测试数 843→847（+4 红锚：
+  196B/192-N3/194×1/197）+ facts 重采 + 五文档同步；native 臂同输出
+  三臂验证（#193/#196/#197 探针 js/native 一致）。
+
+### feat(bytecode+scripts): #200 P0——bytecode 结构验证器落地（防线补集首件：digest 抓「变没变」，verify 抓「对不对」）（2026-10-21）
+
+- **验证器本体**（`moonbit/bytecode/verify.mbt`，四类不变量）：①每 OpCode
+  栈效应签名 + 全函数栈深守恒（Ret 前 1 / RetVoid 前 0 / 块入口深权威化 /
+  Call 净效应含返回值）；②跳转目标值域 + 函数段隔离；③FuncMeta 自洽
+  （键集 / arg_count=Σparam_sizes / local_count 覆盖参数区）；④引用可达
+  （f64/i64 常量池 / symbols / 局部不越帧 / 全局不越 global_data_end /
+  Call 值域）。动态点（CallHost 变参族 / CallVar / CallPtr / libc 固定段）
+  置 Unknown 保守——host id → (pop,push) 全表是 #200 P1 配套件。
+- **效应表真值源 = executor 逐臂核对**；开发中被探针反向校出五处模型 bug
+  （键集方向 / globals_init 偏移域 / PushConstF 位模式立即数 / LoadMem 族
+  弹地址 / Call 返回值）——存量产物是最好的验证器测试集。
+- **接线（并入现有驱动，零新驱动零登记义务）**：dump_compile ok 例外层
+  增 `verify` 字段（不进 14 键 dump 对拍面——五家 digest 零扰动，全语料
+  golden PASS 实证）；codegen_diff 三路径消费——verify 失败 = 真红 /
+  字段缺失 = 协议缺位红（同 slot_strategy 空集红逻辑）。
+- **J9 证红**：wbtest 17 例（16 类违约逐类红锚 + else 块回归防退化绿锚
+  35→36 测试）；Go 侧 --selftest 加 verify 篡改锚（红即证）；缺位分支
+  一次性实验证红（临时剥 verify 字段 → 12/13 协议缺位红）。
+- **存量探针**：常规 688 + library 3 = 691 例 ok 产物零违约（存量 codegen
+  通过结构验证）；libc_boot_diff 只抽 .dump 键零扰动（golden PASS）。
+- **连坐**：测试数 825→843（facts `--run` 重采 + 五文档同步：README×2 /
+  快速入门 / 标准库防线 / 根 README 三行）；surface 边表 +2（dump_compile
+  →bytecode verify 面）；facts 带宽连坐（parser_diff_samples 700→750，
+  c2cb5be1 语料增长既有债顺手清）。
+
 ### fix(ci+scripts+docs): CI 连红处置——demo E2E 浏览器启动修复 + 套件级红遮红治理 + 五家 digest 断供补冻（2026-10-18）
 
 - **demo E2E 闸 8 连红根因**（62f75d3d 进 CI 起**从未绿过**）：F4 browser

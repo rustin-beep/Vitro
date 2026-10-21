@@ -95,7 +95,8 @@ fn inject_texts_at_startup(g : JsGateway) -> Bool {
   req.set("method", Json::string("texts.install"))
   req.set("params", Json::object(params))
   let resp = (g.invoke)(Json::object(req).stringify())
-  let parsed : Json? = match (try? @util.json_parse(resp)) {
+  let parsed : Json? = match
+    (Some(@util.json_parse(resp)) catch { _ => None }) {
     Ok(v) => Some(v)
     Err(_) => None
   }

@@ -88,7 +88,7 @@ test "install_texts_rejects_unknown_key_and_partial_trap" {
   let saved = texts_json()
   // ① 顶层未知键：junk 顶位
   let bad1 = "{\"suggestions\":{},\"builtin_notes\":{},\"junk\":{}}"
-  let r1 = try? install_texts(bad1)
+  let r1 = Ok(install_texts(bad1)) catch { e => Err(e) }
   assert_true(r1 is Err(_), msg="顶层未知键须 raise")
   // ② trap 段部分条目：删任一现表键（E3061_double_free）→ 键集不全等
   let j = @util.json_parse(saved) catch { _ => fail("原载荷解析失败") }
@@ -97,7 +97,7 @@ test "install_texts_rejects_unknown_key_and_partial_trap" {
       match top.get("trap_messages") {
         Some(Object(traps)) => {
           ignore(traps.remove("E3061_double_free"))
-          let r2 = try? install_texts(j.stringify())
+          let r2 = Ok(install_texts(j.stringify())) catch { e => Err(e) }
           assert_true(
             r2 is Err(_),
             msg="trap 部分条目须 raise（host unwrap 消费面）",
@@ -108,7 +108,9 @@ test "install_texts_rejects_unknown_key_and_partial_trap" {
     _ => fail("顶层形态异常")
   }
   // 空表装载（合法 lean 态）不受连坐：trap 段缺席路径
-  let r3 = try? install_texts("{\"suggestions\":{},\"builtin_notes\":{}}")
+  let r3 = Ok(install_texts("{\"suggestions\":{},\"builtin_notes\":{}}")) catch {
+    e => Err(e)
+  }
   assert_true(r3 is Ok(_), msg="两键合法载荷不受新闸误伤")
   install_texts(saved)
 }
@@ -120,16 +122,16 @@ test "install_texts_rejects_unknown_key_and_partial_trap" {
 test "install_texts_rejects_bad_payloads" {
   let saved = texts_json()
   // ① 坏 JSON
-  let raised1 = try? install_texts("{not json")
+  let raised1 = Ok(install_texts("{not json")) catch { e => Err(e) }
   assert_true(raised1 is Err(_), msg="坏 JSON 须 raise")
   // ② suggestions 未知键（值域：引擎侧 43 名单外一律拒——防 strng-typo
   // 类拼写漂移静默入表）
   let bad2 = "{\"suggestions\":{\"strng_typo_probe\":\"x\"},\"builtin_notes\":{},\"trap_messages\":{}}"
-  let raised2 = try? install_texts(bad2)
+  let raised2 = Ok(install_texts(bad2)) catch { e => Err(e) }
   assert_true(raised2 is Err(_), msg="未知 suggestion 键须 raise")
   // ③ trap 占位符声明与模板不符（声明了 {name} 模板没有）
   let bad3 = "{\"suggestions\":{},\"builtin_notes\":{},\"trap_messages\":{\"E3061_probe\":{\"template\":\"无占位符正文\",\"placeholders\":[\"name\"]}}}"
-  let raised3 = try? install_texts(bad3)
+  let raised3 = Ok(install_texts(bad3)) catch { e => Err(e) }
   assert_true(raised3 is Err(_), msg="占位符不符须 raise")
   // fail loud 不落半装：三次拒绝后表仍基态（trap 抽检——lean 基态
   // 建议表为空，无从抽检）

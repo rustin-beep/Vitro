@@ -1,0 +1,243 @@
+// 像素闸（#222 P0 第三批，2026-10-21）：8 状态 × 主题 × 视口的截图对账。
+//
+// 基线口径（拍板稿）：**只在 CI Ubuntu + Chrome 生成**——字体栅格化跨 OS 不同，
+// 本机生成的基线在 Linux 上必假红。所以：
+//   - 基线目录 `demo/tests/visual/baseline/` 由 `.github/workflows/visual_baseline.yml`
+//     （workflow_dispatch）生成并作为 artifact 上传，维护者下载后入库；
+//   - 比对仅在「基线存在且平台一致」时武装；否则打印 ::warning:: 跳过（不静默，
+//     也不伪造通过）；
+//   - 本地只做 `--update` 预习 + 同机比对（用于改样式时的自查，不入库）。
+//
+// 确定性：清 localStorage → 固定 data-size=14 / data-motion=off / 逐图 data-theme；
+// 等 fonts.ready + 两帧 rAF；耗时类文本（输出块的 ms）用掩膜剔除。
+//
+// 用法：
+//   node demo/tests/visual_regress.mjs http://127.0.0.1:8931/             # 比对
+//   node demo/tests/visual_regress.mjs http://127.0.0.1:8931/ --update    # 人工令：重写本机基线
+//   node demo/tests/visual_regress.mjs http://127.0.0.1:8931/ --only work-mid
+
+import http from "node:http";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, resolve, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { decodePNG, encodePNG, diffRGBA, diffImage, maskRect } from "./visual/png.mjs";
+
+const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
+const UPDATE = process.argv.includes("--update");
+const ONLY_IDX = process.argv.indexOf("--only");
+const ONLY = ONLY_IDX > 0 ? process.argv[ONLY_IDX + 1] : "";
+const HERE = dirname(fileURLToPath(import.meta.url));
+const BASELINE_DIR = resolve(HERE, "visual/baseline");
+const DIFF_DIR = resolve(HERE, "visual/diff");
+const THRESHOLD = 0.001; // 拍板稿：单状态 pixel diff ≤ 0.1%
+
+const THEMES = ["paper", "blueprint"];
+
+const STATES = [
+  { name: "work-start", w: 1440, h: 900, theme: "paper", act: "seek0" },
+  { name: "work-mid", w: 1440, h: 900, theme: "paper", act: "seek12" },
+  { name: "work-start-bp", w: 1440, h: 900, theme: "blueprint", act: "seek0" },
+  { name: "work-mid-bp", w: 1440, h: 900, theme: "blueprint", act: "seek12" },
+  { name: "entry", w: 1440, h: 900, theme: "paper", act: "entry" },
+  { name: "entry-bp", w: 1440, h: 900, theme: "blueprint", act: "entry" },
+  { name: "ref", w: 1440, h: 900, theme: "paper", act: "ref" },
+  { name: "ref-bp", w: 1440, h: 900, theme: "blueprint", act: "ref" },
+  { name: "mem", w: 1440, h: 900, theme: "paper", act: "mem" },
+  { name: "proto", w: 1440, h: 900, theme: "paper", act: "proto" },
+  { name: "work-768", w: 768, h: 1024, theme: "paper", act: "seek12" },
+  { name: "work-390", w: 390, h: 844, theme: "paper", act: "seek12" },
+];
+
+let msgId = 0;
+const pending = new Map();
+let ws;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function send(method, params = {}) {
+  const id = ++msgId;
+  return new Promise((res, rej) => {
+    pending.set(id, { res, rej });
+    ws.send(JSON.stringify({ id, method, params }));
+  });
+}
+
+async function evaluate(expr) {
+  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
+  if (r.exceptionDetails) throw new Error("eval: " + JSON.stringify(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
+  return r.result.value;
+}
+
+async function waitFor(expr, timeout = 60000) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await evaluate(expr)) return;
+    if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 100));
+    await sleep(200);
+  }
+}
+
+async function connect() {
+  const targets = await new Promise((res, rej) => {
+    http
+      .get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (r) => {
+        let body = "";
+        r.on("data", (c) => (body += c));
+        r.on("end", () => {
+          try {
+            res(JSON.parse(body));
+          } catch (e) {
+            rej(e);
+          }
+        });
+      })
+      .on("error", rej);
+  });
+  const page = targets.filter((t) => t.type === "page").find((t) => t.url.includes("index.html")) ?? targets.filter((t) => t.type === "page")[0];
+  if (!page) throw new Error("CDP 无 page target");
+  ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = rej;
+  });
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) {
+      const p = pending.get(m.id);
+      pending.delete(m.id);
+      if (m.error) p.rej(new Error(JSON.stringify(m.error)));
+      else p.res(m.result);
+    }
+  };
+  await send("Page.enable");
+  await send("Runtime.enable");
+}
+
+// 点击 helper：先按 aria-label 精确匹配（顶栏「课程目录」按钮的文字是「课程」），
+// 再按 title 前缀、文本全等、文本包含兜底——E2E 里同款口径。
+const CLICK = (label) =>
+  `(() => {
+    const els = [...document.querySelectorAll('button, a, [role="button"]')];
+    const hit =
+      els.find((x) => (x.getAttribute('aria-label') || '') === ${JSON.stringify(label)}) ||
+      els.find((x) => (x.getAttribute('title') || '').startsWith(${JSON.stringify(label)})) ||
+      els.find((x) => x.textContent.trim() === ${JSON.stringify(label)}) ||
+      els.find((x) => x.textContent.includes(${JSON.stringify(label)}));
+    if (!hit) return false;
+    hit.click();
+    return true;
+  })()`;
+
+async function setupState(st) {
+  await send("Emulation.setDeviceMetricsOverride", { width: st.w, height: st.h, deviceScaleFactor: 1, mobile: st.w < 600 });
+  await send("Page.navigate", { url: BASE + "index.html?visual=" + Date.now() });
+  await waitFor("window.__pilot && window.__pilot.session.booted", 60000);
+  await evaluate("localStorage.clear(); true");
+  await send("Page.reload", { ignoreCache: true });
+  await waitFor("window.__pilot && window.__pilot.ui.ready", 60000);
+  await waitFor("window.__pilot && window.__pilot.session.viewFrames.length > 0", 90000);
+  await evaluate(`document.documentElement.setAttribute("data-size", "14"); document.documentElement.setAttribute("data-motion", "off"); true`);
+  await sleep(300);
+  if (st.act === "seek0" || st.act === "seek12") {
+    const i = st.act === "seek0" ? 0 : 12;
+    await evaluate(`(() => { const s = document.querySelector('.vr-seek'); s.value = ${i}; s.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  } else if (st.act === "entry") {
+    if (!(await evaluate(CLICK("课程目录")))) throw new Error("entry 点击失败");
+  } else if (st.act === "ref") {
+    if (!(await evaluate(CLICK("诊断手册")))) throw new Error("ref 点击失败");
+  } else if (st.act === "mem") {
+    if (!(await evaluate(CLICK("内存")))) throw new Error("mem 点击失败");
+  } else if (st.act === "proto") {
+    if (!(await evaluate(CLICK("协议")))) throw new Error("proto 点击失败");
+  }
+  await evaluate(`document.documentElement.setAttribute("data-theme", ${JSON.stringify(st.theme)}); true`);
+  await evaluate("document.fonts.ready.then(() => true)");
+  await sleep(350);
+  await evaluate("document.activeElement instanceof HTMLElement ? (document.activeElement.blur(), true) : true");
+  await evaluate("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))");
+}
+
+/** 掩膜：输出块的「采集 N ms」会随运行浮动——按选择器取包围盒涂灰后再比。 */
+async function maskRects() {
+  return evaluate(`(() => {
+    const sel = ['.vr-out'];
+    return sel.map((s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }).filter(Boolean);
+  })()`);
+}
+
+async function shoot(st) {
+  const params = { format: "png", fromSurface: true, captureBeyondViewport: false, clip: { x: 0, y: 0, width: st.w, height: st.h, scale: 1 } };
+  const r = await send("Page.captureScreenshot", params);
+  const img = decodePNG(Buffer.from(r.data, "base64"));
+  for (const rect of await maskRects()) maskRect(img, rect);
+  return img;
+}
+
+function baselinePath(st) {
+  return join(BASELINE_DIR, `${st.name}.png`);
+}
+
+async function main() {
+  await connect();
+  const states = ONLY ? STATES.filter((s) => s.name.includes(ONLY)) : STATES;
+  if (!states.length) throw new Error("--only 没匹配到状态：" + ONLY);
+
+  const indexFile = join(BASELINE_DIR, "index.json");
+  if (!UPDATE) {
+    if (!existsSync(indexFile)) {
+      console.log("::warning::视觉闸未武装：demo/tests/visual/baseline 未入库——需在 CI Ubuntu 跑 workflow_dispatch（visual-baseline）生成并提交基线");
+      ws.close();
+      return;
+    }
+    const idx = JSON.parse(readFileSync(indexFile, "utf8"));
+    if (idx.platform !== process.platform) {
+      console.log(`::warning::视觉闸跳过：基线平台=${idx.platform}，本机=${process.platform}（像素基线不跨 OS 复用；本地只做 --update 预习）`);
+      ws.close();
+      return;
+    }
+  }
+
+  mkdirSync(BASELINE_DIR, { recursive: true });
+  mkdirSync(DIFF_DIR, { recursive: true });
+
+  let failed = 0;
+  const results = [];
+  for (const st of states) {
+    await setupState(st);
+    const shot = await shoot(st);
+    const file = baselinePath(st);
+    if (UPDATE) {
+      writeFileSync(file, encodePNG(shot));
+      results.push({ name: st.name, written: true });
+      console.log("update", st.name, `${st.w}x${st.h}`, st.theme);
+      continue;
+    }
+    const base = decodePNG(readFileSync(file));
+    const d = diffRGBA(base, shot);
+    const ok = d.ratio <= THRESHOLD;
+    results.push({ name: st.name, ratio: d.ratio, ok, bbox: d.bbox });
+    if (!ok) {
+      failed++;
+      writeFileSync(join(DIFF_DIR, `${st.name}.diff.png`), encodePNG(diffImage(base, shot)));
+      console.error(`FAIL ${st.name} diff=${(d.ratio * 100).toFixed(3)}% 变更 ${d.changed}/${d.total}px bbox=${JSON.stringify(d.bbox)} → visual/diff/${st.name}.diff.png`);
+    } else {
+      console.log(`PASS ${st.name} diff=${(d.ratio * 100).toFixed(3)}%`);
+    }
+  }
+  if (UPDATE) {
+    writeFileSync(
+      indexFile,
+      JSON.stringify({ version: 1, platform: process.platform, arch: process.arch, theme: THEMES, shots: states.map((s) => ({ name: s.name, w: s.w, h: s.h, theme: s.theme })) }, null, 2) + "\n",
+    );
+    console.log(`visual_regress: 本机基线已写入 ${BASELINE_DIR}（${states.length} 张；不入库——正式基线由 CI Ubuntu 生成）`);
+    ws.close();
+    return;
+  }
+  console.log(`visual_regress: ${states.length - failed}/${states.length} 通过（阈值 ${(THRESHOLD * 100).toFixed(1)}%）`);
+  ws.close();
+  if (failed) process.exit(1);
+}
+
+main().catch((e) => {
+  console.error("visual_regress 异常:", e?.message ?? e);
+  process.exit(1);
+});

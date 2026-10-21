@@ -221,7 +221,16 @@ func main() {
 	demoDir := flag.String("demo", "demo", "demo 目录")
 	rulesPath := flag.String("rules", "scripts/demo_ui_lint/rules.json", "规则文件")
 	selftest := flag.Bool("selftest", false, "内存注入三路证红后即退出（不读盘）")
+	rawBaseline := flag.String("raw-baseline", "scripts/demo_ui_lint/raw_literals_baseline.json", "裸值棘轮基线（#222 P0 第三批）")
+	updateRaw := flag.Bool("update-raw", false, "重写裸值基线（人工令：清理存量后收窄）")
 	flag.Parse()
+
+	if *selftest {
+		if err := selftestRaw(); err != nil {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest 裸值棘轮证红失败: %v\n", err)
+			os.Exit(1)
+		}
+	}
 
 	var rl rules
 	if *selftest {
@@ -753,7 +762,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest toggle 首参未定义类未被抽到——首参特判退化\n")
 			os.Exit(1)
 		}
-		fmt.Printf("demo_ui_lint: -selftest 五类证红 OK + 泛型锚 OK（class=%d var=%d id=%d zombie=%d mono=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
+		fmt.Printf("demo_ui_lint: -selftest 五类证红 OK + 泛型锚 OK + 裸值棘轮五路 OK（class=%d var=%d id=%d zombie=%d mono=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
 		return
 	}
 
@@ -776,6 +785,31 @@ func main() {
 			"抽取面塌缩：有效位点 class=%d（下限 %d）/ id=%d（下限 %d）/ var=%d（下限 %d）/ mono=%d（下限 %d）——抽取器失能或 demo 大重构（重构则更新常量）",
 			sitesClass, minClassSites, sitesID, minIDSites, sitesVar, minVarSites, sitesMono, minMonoSites)})
 	}
+
+	// ── 裸值棘轮（#222 P0 第三批，2026-10-21）：存量冻结、只减不增 ──
+	// 判定面见 raw.go 头注：demo/src 的 CSS 面（.css + .svelte <style>），跳过
+	// @generated 生成物；新增裸值/用量增加/僵尸基线三类红，-update-raw 为人工令。
+	rawEntries, rawErr := collectRawLiterals(*demoDir)
+	if rawErr != nil {
+		fmt.Fprintf(os.Stderr, "demo_ui_lint: 裸值扫描失败: %v\n", rawErr)
+		os.Exit(2)
+	}
+	if *updateRaw {
+		if err := writeRawBaseline(*rawBaseline, rawEntries); err != nil {
+			fmt.Fprintf(os.Stderr, "demo_ui_lint: 写裸值基线失败: %v\n", err)
+			os.Exit(2)
+		}
+		fmt.Printf("demo_ui_lint: 裸值基线已重写 %s（%d 条 / 颜色 %d + 字号 %d）\n",
+			*rawBaseline, len(rawEntries), countRawKind(rawEntries, "color"), countRawKind(rawEntries, "font-px"))
+		return
+	}
+	baseRaw, rawErr := loadRawBaseline(*rawBaseline)
+	if rawErr != nil {
+		fmt.Fprintf(os.Stderr, "demo_ui_lint: 裸值基线不可读 %s: %v（先跑 -update-raw）\n", *rawBaseline, rawErr)
+		os.Exit(2)
+	}
+	rawIssues := checkRaw(rawEntries, baseRaw)
+	issues = append(issues, rawIssues...)
 
 	if len(issues) > 0 {
 		sort.Slice(issues, func(i, j int) bool { return issues[i].kind < issues[j].kind })

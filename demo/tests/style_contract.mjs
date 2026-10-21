@@ -163,9 +163,14 @@ function walkDiff(expected, actual, path, diffs) {
 async function main() {
   await connect();
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-  await send("Page.navigate", { url: BASE + "index.html" });
+  await send("Page.navigate", { url: BASE + "index.html?style=" + Date.now() });
   await waitFor("window.__pilot && window.__pilot.session.booted", 60000);
-  await waitFor("window.__pilot.ui.ready && window.__pilot.session.viewFrames.length > 0", 90000);
+  // 先清持久化再重载：上次课/主题/字号会留在 localStorage 里（E2E/视觉闸跑完
+  // 常停在别的课）——不清就会拿「另一门课的 DOM」去比基线，红得莫名其妙。
+  await evaluate("localStorage.clear(); true");
+  await send("Page.reload", { ignoreCache: true });
+  await waitFor("window.__pilot && window.__pilot.ui.ready", 60000);
+  await waitFor("window.__pilot && window.__pilot.session.viewFrames.length > 0", 90000);
   await sleep(500);
 
   // 字号档固定 14：em→px 的 computed 值随档位变（CI 新 profile 默认 14，本地

@@ -53,7 +53,8 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 - 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `go run ./scripts/gen_demo_tokens` → `-check` 绿 → 五主题截图对比（零视觉变化口径 = 同帧同尺寸 PNG 逐字节一致）。
 - 门：`go run ./scripts/gen_demo_tokens -check`（逐字节，CRLF 归一）+ `-selftest`（内存篡改注入证红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
 - 本批迁移实测：五主题 1440×900 截图**迁移前后逐字节一致**（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）。
-- **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mjs http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。像素闸仍待建（需 CI Ubuntu + Chrome 生成基线）。
+- **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mjs http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。
+- **像素闸（P0 第三批）**：`node demo/tests/visual_regress.mjs http://127.0.0.1:8931/`——12 状态（工作台首/中帧 × paper/blueprint、目录、手册、内存、协议、768/390）逐像素比对，阈值 0.1%，耗时文本（输出块 ms）先掩膜；差异图落 `demo/tests/visual/diff/`（gitignore）。**基线只能由 CI Ubuntu + Chrome 生成**：`workflow_dispatch` 勾 `visual_baseline=yes` → 产物 `visual-baseline` artifact → 下载后把 `demo/tests/visual/baseline/` 入库；未入库时比对步打印 `::warning::` 跳过（不伪造通过）。本机 `--update` 只作改样式自查，不入库。
 
 ## 本地预览
 

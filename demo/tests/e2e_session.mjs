@@ -12,6 +12,7 @@
 //   B3 三栏 + 底栏时间轴 + 首屏（#222 P1 第四片，2026-10-21）
 //   B4 逐行注记（#222 P1 第五片，2026-10-21）
 //   B5 本幕讲解 + 展开全文（#222 P1 第六片，2026-10-21）
+//   B6 uaf 三幕分镜（#222 P1 内容扩面，2026-10-21）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -278,6 +279,39 @@ async function run() {
   check("B5 本幕讲解 + 展开全文（#222）",
     b5.card.includes("本幕讲解") && b5.card.includes("交换不是瞬间完成的") && b5.open === false && b5.fullInDom === true && b5open === true,
     JSON.stringify({ b5, b5open }));
+
+  // ── B6 第二门旗舰课 uaf（#222 P1 内容扩面）：3 幕（申请写入 / 释放 / 悬垂读），
+  //    点幕 → 幕头与分幕带同步；幕首帧 = 0、第 2 幕首帧 = 3（释放帧）──
+  await pickLesson("uaf");
+  // pickLesson 返回后仍有一段「落地定位」异步（首访中段 / 继续上次）会把 idx 再
+  // 挪一次——等落定再点幕，否则点第 1 幕会被随后定位覆盖（实测 idx 0 → 5）。
+  await sleep(900);
+  const b6 = await evaluate(`(() => ({
+    n: window.__pilot.session.viewFrames.length,
+    beats: document.querySelectorAll('.vr-beat').length,
+    bands: document.querySelectorAll('.vr-band').length,
+    first: document.querySelector('.vr-beat')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-beat')[0]?.click(); true");
+  await sleep(250);
+  const b6start = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+    note: document.querySelector('.vr-scenenote-title')?.textContent?.trim() ?? '',
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-beat')[1]?.click(); true");
+  await sleep(250);
+  const b6free = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+  }))()`);
+  check("B6 uaf 三幕分镜（#222 内容扩面）",
+    b6.n === 6 && b6.beats === 3 && b6.bands === 3 && b6.first.includes("01") &&
+      b6start.idx === 0 && b6start.stage.includes("申请与写入") && b6start.kicker.includes("帧 0–2") &&
+      b6start.note.includes("申请与写入") && b6free.idx === 3 && b6free.stage.includes("释放") && b6free.kicker.includes("帧 3"),
+    JSON.stringify({ b6, b6start, b6free }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

@@ -77,11 +77,12 @@ generated: src/tokens.css（@generated，禁手改）
 |---|---|
 | token 单源 ↔ 产物 | `go run ./scripts/gen_demo_tokens -check`（+ `-selftest`） |
 | 类名/CSS 变量/连字 | `go run ./scripts/demo_ui_lint` |
+| 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `go run ./scripts/demo_ui_lint`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
 | 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套 |
 | 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令） |
-| 画面语义 | **待建**：截图闸（CI Ubuntu + Chrome，8 状态 × 3 视口 × 主题，diff ≤ 0.1%）——本批只留位，不假装已有 |
+| 画面语义（像素） | `node demo/tests/visual_regress.mjs`——12 状态（工作台首/中帧 × paper/blueprint、目录、手册、内存、协议、768/390）× 逐像素 diff（阈值 0.1%），耗时文本走掩膜；**基线只能由 CI Ubuntu + Chrome 生成**（`workflow_dispatch` 选 `visual_baseline=yes` → artifact → 入库），未武装时打印 `::warning::` 跳过（不伪造通过） |
 
 ## 8. 本文件的边界
 

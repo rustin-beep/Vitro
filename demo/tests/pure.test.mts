@@ -421,3 +421,47 @@ test("lessonMd：bubble scene 覆盖 0..41（内容锚，先红后绿）", () =>
     assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
   }
 });
+
+// 第二门旗舰课（#222 P1 内容扩面）：uaf 释放后读——6 帧、3 幕；帧数来自
+// 2026-10-21 实机采集（`node tmp/iss222/measure-lesson.mjs uaf` → n=6）。
+test("lessonMd：uaf scene 覆盖 0..5（内容锚：悬垂指针三幕）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/basic/uaf/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 3);
+  assert.deepEqual(
+    doc.scenes.map((s) => [s.id, s.from, s.to, s.lines.join("..")]),
+    [
+      ["01", 0, 2, "4..5"],
+      ["02", 3, 3, "6..6"],
+      ["03", 4, 5, "7..8"],
+    ],
+  );
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
+  // 注释块剥离：正文首块仍是 h2（与本片 E-08/课文渲染口径一致）
+  assert.equal(doc.blocks[0].type, "h2");
+});
+
+// token 单源 ↔ 主题清单一致性（#222 P0）：新加主题若只改了 persisted 的
+// THEME_KEYS、没在 tokens.json 里登记色板，style_contract 只覆盖硬编码五主题、
+// 该主题会静默无样式——这里把两边钉死。
+test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8"));
+  const persisted = readFileSync(path.resolve(here, "../src/persisted.svelte.ts"), "utf8");
+  const m = persisted.match(/THEME_KEYS\s*=\s*\[([^\]]+)\]/);
+  assert.ok(m, "persisted.svelte.ts 里找不到 THEME_KEYS");
+  const keys = m[1]
+    .split(",")
+    .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean);
+  assert.ok(keys.length >= 5, `THEME_KEYS 只解析出 ${keys.length} 个（抽取面塌缩）`);
+  assert.deepEqual([...tokens.themeOrder].sort(), [...keys].sort());
+  for (const k of keys) {
+    const t = tokens.themes[k]?.tokens ?? {};
+    assert.ok(Object.keys(t).length > 0, `主题 ${k} 在 tokens.json 里没有 token`);
+    assert.ok(["--vr-bg", "--vr-panel", "--vr-ink", "--vr-rule", "--vr-amber"].every((v) => t[v]), `主题 ${k} 缺核心 token`);
+  }
+});

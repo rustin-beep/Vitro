@@ -515,3 +515,54 @@ test "time_clock_host_wall_source_wiring" {
   vm.execute_host_func(123, 1, 1)
   assert_eq(vm.pop(), 0UL)
 }
+
+///|
+/// #168 红锚（2026-10-21，修复前证红）：libc StepEvent 行号域（strlen
+/// 段 89~95）与用户断点行号重叠 → 假暂停；#167 引擎半边：libc 步把
+/// current_line 改写为 libc 内部行号（错行高亮根源）。修复后：断点
+/// 不在用户真实行上时 run 到完成，且 current_line 不被 libc 污染。
+test "libc_step_event_no_user_breakpoint_hit_issue168" {
+  let vm = VitroVM::new()
+  // 用户程序：PushConst 串址; Call 1015(strlen); Pop; PushConst 0; Ret
+  // （无用户 StepEvent——91 行断点只可能与 libc 段重叠）
+  let out = @bytecode.CompileOutput::{
+    code: [
+      @opcode.Instruction::new(PushConst, 4104, @source.SourceLoc::new(1, 1)),
+      @opcode.Instruction::new(Call, 1015, @source.SourceLoc::new(2, 1)),
+      @opcode.Instruction::new(Pop, 0, @source.SourceLoc::new(3, 1)),
+      @opcode.Instruction::new(PushConst, 0, @source.SourceLoc::new(4, 1)),
+      @opcode.Instruction::new(Ret, 0, @source.SourceLoc::new(4, 1)),
+    ],
+    globals_init_32: [],
+    globals_init_64: [],
+    func_table: Map([]),
+    func_index: Map([]),
+    string_data: [],
+    source_map: [],
+    symbols: [],
+    struct_defs: Map([]),
+    union_defs: Map([]),
+    f64_constants: [],
+    i64_constants: [],
+    global_data_end: 0U,
+  }
+  vm.setup_from_output(out, 0, [], [])
+  vm.write_cstring(4104U, "ab")
+  // 用户断点 91 行（与 strlen 内部 StepEvent 行号域 89~95 重叠）
+  ignore(vm.breakpoints.add(91))
+  let rc = vm.run()
+  // 修后：不在用户真实断点行 → 完整跑完 rc=0 且零 trap、非 paused
+  assert_eq(rc, 0)
+  assert_false(vm.paused, msg="libc 内部同号 StepEvent 不得假暂停")
+  assert_true(
+    vm.error.is_empty(),
+    msg="run 不得因 libc 假暂停产 trap（实得 \{vm.error}）",
+  )
+  // #167 引擎半边：current_line 不得被 libc 内部行号污染（用户段无
+  // StepEvent，初值 0 应保持）
+  assert_eq(
+    vm.current_line,
+    0,
+    msg="libc StepEvent 不得改写 current_line（实得 \{vm.current_line}——libc 行号污染）",
+  )
+}

@@ -71,6 +71,7 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
     inst.operand,
     inst.loc.line,
     inst.loc.column,
+    inst.loc.file_id,
   )
   match r {
     Some(result) => result
@@ -108,6 +109,7 @@ fn VitroVM::dispatch_single(
   operand : Int32,
   line : Int32,
   column : Int32,
+  file_id : Int32,
 ) -> StepResult? {
   match op {
     Nop => ()
@@ -259,7 +261,7 @@ fn VitroVM::dispatch_single(
       )
     // ── 教学观测 ──
     StepEvent | TrapBounds | TrapBoundsVla =>
-      return self.execute_debug(op, operand, line, column)
+      return self.execute_debug(op, operand, line, column, file_id)
   }
   if !self.error.is_empty() {
     Some(Trap)

@@ -15,9 +15,21 @@ fn VitroVM::execute_debug(
   operand : Int32,
   line : Int32,
   column : Int32,
+  file_id : Int32,
 ) -> StepResult? {
   match op {
     StepEvent => {
+      // #167/#168（2026-10-21）：libc 段（装载 file_id=1）的 StepEvent
+      // 行号是 libc C 源自家坐标（464 条、域 3~536），与用户行号共用
+      // 一个无文件域编号空间，三面全部跳过——①断点行号域重叠假暂停
+      //（用户在 89~95 行设断点 + strlen 内部同号）；②current_line 错
+      // 染（UI 把 libc 行号高亮到用户源文件——错行高亮根源）；③vis
+      // 事件同号误触发。跳过后 libc 步行进时 current_line 保持上一
+      // 用户行（高亮停在调用点——教学语义合理）。热力图的 file_id==0
+      // 口径（step()）同族先例。
+      if file_id == 1 {
+        return None
+      }
       self.current_line = operand
       if self.breakpoints.contains(operand) {
         self.paused = true

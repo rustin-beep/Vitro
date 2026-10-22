@@ -1,6 +1,3 @@
-// @category: llm_multifile
-// 工程：MF-JSONMINI — 迷你 JSON：递归下降 + 转义 + 路径查询 + 序列化回环
-// 来源：LLM 多文件语料（2026-10-21 入库；clang golden 由 clang_direct 工程模式现场生成）
 #include <stdio.h>
 #include <string.h>
 #include "json.h"

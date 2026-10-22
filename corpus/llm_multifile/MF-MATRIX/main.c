@@ -1,6 +1,3 @@
-// @category: llm_multifile
-// 工程：MF-MATRIX — 矩阵库：高斯-约当求逆 + 行列式 + 奇异矩阵失败路径
-// 来源：LLM 多文件语料（2026-10-21 入库；clang golden 由 clang_direct 工程模式现场生成）
 #include <stdio.h>
 #include <math.h>
 #include "matrix.h"

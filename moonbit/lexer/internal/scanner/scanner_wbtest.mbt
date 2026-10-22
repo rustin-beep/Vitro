@@ -62,3 +62,30 @@ test "scan_raw c11 whitespace vtab formfeed" {
   )
   assert_eq(r.errors.length(), 0)
 }
+
+///|
+/// #247（2026-10-22，C99 §6.4.4.4 小数部分缺省）：`10.` / `10.e5` 是
+/// 完整浮点常量——旧扫描把尾点拆出去按成员访问处理（E2005/E3041 误拒）。
+/// 点后三态锚：数字（既有）、e 指数（10.e5）、常量终结符（10.;）。
+test "scan_raw trailing dot float literal" {
+  let r = scan_raw(@utf8.encode("double a = 10.; double b = 10.e5;"))
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="Double:double Identifier:a Assign:= FloatLiteral:10. Semicolon:; Double:double Identifier:b Assign:= FloatLiteral:10.e5 Semicolon:; Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}
+
+///|
+/// #247 边界：点后标识符起始（`10.x` 非法后缀）维持拆分——教学域显式
+/// 拒绝优于静默吞；前导点 `.5` 与 `2.f` 既有形态回归。
+test "scan_raw trailing dot boundaries" {
+  let r = scan_raw(@utf8.encode(".5 2.f 10.x"))
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="FloatLiteral:.5 FloatLiteral:2.f Number:10 Dot:. Identifier:x Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}

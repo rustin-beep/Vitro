@@ -265,6 +265,21 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
               Some(t) => self.compute_type_size(t)
               None =>
                 match operand {
+                  // #265（2026-10-22）：声明类型里的 vla_dims（`(int)(sizeof
+                  // ARR / sizeof ARR[0])` 维数惯用法）未经 resolve——
+                  // Identifier/Index 的 ty 未定型，查符号表取真类型
+                  //（`sizeof ARR[0]` 的 Index 节点取下标一次后的元素类型）
+                  Some(Identifier(name, _, _)) =>
+                    match self.lookup_var(name) {
+                      Some(sym) => self.compute_type_size(sym.ty)
+                      None => return None
+                    }
+                  Some(Index(Identifier(name, _, _), _, _, _)) =>
+                    match self.lookup_var(name) {
+                      Some(sym) if sym.ty.is_array() =>
+                        self.compute_type_size(sym.ty.subscript_type())
+                      _ => return None
+                    }
                   // 求值时机在 resolve 之后：operand.ty() 已定型
                   Some(op_expr) => self.compute_type_size(op_expr.ty())
                   None => return None
@@ -493,12 +508,18 @@ fn TypeChecker::diagnose_static_init(
     Identifier(name, _, _) => {
       let is_func = self.funcs.contains(name) ||
         self.static_func_sigs.contains(name)
-      if !is_func && self.lookup_var(name) is Some(_) {
-        self.report_error(
-          "初始化器引用了变量 '\{name}'，静态存储期对象的初始化器必须是编译期常量表达式",
-          expr.loc(),
-          E3075_StaticInitNotConstant,
-        )
+      if !is_func && self.lookup_var(name) is Some(sym) {
+        // #264（2026-10-22）：数组名是地址常量——C23 §6.6p9（数组右值
+        // 退化为指向首元素的指针，指向静态存储期对象），静态初始化器
+        // 合法形态（静态规格表互引用的标准写法）；值回填在 codegen
+        // flatten_global_init 的地址常量路径
+        if !sym.ty.is_array() {
+          self.report_error(
+            "初始化器引用了变量 '\{name}'，静态存储期对象的初始化器必须是编译期常量表达式",
+            expr.loc(),
+            E3075_StaticInitNotConstant,
+          )
+        }
       }
     }
     Unary(op, inner, _, _) =>
@@ -524,6 +545,65 @@ fn TypeChecker::diagnose_static_init(
         self.diagnose_static_init(elem.value)
       }
     _ => ()
+  }
+}
+
+///|
+/// #265（2026-10-22）：VLA 维度的常量二次折叠。parser 的 const_int_of
+/// 无 Cast/Sizeof 臂——`(int)(sizeof arr / sizeof arr[0])`（C 求数组长
+/// 度的标准惯用法，C23 §6.6 整型常量表达式）折不出被误判 VLA（dims 落
+/// 0 哨兵 + is_vla=true），下游三面连坐：decay 判等（type_eq 含
+/// is_vla、subscript_type 传导）误拒 E3038 / 全局被 codegen 拒「不支持
+/// VLA」/ struct 成员 stride 落 0 哨兵运行时 trap。typeck 层 const_eval
+/// 支持 Cast/Sizeof/Ternary（含 #265 的 sizeof 符号表回退），此处对
+/// vla_dims 逐维再折；**全部维度折出正整数**才回填定长（部分折出维持
+/// VLA——parser size 状态机「最外维 0 恒 0」的语义不在此重算，混合
+/// 形态教学域罕见、维持既有运行时求值路径）。
+///
+/// vla_dims 与 dims 的 0 哨兵维按序一一对应（parser array_prepend_dim
+/// 头插同序保证；显式 `[0]` 零长数组 is_vla=false 不进此路径）。
+fn TypeChecker::refold_vla_const_dims(
+  self : TypeChecker,
+  ty : @ast.Type,
+) -> @ast.Type {
+  match ty {
+    Array(element, _, dims, is_const, is_vla, vla_dims) => {
+      if !is_vla || vla_dims.is_empty() {
+        return ty
+      }
+      let new_dims : Array[Int32] = []
+      for d in dims {
+        new_dims.push(d)
+      }
+      let mut cursor = 0
+      let mut all_folded = true
+      for i in 0..<new_dims.length() {
+        if new_dims[i] == 0 && cursor < vla_dims.length() {
+          match self.const_eval(vla_dims[cursor]) {
+            Some(CI(v)) =>
+              if v > 0L && v <= 2147483647L {
+                new_dims[i] = @util.i64_to_i32_bits(v)
+              } else {
+                all_folded = false
+              }
+            // 浮点维度非 C 合法维数形态：不折（VLA 路径承接）
+            Some(CF(_)) => all_folded = false
+            None => all_folded = false
+          }
+          cursor += 1
+        }
+      }
+      // 0 哨兵维与 vla_dims 未对齐消费（形态异常）或折不全：不动
+      if !all_folded || cursor != vla_dims.length() {
+        return ty
+      }
+      let mut size = 1
+      for d in new_dims {
+        size *= d
+      }
+      Array(element, size, new_dims, is_const, false, [])
+    }
+    _ => ty
   }
 }
 

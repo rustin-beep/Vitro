@@ -198,9 +198,31 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
 
   // 浮点检查必须在十进制数字扫描之后（peek 停在 '.' 或 'e' 上）；
   // 指数部分（C89）：float.h 的 DBL_EPSILON=2.22e-16 等宏依赖
+  // #247（2026-10-22，C99 §6.4.4.4 digit-sequence '.' 小数部分可缺省）：
+  // 点后取三态——数字/f/F（既有）、e/E 指数（10.e5 形态）、**常量终结符**
+  //（; ) , ] } 空白等非标识符起始字符——`10.` 是完整浮点常量，消费 '.'
+  // 产 FloatLiteral；点后其他标识符起始（`10.x` 非法后缀形态）维持拆分
+  // 由下游报错（诚实保留——教学域显式拒绝优于静默吞）
+  let after_dot = self.peek(1)
+  let dot_exp = (after_dot == 'e' || after_dot == 'E') &&
+    (
+      is_ascii_digit(self.peek(2)) ||
+      (
+        (self.peek(2) == '+' || self.peek(2) == '-') &&
+        is_ascii_digit(self.peek(3))
+      )
+    )
+  let dot_terminated = !(is_ascii_alphanumeric(after_dot) || after_dot == '_') &&
+    !(after_dot == 'e' || after_dot == 'E')
   let dot_float = !has_integer_prefix &&
     self.peek(0) == '.' &&
-    (is_ascii_digit(self.peek(1)) || self.peek(1) == 'f' || self.peek(1) == 'F')
+    (
+      is_ascii_digit(after_dot) ||
+      after_dot == 'f' ||
+      after_dot == 'F' ||
+      dot_exp ||
+      dot_terminated
+    )
   let exp_float = !has_integer_prefix &&
     (self.peek(0) == 'e' || self.peek(0) == 'E') &&
     (

@@ -152,7 +152,20 @@ pub fn Type::subscript_type(self : Type) -> Type {
             new_vla_dims.push(vla_dims[i])
           }
         }
-        Array(element, new_size, new_dims, is_const, is_vla, new_vla_dims)
+        // #265（2026-10-22）：is_vla 传导仅当剩余维仍是 VLA——判据取
+        // dims 的 0 哨兵（VLA 维的标志；vla_dims 表达式可为空——手写
+        // 锚/部分路径不带，0 哨兵恒在）。剥掉第一维后全常量维即普通
+        // 数组（C 语义；旧原样传导令形参 decay 的 pointee 带 VLA 标记，
+        // `char out[][N]` 收 cast 维数误判数组/真 VLA 双形态均误拒
+        // E3038——C99 VLA 实参传 N 常量形参本就合法）
+        Array(
+          element,
+          new_size,
+          new_dims,
+          is_const,
+          is_vla && new_dims.exists(d => d == 0),
+          new_vla_dims,
+        )
       }
     _ => self
   }

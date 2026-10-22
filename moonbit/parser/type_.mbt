@@ -963,6 +963,14 @@ fn Parser::parse_param_list_inner(
     let np : (@ast.Type, String) = if self.check(Comma) || self.check(RParen) {
       // 无名参数（函数原型声明）：int foo(int);
       (base_type, "")
+    } else if self.check(LBracket) {
+      // #252（2026-10-22，C11 §6.7.6.3p13）：无名抽象数组声明符
+      //（`void f(int[], int)` / `void f(char[3])` 原型形态——参数类型
+      // 信息完全由类型给出，名字可省）。抽象声明符链解释出数组类型，
+      // 随后统一走下方形参 decay（数组 → 指向首元素/行指针）
+      let node = self.parse_abstract_declarator_body(depth)
+      let ty = self.interpret_declarator_node(node, base_type, depth)
+      (ty, "")
     } else if self.check(Star) {
       // 前瞻：跳过所有 * 后看是否是 Comma/RParen，以支持 int foo(char *);
       let lookahead = self.look_ahead_skip_stars()

@@ -180,14 +180,68 @@ fn BytecodeGen::flatten_global_init(
           Identifier(name, _, _) =>
             match self.func_index.get(name) {
               Some(idx) => self.globals_init_32.push((base_offset, idx))
-              None => ()
+              // #264（2026-10-22）：数组名地址常量（C23 §6.6p9——数组右值
+              // 退化指向首元素，静态规格表互引用标准写法）——旧形态
+              // func_index 未命中静默置 0（运行期 NULL 解引用 trap）；
+              // 地址模型同取址：GLOBAL_START + offset；前向引用 pending
+              None => ignore(self.push_global_addr_init(base_offset, name))
             }
+          // #264 同族：&g 地址常量——诊断面 typeck 已放行（Addr 臂），
+          // 值回填此前静默置 0
+          Unary(@ast.UnaryOp::Addr, Identifier(name, _, _), _, _) =>
+            ignore(self.push_global_addr_init(base_offset, name))
           StringLiteral(value, _, _) =>
             // 延迟到 Pass 1 结束后分配地址，确保字符串区位于全局变量区之后
             self.pending_string_inits.push((base_offset, value))
           _ => ()
         }
       }
+  }
+}
+
+///|
+/// #264：地址常量回填单点——目标已登记直接写 GLOBAL_START + offset
+///（指针 4 字节槽）；前向引用/静态局部（Pass 3 才 bump）落 pending，
+/// flush_pending_addr_inits 在 Pass 1/3 尾统一回填（同字符串字面量时机）。
+/// 返回 true = 已处置（直写或挂 pending，调用方跳过默认回填防覆盖）；
+/// false = 未声明符号（诊断层 E3023 已报，调用方走原路径）。
+fn BytecodeGen::push_global_addr_init(
+  self : BytecodeGen,
+  base_offset : UInt32,
+  name : String,
+) -> Bool {
+  let offset = match self.global_indices.get(name) {
+    Some(o) => o
+    None =>
+      match self.static_local_indices.get(name) {
+        Some(o) => o
+        None => -1
+      }
+  }
+  if offset >= 0 {
+    self.globals_init_32.push(
+      (
+        base_offset,
+        (@bytecode.GLOBAL_START + offset.reinterpret_as_uint()).reinterpret_as_int(),
+      ),
+    )
+    true
+  } else {
+    self.pending_addr_inits.push((base_offset, name))
+    true
+  }
+}
+
+///|
+/// 回填 pending_addr_inits（前向引用的地址常量——Pass 1/3 尾调用，幂等；
+/// 此时全局与静态局部均已登记，仍 miss = 未声明符号，再挂 pending 至
+/// 终轮后丢弃，置 0 由诊断层承接）。
+fn BytecodeGen::flush_pending_addr_inits(self : BytecodeGen) -> Unit {
+  let pending = self.pending_addr_inits
+  self.pending_addr_inits = []
+  for entry in pending {
+    let (base_offset, name) = entry
+    let _ = self.push_global_addr_init(base_offset, name)
   }
 }
 

@@ -23,12 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `order` 为 courseIndex 真值 3/7。
 - **码表**：`catalogDetail.ts` 新增 19 条 BAD/FIX（三臂实测）与 11 条关联课，EXAMPLES
   25 条 / RELATED 16 条；删 E1019 死键（真实 code_str 为 W1019）；E3026 无引擎发射点，
-  留空不硬凑；W3064 示例按引擎真实语义保留，catalog 标题待数据批修正（已注释登记）。
+  留空不硬凑。**W3064 的 catalog 文案同步修正**：`catalog.json` 标题「双重指针转换」
+  →「指针与浮点互转」，解释/常见原因按引擎 `typeck/expr.mbt` 的真实发射点
+  （指针 ↔ 浮点显式 cast）重写，`gen_diag` 重生 `catalog_data_gen.mbt`；页面
+  101 条 C 目录实测 title = 指针与浮点互转。
+- **内容闸**（审阅 P2-1/P2-2）：pure 新增 3 条——全量 course scene 连续/行界/注记、
+  第〇章新 5 门 N 帧与四节、码表 EXAMPLES/RELATED 键命中 catalog + 关联课存在；
+  突变实证：scene `0..1→9..9` 与 `RELATED E3060→no_such_lesson` 均判红，恢复后绿。
 - **审阅补丁**：`catalogDetail` 头注限定「新增 19 条」为完整程序，既有 6 条保留片段
   形态；`global_struct` 幕注记 off-by-one 修正。
-- **验证**：pure 34/34、e08 17/17、course_catalog 8 课 + `-selftest`、`gen_course
-  -check`、`teaching_gen_check`（Git Bash）、tsc/svelte-check/oxlint/build、ui_lint、
-  assemble、E2E 五套 90/90；码表 19×2 条 js/native/wasm 三臂一致。
+- **验证**：pure **37/37**、e08 17/17、course_catalog 8 课 + `-selftest`、`gen_course
+  -check`、`teaching_gen_check`（Git Bash）、`gen_diag -check`、tsc/svelte-check/
+  oxlint/build、ui_lint、assemble、E2E 五套 90/90；码表 19×2 条 js/native/wasm
+  三臂一致。
 
 ### fix(demo): #263 审阅处置——P2×6 + P3 清理 + 同步 master 5d3d4dd7（2026-10-22）
 

@@ -8,9 +8,10 @@
 // 【锚驱动战果记录】首批锚抓到三真问题：editor 漏 import esc（拆分接线
 // 遗漏）、calltree 漏 import esc、isArrayAnimCase 紧凑声明不命中（存量 bug）。
 import { test } from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import assert from "node:assert/strict";
 
 import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
@@ -31,6 +32,7 @@ import {
 import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
 import { sceneBand, sceneIndexAt, sceneKicker, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
+import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -494,5 +496,89 @@ test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
     const t = tokens.themes[k]?.tokens ?? {};
     assert.ok(Object.keys(t).length > 0, `主题 ${k} 在 tokens.json 里没有 token`);
     assert.ok(["--vr-bg", "--vr-panel", "--vr-ink", "--vr-rule", "--vr-amber"].every((v) => t[v]), `主题 ${k} 缺核心 token`);
+  }
+});
+
+// ── 内容批回归闸（2026-10-23 审阅 P2）：课程 scene 与码表附属内容此前只有
+// tmp/ 探针，没有任何 CI 锚——scene 帧号改坏、catalog 键写错都能全绿。
+// 这里补两个纯函数闸：不依赖浏览器/引擎，只锁结构面（帧号连续/行界/键命中/
+// 关联课存在）；引擎帧数锚另由各课的 N 常量显式钉住，帧流变化会先红。
+
+test("lessonMd：全量 course 叙述 scene 连续、行界/注记非空（P2-1 闸）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const root = path.resolve(here, "../../course");
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(p);
+      else if (ent.isFile() && ent.name === "lesson.md") files.push(p);
+    }
+  };
+  walk(root);
+  assert.ok(files.length >= 8, `course 叙述文件只找到 ${files.length} 份（抽取面塌缩）`);
+  for (const file of files) {
+    const doc = parseLessonMd(readFileSync(file, "utf8"));
+    const rel = path.relative(root, file);
+    assert.ok(doc.scenes.length >= 1, `${rel}: 无 scene`);
+    assert.equal(doc.scenes[0].from, 0, `${rel}: 首幕不从 0 起`);
+    let prev = -1;
+    for (const s of doc.scenes) {
+      assert.ok(s.to >= s.from, `${rel}: scene ${s.id} to < from`);
+      assert.equal(s.from, prev + 1, `${rel}: scene ${s.id} 与上一幕不连续`);
+      assert.ok(s.lines[0] >= 1 && s.lines[1] >= s.lines[0], `${rel}: scene ${s.id} 行界非法`);
+      assert.ok(s.title.trim() && s.note.trim(), `${rel}: scene ${s.id} 标题/注记为空`);
+      prev = s.to;
+    }
+  }
+});
+
+test("lessonMd：第〇章新 5 门 scene 帧数/四节（内容批锚）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const expectN: Record<string, number> = { hello: 5, double_avg: 9, global_struct: 540, macro: 6, malloc_free: 9 };
+  const need = ["这门课在做什么", "先跑一遍，看三个东西", "一个常见错误，先放在这里", "试着改"];
+  for (const [id, n] of Object.entries(expectN)) {
+    const doc = parseLessonMd(readFileSync(path.resolve(here, `../../course/basic/${id}/lesson.md`), "utf8"));
+    assert.ok(doc.scenes.length >= 3 && doc.scenes.length <= 6, `${id}: 幕数 ${doc.scenes.length} 不在 3..6`);
+    assert.equal(doc.scenes[doc.scenes.length - 1].to, n - 1, `${id}: 末幕 to ≠ N-1`);
+    assert.equal(doc.scenes.reduce((s, x) => s + (x.to - x.from + 1), 0), n, `${id}: scene 覆盖帧数 ≠ ${n}`);
+    const h2 = doc.blocks.flatMap((b) => (b.type === "h2" ? [b.text] : []));
+    for (const h of need) assert.ok(h2.includes(h), `${id}: 缺小节「${h}」`);
+  }
+});
+
+test("catalogDetail：示例/关联课键命中 catalog，关联课存在（P2-2 闸）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const cat = JSON.parse(readFileSync(path.resolve(here, "../../scripts/moonbit/diagnostics_data/catalog.json"), "utf8")) as {
+    entries: Array<{ code: number }>;
+  };
+  const arms = JSON.parse(readFileSync(path.resolve(here, "../../scripts/moonbit/diagnostics_data/error_codes.json"), "utf8")) as {
+    arms: Array<{ name: string; code: number }>;
+  };
+  const prefix = new Map(arms.arms.map((a) => [a.code, a.name.split("_")[0]]));
+  const codes = new Set(cat.entries.map((e) => prefix.get(e.code)).filter((s): s is string => !!s));
+  assert.ok(Object.keys(EXAMPLES).length >= 25, `EXAMPLES 只剩 ${Object.keys(EXAMPLES).length} 条`);
+  for (const [code, ex] of Object.entries(EXAMPLES)) {
+    assert.ok(codes.has(code), `EXAMPLES 键 ${code} 不在 catalog.code_str`);
+    assert.ok(ex.bad.trim().length > 0, `${code}: bad 为空`);
+    if (ex.fix !== undefined) assert.ok(ex.fix.trim().length > 0, `${code}: fix 为空`);
+  }
+
+  const cases = runInNewContext(readFileSync(path.resolve(here, "../cases.js"), "utf8") + "\n;DEMO_CASES;", {}) as Array<{ id: string }>;
+  const algos = runInNewContext(readFileSync(path.resolve(here, "../algorithms.js"), "utf8") + "\n;DEMO_ALGORITHMS;", {}) as {
+    groups?: Array<{ id: string; items?: Array<{ id: string; variants?: Array<{ tpl: string }> }>; xitems?: Array<{ id: string }> }>;
+  };
+  const lessonIds = new Set<string>(cases.map((c) => c.id));
+  for (const g of algos.groups ?? []) {
+    if (g.id === "xlab") for (const x of g.xitems ?? []) lessonIds.add(x.id);
+    else for (const it of g.items ?? []) {
+      lessonIds.add(it.id);
+      for (const v of it.variants ?? []) lessonIds.add(v.tpl);
+    }
+  }
+  assert.ok(Object.keys(RELATED).length >= 16, `RELATED 只剩 ${Object.keys(RELATED).length} 条`);
+  for (const [code, id] of Object.entries(RELATED)) {
+    assert.ok(codes.has(code), `RELATED 键 ${code} 不在 catalog.code_str`);
+    assert.ok(lessonIds.has(id), `RELATED[${code}] 的课 id「${id}」不在课表`);
   }
 });

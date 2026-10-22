@@ -123,10 +123,11 @@ Firefox 134+），加载失败页面会显示降级提示。
    教学硬伤防线）。抓「操作永不生效的类」「引用不存在的 CSS 变量」「连字
    复活」形态。
 11. `go run ./scripts/teaching_phase_vocab`——教学阶段词表冻结闸。
-12. `node --test demo/tests/pure.test.mts`——纯函数 34 锚（buildCallTree
+12. `node --test demo/tests/pure.test.mts`——纯函数 37 锚（buildCallTree
     trie / isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四
     锚 / share 七锚 / **decorateBadges·formatTrap 徽章码表** / scene 解析与
-    scenes 纯函数 / 逐行注记差分 / 三门旗舰课 scene 覆盖；须 node 25，
+    scenes 纯函数 / 逐行注记差分 / 三门旗舰课 scene 覆盖 / 全量 course scene
+    连续与行界 / 第〇章 5 门 N 帧与四节 / 码表键与关联课；须 node 25，
     type stripping 直跑 .ts）。DOM 交互层不硬测，走第 13 条浏览器 E2E。
 13. **浏览器 E2E（已进 CI，2026-10-17 收口）**——`demo/tests/
     e2e_diagcard.mjs`（诊断带 + 断点行为链 S1-S5，18 锚）+

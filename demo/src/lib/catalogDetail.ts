@@ -304,8 +304,6 @@ int main(void) {
   return 0;
 }`,
   },
-  // ⚠️ catalog 3064 当前标题仍写「双重指针转换」，与本条「指针 ↔ 浮点」语义
-  // 不符；示例按引擎真实发射点保留，待 catalog 数据批修标题（2026-10-23 审阅登记）。
   W3064: {
     bad: `int main(void) {
   double d = 1.0;

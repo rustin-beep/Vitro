@@ -12,7 +12,7 @@
   import { collect, frameAt, resetSession, session } from "../session.svelte.ts";
   import { packSource, urlLenWarning, SHARE_URL_WARN } from "../../js/share.ts";
   import { toast } from "../toasts.svelte.ts";
-  import { ui, setMode } from "../ui.svelte.ts";
+  import { ui } from "../ui.svelte.ts";
   import { untrack } from "svelte";
   import { lessonSession } from "../lib/lessonSession.svelte.ts";
   import { progress } from "../lib/progress.svelte.ts";
@@ -31,6 +31,9 @@
   import { sceneAnnotations } from "../lib/annotations.ts";
   import { sceneIndexAt } from "../lib/scenes.ts";
   import BeatRail from "../lib/BeatRail.svelte";
+  import ModeTabs from "../lib/ModeTabs.svelte";
+  import MemorySide from "../lib/MemorySide.svelte";
+  import ProtoSide from "../lib/ProtoSide.svelte";
   import WorkspaceBar from "../lib/WorkspaceBar.svelte";
   import SessionConfig from "../lib/SessionConfig.svelte";
 
@@ -188,6 +191,7 @@
   });
 </script>
 
+{#if ui.mode === "exec"}
 <main class="vr-bench">
   <section class="vr-colrail" aria-label="课程与分镜">
     <div class="vr-kicker">{kicker}</div>
@@ -273,39 +277,26 @@
   </section>
 
   <section class="vr-colnow" aria-label="此刻">
-    <nav class="vr-modes" aria-label="仪器模式">
-      <button type="button" class="vr-mode" class:is-active={ui.mode === "exec"} onclick={() => setMode("exec")}>执行</button>
-      <button type="button" class="vr-mode" class:is-active={ui.mode === "mem"} onclick={() => setMode("mem")}>内存</button>
-      <button type="button" class="vr-mode" class:is-active={ui.mode === "proto"} onclick={() => setMode("proto")}>协议</button>
-      <span class="vr-mode-meta">{session.gran === "insn" ? "指令级" : "语句级"}</span>
-    </nav>
+    <ModeTabs meta={session.gran === "insn" ? "指令级" : "语句级"} />
 
-    {#if ui.mode === "exec"}
-      <DiagBand onjump={(ln) => editorRef?.revealLine(ln)} />
-      {#if snaps.length > 0}
-        {#each snaps as s, si (s.name + "#" + si)}
-          <ArrayCells snap={s} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} {source} />
-        {/each}
-      {:else}
-        <section class="vr-block" aria-label="数组可视化">
-          <div class="vr-blockhead"><h2 class="vr-label">数组</h2><span class="vr-spacer"></span><span class="vr-meta">本帧无数组快照</span></div>
-          <p class="vr-empty">{n ? "（此帧没有数组下标访问）" : "（采集后显示数组索引格）"}</p>
-        </section>
-      {/if}
-      <CallTree tree={session.tree} idx={session.idx} {source} />
-      <VarsList idx={dataIdx} heldFrom={heldFrom} />
-    {:else if ui.mode === "mem"}
-      <MemoryView />
+    <DiagBand onjump={(ln) => editorRef?.revealLine(ln)} />
+    {#if snaps.length > 0}
+      {#each snaps as s, si (s.name + "#" + si)}
+        <ArrayCells snap={s} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} {source} />
+      {/each}
     {:else}
-      <ProtoView />
+      <section class="vr-block" aria-label="数组可视化">
+        <div class="vr-blockhead"><h2 class="vr-label">数组</h2><span class="vr-spacer"></span><span class="vr-meta">本帧无数组快照</span></div>
+        <p class="vr-empty">{n ? "（此帧没有数组下标访问）" : "（采集后显示数组索引格）"}</p>
+      </section>
     {/if}
+    <CallTree tree={session.tree} idx={session.idx} {source} />
+    <VarsList idx={dataIdx} heldFrom={heldFrom} />
   </section>
 
   <section class="vr-coldock" aria-label="时间轴与输出">
     <Timeline {source} />
-    {#if ui.mode === "exec"}
-      <OutputView />
-    {/if}
+    <OutputView />
   </section>
 
   <section class="vr-notearea" aria-label="讲解与课文">
@@ -320,3 +311,18 @@
     {/if}
   </section>
 </main>
+{:else}
+<main class="vr-modebench" data-mode={ui.mode}>
+  <header class="vr-modebar">
+    <ModeTabs meta={ui.mode === "mem" ? "只读 · 会话结束态" : "只读事实 · capabilities / contracts"} />
+  </header>
+  <div class="vr-modebody">
+    <section class="vr-modemain" aria-label={ui.mode === "mem" ? "内存地图" : "引擎与协议"}>
+      {#if ui.mode === "mem"}<MemoryView />{:else}<ProtoView />{/if}
+    </section>
+    <aside class="vr-modeside" aria-label="本课与动作">
+      {#if ui.mode === "mem"}<MemorySide />{:else}<ProtoSide />{/if}
+    </aside>
+  </div>
+</main>
+{/if}

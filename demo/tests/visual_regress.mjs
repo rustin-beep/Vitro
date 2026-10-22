@@ -1,4 +1,4 @@
-// 像素闸（#222 P0 第三批，2026-10-21）：8 状态 × 主题 × 视口的截图对账。
+// 像素闸（#222 P0 第三批，2026-10-21；P0 状态补全 2026-10-22）：16 状态 × 主题 × 视口。
 //
 // 基线口径：**只在 CI runner + Chrome 生成**——字体栅格化跨 OS 不同，
 // （拍板稿假设 CI 是 Ubuntu；本仓 ci.yml 实为 windows-latest，DESIGN.md §7 已记录更正）
@@ -45,6 +45,12 @@ const STATES = [
   { name: "ref-bp", w: 1440, h: 900, theme: "blueprint", act: "ref" },
   { name: "mem", w: 1440, h: 900, theme: "paper", act: "mem" },
   { name: "proto", w: 1440, h: 900, theme: "paper", act: "proto" },
+  // P0 状态补全（2026-10-22）：trap / 编译失败 / 空输出 / 坏链——四态都是
+  // 「说清发生了什么 + 一个动作」的诚实面，入像素闸防回退成空白或假绿。
+  { name: "state-trap", w: 1440, h: 900, theme: "paper", act: "trap" },
+  { name: "state-compilefail", w: 1440, h: 900, theme: "paper", act: "compilefail" },
+  { name: "state-emptyout", w: 1440, h: 900, theme: "paper", act: "emptyout" },
+  { name: "state-badlink", w: 1440, h: 900, theme: "paper", act: "badlink", hash: "#z1.BROKEN" },
   { name: "work-768", w: 768, h: 1024, theme: "paper", act: "seek12" },
   { name: "work-390", w: 390, h: 844, theme: "paper", act: "seek12" },
 ];
@@ -68,10 +74,26 @@ async function evaluate(expr) {
   return r.result.value;
 }
 
+// 导航/重载窗口的 CDP 竞态：页面上下文销毁瞬间 Runtime.evaluate 会返回
+// -32000（Cannot find context with specified id / Execution context was
+// destroyed）。这是「页面正在换」的正常瞬态，不是断言失败——waitFor 只对它
+// 退避重试；其余 CDP 错误照旧 fail loud（Master 线 2026-10-22 反馈实锤：
+// badlink 态 reload 后偶发整闸 flaky）。
+function isContextRace(err) {
+  return String(err).includes("-32000");
+}
+
 async function waitFor(expr, timeout = 60000) {
   const t0 = Date.now();
   for (;;) {
-    if (await evaluate(expr)) return;
+    let v;
+    try {
+      v = await evaluate(expr);
+    } catch (err) {
+      if (!isContextRace(err)) throw err;
+      v = undefined;
+    }
+    if (v) return;
     if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 100));
     await sleep(200);
   }
@@ -130,12 +152,32 @@ const CLICK = (label) =>
 
 async function setupState(st) {
   await send("Emulation.setDeviceMetricsOverride", { width: st.w, height: st.h, deviceScaleFactor: 1, mobile: st.w < 600 });
-  await send("Page.navigate", { url: BASE + "index.html?visual=" + Date.now() });
+  await send("Page.navigate", { url: BASE + "index.html?visual=" + Date.now() + (st.hash ?? "") });
   await waitFor("window.__pilot && window.__pilot.session.booted", 60000);
+  if (st.act === "badlink") {
+    // 坏链横幅是持久 DOM（F1 锚同判据）；不等它直接截会把「已还原」拍成基准
+    await waitFor("document.querySelector('.vr-banner b')?.textContent?.includes('无法还原')", 30000);
+  }
   await evaluate("localStorage.clear(); true");
   await send("Page.reload", { ignoreCache: true });
   await waitFor("window.__pilot && window.__pilot.ui.ready", 60000);
-  await waitFor("window.__pilot && window.__pilot.session.viewFrames.length > 0", 90000);
+  // 坏链态不落课（boot 的还原分支只出横幅）：没有帧流可等——等它只会
+  // 90s 超时（2026-10-22 实锤）。其余态都必须有首课帧流。
+  if (st.act === "badlink") {
+    await waitFor("document.querySelector('.vr-banner b')?.textContent?.includes('无法还原')", 30000);
+  } else {
+    await waitFor("window.__pilot && window.__pilot.session.viewFrames.length > 0", 90000);
+    // 首访采集完会自动播放：不先停播，seek 后的 350ms 等待里帧会继续走
+    // （work-start 实测两跑一帧之差 → 当前行高亮带 0.97% 假红）。
+    if (await evaluate("window.__pilot.session.playing")) {
+      await evaluate(`document.querySelector('[data-act="play"]')?.click(); true`);
+      await sleep(120);
+    }
+    // 模式页的数据面在 collect 之后才拉（memory.regions / capabilities）：
+    // 只等帧流会在数据未到时截到空态（mem 实测 10.5% 假红）。
+    if (st.act === "mem") await waitFor("!!window.__pilot.session.memory", 30000);
+    if (st.act === "proto") await waitFor("!!window.__pilot.session.capabilities", 30000);
+  }
   await evaluate(`document.documentElement.setAttribute("data-size", "14"); document.documentElement.setAttribute("data-motion", "off"); true`);
   await sleep(300);
   if (st.act === "seek0" || st.act === "seek12") {
@@ -149,7 +191,52 @@ async function setupState(st) {
     if (!(await evaluate(CLICK("内存")))) throw new Error("mem 点击失败");
   } else if (st.act === "proto") {
     if (!(await evaluate(CLICK("协议")))) throw new Error("proto 点击失败");
+  } else if (st.act === "trap") {
+    // 真 trap（uaf 末帧）而非伪造横幅：走课程真源 + 引擎实跑
+    await evaluate("window.__pilot.lessonSession.openById('uaf', 'basic')");
+    await waitFor("!window.__pilot.session.collecting && window.__pilot.session.viewFrames.length > 0", 60000);
+    await evaluate("window.__pilot.seek(window.__pilot.session.viewFrames.length - 1); true");
+    await sleep(250);
+    await evaluate("document.querySelector('.vr-diag-pill')?.click(); true");
+  } else if (st.act === "compilefail" || st.act === "emptyout") {
+    const src =
+      st.act === "compilefail"
+        ? "#include <stdio.h>\nint main(void) { int x = ; return 0; }"
+        : "#include <stdio.h>\nint main(void) { return 0; }";
+    await evaluate(`window.__pilot.lessonSession.setShared(${JSON.stringify(src)}); true`);
+    await evaluate(`window.__pilot.collect(${JSON.stringify(src)})`);
+    await waitFor("!window.__pilot.session.collecting", 60000);
+    if (st.act === "compilefail") await evaluate("document.querySelector('.vr-diag-pill')?.click(); true");
+    await sleep(250);
   }
+  // 光标归位：CM6 光标位置影响 matching-bracket/选区渲染，而暂停点不同会让
+  // 光标落在不同行的括号上（work-start 同机两跑 1.95% 假红的真因）。合成
+  // 鼠标事件在 headless 下时灵时不灵（实测两次一跑点中一跑没点中），改走
+  // DOM Selection：把选区折叠到 .cm-content 起点并广播 selectionchange，
+  // CM6 的 DOM 选区同步层会把它写回 state——无坐标、无命中区。
+  await evaluate("window.__pilot.session.breakpoints = []; true");
+  const cursorSet = await evaluate(`(() => {
+    const el = document.querySelector('.cm-content');
+    if (!el) return false;
+    el.focus();
+    const sel = window.getSelection();
+    if (!sel) return false;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    return true;
+  })()`);
+  if (cursorSet) {
+    await evaluate("document.querySelector('.vr-kicker')?.click(); true");
+    await sleep(80);
+  }
+  // 吐司是时间态（trap / 编译失败各弹一条，4.2s 后自清）——截图前点掉，
+  // 否则基线随「距采集多久」漂（同机两次 --update 都能哈希不同）。
+  await evaluate("document.querySelectorAll('.vr-toast button').forEach((b) => b.click()); true");
+  await sleep(120);
   await evaluate(`document.documentElement.setAttribute("data-theme", ${JSON.stringify(st.theme)}); true`);
   await evaluate("document.fonts.ready.then(() => true)");
   await sleep(350);

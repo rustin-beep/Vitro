@@ -12,6 +12,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 P0 四状态入像素闸 + CDP 竞态健壮性（2026-10-22）
+
+- **四状态**（12 → 16）：`state-trap`（uaf 末帧真 trap + 诊断带展开）、
+  `state-compilefail`（`setShared` + `collect` 坏表达式，E2003/E2005 + 诊断
+  带展开）、`state-emptyout`（0 B stdout/stderr/note + 无 golden 面）、
+  `state-badlink`（`#z1.BROKEN` 持久横幅 + 默认示例 + 未采集面）。状态动作
+  全部走真实交互/引擎，不伪造横幅或文案。
+- **CDP 竞态**（master 线反馈）：`waitFor` 对 `-32000`（导航/重载窗口
+  execution context destroyed）退避重试，其余 CDP 错误仍 fail loud；坏链态
+  不落课、不等帧流（此前必 90s 超时，实锤）。
+- **确定性**：截图前点掉吐司（trap/编译失败各弹一条、4.2s 后自清）——否则
+  基线随「距采集多久」漂；本机连续两次 `--update` 四张 PNG SHA-256 全等。
+- **DESIGN.md §7** 状态数 12 → 16；基线仍待 CI `workflow_dispatch` 生成，
+  本地生成的 `demo/tests/visual/baseline/` 不入库。
+
+### feat(demo): #222 内存/协议两模式 P1 全页形态（2026-10-22）
+
+- **信息架构**：`ui.mode` 为 mem/proto 时，exec 三栏整体退役，换「页头模式条 +
+  左证据面 + 右叙事栏」全页形态；执行态 DOM/几何零改动（B3 三栏锚原样绿）。
+  模式导航抽 `ModeTabs.svelte`（右栏 compact 版与页头版同 DOM 语义，锚不变）。
+- **内存页**（`MemoryView` + 新 `MemorySide`）：stack / heap / global / free_list
+  四轨（块宽 = 真实 size，freed 红色虚线）+ 六格统计 + 图例 + 真地址账本 +
+  「读法三步」；右栏本课源码卡（当前行高亮，8 行窗口）+ 内存三问 + 术语 +
+  动作。三问只答 `memory.regions` 能证的三件事，「谁还在指」显式标 —（无别名
+  表，不发明指针图）。隔离区占比 <1% 时保留三位小数（4 B/262144 B 不再印成
+  0.00%）。
+- **协议页**（`ProtoView` + 新 `ProtoSide`）：四组方法（编译执行 4/4、观测教学
+  4/4、配置生命周期 4/4、未消费工具 1/3，共 15 行）+ 六格事实条 + schema 台账
+  + 契约 + 当前帧 wire JSON（裁剪）+ 语义词表折叠；右栏 13/25 本页消费 +
+  四条原则 + 三入口 + 复制能力清单（JSON）。方法清单单源
+  `lib/protoFacts.ts`，主页与右栏计数不各写一份。
+- **锚**：E2E B8（模式页接管/四轨/六统计/freed 块/E3060 叙事/三问/四组 15 行/
+  13 项消费/台账非空/帧 JSON/返回执行三栏恢复/页面无横向溢出）；E-08
+  `memoryview-mallocfree` 与 `protoview-caps` golden 重建（唯 2 例变化）。
+- **响应式实测**：1440×900 右栏动作按钮落首屏（818–885）；768 与 390 宽
+  `documentElement.scrollWidth ≤ innerWidth`，窄屏账本收列（隐类型/段/来源）、
+  方法行改两行式。
+- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 87/87、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  `gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装按预期跳过。
+
 ### feat(demo): #222 第三门旗舰课 bubble_sort——65 帧六幕分镜 + 旗舰课文（2026-10-22）
 
 - **内容**：`course/sorting/bubble_sort/lesson.md` 补 `vitri-scenes v1` 六幕

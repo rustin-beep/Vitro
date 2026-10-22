@@ -14,6 +14,7 @@
 //   B5 本幕讲解 + 展开全文（#222 P1 第六片，2026-10-21）
 //   B6 uaf 三幕分镜（#222 P1 内容扩面，2026-10-21）
 //   B7 bubble_sort 六幕分镜（#222 P1 内容扩面，2026-10-22）
+//   B8 内存/协议全页形态（#222 P1 两模式，2026-10-22）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -353,6 +354,54 @@ async function run() {
       b7last.note.includes("最后一轮") && b7last.cells > 0 &&
       b7end.idx === 51 && b7end.stage.includes("收尾") && b7end.kicker.includes("帧 51–64"),
     JSON.stringify({ b7, b7last, b7end }));
+
+  // ── B8 内存/协议两模式 P1 全页形态（#222 P1，2026-10-22）：模式切换后
+  //    exec 三栏整体退役、页头模式条 + 左证据面 + 右叙事栏接管；内存页四轨 +
+  //    六格统计 + freed 块 + E3060 叙事；协议页四组 15 行 + 13 项本页消费 +
+  //    schema 台账 + 当前帧 JSON；切回执行模式恢复三栏 ──
+  await pickLesson("uaf");
+  await sleep(900);
+  await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '内存')?.click(); true");
+  await sleep(300);
+  const b8mem = await evaluate(`(() => ({
+    mode: window.__pilot.ui.mode,
+    page: !!document.querySelector('.vr-modebench'),
+    bench: !!document.querySelector('.vr-bench'),
+    tabs: document.querySelectorAll('.vr-modebar .vr-mode').length,
+    tracks: document.querySelectorAll('.vr-mem-row').length,
+    stats: document.querySelectorAll('.vr-mem-stats.is-wide > span').length,
+    freed: document.querySelectorAll('.vr-mem-seg.is-freed').length,
+    alert: document.querySelector('.vr-side-alert')?.textContent?.includes('E3060') ?? false,
+    questions: document.querySelectorAll('.vr-side-q dl > div').length,
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+  }))()`);
+  await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '协议')?.click(); true");
+  await sleep(300);
+  const b8proto = await evaluate(`(() => ({
+    mode: window.__pilot.ui.mode,
+    groups: document.querySelectorAll('.vr-proto-group').length,
+    methods: document.querySelectorAll('.vr-proto-method').length,
+    used: document.querySelectorAll('.vr-proto-method .m-use.is-yes').length,
+    sideCount: document.querySelector('.vr-side-count b')?.textContent?.trim() ?? '',
+    ledger: document.querySelectorAll('.vr-proto-table tbody tr').length,
+    frame: (document.querySelector('.vr-proto-frame')?.textContent ?? '').includes('step_index'),
+    overflow: document.documentElement.scrollWidth - window.innerWidth,
+  }))()`);
+  await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '执行')?.click(); true");
+  await sleep(250);
+  const b8back = await evaluate(`(() => ({
+    mode: window.__pilot.ui.mode,
+    bench: !!document.querySelector('.vr-bench'),
+    page: !!document.querySelector('.vr-modebench'),
+  }))()`);
+  check("B8 内存/协议全页形态（#222 P1）",
+    b8mem.mode === "mem" && b8mem.page === true && b8mem.bench === false && b8mem.tabs === 3 &&
+      b8mem.tracks === 5 && b8mem.stats === 6 && b8mem.freed >= 1 && b8mem.alert === true &&
+      b8mem.questions === 3 && b8mem.overflow <= 1 &&
+      b8proto.mode === "proto" && b8proto.groups === 4 && b8proto.methods === 15 && b8proto.used === 13 &&
+      b8proto.sideCount === "13" && b8proto.ledger > 0 && b8proto.frame === true && b8proto.overflow <= 1 &&
+      b8back.mode === "exec" && b8back.bench === true && b8back.page === false,
+    JSON.stringify({ b8mem, b8proto, b8back }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

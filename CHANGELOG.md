@@ -91,6 +91,14 @@ catalog/gen_diag -check 全绿。
   cmd/vitro 否则陈旧产物下「单侧编译失败」假红（本次 MF-UNIT 直拍
   首跑实锤）。
 
+### chore(scripts): #273 次批——gen_icon_preview py→.mts，scripts 面 .py 清零（2026-10-23）
+
+- `gen_icon_preview/main.py` → `main.mts`：图鉴排版（76 图标 / 5 组 / 54527 B）
+  与 py 版**逐字节一致**；`-check` 不落盘语义、退出码 0/1/2 与 fail loud 保留。
+- `%g` 坐标口径按 Python 默认（6 位有效数字、去尾零）复刻；新增单测锁
+  `fmtG` 与布局坐标/页高/确定性。
+- 摘 `ci_checklist` 的 gen_icon_preview 例外（已非 Go 驱动面）；`scripts/` 下
+  `.py` 清零。
 ### chore(scripts): #273 批二——mdrender 退场，docs_preview/gen_course .mts 化（marked）（2026-10-23）
 
 - **mdrender 退役**：2555 行 Go 手写解析器 + 7 测试删除；渲染层改为 marked 18.1.1

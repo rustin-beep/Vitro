@@ -12,8 +12,8 @@
   },
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint wasm_load.mts wasm_load.test.mts demo_assemble_check/main.mts demo_assemble_check/assemble_check.test.mts wasm_gateway/host.mts demo_smoke/main.mts wasmopt/wasmopt.mts wasmopt/wasmopt.test.mts docs_preview/highlight.mts docs_preview/paths.mts docs_preview/paths.test.mts docs_preview/render.mts docs_preview/render.test.mts docs_preview/page.mts docs_preview/main.mts gen_course/main.mts gen_course/gen_course.test.mts",
-    "test": "node --test wasm_load.test.mts demo_assemble_check/assemble_check.test.mts wasmopt/wasmopt.test.mts docs_preview/render.test.mts docs_preview/paths.test.mts gen_course/gen_course.test.mts"
+    "lint": "oxlint wasm_load.mts wasm_load.test.mts demo_assemble_check/main.mts demo_assemble_check/assemble_check.test.mts wasm_gateway/host.mts demo_smoke/main.mts wasmopt/wasmopt.mts wasmopt/wasmopt.test.mts docs_preview/highlight.mts docs_preview/paths.mts docs_preview/paths.test.mts docs_preview/render.mts docs_preview/render.test.mts docs_preview/page.mts docs_preview/main.mts gen_course/main.mts gen_course/gen_course.test.mts gen_icon_preview/main.mts gen_icon_preview/gen_icon_preview.test.mts",
+    "test": "node --test wasm_load.test.mts demo_assemble_check/assemble_check.test.mts wasmopt/wasmopt.test.mts docs_preview/render.test.mts docs_preview/paths.test.mts gen_course/gen_course.test.mts gen_icon_preview/gen_icon_preview.test.mts"
   },
   "dependencies": {
     "marked": "18.1.1"

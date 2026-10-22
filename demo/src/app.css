@@ -309,6 +309,9 @@ code, pre, kbd, samp, .vr-mono {
 .vr-code { border: 1px solid var(--vr-rule); background: var(--vr-code-bg); border-radius: var(--vr-r); overflow: hidden; }
 .vr-codehead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-bottom: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-codehead .vr-dot { display: inline-block; width: 5px; height: 5px; background: var(--vr-green); margin-right: 6px; }
+/* 移动端专属件（#222 P3）：桌面一律不渲染 */
+.vr-mobilecodebtn { display: none; }
+.vr-mobileline { display: none; }
 .vr-codebody { display: flex; align-items: stretch; min-width: 0; }
 .vr-codebody > .vr-editor { flex: 1 1 auto; min-width: 0; }
 
@@ -1153,6 +1156,41 @@ code, pre, kbd, samp, .vr-mono {
   .vr-popover { width: 290px; }
   .vr-diag-pill { flex-wrap: wrap; gap: 6px 12px; }
   .vr-diag-pill .vr-chev { display: none; }
+  /* #222 P3 移动工作台：幕头 → 数组 → 当前行 → 时间轴/输出 → 讲解 →
+     调用树/变量；书栏只留运行条，整段代码默认收起（按「代码」展开）。 */
+  .vr-bench { display: flex; flex-direction: column; gap: 10px; }
+  .vr-bench > .vr-colrail, .vr-bench > .vr-colstage, .vr-bench > .vr-colnow, .vr-bench > .vr-coldock { display: contents; }
+  .vr-bench > .vr-colrail > *, .vr-bench > .vr-colstage > *, .vr-bench > .vr-colnow > *, .vr-bench > .vr-coldock > * { order: 30; }
+  .vr-colrail { padding: 0; border-right: 0; }
+  .vr-colrail > .vr-kicker, .vr-colrail > .vr-title, .vr-colrail > .vr-lede, .vr-colrail > .vr-beatrail { display: none; }
+  .vr-colrail > .vr-runbar { order: 1; margin: 0 0 2px; }
+  .vr-colrail > .vr-banner { order: 2; }
+  .vr-colstage > .vr-stagehead { order: 3; margin: 0; }
+  .vr-colnow > [aria-label="数组可视化"] { order: 4; }
+  .vr-colstage > .vr-mobileline { order: 5; display: block; border: 1px solid var(--vr-rule); background: var(--vr-panel); padding: 8px 10px; }
+  .vr-mobileline-head { display: flex; justify-content: space-between; gap: 8px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+  .vr-mobileline code { display: block; margin: 5px 0; font-family: var(--vr-mono); font-size: var(--vr-fs-code); font-variant-ligatures: none; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--vr-ink); }
+  .vr-mobileline-foot { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+  .vr-mobileline-foot.is-live, .vr-mobileline-foot.is-end { color: var(--vr-amber); }
+  .vr-colstage > .vr-code { order: 6; }
+  .vr-colstage > .vr-code .vr-codebody { display: none; }
+  .vr-colstage > .vr-code.is-mobileopen .vr-codebody { display: flex; }
+  .vr-mobilecodebtn { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; border: 1px solid var(--vr-rule); background: transparent; color: var(--vr-ink-3); font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; padding: 2px 6px; }
+  .vr-mobilecodebtn:hover { color: var(--vr-ink); border-color: var(--vr-rule-2); }
+  .vr-colnow > .vr-diag-summary { order: 7; }
+  .vr-colstage > .vr-params, .vr-colnow > .vr-modes { display: none; }
+  .vr-coldock > .vr-timeline { order: 8; }
+  /* 移动端 transport 提到轴前（设计稿 03：先给播放/步进，再给刻度带） */
+  .vr-timeline { display: flex; flex-direction: column; }
+  .vr-timeline > .vr-blockhead { order: 1; }
+  .vr-timeline > .vr-transport { order: 2; }
+  .vr-timeline > .vr-bands { order: 3; }
+  .vr-timeline > .vr-ruler { order: 4; }
+  .vr-timeline > .vr-grain-note { order: 5; }
+  .vr-coldock > [aria-label="运行输出"] { order: 9; }
+  .vr-notearea { order: 10; margin: 0; padding-top: 12px; border-top: 1px solid var(--vr-rule); }
+  .vr-colnow > [aria-label="调用树"], .vr-colnow > [aria-label="局部变量"] { order: 11; }
+  .vr-foot { display: none; }
   .vr-themes { grid-template-columns: 1fr; }
   .vr-mem-stats.is-wide, .vr-proto-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vr-mem-stats.is-wide span:nth-child(3n), .vr-proto-facts > span:nth-child(3n) { border-right: 1px solid var(--vr-rule); }

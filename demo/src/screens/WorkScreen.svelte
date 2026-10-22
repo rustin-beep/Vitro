@@ -52,6 +52,13 @@
   const errCount = $derived(session.diagnostics.filter((d) => d.severity === "error").length);
   const ended = $derived(n > 0 && session.idx >= n - 1);
   const waiting = $derived(!!session.runStats?.waiting_input);
+  /** 移动端代码折叠（#222 P3）：≤760 默认只看当前行，整段代码按需展开。 */
+  let mobileCodeOpen = $state(false);
+  const curLine = $derived(frameAt(session.idx)?.code_line ?? 0);
+  const curLineText = $derived.by(() => {
+    const ln = curLine;
+    return ln > 0 ? (source.split("\n")[ln - 1] ?? "").trim() : "";
+  });
 
   const kicker = $derived(
     lesson
@@ -253,14 +260,32 @@
   <section class="vr-colstage" aria-label="代码">
     <StageHead />
 
-    <div class="vr-code">
+    <div class="vr-code" class:is-mobileopen={mobileCodeOpen}>
       <div class="vr-codehead">
         <span>{codeName}</span>
         <span><span class="vr-dot {codeDotCls}"></span>{codeStatus}</span>
+        <button
+          type="button"
+          class="vr-mobilecodebtn"
+          aria-expanded={mobileCodeOpen}
+          onclick={() => (mobileCodeOpen = !mobileCodeOpen)}
+          title={mobileCodeOpen ? "收起完整代码" : "展开完整代码"}
+        >
+          {mobileCodeOpen ? "收起代码" : "</> 代码"}
+        </button>
       </div>
       <div class="vr-codebody">
         <Editor bind:source bind:this={editorRef} disabled={session.collecting || waiting} {annotations} />
       </div>
+    </div>
+
+    <div class="vr-mobileline" aria-label="当前执行行">
+      <div class="vr-mobileline-head">
+        <span>当前行</span>
+        <span>{curLine > 0 ? `L${curLine}` : "—"} · 第 {n ? session.idx + 1 : 0} / {Math.max(n, 1)} 帧</span>
+      </div>
+      <code>{curLineText || "（未采集：点「运行」后这里显示当前执行行）"}</code>
+      <div class="vr-mobileline-foot {statusCls}">{statusText}</div>
     </div>
 
     <div class="vr-params">

@@ -17,6 +17,7 @@
 //   B8 内存/协议全页形态（#222 P1 两模式，2026-10-22）
 //   B9 目录/手册 P2 形态（章路径 + 章节面板 / 六段证据链，2026-10-22）
 //   B10 专注模式 F/Esc + ?focus=1（#222 P4，2026-10-22）
+//   B11 移动工作台 390 首屏顺序 + 代码折叠（#222 P3，2026-10-22）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -560,6 +561,41 @@ async function run() {
     check("F8 首访 shell 先行（ui.ready 不等首课采集）", f8.readyFrames === 0 && f8.frames > 0, JSON.stringify(f8));
     await sleep(400);
   }
+
+  // ── B11 移动工作台 P3（#222 P3，2026-10-22）：390 下书栏标题/分镜轨退役、
+  //    代码默认收起、当前行卡顶到数组之后、时间轴在讲解之前；「代码」按钮
+  //    展开/收起整段源码（桌面恢复 1440） ──
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  const b11 = await evaluate(`(() => {
+    const q = (s) => document.querySelector(s);
+    const top = (s) => (q(s) ? Math.round(q(s).getBoundingClientRect().top) : null);
+    const disp = (s) => (q(s) ? getComputedStyle(q(s)).display : null);
+    return {
+      title: disp('.vr-colrail .vr-title'),
+      code: disp('.vr-codebody'),
+      line: disp('.vr-mobileline'),
+      lineText: q('.vr-mobileline code')?.textContent?.trim() ?? '',
+      btn: disp('.vr-mobilecodebtn'),
+      head: top('.vr-stagehead'), arr: top('[aria-label="数组可视化"]'), lineTop: top('.vr-mobileline'), dock: top('.vr-timeline'),
+      overflow: document.documentElement.scrollWidth - innerWidth,
+    };
+  })()`);
+  await evaluate("document.querySelector('.vr-mobilecodebtn')?.click(); true");
+  await sleep(250);
+  const b11open = await evaluate(`(() => ({
+    code: getComputedStyle(document.querySelector('.vr-codebody')).display,
+    expanded: document.querySelector('.vr-mobilecodebtn')?.getAttribute('aria-expanded'),
+  }))()`);
+  await evaluate("document.querySelector('.vr-mobilecodebtn')?.click(); true");
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(300);
+  check("B11 移动工作台 P3（390 首屏顺序 + 代码折叠）",
+    b11.title === "none" && b11.code === "none" && b11.line === "block" && b11.lineText.length > 0 &&
+      b11.btn !== "none" && b11.head !== null && b11.arr !== null && b11.lineTop !== null && b11.dock !== null &&
+      b11.head < b11.arr && b11.arr < b11.lineTop && b11.lineTop < b11.dock &&
+      b11.overflow <= 1 && b11open.code === "flex" && b11open.expanded === "true",
+    JSON.stringify({ b11, b11open }));
 
   const fails = results.filter((r) => !r.ok);
   console.log(`===== ${results.length - fails.length}/${results.length} 通过 =====`);

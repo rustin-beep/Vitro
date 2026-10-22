@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 P3 移动工作台——390 首屏顺序 + 代码折叠（2026-10-22）
+
+- **390 首屏**：运行条 → 幕头 → 数组索引格 → 当前行卡 → 代码头（可展开）→
+  诊断摘要 → transport + 时间轴 → 输出 → 本幕讲解 → 调用树/变量；书栏的
+  课头/分镜轨、实验参数、模式 tab、页脚在移动端退役。
+- **代码折叠**：≤760 容器整段代码默认收起，`</> 代码` 按钮展开/收起（桌面
+  不渲染按钮）；当前行卡显示 `L<行> · 第 N / M 帧` + 源码行 + 状态行，替代
+  被折叠的编辑器成为首屏「当前执行点」。
+- **时间轴**：移动端 transport 提到刻度带之前（设计稿 03 顺序），刻度/分幕带
+  在后。
+- **既有页面**：目录 / 手册 / 内存的 390 布局在前两批已落地，本轮复测
+  `scrollWidth ≤ innerWidth`，无横向溢出。
+- **E2E**：新增 B11（390 下书栏标题 none / 代码 body 收起 / 当前行卡可见 /
+  幕头→数组→当前行→时间轴 的 top 序 / 展开后 codebody=flex）；session 21 锚。
+  顺带修 `e2e_editor` 未钉视口——无头默认 800×600 容器 ~736 会落进移动形态，
+  代码收起导致 N1 点击编辑器失焦（显式 1440×900，与 session/workspace 同口径）。
+- **验证**：pure 34/34、e08 17/17、E2E 五套 **90/90**（21+38+18+10+3）、
+  style_contract、ui_lint（含 selftest）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿。
+
 ### chore(demo): 退役像素闸——PNG 基线入库判定为噪声（用户裁定 2026-10-22）
 
 - **裁定**（用户）：逐状态 PNG 基线只能由 CI 专用 runner 生成、入库体积与跨 OS

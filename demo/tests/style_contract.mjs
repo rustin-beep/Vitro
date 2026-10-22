@@ -160,8 +160,23 @@ function walkDiff(expected, actual, path, diffs) {
   if (expected !== actual) diffs.push({ path, expected, actual });
 }
 
+
+/** CDP 就绪重试：CI 上 chrome 开端口可能晚于固定 sleep（实测 ECONNREFUSED）。
+ *  只重试连接阶段，最多 30s；超时把最后一条错误带出来（fail loud 可诊断）。 */
+async function connectWithRetry(port = 9222, timeoutMs = 30000) {
+  const t0 = Date.now();
+  for (;;) {
+    try {
+      return await connect(port);
+    } catch (e) {
+      if (Date.now() - t0 > timeoutMs) throw new Error("CDP " + port + " 在 " + timeoutMs + "ms 内未就绪：" + (e && e.message ? e.message : e));
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+}
+
 async function main() {
-  await connect();
+  await connectWithRetry();
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Page.navigate", { url: BASE + "index.html?style=" + Date.now() });
   await waitFor("window.__pilot && window.__pilot.session.booted", 60000);

@@ -1,6 +1,7 @@
 // 像素闸（#222 P0 第三批，2026-10-21）：8 状态 × 主题 × 视口的截图对账。
 //
-// 基线口径（拍板稿）：**只在 CI Ubuntu + Chrome 生成**——字体栅格化跨 OS 不同，
+// 基线口径：**只在 CI runner + Chrome 生成**——字体栅格化跨 OS 不同，
+// （拍板稿假设 CI 是 Ubuntu；本仓 ci.yml 实为 windows-latest，DESIGN.md §7 已记录更正）
 // 本机生成的基线在 Linux 上必假红。所以：
 //   - 基线目录 `demo/tests/visual/baseline/` 由 `.github/workflows/visual_baseline.yml`
 //     （workflow_dispatch）生成并作为 artifact 上传，维护者下载后入库；
@@ -176,15 +177,30 @@ function baselinePath(st) {
   return join(BASELINE_DIR, `${st.name}.png`);
 }
 
+
+/** CDP 就绪重试：CI 上 chrome 开端口可能晚于固定 sleep（实测 ECONNREFUSED）。
+ *  只重试连接阶段，最多 30s；超时把最后一条错误带出来（fail loud 可诊断）。 */
+async function connectWithRetry(port = 9222, timeoutMs = 30000) {
+  const t0 = Date.now();
+  for (;;) {
+    try {
+      return await connect(port);
+    } catch (e) {
+      if (Date.now() - t0 > timeoutMs) throw new Error("CDP " + port + " 在 " + timeoutMs + "ms 内未就绪：" + (e && e.message ? e.message : e));
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+}
+
 async function main() {
-  await connect();
+  await connectWithRetry();
   const states = ONLY ? STATES.filter((s) => s.name.includes(ONLY)) : STATES;
   if (!states.length) throw new Error("--only 没匹配到状态：" + ONLY);
 
   const indexFile = join(BASELINE_DIR, "index.json");
   if (!UPDATE) {
     if (!existsSync(indexFile)) {
-      console.log("::warning::视觉闸未武装：demo/tests/visual/baseline 未入库——需在 CI Ubuntu 跑 workflow_dispatch（visual-baseline）生成并提交基线");
+      console.log("::warning::视觉闸未武装：demo/tests/visual/baseline 未入库——需在 CI（windows-latest）跑 workflow_dispatch（visual-baseline）生成并提交基线");
       ws.close();
       return;
     }

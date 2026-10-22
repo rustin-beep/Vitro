@@ -31,7 +31,13 @@
 ## 二、运行方法
 
 ```bash
-# 在仓库根目录执行（语料 = corpus/ 六目录全量）
+# 在仓库根目录执行（语料 = corpus/ 八目录全量——llm_multifile 为工程模式：一级子目录 = 一个多文件工程；llm_scale 为千行单文件规模压力面）
+
+<!-- #237 工程模式（2026-10-21）：llm_multifile 的一级子目录视为一个工程——
+同目录全部 .c 一次编译链接（.h 只被 include 不上命令行，-I 指向工程目录）；
+vitro 侧走 api --batch 三帧（compile{files} → run → output.delta，#202 修复后的
+files 数组虚拟工程通道）；缓存 key = 目录全部源文件内容串联哈希；known 条目名
+= 工程目录名；比对尾换行经双侧对称 normalize（单文件路径口径不动）。 -->
 go run ./scripts/clang_direct
 
 # CI 形态：先验白名单新鲜度再跑全量
@@ -41,7 +47,7 @@ go run ./scripts/clang_direct
 
 | 选项 | 说明 |
 |:---|:---|
-| `--corpus dir` | 指定单个语料目录（默认 `corpus/` 下 baseline / knr / leetcode / gap / codegen_skeleton / template_generated 六目录全量） |
+| `--corpus dir` | 指定单个语料目录（默认 `corpus/` 下 baseline / knr / leetcode / gap / codegen_skeleton / template_generated / llm_multifile / llm_scale 八目录全量） |
 | `--cases f1.c,...` | 指定具体用例（调试用） |
 | `--sample N` | 仅跑前 N 例（调试用） |
 | `--jobs N` | Clang 并发数（默认 min(CPU,8)；Vitro 侧始终互斥串行） |

@@ -54,6 +54,15 @@
     "baseline/bitwise_shift.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/block_enum_definition.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/block_enum_definition.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/block_enum_definition.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/block_static_typedef.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -243,6 +252,15 @@
     "baseline/do_while_break.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/do_while_continue.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/do_while_continue.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/do_while_continue.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/double_arith.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -295,6 +313,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/double_cmp_eq.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/double_compare.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/double_compare.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/double_compare.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/double_init_zero.c|cast_strip": {
@@ -378,6 +405,15 @@
     "baseline/e1_limits_macros.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/e2_angle_local_header.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_angle_local_header.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_angle_local_header.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/e2_cond_if_elif.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -403,6 +439,24 @@
       "bucket": "AGREE"
     },
     "baseline/e2_include_cycle.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_guarded.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_guarded.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_guarded.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_angle.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_angle.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_angle.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/e3_unreachable_dead.c|cast_strip": {
@@ -512,6 +566,15 @@
     },
     "baseline/fprintf_basic.c|div2shift": {
       "bucket": "AGREE"
+    },
+    "baseline/func_return_as_arg.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_return_as_arg.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_return_as_arg.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/function_pointer_decl.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -1038,17 +1101,17 @@
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "WRONG_VALUE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|cast_strip": {
       "bucket": "WRONG_VALUE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|div2shift": {
       "bucket": "WRONG_VALUE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/puts_basic.c|brace_wrap": {
       "bucket": "AGREE"
@@ -1068,6 +1131,15 @@
     "baseline/realloc.c|static_inject": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/register_addr_of_reject.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/register_addr_of_reject.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/register_addr_of_reject.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/scanf_digit_mismatch.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -1076,6 +1148,15 @@
     },
     "baseline/scanf_digit_mismatch.c|char_escape": {
       "bucket": "AGREE"
+    },
+    "baseline/scanf_float.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_float.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/scanf_float.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/scanf_literal_mismatch.c|init_partial": {
       "bucket": "AGREE"
@@ -1157,6 +1238,15 @@
     },
     "baseline/short_type.c|init_partial": {
       "bucket": "AGREE"
+    },
+    "baseline/sizeof_basic_types.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_basic_types.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_basic_types.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/sizeof_enum.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -1259,6 +1349,15 @@
     },
     "baseline/static_string_pointer.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/stdio_fgets_stdin.c|brace_strip": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/stdio_fgets_stdin.c|cast_strip": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/stdio_fgets_stdin.c|init_partial": {
+      "bucket": "WRONG_VALUE"
     },
     "baseline/stdio_macro_file_ptr.c|brace_strip": {
       "bucket": "AGREE"
@@ -1423,6 +1522,15 @@
     "baseline/ternary_as_expr.c|memset_zero": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/ternary_mixed.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/ternary_mixed.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/ternary_mixed.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/ternary_nested.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
@@ -1480,6 +1588,24 @@
     "baseline/union_member_struct_assign.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/unsigned_printf_lu.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/unsigned_printf_lu.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/unsigned_printf_lu.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/utf8_latin1_output.c|char_escape": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/utf8_latin1_output.c|div2shift": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/utf8_latin1_output.c|nested2flat": {
+      "bucket": "WRONG_VALUE"
+    },
     "baseline/vla_2d.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -1535,34 +1661,34 @@
       "bucket": "AGREE"
     },
     "gap/file_fopen.c|cmp_swap": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fopen.c|memset_zero": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fopen.c|static_inject": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|cmp_swap": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|memset_zero": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|static_inject": {
-      "bucket": "WRONG_VALUE",
-      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）",
-      "issue": "known-arch-diff"
+      "bucket": "AGREE",
+      "issue": "known-arch-diff",
+      "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fwrite.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2284,6 +2410,60 @@
     "leetcode/lc_84.c|static_inject": {
       "bucket": "VITRO_REJECT",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "llm_scale/llm_scale_compiler.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_compiler.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_compiler.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db_join.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db_join.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_db_join.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_editor.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_editor.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_editor.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_os.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_os.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_os.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_shell.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_shell.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "llm_scale/llm_scale_shell.c|div2shift": {
+      "bucket": "AGREE"
     }
   }
 }

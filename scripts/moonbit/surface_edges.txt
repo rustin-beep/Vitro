@@ -176,6 +176,8 @@ vitro/engine/codegen vitro/engine/bytecode cstring_bytes
 vitro/engine/codegen vitro/engine/bytecode cstring_len
 vitro/engine/codegen vitro/engine/bytecode host_func_id_by_user_name
 vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
+vitro/engine/codegen vitro/engine/bytecode verify_compile_output
+vitro/engine/codegen vitro/engine/bytecode verify_violations_json
 vitro/engine/codegen vitro/engine/opcode Instruction
 vitro/engine/codegen vitro/engine/opcode OpCode
 vitro/engine/codegen vitro/engine/source SourceLoc

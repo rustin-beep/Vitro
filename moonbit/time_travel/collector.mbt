@@ -482,9 +482,16 @@ pub fn infer_semantic_label(
     None => ()
   }
   let loop_depth = loop_vars.length()
-  // 降级形态：循环行首直接判"循环"（同词汇表）
+  // 降级形态：循环行首直接判"循环"（同词汇表）——#220（2026-10-21）：
+  // 前缀须含无空格形态 `for(`/`while(`（`for(int i=0;...)` 旧落 is_func_call
+  // →「函数调用」误标）；trim 已归一缩进。
   let is_loop_headline = local_vars is None &&
-    (source_line.has_prefix("for ") || source_line.has_prefix("while "))
+    (
+      source_line.has_prefix("for ") ||
+      source_line.has_prefix("for(") ||
+      source_line.has_prefix("while ") ||
+      source_line.has_prefix("while(")
+    )
   // 交换模式：temp + arr[/a[ + 赋值
   let is_swap = source_line.contains("temp") &&
     (source_line.contains("arr[") || source_line.contains("a[")) &&
@@ -495,12 +502,18 @@ pub fn infer_semantic_label(
     func_name != "main" &&
     source_line.contains("\{func_name}(") &&
     !is_function_definition_line(source_line, func_name)
-  // 普通调用（排除控制流关键字/注释行首）
+  // 普通调用（排除控制流关键字/注释行首）——#220：for(/while( 无空格
+  // 形态一并排除（`for(int i=0;...)` 含 '(' 曾被判普通调用）
   let is_func_call = source_line.contains("(") &&
     !source_line.has_prefix("if ") &&
+    !source_line.has_prefix("if(") &&
     !source_line.has_prefix("while ") &&
+    !source_line.has_prefix("while(") &&
     !source_line.has_prefix("for ") &&
+    !source_line.has_prefix("for(") &&
     !source_line.has_prefix("switch ") &&
+    !source_line.has_prefix("do ") &&
+    !source_line.has_prefix("do{") &&
     !source_line.has_prefix("return ") &&
     !source_line.has_prefix("//") &&
     !source_line.has_prefix("/*")
@@ -766,5 +779,12 @@ fn extract_called_func(line : String) -> String? {
     buf.write_char(cs[w])
     w = w + 1
   }
-  Some(buf.to_string())
+  let name = buf.to_string()
+  // #220（2026-10-21）：控制流关键字不作函数名——`} while (...)`（do-while
+  // 尾）/ `} if` 复合语句尾随形态经 is_func_call 前缀排除漏网后，此处
+  // 曾抽出 "while" 产出「调用 while」
+  match name {
+    "while" | "for" | "if" | "switch" | "else" | "do" | "return" => None
+    _ => Some(name)
+  }
 }

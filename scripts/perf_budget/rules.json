@@ -6,7 +6,9 @@
     "knr",
     "leetcode",
     "gap",
-    "codegen_skeleton"
+    "codegen_skeleton",
+    "llm_scale",
+    "llm_multifile"
   ],
   "file_ext": ".c",
   "_corpus_note": [
@@ -32,10 +34,20 @@
           "id": "member_accesses",
           "pattern": "[A-Za-z_]\\w*\\s*(?:\\.|->)\\s*[A-Za-z_]\\w*",
           "max_per_file": 200,
-          "_why": "现状 37；留 5× 余量。这是 compute_type_size 的调用频率上界（expr.mbt:64 每条成员访问一次）。"
+          "_why": "现状 37；留 5× 余量。这是 compute_type_size 的调用频率上界（expr.mbt:64 每条成员访问一次）。",
+          "dir_tiers": [
+            {
+              "dirs": [
+                "llm_scale"
+              ],
+              "max_per_file": 400,
+              "_why": "#236（2026-10-21）：千行规模压力面档——HUGE 语料 11 工程实测 249–344（单文件 1082–1627 行）。该档是「规模压力建模」而非 O2 债裁决的存量前提——O2 债（typeck struct 表不缓存）裁决依据的是存量语料（中位 13 行）的实测上界，llm_scale 超该上界不构成「前提失效须复核」，缓存化裁决单独立项（issue #236 方案 B）。"
+            }
+          ]
         }
       ],
       "on_exceed": "语料规模超出 O2 债裁决所依据的实测上界——须重估 typeck 的 struct/union 表缓存化（当前裁决为「不缓存」，依据是规模不可测；前提失效则裁决须复核）"
     }
-  ]
+  ],
+  "_tier_note": "dir_tiers（2026-10-21 #236 建）：counter 可按 corpus_dirs 子目录单列预算档——文件按所属 corpus_dir 前缀匹配档位（未匹配用顶层 max_per_file）；每档独立判红（一档超即红），报告逐档列出。档位语义 = 显式建模新规模面，不允许「全局抬高上限稀释存量前提」。"
 }

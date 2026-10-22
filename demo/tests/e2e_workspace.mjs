@@ -112,8 +112,8 @@ async function run() {
           }).on("error", reject);
         });
         } catch (e) {
-          if (attempt >= 9 || !String(e).includes("ECONNREFUSED")) throw e;
-          await new Promise((r) => setTimeout(r, 500));
+          if (attempt >= 19 || !String(e).includes("ECONNREFUSED")) throw e;
+          await new Promise((r) => setTimeout(r, 1000));
         }
       }
   })();

@@ -12,6 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 第三门旗舰课 bubble_sort——65 帧六幕分镜 + 旗舰课文（2026-10-22）
+
+- **内容**：`course/sorting/bubble_sort/lesson.md` 补 `vitri-scenes v1` 六幕
+  （0–4 起点 / 5–23 第一轮 / 24–36 第二轮 / 37–47 第三轮 / 48–50 最后一轮
+  零交换 / 51–64 收尾），课文重写为旗舰形态：65 帧口径、每幕比较/交换计数
+  （4+3+2+1 = 10 次比较 = n(n-1)/2）、「第 5 幕反证算法不知道已有序」的
+  不变量教学点。
+- **帧量测（不脑测）**：`templates/bubble/source.c` 的 lesson 源码经 demo
+  同链（引擎 insn 帧 → `annotateGroups` 取组尾）实测 914 条指令帧 → **65**
+  条语句帧；E2E B7 在构建产物上复证 n=65、六幕坐标（48/51）与幕头同步。
+- **锚**：纯函数锚 `lessonMd：bubble_sort scene 覆盖 0..64`（六幕精确坐标 +
+  无缝覆盖 + 末幕落 64，先红后绿）；E2E B7（6 幕/6 条分幕带、点第 5 幕
+  idx=48 且幕头源码 L4–L6、点第 6 幕 idx=51 帧 51–64；65 帧 × 8fps 先停播
+  再断言，防漂移帧假红）。
+- **E-08**：`coursenote-sorting` golden 重建（唯 1 例变化，其余 15 例逐字节
+  不变——scene 元数据剥离语义再证）。
+- **验证**：pure 34/34、E2E 五套 86/86、e08 17/17、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、png 5/5、svelte-check 0 错、
+  oxlint 0 错、`gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装
+  按预期 `::warning::` 跳过（基线仍待 CI dispatch 生成）。
+
 ### feat(corpus): llm_scale/llm_multifile 全域接线 + #238 (void) 栈泄漏修复（2026-10-21）
 
 - **接线面**（用户令「有语料入库 你进行接线」）：`corpus/llm_scale`（6 个

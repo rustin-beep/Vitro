@@ -444,6 +444,36 @@ test("lessonMd：uaf scene 覆盖 0..5（内容锚：悬垂指针三幕）", () 
   assert.equal(doc.blocks[0].type, "h2");
 });
 
+// 第三门旗舰课（#222 P1 内容扩面）：bubble_sort 冒泡——65 帧、6 幕。
+// 帧数是实机口径：demo 的 viewFrames = 引擎 insn 帧经 annotateGroups 取组尾
+// （语句级），本锚用同一条链对 templates/bubble/source.c 的 lesson 源码实测
+// 65 帧（2026-10-22：js 臂 step 流 914 条指令帧 → 65 条语句帧）。
+test("lessonMd：bubble_sort scene 覆盖 0..64（内容锚：六幕收敛）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/sorting/bubble_sort/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 6);
+  assert.deepEqual(
+    doc.scenes.map((s) => [s.id, s.from, s.to, s.lines.join("..")]),
+    [
+      ["01", 0, 4, "15..18"],
+      ["02", 5, 23, "4..9"],
+      ["03", 24, 36, "4..9"],
+      ["04", 37, 47, "4..9"],
+      ["05", 48, 50, "4..6"],
+      ["06", 51, 64, "18..23"],
+    ],
+  );
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
+  // 末幕必须落在最后一帧（65 帧 = 0..64；帧数变化要连坐改幕，不许静默越界）
+  assert.equal(doc.scenes[doc.scenes.length - 1].to, 64);
+  // 元数据剥离 + 课文仍在：首块 h2，且六幕讲解不是正文段落
+  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
+});
+
 // token 单源 ↔ 主题清单一致性（#222 P0）：新加主题若只改了 persisted 的
 // THEME_KEYS、没在 tokens.json 里登记色板，style_contract 只覆盖硬编码五主题、
 // 该主题会静默无样式——这里把两边钉死。

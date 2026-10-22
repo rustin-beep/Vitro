@@ -13,6 +13,7 @@
 //   B4 逐行注记（#222 P1 第五片，2026-10-21）
 //   B5 本幕讲解 + 展开全文（#222 P1 第六片，2026-10-21）
 //   B6 uaf 三幕分镜（#222 P1 内容扩面，2026-10-21）
+//   B7 bubble_sort 六幕分镜（#222 P1 内容扩面，2026-10-22）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -312,6 +313,46 @@ async function run() {
       b6start.idx === 0 && b6start.stage.includes("申请与写入") && b6start.kicker.includes("帧 0–2") &&
       b6start.note.includes("申请与写入") && b6free.idx === 3 && b6free.stage.includes("释放") && b6free.kicker.includes("帧 3"),
     JSON.stringify({ b6, b6start, b6free }));
+
+  // ── B7 第三门旗舰课 bubble_sort（#222 P1 内容扩面）：65 帧压成 6 幕；
+  //    第 5 幕（明界：最后一轮一次比较零交换）是「算法正确 ≠ 算法知道」的
+  //    教学锚，点幕必须跳到帧 48 且幕头/本幕卡同步；第 6 幕收尾 51–64 ──
+  await pickLesson("bubble_sort");
+  await sleep(900);
+  // 65 帧 × 8fps 播放要 ~8s：断言前先停播（seek 本身不停播，B6 的 6 帧课
+  // 等 900ms 已自然播完，本课不行——不停会读到漂移帧）
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(150);
+  }
+  const b7 = await evaluate(`(() => ({
+    n: window.__pilot.session.viewFrames.length,
+    beats: document.querySelectorAll('.vr-beat').length,
+    bands: document.querySelectorAll('.vr-band').length,
+    first: document.querySelector('.vr-beat')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-beat')[4]?.click(); true");
+  await sleep(250);
+  const b7last = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+    note: document.querySelector('.vr-scenenote-title')?.textContent?.trim() ?? '',
+    cells: document.querySelectorAll('.vr-cell').length,
+  }))()`);
+  await evaluate("document.querySelectorAll('.vr-beat')[5]?.click(); true");
+  await sleep(250);
+  const b7end = await evaluate(`(() => ({
+    idx: window.__pilot.session.idx,
+    stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
+    kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
+  }))()`);
+  check("B7 bubble_sort 六幕分镜（#222 内容扩面）",
+    b7.n === 65 && b7.beats === 6 && b7.bands === 6 && b7.first.includes("01") &&
+      b7last.idx === 48 && b7last.stage.includes("最后一轮") && b7last.kicker.includes("帧 48–50") &&
+      b7last.note.includes("最后一轮") && b7last.cells > 0 &&
+      b7end.idx === 51 && b7end.stage.includes("收尾") && b7end.kicker.includes("帧 51–64"),
+    JSON.stringify({ b7, b7last, b7end }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

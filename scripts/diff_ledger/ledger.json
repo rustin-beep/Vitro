@@ -1,6 +1,6 @@
 {
   "schema": "vitro-diff-ledger-v1",
-  "as_of": "2026-10-10",
+  "as_of": "2026-10-22",
   "provenance": "初始 14 条 = MoonBit迁移蓝图v1 §⑦（2026-09-18 Rust 侧快照）迁入；capability_flags 17 项 = 知识沉淀勘察报告附录 A JSON 示例原数（'19 项'系摘要误传）。**批零号一段 b（2026-09-30）复核完成**：14 条逐条按 MoonBit 侧 0.7.0 现状实测/亲读复核（evidence 字段记方式：run=探针双对照实测 / code=源码亲读 / anchor=防线 known 在册 / doc=文档在册语义）；补录 10 条（已知限制①类销账对象 + 三防线 known 归因面 + 一段 b 新实锤的出口层缺陷）。行为探针留档 .shadow_tmp/diff_ledger_probe/（cmd/run = _build/native/debug 构建实跑；对照剥出口恒定尾注——空程序 stdout 恒 0d0a0d0a 出口形态偏移，Windows 文本模式 \\n→\\r\\n 两侧同构非差异）。守门规则：引擎行为与台账冲突时要么改行为要么改台账，禁止沉默漂移。",
   "status_vocab": "verified-run=探针双对照实测在案 / verified-code=源码亲读定值 / verified-anchor=防线 known 白名单在册 / verified-doc=文档在册语义（UB 域或无行为锚）/ resolved-verified=缺陷已修且行为+文档双确认 / open=缺陷确认未修 / open-unverified=差异面存在但本批探针未显现",
   "capability_flags_as_of": "2026-09-30",
@@ -972,6 +972,38 @@
         "clang_direct"
       ],
       "notes": "digest 1a42137c；对照组 guard-ok 分支双侧语义一致（非空指针路径不作差异面）"
+    },
+    {
+      "id": "DIFF-MF-BEHAVIOR-01",
+      "title": "llm_multifile 工程模式行为层首跑 5 例差异（AUDIO 错误路径字节差 / QUEUE printf 左对齐族 / SERIAL 校验和错值〔疑真缺陷〕/ CRYPTO LShr UB trap / GAME 步数墙）",
+      "class": "implementable",
+      "carry_over": "inherit",
+      "status": "open",
+      "evidence": "run",
+      "rationale": "2026-10-22 多文件工程扩容（8→43）后 clang_direct 工程模式行为层首跑挖出：三例待最小化（#268 汇总登记——SERIAL 疑运算错值真缺陷）+ 两例已定性（CRYPTO=LShr 移位量 60 越界受检 trap vs clang UB 静默〔教学白箱既有口径，同 array_bound_const_index 形态〕；GAME=10M 默认步数墙 vs 程序真需求〔预算配置面，preset algo 档 2e9 可跑，工程模式未接 dir_tiers〕）",
+      "subsystems": [
+        "corpus",
+        "engine"
+      ],
+      "clang_verdict": "不一致（三例待深挖；两例口径差非病）",
+      "source_docs": [
+        "issue #268（2026-10-22 首跑登记）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "MF-AUDIO",
+          "MF-CRYPTO",
+          "MF-GAME",
+          "MF-QUEUE",
+          "MF-SERIAL"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "digest 双向监控（known_direct 锁定；修复转绿自动提醒摘除）；工程模式无 digest 冻结层，回归锚=每轮现场 clang 直拍"
     }
   ]
 }

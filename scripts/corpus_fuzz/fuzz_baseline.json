@@ -117,6 +117,15 @@
     "baseline/bubble_sort.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/calloc_basic.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/calloc_basic.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/calloc_basic.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/calloc_reuse_after_eviction.c|cast_strip": {
       "bucket": "AGREE"
     },
@@ -250,6 +259,15 @@
       "bucket": "AGREE"
     },
     "baseline/continue_while.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/decrement_var.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/decrement_var.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/decrement_var.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/designated_init.c|brace_wrap": {
@@ -540,6 +558,15 @@
     "baseline/enum_const_array_dim.c|char_escape": {
       "bucket": "AGREE"
     },
+    "baseline/extern_func.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/extern_func.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/extern_func.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/fgets_fputs_basic.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -574,6 +601,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/for_break.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/for_empty_cond.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/for_empty_cond.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/for_empty_cond.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/for_no_init.c|brace_wrap": {
@@ -673,6 +709,24 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/hanoi_tower.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/hex_literal.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/hex_literal.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/hex_literal.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/if_nested.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/if_nested.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/if_nested.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/include_custom_header.c|brace_wrap": {
@@ -810,6 +864,15 @@
     "baseline/linear_search.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/linked_list_tail.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/linked_list_tail.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/linked_list_tail.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/linked_queue.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -818,6 +881,15 @@
     },
     "baseline/linked_queue.c|paren_wrap": {
       "bucket": "AGREE"
+    },
+    "baseline/logical_and.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/logical_and.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/logical_and.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/logical_and_var.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -909,6 +981,15 @@
     "baseline/memset_struct.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/mod_by_var.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/mod_by_var.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/mod_by_var.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/mul_overflow_safe.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -925,6 +1006,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/multi_level_ptr_cast_struct.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_var_decl.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_var_decl.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/multi_var_decl.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/neg_hex.c|char_escape": {
@@ -954,6 +1044,15 @@
     "baseline/negate.c|static_inject": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/not_equal_var.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/not_equal_var.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/not_equal_var.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/null_pointer_constant.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -971,6 +1070,15 @@
     },
     "baseline/octal_literal.c|div2shift": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/offsetof_struct.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/offsetof_struct.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/offsetof_struct.c|memset_zero": {
+      "bucket": "AGREE"
     },
     "baseline/p2b_typeck_false_positives.c|brace_wrap": {
       "bucket": "AGREE"
@@ -1098,6 +1206,15 @@
     "baseline/pre_increment.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/print_int_user_redefine.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/print_int_user_redefine.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/print_int_user_redefine.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/printf_char.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -1170,6 +1287,15 @@
     "baseline/ptr_init_null.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/ptr_member_widths.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/ptr_member_widths.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/ptr_member_widths.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
@@ -1194,6 +1320,15 @@
     "baseline/puts_basic.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/qsort.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/qsort.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/qsort.c|static_inject": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/realloc.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
@@ -1201,6 +1336,24 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/realloc.c|static_inject": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/realloc_shrink.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/realloc_shrink.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/realloc_shrink.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/recursive_function.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/recursive_function.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/recursive_function.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/register_addr_of_reject.c|cmp_swap": {
@@ -1401,6 +1554,15 @@
     "baseline/static_forward_func.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/static_init_addr_const.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_init_addr_const.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_init_addr_const.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/static_local_aggregate.c|init_partial": {
       "bucket": "AGREE",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
@@ -1448,6 +1610,15 @@
     },
     "baseline/stdio_fgets_stdin.c|init_partial": {
       "bucket": "WRONG_VALUE"
+    },
+    "baseline/stdio_fseek_macro.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/stdio_fseek_macro.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/stdio_fseek_macro.c|init_partial": {
+      "bucket": "AGREE"
     },
     "baseline/stdio_macro_file_ptr.c|brace_strip": {
       "bucket": "AGREE"
@@ -1502,6 +1673,15 @@
     },
     "baseline/string_reverse.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/strtol_prefix.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/strtol_prefix.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/strtol_prefix.c|div2shift": {
+      "bucket": "AGREE"
     },
     "baseline/struct_array_char_member_init.c|brace_strip": {
       "bucket": "AGREE"
@@ -1657,6 +1837,15 @@
     "baseline/tree_level_order.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/typedef.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/typedef.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/typedef.c|static_inject": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/typedef_after_struct_decl.c|brace_wrap": {
       "bucket": "AGREE",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
@@ -1687,6 +1876,15 @@
     "baseline/typedef_struct_anon.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/union_basic.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/union_basic.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/union_basic.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/union_member_struct_assign.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -1715,13 +1913,13 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/utf8_latin1_output.c|char_escape": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "AGREE"
     },
     "baseline/utf8_latin1_output.c|div2shift": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "AGREE"
     },
     "baseline/utf8_latin1_output.c|nested2flat": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "AGREE"
     },
     "baseline/vla_2d.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -1740,6 +1938,15 @@
     },
     "baseline/vla_param_decay.c|memset_zero": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/vla_row_pointer.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_row_pointer.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_row_pointer.c|memset_zero": {
+      "bucket": "AGREE"
     },
     "baseline/while_continue.c|div2shift": {
       "bucket": "CLANG_REJECT"

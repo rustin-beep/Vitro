@@ -115,7 +115,7 @@ fn BytecodeGen::emit_static_var(
     decl_line: loc.line,
   })
   match init {
-    Some(e) => self.emit_static_init(vty, e, global_offset, loc)
+    Some(e) => self.emit_static_init(n, vty, e, global_offset, loc)
     None => ()
   }
 }
@@ -123,6 +123,7 @@ fn BytecodeGen::emit_static_var(
 ///|
 fn BytecodeGen::emit_static_init(
   self : BytecodeGen,
+  name : String,
   vty : @ast.Type,
   init : @ast.Expr,
   global_offset : Int32,
@@ -132,9 +133,18 @@ fn BytecodeGen::emit_static_init(
     InitList(elements, _, _) => {
       let has_designators = elements.exists(e => e.designators.length() > 0)
       if has_designators {
-        self.report_error(
-          "静态局部变量的 designated initializer 暂不支持", loc,
-        )
+        // #270（2026-10-22）：局部 static 的 designated 与文件作用域同
+        // 语义（C11 6.7.9）——复用 flatten_designated_global（数组 Index
+        // 指派 + struct/union .field 指派 + #266 匿名穿透 + 续位），
+        // 壳 GlobalDecl 只承载 name/loc/ty 三元组（诊断定位用）
+        let g_decl : @ast.GlobalDecl = {
+          ..Default::default(),
+          loc,
+          ty: vty,
+          name,
+          source_file: "",
+        }
+        self.flatten_designated_global(g_decl, elements, global_offset)
         return
       }
       // #137 缺陷 1 连坐（2026-10-17）：一维 char 限定——二维 char
@@ -815,49 +825,74 @@ fn BytecodeGen::emit_local_struct_init(
         // `{.a=1, 2, 3}` 的 2、3 静默丢失
         let mut cursor = 0
         for elem in elements {
-          let field_idx = if elem.designators.length() == 0 {
+          if elem.designators.length() == 0 {
+            // 裸项：当前位续位写并推进（病 121 修语义保持）
             if cursor >= fields.length() {
               continue
             }
             let cur = cursor
             cursor = cur + 1
-            cur
-          } else {
-            match elem.designators[0] {
-              Field(fname) => {
-                let mut found = -1
-                for j, f in fields {
-                  if f.name == fname {
-                    found = j
-                    break
-                  }
-                }
-                if found >= 0 && found < fields.length() {
-                  cursor = found + 1
-                  found
-                } else {
-                  continue
+            let mut o = 0
+            for j = 0; j < cur; j = j + 1 {
+              o += self.type_size(fields[j].ty)
+            }
+            self.emit_field_init(base_temp, o, fields[cur].ty, elem.value, loc)
+            continue
+          }
+          match elem.designators[0] {
+            Field(fname) => {
+              let mut found = -1
+              for j, f in fields {
+                if f.name == fname {
+                  found = j
+                  break
                 }
               }
-              _ => {
-                self.report_error(
-                  "结构体初始化只能使用 .field 形式的 designator", loc,
+              if found >= 0 && found < fields.length() {
+                cursor = found + 1
+                let mut o = 0
+                for j = 0; j < found; j = j + 1 {
+                  o += self.type_size(fields[j].ty)
+                }
+                self.emit_field_init(
+                  base_temp,
+                  o,
+                  fields[found].ty,
+                  elem.value,
+                  loc,
                 )
-                continue
+              } else {
+                // #266（2026-10-22，C11 6.7.2.1p13）：designator 指名
+                // 匿名成员内部成员——穿透定位（`.a` 命中匿名 union 的
+                // a）：写入面 = 匿名字段前缀偏移 + 内部偏移（union 内
+                // 0 / struct 内前缀累加），目标类型 = 提升成员类型；
+                // cursor 续位匿名字段下一位
+                match self.anon_promote_lookup(fields, fname) {
+                  Some((outer_idx, inner_off, member_ty)) => {
+                    cursor = outer_idx + 1
+                    let mut o = 0
+                    for j = 0; j < outer_idx; j = j + 1 {
+                      o += self.type_size(fields[j].ty)
+                    }
+                    self.emit_field_init(
+                      base_temp,
+                      o + inner_off,
+                      member_ty,
+                      elem.value,
+                      loc,
+                    )
+                  }
+                  None => continue
+                }
               }
             }
+            _ => {
+              self.report_error(
+                "结构体初始化只能使用 .field 形式的 designator", loc,
+              )
+              continue
+            }
           }
-          let mut offset = 0
-          for j = 0; j < field_idx; j = j + 1 {
-            offset += self.type_size(fields[j].ty)
-          }
-          self.emit_field_init(
-            base_temp,
-            offset,
-            fields[field_idx].ty,
-            elem.value,
-            loc,
-          )
         }
       } else {
         for i, elem in elements {
@@ -896,7 +931,14 @@ fn BytecodeGen::emit_field_init(
     return
   }
   if value is InitList(_, _, _) &&
-    (field_ty.kind() is TK_Struct || field_ty.is_array()) {
+    (
+      field_ty.kind() is TK_Struct ||
+      field_ty.kind() is TK_Union ||
+      field_ty.is_array()
+    ) {
+    // #266（2026-10-22）：TK_Union 补入——匿名 union 成员的子列表/
+    // 透传包（typeck 位置透传产物）走嵌套初始化（union 首元素承接，
+    // 成员偏移恒 0——gen_nested_init 首元素递归臂）
     self.gen_nested_init(base_temp, offset, field_ty, value, loc)
   } else if field_ty.is_array() &&
     field_ty.base_element_type().kind() is TK_Char &&

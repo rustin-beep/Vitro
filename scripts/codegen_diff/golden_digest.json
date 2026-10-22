@@ -5,6 +5,7 @@
     "baseline": {
       "sources": {
         "abstract_array_param.c": "1d6d9fb9",
+        "anon_member_promotion.c": "0142ec02",
         "array_address.c": "0ba37ef8",
         "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
@@ -90,6 +91,7 @@
         "designated_init.c": "1bb9fd6b",
         "designated_mixed_cont.c": "413bba13",
         "designated_struct_copy.c": "2ea3f5f3",
+        "designated_struct_init.c": "d2d2524d",
         "dfs_graph.c": "7ec6a1df",
         "div_by_var.c": "9db4f22f",
         "do_while.c": "8f06ab4b",
@@ -492,6 +494,9 @@
         "abstract_array_param.c": {
           "result_sha": "6a6c7cd2d059bcac"
         },
+        "anon_member_promotion.c": {
+          "result_sha": "7b45d3d29192a760"
+        },
         "array_address.c": {
           "result_sha": "37ce0c5a8f992ea5"
         },
@@ -748,6 +753,9 @@
         },
         "designated_struct_copy.c": {
           "result_sha": "8f0180348759fe72"
+        },
+        "designated_struct_init.c": {
+          "result_sha": "43dd398c9b2dd73c"
         },
         "dfs_graph.c": {
           "result_sha": "0ce7db71b17b8402"

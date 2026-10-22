@@ -3,6 +3,7 @@
   "sources": {
     "baseline": {
       "abstract_array_param.c": "1d6d9fb9",
+      "anon_member_promotion.c": "0142ec02",
       "array_address.c": "0ba37ef8",
       "array_assign_lvalue_reject.c": "3bbc778e",
       "array_bound_const_index.c": "25cc0c64",
@@ -88,6 +89,7 @@
       "designated_init.c": "1bb9fd6b",
       "designated_mixed_cont.c": "413bba13",
       "designated_struct_copy.c": "2ea3f5f3",
+      "designated_struct_init.c": "d2d2524d",
       "dfs_graph.c": "7ec6a1df",
       "div_by_var.c": "9db4f22f",
       "do_while.c": "8f06ab4b",
@@ -791,6 +793,8 @@
   "tsvs": {
     "baseline/abstract_array_param.l1.tsv": "025d3cadf1c48ad8",
     "baseline/abstract_array_param.l2.tsv": "78530396d2beec8e",
+    "baseline/anon_member_promotion.l1.tsv": "dea2c2e9d4c58890",
+    "baseline/anon_member_promotion.l2.tsv": "b670e28fbe896e29",
     "baseline/array_address.l1.tsv": "0c1973c84fea4647",
     "baseline/array_address.l2.tsv": "2804020f51fc1ccc",
     "baseline/array_assign_lvalue_reject.l1.tsv": "5c889a123c9a3477",
@@ -961,6 +965,8 @@
     "baseline/designated_mixed_cont.l2.tsv": "1b644818b5df2a1a",
     "baseline/designated_struct_copy.l1.tsv": "0f20cf8df39ce845",
     "baseline/designated_struct_copy.l2.tsv": "a2b569e748a2db90",
+    "baseline/designated_struct_init.l1.tsv": "6a622d8fa10d58d0",
+    "baseline/designated_struct_init.l2.tsv": "17fd32d419c1dccd",
     "baseline/dfs_graph.l1.tsv": "07175e500037291b",
     "baseline/dfs_graph.l2.tsv": "4ef0267ab65302b0",
     "baseline/div_by_var.l1.tsv": "80d9c754c7fe36b6",

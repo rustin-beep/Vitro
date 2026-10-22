@@ -79,7 +79,7 @@
  {
   "case": "MF-AUDIO",
   "digest": "a9e4e97c",
-  "reason": "llm_multifile 工程模式直拍首跑挖出（2026-10-22 入库批）：WAV 错误路径（bytes=-2）族的字节级输出差异，rate/data 大值侧差——待最小化定性（汇总 issue 登记待深挖）"
+  "reason": "llm_multifile 工程模式直拍首跑（2026-10-22）+ 最小化改判（同日）：wav_serialize 容量不足返回 -2 后 printf 仍无条件读未初始化 buffer[4..43]——rate=2163862048/data=3176896794 即 clang 栈垃圾；UB 读未初始化结局漂移（clang 栈垃圾 vs vitro 零填充，bTree_default.c 同族），语料缺陷非引擎缺陷"
  },
  {
   "case": "MF-CRYPTO",
@@ -94,11 +94,11 @@
  {
   "case": "MF-QUEUE",
   "digest": "29f439a4",
-  "reason": "同上首跑：printf %-.8s/条件实参族输出差异（expected=$ 左对齐宽度侧空）——待最小化定性（汇总 issue）"
+  "reason": "llm_multifile 工程模式直拍首跑 + 最小化改判（2026-10-22）：expected[16][PQ_NAME_LEN] 未初始化，alive 仅 7 名致 expected[7] 永不写，compare 循环读之——clang 栈垃圾 \"$\" vs vitro 零填充空串；UB 读未初始化结局漂移（printf %-8s 基础面四形态实测全对），语料缺陷非引擎缺陷"
  },
  {
   "case": "MF-SERIAL",
   "digest": "26aed0b3",
-  "reason": "同上首跑：串口校验和族字节错值（0x24 vs 0x00，第 9 字节）——疑运算错值真缺陷，待最小化定性（汇总 issue）"
+  "reason": "llm_multifile 工程模式直拍首跑 + 最小化改判（2026-10-22）：serial_pack 的 total=HEADER_SIZE(6)+length+3 但写入面仅到 frame[6+length]（HEADER 实际 4 字节布局）——memcpy 拷出 frame[8..9] 未初始化字节，clang 0x24 vs vitro 0x00；CRC16 本体两侧一致（0xb41a），UB 读未初始化结局漂移，语料缺陷非引擎缺陷"
  }
 ]

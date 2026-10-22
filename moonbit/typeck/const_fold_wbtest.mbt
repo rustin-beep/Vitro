@@ -690,3 +690,96 @@ test "issue265_refold_cast_dims" {
     _ => fail("真 VLA 应原样返回")
   }
 }
+
+///|
+/// #266/#249（2026-10-22，C11 6.7.2.1p13）：匿名成员提升的三面锚——
+/// designated 查名穿透（.a 命中匿名 union 内部）、位置初始化透传
+/// （标量包 InitList 递归匿名成员）、双匿名不撞重名（空名跳过）。
+test "issue266_anon_member_promotion" {
+  let loc = @source.SourceLoc::new(3, 22)
+  // struct AnonUnion { union { int a; float b; }; };
+  let anon_union_ty = @ast.Type::Union("__anon_u", false)
+  let s_decl : @ast.StructDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    name: "AnonUnion",
+    fields: [{ ty: anon_union_ty, name: "", }],
+    is_forward: false,
+  }
+  let x_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::Struct("AnonUnion", false),
+    name: "g",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [@ast.Designator::Field("a")],
+            value: @ast.Expr::Literal(2, loc, @ast.Type::int()),
+          },
+        ],
+        loc,
+        @ast.Type::Struct("AnonUnion", false),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check({
+    structs: [s_decl],
+    unions: [
+      {
+        ..Default::default(),
+        loc: @source.SourceLoc::new(2, 3),
+        name: "__anon_u",
+        fields: [
+          { ty: @ast.Type::int(), name: "a", },
+          { ty: @ast.Type::float(), name: "b", },
+        ],
+        is_forward: false,
+      },
+    ],
+    globals: [x_decl],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  // designated .a 穿透命中：零 E3042/E3006
+  assert_false(
+    errs.exists(e => e.code == 3042 || e.code == 3006),
+    msg="匿名成员 designated 应穿透命中不误拒",
+  )
+  // 静态折叠面：值折成 Literal(2)（find_field_ty 穿透）
+  ignore(typed)
+}
+
+///|
+/// #249 负锚锚：双匿名成员（两个空名）不互撞 E3080。
+test "issue249_double_anon_no_dup" {
+  let s_decl : @ast.StructDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    name: "Mixed",
+    fields: [
+      { ty: @ast.Type::Union("__u1", false), name: "", },
+      { ty: @ast.Type::Union("__u2", false), name: "", },
+    ],
+    is_forward: false,
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({
+    structs: [s_decl],
+    unions: [],
+    globals: [],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_false(
+    errs.exists(e => e.code == 3080),
+    msg="双匿名成员（空名）不参与重名判——C11 6.7.2.1p13",
+  )
+}

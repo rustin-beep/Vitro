@@ -12,6 +12,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(codegen): #270 struct/union designated initializer 全层——.field 指派的文件作用域/嵌套/局部 static/匿名穿透（2026-10-22）
+
+- **三层缺口连通**：①文件作用域 struct/union 的 `.field=`（`flatten_
+  designated_global` 新 struct/union 分支——按名定位 + flatten_global_
+  init 递归复用位模式/嵌套/字符串单源 + 续位 + 未提及位静态零；旧
+  「仅支持数组目标」拒绝）；②**局部 static** 的 designated（`emit_
+  static_init` 壳 GlobalDecl 复用同一单源，旧独立闸拒绝）；③**嵌套
+  子列表**的 designator（`flatten_global_init` 入口分流——`.in = {.b=7,
+  .a=6}` 旧按位置序无视指派致 a/b 错位）。
+- **顺修 #266 尾巴**：`anon_promote_lookup` 的 union 内部偏移按 struct
+  前缀累加（应恒 0——`{.u2=1}` 的 u1 视图读到 0）；局部 designated 的
+  匿名穿透（var_decl 侧本批前已接）与全局面合并同源。
+- **边界登记**：多级 designator 链（`.in.a = 4`）是 parser 层独立缺口
+  （「预期 '='」），锚收窄为等价嵌套形态 `{.in = {.a=4}}`，多级链另案。
+- 锚：语料 `designated_struct_init.c`（嵌套/匿名穿透双视图/部分零填/
+  数组指派续位/局部 static/局部嵌套六形态）clang golden 双臂逐字节
+  一致；moon test 865/865；存量 vm_diff 484 SAME / clang_direct 485
+  DIFF=0 / 三套件六路 PASS；五家 freeze + fuzz 基线连坐重冻。
+
+### fix(typeck+codegen): #266/#249 匿名成员提升——单匿名三面 + 双匿名重名（2026-10-22）
+
+- **[#266] 匿名 union/struct 成员提升**（C11 §6.7.2.1p13，与 #249 同根
+  分型）：成员访问面 #7 已有穿透（find_anonymous_member），缺口在**初始
+  化器与 codegen**——①typeck designated 查名穿透（`.a = 2` 旧 E3042）；
+  ②位置初始化透传（标量值包单元素 InitList 走匿名成员递归检查——
+  union 第一成员承接，旧 E3006「期望 union 实际 int」误拒）；③静态
+  聚合 find_field_ty 同穿透；④codegen `emit_field_init` 补 TK_Union 嵌套
+  初始化臂（gen_nested_init 首元素承接）+ 局部 designated 定位穿透
+  （`anon_promote_lookup`：匿名字段位+内部偏移+成员类型三元组，union
+  内偏移 0/struct 内前缀累加，深度 8 防环——旧 miss 静默丢值）。
+- **[#249] 双匿名空名互撞**：`check_duplicate_member_names` 空名跳过
+  （多个匿名成员合法；提升成员与外层成员的重名约束检查另登记收窄）。
+- **边界**：全局 struct designated（`.x=1`，含非匿名字段）是 #270 域
+  （parser 层「仅支持数组目标」），本批不扩。
+- 锚：语料 `anon_member_promotion.c`（局部 designated/位置透传/双匿名
+  + 命名混排三形态）clang golden 双臂逐字节一致（rc=10）；wbtest +2
+  （穿透命中负 E3042/E3006 + 双匿名负 E3080）；moon test 865/865；
+  存量 483 SAME / clang_direct 484 DIFF=0 / 三套件六路 PASS；五家
+  freeze + fuzz 连坐重冻（42 新指纹全良性：15 AGREE + 27
+  CLANG_REJECT）。
+
 ### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
 
 - **入库**（用户拍板替换旧版）：`scripts/realcode_diff/corpus/multifile`

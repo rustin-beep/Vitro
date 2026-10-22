@@ -68,6 +68,10 @@
         await lessonSession.openInitial();
       })
       .finally(() => {
+        // 测试观测面（与 main.ts 的 __pilot 同域）：记录 ready 翻态瞬间的帧数——
+        // E2E F8「首访 shell 先行」用它判「ready 不等首课采集」，不再靠轮询抓瞬态
+        // 窗口（CI 上采集快于轮询，锚会假红，2026-10-22 实锤）。
+        (window as unknown as Record<string, unknown>).__readyFrames = session.frames.length;
         ui.ready = true;
       })
       .catch((err: unknown) => {

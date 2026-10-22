@@ -388,23 +388,16 @@ async function run() {
   // (ui.ready=true && frames=0) 组合：修后 shell 先行该窗口必然存在；
   // 修前 ready 与 frames 同时就绪、组合永不存在。CPU 6x 节流放大窗口。
   {
-    await send("Emulation.setCPUThrottlingRate", { rate: 6 });
+    // 2026-10-22 加固：原先靠 CPU 6x 节流 + 25ms 轮询捕捉 (ready && frames=0)
+    // 瞬态窗口——CI 实测轮询首帧时采集已完成，锚假红（sawReady=true 但窗口没抓到）。
+    // 改为读 App.svelte 在 ready 翻态瞬间写下的 __readyFrames 快照：采集快慢无关，
+    // 「ready 那一刻帧数 = 0」是可复现的事实。
     await send("Page.navigate", { url: PAGE + "?f8=" + Date.now() });
-    let caught = false;
-    let sawReady = false;
-    const t0 = Date.now();
-    while (Date.now() - t0 < 30000) {
-      const st = await evaluate("({ ready: window.__pilot?.ui?.ready ?? null, frames: window.__pilot?.session?.frames?.length ?? null })").catch(() => null);
-      if (st) {
-        if (st.ready === true) sawReady = true;
-        if (st.ready === true && st.frames === 0) { caught = true; break; }
-      }
-      await sleep(25);
-    }
-    await send("Emulation.setCPUThrottlingRate", { rate: 1 });
-    check("F8 首访 shell 先行（ui.ready 不等首课采集）", caught, `捕捉到 ready&&frames=0=${caught}（sawReady=${sawReady}）`);
-    await waitFor("window.__pilot?.ui?.ready === true", 30000);
-    await sleep(600);
+    await waitFor("window.__pilot?.ui?.ready === true", 40000);
+    await waitFor("window.__pilot.session.frames.length > 0", 40000);
+    const f8 = JSON.parse(await evaluate("JSON.stringify({ readyFrames: window.__readyFrames ?? null, frames: window.__pilot.session.frames.length })"));
+    check("F8 首访 shell 先行（ui.ready 不等首课采集）", f8.readyFrames === 0 && f8.frames > 0, JSON.stringify(f8));
+    await sleep(400);
   }
 
   const fails = results.filter((r) => !r.ok);

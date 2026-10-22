@@ -17,7 +17,7 @@
     // 与主面同裁定（见 ../tsconfig.json 注释）
     "strictNullChecks": false
   },
-  "include": ["*.mts", "visual/*.mts", "../js/**/*.ts", "../app.ts", "../global.d.ts"],
+  "include": ["*.mts", "../js/**/*.ts", "../app.ts", "../global.d.ts"],
   // e08.test/e08-update（E-08 快照闸）排除出本面：类型 import 链经
   // src/e08/entry.ts → .svelte 组件，tsc 不解析 .svelte（svelte-check 的
   // 面）；entry.ts 本体的类型面由 tsconfig.pilot（svelte-check）覆盖，

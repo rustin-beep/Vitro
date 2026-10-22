@@ -82,7 +82,10 @@ generated: src/tokens.css（@generated，禁手改）
 | 语义 lint | `cd demo && npm run lint` |
 | 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套 |
 | 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令） |
-| 画面语义（像素） | `node demo/tests/visual_regress.mjs`——17 状态（工作台首/中帧 × paper/blueprint、目录、手册、内存、协议、专注模式、trap / 编译失败 / 空输出 / 坏链、768/390）× 逐像素 diff（阈值 0.1%），耗时文本走掩膜；**基线只能由 CI runner + Chrome 生成**（本仓 CI = `windows-latest`；拍板稿的 Ubuntu 假设与现状不符——基线在同一 runner 镜像内自洽，跨 OS 复用仍由 `platform` 守卫拦住）（`workflow_dispatch` 选 `visual_baseline=yes` → artifact → 入库），未武装时打印 `::warning::` 跳过（不伪造通过） |
+
+> 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS
+> 需 CI 专用生成、入库体积与维护噪声大于收益。画面语义改由「样式契约（computed
+> 值）+ E2E 行为锚 + ui_lint 文本面」三者守；不再保留截图基线目录/生成步骤。
 
 ## 8. 本文件的边界
 

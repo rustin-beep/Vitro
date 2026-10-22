@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### chore(demo): 退役像素闸——PNG 基线入库判定为噪声（用户裁定 2026-10-22）
+
+- **裁定**（用户）：逐状态 PNG 基线只能由 CI 专用 runner 生成、入库体积与跨 OS
+  维护噪声大于收益；「基线未武装就 warning 跳过」等于半个死闸。**整体退役**，
+  不保留半武装形态。
+- **删除**：`demo/tests/visual_regress.mjs`、`demo/tests/visual/`
+  （`png.mjs` / `png.d.mts` / `png.test.mts` / `diff/`）；CI 移除
+  `visual_baseline` dispatch input、demo 段像素步、`visual-baseline` artifact
+  上传、`png.test` 纯函数步；`demo/tests/tsconfig.json` 摘 `visual/*.mts`。
+- **文档**：`DESIGN.md §7` 删「画面语义（像素）」行并记退役理由；
+  `demo/README.md` 像素闸小节改退役说明；
+  `docs/current/02-构建与上手/脚本总清单与必跑防线.md` 删对应行。
+- **保留防线**：样式契约（五主题 × 19 选择器 × 9 computed 值）、E2E 五套
+  89 锚、`demo_ui_lint`（类名/变量/连字 + 裸值棘轮）。此前 P0/P4 条目里的
+  「像素闸 N 状态」计数随本裁定失效，以本条为准。
+
 ### feat(demo): #222 P4 专注模式——F / Esc / ?focus=1（2026-10-22）
 
 - **入口**：`F` 进、`Esc` 出；`?focus=1` 深链直达（URL 由 effect `replaceState`

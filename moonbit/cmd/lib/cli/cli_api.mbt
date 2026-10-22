@@ -62,14 +62,14 @@ pub fn api(
         0
       }
       None => {
-        println(
+        say(
           "用法错: 未知方法 '\{help_target}'（api help 看方法清单；api help <method> 看详情）",
         )
         4
       }
     }
   } else if method_name == "help" && batch {
-    println(
+    say(
       "用法错: --batch 不与 help 并用（help 是离线出口不进会话）",
     )
     return 4
@@ -78,16 +78,14 @@ pub fn api(
   // invoke——空行跳过（尾换行产物）；id 由 gateway 侧单源处理
   if batch {
     if method_name != "" {
-      println(
+      say(
         "用法错: --batch 不与 <method> 并用（帧序列从 stdin 读）",
       )
       return 4
     }
     let text = @util.utf8_text_partial(read_stdin())
     if text.is_empty() {
-      println(
-        "用法错: --batch 收到空 stdin（喂 NDJSON 请求帧序列）",
-      )
+      say("用法错: --batch 收到空 stdin（喂 NDJSON 请求帧序列）")
       return 4
     }
     let mut rc = 0
@@ -105,7 +103,7 @@ pub fn api(
     return rc
   }
   if method_name == "" {
-    println(
+    say(
       "用法: api <method> [params-json] | api --batch < frames.ndjson  （例: api memory.regions / api compile '{\"source\":\"int main(){return 0;}\"}'）",
     )
     return 4
@@ -113,9 +111,7 @@ pub fn api(
   // params 形态校验：必须是 JSON 对象字面量（fail loud——拼错静默当字符串
   // 会拼出非法帧，错误信息更难懂）
   if !params.has_prefix("{") {
-    println(
-      "用法错: params 须为 JSON 对象字面量，得到 '\{params}'",
-    )
+    say("用法错: params 须为 JSON 对象字面量，得到 '\{params}'")
     return 4
   }
   // DX P2（#71 工具批，2026-10-11）：未知方法名 cli 层预检 rc=4——此前
@@ -123,7 +119,7 @@ pub fn api(
   // 失败（compile 错同码位）；名单单源 = gateway dispatch 权威源生成的
   // api_help_detail（None=未知——与 api help 出口同表，禁第二份手抄）。
   if api_help_detail(method_name) is None {
-    println(
+    say(
       "用法错: 未知方法 '\{method_name}'（rc=4 用法错，非协议内失败；api help 看方法清单）",
     )
     return 4

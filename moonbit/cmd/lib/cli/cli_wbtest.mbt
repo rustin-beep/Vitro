@@ -65,6 +65,18 @@ test "parse_run_args_json 与 stdin 占位" {
 }
 
 ///|
+/// #211 锚（2026-10-22）：--realtime 解析（time()/clock() 真墙钟——
+/// config.set 的 deterministic 置 false）；透传域内旗标形不解析同款。
+test "parse_run_args_realtime" {
+  let ra = parse_run_args(["--realtime", "x.c"])
+  inspect(ra.realtime, content="true")
+  inspect(ra.file, content="x.c")
+  // 默认关（判分可复现口径）+ 透传域零解析
+  inspect(parse_run_args(["x.c"]).realtime, content="false")
+  inspect(parse_run_args(["x.c", "--", "--realtime"]).realtime, content="false")
+}
+
+///|
 test "parse_run_args_多位参数_首为文件余进 argv（Rust 口径）" {
   let ra = parse_run_args(["ok.c", "extra1", "extra2"])
   inspect(ra.file, content="ok.c")

@@ -252,6 +252,33 @@ catalog/gen_diag -check 全绿。
   ci.yml YAML 解析、vite build 全绿。
 
 
+### feat(infra): realcode 勘探工具仓内语料批试点——-corpus 模式 + chibicc/multifile 双金样本（2026-10-22）
+
+- `vitro_clang_diff.go` 新 `-corpus <name>` 模式（Clang+gcc 分桶 + Vitro 三方对拍；子目录=多文件工程一次编译〔#237 零覆盖形态〕）；仓内语料批两批落地：`corpus/chibicc`（41 .c+5 .h，MIT）与 `corpus/multifile`（36 工程 74 .c+38 .h，本仓生成）；登记单源 `corpora.json` 三向对账；`-check` 闸扩多金样本扫描（gold_chibicc/gold_multifile 入库，484 条目）。**豁免定性（用户拍板方案 1，2026-10-23）**：本批为纪律 8 改写（#273 ts 裁定）前在途工作，先入库；ts 迁移义务挂 #273 台账按批序处置。
+- 防线连坐（B 线批一收口时暴露并修复）：gap 语料 `file_fopen.c`/`file_fread.c` 去 UB 修复（fclose(NULL)/fread(NULL) 在 f=NULL 路径调用——clang/UCRT 崩溃 vs Vitro 静默的 UB 域分叉；且原用名 test.txt 与 VFS 预置文件撞名〔#95〕致两侧语义天然分叉，fuzz 基线曾在根残留 test.txt 的污染环境采成 AGREE——改名 gap_missing.txt + fclose 入 if 内，恢复「两侧 fopen 不存在的文件同返 NULL」原始意图）；vm_diff golden_digest 连坐重刷（730 SAME）、clang_direct known 白名单两条空转清理（844 SAME/16 KNOWN/0 DIFF）、corpus_fuzz 318 例 PASS 零 freeze。
+
+> **与 c3df8005（A 线 fuzz 槽位隔离）同题双修互补**：A 线根治工具侧污染面（变体 cwd 隔离），本批语料侧合法化（去 UB + 改名避 VFS 预置撞名）——rebase 合流后 fuzz 基线以语料修复后真值（AGREE）重刷，见收尾段。
+### fix(host+vm+stdlib): B 线批一——#269 sscanf %n 写回 + #211 time/clock 墙钟 + #228 fopen 读写族（2026-10-22）
+
+- **[#269] `sscanf`/`scanf` 补 `%n` 转换符**（C23 §7.23.6.2p12）：写回到该点已读字符数、不消耗输入、不计返回值；`%lln` 8 字节（len_mod≥2 与 d/u/i 臂同口径）。旧形态落「未知转换符」静默不写——`pos += consumed` 循环推进形态全死循环（LLM 语料 gen4/q36_27b 666KB 输出实锤）。锚：`sscanf_n_writes_consumed_count`（初值 -1 哨兵 + 宽度截断 + %ln/%lln 双口径）+ `scanf_n_stream_consumed`（前导空白计入）；js 臂端到端与 gcc 逐字一致。
+- **[#211] `time()`/`clock()` 墙钟三态**：CLI `run` 新 `--realtime` 旗标（config.set 的 deterministic 置 false——默认仍恒 0 保判分 digest）；`clock()` 改**自会话起点差值微秒**（vm `set_clock_source` 注册时采样 `clock_start_millis`——旧「绝对墙钟微秒」真开墙钟会得自 Unix 纪元的天文数字，C11 §7.27.2.1 是"自程序起算"；回拨钳 0）；wasm 臂恒 0 分臂不变。矩阵 §2.6 实测口径改写。锚：`time_clock_host_wall_source_wiring` 翻转（可变假钟差值语义）+ `parse_run_args_realtime`；双臂实测 `--realtime` time 与 gcc 同值。
+- **[#228] `fopen` 读写族**：`r+`/`rb+`/`r+b`、`w+`/`wb+`/`w+b`、`a+`/`ab+`/`a+b` 十二形态（C11 §7.21.5.3，`b`/`+` 序不敏感）——`VfsMode` 增 ReadWrite/WriteRead/AppendRead 三变体（快照码位 3~5 连坐），共享基础族建文件/清空/游标语义；写放行由消费点「仅纯 Read 拒写」天然覆盖。旧形态 `+` 族落 None **静默返 NULL 无诊断**。锚：`vfs_fopen_plus_modes`（覆盖写不清空/w+ 清空/a+ 追加/未知模式仍拒）；js 端到端 r+/w+/a+ 与 gcc 逐字一致。
+- moon test 1022/1022；moonbit_surface 六条新出口边登记（三壳 print_usage/usage_err）。
+
+### fix(gateway+cli): #258 output.delta 未知 stream 整帧拒绝 + #215 用法错迁 stderr + #227 rc 判据成文（2026-10-22）
+
+- **[#258]** `output.delta` 的 `stream` 非法值旧静默降级 display（ok:true + 回包改写 + 无标记），现 `serve_param_err` 整帧拒绝（expected=display|stdout|stderr|note；归一域 trim/lower/note|notes 不变，缺省不传仍 display）。锚：`serve_output_delta_unknown_stream_rejected` + 旧锚 `unknown_stream_defaults_display` 翻转；api help 简介连坐再生（gen_api_help 形状面豁免闸先拦后过——消息改规范「<method> 的…」形态）。
+- **[#215]** 用法错文案 6 路径 5 走 stdout（spec §1 已改口径）——三壳（vitro/vitro_js/vitro_wasm）顶层分派 + cli_api 五处全迁 stderr；三份手写 print_help 收单源 `cli_help.mbt`（`print_usage(to_stderr)`——显式 help=stdout rc=0，用法错语境=stderr rc=4）；smoke B 组附 4「rc=4 路径 stdout 恒空」8 路径 × 三臂机判；spec §1 补可测不变式。~~勘误链：本小节初稿曾记「moon fmt 重写 `i = i + 1` 为 `i++` 且 js 后端独拒」为工具链坑——经用户质疑复测证伪：`i++` 系批内笔误（MoonBit 无 `++` 运算符，native/js 双后端同款 Parse error；探针 util 包双 check 实证），`moon fmt` 对 `i = i + 1` 原样保留（探针实证），native 壳「能过」只因该处循环未被本批触碰——三断言全为误判，注释与登记同步撤除。
+- **[#227]** spec §4.5 退出码措辞按实现改写（两层判据：`result.ok:false`〔外层 ok:true 也算〕或外层 ok:false → rc=1 + 三行示例）；smoke B 组附 3「api 失败形态三臂同 rc」锚（编译错帧/协议错帧/成功帧）。
+- **[#246/#245]** 语义标签两案：`is_func_call` 改「`(` 前紧邻标识符」判据（`arr[(0+1)/2]` 旧落「函数调用」×每帧）；函数定义行/入口帧独立标签「进入 <名>」（`definition_name_of_call`——名字段左侧另有类型词即定义行；#220 销案时明言「另开单病」即此）。词汇表只增不改追加 `func_entry`（14→15）：vocabulary 锚三处 + README doc 测试 + gateway capabilities `semantic_label_kinds` 计数连坐翻锚。锚：`semantic_index_paren_not_func_call` + `semantic_function_definition_entry_label` + 旧锚 `semantic_recursive_exclusions` 排除二翻转。
+
+### fix(infra): #253/#254 勘探工具口径两案 + docs 协议族批（2026-10-22）
+
+- **[#253]** `vitro_clang_diff.go` 外置仓模式 serve compile 请求补 `filename`（绝对路径）——引擎 base_dir 候选链由此生效，本地 quote-include 不再一律 E1021 假红（issue 实测 104 次 → 残 33 次全为真子集边界）；仓内语料模式（serveBatchFiles）试点批已带本修复。
+- **[#254]** 运行对比两侧改分离捕获（`runWithTimeoutSplit` 只取 stdout——合并捕获时代 stderr 协议帧族混入「程序输出」是假 mismatch 主源）；删 Latin-1 还原迂回（#16 后 stdout 通道已 UTF-8 保真，还原把程序非 ASCII 输出打成 `?`）；moon Warning 块正则 `─{5,}╯`→`─{3,}╯`（实测块尾 4 个 ─ 旧恒不匹配）。`-corpus chibicc/multifile` 全量复跑通过、gold 基线零漂移；外置仓 gold_signatures 待下次 -repo 勘探重冻。
+- **docs**：CLI 使用手册补通道容量节（#235/#241——单帧 argv 上限 Win 32K/Linux 2M/mac 256K + 语言包必须 --batch）、texts.install 段内 schema 与整表等键约束（#244）、覆盖面分工（#243——诊断 message/fix_suggestion 不受语言包控制）；标准库矩阵 §2.1 fopen 模式面 + VFS 预置文件成文（#95/#228）、§2.6 time/clock 分臂口径（#211）；bubble 课程反例改大数哨兵形态（#239——`a[6]={…,9999}` 实测保「结果正确+多比一次」，原稿 a[5] 越界版在 Vitro 是 trap 走不到教学点；顺带把受检访存抓越界写成正向教学点）；demo/js/types.ts 六处漂移修正（#240——error_code string→number 实测勘误 + 5 个 HEAD 字段补面，零消费方零波及）。
+- **改派登记**：#242（诊断 column 非 ASCII 行量纲混算）是 lexer/诊断列号引擎缺陷，属 A 线（master 编译器+诊断域）——本批不动，建议随 A 线诊断批处置。
+
 ### fix(codegen): #270 struct/union designated initializer 全层——.field 指派的文件作用域/嵌套/局部 static/匿名穿透（2026-10-22）
 
 - **三层缺口连通**：①文件作用域 struct/union 的 `.field=`（`flatten_

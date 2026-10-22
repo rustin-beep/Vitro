@@ -537,6 +537,62 @@ test "sscanf_mixed_and_no_guard_shape" {
 }
 
 ///|
+/// #269 锚（2026-10-22）：`%n` 写回到该点**已读字符数**（C23 §7.23.6.2p12
+/// ——不消耗输入、不计返回值）。红锚：补臂前 `%n` 落「未知转换符」分支
+/// 静默不写（issue 最小复现 `sscanf("123 456","%d%n")` 的 used 恒初值 -1
+/// ⇒ 循环 `pos += consumed` 形态死循环——gen4/q36_27b 高频教学面）。
+test "sscanf_n_writes_consumed_count" {
+  let (map, mem) = fresh()
+  // 最小复现：%d 配 123 后 %n 写 3
+  put_cstr(mem, map, 0x6B00U, "123 456")
+  put_cstr(mem, map, 0x6300U, "%d%n")
+  let pv = 0x8600U
+  let pn = 0x8610U
+  ignore(mem.store_u32(map, pn, (-1).reinterpret_as_uint())) // 初值哨兵
+  let r = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pn])
+  assert_eq(r.value, Some(1UL), msg="%n 不计入返回值")
+  assert_eq(mem.load_u32(map, pv), Ok(123U))
+  assert_eq(mem.load_u32(map, pn), Ok(3U), msg="%n 写回已读字符数")
+  // %lln → 8 字节写；宽度截断（%2d 只读 2 字符）后 n=2。%ln = long
+  // 4 字节（本仓 LLP64 口径——d/u/i 臂 len_mod>=2 才 8 字节同款）
+  put_cstr(mem, map, 0x6B00U, "12345")
+  put_cstr(mem, map, 0x6300U, "%2d%lln")
+  let pll = 0x8620U
+  ignore(mem.store_u64(map, pll, (-1L).reinterpret_as_uint64()))
+  let r2 = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pll])
+  assert_eq(r2.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pv), Ok(12U))
+  assert_eq(
+    mem.load_u64(map, pll),
+    Ok(2UL),
+    msg="%lln 8 字节写，宽度内只读 2 字符",
+  )
+  put_cstr(mem, map, 0x6300U, "%2d%ln")
+  ignore(mem.store_u32(map, pn, (-1).reinterpret_as_uint()))
+  let r3 = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pn])
+  assert_eq(r3.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pn), Ok(2U), msg="%ln 4 字节（long=LLP64）")
+}
+
+///|
+/// #269 锚（流版）：scanf 的 %n 同语义——已读数含被前导空白消费的字符。
+test "scanf_n_stream_consumed" {
+  let (map, mem) = fresh()
+  let x_addr = 0x7000U
+  let n_addr = 0x7100U
+  let input = InputState::new([b"  42tail"], true)
+  let r = scanf_run(map, mem, input, "%d%n", [x_addr, n_addr])
+  guard r is InputOutcome::Value(m) else { fail("应完成匹配") }
+  assert_eq(m, 1UL, msg="%n 不计数")
+  assert_eq(mem.load_u32(map, x_addr), Ok(42U))
+  assert_eq(
+    mem.load_u32(map, n_addr),
+    Ok(4U),
+    msg="前导空白 2 + 数字 2 = 已读 4",
+  )
+}
+
+///|
 /// #47 批 sscanf %i/%x/%o 扩面锚（审阅 P2-1 同族漏改补齐，2026-10-09）：
 /// 三转换符与 scanf 臂同口径（C11 §7.21.6.2 真值源——%i 前缀探测 0x→16/
 /// 0→8、%x 可选 0x 前缀仅后随 hex 才跳、%o base 8；均可带符号）。红→绿

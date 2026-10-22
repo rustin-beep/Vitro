@@ -1,0 +1,27 @@
+{
+  "_note": "仓内语料批登记表（#25 义务链第⑤步：_meta.corpora 登记 + -check 多文件扫描）。三向对账：语料目录 ↔ 本表 ↔ 金样本文件——漏登记/悬空/僵尸例任一即红（scripts/realcode_diff -check 第四道）。",
+  "as_of": "2026-10-22",
+  "corpora": {
+    "chibicc": {
+      "gold": "gold_chibicc.json",
+      "license": "MIT",
+      "license_file": "corpus/chibicc/LICENSE.upstream",
+      "upstream": "https://github.com/RunThem/chibicc-repo",
+      "upstream_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
+      "upstream_base": "https://github.com/rui314/chibicc@90d1f7f199cc55b13c7fdb5839d1409806633fdb",
+      "total": 41,
+      "kind": "single_file",
+      "note": "chibicc 的活跃 fork（libchibicc 前端库化 + 自举增强）。相对上游 ahead 171 / behind 0——上游 41 份 test/ 用例零删除、净增 538 行断言（_Alignas/aligned 属性、语句表达式 void 类型、有符号无符号比较、匿名 union 指定初始化器、_Generic/VLA/typeof/_Atomic 等形状面）。"
+    },
+    "multifile": {
+      "gold": "gold_multifile.json",
+      "license": "MIT",
+      "license_file": null,
+      "upstream": "in-repo（本地 LLM 生成，2026-10-21 三批）",
+      "upstream_commit": "tmp/multifile_corpus{,2,3}_20261021",
+      "total": 36,
+      "kind": "multi_file_project",
+      "note": "多文件工程语料 36 份（每份 2-3 个 .c + 1-2 个 .h）。此前只存在于 tmp/（gitignore 域=会丢），本次入库——这是防线唯一零覆盖的形态（#237）。首跑双绿 35/36，唯一红的 MF-UNIT 命中已知缺口 #221（__FILE__/__LINE__ 预定义宏未支持）。"
+    }
+  }
+}

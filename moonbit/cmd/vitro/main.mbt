@@ -8,7 +8,7 @@ fn main {
   @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   if args.length() < 2 {
-    print_help()
+    @cli.print_usage(true) // #215：无参用法错（rc=4）走 stderr
     c_exit(4)
   }
   let cmd = args[1]
@@ -37,42 +37,23 @@ fn main {
     "api" =>
       @cli.api(rest, make_stdin(), channel=@engine_direct.direct_channel())
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
-      println(
+      // #215：rc=4 用法错语境的指引走 stderr（stdout 恒空不变式）
+      @cli.usage_err(
         "vitro: '\{cmd}' 走独立 exe（moonbit/_build/native/release/build/cmd/<name>/——防线调用面，暂不收拢；见 issue #37 B1）；一次性脚本化用 'vitro api <method> <params>' 覆盖全部协议方法",
       )
       4
     }
     "help" | "--help" | "-h" => {
-      print_help()
+      @cli.print_usage(false)
       0
     }
     _ => {
-      println("vitro: 未知命令 '\{cmd}'")
-      print_help()
+      @cli.usage_err("vitro: 未知命令 '\{cmd}'")
+      @cli.print_usage(true)
       4
     }
   }
   c_exit(code)
-}
-
-///|
-fn print_help() -> Unit {
-  println("用法: vitro <cmd> [args]")
-  println(
-    "  run <file.c> [--json] [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4；--json=事件流 NDJSON）",
-  )
-  println(
-    "  compile <file.c | -> [--json]                             编译+诊断单出",
-  )
-  println(
-    "  step <file.c | -> [--max-steps N] [--json|--summary]      一次性 step 流（交互调试走 serve）",
-  )
-  println(
-    "  api <method> [params-json] | api --batch < frames.ndjson  万能单帧 + 批式多帧（状态跨帧保留——seek/breakpoints/input.feed 序列可脚本化；响应 NDJSON 直出；任一帧 ok:false → rc=1；api help <method> 看参数详情）",
-  )
-  println(
-    "  help                                                      本帮助",
-  )
 }
 
 ///|

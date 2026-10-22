@@ -185,6 +185,10 @@ fn vfs_mode_code(mode : VfsMode) -> Int32 {
     Read => 0
     Write => 1
     Append => 2
+    // #228 读写族（3~5）：旧快照（0~2）不受影响
+    ReadWrite => 3
+    WriteRead => 4
+    AppendRead => 5
   }
 }
 
@@ -194,6 +198,9 @@ fn vfs_mode_from_code(code : Int32) -> VfsMode {
     0 => Read
     1 => Write
     2 => Append
+    3 => ReadWrite
+    4 => WriteRead
+    5 => AppendRead
     _ =>
       abort(
         "VfsSnapshot.restore: mode 编号越界（\{code}）——快照数据损坏",

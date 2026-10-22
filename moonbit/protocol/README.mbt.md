@@ -63,8 +63,10 @@ test {
 test {
   // v0.1 十四字段白名单（对账单源 = scripts/replay/v01_payload_fields.json）
   inspect(@protocol.step_payload_fields_v0_1().length(), content="14")
-  // 词汇表 14 条 = 10 active c 域 + 4 reserved csharp 域（只增不改）
-  inspect(@protocol.semantic_label_vocabulary().length(), content="14")
+  // 词汇表 15 条 = 11 active c 域 + 4 reserved csharp 域（只增不改；
+  // #245，2026-10-22：+func_entry「进入 {func}」——函数定义行/入口帧
+  // 独立标签，此前落 generic_call 兜底）
+  inspect(@protocol.semantic_label_vocabulary().length(), content="15")
   // schema 版本轨道（v0.1 冻结日期是协议事实，不是文档装饰；版本串随
   // v0.2 首批激活 #90 升格——2026-10-17）
   inspect(@protocol.SCHEMA_VERSION, content="v0.2")

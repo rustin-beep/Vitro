@@ -123,6 +123,7 @@ fn frame_pipeline(
   compile_mode~ : Bool = false,
   channel~ : EngineChannel,
   max_steps_override~ : Int32? = None,
+  realtime~ : Bool = false,
 ) -> Int32 {
   // #133 止血包：--max-steps 覆盖值（缺省 10M）——config.set 下发与
   // rc=3 步数超限判定（两处）同源此值
@@ -146,10 +147,14 @@ fn frame_pipeline(
   // 登记形态）
   (channel.set_clock)(clock_millis)
   ignore(inv_raw("session.create", "{}"))
+  // #211（2026-10-22）：deterministic 默认 true（判分可复现——time/clock
+  // 恒 0、digest 冻结依赖）；--realtime 置 false 走宿主墙钟（教学面：
+  // srand(time(0)) / clock() 计时）
+  let det_flag = !realtime
   ignore(
     inv_raw(
       "config.set",
-      "{\"max_steps\":\{ms_cap},\"call_depth_limit\":10000,\"deterministic\":true,\"quarantine_budget\":262144}",
+      "{\"max_steps\":\{ms_cap},\"call_depth_limit\":10000,\"deterministic\":\{det_flag},\"quarantine_budget\":262144}",
     ),
   )
   // compile params 装配走通道（直连 = source+filename；wasm = files 多

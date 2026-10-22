@@ -72,6 +72,16 @@ pub fn semantic_label_vocabulary() -> Array[SemanticLabelKind] {
       since: "-",
     },
     {
+      id: "func_entry",
+      domain: "c",
+      template: "进入 {func}",
+      example: "进入 main / 进入 defLine",
+      status: "active",
+      // #245（2026-10-22）：函数定义行/入口帧独立标签（此前落 generic_call
+      // 兜底「函数调用」——教学误导：进入 ≠ 调用）；active 条目 since 恒 '-'
+      since: "-",
+    },
+    {
       id: "loop",
       domain: "c",
       template: "循环 {iter=v, …}",
@@ -179,6 +189,14 @@ pub fn classify(label : String) -> String? {
   }
   if label == "函数调用" {
     return Some("generic_call")
+  }
+  // #245：进入 {func}（函数定义行/入口帧）——注意须在「进入 catch」
+  //（csharp 预留域）之前判：两者同「进入」前缀，c 域的 func_entry 模板
+  // 更宽（任意函数名），精确形「进入 catch」优先归 csharp 域
+  if label.has_prefix("进入 ") &&
+    label != "进入 catch" &&
+    label.length() > "进入 ".length() {
+    return Some("func_entry")
   }
   if label.has_prefix("调用 ") && label.length() > "调用 ".length() {
     return Some("call")

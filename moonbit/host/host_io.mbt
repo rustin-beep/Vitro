@@ -744,6 +744,9 @@ const SCANF_X = 120
 const SCANF_O = 111
 
 ///|
+const SCANF_N = 110
+
+///|
 /// token → Int（oracle `parse().unwrap_or(0)`：溢出/空/孤立符号 → 0）。
 fn parse_int_or_zero(token : Array[Byte]) -> Int32 {
   @string.parse_int(@utf8.decode_lossy(Bytes::from_array(token))) catch {
@@ -1328,6 +1331,26 @@ pub fn host_scanf_n(
         Ok(_) => ()
         Err(e) => return InputOutcome::Trap(access_fault_text(e))
       }
+    } else if spec == SCANF_N {
+      // #269（2026-10-22）：`%n` 写回到该点**已读字符数**（C23 §7.23.6.2p12
+      // ——不消耗输入、不计返回值；被转换符消费的前导空白也计入 pos）。
+      // `pos += consumed` 循环推进形态的教学语料（gen4/q36_27b）依赖此
+      // 写回，漏写即死循环。长度修饰同 d/u/i 臂口径：ll → 8 字节、其余
+      // 4 字节（%hn 与 %ln 同形——len_mod 1=l/h 共档，既有简化）。
+      let f = if !sl.2 {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, pos.to_int64().reinterpret_as_uint64())
+        } else {
+          mem.store_u32(map, ptr, pos.reinterpret_as_uint())
+        }
+      } else {
+        Ok(())
+      }
+      match f {
+        Ok(_) => ()
+        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+      }
+      continue
     } else {
       // 不支持的转换符：未消费输入，不计入成功项
       continue
@@ -1832,6 +1855,22 @@ pub fn host_sscanf(
       }
       if !sl.2 {
         matched = matched + 1
+      }
+    } else if spec == SCANF_N {
+      // #269（2026-10-22）：`%n` 写回已读字符数（与 scanf 臂同语义——
+      // 不消耗输入、不计返回值；pos = 源串到该点已消费字节数）
+      let f = if !sl.2 {
+        if len_mod >= 2 {
+          mem.store_u64(map, ptr, pos.to_int64().reinterpret_as_uint64())
+        } else {
+          mem.store_u32(map, ptr, pos.reinterpret_as_uint())
+        }
+      } else {
+        Ok(())
+      }
+      match f {
+        Ok(_) => ()
+        Err(e) => return fault_reply(e)
       }
     } else {
       // 未知转换符：不消费不计数

@@ -26,7 +26,7 @@
 
 ## 1. 文本模式输出协议（标记行）
 
-**通道分立（#129，2026-10-16 用户拍板——推翻 #69 混流裁定）**：stdout **只承载程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理；此规则是 §6 通道字节语义总则在文本面的投影，NDJSON/serve 帧的 `delta` 字段同语义）——**字节精确**，下游管道/重定向/diff 无需剥离。引擎标记行（诊断/note/TRAP/EXIT 等）与用法错文案全部走 **stderr**（gcc/clang 先例）。标记行前缀白名单（均在 stderr 通道）：
+**通道分立（#129，2026-10-16 用户拍板——推翻 #69 混流裁定）**：stdout **只承载程序输出**（C 层 printf 原样，非 UTF-8 字节按 Latin-1 落文本——字节级归一由消费方处理；此规则是 §6 通道字节语义总则在文本面的投影，NDJSON/serve 帧的 `delta` 字段同语义）——**字节精确**，下游管道/重定向/diff 无需剥离。引擎标记行（诊断/note/TRAP/EXIT 等）与用法错文案全部走 **stderr**（gcc/clang 先例）。**可测不变式（#215，2026-10-22）：任一 rc=4 路径的 stdout 恒为空**（用法错文案/无参与未知命令的帮助文本全在 stderr；显式 `help` 子命令是 rc=0 的正常输出走 stdout）——三臂由 `vitro_cli_smoke` B 组附 4 锚定。标记行前缀白名单（均在 stderr 通道）：
 
 | 前缀 | 语义 | 示例 |
 |---|---|---|
@@ -95,7 +95,7 @@ vitro api <method> [params-json]
 - **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把 21+4 方法全部拉平为「一行命令」）；响应帧 stdout 原样直出；
 - params 缺省 `{}`；非 JSON 对象字面量 → 用法错 rc=4（fail loud）；
 - **未知方法名预检（DX P2，2026-10-11）**：cli 层先行查生成方法表（单源同 api help——`api_help_gen.mbt`，main.js 退役批 2026-10-16 起三臂同表单产物），未知 → rc=4 用法错（不再落 gateway「未知方法」帧的 rc=1——shell 会把 1 误读为协议内失败/编译错同码位）；已知方法照常 invoke；
-- 退出码：0=帧 `ok:true` / **1=帧 `ok:false`（协议内错误统一——含编译错/trap 报错帧，api 是透传层不细分语义）** / 4=用法错；
+- 退出码：0=帧全成功 / **1=帧含失败——两层判据：`result.ok:false`（协议内失败：编译错/trap/协议错，**外层 `ok:true` 也算**）或外层 `ok:false`（result 缺省的纯协议帧）；api 是透传层不细分语义** / 4=用法错。示例：成功帧 `{"ok":true,"result":{"ok":true,…}}` → rc=0；编译错帧 `{"ok":true,"result":{"ok":false,"diagnostics":[…]}}` → rc=1；协议错帧 `{"ok":false,"error":{…}}` → rc=1（#227，2026-10-22：实现判据自始为「响应文本含 `"ok":false`（含内层 result）」，本句旧措辞「0=帧 ok:true」按字面读与实现矛盾，已对齐；三臂同码由 `vitro_cli_smoke` B 组附 3 锚定）；
 - **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；
 - 单帧形态会话态：每次 api 调用独立进程会话（跨调用不保留——会话场景走 --batch 或 serve 长会话）；
 - **`api help [method]`（#67，2026-10-11）**：离线可发现性出口——`help` 是方法位保留字（不进 invoke、不起会话）：无 method 打印全方法清单、有 method 打印单方法详情（params 形状 = `serve_param_err` 的 `expected` 字段同源，#68 词汇表）；数据 = `scripts/gen_api_help` 生成表（权威源 dispatch + serve_param_err，`-check` 幂等锁——禁手抄），三臂同表（`cmd/lib/cli/api_help_gen.mbt` 单产物——main.js 退役批 2026-10-16 起）由 vitro_cli_smoke 对拍锁；rc：0=清单/详情 / 4=未知方法（stdout 用法错文案）；`--batch` 与 `help` 并用 = rc=4；

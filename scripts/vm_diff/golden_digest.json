@@ -2969,16 +2969,16 @@
       "compile_fail": true
     },
     "gap/file_fopen.c": {
-      "src_sha": "d1bdc876",
+      "src_sha": "3c38e8f4",
       "exit_code": 0,
-      "stdout_sha": "2689367b205c16ce",
-      "memory_sha": "0c3603ec185977f9"
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "edd46c0f94e17090"
     },
     "gap/file_fread.c": {
-      "src_sha": "dc8404a4",
+      "src_sha": "622854fc",
       "exit_code": 0,
-      "stdout_sha": "2cf24dba5fb0a30e",
-      "memory_sha": "bb87259b9df01b88"
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "08d57f809c946546"
     },
     "gap/file_fwrite.c": {
       "src_sha": "e2c3c877",

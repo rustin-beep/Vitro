@@ -494,7 +494,9 @@ test "set_call_depth_limit_clamps_to_16_floor" {
 test "time_clock_host_wall_source_wiring" {
   // 2026-10-02 deterministic 分叉销案接线锚：dispatch 123/124 的
   // now_millis 取 clock_source（宿主注入）；不注册恒 0（wasm-gc 形态）、
-  // deterministic=true 恒 0（判分可复现）——三态经假钟 123456789UL 直锚
+  // deterministic=true 恒 0（判分可复现）——三态经假钟直锚。
+  // #211（2026-10-22）：clock 改**自会话起点**差值——起点 = 墙钟注册时
+  // 采样（set_clock_source 首调），假钟可变推进验证差值语义。
   let vm = VitroVM::new()
   // 无源：恒 0
   vm.push(0UL)
@@ -502,13 +504,16 @@ test "time_clock_host_wall_source_wiring" {
   assert_eq(vm.pop(), 0UL)
   vm.execute_host_func(124, 1, 1)
   assert_eq(vm.pop(), 0UL)
-  // 有源：time = millis/1000、clock = millis*1000
-  vm.set_clock_source(fn() { 123456789UL })
+  // 有源（可变假钟）：注册时 t=1000（起点采样），推进到 4500 后
+  // time = 4（绝对秒）、clock = 3500000（差值 3.5 秒的微秒）
+  let fake_now : Array[UInt64] = [1000UL]
+  vm.set_clock_source(fn() { fake_now[0] })
+  fake_now[0] = 4500UL
   vm.push(0UL)
   vm.execute_host_func(123, 1, 1)
-  assert_eq(vm.pop(), 123456UL)
+  assert_eq(vm.pop(), 4UL)
   vm.execute_host_func(124, 1, 1)
-  assert_eq(vm.pop(), 123456789000UL)
+  assert_eq(vm.pop(), 3500000UL)
   // 有源 + deterministic：恒 0（判分模式压过墙钟）
   vm.set_deterministic(true)
   vm.push(0UL)

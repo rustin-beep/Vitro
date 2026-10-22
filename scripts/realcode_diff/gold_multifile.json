@@ -1,0 +1,429 @@
+{
+  "_meta": {
+    "as_of": "2026-10-22",
+    "buckets": {
+      "both_green": 35,
+      "clang_red": 0,
+      "vitro_red": 1
+    },
+    "gcc_buckets": {
+      "both_green": 36,
+      "both_red": 0,
+      "divergence": 0,
+      "rescued": 0
+    },
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。 仓内语料批金样本（#25 义务链第⑤步）：只存诊断码/数量/运行判定签名,零源码文本。",
+    "repo": "multifile-llm-20261021",
+    "total": 36,
+    "source_fork": "in-repo:scripts/realcode_diff/corpus/multifile",
+    "source_commit": "local-20261021 (tmp/multifile_corpus{,2,3}_20261021)"
+  },
+  "files": {
+    "MF-ARGS/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 14,
+      "codes": {
+        "H3057": 4,
+        "W3053": 10
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-AUDIO/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 12,
+      "codes": {
+        "H3057": 12
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-BITS/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {
+        "W3053": 3
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-BMP/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {
+        "W3053": 6
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-CACHE/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {
+        "H3057": 3,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-CONFIG/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 21,
+      "codes": {
+        "H3057": 16,
+        "W3053": 5
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-CRYPTO/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {
+        "H3057": 4,
+        "W3053": 3
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-CSV/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 10,
+      "codes": {
+        "H3057": 6,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-DATE/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 7,
+      "codes": {
+        "H3057": 1,
+        "W3053": 6
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-DICT/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 9,
+      "codes": {
+        "H3057": 4,
+        "W3053": 5
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-EVENTS/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 8,
+      "codes": {
+        "H3057": 8
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-GAME/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 2,
+      "codes": {
+        "W3053": 2
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-GRAPH/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-HASH/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {
+        "H3057": 6
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-HTTP/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 31,
+      "codes": {
+        "H3057": 12,
+        "W3053": 19
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-JSONMINI/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 52,
+      "codes": {
+        "H3057": 21,
+        "W3053": 31
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-LIST/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 14,
+      "codes": {
+        "H3057": 10,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-LOG/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-MATRIX/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-PATH/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 46,
+      "codes": {
+        "H3057": 18,
+        "W3053": 28
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-POOL/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {
+        "H3057": 2,
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-PROTO/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 14,
+      "codes": {
+        "H3057": 6,
+        "W3053": 8
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-QUEUE/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 6,
+      "codes": {
+        "H3057": 4,
+        "W3053": 2
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-REGEX/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 9,
+      "codes": {
+        "H3057": 2,
+        "W3053": 7
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-RLE/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 4,
+      "codes": {
+        "W3053": 4
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-SERIAL/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 21,
+      "codes": {
+        "H3057": 10,
+        "W3053": 11
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-SIM/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-SORT/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 29,
+      "codes": {
+        "H3057": 29
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-STACK/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-STATE/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 5,
+      "codes": {
+        "H3057": 2,
+        "W3053": 3
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-STR/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 22,
+      "codes": {
+        "H3057": 12,
+        "W3053": 10
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-TAR/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 58,
+      "codes": {
+        "H3057": 42,
+        "W3053": 16
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-TASK/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 3,
+      "codes": {
+        "H3057": 2,
+        "W3053": 1
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-TEXT/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 19,
+      "codes": {
+        "H3057": 10,
+        "W3053": 9
+      },
+      "layer": "ok",
+      "run": ""
+    },
+    "MF-UNIT/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 69,
+      "vitro_warns": 0,
+      "codes": {
+        "E3023": 46,
+        "E3054": 23
+      },
+      "layer": "typeck",
+      "run": ""
+    },
+    "MF-VEC/": {
+      "clang_ok": true,
+      "gcc_ok": true,
+      "vitro_errs": 0,
+      "vitro_warns": 0,
+      "codes": {},
+      "layer": "ok",
+      "run": ""
+    }
+  }
+}

@@ -20,11 +20,17 @@
 /// 不搬。
 
 ///|
-/// 打开模式（穷尽三态——坑 13 的结构性预防）。
+/// 打开模式（穷尽态——坑 13 的结构性预防）。#228（2026-10-22）起含
+/// 读写三态：`ReadWrite`（r+：须存在/不清空/游标 0）、`WriteRead`
+///（w+：建或清空）、`AppendRead`（a+：建文件/游标末尾）——读写放行
+/// 由消费点判「仅纯 `Read` 拒写」天然覆盖（fread 无模式检查）。
 pub enum VfsMode {
   Read
   Write
   Append
+  ReadWrite
+  WriteRead
+  AppendRead
 } derive(Debug, Eq)
 
 ///|
@@ -252,31 +258,34 @@ pub fn VirtualFileSystem::inject_preset_file(
 }
 
 ///|
-/// `fopen(path, mode)` → fd（0 = 失败）。模式串 `r/rb/w/wb/a/ab`；文本
-/// 模式带 CRLF 伸缩。
+/// `fopen(path, mode)` → fd（0 = 失败）。模式串：`r/rb/w/wb/a/ab` 及
+/// 读写族 `r+`/`rb+`/`r+b`、`w+`/`wb+`/`w+b`、`a+`/`ab+`/`a+b`（#228，
+/// C11 §7.21.5.3——`b` 与 `+` 序不敏感）；文本模式带 CRLF 伸缩。
 ///
 /// **坑 13 修复**：Append 对不存在文件**建文件**（oracle 该分支死代码，
 /// 追加写静默丢弃——登记分叉）；Write 建文件/清空既有；Read 不存在即失败。
+/// 读写族（r+/w+/a+）共享对应基础族的建文件/清空/游标语义（r+ 须存在、
+/// w+ 清空、a+ 建文件游标末尾）——此前 `+` 族落 None **静默返回 0**
+///（NULL 无诊断，#228 病根）。
 pub fn VirtualFileSystem::fopen(
   self : VirtualFileSystem,
   map : @memory.MemoryMap,
   path : String,
   mode : String,
 ) -> UInt32 {
-  let mode_pair = if mode == "r" {
-    Some((VfsMode::Read, true))
-  } else if mode == "rb" {
-    Some((VfsMode::Read, false))
-  } else if mode == "w" {
-    Some((VfsMode::Write, true))
-  } else if mode == "wb" {
-    Some((VfsMode::Write, false))
-  } else if mode == "a" {
-    Some((VfsMode::Append, true))
-  } else if mode == "ab" {
-    Some((VfsMode::Append, false))
-  } else {
-    None
+  // `b` 位 = 模式串含 'b'（rb+/r+b 同判）；基础族字母 = 首字符
+  let is_text = !mode.contains("b")
+  let mode_pair : (VfsMode, Bool)? = match mode {
+    "r" => Some((VfsMode::Read, true))
+    "rb" => Some((VfsMode::Read, false))
+    "w" => Some((VfsMode::Write, true))
+    "wb" => Some((VfsMode::Write, false))
+    "a" => Some((VfsMode::Append, true))
+    "ab" => Some((VfsMode::Append, false))
+    "r+" | "rb+" | "r+b" => Some((VfsMode::ReadWrite, is_text))
+    "w+" | "wb+" | "w+b" => Some((VfsMode::WriteRead, is_text))
+    "a+" | "ab+" | "a+b" => Some((VfsMode::AppendRead, is_text))
+    _ => None
   }
   let vfs_mode = match mode_pair {
     Some(p) => p.0
@@ -284,11 +293,11 @@ pub fn VirtualFileSystem::fopen(
   }
   let is_text = mode_pair.unwrap().1
   match vfs_mode {
-    VfsMode::Read =>
+    VfsMode::Read | VfsMode::ReadWrite =>
       if !self.files.contains(path) {
         return 0U // 读模式文件不存在
       }
-    VfsMode::Write =>
+    VfsMode::Write | VfsMode::WriteRead =>
       match self.files.get(path) {
         Some(meta) => meta.size = 0 // 覆盖：清空既有
         None => {
@@ -305,7 +314,7 @@ pub fn VirtualFileSystem::fopen(
           })
         }
       }
-    VfsMode::Append =>
+    VfsMode::Append | VfsMode::AppendRead =>
       if !self.files.contains(path) {
         // 坑 13 修复：Append 建文件（oracle 死分支——分叉登记）
         let addr = match vfs_malloc_raw(map, 256) {
@@ -323,7 +332,7 @@ pub fn VirtualFileSystem::fopen(
   let fd = self.next_fd + 1U
   self.next_fd = fd
   let cursor = match vfs_mode {
-    VfsMode::Append =>
+    VfsMode::Append | VfsMode::AppendRead =>
       match self.files.get(path) {
         Some(m) => m.size
         None => 0

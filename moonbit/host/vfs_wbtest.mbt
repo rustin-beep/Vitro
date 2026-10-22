@@ -97,8 +97,56 @@ test "vfs_fopen_write_truncates_and_read_missing_fails" {
   assert_eq(vfs.fread(mem, map, fdr, 0x8000U, 1, 10), 0)
   // 读模式不存在 → 0
   assert_eq(vfs.fopen(map, "no.txt", "r"), 0U)
-  // 未知模式串 → 0
-  assert_eq(vfs.fopen(map, "t.txt", "r+"), 0U)
+  // 真未知模式串 → 0（r+ 系已合法化，见 vfs_fopen_plus_modes——#228）
+  assert_eq(vfs.fopen(map, "t.txt", "rw"), 0U)
+}
+
+///|
+/// #228 锚（2026-10-22）：`r+`/`w+`/`a+` 读写模式（C11 §7.21.5.3——
+/// 旧形态落 None 静默返 NULL 无任何诊断，学生 `fprintf(fp,…)` 后续行为
+/// 不可预期）。语义：r+ 须存在/不清空/游标 0；w+ 建或清空；a+ 建文件/
+/// 游标末尾；`b` 与 `+` 可任意序（rb+ = r+b）。
+test "vfs_fopen_plus_modes" {
+  let (map, mem, vfs) = vfs_fresh()
+  // r+：存在文件打开成功，可写可读，游标 0（写覆盖不截断）
+  ignore(vfs.inject_preset_file(map, mem, "t1.txt", b"hello"))
+  let fd = vfs.fopen(map, "t1.txt", "r+")
+  assert_true(fd != 0U, msg="r+ 打开存在文件不应返回 NULL")
+  put_str(mem, map, 0x6000U, "HE")
+  assert_eq(vfs.fputs(mem, map, fd, 0x6000U), 0, msg="r+ 允许写")
+  ignore(vfs.fclose(fd))
+  let fdr = vfs.fopen(map, "t1.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr, 0x8000U, 1, 100), 5)
+  assert_eq(peek(mem, map, 0x8000U, 5), b"HEllo", msg="r+ 覆盖写不清空")
+  // r+：不存在 → 0（与 r 同）
+  assert_eq(vfs.fopen(map, "no.txt", "r+"), 0U)
+  // w+：建新文件，写后可重读（fclose 重开校验）
+  let fdw = vfs.fopen(map, "t3.txt", "w+")
+  assert_true(fdw != 0U, msg="w+ 建文件")
+  put_str(mem, map, 0x6100U, "abc")
+  assert_eq(vfs.fputs(mem, map, fdw, 0x6100U), 0)
+  ignore(vfs.fclose(fdw))
+  let fdr3 = vfs.fopen(map, "t3.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr3, 0x8100U, 1, 100), 3)
+  assert_eq(peek(mem, map, 0x8100U, 3), b"abc")
+  // w+：清空既有（同 w）
+  let fdw2 = vfs.fopen(map, "t1.txt", "w+")
+  assert_true(fdw2 != 0U)
+  ignore(vfs.fclose(fdw2))
+  let fdr1 = vfs.fopen(map, "t1.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr1, 0x8200U, 1, 100), 0, msg="w+ 清空")
+  // a+：建文件 + 游标末尾（追加后读全量）
+  let fda = vfs.fopen(map, "t4.txt", "a+")
+  assert_true(fda != 0U, msg="a+ 建文件")
+  put_str(mem, map, 0x6200U, "XY")
+  assert_eq(vfs.fputs(mem, map, fda, 0x6200U), 0)
+  ignore(vfs.fclose(fda))
+  let fdr4 = vfs.fopen(map, "t4.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr4, 0x8300U, 1, 100), 2)
+  assert_eq(peek(mem, map, 0x8300U, 2), b"XY")
+  // b/+ 序不敏感：rb+ = r+b（文件在——w+ 只清空不删除）
+  assert_true(vfs.fopen(map, "t1.txt", "rb+") != 0U)
+  assert_true(vfs.fopen(map, "t1.txt", "r+b") != 0U)
 }
 
 ///|

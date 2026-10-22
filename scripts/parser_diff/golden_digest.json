@@ -988,8 +988,8 @@
       "sources": {
         "complex_number.c": "b5a7d055",
         "failfast_chain.c": "3fe877ff",
-        "file_fopen.c": "d1bdc876",
-        "file_fread.c": "dc8404a4",
+        "file_fopen.c": "3c38e8f4",
+        "file_fread.c": "622854fc",
         "file_fwrite.c": "e2c3c877",
         "function_pointer_sizeof.c": "68025bba",
         "goto_basic.c": "7c9d571e",
@@ -1010,8 +1010,8 @@
       "resp_hashes": {
         "complex_number.c": "a0b194f216c5325d",
         "failfast_chain.c": "b25318427742acad",
-        "file_fopen.c": "9bc7cbd66f8750a5",
-        "file_fread.c": "f6e52355876b53fb",
+        "file_fopen.c": "cb988aeb63fd75c4",
+        "file_fread.c": "afd3143ac764d189",
         "file_fwrite.c": "98b3b6adf13a274b",
         "function_pointer_sizeof.c": "41442afe1ec09b8b",
         "goto_basic.c": "59eed89788ac2156",

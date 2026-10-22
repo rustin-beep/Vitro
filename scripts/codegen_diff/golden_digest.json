@@ -2047,8 +2047,8 @@
       "sources": {
         "complex_number.c": "b5a7d055",
         "failfast_chain.c": "3fe877ff",
-        "file_fopen.c": "d1bdc876",
-        "file_fread.c": "dc8404a4",
+        "file_fopen.c": "3c38e8f4",
+        "file_fread.c": "622854fc",
         "file_fwrite.c": "e2c3c877",
         "function_pointer_sizeof.c": "68025bba",
         "goto_basic.c": "7c9d571e",
@@ -2076,10 +2076,10 @@
           "fail_stage": "lex"
         },
         "file_fopen.c": {
-          "result_sha": "eee581130fd179cf"
+          "result_sha": "2b85d154c0490372"
         },
         "file_fread.c": {
-          "result_sha": "69ba99daeb2ef3cd"
+          "result_sha": "33ac68acc8eeecc1"
         },
         "file_fwrite.c": {
           "result_sha": "972592fa13975ec5"

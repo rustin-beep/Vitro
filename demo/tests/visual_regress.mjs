@@ -45,6 +45,8 @@ const STATES = [
   { name: "ref-bp", w: 1440, h: 900, theme: "blueprint", act: "ref" },
   { name: "mem", w: 1440, h: 900, theme: "paper", act: "mem" },
   { name: "proto", w: 1440, h: 900, theme: "paper", act: "proto" },
+  // P4 专注模式（2026-10-22）：书栏/参数退役后的讲解面
+  { name: "focus", w: 1440, h: 900, theme: "paper", act: "focus" },
   // P0 状态补全（2026-10-22）：trap / 编译失败 / 空输出 / 坏链——四态都是
   // 「说清发生了什么 + 一个动作」的诚实面，入像素闸防回退成空白或假绿。
   { name: "state-trap", w: 1440, h: 900, theme: "paper", act: "trap" },
@@ -166,7 +168,15 @@ async function setupState(st) {
   if (st.act === "badlink") {
     await waitFor("document.querySelector('.vr-banner b')?.textContent?.includes('无法还原')", 30000);
   } else {
-    await waitFor("window.__pilot && window.__pilot.session.viewFrames.length > 0", 90000);
+    // localStorage.clear 后 reload 并不保证首课是默认 bubble：App 的 beforeunload
+    // persistFrame 会把「上次课」又写回去（2026-10-22 实测：上一轮 E2E 停在 uaf，
+    // 像素 baseline 就截到 uaf）。这里显式 openById('bubble') 钉死首课。
+    await waitFor("window.__pilot && !window.__pilot.session.collecting", 90000);
+    await evaluate("window.__pilot.lessonSession.openById('bubble', 'basic'); true");
+    await waitFor(
+      "window.__pilot && window.__pilot.lessonSession.lesson?.id === 'bubble' && window.__pilot.session.viewFrames.length > 0 && !window.__pilot.session.collecting",
+      90000,
+    );
     // 首访采集完会自动播放：不先停播，seek 后的 350ms 等待里帧会继续走
     // （work-start 实测两跑一帧之差 → 当前行高亮带 0.97% 假红）。
     if (await evaluate("window.__pilot.session.playing")) {
@@ -191,6 +201,9 @@ async function setupState(st) {
     if (!(await evaluate(CLICK("内存")))) throw new Error("mem 点击失败");
   } else if (st.act === "proto") {
     if (!(await evaluate(CLICK("协议")))) throw new Error("proto 点击失败");
+  } else if (st.act === "focus") {
+    await evaluate("window.__pilot.ui.focus = true; true");
+    await sleep(250);
   } else if (st.act === "trap") {
     // 真 trap（uaf 末帧）而非伪造横幅：走课程真源 + 引擎实跑
     await evaluate("window.__pilot.lessonSession.openById('uaf', 'basic')");

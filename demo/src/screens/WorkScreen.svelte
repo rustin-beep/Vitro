@@ -192,7 +192,7 @@
 </script>
 
 {#if ui.mode === "exec"}
-<main class="vr-bench">
+<main class="vr-bench" class:is-focus={ui.focus}>
   <section class="vr-colrail" aria-label="课程与分镜">
     <div class="vr-kicker">{kicker}</div>
     <h1 class="vr-title">{lessonSession.title}</h1>

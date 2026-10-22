@@ -135,6 +135,10 @@ code, pre, kbd, samp, .vr-mono {
 .vr-context b { color: var(--vr-ink-2); font-weight: 500; }
 .vr-context .vr-sep { color: var(--vr-rule-2); }
 .vr-head-right { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* 专注模式（#222 P4，2026-10-22）：顶栏只留 FOCUS 标签 / 课名幕名 / 帧号 / 退出 */
+.vr-focuslabel { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .72); font-variant-ligatures: none; letter-spacing: .16em; color: var(--vr-amber); padding-left: 12px; border-left: 1px solid var(--vr-rule); white-space: nowrap; }
+.vr-focusbadge { border: 1px solid var(--vr-amber-2); color: var(--vr-amber); padding: 2px 7px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .72); font-variant-ligatures: none; letter-spacing: .08em; white-space: nowrap; }
+.vr-focusframe { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .75); font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
 .vr-engine { display: flex; align-items: center; gap: 10px; padding-right: 10px; margin-right: 4px; border-right: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
 .vr-engine b { color: var(--vr-ink-2); font-weight: 500; }
 .vr-engine .vr-live { width: 5px; height: 5px; background: var(--vr-green); display: inline-block; margin-right: 2px; }
@@ -254,6 +258,8 @@ code, pre, kbd, samp, .vr-mono {
 .vr-colstage { padding: 16px 0 0; }
 .vr-colnow { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding: 16px 0 0; }
 .vr-coldock { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding-top: 4px; }
+/* 专注模式窄容器：书栏一律退役（执行面 + 参数在 ≥1180 的布局里另有处理） */
+.vr-bench.is-focus .vr-colrail { display: none; }
 @container vitro (min-width: 1180px) {
   .vr-bench {
     grid-template-columns: 264px minmax(0, 1fr) 372px;
@@ -274,6 +280,21 @@ code, pre, kbd, samp, .vr-mono {
   .vr-colnow .vr-block { padding: 8px 0 10px; }
   .vr-colstage .vr-stagehead { margin: 8px 0 10px; }
   .vr-notearea { grid-area: note; margin: 0 0 40px; max-width: 78ch; }
+  /* 专注模式：左书栏退役，讲解/时间轴仍在；stage 让宽给代码 */
+  .vr-bench.is-focus {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-areas:
+      "stage now"
+      "dock dock"
+      "note note";
+    column-gap: 34px;
+  }
+  .vr-bench.is-focus .vr-colrail { display: none; }
+  .vr-bench.is-focus .vr-colstage { padding-top: 18px; }
+  .vr-bench.is-focus .vr-colnow { padding: 18px 0 16px 24px; }
+  .vr-bench.is-focus .vr-notearea { max-width: none; }
+  .vr-bench.is-focus .vr-params { display: none; }
+  .vr-bench.is-focus .vr-colnow .vr-modes { display: none; }
 }
 .vr-kicker { font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; letter-spacing: .11em; color: var(--vr-ink-3); }
 .vr-title { font-family: var(--vr-serif); font-size: 31px; line-height: 1.18; font-weight: 600; margin: 8px 0 6px; letter-spacing: .005em; }

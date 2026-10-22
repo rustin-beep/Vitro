@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 P4 专注模式——F / Esc / ?focus=1（2026-10-22）
+
+- **入口**：`F` 进、`Esc` 出；`?focus=1` 深链直达（URL 由 effect `replaceState`
+  单点同步，不新增历史项）；切内存/协议模式自动退出（专注只属于执行面）。
+- **形态**：书栏（课头/运行条/分镜轨）与实验参数退役，stage 让宽（1440 下
+  935 / 400 两栏），页脚隐藏；顶栏换 `FOCUS / LECTURE` + 课名 + 当前幕 +
+  「专注模式 / 第 N / M 帧 / 退出专注 Esc」；右栏模式 tab 隐藏，讲解与时间轴
+  保留。主题仍跟随用户当前主题（拍板 5，不强制 blueprint）。
+- **锚**：E2E B10（F 进：`.vr-bench.is-focus` / 书栏 none / badge / 模式 tab
+  none / URL focus=1；Esc 出：恢复书栏 / URL 去参）；像素闸新增 `focus` 态
+  （16 → 17）。
+- **像素闸确定性加固**（本批实锤）：`localStorage.clear` + reload 并不能钉死
+  首课——App 的 `beforeunload persistFrame` 会把上次课写回（上一轮 E2E 停在
+  uaf 时 baseline 截到 uaf）。改为显式 `openById('bubble')` 并加 `__pilot`
+  存在性守卫；同机连续两轮 `--update` 17 张 PNG SHA-256 全等，第三轮比对
+  17/17。
+- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 89/89、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿。
+
 ### feat(demo): #222 P2 目录/手册——章路径 + 章节面板 / 六段证据链 + 右栏阅读法（2026-10-22）
 
 - **目录**（`EntryScreen`）：hero 主张 + 首访动线 + 「继续上次」主卡右置；9 章

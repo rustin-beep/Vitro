@@ -16,6 +16,7 @@
 //   B7 bubble_sort 六幕分镜（#222 P1 内容扩面，2026-10-22）
 //   B8 内存/协议全页形态（#222 P1 两模式，2026-10-22）
 //   B9 目录/手册 P2 形态（章路径 + 章节面板 / 六段证据链，2026-10-22）
+//   B10 专注模式 F/Esc + ?focus=1（#222 P4，2026-10-22）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -436,6 +437,42 @@ async function run() {
       b9ref.secs === 6 && b9ref.three === 3 && b9ref.fam > 0 && b9ref.side === true &&
       b9ref.discrim > 0 && b9ref.back === true && b9ref.h1.length > 0,
     JSON.stringify({ b9entry, b9ref }));
+
+  // ── B10 专注模式（#222 P4，2026-10-22）：F 进 / Esc 出，书栏与参数退役、
+  //    顶栏换 FOCUS 标签 + 帧号 + 退出；URL ?focus=1 同步（可直达/可分享） ──
+  await evaluate(`[...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('返回实验台'))?.click(); true`);
+  await waitFor("window.__pilot.ui.screen === 'work'", 20000);
+  await sleep(300);
+  const pressKey = async (k, code, vk) => {
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key: k, code, windowsVirtualKeyCode: vk });
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code, windowsVirtualKeyCode: vk });
+  };
+  await pressKey("f", "KeyF", 70);
+  await waitFor("window.__pilot.ui.focus === true", 10000);
+  await sleep(250);
+  const b10on = await evaluate(`(() => ({
+    focus: window.__pilot.ui.focus,
+    bench: !!document.querySelector('.vr-bench.is-focus'),
+    rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
+    badge: !!document.querySelector('.vr-focusbadge'),
+    frame: document.querySelector('.vr-focusframe')?.textContent?.trim() ?? '',
+    modes: getComputedStyle(document.querySelector('.vr-colnow .vr-modes')).display,
+    url: location.search,
+  }))()`);
+  await pressKey("Escape", "Escape", 27);
+  await waitFor("window.__pilot.ui.focus === false", 10000);
+  await sleep(250);
+  const b10off = await evaluate(`(() => ({
+    focus: window.__pilot.ui.focus,
+    bench: !!document.querySelector('.vr-bench.is-focus'),
+    rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
+    url: location.search,
+  }))()`);
+  check("B10 专注模式 F/Esc + ?focus=1（#222 P4）",
+    b10on.focus === true && b10on.bench === true && b10on.rail === "none" && b10on.badge === true &&
+      b10on.frame.includes("/") && b10on.modes === "none" && b10on.url.includes("focus=1") &&
+      b10off.focus === false && b10off.bench === false && b10off.rail !== "none" && !b10off.url.includes("focus=1"),
+    JSON.stringify({ b10on, b10off }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

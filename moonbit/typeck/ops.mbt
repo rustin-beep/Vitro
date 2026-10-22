@@ -440,11 +440,16 @@ fn TypeChecker::resolve_assign(
   let (right_type, new_right_pre) = self.resolve_expr_type(right)
   let (left_type, new_left) = self.resolve_expr_type(left)
   // 左值判定（C++ 的 Call/CallPtr/MemberCall 引用返回剔除登记）
+  // #267（2026-10-22，C99 6.5.2.5p3）：复合字面量是可修改左值——
+  // 「unnamed object ... modifiable lvalue」，`*(int[]){1,2} = 3` 是
+  // 标准明文示例；codegen 侧 gen_expr 的 CompoundLiteral 臂本就按
+  // 「临时槽物化 + 栈顶留地址」的 lvalue 形态发射
   let is_lvalue = match new_left {
     Identifier(_, _, _) => true
     Index(_, _, _, _) => true
     Member(_, _, _, _, _) => true
     Unary(Deref, _, _, _) => true
+    CompoundLiteral(_, _, _, _) => true
     _ => false
   }
   if !is_lvalue {

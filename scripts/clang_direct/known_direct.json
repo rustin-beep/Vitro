@@ -94,7 +94,11 @@
  {
   "case": "MF-QUEUE",
   "digest": "29f439a4",
-  "reason": "llm_multifile 工程模式直拍首跑 + 最小化改判（2026-10-22）：expected[16][PQ_NAME_LEN] 未初始化，alive 仅 7 名致 expected[7] 永不写，compare 循环读之——clang 栈垃圾 \"$\" vs vitro 零填充空串；UB 读未初始化结局漂移（printf %-8s 基础面四形态实测全对），语料缺陷非引擎缺陷"
+  "reason": "llm_multifile 工程模式直拍首跑 + 最小化改判（2026-10-22）：expected[16][PQ_NAME_LEN] 未初始化，alive 仅 7 名致 expected[7] 永不写，compare 循环读之——clang 栈垃圾 \"$\" vs vitro 零填充空串；UB 读未初始化结局漂移（printf %-8s 基础面四形态实测全对），语料缺陷非引擎缺陷。第二形态（CI 39800866009，2026-10-22）：clang 侧栈垃圾随 CI runner 环境漂（digest 258ce67e 入跨环境集）——同 bTree UB 结局漂移史，digests 集合双环境绿",
+  "digests": [
+   "29f439a4",
+   "258ce67e"
+  ]
  },
  {
   "case": "MF-SERIAL",

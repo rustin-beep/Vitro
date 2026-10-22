@@ -84,7 +84,78 @@ fn TypeChecker::visit_func_decl(
   self.func_labels.clear()
   self.exit_scope()
   self.current_func_params.clear()
+  // #214（2026-10-22）：非 void 函数的未返回路径教学警告——所有出口
+  // 路径缺 return 时返回值未定义（C 标准不保证任何值，得 0 只是巧合）；
+  // clang -Wreturn-type 同点。always_returns 覆盖 Return/Block 尾段/
+  // if-else 双臂/while(true) 教学主形态，switch 覆盖形态保守不算
+  //（default 全臂返回的精确分析教学域收益低，误报代价更高）
+  if node.body is Some(body_stmt) && !(node.return_type.kind() is TK_Void) {
+    if !always_returns(body_stmt) {
+      self.report_warning(
+        "非 void 函数 '\{node.name}' 存在未返回路径——返回值将是未定义值，每条出口路径都需要 return",
+        node.loc,
+        W3084_MissingReturnPath,
+      )
+    }
+  }
   { ..node, body: new_body, }
+}
+
+///|
+/// 语句是否必然产生 return（#214 缺 return 检测的控制流近似）：Return
+/// 直判；Block 任一尾部子语句命中即整体必然（顺序语句只有最后能到）；
+/// if 带 else 且双臂必然则必然；while(true) 字面量条件无 break 直判
+///（break 的存在性扫描保守从宽——罕见形态宁可漏报不误报）。
+fn always_returns(stmt : @ast.Stmt) -> Bool {
+  match stmt {
+    Return(_, _) => true
+    Block(stmts, _) => {
+      let mut hit = false
+      for s in stmts {
+        if always_returns(s) {
+          hit = true
+          break
+        }
+      }
+      hit
+    }
+    If(_, then_s, else_s, _) =>
+      match else_s {
+        Some(e) => always_returns(then_s) && always_returns(e)
+        None => false
+      }
+    While(cond, _, _) =>
+      match cond {
+        Literal(v, _, _) => v != 0 && !stmt_contains_break(stmt)
+        _ => false
+      }
+    Label(_, inner, _) => always_returns(inner)
+    _ => false
+  }
+}
+
+///|
+/// 语句树内是否含 break（while(true){...break...} 的返回必然性撤销）。
+fn stmt_contains_break(stmt : @ast.Stmt) -> Bool {
+  match stmt {
+    Break(_) => true
+    Block(stmts, _) => stmts.exists(s => stmt_contains_break(s))
+    If(_, t, e, _) => {
+      let tb = stmt_contains_break(t)
+      let eb = match e {
+        Some(x) => stmt_contains_break(x)
+        None => false
+      }
+      tb || eb
+    }
+    While(_, body, _) => stmt_contains_break(body)
+    DoWhile(body, _, _) => stmt_contains_break(body)
+    For(_, _, _, body, _) => stmt_contains_break(body)
+    Switch(_, body, _) => stmt_contains_break(body)
+    Case(_, inner, _) => stmt_contains_break(inner)
+    Label(_, inner, _) => stmt_contains_break(inner)
+    _ => false
+  }
 }
 
 ///|
@@ -671,6 +742,17 @@ fn TypeChecker::check_user_func(
 ) -> @ast.Type {
   match self.funcs.get(name) {
     Some(sym) => {
+      // #214（2026-10-22，C99 §6.5.1p2 隐式声明废弃）：非 static 函数的
+      // 前向序使用（调用点早于任何原型/定义，first_decl_line 之后无原型
+      // ——同文件近似）——clang C99 起默认 error，教学口径 warning 提示
+      // 补原型（static 形态已有 E3058 error 在下面分支）
+      if loc.line < sym.first_decl_line {
+        self.report_warning(
+          "函数 '\{name}' 在声明之前被调用（第 \{sym.first_decl_line} 行才声明）——C99 起隐式函数声明已废弃，请补前置原型",
+          loc,
+          W3085_ImplicitFuncDecl,
+        )
+      }
       let filled = self.try_fill_default_args(args, sym.param_defaults)
       if !filled ||
         args.length() < sym.param_types.length() ||

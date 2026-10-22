@@ -442,6 +442,12 @@
       "stdout_sha": "aa1b4691f86c3620",
       "memory_sha": "be09be8e273753db"
     },
+    "baseline/compound_literal_lvalue.c": {
+      "src_sha": "da4fb7a7",
+      "exit_code": 30,
+      "stdout_sha": "394a2b4e43d23aff",
+      "memory_sha": "7a7946af7921d5ac"
+    },
     "baseline/compound_mod_var.c": {
       "src_sha": "e36b3f92",
       "exit_code": 0,
@@ -1066,6 +1072,12 @@
       "exit_code": 0,
       "stdout_sha": "e7f6c011776e8db7",
       "memory_sha": "e68c5145b95b3778"
+    },
+    "baseline/func_return_safety.c": {
+      "src_sha": "b7ced8d0",
+      "exit_code": 0,
+      "stdout_sha": "e2d81d9a255a0d1a",
+      "memory_sha": "d02be7ff5489f09a"
     },
     "baseline/function_call.c": {
       "src_sha": "4e864050",

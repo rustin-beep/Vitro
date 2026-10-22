@@ -352,3 +352,98 @@ test "char_safe_initializer_w0_4" {
     is_char_safe_initializer(@ast.Expr::Identifier("x", loc, @ast.Type::int())),
   )
 }
+
+///|
+/// #214（2026-10-22）：W3085 隐式函数声明——无原型前向调用（调用行早于
+/// 定义行）报 warning 提示补原型；原型先行（first_decl_line=原型行）不报。
+/// W3084 缺 return 由语料锚 func_return_safety.c 锁行为层（双侧同
+/// warning 放行）；本测试手写 AST 锁 W3085 的正反两面。
+test "issue214_w3085_implicit_decl_forward_call" {
+  fn fdecl(name : String, line : Int32) -> @ast.FuncDecl {
+    {
+      ..Default::default(),
+      loc: @source.SourceLoc::new(line, 1),
+      return_type: @ast.Type::int(),
+      name,
+      params: [{ ..Default::default(), ty: @ast.Type::int(), name: "v", }],
+      body: Some(
+        @ast.Stmt::Return(
+          Some(
+            @ast.Expr::Binary(
+              @ast.BinaryOp::Mul,
+              @ast.Expr::Identifier(
+                "v",
+                @source.SourceLoc::new(line, 30),
+                @ast.Type::int(),
+              ),
+              @ast.Expr::Literal(
+                2,
+                @source.SourceLoc::new(line, 34),
+                @ast.Type::int(),
+              ),
+              @source.SourceLoc::new(line, 32),
+              @ast.Type::int(),
+            ),
+          ),
+          @source.SourceLoc::new(line, 5),
+        ),
+      ),
+      source_file: "t.c",
+    }
+  }
+  // main（行 10）前向调用 later（行 20 定义、无原型）→ W3085
+  let call = @ast.Expr::Call(
+    "later",
+    [@ast.Expr::Literal(3, @source.SourceLoc::new(10, 20), @ast.Type::int())],
+    @source.SourceLoc::new(10, 15),
+    @ast.Type::int(),
+  )
+  let main_decl = {
+    ..fdecl("main", 10),
+    params: [],
+    body: Some(@ast.Stmt::Return(Some(call), @source.SourceLoc::new(10, 5))),
+  }
+  let later = fdecl("later", 20)
+  let tc = TypeChecker::new()
+  let (_, _, warns, _) = tc.check({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [main_decl, later],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_true(
+    warns.exists(w => w.code == 3085),
+    msg="无原型前向调用应报 W3085（隐式声明废弃）",
+  )
+  // 反面：原型先行（行 5）后调用（行 10）→ 不报
+  let proto = { ..fdecl("later2", 5), body: None, }
+  let call2 = @ast.Expr::Call(
+    "later2",
+    [@ast.Expr::Literal(3, @source.SourceLoc::new(10, 20), @ast.Type::int())],
+    @source.SourceLoc::new(10, 15),
+    @ast.Type::int(),
+  )
+  let main2 = {
+    ..fdecl("main", 10),
+    params: [],
+    body: Some(@ast.Stmt::Return(Some(call2), @source.SourceLoc::new(10, 5))),
+  }
+  let def2 = fdecl("later2", 30)
+  let tc2 = TypeChecker::new()
+  let (_, _, warns2, _) = tc2.check({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [proto, main2, def2],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_false(
+    warns2.exists(w => w.code == 3085),
+    msg="原型先行（first_decl_line=5 < 调用行 10）不报",
+  )
+}

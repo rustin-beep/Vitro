@@ -20,6 +20,35 @@ fn empty_prog(funcs : Array[@ast.FuncDecl]) -> @ast.ProgramNode {
 /// main 包装（body 注入）。
 fn main_of(body : @ast.Stmt) -> @ast.FuncDecl {
   let loc = @source.SourceLoc::new(1, 1)
+  // #214：仅 Block 体且尾语句非 Return 时兜底补 return 0（理由同
+  // call_wbtest 的 func_of——Return 语义/形态断言测试原样不动）
+  let body = match body {
+    @ast.Stmt::Block(stmts, bloc) => {
+      let tail_is_return = stmts.length() > 0 &&
+        stmts[stmts.length() - 1] is @ast.Stmt::Return(_, _)
+      if tail_is_return {
+        body
+      } else {
+        @ast.Stmt::Block(
+          {
+            let all : Array[@ast.Stmt] = []
+            for st in stmts {
+              all.push(st)
+            }
+            all.push(
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+                loc,
+              ),
+            )
+            all
+          },
+          bloc,
+        )
+      }
+    }
+    _ => body
+  }
   {
     ..Default::default(),
     loc,

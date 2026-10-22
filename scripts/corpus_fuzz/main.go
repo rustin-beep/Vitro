@@ -505,13 +505,34 @@ func runCmd(args []string, dir string) (string, string, int) {
 }
 
 // exeBase：可执行目录查找（本地 Git Bash 有 clang；CI windows 也有）
+// 槽位隔离（2026-10-22，CI 39800866009 三红根）：变异体程序此前以仓库根
+// 为 cwd 运行——写文件的语料把 test.txt 落回根域，后续 freeze 轮在污染
+// 环境入账 AGREE 假象、CI 干净检出真值 WRONG_VALUE 桶恶化红（file_fopen/
+// fread 族两连坐）。运行 cwd 改 workdir（=cacheDir，KEY 漂移时整体清）：
+// 变异体间的顺序文件耦合消除、本地与 CI 同判（clang_direct P1-1 同款）。
 func clangOutcome(src string, workdir string) outcome {
 	exe := filepath.Join(workdir, "a.exe")
 	_, errtxt, rc := runCmd([]string{"clang", "-O0", src, "-o", exe}, ".")
 	if rc != 0 {
+		// 编译失败重试（clang_direct 同判据，2026-10-22 CI 39800866009）：
+		// Defender 实时扫描锁 a.exe 令 clang 非零退出（calloc_basic|
+		// paren_wrap 的 CI CLANG_REJECT 瞬态形态）——1s/2s 退避重试 2 次
+		// 仍失败才接受（真确定性失败只多花 3s）
+		for attempt := 0; attempt < 2; attempt++ {
+			time.Sleep(time.Duration(1000<<attempt) * time.Millisecond)
+			_, errtxt, rc = runCmd(
+				[]string{"clang", "-O0", src, "-o", exe},
+				".",
+			)
+			if rc == 0 {
+				break
+			}
+		}
+	}
+	if rc != 0 {
 		return outcome{"REJECT", norm(errtxt)}
 	}
-	out, _, rc2 := runCmd([]string{exe}, ".")
+	out, _, rc2 := runCmd([]string{absPath(exe)}, workdir)
 	os.Remove(exe)
 	if rc2 != 0 {
 		// 崩溃域（Windows 异常码，如 0xC0000005≈3.2e9）与合法非零 return
@@ -893,4 +914,17 @@ func latin1Fold(s string) string {
 		i++
 	}
 	return b.String()
+}
+
+// absPath：相对路径绝对化（槽位隔离后 exe 以 workdir 为 cwd 启动——
+// 相对 exe 路径会在新 cwd 下解析失败，212 键假 WRONG_VALUE 实锤）。
+func absPath(p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	a, err := filepath.Abs(p)
+	if err != nil {
+		return p
+	}
+	return a
 }

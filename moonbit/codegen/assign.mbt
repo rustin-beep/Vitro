@@ -368,6 +368,24 @@ fn BytecodeGen::gen_assign_inner(
       )
       return
     }
+    CompoundLiteral(_, _, _, _) => {
+      // #267（2026-10-22，C99 6.5.2.5p3 可修改左值）：gen_expr 的
+      // CompoundLiteral 臂按「临时槽物化 + 栈顶留地址」的 lvalue 形态
+      // 发射——直接取地址走内存赋值单源（同 Member/Index 臂模式）；
+      // `*(int[]){1,2} = 3` 的 Deref 左值经其 operand 物化自动覆盖
+      self.gen_expr(left)
+      self.assign_mem_op(
+        op,
+        right,
+        left_ty,
+        left_is_ptr,
+        is_ptr_compound,
+        ptr_step,
+        loc,
+        left_ty.kind(),
+      )
+      return
+    }
     _ => ()
   }
   self.report_error("赋值目标不支持", loc)

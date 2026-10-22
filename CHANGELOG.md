@@ -12,6 +12,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(ci): 5d3d4dd7 推后三红——fuzz 槽位隔离根治 + Defender 重试 + UB 漂移 digests 集（2026-10-22）
+
+- **fuzz 桶恶化 6（file_fopen/file_fread × 3 算子）根治**：变异体程序
+  此前以仓库根为 cwd 运行——写文件语料把 test.txt 写回根域，后续
+  freeze 轮在污染环境入账 AGREE 假象、CI 干净检出真值 WRONG_VALUE
+  （同文件两连坐）。修 = clangOutcome 运行 cwd 改 cacheDir（槽位
+  隔离，clang_direct P1-1 同款）+ exe 绝对路径（相对路径换 cwd 后
+  212 键假 WRONG_VALUE 的路径解析坑）+ 清根域污染物 + 按 CI 真值
+  重冻（本地复现 CI 同款 6 键后收编，PASS 且根域零残留）。
+- **calloc_basic|paren_wrap CI CLANG_REJECT**：Defender 锁 a.exe 的
+  编译瞬态（clang_direct 有重试判据 fuzz 没有）——移植同款
+  （1s/2s 退避 ×2 仍失败才接受）。
+- **MF-QUEUE digest 形状变**：clang 侧栈垃圾随 CI runner 环境漂
+  （#268 UB 面第二形态，bTree 漂移史同款）——CI 值 258ce67e 入
+  known_direct 的 digests 跨环境集合（保留本地 29f439a4，双绿）。
+
+### chore(scripts+docs): 裁定 #273——scripts 脚本语言统一 TypeScript，纪律 8 改写落地（2026-10-22）
+
+- **纪律 8 改写**：「判定型脚本默认 Go」退役，新脚本一律 `.mts`（node 直跑 + tsc 严格档 +
+  oxlint + node:test 四件套齐才入库）；存量 Go 43 驱动**存量服役**——修复与小改照常，
+  结构性变更批次触达即迁（双跑逐位对拍互证 + CI 引用切换后才删 Go 版，禁僵尸双轨）；
+  依赖从「零依赖」改「stdlib 优先 + 白名单登记 + lockfile」；字节确定性口径新增
+  `Buffer.byteLength`（UTF-16 不入库）；白名单格=迁移期 Go / Windows 胶水 ps1-sh-cmd /
+  wasmtime py（备而不用）。裁定依据与批序台账 = [issue #273](https://github.com/rustin-beep/Vitro/issues/273)。
+- **连坐**：AGENTS.md 纪律 8 + AGENTS_EN.md 对应句；脚本总清单语言政策节与
+  gen_icon_preview 登记行；语料生成防线方案纪律合规节；realcode_diff 头注释指向更新。
+
+### feat(diag+typeck): #214 缺 return 与隐式声明两教学点——W3084/W3085 新码双卡（2026-10-22）
+
+- **W3084 非 void 未返回路径**：visit_func_decl 尾查 always_returns
+  （Return/Block 尾段/if-else 双臂/while(true) 无 break 的教学主形态；
+  switch 覆盖形态保守不算——精确控制流教学域收益低误报代价高）；
+  文案点明「返回值将是未定义值，得 0 只是巧合」（clang
+  -Wreturn-type 同点实测对齐）。
+- **W3085 隐式函数声明**：非 static 函数前向序使用（调用行 <
+  first_decl_line，同文件近似；原型先行合法放行）——clang C99 起
+  默认 error，教学口径 warning 提示补原型（static 形态 E3058 既有）。
+  **设计口径**：与 clang 的 error 分歧是教学宽容裁定（issue 二选一
+  取 warning 面），语料锚不含该正面形态（双侧编译状态不同）。
+- **码-卡连坐**：W3084/W3085 入 error_codes+catalog（108 卡），
+  gen_diag 基线 150→152/106→108 + diag_wbtest/lang_segment/teaching
+  contract/diag README 四基线连坐更新；wbtest helper（main_of/
+  func_of）智能兜底 return（仅 Block 尾非 Return 时追加——Return
+  语义/形态断言测试原样）。
+- 锚：语料 func_return_safety.c（W3084 双形态正反对照 + 原型先行/
+  双臂 return 不误报，UB 值不消费）+ W3085 wbtest 正反两面；866/866
+  （+1）；行为零变（vm_diff 487 SAME / clang_direct 487 DIFF=0）；五
+  家 freeze + knr 3 例 W3085 投影漂移收编 + fuzz 984。
+
+### fix(typeck+codegen): #267 复合字面量左值——C99 6.5.2.5p3 可修改左值双臂（2026-10-22）
+
+- **typeck**：赋值左值四形态判定加 CompoundLiteral 臂（unnamed
+  object 是可修改左值——`(int){3} = 5` / `*(int[]){1,2} = 3`〔p5
+  明文示例〕旧报 E3043 误拒）；#175 的数组名非左值面不受扰。
+- **codegen**：gen_assign 加 CompoundLiteral 臂——gen_expr 的物化臂
+  本就按「临时槽物化 + 栈顶留地址」lvalue 形态发射，直接取地址走
+  assign_mem_op 内存赋值单源（同 Member/Index 臂模式）；Deref 左值
+  （`*(int[]){...} = v`）经 operand 物化自动覆盖；`&(struct P){...}`
+  取址后的成员赋值/复合赋值同链生效。
+- **边界分型（开 [#272]）**：数组复合字面量作**初始化值**
+  （`int *p = (int[]){10,20}`）静默错值（p[0] 读 0、复杂上下文 trap
+  读垃圾址）——值语义消费面缺口与左值语义独立，struct 形态正确。
+- 锚：语料 `compound_literal_lvalue.c`（直接赋值/解引用数组/取址
+  成员/复合赋值四形态）clang golden 双臂逐字节一致（rc=30）；moon
+  test 865/865；存量 485 SAME / 三套件六路 PASS；五家 freeze + fuzz
+  基线连坐重冻。
+
 ### fix(codegen): #270 struct/union designated initializer 全层——.field 指派的文件作用域/嵌套/局部 static/匿名穿透（2026-10-22）
 
 - **三层缺口连通**：①文件作用域 struct/union 的 `.field=`（`flatten_

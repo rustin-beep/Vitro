@@ -47,8 +47,8 @@ native CLI 1.5–6.3×**。诚实短板：全速执行慢 CPython 9.6–19.8×�
 ## 验证
 
 ```bash
-moon check && moon test    # 865 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 865 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕；2026-10-22 #264/#265 批 +4：ast subscript VLA 传导锚 1 + typeck 地址常量/refold 锚 3；#247 批 +2：lexer 尾点浮点扫描锚）
-                           # native-only 包测试 150 个（fs 0 / gateway 135 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1015（CI 门禁口径；865+150=1015 逐包实测自洽，2026-10-22 实测）
+moon check && moon test    # 866 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 866 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕；2026-10-22 #264/#265 批 +4：ast subscript VLA 传导锚 1 + typeck 地址常量/refold 锚 3；#247 批 +2：lexer 尾点浮点扫描锚）
+                           # native-only 包测试 150 个（fs 0 / gateway 135 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1016（CI 门禁口径；866+150=1016 逐包实测自洽，2026-10-22 实测）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

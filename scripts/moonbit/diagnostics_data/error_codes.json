@@ -600,6 +600,14 @@
     {
       "name": "E4106_CppReferenceToTemporary",
       "code": 4106
+    },
+    {
+      "name": "W3084_MissingReturnPath",
+      "code": 3084
+    },
+    {
+      "name": "W3085_ImplicitFuncDecl",
+      "code": 3085
     }
   ]
 }

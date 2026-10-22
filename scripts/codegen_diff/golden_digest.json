@@ -77,6 +77,7 @@
         "compound_assign_struct.c": "0ccfb227",
         "compound_div_var.c": "464f5d0a",
         "compound_literal.c": "1e8a9390",
+        "compound_literal_lvalue.c": "da4fb7a7",
         "compound_mod_var.c": "e36b3f92",
         "compound_mul_var.c": "b8fda662",
         "compound_sub_var.c": "4c3236cb",
@@ -180,6 +181,7 @@
         "func_ptr_param_decay.c": "f6d41aad",
         "func_redefinition.c": "a29681ba",
         "func_return_as_arg.c": "7801ab85",
+        "func_return_safety.c": "b7ced8d0",
         "function_call.c": "4e864050",
         "function_pointer_arg.c": "b93a77d0",
         "function_pointer_array.c": "9420f92e",
@@ -712,6 +714,9 @@
         "compound_literal.c": {
           "result_sha": "a5121dd514e5d543"
         },
+        "compound_literal_lvalue.c": {
+          "result_sha": "576219cf114fd95e"
+        },
         "compound_mod_var.c": {
           "result_sha": "ed62faef9a882a41"
         },
@@ -1027,6 +1032,9 @@
         },
         "func_return_as_arg.c": {
           "result_sha": "210ad8d2a3b4a48b"
+        },
+        "func_return_safety.c": {
+          "result_sha": "44d07e02ef576c14"
         },
         "function_call.c": {
           "result_sha": "0825b54c550e2375"

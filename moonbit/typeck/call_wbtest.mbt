@@ -28,6 +28,38 @@ fn func_of(
   body : @ast.Stmt?,
   loc : @source.SourceLoc,
 ) -> @ast.FuncDecl {
+  // #214：仅 Block 体且尾语句非 Return 时兜底补 return 0——W3084 对无
+  // return 构造体全面触发，各测试断言面在调用/格式诊断；直 body / 尾
+  // 已 Return 的构造（Return 语义与形态断言测试）原样不动
+  let body = match body {
+    Some(@ast.Stmt::Block(stmts, bloc)) => {
+      let tail_is_return = stmts.length() > 0 &&
+        stmts[stmts.length() - 1] is @ast.Stmt::Return(_, _)
+      if tail_is_return {
+        body
+      } else {
+        Some(
+          @ast.Stmt::Block(
+            {
+              let all : Array[@ast.Stmt] = []
+              for st in stmts {
+                all.push(st)
+              }
+              all.push(
+                @ast.Stmt::Return(
+                  Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+                  loc,
+                ),
+              )
+              all
+            },
+            bloc,
+          ),
+        )
+      }
+    }
+    _ => body
+  }
   {
     ..Default::default(),
     loc,

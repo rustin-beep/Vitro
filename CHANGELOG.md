@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 内容批——第〇章 5 门课 + 96 课说明 + 码表 19 条实测示例（2026-10-23）
+
+- **课程**：新增 `course/basic/{hello,double_avg,global_struct,macro,malloc_free}/lesson.md`
+  ——5 门课按真实帧流写 scene（分别 5/9/540/6/9 语句帧），含四节课文与实跑错版；
+  `global_struct` 第 4 幕注记按实际帧分布改正（L11/L12 各 177、L13 176）。
+- **目录说明**：新增 `demo/src/lib/courseBlurbs.ts`（95 键覆盖 96 行；`structures/josephus`
+  族/变体同键共用一条），`courseIndex.ts` 加 `blurbOf()` 兜底——算法/变体/练习不再
+  显示裸 id；case 课真实 blurb 不覆盖。顺带修正既有 `bubble`/`uaf` 的 frontmatter
+  `order` 为 courseIndex 真值 3/7。
+- **码表**：`catalogDetail.ts` 新增 19 条 BAD/FIX（三臂实测）与 11 条关联课，EXAMPLES
+  25 条 / RELATED 16 条；删 E1019 死键（真实 code_str 为 W1019）；E3026 无引擎发射点，
+  留空不硬凑；W3064 示例按引擎真实语义保留，catalog 标题待数据批修正（已注释登记）。
+- **审阅补丁**：`catalogDetail` 头注限定「新增 19 条」为完整程序，既有 6 条保留片段
+  形态；`global_struct` 幕注记 off-by-one 修正。
+- **验证**：pure 34/34、e08 17/17、course_catalog 8 课 + `-selftest`、`gen_course
+  -check`、`teaching_gen_check`（Git Bash）、tsc/svelte-check/oxlint/build、ui_lint、
+  assemble、E2E 五套 90/90；码表 19×2 条 js/native/wasm 三臂一致。
+
 ### fix(demo): #263 审阅处置——P2×6 + P3 清理 + 同步 master 5d3d4dd7（2026-10-22）
 
 - **P1 合并门**：同步 master `5d3d4dd7`（#266/#249/#270 + testcount/ledger/fuzz

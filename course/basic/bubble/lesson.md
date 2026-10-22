@@ -1,7 +1,7 @@
 ---
 id: bubble
 kind: case
-order: 1
+order: 3
 title: 冒泡排序 · 第一次逐帧执行
 ---
 

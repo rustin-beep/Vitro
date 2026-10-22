@@ -1,7 +1,7 @@
 ---
 id: uaf
 kind: case
-order: 20
+order: 7
 title: 释放之后再看一眼 · 悬垂指针
 ---
 

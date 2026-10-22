@@ -4,19 +4,11 @@
     "reason": "库目录：各差分驱动进程内 import（canonicalize 函数库），main.go 仅 CLI 壳（手册登记的可执行壳，无 CI 判定面）"
   },
   {
-    "driver": "scripts/docs_preview",
-    "reason": "本地工具：docs 站预览服务（开发时本地起服），CI 无消费面"
-  },
-  {
     "driver": "scripts/perf_baseline",
     "reason": "本地工具：性能基线采集（人工跑、产物 reports/ 不入仓），非 CI 判定面"
   },
   {
     "driver": "scripts/gen_icon_preview",
     "reason": "本地工具：图标预览页生成（人工审阅用），非 CI 判定面"
-  },
-  {
-    "driver": "scripts/gen_course",
-    "reason": "回退预案（#125 批 A 形态修正 2026-10-15）：资产链自举判据驳回 Go 进资产链，lessons.ts 渲染角色退役；本体保留作 content.json 静态发射失败回退（宿主运行时方案 parser.c 落地失败时启用），非 CI 判定面"
   }
 ]

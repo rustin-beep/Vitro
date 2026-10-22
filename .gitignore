@@ -207,7 +207,7 @@ demo/src/data/lessons.ts
 # wasmopt 供给缓存（钉版本下载物——不入库）
 tools/cache/
 .mcp.json
-package-lock.json
+# scripts/package-lock.json 入库（#273 依赖白名单锁版本；2026-10-23 摘除旧忽略）
 
 # demo 实测存证与设计稿工作区（#148 实测截图/JSON 状态 + 2026-10-18-redesign 设计稿，本地保留不入库）
 demo-evidence/

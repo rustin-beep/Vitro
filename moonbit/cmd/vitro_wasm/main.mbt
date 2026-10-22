@@ -409,7 +409,7 @@ extern "js" fn js_exit(code : Int32) -> Unit =
 
 ///|
 /// 装载 gateway wasm 产物（同步 Instance + "_" 常量显式供给——#126 形态；
-/// 与 scripts/wasm_load.js 同形双处：闸宿主走 wasm_load.js、CLI 胶水走本
+/// 与 scripts/wasm_load.mts 同形双处：闸宿主走 wasm_load.mts、CLI 胶水走本
 /// 段，同形性由各自消费面的行为闸兜底）。产物路径 = 本 js 产物位置上溯
 /// 7 层（…/_build/js/release/build/cmd/vitro_wasm → repo root）+ moonbit/
 /// _build 标准位；VITRO_WASM_MOD 环境变量覆盖（本地调试改产物不动代码）。

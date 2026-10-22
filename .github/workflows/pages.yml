@@ -78,8 +78,16 @@ jobs:
       # 已随 #125 批 B 入库为真源（.json.mbt 出库），本 job 的 jsonmbt
       # clone/build/再生步随之摘除（干净检出即自洽）。
 
+      # #273 批二：docs_preview 已迁 .mts（marked 渲染）——本 job 需 node ≥24
+      # + scripts 依赖锁文件（仅运行期 marked，--omit=dev 不装工具链）。
+      - name: Install Node (docs_preview .mts)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install scripts runtime deps (lockfile)
+        run: cd scripts && npm ci --omit=dev
       - name: Render docs site (current-only)
-        run: go run ./scripts/docs_preview -section current -force -out demo-dist/docs
+        run: node scripts/docs_preview/main.mts -section current -force -out demo-dist/docs
 
       - name: Assemble demo artifact (F4 收尾 2026-10-17：vite 唯一构建)
         run: |
@@ -106,7 +114,7 @@ jobs:
           cp assets/logo/vitro-icon.svg assets/logo/vitro-icon-light.svg assets/logo/vitro-icon-dark.svg demo-dist/assets/logo/
           # 组装自检（对 index.html+入口的本地资源做存在性断言，缺即红；
           # --no-ts 禁源发布——与 ci.yml PR 侧共用同一脚本）
-          node scripts/demo_assemble_check/main.js demo-dist --no-ts
+          node scripts/demo_assemble_check/main.mts demo-dist --no-ts
           ls -la demo-dist demo-dist/assets/logo demo-dist/docs | head -24
 
       - name: Setup Pages

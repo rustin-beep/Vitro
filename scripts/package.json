@@ -1,0 +1,21 @@
+{
+  "name": "vitro-scripts",
+  "private": true,
+  "description": "Vitro 防线脚本工具链（#273 .mts 四件套门：node 直跑 + tsc 严格档 + oxlint + node:test）",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "oxlint": "1.89.0",
+    "typescript": "7.0.2"
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint wasm_load.mts wasm_load.test.mts demo_assemble_check/main.mts demo_assemble_check/assemble_check.test.mts wasm_gateway/host.mts demo_smoke/main.mts wasmopt/wasmopt.mts wasmopt/wasmopt.test.mts docs_preview/highlight.mts docs_preview/paths.mts docs_preview/paths.test.mts docs_preview/render.mts docs_preview/render.test.mts docs_preview/page.mts docs_preview/main.mts gen_course/main.mts gen_course/gen_course.test.mts",
+    "test": "node --test wasm_load.test.mts demo_assemble_check/assemble_check.test.mts wasmopt/wasmopt.test.mts docs_preview/render.test.mts docs_preview/paths.test.mts gen_course/gen_course.test.mts"
+  },
+  "dependencies": {
+    "marked": "18.1.1"
+  }
+}

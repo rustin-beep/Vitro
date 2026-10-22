@@ -11,8 +11,8 @@
 //
 // 例外表 exceptions.json（本目录）：{"driver": "<scripts 相对路径>", "reason":
 // "..."}。豁免面三类合法形态：库目录（canonicalize/internal/jmemit——被进程
-// 内 import 消费，非独立 go run 闸）、本地工具（docs_preview/perf_baseline/
-// icon 预览类——CI 无消费面）、CLI 资产（vitro_cli——scripts/bin/vitro 是
+// 内 import 消费，非独立 go run 闸）、本地工具（perf_baseline/icon 预览类——
+// CI 无消费面；docs_preview 已于 #273 批二迁 .mts 出 Go 驱动面）、CLI 资产（vitro_cli——scripts/bin/vitro 是
 // sh/js launcher 资产非 go run 目标）。例外条目若同时被 ci.yml 活行引用 =
 // 僵尸（红——双向监控，known_direct 同哲学）。
 //

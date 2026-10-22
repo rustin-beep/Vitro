@@ -22,7 +22,7 @@
 
 ## 现役引擎：MoonBit（`vitro/engine`）
 
-- **wasm-gc 单出口（F-5）**：`vitro/engine/gateway`——NDJSON 帧协议层（4 函数导出 invoke/reset/protocol_version/engine_version，String 零拷贝直传），Node 宿主驱动与 16 断言冒烟见 [scripts/wasm_gateway](scripts/wasm_gateway/host.js)；native stdio 壳 `cmd/serve` 与 wasm 宿主消费同一 dispatch
+- **wasm-gc 单出口（F-5）**：`vitro/engine/gateway`——NDJSON 帧协议层（4 函数导出 invoke/reset/protocol_version/engine_version，String 零拷贝直传），Node 宿主驱动与 16 断言冒烟见 [scripts/wasm_gateway](scripts/wasm_gateway/host.mts)；native stdio 壳 `cmd/serve` 与 wasm 宿主消费同一 dispatch
 - **已发布**：mooncakes [`vitro/engine`](https://mooncakes.io/docs/#/vitro/engine/) 0.1.0 → 0.5.0（2026-09-23）→ 0.6.0（S6 收官版，2026-09-27 发布）→ 0.7.0（S7 协议层与 wasm-gc 单出口版：`fs`（vendored，module 依赖清零）/ `protocol` / `session` / `gateway`(+`gateway/wasm`) 五新包 + `cmd/serve`，2026-09-30 发布）→ **0.8.0**（S8 收官版：净增 4 包共 24 包 + `cmd/vitro` 总入口与 `vitro api` 万能单帧，2026-10-05 发布，线上验收三件全绿）——变更与性能披露见 [moonbit/CHANGELOG.md](moonbit/CHANGELOG.md)
 - **已收官片**（各片收官时点数字，历史快照不连坐当前真值）：S2 lexer（token TSV 差分 6002 逐字节一致）/ S3 parser（597 语料 AST+诊断归一逐字节一致）/ S4 typeck·names·libc（598 语料 E1–E4 全绿）/ S5 codegen·bytecode（**A 级对拍 598/598 全闭环**，含 code 段逐指令）/ S6 memory·host·vm（135 opcode 穷尽执行器 + `VMSnapshot` 快照体系 + 110 host 路由 + `cmd/run` 端到端 runner）/ **S8 时间旅行与教学智能四域**（`time_travel` 检查点体系与 FrameWindow + `teaching/steps` 43 算法族 311 条标注 golden 对拍全绿 + `diagnostics` 教学七元组 + serve step/dump 族全接；白箱招牌能力——每步可回放、算法自动识别、根因提示——均已进现役引擎，总览见 [S8时间旅行与教学智能总览](docs/current/05-教学体验/S8时间旅行与教学智能总览.md)）
 - **验证**：`moon test` **857 用例**全绿 + **全部闸门绿**（分解明细见 [moonbit/README.md](moonbit/README.md)，裸总数真值以 facts `moonbit_test_passed` 为准；本行为现值行，不写日期——留在 facts 数字对账管束内，漂移即红即连坐）

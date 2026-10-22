@@ -552,3 +552,141 @@ test "scalar_brace_unwrap_four_sites" {
     _ => fail("g={42} 应解包折叠为 Literal(42)")
   }
 }
+
+///|
+/// #264（2026-10-22）：静态初始化器的数组名地址常量放行——C23 §6.6p9
+/// 数组右值退化指向首元素（静态存储期对象）＝地址常量，静态规格表
+/// 互引用合法形态；标量变量引用照旧报 E3075（负锚防误放）。
+test "issue264_static_init_array_name_allowed" {
+  let loc = @source.SourceLoc::new(3, 22)
+  // static const char X[] = "hello";  static const S s = { X };
+  let x_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    ty: @ast.Type::Array(@ast.Type::char(), 6, [6], true, false, []),
+    name: "X",
+    init: Some(
+      @ast.Expr::StringLiteral(
+        "hello",
+        @source.SourceLoc::new(2, 27),
+        @ast.Type::char(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let s_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::Struct("S", false),
+    name: "s",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::Identifier("X", loc, @ast.Type::char()),
+          },
+        ],
+        loc,
+        @ast.Type::Struct("S", false),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  // struct S { const char *p; } 需登记——直接走 structs 声明省略，改用
+  // 标量形态压最小面：static const char *pick = X;（数组名初始化指针）
+  let pick_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::pointer_to(@ast.Type::char()),
+    name: "pick",
+    init: Some(@ast.Expr::Identifier("X", loc, @ast.Type::char())),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check(gprog([x_decl, pick_decl, s_decl]))
+  // s 的 struct 未登记会有 E3076 类噪声——只断言 E3075 零命中（核心面）
+  assert_false(
+    errs.exists(e => e.code == 3075),
+    msg="数组名是地址常量，静态初始化器不得报 E3075",
+  )
+}
+
+///|
+/// #264 负锚：标量变量引用照旧报（防放行面过宽）。
+test "issue264_scalar_var_ref_still_e3075" {
+  let loc = @source.SourceLoc::new(2, 20)
+  let n_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    ty: @ast.Type::int(),
+    name: "n",
+    init: Some(@ast.Expr::Literal(5, loc, @ast.Type::int())),
+    source_file: "t.c",
+  }
+  let b_decl : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::int(),
+    name: "b",
+    init: Some(
+      @ast.Expr::Binary(
+        @ast.BinaryOp::Add,
+        @ast.Expr::Identifier("n", loc, @ast.Type::int()),
+        @ast.Expr::Literal(1, loc, @ast.Type::int()),
+        loc,
+        @ast.Type::int(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([n_decl, b_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3075),
+    msg="标量变量引用静态初始化器应照旧报 E3075",
+  )
+}
+
+///|
+/// #265（2026-10-22）：cast 维数误判 VLA 的常量二次折叠——`(int)(2+1)`
+/// 维度经 refold_vla_const_dims 回填定长 [3,40]，check 管线零 error。
+test "issue265_refold_cast_dims" {
+  let tc = TypeChecker::new()
+  // dims=[0,40] 0 哨兵 + vla_dims=[Cast(Literal 3)]——parser 折不出形态
+  let cast3 : @ast.Expr = @ast.Expr::Cast(
+    @ast.Expr::Literal(3, @source.SourceLoc::new(5, 19), @ast.Type::int()),
+    @ast.Type::int(),
+    @source.SourceLoc::new(5, 14),
+    @ast.Type::int(),
+  )
+  let vla_ty = @ast.Type::Array(@ast.Type::char(), 0, [0, 40], false, true, [
+    cast3,
+  ])
+  match tc.refold_vla_const_dims(vla_ty) {
+    Array(_, size, dims, _, is_vla, vd) => {
+      inspect(size, content="120")
+      inspect(dims[0], content="3")
+      inspect(dims[1], content="40")
+      inspect(is_vla, content="false")
+      inspect(vd.length(), content="0")
+    }
+    _ => fail("refold 产物应为数组")
+  }
+  // 负锚：真 VLA（Identifier 维度）折不回、维持原样
+  let n_dim : @ast.Expr = @ast.Expr::Identifier(
+    "n",
+    @source.SourceLoc::new(5, 19),
+    @ast.Type::int(),
+  )
+  let true_vla = @ast.Type::Array(@ast.Type::char(), 0, [0, 40], false, true, [
+    n_dim,
+  ])
+  match tc.refold_vla_const_dims(true_vla) {
+    Array(_, _, _, _, is_vla, vd) => {
+      inspect(is_vla, content="true")
+      inspect(vd.length(), content="1")
+    }
+    _ => fail("真 VLA 应原样返回")
+  }
+}

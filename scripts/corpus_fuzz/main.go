@@ -570,7 +570,13 @@ func parseVitro(ndjson string) outcome {
 				diagOK = "reject"
 			}
 		case "stdout":
-			stdout = f.Frame.Result.Delta
+			// CI 红（2026-10-22，master a7202d19 后抽样轮换首触）：JSON delta
+			// 出口把程序 stdout 的单字节 0x80–0xFF 按 Latin-1 码点转义（\u0085），
+			// Go json.Unmarshal 解码成 U+0085 双字节——与 clang 侧原始单字节量纲
+			// 不等，#172 锚（stdout_c1_byte_0x85）基线即被误判 WRONG_VALUE。
+			// U+0080–U+00FF 折回 Latin-1 单字节（封闭域无损可逆——#66 在
+			// clang_direct 退役的 latin1Fold 同款语义，此处 JSON 通道语境启用）。
+			stdout = latin1Fold(f.Frame.Result.Delta)
 		case "run":
 			status = f.Frame.Result.Status
 			trap = f.Frame.Result.Trap
@@ -863,4 +869,28 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("corpus_fuzz: PASS——无新指纹、无桶恶化")
+}
+
+// latin1Fold：UTF-8 的 U+0080–U+00FF 双字节序折回 Latin-1 单字节（自
+// clang_direct 迁入——#66 在彼处随出口字节直通退役，本 JSON 通道消费
+// 侧重启用：程序 stdout 是字节流，经 JSON delta 码点域须折回字节域再比）。
+func latin1Fold(s string) string {
+	var b bytes.Buffer
+	b.Grow(len(s))
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c == 0xC2 && i+1 < len(s) {
+			b.WriteByte(s[i+1]) // C2 80..BF → 80..BF
+			i += 2
+			continue
+		}
+		if c == 0xC3 && i+1 < len(s) {
+			b.WriteByte(s[i+1] + 0x40) // C3 80..BF → C0..FF
+			i += 2
+			continue
+		}
+		b.WriteByte(c)
+		i++
+	}
+	return b.String()
 }

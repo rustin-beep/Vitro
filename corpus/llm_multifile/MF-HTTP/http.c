@@ -1,6 +1,3 @@
-// @category: llm_multifile
-// 工程：MF-HTTP — HTTP 报文解析：头列表 + 重建 round-trip + CRLF 处理
-// 来源：LLM 多文件语料（2026-10-21 入库；clang golden 由 clang_direct 工程模式现场生成）
 #include "http.h"
 
 int http_ops = 0;

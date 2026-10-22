@@ -66,6 +66,10 @@ priv struct BytecodeGen {
   /// 全局变量初始化中遇到的字符串字面量，Pass 1 结束后统一分配地址并
   /// 回填——避免字符串区与全局变量区重叠（事故 #12）。
   mut pending_string_inits : Array[(UInt32, String)]
+  /// #264（2026-10-22）：静态初始化器的**地址常量前向引用**（数组名/
+  /// &g 形态，`static const S s = { X };` 而 X 声明在 s 之后）——展开时
+  /// 目标 offset 未定，延迟到 Pass 1/3 尾统一回填（同字符串字面量时机）
+  mut pending_addr_inits : Array[(UInt32, String)]
   /// 字面量池（value → 已分配地址；病 120 修，2026-10-16）：相同内容
   /// 的字符串字面量合并同址（clang 实测合并——`a=="twin" && b=="twin"`
   /// 的指针相等形态；C 标准不要求合但主流实现全合，教学对照避免分叉）
@@ -162,6 +166,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     union_defs: {},
     string_data: [],
     pending_string_inits: [],
+    pending_addr_inits: [],
     string_pool: Map([]),
     source_map: [],
     break_patches: [],
@@ -234,8 +239,9 @@ fn BytecodeGen::generate(
   }
   // vtable 分配（C++ 虚派发）：不迁移（F-2）。
   // 回填全局变量初始化中的字符串字面量地址（Pass 1 后统一分配——
-  // 字符串区位于全局变量区之后）。
+  // 字符串区位于全局变量区之后）。#264：地址常量前向引用同时机回填。
   self.flush_pending_string_inits()
+  self.flush_pending_addr_inits()
   // Pass 2：函数元数据（func_index 已预填）。
   for f in program.funcs {
     if f.body is None {
@@ -283,8 +289,10 @@ fn BytecodeGen::generate(
   // Pass 3 尾再回填一次：static 局部聚合的字符串指针成员初值在函数体
   // 生成时（Pass 3）经 flatten_global_init 压入 pending——首轮回填在
   // Pass 1 尾已过，无人消费即丢值（①表 9 号①：解引用 TRAP NULL，
-  // 批五 2026-10-07 收口）。幂等：pending 空则无操作。
+  // 批五 2026-10-07 收口）。幂等：pending 空则无操作。#264：静态局部
+  // 的地址常量（&sl / sl 数组名）同批 bump 后此处才可命中，同时机回填。
   self.flush_pending_string_inits()
+  self.flush_pending_addr_inits()
   // 入口 wrapper：code[0] = Jump wrapper_ip；PushArgv/PushArgc + Call main + Ret。
   let wrapper_ip = self.current_ip()
   match self.func_index.get("main") {
@@ -522,24 +530,34 @@ fn BytecodeGen::pass1_register_global(
                   // 静默落 0（判空恒假 + CallPtr「索引 0 越界」TRAP；
                   // 全局标量臂 `AF g = a1` 走 func_index 编码一直正确）。
                   // 与标量臂同源查 func_index，非函数名元素照旧取折叠值。
+                  // #201-B/#264：元素为函数名（func_index 编码）/数组名
+                  //（地址常量——#264 直写或前向 pending，handled 时跳过
+                  // 默认 push 防覆盖）；其余取 flatten_init_list 折叠值
+                  let mut addr_handled = false
                   let v = match elements.get(i) {
                     Some(e) =>
                       match e.value {
                         Identifier(name, _, _) =>
                           match self.func_index.get(name) {
                             Some(idx) => idx
-                            None =>
-                              if i < values.length() {
-                                values[i]
-                              } else {
+                            None => {
+                              addr_handled = self.push_global_addr_init(
+                                addr, name,
+                              )
+                              if addr_handled || i >= values.length() {
                                 0
+                              } else {
+                                values[i]
                               }
+                            }
                           }
                         _ => if i < values.length() { values[i] } else { 0 }
                       }
                     None => 0
                   }
-                  self.globals_init_32.push((addr, v))
+                  if !addr_handled {
+                    self.globals_init_32.push((addr, v))
+                  }
                 }
               }
             }
@@ -593,8 +611,21 @@ fn BytecodeGen::pass1_register_global(
           match self.func_index.get(name) {
             Some(idx) =>
               self.globals_init_32.push((offset.reinterpret_as_uint(), idx))
-            None => ()
+            // #264（2026-10-22）：数组名地址常量（顶层标量 char* = ARR——
+            // 旧 None => () 静默置 0）；函数名/数组名双查同 flatten 路径
+            None => {
+              let _ = self.push_global_addr_init(
+                offset.reinterpret_as_uint(),
+                name,
+              )
+              ()
+            }
           }
+        // #264 同族：&g 顶层标量地址常量（旧落 _ => () 静默置 0）
+        Unary(@ast.UnaryOp::Addr, Identifier(name, _, _), _, _) => {
+          let _ = self.push_global_addr_init(offset.reinterpret_as_uint(), name)
+          ()
+        }
         _ => ()
       }
     None => ()

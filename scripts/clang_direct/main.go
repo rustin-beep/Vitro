@@ -899,28 +899,6 @@ func normalizeClangStdout(s string) string {
 	return normalizeLines(strings.Split(s, "\n"))
 }
 
-// latin1Fold：UTF-8 的 U+0080–U+00FF 双字节序折回 Latin-1 单字节。
-func latin1Fold(s string) string {
-	var b bytes.Buffer
-	b.Grow(len(s))
-	for i := 0; i < len(s); {
-		c := s[i]
-		if c == 0xC2 && i+1 < len(s) {
-			b.WriteByte(s[i+1]) // C2 80..BF → 80..BF
-			i += 2
-			continue
-		}
-		if c == 0xC3 && i+1 < len(s) {
-			b.WriteByte(s[i+1] + 0x40) // C3 80..BF → C0..FF
-			i += 2
-			continue
-		}
-		b.WriteByte(c)
-		i++
-	}
-	return b.String()
-}
-
 // ── 比对 ──
 
 func compareDirect(o *clangResult, m *moonResult) []string {

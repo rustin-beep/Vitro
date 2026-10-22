@@ -4,10 +4,12 @@
   "corpora": {
     "baseline": {
       "sources": {
+        "abstract_array_param.c": "1d6d9fb9",
         "array_address.c": "0ba37ef8",
         "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
         "array_bounds_safe.c": "0f125842",
+        "array_dim_cast.c": "22c2c0c9",
         "array_dim_const_expr.c": "8820e906",
         "array_index.c": "a562c208",
         "array_index_increment.c": "d92fbb2c",
@@ -61,6 +63,7 @@
         "char_signedness.c": "558096f8",
         "circular_queue.c": "e85826b6",
         "codegen_soundness_regression.c": "f6946525",
+        "comma_expr_stmt.c": "a7b2f601",
         "comma_operator.c": "160ed832",
         "compare_eq.c": "cdb57571",
         "compare_gt_eq.c": "33020a10",
@@ -158,6 +161,7 @@
         "flexible_array_static_init_reject.c": "d9432565",
         "float_basic.c": "3016d3e3",
         "float_compare.c": "fb3b35b5",
+        "float_const_trailing_dot.c": "5d48bf0e",
         "float_func_return.c": "e0a67f44",
         "fnptr_enum_int_param.c": "2fd3cfc5",
         "for_break.c": "a0481497",
@@ -380,6 +384,7 @@
         "static_forward_func.c": "e82fdca6",
         "static_forward_global.c": "8fd6e158",
         "static_global_basic.c": "6e2264cf",
+        "static_init_addr_const.c": "49ece5b7",
         "static_init_expr.c": "81f09bf5",
         "static_local_aggregate.c": "26d50ad9",
         "static_local_array.c": "b308a88f",
@@ -484,6 +489,9 @@
         "zero_init_array.c": "40d03832"
       },
       "cases": {
+        "abstract_array_param.c": {
+          "result_sha": "6a6c7cd2d059bcac"
+        },
         "array_address.c": {
           "result_sha": "37ce0c5a8f992ea5"
         },
@@ -496,6 +504,9 @@
         },
         "array_bounds_safe.c": {
           "result_sha": "9f76538e1765a379"
+        },
+        "array_dim_cast.c": {
+          "result_sha": "51dc12302d5f0fbf"
         },
         "array_dim_const_expr.c": {
           "result_sha": "edf6125acf461563"
@@ -656,6 +667,9 @@
         },
         "codegen_soundness_regression.c": {
           "result_sha": "95a00e1c2ebdbf6e"
+        },
+        "comma_expr_stmt.c": {
+          "result_sha": "2034bf615ac55451"
         },
         "comma_operator.c": {
           "result_sha": "6b709ddcf1b095e5"
@@ -953,6 +967,9 @@
         },
         "float_compare.c": {
           "result_sha": "38a1eacebddae0be"
+        },
+        "float_const_trailing_dot.c": {
+          "result_sha": "bd8b2c37b48f8da6"
         },
         "float_func_return.c": {
           "result_sha": "8e42b14f60a41f70"
@@ -1632,6 +1649,9 @@
         },
         "static_global_basic.c": {
           "result_sha": "83c9072f22eaaba2"
+        },
+        "static_init_addr_const.c": {
+          "result_sha": "5a09f751784cc0e1"
         },
         "static_init_expr.c": {
           "result_sha": "1dcf688f718775ad"

@@ -2,6 +2,12 @@
   "version": 1,
   "note": "freeze 落盘前已全量对拍（SAME/DIFF-KNOWN），DIFF 例拒绝写入",
   "cases": {
+    "baseline/abstract_array_param.c": {
+      "src_sha": "1d6d9fb9",
+      "exit_code": 0,
+      "stdout_sha": "75f3cdaf908ad49d",
+      "memory_sha": "c218f44590c491c3"
+    },
     "baseline/array_address.c": {
       "src_sha": "0ba37ef8",
       "exit_code": 0,
@@ -26,6 +32,12 @@
       "exit_code": 0,
       "stdout_sha": "4b227777d4dd1fc6",
       "memory_sha": "b4d787aff188ea45"
+    },
+    "baseline/array_dim_cast.c": {
+      "src_sha": "22c2c0c9",
+      "exit_code": 0,
+      "stdout_sha": "82ab3f7b4978ff7f",
+      "memory_sha": "45add1fa69bd10a2"
     },
     "baseline/array_dim_const_expr.c": {
       "src_sha": "8820e906",
@@ -345,6 +357,12 @@
       "exit_code": 0,
       "stdout_sha": "309e7e5f3332b6dd",
       "memory_sha": "66cfc80f5c57f9f4"
+    },
+    "baseline/comma_expr_stmt.c": {
+      "src_sha": "a7b2f601",
+      "exit_code": 0,
+      "stdout_sha": "1e6eca10b88364be",
+      "memory_sha": "5d46b6fc787d84b7"
     },
     "baseline/comma_operator.c": {
       "src_sha": "160ed832",
@@ -933,6 +951,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "a3947ca67e8b5103"
+    },
+    "baseline/float_const_trailing_dot.c": {
+      "src_sha": "5d48bf0e",
+      "exit_code": 0,
+      "stdout_sha": "a54d4ed0c75e590e",
+      "memory_sha": "1309a9f6d8e390b4"
     },
     "baseline/float_func_return.c": {
       "src_sha": "e0a67f44",
@@ -2278,6 +2302,12 @@
       "exit_code": 0,
       "stdout_sha": "ad53e8806d17c82d",
       "memory_sha": "abc76ab43b366e42"
+    },
+    "baseline/static_init_addr_const.c": {
+      "src_sha": "49ece5b7",
+      "exit_code": 0,
+      "stdout_sha": "9a2add3938d58e18",
+      "memory_sha": "179b592e8cb6c27e"
     },
     "baseline/static_init_expr.c": {
       "src_sha": "81f09bf5",

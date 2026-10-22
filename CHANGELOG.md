@@ -12,6 +12,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
+
+- **入库**（用户拍板替换旧版）：`scripts/realcode_diff/corpus/multifile`
+  的 35 个编译层双绿工程入 `corpus/llm_multifile`——8 个同名工程
+  （ARGS/CACHE/CONFIG/HTTP/JSONMINI/MATRIX/SORT/STATE）用终版替换
+  10-21 早期版 + 新增 27 域（AUDIO/BMP/CRYPTO/GRAPH/REGEX/SIM/TAR
+  等）；MF-UNIT 留对拍域（#221 `__FILE__`/`__LINE__` 未支持，修后
+  提升）。防线唯一多文件面 8→43 工程；对拍域 36 份原样保留。
+- **行为层首跑**（工程模式 clang_direct 直拍，预期收获）：30 SAME +
+  5 DIFF——2 例定性进 known（CRYPTO = LShr 移位量 60 越界受检 trap
+  vs clang UB 静默〔教学白箱既有口径〕；GAME = 10M 步墙 vs 程序真
+  需求〔预算配置面，preset algo 档 2e9 可跑，工程模式未接 dir_tiers〕）
+  + 3 例待深挖开 [#268]（AUDIO 错误路径字节差 / QUEUE printf 左对齐
+  宽度族 / SERIAL 校验和字节错值——疑真缺陷）；5 条 known_direct
+  digest 锁定（双向监控），工程模式 35 例 DIFF=0 转绿。
+- chibicc 批维持对拍域定位（实测：25 份「绿」是 -fsyntax-only 编译
+  层口径，防线直拍形态下 K&R implicit int + GNU 语句表达式令 clang
+  各 -std 档 error、-std=gnu89 又卡 test.h 外部函数 assert 桩——
+  需 per-suite 旗标 + 桩定制，收益/成本不划算；16 份红 =
+  _Generic/VLA/typeof/_Atomic 支持面路线图，随引擎支持面逐批提取）。
+- 闸：clang_direct baseline 483 DIFF=0 / vm_diff 483 SAME / facts
+  漂移 0 / 107 文件全 LF（editorconfig 合规）。
+
+### fix(lexer+parser+codegen): #247/#252/#248 误拒与虚假 trap 三案（2026-10-22）
+
+- **[#247] 无小数位浮点常量**（`10.` / `10.e5`，C99 §6.4.4.4
+  digit-sequence '.' 小数部分可缺省）：扫描器旧形态把尾点拆出去按成员
+  访问处理（E2005「预期成员名称」/E3041 误拒）。修 = 点后三态判定
+  （数字/f/F 既有、e/E 指数〔10.e5〕、**常量终结符**——`; ) , ] }`
+  空白等非标识符起始即并入浮点）；点后其他标识符起始（`10.x` 非法
+  后缀）维持拆分显式拒绝。
+- **[#252] 无名抽象数组声明符形参**（`void f(int[], int)`，C11
+  §6.7.6.3p13 原型参数名可省）：形参解析的无名分支此前只覆盖裸类型
+  与 `*` 指针，类型后直接 `[` 报「预期标识符名称」误拒（具名 `int
+  xs[]` 一直支持）。修 = 无名分支接 `parse_abstract_declarator_body`
+  + `interpret_declarator_node`（sizeof(type) 同款抽象声明符链），
+  产物统一走既有形参 decay；`int[3]` 带尺寸同覆盖。
+- **[#248] 逗号运算符虚假 TRAP**（`g(1), g(2);` 语句 → 「Swap: 栈
+  不足」rc=2、后续语句截断）：codegen 对 Comma 无条件发 Swap+Pop，
+  但 void 操作数不压值——双 void 语句栈空触发下溢守卫。修 = 按
+  左值是否在场分流（左 void 空操作；左值右 void 单 Pop 清场；
+  双值维持 Swap+Pop）。
+- **[#251] 撞拍板不修**：issue 主张十进制大常量（>INT64_MAX 无后缀）
+  误拒，但 diff 台账 DIFF-LEX-DECL-BIGCONST-01（2026-10-04
+  verified-doc）已裁定维持 error（C11 §6.4.4.1 十进制候选类型序列
+  不含 unsigned 档、constraint 违反要求诊断——与 #24 十六进制的
+  标准合法地位根本不同）；翻案权在用户。
+- **锚与门禁**：语料 +3（`float_const_trailing_dot` 八形态 /
+  `abstract_array_param` 原型·带尺寸·二维全链 / `comma_expr_stmt`
+  四值形态含三连嵌套）clang golden 双臂逐字节一致；lexer wbtest +2
+  （尾点三态 + 边界拆分）；存量 vm_diff 480 SAME / clang_direct
+  483 DIFF=0 / 三套件六路 PASS（逗号 codegen 改动零存量漂移）后
+  五家 freeze；moon test 863/863。
+
+### fix(typeck+codegen): #264/#265 误拒双案——cast 维数误判 VLA 三面 + 静态初始化器地址常量（2026-10-22）
+
+- **[#265] cast 维数误判 VLA**（`(int)(sizeof arr/sizeof arr[0])` 惯用法全灭）：
+  parser `const_int_of` 无 Cast/Sizeof 臂，折不出即判 VLA，下游三面连坐
+  （传参 E3038 / 全局「不支持 VLA」/ struct 成员 0 哨兵 stride 运行时
+  trap）。修两层：①typeck `refold_vla_const_dims` 常量二次折叠
+  （`const_eval` 支持 Cast/Sizeof——Sizeof 臂补 Identifier/`arr[0]` 符号表
+  回退），接线局部声明（process_var_decl）/全局（尺寸推断循环头——
+  sizeof 惯用法引用的先行全局已推断回写）/struct·union 成员三处；
+  ②`subscript_type` 的 is_vla 传导改按剩余维 0 哨兵判——剥首维后定长
+  即普通数组（形参 parser 层已 decay，旧原样传导令 pointee 带 VLA 标记
+  误拒 E3038；**真 VLA 传参 `char a[n][N]` → `f(char out[][N])`（C99
+  合法）顺带修复**，#84 锚判据同步语义化）。
+- **[#264] 静态初始化器地址常量**（静态规格表互引用全灭）：①typeck
+  `diagnose_static_init` 的 Identifier 臂放行数组名（C23 §6.6p9 数组右值
+  退化＝指向静态存储期对象的地址常量；标量变量引用照旧 E3075，负锚锁面）；
+  ②codegen 地址回填四处接线（`push_global_addr_init` 单点 = GLOBAL_START
+  + offset，前向引用 pending 至 Pass 1/3 尾回填）：flatten_global_init
+  的数组名/`&g` 臂、顶层标量 Identifier/Unary(Addr) 臂（旧 None=>() 静默
+  置 0 → 运行期 NULL 解引用 trap）、数组元素函数名/数组名双查分支
+  （#201-B 面扩程，handled 防 push 覆盖）。
+- **锚与门禁**：语料 `corpus/baseline/array_dim_cast.c`（六形态：
+  局部传参/全局/struct 成员/**局部+sizeof 宏传参（评论 HUGE-CPM=z6
+  同形）/(size_t) 强转（评论点名确认面）**/无 cast 对照）
+  + `static_init_addr_const.c`（表引用/顶层 char\*/&g/函数名对照）
+  clang golden 双臂逐字节一致（`(unsigned)/(char)/(long long)` 变体
+  探针同验）；wbtest +4（ast subscript 传导 1 + typeck
+  放行/负锚/refold 2+1）；存量 vm_diff 478 SAME / clang_direct
+  480 DIFF=0 / codegen 477 零漂移；typeck 漂移仅 `vla_2d.c`
+  （VLA 标记表示变化，运行 SAME——语义正确面）；knr/leetcode/gap
+  三套件六路 PASS 后五家 freeze；moon test 861/861。
+
 ### feat(demo): #222 P0 四状态入像素闸 + CDP 竞态健壮性（2026-10-22）
 
 - **四状态**（12 → 16）：`state-trap`（uaf 末帧真 trap + 诊断带展开）、
@@ -73,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   5×19×9、ui_lint（含 `-selftest` 五路）、png 5/5、svelte-check 0 错、
   oxlint 0 错、`gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装
   按预期 `::warning::` 跳过（基线仍待 CI dispatch 生成）。
+
 
 ### feat(corpus): llm_scale/llm_multifile 全域接线 + #238 (void) 栈泄漏修复（2026-10-21）
 

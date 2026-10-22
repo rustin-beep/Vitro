@@ -368,10 +368,20 @@ fn BytecodeGen::gen_binary(
     // And/Or 已在上方短路结构处理，到不了这里（穷尽 match 的占位臂）
     And => ()
     Or => ()
-    Comma => {
-      // 丢弃左值保留右值
-      self.emit(@opcode.OpCode::Swap, 0, loc)
-      self.emit(@opcode.OpCode::Pop, 0, loc)
-    }
+    Comma =>
+      // 丢弃左值保留右值。#248（2026-10-22）：void 操作数不压值——
+      // 左 void（`g(1), g(2)`）时栈上无左值可换，旧无条件 Swap+Pop
+      // 触发下溢守卫虚假 TRAP「栈不足」（输出正确但 rc=2 且后续语句
+      // 截断）；按左值是否在场分流（Swap 只动栈顶两项，只需左值在）
+      if left.ty().kind() is TK_Void {
+        // 左不产值：无值可弃——右值（若有）即结果
+        ()
+      } else if right.ty().kind() is TK_Void {
+        // 左产值、右 void：结果无值，弃栈上的左值
+        self.emit(@opcode.OpCode::Pop, 0, loc)
+      } else {
+        self.emit(@opcode.OpCode::Swap, 0, loc)
+        self.emit(@opcode.OpCode::Pop, 0, loc)
+      }
   }
 }

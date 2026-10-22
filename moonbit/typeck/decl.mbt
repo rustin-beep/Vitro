@@ -508,6 +508,9 @@ fn TypeChecker::process_var_decl(
   } else {
     var_type_1
   }
+  // #265（2026-10-22）：cast/sizeof 维数误判 VLA 的常量二次折叠——
+  // 须在 dims 合法性检查之前（折出定长后负/零/缺尺寸检查才接得上）
+  let var_type_2 : @ast.Type = self.refold_vla_const_dims(var_type_2)
   // 只有 C++ 构造函数初始化需要提前声明变量（try_process_ctor_init——
   // 剔除登记，C 恒 false：普通变量（尤其数组）必须在初始化处理后声明，
   // 否则符号表类型无法反映 check_array_initializer 推断的尺寸）

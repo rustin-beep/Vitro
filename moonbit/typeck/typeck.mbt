@@ -110,7 +110,22 @@ pub fn TypeChecker::check(
   // ①重复前向合法（不覆盖既有条目）；②前向后完整定义=合法升级（旧
   // 形态前向被当零字段完整定义，后续定义误报 E3002）；③完整+完整
   // 仍 E3002（照旧）。
-  for s in program.structs {
+  for si in 0..<program.structs.length() {
+    let s = program.structs[si]
+    // #265（2026-10-22）：成员数组 cast 维数误判 VLA 的常量二次折叠
+    //（sizeof 形态折不了——struct 注册先于全局符号登记，lookup_var
+    // 扑空；cast 直接维数可折，运行时 0 哨兵 stride trap 一并解除）
+    let s = if s.is_forward {
+      s
+    } else {
+      let folded : Array[@ast.StructField] = []
+      for f in s.fields {
+        folded.push({ ..f, ty: self.refold_vla_const_dims(f.ty), })
+      }
+      let ns = { ..s, fields: folded, }
+      program.structs[si] = ns
+      ns
+    }
     if s.is_forward {
       if !self.structs.contains(s.name) {
         self.structs.set(s.name, { fields: [], is_complete: false, })
@@ -170,7 +185,20 @@ pub fn TypeChecker::check(
     // 同约束；typedef struct 匿名体与嵌套字段类型里的定义走同一注册路径）
     self.check_duplicate_member_names(s, "结构体")
   }
-  for u in program.unions {
+  for ui in 0..<program.unions.length() {
+    let u = program.unions[ui]
+    // #265 同 struct：成员 cast 维数误判 VLA 的常量二次折叠
+    let u = if u.is_forward {
+      u
+    } else {
+      let folded : Array[@ast.StructField] = []
+      for f in u.fields {
+        folded.push({ ..f, ty: self.refold_vla_const_dims(f.ty), })
+      }
+      let nu = { ..u, fields: folded, }
+      program.unions[ui] = nu
+      nu
+    }
     if u.is_forward {
       if !self.unions.contains(u.name) {
         self.unions.set(u.name, { fields: [], is_complete: false, })
@@ -275,6 +303,9 @@ pub fn TypeChecker::check(
     program.unions.push(u)
   }
   // Pass 2: 函数签名注册
+  // #265 注：形参数组在 parser 层已 decay 成 Pointer(subscript_type)——
+  // cast 维度的 VLA 误判由 subscript_type 的 is_vla 传导修正收口（ast
+  // 包），此处无需再折（Pointer 的 is_vla 恒 false，折臂永不进）。
   for f in program.funcs {
     let new_sym : FuncSymbol = {
       return_type: f.return_type,
@@ -397,6 +428,17 @@ pub fn TypeChecker::check(
     }
   }
   for i in 0..<program.globals.length() {
+    let g = program.globals[i]
+    // #265（2026-10-22）：cast/sizeof 维数误判 VLA 的常量二次折叠——
+    // 折在**尺寸推断循环内、逐个声明检查前**（sizeof 惯用法引用的先行
+    // 全局此时已推断回写符号表）；折出后回写 program + 符号表，codegen
+    // 的「全局不支持 VLA」与传参 E3038 一并解除
+    let refolded = self.refold_vla_const_dims(g.ty)
+    if refolded is Array(_, _, _, _, false, _) &&
+      g.ty is Array(_, _, _, _, true, _) {
+      program.globals[i] = { ..g, ty: refolded, }
+      self.update_var_type(g.name, refolded)
+    }
     let g = program.globals[i]
     // U1#12：全局数组尺寸合法性——extern 不完整声明（extern int g[];）
     // 是合法的，跳过；无初始化器的 `int a[];` 全局定义必须报错

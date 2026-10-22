@@ -1,79 +1,104 @@
 [
-  {
-    "case": "array_bound_const_index.c",
-    "digest": "d07256b0",
-    "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
-  },
-  {
-    "case": "bTree_default.c",
-    "digest": "a1d62714",
-    "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。UB 结局漂移史：Clang 侧 UB 恰好无害（输出 1）；引擎 kruskal 零填充修复（0c893ae）后 UB 走向 NULL 解引用受检 trap @71:32（ff228a13）；CI MSVC 构建形态=诊断行后 0xC0000005（65593255，双集兼容）；批五 ①表 9 号修复（2026-10-07：static 聚合字符串指针成员 Pass 3 回填 + scanf 抑制不写内存）再改布局——第三次漂移收敛为 f7c93a73（旧双集随旧布局退役，CI clang 构建同形态）。第四形态 4c8b994e（审阅处置 2026-10-10 实测归因）：trap 文案截断形态对产物二进制布局敏感而非链敏感——同一提交本机冷启动构建 MSVC/clang 两链同得 4c8b994e，主仓热增量构建与 CI（Windows runner 冷构建）落 f7c93a73；digest 值随构建环境漂属本条 UB 形态固有噪声面，CI 全量实测 DIFF=0（SAME=712 DIFF-KNOWN=7）不受影响。两侧结局不同是 UB 的正当形态，保留作安全检测教学示例。第五形态 a1d62714（2026-10-21 CI 处置批）：c2cb5be1 的 E3083 trap 码链改版 NULL 解引用教学文案（stdout 首行现为 [cause] 原因：指针的值是 NULL…），MoonBit 侧 trap 输出随码链变化——本地与 CI 双环境同值（非噪声漂移），属有意行为变更的连坐重冻",
-    "digests": [
-      "f7c93a73",
-      "ff228a13",
-      "65593255",
-      "4c8b994e",
-      "a1d62714"
-    ]
-  },
-  {
-    "case": "file_fopen.c",
-    "digest": "5d175f95",
-    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
-  },
-  {
-    "case": "file_fread.c",
-    "digest": "79c7c561",
-    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
-  },
-  {
-    "case": "function_pointer_sizeof.c",
-    "digest": "097c5e9f",
-    "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "null_deref_trap_e3083.c",
-    "digest": "1a42137c",
-    "reason": "#178（2026-10-19）E3083 码位锁面锚：NULL 写 trap（vitro 教学 trap rc=2、stdout『guard-ok』——trap 前已产出）vs Clang SIGSEGV 3221225477 且 stdio 缓冲崩溃吞掉 stdout（空）——UB 崩溃域与受检 trap 的正当形态差异（p2e_div_zero_scope 同款：报告返回码 X != Y 的 o=Clang/m=MoonBit，trap 时 m 侧 // EXIT 行缺失记 0）。对照组判空分支 guard-ok 双侧语义一致。"
-  },
-  {
-    "case": "p2e_div_zero_scope.c",
-    "digest": "5fd9b345",
-    "reason": "除零教学 trap vs Clang Windows SEH 崩（0xC0000142 域返回码 3221225620）——Vitro 白箱把除零转为结构化教学诊断（inspect 段列本帧零值变量），Clang 无 sanitizer 直接崩；array_bound_const_index.c 同款形态（教学 trap vs 无 sanitizer）。病 53 修复批：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）"
-  },
-  {
-    "case": "p2f_review_regression_guards.c",
-    "digest": "9a329ad2",
-    "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因勘误（2026-10-14 CI 首跑取证后定案）：digest 差异**全在 Clang 侧**——a[10] 越界读（C 侧 UB）的垃圾值随环境漂（本地 exit 0 / CI runner exit 524288=0x80000 栈残留），与 bTree_default 同族「UB 结局随构建/运行环境漂移属正当形态」；MoonBit 侧恒定 trap rc=2（CI 直跑取证步实锤，#71 挂账销案）。首次归因误读报文「返回码 524288 != 0」的 o/m 次序（o=Clang 侧、m=MoonBit 侧 // EXIT 行解析值，trap 时无该行为 0）——教训：digest 差异定位先分侧。第三形态（2026-10-15 CI run 38678958859 取证重冻）：Clang 侧 32768 崩溃 + stdout 提前截断（2 vs 6 行）——同族 UB 结局漂移第三集，本地复跑 digest 9a329ad2 未漂（分侧归因维持），仅 CI 环境新形态入集。",
-    "digests": [
-      "9a329ad2",
-      "a08efe4a",
-      "3e3edab5"
-    ]
-  },
-  {
-    "case": "printf_scanf_type_mismatch.c",
-    "digest": "d70d6dd0",
-    "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
-  },
-  {
-    "case": "scanf_0x_retval.c",
-    "digest": "71b4b08d",
-    "reason": "sscanf 0x 残缺前缀返回值派系差（#59 题 1 裁定 2026-10-10）：UCRT 把匹配冲突当 EOF 返 -1；Vitro 按 C11 §7.21.6.2 匹配失败返已配数 0（glibc 2.43 实测同判 0）。行为面（不写/游标消费不退回/正常前缀）双侧一致，由 baseline/scanf_0x_behavior.c 严拍；本例只锁返回值派系差"
-  },
-  {
-    "case": "sizeof_array_param.c",
-    "digest": "fea933cd",
-    "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
-  },
-  {
-    "case": "static_forward_func.c",
-    "digest": "96ef11dc",
-    "reason": "闸标定面形态差（#50 审阅 P1-2 登记，非引擎错）：clang_direct 历史标定参数 -Wno-implicit-function-declaration 关闭了 C99+ 默认 error 的隐式声明检查；裸默认口径 Clang 同位亦 error（实测 error: call to undeclared function）——E3058 与 Clang 默认对齐成立，属参数口径差。E3059 对照面（undeclared identifier 不受该 flag 影响）双侧等价不登记"
-  },
-  {
-    "case": "string_escape_octal_hex.c",
-    "digest": "38dfc934",
-    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
-  }
+ {
+  "case": "array_bound_const_index.c",
+  "digest": "d07256b0",
+  "reason": "教学白箱 trap vs Clang 静默（#50 审阅 P1-2 登记）：Vitro 运行期受检越界 trap rc=2（[deny] 数组越界教学文案）vs Clang 无 sanitizer 静默 rc=0——运行期防护族既有同类形态（trap 文案形态差在 #50 表已登记）；静态面 W3051 双侧警告对齐"
+ },
+ {
+  "case": "bTree_default.c",
+  "digest": "a1d62714",
+  "reason": "模板 UB（malloc 后 keys[M] 未初始化 + splitChild 搬移读越 keyCount 界——归因勘误 2026-09-29：此前误写\"未初始化子节点指针\"，细读 createNode 已循环置 NULL children，真 UB 面是 keys 未清零）——E2E_FAILURES.md 已登记同款（shadow known_issue 一致）。UB 结局漂移史：Clang 侧 UB 恰好无害（输出 1）；引擎 kruskal 零填充修复（0c893ae）后 UB 走向 NULL 解引用受检 trap @71:32（ff228a13）；CI MSVC 构建形态=诊断行后 0xC0000005（65593255，双集兼容）；批五 ①表 9 号修复（2026-10-07：static 聚合字符串指针成员 Pass 3 回填 + scanf 抑制不写内存）再改布局——第三次漂移收敛为 f7c93a73（旧双集随旧布局退役，CI clang 构建同形态）。第四形态 4c8b994e（审阅处置 2026-10-10 实测归因）：trap 文案截断形态对产物二进制布局敏感而非链敏感——同一提交本机冷启动构建 MSVC/clang 两链同得 4c8b994e，主仓热增量构建与 CI（Windows runner 冷构建）落 f7c93a73；digest 值随构建环境漂属本条 UB 形态固有噪声面，CI 全量实测 DIFF=0（SAME=712 DIFF-KNOWN=7）不受影响。两侧结局不同是 UB 的正当形态，保留作安全检测教学示例。第五形态 a1d62714（2026-10-21 CI 处置批）：c2cb5be1 的 E3083 trap 码链改版 NULL 解引用教学文案（stdout 首行现为 [cause] 原因：指针的值是 NULL…），MoonBit 侧 trap 输出随码链变化——本地与 CI 双环境同值（非噪声漂移），属有意行为变更的连坐重冻",
+  "digests": [
+   "f7c93a73",
+   "ff228a13",
+   "65593255",
+   "4c8b994e",
+   "a1d62714"
+  ]
+ },
+ {
+  "case": "file_fopen.c",
+  "digest": "5d175f95",
+  "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
+ },
+ {
+  "case": "file_fread.c",
+  "digest": "79c7c561",
+  "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
+ },
+ {
+  "case": "function_pointer_sizeof.c",
+  "digest": "097c5e9f",
+  "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"
+ },
+ {
+  "case": "null_deref_trap_e3083.c",
+  "digest": "1a42137c",
+  "reason": "#178（2026-10-19）E3083 码位锁面锚：NULL 写 trap（vitro 教学 trap rc=2、stdout『guard-ok』——trap 前已产出）vs Clang SIGSEGV 3221225477 且 stdio 缓冲崩溃吞掉 stdout（空）——UB 崩溃域与受检 trap 的正当形态差异（p2e_div_zero_scope 同款：报告返回码 X != Y 的 o=Clang/m=MoonBit，trap 时 m 侧 // EXIT 行缺失记 0）。对照组判空分支 guard-ok 双侧语义一致。"
+ },
+ {
+  "case": "p2e_div_zero_scope.c",
+  "digest": "5fd9b345",
+  "reason": "除零教学 trap vs Clang Windows SEH 崩（0xC0000142 域返回码 3221225620）——Vitro 白箱把除零转为结构化教学诊断（inspect 段列本帧零值变量），Clang 无 sanitizer 直接崩；array_bound_const_index.c 同款形态（教学 trap vs 无 sanitizer）。病 53 修复批：inspect 段已按当前帧 func_name 过滤（跨函数局部变量不再错位列出）"
+ },
+ {
+  "case": "p2f_review_regression_guards.c",
+  "digest": "9a329ad2",
+  "reason": "审阅 2026-10-14 回归锚族：运行期 a[10] 触发 Vitro [deny] 教学 trap（文案含变量名 a——P1-b 修复后 designated 全局进 symbols 表）vs Clang 无 sanitizer 静默越界；array_bound_const_index/p2e_div_zero_scope 同款形态。同文件锁 UL/ULL 宽度（4/4/8）与混合 designated 续位（a[3]=9）运行期值面。双集归因勘误（2026-10-14 CI 首跑取证后定案）：digest 差异**全在 Clang 侧**——a[10] 越界读（C 侧 UB）的垃圾值随环境漂（本地 exit 0 / CI runner exit 524288=0x80000 栈残留），与 bTree_default 同族「UB 结局随构建/运行环境漂移属正当形态」；MoonBit 侧恒定 trap rc=2（CI 直跑取证步实锤，#71 挂账销案）。首次归因误读报文「返回码 524288 != 0」的 o/m 次序（o=Clang 侧、m=MoonBit 侧 // EXIT 行解析值，trap 时无该行为 0）——教训：digest 差异定位先分侧。第三形态（2026-10-15 CI run 38678958859 取证重冻）：Clang 侧 32768 崩溃 + stdout 提前截断（2 vs 6 行）——同族 UB 结局漂移第三集，本地复跑 digest 9a329ad2 未漂（分侧归因维持），仅 CI 环境新形态入集。",
+  "digests": [
+   "9a329ad2",
+   "a08efe4a",
+   "3e3edab5"
+  ]
+ },
+ {
+  "case": "printf_scanf_type_mismatch.c",
+  "digest": "d70d6dd0",
+  "reason": "SEVERITY-FORMAT 销案连坐（批四 2026-10-07）：W3035/W3063 降 warning 后 Vitro 编译放行，Clang 侧该例因无 #include 的 scanf 隐式声明在 Windows/MSVC 链接域 undefined symbol（lld-link: scanf）——单侧编译失败系 Clang 环境域非行为差（含 include 的 scanf 语料全量 705 SAME 佐证）；格式错配运行期输出为 UB 域，stdout 无对拍意义；诊断面由 typeck_diff gap digest 锁"
+ },
+ {
+  "case": "scanf_0x_retval.c",
+  "digest": "71b4b08d",
+  "reason": "sscanf 0x 残缺前缀返回值派系差（#59 题 1 裁定 2026-10-10）：UCRT 把匹配冲突当 EOF 返 -1；Vitro 按 C11 §7.21.6.2 匹配失败返已配数 0（glibc 2.43 实测同判 0）。行为面（不写/游标消费不退回/正常前缀）双侧一致，由 baseline/scanf_0x_behavior.c 严拍；本例只锁返回值派系差"
+ },
+ {
+  "case": "sizeof_array_param.c",
+  "digest": "fea933cd",
+  "reason": "同 function_pointer_sizeof：指针宽度架构差异（shadow KNOWN 同款，DIFF-PTR-4BYTE-01）"
+ },
+ {
+  "case": "static_forward_func.c",
+  "digest": "96ef11dc",
+  "reason": "闸标定面形态差（#50 审阅 P1-2 登记，非引擎错）：clang_direct 历史标定参数 -Wno-implicit-function-declaration 关闭了 C99+ 默认 error 的隐式声明检查；裸默认口径 Clang 同位亦 error（实测 error: call to undeclared function）——E3058 与 Clang 默认对齐成立，属参数口径差。E3059 对照面（undeclared identifier 不受该 flag 影响）双侧等价不登记"
+ },
+ {
+  "case": "string_escape_octal_hex.c",
+  "digest": "38dfc934",
+  "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
+ },
+ {
+  "case": "MF-AUDIO",
+  "digest": "a9e4e97c",
+  "reason": "llm_multifile 工程模式直拍首跑挖出（2026-10-22 入库批）：WAV 错误路径（bytes=-2）族的字节级输出差异，rate/data 大值侧差——待最小化定性（汇总 issue 登记待深挖）"
+ },
+ {
+  "case": "MF-CRYPTO",
+  "digest": "8e17c3b5",
+  "reason": "同上首跑：vitro LShr 移位量 60 越界受检 trap（32 位宽）vs clang x86 掩码静默产出——C UB 面（移位量≥位宽），教学白箱 fail loud 既有口径（同 array_bound_const_index 形态）"
+ },
+ {
+  "case": "MF-GAME",
+  "digest": "8efe31e7",
+  "reason": "同上首跑：游戏模拟长循环撞默认 10M 步墙（[step-limit]）vs clang 完整跑完——预算配置面非缺陷（preset algo 档 2e9 可跑，#131），工程模式未接 dir_tiers 分档"
+ },
+ {
+  "case": "MF-QUEUE",
+  "digest": "29f439a4",
+  "reason": "同上首跑：printf %-.8s/条件实参族输出差异（expected=$ 左对齐宽度侧空）——待最小化定性（汇总 issue）"
+ },
+ {
+  "case": "MF-SERIAL",
+  "digest": "26aed0b3",
+  "reason": "同上首跑：串口校验和族字节错值（0x24 vs 0x00，第 9 字节）——疑运算错值真缺陷，待最小化定性（汇总 issue）"
+ }
 ]

@@ -29,6 +29,33 @@ test "issue84_subscript_type_vla_size_zero" {
 }
 
 ///|
+/// #265（2026-10-22）：subscript_type 剥首维后 is_vla 只在剩余维仍含
+/// VLA（0 哨兵）时传导——cast 维数误判数组（`char a[(int)3][N]`）与
+/// 真 VLA（`char a[n][N]`）decay 出的 pointee 都是定长 char[N]，不再
+/// 带 VLA 标记误拒传参 E3038；第二维 VLA（[3,0]→[0]）维持传导（#84 面）。
+test "issue265_subscript_vla_flag_clears_when_rest_const" {
+  // cast 维数误判形态：dims=[0,40]（第一维误判 VLA）——剥首维 [40] 定长
+  let miscast = Type::Array(Type::char(), 0, [0, 40], false, true, [])
+  match miscast.subscript_type() {
+    Array(_, size, dims, _, is_vla, _) => {
+      inspect(size, content="40")
+      inspect(dims[0], content="40")
+      inspect(is_vla, content="false")
+    }
+    _ => fail("subscript 产物应为数组")
+  }
+  // 真 VLA 同款：第一维运行时、内层定长——C99 传 `char out[][N]` 合法
+  let true_vla = Type::Array(Type::char(), 0, [0, 40], false, true, [])
+  match true_vla.subscript_type() {
+    Array(_, _, _, _, is_vla, _) => inspect(is_vla, content="false")
+    _ => fail("subscript 产物应为数组")
+  }
+  // 判等面：decay pointee 与形参 pointee（定长）type_eq 通过
+  let param_pointee = Type::Array(Type::char(), 40, [40], false, false, [])
+  assert_true(type_eq(miscast.subscript_type(), param_pointee))
+}
+
+///|
 /// 病 80 锚（#71，2026-10-16）：type_display_name 的 Function 臂字段序
 /// 绑定——变体序 (return, params, is_const, is_variadic)。旧形态第三位
 /// （is_const）被绑成 is_variadic：const 函数指针显假 "..."、真变参丢。

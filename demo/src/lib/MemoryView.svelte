@@ -40,13 +40,23 @@
   }
 
   function segOfRegion(r: HeapRegion): Seg {
-    const cls = r.is_freed ? "is-freed" : r.kind === "heap" ? "is-alloc" : r.kind === "global" ? "is-global" : "is-stack";
+    // 未知 kind 显式落 is-unknown（审查 P3：旧实现静默归 is-stack，引擎新增
+    // 段类型会伪装成栈）
+    const cls = r.is_freed
+      ? "is-freed"
+      : r.kind === "heap"
+        ? "is-alloc"
+        : r.kind === "global"
+          ? "is-global"
+          : r.kind === "stack"
+            ? "is-stack"
+            : "is-unknown";
     return {
       key: `${r.addr}:${r.size}:${r.name}`,
       label: r.is_freed ? `${r.name || r.ty} · freed` : `${r.name || r.ty} · ${r.size} B`,
       size: r.size,
       cls,
-      title: `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed（隔离中）" : ""}`,
+      title: `${r.name} · ${r.ty} · ${r.size} B @0x${r.addr.toString(16)}${r.is_freed ? " · freed（隔离中）" : ""}${r.kind === "heap" || r.kind === "global" || r.kind === "stack" ? "" : ` · 未知段 ${r.kind}`}`,
     };
   }
 
@@ -62,7 +72,9 @@
       empty,
     });
     const free = mem.free_list as Array<{ addr: number; size: number }>;
-    return [
+    const known = new Set(["stack", "heap", "global"]);
+    const unknown = mem.regions.filter((r) => !known.has(r.kind));
+    const tracks: Track[] = [
       mk("stack", "stack", pick("stack"), "（空）"),
       mk("heap", "heap", pick("heap"), "0 次 malloc"),
       mk("global", "global", pick("global"), "（空）"),
@@ -81,6 +93,9 @@
         empty: "无外部碎片",
       },
     ];
+    // 未知 kind 单起一轨（不并进 stack/heap/global，也不静默丢块）
+    if (unknown.length) tracks.push(mk("unknown", "unknown", unknown, "（无未知段）"));
+    return tracks;
   });
 
   const stats = $derived.by(() => {

@@ -66,7 +66,6 @@
 /* 夜航图：标题切技术说明书的无衬线粗体；形状归直角；仪器画布叠图纸网格 */
 :root[data-theme="blueprint"] .vr-title,
 :root[data-theme="blueprint"] .vr-entry-hero h1,
-:root[data-theme="blueprint"] .vr-preview h3,
 :root[data-theme="blueprint"] .vr-note h2,
 :root[data-theme="blueprint"] .vr-ref-detail h1,
 :root[data-theme="blueprint"] .vr-ref-detail h2 { font-family: var(--vr-sans); font-weight: 700; letter-spacing: -.02em; }
@@ -667,8 +666,7 @@ code, pre, kbd, samp, .vr-mono {
 .vr-continue b { color: var(--vr-ink); font-weight: 500; }
 .vr-continue .vr-frame { color: var(--vr-amber); }
 .vr-entry-grid { display: grid; grid-template-columns: minmax(190px, 210px) minmax(0, 1.25fr) minmax(360px, 1fr); }
-.vr-chapters { border-right: 1px solid var(--vr-rule); padding: 16px 14px 30px 0; }
-.vr-chapters h2, .vr-lessons h2, .vr-preview h2 { margin: 0 0 10px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; letter-spacing: .1em; color: var(--vr-ink-3); font-weight: 400; }
+.vr-lessons h2 { margin: 0 0 10px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; letter-spacing: .1em; color: var(--vr-ink-3); font-weight: 400; }
 .vr-chapter { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; background: transparent; border: 0; border-left: 2px solid transparent; color: var(--vr-ink-2); font-size: 12px; text-align: left; }
 .vr-chapter:hover { background: var(--vr-panel-2); color: var(--vr-ink); }
 .vr-chapter.is-active { border-left-color: var(--vr-amber-2); background: var(--vr-panel-2); color: var(--vr-ink); font-weight: 600; }
@@ -687,17 +685,6 @@ code, pre, kbd, samp, .vr-mono {
 .vr-lesson-row .vr-mark { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); text-align: right; }
 .vr-lesson-row.is-done .vr-mark { color: var(--vr-green); }
 .vr-lesson-row .vr-tag { font-family: var(--vr-mono); font-size: 8px; font-variant-ligatures: none; border: 1px solid var(--vr-rule-2); color: var(--vr-ink-3); padding: 0 3px; margin-left: 5px; vertical-align: 1px; }
-.vr-preview { padding: 16px 0 30px 20px; position: sticky; top: 74px; align-self: start; min-width: 0; }
-.vr-preview .vr-kicker { margin-bottom: 5px; }
-.vr-preview h3 { font-family: var(--vr-serif); font-size: 23px; line-height: 1.25; margin: 0 0 7px; font-weight: 600; }
-.vr-preview .vr-blurb { margin: 0 0 12px; color: var(--vr-ink-2); font-size: 12.5px; line-height: 1.8; }
-.vr-preview .vr-note { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--vr-rule); max-height: 420px; overflow: auto; }
-.vr-preview .vr-note h2 { font-family: var(--vr-sans); font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
-.vr-preview .vr-note p, .vr-preview .vr-note li { font-size: 12.5px; line-height: 1.8; }
-.vr-preview .vr-note pre { white-space: pre-wrap; word-break: break-word; }
-.vr-preview .vr-open { margin-top: 14px; width: 100%; }
-.vr-preview .vr-meta { margin-top: 8px; display: block; }
-.vr-preview .vr-note-empty { margin-top: 10px; }
 
 /* 入口态 P2（#222，2026-10-22）：章路径 + 课列 + 章节面板（替代旧三列预览） */
 .vr-entrypage .vr-entry-hero { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 26px 40px; align-items: start; }
@@ -990,6 +977,7 @@ code, pre, kbd, samp, .vr-mono {
 .vr-mem-total { text-align: right; font-family: var(--vr-mono); font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
 .vr-mem-row.is-page .vr-mem-track { min-height: 30px; }
 .vr-mem-seg.is-free { background: var(--vr-panel-3); color: var(--vr-ink-2); border: 1px dashed var(--vr-rule-2); }
+.vr-mem-seg.is-unknown { background: var(--vr-amber-tint); color: var(--vr-amber); border: 1px dashed var(--vr-amber-2); }
 .vr-mem-row.is-quar { align-items: center; grid-template-columns: 74px minmax(0, 1fr) 132px; }
 .vr-quar-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .vr-quar-wrap .vr-quar { flex: 0 0 160px; margin: 0; }
@@ -1131,16 +1119,10 @@ code, pre, kbd, samp, .vr-mono {
   .vr-tick-label.is-minor { display: none; }
   .vr-entry-hero { padding-top: 30px; }
   .vr-entry-grid { grid-template-columns: 1fr; }
-  .vr-chapters { border-right: 0; border-bottom: 1px solid var(--vr-rule); padding: 12px 0; display: flex; gap: 4px; overflow-x: auto; }
-  .vr-chapters h2 { display: none; }
-  .vr-chapter { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; padding: 5px 9px; }
-  .vr-chapter.is-active { border-left: 0; border-bottom-color: var(--vr-amber-2); }
-  .vr-chapter .vr-count { margin-left: 3px; }
   .vr-lessons { border-right: 0; padding: 14px 0 20px; }
   .vr-lesson-row { grid-template-columns: 28px minmax(0, 1fr) 16px; gap: 9px; }
   .vr-lesson-state { display: none; }
   .vr-path .vr-chapter { padding: 5px 7px; }
-  .vr-preview { border-top: 1px solid var(--vr-rule); }
   .vr-ref-main { grid-template-columns: minmax(0, 1fr); }
   .vr-ref-index { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--vr-rule); padding: 12px 0; display: block; overflow: visible; }
   .vr-ref-index .vr-search { min-width: 0; margin: 0 0 8px; }

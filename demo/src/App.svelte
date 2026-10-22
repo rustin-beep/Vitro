@@ -107,8 +107,9 @@
       ui.shareOpen = false;
       return;
     }
-    // 专注模式 F 进 / Esc 出（输入框/编辑器内不劫持——'f' 要能正常输入）
-    if (ui.screen === "work" && (e.key === "f" || e.key === "F") && !typingIn(e.target as HTMLElement | null)) {
+    // 专注模式 F 进 / Esc 出（输入框/编辑器内不劫持——'f' 要能正常输入；
+    // 只属于执行面：mem/proto 下 F 不生效，setFocus 亦有同一守卫）
+    if (ui.screen === "work" && ui.mode === "exec" && (e.key === "f" || e.key === "F") && !typingIn(e.target as HTMLElement | null)) {
       e.preventDefault();
       setFocus(!ui.focus);
       return;

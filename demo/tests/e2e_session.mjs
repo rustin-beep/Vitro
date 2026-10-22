@@ -359,8 +359,9 @@ async function run() {
 
   // ── B8 内存/协议两模式 P1 全页形态（#222 P1，2026-10-22）：模式切换后
   //    exec 三栏整体退役、页头模式条 + 左证据面 + 右叙事栏接管；内存页四轨 +
-  //    六格统计 + freed 块 + E3060 叙事；协议页四组 15 行 + 13 项本页消费 +
-  //    schema 台账 + 当前帧 JSON；切回执行模式恢复三栏 ──
+  //    隔离区行（共 5 行；未知 kind 另起轨）
+  //    六格统计 + freed 块 + E3060 叙事；协议页四组 15 行（展开 22 方法）+
+  //    20 方法本页消费 + schema 台账 + 当前帧 JSON；切回执行模式恢复三栏 ──
   await pickLesson("uaf");
   await sleep(900);
   await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '内存')?.click(); true");
@@ -385,6 +386,7 @@ async function run() {
     methods: document.querySelectorAll('.vr-proto-method').length,
     used: document.querySelectorAll('.vr-proto-method .m-use.is-yes').length,
     sideCount: document.querySelector('.vr-side-count b')?.textContent?.trim() ?? '',
+    facts: document.querySelector('.vr-proto-facts')?.textContent?.replace(/\\s+/g, ' ') ?? '',
     ledger: document.querySelectorAll('.vr-proto-table tbody tr').length,
     frame: (document.querySelector('.vr-proto-frame')?.textContent ?? '').includes('step_index'),
     overflow: document.documentElement.scrollWidth - window.innerWidth,
@@ -401,7 +403,8 @@ async function run() {
       b8mem.tracks === 5 && b8mem.stats === 6 && b8mem.freed >= 1 && b8mem.alert === true &&
       b8mem.questions === 3 && b8mem.overflow <= 1 &&
       b8proto.mode === "proto" && b8proto.groups === 4 && b8proto.methods === 15 && b8proto.used === 13 &&
-      b8proto.sideCount === "13" && b8proto.ledger > 0 && b8proto.frame === true && b8proto.overflow <= 1 &&
+      b8proto.sideCount === "20" && b8proto.facts.includes("15 行 / 22 方法") &&
+      b8proto.ledger > 0 && b8proto.frame === true && b8proto.overflow <= 1 &&
       b8back.mode === "exec" && b8back.bench === true && b8back.page === false,
     JSON.stringify({ b8mem, b8proto, b8back }));
 
@@ -469,11 +472,48 @@ async function run() {
     rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
     url: location.search,
   }))()`);
-  check("B10 专注模式 F/Esc + ?focus=1（#222 P4）",
+
+  // 守卫：mem 模式按 F 不得出专注顶栏（审查 P2-2）
+  await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '内存')?.click(); true");
+  await waitFor("window.__pilot.ui.mode === 'mem'", 10000);
+  await sleep(200);
+  await pressKey("f", "KeyF", 70);
+  await sleep(250);
+  const b10mem = await evaluate(`(() => ({
+    mode: window.__pilot.ui.mode,
+    focus: window.__pilot.ui.focus,
+    bench: !!document.querySelector('.vr-bench.is-focus'),
+    url: location.search,
+  }))()`);
+  await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '执行')?.click(); true");
+  await waitFor("window.__pilot.ui.mode === 'exec'", 10000);
+  await sleep(200);
+
+  // 深链：?focus=1 首帧即专注（审查 P2-3：旧 B10 只走键盘，标题声称的深链没测）
+  await send("Page.navigate", { url: PAGE + "?focus=1&r=" + Date.now() });
+  await waitFor("window.__pilot?.ui?.ready === true", 40000);
+  await waitFor("window.__pilot.ui.focus === true", 15000);
+  await sleep(300);
+  const b10link = await evaluate(`(() => ({
+    focus: window.__pilot.ui.focus,
+    bench: !!document.querySelector('.vr-bench.is-focus'),
+    rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
+    badge: !!document.querySelector('.vr-focusbadge'),
+    url: location.search,
+  }))()`);
+  // 回普通页给 F5/B11 用
+  await send("Page.navigate", { url: PAGE + "?r=" + Date.now() });
+  await waitFor("window.__pilot?.ui?.ready === true", 40000);
+  await waitFor("window.__pilot.session.viewFrames.length > 0 && !window.__pilot.session.collecting", 60000);
+  await sleep(400);
+
+  check("B10 专注模式 F/Esc + mem 守卫 + ?focus=1 深链（#222 P4）",
     b10on.focus === true && b10on.bench === true && b10on.rail === "none" && b10on.badge === true &&
       b10on.frame.includes("/") && b10on.modes === "none" && b10on.url.includes("focus=1") &&
-      b10off.focus === false && b10off.bench === false && b10off.rail !== "none" && !b10off.url.includes("focus=1"),
-    JSON.stringify({ b10on, b10off }));
+      b10off.focus === false && b10off.bench === false && b10off.rail !== "none" && !b10off.url.includes("focus=1") &&
+      b10mem.mode === "mem" && b10mem.focus === false && b10mem.bench === false && !b10mem.url.includes("focus=1") &&
+      b10link.focus === true && b10link.bench === true && b10link.rail === "none" && b10link.badge === true && b10link.url.includes("focus=1"),
+    JSON.stringify({ b10on, b10off, b10mem, b10link }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

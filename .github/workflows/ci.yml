@@ -1172,7 +1172,7 @@ jobs:
       # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
       # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
       # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
-      - name: F4 browser E2E (headless chrome, 61 anchors)
+      - name: F4 browser E2E (headless chrome, 90 anchors)
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"
           if [ -z "$CHROME_BIN" ]; then
@@ -1214,6 +1214,8 @@ jobs:
           # 样式契约闸（#222 P0 第二批，2026-10-21）：五主题 × 19 选择器 × 9
           # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
           # （不经栅格化），基线 demo/tests/style_contract.json 入库。
+          # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
+          node demo/tests/style_contract.mjs --selftest
           node demo/tests/style_contract.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
@@ -1274,8 +1276,6 @@ jobs:
           cd demo && npx tsc -p tests/tsconfig.json && cd ..
           node --test demo/tests/pure.test.mts
         shell: bash
-
-  # ── hygiene（记账型，2026-09-23 拆分）        shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────
   # 红的含义是「账没跟上」而非「代码坏了」：文档漂移 / 工具链版本迁移 /

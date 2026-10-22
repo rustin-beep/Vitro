@@ -37,7 +37,7 @@ generated: src/tokens.css（@generated，禁手改）
 
 ## 4. 形与动
 
-- 圆角 `--vr-r`（纸/实验台系 3px、手账系 8px），阴影只给**锚定浮层**
+- 圆角 `--vr-r`（纸/实验台系与手账系两档；具体数值唯一真源 `tokens.json`），阴影只给**锚定浮层**
   （`--vr-shadow`）；卡片/面板一律不投影。
 - 动效只用于状态过渡，时长/曲线走 `--vr-t` / `--vr-ease`；`data-motion="off"`
   必须整体关断（设置与 `prefers-reduced-motion` 双入口）。
@@ -76,12 +76,12 @@ generated: src/tokens.css（@generated，禁手改）
 | 面 | 闸 |
 |---|---|
 | token 单源 ↔ 产物 | `go run ./scripts/gen_demo_tokens -check`（+ `-selftest`） |
-| 类名/CSS 变量/连字 | `go run ./scripts/demo_ui_lint` |
+| CSS 变量 / id / 连字 | `go run ./scripts/demo_ui_lint`（class 写操作位点当前 0——Svelte 组件态由 svelte-check 与 E2E DOM 锚守；文本闸只查 var/id/mono） |
 | 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `go run ./scripts/demo_ui_lint`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
-| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套 |
-| 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令） |
+| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（90 锚） |
+| 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
 
 > 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS
 > 需 CI 专用生成、入库体积与维护噪声大于收益。画面语义改由「样式契约（computed

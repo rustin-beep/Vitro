@@ -16,9 +16,8 @@ class UiState {
   mode = $state<Mode>("exec");
   /** 诊断手册当前条目（空 = 首条/由页面自选）。 */
   refCode = $state("");
-  /** 课程目录：当前章 / 当前预览课（点课只换预览，不跳转——A-3/B 反馈④）。 */
+  /** 课程目录：当前章（点章只切课列，不跳转——A-3/B 反馈④）。 */
   entryChapter = $state("");
-  entryLesson = $state("");
   /** 首访落地位：boot 链（协议面 + 首课装载/采集）走完后才撤加载遮罩——
    *  否则遮罩先撤、默认示例先闪一帧再被 bubble 覆盖（2026-10-18 实测形态）。 */
   ready = $state(false);
@@ -60,8 +59,11 @@ export function setMode(m: Mode): void {
   if (m !== "exec") ui.focus = false;
 }
 
-/** 专注模式开关（F / Esc / 顶栏按钮共用；URL 同步由 App 的 effect 单点做）。 */
+/** 专注模式开关（F / Esc / 顶栏按钮共用；URL 同步由 App 的 effect 单点做）。
+ *  **只属于执行面**：内存/协议/目录/手册下 F 不生效（审查 P2-2 实锤：旧实现
+ *  在 mem 页按 F 会出 FOCUS 顶栏 + 内存页并存的错位态）。 */
 export function setFocus(on: boolean): void {
+  if (on && (ui.screen !== "work" || ui.mode !== "exec")) return;
   ui.focus = on;
   if (on) {
     ui.settingsOpen = false;

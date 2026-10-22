@@ -47,7 +47,7 @@ export const METHOD_GROUPS: MethodGroup[] = [
     items: [
       { name: "config.get / config.set", desc: "确定性 / 步数上限 / 调用深度 / 隔离区预算（4 可写字段）", used: true },
       { name: "session.create / reset / destroy", desc: "会话生命周期（create 清 runtime 域，config 需显式回设）", used: true },
-      { name: "capabilities", desc: "schema 冻结 + v0.2 台账 + languages + memory_model", used: true },
+      { name: "capabilities", desc: "schema 冻结 + v0.2 台账（languages / memory_model 已拉取，本页未展开）", used: true },
       { name: "contracts", desc: "行为契约 + v0.2 激活清单", used: true },
     ],
   },
@@ -65,13 +65,36 @@ export const METHOD_GROUPS: MethodGroup[] = [
 /** 协议 v0.2 冻结方法面（既有 ProtoView 头口径）。 */
 export const METHOD_TOTAL = 25;
 
-/** 本页组清单行数（四组之和）。 */
+/** 本页组清单行数（四组之和；一行可能展开多个方法，如 step.* 一行 4 个）。 */
 export const METHOD_ROWS = METHOD_GROUPS.reduce((s, g) => s + g.items.length, 0);
 
-/** 本页实际消费的方法数（used=true 的行数）。 */
-export const METHOD_USED = METHOD_GROUPS.reduce((s, g) => s + g.items.filter((i) => i.used).length, 0);
+/** 单行展开成多少个方法名（'step.begin / next / seek' → 4）。 */
+export function methodNames(m: MethodFact): string[] {
+  return m.name.split("/").map((s) => s.trim()).filter(Boolean);
+}
 
-/** 单组消费计数（组内 used / 组内行数）。 */
+/** 单组方法数（展开后）：本页消费 / 组内方法总数。 */
+export function groupMethodStats(g: MethodGroup): { used: number; total: number } {
+  let used = 0;
+  let total = 0;
+  for (const m of g.items) {
+    const c = methodNames(m).length;
+    total += c;
+    if (m.used) used += c;
+  }
+  return { used, total };
+}
+
+/** 本页清单展开后的方法总数（22）。 */
+export const METHOD_LISTED = METHOD_GROUPS.reduce((s, g) => s + groupMethodStats(g).total, 0);
+
+/** 本页实际消费的方法数（按方法展开，20）——大数字口径用它，不混行数。 */
+export const METHOD_USED = METHOD_GROUPS.reduce((s, g) => s + groupMethodStats(g).used, 0);
+
+/** 行级消费数（15 行里 13 行有 ✓；仅用于行口径展示/断言）。 */
+export const METHOD_USED_ROWS = METHOD_GROUPS.reduce((s, g) => s + g.items.filter((i) => i.used).length, 0);
+
+/** 单组行级消费计数（组内 used / 组内行数）——行口径。 */
 export function groupUsed(g: MethodGroup): number {
   return g.items.filter((i) => i.used).length;
 }

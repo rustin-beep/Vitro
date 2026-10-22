@@ -475,8 +475,9 @@ test("lessonMd：bubble_sort scene 覆盖 0..64（内容锚：六幕收敛）", 
 });
 
 // token 单源 ↔ 主题清单一致性（#222 P0）：新加主题若只改了 persisted 的
-// THEME_KEYS、没在 tokens.json 里登记色板，style_contract 只覆盖硬编码五主题、
-// 该主题会静默无样式——这里把两边钉死。
+// THEME_KEYS、没在 tokens.json 里登记色板，该主题会静默无样式——这里把
+// persisted 与 tokens 两端钉死；style_contract 的主题清单也读 tokens.themeOrder
+// （同一单源，不再手抄），故三者不会各错一次。
 test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8"));

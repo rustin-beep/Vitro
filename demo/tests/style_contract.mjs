@@ -1,17 +1,24 @@
 // 样式契约闸（#222 P0 第二批，2026-10-21）：computed-style 基线对账。
 //
-// 为什么不是像素闸：像素基线依赖字体栅格化，Windows/macOS 与 CI Ubuntu 会
-// 假红（拍板稿明确基线必须在 CI Ubuntu + Chrome 生成）。本闸取的是**跨 OS
+// 为什么不是像素闸：像素基线依赖字体栅格化，跨 OS 假红成本高；本闸取**跨 OS
 // 确定**的 computed 值——颜色（rgb 串）、字体族声明、连字开关、letter-spacing
-// ——它们由 CSS/token 决定，不经过栅格化。像素闸仍待建（DESIGN.md §7 已标）。
+// ——由 CSS/token 决定，不经过栅格化。像素闸已于 2026-10-22 按用户裁定退役
+// （PNG 基线入库为噪声），本闸是画面样式的主力机判面。
 //
-// 覆盖面：五主题 × 固定选择器集 × 固定属性集——抓「组件没用上主题 token /
-// 某主题漏定义 / 连字没关」这类 163 变量 + 61 处主题覆盖最容易漏的形态。
+// 覆盖面：五主题（清单读 demo/tokens.json `themeOrder`，不在脚本里手抄）×
+// 固定选择器集 × 固定属性集——抓「组件没用上主题 token / 某主题漏定义 /
+// 连字没关」。边界（显式登记）：只在工作态 exec 首课 DOM 取样；目录/手册/
+// 内存/协议/专注页不在选择器集内，由 E2E 结构锚 + ui_lint 守（审查 P3 项）。
 //
 // 用法：
 //   node demo/tests/style_contract.mjs http://127.0.0.1:8931/            # 比对（红即 exit 1）
 //   node demo/tests/style_contract.mjs http://127.0.0.1:8931/ --update   # 人工令：重写基线
-// 前提：demo dist 已构建 + 静态服在跑 + headless Chrome 的 CDP 9222。
+// 前提：demo dist 已构建 + 静态服在跑 + headless Chrome 的 CDP 9222（CI 为
+// windows-latest + Chrome/Edge）。
+//
+// --update 写盘前强制完整性断言（审查 P2-5）：每个选择器必须命中、每个 token
+// 必须非空——否则 null / 空串会被冻进基线，下一次比较自然全等（D8 更新侧
+// 塌缩）。比对路径也校验基线本身完整，坏基线 fail loud。
 //
 // 基线：demo/tests/style_contract.json（入库，逐主题）。
 // 判定：深比较；任一路径不同即红并列期望/实际；--update 才写盘（与 E2E
@@ -26,8 +33,13 @@ const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
 const UPDATE = process.argv.includes("--update");
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASELINE = resolve(HERE, "style_contract.json");
-
-const THEMES = ["ice", "rose", "soft", "paper", "blueprint"];
+// 主题清单单源 = tokens.json（审查 P3：旧脚本硬编码五主题，新增主题会漏测）
+const TOKENS = JSON.parse(readFileSync(new URL("../tokens.json", import.meta.url), "utf8"));
+const THEMES = Array.isArray(TOKENS.themeOrder) ? TOKENS.themeOrder : Object.keys(TOKENS.themes ?? {});
+if (!THEMES.length) {
+  console.error("style_contract: demo/tokens.json 无 themeOrder/themes，拒绝空转");
+  process.exit(2);
+}
 
 // 选择器集：覆盖外壳 / 课头 / 代码 / 幕头 / 分镜 / 索引格 / 时间轴 / 课文 /
 // 等宽面 / 浮层。只在工作态取（首课已采集）。
@@ -160,6 +172,54 @@ function walkDiff(expected, actual, path, diffs) {
   if (expected !== actual) diffs.push({ path, expected, actual });
 }
 
+/** 完整性判定（审查 P2-5）：返回缺失清单；空数组 = 完整。--selftest 直接
+ *  调它证红，--update / 比对路径共用同一判定。 */
+function completenessProblems(doc) {
+  const problems = [];
+  for (const theme of THEMES) {
+    const t = doc?.[theme];
+    if (!t) {
+      problems.push(`${theme}: 整主题缺失`);
+      continue;
+    }
+    for (const sel of SELECTORS) if (!t.styles?.[sel]) problems.push(`${theme}: 选择器未命中 ${sel}`);
+    for (const v of VARS) if (!t.vars?.[v]) problems.push(`${theme}: token 为空 ${v}`);
+  }
+  return problems;
+}
+
+/** 完整性断言：--update 写盘前 / 比对读基线后都必须通过——缺失选择器在
+ *  COLLECT 里是 null、未定义 token 是空串，直接写进基线会让下一次比较自然
+ *  全等（D8 更新侧塌缩）。任一缺失 fail loud。 */
+function assertComplete(doc, label) {
+  const problems = completenessProblems(doc);
+  if (problems.length) {
+    console.error(`style_contract: ${label}完整性断言失败（${problems.length} 处）——拒绝冻结/比对残缺基线：`);
+    for (const p of problems.slice(0, 20)) console.error("  " + p);
+    if (problems.length > 20) console.error(`  ...另有 ${problems.length - 20} 处`);
+    process.exit(2);
+  }
+}
+
+// -selftest（J9）：完整 doc 必须 0 问题、残缺 doc 必须判红——证完整性判定
+// 不是恒绿空转。纯内存，不连浏览器。
+if (process.argv.includes("--selftest")) {
+  const okStyles = Object.fromEntries(SELECTORS.map((s) => [s, { color: "rgb(0, 0, 0)" }]));
+  const okVars = Object.fromEntries(VARS.map((v) => [v, "#000000"]));
+  const good = Object.fromEntries(THEMES.map((t) => [t, { styles: okStyles, vars: okVars }]));
+  const bad = { [THEMES[0]]: { styles: {}, vars: {} } };
+  if (completenessProblems(good).length !== 0) {
+    console.error("style_contract: -selftest 失败——完整 doc 被判残缺");
+    process.exit(2);
+  }
+  if (completenessProblems(bad).length === 0) {
+    console.error("style_contract: -selftest 失败——残缺 doc 未判红（完整性判定空转）");
+    process.exit(2);
+  }
+  console.log("style_contract: -selftest 通过（完整 doc 0 问题 / 残缺 doc 判红）");
+  process.exit(0);
+}
+
 
 /** CDP 就绪重试：CI 上 chrome 开端口可能晚于固定 sleep（实测 ECONNREFUSED）。
  *  只重试连接阶段，最多 30s；超时把最后一条错误带出来（fail loud 可诊断）。 */
@@ -198,6 +258,7 @@ async function main() {
     actual[theme] = await evaluate(COLLECT);
   }
   ws.close();
+  assertComplete(actual, "采集");
 
   if (UPDATE) {
     writeFileSync(BASELINE, JSON.stringify(actual, null, 2) + "\n");
@@ -205,10 +266,11 @@ async function main() {
     return;
   }
   if (!existsSync(BASELINE)) {
-    console.error(`style_contract: 缺基线 ${BASELINE}——先在 CI Ubuntu + Chrome 跑 --update 生成`);
+    console.error(`style_contract: 缺基线 ${BASELINE}——先在 CI（windows-latest + Chrome/Edge）跑 --update 生成`);
     process.exit(1);
   }
   const expected = JSON.parse(readFileSync(BASELINE, "utf8"));
+  assertComplete(expected, "基线");
   const diffs = [];
   walkDiff(expected, actual, "", diffs);
   if (diffs.length) {

@@ -1,12 +1,13 @@
 <script lang="ts">
   // 协议模式右栏（#222 P1 内存/协议，2026-10-22）：叙事故障 / 计数 / 三入口 / 动作。
   //
-  // 计数与主页同源（lib/protoFacts.ts）：大号数字 = 本页实际消费的方法数 /
-  // 协议 v0.2 冻结方法面 25；组清单行数另记，分母不同不混算。
+  // 计数与主页同源（lib/protoFacts.ts）：大号数字 = 本页实际消费的**方法数**
+  // （按方法展开 = 20）/ 协议 v0.2 冻结方法面 25；组清单 15 行 / 展开 22 方法
+  // 另记，行与方法分母不同，不混算（审查 P2-1）。
   import { session } from "../session.svelte.ts";
   import { setMode } from "../ui.svelte.ts";
   import { toast } from "../toasts.svelte.ts";
-  import { METHOD_ROWS, METHOD_TOTAL, METHOD_USED } from "./protoFacts.ts";
+  import { METHOD_LISTED, METHOD_ROWS, METHOD_TOTAL, METHOD_USED } from "./protoFacts.ts";
 
   const schemaVersion = $derived(String(((session.capabilities as Record<string, unknown> | null)?.schema as Record<string, unknown> | undefined)?.version ?? "—"));
 
@@ -48,5 +49,5 @@
     <button type="button" class="vr-btn" onclick={() => setMode("exec")}>切回执行模式</button>
   </div>
 
-  <p class="vr-side-foot">schema {schemaVersion}。方法面 {METHOD_TOTAL}，本页组清单 {METHOD_ROWS} 行——分母不同，不混算。</p>
+  <p class="vr-side-foot">schema {schemaVersion}。本页清单 {METHOD_ROWS} 行 / 展开 {METHOD_LISTED} 方法；协议方法面 {METHOD_TOTAL}——行与方法分母不同，不混算。</p>
 </div>

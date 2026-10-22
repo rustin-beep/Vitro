@@ -14,8 +14,8 @@
 
   // 章简介：只写「这章在教什么」，不复制课名/数字（数字从数据算）。
   const CHAPTER_BLURB: Record<string, string> = {
-    basic: "白箱入门的 15 个最小闭环——从 printf 到 malloc，每一课都能逐帧停。",
-    sorting: "六种排序同框对照：比较与交换的次数在帧流里看得见。",
+    basic: "白箱入门的最小闭环——从 printf 到 malloc，每一课都能逐帧停。",
+    sorting: "排序算法同框对照：比较与交换的次数在帧流里看得见。",
     search: "有序与无序的两条查找路径，先看边界怎么收。",
     graph: "邻接表上的 BFS / DFS / 最短路——队列与栈的现场。",
     tree: "从二叉树遍历到平衡树：递归深度就是调用栈深度。",
@@ -31,7 +31,6 @@
     if (ui.entryChapter) return;
     const d = defaultLesson();
     ui.entryChapter = d?.chapter.id ?? CHAPTERS[0]?.id ?? "";
-    ui.entryLesson = d?.lesson.id ?? CHAPTERS[0]?.lessons[0]?.id ?? "";
   });
 
   const chapter = $derived(CHAPTERS.find((c) => c.id === ui.entryChapter) ?? CHAPTERS[0] ?? null);
@@ -60,13 +59,10 @@
     return "未开始";
   }
   function open(l: CourseLesson): void {
-    ui.entryLesson = l.id;
     void lessonSession.open(l, { autoplay: true });
   }
   function pick(chapId: string): void {
     ui.entryChapter = chapId;
-    const c = CHAPTERS.find((x) => x.id === chapId);
-    ui.entryLesson = c?.lessons[0]?.id ?? "";
   }
 </script>
 

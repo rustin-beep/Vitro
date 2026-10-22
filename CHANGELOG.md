@@ -12,6 +12,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(demo): #263 审阅处置——P2×6 + P3 清理 + 同步 master 5d3d4dd7（2026-10-22）
+
+- **P1 合并门**：同步 master `5d3d4dd7`（#266/#249/#270 + testcount/ledger/fuzz
+  三红收口），CHANGELOG 冲突并留双方条目。wasm-arm 的 `MF-QUEUE` / `bTree`
+  digest 形状漂移仍属 master 侧 UB known 噪声，不在本 PR 内改。
+- **P2-1 计数口径**：协议页改「20 / 25 方法（按方法展开）」，组头 4/4、7/7、
+  7/7、2/4 方法；15 行 / 展开 22 方法分列；`RefScreen` 去掉硬编码「100 条 C
+  卡」；B8 锁 sideCount=20 + facts「15 行 / 22 方法」。
+- **P2-2 专注模式守卫**：`setFocus` 与 F 键均限 `screen=work && mode=exec`；
+  mem/proto 下 F 不再出 FOCUS 顶栏（B10 增 mem 守卫断言）。
+- **P2-3 深链锚**：B10 增 `?focus=1` 首帧导航断言（旧锚只走键盘，标题声称的
+  深链未测）。
+- **P2-4 tokens 自证**：`gen_demo_tokens` 抽出唯一 `verify()`，`-check` 与
+  `-selftest` 共用；selftest 断言「同集绿 + 篡改必红 + 定位可见」（旧 selftest
+  只查 diffHint 字符串，判定空转仍绿）。
+- **P2-5 样式契约更新面**：`--update` 写盘前 / 比对读基线后都跑完整性断言
+  （选择器未命中 / token 空串 / 整主题缺失 → exit 2）；新增 `--selftest`（完整
+  doc 0 问题 / 残缺 doc 判红）并接 CI；THEMES 改读 `tokens.json themeOrder`。
+- **P2-6 协议信息面**：capabilities 描述改为「languages / memory_model 已拉取、
+  本页未展开」，页脚同步登记，不再声称本页消费这两个字段。
+- **P3 清理**：README 控制字符（BEL/TAB 导致丢字母）修复；截图验收句改
+  style_contract/E2E（像素闸已退役）；CHANGELOG 旧条目 png 计数标注失效；
+  ci.yml E2E 名 61→90 锚 + 删重复 hygiene 片段；app.css 删死 `.vr-preview`/
+  `.vr-chapters` 规则；`ui.entryLesson` 只写字段删除；MemoryView 未知 kind 单起
+  `is-unknown` 轨；EntryScreen 章简介去硬编码数字；DESIGN §4 去 token 数值复制、
+  §7 修正类名闸与覆盖边界；B8 注释改「四轨 + 隔离区行（5）」。
+- **门禁**：pure 34/34、e08 17/17、E2E 五套 **90/90**、style_contract
+  `-selftest`+主跑、tokens `-selftest`+`-check`、ui_lint（含 selftest、裸值
+  基线随死规则收窄 28 条）、svelte-check 0 错、oxlint 0 错、editorconfig、
+  ci.yml YAML 解析、vite build 全绿。
+
 ### fix(codegen): #270 struct/union designated initializer 全层——.field 指派的文件作用域/嵌套/局部 static/匿名穿透（2026-10-22）
 
 - **三层缺口连通**：①文件作用域 struct/union 的 `.field=`（`flatten_
@@ -99,13 +130,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   保留。主题仍跟随用户当前主题（拍板 5，不强制 blueprint）。
 - **锚**：E2E B10（F 进：`.vr-bench.is-focus` / 书栏 none / badge / 模式 tab
   none / URL focus=1；Esc 出：恢复书栏 / URL 去参）；像素闸新增 `focus` 态
-  （16 → 17）。
-- **像素闸确定性加固**（本批实锤）：`localStorage.clear` + reload 并不能钉死
+  （16 → 17；该闸已于 2026-10-22 退役，计数仅历史）。
+- **像素闸确定性加固**（本批实锤；闸已退役，记录留档）：`localStorage.clear` + reload 并不能钉死
   首课——App 的 `beforeunload persistFrame` 会把上次课写回（上一轮 E2E 停在
   uaf 时 baseline 截到 uaf）。改为显式 `openById('bubble')` 并加 `__pilot`
   存在性守卫；同机连续两轮 `--update` 17 张 PNG SHA-256 全等，第三轮比对
   17/17。
-- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 89/89、style_contract
+- **验证**：pure 34/34、e08 17/17、E2E 五套 89/89、style_contract
   5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
   tokens -check、editorconfig、vite build 全绿。
 
@@ -125,10 +156,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   用例按单击重排。
 - **响应式**：1440 三栏（索引/详情/阅读法）、≤1100 右栏下沉两列、390 单列；
   entry / ref 页面 `scrollWidth ≤ innerWidth`。
-- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 88/88、style_contract
+- **验证**：pure 34/34、e08 17/17、E2E 五套 88/88、style_contract
   5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
-  tokens -check、editorconfig、vite build 全绿；visual entry/ref 两态截图
-  可生成（基线未武装）。
+  tokens -check、editorconfig、vite build 全绿；visual entry/ref 两态截图（像素闸已退役，不再作为门）。
 
 
 ### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
@@ -254,7 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **响应式实测**：1440×900 右栏动作按钮落首屏（818–885）；768 与 390 宽
   `documentElement.scrollWidth ≤ innerWidth`，窄屏账本收列（隐类型/段/来源）、
   方法行改两行式。
-- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 87/87、style_contract
+- **验证**：pure 34/34、e08 17/17、E2E 五套 87/87、style_contract
   5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
   `gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装按预期跳过。
 
@@ -275,7 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **E-08**：`coursenote-sorting` golden 重建（唯 1 例变化，其余 15 例逐字节
   不变——scene 元数据剥离语义再证）。
 - **验证**：pure 34/34、E2E 五套 86/86、e08 17/17、style_contract
-  5×19×9、ui_lint（含 `-selftest` 五路）、png 5/5、svelte-check 0 错、
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、
   oxlint 0 错、`gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装
   按预期 `::warning::` 跳过（基线仍待 CI dispatch 生成）。
 

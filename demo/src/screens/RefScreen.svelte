@@ -173,7 +173,7 @@
         </section>
       {/if}
 
-      <p class="vr-ref-note">条目来自 <b>error_catalog</b>（{session.catalog.length} 条）· 100 条 C 卡按 lang 过滤 · 与引擎同源，不手写第二份错误文案。</p>
+      <p class="vr-ref-note">条目来自 <b>error_catalog</b>（{session.catalog.length} 条）· C 卡按 lang 过滤 · 与引擎同源，不手写第二份错误文案。</p>
     </article>
 
     <aside class="vr-ref-side" aria-label="手册阅读法">

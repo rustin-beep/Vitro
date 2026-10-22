@@ -212,36 +212,50 @@ func diffHint(want, got string) string {
 	return "内容一致（不应走到这里）"
 }
 
+// verify 是 -check 的唯一判定点。-selftest 直接调用它（审查 P2-4：旧 selftest
+// 只检查 diffHint 里有没有注入串，把 `got != want` 改成恒假仍能绿——自证面
+// 与判定面脱节）。统一后 selftest 证明「判定函数对篡改输入必红」。
+func verify(out, want, got string) error {
+	got = strings.ReplaceAll(got, "\r\n", "\n")
+	if got == want {
+		return nil
+	}
+	return fmt.Errorf("%s: 产物漂移 %s ← 真源 demo/tokens.json\n%s", genPath, out, diffHint(want, got))
+}
+
 func check(doc *tokensDoc, out string) {
 	want := render(doc)
 	raw, err := os.ReadFile(out)
 	if err != nil {
 		die("-check 读产物失败 %s: %v（先跑一次生成）", out, err)
 	}
-	got := strings.ReplaceAll(string(raw), "\r\n", "\n")
-	if got != want {
-		fmt.Fprintf(os.Stderr, "%s: 产物漂移 %s ← 真源 demo/tokens.json\n%s\n", genPath, out, diffHint(want, got))
+	if err := verify(out, want, string(raw)); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		fmt.Fprintf(os.Stderr, "修复：go run ./%s\n", genPath)
 		os.Exit(1)
 	}
 	fmt.Printf("%s: -check 通过（%s ≡ demo/tokens.json）\n", genPath, out)
 }
 
-// selftest：J9 埋雷义务的内存形态——篡改一处后必须判红，证明比对面不是恒绿。
+// selftest：J9 埋雷义务的内存形态——同集必须绿、篡改必须红且定位可见。
+// 直接走 verify（不是复述 diffHint），判定面空转即自证红。
 func selftest(doc *tokensDoc, out string) {
 	want := render(doc)
+	if err := verify(out, want, want); err != nil {
+		die("-selftest 同集应绿，实际红：%v", err)
+	}
 	tampered := strings.Replace(want, "--vr-fs:", "--vr-fs-TAMPERED:", 1)
 	if tampered == want {
 		die("-selftest 注入失败：真源里没有 --vr-fs，注入面失效")
 	}
-	if tampered == want {
-		die("-selftest 比对面异常")
+	err := verify(out, want, tampered)
+	if err == nil {
+		die("-selftest 判定空转：篡改后 verify 仍绿（-check 比对面失效）")
 	}
-	if !strings.Contains(diffHint(want, tampered), "TAMPERED") {
-		die("-selftest 注入未体现在 diffHint（定位面失能）")
+	if !strings.Contains(err.Error(), "TAMPERED") {
+		die("-selftest 注入未体现在 diffHint（定位面失能）：%v", err)
 	}
-	_ = out
-	fmt.Printf("%s: -selftest 通过（篡改 --vr-fs → 判红且定位可见）\n", genPath)
+	fmt.Printf("%s: -selftest 通过（同集绿 + 篡改 --vr-fs → verify 判红且定位可见）\n", genPath)
 }
 
 func main() {

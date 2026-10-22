@@ -1,12 +1,13 @@
 <script lang="ts">
   // 引擎与协议 · P1 全页形态（#222 P1 内存/协议，2026-10-22）。
   //
-  // 只读事实面：方法分组（本页消费 x/y）+ schema 台账 + 契约 + 当前帧示例。
-  // 方法清单单源 = lib/protoFacts.ts（右栏「x / 25」与这里共读，防两处计数漂移）；
+  // 只读事实面：方法分组（本页消费 x/y 方法）+ schema 台账 + 契约 + 当前帧示例。
+  // 方法清单单源 = lib/protoFacts.ts（右栏「20 / 25 方法」与这里共读，防两处
+  // 计数漂移）；行数(15)与方法数(22)分列，不混算（审查 P2-1）。
   // 其余数据来自 session 层 loadProto 拉取的 capabilities/contracts/labels 帧。
   // 字段缺失显「—」不发明；未消费方法显式标 —（不假装全用）。
   import { frameAt, session } from "../session.svelte.ts";
-  import { METHOD_GROUPS, METHOD_ROWS, METHOD_TOTAL, groupUsed } from "./protoFacts.ts";
+  import { METHOD_GROUPS, METHOD_LISTED, METHOD_ROWS, METHOD_TOTAL, groupMethodStats } from "./protoFacts.ts";
 
   type JsonRec = Record<string, unknown>;
   const cap = $derived((session.capabilities ?? {}) as JsonRec);
@@ -47,7 +48,7 @@
     <span>PROTOCOL <b>{session.versions.protocol || "…"}</b></span>
     <span>STEPPAYLOAD <b>14 字段</b></span>
     <span>SCHEMA <b>{String(schema.version ?? "—")} 冻结</b></span>
-    <span>METHODS <b>{METHOD_TOTAL} · 本页 {METHOD_ROWS} 行</b></span>
+    <span>METHODS <b>{METHOD_TOTAL} · 本页 {METHOD_ROWS} 行 / {METHOD_LISTED} 方法</b></span>
     <span>TRANSPORT <b>wasm-gc · js-string</b></span>
   </div>
 
@@ -56,7 +57,7 @@
       <div class="vr-proto-group">
         <div class="vr-proto-grouphead">
           <h3><span class="no">{String(gi + 1).padStart(2, "0")}</span>{g.title}</h3>
-          <span class="vr-meta">{groupUsed(g)} / {g.items.length} 本页</span>
+          <span class="vr-meta">{groupMethodStats(g).used} / {groupMethodStats(g).total} 方法</span>
         </div>
         {#each g.items as m (m.name)}
           <div class="vr-proto-method">
@@ -145,5 +146,5 @@
     {/if}
   </details>
 
-  <p class="vr-meta vr-protopage-foot">capabilities / contracts / semantic_labels 均为只读帧；缺失字段显「—」，不发明。</p>
+  <p class="vr-meta vr-protopage-foot">capabilities / contracts / semantic_labels 均为只读帧；languages / memory_model 已拉取但本页不展开（审查 P2-6 登记）；缺失字段显「—」，不发明。</p>
 </section>

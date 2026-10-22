@@ -5,6 +5,7 @@
     "corpus-baseline": {
       "sources": {
         "abstract_array_param.c": "1d6d9fb9",
+        "anon_member_promotion.c": "0142ec02",
         "array_address.c": "0ba37ef8",
         "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
@@ -90,6 +91,7 @@
         "designated_init.c": "1bb9fd6b",
         "designated_mixed_cont.c": "413bba13",
         "designated_struct_copy.c": "2ea3f5f3",
+        "designated_struct_init.c": "d2d2524d",
         "dfs_graph.c": "7ec6a1df",
         "div_by_var.c": "9db4f22f",
         "do_while.c": "8f06ab4b",
@@ -490,6 +492,7 @@
       },
       "resp_hashes": {
         "abstract_array_param.c": "efe69fe7f65b999e",
+        "anon_member_promotion.c": "d5874d3d555a6d24",
         "array_address.c": "99243696364bc67c",
         "array_assign_lvalue_reject.c": "5c912fea6e13deaf",
         "array_bound_const_index.c": "2f1adc171b055795",
@@ -575,6 +578,7 @@
         "designated_init.c": "f8ac7cddc897fba2",
         "designated_mixed_cont.c": "2a1b274e3674ffa8",
         "designated_struct_copy.c": "79d0157365be717c",
+        "designated_struct_init.c": "249a438a97905016",
         "dfs_graph.c": "9499a4c5bdc792ba",
         "div_by_var.c": "ad6195ea19f08035",
         "do_while.c": "cb81cd159641b58f",

@@ -784,6 +784,13 @@ fn TypeChecker::check_duplicate_member_names(
 ) -> Unit {
   let seen : Set[String] = Set([])
   for f in decl.fields {
+    // #249（2026-10-22，C11 6.7.2.1p13）：匿名成员（无声明器，name 空）
+    // 不参与重名判——多个匿名 union/struct 成员合法（内部成员经提升
+    // 访问）；旧空名互撞误报 E3080「成员 '' 重复定义」。提升成员与
+    // 外层成员的重名约束检查（p13 constraint）另登记（教学域收窄）
+    if f.name == "" {
+      continue
+    }
     if seen.contains(f.name) {
       self.report_error(
         "\{kind_label} '\{decl.name}' 的成员 '\{f.name}' 重复定义——同一结构体内的成员名必须唯一",

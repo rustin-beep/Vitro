@@ -117,7 +117,30 @@ fn BytecodeGen::flatten_global_init(
   base_offset : UInt32,
 ) -> Unit {
   match init {
-    InitList(elements, _, _) =>
+    InitList(elements, _, _) => {
+      // #270（2026-10-22）：子层 designated（嵌套聚合的 `.field=`/`[i]=`
+      // 指派——`.in = {.b=7, .a=6}` 的内层）分流到 designated 展开单源
+      //（数组 Index 分支 + struct/union Field 分支）——旧按位置序无视
+      // designator 致元素错位（乱序指派的 a/b 对调）
+      let has_desig = elements.exists(e => e.designators.length() > 0)
+      if has_desig &&
+        (
+          target_ty.kind() is TK_Struct ||
+          target_ty.kind() is TK_Union ||
+          target_ty.is_array()
+        ) {
+        let g_decl : @ast.GlobalDecl = {
+          ..Default::default(),
+          ty: target_ty,
+          name: "",
+        }
+        self.flatten_designated_global(
+          g_decl,
+          elements,
+          base_offset.reinterpret_as_int(),
+        )
+        return
+      }
       if target_ty.kind() is TK_Struct || target_ty.kind() is TK_Union {
         // issue #19 连带：union 全局 init（成员偏移恒 0——union_defs 表）
         let fields = match self.struct_defs.get(target_ty.name()) {
@@ -155,6 +178,7 @@ fn BytecodeGen::flatten_global_init(
       } else if elements.length() > 0 {
         self.flatten_global_init(target_ty, elements[0].value, base_offset)
       }
+    }
     StringLiteral(value, _, _) =>
       if target_ty.is_array() && target_ty.base_element_type().kind() is TK_Char {
         // #75 缺口 3 全局层（2026-10-12，C11 6.7.9p14）：char[] 目标的

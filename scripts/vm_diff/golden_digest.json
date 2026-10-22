@@ -8,6 +8,12 @@
       "stdout_sha": "75f3cdaf908ad49d",
       "memory_sha": "c218f44590c491c3"
     },
+    "baseline/anon_member_promotion.c": {
+      "src_sha": "0142ec02",
+      "exit_code": 10,
+      "stdout_sha": "bd432d47c2040f87",
+      "memory_sha": "96584a0abad271ae"
+    },
     "baseline/array_address.c": {
       "src_sha": "0ba37ef8",
       "exit_code": 0,
@@ -519,6 +525,12 @@
       "exit_code": 0,
       "stdout_sha": "a2e665e2403048e3",
       "memory_sha": "fcc8cc74b93539f0"
+    },
+    "baseline/designated_struct_init.c": {
+      "src_sha": "d2d2524d",
+      "exit_code": 0,
+      "stdout_sha": "63df8b7acb1cb3fc",
+      "memory_sha": "8d86b9d5e14f1581"
     },
     "baseline/dfs_graph.c": {
       "src_sha": "7ec6a1df",

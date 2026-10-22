@@ -437,3 +437,92 @@ fn BytecodeGen::gen_vla_stride(
       self.emit(@opcode.OpCode::PushConst, self.elem_type_size(arr_type), loc)
   }
 }
+
+///|
+/// #266（2026-10-22，C11 6.7.2.1p13）：designated 初始化的匿名成员提升
+/// 定位——在 fields 的匿名聚合成员（name == ""）内部按名查找，返回
+/// (匿名字段位, 提升成员的内部偏移, 提升成员类型)；union 内部偏移恒 0、
+/// struct 内部按前缀累加；递归深度上限 8（与 anon_field_offset 同防环）。
+/// 供 emit_local_struct_init 的 designated 分支穿透（typeck 侧
+/// find_anonymous_member 同语义的 codegen 位点版）。
+fn BytecodeGen::anon_promote_lookup(
+  self : BytecodeGen,
+  fields : Array[@ast.StructField],
+  fname : String,
+) -> (Int32, Int32, @ast.Type)? {
+  fn recurse(
+    bgen : BytecodeGen,
+    fs : Array[@ast.StructField],
+    depth : Int32,
+  ) -> (Int32, @ast.Type)? {
+    if depth >= 8 {
+      return None
+    }
+    for f in fs {
+      if f.name != "" {
+        continue
+      }
+      let k = f.ty.kind()
+      if !(k is TK_Struct || k is TK_Union) {
+        continue
+      }
+      let inner_fields = match k {
+        TK_Struct => bgen.struct_defs.get(f.ty.name())
+        _ => bgen.union_defs.get(f.ty.name())
+      }
+      match inner_fields {
+        Some(ifs) => {
+          // union 成员全偏移 0（仅 struct 按前缀累加）
+          let mut off = 0
+          for j, inner in ifs {
+            if inner.name == fname {
+              return Some((off, inner.ty))
+            }
+            if k is TK_Struct {
+              off += bgen.type_size(inner.ty)
+            }
+          }
+          match recurse(bgen, ifs, depth + 1) {
+            Some((io, it)) => return Some((io, it))
+            None => ()
+          }
+        }
+        None => ()
+      }
+    }
+    None
+  }
+  for i, f in fields {
+    if f.name != "" {
+      continue
+    }
+    let k = f.ty.kind()
+    if !(k is TK_Struct || k is TK_Union) {
+      continue
+    }
+    let inner_fields = match k {
+      TK_Struct => self.struct_defs.get(f.ty.name())
+      _ => self.union_defs.get(f.ty.name())
+    }
+    match inner_fields {
+      Some(ifs) => {
+        // union 成员全偏移 0（仅 struct 按前缀累加）
+        let mut off = 0
+        for j, inner in ifs {
+          if inner.name == fname {
+            return Some((i, off, inner.ty))
+          }
+          if k is TK_Struct {
+            off += self.type_size(inner.ty)
+          }
+        }
+        match recurse(self, ifs, 1) {
+          Some((io, it)) => return Some((i, io, it))
+          None => ()
+        }
+      }
+      None => ()
+    }
+  }
+  None
+}

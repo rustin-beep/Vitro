@@ -647,9 +647,17 @@ fn BytecodeGen::flatten_designated_global(
   elements : Array[@ast.InitElement],
   offset : Int32,
 ) -> Unit {
+  // #270（2026-10-22，C99 §6.7.8 designator 的 .field 形态）：struct/
+  // union 目标的成员指派——按名定位（含匿名成员穿透）递归 flatten，
+  // 未提及位置保持静态零；designator 后裸项按 prev+1 续位（数组语义
+  // 同构）；局部 static 聚合同经本函数自动受益
+  if g.ty.kind() is TK_Struct || g.ty.kind() is TK_Union {
+    self.flatten_struct_designated_global(g, elements, offset)
+    return
+  }
   guard g.ty.is_array() else {
     self.report_error(
-      "designated initializer 仅支持数组目标（'\{g.name}' 为 \{g.ty.to_c_string()}）",
+      "designated initializer 仅支持数组或结构体目标（'\{g.name}' 为 \{g.ty.to_c_string()}）",
       g.loc,
     )
     return
@@ -736,6 +744,113 @@ fn BytecodeGen::flatten_designated_global(
         )
     }
     next_index = next_index + 1
+  }
+}
+
+///|
+/// #270（2026-10-22，C99 §6.7.8p35 designator 的 .field 形态）：
+/// struct/union 目标的 designated 全局展开——按名定位（含 #266 匿名
+/// 成员穿透）+ flatten_global_init 递归（标量位模式/嵌套聚合/字符串
+/// 直写全复用既有单源）；designator 后裸项按 prev+1 续位；未提及位置
+/// 保持静态零（全局区零填语义）。
+fn BytecodeGen::flatten_struct_designated_global(
+  self : BytecodeGen,
+  g : @ast.GlobalDecl,
+  elements : Array[@ast.InitElement],
+  offset : Int32,
+) -> Unit {
+  let fields = match g.ty.kind() {
+    TK_Struct => self.struct_defs.get(g.ty.name())
+    _ => self.union_defs.get(g.ty.name())
+  }
+  let fields : Array[@ast.StructField] = match fields {
+    Some(f) => f
+    None => {
+      self.report_error(
+        "designated initializer 目标 '\{g.name}' 字段表缺失",
+        g.loc,
+      )
+      return
+    }
+  }
+  let is_union = g.ty.kind() is TK_Union
+  let mut cursor = 0
+  for elem in elements {
+    if elem.designators.length() == 0 {
+      // 裸项续位（designator 后 prev+1——C11 6.7.9 current object）
+      if cursor >= fields.length() {
+        continue
+      }
+      let cur = cursor
+      cursor = cur + 1
+      let mut o = 0
+      if !is_union {
+        for j = 0; j < cur; j = j + 1 {
+          o += self.type_size(fields[j].ty)
+        }
+      }
+      self.flatten_global_init(
+        fields[cur].ty,
+        elem.value,
+        (offset + o).reinterpret_as_uint(),
+      )
+      continue
+    }
+    match elem.designators[0] {
+      Field(fname) => {
+        let mut found = -1
+        for j, f in fields {
+          if f.name == fname {
+            found = j
+            break
+          }
+        }
+        if found >= 0 {
+          cursor = found + 1
+          let mut o = 0
+          if !is_union {
+            for j = 0; j < found; j = j + 1 {
+              o += self.type_size(fields[j].ty)
+            }
+          }
+          self.flatten_global_init(
+            fields[found].ty,
+            elem.value,
+            (offset + o).reinterpret_as_uint(),
+          )
+        } else {
+          // #266：匿名成员穿透（.a 命中匿名 union/struct 内部）
+          match self.anon_promote_lookup(fields, fname) {
+            Some((outer_idx, inner_off, member_ty)) => {
+              cursor = outer_idx + 1
+              let mut o = inner_off
+              if !is_union {
+                for j = 0; j < outer_idx; j = j + 1 {
+                  o += self.type_size(fields[j].ty)
+                }
+              }
+              self.flatten_global_init(
+                member_ty,
+                elem.value,
+                (offset + o).reinterpret_as_uint(),
+              )
+            }
+            None =>
+              self.report_error(
+                "结构体 '\{g.ty.name()}' 没有字段 '\{fname}'（'\{g.name}'）",
+                g.loc,
+              )
+          }
+        }
+      }
+      _ => {
+        self.report_error(
+          "结构体目标的 designated initializer 只支持 .field 指派（'\{g.name}'）",
+          g.loc,
+        )
+        return
+      }
+    }
   }
 }
 

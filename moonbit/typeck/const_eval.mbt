@@ -468,7 +468,10 @@ fn find_field_ty(
       return Some(pair.0)
     }
   }
-  None
+  // #266（2026-10-22）：静态聚合 designated（`.a = 常量`）指名匿名成员
+  // 内部成员——穿透查找（与 check_struct_initializer designated 分支
+  // 同语义；成员访问面 #7 销案同源）
+  tc.find_anonymous_member(target.name(), target.kind() is TK_Union, fname, 0)
 }
 
 ///|

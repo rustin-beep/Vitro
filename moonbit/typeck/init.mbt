@@ -107,12 +107,35 @@ pub fn TypeChecker::check_struct_initializer(
                   )
                   elements[i] = { ..elem, value: new_value, }
                 }
-                None =>
-                  self.report_error(
-                    "结构体 '\{struct_type.name()}' 没有字段 '\{field_name}'",
-                    loc,
-                    E3042_UnknownMember,
+                None => {
+                  // #266（2026-10-22，C11 6.7.2.1p13）：designator 指名
+                  // 匿名成员的内部成员（`s = {.a = 2}` 的 a 在匿名 union
+                  // 内）——直查 miss 时穿透匿名聚合查找（成员访问面
+                  // #7 销案同款语义）；仍 miss 才报 E3042
+                  let promoted = self.find_anonymous_member(
+                    struct_type.name(),
+                    struct_type.kind() is TK_Union,
+                    field_name,
+                    0,
                   )
+                  match promoted {
+                    Some(ft) => {
+                      let new_value = self.check_field_value(
+                        ft,
+                        field_name,
+                        elem.value,
+                        loc,
+                      )
+                      elements[i] = { ..elem, value: new_value, }
+                    }
+                    None =>
+                      self.report_error(
+                        "结构体 '\{struct_type.name()}' 没有字段 '\{field_name}'",
+                        loc,
+                        E3042_UnknownMember,
+                      )
+                  }
+                }
               }
             }
             _ =>
@@ -229,12 +252,27 @@ pub fn TypeChecker::check_struct_initializer(
           break
         }
         let elem = elements[i]
-        let new_value = self.check_field_value(
-          fields[i].0,
-          fields[i].1,
-          elem.value,
-          loc,
-        )
+        // #266（2026-10-22，C11 6.7.2.1p13 匿名成员位置初始化）：匿名
+        // 聚合成员收标量值时透传——包单元素 InitList 走该成员的递归
+        // 初始化检查（匿名 union 由第一成员承接、匿名 struct 由首字段
+        // 承接——brace elision 的匿名面）；旧按字段整体比对报
+        // E3006「期望 union 实际 int」误拒
+        let is_anon_agg = fields[i].1 == "" &&
+          (fields[i].0.kind() is TK_Struct || fields[i].0.kind() is TK_Union)
+        let new_value = if is_anon_agg {
+          let inner = if elem.value is InitList(_, _, _) {
+            elem.value
+          } else {
+            InitList(
+              [{ designators: [], value: elem.value, }],
+              loc,
+              fields[i].0,
+            )
+          }
+          self.check_struct_initializer(fields[i].0, inner, loc)
+        } else {
+          self.check_field_value(fields[i].0, fields[i].1, elem.value, loc)
+        }
         elements[i] = { ..elem, value: new_value, }
       }
       InitList(elements, iloc, ity)

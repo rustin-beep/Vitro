@@ -93,10 +93,9 @@ async function pickLesson(id, waitMs = 30000) {
     if (found) break;
   }
   if (!found) throw new Error(`找不到课程 ${id}`);
-  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
-  await sleep(200);
   const e0 = await evaluate("window.__pilot.session.epoch");
-  await evaluate("document.querySelector('.vr-preview .vr-open')?.click()");
+  // #222 P2：课列单击即开课（旧「预览 → .vr-open」两步已退役）
+  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
   await waitFor(`window.__pilot.ui.screen === 'work' && window.__pilot.lessonSession.lesson?.id === ${JSON.stringify(id)} && window.__pilot.session.epoch > ${e0} && !window.__pilot.session.collecting`, waitMs);
 }
 
@@ -272,9 +271,8 @@ async function run() {
   await openEntry();
   await evaluate(`[...document.querySelectorAll('.vr-chapter')].find(b => b.textContent.includes('排序'))?.click()`);
   await sleep(300);
+  // #222 P2：课列单击即开课——guard 在 open() 内，confirm(false) 时中止在入口态
   await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === 'bubble_sort')?.click()`);
-  await sleep(300);
-  await evaluate("document.querySelector('.vr-preview .vr-open')?.click()");
   await sleep(500);
   const w10a = await evaluate(`(() => ({
     active: window.__pilot.workspace.active,
@@ -283,7 +281,7 @@ async function run() {
   }))()`);
   check("W10 confirm(false) → 选课中止（工作区不关、不跳工作态）", w10a.active === true && w10a.dirty === true && w10a.screen === "entry", JSON.stringify(w10a));
   await evaluate("window.__confirmAnswer = true");
-  await evaluate("document.querySelector('.vr-preview .vr-open')?.click()");
+  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === 'bubble_sort')?.click()`);
   await waitFor("window.__pilot.ui.screen === 'work' && !window.__pilot.session.collecting", 20000);
   const w10b = await evaluate(`(() => ({
     chips: document.querySelectorAll('.ws-chip').length,

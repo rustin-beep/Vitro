@@ -12,6 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(demo): #222 P2 目录/手册——章路径 + 章节面板 / 六段证据链 + 右栏阅读法（2026-10-22）
+
+- **目录**（`EntryScreen`）：hero 主张 + 首访动线 + 「继续上次」主卡右置；9 章
+  横向路径（完成/总数）；课列升级为「序 / id + 课名 + 类签 / 一句话说明 /
+  状态 →」，**单击即开课**（旧「预览面板 → 在实验台打开」两步退役，预览面板
+  删除）；右栏章节面板 = 章简介 + 进度 + 本章会看到（前三课真数据）+ 开课
+  CTA。章简介是演示文案（`CHAPTER_BLURB`），课名/说明/进度全部读数据。
+- **手册**（`RefScreen`）：六段证据链——01 三问（WHERE 源码 / HOW 引擎判定 /
+  FIX 修法）、02 常见原因、03 同族码、04 相关课、05 最小复现（BAD/GOOD）、
+  06 鉴别诊断（同 catalog 分组对照）；新增右栏「怎么用这一页」三步 + 同族码
+  + 返回/复现动作。无示例 / 无关联课的条目显式空态，不发明诊断归因。
+- **E2E**：新增 B9（目录章路径/章节面板/预览退役；手册六段/三问三列/同族/
+  右栏/返回）；选课助手改为课列单击（session/workspace 两处），W10 guard
+  用例按单击重排。
+- **响应式**：1440 三栏（索引/详情/阅读法）、≤1100 右栏下沉两列、390 单列；
+  entry / ref 页面 `scrollWidth ≤ innerWidth`。
+- **验证**：pure 34/34、e08 17/17、png 5/5、E2E 五套 88/88、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿；visual entry/ref 两态截图
+  可生成（基线未武装）。
+
 ### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
 
 - **入库**（用户拍板替换旧版）：`scripts/realcode_diff/corpus/multifile`

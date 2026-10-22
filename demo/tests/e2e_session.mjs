@@ -15,6 +15,7 @@
 //   B6 uaf 三幕分镜（#222 P1 内容扩面，2026-10-21）
 //   B7 bubble_sort 六幕分镜（#222 P1 内容扩面，2026-10-22）
 //   B8 内存/协议全页形态（#222 P1 两模式，2026-10-22）
+//   B9 目录/手册 P2 形态（章路径 + 章节面板 / 六段证据链，2026-10-22）
 // 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -76,8 +77,9 @@ async function openEntry() {
   await sleep(250);
 }
 
-/** 目录选课 → 预览 → 在实验台打开 → 等本课采集完成（epoch 判据，防上一课
- *  残留帧骗过 collecting=false 的空窗）。课程可能不在当前章：逐章扫描。 */
+/** 目录选课 → 单击直接在实验台打开 → 等本课采集完成（epoch 判据，防上一课
+ *  残留帧骗过 collecting=false 的空窗）。课程可能不在当前章：逐章扫描。
+ *  #222 P2 起课列单击即开课（旧「预览 → .vr-open」两步已退役）。 */
 async function pickLesson(id, waitMs = 30000) {
   await openEntry();
   await waitFor("!window.__pilot.session.collecting", 30000); // 首访自动采集可能仍在跑
@@ -90,10 +92,8 @@ async function pickLesson(id, waitMs = 30000) {
     if (found) break;
   }
   if (!found) throw new Error(`找不到课程 ${id}`);
-  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
-  await sleep(200);
   const e0 = await evaluate("window.__pilot.session.epoch");
-  await evaluate("document.querySelector('.vr-preview .vr-open')?.click()");
+  await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
   await waitFor(`window.__pilot.ui.screen === 'work' && window.__pilot.lessonSession.lesson?.id === ${JSON.stringify(id)} && window.__pilot.session.epoch > ${e0} && !window.__pilot.session.collecting`, waitMs);
 }
 
@@ -402,6 +402,40 @@ async function run() {
       b8proto.sideCount === "13" && b8proto.ledger > 0 && b8proto.frame === true && b8proto.overflow <= 1 &&
       b8back.mode === "exec" && b8back.bench === true && b8back.page === false,
     JSON.stringify({ b8mem, b8proto, b8back }));
+
+  // ── B9 目录 / 手册 P2 形态（#222 P2，2026-10-22）：目录 = 章路径 + 课列 +
+  //    章节面板（旧预览面板退役；课列单击即开课）；手册 = 六段证据链 +
+  //    三问并列 + 同族码 + 右栏阅读法 ──
+  await openEntry();
+  const b9entry = await evaluate(`(() => ({
+    chapters: document.querySelectorAll('.vr-path .vr-chapter').length,
+    rows: document.querySelectorAll('.vr-lesson-row').length,
+    panel: !!document.querySelector('.vr-chapterpanel'),
+    peek: document.querySelectorAll('.vr-peek > li').length,
+    preview: !!document.querySelector('.vr-preview'),
+    hero: document.querySelector('.vr-entry-hero h1')?.textContent?.replace(/\\s+/g, '') ?? '',
+  }))()`);
+  await evaluate(`[...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('诊断手册'))?.click(); true`);
+  await waitFor("window.__pilot.ui.screen === 'ref'", 20000);
+  // 选 E3060：示例 / 常见原因 / 同族 / 关联课齐全，六段证据链都在（E1001 无示例
+  // 会按「无示例则隐藏」少一段——那是数据面诚实，不是缺段）
+  await evaluate("window.__pilot.ui.refCode = 'E3060'; true");
+  await sleep(350);
+  const b9ref = await evaluate(`(() => ({
+    secs: document.querySelectorAll('.vr-ref-sec').length,
+    three: document.querySelectorAll('.vr-ref-three > .vr-ref-q').length,
+    fam: document.querySelectorAll('.vr-ref-famchip').length,
+    side: !!document.querySelector('.vr-ref-side'),
+    discrim: document.querySelectorAll('.vr-ref-discrim tbody tr').length,
+    back: [...document.querySelectorAll('button')].some(b => (b.textContent || '').includes('返回实验台')),
+    h1: document.querySelector('.vr-ref-detail h1')?.textContent?.trim() ?? '',
+  }))()`);
+  check("B9 目录/手册 P2 形态（#222 P2）",
+    b9entry.chapters === 9 && b9entry.rows > 0 && b9entry.panel === true && b9entry.peek === 3 &&
+      b9entry.preview === false && b9entry.hero.includes("从一行C开始") &&
+      b9ref.secs === 6 && b9ref.three === 3 && b9ref.fam > 0 && b9ref.side === true &&
+      b9ref.discrim > 0 && b9ref.back === true && b9ref.h1.length > 0,
+    JSON.stringify({ b9entry, b9ref }));
 
   // ── F5 char 数组可视化零崩溃（P1-5）──
   // 2026-10-18 加固：逐帧 seek 全量帧（此前只看首个数组帧 + 800ms，晚帧崩溃

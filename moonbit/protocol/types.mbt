@@ -57,7 +57,14 @@ pub(all) struct AlgorithmMatch {
   confidence : Int32
   suggestion : String
   line : Int32
+  /// vis_events 是**函数级**事件（compare_lines 投影——特征提取按函数
+  /// 整体产出），与命中的族无关；下游勿按「族特异事件」消费（#224 勘误：
+  /// 曾被误读为族特异动画事件）。
   vis_events : Array[VisEvent]
+  /// 判别依据（#224，v0.2 additive）：`"name"` = 函数名命名证据 /
+  /// `"structure"` = 代码结构特征证据。sorting 族内互斥裁决的优先级
+  /// 依据（命名 > 结构）；下游可按此自行取舍置信度。
+  evidence : String
 } derive(Debug)
 
 ///|

@@ -90,6 +90,7 @@ fn mk_alg(name : String, display : String) -> @protocol.AlgorithmMatch {
     suggestion: "",
     line: 1,
     vis_events: [],
+    evidence: "name",
   }
 }
 
@@ -325,6 +326,7 @@ fn mk_alg2(name : String, display : String) -> @protocol.AlgorithmMatch {
     suggestion: "",
     line: 1,
     vis_events: [],
+    evidence: "name",
   }
 }
 
@@ -611,6 +613,7 @@ test "teaching_infer_validate_phases_match_lines" {
     suggestion: "",
     line: 19,
     vis_events: [],
+    evidence: "name",
   }
   let env = empty_env()
   let r1 = infer_algorithm_step(
@@ -656,6 +659,7 @@ test "teaching_infer_validate_rejects_plain_compare" {
     suggestion: "",
     line: 19,
     vis_events: [],
+    evidence: "name",
   }
   let r = infer_algorithm_step(
     10,
@@ -682,6 +686,7 @@ test "teaching_infer_delete_phases_table" {
     suggestion: "",
     line: 32,
     vis_events: [],
+    evidence: "name",
   }
   let lines : Array[(String, String)] = [
     ("if (root == NULL) return NULL;", "not_found"),
@@ -719,6 +724,7 @@ test "teaching_infer_delete_rejects_unrelated" {
     suggestion: "",
     line: 32,
     vis_events: [],
+    evidence: "name",
   }
   for
     src in [

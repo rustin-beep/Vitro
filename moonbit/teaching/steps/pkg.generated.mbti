@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub fn build_match(String, String, String, Int, Array[(Int, Int, String)]) -> @protocol.AlgorithmMatch
+pub fn build_match(String, String, String, Int, Array[(Int, Int, String)], evidence? : String) -> @protocol.AlgorithmMatch
 
 pub fn detect_algorithms(@ast.ProgramNode) -> Array[@protocol.AlgorithmMatch]
 
@@ -58,6 +58,7 @@ pub(all) struct FuncFeatures {
   mut has_left_right_update : Bool
   mut has_adjacent_index_compare : Bool
   mut has_dp_array : Bool
+  mut has_heap_index_pattern : Bool
   mut is_treenode_ctx : Bool
   mut compare_lines : Array[(Int, Int, String)]
 }

@@ -236,7 +236,7 @@ async function run() {
   }))()`);
   check("B2 幕头随帧更新 + 浅树压扁（#222）",
     b2.title.includes("起点") && b2.prevDisabled === true && b2.compact === true && b2.canvas === false &&
-      b2after.idx === 5 && b2after.title.includes("交换") && b2after.kicker.includes("帧 5–20"),
+      b2after.idx === 3 && b2after.title.includes("交换") && b2after.kicker.includes("帧 3–20"),
     JSON.stringify({ b2, b2after }));
 
   // ── B3 三栏 + 底栏时间轴（#222 P1 第四片）：1440 下 rail / stage / now 左中右
@@ -267,7 +267,7 @@ async function run() {
     inText: (document.querySelector('.cm-content')?.textContent ?? '').includes('←'),
   }))()`);
   check("B4 逐行注记（#222 P1 第五片）",
-    b4.idx === 12 && b4.attrs.length === 3 && b4.attrs.includes("t ← 5") && b4.attrs.includes("a[1] ← 1") &&
+    b4.idx === 12 && b4.attrs.length === 5 && b4.attrs.includes("t ← 5") && b4.attrs.includes("a[1] ← 1") &&
       b4.attrs.includes("a[2] ← 5") && b4.inText === false,
     JSON.stringify(b4));
   // ── B5 本幕讲解 + 展开全文（#222 P1 第六片）：scene 课默认折叠、本幕卡片随幕更新，
@@ -319,7 +319,7 @@ async function run() {
 
   // ── B7 第三门旗舰课 bubble_sort（#222 P1 内容扩面）：65 帧压成 6 幕；
   //    第 5 幕（明界：最后一轮一次比较零交换）是「算法正确 ≠ 算法知道」的
-  //    教学锚，点幕必须跳到帧 48 且幕头/本幕卡同步；第 6 幕收尾 51–64 ──
+  //    教学锚，点幕必须跳到帧 48（#238 锚点化：幕 5 = @arr_change:17+1..19，与正文表同源）且幕头/本幕卡同步；第 6 幕收尾 51–64 ──
   await pickLesson("bubble_sort");
   await sleep(900);
   // 65 帧 × 8fps 播放要 ~8s：断言前先停播（seek 本身不停播，B6 的 6 帧课

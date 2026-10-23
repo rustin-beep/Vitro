@@ -69,6 +69,7 @@ pub(all) struct AlgorithmMatch {
   suggestion : String
   line : Int
   vis_events : Array[VisEvent]
+  evidence : String
 } derive(@debug.Debug)
 pub fn AlgorithmMatch::to_repr(Self) -> @debug.Repr
 

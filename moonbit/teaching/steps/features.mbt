@@ -24,6 +24,11 @@ pub(all) struct FuncFeatures {
   mut has_adjacent_index_compare : Bool
   /// U1#1 P1-a：函数体含 `dp[` 数组访问（动态规划状态表特征）。
   mut has_dp_array : Bool
+  /// #224：堆子索引形态——`arr[2*i+1]` / `arr[2*i+2]`（乘 2 加 1/2 的
+  /// 下标）或建堆起点 `i = n/2 - 1`（除 2 减 1 的循环初值）。堆排序的
+  /// 排他结构证据（旧判据「递归+数组比较+swap+名字含 sort」宽兜底致
+  /// quickSort/mergeSort 交叉误命中）。
+  mut has_heap_index_pattern : Bool
   /// 二审 P0-B：BST 语境特征——参数/返回类型 pointee 为 `TreeNode`
   /// 结构（整名匹配，穿透包装层）。
   mut is_treenode_ctx : Bool
@@ -50,6 +55,7 @@ pub fn FuncFeatures::default() -> FuncFeatures {
     has_left_right_update: false,
     has_adjacent_index_compare: false,
     has_dp_array: false,
+    has_heap_index_pattern: false,
     is_treenode_ctx: false,
     compare_lines: [],
   }
@@ -184,7 +190,26 @@ fn walk_stmt(
         f.max_loop_depth = new_depth
       }
       match init {
-        Some(i) => walk_stmt(i, f, loop_depth, func_name, depth + 1)
+        Some(i) => {
+          // 建堆起点（#224）：for (int i = n / 2 - 1; ...) ——init 表达式
+          // 「除 2 - 1」形
+          match i {
+            VarDecl(_, _, iinit, _, _, _, _) =>
+              match iinit {
+                Some(e) =>
+                  if is_heap_build_start(e) {
+                    f.has_heap_index_pattern = true
+                  }
+                None => ()
+              }
+            Expr(Assign(_, _, right, _, _), _) =>
+              if is_heap_build_start(right) {
+                f.has_heap_index_pattern = true
+              }
+            _ => ()
+          }
+          walk_stmt(i, f, loop_depth, func_name, depth + 1)
+        }
         None => ()
       }
       match cond {
@@ -197,13 +222,26 @@ fn walk_stmt(
       walk_stmt(body, f, new_depth, func_name, depth + 1)
     }
     VarDecl(_, _, init, extra_vars, _, _, _) => {
+      // #224 审阅 P1-3 补：`int l = 2 * i + 1` 间接形态（CLRS 风）——
+      // 堆算术出现在声明 init 而非下标位，此处判定（与 Index 下标位
+      // 直写形态同源）
       match init {
-        Some(e) => walk_expr(e, f, loop_depth, func_name, depth + 1)
+        Some(e) => {
+          if is_heap_child_index(e) {
+            f.has_heap_index_pattern = true
+          }
+          walk_expr(e, f, loop_depth, func_name, depth + 1)
+        }
         None => ()
       }
       for ex in extra_vars {
         match ex.init {
-          Some(e) => walk_expr(e, f, loop_depth, func_name, depth + 1)
+          Some(e) => {
+            if is_heap_child_index(e) {
+              f.has_heap_index_pattern = true
+            }
+            walk_expr(e, f, loop_depth, func_name, depth + 1)
+          }
           None => ()
         }
       }
@@ -269,6 +307,11 @@ fn walk_expr(
         if name == "dp" {
           f.has_dp_array = true
         }
+      }
+      // 堆子索引（#224）：arr[2*i+1] / arr[2*i+2]——下标为「乘 2 表达式
+      // + 字面 1/2」形（2*i+1 与 i*2+1 两侧乘法均收）
+      if is_heap_child_index(index) {
+        f.has_heap_index_pattern = true
       }
       walk_expr(array, f, loop_depth, func_name, depth + 1)
       walk_expr(index, f, loop_depth, func_name, depth + 1)
@@ -373,6 +416,13 @@ fn check_compare_expr(
     Index(array, index, _, _) => {
       check_compare_expr(array, f, loop_depth)
       check_compare_expr(index, f, loop_depth)
+      // #224 审阅 P1-3：比较表达式里的堆子索引（`a[2*i+1] > a[largest]`
+      // 是 heapsort 标配写法）——本函数独立于 walk_expr 递归（比较行
+      // 特征提取专用通道），Index 臂须自带堆子索引判定，否则 siftDown
+      // 形态的 heap_index 恒 false（插桩实证：结构分支对真实代码不可达）。
+      if is_heap_child_index(index) {
+        f.has_heap_index_pattern = true
+      }
     }
     Member(object, _, _, _, _) => check_compare_expr(object, f, loop_depth)
     Ternary(cond, then_branch, else_branch, _, _) => {
@@ -569,6 +619,42 @@ fn is_shift_pattern(left : @ast.Expr, right : @ast.Expr) -> Bool {
       } else {
         false
       }
+    _ => false
+  }
+}
+
+///|
+/// 堆子索引下标（#224）：`2*i + 1` / `2*i + 2`（i*2 两侧形态均收——
+/// 乘 2 表达式加字面 1/2；纯字面 `2+1` 不算——乘侧须含非字面因子）。
+fn is_heap_child_index(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(Add, mul, lit, _, _) =>
+      is_times_two(mul) && (is_literal_int(lit, 1) || is_literal_int(lit, 2))
+    _ => false
+  }
+}
+
+///|
+/// 乘 2 表达式（一侧字面 2、另一侧非字面 2）。
+fn is_times_two(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(Mul, a, b, _, _) =>
+      (is_literal_int(a, 2) && !is_literal_int(b, 2)) ||
+      (!is_literal_int(a, 2) && is_literal_int(b, 2))
+    _ => false
+  }
+}
+
+///|
+/// 建堆起点初值（#224）：`n / 2 - 1`——除 2 表达式减字面 1。
+fn is_heap_build_start(e : @ast.Expr) -> Bool {
+  match e {
+    Binary(Sub, div, lit, _, _) =>
+      is_literal_int(lit, 1) &&
+      (match div {
+        Binary(Div, a, b, _, _) => !is_literal_int(a, 2) && is_literal_int(b, 2)
+        _ => false
+      })
     _ => false
   }
 }

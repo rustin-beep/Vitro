@@ -16,7 +16,7 @@
   import CourseNote from "./CourseNote.svelte";
 
   const note = $derived(lessonSession.note);
-  const scenes = $derived(note?.scenes ?? []);
+  const scenes = $derived(lessonSession.scenes);
   const n = $derived(session.viewFrames.length);
   const cur = $derived(n > 0 ? sceneIndexAt(scenes, session.idx) : -1);
   const s = $derived(cur >= 0 ? scenes[cur] : null);

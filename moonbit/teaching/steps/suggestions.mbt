@@ -6,13 +6,15 @@
 // 空串兜底）。vis_events = compare_lines 投影
 
 ///|
-/// 构造算法匹配（confidence 固定 85——Rust 同款）。
+/// 构造算法匹配（confidence 固定 85——Rust 同款；evidence 具名参数缺省
+/// "name"——命名分支调用点零改动，结构分支显式传 "structure"，#224）。
 pub fn build_match(
   name : String,
   display_name : String,
   func_name : String,
   line : Int32,
   compare_lines : Array[(Int32, Int32, String)],
+  evidence~ : String = "name",
 ) -> @protocol.AlgorithmMatch {
   let suggestion = @assets.suggestion_map.get(name).unwrap_or("")
   let vis : Array[@protocol.VisEvent] = []
@@ -28,5 +30,6 @@ pub fn build_match(
     suggestion,
     line,
     vis_events: vis,
+    evidence,
   }
 }

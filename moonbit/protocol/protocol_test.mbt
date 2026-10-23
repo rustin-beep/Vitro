@@ -26,7 +26,7 @@ test "blackbox_schema_surface" {
   assert_eq(cf[0].status, "active")
   assert_eq(cf[0].kind, "add")
   let contracts : Array[@protocol.BehaviorContract] = @protocol.behavior_contracts()
-  assert_eq(contracts.length(), 6) // 5 Rust 照搬 + icons_asset_channel（#27 增补）
+  assert_eq(contracts.length(), 7) // 5 Rust 照搬 + icons_asset_channel(#27) + algorithm_step_line_end_sparsity(#225)
   // emitter
   let json = @protocol.contracts_json()
   assert_true(json.contains("\"schema\":\"v0.2\"")) // #90 激活升格

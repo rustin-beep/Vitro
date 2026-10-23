@@ -33,7 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   新增 `ci-summary`：所有上游 job 必须 success，failure/skipped 一律红
   （skipped 不算绿）。矩阵 `fail-fast: false` 保留。
   已知边界：下游 job 仍依赖 build-products artifact，build 整体失败时
-  artifact 不存在（无产物可测）；要彻底解耦需拆独立 artifact job（后续批）。
+  artifact 不存在（无产物可测）；本轮已把测试迁出 build（测试红不再挡产物），
+  但构建本身失败仍会挡下游，彻底解耦需拆独立 artifact job + 备用构建。
+- **CI 提速（2026-10-23）**：`build-and-unit` 拆为 `build-artifacts`（只构建/
+  上传，无 MoonBit/Go 测试）；单测归 Hygiene 四 target，删掉 build 里重复的
+  native 全量；Go vet/test 随迁 Hygiene。build artifact 增传
+  `teaching/langpack/langpack.js`，demo 不再装第二套 MoonBit 编 langpack，
+  直接 cp artifact。测试红不再挡 artifact 产出，下游闸照常运行。
 - **当前实证**：手动 dispatch `39906423527`（head `ab263a6b`）全绿；同 head
   的 PR run `39906203112` 仅 E2E flake 红。四门 digest 漏刷已由
   `ab263a6b` 补齐；`typeck_diff` 为上游 master 同红，f4a0add9/27ad50df

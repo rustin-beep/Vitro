@@ -40,7 +40,7 @@ concurrency:
 # --refresh 删除 fail loud）消灭「入新键 vs 刷存量 vs 手删旧键」三套心智。
 #
 # 分类判据沿袭（红了是否意味着这批不能要）：
-#   build-and-unit = 准入（编译/单测坏）——下游全 needs 它
+#   build-artifacts = 产物准入（编译/构建坏）——下游 needs 它；测试归 hygiene
 #   gates-diff     = 行为差分（matrix 六实例独立）
 #   gates-native   = 消费 exe 的协议/冒烟族
 #   gates-wasm     = wasm 臂族 + cli smoke（matrix 四实例独立，2026-10-17
@@ -58,8 +58,8 @@ concurrency:
 
 
 jobs:
-  build-and-unit:
-    name: Build & unit tests (准入型基础)
+  build-artifacts:
+    name: Build artifacts (native/wasm/js, 无测试)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,19 +68,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum，缓存无意义
-      - name: Go vet (scripts)
-        run: go vet ./scripts/...
-
-      # 2026-09-22 闸缺口补齐：go test ./scripts/... 此前**不在 CI**——
-      # scripts 侧已有 5 包 / 10 文件 / 58 个 J9·性质测试（CLI 契约锚 10、
-      # 归一性质锚 7、docs_preview 7、facts 30、toolchain_probe 基线判定锚 4），
-      # 全部只在本地可跑、CI 一直抓不到。"判定函数坏了的『全绿』比没有门禁
-      # 更坏"（J9 义务原话）——本步骤退非 0 即红。测试面全为纯函数 /
-      # t.TempDir() 夹具，不依赖 moon 工具链、cargo 产物或 reports/（后者被
-      # gitignore，CI 上不存在）；故接线在 go vet 旁而非 MoonBit 步骤之后，
-      # 可先行失败。
-      - name: Go test (scripts)
-        run: go test ./scripts/...
+      # Go vet/test 归 hygiene（2026-10-23 提速批）：本 job 不跑测试，
+      # 测试红不阻塞产物构建；Go 纯函数锚仍由 hygiene 覆盖。
 
       # Clang Golden 缓存（方案 A）：结果是确定性的（同一源码 + 同一 clang 版本
       # ⇒ 同一结果），跨 CI 运行复用可把 Shadow 从分钟级降到秒级。
@@ -98,24 +87,13 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
 
-      - name: MoonBit unit tests (moon test)
-        # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
-        # --run 间接跑（采集失败只记 unavailable 不红），且 README 测试
-        # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
-        # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
-        shell: bash
-        # --target native：把 native-only 包的锚（fs 9 + gateway 91，2026-10-04
-        # 实测差值 741-641=100——原注「fs 9 + cmd/serve 14，差值 527-504=23」
-        # 系 2026-09-20 接线时点的 as-of 快照，CI 拆批搬运时未随刷，审阅 P3-⑧
-        # 勘正）纳入门禁——此前 CI 从不跑它们（默认 wasm target
-        # 不含 native-only 包，check --target all 只抓编译错不抓行为错），
-        # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
-        # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。
-        run: cd moonbit && moon test --target native
+      # MoonBit 单测归 hygiene 的四 target 步（2026-10-23 提速批）：
+      # native 全量此前在本 job 与 hygiene 各跑一遍，纯重复；本 job 只负责
+      # 产物构建，测试红由 hygiene 显式红，不再挡 artifact 产出。
 
       # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
       # 防遮蔽（job 内，2026-10-23）：单测/前置步红后仍继续构建并上传 artifact，
-      # 但下游 job 仍 `needs: build-and-unit`，build 整体红时依旧 skipped；
+      # 但下游 job 仍 `needs: build-artifacts`，build 整体红时依旧 skipped；
       # 这层只保证「本 job 内能跑的步都跑」。job 间遮蔽由末尾 ci-summary
       # 显式判 skipped/failure 为红兜底（不把 skipped 当绿）。
       - name: Full native release build gate (declared targets must build)
@@ -184,10 +162,11 @@ jobs:
             moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
             moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
             moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js
+            moonbit/_build/js/release/build/teaching/langpack/langpack.js
           retention-days: 3
   gates-diff:
     name: Diff gate (${{ matrix.driver }})
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：六实例互不取消（一红不见其余）。
@@ -285,7 +264,7 @@ jobs:
           esac
   corpus-fuzz:
     name: Adversarial corpus fuzz (mutated corpus vs clang, baseline-locked)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -309,7 +288,7 @@ jobs:
 
   gates-native:
     name: Native protocol & parity gates (consume exe)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -431,7 +410,7 @@ jobs:
 
   gates-wasm:
     name: wasm-arm gate (${{ matrix.slice }})
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：四实例互不取消（一红不见其余）——gates-diff 同款
@@ -949,6 +928,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum
+      # 2026-10-23 提速批：Go vet/test 从 build job 迁来——测试红归 hygiene，
+      # build 只负责产物，避免「测试红 → artifact 不产出 → 下游全 skipped」。
+      - name: Go vet (scripts)
+        run: go vet ./scripts/...
+      - name: Go test (scripts)
+        run: go test ./scripts/...
       - name: Install MoonBit toolchain
         shell: pwsh
         run: |
@@ -985,7 +970,7 @@ jobs:
 
       - name: MoonBit tests (four targets)
         # js 目标接线（2026-10-15）：三后端批落地 js 后端（38f63d42）但测试
-        # 面漏接——js 入口只做产物（build-and-unit 的 artifact 源），行为锚
+        # 面漏接——js 入口只做产物（build-artifacts 的 artifact 源），行为锚
         # （fs_js 等 js 后端专属文件的锚，全量 907 例）零 CI 覆盖，与三臂
         # 强制纪律（AGENTS §14）不符。本地实证 907/907 全绿后接线。
         run: |
@@ -1034,7 +1019,7 @@ jobs:
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -1141,16 +1126,15 @@ jobs:
         shell: bash
         run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
 
-      # 语言包懒加载产物（#130 批② demo 接线）：engine.worker 动态 import
-      # demo/teaching/langpack/langpack.js（vite 懒 chunk，缺失即 build 红
-      # ——与 wasm 同款 fail loud），moon js target 现场构建后 cp。
-      - name: demo langpack asset (moon js target → cp)
+      # 语言包懒加载产物（#130 批② demo 接线）：复用 build-artifacts 的
+      # teaching/langpack（2026-10-23 提速批——此前 demo 重装工具链再编一遍，
+      # 与 build 的全量 js 构建重复）。artifact 缺失即 cp 红，与 wasm 同款 fail loud。
+      - name: demo langpack asset (build artifact → cp)
         if: always()
         shell: bash
         run: |
-          cd moonbit && moon build --release --target js teaching/langpack
-          mkdir -p ../demo/teaching/langpack
-          cp _build/js/release/build/teaching/langpack/langpack.js ../demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
 
       - name: F4 vite build (build success gate)
         if: always()
@@ -1312,12 +1296,12 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-and-unit, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
         env:
-          BUILD: ${{ needs.build-and-unit.result }}
+          BUILD: ${{ needs.build-artifacts.result }}
           DIFF: ${{ needs.gates-diff.result }}
           FUZZ: ${{ needs.corpus-fuzz.result }}
           NATIVE: ${{ needs.gates-native.result }}

@@ -91,6 +91,18 @@ catalog/gen_diag -check 全绿。
   cmd/vitro 否则陈旧产物下「单侧编译失败」假红（本次 MF-UNIT 直拍
   首跑实锤）。
 
+### refactor(scripts): #273 存量 Go 重写批——共享库/闸/生成器 12 个 .mts 双轨版（2026-10-23）
+
+- **共享库**：`internal/canonicalize`（保数字形态 JSON 解析 + Go `encoding/json`
+  编码口径：键字节序 / 转义 / 缩进）、`internal/capi`、`internal/freshness`。
+- **闸与工具**：`canonicalize` CLI、`source_hygiene`、`editorconfig_check`、
+  `testcount`、`precompile_bytecode_libc`、`host_route_coverage`。
+- **生成器**：`gen_stubs` / `gen_protocol_fields` / `gen_host_route` /
+  `gen_libc_data`（`-check` 双跑逐字节；同时修正「带文件参数 moon fmt 会改写
+  产物」的存量副作用——TS 版比对后无条件还原，`-check` 真正零副作用）。
+- **验证**：canonicalize 170 例随机/边界 JSON 与 Go CLI stdout+退出码零差异；
+  各驱动 Go/TS 双跑输出逐字一致；node:test **92 例**；Go 版全部保留
+  （双轨期：CI 引用未切换、未删 Go）。
 ### chore(scripts): #273 次批——gen_icon_preview py→.mts，scripts 面 .py 清零（2026-10-23）
 
 - `gen_icon_preview/main.py` → `main.mts`：图鉴排版（76 图标 / 5 组 / 54527 B）

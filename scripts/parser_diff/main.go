@@ -308,10 +308,13 @@ func goldenRun(files []string, mode string, corpusDir string) int {
 		fail("清单缺模式节 %s（先 --freeze）", mode)
 	}
 	goldenSelftestHit(sec.RespHashes)
+	// 2026-10-23（审阅 P3）：不再比对 source sha——注释/空白/路径改动会要求
+	// 无意义重冻；行为回归由下方 resp_hash 指纹承担（语义变化必红）。source
+	// map 只留作冻结留档；新增/删除样本仍须重冻（文件集变化）。
 	for _, f := range files {
 		name := filepath.Base(f)
-		if sha := parserSrcSHA(f); sec.Sources[name] != sha {
-			fail("样本 %s 与 freeze 时不一致（%s ≠ %s）——生成样本由代码决定，代码变了先重跑 --freeze", name, sha, sec.Sources[name])
+		if _, ok := sec.Sources[name]; !ok {
+			fail("新样本 %s 不在清单（先 --freeze）", name)
 		}
 	}
 	moonDir := moonDump(corpusDir)

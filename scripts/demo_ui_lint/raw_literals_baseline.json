@@ -9,8 +9,20 @@
     {
       "file": "demo/src/app.css",
       "kind": "color",
-      "literal": "rgba()",
-      "count": 3
+      "literal": "rgba(0, 0, 0, .12)",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "color",
+      "literal": "rgba(142, 82, 92, .35)",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "color",
+      "literal": "rgba(47, 81, 107, .35)",
+      "count": 1
     },
     {
       "file": "demo/src/app.css",

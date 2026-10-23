@@ -44,8 +44,10 @@ type rawBaselineFile struct {
 }
 
 var (
-	reRawHex      = regexp.MustCompile(`#[0-9a-fA-F]{3,8}\b`)
-	reRawFn       = regexp.MustCompile(`\b(rgba?|hsla?)\(`)
+	reRawHex = regexp.MustCompile(`#[0-9a-fA-F]{3,8}\b`)
+	// 捕获完整函数调用，不只函数名：旧形态只记 `rgba()`，改分量/alpha 不红
+	// （2026-10-23 审阅 P3）。函数参数允许跨行，落基线前压空白。
+	reRawFn       = regexp.MustCompile(`(?i)\b((?:rgba?|hsla?)\s*\([^)]*\))`)
 	reRawFontSize = regexp.MustCompile(`font-size\s*:\s*([^;{}]*)`)
 	reRawPx       = regexp.MustCompile(`\d+(?:\.\d+)?px`)
 	reStyleBlock  = regexp.MustCompile(`(?s)<style[^>]*>(.*?)</style>`)
@@ -78,6 +80,22 @@ func aggregateRaw(in []rawEntry) []rawEntry {
 		return out[i].Literal < out[j].Literal
 	})
 	return out
+}
+
+// relForBaseline 把扫描到的文件路径归一为基线口径（相对仓库根，posix）。
+// 旧实现直接 ToSlash(p)：`-demo <绝对路径>` 会把 File 写成绝对路径，与
+// 基线 `demo/src/...` 全不匹配，实测 56 条假红（2026-10-23 审阅 P3）。
+func relForBaseline(demoDir, p string) string {
+	absDemo, err := filepath.Abs(demoDir)
+	if err != nil {
+		return filepath.ToSlash(p)
+	}
+	root := filepath.Dir(absDemo) // demoDir 的父目录 = 仓库根
+	rel, err := filepath.Rel(root, p)
+	if err != nil {
+		return filepath.ToSlash(p)
+	}
+	return filepath.ToSlash(rel)
 }
 
 // collectRawLiterals 扫 demo/src 的 CSS 面（.css + .svelte <style>），跳过生成物。
@@ -118,12 +136,13 @@ func collectRawLiterals(demoDir string) ([]rawEntry, error) {
 			text = sb.String()
 		}
 		text = reCSSComment.ReplaceAllString(text, "")
-		rel := filepath.ToSlash(p)
+		rel := relForBaseline(demoDir, p)
 		for _, m := range reRawHex.FindAllString(text, -1) {
 			out = append(out, rawEntry{rel, "color", m, 1})
 		}
 		for _, m := range reRawFn.FindAllStringSubmatch(text, -1) {
-			out = append(out, rawEntry{rel, "color", m[1] + "()", 1})
+			lit := strings.Join(strings.Fields(m[1]), " ")
+			out = append(out, rawEntry{rel, "color", lit, 1})
 		}
 		for _, m := range reRawFontSize.FindAllStringSubmatch(text, -1) {
 			if v := reRawPx.FindString(m[1]); v != "" {
@@ -172,10 +191,11 @@ func checkRaw(actual, baseline []rawEntry) []issue {
 	return out
 }
 
-// selftestRaw：四路内存证红（同集绿 / 新色红 / 新字号红 / 僵尸红）+ 增量红。
+// selftestRaw：同集绿 / 新色红 / 新字号红 / 僵尸红 / 用量增加 / 色值分量变化。
 func selftestRaw() error {
 	base := []rawEntry{
 		{"demo/src/a.css", "color", "#fff", 1},
+		{"demo/src/a.css", "color", "rgba(0, 0, 0, .5)", 1},
 		{"demo/src/a.css", "font-px", "12px", 2},
 	}
 	if got := checkRaw(base, base); len(got) != 0 {
@@ -189,7 +209,13 @@ func selftestRaw() error {
 		{"新增字号", append(append([]rawEntry{}, base...), rawEntry{"demo/src/b.svelte", "font-px", "9.5px", 1})},
 		{"用量增加", []rawEntry{
 			{"demo/src/a.css", "color", "#fff", 1},
+			{"demo/src/a.css", "color", "rgba(0, 0, 0, .5)", 1},
 			{"demo/src/a.css", "font-px", "12px", 3},
+		}},
+		{"色值分量变化", []rawEntry{
+			{"demo/src/a.css", "color", "#fff", 1},
+			{"demo/src/a.css", "color", "rgba(0, 0, 0, .6)", 1},
+			{"demo/src/a.css", "font-px", "12px", 2},
 		}},
 		{"僵尸基线", []rawEntry{{"demo/src/a.css", "color", "#fff", 1}}},
 	}
@@ -197,6 +223,15 @@ func selftestRaw() error {
 		if got := checkRaw(c.act, base); len(got) == 0 {
 			return fmt.Errorf("%s 未被判红——棘轮失效", c.name)
 		}
+	}
+	// 绝对路径归一：-demo <绝对路径> 不得把 File 写成绝对路径（审阅 P3）
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(wd, "demo", "src", "a.css")
+	if got, want := relForBaseline(filepath.Join(wd, "demo"), p), "demo/src/a.css"; got != want {
+		return fmt.Errorf("绝对路径归一失效：%q != %q", got, want)
 	}
 	return nil
 }

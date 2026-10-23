@@ -762,7 +762,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "demo_ui_lint: -selftest toggle 首参未定义类未被抽到——首参特判退化\n")
 			os.Exit(1)
 		}
-		fmt.Printf("demo_ui_lint: -selftest 五类证红 OK + 泛型锚 OK + 裸值棘轮五路 OK（class=%d var=%d id=%d zombie=%d mono=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
+		fmt.Printf("demo_ui_lint: -selftest 五类证红 OK + 泛型锚 OK + 裸值棘轮六路 OK（class=%d var=%d id=%d zombie=%d mono=%d）\n", kinds["class"], kinds["var"], kinds["id"], kinds["zombie"], kinds["mono"])
 		return
 	}
 

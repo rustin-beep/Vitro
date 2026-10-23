@@ -114,9 +114,10 @@ jobs:
         run: cd moonbit && moon test --target native
 
       # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
-      # 防遮蔽（2026-10-23）：单测/前置步红后仍继续构建并上传 artifact——
-      # 否则 build job 一红，下游 diff/native/wasm/demo 全 skipped，红被前置
-      # 红吞掉（master 多轮「修一红露一红」的放大源）。能跑的闸必须都跑。
+      # 防遮蔽（job 内，2026-10-23）：单测/前置步红后仍继续构建并上传 artifact，
+      # 但下游 job 仍 `needs: build-and-unit`，build 整体红时依旧 skipped；
+      # 这层只保证「本 job 内能跑的步都跑」。job 间遮蔽由末尾 ci-summary
+      # 显式判 skipped/failure 为红兜底（不把 skipped 当绿）。
       - name: Full native release build gate (declared targets must build)
         if: always()
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
@@ -1303,6 +1304,40 @@ jobs:
         run: |
           cd demo && npx tsc -p tests/tsconfig.json && cd ..
           node --test demo/tests/pure.test.mts
+        shell: bash
+
+  # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────
+  # 只做汇总、不重跑闸：所有上游 job 必须 success；任一 failure/skipped 即红。
+  # 这样 build 红导致下游 skipped 时不会显示成「其余全绿可合并」。
+  ci-summary:
+    name: CI summary (all gates must be success)
+    if: always()
+    needs: [build-and-unit, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo]
+    runs-on: ubuntu-latest
+    steps:
+      - name: summarize gate results
+        env:
+          BUILD: ${{ needs.build-and-unit.result }}
+          DIFF: ${{ needs.gates-diff.result }}
+          FUZZ: ${{ needs.corpus-fuzz.result }}
+          NATIVE: ${{ needs.gates-native.result }}
+          WASM: ${{ needs.gates-wasm.result }}
+          STATIC: ${{ needs.static-gates.result }}
+          HYGIENE: ${{ needs.hygiene.result }}
+          DEMO: ${{ needs.demo.result }}
+        run: |
+          set +e
+          bad=0
+          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"; do
+            name="${pair%%:*}"; result="${pair#*:}"
+            echo "$name=$result"
+            if [ "$result" != "success" ]; then bad=1; fi
+          done
+          if [ "$bad" != "0" ]; then
+            echo "::error::CI 汇总红：有 job failure/skipped——skipped 不算绿（防遮蔽）"
+            exit 1
+          fi
+          echo "CI 汇总：8 个上游 job 全部 success"
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

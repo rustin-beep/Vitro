@@ -23,15 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   typeck/codegen 四门 `--freeze-mb` 更新 source hash + 指纹（仅
   `predefined_macro.c` 变化）；`vm_diff` baseline native/wasm 各
   **488 SAME / 0 DIFF**，四门 golden 各 **PASS**，`clang_direct` 单例 SAME。
+- **冻结降噪**（审阅 P3 同族）：parser/typeck/codegen 与 vm_diff 不再把
+  `source sha` 判红（注释/空白改动不再要求重冻；语义变化由输出指纹抓）；
+  protocol_frames 对 catalog 的 title/explanation/common_causes 加展示字段
+  mask（W3064 改标题不再重冻 47 帧）；裸值棘轮记录完整 `rgba(...)` 参数并
+  修 `-demo <绝对路径>` 的 56 条假红；协议 selftest、raw 六路 selftest 同步。
 - **CI 防遮蔽**：build job 的构建/上传步与 demo job 的 tsc 之后全部闸步加
   `if: always()`——单测/E-08 等前置红不再吞掉后续构建与 smoke/E2E/pure；
-  矩阵 `fail-fast: false` 复核保留（六路 diff / 四路 wasm / 三路 static）。
+  新增 `ci-summary`：所有上游 job 必须 success，failure/skipped 一律红
+  （skipped 不算绿）。矩阵 `fail-fast: false` 保留。
   已知边界：下游 job 仍依赖 build-products artifact，build 整体失败时
-  artifact 不存在（无产物可测），只能保证「能跑的闸都跑」并显式红；
-  要彻底解耦需 demo 自建 wasm/langpack 或拆独立 artifact job（后续批）。
-- 效果：本轮 PR 红只剩 `wasm-arm gate (vm_diff)`（已修）与上游
-  `typeck_diff`（master c3df8005 同红，已随 f4a0add9/27ad50df 合入），
-  native protocol / serve_channel 因 catalog 帧变化重刷 baseline 后转绿。
+  artifact 不存在（无产物可测）；要彻底解耦需拆独立 artifact job（后续批）。
+- **当前实证**：手动 dispatch `39906423527`（head `ab263a6b`）全绿；同 head
+  的 PR run `39906203112` 仅 E2E flake 红。四门 digest 漏刷已由
+  `ab263a6b` 补齐；`typeck_diff` 为上游 master 同红，f4a0add9/27ad50df
+  合入后本轮已转绿（手动 dispatch 验证）。
 
 ### fix(engine+ci): 用户审阅批 P1×5/P2×6/P3×5 处置——假阳性矩阵对齐 + 嵌套 designated 三层 + &f 全局 + 成员 sizeof 延迟折叠（2026-10-23）
 

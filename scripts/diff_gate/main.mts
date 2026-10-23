@@ -17,6 +17,7 @@ import path from "node:path";
 import { runGate } from "../internal/diffgate.mts";
 import { makeFail } from "../internal/genio.mts";
 import { lexerTarget } from "./targets/lexer.mts";
+import { codegenTarget } from "./targets/codegen.mts";
 import { parserTarget } from "./targets/parser.mts";
 import { typeckTarget } from "./targets/typeck.mts";
 import { vmTarget } from "./targets/vm.mts";
@@ -32,6 +33,7 @@ const TARGETS: Record<string, DiffTarget> = {
   typeck: typeckTarget,
   parser: parserTarget,
   vm: vmTarget,
+  codegen: codegenTarget,
 };
 
 const NAMES = Object.keys(TARGETS);

@@ -61,22 +61,43 @@ export interface GoldenStore {
   missingHint: string;
 }
 
+/**
+ * 合成语料模式（parser 的 `--pathological` / `--legal-deep` / `--threshold`）：
+ * 收 flag 后**不吃 corpus 位置参数**，自己往临时目录写语料再当 corpus 跑同一套
+ * golden 比对——digest 里对应独立节（section）。
+ */
+export interface SyntheticMode {
+  /** digest 节名（如 "pathological"） */
+  section: string;
+  /** 往 tmpDir 写入语料文件 */
+  prepare(tmpDir: string): void;
+}
+
 export interface DiffTarget {
   /** lexer / parser / typeck / codegen / vm */
   name: string;
   /** 判红出口（**退出码按各驱动历史行为**：lexer=1，typeck/parser=2）——与入口用法错分流 */
   fail: Fail;
-  /** golden 存取工厂：传 root 以便测试注入临时仓库根 */
-  golden(root: string): GoldenStore;
+  /** golden 存取工厂：传 root 以便测试注入临时仓库根（override 型可不给） */
+  golden?(root: string): GoldenStore;
   /**
    * 跑 mb 侧 dump，返回 case 名 → sha256 前 16 位（键 = 单 case 标识，不含语料段）。
-   * 「怎么跑、产物落在哪、怎么归一」是各驱动唯一的真差异面。
+   * 「怎么跑、产物落在哪、怎么归一」是各驱动唯一的真差异面（override 型可不给）。
    */
-  runCases(ctx: GateContext): Map<string, string>;
+  runCases?(ctx: GateContext): Map<string, string>;
   /** 语料文件后缀集（默认 .c/.h/.in）；typeck 只吃 .c（listCFiles 口径） */
   corpusExts?: string[];
-  /** 有意分叉例：golden 比对跳过并单列说明（typeck 的 knownForkFiles 形态） */
-  knownForks?: Record<string, string>;
+  /** 有意分叉例：golden 比对跳过并单列说明。可给表，也可给按（语料节, case）判定的函数 */
+  knownForks?:
+    | Record<string, string>
+    | ((corpusName: string, caseName: string) => string | undefined);
+  /**
+   * 语料源指纹的判定档：
+   * - `strict`（默认）：sha8 全等，注释/空白改动即要求重冻
+   * - `presence`：只查「新样本不在清单」（parser 的 2026-10-23 口径——行为回归由
+   *   resp_hash 承担，source map 只作冻结留档）
+   */
+  sourcesPolicy?: "strict" | "presence";
   /**
    * 额外 CLI 布尔 flag（如 codegen 的 `--baseline`）。骨架按白名单识别并透传，
    * 未列出的 `--xxx` 仍按未知参数 fail loud。
@@ -88,6 +109,21 @@ export interface DiffTarget {
    * 需要产物中间态时由 target 自持（单进程单次运行，闭包缓存即可）。
    */
   extraChecks?(ctx: GateContext): string[];
+  /** 合成语料模式：flag → 模式（命中时不接受 corpus 位置参数） */
+  syntheticModes?: Record<string, SyntheticMode>;
+  /**
+   * **完全接管**（逃生舱）：给了就在 runGate 最前面调用它，跳过默认的
+   * 语料解析 / golden 比对 / freeze 流程，argv 原样交给 target，返回值即退出码。
+   *
+   * 用于**形态根本不同**的驱动——vm_diff（三通道比对 + 预编译 exe + 新鲜度门禁
+   * + known/skip 双清单 + 多 backend + 内存差异区间机判）与 codegen_diff
+   * （cases 是判定记录表 + dump 段需 RawMessage 保真 u64 + 四类非 case 级校验）。
+   * 这两个只复用本模块的工具函数（语料归一 / sha / digest 序列化），不复用流程。
+   *
+   * 判据同 genio：配置面不得超过被替换的代码——当 3 个以上钩子都要为目标驱动
+   * 定制时，说明它不在同一抽象层，应当整体接管。
+   */
+  override?: (argv: string[], root: string) => number;
 }
 
 export const DEFAULT_CORPUS_EXT = [".c", ".h", ".in"];
@@ -163,6 +199,7 @@ export function parseGateArgs(
   usage: string,
   fail: Fail,
   extraFlags: string[] = [],
+  requireCorpus = true,
 ): { corpus: string; modes: Modes } {
   const modes: Modes = { golden: false, freezeMB: false, selftest: false, extra: new Set() };
   let corpus = "";
@@ -179,7 +216,10 @@ export function parseGateArgs(
       fail(`未知/重复参数 ${JSON.stringify(a)}`);
     } else corpus = a;
   }
-  if (corpus === "") fail(usage);
+  if (requireCorpus && corpus === "") fail(usage);
+  if (!requireCorpus && corpus !== "") {
+    fail(`本模式不接受语料位置参数（收到 ${JSON.stringify(corpus)}）`);
+  }
   if (modes.golden && modes.freezeMB) {
     fail("--golden 与 --freeze-mb 互斥（比对 vs 入账）");
   }
@@ -189,13 +229,52 @@ export function parseGateArgs(
 /** 跑一个 target（三模式调度 + 临时目录生命周期）。 */
 export function runGate(target: DiffTarget, argv: string[], usageFail: Fail): void {
   const root = projectRoot();
+  // 逃生舱：形态不同的驱动整体接管（vm / codegen）
+  if (target.override !== undefined) {
+    const rc = target.override(argv, root);
+    if (rc !== 0) process.exit(rc);
+    return;
+  }
+  if (target.golden === undefined || target.runCases === undefined) {
+    return usageFail(`内部错误：${target.name} 既未提供 override，也未提供 golden/runCases`);
+  }
   const store = target.golden(root);
-  const usage = `用法: node scripts/diff_gate/main.mts ${target.name} <corpus_dir> [--golden|--freeze-mb|--selftest${(target.extraFlags ?? []).map((f) => "|" + f).join("")}]`;
-  const { corpus: corpusArg, modes } = parseGateArgs(argv, usage, usageFail, target.extraFlags ?? []);
+  const runCases = target.runCases;
+  const extraFlags = target.extraFlags ?? [];
+  const synModes = target.syntheticModes ?? {};
+  const synFlag = Object.keys(synModes).find((k) => argv.includes(k));
+  const usage =
+    synFlag !== undefined
+      ? `用法: node scripts/diff_gate/main.mts ${target.name} ${synFlag} [--golden|--freeze-mb|--selftest]`
+      : `用法: node scripts/diff_gate/main.mts ${target.name} <corpus_dir> [--golden|--freeze-mb|--selftest${extraFlags.map((f) => "|" + f).join("")}]`;
 
-  const corpus = path.resolve(corpusArg);
-  if (!fs.existsSync(corpus)) usageFail(`语料目录不存在: ${corpusArg}`);
-  const corpusName = path.basename(corpus);
+  let corpus: string;
+  let corpusName: string;
+  let modes: Modes;
+  let synthTmp: string | null = null;
+
+  if (synFlag !== undefined) {
+    // 合成语料模式：不吃位置参数，自己造语料到临时目录
+    const syn = synModes[synFlag];
+    if (syn === undefined) usageFail(`未知合成模式 ${synFlag}`);
+    modes = parseGateArgs(
+      argv.filter((a) => a !== synFlag),
+      usage,
+      usageFail,
+      extraFlags,
+      false,
+    ).modes;
+    synthTmp = fs.mkdtempSync(path.join(os.tmpdir(), `vitro_${target.name}_syn_`));
+    syn.prepare(synthTmp);
+    corpus = synthTmp;
+    corpusName = syn.section;
+  } else {
+    const parsed = parseGateArgs(argv, usage, usageFail, extraFlags, true);
+    modes = parsed.modes;
+    corpus = path.resolve(parsed.corpus);
+    if (!fs.existsSync(corpus)) usageFail(`语料目录不存在: ${parsed.corpus}`);
+    corpusName = path.basename(corpus);
+  }
 
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), `vitro_${target.name}_`));
   const normBase = fs.mkdtempSync(path.join(os.tmpdir(), `vitro_${target.name}_norm_`));
@@ -205,7 +284,7 @@ export function runGate(target: DiffTarget, argv: string[], usageFail: Fail): vo
     const ctx: GateContext = { root, corpus, corpusName, normDir, workDir, exts };
 
     if (modes.freezeMB) {
-      freezeMB(target, ctx, store);
+      freezeMB(target, ctx, store, runCases);
       return;
     }
     // 固定走冻结基线：oracle 面已随工序④永久退役（原 Go 版的「裁判切换」是
@@ -213,19 +292,32 @@ export function runGate(target: DiffTarget, argv: string[], usageFail: Fail): vo
     process.stderr.write(
       `${target.name}: [裁判切换] oracle 面已随工序④退役——本判定固定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）\n`,
     );
-    const rc = compareGolden(target, ctx, store, modes.selftest);
+    const rc = compareGolden(target, ctx, store, modes.selftest, runCases);
     if (rc !== 0) process.exit(rc);
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
     fs.rmSync(normBase, { recursive: true, force: true });
+    if (synthTmp !== null) fs.rmSync(synthTmp, { recursive: true, force: true });
   }
 }
 
-/** 语料指纹闸：文件集与 sha 全等（漂移即红）。 */
-function checkSources(sec: GoldenSection, ctx: GateContext, fail: Fail, hint: string): void {
+/** 语料指纹闸：strict = 文件集与 sha 全等；presence = 只查新样本已登记。 */
+function checkSources(
+  sec: GoldenSection,
+  ctx: GateContext,
+  fail: Fail,
+  hint: string,
+  policy: "strict" | "presence",
+): void {
   const cur = corpusSHAs(ctx.corpus, ctx.exts);
   const curNames = Object.keys(cur);
   const srcNames = Object.keys(sec.sources);
+  if (policy === "presence") {
+    for (const n of curNames) {
+      if (sec.sources[n] === undefined) fail(`新样本 ${n} 不在清单（${hint}）`);
+    }
+    return;
+  }
   if (curNames.length !== srcNames.length) {
     fail(
       `语料 ${ctx.corpusName} 文件数已变（现 ${curNames.length} ≠ 落盘 ${srcNames.length}）——${hint}`,
@@ -243,6 +335,7 @@ function compareGolden(
   ctx: GateContext,
   store: GoldenStore,
   selftest: boolean,
+  runCases: (ctx: GateContext) => Map<string, string>,
 ): number {
   const fail = target.fail;
   const sec = store.load(ctx.corpusName);
@@ -258,16 +351,19 @@ function compareGolden(
       process.stdout.write(`[selftest][golden] 已篡改清单条目: ${k} ——随后比对必须 FAIL\n`);
     }
   }
-  checkSources(sec, ctx, fail, store.missingHint);
+  checkSources(sec, ctx, fail, store.missingHint, target.sourcesPolicy ?? "strict");
 
-  const got = target.runCases(ctx);
+  const got = runCases(ctx);
   let failures = 0;
   let matched = 0;
   let forks = 0;
   const seen = new Set<string>();
   for (const [base, want] of Object.entries(sec.cases)) {
     seen.add(base);
-    const forkReason = target.knownForks?.[base];
+    const forkReason =
+      typeof target.knownForks === "function"
+        ? target.knownForks(ctx.corpusName, base)
+        : target.knownForks?.[base];
     if (forkReason !== undefined) {
       process.stdout.write(`FORK(known-golden-skip) ${base}——${forkReason}\n`);
       forks++;
@@ -312,7 +408,12 @@ function compareGolden(
 }
 
 /** --freeze-mb：补登新 case + 存量重算（--refresh 语义已内置）。 */
-function freezeMB(target: DiffTarget, ctx: GateContext, store: GoldenStore): void {
+function freezeMB(
+  target: DiffTarget,
+  ctx: GateContext,
+  store: GoldenStore,
+  runCases: (ctx: GateContext) => Map<string, string>,
+): void {
   const fail = target.fail;
   const sec = store.load(ctx.corpusName);
   if (sec === null) {
@@ -337,7 +438,7 @@ function freezeMB(target: DiffTarget, ctx: GateContext, store: GoldenStore): voi
     );
   }
 
-  const got = target.runCases(ctx);
+  const got = runCases(ctx);
   let added = 0;
   let refreshed = 0;
   for (const [base, sha] of got) {

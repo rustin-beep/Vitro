@@ -17,6 +17,7 @@ import path from "node:path";
 import { runGate } from "../internal/diffgate.mts";
 import { makeFail } from "../internal/genio.mts";
 import { lexerTarget } from "./targets/lexer.mts";
+import { parserTarget } from "./targets/parser.mts";
 import { typeckTarget } from "./targets/typeck.mts";
 import type { DiffTarget } from "../internal/diffgate.mts";
 
@@ -28,6 +29,7 @@ function usageFail(msg: string): never {
 const TARGETS: Record<string, DiffTarget> = {
   lexer: lexerTarget,
   typeck: typeckTarget,
+  parser: parserTarget,
 };
 
 const NAMES = Object.keys(TARGETS);

@@ -20,11 +20,17 @@ import {
   type DiffTarget,
   type Fail,
   type GateContext,
-  type GoldenSection,
   type GoldenStore,
 } from "../../internal/diffgate.mts";
 import { makeFail } from "../../internal/genio.mts";
-import { sortBytes } from "../../internal/gofmt.mts";
+import {
+  loadModesDigest,
+  makeModesStore,
+  saveModesDigest,
+  serializeModesDigest,
+  type ModesDigest,
+  type ModesSec,
+} from "../../internal/modesdigest.mts";
 
 /** 判红出口：typeck 历史口径是 exit 2（与 lexer 的 1 不同，保持原样）。 */
 export function fatal(msg: string): never {
@@ -42,90 +48,23 @@ const KNOWN_FORKS: Record<string, string> = {
   "kr_5_11.c": "局部函数原型双层→C 单层（F3-v2）——typeck 消费面放大",
 };
 
-export interface TypeckSec {
-  sources: Record<string, string>;
-  resp_hashes: Record<string, string>;
-}
-export interface TypeckDigest {
-  version: number;
-  note: string;
-  modes: Record<string, TypeckSec>;
-}
+export type TypeckSec = ModesSec;
+export type TypeckDigest = ModesDigest;
 
 export function loadTypeckDigest(root: string, fail: Fail = fatal): TypeckDigest {
-  const p = path.join(root, GOLDEN_REL);
-  const empty: TypeckDigest = { version: 1, note: NOTE, modes: {} };
-  if (!fs.existsSync(p)) return empty;
-  let d: TypeckDigest;
-  try {
-    d = JSON.parse(fs.readFileSync(p, "utf8")) as TypeckDigest;
-  } catch {
-    return fail(`digest 清单坏或版本不识 ${GOLDEN_REL}`);
-  }
-  if (d.version !== 1) fail(`digest 清单坏或版本不识 ${GOLDEN_REL}`);
-  return { version: 1, note: d.note ?? NOTE, modes: d.modes ?? {} };
+  return loadModesDigest(root, GOLDEN_REL, NOTE, fail);
 }
 
-/**
- * 复刻 Go `json.MarshalIndent` 的两层键序语义：
- *   顶层 = struct 字段声明序（version → note → modes）；
- *   modes 节 = map 键字节序；节内 = struct 字段序（sources → resp_hashes）；
- *   sec 内的 sources / resp_hashes = map 键字节序。
- */
 export function serializeTypeckDigest(d: TypeckDigest): string {
-  const q = (s: string): string => JSON.stringify(s);
-  const mapBody = (m: Record<string, string>, indent: string): string => {
-    const keys = sortBytes(Object.keys(m));
-    if (keys.length === 0) return "{}";
-    return (
-      "{\n" + keys.map((k) => `${indent}  ${q(k)}: ${q(m[k] ?? "")}`).join(",\n") + "\n" + indent + "}"
-    );
-  };
-  const modeKeys = sortBytes(Object.keys(d.modes));
-  const modesBody =
-    modeKeys.length === 0
-      ? "{}"
-      : "{\n" +
-        modeKeys
-          .map((mk) => {
-            const sec = d.modes[mk] ?? { sources: {}, resp_hashes: {} };
-            return (
-              `    ${q(mk)}: {\n` +
-              `      "sources": ${mapBody(sec.sources, "      ")},\n` +
-              `      "resp_hashes": ${mapBody(sec.resp_hashes, "      ")}\n` +
-              "    }"
-            );
-          })
-          .join(",\n") +
-        "\n  }";
-  return `{\n  "version": ${d.version},\n  "note": ${q(d.note)},\n  "modes": ${modesBody}\n}\n`;
+  return serializeModesDigest(d);
 }
 
 export function saveTypeckDigest(root: string, d: TypeckDigest, fail: Fail = fatal): void {
-  const p = path.join(root, GOLDEN_REL);
-  try {
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, serializeTypeckDigest(d), { mode: 0o644 });
-  } catch (e) {
-    fail(`写 digest 清单失败 ${GOLDEN_REL}: ${(e as Error).message}`);
-  }
+  saveModesDigest(root, GOLDEN_REL, d, fail);
 }
 
 function makeTypeckGolden(root: string): GoldenStore {
-  return {
-    missingHint: "先 --freeze",
-    load(corpusName: string): GoldenSection | null {
-      const d = loadTypeckDigest(root);
-      const sec = d.modes[MODE_PREFIX + corpusName];
-      if (sec === undefined) return null;
-      return { sources: sec.sources ?? {}, cases: sec.resp_hashes ?? {} };
-    },
-    save(corpusName: string, s: GoldenSection): void {
-      const d = loadTypeckDigest(root);
-      d.modes[MODE_PREFIX + corpusName] = { sources: s.sources, resp_hashes: s.cases };
-      saveTypeckDigest(root, d);
-    },
-  };
+  return makeModesStore(root, GOLDEN_REL, NOTE, "先 --freeze", (n) => MODE_PREFIX + n, fatal);
 }
 
 export { makeTypeckGolden };

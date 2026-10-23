@@ -12,7 +12,7 @@
       "divergence": 0,
       "rescued": 1
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。 仓内语料批金样本（#25 义务链第⑤步）：只存诊断码/数量/运行判定签名,零源码文本。",
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×2 为真子集边界(未收录标准头,断言时豁免);旧勘探方法限制(E1021×104,serve 无 base_dir)已随 #253 filename 补全修复消解。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "total": 41,
     "source_fork": "https://github.com/RunThem/chibicc-repo",

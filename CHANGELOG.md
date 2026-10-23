@@ -124,6 +124,20 @@ catalog/gen_diag -check 全绿。
   cmd/vitro 否则陈旧产物下「单侧编译失败」假红（本次 MF-UNIT 直拍
   首跑实锤）。
 
+### fix(host+vm+cli+infra): PR #275 审阅批——P1×4 + P2×6 全处置（2026-10-23）
+
+- **P1-1 数字重采**：PR 正文/本文件全部数字按 head 实测重写（裸 875 / native 1027 / vm_diff 732 / clang_direct 846·16·0 / catalog 108 / gold E1021=2 / 484 条目口径分解）——初稿的「验证矩阵全绿」系 rebase 前手挑子集，不成立（审阅定性 E2/D1）。
+- **P1-2 testcount 连坐**：README.md/README.mbt.md 测试数 866→875、native-only 152、全量 1027（875+152 自洽）——新锚计数全入注。
+- **P1-3 demo E-08**：bubble 课程改动的两冻结快照重生成（e08-update + 人工审定 diff，17/17）。
+- **P1-4 diff_ledger**：DIFF-VFS-PRESET-01 台账条目随 known 双删整条删除（悬空锚；预置语义的文档职责已在矩阵 §2.1/#95）——36 条双向对账绿。
+- **P2-1 %h 族写宽**：parse_scanf_specs 长度修饰分档（l=1/ll=2/h=3/hh=4，旧 h·hh 与 l 共档 1——%hn/%hhn 4 字节写穿相邻 canary，报告 nwidth3.c 实锤 b=de000000）；scanf_store_by_lenmod 单源宽度写（ll 8B/无·l 4B〔LLP64〕/h 2B 两次 i8 小端组合/ hh 1B）接管 d/u/i/x/o/n 六臂 × 两循环；%hd/%hu/%ho/%hx pre-existing 同根因一并修族。锚：scanf_h_family_widths_canary（三 u32 canary 布局）+ 端到端 gcc 逐字一致。%zn/%jn/%tn 登记不承诺（#269 评论）。
+- **P2-2 a/a+ 语义**：VfsDesc 增 is_append 派生位（mode 构造期导出，不入快照——restore 按 mode 重导出）；fwrite 与 vfs_append_bytes（fputs/fputc 通道）写前强制游标末尾（C11 §7.21.5.3——fseek 只移读位）；a+ 读起点文件头（旧共用「初始游标=末尾」）。锚：vfs_append_mode_write_always_end_and_aplus_reads_from_start 三形态 + 端到端 gcc 逐行一致。
+- **P2-3 serve 长会话 clock 起点**：VitroVM::reset 在 clock_source 存在时重采样 clock_start_millis（serve 进程只注册一次墙钟、session.create 走 reset——旧形态第二会话拿到「进程启动以来」；CLI 路径每次重注入天然正确）。锚：clock_start_resampled_on_reset。
+- **P2-4 语义标签边界四形态**：has_call_paren 的 ( 前跳空白并放行 ) 前置（`defLine ()`/`(fp)(1);`）；definition_name_of_call 左侧放宽指针 *（`static struct S *f(void) {` 曾误落「函数调用」）。锚：semantic_label_review_p24_edge_forms（形态 1 `char make(void) {` 本地实测本已过，与报告记录有出入——已核）。
+- **P2-5 realcode -check 真三向对账**：补 units（根层 .c ∪ 子目录+"/"）↔ gold files 键集双向、corpora.total ↔ 实际数、license_file 存在——「加未登记文件/改 total 仍绿」的审阅自证双实验复跑证红后还原复绿。
+- **P2-6 catalog 卡数 108**：手册三处（105/106 旧文 + 本批 106）统一 108 并加「随码表增长、装前以 error_catalog 帧实数为准」活口径。
+- **P3 登记批**：词汇表 func_entry 移至 c 域末尾（「追加到域末」契约对齐，四锚连坐）；classify「进入 catch」碰撞登记（C 函数名恰为 catch 的双域同形不可分，CS 批 domain 化时消除）；--realtime 的 wasm 臂恒 0 入 CLI help；gap/file_fread 去 UB 后的 UB 面去向登记；gold_chibicc note 的 E1021×104 过时叙事改写；README.corpus 基座句更新 + 28/28 与 10/10 两数字两口径注（错误数全量一致 vs 绿语料错误集逐字节一致）。
+
 ### fix(ci): 5d3d4dd7 推后三红——fuzz 槽位隔离根治 + Defender 重试 + UB 漂移 digests 集（2026-10-22）
 
 - **fuzz 桶恶化 6（file_fopen/file_fread × 3 算子）根治**：变异体程序
@@ -263,7 +277,7 @@ catalog/gen_diag -check 全绿。
 - **[#269] `sscanf`/`scanf` 补 `%n` 转换符**（C23 §7.23.6.2p12）：写回到该点已读字符数、不消耗输入、不计返回值；`%lln` 8 字节（len_mod≥2 与 d/u/i 臂同口径）。旧形态落「未知转换符」静默不写——`pos += consumed` 循环推进形态全死循环（LLM 语料 gen4/q36_27b 666KB 输出实锤）。锚：`sscanf_n_writes_consumed_count`（初值 -1 哨兵 + 宽度截断 + %ln/%lln 双口径）+ `scanf_n_stream_consumed`（前导空白计入）；js 臂端到端与 gcc 逐字一致。
 - **[#211] `time()`/`clock()` 墙钟三态**：CLI `run` 新 `--realtime` 旗标（config.set 的 deterministic 置 false——默认仍恒 0 保判分 digest）；`clock()` 改**自会话起点差值微秒**（vm `set_clock_source` 注册时采样 `clock_start_millis`——旧「绝对墙钟微秒」真开墙钟会得自 Unix 纪元的天文数字，C11 §7.27.2.1 是"自程序起算"；回拨钳 0）；wasm 臂恒 0 分臂不变。矩阵 §2.6 实测口径改写。锚：`time_clock_host_wall_source_wiring` 翻转（可变假钟差值语义）+ `parse_run_args_realtime`；双臂实测 `--realtime` time 与 gcc 同值。
 - **[#228] `fopen` 读写族**：`r+`/`rb+`/`r+b`、`w+`/`wb+`/`w+b`、`a+`/`ab+`/`a+b` 十二形态（C11 §7.21.5.3，`b`/`+` 序不敏感）——`VfsMode` 增 ReadWrite/WriteRead/AppendRead 三变体（快照码位 3~5 连坐），共享基础族建文件/清空/游标语义；写放行由消费点「仅纯 Read 拒写」天然覆盖。旧形态 `+` 族落 None **静默返 NULL 无诊断**。锚：`vfs_fopen_plus_modes`（覆盖写不清空/w+ 清空/a+ 追加/未知模式仍拒）；js 端到端 r+/w+/a+ 与 gcc 逐字一致。
-- moon test 1022/1022；moonbit_surface 六条新出口边登记（三壳 print_usage/usage_err）。
+- moon test 终态：裸 875/875、native 1027/1027（1027=875+152 native-only 逐包自洽）；moonbit_surface 六条新出口边登记（三壳 print_usage/usage_err）。
 
 ### fix(gateway+cli): #258 output.delta 未知 stream 整帧拒绝 + #215 用法错迁 stderr + #227 rc 判据成文（2026-10-22）
 
@@ -275,7 +289,7 @@ catalog/gen_diag -check 全绿。
 ### fix(infra): #253/#254 勘探工具口径两案 + docs 协议族批（2026-10-22）
 
 - **[#253]** `vitro_clang_diff.go` 外置仓模式 serve compile 请求补 `filename`（绝对路径）——引擎 base_dir 候选链由此生效，本地 quote-include 不再一律 E1021 假红（issue 实测 104 次 → 残 33 次全为真子集边界）；仓内语料模式（serveBatchFiles）试点批已带本修复。
-- **[#254]** 运行对比两侧改分离捕获（`runWithTimeoutSplit` 只取 stdout——合并捕获时代 stderr 协议帧族混入「程序输出」是假 mismatch 主源）；删 Latin-1 还原迂回（#16 后 stdout 通道已 UTF-8 保真，还原把程序非 ASCII 输出打成 `?`）；moon Warning 块正则 `─{5,}╯`→`─{3,}╯`（实测块尾 4 个 ─ 旧恒不匹配）。`-corpus chibicc/multifile` 全量复跑通过、gold 基线零漂移；外置仓 gold_signatures 待下次 -repo 勘探重冻。
+- **[#254]** 运行对比两侧改分离捕获（`runWithTimeoutSplit` 只取 stdout——合并捕获时代 stderr 协议帧族混入「程序输出」是假 mismatch 主源）；删 Latin-1 还原迂回（#16 后 stdout 通道已 UTF-8 保真，还原把程序非 ASCII 输出打成 `?`）；moon Warning 块正则 `─{5,}╯`→`─{3,}╯`（实测块尾 4 个 ─ 旧恒不匹配）。`-corpus chibicc/multifile` 全量复跑通过、gold 基线零漂移；外置仓 gold_signatures（TheAlgorithms 域，E1021 假红 104→33 实测口径）待下次 -repo 勘探重冻——仓内语料域 gold_chibicc 的 E1021=2（真子集边界）。
 - **docs**：CLI 使用手册补通道容量节（#235/#241——单帧 argv 上限 Win 32K/Linux 2M/mac 256K + 语言包必须 --batch）、texts.install 段内 schema 与整表等键约束（#244）、覆盖面分工（#243——诊断 message/fix_suggestion 不受语言包控制）；标准库矩阵 §2.1 fopen 模式面 + VFS 预置文件成文（#95/#228）、§2.6 time/clock 分臂口径（#211）；bubble 课程反例改大数哨兵形态（#239——`a[6]={…,9999}` 实测保「结果正确+多比一次」，原稿 a[5] 越界版在 Vitro 是 trap 走不到教学点；顺带把受检访存抓越界写成正向教学点）；demo/js/types.ts 六处漂移修正（#240——error_code string→number 实测勘误 + 5 个 HEAD 字段补面，零消费方零波及）。
 - **改派登记**：#242（诊断 column 非 ASCII 行量纲混算）是 lexer/诊断列号引擎缺陷，属 A 线（master 编译器+诊断域）——本批不动，建议随 A 线诊断批处置。
 

@@ -261,6 +261,14 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   self.mem_map.set_quarantine_budget(budget)
   self.memory.reset()
   self.mem_stack_top = @bytecode.STACK_START
+  // #211 补齐（2026-10-23 审阅 P2-3）：会话起点重采样——serve 长进程只
+  // 注册一次墙钟，session.create（reset）若不刷新 clock_start_millis，
+  // 第二会话的 clock() 拿到的是「进程启动以来」而非「本会话起点」
+  //（CLI run 路径每次 frame_pipeline 重注入天然正确；serve 路径曾漏）。
+  match self.clock_source {
+    Some(f) => self.clock_start_millis = f()
+    None => ()
+  }
 }
 
 // ---------------------------------------------------------------------------

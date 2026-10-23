@@ -504,16 +504,24 @@ pub fn infer_semantic_label(
     !is_function_definition_line(source_line, func_name)
   // 普通调用（排除控制流关键字/注释行首）——#220：for(/while( 无空格
   // 形态一并排除（`for(int i=0;...)` 含 '(' 曾被判普通调用）；#246
-  //（2026-10-22）：调用点 = '(' 前紧邻**标识符字符**——`arr[(0+1)/2]`
-  // 的 '(' 前是 '['（非标识符）不是调用，旧 contains("(") 判据令其落
-  // 兜底「函数调用」×每帧
+  //（2026-10-22）：调用点 = '(' 前（跳空白后）紧邻**标识符字符或 ')'**
+  //——`arr[(0+1)/2]` 的 '(' 前是 '['（非标识符）不是调用，旧 contains("(")
+  // 判据令其落兜底「函数调用」×每帧；审阅 P2-4（2026-10-23）补两形态：
+  // `defLine ()`（名字与括号间空白）与 `(fp)(1);`（函数指针调用的括号
+  // 前是 ')'）
   let mut has_call_paren = false
   let line_cs = source_line.to_array()
   let mut cp = 0
   while cp < line_cs.length() {
-    if line_cs[cp] == '(' && cp > 0 && is_ident_char(line_cs[cp - 1]) {
-      has_call_paren = true
-      break
+    if line_cs[cp] == '(' && cp > 0 {
+      let mut p = cp - 1
+      while p > 0 && (line_cs[p] == ' ' || line_cs[p] == '\t') {
+        p = p - 1
+      }
+      if is_ident_char(line_cs[p]) || line_cs[p] == ')' {
+        has_call_paren = true
+        break
+      }
     }
     cp = cp + 1
   }
@@ -649,9 +657,12 @@ fn is_function_definition_line(line : String, func_name : String) -> Bool {
 
 ///|
 /// 定义行取名（#245，2026-10-22）：尾 `{` + 存在调用点（'(' 前紧邻
-/// 标识符），且名字段**左侧（跳空白）仍是标识符字符**——即名字前还有
-/// 一词（类型/void，如 "int main"）⇒ 定义行，返回名字段；`x = foo(`
-///（左侧是 '='）与行首 `foo(`（左侧到头）是调用形态返 None。
+/// 标识符），且名字段**左侧（跳空白与指针 `*`）仍是标识符字符**——即
+/// 名字前还有一词（类型/void，如 "int main"）⇒ 定义行，返回名字段；
+/// `x = foo(`（左侧是 '='）与行首 `foo(`（左侧到头）是调用形态返 None。
+/// 审阅 P2-4（2026-10-23）：`static struct S *f(void) {` 的指针星号
+/// 曾挡住判定（'f' 左是 '*' 非标识符 → 误落「函数调用」）——左侧跳过
+/// 空白与 `*` 的任意组合后再判。
 fn definition_name_of_call(line : String) -> String? {
   if !line.has_suffix("{") {
     return None
@@ -674,9 +685,10 @@ fn definition_name_of_call(line : String) -> String? {
   while name_start >= 0 && is_ident_char(cs[name_start]) {
     name_start = name_start - 1
   }
-  // 左侧跳空白后仍是标识符 → 前面还有一词（定义形态）
+  // 左侧跳空白与 '*'（指针声明符）后再看：标识符 → 前面还有类型词
+  //（定义形态）；'='（x = foo）或到头（foo(）→ 调用形态
   let mut left = name_start
-  while left >= 0 && cs[left] == ' ' {
+  while left >= 0 && (cs[left] == ' ' || cs[left] == '\t' || cs[left] == '*') {
     left = left - 1
   }
   if left >= 0 && is_ident_char(cs[left]) && name_start + 1 < paren {

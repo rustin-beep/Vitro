@@ -985,3 +985,59 @@ test "sscanf_scanset_unclosed_fails" {
   let r = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
   assert_eq(r.value, Some(0UL), msg="未闭合 scanset 应匹配失败返回 0")
 }
+
+///|
+/// 审阅 P2-1 锚（2026-10-23，修复前证红）：%h 族写入宽度——hhn 1 字节 /
+/// hn 2 字节 / hd·hu·ho·hx 截断写。旧实现 len_mod 把 h 与 hh 都记 1（与 l
+/// 同档 4 字节写）——canary 相邻字段被写穿（报告 nwidth3.c 实锤
+/// b=de000000）。三 u32 布局：a@0 / b@4 / c@8，c 只允许低 1/2 字节被改。
+test "scanf_h_family_widths_canary" {
+  let (map, mem) = fresh()
+  // %hhn：只写 c 的低 1 字节
+  put_cstr(mem, map, 0x6C00U, "98765")
+  put_cstr(mem, map, 0x6400U, "%3d%hhn")
+  let pv = 0x8700U
+  let pc = 0x8808U // c@8（a@0 / b@4）
+  ignore(mem.store_u32(map, 0x8800U, 0x99AABBCCU)) // a
+  ignore(mem.store_u32(map, 0x8804U, (-1).reinterpret_as_uint())) // b
+  ignore(mem.store_u32(map, 0x8808U, 0xDEADBEEFU)) // c
+  let r = host_sscanf(map, mem, 0x6C00U, 0x6400U, [pv, pc])
+  assert_eq(r.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pv), Ok(987U), msg="%3d 宽度截断")
+  assert_eq(
+    mem.load_u32(map, 0x8808U),
+    Ok(0xDEADBE03U),
+    msg="%hhn 只写低 1 字节（高 3 字节 canary 保真）",
+  )
+  assert_eq(mem.load_u32(map, 0x8800U), Ok(0x99AABBCCU), msg="a 未被写穿")
+  assert_eq(
+    mem.load_u32(map, 0x8804U),
+    Ok((-1).reinterpret_as_uint()),
+    msg="b 未被写穿",
+  )
+  // %hn：只写 c 的低 2 字节
+  put_cstr(mem, map, 0x6400U, "%3d%hn")
+  ignore(mem.store_u32(map, 0x8808U, 0xDEADBEEFU))
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pv, pc]))
+  assert_eq(
+    mem.load_u32(map, 0x8808U),
+    Ok(0xDEAD0003U),
+    msg="%hn 只写低 2 字节",
+  )
+  // %hd：2 字节截断写（98765 截 int16 = 98765 & 0xFFFF = 0x7FED 位模式）
+  put_cstr(mem, map, 0x6400U, "%hd")
+  ignore(mem.store_u32(map, 0x8810U, 0xDEADBEEFU))
+  let pd = 0x8810U
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pd]))
+  assert_eq(
+    mem.load_u32(map, 0x8810U),
+    Ok(0xDEAD81CDU),
+    msg="%hd 写低 2 字节（98765=0x181CD 截 0x81CD）",
+  )
+  // %hu 同款（无符号 2 字节）
+  put_cstr(mem, map, 0x6400U, "%hu")
+  ignore(mem.store_u32(map, 0x8814U, 0xDEADBEEFU))
+  let pu = 0x8814U
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pu]))
+  assert_eq(mem.load_u32(map, 0x8814U), Ok(0xDEAD81CDU), msg="%hu 低 2 字节")
+}

@@ -496,3 +496,40 @@ test "stdio_handle_dispatch_batch_b" {
     msg="fread stdin 跨行拼接（'abc'+'de' 前 4 字节）",
   )
 }
+
+///|
+/// 审阅 P2-2 锚（2026-10-23，修复前证红）：a/a+ 的追加写语义与 a+ 读起点
+///——C11 §7.21.5.3：a/a+ **写恒在末尾**（fseek 不改变写位）；a+ 的**读
+/// 起点在文件头**。旧形态：a/a+ 共用「游标初始=末尾」+ 写按游标——
+/// a+ 同 fd 读返回空、fseek(0) 后 fputs 覆盖头部（Xbc）。
+test "vfs_append_mode_write_always_end_and_aplus_reads_from_start" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "t.txt", b"abc"))
+  // a+ 同 fd 读：起点在文件头（旧：游标在末尾 → 读空）
+  let fap = vfs.fopen(map, "t.txt", "a+")
+  assert_true(fap != 0U)
+  let buf = 0x8000U
+  assert_eq(
+    vfs.fread(mem, map, fap, buf, 1, 10),
+    3,
+    msg="a+ 读起点在文件头",
+  )
+  assert_eq(peek(mem, map, buf, 3), b"abc")
+  // a+ fseek(0) 后写：写位恒末尾（旧：Xbc 覆盖头部）
+  assert_eq(vfs.fseek(mem, map, fap, 0, 0), 0)
+  put_str(mem, map, 0x6000U, "X")
+  assert_eq(vfs.fputs(mem, map, fap, 0x6000U), 0)
+  ignore(vfs.fclose(fap))
+  let fr = vfs.fopen(map, "t.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fr, 0x8100U, 1, 10), 4)
+  assert_eq(peek(mem, map, 0x8100U, 4), b"abcX", msg="a+ 写恒追加到末尾")
+  // a（纯追加）fseek(0) 后写：同语义（既有缺口，一处根因两个症状）
+  let fa = vfs.fopen(map, "t.txt", "a")
+  assert_eq(vfs.fseek(mem, map, fa, 0, 0), 0)
+  put_str(mem, map, 0x6100U, "Y")
+  assert_eq(vfs.fputs(mem, map, fa, 0x6100U), 0)
+  ignore(vfs.fclose(fa))
+  let fr2 = vfs.fopen(map, "t.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fr2, 0x8200U, 1, 10), 5)
+  assert_eq(peek(mem, map, 0x8200U, 5), b"abcXY", msg="a 写恒追加")
+}

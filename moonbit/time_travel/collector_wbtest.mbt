@@ -258,3 +258,24 @@ test "semantic_function_definition_entry_label" {
     "调用 defLine",
   )
 }
+
+///|
+/// 审阅 P2-4 锚（2026-10-23）：#245/#246 的边界形态四例——
+/// 指针/多词返回类型定义行、调用点空格形态、函数指针调用形态。
+test "semantic_label_review_p24_edge_forms" {
+  let none : Array[@protocol.ApiVariableSnapshot]? = None
+  // 形态 1：char 返回类型的定义行
+  let r1 = infer_semantic_label(5, none, "main", "char make(void) {", false)
+  inspect(r1, content="进入 make")
+  // 形态 2：static struct S 多词 + 指针返回类型定义行
+  let r2 = infer_semantic_label(
+    6, none, "main", "static struct S *f(void) {", false,
+  )
+  inspect(r2, content="进入 f")
+  // 形态 3：调用点名字与括号间有空格（旧判据 contains("(") 可达）
+  let r3 = infer_semantic_label(5, none, "main", "  defLine ();", false)
+  inspect(r3, content="调用 defLine")
+  // 形态 4：函数指针调用 (fp)(1);
+  let r4 = infer_semantic_label(6, none, "main", "  (fp)(1);", false)
+  inspect(r4, content="函数调用")
+}

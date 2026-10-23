@@ -72,16 +72,6 @@ pub fn semantic_label_vocabulary() -> Array[SemanticLabelKind] {
       since: "-",
     },
     {
-      id: "func_entry",
-      domain: "c",
-      template: "进入 {func}",
-      example: "进入 main / 进入 defLine",
-      status: "active",
-      // #245（2026-10-22）：函数定义行/入口帧独立标签（此前落 generic_call
-      // 兜底「函数调用」——教学误导：进入 ≠ 调用）；active 条目 since 恒 '-'
-      since: "-",
-    },
-    {
       id: "loop",
       domain: "c",
       template: "循环 {iter=v, …}",
@@ -127,6 +117,16 @@ pub fn semantic_label_vocabulary() -> Array[SemanticLabelKind] {
       template: "第 {line} 行",
       example: "第 12 行",
       status: "active",
+      since: "-",
+    },
+    {
+      id: "func_entry",
+      domain: "c",
+      template: "进入 {func}",
+      example: "进入 main / 进入 defLine",
+      status: "active",
+      // #245（2026-10-22）：函数定义行/入口帧独立标签（此前落 generic_call
+      // 兜底「函数调用」——教学误导：进入 ≠ 调用）；active 条目 since 恒 '-'
       since: "-",
     },
     // ── 异常域（SharpTutor S4 §6 首批；CS3b 激活）──
@@ -192,7 +192,11 @@ pub fn classify(label : String) -> String? {
   }
   // #245：进入 {func}（函数定义行/入口帧）——注意须在「进入 catch」
   //（csharp 预留域）之前判：两者同「进入」前缀，c 域的 func_entry 模板
-  // 更宽（任意函数名），精确形「进入 catch」优先归 csharp 域
+  // 更宽（任意函数名），精确形「进入 catch」优先归 csharp 域。
+  // 已知碰撞登记（审阅 P3，2026-10-23）：C 函数恰好命名为 catch 时其
+  // func_entry 帧会被归 csharp catch_enter——classify 无 domain 参数，
+  // 双域同形不可分；教学语料避用 catch 作函数名，CS 批激活 domain 化
+  // classify 时消除
   if label.has_prefix("进入 ") &&
     label != "进入 catch" &&
     label.length() > "进入 ".length() {

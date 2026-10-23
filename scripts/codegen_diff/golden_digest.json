@@ -2048,7 +2048,7 @@
         "complex_number.c": "b5a7d055",
         "failfast_chain.c": "3fe877ff",
         "file_fopen.c": "3c38e8f4",
-        "file_fread.c": "622854fc",
+        "file_fread.c": "293037c6",
         "file_fwrite.c": "e2c3c877",
         "function_pointer_sizeof.c": "68025bba",
         "goto_basic.c": "7c9d571e",
@@ -2079,7 +2079,7 @@
           "result_sha": "2b85d154c0490372"
         },
         "file_fread.c": {
-          "result_sha": "33ac68acc8eeecc1"
+          "result_sha": "b75823211c8030fb"
         },
         "file_fwrite.c": {
           "result_sha": "972592fa13975ec5"

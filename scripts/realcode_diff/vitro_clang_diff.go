@@ -1308,7 +1308,7 @@ func runProbeDiff(name, repoAbs string, green []string, served map[string][]Diag
 		"> 目的：识别被 parse 层 E2005 洪水遮蔽的深层诊断。",
 		"> 消解规则：`({ stmts; expr; })` → `{ stmts; int __vitro_sxN = expr; __vitro_sxN }`（保值语义）。",
 		"> 保守边界：含 return/break/continue/goto 的语句体不消解。",
-		"> 等价性已验：28 份消解副本的 Clang 错误数与原始逐份一致（28/28）。",
+		"> 等价性已验：28 份消解副本的 Clang 错误数与原始逐份一致（28/28）；其中绿语料错误集逐字节一致（10/10）、红 3 份次生差异根因语料自身（README.corpus 口径注）。",
 		"",
 		"| 文件 | 消解处数 | 原始 errs | 剥壳后 errs | 原始首码 | 剥壳后码分布 |",
 		"|---|---|---|---|---|---|",
@@ -1849,6 +1849,58 @@ func runCheck() int {
 	for name := range registered {
 		if !dirExists(filepath.Join(corpusDir, name)) {
 			fail(fmt.Sprintf("corpora.json 登记的语料批 %s 目录不存在（僵尸登记）", name))
+		}
+	}
+	// 审阅 P2-5（2026-10-23）：真三向对账——此前只验「目录↔登记表↔gold
+	// 文件存在」，语料 units ↔ gold files 键集、total ↔ 实际数、
+	// license_file 存在均未对账（加未登记文件/改 total 仍绿的审阅自证
+	// 实锤）。units 口径：根层 .c（单文件批）∪ 直接子目录 +"/"（工程批）；
+	// .h 是 include 辅件不进 units（两侧同口径）。
+	for name, v := range corpora["corpora"].(map[string]any) {
+		e := v.(map[string]any)
+		if lf, _ := e["license_file"].(string); lf != "" {
+			if !fileExists(filepath.Join(dir, lf)) {
+				fail(fmt.Sprintf("corpora.json corpora.%s.license_file 不存在: %s", name, lf))
+			}
+		}
+		goldName, _ := e["gold"].(string)
+		goldKeys := map[string]bool{}
+		if b, err := os.ReadFile(filepath.Join(dir, goldName)); err != nil {
+			fail(fmt.Sprintf("金样本读取失败 %s: %v", goldName, err))
+		} else {
+			var g map[string]any
+			if err := json.Unmarshal(b, &g); err != nil {
+				fail(fmt.Sprintf("金样本解析失败 %s: %v", goldName, err))
+			}
+			for k := range g["files"].(map[string]any) {
+				goldKeys[k] = true
+			}
+		}
+		units := map[string]bool{}
+		batchDir := filepath.Join(corpusDir, name)
+		if ents, err := os.ReadDir(batchDir); err != nil {
+			fail(fmt.Sprintf("语料批目录读取失败 %s: %v", name, err))
+		} else {
+			for _, ent := range ents {
+				if ent.IsDir() {
+					units[ent.Name()+"/"] = true
+				} else if filepath.Ext(ent.Name()) == ".c" {
+					units[ent.Name()] = true
+				}
+			}
+		}
+		for u := range units {
+			if !goldKeys[u] {
+				fail(fmt.Sprintf("语料 unit %s/%s 不在金样本 %s 键集（漏冻）", name, u, goldName))
+			}
+		}
+		for k := range goldKeys {
+			if !units[k] {
+				fail(fmt.Sprintf("金样本 %s 键 %q 无对应语料（僵尸条目）", goldName, k))
+			}
+		}
+		if totF, ok := e["total"].(float64); !ok || int(totF) != len(units) {
+			fail(fmt.Sprintf("corpora.json corpora.%s.total = %v != 实际 units %d", name, e["total"], len(units)))
 		}
 	}
 

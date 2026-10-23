@@ -371,6 +371,7 @@ pub struct VfsDesc {
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
+  is_append : Bool
 } derive(@debug.Debug)
 pub fn VfsDesc::to_repr(Self) -> @debug.Repr
 

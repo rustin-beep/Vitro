@@ -59,6 +59,10 @@ pub struct VfsDesc {
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
+  /// a/a+ 追加语义位（审阅 P2-2，2026-10-23）：写路径写前强制游标到
+  /// 末尾（C11 §7.21.5.3——fseek 不改变 a/a+ 的写位）；mode 的派生
+  /// 位（restore 时按 mode 重导出，不入快照）——构造期定死，非 mut
+  is_append : Bool
 } derive(Debug)
 
 ///|
@@ -331,8 +335,11 @@ pub fn VirtualFileSystem::fopen(
   }
   let fd = self.next_fd + 1U
   self.next_fd = fd
+  // 审阅 P2-2（2026-10-23）：a+（AppendRead）读起点在文件头（C11
+  // §7.21.5.3——写恒末尾由 is_append 位承担，读游标独立）；a 语义不变
+  //（读写共用游标且写前强制末尾，读从末尾起自然为空——a 无读语义）
   let cursor = match vfs_mode {
-    VfsMode::Append | VfsMode::AppendRead =>
+    VfsMode::Append =>
       match self.files.get(path) {
         Some(m) => m.size
         None => 0
@@ -346,6 +353,7 @@ pub fn VirtualFileSystem::fopen(
     eof: false,
     error: false,
     is_text_mode: is_text,
+    is_append: vfs_mode is VfsMode::Append || vfs_mode is VfsMode::AppendRead,
   })
   fd
 }
@@ -463,6 +471,10 @@ pub fn VirtualFileSystem::fwrite(
   let meta = match self.files.get(desc.file_name) {
     Some(m) => m
     None => return 0
+  }
+  // 审阅 P2-2：a/a+ 写恒末尾（fseek 移动的是读游标）
+  if desc.is_append {
+    desc.cursor = meta.size
   }
   // 读用户数据
   let user_data = match read_span(mem, map, buf, to_write.to_int()) {
@@ -698,6 +710,11 @@ fn vfs_append_bytes(
   desc : VfsDesc,
   data : Array[Byte],
 ) -> Int32 {
+  // 审阅 P2-2（2026-10-23）：a/a+ 写恒末尾（fputs/fputc 共用本通道；
+  // fseek 移动的是读游标——写前强制回末尾）
+  if desc.is_append {
+    desc.cursor = meta.size
+  }
   let write_len = data.length()
   let new_size = desc.cursor + write_len
   if new_size > meta.capacity {

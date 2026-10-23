@@ -472,7 +472,9 @@ fn parse_scanf_specs(fmt : Array[Int32]) -> Array[ScanfItem] {
               }
               _ => ()
             }
-            // 长度修饰
+            // 长度修饰（审阅 P2-1，2026-10-23 分档化）：l=1 / ll=2 /
+            // h=3 / hh=4（旧形态 h 与 hh 都记 1〔与 l 同档〕——%hn 写
+            // 4 字节、%hhn 写 4 字节，相邻 canary 写穿）
             let mut len_mod = 0
             match scan.peek() {
               Some(c) =>
@@ -487,10 +489,13 @@ fn parse_scanf_specs(fmt : Array[Int32]) -> Array[ScanfItem] {
                     _ => ()
                   }
                 } else if c == 104 {
-                  len_mod = 1
+                  len_mod = 3
                   scan.advance()
                   match scan.peek() {
-                    Some(104) => scan.advance()
+                    Some(104) => {
+                      len_mod = 4
+                      scan.advance()
+                    }
                     _ => ()
                   }
                 } else if c == 76 {
@@ -745,6 +750,36 @@ const SCANF_O = 111
 
 ///|
 const SCANF_N = 110
+
+///|
+/// scanf 写目标按长度修饰分宽（审阅 P2-1，2026-10-23）：ll→8 字节 /
+/// 无与 l→4（LLP64 long=4）/ h→2 / hh→1。val 一律 u64 位模式（各臂
+/// parse 后 reinterpret；窄档取低位字节与 C 实现一致）。u16 = 两次 i8
+/// 小端组合（memory 无 store_u16——组合写避免出口面扩张）。
+fn scanf_store_by_lenmod(
+  mem : @memory.Memory,
+  map : @memory.MemoryMap,
+  ptr : UInt32,
+  len_mod : Int32,
+  v64 : UInt64,
+) -> Result[Unit, @memory.MemFault] {
+  if len_mod == 2 {
+    mem.store_u64(map, ptr, v64)
+  } else if len_mod == 3 {
+    match mem.store_i8(map, ptr, (v64 & 0xFFUL).to_int()) {
+      Ok(_) => mem.store_i8(map, ptr + 1U, ((v64 >> 8) & 0xFFUL).to_int())
+      Err(e) => Err(e)
+    }
+  } else if len_mod == 4 {
+    mem.store_i8(map, ptr, (v64 & 0xFFUL).to_int())
+  } else {
+    mem.store_u32(
+      map,
+      ptr,
+      @util.i64_to_i32_bits(v64.reinterpret_as_int64()).reinterpret_as_uint(),
+    )
+  }
+}
 
 ///|
 /// token → Int（oracle `parse().unwrap_or(0)`：溢出/空/孤立符号 → 0）。
@@ -1016,20 +1051,16 @@ pub fn host_scanf_n(
         token.push(chars[j])
         j = j + 1
       }
+      // 审阅 P2-1：宽度分档（统一 i64 位模式——4 字节档取低 32 位与
+      // 旧 parse_int 等价）
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(
-            map,
-            ptr,
-            parse_int64_or_zero(token).reinterpret_as_uint64(),
-          )
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            parse_int_or_zero(token).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(
+          mem,
+          map,
+          ptr,
+          len_mod,
+          parse_int64_or_zero(token).reinterpret_as_uint64(),
+        )
       } else {
         Ok(())
       }
@@ -1086,15 +1117,7 @@ pub fn host_scanf_n(
         parse_uint64_or_zero(token)
       }
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, uval)
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            @util.i64_to_i32_bits(uval.reinterpret_as_int64()).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(mem, map, ptr, len_mod, uval)
       } else {
         Ok(())
       }
@@ -1315,15 +1338,7 @@ pub fn host_scanf_n(
         val = 0UL - val
       }
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, val)
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            @util.i64_to_i32_bits(val.reinterpret_as_int64()).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(mem, map, ptr, len_mod, val)
       } else {
         Ok(())
       }
@@ -1338,11 +1353,13 @@ pub fn host_scanf_n(
       // 写回，漏写即死循环。长度修饰同 d/u/i 臂口径：ll → 8 字节、其余
       // 4 字节（%hn 与 %ln 同形——len_mod 1=l/h 共档，既有简化）。
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, pos.to_int64().reinterpret_as_uint64())
-        } else {
-          mem.store_u32(map, ptr, pos.reinterpret_as_uint())
-        }
+        scanf_store_by_lenmod(
+          mem,
+          map,
+          ptr,
+          len_mod,
+          pos.to_int64().reinterpret_as_uint64(),
+        )
       } else {
         Ok(())
       }
@@ -1561,20 +1578,16 @@ pub fn host_sscanf(
         token.push(chars[j])
         j = j + 1
       }
+      // 审阅 P2-1：宽度分档（统一 i64 位模式——4 字节档取低 32 位与
+      // 旧 parse_int 等价）
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(
-            map,
-            ptr,
-            parse_int64_or_zero(token).reinterpret_as_uint64(),
-          )
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            parse_int_or_zero(token).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(
+          mem,
+          map,
+          ptr,
+          len_mod,
+          parse_int64_or_zero(token).reinterpret_as_uint64(),
+        )
       } else {
         Ok(())
       }
@@ -1633,15 +1646,7 @@ pub fn host_sscanf(
         parse_uint64_or_zero(token)
       }
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, uval)
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            @util.i64_to_i32_bits(uval.reinterpret_as_int64()).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(mem, map, ptr, len_mod, uval)
       } else {
         Ok(())
       }
@@ -1742,15 +1747,7 @@ pub fn host_sscanf(
         val = 0UL - val
       }
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, val)
-        } else {
-          mem.store_u32(
-            map,
-            ptr,
-            @util.i64_to_i32_bits(val.reinterpret_as_int64()).reinterpret_as_uint(),
-          )
-        }
+        scanf_store_by_lenmod(mem, map, ptr, len_mod, val)
       } else {
         Ok(())
       }
@@ -1860,11 +1857,13 @@ pub fn host_sscanf(
       // #269（2026-10-22）：`%n` 写回已读字符数（与 scanf 臂同语义——
       // 不消耗输入、不计返回值；pos = 源串到该点已消费字节数）
       let f = if !sl.2 {
-        if len_mod >= 2 {
-          mem.store_u64(map, ptr, pos.to_int64().reinterpret_as_uint64())
-        } else {
-          mem.store_u32(map, ptr, pos.reinterpret_as_uint())
-        }
+        scanf_store_by_lenmod(
+          mem,
+          map,
+          ptr,
+          len_mod,
+          pos.to_int64().reinterpret_as_uint64(),
+        )
       } else {
         Ok(())
       }

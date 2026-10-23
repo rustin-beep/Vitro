@@ -138,8 +138,8 @@ Rust oracle 的实测数字：
 ## 验证
 
 ```bash
-moon check && moon test    # 866 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 866 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕）
-                           # native-only 包测试 150 个（fs 0 / gateway 135 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1016（CI 门禁口径；866+150=1016 逐包实测自洽，2026-10-22 实测）
+moon check && moon test    # 875 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 875 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕；2026-10-23 B 线批一 +9：sscanf %n 双锚 + vfs + 族锚 + 语义标签双锚 + 审阅批 +4〔a/a+ 追加语义 1 + %h 族 canary 1 + clock reset 重采样 1 + 标签边界四形态 1〕）
+                           # native-only 包测试 152 个（fs 0 / gateway 136 / cli 16——2026-10-23 B 线批一连坐：gateway +1〔output.delta 未知 stream 拒绝锚 #258〕+ cli +1〔--realtime 解析锚 #211〕；fs 0 / gateway / cli 域分解既注同前——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1027（CI 门禁口径；875+152=1027 逐包实测自洽，2026-10-23 实测）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

@@ -167,13 +167,17 @@ pub fn VirtualFileSystem::restore(
   }
   self.descriptors.clear()
   for pair in snap.descriptors {
+    let restored_mode = vfs_mode_from_code(pair.1.mode)
     self.descriptors.set(pair.0, VfsDesc::{
       file_name: pair.1.file_name,
-      mode: vfs_mode_from_code(pair.1.mode),
+      mode: restored_mode,
       cursor: pair.1.cursor,
       eof: pair.1.eof,
       error: pair.1.error,
       is_text_mode: pair.1.is_text_mode,
+      // mode 派生位（不入快照——restore 按 mode 重导出）
+      is_append: restored_mode is VfsMode::Append ||
+      restored_mode is VfsMode::AppendRead,
     })
   }
   self.next_fd = snap.next_fd

@@ -11,7 +11,7 @@ pub fn usage_text() -> String {
   let b = StringBuilder()
   b.write_string("用法: vitro <cmd> [args]\n")
   b.write_string(
-    "  run <file.c> [--json] [--realtime] [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4；--json=事件流 NDJSON；--realtime=time()/clock() 真墙钟，默认确定性判分）\n",
+    "  run <file.c> [--json] [--realtime] [--dump-memory out] [-i in] [-- <argv...>]   编译+执行（退出码 0/1/2/3/4；--json=事件流 NDJSON；--realtime=time()/clock() 真墙钟——js/native 臂生效，wasm 臂恒 0〔F5 无熵源，静默无效〕；默认确定性判分）\n",
   )
   b.write_string(
     "  compile <file.c | -> [--json]                             编译+诊断单出\n",

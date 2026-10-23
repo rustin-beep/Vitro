@@ -571,3 +571,28 @@ test "libc_step_event_no_user_breakpoint_hit_issue168" {
     msg="libc StepEvent 不得改写 current_line（实得 \{vm.current_line}——libc 行号污染）",
   )
 }
+
+///|
+/// #211 审阅 P2-3 锚（2026-10-23）：serve 长进程的会话起点重采样——
+/// reset（session.create 走 reset_session_preserving_config）时若不重采样
+/// clock_start_millis，第二会话的 clock() = 进程启动以来而非本会话起点。
+/// 假钟：注册 t=1000 → 推进 t=9000 → reset → clock 应从 reset 时刻重新
+/// 起算（推进到 9500 → clock=500µs，旧实现=8500000µs）。
+test "clock_start_resampled_on_reset" {
+  let vm = VitroVM::new()
+  let fake_now : Array[UInt64] = [1000UL]
+  vm.set_clock_source(fn() { fake_now[0] })
+  fake_now[0] = 9000UL
+  vm.reset()
+  fake_now[0] = 9500UL
+  vm.execute_host_func(124, 1, 1)
+  assert_eq(
+    vm.pop(),
+    500000UL,
+    msg="reset 后 clock 自新会话起点起算（500ms 差 = 500000µs）",
+  )
+  // time() 不受影响（绝对秒）
+  vm.push(0UL)
+  vm.execute_host_func(123, 1, 1)
+  assert_eq(vm.pop(), 9UL)
+}

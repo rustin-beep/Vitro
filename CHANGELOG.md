@@ -12,6 +12,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts+ci): #273 教学线与文本闸 7 件 .mts 接线（2026-10-24）
+
+- **接线面（本批重点）**：`teaching_gen_check` / `teaching_reconcile` /
+  `host_contract_map` / `course_catalog` / `gen_demo_tokens` /
+  `skill_path_check` / `teaching_phase_vocab` 的 CI 引用由 `go run` 全量切
+  `node scripts/.../main.mts`（10 处活行 + 注释处方同步改写，防
+  `ci_checklist` 活行正则扫到注释误判）。`static-gates` 新增
+  `actions/setup-node`（`node-version-file: .node-version`，type stripping
+  需 ≥22.18——不 pin 会随 runner 预装漂移）；`demo` job 复用已有 Node 24 步。
+  Go 版转纯回退面（目录仍被 node 活行占用，`ci_checklist` 同目录归并，不报
+  漏登记），退役另批裁定。
+- **重写面**：7 件 `.mts` 双轨（原 Go 合计 2118 行）+ 配套 `main.test.mts`。
+  Go/TS 双跑证据：`teaching_phase_vocab`（绿 + selftest 四路）、
+  `teaching_reconcile`（默认/-v 101 行/-selftest）、`host_contract_map`
+  （默认/-strict/-selftest）、`skill_path_check`（默认/-selftest）、
+  `course_catalog`（默认/-v/-selftest）、`teaching_gen_check`（3 产物 + 负例
+  ×7）均**逐字零差**；`gen_demo_tokens` 重生成产物与入库 `tokens.css`
+  **逐字节一致**（cmp）。
+- **测试补口**：`node:test` 新增 26 例（229 → 255）。重点是此前**零覆盖**的
+  路径：`course_catalog` 的 lesson.c 双臂对拍（仓库长期无 lesson.c，本批以
+  自造临时课目录跑 vivo↔clang 绿 + 坏 lesson.c 判红，缺 vitro js 臂/clang
+  时显式 skip 打印原因，不静默绿）；`gen_demo_tokens` 的
+  `DisallowUnknownFields` 手工还原成 12 条断言红路；`teaching_reconcile` 用
+  45/43/12 规模 fixture 覆盖装配缺键/孤儿键/条数漂移/节键重复四类红。
+- **口径记录（照抄不"顺手修"）**：`skill_path_check` 的 `file:line` 段在冒号
+  处 break（只 stat 到所在目录、丢文件名）；`./x` 因 `strings.Trim(".,;:")`
+  吃掉首点被当绝对路径跳过——两条都是 Go 版既有行为，测试内注释锁定，避免
+  后人当 bug 改掉。
+
 ### fix(parser+codegen): A 线批一——#272 复合字面量指针初始化 + #278 匿名 union 变量 + #277 同名 static 遮蔽（2026-10-23）
 
 - **审阅处置批（用户五阶段审阅，PR #282 评论全档）**：P1=recorder 两处

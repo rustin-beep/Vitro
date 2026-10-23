@@ -50,8 +50,8 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 ## 设计契约与主题 token（P0 契约批，2026-10-21）
 
 - **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{$value, $type}`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
-- 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `go run ./scripts/gen_demo_tokens` → `-check` 绿 → `node demo/tests/style_contract.mjs` 比对（computed 值；像素闸已退役，不再以截图作门）。
-- 门：`go run ./scripts/gen_demo_tokens -check`（逐字节，CRLF 归一）+ `-selftest`（同集绿 + 篡改必红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
+- 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `node scripts/gen_demo_tokens/main.mts` → `-check` 绿 → `node demo/tests/style_contract.mjs` 比对（computed 值；像素闸已退役，不再以截图作门）。
+- 门：`node scripts/gen_demo_tokens/main.mts -check`（逐字节，CRLF 归一）+ `-selftest`（同集绿 + 篡改必红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
 - 本批迁移实测（一次性取证，非门）：五主题 1440×900 截图迁移前后逐字节一致（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）；像素闸已于 2026-10-22 退役。
 - **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mjs http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。
 - **像素闸（P0 第三批）已于 2026-10-22 退役**（用户裁定：PNG 基线只能 CI 专用生成、入库体积与维护噪声大于收益）。画面语义改由样式契约（computed 值）+ E2E 行为锚 + `demo_ui_lint` 文本面守，不再保留截图基线目录与生成步骤。
@@ -94,7 +94,7 @@ Firefox 134+），加载失败页面会显示降级提示。
 2. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入
    库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全
    集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
-3. `go run ./scripts/course_catalog`——课程目录闸（reconcile + lesson.c 双
+3. `node scripts/course_catalog/main.mts`——课程目录闸（reconcile + lesson.c 双
    臂 diff）。
 4. `node scripts/demo_assemble_check/main.mts demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
@@ -122,7 +122,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    连字——2026-10-18 扩面到五主题令牌，位点下限 40 兜抽取面塌缩；#121①
    教学硬伤防线）。抓「操作永不生效的类」「引用不存在的 CSS 变量」「连字
    复活」形态。
-11. `go run ./scripts/teaching_phase_vocab`——教学阶段词表冻结闸。
+11. `node scripts/teaching_phase_vocab/main.mts`——教学阶段词表冻结闸。
 12. `node --test demo/tests/pure.test.mts`——纯函数 37 锚（buildCallTree
     trie / isArrayAnimCase / latin1ToUtf8 / heapSpanOf / esc / workspace 四
     锚 / share 七锚 / **decorateBadges·formatTrap 徽章码表** / scene 解析与

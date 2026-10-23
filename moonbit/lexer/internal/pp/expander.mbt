@@ -642,7 +642,11 @@ fn line_at(ctx : ExpandCtx, use_site : @token.Token) -> Int32 {
 
 ///|
 /// #221：使用点文件名分派（展开循环同款逻辑的 helper 形——主段按拼接
-/// 区间表、include 段按 file_names）。
+/// 区间表、include 段按 file_names）。**统一返回 basename**：CLI 传全路径、
+/// gateway/wasm 传 basename 是通道差异，不是 C 语义差异；不归一会让同一
+/// 程序在 native/wasm 两臂的 `__FILE__` 字符串内存映像分叉（vm_diff 实锤）。
+/// C99 §6.10.8 对 `__FILE__` 的拼写本就是实现定义，取 basename 是教学沙盒
+/// 的统一口径（诊断/断言输出惯例，与 builtins.display_name_of 同源）。
 fn file_name_at(ctx : ExpandCtx, use_site : @token.Token) -> String {
   if use_site.loc.file_id == 0 {
     let mut hit = ctx.main_name
@@ -652,11 +656,11 @@ fn file_name_at(ctx : ExpandCtx, use_site : @token.Token) -> String {
         break
       }
     }
-    hit
+    display_name_of(hit)
   } else {
     match ctx.file_names.get(use_site.loc.file_id) {
-      Some(n) => n
-      None => ctx.main_name
+      Some(n) => display_name_of(n)
+      None => display_name_of(ctx.main_name)
     }
   }
 }

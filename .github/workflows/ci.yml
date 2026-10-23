@@ -40,7 +40,7 @@ concurrency:
 # --refresh 删除 fail loud）消灭「入新键 vs 刷存量 vs 手删旧键」三套心智。
 #
 # 分类判据沿袭（红了是否意味着这批不能要）：
-#   build-and-unit = 准入（编译/单测坏）——下游全 needs 它
+#   build-artifacts = 产物准入（编译/构建坏）——下游 needs 它；测试归 hygiene
 #   gates-diff     = 行为差分（matrix 六实例独立）
 #   gates-native   = 消费 exe 的协议/冒烟族
 #   gates-wasm     = wasm 臂族 + cli smoke（matrix 四实例独立，2026-10-17
@@ -59,8 +59,8 @@ concurrency:
 
 
 jobs:
-  build-and-unit:
-    name: Build & unit tests (准入型基础)
+  build-artifacts:
+    name: Build artifacts (native/wasm/js, 无测试)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,20 +69,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum，缓存无意义
-      - name: Go vet (scripts)
-        run: go vet ./scripts/...
-
-      # 2026-09-22 闸缺口补齐：go test ./scripts/... 此前**不在 CI**——
-      # scripts 侧仍有多包 J9·性质测试（CLI 契约锚 / 归一性质锚 / facts /
-      # toolchain_probe 基线判定锚；mdrender 7 例已随 #273 批二迁到
-      # node:test——scripts-ts job），
-      # 全部只在本地可跑、CI 一直抓不到。"判定函数坏了的『全绿』比没有门禁
-      # 更坏"（J9 义务原话）——本步骤退非 0 即红。测试面全为纯函数 /
-      # t.TempDir() 夹具，不依赖 moon 工具链、cargo 产物或 reports/（后者被
-      # gitignore，CI 上不存在）；故接线在 go vet 旁而非 MoonBit 步骤之后，
-      # 可先行失败。
-      - name: Go test (scripts)
-        run: go test ./scripts/...
+      # Go vet/test 归 hygiene（2026-10-23 提速批）：本 job 不跑测试，
+      # 测试红不阻塞产物构建；Go 纯函数锚仍由 hygiene 覆盖。
 
       # Clang Golden 缓存（方案 A）：结果是确定性的（同一源码 + 同一 clang 版本
       # ⇒ 同一结果），跨 CI 运行复用可把 Shadow 从分钟级降到秒级。
@@ -100,23 +88,17 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
 
-      - name: MoonBit unit tests (moon test)
-        # 2026-09-20 审阅补线：moon test 此前无独立门禁步骤——仅 facts
-        # --run 间接跑（采集失败只记 unavailable 不红），且 README 测试
-        # 数为分解式（facts 归人工维护不机判），两路都不拦挂用例。本
-        # 步骤退非 0 即红，MoonBit 侧防线自此有牙。
-        shell: bash
-        # --target native：把 native-only 包的锚（fs 9 + gateway 91，2026-10-04
-        # 实测差值 741-641=100——原注「fs 9 + cmd/serve 14，差值 527-504=23」
-        # 系 2026-09-20 接线时点的 as-of 快照，CI 拆批搬运时未随刷，审阅 P3-⑧
-        # 勘正）纳入门禁——此前 CI 从不跑它们（默认 wasm target
-        # 不含 native-only 包，check --target all 只抓编译错不抓行为错），
-        # fs 是 cmd 工具链五包的依赖，行为可信度只剩本地手工证据（审阅八轮
-        # P2①）。native 后端同跑 wasm 侧测试无冲突（超集）。
-        run: cd moonbit && moon test --target native
+      # MoonBit 单测归 hygiene 的四 target 步（2026-10-23 提速批）：
+      # native 全量此前在本 job 与 hygiene 各跑一遍，纯重复；本 job 只负责
+      # 产物构建，测试红由 hygiene 显式红，不再挡 artifact 产出。
 
       # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
+      # 防遮蔽（job 内，2026-10-23）：单测/前置步红后仍继续构建并上传 artifact，
+      # 但下游 job 仍 `needs: build-artifacts`，build 整体红时依旧 skipped；
+      # 这层只保证「本 job 内能跑的步都跑」。job 间遮蔽由末尾 ci-summary
+      # 显式判 skipped/failure 为红兜底（不把 skipped 当绿）。
       - name: Full native release build gate (declared targets must build)
+        if: always()
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
         # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
         # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
@@ -130,17 +112,20 @@ jobs:
           MOON_CC=clang moon build --release --target native
           echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: wasm-gc gateway build (artifact source)
+        if: always()
         # 自「wasm-gc gateway build + Node host smoke」拆出（2026-10-11）：
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
       - name: Install Node (wasmopt supply)
+        if: always()
         # #120 批①（2026-10-17）：wasm-opt 构建后置——binaryen JS API 经
         # node 执行（供给钉版本下载到 tools/cache，sha256 校验）。
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
       - name: wasm-opt post-build (artifact source)
+        if: always()
         # 产物出口后置优化（#120 批①）：-19.3% raw / -20.4% gzip（lean
         # 产物实测）；等价性背书 = 下游 gates-wasm 四 slice（vm_diff wasm
         # 全量 440 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
@@ -154,6 +139,7 @@ jobs:
           go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
           go run ./scripts/wasmopt -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
+        if: always()
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
         # 产物检查消费（cmd/vitro_js/vitro_js.js）。
         # 全量 js 编译闸（2026-10-15 补——审阅指出缺口）：此前只编
@@ -164,6 +150,7 @@ jobs:
         shell: bash
         run: cd moonbit && moon build --release --target js
       - name: Upload build products (native release exe set + wasm module + js entry)
+        if: always()
         # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
         # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复
         # 构建（此前 core 串行一步红全断；闸间遮挡即此形态）。download 侧
@@ -176,10 +163,11 @@ jobs:
             moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
             moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js
             moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js
+            moonbit/_build/js/release/build/teaching/langpack/langpack.js
           retention-days: 3
   gates-diff:
     name: Diff gate (${{ matrix.driver }})
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：六实例互不取消（一红不见其余）。
@@ -277,7 +265,7 @@ jobs:
           esac
   corpus-fuzz:
     name: Adversarial corpus fuzz (mutated corpus vs clang, baseline-locked)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -301,7 +289,7 @@ jobs:
 
   gates-native:
     name: Native protocol & parity gates (consume exe)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -423,7 +411,7 @@ jobs:
 
   gates-wasm:
     name: wasm-arm gate (${{ matrix.slice }})
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     strategy:
       # 闸级可见性全开：四实例互不取消（一红不见其余）——gates-diff 同款
@@ -941,6 +929,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # 零第三方依赖仓无 go.sum
+      # 2026-10-23 提速批：Go vet/test 从 build job 迁来——测试红归 hygiene，
+      # build 只负责产物，避免「测试红 → artifact 不产出 → 下游全 skipped」。
+      - name: Go vet (scripts)
+        run: go vet ./scripts/...
+      - name: Go test (scripts)
+        run: go test ./scripts/...
       - name: Install MoonBit toolchain
         shell: pwsh
         run: |
@@ -977,7 +971,7 @@ jobs:
 
       - name: MoonBit tests (four targets)
         # js 目标接线（2026-10-15）：三后端批落地 js 后端（38f63d42）但测试
-        # 面漏接——js 入口只做产物（build-and-unit 的 artifact 源），行为锚
+        # 面漏接——js 入口只做产物（build-artifacts 的 artifact 源），行为锚
         # （fs_js 等 js 后端专属文件的锚，全量 907 例）零 CI 覆盖，与三臂
         # 强制纪律（AGENTS §14）不符。本地实证 907/907 全绿后接线。
         run: |
@@ -1026,7 +1020,7 @@ jobs:
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)
-    needs: build-and-unit
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -1057,7 +1051,10 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+      # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
+      # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
       - name: demo TS check (tsc --noEmit = js/ 模块类型面)
+        if: always()
         # F4 收尾（2026-10-17）：app.ts 退役 → emit 无对象，只留 --noEmit
         # （js/ 八个物理保留模块的类型面；src/ 由 svelte-check 覆盖）
         run: |
@@ -1069,6 +1066,7 @@ jobs:
       # rules.json 43 族、82 模板全集对账，断言失败即红）。assemble check
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
+        if: always()
         run: go run ./scripts/gen_demo_algorithms
         shell: bash
 
@@ -1081,6 +1079,7 @@ jobs:
       # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
       # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
+        if: always()
         run: go run ./scripts/course_catalog
         shell: bash
 
@@ -1089,13 +1088,26 @@ jobs:
       # demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法；F4 收尾后断言
       # index.html 入口 = src/main.ts + 本地资源面）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
+        if: always()
         run: node scripts/demo_assemble_check/main.mts demo
+        shell: bash
+
+      # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = demo/tokens.json，
+      # 产物 demo/src/tokens.css 由 scripts/gen_demo_tokens 生成（@generated 禁手改，
+      # app.css 只 @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
+      # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
+      - name: demo tokens gate (tokens.json → tokens.css, -check)
+        if: always()
+        run: |
+          go run ./scripts/gen_demo_tokens -selftest
+          go run ./scripts/gen_demo_tokens -check
         shell: bash
 
       # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，
       # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
       # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
       - name: F4 svelte-check (type + a11y gate)
+        if: always()
         run: cd demo && npm run check
         shell: bash
 
@@ -1103,6 +1115,7 @@ jobs:
       # 阻塞；devDep 精确 pin + npm ci 锁定链）。CallTree.svelte:150/156 两处
       # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
       - name: F4 oxlint (zero-error gate)
+        if: always()
         run: cd demo && npm run lint
         shell: bash
 
@@ -1111,20 +1124,22 @@ jobs:
       # 此前漏本 job 的 cp → CI vite build 红；Pages job 因有前置 cp 而绿
       # ——同坑两处只堵一处的教训（62f75d3d CI 首跑实锤）。
       - name: demo wasm asset in place (build-time asset)
+        if: always()
         shell: bash
         run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
 
-      # 语言包懒加载产物（#130 批② demo 接线）：engine.worker 动态 import
-      # demo/teaching/langpack/langpack.js（vite 懒 chunk，缺失即 build 红
-      # ——与 wasm 同款 fail loud），moon js target 现场构建后 cp。
-      - name: demo langpack asset (moon js target → cp)
+      # 语言包懒加载产物（#130 批② demo 接线）：复用 build-artifacts 的
+      # teaching/langpack（2026-10-23 提速批——此前 demo 重装工具链再编一遍，
+      # 与 build 的全量 js 构建重复）。artifact 缺失即 cp 红，与 wasm 同款 fail loud。
+      - name: demo langpack asset (build artifact → cp)
+        if: always()
         shell: bash
         run: |
-          cd moonbit && moon build --release --target js teaching/langpack
-          mkdir -p ../demo/teaching/langpack
-          cp _build/js/release/build/teaching/langpack/langpack.js ../demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
 
       - name: F4 vite build (build success gate)
+        if: always()
         run: cd demo && npm run build
         shell: bash
 
@@ -1136,6 +1151,7 @@ jobs:
       # 生成）。组件面↔用例表↔golden 目录三方全等锚防快照僵死。覆盖面
       # 边界（动画/交互/浏览器态不入快照语义）见 demo/src/e08/entry.ts 头注。
       - name: F4 E-08 snapshot gate (SSR render vs frozen golden)
+        if: always()
         run: |
           cd demo && npx vite build --ssr src/e08/entry.ts --outDir dist-e08
           cd .. && node --test demo/tests/e08.test.mts
@@ -1147,6 +1163,7 @@ jobs:
       # cases.js golden 即红（已留痕）。（原注释随 gates-wasm 拆分批从该
       # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
       - name: demo page smoke (protocol-level, cases golden + field keys)
+        if: always()
         run: node scripts/demo_smoke/main.mts
         shell: bash
 
@@ -1165,7 +1182,8 @@ jobs:
       # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
       # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
       # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
-      - name: F4 browser E2E (headless chrome, 61 anchors)
+      - name: F4 browser E2E (headless chrome, 90 anchors)
+        if: always()
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"
           if [ -z "$CHROME_BIN" ]; then
@@ -1178,32 +1196,48 @@ jobs:
             exit 1
           fi
           echo "E2E browser: $CHROME_BIN"
-          # 2026-10-21 连红处置（run 39612543937：chrome 进程存活但 CDP 9222
-          # 全程 ECONNREFUSED）：①profile 遗留——同 runner 的 workspace 跨
-          # run 保留 .chrome-e2e，浏览器版本自动升级后旧 profile 可能令
-          # 新实例启动即退（进程残留可见、端口从未 listen）；每次清空。
-          # ②启动日志落盘并在失败时回显——此前静默后台启动，异常唯一
-          # 表现是脚本层 ECONNREFUSED，根因不可诊断。
-          rm -rf "$PWD/.chrome-e2e"
-          ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PWD/.chrome-e2e" --no-first-run about:blank >"$PWD/.chrome-e2e.log" 2>&1 &)
+          # 2026-10-23 连红处置：CDP 30s 在 runner 冷启动/Chrome 更新时不够
+          # （run 39939871737 实测 30s 内未 listen，E2E 整段红）。改为：
+          # ①profile 放 RUNNER_TEMP 且每 run 唯一（不继承 workspace 旧 profile）；
+          # ②首启最多等 90s；③仍未就绪则清 profile 重启一次再等 90s；
+          # ④失败回显日志 + 进程态，不把「浏览器没起来」伪装成断言失败。
+          PROFILE="${RUNNER_TEMP:-$PWD}/chrome-e2e-$$"
+          LOG="${RUNNER_TEMP:-$PWD}/chrome-e2e-$$.log"
+          rm -rf "$PROFILE" "$LOG"
+          taskkill //F //IM chrome.exe >/dev/null 2>&1 || true
+          start_chrome() {
+            ("$CHROME_BIN" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port=9222 --no-proxy-server --user-data-dir="$PROFILE" --no-first-run about:blank >>"$LOG" 2>&1 &)
+          }
+          wait_cdp() {
+            for i in $(seq 1 90); do
+              if curl -sf --max-time 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then return 0; fi
+              sleep 1
+            done
+            return 1
+          }
+          start_chrome
           (cd demo && node tests/serve_static.mjs 8931 &)
-          # CDP 就绪门（fail loud 且可诊断）：最多等 30s，超时回显浏览器
-          # 日志 + 进程态后红——不把「浏览器没起来」伪装成脚本断言失败。
-          cdp_ready=""
-          for i in $(seq 1 30); do
-            if curl -sf --max-time 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
-              cdp_ready="yes"; break
+          if ! wait_cdp; then
+            echo "E2E：CDP 首启 90s 未就绪，清 profile 重启一次…" >&2
+            taskkill //F //IM chrome.exe >/dev/null 2>&1 || true
+            rm -rf "$PROFILE"
+            sleep 2
+            start_chrome
+            if ! wait_cdp; then
+              echo "E2E 闸 fail loud：CDP 9222 重启后 90s 仍未就绪（$CHROME_BIN）" >&2
+              echo "---- chrome log ($LOG) ----" >&2
+              tail -40 "$LOG" >&2 || true
+              echo "---- chrome 进程 ----" >&2
+              (tasklist //FI "IMAGENAME eq chrome.exe" 2>/dev/null || ps aux | grep -i chrome | grep -v grep) >&2 || true
+              exit 1
             fi
-            sleep 1
-          done
-          if [ -z "$cdp_ready" ]; then
-            echo "E2E 闸 fail loud：CDP 9222 在 30s 内未就绪（浏览器 $CHROME_BIN）" >&2
-            echo "---- .chrome-e2e.log ----" >&2
-            tail -40 "$PWD/.chrome-e2e.log" >&2 || true
-            echo "---- chrome 进程 ----" >&2
-            (tasklist //FI "IMAGENAME eq chrome.exe" 2>/dev/null || ps aux | grep -i chrome | grep -v grep) >&2 || true
-            exit 1
           fi
+          # 样式契约闸（#222 P0 第二批，2026-10-21）：五主题 × 19 选择器 × 9
+          # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
+          # （不经栅格化），基线 demo/tests/style_contract.json 入库。
+          # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
+          node demo/tests/style_contract.mjs --selftest
+          node demo/tests/style_contract.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
           node demo/tests/e2e_session.mjs http://127.0.0.1:8931/
@@ -1223,6 +1257,7 @@ jobs:
       # （2 陈旧路径修正 + 1 笔误前缀修正 + 1 占位符化 + 1 注释粘连 +
       # 6 退役/反例语境收编 dead_paths）。
       - name: skill docs referenced-path existence
+        if: always()
         run: |
           go run ./scripts/skill_path_check -selftest
           go run ./scripts/skill_path_check
@@ -1234,6 +1269,7 @@ jobs:
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
+        if: always()
         run: |
           go run ./scripts/demo_ui_lint -selftest
           go run ./scripts/demo_ui_lint
@@ -1244,6 +1280,7 @@ jobs:
       # （未登记扩张红 / 僵尸条目红 / family 漂移红 / 非字面量调用红）；
       # 抽取面下限防正则失能，-selftest 内存注入四路证红（J9）。
       - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
+        if: always()
         run: |
           go run ./scripts/teaching_phase_vocab -selftest
           go run ./scripts/teaching_phase_vocab
@@ -1259,6 +1296,7 @@ jobs:
       # 「能跑」保证无类型保证。独立 tests/tsconfig.json（@types/node）
       # 补类型面，直跑前先过 tsc。
       - name: demo pure-function tests (node --test on .ts)
+        if: always()
         run: |
           cd demo && npx tsc -p tests/tsconfig.json && cd ..
           node --test demo/tests/pure.test.mts
@@ -1319,6 +1357,41 @@ jobs:
 
       - name: node:test (explicit file list)
         run: npm run test
+        shell: bash
+
+  # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────
+  # 只做汇总、不重跑闸：所有上游 job 必须 success；任一 failure/skipped 即红。
+  # 这样 build 红导致下游 skipped 时不会显示成「其余全绿可合并」。
+  ci-summary:
+    name: CI summary (all gates must be success)
+    if: always()
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: summarize gate results
+        env:
+          BUILD: ${{ needs.build-artifacts.result }}
+          DIFF: ${{ needs.gates-diff.result }}
+          FUZZ: ${{ needs.corpus-fuzz.result }}
+          NATIVE: ${{ needs.gates-native.result }}
+          WASM: ${{ needs.gates-wasm.result }}
+          STATIC: ${{ needs.static-gates.result }}
+          HYGIENE: ${{ needs.hygiene.result }}
+          DEMO: ${{ needs.demo.result }}
+          SCRIPTS_TS: ${{ needs.scripts-ts.result }}
+        run: |
+          set +e
+          bad=0
+          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS"; do
+            name="${pair%%:*}"; result="${pair#*:}"
+            echo "$name=$result"
+            if [ "$result" != "success" ]; then bad=1; fi
+          done
+          if [ "$bad" != "0" ]; then
+            echo "::error::CI 汇总红：有 job failure/skipped——skipped 不算绿（防遮蔽）"
+            exit 1
+          fi
+          echo "CI 汇总：9 个上游 job 全部 success"
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

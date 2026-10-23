@@ -12,6 +12,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
+
+- **__FILE__ 跨臂一致**：`pp.file_name_at` 对主文件/拼接段/include 段统一走
+  `display_name_of`（basename）。此前 CLI 传全路径、gateway 传 basename，
+  `__FILE__` 字符串进内存映像后 native/wasm 两臂 memory hash 分叉——vm_diff
+  wasm 的 `predefined_macro.c` 单例红。C99 §6.10.8 的拼写本为实现定义，
+  沙盒统一 basename；`corpus/baseline/predefined_macro.c` 注释同步。
+- **基线重冻**：`vm_diff --freeze-mb` 更新 memory/exit 单例，parser/lexer/
+  typeck/codegen 四门 `--freeze-mb` 更新 source hash + 指纹（仅
+  `predefined_macro.c` 变化）；`vm_diff` baseline native/wasm 各
+  **488 SAME / 0 DIFF**，四门 golden 各 **PASS**，`clang_direct` 单例 SAME。
+- **冻结降噪**（审阅 P3 同族）：parser/typeck/codegen 与 vm_diff 不再把
+  `source sha` 判红（注释/空白改动不再要求重冻；语义变化由输出指纹抓）；
+  protocol_frames 对 catalog 的 title/explanation/common_causes 加展示字段
+  mask（W3064 改标题不再重冻 47 帧）；裸值棘轮记录完整 `rgba(...)` 参数并
+  修 `-demo <绝对路径>` 的 56 条假红；协议 selftest、raw 六路 selftest 同步。
+- **CI 防遮蔽**：build job 的构建/上传步与 demo job 的 tsc 之后全部闸步加
+  `if: always()`——单测/E-08 等前置红不再吞掉后续构建与 smoke/E2E/pure；
+  新增 `ci-summary`：所有上游 job 必须 success，failure/skipped 一律红
+  （skipped 不算绿）。矩阵 `fail-fast: false` 保留。
+  已知边界：下游 job 仍依赖 build-products artifact，build 整体失败时
+  artifact 不存在（无产物可测）；本轮已把测试迁出 build（测试红不再挡产物），
+  但构建本身失败仍会挡下游，彻底解耦需拆独立 artifact job + 备用构建。
+- **CI 提速（2026-10-23）**：`build-and-unit` 拆为 `build-artifacts`（只构建/
+  上传，无 MoonBit/Go 测试）；单测归 Hygiene 四 target，删掉 build 里重复的
+  native 全量；Go vet/test 随迁 Hygiene。build artifact 增传
+  `teaching/langpack/langpack.js`，demo 不再装第二套 MoonBit 编 langpack，
+  直接 cp artifact。测试红不再挡 artifact 产出，下游闸照常运行。
+- **当前实证**：手动 dispatch `39906423527`（head `ab263a6b`）全绿；同 head
+  的 PR run `39906203112` 仅 E2E flake 红。四门 digest 漏刷已由
+  `ab263a6b` 补齐；`typeck_diff` 为上游 master 同红，f4a0add9/27ad50df
+  合入后本轮已转绿（手动 dispatch 验证）。
+
 ### fix(engine+ci): 用户审阅批 P1×5/P2×6/P3×5 处置——假阳性矩阵对齐 + 嵌套 designated 三层 + &f 全局 + 成员 sizeof 延迟折叠（2026-10-23）
 
 **P1（全部红锚先行→修→双侧对拍）**：
@@ -209,6 +242,67 @@ catalog/gen_diag -check 全绿。
   test 865/865；存量 485 SAME / 三套件六路 PASS；五家 freeze + fuzz
   基线连坐重冻。
 
+### feat(demo): #222 内容批——第〇章 5 门课 + 96 课说明 + 码表 19 条实测示例（2026-10-23）
+
+- **课程**：新增 `course/basic/{hello,double_avg,global_struct,macro,malloc_free}/lesson.md`
+  ——5 门课按真实帧流写 scene（分别 5/9/540/6/9 语句帧），含四节课文与实跑错版；
+  `global_struct` 第 4 幕注记按实际帧分布改正（L11/L12 各 177、L13 176）。
+- **目录说明**：新增 `demo/src/lib/courseBlurbs.ts`（95 键覆盖 96 行；`structures/josephus`
+  族/变体同键共用一条），`courseIndex.ts` 加 `blurbOf()` 兜底——算法/变体/练习不再
+  显示裸 id；case 课真实 blurb 不覆盖。顺带修正既有 `bubble`/`uaf` 的 frontmatter
+  `order` 为 courseIndex 真值 3/7。
+- **码表**：`catalogDetail.ts` 新增 19 条 BAD/FIX（三臂实测）与 11 条关联课，EXAMPLES
+  25 条 / RELATED 16 条；删 E1019 死键（真实 code_str 为 W1019）；E3026 无引擎发射点，
+  留空不硬凑。**W3064 的 catalog 文案同步修正**：`catalog.json` 标题「双重指针转换」
+  →「指针与浮点互转」，解释/常见原因按引擎 `typeck/expr.mbt` 的真实发射点
+  （指针 ↔ 浮点显式 cast）重写，`gen_diag` 重生 `catalog_data_gen.mbt`；页面
+  101 条 C 目录实测 title = 指针与浮点互转。
+- **协议基线**：catalog 帧内容随 E3084/E3085 与 W3064 文案变化，
+  `protocol_frames --update-baseline` 重刷 47 帧基线（native 臂比对全部一致）；
+  合并 master c3df8005 后补 `mbti` 两臂、icon 映射既有 `return`/`func-undefined`，
+  `icon_catalog` 76 图标全绿。
+- **内容闸**（审阅 P2-1/P2-2）：pure 新增 3 条——全量 course scene 连续/行界/注记、
+  第〇章新 5 门 N 帧与四节、码表 EXAMPLES/RELATED 键命中 catalog + 关联课存在；
+  突变实证：scene `0..1→9..9` 与 `RELATED E3060→no_such_lesson` 均判红，恢复后绿。
+- **审阅补丁**：`catalogDetail` 头注限定「新增 19 条」为完整程序，既有 6 条保留片段
+  形态；`global_struct` 幕注记 off-by-one 修正。
+- **验证**：pure **37/37**、e08 17/17、course_catalog 8 课 + `-selftest`、`gen_course
+  -check`、`teaching_gen_check`（Git Bash）、`gen_diag -check`、tsc/svelte-check/
+  oxlint/build、ui_lint、assemble、E2E 五套 90/90；码表 19×2 条 js/native/wasm
+  三臂一致。
+
+### fix(demo): #263 审阅处置——P2×6 + P3 清理 + 同步 master 5d3d4dd7（2026-10-22）
+
+- **P1 合并门**：同步 master `5d3d4dd7`（#266/#249/#270 + testcount/ledger/fuzz
+  三红收口），CHANGELOG 冲突并留双方条目。wasm-arm 的 `MF-QUEUE` / `bTree`
+  digest 形状漂移仍属 master 侧 UB known 噪声，不在本 PR 内改。
+- **P2-1 计数口径**：协议页改「20 / 25 方法（按方法展开）」，组头 4/4、7/7、
+  7/7、2/4 方法；15 行 / 展开 22 方法分列；`RefScreen` 去掉硬编码「100 条 C
+  卡」；B8 锁 sideCount=20 + facts「15 行 / 22 方法」。
+- **P2-2 专注模式守卫**：`setFocus` 与 F 键均限 `screen=work && mode=exec`；
+  mem/proto 下 F 不再出 FOCUS 顶栏（B10 增 mem 守卫断言）。
+- **P2-3 深链锚**：B10 增 `?focus=1` 首帧导航断言（旧锚只走键盘，标题声称的
+  深链未测）。
+- **P2-4 tokens 自证**：`gen_demo_tokens` 抽出唯一 `verify()`，`-check` 与
+  `-selftest` 共用；selftest 断言「同集绿 + 篡改必红 + 定位可见」（旧 selftest
+  只查 diffHint 字符串，判定空转仍绿）。
+- **P2-5 样式契约更新面**：`--update` 写盘前 / 比对读基线后都跑完整性断言
+  （选择器未命中 / token 空串 / 整主题缺失 → exit 2）；新增 `--selftest`（完整
+  doc 0 问题 / 残缺 doc 判红）并接 CI；THEMES 改读 `tokens.json themeOrder`。
+- **P2-6 协议信息面**：capabilities 描述改为「languages / memory_model 已拉取、
+  本页未展开」，页脚同步登记，不再声称本页消费这两个字段。
+- **P3 清理**：README 控制字符（BEL/TAB 导致丢字母）修复；截图验收句改
+  style_contract/E2E（像素闸已退役）；CHANGELOG 旧条目 png 计数标注失效；
+  ci.yml E2E 名 61→90 锚 + 删重复 hygiene 片段；app.css 删死 `.vr-preview`/
+  `.vr-chapters` 规则；`ui.entryLesson` 只写字段删除；MemoryView 未知 kind 单起
+  `is-unknown` 轨；EntryScreen 章简介去硬编码数字；DESIGN §4 去 token 数值复制、
+  §7 修正类名闸与覆盖边界；B8 注释改「四轨 + 隔离区行（5）」。
+- **门禁**：pure 34/34、e08 17/17、E2E 五套 **90/90**、style_contract
+  `-selftest`+主跑、tokens `-selftest`+`-check`、ui_lint（含 selftest、裸值
+  基线随死规则收窄 28 条）、svelte-check 0 错、oxlint 0 错、editorconfig、
+  ci.yml YAML 解析、vite build 全绿。
+
+
 ### fix(codegen): #270 struct/union designated initializer 全层——.field 指派的文件作用域/嵌套/局部 static/匿名穿透（2026-10-22）
 
 - **三层缺口连通**：①文件作用域 struct/union 的 `.field=`（`flatten_
@@ -249,6 +343,83 @@ catalog/gen_diag -check 全绿。
   存量 483 SAME / clang_direct 484 DIFF=0 / 三套件六路 PASS；五家
   freeze + fuzz 连坐重冻（42 新指纹全良性：15 AGREE + 27
   CLANG_REJECT）。
+
+### feat(demo): #222 P3 移动工作台——390 首屏顺序 + 代码折叠（2026-10-22）
+
+- **390 首屏**：运行条 → 幕头 → 数组索引格 → 当前行卡 → 代码头（可展开）→
+  诊断摘要 → transport + 时间轴 → 输出 → 本幕讲解 → 调用树/变量；书栏的
+  课头/分镜轨、实验参数、模式 tab、页脚在移动端退役。
+- **代码折叠**：≤760 容器整段代码默认收起，`</> 代码` 按钮展开/收起（桌面
+  不渲染按钮）；当前行卡显示 `L<行> · 第 N / M 帧` + 源码行 + 状态行，替代
+  被折叠的编辑器成为首屏「当前执行点」。
+- **时间轴**：移动端 transport 提到刻度带之前（设计稿 03 顺序），刻度/分幕带
+  在后。
+- **既有页面**：目录 / 手册 / 内存的 390 布局在前两批已落地，本轮复测
+  `scrollWidth ≤ innerWidth`，无横向溢出。
+- **E2E**：新增 B11（390 下书栏标题 none / 代码 body 收起 / 当前行卡可见 /
+  幕头→数组→当前行→时间轴 的 top 序 / 展开后 codebody=flex）；session 21 锚。
+  顺带修 `e2e_editor` 未钉视口——无头默认 800×600 容器 ~736 会落进移动形态，
+  代码收起导致 N1 点击编辑器失焦（显式 1440×900，与 session/workspace 同口径）。
+- **验证**：pure 34/34、e08 17/17、E2E 五套 **90/90**（21+38+18+10+3）、
+  style_contract、ui_lint（含 selftest）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿。
+
+### chore(demo): 退役像素闸——PNG 基线入库判定为噪声（用户裁定 2026-10-22）
+
+- **裁定**（用户）：逐状态 PNG 基线只能由 CI 专用 runner 生成、入库体积与跨 OS
+  维护噪声大于收益；「基线未武装就 warning 跳过」等于半个死闸。**整体退役**，
+  不保留半武装形态。
+- **删除**：`demo/tests/visual_regress.mjs`、`demo/tests/visual/`
+  （`png.mjs` / `png.d.mts` / `png.test.mts` / `diff/`）；CI 移除
+  `visual_baseline` dispatch input、demo 段像素步、`visual-baseline` artifact
+  上传、`png.test` 纯函数步；`demo/tests/tsconfig.json` 摘 `visual/*.mts`。
+- **文档**：`DESIGN.md §7` 删「画面语义（像素）」行并记退役理由；
+  `demo/README.md` 像素闸小节改退役说明；
+  `docs/current/02-构建与上手/脚本总清单与必跑防线.md` 删对应行。
+- **保留防线**：样式契约（五主题 × 19 选择器 × 9 computed 值）、E2E 五套
+  89 锚、`demo_ui_lint`（类名/变量/连字 + 裸值棘轮）。此前 P0/P4 条目里的
+  「像素闸 N 状态」计数随本裁定失效，以本条为准。
+
+### feat(demo): #222 P4 专注模式——F / Esc / ?focus=1（2026-10-22）
+
+- **入口**：`F` 进、`Esc` 出；`?focus=1` 深链直达（URL 由 effect `replaceState`
+  单点同步，不新增历史项）；切内存/协议模式自动退出（专注只属于执行面）。
+- **形态**：书栏（课头/运行条/分镜轨）与实验参数退役，stage 让宽（1440 下
+  935 / 400 两栏），页脚隐藏；顶栏换 `FOCUS / LECTURE` + 课名 + 当前幕 +
+  「专注模式 / 第 N / M 帧 / 退出专注 Esc」；右栏模式 tab 隐藏，讲解与时间轴
+  保留。主题仍跟随用户当前主题（拍板 5，不强制 blueprint）。
+- **锚**：E2E B10（F 进：`.vr-bench.is-focus` / 书栏 none / badge / 模式 tab
+  none / URL focus=1；Esc 出：恢复书栏 / URL 去参）；像素闸新增 `focus` 态
+  （16 → 17；该闸已于 2026-10-22 退役，计数仅历史）。
+- **像素闸确定性加固**（本批实锤；闸已退役，记录留档）：`localStorage.clear` + reload 并不能钉死
+  首课——App 的 `beforeunload persistFrame` 会把上次课写回（上一轮 E2E 停在
+  uaf 时 baseline 截到 uaf）。改为显式 `openById('bubble')` 并加 `__pilot`
+  存在性守卫；同机连续两轮 `--update` 17 张 PNG SHA-256 全等，第三轮比对
+  17/17。
+- **验证**：pure 34/34、e08 17/17、E2E 五套 89/89、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿。
+
+### feat(demo): #222 P2 目录/手册——章路径 + 章节面板 / 六段证据链 + 右栏阅读法（2026-10-22）
+
+- **目录**（`EntryScreen`）：hero 主张 + 首访动线 + 「继续上次」主卡右置；9 章
+  横向路径（完成/总数）；课列升级为「序 / id + 课名 + 类签 / 一句话说明 /
+  状态 →」，**单击即开课**（旧「预览面板 → 在实验台打开」两步退役，预览面板
+  删除）；右栏章节面板 = 章简介 + 进度 + 本章会看到（前三课真数据）+ 开课
+  CTA。章简介是演示文案（`CHAPTER_BLURB`），课名/说明/进度全部读数据。
+- **手册**（`RefScreen`）：六段证据链——01 三问（WHERE 源码 / HOW 引擎判定 /
+  FIX 修法）、02 常见原因、03 同族码、04 相关课、05 最小复现（BAD/GOOD）、
+  06 鉴别诊断（同 catalog 分组对照）；新增右栏「怎么用这一页」三步 + 同族码
+  + 返回/复现动作。无示例 / 无关联课的条目显式空态，不发明诊断归因。
+- **E2E**：新增 B9（目录章路径/章节面板/预览退役；手册六段/三问三列/同族/
+  右栏/返回）；选课助手改为课列单击（session/workspace 两处），W10 guard
+  用例按单击重排。
+- **响应式**：1440 三栏（索引/详情/阅读法）、≤1100 右栏下沉两列、390 单列；
+  entry / ref 页面 `scrollWidth ≤ innerWidth`。
+- **验证**：pure 34/34、e08 17/17、E2E 五套 88/88、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  tokens -check、editorconfig、vite build 全绿；visual entry/ref 两态截图（像素闸已退役，不再作为门）。
+
 
 ### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
 
@@ -335,6 +506,69 @@ catalog/gen_diag -check 全绿。
   480 DIFF=0 / codegen 477 零漂移；typeck 漂移仅 `vla_2d.c`
   （VLA 标记表示变化，运行 SAME——语义正确面）；knr/leetcode/gap
   三套件六路 PASS 后五家 freeze；moon test 861/861。
+
+### feat(demo): #222 P0 四状态入像素闸 + CDP 竞态健壮性（2026-10-22）
+
+- **四状态**（12 → 16）：`state-trap`（uaf 末帧真 trap + 诊断带展开）、
+  `state-compilefail`（`setShared` + `collect` 坏表达式，E2003/E2005 + 诊断
+  带展开）、`state-emptyout`（0 B stdout/stderr/note + 无 golden 面）、
+  `state-badlink`（`#z1.BROKEN` 持久横幅 + 默认示例 + 未采集面）。状态动作
+  全部走真实交互/引擎，不伪造横幅或文案。
+- **CDP 竞态**（master 线反馈）：`waitFor` 对 `-32000`（导航/重载窗口
+  execution context destroyed）退避重试，其余 CDP 错误仍 fail loud；坏链态
+  不落课、不等帧流（此前必 90s 超时，实锤）。
+- **确定性**：截图前点掉吐司（trap/编译失败各弹一条、4.2s 后自清）——否则
+  基线随「距采集多久」漂；本机连续两次 `--update` 四张 PNG SHA-256 全等。
+- **DESIGN.md §7** 状态数 12 → 16；基线仍待 CI `workflow_dispatch` 生成，
+  本地生成的 `demo/tests/visual/baseline/` 不入库。
+
+### feat(demo): #222 内存/协议两模式 P1 全页形态（2026-10-22）
+
+- **信息架构**：`ui.mode` 为 mem/proto 时，exec 三栏整体退役，换「页头模式条 +
+  左证据面 + 右叙事栏」全页形态；执行态 DOM/几何零改动（B3 三栏锚原样绿）。
+  模式导航抽 `ModeTabs.svelte`（右栏 compact 版与页头版同 DOM 语义，锚不变）。
+- **内存页**（`MemoryView` + 新 `MemorySide`）：stack / heap / global / free_list
+  四轨（块宽 = 真实 size，freed 红色虚线）+ 六格统计 + 图例 + 真地址账本 +
+  「读法三步」；右栏本课源码卡（当前行高亮，8 行窗口）+ 内存三问 + 术语 +
+  动作。三问只答 `memory.regions` 能证的三件事，「谁还在指」显式标 —（无别名
+  表，不发明指针图）。隔离区占比 <1% 时保留三位小数（4 B/262144 B 不再印成
+  0.00%）。
+- **协议页**（`ProtoView` + 新 `ProtoSide`）：四组方法（编译执行 4/4、观测教学
+  4/4、配置生命周期 4/4、未消费工具 1/3，共 15 行）+ 六格事实条 + schema 台账
+  + 契约 + 当前帧 wire JSON（裁剪）+ 语义词表折叠；右栏 13/25 本页消费 +
+  四条原则 + 三入口 + 复制能力清单（JSON）。方法清单单源
+  `lib/protoFacts.ts`，主页与右栏计数不各写一份。
+- **锚**：E2E B8（模式页接管/四轨/六统计/freed 块/E3060 叙事/三问/四组 15 行/
+  13 项消费/台账非空/帧 JSON/返回执行三栏恢复/页面无横向溢出）；E-08
+  `memoryview-mallocfree` 与 `protoview-caps` golden 重建（唯 2 例变化）。
+- **响应式实测**：1440×900 右栏动作按钮落首屏（818–885）；768 与 390 宽
+  `documentElement.scrollWidth ≤ innerWidth`，窄屏账本收列（隐类型/段/来源）、
+  方法行改两行式。
+- **验证**：pure 34/34、e08 17/17、E2E 五套 87/87、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
+  `gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装按预期跳过。
+
+### feat(demo): #222 第三门旗舰课 bubble_sort——65 帧六幕分镜 + 旗舰课文（2026-10-22）
+
+- **内容**：`course/sorting/bubble_sort/lesson.md` 补 `vitri-scenes v1` 六幕
+  （0–4 起点 / 5–23 第一轮 / 24–36 第二轮 / 37–47 第三轮 / 48–50 最后一轮
+  零交换 / 51–64 收尾），课文重写为旗舰形态：65 帧口径、每幕比较/交换计数
+  （4+3+2+1 = 10 次比较 = n(n-1)/2）、「第 5 幕反证算法不知道已有序」的
+  不变量教学点。
+- **帧量测（不脑测）**：`templates/bubble/source.c` 的 lesson 源码经 demo
+  同链（引擎 insn 帧 → `annotateGroups` 取组尾）实测 914 条指令帧 → **65**
+  条语句帧；E2E B7 在构建产物上复证 n=65、六幕坐标（48/51）与幕头同步。
+- **锚**：纯函数锚 `lessonMd：bubble_sort scene 覆盖 0..64`（六幕精确坐标 +
+  无缝覆盖 + 末幕落 64，先红后绿）；E2E B7（6 幕/6 条分幕带、点第 5 幕
+  idx=48 且幕头源码 L4–L6、点第 6 幕 idx=51 帧 51–64；65 帧 × 8fps 先停播
+  再断言，防漂移帧假红）。
+- **E-08**：`coursenote-sorting` golden 重建（唯 1 例变化，其余 15 例逐字节
+  不变——scene 元数据剥离语义再证）。
+- **验证**：pure 34/34、E2E 五套 86/86、e08 17/17、style_contract
+  5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、
+  oxlint 0 错、`gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装
+  按预期 `::warning::` 跳过（基线仍待 CI dispatch 生成）。
+
 
 ### feat(corpus): llm_scale/llm_multifile 全域接线 + #238 (void) 栈泄漏修复（2026-10-21）
 

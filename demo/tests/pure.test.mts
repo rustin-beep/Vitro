@@ -8,6 +8,10 @@
 // 【锚驱动战果记录】首批锚抓到三真问题：editor 漏 import esc（拆分接线
 // 遗漏）、calltree 漏 import esc、isArrayAnimCase 紧凑声明不命中（存量 bug）。
 import { test } from "node:test";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import assert from "node:assert/strict";
 
 import { latin1ToUtf8, esc, isArrayAnimCase, annotateGroups, coalesceStmt } from "../js/util.ts";
@@ -25,6 +29,10 @@ import {
   SHARE_URL_WARN,
   SHARE_VERSION,
 } from "../js/share.ts";
+import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
+import { sceneBand, sceneIndexAt, sceneKicker, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
+import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
+import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -224,4 +232,353 @@ test("粒度分组：空数组 / 单帧 / 全同行边界", () => {
   const same = [1, 1, 1, 1].map((code_line, i) => ({ code_line, step_index: i }));
   assert.equal(coalesceStmt(same).length, 1); // 全同行压成 1 帧
   assert.equal(annotateGroups(same).length, 4);
+});
+
+// ── lessonMd：scene metadata（2026-10-21 拍板：lesson.md 单源，不建 beats.ts）
+test("lessonMd：scene 元数据解析 + 从 blocks 剥离（E-08 渲染面不变）", () => {
+  const md = `---
+id: fixture
+kind: case
+order: 1
+title: 夹具
+---
+
+<!-- vitri-scenes v1
+01 | 起点：数组与循环 | 0..4 | 3..4 | 数组初始化，i / j 还是 0。
+02 | 交换不是瞬间完成的 | 5..20 | 8..10 | a[1] 刚被覆盖，旧值 5 还在 t 里。
+-->
+
+## 正文
+
+段落。
+`;
+  const doc = parseLessonMd(md);
+  assert.equal(doc.scenes.length, 2);
+  assert.deepEqual(doc.scenes[0], {
+    id: "01",
+    title: "起点：数组与循环",
+    from: 0,
+    to: 4,
+    lines: [3, 4],
+    note: "数组初始化，i / j 还是 0。",
+  });
+  assert.equal(doc.scenes[1].note, "a[1] 刚被覆盖，旧值 5 还在 t 里。");
+  // 注释块必须剥离：第一块仍是正文 h2，不能把 metadata 当段落渲染
+  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(doc.blocks[0].text, "正文");
+  assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
+});
+
+test("lessonMd：无 scene 元数据 = 空数组（老课回退长文）", () => {
+  const md = `---
+id: old
+kind: case
+order: 1
+title: 老课
+---
+
+## 正文
+`;
+  const doc = parseLessonMd(md);
+  assert.deepEqual(doc.scenes, []);
+  assert.equal(doc.blocks[0].type, "h2");
+});
+
+test("lessonMd：scene 元数据格式错误 fail loud（先红后绿）", () => {
+  const md = `---
+id: bad
+kind: case
+order: 1
+title: 坏课
+---
+
+<!-- vitri-scenes v1
+01 | 起点 | 0..4 | 3..4
+-->
+`;
+  assert.throws(() => parseLessonMd(md), LessonParseError);
+});
+
+// ── annotations：本幕逐行注记（#222 P1 第五片：08 t ← 5 / 09 a[1] ← 1）
+test("annotations：只记本幕内的变化（局部量 + 数组元素），首帧无前态不猜", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },
+    { code_line: 8, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "t", value: "5" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "1", "4", "2", "5"] }] },
+    { code_line: 9, func_name: "main", local_vars: [{ name: "i", value: "0" }, { name: "t", value: "5" }, { name: "a", value: "{3, 1, 4, 2, 5}", ty_name: "int[5]" }], array_snapshots: [{ name: "a", elements: ["3", "3", "4", "2", "5"] }] },
+  ];
+  const a = sceneAnnotations(frames, 0, 2);
+  assert.deepEqual(
+    a.map((x) => [x.line, x.text]),
+    [[8, "t ← 5"], [9, "a[1] ← 3"]],
+  );
+  // 第一帧（无前态）不产出注记；数组整体值（int[5]）不进 local 面
+  assert.equal(a.some((x) => x.text.includes("{3, 1")), false);
+});
+
+test("annotations：每行取最近一次执行的差分（随帧更新，不叠整幕迭代）", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "j", value: "0" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "1" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "2" }, { name: "t", value: "5" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "3" }, { name: "t", value: "5" }] },
+    { code_line: 9, func_name: "swap", local_vars: [{ name: "j", value: "9" }] },
+  ];
+  // 截至第 2 帧：line 7 最近一次是 j ← 2（同帧 t 也新 → 两条，不被前一帧的 j ← 1 污染）
+  const at2 = sceneAnnotations(frames, 0, 4, 2);
+  assert.deepEqual(at2.map((x) => [x.line, x.text]), [[7, "j ← 2 · t ← 5"]]);
+  // 截至第 3 帧：line 7 只留最近一次 j ← 3（旧注记被替换，不叠成 j ← 1 · j ← 2）
+  const at3 = sceneAnnotations(frames, 0, 4, 3);
+  assert.deepEqual(at3.map((x) => [x.line, x.text]), [[7, "j ← 3"]]);
+  // 第 4 帧换函数（swap）：不与 main 的 j 比，不产出注记
+  assert.equal(sceneAnnotations(frames, 0, 4, 4).some((x) => x.line === 9), false);
+});
+
+test("annotations：归行校验——不写该变量的行不贴注记（for 自增并进末行实锤）", () => {
+  const frames: StepLike[] = [
+    { code_line: 8, func_name: "main", local_vars: [{ name: "j", value: "0" }, { name: "t", value: "5" }], array_snapshots: [{ name: "a", elements: ["5", "3", "1"] }] },
+    { code_line: 10, func_name: "main", local_vars: [{ name: "j", value: "1" }, { name: "t", value: "5" }], array_snapshots: [{ name: "a", elements: ["3", "5", "1"] }] },
+  ];
+  const src = ["", "", "", "", "", "", "", "", "  int t = a[j];", "  a[j] = a[j + 1];", "  a[j + 1] = t;"];
+  const a = sceneAnnotations(frames, 0, 1, 1, src);
+  // line 10 帧：j 确实变了（语句边界把 j++ 并进末行），但该行源码不写 j → 只留数组注记
+  assert.deepEqual(a.map((x) => [x.line, x.text]), [[10, "a[0] ← 3 · a[1] ← 5"]]);
+  // 写入判定：a[j] = v 不算写 a；j++ / j = / --j 算；j == 0 不算
+  assert.equal(writesName("  a[j] = a[j + 1];", "j"), false);
+  assert.equal(writesName("  a[j] = a[j + 1];", "a"), false);
+  assert.equal(writesName("  for (int j = 0; j < 4; j++)", "j"), true);
+  assert.equal(writesName("  --j;", "j"), true);
+  assert.equal(writesName("  if (j == 0) {", "j"), false);
+});
+test("annotations：at 在幕前 = 空表（未走到本幕不出旧注记）", () => {
+  const frames: StepLike[] = [
+    { code_line: 5, func_name: "main", local_vars: [{ name: "j", value: "0" }] },
+    { code_line: 7, func_name: "main", local_vars: [{ name: "j", value: "1" }] },
+  ];
+  assert.deepEqual(sceneAnnotations(frames, 1, 1, 0), []);
+});
+
+// ── scenes：帧 → 幕定位（时间轴分幕 / 分镜条共用单点，P1 第二片）
+test("scenes：sceneIndexAt 边界（首帧/幕尾/幕缝/幕外/空表），先红后绿", () => {
+  const scenes: Scene[] = [
+    { id: "01", title: "甲", from: 0, to: 4, lines: [3, 4], note: "" },
+    { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" },
+    { id: "03", title: "丙", from: 21, to: 29, lines: [6, 10], note: "" },
+  ];
+  assert.equal(sceneIndexAt([], 0), -1); // 无 scene 老课：回退长文，无幕
+  assert.equal(sceneIndexAt(scenes, 0), 0); // 首帧 = 第一幕 from
+  assert.equal(sceneIndexAt(scenes, 4), 0); // 幕尾含（闭区间）
+  assert.equal(sceneIndexAt(scenes, 5), 1); // 幕缝 = 下一幕 from
+  assert.equal(sceneIndexAt(scenes, 20), 1);
+  assert.equal(sceneIndexAt(scenes, 29), 2);
+  assert.equal(sceneIndexAt(scenes, -1), -1); // 未采集（idx 负数）
+  assert.equal(sceneIndexAt(scenes, 30), -1); // 超出末幕（帧数变化/旧存档帧号）
+});
+
+test("scenes：sceneProgress 幕内进度与单帧幕（0/0 不得 NaN），先红后绿", () => {
+  const s: Scene = { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" };
+  assert.equal(sceneProgress(s, 5), 0);
+  assert.equal(sceneProgress(s, 20), 1);
+  assert.ok(Math.abs(sceneProgress(s, 12) - 7 / 15) < 1e-9);
+  const one: Scene = { ...s, from: 7, to: 7 };
+  assert.equal(sceneProgress(one, 7), 1); // 单帧幕：到即满
+  assert.equal(sceneProgress(one, 6), 0); // 幕外钳制
+});
+
+test("scenes：sceneRangeLabel 单帧/多帧形态", () => {
+  const s: Scene = { id: "01", title: "", from: 0, to: 4, lines: [1, 2], note: "" };
+  assert.equal(sceneRangeLabel(s), "帧 0–4");
+  assert.equal(sceneRangeLabel({ ...s, from: 7, to: 7 }), "帧 7");
+});
+
+test("scenes：sceneKicker 幕号/帧范围文案（幕头用），先红后绿", () => {
+  const s: Scene = { id: "02", title: "乙", from: 5, to: 20, lines: [8, 10], note: "" };
+  assert.equal(sceneKicker(s, 1, 4), "第 2 幕 / 共 4 幕 · 帧 5–20");
+  assert.equal(sceneKicker({ ...s, from: 7, to: 7 }, 0, 1), "第 1 幕 / 共 1 幕 · 帧 7");
+});
+
+test("scenes：sceneBand 百分比几何（帧数变化/末幕越界/未采集），先红后绿", () => {
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+  const s: Scene = { id: "02", title: "", from: 5, to: 20, lines: [1, 2], note: "" };
+  const b = sceneBand(s, 42);
+  assert.ok(near(b.left, (5 / 42) * 100));
+  assert.ok(near(b.width, (16 / 42) * 100));
+  // 末幕越界（旧存档 frame 41，但当前只采到 30 帧）→ 宽度按现存帧钳制，不溢出轴
+  const tail = sceneBand({ ...s, from: 21, to: 41 }, 30);
+  assert.ok(near(tail.left, (21 / 30) * 100));
+  assert.ok(near(tail.width, (9 / 30) * 100));
+  // 未采集（n=0）→ 零宽，绝不出 NaN（NaN% 会让整条轴静默消失）
+  assert.deepEqual(sceneBand(s, 0), { left: 0, width: 0 });
+  // 单帧幕 = 一格宽
+  assert.ok(near(sceneBand({ ...s, from: 7, to: 7 }, 10).width, 10));
+});
+
+test("lessonMd：bubble scene 覆盖 0..41（内容锚，先红后绿）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/basic/bubble/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 4);
+  assert.equal(doc.scenes[0].from, 0);
+  assert.equal(doc.scenes[doc.scenes.length - 1].to, 41);
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
+});
+
+// 第二门旗舰课（#222 P1 内容扩面）：uaf 释放后读——6 帧、3 幕；帧数来自
+// 2026-10-21 实机采集（`node tmp/iss222/measure-lesson.mjs uaf` → n=6）。
+test("lessonMd：uaf scene 覆盖 0..5（内容锚：悬垂指针三幕）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/basic/uaf/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 3);
+  assert.deepEqual(
+    doc.scenes.map((s) => [s.id, s.from, s.to, s.lines.join("..")]),
+    [
+      ["01", 0, 2, "4..5"],
+      ["02", 3, 3, "6..6"],
+      ["03", 4, 5, "7..8"],
+    ],
+  );
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
+  // 注释块剥离：正文首块仍是 h2（与本片 E-08/课文渲染口径一致）
+  assert.equal(doc.blocks[0].type, "h2");
+});
+
+// 第三门旗舰课（#222 P1 内容扩面）：bubble_sort 冒泡——65 帧、6 幕。
+// 帧数是实机口径：demo 的 viewFrames = 引擎 insn 帧经 annotateGroups 取组尾
+// （语句级），本锚用同一条链对 templates/bubble/source.c 的 lesson 源码实测
+// 65 帧（2026-10-22：js 臂 step 流 914 条指令帧 → 65 条语句帧）。
+test("lessonMd：bubble_sort scene 覆盖 0..64（内容锚：六幕收敛）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(path.resolve(here, "../../course/sorting/bubble_sort/lesson.md"), "utf8");
+  const doc = parseLessonMd(src);
+  assert.equal(doc.scenes.length, 6);
+  assert.deepEqual(
+    doc.scenes.map((s) => [s.id, s.from, s.to, s.lines.join("..")]),
+    [
+      ["01", 0, 4, "15..18"],
+      ["02", 5, 23, "4..9"],
+      ["03", 24, 36, "4..9"],
+      ["04", 37, 47, "4..9"],
+      ["05", 48, 50, "4..6"],
+      ["06", 51, 64, "18..23"],
+    ],
+  );
+  for (let i = 1; i < doc.scenes.length; i += 1) {
+    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  }
+  // 末幕必须落在最后一帧（65 帧 = 0..64；帧数变化要连坐改幕，不许静默越界）
+  assert.equal(doc.scenes[doc.scenes.length - 1].to, 64);
+  // 元数据剥离 + 课文仍在：首块 h2，且六幕讲解不是正文段落
+  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
+});
+
+// token 单源 ↔ 主题清单一致性（#222 P0）：新加主题若只改了 persisted 的
+// THEME_KEYS、没在 tokens.json 里登记色板，该主题会静默无样式——这里把
+// persisted 与 tokens 两端钉死；style_contract 的主题清单也读 tokens.themeOrder
+// （同一单源，不再手抄），故三者不会各错一次。
+test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8"));
+  const persisted = readFileSync(path.resolve(here, "../src/persisted.svelte.ts"), "utf8");
+  const m = persisted.match(/THEME_KEYS\s*=\s*\[([^\]]+)\]/);
+  assert.ok(m, "persisted.svelte.ts 里找不到 THEME_KEYS");
+  const keys = m[1]
+    .split(",")
+    .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean);
+  assert.ok(keys.length >= 5, `THEME_KEYS 只解析出 ${keys.length} 个（抽取面塌缩）`);
+  assert.deepEqual([...tokens.themeOrder].sort(), [...keys].sort());
+  for (const k of keys) {
+    const t = tokens.themes[k]?.tokens ?? {};
+    assert.ok(Object.keys(t).length > 0, `主题 ${k} 在 tokens.json 里没有 token`);
+    assert.ok(["--vr-bg", "--vr-panel", "--vr-ink", "--vr-rule", "--vr-amber"].every((v) => t[v]), `主题 ${k} 缺核心 token`);
+  }
+});
+
+// ── 内容批回归闸（2026-10-23 审阅 P2）：课程 scene 与码表附属内容此前只有
+// tmp/ 探针，没有任何 CI 锚——scene 帧号改坏、catalog 键写错都能全绿。
+// 这里补两个纯函数闸：不依赖浏览器/引擎，只锁结构面（帧号连续/行界/键命中/
+// 关联课存在）；引擎帧数锚另由各课的 N 常量显式钉住，帧流变化会先红。
+
+test("lessonMd：全量 course 叙述 scene 连续、行界/注记非空（P2-1 闸）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const root = path.resolve(here, "../../course");
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(p);
+      else if (ent.isFile() && ent.name === "lesson.md") files.push(p);
+    }
+  };
+  walk(root);
+  assert.ok(files.length >= 8, `course 叙述文件只找到 ${files.length} 份（抽取面塌缩）`);
+  for (const file of files) {
+    const doc = parseLessonMd(readFileSync(file, "utf8"));
+    const rel = path.relative(root, file);
+    assert.ok(doc.scenes.length >= 1, `${rel}: 无 scene`);
+    assert.equal(doc.scenes[0].from, 0, `${rel}: 首幕不从 0 起`);
+    let prev = -1;
+    for (const s of doc.scenes) {
+      assert.ok(s.to >= s.from, `${rel}: scene ${s.id} to < from`);
+      assert.equal(s.from, prev + 1, `${rel}: scene ${s.id} 与上一幕不连续`);
+      assert.ok(s.lines[0] >= 1 && s.lines[1] >= s.lines[0], `${rel}: scene ${s.id} 行界非法`);
+      assert.ok(s.title.trim() && s.note.trim(), `${rel}: scene ${s.id} 标题/注记为空`);
+      prev = s.to;
+    }
+  }
+});
+
+test("lessonMd：第〇章新 5 门 scene 帧数/四节（内容批锚）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const expectN: Record<string, number> = { hello: 5, double_avg: 9, global_struct: 540, macro: 6, malloc_free: 9 };
+  const need = ["这门课在做什么", "先跑一遍，看三个东西", "一个常见错误，先放在这里", "试着改"];
+  for (const [id, n] of Object.entries(expectN)) {
+    const doc = parseLessonMd(readFileSync(path.resolve(here, `../../course/basic/${id}/lesson.md`), "utf8"));
+    assert.ok(doc.scenes.length >= 3 && doc.scenes.length <= 6, `${id}: 幕数 ${doc.scenes.length} 不在 3..6`);
+    assert.equal(doc.scenes[doc.scenes.length - 1].to, n - 1, `${id}: 末幕 to ≠ N-1`);
+    assert.equal(doc.scenes.reduce((s, x) => s + (x.to - x.from + 1), 0), n, `${id}: scene 覆盖帧数 ≠ ${n}`);
+    const h2 = doc.blocks.flatMap((b) => (b.type === "h2" ? [b.text] : []));
+    for (const h of need) assert.ok(h2.includes(h), `${id}: 缺小节「${h}」`);
+  }
+});
+
+test("catalogDetail：示例/关联课键命中 catalog，关联课存在（P2-2 闸）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const cat = JSON.parse(readFileSync(path.resolve(here, "../../scripts/moonbit/diagnostics_data/catalog.json"), "utf8")) as {
+    entries: Array<{ code: number }>;
+  };
+  const arms = JSON.parse(readFileSync(path.resolve(here, "../../scripts/moonbit/diagnostics_data/error_codes.json"), "utf8")) as {
+    arms: Array<{ name: string; code: number }>;
+  };
+  const prefix = new Map(arms.arms.map((a) => [a.code, a.name.split("_")[0]]));
+  const codes = new Set(cat.entries.map((e) => prefix.get(e.code)).filter((s): s is string => !!s));
+  assert.ok(Object.keys(EXAMPLES).length >= 25, `EXAMPLES 只剩 ${Object.keys(EXAMPLES).length} 条`);
+  for (const [code, ex] of Object.entries(EXAMPLES)) {
+    assert.ok(codes.has(code), `EXAMPLES 键 ${code} 不在 catalog.code_str`);
+    assert.ok(ex.bad.trim().length > 0, `${code}: bad 为空`);
+    if (ex.fix !== undefined) assert.ok(ex.fix.trim().length > 0, `${code}: fix 为空`);
+  }
+
+  const cases = runInNewContext(readFileSync(path.resolve(here, "../cases.js"), "utf8") + "\n;DEMO_CASES;", {}) as Array<{ id: string }>;
+  const algos = runInNewContext(readFileSync(path.resolve(here, "../algorithms.js"), "utf8") + "\n;DEMO_ALGORITHMS;", {}) as {
+    groups?: Array<{ id: string; items?: Array<{ id: string; variants?: Array<{ tpl: string }> }>; xitems?: Array<{ id: string }> }>;
+  };
+  const lessonIds = new Set<string>(cases.map((c) => c.id));
+  for (const g of algos.groups ?? []) {
+    if (g.id === "xlab") for (const x of g.xitems ?? []) lessonIds.add(x.id);
+    else for (const it of g.items ?? []) {
+      lessonIds.add(it.id);
+      for (const v of it.variants ?? []) lessonIds.add(v.tpl);
+    }
+  }
+  assert.ok(Object.keys(RELATED).length >= 16, `RELATED 只剩 ${Object.keys(RELATED).length} 条`);
+  for (const [code, id] of Object.entries(RELATED)) {
+    assert.ok(codes.has(code), `RELATED 键 ${code} 不在 catalog.code_str`);
+    assert.ok(lessonIds.has(id), `RELATED[${code}] 的课 id「${id}」不在课表`);
+  }
 });

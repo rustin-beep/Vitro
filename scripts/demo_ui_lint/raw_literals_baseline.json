@@ -1,0 +1,190 @@
+{
+  "_comment": "demo_ui_lint 裸值棘轮基线（#222 P0 第三批，2026-10-21）——只能收窄：清理存量后跑 -update-raw 重写；新增裸值/用量增加/僵尸条目一律红。",
+  "note": "判定面 = demo/src 的 .css 与 .svelte 的 \u003cstyle\u003e 块（跳过 @generated 生成物）；颜色 = hex/rgb()/rgba()/hsl()/hsla()，字号 = font-size 里的裸 px。",
+  "surface": [
+    "demo/src/**/*.css",
+    "demo/src/**/*.svelte \u003cstyle\u003e"
+  ],
+  "entries": [
+    {
+      "file": "demo/src/app.css",
+      "kind": "color",
+      "literal": "rgba(0, 0, 0, .12)",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "color",
+      "literal": "rgba(142, 82, 92, .35)",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "color",
+      "literal": "rgba(47, 81, 107, .35)",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "10.5px",
+      "count": 23
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "10px",
+      "count": 38
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "11.5px",
+      "count": 7
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "11px",
+      "count": 16
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "12.5px",
+      "count": 5
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "12px",
+      "count": 8
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "13.5px",
+      "count": 3
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "13px",
+      "count": 2
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "14.5px",
+      "count": 2
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "14px",
+      "count": 3
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "15px",
+      "count": 3
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "17px",
+      "count": 2
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "18px",
+      "count": 2
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "19px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "20px",
+      "count": 2
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "21px",
+      "count": 3
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "22px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "24px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "25px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "29px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "30px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "31px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "36px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "7px",
+      "count": 1
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "8px",
+      "count": 3
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "9.5px",
+      "count": 27
+    },
+    {
+      "file": "demo/src/app.css",
+      "kind": "font-px",
+      "literal": "9px",
+      "count": 16
+    }
+  ]
+}

@@ -10,6 +10,24 @@
       "pattern": "(,?\"engine_version\":\"[^\"]*\")",
       "replace": "",
       "reason": "engine_version 为构建期身份串（Rust=git 短哈希、MoonBit=moon.mod 版本）。**语义诚实化（审阅 P3-③）：本 mask 为无条件键抹除——单侧独现该键时同样被抹平（键集分叉探测不由此规则承担，首版注释「单臂独现应红」与实现不符已勘正）**；当前零命中（capabilities 已整帧 skip，其余帧无此键），属防御位——散出点出现时若帧与基线两侧同现可直接抹，单侧独现应改走 skip 并给理由"
+    },
+    {
+      "name": "catalog-title-display",
+      "pattern": "\"title\":\"[^\"]*\"",
+      "replace": "\"title\":\"*\"",
+      "reason": "catalog 条目标题是展示文案，不是协议结构；改文案不应要求重冻 47 帧基线（2026-10-23 审阅 P3：W3064 标题修正曾触发整段重冻）。结构面 code/code_str/category/lang 仍冻结。"
+    },
+    {
+      "name": "catalog-explanation-display",
+      "pattern": "\"explanation\":\"[^\"]*\"",
+      "replace": "\"explanation\":\"*\"",
+      "reason": "catalog 解释文案是展示字段，同 title；结构/码集仍由基线冻结。"
+    },
+    {
+      "name": "catalog-causes-display",
+      "pattern": "\"common_causes\":\\[[^\\]]*\\]",
+      "replace": "\"common_causes\":[\"*\"]",
+      "reason": "catalog 常见原因是展示文案，同 title；若内容含 ] 会漏掩，届时改 JSON 级 mask（当前 106 条实测无）。"
     }
   ]
 }

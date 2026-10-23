@@ -316,7 +316,7 @@
         "pre_decrement.c": "c4c36fe5",
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
-        "predefined_macro.c": "b4cfaf56",
+        "predefined_macro.c": "9aee91b9",
         "print_int_user_redefine.c": "c6d73ef4",
         "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
@@ -1448,7 +1448,7 @@
           "result_sha": "e61c7c3ab5cdeb8b"
         },
         "predefined_macro.c": {
-          "result_sha": "31bcdcecf3feb935"
+          "result_sha": "34b60d8400abc414"
         },
         "print_int_user_redefine.c": {
           "result_sha": "6295ef49e92b9724"

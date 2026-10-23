@@ -12,7 +12,8 @@
   import { progress } from "./lib/progress.svelte.ts";
   import { lessonSession } from "./lib/lessonSession.svelte.ts";
   import { saveActiveFile, workspace } from "./lib/workspace.svelte.ts";
-  import { showEntry, showRef, showWork, ui } from "./ui.svelte.ts";
+  import { showEntry, showRef, showWork, setFocus, ui } from "./ui.svelte.ts";
+  import { sceneIndexAt } from "./lib/scenes.ts";
   import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
   import { NIGHT_THEMES, cycleTheme, initTheme, themeState } from "./theme.svelte.ts";
   import WorkScreen from "./screens/WorkScreen.svelte";
@@ -27,6 +28,12 @@
   let bootError = $state("");
   let shareError = $state("");
 
+  // 专注模式深链：?focus=1 首帧即专注（课堂投屏/录屏入口）；F/Esc 后续切换。
+  // 只读 location，写入由下方 effect 单点（replaceState，不新增历史项）。
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).get("focus") === "1") {
+    ui.focus = true;
+  }
+
   // 主题/字号/动效引导（旧值迁移 + 落盘规范化）。旧 glass 用户收到一次说明。
   const rawTheme = storeGet(KEYS.theme);
   initTheme();
@@ -40,6 +47,9 @@
   const chapterLabel = $derived(lessonSession.lesson?.chapLabel ?? "");
   const lessonId = $derived(lessonSession.lesson?.id ?? "分享代码");
   const ctxRef = $derived(ui.refCode || session.catalog[0]?.code_str || "");
+  const focusScenes = $derived(lessonSession.note?.scenes ?? []);
+  const focusSceneIdx = $derived(session.viewFrames.length ? sceneIndexAt(focusScenes, session.idx) : -1);
+  const focusScene = $derived(focusSceneIdx >= 0 ? focusScenes[focusSceneIdx] : null);
 
   function startBoot(): void {
     bootError = "";
@@ -68,6 +78,10 @@
         await lessonSession.openInitial();
       })
       .finally(() => {
+        // 测试观测面（与 main.ts 的 __pilot 同域）：记录 ready 翻态瞬间的帧数——
+        // E2E F8「首访 shell 先行」用它判「ready 不等首课采集」，不再靠轮询抓瞬态
+        // 窗口（CI 上采集快于轮询，锚会假红，2026-10-22 实锤）。
+        (window as unknown as Record<string, unknown>).__readyFrames = session.frames.length;
         ui.ready = true;
       })
       .catch((err: unknown) => {
@@ -84,8 +98,20 @@
   }
   function onKey(e: KeyboardEvent): void {
     if (e.key === "Escape") {
+      if (ui.focus) {
+        e.preventDefault();
+        setFocus(false);
+        return;
+      }
       ui.settingsOpen = false;
       ui.shareOpen = false;
+      return;
+    }
+    // 专注模式 F 进 / Esc 出（输入框/编辑器内不劫持——'f' 要能正常输入；
+    // 只属于执行面：mem/proto 下 F 不生效，setFocus 亦有同一守卫）
+    if (ui.screen === "work" && ui.mode === "exec" && (e.key === "f" || e.key === "F") && !typingIn(e.target as HTMLElement | null)) {
+      e.preventDefault();
+      setFocus(!ui.focus);
       return;
     }
     if (ui.screen !== "work" || ui.mode !== "exec") return;
@@ -152,6 +178,17 @@
     };
   });
 
+  // 专注模式 URL 单点同步（?focus=1 可分享/可直达；replaceState 不污染历史）
+  $effect(() => {
+    const on = ui.focus;
+    if (typeof location === "undefined") return;
+    const u = new URL(location.href);
+    if (on) u.searchParams.set("focus", "1");
+    else u.searchParams.delete("focus");
+    const next = u.pathname + u.search + u.hash;
+    if (next !== location.pathname + location.search + location.hash) history.replaceState(null, "", next);
+  });
+
   // 点浮层外关闭（齿轮/分享触发器先 toggle，document 冒泡在后只做判定）
   function onDocClick(e: MouseEvent): void {
     const t = e.target as HTMLElement | null;
@@ -170,25 +207,38 @@
 
 <div class="vr-shell">
   <div class="vr-app">
-    <header class="vr-masthead">
+    <header class="vr-masthead" class:is-focus={ui.focus && ui.screen === "work"}>
       <div class="vr-brand">
         <!-- 品牌真 logo（项目自有资产，昼夜双变体随主题族切换）——设计稿里的
              方形 V 字形只是占位 glyph，不替代品牌资产。 -->
         <img class="vr-logo" src={NIGHT_THEMES.has(themeState.current) ? iconDark : iconLight} alt="Vitro" width="26" height="26" />
         <span class="vr-wordmark">Vitro</span>
-        <span class="vr-tagline">C 执行观察台</span>
-        <span class="vr-context">
-          {#if ui.screen === "work"}
-            <span class="vr-sep">/</span><b>{chapterLabel || "自由代码"}</b><span class="vr-sep">/</span><span>{lessonId}</span>
-          {:else if ui.screen === "entry"}
-            <span class="vr-sep">/</span><b>课程目录</b>
-          {:else}
-            <span class="vr-sep">/</span><b>诊断手册</b><span class="vr-sep">/</span><span>{ctxRef}</span>
-          {/if}
-        </span>
+        {#if ui.focus && ui.screen === "work"}
+          <span class="vr-focuslabel">FOCUS / LECTURE</span>
+          <span class="vr-context">
+            <b>{lessonSession.title}</b>
+            {#if focusScene}<span class="vr-sep">/</span><span>第 {focusSceneIdx + 1} 幕 · {focusScene.title}</span>{/if}
+          </span>
+        {:else}
+          <span class="vr-tagline">C 执行观察台</span>
+          <span class="vr-context">
+            {#if ui.screen === "work"}
+              <span class="vr-sep">/</span><b>{chapterLabel || "自由代码"}</b><span class="vr-sep">/</span><span>{lessonId}</span>
+            {:else if ui.screen === "entry"}
+              <span class="vr-sep">/</span><b>课程目录</b>
+            {:else}
+              <span class="vr-sep">/</span><b>诊断手册</b><span class="vr-sep">/</span><span>{ctxRef}</span>
+            {/if}
+          </span>
+        {/if}
       </div>
 
       <div class="vr-head-right">
+        {#if ui.focus && ui.screen === "work"}
+          <span class="vr-focusbadge">专注模式</span>
+          <span class="vr-focusframe">第 {session.idx + 1} / {Math.max(session.viewFrames.length, 1)} 帧</span>
+          <button type="button" class="vr-btn vr-tiny" onclick={() => setFocus(false)} title="退出专注（Esc）">退出专注 Esc</button>
+        {:else}
         <div class="vr-engine" aria-label="引擎状态">
           <span><span class="vr-live"></span>引擎 <b>{session.versions.engine || "…"}</b></span>
           <span class="vr-hide-sm">协议 <b>{session.versions.protocol || "…"}</b></span>
@@ -254,6 +304,7 @@
             <SettingsPopover />
           {/if}
         </div>
+        {/if}
       </div>
     </header>
 
@@ -282,10 +333,12 @@
       <RefScreen />
     {/if}
 
+    {#if !(ui.focus && ui.screen === "work")}
     <footer class="vr-foot">
       <p>白箱引擎：内存映射、freed 隔离区、VM 步数、诊断全部来自引擎真实数据（memory.regions / output.delta / error_catalog / trap 帧），非装饰性 mock。</p>
       <p>课程叙述真源：<b>course/**/lesson.md</b>；课目与计数由同一数据源渲染，不在页面里手写。</p>
     </footer>
+    {/if}
   </div>
 </div>
 

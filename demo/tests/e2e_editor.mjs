@@ -79,6 +79,10 @@ async function run() {
 
   await send("Page.enable");
   await send("Runtime.enable");
+  // 桌面视口（2026-10-22 P3）：≤760 容器起移动工作台（整段代码默认收起），
+  // 无头浏览器默认 800×600 → 容器约 736 会落进移动形态，N1 点击编辑器不再
+  // 命中。本套件是桌面编辑器锚，显式钉 1440×900（与 session/workspace 同口径）。
+  await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   // 清「继续上次」再重载——本套件锚假定默认课（非 scanf 等待态：#189 起
   // waiting 态编辑器锁定会让 N1 键入锚红；上次套件留下的 progress.last
   // 不可依赖，localStorage 清除后 openInitial 走默认 bubble）。⚠️ 清除必须

@@ -8,6 +8,7 @@
 
 import type { DemoCase, AlgoGroup } from "virtual:demo-globals";
 import { DEMO_CASES, DEMO_ALGORITHMS } from "virtual:demo-globals";
+import { COURSE_BLURB } from "./courseBlurbs.ts";
 
 export type LessonKind = "case" | "algo" | "variant" | "xlab";
 
@@ -40,6 +41,14 @@ export const KIND_LABELS: Record<LessonKind, string> = {
   xlab: "练习",
 };
 
+/** 一句话说明兜底：课程数据里的 blurb 仍是 id 或「族名 · 变体」这类**占位**时，
+ *  改取 COURSE_BLURB["<chap>/<id>"]；已有真实说明（case 课的 blurb 字段）
+ *  一律不覆盖。键缺失时回落原占位文案——不白屏、不改既有行为。 */
+function blurbOf(chapId: string, id: string, raw: string): string {
+  const placeholder = !raw || raw === id || raw.endsWith("变体");
+  return placeholder ? (COURSE_BLURB[chapId + "/" + id] ?? raw) : raw;
+}
+
 function buildChapters(): CourseChapter[] {
   const out: CourseChapter[] = [];
   let n = 0;
@@ -58,7 +67,7 @@ function buildChapters(): CourseChapter[] {
     DEMO_CASES.map((k: DemoCase) => ({
       id: k.id,
       title: k.label,
-      blurb: k.blurb ?? "",
+      blurb: blurbOf("basic", k.id, k.blurb ?? ""),
       kind: "case" as const,
       source: k.source,
     })),
@@ -69,9 +78,9 @@ function buildChapters(): CourseChapter[] {
   for (const g of groups) {
     const lessons: Omit<CourseLesson, "chapId" | "chapLabel" | "ordinal" | "index">[] = [];
     for (const it of g.items ?? []) {
-      lessons.push({ id: it.id, title: it.name, blurb: it.id, kind: "algo", source: it.source });
+      lessons.push({ id: it.id, title: it.name, blurb: blurbOf(g.id, it.id, it.id), kind: "algo", source: it.source });
       for (const v of it.variants ?? []) {
-        lessons.push({ id: v.tpl, title: v.tpl, blurb: `${it.name} · 变体`, kind: "variant", famId: it.id, source: v.source });
+        lessons.push({ id: v.tpl, title: v.tpl, blurb: blurbOf(g.id, v.tpl, `${it.name} · 变体`), kind: "variant", famId: it.id, source: v.source });
       }
     }
     push(g.id, g.label, lessons);
@@ -83,7 +92,7 @@ function buildChapters(): CourseChapter[] {
     push(
       "xlab",
       xg.label,
-      (xg.xitems ?? []).map((x) => ({ id: x.id, title: x.name, blurb: x.id, kind: "xlab" as const, source: x.source })),
+      (xg.xitems ?? []).map((x) => ({ id: x.id, title: x.name, blurb: blurbOf("xlab", x.id, x.id), kind: "xlab" as const, source: x.source })),
     );
   }
   return out;

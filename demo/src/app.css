@@ -8,92 +8,12 @@
    旧主题键 glass（深夜书房）→ blueprint（夜航图），见 theme.svelte.ts。
    ============================================================ */
 
+/* 主题 token 单源 = demo/tokens.json；本文件由 scripts/gen_demo_tokens 生成，@import 进来。"禁手改" */
+@import "./tokens.css";
+
 /* ---------- 字体与动效规格 ---------- */
-:root {
-  --vr-serif: "Iowan Old Style", "Palatino Linotype", "Songti SC", "STSong", "SimSun", Georgia, serif;
-  --vr-sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
-  --vr-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --vr-fs: 14px;
-  --vr-fs-code: 12.5px;
-  --vr-r: 3px;
-  --vr-t: 160ms;
-  --vr-ease: cubic-bezier(.2, .7, .3, 1);
-  --vr-shadow: 0 14px 34px rgba(30, 24, 12, .16), 0 2px 6px rgba(30, 24, 12, .08);
-}
-
 /* ---------- 主题：明亮实验室（旧 ice 色板原样） ---------- */
-:root[data-theme="ice"] {
-  color-scheme: light;
-  --vr-bg: #eaf2fc;
-  --vr-panel: #ffffff;
-  --vr-panel-2: #f6f9fe;
-  --vr-panel-3: #edf3fb;
-  --vr-ink: #1a2740;
-  --vr-ink-2: #465872;
-  --vr-ink-3: #5b6b82;
-  --vr-rule: #dbe5f0;
-  --vr-rule-2: #c3d2e4;
-  --vr-amber: #1d4ed8;
-  --vr-amber-2: #2563eb;
-  --vr-amber-bg: #dbe7fd;
-  --vr-amber-tint: rgba(37, 99, 235, .08);
-  --vr-red: #b91c1c;
-  --vr-red-tint: rgba(185, 28, 28, .07);
-  --vr-green: #15803d;
-  --vr-green-tint: rgba(21, 128, 61, .08);
-  --vr-code-bg: #fbfdff;
-  --vr-code-line: rgba(37, 99, 235, .075);
-  --vr-sel: rgba(37, 99, 235, .18);
-  --vr-masthead: rgba(255, 255, 255, .94);
-  --vr-hatch: rgba(91, 107, 130, .42);
-  --vr-r: 8px;
-  --vr-shadow: 0 16px 40px rgba(30, 58, 95, .16), 0 3px 10px rgba(30, 58, 95, .12);
-  /* 旧主题保留各自的语法色板（「主题不变」） */
-  --vr-kw: #4338ca;
-  --vr-ty: #0e7490;
-  --vr-str: #15803d;
-  --vr-num: #b45309;
-  --vr-cmt: #64748b;
-}
-
 /* ---------- 主题：奶油手账（旧 rose 色板原样） ---------- */
-:root[data-theme="rose"] {
-  color-scheme: light;
-  --vr-bg: #f9f1f4;
-  --vr-panel: #fffdfd;
-  --vr-panel-2: #faf2f5;
-  --vr-panel-3: #f4e7ec;
-  --vr-ink: #2e2428;
-  --vr-ink-2: #6b5760;
-  --vr-ink-3: #75666e;
-  --vr-rule: #f0dfe6;
-  --vr-rule-2: #dfc4ce;
-  --vr-amber: #a83b62;
-  --vr-amber-2: #d4597a;
-  --vr-amber-bg: #f6dbe5;
-  --vr-amber-tint: rgba(212, 89, 122, .10);
-  --vr-red: #a83b52;
-  --vr-red-tint: rgba(168, 59, 82, .08);
-  --vr-green: #5c6b2f;
-  --vr-green-tint: rgba(92, 107, 47, .10);
-  --vr-code-bg: #fdf7f9;
-  --vr-code-line: rgba(212, 89, 122, .08);
-  --vr-sel: rgba(212, 89, 122, .18);
-  --vr-masthead: rgba(255, 253, 253, .94);
-  --vr-hatch: rgba(117, 102, 110, .40);
-  --vr-r: 12px;
-  --vr-shadow: 0 16px 40px rgba(142, 82, 92, .16), 0 3px 10px rgba(142, 82, 92, .12);
-  /* 新拟物双阴影（rose 主题专属；用户 2026-10-18 反馈：不要把奶油压成平纸） */
-  --vr-neu-raised: -3px -3px 8px rgba(255, 255, 255, 1), 4px 4px 11px rgba(142, 82, 92, .30);
-  --vr-neu-inset: inset -2px -2px 6px rgba(255, 255, 255, .95), inset 3px 3px 8px rgba(142, 82, 92, .20);
-  --vr-neu-pop: 14px 16px 34px rgba(142, 82, 92, .28), -10px -10px 24px rgba(255, 255, 255, .9);
-  --vr-kw: #b03a64;
-  --vr-ty: #1f7a76;
-  --vr-str: #2e7a52;
-  --vr-num: #a83b1a;
-  --vr-cmt: #75666e;
-}
-
 /* 奶油手账：保留旧主题的「新拟物」语言——只在本主题给可操作面/字段加双阴影，
    其它主题（纸/夜航/实验室）仍是平面 + 描边。 */
 :root[data-theme="rose"] .vr-code,
@@ -140,116 +60,12 @@
 :root[data-theme="rose"] .vr-masthead { box-shadow: 0 8px 18px -14px rgba(142, 82, 92, .35); }
 
 /* ---------- 主题：绒面深蓝（旧 soft 色板原样） ---------- */
-:root[data-theme="soft"] {
-  color-scheme: dark;
-  --vr-bg: #0d1428;
-  --vr-panel: #131a2e;
-  --vr-panel-2: #161e35;
-  --vr-panel-3: #1b2440;
-  --vr-ink: #e6ebf7;
-  --vr-ink-2: #9aa6c6;
-  --vr-ink-3: #7d89ad;
-  --vr-rule: #222c47;
-  --vr-rule-2: #33405f;
-  --vr-amber: #93a9ee;
-  --vr-amber-2: #7a94e6;
-  --vr-amber-bg: #26345c;
-  --vr-amber-tint: rgba(122, 148, 230, .16);
-  --vr-red: #e08080;
-  --vr-red-tint: rgba(224, 128, 128, .12);
-  --vr-green: #5fc795;
-  --vr-green-tint: rgba(95, 199, 149, .13);
-  --vr-code-bg: #10172b;
-  --vr-code-line: rgba(122, 148, 230, .09);
-  --vr-sel: rgba(122, 148, 230, .20);
-  --vr-masthead: rgba(13, 20, 40, .94);
-  --vr-hatch: rgba(157, 171, 201, .38);
-  --vr-r: 7px;
-  --vr-shadow: 0 22px 50px rgba(3, 6, 16, .55), 0 2px 8px rgba(3, 6, 16, .5);
-  --vr-kw: #f97583;
-  --vr-ty: #6fc9d8;
-  --vr-str: #98d89a;
-  --vr-num: #e0a96a;
-  --vr-cmt: #75809f;
-}
-
 /* ---------- 主题：白天（纸）——设计稿新增 ---------- */
-:root[data-theme="paper"] {
-  color-scheme: light;
-  --vr-bg: #efe7d8;
-  --vr-panel: #f8f3e8;
-  --vr-panel-2: #f2ebdc;
-  --vr-panel-3: #e9dfcc;
-  --vr-ink: #1d1a15;
-  --vr-ink-2: #514a3c;
-  --vr-ink-3: #6b6252;
-  --vr-rule: #d8ccb6;
-  --vr-rule-2: #bfae91;
-  --vr-amber: #96520a;
-  --vr-amber-2: #b06814;
-  --vr-amber-bg: #f0d6a4;
-  --vr-amber-tint: rgba(150, 82, 10, .09);
-  --vr-red: #9b3a2a;
-  --vr-red-tint: rgba(155, 58, 42, .07);
-  --vr-green: #4c6338;
-  --vr-green-tint: rgba(76, 99, 56, .08);
-  --vr-code-bg: #f6efe1;
-  --vr-code-line: rgba(150, 82, 10, .075);
-  --vr-sel: rgba(150, 82, 10, .18);
-  --vr-masthead: rgba(248, 243, 232, .94);
-  --vr-hatch: rgba(116, 107, 90, .42);
-  --vr-r: 3px;
-  --vr-shadow: 0 14px 34px rgba(30, 24, 12, .16), 0 2px 6px rgba(30, 24, 12, .08);
-  /* 教科书批注色系（2026-10-19 改）：原「单色排版」（kw≡ink 同墨色）被线上
-     首访实测证伪——用户体感「完全没高亮」（默认主题即 paper）。改用传统印
-     刷批注色：朱批=关键字（=--vr-red）、青碧=类型、墨绿=字符串（=--vr-green）、
-     赭石=数字（=--vr-amber）——色系与主题信号色统一，对纸底对比度均 ≥5:1，
-     色度（RGB 极差）74~140（e2e_editor N9 锚 ≥40）。注释保持 ink-3 弱化。 */
-  --vr-kw: #9b3a2a;
-  --vr-ty: #2a6b74;
-  --vr-str: #4c6338;
-  --vr-num: #96520a;
-  --vr-cmt: #6b6252;
-}
-
 /* ---------- 主题：夜航图（设计稿新增；接替旧 glass 深夜书房） ----------
    不是玻璃：深石墨蓝、平面、发丝线、唯一信号橙；图纸网格只铺仪器画布。 */
-:root[data-theme="blueprint"] {
-  color-scheme: dark;
-  --vr-bg: #08111a;
-  --vr-panel: #0e1a26;
-  --vr-panel-2: #132433;
-  --vr-panel-3: #1a2e40;
-  --vr-ink: #dbe8f4;
-  --vr-ink-2: #a4b8cc;
-  --vr-ink-3: #7d93a8;
-  --vr-rule: #1e3446;
-  --vr-rule-2: #2f516b;
-  --vr-amber: #ff8a3c;
-  --vr-amber-2: #ffa25e;
-  --vr-amber-bg: #3a2413;
-  --vr-amber-tint: rgba(255, 138, 60, .12);
-  --vr-red: #ff6b6b;
-  --vr-red-tint: rgba(255, 107, 107, .10);
-  --vr-green: #62d99b;
-  --vr-green-tint: rgba(98, 217, 155, .10);
-  --vr-code-bg: #071019;
-  --vr-code-line: rgba(255, 138, 60, .10);
-  --vr-sel: rgba(255, 138, 60, .22);
-  --vr-masthead: rgba(8, 17, 26, .94);
-  --vr-hatch: rgba(125, 147, 168, .45);
-  --vr-r: 0px;
-  --vr-shadow: 0 0 0 1px var(--vr-rule-2), 0 22px 50px rgba(0, 0, 0, .55);
-  --vr-kw: #dbe8f4;
-  --vr-ty: #a4b8cc;
-  --vr-str: #a4b8cc;
-  --vr-num: #a4b8cc;
-  --vr-cmt: #7d93a8;
-}
 /* 夜航图：标题切技术说明书的无衬线粗体；形状归直角；仪器画布叠图纸网格 */
 :root[data-theme="blueprint"] .vr-title,
 :root[data-theme="blueprint"] .vr-entry-hero h1,
-:root[data-theme="blueprint"] .vr-preview h3,
 :root[data-theme="blueprint"] .vr-note h2,
 :root[data-theme="blueprint"] .vr-ref-detail h1,
 :root[data-theme="blueprint"] .vr-ref-detail h2 { font-family: var(--vr-sans); font-weight: 700; letter-spacing: -.02em; }
@@ -274,10 +90,6 @@
 :root[data-theme="blueprint"] .vr-treebox::after { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(47, 81, 107, .35); pointer-events: none; }
 
 /* 字号档（设置消费；--vr-fs 驱动正文，--vr-fs-code 驱动代码） */
-:root[data-size="13"] { --vr-fs: 13px; --vr-fs-code: 11.8px; }
-:root[data-size="14"] { --vr-fs: 14px; --vr-fs-code: 12.5px; }
-:root[data-size="16"] { --vr-fs: 16px; --vr-fs-code: 13.5px; }
-
 /* ---------- 基座 ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -322,6 +134,10 @@ code, pre, kbd, samp, .vr-mono {
 .vr-context b { color: var(--vr-ink-2); font-weight: 500; }
 .vr-context .vr-sep { color: var(--vr-rule-2); }
 .vr-head-right { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* 专注模式（#222 P4，2026-10-22）：顶栏只留 FOCUS 标签 / 课名幕名 / 帧号 / 退出 */
+.vr-focuslabel { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .72); font-variant-ligatures: none; letter-spacing: .16em; color: var(--vr-amber); padding-left: 12px; border-left: 1px solid var(--vr-rule); white-space: nowrap; }
+.vr-focusbadge { border: 1px solid var(--vr-amber-2); color: var(--vr-amber); padding: 2px 7px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .72); font-variant-ligatures: none; letter-spacing: .08em; white-space: nowrap; }
+.vr-focusframe { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .75); font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
 .vr-engine { display: flex; align-items: center; gap: 10px; padding-right: 10px; margin-right: 4px; border-right: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
 .vr-engine b { color: var(--vr-ink-2); font-weight: 500; }
 .vr-engine .vr-live { width: 5px; height: 5px; background: var(--vr-green); display: inline-block; margin-right: 2px; }
@@ -432,11 +248,53 @@ code, pre, kbd, samp, .vr-mono {
 .vr-banner.is-amber { border-color: var(--vr-amber-2); border-left-color: var(--vr-amber-2); background: var(--vr-amber-tint); }
 .vr-banner.is-amber b { color: var(--vr-amber); }
 
-/* ---------- 工作态：两页 ---------- */
-.vr-bench { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr); align-items: start; }
-.vr-left { min-width: 0; }
-.vr-page { padding: 30px 0 0 34px; min-width: 0; }
-.vr-instrument { border-right: 1px solid var(--vr-rule); padding: 24px 34px 40px 0; min-width: 0; }
+/* ---------- 工作态：三栏 + 底栏时间轴（#222 P1 第四片，2026-10-21） ---------- */
+/* 宽容器（≥1180）：rail / stage / now 三栏，时间轴横跨三栏做底栏，课文殿后；
+   窄容器：单列 rail → stage → now → dock → note（与 DOM 序一致）。 */
+.vr-bench { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.vr-colrail, .vr-colstage, .vr-colnow, .vr-coldock { min-width: 0; }
+.vr-colrail { padding: 20px 0 0; }
+.vr-colstage { padding: 16px 0 0; }
+.vr-colnow { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding: 16px 0 0; }
+.vr-coldock { border-top: 1px solid var(--vr-rule); margin-top: 18px; padding-top: 4px; }
+/* 专注模式窄容器：书栏一律退役（执行面 + 参数在 ≥1180 的布局里另有处理） */
+.vr-bench.is-focus .vr-colrail { display: none; }
+@container vitro (min-width: 1180px) {
+  .vr-bench {
+    grid-template-columns: 264px minmax(0, 1fr) 372px;
+    grid-template-areas:
+      "rail stage now"
+      "dock dock dock"
+      "note note note";
+    column-gap: 30px;
+  }
+  .vr-colrail { grid-area: rail; border-right: 1px solid var(--vr-rule); padding: 24px 22px 30px 0; }
+  .vr-colstage { grid-area: stage; padding: 16px 0 0; }
+  .vr-colnow { grid-area: now; border-left: 1px solid var(--vr-rule); border-top: 0; margin-top: 0; padding: 14px 0 16px 22px; }
+  .vr-coldock { grid-area: dock; margin-top: 16px; padding-top: 4px; }
+  .vr-coldock .vr-block { padding: 10px 0 12px; }
+  .vr-colstage .vr-params { margin-top: 6px; }
+  /* 三栏同屏预算：now/stage 的块间距收窄，把首屏让给底栏时间轴（#222 验收：
+     1440×900 不滚动见代码+数组+时间轴+幕头；output 至少露出 strip） */
+  .vr-colnow .vr-block { padding: 8px 0 10px; }
+  .vr-colstage .vr-stagehead { margin: 8px 0 10px; }
+  .vr-notearea { grid-area: note; margin: 0 0 40px; max-width: 78ch; }
+  /* 专注模式：左书栏退役，讲解/时间轴仍在；stage 让宽给代码 */
+  .vr-bench.is-focus {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-areas:
+      "stage now"
+      "dock dock"
+      "note note";
+    column-gap: 34px;
+  }
+  .vr-bench.is-focus .vr-colrail { display: none; }
+  .vr-bench.is-focus .vr-colstage { padding-top: 18px; }
+  .vr-bench.is-focus .vr-colnow { padding: 18px 0 16px 24px; }
+  .vr-bench.is-focus .vr-notearea { max-width: none; }
+  .vr-bench.is-focus .vr-params { display: none; }
+  .vr-bench.is-focus .vr-colnow .vr-modes { display: none; }
+}
 .vr-kicker { font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; letter-spacing: .11em; color: var(--vr-ink-3); }
 .vr-title { font-family: var(--vr-serif); font-size: 31px; line-height: 1.18; font-weight: 600; margin: 8px 0 6px; letter-spacing: .005em; }
 .vr-lede { margin: 0; color: var(--vr-ink-2); font-size: 13.5px; line-height: 1.75; }
@@ -450,6 +308,9 @@ code, pre, kbd, samp, .vr-mono {
 .vr-code { border: 1px solid var(--vr-rule); background: var(--vr-code-bg); border-radius: var(--vr-r); overflow: hidden; }
 .vr-codehead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-bottom: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-codehead .vr-dot { display: inline-block; width: 5px; height: 5px; background: var(--vr-green); margin-right: 6px; }
+/* 移动端专属件（#222 P3）：桌面一律不渲染 */
+.vr-mobilecodebtn { display: none; }
+.vr-mobileline { display: none; }
 .vr-codebody { display: flex; align-items: stretch; min-width: 0; }
 .vr-codebody > .vr-editor { flex: 1 1 auto; min-width: 0; }
 
@@ -459,7 +320,8 @@ code, pre, kbd, samp, .vr-mono {
 
 /* 课文（行内 markdown 真渲染） */
 .vr-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--vr-rule); max-width: 64ch; min-width: 0; }
-.vr-note-page { margin: 0 0 40px 34px; padding-top: 20px; min-width: 0; }
+.vr-notearea { margin: 0 0 40px; min-width: 0; }
+.vr-note-page { margin: 0; padding-top: 20px; min-width: 0; }
 .vr-note h2 { font-family: var(--vr-serif); font-size: 20px; line-height: 1.3; font-weight: 600; margin: 24px 0 8px; }
 .vr-note h2:first-child { margin-top: 0; }
 .vr-note h3 { font-size: 15px; margin: 18px 0 6px; }
@@ -474,6 +336,18 @@ code, pre, kbd, samp, .vr-mono {
 .vr-note th, .vr-note td { text-align: left; padding: 4px 10px; border: 1px solid var(--vr-rule); color: var(--vr-ink-2); }
 .vr-note th { background: var(--vr-panel-2); color: var(--vr-ink-3); font-weight: 500; }
 .vr-note-empty { margin: 6px 0 0; color: var(--vr-ink-3); font-size: 12.5px; }
+/* 本幕讲解 + 展开全文（P1 第六片，2026-10-21）：scene 课默认折叠长文，
+   本幕卡片只读 lesson.md 的 scene 字段（不手写第二份讲解） */
+.vr-scenenote { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--vr-rule); border-left: 3px solid var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-scenenote-head { display: flex; align-items: baseline; gap: 10px; }
+.vr-scenenote-head .vr-meta { margin-left: auto; text-align: right; }
+.vr-note .vr-scenenote-title { margin: 6px 0 4px; font-family: var(--vr-serif); font-size: 21px; line-height: 1.35; font-weight: 600; }
+.vr-scenenote-note { margin: 0; font-size: 14px; line-height: 1.8; color: var(--vr-ink-2); }
+.vr-scenenote-hint { margin: 0 0 12px; font-size: 12.5px; line-height: 1.7; color: var(--vr-ink-3); }
+.vr-notefull { margin-top: 4px; }
+.vr-notefull > summary { cursor: pointer; padding: 4px 0; font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-notefull > summary:hover { color: var(--vr-ink); }
+.vr-notefull[open] > summary { margin-bottom: 10px; }
 
 /* ---------- 仪器：模式条与块 ---------- */
 .vr-modes { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid var(--vr-rule); margin-bottom: 0; }
@@ -555,6 +429,43 @@ code, pre, kbd, samp, .vr-mono {
 .vr-ref-item .vr-codeicon { align-self: center; color: var(--vr-ink-3); }
 .vr-ref-item.is-active .vr-codeicon { color: var(--vr-amber); }
 .vr-ref-kicker .vr-codeicon { vertical-align: -2px; margin-right: 3px; }
+
+/* ---------- 幕头（P1 第三片，2026-10-21） ---------- */
+/* 当前幕钉在代码上方：幕号/帧范围/源码行 + 标题 + 一句要点 + 上一幕/下一幕。
+   无 scene 的课不渲染（回退长文）；未采集不出幕头。 */
+.vr-stagehead { display: flex; align-items: flex-start; gap: 16px; margin: 14px 0 12px; padding: 10px 12px; border: 1px solid var(--vr-rule); border-left: 3px solid var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-stagehead-text { min-width: 0; }
+.vr-stagehead-kicker { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-stagehead-title { margin: 3px 0 2px; font-family: var(--vr-serif); font-size: 17px; line-height: 1.35; font-weight: 600; color: var(--vr-ink); }
+.vr-stagehead-note { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--vr-ink-2); }
+.vr-stagehead-nav { display: flex; gap: 6px; margin-left: auto; flex: 0 0 auto; }
+
+/* ---------- 本课分镜轨（P1 第四片，2026-10-21：左栏竖排） ---------- */
+/* scene 真源 = course/…/lesson.md 的 vitri-scenes 块（lessonMd 解析、demo/README
+   口径）；点一幕 = 跳到幕首帧。未迁移课 scenes=[] → 整段不渲染（回退长文）。 */
+.vr-beatrail { margin-top: 22px; border-top: 1px solid var(--vr-rule); padding-top: 12px; }
+.vr-beatrail-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.vr-beatrail-head .vr-meta { margin-left: auto; }
+.vr-beatlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.vr-beat { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 7px 8px 8px; border: 0; border-left: 2px solid transparent; background: transparent; color: var(--vr-ink-3); text-align: left; }
+.vr-beat:hover { background: var(--vr-panel-2); color: var(--vr-ink-2); }
+.vr-beat.is-done { color: var(--vr-ink-2); }
+.vr-beat.is-active { color: var(--vr-ink); border-left-color: var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-beat:disabled { opacity: .6; cursor: default; }
+.vr-beat-no { flex: 0 0 auto; padding-top: 2px; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-beat.is-active .vr-beat-no { color: var(--vr-amber); }
+.vr-beat-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vr-beat-title { font-size: 12.5px; line-height: 1.5; }
+.vr-beat.is-active .vr-beat-title { font-weight: 600; }
+.vr-beat-note { font-size: 11.5px; line-height: 1.6; color: var(--vr-ink-2); }
+.vr-beat-range { font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-beat-prog { display: block; height: 2px; margin-top: 3px; background: var(--vr-rule); }
+.vr-beat-prog > span { display: block; height: 100%; background: var(--vr-amber-2); }
+/* 分幕条：按帧格等分轴宽，落在时间轴上方；越界已由 sceneBand 钳制 */
+.vr-bands { position: relative; height: 5px; margin: 4px 0 3px; }
+.vr-band { position: absolute; top: 0; bottom: 0; background: var(--vr-rule); border-right: 1px solid var(--vr-panel); }
+.vr-band.is-done { background: var(--vr-rule-2); }
+.vr-band.is-active { background: var(--vr-amber-2); }
 
 /* ---------- 执行时间轴 ---------- */
 .vr-timeline-tools { display: flex; align-items: center; gap: 12px; margin-left: auto; }
@@ -657,6 +568,14 @@ code, pre, kbd, samp, .vr-mono {
 .vr-zoom { display: inline-flex; align-items: center; gap: 2px; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-zoom button { width: 20px; height: 20px; border: 1px solid var(--vr-rule); background: transparent; color: var(--vr-ink-2); line-height: 1; }
 .vr-zoom button:hover { border-color: var(--vr-rule-2); }
+/* 浅树压扁（P1 第三片，2026-10-21）：节点 ≤3 的课不占 214px 画布，压成一行
+   面包屑 + 当前语句；深树（递归）仍走画布。 */
+.vr-tree-compact { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--vr-rule); background: var(--vr-panel-2); }
+.vr-tree-compact .vr-tree-path { font-family: var(--vr-mono); font-size: 11px; font-variant-ligatures: none; color: var(--vr-ink); }
+.vr-tree-compact .vr-tree-line { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-amber); }
+.vr-tree-compact .vr-tree-code { flex: 1 1 220px; min-width: 0; font-family: var(--vr-mono); font-size: 10.5px; font-variant-ligatures: none; color: var(--vr-ink-2); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.vr-tree-compact .vr-tree-vars { margin-left: auto; font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-tree-note { margin: 6px 0 0; font-family: var(--vr-mono); font-size: 9.5px; line-height: 1.6; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-zoom span { min-width: 34px; text-align: center; }
 
 /* ---------- 变量 / 输出 ---------- */
@@ -747,8 +666,7 @@ code, pre, kbd, samp, .vr-mono {
 .vr-continue b { color: var(--vr-ink); font-weight: 500; }
 .vr-continue .vr-frame { color: var(--vr-amber); }
 .vr-entry-grid { display: grid; grid-template-columns: minmax(190px, 210px) minmax(0, 1.25fr) minmax(360px, 1fr); }
-.vr-chapters { border-right: 1px solid var(--vr-rule); padding: 16px 14px 30px 0; }
-.vr-chapters h2, .vr-lessons h2, .vr-preview h2 { margin: 0 0 10px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; letter-spacing: .1em; color: var(--vr-ink-3); font-weight: 400; }
+.vr-lessons h2 { margin: 0 0 10px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; letter-spacing: .1em; color: var(--vr-ink-3); font-weight: 400; }
 .vr-chapter { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; background: transparent; border: 0; border-left: 2px solid transparent; color: var(--vr-ink-2); font-size: 12px; text-align: left; }
 .vr-chapter:hover { background: var(--vr-panel-2); color: var(--vr-ink); }
 .vr-chapter.is-active { border-left-color: var(--vr-amber-2); background: var(--vr-panel-2); color: var(--vr-ink); font-weight: 600; }
@@ -767,20 +685,59 @@ code, pre, kbd, samp, .vr-mono {
 .vr-lesson-row .vr-mark { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); text-align: right; }
 .vr-lesson-row.is-done .vr-mark { color: var(--vr-green); }
 .vr-lesson-row .vr-tag { font-family: var(--vr-mono); font-size: 8px; font-variant-ligatures: none; border: 1px solid var(--vr-rule-2); color: var(--vr-ink-3); padding: 0 3px; margin-left: 5px; vertical-align: 1px; }
-.vr-preview { padding: 16px 0 30px 20px; position: sticky; top: 74px; align-self: start; min-width: 0; }
-.vr-preview .vr-kicker { margin-bottom: 5px; }
-.vr-preview h3 { font-family: var(--vr-serif); font-size: 23px; line-height: 1.25; margin: 0 0 7px; font-weight: 600; }
-.vr-preview .vr-blurb { margin: 0 0 12px; color: var(--vr-ink-2); font-size: 12.5px; line-height: 1.8; }
-.vr-preview .vr-note { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--vr-rule); max-height: 420px; overflow: auto; }
-.vr-preview .vr-note h2 { font-family: var(--vr-sans); font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
-.vr-preview .vr-note p, .vr-preview .vr-note li { font-size: 12.5px; line-height: 1.8; }
-.vr-preview .vr-note pre { white-space: pre-wrap; word-break: break-word; }
-.vr-preview .vr-open { margin-top: 14px; width: 100%; }
-.vr-preview .vr-meta { margin-top: 8px; display: block; }
-.vr-preview .vr-note-empty { margin-top: 10px; }
+
+/* 入口态 P2（#222，2026-10-22）：章路径 + 课列 + 章节面板（替代旧三列预览） */
+.vr-entrypage .vr-entry-hero { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 26px 40px; align-items: start; }
+.vr-entry-herotext { min-width: 0; }
+.vr-continue {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  margin-top: 0; padding: 12px 14px; border: 1px solid var(--vr-rule-2);
+  background: var(--vr-panel); text-align: left;
+}
+.vr-continue-head { display: flex; justify-content: space-between; gap: 8px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; letter-spacing: .08em; text-transform: uppercase; color: var(--vr-ink-3); }
+.vr-continue b { font-family: var(--vr-serif); font-size: calc(var(--vr-fs) * 1.3); line-height: 1.3; font-weight: 600; color: var(--vr-ink); }
+.vr-continue-meta { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-continue-cta { margin-top: 4px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-amber); }
+.vr-path { display: flex; gap: 4px; border-bottom: 1px solid var(--vr-rule); padding: 10px 0 0; overflow-x: auto; }
+.vr-path .vr-chapter { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; padding: 6px 9px; }
+.vr-path .vr-chapter.is-active { border-left: 0; border-bottom-color: var(--vr-amber-2); background: var(--vr-panel-2); }
+.vr-path .vr-count { margin-left: 5px; }
+.vr-entry-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.vr-lessons { border-right: 0; padding: 18px 26px 30px 0; }
+.vr-lesson-row {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) 62px 16px;
+  align-items: start; gap: 12px; width: 100%; padding: 11px 8px;
+  background: transparent; border: 0; border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--vr-rule); text-align: left; color: var(--vr-ink-2);
+}
+.vr-lesson-row:hover { background: var(--vr-panel-2); color: var(--vr-ink); }
+.vr-lesson-row.is-active { border-left-color: var(--vr-amber-2); background: var(--vr-panel-2); color: var(--vr-ink); }
+.vr-lesson-row .vr-ord { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-ink-3); padding-top: 1px; }
+.vr-lesson-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vr-lesson-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.vr-lesson-row .vr-id { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .7); font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
+.vr-lesson-row .vr-name { font-size: calc(var(--vr-fs) * .86); color: var(--vr-ink); white-space: normal; }
+.vr-lesson-row .vr-blurb { font-size: calc(var(--vr-fs) * .74); line-height: 1.6; color: var(--vr-ink-3); }
+.vr-lesson-row .vr-tag { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .6); font-variant-ligatures: none; border: 1px solid var(--vr-rule-2); color: var(--vr-ink-3); padding: 0 3px; white-space: nowrap; }
+.vr-lesson-state { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; color: var(--vr-ink-3); text-align: right; white-space: nowrap; padding-top: 2px; }
+.vr-lesson-state.is-done { color: var(--vr-green); }
+.vr-lesson-state.is-live { color: var(--vr-amber); }
+.vr-arrow { color: var(--vr-ink-3); text-align: right; }
+.vr-chapterpanel { position: sticky; top: 74px; align-self: start; border-left: 1px solid var(--vr-rule); padding: 18px 0 30px 26px; }
+.vr-chapterpanel h2 { margin: 6px 0 8px; font-family: var(--vr-serif); font-size: calc(var(--vr-fs) * 1.66); line-height: 1.22; font-weight: 600; }
+.vr-chapterpanel-lede { margin: 0 0 12px; color: var(--vr-ink-2); font-size: calc(var(--vr-fs) * .8); line-height: 1.8; }
+.vr-chapterpanel-prog { display: flex; flex-direction: column; gap: 5px; margin: 0 0 16px; }
+.vr-chapterpanel-h { margin: 0 0 7px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; letter-spacing: .1em; text-transform: uppercase; font-weight: 400; color: var(--vr-ink-3); }
+.vr-peek { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.vr-peek li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 2px 8px; border-top: 1px solid var(--vr-rule); padding-top: 7px; }
+.vr-peek-id { grid-row: 1 / span 2; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; color: var(--vr-ink-3); overflow: hidden; text-overflow: ellipsis; }
+.vr-peek-title { font-size: calc(var(--vr-fs) * .8); color: var(--vr-ink); }
+.vr-peek-blurb { font-size: calc(var(--vr-fs) * .7); line-height: 1.55; color: var(--vr-ink-2); }
+.vr-chapterpanel-cta { width: 100%; justify-content: center; }
+
 
 /* ---------- 参考态：诊断手册 ---------- */
-.vr-ref-main { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 66px); }
+.vr-ref-main { display: grid; grid-template-columns: 250px minmax(0, 1fr) 280px; min-height: calc(100vh - 66px); }
 .vr-ref-index { border-right: 1px solid var(--vr-rule); padding: 18px 16px 30px 0; min-width: 0; position: sticky; top: 66px; align-self: start; max-height: calc(100vh - 80px); overflow-y: auto; scrollbar-width: thin; }
 .vr-ref-list { display: flex; flex-direction: column; min-width: 0; }
 .vr-search { width: 100%; background: transparent; border: 1px solid var(--vr-rule); color: var(--vr-ink); font-family: var(--vr-mono); font-size: 11px; font-variant-ligatures: none; padding: 6px 8px; border-radius: 2px; margin-bottom: 14px; }
@@ -791,7 +748,7 @@ code, pre, kbd, samp, .vr-mono {
 .vr-ref-item.is-active { border-left-color: var(--vr-amber-2); background: var(--vr-panel-2); color: var(--vr-ink); }
 .vr-ref-item .vr-code-id { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); min-width: 44px; }
 .vr-ref-item .vr-ref-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vr-ref-detail { padding: 34px 44px 60px; max-width: 860px; }
+.vr-ref-detail { padding: 30px 36px 60px; max-width: none; counter-reset: refsec; }
 .vr-ref-kicker { font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; letter-spacing: .1em; color: var(--vr-amber); }
 .vr-ref-detail h1 { font-family: var(--vr-serif); font-size: 36px; line-height: 1.15; font-weight: 600; margin: 8px 0 6px; }
 .vr-ref-lead { font-size: 15px; line-height: 1.85; color: var(--vr-ink-2); max-width: 62ch; margin: 0 0 16px; }
@@ -809,6 +766,43 @@ code, pre, kbd, samp, .vr-mono {
 .vr-ref-empty { margin: 30px 0; padding: 20px 0; border-top: 1px solid var(--vr-rule); border-bottom: 1px solid var(--vr-rule); color: var(--vr-ink-3); font-family: var(--vr-mono); font-size: 11px; font-variant-ligatures: none; line-height: 1.8; }
 .vr-ref-note { font-family: var(--vr-mono); font-size: 9.5px; font-variant-ligatures: none; color: var(--vr-ink-3); margin-top: 10px; }
 .vr-common { margin: 6px 0 0; padding-left: 20px; }
+
+/* 参考态 P2（#222，2026-10-22）：三问 + 证据链 + 右栏阅读法 */
+.vr-ref-sec { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--vr-rule); counter-increment: refsec; }
+.vr-ref-sechead h2::before { content: counter(refsec, decimal-leading-zero) " "; color: var(--vr-amber); }
+.vr-ref-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.vr-ref-sechead h2 { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; letter-spacing: .1em; text-transform: uppercase; font-weight: 400; color: var(--vr-ink-3); }
+.vr-ref-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 20px; }
+.vr-ref-q { min-width: 0; border-left: 1px solid var(--vr-rule-2); padding-left: 10px; }
+.vr-ref-qtag { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .62); font-variant-ligatures: none; letter-spacing: .08em; color: var(--vr-amber); }
+.vr-ref-qtag.is-bad { color: var(--vr-red); }
+.vr-ref-qtag.is-ok { color: var(--vr-green); }
+.vr-ref-q h3 { margin: 3px 0 6px; font-family: var(--vr-sans); font-size: calc(var(--vr-fs) * .82); font-weight: 600; color: var(--vr-ink); }
+.vr-ref-q p { font-size: calc(var(--vr-fs) * .74); line-height: 1.75; color: var(--vr-ink-2); max-width: none; }
+.vr-ref-snippet { margin: 0; padding: 8px 10px; background: var(--vr-panel-2); border: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: var(--vr-fs-code); font-variant-ligatures: none; line-height: 1.65; overflow-x: auto; color: var(--vr-ink); white-space: pre; }
+.vr-ref-muted { color: var(--vr-ink-3); font-size: calc(var(--vr-fs) * .74); line-height: 1.75; }
+.vr-ref-causes { margin: 0; padding-left: 20px; font-size: calc(var(--vr-fs) * .78); line-height: 1.85; color: var(--vr-ink-2); }
+.vr-ref-family { display: flex; flex-wrap: wrap; gap: 6px; }
+.vr-ref-famchip { display: inline-flex; align-items: baseline; gap: 6px; border: 1px solid var(--vr-rule); background: transparent; padding: 3px 8px; font-size: calc(var(--vr-fs) * .72); color: var(--vr-ink-2); }
+.vr-ref-famchip:hover { border-color: var(--vr-rule-2); color: var(--vr-ink); }
+.vr-ref-famchip.is-active { border-color: var(--vr-amber-2); color: var(--vr-ink); }
+.vr-ref-course { display: flex; align-items: baseline; gap: 10px; width: 100%; border: 1px solid var(--vr-rule); background: var(--vr-panel-2); padding: 8px 10px; text-align: left; color: var(--vr-ink-2); font-size: calc(var(--vr-fs) * .74); }
+.vr-ref-course b { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .74); font-variant-ligatures: none; color: var(--vr-ink); }
+.vr-ref-repro { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.vr-ref-discrim { width: 100%; border-collapse: collapse; font-size: calc(var(--vr-fs) * .72); }
+.vr-ref-discrim th, .vr-ref-discrim td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vr-rule); vertical-align: top; color: var(--vr-ink-2); }
+.vr-ref-discrim th { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; letter-spacing: .06em; color: var(--vr-ink-3); font-weight: 500; }
+.vr-ref-discrim tr.is-active td { color: var(--vr-ink); }
+.vr-ref-side { border-left: 1px solid var(--vr-rule); padding: 26px 0 40px 24px; position: sticky; top: 66px; align-self: start; }
+.vr-ref-sidebox { margin-bottom: 18px; }
+.vr-ref-side h2 { margin: 6px 0 8px; font-family: var(--vr-serif); font-size: calc(var(--vr-fs) * 1.38); line-height: 1.25; font-weight: 600; }
+.vr-ref-how { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.vr-ref-how li { display: flex; flex-direction: column; gap: 1px; border-bottom: 1px dotted var(--vr-rule); padding-bottom: 6px; }
+.vr-ref-how b { font-size: calc(var(--vr-fs) * .78); font-weight: 500; color: var(--vr-ink); }
+.vr-ref-how span { font-size: calc(var(--vr-fs) * .72); line-height: 1.6; color: var(--vr-ink-3); }
+.vr-ref-sidecode { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 6px; width: 100%; border: 0; border-bottom: 1px dotted var(--vr-rule); background: none; padding: 4px 0; text-align: left; font-size: calc(var(--vr-fs) * .72); color: var(--vr-ink-2); }
+.vr-ref-sidecode:hover { color: var(--vr-ink); }
+
 
 /* trap 三幕图 */
 .vr-diagram { margin: 20px 0 8px; border: 1px solid var(--vr-rule); background: var(--vr-panel); }
@@ -833,6 +827,8 @@ code, pre, kbd, samp, .vr-mono {
 .vr-editor .cm-scroller::-webkit-scrollbar-thumb { background: var(--vr-rule-2); }
 .vr-editor .cm-scroller::-webkit-scrollbar-track { background: transparent; }
 .vr-editor .cm-content { padding: 10px 0 10px 12px; caret-color: var(--vr-amber-2); }
+/* 逐行注记（P1 第五片）：行尾伪元素（文本不进 DOM textContent——E2E docLen 不被污染） */
+.vr-editor .cm-line[data-annot]::after { content: attr(data-annot); margin-left: 14px; padding: 0 5px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); background: var(--vr-amber-tint); border-left: 1px solid var(--vr-amber-2); white-space: pre; user-select: none; }
 .vr-editor .cm-line { padding: 0 12px 0 0; }
 .vr-editor .cm-gutters { background: transparent; border-right: 1px solid var(--vr-rule); color: var(--vr-ink-3); }
 .vr-editor .cm-bpgutter { width: 13px; }
@@ -914,23 +910,152 @@ code, pre, kbd, samp, .vr-mono {
 /* ---------- 可达性小件 ---------- */
 .vr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* ---------- 仪器模式页：内存 / 协议（#222 P1，2026-10-22） ---------- */
+/* 全页形态 = 页头模式条 + 左证据面 + 右叙事栏；执行态仍走 .vr-bench 三栏
+   （互不影响：E2E B3 的三栏几何锚只在 exec 态取样）。 */
+.vr-modebench { padding-bottom: 44px; }
+.vr-modebar { border-bottom: 1px solid var(--vr-rule); padding: 14px 0 0; }
+.vr-modebar .vr-modes { border-bottom: 0; gap: 26px; }
+.vr-modebar .vr-mode { font-size: calc(var(--vr-fs) * .86); padding: 6px 0 10px; }
+.vr-modebody { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 26px 40px; padding: 20px 0 0; align-items: start; }
+.vr-modemain { min-width: 0; }
+.vr-modemain .vr-block { border-bottom: 0; padding-top: 0; }
+.vr-modeside { min-width: 0; border-left: 1px solid var(--vr-rule); padding: 2px 0 0 26px; }
+
+/* 右栏叙事（MemorySide / ProtoSide 共用） */
+.vr-side { display: flex; flex-direction: column; gap: 12px; }
+.vr-side-kicker { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .7); font-variant-ligatures: none; letter-spacing: .12em; color: var(--vr-ink-3); text-transform: uppercase; }
+.vr-side-title { margin: 0; font-family: var(--vr-serif); font-size: calc(var(--vr-fs) * 1.52); line-height: 1.2; font-weight: 600; color: var(--vr-ink); }
+.vr-side-lede { margin: 0; color: var(--vr-ink-2); font-size: calc(var(--vr-fs) * .82); line-height: 1.8; }
+.vr-side-alert { border: 1px solid var(--vr-red); border-left: 3px solid var(--vr-red); background: var(--vr-red-tint); padding: 9px 11px; }
+.vr-side-alerthead { display: flex; align-items: baseline; gap: 8px; }
+.vr-side-alerthead b { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .76); font-variant-ligatures: none; color: var(--vr-red); }
+.vr-side-alerthead span { font-size: calc(var(--vr-fs) * .72); color: var(--vr-ink-2); }
+.vr-side-alert p { margin: 5px 0 4px; font-size: calc(var(--vr-fs) * .78); line-height: 1.7; color: var(--vr-ink-2); }
+.vr-side-state { display: flex; align-items: center; gap: 7px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .72); font-variant-ligatures: none; color: var(--vr-ink-3); border-top: 1px solid var(--vr-rule); border-bottom: 1px solid var(--vr-rule); padding: 6px 0; }
+.vr-side-dot { width: 5px; height: 5px; background: var(--vr-ink-3); display: inline-block; }
+.vr-sidecode { border: 1px solid var(--vr-rule); background: var(--vr-panel-2); }
+.vr-sidecode-head { display: flex; justify-content: space-between; gap: 8px; padding: 4px 9px; border-bottom: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-sidecode-body { list-style: none; margin: 0; padding: 5px 0; }
+.vr-sidecode-body li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 6px; padding: 0 8px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); line-height: 1.6; font-variant-ligatures: none; color: var(--vr-ink-2); white-space: pre; }
+.vr-sidecode-body li .no { color: var(--vr-ink-3); text-align: right; }
+.vr-sidecode-body li .tx { overflow: hidden; text-overflow: ellipsis; }
+.vr-sidecode-body li.is-cur { background: var(--vr-amber-tint); box-shadow: inset 2px 0 0 var(--vr-amber-2); color: var(--vr-ink); }
+.vr-side-q { border-top: 1px solid var(--vr-rule); padding-top: 10px; }
+.vr-side-q h3, .vr-side-entries h3 { margin: 0 0 7px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; letter-spacing: .1em; text-transform: uppercase; color: var(--vr-ink-3); font-weight: 400; }
+.vr-side-q dl { margin: 0; display: flex; flex-direction: column; gap: 5px; }
+.vr-side-q dl div { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 8px; align-items: baseline; border-bottom: 1px dotted var(--vr-rule); padding-bottom: 5px; }
+.vr-side-q dt { font-size: calc(var(--vr-fs) * .72); color: var(--vr-ink-3); }
+.vr-side-q dd { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .7); font-variant-ligatures: none; color: var(--vr-ink-2); line-height: 1.6; }
+.vr-side-terms { display: flex; flex-wrap: wrap; gap: 5px; }
+.vr-side-terms button, .vr-side-terms span { border: 1px solid var(--vr-rule); background: transparent; color: var(--vr-ink-3); padding: 2px 6px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; }
+.vr-side-terms button:hover { color: var(--vr-ink); border-color: var(--vr-rule-2); }
+.vr-side-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.vr-side-actions .vr-btn { width: 100%; justify-content: center; }
+.vr-side-foot { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; line-height: 1.7; color: var(--vr-ink-3); border-top: 1px solid var(--vr-rule); padding-top: 8px; }
+.vr-side-empty { font-size: calc(var(--vr-fs) * .8); color: var(--vr-ink-3); line-height: 1.8; }
+.vr-side-count { display: flex; align-items: baseline; gap: 8px; border-top: 1px solid var(--vr-rule); border-bottom: 1px solid var(--vr-rule); padding: 8px 0; }
+.vr-side-count b { font-family: var(--vr-serif); font-size: calc(var(--vr-fs) * 2.4); line-height: 1; font-weight: 600; color: var(--vr-amber); }
+.vr-side-count span { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .7); font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-side-principles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.vr-side-principles li { display: flex; flex-direction: column; gap: 1px; border-bottom: 1px dotted var(--vr-rule); padding-bottom: 6px; }
+.vr-side-principles b { font-size: calc(var(--vr-fs) * .76); font-weight: 500; color: var(--vr-ink); }
+.vr-side-principles span { font-size: calc(var(--vr-fs) * .74); line-height: 1.65; color: var(--vr-ink-2); }
+.vr-side-entries { border-top: 1px solid var(--vr-rule); padding-top: 9px; }
+.vr-side-entries div { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--vr-rule); align-items: baseline; }
+.vr-side-entries span { font-size: calc(var(--vr-fs) * .7); color: var(--vr-ink-3); }
+.vr-side-entries code { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-2); overflow-wrap: anywhere; }
+
+/* 内存页：统计条 / 四轨 / 图例 / 账本 / 读法 */
+.vr-mem-stats.is-wide { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--vr-rule); margin: 0 0 20px; }
+.vr-mem-stats.is-wide span { display: flex; flex-direction: column; gap: 3px; padding: 7px 10px; border-right: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; letter-spacing: .08em; text-transform: uppercase; color: var(--vr-ink-3); }
+.vr-mem-stats.is-wide span:last-child { border-right: 0; }
+.vr-mem-stats.is-wide b { font-size: calc(var(--vr-fs) * .8); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--vr-ink); }
+.vr-mem.is-page { gap: 10px; }
+.vr-mem-row.is-page { grid-template-columns: 74px minmax(0, 1fr) 132px; gap: 12px; align-items: center; font-size: calc(var(--vr-fs) * .68); }
+.vr-mem-label { font-family: var(--vr-mono); font-variant-ligatures: none; color: var(--vr-ink-2); }
+.vr-mem-total { text-align: right; font-family: var(--vr-mono); font-variant-ligatures: none; color: var(--vr-ink-3); white-space: nowrap; }
+.vr-mem-row.is-page .vr-mem-track { min-height: 30px; }
+.vr-mem-seg.is-free { background: var(--vr-panel-3); color: var(--vr-ink-2); border: 1px dashed var(--vr-rule-2); }
+.vr-mem-seg.is-unknown { background: var(--vr-amber-tint); color: var(--vr-amber); border: 1px dashed var(--vr-amber-2); }
+.vr-mem-row.is-quar { align-items: center; grid-template-columns: 74px minmax(0, 1fr) 132px; }
+.vr-quar-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.vr-quar-wrap .vr-quar { flex: 0 0 160px; margin: 0; }
+.vr-quar-wrap .vr-meta { font-size: calc(var(--vr-fs) * .66); }
+.vr-mem-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-mem-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.vr-swatch { width: 9px; height: 9px; display: inline-block; border: 1px solid var(--vr-rule-2); }
+.vr-swatch.is-active { background: var(--vr-green-tint); border-color: var(--vr-green); }
+.vr-swatch.is-freed { background: var(--vr-red-tint); border: 1px dashed var(--vr-red); }
+.vr-swatch.is-quar { background: var(--vr-amber-tint); border-color: var(--vr-amber-2); }
+.vr-mem-tablewrap { margin-top: 16px; overflow-x: auto; border-top: 1px solid var(--vr-rule); }
+.vr-mem-table caption { text-align: left; padding: 7px 0 2px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; letter-spacing: .08em; color: var(--vr-ink-3); text-transform: uppercase; }
+.vr-mem-readtitle { margin: 18px 0 6px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .64); font-variant-ligatures: none; letter-spacing: .1em; text-transform: uppercase; color: var(--vr-ink-3); }
+.vr-mem-read { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 22px; }
+.vr-mem-read li { display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--vr-rule-2); padding-left: 9px; }
+.vr-mem-read b { font-size: calc(var(--vr-fs) * .74); font-weight: 500; color: var(--vr-ink); }
+.vr-mem-read span { font-size: calc(var(--vr-fs) * .72); line-height: 1.7; color: var(--vr-ink-2); }
+.vr-mempage-foot { margin-top: 14px; }
+
+/* 协议页：事实条 / 四组方法 / 台账 / 契约 / 帧示例 */
+.vr-proto-facts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--vr-rule); }
+.vr-proto-facts > span { display: flex; flex-direction: column; gap: 3px; padding: 7px 10px; border-right: 1px solid var(--vr-rule); font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .62); font-variant-ligatures: none; letter-spacing: .08em; color: var(--vr-ink-3); text-transform: uppercase; }
+.vr-proto-facts > span:last-child { border-right: 0; }
+.vr-proto-facts b { font-size: calc(var(--vr-fs) * .78); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--vr-ink); }
+.vr-proto-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 36px; margin-top: 22px; }
+.vr-proto-group { border-top: 1px solid var(--vr-rule); padding-top: 8px; min-width: 0; }
+.vr-proto-grouphead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.vr-proto-grouphead h3 { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .7); font-variant-ligatures: none; letter-spacing: .08em; font-weight: 400; color: var(--vr-ink); text-transform: uppercase; }
+.vr-proto-grouphead h3 .no { color: var(--vr-amber); margin-right: 7px; }
+.vr-proto-method { display: grid; grid-template-columns: minmax(120px, .9fr) minmax(0, 2fr) 18px; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--vr-rule); font-size: calc(var(--vr-fs) * .74); color: var(--vr-ink-2); }
+.vr-proto-method .m-name { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-ink); overflow-wrap: anywhere; }
+.vr-proto-method .m-desc { line-height: 1.55; }
+.vr-proto-method .m-use { text-align: right; color: var(--vr-ink-3); font-family: var(--vr-mono); font-variant-ligatures: none; }
+.vr-proto-method .m-use.is-yes { color: var(--vr-green); }
+.vr-proto-sec { margin-top: 26px; }
+.vr-proto-seclabel { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-top: 1px solid var(--vr-rule); padding-top: 9px; margin-bottom: 7px; }
+.vr-proto-seclabel h3 { margin: 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; letter-spacing: .1em; text-transform: uppercase; font-weight: 400; color: var(--vr-ink-3); }
+.vr-proto-table { width: 100%; border-collapse: collapse; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; }
+.vr-proto-table th, .vr-proto-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vr-rule); }
+.vr-proto-table th { color: var(--vr-ink-3); font-weight: 500; letter-spacing: .06em; }
+.vr-proto-table td { color: var(--vr-ink-2); }
+.vr-proto-table td.code { color: var(--vr-ink); }
+.vr-proto-status { border: 1px solid var(--vr-rule-2); padding: 0 4px; color: var(--vr-ink-3); }
+.vr-proto-status.is-active { border-color: var(--vr-green); color: var(--vr-green); }
+.vr-proto-status.is-pending { border-color: var(--vr-amber-2); color: var(--vr-amber); }
+.vr-proto-contract { padding: 4px 0 4px 9px; border-left: 2px solid var(--vr-rule); margin: 4px 0; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); line-height: 1.7; font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-proto-contract .code { color: var(--vr-ink-2); }
+.vr-proto-contract .dim { color: var(--vr-ink-3); }
+.vr-proto-note { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-ink-3); margin: 4px 0; }
+.vr-proto-frame { margin: 0; padding: 10px 12px; border: 1px solid var(--vr-rule); background: var(--vr-panel-2); max-height: 260px; overflow: auto; font-family: var(--vr-mono); font-size: var(--vr-fs-code); font-variant-ligatures: none; line-height: 1.65; color: var(--vr-ink); }
+.vr-proto-more { margin-top: 18px; border-top: 1px solid var(--vr-rule); padding-top: 8px; }
+.vr-proto-more > summary { cursor: pointer; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .68); font-variant-ligatures: none; color: var(--vr-ink-3); }
+.vr-proto-more > summary:hover { color: var(--vr-ink); }
+.vr-protopage-foot { margin-top: 14px; }
+
 /* ---------- 容器查询：1100 / 980 / 760 ---------- */
 @container vitro (max-width: 1100px) {
   .vr-timeline .vr-blockhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
   .vr-timeline .vr-blockhead .vr-label { grid-column: 1; white-space: nowrap; }
   .vr-timeline .vr-blockhead .vr-meta { grid-column: 2; text-align: right; white-space: nowrap; }
   .vr-timeline .vr-timeline-tools { grid-column: 1 / -1; margin-left: 0; width: 100%; justify-content: space-between; }
+  .vr-ref-main { grid-template-columns: 220px minmax(0, 1fr); }
+  .vr-ref-side { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--vr-rule); position: static; padding: 18px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .vr-ref-sidebox { margin-bottom: 0; }
 }
 @container vitro (max-width: 980px) {
-  .vr-bench { grid-template-columns: minmax(0, 1fr); }
-  .vr-left { display: contents; }
-  .vr-page { order: 1; padding-left: 0; padding-bottom: 0; }
-  .vr-instrument { order: 2; border-right: 0; border-top: 1px solid var(--vr-rule); padding-right: 0; padding-top: 18px; }
-  .vr-note-page { order: 3; margin: 0 0 40px; padding-top: 20px; }
-  .vr-entry-grid { grid-template-columns: 200px minmax(0, 1fr); }
-  .vr-preview { grid-column: 1 / -1; border-top: 1px solid var(--vr-rule); position: static; padding: 18px 0 30px; }
-  .vr-ref-main { grid-template-columns: 240px minmax(0, 1fr); }
+  /* 三栏（≥1180）收成单列时不再需要 order 重排：DOM 序 = rail → stage → now → dock → note */
+  .vr-entry-grid { grid-template-columns: minmax(0, 1fr); }
+  .vr-entrypage .vr-entry-hero { grid-template-columns: minmax(0, 1fr); }
+  .vr-chapterpanel { position: static; border-left: 0; border-top: 1px solid var(--vr-rule); padding: 18px 0 30px; }
+  .vr-ref-main { grid-template-columns: 220px minmax(0, 1fr); }
   .vr-ref-detail { padding: 28px 24px 50px; }
+  .vr-modebody { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .vr-modeside { border-left: 0; border-top: 1px solid var(--vr-rule); padding: 18px 0 0; }
+  .vr-mem-stats.is-wide, .vr-proto-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vr-mem-stats.is-wide span:nth-child(3n), .vr-proto-facts > span:nth-child(3n) { border-right: 0; }
+  .vr-proto-groups { grid-template-columns: minmax(0, 1fr); }
+  .vr-mem-read { grid-template-columns: minmax(0, 1fr); }
 }
 @container vitro (max-width: 760px) {
   .vr-app { padding: 0 16px; }
@@ -944,7 +1069,7 @@ code, pre, kbd, samp, .vr-mono {
   .vr-coursebtn { padding: 5px 8px; }
   .vr-coursebtn span { display: none; }
   .vr-title { font-size: 25px; }
-  .vr-page { padding-top: 20px; }
+  .vr-colstage { padding-top: 14px; }
   .vr-runbar { gap: 6px; }
   .vr-status { width: 100%; margin-left: 0; }
   .vr-codehead { flex-wrap: wrap; }
@@ -994,13 +1119,10 @@ code, pre, kbd, samp, .vr-mono {
   .vr-tick-label.is-minor { display: none; }
   .vr-entry-hero { padding-top: 30px; }
   .vr-entry-grid { grid-template-columns: 1fr; }
-  .vr-chapters { border-right: 0; border-bottom: 1px solid var(--vr-rule); padding: 12px 0; display: flex; gap: 4px; overflow-x: auto; }
-  .vr-chapters h2 { display: none; }
-  .vr-chapter { width: auto; white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; padding: 5px 9px; }
-  .vr-chapter.is-active { border-left: 0; border-bottom-color: var(--vr-amber-2); }
-  .vr-chapter .vr-count { margin-left: 3px; }
   .vr-lessons { border-right: 0; padding: 14px 0 20px; }
-  .vr-preview { border-top: 1px solid var(--vr-rule); }
+  .vr-lesson-row { grid-template-columns: 28px minmax(0, 1fr) 16px; gap: 9px; }
+  .vr-lesson-state { display: none; }
+  .vr-path .vr-chapter { padding: 5px 7px; }
   .vr-ref-main { grid-template-columns: minmax(0, 1fr); }
   .vr-ref-index { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--vr-rule); padding: 12px 0; display: block; overflow: visible; }
   .vr-ref-index .vr-search { min-width: 0; margin: 0 0 8px; }
@@ -1010,11 +1132,66 @@ code, pre, kbd, samp, .vr-mono {
   .vr-ref-item.is-active { border-left: 0; border-bottom-color: var(--vr-amber-2); }
   .vr-ref-detail { padding: 22px 0 44px; }
   .vr-ref-detail h1 { font-size: 29px; }
+  .vr-ref-three, .vr-ref-repro { grid-template-columns: minmax(0, 1fr); }
+  .vr-ref-side { grid-template-columns: minmax(0, 1fr); padding: 16px 0; }
   .vr-foot { padding-bottom: 20px; }
   .vr-popover { width: 290px; }
   .vr-diag-pill { flex-wrap: wrap; gap: 6px 12px; }
   .vr-diag-pill .vr-chev { display: none; }
+  /* #222 P3 移动工作台：幕头 → 数组 → 当前行 → 时间轴/输出 → 讲解 →
+     调用树/变量；书栏只留运行条，整段代码默认收起（按「代码」展开）。 */
+  .vr-bench { display: flex; flex-direction: column; gap: 10px; }
+  .vr-bench > .vr-colrail, .vr-bench > .vr-colstage, .vr-bench > .vr-colnow, .vr-bench > .vr-coldock { display: contents; }
+  .vr-bench > .vr-colrail > *, .vr-bench > .vr-colstage > *, .vr-bench > .vr-colnow > *, .vr-bench > .vr-coldock > * { order: 30; }
+  .vr-colrail { padding: 0; border-right: 0; }
+  .vr-colrail > .vr-kicker, .vr-colrail > .vr-title, .vr-colrail > .vr-lede, .vr-colrail > .vr-beatrail { display: none; }
+  .vr-colrail > .vr-runbar { order: 1; margin: 0 0 2px; }
+  .vr-colrail > .vr-banner { order: 2; }
+  .vr-colstage > .vr-stagehead { order: 3; margin: 0; }
+  .vr-colnow > [aria-label="数组可视化"] { order: 4; }
+  .vr-colstage > .vr-mobileline { order: 5; display: block; border: 1px solid var(--vr-rule); background: var(--vr-panel); padding: 8px 10px; }
+  .vr-mobileline-head { display: flex; justify-content: space-between; gap: 8px; font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+  .vr-mobileline code { display: block; margin: 5px 0; font-family: var(--vr-mono); font-size: var(--vr-fs-code); font-variant-ligatures: none; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--vr-ink); }
+  .vr-mobileline-foot { font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; color: var(--vr-ink-3); }
+  .vr-mobileline-foot.is-live, .vr-mobileline-foot.is-end { color: var(--vr-amber); }
+  .vr-colstage > .vr-code { order: 6; }
+  .vr-colstage > .vr-code .vr-codebody { display: none; }
+  .vr-colstage > .vr-code.is-mobileopen .vr-codebody { display: flex; }
+  .vr-mobilecodebtn { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; border: 1px solid var(--vr-rule); background: transparent; color: var(--vr-ink-3); font-family: var(--vr-mono); font-size: calc(var(--vr-fs) * .66); font-variant-ligatures: none; padding: 2px 6px; }
+  .vr-mobilecodebtn:hover { color: var(--vr-ink); border-color: var(--vr-rule-2); }
+  .vr-colnow > .vr-diag-summary { order: 7; }
+  .vr-colstage > .vr-params, .vr-colnow > .vr-modes { display: none; }
+  .vr-coldock > .vr-timeline { order: 8; }
+  /* 移动端 transport 提到轴前（设计稿 03：先给播放/步进，再给刻度带） */
+  .vr-timeline { display: flex; flex-direction: column; }
+  .vr-timeline > .vr-blockhead { order: 1; }
+  .vr-timeline > .vr-transport { order: 2; }
+  .vr-timeline > .vr-bands { order: 3; }
+  .vr-timeline > .vr-ruler { order: 4; }
+  .vr-timeline > .vr-grain-note { order: 5; }
+  .vr-coldock > [aria-label="运行输出"] { order: 9; }
+  .vr-notearea { order: 10; margin: 0; padding-top: 12px; border-top: 1px solid var(--vr-rule); }
+  .vr-colnow > [aria-label="调用树"], .vr-colnow > [aria-label="局部变量"] { order: 11; }
+  .vr-foot { display: none; }
   .vr-themes { grid-template-columns: 1fr; }
+  .vr-mem-stats.is-wide, .vr-proto-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vr-mem-stats.is-wide span:nth-child(3n), .vr-proto-facts > span:nth-child(3n) { border-right: 1px solid var(--vr-rule); }
+  .vr-mem-stats.is-wide span:nth-child(2n), .vr-proto-facts > span:nth-child(2n) { border-right: 0; }
+  .vr-mem-row.is-page, .vr-mem-row.is-quar { grid-template-columns: 56px minmax(0, 1fr); }
+  .vr-mem-total { display: none; }
+  .vr-quar-wrap { flex-direction: column; align-items: stretch; gap: 4px; }
+  .vr-quar-wrap .vr-quar { flex: 0 0 auto; }
+  .vr-modebar .vr-mode { padding: 10px 0 12px; }
+  /* 窄屏账本收列而不是压字：保留地址/大小/名称/状态/分配行，隐藏类型/段/来源 */
+  .vr-mem-table th:nth-child(4), .vr-mem-table td:nth-child(4),
+  .vr-mem-table th:nth-child(5), .vr-mem-table td:nth-child(5),
+  .vr-mem-table th:nth-child(8), .vr-mem-table td:nth-child(8) { display: none; }
+  .vr-mem-table th, .vr-mem-table td { white-space: nowrap; }
+  /* 方法行窄屏改两行式：名称/说明同列，✓— 右列跨两行（避免 120px 名称列挤成三行） */
+  .vr-proto-method { grid-template-columns: minmax(0, 1fr) 18px; row-gap: 2px; }
+  .vr-proto-method .m-name { grid-column: 1; }
+  .vr-proto-method .m-desc { grid-column: 1; }
+  .vr-proto-method .m-use { grid-column: 2; grid-row: 1 / span 2; }
 }
 
 /* ---------- 动效关（设置 / 系统偏好） ---------- */

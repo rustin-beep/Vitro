@@ -2,9 +2,10 @@
  * @category: predefined_macro
  * __FILE__/__LINE__ 预定义宏（#221 修复锚，2026-10-22；2026-10-23 CI
  * 三臂修正）：C99 §6.10.8——直接使用/宏体内使用（取展开点）/断言惯
- * 用法。旧形态 E3023「未声明的变量」误拒。__FILE__ 的原始值是调用方
- * 传入的路径拼写（CLI 全路径/gateway basename，C 语义即如此）——锚
- * 输出经 strrchr 剥离归一为 basename，三臂同判不依赖通道。
+ * 用法。旧形态 E3023「未声明的变量」误拒。__FILE__ 的 C99 语义是实现
+ * 定义；本沙盒在 pp 展开层统一取 basename（2026-10-23 跨臂修正）——
+ * 否则 CLI 全路径 / gateway basename 会让 native/wasm 的字符串内存映像
+ * 分叉（vm_diff 实锤）。输出侧的 BASE 仍保留，作显示归一与兼容。
  * clang 真值对拍。
  */
 #include <string.h>

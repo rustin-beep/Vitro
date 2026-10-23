@@ -95,6 +95,11 @@ priv struct ShadowEntry {
   old_offset : Int32?
   old_type : @ast.Type?
   old_sym_idx : Int32?
+  // #277（2026-10-23）：static 局部两张表纳入遮蔽/恢复链——同名 static
+  // 在不同块/不同函数是**独立对象**（C11 6.2.1），退出作用域须恢复外层
+  // 映射；普通局部声明这两项恒 None（不碰 static 表）
+  old_static_offset : Int32?
+  old_static_type : @ast.Type?
 }
 
 ///|
@@ -983,6 +988,16 @@ fn BytecodeGen::exit_scope(self : BytecodeGen) -> Unit {
           Some(old) => self.sym_index.set(entry.name, old)
           None => self.sym_index.remove(entry.name)
         }
+        // #277：static 两张表同款恢复（static 声明登记的条目才带值，
+        // 普通局部条目恒 None → remove 语义与「未登记前无此键」一致）
+        match entry.old_static_offset {
+          Some(old) => self.static_local_indices.set(entry.name, old)
+          None => self.static_local_indices.remove(entry.name)
+        }
+        match entry.old_static_type {
+          Some(old) => self.static_local_types.set(entry.name, old)
+          None => self.static_local_types.remove(entry.name)
+        }
       }
     None => ()
   }
@@ -997,6 +1012,27 @@ fn BytecodeGen::record_scope_var(self : BytecodeGen, name : String) -> Unit {
       old_offset: self.local_indices.get(name),
       old_type: self.local_types.get(name),
       old_sym_idx: self.sym_index.get(name),
+      old_static_offset: None,
+      old_static_type: None,
+    })
+  }
+}
+
+///|
+/// #277（2026-10-23）：static 局部声明的遮蔽登记——static 两表 + 共享的
+/// sym_index 记旧值（local 三元组不碰，恒 None）。须在 set 新映射**之前**
+/// 调用。函数级作用域起点清空 scope 栈（func.mbt），跨函数同名 static
+/// 各自分配、互不残留。
+fn BytecodeGen::record_scope_static(self : BytecodeGen, name : String) -> Unit {
+  if self.local_scope_stack.length() > 0 {
+    let frame = self.local_scope_stack[self.local_scope_stack.length() - 1]
+    frame.shadows.push({
+      name,
+      old_offset: None,
+      old_type: None,
+      old_sym_idx: self.sym_index.get(name),
+      old_static_offset: self.static_local_indices.get(name),
+      old_static_type: self.static_local_types.get(name),
     })
   }
 }

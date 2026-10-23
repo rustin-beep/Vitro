@@ -12,6 +12,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(parser+codegen): A 线批一——#272 复合字面量指针初始化 + #278 匿名 union 变量 + #277 同名 static 遮蔽（2026-10-23）
+
+- **#272 数组复合字面量作指针初始化值**（`int *p = (int[]){10,20};` 的
+  `p[0]` trap/静默错值）：`emit_local_init` 对 TK_Array 字面量沿标量路径
+  LoadMem——把 gen_expr 物化后留下的**对象地址**当可读内存 load 出首元素
+  存给 p（dump_compile 指令流实证：`StoreLocal p ← LoadMem [FB+物化槽]`），
+  p 持元素值，p[i] 变解引用小整数地址。修复 = TK_Array 分支免 LoadMem
+  直接落槽（地址即指针值，C99 6.5.2.5）。与 #267（左值语义）分型闭合。
+- **#278 顶层匿名 union 变量声明带初始化器**（`union {int a;int b;} gu =
+  {.b=5};` 报 E2005 三连）：`parse_aggregate_trailing_globals` 恒
+  `init:None` 且不消费 `=`。union 带声明器全落 trailing（classify 恒
+  UnionDecl）而 struct 对称形态被分到 StructVarOrFunc 完整路径——两路径
+  不对称是只咬 union 的原因。修复 = trailing 补 init 解析
+  （init_list/assign 与 parse_global_var_or_func 同款，loc 口径同步）。
+- **#277 同名 static 局部变量作用域独立性**（内层 `static int a[2]={1,1}`
+  读到外层 `{9,9}`）：`emit_static_var` 按裸名 contains 早退——内层声明
+  复用外层槽（初始化被跳过 + 读写错指），跨函数同名残留键同款复用他函数
+  槽。修复 = 删早退（每声明必分配新槽；函数体单次遍历无重复 emit 场景，
+  早退系 S5 初版照搬无语义必要）+ `static_local_indices/types` 两表接入
+  ScopeFrame 遮蔽/恢复链（ShadowEntry 扩两字段 + record_scope_static，
+  退出作用域恢复外层映射）。
+- **语料三例入库**（baseline）：`compound_literal_ptr_init.c` /
+  `anon_union_var_init.c`（含具名/数组声明器/多声明器边界）/
+  `static_local_shadow.c`（含跨函数同名/循环体单次初始化/三层嵌套；
+  counter 三连改语句序列消实参求值顺序 UB）。五家 digest freeze 纯新增
+  （存量零漂移——knr/leetcode/gap 无需连坐）；corpus_fuzz 新指纹 29 条
+  全良性值域（AGREE/CLANG_REJECT/VITRO_TRAP，无 arm_divergence）已
+  -freeze 收编（1041 条基线）。
+- **验证矩阵**：moon test 裸 **866/866**；clang_direct baseline
+  **SAME=485 DIFF-KNOWN=6 DIFF=0（491）**；vm_diff baseline native
+  **491 SAME**；corpus_fuzz 318 PASS（新指纹 0/桶恶化 0）；testcount /
+  surface / mbti / editorconfig / ci_checklist / facts --strict（漂移
+  0）全绿；三新例 js+native 双臂逐字节一致。README 与 docs 两处测试数
+  857→866 连坐（f87b16db 存量债，facts --run 抓出人工同步）。
+
 ### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
 
 - **__FILE__ 跨臂一致**：`pp.file_name_at` 对主文件/拼接段/include 段统一走

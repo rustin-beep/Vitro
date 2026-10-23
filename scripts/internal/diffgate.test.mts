@@ -142,28 +142,8 @@ test("loadLexDigest：文件缺失返回空骨架；坏 JSON / 版本不符 fail
   }
 });
 
-test("真实仓库：lexer target 在 baseline 语料上 PASS（与 Go 版同判据）", () => {
-  const r = spawnSync(
-    process.execPath,
-    [path.join(projectRoot(), "scripts/diff_gate/main.mts"), "lexer", "corpus/baseline"],
-    { cwd: projectRoot(), encoding: "utf8" },
-  );
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /lexer_diff\[golden\]: PASS——\d+ 个 case hash 与冻结基线一致（语料 baseline）/);
-  // 裁判切换警示保留（skill 文档在案的前缀）
-  assert.match(r.stderr, /\[裁判切换\] oracle 面已随工序④退役/);
-});
-
-test("真实仓库：--selftest 注入后必红（J9，退出码 1）", () => {
-  const r = spawnSync(
-    process.execPath,
-    [path.join(projectRoot(), "scripts/diff_gate/main.mts"), "lexer", "corpus/baseline", "--selftest"],
-    { cwd: projectRoot(), encoding: "utf8" },
-  );
-  assert.equal(r.status, 1, r.stderr);
-  assert.match(r.stdout, /已篡改清单条目/);
-  assert.match(r.stdout, /FAIL——1 处差异/);
-});
+// lexer 的族内测试（含真实仓库对拍 / selftest 证红）已归位到
+// diff_gate/targets/lexer.test.mts（2026-10-23 审阅 P3-3：同族各一个测试文件）。
 
 test("未知 target / 缺参数 fail loud（退出码 2）", () => {
   const base = [path.join(projectRoot(), "scripts/diff_gate/main.mts")];

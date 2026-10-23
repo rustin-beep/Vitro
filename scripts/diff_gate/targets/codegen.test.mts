@@ -99,5 +99,6 @@ test("真实仓库：codegen 在 baseline 上 PASS 且 fork 例单列", () => {
   );
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /FORK\(known-golden-skip\) function_pointer_return_ptr\.c/);
-  assert.match(r.stdout, /PASS——487 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）/);
+  const want = Object.keys(loadCg(projectRoot(), boom).corpora["baseline"]?.cases ?? {}).length - 1;
+  assert.match(r.stdout, new RegExp(`PASS——${want} 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）`));
 });

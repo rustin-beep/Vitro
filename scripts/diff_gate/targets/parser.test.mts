@@ -54,7 +54,8 @@ test("parser 的语料口径：只吃 .c（.h/.in 不入 sources）且源指纹�
 test("真实仓库：corpus 模式 PASS 487 + fork 1", () => {
   const r = run(["corpus/baseline"]);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /PASS——487 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）/);
+  const want = Object.keys(loadModesDigest(projectRoot(), "scripts/parser_diff/golden_digest.json", "", boom).modes["corpus-baseline"]?.resp_hashes ?? {}).length - 1;
+  assert.match(r.stdout, new RegExp(`PASS——${want} 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）`));
 });
 
 test("真实仓库：--pathological 12 / --legal-deep 2", () => {

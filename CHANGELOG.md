@@ -19,9 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `__FILE__` 字符串进内存映像后 native/wasm 两臂 memory hash 分叉——vm_diff
   wasm 的 `predefined_macro.c` 单例红。C99 §6.10.8 的拼写本为实现定义，
   沙盒统一 basename；`corpus/baseline/predefined_macro.c` 注释同步。
-- **基线重冻**：`vm_diff --freeze-mb` 更新 `golden_digest.json` 单例（source
-  hash + memory hash）；`vm_diff` baseline native/wasm 各 **488 SAME / 0 DIFF**，
-  `clang_direct` 单例 SAME。
+- **基线重冻**：`vm_diff --freeze-mb` 更新 memory/exit 单例，parser/lexer/
+  typeck/codegen 四门 `--freeze-mb` 更新 source hash + 指纹（仅
+  `predefined_macro.c` 变化）；`vm_diff` baseline native/wasm 各
+  **488 SAME / 0 DIFF**，四门 golden 各 **PASS**，`clang_direct` 单例 SAME。
 - **CI 防遮蔽**：build job 的构建/上传步与 demo job 的 tsc 之后全部闸步加
   `if: always()`——单测/E-08 等前置红不再吞掉后续构建与 smoke/E2E/pure；
   矩阵 `fail-fast: false` 复核保留（六路 diff / 四路 wasm / 三路 static）。

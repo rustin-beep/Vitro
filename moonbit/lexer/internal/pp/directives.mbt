@@ -143,11 +143,18 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
 
 ///|
 /// `#pragma` 处置（#212，2026-10-23）：`once` 零诊断跳过——重复包含
-/// 防护由 resolver 环检测天然承接（自 include/重复 include 不再展开，
-/// GCC/Clang include-once 同款语义）；其余 pragma（pack/STDC/Pack 等）
-/// 降 W1023 警告跳过——语义未实现按默认口径编译，不再 E1006 硬拒。
+/// 防护由宿主 include-once 能力旗标承接（`include_once_implicit`——
+/// 同文件重复 include 隐式去重，diff_ledger 17 键在册；非环检测通道
+/// ——PR #284 审阅 P3 勘误：`include_cycle_detect` 是另一条独立旗标）；
+/// 其余 pragma（pack/STDC/Pack 等）降 W1023 警告跳过——语义未实现按
+/// 默认口径编译，不再 E1006 硬拒。
+/// PR #284 审阅 P1-1（2026-10-24）：once 匹配前 `trailing_trim` 剥
+/// 尾随空白（\r/空格/制表）——CRLF 检出态（行尾 `\r` 系
+/// split_physical_lines 刻意保留、靠 scanner 消化）、注释剥除残留
+/// 空格、编辑器尾随空格三形态与 LF 裸行统一判零诊断（旧精确比较
+/// 只认 1/4 形态，自家语料在本机 CRLF 检出态即中招报 W1023 'once\r'）。
 fn[P] Pp::handle_pragma(self : Pp[P], after : String, line : Int32) -> Unit {
-  let arg = leading_trim(after)
+  let arg = trailing_trim(leading_trim(after))
   if arg == "once" {
     return
   }

@@ -7,8 +7,8 @@
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
   assert_eq(all.length(), 153) // #214：150→152（W3084/W3085）；#212：152→153（W1023）
-  assert_eq(catalog_codes().length(), 108) // #214：106→108（W3084/W3085 卡）
-  assert_eq(codes_without_catalog().length(), 45) // 153-108
+  assert_eq(catalog_codes().length(), 109) // #214：106→108（W3084/W3085 卡）；PR #284 审阅 P3：108→109（W1023 卡）
+  assert_eq(codes_without_catalog().length(), 44) // 153-109
   // 互补无交集
   let set : Map[Int32, Bool] = Map([])
   for c in catalog_codes() {

@@ -438,8 +438,10 @@ fn TypeChecker::check_scalar_assignable(
 ///|
 /// 指针赋值兼容（整数→指针 W3054；任意指针/数组→void* H3057；指针间
 /// 目标 pointee **加 const 限定**的安全方向兼容（C：T → const T 合法、
-/// 去 const 反向禁止——仅一层顶层限定差异，char** → const char** 深层
-/// 不放行对齐 C 严格规则）。
+/// 去 const 反向禁止——本判定**单层语义**（pointee 顶层限定差异，免警
+/// 放行）；深层嵌套限定符差异族（char** → const char** 等）自 #250
+/// 起由 qualifier_only_mismatch 判 W3053 警告放行，不再经此——
+/// PR #284 审阅 P3 勘误：旧注「深层不放行对齐 C 严格规则」已过时）。
 fn const_promoted_eq(target_pointee : @ast.Type, value : @ast.Type) -> Bool {
   let stripped = strip_top_const(target_pointee)
   // 目标本无 const（无可剥）或剥后仍不等 → 不兼容

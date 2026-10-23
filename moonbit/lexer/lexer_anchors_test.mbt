@@ -495,3 +495,35 @@ test "char literal escaped double quote" {
   let q_tok = r2.tokens.filter(t => t.ty is CharLiteral)[0]
   inspect(q_tok.text, content="39")
 }
+
+///|
+/// PR #284 审阅 P1-1（2026-10-24）：`#pragma once` 尾随空白族——匹配前
+/// trailing_trim 剥尾随空白（\r/空格/制表）后 CRLF 检出态（行尾 `\r`）、
+/// 显式尾随空格、尾注释剥除残留空格三形态与 LF 裸行统一判零诊断
+///（旧精确比较只认 1/4 形态——`once\r`/`once␠` 全落 W1023，自家语料
+/// 在本机 CRLF 检出态即中招）；非 once 的 pragma 维持 W1023（对照格）。
+/// 后两形态（显式空格/CRLF）受 editorconfig trim_trailing_whitespace
+/// 约束无法入库内语料表达，锚定位于此。
+test "pragma_once_trailing_whitespace_family" {
+  // 形态 1：LF 裸行（旧版即过）
+  let r1 = @lexer.tokenize("#pragma once\nint x;\n")
+  assert_eq(r1.errors.length(), 0)
+  assert_eq(r1.warnings.length(), 0)
+  // 形态 2：显式尾随空格（旧版报 W1023 'once '）
+  let r2 = @lexer.tokenize("#pragma once \nint x;\n")
+  assert_eq(r2.errors.length(), 0)
+  assert_eq(r2.warnings.length(), 0)
+  // 形态 3：CRLF 检出态（行尾 \r，旧版报 W1023 'once\r'）
+  let r3 = @lexer.tokenize("#pragma once\r\nint x;\n")
+  assert_eq(r3.errors.length(), 0)
+  assert_eq(r3.warnings.length(), 0)
+  // 形态 4：尾注释（剥注释残留尾随空格，旧版报 W1023 'once '）+ 对照：
+  // 同行非 once 的 pack 维持 W1023（0/0/0/1 四格警告计数）
+  let r4 = @lexer.tokenize(
+    "#pragma once // 防重复包含\n#pragma pack(1)\nint x;\n",
+  )
+  assert_eq(r4.errors.length(), 0)
+  assert_eq(r4.warnings.length(), 1)
+  inspect(@diag.ErrorCode::code(r4.warnings[0].code), content="1023")
+  assert_true(r4.warnings[0].message.contains("pack(1)"))
+}

@@ -255,11 +255,13 @@ test "resolve_generic_selection" {
 
 ///|
 /// 病 3 锚（#47，2026-10-09）：`char*` → `const char*` 是 C11 §6.5.16.1
-/// 的安全方向（目标指向类型的限定符不弱于源即合法），零 W3067；旧实现
-/// type_eq 严格等不认 pointee 顶层 const 增强，假阳性（文案还渲染成两侧
-/// 同型 "char*" 自相矛盾）。负锚锁 base 类型不同维持 E3067；多级指针
-/// const 差异（char** → const char**）自 #250（2026-10-23）降 W3053
-/// 警告——clang 默认 -Wincompatible...-discards-qualifiers 全族仅警告。
+/// 的安全方向（目标指向类型的限定符不弱于源即合法），零警告（注：历史
+/// 名 W3067 系码表不存在的错码引用——实际承载码自 #80 起为 W3053，
+/// PR #284 审阅 P3 勘误）；旧实现 type_eq 严格等不认 pointee 顶层
+/// const 增强，假阳性（文案还渲染成两侧同型 "char*" 自相矛盾）。
+/// 负锚锁 base 类型不同维持 E3067；多级指针 const 差异
+///（char** → const char**）自 #250（2026-10-23）降 W3053 警告——
+/// clang 默认 -Wincompatible...-discards-qualifiers 全族仅警告。
 test "assign_const_gain_pointer_no_w3067" {
   let loc = @source.SourceLoc::new(1, 1)
   // char* a; const char* b = a;

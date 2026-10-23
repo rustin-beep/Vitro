@@ -270,11 +270,21 @@ fn infer_quick_sort(
   if source_line.contains("\{func_name}(") {
     // callee entry + caller_is_main 区分顶层启动（U1#1 P1-3 收口）
     if env.at_callee_entry && env.caller_is_main {
+      // #224：callee 入口首帧形参尚未落局部（store 指令未执行），
+      // left/right 读出哨兵 -1——此前文案直接拼出「区间 [left=-1,
+      // right=-1]」垃圾值；读不到时降级为不带数字的启动文案
+      if left >= 0 && right >= 0 {
+        return Some(
+          build_step(
+            algorithm,
+            "recursive",
+            "启动快速排序：处理区间 [left=\{left}, right=\{right}]",
+          ),
+        )
+      }
       return Some(
         build_step(
-          algorithm,
-          "recursive",
-          "启动快速排序：处理区间 [left=\{left}, right=\{right}]",
+          algorithm, "recursive", "启动快速排序：处理整个数组",
         ),
       )
     }
@@ -355,11 +365,19 @@ fn infer_merge_sort(
   if source_line.contains("\{func_name}(") {
     // caller_is_main 区分顶层启动（U1#1 P1-4 收口）
     if env.at_callee_entry && env.caller_is_main {
+      // #224：与快排同款——入口首帧形参未落局部时降级（不拼 [-1, -1]）
+      if left >= 0 && right >= 0 {
+        return Some(
+          build_step(
+            algorithm,
+            "recursive_split",
+            "启动归并：处理区间 [\{left}, \{right}]",
+          ),
+        )
+      }
       return Some(
         build_step(
-          algorithm,
-          "recursive_split",
-          "启动归并：处理区间 [\{left}, \{right}]",
+          algorithm, "recursive_split", "启动归并：处理整个数组",
         ),
       )
     }

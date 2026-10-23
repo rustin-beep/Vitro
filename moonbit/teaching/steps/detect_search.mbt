@@ -14,8 +14,8 @@ pub fn detect_search(
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // 二分查找
-  if name_lower.contains("binary") ||
-    name_lower.contains("bsearch") ||
+  let bs_name = name_lower.contains("binary") || name_lower.contains("bsearch")
+  if bs_name ||
     (
       features.has_single_loop &&
       features.has_mid_calculation &&
@@ -28,6 +28,7 @@ pub fn detect_search(
         func_name,
         line,
         features.compare_lines,
+        evidence=if bs_name { "name" } else { "structure" },
       ),
     )
   }

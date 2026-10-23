@@ -279,6 +279,111 @@ test "serve_step_algorithm_step_annotated" {
 }
 
 ///|
+/// #225 行末不变量锚：step.next 发布流中 algorithm_step 是**行末帧语义**
+/// （behavior_contracts 第 7 条契约的可执行判据）——同一 code_line 的
+/// 连续帧段内，非段尾帧标注必为 null（serve 层一帧发布缓冲的同行清标注
+/// 机制：行执行完毕、变量为行末态才携带标注）。防两种退化：清不足
+///（行中间帧带标注 = 半执行态宣称语义）与塌零（全程无标注帧）。
+/// 同时锚密度下限：3 元素冒泡全程标注帧 ≥ 8（compare×3 + swap×2×2 +
+/// 趟/循环帧——#225 实测密度 5% 量级的结构性下界，防标注面整体蒸发）。
+test "serve_step_algorithm_step_line_end_invariant" {
+  let s = @session.Session::new()
+  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    "void bubbleSort(int arr[], int n) {\\n" +
+    "  int i, j, temp;\\n" +
+    "  for (i = 0; i < n - 1; i++) {\\n" +
+    "    for (j = 0; j < n - i - 1; j++) {\\n" +
+    "      if (arr[j] > arr[j + 1]) {\\n" +
+    "        temp = arr[j];\\n" +
+    "        arr[j] = arr[j + 1];\\n" +
+    "        arr[j + 1] = temp;\\n" +
+    "      }\\n" +
+    "    }\\n" +
+    "  }\\n" +
+    "}\\n" +
+    "int main() {\\n" +
+    "  int arr[3] = {3, 1, 2};\\n" +
+    "  int n = 3;\\n" +
+    "  bubbleSort(arr, n);\\n" +
+    "  return arr[0];\\n" +
+    "}\\n" +
+    "\"}}"
+  let (cresp, _) = serve_handle(s, jsrc)
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":9,\"method\":\"run\"}"))
+  let (bresp, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
+  assert_true(bresp.contains("\"ready\":true"))
+  // 发布流收集（frames=50 批推进；段判定在拼接后的全流上，跨批拼接
+  // 与单帧流同構——清标注的「下一帧」判断在 serve 内部按发布序进行）
+  let lines : Array[Int32] = []
+  let annos : Array[Bool] = []
+  let mut finished = false
+  for k = 0; k < 40; k = k + 1 {
+    let (r, _) = serve_handle(
+      s,
+      "{\"id\":\{100 + k},\"method\":\"step.next\",\"params\":{\"frames\":50}}",
+    )
+    let v = @util.json_parse(r) catch {
+      _ => fail("step.next 响应解析失败")
+    }
+    let result = json_field(v, "result")
+    let payloads = json_field(result, "payloads")
+    guard payloads.as_array() is Some(arr) else { fail("payloads 非数组") }
+    for p in arr {
+      let cl = json_field(p, "code_line").as_int().unwrap_or(-1)
+      let anno = match json_field(p, "algorithm_step") {
+        Null => false
+        _ => true
+      }
+      lines.push(cl)
+      annos.push(anno)
+    }
+    let fin = json_field(result, "finished").as_bool().unwrap_or(false)
+    if fin {
+      finished = true
+      break
+    }
+  }
+  assert_true(finished, msg="40×50 帧应跑完 3 元素冒泡")
+  assert_true(
+    lines.length() > 100,
+    msg="帧流非空（实得 \{lines.length()}）",
+  )
+  // 行末不变量：同行连续段内非段尾帧不得带标注
+  let mut i = 0
+  while i < lines.length() {
+    let mut j = i
+    while j + 1 < lines.length() && lines[j + 1] == lines[i] {
+      j = j + 1
+    }
+    let seg = j - i + 1
+    if seg > 1 {
+      let mut k = i
+      while k < j {
+        if annos[k] {
+          fail(
+            "行中间帧带标注（line=\{lines[i]} 段长 \{seg} 第 \{k - i + 1} 帧）——行末语义破坏",
+          )
+        }
+        k = k + 1
+      }
+    }
+    i = j + 1
+  }
+  // 密度下限
+  let mut annotated = 0
+  for a in annos {
+    if a {
+      annotated = annotated + 1
+    }
+  }
+  assert_true(
+    annotated >= 6,
+    msg="全程标注帧 ≥ 6（实测 8，下限留余量防文案/判据微调的零余量假红）",
+  )
+}
+
+///|
 /// 批四号接线锚二（反向）：**判据不命中的函数**帧 algorithm_step 恒
 /// null（None 降级是协议合法形态）。素材随批翻新至终结：批四号=gcd、
 /// 批五号=static_list_insert、批六号 structures 迁移后 43/43 全量——

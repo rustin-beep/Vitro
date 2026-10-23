@@ -47,7 +47,7 @@
   const chapterLabel = $derived(lessonSession.lesson?.chapLabel ?? "");
   const lessonId = $derived(lessonSession.lesson?.id ?? "分享代码");
   const ctxRef = $derived(ui.refCode || session.catalog[0]?.code_str || "");
-  const focusScenes = $derived(lessonSession.note?.scenes ?? []);
+  const focusScenes = $derived(lessonSession.scenes);
   const focusSceneIdx = $derived(session.viewFrames.length ? sceneIndexAt(focusScenes, session.idx) : -1);
   const focusScene = $derived(focusSceneIdx >= 0 ? focusScenes[focusSceneIdx] : null);
 

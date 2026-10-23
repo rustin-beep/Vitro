@@ -77,7 +77,7 @@
   // 本幕逐行注记（#222 P1 第五片）：当前幕内「哪一行改了什么」→ 编辑器行尾 widget。
   // 无幕/未采集/帧落在幕外 → 空表（编辑器即时清空，不留旧行号注记）。
   const annotations = $derived.by(() => {
-    const scenes = lessonSession.note?.scenes ?? [];
+    const scenes = lessonSession.scenes;
     const frames = session.viewFrames;
     if (!scenes.length || !frames.length) return [] as Array<{ line: number; text: string }>;
     const i = sceneIndexAt(scenes, session.idx);

@@ -61,6 +61,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   逐字节一致。README 与 docs 两处测试数 857→866 连坐（f87b16db 存量债，
   facts --run 抓出人工同步）。
 
+### fix(teaching+protocol+gateway+demo): B 线批二——#224/#225/#238 三案 + PR #281 审阅批全处置（2026-10-23）
+
+**#224 排序族判据交叉误命中**：堆排序结构分支「递归+数组比较+swap+
+名字含 sort」极宽兜底致 quickSort/mergeSort 双命中（confidence 双 85 +
+错误教学文案 + 同一份 vis_events）。修复：①结构分支改**堆索引形态证据**
+（`has_heap_index_pattern`：子索引 `2*i+1`/`2*i+2` + 建堆起点 `n/2-1`；
+递归条件去除——教科书 heapSort 主函数迭代建堆）；②`AlgorithmMatch` 增
+`evidence`（name/structure，additive）+ sorting 族内互斥裁决（命名优先，
+跨族 B13 共存不动）；③quick/merge 启动帧 `[-1,-1]` 垃圾区间降级。
+**审阅 P1-3 补**（原「收紧」实为「关闭」——插桩实证真实 heapsort
+matches 恒空）：比较表达式专用通道 `check_compare_expr` 独立递归看不到
+堆子索引——其 Index 臂与声明 init 补堆算术判定（覆盖 `a[2*i+1]` 直写与
+`int l = 2*i+1` 间接两形态）；三合取改 OR 链（堆索引主证据 + 交换/比较
+任一佐证——证据天然跨函数）；新增真实源码端到端锚×2（gateway serve
+通道，变异证红）。端到端：siftDown/sortArray 结构命中、quick/merge/
+merge_swap 唯一命中（js/native 双臂）。
+
+**#225 步帧标注行末语义定性**：`algorithm_step` 在 step.next 发布流是
+行末帧语义（同一 code_line 指令帧序列仅段尾帧携带标注——Rust oracle
+同款设计态），密度 ≈ 行数/指令数量级（实测 ~5%）。行为契约第 7 条
+`algorithm_step_line_end_sparsity` + serve 层行末不变量锚（同行段非段尾
+帧必 null + 密度下限）。**审阅 P2-1 定谳修正**：双通道（发布流 vs
+payload.get 窗口流）**行为一致**——批内去重单源于 `FrameWindow.
+push_batch` 两段去重；本批 serve 层曾重复加一道批内清（变异实证冗余，
+撤）；真缺陷为**跨批 pending 行末性参照帧错位**（旧判据用批尾 curr、
+frames>1 时与 pending 中隔整批帧——行末不变量锚 frames=50 批形态证红，
+probe frames=300 恰未跨段；修正为批首帧判定）。契约句「两通道差异是
+设计态」撤回改写；truth 真值 + protocol_frames 基线连坐刷新。
+
+**#238 分镜锚点化（v2）**：两冒泡课 `vitri-scenes` 帧区间从写死下标
+改锚点表达式（`resolveAnchor` 词汇表：`@first_swap`/`@swap:N`/
+`@compare:N`/`@arr_change:N`/`@func:name`/`@last`/`@N` + ±K），帧流
+就绪后 `resolveScenes` 动态求值、未命中 fail loud 不猜；消费单点收敛
+`lessonSession.scenes`（六处消费点统一，防漏接——审阅抓到 SceneNote/
+WorkScreen/StageHead 三处漏网）。**审阅 P1-1/P1-2/P2-3 修正**：①
+bubble_sort 幕 03/04/05 序数原按「每轮 4 变」线性外推错位三帧段——按
+实测变化序修正（轮边界 = 变化 #8/#13/#17/#19 = 帧 23/36/47/50，六幕
+与正文表逐幕一致）；②`resolveAnchor` 整体改**语句级归一域求值**
+（差分与 ±K 偏移在归一数组上做、结果映射回原流帧号）——指令级/语句级
+两粒度事件对齐（双 probe 实证）；③basic/bubble 幕名如实化（幕 03 收窄
+第二轮全段、幕 04「第三轮与收尾」）；④lessonMd v2 注释行 skip 判据改
+「不含 |」（数字起首注释不误吞、含 | 行一律 fail loud——审阅 P3）。
+锚点解析结果测试仍以真实帧流 verify（tmp 探针）+ pure 42 例锁结构面。
+E-08 golden 逐字节不变。**P2-2 登记**：数组形参快照污染
+（`array_snapshots` 首元素=地址、栈内容抖动、越界 label）——既存缺陷，
+`@arr_change` 序数稳定性依赖它，后续单案处置。
+
+- 测试面：moonbit 871/871（origin/master 基，+16 锚：#224 判据三锚 +
+  infer 降级锚 + heapsort 端到端锚×2 + #225 j 动态行为锚 + 行末不变量
+  锚 + 契约计数连坐）；demo pure 42/42 + E2E 本地 19/21（唯二红为本地
+  缺手册资产，CI 证绿）+ svelte-check/lint 0 + E-08 17/17；teaching
+  三闸 + 43 族对拍 82 模板 + surface/mbti + 三臂 smoke 全绿；三轮 CI
+  全绿（run 39968579766）。
+- **审阅方法论沉淀**（skill 演化）：①课源锚点/写死下标类缺陷必须在
+  真实帧流上求值对账（锚字符串冻结测试是假绿面）；②教学判据端到端取
+  真值走 `cmd/serve` compile 响应（`vitro api` 不支持跨方法会话）。
+
 ### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
 
 - **__FILE__ 跨臂一致**：`pp.file_name_at` 对主文件/拼接段/include 段统一走

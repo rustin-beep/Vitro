@@ -347,6 +347,7 @@ func main() {
 	backendWasm := flag.Bool("backend-wasm", false, "#49 批三：被测物换统一入口壳 serve（node 消费 gateway wasm.wasm）")
 	catalogCheck := flag.Bool("catalog-check", false, "#36：引擎 algorithms.catalog 导出 ↔ 判据源码 build_match 提取物 ↔ rules.json ↔ demo 分组表三方对账（双臂 native+js）")
 	catalogSelftest := flag.Bool("catalog-selftest", false, "#36：--catalog-check 的 J9 证红模式（内存注入两路，不落盘）")
+	freeze := flag.Bool("freeze", false, "人工令重冻 golden（首现序列以当前被测物为准写回——diff 族 --freeze-mb 同款；J9：篡改单条后对拍必红）")
 	flag.Parse()
 	backendWasmOn = *backendWasm
 	if *catalogCheck || *catalogSelftest {
@@ -484,6 +485,49 @@ func main() {
 		if (idx+1)%10 == 0 || idx == len(tplNames)-1 {
 			fmt.Printf("  … %d/%d\n", idx+1, len(tplNames))
 		}
+	}
+
+	// -freeze：首现序列以当前被测物为准写回 golden（过滤后形态——与
+	// 对拍读回同构）。人工令专用：行为正当变化（如 #225 跨批 pending
+	// 参照修正令首现点移动）经差异方向人工核准后重冻；禁止与 --only
+	// 同用（子集会漏写其余模板）。
+	if *freeze {
+		if *only != "" {
+			fmt.Println("错误: --freeze 须全量模式（--only 子集会漏写其余模板）")
+			os.Exit(2)
+		}
+		frozen := map[string][]FirstOccurrence{}
+		for idx, tpl := range tplNames {
+			srcBytes, err := os.ReadFile(filepath.Join(root, "templates", tpl, "source.c"))
+			if err != nil {
+				fmt.Println("错误: 读模板失败:", tpl, err)
+				os.Exit(2)
+			}
+			actual, err := extractViaServe(exe, string(srcBytes), rules.StepBudget)
+			if err != nil {
+				fmt.Println("错误: 冻结提取失败:", tpl, err)
+				os.Exit(2)
+			}
+			f := filterMigrated(actual, migrated)
+			if len(f) > 0 {
+				frozen[tpl] = f
+			}
+			if (idx+1)%10 == 0 || idx == len(tplNames)-1 {
+				fmt.Printf("  … 冻结 %d/%d\n", idx+1, len(tplNames))
+			}
+		}
+		out, err := json.MarshalIndent(frozen, "", "  ")
+		if err != nil {
+			fmt.Println("错误: golden 序列化失败:", err)
+			os.Exit(2)
+		}
+		out = append(out, '\n')
+		if err := os.WriteFile(goldenPath, out, 0o644); err != nil {
+			fmt.Println("错误: golden 写回失败:", err)
+			os.Exit(2)
+		}
+		fmt.Printf("golden 已重冻 → %s（%d 模板）\n", goldenPath, len(frozen))
+		return
 	}
 
 	// 双向模板集：golden 有条目（过滤后）但本次未跑的模板不计（--only 子集模式跳过该断言）

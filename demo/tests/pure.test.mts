@@ -30,7 +30,16 @@ import {
   SHARE_VERSION,
 } from "../js/share.ts";
 import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
-import { sceneBand, sceneIndexAt, sceneKicker, sceneProgress, sceneRangeLabel } from "../src/lib/scenes.ts";
+import {
+  resolveAnchor,
+  resolveScenes,
+  sceneBand,
+  sceneIndexAt,
+  sceneKicker,
+  sceneProgress,
+  sceneRangeLabel,
+  type AnchorFrame,
+} from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 
@@ -412,16 +421,19 @@ test("scenes：sceneBand 百分比几何（帧数变化/末幕越界/未采集�
   assert.ok(near(sceneBand({ ...s, from: 7, to: 7 }, 10).width, 10));
 });
 
-test("lessonMd：bubble scene 覆盖 0..41（内容锚，先红后绿）", () => {
+test("lessonMd：bubble scene 为 v2 锚点形态（#238——写死下标结构性必错）", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const src = readFileSync(path.resolve(here, "../../course/basic/bubble/lesson.md"), "utf8");
   const doc = parseLessonMd(src);
   assert.equal(doc.scenes.length, 4);
-  assert.equal(doc.scenes[0].from, 0);
-  assert.equal(doc.scenes[doc.scenes.length - 1].to, 41);
-  for (let i = 1; i < doc.scenes.length; i += 1) {
-    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+  // v2：解析期 from/to=-1 占位 + 锚点原文留存；区间无缝性由 resolveScenes
+  // 求值后保证（真源帧流验证见 tmp 校准——本锚锁「全部锚点化、不回退写死」）
+  for (const s of doc.scenes) {
+    assert.equal(s.from, -1, `幕 ${s.id} 应为锚点形态`);
+    assert.ok(s.fromAnchor && s.toAnchor, `幕 ${s.id} 缺锚点表达式`);
   }
+  assert.equal(doc.scenes[0].fromAnchor, "@0");
+  assert.equal(doc.scenes[doc.scenes.length - 1].toAnchor, "@last");
 });
 
 // 第二门旗舰课（#222 P1 内容扩面）：uaf 释放后读——6 帧、3 幕；帧数来自
@@ -450,27 +462,28 @@ test("lessonMd：uaf scene 覆盖 0..5（内容锚：悬垂指针三幕）", () 
 // 帧数是实机口径：demo 的 viewFrames = 引擎 insn 帧经 annotateGroups 取组尾
 // （语句级），本锚用同一条链对 templates/bubble/source.c 的 lesson 源码实测
 // 65 帧（2026-10-22：js 臂 step 流 914 条指令帧 → 65 条语句帧）。
-test("lessonMd：bubble_sort scene 覆盖 0..64（内容锚：六幕收敛）", () => {
+test("lessonMd：bubble_sort scene 为 v2 锚点形态（六幕全锚点化，#238）", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const src = readFileSync(path.resolve(here, "../../course/sorting/bubble_sort/lesson.md"), "utf8");
   const doc = parseLessonMd(src);
   assert.equal(doc.scenes.length, 6);
+  // v2 锚点化（2026-10-23 #238）：帧区间随语句级帧流动态求值（旧 0..64
+  // 写死数字退役）；六幕的轮边界 = arr_change 序数（每轮交换次数恒等式）
+  for (const s of doc.scenes) {
+    assert.equal(s.from, -1);
+    assert.ok(s.fromAnchor && s.toAnchor, `幕 ${s.id} 缺锚点表达式`);
+  }
   assert.deepEqual(
-    doc.scenes.map((s) => [s.id, s.from, s.to, s.lines.join("..")]),
+    doc.scenes.map((s) => [s.id, s.fromAnchor, s.toAnchor, s.lines.join("..")]),
     [
-      ["01", 0, 4, "15..18"],
-      ["02", 5, 23, "4..9"],
-      ["03", 24, 36, "4..9"],
-      ["04", 37, 47, "4..9"],
-      ["05", 48, 50, "4..6"],
-      ["06", 51, 64, "18..23"],
+      ["01", "@0", "@arr_change:2", "15..18"],
+      ["02", "@arr_change:2+1", "@arr_change:8", "4..9"],
+      ["03", "@arr_change:8+1", "@arr_change:13", "4..9"],
+      ["04", "@arr_change:13+1", "@arr_change:17", "4..9"],
+      ["05", "@arr_change:17+1", "@arr_change:19", "4..6"],
+      ["06", "@arr_change:19+1", "@last", "18..23"],
     ],
   );
-  for (let i = 1; i < doc.scenes.length; i += 1) {
-    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
-  }
-  // 末幕必须落在最后一帧（65 帧 = 0..64；帧数变化要连坐改幕，不许静默越界）
-  assert.equal(doc.scenes[doc.scenes.length - 1].to, 64);
   // 元数据剥离 + 课文仍在：首块 h2，且六幕讲解不是正文段落
   assert.equal(doc.blocks[0].type, "h2");
   assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
@@ -521,6 +534,15 @@ test("lessonMd：全量 course 叙述 scene 连续、行界/注记非空（P2-1 
     const doc = parseLessonMd(readFileSync(file, "utf8"));
     const rel = path.relative(root, file);
     assert.ok(doc.scenes.length >= 1, `${rel}: 无 scene`);
+    // v1 数字课：首幕 0 起 + 逐幕无缝；v2 锚点课（#238）：锚点表达式齐全、
+    // 覆盖校验移交 resolveScenes（帧流上动态求值——写死下标结构性必错）
+    if (doc.scenes[0].fromAnchor !== undefined) {
+      for (const s of doc.scenes) {
+        assert.ok(s.fromAnchor && s.toAnchor, `${rel}: v2 幕 ${s.id} 缺锚点表达式`);
+        assert.equal(s.from, -1, `${rel}: v2 幕 ${s.id} from 应为 -1 占位`);
+      }
+      continue;
+    }
     assert.equal(doc.scenes[0].from, 0, `${rel}: 首幕不从 0 起`);
     let prev = -1;
     for (const s of doc.scenes) {
@@ -580,5 +602,114 @@ test("catalogDetail：示例/关联课键命中 catalog，关联课存在（P2-2
   for (const [code, id] of Object.entries(RELATED)) {
     assert.ok(codes.has(code), `RELATED 键 ${code} 不在 catalog.code_str`);
     assert.ok(lessonIds.has(id), `RELATED[${code}] 的课 id「${id}」不在课表`);
+  }
+});
+
+// ── #238：v2 锚点分镜（lessonMd 解析 + resolveAnchor/resolveScenes 求值）──
+
+test("lessonMd：v2 锚点幕解析（from/to=-1 占位 + 原文留存；纯数字幕直存）", () => {
+  const md = `---
+id: anchorfx
+kind: case
+order: 1
+---
+
+<!-- vitri-scenes v2
+01 | 起点 | @0..@func:bubbleSort-1 | 1..2 | 初始化段。
+02 | 交换 | @first_swap-1..@first_swap+6 | 3..4 | 半完成中间态。
+03 | 收尾 | 40..50 | 5..6 | 数字幕在 v2 同样合法。
+-->
+`;
+  const doc = parseLessonMd(md);
+  assert.equal(doc.scenes.length, 3);
+  assert.equal(doc.scenes[0].from, -1);
+  assert.equal(doc.scenes[0].to, -1);
+  assert.equal(doc.scenes[0].fromAnchor, "@0");
+  assert.equal(doc.scenes[0].toAnchor, "@func:bubbleSort-1");
+  assert.equal(doc.scenes[1].fromAnchor, "@first_swap-1");
+  assert.equal(doc.scenes[1].toAnchor, "@first_swap+6");
+  assert.equal(doc.scenes[2].from, 40);
+  assert.equal(doc.scenes[2].to, 50);
+  assert.equal(doc.scenes[2].fromAnchor, undefined);
+});
+
+test("lessonMd：v2 混排（数字+锚点两端）fail loud", () => {
+  const md = `---
+id: badmix
+kind: case
+order: 1
+---
+
+<!-- vitri-scenes v2
+01 | 起点 | 0..@last | 1..2 | 两端不同形。
+-->
+`;
+  assert.throws(() => parseLessonMd(md), /两端须同为数字或同为锚点/);
+});
+
+test("resolveAnchor：swap 序 / compare 序 / func / last / 偏移 clamp", () => {
+  // code_line 逐帧递增：resolveAnchor 在语句级归一域求值（同行组合并），
+  // 合成帧须各自独立成组否则序数全塌成一组
+  const mk = (i: number, over: Partial<AnchorFrame>): AnchorFrame => ({
+    code_line: i + 1,
+    func_name: "main",
+    semantic_label: "",
+    algorithm_step: null,
+    ...over,
+  });
+  const frames: AnchorFrame[] = [];
+  for (let i = 0; i < 10; i += 1) frames.push(mk(i, {}));
+  // 帧 2/5/8 = swap（一条走 phase、一条走 label 兜底）；帧 3/6 = compare
+  frames[2] = mk(2, { algorithm_step: { phase: "swap" } });
+  frames[5] = mk(5, { semantic_label: "交换 arr[0]↔arr[1]" });
+  frames[8] = mk(8, { algorithm_step: { phase: "swap" } });
+  frames[3] = mk(3, { algorithm_step: { phase: "compare" } });
+  frames[6] = mk(6, { algorithm_step: { phase: "compare" } });
+  frames[7] = mk(7, { func_name: "bubbleSort" });
+  assert.equal(resolveAnchor("@first_swap", frames), 2);
+  assert.equal(resolveAnchor("@swap:2", frames), 5); // label 兜底命中
+  assert.equal(resolveAnchor("@swap:3", frames), 8);
+  assert.equal(resolveAnchor("@swap:4", frames), -1); // 不存在 → 不猜
+  assert.equal(resolveAnchor("@compare:1", frames), 3);
+  assert.equal(resolveAnchor("@compare:2", frames), 6);
+  assert.equal(resolveAnchor("@compare:9", frames), -1);
+  assert.equal(resolveAnchor("@func:bubbleSort", frames), 7);
+  assert.equal(resolveAnchor("@func:quickSort", frames), -1);
+  assert.equal(resolveAnchor("@last", frames), 9);
+  assert.equal(resolveAnchor("@first_swap-1", frames), 1);
+  assert.equal(resolveAnchor("@first_swap+99", frames), 9); // clamp 末帧
+  assert.equal(resolveAnchor("@first_swap-99", frames), 0); // clamp 首帧
+  assert.equal(resolveAnchor("@nosuch", frames), -1); // 未登记词汇
+});
+
+test("resolveScenes：v1 数字幂等直通 / v2 求值 / 未命中 -1 保持", () => {
+  const v1: Scene[] = [{ id: "01", title: "t", from: 2, to: 5, lines: [1, 2], note: "n" }];
+  // code_line 逐帧独立（resolveAnchor 语句级归一域求值——同线并组）
+  const frames: AnchorFrame[] = [
+    { code_line: 1, func_name: "main", semantic_label: "", algorithm_step: null },
+    { code_line: 2, func_name: "main", semantic_label: "", algorithm_step: { phase: "swap" } },
+    { code_line: 3, func_name: "main", semantic_label: "", algorithm_step: null },
+  ];
+  assert.equal(resolveScenes(v1, frames), v1); // 无锚点 = 原引用直通
+  const v2: Scene[] = [
+    { id: "01", title: "交换", from: -1, to: -1, fromAnchor: "@first_swap-1", toAnchor: "@first_swap+1", lines: [1, 2], note: "n" },
+    { id: "02", title: "幽灵", from: -1, to: -1, fromAnchor: "@swap:9", toAnchor: "@last", lines: [1, 2], note: "n" },
+  ];
+  const got = resolveScenes(v2, frames);
+  assert.deepEqual([got[0].from, got[0].to], [0, 2]); // 1-1=0、1+1=2
+  assert.deepEqual([got[1].from, got[1].to], [-1, -1]); // 未命中不猜
+  assert.deepEqual(resolveScenes(v2, []), v2.map((s) => ({ ...s }))); // 空帧流原样（未采集）
+});
+
+test("lessonMd：bubble 两课真源均为 v2 锚点（防回退写死下标）", () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  for (const rel of ["course/basic/bubble/lesson.md", "course/sorting/bubble_sort/lesson.md"]) {
+    const doc = parseLessonMd(readFileSync(path.join(root, rel), "utf-8"));
+    assert.ok(doc.scenes.length > 0, `${rel} 应带分镜`);
+    for (const s of doc.scenes) {
+      assert.ok(s.fromAnchor && s.toAnchor, `${rel} 幕 ${s.id} 应为锚点形态（#238——写死下标结构性必错）`);
+      assert.equal(s.from, -1);
+      assert.equal(s.to, -1);
+    }
   }
 });

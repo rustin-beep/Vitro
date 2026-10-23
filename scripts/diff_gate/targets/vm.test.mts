@@ -92,12 +92,24 @@ test("stdinFor：同名 .in 存在才返回；sampleN 均匀覆盖首尾", () =>
   assert.equal(s[4], "f80.c");
 });
 
-test("真实仓库：vm 在 gap 全套上全 SAME（与 Go 版同判据）", () => {
+test("真实仓库：vm 在 gap 上全 SAME（exe 缺失时断言 fail loud 契约）", () => {
+  // CI 的 scripts-ts job **不构建 native exe**（只装 moon 工具链 + go + npm ci），
+  // 而三通道对拍需要预编译 run.exe。故本用例双环境自适配：
+  //   exe 在  → 完整三通道对拍（本地实测 733/733 与 Go 版一致）
+  //   exe 不在 → 断言 fail loud 契约（exe 缺失不得静默跳过或假绿）
+  // 真实对拍的 CI 覆盖由 gates-diff 的 Go 版承担（双轨期），终局切 TS 时
+  // 再给 scripts-ts 补 build 步骤。
+  const exe = path.join(projectRoot(), "moonbit/_build/native/release/build/cmd/run/run.exe");
   const r = spawnSync(
     process.execPath,
     [path.join(projectRoot(), "scripts/diff_gate/main.mts"), "vm", "--corpus", "gap"],
     { cwd: projectRoot(), encoding: "utf8", timeout: 600_000 },
   );
+  if (!fs.existsSync(exe)) {
+    assert.equal(r.status, 1, `exe 缺失时应 fail loud，实际 exit=${String(r.status)}`);
+    assert.match(r.stderr, /run\.exe 不存在/);
+    return;
+  }
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /vm_diff\[golden\]: SAME=20 DIFF-KNOWN=0 DIFF=0 SKIP=0（共 20）/);
 });

@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### fix(parser+codegen): A 线批一——#272 复合字面量指针初始化 + #278 匿名 union 变量 + #277 同名 static 遮蔽（2026-10-23）
 
+- **审阅处置批（用户五阶段审阅，PR #282 评论全档）**：P1=recorder 两处
+  old_ 硬编码 None 致跨族同名遮蔽退出删表（误拒 E0/静默错指）——修复=
+  五表 old_ 全取 get(name) 真值 + **二段补丁**（登记时对称 remove 另一张
+  表同名条目——审阅处方实测后暴露 p1b/p1c 块内错值，仅取真值不够：块内
+  解析链 local 先于 static_local，须靠 remove 保证命中本声明；退出由恢复
+  链对称 set 回）；P2-1=enum 孪生 trailing 循环同款缺 init 解析
+  （`enum {A,B} e=B;` 报 E2005）——补齐 + parser.mbt 误导注释改写 +
+  `enum_trailing_init.c` 语料；P2-2=static 局部 vs 同名 global 解析链
+  次序（无块形静默错值 501，存量定责）拆 issue **#283**（8 消费点处方
+  在册，勿在批内修）；P3=指纹数口径改「检出 29/净入账 27」+ 验证矩阵
+  补 baseline vs CI 全集口径注（867/736）。
+
 - **#272 数组复合字面量作指针初始化值**（`int *p = (int[]){10,20};` 的
   `p[0]` trap/静默错值）：`emit_local_init` 对 TK_Array 字面量沿标量路径
   LoadMem——把 gen_expr 物化后留下的**对象地址**当可读内存 load 出首元素
@@ -37,15 +49,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `anon_union_var_init.c`（含具名/数组声明器/多声明器边界）/
   `static_local_shadow.c`（含跨函数同名/循环体单次初始化/三层嵌套；
   counter 三连改语句序列消实参求值顺序 UB）。五家 digest freeze 纯新增
-  （存量零漂移——knr/leetcode/gap 无需连坐）；corpus_fuzz 新指纹 29 条
-  全良性值域（AGREE/CLANG_REJECT/VITRO_TRAP，无 arm_divergence）已
-  -freeze 收编（1041 条基线）。
+  （存量零漂移——knr/leetcode/gap 无需连坐）；corpus_fuzz 检出新指纹
+  29 条 / 净入账 27 条（entries 1014→1041，抽样轮换所致）全良性值域
+  （AGREE/CLANG_REJECT/VITRO_TRAP，无 arm_divergence）已 -freeze 收编。
 - **验证矩阵**：moon test 裸 **866/866**；clang_direct baseline
   **SAME=485 DIFF-KNOWN=6 DIFF=0（491）**；vm_diff baseline native
-  **491 SAME**；corpus_fuzz 318 PASS（新指纹 0/桶恶化 0）；testcount /
-  surface / mbti / editorconfig / ci_checklist / facts --strict（漂移
-  0）全绿；三新例 js+native 双臂逐字节一致。README 与 docs 两处测试数
-  857→866 连坐（f87b16db 存量债，facts --run 抓出人工同步）。
+  **491 SAME**（注：491 系 baseline 套件口径，CI 全集实测 = clang_direct
+  867 例 / vm_diff 736 例，审阅方亲跑双态均绿）；corpus_fuzz 318 PASS
+  （新指纹 0/桶恶化 0）；testcount / surface / mbti / editorconfig /
+  ci_checklist / facts --strict（漂移 0）全绿；三新例 js+native 双臂
+  逐字节一致。README 与 docs 两处测试数 857→866 连坐（f87b16db 存量债，
+  facts --run 抓出人工同步）。
 
 ### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
 

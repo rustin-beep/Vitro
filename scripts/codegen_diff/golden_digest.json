@@ -154,6 +154,7 @@
         "enum_arith.c": "b26960b5",
         "enum_const_array_dim.c": "ffd00a73",
         "enum_non_continuous.c": "bd182341",
+        "enum_trailing_init.c": "e000b96d",
         "equal_var.c": "674d6f88",
         "escape_tab.c": "6eca02c4",
         "exit_function.c": "5ae58a28",
@@ -953,6 +954,9 @@
         },
         "enum_non_continuous.c": {
           "result_sha": "5b0d9c3a84fafcbe"
+        },
+        "enum_trailing_init.c": {
+          "result_sha": "7249c78a6a1b81ef"
         },
         "equal_var.c": {
           "result_sha": "a667d6f4ae43721a"

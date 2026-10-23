@@ -988,8 +988,8 @@ fn BytecodeGen::exit_scope(self : BytecodeGen) -> Unit {
           Some(old) => self.sym_index.set(entry.name, old)
           None => self.sym_index.remove(entry.name)
         }
-        // #277：static 两张表同款恢复（static 声明登记的条目才带值，
-        // 普通局部条目恒 None → remove 语义与「未登记前无此键」一致）
+        // #277：static 两张表同款恢复（PR #282 审阅 P1 后 old_ 全为登记
+        // 时真值——同名字在另一族表有条目时恢复之，无条目（None）才 remove）
         match entry.old_static_offset {
           Some(old) => self.static_local_indices.set(entry.name, old)
           None => self.static_local_indices.remove(entry.name)
@@ -1007,33 +1007,52 @@ fn BytecodeGen::exit_scope(self : BytecodeGen) -> Unit {
 fn BytecodeGen::record_scope_var(self : BytecodeGen, name : String) -> Unit {
   if self.local_scope_stack.length() > 0 {
     let frame = self.local_scope_stack[self.local_scope_stack.length() - 1]
+    // PR #282 审阅 P1（2026-10-23）：五张表 old_ 一律取真值——同名字被
+    // 另一族（static/普通）登记过时，硬编码 None 会在 exit_scope 把另一张
+    // 表的同名条目 remove（跨族同名遮蔽退出即「未声明的标识符」误拒；
+    // 解析链里 static_local 排 global 后时退化静默错指 global）
+    let old_static = self.static_local_indices.get(name)
     frame.shadows.push({
       name,
       old_offset: self.local_indices.get(name),
       old_type: self.local_types.get(name),
       old_sym_idx: self.sym_index.get(name),
-      old_static_offset: None,
-      old_static_type: None,
+      old_static_offset: old_static,
+      old_static_type: self.static_local_types.get(name),
     })
+    // P1 补丁二段（处方实测后补）：普通声明遮蔽外层 static 时同步
+    // remove static 表同名条目——块内解析链（local→global→static_local）
+    // 才会命中本声明；退出由恢复链 set 回（对称）。不 remove 则块内
+    // 读错指外层静态槽（探针 p1b/p1c 实测：修误拒后显形为静默错值）
+    if old_static is Some(_) {
+      self.static_local_indices.remove(name)
+    }
   }
 }
 
 ///|
 /// #277（2026-10-23）：static 局部声明的遮蔽登记——static 两表 + 共享的
-/// sym_index 记旧值（local 三元组不碰，恒 None）。须在 set 新映射**之前**
-/// 调用。函数级作用域起点清空 scope 栈（func.mbt），跨函数同名 static
-/// 各自分配、互不残留。
+/// sym_index 记旧值。须在 set 新映射**之前**调用。函数级作用域起点清空
+/// scope 栈（func.mbt），跨函数同名 static 各自分配、互不残留。
+/// PR #282 审阅 P1：old_ 全取真值（同 record_scope_var 注）。
 fn BytecodeGen::record_scope_static(self : BytecodeGen, name : String) -> Unit {
   if self.local_scope_stack.length() > 0 {
     let frame = self.local_scope_stack[self.local_scope_stack.length() - 1]
+    let old_local = self.local_indices.get(name)
     frame.shadows.push({
       name,
-      old_offset: None,
-      old_type: None,
+      old_offset: old_local,
+      old_type: self.local_types.get(name),
       old_sym_idx: self.sym_index.get(name),
       old_static_offset: self.static_local_indices.get(name),
       old_static_type: self.static_local_types.get(name),
     })
+    // P1 补丁二段：static 声明遮蔽外层普通局部/参数时同步 remove local
+    // 表同名条目（对称理由同 record_scope_var——不 remove 则块内读错指
+    // 外层普通槽，探针 p1b 块内读 5≠2、p1c 参数形 ret 5≠4 实测）
+    if old_local is Some(_) {
+      self.local_indices.remove(name)
+    }
   }
 }
 

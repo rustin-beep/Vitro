@@ -1305,9 +1305,11 @@ fn Parser::parse_aggregate_trailing_globals(
     // #137 缺陷 2（2026-10-17）：trailing 声明器不得吞 typedef 名——
     // `struct P{...}; ll g = 3;` 旧把 `ll` 当 struct P 的声明器名吞掉，
     // `g`/`= 3` 悬空报双 E2005（typedef 别名在聚合声明后「文件作用域
-    // 失效」的假象——表没丢，是 trailing 贪吃）。enum 无 trailing 故
-    // 不触发；函数体不走顶层路径故正常。而 `struct P{...} ll;`（ll 已
-    // 为 typedef 名）本属 clang 非法重声明，拒吞即对齐
+    // 失效」的假象——表没丢，是 trailing 贪吃）。注意 enum **自带孪生
+    // trailing 循环**（decl.mbt parse_enum_decl，PR #282 审阅 P2-1 起
+    // 含 init 解析）——本函数不路由 enum，勿读作「enum 无 trailing 形态」。
+    // 而 `struct P{...} ll;`（ll 已为 typedef 名）本属 clang 非法重声明，
+    // 拒吞即对齐
     if self.typedef_names.get(t) is Some(_) {
       return
     }

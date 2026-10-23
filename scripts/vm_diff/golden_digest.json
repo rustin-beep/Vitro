@@ -909,6 +909,12 @@
       "stdout_sha": "f5ca38f748a1d6ea",
       "memory_sha": "1a5c3974a2dc103b"
     },
+    "baseline/enum_trailing_init.c": {
+      "src_sha": "e000b96d",
+      "exit_code": 7,
+      "stdout_sha": "554758d997bdf078",
+      "memory_sha": "360839e91c7419ce"
+    },
     "baseline/equal_var.c": {
       "src_sha": "674d6f88",
       "exit_code": 0,

@@ -230,6 +230,57 @@ catalog/gen_diag -check 全绿。
   cmd/vitro 否则陈旧产物下「单侧编译失败」假红（本次 MF-UNIT 直拍
   首跑实锤）。
 
+### refactor(scripts): #273 存量 Go 重写批——共享库/闸/生成器 12 个 .mts 双轨版（2026-10-23）
+
+- **共享库**：`internal/canonicalize`（保数字形态 JSON 解析 + Go `encoding/json`
+  编码口径：键字节序 / 转义 / 缩进）、`internal/capi`、`internal/freshness`。
+- **闸与工具**：`canonicalize` CLI、`source_hygiene`、`editorconfig_check`、
+  `testcount`、`precompile_bytecode_libc`、`host_route_coverage`。
+- **生成器**：`gen_stubs` / `gen_protocol_fields` / `gen_host_route` /
+  `gen_libc_data`（`-check` 双跑逐字节；同时修正「带文件参数 moon fmt 会改写
+  产物」的存量副作用——TS 版比对后无条件还原，`-check` 真正零副作用）。
+- **验证**：canonicalize 170 例随机/边界 JSON 与 Go CLI stdout+退出码零差异；
+  各驱动 Go/TS 双跑输出逐字一致；node:test **92 例**；Go 版全部保留
+  （双轨期：CI 引用未切换、未删 Go）。
+### chore(scripts): #273 次批——gen_icon_preview py→.mts，scripts 面 .py 清零（2026-10-23）
+
+- `gen_icon_preview/main.py` → `main.mts`：图鉴排版（76 图标 / 5 组 / 54527 B）
+  与 py 版**逐字节一致**；`-check` 不落盘语义、退出码 0/1/2 与 fail loud 保留。
+- `%g` 坐标口径按 Python 默认（6 位有效数字、去尾零）复刻；新增单测锁
+  `fmtG` 与布局坐标/页高/确定性。
+- 摘 `ci_checklist` 的 gen_icon_preview 例外（已非 Go 驱动面）；`scripts/` 下
+  `.py` 清零。
+### chore(scripts): #273 批二——mdrender 退场，docs_preview/gen_course .mts 化（marked）（2026-10-23）
+
+- **mdrender 退役**：2555 行 Go 手写解析器 + 7 测试删除；渲染层改为 marked 18.1.1
+  + 移植的 `tok-*` 高亮器（highlight.go 逐行为移植）；标题 id 走 GitHub slug 规则，
+  链接改写、table-wrap、字数/大纲/搜索索引口径保持。
+- **docs_preview .mts**：main/render/highlight/page/paths 五模块，增量缓存 v11、
+  目录页/监听/open/断链报告全保留；pages.yml 部署步改 node 并加 setup-node +
+  `npm ci --omit=dev`（运行期仅 marked）。
+- **gen_course .mts**：frontmatter 校验/字典序/Go 兼容 JSON 转义保留，产物与旧
+  Go 版逐字节一致（header 再生命令行除外）；仍为回退预案不入 CI。
+- **对拍**：current 全量文档构建 89 页，标题 id / 代码块 / 表格 / 文件集零差异，
+  href 零差异；4 处可见文本差异均为源文档 `**` 未闭合/落单 `*` 的强调边界
+  （marked 与手写器口径不同，无内容丢失）；浏览器实测导航/大纲/高亮/搜索全通、
+  控制台零错误。
+- **注册表**：ci_checklist 例外摘 docs_preview/gen_course 两条（Go 驱动面退役）。
+
+### chore(scripts): #273 批一——五件守卫脚本 .mts 化 + scripts TS 四件套门（2026-10-23）
+
+- **五件迁移**：`wasm_load` / `wasm_gateway/host` / `demo_smoke/main` /
+  `demo_assemble_check/main` / `wasmopt` 执行器 JS→`.mts`（node 24 type
+  stripping 直跑，零发射产物）；旧文件删除，调用点同步（ci.yml ×4 /
+  pages.yml ×1 / wasmopt Go 驱动 / 文档与 README 引用面）。
+- **四件套底座**：`scripts/package.json` + `scripts/package-lock.json` 钉版本
+  （typescript 7.0.2 / oxlint 1.89.0 / @types/node 24.19.2）；`npm run
+  check|lint|test` = tsc 严格档 + oxlint + node:test；CI 新增 `scripts-ts`
+  job（`.mts` 目录扫描与 Windows 目录模式双缺口 ⇒ 显式文件清单）。
+- **测试面新增**：wasm_load 合成 wasm（`_` 常量枚举/过滤/实例化）、
+  assemble_check 三判据正反 6 例、wasmopt 缺参 rc=4。
+- **双跑对拍**：host 16/16、demo_smoke 197/197 逐字节同输出；wasmopt
+  执行器新旧产物 sha256 一致（993206→798895 B）；Go 驱动 `-check`
+  白/红双路复跑（无 sidecar 即红）。
 ### fix(ci): 5d3d4dd7 推后三红——fuzz 槽位隔离根治 + Defender 重试 + UB 漂移 digests 集（2026-10-22）
 
 - **fuzz 桶恶化 6（file_fopen/file_fread × 3 算子）根治**：变异体程序

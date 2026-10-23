@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+// demo 组装资源存在性自检（2026-10-04 审阅 P2-2/P3-②/P3-③ 单源化；#273 批 .mts 化）
+//
+// 缘起：pages.yml 原内联版正则要求 src="./..." 而 index.html 实写
+// src="cases.js"（无 ./ 前缀）⇒ HTML 一路恒 0 命中，实测删 cases.js 自检
+// 仍绿（缺它 DEMO_CASES 未定义直接白屏）——与该闸当初要堵的历史白屏同类。
+// 单源化后 ci.yml（demo/ 原地发射面）与 pages.yml（demo-dist 发布面）双接。
+//
+// 判据（fail loud，无静默 default）：
+//   ① <script src> 抽取面哨兵（F4 收尾 2026-10-17 起阈值 2 → 1）——旧栈
+//      3 个经典 script（cases.js + app.js + 主 bundle）压到新栈单入口 bundle，
+//      实现取 `< 1 即红`（见下方 scriptRefs.length < 1 处）。**头注曾写
+//      「≥2（cases.js + app.js）」系 F4 前的陈旧形态**（2026-10-23 审阅 P3-4
+//      登记：非本批引入，master 旧 .js 同形），抽取退化/HTML 结构变更仍红；
+//   ② 全部 ref（script/img/app 产物 import 面）逐项存在性断言，缺即红
+//      （外链 http(s)/data: 过滤不查）；
+//   ③ --no-ts（发布面模式）：目录内出现 .ts/.mts 即红——源不随产物发布
+//      （pages.yml 曾 cp -r demo/js 连 .ts 一起上传）。
+//
+// 用法：node scripts/demo_assemble_check/main.mts <目录> [--no-ts]
+
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+export interface CheckResult {
+  refs: number;
+}
+
+function die(msg: string): never {
+  throw new Error(msg);
+}
+
+export function checkAssembly(dir: string, opts: { noTs: boolean }): CheckResult {
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) die(`目录不可读: ${dir}`);
+
+  const indexPath = path.join(dir, "index.html");
+  if (!fs.existsSync(indexPath)) die(`缺 index.html: ${indexPath}`);
+  const html = fs.readFileSync(indexPath, "utf8");
+
+  // ── ① script src 抽取面哨兵（F4 收尾 2026-10-17：旧栈 3 个经典 script →
+  //   新栈单模块 script + vite 产物 assets/*.js；下限 1，防正则退化恒 0）──
+  const scriptRefs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1] ?? "");
+  if (scriptRefs.length < 1) {
+    die(
+      `HTML <script src> 抽取面 ${scriptRefs.length} < 1——正则退化或 index.html 结构变更` +
+        `（审阅 P2-2 形态：src 无 ./ 前缀曾致本路恒 0 命中不报）`
+    );
+  }
+
+  // ── ② 收集全部本地资源 ref（script/img src + favicon link href——新栈
+  //    index.html 带 ./assets/logo 图标，缺了页面无图标但闸要拦）──
+  const isExternal = (s: string): boolean => /^(https?:)?\/\//.test(s) || s.startsWith("data:");
+  const refs = new Set<string>();
+  for (const m of html.matchAll(/<(script|img)[^>]+src="([^"]+)"/g)) {
+    const src = m[2];
+    if (src !== undefined && !isExternal(src)) refs.add(src);
+  }
+  for (const m of html.matchAll(/<link[^>]+rel="icon"[^>]+href="([^"]+)"/g)) {
+    const href = m[1];
+    if (href !== undefined && !isExternal(href)) refs.add(href);
+  }
+  if (!opts.noTs) {
+    // 源目录面：入口必须是 src/main.ts（vite 的唯一入口）
+    const entry = path.join(dir, "src", "main.ts");
+    if (!fs.existsSync(entry)) die(`缺入口源 src/main.ts: ${entry}`);
+    refs.delete("/src/main.ts");
+  }
+  // 发布面（vite 产物）：入口 JS 由 html 的 assets/*.js 引用覆盖，无需 app.js
+
+  const missing: string[] = [];
+  for (const r of refs) {
+    const p = path.join(dir, r.replace(/^\.\//, ""));
+    if (!fs.existsSync(p)) missing.push(r);
+  }
+  if (missing.length) die(`组装缺资源: ${missing.join(", ")}`);
+
+  // ── ③ 发布面禁源（--no-ts）────────────────────────────────
+  if (opts.noTs) {
+    const leaked: string[] = [];
+    const walk = (d: string): void => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) {
+          if (e.name === "docs") continue; // docs 子站由 docs_preview 组装，不属本闸
+          walk(p);
+        } else if (/\.(ts|mts)$/.test(e.name)) {
+          leaked.push(path.relative(dir, p));
+        }
+      }
+    };
+    walk(dir);
+    if (leaked.length) die(`发布面含 TS 源（cp -r 应排除/发射产物面只留 .js）: ${leaked.join(", ")}`);
+  }
+
+  return { refs: refs.size };
+}
+
+function main(): void {
+  const args = process.argv.slice(2);
+  const noTs = args.includes("--no-ts");
+  const dir = args.find((a) => !a.startsWith("--"));
+  if (!dir) die("用法: node scripts/demo_assemble_check/main.mts <目录> [--no-ts]");
+  try {
+    const { refs } = checkAssembly(dir, { noTs });
+    console.log(`[demo_assemble_check] ${refs} 项本地资源全在${noTs ? "（发布面无 .ts 源）" : ""}: ${dir}`);
+  } catch (e) {
+    console.error("[demo_assemble_check] " + (e instanceof Error ? e.message : String(e)));
+    process.exit(1);
+  }
+}
+
+const invokedDirectly =
+  process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+if (invokedDirectly) main();

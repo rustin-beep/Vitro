@@ -65,8 +65,9 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
   | `scripts/moonbit/` | `gen_diag`、`gen_host_route`、`gen_libc_data`、`gen_protocol_fields`、`gen_stubs` |
 
   （清单变更时同步更新此表；核对：`grep -oE "gen_[a-z_]+" .github/workflows/ci.yml \| sort -u`——发射步同样是 `go run` 形态可命中）
+- **非 CI 生成器（人工跑，不入上表）**：`gen_course/main.mts`（课程叙述回退，`-check`）、`gen_icon_preview/main.mts`（图标图鉴，`-check`）——同守「`@generated` / 幂等 / `-check` 不落盘」契约；#273 起**新生成器默认 `.mts`**（四件套门：node 直跑 + tsc 严格档 + oxlint + node:test）。
 
 ## 权威源与时效
-- 各生成器 `.go` 头注；`docs/current/02-构建与上手/脚本总清单与必跑防线.md`
+- 各生成器头注（Go `.go` / TypeScript `.mts`）；`docs/current/02-构建与上手/脚本总清单与必跑防线.md`
 - **相关规程**：`vitro-facts-reconciliation`（facts 依赖收窄与产物落位）、`vitro-release-playbook`（包图徽标为 facts 锚，改包集/版本必连坐）、`vitro-baseline-corpus-workflow`（`gen_svg` 重生成）
-- as_of: 2026-10-04（09-29 gen_stubs / gen_libc_data / gen_host_route / gen_svg 四轮实战沉淀 + skills 图批两坑；10-04 增发射形态一节 + 在册清单补 gen_demo_algorithms〔178401a 入库时漏登〕）
+- as_of: 2026-10-23（#273：补非 CI 生成器 `.mts` 两条与「新生成器默认 .mts」；前史 2026-10-04：09-29 gen_stubs / gen_libc_data / gen_host_route / gen_svg 四轮实战沉淀 + skills 图批两坑；10-04 增发射形态一节 + 在册清单补 gen_demo_algorithms〔178401a 入库时漏登〕）

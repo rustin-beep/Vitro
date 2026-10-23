@@ -11,8 +11,8 @@
 //
 // 例外表 exceptions.json（本目录）：{"driver": "<scripts 相对路径>", "reason":
 // "..."}。豁免面三类合法形态：库目录（canonicalize/internal/jmemit——被进程
-// 内 import 消费，非独立 go run 闸）、本地工具（docs_preview/perf_baseline/
-// icon 预览类——CI 无消费面）、CLI 资产（vitro_cli——scripts/bin/vitro 是
+// 内 import 消费，非独立 go run 闸）、本地工具（perf_baseline——CI 无消费面；
+// docs_preview / gen_icon_preview 已于 #273 迁 .mts 出 Go 驱动面）、CLI 资产（vitro_cli——scripts/bin/vitro 是
 // sh/js launcher 资产非 go run 目标）。例外条目若同时被 ci.yml 活行引用 =
 // 僵尸（红——双向监控，known_direct 同哲学）。
 //
@@ -37,6 +37,9 @@ import (
 type exception struct {
 	Driver string `json:"driver"`
 	Reason string `json:"reason"`
+	// Kind（2026-10-23 #273 P2-1 补）：例外类别。superseded-by-mts = 已被
+	// .mts 双轨版取代、暂留回退面；空 = 传统形态（库目录/本地工具等）。
+	Kind string `json:"kind,omitempty"`
 }
 
 func main() {
@@ -50,6 +53,24 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ci_checklist: 读 ci.yml 失败: %v\n", err)
 		os.Exit(2)
 	}
+	// 2026-10-23 #273 P2-1：活行集扩展到**全部 workflow**——pages.yml 的
+	// 文档站步（node scripts/docs_preview/main.mts）与 gates-wasm 的 wasm 臂
+	// 都不在 ci.yml 里，只读 ci.yml 会把它们误判成漏登记。
+	wfBytes := map[string][]byte{"ci.yml": ciBytes}
+	wfRoot := filepath.Join(repo, ".github", "workflows")
+	if entries, err := os.ReadDir(wfRoot); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".yml") {
+				continue
+			}
+			if _, done := wfBytes[e.Name()]; done {
+				continue
+			}
+			if b, err := os.ReadFile(filepath.Join(wfRoot, e.Name())); err == nil {
+				wfBytes[e.Name()] = b
+			}
+		}
+	}
 
 	// ── 驱动集：scripts/** 含 package main 的 .go（剪枝生成物/非源码）──
 	prune := map[string]bool{
@@ -59,6 +80,7 @@ func main() {
 	// go run 的单位是**目录**（包）——同目录多个 package main 文件计一次。
 	driverSet := map[string]bool{}
 	var drivers []string
+	var mtsDrivers []string // #273 P2-1：.mts 入口子集（自报分语言计数）
 	scriptsRoot := filepath.Join(repo, "scripts")
 	err = filepath.Walk(scriptsRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -71,6 +93,23 @@ func main() {
 			return nil
 		}
 		if strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		// 2026-10-23 #273 P2-1：第二扫描面——.mts 入口。判据 = 文件名 main.mts
+		// 且首行带 node shebang（排除 .test.mts 与被 import 的库：本仓所有
+		// 独立入口都叫 main.mts，diff_gate/targets/*.mts 这类库不匹配）。
+		// 单位同样是**目录**（与 Go 版同单位对账——scripts/canonicalize 的
+		// Go 版与 .mts 版归一个驱动）。
+		if strings.HasSuffix(path, "main.mts") && !strings.HasSuffix(path, ".test.mts") {
+			if body, err := os.ReadFile(path); err == nil && strings.HasPrefix(string(body), "#!/usr/bin/env node") {
+				rel, _ := filepath.Rel(repo, filepath.Dir(path))
+				rel = filepath.ToSlash(rel)
+				if !driverSet[rel] {
+					driverSet[rel] = true
+					drivers = append(drivers, rel)
+					mtsDrivers = append(mtsDrivers, rel)
+				}
+			}
 			return nil
 		}
 		body, err := os.ReadFile(path)
@@ -94,28 +133,45 @@ func main() {
 		os.Exit(2)
 	}
 
-	// ── 活行集：ci.yml 全部 go run ./scripts/... ──
+	// ── 活行集：全部 workflow 的 go run ./scripts/... 与 node scripts/...mts ──
 	liveRe := regexp.MustCompile("go run (\\./)?scripts/[a-zA-Z0-9_/${}.-]+")
+	// #273 P2-1：node 直跑形态（.mts 入口的现役引用面）
+	nodeRe := regexp.MustCompile("node (\\./)?scripts/[a-zA-Z0-9_/${}.-]+\\.mts")
 	liveSet := map[string]bool{}
-	for _, m := range liveRe.FindAllString(string(ciBytes), -1) {
-		p := strings.TrimPrefix(strings.TrimPrefix(m, "go run "), "./")
-		if strings.Contains(p, "${{") {
-			// matrix 模板行（gates-diff）：driver 枚举在 matrix.include 段
-			//——静态展开（缺一即不入活行=matrix 删驱动后本闸连带红）
-			for _, d := range []string{"parser_diff", "lexer_diff", "typeck_diff", "codegen_diff", "vm_diff", "clang_direct"} {
-				if strings.Contains(string(ciBytes), "- driver: "+d) {
-					liveSet["scripts/"+d] = true
+	for _, wb := range wfBytes {
+		for _, m := range liveRe.FindAllString(string(wb), -1) {
+			p := strings.TrimPrefix(strings.TrimPrefix(m, "go run "), "./")
+			if strings.Contains(p, "${{") {
+				// matrix 模板行（gates-diff）：driver 枚举在 matrix.include 段
+				//——静态展开（缺一即不入活行=matrix 删驱动后本闸连带红）
+				for _, d := range []string{"parser_diff", "lexer_diff", "typeck_diff", "codegen_diff", "vm_diff", "clang_direct"} {
+					if strings.Contains(string(wb), "- driver: "+d) {
+						liveSet["scripts/"+d] = true
+					}
 				}
+				continue
 			}
-			continue
+			if strings.HasSuffix(p, ".go") {
+				// 单文件 go run 形态（realcode_diff/vitro_clang_diff.go -check）：
+				// 归一到所在目录对账（目录=驱动单位）
+				p = strings.TrimSuffix(p, filepath.ToSlash(filepath.Base(p)))
+				p = strings.TrimSuffix(p, "/")
+			}
+			liveSet[p] = true
 		}
-		if strings.HasSuffix(p, ".go") {
-			// 单文件 go run 形态（realcode_diff/vitro_clang_diff.go -check）：
-			// 归一到所在目录对账（目录=驱动单位）
-			p = strings.TrimSuffix(p, filepath.ToSlash(filepath.Base(p)))
-			p = strings.TrimSuffix(p, "/")
+		// node 活行：既进 liveSet（目录），也把该 .mts 入口登记为驱动——
+		// 被 workflow 的 node 行直跑即是入口，不要求 shebang（host.mts /
+		// demo_smoke/main.mts 等本仓实存形态无 shebang 首行）。
+		for _, m := range nodeRe.FindAllString(string(wb), -1) {
+			p := strings.TrimPrefix(strings.TrimPrefix(m, "node "), "./")
+			dir := filepath.ToSlash(filepath.Dir(p))
+			liveSet[dir] = true
+			if !driverSet[dir] {
+				driverSet[dir] = true
+				drivers = append(drivers, dir)
+				mtsDrivers = append(mtsDrivers, dir)
+			}
 		}
-		liveSet[p] = true
 	}
 
 	// ── 例外表 ──
@@ -161,7 +217,7 @@ func main() {
 			}
 		}
 		if !found {
-			fmt.Printf("悬空: ci.yml 活行 go run ./%s 但该驱动不存在\n", p)
+			fmt.Printf("悬空: workflow 活行 ./%s 但该驱动不存在\n", p)
 			failed = true
 		}
 	}
@@ -202,6 +258,6 @@ func main() {
 		fmt.Println("ci_checklist: FAIL——存在即接入对账不符")
 		os.Exit(1)
 	}
-	fmt.Printf("ci_checklist: PASS——驱动 %d / 活行 %d / 例外 %d 三向对账 + moon test 目标面（%d 目标齐）一致\n",
-		len(drivers), len(liveSet), len(exceptions), len(targetUnion))
+	fmt.Printf("ci_checklist: PASS——驱动 %d（.go %d / .mts %d）/ 活行 %d / 例外 %d 三向对账 + moon test 目标面（%d 目标齐）一致\n",
+		len(drivers), len(drivers)-len(mtsDrivers), len(mtsDrivers), len(liveSet), len(exceptions), len(targetUnion))
 }

@@ -96,7 +96,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
 3. `go run ./scripts/course_catalog`——课程目录闸（reconcile + lesson.c 双
    臂 diff）。
-4. `node scripts/demo_assemble_check/main.js demo`——组装资源存在性自检
+4. `node scripts/demo_assemble_check/main.mts demo`——组装资源存在性自检
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
 5. `npm run check`——F4 svelte-check（type + a11y gate，零错零警）。
@@ -109,7 +109,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    **课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
    （blocks/sorting/h3）直读 `course/*.md` 真源解析渲染；块型覆盖矩阵登记
    在 `src/e08/entry.ts` 头注。
-9. `node scripts/demo_smoke/main.js`——**协议层实跑闸**：对 `cases.js` 每个
+9. `node scripts/demo_smoke/main.mts`——**协议层实跑闸**：对 `cases.js` 每个
    预置用例经 wasm gateway 实跑协议链并逐字节比对 golden，断言渲染所需的
    响应字段存在，含 **step 族字段契约**（StepPayload 顶层 = 协议 v0.1 十四
    字段白名单键集全等）与 **方法面计数对账**（gateway 错误帧自报清单 ==

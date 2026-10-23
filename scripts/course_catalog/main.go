@@ -9,7 +9,7 @@ package main
 //	go run ./scripts/course_catalog -v         # 逐条打印通过项
 //	go run ./scripts/course_catalog -selftest  # J9 注入证红（闸自身体检）
 //
-// 判据（schema 校验单源在 gen_course——CI 先跑 gen_course -check 再跑本闸）：
+// 判据（schema 校验单源在 gen_course——回退预案，不入 CI；#273 批二已迁 .mts）：
 //  1. 叙述→课目对账：course/**/*.md 的 (kind,id) 必须命中 demo 课目集
 //     （cases.js 用例 id ∪ algorithms.js 族/扩展 id ∪ variants tpl）——
 //     「叙述指向不存在的课」即红（反方向不查：课目可以暂无叙述，渐进覆盖）。

@@ -46,6 +46,7 @@ concurrency:
 #   gates-wasm     = wasm 臂族 + cli smoke（matrix 四实例独立，2026-10-17
 #                    拆分——原单 job 串行链红遮红实锤后收口）
 #   static-gates   = 纯对账/生成器闸（无产物依赖——与 build 并行）
+#   scripts-ts     = 判定脚本 TS 四件套门（#273：tsc/oxlint/node:test）
 #   hygiene        = 记账型（fmt/四 target test/环境探针）
 #
 # ── 主 CI 恒全量裁定（2026-10-15，CI 全跳事故后）──────────────────────────
@@ -222,8 +223,12 @@ jobs:
           path: |
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
-          # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/vm_diff/main.go', 'scripts/internal/**/*.go') }}
+          # #273 批（2026-10-23）：差分五驱动已切 TS 版，故 key 取 TS 侧源码
+          # （diff_gate/**/*.mts + internal/**/*.mts）+ 仍跑 Go 的 clang_direct
+          # 与其依赖的 internal/**/*.go。Go 版 diff 驱动（vm_diff 等）不再进 key
+          # ——它们已不被 CI 执行，其变更不影响产物；否则 ci_checklist 会把
+          # hashFiles 引用判成「活行」而报僵尸例外。
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/diff_gate/**/*.mts', 'scripts/internal/**/*.mts') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
 
@@ -235,6 +240,14 @@ jobs:
       # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
       # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
       # 语义防线 = clang_direct（真值 Clang）+ moon test。
+      # === #273 批（2026-10-23）：差分五驱动 Go→TS 切换 ===
+      # 五驱动 .mts 双轨版与 Go 版逐位对拍互证后切 CI 引用（lexer 976 /
+      # typeck 487+1 / parser 487+1+三合成模式 / vm 733/733 三通道 /
+      # codegen 487+80+138+20+6，全部与 Go 版一致）。入口 =
+      # scripts/diff_gate/main.mts <target>（target = driver 去掉 _diff 后缀）。
+      # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
+      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动暂留（回退面），
+      # 退役时机另批裁定。
       - name: Run diff driver (full four corpora)
         shell: bash
         run: |
@@ -250,13 +263,14 @@ jobs:
               # 写不出的形态）。llm_multifile 不进本循环——多文件工程的跨
               # 文件引用对逐文件结构面无意义，其覆盖面归 clang_direct 工程
               # 模式（#237）。
-              for d in baseline knr leetcode gap llm_scale; do
-                go run ./scripts/${{ matrix.driver }} corpus/$d || rc=1
+              t="${{ matrix.driver }}"; t="${t%_diff}"
+              for c in baseline knr leetcode gap llm_scale; do
+                node scripts/diff_gate/main.mts "$t" "corpus/$c" || rc=1
               done
               exit $rc
               ;;
             vm_diff)
-              go run ./scripts/vm_diff
+              node scripts/diff_gate/main.mts vm
               ;;
             clang_direct)
               go run ./scripts/clang_direct
@@ -467,7 +481,7 @@ jobs:
         if: matrix.slice == 'serve_channel'
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
-          node scripts/wasm_gateway/host.js
+          node scripts/wasm_gateway/host.mts
         shell: bash
 
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
@@ -521,9 +535,11 @@ jobs:
       # 与冻结 golden 全量对拍。前置 = gateway wasm 产物（artifact）+ node +
       # 工具链；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
       # 全量各 ~80s（本地实测 609/704 例）。
+      # #273 批（2026-10-23）：vm_diff wasm 臂同步切 TS 版——双跑对拍通过
+      # （gap 20/20 + 全量 733/733 两侧 exit 0，与 native 臂同判据）。
       - name: vm_diff wasm arm (gateway product vs frozen golden)
         if: matrix.slice == 'vm_diff'
-        run: go run ./scripts/vm_diff --backend wasm
+        run: node scripts/diff_gate/main.mts vm --backend wasm
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
         if: matrix.slice == 'clang_direct'
@@ -598,7 +614,7 @@ jobs:
         # （先例：docs/** 148 行事故族；host_test.mbt 15KB 整文件不可见；
         # 冻结区 vitro_lexer/src/string.rs 索引侧潜伏 i/-text）。J9 证红留痕。
         shell: bash
-        run: go run ./scripts/moonbit/source_hygiene
+        run: node scripts/moonbit/source_hygiene/main.mts
 
       - name: Bytecode libc data generation idempotency
 
@@ -607,7 +623,7 @@ jobs:
         # JSON 是单一真相源，本闸保证 MoonBit 数据字面量与其一致
         # （生成流程内置 moon fmt + check 同流程比对；J9 篡改证红）。
         shell: bash
-        run: go run ./scripts/moonbit/gen_libc_data -check
+        run: node scripts/moonbit/gen_libc_data/main.mts -check
 
       - name: MoonBit generated-artifact freshness (gen_diag / gen_host_route / gen_stubs)
 
@@ -623,16 +639,16 @@ jobs:
         # 内置 fmt 后方可入闸。
         shell: bash
         run: |
-          go run ./scripts/moonbit/gen_diag -check
-          go run ./scripts/moonbit/gen_host_route -check
-          go run ./scripts/moonbit/gen_stubs -check
-          go run ./scripts/moonbit/gen_protocol_fields -check
-          go run ./scripts/moonbit/gen_diagnostics -check
+          node scripts/moonbit/gen_diag/main.mts -check
+          node scripts/moonbit/gen_host_route/main.mts -check
+          node scripts/moonbit/gen_stubs/main.mts -check
+          node scripts/moonbit/gen_protocol_fields/main.mts -check
+          node scripts/moonbit/gen_diagnostics/main.mts -check
           # #27 图标资产双闸（2026-10-07 挂入）：gen_icons -check 锁几何层
           # 与真源 svg 同步；icon_catalog 判定契约（viewBox/stroke/白名单/
           # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
           # 已在 c3601055 资产批留痕。
-          go run ./scripts/gen_icons -check
+          node scripts/gen_icons/main.mts -check
           go run ./scripts/icon_catalog
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
@@ -705,7 +721,7 @@ jobs:
         # 「路由名 ↔ 有实现」。规则外置 host_route_rules.json（别名 /
         # vm 白名单，白名单双向对账防腐化）；J9 双路证红留痕。
         shell: bash
-        run: go run ./scripts/moonbit/host_route_coverage
+        run: node scripts/moonbit/host_route_coverage/main.mts
 
       - name: Host contract map (oracle 103 tests vs mb anchors, 3-state)
 
@@ -732,7 +748,7 @@ jobs:
         # 注意 §5 差分层（StepStreamBatch/StepPayloadDelta）未纳入：该节表格是
         # 压缩式，无法逐字段机判（已在 rules.json 登记）。
         shell: bash
-        run: go run ./scripts/gen_protocol_ts -check
+        run: node scripts/gen_protocol_ts/main.mts -check
 
       - name: MoonBit test count (README vs moon test truth)
 
@@ -744,7 +760,7 @@ jobs:
         # 用户 J9 三层之第二层抓出）；v2 真值实跑。J9：篡改声明 ±1 红 /
         # 原缺陷场景（文档回旧值）红。
         shell: bash
-        run: go run ./scripts/moonbit/testcount
+        run: node scripts/moonbit/testcount/main.mts
 
       # ── MoonBit serve 行为闸族（serve exe 由本步骤链内构建）────────────
       # S7 批四号（2026-09-28）：双宿主对拍——同一请求表与断言集跑 MoonBit
@@ -773,8 +789,8 @@ jobs:
         # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
         # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
         # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
-        # 补 `go run ./scripts/precompile_bytecode_libc` + git add 即绿。
-        run: go run ./scripts/precompile_bytecode_libc --check
+        # 补 `node scripts/precompile_bytecode_libc/main.mts` + git add 即绿。
+        run: node scripts/precompile_bytecode_libc/main.mts --check
         shell: bash
 
       - name: Vendored upstream drift probe (moonbitlang/x fs)
@@ -829,7 +845,7 @@ jobs:
         # 零接线——E6（JSON 缩进/末行换行漂移）历史复发 4 次全靠本地抓。
         # 生成物（@generated 头注）按"产物面归生成器闸"排除；tmp/_build 剪枝。
         shell: bash
-        run: go run ./scripts/editorconfig_check
+        run: node scripts/editorconfig_check/main.mts
 
       - name: gen_api_help artifact check (-check)
 
@@ -837,7 +853,7 @@ jobs:
         # 审阅批 P3 接线（2026-10-11）：#67 生成器产物对账闸此前只在
         # ci.yml 注释里出现——api_help 双产物漂移无 CI 强制。
         shell: bash
-        run: go run ./scripts/gen_api_help -check
+        run: node scripts/gen_api_help/main.mts -check
 
       - name: Go format check (gofmt -l scripts)
 
@@ -887,9 +903,18 @@ jobs:
         # （moonbit_built_packages / moonbit_engine_version，上一步 facts
         # facts 已落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9
         # 证红：手改落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归
-        # hygiene：红 = 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
+        # hygiene：红 = 插图账没跟上，跑 node scripts/gen_svg/main.mts all 即绿。
         shell: bash
-        run: go run ./scripts/gen_svg -check
+        run: node scripts/gen_svg/main.mts -check
+
+      # 图鉴新鲜度（2026-10-23 #273 P2-1 补接线）：gen_icon_preview 的 .mts
+      # 入口自次批落地起就没有任何 workflow 活行——ci_checklist 加第二扫描面
+      # （.mts 入口面）后当即漏登记红。产物 assets/icons-preview.svg 入库，
+      # -check 是标准新鲜度闸（红 = 改图标后忘了重跑图鉴）。
+      - name: Icon preview freshness (gen_icon_preview -check)
+        if: matrix.slice == 'contract'
+        run: node scripts/gen_icon_preview/main.mts -check
+        shell: bash
 
       - name: CI checklist (存在即接入注册表——scripts 驱动集 ↔ ci.yml 活行集双向对账)
 
@@ -988,7 +1013,7 @@ jobs:
       - name: wasm-gc gateway artifact + Node host smoke
         run: |
           cd moonbit && moon build --release --target wasm-gc gateway/wasm && cd ..
-          node scripts/wasm_gateway/host.js
+          node scripts/wasm_gateway/host.mts
 
 
   # ── toolchain-latest-sentinel（#132 追新哨兵，2026-10-16）────────────────
@@ -1066,14 +1091,15 @@ jobs:
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
         if: always()
-        run: go run ./scripts/gen_demo_algorithms
+        run: node scripts/gen_demo_algorithms/main.mts
         shell: bash
 
       # 课程内容防线（#120 补充 + #125 批 A 形态修正，2026-10-15）：
       # course_catalog = 叙述→课目对账 + lesson.c 双臂对拍（vitro ≡ clang，
       # 独立于 corpus/ 语料线）。**gen_course -check 步已摘**——#125 补充
-      # 「资产链自举」判据驳回 Go 进资产链（Go 只许当防线），gen_course 的
-      # lessons.ts 渲染角色退役为失败回退预案（本体保留，头注标注）；
+      # 「资产链自举」判据驳回生成器进资产链（当时为 Go；#273 批二已迁 .mts，
+      # 仍不入资产链/CI），gen_course 的 lessons.ts 渲染角色退役为失败回退
+      # 预案（本体保留，头注标注）；
       # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
       # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
@@ -1087,7 +1113,7 @@ jobs:
       # index.html 入口 = src/main.ts + 本地资源面）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
         if: always()
-        run: node scripts/demo_assemble_check/main.js demo
+        run: node scripts/demo_assemble_check/main.mts demo
         shell: bash
 
       # #222 P0 契约批（2026-10-21）：demo 主题 token 单源 = demo/tokens.json，
@@ -1162,7 +1188,7 @@ jobs:
       # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
       - name: demo page smoke (protocol-level, cases golden + field keys)
         if: always()
-        run: node scripts/demo_smoke/main.js
+        run: node scripts/demo_smoke/main.mts
         shell: bash
 
       # F4 浏览器 E2E（61 锚：诊断带 S1-S5（18）+ 工作区/回放/设置/主链面
@@ -1300,13 +1326,84 @@ jobs:
           node --test demo/tests/pure.test.mts
         shell: bash
 
+  # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
+  # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +
+  # oxlint（.mts 目录扫描缺口——显式列文件）+ node:test（Windows 目录模式
+  # 缺口——显式列文件）。依赖钉版本 = scripts/package-lock.json（npm ci）。
+  scripts-ts:
+    name: Scripts TS gate (tsc / oxlint / node:test)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # gen_svg 的「真实仓库 -check」用例读 reports/facts.json（包切分图的实/虚
+      # 线与在架徽标全部 facts 派生）——该文件 gitignored，CI 检出态不存在，
+      # 故本 job 自带采集（`facts facts` 只采集落盘不判红，判红归 bookkeeping）。
+      # 与 hygiene 的 facts 步同命令同口径。
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum，缓存无意义
+      - name: npm ci (lockfile pinned)
+        run: npm ci
+        shell: bash
+      - name: tsc strict (strict + noUncheckedIndexedAccess)
+        run: npm run check
+        shell: bash
+      - name: oxlint (explicit file list)
+        run: npm run lint
+        shell: bash
+
+      # 生成器簇「真实仓库 -check」用例内置 `moon fmt` 归一（gen_stubs /
+      # gen_protocol_fields / gen_host_route / gen_libc_data / gen_icons 五例），
+      # 归一后再比对产物、比对后无条件还原——moon 不在 PATH 时**必须红**
+      # （fail loud，不做 skip 兜底：环境缺口静默通过就是假绿）。
+      # 2026-10-23 首轮 CI 实锤五红同根 = moon 缺席（exit null），非代码缺陷。
+      # 安装置于 node:test 前、tsc/oxlint 后：类型/风格面仍先快失败。
+      - name: Install MoonBit toolchain (generator -check runs moon fmt)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      # gen_svg -check 的 facts 输入（见上方 setup-go 注释）。放在 moon 之后：
+      # 采集链含 moon 相关项，缺工具链会把可用键降级成 unavailable。
+      # working-directory 必须覆盖回仓库根——本 job 默认在 scripts/ 下跑，
+      # 直接 `go run ./scripts/facts facts` 会变成 scripts/scripts/facts
+      #（2026-10-23 CI 红实锤：stat D:\a\Vitro\Vitro\scripts\scripts\facts）。
+      - name: facts collect (gen_svg -check input)
+        working-directory: ${{ github.workspace }}
+        run: go run ./scripts/facts facts
+        shell: bash
+
+      - name: node:test (explicit file list)
+        run: npm run test
+        shell: bash
+
+      # 双轨对拍闸（2026-10-23 #273 审阅 P2-2 接线）：族 A 五 target 的 Go 版
+      # 与 .mts 版长期并存，而 .mts 侧单测只对自己产物 -check 自洽——任一轨
+      # 单独演进会静默分叉，切 CI 那天无闸可拦。本步同一语料两侧各跑，比对
+      # 「判定 + matched 数 + fork 数」三元组（措辞不同故比语义不比字节）。
+      # J9 证红：把 TS 侧 lexer 的 sha16 截断为 8 位 → PARITY-DIFF exit 1（已实测）。
+      # 注意本 job working-directory 是 scripts/，故用相对该目录的路径。
+      - name: diff parity (Go ↔ .mts dual-track)
+        run: node diff_gate/parity.mts
+        shell: bash
+
   # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────
   # 只做汇总、不重跑闸：所有上游 job 必须 success；任一 failure/skipped 即红。
   # 这样 build 红导致下游 skipped 时不会显示成「其余全绿可合并」。
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1319,10 +1416,11 @@ jobs:
           STATIC: ${{ needs.static-gates.result }}
           HYGIENE: ${{ needs.hygiene.result }}
           DEMO: ${{ needs.demo.result }}
+          SCRIPTS_TS: ${{ needs.scripts-ts.result }}
         run: |
           set +e
           bad=0
-          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"; do
+          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS"; do
             name="${pair%%:*}"; result="${pair#*:}"
             echo "$name=$result"
             if [ "$result" != "success" ]; then bad=1; fi
@@ -1331,7 +1429,7 @@ jobs:
             echo "::error::CI 汇总红：有 job failure/skipped——skipped 不算绿（防遮蔽）"
             exit 1
           fi
-          echo "CI 汇总：8 个上游 job 全部 success"
+          echo "CI 汇总：9 个上游 job 全部 success"
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

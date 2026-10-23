@@ -1,9 +1,9 @@
 // wasmopt —— wasm-gc 产物构建后置优化驱动（#120 批①，2026-10-17）。
 //
 // 形态：Go 驱动（供给管理/校验/确定性自检/fail loud）+ node 执行器
-// （wasmopt.mjs——binaryen JS API；供给 = npm tarball 钉版本下载到
+// （wasmopt.mts——binaryen JS API；供给 = npm tarball 钉版本下载到
 // tools/cache，sha256 校验，Go 标准库解包零三方依赖）。
-// 特征位组合与等价性背书见 wasmopt.mjs 头注；体积收益 = lean 产物
+// 特征位组合与等价性背书见 wasmopt.mts 头注；体积收益 = lean 产物
 // 实测 -19.3% raw / -20.4% gzip（1872 帧逐字节一致在案）。
 //
 // 用法（仓库根）：
@@ -142,8 +142,8 @@ func fileSHA256(p string) (string, []byte) {
 }
 
 // runOnce 跑一次优化到临时产物，返回其 sha256。
-func runOnce(mjs, supply, inPath, outPath string) string {
-	cmd := exec.Command("node", mjs, inPath, outPath, supply)
+func runOnce(executor, supply, inPath, outPath string) string {
+	cmd := exec.Command("node", executor, inPath, outPath, supply)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -168,7 +168,7 @@ func main() {
 		die("路径解析失败: %v", err)
 	}
 	supply := ensureSupply()
-	mjs, err := filepath.Abs("scripts/wasmopt/wasmopt.mjs")
+	executor, err := filepath.Abs("scripts/wasmopt/wasmopt.mts")
 	if err != nil {
 		die("路径解析失败: %v", err)
 	}
@@ -201,8 +201,8 @@ func main() {
 		return
 	}
 	start := time.Now()
-	d1 := runOnce(mjs, supply, target, tmp1)
-	d2 := runOnce(mjs, supply, target, tmp2)
+	d1 := runOnce(executor, supply, target, tmp1)
+	d2 := runOnce(executor, supply, target, tmp2)
 	if d1 != d2 {
 		die("确定性破坏：两次优化 digest 不一致（%s ≠ %s）——binaryen 非确定或环境异常，拒落盘", d1[:12], d2[:12])
 	}

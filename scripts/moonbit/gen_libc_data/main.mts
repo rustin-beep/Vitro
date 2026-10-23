@@ -14,6 +14,8 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { makeFail, parseFlags } from "../../internal/genio.mts";
+import { goFormatFloat } from "../../internal/gofmt.mts";
 
 interface Instr {
   op: string;
@@ -44,8 +46,7 @@ const norm = (b: Buffer | string): string =>
   (typeof b === "string" ? b : b.toString("utf8")).replace(/\r\n/g, "\n");
 
 function fatal(msg: string): never {
-  process.stderr.write("gen_libc_data: " + msg + "\n");
-  process.exit(1);
+  return makeFail("gen_libc_data: ", 1)(msg);
 }
 
 function safeInt(v: number, what: string): number {
@@ -55,30 +56,9 @@ function safeInt(v: number, what: string): number {
   return v;
 }
 
-// goFormatFloat 对齐 Go fmt %v（strconv.FormatFloat 'g', -1）：最短往返数字；
-// shortest 形态的指数阈值固定为 6（Go ftoa.go：eprec=6），即 exp < -4 或
-// exp >= 6 用指数形态（指数两位补零、正号显式）。
-export function goFormatFloat(n: number): string {
-  if (Object.is(n, -0)) return "-0";
-  if (n === 0) return "0";
-  const sign = n < 0 ? "-" : "";
-  const [mant, expStr] = n.toExponential().slice(sign.length).split("e");
-  const digits = (mant ?? "").replace(".", "");
-  const exp = Number.parseInt(expStr ?? "0", 10);
-  let body: string;
-  if (exp < -4 || exp >= 6) {
-    const m = digits.length > 1 ? `${digits[0]}.${digits.slice(1)}` : `${digits[0]}`;
-    body = `${m}e${exp >= 0 ? "+" : "-"}${String(Math.abs(exp)).padStart(2, "0")}`;
-  } else if (exp >= 0) {
-    body =
-      digits.length <= exp + 1
-        ? digits + "0".repeat(exp + 1 - digits.length)
-        : `${digits.slice(0, exp + 1)}.${digits.slice(exp + 1)}`;
-  } else {
-    body = "0." + "0".repeat(-exp - 1) + digits;
-  }
-  return sign + body;
-}
+// goFormatFloat 已上收 internal/gofmt.mts（gen_diagnostics 的 strength 字段同用）；
+// 此处 re-export 保持既有测试的 import 面不变。
+export { goFormatFloat };
 
 // parseOpNumbers：只扫 OpCode::code 的 match 体（窗口约束），重名臂 fail loud，
 // 少于 100 臂视为窗口判定可疑。
@@ -225,13 +205,17 @@ function runMoonFmt(moonbit: string, keep: string[]): void {
 const invokedDirectly =
   process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (invokedDirectly) {
-  const check = process.argv.slice(2).includes("-check") || process.argv.slice(2).includes("--check");
-  for (const a of process.argv.slice(2)) {
-    if (a !== "-check" && a !== "--check") {
-      process.stderr.write(`gen_libc_data: 未知参数 ${a}\n`);
-      process.exit(2);
-    }
+  const cli = parseFlags(
+    process.argv.slice(2),
+    { bool: ["-check", "--check"], value: [] },
+    fatal,
+  );
+  // 未知参数走 exit 2（与 fatal 的 1 分流——既有行为，保持不变）
+  if (cli.rest.length > 0) {
+    process.stderr.write(`gen_libc_data: 未知参数 ${cli.rest[0] ?? ""}\n`);
+    process.exit(2);
   }
+  const check = cli.has("-check", "--check");
   const root = projectRoot();
   const moonbit = path.join(root, "moonbit");
   const srcPath = path.join(root, "scripts/moonbit/libc_data/bytecode_libc_data.json");

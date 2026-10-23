@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../internal/capi.mts";
+import { makeFail } from "../internal/genio.mts";
 
 interface Rules {
   assets_dir: string;
@@ -47,13 +48,13 @@ const ATTR_RE = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*"([^"]*)"/g;
 const TITLE_RE = /<title>([\s\S]*?)<\/title>/;
 const NUM_RE = /^-?[0-9.]+$/;
 
+// 两个出口语义不同（既有行为）：fatal = 环境/输入不可用（exit 2），
+// fail = 判定红（exit 1）。前缀保留原样，不合并成单一码。
 function fatal(msg: string): never {
-  process.stderr.write("FATAL: " + msg + "\n");
-  process.exit(2);
+  return makeFail("FATAL: ", 2)(msg);
 }
 function fail(msg: string): never {
-  process.stderr.write("FAIL: " + msg + "\n");
-  process.exit(1);
+  return makeFail("FAIL: ", 1)(msg);
 }
 
 // n 用最短往返格式化，且先把运算结果收敛到 1e-6（Go：Round(f*1e6)/1e6 +

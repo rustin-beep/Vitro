@@ -25,6 +25,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { goQuote, sortBytes } from "../internal/gofmt.mts";
+import { makeFail } from "../internal/genio.mts";
 
 /** 七组呈现层分组（组概念属 UI 非引擎语义；完备性由断言机判）。 */
 export interface Group {
@@ -113,8 +114,7 @@ const PARAM_MARK_RE = /\/\*__PARAM_[a-z_0-9]+__\*\//g;
 const BUILD_MATCH_RE = /build_match\(\s*"([a-z_0-9]+)",\s*"([^"]+)"/g;
 
 function die(msg: string): never {
-  process.stderr.write("gen_demo_algorithms: " + msg + "\n");
-  process.exit(1);
+  return makeFail("gen_demo_algorithms: ", 1)(msg);
 }
 
 /**

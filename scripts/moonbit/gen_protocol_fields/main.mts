@@ -10,9 +10,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts";
 
 export interface Baselines {
   expected_schema: string;
@@ -29,8 +29,7 @@ export interface FieldsFile {
 }
 
 function fatal(msg: string): never {
-  process.stderr.write("gen_protocol_fields: " + msg + "\n");
-  process.exit(2);
+  return makeFail("gen_protocol_fields: ", 2)(msg);
 }
 
 const toLF = (b: Buffer): Buffer => Buffer.from(b.toString("latin1").replace(/\r\n/g, "\n"), "latin1");
@@ -135,69 +134,27 @@ export function render(f: FieldsFile, srcHash: string): string {
   return lines.join("\n") + "\n";
 }
 
-function writeProduct(outFile: string, display: string, gen: string, moonbit: string, check: boolean): void {
-  let cur: Buffer | null = null;
-  try {
-    cur = fs.readFileSync(outFile);
-  } catch {
-    cur = null;
-  }
-  const restore = (): void => {
-    if (cur !== null) fs.writeFileSync(outFile, cur);
-  };
-  try {
-    fs.writeFileSync(outFile, gen);
-  } catch (e) {
-    if (check) restore();
-    fatal(`写产物失败 ${display}: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  const fmt = spawnSync("moon", ["fmt", display], { cwd: moonbit, encoding: "utf8" });
-  if (fmt.status !== 0) {
-    restore();
-    fatal(`moon fmt 失败（moon 须在 PATH）: exit ${fmt.status}\n${(fmt.stdout ?? "") + (fmt.stderr ?? "")}`);
-  }
-  if (!check) return;
-  let now: Buffer;
-  try {
-    now = fs.readFileSync(outFile);
-  } catch (e) {
-    restore();
-    fatal(`-check: 回读产物失败 ${display}: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  const drifted = cur === null || !toLF(now).equals(toLF(cur));
-  // 文件参数 fmt 与整包 fmt 形态不同：无论成败都还原原产物（-check 零副作用）
-  restore();
-  if (drifted) {
-    fatal(`-check: 产物漂移 ${display}——JSON 单源已变更未再生成（cd 仓库根 && node scripts/moonbit/gen_protocol_fields/main.mts）`);
-  }
-}
-
 const invokedDirectly =
   process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (invokedDirectly) {
   const root = projectRoot();
   const moonbit = path.join(root, "moonbit");
-  let check = false;
   let srcPath = path.join(root, "scripts/replay/v01_payload_fields.json");
   let outDir = path.join(moonbit, "protocol");
   let baselinesPath = path.join(root, "scripts/moonbit/gen_protocol_fields/baselines.json");
-  const args = process.argv.slice(2);
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i] ?? "";
-    const eq = a.indexOf("=");
-    const flag = eq >= 0 ? a.slice(0, eq) : a;
-    const value = (): string => {
-      if (eq >= 0) return a.slice(eq + 1);
-      const v = args[++i];
-      if (v === undefined) fatal(`${flag} 缺值`);
-      return v;
-    };
-    if (flag === "-check" || flag === "--check") check = true;
-    else if (flag === "-src") srcPath = path.resolve(moonbit, value());
-    else if (flag === "-out") outDir = path.resolve(moonbit, value());
-    else if (flag === "-baselines") baselinesPath = path.resolve(moonbit, value());
-    else fatal(`未知参数 ${a}`);
-  }
+  const args = parseFlags(
+    process.argv.slice(2),
+    { bool: ["-check", "--check"], value: ["-src", "-out", "-baselines"] },
+    fatal,
+  );
+  if (args.rest.length > 0) fatal(`未知参数 ${args.rest[0] ?? ""}`);
+  const check = args.has("-check", "--check");
+  const srcArg = args.value("-src");
+  if (srcArg !== undefined) srcPath = path.resolve(moonbit, srcArg);
+  const outArg = args.value("-out");
+  if (outArg !== undefined) outDir = path.resolve(moonbit, outArg);
+  const baseArg = args.value("-baselines");
+  if (baseArg !== undefined) baselinesPath = path.resolve(moonbit, baseArg);
 
   let base: Baselines;
   let f: FieldsFile;
@@ -214,7 +171,12 @@ if (invokedDirectly) {
     fatal(e instanceof Error ? e.message : String(e));
   }
   const outFile = path.join(outDir, "schema_fields_gen.mbt");
-  const display = path.relative(moonbit, outFile);
-  writeProduct(outFile, display, gen, moonbit, check);
+  emitWithMoonFmt({
+    root,
+    check,
+    fail: fatal,
+    driftHint: "JSON 单源已变更未再生成（cd 仓库根 && node scripts/moonbit/gen_protocol_fields/main.mts）",
+    products: [{ rel: path.relative(moonbit, outFile), content: gen }],
+  });
   if (check) console.log("gen_protocol_fields: check OK（产物与 JSON 单源一致，未漂移）");
 }

@@ -4,7 +4,7 @@
 // 尤其 U+00A0 落 \u 而非 \x 这一步，是实测纠正了初版实现的错判。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { byteCompare, goQuote, padEndRunes, sortBytes } from "./gofmt.mts";
+import { byteCompare, goFormatFloat, goIntSlice, goQuote, padEndRunes, sortBytes } from "./gofmt.mts";
 
 test("goQuote：可打印面原样（ASCII / 中文 / emoji / 反引号 / ${）", () => {
   assert.equal(goQuote("abc"), '"abc"');
@@ -52,4 +52,26 @@ test("byteCompare / sortBytes：UTF-8 字节序（不是 UTF-16 code unit 序）
   assert.equal(byteCompare("a", "a"), 0);
   assert.deepEqual(sortBytes(["b", "a", "c"]), ["a", "b", "c"]);
   assert.deepEqual(sortBytes(["aa", "a", "ab"]), ["a", "aa", "ab"]);
+});
+
+test("goFormatFloat：Go %v 浮点（shortest，eprec=6 阈值）与 JS String 的分歧点", () => {
+  assert.equal(goFormatFloat(0), "0");
+  assert.equal(goFormatFloat(-0), "-0");
+  assert.equal(goFormatFloat(1), "1");
+  assert.equal(goFormatFloat(0.85), "0.85");
+  assert.equal(goFormatFloat(1.5), "1.5");
+  // 阈值锚：JS String(1e6)="1000000"、String(1e-5)="0.00001"，Go 'g' 用指数
+  assert.equal(goFormatFloat(1e6), "1e+06");
+  assert.equal(goFormatFloat(1e7), "1e+07");
+  assert.equal(goFormatFloat(1e-5), "1e-05");
+  // exp 在 [-4, 6) 区间走定点形态
+  assert.equal(goFormatFloat(1e5), "100000");
+  assert.equal(goFormatFloat(0.0001), "0.0001");
+  assert.equal(goFormatFloat(-1e6), "-1e+06");
+});
+
+test("goIntSlice：Go %v 对 []int 的形态（空格分隔、空集 []）", () => {
+  assert.equal(goIntSlice([]), "[]");
+  assert.equal(goIntSlice([3]), "[3]");
+  assert.equal(goIntSlice([1004, 3035]), "[1004 3035]");
 });

@@ -70,3 +70,38 @@ export function byteCompare(a: string, b: string): number {
 export function sortBytes(list: string[]): string[] {
   return list.sort(byteCompare);
 }
+
+/**
+ * Go `strconv.FormatFloat(f, 'g', -1, 64)` / `fmt %v` 的浮点复刻：最短往返
+ * 数字；shortest 形态的指数阈值固定 6（Go ftoa.go 的 eprec=6），即
+ * `exp < -4 || exp >= 6` 走指数形态（指数两位补零、正号显式）。
+ *
+ * 与 JS `String(n)` 的分歧点就在这个阈值：`String(1e6)` = "1000000"，
+ * Go 给 "1e+06"。产物里落浮点的地方必须走本函数。
+ */
+export function goFormatFloat(n: number): string {
+  if (Object.is(n, -0)) return "-0";
+  if (n === 0) return "0";
+  const sign = n < 0 ? "-" : "";
+  const [mant, expStr] = n.toExponential().slice(sign.length).split("e");
+  const digits = (mant ?? "").replace(".", "");
+  const exp = Number.parseInt(expStr ?? "0", 10);
+  let body: string;
+  if (exp < -4 || exp >= 6) {
+    const m = digits.length > 1 ? `${digits[0]}.${digits.slice(1)}` : `${digits[0]}`;
+    body = `${m}e${exp >= 0 ? "+" : "-"}${String(Math.abs(exp)).padStart(2, "0")}`;
+  } else if (exp >= 0) {
+    body =
+      digits.length <= exp + 1
+        ? digits + "0".repeat(exp + 1 - digits.length)
+        : `${digits.slice(0, exp + 1)}.${digits.slice(exp + 1)}`;
+  } else {
+    body = "0." + "0".repeat(-exp - 1) + digits;
+  }
+  return sign + body;
+}
+
+/** Go `%v` 对 `[]int` 的形态：`[1 2 3]`（空格分隔、空集为 `[]`）。 */
+export function goIntSlice(nums: number[]): string {
+  return "[" + nums.join(" ") + "]";
+}

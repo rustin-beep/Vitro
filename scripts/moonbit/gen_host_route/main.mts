@@ -10,9 +10,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts";
 
 export interface Baselines {
   expected_consts: number;
@@ -34,9 +34,11 @@ const PURE_BLOCK_RE = /BYTECODE_LIBC_PURE_FUNCS[^=]*=\s*&\[([^\]]+)\]/;
 
 const toLF = (b: Buffer): Buffer => Buffer.from(b.toString("latin1").replace(/\r\n/g, "\n"), "latin1");
 
+// 函数声明形式（而非 `const fatal = makeFail(...)`）：TS 的控制流分析只在
+// 「显式声明 + 返回 never」的函数调用处切断可达性——用 const 箭头会让
+// catch 块后的变量报 TS2454「used before being assigned」。
 function fatal(msg: string): never {
-  process.stderr.write("gen_host_route: " + msg + "\n");
-  process.exit(2);
+  return makeFail("gen_host_route: ", 2)(msg);
 }
 
 export function loadBaselines(p: string): Baselines {
@@ -182,72 +184,27 @@ export function renderAnchor(p: Parsed, srcHash: string): string {
   return lines.join("\n") + "\n";
 }
 
-function writeProducts(dirAbs: string, moonbit: string, products: Map<string, string>, check: boolean): void {
-  const names = [...products.keys()].sort();
-  const items: Array<{ abs: string; rel: string; cur: Buffer | null }> = [];
-  for (const name of names) {
-    const abs = path.join(dirAbs, name);
-    const rel = path.relative(moonbit, abs);
-    let cur: Buffer | null = null;
-    if (check) {
-      try {
-        cur = fs.readFileSync(abs);
-      } catch (e) {
-        fatal(`-check: 读产物失败 ${rel}: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
-    try {
-      fs.mkdirSync(dirAbs, { recursive: true });
-      fs.writeFileSync(abs, products.get(name) ?? "");
-    } catch (e) {
-      fatal(`写产物失败 ${rel}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-    items.push({ abs, rel, cur });
-  }
-  const fmt = spawnSync("moon", ["fmt", ...items.map((i) => i.rel)], { cwd: moonbit, encoding: "utf8" });
-  if (fmt.status !== 0) {
-    for (const it of items) if (it.cur !== null) fs.writeFileSync(it.abs, it.cur);
-    fatal(`moon fmt 失败（moon 须在 PATH）: exit ${fmt.status}\n${(fmt.stdout ?? "") + (fmt.stderr ?? "")}`);
-  }
-  if (!check) return;
-  const drifted: string[] = [];
-  for (const it of items) {
-    const now = fs.readFileSync(it.abs);
-    if (it.cur === null || !toLF(now).equals(toLF(it.cur))) drifted.push(it.rel);
-  }
-  // 文件参数 fmt 与整包 fmt 形态不同：无论成败都还原原产物（-check 零副作用）
-  for (const it of items) if (it.cur !== null) fs.writeFileSync(it.abs, it.cur);
-  if (drifted.length > 0) {
-    fatal(`-check: 产物漂移 ${drifted.join(", ")}——源已变更未再生成（cd 仓库根 && node scripts/moonbit/gen_host_route/main.mts）`);
-  }
-}
-
 const invokedDirectly =
   process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (invokedDirectly) {
   const root = projectRoot();
   const moonbit = path.join(root, "moonbit");
-  let check = false;
   let srcPath = path.join(root, "scripts/moonbit/gen_host_route/host_func_id.snapshot.rs");
   let outDir = path.join(moonbit, "bytecode");
   let baselinesPath = path.join(root, "scripts/moonbit/gen_host_route/baselines.json");
-  const args = process.argv.slice(2);
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i] ?? "";
-    const eq = a.indexOf("=");
-    const flag = eq >= 0 ? a.slice(0, eq) : a;
-    const value = (): string => {
-      if (eq >= 0) return a.slice(eq + 1);
-      const v = args[++i];
-      if (v === undefined) fatal(`${flag} 缺值`);
-      return v;
-    };
-    if (flag === "-check" || flag === "--check") check = true;
-    else if (flag === "-src") srcPath = path.resolve(moonbit, value());
-    else if (flag === "-out") outDir = path.resolve(moonbit, value());
-    else if (flag === "-baselines") baselinesPath = path.resolve(moonbit, value());
-    else fatal(`未知参数 ${a}`);
-  }
+  const args = parseFlags(
+    process.argv.slice(2),
+    { bool: ["-check", "--check"], value: ["-src", "-out", "-baselines"] },
+    fatal,
+  );
+  if (args.rest.length > 0) fatal(`未知参数 ${args.rest[0] ?? ""}`);
+  const check = args.has("-check", "--check");
+  const srcArg = args.value("-src");
+  if (srcArg !== undefined) srcPath = path.resolve(moonbit, srcArg);
+  const outArg = args.value("-out");
+  if (outArg !== undefined) outDir = path.resolve(moonbit, outArg);
+  const baseArg = args.value("-baselines");
+  if (baseArg !== undefined) baselinesPath = path.resolve(moonbit, baseArg);
 
   let parsed: Parsed;
   let srcHash: string;
@@ -263,6 +220,15 @@ if (invokedDirectly) {
     ["host_func_id_gen.mbt", renderImpl(parsed, srcHash)],
     ["host_route_anchor_wbtest.mbt", renderAnchor(parsed, srcHash)],
   ]);
-  writeProducts(outDir, moonbit, products, check);
+  emitWithMoonFmt({
+    root,
+    check,
+    fail: fatal,
+    driftHint: "源已变更未再生成（cd 仓库根 && node scripts/moonbit/gen_host_route/main.mts）",
+    products: [...products.keys()].sort().map((name) => ({
+      rel: path.relative(moonbit, path.join(outDir, name)),
+      content: products.get(name) ?? "",
+    })),
+  });
   if (check) console.log("gen_host_route: check OK（产物与源一致，未漂移）");
 }

@@ -10,9 +10,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts";
 
 const OUT_REL = "lexer/internal/host/stubs_gen.mbt";
 
@@ -21,8 +21,7 @@ function toLF(b: Buffer): Buffer {
 }
 
 function fatal(msg: string): never {
-  process.stderr.write("gen_stubs: " + msg + "\n");
-  process.exit(1);
+  return makeFail("gen_stubs: ", 1)(msg);
 }
 
 export function moonEscape(s: string): string {
@@ -138,34 +137,17 @@ function main(check: boolean): void {
   } catch (e) {
     fatal(e instanceof Error ? e.message : String(e));
   }
-  const outFile = path.join(root, "moonbit", OUT_REL);
   const outFileRel = OUT_REL;
-
-  let orig: Buffer | null = null;
-  try {
-    orig = fs.readFileSync(outFile);
-  } catch {
-    orig = null;
-  }
-
-  fs.writeFileSync(outFile, built.text);
-  const fmt = spawnSync("moon", ["fmt", outFileRel], { cwd: path.join(root, "moonbit"), encoding: "utf8" });
-  if (fmt.status !== 0) {
-    if (orig !== null) fs.writeFileSync(outFile, orig);
-    fatal(`moon fmt 失败（moon 须在 PATH）: exit ${fmt.status}\n${(fmt.stdout ?? "") + (fmt.stderr ?? "")}`);
-  }
-
+  emitWithMoonFmt({
+    root,
+    check,
+    fail: fatal,
+    driftHint: "源已变更未再生成（node scripts/moonbit/gen_stubs/main.mts）",
+    products: [{ rel: outFileRel, content: built.text }],
+  });
   if (!check) {
     console.log(`gen_stubs: 已生成 ${outFileRel}（sha256 ${built.sha256}）`);
     return;
-  }
-  const now = fs.readFileSync(outFile);
-  const same = orig !== null && toLF(now).equals(toLF(orig));
-  // 带文件参数的 moon fmt 与整包 fmt 形态不同：比对成功后也必须还原，
-  // 否则 -check 会把产物改成文件 fmt 形态（Go 版既有副作用，本版修正）。
-  if (orig !== null) fs.writeFileSync(outFile, orig);
-  if (!same) {
-    fatal(`-check: 产物漂移 ${outFileRel}——源已变更未再生成（node scripts/moonbit/gen_stubs/main.mts）`);
   }
   console.log(`gen_stubs: check OK（产物与源一致，未漂移；sha256 ${built.sha256}）`);
 }
@@ -173,13 +155,15 @@ function main(check: boolean): void {
 const invokedDirectly =
   process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (invokedDirectly) {
-  const args = process.argv.slice(2);
-  const check = args.includes("-check") || args.includes("--check");
-  for (const a of args) {
-    if (a !== "-check" && a !== "--check") {
-      process.stderr.write(`gen_stubs: 未知参数 ${a}\n`);
-      process.exit(2);
-    }
+  const args = parseFlags(
+    process.argv.slice(2),
+    { bool: ["-check", "--check"], value: [] },
+    fatal,
+  );
+  // 未知参数走 exit 2（与 fatal 的 1 分流——既有行为，保持不变）
+  if (args.rest.length > 0) {
+    process.stderr.write(`gen_stubs: 未知参数 ${args.rest[0] ?? ""}\n`);
+    process.exit(2);
   }
-  main(check);
+  main(args.has("-check", "--check"));
 }

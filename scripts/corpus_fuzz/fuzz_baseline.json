@@ -18,15 +18,6 @@
     "baseline/array_assign_lvalue_reject.c|init_partial": {
       "bucket": "AGREE"
     },
-    "baseline/array_bound_const_index.c|cmp_swap": {
-      "bucket": "VITRO_TRAP"
-    },
-    "baseline/array_bound_const_index.c|init_partial": {
-      "bucket": "VITRO_TRAP"
-    },
-    "baseline/array_bound_const_index.c|memset_zero": {
-      "bucket": "VITRO_TRAP"
-    },
     "baseline/array_bounds_safe.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -54,15 +45,6 @@
     "baseline/array_max.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/array_of_union.c|div2shift": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/array_of_union.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/array_of_union.c|paren_wrap": {
-      "bucket": "CLANG_REJECT"
-    },
     "baseline/array_param_decay.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -71,15 +53,6 @@
     },
     "baseline/array_param_decay.c|init_partial": {
       "bucket": "AGREE"
-    },
-    "baseline/bit_not_zero.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/bit_not_zero.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/bit_not_zero.c|paren_wrap": {
-      "bucket": "CLANG_REJECT"
     },
     "baseline/bitwise.c|char_escape": {
       "bucket": "CLANG_REJECT"
@@ -216,15 +189,6 @@
     "baseline/char2d_string_init.c|nested2flat": {
       "bucket": "AGREE"
     },
-    "baseline/char_arr_no_size.c|cast_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/char_arr_no_size.c|char_escape": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/char_arr_no_size.c|div2shift": {
-      "bucket": "CLANG_REJECT"
-    },
     "baseline/char_array_init.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -233,15 +197,6 @@
     },
     "baseline/char_array_init.c|memset_zero": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/char_global_read_extents.c|div2shift": {
-      "bucket": "AGREE"
-    },
-    "baseline/char_global_read_extents.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/char_global_read_extents.c|paren_wrap": {
-      "bucket": "AGREE"
     },
     "baseline/char_init_no_false_positive.c|cast_strip": {
       "bucket": "AGREE"
@@ -268,15 +223,6 @@
       "bucket": "AGREE"
     },
     "baseline/circular_queue.c|paren_wrap": {
-      "bucket": "AGREE"
-    },
-    "baseline/comma_expr_stmt.c|brace_wrap": {
-      "bucket": "AGREE"
-    },
-    "baseline/comma_expr_stmt.c|cmp_swap": {
-      "bucket": "AGREE"
-    },
-    "baseline/comma_expr_stmt.c|memset_zero": {
       "bucket": "AGREE"
     },
     "baseline/comma_operator.c|div2shift": {
@@ -369,15 +315,6 @@
     "baseline/const_2d_array_param.c|char_escape": {
       "bucket": "AGREE"
     },
-    "baseline/const_fold_unsigned.c|cast_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/const_fold_unsigned.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/const_fold_unsigned.c|nested2flat": {
-      "bucket": "AGREE"
-    },
     "baseline/continue_while.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
@@ -404,6 +341,15 @@
     },
     "baseline/designated_init.c|memset_zero": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/designated_mixed_cont.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/designated_mixed_cont.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/designated_mixed_cont.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/do_while.c|brace_strip": {
       "bucket": "CLANG_REJECT"
@@ -531,15 +477,6 @@
     "baseline/dp_knapsack.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/e1_c23_alignof.c|div2shift": {
-      "bucket": "AGREE"
-    },
-    "baseline/e1_c23_alignof.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/e1_c23_alignof.c|paren_wrap": {
-      "bucket": "AGREE"
-    },
     "baseline/e1_c23_enum_underlying.c|init_partial": {
       "bucket": "AGREE"
     },
@@ -630,6 +567,24 @@
     "baseline/e2_cond_if_elif.c|memset_zero": {
       "bucket": "AGREE"
     },
+    "baseline/e2_guarded_mutual.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_guarded_mutual.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_guarded_mutual.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_guarded_self_include.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_guarded_self_include.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_guarded_self_include.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/e2_has_include_chain.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -675,13 +630,13 @@
     "baseline/e2_predefined_macros.c|char_escape": {
       "bucket": "AGREE"
     },
-    "baseline/e3_attributes.c|brace_strip": {
+    "baseline/e2_undef_redefine.c|brace_strip": {
       "bucket": "AGREE"
     },
-    "baseline/e3_attributes.c|cast_strip": {
+    "baseline/e2_undef_redefine.c|cast_strip": {
       "bucket": "AGREE"
     },
-    "baseline/e3_attributes.c|div2shift": {
+    "baseline/e2_undef_redefine.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/e3_static_assert.c|cast_strip": {
@@ -700,15 +655,6 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/e3_unreachable_dead.c|nested2flat": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/empty_for.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/empty_for.c|brace_wrap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/empty_for.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/empty_func.c|brace_wrap": {
@@ -783,15 +729,6 @@
     "baseline/float_basic.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/float_compare.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/float_compare.c|cast_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/float_compare.c|div2shift": {
-      "bucket": "CLANG_REJECT"
-    },
     "baseline/float_const_trailing_dot.c|div2shift": {
       "bucket": "AGREE"
     },
@@ -808,15 +745,6 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/for_break.c|nested2flat": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/for_continue.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/for_continue.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/for_continue.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/for_empty_cond.c|div2shift": {
@@ -881,6 +809,15 @@
     },
     "baseline/func_many_params.c|div2shift": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_redefinition.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/func_redefinition.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/func_redefinition.c|init_partial": {
+      "bucket": "AGREE"
     },
     "baseline/func_return_as_arg.c|char_escape": {
       "bucket": "CLANG_REJECT"
@@ -1134,15 +1071,6 @@
     "baseline/linear_search.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/linked_list_delete.c|char_escape": {
-      "bucket": "AGREE"
-    },
-    "baseline/linked_list_delete.c|div2shift": {
-      "bucket": "AGREE"
-    },
-    "baseline/linked_list_delete.c|nested2flat": {
-      "bucket": "AGREE"
-    },
     "baseline/linked_list_tail.c|cast_strip": {
       "bucket": "AGREE"
     },
@@ -1161,6 +1089,15 @@
     "baseline/linked_queue.c|paren_wrap": {
       "bucket": "AGREE"
     },
+    "baseline/llm_fnptr_callback.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_fnptr_callback.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_fnptr_callback.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/llm_snprintf_struct_member.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -1169,15 +1106,6 @@
     },
     "baseline/llm_snprintf_struct_member.c|init_partial": {
       "bucket": "AGREE"
-    },
-    "baseline/llm_struct_nested_2d_init.c|brace_wrap": {
-      "bucket": "AGREE"
-    },
-    "baseline/llm_struct_nested_2d_init.c|char_escape": {
-      "bucket": "AGREE"
-    },
-    "baseline/llm_struct_nested_2d_init.c|static_inject": {
-      "bucket": "CLANG_REJECT"
     },
     "baseline/logical_and.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -1250,15 +1178,6 @@
     },
     "baseline/malloc_free.c|nested2flat": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/matrix_trace.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/matrix_trace.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/matrix_trace.c|paren_wrap": {
-      "bucket": "AGREE"
     },
     "baseline/memchr_negative_c.c|brace_strip": {
       "bucket": "AGREE"
@@ -1341,15 +1260,6 @@
     "baseline/multi_var_decl.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/multidecl_array_pointer_mix.c|cast_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/multidecl_array_pointer_mix.c|nested2flat": {
-      "bucket": "AGREE"
-    },
-    "baseline/multidecl_array_pointer_mix.c|paren_wrap": {
-      "bucket": "AGREE"
-    },
     "baseline/neg_hex.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
@@ -1375,15 +1285,6 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/negate.c|static_inject": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/negative_number.c|brace_wrap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/negative_number.c|cmp_swap": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/negative_number.c|memset_zero": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/nested_ternary.c|div2shift": {
@@ -1412,15 +1313,6 @@
     },
     "baseline/not_equal_var.c|div2shift": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/null_deref_trap_e3083.c|brace_wrap": {
-      "bucket": "AGREE"
-    },
-    "baseline/null_deref_trap_e3083.c|init_partial": {
-      "bucket": "VITRO_TRAP"
-    },
-    "baseline/null_deref_trap_e3083.c|nested2flat": {
-      "bucket": "VITRO_TRAP"
     },
     "baseline/null_pointer_constant.c|brace_wrap": {
       "bucket": "AGREE"
@@ -1528,15 +1420,6 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/parametric_macro_swap.c|nested2flat": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/parentheses_priority.c|brace_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/parentheses_priority.c|cast_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/parentheses_priority.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/pointer_add_assign_char.c|cmp_swap": {
@@ -1709,15 +1592,6 @@
     },
     "baseline/ptr_arith_char.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/ptr_compare_null.c|cast_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/ptr_compare_null.c|char_escape": {
-      "bucket": "AGREE"
-    },
-    "baseline/ptr_compare_null.c|div2shift": {
-      "bucket": "AGREE"
     },
     "baseline/ptr_comparison.c|div2shift": {
       "bucket": "CLANG_REJECT"
@@ -2004,14 +1878,14 @@
     "baseline/sizeof_struct_union.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
-    "baseline/sprintf_basic.c|brace_strip": {
+    "baseline/sizeof_typedef.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_typedef.c|init_partial": {
       "bucket": "AGREE"
     },
-    "baseline/sprintf_basic.c|cast_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/sprintf_basic.c|div2shift": {
-      "bucket": "AGREE"
+    "baseline/sizeof_typedef.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/srand_rand.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -2065,6 +1939,15 @@
       "bucket": "AGREE"
     },
     "baseline/static_forward_func.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_forward_global.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_forward_global.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_forward_global.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/static_init_addr_const.c|init_partial": {
@@ -2359,6 +2242,15 @@
     "baseline/swap_by_ptr.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/switch_break.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/switch_break.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/switch_break.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/switch_default_first.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -2522,6 +2414,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/unsigned_printf_u.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_semantics.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_semantics.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_semantics.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/unsigned_type.c|brace_strip": {

@@ -91,6 +91,23 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
       if !self.is_skipping() {
         self.handle_include(after, line, out)
       }
+    // #212（2026-10-21 报 / 2026-10-23 修）：#pragma/#line 整族不再落
+    // 未知指令 E1006 硬拒——`#pragma once` 是学生代码/教材高频惯用法
+    //（在线题解、模板库广泛使用）；旧文案「已跳过该行」与 err 终止
+    // 编译的实际行为矛盾（说谎文案）。处置：once 零诊断跳过（重复
+    // 包含防护由 resolver 环检测天然承接）；其余 pragma/#line 降
+    // W1023 警告跳过——语义未实现，按默认口径编译（布局/行号与真实
+    // 编译器的差异登记《已知限制与差异》），对齐 clang 对未知
+    // pragma 的忽略倾向（默认不启 -Wunknown-pragmas）
+    "pragma" => if !self.is_skipping() { self.handle_pragma(after, line) }
+    "line" =>
+      if !self.is_skipping() {
+        self.warnings.push({
+          message: "#line 指令已忽略（行号映射按原文件行号，未随指令改写）",
+          loc: { line, column: 0, file_id: self.current_file_id(), },
+          code: W1023_PreprocDirectiveIgnored,
+        })
+      }
     // 标准指令：显式诊断（修复 ⑥-12：Rust 落未知分支静默跳过、零诊断——
     // 决议记载"已支持"与代码不符；W 级码表暂缺，severity 精确化随码表扩容裁定）
     "error" =>
@@ -122,6 +139,25 @@ fn[P : @token.SourceProvider] Pp::handle_directive(
         )
       }
   }
+}
+
+///|
+/// `#pragma` 处置（#212，2026-10-23）：`once` 零诊断跳过——重复包含
+/// 防护由 resolver 环检测天然承接（自 include/重复 include 不再展开，
+/// GCC/Clang include-once 同款语义）；其余 pragma（pack/STDC/Pack 等）
+/// 降 W1023 警告跳过——语义未实现按默认口径编译，不再 E1006 硬拒。
+fn[P] Pp::handle_pragma(self : Pp[P], after : String, line : Int32) -> Unit {
+  let arg = leading_trim(after)
+  if arg == "once" {
+    return
+  }
+  // 参数截断显示（教学源码 pragma 参数均短；防病态长串撑爆文案）
+  let shown = if arg.length() > 32 { "\{arg[0:32]}…" } else { arg }
+  self.warnings.push({
+    message: "#pragma 已忽略（'\{shown}' 的语义未实现——布局/对齐类 pragma 与真实编译器可能存在差异，程序按默认口径编译）",
+    loc: { line, column: 0, file_id: self.current_file_id(), },
+    code: W1023_PreprocDirectiveIgnored,
+  })
 }
 
 ///|

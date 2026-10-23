@@ -88,6 +88,7 @@
         "const_2d_array_param.c": "70d43963",
         "const_array_decay_warn.c": "20cd4f44",
         "const_fold_unsigned.c": "2b257ffd",
+        "const_nested_qualifier_warn.c": "af965fcd",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
         "decrement_var.c": "629e3563",
@@ -317,6 +318,7 @@
         "pointer_deref.c": "ea66838e",
         "post_inc_vs_pre_inc.c": "4d545af4",
         "power_of_2.c": "10150c44",
+        "pragma_line_ignore.c": "8485724f",
         "pre_decrement.c": "c4c36fe5",
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
@@ -752,6 +754,9 @@
         },
         "const_fold_unsigned.c": {
           "result_sha": "bfce8adbdda009e1"
+        },
+        "const_nested_qualifier_warn.c": {
+          "result_sha": "2b6472612d50a27f"
         },
         "continue_while.c": {
           "result_sha": "8b4227ff886e9496"
@@ -1454,6 +1459,9 @@
         },
         "power_of_2.c": {
           "result_sha": "533dde33575355c3"
+        },
+        "pragma_line_ignore.c": {
+          "result_sha": "2744725c89b93583"
         },
         "pre_decrement.c": {
           "result_sha": "79a02f61f91f50b4"

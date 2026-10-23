@@ -508,6 +508,12 @@
       "stdout_sha": "0eb5298704b57eb1",
       "memory_sha": "4b8abfa28c83e9a2"
     },
+    "baseline/const_nested_qualifier_warn.c": {
+      "src_sha": "af965fcd",
+      "exit_code": 0,
+      "stdout_sha": "be046e0066b868fc",
+      "memory_sha": "9143670c6cd368c6"
+    },
     "baseline/continue_while.c": {
       "src_sha": "f12c98b8",
       "exit_code": 0,
@@ -1896,6 +1902,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "d4046963c143dbff"
+    },
+    "baseline/pragma_line_ignore.c": {
+      "src_sha": "8485724f",
+      "exit_code": 0,
+      "stdout_sha": "ef2d127de37b942b",
+      "memory_sha": "0e979f8878ede6b9"
     },
     "baseline/pre_decrement.c": {
       "src_sha": "c4c36fe5",

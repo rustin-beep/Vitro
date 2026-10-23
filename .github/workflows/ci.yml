@@ -1279,6 +1279,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      # gen_svg 的「真实仓库 -check」用例读 reports/facts.json（包切分图的实/虚
+      # 线与在架徽标全部 facts 派生）——该文件 gitignored，CI 检出态不存在，
+      # 故本 job 自带采集（`facts facts` 只采集落盘不判红，判红归 bookkeeping）。
+      # 与 hygiene 的 facts 步同命令同口径。
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # 零第三方依赖仓无 go.sum，缓存无意义
       - name: npm ci (lockfile pinned)
         run: npm ci
         shell: bash
@@ -1288,6 +1296,27 @@ jobs:
       - name: oxlint (explicit file list)
         run: npm run lint
         shell: bash
+
+      # 生成器簇「真实仓库 -check」用例内置 `moon fmt` 归一（gen_stubs /
+      # gen_protocol_fields / gen_host_route / gen_libc_data / gen_icons 五例），
+      # 归一后再比对产物、比对后无条件还原——moon 不在 PATH 时**必须红**
+      # （fail loud，不做 skip 兜底：环境缺口静默通过就是假绿）。
+      # 2026-10-23 首轮 CI 实锤五红同根 = moon 缺席（exit null），非代码缺陷。
+      # 安装置于 node:test 前、tsc/oxlint 后：类型/风格面仍先快失败。
+      - name: Install MoonBit toolchain (generator -check runs moon fmt)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+
+      # gen_svg -check 的 facts 输入（见上方 setup-go 注释）。放在 moon 之后：
+      # 采集链含 moon 相关项，缺工具链会把可用键降级成 unavailable。
+      - name: facts collect (gen_svg -check input)
+        run: go run ./scripts/facts facts
+        shell: bash
+
       - name: node:test (explicit file list)
         run: npm run test
         shell: bash

@@ -614,7 +614,7 @@ jobs:
         # （先例：docs/** 148 行事故族；host_test.mbt 15KB 整文件不可见；
         # 冻结区 vitro_lexer/src/string.rs 索引侧潜伏 i/-text）。J9 证红留痕。
         shell: bash
-        run: go run ./scripts/moonbit/source_hygiene
+        run: node scripts/moonbit/source_hygiene/main.mts
 
       - name: Bytecode libc data generation idempotency
 
@@ -623,7 +623,7 @@ jobs:
         # JSON 是单一真相源，本闸保证 MoonBit 数据字面量与其一致
         # （生成流程内置 moon fmt + check 同流程比对；J9 篡改证红）。
         shell: bash
-        run: go run ./scripts/moonbit/gen_libc_data -check
+        run: node scripts/moonbit/gen_libc_data/main.mts -check
 
       - name: MoonBit generated-artifact freshness (gen_diag / gen_host_route / gen_stubs)
 
@@ -639,16 +639,16 @@ jobs:
         # 内置 fmt 后方可入闸。
         shell: bash
         run: |
-          go run ./scripts/moonbit/gen_diag -check
-          go run ./scripts/moonbit/gen_host_route -check
-          go run ./scripts/moonbit/gen_stubs -check
-          go run ./scripts/moonbit/gen_protocol_fields -check
-          go run ./scripts/moonbit/gen_diagnostics -check
+          node scripts/moonbit/gen_diag/main.mts -check
+          node scripts/moonbit/gen_host_route/main.mts -check
+          node scripts/moonbit/gen_stubs/main.mts -check
+          node scripts/moonbit/gen_protocol_fields/main.mts -check
+          node scripts/moonbit/gen_diagnostics/main.mts -check
           # #27 图标资产双闸（2026-10-07 挂入）：gen_icons -check 锁几何层
           # 与真源 svg 同步；icon_catalog 判定契约（viewBox/stroke/白名单/
           # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
           # 已在 c3601055 资产批留痕。
-          go run ./scripts/gen_icons -check
+          node scripts/gen_icons/main.mts -check
           go run ./scripts/icon_catalog
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
@@ -721,7 +721,7 @@ jobs:
         # 「路由名 ↔ 有实现」。规则外置 host_route_rules.json（别名 /
         # vm 白名单，白名单双向对账防腐化）；J9 双路证红留痕。
         shell: bash
-        run: go run ./scripts/moonbit/host_route_coverage
+        run: node scripts/moonbit/host_route_coverage/main.mts
 
       - name: Host contract map (oracle 103 tests vs mb anchors, 3-state)
 
@@ -748,7 +748,7 @@ jobs:
         # 注意 §5 差分层（StepStreamBatch/StepPayloadDelta）未纳入：该节表格是
         # 压缩式，无法逐字段机判（已在 rules.json 登记）。
         shell: bash
-        run: go run ./scripts/gen_protocol_ts -check
+        run: node scripts/gen_protocol_ts/main.mts -check
 
       - name: MoonBit test count (README vs moon test truth)
 
@@ -760,7 +760,7 @@ jobs:
         # 用户 J9 三层之第二层抓出）；v2 真值实跑。J9：篡改声明 ±1 红 /
         # 原缺陷场景（文档回旧值）红。
         shell: bash
-        run: go run ./scripts/moonbit/testcount
+        run: node scripts/moonbit/testcount/main.mts
 
       # ── MoonBit serve 行为闸族（serve exe 由本步骤链内构建）────────────
       # S7 批四号（2026-09-28）：双宿主对拍——同一请求表与断言集跑 MoonBit
@@ -789,8 +789,8 @@ jobs:
         # 双轨对账：--check 双侧同判定（digest 逐字节一致）；重生成产物 JSON
         # 逐字节一致、.rs 仅头注指向 Go；J9 篡改源文件 → digest 失配 / exit 1。
         # 归 hygiene（2026-09-23）：红 = 改 C 源后忘了再生成——账没跟上，
-        # 补 `go run ./scripts/precompile_bytecode_libc` + git add 即绿。
-        run: go run ./scripts/precompile_bytecode_libc --check
+        # 补 `node scripts/precompile_bytecode_libc/main.mts` + git add 即绿。
+        run: node scripts/precompile_bytecode_libc/main.mts --check
         shell: bash
 
       - name: Vendored upstream drift probe (moonbitlang/x fs)
@@ -845,7 +845,7 @@ jobs:
         # 零接线——E6（JSON 缩进/末行换行漂移）历史复发 4 次全靠本地抓。
         # 生成物（@generated 头注）按"产物面归生成器闸"排除；tmp/_build 剪枝。
         shell: bash
-        run: go run ./scripts/editorconfig_check
+        run: node scripts/editorconfig_check/main.mts
 
       - name: gen_api_help artifact check (-check)
 
@@ -853,7 +853,7 @@ jobs:
         # 审阅批 P3 接线（2026-10-11）：#67 生成器产物对账闸此前只在
         # ci.yml 注释里出现——api_help 双产物漂移无 CI 强制。
         shell: bash
-        run: go run ./scripts/gen_api_help -check
+        run: node scripts/gen_api_help/main.mts -check
 
       - name: Go format check (gofmt -l scripts)
 
@@ -903,9 +903,9 @@ jobs:
         # （moonbit_built_packages / moonbit_engine_version，上一步 facts
         # facts 已落盘当轮 facts.json），本步 -check 兜「忘了重生成」。J9
         # 证红：手改落盘 SVG 后 -check 必红（2026-09-28 本批实测）。归
-        # hygiene：红 = 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
+        # hygiene：红 = 插图账没跟上，跑 node scripts/gen_svg/main.mts all 即绿。
         shell: bash
-        run: go run ./scripts/gen_svg -check
+        run: node scripts/gen_svg/main.mts -check
 
       # 图鉴新鲜度（2026-10-23 #273 P2-1 补接线）：gen_icon_preview 的 .mts
       # 入口自次批落地起就没有任何 workflow 活行——ci_checklist 加第二扫描面
@@ -1091,7 +1091,7 @@ jobs:
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
         if: always()
-        run: go run ./scripts/gen_demo_algorithms
+        run: node scripts/gen_demo_algorithms/main.mts
         shell: bash
 
       # 课程内容防线（#120 补充 + #125 批 A 形态修正，2026-10-15）：

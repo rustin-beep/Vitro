@@ -214,3 +214,78 @@ fn[P] Pp::define_macro(
   }
   self.macros[name] = def
 }
+
+///|
+/// #221（2026-10-22，C99 §6.10.8 预定义宏）：`__FILE__`/`__LINE__` 的
+/// 值依赖**使用点位置**——静态宏表不可表达，展开循环（expander.mbt 的
+/// macros 查表前）按 token 特判合成。此处集中放合成件：
+/// display_name_of 取路径 basename（断言/日志输出惯例），loc 合成到
+/// 使用点（诊断归位）。
+fn display_name_of(path : String) -> String {
+  let mut name = path
+  for sep in ["/", "\\"] {
+    match name.split(sep).last() {
+      Some(tail) if tail.length() > 0 => name = tail.to_string()
+      _ => ()
+    }
+  }
+  name
+}
+
+///|
+/// `__FILE__` 展开 token：StringLiteral（值 = 使用点所属文件的 basename）。
+fn synth_file_macro(use_site : @token.Token, fname : String) -> @token.Token {
+  {
+    ty: @token.TokenType::String,
+    text: fname,
+    loc: use_site.loc,
+    byte_off: use_site.byte_off,
+    real_line: use_site.real_line,
+  }
+}
+
+///|
+/// `__LINE__` 展开 token：Number（值 = 使用点**真实行号** real_line——
+/// 仿古坐标下 include 段的 loc.line 是拼接补偿值（负数/偏移），C 语义
+/// 的 __LINE__ 是原文件物理行，两者在主文件重合、include 段分叉）。
+fn synth_line_macro(use_site : @token.Token) -> @token.Token {
+  synth_line_macro_at(use_site, use_site.real_line)
+}
+
+///|
+/// `__LINE__` 合成（行号由调用方分派——顶层直用 real_line / 拼接段
+/// 还原 / 宏体调用点取展开点行）。
+fn synth_line_macro_at(use_site : @token.Token, line : Int32) -> @token.Token {
+  {
+    ty: @token.TokenType::Number,
+    text: "\{line}",
+    loc: use_site.loc,
+    byte_off: use_site.byte_off,
+    real_line: use_site.real_line,
+  }
+}
+
+///|
+/// #221：预定义宏的**调用点替换**——`__FILE__`/`__LINE__` 出现在宏体
+/// （`#define ASSERT(x) fail(__FILE__, __LINE__)`）时，C 语义取**展开
+/// 点**的文件与行（C99 §6.10.8.1），而非宏定义处。展开循环的内层特判
+/// 看到的是 body token（loc=定义处），故在 Object/Function 展开入口先
+/// 把 body 内的预定义宏 token 按调用点就地替换（内层递归不再遇到）。
+fn substitute_predefined(
+  body : Array[@token.Token],
+  call_site : @token.Token,
+  file_name : String,
+  line : Int32,
+) -> Array[@token.Token] {
+  let out : Array[@token.Token] = []
+  for bt in body {
+    if bt.text == "__FILE__" && bt.ty is Identifier {
+      out.push(synth_file_macro(call_site, file_name))
+    } else if bt.text == "__LINE__" && bt.ty is Identifier {
+      out.push(synth_line_macro_at(call_site, line))
+    } else {
+      out.push(bt)
+    }
+  }
+  out
+}

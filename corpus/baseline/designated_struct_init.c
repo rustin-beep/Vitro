@@ -25,7 +25,27 @@ static int counter(void) {
     return s.a * 100 + s.b;
 }
 
+struct Deep {
+    int a;
+    struct { int b; struct { int c; int d; }; };   /* 嵌套 >=2 层匿名 */
+};
+static struct Deep gdeep = { .d = 9 };            /* 审阅 P1-2：深层偏移 */
+typedef int (*AF)(int);
+static int a1(int x) { return x + 1; }
+static int a2(int x) { return x + 2; }
+static AF faddr[2] = { &a1, &a2 };                /* 审阅 P1-4：&f 全局数组 */
+static AF fsingle = &a1;                          /* 审阅 P1-4：&f 全局标量 */
+union V { int x; int y; };
+
 int main(void) {
+    struct Deep d = { .d = 9 };
+    printf("deep=%d %d %d %d\n", d.a, d.b, d.c, d.d);
+    struct Inner li = { .b = 7, .a = 6 };         /* 审阅 P1-3：局部乱序 */
+    printf("li=%d %d\n", li.a, li.b);
+    union V v = { .y = 1 };                       /* 审阅 P1-3 连坐：union 非首成员 */
+    printf("v=%d\n", v.y);
+    struct Inner p2 = { .a = 1, 2 };               /* 审阅 P2-3：混合续位 */
+    printf("mix=%d %d\n", p2.a, p2.b);
     printf("g1=%d %d %d\n", g1.tag, g1.in.a, g1.in.b);
     printf("g2=%d %d\n", g2.pre, g2.u1);           /* u1 视图读 u2 位模式 */
     printf("g3=%d partial=%d %d\n", g3.u1, partial.a, partial.b);

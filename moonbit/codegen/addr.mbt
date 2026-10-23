@@ -110,6 +110,72 @@ fn BytecodeGen::gen_nested_init(
           Some(f) => f
           None => []
         }
+        // P1-3（审阅批 2026-10-23，C11 6.7.9）：局部嵌套子列表带
+        // designator（`{.in = {.b=7,.a=6}}` 的内层）——按名定位递归，
+        // 旧按位置序无视指派致 a/b 错位（全局层 flatten_global_init
+        // 同批已修，本臂是局部层的成对实现）
+        let has_desig = elements.exists(e => e.designators.length() > 0)
+        if has_desig {
+          let mut cursor = 0
+          for elem in elements {
+            if elem.designators.length() == 0 {
+              // 裸项续位（designator 后 prev+1）
+              if cursor >= fields.length() {
+                continue
+              }
+              let cur = cursor
+              cursor = cur + 1
+              self.gen_nested_init(
+                base_temp,
+                offset + self.struct_fields_prefix_offset(fields, cur),
+                fields[cur].ty,
+                elem.value,
+                loc,
+              )
+              continue
+            }
+            match elem.designators[0] {
+              Field(fname) => {
+                let mut found = -1
+                for j, f in fields {
+                  if f.name == fname {
+                    found = j
+                    break
+                  }
+                }
+                if found >= 0 {
+                  cursor = found + 1
+                  self.gen_nested_init(
+                    base_temp,
+                    offset + self.struct_fields_prefix_offset(fields, found),
+                    fields[found].ty,
+                    elem.value,
+                    loc,
+                  )
+                } else {
+                  // 匿名成员穿透（#266/P1-2 同源）
+                  match self.anon_promote_lookup(fields, fname) {
+                    Some((oi, io, mty)) => {
+                      cursor = oi + 1
+                      self.gen_nested_init(
+                        base_temp,
+                        offset +
+                        self.struct_fields_prefix_offset(fields, oi) +
+                        io,
+                        mty,
+                        elem.value,
+                        loc,
+                      )
+                    }
+                    None => continue
+                  }
+                }
+              }
+              _ => continue
+            }
+          }
+          return
+        }
         for i, elem in elements {
           if i >= fields.length() {
             break

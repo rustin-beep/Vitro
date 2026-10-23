@@ -169,7 +169,8 @@ test "init_struct_tracks" {
     ),
     source_file: "t.c",
   }
-  // 混合 → E3005
+  // 混合 → 零诊断（P2-3 审阅批 2026-10-23：C11 6.7.9p20 混合合法——
+  // designator 后裸项续位；旧 E3005 误报与 clang 双实测推翻，锚改锁零 error）
   let mix_g : @ast.GlobalDecl = {
     ..Default::default(),
     loc,
@@ -204,8 +205,11 @@ test "init_struct_tracks" {
   assert_true(errs2[0].code == 3042)
   let tc3 = TypeChecker::new()
   let (_, _, errs3, _) = tc3.check({ ..prog, globals: [mix_g], })
-  assert_eq(errs3.length(), 1)
-  assert_true(errs3[0].code == 3005)
+  assert_eq(
+    errs3.length(),
+    0,
+    msg="混合 designated+位置合法（P2-3）零 error",
+  )
 }
 
 ///|

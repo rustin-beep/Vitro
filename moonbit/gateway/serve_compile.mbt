@@ -318,7 +318,25 @@ fn serve_compile_pipeline(
   // units 全量注入内存 vfs（2026-10-05 files-vfs 批：集合内互引可解析，
   // 集合外仍 E1021）。此前统一 vfs 空表曾使 native 壳静默丢失 include
   // 解析（oracle 同请求成功而本侧 E1021——审阅实锤）。
-  let lexed = lex_full_source(full_source, units)
+  // #221：拼接段行区间表（ranges → __FILE__ 展开单源）+ 主名（首个
+  // 非头文件的 unit 名——拼接主体即其起点）
+  let merged_spans : Array[(Int32, Int32, String)] = []
+  let mut main_name = "main.c"
+  // 名字原样（不 basename）：__FILE__ 的 C 语义是「当前输入文件名」
+  // ——clang 输出命令行/槽内拼写（单文件 CLI=相对路径、工程模式=槽内
+  // basename），units.filename 即上游传给两侧的同款拼写，原样透传两侧
+  // 一致；basename 会让 CLI 形态（vitro run path/x.c）出 basename vs
+  // clang 出路径的双侧 DIFF
+  for r in ranges {
+    merged_spans.push((r.start_line, r.end_line, r.filename))
+  }
+  for u in compile_units {
+    if !u.filename.is_empty() {
+      main_name = u.filename
+      break
+    }
+  }
+  let lexed = lex_full_source(full_source, units, main_name~, merged_spans~)
   for t in lexed.trace {
     st.preprocessor_trace.push(t.render())
   }

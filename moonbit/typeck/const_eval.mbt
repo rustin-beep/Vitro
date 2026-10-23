@@ -645,3 +645,68 @@ fn collect_case_labels(
   }
   default_count
 }
+
+///|
+/// #265/P1-5（审阅批 2026-10-23）：struct/union 成员维数折叠的延迟执行
+/// 点——在全局符号登记与尺寸推断定型后由 check 主流程调用（注册期
+/// lookup_var 扑空只覆盖纯 cast 面）。折后回写 program 声明与
+/// structs/unions 符号表（is_complete 保持注册时值）。
+fn TypeChecker::defer_refold_members(
+  self : TypeChecker,
+  program : @ast.ProgramNode,
+) -> Unit {
+  for si in 0..<program.structs.length() {
+    let s = program.structs[si]
+    if s.is_forward {
+      continue
+    }
+    let mut changed = false
+    let folded : Array[@ast.StructField] = []
+    for f in s.fields {
+      let fty = self.refold_vla_const_dims(f.ty)
+      if fty is Array(_, _, _, _, false, _) &&
+        f.ty is Array(_, _, _, _, true, _) {
+        changed = true
+      }
+      folded.push({ ..f, ty: fty, })
+    }
+    if changed {
+      program.structs[si] = { ..s, fields: folded, }
+      match self.structs.get(s.name) {
+        Some(sym) =>
+          self.structs.set(s.name, {
+            fields: folded.map(f => (f.ty, f.name)),
+            is_complete: sym.is_complete,
+          })
+        None => ()
+      }
+    }
+  }
+  for ui in 0..<program.unions.length() {
+    let u = program.unions[ui]
+    if u.is_forward {
+      continue
+    }
+    let mut changed = false
+    let folded : Array[@ast.StructField] = []
+    for f in u.fields {
+      let fty = self.refold_vla_const_dims(f.ty)
+      if fty is Array(_, _, _, _, false, _) &&
+        f.ty is Array(_, _, _, _, true, _) {
+        changed = true
+      }
+      folded.push({ ..f, ty: fty, })
+    }
+    if changed {
+      program.unions[ui] = { ..u, fields: folded, }
+      match self.unions.get(u.name) {
+        Some(sym) =>
+          self.unions.set(u.name, {
+            fields: folded.map(f => (f.ty, f.name)),
+            is_complete: sym.is_complete,
+          })
+        None => ()
+      }
+    }
+  }
+}

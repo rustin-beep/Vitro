@@ -12,6 +12,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(engine+ci): 用户审阅批 P1×5/P2×6/P3×5 处置——假阳性矩阵对齐 + 嵌套 designated 三层 + &f 全局 + 成员 sizeof 延迟折叠（2026-10-23）
+
+**P1（全部红锚先行→修→双侧对拍）**：
+- P1-1 W3084 假阳性四形态：always_returns 补 main 豁免（C11
+  5.1.2.2.3）/for(;;)/do-while 体必返/switch 全臂+default——判据对齐
+  clang -Wreturn-type 矩阵；**上轮把 llm_scale 假阳性漂移 freeze 收编
+  是粉饰（纪律 4），本批修正后重冻**；锚补四反例
+- P1-2 嵌套 >=2 层匿名 designated 偏移：anon_promote_lookup 递归层补
+  匿名字段在 fs 的前缀累计（`.d` 写进 `c` 静默错值根）
+- P1-3 局部嵌套 designated 子列表：gen_nested_init 补 designator 分流
+  （定位→递归，对齐全局 flatten 成对面实现）+ 局部 union designated
+  偏移 0 特判（全局有局部漏——`.y=1` 写偏移 4 越界）
+- P1-4 全局 &f 函数指针初始化落 0：push_global_addr_init 补 func_index
+  查询 + 数组元素分支补 Unary(Addr) 臂（CallPtr 索引越界 TRAP 根）
+- P1-5 struct 成员 sizeof 惯用法：成员维数折叠延迟 defer_refold_
+  members（全局登记+尺寸推断**之后**——推断前跑 TIPS 未定型折不出，
+  tipsize 8 vs 32 二段实锤）
+- P1-6 mbti：已随上轮 CI 收口修（本批复核 PASS）
+
+**P2**：P2-2 W3055 对 &f 误报（**根因双层**：函数名 decay 后再包一层
+pointer——Addr 臂对函数指示符恒等，C11 6.5.3.1）+ check_pointer_
+assignable 排除函数指针互赋；P2-3 混合 designator+位置合法化（cursor
+续位检查，C11 6.7.9p20——旧 E3005 误报；wbtest 旧断言为该误报的锁，
+随 clang 对照更新为零 error）；P2-1 锚补强（late_def 锚位勘误 + W3084
+四反例）；P2-4 gen_diag 模板头注 140/105→真值 152/108；P2-5 known_
+direct 缩进回 .editorconfig 2（E6 第 5 次复发）；P2-6 bTree 本地
+digest a4c96bb7 入跨环境集。
+
+**P3**：fuzz 槽位注释诚实化（cacheDir 内仍有顺序副作用——per-case
+目录登记为改进项）；perf_budget dir_tiers 空档 fail loud 守卫；
+latin1Fold 合法 UTF-8 C2/C3 折叠局限注释登记；既有缺陷开 [#277]（静态
+局部同名遮蔽）[#278]（顶层匿名 union 变量）。
+
+锚扩容：designated_struct_init +6 形态（深层匿名/局部乱序/union 非首/
+混合续位/全局 &f 数组与标量）、array_dim_cast +成员 sizeof（TIP_COUNT
+惯用法）——全部 clang golden 双臂逐字节一致。866/866、488+36 例
+DIFF=0、五家×五套件 freeze、fuzz 1014 PASS、testcount/facts/icon_
+catalog/gen_diag -check 全绿。
+
+### fix(ci): c3df8005 推后五红收口——#214 连坐面四闸补齐 + llm_scale 漏冻（2026-10-22）
+
+- **gen/icon_catalog**：W3084/W3085 卡的 icon（control-flow/declaration）
+  不在 icons 资产表——改选现有语义贴合项（return/undeclared）。
+- **contract/mbti_sync**：diag 枚举扩两臂后 .mbti 未随批 moon info——
+  补（diag/lexer 三件）。
+- **protocol_frames（Native protocol + wasm-arm serve_channel 两 job
+  同根）**：error_catalog 帧 106→108 卡——--update-baseline 刷基线
+  （47 帧全绿）。
+- **typeck_diff/llm_scale**：#214 的 W3085 投影漂移 llm_scale 3/6 例
+  ——freeze 漏跑该套件（**skill「三套件」教训清单过时**：a7202d19 批
+  llm_scale 已进 CI 四族循环，本地 freeze 义务面是五套件）。
+- 教训：CI 五红中四红是同一批（#214 加码）的**连坐闸没跑全**——
+  mbti/protocol_frames/icon_catalog 是诊断面改动的固定连坐三件，
+  今后加码批的本地门禁清单加上这三件+全五套件 freeze。
+
+### fix(lexer+gateway): #221 __FILE__/__LINE__ 预定义宏——断言框架复活 + MF-UNIT 入防线（2026-10-22）
+
+- **pp 层展开**：__FILE__/__LINE__ 值依赖使用点位置——静态宏表不可
+  表达，展开循环查表前特判合成（经 #define 间接引用同判）；**宏体内
+  预定义宏取展开点**（C99 §6.10.8.1——`ASSERT(x) fail(__FILE__,
+  __LINE__)` 的调用点文件/行，substitute_predefined 在 Object/
+  Function 展开入口按调用点替换 body）。
+- **多文件拼接坐标还原**：gateway merge_units 的 ranges 透传 pp
+  （merged_spans 行区间表）——主段 __FILE__ 按区间分派文件名、
+  __LINE__ 还原原文件行（拼接坐标 − 段起点 + 1）；include 段走
+  file_names（file_id 反向表新增）；名字**原样拼写**（与 clang 的
+  命令行/槽内拼写一致——basename 会让 CLI 形态双侧 DIFF）。
+- **验收**：锚 predefined_macro.c（直接/宏体/断言惯用法/语句取值四
+  形态）双侧逐字节一致；**MF-UNIT（issue 来源语料，5 文件 338 行
+  迷你测试框架）双侧逐字节一致并入防线**（36 例 DIFF=0）；moon
+  test 866/866；存量 487 SAME / 三套件 PASS；五家 freeze + fuzz
+  1014（新增 30 全良性：p2f 的 3 条 VITRO_TRAP=本体 known UB 面的
+  变异延伸）。
+- **登记**：include 段 __FILE__ 的拼写差（clang Windows 带 ./ 前缀）
+  是平台相关形态，锚不含 include 段 __FILE__ 输出。
+- **坑**：clang_direct 工程模式消费 native exe——引擎改动后须重建
+  cmd/vitro 否则陈旧产物下「单侧编译失败」假红（本次 MF-UNIT 直拍
+  首跑实锤）。
+
 ### fix(ci): 5d3d4dd7 推后三红——fuzz 槽位隔离根治 + Defender 重试 + UB 漂移 digests 集（2026-10-22）
 
 - **fuzz 桶恶化 6（file_fopen/file_fread × 3 算子）根治**：变异体程序

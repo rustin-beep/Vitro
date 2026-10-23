@@ -21,6 +21,11 @@ const TRACE_ENTRY_MAX_CHARS : Int32 = 2048
 /// 展开上下文（宏表 + 诊断/教学通道 + 双保险丝熔断记账）。
 priv struct ExpandCtx {
   macros : Map[String, @token.MacroDef]
+  /// #221：file_id → 显示名（__FILE__ 展开单源；主文件 id=0 由调用方
+  /// 预置）+ 主段拼接区间表/主名（多 .c 拼接形态按行分派）。
+  file_names : Map[Int32, String]
+  main_name : String
+  merged_spans : Array[(Int32, Int32, String)]
   errors : Array[@token.LexError]
   warnings : Array[@token.LexWarning]
   trace : Array[@token.TraceEntry]
@@ -39,6 +44,9 @@ fn[P] Pp::expand_tokens_all(
 ) -> Array[@token.Token] {
   let ctx : ExpandCtx = {
     macros: self.macros,
+    file_names: self.file_names,
+    main_name: self.main_name,
+    merged_spans: self.merged_spans,
     errors: self.errors,
     warnings: self.warnings,
     trace: self.trace,
@@ -105,6 +113,20 @@ fn expand_inner(
       i += 1
       continue
     }
+    // #221（2026-10-22，C99 §6.10.8 预定义宏）：__FILE__/__LINE__ 值依
+    // 赖使用点位置——静态宏表不可表达，查表前特判合成（经 #define 间接
+    // 引用同判展开；预定义宏的 #define/#undef 约束检查属误用面罕见，
+    // 不查——蓝漆子集口径）。主文件 id=0 预置名，include 段按 file_names。
+    if tok.text == "__FILE__" {
+      result.push(synth_file_macro(tok, file_name_at(ctx, tok)))
+      i += 1
+      continue
+    }
+    if tok.text == "__LINE__" {
+      result.push(synth_line_macro_at(tok, line_at(ctx, tok)))
+      i += 1
+      continue
+    }
     let mdef = match ctx.macros.get(tok.text) {
       Some(d) => d
       None => {
@@ -122,7 +144,14 @@ fn expand_inner(
     match mdef {
       Object(body~) => {
         expanding.push(tok.text)
-        let sub = substitute_params(body, [], None)
+
+        let body2 = substitute_predefined(
+          body,
+          tok,
+          file_name_at(ctx, tok),
+          line_at(ctx, tok),
+        )
+        let sub = substitute_params(body2, [], None)
         if sub.paste_err is Some(msg) {
           ctx.errors.push({
             message: msg,
@@ -292,8 +321,15 @@ fn expand_inner(
           eff_subst.push([])
         }
         expanding.push(tok.text)
-        let sub = substitute_params_ext(
+        // #221：body 内预定义宏按调用点替换（同 Object 分支）
+        let body2 = substitute_predefined(
           body,
+          tok,
+          file_name_at(ctx, tok),
+          line_at(ctx, tok),
+        )
+        let sub = substitute_params_ext(
+          body2,
           eff_params,
           Some(eff_args),
           Some(eff_subst),
@@ -587,4 +623,40 @@ fn count_param_occurrences(mdef : @token.MacroDef, param : String) -> Int32 {
     }
   }
   n
+}
+
+///|
+/// #221：使用点行号分派——主段在拼接区间内时**还原原文件行**
+///（拼接坐标 − 段起点 + 1）；否则 real_line（include 段的仿古补偿
+/// 已由 real_line 承载）。
+fn line_at(ctx : ExpandCtx, use_site : @token.Token) -> Int32 {
+  if use_site.loc.file_id == 0 && ctx.merged_spans.length() > 0 {
+    for span in ctx.merged_spans {
+      if use_site.loc.line >= span.0 && use_site.loc.line <= span.1 {
+        return use_site.loc.line - span.0 + 1
+      }
+    }
+  }
+  use_site.real_line
+}
+
+///|
+/// #221：使用点文件名分派（展开循环同款逻辑的 helper 形——主段按拼接
+/// 区间表、include 段按 file_names）。
+fn file_name_at(ctx : ExpandCtx, use_site : @token.Token) -> String {
+  if use_site.loc.file_id == 0 {
+    let mut hit = ctx.main_name
+    for span in ctx.merged_spans {
+      if use_site.loc.line >= span.0 && use_site.loc.line <= span.1 {
+        hit = span.2
+        break
+      }
+    }
+    hit
+  } else {
+    match ctx.file_names.get(use_site.loc.file_id) {
+      Some(n) => n
+      None => ctx.main_name
+    }
+  }
 }

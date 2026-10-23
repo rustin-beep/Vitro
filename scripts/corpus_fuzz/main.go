@@ -509,7 +509,9 @@ func runCmd(args []string, dir string) (string, string, int) {
 // 为 cwd 运行——写文件的语料把 test.txt 落回根域，后续 freeze 轮在污染
 // 环境入账 AGREE 假象、CI 干净检出真值 WRONG_VALUE 桶恶化红（file_fopen/
 // fread 族两连坐）。运行 cwd 改 workdir（=cacheDir，KEY 漂移时整体清）：
-// 变异体间的顺序文件耦合消除、本地与 CI 同判（clang_direct P1-1 同款）。
+// 根域写脏断根（与 CI 检出同判）；变异体间在 cacheDir 内仍有顺序文件
+// 副作用共享（per-case 目录才是完全隔离——clang_direct P1-1 形态，
+// 登记为改进项，当前语料域 write-read 跨例耦合未观测到）
 func clangOutcome(src string, workdir string) outcome {
 	exe := filepath.Join(workdir, "a.exe")
 	_, errtxt, rc := runCmd([]string{"clang", "-O0", src, "-o", exe}, ".")
@@ -893,6 +895,9 @@ func main() {
 }
 
 // latin1Fold：UTF-8 的 U+0080–U+00FF 双字节序折回 Latin-1 单字节（自
+// 局限（审阅 P3-5）：程序真输出合法 UTF-8 多字节序列（如 © = C2 A9）时
+// 同被折叠致与 clang 侧不等——当前 fuzz 语料 ASCII 面无影响，非 ASCII
+// 输出语料入库前需换按字节精确比对（
 // clang_direct 迁入——#66 在彼处随出口字节直通退役，本 JSON 通道消费
 // 侧重启用：程序 stdout 是字节流，经 JSON delta 码点域须折回字节域再比）。
 func latin1Fold(s string) string {

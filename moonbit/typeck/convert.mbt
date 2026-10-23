@@ -278,11 +278,20 @@ fn TypeChecker::check_function_pointer_assignable(
     return true
   }
   if t_fp && value.kind() is TK_Pointer {
-    self.report_warning(
-      "将通用指针赋值给函数指针，建议显式转换",
-      loc,
-      W3055_VoidPointerCast,
-    )
+    // P2-2（审阅批 2026-10-23）：函数指针互赋（含 &f 取址形态——
+    // resolve 的 Addr 臂产 pointer_to(Function)）合法零警告——clang 同
+    // 判；W3055 只服务 void* 桥接（v_pointee is Void 才有提示价值）
+    let v_is_fn_ptr = match value {
+      Pointer(vp, _) => vp.kind() is TK_Function
+      _ => false
+    }
+    if !v_is_fn_ptr {
+      self.report_warning(
+        "将通用指针赋值给函数指针，建议显式转换",
+        loc,
+        W3055_VoidPointerCast,
+      )
+    }
     return true
   }
   false

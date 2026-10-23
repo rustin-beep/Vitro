@@ -40,6 +40,14 @@ struct Pp[P] {
   processed : Set[String]
   /// 规范路径 → file_id（LineMap/诊断归属单源）。
   file_ids : Map[String, Int32]
+  /// file_id → 显示名（#221：__FILE__ 展开单源——basename 形态，与
+  /// 诊断归属的规范路径解耦）。
+  file_names : Map[Int32, String]
+  /// 主文件名（file_id=0 段的 __FILE__ 值；单文件 CLI 形态即编译入口名）。
+  main_name : String
+  /// 拼接段行区间表（起行, 止行, 显示名）——多 .c 拼接形态（gateway
+  /// merge_units）主段内按行区分 __FILE__；空表 = 单文件（恒 main_name）。
+  merged_spans : Array[(Int32, Int32, String)]
   mut next_file_id : Int32
   /// 文件内容缓存（环检测 DFS 与实际拼接共用一次读取）。
   content_cache : Map[String, String]
@@ -50,6 +58,8 @@ pub fn[P] Pp::new(
   provider~ : P,
   cpp_mode~ : Bool,
   base_dir~ : String = ".",
+  main_name~ : String = "main.c",
+  merged_spans~ : Array[(Int32, Int32, String)] = [],
 ) -> Pp[P] {
   {
     provider,
@@ -64,6 +74,9 @@ pub fn[P] Pp::new(
     cond_stack: [],
     processed: Set([]),
     file_ids: Map([]),
+    file_names: Map([]),
+    main_name,
+    merged_spans,
     next_file_id: 1,
     content_cache: Map([]),
   }

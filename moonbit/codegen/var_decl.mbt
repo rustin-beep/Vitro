@@ -850,9 +850,14 @@ fn BytecodeGen::emit_local_struct_init(
               }
               if found >= 0 && found < fields.length() {
                 cursor = found + 1
+                // P1-3 连坐（审阅批 2026-10-23）：union 目标成员全偏移 0
+                //（全局版 flatten_struct_designated_global 有 is_union 特判，
+                // 本局部分支漏——`{.y=1}` 写到偏移 4 越界、u.y 读 0）
                 let mut o = 0
-                for j = 0; j < found; j = j + 1 {
-                  o += self.type_size(fields[j].ty)
+                if !(vty.kind() is TK_Union) {
+                  for j = 0; j < found; j = j + 1 {
+                    o += self.type_size(fields[j].ty)
+                  }
                 }
                 self.emit_field_init(
                   base_temp,

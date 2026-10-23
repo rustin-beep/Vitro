@@ -26,6 +26,13 @@ struct Table {
     char cells[(int)(1 + 2)][N]; /* struct 成员含 cast */
 };
 
+/* 审阅 P1-5：成员维数 sizeof 惯用法（延迟折叠——sizeof g/sizeof g[0]） */
+static const char *const TIPS[] = { "t1", "t2", "t3", "t4" };
+#define TIP_COUNT ((int)(sizeof TIPS / sizeof TIPS[0]))
+struct TipTable {
+    char rows[TIP_COUNT][8];
+};
+
 /* 全局含 cast + sizeof 惯用法宏（SCORE_STRATEGY_COUNT 同款） */
 static char g_lines[CNT][N];
 
@@ -45,6 +52,13 @@ int main(void) {
     t.cells[2][0] = 'T';
     t.cells[2][1] = 0;
     printf("member=%s\n", t.cells[2]);
+
+    /* 成员 sizeof 惯用法（审阅 P1-5）*/
+    struct TipTable tt;
+    tt.rows[TIP_COUNT - 1][0] = 'Z';
+    tt.rows[TIP_COUNT - 1][1] = 0;
+    printf("tips=%d %s\n", TIP_COUNT, tt.rows[TIP_COUNT - 1]);
+    printf("tipsize=%d\n", (int)sizeof(struct TipTable));
 
     /* 无 cast 对照（既有路径回归锚） */
     char plain[2 * 2][N];

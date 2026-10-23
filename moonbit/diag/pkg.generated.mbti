@@ -149,6 +149,8 @@ pub(all) enum ErrorCode {
   E3081_NegativeArraySize
   E3082_FuncTypeField
   E3083_NullDeref
+  W3084_MissingReturnPath
+  W3085_ImplicitFuncDecl
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

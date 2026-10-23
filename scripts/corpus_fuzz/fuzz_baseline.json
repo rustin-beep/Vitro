@@ -1,5 +1,14 @@
 {
   "entries": {
+    "baseline/array_address.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/array_address.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/array_address.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/array_assign_lvalue_reject.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -260,6 +269,15 @@
     },
     "baseline/compound_assign_struct.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/compound_literal_lvalue.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/compound_literal_lvalue.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/compound_literal_lvalue.c|memset_zero": {
+      "bucket": "AGREE"
     },
     "baseline/compound_mod_var.c|cast_strip": {
       "bucket": "CLANG_REJECT"
@@ -711,6 +729,15 @@
     "baseline/forward_decl.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/forward_decl_usage.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/forward_decl_usage.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/forward_decl_usage.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/fprintf_basic.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -1116,6 +1143,15 @@
     "baseline/mul_overflow_safe.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/multi_dim_array.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_dim_array.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_dim_array.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/multi_level_ptr_cast_struct.c|cast_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1235,6 +1271,15 @@
     "baseline/p2e_div_zero_scope.c|nested2flat": {
       "bucket": "VITRO_TRAP",
       "note": "受检 trap vs clang UB 崩溃域——待定性"
+    },
+    "baseline/p2f_review_regression_guards.c|cast_strip": {
+      "bucket": "VITRO_TRAP"
+    },
+    "baseline/p2f_review_regression_guards.c|div2shift": {
+      "bucket": "VITRO_TRAP"
+    },
+    "baseline/p2f_review_regression_guards.c|init_partial": {
+      "bucket": "VITRO_TRAP"
     },
     "baseline/p71_tier3_scanf.c|brace_wrap": {
       "bucket": "WRONG_VALUE",
@@ -1635,6 +1680,15 @@
     "baseline/short_type.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/side_effect_index.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/side_effect_index.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/side_effect_index.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/sizeof.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -1669,6 +1723,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/sizeof_expr.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_float_arr.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_float_arr.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_float_arr.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/sizeof_struct_union.c|cast_strip": {
@@ -1953,6 +2016,15 @@
     "baseline/struct_nested_init.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/struct_pointer_access.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/struct_pointer_access.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/struct_pointer_access.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/struct_ret_stmt_leak.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -2110,6 +2182,15 @@
     "baseline/unsigned_lshr.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/unsigned_mul_wrap.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_mul_wrap.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_mul_wrap.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/unsigned_printf_lu.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
@@ -2171,6 +2252,15 @@
       "bucket": "AGREE"
     },
     "baseline/vla_row_pointer.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_sizeof.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/vla_sizeof.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/vla_sizeof.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/while_continue.c|div2shift": {

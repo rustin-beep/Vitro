@@ -92,9 +92,14 @@ fn BytecodeGen::emit_static_var(
     self.report_error("static 变量不支持变长数组(VLA)", loc)
     return
   }
-  if self.static_local_indices.contains(n) {
-    return
-  }
+  // #277（2026-10-23）：删裸名 contains 早退——同名 static 在不同块
+  // （C11 6.2.1 独立对象）与不同函数（跨函数残留同名键）两形态下旧逻辑
+  // 都复用外层/他函数槽：内层初始化被跳过、读写错指（探针 p10：内层
+  // `static int a[2]={1,1}` 读到外层 {9,9}）。改为每声明必分配新槽 +
+  // 遮蔽登记（record_scope_static），退出作用域由 exit_scope 恢复外层
+  // 映射。函数体内单次遍历（Pass 3），无「同一声明重复 emit」场景，
+  // 早退自 S5 初版照搬 Rust 而来、无语义必要。
+  self.record_scope_static(n)
   let sz = self.type_size(vty)
   let aligned_sz = if sz % 4 == 0 { sz } else { sz + 4 - sz % 4 }
   let global_offset = match
@@ -433,6 +438,13 @@ fn BytecodeGen::emit_local_init(
     let scalar_kind = target_type.kind()
     self.gen_expr(init)
     match scalar_kind {
+      // #272（2026-10-23）：数组复合字面量初始化指针变量（`int *p =
+      // (int[]){10,20};`）——gen_expr 物化后栈顶留**对象地址**，地址即
+      // 指针值（clang 口径 p 指向物化临时对象），直接落槽。不得沿标量
+      // 路径 LoadMem：旧把留地址尾当可读地址，load 出**首元素值**存给
+      // p——p 持元素值 10，p[0] 变成解引用小整数地址 → trap/静默错值
+      //（dump_compile 实证 pc 序：StoreLocal p ← LoadMem [FB+物化槽]）
+      TK_Array => self.emit(@opcode.OpCode::StoreLocal, local_offset, loc)
       TK_Double => {
         self.emit(@opcode.OpCode::LoadMemD, 0, loc)
         self.emit(@opcode.OpCode::StoreLocalD, local_offset, loc)

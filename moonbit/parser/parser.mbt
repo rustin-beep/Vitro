@@ -1305,15 +1305,33 @@ fn Parser::parse_aggregate_trailing_globals(
     // #137 缺陷 2（2026-10-17）：trailing 声明器不得吞 typedef 名——
     // `struct P{...}; ll g = 3;` 旧把 `ll` 当 struct P 的声明器名吞掉，
     // `g`/`= 3` 悬空报双 E2005（typedef 别名在聚合声明后「文件作用域
-    // 失效」的假象——表没丢，是 trailing 贪吃）。enum 无 trailing 故
-    // 不触发；函数体不走顶层路径故正常。而 `struct P{...} ll;`（ll 已
-    // 为 typedef 名）本属 clang 非法重声明，拒吞即对齐
+    // 失效」的假象——表没丢，是 trailing 贪吃）。注意 enum **自带孪生
+    // trailing 循环**（decl.mbt parse_enum_decl，PR #282 审阅 P2-1 起
+    // 含 init 解析）——本函数不路由 enum，勿读作「enum 无 trailing 形态」。
+    // 而 `struct P{...} ll;`（ll 已为 typedef 名）本属 clang 非法重声明，
+    // 拒吞即对齐
     if self.typedef_names.get(t) is Some(_) {
       return
     }
   }
   while true {
     let d = self.parse_declarator(base, 0)
+    // #278（2026-10-23）：trailing 声明器支持初始化器——`union {..} gu = {.b=5};`
+    // 旧恒 init:None 且不消费 '='，首个 E2005 落在 '=' 前后 + 剩余 token 逐个
+    // 炸顶层 UnexpectedTop（union 带声明器全落本函数：classify 恒 UnionDecl；
+    // struct 对称形态被分到 StructVarOrFunc 完整路径故不触发——两条路径不对称
+    // 是本缺陷只咬 union 的原因）。init 解析与 parse_global_var_or_func 同款
+    //（'{' → init_list / 否则 assign），loc 口径同步：落在初始化器末 token，
+    // 无初始化时落在名字 token（Rust 现状口径）
+    let init = if self.match_token(Assign) {
+      if self.check(LBrace) {
+        Some(self.parse_init_list(0))
+      } else {
+        Some(self.parse_assign(0))
+      }
+    } else {
+      None
+    }
     let prev = self.previous()
     let loc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
     program.globals.push({
@@ -1321,7 +1339,7 @@ fn Parser::parse_aggregate_trailing_globals(
       loc,
       ty: d.0,
       name: d.1,
-      init: None,
+      init,
     })
     self.parsed_var_types.push((d.1, d.0))
     if !self.match_token(Comma) {

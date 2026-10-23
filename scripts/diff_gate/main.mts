@@ -19,6 +19,7 @@ import { makeFail } from "../internal/genio.mts";
 import { lexerTarget } from "./targets/lexer.mts";
 import { parserTarget } from "./targets/parser.mts";
 import { typeckTarget } from "./targets/typeck.mts";
+import { vmTarget } from "./targets/vm.mts";
 import type { DiffTarget } from "../internal/diffgate.mts";
 
 /** 入口用法错的出口：exit 2（与 target 的判红码 1 分流）。 */
@@ -30,6 +31,7 @@ const TARGETS: Record<string, DiffTarget> = {
   lexer: lexerTarget,
   typeck: typeckTarget,
   parser: parserTarget,
+  vm: vmTarget,
 };
 
 const NAMES = Object.keys(TARGETS);

@@ -408,6 +408,7 @@ fn[P : @token.SourceProvider] Pp::handle_include(
       let id = self.next_file_id
       self.next_file_id += 1
       self.file_ids[key] = id
+      self.file_names[id] = display_name_of(key)
       id
     }
   }

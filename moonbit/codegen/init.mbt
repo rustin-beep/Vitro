@@ -251,8 +251,19 @@ fn BytecodeGen::push_global_addr_init(
     )
     true
   } else {
-    self.pending_addr_inits.push((base_offset, name))
-    true
+    // P1-4（审阅批 2026-10-23）：`&f` 函数取址初始化器——func_index 编码
+    // 与裸名 Identifier 路径同源（gen.mbt 顶层标量臂先查函数表）；旧只查
+    // 变量表，pending 最终丢弃 ⇒ 落 0，运行期 CallPtr「索引 0 越界」TRAP
+    match self.func_index.get(name) {
+      Some(idx) => {
+        self.globals_init_32.push((base_offset, idx))
+        true
+      }
+      None => {
+        self.pending_addr_inits.push((base_offset, name))
+        true
+      }
+    }
   }
 }
 

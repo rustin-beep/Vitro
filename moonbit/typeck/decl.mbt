@@ -86,10 +86,13 @@ fn TypeChecker::visit_func_decl(
   self.current_func_params.clear()
   // #214（2026-10-22）：非 void 函数的未返回路径教学警告——所有出口
   // 路径缺 return 时返回值未定义（C 标准不保证任何值，得 0 只是巧合）；
-  // clang -Wreturn-type 同点。always_returns 覆盖 Return/Block 尾段/
-  // if-else 双臂/while(true) 教学主形态，switch 覆盖形态保守不算
-  //（default 全臂返回的精确分析教学域收益低，误报代价更高）
-  if node.body is Some(body_stmt) && !(node.return_type.kind() is TK_Void) {
+  // clang -Wreturn-type 同点。always_returns 判据对齐 clang 矩阵
+  //（审阅 P1-1 批 2026-10-23 补全四形态）：Return/Block 尾段/if-else
+  // 双臂/while(true)/for(;;)/do-while 体必返/switch 全 case 臂+default
+  // 必返；main 豁免（C11 5.1.2.2.3 隐式 return 0——clang 同判不告警）
+  if node.body is Some(body_stmt) &&
+    !(node.return_type.kind() is TK_Void) &&
+    node.name != "main" {
     if !always_returns(body_stmt) {
       self.report_warning(
         "非 void 函数 '\{node.name}' 存在未返回路径——返回值将是未定义值，每条出口路径都需要 return",
@@ -102,10 +105,12 @@ fn TypeChecker::visit_func_decl(
 }
 
 ///|
-/// 语句是否必然产生 return（#214 缺 return 检测的控制流近似）：Return
-/// 直判；Block 任一尾部子语句命中即整体必然（顺序语句只有最后能到）；
-/// if 带 else 且双臂必然则必然；while(true) 字面量条件无 break 直判
-///（break 的存在性扫描保守从宽——罕见形态宁可漏报不误报）。
+/// 语句是否必然产生 return（#214 缺 return 检测的控制流近似；判据对齐
+/// clang -Wreturn-type 矩阵——审阅 P1-1 批 2026-10-23）：Return 直判；
+/// Block 任一尾部子语句命中即整体必然（顺序语句只有最后能到）；if 带
+/// else 且双臂必然则必然；while(true)/for(;;) 无 break 直判；do-while
+/// 体必返则必返（体至少执行一次，与 cond 无关）；switch 全 case 臂
+/// 必返且 default 在场（缺 default 有贯穿出口——clang 同判告警）。
 fn always_returns(stmt : @ast.Stmt) -> Bool {
   match stmt {
     Return(_, _) => true
@@ -129,9 +134,46 @@ fn always_returns(stmt : @ast.Stmt) -> Bool {
         Literal(v, _, _) => v != 0 && !stmt_contains_break(stmt)
         _ => false
       }
+    For(_, cond, _, _, _) =>
+      match cond {
+        None => !stmt_contains_break(stmt)
+        Some(Literal(v, _, _)) => v != 0 && !stmt_contains_break(stmt)
+        _ => false
+      }
+    DoWhile(body, _, _) => always_returns(body)
+    Switch(_, body, _) => switch_all_cases_return(body)
     Label(_, inner, _) => always_returns(inner)
     _ => false
   }
+}
+
+///|
+/// switch 体（Block 或裸 Case 链）是否「全 case 臂必返且 default 在场」。
+fn switch_all_cases_return(body : @ast.Stmt) -> Bool {
+  let cases : Array[@ast.Stmt] = match body {
+    Block(stmts, _) => stmts
+    other => [other]
+  }
+  let mut has_default = false
+  let mut seen_case = false
+  for c in cases {
+    match c {
+      Case(None, inner, _) => {
+        has_default = true
+        if !always_returns(inner) {
+          return false
+        }
+      }
+      Case(Some(_), inner, _) => {
+        seen_case = true
+        if !always_returns(inner) {
+          return false
+        }
+      }
+      _ => ()
+    }
+  }
+  seen_case && has_default
 }
 
 ///|

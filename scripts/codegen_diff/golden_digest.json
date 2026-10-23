@@ -10,7 +10,7 @@
         "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
         "array_bounds_safe.c": "0f125842",
-        "array_dim_cast.c": "22c2c0c9",
+        "array_dim_cast.c": "7db8420e",
         "array_dim_const_expr.c": "8820e906",
         "array_index.c": "a562c208",
         "array_index_increment.c": "d92fbb2c",
@@ -92,7 +92,7 @@
         "designated_init.c": "1bb9fd6b",
         "designated_mixed_cont.c": "413bba13",
         "designated_struct_copy.c": "2ea3f5f3",
-        "designated_struct_init.c": "d2d2524d",
+        "designated_struct_init.c": "47b156ec",
         "dfs_graph.c": "7ec6a1df",
         "div_by_var.c": "9db4f22f",
         "do_while.c": "8f06ab4b",
@@ -181,7 +181,7 @@
         "func_ptr_param_decay.c": "f6d41aad",
         "func_redefinition.c": "a29681ba",
         "func_return_as_arg.c": "7801ab85",
-        "func_return_safety.c": "b7ced8d0",
+        "func_return_safety.c": "00e7474e",
         "function_call.c": "4e864050",
         "function_pointer_arg.c": "b93a77d0",
         "function_pointer_array.c": "9420f92e",
@@ -316,6 +316,7 @@
         "pre_decrement.c": "c4c36fe5",
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
+        "predefined_macro.c": "b4cfaf56",
         "print_int_user_redefine.c": "c6d73ef4",
         "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
@@ -513,7 +514,7 @@
           "result_sha": "9f76538e1765a379"
         },
         "array_dim_cast.c": {
-          "result_sha": "51dc12302d5f0fbf"
+          "result_sha": "ae9aba0ea369c1db"
         },
         "array_dim_const_expr.c": {
           "result_sha": "edf6125acf461563"
@@ -760,7 +761,7 @@
           "result_sha": "8f0180348759fe72"
         },
         "designated_struct_init.c": {
-          "result_sha": "43dd398c9b2dd73c"
+          "result_sha": "e47a2255ab5b4252"
         },
         "dfs_graph.c": {
           "result_sha": "0ce7db71b17b8402"
@@ -1034,7 +1035,7 @@
           "result_sha": "210ad8d2a3b4a48b"
         },
         "func_return_safety.c": {
-          "result_sha": "44d07e02ef576c14"
+          "result_sha": "b06bf1fcb0eef126"
         },
         "function_call.c": {
           "result_sha": "0825b54c550e2375"
@@ -1445,6 +1446,9 @@
         },
         "precedence.c": {
           "result_sha": "e61c7c3ab5cdeb8b"
+        },
+        "predefined_macro.c": {
+          "result_sha": "31bcdcecf3feb935"
         },
         "print_int_user_redefine.c": {
           "result_sha": "6295ef49e92b9724"

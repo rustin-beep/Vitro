@@ -45,8 +45,16 @@ pub fn[P : @token.SourceProvider] tokenize_with(
   provider~ : P,
   cpp_mode~ : Bool = false,
   base_dir~ : String = ".",
+  main_name~ : String = "main.c",
+  merged_spans~ : Array[(Int32, Int32, String)] = [],
 ) -> @token.LexResult {
-  let pp_state : @pp.Pp[P] = @pp.Pp::new(provider~, cpp_mode~, base_dir~)
+  let pp_state : @pp.Pp[P] = @pp.Pp::new(
+    provider~,
+    cpp_mode~,
+    base_dir~,
+    main_name~,
+    merged_spans~,
+  )
   let tokens = pp_state.run_pp(src, emit_eof=true)
   pp_state.finish_pp(tokens)
 }
@@ -60,12 +68,16 @@ pub fn tokenize_with_vfs(
   files~ : Map[String, String],
   cpp_mode~ : Bool = false,
   base_dir~ : String = ".",
+  main_name~ : String = "main.c",
+  merged_spans~ : Array[(Int32, Int32, String)] = [],
 ) -> @token.LexResult {
   let provider = @host.vfs_provider(files~)
   let pp_state : @pp.Pp[@host.VfsProvider] = @pp.Pp::new(
     provider~,
     cpp_mode~,
     base_dir~,
+    main_name~,
+    merged_spans~,
   )
   let tokens = pp_state.run_pp(src, emit_eof=true)
   pp_state.finish_pp(tokens)

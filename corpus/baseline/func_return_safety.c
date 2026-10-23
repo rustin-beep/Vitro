@@ -1,10 +1,11 @@
 /*
  * @category: func_safety
- * 非 void 缺 return 与隐式函数声明两教学点（#214 修复锚，2026-10-22）：
- * W3084（所有出口路径缺 return——返回值未定义，clang -Wreturn-type 同
- * 点）+ W3085（无原型前向调用——C99 起隐式声明废弃，clang 默认 error、
- * 教学口径 warning）。对照组：双臂 return / 原型先行不误报。运行行为
- * 与 clang 对拍（警告不进 stdout）。clang 真值对拍。
+ * 非 void 缺 return 与隐式函数声明两教学点（#214 修复锚，2026-10-22；
+ * 审阅 P1-1/P2-1 批 2026-10-23 补强——W3084 四反例形态与锚位勘误）：
+ * W3084（所有出口路径缺 return——返回值未定义，clang -Wreturn-type
+ * 同点判据矩阵：main 豁免/for(;;)/do-while 体必返/switch 全臂+default）
+ * + W3085（无原型前向调用——C99 起隐式声明废弃，教学宽容 warning，
+ * 与 clang error 的编译状态分歧不入锚、由 wbtest 锁）。clang 对拍。
  */
 #include <stdio.h>
 
@@ -19,7 +20,17 @@ int fallthrough(int x) {                    /* W3084：if 单臂落空 */
 int no_return(int x) {                      /* W3084：全缺 */
     printf("side=%d\n", x);
 }
-int late_def(int v) { return v + 1; }       /* 定义晚于 main：W3085 */
+/* W3084 四反例（clang -Wreturn-type 零告警形态）——审阅 P1-1 补强 */
+int spin_forever(void) { for (;;) {} }      /* for(;;) 永不退出 */
+int do_once(void) { do { return 1; } while (0); }  /* 体必返 */
+int pick(int x) {                           /* switch 全臂 + default */
+    switch (x) {
+    case 1: return 10;
+    case 2: return 20;
+    default: return 0;
+    }
+}
+int late_def(int v) { return v + 1; }       /* 值对照（定义先行） */
 
 int main(void) {
     printf("add=%d\n", add(2, 3));

@@ -157,6 +157,8 @@ type finding struct {
 }
 
 // tierOf：文件所属档位（counter 的 dir_tiers 首个前缀命中；无命中顶层档）。
+// P3-2（审阅批 2026-10-23）：档位目录名写错/不存在时 tierOf 静默落顶层
+// 档（配置空转而闸绿）——启动时逐档验证目录真实存在，fail loud。
 func tierOf(c counter, f string) (dirTier, string) {
 	for _, t := range c.DirTiers {
 		for _, d := range t.Dirs {
@@ -166,6 +168,26 @@ func tierOf(c counter, f string) (dirTier, string) {
 		}
 	}
 	return dirTier{MaxPerFile: c.MaxPerFile}, ""
+}
+
+// validateDirTiers：档位目录存在性守卫（空转根除——审阅 P3-2）。
+func validateDirTiers(rd rulesDoc) {
+	seen := map[string]bool{}
+	for _, m := range rd.Metrics {
+		for _, c := range m.Counters {
+			for _, t := range c.DirTiers {
+				for _, d := range t.Dirs {
+					if seen[d] {
+						continue
+					}
+					seen[d] = true
+					if _, err := os.Stat("corpus/" + d); err != nil {
+						fatal("dir_tiers 档位目录 corpus/%s 不存在（配置空转：文件将静默落顶层档）", d)
+					}
+				}
+			}
+		}
+	}
 }
 
 func scan(root string, rd rulesDoc) ([]finding, int) {
@@ -322,6 +344,7 @@ func main() {
 	if err := json.Unmarshal(raw, &rd); err != nil {
 		fatal("解析规则失败: %v", err)
 	}
+	validateDirTiers(rd)
 	if rd.CorpusRoot == "" || len(rd.CorpusDirs) == 0 || len(rd.Metrics) == 0 {
 		fatal("规则缺 corpus_root / corpus_dirs / metrics")
 	}

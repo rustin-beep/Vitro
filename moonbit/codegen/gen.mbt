@@ -551,6 +551,19 @@ fn BytecodeGen::pass1_register_global(
                               }
                             }
                           }
+                        // P1-4（审阅批 2026-10-23）：`&f` 取址元素——与裸
+                        // 名同源（push_global_addr_init 已补 func_index 查
+                        // 询：函数名落 func_index 编码 / 数组名落地址 /
+                        // 前向 pending）；旧落 flatten 折叠 0 ⇒ CallPtr
+                        // 索引越界 TRAP
+                        Unary(@ast.UnaryOp::Addr, Identifier(aname, _, _), _, _) => {
+                          addr_handled = self.push_global_addr_init(addr, aname)
+                          if addr_handled || i >= values.length() {
+                            0
+                          } else {
+                            values[i]
+                          }
+                        }
                         _ => if i < values.length() { values[i] } else { 0 }
                       }
                     None => 0

@@ -83,6 +83,9 @@ fn[P : @token.SourceProvider] Pp::evaluate_cond_inner(
   let warn_scratch : Array[@token.LexWarning] = []
   let ctx : ExpandCtx = {
     macros: self.macros,
+    file_names: self.file_names,
+    main_name: self.main_name,
+    merged_spans: self.merged_spans,
     errors: self.errors,
     warnings: warn_scratch,
     trace: self.trace,

@@ -66,14 +66,31 @@ pub fn TypeChecker::check_struct_initializer(
       }
       let has_designators = elements.exists(e => e.designators.length() > 0)
       if has_designators {
+        // P2-3（审阅批 2026-10-23，C11 6.7.9p20 混合合法）：designator
+        // 后的裸项按 cursor 续位（clang/GNU 均接受 `{.a=1, 2}`——2 落
+        // a 的下一位 b；codegen 病 121 批已实现同款续位语义）——旧全量
+        // W3005 误报且裸项跳检；现按续位走正常 check_field_value
+        let mut cursor = 0
         for i in 0..<elements.length() {
           let elem = elements[i]
           if elem.designators.length() == 0 {
-            self.report_warning(
-              "初始化列表中不能混合使用指定初始化和非指定初始化",
+            if cursor >= fields.length() {
+              self.report_warning(
+                "初始化列表元素数量超过结构体字段数",
+                loc,
+                W3005_ArrayInitTooMany,
+              )
+              continue
+            }
+            let cur = cursor
+            cursor = cur + 1
+            let new_value = self.check_field_value(
+              fields[cur].0,
+              fields[cur].1,
+              elem.value,
               loc,
-              W3005_ArrayInitTooMany,
             )
+            elements[i] = { ..elem, value: new_value, }
             continue
           }
           if elem.designators.length() != 1 {
@@ -89,6 +106,7 @@ pub fn TypeChecker::check_struct_initializer(
               let field_idx = find_field(fields, field_name)
               match field_idx {
                 Some(idx) => {
+                  cursor = idx + 1
                   // #157：designated 指名柔性成员同报（位置路径对称面）
                   if is_flexible_array_member(fields[idx].0) {
                     self.report_error(

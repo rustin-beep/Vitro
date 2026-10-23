@@ -355,7 +355,20 @@ fn TypeChecker::resolve_unary(
           }
         _ => ()
       }
-      @ast.Type::pointer_to(operand_type)
+      // P2-2（审阅批 2026-10-23，C11 6.5.3.1）：函数指示符取址 &f ≡ f
+      //——函数名 resolve 已产 decay 形态 Pointer(Function)，再包一层成
+      // Pointer(Pointer(Function)) 双层（&f 与 f 类型不一致 + 误触
+      // W3055）——函数名原样返回
+      let is_func_name = match new_operand {
+        Identifier(n, _, _) =>
+          self.funcs.contains(n) || self.static_func_sigs.contains(n)
+        _ => false
+      }
+      if is_func_name {
+        operand_type
+      } else {
+        @ast.Type::pointer_to(operand_type)
+      }
     }
     Deref =>
       if !(operand_type.kind() is TK_Pointer) && !operand_type.is_array() {

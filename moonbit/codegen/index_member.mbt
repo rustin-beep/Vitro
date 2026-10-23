@@ -458,7 +458,7 @@ fn BytecodeGen::anon_promote_lookup(
     if depth >= 8 {
       return None
     }
-    for f in fs {
+    for fi, f in fs {
       if f.name != "" {
         continue
       }
@@ -470,20 +470,26 @@ fn BytecodeGen::anon_promote_lookup(
         TK_Struct => bgen.struct_defs.get(f.ty.name())
         _ => bgen.union_defs.get(f.ty.name())
       }
+      // P1-2（审阅批 2026-10-23）：匿名字段 f 的命中偏移须含 f 在 fs 的
+      // 前缀（嵌套 >=2 层时递归返回的相对偏移漏此层——.d 写进 c 的根）
+      let mut f_pre = 0
+      for j = 0; j < fi; j = j + 1 {
+        f_pre += bgen.type_size(fs[j].ty)
+      }
       match inner_fields {
         Some(ifs) => {
           // union 成员全偏移 0（仅 struct 按前缀累加）
           let mut off = 0
           for j, inner in ifs {
             if inner.name == fname {
-              return Some((off, inner.ty))
+              return Some((f_pre + off, inner.ty))
             }
             if k is TK_Struct {
               off += bgen.type_size(inner.ty)
             }
           }
           match recurse(bgen, ifs, depth + 1) {
-            Some((io, it)) => return Some((io, it))
+            Some((io, it)) => return Some((f_pre + io, it))
             None => ()
           }
         }

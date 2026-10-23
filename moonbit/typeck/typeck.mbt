@@ -112,20 +112,11 @@ pub fn TypeChecker::check(
   // 仍 E3002（照旧）。
   for si in 0..<program.structs.length() {
     let s = program.structs[si]
-    // #265（2026-10-22）：成员数组 cast 维数误判 VLA 的常量二次折叠
-    //（sizeof 形态折不了——struct 注册先于全局符号登记，lookup_var
-    // 扑空；cast 直接维数可折，运行时 0 哨兵 stride trap 一并解除）
-    let s = if s.is_forward {
-      s
-    } else {
-      let folded : Array[@ast.StructField] = []
-      for f in s.fields {
-        folded.push({ ..f, ty: self.refold_vla_const_dims(f.ty), })
-      }
-      let ns = { ..s, fields: folded, }
-      program.structs[si] = ns
-      ns
-    }
+    // #265/P1-5（审阅批 2026-10-23 改）：成员数组的 cast/sizeof 维数
+    // 折叠**延迟**到全局符号+尺寸推断定型后统一跑（defer_refold_
+    // members）——struct 注册期 lookup_var 扑空（sizeof g/sizeof g[0]
+    // 的 g 未登记），旧即时折叠只覆盖纯 cast 面，sizeof 惯用语折不出
+    // 维持 0 哨兵（type_size 算 4 + 下标越界 TRAP）
     if s.is_forward {
       if !self.structs.contains(s.name) {
         self.structs.set(s.name, { fields: [], is_complete: false, })
@@ -187,18 +178,7 @@ pub fn TypeChecker::check(
   }
   for ui in 0..<program.unions.length() {
     let u = program.unions[ui]
-    // #265 同 struct：成员 cast 维数误判 VLA 的常量二次折叠
-    let u = if u.is_forward {
-      u
-    } else {
-      let folded : Array[@ast.StructField] = []
-      for f in u.fields {
-        folded.push({ ..f, ty: self.refold_vla_const_dims(f.ty), })
-      }
-      let nu = { ..u, fields: folded, }
-      program.unions[ui] = nu
-      nu
-    }
+    // #265/P1-5 同 struct：成员维数折叠延迟到 defer_refold_members
     if u.is_forward {
       if !self.unions.contains(u.name) {
         self.unions.set(u.name, { fields: [], is_complete: false, })
@@ -427,6 +407,11 @@ pub fn TypeChecker::check(
       }
     }
   }
+  // #265/P1-5（审阅批 2026-10-23）：struct/union 成员的 cast/sizeof 维数
+  // 折叠延迟点——全局符号登记与数组尺寸推断均定型（sizeof g/sizeof g[0]
+  // 的 lookup_var 命中真类型），折后回写 program 与 structs/unions 符号
+  // 表（is_complete 保持）；注册期即时折叠只覆盖纯 cast 面（sizeof 折
+  // 不出 ⇒ 维持 0 哨兵、type_size 4、下标越界 TRAP——审阅 p8 实锤）
   for i in 0..<program.globals.length() {
     let g = program.globals[i]
     // #265（2026-10-22）：cast/sizeof 维数误判 VLA 的常量二次折叠——
@@ -526,6 +511,11 @@ pub fn TypeChecker::check(
       }
     }
   }
+  // #265/P1-5（审阅批 2026-10-23）：defer 移位二段——必须在全局尺寸
+  // 推断循环**之后**（`static const char *TIPS[] = {...}` 的维数推断
+  // 发生在该循环，之前跑 lookup_var 拿 [-1] 未定型 → sizeof 惯用法
+  // 折不出〔tipsize 8 vs 32 实锤〕）
+  self.defer_refold_members(program)
   // Pass 3: Check function bodies（decl.mbt visit_func_decl——body 为
   // None 的存根声明跳过：include 存根注入与 extern 声明同此轨）
   for i in 0..<program.funcs.length() {

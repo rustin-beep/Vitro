@@ -223,9 +223,11 @@ jobs:
           path: |
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
-          # #273 批（2026-10-23）：差分五驱动已切 TS 版，故两侧源码都要进 key
-          # （Go 版暂留作回退面，其变更同样影响口径）。
-          # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
+          # #273 批（2026-10-23）：差分五驱动已切 TS 版，故 key 取 TS 侧源码
+          # （diff_gate/**/*.mts + internal/**/*.mts）+ 仍跑 Go 的 clang_direct
+          # 与其依赖的 internal/**/*.go。Go 版 diff 驱动（vm_diff 等）不再进 key
+          # ——它们已不被 CI 执行，其变更不影响产物；否则 ci_checklist 会把
+          # hashFiles 引用判成「活行」而报僵尸例外。
           key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/diff_gate/**/*.mts', 'scripts/internal/**/*.mts') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
@@ -533,9 +535,11 @@ jobs:
       # 与冻结 golden 全量对拍。前置 = gateway wasm 产物（artifact）+ node +
       # 工具链；产物新鲜度由脚本自带门禁兜（#41 毒化机判）。
       # 全量各 ~80s（本地实测 609/704 例）。
+      # #273 批（2026-10-23）：vm_diff wasm 臂同步切 TS 版——双跑对拍通过
+      # （gap 20/20 + 全量 733/733 两侧 exit 0，与 native 臂同判据）。
       - name: vm_diff wasm arm (gateway product vs frozen golden)
         if: matrix.slice == 'vm_diff'
-        run: go run ./scripts/vm_diff --backend wasm
+        run: node scripts/diff_gate/main.mts vm --backend wasm
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
         if: matrix.slice == 'clang_direct'
@@ -902,6 +906,15 @@ jobs:
         # hygiene：红 = 插图账没跟上，跑 go run ./scripts/gen_svg all 即绿。
         shell: bash
         run: go run ./scripts/gen_svg -check
+
+      # 图鉴新鲜度（2026-10-23 #273 P2-1 补接线）：gen_icon_preview 的 .mts
+      # 入口自次批落地起就没有任何 workflow 活行——ci_checklist 加第二扫描面
+      # （.mts 入口面）后当即漏登记红。产物 assets/icons-preview.svg 入库，
+      # -check 是标准新鲜度闸（红 = 改图标后忘了重跑图鉴）。
+      - name: Icon preview freshness (gen_icon_preview -check)
+        if: matrix.slice == 'contract'
+        run: node scripts/gen_icon_preview/main.mts -check
+        shell: bash
 
       - name: CI checklist (存在即接入注册表——scripts 驱动集 ↔ ci.yml 活行集双向对账)
 
@@ -1372,6 +1385,16 @@ jobs:
 
       - name: node:test (explicit file list)
         run: npm run test
+        shell: bash
+
+      # 双轨对拍闸（2026-10-23 #273 审阅 P2-2 接线）：族 A 五 target 的 Go 版
+      # 与 .mts 版长期并存，而 .mts 侧单测只对自己产物 -check 自洽——任一轨
+      # 单独演进会静默分叉，切 CI 那天无闸可拦。本步同一语料两侧各跑，比对
+      # 「判定 + matched 数 + fork 数」三元组（措辞不同故比语义不比字节）。
+      # J9 证红：把 TS 侧 lexer 的 sha16 截断为 8 位 → PARITY-DIFF exit 1（已实测）。
+      # 注意本 job working-directory 是 scripts/，故用相对该目录的路径。
+      - name: diff parity (Go ↔ .mts dual-track)
+        run: node diff_gate/parity.mts
         shell: bash
 
   # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────

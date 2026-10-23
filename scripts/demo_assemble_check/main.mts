@@ -7,8 +7,11 @@
 // 单源化后 ci.yml（demo/ 原地发射面）与 pages.yml（demo-dist 发布面）双接。
 //
 // 判据（fail loud，无静默 default）：
-//   ① <script src> 抽取面 ≥2（cases.js + app.js）——抽取退化/HTML 结构
-//      变更即红（「某一路恒 0 命中不报」形态的定向哨兵）；
+//   ① <script src> 抽取面哨兵（F4 收尾 2026-10-17 起阈值 2 → 1）——旧栈
+//      3 个经典 script（cases.js + app.js + 主 bundle）压到新栈单入口 bundle，
+//      实现取 `< 1 即红`（见下方 scriptRefs.length < 1 处）。**头注曾写
+//      「≥2（cases.js + app.js）」系 F4 前的陈旧形态**（2026-10-23 审阅 P3-4
+//      登记：非本批引入，master 旧 .js 同形），抽取退化/HTML 结构变更仍红；
 //   ② 全部 ref（script/img/app 产物 import 面）逐项存在性断言，缺即红
 //      （外链 http(s)/data: 过滤不查）；
 //   ③ --no-ts（发布面模式）：目录内出现 .ts/.mts 即红——源不随产物发布

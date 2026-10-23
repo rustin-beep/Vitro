@@ -1,0 +1,101 @@
+// lexer.test.mts —— lexer target 的族内单测（2026-10-23 审阅 P3-3 补：
+// 同族 typeck/parser/vm/codegen 各有 82–130 行测试，唯 lexer 零族内文件，
+// 其测试此前散在 internal/diffgate.test.mts 里——本文件归位并补 target 分发锚）。
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  lexerTarget,
+  loadLexDigest,
+  makeLexGolden,
+  serializeLexDigest,
+} from "./lexer.mts";
+import { projectRoot } from "../../internal/capi.mts";
+import type { Fail } from "../../internal/diffgate.mts";
+
+const boom: Fail = (msg: string): never => {
+  throw new Error(msg);
+};
+
+const GATE = path.join(projectRoot(), "scripts/diff_gate/main.mts");
+const run = (args: string[]) =>
+  spawnSync(process.execPath, [GATE, ...args], { cwd: projectRoot(), encoding: "utf8", timeout: 600_000 });
+
+test("lexer 的语料口径：.c/.h/.in 全量伴生（与 typeck 只吃 .c 不同）", () => {
+  assert.deepEqual(lexerTarget.corpusExts, undefined, "未声明 = 用骨架默认三后缀");
+  assert.deepEqual(lexerTarget.knownForks, undefined, "lexer 无 known-fork");
+});
+
+test("makeLexGolden：load 只取本语料段 cases，save 后回读一致（临时根）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-lx-"));
+  try {
+    fs.mkdirSync(path.join(dir, "scripts/lexer_diff"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "scripts/lexer_diff/golden_digest.json"),
+      JSON.stringify({
+        version: 1,
+        sources: { alpha: { "a.c": "aaaaaaaa" }, beta: { "b.c": "bbbbbbbb" } },
+        tsvs: { "alpha/x.tsv": "1111", "beta/y.tsv": "2222" },
+      }),
+    );
+    const store = makeLexGolden(dir);
+    const sec = store.load("alpha");
+    assert.ok(sec !== null);
+    assert.deepEqual(sec.sources, { "a.c": "aaaaaaaa" });
+    assert.deepEqual(sec.cases, { "x.tsv": "1111" });
+    assert.equal(store.load("nope"), null);
+
+    store.save("alpha", { sources: { "a.c": "aaaaaaaa", "new.c": "cccccccc" }, cases: { "z.tsv": "9999" } });
+    const back = loadLexDigest(dir, boom);
+    assert.equal(back.tsvs["beta/y.tsv"], "2222", "不得动其它段");
+    assert.equal(back.tsvs["alpha/x.tsv"], undefined);
+    assert.equal(back.tsvs["alpha/z.tsv"], "9999");
+    assert.equal(back.sources.alpha?.["new.c"], "cccccccc");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("真实仓库：serializeLexDigest 与入库 golden_digest.json 逐字节一致", () => {
+  const rel = "scripts/lexer_diff/golden_digest.json";
+  const doc = loadLexDigest(projectRoot(), boom);
+  const original = fs.readFileSync(path.join(projectRoot(), rel), "utf8");
+  assert.equal(serializeLexDigest(doc), original);
+});
+
+test("真实仓库：lexer 在 baseline 上 PASS 976（与 Go 版同判据）", () => {
+  const r = run(["lexer", "corpus/baseline"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /lexer_diff\[golden\]: PASS——976 个 case hash 与冻结基线一致（语料 baseline）/);
+});
+
+test("真实仓库：lexer --selftest 必红（J9，退出码 1）", () => {
+  const r = run(["lexer", "corpus/baseline", "--selftest"]);
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stdout, /已篡改清单条目/);
+  assert.match(r.stdout, /FAIL/);
+});
+
+test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main 分发锚）", () => {
+  // 未知名 → exit 2 且措辞为「未知 target」
+  const unknown = run(["nosuch"]);
+  assert.equal(unknown.status, 2);
+  assert.match(unknown.stderr, /未知 target/);
+
+  // 四个 hash 表型：缺语料位置参数 → exit 2，且用法行带各自 name（证明已分发）
+  for (const t of ["lexer", "typeck", "parser", "codegen"]) {
+    const r = run([t]);
+    assert.equal(r.status, 2, `${t} 缺语料位置参数应 exit 2`);
+    assert.ok(!/未知 target/.test(r.stderr), `${t} 必须已被 TARGETS 分发`);
+    assert.match(r.stderr, new RegExp(`diff_gate/main\\.mts ${t}_diff <corpus_dir>`));
+  }
+
+  // vm 是 override 型：无位置参数是**设计行为**（默认遍历五语料），故用
+  // --corpus gap 小规模验证分发可达（不把 733 例全量跑进测试）
+  const r = run(["vm", "--corpus", "gap"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /vm_diff\[golden\]: SAME=20/);
+});

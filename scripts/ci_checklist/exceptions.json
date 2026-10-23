@@ -6,5 +6,30 @@
   {
     "driver": "scripts/perf_baseline",
     "reason": "本地工具：性能基线采集（人工跑、产物 reports/ 不入仓），非 CI 判定面"
+  },
+  {
+    "driver": "scripts/lexer_diff",
+    "kind": "superseded-by-mts",
+    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts lexer，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
+  },
+  {
+    "driver": "scripts/typeck_diff",
+    "kind": "superseded-by-mts",
+    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts typeck，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
+  },
+  {
+    "driver": "scripts/parser_diff",
+    "kind": "superseded-by-mts",
+    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts parser，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
+  },
+  {
+    "driver": "scripts/codegen_diff",
+    "kind": "superseded-by-mts",
+    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts codegen，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
+  },
+  {
+    "driver": "scripts/vm_diff",
+    "kind": "superseded-by-mts",
+    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts vm，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
   }
 ]

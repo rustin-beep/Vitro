@@ -956,6 +956,21 @@ fn Parser::parse_enum_decl(
   } else if !self.is_at_end() && !self.check(RBrace) {
     while true {
       let d = self.parse_declarator(underlying, depth)
+      // PR #282 审阅 P2-1（2026-10-23）：enum 自带孪生 trailing 循环——
+      // 此前恒 init:None 且不消费 '='（`enum {A,B} e = B;` 报 E2005，
+      // #278 只修了 aggregate 侧孪生实现）。init 解析与
+      // parse_aggregate_trailing_globals / parse_global_var_or_func 同款
+      //（'{' → init_list / 否则 assign），loc 口径同步：初始化器末 token，
+      // 无初始化时落名字 token
+      let init = if self.match_token(Assign) {
+        if self.check(LBrace) {
+          Some(self.parse_init_list(depth))
+        } else {
+          Some(self.parse_assign(depth))
+        }
+      } else {
+        None
+      }
       let prev = self.previous()
       let gloc = @source.SourceLoc::new(prev.loc.line, prev.loc.column)
       program.globals.push({
@@ -963,7 +978,7 @@ fn Parser::parse_enum_decl(
         loc: gloc,
         ty: d.0,
         name: d.1,
-        init: None,
+        init,
       })
       if !self.match_token(Comma) {
         break

@@ -223,8 +223,10 @@ jobs:
           path: |
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
+          # #273 批（2026-10-23）：差分五驱动已切 TS 版，故两侧源码都要进 key
+          # （Go 版暂留作回退面，其变更同样影响口径）。
           # go1 缓存条目与历史 Python 条目（schema=1）同目录共存、key 空间不相交。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/vm_diff/main.go', 'scripts/internal/**/*.go') }}
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/diff_gate/**/*.mts', 'scripts/internal/**/*.mts') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
 
@@ -236,6 +238,14 @@ jobs:
       # serve smoke Rust 臂）+ 断言对象为 oracle 的（replay/three-tier/C-ABI/wasm32/freeze 新鲜度闸）。
       # 差分五驱动自动降级 --golden 冻结基线；protocol_frames 保 mb 单臂帧基线；
       # 语义防线 = clang_direct（真值 Clang）+ moon test。
+      # === #273 批（2026-10-23）：差分五驱动 Go→TS 切换 ===
+      # 五驱动 .mts 双轨版与 Go 版逐位对拍互证后切 CI 引用（lexer 976 /
+      # typeck 487+1 / parser 487+1+三合成模式 / vm 733/733 三通道 /
+      # codegen 487+80+138+20+6，全部与 Go 版一致）。入口 =
+      # scripts/diff_gate/main.mts <target>（target = driver 去掉 _diff 后缀）。
+      # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
+      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动暂留（回退面），
+      # 退役时机另批裁定。
       - name: Run diff driver (full four corpora)
         shell: bash
         run: |
@@ -251,13 +261,14 @@ jobs:
               # 写不出的形态）。llm_multifile 不进本循环——多文件工程的跨
               # 文件引用对逐文件结构面无意义，其覆盖面归 clang_direct 工程
               # 模式（#237）。
-              for d in baseline knr leetcode gap llm_scale; do
-                go run ./scripts/${{ matrix.driver }} corpus/$d || rc=1
+              t="${{ matrix.driver }}"; t="${t%_diff}"
+              for c in baseline knr leetcode gap llm_scale; do
+                node scripts/diff_gate/main.mts "$t" "corpus/$c" || rc=1
               done
               exit $rc
               ;;
             vm_diff)
-              go run ./scripts/vm_diff
+              node scripts/diff_gate/main.mts vm
               ;;
             clang_direct)
               go run ./scripts/clang_direct

@@ -267,7 +267,7 @@ test "host_convert_misc_surface" {
   ignore(@host.host_rand(st))
   @host.host_srand(st, 7U)
   assert_eq(@host.host_time(true, 0UL), 0UL)
-  assert_eq(@host.host_clock(false, 2UL), 2000UL)
+  assert_eq(@host.host_clock(false, 5UL, 2UL), 3000UL)
   assert_true(@host.host_unreachable().contains("unreachable"))
   ignore(mem.write_bytes(map, 0x7000U, b"\x00\x00\x00\x00"))
   assert_true(@host.host_va_start(mem, map, 0x7000U, 0x7000, 4).value is None)

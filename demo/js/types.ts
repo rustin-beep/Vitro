@@ -101,7 +101,8 @@ export interface StepNextResult {
 
 export interface Diagnostic {
   code: string;
-  error_code: string;
+  /** 数码位（如 2003）——与 code 字符串（"E2003"）同源双形态；实测 number，#240 勘误（2026-10-22，旧声明 string 系手写漂移） */
+  error_code: number;
   severity: string;
   line: number;
   column: number;
@@ -116,6 +117,8 @@ export interface CompileResult {
   ok: boolean;
   diagnostics: Diagnostic[];
   preprocessor_trace: string[];
+  /** 算法匹配（teaching/steps 判据；#240 补——类型面此前缺） */
+  algorithm_matches: unknown[];
 }
 
 export interface RunResult {
@@ -125,6 +128,8 @@ export interface RunResult {
   trap: string;
   waiting_input: boolean;
   steps_executed: number;
+  /** 输出预算触顶位（#91；#240 补） */
+  output_truncated?: boolean;
 }
 
 // ── output.delta（四通道游标制增量）─────────────────────────
@@ -134,6 +139,8 @@ export interface OutputDelta {
   cursor: number;
   total: number;
   stream: string;
+  /** 环形预算丢弃字节数（DX ③；#240 补） */
+  truncated_bytes?: number;
 }
 
 // ── memory.regions（内存地图消费）───────────────────────────
@@ -169,6 +176,12 @@ export interface EngineConfig {
   deterministic: boolean;
   input_mode_batch: boolean;
   quarantine_budget: number;
+  /** 输出预算字节（DX ③；#240 补——HEAD 新增） */
+  output_budget: number;
+  /** 预算档位 default|algo|tiny（#133；#240 补——HEAD 新增） */
+  preset: string;
+  /** 会话已编译位（#240 补——HEAD 新增） */
+  compiled: boolean;
 }
 
 // ── gateway 帧信封 ──────────────────────────────────────────

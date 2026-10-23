@@ -20,6 +20,9 @@ pub(all) struct RunArgs {
   mut max_steps : Int32? // --max-steps（#133 止血包：预算墙教学刚需——
   // 撞 TRAP step-limit 的学生命令行直调出口；显式键覆盖 preset 同款语义）
   mut json_mode : Bool // --json（批③：事件流 NDJSON——gateway 帧单源）
+  mut realtime : Bool // --realtime（#211：开真墙钟——config.set 的
+  // deterministic 置 false，time()/clock() 走宿主墙钟；默认关保持判分
+  // 可复现口径〔vm_diff/clang_direct 的 digest 依赖〕）
   argv_passthrough : Array[String] // `--` 之后的 argv 透传（Rust 口径）
   mut unknown_flag : String? // DX P1：未知旗标/尾置缺值（fail loud rc=4）
 }
@@ -34,6 +37,7 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
     stdin_file: "",
     max_steps: None,
     json_mode: false,
+    realtime: false,
     argv_passthrough: [],
     unknown_flag: None,
   }
@@ -54,6 +58,10 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       passthrough = true
     } else if a == "--json" {
       ra.json_mode = true
+    } else if a == "--realtime" {
+      // #211（2026-10-22）：time()/clock() 真墙钟出口——教学面刚需
+      //（srand(time(0)) 种子 / clock() 计时）；默认关 = 判分确定性
+      ra.realtime = true
     } else if a == "--dump-memory" {
       if i + 1 >= args.length() {
         unknown_flag = Some(
@@ -170,5 +178,6 @@ pub fn run(
     ra.json_mode,
     channel~,
     max_steps_override=ra.max_steps,
+    realtime=ra.realtime,
   )
 }

@@ -149,18 +149,25 @@ func main() {
 		if strings.HasPrefix(rel, "tools"+string(filepath.Separator)+"cache") {
 			return filepath.SkipDir
 		}
-		for _, seg := range strings.Split(rel, string(filepath.Separator)) {
-			// dist-pilot/dist-e08/dist = vite 构建产物（gitignored，产物面归
-			// 生成器闸，与 _build/build 同族；dist = F4 收官批 outDir 迁移后
-			// 的现役形态，2026-10-17 连坐）；.workbuddy = 用户本机工具私有
-			// 目录（git 未跟踪）。不豁免则本地钩子恒红、与提交内容无关——
-			// 逼 --no-verify 的环境盲区（2026-10-16 E-08 提交实锤，并发会话
-			// 同款绕过的真因）。
-			if seg == ".git" || seg == "_build" || seg == ".mooncakes" ||
-				seg == "node_modules" || seg == "tmp" || seg == ".clang_cache_cd" ||
-				seg == ".shadow_tmp" || seg == "tmp_vitro_fs_bb_roundtrip" || seg == ".vscode" || seg == "build" ||
-				seg == "dist-pilot" || seg == "dist-e08" || seg == "dist" || seg == ".workbuddy" {
-				return filepath.SkipDir
+		// PR #280 审阅 P3-2 深挖（2026-10-23）：SkipDir 只许作用于**目录
+		// entry**——worktree 形态的 .git 是文件（gitdir 指针），对文件返
+		// 回 SkipDir = 「跳过所在目录余下文件」（filepath.Walk 语义）⇒ 根
+		// 目录余下全跳、整树只扫 43 entry（worktree 假绿实锤：缩进/尾换行
+		// 项全部漏检）。目录序保证祖先目录 entry 先至，文件层祖先查冗余。
+		if info.IsDir() {
+			for _, seg := range strings.Split(rel, string(filepath.Separator)) {
+				// dist-pilot/dist-e08/dist = vite 构建产物（gitignored，产物面归
+				// 生成器闸，与 _build/build 同族；dist = F4 收官批 outDir 迁移后
+				// 的现役形态，2026-10-17 连坐）；.workbuddy = 用户本机工具私有
+				// 目录（git 未跟踪）。不豁免则本地钩子恒红、与提交内容无关——
+				// 逼 --no-verify 的环境盲区（2026-10-16 E-08 提交实锤，并发会话
+				// 同款绕过的真因）。
+				if seg == ".git" || seg == "_build" || seg == ".mooncakes" ||
+					seg == "node_modules" || seg == "tmp" || seg == ".clang_cache_cd" ||
+					seg == ".shadow_tmp" || seg == "tmp_vitro_fs_bb_roundtrip" || seg == ".vscode" || seg == "build" ||
+					seg == "dist-pilot" || seg == "dist-e08" || seg == "dist" || seg == ".workbuddy" {
+					return filepath.SkipDir
+				}
 			}
 		}
 		if info.IsDir() {
@@ -176,14 +183,17 @@ func main() {
 		// ② 实测样本库（用户采集样本保真优先——末行换行改写属内容改写）
 		// ③ reports/（shadow 时代一次性产物，非活跃手写面）
 		if strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".json.mbt") {
-			// jsonmbt 真源族按前缀豁免缩进项（末行换行等通用项仍管）。
+			// 机器写回面前缀豁免（PR #280 审阅 P3-2 重构，2026-10-23）：
+			// **每条前缀须附 writer 证据**（freeze/-update 类写回通道在案）——
+			// diagnostics_data〔手改 JSON〕/teaching_annotation_diff/clang_direct
+			// 〔known_direct.json 全仓只读〕三前缀 writer=0 已撤（其文件按
+			// .editorconfig 全项合规）；protocol_frames 的 baseline.jsonl 由
+			// -update-baseline 逐行写回（jsonl 行形态，非 MarshalIndent——
+			// grep 判据抓不到但写回实存）。
 			// 注：moonbit/teaching/assets 曾整目录豁免（#60 双出口的教师面
 			// .json 无尾换行与同步闸互斥，2026-10-11 实锤）——#125 批 A 出库
 			// 后该目录无 .json/.json.mbt，豁免随之摘除（2026-10-15）。
-			if strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"moonbit"+string(filepath.Separator)+"diagnostics_data") ||
-				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"teaching_annotation_diff") ||
-				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"vm_diff") ||
-				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"clang_direct") ||
+			if strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"vm_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"lexer_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"typeck_diff") ||
 				strings.HasPrefix(rel, "scripts"+string(filepath.Separator)+"codegen_diff") ||

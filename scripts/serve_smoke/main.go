@@ -783,11 +783,14 @@ func run() int {
 	// ── time/clock 墙钟（deterministic 默认 false 销分叉的端到端：双臂
 	// 各自非零——MB 侧经 cmd/serve 注册的 clock_source，oracle 走
 	// current_time_millis；deterministic 语义〔判分可复现〕走 config.set 通道）──
+	// #211 审阅 P2-3 连坐（2026-10-23）：clock() 改自会话起点差值微秒后，
+	// 探针同一毫秒内完成 ⇒ c=0 合法（差值 0 ≠ 墙钟未接）；t 非零即证
+	// clock_source 通道活（time/clock 同源）——c 不再断非零（旧绝对墙钟
+	// 形态的断言在差值语义下是时好时坏的脆断言，CI 实锤过 c=0）。
 	d25 := asObj(byID[25]["result"])
 	deltaTxt := strOf(d25["delta"])
-	check(strings.Contains(deltaTxt, "t=1") && !strings.Contains(deltaTxt, "t=0 ") &&
-		strings.Contains(deltaTxt, "c=") && !strings.Contains(deltaTxt, "c=0\n"),
-		"time/clock 墙钟真值（非零——deterministic 销分叉）", tailMap(d25))
+	check(strings.Contains(deltaTxt, "t=1") && !strings.Contains(deltaTxt, "t=0 "),
+		"time 墙钟真值（非零——deterministic 销分叉；clock 同源不断言，差值 0 合法）", tailMap(d25))
 
 	r22 := asObj(byID[22]["result"])
 	check(isBool(r22["shutdown"], true), "shutdown 回应", "")

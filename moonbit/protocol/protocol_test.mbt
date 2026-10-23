@@ -52,7 +52,7 @@ test "blackbox_granularity_surface" {
 ///|
 test "blackbox_vocabulary_surface" {
   let vocab : Array[@protocol.SemanticLabelKind] = @protocol.semantic_label_vocabulary()
-  assert_eq(vocab.length(), 14)
+  assert_eq(vocab.length(), 15)
   assert_eq(@protocol.classify("返回"), Some("return"))
   assert_eq(@protocol.classify("第 12 行"), Some("line_fallback"))
   assert_eq(@protocol.classify("未知标签"), None)

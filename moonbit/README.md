@@ -26,7 +26,7 @@
 | `vitro/engine/host` | L7 | Host-function domain: 110-route consumption side, byte-faithful output channels (`Bytes`), 100+ VM-independent handlers (memory / ctype / math / string / str-to-num / printf-scanner / VFS) returning structured replies |
 | `vitro/engine/vm` | L7 | Executor state machine + snapshot system (`VMSnapshot` Full/Delta, two-endpoint single-point) + C# exception triple exec-state (handler stack / exception register / UNWINDING — v1 design input) |
 | `vitro/engine/session` | L8 | 会话骨架 + SessionConfig 值对象（单一真相源 + 单一写入口，消 Rust setup_vm 覆盖事故面三段式）+ 多文件安全 source_line_at + 会话侧 DTO 族（S7 批二号） |
-| `vitro/engine/protocol` | L8 | StepPayload schema contract (v0.1 frozen whitelist + v0.2 ledger/activation checklist + behavior contracts) + semantic_label controlled vocabulary (14 entries) + protocol DTO family + unwind granularity predicate (S7 batch 1, zero-dependency) |
+| `vitro/engine/protocol` | L8 | StepPayload schema contract (v0.1 frozen whitelist + v0.2 ledger/activation checklist + behavior contracts) + semantic_label controlled vocabulary (15 entries) + protocol DTO family + unwind granularity predicate (S7 batch 1, zero-dependency) |
 | `vitro/engine/gateway` | L8 | wasm-gc single export (F-5 ruling): NDJSON frame protocol layer lifted to an engine-neutral carrier (`invoke` String→String carrying the 21-method table / `reset` / `protocol_version` / `engine_version`), js-builtin-string zero-copy passing, zero functional imports; `library` form shared by native consumers (cmd/serve shell) and the wasm shell (S7 batch 5) |
 | `vitro/engine/time_travel` | L8 | 时间旅行引擎域：`CheckpointManager`（无策略快照原语）+ `FrameWindow`（O(1) 摊还窗口，push 唯一写入口）+ `UnifiedEngine`（run_batch / seek_to 越窗五步契约；Trap 回退改「最近检查点+正向重放」——每步 1MB 快照机制消亡） |
 | `vitro/engine/teaching/steps` | L8 | 算法语义标注：43 算法判据（误判收紧照搬）+ 43 步骤推断 + 文案全表；serve 通道端到端接线；族级 golden 对拍 311/311 全覆盖 |
@@ -92,7 +92,7 @@ gateway 产物的 node 壳、自动降级本 native exe，见仓库 CLI 手册�
 | `vitro/engine/host` | L7 | 宿主函数域：110 路由表消费侧 + 输出通道（`Bytes` 字节保真）+ **100+ 个 VM 无耦合 handler**（内存族 / ctype / math / 字符串 / 转数值 / printf-scanf / VFS；统一 `HostMemReply` 结构化回复）+ E3061/E3027 文案（S6 余量全批） |
 | `vitro/engine/vm` | L7 | 执行器状态机（值栈 u64 位模式 / 调用栈 / 教学观测 / 宿主域三态）+ 快照体系（`VMSnapshot`/`MemoryImage` 两端单点）+ C# 异常三执行状态（handler 栈 / 异常寄存器 / UNWINDING——CS 批硬前置 v1 入形）+ ARC 帧退出清理占位（S6 vm 批一号） |
 | `vitro/engine/session` | L8 | 会话骨架 + `SessionConfig` 值对象（单一真相源 + 单一写入口——Rust「配置散在 VM 字段 + setup 硬编码覆盖 + capi 静默丢弃」事故链结构性消除）+ 多文件安全 `source_line_at` + 会话侧 DTO 九型（S7 批二号） |
-| `vitro/engine/protocol` | L8 | StepPayload schema 契约（v0.1 冻结白名单 + v0.2 台账/激活清单 + 行为契约表）+ semantic_label 受控词汇表（14 条）+ 协议 DTO 族 + 展开粒度判据（S7 批一号，零依赖自持） |
+| `vitro/engine/protocol` | L8 | StepPayload schema 契约（v0.1 冻结白名单 + v0.2 台账/激活清单 + 行为契约表）+ semantic_label 受控词汇表（15 条）+ 协议 DTO 族 + 展开粒度判据（S7 批一号，零依赖自持） |
 | `vitro/engine/gateway` | L8 | wasm-gc 单出口（F-5 裁定落点）：NDJSON 帧协议层上提为引擎无关载体（`invoke` String→String 单口承载 21 方法表 / `reset` / `protocol_version` / `engine_version` 四导出），js-builtin-string 零拷贝直传、零功能性 imports；`library` 形态由 native 消费者（cmd/serve 壳）与 wasm 外壳共用（S7 批五号） |
 | `vitro/engine/gateway/wasm` | L8 | wasm-gc 单目标薄壳：四个 `#export_name` 导出面所在（foreign_library）；Node 宿主驱动见仓库 `scripts/wasm_gateway/host.mts`（17 断言） |
 
@@ -138,8 +138,8 @@ Rust oracle 的实测数字：
 ## 验证
 
 ```bash
-moon check && moon test    # 871 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 871 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕）
-                           # native-only 包测试 153 个（fs 0 / gateway 138 / cli 15——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1024（CI 门禁口径；871+153=1024 逐包实测自洽，2026-10-23 实测——本批 +8：teaching/steps #224/#225 锚 5 + gateway 行末不变量锚 1 + heapsort 端到端锚 2〔裸 871 内 steps 52→57；gateway native 域 135→138〕）
+moon check && moon test    # 883 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 883 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕；2026-10-23 B 线批一 +12：sscanf %n 双锚 + vfs + 族锚 + 语义标签双锚 + 审阅批 +4 + PR#280 审阅 +3〔fwrite 追加通道锚 1 + +族 b 位锚 1 + 定义侧空白锚 1〕）
+                           # native-only 包测试 156 个（fs 0 / gateway 138 / cli 18——2026-10-23 B 线批一连坐：gateway +1〔output.delta 未知 stream 拒绝锚 #258〕+ cli +1〔--realtime 解析锚 #211〕；fs 0 / gateway / cli 域分解既注同前——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1039（CI 门禁口径；883+156=1039 逐包实测自洽，2026-10-24 实测）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

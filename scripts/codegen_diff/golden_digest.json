@@ -164,6 +164,7 @@
         "fclose_leak.c": "858d7156",
         "fgets_fputs_basic.c": "68b0a7bd",
         "fibonacci.c": "0fafa920",
+        "file_fopen_modes.c": "83ee39fc",
         "flexible_array_static_init_reject.c": "d9432565",
         "float_basic.c": "3016d3e3",
         "float_compare.c": "fb3b35b5",
@@ -984,6 +985,9 @@
         },
         "fibonacci.c": {
           "result_sha": "d4b772e247fb30c9"
+        },
+        "file_fopen_modes.c": {
+          "result_sha": "4e6d4c110a7b2b42"
         },
         "flexible_array_static_init_reject.c": {
           "fail": true,
@@ -2063,8 +2067,8 @@
       "sources": {
         "complex_number.c": "b5a7d055",
         "failfast_chain.c": "3fe877ff",
-        "file_fopen.c": "d1bdc876",
-        "file_fread.c": "dc8404a4",
+        "file_fopen.c": "3c38e8f4",
+        "file_fread.c": "293037c6",
         "file_fwrite.c": "e2c3c877",
         "function_pointer_sizeof.c": "68025bba",
         "goto_basic.c": "7c9d571e",
@@ -2092,10 +2096,10 @@
           "fail_stage": "lex"
         },
         "file_fopen.c": {
-          "result_sha": "eee581130fd179cf"
+          "result_sha": "2b85d154c0490372"
         },
         "file_fread.c": {
-          "result_sha": "69ba99daeb2ef3cd"
+          "result_sha": "b75823211c8030fb"
         },
         "file_fwrite.c": {
           "result_sha": "972592fa13975ec5"

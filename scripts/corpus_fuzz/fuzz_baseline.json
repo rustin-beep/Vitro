@@ -603,6 +603,15 @@
     "baseline/e1_limits_macros.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/e1_string_concat.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/e1_string_concat.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e1_string_concat.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/e2_angle_local_header.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -673,6 +682,15 @@
       "bucket": "AGREE"
     },
     "baseline/e3_attributes.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert.c|div2shift": {
       "bucket": "AGREE"
     },
     "baseline/e3_unreachable_dead.c|cast_strip": {
@@ -909,6 +927,15 @@
     "baseline/function_pointer_multi_level.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/function_pointer_return_ptr.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/function_pointer_return_ptr.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/function_pointer_return_ptr.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/function_pointer_typedef.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
@@ -944,6 +971,15 @@
     },
     "baseline/hanoi_tower.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/hash_table_linear.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/hash_table_linear.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/hash_table_linear.c|init_partial": {
+      "bucket": "AGREE"
     },
     "baseline/hex_literal.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -1359,6 +1395,15 @@
     "baseline/nested_ternary.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/not_equal.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/not_equal.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/not_equal.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/not_equal_var.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1557,6 +1602,24 @@
     "baseline/pointer_deref.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/post_inc_vs_pre_inc.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/post_inc_vs_pre_inc.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/post_inc_vs_pre_inc.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/power_of_2.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/power_of_2.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/power_of_2.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/pre_decrement.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1575,6 +1638,15 @@
     "baseline/pre_increment.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/predefined_macro.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/predefined_macro.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/predefined_macro.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/print_int_user_redefine.c|cmp_swap": {
       "bucket": "AGREE"
     },
@@ -1582,6 +1654,15 @@
       "bucket": "AGREE"
     },
     "baseline/print_int_user_redefine.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "baseline/print_int_user_redefine_bad.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/print_int_user_redefine_bad.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/print_int_user_redefine_bad.c|paren_wrap": {
       "bucket": "AGREE"
     },
     "baseline/printf_char.c|brace_wrap": {
@@ -2007,6 +2088,15 @@
       "bucket": "AGREE",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
     },
+    "baseline/static_local_array.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_local_array.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_local_array.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/static_local_init_once.c|init_partial": {
       "bucket": "AGREE"
     },
@@ -2042,6 +2132,15 @@
     },
     "baseline/stdio_fgets_stdin.c|init_partial": {
       "bucket": "WRONG_VALUE"
+    },
+    "baseline/stdio_fputc_stdout.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/stdio_fputc_stdout.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/stdio_fputc_stdout.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/stdio_fseek_macro.c|brace_strip": {
       "bucket": "AGREE"
@@ -2269,6 +2368,15 @@
     "baseline/switch_default_first.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/ternary.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/ternary.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/ternary.c|static_inject": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/ternary_as_expr.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -2325,6 +2433,15 @@
     "baseline/typedef_after_struct_decl.c|static_inject": {
       "bucket": "AGREE",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
+    },
+    "baseline/typedef_chain.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/typedef_chain.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/typedef_chain.c|div2shift": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/typedef_pointer.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -2388,6 +2505,15 @@
     },
     "baseline/unsigned_printf_lu.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/unsigned_printf_o.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/unsigned_printf_o.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/unsigned_printf_o.c|init_partial": {
+      "bucket": "AGREE"
     },
     "baseline/unsigned_printf_u.c|brace_strip": {
       "bucket": "CLANG_REJECT"
@@ -2498,32 +2624,32 @@
       "bucket": "AGREE"
     },
     "gap/file_fopen.c|cmp_swap": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fopen.c|memset_zero": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fopen.c|static_inject": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|cmp_swap": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|memset_zero": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },
     "gap/file_fread.c|static_inject": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "issue": "known-arch-diff",
       "note": "VFS 预置文件差异面（#95 登记/#102 预置）：fopen(\"test.txt\") vitro 沙盒预置命中（输出 ok/读到内容）、clang 工作目录无该文件（输出空）——预置文件是教学特性非病；桶随 6fe4023a 抽样集变化在 CI 首次轮到（2026-10-20 run 39374005221 实测）"
     },

@@ -402,9 +402,14 @@ test "srand_sets_seed" {
 ///|
 test "time_clock_deterministic_and_derived" {
   assert_eq(host_time(true, 123456789UL), 0UL)
-  assert_eq(host_clock(true, 123456789UL), 0UL)
+  assert_eq(host_clock(true, 123456789UL, 0UL), 0UL)
   assert_eq(host_time(false, 1234567UL), 1234UL)
-  assert_eq(host_clock(false, 1234567UL), 1234567000UL)
+  // #211（2026-10-22）：clock = 自**会话起点**的微秒近似（绝对墙钟的
+  // 微秒会让 clock()/CLOCKS_PER_SEC 得到天文数字——C 语义是进程起算）；
+  // 时钟回拨（now < start）钳 0
+  assert_eq(host_clock(false, 5000UL, 2000UL), 3000000UL, msg="差值 3 秒")
+  assert_eq(host_clock(false, 2000UL, 5000UL), 0UL, msg="回拨钳 0")
+  assert_eq(host_clock(false, 1234567UL, 0UL), 1234567000UL)
 }
 
 ///|

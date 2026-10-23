@@ -18,16 +18,6 @@
     ]
   },
   {
-    "case": "file_fopen.c",
-    "digest": "5d175f95",
-    "reason": "同 file_fread：vfs 预设特有注入（fopen(\"test.txt\",\"r\") 读预设内容——Clang 真实 fs 无此文件，fopen 失败后程序崩溃 0xC0000409）vs 引擎内存 VFS 注入成功"
-  },
-  {
-    "case": "file_fread.c",
-    "digest": "79c7c561",
-    "reason": "vfs 预设文件（test.txt/numbers.txt）是 Vitro 引擎内存 VFS 的教学演示注入——Clang 直拍在槽位隔离目录运行（P1-1 修复后无仓库根遗留文件可读），fopen 失败走空输出/崩溃（0xC0000409）vs 引擎读预设成功输出内容；工具层能力差异非 VM 语义（vm_diff 侧经 oracle 同注入已 SAME）"
-  },
-  {
     "case": "function_pointer_sizeof.c",
     "digest": "097c5e9f",
     "reason": "指针 4 字节模型 vs Clang 8 字节（x64）——C语言子集规范已记载的架构差异；shadow KNOWN_FAILURE_CASES 同款条目（DIFF-PTR-4BYTE-01）"

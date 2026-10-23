@@ -1351,7 +1351,11 @@ jobs:
 
       # gen_svg -check 的 facts 输入（见上方 setup-go 注释）。放在 moon 之后：
       # 采集链含 moon 相关项，缺工具链会把可用键降级成 unavailable。
+      # working-directory 必须覆盖回仓库根——本 job 默认在 scripts/ 下跑，
+      # 直接 `go run ./scripts/facts facts` 会变成 scripts/scripts/facts
+      #（2026-10-23 CI 红实锤：stat D:\a\Vitro\Vitro\scripts\scripts\facts）。
       - name: facts collect (gen_svg -check input)
+        working-directory: ${{ github.workspace }}
         run: go run ./scripts/facts facts
         shell: bash
 

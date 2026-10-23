@@ -9,7 +9,8 @@
   import { lessonSession } from "./lessonSession.svelte.ts";
   import { sceneIndexAt, sceneKicker } from "./scenes.ts";
 
-  const scenes = $derived(lessonSession.note?.scenes ?? []);
+  // #238：scenes 统一走 lessonSession.scenes 单点（v2 锚点在帧流上求值）。
+  const scenes = $derived(lessonSession.scenes);
   const n = $derived(session.viewFrames.length);
   // 未采集（n=0）不出幕头：帧流还不存在，idx 0 落在第一幕坐标里会被误读成「已到第 1 幕」
   const cur = $derived(n > 0 ? sceneIndexAt(scenes, session.idx) : -1);

@@ -32,14 +32,24 @@ export type Block =
   | { type: "code"; lang: string; text: string }
   | { type: "table"; rows: string[][] };
 
-/** 分镜（scene）：lesson.md body 顶部 `vitri-scenes v1` 注释块的解析产物。
+/** 分镜（scene）：lesson.md body 顶部 `vitri-scenes` 注释块的解析产物。
  *  与 blocks 同源、不新增正文段落——注释在解析时剥离，CourseNote / E-08
- *  渲染面保持逐字节不变。from/to 是 viewFrames 下标（闭区间）。 */
+ *  渲染面保持逐字节不变。
+ *  - v1：from/to 是 viewFrames 下标（闭区间）——写死数字。
+ *  - v2（#238）：from/to 为**锚点表达式**（`@first_swap±K` 等，完整词汇表
+ *    见 lib/scenes.ts resolveScenes）——帧流就绪后由 resolveScenes 动态
+ *    求值（帧数随程序参数变化，写死下标结构性必错：课程曾写死 0..41
+ *    vs 引擎实测 914 帧，89.5% 帧落幕外）。锚点形态时 from/to 解析期存
+ *    -1 占位 + fromAnchor/toAnchor 留原文；消费方必须经 resolveScenes
+ *    （sceneIndexAt 对 -1 天然「不猜」）。 */
 export interface Scene {
   id: string;
   title: string;
   from: number;
   to: number;
+  /** v2 锚点表达式（如 `@first_swap-1`）；v1 数字形态无此字段。 */
+  fromAnchor?: string;
+  toAnchor?: string;
   lines: [number, number];
   note: string;
 }
@@ -109,15 +119,20 @@ export function parseLessonMd(src: string): LessonDoc {
   return { version: 1, meta, blocks: parseBlocks(sceneDoc.body.split("\n")), scenes: sceneDoc.scenes };
 }
 
-/** 从 body 顶部剥离 `<!-- vitri-scenes v1 ... -->` 并解析。
+/** 从 body 顶部剥离 `<!-- vitri-scenes v1|v2 ... -->` 并解析。
  *  只在 body 开头识别（正文中间的注释按普通段落保留）；格式错误 fail loud，
- *  由 lessonNotes 的 catch 兜底为诚实的「无叙述」而不是半截 scene。 */
+ *  由 lessonNotes 的 catch 兜底为诚实的「无叙述」而不是半截 scene。
+ *  v2 锚点行（#238）：第 3 列为锚点表达式（`@word(:arg)?(±K)?` 或纯数字
+ *  ——纯数字在 v2 里同样合法），静态校验只做形态与纯数字段的重叠；锚点段
+ *  的重叠/乱序由课源保证（resolveScenes 后 sceneIndexAt 顺序扫描，重叠时
+ *  靠前的幕赢）。 */
 function extractScenes(body: string): { body: string; scenes: Scene[] } {
   const prefix = body.match(/^<!--\s*vitri-scenes\b/);
   if (!prefix) return { body, scenes: [] };
   const head = body.match(/^<!--\s*vitri-scenes\s+v(\d+)[^\n]*\n/);
   if (!head) throw new LessonParseError("scene 元数据缺版本行（vitri-scenes v1）");
-  if (head[1] !== "1") throw new LessonParseError(`不支持的 scene 版本 v${head[1]}`);
+  if (head[1] !== "1" && head[1] !== "2") throw new LessonParseError(`不支持的 scene 版本 v${head[1]}`);
+  const ver = Number.parseInt(head[1], 10);
   const close = body.indexOf("\n-->", head[0].length);
   if (close < 0) throw new LessonParseError("scene 元数据未闭合");
   const raw = body.slice(head[0].length, close);
@@ -125,27 +140,64 @@ function extractScenes(body: string): { body: string; scenes: Scene[] } {
   const scenes: Scene[] = [];
   const ids = new Set<string>();
   let prevTo = -1;
+  const anchorExpr = /^(@[A-Za-z_][\w]*(?::[\w]+)?(?:[+-]\d+)?|@\d+)$/;
   for (const line of raw.split("\n")) {
     const t = line.trim();
     if (!t) continue;
+    // v2：头内注释行忽略——判据是「不含 |」（注释无竖线分隔、幕行必有
+    // 4 个）；比「数字起首」稳（注释以数字起〔如「20 变实测分解」〕不误判
+    // 幕行，含 | 的行一律走 5 段解析——id 形态错即红，不静默吞，fail-loud）。
+    if (ver === 2 && !t.includes("|")) continue;
     const m = t.match(/^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|(.*)$/);
     if (!m) throw new LessonParseError(`scene 行不是 5 段形态: ${t}`);
     const id = m[1].trim();
     const title = m[2].trim();
-    const fromTo = m[3].trim().match(/^(\d+)\.\.(\d+)$/);
+    const ft = m[3].trim();
+    const fromTo = ft.match(/^(\S+)\.\.(\S+)$/);
     const lineRange = m[4].trim().match(/^(\d+)\.\.(\d+)$/);
     if (!id || !title) throw new LessonParseError(`scene 缺 id 或 title: ${t}`);
     if (ids.has(id)) throw new LessonParseError(`scene id 重复: ${id}`);
     if (!fromTo || !lineRange) throw new LessonParseError(`scene 范围须为 a..b: ${t}`);
-    const from = Number.parseInt(fromTo[1], 10);
-    const to = Number.parseInt(fromTo[2], 10);
     const l0 = Number.parseInt(lineRange[1], 10);
     const l1 = Number.parseInt(lineRange[2], 10);
-    if (from > to || l0 < 1 || l1 < l0) throw new LessonParseError(`scene 范围非法: ${t}`);
-    if (from <= prevTo) throw new LessonParseError(`scene 帧范围重叠或乱序: ${id}`);
-    prevTo = to;
+    if (l0 < 1 || l1 < l0) throw new LessonParseError(`scene 行区间非法: ${t}`);
+    // v1 / v2 纯数字：静态数字直存；v2 锚点：-1 占位 + 原文（resolveScenes 求值）
+    const numeric = (s: string): number | null => /^\d+$/.test(s) ? Number.parseInt(s, 10) : null;
+    const fromN = numeric(fromTo[1]);
+    const toN = numeric(fromTo[2]);
+    if (ver === 1 && (fromN === null || toN === null)) {
+      throw new LessonParseError(`v1 scene 帧范围须为数字 a..b: ${t}`);
+    }
+    if (ver === 2 && (fromN === null) !== (toN === null)) {
+      throw new LessonParseError(`v2 scene 帧范围两端须同为数字或同为锚点: ${t}`);
+    }
+    if (ver === 2 && fromN === null) {
+      if (!anchorExpr.test(fromTo[1]) || !anchorExpr.test(fromTo[2])) {
+        throw new LessonParseError(`v2 锚点形态非法（@word(:arg)?(±K)?）: ${t}`);
+      }
+    }
+    if (fromN !== null && toN !== null && fromN > toN) {
+      throw new LessonParseError(`scene 帧范围非法: ${t}`);
+    }
+    if (fromN !== null && toN !== null && fromN <= prevTo) {
+      throw new LessonParseError(`scene 帧范围重叠或乱序: ${id}`);
+    }
+    const scene: Scene = {
+      id,
+      title,
+      from: fromN ?? -1,
+      to: toN ?? -1,
+      lines: [l0, l1],
+      note: m[5].trim(),
+    };
+    if (fromN === null) {
+      scene.fromAnchor = fromTo[1];
+      scene.toAnchor = fromTo[2];
+    } else {
+      prevTo = toN as number;
+    }
     ids.add(id);
-    scenes.push({ id, title, from, to, lines: [l0, l1], note: m[5].trim() });
+    scenes.push(scene);
   }
   if (scenes.length === 0) throw new LessonParseError("scene 元数据为空");
   return { body: rest, scenes };

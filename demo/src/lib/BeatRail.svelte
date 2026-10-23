@@ -9,7 +9,7 @@
   import { lessonSession } from "./lessonSession.svelte.ts";
   import { sceneIndexAt, sceneProgress, sceneRangeLabel } from "./scenes.ts";
 
-  const scenes = $derived(lessonSession.note?.scenes ?? []);
+  const scenes = $derived(lessonSession.scenes);
   const n = $derived(session.viewFrames.length);
   // 未采集（n=0）不给「当前幕」：帧流还不存在，idx 0 落在第一幕坐标里会被误读
   const cur = $derived(n > 0 ? sceneIndexAt(scenes, session.idx) : -1);

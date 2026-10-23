@@ -57,6 +57,7 @@ test "blackbox_dto_surface" {
     suggestion: "s",
     line: 1,
     vis_events: [],
+    evidence: "name",
   }
   let t : @session.TraceEntry = { line: 1, operation: "op", }
   let vs : @session.VariableSnapshot = {

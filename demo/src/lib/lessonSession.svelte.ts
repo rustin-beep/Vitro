@@ -16,6 +16,7 @@ import { ui } from "../ui.svelte.ts";
 import { DEFAULT_PROGRAM } from "../program.ts";
 import { defaultLesson, findLesson, noteKeyOf, type CourseLesson } from "./courseIndex.ts";
 import { loadLessonNote } from "./lessonNotes.ts";
+import { resolveScenes } from "./scenes.ts";
 import type { Block, Scene } from "./lessonMd.ts";
 import { progress } from "./progress.svelte.ts";
 import { ensureClosedForLesson } from "./workspace.svelte.ts";
@@ -34,6 +35,13 @@ class LessonSessionState {
   source = $state(DEFAULT_PROGRAM);
   /** 当前课叙述（course/<chap>/<id>/lesson.md 懒加载产物；null = 无叙述）。 */
   note = $state<{ title: string; blocks: Block[]; scenes: Scene[] } | null>(null);
+
+  /** 当前课分镜（#238 单点解析出口）：v2 锚点幕在帧流上动态求值
+   *  （未命中该幕不猜）、v1 数字课幂等直通——**消费方一律取本属性**，
+   *  勿直接读 note.scenes（那是未求值的锚点原态，from=-1 恒无当前幕）。 */
+  get scenes(): Scene[] {
+    return resolveScenes(this.note?.scenes ?? [], session.viewFrames);
+  }
   /** 当前课（null = 分享还原的自由代码/默认示例）。 */
   lesson = $state<CourseLesson | null>(null);
   /** 课名与章名（面包屑 / kicker；分享代码时是「分享的代码」）。 */

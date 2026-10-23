@@ -26,7 +26,7 @@
   // 本课分镜（scene 真源 = lesson.md；未迁移课 = []，整条分幕面不渲染）。
   // 未采集（n=0）时不给「当前幕」：帧流还不存在，idx 0 落在第一幕坐标里
   // 会被误读成「已到第 1 幕」。
-  const scenes = $derived(lessonSession.note?.scenes ?? []);
+  const scenes = $derived(lessonSession.scenes);
   const cur = $derived(n > 0 ? sceneIndexAt(scenes, idx) : -1);
   const bands = $derived(scenes.map((s) => ({ id: s.id, ...sceneBand(s, n) })));
 

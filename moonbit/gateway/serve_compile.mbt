@@ -551,6 +551,9 @@ fn compile_result_json(s : @session.Session) -> Json {
     mm.set("confidence", Json(am.confidence))
     mm.set("suggestion", Json::string(am.suggestion))
     mm.set("line", Json(am.line))
+    // evidence（#224，只增不改纪律内新增）：name=命名证据 / structure=
+    // 结构特征证据——sorting 族互斥裁决依据，下游可按此取舍。
+    mm.set("evidence", Json::string(am.evidence))
     let ves : Array[Json] = []
     for ve in am.vis_events {
       let vm : Map[String, Json] = Map([])

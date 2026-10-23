@@ -126,7 +126,13 @@ func extractBuildMatches(stepsDir string) ([]buildMatchSource, error) {
 			}
 			params = filtered
 			if len(params) != 5 {
-				return nil, fmt.Errorf("build_match 参数数 %d ≠ 5：%s 内 %q", len(params), f, firstN(inner, 60))
+				// #224：evidence~ 具名参数（第 6 参，name/structure 判别依据）
+				// 合法附加——取前 5 参语义（族名/中文名/函数/行/vis）。
+				if len(params) == 6 && strings.HasPrefix(params[5], "evidence=") {
+					params = params[:5]
+				} else {
+					return nil, fmt.Errorf("build_match 参数数 %d ≠ 5（第 6 参仅允许 evidence=）：%s 内 %q", len(params), f, firstN(inner, 60))
+				}
 			}
 			fam := strings.Trim(params[0], `"`)
 			disp := strings.Trim(params[1], `"`)

@@ -65,7 +65,14 @@ fn detect_in_func(
   if features.has_dp_array &&
     (features.has_single_loop || features.has_nested_loops) {
     matches.push(
-      build_match("dp", "动态规划", func.name, func.loc.line, []),
+      build_match(
+        "dp",
+        "动态规划",
+        func.name,
+        func.loc.line,
+        [],
+        evidence="structure",
+      ),
     )
   }
   matches
@@ -73,6 +80,8 @@ fn detect_in_func(
 
 ///|
 /// sorting 族判据（九算法——命名分支 + 结构特征分支；收紧注释照搬）。
+/// #224：各命中带判别依据（evidence：name=命名 / structure=结构特征），
+/// 族尾互斥裁决（九算法教学互斥——命名证据优先，跨族共存不动 B13 契约）。
 pub fn detect_sorting(
   name_lower : String,
   features : FuncFeatures,
@@ -81,7 +90,8 @@ pub fn detect_sorting(
 ) -> Array[@protocol.AlgorithmMatch] {
   let matches : Array[@protocol.AlgorithmMatch] = []
   // 冒泡排序
-  if name_lower.contains("bubble") ||
+  let bubble_name = name_lower.contains("bubble")
+  if bubble_name ||
     (
       features.has_nested_loops &&
       features.has_array_compare &&
@@ -96,6 +106,7 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if bubble_name { "name" } else { "structure" },
       ),
     )
   }
@@ -105,18 +116,17 @@ pub fn detect_sorting(
     name_lower.contains("activity") ||
     name_lower.contains("replacement")
   let has_sort_word = has_word(func_name, "sort")
-  if (
-      (has_word(func_name, "select") || has_word(func_name, "selection")) &&
-      has_sort_word
-    ) ||
-    (
-      !greedy_ctx &&
-      features.has_nested_loops &&
-      features.has_array_compare &&
-      features.has_min_max_track &&
-      features.loop_depth >= 2 &&
-      !features.has_swap_in_inner_loop
-    ) {
+  let sel_name = (
+      has_word(func_name, "select") || has_word(func_name, "selection")
+    ) &&
+    has_sort_word
+  let sel_struct = !greedy_ctx &&
+    features.has_nested_loops &&
+    features.has_array_compare &&
+    features.has_min_max_track &&
+    features.loop_depth >= 2 &&
+    !features.has_swap_in_inner_loop
+  if sel_name || sel_struct {
     matches.push(
       build_match(
         "selection_sort",
@@ -124,14 +134,16 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if sel_name { "name" } else { "structure" },
       ),
     )
   }
   // 插入排序（U1#1 修复：insertion / insert_sort / insertsort 形态——
   // insert_node 等子串不命中）
-  if name_lower.contains("insertion") ||
+  let ins_name = name_lower.contains("insertion") ||
     name_lower.contains("insert_sort") ||
-    name_lower.contains("insertsort") ||
+    name_lower.contains("insertsort")
+  if ins_name ||
     (
       features.has_nested_loops &&
       features.has_shift_pattern &&
@@ -145,11 +157,13 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if ins_name { "name" } else { "structure" },
       ),
     )
   }
   // 快速排序
-  if name_lower.contains("quick") ||
+  let quick_name = name_lower.contains("quick")
+  if quick_name ||
     (
       features.is_recursive &&
       features.has_partition_pattern &&
@@ -162,12 +176,14 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if quick_name { "name" } else { "structure" },
       ),
     )
   }
   // 归并排序（U1#1 P0-2：merge 整词 + sort 语境——mergeSortedLists
   // 的链表归并函数不误判）
-  if (has_word(func_name, "merge") && has_word(func_name, "sort")) ||
+  let merge_name = has_word(func_name, "merge") && has_word(func_name, "sort")
+  if merge_name ||
     (
       features.is_recursive &&
       features.has_merge_pattern &&
@@ -180,17 +196,25 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if merge_name { "name" } else { "structure" },
       ),
     )
   }
-  // 堆排序
-  if name_lower.contains("heap") ||
-    (
-      features.is_recursive &&
-      features.has_array_compare &&
-      features.has_swap &&
-      name_lower.contains("sort")
-    ) {
+  // 堆排序（#224 收紧：旧结构分支「递归 + 数组比较 + swap + 名字含
+  // sort」是极宽兜底——教科书命名的 quickSort/mergeSort 全中四项，与
+  // 真族并存交叉误命中〔confidence 双 85 + 完整错误教学文案 + 同一份
+  // vis_events〕。改堆索引形态为排他证据：子索引 2*i+1/2*i+2 或建堆
+  // 起点 n/2-1〔features.has_heap_index_pattern〕；递归条件同时去除
+  // ——教科书 heapSort 主函数是迭代建堆，递归的是 heapify 辅助函数
+  // 〔其命中走命名分支〕）
+  let heap_name = name_lower.contains("heap")
+  // 审阅 P1-3：三合取对真实代码不可达（建堆起点在 driver、子索引在
+  // sift——证据天然跨函数；插桩：siftDown 有 compare+swap 无 heap_index
+  // 〔修复 check_compare_expr 前〕、driver 有 heap_index 无 compare）。
+  // 改 OR 链：堆索引形态为排他主证据，交换/数组比较任一佐证即可。
+  let heap_struct = features.has_heap_index_pattern &&
+    (features.has_swap || features.has_array_compare)
+  if heap_name || heap_struct {
     matches.push(
       build_match(
         "heap_sort",
@@ -198,6 +222,7 @@ pub fn detect_sorting(
         func_name,
         line,
         features.compare_lines,
+        evidence=if heap_name { "name" } else { "structure" },
       ),
     )
   }
@@ -237,5 +262,24 @@ pub fn detect_sorting(
       ),
     )
   }
-  matches
+  adjudicate_sorting(matches)
+}
+
+///|
+/// sorting 族内互斥裁决（#224）：九排序算法教学互斥——同一函数多命中
+/// 只保留一条：命名证据（evidence="name"）优先于结构证据，同证据按
+/// 族序（push 序 = oracle 族序）首中。跨族（sorting×search×graph…）
+/// 共存是 B13 契约内合法形态，不在此裁决。
+fn adjudicate_sorting(
+  matches : Array[@protocol.AlgorithmMatch],
+) -> Array[@protocol.AlgorithmMatch] {
+  if matches.length() <= 1 {
+    return matches
+  }
+  for m in matches {
+    if m.evidence == "name" {
+      return [m]
+    }
+  }
+  [matches[0]]
 }

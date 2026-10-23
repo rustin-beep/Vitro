@@ -454,14 +454,22 @@ fn serve_step_next_frame(
       s.unified_pending = curr
       return (serve_ok(id, auto_step_result_json(result)).stringify(), false)
     }
-    let mut to_publish = pending
     guard curr is Some(c) else {
       abort("unreachable：非 flushed 必有一帧")
     }
-    if c.code_line == to_publish.code_line {
+    // §7.3 append 语义：pending 前插发布位；curr 移入缓冲
+    //（#225 审阅 P2-1 定谳：批内帧的行末清标注由 FrameWindow.push_batch
+    // 两段去重单源保证，serve 不重复；serve 只管自己持有的跨批 pending
+    // ——其行末性参照**批首帧**（pop 后 payloads[0] 是 pending 在发布流
+    // 中的真实后继）。旧判据用批尾 curr，frames>1 时批尾与 pending 中隔
+    // 整批帧、同行性错位——跨批边界的行中间 pending 帧带标注漏出（行末
+    // 不变量锚 frames=50 批形态证红；probe frames=300 恰未跨段复现，
+    // 变异实验 + 锚双证据定谳）
+    let mut to_publish = pending
+    if result.payloads.length() > 0 &&
+      result.payloads[0].code_line == to_publish.code_line {
       to_publish = { ..to_publish, algorithm_step: None, }
     }
-    // §7.3 append 语义：pending 前插发布位；curr 移入缓冲
     result.payloads.insert(0, to_publish)
     s.unified_pending = Some(c)
   }

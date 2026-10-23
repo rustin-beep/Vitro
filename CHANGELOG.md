@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
+
+- **__FILE__ 跨臂一致**：`pp.file_name_at` 对主文件/拼接段/include 段统一走
+  `display_name_of`（basename）。此前 CLI 传全路径、gateway 传 basename，
+  `__FILE__` 字符串进内存映像后 native/wasm 两臂 memory hash 分叉——vm_diff
+  wasm 的 `predefined_macro.c` 单例红。C99 §6.10.8 的拼写本为实现定义，
+  沙盒统一 basename；`corpus/baseline/predefined_macro.c` 注释同步。
+- **基线重冻**：`vm_diff --freeze-mb` 更新 `golden_digest.json` 单例（source
+  hash + memory hash）；`vm_diff` baseline native/wasm 各 **488 SAME / 0 DIFF**，
+  `clang_direct` 单例 SAME。
+- **CI 防遮蔽**：build job 的构建/上传步与 demo job 的 tsc 之后全部闸步加
+  `if: always()`——单测/E-08 等前置红不再吞掉后续构建与 smoke/E2E/pure；
+  矩阵 `fail-fast: false` 复核保留（六路 diff / 四路 wasm / 三路 static）。
+  已知边界：下游 job 仍依赖 build-products artifact，build 整体失败时
+  artifact 不存在（无产物可测），只能保证「能跑的闸都跑」并显式红；
+  要彻底解耦需 demo 自建 wasm/langpack 或拆独立 artifact job（后续批）。
+- 效果：本轮 PR 红只剩 `wasm-arm gate (vm_diff)`（已修）与上游
+  `typeck_diff`（master c3df8005 同红，已随 f4a0add9/27ad50df 合入），
+  native protocol / serve_channel 因 catalog 帧变化重刷 baseline 后转绿。
+
 ### fix(engine+ci): 用户审阅批 P1×5/P2×6/P3×5 处置——假阳性矩阵对齐 + 嵌套 designated 三层 + &f 全局 + 成员 sizeof 延迟折叠（2026-10-23）
 
 **P1（全部红锚先行→修→双侧对拍）**：

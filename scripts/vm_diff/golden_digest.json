@@ -1892,10 +1892,10 @@
       "memory_sha": "74f081b24f1fa786"
     },
     "baseline/predefined_macro.c": {
-      "src_sha": "b4cfaf56",
+      "src_sha": "9aee91b9",
       "exit_code": 0,
-      "stdout_sha": "8e788783f47e2585",
-      "memory_sha": "1490aabf2f82b7de"
+      "stdout_sha": "59d83f82f6646a8d",
+      "memory_sha": "48b60c020320c890"
     },
     "baseline/print_int_user_redefine.c": {
       "src_sha": "c6d73ef4",

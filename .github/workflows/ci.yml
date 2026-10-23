@@ -114,7 +114,11 @@ jobs:
         run: cd moonbit && moon test --target native
 
       # ── 静态对账闸族（秒级批量，fail fast 先于分钟级行为闸）────────────
+      # 防遮蔽（2026-10-23）：单测/前置步红后仍继续构建并上传 artifact——
+      # 否则 build job 一红，下游 diff/native/wasm/demo 全 skipped，红被前置
+      # 红吞掉（master 多轮「修一红露一红」的放大源）。能跑的闸必须都跑。
       - name: Full native release build gate (declared targets must build)
+        if: always()
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
         # gateway 本体改 library，4 导出面在 gateway/wasm 外壳，wasm-gc
         # 单目标）。全量 --target native 是唯一会遍历每个包的形态。
@@ -128,17 +132,20 @@ jobs:
           MOON_CC=clang moon build --release --target native
           echo "全量 native release 构建：通过（每个包都真的被构建过）"
       - name: wasm-gc gateway build (artifact source)
+        if: always()
         # 自「wasm-gc gateway build + Node host smoke」拆出（2026-10-11）：
         # 构建归本 job（产物进 artifact），Node smoke 归 gates-wasm。
         shell: bash
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm
       - name: Install Node (wasmopt supply)
+        if: always()
         # #120 批①（2026-10-17）：wasm-opt 构建后置——binaryen JS API 经
         # node 执行（供给钉版本下载到 tools/cache，sha256 校验）。
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
       - name: wasm-opt post-build (artifact source)
+        if: always()
         # 产物出口后置优化（#120 批①）：-19.3% raw / -20.4% gzip（lean
         # 产物实测）；等价性背书 = 下游 gates-wasm 四 slice（vm_diff wasm
         # 全量 440 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
@@ -152,6 +159,7 @@ jobs:
           go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
           go run ./scripts/wasmopt -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
+        if: always()
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
         # 产物检查消费（cmd/vitro_js/vitro_js.js）。
         # 全量 js 编译闸（2026-10-15 补——审阅指出缺口）：此前只编
@@ -162,6 +170,7 @@ jobs:
         shell: bash
         run: cd moonbit && moon build --release --target js
       - name: Upload build products (native release exe set + wasm module + js entry)
+        if: always()
         # 拆批基建（2026-10-11 闸级 job 化）：release 全量构建产物供下游
         # gates-diff / gates-native / gates-wasm / demo 消费——四个 job 免重复
         # 构建（此前 core 串行一步红全断；闸间遮挡即此形态）。download 侧
@@ -1055,7 +1064,10 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+      # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
+      # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
       - name: demo TS check (tsc --noEmit = js/ 模块类型面)
+        if: always()
         # F4 收尾（2026-10-17）：app.ts 退役 → emit 无对象，只留 --noEmit
         # （js/ 八个物理保留模块的类型面；src/ 由 svelte-check 覆盖）
         run: |
@@ -1067,6 +1079,7 @@ jobs:
       # rules.json 43 族、82 模板全集对账，断言失败即红）。assemble check
       # 与 demo_smoke 消费盘上 algorithms.js，本步必须排在其前。
       - name: demo algorithms data emit (generator assertions = gate)
+        if: always()
         run: go run ./scripts/gen_demo_algorithms
         shell: bash
 
@@ -1078,6 +1091,7 @@ jobs:
       # 课程叙述的现役呈现路线 = #125 补充宿主侧运行时方案（parser.c 随包
       # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
+        if: always()
         run: go run ./scripts/course_catalog
         shell: bash
 
@@ -1086,6 +1100,7 @@ jobs:
       # demo/ 跑同一断言集（不带 --no-ts：源目录 .ts 合法；F4 收尾后断言
       # index.html 入口 = src/main.ts + 本地资源面）。
       - name: demo assemble check (asset existence, HTML-face sentinel)
+        if: always()
         run: node scripts/demo_assemble_check/main.js demo
         shell: bash
 
@@ -1094,6 +1109,7 @@ jobs:
       # app.css 只 @import）。-check 逐字节比对（CRLF 归一）；-selftest 先证比对面
       # 会红（J9 埋雷义务）——两行都跑，闸与自证同在。
       - name: demo tokens gate (tokens.json → tokens.css, -check)
+        if: always()
         run: |
           go run ./scripts/gen_demo_tokens -selftest
           go run ./scripts/gen_demo_tokens -check
@@ -1103,6 +1119,7 @@ jobs:
       # 比 tsc 宽）+ vite build（构建成功性）。demo/src 在 tsc include 外、
       # demo_smoke 跑 js 面，不加这两步则 demo/src 在 CI 零覆盖（裸奔）。
       - name: F4 svelte-check (type + a11y gate)
+        if: always()
         run: cd demo && npm run check
         shell: bash
 
@@ -1110,6 +1127,7 @@ jobs:
       # 阻塞；devDep 精确 pin + npm ci 锁定链）。CallTree.svelte:150/156 两处
       # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
       - name: F4 oxlint (zero-error gate)
+        if: always()
         run: cd demo && npm run lint
         shell: bash
 
@@ -1118,6 +1136,7 @@ jobs:
       # 此前漏本 job 的 cp → CI vite build 红；Pages job 因有前置 cp 而绿
       # ——同坑两处只堵一处的教训（62f75d3d CI 首跑实锤）。
       - name: demo wasm asset in place (build-time asset)
+        if: always()
         shell: bash
         run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
 
@@ -1125,6 +1144,7 @@ jobs:
       # demo/teaching/langpack/langpack.js（vite 懒 chunk，缺失即 build 红
       # ——与 wasm 同款 fail loud），moon js target 现场构建后 cp。
       - name: demo langpack asset (moon js target → cp)
+        if: always()
         shell: bash
         run: |
           cd moonbit && moon build --release --target js teaching/langpack
@@ -1132,6 +1152,7 @@ jobs:
           cp _build/js/release/build/teaching/langpack/langpack.js ../demo/teaching/langpack/langpack.js  # 仅 .js——d.ts 相对引用 moonbit.d.ts 拖类型错
 
       - name: F4 vite build (build success gate)
+        if: always()
         run: cd demo && npm run build
         shell: bash
 
@@ -1143,6 +1164,7 @@ jobs:
       # 生成）。组件面↔用例表↔golden 目录三方全等锚防快照僵死。覆盖面
       # 边界（动画/交互/浏览器态不入快照语义）见 demo/src/e08/entry.ts 头注。
       - name: F4 E-08 snapshot gate (SSR render vs frozen golden)
+        if: always()
         run: |
           cd demo && npx vite build --ssr src/e08/entry.ts --outDir dist-e08
           cd .. && node --test demo/tests/e08.test.mts
@@ -1154,6 +1176,7 @@ jobs:
       # cases.js golden 即红（已留痕）。（原注释随 gates-wasm 拆分批从该
       # job 尾部迁来——步骤实排历来在本 job，2026-10-17）
       - name: demo page smoke (protocol-level, cases golden + field keys)
+        if: always()
         run: node scripts/demo_smoke/main.js
         shell: bash
 
@@ -1173,6 +1196,7 @@ jobs:
       # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
       # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
       - name: F4 browser E2E (headless chrome, 90 anchors)
+        if: always()
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"
           if [ -z "$CHROME_BIN" ]; then
@@ -1236,6 +1260,7 @@ jobs:
       # （2 陈旧路径修正 + 1 笔误前缀修正 + 1 占位符化 + 1 注释粘连 +
       # 6 退役/反例语境收编 dead_paths）。
       - name: skill docs referenced-path existence
+        if: always()
         run: |
           go run ./scripts/skill_path_check -selftest
           go run ./scripts/skill_path_check
@@ -1247,6 +1272,7 @@ jobs:
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
+        if: always()
         run: |
           go run ./scripts/demo_ui_lint -selftest
           go run ./scripts/demo_ui_lint
@@ -1257,6 +1283,7 @@ jobs:
       # （未登记扩张红 / 僵尸条目红 / family 漂移红 / 非字面量调用红）；
       # 抽取面下限防正则失能，-selftest 内存注入四路证红（J9）。
       - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
+        if: always()
         run: |
           go run ./scripts/teaching_phase_vocab -selftest
           go run ./scripts/teaching_phase_vocab
@@ -1272,6 +1299,7 @@ jobs:
       # 「能跑」保证无类型保证。独立 tests/tsconfig.json（@types/node）
       # 补类型面，直跑前先过 tsc。
       - name: demo pure-function tests (node --test on .ts)
+        if: always()
         run: |
           cd demo && npx tsc -p tests/tsconfig.json && cd ..
           node --test demo/tests/pure.test.mts

@@ -94,6 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   →「指针与浮点互转」，解释/常见原因按引擎 `typeck/expr.mbt` 的真实发射点
   （指针 ↔ 浮点显式 cast）重写，`gen_diag` 重生 `catalog_data_gen.mbt`；页面
   101 条 C 目录实测 title = 指针与浮点互转。
+- **协议基线**：catalog 帧内容随 E3084/E3085 与 W3064 文案变化，
+  `protocol_frames --update-baseline` 重刷 47 帧基线（native 臂比对全部一致）；
+  合并 master c3df8005 后补 `mbti` 两臂、icon 映射既有 `return`/`func-undefined`，
+  `icon_catalog` 76 图标全绿。
 - **内容闸**（审阅 P2-1/P2-2）：pure 新增 3 条——全量 course scene 连续/行界/注记、
   第〇章新 5 门 N 帧与四节、码表 EXAMPLES/RELATED 键命中 catalog + 关联课存在；
   突变实证：scene `0..1→9..9` 与 `RELATED E3060→no_such_lesson` 均判红，恢复后绿。

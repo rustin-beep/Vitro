@@ -90,7 +90,7 @@ test("真实仓库：lexer --selftest 必红（J9，退出码 1）", () => {
   assert.match(r.stdout, /FAIL/);
 });
 
-test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main 分发锚）", () => {
+test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main 分发锚）", (t) => {
   // 未知名 → exit 2 且措辞为「未知 target」
   const unknown = run(["nosuch"]);
   assert.equal(unknown.status, 2);
@@ -106,6 +106,15 @@ test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main
 
   // vm 是 override 型：无位置参数是**设计行为**（默认遍历五语料），故用
   // --corpus gap 小规模验证分发可达（不把 733 例全量跑进测试）
+  //
+  // 产物依赖（#292 终局批补）：vm 臂消费 `cmd/run` release exe + wasm 壳——在无
+  // `_build` 的 job（如 scripts-ts / Demo front-end）里跑必红。本文件此前**不在
+  // npm test 清单**，故这层依赖一直没人撞上；补登记后必须显式 skip。
+  const runExe = path.join(projectRoot(), "moonbit/_build/native/release/build/cmd/run/run.exe");
+  if (!fs.existsSync(runExe)) {
+    t.diagnostic("skip：vm 臂产物缺失（cmd/run release exe）——分发锚的其余四 target 已覆盖");
+    return;
+  }
   const r = run(["vm", "--corpus", "gap"]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /vm_diff\[golden\]: SAME=20/);

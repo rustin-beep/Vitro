@@ -11,15 +11,17 @@
 //         ⇒ 另有断言「每个算子至少一个变体 != 源」，防覆盖静默退化；
 //   2. **判定流水线**：codeMask / firstIntLit / latin1Fold / parseVitro / bucketOf
 //      的单元口径；
-//   3. **端到端**：用 testdata 的迷你规则 + 基线真跑（含 clang × js × native），
-//      断言汇总行（21 变体 / 20 AGREE / 0 新指纹 / 0 桶恶化）。缺编译器显式 skip。
+//   3. **端到端不在这里**：全量/迷你真跑（clang × js × native）由 CI 的 corpus-fuzz
+//      job 承担。本套件曾放了一条「迷你规则真跑」，两个问题使它撤下：
+//      ① 它依赖**冻结的桶基线**，而桶随 clang/引擎版本漂移（审阅 P3 实测本机陈旧
+//         产物即出假红）；② 为治陈旧又得内嵌 ensureFresh 重建（+40s），把单测变成
+//         构建任务。产物相关的端到端留给有产物的 job，靠 skip 而非重建来隔离。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { projectRoot } from "../internal/capi.mts";
-import { ensureFresh } from "../internal/freshness.mts";
 import {
   BUCKET_RANK,
   DetRand,
@@ -198,33 +200,6 @@ test("bucketOf：六桶分类 + 恶化序", () => {
 
 test("norm：CRLF / 裸 CR 归一", () => {
   assert.equal(norm("a\r\nb\rc"), "a\nbc");
-});
-
-test("e2e：迷你规则真跑（21 变体 / 20 AGREE / 0 新指纹 / 0 桶恶化）", (t) => {
-  const clang = spawnSync("clang", ["--version"], { encoding: "utf8" });
-  const runner = path.join(ROOT, "moonbit", "_build", "native", "release", "build", "cmd", "run", "run.exe");
-  if (clang.status !== 0 || !fs.existsSync(runner)) {
-    t.diagnostic("skip：缺 clang 或 cmd/run release exe");
-    return;
-  }
-  // #292 审阅 P3：陈旧 run.exe 会让桶分类整体漂移（AGREE→CLANG_REJECT 等）⇒ 本地假红。
-  // 与其它产物消费者同口径：先过新鲜度门禁（mtime 触发 + 构建复核）。
-  ensureFresh("corpus_fuzz_e2e", runner, ["build", "--release", "--target", "native", "cmd/run"]);
-  const r = spawnSync(
-    process.execPath,
-    [
-      MAIN,
-      "-regen",
-      "-rules",
-      path.join(FIX, "mini_rules.json"),
-      "-baseline",
-      path.join(FIX, "mini_baseline.json"),
-    ],
-    { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 600_000 },
-  );
-  assert.equal(r.status, 0, (r.stdout ?? "").slice(-2000) + r.stderr);
-  assert.match(r.stdout, /corpus_fuzz：total=21 AGREE=20 新指纹=0 桶恶化=0/);
-  assert.match(r.stdout, /corpus_fuzz: PASS——无新指纹、无桶恶化/);
 });
 
 test("e2e：未知算子名 fail loud（exit 2，规则与实现失配不静默）", () => {

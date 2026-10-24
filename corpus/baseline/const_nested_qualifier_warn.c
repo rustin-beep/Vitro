@@ -10,11 +10,10 @@
  * E3067。注：vitro 侧 W3053 警告与 clang 同级，输出面（stdout/exit）
  * 两侧一致。
  * PR #284 审阅 P2-1（2026-10-24）：补 `char *const[]` decay 给
- * `char *const *` 形参的**精确匹配格**——clang 零诊断，vitro 现报
- * W3053 = 已知误报锚（parser 对 `T *const *` 声明符链的 const 层级
- * 归属错，挂在最外层指针位；根因与修复跟踪 issue #285，修复后本格
- * 转「零诊断」并连坐重冻）。警告不进 stdout/exit 对拍面，本例双侧
- * 输出仍一致。 */
+ * `char *const *` 形参的**精确匹配格**——clang 零诊断；曾报 W3053
+ * = 已知误报锚（parser 对 `T *const *` 声明符链的 const 层级归属错，
+ * issue #285），**#285 修复（2026-10-24 同批）后本格转零诊断**，
+ * 误报锚退役。警告不进 stdout/exit 对拍面，本例双侧输出一致。 */
 #include <stdio.h>
 static int T2[2][3] = { { 1, 2, 3 }, { 4, 5, 6 } };
 static const int CT[2][3] = { { 9, 8, 7 }, { 6, 5, 4 } };

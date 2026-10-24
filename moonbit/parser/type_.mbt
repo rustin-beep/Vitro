@@ -598,13 +598,22 @@ fn Parser::parse_declarator_node(
         node = Function(node, params, is_variadic)
     }
   }
-  // 再应用前缀（从外到内，但解释时从内到外）
-  for prefix in prefixes {
-    match prefix {
+  // 再应用前缀（倒序 wrap，链头=源码首位前缀）。issue #285（2026-10-24）：
+  // interpret 是「自顶向下累加器」——链头节点先变形 base、链深层节点后
+  // wrap 成为外层，即**链头语义=最深层**（后缀链天然如此：`a[2][3]` 链头
+  // =最内维 3，维度归属一直正确）。旧前缀按源码序 wrap ⇒ 链头=源码末位
+  // `*`（标识符直接层=C 最外层），与链头=最深层的解释方向相反 ⇒ 纯多前缀
+  // 形态层级贡献者互换：`char *const *p` 的 const 落最外层（`char** const`）
+  // 而非 pointee 层（`char* const*`），精确匹配传参被误报 W3053。对称
+  // 形态（`char **`）互换无观察差异，数组/指针混合形态后缀在外层不受影响。
+  let mut i = prefixes.length() - 1
+  while i >= 0 {
+    match prefixes[i] {
       PtrPrefix(is_const) => node = Pointer(node, is_const)
       RefPrefix(is_const) => node = Reference(node, is_const)
       RValPrefix => node = RValueRef(node)
     }
+    i -= 1
   }
   if !is_abstract {
     dguard.cross_count = node_cross_count(node)

@@ -10,8 +10,9 @@
 ///
 /// 口径（勘察 8.2 三条固化）：
 /// 1. `text` 为**规范化值**（整数十进制 / 字符串解码值 / 字符数值 / 浮点源拼写）；
-/// 2. `col` = 复刻口径 `column - text 的 UTF-8 字节数`（已知偏差故意保留换可比，
-///    无缺陷坐标用 byte_off）；
+/// 2. `col` = `column - text 的 UTF-8 字节数`（回推公式；列计数自 #242
+///    2026-10-24 起按字节——非 ASCII 量纲混算已修；规范化 text 的回推偏差
+///    为已知残留，PR #294 审阅 P2-2 待处置；无缺陷坐标用 byte_off）；
 /// 3. L2 位置钉宏调用点（与 Rust 展开器行为一致）。
 pub fn dump_raw_tsv(result : @token.RawResult) -> String {
   let buf = StringBuilder()

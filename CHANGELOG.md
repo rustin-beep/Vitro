@@ -12,6 +12,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(parser+lexer): A 线批四——#285 声明符螺旋 const 层级归位 + #251 U/UL 后缀符号域 + #242 诊断列字节量纲统一（2026-10-24）
+
+- **#285（parser）**：`T *const *` 声明符链的 const 落最外层指针位（`char** const`）
+  ⇒ 精确匹配传参/赋值误报 W3053（clang -Wall -Wextra 全零诊断）。根因＝前缀
+  组装（源码序 wrap，链头＝末位 `*`＝C 最外层）与 `interpret_declarator_node`
+  「自顶向下累加器」（链头先变形 base、深层后 wrap 成外层＝**链头语义应为最深
+  层**；后缀链天然如此故数组维度一直正确）方向相反 ⇒ 纯多前缀形态层级贡献者
+  互换；对称形态（`char **`）互换无观察差异故长期潜伏。修复＝前缀组装倒序
+  wrap（`type_.mbt`），链头对齐最深层语义；`type_full_name` 渲染随结构自洽
+  （`char* const*`）。锚：parser wbtest 三形态（`*const *`/`** const`/单层）
+  + 语料 `const_ptr_level_spiral.c`（四精确匹配格零诊断 + f1 真丢弃对照格
+  W3053 保留）+ `const_nested_qualifier_warn.c` 精确匹配误报锚退役转绿。
+- **#251 同族格（lexer）**：U/UL 后缀超 u32 档（u32 < v ≤ i64）旧发
+  LongLiteral（有符号 8B）——C11 6.4.4.1 U 后缀候选序全无符号，值 >4B
+  （LLP64 下 unsigned int/unsigned long 均 4B）定型 ULL，clang 零警告；
+  符号域错置致 `5000000000U - 6000000000U` 类无符号回绕走有符号分流。
+  修复＝`has_u` 分派三格坍缩为裸 UnsignedLiteral（parser 按值域派生
+  uint/ULL）；语料 `u_suffix_unsigned_domain.c` 运行期判别式
+  （`（5000000000U - 6000000000U） > 0` 直比，对拍 clang＝1 / 旧实现＝0
+  ——突变实证）。**勘误（审阅 P2-1）**：初版语料把差值赋给
+  `unsigned long long` 变量再比较——位模式赋值转换抹掉符号域差异，
+  旧实现转存格输出与修复版逐字节相同（无判别力）；判别式已改直比。
+  锚面：scanner wbtest（token 类型，突变红）+ 存量
+  `u_suffix_literal_uint_domain_typing`（parser 派生臂，突变红）双层。
+  **十进制无后缀大常量的 E1006 维持**——DIFF-LEX-DECL-BIGCONST-01
+  台账 2026-10-04 定级「保持 error」在先，翻案论证挂 issue #251 待
+  拍板，未随本批改动。
+- **#242（lexer）**：诊断列量纲混算——注释路径（pp 剥离为字节等宽空格）
+  恒字节列、串字面量路径（`advance()` 标量计列 + `make_token` 字节反推）
+  ⇒ token 自身含多字节（中文教材常态）时列基线左移成字符列，同源两量纲。
+  修复＝`advance()` 多字节序列列增量为字节数（`+= n`），反推公式两侧同
+  字节量纲自洽（source 包 SourceLoc 契约「column＝行内 UTF-8 字节偏
+  移+1」）；注释剥离路径纯 ASCII 空格零漂移，ASCII 域全零变化。锚：
+  lexer 黑盒双场景（中文注释 18 回归格/中文字符串 16 修复格）+ 语料
+  `col_utf8_units.c`（词法 digest TSV 列锁字节口径）。
+- **义务链**：三新语料 clang 直拍全绿（baseline 498 例 DIFF=0、四套件
+  DIFF=0）；五家 digest 重冻（baseline 新增 3/重算 495 + gap/knr/
+  leetcode/llm_scale 重算——存量漂移逐项归因（审阅 P3-3）：
+  `llm_scale_editor.c`、`const_nested_qualifier_warn.c`＝#285 螺旋
+  翻转的类型结构；`engine_note_lookalike.c`、`utf8_latin1_output.c`
+  ＝#242 列/AST loc 漂移（前者 0 诊断纯 loc 变化）；
+  `gap/p2d_parser_preproc_batch.l1.tsv`＝#242 raw 列漂移（l2 未变））；
+  corpus_fuzz 新指纹 21 收编（20 AGREE + 1 init_partial 截初始化列表
+  越界读 UB 域合法桶标注）；moon test 891/891（新增锚 4；基线含同日 #256/#261 审阅处置批 +3 锚，rebase 连坐）；双臂（js/
+  native）探针与语料逐位一致；surface/mbti/fmt/facts 零漂移。
+
 ### fix(vm+host+infra): #256/#261 批用户审阅处置——P2×2 同族臂漏接 + P3×4 锚与闸补牙（2026-10-24）
 
 - **P2-1**：`DivQ`/`ModQ`（long long 有符号除/模零）补 `code="E3088"` 且裸文案

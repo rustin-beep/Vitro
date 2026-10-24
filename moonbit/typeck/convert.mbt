@@ -135,13 +135,47 @@ pub fn TypeChecker::is_comparable(
 }
 
 ///|
-/// #80（2026-10-13）：const 限定符**丢弃方向**判等——value 顶层带 const、
-/// target 不带且 unqualified 相等（`const int*` → `int*`、`const int[3]`
-/// 的 element 面 → `int*`）。C11 §6.5.16.1 约束违反但 clang/gcc 默认
-/// -Wincompatible-pointer-types-discards-qualifiers 仅警告；单层语义
-///（pointee/element 顶层），深层 char** 族同判 warning 属登记扩面
-fn const_discard_eq(v : @ast.Type, t : @ast.Type) -> Bool {
-  v.is_const() && !t.is_const() && @ast.type_eq(v.set_const(false), t)
+/// 递归剥除全部 const 位（#250，2026-10-23）：与 ast `set_const` 的单层
+/// 语义互补——深层限定符族（`int**` vs `const int**`，const 在 pointee
+/// 的 pointee 层）的比较前提。vla_dims/Typeof 的 Expr 原样保留。
+fn strip_all_const(t : @ast.Type) -> @ast.Type {
+  match t {
+    Void(_) => Void(false)
+    Int(u, _) => Int(u, false)
+    Char(u, _) => Char(u, false)
+    Float(_) => Float(false)
+    Double(_) => Double(false)
+    LongLong(u, _) => LongLong(u, false)
+    Pointer(p, _) => Pointer(strip_all_const(p), false)
+    Array(e, n, d, _, v, vd) => Array(strip_all_const(e), n, d, false, v, vd)
+    Function(r, ps, _, vari) => {
+      let stripped : Array[@ast.Type] = []
+      for p in ps {
+        stripped.push(strip_all_const(p))
+      }
+      Function(strip_all_const(r), stripped, false, vari)
+    }
+    Struct(n, _) => Struct(n, false)
+    Union(n, _) => Union(n, false)
+    Class(n, _) => Class(n, false)
+    Reference(b, _) => Reference(strip_all_const(b), false)
+    RValueRef(b) => RValueRef(strip_all_const(b))
+    Auto => Auto
+    TemplateId(b, args, _) => TemplateId(b, args, false)
+    Typeof(e, _, u) => Typeof(e, false, u)
+  }
+}
+
+///|
+/// #80（2026-10-13）→ #250 深层族扩面（2026-10-23）：纯限定符差异判等
+/// ——两侧递归剥除全部 const 位后结构同形，即差异**只**在 const 位
+///（任意嵌套层、方向不限：`const int*` → `int*` 丢弃向 / `int**` →
+/// `const int**` 嵌套加 const 向——后者经典 FAQ 写穿通道，C11
+/// §6.5.16.1 同属约束违反）。clang/gcc 默认
+/// -Wincompatible-pointer-types-discards-qualifiers 对全族仅警告；
+/// 结构性差异（`int*` vs `char*`）不满足本判定，维持 E3067。
+fn qualifier_only_mismatch(v : @ast.Type, t : @ast.Type) -> Bool {
+  @ast.type_eq(strip_all_const(v), strip_all_const(t))
 }
 
 ///|
@@ -176,13 +210,17 @@ fn TypeChecker::check_array_pointer_assignable(
       if qualifier_widens(value.subscript_type(), t_pointee) {
         return true
       }
-      // #80（2026-10-13）：限定符丢弃方向（const T[] decay 给 T*）——
+      // #80（2026-10-13）+ #250 深层族扩面（2026-10-23）：限定符差异
+      // 方向（const T[] decay 给 T*、含 element 为指针层的嵌套形态）
       // 降 W3053 警告放行（clang/gcc 默认
       // -Wincompatible-pointer-types-discards-qualifiers 同判 warning；
-      // 旧落 false → E3044/E3004 误拒合法 C）
-      if const_discard_eq(v_element, t_pointee) {
+      // 旧落 false → E3044/E3004 误拒合法 C）。比较层级与上方
+      // subscript_type 同层——`const int[2][3]` decay 给 `int(*)[3]`
+      // 形参时 v_element 是最内 `const int`、t_pointee 是 `int[3]` 数组
+      //（错位必不匹配），subscript_type 归一到 `const int[3]` 才同构
+      if qualifier_only_mismatch(value.subscript_type(), t_pointee) {
         self.report_warning(
-          "将 const 数组赋值给非 const 指针，可能通过后者修改 const 数据。",
+          "数组 decay 的 const 限定不匹配：\{type_full_name(target)} ← \{type_full_name(value)}，const 位差异存在绕过只读保护修改数据的通道。",
           loc,
           W3053_ImplicitScalarConversion,
         )
@@ -400,8 +438,10 @@ fn TypeChecker::check_scalar_assignable(
 ///|
 /// 指针赋值兼容（整数→指针 W3054；任意指针/数组→void* H3057；指针间
 /// 目标 pointee **加 const 限定**的安全方向兼容（C：T → const T 合法、
-/// 去 const 反向禁止——仅一层顶层限定差异，char** → const char** 深层
-/// 不放行对齐 C 严格规则）。
+/// 去 const 反向禁止——本判定**单层语义**（pointee 顶层限定差异，免警
+/// 放行）；深层嵌套限定符差异族（char** → const char** 等）自 #250
+/// 起由 qualifier_only_mismatch 判 W3053 警告放行，不再经此——
+/// PR #284 审阅 P3 勘误：旧注「深层不放行对齐 C 严格规则」已过时）。
 fn const_promoted_eq(target_pointee : @ast.Type, value : @ast.Type) -> Bool {
   let stripped = strip_top_const(target_pointee)
   // 目标本无 const（无可剥）或剥后仍不等 → 不兼容
@@ -472,26 +512,47 @@ fn is_null_pointer_constant(e : @ast.Expr) -> Bool {
 }
 
 ///|
-/// E3067 文案的指针类型全形（#63 尾巴，2026-10-13）：pointee 为数组时
-/// C 记法 `int (*)[9]`（clang 同款）；`name()` 剥 `[n]`/`*` 的核心名
-/// 设计不动（照搬本体），装饰（(*) 与维度链、const 前缀）在本层组装
-///（const 附注承 #61 遗留 5 轻项 pointee_name_with_const，已并入）。
-/// 多维拼 `[3][9]`。
-fn pointer_type_name(t : @ast.Type, render_const : Bool) -> String {
-  let base = if render_const && t.is_const() {
-    "const \{t.name()}"
-  } else {
-    t.name()
-  }
+/// E3067 文案的指针类型全形（#63 尾巴 + #250 深层 const）：输入**完整
+/// 指针类型**，递归展开 pointee 链——`const int**` 不再压扁成 `int*`
+///（旧 `name()` 只取最内层核心名 + 顶层 const 前缀，深层 const 位全部
+/// 丢失，报出「int\* ← int\*」自相矛盾文案）；指向数组的指针用 C 记法
+/// `int (*)[9]`（clang 同款，多维拼 `[3][9]`，const 在 element 层时
+/// `const int (*)[9]`——#63 差异可见性维持）；指针自身 const 位
+///（`int* const`）按 C 后置记法。
+fn type_full_name(t : @ast.Type) -> String {
   match t {
-    Array(_, _, dims, _, _, _) => {
-      let mut s = "\{base} (*)"
+    Pointer(pointee, is_const) =>
+      match pointee {
+        Array(element, _, dims, _, _, _) => {
+          let mut s = "\{type_full_name(element)} (*)"
+          for d in dims {
+            s = "\{s}[\{d}]"
+          }
+          if is_const {
+            "\{s} const"
+          } else {
+            s
+          }
+        }
+        _ => {
+          let inner = type_full_name(pointee)
+          if is_const {
+            "\{inner}* const"
+          } else {
+            "\{inner}*"
+          }
+        }
+      }
+    Array(element, _, dims, _, _, _) => {
+      // 数组类型本身（element 位/裸数组）：C 记法借 declarator，教学
+      // 口径用 int[9] 简记
+      let mut s = "\{type_full_name(element)}"
       for d in dims {
         s = "\{s}[\{d}]"
       }
       s
     }
-    _ => "\{base}*"
+    _ => if t.is_const() { "const \{t.name()}" } else { t.name() }
   }
 }
 
@@ -554,22 +615,26 @@ fn TypeChecker::check_pointer_assignable(
           // 对 Pointer(pointee) 层的 const 同样要求只增，char** 的第二层是
           // 指针位非元素位，加宽判定与其一致。
           !qualifier_widens(v_pointee, t_pointee) {
-          // #80（2026-10-13）：pointee 顶层 const 丢弃方向（const int\* →
-          // int\*，unqualified 相等只差 const 位）降 W3053 警告——clang/gcc
-          // 默认 -Wincompatible-pointer-types-discards-qualifiers 同判
-          // warning；真不兼容维持 E3067
-          if const_discard_eq(v_pointee, t_pointee) {
+          // #80（2026-10-13）+ #250 深层族扩面（2026-10-23）：pointee
+          // 间纯限定符差异（`const int\*` → `int\*` 单层丢弃向 /
+          // `int\*\*` → `const int\*\*` 嵌套层，unqualified 同形只差
+          // const 位）降 W3053 警告——clang/gcc 默认
+          // -Wincompatible-pointer-types-discards-qualifiers 全族同判
+          // warning；结构性差异维持 E3067
+          if qualifier_only_mismatch(v_pointee, t_pointee) {
             self.report_warning(
-              "将 const 指针赋值给非 const 指针，可能通过后者修改 const 数据。",
+              "指针 const 限定不匹配：\{type_full_name(target)} ← \{type_full_name(value)}，const 位差异存在绕过只读保护修改数据的通道。",
               loc,
               W3053_ImplicitScalarConversion,
             )
           } else {
             // P1-6 向上转型豁免（is_upcast）属 C++ 单继承链——C 子集剔除
             // #63 尾巴（2026-10-13）：数组 pointee 用 (*)[n] 记法（旧
-            // `name()*` 压扁丢维度——char* ← int* 看不出 [9] 差异点）
+            // `name()*` 压扁丢维度——char* ← int* 看不出 [9] 差异点）；
+            // #250（2026-10-23）：完整指针类型递归全形（旧版深层 const
+            // 位丢失，`int**` vs `const int**` 报成「int* ← int*」）
             self.report_error(
-              "指针类型不兼容：\{pointer_type_name(t_pointee, true)} ← \{pointer_type_name(v_pointee, false)}，需要显式转换（向上转型 Derived* → Base* 除外）。",
+              "指针类型不兼容：\{type_full_name(target)} ← \{type_full_name(value)}，需要显式转换（向上转型 Derived* → Base* 除外）。",
               loc,
               E3067_PointerTypeMismatch,
             )

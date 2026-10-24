@@ -58,6 +58,7 @@ pub(all) enum ErrorCode {
   E1020_StaticAssertFailed
   E1021_IncludeNotFound
   E1022_TemplateInstantiationLimit
+  W1023_PreprocDirectiveIgnored
   E2001_ExpectedType
   W2002_ExpectedArraySize
   E2003_ExpectedExpr

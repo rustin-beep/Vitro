@@ -117,6 +117,68 @@ E-08 golden 逐字节不变。**P2-2 登记**：数组形参快照污染
 - **审阅方法论沉淀**（skill 演化）：①课源锚点/写死下标类缺陷必须在
   真实帧流上求值对账（锚字符串冻结测试是假绿面）；②教学判据端到端取
   真值走 `cmd/serve` compile 响应（`vitro api` 不支持跨方法会话）。
+### fix(typeck+lexer+diag): #250 深层 const 限定符族降警告 + 文案全形渲染 + #212 #pragma/#line 整族降警告（2026-10-23）
+
+- **#250 深层限定符族**：`int**` → `const int**`（嵌套加 const，经典 FAQ
+  写穿通道）与 `const int(*)[3]` decay 给 `int(*)[3]`（数组 element 层剥
+  const）从 E3067/E3038 硬错降 **W3053 警告放行**——clang/gcc 默认
+  `-Wincompatible-pointer-types-discards-qualifiers` 全族仅警告。旧
+  `const_discard_eq` 只判顶层 const 位（#80 单层语义），深层族一律误拒
+  合法 C（语料对拍唯一编译层真回归：外置金样本 2026-10-02 记警告态
+  〔旧码 W3067，已改号 E3067〕→ 本轮硬拒态）。新判据
+  `qualifier_only_mismatch` = 两侧递归剥光 const 位
+  （`strip_all_const`）后 `type_eq` 同形——结构性差异（`int*` vs `char*`）
+  不满足判定维持 E3067；数组 decay 通道同步修层级错位（`v_element` 最内
+  element vs `t_pointee` 数组必不匹配，归位 `subscript_type()` 同层）。
+  两处 #50 批②「维持 E3067」旧断言随本批翻案（ops_wbtest 断言翻转 +
+  文案自洽断言：警告码 + 全形含 const）。
+- **E3067/W3053 文案全形渲染**：`pointer_type_name`（核心名 + 顶层 const
+  前缀，深层 const 位全丢——`int**` vs `const int**` 报成自相矛盾的
+  「int\* ← int\*」）升级为 `type_full_name`（完整类型递归全形：
+  `const int**` / `int (*)[9]` / 指针自身 const 后置 `* const`）。
+- **#212 #pragma/#line 整族**：不再落未知指令 E1006 硬拒（旧文案
+  「已跳过该行」与 err 终止编译矛盾——说谎文案；`#pragma once` 学生/
+  教材高频惯用法中招）。新处置：`once` **零诊断跳过**（重复包含防护由
+  宿主 `include_once_implicit` 能力旗标承接——同文件重复 include 隐式
+  去重；环检测 `include_cycle_detect` 是另一条独立旗标）；其余 pragma
+  （pack/STDC 族）与 `#line` 降
+  **W1023 警告跳过**（新码 `W1023_PreprocDirectiveIgnored`，码表 152→153
+  臂，gen_diag expectedArms/diag_wbtest 计数连坐）——语义未实现按默认
+  口径编译，布局/行号差异在警告文案与《已知限制与差异》§③ 条目 6 示警。
+  意外收获实测：vitro 默认紧缩布局与 `pack(1)` 恰好同值（sizeof 同 5）。
+- **语料两例**：`corpus/baseline/const_nested_qualifier_warn.c`（#250：
+  嵌套加 const/剥 const/匹配基线/加宽安全方向四形态，clang 实跑
+  14/5/7/15 双臂逐字节一致）+ `corpus/baseline/pragma_line_ignore.c`
+  （#212：once/pack/#line 三形态，输出 5 三向一致）。五家 digest
+  `--freeze-mb` 连坐（typeck 存量漂移 2 键：`const_array_decay_warn.c`
+  = #80 锚文案更新 + `llm_scale/llm_scale_editor.c` = 满页 const char\*
+  族命中新文案——后者系首轮 CI 红后补冻的 **llm_scale 套件漏冻**，
+  本地预检只跑了四套件口径）。
+- **顺手收口（master 既有欠账）**：facts 测试数 857→866 连坐 3 个文件
+  6 行（README×3 行 / 快速入门×2 行 / 标准库架构与测试防线×1 行——
+  f87b16db 批漏连坐，本批 CI facts --strict 会踩故收掉）。
+- **PR #284 审阅处置批（P1×1 + P2×1 + P3 批，2026-10-24）**：
+  - **P1-1 `#pragma once` 尾随空白族**：匹配前 `trailing_trim` 剥尾随
+    空白（\r/空格/制表）——CRLF 检出态（行尾 `\r`）、注释剥除残留空格、
+    显式尾随空格三形态与 LF 裸行统一判零诊断（旧精确比较只认 1/4
+    形态，自家语料在本机 system 级 autocrlf=true 的 CRLF 检出态即中招
+    报 W1023 'once\r'——五家差分先归一 LF 喂闸故结构性不可见）。连坐：
+    `.gitattributes` 补 `corpus/** text eol=lf`（语料检出态= blob 形态）
+    + 语料补尾注释形态 + lexer 四形态黑盒锚（显式空格/CRLF 两形态受
+    editorconfig trim 约束无法入库内表达，锚定位于此；突变注入证红）。
+  - **P2-1 → issue #285**：`T *const *` 声明符链 const 层级归属错
+    （parser 挂最外层指针位，C 语义在第一层指针自身位）——精确匹配
+    形态（`char* const[]` decay `char* const*` 传 `char *const *` 形参）
+    被误报 W3053（存量误报，本批文案放大：断言式表述 + 全形渲染印出
+    错层级）。语料补该格为已知误报锚（修复后转零诊断连坐重冻）。
+  - **P3 批**：CHANGELOG 三处失实修正（本节内嵌：llm_scale 漏说 /
+    fuzz +30 非「13 轮换」/「5 处」→3 文件 6 行）+ W3067 历史码引用
+    勘误（ops_wbtest 头注与语料头注，实际承载码 W3053）+
+    `const_promoted_eq` 头注过时状态句（「深层不放行」已翻案）+
+    **W1023 补教学卡 + W3053 卡面扩 const 族**（catalog 108→109、
+    gen_diag/计数/doc 测试三连坐——#212 动机「学生高频惯用法」查卡
+    不落空）+ 头文件内 `#pragma pack` 的 W1023 落 line=-1/filename=
+    main.c（存量 ③-3 行号补偿缺陷面常见化——《已知限制》§③6 登记）。
 
 ### fix(corpus+infra): PR #280 审阅批三——三项后续处置（2026-10-23）
 

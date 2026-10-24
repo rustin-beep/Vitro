@@ -255,10 +255,13 @@ test "resolve_generic_selection" {
 
 ///|
 /// 病 3 锚（#47，2026-10-09）：`char*` → `const char*` 是 C11 §6.5.16.1
-/// 的安全方向（目标指向类型的限定符不弱于源即合法），零 W3067；旧实现
-/// type_eq 严格等不认 pointee 顶层 const 增强，假阳性（文案还渲染成两侧
-/// 同型 "char*" 自相矛盾）。两条负锚锁不放松面：base 类型不同、多级指针
-/// const 增强（char** → const char**，C 标准判非法）均维持 W3067。
+/// 的安全方向（目标指向类型的限定符不弱于源即合法），零警告（注：历史
+/// 名 W3067 系码表不存在的错码引用——实际承载码自 #80 起为 W3053，
+/// PR #284 审阅 P3 勘误）；旧实现 type_eq 严格等不认 pointee 顶层
+/// const 增强，假阳性（文案还渲染成两侧同型 "char*" 自相矛盾）。
+/// 负锚锁 base 类型不同维持 E3067；多级指针 const 差异
+///（char** → const char**）自 #250（2026-10-23）降 W3053 警告——
+/// clang 默认 -Wincompatible...-discards-qualifiers 全族仅警告。
 test "assign_const_gain_pointer_no_w3067" {
   let loc = @source.SourceLoc::new(1, 1)
   // char* a; const char* b = a;
@@ -284,7 +287,11 @@ test "assign_const_gain_pointer_no_w3067" {
     1,
     msg="base 类型不同须维持 E3067（#50 批②升级）",
   )
-  // 负锚 2：char** → const char**（多级指针 const 增强，C 判非法）照报
+  // 负锚 2：char** → const char**（多级指针 const 差异）——#250 翻案
+  //（2026-10-23）：降 W3053 警告放行，对齐 clang 默认
+  // -Wincompatible-pointer-types-discards-qualifiers 全族仅警告口径
+  //（旧「维持 E3067」为 #50 批②断言；C11 §6.5.16.1 约束违反属
+  // 「要求诊断」级，error 强于 clang 默认——与 #80 单层降警告同族处置）
   let tc3 = TypeChecker::new()
   ignore(
     tc3.check_assignable(
@@ -301,8 +308,21 @@ test "assign_const_gain_pointer_no_w3067" {
   )
   assert_eq(
     tc3.errors.length(),
+    0,
+    msg="嵌套 const 差异不得 error（#250 对齐 clang 仅警告）",
+  )
+  assert_eq(
+    tc3.warnings.length(),
     1,
-    msg="多级 const 增强维持 E3067（C 标准；#50 批②升级）",
+    msg="嵌套 const 差异须报 W3053 警告",
+  )
+  assert_true(
+    tc3.warnings[0].code == 3053,
+    msg="嵌套 const 差异警告码 = W3053",
+  )
+  assert_true(
+    tc3.warnings[0].message.contains("const char**"),
+    msg="警告文案须渲出深层 const（两侧全形，不压扁）",
   )
 }
 
@@ -540,7 +560,10 @@ test "assign_const_2d_array_param_widening" {
   )
   assert_true(ok, msg="const int g[9][9] 形参收 int grid[9][9]")
   assert_eq(tc.errors.length(), 0)
-  // 反向（int(*)[9] ← const int(*)[9]）：剥 const 仍拒（写穿风险）
+  // 反向（int(*)[9] ← const int(*)[9]）：剥 const 深层——#250 翻案
+  //（2026-10-23）：降 W3053 警告放行（clang 实测
+  // -Wincompatible-pointer-types-discards-qualifiers 仅警告，rc=0）；
+  // 旧「维持 E3067」随 #250 对齐 clang 翻转
   let tc2 = TypeChecker::new()
   let bad = tc2.check_assignable(
     @ast.Type::Pointer(
@@ -555,9 +578,18 @@ test "assign_const_2d_array_param_widening" {
   )
   assert_true(
     bad,
-    msg="指针赋值路径本身可达（报错在 E3067 臂）",
+    msg="指针赋值路径本身可达（警告在 W3053 臂）",
   )
-  assert_eq(tc2.errors.length(), 1, msg="剥 const 方向维持 E3067")
+  assert_eq(
+    tc2.errors.length(),
+    0,
+    msg="剥 const 深层不得 error（#250 对齐 clang 仅警告）",
+  )
+  assert_eq(tc2.warnings.length(), 1, msg="剥 const 深层须报 W3053 警告")
+  assert_true(
+    tc2.warnings[0].message.contains("const int (*)[9]"),
+    msg="警告文案须含数组 pointee 全形（const 差异点可见）",
+  )
 }
 
 ///|

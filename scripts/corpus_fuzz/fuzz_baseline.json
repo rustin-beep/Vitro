@@ -198,6 +198,15 @@
     "baseline/case_const_expr.c|memset_zero": {
       "bucket": "AGREE"
     },
+    "baseline/case_not_constant.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/case_not_constant.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/case_not_constant.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/char2d_string_edge.c|char_escape": {
       "bucket": "AGREE"
     },
@@ -233,6 +242,15 @@
     },
     "baseline/char_array_init.c|memset_zero": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/char_array_var_init.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/char_array_var_init.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/char_array_var_init.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/char_global_read_extents.c|div2shift": {
       "bucket": "AGREE"
@@ -522,6 +540,15 @@
     "baseline/double_mul.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/dp_fibonacci.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/dp_fibonacci.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/dp_fibonacci.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/dp_knapsack.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -666,6 +693,15 @@
     "baseline/e2_include_not_found_angle.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/e2_macro_stringize.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_macro_stringize.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_macro_stringize.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/e2_predefined_macros.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -691,6 +727,15 @@
       "bucket": "AGREE"
     },
     "baseline/e3_static_assert.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert_fail.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert_fail.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/e3_static_assert_fail.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/e3_unreachable_dead.c|cast_strip": {
@@ -900,6 +945,15 @@
     "baseline/function_call.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/function_pointer_array.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/function_pointer_array.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/function_pointer_array.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/function_pointer_decl.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -952,6 +1006,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/gcd_euclidean.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/global_var_init.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/global_var_init.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/global_var_init.c|memset_zero": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/goto_basic.c|brace_wrap": {
@@ -1116,6 +1179,15 @@
     "baseline/libc_difftime.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/libc_func_pointer_value.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_func_pointer_value.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_func_pointer_value.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/libc_vprintf.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -1159,6 +1231,15 @@
       "bucket": "AGREE"
     },
     "baseline/linked_queue.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_corpus_rejects.c|char_escape": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/llm_corpus_rejects.c|div2shift": {
+      "bucket": "WRONG_VALUE"
+    },
+    "baseline/llm_corpus_rejects.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/llm_snprintf_struct_member.c|brace_wrap": {
@@ -1449,6 +1530,15 @@
     "baseline/offsetof_struct.c|memset_zero": {
       "bucket": "AGREE"
     },
+    "baseline/p2a_host_semantics.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/p2a_host_semantics.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/p2a_host_semantics.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/p2b_typeck_false_positives.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -1573,6 +1663,15 @@
       "bucket": "AGREE"
     },
     "baseline/pointer_add_assign_negative.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/pointer_add_assign_side_effect.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/pointer_add_assign_side_effect.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/pointer_add_assign_side_effect.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/pointer_add_assign_struct.c|brace_wrap": {
@@ -1796,6 +1895,15 @@
     },
     "baseline/qsort.c|static_inject": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/qsort_strcmp_callback.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/qsort_strcmp_callback.c|init_partial": {
+      "bucket": "VITRO_TRAP"
+    },
+    "baseline/qsort_strcmp_callback.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/qualifier_order_static.c|init_partial": {
       "bucket": "AGREE"
@@ -2470,6 +2578,15 @@
     "baseline/union_basic.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/union_int_member.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/union_int_member.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/union_int_member.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/union_member_struct_assign.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -2594,6 +2711,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/while_loop.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/zero_init_aggregate.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/zero_init_aggregate.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/zero_init_aggregate.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/zero_init_array.c|brace_wrap": {

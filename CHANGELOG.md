@@ -12,6 +12,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(diag+vm+host+gateway): A 线批三——#256/#261 诊断码↔教学卡双向闭合批 + 运行期 trap 立码 E3086/E3087/E3088（2026-10-24）
+
+- **#256 正向（10+1 卡补齐）**：catalog 补 `E0`（内部错误通用卡）+
+  `E3074`–`E3082` 九卡（重复 case / 静态初始化非常量 / 不完整类型 /
+  typedef 重定义 / register 取地址 / 弹性数组初始化 / 结构体重复成员 /
+  负数组长度 / 结构体函数字段——码位早已在引擎落地但零卡，下游按码查卡
+  落空）；闭合闸摸底另抓 `E1012`（#else/#elif 位置错误——#256 报告外
+  同族活码无卡缺口）一并补卡。catalog 109→114。
+- **#256 反向（9 卡退役）**：`E1022`（C++ 模板残留）/`E2001`（被 E2005
+  泛化覆盖）/`E3026`（被 E3028 泛化覆盖）/`W3056`（卡文与实现相反——
+  引擎已完整支持 unsigned 回绕）/`E4100`–`E4104`（C++ 死条目，#233 码臂
+  摘除另批）从真源删除——码臂保留（from_code 兼容），下游预渲染错误清单
+  不再混入永不触发码；diag `e4_export_cpp_segment` 锚翻转为「臂在无卡 +
+  导出不含 4xxx」退役锚。
+- **#261 运行期 trap 立码**：`E3086`（数组越界 bounds_array + TrapBounds
+  直写文案）/`E3087`（泛内存越界 bounds_generic + host oob）/`E3088`
+  （除零）——三码位立臂入表（156 臂）+ 三张运行期概念卡；trap 文案首段
+  带码对齐既有四码形态（E3083/E3060/E3061/E3027/E3070）。
+- **#261 协议出口结构化**：run/feed 帧 `+trap_code` 字段（`vm.trap_code`
+  单源，空串=无码形态——资源墙/装载错/内部形态；`VMSnapshot`/restore
+  连坐往返）；host 回传通道 `HostMemReply.trap_code`（access_fault_code
+  单点分派 E3083/E3087/E3060）+ `InputOutcome::Trap(String, String)`；
+  CLI 手册字段↔最低版本表 + 快速入门示例帧连坐；protocol_frames 基线
+  47 帧重冻（合法漂移=文案带码 + 新字段）。
+- **#261 键名对齐**：trap_messages.md 真源键名规则成文——**键带 `E####_`
+  前缀 ⇔ 渲染文案首段带同码**；改名四键（`E3060_null_deref`→
+  `E3083_null_deref`、`E3060_oob_host`→`E3087_oob_host`（文案补码）、
+  `E_div_zero`→`E3088_div_zero`、`bounds_array`/`bounds_generic`→带码
+  键）——键名从此是码位可信来源（旧 `E3060_null_deref` 实带 E3083 的
+  错位形态根除）；teaching_gen_check -write 再生 + 装配点（trap.mbt/
+  host_memory.mbt）连坐。
+- **#256 建议 3 落地：catalog_closure 闭合闸**（.mts 四件套——node 直跑/
+  tsc 严格档/oxlint/node:test，CI `gen` slice 接线 + ci_checklist 活行）：
+  R1 正向（生产码须有卡）+ R2 反向（卡须有生产点）+ R3 撞键防（catalog
+  数字码 ↔ 同号异前缀双臂）+ R4 幽灵卡 + R5 白名单僵尸条目；生产点扫描
+  两形态（`[EWH]\d{4}_变体` 枚举引用 + `"E\d{4}"` 字面量——trap 面），
+  规则外置 rules.json（白名单条目带 reason 且零命中即红——白名单是债）；
+  J9 埋雷五路证红（每规则注入突变）+ 扫描形态锚；豁免登记 E0（Unknown
+  数值构造盲区）/E4001/E4025（C++ 残留死路径，挂 #233 清源）。
+- 连坐基线：gen_diag expectedArms 153→156 / expectedCatalog 109→114；
+  diag_wbtest（156/114/42）+ content_data contract_wbtest（114 卡）+
+  README.mbt.md + e4 fixture（4100 探针→3086）连坐；moon test 884/884。
+
 ### fix(demo): B 线批三——真实浏览器实测三连 #286 P1×3 + #287 P2×5 + #288 P3×2（2026-10-24）
 
 - **#286 P1 三条**：①sticky 顶栏遮运行条——五主题 `--vr-masthead` token

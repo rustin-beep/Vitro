@@ -537,6 +537,6 @@ pub fn host_strerror(
   match mem.write_bytes(map, addr, msg) {
     Ok(_) => value_only(addr.to_uint64())
     // oracle 对该"理论不可达"失败显式 trap（非静默——审阅 P1-b 定的口径）
-    Err(_) => trap_only("strerror: 输出缓冲写入失败")
+    Err(_) => trap_only("strerror: 输出缓冲写入失败", "")
   }
 }

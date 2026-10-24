@@ -482,7 +482,7 @@ test "realloc_invalid_ptr_reports_not_silent" {
 test "trap_messages_migration_snapshot_before" {
   let (map, mem) = fresh()
   // E3061_double_free：纯行号，整串
-  let df = double_free_message(@memory.FreedRegionInfo::{
+  let (df, df_code) = double_free_message(@memory.FreedRegionInfo::{
     addr: 0U,
     size: 0,
     alloc_line: 1,
@@ -490,6 +490,7 @@ test "trap_messages_migration_snapshot_before" {
     alloc_step: 0,
     freed_step: 3,
   })
+  assert_eq(df_code, "E3061", msg="#261 码随文案")
   assert_eq(
     df, "[double-free] Double-Free (E3061)：你正在 free 一块已经在第 2 行被释放过的内存（由第 1 行的 malloc/realloc 分配）。\n\n[cause] 原因：同一块内存被释放了两次，这通常是因为 free(p) 后没有将 p 置为 NULL，或者两个指针指向同一块内存且都被释放了。\n[fix] 解决方法：每次 free(p) 后立刻写 p = NULL;。对 NULL 指针重复 free 是安全的。",
   )
@@ -521,19 +522,22 @@ test "trap_messages_migration_snapshot_before" {
   }
   // E3027_free_interior：malloc(16,1) 的 p+8（块内部）
   let p = host_malloc(map, 16, 1).value.unwrap().to_uint()
-  let fi = invalid_free_message(map, p + 8U)
+  let (fi, fi_code) = invalid_free_message(map, p + 8U)
+  assert_eq(fi_code, "E3027", msg="#261 码随文案")
   assert_eq(
     norm(fi),
     "[deny] 无效 free (E3027)：free 的地址 0xX 是第 1 行 malloc 块（起始 0xX，16 字节）的内部地址，不是起始地址。\n\n[cause] 原因：free 只能释放 malloc/calloc/realloc 返回的原始指针。\n[fix] 解决方法：保存分配返回的原始指针用于 free；需要偏移访问时使用单独的指针变量，不要 free 偏移后的指针。",
   )
   // E3027_free_unknown：栈垃圾地址（不在任何块）
-  let fu = invalid_free_message(map, 0x90000U)
+  let (fu, fu_code) = invalid_free_message(map, 0x90000U)
+  assert_eq(fu_code, "E3027", msg="#261 码随文案")
   assert_eq(
     norm(fu),
     "[deny] 无效 free (E3027)：free 的地址 0xX 不指向任何 malloc/calloc/realloc 分配的内存块起始地址（可能是栈地址、全局变量地址或未初始化指针的垃圾值）。\n\n[cause] 原因：只有 malloc 系列函数返回的指针才能被 free。\n[fix] 解决方法：检查该指针是否来自 malloc 分配，且未经过指针算术运算。",
   )
   // E3027_realloc_unknown
-  let ru = realloc_invalid_message(map, 0x90000U)
+  let (ru, ru_code) = realloc_invalid_message(map, 0x90000U)
+  assert_eq(ru_code, "E3027", msg="#261 码随文案")
   assert_eq(
     norm(ru),
     "[deny] 无效 realloc (E3027)：realloc 的地址 0xX 不指向任何已分配块的起始位置。\n\n[cause] 原因：可能是栈地址、全局变量地址或未初始化的垃圾值。\n[fix] 解决方法：只对 malloc/calloc/realloc 的返回值调用 realloc。",
@@ -558,11 +562,11 @@ test "host_note_access_snapshot_before" {
     access_fault_text(
       @memory.MemFault::NullDeref(0x10U, @memory.AccessKind::Read),
     ),
-    "访问了 NULL 指针区域（地址 0x10）。NULL 指针不能解引用。请确认指针已被正确初始化。",
+    "[null-deref] NULL 指针解引用 (E3083)：访问了 NULL 指针区域（地址 0x10）。NULL 指针不能解引用。请确认指针已被正确初始化。",
   )
   assert_eq(
     access_fault_text(@memory.MemFault::OutOfBounds(0x10U, 0)),
-    "内存访问越界（地址 0x10）。请检查数组下标或指针运算是否超出分配范围。",
+    "[oob] 内存访问越界 (E3087)：你访问了地址 0x10，它不属于任何变量、数组或堆块。请检查数组下标或指针运算是否超出分配范围。",
   )
   assert_eq(
     access_fault_text(

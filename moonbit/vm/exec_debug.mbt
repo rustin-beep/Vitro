@@ -86,8 +86,10 @@ fn VitroVM::execute_debug(
       }
       if index < 0L || index >= size.to_int64() {
         let max_idx = if size > 0 { size - 1 } else { 0 }
+        // #261（2026-10-24）：数组越界文案首段带码 E3086（与
+        // E3086_bounds_array 资产模板同码——两条渲染路径同码位）。
         let diag = if operand >= 0 {
-          "[deny] 数组越界：你访问了 " +
+          "[deny] 数组越界 (E3086)：你访问了 " +
           name +
           "[" +
           index.to_string() +
@@ -101,13 +103,13 @@ fn VitroVM::execute_debug(
           max_idx.to_string() +
           " 之间。"
         } else {
-          "[deny] 数组越界：索引 " +
+          "[deny] 数组越界 (E3086)：索引 " +
           index.to_string() +
           " 超出了合法范围 0~" +
           max_idx.to_string() +
           "。\n\n[cause] 原因：数组索引超出了合法范围。"
         }
-        self.trap(diag, line, column)
+        self.trap(diag, line, column, code="E3086")
       }
       None
     }

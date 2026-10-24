@@ -114,7 +114,7 @@ fn hex04_upper(v : UInt32) -> String {
 ///|
 /// 受检故障 → trap 回复。
 fn fault_reply(f : @memory.MemFault) -> HostMemReply {
-  trap_only(access_fault_text(f))
+  trap_only(access_fault_text(f), access_fault_code(f))
 }
 
 ///|
@@ -242,6 +242,7 @@ pub fn host_strcpy(
       if src_len + 1 > available {
         return trap_only(
           "[buffer-overflow] Buffer Overflow (E3070)：strcpy 目标缓冲区溢出。源字符串长度 \{src_len} 字节（含终止符 \{src_len + 1} 字节），但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n[cause] 原因：strcpy 不会检查目标缓冲区大小。\n[fix] 解决方法：使用 strncpy 或确保目标缓冲区足够大（至少 \{src_len + 1} 字节）。",
+          "E3070",
         )
       }
     }
@@ -249,7 +250,7 @@ pub fn host_strcpy(
   }
   // V-P1-6 栈缓冲容量检查
   match stack_buffer_check(stack_buffers, dest, src_len + 1, "strcpy") {
-    Some(t) => return trap_only(t)
+    Some(t) => return trap_only(t, "")
     None => ()
   }
   // 写入（受检批量；oracle 是截断 store_i8 循环）
@@ -321,6 +322,7 @@ pub fn host_memset(
   if ptr < @bytecode.NULL_TRAP_SIZE && write_len > 0U {
     return trap_only(
       "向 NULL 指针区域写入（地址 \{hex04_upper(ptr)}）。请确认指针已被正确初始化。",
+      "",
     )
   }
   if write_len > 0U {
@@ -378,6 +380,7 @@ pub fn host_strcat(
       if total > available {
         return trap_only(
           "[buffer-overflow] Buffer Overflow (E3070)：strcat 目标缓冲区溢出。已有 \{dest_len} 字节 + 源字符串 \{src_len} 字节 + 终止符 1 字节 = \{total} 字节，但目标区域 '\{rname}' 从偏移 \{offset} 开始仅剩 \{available} 字节。\n\n[cause] 原因：strcat 不会检查目标缓冲区剩余容量。\n[fix] 解决方法：使用 strncat 或确保目标缓冲区足够大。",
+          "E3070",
         )
       }
     }
@@ -386,7 +389,7 @@ pub fn host_strcat(
   // V-P1-6 栈缓冲容量检查（end 为 dest 起已有内容末尾——oracle 以 dest 查块）
   match
     stack_buffer_check(stack_buffers, dest, dest_len + src_len + 1, "strcat") {
-    Some(t) => return trap_only(t)
+    Some(t) => return trap_only(t, "")
     None => ()
   }
   // 追加 + 终止符（受检批量；oracle 是截断 store_i8 循环）
@@ -420,6 +423,7 @@ pub fn host_strncpy(
   if n < 0 {
     return trap_only(
       "strncpy: 拷贝长度 n 为负（作为无符号长度是巨量越界写——请检查长度参数的计算）。",
+      "",
     )
   }
   let mem_size = @bytecode.MEM_SIZE
@@ -494,6 +498,7 @@ pub fn host_memmove(
   if n < 0 {
     return trap_only(
       "memmove/memcpy: 拷贝长度 n 为负（作为无符号长度是巨量越界写——请检查长度参数的计算）。",
+      "",
     )
   }
   let mem_size = @bytecode.MEM_SIZE
@@ -538,6 +543,7 @@ pub fn host_strncat(
   if n > 0x7FFFFFFFUL {
     return trap_only(
       "strncat: 追加长度 n 超出正域（负数或巨量越界写——请检查长度参数的计算）。",
+      "",
     )
   } // 扫 dest 末尾（同 strcat）
   let mut end = dest

@@ -2,6 +2,17 @@
   "source_sha": "7d1711d3",
   "entries": [
     {
+      "code": 0,
+      "icon": "unsupported",
+      "title": "内部错误（未分类）",
+      "explanation": "编译器在处理你的代码时遇到无法归入已知类别的内部错误。这类错误通常意味着编译器自身的边界被触碰（极深的嵌套、罕见的语法组合等），而不是你的代码有明确的语义错误。请把可复现的最小代码片段反馈给维护者。",
+      "common_causes": [
+        "极深嵌套或超长表达式触发编译器内部限制",
+        "少见语法组合命中未分类路径",
+        "编译器缺陷——欢迎反馈最小复现片段"
+      ]
+    },
+    {
       "code": 1001,
       "icon": "unknown-char",
       "title": "未知字符",
@@ -89,6 +100,17 @@
         "删除了 #if 却保留了 #elif",
         "#elif 误写在了 #if 之前",
         "嵌套条件编译时配对错乱"
+      ]
+    },
+    {
+      "code": 1012,
+      "icon": "preproc-cond",
+      "title": "#else/#elif 位置错误",
+      "explanation": "#else 或 #elif 出现在了错误的位置。条件编译块的结构是 #if → 若干 #elif → 至多一个 #else → #endif：#else 之后不能再出现 #elif，#else 本身也只能出现一次。",
+      "common_causes": [
+        "把 #elif 写在了 #else 之后",
+        "同一个 #if 块里写了两个 #else",
+        "嵌套 #if 时漏写 #endif，导致块边界错乱"
       ]
     },
     {
@@ -191,17 +213,6 @@
       ]
     },
     {
-      "code": 1022,
-      "icon": "depth-limit",
-      "title": "模板实例化超限",
-      "explanation": "模板实例化的嵌套层数超过了限制。每一层实例化都会产生新的模板，无限制递归会耗尽资源。",
-      "common_causes": [
-        "模板递归实例化自身",
-        "模板互相实例化形成环",
-        "缺少递归终止条件的特化"
-      ]
-    },
-    {
       "code": 1023,
       "icon": "unsupported",
       "title": "预处理指令已忽略",
@@ -210,17 +221,6 @@
         "#pragma pack(n) 期望改变结构体布局（当前子集恒按紧缩布局——pack(1) 恰好同值，其他 n 不同）",
         "#line 期望改写后续诊断行号（当前按原文件行号报告）",
         "STDC 等标准 pragma 期望切换浮点约定/方言开关"
-      ]
-    },
-    {
-      "code": 2001,
-      "icon": "type-expected",
-      "title": "缺少类型说明符",
-      "explanation": "声明中缺少类型。C 的每个声明都必须以类型（int、char、struct 等）开头。",
-      "common_causes": [
-        "直接写变量名忘记类型",
-        "误以为可以像某些语言一样省略类型",
-        "类型名拼写错误被当成了变量名"
       ]
     },
     {
@@ -542,15 +542,6 @@
       ]
     },
     {
-      "code": 3026,
-      "icon": "alloc-args",
-      "title": "free 参数个数错误",
-      "explanation": "free 函数只需要一个参数：要释放的内存指针。",
-      "common_causes": [
-        "free() 传了多个参数"
-      ]
-    },
-    {
       "code": 3027,
       "icon": "alloc-args",
       "title": "free 参数类型错误",
@@ -849,16 +840,6 @@
       ]
     },
     {
-      "code": 3056,
-      "icon": "implicit-cast",
-      "title": "无符号类型提示",
-      "explanation": "当前编译器将 unsigned int 映射为 int，暂不支持完整的无符号语义。请确保数值范围在有符号 int 内。",
-      "common_causes": [
-        "使用了 unsigned 关键字",
-        "需要无符号运算但未实现"
-      ]
-    },
-    {
       "code": 3057,
       "icon": "promote",
       "title": "隐式类型提升",
@@ -1041,6 +1022,105 @@
       ]
     },
     {
+      "code": 3074,
+      "icon": "duplicate",
+      "title": "switch 的 case 标签重复",
+      "explanation": "同一个 switch 语句里出现了两个相同的 case 常量。C 语言要求每个 case 标签在同一个 switch 内唯一——重复标签会让编译器不知道该跳转到哪一个分支。",
+      "common_causes": [
+        "复制粘贴 case 分支后忘了改常量值",
+        "宏展开后多个 case 得到相同常量",
+        "本想写不同值但打错了数字"
+      ]
+    },
+    {
+      "code": 3075,
+      "icon": "const-qual",
+      "title": "全局/静态变量的初始化必须是常量",
+      "explanation": "全局变量和 static 变量在程序进入 main 之前初始化，此时不能调用函数、也不能使用运行期才能确定的值——初始化表达式必须是编译期常量。",
+      "common_causes": [
+        "用函数调用初始化全局变量（如 int gx = compute();）",
+        "用另一个非常量表达式初始化全局变量",
+        "把运行期才能算出的值误当作编译期常量"
+      ]
+    },
+    {
+      "code": 3076,
+      "icon": "type-expected",
+      "title": "使用了不完整类型",
+      "explanation": "类型只有声明（如 struct S;）而没有定义（成员列表）时是不完整类型，不能用它创建变量——编译器不知道这种类型占多少字节。先给出带成员列表的完整定义，再定义变量。",
+      "common_causes": [
+        "只写了 struct S; 前向声明就定义 struct S s;",
+        "头文件里漏掉了结构体的完整定义",
+        "类型名拼写错误被当成了新的前向声明"
+      ]
+    },
+    {
+      "code": 3077,
+      "icon": "duplicate",
+      "title": "typedef 重定义且类型不同",
+      "explanation": "同一个 typedef 名字再次定义时必须与原类型完全一致——完全相同的重复定义是允许的，但改成不同的类型是错误的。",
+      "common_causes": [
+        "在头文件和源文件里对同一名字给了不同类型",
+        "复制代码后修改了 typedef 的目标类型",
+        "想重用名字却忘了它已经被定义过"
+      ]
+    },
+    {
+      "code": 3078,
+      "icon": "deref",
+      "title": "不能对 register 变量取地址",
+      "explanation": "register 提示编译器把变量放进寄存器，而寄存器没有内存地址，所以对 register 变量用 & 取地址是非法的。现代编译器大多会忽略 register 提示，但取地址这个动作仍然是硬性错误。",
+      "common_causes": [
+        "对 register int x 写了 scanf(\"%d\", &x) 或 &x",
+        "从别的代码复制了 register 声明又对其取地址",
+        "不需要 register 就删掉它，需要取地址就别用 register"
+      ]
+    },
+    {
+      "code": 3079,
+      "icon": "array-init",
+      "title": "弹性数组成员不能在初始化里赋值",
+      "explanation": "结构体最后一个成员写成 int a[]（弹性数组）表示长度由运行期 malloc 决定，它不占结构体尺寸，也不能在声明初始化时用大括号给它填元素。需要用 malloc 分配足够空间后手动填充。",
+      "common_causes": [
+        "struct F { int n; int a[]; }; 后写 struct F f = {1, {2,3}};",
+        "误以为弹性数组能像普通数组一样初始化",
+        "需要固定长度就写成 int a[N]，或改用指针成员 int *a"
+      ]
+    },
+    {
+      "code": 3080,
+      "icon": "struct-member",
+      "title": "结构体成员重名",
+      "explanation": "同一个结构体里每个成员的名字必须唯一——两个同名成员会让 a.x 无法确定指哪一个。",
+      "common_causes": [
+        "复制成员声明后忘了改名",
+        "合并两份结构体定义时撞了名",
+        "成员较多时手误重复写了一行"
+      ]
+    },
+    {
+      "code": 3081,
+      "icon": "array-size",
+      "title": "数组长度不能为负",
+      "explanation": "声明数组时方括号里的长度必须是正整数（或值为正的常量表达式），负数长度没有意义、无法分配空间。",
+      "common_causes": [
+        "常量表达式算出了负数（如 a[N-4] 而 N<4）",
+        "符号或数字写错",
+        "把访问下标误写进了声明里"
+      ]
+    },
+    {
+      "code": 3082,
+      "icon": "type-expected",
+      "title": "结构体成员不能是函数类型",
+      "explanation": "C 的结构体成员不能是函数本身，只能放函数指针。把 int f(int); 写进结构体是 C++ 的成员函数语法；C 里应写成 int (*f)(int);。",
+      "common_causes": [
+        "把 C++ 成员函数写法带进了 C",
+        "想存回调函数却漏了星号",
+        "应改为函数指针成员 int (*f)(int);"
+      ]
+    },
+    {
       "code": 3083,
       "icon": "null-deref",
       "title": "NULL 指针解引用 (Null Dereference)",
@@ -1049,61 +1129,6 @@
         "指针声明后未初始化就被解引用（局部指针默认不是 NULL，但教学沙盒零初始化为 NULL）",
         "malloc 返回 NULL（内存耗尽）未检查就使用",
         "free(p) 后继续通过 p 访问（应立即置 NULL）"
-      ]
-    },
-    {
-      "code": 4100,
-      "icon": "leak",
-      "title": "C++ 内存泄漏 (Memory Leak)",
-      "explanation": "使用 new 分配的内存没有被对应的 delete 释放。长期运行的程序会因此不断占用内存，最终导致资源耗尽。",
-      "common_causes": [
-        "new 后忘记 delete",
-        "异常路径导致 delete 未执行",
-        "构造函数 new 但析构函数未 delete"
-      ]
-    },
-    {
-      "code": 4101,
-      "icon": "dangling",
-      "title": "C++ 悬垂引用 (Dangling Reference)",
-      "explanation": "引用绑定到了一个生命周期即将结束的对象上。当被引用对象销毁后，引用指向的内存已经无效，继续使用会导致未定义行为。",
-      "common_causes": [
-        "返回局部变量的引用",
-        "引用绑定到临时对象",
-        "引用的对象在引用使用前已被释放"
-      ]
-    },
-    {
-      "code": 4102,
-      "icon": "slice",
-      "title": "C++ 对象切片 (Object Slicing)",
-      "explanation": "把派生类对象赋值给基类值对象时，派生类特有的成员和数据会被'切掉'，只保留基类部分。这通常不是期望的行为。",
-      "common_causes": [
-        "函数参数按值传递派生类",
-        "用基类值对象接收派生类对象",
-        "容器存储基类值对象"
-      ]
-    },
-    {
-      "code": 4103,
-      "icon": "ownership",
-      "title": "C++ unique_ptr 所有权混乱",
-      "explanation": "unique_ptr 独占它所指向的对象所有权。通过拷贝、重复 delete 或在 move 后继续使用原指针，都会破坏所有权语义。",
-      "common_causes": [
-        "对 unique_ptr 使用 std::move 后又通过原指针访问",
-        "手动 delete unique_ptr 管理的对象",
-        "两个 unique_ptr 指向同一地址"
-      ]
-    },
-    {
-      "code": 4104,
-      "icon": "move",
-      "title": "C++ move 后继续使用源对象",
-      "explanation": "对象被 std::move 后，其资源通常已被转移，源对象处于有效但未指定状态。把它当作仍有原值使用会导致错误结果。",
-      "common_causes": [
-        "std::move 后仍读取原对象值",
-        "move 后再次 move 同一对象",
-        "不理解 move 语义把 move 当 copy 用"
       ]
     },
     {
@@ -1126,6 +1151,39 @@
         "在函数定义之前调用它，且没有前置原型声明",
         "函数名拼写错误，恰好又没有原型可供比对",
         "跨文件调用时忘记 #include 对应的头文件"
+      ]
+    },
+    {
+      "code": 3086,
+      "icon": "index",
+      "title": "数组越界（运行期）",
+      "explanation": "程序运行中访问了数组边界之外的元素。C 不会在运行期自动检查下标，越界读写属于未定义行为——可能立刻被终止，也可能悄悄改坏相邻内存。有效下标是 0 到 数组长度-1。",
+      "common_causes": [
+        "循环条件写了 <=（应为 <）",
+        "循环变量的初始值或步长算错",
+        "用变量做下标且没有检查范围"
+      ]
+    },
+    {
+      "code": 3087,
+      "icon": "buffer-overflow",
+      "title": "内存访问越界（运行期）",
+      "explanation": "程序通过指针访问了不属于任何变量、数组或堆块的地址——常见于指针算术走过头、解引用野指针或未初始化的指针。越界访问是未定义行为，教学运行时会在此处安全终止程序。",
+      "common_causes": [
+        "指针加减后越出了分配范围",
+        "解引用了未初始化或已失效的指针",
+        "栈上数组越界波及相邻区域"
+      ]
+    },
+    {
+      "code": 3088,
+      "icon": "operator",
+      "title": "除零（运行期）",
+      "explanation": "除法或取模运算的除数为 0。整数除以 0 在 C 中是未定义行为（教学运行时会在此处安全终止程序）；浮点除零会得到 inf/nan，但通常也是逻辑错误的信号。计算前先确认除数不为 0。",
+      "common_causes": [
+        "循环或递推中除数变量可能变成 0",
+        "输入数据没有校验就直接当除数用",
+        "求平均数时计数还没累加就先做了除法"
       ]
     }
   ]

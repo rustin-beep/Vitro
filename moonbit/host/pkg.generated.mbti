@@ -15,7 +15,7 @@ pub const NOTE_LOG_BUDGET : Int = 8388608
 
 pub const OUTPUT_LOG_BUDGET : Int = 16777216
 
-pub fn double_free_message(@memory.FreedRegionInfo) -> String
+pub fn double_free_message(@memory.FreedRegionInfo) -> (String, String)
 
 pub fn format_arg_count(Array[Int]) -> Int
 
@@ -239,11 +239,11 @@ pub fn host_vprintf_n(@memory.MemoryMap, @memory.Memory, OutputLog, UInt, UInt) 
 
 pub fn host_vsnprintf(@memory.MemoryMap, @memory.Memory, UInt, Int, UInt, UInt) -> HostMemReply
 
-pub fn invalid_free_message(@memory.MemoryMap, UInt) -> String
+pub fn invalid_free_message(@memory.MemoryMap, UInt) -> (String, String)
 
 pub fn malloc_zero_note() -> String
 
-pub fn realloc_invalid_message(@memory.MemoryMap, UInt) -> String
+pub fn realloc_invalid_message(@memory.MemoryMap, UInt) -> (String, String)
 
 pub fn scanf_spec_count(Array[Int]) -> Int
 
@@ -254,6 +254,7 @@ pub(all) struct HostMemReply {
   value : UInt64?
   note : String?
   trap : String?
+  trap_code : String
 } derive(Eq, @debug.Debug)
 pub fn HostMemReply::equal(Self, Self) -> Bool
 pub fn HostMemReply::not_equal(Self, Self) -> Bool
@@ -262,7 +263,7 @@ pub fn HostMemReply::to_repr(Self) -> @debug.Repr
 pub(all) enum InputOutcome {
   Value(UInt64)
   Waiting
-  Trap(String)
+  Trap(String, String)
 } derive(Eq, @debug.Debug)
 pub fn InputOutcome::equal(Self, Self) -> Bool
 pub fn InputOutcome::not_equal(Self, Self) -> Bool

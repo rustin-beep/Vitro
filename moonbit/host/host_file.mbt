@@ -121,7 +121,7 @@ fn host_fgetc_stdio(input : InputState, stream : UInt32) -> StdioRead {
   }
   match host_getchar(input) {
     Value(v) => StdioRead::Done(value_only(v))
-    Trap(msg) => StdioRead::Done(trap_only(msg))
+    Trap(msg, code) => StdioRead::Done(trap_only(msg, code))
     Waiting => StdioRead::StdioWaiting
   }
 }

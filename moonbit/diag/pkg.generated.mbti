@@ -152,6 +152,9 @@ pub(all) enum ErrorCode {
   E3083_NullDeref
   W3084_MissingReturnPath
   W3085_ImplicitFuncDecl
+  E3086_BoundsArray
+  E3087_BoundsGeneric
+  E3088_DivideZero
   E4001_ExceptionNotSupported
   E4002_OperatorOverloadNotSupported
   E4003_TemplateSpecializationNotSupported

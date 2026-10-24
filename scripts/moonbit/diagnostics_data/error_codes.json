@@ -454,6 +454,18 @@
       "code": 3083
     },
     {
+      "name": "E3086_BoundsArray",
+      "code": 3086
+    },
+    {
+      "name": "E3087_BoundsGeneric",
+      "code": 3087
+    },
+    {
+      "name": "E3088_DivideZero",
+      "code": 3088
+    },
+    {
       "name": "E4001_ExceptionNotSupported",
       "code": 4001
     },

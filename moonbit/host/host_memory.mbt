@@ -40,6 +40,9 @@ pub(all) struct HostMemReply {
   value : UInt64?
   note : String?
   trap : String?
+  /// trap 的结构化 E 码（#261：空串 = 无码；与 trap 文案同生命周期——
+  /// apply_reply 消费时传给 vm.trap 的 code~ 具名参数）。
+  trap_code : String
 } derive(Debug, Eq)
 
 ///|
@@ -51,31 +54,36 @@ pub extend HostMemReply with Eq::{not_equal, equal}
 ///|
 /// 无事发生的回复（`free(NULL)` / 释放成功等）。
 fn no_reply() -> HostMemReply {
-  HostMemReply::{ value: None, note: None, trap: None, }
+  HostMemReply::{ value: None, note: None, trap: None, trap_code: "", }
 }
 
 ///|
 /// 只压一个值。
 fn value_only(v : UInt64) -> HostMemReply {
-  HostMemReply::{ value: Some(v), note: None, trap: None, }
+  HostMemReply::{ value: Some(v), note: None, trap: None, trap_code: "", }
 }
 
 ///|
 /// 压 NULL 并附教学附注。
 fn null_with_note(note : String) -> HostMemReply {
-  HostMemReply::{ value: Some(0UL), note: Some(note), trap: None, }
+  HostMemReply::{
+    value: Some(0UL),
+    note: Some(note),
+    trap: None,
+    trap_code: "",
+  }
 }
 
 ///|
 /// 压 NULL，无附注。
 fn null_silent() -> HostMemReply {
-  HostMemReply::{ value: Some(0UL), note: None, trap: None, }
+  HostMemReply::{ value: Some(0UL), note: None, trap: None, trap_code: "", }
 }
 
 ///|
 /// 发 trap（不压值）。
-fn trap_only(text : String) -> HostMemReply {
-  HostMemReply::{ value: None, note: None, trap: Some(text), }
+fn trap_only(text : String, code : String) -> HostMemReply {
+  HostMemReply::{ value: None, note: None, trap: Some(text), trap_code: code, }
 }
 
 ///|
@@ -206,11 +214,11 @@ pub fn host_calloc(
   // `aligned == 0` 的跳过是**防御性**保留：尺寸链已在前置 `total > MEM_SIZE`
   // 拦截（total ≥ 1 时 aligned ≥ 4），理论不可达；保留是为防未来路径变化时
   // `Memory::fill` 即便 len=0 也走 `check_access`（addr=0 落 NULL 陷阱区）。
-  let mut fault : String? = None
+  let mut fault : (String, String)? = None
   if aligned != 0U {
     match mem.fill(map, addr, aligned.reinterpret_as_int(), b'\x00') {
       Ok(_) => ()
-      Err(f) => fault = Some(access_fault_text(f))
+      Err(f) => fault = Some((access_fault_text(f), access_fault_code(f)))
     }
   }
   map.register_alloc(
@@ -223,11 +231,12 @@ pub fn host_calloc(
   // Rust 的 `trap()` **不中断 handler**（首错优先，`core/trap.rs:145-156`），
   // 故 trap 之后仍照常清理、登记、压地址——本实现保持同序，只把文案交给调用方。
   match fault {
-    Some(t) =>
+    Some((t, c)) =>
       HostMemReply::{
         value: Some(addr.to_uint64()),
         note: None,
         trap: Some(t),
+        trap_code: c,
       }
     None => value_only(addr.to_uint64())
   }
@@ -283,6 +292,7 @@ pub fn host_realloc(
           "realloc 请求的 size 为负数（32 位截断后是 \{new_size}）——按分配失败处理返回 NULL，原内存块保持有效。",
         ),
         trap: None,
+        trap_code: "",
       }
     }
     // 等价 free（new_size == 0）：**结果恒为 NULL**（Rust `:163-194` 在 free 之后无条件 push(0)）。
@@ -293,9 +303,17 @@ pub fn host_realloc(
     // 红→绿锚 `realloc_zero_size_on_freed_ptr_matches_oracle`）。
     let r = match map.release(ptr, freed_line, freed_step) {
       Some(_) => no_reply()
-      None => trap_only(invalid_free_message(map, ptr))
+      None => {
+        let (msg, code) = invalid_free_message(map, ptr)
+        trap_only(msg, code)
+      }
     }
-    return HostMemReply::{ value: Some(0UL), note: None, trap: r.trap, }
+    return HostMemReply::{
+      value: Some(0UL),
+      note: None,
+      trap: r.trap,
+      trap_code: r.trap_code,
+    }
   }
   if ptr == 0U {
     // 等价 malloc
@@ -307,11 +325,15 @@ pub fn host_realloc(
     let old_size = match map.region(ptr) {
       Some(r) =>
         if r.is_freed {
-          return trap_only(realloc_invalid_message(map, ptr))
+          let (msg, code) = realloc_invalid_message(map, ptr)
+          return trap_only(msg, code)
         } else {
           r.size
         }
-      None => return trap_only(realloc_invalid_message(map, ptr))
+      None => {
+        let (msg, code) = realloc_invalid_message(map, ptr)
+        return trap_only(msg, code)
+      }
     }
     let aligned_new = @bytecode.align4(new_size.reinterpret_as_uint())
     let new_addr = match map.allocate_raw(aligned_new, @bytecode.MEM_SIZE) {
@@ -326,10 +348,10 @@ pub fn host_realloc(
     } else {
       aligned_new.reinterpret_as_int()
     }
-    let mut fault : String? = None
+    let mut fault : (String, String)? = None
     match mem.copy(map, new_addr, ptr, copy_size) {
       Ok(_) => ()
-      Err(f) => fault = Some(access_fault_text(f))
+      Err(f) => fault = Some((access_fault_text(f), access_fault_code(f)))
     }
     // 尾部置零（oracle 行为，见文档）
     let tail = aligned_new.reinterpret_as_int() - copy_size
@@ -340,7 +362,7 @@ pub fn host_realloc(
         Err(f) =>
           match fault {
             Some(_) => ()
-            None => fault = Some(access_fault_text(f))
+            None => fault = Some((access_fault_text(f), access_fault_code(f)))
           }
       }
     }
@@ -353,11 +375,12 @@ pub fn host_realloc(
     map.freed_logs_remove_overlapping(new_addr, new_addr + aligned_new)
     map.register_alloc(new_addr, new_size, alloc_line, "realloc", false)
     match fault {
-      Some(t) =>
+      Some((t, c)) =>
         HostMemReply::{
           value: Some(new_addr.to_uint64()),
           note: None,
           trap: Some(t),
+          trap_code: c,
         }
       None => value_only(new_addr.to_uint64())
     }
@@ -390,26 +413,36 @@ pub fn host_free(
     return no_reply()
   }
   match map.freed_logs_get(addr) {
-    Some(info) => return trap_only(double_free_message(info))
+    Some(info) => {
+      let (msg, code) = double_free_message(info)
+      return trap_only(msg, code)
+    }
     None => ()
   }
   match map.release(addr, freed_line, freed_step) {
     Some(_) => no_reply()
-    None => trap_only(invalid_free_message(map, addr))
+    None => {
+      let (msg, code) = invalid_free_message(map, addr)
+      trap_only(msg, code)
+    }
   }
 }
 
 ///|
 /// Double-Free 教学文案（E3061，逐字照搬 Rust `host/memory.rs:67`）。
-pub fn double_free_message(info : @memory.FreedRegionInfo) -> String {
+pub fn double_free_message(info : @memory.FreedRegionInfo) -> (String, String) {
   // #60 批二（2026-10-10）：文案模板外置 teaching/assets（键 E3061_double_free）
   // ——渲染走 @util.render_template；缺键 unwrap panic（装配 bug，fail loud）。
-  @util.render_template(
-    @assets.trap_messages.get("E3061_double_free").unwrap().template,
-    [
-      ("freed_line", info.freed_line.to_string()),
-      ("alloc_line", info.alloc_line.to_string()),
-    ],
+  // #261（2026-10-24）：返回 (文案, 码)——码与文案首段同源。
+  (
+    @util.render_template(
+      @assets.trap_messages.get("E3061_double_free").unwrap().template,
+      [
+        ("freed_line", info.freed_line.to_string()),
+        ("alloc_line", info.alloc_line.to_string()),
+      ],
+    ),
+    "E3061",
   )
 }
 
@@ -419,20 +452,28 @@ pub fn double_free_message(info : @memory.FreedRegionInfo) -> String {
 /// ① 落在**存活**块内部的地址（E3027「不是起始地址」）；
 /// ② 落在**已释放**块内部的地址（E3061 变体）；
 /// ③ 不指向任何分配块起始地址（E3027 兜底：栈地址 / 全局地址 / 垃圾值）。
-pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt32) -> String {
+pub fn invalid_free_message(
+  map : @memory.MemoryMap,
+  addr : UInt32,
+) -> (String, String) {
+  // #261（2026-10-24）：返回 (文案, 码)——码随分支（E3027/E3061）与
+  // 文案首段同源。
   match map.find_live_region_containing(addr) {
     Some(block) => {
       let base = block.0
       let r = block.1
       // #60 批二：文案模板外置（键 E3027_free_interior）
-      @util.render_template(
-        @assets.trap_messages.get("E3027_free_interior").unwrap().template,
-        [
-          ("addr", hex_upper(addr)),
-          ("alloc_line", r.alloc_line.to_string()),
-          ("base", hex_upper(base)),
-          ("size", r.size.to_string()),
-        ],
+      (
+        @util.render_template(
+          @assets.trap_messages.get("E3027_free_interior").unwrap().template,
+          [
+            ("addr", hex_upper(addr)),
+            ("alloc_line", r.alloc_line.to_string()),
+            ("base", hex_upper(base)),
+            ("size", r.size.to_string()),
+          ],
+        ),
+        "E3027",
       )
     }
     None =>
@@ -440,21 +481,24 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt32) -> String {
         Some(log) =>
           if log.addr != addr {
             // #60 批二：文案模板外置（键 E3061_free_freed_interior）
-            @util.render_template(
-              @assets.trap_messages.get("E3061_free_freed_interior").unwrap().template,
-              [
-                ("addr", hex_upper(addr)),
-                ("freed_line", log.freed_line.to_string()),
-                ("log_base", hex_upper(log.addr)),
-              ],
+            (
+              @util.render_template(
+                @assets.trap_messages.get("E3061_free_freed_interior").unwrap().template,
+                [
+                  ("addr", hex_upper(addr)),
+                  ("freed_line", log.freed_line.to_string()),
+                  ("log_base", hex_upper(log.addr)),
+                ],
+              ),
+              "E3061",
             )
           } else {
             // 已释放块的**精确起点**：host_free 走不进这里（Double-Free 前置
             // 拦下）；但 `realloc(p, 0)` 走 release 单出口（无前置），oracle 的
             // `trap_invalid_free` 恰把精确命中滤掉 → 兜底 E3027（P1 修复路径）
-            unknown_free_message(addr)
+            (unknown_free_message(addr), "E3027")
           }
-        None => unknown_free_message(addr)
+        None => (unknown_free_message(addr), "E3027")
       }
   }
 }
@@ -466,20 +510,25 @@ pub fn invalid_free_message(map : @memory.MemoryMap, addr : UInt32) -> String {
 pub fn realloc_invalid_message(
   map : @memory.MemoryMap,
   addr : UInt32,
-) -> String {
+) -> (String, String) {
+  // #261（2026-10-24）：返回 (文案, 码)——码随分支（E3027/E3061）与
+  // 文案首段同源。
   match map.find_live_region_containing(addr) {
     Some(block) => {
       let base = block.0
       let r = block.1
       // #60 批二：文案模板外置（键 E3027_realloc_interior）
-      @util.render_template(
-        @assets.trap_messages.get("E3027_realloc_interior").unwrap().template,
-        [
-          ("addr", hex_upper(addr)),
-          ("alloc_line", r.alloc_line.to_string()),
-          ("base", hex_upper(base)),
-          ("size", r.size.to_string()),
-        ],
+      (
+        @util.render_template(
+          @assets.trap_messages.get("E3027_realloc_interior").unwrap().template,
+          [
+            ("addr", hex_upper(addr)),
+            ("alloc_line", r.alloc_line.to_string()),
+            ("base", hex_upper(base)),
+            ("size", r.size.to_string()),
+          ],
+        ),
+        "E3027",
       )
     }
     None =>
@@ -487,29 +536,40 @@ pub fn realloc_invalid_message(
         Some(log) =>
           if log.addr != addr {
             // #60 批二：文案模板外置（键 E3061_realloc_freed_interior）
-            @util.render_template(
-              @assets.trap_messages.get("E3061_realloc_freed_interior").unwrap().template,
-              [
-                ("addr", hex_upper(addr)),
-                ("freed_line", log.freed_line.to_string()),
-                ("log_base", hex_upper(log.addr)),
-              ],
+            (
+              @util.render_template(
+                @assets.trap_messages
+                .get("E3061_realloc_freed_interior")
+                .unwrap().template,
+                [
+                  ("addr", hex_upper(addr)),
+                  ("freed_line", log.freed_line.to_string()),
+                  ("log_base", hex_upper(log.addr)),
+                ],
+              ),
+              "E3061",
             )
           } else {
             // #60 批二：文案模板外置（键 E3061_realloc_freed_exact）
-            @util.render_template(
-              @assets.trap_messages.get("E3061_realloc_freed_exact").unwrap().template,
-              [
-                ("freed_line", log.freed_line.to_string()),
-                ("alloc_line", log.alloc_line.to_string()),
-              ],
+            (
+              @util.render_template(
+                @assets.trap_messages.get("E3061_realloc_freed_exact").unwrap().template,
+                [
+                  ("freed_line", log.freed_line.to_string()),
+                  ("alloc_line", log.alloc_line.to_string()),
+                ],
+              ),
+              "E3061",
             )
           }
         _ =>
           // #60 批二：文案模板外置（键 E3027_realloc_unknown）
-          @util.render_template(
-            @assets.trap_messages.get("E3027_realloc_unknown").unwrap().template,
-            [("addr", hex_upper(addr))],
+          (
+            @util.render_template(
+              @assets.trap_messages.get("E3027_realloc_unknown").unwrap().template,
+              [("addr", hex_upper(addr))],
+            ),
+            "E3027",
           )
       }
   }
@@ -523,6 +583,19 @@ fn unknown_free_message(addr : UInt32) -> String {
     @assets.trap_messages.get("E3027_free_unknown").unwrap().template,
     [("addr", hex_upper(addr))],
   )
+}
+
+///|
+/// 受检访问故障（MemFault）的结构化 trap 码（#261，2026-10-24）——与
+/// `access_fault_text` 同臂分派：NullDeref→E3083 / OutOfBounds→E3087 /
+/// UseAfterFree→E3060。host 路径 trap 经 `HostMemReply.trap_code` 回传，
+/// apply_reply 消费时传给 vm.trap 的 code~ 参数。
+fn access_fault_code(fault : @memory.MemFault) -> String {
+  match fault {
+    @memory.MemFault::NullDeref(_, _) => "E3083"
+    @memory.MemFault::OutOfBounds(_, _) => "E3087"
+    @memory.MemFault::UseAfterFree(_, _) => "E3060"
+  }
 }
 
 ///|
@@ -546,15 +619,15 @@ fn unknown_free_message(addr : UInt32) -> String {
 fn access_fault_text(fault : @memory.MemFault) -> String {
   match fault {
     @memory.MemFault::NullDeref(addr, _) =>
-      // #60 批二：文案模板外置（键 E3060_null_deref）
+      // #60 批二：文案模板外置（键 E3083_null_deref——#261 键名对齐码位）
       @util.render_template(
-        @assets.trap_messages.get("E3060_null_deref").unwrap().template,
+        @assets.trap_messages.get("E3083_null_deref").unwrap().template,
         [("addr", hex_upper(addr))],
       )
     @memory.MemFault::OutOfBounds(addr, _) =>
-      // #60 批二：文案模板外置（键 E3060_oob_host）
+      // #60 批二：文案模板外置（键 E3087_oob_host——#261 立码）
       @util.render_template(
-        @assets.trap_messages.get("E3060_oob_host").unwrap().template,
+        @assets.trap_messages.get("E3087_oob_host").unwrap().template,
         [("addr", hex_upper(addr))],
       )
     @memory.MemFault::UseAfterFree(info, kind) => {

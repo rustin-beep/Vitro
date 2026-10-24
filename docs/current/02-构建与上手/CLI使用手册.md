@@ -108,6 +108,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | 字段 / 方法 / 参数 | 载体 | 最低版本 | 出处 |
 |---|---|---|---|
 | `run` 响应 `output_truncated` | run 帧 | **HEAD（未发布）** | #91 截断位 |
+| `run` 响应 `trap_code` | run 帧 | **HEAD（未发布）** | #261 trap 结构化 E 码（空串 = 无码形态；带码 trap 文案首段同步带 `(E####)`——按码查 error_catalog 教学卡） |
 | `output.delta` 响应 `truncated_bytes` | delta 帧 | **HEAD（未发布）** | [CLI_PROTOCOL_V1](../../spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
 | `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **HEAD（未发布）** | #27 语义图标 |
 | `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
@@ -143,7 +144,7 @@ $ ./_build/native/release/build/cmd/serve/serve.exe <<'EOF'
 {"id":8,"method":"shutdown"}
 EOF
 {"id":1,"ok":true,"result":{"diagnostics":[],"ok":true,"preprocessor_trace":[],"algorithm_matches":[]}}
-{"id":2,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","waiting_input":false,"output_truncated":false}}
+{"id":2,"ok":true,"result":{"ok":true,"return_value":0,"status":"finished","steps_executed":13,"trap":"","trap_code":"","waiting_input":false,"output_truncated":false}}
 {"id":3,"ok":true,"result":{"cursor":36,"delta":"3程序运行完成，返回值：0\n","stream":"display","total":36}}
 {"id":4,"ok":true,"result":{"max_collected_step":-1,"ready":true}}
 {"id":5,"ok":true,"result":{"payloads":[],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}

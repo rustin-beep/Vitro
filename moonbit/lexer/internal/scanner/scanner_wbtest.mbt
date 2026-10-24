@@ -89,3 +89,22 @@ test "scan_raw trailing dot boundaries" {
   )
   assert_eq(r.errors.length(), 0)
 }
+
+///|
+/// issue #251 同族格（2026-10-24）：U/UL 后缀超 u32 档的符号域。C11 6.4.4.1
+/// U 后缀候选序**全无符号**（unsigned int → unsigned long → unsigned long
+/// long；LLP64 前两者 4B）——值 >4B 定型 ULL，clang 零警告；旧发
+/// LongLiteral（有符号 8B）符号域错置（`5000000000U < 0` 按无符号应为假、
+/// 除法/比较按符号域分流错）。token 裸 text 交 parser UnsignedLiteral 臂按
+/// 值域派生（≤UINT_MAX 定 uint、超档定 ULL）。注：十进制**无后缀**大常量
+/// 的 E1006 维持（DIFF-LEX-DECL-BIGCONST-01 2026-10-04 台账裁定，翻案
+/// 挂 issue #251 待拍板——与本格「U 后缀候选全无符号」的标准地位不同）。
+test "issue_251_u_suffix_above_u32_unsigned_domain" {
+  let r = scan_raw(@utf8.encode("5000000000U 0x1FFFFFFFFu 4294967295U"))
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="UnsignedLiteral:5000000000 UnsignedLiteral:8589934591 UnsignedLiteral:4294967295 Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}

@@ -3,9 +3,12 @@
 /// - `loc.line`：主文件坐标系（include 拼接后仿古口径——与 Rust oracle 的
 ///   `line -= inserted_newlines` 补偿后行为一致；头文件 token 的真实归属由
 ///   `loc.file_id` + `line_map` 携带，这是新架构增量，不破坏对拍）；
-/// - `loc.column`：**精确复刻** Rust 缺陷口径 `column - text 的 UTF-8 字节数`
-///   （扫描按 Unicode 标量计数 × 反推按字节——⑥-1/⑥-2 已知偏差故意保留，
-///   换取 col 字段逐字节可比；无缺陷坐标用 `byte_off`）；
+/// - `loc.column`：`column - text 的 UTF-8 字节数`（回推公式）。列计数自
+///   #242（2026-10-24）起按**字节**（scanner `advance()` 多字节序列 +n）——
+///   非 ASCII 的字符/字节量纲混算已修（旧复刻 Rust 的标量计数口径随批退役）；
+///   已知残留：text 为规范化值（整数十进制化等）的 token 回推必偏
+///   （源拼写 ≠ text，如 `0x1F`→"31" 列 +2），跨行 token 可出负列——契约
+///   §3 禁止的回推法本身待处置（PR #294 审阅 P2-2）；无缺陷坐标用 `byte_off`；
 /// - `byte_off`：token 首字节的源内偏移（0 起，BOM 剥离后坐标系），扫描器直记
 ///   ——L1 强锚字段；L2 展开产物钉宏调用点的 byte_off（与 line/column 钉点一致）。
 pub(all) struct Token {

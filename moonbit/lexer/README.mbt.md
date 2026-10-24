@@ -62,7 +62,7 @@ test {
 - **L2**（`tokenize`）：完整管线，五字段 TSV + errors/warnings 计数；
 - `text` 为**规范化值**（整数十进制 / 字符串解码值 / 字符数值）；
 - 真实文件归属：`token.loc.file_id` + `token.real_line`（文件内真实行号，0.3.0 起）——`loc.line` 是仿古主坐标（对拍口径）；
-- 列号复刻 oracle 口径 `column − text 的 UTF-8 字节数`（已知量纲混算缺陷**故意保留**换可比性；无缺陷坐标用 `byte_off`，真实文件归属用 `loc.file_id` + `line_map`）。
+- 列号 = `column − text 的 UTF-8 字节数`（回推公式）；列计数自 #242（2026-10-24）起按**字节**（多字节序列 +n）——非 ASCII 量纲混算已修，旧「复刻 oracle 标量计数、故意保留混算」口径随批退役；规范化 text 的回推偏差为已知残留（PR #294 审阅 P2-2 待处置）；无缺陷坐标用 `byte_off`，真实文件归属用 `loc.file_id` + `line_map`。
 
 ## 差分基础设施（仓库内）
 

@@ -370,6 +370,12 @@
       "stdout_sha": "309e7e5f3332b6dd",
       "memory_sha": "66cfc80f5c57f9f4"
     },
+    "baseline/col_utf8_units.c": {
+      "src_sha": "91e44bdc",
+      "exit_code": 0,
+      "stdout_sha": "39ac491ce2a4cea7",
+      "memory_sha": "b4caf976cc0905b2"
+    },
     "baseline/comma_expr_stmt.c": {
       "src_sha": "a7b2f601",
       "exit_code": 0,
@@ -509,10 +515,16 @@
       "memory_sha": "4b8abfa28c83e9a2"
     },
     "baseline/const_nested_qualifier_warn.c": {
-      "src_sha": "3f43916d",
+      "src_sha": "56576870",
       "exit_code": 0,
       "stdout_sha": "437745c6be88b7f2",
       "memory_sha": "6f23f54e6348eccb"
+    },
+    "baseline/const_ptr_level_spiral.c": {
+      "src_sha": "2733a6ae",
+      "exit_code": 0,
+      "stdout_sha": "34ab6bb8ab5c5dfe",
+      "memory_sha": "4059d26e40c3faed"
     },
     "baseline/continue_while.c": {
       "src_sha": "f12c98b8",
@@ -2755,6 +2767,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "fac2f047ce351d88"
+    },
+    "baseline/u_suffix_unsigned_domain.c": {
+      "src_sha": "c4415ca4",
+      "exit_code": 0,
+      "stdout_sha": "1c1753d340cf12c7",
+      "memory_sha": "281ba7b89c922d5d"
     },
     "baseline/union_array.c": {
       "src_sha": "eb30623a",

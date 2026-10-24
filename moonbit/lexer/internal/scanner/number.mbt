@@ -330,13 +330,13 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
     // 后缀识别；TSV/差分 digest 连坐 freeze）。
     self.make_token(UnsignedLiteral, val_str + "ull", start)
   } else if has_u {
-    if fits_u32(val) {
-      self.make_token(UnsignedLiteral, val_str, start)
-    } else if fits_i64(val) {
-      self.make_token(LongLiteral, val_str, start)
-    } else {
-      self.make_token(UnsignedLiteral, val_str, start)
-    }
+    // U/UL 后缀（无 ll 分量）：C11 6.4.4.1 候选序**全无符号**（unsigned int
+    // → unsigned long → unsigned long long；LLP64 前两者 4B）。token 裸 text
+    // 交 parser UnsignedLiteral 臂按值域派生（≤UINT_MAX 定型 uint、超档定型
+    // ULL）——#251 同族格修复（2026-10-24）：旧中档（u32 < v ≤ i64）发
+    // LongLiteral 有符号 8B，符号域错置（U 后缀常量参与除法/比较按无符号
+    // 分流）；u32 内与超 i64 两格旧行为不变（三格坍缩为同 token）。
+    self.make_token(UnsignedLiteral, val_str, start)
   } else if l_count >= 1 {
     if !fits_i64(val) {
       // C 标准十进制常量溢出有符号域时转 unsigned long long（LLONG_MIN 量值

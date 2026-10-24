@@ -23,8 +23,8 @@ runner + `cmd/serve` JSON-lines 会话模式 native 壳）——它们是仓库�
 
 ```bash
 cd moonbit
-go run ./scripts/gen_diag          # 从 Rust 源再生成 diag 包机器单源部分
-go run ./scripts/gen_diag -check   # 幂等校验（源变产物变 / 产物被篡改即红）
+node scripts/moonbit/gen_diag/main.mts          # 从 Rust 源再生成 diag 包机器单源部分
+node scripts/moonbit/gen_diag/main.mts -check   # 幂等校验（源变产物变 / 产物被篡改即红）
 ```
 
 - `diag/error_code_gen.mbt`、`diag/catalog_gen.mbt` 为生成物（**禁手改**，文件头有源 sha256 落款）；

@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
+
+**删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。
+
+**退役 `scripts/diff_gate/parity.mts`**（+ CI 步骤 + `package.json` lint 项）
+- 同上批 `parity_gate` 的理由：Go 侧不存在后没有可比较对象，留着＝**零目标恒绿空闸**。等价性证据由「两轨互拍」转为「冻结 `golden_digest.json` 单轨自证」——digest 由 Go 版生成后冻结，TS 侧此后只许与它逐位一致。
+
+**数据面留住**：五家 `*_diff/` 目录的 `golden_digest.json` / `known_diffs.json` / `skip_list.json` / `slot_strategy.json` / `gen_corpus.mbtx` 是 `diff_gate` 的真值源，**只删 `main.go`，目录与数据不动**。
+
+**文档命令面欠账一次清（机械 151 处 / 35 个 .md）**
+- 活跃文档里所有指向「本批/前批已删 Go」的 `go run ./scripts/X` → `node scripts/X/main.mts`；差分族改 `node scripts/diff_gate/main.mts <target>`（target 插在入口之后，位置参数与旗标原样跟）。
+- 面积：`moonbit/AGENTS.md`(25) / `.agents/skills/**`(39，含 review 的复现清单与 baseline 语料工作流) / `docs/current/**`(48) / `docs/spec/**`(10) / `README.md` / `AGENTS.md` / `protocol/README.md` / `scripts/moonbit/README.md` 等。
+- §2 语言列按文件系统实况重判（14 行 Go→TS）；五家 `*_diff/` 的清单行收编为 `scripts/diff_gate/` 行 + 一行「数据（无代码）」。
+- 顺带修 `--baseline`：codegen 随 oracle 面退役已拒收该旗（实测 `未知/重复参数`），文档撤下并注明。
+- **不动历史区**：`docs/archive/**`、`CHANGELOG.md`、`.workbuddy/memory/**` 保留撰写时点原文；`shadow_verify`/`ci_three_tier_check`/`ghost_probe` 等 2026-10-05 前退役设施的残留引用（30 处）不属本批。
+
+**实测抽检**（改完即跑，非推断）：`diff_gate lexer corpus/gap` 40 例 PASS / `diff_gate parser --pathological` 12 例 PASS / `pkg_deps -check` / `single_source -check` / `canonicalize`（stdin 过滤器，`-check` 对非规范形报红）/ `perf_budget -check` 全 PASS。
+
+**门禁**：tsc 0 错 / oxlint 143 文件 0 警告 / node:test **463 例 0 失败**（首跑 462/463 有 1 例偶发红，复跑全绿；CI 若再现按红线处理）/ `ci_checklist` PASS（驱动 60→**55**，.go 9→**4**，.mts 51）/ `editorconfig_check` PASS / `facts --strict check` 坏引用 0 / `skill_path_check` missing=0。
+
 ### refactor(scripts)!: #273 终局批——删除已迁 Go 版（52 文件 / 22,417 行）+ 退役 parity 闸（2026-10-24）
 
 **删了什么**：44 个目录里已成双轨的 `.go`（含 Go 测试）共 **52 文件 / 22,417 行**；`go build ./...` 复验剩余 Go 全绿。归档证据在仓库历史：每批的 parity 对拍（23 双轨 × 47 组）、生成金样本（`corpus_fuzz/testdata/`）、各脚本单测。

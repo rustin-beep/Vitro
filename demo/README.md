@@ -91,7 +91,7 @@ Firefox 134+），加载失败页面会显示降级提示。
 1. **tsc 类型检查**——`cd demo && npx tsc -p tsconfig.json --noEmit`（strict，
    `strictNullChecks` 单档收窄——裁定见 tsconfig 注释；覆盖 `js/` 八个物理
    保留纯函数模块的类型面）；`tests/` 另有独立 tsconfig（`@types/node` 面）。
-2. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入
+2. `node scripts/gen_demo_algorithms/main.mts`——算法侧栏数据发射（**产物不入
    库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全
    集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
 3. `node scripts/course_catalog/main.mts`——课程目录闸（reconcile + lesson.c 双

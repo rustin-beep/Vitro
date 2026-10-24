@@ -252,8 +252,8 @@ jobs:
       # codegen 487+80+138+20+6，全部与 Go 版一致）。入口 =
       # scripts/diff_gate/main.mts <target>（target = driver 去掉 _diff 后缀）。
       # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
-      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动暂留（回退面），
-      # 退役时机另批裁定。
+      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动已于 2026-10-24 删除
+      # （scripts/*_diff/main.go 全删，目录仅存冻结 golden 与台账数据）。
       - name: Run diff driver (full four corpora)
         shell: bash
         run: |
@@ -716,7 +716,7 @@ jobs:
         # （scripts/surface_allowlist.txt）：无跨包消费的 pub 符号必须收面
         # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
         shell: bash
-        # #292 批：驱动切 .mts（Go 版转回退面；双轨对拍见 parity 闸的 moonbit_surface 条目）
+        # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）
         run: node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check
 
       - name: MoonBit package dependency direction (L0-L9 layering + acyclic)
@@ -1351,7 +1351,7 @@ jobs:
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
-      # #292 批：驱动切 .mts（Go 版转回退面，双轨对拍见 parity 闸）。
+      # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
         if: always()
         run: |
@@ -1445,16 +1445,6 @@ jobs:
 
       - name: node:test (explicit file list)
         run: npm run test
-        shell: bash
-
-      # 双轨对拍闸（2026-10-23 #273 审阅 P2-2 接线）：族 A 五 target 的 Go 版
-      # 与 .mts 版长期并存，而 .mts 侧单测只对自己产物 -check 自洽——任一轨
-      # 单独演进会静默分叉，切 CI 那天无闸可拦。本步同一语料两侧各跑，比对
-      # 「判定 + matched 数 + fork 数」三元组（措辞不同故比语义不比字节）。
-      # J9 证红：把 TS 侧 lexer 的 sha16 截断为 8 位 → PARITY-DIFF exit 1（已实测）。
-      # 注意本 job working-directory 是 scripts/，故用相对该目录的路径。
-      - name: diff parity (Go ↔ .mts dual-track)
-        run: node diff_gate/parity.mts
         shell: bash
 
   # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────

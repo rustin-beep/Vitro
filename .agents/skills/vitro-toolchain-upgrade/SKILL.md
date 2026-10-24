@@ -34,8 +34,8 @@ moon bundle --warn-list -a --target wasm-gc --quiet
 
 ### 4. 收尾：基线迁移与真值刷新
 ```bash
-go run ./scripts/toolchain_probe --update-baseline   # 写新基线（cwd=仓库根）
-go run ./scripts/toolchain_probe                     # 探针四项须全绿
+node scripts/toolchain_probe/toolchain_probe.mts --update-baseline   # 写新基线（cwd=仓库根）
+node scripts/toolchain_probe/toolchain_probe.mts                     # 探针四项须全绿
 go run ./scripts/facts --run                         # ① 只采集、刷新真值（无子命令 ⇒ 不做对账）
 go run ./scripts/facts --run check                   # ② 采集 + 对账判红 —— 要"确认无回归"必须带 check 子命令
 ```

@@ -445,7 +445,7 @@ func collectMoonbitLexerDiff(root string, facts map[string]Fact) {
 	// 在冻结清单，随机目录名恒 miss（as_of 停在 2026-10-05 超 168h 红的
 	// 根因）。真值面改四目录稳定语料（与冻结基线一致=可比语义保留）；
 	// 随机语料对拍语义已不可再生（无 oracle 侧），how 口径同步。
-	how := "go run ./scripts/lexer_diff ×4（四目录冻结基线）"
+	how := "node scripts/diff_gate/main.mts lexer <corpus> ×4（四目录冻结基线）"
 	total := 0
 	for _, corpus := range []string{
 		filepath.Join("corpus", "baseline"),
@@ -487,7 +487,7 @@ func parseLexerDiffPass(out string) (int, bool) {
 // （病态 12 样本同等拒绝）+ E4（合法深嵌套反向锚）。任一路 FAIL 即
 // unavailable（fail loud）。
 func collectMoonbitParserDiff(root string, facts map[string]Fact) {
-	how := "go run ./scripts/parser_diff <corpus> ×4 + --pathological + --legal-deep + --threshold"
+	how := "node scripts/diff_gate/main.mts parser <corpus> ×4 + --pathological + --legal-deep + --threshold"
 	total := 0
 	for _, corpus := range []string{
 		filepath.Join("corpus", "baseline"),

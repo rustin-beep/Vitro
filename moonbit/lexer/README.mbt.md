@@ -67,5 +67,5 @@ test {
 ## 差分基础设施（仓库内）
 
 - Rust 侧出口：`vitro_cli dump-tokens <dir> --out <dir> --raw --pp`；
-- 比对驱动：`go run ./scripts/lexer_diff <corpus>`（fail loud + `--selftest` 埋雷证红）；
+- 比对驱动：`node scripts/diff_gate/main.mts lexer <corpus>`（fail loud + `--selftest` 埋雷证红）；
 - 语料生成器：`moon run scripts/lexer_diff/gen_corpus.mbtx -- <dir> <count> [seed]`（xorshift64* 确定性；仓库根运行）。

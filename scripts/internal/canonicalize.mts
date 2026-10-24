@@ -25,6 +25,8 @@ export type JsonValue = null | boolean | string | JsonNumber | JsonValue[] | Map
 class Parser {
   private i = 0;
   private readonly s: string;
+  /** true 时每个值包成 JsonRaw（带原始切片）——`json.RawMessage` 语义用。 */
+  wrapRaw = false;
 
   constructor(s: string) {
     this.s = s;
@@ -55,6 +57,13 @@ class Parser {
   }
 
   private parseValue(): JsonValue {
+    if (this.i >= this.s.length) this.fail("意外结束");
+    const start = this.i;
+    const v = this.parseValueInner();
+    return this.wrapRaw ? new JsonRaw(this.s.slice(start, this.i), v) : v;
+  }
+
+  private parseValueInner(): JsonValue {
     if (this.i >= this.s.length) this.fail("意外结束");
     const c = this.s[this.i] ?? "";
     if (c === "{") return this.parseObject();
@@ -265,11 +274,20 @@ function quote(s: string): string {
   return out + '"';
 }
 
+/** Go `json.Marshal` 的字符串转义（`SetEscapeHTML` 默认 true：`<` `>` `&` 也转义）。 */
+function quoteGoHTML(s: string): string {
+  return quote(s)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}
+
 function keyCompare(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
 }
 
 function encode(v: JsonValue, depth: number): string {
+  if (v instanceof JsonRaw) return encode(v.value, depth);
   const pad = "  ".repeat(depth);
   const padIn = "  ".repeat(depth + 1);
   if (v === null) return "null";
@@ -295,4 +313,95 @@ export function canonicalize(raw: string | Uint8Array): Buffer {
 
 export function canonicalizeText(raw: string): string {
   return canonicalize(raw).toString("utf8");
+}
+
+// ── 结构化读写面（#292 批补：libc_boot_diff 需在「保数字形态」树上做字段级
+//    搬移——Go 侧是 json.RawMessage，TS 侧靠 JsonNumber 直通原始 token）─────
+
+/**
+ * `json.RawMessage` 的等价节点：`raw` = 该值在源文本里的**原始切片**，
+ * `value` = 结构解读（对象为 Map / 数组为数组 / 标量为解码值）。
+ *
+ * 为什么需要它（#292 实测实锤）：Go `json.Unmarshal` 到 `map[string]RawMessage`
+ * 再 `json.Marshal` 回去时，**只有被解码成 map 的那一层**键被排序；值以原始
+ * 字节内嵌（含嵌套对象的原键序）。全层排序会改写 `{"loc":{"line":…,"column":…}}`
+ * 这类内层顺序，proj 哈希立刻失真。
+ */
+export class JsonRaw {
+  readonly raw: string;
+  readonly value: JsonValue;
+  constructor(raw: string, value: JsonValue) {
+    this.raw = raw;
+    this.value = value;
+  }
+}
+
+/** 解析为「每个值带原始切片」的树（键序按源文；对象键已解码）。 */
+export function parseRawJson(raw: string | Uint8Array): JsonValue {
+  const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
+  const p = new Parser(text);
+  p.wrapRaw = true;
+  return p.parseDocument();
+}
+
+/**
+ * Go `json.Marshal` 内嵌 RawMessage 时的 `compact(raw, escapeHTML=true)` 口径：
+ * 删去字符串外的空白；字符串内 `<` `>` `&` 与 U+2028/U+2029 转成 `\uXXXX`；
+ * 既有转义序列原样保留（compact 不重写转义）。
+ */
+export function compactGoJson(raw: string): string {
+  let out = "";
+  let inStr = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw.charAt(i);
+    if (inStr) {
+      if (ch === "\\") {
+        out += ch + (raw.charAt(i + 1) ?? "");
+        i++;
+        continue;
+      }
+      if (ch === '"') {
+        inStr = false;
+        out += ch;
+        continue;
+      }
+      if (ch === "<") out += "\\u003c";
+      else if (ch === ">") out += "\\u003e";
+      else if (ch === "&") out += "\\u0026";
+      else if (ch === "\u2028") out += "\\u2028";
+      else if (ch === "\u2029") out += "\\u2029";
+      else out += ch;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = true;
+      out += ch;
+      continue;
+    }
+    if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") continue;
+    out += ch;
+  }
+  return out;
+}
+
+/** 值的「内嵌形态」文本：JsonRaw 走 compactGoJson；其余走紧凑编码。 */
+export function embedText(v: JsonValue): string {
+  if (v instanceof JsonRaw) return compactGoJson(v.raw);
+  return encodeCompact(v);
+}
+
+/** Go `json.Marshal(map[string]RawMessage)`：键按字节序排序，值取内嵌形态。 */
+export function emitSortedObject(entries: ReadonlyMap<string, string>): string {
+  const keys = [...entries.keys()].sort(keyCompare);
+  return "{" + keys.map((k) => quoteGoHTML(k) + ":" + (entries.get(k) as string)).join(",") + "}";
+}
+
+function encodeCompact(v: JsonValue): string {
+  if (v === null) return "null";
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "string") return quoteGoHTML(v);
+  if (v instanceof JsonNumber) return v.raw;
+  if (Array.isArray(v)) return "[" + v.map(encodeCompact).join(",") + "]";
+  const keys = [...v.keys()].sort(keyCompare);
+  return "{" + keys.map((k) => quoteGoHTML(k) + ":" + encodeCompact(v.get(k) as JsonValue)).join(",") + "}";
 }

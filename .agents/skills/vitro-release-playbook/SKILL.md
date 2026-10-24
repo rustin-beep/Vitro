@@ -8,7 +8,7 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
 **适用场景**：发布 `vitro/engine` 新版到 mooncakes；publish 前彩排；下载计数异常排查。
 
 ## 1. 版本定性（先于一切）
-跑接口面 diff（`go run ./scripts/moonbit/moonbit_surface -check` 与 `.mbti` 对比）：
+跑接口面 diff（`node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check` 与 `.mbti` 对比）：
 - **新增公共 API / 新增包 → minor**；纯修复 / 文档 → patch；
 - 0.x 阶段 minor 可带 breaking（CHANGELOG 明示破坏面）。
 

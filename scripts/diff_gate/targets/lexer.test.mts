@@ -66,10 +66,21 @@ test("真实仓库：serializeLexDigest 与入库 golden_digest.json 逐字节�
   assert.equal(serializeLexDigest(doc), original);
 });
 
-test("真实仓库：lexer 在 baseline 上 PASS 976（与 Go 版同判据）", () => {
+test("真实仓库：lexer 在 baseline 全量 PASS（条数取自冻结基线，不写死）", () => {
+  // #292 审阅 P3 连带修：此处原写死 976，master 语料增长后（实测 990）该断言会恒红——
+  // 而本文件曾长期**不在 npm test 清单**里，所以没人发现。现改为以 golden_digest 的
+  // baseline/ 条目数为唯一真值（同一份冻结产物），语料扩容后自动跟随、删条目才会红。
+  const digest = JSON.parse(
+    fs.readFileSync(path.join(projectRoot(), "scripts", "lexer_diff", "golden_digest.json"), "utf8"),
+  ) as { tsvs: Record<string, unknown> };
+  const expected = Object.keys(digest.tsvs).filter((k) => k.startsWith("baseline/")).length;
+  assert.ok(expected > 0, "冻结基线里没有 baseline 条目（golden 缺失或结构漂移）");
   const r = run(["lexer", "corpus/baseline"]);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /lexer_diff\[golden\]: PASS——976 个 case hash 与冻结基线一致（语料 baseline）/);
+  assert.match(
+    r.stdout,
+    new RegExp(`lexer_diff\\[golden\\]: PASS——${expected} 个 case hash 与冻结基线一致（语料 baseline）`),
+  );
 });
 
 test("真实仓库：lexer --selftest 必红（J9，退出码 1）", () => {
@@ -79,7 +90,7 @@ test("真实仓库：lexer --selftest 必红（J9，退出码 1）", () => {
   assert.match(r.stdout, /FAIL/);
 });
 
-test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main 分发锚）", () => {
+test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main 分发锚）", (t) => {
   // 未知名 → exit 2 且措辞为「未知 target」
   const unknown = run(["nosuch"]);
   assert.equal(unknown.status, 2);
@@ -95,6 +106,15 @@ test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main
 
   // vm 是 override 型：无位置参数是**设计行为**（默认遍历五语料），故用
   // --corpus gap 小规模验证分发可达（不把 733 例全量跑进测试）
+  //
+  // 产物依赖（#292 终局批补）：vm 臂消费 `cmd/run` release exe + wasm 壳——在无
+  // `_build` 的 job（如 scripts-ts / Demo front-end）里跑必红。本文件此前**不在
+  // npm test 清单**，故这层依赖一直没人撞上；补登记后必须显式 skip。
+  const runExe = path.join(projectRoot(), "moonbit/_build/native/release/build/cmd/run/run.exe");
+  if (!fs.existsSync(runExe)) {
+    t.diagnostic("skip：vm 臂产物缺失（cmd/run release exe）——分发锚的其余四 target 已覆盖");
+    return;
+  }
   const r = run(["vm", "--corpus", "gap"]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /vm_diff\[golden\]: SAME=20/);

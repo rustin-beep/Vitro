@@ -12,12 +12,12 @@ import { spawnSync } from "node:child_process";
 import {
   compareCatalogs,
   extractBuildMatches,
-  extractDemoGroups,
   loadRules,
 } from "./catalog.mts";
 import { compareTemplate, filterMigrated, goJSONMarshalIndent, parseArgs, recordString } from "./main.mts";
 import type { FirstOccurrence } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
+import { GROUPS } from "../gen_demo_algorithms/main.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
 
@@ -115,24 +115,13 @@ test("extractBuildMatches：evidence= 第 6 参合法；参数数错 / 未闭合
   assert.throws(() => extractBuildMatches(dir), /未闭合/);
 });
 
-test("extractDemoGroups：真实 gen_demo_algorithms/main.go → 7 组，组内族非空", () => {
-  const root = projectRoot();
-  const groups = extractDemoGroups(path.join(root, "scripts/gen_demo_algorithms/main.go"));
-  assert.equal(groups.length, 7);
-  for (const g of groups) {
+test("GROUPS 直连：7 组，组内族非空（终局批删 Go 后不再文本解析）", () => {
+  assert.equal(GROUPS.length, 7);
+  for (const g of GROUPS) {
     assert.ok(g.id.length > 0);
     assert.ok(g.label.length > 0);
     assert.ok(g.algos.length > 0, g.id);
   }
-});
-
-test("extractDemoGroups：groups var 缺失 / 零条必 fail loud", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-tad-g-"));
-  const p = path.join(dir, "main.go");
-  fs.writeFileSync(p, "package main\n");
-  assert.throws(() => extractDemoGroups(p), /未找到 groups var/);
-  fs.writeFileSync(p, "var groups = []struct{}{}\n");
-  assert.throws(() => extractDemoGroups(p), /零条|未闭合|起始/);
 });
 
 test("loadRules：真实 rules.json 43 族 / budget>0；空 migrated 与非法 kind 必抛", () => {

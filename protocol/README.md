@@ -9,7 +9,7 @@ Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScrip
 > 当时受 Rust 字段冻结测试守护）；Rust 区已随 2026-10-05 工序④**物理删除**（档案 tag
 > `rust-oracle-freeze`），真源随 #39 迁移收拢至 MoonBit 侧 protocol 包（编译期受 wbtest
 > 锚守护）。本节旧「权威 Rust 源」表述已过时——生成器 `-check` 的对账面以 MoonBit 生成源
-> ↔ schema 文档为准（`go run ./scripts/gen_protocol_ts -check` 即验）。
+> ↔ schema 文档为准（`node scripts/gen_protocol_ts/main.mts -check` 即验）。
 
 **投放状态（#118 勘正）**：`@vitro/protocol` **尚未发布到 npm**（`npm view` 404 属预期）——
 消费形态现阶段 = 仓内 `protocol/` 目录直接引用（`index.d.ts`/`fields.mjs` 生成物 +
@@ -36,13 +36,13 @@ Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScrip
 
 ```bash
 # 再生成（源改了之后）
-go run ./scripts/gen_protocol_ts
+node scripts/gen_protocol_ts/main.mts
 
 # 幂等校验 + 字段集与文档对账（CI 入口）
-go run ./scripts/gen_protocol_ts -check
+node scripts/gen_protocol_ts/main.mts -check
 
 # 判据证红（三路内存注入）
-go run ./scripts/gen_protocol_ts --selftest
+node scripts/gen_protocol_ts/main.mts --selftest
 
 # 第一个消费者：消费真实引擎输出（现役 MoonBit 产物——初版的 rust 臂
 # debug serve 已随 2026-10-05 删区退役）

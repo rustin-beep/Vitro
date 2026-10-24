@@ -91,7 +91,7 @@ Firefox 134+），加载失败页面会显示降级提示。
 1. **tsc 类型检查**——`cd demo && npx tsc -p tsconfig.json --noEmit`（strict，
    `strictNullChecks` 单档收窄——裁定见 tsconfig 注释；覆盖 `js/` 八个物理
    保留纯函数模块的类型面）；`tests/` 另有独立 tsconfig（`@types/node` 面）。
-2. `go run ./scripts/gen_demo_algorithms`——算法侧栏数据发射（**产物不入
+2. `node scripts/gen_demo_algorithms/main.mts`——算法侧栏数据发射（**产物不入
    库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全
    集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
 3. `node scripts/course_catalog/main.mts`——课程目录闸（reconcile + lesson.c 双
@@ -115,7 +115,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    字段白名单键集全等）与 **方法面计数对账**（gateway 错误帧自报清单 ==
    index.html 宣称数 == src/ `method:` 字面量去重数，三方法面单源对账）。
    篡改 golden、页面引用字段名漂移、wire 键集漂移即红。
-10. `go run ./scripts/demo_ui_lint`——JS↔CSS 字符串契约对账：`classList`
+10. `node scripts/demo_ui_lint/main.mts`——JS↔CSS 字符串契约对账：`classList`
    写操作的类名对「CSS 复合单元 ∪ JS 生成面 ∪ 元素候选闭包 ∪ rules.json
    白名单」对账、`var(--x)` 引用对定义面对账、`$("id")` 对 html id 集对账、
    **mono 连字对账**（`var(--mono)` / `var(--vr-mono)` 消费面必须同行关闭

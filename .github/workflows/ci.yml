@@ -136,8 +136,8 @@ jobs:
         # 二轮审阅 P2：优化落盘后 -check 自证（sidecar 指纹回读比对——
         # 落盘与标记原子性在闸内闭环）
         run: |
-          go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
-          go run ./scripts/wasmopt -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
         if: always()
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
@@ -252,8 +252,8 @@ jobs:
       # codegen 487+80+138+20+6，全部与 Go 版一致）。入口 =
       # scripts/diff_gate/main.mts <target>（target = driver 去掉 _diff 后缀）。
       # TS 版零第三方依赖（只用 node 内置 + scripts/internal/*.mts），故本 job
-      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动暂留（回退面），
-      # 退役时机另批裁定。
+      # 不需要 npm ci；node 由 runner 自带。Go 版 diff 驱动已于 2026-10-24 删除
+      # （scripts/*_diff/main.go 全删，目录仅存冻结 golden 与台账数据）。
       - name: Run diff driver (full four corpora)
         shell: bash
         run: |
@@ -314,7 +314,8 @@ jobs:
       # .corpus_fuzz_cache/ gitignored）。js 臂依赖 runner 预装 node。
       - name: Run corpus fuzz gate (baseline check)
         shell: bash
-        run: go run ./scripts/corpus_fuzz
+        run: |
+          node scripts/corpus_fuzz/main.mts
 
   gates-native:
     name: Native protocol & parity gates (consume exe)
@@ -376,8 +377,10 @@ jobs:
         # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
         # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
         # 依赖 Rust release 二进制（与 codegen_diff 同）。
+        # moon 与构建缓存，artifact-free 的 exclusive 目标在此最省）。
         shell: bash
-        run: go run ./scripts/moonbit/libc_boot_diff
+        run: |
+          node scripts/moonbit/libc_boot_diff/main.mts
 
       - name: Protocol first consumer (fields-level validation on real engine output)
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
@@ -403,7 +406,7 @@ jobs:
       - name: Protocol frames freeze (dual-host, canonicalized)
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
-          go run ./scripts/protocol_frames
+          node scripts/protocol_frames/main.mts
         shell: bash
 
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
@@ -411,7 +414,7 @@ jobs:
       - name: MoonBit serve smoke (dual-host, Exit 3)
         run: |
           cd moonbit && moon build --target native cmd/serve && cd ..
-          go run ./scripts/serve_smoke -moonbit
+          node scripts/serve_smoke/main.mts -moonbit
         shell: bash
 
       # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
@@ -419,7 +422,8 @@ jobs:
       # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
       # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
       - name: replay S1-S5 protocol assertions (MoonBit arm)
-        run: go run ./scripts/replay -moonbit
+        run: |
+          node scripts/replay/replay_s1_s5.mts -moonbit
         shell: bash
 
       # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
@@ -435,7 +439,7 @@ jobs:
       # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
       # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
       - name: MoonBit exemption audit (zombie detector, D19)
-        run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
+        run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
         shell: bash
 
       # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
@@ -510,23 +514,24 @@ jobs:
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
       # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
       # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
+      # #292 批：驱动切 .mts（wasm 臂不进对拍——ensureFresh 会重建产物，对拍状态性）
       - name: replay wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/replay --backend wasm
+        run: node scripts/replay/replay_s1_s5.mts --backend wasm
         shell: bash
       - name: serve_smoke wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/serve_smoke --backend-wasm
+        run: node scripts/serve_smoke/main.mts --backend-wasm
         shell: bash
       # PR #280 审阅 P3-6（2026-10-23）：豁免表 wasm 臂段此前从不入审计面
       #（僵尸审计只跑 -moonbit 一臂——断言更名批曾靠审阅者补跑才证真）
       - name: serve_smoke wasm exemptions audit
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/serve_smoke --backend-wasm -audit-exemptions
+        run: node scripts/serve_smoke/main.mts --backend-wasm -audit-exemptions
         shell: bash
       - name: protocol_frames wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/protocol_frames --backend-wasm
+        run: node scripts/protocol_frames/main.mts --backend-wasm
         shell: bash
       - name: teaching_annotation_diff wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
@@ -541,11 +546,11 @@ jobs:
       # note 前缀 → B 组双臂对拍红（已留痕）。前置 = gateway wasm 产物
       # （artifact）+ 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）
       # + Go + node（上方公共步）。
-      - name: unified CLI smoke (wasm shell vs native exe)
+      - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
         if: matrix.slice == 'cli_smoke'
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
-          go run ./scripts/vitro_cli_smoke --corpus 30
+          node scripts/vitro_cli_smoke/main.mts --corpus 30
         shell: bash
 
       # algorithms.catalog 三方对账（#36，2026-10-16）：判据源码 build_match
@@ -591,10 +596,11 @@ jobs:
           - slice: bookkeeping
     steps:
       - uses: actions/checkout@v4
-      # #273 接线批（2026-10-24）：本 job 的 gen/contract slice 已跑 `.mts` 闸
-      # （teaching_gen_check / teaching_reconcile / host_contract_map）——node
-      # 版本走 .node-version 单点（type stripping 需 ≥22.18；不 pin 会随
+      # #273 接线批（2026-10-24）：gen/contract slice 已跑 .mts 闸
+      # （教学线 teaching_* / host_contract_map / icon_catalog / diff_ledger）——
+      # node 版本走 .node-version 单点（type stripping 需 ≥22.18；不 pin 会随
       # runner 预装版本漂移，绿灯不可复现）。
+
       - name: Install Node 24
         uses: actions/setup-node@v4
         with:
@@ -701,8 +707,7 @@ jobs:
           # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
           # 已在 c3601055 资产批留痕。
           node scripts/gen_icons/main.mts -check
-          go run ./scripts/icon_catalog
-
+          node scripts/icon_catalog/main.mts
       - name: MoonBit API surface audit (unpublished pkgs contracted)
 
         if: matrix.slice == 'contract'
@@ -711,7 +716,8 @@ jobs:
         # （scripts/surface_allowlist.txt）：无跨包消费的 pub 符号必须收面
         # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
         shell: bash
-        run: go run ./scripts/moonbit/moonbit_surface -check
+        # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）
+        run: node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check
 
       - name: MoonBit package dependency direction (L0-L9 layering + acyclic)
 
@@ -724,7 +730,7 @@ jobs:
         # cmd/* 为工具层豁免方向检查。J9 证红已留痕（注入 opcode→bytecode
         # 同时触发越层与成环两条判据）。
         shell: bash
-        run: go run ./scripts/moonbit/pkg_deps -check
+        run: node scripts/moonbit/pkg_deps/main.mts -check
 
       - name: MoonBit interface-surface sync (moon info no-drift)
 
@@ -736,7 +742,7 @@ jobs:
         # 不等即有 .mbti 与实现脱节（pub 面改了没同步 / 新包未生成 / 改坏）。
         # 0 个 .mbti 亦红（空集不得绿）。J9 证红：注入脱节内容必红。
         shell: bash
-        run: go run ./scripts/moonbit/mbti_sync -check
+        run: node scripts/moonbit/mbti_sync/main.mts -check
 
       - name: Single-source-of-truth registry check
 
@@ -749,7 +755,7 @@ jobs:
         # 单源被删/改名亦红）；registered 条目校验两侧声明路径存在。
         # 清单：scripts/moonbit/single_source/rules.json；J9 证红已留痕。
         shell: bash
-        run: go run ./scripts/moonbit/single_source -check
+        run: node scripts/moonbit/single_source/main.mts -check
 
       - name: libc single-source reconciliation (3 name tables)
 
@@ -763,7 +769,7 @@ jobs:
         # 本步把「三表一致」变成机判红线（等式 + 交集计数 + PURE 子集 +
         # 空集不得绿）；规则外置 rules.json，J9 三路证红已留痕。
         shell: bash
-        run: go run ./scripts/moonbit/libc_single_source -check
+        run: node scripts/moonbit/libc_single_source/main.mts -check
 
       - name: Host route coverage (110 routes vs host impls)
 
@@ -828,11 +834,11 @@ jobs:
         # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
         # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
         # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
-        # --selftest 五路注入证红（J9）；shadow 真值为闸内清单
+        # --selftest 六路注入证红（J9）；shadow 真值为闸内清单
         # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
         # 维护窗口——G-7 同族）。
         shell: bash
-        run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
+        run: node scripts/diff_ledger/main.mts --selftest && node scripts/diff_ledger/main.mts
 
       - name: Check Bytecode Libc precompiled artifacts are up-to-date
 
@@ -857,7 +863,7 @@ jobs:
         # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
         # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
         shell: bash
-        run: go run ./scripts/moonbit/vendor_drift
+        run: node scripts/moonbit/vendor_drift/main.mts
 
       # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
       # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance
@@ -888,7 +894,7 @@ jobs:
         # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
         # 不指当下提交有问题。
         shell: bash
-        run: go run ./scripts/perf_budget -check
+        run: node scripts/perf_budget/main.mts -check
 
       - name: Editorconfig hard-rule check (charset/EOL/final-newline/JSON indent)
 
@@ -976,7 +982,7 @@ jobs:
         #（活行引用不存在的驱动）/ 僵尸例外 三向红；例外表 exceptions.json
         # 每条 reason 必填自证。J9 三向证红在案。
         shell: bash
-        run: go run ./scripts/ci_checklist
+        run: node scripts/ci_checklist/main.mts
 
       - name: Agent skills frontmatter audit (install_skills --list)
 
@@ -1029,7 +1035,8 @@ jobs:
         # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
         # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
         shell: bash
-        run: go run ./scripts/toolchain_probe
+        run: |
+          node scripts/toolchain_probe/toolchain_probe.mts
 
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前
@@ -1344,11 +1351,12 @@ jobs:
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
+      # #292 终局批：Go 版已删；双轨对拍闸同批退役（等价性证据 = 冻结 golden/sha 基线自证）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
         if: always()
         run: |
-          go run ./scripts/demo_ui_lint -selftest
-          go run ./scripts/demo_ui_lint
+          node scripts/demo_ui_lint/main.mts -selftest
+          node scripts/demo_ui_lint/main.mts
         shell: bash
 
       # #51 批①（2026-10-17，refs #122 F3）：phase 受控词表冻结闸——
@@ -1437,16 +1445,6 @@ jobs:
 
       - name: node:test (explicit file list)
         run: npm run test
-        shell: bash
-
-      # 双轨对拍闸（2026-10-23 #273 审阅 P2-2 接线）：族 A 五 target 的 Go 版
-      # 与 .mts 版长期并存，而 .mts 侧单测只对自己产物 -check 自洽——任一轨
-      # 单独演进会静默分叉，切 CI 那天无闸可拦。本步同一语料两侧各跑，比对
-      # 「判定 + matched 数 + fork 数」三元组（措辞不同故比语义不比字节）。
-      # J9 证红：把 TS 侧 lexer 的 sha16 截断为 8 位 → PARITY-DIFF exit 1（已实测）。
-      # 注意本 job working-directory 是 scripts/，故用相对该目录的路径。
-      - name: diff parity (Go ↔ .mts dual-track)
-        run: node diff_gate/parity.mts
         shell: bash
 
   # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────

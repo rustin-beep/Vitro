@@ -23,6 +23,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { ensureFresh } from "../internal/freshness.mts";
+import { GROUPS } from "../gen_demo_algorithms/main.mts";
+import type { Group } from "../gen_demo_algorithms/main.mts";
 
 export interface CatalogEntry {
   family: string;
@@ -51,11 +53,8 @@ export interface BuildMatchSource {
   visEvents: boolean;
 }
 
-export interface DemoGroup {
-  id: string;
-  label: string;
-  algos: string[];
-}
+/** 分组形态：直接复用生成器的 Group（终局批改直连，不再走文本解析）。 */
+export type DemoGroup = Group;
 
 export interface Rules {
   as_of: string;
@@ -264,39 +263,6 @@ export function compareCatalogs(
   return errs;
 }
 
-/** 正则提取 gen_demo_algorithms 的 groups var（Go 版真源仍是 main.go）。 */
-export function extractDemoGroups(p: string): DemoGroup[] {
-  let text: string;
-  try {
-    text = fs.readFileSync(p, "utf8");
-  } catch (e) {
-    throw new Error(`${p}: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  const start = text.indexOf("var groups = ");
-  if (start < 0) throw new Error("gen_demo_algorithms 未找到 groups var");
-  // []struct {...}{ 字面量起始——从字面量段起扫描，避免类型声明结尾的 \n}{ 提前截断
-  let body = text.slice(start);
-  const braceOpen = body.indexOf("}{");
-  if (braceOpen < 0) throw new Error("groups 字面量起始 }{ 未找到");
-  body = body.slice(braceOpen + 1);
-  const end = body.indexOf("\n}");
-  if (end < 0) throw new Error("groups 字面量未闭合");
-  const block = body.slice(0, end);
-  const re = /\{"([a-z]+)", "([^"]+)", \[\]string\{([^}]*)\}\}/g;
-  const out: DemoGroup[] = [];
-  for (const m of block.matchAll(re)) {
-    const algos: string[] = [];
-    for (const a of (m[3] ?? "").split(",")) {
-      // 先 trim 再剥引号——顺序反了前导空格会挡住引号剥除（Go 版注释同款）
-      const t = a.trim().replace(/^"|"$/g, "");
-      if (t !== "") algos.push(t);
-    }
-    out.push({ id: m[1] ?? "", label: m[2] ?? "", algos });
-  }
-  if (out.length === 0) throw new Error("groups 提取零条（正则失配？）");
-  return out;
-}
-
 /** --catalog-check 主流程（双臂 + 三方）。返回 exit 码，错误消息由调用方打印。 */
 export function runCatalogCheck(root: string, selftest: boolean): { code: number; error?: string } {
   try {
@@ -320,8 +286,9 @@ export function runCatalogCheck(root: string, selftest: boolean): { code: number
     const rules = loadRules(path.join(root, "scripts", "teaching_annotation_diff", "rules.json"));
     const migrated = new Set(rules.migrated_algorithms);
 
-    // D：gen_demo_algorithms 分组表
-    const demoGroups = extractDemoGroups(path.join(root, "scripts", "gen_demo_algorithms", "main.go"));
+    // D：gen_demo_algorithms 分组表（**直接 import**——终局批删 Go 版后不再需要
+    //    文本解析 Go 源码；该模块有入口守卫，导入无副作用）
+    const demoGroups: DemoGroup[] = GROUPS;
 
     const errs = compareCatalogs(a, bNative, migrated, demoGroups);
     if (selftest) {

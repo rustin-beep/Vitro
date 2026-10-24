@@ -58,7 +58,7 @@
 | `pointer_snapshots` | array | 否 | 指针快照（§2.5），四状态见 §3.1 |
 | `root_cause_hint` | object | **是** | 运行时陷阱的根因提示（§2.8）；无提示时为 `null` |
 
-帧结构图（由 `go run ./scripts/gen_svg` 生成，对账本节字段表与 §4/§5）：
+帧结构图（由 `node scripts/gen_svg/main.mts` 生成，对账本节字段表与 §4/§5）：
 
 <p align="center"><img src="step-payload-frame.svg" alt="StepPayload v0.1 帧结构" width="900"></p>
 
@@ -367,7 +367,7 @@ NDJSON；请求带 `id`，响应回填同一 `id`；错误帧与成功帧**同�
 | C1 | 原生前端 frameCache 消费序列（**已切割的历史资产**；现由 `vitro_cli serve` 同形口径复现，见 C4） | `compile` → `step_begin` → `step_next` ×N → `get_step_payloads_json(窗口)` → 断点暂停 → 继续 | 顶层 14 字段齐全；`call_stack` 自底向上；`cache_start_step` 单调不减；窗口裁剪后 `payloads` 非空且步号连续 | ✅ 已实测（§7.2，由 `step_payload_schema_v0_1_test` 冻结） |
 | C2 | 差分往返 | 同一步序列的 `StepPayload[]` → `encode_payloads` → `decode` | 解码结果与原始 payload 逐字段等价；`null` 与 `[]` 语义区分正确 | ✅ 已有回归测试（`stream.rs::test_accessed_vars_and_vis_events_delta` 等） |
 | C3 | 窗口滑动与越窗 seek | 连续执行 >2000 步 → 查询窗口 → seek 回退到窗口外 → 再查询 | 窗口 2000 帧、丢最早 20%；越窗 seek 触发检查点恢复 + 正向重放；seek 后窗口为 `[target-1999, target]` | ✅ 已实测（`step_payload_schema_v0_1_test` + `unified_engine_window_test`） |
-| C4 | serve 出口形状一致性（新增） | `vitro_cli serve`：`compile` → `run` → `output.delta` → `step.begin` → `step.next` → `payload.get` → `seek` → `session.reset` | 与 capi 同形：`payloads` 字段、`cache_start_step`、`status` 枚举、iso 帧（`id`/`ok`） | ✅ 已实测（`scripts/serve_smoke.py`（已退役，现役 `go run ./scripts/serve_smoke`），40 项断言；2026-09-12 扩至三段式内存地图 / schema 轨道 / 词汇表） |
+| C4 | serve 出口形状一致性（新增） | `vitro_cli serve`：`compile` → `run` → `output.delta` → `step.begin` → `step.next` → `payload.get` → `seek` → `session.reset` | 与 capi 同形：`payloads` 字段、`cache_start_step`、`status` 枚举、iso 帧（`id`/`ok`） | ✅ 已实测（`scripts/serve_smoke.py`（已退役，现役 `node scripts/serve_smoke/main.mts`），40 项断言；2026-09-12 扩至三段式内存地图 / schema 轨道 / 词汇表） |
 | S1 | 防抖编译流（对端） | 高频 `compile_unit` + `compile_json`，期间夹杂 `step_next` | 诊断 JSON 稳定；`payloads` 不因重编译而串步 | ⏳ 待对端执行（Vitro 侧接口已就绪） |
 | S2 | fixtures 判分流（对端） | 固定输入程序批量判分：`compile` → `run_json` → `get_output_delta` | `status`/`return_value`/`steps_executed` 稳定可复现（配 `vitro_set_deterministic`） | ⏳ 待对端执行 |
 | S3 | 单步 + seek + 内存查询交错流（对端） | `step_next` / `seek` / `memory.regions` 交错 | 三视图一致：指针四状态与内存区域状态不矛盾；`accessed_vars` 枚举值合法 | ⏳ 待对端执行（`memory.regions` 属 capi 第二批；serve 已有过渡形态可先回放） |
@@ -386,7 +386,7 @@ NDJSON；请求带 `id`，响应回填同一 `id`；错误帧与成功帧**同�
 | C1 出口形状（capi） | `cargo test --test capi_first_batch_tests` → `test_step_next_and_payload_schema_fields` | ✅ 18 passed（同批含隔离预算、断点、游标等用例） |
 | C2 差分往返（`null` vs `[]`） | `cargo test --workspace`（`unified::stream` 单测） | ✅ 全绿（exit 0） |
 | C3 窗口 2000 帧 + 越窗行为 | `test_frame_cache_window_2000_frames_with_20pct_trim` + `cargo test --test unified_engine_window_test` | ✅ 窗口上限与 `cache_start_step` 前移断言通过 |
-| C4 serve 出口一致性 | `go run ./scripts/serve_smoke`（当时为 Python 版，2026-09-18 退役） | ✅ 26 项断言通过（id 关联 / 帧同构 / 生命周期 / 与 capi 同形的 payload 字段） |
+| C4 serve 出口一致性 | `node scripts/serve_smoke/main.mts`（当时为 Python 版，2026-09-18 退役） | ✅ 26 项断言通过（id 关联 / 帧同构 / 生命周期 / 与 capi 同形的 payload 字段） |
 | 静态检查 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | ✅ 无警告（exit 0） |
 | S1–S3 | — | ⏳ **未执行**：SharpTutor 场景由对端提供，本轮无对端输入。已在表内标注为待办，避免"文档宣称已校验"的失真 |
 
@@ -395,9 +395,9 @@ NDJSON；请求带 `id`，响应回填同一 `id`；错误帧与成功帧**同�
 | 项 | 载体（可复现命令） | 结果 |
 |---|---|---|
 | 键集冻结（v0.1 十四字段 + v0.2 激活并集） | `cd moonbit && moon test`（`contracts_json_byte_exact_rust_truth` 重铸 + `v0_2_active_fields_match_single_source` 新锚） | ✅ 781/781 |
-| 出口形状 + 值域（单文件） | `go run ./scripts/demo_smoke`（StepPayload 键集 15 键全等 + `code_file=="main.c"` 抽查） | ✅ 169/169 |
+| 出口形状 + 值域（单文件） | `node scripts/demo_smoke/main.mts`（StepPayload 键集 15 键全等 + `code_file=="main.c"` 抽查） | ✅ 169/169 |
 | 多文件归属（#90 原实测场景复跑） | wasm 臂探针：`compile{files:[util.c(7 行), main.c(7 行)]}` → step 帧 | ✅ `util.c` 帧 code_line∈1-7 / `main.c` 帧 code_line≥8（callee 入口帧归调用点行 → main.c）；stdout=「55」 |
-| 帧基线（mb 单臂） | `go run ./scripts/protocol_frames`（`--update-baseline` 重生后） | ✅ 47 帧全部一致（15 个 step 帧各增 `code_file`，其余逐字节不变） |
+| 帧基线（mb 单臂） | `node scripts/protocol_frames/main.mts`（`--update-baseline` 重生后） | ✅ 47 帧全部一致（15 个 step 帧各增 `code_file`，其余逐字节不变） |
 | 差分往返（null/[]/新增键） | `moon test` 的 `stream_wbtest` 全锚（符号表全内容锚已含 `main.c`@index1） | ✅ |
 
 > 字段冻结的工程意义：`step_payload_schema_v0_1_test` 断言的是 **capi 出口 JSON 的键集合与枚举字面量**。任何字段改名/增删都会让该测试失败，从而强制走版本化流程（而不是让 schema 文档悄悄过期）。
@@ -485,7 +485,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | Rust 全量 + 静态检查 | `cargo test --workspace` / `cargo clippy … -- -D warnings` | ✅ 全绿 / 零警告 |
 | C Shadow | `python native/tests/shadow_verification/shadow_verify.py`（已退役，现行命令见下方勘误） | ✅ 662 用例（`known_issue` 3，无非预期差异） |
 | C++ Shadow | `python scripts/shadow_verify_cpp.py`（已退役，现行命令见下方勘误） | ✅ 94 用例（92 一致 + 2 已记录 `CLANG_COMPILE_FAIL`） |
-| serve 出口一致性 | `go run ./scripts/serve_smoke`（当时为 Python 版，2026-09-18 退役） | ✅ 40 项断言（新增三段式内存地图 / schema 轨道 / 词汇表 / 会话语义） |
+| serve 出口一致性 | `node scripts/serve_smoke/main.mts`（当时为 Python 版，2026-09-18 退役） | ✅ 40 项断言（新增三段式内存地图 / schema 轨道 / 词汇表 / 会话语义） |
 | 签字回放 S1–S5 | `python scripts/replay/replay_s1_s5.py`（已退役，现行命令见下方勘误） | ✅ **61/61 PASS** |
 
 > **执行路径勘误（2026-09-13 注；上表验收数字仍为 v0.1 签字时快照）**：上表
@@ -494,8 +494,8 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 > Python 驱动已在 D5 工具链迁移（2026-09-13）中由 Go 版取代退役，文件已
 > 删除。现行复现命令：`go run ./scripts/shadow_verify`（C 侧）、
 > `go run ./scripts/shadow_verify_cpp`（C++ 侧）、
-> `go run ./scripts/replay/replay_s1_s5.go`（签字回放，带 `--selftest`
-> 自检）。`go run ./scripts/serve_smoke` 仍在服役（CI 活性件）。
+> `node scripts/replay/replay_s1_s5.mts`（签字回放，带 `--selftest`
+> 自检）。`node scripts/serve_smoke/main.mts` 仍在服役（CI 活性件）。
 
 > **锚点与产物新鲜度（2026-09-12 补）**：驱动现在**前置门禁** —— `capabilities.engine_version`
 > 必须含当前 `git rev-parse --short HEAD`，否则 fail fast（exit 2）；`--anchor` 缺省从版本串
@@ -545,8 +545,8 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 |---|---|
 | ① | **只增事件**：不得改动 v0.1 既有 14 字段的名称/类型/语义；预留位激活一律以新增字段形态落地 |
 | ② | 同步更新**本文档**：§9 台账状态 `pending → active`，并在 **§7 校验表追加 v0.2 历史行** |
-| ③ | 重跑引擎侧 **C1–C3**：`step_payload_schema_v0_1_test` + `unified_engine_window_test` + `go run ./scripts/serve_smoke` |
-| ④ | 重跑签字回放 **S1–S5**：`go run ./scripts/replay/replay_s1_s5.go --anchor <新短哈希>`；异常域另需 S4 §5 激活契约 A1–A8（第四组回放场景） |
+| ③ | 重跑引擎侧 **C1–C3**：`step_payload_schema_v0_1_test` + `unified_engine_window_test` + `node scripts/serve_smoke/main.mts` |
+| ④ | 重跑签字回放 **S1–S5**：`node scripts/replay/replay_s1_s5.mts --anchor <新短哈希>`；异常域另需 S4 §5 激活契约 A1–A8（第四组回放场景） |
 | ⑤ | 解除冻结测试中的预留位断言（v0.1 → v0.2），并知会下游按容忍矩阵回归 T4 投影 |
 
 **tripwire（不是建议，是防线）**：`step_payload_schema_v0_1_test::test_v0_1_reserved_fields_absent`

@@ -1,0 +1,4 @@
+:root { --real: 1px; }
+.tab.on { color: red; }
+.mono-face { font: 12px var(--mono); }
+.mono-normal { font: 12px var(--mono); font-variant-ligatures: normal; }

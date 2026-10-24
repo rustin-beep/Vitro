@@ -376,8 +376,12 @@ jobs:
         # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
         # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
         # 依赖 Rust release 二进制（与 codegen_diff 同）。
+        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（本 job 已有
+        # moon 与构建缓存，artifact-free 的 exclusive 目标在此最省）。
         shell: bash
-        run: go run ./scripts/moonbit/libc_boot_diff
+        run: |
+          node scripts/moonbit/libc_boot_diff/main.mts
+          node scripts/parity_gate/main.mts --only scripts/moonbit/libc_boot_diff
 
       - name: Protocol first consumer (fields-level validation on real engine output)
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：

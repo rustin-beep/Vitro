@@ -1,7 +1,8 @@
 // canonicalize.test.mts —— 归一性质 + J9 锚（Go 版 7 例 + 字节序/重复键/转义面）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalizeText } from "./canonicalize.mts";
+import { JsonRaw, canonicalizeText, compactGoJson, emitSortedObject, embedText, parseRawJson } from "./canonicalize.mts";
+import type { JsonValue } from "./canonicalize.mts";
 
 test("键排序：嵌套对象逐层按键字节序", () => {
   assert.equal(
@@ -58,4 +59,35 @@ test("键排序走 UTF-8 字节序（非 UTF-16 code unit）", () => {
 
 test("重复键后者覆盖（Go map 解码口径）", () => {
   assert.equal(canonicalizeText(`{"a":1,"a":2}`), '{\n  "a": 2\n}\n');
+});
+
+// ── #292 批：RawMessage 语义面（libc_boot_diff 的 proj_sha 保真前提）──────
+
+test("parseRawJson：每个值带原始切片（空白/转义不改写）", () => {
+  const doc = parseRawJson('{"a" : [ 1 ,"x\\u0041"] , "b":{"k":1}}');
+  assert.ok(doc instanceof JsonRaw);
+  const root = (doc as JsonRaw).value as Map<string, JsonValue>;
+  const a = root.get("a") as JsonRaw;
+  assert.equal(a.raw, '[ 1 ,"x\\u0041"]', "原始切片逐字保留（含内部空白与 \\u 转义）");
+  const b = root.get("b") as JsonRaw;
+  assert.equal(b.raw, '{"k":1}');
+});
+
+test("compactGoJson：去字符串外空白 + HTML 字符转义 + 既有转义保留", () => {
+  assert.equal(compactGoJson('{ "a" : [ 1 , 2 ] }'), '{"a":[1,2]}');
+  assert.equal(compactGoJson('{"s":"a<b>&c"}'), '{"s":"a\\u003cb\\u003e\\u0026c"}');
+  assert.equal(compactGoJson('{"s":"x\\u0041y"}'), '{"s":"x\\u0041y"}', "既有转义原样保留（compact 不重写）");
+  assert.equal(compactGoJson('{"s":"\\""}'), '{"s":"\\""}', "转义引号不误判字符串结束");
+});
+
+test("embedText / emitSortedObject：内嵌形态取 RawMessage 原文，仅该层键排序", () => {
+  const doc = parseRawJson('{"z":{"line":0,"column":1},"a":1}') as JsonRaw;
+  const m = doc.value as Map<string, JsonValue>;
+  const entries = new Map<string, string>();
+  for (const [k, v] of m) entries.set(k, embedText(v));
+  assert.equal(
+    emitSortedObject(entries),
+    '{"a":1,"z":{"line":0,"column":1}}',
+    "顶层键排序，但 z 的内层键**保持原序**（全层重排会破 proj_sha）",
+  );
 });

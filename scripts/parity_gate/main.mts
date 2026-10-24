@@ -37,6 +37,11 @@ export interface Target {
    * 构建过产物的 job 里用 `--only <dir>` 显式跑，且缺任一产物即 rc 2 硬红。
    */
   requires?: string[];
+  /**
+   * 只在 `--only` 点名时跑的**理由**（如「需四臂 release 产物」「需 moon 现场编译、
+   * 单价高」）。带此字段 = 不进默认跑，避免给静态 job 加冷编译/空转成本。
+   */
+  exclusive?: string;
 }
 
 /**
@@ -81,10 +86,18 @@ export const TARGETS: Target[] = [
   { dir: "scripts/gen_demo_tokens", modes: [["-check"], ["-selftest"]] },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   {
+    dir: "scripts/moonbit/libc_boot_diff",
+    // 默认（golden 基线比）+ --selftest（本仓 oracle 已删区，selftest 亦落 golden 路径）。
+    // 单价：`moon run --target native cmd/dump_compile` 会现场编译引擎——不进默认跑。
+    modes: [[], ["--selftest"]],
+    exclusive: "需 moon 现场编译 dump_compile（gates-native 已有工具链与构建缓存）",
+  },
+  {
     dir: "scripts/vitro_cli_smoke",
     // 默认（内置 5 fixture × 三臂）+ --corpus 2（语料级循环面）。
     // 全量 --corpus 30 留给 CI 的 cli_smoke slice（对拍只验等价，不重复全量跑）。
     modes: [[], ["--corpus", "2"]],
+    exclusive: "需四臂 release 产物（gates-wasm 的 cli_smoke slice 是唯一齐备处）",
     requires: [
       "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js",
       "moonbit/_build/native/release/build/cmd/vitro/vitro.exe",
@@ -246,11 +259,11 @@ export function main(argv: string[]): number {
     // 指定目标（跨两组，供产物就绪的 job 用）。
     let selected: Target[];
     if (only === null) {
-      selected = TARGETS.filter((t) => t.requires === undefined);
-      const skipped = TARGETS.filter((t) => t.requires !== undefined);
+      selected = TARGETS.filter((t) => t.requires === undefined && t.exclusive === undefined);
+      const skipped = TARGETS.filter((t) => t.requires !== undefined || t.exclusive !== undefined);
       if (skipped.length > 0) {
         process.stdout.write(
-          `parity_gate: 跳过 ${skipped.length} 个产物依赖目标（在产物就绪的 job 用 --only 跑）：${skipped.map((t) => t.dir).join(", ")}\n`,
+          `parity_gate: 跳过 ${skipped.length} 个点名目标（在对应 job 用 --only 跑）：${skipped.map((t) => t.dir).join(", ")}\n`,
         );
       }
     } else {

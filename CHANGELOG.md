@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 libc_boot_diff .mts 化（729 行）+ canonicalize RawMessage 面（2026-10-24）
+
+- **迁移**：libc 自举对拍闸全量移植（golden 基线比 / `--freeze` / `--freeze-mb` / `--selftest` 四模式 + 入口过滤 ①–④ + 9 字段投影 + digest 清单读写）。默认与 `--selftest` 两模式 **stdout/stderr/rc 逐字零差**（0.8s vs Go 0.78s）。
+- **踩到并修掉的保真坑（本批最大收获）**：Go `json.Unmarshal→map[string]RawMessage→json.Marshal` 只对**被解码成 map 的那一层**排序键，值以原始字节内嵌——首版按「全层排序」实现，`proj_sha` 三例全错（`{"loc":{"line":0,"column":0,…}}` 的内层被重排成 `column,file_id,line`）。正解：`internal/canonicalize` 新增 **RawMessage 面**（`JsonRaw` 原始切片 + `compactGoJson` 复刻 Go `compact(escapeHTML)` + `emitSortedObject` 只排该层），三例 `proj_sha` 随即与冻结清单逐字节对上。
+- **parity 机制补 `exclusive`**：把「需 artifacts / 需 moon 现场编译、单价高」的目标标成点名跑（默认跳过并打印留痕），注册 `libc_boot_diff` 两模式；CI 在 gates-native 的 libc 步点名对拍（该 job 已有 moon 与构建缓存）。
+- **接线**：gates-native 的 libc 自举步 `go run` → `node`；文档三处处方同步。
+- **测试 +18**（canonicalize +3 / libc_boot_diff +15）：嵌套键序保真（回归锚）、大整数 token 直通（`9007199254740993` 不丢末位）、wrapper 截断、func_table/func_index 删 main、注入 +1、CRLF 归一 sha、`listC` 字节序、CLI 退出码、golden 端到端。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 391 → 409 例 0 失败 / ci_checklist + editorconfig + facts --strict 绿。
+
 ### refactor(scripts): #273 vitro_cli_smoke .mts 化（617 行）+ parity artifact 组（2026-10-24）
 
 - **迁移**：三臂 CLI 协议闸全量移植——A 组壳 rc 契约（8 例 + `api --batch` 跨帧状态断言）、B 组三臂同形对拍（5 fixture × wasm/js/native + api help 三态 + 失败帧 rc + `rc=4` stdout 恒空 8 路径 × 三臂 + `--realtime` 分臂口径 + note 去重 + 1MB 映像）、C 组 launcher（sh ×3 + cmd.exe）、G 组 #129 通道分立、D 组薄壳 include（薄壳 exe 在位才跑，否则显式 skip）。

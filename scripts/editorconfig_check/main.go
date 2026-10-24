@@ -165,7 +165,8 @@ func main() {
 				if seg == ".git" || seg == "_build" || seg == ".mooncakes" ||
 					seg == "node_modules" || seg == "tmp" || seg == ".clang_cache_cd" ||
 					seg == ".shadow_tmp" || seg == "tmp_vitro_fs_bb_roundtrip" || seg == ".vscode" || seg == "build" ||
-					seg == "dist-pilot" || seg == "dist-e08" || seg == "dist" || seg == ".workbuddy" {
+					seg == "dist-pilot" || seg == "dist-e08" || seg == "dist" || seg == ".workbuddy" ||
+					seg == ".corpus_fuzz_cache" { // #292：fuzz 运行期缓存（gitignored，写出物常缺末行换行）
 					return filepath.SkipDir
 				}
 			}

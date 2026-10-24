@@ -1053,7 +1053,10 @@ jobs:
         # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
         # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
         shell: bash
-        run: go run ./scripts/toolchain_probe
+        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑
+        run: |
+          node scripts/toolchain_probe/toolchain_probe.mts
+          node scripts/parity_gate/main.mts --only scripts/toolchain_probe
 
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前

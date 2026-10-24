@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 toolchain_probe .mts 化（178 行）+ 证红留痕（2026-10-24）
+
+- **迁移**：四项检查全量移植（版本锁定 vs `toolchain_baseline.txt` / registry 索引行为式预检（`moon update` + 索引非空）/ F8 ICE 特征识别 / 退出码 fail loud）。默认模式 **stdout/stderr/rc 逐字零差**（首轮即零差）。
+- **证红留痕（J9）**：把基线里的 `moon 0.1.` 改成 `moon 0.9.` → 双侧同 **rc=1**、输出逐字同（`[红] 工具链版本漂移…基线/实测` 两行）；还原后复绿。
+- **接线**：hygiene job 的探针步 `go run` → node + `parity_gate --only scripts/toolchain_probe`；文档三处处方同步。
+- **测试 +4**：`baselineLines`（CRLF 归一/剔注释空行/trim）、`baselineMatches`（行尾 `\r` 残留不致假红——CI 2026-09-22 实锤面）、`isKnownICE` 三特征（含「Go 特征串是字面 `segfault`，大小写敏感」的如实登记）、四项全绿端到端（缺 moon 显式 skip）。
+
 ### refactor(scripts): #273 parity 补 5 个「基名不同」的既迁双轨（22 双轨 × 46 组）（2026-10-24）
 
 - **盲区**：parity 自动发现只认**同基名**的 `.go` + `.mts`，而更早迁移批的产物是「Go 文件名 = 包名、`.mts` 统一 `main.mts`」（`gen_host_route.go` ↔ `main.mts` 等 7 个目录）——这些驱动长期只有人工验证、**无对拍闸**。

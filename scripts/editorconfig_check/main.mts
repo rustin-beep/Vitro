@@ -25,6 +25,10 @@ const SKIP_SEGS = new Set([
   "dist-e08",
   "dist",
   ".workbuddy",
+  // #292 批：corpus_fuzz 的运行期缓存（gitignored，KEY/变体程序写出物常缺末行
+  // 换行）——不剪枝则「本地跑过一次 fuzz」后本闸恒红，属与提交内容无关的环境
+  // 盲区（同 .build/.workbuddy 一族）。
+  ".corpus_fuzz_cache",
 ]);
 
 const JSON_EXEMPT_PREFIXES = [

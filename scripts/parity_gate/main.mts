@@ -114,6 +114,7 @@ export const TARGETS: Target[] = [
   { dir: "scripts/moonbit/host_route_coverage", goEntry: "host_route_coverage", tsEntry: "main", modes: [[]] },
   { dir: "scripts/moonbit/source_hygiene", goEntry: "source_hygiene", tsEntry: "main", modes: [[]] },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
+  { dir: "scripts/toolchain_probe", entry: "toolchain_probe", modes: [[]] },
   {
     // 只对拍 `-check`（指纹比对，确定性）：优化路径的收尾行含**耗时**，不可逐字比；
     // 冷缓存时「下载…」行只在首侧出现——故本目标准入条件 = tools/cache 已预热

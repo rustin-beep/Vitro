@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 replay 协议回放 .mts 化（1213 行）+ 双模对拍（2026-10-24）
+
+- **迁移**：S1–S5 全套断言移植（S1 防抖编译流 A1–A10 / S2 fixtures 判分流 A1–A6 / S3 单步+seek+内存交错流 A1–A16 / S5 预留位缺省语义 A1–A5）。`-moonbit`（61 断言：60 PASS + 1 EXEMPT）与 `--selftest`（12 条 J9 埋雷）两模式 **stdout/stderr/rc 逐字零差**。
+- **交互式管道的等价手法**：Go 版同步读写 NDJSON 管道，本版 `spawn` + 行队列 + `async/await` 串行化——协议时序不变（同一 id 关联、同一 shutdown/超时/kill 语义）。
+- **口径差异（有意，已注释）**：`--backend wasm` 不进对拍——它的 `ensureFresh` 会**重建**产物（状态性），后跑的一侧必然看不到「旧于源」行；wasm 臂仍由 CI 的 serve_channel slice 真跑。
+- **踩到的初始化顺序坑**：Go 的字段白名单是**包级 var 初始化**（`loadV01Fields()` 在 package init 跑），首版把它放在 runMain 分支里 → `--selftest` 的「预留字段必被识别」埋雷拿空集合、自检自己红。改为模块装载期装入后两模式逐字对齐。
+- **接线**：gates-native 的 replay 步 `go run` → node + `parity_gate --only scripts/replay`；gates-wasm serve_channel 的 wasm 臂切 node；文档三处同步。
+- **测试 +10**：`abiVersionAtLeast` 下限语义（含 2.0.0 翻案锚）、`deepEqual`（数组有序/对象无序）、`diagErrors`、`head3`、`stepIndexOf`、`Report` 汇总计数、`selfTest` 12 条、`--selftest`/未选臂 e2e、`-moonbit` 全绿 e2e（缺 serve 产物显式 skip）。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 414 → 424 例 0 失败 / parity 17 脚本 × 41 组 + replay 2 组全等价。
+
 ### refactor(scripts): #273 moonbit_surface .mts 化（622 行）+ parity 支持非 main 命名（2026-10-24）
 
 - **迁移**：对外面双面闸全量移植（pub 符号收面判定 + 签名闭包识别 + 白名单双向对账 + 消费边清单对账 + 包发现/别名解析/moon.pkg 语法面 fail loud）。默认模式与 `-check` 两模式 **stdout/stderr/rc 逐字零差**（首轮即零差，无迭代）。

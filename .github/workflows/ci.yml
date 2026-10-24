@@ -422,8 +422,11 @@ jobs:
       # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
       # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
       # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
+      # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（-moonbit/--selftest）
       - name: replay S1-S5 protocol assertions (MoonBit arm)
-        run: go run ./scripts/replay -moonbit
+        run: |
+          node scripts/replay/replay_s1_s5.mts -moonbit
+          node scripts/parity_gate/main.mts --only scripts/replay
         shell: bash
 
       # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
@@ -514,9 +517,10 @@ jobs:
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
       # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
       # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
+      # #292 批：驱动切 .mts（wasm 臂不进对拍——ensureFresh 会重建产物，对拍状态性）
       - name: replay wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/replay --backend wasm
+        run: node scripts/replay/replay_s1_s5.mts --backend wasm
         shell: bash
       - name: serve_smoke wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'

@@ -94,6 +94,15 @@ export const TARGETS: Target[] = [
   },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   {
+    // 非 main 命名（replay_s1_s5.go）；`-moonbit` 需 debug serve exe，
+    // `--selftest` 纯判定口径埋雷（无产物依赖）。`--backend wasm` 不进对拍：
+    // 它的 ensureFresh 会**重建**产物（状态性），后跑的一侧必然看不到陈旧行。
+    dir: "scripts/replay",
+    entry: "replay_s1_s5",
+    modes: [["-moonbit"], ["--selftest"]],
+    exclusive: "需 debug cmd/serve exe（gates-native 的 serve 步先建）",
+  },
+  {
     dir: "scripts/moonbit/libc_boot_diff",
     // 默认（golden 基线比）+ --selftest（本仓 oracle 已删区，selftest 亦落 golden 路径）。
     // 单价：`moon run --target native cmd/dump_compile` 会现场编译引擎——不进默认跑。

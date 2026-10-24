@@ -19,10 +19,12 @@ test("byteSort 不改入参", () => {
   assert.deepEqual(xs, ["b", "a"]);
 });
 
-test("goTrimSpace：Go unicode.IsSpace 集（含 U+0085，不含 U+2028/U+FEFF）", () => {
+test("goTrimSpace：Go unicode.IsSpace 集（含 U+0085/U+2028/U+2029，不含 U+FEFF）", () => {
   assert.equal(goTrimSpace("  a\t\n"), "a");
   assert.equal(goTrimSpace("\u0085a\u00A0"), "a", "NEL 是 Go 空白");
-  assert.equal(goTrimSpace("\u2028a\uFEFF"), "\u2028a\uFEFF", "JS 的 \\s 多这两类，Go 不认");
+  // #292 审阅 P3 实测：Go TrimSpace("\u2028x\u2029") == "x"（White_Space 含行/段分隔符）
+  assert.equal(goTrimSpace("\u2028x\u2029"), "x", "U+2028/U+2029 属 Go 空白（本实现曾漏）");
+  assert.equal(goTrimSpace("\uFEFFa"), "\uFEFFa", "U+FEFF（BOM）不是 Go 空白，两侧都不应剥");
   assert.equal(goTrimSpace(""), "");
 });
 
@@ -31,6 +33,7 @@ test("goFields：连续空白不产空段，按 Go 空白集切分", () => {
   assert.deepEqual(goFields(""), []);
   assert.deepEqual(goFields("   "), []);
   assert.deepEqual(goFields("a\u0085b"), ["a", "b"]);
+  assert.deepEqual(goFields("a\u2028b\u2029c"), ["a", "b", "c"], "U+2028/U+2029 是分隔符");
 });
 
 test("goJSONMarshalIndent：SetEscapeHTML 转义 < > & 与 U+2028/U+2029", () => {

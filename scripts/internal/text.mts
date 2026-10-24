@@ -8,14 +8,17 @@
 //   - byteCompare / byteSort：复刻 Go 的字符串 `<` 与 `sort.Strings`（UTF-8 字节字典序）。
 //     JS `.sort()` 默认按 UTF-16 code unit 比，astral 面（U+10000 以上）与字节序不同。
 //   - goTrimSpace / goFields：复刻 `strings.TrimSpace` / `strings.Fields`（unicode.IsSpace）。
-//     JS `\s` 与 Go 的空白集有两处差异：Go 有 U+0085（NEL），JS 有 U+2028/U+2029/U+FEFF。
+//     JS `\s` 与 Go 的空白集**不等价**：Go（unicode.IsSpace = Unicode White_Space）
+//     比 JS `\s` 多 U+0085（NEL），且 U+2028/U+2029 必须显式列入（本文件曾漏，
+//     #292 审阅 P3 实测 `TrimSpace("\u2028x\u2029")` Go 返 "x"、TS 返原串）；
+//     JS `\s` 含而 Go **不含**的是 U+FEFF（BOM，非 White_Space）。
 //   - goJSONMarshalIndent：复刻 `json.MarshalIndent`（`SetEscapeHTML` 默认 true）。
 //     原实现散在 teaching_annotation_diff；本批上收为单源，那边改为 re-export
 //     （避免两份「Go 序列化口径」并存——#289 审阅 P2-1 的 154 行伪漂移就是这类口径缺口）。
 
-/** Go `unicode.IsSpace` 的空白集（`\s` 之外多 U+0085，少 U+2028/2029/FEFF）。 */
-const GO_SPACE_RE = /[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/;
-const GO_SPACE_EDGE_RE = /^[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]+|[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]+$/g;
+/** Go `unicode.IsSpace` 的空白集（含 U+0085/U+2028/U+2029；不含 U+FEFF）。 */
+const GO_SPACE_RE = /[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/;
+const GO_SPACE_EDGE_RE = /^[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+|[\t\n\v\f\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+$/g;
 
 /** Go `strings.TrimSpace`。 */
 export function goTrimSpace(s: string): string {

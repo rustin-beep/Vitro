@@ -32,6 +32,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../internal/capi.mts";
+import { byteCompare } from "../internal/text.mts";
 
 export interface Target {
   /** 仓库相对目录（Go main.go 与 .mts 同目录） */
@@ -190,11 +191,39 @@ export const TARGETS: Target[] = [
 ];
 
 /**
+ * 「混合目录」：同目录既有 `.go`（非 _test）又有 `.mts`，但**没有任何同基名配对**
+ * ——自动发现看不见它们（审阅 P3-2 实测 bar.go + main.mts 曾静默通过）。这类目录
+ * 必须显式归类：进 TARGETS（带 goEntry/tsEntry）或进 EXCLUDED 写原因。
+ */
+export function discoverMixedDirs(): string[] {
+  const root = projectRoot();
+  const out: string[] = [];
+  const walk = (rel: string): void => {
+    const abs = path.join(root, rel);
+    let ents: fs.Dirent[];
+    try {
+      ents = fs.readdirSync(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    const goFiles = ents.filter((e) => e.isFile() && e.name.endsWith(".go") && !e.name.endsWith("_test.go")).map((e) => e.name);
+    const mtsFiles = ents.filter((e) => e.isFile() && e.name.endsWith(".mts")).map((e) => e.name);
+    const paired = goFiles.some((g) => mtsFiles.includes(g.slice(0, -3) + ".mts"));
+    if (goFiles.length > 0 && mtsFiles.length > 0 && !paired) out.push(rel);
+    for (const e of ents) if (e.isDirectory()) walk(`${rel}/${e.name}`);
+  };
+  walk("scripts");
+  return out.sort(byteCompare);
+}
+
+/**
  * 未纳入对拍的双轨目录 + 原因。**必须穷举**：自动发现的每个「main.go + main.mts」
  * 目录要么在 TARGETS，要么在此表——否则闸报「未归类」红（#292 审阅质疑：全做还是
  * 留白？答案是把「不做」也变成显式登记，不允许黑箱跳过）。
  */
 export const EXCLUDED: Record<string, string> = {
+  "scripts/realcode_diff":
+    "混合目录但**非双轨**：`vitro_clang_diff.go`（Go 版真值源闸）与 `compare_gold.mts`（golden 比对工具）是两个无关程序，不存在「同一驱动两实现」；待 realcode_diff 迁移时再按 goEntry/tsEntry 登记",
   "scripts/moonbit/gen_diag":
     "基名不同（gen_diag.go ↔ main.mts）+ **有意不迁** legacy 对账臂（452 行死代码，2026-10-23 裁定）：删区态 Go 打「legacy 源已删区（工序④），对账臂豁免」而 .mts 直接打 check OK——文案差异属既定设计，不做逐字对拍",
   "scripts/moonbit/gen_diagnostics":
@@ -215,13 +244,19 @@ export const EXCLUDED: Record<string, string> = {
 };
 
 /** 归一化：分隔符 + 剥离 go run 的退出码噪音行。 */
+/**
+ * 归一：CRLF→LF、去 `go run` 包装的 `exit status N` 行、去尾随空行。
+ *
+ * **不再做「全文 `\`→`/`」**（#292 审阅 P3-1）：那是结构性假绿面——`\2014` 与
+ * `/2014` 会被判等价（CSS 转义 vs 路径）。两侧都跑在同一平台、同一 path.join 口径，
+ * 路径分隔符本就一致；若将来某目标真的跨平台打印分叉，应当在**该目标**上显式处理，
+ * 而不是全局放宽。
+ */
 export function normalize(s: string): string {
   return s
     .split(/\r?\n/)
     .filter((l) => !/^exit status \d+$/.test(l.trim()))
     .join("\n")
-    .split("\\")
-    .join("/")
     .replace(/\n+$/, "");
 }
 
@@ -278,6 +313,15 @@ export interface Mismatch {
   field: "rc" | "stdout" | "stderr";
   goVal: string;
   tsVal: string;
+}
+
+/**
+ * 「未归类」明细的行格式（可单测）。历史 bug：直接把 {dir, entry} 对象插值 ⇒ 输出
+ * `[object Object]`，定位全失（#292 审阅 P2-2）。类型上已收窄为 string[]，此处再给
+ * 一条断言兜底。
+ */
+export function formatUnclassified(entries: readonly string[]): string {
+  return entries.map((e) => `  - ${e}`).join("\n");
 }
 
 /** 按 maskLines 正则丢弃整行（无 mask 时原样返回）。 */
@@ -348,12 +392,21 @@ export function main(argv: string[]): number {
   try {
     // 自动发现双轨目录：每个都必须在 TARGETS 或 EXCLUDED 中（未归类 = 红）
     const known = new Set([...TARGETS.map((t) => t.dir), ...Object.keys(EXCLUDED)]);
-    const unclassified = discoverDualDirs().filter((d) => !known.has(d.dir));
+        // 两类都要归类（P3-2 修）：① 同基名成对（可直接对拍）；② 同目录有 .go 与 .mts 但
+    // 基名不同（须显式 goEntry/tsEntry 才可比，否则**静默跳过**——审阅实测 bar.go+main.mts
+    // 曾静默通过）。
+    const unclassified: string[] = [
+      ...discoverDualDirs()
+        .filter((d) => !known.has(d.dir))
+        .map((d) => `${d.dir}/${d.entry}`),
+      ...discoverMixedDirs()
+        .filter((dir) => !known.has(dir))
+        .map((dir) => `${dir}（基名不同：须在 TARGETS 显式 goEntry/tsEntry，或入 EXCLUDED 写明原因）`),
+    ];
     if (unclassified.length > 0) {
-      process.stderr.write(`parity_gate: ${unclassified.length} 个双轨目录未归类（须入 TARGETS 或 EXCLUDED 并写明原因）：
-`);
-      for (const d of unclassified) process.stderr.write(`  - ${d}
-`);
+      process.stderr.write(
+        `parity_gate: ${unclassified.length} 个双轨目录未归类（须入 TARGETS 或 EXCLUDED 并写明原因）：\n${formatUnclassified(unclassified)}\n`,
+      );
       return 1;
     }
 

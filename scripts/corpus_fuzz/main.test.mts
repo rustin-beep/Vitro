@@ -1,9 +1,14 @@
 // corpus_fuzz.test.mts —— 生成保真（Go 金样本逐字节）+ 判定流水线 + 端到端（.mts 重写批）。
 //
 // 三层锚：
-//   1. **生成保真**：`testdata/variants/*.c` 是 Go 版 `-freeze` 实跑落下的变体，
-//      本测试用 planVariants 重算同 21 个文件并逐字节比对——RNG（uint64 回绕）、
-//      11 个算子、2 个生成器、采样派生种子全在这一层锁死；
+//   1. **生成保真**（两层，缺一不可）：
+//      a. `testdata/variants/*.c`（21 个）：Go `-freeze` 实跑产物 ⇒ 锁「采样 + 派生种子 +
+//         suite/路径长度参与 RNG」这条链；其中多数算子在抽样种子上本就是 no-op，
+//         故**不能**单靠它证明每个算子都被改写过（#292 审阅 P2-1 实测：突变
+//         static_inject 的实现后该层仍绿）；
+//      b. `testdata/golden_mutators/*.c`（11 个）：`corpus/mutator_probe/seed_all.c`
+//         专为「每个算子都实际改变字节」而写，`mutators_per_seed=11` 一次跑满全算子
+//         ⇒ 另有断言「每个算子至少一个变体 != 源」，防覆盖静默退化；
 //   2. **判定流水线**：codeMask / firstIntLit / latin1Fold / parseVitro / bucketOf
 //      的单元口径；
 //   3. **端到端**：用 testdata 的迷你规则 + 基线真跑（含 clang × js × native），
@@ -14,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { projectRoot } from "../internal/capi.mts";
+import { ensureFresh } from "../internal/freshness.mts";
 import {
   BUCKET_RANK,
   DetRand,
@@ -59,6 +65,35 @@ test("生成保真：planVariants 重算的变体与 Go 金样本逐字节相同
     assert.ok(got !== undefined, `planVariants 未产出 ${f}`);
     assert.ok((got as Buffer).equals(fs.readFileSync(path.join(goldenDir, f))), `${f} 字节不一致`);
   }
+});
+
+test("算子覆盖：11 个算子各有一个「实际改变字节」的金样本（#292 审阅 P2-1）", () => {
+  const mr = JSON.parse(fs.readFileSync(path.join(ROOT, FIX, "mutator_rules.json"), "utf8")) as Rules;
+  assert.equal(mr.mutators.length, 11, "规则须覆盖全部 11 算子");
+  assert.equal(mr.mutators_per_seed, 11, "每种子跑满全部算子（否则抽样可能漏算子）");
+
+  const seedPath = path.join("corpus", "mutator_probe", "seed_all.c");
+  const seedAbs = path.join(ROOT, seedPath);
+  const seedBytes = fs.readFileSync(seedAbs);
+  const plan = planVariants(mr, [{ suite: "mutator_probe", name: "seed_all.c", path: seedPath, absPath: seedAbs }]);
+  assert.equal(plan.length, 11, "单种子 × 11 算子");
+
+  const goldenDir = path.join(ROOT, FIX, "golden_mutators");
+  const goldens = fs.readdirSync(goldenDir).filter((n) => n.endsWith(".c"));
+  assert.equal(goldens.length, 11);
+
+  // ① 逐字节对拍 Go 金样本
+  const byName = new Map(plan.map((v) => [v.filename, v.bytes]));
+  for (const g of goldens) {
+    const got = byName.get(g);
+    assert.ok(got !== undefined, `planVariants 未产出 ${g}`);
+    assert.ok((got as Buffer).equals(fs.readFileSync(path.join(goldenDir, g))), `${g} 字节不一致`);
+  }
+  // ② 每个算子都必须真的改动过字节（no-op 金样本不算覆盖）
+  const noop = plan.filter((v) => v.bytes.equals(seedBytes)).map((v) => v.mutator);
+  assert.deepEqual(noop, [], `以下算子的金样本与源相同（覆盖失效）：${noop.join(", ")}`);
+  const covered = new Set(plan.map((v) => v.mutator));
+  for (const name of mr.mutators) assert.ok(covered.has(name), `算子 ${name} 无金样本`);
 });
 
 test("DetRand：uint64 回绕 + 同种子可复现（BigInt 语义，非 double）", () => {
@@ -172,6 +207,9 @@ test("e2e：迷你规则真跑（21 变体 / 20 AGREE / 0 新指纹 / 0 桶恶�
     t.diagnostic("skip：缺 clang 或 cmd/run release exe");
     return;
   }
+  // #292 审阅 P3：陈旧 run.exe 会让桶分类整体漂移（AGREE→CLANG_REJECT 等）⇒ 本地假红。
+  // 与其它产物消费者同口径：先过新鲜度门禁（mtime 触发 + 构建复核）。
+  ensureFresh("corpus_fuzz_e2e", runner, ["build", "--release", "--target", "native", "cmd/run"]);
   const r = spawnSync(
     process.execPath,
     [

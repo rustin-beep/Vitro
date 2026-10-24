@@ -12,6 +12,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts): #292 审阅处置——P2×3 + P3×8 逐条（2026-10-24）
+
+**P2-1 · corpus_fuzz 金样本只锁住 1 个算子的实际变换面** —— 已修（含先红后绿）
+- 复核审阅复现：突变 `static_inject` 的 `"    static "` → 旧 21 个金样本仍全绿（它们多在抽样种子上本就是 no-op）。
+- 修法：新增 `corpus/mutator_probe/seed_all.c`（专为「每个算子都实际改动字节」而写）+ `testdata/mutator_rules.json`（单种子 × 全 11 算子），Go 侧 `-freeze` 产出 `testdata/golden_mutators/*.c`（11 个）。
+- 断言：① 11 个金样本逐字节比对；② **每个算子至少一个变体 != 源**（no-op 不算覆盖），防静默退化。
+- 证红：同一条突变（`static` → `staticx`）现在 **✖ `mutator_seed_seed_all_static_inject.c 字节不一致`**；还原后 ✔。
+- 顺带发现：`brace_strip` 的语义是「`{ N }` → `{N}`」（空白归一，不是去花括号），种子里需 `= { 5 }` 才触发；已写成注释免后人踩。
+
+**P2-2 · 未归类输出打印 `[object Object]`** —— 已修
+- 抽出 `formatUnclassified()`（类型收窄为 `string[]`），输出 `  - <dir>/<entry>`；补回归断言「含目录名且绝不出现 `[object Object]`」。
+
+**P2-3 · 文档两处「Go 版已删」失实** —— 已修
+- `diff_ledger` / `icon_catalog` 行改回「Go 版转回退面 + parity 双轨对拍」（与其余 20 余行同口径）。
+
+**P3 · 八条**
+- **normalize 全文 `\`→`/`（结构性假绿）**：删掉该归一——两侧同平台同 `path.join`，本无需归一；实测删后 23×47 仍全等价。补断言 `\2014 ≠ /2014`。（`C:\x\y.ts` 现在原样保留。）
+- **双轨自动发现只认同基名**：新增 `discoverMixedDirs()`——同目录有 `.go` 又有 `.mts` 但无同基名配对者，必须归类（实测立刻抓出 `scripts/realcode_diff`，已入 EXCLUDED 写明「两个无关程序、非双轨」）。
+- **`goTrimSpace`/`goFields` 漏 U+2028/U+2029**：Go `unicode.IsSpace` = Unicode White_Space **含**行/段分隔符；已补进两处正则，注释改正（Go 有 U+0085/U+2028/U+2029，**不含** U+FEFF）。原测试断言的是错误语义，同步改正并加审阅给的实测例。
+- **文档数字失实**：22 双轨 × 46 组 → 23 × 47；`catalog.json 108 条` → 114。
+- **test 清单漏 `diff_gate/targets/lexer.test.mts`**：已补登记，并新增 `internal/testlist.test.mts` 机判（磁盘 `.test.mts` 集合 ↔ `npm test` 清单**双向**一致）。补登记后立刻暴露该文件里写死的 `976` 已过期（实测 990）——改为以 `lexer_diff/golden_digest.json` 的 `baseline/` 条目数为唯一真值。
+- **修改面表漏改 serve_smoke**：同一行内 `serve_smoke` 也切 node。
+- **corpus_fuzz e2e 不查产物新鲜度**：e2e 前置 `ensureFresh(cmd/run)`，陈旧 `run.exe` 导致的桶漂移假红不再出现。
+- **demo/DESIGN.md cwd 混用**：`../scripts/demo_ui_lint/main.mts` → `scripts/demo_ui_lint/main.mts`，并注明本段统一以仓库根为 cwd。
+
+**门禁**：tsc 0 错 / oxlint 146 文件 0 警告 / node:test **467 例 0 失败**（+9）/ parity 23×47 全等价 / ci_checklist + editorconfig + facts --strict（0 漂移 0 坏引用）绿。
+
 ### refactor(scripts): #273 serve_smoke .mts 化（1274 行）+ RSS 口径替换 + 证红（2026-10-24）
 
 - **迁移**：出口 3 的 serve 协议冒烟全量移植（主批 25 请求 × 68 断言 + 边界/负值/极值批 + 二次运行不串帧批 + RSS 护栏批 + 超长行批 + 豁免表（断言级/整批级）+ `--audit-exemptions` 僵尸审计）。`-moonbit`（69 断言 = 67 PASS + 2 豁免）与 `-moonbit -audit-exemptions` 两模式 **stdout/stderr/rc 逐字零差**。

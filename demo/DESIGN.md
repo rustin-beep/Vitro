@@ -61,7 +61,7 @@ generated: src/tokens.css（@generated，禁手改）
 - 数据面（帧号、地址、输出、代码）用 mono；叙事面用 serif/sans。
 - 状态用语义 token（red/green/amber）+ 一句话原因 + 一个动作。
 - 改完跑：`node scripts/gen_demo_tokens/main.mts -check`、`npm run check`、
-  `npm run lint`、`npm run build`、`node ../scripts/demo_ui_lint/main.mts`。
+  `npm run lint`、`npm run build`、`node scripts/demo_ui_lint/main.mts`（本段全部命令以**仓库根**为 cwd，与本表其余行一致——#292 审阅 P3 实测此处原写 `../scripts/…` 混用）。
 
 **Don't**
 

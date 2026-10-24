@@ -66,10 +66,21 @@ test("真实仓库：serializeLexDigest 与入库 golden_digest.json 逐字节�
   assert.equal(serializeLexDigest(doc), original);
 });
 
-test("真实仓库：lexer 在 baseline 上 PASS 976（与 Go 版同判据）", () => {
+test("真实仓库：lexer 在 baseline 全量 PASS（条数取自冻结基线，不写死）", () => {
+  // #292 审阅 P3 连带修：此处原写死 976，master 语料增长后（实测 990）该断言会恒红——
+  // 而本文件曾长期**不在 npm test 清单**里，所以没人发现。现改为以 golden_digest 的
+  // baseline/ 条目数为唯一真值（同一份冻结产物），语料扩容后自动跟随、删条目才会红。
+  const digest = JSON.parse(
+    fs.readFileSync(path.join(projectRoot(), "scripts", "lexer_diff", "golden_digest.json"), "utf8"),
+  ) as { tsvs: Record<string, unknown> };
+  const expected = Object.keys(digest.tsvs).filter((k) => k.startsWith("baseline/")).length;
+  assert.ok(expected > 0, "冻结基线里没有 baseline 条目（golden 缺失或结构漂移）");
   const r = run(["lexer", "corpus/baseline"]);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /lexer_diff\[golden\]: PASS——976 个 case hash 与冻结基线一致（语料 baseline）/);
+  assert.match(
+    r.stdout,
+    new RegExp(`lexer_diff\\[golden\\]: PASS——${expected} 个 case hash 与冻结基线一致（语料 baseline）`),
+  );
 });
 
 test("真实仓库：lexer --selftest 必红（J9，退出码 1）", () => {

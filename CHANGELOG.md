@@ -12,6 +12,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(codegen): #283 static 局部遮蔽同名 global 解析链前置 + 语料/基线连坐（2026-10-24）
+
+- **静默错值修复**：函数级 `static int c` 与文件作用域 `int c` 同名时，
+  旧解析链 local → global → static 垫底——global 抢先命中，`c=c+1` 读
+  global 500 写回 global（clang 8 / vitro 501，零诊断）。修复 = static
+  前置（local → static → global），codegen 六消费点同改：addr /
+  assign（整臂前置）/ index_member / unary IncDec（短路式）/ stmt 读值
+  / init 回填（push_global_addr_init + flush 复用自动继承）；call.mbt
+  与 unary Addr 臂原序已正确（复核）。病 37（#71）local 居首与
+  #277/#282 块内形态零回退（边界矩阵 p1b / p1c / p7 / 无块形双臂逐字
+  一致）。红→绿：修复前 js 臂实测 `507/508/508`（主案 c 与块内
+  `static c=100` 全被 global 吞），修复后 js + native 双臂九行全对。
+- **语料红锚**：`corpus/baseline/static_shadows_global.c`（无块形主案 +
+  复合赋值/自增/取址/指针初始化器回填/struct 成员/数组传参消费点矩阵 +
+  块内 local 遮蔽 static + 块内 static 层级 + 参数形防回退锚，clang 真值
+  三方逐字一致）；五家 digest 入账（rebase 批四后 499 语料重验：lexer 998
+  TSV / parser·typeck·codegen 498 / vm 499 SAME / clang_direct DIFF=0）；
+  fuzz 基线收编 21 条抽样扰动新指纹（AGREE 10 + CLANG_REJECT 11——
+  抽样定性全部同根因：变体截 `#include` → clang C99 拒隐式声明、vitro
+  宽容收，js/native 双臂输出一致，#255 严格性差异域已知形态非新病；
+  语料池 +1 致确定性抽样整体偏移，「新语料必 re-freeze」义务机理）。
+- **发布档案白名单（用户拍板 2026-10-24）**：`scripts/facts/exempt_docs.json`
+  收编 `docs/current/08-发布档案/` 全部十文件——发布档案=发版时点实录快照，
+  不随 HEAD 连坐、不改写（0.9.0 预写稿发版回填后同规）；出列后 facts
+  `--strict check` 绿（master 上 0.9.0.md:13/:122 的既有 Suspect/漂移
+  形态随白名单销案；CI 侧「待采集键缺位跳过漂移判定」的假绿面另行
+  登记不在本批）。
+
 ### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
 
 **删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。
@@ -48,7 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **保留的 Go（不迁，理由已登记）**：`facts`(3 文件 2338) / `clang_direct`(1142) / `realcode_diff`(2206) 三个**真值源**（无 golden 可对拍）；`perf_baseline`(870) 报告型；diff 家族 5 个(4697) 已被 `diff_gate` 取代，待独立批删除。
 
 **门禁**：tsc 0 错 / oxlint 144 文件 0 警告 / node:test **464 例 0 失败** / ci_checklist PASS / editorconfig PASS / facts --strict（0 漂移 0 坏引用）/ skill_path_check 0 缺失。
-
 ### fix(parser+lexer): A 线批四——#285 声明符螺旋 const 层级归位 + #251 U/UL 后缀符号域 + #242 诊断列字节量纲统一（2026-10-24）
 
 - **#285（parser）**：`T *const *` 声明符链的 const 落最外层指针位（`char** const`）

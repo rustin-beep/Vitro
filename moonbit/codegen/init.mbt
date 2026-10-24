@@ -234,10 +234,13 @@ fn BytecodeGen::push_global_addr_init(
   base_offset : UInt32,
   name : String,
 ) -> Bool {
-  let offset = match self.global_indices.get(name) {
+  // static local 前置（#283）：静态局部初始化器引用同名 global 时
+  // （`static int c = …; static int *p = &c;`）应取 static 槽——
+  // 旧序 global 先命中会回填文件作用域地址；flush 侧复用本函数自动继承
+  let offset = match self.static_local_indices.get(name) {
     Some(o) => o
     None =>
-      match self.static_local_indices.get(name) {
+      match self.global_indices.get(name) {
         Some(o) => o
         None => -1
       }

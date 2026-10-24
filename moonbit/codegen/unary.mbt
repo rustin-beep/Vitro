@@ -220,9 +220,10 @@ fn BytecodeGen::gen_unary(
           }
           // 统一序列：load →(float: CastF2D)→ postDup → ±step →
           // (float: CastD2F)→ preDup → store（Rust emit_seq 闭包展开）
-          // 病 37 修正（#71 第三梯队，2026-10-11）：增减序对齐 gen_addr =
-          // local → global → static——此前 static-first，块内局部遮蔽
-          // static 的 x++ 写穿到 static（b37c 探针 inner2=20/static=6 实锤）。
+          // 病 37 修正（#71 第三梯队，2026-10-11）：local 居首——块内局部
+          // 遮蔽 static 的 x++ 写穿到 static（b37c 探针 inner2=20/static=6
+          // 实锤）；#283 起增减序 = local → static → global（无块形态
+          // static 遮蔽同名 global）。
           let local_idx = self.resolve_local(name)
           if local_idx >= 0 {
             self.emit_incdec_seq(
@@ -236,7 +237,11 @@ fn BytecodeGen::gen_unary(
               loc~,
             )
           } else {
-            let global_idx = self.resolve_global(name)
+            // static local 前置（#283）：命中即短路 global 查询
+            let global_idx = match self.static_local_indices.get(name) {
+              Some(_) => -1
+              None => self.resolve_global(name)
+            }
             if global_idx >= 0 {
               self.emit_incdec_seq(
                 load_op=incdec_global_load(incdec_kind_of(var_ty)),

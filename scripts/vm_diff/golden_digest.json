@@ -2435,6 +2435,12 @@
       "stdout_sha": "a4b33006a1c99dec",
       "memory_sha": "ca2c8b634fc965a3"
     },
+    "baseline/static_shadows_global.c": {
+      "src_sha": "887d15e4",
+      "exit_code": 0,
+      "stdout_sha": "4e4a4b125b60c1cd",
+      "memory_sha": "ab8e55dd081e7056"
+    },
     "baseline/static_str_member.c": {
       "src_sha": "e8f0723b",
       "exit_code": 7,

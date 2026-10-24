@@ -2,9 +2,9 @@
   "_meta": {
     "as_of": "2026-10-22",
     "buckets": {
+      "clang_red": 21,
       "both_green": 0,
-      "clang_red": 25,
-      "vitro_red": 16
+      "vitro_red": 20
     },
     "gcc_buckets": {
       "both_green": 16,
@@ -12,7 +12,7 @@
       "divergence": 0,
       "rescued": 1
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×2 为真子集边界(未收录标准头,断言时豁免);旧勘探方法限制(E1021×104,serve 无 base_dir)已随 #253 filename 补全修复消解。",
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。E1021×2 真子集边界豁免；union.c #278 重冻；vla/variable/struct/pointer 四文件 clang 判定口径统一重冻（-Wno-incompatible-pointer-types 跨版本稳定口径，2026-10-24 CI 接线批）。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "total": 41,
     "source_fork": "https://github.com/RunThem/chibicc-repo",
@@ -302,12 +302,17 @@
       "run": ""
     },
     "pointer.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "vitro_errs": 894,
+      "vitro_warns": 32,
+      "codes": {
+        "E2003": 1,
+        "E2007": 2,
+        "E2005": 891,
+        "W1019": 32
+      },
+      "layer": "parse",
       "run": ""
     },
     "pragma-once.c": {
@@ -352,12 +357,18 @@
       "run": ""
     },
     "struct.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "vitro_errs": 2042,
+      "vitro_warns": 60,
+      "codes": {
+        "E2003": 1,
+        "E2007": 2,
+        "E2005": 2038,
+        "E3077": 1,
+        "W1019": 60
+      },
+      "layer": "parse",
       "run": ""
     },
     "tls.c": {
@@ -399,12 +410,12 @@
     "union.c": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 406,
+      "vitro_errs": 403,
       "vitro_warns": 16,
       "codes": {
         "E2003": 1,
-        "E2005": 403,
         "E2007": 2,
+        "E2005": 400,
         "W1019": 16
       },
       "layer": "parse",
@@ -438,21 +449,31 @@
       "run": ""
     },
     "variable.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "vitro_errs": 967,
+      "vitro_warns": 25,
+      "codes": {
+        "E2003": 1,
+        "E2007": 2,
+        "E2005": 964,
+        "W1019": 25
+      },
+      "layer": "parse",
       "run": ""
     },
     "vla.c": {
-      "clang_ok": false,
+      "clang_ok": true,
       "gcc_ok": false,
-      "vitro_errs": 0,
-      "vitro_warns": 0,
-      "codes": {},
-      "layer": "",
+      "vitro_errs": 642,
+      "vitro_warns": 26,
+      "codes": {
+        "E2003": 1,
+        "E2007": 2,
+        "E2005": 639,
+        "W1019": 26
+      },
+      "layer": "parse",
       "run": ""
     }
   }

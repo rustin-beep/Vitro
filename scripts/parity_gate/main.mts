@@ -45,6 +45,18 @@ export interface Target {
   /** .mts 侧文件名基（默认 = entry） */
   tsEntry?: string;
   /**
+   * **已知非确定行**的屏蔽正则（源码字符串，作用于整行）：两侧取值依赖采样时刻/
+   * 采样后端的行（如 RSS 峰值 MB）在比对前整行丢弃。仅用于「测得值本身不可比、
+   * 但判定行可比」的场合——屏蔽面必须在批注里写明理由。
+   */
+  maskLines?: string;
+  /**
+   * 先跑一次 Go 侧**丢弃输出**再比对：带 `ensureFresh` 的目标在产物陈旧时，首跑会
+   * 打印「旧于源」并触发重建，第二跑就没这行了——不预热则两侧必然不对称（状态性
+   * 假红）。预热只让**新鲜度噪声**消失；判定面差异仍会被比对到。
+   */
+  warmup?: boolean;
+  /**
    * 产物前置（仓库相对路径）。带此字段 = **artifact 组**：不进默认跑（静态 job
    * 没产物时会两侧同报「前置产物缺失」空转绿——那是假绿，不是等价）；只在
    * 构建过产物的 job 里用 `--only <dir>` 显式跑，且缺任一产物即 rc 2 硬红。
@@ -73,7 +85,8 @@ export const TARGETS: Target[] = [
   { dir: "scripts/moonbit/pkg_deps", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/perf_budget", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/moonbit/mbti_sync", modes: [[], ["-check"], ["--selftest"]] },
-  { dir: "scripts/protocol_frames", modes: [[], ["--selftest"]] },
+  // warmup：protocol_frames 带 ensureFresh（产物陈旧时首跑会重建，两侧不对称）
+  { dir: "scripts/protocol_frames", modes: [[], ["--selftest"]], warmup: true },
   {
     dir: "scripts/demo_ui_lint",
     // 红 fixture（13 条 >12）是刻意保留的：n>12 越过 Go sort 的插入排序阈值，
@@ -123,6 +136,17 @@ export const TARGETS: Target[] = [
       ["-regen", "-rules", "scripts/corpus_fuzz/testdata/mini_rules.json", "-baseline", "scripts/corpus_fuzz/testdata/mini_baseline.json"],
     ],
     exclusive: "需 clang + cmd/run release exe + launcher（corpus fuzz job 具备）",
+  },
+  {
+    // 需 debug cmd/serve exe。两模式：主跑（68 断言）+ 豁免面审计轮（D19：豁免全失效
+    // 真跑，原豁免条目 FAIL = 合法证明——这本身就是豁免面的证红路径）。
+    // maskLines：RSS 4 行「seek(…) 后提交峰值 ≈ N MB」是**测得值**（Go 走 psapi、
+    // 本版走 CIM 同一计数器；采样时刻差异可致 ±1MB），屏蔽后判定行仍逐字可比。
+    dir: "scripts/serve_smoke",
+    modes: [["-moonbit"], ["-moonbit", "-audit-exemptions"]],
+    exclusive: "需 debug cmd/serve exe（gates-native 的 serve 步先建）",
+    warmup: true,
+    maskLines: "^\\s+seek\\(\\s*\\d+\\) 后提交峰值 ≈ \\d+ MB（预算 \\d+ MB）$",
   },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   { dir: "scripts/toolchain_probe", entry: "toolchain_probe", modes: [[]] },
@@ -256,7 +280,23 @@ export interface Mismatch {
   tsVal: string;
 }
 
-export function compareOne(dir: string, mode: string[], goBin: string, entry = "main"): { diff: Mismatch[]; goMs: number; tsMs: number } {
+/** 按 maskLines 正则丢弃整行（无 mask 时原样返回）。 */
+export function maskText(s: string, maskSrc: string | undefined): string {
+  if (maskSrc === undefined || maskSrc === "") return s;
+  const re = new RegExp(maskSrc);
+  return s
+    .split("\n")
+    .filter((l) => !re.test(l))
+    .join("\n");
+}
+
+export function compareOne(
+  dir: string,
+  mode: string[],
+  goBin: string,
+  entry = "main",
+  maskSrc?: string,
+): { diff: Mismatch[]; goMs: number; tsMs: number } {
   const modeLabel = mode.length === 0 ? "(默认)" : mode.join(" ");
   const t0 = performance.now();
   const g = run(goBin, mode);
@@ -266,8 +306,8 @@ export function compareOne(dir: string, mode: string[], goBin: string, entry = "
   const out: Mismatch[] = [];
   if (g.rc !== t.rc) out.push({ dir, mode: modeLabel, field: "rc", goVal: String(g.rc), tsVal: String(t.rc) });
   for (const field of ["stdout", "stderr"] as const) {
-    const a = normalize(g[field]);
-    const b = normalize(t[field]);
+    const a = maskText(normalize(g[field]), maskSrc);
+    const b = maskText(normalize(t[field]), maskSrc);
     if (a !== b) out.push({ dir, mode: modeLabel, field, goVal: a, tsVal: b });
   }
   return { diff: out, goMs: t1 - t0, tsMs: t2 - t1 };
@@ -363,9 +403,13 @@ export function main(argv: string[]): number {
         return 2;
       }
       const goBin = buildGo(t.dir, tmp);
+      if (t.warmup === true && t.modes.length > 0) {
+        // 预热：只为把「产物陈旧 → 重建」这一步提前做掉（输出丢弃）
+        run(goBin, t.modes[0] as string[]);
+      }
       for (const mode of t.modes) {
         cases++;
-        const r = compareOne(t.dir, mode, goBin, tsEntry);
+        const r = compareOne(t.dir, mode, goBin, tsEntry, t.maskLines);
         goTotal += r.goMs;
         tsTotal += r.tsMs;
         const diff = r.diff;

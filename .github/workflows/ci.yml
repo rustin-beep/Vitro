@@ -420,7 +420,9 @@ jobs:
       - name: MoonBit serve smoke (dual-host, Exit 3)
         run: |
           cd moonbit && moon build --target native cmd/serve && cd ..
-          go run ./scripts/serve_smoke -moonbit
+          node scripts/serve_smoke/main.mts -moonbit
+          # 双轨对拍（#292 批）：本 job 是 debug serve exe 齐备处
+          node scripts/parity_gate/main.mts --only scripts/serve_smoke
         shell: bash
 
       # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
@@ -447,7 +449,7 @@ jobs:
       # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
       # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
       - name: MoonBit exemption audit (zombie detector, D19)
-        run: go run ./scripts/serve_smoke -moonbit -audit-exemptions
+        run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
         shell: bash
 
       # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
@@ -529,13 +531,13 @@ jobs:
         shell: bash
       - name: serve_smoke wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/serve_smoke --backend-wasm
+        run: node scripts/serve_smoke/main.mts --backend-wasm
         shell: bash
       # PR #280 审阅 P3-6（2026-10-23）：豁免表 wasm 臂段此前从不入审计面
       #（僵尸审计只跑 -moonbit 一臂——断言更名批曾靠审阅者补跑才证真）
       - name: serve_smoke wasm exemptions audit
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/serve_smoke --backend-wasm -audit-exemptions
+        run: node scripts/serve_smoke/main.mts --backend-wasm -audit-exemptions
         shell: bash
       - name: protocol_frames wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'

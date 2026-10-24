@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 serve_smoke .mts 化（1274 行）+ RSS 口径替换 + 证红（2026-10-24）
+
+- **迁移**：出口 3 的 serve 协议冒烟全量移植（主批 25 请求 × 68 断言 + 边界/负值/极值批 + 二次运行不串帧批 + RSS 护栏批 + 超长行批 + 豁免表（断言级/整批级）+ `--audit-exemptions` 僵尸审计）。`-moonbit`（69 断言 = 67 PASS + 2 豁免）与 `-moonbit -audit-exemptions` 两模式 **stdout/stderr/rc 逐字零差**。
+- **唯一有意差异：RSS 采样后端**。Go 走 `probeutil` 的 Windows psapi（`GetProcessMemoryInfo.PeakPagefileUsage`）；Node 无该 API，改读**同一计数器**的 CIM 面 `Win32_Process.PeakPageFileUsage`。量纲实测：CIM 该字段是 **KB**（同进程 `WorkingSetSize` 是字节，本机实测 29656 vs 62152704）——换算后与 psapi 逐值吻合（21/23/23/23 MB）。
+- **parity 新增 `maskLines` 机制**：把「测得值/采样时刻敏感」的行（4 行 `seek(…) 后提交峰值 ≈ N MB`）在比对前整行屏蔽，判定行（预算内/超预算）仍逐字比——这是「非确定行」与「空转绿」的正解：屏蔽面显式登记 + 理由落注释。
+- **证红留痕（J9）**：① `VITRO_RSS_BUDGET_MB=5` → RSS 护栏断言必红、`FAILED: 1 项 -> ["RSS 护栏：提交峰值在预算内"]`（并落成测试）；② `-audit-exemptions` 轮：两条豁免条目真跑即 FAIL（`LEGIT(FAIL)`）= 豁免面自身被证伪为合法，僵尸即红。
+- **接线**：gates-native 的 serve 步（含点名对拍）、审计步骤、gates-wasm 的 wasm 臂与 wasm 审计步共四处 `go run` → node。
+- **测试 +10**：`nonEmptyLines` / `tailRunes`（按码点取尾）/ `parseFrame` / `peakCommitMB` 失败口径 / 未选臂与 `--audit-exemptions` 未配臂与 `VITRO_CLI` 缺失三条 fail loud / 主跑全绿 / 审计轮无僵尸 / **RSS 预算证红**。
+
 ### refactor(scripts): #273 corpus_fuzz .mts 化（1100 行）+ 生成金样本 + 证红（2026-10-24）
 
 - **迁移**：对抗随机分叉闸全量移植（clang × vitro-native × vitro-js 三方六桶分类 / 指纹基线 / 新指纹·桶恶化判红 / `-freeze` 合并语义 / 缓存键 / `-probe` / 域生成器段）。

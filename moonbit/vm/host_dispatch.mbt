@@ -298,7 +298,10 @@ fn VitroVM::execute_host_func(
         Some(f) => f()
         None => 0UL
       }
-      self.push(@host.host_clock(self.deterministic, now))
+      // #211：clock = 自会话起点的微秒近似（start 在墙钟注册时采样）
+      self.push(
+        @host.host_clock(self.deterministic, now, self.clock_start_millis),
+      )
     }
     // ── 输出族 ──
     0 => {

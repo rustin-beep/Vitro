@@ -1,5 +1,5 @@
 // 词汇表白盒锚（S7 批一号）：classify 3 锚照搬 vocabulary.rs tests 模块
-// + 14 条词汇表三元组（id/domain/status）硬编码对账锚——与 Rust 源常量表
+// + 15 条词汇表三元组（id/domain/status）硬编码对账锚——与 Rust 源常量表
 // 任一侧漂移即红。
 
 ///|
@@ -53,8 +53,9 @@ test "ids_are_unique" {
 
 ///|
 test "vocabulary_table_matches_rust_source" {
-  // 对账锚：14 条 (id, domain, status) 三元组硬编码对齐
+  // 对账锚：15 条 (id, domain, status) 三元组硬编码对齐
   // native/src/unified/vocabulary.rs SEMANTIC_LABEL_VOCABULARY
+  // 合法追加；Rust 对照区退役后此锚转为插入序/域/状态自洽冻结）
   let expected : Array[(String, String, String)] = [
     ("swap", "c", "active"),
     ("recursive_call", "c", "active"),
@@ -66,13 +67,14 @@ test "vocabulary_table_matches_rust_source" {
     ("heap_free", "c", "active"),
     ("io", "c", "active"),
     ("line_fallback", "c", "active"),
+    ("func_entry", "c", "active"),
     ("throw", "csharp", "reserved"),
     ("unwind", "csharp", "reserved"),
     ("catch_enter", "csharp", "reserved"),
     ("finally", "csharp", "reserved"),
   ]
   let vocab = semantic_label_vocabulary()
-  assert_eq(vocab.length(), 14, msg="词汇表必须恰 14 条")
+  assert_eq(vocab.length(), 15, msg="词汇表必须恰 15 条")
   for i, t in expected {
     assert_eq(vocab[i].id, t.0, msg="第 \{i} 条 id 与 Rust 源漂移")
     assert_eq(vocab[i].domain, t.1, msg="第 \{i} 条 domain 漂移")
@@ -127,29 +129,7 @@ test "kind_by_id_roundtrip" {
 test "vocabulary_json_byte_exact_rust_truth" {
   // 与 Rust 真值逐字节对拍锚（用户审阅 P2-1 实测锁定，2026-09-27）：探针 stdout 真值第二条。键序漂移（含 preserve_order 启用 / 词汇改文）即红。
   let vt : Array[String] = [
-    "{\"discipline\":\"词汇只增不改：id 与 template 一经发布不得改语义，扩充只能追加条目\",\"labels\":[{\"domain\":\"c",
-    "\",\"example\":\"交换 arr[3]↔arr[4]\",\"id\":\"swap\",\"since\":\"-\",\"status\":\"active",
-    "\",\"template\":\"交换 arr[{i}]↔arr[{j}]\"},{\"domain\":\"c\",\"example\":\"递归调用 fib\",\"i",
-    "d\":\"recursive_call\",\"since\":\"-\",\"status\":\"active\",\"template\":\"递归调用 {func}",
-    "\"},{\"domain\":\"c\",\"example\":\"调用 printf / 调用 qsort / 调用 swap\",\"id\":\"call\",\"s",
-    "ince\":\"-\",\"status\":\"active\",\"template\":\"调用 {func}\"},{\"domain\":\"c\",\"examp",
-    "le\":\"函数调用\",\"id\":\"generic_call\",\"since\":\"-\",\"status\":\"active\",\"template\"",
-    ":\"函数调用\"},{\"domain\":\"c\",\"example\":\"循环 i=0, j=1（无值形态为裸 `循环`）\",\"id\":\"loop\",\"",
-    "since\":\"-\",\"status\":\"active\",\"template\":\"循环 {iter=v, …}\"},{\"domain\":\"c\",",
-    "\"example\":\"返回\",\"id\":\"return\",\"since\":\"-\",\"status\":\"active\",\"template\":",
-    "\"返回\"},{\"domain\":\"c\",\"example\":\"内存分配\",\"id\":\"heap_alloc\",\"since\":\"-\",\"s",
-    "tatus\":\"active\",\"template\":\"内存分配\"},{\"domain\":\"c\",\"example\":\"释放内存\",\"id\":",
-    "\"heap_free\",\"since\":\"-\",\"status\":\"active\",\"template\":\"释放内存\"},{\"domain\":",
-    "\"c\",\"example\":\"IO 操作\",\"id\":\"io\",\"since\":\"-\",\"status\":\"active\",\"templa",
-    "te\":\"IO 操作\"},{\"domain\":\"c\",\"example\":\"第 12 行\",\"id\":\"line_fallback\",\"sinc",
-    "e\":\"-\",\"status\":\"active\",\"template\":\"第 {line} 行\"},{\"domain\":\"csharp\",\"ex",
-    "ample\":\"抛出异常\",\"id\":\"throw\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template",
-    "\":\"抛出异常\"},{\"domain\":\"csharp\",\"example\":\"栈展开\",\"id\":\"unwind\",\"since\":\"CS",
-    "3b\",\"status\":\"reserved\",\"template\":\"栈展开\"},{\"domain\":\"csharp\",\"example\":\"",
-    "进入 catch\",\"id\":\"catch_enter\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template",
-    "\":\"进入 catch\"},{\"domain\":\"csharp\",\"example\":\"finally 执行\",\"id\":\"finally\",\"",
-    "since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"finally 执行\"}],\"schema\":\"v0.2",
-    "\"}",
+    "{\"discipline\":\"词汇只增不改：id 与 template 一经发布不得改语义，扩充只能追加条目\",\"labels\":[{\"domain\":\"c\",\"example\":\"交换 arr[3]↔arr[4]\",\"id\":\"swap\",\"since\":\"-\",\"status\":\"active\",\"template\":\"交换 arr[{i}]↔arr[{j}]\"},{\"domain\":\"c\",\"example\":\"递归调用 fib\",\"id\":\"recursive_call\",\"since\":\"-\",\"status\":\"active\",\"template\":\"递归调用 {func}\"},{\"domain\":\"c\",\"example\":\"调用 printf / 调用 qsort / 调用 swap\",\"id\":\"call\",\"since\":\"-\",\"status\":\"active\",\"template\":\"调用 {func}\"},{\"domain\":\"c\",\"example\":\"函数调用\",\"id\":\"generic_call\",\"since\":\"-\",\"status\":\"active\",\"template\":\"函数调用\"},{\"domain\":\"c\",\"example\":\"循环 i=0, j=1（无值形态为裸 `循环`）\",\"id\":\"loop\",\"since\":\"-\",\"status\":\"active\",\"template\":\"循环 {iter=v, …}\"},{\"domain\":\"c\",\"example\":\"返回\",\"id\":\"return\",\"since\":\"-\",\"status\":\"active\",\"template\":\"返回\"},{\"domain\":\"c\",\"example\":\"内存分配\",\"id\":\"heap_alloc\",\"since\":\"-\",\"status\":\"active\",\"template\":\"内存分配\"},{\"domain\":\"c\",\"example\":\"释放内存\",\"id\":\"heap_free\",\"since\":\"-\",\"status\":\"active\",\"template\":\"释放内存\"},{\"domain\":\"c\",\"example\":\"IO 操作\",\"id\":\"io\",\"since\":\"-\",\"status\":\"active\",\"template\":\"IO 操作\"},{\"domain\":\"c\",\"example\":\"第 12 行\",\"id\":\"line_fallback\",\"since\":\"-\",\"status\":\"active\",\"template\":\"第 {line} 行\"},{\"domain\":\"c\",\"example\":\"进入 main / 进入 defLine\",\"id\":\"func_entry\",\"since\":\"-\",\"status\":\"active\",\"template\":\"进入 {func}\"},{\"domain\":\"csharp\",\"example\":\"抛出异常\",\"id\":\"throw\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"抛出异常\"},{\"domain\":\"csharp\",\"example\":\"栈展开\",\"id\":\"unwind\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"栈展开\"},{\"domain\":\"csharp\",\"example\":\"进入 catch\",\"id\":\"catch_enter\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"进入 catch\"},{\"domain\":\"csharp\",\"example\":\"finally 执行\",\"id\":\"finally\",\"since\":\"CS3b\",\"status\":\"reserved\",\"template\":\"finally 执行\"}],\"schema\":\"v0.2\"}",
   ]
   let buf = StringBuilder()
   for p in vt {

@@ -65,6 +65,18 @@ test "parse_run_args_json 与 stdin 占位" {
 }
 
 ///|
+/// #211 锚（2026-10-22）：--realtime 解析（time()/clock() 真墙钟——
+/// config.set 的 deterministic 置 false）；透传域内旗标形不解析同款。
+test "parse_run_args_realtime" {
+  let ra = parse_run_args(["--realtime", "x.c"])
+  inspect(ra.realtime, content="true")
+  inspect(ra.file, content="x.c")
+  // 默认关（判分可复现口径）+ 透传域零解析
+  inspect(parse_run_args(["x.c"]).realtime, content="false")
+  inspect(parse_run_args(["x.c", "--", "--realtime"]).realtime, content="false")
+}
+
+///|
 test "parse_run_args_多位参数_首为文件余进 argv（Rust 口径）" {
   let ra = parse_run_args(["ok.c", "extra1", "extra2"])
   inspect(ra.file, content="ok.c")
@@ -140,5 +152,93 @@ test "b87_compile_step_strict_args" {
   assert_true(
     rc4 != 4,
     msg="合法路径不因参数被拒（引擎态 rc 任意）",
+  )
+}
+
+///|
+/// PR #280 审阅 P2-1 锚（2026-10-23）：--realtime 生效面——解析锚之外，
+/// 「旗标 → config.set 下行串」的 deterministic 值两态锁定（旧形态该面
+/// 全防线零锚：把 cli_frame 的 det_flag 写死 true 单测全绿）。
+test "frame_pipeline_realtime_reaches_config_set" {
+  let captured : Array[String] = []
+  let ok_frame = fn(m : String) -> String {
+    if m == "compile" {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}"
+    } else if m == "run" {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"waiting_input\":false,\"steps_executed\":1}}"
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}"
+    }
+  }
+  let chan : EngineChannel = {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"config.set\"") {
+        captured.push(line)
+      }
+      if line.contains("\"method\":\"compile\"") {
+        ok_frame("compile")
+      } else if line.contains("\"method\":\"run\"") {
+        ok_frame("run")
+      } else {
+        ok_frame("delta")
+      }
+    },
+    invoke_parsed: fn(_line : String) -> Json? {
+      // compile 帧走 inv_tree（invoke_parsed）——固定回 ok 帧（json_parse
+      // 会 raise，桩内 catch 兜底同 engine_direct 形态）
+      Some(
+        @util.json_parse(
+          "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}",
+        ) catch {
+          _ => Json::number(0)
+        },
+      )
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, _src : String) -> String {
+      "{\"source\":\"\",\"filename\":\"\{file}\"}"
+    },
+  }
+  let clock = fn() { 0UL }
+  let wout = fn(_b : Bytes) { () }
+  ignore(
+    frame_pipeline(
+      "int main(){return 0;}",
+      "x.c",
+      "",
+      [],
+      "",
+      clock,
+      wout,
+      false,
+      channel=chan,
+      realtime=true,
+    ),
+  )
+  assert_true(captured.length() == 1, msg="config.set 恰一次下发")
+  assert_true(
+    captured[0].contains("\"deterministic\":false"),
+    msg="--realtime 下行 deterministic:false",
+  )
+  captured.clear()
+  ignore(
+    frame_pipeline(
+      "int main(){return 0;}",
+      "x.c",
+      "",
+      [],
+      "",
+      clock,
+      wout,
+      false,
+      channel=chan,
+      realtime=false,
+    ),
+  )
+  assert_true(
+    captured[0].contains("\"deterministic\":true"),
+    msg="缺省下行 deterministic:true（判分口径）",
   )
 }

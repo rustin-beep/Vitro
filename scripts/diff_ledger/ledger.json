@@ -527,36 +527,6 @@
       "notes": "n3_probe.c 探针实锤（2026-09-30）：MoonBit 编译错 'void 赋 int' vs Clang 通过返回 2；N4 面由三表对账闸在 CI 管；销案 2026-10-07 批四（#47 refs）——n3_probe.c 原探针 + n3_recheck.c 复核探针在 .shadow_tmp"
     },
     {
-      "id": "DIFF-VFS-PRESET-01",
-      "title": "vfs 预设注入（fopen(\"test.txt\"/\"numbers.txt\") 读教学演示预设；Clang 真读文件系统）",
-      "class": "pedagogical",
-      "carry_over": "inherit",
-      "status": "verified-anchor",
-      "evidence": "anchor",
-      "rationale": "教学演示通道（oracle execute_run 无条件注入同形）；工具层能力差异非 VM 语义",
-      "subsystems": [
-        "host",
-        "cmd/run"
-      ],
-      "clang_verdict": "不一致（教学演示通道）",
-      "source_docs": [
-        "已知限制与差异.md ③-8",
-        "clang_direct known_direct.json 归因"
-      ],
-      "anchors": {
-        "shadow_known": [],
-        "clang_direct_known": [
-          "file_fread.c",
-          "file_fopen.c"
-        ],
-        "vm_diff_known": []
-      },
-      "detectable_by_defense": [
-        "clang_direct"
-      ],
-      "notes": "clang_direct known 在册两条（2026-09-30 读值）；vm_diff 侧经 oracle 同注入已 SAME"
-    },
-    {
       "id": "DIFF-UB-BTREE-01",
       "title": "bTree 模板 UB 结局漂移（malloc 后 keys[M] 未初始化 + splitChild 越界读——UB 程序在引擎合法变更下结局可漂，两侧结局不同是 UB 的正当形态；保留作安全检测教学示例）",
       "class": "pedagogical",

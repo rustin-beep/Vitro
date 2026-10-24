@@ -1,0 +1,188 @@
+#include "test.h"
+
+int main() {
+  ASSERT(0, 0);
+  ASSERT(42, 42);
+  ASSERT(21, 5+20-4);
+  ASSERT(41,  12 + 34 - 5 );
+  ASSERT(47, 5+6*7);
+  ASSERT(15, 5*(9-6));
+  ASSERT(4, (3+5)/2);
+  ASSERT(10, -10+20);
+  ASSERT(10, - -10);
+  ASSERT(10, - - +10);
+
+  ASSERT(0, 0==1);
+  ASSERT(1, 42==42);
+  ASSERT(1, 0!=1);
+  ASSERT(0, 42!=42);
+
+  ASSERT(1, 0<1);
+  ASSERT(0, 1<1);
+  ASSERT(0, 2<1);
+  ASSERT(1, 0<=1);
+  ASSERT(1, 1<=1);
+  ASSERT(0, 2<=1);
+
+  ASSERT(1, 1>0);
+  ASSERT(0, 1>1);
+  ASSERT(0, 1>2);
+  ASSERT(1, 1>=0);
+  ASSERT(1, 1>=1);
+  ASSERT(0, 1>=2);
+
+  ASSERT(0, 1073741824 * 100 / 100);
+
+  ASSERT(7, ({ int i=2; i+=5; i; }));
+  ASSERT(7, ({ int i=2; i+=5; }));
+  ASSERT(3, ({ int i=5; i-=2; i; }));
+  ASSERT(3, ({ int i=5; i-=2; }));
+  ASSERT(6, ({ int i=3; i*=2; i; }));
+  ASSERT(6, ({ int i=3; i*=2; }));
+  ASSERT(3, ({ int i=6; i/=2; i; }));
+  ASSERT(3, ({ int i=6; i/=2; }));
+
+  ASSERT(3, ({ int i=2; ++i; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; ++*p; }));
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; --*p; }));
+
+  ASSERT(2, ({ int i=2; i++; }));
+  ASSERT(2, ({ int i=2; i--; }));
+  ASSERT(3, ({ int i=2; i++; i; }));
+  ASSERT(1, ({ int i=2; i--; i; }));
+  ASSERT(1, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; *p++; }));
+  ASSERT(1, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; *p--; }));
+
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p++)--; a[0]; }));
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*(p--))--; a[1]; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p)--; a[2]; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p)--; p++; *p; }));
+
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p++)--; a[0]; }));
+  ASSERT(0, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p++)--; a[1]; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p++)--; a[2]; }));
+  ASSERT(2, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *p=a+1; (*p++)--; *p; }));
+
+  // [GNU] A statement expression whose last statement is not an
+  // expression statement has type void (C5 audit).
+  ASSERT(3, ({ int i=0; ({ if (1) i=3; }); i; }));
+  ASSERT(0, ({ int i=0; ({ int j=1; }); i; }));
+
+  ASSERT(0, !1);
+  ASSERT(0, !2);
+  ASSERT(1, !0);
+  ASSERT(1, !(char)0);
+  ASSERT(0, !(long)3);
+  ASSERT(4, sizeof(!(char)0));
+  ASSERT(4, sizeof(!(long)0));
+
+  ASSERT(-1, ~0);
+  ASSERT(0, ~-1);
+
+  ASSERT(5, 17%6);
+  ASSERT(5, ((long)17)%6);
+  ASSERT(2, ({ int i=10; i%=4; i; }));
+  ASSERT(2, ({ long i=10; i%=4; i; }));
+
+  ASSERT(0, 0&1);
+  ASSERT(1, 3&1);
+  ASSERT(3, 7&3);
+  ASSERT(10, -1&10);
+
+  ASSERT(1, 0|1);
+  ASSERT(0b10011, 0b10000|0b00011);
+
+  ASSERT(0, 0^0);
+  ASSERT(0, 0b1111^0b1111);
+  ASSERT(0b110100, 0b111000^0b001100);
+
+  ASSERT(2, ({ int i=6; i&=3; i; }));
+  ASSERT(7, ({ int i=6; i|=3; i; }));
+  ASSERT(10, ({ int i=15; i^=5; i; }));
+
+  ASSERT(1, 1<<0);
+  ASSERT(8, 1<<3);
+  ASSERT(10, 5<<1);
+  ASSERT(2, 5>>1);
+  ASSERT(-1, -1>>1);
+  ASSERT(1, ({ int i=1; i<<=0; i; }));
+  ASSERT(8, ({ int i=1; i<<=3; i; }));
+  ASSERT(10, ({ int i=5; i<<=1; i; }));
+  ASSERT(2, ({ int i=5; i>>=1; i; }));
+  ASSERT(-1, -1);
+  ASSERT(-1, ({ int i=-1; i; }));
+  ASSERT(-1, ({ int i=-1; i>>=1; i; }));
+
+  ASSERT(2, 0?1:2);
+  ASSERT(1, 1?1:2);
+  ASSERT(-1, 0?-2:-1);
+  ASSERT(-2, 1?-2:-1);
+  ASSERT(4, sizeof(0?1:2));
+  ASSERT(8, sizeof(0?(long)1:(long)2));
+  ASSERT(-1, 0?(long)-2:-1);
+  ASSERT(-1, 0?-2:(long)-1);
+  ASSERT(-2, 1?(long)-2:-1);
+  ASSERT(-2, 1?-2:(long)-1);
+
+  1 ? -2 : (void)-1;
+
+  ASSERT(20, ({ int x; int *p=&x; p+20-p; }));
+  ASSERT(1, ({ int x; int *p=&x; p+20-p>0; }));
+  ASSERT(-20, ({ int x; int *p=&x; p-20-p; }));
+  ASSERT(1, ({ int x; int *p=&x; p-20-p<0; }));
+
+  ASSERT(15, (char *)0xffffffffffffffff - (char *)0xfffffffffffffff0);
+  ASSERT(-15, (char *)0xfffffffffffffff0 - (char *)0xffffffffffffffff);
+  ASSERT(1, (void *)0xffffffffffffffff > (void *)0);
+
+  // PLAN B1.1c: `>`/`>=` keep their operands at the emission point, and
+  // the signedness they compare with is the one of the operand the old
+  // swap moved to the left - the values below are picked so that a
+  // signed comparison would answer the opposite.
+  ASSERT(1, ({ unsigned a = 0xffffffff; int b = 1; a > b; }));
+  ASSERT(0, ({ unsigned a = 0xffffffff; int b = 1; a < b; }));
+  ASSERT(1, ({ unsigned a = 0xffffffff; int b = 1; a >= b; }));
+  ASSERT(1, ({ int a = -1; unsigned b = 1; a > b; }));
+  ASSERT(1, ({ unsigned a = 0x80000000; unsigned b = 0x7fffffff; a > b; }));
+  ASSERT(0, ({ unsigned a = 1; int b = 2; a >= b; }));
+
+  ASSERT(3, 3?:5);
+  ASSERT(5, 0?:5);
+  ASSERT(4, ({ int i = 3; ++i?:10; }));
+
+  // PLAN B1.1e: elvis operand pairs whose types the slot-free emission
+  // has to convert (double, long double, unsigned, char/short
+  // promotions), in both the truthy and the falsy direction - the
+  // long double ones are where the test value lives on the x87 stack.
+  // Expected values cross-checked with the host compiler.
+  ASSERT(2, ({ double x = 0; x ?: 2.5; }));
+  ASSERT(1, ({ double x = 1.5; x ?: 2.5; }));
+  ASSERT(3, ({ long double x = 0; (int)(x ?: 3.0L); }));
+  ASSERT(2, ({ long double x = 2.0L; (int)(x ?: 9.0L); }));
+  ASSERT(7, ({ unsigned x = 7; x ?: 9; }));
+  ASSERT(8, ({ int x = 0; unsigned y = 8; (int)(x ?: y); }));
+  ASSERT(3, ({ int x = 3; unsigned y = 8; (int)(x ?: y); }));
+  ASSERT(4, ({ short s = 0; s ?: 4; }));
+  ASSERT(6, ({ char c = 0; c ?: 6; }));
+
+  ASSERT(3, (long double)3);
+  ASSERT(5, (long double)3+2);
+  ASSERT(6, (long double)3*2);
+  ASSERT(5, (long double)3+2.0);
+
+  // PLAN B1.1c: the `>`/`>=` probes of the long double path.
+  ASSERT(1, (long double)3 > 2.5);
+  ASSERT(0, (long double)3 > 3.0);
+  ASSERT(1, (long double)3 >= 3.0);
+  ASSERT(0, (long double)2.5 >= 3.0);
+
+  // PLAN A10.2: shapes the faithful pipeline brings together - a
+  // pointer elvis, and a subscript under a compound assignment whose
+  // right side is a post-increment.
+  ASSERT(5, ({ int a=3; int *p=&a; *(p ?: &a) + 2; }));
+  ASSERT(3, ({ int i=1, j=2; int a[3]={0,1,2}; a[i] += j++; a[i]; }));
+  ASSERT(3, ({ int i=1, j=2; int a[3]={0,1,2}; a[i] += j++; j; }));
+
+  printf("OK\n");
+  return 0;
+}

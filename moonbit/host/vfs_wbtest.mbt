@@ -97,8 +97,56 @@ test "vfs_fopen_write_truncates_and_read_missing_fails" {
   assert_eq(vfs.fread(mem, map, fdr, 0x8000U, 1, 10), 0)
   // 读模式不存在 → 0
   assert_eq(vfs.fopen(map, "no.txt", "r"), 0U)
-  // 未知模式串 → 0
-  assert_eq(vfs.fopen(map, "t.txt", "r+"), 0U)
+  // 真未知模式串 → 0（r+ 系已合法化，见 vfs_fopen_plus_modes——#228）
+  assert_eq(vfs.fopen(map, "t.txt", "rw"), 0U)
+}
+
+///|
+/// #228 锚（2026-10-22）：`r+`/`w+`/`a+` 读写模式（C11 §7.21.5.3——
+/// 旧形态落 None 静默返 NULL 无任何诊断，学生 `fprintf(fp,…)` 后续行为
+/// 不可预期）。语义：r+ 须存在/不清空/游标 0；w+ 建或清空；a+ 建文件/
+/// 游标末尾；`b` 与 `+` 可任意序（rb+ = r+b）。
+test "vfs_fopen_plus_modes" {
+  let (map, mem, vfs) = vfs_fresh()
+  // r+：存在文件打开成功，可写可读，游标 0（写覆盖不截断）
+  ignore(vfs.inject_preset_file(map, mem, "t1.txt", b"hello"))
+  let fd = vfs.fopen(map, "t1.txt", "r+")
+  assert_true(fd != 0U, msg="r+ 打开存在文件不应返回 NULL")
+  put_str(mem, map, 0x6000U, "HE")
+  assert_eq(vfs.fputs(mem, map, fd, 0x6000U), 0, msg="r+ 允许写")
+  ignore(vfs.fclose(fd))
+  let fdr = vfs.fopen(map, "t1.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr, 0x8000U, 1, 100), 5)
+  assert_eq(peek(mem, map, 0x8000U, 5), b"HEllo", msg="r+ 覆盖写不清空")
+  // r+：不存在 → 0（与 r 同）
+  assert_eq(vfs.fopen(map, "no.txt", "r+"), 0U)
+  // w+：建新文件，写后可重读（fclose 重开校验）
+  let fdw = vfs.fopen(map, "t3.txt", "w+")
+  assert_true(fdw != 0U, msg="w+ 建文件")
+  put_str(mem, map, 0x6100U, "abc")
+  assert_eq(vfs.fputs(mem, map, fdw, 0x6100U), 0)
+  ignore(vfs.fclose(fdw))
+  let fdr3 = vfs.fopen(map, "t3.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr3, 0x8100U, 1, 100), 3)
+  assert_eq(peek(mem, map, 0x8100U, 3), b"abc")
+  // w+：清空既有（同 w）
+  let fdw2 = vfs.fopen(map, "t1.txt", "w+")
+  assert_true(fdw2 != 0U)
+  ignore(vfs.fclose(fdw2))
+  let fdr1 = vfs.fopen(map, "t1.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr1, 0x8200U, 1, 100), 0, msg="w+ 清空")
+  // a+：建文件 + 读起点文件头（写恒末尾——追加后重开读全量）
+  let fda = vfs.fopen(map, "t4.txt", "a+")
+  assert_true(fda != 0U, msg="a+ 建文件")
+  put_str(mem, map, 0x6200U, "XY")
+  assert_eq(vfs.fputs(mem, map, fda, 0x6200U), 0)
+  ignore(vfs.fclose(fda))
+  let fdr4 = vfs.fopen(map, "t4.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fdr4, 0x8300U, 1, 100), 2)
+  assert_eq(peek(mem, map, 0x8300U, 2), b"XY")
+  // b/+ 序不敏感：rb+ = r+b（文件在——w+ 只清空不删除）
+  assert_true(vfs.fopen(map, "t1.txt", "rb+") != 0U)
+  assert_true(vfs.fopen(map, "t1.txt", "r+b") != 0U)
 }
 
 ///|
@@ -447,4 +495,90 @@ test "stdio_handle_dispatch_batch_b" {
     Ok([b'a', b'b', b'c', b'd']),
     msg="fread stdin 跨行拼接（'abc'+'de' 前 4 字节）",
   )
+}
+
+///|
+/// 审阅 P2-2 锚（2026-10-23，修复前证红）：a/a+ 的追加写语义与 a+ 读起点
+///——C11 §7.21.5.3：a/a+ **写恒在末尾**（fseek 不改变写位）；a+ 的**读
+/// 起点在文件头**。旧形态：a/a+ 共用「游标初始=末尾」+ 写按游标——
+/// a+ 同 fd 读返回空、fseek(0) 后 fputs 覆盖头部（Xbc）。
+test "vfs_append_mode_write_always_end_and_aplus_reads_from_start" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "t.txt", b"abc"))
+  // a+ 同 fd 读：起点在文件头（旧：游标在末尾 → 读空）
+  let fap = vfs.fopen(map, "t.txt", "a+")
+  assert_true(fap != 0U)
+  let buf = 0x8000U
+  assert_eq(
+    vfs.fread(mem, map, fap, buf, 1, 10),
+    3,
+    msg="a+ 读起点在文件头",
+  )
+  assert_eq(peek(mem, map, buf, 3), b"abc")
+  // a+ fseek(0) 后写：写位恒末尾（旧：Xbc 覆盖头部）
+  assert_eq(vfs.fseek(mem, map, fap, 0, 0), 0)
+  put_str(mem, map, 0x6000U, "X")
+  assert_eq(vfs.fputs(mem, map, fap, 0x6000U), 0)
+  ignore(vfs.fclose(fap))
+  let fr = vfs.fopen(map, "t.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fr, 0x8100U, 1, 10), 4)
+  assert_eq(peek(mem, map, 0x8100U, 4), b"abcX", msg="a+ 写恒追加到末尾")
+  // a（纯追加）fseek(0) 后写：同语义（既有缺口，一处根因两个症状）
+  let fa = vfs.fopen(map, "t.txt", "a")
+  assert_eq(vfs.fseek(mem, map, fa, 0, 0), 0)
+  put_str(mem, map, 0x6100U, "Y")
+  assert_eq(vfs.fputs(mem, map, fa, 0x6100U), 0)
+  ignore(vfs.fclose(fa))
+  let fr2 = vfs.fopen(map, "t.txt", "rb")
+  assert_eq(vfs.fread(mem, map, fr2, 0x8200U, 1, 10), 5)
+  assert_eq(peek(mem, map, 0x8200U, 5), b"abcXY", msg="a 写恒追加")
+}
+
+///|
+/// PR #280 审阅 P2-2 锚（2026-10-23）：a/a+「写恒末尾」的 **fwrite 通道**
+///——同根因两点此前只锚了 vfs_append_bytes（fputs/fputc），fwrite 写前
+/// 强制游标末尾零锚（注入 no-op 化 170/170 绿）。a 模式 fseek(0) 后 fwrite
+/// 读回应为追加形态（覆盖头部=旧病）。
+test "vfs_fwrite_append_writes_at_end" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "t.bin", b"12345"))
+  let buf = 0x8400U
+  // fwrite 通道：a 模式 + fseek(0) + fwrite("AB") → 读回 12345AB（非 AB345）
+  let fa = vfs.fopen(map, "t.bin", "a")
+  assert_true(fa != 0U)
+  assert_eq(vfs.fseek(mem, map, fa, 0, 0), 0)
+  put_str(mem, map, 0x6300U, "AB")
+  ignore(mem.write_bytes(map, buf, b"AB"))
+  assert_eq(vfs.fwrite(mem, map, fa, buf, 1, 2), 2, msg="fwrite 追加写")
+  ignore(vfs.fclose(fa))
+  let fr = vfs.fopen(map, "t.bin", "rb")
+  assert_eq(vfs.fread(mem, map, fr, 0x8500U, 1, 10), 7)
+  assert_eq(
+    peek(mem, map, 0x8500U, 7),
+    b"12345AB",
+    msg="a 模式 fseek 后 fwrite 仍恒末尾（审阅预演形态）",
+  )
+}
+
+///|
+/// PR #280 审阅 P3-4b 锚（2026-10-23）：`+` 族 b 位——rb+/r+b 的
+/// is_text_mode=false（二进制：\n 不做 CRLF 伸缩）。M4 注入证明该面
+/// 零锚（写穿 is_text 判定 170/170 绿）。
+test "vfs_plus_modes_binary_flag" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "t.bin", b"a"))
+  // rb+ / r+b：二进制位——fputs 含 \n 的串不展开 \r\n
+  for m in ["rb+", "r+b"] {
+    let fd = vfs.fopen(map, "t.bin", m)
+    assert_true(fd != 0U, msg="\{m} 打开")
+    assert_eq(vfs.fseek(mem, map, fd, 1, 0), 0)
+    put_str(mem, map, 0x6400U, "X")
+    ignore(vfs.fputs(mem, map, fd, 0x6400U))
+    ignore(vfs.fclose(fd))
+  }
+  let fr = vfs.fopen(map, "t.bin", "rb")
+  let n = vfs.fread(mem, map, fr, 0x8600U, 1, 10)
+  // 两次写各覆盖 [1]=X（同位）→ 终态 a X（二进制：无 \r 插入，长度 2）
+  assert_eq(n, 2, msg="二进制模式无 CRLF 展开")
+  assert_eq(peek(mem, map, 0x8600U, 2), b"aX")
 }

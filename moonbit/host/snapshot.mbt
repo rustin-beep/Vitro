@@ -167,13 +167,17 @@ pub fn VirtualFileSystem::restore(
   }
   self.descriptors.clear()
   for pair in snap.descriptors {
+    let restored_mode = vfs_mode_from_code(pair.1.mode)
     self.descriptors.set(pair.0, VfsDesc::{
       file_name: pair.1.file_name,
-      mode: vfs_mode_from_code(pair.1.mode),
+      mode: restored_mode,
       cursor: pair.1.cursor,
       eof: pair.1.eof,
       error: pair.1.error,
       is_text_mode: pair.1.is_text_mode,
+      // mode 派生位（不入快照——restore 按 mode 重导出）
+      is_append: restored_mode is VfsMode::Append ||
+      restored_mode is VfsMode::AppendRead,
     })
   }
   self.next_fd = snap.next_fd
@@ -185,6 +189,10 @@ fn vfs_mode_code(mode : VfsMode) -> Int32 {
     Read => 0
     Write => 1
     Append => 2
+    // #228 读写族（3~5）：旧快照（0~2）不受影响
+    ReadWrite => 3
+    WriteRead => 4
+    AppendRead => 5
   }
 }
 
@@ -194,6 +202,9 @@ fn vfs_mode_from_code(code : Int32) -> VfsMode {
     0 => Read
     1 => Write
     2 => Append
+    3 => ReadWrite
+    4 => WriteRead
+    5 => AppendRead
     _ =>
       abort(
         "VfsSnapshot.restore: mode 编号越界（\{code}）——快照数据损坏",

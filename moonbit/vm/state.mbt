@@ -135,6 +135,10 @@ pub struct VitroVM {
   /// deterministic 销分叉接线（此前 dispatch 恒传 0UL 占位）。不入快照、
   /// `reset` 保留（宿主注入物非执行态）。
   mut clock_source : (() -> UInt64)?
+  /// 会话起点（墙钟注册时采样，#211：`clock()` 自此起算的微秒近似——
+  /// C11 §7.27.2.1 "自程序起算"，绝对墙钟会让 clock()/CLOCKS_PER_SEC
+  /// 得到自 Unix 纪元的天文数字）。不入快照、reset 保留（会话级）。
+  mut clock_start_millis : UInt64
   // ── C# 异常三执行状态（CS 批硬前置；C 前端恒默认值）──
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
@@ -195,6 +199,7 @@ pub fn VitroVM::new() -> VitroVM {
     waiting_input: false,
     deterministic: false,
     clock_source: None,
+    clock_start_millis: 0UL,
     handler_stack: [],
     exec_mode: Running,
     exception_ref: None,
@@ -256,6 +261,14 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   self.mem_map.set_quarantine_budget(budget)
   self.memory.reset()
   self.mem_stack_top = @bytecode.STACK_START
+  // #211 补齐（2026-10-23 审阅 P2-3）：会话起点重采样——serve 长进程只
+  // 注册一次墙钟，session.create（reset）若不刷新 clock_start_millis，
+  // 第二会话的 clock() 拿到的是「进程启动以来」而非「本会话起点」
+  //（CLI run 路径每次 frame_pipeline 重注入天然正确；serve 路径曾漏）。
+  match self.clock_source {
+    Some(f) => self.clock_start_millis = f()
+    None => ()
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -536,6 +549,10 @@ pub fn VitroVM::set_deterministic(self : VitroVM, deterministic : Bool) -> Unit 
 ///|
 /// 注册墙钟源（宿主注入——native 壳注册真时钟；不注册〔wasm-gc〕恒 0。
 /// 2026-10-02 deterministic 分叉销案接线：oracle current_time_millis 对应物）。
+/// #211（2026-10-22）：注册即采样**会话起点**（clock() 差值语义的锚——
+/// CLI 帧管线每次 reset 后重注入，起点随之刷新为本次运行的时刻，恰为
+/// C "自程序起算" 语义）。
 pub fn VitroVM::set_clock_source(self : VitroVM, f : () -> UInt64) -> Unit {
+  self.clock_start_millis = f()
   self.clock_source = Some(f)
 }

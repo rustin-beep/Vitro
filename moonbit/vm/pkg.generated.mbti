@@ -203,6 +203,7 @@ pub struct VitroVM {
   mut waiting_input : Bool
   mut deterministic : Bool
   mut clock_source : (() -> UInt64)?
+  mut clock_start_millis : UInt64
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
   mut exception_ref : UInt?

@@ -194,7 +194,31 @@ export function invalidate(): void {
 // ── Worker RPC ───────────────────────────────────────────────
 let worker: Worker | null = null;
 let rpcId = 0;
-const pending = new Map<number, { resolve: (v: never) => void; reject: (e: Error) => void }>();
+const pending = new Map<number, { resolve: (v: never) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+
+/** RPC 兜底超时（#288-①）：boot/invoke 短面 15s；collect/feed 是长面
+ *  （帧采集整段跑完才回帖，大程序可达数十秒）放宽到 120s。Worker 根本
+ *  没起来 / 脚本被 CSP 拦 ⇒ 永不回帖 ⇒ promise 永不 settle ⇒ 加载遮罩
+ *  常驻零提示——超时与 onerror 双兜底把这条路堵死。 */
+const RPC_TIMEOUT_MS = 15_000;
+const RPC_TIMEOUT_LONG_MS = 120_000;
+
+/** Worker 实例已不可信（超时/onerror）——terminate 销毁，下次 getWorker
+ *  重建。「重试」按钮必须真的重建引擎，而不是继续撞同一个死实例。 */
+function killWorker(): void {
+  worker?.terminate();
+  worker = null;
+}
+
+/** Worker 级故障（加载失败 / 运行期未捕获异常 / 消息无法反序列化）——
+ *  在途 rpc 本该收到的回帖永远不来了，全部 reject，不让上层干等。 */
+function rejectAllPending(err: Error): void {
+  for (const p of pending.values()) {
+    clearTimeout(p.timer);
+    p.reject(err);
+  }
+  pending.clear();
+}
 
 function getWorker(): Worker {
   if (!worker) {
@@ -204,17 +228,33 @@ function getWorker(): Worker {
       const p = pending.get(id);
       if (!p) return;
       pending.delete(id);
+      clearTimeout(p.timer);
       if (ok) p.resolve(data as never);
       else p.reject(new Error(error ?? "worker 无错误信息"));
+    };
+    worker.onerror = (e: ErrorEvent) => {
+      rejectAllPending(new Error(`引擎 Worker 异常（${e.message || e.filename || "未知错误"}）——可点「重试」重建引擎`));
+      killWorker();
+    };
+    worker.onmessageerror = () => {
+      rejectAllPending(new Error("引擎 Worker 消息无法反序列化——可点「重试」重建引擎"));
+      killWorker();
     };
   }
   return worker;
 }
 
-function rpc<T>(msg: Record<string, unknown>): Promise<T> {
+function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS): Promise<T> {
   const id = ++rpcId;
+  const op = String(msg.op ?? msg.method ?? "rpc");
   return new Promise<T>((resolve, reject) => {
-    pending.set(id, { resolve: resolve as never, reject });
+    const timer = setTimeout(() => {
+      if (!pending.has(id)) return;
+      pending.delete(id);
+      killWorker(); // 永不回帖的实例不可信——销毁，重试走重建
+      reject(new Error(`引擎 ${op} 无响应（${timeoutMs}ms 超时）——Worker 可能未启动或被浏览器策略拦截，可点「重试」`));
+    }, timeoutMs);
+    pending.set(id, { resolve: resolve as never, reject, timer });
     getWorker().postMessage({ id, ...msg });
   });
 }
@@ -337,7 +377,7 @@ export async function collect(source: string, bpLines: number[] = [], opts: { au
       files,
       cfg,
       argv,
-    });
+    }, RPC_TIMEOUT_LONG_MS);
     if (my !== session.epoch) return; // 迟到回传：期间有新采集/作废，整体丢弃不碰任何状态
     session.frames = r.frames;
     session.idx = 0;
@@ -415,7 +455,7 @@ export async function feedStdin(): Promise<void> {
       op: "feed",
       text: session.stdinDraft,
       cap: session.cap,
-    });
+    }, RPC_TIMEOUT_LONG_MS);
     if (my !== session.epoch) return;
     session.frames = r.frames;
     session.idx = 0;

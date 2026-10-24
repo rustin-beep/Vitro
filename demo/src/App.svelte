@@ -57,20 +57,7 @@
     boot()
       .then(() => Promise.all([loadCatalog(), loadProto()]))
       .then(async () => {
-        const parsed = parseFragment(location.hash.slice(1));
-        if (parsed.kind === "bad") {
-          shareError = `${parsed.reason}——链接多半被聊天工具截断或手动改坏。已载入默认示例；当前内容未被覆盖。`;
-          return;
-        }
-        if (parsed.kind === "payload") {
-          try {
-            lessonSession.setShared(await unpackSource(parsed.payload));
-            toast("ok", "已从分享链接还原代码");
-          } catch (err) {
-            shareError = `载荷无法解压（${String((err as Error).message).slice(0, 80)}）——链接多半被截断。已载入默认示例。`;
-          }
-          return;
-        }
+        if (await applySharedHash()) return;
         // ?autorun / ?bench 由 main.ts 的验收钩子接管（此处不抢跑）
         const q = new URLSearchParams(location.search);
         if (q.has("autorun") || q.has("bench")) return;
@@ -89,6 +76,43 @@
       });
   }
   startBoot();
+
+  /** 解析 location.hash 的分享载荷：bad → shareError 横幅；payload → 还原
+   *  代码 + toast。返回「是否处理了分享载荷」（boot 链据此跳过 openInitial；
+   *  hashchange 路径据此决定是否回工作态）。 */
+  async function applySharedHash(): Promise<boolean> {
+    const parsed = parseFragment(location.hash.slice(1));
+    if (parsed.kind === "bad") {
+      shareError = `${parsed.reason}——链接多半被聊天工具截断或手动改坏。已载入默认示例；当前内容未被覆盖。`;
+      return true;
+    }
+    if (parsed.kind === "payload") {
+      try {
+        lessonSession.setShared(await unpackSource(parsed.payload));
+        toast("ok", "已从分享链接还原代码");
+      } catch (err) {
+        shareError = `载荷无法解压（${String((err as Error).message).slice(0, 80)}）——链接多半被截断。已载入默认示例。`;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // 分享链接「仅改 hash」的同文档导航（#286-③）：boot 链只在整页加载时解析
+  // 一次 hash，而把链接贴进**已打开的标签页**触发的是 hashchange（不重载）
+  // ——此前无监听 ⇒ 页面纹丝不动零反馈。分享按钮自己写 hash 用
+  // replaceState（不触发 hashchange），无自触发回路。
+  $effect(() => {
+    const onHash = (): void => {
+      if (!session.booted) return; // boot 前不动——boot 链稍后自会读 hash
+      shareError = "";
+      void applySharedHash().then((handled) => {
+        if (handled) showWork(); // 有载荷/坏载荷都回工作态——横幅与还原结果就在眼前
+      });
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  });
 
   // ── 键盘仪表盘（工作态专用；输入框/编辑器内不劫持） ──────────────
   const FPS_STEPS = [2, 8, 30, 60, 120, 240];
@@ -350,7 +374,7 @@
         <span class="vr-wordmark">Vitro</span>
       </div>
       <p class="vr-boot-title">正在装载实验台</p>
-      <p class="vr-boot-sub">wasm 引擎约 0.9 MB · 协议握手 · 课程叙述按需加载</p>
+      <p class="vr-boot-sub">wasm 引擎 &lt; 1 MB · 协议握手 · 课程叙述按需加载</p>
       <div class="vr-boot-bar"><i></i></div>
       <div class="vr-boot-skel"><span></span><span></span><span></span></div>
     </div>

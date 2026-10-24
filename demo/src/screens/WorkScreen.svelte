@@ -284,13 +284,16 @@
         <span>当前行</span>
         <span>{curLine > 0 ? `L${curLine}` : "—"} · 第 {n ? session.idx + 1 : 0} / {Math.max(n, 1)} 帧</span>
       </div>
-      <code>{curLineText || "（未采集：点「运行」后这里显示当前执行行）"}</code>
+      <!-- 空态分流（#286-②）：有帧但该帧无语句 ≠ 未采集——首帧 prog 帧落在
+           这里时，同屏状态行写着「已暂停 · 第 1/6 帧」，若再写「未采集」即
+           自相矛盾；确无帧才提示点「运行」。 -->
+      <code>{curLineText || (n > 0 ? "本帧无当前语句" : "（未采集：点「运行」后这里显示当前执行行）")}</code>
       <div class="vr-mobileline-foot {statusCls}">{statusText}</div>
     </div>
 
     <div class="vr-params">
       <span class="vr-params-label">实验参数</span>
-      <button type="button" class="vr-chip" class:is-on={!!session.argvText.trim()} onclick={() => (ui.paramsOpen = true)} title="命令行参数（argv）">argv {argvLabel}</button>
+      <button type="button" class="vr-chip" class:is-on={!!session.argvText.trim()} onclick={() => { ui.paramsOpen = true; ui.scfgOpen = true; }} title="命令行参数（argv）">argv {argvLabel}</button>
       <button type="button" class="vr-chip" class:is-on={waiting} onclick={() => (ui.paramsOpen = true)} title="标准输入（stdin）">stdin {stdinLabel}</button>
       <span class="vr-chip" title="编译单元">文件 {filesLabel}</span>
       <WorkspaceBar onswitch={(_p, src) => (source = src)} />

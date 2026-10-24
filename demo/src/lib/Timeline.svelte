@@ -66,7 +66,14 @@
   const lineText = $derived.by(() => {
     const f = session.viewFrames[idx];
     if (!f) return "";
-    if (!(f.code_line > 0)) return "程序收尾 · 无当前语句";
+    if (!(f.code_line > 0)) {
+      // code_line=0 有两义（#286-②）：第 1 帧是「程序尚未执行任何语句」，
+      // 末帧才是「程序收尾的 prog 帧」——首帧写「收尾」会让读者以为已跑完；
+      // 中间帧罕见无语句，如实报「本帧无」。
+      if (idx === 0) return "程序开始 · 尚未执行语句";
+      if (idx >= n - 1) return "程序收尾 · 无当前语句";
+      return "本帧无当前语句";
+    }
     const text = source.split("\n")[f.code_line - 1]?.trim() ?? "";
     return `line ${f.code_line}${text ? " · " + text : ""}`;
   });

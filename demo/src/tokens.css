@@ -30,7 +30,7 @@
   --vr-ink-2: #465872;
   --vr-ink-3: #5b6b82;
   --vr-kw: #4338ca;
-  --vr-masthead: rgba(255, 255, 255, .94);
+  --vr-masthead: #ffffff;
   --vr-num: #b45309;
   --vr-panel: #ffffff;
   --vr-panel-2: #f6f9fe;
@@ -63,7 +63,7 @@
   --vr-ink-2: #6b5760;
   --vr-ink-3: #75666e;
   --vr-kw: #b03a64;
-  --vr-masthead: rgba(255, 253, 253, .94);
+  --vr-masthead: #fffdfd;
   --vr-neu-inset: inset -2px -2px 6px rgba(255, 255, 255, .95), inset 3px 3px 8px rgba(142, 82, 92, .20);
   --vr-neu-pop: 14px 16px 34px rgba(142, 82, 92, .28), -10px -10px 24px rgba(255, 255, 255, .9);
   --vr-neu-raised: -3px -3px 8px rgba(255, 255, 255, 1), 4px 4px 11px rgba(142, 82, 92, .30);
@@ -99,7 +99,7 @@
   --vr-ink-2: #9aa6c6;
   --vr-ink-3: #7d89ad;
   --vr-kw: #f97583;
-  --vr-masthead: rgba(13, 20, 40, .94);
+  --vr-masthead: #0d1428;
   --vr-num: #e0a96a;
   --vr-panel: #131a2e;
   --vr-panel-2: #161e35;
@@ -132,7 +132,7 @@
   --vr-ink-2: #514a3c;
   --vr-ink-3: #6b6252;
   --vr-kw: #9b3a2a;
-  --vr-masthead: rgba(248, 243, 232, .94);
+  --vr-masthead: #f8f3e8;
   --vr-num: #96520a;
   --vr-panel: #f8f3e8;
   --vr-panel-2: #f2ebdc;
@@ -165,7 +165,7 @@
   --vr-ink-2: #a4b8cc;
   --vr-ink-3: #7d93a8;
   --vr-kw: #dbe8f4;
-  --vr-masthead: rgba(8, 17, 26, .94);
+  --vr-masthead: #08111a;
   --vr-num: #a4b8cc;
   --vr-panel: #0e1a26;
   --vr-panel-2: #132433;

@@ -116,7 +116,12 @@ func fail(format string, a ...any) {
 
 // ---------- P2: Clang 真值 ----------
 func clangCheck(path string) (ok bool, errs, warns int, first string) {
-	cmd := exec.Command("clang", "-std=c11", "-Wall", "-Wextra", "-fsyntax-only", path)
+	// -Wno-incompatible-pointer-types（2026-10-24 CI 接线批）：LLVM 22 起
+	// 该诊断在 C 模式默认 error（旧版是 warning）——CI runner clang 较低版本
+	// 与本地分叉，clang_ok 判定不稳定（vla.c/variable.c/struct.c/pointer.c
+	// 本地红 CI 绿实锤）。显式关闭恢复「error=真语法错误」语义（实测 22 下
+	// -Wno-error 不覆盖此默认 error 诊断，须点名关闭）。
+	cmd := exec.Command("clang", "-std=c11", "-Wall", "-Wextra", "-Wno-incompatible-pointer-types", "-fsyntax-only", path)
 	out, err := runWithTimeout(cmd, 15*time.Second)
 	if err != nil && !strings.Contains(out, "error") && !strings.Contains(out, "warning") {
 		return false, 1, 0, "clang 执行失败: " + err.Error() // 工具层失败(如缺头/链接需求在 syntax-only 不发生)
@@ -241,7 +246,7 @@ func clangCheckProject(pr project) (ok bool, errs int, first string) {
 	if len(pr.Files) == 0 {
 		return false, 1, "工程内无 .c 文件"
 	}
-	args := append([]string{"-std=c11", "-Wall", "-Wextra", "-fsyntax-only"}, pr.Files...)
+	args := append([]string{"-std=c11", "-Wall", "-Wextra", "-Wno-incompatible-pointer-types", "-fsyntax-only"}, pr.Files...)
 	cmd := exec.Command("clang", args...)
 	cmd.Dir = pr.Dir
 	out, err := runWithTimeout(cmd, 30*time.Second)
@@ -1283,6 +1288,107 @@ func runCorpus(name string) int {
 	jsonBytes, _ := json.MarshalIndent(results, "", "  ")
 	os.WriteFile(filepath.Join(*flagOut, "result.json"), jsonBytes, 0644)
 	fmt.Fprintf(os.Stderr, "[%s] 完成: %s/report.md\n", name, *flagOut)
+	// CI 对拍防线（2026-10-24 接线批）：本轮测量 vs 在库 gold 逐条对账——
+	// 键集双向 + 分桶/码计数/层/运行判定全字段；任何漂移即非零退出（引擎
+	// 行为回归或语料变更未重冻都会被抓住）。CI 的 realcode_corpus 实例消费
+	// 本判据；勘探重冻流程（-aggregate 后 -check）不受影响。
+	return corpusCompareWithGold(name, results)
+}
+
+// corpusCompareWithGold 本轮 []FileResult ↔ 在库 gold_<corpus>.json 对账。
+// 返回 0=一致；1=有漂移（已打印差异清单）。
+func corpusCompareWithGold(name string, results []FileResult) int {
+	goldPath := filepath.Join("scripts", "realcode_diff", "gold_"+name+".json")
+	// 登记表优先（corpora.json 的 gold 字段是单源）
+	if b, err := os.ReadFile(filepath.Join("scripts", "realcode_diff", "corpora.json")); err == nil {
+		var reg struct {
+			Corpora map[string]struct {
+				Gold string `json:"gold"`
+			} `json:"corpora"`
+		}
+		if json.Unmarshal(b, &reg) == nil {
+			if e, ok := reg.Corpora[name]; ok && e.Gold != "" {
+				goldPath = filepath.Join("scripts", "realcode_diff", e.Gold)
+			}
+		}
+	}
+	gb, err := os.ReadFile(goldPath)
+	if err != nil {
+		fail(fmt.Sprintf("对账失败：金样本不可读 %s（%v）——CI 形态下 gold 必须在库", goldPath, err))
+	}
+	var gold struct {
+		Files map[string]struct {
+			ClangOK   bool           `json:"clang_ok"`
+			GccOK     *bool          `json:"gcc_ok"`
+			VitroErrs int            `json:"vitro_errs"`
+			VitroWarn int            `json:"vitro_warns"`
+			Layer     string         `json:"layer"`
+			Run       string         `json:"run"`
+			Codes     map[string]int `json:"codes"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(gb, &gold); err != nil {
+		fail(fmt.Sprintf("金样本解析失败 %s: %v", goldPath, err))
+	}
+	now := map[string]FileResult{}
+	for _, r := range results {
+		now[r.Path] = r
+	}
+	bad := 0
+	report := func(rel, msg string) {
+		fmt.Fprintf(os.Stderr, "  [漂移] %s: %s\n", rel, msg)
+		bad++
+	}
+	for rel, g := range gold.Files {
+		r, ok := now[rel]
+		if !ok {
+			report(rel, "本轮结果缺失（语料被删或未跑）")
+			continue
+		}
+		if r.ClangOK != g.ClangOK {
+			report(rel, fmt.Sprintf("clang_ok %v → %v", g.ClangOK, r.ClangOK))
+		}
+		if r.VitroErrs != g.VitroErrs {
+			report(rel, fmt.Sprintf("vitro_errs %d → %d", g.VitroErrs, r.VitroErrs))
+		}
+		if r.VitroWarns != g.VitroWarn {
+			report(rel, fmt.Sprintf("vitro_warnings %d → %d", g.VitroWarn, r.VitroWarns))
+		}
+		if r.Layer != g.Layer {
+			report(rel, fmt.Sprintf("layer %q → %q", g.Layer, r.Layer))
+		}
+		if r.RunCmp != g.Run {
+			report(rel, fmt.Sprintf("run %q → %q", g.Run, r.RunCmp))
+		}
+		// 码计数（gold JSON 数字 → float64）
+		gc := map[string]int{}
+		for k, v := range g.Codes {
+			gc[k] = v
+		}
+		rc := map[string]int{}
+		for _, d := range r.VitroDiags {
+			rc[d.Code]++
+		}
+		if len(gc) != len(rc) {
+			report(rel, fmt.Sprintf("码集 %v → %v", gc, rc))
+		} else {
+			for k, v := range gc {
+				if rc[k] != v {
+					report(rel, fmt.Sprintf("码 %s 计数 %d → %d", k, v, rc[k]))
+				}
+			}
+		}
+	}
+	for rel := range now {
+		if _, ok := gold.Files[rel]; !ok {
+			report(rel, "gold 缺该条（新语料未冻结——重跑 -aggregate + 提交）")
+		}
+	}
+	if bad > 0 {
+		fmt.Fprintf(os.Stderr, "realcode 对拍 FAIL：%d 处漂移（%s ↔ %s）\n", bad, goldPath, name)
+		return 1
+	}
+	fmt.Fprintf(os.Stderr, "realcode 对拍 OK：%d 条逐字段一致（%s）\n", len(gold.Files), goldPath)
 	return 0
 }
 

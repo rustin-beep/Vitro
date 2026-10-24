@@ -190,6 +190,12 @@ jobs:
             needs_artifact: true
           - driver: clang_direct
             needs_artifact: true
+          # realcode 仓内语料对拍（2026-10-24 接线批）：-corpus 全量真跑
+          # （Clang+gcc 分桶 + serve 三方）后与在库 gold 逐字段对账——77 语料
+          # 此前只有 -check 静态闸（运行时防线为零）。moon 现场构建 serve
+          # 同 parser_diff 四家形态（needs_artifact: false）。
+          - driver: realcode_corpus
+            needs_artifact: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -274,6 +280,16 @@ jobs:
               ;;
             clang_direct)
               go run ./scripts/clang_direct
+              ;;
+            realcode_corpus)
+              # 仓内语料批运行时对拍（#273 双轨形态）：Go 勘探真跑（-corpus
+              # 产 result.json——内嵌对账 corpusCompareWithGold 同步判红）
+              # + TS 对账判红（compare_gold.mts——新代码新语言，CI 判红面
+              # 走 TS 版；双跑逐位互证，退役 Go 内嵌版待整工具迁移批裁定）。
+              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus chibicc -out tmp/rc_ci_chibicc
+              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus multifile -out tmp/rc_ci_multifile
+              node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
+              node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
               ;;
           esac
   corpus-fuzz:

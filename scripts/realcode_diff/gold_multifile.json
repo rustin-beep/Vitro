@@ -2,9 +2,9 @@
   "_meta": {
     "as_of": "2026-10-22",
     "buckets": {
-      "both_green": 35,
       "clang_red": 0,
-      "vitro_red": 1
+      "both_green": 36,
+      "vitro_red": 0
     },
     "gcc_buckets": {
       "both_green": 36,
@@ -12,7 +12,7 @@
       "divergence": 0,
       "rescued": 0
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。 仓内语料批金样本（#25 义务链第⑤步）：只存诊断码/数量/运行判定签名,零源码文本。",
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。RC-MF-UNIT 69→0 errs：A 线 #221 __FILE__ 修复良性重冻（2026-10-24 CI 对拍接线批）。",
     "repo": "multifile-llm-20261021",
     "total": 36,
     "source_fork": "in-repo:scripts/realcode_diff/corpus/multifile",
@@ -407,13 +407,10 @@
     "RC-MF-UNIT/": {
       "clang_ok": true,
       "gcc_ok": true,
-      "vitro_errs": 69,
+      "vitro_errs": 0,
       "vitro_warns": 0,
-      "codes": {
-        "E3023": 46,
-        "E3054": 23
-      },
-      "layer": "typeck",
+      "codes": {},
+      "layer": "ok",
       "run": ""
     },
     "RC-MF-VEC/": {

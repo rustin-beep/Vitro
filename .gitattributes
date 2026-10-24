@@ -46,3 +46,8 @@ moonbit/icons/icons.json text eol=lf
 # 本文件自身：core.autocrlf=true 的 checkout 会把工作区副本翻成 CRLF，
 # 而它声明的 eol=lf 规则正是为防这个 —— 规则文件自己更不能被翻（2026-10-07 提交时观察到 CRLF 警告）
 .gitattributes text eol=lf
+# corpus/ C 语料（2026-10-24，PR #284 审阅 P1-1）：本机 system 级
+# core.autocrlf=true 把语料检出成 CRLF，`#pragma once` 行尾 `\r` 曾令
+# 自家锚点 pragma_line_ignore.c 在本机产出 3 条 W1023（LF blob 双态实验
+# 实证）；语料是行为锚，检出态必须与 blob 逐字节一致——锁 LF。
+corpus/** text eol=lf

@@ -57,10 +57,10 @@ test {
 ///|
 test {
   let json = @diag.export_catalog_json()
-  // {"catalog":[{...},…]} 码升序 108 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2）——与 Vitro Rust 版 error_catalog
+  // {"catalog":[{...},…]} 码升序 109 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕）——与 Vitro Rust 版 error_catalog
   // 出口经 canonicalize 归一后逐字节一致（E4 锚）
   assert_true(json.has_prefix("{\"catalog\":["))
-  assert_true(@diag.catalog_codes().length() == 108)
+  assert_true(@diag.catalog_codes().length() == 109)
 }
 ```
 

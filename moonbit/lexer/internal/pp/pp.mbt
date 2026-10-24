@@ -405,6 +405,29 @@ fn leading_trim(s : String) -> String {
 }
 
 ///|
+/// 尾随空白裁剪（空格/制表/\r——PR #284 审阅 P1-1）：CRLF 检出态行尾
+/// 保留 `\r`（split_physical_lines 刻意设计，靠 scanner 消化）、注释
+/// 剥除（strip_comments_stateful）残留尾随空格、编辑器尾随空格三形态
+/// 都会在指令参数尾部留尾巴；指令名/参数匹配前须剥净（scanner 的
+/// 空白跳过不覆盖指令面——`#pragma once ` 曾因此落 W1023）。
+fn trailing_trim(s : String) -> String {
+  let mut i = s.length()
+  while i > 0 {
+    let c = s[i - 1]
+    if c == ' ' || c == '\t' || c == '\r' {
+      i -= 1
+    } else {
+      break
+    }
+  }
+  if i == s.length() {
+    s
+  } else {
+    s[:i].to_owned()
+  }
+}
+
+///|
 priv struct StrippedLines {
   lines : Array[LogicalLine]
   ended_in_comment : Bool

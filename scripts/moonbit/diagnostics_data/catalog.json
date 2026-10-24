@@ -202,6 +202,17 @@
       ]
     },
     {
+      "code": 1023,
+      "icon": "unsupported",
+      "title": "预处理指令已忽略",
+      "explanation": "#pragma 的参数（如 pack/STDC）或 #line 指令的语义在当前 C 子集中未实现，该行已被忽略——程序按默认口径继续编译，不会因此失败。布局/对齐类 pragma 与行号映射的行为可能与支持它们的编译器不同；#pragma once 不受影响（正常生效，防重复包含）。",
+      "common_causes": [
+        "#pragma pack(n) 期望改变结构体布局（当前子集恒按紧缩布局——pack(1) 恰好同值，其他 n 不同）",
+        "#line 期望改写后续诊断行号（当前按原文件行号报告）",
+        "STDC 等标准 pragma 期望切换浮点约定/方言开关"
+      ]
+    },
+    {
       "code": 2001,
       "icon": "type-expected",
       "title": "缺少类型说明符",
@@ -809,11 +820,13 @@
     {
       "code": 3053,
       "icon": "implicit-cast",
-      "title": "隐式标量转换",
-      "explanation": "赋值时发生了隐式类型转换，可能导致数据截断或精度丢失。例如 int 赋值给 char 会截断高位。",
+      "title": "隐式转换警告（窄化或 const 限定符差异）",
+      "explanation": "赋值/传参发生了隐式转换：可能是数值窄化（int 赋值给 char 截断高位），或指针间 const 限定符差异——两侧类型剥除全部 const 位后相同，但限定符保护存在被绕过的通道（C11 §6.5.16.1 约束违反，clang/gcc 默认仅警告放行）。",
       "common_causes": [
         "int 赋值给 char（截断）",
-        "float 赋值给 int（丢失小数）"
+        "float 赋值给 int（丢失小数）",
+        "const 指针赋给非 const 指针，或嵌套指针层 const 差异（如 int** 传给 const int** 形参）",
+        "const 数组 decay 给非 const 指针"
       ]
     },
     {

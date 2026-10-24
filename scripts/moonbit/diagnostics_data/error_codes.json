@@ -86,6 +86,10 @@
       "code": 1022
     },
     {
+      "name": "W1023_PreprocDirectiveIgnored",
+      "code": 1023
+    },
+    {
       "name": "E2001_ExpectedType",
       "code": 2001
     },

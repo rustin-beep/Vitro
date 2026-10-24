@@ -15,8 +15,25 @@
 
   const elements = $derived(snap?.elements ?? []);
   const nums = $derived(elements.map(Number));
-  const numeric = $derived(elements.length > 0 && nums.every((n) => Number.isFinite(n)));
+  // 元素类型判据（#288-②）：char 数组恒走字符格——旧判据按「元素能否解析成
+  // 数字」猜类型，而引擎对 char 的不可打印字节（NUL='\n' 等）回传裸数字
+  // （"0"），全 NUL 的 char 数组于是整个降级成数字格，与 int 数组肉眼不可
+  // 区分。element_ty 引擎已给对，不必再猜；数字解析守卫保留给 element_ty
+  // 未知（"?"）的快照。
+  const isChar = $derived(snap?.element_ty === "char");
+  const numeric = $derived(elements.length > 0 && !isChar && nums.every((n) => Number.isFinite(n)));
   const maxAbs = $derived(Math.max(...nums.map((n) => Math.abs(n)), 1));
+
+  /** char 数组格子的显示文本：可打印字节引擎已回传 'c' 形态；不可打印
+   *  （含 NUL 终止符）回传裸数字——按 C 转义形态补引号渲染（0 → '\0'、
+   *  10 → '\n'、其余 → '\xHH'），同一数组内不再 '0' 与裸 0 混排。引擎
+   *  协议面（裸数字）保持现状，消费侧转义（#288-② 处置）。 */
+  const C_ESCAPES: Record<number, string> = { 0: "\\0", 7: "\\a", 8: "\\b", 9: "\\t", 10: "\\n", 11: "\\v", 12: "\\f", 13: "\\r" };
+  function charCellText(v: string): string {
+    if (!/^-?\d+$/.test(v)) return v; // 'c' 等既有形态原样
+    const b = Number(v) & 0xff; // i8 负值按无符号字节解释（-1 → 0xFF）
+    return "'" + (C_ESCAPES[b] ?? "\\x" + b.toString(16).padStart(2, "0")) + "'";
+  }
 
   /** 上一个可视帧的同名快照（变化闪烁的判定基准）。 */
   const prevEls = $derived(before?.array_snapshots?.find((s) => s.name === snap.name)?.elements ?? null);
@@ -82,14 +99,14 @@
         <div
           class="vr-cell"
           class:is-current={focus.includes(i)}
-          class:is-sorted={i >= sortedFrom}
+          class:is-sorted={numeric && i >= sortedFrom}
           class:is-swap={changed.has(i)}
           class:is-text={!numeric}
           role="listitem"
-          aria-label="{snap.name}[{i}] = {v}"
+          aria-label="{snap.name}[{i}] = {isChar ? charCellText(v) : v}"
         >
           <span class="vr-idx">{snap.name}[{i}]</span>
-          <span class="vr-val">{v}</span>
+          <span class="vr-val">{isChar ? charCellText(v) : v}</span>
           {#if numeric}
             <span class="vr-bar" style:height="{Math.round(Math.max((Math.abs(nums[i]) / maxAbs) * 16, 2))}px"></span>
           {/if}

@@ -30,6 +30,10 @@ class UiState {
   // 面板折叠
   diagOpen = $state(false);
   paramsOpen = $state(false);
+  /** 会话配置 details 展开（#287-①）：argv 胶囊 = 「打开面板 + 直达 argv
+   *  输入框」——details 收着时点胶囊只开面板，argv 框仍藏在 summary 后面
+   *  （要点第二次）。状态放 ui 层使 details 跨面板折叠持久展开。 */
+  scfgOpen = $state(false);
   railExpanded = $state(false);
 }
 

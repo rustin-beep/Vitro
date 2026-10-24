@@ -742,7 +742,7 @@ jobs:
         # 本步把「三表一致」变成机判红线（等式 + 交集计数 + PURE 子集 +
         # 空集不得绿）；规则外置 rules.json，J9 三路证红已留痕。
         shell: bash
-        run: go run ./scripts/moonbit/libc_single_source -check
+        run: node scripts/moonbit/libc_single_source/main.mts -check
 
       - name: Host route coverage (110 routes vs host impls)
 

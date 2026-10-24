@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 libc_single_source .mts 化（368 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：四判据原样——① 四表非空且无重复（空集不得绿）② `builtin_all ==
+  (host ∪ bytecode) - excluded_from_union` ③ 交集计数 == `expect.host_intersect_bytecode`
+  ④ `pure_names ⊆ host ∩ bytecode`。锚点切片保留「`anchor_end` 为空时用下一个顶层
+  `fn` 收尾」的启发式。
+- **对拍**：默认（三表关系报告）/ `-check` / `--selftest` 三模式 stdout 与 rc
+  **逐字零差**（一次通过，无返工）。
+- **接线**：CI 的 `-check` 切 node；登记 parity TARGETS（11 双轨 × 25 组参数）。
+- **测试 +7**：锚点切片三路（命中 / 缺 start / 缺 end）、`fn` 收尾启发式、
+  真实四表自洽、J9 三红（抽名 → 等式缺失 / 空集与重复名 / 交集计数被改）、
+  真实仓库三模式端到端。
+- **口径注**：`mustTable` 的 `fatal` 走 `process.exit`，`assert.throws` 抓不到
+  ——测试里不能用 throws 断言 fail loud，只能走子进程（已在用例注释说明）。
+
 ### refactor(scripts): #273 single_source .mts 化（380 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：三类条目判定原样——`enforced`（定义点文件集必须全等：多 = 第二份真相，

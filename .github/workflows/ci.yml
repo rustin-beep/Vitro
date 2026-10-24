@@ -138,8 +138,6 @@ jobs:
         run: |
           node scripts/wasmopt/main.mts moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
           node scripts/wasmopt/main.mts -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
-          # 双轨对拍（#292 批）：上一步已预热 tools/cache（冷缓存下载行会只在首侧出现）
-          node scripts/parity_gate/main.mts --only scripts/wasmopt
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
         if: always()
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置
@@ -316,10 +314,8 @@ jobs:
       # .corpus_fuzz_cache/ gitignored）。js 臂依赖 runner 预装 node。
       - name: Run corpus fuzz gate (baseline check)
         shell: bash
-        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（迷你规则 21 变体）
         run: |
           node scripts/corpus_fuzz/main.mts
-          node scripts/parity_gate/main.mts --only scripts/corpus_fuzz
 
   gates-native:
     name: Native protocol & parity gates (consume exe)
@@ -381,12 +377,10 @@ jobs:
         # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
         # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
         # 依赖 Rust release 二进制（与 codegen_diff 同）。
-        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（本 job 已有
         # moon 与构建缓存，artifact-free 的 exclusive 目标在此最省）。
         shell: bash
         run: |
           node scripts/moonbit/libc_boot_diff/main.mts
-          node scripts/parity_gate/main.mts --only scripts/moonbit/libc_boot_diff
 
       - name: Protocol first consumer (fields-level validation on real engine output)
         # 2026-09-22 接线（架构审阅 v2 A 组 #10 / §8.5「第一个消费者跑通」）：
@@ -421,19 +415,15 @@ jobs:
         run: |
           cd moonbit && moon build --target native cmd/serve && cd ..
           node scripts/serve_smoke/main.mts -moonbit
-          # 双轨对拍（#292 批）：本 job 是 debug serve exe 齐备处
-          node scripts/parity_gate/main.mts --only scripts/serve_smoke
         shell: bash
 
       # replay MoonBit 臂（S7 批四号留批义务兑现，2026-10-04）：S1–S5 帧序列
       # 断言全集跑 cmd/serve（同一断言集，豁免面 scripts/replay/
       # moonbit_exemptions.json——主跑即审计：PASS 即 ZOMBIE 红防僵尸）。
       # 复用上一步构建的同一 exe（debug 路径零重建）；Rust 臂在 core job。
-      # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（-moonbit/--selftest）
       - name: replay S1-S5 protocol assertions (MoonBit arm)
         run: |
           node scripts/replay/replay_s1_s5.mts -moonbit
-          node scripts/parity_gate/main.mts --only scripts/replay
         shell: bash
 
       # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
@@ -561,9 +551,6 @@ jobs:
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
           node scripts/vitro_cli_smoke/main.mts --corpus 30
-          # 双轨对拍（#292 批）：本 slice 是唯一四臂产物齐备处——artifact 组
-          # 只能在这里点名跑（parity_gate 默认跳过 artifact 组，缺产物即 rc 2 硬红）。
-          node scripts/parity_gate/main.mts --only scripts/vitro_cli_smoke
         shell: bash
 
       # algorithms.catalog 三方对账（#36，2026-10-16）：判据源码 build_match
@@ -721,16 +708,6 @@ jobs:
           # 已在 c3601055 资产批留痕。
           node scripts/gen_icons/main.mts -check
           node scripts/icon_catalog/main.mts
-      # 双轨 Go ↔ .mts 对拍（#292 审阅后新增）：并存期把「判定等价」变机判。
-      # go build 后直跑比真实 rc（go run 会把非零退出折成 1，比 rc 会被骗）。
-      - name: dual-track parity gate (Go ↔ .mts, stdout/stderr/rc)
-        if: matrix.slice == 'contract'
-        run: |
-          node scripts/parity_gate/main.mts --selftest
-          node scripts/parity_gate/main.mts
-        shell: bash
-
-
       - name: MoonBit API surface audit (unpublished pkgs contracted)
 
         if: matrix.slice == 'contract'
@@ -1058,10 +1035,8 @@ jobs:
         # 漂移红的含义是「该走 --update-baseline + 全门禁迁移流程」，不是
         # 代码坏了。处置手册见 memory / a592f60、2f5d5d4 先例。
         shell: bash
-        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑
         run: |
           node scripts/toolchain_probe/toolchain_probe.mts
-          node scripts/parity_gate/main.mts --only scripts/toolchain_probe
 
       - name: MoonBit format check (moon fmt --check)
         # 2026-09-21 审阅批四补线：fmt 漂移已跨多个批次无人拦（此前

@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts)!: #273 终局批——删除已迁 Go 版（52 文件 / 22,417 行）+ 退役 parity 闸（2026-10-24）
+
+**删了什么**：44 个目录里已成双轨的 `.go`（含 Go 测试）共 **52 文件 / 22,417 行**；`go build ./...` 复验剩余 Go 全绿。归档证据在仓库历史：每批的 parity 对拍（23 双轨 × 47 组）、生成金样本（`corpus_fuzz/testdata/`）、各脚本单测。
+
+**退役 parity 闸**（`scripts/parity_gate/` 整件 + CI 步骤 + package.json 清单项）
+- 理由：它存在的唯一理由是「Go 与 .mts 并存期把判定等价变机判」。Go 版删完后它没有可比较对象，留着就是**零目标恒绿的空闸**——恰是本仓最忌的假绿形态。故连同 `--selftest`/`--only` 全部 CI 调用一并移除，而不是让它空转。
+
+**连带清理**
+- 孤儿 Go 库：`internal/probeutil`（唯一消费者 serve_smoke 已切 CIM）、`internal/pyrandom`（零 Go 消费者）——删除；`capi`/`freshness`/`canonicalize` 仍被保留的 9 个 Go 驱动使用，留。
+- `teaching_annotation_diff/catalog.mts`：原「正则解析 `gen_demo_algorithms/main.go` 的 groups var」改为**直接 import `GROUPS`**（该模块有入口守卫、导入无副作用）。文本解析存在的前提是「真源在 Go」——前提消失，解析器与 3 条 fail-loud 测试一并删除，改为直连数据断言。
+- 文档：清掉 parity 闸清单行、「Go 版转回退面」口径改「TS（`.mts`，终局批已删 Go 版）」共 17 处；修 6 处指向已删 `.go` 的坏引用（facts `--strict` 由 6 红转 0）；`.agents/skills/vitro-toolchain-upgrade/SKILL.md` 引用同步。
+- `ci_checklist` 口径自动跟随：驱动 61（.go 52 / .mts 9）→ **60（.go 9 / .mts 51）**，活行 53。
+
+**保留的 Go（不迁，理由已登记）**：`facts`(3 文件 2338) / `clang_direct`(1142) / `realcode_diff`(2206) 三个**真值源**（无 golden 可对拍）；`perf_baseline`(870) 报告型；diff 家族 5 个(4697) 已被 `diff_gate` 取代，待独立批删除。
+
+**门禁**：tsc 0 错 / oxlint 144 文件 0 警告 / node:test **464 例 0 失败** / ci_checklist PASS / editorconfig PASS / facts --strict（0 漂移 0 坏引用）/ skill_path_check 0 缺失。
+
 ### fix(scripts): #292 审阅处置——P2×3 + P3×8 逐条（2026-10-24）
 
 **P2-1 · corpus_fuzz 金样本只锁住 1 个算子的实际变换面** —— 已修（含先红后绿）

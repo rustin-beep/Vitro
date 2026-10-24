@@ -51,7 +51,7 @@ go run ./scripts/facts --run check                   # ② 采集 + 对账判红
 优先核对**切片语义 / 警告默认值**类行为变化。实例（0.10.13→0.10.14）：切片 `a[i:j]` 改为钳制化；`unused_package` / `test_unqualified_package` 警告默认开启。本仓无 deny 级警告配置时通常不阻塞，但要过一遍新增警告，确认没有新缺陷信号混在里面。
 
 ## 权威源与时效
-- `scripts/toolchain_probe/toolchain_probe.go` 头注（用法与 J9 埋雷记录）
+- `scripts/toolchain_probe/toolchain_probe.mts` 头注（用法与 J9 埋雷记录）
 - `moonbit/AGENTS.md` §构建与验证命令
 - **相关规程**：`vitro-facts-reconciliation`（升级后刷新真值）、`vitro-release-playbook`（升级与发版的先后关系）
 - as_of: 2026-09-28（0.10.13→0.10.14 实战两轮沉淀；具体版本号会过时，流程长期有效）

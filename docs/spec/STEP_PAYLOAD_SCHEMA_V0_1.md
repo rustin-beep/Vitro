@@ -494,7 +494,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 > Python 驱动已在 D5 工具链迁移（2026-09-13）中由 Go 版取代退役，文件已
 > 删除。现行复现命令：`go run ./scripts/shadow_verify`（C 侧）、
 > `go run ./scripts/shadow_verify_cpp`（C++ 侧）、
-> `go run ./scripts/replay/replay_s1_s5.go`（签字回放，带 `--selftest`
+> `go run ./scripts/replay/replay_s1_s5.mts`（签字回放，带 `--selftest`
 > 自检）。`go run ./scripts/serve_smoke` 仍在服役（CI 活性件）。
 
 > **锚点与产物新鲜度（2026-09-12 补）**：驱动现在**前置门禁** —— `capabilities.engine_version`
@@ -546,7 +546,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | ① | **只增事件**：不得改动 v0.1 既有 14 字段的名称/类型/语义；预留位激活一律以新增字段形态落地 |
 | ② | 同步更新**本文档**：§9 台账状态 `pending → active`，并在 **§7 校验表追加 v0.2 历史行** |
 | ③ | 重跑引擎侧 **C1–C3**：`step_payload_schema_v0_1_test` + `unified_engine_window_test` + `go run ./scripts/serve_smoke` |
-| ④ | 重跑签字回放 **S1–S5**：`go run ./scripts/replay/replay_s1_s5.go --anchor <新短哈希>`；异常域另需 S4 §5 激活契约 A1–A8（第四组回放场景） |
+| ④ | 重跑签字回放 **S1–S5**：`go run ./scripts/replay/replay_s1_s5.mts --anchor <新短哈希>`；异常域另需 S4 §5 激活契约 A1–A8（第四组回放场景） |
 | ⑤ | 解除冻结测试中的预留位断言（v0.1 → v0.2），并知会下游按容忍矩阵回归 T4 投影 |
 
 **tripwire（不是建议，是防线）**：`step_payload_schema_v0_1_test::test_v0_1_reserved_fields_absent`

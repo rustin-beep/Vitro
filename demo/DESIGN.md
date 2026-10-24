@@ -61,7 +61,7 @@ generated: src/tokens.css（@generated，禁手改）
 - 数据面（帧号、地址、输出、代码）用 mono；叙事面用 serif/sans。
 - 状态用语义 token（red/green/amber）+ 一句话原因 + 一个动作。
 - 改完跑：`node scripts/gen_demo_tokens/main.mts -check`、`npm run check`、
-  `npm run lint`、`npm run build`、`go run ./scripts/demo_ui_lint`。
+  `npm run lint`、`npm run build`、`node ../scripts/demo_ui_lint/main.mts`。
 
 **Don't**
 
@@ -76,8 +76,8 @@ generated: src/tokens.css（@generated，禁手改）
 | 面 | 闸 |
 |---|---|
 | token 单源 ↔ 产物 | `node scripts/gen_demo_tokens/main.mts -check`（+ `-selftest`） |
-| CSS 变量 / id / 连字 | `go run ./scripts/demo_ui_lint`（class 写操作位点当前 0——Svelte 组件态由 svelte-check 与 E2E DOM 锚守；文本闸只查 var/id/mono） |
-| 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `go run ./scripts/demo_ui_lint`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
+| CSS 变量 / id / 连字 | `node scripts/demo_ui_lint/main.mts`（class 写操作位点当前 0——Svelte 组件态由 svelte-check 与 E2E DOM 锚守；文本闸只查 var/id/mono） |
+| 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `node scripts/demo_ui_lint/main.mts`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
 | 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（90 锚） |

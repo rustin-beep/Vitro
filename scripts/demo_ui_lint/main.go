@@ -812,7 +812,12 @@ func main() {
 	issues = append(issues, rawIssues...)
 
 	if len(issues) > 0 {
-		sort.Slice(issues, func(i, j int) bool { return issues[i].kind < issues[j].kind })
+		// 稳定排序（2026-10-24 #273/#292 迁移批修）：comparator 只比 kind，同 kind 条目
+		// 的相对序原本由 `sort.Slice` 的 pdqsort 决定——n≤12 走插入排序（=插入序），
+		// n>12 走划分路径后 tie 序变成实现内幕（13 条红 fixture 实测被打乱 4 处）。
+		// 该顺序漂移不可在 .mts 侧重刻，改用 SliceStable 让「同 kind 保持插入序」成为
+		// 契约（绿路径 0 条输出不变，仅红路径 tie 序收严）。
+		sort.SliceStable(issues, func(i, j int) bool { return issues[i].kind < issues[j].kind })
 		for _, i := range issues {
 			fmt.Fprintf(os.Stderr, "[demo_ui_lint][%s] %s\n", i.kind, i.msg)
 		}

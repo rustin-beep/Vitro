@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 demo_ui_lint 双件 .mts 化（1197 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：`main.go`(924) + `raw.go`(273) → `main.mts` + `raw.mts`。判定面全数保留：三路字符串契约（类名/CSS 变量/id）+ mono 连字**值**判据 + 四张僵尸表 + 抽取面下限 + 裸值棘轮六路（新增/用量增加/僵尸/用量减少/分量变化/绝对路径归一）。
+- **对拍**：默认（绿：位点 class=0 / id=0 / var=1082 / mono=169）、`-selftest`（五类证红计数 2/6/2/2/3）、红 fixture（13 条，覆盖 class/coverage/id/logo/mono/var/zombie 七族）三模式 stdout/stderr/rc **逐字零差**；`-update-raw` 写盘 JSON 逐字节同（键序 = Go struct 声明序 + `SetEscapeHTML` 转义）。
+- **存量缺陷修正（Go 侧一行）**：`sort.Slice` 只比 kind，同 kind 的 tie 序在 n>12 时落进 pdqsort 划分路径（13 条红 fixture 实测 4 处顺序差），改 `sort.SliceStable` 把「同 kind 保持插入序」变成契约——绿路径 0 条输出不变，红路径两侧才有可比性。
+- **接线**：CI demo job 两处 `go run` → `node`；parity TARGETS 扩到 16 双轨（demo_ui_lint 三模式，红 fixture 常驻 `scripts/demo_ui_lint/testdata/red`）；文档处方（脚本总清单 / demo README / demo DESIGN）同步切 node。
+- **共享层**：新增 `internal/text.mts`（`byteCompare`/`byteSort`/`goTrimSpace`/`goFields`/`goJSONMarshalIndent`）+ `capi.walkDirSorted`——Go 的**字节序与空白集**口径单源化；`teaching_annotation_diff` 的 `goJSONMarshalIndent` 改为 re-export 上收，消灭第二份复刻。
+- **测试 +38**（node:test 337 → 375）：提取器六件、五族判定逐路红/绿、僵尸四表、抽取面下限、棘轮六路、`writeRawBaseline` 字节形态、logo 双份三态、CLI 五模式（含布尔 `=value` 显式拒绝与规则类型错 exit 2）。
+- **踩坑**：node strip-only 不支持**类参数属性**（`constructor(readonly x)`）——本批第三次复现，一律改写显式字段。
+
 ### refactor(scripts): #273 protocol_frames .mts 化（550 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：48 帧固定序列发往 MoonBit serve（native 臂 / --backend-wasm 统一入口壳），每帧 canonicalize → compact 单行 → 文本级 mask（规则外置）→ 与 baseline.jsonl 逐帧比。

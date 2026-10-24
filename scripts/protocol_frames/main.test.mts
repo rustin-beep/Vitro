@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { diffAgainstBase, loadRules, readBaseline, requestTable, writeBaseline } from "./main.mts";
+import { diffAgainstBase, readBaseline, requestTable, writeBaseline } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");

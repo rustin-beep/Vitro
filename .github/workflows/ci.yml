@@ -1339,11 +1339,12 @@ jobs:
       # 三件套复现 5 条。TS 类型系统对这两类零感知，故走文本闸）。
       # 规则外置 rules.json（动态类簇/动态 id 前缀，僵尸条目无条件红）。
       # TS 重写批：扫描面 = app.ts + js/*.ts（源=审阅对象）。
+      # #292 批：驱动切 .mts（Go 版转回退面，双轨对拍见 parity 闸）。
       - name: demo UI string-contract lint (class/var/id reconciliation)
         if: always()
         run: |
-          go run ./scripts/demo_ui_lint -selftest
-          go run ./scripts/demo_ui_lint
+          node scripts/demo_ui_lint/main.mts -selftest
+          node scripts/demo_ui_lint/main.mts
         shell: bash
 
       # #51 批①（2026-10-17，refs #122 F3）：phase 受控词表冻结闸——

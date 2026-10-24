@@ -28,8 +28,13 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../internal/capi.mts";
 import { ensureFresh } from "../internal/freshness.mts";
+import { goJSONMarshalIndent } from "../internal/text.mts";
 import { loadRules, runCatalogCheck } from "./catalog.mts";
 import type { Rules } from "./catalog.mts";
+
+// Go `json.MarshalIndent` 口径（SetEscapeHTML）在 #292 批上收为单源——
+// 两个脚本（本件 + demo_ui_lint 裸值棘轮写盘）共用同一形态，避免第二份复刻漂移。
+export { goJSONMarshalIndent };
 
 export interface FirstOccurrence {
   algorithm: string;
@@ -64,24 +69,6 @@ interface ServingOptions {
 /** Go `%q` 对 ASCII/普通文本的等价形态（诊断文案用）。 */
 function quote(s: string): string {
   return JSON.stringify(s);
-}
-
-/**
- * Go `json.MarshalIndent` 口径（`SetEscapeHTML` 默认 true）：
- * `<` `>` `&` 与 U+2028/U+2029 一律转义成 `\uXXXX`。
- *
- * **为什么必须补**（#289 审阅 P2-1 实测）：`JSON.stringify` 不转义这些字符，
- * 直接写回会把入库 golden 里 190 处 `\u003c/\u003e/\u0026` 换成裸字符 ——
- * 未变更树上 `--freeze` 会产出 154 行 / −950 B 的伪漂移。只读模式对拍不存在
- * 该面（它不写盘），故此前等价证据覆盖不到。
- */
-export function goJSONMarshalIndent(v: unknown): string {
-  return JSON.stringify(v, null, 2)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029");
 }
 
 /** Go `%+v` 结构体打印的近似形态（红路径诊断用）。 */

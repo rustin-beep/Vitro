@@ -49,6 +49,23 @@ export const TARGETS: Target[] = [
   { dir: "scripts/perf_budget", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/moonbit/mbti_sync", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/protocol_frames", modes: [[], ["--selftest"]] },
+  {
+    dir: "scripts/demo_ui_lint",
+    // 红 fixture（13 条 >12）是刻意保留的：n>12 越过 Go sort 的插入排序阈值，
+    // 「同 kind 保持插入序」这条契约要靠它锁（Go 版已改 SliceStable，见 main.go）。
+    modes: [
+      [],
+      ["-selftest"],
+      [
+        "-demo",
+        "scripts/demo_ui_lint/testdata/red",
+        "-rules",
+        "scripts/demo_ui_lint/testdata/red/rules.json",
+        "-raw-baseline",
+        "scripts/demo_ui_lint/testdata/red/raw_baseline.json",
+      ],
+    ],
+  },
   // #289 批（教学线 + 文本闸）：合并 master 后纳入
   { dir: "scripts/teaching_phase_vocab", modes: [[], ["-selftest"]] },
   { dir: "scripts/teaching_reconcile", modes: [[], ["-v"], ["-selftest"]] },

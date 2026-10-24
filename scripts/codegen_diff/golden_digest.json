@@ -65,6 +65,7 @@
         "char_signedness.c": "558096f8",
         "circular_queue.c": "e85826b6",
         "codegen_soundness_regression.c": "f6946525",
+        "col_utf8_units.c": "91e44bdc",
         "comma_expr_stmt.c": "a7b2f601",
         "comma_operator.c": "160ed832",
         "compare_eq.c": "cdb57571",
@@ -88,7 +89,8 @@
         "const_2d_array_param.c": "70d43963",
         "const_array_decay_warn.c": "20cd4f44",
         "const_fold_unsigned.c": "2b257ffd",
-        "const_nested_qualifier_warn.c": "3f43916d",
+        "const_nested_qualifier_warn.c": "56576870",
+        "const_ptr_level_spiral.c": "2733a6ae",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
         "decrement_var.c": "629e3563",
@@ -459,6 +461,7 @@
         "typedef_pointer.c": "024b6b1a",
         "typedef_redefine_reject.c": "24d2feff",
         "typedef_struct_anon.c": "2061a8b7",
+        "u_suffix_unsigned_domain.c": "c4415ca4",
         "union_array.c": "eb30623a",
         "union_basic.c": "d0a842c6",
         "union_int_member.c": "aeb30e27",
@@ -686,6 +689,9 @@
         "codegen_soundness_regression.c": {
           "result_sha": "95a00e1c2ebdbf6e"
         },
+        "col_utf8_units.c": {
+          "result_sha": "7253719704896bbe"
+        },
         "comma_expr_stmt.c": {
           "result_sha": "2034bf615ac55451"
         },
@@ -756,7 +762,10 @@
           "result_sha": "bfce8adbdda009e1"
         },
         "const_nested_qualifier_warn.c": {
-          "result_sha": "43f7c3994ee71baf"
+          "result_sha": "fafc46538847f74c"
+        },
+        "const_ptr_level_spiral.c": {
+          "result_sha": "9d68a1287c037acc"
         },
         "continue_while.c": {
           "result_sha": "8b4227ff886e9496"
@@ -947,7 +956,7 @@
           "result_sha": "d12e2ad13efab2f7"
         },
         "engine_note_lookalike.c": {
-          "result_sha": "325754977f4de36b"
+          "result_sha": "9a5cae1cf9884daf"
         },
         "enum.c": {
           "result_sha": "9911f84c9ad24381"
@@ -1890,6 +1899,9 @@
         "typedef_struct_anon.c": {
           "result_sha": "d8fedced81164240"
         },
+        "u_suffix_unsigned_domain.c": {
+          "result_sha": "1bae0d40bc225a6e"
+        },
         "union_array.c": {
           "result_sha": "d244af63a4137df1"
         },
@@ -1948,7 +1960,7 @@
           "result_sha": "c5c23862c41801b5"
         },
         "utf8_latin1_output.c": {
-          "result_sha": "09bbd3c141d229f0"
+          "result_sha": "6e4865eeec07ff3a"
         },
         "variable_length_array.c": {
           "result_sha": "1707c5a7681087dd"
@@ -3071,7 +3083,7 @@
           "result_sha": "734be730098a639c"
         },
         "llm_scale_editor.c": {
-          "result_sha": "1ede22aa0b2af637"
+          "result_sha": "5ef47be7327455d1"
         },
         "llm_scale_os.c": {
           "result_sha": "7510dd077037615f"

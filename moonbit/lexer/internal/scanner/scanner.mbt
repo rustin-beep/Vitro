@@ -3,10 +3,13 @@
 ///
 /// 契约（S2 差分对拍口径，与 Rust oracle `vitro_lexer/src/lib.rs` 精确对齐）：
 /// - 承载 `Bytes`（UTF-8 字节流）；`byte_off` 为 0 起字节偏移；
-/// - `column` 按 **Unicode 标量**计数（多字节序列一次 +1）——复刻 Rust
-///   `advance()` 的 char 计数；token 的 `loc.column = column - text 的 UTF-8
-///   字节数`——**故意复刻** Rust `make_token` 的量纲混算缺陷（⑥-1/⑥-2），
-///   换取 col 逐字节可比；
+/// - `column` 按 **UTF-8 字节**计数（多字节序列一次 +n）——issue #242
+///   （2026-10-24）改定：source 包 SourceLoc 契约「column = 行内字节偏移+1，
+///   禁字符量纲混算」。旧口径复刻 Rust `advance()` 的标量计数并**故意保留**
+///   `make_token` 的量纲混算（⑥-1/⑥-2，换取 col 逐字节可比）——但注释路径
+///   （pp 按字节剥为等宽空格）恒字节列，同源两量纲（注释按字节/串字面量按
+///   字符）⇒ 含非 ASCII 行的诊断列失准。改后 `loc.column = column - text 的
+///   UTF-8 字节数`两側同字节量纲自洽；ASCII 域零变化；
 /// - 主循环 `while` 重派发，禁止递归（⑥-15：递归实现下连续数万行注释栈溢出）；
 /// - `#` 的处理由 `macro_body_mode` 决定：true → Hash/HashHash token（L1 raw
 ///   全程 true；L2 的宏体/`#`/`##` 操作数扫描同）；false → 由上层 pass 消费
@@ -243,8 +246,15 @@ fn Scanner::at_end(self : Scanner) -> Bool {
 }
 
 ///|
-/// 推进一个码点：ASCII 快路径；多字节按序列长度跳（列 +1——Rust char 计数）。
+/// 推进一个码点：ASCII 快路径；多字节按序列长度跳（pos 字节推进）。
 /// 返回被消费的码点（越界返回 -1 且不推进）。
+/// 列量纲（issue #242，2026-10-24）：**column 按字节计数**（多字节序列
+/// 一次 +n）——source 包 SourceLoc 契约「column = 行内 UTF-8 字节偏移+1，
+/// 禁与字符量纲混算」。旧口径按标量 +1（复刻 Rust advance 的 char 计数）
+/// 与 make_token 的「− token 字节数」反推公式混算 ⇒ token 自身含多字节
+/// （字符串字面量内中文）时列基线左移成字符列，而注释路径（pp 按字节剥
+/// 离为等宽空格）恒字节列——同源两量纲。改 advance 后反推公式两側同字节
+/// 量纲，自洽；ASCII 域（±n 皆为 1）行为零变化。
 fn Scanner::advance(self : Scanner) -> Int32 {
   if self.pos >= self.length {
     return -1
@@ -261,7 +271,7 @@ fn Scanner::advance(self : Scanner) -> Int32 {
     self.real_line += 1
     self.column = 1
   } else {
-    self.column += 1
+    self.column += n
   }
   c
 }

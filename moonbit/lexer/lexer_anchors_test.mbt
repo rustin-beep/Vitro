@@ -527,3 +527,37 @@ test "pragma_once_trailing_whitespace_family" {
   inspect(@diag.ErrorCode::code(r4.warnings[0].code), content="1023")
   assert_true(r4.warnings[0].message.contains("pack(1)"))
 }
+
+///|
+/// issue #242（2026-10-24）：诊断列量纲统一为 UTF-8 **字节**列（source 包
+/// SourceLoc 契约：column = 行内字节偏移 + 1，禁与字符量纲混算）。此前
+/// scanner `advance()` 按标量计列 + `make_token` 按 token 字节数反推 ⇒
+/// token 自身含多字节（字符串字面量内中文）时列基线左移成字符列；而注释
+/// 路径（pp 剥离为**字节**等宽空格）是字节列——同源两量纲。锚两个真实
+/// 教学场景：中文注释在前（历史即字节列，回归格）+ 中文字符串在前（修复格，
+/// 旧标量列 12）。
+test "issue_242_column_unit_utf8_bytes_comment_and_string" {
+  // 中文注释在前：`/* 中文 */`（12 字节）剥离为 12 等宽空格，u 字节列 18
+  let a = @lexer.tokenize("int main(void) {\n    /* 中文 */ u = 1;\n}\n")
+  // 中文字符串在前：`"中文"` 占 8 字节，字符串 token 起始字节列 5、u 字节列 16
+  let b = @lexer.tokenize("int main(void) {\n    \"中文\" ; u = 1;\n}\n")
+  let mut u_a : Int32 = -1
+  for t in a.tokens {
+    if t.ty.to_name() == "Identifier" && t.text == "u" {
+      u_a = t.loc.column
+    }
+  }
+  let mut u_b : Int32 = -1
+  let mut s_b : Int32 = -1
+  for t in b.tokens {
+    if t.ty.to_name() == "String" {
+      s_b = t.loc.column
+    }
+    if t.ty.to_name() == "Identifier" && t.text == "u" {
+      u_b = t.loc.column
+    }
+  }
+  inspect(u_a, content="18")
+  inspect(s_b, content="5")
+  inspect(u_b, content="16")
+}

@@ -36,6 +36,17 @@
     "baseline/array_bounds_safe.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/array_dim_cast.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/array_dim_cast.c|init_partial": {
+      "bucket": "WRONG_VALUE",
+      "issue": "known-ub-domain",
+      "note": "init_partial 截 STRATS 初始化列表 3→2 ⇒ CNT=2 而 printf 读 name_lines[2] 越界——clang 恰读相邻 plain 的 P、vitro 自家布局读空，UB 域无义务一致非病（截初始化列表造真越界 UB 同族，iss283 批 init_partial VITRO_TRAP 格同算子）"
+    },
+    "baseline/array_dim_cast.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/array_index.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -70,6 +81,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/array_param_decay.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/atof_prefix.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/atof_prefix.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/atof_prefix.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/bit_not_zero.c|brace_strip": {
@@ -1986,6 +2006,15 @@
     "baseline/scanf_printf.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/scanf_return_value.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_return_value.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_return_value.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/scanf_string.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -2111,6 +2140,15 @@
     },
     "baseline/sizeof_struct_union.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/snprintf_basic.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/snprintf_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/snprintf_basic.c|paren_wrap": {
+      "bucket": "AGREE"
     },
     "baseline/sprintf_basic.c|brace_strip": {
       "bucket": "AGREE"
@@ -2596,6 +2634,15 @@
     "baseline/union_member_struct_assign.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/unsigned_add_wrap.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_add_wrap.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_add_wrap.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/unsigned_lshr.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -2659,6 +2706,15 @@
     "baseline/utf8_latin1_output.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/vfs_io_extensions.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/vfs_io_extensions.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/vfs_io_extensions.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/vla_2d.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -2711,6 +2767,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/while_loop.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/whitespace_vtab_formfeed.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/whitespace_vtab_formfeed.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/whitespace_vtab_formfeed.c|paren_wrap": {
       "bucket": "AGREE"
     },
     "baseline/zero_init_aggregate.c|cast_strip": {

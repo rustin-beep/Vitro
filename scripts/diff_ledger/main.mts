@@ -193,6 +193,32 @@ export function validate(l: Ledger, shadow: string[], clangDirect: string[], vmD
   return bad;
 }
 
+/**
+ * 结构守卫（#292 审阅 P3-3）：Go 版靠 `json.Unmarshal` 到 struct 天然拒绝
+ * 畸形结构并给出可读违规；`as Ledger` 只骗 tsc，畸形输入会以 `TypeError` 栈
+ * 崩掉（仍是红，但不是判定型脚本该有的 fail loud 形态）。
+ */
+export function assertLedgerShape(l: Ledger): string {
+  if (l === null || typeof l !== "object" || Array.isArray(l)) return "顶层必须是对象";
+  if (!Array.isArray(l.differences)) return "differences 必须是数组";
+  if (l.capability_flags === null || typeof l.capability_flags !== "object" || Array.isArray(l.capability_flags)) {
+    return "capability_flags 必须是对象";
+  }
+  for (const [i, d] of l.differences.entries()) {
+    if (d === null || typeof d !== "object" || Array.isArray(d)) return `differences[${i}] 必须是对象`;
+    const a = d.anchors;
+    if (a === null || typeof a !== "object" || Array.isArray(a)) return `differences[${i}].anchors 必须是对象`;
+    for (const k of ["shadow_known", "clang_direct_known", "vm_diff_known"] as const) {
+      const v = (a as unknown as Record<string, unknown>)[k];
+      if (v === undefined) (a as unknown as Record<string, unknown>)[k] = [];
+      else if (!Array.isArray(v)) return `differences[${i}].anchors.${k} 必须是数组`;
+    }
+    if (d.detectable_by_defense === undefined) d.detectable_by_defense = [];
+    else if (!Array.isArray(d.detectable_by_defense)) return `differences[${i}].detectable_by_defense 必须是数组`;
+  }
+  return "";
+}
+
 // ---------------------------------------------------------------- known 加载
 
 export function loadKnownCases(p: string): string[] {
@@ -210,7 +236,18 @@ export function loadKnownCases(p: string): string[] {
     process.stderr.write(`[diff_ledger] fail loud：${p} 解析失败：${e instanceof Error ? e.message : String(e)}\n`);
     process.exit(2);
   }
-  return entries.map((e) => e.case ?? "");
+  // #292 审阅 P3-3：非对象条目 / 缺 case 一律 fail loud（Go 版 struct 解码同口径）
+  return entries.map((e, i) => {
+    if (e === null || typeof e !== "object" || Array.isArray(e)) {
+      process.stderr.write(`[diff_ledger] fail loud：${p} 第 ${i} 条不是对象\n`);
+      process.exit(2);
+    }
+    if (typeof e.case !== "string") {
+      process.stderr.write(`[diff_ledger] fail loud：${p} 第 ${i} 条缺 case 字符串\n`);
+      process.exit(2);
+    }
+    return e.case;
+  });
 }
 
 // ---------------------------------------------------------------- selftest（J9）
@@ -326,6 +363,11 @@ export function main(argv: string[]): number {
     return 0;
   }
 
+  const shape = assertLedgerShape(l);
+  if (shape !== "") {
+    process.stderr.write(`[diff_ledger] fail loud：${ledgerPath} 结构不可用：${shape}（输入不可用 = exit 2）\n`);
+    return 2;
+  }
   const violations = validate(l, shadow, clangDirect, vmDiff);
   process.stdout.write(
     `[diff_ledger] 条目 ${l.differences.length} | capability_flags ${Object.keys(l.capability_flags ?? {}).length} | shadow ${shadow.length} + clang_direct ${clangDirect.length} + vm_diff ${vmDiff.length} 条 known 对账\n`,

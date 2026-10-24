@@ -12,6 +12,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts+ci): #292 审阅处置——P2×3 + P3×5（2026-10-24）
+
+- **P2-1（已修）**：`icons.json` 缺 `digest` / 空串时原**静默放行**（`if (digest !== "")`
+  才比较）→ 改为缺字段或空串**本身即红**（Go 版直接比较，空值必然 ≠ 现算）。
+  两例测试（`{}` 与 `{"digest":""}`）。
+- **P2-2（已修）**：规则表 `JSON.parse(...) as Rules` 无运行时类型门——布尔写成 `0`
+  （falsy）会**静默关闭整项检查**、数组写成字符串会子串误匹配、`svg_attrs: []`
+  让属性契约整项消失（Go 版 `json.Unmarshal` 强类型天然拦住）。新增零依赖
+  `assertRules()` schema 校验（失败 exit 2）+ 五类类型变异测试。
+- **P2-3（处置：删 Go 双轨）**：CI 已切 node 且逐字对拍在手，两个 `main.go` 按
+  AGENTS §8「CI 引用切换后才删」直接删除（回退面 = git 历史）。**为什么不走
+  「登记 exceptions + 接 parity」**：已实测——`ci_checklist` 按**目录**归并，
+  node 活行已填满 `liveSet`，登记例外会立刻触发「僵尸例外」红；要支持须改造该闸
+  的活行分语言，成本大于收益（本批仅两件）。删后 `ci_checklist` 语言分布由
+  `.go 52 / .mts 7` 变为 **`.go 50 / .mts 9`**，驱动总数 59 不变。
+- **P3-1（已修）**：三处声明失实——`diff_ledger` 实际在 **contract** slice（原写
+  bookkeeping）；「两片均已有 Node 24 前置」不成立（**static-gates 本批才加
+  `setup-node`**，此前该 job 的 node 步靠 runner 预装版本、不受 `.node-version`
+  锁定）；ci.yml 注释「五路注入」→ **六路**。
+- **P3-2（已修）**：文档数字按实测重算（ledger 28 → **36** 条、clang_direct 7 →
+  **16**、catalog 77 → **108** 条）。
+- **P3-3（已修）**：`diff_ledger` 对畸形输入从 `TypeError` 栈改为**结构守卫 +
+  fail loud exit 2**（`assertLedgerShape`）；`loadKnownCases` 的非对象条目 / 缺
+  `case` 不再静默产出空串。
+- **P3-4（部分修）**：PASS 文案断言去掉宽松分支（精确锁「机判化」）、
+  `icon_catalog` 标题「四项齐」→「五项齐」、删 `s.replace("\t甲","\t甲")` 死代码。
+  **未做**：两个测试文件的 `mkdtempSync` 清理——需 `finally` 包裹整个文件，
+  收益低于改动面，遗留登记于此。
+- **P3-5（环境注记，不修）**：本地 oxlint 1.88 vs lockfile 1.89；CI `npm ci` 装
+  1.89，本地版本差不动摇结论。
+
+**测试**：211 → **214**（+3），全真实执行。
+
 ### refactor(scripts+ci): #273 icon_catalog + diff_ledger .mts 化（805 行）与 CI 接线（2026-10-24）
 
 - **重写面**：`icon_catalog`（404 行 → 十项资产契约闸）与 `diff_ledger`
@@ -20,7 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   （76 图标 / 108 catalog 条）；`diff_ledger` 默认（36 条 / 17 flags / shadow 3 +
   clang_direct 16 + vm_diff 5）与 `--selftest`（六路注入）**逐字零差**。
 - **接线**：`ci.yml` 两处 `go run` → `node scripts/.../main.mts`（icon_catalog 在
-  static-gates gen slice，diff_ledger 在 bookkeeping slice；两片均已有 Node 24 前置）。
+  static-gates 的 **gen** slice，diff_ledger 在 **contract** slice）。**static-gates
+  本批新增 `setup-node`**——此前该 job 的 node 步骤靠 runner 预装版本跑、不受
+  `.node-version` 锁定，"已有 Node 24 前置"是失实旧账（#292 审阅 P3-1 抓出）。
 - **顺带修掉的实现缺陷（fixture 测试抓出）**：`icon_catalog` 的 `readTsv` 原用
   `projectRoot()` 全局解析路径，`run(root, …)` 的 root 参数没贯穿到底——合成
   fixture 下会读到真实仓库的 `index.tsv`。改为 root 显式贯穿（同批另一处

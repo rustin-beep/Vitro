@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { CAPABILITY_FLAGS_KEYS, loadKnownCases, main, selftest, validate } from "./main.mts";
+import { CAPABILITY_FLAGS_KEYS, assertLedgerShape, loadKnownCases, main, selftest, validate } from "./main.mts";
 import type { Difference, Ledger } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
@@ -107,7 +107,7 @@ test("真实仓库端到端：默认 PASS 行逐字 + selftest 六路 + 自定�
   const def = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });
   assert.equal(def.status, 0, def.stderr);
   assert.match(def.stdout, /\[diff_ledger\] 条目 \d+ \| capability_flags 17 \| shadow 3 \+ clang_direct 16 \+ vm_diff 5 条 known 对账/);
-  assert.match(def.stdout, /\[diff_ledger\] PASS：schema \+ 双向对账全绿（守门规则机化就位）|\[diff_ledger\] PASS：schema \+ 双向对账全绿/);
+  assert.match(def.stdout, /\[diff_ledger\] PASS：schema \+ 双向对账全绿（守门规则机判化就位）/);
 
   const self = spawnSync(process.execPath, [MAIN, "--selftest"], { cwd: root, encoding: "utf8" });
   assert.equal(self.status, 0, self.stderr);
@@ -123,4 +123,18 @@ test("真实仓库端到端：默认 PASS 行逐字 + selftest 六路 + 自定�
   assert.match(r.stderr, /✗ \d+ 条违规/);
   assert.match(r.stderr, /class 越界: cosmetic/);
   assert.equal(main([p]), 1);
+});
+
+test("P3-3：畸形 ledger 结构守卫给可读原因（不崩栈）；子进程 exit 2", () => {
+  assert.match(assertLedgerShape({} as Ledger), /differences 必须是数组/);
+  assert.match(assertLedgerShape({ capability_flags: {}, differences: [1] } as unknown as Ledger), /differences\[0\] 必须是对象/);
+  assert.equal(assertLedgerShape(mini()), "", "合法 ledger 不得误报");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-dl-shape-"));
+  const p = path.join(dir, "x.json");
+  fs.writeFileSync(p, "{}");
+  const r = spawnSync(process.execPath, [MAIN, p], { cwd: projectRoot(), encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /结构不可用：differences 必须是数组/);
+  assert.ok(!/[Tt]ypeError/.test(r.stderr), "不得以 TypeError 栈形态失败");
 });

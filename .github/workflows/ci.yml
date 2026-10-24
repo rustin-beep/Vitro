@@ -568,6 +568,13 @@ jobs:
           - slice: bookkeeping
     steps:
       - uses: actions/checkout@v4
+      # #273 接线批（2026-10-24）：gen/contract slice 已跑 .mts 闸
+      # （icon_catalog / diff_ledger / 教学线）——node 版本走 .node-version 单点
+      # （type stripping 需 ≥22.18；不 pin 会随 runner 预装版本漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -782,7 +789,7 @@ jobs:
         # scripts/diff_ledger/ledger.json 双向对账：台账 anchors 不得
         # 虚报（正向），防线新豁免一条分叉必须同步收编台账（反向——
         # 沉默漂移即红）；schema/枚举域/17 键 capability_flags 锁定同判。
-        # --selftest 五路注入证红（J9）；shadow 真值为闸内清单
+        # --selftest 六路注入证红（J9）；shadow 真值为闸内清单
         # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
         # 维护窗口——G-7 同族）。
         shell: bash

@@ -114,6 +114,59 @@ export function readTsv(root: string, p: string, cols: string[]): TsvRow[] {
   return out;
 }
 
+/**
+ * 零依赖规则 schema 校验（#292 审阅 P2-2）。
+ *
+ * `JSON.parse(...) as Rules` 只骗过 tsc：规则字段类型畸形时不再 fail loud——
+ * 布尔写成 0（falsy）⇒ 整项检查静默关闭；数组写成字符串 ⇒ 子串误匹配；
+ * 对象写成 [] ⇒ `Object.entries` 为空 ⇒ 整项契约消失。Go 版靠
+ * `json.Unmarshal` 强类型天然守住这条，迁移必须显式补回（AGENTS §8 fail loud）。
+ */
+export function assertRules(raw: unknown): Rules {
+  // 抛 Error 而非直接 exit：便于进程内单测断言（run() 统一转 fatal exit 2）
+  const bad = (m: string): never => {
+    throw new Error(`规则文件 schema 非法：${m}（fail loud，不静默降级）`);
+  };
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) bad("顶层必须是对象");
+  const o = { ...(raw as Record<string, unknown>) };
+  for (const k of ["assets_dir", "index_tsv"]) {
+    if (typeof o[k] !== "string" || o[k] === "") bad(`${k} 必须是非空字符串`);
+  }
+  for (const k of ["geometry_json", "catalog_json"]) {
+    if (o[k] === undefined) o[k] = "";
+    else if (typeof o[k] !== "string") bad(`${k} 必须是字符串`);
+  }
+  for (const k of [
+    "forbid_color_literal",
+    "forbid_named_color",
+    "forbid_zero_length_subpath",
+    "forbid_aria_hidden",
+    "require_title",
+    "require_desc",
+    "emoji_must_be_unique",
+  ]) {
+    if (typeof o[k] !== "boolean") bad(`${k} 必须是布尔（收到 ${JSON.stringify(o[k])}）`);
+  }
+  for (const k of [
+    "allowed_elements",
+    "rect_forbidden_attrs",
+    "tsv_columns",
+    "categories",
+    "scopes",
+    "emoji_required_scopes",
+    "named_colors",
+  ]) {
+    const v = o[k];
+    if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) bad(`${k} 必须是字符串数组`);
+  }
+  const attrs = o["svg_attrs"];
+  if (attrs === null || typeof attrs !== "object" || Array.isArray(attrs)) bad("svg_attrs 必须是平面对象");
+  for (const [k, v] of Object.entries(attrs as Record<string, unknown>)) {
+    if (typeof v !== "string") bad(`svg_attrs.${k} 必须是字符串`);
+  }
+  return o as unknown as Rules;
+}
+
 export interface RunResult {
   errs: string[];
   passes: string[];
@@ -131,12 +184,9 @@ export function run(root: string, rulesPath = RULES_PATH): RunResult {
   }
   let rules: Rules;
   try {
-    rules = JSON.parse(rawRules) as Rules;
+    rules = assertRules(JSON.parse(rawRules));
   } catch (e) {
     fatal(`规则文件解析失败 ${rulesPath}：${e instanceof Error ? e.message : String(e)}`);
-  }
-  if (!rules.assets_dir || !rules.index_tsv) {
-    fatal("规则缺 assets_dir / index_tsv（fail loud，不猜默认值）");
   }
 
   const errs: string[] = [];
@@ -285,12 +335,20 @@ export function run(root: string, rulesPath = RULES_PATH): RunResult {
     }
     if (gb !== null) {
       let digest = "";
+      let parseFailed = false;
       try {
-        digest = (JSON.parse(gb) as { digest?: string }).digest ?? "";
+        const geo = JSON.parse(gb) as { digest?: unknown };
+        digest = typeof geo.digest === "string" ? geo.digest : "";
       } catch (e) {
         fail(`几何层 ${rules.geometry_json} 解析失败：${e instanceof Error ? e.message : String(e)}`);
+        parseFailed = true;
       }
-      if (digest !== "") {
+      // #292 审阅 P2-1：缺字段 / 空串**本身即红**（Go 版直接比较，空值必然 ≠ 现算）。
+      // 早前 `if (digest !== "")` 让缺 digest 的 icons.json 直接放行成"契约全绿"。
+      if (!parseFailed && digest === "") {
+        fail(`几何层 ${rules.geometry_json} 缺 digest 字段（空值不得放行——跑 gen_icons 同步）`);
+      }
+      if (!parseFailed && digest !== "") {
         const now = digestOf(sortedIds, svgBytes);
         if (digest !== now) {
           fail(`几何层 digest 过期：文件=${digest} 现算=${now}（跑 gen_icons 同步）`);

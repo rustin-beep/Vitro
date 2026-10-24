@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { digestOf, readTsv, run } from "./main.mts";
+import { assertRules, digestOf, readTsv, run } from "./main.mts";
 import type { Rules } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
@@ -80,7 +80,7 @@ function errsOf(f: Fixture): string {
   return run(f.root, f.rulesPath).errs.join("\n");
 }
 
-test("绿 fixture：零红，pass 面四项齐", () => {
+test("绿 fixture：零红，pass 面五项齐", () => {
   const f = makeFixture();
   const r = run(f.root, f.rulesPath);
   assert.deepEqual(r.errs, []);
@@ -132,7 +132,6 @@ test("J9 红：属性契约 / 具体色值 / 具名色 / 白名单外图元 / re
     ["id 命名", (f) => {
       fs.renameSync(path.join(f.root, "moonbit/icons/a.svg"), path.join(f.root, "moonbit/icons/Bad_Id.svg"));
       f.edit("moonbit/icons/index.tsv", (s) => s.replace("a\t", "Bad_Id\t"));
-      f.edit("moonbit/icons/index.tsv", (s) => s.replace("\t甲", "\t甲"));
       f.edit("moonbit/icons/Bad_Id.svg", (s) => s.replace("<desc>a</desc>", "<desc>Bad_Id</desc>"));
     }, /id 命名不合法/],
   ];
@@ -202,4 +201,29 @@ test("真实仓库：默认绿（OK 行逐字）+ -v 五项 pass", () => {
 
   const bad = spawnSync(process.execPath, [MAIN, "--nope"], { cwd: root, encoding: "utf8" });
   assert.equal(bad.status, 2);
+});
+
+test("P2-1：icons.json 缺 digest / 空串必须红（不得静默放行）", () => {
+  for (const bad of ["{}", '{"digest":""}']) {
+    const f = makeFixture();
+    fs.writeFileSync(path.join(f.root, "moonbit/icons/icons.json"), bad);
+    assert.match(errsOf(f), /缺 digest 字段（空值不得放行/, bad);
+  }
+});
+
+test("P2-2：规则字段类型畸形必须 fail loud（布尔变 0 / 数组变串 / 对象变数组）", () => {
+  const cases: Array<[string, (r: Record<string, unknown>) => void, RegExp]> = [
+    ["svg_attrs 变数组", (r) => { r["svg_attrs"] = []; }, /svg_attrs 必须是平面对象/],
+    ["布尔变 0", (r) => { r["forbid_color_literal"] = 0; }, /forbid_color_literal 必须是布尔/],
+    ["数组变字符串", (r) => { r["categories"] = "词法"; }, /categories 必须是字符串数组/],
+    ["named_colors 变字符串", (r) => { r["named_colors"] = "red"; }, /named_colors 必须是字符串数组/],
+    ["assets_dir 缺失", (r) => { delete r["assets_dir"]; }, /assets_dir 必须是非空字符串/],
+  ];
+  for (const [name, mutate, re] of cases) {
+    const r = baseRules() as unknown as Record<string, unknown>;
+    mutate(r);
+    assert.throws(() => assertRules(r), re, name);
+  }
+  // 合法规则必须通过（防止校验本身过严）
+  assert.equal(assertRules(baseRules()).assets_dir, "moonbit/icons");
 });

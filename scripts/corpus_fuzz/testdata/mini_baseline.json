@@ -1,0 +1,67 @@
+{
+  "entries": {
+    "baseline/char2d_string_init.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/char2d_string_init.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/char2d_string_init.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/char2d_string_init.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/char2d_string_init.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/qsort_strcmp_callback.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/qsort_strcmp_callback.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/qsort_strcmp_callback.c|init_partial": {
+      "bucket": "VITRO_TRAP"
+    },
+    "baseline/qsort_strcmp_callback.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "baseline/qsort_strcmp_callback.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/tree_level_order.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/tree_level_order.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/tree_level_order.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/tree_level_order.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/tree_level_order.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "gen:char_arith/000": {
+      "bucket": "AGREE"
+    },
+    "gen:char_arith/001": {
+      "bucket": "AGREE"
+    },
+    "gen:char_arith/002": {
+      "bucket": "AGREE"
+    },
+    "gen:diag_legal/000": {
+      "bucket": "AGREE"
+    },
+    "gen:diag_legal/001": {
+      "bucket": "AGREE"
+    },
+    "gen:diag_legal/002": {
+      "bucket": "AGREE"
+    }
+  }
+}

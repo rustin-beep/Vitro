@@ -316,7 +316,10 @@ jobs:
       # .corpus_fuzz_cache/ gitignored）。js 臂依赖 runner 预装 node。
       - name: Run corpus fuzz gate (baseline check)
         shell: bash
-        run: go run ./scripts/corpus_fuzz
+        # #292 批：驱动切 .mts（Go 版转回退面）+ 双轨对拍点名跑（迷你规则 21 变体）
+        run: |
+          node scripts/corpus_fuzz/main.mts
+          node scripts/parity_gate/main.mts --only scripts/corpus_fuzz
 
   gates-native:
     name: Native protocol & parity gates (consume exe)

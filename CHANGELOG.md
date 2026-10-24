@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 corpus_fuzz .mts 化（1100 行）+ 生成金样本 + 证红（2026-10-24）
+
+- **迁移**：对抗随机分叉闸全量移植（clang × vitro-native × vitro-js 三方六桶分类 / 指纹基线 / 新指纹·桶恶化判红 / `-freeze` 合并语义 / 缓存键 / `-probe` / 域生成器段）。
+- **字节语义是硬前提**：Go 侧 `src` 是 string（按字节索引），本版一律 Buffer——语料含中文注释，按 UTF-16 code unit 索引会让 `codeMask`/`firstIntLit` 位点整体漂移、变体字节随之不同。`detRand` 的 uint64 回绕改用 BigInt（number 在 >2^53 丢精度）。
+- **生成保真（本批主证据）**：`testdata/variants/*.c` 是 Go 版 `-freeze` 实跑落下的 **21 个变体**，测试用抽出的纯函数 `planVariants` 重算并**逐字节比对**——RNG、11 个算子、2 个生成器、采样派生种子全锁在这一层。`-freeze` 两侧产出的基线文件亦**逐字节相同**（说明 clangOutcome/parseVitro/bucketOf 全等价）。
+- **证红留痕（J9）**：把迷你基线里一个非 AGREE 条目改成 AGREE + 删一个条目 → 双侧同 **rc=1**，`新指纹=1 桶恶化=1` 两行逐字同；还原后复绿。
+- **对拍口径**：全量 318 变体 ≈ **9 分钟/侧**，故 parity 走 `testdata` 迷你规则（21 变体，≈19s/侧，`-regen` 让两侧都从干净缓存起）；CI 真跑仍是全量，随后点名对拍。
+- **接线**：corpus fuzz job 的 `go run` → node + `parity_gate --only scripts/corpus_fuzz`；文档补该驱动的清单行。
+- **测试 +11**：金样本 21 变体逐字节、DetRand（回绕/可复现/种子边界）、codeMask（注释/字符串/字符字面量/引号本体）、firstIntLit（跳 `#` 行与标识符中数字）、isSep·isAllDigits·replaceFirstBareType、latin1Fold、parseVitro 四态、bucketOf 六桶+恶化序、norm、迷你规则端到端、未知算子 fail loud。
+
 ### refactor(scripts): #273 toolchain_probe .mts 化（178 行）+ 证红留痕（2026-10-24）
 
 - **迁移**：四项检查全量移植（版本锁定 vs `toolchain_baseline.txt` / registry 索引行为式预检（`moon update` + 索引非空）/ F8 ICE 特征识别 / 退出码 fail loud）。默认模式 **stdout/stderr/rc 逐字零差**（首轮即零差）。

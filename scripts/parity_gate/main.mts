@@ -113,6 +113,17 @@ export const TARGETS: Target[] = [
   { dir: "scripts/moonbit/gen_stubs", goEntry: "gen_stubs", tsEntry: "main", modes: [["-check"]] },
   { dir: "scripts/moonbit/host_route_coverage", goEntry: "host_route_coverage", tsEntry: "main", modes: [[]] },
   { dir: "scripts/moonbit/source_hygiene", goEntry: "source_hygiene", tsEntry: "main", modes: [[]] },
+  {
+    // 全量跑一轮 ~9 分钟/侧（318 变体 × clang/js/native）⇒ 对拍走 testdata 迷你规则
+    // （21 变体 ≈ 40s/侧）：生成计划由 testdata/variants 的 Go 金样本逐字节锁、判定
+    // 流水线由这轮真跑锁。`-regen` 让两侧都从干净缓存起（否则首侧生成/次侧「缓存命中」
+    // 行不同）。
+    dir: "scripts/corpus_fuzz",
+    modes: [
+      ["-regen", "-rules", "scripts/corpus_fuzz/testdata/mini_rules.json", "-baseline", "scripts/corpus_fuzz/testdata/mini_baseline.json"],
+    ],
+    exclusive: "需 clang + cmd/run release exe + launcher（corpus fuzz job 具备）",
+  },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   { dir: "scripts/toolchain_probe", entry: "toolchain_probe", modes: [[]] },
   {

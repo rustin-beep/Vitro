@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 vitro_cli_smoke .mts 化（617 行）+ parity artifact 组（2026-10-24）
+
+- **迁移**：三臂 CLI 协议闸全量移植——A 组壳 rc 契约（8 例 + `api --batch` 跨帧状态断言）、B 组三臂同形对拍（5 fixture × wasm/js/native + api help 三态 + 失败帧 rc + `rc=4` stdout 恒空 8 路径 × 三臂 + `--realtime` 分臂口径 + note 去重 + 1MB 映像）、C 组 launcher（sh ×3 + cmd.exe）、G 组 #129 通道分立、D 组薄壳 include（薄壳 exe 在位才跑，否则显式 skip）。
+- **对拍**：默认模式（34 行输出）与 `--corpus 2` 两模式 stdout/stderr/rc **逐字零差**；本地墙钟 9.6s（Go 9.5s）。
+- **parity 机制扩展**：`TARGETS` 新增 `requires`（产物前置）+ `--only <dir>[,<dir>]`；artifact 组默认**跳过并打印留痕**，点名跑时缺任一产物即 **rc 2 硬红**（缺件/未知目录两路证红实测）——杜绝「静态 job 里两侧同报前置产物缺失」的空转绿。
+- **接线**：gates-wasm 的 cli_smoke slice 两处——`go run ./scripts/vitro_cli_smoke` → `node scripts/vitro_cli_smoke/main.mts --corpus 30`，并新增 `parity_gate --only scripts/vitro_cli_smoke`（该 slice 是唯一四臂产物齐备处）。
+- **测试 +8**：`stripBackendLine` / `firstDiff` / `runOut` 合并通道与 CRLF 归一 / rc 透传（不被折码）/ `runSplit` 通道分离 / 缺产物 fail loud（rc 1 + 构建指引）/ flag 用法错 rc 2 / e2e（四臂就绪才跑，缺产物显式 skip）。
+- **踩坑**：`spawnSync` 的 `encoding: "buffer"` 不存在（要 Buffer 就不传 encoding，否则 `Buffer.from(input,"buffer")` 直接 TypeError）。
+
 ### refactor(scripts): #273 demo_ui_lint 双件 .mts 化（1197 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：`main.go`(924) + `raw.go`(273) → `main.mts` + `raw.mts`。判定面全数保留：三路字符串契约（类名/CSS 变量/id）+ mono 连字**值**判据 + 四张僵尸表 + 抽取面下限 + 裸值棘轮六路（新增/用量增加/僵尸/用量减少/分量变化/绝对路径归一）。

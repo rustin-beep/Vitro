@@ -541,11 +541,14 @@ jobs:
       # note 前缀 → B 组双臂对拍红（已留痕）。前置 = gateway wasm 产物
       # （artifact）+ 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）
       # + Go + node（上方公共步）。
-      - name: unified CLI smoke (wasm shell vs native exe)
+      - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
         if: matrix.slice == 'cli_smoke'
         run: |
           cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
-          go run ./scripts/vitro_cli_smoke --corpus 30
+          node scripts/vitro_cli_smoke/main.mts --corpus 30
+          # 双轨对拍（#292 批）：本 slice 是唯一四臂产物齐备处——artifact 组
+          # 只能在这里点名跑（parity_gate 默认跳过 artifact 组，缺产物即 rc 2 硬红）。
+          node scripts/parity_gate/main.mts --only scripts/vitro_cli_smoke
         shell: bash
 
       # algorithms.catalog 三方对账（#36，2026-10-16）：判据源码 build_match

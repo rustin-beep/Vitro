@@ -14,10 +14,11 @@
 //   - 其余一律逐字比。
 //
 // 用法：
-//   node scripts/parity_gate/main.mts             # 全量对拍（CI 形态）
-//   node scripts/parity_gate/main.mts --selftest  # 注入必然差异，证明闸会红
+//   node scripts/parity_gate/main.mts                     # 全量对拍（CI 静态 job 形态：只跑无产物依赖目标）
+//   node scripts/parity_gate/main.mts --only <dir>[,<dir>] # 点名跑（artifact 组必须这样跑：缺产物即 rc 2 硬红）
+//   node scripts/parity_gate/main.mts --selftest           # 注入必然差异，证明闸会红
 //
-// 退出码：0 全等价 / 1 有差异（逐条列） / 2 用法或环境错。
+// 退出码：0 全等价 / 1 有差异（逐条列） / 2 用法、产物或环境错。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -30,6 +31,12 @@ export interface Target {
   dir: string;
   /** 参数组；每组是一次完整的 argv */
   modes: string[][];
+  /**
+   * 产物前置（仓库相对路径）。带此字段 = **artifact 组**：不进默认跑（静态 job
+   * 没产物时会两侧同报「前置产物缺失」空转绿——那是假绿，不是等价）；只在
+   * 构建过产物的 job 里用 `--only <dir>` 显式跑，且缺任一产物即 rc 2 硬红。
+   */
+  requires?: string[];
 }
 
 /**
@@ -72,6 +79,19 @@ export const TARGETS: Target[] = [
   { dir: "scripts/host_contract_map", modes: [[], ["-strict"], ["-selftest"]] },
   { dir: "scripts/skill_path_check", modes: [[], ["-selftest"]] },
   { dir: "scripts/gen_demo_tokens", modes: [["-check"], ["-selftest"]] },
+  // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
+  {
+    dir: "scripts/vitro_cli_smoke",
+    // 默认（内置 5 fixture × 三臂）+ --corpus 2（语料级循环面）。
+    // 全量 --corpus 30 留给 CI 的 cli_smoke slice（对拍只验等价，不重复全量跑）。
+    modes: [[], ["--corpus", "2"]],
+    requires: [
+      "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js",
+      "moonbit/_build/native/release/build/cmd/vitro/vitro.exe",
+      "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm",
+      "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js",
+    ],
+  },
 ];
 
 /**
@@ -186,9 +206,19 @@ function firstDiffLine(a: string, b: string): string {
 
 export function main(argv: string[]): number {
   let selftest = false;
-  for (const a of argv) {
+  let only: string[] | null = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i] ?? "";
     if (a === "--selftest" || a === "-selftest") selftest = true;
-    else {
+    else if (a === "--only") {
+      const v = argv[i + 1];
+      if (v === undefined || v === "") {
+        process.stderr.write("parity_gate: --only 需要逗号分隔的仓库相对目录\n");
+        return 2;
+      }
+      only = v.split(",").map((s) => s.trim()).filter((s) => s !== "");
+      i++;
+    } else {
       process.stderr.write(`parity_gate: 未知参数 ${JSON.stringify(a)}\n`);
       return 2;
     }
@@ -211,8 +241,39 @@ export function main(argv: string[]): number {
     let cases = 0;
     let goTotal = 0;
     let tsTotal = 0;
+
+    // 选取面：默认跑 artifact-free 目标（静态 job 无产物）；`--only` 点名跑
+    // 指定目标（跨两组，供产物就绪的 job 用）。
+    let selected: Target[];
+    if (only === null) {
+      selected = TARGETS.filter((t) => t.requires === undefined);
+      const skipped = TARGETS.filter((t) => t.requires !== undefined);
+      if (skipped.length > 0) {
+        process.stdout.write(
+          `parity_gate: 跳过 ${skipped.length} 个产物依赖目标（在产物就绪的 job 用 --only 跑）：${skipped.map((t) => t.dir).join(", ")}\n`,
+        );
+      }
+    } else {
+      const known = new Set(TARGETS.map((t) => t.dir));
+      const unknown = only.filter((d) => !known.has(d));
+      if (unknown.length > 0) {
+        process.stderr.write(`parity_gate: --only 含未登记目录 ${unknown.join(", ")}（须先入 TARGETS）\n`);
+        return 2;
+      }
+      selected = TARGETS.filter((t) => only.includes(t.dir));
+      // 点名跑 = 断言产物就绪：缺产物硬红，绝不空转绿
+      for (const t of selected) {
+        for (const rel of t.requires ?? []) {
+          if (!fs.existsSync(path.join(projectRoot(), rel))) {
+            process.stderr.write(`parity_gate: ${t.dir} 产物缺失 ${rel}——artifact 组须在构建过产物的 job 里跑\n`);
+            return 2;
+          }
+        }
+      }
+    }
+
     const wall0 = performance.now();
-    for (const t of TARGETS) {
+    for (const t of selected) {
       const goMain = path.join(projectRoot(), t.dir, "main.go");
       const tsMain = path.join(projectRoot(), t.dir, "main.mts");
       if (!fs.existsSync(goMain) || !fs.existsSync(tsMain)) {
@@ -255,7 +316,7 @@ export function main(argv: string[]): number {
     }
     const wall = performance.now() - wall0;
     const ratio = goTotal > 0 ? tsTotal / goTotal : 0;
-    process.stdout.write(`parity_gate: PASS（${TARGETS.length} 个双轨脚本 × ${cases} 组参数，stdout/stderr/rc 全等价）\n`);
+    process.stdout.write(`parity_gate: PASS（${selected.length} 个双轨脚本 × ${cases} 组参数，stdout/stderr/rc 全等价）\n`);
     // 双边计时：一次对拍 = go 侧 + ts 侧（理论 ≈ 单边 2×；不含 go build）
     process.stdout.write(
       `  耗时（同口径，不含 go build）：go 侧 ${Math.round(goTotal)} ms / ts 侧 ${Math.round(tsTotal)} ms` +

@@ -719,7 +719,7 @@ jobs:
         # cmd/* 为工具层豁免方向检查。J9 证红已留痕（注入 opcode→bytecode
         # 同时触发越层与成环两条判据）。
         shell: bash
-        run: go run ./scripts/moonbit/pkg_deps -check
+        run: node scripts/moonbit/pkg_deps/main.mts -check
 
       - name: MoonBit interface-surface sync (moon info no-drift)
 
@@ -883,7 +883,7 @@ jobs:
         # 归 hygiene（2026-09-23）：红 = 裁决的规模前提过期待重估——决策账，
         # 不指当下提交有问题。
         shell: bash
-        run: go run ./scripts/perf_budget -check
+        run: node scripts/perf_budget/main.mts -check
 
       - name: Editorconfig hard-rule check (charset/EOL/final-newline/JSON indent)
 

@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 perf_budget .mts 化（380 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：阈值断言原样——每个 counter 的**单文件计数最大值**不得超其预算，按 corpus_dir 分档（dir_tiers 首命中，未命中落顶层 max_per_file），超阈输出 on_exceed 指回裁决。扫描面 = corpus_dirs 下目标扩展名，比对前粗去块注释与行注释（两侧同口径）。
+- **保留的两个守卫**：档位目录**存在性**（目录名写错会静默落顶层档 → 配置空转，fail loud）与 **0 语料即红**。
+- **对拍**：默认 / -check / --selftest 三模式 stdout 与 rc 逐字零差；selftest 会临时把预算压 0 再恢复 rules.json（TS 侧用 try/finally，验证后工作区无残留）。
+- **接线**：CI 切 node；parity TARGETS 扩到 13 双轨。
+- **测试 +5**：stripComments（块/行注释 + 字符串内 // 不误伤）、tierOf（首命中/落顶层）、真实规则 scan 自洽、J9 内存注入（预算压 0 必有超阈）、真实三模式。
+
+### refactor(scripts): #273 pkg_deps .mts 化（396 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：四判据原样——未登记分层 / 向上越层 / 成环 / 空集不得绿；cmd 前缀豁免方向检查但仍参与环检测，外部分依赖不判定。扫描面 = 含 moon.pkg 的目录，import 块（含 for test）取同 module 前缀，子包按最长前缀继承父包层号。
+- **对拍**：默认（分层报告）/ -check / --selftest 三模式 stdout 与 rc 逐字零差（一次通过）。
+- **接线**：CI 的 -check 切 node；parity TARGETS 扩到 12 双轨。
+- **测试 +5**：parseDeps（前缀/去 self/去重/排序/for test）、longestPrefixLevel、verdict 三路红（手工构图，不依赖 scan 的 cwd）、findCycle（造环与无环）、真实仓库三模式。
+
 ### refactor(scripts): #273 libc_single_source .mts 化（368 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：四判据原样——① 四表非空且无重复（空集不得绿）② `builtin_all ==

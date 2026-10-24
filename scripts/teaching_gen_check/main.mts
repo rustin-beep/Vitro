@@ -203,6 +203,11 @@ export function main(argv: string[]): number {
       }
       backend = v;
     } else if (flag === "-write" || flag === "--write") {
+      // #289 审阅 P3-1：布尔 flag 带 = 值显式拒绝（Go flag 解析 false，本版早前丢值当 true）
+      if (eq >= 0) {
+        process.stderr.write(`[teaching_gen_check] 布尔 flag ${flag} 不接受值（收到 ${a}）\n`);
+        return 2;
+      }
       writeMode = true;
     } else {
       // 用法错 = exit 2（Go flag 包同口径），与判定红的 1 分流

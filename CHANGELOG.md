@@ -12,6 +12,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts): #289 审阅处置——freeze 转义口径 / 布尔 flag 语义 / 诊断形态 / 文档数字（2026-10-24）
+
+- **P2-1（必修，已修）**：`--freeze` 写回未复刻 Go `MarshalIndent` 的 `SetEscapeHTML`
+  （`<` `>` `&` 与 U+2028/U+2029 转义）——未变更树上重冻会产出 **154 行 / −950 B
+  伪漂移**（golden 里 190 处 `\u003c/\u003e/\u0026` 被换成裸字符）。修法 =
+  `goJSONMarshalIndent`（序列化后补五类转义）；红证 = 修复前 `git diff --stat` 154 行，
+  绿证 = 修复后 `sha256sum -c` 逐字节一致；单测含 `<>&` 与 U+2028/2029 样例。
+- **P2-2（处置：收紧声明面；根因未定位，不猜修）**：`host_contract_map` 在
+  Node 25.9.0 下 **import 即崩** —— `Assertion failed: !(handle->flags &
+  UV_HANDLE_CLOSING)`（rc=127），Node 24.22.1 全绿；最小工程未复现，评估
+  30–60 min 仍无收敛。处置 = `engines` 由 `>=24` 收紧为 **`>=24 <25`**（声明面与
+  实测面一致），定位另开。**为什么不选「升 25.x 复测」**：该环境无稳定可控的
+  Node 25 安装面（`npx node@24` 的 `.bin` shim 已实测是坏的，会给出假 127），
+  拿不到可信复测证据就不宣称支持。
+- **P3-1（已修）**：布尔 flag 的 `=value` 形态原被静默当 true（`--freeze=false`
+  会真去冻结）——`teaching_annotation_diff` / `teaching_gen_check` /
+  `skill_path_check` 三处改为**显式 exit 2**。**有意差异**：Go `flag` 把
+  `=false` 解析为假并继续，本版拒绝执行——选「报错」而非猜语义，与
+  `gen_demo_tokens` 既有形态一致。
+- **P3-2（已修）**：数字按实测重算——7 件 Go 合计 **2030** 行（原写 2118）、
+  **11 条**命令行（原写 10 处活行）、测试 **229 → 249**（原写 229 → 255，与
+  annotation 小节的 249 → 263 自相矛盾）；`skill_path_check` 测试标题的写死引用数
+  改为**形态断言**（数字随文档增删漂移，写死即假账）。
+- **P3-3（已修）**：`skill_path_check` 的 MISSING 行路径形态对齐 Go（默认相对 /
+  显式 `-root` 绝对；原一律相对）；`course_catalog` 的 exec 错误串改
+  `exit status N`（Go `*exec.ExitError` 形态，原为 `exit N`）。
+- **测试**：+5 例（**263 → 268**），全部真实执行——P2-1 转义单测、三处
+  `--flag=false` 拒绝、`-root` 绝对路径形态。
+
 ### refactor(scripts+ci): #273 teaching_annotation_diff 982 行 .mts 化 + 三处 CI 接线（2026-10-24）
 
 - **重写面**：`scripts/teaching_annotation_diff/`（原 Go `main.go` 568 + `catalog_check.go`
@@ -43,20 +72,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **接线面（本批重点）**：`teaching_gen_check` / `teaching_reconcile` /
   `host_contract_map` / `course_catalog` / `gen_demo_tokens` /
   `skill_path_check` / `teaching_phase_vocab` 的 CI 引用由 `go run` 全量切
-  `node scripts/.../main.mts`（10 处活行 + 注释处方同步改写，防
+  `node scripts/.../main.mts`（11 条命令行 + 注释处方同步改写，防
   `ci_checklist` 活行正则扫到注释误判）。`static-gates` 新增
   `actions/setup-node`（`node-version-file: .node-version`，type stripping
   需 ≥22.18——不 pin 会随 runner 预装漂移）；`demo` job 复用已有 Node 24 步。
   Go 版转纯回退面（目录仍被 node 活行占用，`ci_checklist` 同目录归并，不报
   漏登记），退役另批裁定。
-- **重写面**：7 件 `.mts` 双轨（原 Go 合计 2118 行）+ 配套 `main.test.mts`。
+- **重写面**：7 件 `.mts` 双轨（原 Go 合计 2030 行）+ 配套 `main.test.mts`。
   Go/TS 双跑证据：`teaching_phase_vocab`（绿 + selftest 四路）、
   `teaching_reconcile`（默认/-v 101 行/-selftest）、`host_contract_map`
   （默认/-strict/-selftest）、`skill_path_check`（默认/-selftest）、
   `course_catalog`（默认/-v/-selftest）、`teaching_gen_check`（3 产物 + 负例
   ×7）均**逐字零差**；`gen_demo_tokens` 重生成产物与入库 `tokens.css`
   **逐字节一致**（cmp）。
-- **测试补口**：`node:test` 新增 26 例（229 → 255）。重点是此前**零覆盖**的
+- **测试补口**：`node:test` 新增 20 例（229 → 249）。重点是此前**零覆盖**的
   路径：`course_catalog` 的 lesson.c 双臂对拍（仓库长期无 lesson.c，本批以
   自造临时课目录跑 vivo↔clang 绿 + 坏 lesson.c 判红，缺 vitro js 臂/clang
   时显式 skip 打印原因，不静默绿）；`gen_demo_tokens` 的

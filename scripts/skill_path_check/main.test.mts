@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { checkToken, run } from "./main.mts";
+import { checkToken } from "./main.mts";
 import type { Rules } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
@@ -120,9 +120,12 @@ test("端到端：skills 目录缺失 / 0 个 md → fail loud", () => {
   assert.match(b.stderr, /0 个 md 文件——扫描面塌缩/);
 });
 
-test("真实仓库：19 文件 / 151 引用 / 0 缺失（与 Go 版同计数）", () => {
-  const r = run(projectRoot());
-  assert.equal(r, 0);
+test("真实仓库：扫描面非空 + 零缺失（计数不写死——随文档改动漂移，见 P3-2）", () => {
+  const root = projectRoot();
+  const r = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /files=\d+ repo_path_refs=\d+ \(min_hits=\d+\) missing=0/);
+  assert.match(r.stdout, /ok all referenced repo paths exist/);
 });
 
 test("真实仓库端到端：默认 exit 0 + selftest 9 路 + 未知参数 exit 2", () => {
@@ -138,4 +141,18 @@ test("真实仓库端到端：默认 exit 0 + selftest 9 路 + 未知参数 exit
 
   const bad = spawnSync(process.execPath, [MAIN, "--nope"], { cwd: root, encoding: "utf8" });
   assert.equal(bad.status, 2);
+});
+
+test("P3-1：-selftest 带 = 值显式拒绝（rc=2）", () => {
+  const r = spawnSync(process.execPath, [MAIN, "-selftest=false"], { cwd: projectRoot(), encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /布尔 flag -selftest 不接受值/);
+});
+
+test("P3-3：显式 -root 时 MISSING 路径形态为绝对（与 Go 同）", () => {
+  const root = tmpRepo({ md: "`scripts/ghost/zzz`\n", rules: { min_hits: 1 } });
+  const r = spawnSync(process.execPath, [MAIN, "-root", root], { cwd: root, encoding: "utf8" });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  const pathSeg = root.split(path.sep).join("/") + "/.agents/skills/demo/SKILL.md:1";
+  assert.ok(r.stdout.includes(pathSeg), `期望绝对路径 ${pathSeg}，实得：${r.stdout}`);
 });

@@ -15,7 +15,7 @@ import {
   extractDemoGroups,
   loadRules,
 } from "./catalog.mts";
-import { compareTemplate, filterMigrated, parseArgs, recordString } from "./main.mts";
+import { compareTemplate, filterMigrated, goJSONMarshalIndent, parseArgs, recordString } from "./main.mts";
 import type { FirstOccurrence } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
@@ -243,4 +243,25 @@ test("端到端 --catalog-check：判据 43 ↔ 双臂 ↔ rules 43（缺产物�
 test("用法错 exit 2", () => {
   const r = spawnSync(process.execPath, [MAIN, "--nope"], { cwd: projectRoot(), encoding: "utf8" });
   assert.equal(r.status, 2);
+});
+
+test("P2-1：goJSONMarshalIndent 复刻 Go SetEscapeHTML（< > & 与 U+2028/2029）", () => {
+  const out = goJSONMarshalIndent({ s: "<a>&</a>", u: "\u2028\u2029" });
+  assert.ok(!out.includes("<") && !out.includes(">") && !out.includes("&"), "不得出现裸字符：" + out);
+  assert.match(out, /\\u003c/);
+  assert.match(out, /\\u003e/);
+  assert.match(out, /\\u0026/);
+  assert.match(out, /\\u2028/);
+  assert.match(out, /\\u2029/);
+  // 键序/缩进/尾换行不变（不含转义字符时与 JSON.stringify 一致）
+  assert.equal(goJSONMarshalIndent({ a: 1, b: 2 }), JSON.stringify({ a: 1, b: 2 }, null, 2));
+});
+
+test("P3-1：布尔 flag 带 = 值显式拒绝（rc=2，不静默当 true）", () => {
+  const root = projectRoot();
+  for (const args of [["--freeze=false", "--only", "bubble"], ["--backend-wasm=false"], ["--catalog-check=false"]]) {
+    const r = spawnSync(process.execPath, [MAIN, ...args], { cwd: root, encoding: "utf8" });
+    assert.equal(r.status, 2, args.join(" "));
+    assert.match(r.stderr, /布尔 flag .* 不接受值/);
+  }
 });

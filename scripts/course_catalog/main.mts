@@ -205,7 +205,7 @@ export function collectVitroOutput(cPath: string, stdin: string): { stdout: Buff
     const r = spawnSync("bash", args, { cwd: root });
     if (r.error !== undefined || r.status !== 0) {
       throw new Error(
-        `vitro run: ${r.error?.message ?? `exit ${r.status}`}\n${(r.stdout ?? Buffer.alloc(0)).toString("utf8")}`,
+        `vitro run: ${r.error?.message ?? `exit status ${r.status}`}\n${(r.stdout ?? Buffer.alloc(0)).toString("utf8")}`,
       );
     }
     return collectFrames((r.stdout ?? Buffer.alloc(0)).toString("utf8"));

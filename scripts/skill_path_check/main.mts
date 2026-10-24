@@ -47,6 +47,8 @@ const TOKEN_SPLIT = /[ \t|;()"'&,*?（），：、；。「」『』·—…]+/;
 
 /** 进程级上下文（与 Go 版 repoRoot / topCache 同位；selftest 会重置）。 */
 let repoRoot = "";
+/** 显示形态：#289 审阅 P3-3——Go 默认 root="." 输出相对路径，显式 -root 原样输出。 */
+let displayRelative = true;
 let topCache = new Set<string>();
 
 function fail(msg: string): never {
@@ -97,7 +99,7 @@ export function scanFile(p: string, r: Rules): { hits: Hit[]; repoHits: number; 
   let skips = 0;
   let repoHits = 0;
   let inFence = false;
-  const rel = path.relative(repoRoot, p).split(path.sep).join("/");
+  const rel = (displayRelative ? path.relative(process.cwd(), p) : p).split(path.sep).join("/");
   lines.forEach((raw, i) => {
     if (FENCE_RE.test(raw)) {
       inFence = !inFence;
@@ -186,7 +188,8 @@ function collectMd(root: string): string[] {
   return out;
 }
 
-export function run(root: string): number {
+export function run(root: string, relativePaths = true): number {
+  displayRelative = relativePaths;
   const r = loadRules(root);
   repoRoot = root;
   topCache = new Set(fs.readdirSync(root));
@@ -272,7 +275,14 @@ export function main(argv: string[]): number {
         return 2;
       }
       rootArg = v;
-    } else if (flag === "-selftest" || flag === "--selftest") self = true;
+    } else if (flag === "-selftest" || flag === "--selftest") {
+      // #289 审阅 P3-1：布尔 flag 带 = 值显式拒绝（不静默当 true）
+      if (eq >= 0) {
+        process.stderr.write(`skill_path_check: 布尔 flag ${flag} 不接受值（收到 ${a}）\n`);
+        return 2;
+      }
+      self = true;
+    }
     else {
       process.stderr.write(`skill_path_check: 未知参数 ${JSON.stringify(a)}\n`);
       return 2;
@@ -280,8 +290,10 @@ export function main(argv: string[]): number {
   }
   if (self) return selftest();
   // 默认根 = 仓库根（projectRoot 找不到即 exit 2）；显式 -root 原样解析
-  const root = rootArg === "." ? projectRoot() : path.resolve(rootArg);
-  return run(root);
+  const explicit = rootArg !== ".";
+  const root = explicit ? path.resolve(rootArg) : projectRoot();
+  // 路径显示形态随实参：默认（仓库根相对）对齐 Go 的相对输出；显式 -root 原样绝对
+  return run(root, !explicit);
 }
 
 const invokedDirectly =

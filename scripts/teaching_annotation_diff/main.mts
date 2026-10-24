@@ -66,6 +66,24 @@ function quote(s: string): string {
   return JSON.stringify(s);
 }
 
+/**
+ * Go `json.MarshalIndent` 口径（`SetEscapeHTML` 默认 true）：
+ * `<` `>` `&` 与 U+2028/U+2029 一律转义成 `\uXXXX`。
+ *
+ * **为什么必须补**（#289 审阅 P2-1 实测）：`JSON.stringify` 不转义这些字符，
+ * 直接写回会把入库 golden 里 190 处 `\u003c/\u003e/\u0026` 换成裸字符 ——
+ * 未变更树上 `--freeze` 会产出 154 行 / −950 B 的伪漂移。只读模式对拍不存在
+ * 该面（它不写盘），故此前等价证据覆盖不到。
+ */
+export function goJSONMarshalIndent(v: unknown): string {
+  return JSON.stringify(v, null, 2)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 /** Go `%+v` 结构体打印的近似形态（红路径诊断用）。 */
 function plusV(e: FirstOccurrence): string {
   return `{Algorithm:${e.algorithm} DisplayName:${e.display_name} Phase:${e.phase} Desc:${e.desc} CodeLine:${e.code_line} Src:${e.src}}`;
@@ -260,12 +278,27 @@ export interface ParsedArgs {
   freeze: boolean;
 }
 
+/** 布尔 flag 名集（`=value` 形态一律拒，见 parseArgs 注）。 */
+const BOOL_FLAGS = new Set([
+  "-backend-wasm",
+  "--backend-wasm",
+  "-catalog-check",
+  "--catalog-check",
+  "-catalog-selftest",
+  "--catalog-selftest",
+  "-freeze",
+  "--freeze",
+]);
+
 export function parseArgs(argv: string[]): { args: ParsedArgs } | { usage: string } {
   const args: ParsedArgs = { only: "", backendWasm: false, catalogCheck: false, catalogSelftest: false, freeze: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? "";
     const eq = a.indexOf("=");
     const flag = eq >= 0 ? a.slice(0, eq) : a;
+    // #289 审阅 P3-1：Go flag 对 `--bool=false` 解析为 false，本版早前按名分支
+    // 丢值 ⇒ `--freeze=false` 被当 true 执行冻结。显式拒绝（不猜值语义）。
+    if (eq >= 0 && BOOL_FLAGS.has(flag)) return { usage: `布尔 flag ${flag} 不接受值（收到 ${a}）` };
     switch (flag) {
       case "-only":
       case "--only": {
@@ -471,7 +504,7 @@ export function main(argv: string[]): number {
       }));
     }
     try {
-      fs.writeFileSync(goldenPath, JSON.stringify(ordered, null, 2) + "\n", "utf8");
+      fs.writeFileSync(goldenPath, goJSONMarshalIndent(ordered) + "\n", "utf8");
     } catch (e) {
       process.stdout.write("错误: golden 写回失败: " + (e instanceof Error ? e.message : String(e)) + "\n");
       return 2;

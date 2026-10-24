@@ -4,6 +4,9 @@
 // 端到端由本地双跑对拍（Go ↔ .mts 输出逐字一致）与 CI gen slice 的生成闸承担。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { projectRoot } from "../internal/capi.mts";
 import { programRC, rebuildChannel } from "./main.mts";
 
 /** 造一帧 --json 输出行（与 CLI_PROTOCOL_V1 的 stdout/stderr 帧同形）。 */
@@ -44,4 +47,13 @@ test("rebuildChannel：按帧类型分流，忽略非 JSON 行与无 delta 行",
 test("rebuildChannel：delta 为空 / 全无匹配 → 空 Buffer", () => {
   assert.equal(rebuildChannel("", "stdout").length, 0);
   assert.equal(rebuildChannel(frame("stdout", ""), "stdout").length, 0);
+});
+
+test("P3-1：-write 带 = 值显式拒绝（rc=2，不静默进入 write 模式）", () => {
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "main.mts"), "-write=false"], {
+    cwd: projectRoot(),
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /布尔 flag -write 不接受值/);
 });

@@ -11,7 +11,7 @@
     },
     "styles": {
       ".vr-masthead": {
-        "background-color": "rgba(255, 255, 255, 0.94)",
+        "background-color": "rgb(255, 255, 255)",
         "color": "rgb(26, 39, 64)",
         "border-top-color": "rgb(26, 39, 64)",
         "border-left-color": "rgb(26, 39, 64)",
@@ -233,7 +233,7 @@
     },
     "styles": {
       ".vr-masthead": {
-        "background-color": "rgba(255, 253, 253, 0.94)",
+        "background-color": "rgb(255, 253, 253)",
         "color": "rgb(46, 36, 40)",
         "border-top-color": "rgb(46, 36, 40)",
         "border-left-color": "rgb(46, 36, 40)",
@@ -455,7 +455,7 @@
     },
     "styles": {
       ".vr-masthead": {
-        "background-color": "rgba(13, 20, 40, 0.94)",
+        "background-color": "rgb(13, 20, 40)",
         "color": "rgb(230, 235, 247)",
         "border-top-color": "rgb(230, 235, 247)",
         "border-left-color": "rgb(230, 235, 247)",
@@ -677,7 +677,7 @@
     },
     "styles": {
       ".vr-masthead": {
-        "background-color": "rgba(248, 243, 232, 0.94)",
+        "background-color": "rgb(248, 243, 232)",
         "color": "rgb(29, 26, 21)",
         "border-top-color": "rgb(29, 26, 21)",
         "border-left-color": "rgb(29, 26, 21)",
@@ -899,7 +899,7 @@
     },
     "styles": {
       ".vr-masthead": {
-        "background-color": "rgba(8, 17, 26, 0.94)",
+        "background-color": "rgb(8, 17, 26)",
         "color": "rgb(219, 232, 244)",
         "border-top-color": "rgb(219, 232, 244)",
         "border-left-color": "rgb(219, 232, 244)",

@@ -12,6 +12,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(demo): B 线批三——真实浏览器实测三连 #286 P1×3 + #287 P2×5 + #288 P3×2（2026-10-24）
+
+- **#286 P1 三条**：①sticky 顶栏遮运行条——五主题 `--vr-masthead` token
+  0.94 半透明 → 不透明等价色（tokens.json 真源改 + gen_demo_tokens 再生
+  + style_contract 基线五行连坐重冻），`html { scroll-padding-top:
+  calc(var(--vr-masthead-h) + 12px) }`（顶栏高度 65/63px 变量单源，视口
+  媒体查询口径——html 非 .vr-shell 后代容器查询够不到）；②首帧读数错标
+  ——Timeline `code_line=0` 三义分流（首帧「程序开始 · 尚未执行语句」/
+  末帧「程序收尾」/中间「本帧无当前语句」），移动端当前行空态按
+  `frames.length` 分流（有帧无语句 ≠ 未采集，与同屏「已暂停 · 第 1/N 帧」
+  不再自相矛盾）；③分享链接仅改 hash 静默——boot 链 hash 解析抽
+  `applySharedHash()` 复用 + `hashchange` 监听（boot 前不动、分享按钮
+  replaceState 写 hash 无自触发回路；好载荷 toast+回工作态、坏载荷
+  shareError 横幅，同文档导航路径不再零反馈）。
+- **#287 P2 五条**：①argv 胶囊直达——`ui.scfgOpen` 受控 details
+  （`bind:open` 双向），点胶囊=开面板+展开 details，argv 框立即可见，
+  summary 文案去 argv 后缀；②trap 长文 toast（受检终止全文进 toast 是
+  窄屏「占屏浮层」真身）——`.vr-toast` 改 flex 钉 × 在文本列外 + 文本区
+  `max-height: min(300px, 45vh)` 内部滚动（390 档实测 316px 高、× 可见、
+  可滚动）；③单栏 toast 压代码——`@media (max-width: 1179px)` toast 移
+  顶栏下方（实测 1024 档 top=75px 避开代码区 top=254px）；④窄屏顶栏——
+  诊断手册 ≤760 档收纯图标（mini 文案退役，语义在 title/aria）+
+  `.vr-app` 窄档 padding 16→20px（右缘余量实测 16→20px）；⑤启动遮罩
+  「约 0.9 MB」过期文案改「< 1 MB」（体积随构建变，写死必陈旧）。
+- **#288 P3 两条**：①boot RPC 无超时兜底——`rpc()` 加超时（boot/invoke
+  15s / collect/feed 长面 120s，超时 `killWorker()` 销毁重建使「重试」真
+  重建）+ `worker.onerror`/`onmessageerror` `rejectAllPending`（Worker
+  级故障全部在途 rpc 立即 reject 不干等）——**红→绿实证**：旧版拦 worker
+  chunk 实测遮罩常驻零提示（waitFor 超时），新版 e2e_bootfail 新增
+  B4/B5/B6（拦 worker chunk → 遮罩撤+失败横幅+重试在场 → 产物还原正常
+  boot）6/6 绿；②char 数组 NUL 裸 0——`ArrayCells` 判据从「元素可解析成
+  数字」改 `element_ty === "char"`（全 NUL char 数组不再降级数字格）+
+  不可打印字节消费侧 C 转义渲染（0→`'\0'`、10→`'\n'`、其余→`'\xHH'`，
+  与可打印 `'c'` 同带引号不再混排；string_match_bf 实测全帧带引号、
+  转义格 86+）。**引擎侧协议面歧义保留**（`vm/observe.mbt` TK_Char 臂
+  不可打印回传裸数字——A 线域且改回传形态牵全量 golden 重冻，demo 消费
+  侧已消化，单独批处置）。
+- **验证**：demo 静态面（tsc/svelte-check/oxlint/vite build）全绿；
+  E2E 五套 97 锚全绿（bootfail 6/6〔新增 3〕+ session 21/21 + diagcard
+  18/18 + editor 10/10 + workspace 38/38）；E-08 17/17；demo_smoke
+  197/197；style_contract 基线重冻后 5×19×9 PASS；CDP 探针 14/14
+  （scroll-padding 77px / 首末帧读数 / hashchange 好坏双路 / argv 直达 /
+  char 转义 / 390 顶栏余量 20px / 单栏 toast 顶部 / trap 长文限高）。
+
 ### fix(scripts): #289 审阅处置——freeze 转义口径 / 布尔 flag 语义 / 诊断形态 / 文档数字（2026-10-24）
 
 - **P2-1（必修，已修）**：`--freeze` 写回未复刻 Go `MarshalIndent` 的 `SetEscapeHTML`

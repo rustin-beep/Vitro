@@ -119,6 +119,14 @@ code, pre, kbd, samp, .vr-mono {
 
 /* ---------- 外壳与顶栏 ---------- */
 .vr-shell { container-type: inline-size; container-name: vitro; }
+/* 顶栏高度单源 + 滚动避让（#286-①）：sticky 顶栏（桌面 65px / ≤760px 档
+   63px）下方的锚点目标此前零补偿——scrollIntoView/锚跳转把目标行压进
+   顶栏底下。html 不是 .vr-shell 后代，容器查询够不到 :root，故顶栏高度
+   变量走视口媒体查询（vr-app 全宽时与容器断点等价）。 */
+html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12px); }
+@media (max-width: 760px) {
+  html { --vr-masthead-h: 63px; }
+}
 .vr-app { max-width: 1680px; margin: 0 auto; padding: 0 28px; background: var(--vr-bg); color: var(--vr-ink); min-height: 100vh; }
 .vr-masthead {
   position: sticky; top: 0; z-index: 30;
@@ -901,11 +909,24 @@ code, pre, kbd, samp, .vr-mono {
 
 /* ---------- 吐司 ---------- */
 .vr-toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 95; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
-.vr-toast { pointer-events: auto; max-width: min(520px, calc(100vw - 32px)); padding: 7px 12px; background: var(--vr-panel); border: 1px solid var(--vr-rule-2); border-left: 3px solid var(--vr-ink-3); border-radius: 2px; box-shadow: var(--vr-shadow); font-family: var(--vr-mono); font-size: 11px; line-height: 1.6; font-variant-ligatures: none; color: var(--vr-ink); }
+/* × 恒可见 + 长文限高（#287-②）：trap 原文这类长文 toast 在窄屏曾把关闭
+   键挤到浮层底边之外裁掉——flex 布局把 × 钉在文本列外，文本区限高内部
+   滚动（trap 详报就地版在诊断带，toast 只是回执）。 */
+.vr-toast {
+  display: flex; align-items: flex-start; gap: 8px; pointer-events: auto;
+  max-width: min(520px, calc(100vw - 32px)); padding: 7px 12px; background: var(--vr-panel); border: 1px solid var(--vr-rule-2); border-left: 3px solid var(--vr-ink-3); border-radius: 2px; box-shadow: var(--vr-shadow); font-family: var(--vr-mono); font-size: 11px; line-height: 1.6; font-variant-ligatures: none; color: var(--vr-ink);
+}
+.vr-toast > span { flex: 1 1 auto; min-width: 0; max-height: min(300px, 45vh); overflow-y: auto; overflow-wrap: anywhere; }
 .vr-toast.is-ok { border-left-color: var(--vr-green); }
 .vr-toast.is-err { border-left-color: var(--vr-red); }
 .vr-toast.is-info { border-left-color: var(--vr-amber-2); }
-.vr-toast button { background: none; border: 0; color: var(--vr-ink-3); margin-left: 8px; padding: 0; }
+.vr-toast button { flex: 0 0 auto; background: none; border: 0; color: var(--vr-ink-3); padding: 0; }
+/* 单栏形态（#287-③）：三栏断点 1180 以下内容单列铺满，底部居中的 toast
+   正压在代码区上——移到顶栏下方，避开正在读的代码（视口媒体查询口径
+   同上方 --vr-masthead-h 注）。 */
+@media (max-width: 1179px) {
+  .vr-toasts { bottom: auto; top: calc(var(--vr-masthead-h, 65px) + 10px); }
+}
 
 /* ---------- 可达性小件 ---------- */
 .vr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1058,11 +1079,14 @@ code, pre, kbd, samp, .vr-mono {
   .vr-mem-read { grid-template-columns: minmax(0, 1fr); }
 }
 @container vitro (max-width: 760px) {
-  .vr-app { padding: 0 16px; }
+  /* 20px（#287-④）：16px 时顶栏最右按钮恰贴 padding 内缘（「顶到边」）；
+     提到 20px 让窄档内容统一留 ≥20px 边距 */
+  .vr-app { padding: 0 20px; }
   .vr-masthead { padding: 11px 0; gap: 8px; }
   .vr-tagline, .vr-context, .vr-engine .vr-hide-sm { display: none; }
-  .vr-manual-full { display: none; }
-  .vr-manual-mini { display: inline; }
+  /* #287-④：窄档诊断手册收纯图标（只剩 ↗ svg，语义在按钮 title/aria）——
+     与课程按钮同为纯图标形态，顶栏右侧余量从贴边 16px 回到 ≥40px。 */
+  .vr-manual-full, .vr-manual-mini { display: none; }
   .vr-wordmark { font-size: 18px; }
   .vr-engine { border-right: 0; padding-right: 0; margin-right: 0; gap: 6px; }
   .vr-head-right { gap: 2px; }

@@ -41,7 +41,27 @@ export interface Target {
 export const TARGETS: Target[] = [
   { dir: "scripts/icon_catalog", modes: [[], ["-v"]] },
   { dir: "scripts/diff_ledger", modes: [[], ["--selftest"]] },
+  { dir: "scripts/editorconfig_check", modes: [[]] },
 ];
+
+/**
+ * 未纳入对拍的双轨目录 + 原因。**必须穷举**：自动发现的每个「main.go + main.mts」
+ * 目录要么在 TARGETS，要么在此表——否则闸报「未归类」红（#292 审阅质疑：全做还是
+ * 留白？答案是把「不做」也变成显式登记，不允许黑箱跳过）。
+ */
+export const EXCLUDED: Record<string, string> = {
+  "scripts/canonicalize": "需 stdin 输入才有判定面（默认无参 rc=1 等输入）；stdin 对拍另议",
+  "scripts/gen_api_help": "生成器写盘（moonbit/cmd/lib/cli/api_help_gen.mbt）；对拍应走 -check 模式，未验证",
+  "scripts/gen_demo_algorithms": "生成器写盘（demo/algorithms.js）；-check 语义未验证",
+  "scripts/gen_icons": "生成器写盘（moonbit/icons/icons_gen.mbt）；-check 语义未验证",
+  "scripts/gen_protocol_ts": "生成器写盘（protocol/ 产物）；-check 语义未验证",
+  "scripts/gen_svg": "生成器写盘（docs/**/*.svg 15 张）+ 依赖 reports/facts.json",
+  "scripts/moonbit/gen_libc_data": "生成器写盘（moonbit/vm/libc_data_gen.mbt）",
+  "scripts/moonbit/testcount": "依赖 moon test 实跑真值（CI hygiene 才有），本地无产物时不可比",
+  "scripts/moonbit/vendor_drift": "出网依赖：CI 与本地出网策略不同，纳入会变不稳定假红；等价性靠本机 --use-system-ca 手工对拍",
+  "scripts/precompile_bytecode_libc": "生成模式已随 Rust oracle 退役（需 checkout tag rust-oracle-freeze）",
+  "scripts/teaching_annotation_diff": "需 native cmd/serve 产物 + 82 模板全量（约 25s/次），单价过高，另设批次",
+};
 
 /** 归一化：分隔符 + 剥离 go run 的退出码噪音行。 */
 export function normalize(s: string): string {
@@ -52,6 +72,25 @@ export function normalize(s: string): string {
     .split("\\")
     .join("/")
     .replace(/\n+$/, "");
+}
+
+/** 自动发现「同目录同时存在 main.go 与 main.mts」的双轨目录（仓库相对）。 */
+export function discoverDualDirs(): string[] {
+  const root = projectRoot();
+  const out: string[] = [];
+  const walk = (rel: string): void => {
+    const abs = path.join(root, rel);
+    for (const ent of fs.readdirSync(abs, { withFileTypes: true })) {
+      if (!ent.isDirectory()) continue;
+      const sub = `${rel}/${ent.name}`;
+      if (fs.existsSync(path.join(root, sub, "main.go")) && fs.existsSync(path.join(root, sub, "main.mts"))) {
+        out.push(sub);
+      }
+      if (rel.split("/").length < 2) walk(sub);
+    }
+  };
+  walk("scripts");
+  return out.sort();
 }
 
 export interface RunResult {
@@ -122,6 +161,17 @@ export function main(argv: string[]): number {
   projectRoot();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "parity_gate_"));
   try {
+    // 自动发现双轨目录：每个都必须在 TARGETS 或 EXCLUDED 中（未归类 = 红）
+    const known = new Set([...TARGETS.map((t) => t.dir), ...Object.keys(EXCLUDED)]);
+    const unclassified = discoverDualDirs().filter((d) => !known.has(d));
+    if (unclassified.length > 0) {
+      process.stderr.write(`parity_gate: ${unclassified.length} 个双轨目录未归类（须入 TARGETS 或 EXCLUDED 并写明原因）：
+`);
+      for (const d of unclassified) process.stderr.write(`  - ${d}
+`);
+      return 1;
+    }
+
     const all: Mismatch[] = [];
     let cases = 0;
     for (const t of TARGETS) {

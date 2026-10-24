@@ -818,7 +818,7 @@ jobs:
         # exit 2 = 网络无法判定（与漂移区分，防把网络抖动误报上游变更）。
         # J9 双路实跑证红：基线副本篡改哈希 → exit 1；假域名 → exit 2。
         shell: bash
-        run: go run ./scripts/moonbit/vendor_drift
+        run: node scripts/moonbit/vendor_drift/main.mts
 
       # fork 方案落地批（2026-10-02）：外部勘探金样本的静态合规闸——只守
       # 仓内 gold_signatures.json（schema 键集白名单/值域/码形态/provenance

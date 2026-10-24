@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 vendor_drift .mts 化（275 行）（2026-10-24）
+
+- **迁移**：`scripts/moonbit/vendor_drift/main.go`（275 行）→ `main.mts`。HTTP 拉上游
+  raw + 内容哈希主口径 + 版本号辅助口径 + `--update-baseline` 迁移式基线，退出码
+  0/1/2 三态语义原样保留。
+- **对拍**：同 CA 策略下（Go 走系统验证器 / `node --use-system-ca`）输出**逐字 SAME**
+  （6 行：5 个文件哈希[绿] + 版本号 0.5.5→0.5.6 报告行），rc 均 0。
+- **环境口径差异（登记，非判定差异）**：Node 默认 CA bundle 不含本地 MITM 代理根证书，
+  带代理直接跑会得到 `exit 2 无法判定`（cause = `UNABLE_TO_VERIFY_LEAF_SIGNATURE`）；
+  Go 在 Windows 走系统验证器故无此现象。处置 = 文档注明用 `node --use-system-ca`，
+  **不**采纳 `NODE_TLS_REJECT_UNAUTHORIZED=0`（关校验换绿灯）。
+- **type stripping 坑（新形态）**：类**参数属性**（`constructor(readonly x: T)`）属
+  codegen 而非纯擦除——node 直跑会 `triggerUncaughtException` 崩在 constructor 行。
+  比 `enum`/`namespace` 更隐蔽（语法看着完全正常），改显式字段 + 赋值。
+- **测试**：`parseVersion` / `sha256Hex`（已知向量）/ `loadBaseline` 四路 fail loud
+  （repo 不符 / ref 不符 / files 空 / 缺字段）+ 真实基线口径断言。
+
 ### fix(scripts+ci): #292 审阅处置——P2×3 + P3×5（2026-10-24）
 
 - **P2-1（已修）**：`icons.json` 缺 `digest` / 空串时原**静默放行**（`if (digest !== "")`

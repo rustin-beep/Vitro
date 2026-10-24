@@ -12,7 +12,7 @@ test "serve_capabilities_static_tracks" {
   assert_true(resp.contains("\"version\":\"v0.2\"")) // #90 v0.2 首批激活
   assert_true(resp.contains("\"frozen_at\":\"2026-09-12\""))
   assert_true(resp.contains("\"behavior_contracts\""))
-  assert_true(resp.contains("\"semantic_label_kinds\":14"))
+  assert_true(resp.contains("\"semantic_label_kinds\":15")) // #245：+func_entry（词汇表 14→15）
   assert_true(
     resp.contains("\"mem_size\":1048576"),
     msg="内存常量单源 @bytecode",
@@ -102,6 +102,39 @@ test "serve_input_feed_multi_line_appends" {
 // ── output.delta 族（E-P1-5 四通道游标）──
 
 ///|
+/// #258 红锚（2026-10-22，修复前证红）：未知 stream 值整帧拒绝——
+/// 旧形态静默降级 display（ok:true + 回包 stream 被改写 + delta 空），
+/// 下游无法区分「程序没输出」与「流名写错」（std_out/out 等误拼静默吞）。
+test "serve_output_delta_unknown_stream_rejected" {
+  let s = @session.Session::new()
+  let _ = serve_handle(
+    s, "{\"id\":0,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main() { printf(\\\"out\\\"); return 0; }\\n\"}}",
+  )
+  let _ = serve_handle(s, "{\"id\":1,\"method\":\"run\"}")
+  // 非法流名 → ok:false + error.kind=protocol + expected 值域
+  let (r, _) = serve_handle(
+    s, "{\"id\":2,\"method\":\"output.delta\",\"params\":{\"cursor\":0,\"stream\":\"nope\"}}",
+  )
+  assert_true(
+    r.contains("\"ok\":false"),
+    msg="整帧拒绝（不再静默降级）",
+  )
+  assert_true(r.contains("\"kind\":\"protocol\""))
+  assert_true(
+    r.contains("display|stdout|stderr|note"),
+    msg="expected 给值域",
+  )
+  // 合法值不受影响（归一：大小写/空白/note|notes 别名照收）
+  let (r2, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"output.delta\",\"params\":{\"cursor\":0,\"stream\":\" stdout \"}}",
+  )
+  assert_true(
+    r2.contains("\"ok\":true") && r2.contains("\"delta\":\"out\""),
+    msg="归一后合法值照常",
+  )
+}
+
+///|
 test "serve_output_delta_cursor_semantics" {
   let s = @session.Session::new()
   let _ = serve_handle(
@@ -171,7 +204,9 @@ test "serve_output_delta_stream_channels" {
 
 ///|
 test "serve_output_delta_unknown_stream_defaults_display" {
-  // 未知通道取值退化 display（Rust 同形——旧值客户端行为不变）
+  // #258（2026-10-22）翻转锚：未知通道取值旧形态退化 display（Rust 照搬）
+  // → 现整帧拒绝（fail loud——静默降级 = 「成功但空内容」，下游无法定位
+  // 流名写错）；缺省不传 stream 仍 = display（见上测试 r4）
   let s = @session.Session::new()
   let _ = serve_handle(
     s, "{\"id\":0,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main() { printf(\\\"x\\\"); return 0; }\\n\"}}",
@@ -180,7 +215,14 @@ test "serve_output_delta_unknown_stream_defaults_display" {
   let (resp, _) = serve_handle(
     s, "{\"id\":2,\"method\":\"output.delta\",\"params\":{\"stream\":\"bogus\"}}",
   )
-  assert_true(resp.contains("\"stream\":\"display\""))
+  assert_true(
+    resp.contains("\"ok\":false"),
+    msg="未知流名整帧拒绝（#258）",
+  )
+  assert_true(
+    resp.contains("\"stream\":") == false,
+    msg="拒绝帧无 stream 改写回包",
+  )
 }
 
 // ── memory.regions 族（C2 三段式）──

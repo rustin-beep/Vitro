@@ -95,6 +95,7 @@ vitro/engine/cmd/lib/cli vitro/engine/fs read_file_to_string
 vitro/engine/cmd/lib/cli vitro/engine/fs write_bytes_to_file
 vitro/engine/cmd/lib/cli vitro/engine/util base64_decode
 vitro/engine/cmd/lib/cli vitro/engine/util json_escape
+vitro/engine/cmd/lib/cli vitro/engine/util json_parse
 vitro/engine/cmd/lib/cli vitro/engine/util utf8_text_partial
 vitro/engine/cmd/lib/engine_direct vitro/engine/cmd/lib/cli EngineChannel
 vitro/engine/cmd/lib/engine_direct vitro/engine/gateway invoke
@@ -135,6 +136,12 @@ vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli print_usage
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli usage_err
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli print_usage
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli usage_err
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli print_usage
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro_wasm vitro/engine/fs read_file_to_string
 vitro/engine/cmd/vitro_wasm vitro/engine/teaching/content_data baked_payload_json
 vitro/engine/cmd/vitro_wasm vitro/engine/teaching/content_data install_baked

@@ -20,11 +20,17 @@
 /// 不搬。
 
 ///|
-/// 打开模式（穷尽三态——坑 13 的结构性预防）。
+/// 打开模式（穷尽态——坑 13 的结构性预防）。#228（2026-10-22）起含
+/// 读写三态：`ReadWrite`（r+：须存在/不清空/游标 0）、`WriteRead`
+///（w+：建或清空）、`AppendRead`（a+：建文件/读起点文件头——写恒末尾，
+/// 由消费点判「仅纯 `Read` 拒写」天然覆盖（fread 无模式检查）。
 pub enum VfsMode {
   Read
   Write
   Append
+  ReadWrite
+  WriteRead
+  AppendRead
 } derive(Debug, Eq)
 
 ///|
@@ -53,6 +59,10 @@ pub struct VfsDesc {
   mut eof : Bool
   mut error : Bool
   is_text_mode : Bool
+  /// a/a+ 追加语义位（审阅 P2-2，2026-10-23）：写路径写前强制游标到
+  /// 末尾（C11 §7.21.5.3——fseek 不改变 a/a+ 的写位）；mode 的派生
+  /// 位（restore 时按 mode 重导出，不入快照）——构造期定死，非 mut
+  is_append : Bool
 } derive(Debug)
 
 ///|
@@ -252,31 +262,34 @@ pub fn VirtualFileSystem::inject_preset_file(
 }
 
 ///|
-/// `fopen(path, mode)` → fd（0 = 失败）。模式串 `r/rb/w/wb/a/ab`；文本
-/// 模式带 CRLF 伸缩。
+/// `fopen(path, mode)` → fd（0 = 失败）。模式串：`r/rb/w/wb/a/ab` 及
+/// 读写族 `r+`/`rb+`/`r+b`、`w+`/`wb+`/`w+b`、`a+`/`ab+`/`a+b`（#228，
+/// C11 §7.21.5.3——`b` 与 `+` 序不敏感）；文本模式带 CRLF 伸缩。
 ///
 /// **坑 13 修复**：Append 对不存在文件**建文件**（oracle 该分支死代码，
 /// 追加写静默丢弃——登记分叉）；Write 建文件/清空既有；Read 不存在即失败。
+/// 读写族（r+/w+/a+）共享对应基础族的建文件/清空/游标语义（r+ 须存在、
+/// w+ 清空、a+ 建文件〔读起点文件头，写恒末尾——审阅 P2-2〕）——此前 `+` 族落 None **静默返回 0**
+///（NULL 无诊断，#228 病根）。
 pub fn VirtualFileSystem::fopen(
   self : VirtualFileSystem,
   map : @memory.MemoryMap,
   path : String,
   mode : String,
 ) -> UInt32 {
-  let mode_pair = if mode == "r" {
-    Some((VfsMode::Read, true))
-  } else if mode == "rb" {
-    Some((VfsMode::Read, false))
-  } else if mode == "w" {
-    Some((VfsMode::Write, true))
-  } else if mode == "wb" {
-    Some((VfsMode::Write, false))
-  } else if mode == "a" {
-    Some((VfsMode::Append, true))
-  } else if mode == "ab" {
-    Some((VfsMode::Append, false))
-  } else {
-    None
+  // `b` 位 = 模式串含 'b'（rb+/r+b 同判）；基础族字母 = 首字符
+  let is_text = !mode.contains("b")
+  let mode_pair : (VfsMode, Bool)? = match mode {
+    "r" => Some((VfsMode::Read, true))
+    "rb" => Some((VfsMode::Read, false))
+    "w" => Some((VfsMode::Write, true))
+    "wb" => Some((VfsMode::Write, false))
+    "a" => Some((VfsMode::Append, true))
+    "ab" => Some((VfsMode::Append, false))
+    "r+" | "rb+" | "r+b" => Some((VfsMode::ReadWrite, is_text))
+    "w+" | "wb+" | "w+b" => Some((VfsMode::WriteRead, is_text))
+    "a+" | "ab+" | "a+b" => Some((VfsMode::AppendRead, is_text))
+    _ => None
   }
   let vfs_mode = match mode_pair {
     Some(p) => p.0
@@ -284,11 +297,11 @@ pub fn VirtualFileSystem::fopen(
   }
   let is_text = mode_pair.unwrap().1
   match vfs_mode {
-    VfsMode::Read =>
+    VfsMode::Read | VfsMode::ReadWrite =>
       if !self.files.contains(path) {
         return 0U // 读模式文件不存在
       }
-    VfsMode::Write =>
+    VfsMode::Write | VfsMode::WriteRead =>
       match self.files.get(path) {
         Some(meta) => meta.size = 0 // 覆盖：清空既有
         None => {
@@ -305,7 +318,7 @@ pub fn VirtualFileSystem::fopen(
           })
         }
       }
-    VfsMode::Append =>
+    VfsMode::Append | VfsMode::AppendRead =>
       if !self.files.contains(path) {
         // 坑 13 修复：Append 建文件（oracle 死分支——分叉登记）
         let addr = match vfs_malloc_raw(map, 256) {
@@ -322,6 +335,9 @@ pub fn VirtualFileSystem::fopen(
   }
   let fd = self.next_fd + 1U
   self.next_fd = fd
+  // 审阅 P2-2（2026-10-23）：a+（AppendRead）读起点在文件头（C11
+  // §7.21.5.3——写恒末尾由 is_append 位承担，读游标独立）；a 语义不变
+  //（读写共用游标且写前强制末尾，读从末尾起自然为空——a 无读语义）
   let cursor = match vfs_mode {
     VfsMode::Append =>
       match self.files.get(path) {
@@ -337,6 +353,7 @@ pub fn VirtualFileSystem::fopen(
     eof: false,
     error: false,
     is_text_mode: is_text,
+    is_append: vfs_mode is VfsMode::Append || vfs_mode is VfsMode::AppendRead,
   })
   fd
 }
@@ -454,6 +471,10 @@ pub fn VirtualFileSystem::fwrite(
   let meta = match self.files.get(desc.file_name) {
     Some(m) => m
     None => return 0
+  }
+  // 审阅 P2-2：a/a+ 写恒末尾（fseek 移动的是读游标）
+  if desc.is_append {
+    desc.cursor = meta.size
   }
   // 读用户数据
   let user_data = match read_span(mem, map, buf, to_write.to_int()) {
@@ -689,6 +710,11 @@ fn vfs_append_bytes(
   desc : VfsDesc,
   data : Array[Byte],
 ) -> Int32 {
+  // 审阅 P2-2（2026-10-23）：a/a+ 写恒末尾（fputs/fputc 共用本通道；
+  // fseek 移动的是读游标——写前强制回末尾）
+  if desc.is_append {
+    desc.cursor = meta.size
+  }
   let write_len = data.length()
   let new_size = desc.cursor + write_len
   if new_size > meta.capacity {

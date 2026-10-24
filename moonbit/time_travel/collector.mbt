@@ -503,8 +503,26 @@ pub fn infer_semantic_label(
     source_line.contains("\{func_name}(") &&
     !is_function_definition_line(source_line, func_name)
   // 普通调用（排除控制流关键字/注释行首）——#220：for(/while( 无空格
-  // 形态一并排除（`for(int i=0;...)` 含 '(' 曾被判普通调用）
-  let is_func_call = source_line.contains("(") &&
+  // 形态一并排除（`for(int i=0;...)` 含 '(' 曾被判普通调用）；#246
+  //（2026-10-22）：调用点 = '(' 前（跳空白后）紧邻**标识符字符或 ')'**
+  //——`arr[(0+1)/2]` 的 '(' 前是 '['（非标识符）不是调用，旧 contains("(")
+  // 判据令其落兜底「函数调用」×每帧；审阅 P2-4（2026-10-23）补两形态：
+  // `defLine ()`（名字与括号间空白）与 `(fp)(1);`（函数指针调用的括号
+  // 前是 ')'）
+  let mut has_call_paren = false
+  let line_cs = source_line.to_array()
+  let mut cp = 0
+  while cp < line_cs.length() {
+    if line_cs[cp] == '(' && cp > 0 {
+      let p = paren_prev_effective(line_cs, cp)
+      if p >= 0 && (is_ident_char(line_cs[p]) || line_cs[p] == ')') {
+        has_call_paren = true
+        break
+      }
+    }
+    cp = cp + 1
+  }
+  let is_func_call = has_call_paren &&
     !source_line.has_prefix("if ") &&
     !source_line.has_prefix("if(") &&
     !source_line.has_prefix("while ") &&
@@ -520,6 +538,14 @@ pub fn infer_semantic_label(
   // ── 判定顺序（顺序敏感——具体模式优先于循环上下文，模块头注契约）──
   if is_loop_headline {
     return "循环"
+  }
+  // #245（2026-10-22）：函数定义行/入口帧独立标签——`int main() {`/
+  // `void defLine(void) {` 此前落 is_func_call 兜底「函数调用」（extract
+  // 对 "int main" 多词段返 None）；教学上学生看到「函数调用」会以为在
+  // 调用/递归而非进入该函数。#220 销案时上游明确留作未修的「另开单病」
+  match definition_name_of_call(source_line) {
+    Some(name) => return "进入 \{name}"
+    None => ()
   }
   if is_swap && loop_depth >= 1 {
     // P0-3：下标从源码行取（first() 会取到 n 这类规模量——曾致
@@ -627,6 +653,62 @@ fn is_function_definition_line(line : String, func_name : String) -> Bool {
 }
 
 ///|
+/// 定义行取名（#245，2026-10-22）：尾 `{` + 存在调用点（'(' 前紧邻
+/// 标识符），且名字段**左侧（跳空白与指针 `*`）仍是标识符字符**——即
+/// 名字前还有一词（类型/void，如 "int main"）⇒ 定义行，返回名字段；
+/// `x = foo(`（左侧是 '='）与行首 `foo(`（左侧到头）是调用形态返 None。
+/// 审阅 P2-4（2026-10-23）：`static struct S *f(void) {` 的指针星号
+/// 曾挡住判定（'f' 左是 '*' 非标识符 → 误落「函数调用」）——左侧跳过
+/// 空白与 `*` 的任意组合后再判。
+fn definition_name_of_call(line : String) -> String? {
+  if !line.has_suffix("{") {
+    return None
+  }
+  let cs = line.to_array()
+  let mut paren = -1
+  let mut cp = 0
+  while cp < cs.length() {
+    if cs[cp] == '(' && cp > 0 {
+      // 审阅 P2-3（2026-10-23）：定义侧同放行「名字与括号间空白」
+      //（`int main  (void) {` 学生常见书写——与调用侧共用跳空白单源）
+      let pe = paren_prev_effective(cs, cp)
+      if pe >= 0 && is_ident_char(cs[pe]) {
+        paren = cp
+        break
+      }
+      break
+    }
+    cp = cp + 1
+  }
+  if paren < 0 {
+    return None
+  }
+  // 名字段 = [name_start, paren)（先跳空白再收连续标识符——审阅 P2-3：
+  // `main  (` 的名字段起点在空白后，旧形态 name_start 停在空格上致
+  // name_start+1 < paren 恒 false 而误判调用形态）
+  let name_end = paren_prev_effective(cs, paren)
+  if name_end < 0 {
+    return None
+  }
+  let mut name_start = name_end
+  while name_start >= 0 && is_ident_char(cs[name_start]) {
+    name_start = name_start - 1
+  }
+  // 左侧跳空白与 '*'（指针声明符）后再看：标识符 → 前面还有类型词
+  //（定义形态）；'='（x = foo）或到头（foo(）→ 调用形态
+  let mut left = name_start
+  while left >= 0 && (cs[left] == ' ' || cs[left] == '\t' || cs[left] == '*') {
+    left = left - 1
+  }
+  if left >= 0 && is_ident_char(cs[left]) && name_start + 1 < paren {
+    // 终点收到 name_end（跳空白后的标识符尾）——substring(start, end)
+    // 左闭右开：name_end+1 恰含尾字符、不含括号前空白
+    return Some(line.substring(start=name_start + 1, end=name_end + 1))
+  }
+  None
+}
+
+///|
 /// 从源码行提取数组下标标识符（`temp = arr[j];` → j；只认简单下标，
 /// 表达式下标〔arr[i + 1]〕返回 None）。
 fn array_index_var(line : String) -> String? {
@@ -675,6 +757,18 @@ fn array_index_var(line : String) -> String? {
     search_from = open + 1
   }
   None
+}
+
+///|
+/// 调用点 '(' 前的有效字符下标（跳空白与 tab；审阅 P2-4/P2-3 单源——
+/// 调用侧 has_call_paren 与定义侧 definition_name_of_call 共用，防姊妹
+/// 判据只补其一的形态复发）。
+fn paren_prev_effective(cs : Array[Char], paren : Int32) -> Int32 {
+  let mut p = paren - 1
+  while p >= 0 && (cs[p] == ' ' || cs[p] == '\t') {
+    p = p - 1
+  }
+  p
 }
 
 ///|

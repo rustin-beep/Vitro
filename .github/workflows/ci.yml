@@ -502,6 +502,12 @@ jobs:
         if: matrix.slice == 'serve_channel'
         run: go run ./scripts/serve_smoke --backend-wasm
         shell: bash
+      # PR #280 审阅 P3-6（2026-10-23）：豁免表 wasm 臂段此前从不入审计面
+      #（僵尸审计只跑 -moonbit 一臂——断言更名批曾靠审阅者补跑才证真）
+      - name: serve_smoke wasm exemptions audit
+        if: matrix.slice == 'serve_channel'
+        run: go run ./scripts/serve_smoke --backend-wasm -audit-exemptions
+        shell: bash
       - name: protocol_frames wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
         run: go run ./scripts/protocol_frames --backend-wasm

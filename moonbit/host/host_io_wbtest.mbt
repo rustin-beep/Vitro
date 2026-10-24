@@ -537,6 +537,62 @@ test "sscanf_mixed_and_no_guard_shape" {
 }
 
 ///|
+/// #269 锚（2026-10-22）：`%n` 写回到该点**已读字符数**（C23 §7.23.6.2p12
+/// ——不消耗输入、不计返回值）。红锚：补臂前 `%n` 落「未知转换符」分支
+/// 静默不写（issue 最小复现 `sscanf("123 456","%d%n")` 的 used 恒初值 -1
+/// ⇒ 循环 `pos += consumed` 形态死循环——gen4/q36_27b 高频教学面）。
+test "sscanf_n_writes_consumed_count" {
+  let (map, mem) = fresh()
+  // 最小复现：%d 配 123 后 %n 写 3
+  put_cstr(mem, map, 0x6B00U, "123 456")
+  put_cstr(mem, map, 0x6300U, "%d%n")
+  let pv = 0x8600U
+  let pn = 0x8610U
+  ignore(mem.store_u32(map, pn, (-1).reinterpret_as_uint())) // 初值哨兵
+  let r = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pn])
+  assert_eq(r.value, Some(1UL), msg="%n 不计入返回值")
+  assert_eq(mem.load_u32(map, pv), Ok(123U))
+  assert_eq(mem.load_u32(map, pn), Ok(3U), msg="%n 写回已读字符数")
+  // %lln → 8 字节写；宽度截断（%2d 只读 2 字符）后 n=2。%ln = long
+  // 4 字节；%ln（LLP64 long=4）与 h=2/hh=1 分档见审阅 P2-1
+  put_cstr(mem, map, 0x6B00U, "12345")
+  put_cstr(mem, map, 0x6300U, "%2d%lln")
+  let pll = 0x8620U
+  ignore(mem.store_u64(map, pll, (-1L).reinterpret_as_uint64()))
+  let r2 = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pll])
+  assert_eq(r2.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pv), Ok(12U))
+  assert_eq(
+    mem.load_u64(map, pll),
+    Ok(2UL),
+    msg="%lln 8 字节写，宽度内只读 2 字符",
+  )
+  put_cstr(mem, map, 0x6300U, "%2d%ln")
+  ignore(mem.store_u32(map, pn, (-1).reinterpret_as_uint()))
+  let r3 = host_sscanf(map, mem, 0x6B00U, 0x6300U, [pv, pn])
+  assert_eq(r3.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pn), Ok(2U), msg="%ln 4 字节（long=LLP64）")
+}
+
+///|
+/// #269 锚（流版）：scanf 的 %n 同语义——已读数含被前导空白消费的字符。
+test "scanf_n_stream_consumed" {
+  let (map, mem) = fresh()
+  let x_addr = 0x7000U
+  let n_addr = 0x7100U
+  let input = InputState::new([b"  42tail"], true)
+  let r = scanf_run(map, mem, input, "%d%n", [x_addr, n_addr])
+  guard r is InputOutcome::Value(m) else { fail("应完成匹配") }
+  assert_eq(m, 1UL, msg="%n 不计数")
+  assert_eq(mem.load_u32(map, x_addr), Ok(42U))
+  assert_eq(
+    mem.load_u32(map, n_addr),
+    Ok(4U),
+    msg="前导空白 2 + 数字 2 = 已读 4",
+  )
+}
+
+///|
 /// #47 批 sscanf %i/%x/%o 扩面锚（审阅 P2-1 同族漏改补齐，2026-10-09）：
 /// 三转换符与 scanf 臂同口径（C11 §7.21.6.2 真值源——%i 前缀探测 0x→16/
 /// 0→8、%x 可选 0x 前缀仅后随 hex 才跳、%o base 8；均可带符号）。红→绿
@@ -928,4 +984,60 @@ test "sscanf_scanset_unclosed_fails" {
   put_cstr(mem, map, 0x6000U, "%[abc")
   let r = host_sscanf(map, mem, 0x6800U, 0x6000U, [ps])
   assert_eq(r.value, Some(0UL), msg="未闭合 scanset 应匹配失败返回 0")
+}
+
+///|
+/// 审阅 P2-1 锚（2026-10-23，修复前证红）：%h 族写入宽度——hhn 1 字节 /
+/// hn 2 字节 / hd·hu·ho·hx 截断写。旧实现 len_mod 把 h 与 hh 都记 1（与 l
+/// 同档 4 字节写）——canary 相邻字段被写穿（报告 nwidth3.c 实锤
+/// b=de000000）。三 u32 布局：a@0 / b@4 / c@8，c 只允许低 1/2 字节被改。
+test "scanf_h_family_widths_canary" {
+  let (map, mem) = fresh()
+  // %hhn：只写 c 的低 1 字节
+  put_cstr(mem, map, 0x6C00U, "98765")
+  put_cstr(mem, map, 0x6400U, "%3d%hhn")
+  let pv = 0x8700U
+  let pc = 0x8808U // c@8（a@0 / b@4）
+  ignore(mem.store_u32(map, 0x8800U, 0x99AABBCCU)) // a
+  ignore(mem.store_u32(map, 0x8804U, (-1).reinterpret_as_uint())) // b
+  ignore(mem.store_u32(map, 0x8808U, 0xDEADBEEFU)) // c
+  let r = host_sscanf(map, mem, 0x6C00U, 0x6400U, [pv, pc])
+  assert_eq(r.value, Some(1UL))
+  assert_eq(mem.load_u32(map, pv), Ok(987U), msg="%3d 宽度截断")
+  assert_eq(
+    mem.load_u32(map, 0x8808U),
+    Ok(0xDEADBE03U),
+    msg="%hhn 只写低 1 字节（高 3 字节 canary 保真）",
+  )
+  assert_eq(mem.load_u32(map, 0x8800U), Ok(0x99AABBCCU), msg="a 未被写穿")
+  assert_eq(
+    mem.load_u32(map, 0x8804U),
+    Ok((-1).reinterpret_as_uint()),
+    msg="b 未被写穿",
+  )
+  // %hn：只写 c 的低 2 字节
+  put_cstr(mem, map, 0x6400U, "%3d%hn")
+  ignore(mem.store_u32(map, 0x8808U, 0xDEADBEEFU))
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pv, pc]))
+  assert_eq(
+    mem.load_u32(map, 0x8808U),
+    Ok(0xDEAD0003U),
+    msg="%hn 只写低 2 字节",
+  )
+  // %hd：2 字节截断写（98765 截 int16 = 98765 & 0xFFFF = 0x7FED 位模式）
+  put_cstr(mem, map, 0x6400U, "%hd")
+  ignore(mem.store_u32(map, 0x8810U, 0xDEADBEEFU))
+  let pd = 0x8810U
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pd]))
+  assert_eq(
+    mem.load_u32(map, 0x8810U),
+    Ok(0xDEAD81CDU),
+    msg="%hd 写低 2 字节（98765=0x181CD 截 0x81CD）",
+  )
+  // %hu 同款（无符号 2 字节）
+  put_cstr(mem, map, 0x6400U, "%hu")
+  ignore(mem.store_u32(map, 0x8814U, 0xDEADBEEFU))
+  let pu = 0x8814U
+  ignore(host_sscanf(map, mem, 0x6C00U, 0x6400U, [pu]))
+  assert_eq(mem.load_u32(map, 0x8814U), Ok(0xDEAD81CDU), msg="%hu 低 2 字节")
 }

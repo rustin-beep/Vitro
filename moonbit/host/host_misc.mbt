@@ -49,7 +49,8 @@ pub fn host_srand(state : RandState, seed : UInt32) -> Unit {
 
 ///|
 /// `time(tloc)`——deterministic 恒 0；否则 `now_millis / 1000`
-///（oracle 只压秒值，**不写 `*tloc`**——`misc.rs:522-530` 的 `_tloc` 未用）。
+///（oracle 只压秒值，**不写 `*tloc`**——`misc.rs:522-530` 的 `_tloc` 未用；
+/// `*tloc` 写回由 vm 接线承担，病 48）。
 pub fn host_time(deterministic : Bool, now_millis : UInt64) -> UInt64 {
   if deterministic {
     0UL
@@ -59,12 +60,24 @@ pub fn host_time(deterministic : Bool, now_millis : UInt64) -> UInt64 {
 }
 
 ///|
-/// `clock()`——deterministic 恒 0；否则微秒近似（`now_millis * 1000`）。
-pub fn host_clock(deterministic : Bool, now_millis : UInt64) -> UInt64 {
+/// `clock()`——deterministic 恒 0；否则**自会话起点**的微秒近似
+/// `（now_millis - start_millis) * 1000`（#211，2026-10-22：旧形态
+/// `now_millis * 1000` 是绝对墙钟微秒——真墙钟接入后
+/// `clock()/CLOCKS_PER_SEC` 会得到自 Unix 纪元起的 56 年，C 语义是
+/// "自程序起算"〔C11 §7.27.2.1 approximated processor time used by
+/// the program〕。start 由 vm 侧在墙钟注册时采样〔set_clock_source〕；
+/// 时钟回拨 now < start 钳 0）。
+pub fn host_clock(
+  deterministic : Bool,
+  now_millis : UInt64,
+  start_millis : UInt64,
+) -> UInt64 {
   if deterministic {
     0UL
+  } else if now_millis >= start_millis {
+    (now_millis - start_millis) * 1000UL
   } else {
-    now_millis * 1000UL
+    0UL
   }
 }
 

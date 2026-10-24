@@ -128,9 +128,23 @@ fn serve_output_delta_frame(
     None => "display"
   }
   // 通道解析复用 OutputKind::parse（trim/lower/note|notes 归一单源；
-  // display = 全通道按写入序拼接的投影，由本帧处理；未知退化 display
-  // ——Rust 同形，旧值客户端行为不变）
+  // display = 全通道按写入序拼接的投影，由本帧处理）
+  // #258（2026-10-22）：未知 stream 值**整帧拒绝**（fail loud）——取值域是
+  // 文档化契约（手册《serve JSON-lines 协议语义》），旧形态静默降级
+  // display 表现为「成功但空内容」，下游无法区分「程序没输出」与「流名
+  // 写错」，且回包 stream 是改写后值、无降级标记；与 config.set 未知键
+  // fail loud（#105）+ texts.install 装载门同族。
   let kind_opt = @host.OutputKind::parse(view)
+  if kind_opt is None && view.trim().to_lower() != "display" {
+    return (
+      serve_param_err(
+        id,
+        "output.delta 的 stream 值 '\{view}' 未知（合法值：display=全通道拼接投影 / stdout / stderr / note=引擎附注；大小写与首尾空白经归一，别名仅 note|notes）",
+        "display|stdout|stderr|note",
+      ).stringify(),
+      false,
+    )
+  }
   let stream_name = match kind_opt {
     Some(kind) => kind.as_str()
     None => "display"

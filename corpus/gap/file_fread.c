@@ -3,4 +3,11 @@
 // 漏头文件伪装，非 VFS 扩展语义）。两侧 fopen 失败返 NULL 后 fread(NULL)
 // 行为：clang 崩溃/UB，Vitro trap——具体分类以 shadow 实跑为准。
 #include <stdio.h>
-int main() { FILE* f = fopen("test.txt", "r"); char buf[20]; fread(buf, 1, 5, f); buf[5] = 0; printf("%s", buf); fclose(f); return 0; }
+// 2026-10-22 改名：test.txt 与 VFS 预置文件（#95）撞名——Vitro 侧恒能打开，
+// clang 侧看磁盘有无，两侧语义天然分叉（fuzz 基线曾在根残留 test.txt 的
+// 污染环境采成 AGREE，干净环境暴露为 WRONG_VALUE）。改用不撞名文件恢复
+// 本语料「两侧 fopen 不存在的文件同返 NULL」的原始意图。
+//（审阅 P3 登记：去 UB 后 fread(NULL)/fclose(NULL) 的 clang 崩溃 vs
+// Vitro 静默分叉面不再有语料承载——受控 trap 例归教学面/E2E，如需
+// 专测另立受控断言例。）
+int main() { FILE* f = fopen("gap_missing.txt", "r"); char buf[20]; buf[0] = 0; if (f) { fread(buf, 1, 5, f); buf[5] = 0; fclose(f); } printf("%s", buf); return 0; }

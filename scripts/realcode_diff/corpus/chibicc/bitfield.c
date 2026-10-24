@@ -1,0 +1,84 @@
+#include "test.h"
+
+struct {
+  char a;
+  int b : 5;
+  int c : 10;
+} g45 = {1, 2, 3}, g46={};
+
+// A bit-field may use the full width of its type. Both the global
+// initializer path and the assignment path must cover all 64 bits.
+struct bit64u { unsigned long long x : 64; };
+struct bit64s { long long x : 64; };
+struct bit64u g_bit64u = {1};
+struct bit64s g_bit64s = {-1};
+
+int main() {
+  ASSERT(4, sizeof(struct {int x:1; }));
+  ASSERT(8, sizeof(struct {long x:1; }));
+
+  struct bit1 {
+    short a;
+    char b;
+    int c : 2;
+    int d : 3;
+    int e : 3;
+  };
+
+  ASSERT(4, sizeof(struct bit1));
+  ASSERT(1, ({ struct bit1 x; x.a=1; x.b=2; x.c=3; x.d=4; x.e=5; x.a; }));
+  ASSERT(1, ({ struct bit1 x={1,2,3,4,5}; x.a; }));
+  ASSERT(2, ({ struct bit1 x={1,2,3,4,5}; x.b; }));
+  ASSERT(-1, ({ struct bit1 x={1,2,3,4,5}; x.c; }));
+  ASSERT(-4, ({ struct bit1 x={1,2,3,4,5}; x.d; }));
+  ASSERT(-3, ({ struct bit1 x={1,2,3,4,5}; x.e; }));
+
+  ASSERT(1, g45.a);
+  ASSERT(2, g45.b);
+  ASSERT(3, g45.c);
+
+  ASSERT(0, g46.a);
+  ASSERT(0, g46.b);
+  ASSERT(0, g46.c);
+
+  ASSERT(8, sizeof(struct bit64u));
+  ASSERT(1, (int)g_bit64u.x);
+  ASSERT(-1, (int)g_bit64s.x);
+  ASSERT(1, ({ struct bit64u x = {1}; (int)x.x; }));
+  ASSERT(1, ({ struct bit64u x = {0}; x.x = 1; (int)x.x; }));
+  ASSERT(-1, ({ struct bit64s x; x.x = -1; (int)x.x; }));
+  ASSERT(3, ({ struct { unsigned long long a : 1, b : 63; } x = {0};
+               x.b = 3; (int)x.b; }));
+  ASSERT(0, ({ struct { unsigned long long a : 1, b : 63; } x = {0};
+               x.b = 3; (int)x.a; }));
+
+  typedef struct {
+    int a : 10;
+    int b : 10;
+    int c : 10;
+  } T3;
+
+  ASSERT(1, ({ T3 x={1,2,3}; x.a++; }));
+  ASSERT(2, ({ T3 x={1,2,3}; x.b++; }));
+  ASSERT(3, ({ T3 x={1,2,3}; x.c++; }));
+
+  ASSERT(2, ({ T3 x={1,2,3}; ++x.a; }));
+  ASSERT(3, ({ T3 x={1,2,3}; ++x.b; }));
+  ASSERT(4, ({ T3 x={1,2,3}; ++x.c; }));
+
+  ASSERT(4, sizeof(struct {int a:3; int c:1; int c:5;}));
+  ASSERT(8, sizeof(struct {int a:3; int:0; int c:5;}));
+  ASSERT(4, sizeof(struct {int a:3; int:0;}));
+
+  ASSERT(4, sizeof(struct {int a : 1 + 3;}));
+  ASSERT(8, sizeof(struct {int a : 3; unsigned b : sizeof(int) * 8 - 8; int c;}));
+  ASSERT(4, ({ enum {W = 2}; sizeof(struct {int a : W;}); }));
+  ASSERT(4, sizeof(struct {int a : (3); int b : 1;}));
+
+  // PLAN A10.2: compound assignment on a bitfield member.
+  ASSERT(5, ({ struct {int a:4;} x={0}; x.a += 5; x.a; }));
+  ASSERT(3, ({ struct {int a:4;} x={7}; x.a -= 4; x.a; }));
+
+  printf("OK\n");
+  return 0;
+}

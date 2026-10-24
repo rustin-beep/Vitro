@@ -79,7 +79,7 @@
     },
     {
       "method": "output.delta",
-      "brief": "拉增量输出（stream=display/stdout/stderr/note；判分取 stdout；delta=逐字节 Latin-1 折回、cursor 按字节——比对前 Buffer.from(delta,latin1) 还原，#112）",
+      "brief": "拉增量输出（stream=display/stdout/stderr/note，未知流名整帧拒绝 #258；判分取 stdout；delta=逐字节 Latin-1 折回、cursor 按字节——比对前 Buffer.from(delta,latin1) 还原，#112）",
       "example": "{\"cursor\":0,\"stream\":\"stdout\"}"
     },
     {

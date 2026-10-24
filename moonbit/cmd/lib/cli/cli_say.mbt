@@ -9,3 +9,11 @@
 fn say(s : String) -> Unit {
   cli_stderr_write(@utf8.encode(s + "\n"))
 }
+
+///|
+/// 用法错文案的 stderr 出口（#215 pub 化——三壳〔vitro/vitro_js/
+/// vitro_wasm〕的顶层分派〔无参/未知命令/独立 exe 指引〕此前 println
+/// 走 stdout，违 spec §1「rc=4 路径 stdout 恒为空」；单源收口供壳调用）。
+pub fn usage_err(s : String) -> Unit {
+  say(s)
+}

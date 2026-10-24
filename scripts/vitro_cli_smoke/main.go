@@ -58,6 +58,13 @@ func stripBackendLine(s string) string {
 	return strings.Join(kept, "\n")
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // runOut 执行并返回 (stdout+stderr 归一, rc)。缺产物/启动失败 = fail loud。
 func runOut(name string, argv ...string) (string, int) {
 	cmd := exec.Command(name, argv...)
@@ -74,6 +81,25 @@ func runOut(name string, argv ...string) (string, int) {
 		return "", -1
 	}
 	return normalize(stdout.String() + "\n--stderr--\n" + stderr.String()), rc
+}
+
+// runSplit 执行并分离捕获 (stdout, stderr, rc)——通道归属断言用
+// （#215：「rc=4 用法错走 stderr、stdout 恒空」不变式的机判）。
+func runSplit(name string, argv ...string) (string, string, int) {
+	cmd := exec.Command(name, argv...)
+	cmd.Dir = repoRoot
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	rc := 0
+	if err := cmd.Run(); err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			rc = exit.ExitCode()
+		} else {
+			fatalf("启动失败 %v %v: %v", name, argv, err)
+		}
+	}
+	return stdout.String(), stderr.String(), rc
 }
 
 // firstDiff：两 buffer 首个差异偏移（等长前提；映像对拍诊断用）。
@@ -261,6 +287,115 @@ func main() {
 			}
 			fmt.Printf("ok  B[api help] %s（rc=%d 同形+内容锚）\n", c.name, c.wantRc)
 		}
+	}
+
+	// B 组附 3：api 失败形态三臂 rc 对拍（#227 机判锚，2026-10-22）——
+	// spec §4.5 两层判据的回归锚：编译错帧〔外层 ok:true + result.ok:false〕
+	// rc=1、协议错帧〔外层 ok:false〕rc=1、成功帧 rc=0。三臂必须同码
+	// （#107 双臂分叉的历史教训面——判据一旦有 spec 表述就该有闸）。
+	{
+		for _, c := range []struct {
+			name string
+			args []string
+			want int
+		}{
+			{"api 编译错帧（result.ok:false）", []string{"api", "compile", `{"source":"int main(){ int a = ; }"}`}, 1},
+			{"api 协议错帧（外层 ok:false）", []string{"api", "output.delta", `{"cursor":0,"stream":"nope"}`}, 1},
+			{"api 成功帧", []string{"api", "compile", `{"source":"int main(){return 0;}"}`}, 0},
+		} {
+			_, wRc := runOut(nodeBin, append([]string{shell}, c.args...)...)
+			_, nRc := runOut(nativeExe, c.args...)
+			_, jRc := runOut(nodeBin, append([]string{jsEntry}, c.args...)...)
+			if wRc != c.want || nRc != c.want || jRc != c.want {
+				fatalf("B[api rc] %s: 期望 %d，实得 wasm=%d native=%d js=%d", c.name, c.want, wRc, nRc, jRc)
+			}
+			fmt.Printf("ok  B[api rc] %s 三臂同 rc=%d\n", c.name, c.want)
+		}
+	}
+
+	// B 组附 4：rc=4 用法错路径 stdout 恒空（#215，2026-10-22）——spec §1
+	// 「stdout 只承载程序输出」的用法错面：文案全走 stderr；三臂同守
+	//（无参/未知命令/serve 指引/api 无参/未知方法/params 非 JSON/
+	// api help 未知/run 未知旗标）。
+	{
+		for _, c := range []struct {
+			name string
+			args []string
+		}{
+			{"壳无参", nil},
+			{"壳未知命令", []string{"bogus-cmd"}},
+			{"dump 指引（独立 exe 族）", []string{"dump-tokens"}},
+			{"api 无参", []string{"api"}},
+			{"api 未知方法", []string{"api", "bogus.method", "{}"}},
+			{"api params 非 JSON", []string{"api", "compile", "notjson"}},
+			{"api help 未知方法", []string{"api", "help", "no.such"}},
+			{"run 未知旗标", []string{"run", "--no-such-flag"}},
+		} {
+			for _, arm := range []struct {
+				label string
+				argv  []string
+				exe   string
+			}{
+				{"wasm", append([]string{shell}, c.args...), nodeBin},
+				{"native", c.args, nativeExe},
+				{"js", append([]string{jsEntry}, c.args...), nodeBin},
+			} {
+				so, se, rc := runSplit(arm.exe, arm.argv...)
+				if rc != 4 {
+					fatalf("B[rc=4 stdout 空] %s/%s: rc=%d 期望 4", c.name, arm.label, rc)
+				}
+				if so != "" {
+					fatalf("B[rc=4 stdout 空] %s/%s: stdout 应为空，实得:\n%s", c.name, arm.label, so)
+				}
+				if se == "" {
+					fatalf("B[rc=4 stdout 空] %s/%s: stderr 不应为空（文案去向）", c.name, arm.label)
+				}
+			}
+		}
+		fmt.Println("ok  B[rc=4 stdout 空] 8 路径 × 三臂（用法错全走 stderr）")
+	}
+
+	// B 组附 5：--realtime 生效面探针（PR #280 审阅 P2-1，2026-10-23）——
+	// 旗标的「被调用」维度：js/native 臂断 time() 非 0（真墙钟），wasm 臂
+	// 断恒 0（F5 无熵源分臂口径——与 CLI help 文案同句钉锚）。探针程序走
+	// rc 判定（输出含时间戳不可比，只验证 t 非 0 → 输出前缀 t=1）。
+	{
+		rtC := filepath.Join(tmpDir, "realtime_probe.c")
+		os.WriteFile(rtC, []byte("#include <stdio.h>\nlong time(long*);\nint main(){ long t = time((long*)0); printf(\"t=%d\", t != 0); return 0; }\n"), 0o644)
+		relRT, _ := filepath.Rel(repoRoot, rtC)
+		relRT = filepath.ToSlash(relRT)
+		for _, arm := range []struct {
+			label string
+			argv  []string
+			exe   string
+			wantT string // 期望输出前缀（t=1=非零截断显示；t=0=恒零）
+		}{
+			{"wasm", append([]string{shell, "run", "--realtime"}, relRT), nodeBin, "t=0"},
+			{"native", []string{"run", "--realtime", relRT}, nativeExe, "t=1"},
+			{"js", append([]string{jsEntry, "run", "--realtime"}, relRT), nodeBin, "t=1"},
+		} {
+			so, _, rc := runSplit(arm.exe, arm.argv...)
+			if rc != 0 {
+				fatalf("B[--realtime] %s: rc=%d\n%s", arm.label, rc, so)
+			}
+			if !strings.HasPrefix(so, arm.wantT) {
+				fatalf("B[--realtime] %s: 期望输出前缀 %q（分臂口径），实得 %q", arm.label, arm.wantT, so[:min(len(so), 24)])
+			}
+			// 缺省对照：无旗标时三臂恒 t=0（判分口径不变）
+			var dArgv []string
+			if arm.label == "wasm" {
+				dArgv = []string{shell, "run", relRT}
+			} else if arm.label == "native" {
+				dArgv = []string{"run", relRT}
+			} else {
+				dArgv = []string{jsEntry, "run", relRT}
+			}
+			so2, _, rc2 := runSplit(arm.exe, dArgv...)
+			if rc2 != 0 || !strings.HasPrefix(so2, "t=0") {
+				fatalf("B[--realtime 缺省] %s: 期望恒 t=0（deterministic 判分口径），rc=%d 实得 %q", arm.label, rc2, so2[:min(len(so2), 24)])
+			}
+		}
+		fmt.Println("ok  B[--realtime] 三臂分口径（js/native 真 t、wasm 恒 0、缺省恒 0）")
 	}
 
 	// B 组附 1：note 去重语义锚（审阅 P3-1，2026-10-07）——note 通道语义

@@ -73,10 +73,12 @@ test "semantic_recursive_exclusions" {
     infer_semantic_label(3, none, "fact", "  fact(3);", true),
     "调用 fact",
   )
-  // 排除二：定义行（含 `fact(` 且行尾 { ——不是递归调用）
+  // 排除二：定义行（含 `fact(` 且行尾 { ——不是递归调用）。
+  // #245（2026-10-22）翻转：定义行旧落 is_func_call 兜底「函数调用」
+  //（正是本 issue 病），现独立标签「进入 fact」
   assert_eq(
     infer_semantic_label(1, none, "fact", "int fact(int n) {", false),
-    "函数调用",
+    "进入 fact",
   )
 }
 
@@ -214,5 +216,86 @@ test "semantic_for_and_indented_while_not_func_call_220" {
   assert_true(
     dowhile != "调用 while",
     msg="do-while 尾不得标「调用 while」（得：\{dowhile}）",
+  )
+}
+
+///|
+/// #246 锚（2026-10-22，修复前证红）：下标内括号不是调用点——
+/// `int p = arr[(0+1)/2];` 的 '(' 前是 '['（非标识符），旧判据
+/// contains("(") 令 is_func_call 成立、extract 返 None 落兜底
+///「函数调用」×每帧；修复后回落行号（声明语句的教学形态）。
+test "semantic_index_paren_not_func_call" {
+  // 简单下标对照（本来就不触发——#246 报告的对照组形态）
+  assert_eq(
+    infer_semantic_label(6, None, "main", "  int x = arr[0];", false),
+    "第 6 行",
+  )
+  // 下标内含括号表达式：不得落「函数调用」
+  assert_eq(
+    infer_semantic_label(13, None, "main", "  int p = arr[(0+1)/2];", false),
+    "第 13 行",
+    msg="arr[(0+1)/2] 的 '(' 前是 '['——非调用点",
+  )
+}
+
+///|
+/// #245 锚（2026-10-22，修复前证红）：函数定义行/入口帧独立标签——
+/// `int main() {`/`void defLine(void) {` 此前落 is_func_call 兜底
+///「函数调用」（extract 对 "int main" 多词段返 None）；修复后标
+///「进入 <名>」（#220 销案时上游明确留作未修的「另开单病」即本条）。
+test "semantic_function_definition_entry_label" {
+  assert_eq(
+    infer_semantic_label(12, None, "main", "int main() {", false),
+    "进入 main",
+  )
+  assert_eq(
+    infer_semantic_label(5, None, "main", "void defLine(void) {", false),
+    "进入 defLine",
+  )
+  // 对照：真调用行不受影响
+  assert_eq(
+    infer_semantic_label(20, None, "main", "  defLine();", false),
+    "调用 defLine",
+  )
+}
+
+///|
+/// 审阅 P2-4 锚（2026-10-23）：#245/#246 的边界形态四例——
+/// 指针/多词返回类型定义行、调用点空格形态、函数指针调用形态。
+test "semantic_label_review_p24_edge_forms" {
+  let none : Array[@protocol.ApiVariableSnapshot]? = None
+  // 形态 1：char 返回类型的定义行
+  let r1 = infer_semantic_label(5, none, "main", "char make(void) {", false)
+  inspect(r1, content="进入 make")
+  // 形态 2：static struct S 多词 + 指针返回类型定义行
+  let r2 = infer_semantic_label(
+    6, none, "main", "static struct S *f(void) {", false,
+  )
+  inspect(r2, content="进入 f")
+  // 形态 3：调用点名字与括号间有空格（旧判据 contains("(") 可达）
+  let r3 = infer_semantic_label(5, none, "main", "  defLine ();", false)
+  inspect(r3, content="调用 defLine")
+  // 形态 4：函数指针调用 (fp)(1);
+  let r4 = infer_semantic_label(6, none, "main", "  (fp)(1);", false)
+  inspect(r4, content="函数调用")
+}
+
+///|
+/// PR #280 审阅 P2-3 锚（2026-10-23）：定义行「名字与括号间空白」——
+/// `int main  (void) {` 学生常见书写形态，定义侧 paren 探测须与调用侧
+/// 同跳空白（旧形态落 is_func_call 兜底「函数调用」）。
+test "semantic_definition_name_space_before_paren" {
+  assert_eq(
+    infer_semantic_label(1, None, "main", "int main  (void) {", false),
+    "进入 main",
+  )
+  assert_eq(
+    infer_semantic_label(5, None, "main", "void defLine () {", false),
+    "进入 defLine",
+  )
+  // 对照：调用侧同形态（P2-4 已锚）不受影响
+  assert_eq(
+    infer_semantic_label(9, None, "main", "  defLine ();", false),
+    "调用 defLine",
   )
 }

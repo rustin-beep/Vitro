@@ -1,0 +1,62 @@
+#include "test.h"
+
+int main() {
+  ASSERT(20, ({ int n=5; int x[n]; sizeof(x); }));
+  ASSERT((5+1)*(8*2)*4, ({ int m=5, n=8; int x[m+1][n*2]; sizeof(x); }));
+
+  ASSERT(8, ({ char n=10; int (*x)[n][n+2]; sizeof(x); }));
+  ASSERT(480, ({ char n=10; int (*x)[n][n+2]; sizeof(*x); }));
+  ASSERT(48, ({ char n=10; int (*x)[n][n+2]; sizeof(**x); }));
+  ASSERT(4, ({ char n=10; int (*x)[n][n+2]; sizeof(***x); }));
+
+  ASSERT(60, ({ char n=3; int x[5][n]; sizeof(x); }));
+  ASSERT(12, ({ char n=3; int x[5][n]; sizeof(*x); }));
+
+  ASSERT(60, ({ char n=3; int x[n][5]; sizeof(x); }));
+  ASSERT(20, ({ char n=3; int x[n][5]; sizeof(*x); }));
+
+  ASSERT(0, ({ int n=10; int x[n+1][n+6]; int *p=x; for (int i = 0; i<sizeof(x)/4; i++) p[i]=i; x[0][0]; }));
+  ASSERT(5, ({ int n=10; int x[n+1][n+6]; int *p=x; for (int i = 0; i<sizeof(x)/4; i++) p[i]=i; x[0][5]; }));
+  ASSERT(5*16+2, ({ int n=10; int x[n+1][n+6]; int *p=x; for (int i = 0; i<sizeof(x)/4; i++) p[i]=i; x[5][2]; }));
+
+  ASSERT(10, ({ int n=5; sizeof(char[2][n]); }));
+
+  // PLAN B2: a nested dimension expression is lowered like a top-level
+  // one. The element count of `q - p` is scaled down by the element
+  // size before it becomes the length; before B2 the nested form was
+  // left unlowered and the byte difference - four times the count
+  // here - was used instead, so sizeof was 64, not 16.
+  ASSERT(16, ({ int a[4]; int *p=a, *q=a+2; int x[2][q-p]; sizeof(x); }));
+
+  // A sizeof of a VLA as an array dimension: the operand's size is a
+  // runtime value, so y is a VLA too (20 elements of int). Guards
+  // is_const_expr's faithful sizeof case, which has to answer false
+  // for a VLA operand by its own kind once the fold stops rewriting
+  // the node (PLAN A1.1/A9.1); a wrong answer turns y into a fixed
+  // array or a spurious not-a-constant error.
+  ASSERT(80, ({ int n=5; int x[n]; int y[sizeof(x)]; sizeof(y); }));
+
+  // A declaration whose type holds no VLA and that has no initializer
+  // emits no statement; one that needs a size emits a single statement
+  // with the computation sequenced before the alloca assignment or the
+  // initializer chain. A pointer to a VLA has the size computed at its
+  // own declaration, which is what the later subscript scaling reads.
+  ASSERT(7, ({ int n=3; int v[n]; int (*p)[n] = &v; (*p)[2] = 7; v[2]; }));
+  ASSERT(10, ({ int n=4; int (*p)[n]; int v[n]; p=&v; (*p)[1]=5; (*p)[1]+v[1]; }));
+  ASSERT(7, ({ int n=3; int v[n][n]; int (*p)[n][n] = &v; (*p)[1][2] = 7; v[1][2]; }));
+  ASSERT(3, ({ int n=2; int v[n][n]; v[1][0]=3; v[1][0]; }));
+  ASSERT(3, ({ int x; int y; x=1; y=2; x+y; }));
+  ASSERT(3, ({ int s=0; for (int x; ; ) { s++; if (s==3) break; } s; }));
+
+  // PLAN A10.2: a VLA type shared by two declarations computes its
+  // size once and a sizeof reads it; rewriting the dimension variable
+  // afterwards does not change the declared object's size, while a
+  // fresh type-name's sizeof reads the current value (both match gcc).
+  ASSERT(20, ({ int n=5; typedef int T[n]; T a; (int)sizeof(T); }));
+  ASSERT(1, ({ int n=5; typedef int T[n]; T a; T b; a[0]=1; b[4]=2; a[0]+b[4]-2; }));
+  ASSERT(20, ({ int n=5; int x[n]; n=7; (int)sizeof(x); }));
+  ASSERT(28, ({ int n=5; int x[n]; n=7; (int)sizeof(int[n]); }));
+
+  printf("OK\n");
+  return 0;
+}

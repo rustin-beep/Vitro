@@ -96,7 +96,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `config.get` / `config.set` | 同上配置项 | 读写会话级配置 |
 | `error_catalog` | — | 错误码表机器可读导出（`{catalog:[{code,code_str,lang,category,icon,title,explanation,common_causes[]}]}`，按 code 升序；`icon` = 语义图标 id（#27 方案 C——原 `emoji` 码点字段已退役），字形经 `icons.get` 单通道下发） |
 | `icons.get` | `ids:[string]`（可选，缺省/空 = 全量） | **图标资产帧（#27 方案 C，2026-10-07）**：响应 `{schema,digest,viewBox,stroke_width,stroke_linecap,stroke_linejoin,fill,icons:{<id>:{paths:[…]}}}`——SVG path 数据 + 统一渲染参数按 digest 锁定下发；值域 = `moonbit/icons/index.tsv` 单源（icon_catalog 闸锁）；按请求序输出、重复 id 去重、含未知 id 整帧拒绝（fail loud 不静默缩水） |
-| `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时覆盖装载——批③b 扩诊断卡片段（105 卡，码值域闸=catalog_codes）——校验（suggestions/builtin_notes 两必到键 + trap_messages 可选段〔批③a：缺席=不碰引擎烘焙 trap，在场=校验后替换〕/suggestions 值域 43 名单/trap 占位符双向契约）全过后原子换装，失败 error 帧不落半装；成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持） |
+| `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时覆盖装载——批③b 扩诊断卡片段（码值域闸=catalog_codes——卡数随码表增长，2026-10-23 实测 108〔A 线 #214 批 +E3084/E3085〕，装前以 `error_catalog` 帧实数为准）——校验（suggestions/builtin_notes 两必到键 + trap_messages 可选段〔批③a：缺席=不碰引擎烘焙 trap，在场=校验后替换〕/suggestions 值域 43 名单/trap 占位符双向契约）全过后原子换装，失败 error 帧不落半装；成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持）。**段内 schema（#244，2026-10-22 成文——此前下游须试错三轮才能装上）**：`payload` 是 JSON 文本，顶层四段**每段都是「整表等键替换」**（少一条即整帧拒绝——与 `texts.install` 装载门「含未知 id 整帧拒绝」同族裁定，#130）：`suggestions` = `{<43 算法名>: string}`（43 名单单源）、`builtin_notes` = `{<12 名>: string}`、`trap_messages` = `{<45 整数码>: string}`、`error_catalog` = `{<108 整数码>: {icon,title,explanation,common_causes[]}}`（卡数随码表增长——装前以 `error_catalog` 方法帧的实数为准，审阅 P2-6）——**键必须整数码**（`"E1001"` 字符串键会被拒），装前对照 `error_catalog`/`semantic_labels` 方法帧拿当前键集。**覆盖面分工（#243，2026-10-22 成文）**：装载替换的是 **`error_catalog` 帧的卡与三张文本表**；**编译/运行诊断帧的 `message`（静态码表文案——「发生了什么」）与 `fix_suggestion` 不受语言包控制**（本地化生效的是「怎么教」层——卡与附注）。「装语言包 → 诊断 message 变中/英」不成立属既定分工，非缺陷 |
 | `semantic_labels` | — | `semantic_label` 受控词汇表导出（`{schema,discipline,labels:[{id,domain,template,example,status,since}]}`；词汇只增不改） |
 | `contracts` | — | schema 版本轨道与行为契约（预留位字段名、v0.2 激活清单与字段台账、行为契约表） |
 | `capabilities` | — | 机器可读能力清单（`engine_version`（含构建期 git 短哈希，可用于产物自检）、版本宏名义锚点、语言子集、内存模型常量、schema 轨道、行为契约） |
@@ -186,6 +186,24 @@ EOF
 > 可用取值：`display`（默认）/ `stdout` / `stderr` / `note`（引擎附注）。引擎内部按
 > `OutputKind` 给每段输出打标，消费方**不得**再对文本做正则清洗——此前散落十余处的
 > "程序运行完成"清洗规则已在 E-P1-5 中全部废除（程序自己打印同类文本时会被误删）。
+> **未知流名整帧拒绝（#258，2026-10-22）**：取值域是本节文档化的契约——传
+> `"stream":"nope"` 等未登记值返回 `ok:false` + `error.kind:"protocol"`（`expected`
+> 字段给值域），**不再静默降级 display**（旧形态表现为「成功但空内容」，下游无法
+> 区分「程序没输出」与「流名写错」——`std_out`/`out` 等误拼会被吞）。大小写与首尾
+> 空白经归一，别名仅 `note|notes`。
+>
+> **通道容量（#235/#241，2026-10-22 成文）**：单帧形态 `vitro api <method> '<params>'`
+> 的参数走**进程命令行（argv）**，受 OS 命令行长度上限约束——Windows 约 32K 字符
+>（实测约 27KB 源码，JSON 转义后）、Linux 约 2MB、macOS 约 256KB。**整表语言包
+>（`texts.install` 四段全发，error_catalog 108 张卡实测 18.7KB 量级〔卡数随码表增长〕）与大源码必须走
+> `--batch`（stdin 帧序列）**：
+>
+> ```bash
+> cat langpack.ndjson | vitro api --batch   # {"id":1,"method":"texts.install","params":{"payload":"…"}}
+> ```
+>
+> 超长参数在 Windows 上以底层 `CreateProcess`「文件名或扩展名太长」失败（连进程都
+> 起不来，与 JSON 合法性无关）——遇到该错误即改走 `--batch`。
 >
 > **字节语义（#112，2026-10-15 成文——判分必读）**：所有通道的 `delta` 字符串都是
 > **程序输出字节流的逐字节 Latin-1 折回**（每字节 → 一个 U+0000~U+00FF 字符），`cursor`/

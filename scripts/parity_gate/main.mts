@@ -18,6 +18,13 @@
 //   node scripts/parity_gate/main.mts --only <dir>[,<dir>] # 点名跑（artifact 组必须这样跑：缺产物即 rc 2 硬红）
 //   node scripts/parity_gate/main.mts --selftest           # 注入必然差异，证明闸会红
 //
+// 双轨判定：同目录**基名相同**的 `.go` + `.mts`（main 与非 main 一视同仁）；两侧基名
+// 不同的历史批（gen_diag.go ↔ main.mts）用 `goEntry`/`tsEntry` 显式登记。
+//
+// **freshness 门禁目标的本地注意**：带 ensureFresh 的目标（protocol_frames 等）在产物
+// 陈旧时，首侧（go）会触发重建 → 第二侧（ts）已看不到「旧于源」行 ⇒ 单次差异属状态性
+// 假红；先构建或重跑一次即可（CI 每轮全新构建，无此问题）。
+//
 // 退出码：0 全等价 / 1 有差异（逐条列） / 2 用法、产物或环境错。
 import fs from "node:fs";
 import os from "node:os";
@@ -31,8 +38,12 @@ export interface Target {
   dir: string;
   /** 参数组；每组是一次完整的 argv */
   modes: string[][];
-  /** 双轨文件名基（默认 "main"）——非 main 命名的驱动（如 moonbit_surface）显式登记 */
+  /** 双轨文件名基（默认 "main"）——两侧同名时用这个简写（如 moonbit_surface） */
   entry?: string;
+  /** Go 侧文件名基（默认 = entry）——两侧**基名不同**的双轨（如 gen_diag.go ↔ main.mts） */
+  goEntry?: string;
+  /** .mts 侧文件名基（默认 = entry） */
+  tsEntry?: string;
   /**
    * 产物前置（仓库相对路径）。带此字段 = **artifact 组**：不进默认跑（静态 job
    * 没产物时会两侧同报「前置产物缺失」空转绿——那是假绿，不是等价）；只在
@@ -92,6 +103,16 @@ export const TARGETS: Target[] = [
     entry: "moonbit_surface",
     modes: [[], ["-check"]],
   },
+  // ── 基名不同但已成双轨：此前 parity 自动发现（同基名）看不见 → 补登记 ─────
+  // 这批是更早迁移批的产物（Go 文件名 = 包名，.mts 统一叫 main.mts），长期只有
+  // 人工验证、无对拍闸。登记后实测：本 5 个逐字等价；gen_diag / gen_diagnostics
+  // 两款**有意不迁** legacy 对账臂（452/850 行死代码，2026-10-23 裁定），删区态
+  // Go 打「对账臂豁免」而 .mts 打自己的 check OK 行 → 见 EXCLUDED 的同名条目。
+  { dir: "scripts/moonbit/gen_host_route", goEntry: "gen_host_route", tsEntry: "main", modes: [["-check"]] },
+  { dir: "scripts/moonbit/gen_protocol_fields", goEntry: "gen_protocol_fields", tsEntry: "main", modes: [["-check"]] },
+  { dir: "scripts/moonbit/gen_stubs", goEntry: "gen_stubs", tsEntry: "main", modes: [["-check"]] },
+  { dir: "scripts/moonbit/host_route_coverage", goEntry: "host_route_coverage", tsEntry: "main", modes: [[]] },
+  { dir: "scripts/moonbit/source_hygiene", goEntry: "source_hygiene", tsEntry: "main", modes: [[]] },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   {
     // 只对拍 `-check`（指纹比对，确定性）：优化路径的收尾行含**耗时**，不可逐字比；
@@ -138,6 +159,10 @@ export const TARGETS: Target[] = [
  * 留白？答案是把「不做」也变成显式登记，不允许黑箱跳过）。
  */
 export const EXCLUDED: Record<string, string> = {
+  "scripts/moonbit/gen_diag":
+    "基名不同（gen_diag.go ↔ main.mts）+ **有意不迁** legacy 对账臂（452 行死代码，2026-10-23 裁定）：删区态 Go 打「legacy 源已删区（工序④），对账臂豁免」而 .mts 直接打 check OK——文案差异属既定设计，不做逐字对拍",
+  "scripts/moonbit/gen_diagnostics":
+    "基名不同（gen_diagnostics.go ↔ main.mts）+ 有意不迁 legacy 对账臂（约 850 行 + 20 个 .rs 解析器，2026-10-23 裁定）；理由同上（删区豁免行 vs check OK 行）",
   "scripts/canonicalize": "需 stdin 输入才有判定面（默认无参 rc=1 等输入）；stdin 对拍另议",
   "scripts/gen_api_help": "生成器写盘（moonbit/cmd/lib/cli/api_help_gen.mbt）；对拍应走 -check 模式，未验证",
   "scripts/gen_demo_algorithms": "生成器写盘（demo/algorithms.js）；-check 语义未验证",
@@ -317,17 +342,18 @@ export function main(argv: string[]): number {
 
     const wall0 = performance.now();
     for (const t of selected) {
-      const entry = t.entry ?? "main";
-      const goMain = path.join(projectRoot(), t.dir, entry + ".go");
-      const tsMain = path.join(projectRoot(), t.dir, entry + ".mts");
+      const goEntry = t.goEntry ?? t.entry ?? "main";
+      const tsEntry = t.tsEntry ?? t.entry ?? "main";
+      const goMain = path.join(projectRoot(), t.dir, goEntry + ".go");
+      const tsMain = path.join(projectRoot(), t.dir, tsEntry + ".mts");
       if (!fs.existsSync(goMain) || !fs.existsSync(tsMain)) {
-        process.stderr.write(`parity_gate: ${t.dir} 不是双轨（缺 ${entry}.go 或 ${entry}.mts）——表项应删或补齐\n`);
+        process.stderr.write(`parity_gate: ${t.dir} 不是双轨（缺 ${goEntry}.go 或 ${tsEntry}.mts）——表项应删或补齐\n`);
         return 2;
       }
       const goBin = buildGo(t.dir, tmp);
       for (const mode of t.modes) {
         cases++;
-        const r = compareOne(t.dir, mode, goBin, entry);
+        const r = compareOne(t.dir, mode, goBin, tsEntry);
         goTotal += r.goMs;
         tsTotal += r.tsMs;
         const diff = r.diff;

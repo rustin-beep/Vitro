@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 parity 补 5 个「基名不同」的既迁双轨（22 双轨 × 46 组）（2026-10-24）
+
+- **盲区**：parity 自动发现只认**同基名**的 `.go` + `.mts`，而更早迁移批的产物是「Go 文件名 = 包名、`.mts` 统一 `main.mts`」（`gen_host_route.go` ↔ `main.mts` 等 7 个目录）——这些驱动长期只有人工验证、**无对拍闸**。
+- **机制**：`Target` 增 `goEntry`/`tsEntry`（两侧异名显式登记，`entry` 保留为同名简写），默认面 17 → **22 双轨 / 41 → 46 组参数**。
+- **实测结果**：5 个逐字等价入表（`gen_host_route` / `gen_protocol_fields` / `gen_stubs` 的 `-check`，`host_route_coverage` / `source_hygiene` 默认模式）；2 个转 EXCLUDED 并写明理由——`gen_diag`（452 行）与 `gen_diagnostics`（约 850 行）**有意不迁** legacy 对账臂（2026-10-23 裁定），删区态 Go 打「对账臂豁免」而 .mts 打自己的 check OK 行，属既定设计。`teaching_annotation_diff/catalog_check.go` 系同一 `package main` 的文件（非独立程序），不入表。
+- **顺带记录一条状态性假红**：带 `ensureFresh` 的目标若产物陈旧，首侧（go）触发重建后第二侧（ts）不再打印「旧于源」行 → 单次差异属状态性，先构建或重跑即可；已写进 parity 头注（CI 每轮全新构建无此问题）。
+
 ### refactor(scripts): #273 wasmopt 驱动 .mts 化（229 行）+ `-check` 对拍（2026-10-24）
 
 - **迁移**：供给管理全量移植（npm tarball 钉版本下载 → sha256 校验 → tar.gz 解包 → 缓冲件校验）+ 两跑确定性自检 + `-check` 指纹比对 + 体积报告。`-check` 路径与 Go 版 **stdout/stderr/rc 逐字零差**（parity 点名跑）。

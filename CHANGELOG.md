@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 wasmopt 驱动 .mts 化（229 行）+ `-check` 对拍（2026-10-24）
+
+- **迁移**：供给管理全量移植（npm tarball 钉版本下载 → sha256 校验 → tar.gz 解包 → 缓冲件校验）+ 两跑确定性自检 + `-check` 指纹比对 + 体积报告。`-check` 路径与 Go 版 **stdout/stderr/rc 逐字零差**（parity 点名跑）。
+- **优化路径的等价证据（一次性）**：同一输入两侧各优化一次，产物 **digest 与字节逐位相同**——1MB gateway 产物（`e9221b67bfce…`，1010972 → 813615 B）与 8B 极小 wasm（`93a44bbb96c7…`）各一组，sidecar 亦逐字节同。
+- **有意差异（已注释 + 文档在案）**：① 收尾行的**耗时**不可逐字比，故优化模式不进 parity；② `gzip` 列走 zlib 口径（Go 用 `compress/flate`），数值可能差一两字节——报告面非判定面，raw 尺寸与 digest 不受影响。
+- **解包实现**：`zlib.gunzipSync` + 手写 512 字节 tar 头解析（dir / reg / symlink 跳过 / GNU long name `L` / pax 跳过），路径穿越即拒；解包后校验 `package/index.js`——解析器漏形态即 fail loud。
+- **接线**：ci.yml 的 wasm-opt 后置步与 pages.yml 同名步 `go run` → node；ci.yml 该步追加 `parity_gate --only scripts/wasmopt`（上一步已预热 `tools/cache`）。
+- **测试 +7**：tar 解包（目录/子目录/长名/路径穿越拒）、`gzipSize` 口径、`parseArgs` 两条 die、无 sidecar `-check` 报红、极小 wasm 优化两跑确定 + sidecar + `-check` 转绿 + 幂等跳过。
+- **四件套**：tsc 0 错 / oxlint 0 警告 / node:test 424 → 431 例 0 失败 / parity 17×41 + wasmopt 1 组全等价。
+
 ### refactor(scripts): #273 replay 协议回放 .mts 化（1213 行）+ 双模对拍（2026-10-24）
 
 - **迁移**：S1–S5 全套断言移植（S1 防抖编译流 A1–A10 / S2 fixtures 判分流 A1–A6 / S3 单步+seek+内存交错流 A1–A16 / S5 预留位缺省语义 A1–A5）。`-moonbit`（61 断言：60 PASS + 1 EXEMPT）与 `--selftest`（12 条 J9 埋雷）两模式 **stdout/stderr/rc 逐字零差**。

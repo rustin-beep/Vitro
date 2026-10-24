@@ -136,8 +136,10 @@ jobs:
         # 二轮审阅 P2：优化落盘后 -check 自证（sidecar 指纹回读比对——
         # 落盘与标记原子性在闸内闭环）
         run: |
-          go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
-          go run ./scripts/wasmopt -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          # 双轨对拍（#292 批）：上一步已预热 tools/cache（冷缓存下载行会只在首侧出现）
+          node scripts/parity_gate/main.mts --only scripts/wasmopt
       - name: Full js target build gate (all packages) + CLI entry (artifact source)
         if: always()
         # 三后端批（2026-10-15）：js 入口产物——gates-wasm 的 smoke 前置

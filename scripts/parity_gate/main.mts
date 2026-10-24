@@ -94,6 +94,14 @@ export const TARGETS: Target[] = [
   },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   {
+    // 只对拍 `-check`（指纹比对，确定性）：优化路径的收尾行含**耗时**，不可逐字比；
+    // 冷缓存时「下载…」行只在首侧出现——故本目标准入条件 = tools/cache 已预热
+    // （CI 的 wasm-opt 步先跑优化再点名对拍）。
+    dir: "scripts/wasmopt",
+    modes: [["-check", "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm"]],
+    exclusive: "需预热 tools/cache（冷缓存下载行只在首侧出现）与 wasm 产物（wasm-opt 步之后）",
+  },
+  {
     // 非 main 命名（replay_s1_s5.go）；`-moonbit` 需 debug serve exe，
     // `--selftest` 纯判定口径埋雷（无产物依赖）。`--backend wasm` 不进对拍：
     // 它的 ensureFresh 会**重建**产物（状态性），后跑的一侧必然看不到陈旧行。

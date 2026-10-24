@@ -12,6 +12,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 single_source .mts 化（380 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：三类条目判定原样——`enforced`（定义点文件集必须全等：多 = 第二份真相，
+  少 = 单源被删）、`copies`（多副本逐字节一致）、`registered`（声明两侧路径存在）。
+  扫描面仍只 .rs/.mbt，注释行与 `exclude_line_pattern` 跳过。
+- **对拍**：默认（清单报告）/ `-check` / `--selftest` 三模式 stdout 与 rc **逐字零差**。
+- **接线**：CI 的 `-check` 切 node；已登记 parity TARGETS（10 双轨 × 22 组参数）。
+- **两处实现差异（已修，均在测试里锁住见下文）**：
+  1. 规则里省略的字符串字段（如 `upstream_ref`）在 Go 是零值 `""`，TS 是 `undefined`
+     ——早前会打印 `上游 : undefined`，改 `undefined | ""` 同判；
+  2. `scanDefs` 的 `search_exclude_dirs` 必须对 **root 自身**生效（Go `Walk` 对 root 也回调
+     `IsDir`）——早前只在子目录检查，root 恰好是被排除目录时会漏。
+- **测试 +6**：canon / scanDefs 四面（注释、exclude_line、exclude dirs、扩展名过滤）/
+  enforced 的 extra+missing / copies 三路红 / 未知 kind 与路径缺失 / 真实仓库三模式。
+- **踩坑记录**：用 shell heredoc 写 TS 测试时反斜杠被折叠（`\(` → `\\(`），正则直接非法
+  ——含反斜杠的代码一律用编辑器工具写，不用 heredoc。
+
 ### refactor(scripts): #273 ci_checklist .mts 化（263 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：注册表闸四向对账原样保留（漏登记 / 悬空 / 僵尸例外 / moon test 目标面），

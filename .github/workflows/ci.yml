@@ -728,7 +728,7 @@ jobs:
         # 单源被删/改名亦红）；registered 条目校验两侧声明路径存在。
         # 清单：scripts/moonbit/single_source/rules.json；J9 证红已留痕。
         shell: bash
-        run: go run ./scripts/moonbit/single_source -check
+        run: node scripts/moonbit/single_source/main.mts -check
 
       - name: libc single-source reconciliation (3 name tables)
 

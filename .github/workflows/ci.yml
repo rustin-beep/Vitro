@@ -306,6 +306,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      # #273 接线批（2026-10-24）：annotation 对拍已切 .mts（node 直跑）——node
+      # 版本走 .node-version 单点（type stripping 需 ≥22.18，不 pin 会随 runner
+      # 预装漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -403,7 +410,7 @@ jobs:
       # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
       # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
       - name: Teaching annotation diff (family-incremental golden, Exit 1)
-        run: go run ./scripts/teaching_annotation_diff
+        run: node scripts/teaching_annotation_diff/main.mts
         shell: bash
 
       # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
@@ -507,7 +514,7 @@ jobs:
         shell: bash
       - name: teaching_annotation_diff wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/teaching_annotation_diff --backend-wasm
+        run: node scripts/teaching_annotation_diff/main.mts --backend-wasm
         shell: bash
 
       # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──
@@ -532,7 +539,7 @@ jobs:
       # 产物 EnsureFresh 自建。
       - name: algorithms.catalog three-way check (dual-arm)
         if: matrix.slice == 'cli_smoke'
-        run: go run ./scripts/teaching_annotation_diff --catalog-check
+        run: node scripts/teaching_annotation_diff/main.mts --catalog-check
         shell: bash
 
       # ── slice vm_diff / clang_direct = 差分双闸 wasm 臂（全语料）───────
@@ -568,6 +575,14 @@ jobs:
           - slice: bookkeeping
     steps:
       - uses: actions/checkout@v4
+      # #273 接线批（2026-10-24）：本 job 的 gen/contract slice 已跑 `.mts` 闸
+      # （teaching_gen_check / teaching_reconcile / host_contract_map）——node
+      # 版本走 .node-version 单点（type stripping 需 ≥22.18；不 pin 会随
+      # runner 预装版本漂移，绿灯不可复现）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -609,8 +624,8 @@ jobs:
         run: |
           set -e
           cd moonbit && moon build --release --target js cmd/vitro_js && cd ..
-          go run ./scripts/teaching_gen_check
-          go run ./scripts/teaching_reconcile
+          node scripts/teaching_gen_check/main.mts
+          node scripts/teaching_reconcile/main.mts
 
       - name: Source hygiene (tracked files must be NUL-free)
 
@@ -741,8 +756,8 @@ jobs:
         # 留痕（2026-10-04 实测）。
         shell: bash
         run: |
-          go run ./scripts/host_contract_map --selftest
-          go run ./scripts/host_contract_map --strict
+          node scripts/host_contract_map/main.mts --selftest
+          node scripts/host_contract_map/main.mts --strict
 
       - name: Protocol TS types freshness + schema doc parity
 
@@ -1110,7 +1125,7 @@ jobs:
       # 发布 + demo 运行时喂引擎解析）。
       - name: course catalog gate (reconcile + lesson.c dual-arm diff)
         if: always()
-        run: go run ./scripts/course_catalog
+        run: node scripts/course_catalog/main.mts
         shell: bash
 
       # 2026-10-04 审阅 P3-②：组装自检原先只在 push-master 的 pages.yml——PR
@@ -1129,8 +1144,8 @@ jobs:
       - name: demo tokens gate (tokens.json → tokens.css, -check)
         if: always()
         run: |
-          go run ./scripts/gen_demo_tokens -selftest
-          go run ./scripts/gen_demo_tokens -check
+          node scripts/gen_demo_tokens/main.mts -selftest
+          node scripts/gen_demo_tokens/main.mts -check
         shell: bash
 
       # F4 前端框架批（Svelte 5 + Vite）闸门：svelte-check（类型+A11y 面，
@@ -1289,8 +1304,8 @@ jobs:
       - name: skill docs referenced-path existence
         if: always()
         run: |
-          go run ./scripts/skill_path_check -selftest
-          go run ./scripts/skill_path_check
+          node scripts/skill_path_check/main.mts -selftest
+          node scripts/skill_path_check/main.mts
         shell: bash
 
       # 变量/id 三路文本对账——demo UI 批三实锤 bug 中两个的归因面
@@ -1312,8 +1327,8 @@ jobs:
       - name: teaching phase vocabulary freeze gate (infer literals ↔ rules.json)
         if: always()
         run: |
-          go run ./scripts/teaching_phase_vocab -selftest
-          go run ./scripts/teaching_phase_vocab
+          node scripts/teaching_phase_vocab/main.mts -selftest
+          node scripts/teaching_phase_vocab/main.mts
         shell: bash
 
       # 拆分批（2026-10-04，refs #28）→ TS 重写批：纯函数层 node --test——

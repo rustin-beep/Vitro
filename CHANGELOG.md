@@ -12,6 +12,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts): #289 审阅处置——freeze 转义口径 / 布尔 flag 语义 / 诊断形态 / 文档数字（2026-10-24）
+
+- **P2-1（必修，已修）**：`--freeze` 写回未复刻 Go `MarshalIndent` 的 `SetEscapeHTML`
+  （`<` `>` `&` 与 U+2028/U+2029 转义）——未变更树上重冻会产出 **154 行 / −950 B
+  伪漂移**（golden 里 190 处 `\u003c/\u003e/\u0026` 被换成裸字符）。修法 =
+  `goJSONMarshalIndent`（序列化后补五类转义）；红证 = 修复前 `git diff --stat` 154 行，
+  绿证 = 修复后 `sha256sum -c` 逐字节一致；单测含 `<>&` 与 U+2028/2029 样例。
+- **P2-2（处置：收紧声明面；根因未定位，不猜修）**：`host_contract_map` 在
+  Node 25.9.0 下 **import 即崩** —— `Assertion failed: !(handle->flags &
+  UV_HANDLE_CLOSING)`（rc=127），Node 24.22.1 全绿；最小工程未复现，评估
+  30–60 min 仍无收敛。处置 = `engines` 由 `>=24` 收紧为 **`>=24 <25`**（声明面与
+  实测面一致），定位另开。**为什么不选「升 25.x 复测」**：该环境无稳定可控的
+  Node 25 安装面（`npx node@24` 的 `.bin` shim 已实测是坏的，会给出假 127），
+  拿不到可信复测证据就不宣称支持。
+- **P3-1（已修）**：布尔 flag 的 `=value` 形态原被静默当 true（`--freeze=false`
+  会真去冻结）——`teaching_annotation_diff` / `teaching_gen_check` /
+  `skill_path_check` 三处改为**显式 exit 2**。**有意差异**：Go `flag` 把
+  `=false` 解析为假并继续，本版拒绝执行——选「报错」而非猜语义，与
+  `gen_demo_tokens` 既有形态一致。
+- **P3-2（已修）**：数字按实测重算——7 件 Go 合计 **2030** 行（原写 2118）、
+  **11 条**命令行（原写 10 处活行）、测试 **229 → 249**（原写 229 → 255，与
+  annotation 小节的 249 → 263 自相矛盾）；`skill_path_check` 测试标题的写死引用数
+  改为**形态断言**（数字随文档增删漂移，写死即假账）。
+- **P3-3（已修）**：`skill_path_check` 的 MISSING 行路径形态对齐 Go（默认相对 /
+  显式 `-root` 绝对；原一律相对）；`course_catalog` 的 exec 错误串改
+  `exit status N`（Go `*exec.ExitError` 形态，原为 `exit N`）。
+- **测试**：+5 例（**263 → 268**），全部真实执行——P2-1 转义单测、三处
+  `--flag=false` 拒绝、`-root` 绝对路径形态。
+
+### refactor(scripts+ci): #273 teaching_annotation_diff 982 行 .mts 化 + 三处 CI 接线（2026-10-24）
+
+- **重写面**：`scripts/teaching_annotation_diff/`（原 Go `main.go` 568 + `catalog_check.go`
+  414 = 982 行）拆 `main.mts`（对拍主路径：serve NDJSON 驱动 / 首现序列提取 /
+  双指针比对 / 豁免僵尸 / `--freeze`）+ `catalog.mts`（`--catalog-check` 三方
+  对账库 + `--catalog-selftest` 四路注入）。`loadRules` 上收到 catalog.mts 供
+  main 单向下依赖（避免 ESM 环）。
+- **对拍证据（全量真跑）**：82 模板首现序列输出**逐字零差**（TS 23.7s / Go 24.8s）；
+  `--catalog-check`（判据 43 ↔ 双臂 ↔ rules 43 ↔ demo 分组表）与
+  `--catalog-selftest`（四路注入均红）**逐字零差**。
+- **接线**：CI 3 处 `go run` → `node scripts/teaching_annotation_diff/main.mts`
+  （native 主步 / `--backend-wasm` 臂 / `--catalog-check`）；`gates-native` 新增
+  `actions/setup-node`（node-version-file 单点）。`gates-wasm` 已有 Node 24 复用。
+- **有意口径差异（两处，均注释在案）**：
+  1. 双臂互拍从 Go `fmt.Sprint(struct)` 改 `JSON.stringify` 深比较——语义等价且
+     更强（结构体打印会把零值差异藏进格式）；
+  2. `--freeze` 序列化按 Go `MarshalIndent` 口径复刻（map 键字节序 + 六字段
+     声明序 + 2 空格 + 尾换行），不交给 JSON.stringify 的自然键序。
+- **测试**：`node:test` +14 例（**249 → 263**，口径注：上一批记的 256 含 7 个误入
+  test 清单的 `main.mts`〔被 `node --test` 当测试文件跑，无断言假绿〕——本日
+  `c8f4e5df` 已剔除，故基线取 249 而非 256）。覆盖 parseArgs / compareTemplate 三类
+  记录 / recordString 文案 / extractBuildMatches（`evidence=` 第 6 参合法、参数数错、
+  括号未闭合）/ extractDemoGroups（7 组 + 两种 fail loud）/ loadRules（空与非法 kind）
+  / compareCatalogs 六类红 / 端到端 `--only bubble` 与 `--catalog-check`（缺产物
+  显式 skip 打印原因）。
+
+### refactor(scripts+ci): #273 教学线与文本闸 7 件 .mts 接线（2026-10-24）
+
+- **接线面（本批重点）**：`teaching_gen_check` / `teaching_reconcile` /
+  `host_contract_map` / `course_catalog` / `gen_demo_tokens` /
+  `skill_path_check` / `teaching_phase_vocab` 的 CI 引用由 `go run` 全量切
+  `node scripts/.../main.mts`（11 条命令行 + 注释处方同步改写，防
+  `ci_checklist` 活行正则扫到注释误判）。`static-gates` 新增
+  `actions/setup-node`（`node-version-file: .node-version`，type stripping
+  需 ≥22.18——不 pin 会随 runner 预装漂移）；`demo` job 复用已有 Node 24 步。
+  Go 版转纯回退面（目录仍被 node 活行占用，`ci_checklist` 同目录归并，不报
+  漏登记），退役另批裁定。
+- **重写面**：7 件 `.mts` 双轨（原 Go 合计 2030 行）+ 配套 `main.test.mts`。
+  Go/TS 双跑证据：`teaching_phase_vocab`（绿 + selftest 四路）、
+  `teaching_reconcile`（默认/-v 101 行/-selftest）、`host_contract_map`
+  （默认/-strict/-selftest）、`skill_path_check`（默认/-selftest）、
+  `course_catalog`（默认/-v/-selftest）、`teaching_gen_check`（3 产物 + 负例
+  ×7）均**逐字零差**；`gen_demo_tokens` 重生成产物与入库 `tokens.css`
+  **逐字节一致**（cmp）。
+- **测试补口**：`node:test` 新增 20 例（229 → 249）。重点是此前**零覆盖**的
+  路径：`course_catalog` 的 lesson.c 双臂对拍（仓库长期无 lesson.c，本批以
+  自造临时课目录跑 vivo↔clang 绿 + 坏 lesson.c 判红，缺 vitro js 臂/clang
+  时显式 skip 打印原因，不静默绿）；`gen_demo_tokens` 的
+  `DisallowUnknownFields` 手工还原成 12 条断言红路；`teaching_reconcile` 用
+  45/43/12 规模 fixture 覆盖装配缺键/孤儿键/条数漂移/节键重复四类红。
+- **口径记录（照抄不"顺手修"）**：`skill_path_check` 的 `file:line` 段在冒号
+  处 break（只 stat 到所在目录、丢文件名）；`./x` 因 `strings.Trim(".,;:")`
+  吃掉首点被当绝对路径跳过——两条都是 Go 版既有行为，测试内注释锁定，避免
+  后人当 bug 改掉。
+
 ### fix(parser+codegen): A 线批一——#272 复合字面量指针初始化 + #278 匿名 union 变量 + #277 同名 static 遮蔽（2026-10-23）
 
 - **审阅处置批（用户五阶段审阅，PR #282 评论全档）**：P1=recorder 两处

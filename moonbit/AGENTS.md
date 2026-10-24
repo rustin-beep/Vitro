@@ -47,34 +47,35 @@ moon test                 # 白盒 _wbtest.mbt + 黑盒 _test.mbt + doc 测试�
 moon test --update        # 快照更新（inspect content= 变更时；核对 diff 再提交）
 moon fmt                  # 格式化（生成物也参与——见 gen_diag 内置 fmt）
 moon info                 # 生成 .mbti 接口面（API 变更信号；pkg.generated.mbti 入版本控制）
-# —— 以下 go 驱动命令：cwd = 仓库根（不是 moonbit/）——
+# —— 以下驱动命令：cwd = 仓库根（不是 moonbit/）；已迁 `.mts`（`node`），
+# 仅 clang_direct 仍为 Go（真值源，无 golden 可对拍）——
 # 2026-09-22 勘误：此前本清单写作 `./scripts/gen_diag` 等（少了 `moonbit/` 段），
 # 在 moonbit/ 与仓库根两处均无法运行（moonbit/ 下无 go.mod 也无 scripts/）；
 # moonbit_surface.go 内部自带 os.Chdir("moonbit")，故必须从仓库根调用。
-go run ./scripts/moonbit/gen_diag          # diag 码表再生成（内置 moon fmt）
-go run ./scripts/moonbit/gen_diag -check   # 幂等校验（源变产物变 / 篡改即红）
-go run ./scripts/moonbit/gen_host_route       # host 路由 110 对再生成（bytecode 包，源 host_func_id.snapshot.rs 快照件；S6 自 codegen 上提）
-go run ./scripts/moonbit/gen_host_route -check  # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
-go run ./scripts/moonbit/gen_stubs          # 标准库存根表再生成（lexer/internal/host/stubs_gen.mbt，源 scripts/moonbit/libc_src/include/*.h——2026-10-05 迁出冻结区）
-go run ./scripts/moonbit/gen_stubs -check   # 幂等校验（2026-09-23 审阅批重构：flag 包口径 + 内置 moon fmt + check 无写副作用——此前手工只认 --check 且无 fmt，干净仓库上必红、-check 单横线会静默改写产物）
-go run ./scripts/moonbit/moonbit_surface -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；provider 全递归 17 包〔批一段全名口径 + 批二段全递归，2026-09-23〕；J9 注入双红留痕）
-go run ./scripts/moonbit/source_hygiene      # 源码卫生闸（真 NUL 扫描——git 判二进制/diff 不可见事故族；白名单 source_hygiene_allowlist.txt；J9 证红）
-go run ./scripts/moonbit/host_route_coverage # 路由覆盖闸（110 路由 ↔ host 实现；别名/VM 白名单规则外置 host_route_rules.json，白名单双向对账；J9 双路证红）
-go run ./scripts/moonbit/libc_single_source -check # libc 三表单源对账闸（builtin_all == host ∪ bytecode - excluded；交集计数 + PURE 子集 + 空集不得绿；J9 三路证红 ✅）
-go run ./scripts/moonbit/pkg_deps -check  # 包依赖方向断言（按总计划 §4 L0–L9：依赖只能向下或同层 + 无环；新包未登记分层即红；cmd/* 豁免方向；J9 证红 ✅）
-go run ./scripts/moonbit/libc_boot_diff   # libc 自举对拍（MoonBit library mode 产物 vs 冻结 golden_digest——Rust oracle 退役后自动切 golden 判定，对拍源 scripts/moonbit/libc_src/src；stub + wrapper 截断口径 + 9 交集字段；J9 证红 ✅）
-go run ./scripts/moonbit/single_source -check # 单一真相源清单校验（判据 C-04 跨语言孪生层：8 条；enforced 判定义点文件集唯一、registered 验路径存在；J9 证红 ✅）
-go run ./scripts/moonbit/mbti_sync -check # 接口面同步闸（.mbt ↔ pkg.generated.mbti；moon info 无 --check 故取跑前后快照不变量；判红时顺手自愈同步 .mbti；J9 证红 ✅）
-go run ./scripts/perf_budget -check     # 性能假设预算闸（语料规模前提守护：typeck O2 债裁决依据 struct 定义 ≤2 / 成员访问 ≤37；超预算即红迫使重估；J9 证红 ✅）
-go run ./scripts/wasmopt <wasm.wasm>   # wasm-gc 产物构建后置优化（#120 批①：binaryen 132 钉版本 + sha256 + 二跑确定性；lean 产物实测 -19.3% raw；moon build 后跑——moon 增量重建会覆盖须重跑；-check=新鲜度校验）
-go run ./scripts/toolchain_probe        # 工具链健康探针（版本锁定/索引预检/ICE 特征；升 moon 后必跑，漂移须 --update-baseline + 全门禁）
-go run ./scripts/parser_diff <corpus>        # S3 解析差分（E1/E2/活性；仓库根跑）
-go run ./scripts/parser_diff --pathological  # E3 病态 12 样本同等拒绝
-go run ./scripts/parser_diff --legal-deep    # E4 合法深嵌套反向锚
-go run ./scripts/parser_diff --threshold     # E3+ 阈值样本（A/B 族两侧一致 + C 族形状）
-go run ./scripts/typeck_diff <corpus>        # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；typeck 已全量收官——非预期 DIFF 即缺陷，处置走登记流程勿静默忽略）
-go run ./scripts/codegen_diff <corpus> [--baseline] # S5 codegen 差分（A 级 14 键全量 + **槽位策略版本对账**〔读产物外层 slot_strategy ↔ scripts/codegen_diff/slot_strategy.json，不符或空集即红〕；--baseline 豁免 one-sided 能力缺口，CONTENT-DIFF 永不计豁免；仓库根跑，骨架语料 corpus/codegen_skeleton 为可通面）
-go run ./scripts/vm_diff [--sample N | --corpus dir | --cases f1.c,...] # S6 D 级运行期 diff（**四语料全量**：stdout 提取 + 返回码 + 1MB 自包含；verdict 三级 SAME/DIFF-known/DIFF-unexpected——skip/known 白名单外置 scripts/vm_diff/*.json，digest 漂移/空转条目即红；前置 `cd moonbit && moon build --target native cmd/run`，脚本自带 exe 新鲜度门禁；总计划 §7.1 层 1，2026-09-26 接 CI）
+node scripts/moonbit/gen_diag/main.mts              # diag 码表再生成（内置 moon fmt）
+node scripts/moonbit/gen_diag/main.mts -check       # 幂等校验（源变产物变 / 篡改即红）
+node scripts/moonbit/gen_host_route/main.mts        # host 路由 110 对再生成（bytecode 包，源 host_func_id.snapshot.rs 快照件；S6 自 codegen 上提）
+node scripts/moonbit/gen_host_route/main.mts -check # 幂等校验（同 gen_diag 三件套：落款 sha + fmt 内置 + 漂移红）
+node scripts/moonbit/gen_stubs/main.mts             # 标准库存根表再生成（lexer/internal/host/stubs_gen.mbt，源 scripts/moonbit/libc_src/include/*.h——2026-10-05 迁出冻结区）
+node scripts/moonbit/gen_stubs/main.mts -check      # 幂等校验（2026-09-23 审阅批重构：flag 包口径 + 内置 moon fmt + check 无写副作用——此前手工只认 --check 且无 fmt，干净仓库上必红、-check 单横线会静默改写产物）
+node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check # 对外面双面闸（①无主 pub 须收面或入白名单 ②跨包消费边须在 surface_edges.txt 登记——新边=面扩张必红；provider 全递归 17 包〔批一段全名口径 + 批二段全递归，2026-09-23〕；J9 注入双红留痕）
+node scripts/moonbit/source_hygiene/main.mts        # 源码卫生闸（真 NUL 扫描——git 判二进制/diff 不可见事故族；白名单 source_hygiene_allowlist.txt；J9 证红）
+node scripts/moonbit/host_route_coverage/main.mts   # 路由覆盖闸（110 路由 ↔ host 实现；别名/VM 白名单规则外置 host_route_rules.json，白名单双向对账；J9 双路证红）
+node scripts/moonbit/libc_single_source/main.mts -check # libc 三表单源对账闸（builtin_all == host ∪ bytecode - excluded；交集计数 + PURE 子集 + 空集不得绿；J9 三路证红 ✅）
+node scripts/moonbit/pkg_deps/main.mts -check       # 包依赖方向断言（按总计划 §4 L0–L9：依赖只能向下或同层 + 无环；新包未登记分层即红；cmd/* 豁免方向；J9 证红 ✅）
+node scripts/moonbit/libc_boot_diff/main.mts        # libc 自举对拍（MoonBit library mode 产物 vs 冻结 golden_digest——Rust oracle 退役后自动切 golden 判定，对拍源 scripts/moonbit/libc_src/src；stub + wrapper 截断口径 + 9 交集字段；J9 证红 ✅）
+node scripts/moonbit/single_source/main.mts -check  # 单一真相源清单校验（判据 C-04 跨语言孪生层：8 条；enforced 判定义点文件集唯一、registered 验路径存在；J9 证红 ✅）
+node scripts/moonbit/mbti_sync/main.mts -check      # 接口面同步闸（.mbt ↔ pkg.generated.mbti；moon info 无 --check 故取跑前后快照不变量；判红时顺手自愈同步 .mbti；J9 证红 ✅）
+node scripts/perf_budget/main.mts -check            # 性能假设预算闸（语料规模前提守护：typeck O2 债裁决依据 struct 定义 ≤2 / 成员访问 ≤37；超预算即红迫使重估；J9 证红 ✅）
+node scripts/wasmopt/main.mts <wasm.wasm>           # wasm-gc 产物构建后置优化（#120 批①：binaryen 132 钉版本 + sha256 + 二跑确定性；lean 产物实测 -19.3% raw；moon build 后跑——moon 增量重建会覆盖须重跑；-check=新鲜度校验）
+node scripts/toolchain_probe/toolchain_probe.mts    # 工具链健康探针（版本锁定/索引预检/ICE 特征；升 moon 后必跑，漂移须 --update-baseline + 全门禁）
+node scripts/diff_gate/main.mts parser <corpus>     # S3 解析差分（E1/E2/活性；仓库根跑）
+node scripts/diff_gate/main.mts parser --pathological # E3 病态 12 样本同等拒绝
+node scripts/diff_gate/main.mts parser --legal-deep # E4 合法深嵌套反向锚
+node scripts/diff_gate/main.mts parser --threshold  # E3+ 阈值样本（A/B 族两侧一致 + C 族形状）
+node scripts/diff_gate/main.mts typeck <corpus>     # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；typeck 已全量收官——非预期 DIFF 即缺陷，处置走登记流程勿静默忽略）
+node scripts/diff_gate/main.mts codegen <corpus>     # S5 codegen 差分（A 级 14 键全量 + **槽位策略版本对账**〔读产物外层 slot_strategy ↔ scripts/codegen_diff/slot_strategy.json，不符或空集即红〕；CONTENT-DIFF 永不计豁免；`--baseline`（one-sided 豁免）随 oracle 面退役已拒收；仓库根跑，骨架语料 corpus/codegen_skeleton 为可通面）
+node scripts/diff_gate/main.mts vm [--sample N | --corpus dir | --cases f1.c,...] # S6 D 级运行期 diff（**四语料全量**：stdout 提取 + 返回码 + 1MB 自包含；verdict 三级 SAME/DIFF-known/DIFF-unexpected——skip/known 白名单外置 scripts/vm_diff/*.json，digest 漂移/空转条目即红；前置 `cd moonbit && moon build --target native cmd/run`，脚本自带 exe 新鲜度门禁；总计划 §7.1 层 1，2026-09-26 接 CI）
 go run ./scripts/clang_direct [--sample N | --corpus dir | --cases f1.c,...] # §7.1 层 2 Clang 直拍（2026-09-26 提前落地）：真值源=Clang 本尊，cmd/run 的 stdout+返回码 vs Clang golden（known_direct.json case+digest 锁定 + 双向监控；重试判据=shadow 同款〔编译失败也重试——Windows 并发 Defender 锁目标文件首跑 127 例瞬态误判实锤〕；MoonBit 侧 Latin-1 折回归一 + clang 侧文本模式 CRLF 归一；缓存 .clang_cache_cd/；J9 digest 篡改证红留痕）
 ```
 
@@ -141,7 +142,7 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 ## 编码与架构纪律（S1 已定型）
 
 1. **穷尽 match 无兜底臂**——枚举增删变体必须让全仓编译红（gen_diag 生成的 137 臂 / opcode 全表 / emitter 均如此）；`from_code` / `from_u8` 这类 Int→枚举允许 `_ => None`（值域无限，数学必然）。
-2. **显式 emitter 纪律**（B 级锚前提）：结构化导出（JSON）两侧手写序列化，禁一侧 serde 一侧 ToJson 派生——字段序、转义、浮点文本化在 emitter 单点对齐 Rust oracle。对拍管道：Rust serve 出口 → Go 归一器归一 → diff。归一单源 = `scripts/internal/canonicalize`（各 diff 驱动**进程内调用**，2026-09-22 抽库）；`go run ./scripts/canonicalize` 仍是**可执行的 CLI 壳**（stdin 进 stdout 出 / `--check`）——原子进程消费方已随 Rust 对照区退役消失，壳保留为手工归一通道。
+2. **显式 emitter 纪律**（B 级锚前提）：结构化导出（JSON）两侧手写序列化，禁一侧 serde 一侧 ToJson 派生——字段序、转义、浮点文本化在 emitter 单点对齐 Rust oracle。对拍管道：Rust serve 出口 → Go 归一器归一 → diff。归一单源 = `scripts/internal/canonicalize`（各 diff 驱动**进程内调用**，2026-09-22 抽库）；`node scripts/canonicalize/main.mts` 仍是**可执行的 CLI 壳**（stdin 进 stdout 出 / `--check`）——原子进程消费方已随 Rust 对照区退役消失，壳保留为手工归一通道。
 3. **生成物纪律**：`diag/error_code_gen.mbt`、`diag/catalog_gen.mbt` 禁手改（文件头源 sha256 落款）；源（native 侧）变更后必须再生成并提交，`-check` 在 CI/审阅中防漂移；行尾归一双保险（.gitattributes 锁 moonbit/** LF + `-check` 比较前归一）。
 4. **照搬不私改**：从 Rust oracle 迁移的定义（opcode 编号、判等语义、Display 渲染口径、mangle）逐字照搬；发现 oracle 现状可疑（如 Display 丢 unsigned）**登记不修正**——差分对拍期两侧一致优先，裁定走差异台账。
 5. **坐标契约**（vitro/engine/source）：`column` = 行内 UTF-8 字节偏移 + 1；双坐标消费方用 `Pos`；禁字节/字符量纲混算；词法 +1 现状不复刻。输入档案：`docs/current/07-质量与裁定/列号口径冻结.md`。

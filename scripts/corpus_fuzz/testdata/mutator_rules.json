@@ -1,0 +1,23 @@
+{
+  "_comment": "算子覆盖金样本规则（#292 审阅 P2-1 处方）：单一种子 × 全 11 算子。种子 corpus/mutator_probe/seed_all.c 专为「每个算子都实际改变字节」而写（建这个 suite 只为覆盖，不进任何真值闸的语料表——clang_direct 等按显式列表取 corpus 子目录）。注：suite 必须是**单段目录名**——变体文件名由 `suite_stem_mutator.c` 拼成，带斜杠会逃出缓存目录。",
+  "seeds_per_suite": 1,
+  "mutators_per_seed": 11,
+  "seed": 20261024,
+  "mutators": [
+    "static_inject",
+    "brace_wrap",
+    "brace_strip",
+    "char_escape",
+    "init_partial",
+    "memset_zero",
+    "div2shift",
+    "cmp_swap",
+    "paren_wrap",
+    "cast_strip",
+    "nested2flat"
+  ],
+  "suites": [
+    "mutator_probe"
+  ],
+  "generators": []
+}

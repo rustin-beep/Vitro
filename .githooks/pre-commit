@@ -65,8 +65,8 @@ fi
 # E6（JSON 缩进/末行换行）历史复发 4 次全靠 CI 红——本闸前移。
 staged_text="$(git diff --cached --name-only --diff-filter=ACM -- '*.json' '*.json.mbt' '*.md' '*.yml' '*.yaml')"
 if [ -n "$staged_text" ] && command -v go >/dev/null 2>&1; then
-  if ! go run ./scripts/editorconfig_check >/dev/null 2>&1; then
-    echo "editorconfig 硬性项漂移（UTF-8/LF/末行换行/JSON 缩进）——go run ./scripts/editorconfig_check 看明细" >&2
+  if ! node scripts/editorconfig_check/main.mts >/dev/null 2>&1; then
+    echo "editorconfig 硬性项漂移（UTF-8/LF/末行换行/JSON 缩进）——node scripts/editorconfig_check/main.mts 看明细" >&2
     status=1
   fi
 fi

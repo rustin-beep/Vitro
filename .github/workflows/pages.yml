@@ -65,8 +65,8 @@ jobs:
         # （binaryen 132 钉版本 + sha256；-19.3% raw 实测）——demo 资产
         # 与 CI 防线消费同一优化形态产物。
         run: |
-          go run ./scripts/wasmopt moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
-          go run ./scripts/wasmopt -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
+          node scripts/wasmopt/main.mts -check moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm
 
       # 语言包懒加载产物（#130 批② demo 接线）：engine.worker 动态 import
       # demo/teaching/langpack/langpack.js——vite 懒 chunk 缺失即 build 红，

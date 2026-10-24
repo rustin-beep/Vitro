@@ -253,7 +253,7 @@ EOF
 > {"id":3,"method":"input.feed","params":{"text":"35\n"}}   // → finished，读入 a=7, b=35
 > ```
 >
-> 防线：`go run ./scripts/serve_smoke` 覆盖 id 关联 / 帧同构 / 生命周期 / 配置一致性 / 三段式内存地图 / schema 轨道与词汇表断言（CI 已纳入，脚本自报口径）。
+> 防线：`node scripts/serve_smoke/main.mts` 覆盖 id 关联 / 帧同构 / 生命周期 / 配置一致性 / 三段式内存地图 / schema 轨道与词汇表断言（CI 已纳入，脚本自报口径）。
 >
 > **已知形态差（登记不照搬）**：请求行 ≥65535 字节时 MoonBit 侧回 protocol
 > 错误帧后干净退出（2026-09-29 超长行修复——静默丢弃违反协议演化纪律②）。

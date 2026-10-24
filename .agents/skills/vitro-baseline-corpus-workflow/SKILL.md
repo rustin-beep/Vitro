@@ -17,11 +17,11 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 1. **clang 实跑**取 stdout + exit code（golden 由实跑生成，**勿手写**）；
 2. **golden 不落盘 `.out` 文件**（**[Rust oracle 退役 2026-10-05]** 改写——原「`corpus/cases_golden/<suite>/<name>.out` + 82 个 `*_default.out`」形态已消亡，`corpus/` 下实测 0 个 `.out`）：期望值由 `clang_direct` **现跑** clang 取真值（缓存 `.clang_cache_cd/`，gitignore 域；行级归一内置）；结构面由各差分驱动随包固化的 `golden_digest.json` 对账（工序③形态）；
    **五家 digest 冻结清单（2026-10-18 连红批改写——本行此前只写了 codegen 一家，10-17/10-18 两批语料各断供 2~3 家致 CI 连红，教训三条在案）**：新增/修改语料后**五家全跑** `--freeze-mb`（driver 均接 `corpus/<suite>`，vm_diff 接 suite 名）——
-   - `go run ./scripts/lexer_diff corpus/baseline --freeze-mb`（语料文件数闸 + 样本 TSV——断供形态「现 N ≠ 落盘 M」）
-   - `go run ./scripts/parser_diff corpus/baseline --freeze-mb`（样本级 hash 校验——新样本不在清单报「与 freeze 时不一致」，CI 上该 job 才红、本地不跑不报）
-   - `go run ./scripts/typeck_diff corpus/baseline --freeze-mb`（逐 suite；**代码改动（含 typeck 行为改进）致存量 hash 漂移时 knr/leetcode/gap 三套件也要重跑**——kr_4_6 实锤：折叠改进只冻了 baseline，knr 旧 hash 连红两轮）
-   - `go run ./scripts/codegen_diff <dir> --freeze-mb`（mb 侧产物指纹入账；**dir 须四套件各跑一次**——codegen 改指令发射面必漂存量：2026-10-20 CI 红实锤，只冻 baseline 漏 knr/leetcode 8 例 char 指令漂移）
-   - `go run ./scripts/vm_diff --corpus <suite> --freeze-mb`（接 **suite 名**非目录）
+   - `node scripts/diff_gate/main.mts lexer corpus/baseline --freeze-mb`（语料文件数闸 + 样本 TSV——断供形态「现 N ≠ 落盘 M」）
+   - `node scripts/diff_gate/main.mts parser corpus/baseline --freeze-mb`（样本级 hash 校验——新样本不在清单报「与 freeze 时不一致」，CI 上该 job 才红、本地不跑不报）
+   - `node scripts/diff_gate/main.mts typeck corpus/baseline --freeze-mb`（逐 suite；**代码改动（含 typeck 行为改进）致存量 hash 漂移时 knr/leetcode/gap 三套件也要重跑**——kr_4_6 实锤：折叠改进只冻了 baseline，knr 旧 hash 连红两轮）
+   - `node scripts/diff_gate/main.mts codegen <dir> --freeze-mb`（mb 侧产物指纹入账；**dir 须四套件各跑一次**——codegen 改指令发射面必漂存量：2026-10-20 CI 红实锤，只冻 baseline 漏 knr/leetcode 8 例 char 指令漂移）
+   - `node scripts/diff_gate/main.mts vm --corpus <suite> --freeze-mb`（接 **suite 名**非目录）
    语义统一（2026-10-11）：`--freeze-mb` 默认含存量重算，代码改动致存量漂移时同命令自动刷新——`--refresh` 已删，出现即说明心智过时。**本地验证面必须四 suite 全跑**（baseline 绿 ≠ knr/leetcode/gap 绿——CI 是四套件全量，kr_4_6 教训）；
 3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
 4. ~~`cargo build --release` 重建后 `go run ./scripts/shadow_verify`~~（**[Rust oracle 退役 2026-10-05]**——`native/` 已整体删除，`scripts/shadow_verify` 同批消失；oracle 正确性底线职责由 clang golden + clang_direct 直拍承接）；
@@ -41,7 +41,7 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 - ~~**shadow_verify --rebuild 只看 mtime**~~（**[Rust oracle 退役 2026-10-05]**——本坑对象已删；教训由现役防线继承：vm_diff / clang_direct 自带「mtime 触发 + 构建复核」新鲜度门禁，统一入口 `scripts/bin/vitro` 的 native 降级臂有 **stderr 大字告警**（不阻断；只扫 `cmd/host/parser/typeck/lexer/codegen/vm` 7 目录，gateway 族改源不在告警面）——陈旧 exe 会用旧代码下结论，查法见 `vitro-workspace-review` 03 的 D16 同族面「陈旧制品」条）。
 
 ## 加用例的连坐面（facts）
-1 个用例会牵动 clang_direct / vm_diff 的对拍计数（原「shadow 总数与 match 计数」**[Rust oracle 退役 2026-10-05]**），下游同步面约 6 处：markdown 现值句、**SVG 内嵌数字（生成物，`go run ./scripts/gen_svg` 重生成，禁手改；重生成后 `grep -o` 抽查数字落位）**、README 分解式行（人工维护不机判但须诚实同步）+ 更新 as_of 实测日期。
+1 个用例会牵动 clang_direct / vm_diff 的对拍计数（原「shadow 总数与 match 计数」**[Rust oracle 退役 2026-10-05]**），下游同步面约 6 处：markdown 现值句、**SVG 内嵌数字（生成物，`node scripts/gen_svg/main.mts` 重生成，禁手改；重生成后 `grep -o` 抽查数字落位）**、README 分解式行（人工维护不机判但须诚实同步）+ 更新 as_of 实测日期。
 
 ## 输出差异类用例：gap 目录配方
 双侧可跑但输出**必然不同**时（如 `putchar(>=128)` 的 UTF-8 重编码差异），不进 baseline。照 `corpus/gap/` 先例：

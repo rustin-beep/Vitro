@@ -1,0 +1,8 @@
+{
+  "seeds_per_suite": 3,
+  "mutators_per_seed": 5,
+  "seed": 20261018,
+  "mutators": ["static_inject","brace_wrap","brace_strip","char_escape","init_partial","memset_zero","div2shift","cmp_swap","paren_wrap","cast_strip","nested2flat"],
+  "suites": ["baseline"],
+  "generators": [{"name":"char_arith","count":3},{"name":"diag_legal","count":3}]
+}

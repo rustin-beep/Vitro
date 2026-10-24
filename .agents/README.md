@@ -41,5 +41,5 @@ Claude Code 等其他工具按上面的命令装到各自目录；安装物是�
 **新增 / 改名 / 改 description 时的三处连坐**（CI 双闸会拦失步，但最好一次改齐）：
 
 1. 本清单表（人工维护）；
-2. `go run ./scripts/gen_svg skills` 重生成插图 `docs/current/02-构建与上手/agent-skills-overview.svg`——图从盘上目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必致图失步，`gen_svg -check`（CI hygiene）即红；
+2. `node scripts/gen_svg/main.mts skills` 重生成插图 `docs/current/02-构建与上手/agent-skills-overview.svg`——图从盘上目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必致图失步，`gen_svg -check`（CI hygiene）即红；
 3. frontmatter 校验 `go run .agents/install_skills.go --list`（CI）——缺 SKILL.md / 缺 name 或 description / name 与目录名不一致即红。

@@ -10,8 +10,10 @@
 //
 //   target = lexer | parser | typeck | codegen | vm
 //
-// 三模式语义见 internal/diffgate.mts 头注。CI 双轨期仍跑 Go 版驱动，本入口
-// 为对拍期并存形态。
+// 三模式语义见 internal/diffgate.mts 头注。**本入口已是唯一形态**：族 A 的 Go 版
+// 驱动随 #273 终局批物理删除，双轨对拍闸（原 diff_gate/parity.mts）同批退役——
+// 等价性证据从「两轨互拍」转为「冻结 golden_digest 单轨自证」（golden 由 Go 版
+// 生成并冻结，此后 TS 侧只许与它逐位一致）。
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { runGate } from "../internal/diffgate.mts";

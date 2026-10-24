@@ -12,6 +12,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
+
+**删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。
+
+**退役 `scripts/diff_gate/parity.mts`**（+ CI 步骤 + `package.json` lint 项）
+- 同上批 `parity_gate` 的理由：Go 侧不存在后没有可比较对象，留着＝**零目标恒绿空闸**。等价性证据由「两轨互拍」转为「冻结 `golden_digest.json` 单轨自证」——digest 由 Go 版生成后冻结，TS 侧此后只许与它逐位一致。
+
+**数据面留住**：五家 `*_diff/` 目录的 `golden_digest.json` / `known_diffs.json` / `skip_list.json` / `slot_strategy.json` / `gen_corpus.mbtx` 是 `diff_gate` 的真值源，**只删 `main.go`，目录与数据不动**。
+
+**文档命令面欠账一次清（机械 151 处 / 35 个 .md）**
+- 活跃文档里所有指向「本批/前批已删 Go」的 `go run ./scripts/X` → `node scripts/X/main.mts`；差分族改 `node scripts/diff_gate/main.mts <target>`（target 插在入口之后，位置参数与旗标原样跟）。
+- 面积：`moonbit/AGENTS.md`(25) / `.agents/skills/**`(39，含 review 的复现清单与 baseline 语料工作流) / `docs/current/**`(48) / `docs/spec/**`(10) / `README.md` / `AGENTS.md` / `protocol/README.md` / `scripts/moonbit/README.md` 等。
+- §2 语言列按文件系统实况重判（14 行 Go→TS）；五家 `*_diff/` 的清单行收编为 `scripts/diff_gate/` 行 + 一行「数据（无代码）」。
+- 顺带修 `--baseline`：codegen 随 oracle 面退役已拒收该旗（实测 `未知/重复参数`），文档撤下并注明。
+- **不动历史区**：`docs/archive/**`、`CHANGELOG.md`、`.workbuddy/memory/**` 保留撰写时点原文；`shadow_verify`/`ci_three_tier_check`/`ghost_probe` 等 2026-10-05 前退役设施的残留引用（30 处）不属本批。
+
+**实测抽检**（改完即跑，非推断）：`diff_gate lexer corpus/gap` 40 例 PASS / `diff_gate parser --pathological` 12 例 PASS / `pkg_deps -check` / `single_source -check` / `canonicalize`（stdin 过滤器，`-check` 对非规范形报红）/ `perf_budget -check` 全 PASS。
+
+**门禁**：tsc 0 错 / oxlint 143 文件 0 警告 / node:test **463 例 0 失败**（首跑 462/463 有 1 例偶发红，复跑全绿；CI 若再现按红线处理）/ `ci_checklist` PASS（驱动 60→**55**，.go 9→**4**，.mts 51）/ `editorconfig_check` PASS / `facts --strict check` 坏引用 0 / `skill_path_check` missing=0。
+
+### refactor(scripts)!: #273 终局批——删除已迁 Go 版（52 文件 / 22,417 行）+ 退役 parity 闸（2026-10-24）
+
+**删了什么**：44 个目录里已成双轨的 `.go`（含 Go 测试）共 **52 文件 / 22,417 行**；`go build ./...` 复验剩余 Go 全绿。归档证据在仓库历史：每批的 parity 对拍（23 双轨 × 47 组）、生成金样本（`corpus_fuzz/testdata/`）、各脚本单测。
+
+**退役 parity 闸**（`scripts/parity_gate/` 整件 + CI 步骤 + package.json 清单项）
+- 理由：它存在的唯一理由是「Go 与 .mts 并存期把判定等价变机判」。Go 版删完后它没有可比较对象，留着就是**零目标恒绿的空闸**——恰是本仓最忌的假绿形态。故连同 `--selftest`/`--only` 全部 CI 调用一并移除，而不是让它空转。
+
+**连带清理**
+- 孤儿 Go 库：`internal/probeutil`（唯一消费者 serve_smoke 已切 CIM）、`internal/pyrandom`（零 Go 消费者）——删除；`capi`/`freshness`/`canonicalize` 仍被保留的 9 个 Go 驱动使用，留。
+- `teaching_annotation_diff/catalog.mts`：原「正则解析 `gen_demo_algorithms/main.go` 的 groups var」改为**直接 import `GROUPS`**（该模块有入口守卫、导入无副作用）。文本解析存在的前提是「真源在 Go」——前提消失，解析器与 3 条 fail-loud 测试一并删除，改为直连数据断言。
+- 文档：清掉 parity 闸清单行、「Go 版转回退面」口径改「TS（`.mts`，终局批已删 Go 版）」共 17 处；修 6 处指向已删 `.go` 的坏引用（facts `--strict` 由 6 红转 0）；`.agents/skills/vitro-toolchain-upgrade/SKILL.md` 引用同步。
+- `ci_checklist` 口径自动跟随：驱动 61（.go 52 / .mts 9）→ **60（.go 9 / .mts 51）**，活行 53。
+
+**保留的 Go（不迁，理由已登记）**：`facts`(3 文件 2338) / `clang_direct`(1142) / `realcode_diff`(2206) 三个**真值源**（无 golden 可对拍）；`perf_baseline`(870) 报告型；diff 家族 5 个(4697) 已被 `diff_gate` 取代，待独立批删除。
+
+**门禁**：tsc 0 错 / oxlint 144 文件 0 警告 / node:test **464 例 0 失败** / ci_checklist PASS / editorconfig PASS / facts --strict（0 漂移 0 坏引用）/ skill_path_check 0 缺失。
+
 ### fix(parser+lexer): A 线批四——#285 声明符螺旋 const 层级归位 + #251 U/UL 后缀符号域 + #242 诊断列字节量纲统一（2026-10-24）
 
 - **#285（parser）**：`T *const *` 声明符链的 const 落最外层指针位（`char** const`）
@@ -58,6 +95,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   越界读 UB 域合法桶标注）；moon test 891/891（新增锚 4；基线含同日 #256/#261 审阅处置批 +3 锚，rebase 连坐）；双臂（js/
   native）探针与语料逐位一致；surface/mbti/fmt/facts 零漂移。
 
+### fix(scripts): #292 审阅处置——P2×3 + P3×8 逐条（2026-10-24）
+
+**P2-1 · corpus_fuzz 金样本只锁住 1 个算子的实际变换面** —— 已修（含先红后绿）
+- 复核审阅复现：突变 `static_inject` 的 `"    static "` → 旧 21 个金样本仍全绿（它们多在抽样种子上本就是 no-op）。
+- 修法：新增 `corpus/mutator_probe/seed_all.c`（专为「每个算子都实际改动字节」而写）+ `testdata/mutator_rules.json`（单种子 × 全 11 算子），Go 侧 `-freeze` 产出 `testdata/golden_mutators/*.c`（11 个）。
+- 断言：① 11 个金样本逐字节比对；② **每个算子至少一个变体 != 源**（no-op 不算覆盖），防静默退化。
+- 证红：同一条突变（`static` → `staticx`）现在 **✖ `mutator_seed_seed_all_static_inject.c 字节不一致`**；还原后 ✔。
+- 顺带发现：`brace_strip` 的语义是「`{ N }` → `{N}`」（空白归一，不是去花括号），种子里需 `= { 5 }` 才触发；已写成注释免后人踩。
+
+**P2-2 · 未归类输出打印 `[object Object]`** —— 已修
+- 抽出 `formatUnclassified()`（类型收窄为 `string[]`），输出 `  - <dir>/<entry>`；补回归断言「含目录名且绝不出现 `[object Object]`」。
+
+**P2-3 · 文档两处「Go 版已删」失实** —— 已修
+- `diff_ledger` / `icon_catalog` 行改回「Go 版转回退面 + parity 双轨对拍」（与其余 20 余行同口径）。
+
+**P3 · 八条**
+- **normalize 全文 `\`→`/`（结构性假绿）**：删掉该归一——两侧同平台同 `path.join`，本无需归一；实测删后 23×47 仍全等价。补断言 `\2014 ≠ /2014`。（`C:\x\y.ts` 现在原样保留。）
+- **双轨自动发现只认同基名**：新增 `discoverMixedDirs()`——同目录有 `.go` 又有 `.mts` 但无同基名配对者，必须归类（实测立刻抓出 `scripts/realcode_diff`，已入 EXCLUDED 写明「两个无关程序、非双轨」）。
+- **`goTrimSpace`/`goFields` 漏 U+2028/U+2029**：Go `unicode.IsSpace` = Unicode White_Space **含**行/段分隔符；已补进两处正则，注释改正（Go 有 U+0085/U+2028/U+2029，**不含** U+FEFF）。原测试断言的是错误语义，同步改正并加审阅给的实测例。
+- **文档数字失实**：22 双轨 × 46 组 → 23 × 47；`catalog.json 108 条` → 114。
+- **test 清单漏 `diff_gate/targets/lexer.test.mts`**：已补登记，并新增 `internal/testlist.test.mts` 机判（磁盘 `.test.mts` 集合 ↔ `npm test` 清单**双向**一致）。补登记后立刻暴露该文件里写死的 `976` 已过期（实测 990）——改为以 `lexer_diff/golden_digest.json` 的 `baseline/` 条目数为唯一真值。
+- **修改面表漏改 serve_smoke**：同一行内 `serve_smoke` 也切 node。
+- **corpus_fuzz e2e 不查产物新鲜度**：e2e 前置 `ensureFresh(cmd/run)`，陈旧 `run.exe` 导致的桶漂移假红不再出现。
+- **demo/DESIGN.md cwd 混用**：`../scripts/demo_ui_lint/main.mts` → `scripts/demo_ui_lint/main.mts`，并注明本段统一以仓库根为 cwd。
+
+**门禁**：tsc 0 错 / oxlint 146 文件 0 警告 / node:test **467 例 0 失败**（+9）/ parity 23×47 全等价 / ci_checklist + editorconfig + facts --strict（0 漂移 0 坏引用）绿。
+
+### refactor(scripts): #273 serve_smoke .mts 化（1274 行）+ RSS 口径替换 + 证红（2026-10-24）
+
+- **迁移**：出口 3 的 serve 协议冒烟全量移植（主批 25 请求 × 68 断言 + 边界/负值/极值批 + 二次运行不串帧批 + RSS 护栏批 + 超长行批 + 豁免表（断言级/整批级）+ `--audit-exemptions` 僵尸审计）。`-moonbit`（69 断言 = 67 PASS + 2 豁免）与 `-moonbit -audit-exemptions` 两模式 **stdout/stderr/rc 逐字零差**。
+- **唯一有意差异：RSS 采样后端**。Go 走 `probeutil` 的 Windows psapi（`GetProcessMemoryInfo.PeakPagefileUsage`）；Node 无该 API，改读**同一计数器**的 CIM 面 `Win32_Process.PeakPageFileUsage`。量纲实测：CIM 该字段是 **KB**（同进程 `WorkingSetSize` 是字节，本机实测 29656 vs 62152704）——换算后与 psapi 逐值吻合（21/23/23/23 MB）。
+- **parity 新增 `maskLines` 机制**：把「测得值/采样时刻敏感」的行（4 行 `seek(…) 后提交峰值 ≈ N MB`）在比对前整行屏蔽，判定行（预算内/超预算）仍逐字比——这是「非确定行」与「空转绿」的正解：屏蔽面显式登记 + 理由落注释。
+- **证红留痕（J9）**：① `VITRO_RSS_BUDGET_MB=5` → RSS 护栏断言必红、`FAILED: 1 项 -> ["RSS 护栏：提交峰值在预算内"]`（并落成测试）；② `-audit-exemptions` 轮：两条豁免条目真跑即 FAIL（`LEGIT(FAIL)`）= 豁免面自身被证伪为合法，僵尸即红。
+- **接线**：gates-native 的 serve 步（含点名对拍）、审计步骤、gates-wasm 的 wasm 臂与 wasm 审计步共四处 `go run` → node。
+- **测试 +10**：`nonEmptyLines` / `tailRunes`（按码点取尾）/ `parseFrame` / `peakCommitMB` 失败口径 / 未选臂与 `--audit-exemptions` 未配臂与 `VITRO_CLI` 缺失三条 fail loud / 主跑全绿 / 审计轮无僵尸 / **RSS 预算证红**。
+
+### refactor(scripts): #273 corpus_fuzz .mts 化（1100 行）+ 生成金样本 + 证红（2026-10-24）
+
+- **迁移**：对抗随机分叉闸全量移植（clang × vitro-native × vitro-js 三方六桶分类 / 指纹基线 / 新指纹·桶恶化判红 / `-freeze` 合并语义 / 缓存键 / `-probe` / 域生成器段）。
+- **字节语义是硬前提**：Go 侧 `src` 是 string（按字节索引），本版一律 Buffer——语料含中文注释，按 UTF-16 code unit 索引会让 `codeMask`/`firstIntLit` 位点整体漂移、变体字节随之不同。`detRand` 的 uint64 回绕改用 BigInt（number 在 >2^53 丢精度）。
+- **生成保真（本批主证据）**：`testdata/variants/*.c` 是 Go 版 `-freeze` 实跑落下的 **21 个变体**，测试用抽出的纯函数 `planVariants` 重算并**逐字节比对**——RNG、11 个算子、2 个生成器、采样派生种子全锁在这一层。`-freeze` 两侧产出的基线文件亦**逐字节相同**（说明 clangOutcome/parseVitro/bucketOf 全等价）。
+- **证红留痕（J9）**：把迷你基线里一个非 AGREE 条目改成 AGREE + 删一个条目 → 双侧同 **rc=1**，`新指纹=1 桶恶化=1` 两行逐字同；还原后复绿。
+- **对拍口径**：全量 318 变体 ≈ **9 分钟/侧**，故 parity 走 `testdata` 迷你规则（21 变体，≈19s/侧，`-regen` 让两侧都从干净缓存起）；CI 真跑仍是全量，随后点名对拍。
+- **接线**：corpus fuzz job 的 `go run` → node + `parity_gate --only scripts/corpus_fuzz`；文档补该驱动的清单行。
+- **测试 +11**：金样本 21 变体逐字节、DetRand（回绕/可复现/种子边界）、codeMask（注释/字符串/字符字面量/引号本体）、firstIntLit（跳 `#` 行与标识符中数字）、isSep·isAllDigits·replaceFirstBareType、latin1Fold、parseVitro 四态、bucketOf 六桶+恶化序、norm、迷你规则端到端、未知算子 fail loud。
+
 ### fix(vm+host+infra): #256/#261 批用户审阅处置——P2×2 同族臂漏接 + P3×4 锚与闸补牙（2026-10-24）
 
 - **P2-1**：`DivQ`/`ModQ`（long long 有符号除/模零）补 `code="E3088"` 且裸文案
@@ -86,6 +169,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README 卡数 B 线域、diag_wbtest 测试名历史锚）。
 - 探针复测（js 臂）：i64 除零→`"E3088"` 教学段 / 栈缓冲 strcat→`"E3070"`
   / 数组越界→`"E3086"`。moon test 887/887（+3 锚）。
+
+### refactor(scripts): #273 toolchain_probe .mts 化（178 行）+ 证红留痕（2026-10-24）
+
+- **迁移**：四项检查全量移植（版本锁定 vs `toolchain_baseline.txt` / registry 索引行为式预检（`moon update` + 索引非空）/ F8 ICE 特征识别 / 退出码 fail loud）。默认模式 **stdout/stderr/rc 逐字零差**（首轮即零差）。
+- **证红留痕（J9）**：把基线里的 `moon 0.1.` 改成 `moon 0.9.` → 双侧同 **rc=1**、输出逐字同（`[红] 工具链版本漂移…基线/实测` 两行）；还原后复绿。
+- **接线**：hygiene job 的探针步 `go run` → node + `parity_gate --only scripts/toolchain_probe`；文档三处处方同步。
+- **测试 +4**：`baselineLines`（CRLF 归一/剔注释空行/trim）、`baselineMatches`（行尾 `\r` 残留不致假红——CI 2026-09-22 实锤面）、`isKnownICE` 三特征（含「Go 特征串是字面 `segfault`，大小写敏感」的如实登记）、四项全绿端到端（缺 moon 显式 skip）。
+
+### refactor(scripts): #273 parity 补 5 个「基名不同」的既迁双轨（22 双轨 × 46 组）（2026-10-24）
+
+- **盲区**：parity 自动发现只认**同基名**的 `.go` + `.mts`，而更早迁移批的产物是「Go 文件名 = 包名、`.mts` 统一 `main.mts`」（`gen_host_route.go` ↔ `main.mts` 等 7 个目录）——这些驱动长期只有人工验证、**无对拍闸**。
+- **机制**：`Target` 增 `goEntry`/`tsEntry`（两侧异名显式登记，`entry` 保留为同名简写），默认面 17 → **22 双轨 / 41 → 46 组参数**。
+- **实测结果**：5 个逐字等价入表（`gen_host_route` / `gen_protocol_fields` / `gen_stubs` 的 `-check`，`host_route_coverage` / `source_hygiene` 默认模式）；2 个转 EXCLUDED 并写明理由——`gen_diag`（452 行）与 `gen_diagnostics`（约 850 行）**有意不迁** legacy 对账臂（2026-10-23 裁定），删区态 Go 打「对账臂豁免」而 .mts 打自己的 check OK 行，属既定设计。`teaching_annotation_diff/catalog_check.go` 系同一 `package main` 的文件（非独立程序），不入表。
+- **顺带记录一条状态性假红**：带 `ensureFresh` 的目标若产物陈旧，首侧（go）触发重建后第二侧（ts）不再打印「旧于源」行 → 单次差异属状态性，先构建或重跑即可；已写进 parity 头注（CI 每轮全新构建无此问题）。
+
+### refactor(scripts): #273 wasmopt 驱动 .mts 化（229 行）+ `-check` 对拍（2026-10-24）
+
+- **迁移**：供给管理全量移植（npm tarball 钉版本下载 → sha256 校验 → tar.gz 解包 → 缓冲件校验）+ 两跑确定性自检 + `-check` 指纹比对 + 体积报告。`-check` 路径与 Go 版 **stdout/stderr/rc 逐字零差**（parity 点名跑）。
+- **优化路径的等价证据（一次性）**：同一输入两侧各优化一次，产物 **digest 与字节逐位相同**——1MB gateway 产物（`e9221b67bfce…`，1010972 → 813615 B）与 8B 极小 wasm（`93a44bbb96c7…`）各一组，sidecar 亦逐字节同。
+- **有意差异（已注释 + 文档在案）**：① 收尾行的**耗时**不可逐字比，故优化模式不进 parity；② `gzip` 列走 zlib 口径（Go 用 `compress/flate`），数值可能差一两字节——报告面非判定面，raw 尺寸与 digest 不受影响。
+- **解包实现**：`zlib.gunzipSync` + 手写 512 字节 tar 头解析（dir / reg / symlink 跳过 / GNU long name `L` / pax 跳过），路径穿越即拒；解包后校验 `package/index.js`——解析器漏形态即 fail loud。
+- **接线**：ci.yml 的 wasm-opt 后置步与 pages.yml 同名步 `go run` → node；ci.yml 该步追加 `parity_gate --only scripts/wasmopt`（上一步已预热 `tools/cache`）。
+- **测试 +7**：tar 解包（目录/子目录/长名/路径穿越拒）、`gzipSize` 口径、`parseArgs` 两条 die、无 sidecar `-check` 报红、极小 wasm 优化两跑确定 + sidecar + `-check` 转绿 + 幂等跳过。
+- **四件套**：tsc 0 错 / oxlint 0 警告 / node:test 424 → 431 例 0 失败 / parity 17×41 + wasmopt 1 组全等价。
+
+### refactor(scripts): #273 replay 协议回放 .mts 化（1213 行）+ 双模对拍（2026-10-24）
+
+- **迁移**：S1–S5 全套断言移植（S1 防抖编译流 A1–A10 / S2 fixtures 判分流 A1–A6 / S3 单步+seek+内存交错流 A1–A16 / S5 预留位缺省语义 A1–A5）。`-moonbit`（61 断言：60 PASS + 1 EXEMPT）与 `--selftest`（12 条 J9 埋雷）两模式 **stdout/stderr/rc 逐字零差**。
+- **交互式管道的等价手法**：Go 版同步读写 NDJSON 管道，本版 `spawn` + 行队列 + `async/await` 串行化——协议时序不变（同一 id 关联、同一 shutdown/超时/kill 语义）。
+- **口径差异（有意，已注释）**：`--backend wasm` 不进对拍——它的 `ensureFresh` 会**重建**产物（状态性），后跑的一侧必然看不到「旧于源」行；wasm 臂仍由 CI 的 serve_channel slice 真跑。
+- **踩到的初始化顺序坑**：Go 的字段白名单是**包级 var 初始化**（`loadV01Fields()` 在 package init 跑），首版把它放在 runMain 分支里 → `--selftest` 的「预留字段必被识别」埋雷拿空集合、自检自己红。改为模块装载期装入后两模式逐字对齐。
+- **接线**：gates-native 的 replay 步 `go run` → node + `parity_gate --only scripts/replay`；gates-wasm serve_channel 的 wasm 臂切 node；文档三处同步。
+- **测试 +10**：`abiVersionAtLeast` 下限语义（含 2.0.0 翻案锚）、`deepEqual`（数组有序/对象无序）、`diagErrors`、`head3`、`stepIndexOf`、`Report` 汇总计数、`selfTest` 12 条、`--selftest`/未选臂 e2e、`-moonbit` 全绿 e2e（缺 serve 产物显式 skip）。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 414 → 424 例 0 失败 / parity 17 脚本 × 41 组 + replay 2 组全等价。
+
+### refactor(scripts): #273 moonbit_surface .mts 化（622 行）+ parity 支持非 main 命名（2026-10-24）
+
+- **迁移**：对外面双面闸全量移植（pub 符号收面判定 + 签名闭包识别 + 白名单双向对账 + 消费边清单对账 + 包发现/别名解析/moon.pkg 语法面 fail loud）。默认模式与 `-check` 两模式 **stdout/stderr/rc 逐字零差**（首轮即零差，无迭代）。
+- **parity 自动发现泛化**：从「只认 `main.go`+`main.mts`」放宽为「同目录**同基名**的 `.go` + `.mts`」（排除 `_test.go`），`Target` 增 `entry` 字段显式登记非 main 命名。这条同时解锁后续 `replay`（`replay_s1_s5.go`）、`corpus_fuzz`（含 `generators.go`）等同形驱动。
+- **接线**：static-gates contract slice 的对外面审计步 `go run` → `node`；文档三处处方同步。
+- **测试 +5**：`hasWord` 字节词边界（`Severity` 不命中 `SeverityX`/`XSeverity`/`Severity_1`）、`noConsecutiveBlankLines`（≥2 连续空行 exit 1；缺文件同码）、`-check` 与默认模式端到端、白名单缺失 fail loud（exit 2，最小 moonbit fixture）。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 409 → 414 例 0 失败 / parity 17 脚本 × 41 组全等价 / ci_checklist + editorconfig + facts --strict 绿。
+
+### refactor(scripts): #273 libc_boot_diff .mts 化（729 行）+ canonicalize RawMessage 面（2026-10-24）
+
+- **迁移**：libc 自举对拍闸全量移植（golden 基线比 / `--freeze` / `--freeze-mb` / `--selftest` 四模式 + 入口过滤 ①–④ + 9 字段投影 + digest 清单读写）。默认与 `--selftest` 两模式 **stdout/stderr/rc 逐字零差**（0.8s vs Go 0.78s）。
+- **踩到并修掉的保真坑（本批最大收获）**：Go `json.Unmarshal→map[string]RawMessage→json.Marshal` 只对**被解码成 map 的那一层**排序键，值以原始字节内嵌——首版按「全层排序」实现，`proj_sha` 三例全错（`{"loc":{"line":0,"column":0,…}}` 的内层被重排成 `column,file_id,line`）。正解：`internal/canonicalize` 新增 **RawMessage 面**（`JsonRaw` 原始切片 + `compactGoJson` 复刻 Go `compact(escapeHTML)` + `emitSortedObject` 只排该层），三例 `proj_sha` 随即与冻结清单逐字节对上。
+- **parity 机制补 `exclusive`**：把「需 artifacts / 需 moon 现场编译、单价高」的目标标成点名跑（默认跳过并打印留痕），注册 `libc_boot_diff` 两模式；CI 在 gates-native 的 libc 步点名对拍（该 job 已有 moon 与构建缓存）。
+- **接线**：gates-native 的 libc 自举步 `go run` → `node`；文档三处处方同步。
+- **测试 +18**（canonicalize +3 / libc_boot_diff +15）：嵌套键序保真（回归锚）、大整数 token 直通（`9007199254740993` 不丢末位）、wrapper 截断、func_table/func_index 删 main、注入 +1、CRLF 归一 sha、`listC` 字节序、CLI 退出码、golden 端到端。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 391 → 409 例 0 失败 / ci_checklist + editorconfig + facts --strict 绿。
+
+### refactor(scripts): #273 vitro_cli_smoke .mts 化（617 行）+ parity artifact 组（2026-10-24）
+
+- **迁移**：三臂 CLI 协议闸全量移植——A 组壳 rc 契约（8 例 + `api --batch` 跨帧状态断言）、B 组三臂同形对拍（5 fixture × wasm/js/native + api help 三态 + 失败帧 rc + `rc=4` stdout 恒空 8 路径 × 三臂 + `--realtime` 分臂口径 + note 去重 + 1MB 映像）、C 组 launcher（sh ×3 + cmd.exe）、G 组 #129 通道分立、D 组薄壳 include（薄壳 exe 在位才跑，否则显式 skip）。
+- **对拍**：默认模式（34 行输出）与 `--corpus 2` 两模式 stdout/stderr/rc **逐字零差**；本地墙钟 9.6s（Go 9.5s）。
+- **parity 机制扩展**：`TARGETS` 新增 `requires`（产物前置）+ `--only <dir>[,<dir>]`；artifact 组默认**跳过并打印留痕**，点名跑时缺任一产物即 **rc 2 硬红**（缺件/未知目录两路证红实测）——杜绝「静态 job 里两侧同报前置产物缺失」的空转绿。
+- **接线**：gates-wasm 的 cli_smoke slice 两处——`go run ./scripts/vitro_cli_smoke` → `node scripts/vitro_cli_smoke/main.mts --corpus 30`，并新增 `parity_gate --only scripts/vitro_cli_smoke`（该 slice 是唯一四臂产物齐备处）。
+- **测试 +8**：`stripBackendLine` / `firstDiff` / `runOut` 合并通道与 CRLF 归一 / rc 透传（不被折码）/ `runSplit` 通道分离 / 缺产物 fail loud（rc 1 + 构建指引）/ flag 用法错 rc 2 / e2e（四臂就绪才跑，缺产物显式 skip）。
+- **踩坑**：`spawnSync` 的 `encoding: "buffer"` 不存在（要 Buffer 就不传 encoding，否则 `Buffer.from(input,"buffer")` 直接 TypeError）。
+
+### refactor(scripts): #273 demo_ui_lint 双件 .mts 化（1197 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：`main.go`(924) + `raw.go`(273) → `main.mts` + `raw.mts`。判定面全数保留：三路字符串契约（类名/CSS 变量/id）+ mono 连字**值**判据 + 四张僵尸表 + 抽取面下限 + 裸值棘轮六路（新增/用量增加/僵尸/用量减少/分量变化/绝对路径归一）。
+- **对拍**：默认（绿：位点 class=0 / id=0 / var=1082 / mono=169）、`-selftest`（五类证红计数 2/6/2/2/3）、红 fixture（13 条，覆盖 class/coverage/id/logo/mono/var/zombie 七族）三模式 stdout/stderr/rc **逐字零差**；`-update-raw` 写盘 JSON 逐字节同（键序 = Go struct 声明序 + `SetEscapeHTML` 转义）。
+- **存量缺陷修正（Go 侧一行）**：`sort.Slice` 只比 kind，同 kind 的 tie 序在 n>12 时落进 pdqsort 划分路径（13 条红 fixture 实测 4 处顺序差），改 `sort.SliceStable` 把「同 kind 保持插入序」变成契约——绿路径 0 条输出不变，红路径两侧才有可比性。
+- **接线**：CI demo job 两处 `go run` → `node`；parity TARGETS 扩到 16 双轨（demo_ui_lint 三模式，红 fixture 常驻 `scripts/demo_ui_lint/testdata/red`）；文档处方（脚本总清单 / demo README / demo DESIGN）同步切 node。
+- **共享层**：新增 `internal/text.mts`（`byteCompare`/`byteSort`/`goTrimSpace`/`goFields`/`goJSONMarshalIndent`）+ `capi.walkDirSorted`——Go 的**字节序与空白集**口径单源化；`teaching_annotation_diff` 的 `goJSONMarshalIndent` 改为 re-export 上收，消灭第二份复刻。
+- **测试 +38**（node:test 337 → 375）：提取器六件、五族判定逐路红/绿、僵尸四表、抽取面下限、棘轮六路、`writeRawBaseline` 字节形态、logo 双份三态、CLI 五模式（含布尔 `=value` 显式拒绝与规则类型错 exit 2）。
+- **踩坑**：node strip-only 不支持**类参数属性**（`constructor(readonly x)`）——本批第三次复现，一律改写显式字段。
 
 ### fix(diag+vm+host+gateway): A 线批三——#256/#261 诊断码↔教学卡双向闭合批 + 运行期 trap 立码 E3086/E3087/E3088（2026-10-24）
 
@@ -129,6 +282,171 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 连坐基线：gen_diag expectedArms 153→156 / expectedCatalog 109→114；
   diag_wbtest（156/114/42）+ content_data contract_wbtest（114 卡）+
   README.mbt.md + e4 fixture（4100 探针→3086）连坐；moon test 884/884。
+
+### refactor(scripts): #273 protocol_frames .mts 化（550 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：48 帧固定序列发往 MoonBit serve（native 臂 / --backend-wasm 统一入口壳），每帧 canonicalize → compact 单行 → 文本级 mask（规则外置）→ 与 baseline.jsonl 逐帧比。
+- **保留的三个守卫**：skip_methods 整帧豁免（双臂同跳并打印留痕）、--audit-skips 强制互比、--update-baseline 人工令；rust 臂退役形态明示（oracle 删区后 MoonBit 单臂基线比，--diff-hosts 依赖双宿主故 fatal）。
+- **对拍**：默认（基线冻结比对：1 臂 × 47 帧全部一致）与 --selftest（三锚）stdout 与 rc **逐字零差**。
+- **踩坑记录**：① node strip-only 不支持**类参数属性**（本批第二次踩，已写进记忆）；② canonicalizeText 的产出不是 compact 单行，Go 版另过一道 json.Compact —— 用 JSON.parse/stringify 复刻，否则帧比对全 DRIFT。
+- **接线**：CI 切 node；parity TARGETS 扩到 15 双轨。
+- **测试 +4**：requestTable（48 帧 / id 连续 / 方法族覆盖）、diffAgainstBase（篡改必 DRIFT / 一致零产出 / 帧数不等）、基线读写往返（空行剔除）、真实三模式端到端（缺 serve 产物显式 skip）。
+
+### refactor(scripts): #273 mbti_sync .mts 化（363 行）+ 纳入 parity——A 组收官（2026-10-24）
+
+- **迁移**：快照不变量原样——moon info 前后 .mbti 的 sha256 集合必须不变；0 个 .mbti 即红（拒绝空转）。完备性断言（#43）保留：非 executable/foreign_library 的包必须有 pkg.generated.mbti，三条结构性豁免（gateway / cmd/lib/cli / cmd/lib/engine_direct）连同理由原样搬入。
+- **自愈型脚本的对拍口径**：它会跑 moon info 并**改写** .mbti，故对拍时先确认工作区干净（跑前脏=0），且两版跑完都要求「残留脏=0」——实测 go rc=0 / ts rc=0 / 残留 0/0 / 输出逐字 SAME；--selftest（注入脱节内容后恢复）同样 SAME 且无残留。
+- **接线**：CI 切 node；parity TARGETS 扩到 14 双轨。
+- **测试 +4**：diffSnapshots 三类（added/removed/changed）+ 排序、mbtiCompleteness（缺件必报 / executable / foreign_library / 豁免放行）、豁免表三条理由非空、真实三模式**且断言跑完不留工作区改动**。
+
+**A 组 6/6 完成**：ci_checklist(263) / single_source(380) / libc_single_source(368) / pkg_deps(396) / perf_budget(380) / mbti_sync(363) = 2150 行。
+
+### refactor(scripts): #273 perf_budget .mts 化（380 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：阈值断言原样——每个 counter 的**单文件计数最大值**不得超其预算，按 corpus_dir 分档（dir_tiers 首命中，未命中落顶层 max_per_file），超阈输出 on_exceed 指回裁决。扫描面 = corpus_dirs 下目标扩展名，比对前粗去块注释与行注释（两侧同口径）。
+- **保留的两个守卫**：档位目录**存在性**（目录名写错会静默落顶层档 → 配置空转，fail loud）与 **0 语料即红**。
+- **对拍**：默认 / -check / --selftest 三模式 stdout 与 rc 逐字零差；selftest 会临时把预算压 0 再恢复 rules.json（TS 侧用 try/finally，验证后工作区无残留）。
+- **接线**：CI 切 node；parity TARGETS 扩到 13 双轨。
+- **测试 +5**：stripComments（块/行注释 + 字符串内 // 不误伤）、tierOf（首命中/落顶层）、真实规则 scan 自洽、J9 内存注入（预算压 0 必有超阈）、真实三模式。
+
+### refactor(scripts): #273 pkg_deps .mts 化（396 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：四判据原样——未登记分层 / 向上越层 / 成环 / 空集不得绿；cmd 前缀豁免方向检查但仍参与环检测，外部分依赖不判定。扫描面 = 含 moon.pkg 的目录，import 块（含 for test）取同 module 前缀，子包按最长前缀继承父包层号。
+- **对拍**：默认（分层报告）/ -check / --selftest 三模式 stdout 与 rc 逐字零差（一次通过）。
+- **接线**：CI 的 -check 切 node；parity TARGETS 扩到 12 双轨。
+- **测试 +5**：parseDeps（前缀/去 self/去重/排序/for test）、longestPrefixLevel、verdict 三路红（手工构图，不依赖 scan 的 cwd）、findCycle（造环与无环）、真实仓库三模式。
+
+### refactor(scripts): #273 libc_single_source .mts 化（368 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：四判据原样——① 四表非空且无重复（空集不得绿）② `builtin_all ==
+  (host ∪ bytecode) - excluded_from_union` ③ 交集计数 == `expect.host_intersect_bytecode`
+  ④ `pure_names ⊆ host ∩ bytecode`。锚点切片保留「`anchor_end` 为空时用下一个顶层
+  `fn` 收尾」的启发式。
+- **对拍**：默认（三表关系报告）/ `-check` / `--selftest` 三模式 stdout 与 rc
+  **逐字零差**（一次通过，无返工）。
+- **接线**：CI 的 `-check` 切 node；登记 parity TARGETS（11 双轨 × 25 组参数）。
+- **测试 +7**：锚点切片三路（命中 / 缺 start / 缺 end）、`fn` 收尾启发式、
+  真实四表自洽、J9 三红（抽名 → 等式缺失 / 空集与重复名 / 交集计数被改）、
+  真实仓库三模式端到端。
+- **口径注**：`mustTable` 的 `fatal` 走 `process.exit`，`assert.throws` 抓不到
+  ——测试里不能用 throws 断言 fail loud，只能走子进程（已在用例注释说明）。
+
+### refactor(scripts): #273 single_source .mts 化（380 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：三类条目判定原样——`enforced`（定义点文件集必须全等：多 = 第二份真相，
+  少 = 单源被删）、`copies`（多副本逐字节一致）、`registered`（声明两侧路径存在）。
+  扫描面仍只 .rs/.mbt，注释行与 `exclude_line_pattern` 跳过。
+- **对拍**：默认（清单报告）/ `-check` / `--selftest` 三模式 stdout 与 rc **逐字零差**。
+- **接线**：CI 的 `-check` 切 node；已登记 parity TARGETS（10 双轨 × 22 组参数）。
+- **两处实现差异（已修，均在测试里锁住见下文）**：
+  1. 规则里省略的字符串字段（如 `upstream_ref`）在 Go 是零值 `""`，TS 是 `undefined`
+     ——早前会打印 `上游 : undefined`，改 `undefined | ""` 同判；
+  2. `scanDefs` 的 `search_exclude_dirs` 必须对 **root 自身**生效（Go `Walk` 对 root 也回调
+     `IsDir`）——早前只在子目录检查，root 恰好是被排除目录时会漏。
+- **测试 +6**：canon / scanDefs 四面（注释、exclude_line、exclude dirs、扩展名过滤）/
+  enforced 的 extra+missing / copies 三路红 / 未知 kind 与路径缺失 / 真实仓库三模式。
+- **踩坑记录**：用 shell heredoc 写 TS 测试时反斜杠被折叠（`\(` → `\\(`），正则直接非法
+  ——含反斜杠的代码一律用编辑器工具写，不用 heredoc。
+
+### refactor(scripts): #273 ci_checklist .mts 化（263 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：注册表闸四向对账原样保留（漏登记 / 悬空 / 僵尸例外 / moon test 目标面），
+  `.mts` 入口判据（main.mts + node shebang）与「目录粒度归并」口径不变。
+- **对拍**：默认与 `-repo .` 两模式输出**逐字零差**（驱动 60 / 活行 53 / 例外 7 / 4 目标齐）。
+- **接线**：CI 引用切 node；Go 版留作回退面并登记进 parity TARGETS
+  （9 双轨 × 19 组参数全等价）。
+- **测试 +8**：临时仓库 fixture 覆盖四向红路 + 例外缺 reason + shebang 判据
+  （main.mts 计驱动、.test.mts 不计）。**fixture 形态坑**：moon test 必须写成
+  block 标量（行首 ）——行内 `- run: moon test` 不匹配闸的 `^\s*moon test`
+  正则，这条与 Go 版同源，不是我写错。
+
+### feat(ci): 双轨 Go ↔ .mts 对拍闸 + 恢复两件 Go 版（2026-10-24）
+
+- **恢复**：`scripts/icon_catalog/main.go` / `scripts/diff_ledger/main.go` 从
+  `47230c1a` 取回。早前按「CI 引用切换后才删」把它们删了，结果是**对拍对象消失、
+  等价性只剩测试自证**——测试若跟着错误实现写，CI 全绿也发现不了（结构性假绿面）。
+- **新增 `scripts/parity_gate/main.mts`**：配置表驱动，Go 侧 `go build` 出独立产物
+  再跑（比**真实**退出码——`go run` 会把非零退出折成 1 并在 stderr 补
+  `exit status N`，比 rc 会被它骗，本仓已踩过），与 `.mts` 侧逐组比 stdout / stderr / rc。
+  归一化只做两件事：路径分隔符统一 `/`、剥离 `exit status` 噪音行。
+  当前覆盖 `icon_catalog`（默认 / `-v`）与 `diff_ledger`（默认 / `--selftest`）共 4 组参数。
+  `--selftest` 注入必然差异（未知参数：Go `flag` 与手写解析的文案不同）→ 证明闸有牙。
+- **CI**：`static-gates` 的 contract slice 新增「dual-track parity gate」步（先 selftest 再全量）。
+- **完成标准改判**：迁移完成不再等于「CI 切 node 后删 Go 版」，而是
+  **parity 绿 + 稳定一批 CI + 显式退役裁定**。此前把删 Go 版当完成标志是错的。
+- **诚实边界**：闸只覆盖 `TARGETS` 表内条目，**不是**全仓自动发现；网络依赖脚本
+  （`vendor_drift`）不进 CI 对拍（出网策略差异会变成不稳定假红），其等价性靠本机
+  `node --use-system-ca` 手工对拍 + PR 记录。
+
+### refactor(scripts): #273 vendor_drift .mts 化（275 行）（2026-10-24）
+
+- **迁移**：`scripts/moonbit/vendor_drift/main.go`（275 行）→ `main.mts`。HTTP 拉上游
+  raw + 内容哈希主口径 + 版本号辅助口径 + `--update-baseline` 迁移式基线，退出码
+  0/1/2 三态语义原样保留。
+- **对拍**：同 CA 策略下（Go 走系统验证器 / `node --use-system-ca`）输出**逐字 SAME**
+  （6 行：5 个文件哈希[绿] + 版本号 0.5.5→0.5.6 报告行），rc 均 0。
+- **环境口径差异（登记，非判定差异）**：Node 默认 CA bundle 不含本地 MITM 代理根证书，
+  带代理直接跑会得到 `exit 2 无法判定`（cause = `UNABLE_TO_VERIFY_LEAF_SIGNATURE`）；
+  Go 在 Windows 走系统验证器故无此现象。处置 = 文档注明用 `node --use-system-ca`，
+  **不**采纳 `NODE_TLS_REJECT_UNAUTHORIZED=0`（关校验换绿灯）。
+- **type stripping 坑（新形态）**：类**参数属性**（`constructor(readonly x: T)`）属
+  codegen 而非纯擦除——node 直跑会 `triggerUncaughtException` 崩在 constructor 行。
+  比 `enum`/`namespace` 更隐蔽（语法看着完全正常），改显式字段 + 赋值。
+- **测试**：`parseVersion` / `sha256Hex`（已知向量）/ `loadBaseline` 四路 fail loud
+  （repo 不符 / ref 不符 / files 空 / 缺字段）+ 真实基线口径断言。
+
+### fix(scripts+ci): #292 审阅处置——P2×3 + P3×5（2026-10-24）
+
+- **P2-1（已修）**：`icons.json` 缺 `digest` / 空串时原**静默放行**（`if (digest !== "")`
+  才比较）→ 改为缺字段或空串**本身即红**（Go 版直接比较，空值必然 ≠ 现算）。
+  两例测试（`{}` 与 `{"digest":""}`）。
+- **P2-2（已修）**：规则表 `JSON.parse(...) as Rules` 无运行时类型门——布尔写成 `0`
+  （falsy）会**静默关闭整项检查**、数组写成字符串会子串误匹配、`svg_attrs: []`
+  让属性契约整项消失（Go 版 `json.Unmarshal` 强类型天然拦住）。新增零依赖
+  `assertRules()` schema 校验（失败 exit 2）+ 五类类型变异测试。
+- **P2-3（处置：删 Go 双轨）**：CI 已切 node 且逐字对拍在手，两个 `main.go` 按
+  AGENTS §8「CI 引用切换后才删」直接删除（回退面 = git 历史）。**为什么不走
+  「登记 exceptions + 接 parity」**：已实测——`ci_checklist` 按**目录**归并，
+  node 活行已填满 `liveSet`，登记例外会立刻触发「僵尸例外」红；要支持须改造该闸
+  的活行分语言，成本大于收益（本批仅两件）。删后 `ci_checklist` 语言分布由
+  `.go 52 / .mts 7` 变为 **`.go 50 / .mts 9`**，驱动总数 59 不变。
+- **P3-1（已修）**：三处声明失实——`diff_ledger` 实际在 **contract** slice（原写
+  bookkeeping）；「两片均已有 Node 24 前置」不成立（**static-gates 本批才加
+  `setup-node`**，此前该 job 的 node 步靠 runner 预装版本、不受 `.node-version`
+  锁定）；ci.yml 注释「五路注入」→ **六路**。
+- **P3-2（已修）**：文档数字按实测重算（ledger 28 → **36** 条、clang_direct 7 →
+  **16**、catalog 77 → **108** 条）。
+- **P3-3（已修）**：`diff_ledger` 对畸形输入从 `TypeError` 栈改为**结构守卫 +
+  fail loud exit 2**（`assertLedgerShape`）；`loadKnownCases` 的非对象条目 / 缺
+  `case` 不再静默产出空串。
+- **P3-4（部分修）**：PASS 文案断言去掉宽松分支（精确锁「机判化」）、
+  `icon_catalog` 标题「四项齐」→「五项齐」、删 `s.replace("\t甲","\t甲")` 死代码。
+  **未做**：两个测试文件的 `mkdtempSync` 清理——需 `finally` 包裹整个文件，
+  收益低于改动面，遗留登记于此。
+- **P3-5（环境注记，不修）**：本地 oxlint 1.88 vs lockfile 1.89；CI `npm ci` 装
+  1.89，本地版本差不动摇结论。
+
+**测试**：211 → **214**（+3），全真实执行。
+
+### refactor(scripts+ci): #273 icon_catalog + diff_ledger .mts 化（805 行）与 CI 接线（2026-10-24）
+
+- **重写面**：`icon_catalog`（404 行 → 十项资产契约闸）与 `diff_ledger`
+  （401 行 → 台账 schema + 三防线 known 双向对账）迁 `.mts`，各带 `main.test.mts`。
+- **对拍证据**：`icon_catalog` 默认 / `-v`（五项 pass）与 Go 版**逐字零差**
+  （76 图标 / 108 catalog 条）；`diff_ledger` 默认（36 条 / 17 flags / shadow 3 +
+  clang_direct 16 + vm_diff 5）与 `--selftest`（六路注入）**逐字零差**。
+- **接线**：`ci.yml` 两处 `go run` → `node scripts/.../main.mts`（icon_catalog 在
+  static-gates 的 **gen** slice，diff_ledger 在 **contract** slice）。**static-gates
+  本批新增 `setup-node`**——此前该 job 的 node 步骤靠 runner 预装版本跑、不受
+  `.node-version` 锁定，"已有 Node 24 前置"是失实旧账（#292 审阅 P3-1 抓出）。
+- **顺带修掉的实现缺陷（fixture 测试抓出）**：`icon_catalog` 的 `readTsv` 原用
+  `projectRoot()` 全局解析路径，`run(root, …)` 的 root 参数没贯穿到底——合成
+  fixture 下会读到真实仓库的 `index.tsv`。改为 root 显式贯穿（同批另一处
+  `-v` 计数断言也踩了 `trim()` 吃掉行首两空格的坑，注释在案）。
+- **测试**：`node:test` +13 例，覆盖 icon_catalog 十项契约逐项红（属性/色值/
+  具名色/白名单外图元/rect rx/零长子路径/aria-hidden/title+desc/tsv 值域/
+  emoji 唯一/孤儿缺件/digest 过期/catalog 越界）+ diff_ledger 六路 selftest
+  对应的 validate 红路。
 
 ### fix(demo): B 线批三——真实浏览器实测三连 #286 P1×3 + #287 P2×5 + #288 P3×2（2026-10-24）
 

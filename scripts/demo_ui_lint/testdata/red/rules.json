@@ -1,0 +1,7 @@
+{
+  "min_class_sites": 0,
+  "dynamic_class_assigns": [],
+  "dynamic_id_prefixes": [{ "prefix": "tab-", "ids": ["tab-result"] }],
+  "class_whitelist": ["never-used-class"],
+  "var_whitelist": []
+}

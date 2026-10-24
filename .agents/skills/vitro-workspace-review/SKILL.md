@@ -38,7 +38,7 @@ agent_created: true
    - vm_diff / clang_direct **自带**「mtime 触发 + 构建复核」新鲜度门禁，跑前不必手动预检；
    - 统一入口 `scripts/bin/vitro` 的 native 降级臂有**stderr 大字告警门禁**（不阻断；只扫 `cmd/host/parser/typeck/lexer/codegen/vm` 7 目录——gateway/memory/time_travel 等改源**不在告警面**，须自行 mtime 比对，见 `03` D16 同族面「陈旧制品」）；
    - wasm 臂消费 `moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm`（壳写死该路径）——引擎改动收尾必须重建：`cd moonbit && moon build --release --target wasm-gc gateway/wasm`（**必须在 `moonbit/` 下**，仓库根跑 = `not in a Moon project` exit 127），否则双臂假分叉。
-4. **两侧比字节前一律过 `go run ./scripts/canonicalize`**（键排序；数字形态不归一）。
+4. **两侧比字节前一律过 `node scripts/canonicalize/main.mts`**（键排序；数字形态不归一）。
 5. **语料全绿 ≠ 正确**。门禁只覆盖语料形状；必须补边界形状探针 + 突变抽检。
 6. **禁改预期值 / 门禁数字粉饰**；发现"红"先反证是不是脚本口径假阳性。
 7. **判据分层**（**[Rust oracle 退役 2026-10-05]** 重写——原「本仓判据是 oracle 照搬；Clang 只作旁证」随删区反转）：**本仓判据是 Clang 直拍**（clang golden + `clang_direct`——golden 由 clang 现跑取真值，缓存 `.clang_cache_cd/`，结构指纹在各驱动 `golden_digest.json`；AGENTS.md 纪律 4「以 Clang 为标准」）；**冻结 golden digest**（工序③固化，结构面）与 **Rust oracle 档案**（tag `rust-oracle-freeze`，按需从档案取回，方法见总计划 §11）作第二方位。浮点面要**三方对拍**（Clang / 目标实现 / 平台 libm），见 `references/01`。
@@ -103,7 +103,7 @@ wc -l <新增文件...>                # 先估规模，决定读码预算
   - 注入写法、增量编译漏检坑（`sleep ≥1.5s`）、"改坏不红"的两分性质（真锚盲区 vs 等价分支）见 `references/01`。
   - **审「别人写的修复批」时反向突变**：把修复**还原成缺陷版**，期望对应用例红、还原后复绿，并记录红的是哪个用例名。`failed == 0` ⇒ 修复写了但锚没牙。
   - **反向突变必须打在「锚所在的那道闸」上**（2026-09-29 实证，差点误判"无锚"）：单测全绿 **≠** 锚没牙——该点的锚可能压根不在单测，而在**差分防线**。
-    实例：kruskalMST 栈布局修复（`codegen/var_decl.mbt` 的 `let idx = k`）反向注入后 `moon test -p vitro/engine/codegen` **15/15 全绿**（failed 0），而改跑 `go run ./scripts/codegen_diff corpus/template_generated`（当时为 `native/tests/cases_template_generated`，**[Rust oracle 退役 2026-10-05]** 后语料迁 `corpus/`）立即 `CONTENT-DIFF=1` + exit 1（真红）。
+    实例：kruskalMST 栈布局修复（`codegen/var_decl.mbt` 的 `let idx = k`）反向注入后 `moon test -p vitro/engine/codegen` **15/15 全绿**（failed 0），而改跑 `node scripts/diff_gate/main.mts codegen corpus/template_generated`（当时为 `native/tests/cases_template_generated`，**[Rust oracle 退役 2026-10-05]** 后语料迁 `corpus/`）立即 `CONTENT-DIFF=1` + exit 1（真红）。
     判据：先读该提交**自称的锚在哪**（提交信息里的"防线 / 差分 / 对拍"字样），再去那道闸上注入；`moon test -p` 绿只说明"单测不覆盖这条路径"。
   - **扫「同族臂的结构同构」**（2026-09-29 实证，我自己漏过一次）：审 dispatch / 路由表 / emitter / 臂族时，把同族**所有臂并排列出来对比**——只看 diff 的上下文行容易漏掉"这一个臂跟邻居写法不一样"。
     实例：`cmd/serve/serve.mbt` 的 dispatch 十几个臂里只有 `config.set` 没包 `serve_ok(id, ...)`（返回裸 config 对象，帧结构不符 Rust）；667ae93 审阅时它以**上下文行**出现在 diff 里我没盯住，直到批四号双宿主对拍才抓到。

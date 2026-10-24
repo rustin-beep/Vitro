@@ -403,7 +403,7 @@ jobs:
       - name: Protocol frames freeze (dual-host, canonicalized)
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
-          go run ./scripts/protocol_frames
+          node scripts/protocol_frames/main.mts
         shell: bash
 
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
@@ -526,7 +526,7 @@ jobs:
         shell: bash
       - name: protocol_frames wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/protocol_frames --backend-wasm
+        run: node scripts/protocol_frames/main.mts --backend-wasm
         shell: bash
       - name: teaching_annotation_diff wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
@@ -731,7 +731,7 @@ jobs:
         # 不等即有 .mbti 与实现脱节（pub 面改了没同步 / 新包未生成 / 改坏）。
         # 0 个 .mbti 亦红（空集不得绿）。J9 证红：注入脱节内容必红。
         shell: bash
-        run: go run ./scripts/moonbit/mbti_sync -check
+        run: node scripts/moonbit/mbti_sync/main.mts -check
 
       - name: Single-source-of-truth registry check
 

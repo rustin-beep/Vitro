@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 protocol_frames .mts 化（550 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：48 帧固定序列发往 MoonBit serve（native 臂 / --backend-wasm 统一入口壳），每帧 canonicalize → compact 单行 → 文本级 mask（规则外置）→ 与 baseline.jsonl 逐帧比。
+- **保留的三个守卫**：skip_methods 整帧豁免（双臂同跳并打印留痕）、--audit-skips 强制互比、--update-baseline 人工令；rust 臂退役形态明示（oracle 删区后 MoonBit 单臂基线比，--diff-hosts 依赖双宿主故 fatal）。
+- **对拍**：默认（基线冻结比对：1 臂 × 47 帧全部一致）与 --selftest（三锚）stdout 与 rc **逐字零差**。
+- **踩坑记录**：① node strip-only 不支持**类参数属性**（本批第二次踩，已写进记忆）；② canonicalizeText 的产出不是 compact 单行，Go 版另过一道 json.Compact —— 用 JSON.parse/stringify 复刻，否则帧比对全 DRIFT。
+- **接线**：CI 切 node；parity TARGETS 扩到 15 双轨。
+- **测试 +4**：requestTable（48 帧 / id 连续 / 方法族覆盖）、diffAgainstBase（篡改必 DRIFT / 一致零产出 / 帧数不等）、基线读写往返（空行剔除）、真实三模式端到端（缺 serve 产物显式 skip）。
+
+### refactor(scripts): #273 mbti_sync .mts 化（363 行）+ 纳入 parity——A 组收官（2026-10-24）
+
+- **迁移**：快照不变量原样——moon info 前后 .mbti 的 sha256 集合必须不变；0 个 .mbti 即红（拒绝空转）。完备性断言（#43）保留：非 executable/foreign_library 的包必须有 pkg.generated.mbti，三条结构性豁免（gateway / cmd/lib/cli / cmd/lib/engine_direct）连同理由原样搬入。
+- **自愈型脚本的对拍口径**：它会跑 moon info 并**改写** .mbti，故对拍时先确认工作区干净（跑前脏=0），且两版跑完都要求「残留脏=0」——实测 go rc=0 / ts rc=0 / 残留 0/0 / 输出逐字 SAME；--selftest（注入脱节内容后恢复）同样 SAME 且无残留。
+- **接线**：CI 切 node；parity TARGETS 扩到 14 双轨。
+- **测试 +4**：diffSnapshots 三类（added/removed/changed）+ 排序、mbtiCompleteness（缺件必报 / executable / foreign_library / 豁免放行）、豁免表三条理由非空、真实三模式**且断言跑完不留工作区改动**。
+
+**A 组 6/6 完成**：ci_checklist(263) / single_source(380) / libc_single_source(368) / pkg_deps(396) / perf_budget(380) / mbti_sync(363) = 2150 行。
+
 ### refactor(scripts): #273 perf_budget .mts 化（380 行）+ 纳入 parity（2026-10-24）
 
 - **迁移**：阈值断言原样——每个 counter 的**单文件计数最大值**不得超其预算，按 corpus_dir 分档（dir_tiers 首命中，未命中落顶层 max_per_file），超阈输出 on_exceed 指回裁决。扫描面 = corpus_dirs 下目标扩展名，比对前粗去块注释与行注释（两侧同口径）。

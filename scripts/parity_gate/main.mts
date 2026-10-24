@@ -47,6 +47,8 @@ export const TARGETS: Target[] = [
   { dir: "scripts/moonbit/libc_single_source", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/moonbit/pkg_deps", modes: [[], ["-check"], ["--selftest"]] },
   { dir: "scripts/perf_budget", modes: [[], ["-check"], ["--selftest"]] },
+  { dir: "scripts/moonbit/mbti_sync", modes: [[], ["-check"], ["--selftest"]] },
+  { dir: "scripts/protocol_frames", modes: [[], ["--selftest"]] },
   // #289 批（教学线 + 文本闸）：合并 master 后纳入
   { dir: "scripts/teaching_phase_vocab", modes: [[], ["-selftest"]] },
   { dir: "scripts/teaching_reconcile", modes: [[], ["-v"], ["-selftest"]] },
@@ -137,10 +139,13 @@ export interface Mismatch {
   tsVal: string;
 }
 
-export function compareOne(dir: string, mode: string[], goBin: string): Mismatch[] {
+export function compareOne(dir: string, mode: string[], goBin: string): { diff: Mismatch[]; goMs: number; tsMs: number } {
   const modeLabel = mode.length === 0 ? "(默认)" : mode.join(" ");
+  const t0 = performance.now();
   const g = run(goBin, mode);
+  const t1 = performance.now();
   const t = run(process.execPath, [`${dir}/main.mts`, ...mode]);
+  const t2 = performance.now();
   const out: Mismatch[] = [];
   if (g.rc !== t.rc) out.push({ dir, mode: modeLabel, field: "rc", goVal: String(g.rc), tsVal: String(t.rc) });
   for (const field of ["stdout", "stderr"] as const) {
@@ -148,7 +153,7 @@ export function compareOne(dir: string, mode: string[], goBin: string): Mismatch
     const b = normalize(t[field]);
     if (a !== b) out.push({ dir, mode: modeLabel, field, goVal: a, tsVal: b });
   }
-  return out;
+  return { diff: out, goMs: t1 - t0, tsMs: t2 - t1 };
 }
 
 function firstDiffLine(a: string, b: string): string {
@@ -187,6 +192,9 @@ export function main(argv: string[]): number {
 
     const all: Mismatch[] = [];
     let cases = 0;
+    let goTotal = 0;
+    let tsTotal = 0;
+    const wall0 = performance.now();
     for (const t of TARGETS) {
       const goMain = path.join(projectRoot(), t.dir, "main.go");
       const tsMain = path.join(projectRoot(), t.dir, "main.mts");
@@ -197,7 +205,10 @@ export function main(argv: string[]): number {
       const goBin = buildGo(t.dir, tmp);
       for (const mode of t.modes) {
         cases++;
-        const diff = compareOne(t.dir, mode, goBin);
+        const r = compareOne(t.dir, mode, goBin);
+        goTotal += r.goMs;
+        tsTotal += r.tsMs;
+        const diff = r.diff;
         if (diff.length > 0) all.push(...diff);
         else process.stdout.write(`  ok  ${t.dir} ${mode.length === 0 ? "(默认)" : mode.join(" ")}\n`);
       }
@@ -206,7 +217,7 @@ export function main(argv: string[]): number {
     if (selftest) {
       // 注入必然差异：Go 与 TS 对未知参数的文案不同（flag 包 vs 手写解析）
       // ——用它对拍，闸**必须**报差异，否则说明比对逻辑空转。
-      const probe: Mismatch[] = compareOne("scripts/icon_catalog", ["--definitely-bogus"], buildGo("scripts/icon_catalog", tmp));
+      const probe: Mismatch[] = compareOne("scripts/icon_catalog", ["--definitely-bogus"], buildGo("scripts/icon_catalog", tmp)).diff;
       if (probe.length === 0) {
         process.stderr.write("parity_gate selftest FAIL：注入的已知差异未被捕获（闸空转）\n");
         return 1;
@@ -225,7 +236,14 @@ export function main(argv: string[]): number {
       }
       return 1;
     }
+    const wall = performance.now() - wall0;
+    const ratio = goTotal > 0 ? tsTotal / goTotal : 0;
     process.stdout.write(`parity_gate: PASS（${TARGETS.length} 个双轨脚本 × ${cases} 组参数，stdout/stderr/rc 全等价）\n`);
+    // 双边计时：一次对拍 = go 侧 + ts 侧（理论 ≈ 单边 2×；不含 go build）
+    process.stdout.write(
+      `  耗时（同口径，不含 go build）：go 侧 ${Math.round(goTotal)} ms / ts 侧 ${Math.round(tsTotal)} ms` +
+        `（ts/go = ${ratio.toFixed(2)}×）/ 双边累计 ${Math.round(goTotal + tsTotal)} ms / 含编译墙钟 ${Math.round(wall)} ms\n`,
+    );
     return 0;
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

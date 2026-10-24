@@ -31,6 +31,8 @@ export interface Target {
   dir: string;
   /** 参数组；每组是一次完整的 argv */
   modes: string[][];
+  /** 双轨文件名基（默认 "main"）——非 main 命名的驱动（如 moonbit_surface）显式登记 */
+  entry?: string;
   /**
    * 产物前置（仓库相对路径）。带此字段 = **artifact 组**：不进默认跑（静态 job
    * 没产物时会两侧同报「前置产物缺失」空转绿——那是假绿，不是等价）；只在
@@ -84,6 +86,12 @@ export const TARGETS: Target[] = [
   { dir: "scripts/host_contract_map", modes: [[], ["-strict"], ["-selftest"]] },
   { dir: "scripts/skill_path_check", modes: [[], ["-selftest"]] },
   { dir: "scripts/gen_demo_tokens", modes: [["-check"], ["-selftest"]] },
+  {
+    // 单文件非 main 命名的双轨（entry 显式登记）；两形态同强度，-check 仅兼容旧调用
+    dir: "scripts/moonbit/moonbit_surface",
+    entry: "moonbit_surface",
+    modes: [[], ["-check"]],
+  },
   // ── artifact 组：需四臂产物，只在构建过产物的 job 里 `--only` 跑 ──────
   {
     dir: "scripts/moonbit/libc_boot_diff",
@@ -140,22 +148,27 @@ export function normalize(s: string): string {
 }
 
 /** 自动发现「同目录同时存在 main.go 与 main.mts」的双轨目录（仓库相对）。 */
-export function discoverDualDirs(): string[] {
+export function discoverDualDirs(): Array<{ dir: string; entry: string }> {
   const root = projectRoot();
-  const out: string[] = [];
+  const out: Array<{ dir: string; entry: string }> = [];
   const walk = (rel: string): void => {
     const abs = path.join(root, rel);
     for (const ent of fs.readdirSync(abs, { withFileTypes: true })) {
-      if (!ent.isDirectory()) continue;
-      const sub = `${rel}/${ent.name}`;
-      if (fs.existsSync(path.join(root, sub, "main.go")) && fs.existsSync(path.join(root, sub, "main.mts"))) {
-        out.push(sub);
+      if (ent.isDirectory()) {
+        const sub = `${rel}/${ent.name}`;
+        walk(sub);
+        continue;
       }
-      if (rel.split("/").length < 2) walk(sub);
+      // 双轨判定：同目录同基名的 .go 与 .mts（main 与非 main 命名一视同仁）
+      if (!ent.name.endsWith(".go") || ent.name.endsWith("_test.go")) continue;
+      const entry = ent.name.slice(0, -3);
+      if (entry === "") continue;
+      if (!fs.existsSync(path.join(abs, entry + ".mts"))) continue;
+      out.push({ dir: rel, entry });
     }
   };
   walk("scripts");
-  return out.sort();
+  return out.sort((a, b) => (a.dir + "/" + a.entry < b.dir + "/" + b.entry ? -1 : 1));
 }
 
 export interface RunResult {
@@ -189,12 +202,12 @@ export interface Mismatch {
   tsVal: string;
 }
 
-export function compareOne(dir: string, mode: string[], goBin: string): { diff: Mismatch[]; goMs: number; tsMs: number } {
+export function compareOne(dir: string, mode: string[], goBin: string, entry = "main"): { diff: Mismatch[]; goMs: number; tsMs: number } {
   const modeLabel = mode.length === 0 ? "(默认)" : mode.join(" ");
   const t0 = performance.now();
   const g = run(goBin, mode);
   const t1 = performance.now();
-  const t = run(process.execPath, [`${dir}/main.mts`, ...mode]);
+  const t = run(process.execPath, [`${dir}/${entry}.mts`, ...mode]);
   const t2 = performance.now();
   const out: Mismatch[] = [];
   if (g.rc !== t.rc) out.push({ dir, mode: modeLabel, field: "rc", goVal: String(g.rc), tsVal: String(t.rc) });
@@ -241,7 +254,7 @@ export function main(argv: string[]): number {
   try {
     // 自动发现双轨目录：每个都必须在 TARGETS 或 EXCLUDED 中（未归类 = 红）
     const known = new Set([...TARGETS.map((t) => t.dir), ...Object.keys(EXCLUDED)]);
-    const unclassified = discoverDualDirs().filter((d) => !known.has(d));
+    const unclassified = discoverDualDirs().filter((d) => !known.has(d.dir));
     if (unclassified.length > 0) {
       process.stderr.write(`parity_gate: ${unclassified.length} 个双轨目录未归类（须入 TARGETS 或 EXCLUDED 并写明原因）：
 `);
@@ -287,16 +300,17 @@ export function main(argv: string[]): number {
 
     const wall0 = performance.now();
     for (const t of selected) {
-      const goMain = path.join(projectRoot(), t.dir, "main.go");
-      const tsMain = path.join(projectRoot(), t.dir, "main.mts");
+      const entry = t.entry ?? "main";
+      const goMain = path.join(projectRoot(), t.dir, entry + ".go");
+      const tsMain = path.join(projectRoot(), t.dir, entry + ".mts");
       if (!fs.existsSync(goMain) || !fs.existsSync(tsMain)) {
-        process.stderr.write(`parity_gate: ${t.dir} 不是双轨（缺 main.go 或 main.mts）——表项应删或补齐\n`);
+        process.stderr.write(`parity_gate: ${t.dir} 不是双轨（缺 ${entry}.go 或 ${entry}.mts）——表项应删或补齐\n`);
         return 2;
       }
       const goBin = buildGo(t.dir, tmp);
       for (const mode of t.modes) {
         cases++;
-        const r = compareOne(t.dir, mode, goBin);
+        const r = compareOne(t.dir, mode, goBin, entry);
         goTotal += r.goMs;
         tsTotal += r.tsMs;
         const diff = r.diff;

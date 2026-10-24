@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 moonbit_surface .mts 化（622 行）+ parity 支持非 main 命名（2026-10-24）
+
+- **迁移**：对外面双面闸全量移植（pub 符号收面判定 + 签名闭包识别 + 白名单双向对账 + 消费边清单对账 + 包发现/别名解析/moon.pkg 语法面 fail loud）。默认模式与 `-check` 两模式 **stdout/stderr/rc 逐字零差**（首轮即零差，无迭代）。
+- **parity 自动发现泛化**：从「只认 `main.go`+`main.mts`」放宽为「同目录**同基名**的 `.go` + `.mts`」（排除 `_test.go`），`Target` 增 `entry` 字段显式登记非 main 命名。这条同时解锁后续 `replay`（`replay_s1_s5.go`）、`corpus_fuzz`（含 `generators.go`）等同形驱动。
+- **接线**：static-gates contract slice 的对外面审计步 `go run` → `node`；文档三处处方同步。
+- **测试 +5**：`hasWord` 字节词边界（`Severity` 不命中 `SeverityX`/`XSeverity`/`Severity_1`）、`noConsecutiveBlankLines`（≥2 连续空行 exit 1；缺文件同码）、`-check` 与默认模式端到端、白名单缺失 fail loud（exit 2，最小 moonbit fixture）。
+- **四件套**：tsc 0 错 / oxlint 全绿 / node:test 409 → 414 例 0 失败 / parity 17 脚本 × 41 组全等价 / ci_checklist + editorconfig + facts --strict 绿。
+
 ### refactor(scripts): #273 libc_boot_diff .mts 化（729 行）+ canonicalize RawMessage 面（2026-10-24）
 
 - **迁移**：libc 自举对拍闸全量移植（golden 基线比 / `--freeze` / `--freeze-mb` / `--selftest` 四模式 + 入口过滤 ①–④ + 9 字段投影 + digest 清单读写）。默认与 `--selftest` 两模式 **stdout/stderr/rc 逐字零差**（0.8s vs Go 0.78s）。

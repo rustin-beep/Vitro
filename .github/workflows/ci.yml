@@ -728,7 +728,8 @@ jobs:
         # （scripts/surface_allowlist.txt）：无跨包消费的 pub 符号必须收面
         # 或入白名单（已发布 5 包走版本化弃期、类型闭包保留）。
         shell: bash
-        run: go run ./scripts/moonbit/moonbit_surface -check
+        # #292 批：驱动切 .mts（Go 版转回退面；双轨对拍见 parity 闸的 moonbit_surface 条目）
+        run: node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check
 
       - name: MoonBit package dependency direction (L0-L9 layering + acyclic)
 

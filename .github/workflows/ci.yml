@@ -663,6 +663,15 @@ jobs:
           # 已在 c3601055 资产批留痕。
           node scripts/gen_icons/main.mts -check
           node scripts/icon_catalog/main.mts
+      # 双轨 Go ↔ .mts 对拍（#292 审阅后新增）：并存期把「判定等价」变机判。
+      # go build 后直跑比真实 rc（go run 会把非零退出折成 1，比 rc 会被骗）。
+      - name: dual-track parity gate (Go ↔ .mts, stdout/stderr/rc)
+        if: matrix.slice == 'contract'
+        run: |
+          node scripts/parity_gate/main.mts --selftest
+          node scripts/parity_gate/main.mts
+        shell: bash
+
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
 

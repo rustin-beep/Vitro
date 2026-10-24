@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### feat(ci): 双轨 Go ↔ .mts 对拍闸 + 恢复两件 Go 版（2026-10-24）
+
+- **恢复**：`scripts/icon_catalog/main.go` / `scripts/diff_ledger/main.go` 从
+  `47230c1a` 取回。早前按「CI 引用切换后才删」把它们删了，结果是**对拍对象消失、
+  等价性只剩测试自证**——测试若跟着错误实现写，CI 全绿也发现不了（结构性假绿面）。
+- **新增 `scripts/parity_gate/main.mts`**：配置表驱动，Go 侧 `go build` 出独立产物
+  再跑（比**真实**退出码——`go run` 会把非零退出折成 1 并在 stderr 补
+  `exit status N`，比 rc 会被它骗，本仓已踩过），与 `.mts` 侧逐组比 stdout / stderr / rc。
+  归一化只做两件事：路径分隔符统一 `/`、剥离 `exit status` 噪音行。
+  当前覆盖 `icon_catalog`（默认 / `-v`）与 `diff_ledger`（默认 / `--selftest`）共 4 组参数。
+  `--selftest` 注入必然差异（未知参数：Go `flag` 与手写解析的文案不同）→ 证明闸有牙。
+- **CI**：`static-gates` 的 contract slice 新增「dual-track parity gate」步（先 selftest 再全量）。
+- **完成标准改判**：迁移完成不再等于「CI 切 node 后删 Go 版」，而是
+  **parity 绿 + 稳定一批 CI + 显式退役裁定**。此前把删 Go 版当完成标志是错的。
+- **诚实边界**：闸只覆盖 `TARGETS` 表内条目，**不是**全仓自动发现；网络依赖脚本
+  （`vendor_drift`）不进 CI 对拍（出网策略差异会变成不稳定假红），其等价性靠本机
+  `node --use-system-ca` 手工对拍 + PR 记录。
+
 ### refactor(scripts): #273 vendor_drift .mts 化（275 行）（2026-10-24）
 
 - **迁移**：`scripts/moonbit/vendor_drift/main.go`（275 行）→ `main.mts`。HTTP 拉上游

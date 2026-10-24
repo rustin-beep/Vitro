@@ -130,6 +130,8 @@ test "strcpy_heap_overflow_e3070" {
   assert_true(t.contains("E3070"))
   assert_true(t.contains("strcpy 目标缓冲区溢出"))
   assert_true(t.contains("源字符串长度 8 字节"))
+  // 审阅 P3-4 补牙：结构化码随文案（带码文案 ⇔ 结构码不变式）。
+  assert_eq(r.trap_code, "E3070")
 }
 
 ///|
@@ -142,6 +144,9 @@ test "strcpy_stack_buffer_overflow_e3070" {
   guard r.trap is Some(t) else { fail("栈溢出必须 E3070") }
   assert_true(t.contains("栈上缓冲区 'buf' 溢出"))
   assert_true(t.contains("需要写入 7 字节"))
+  // 审阅 P2-2 红锚先行：文案首段印着 (E3070)、结构化码曾是空串（自违
+  // 「带码文案 ⇔ 结构码」不变式——stack_buffer_check 四调用点漏传码）。
+  assert_eq(r.trap_code, "E3070")
 }
 
 ///|

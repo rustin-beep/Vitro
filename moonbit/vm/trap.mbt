@@ -240,7 +240,7 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
       names.write_string(name)
     }
     @util.render_template(
-      @assets.trap_messages.get("E3088_div_zero_inspect").unwrap().template,
+      @assets.trap_messages.get("div_zero_inspect").unwrap().template,
       [("vars", names.to_string())],
     )
   } else {
@@ -253,6 +253,17 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
 /// ——被除数按**无符号**渲染（病 93 同族教训：U 系臂不得借 i32 版把
 /// 4000000000u 渲染成负数）。
 fn VitroVM::format_div_zero_error_u64(self : VitroVM, a : UInt64) -> String {
+  @util.render_template(
+    @assets.trap_messages.get("E3088_div_zero").unwrap().template,
+    [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],
+  )
+}
+
+///|
+/// 除零教学文案·i64 版（审阅 P2-1，2026-10-24）：DivQ/ModQ 消费——被除数
+/// 按**有符号**渲染（符号域不同不得互借：负值借 u64 版会渲染成巨大无符号
+/// 数误导归因）。
+fn VitroVM::format_div_zero_error_i64(self : VitroVM, a : Int64) -> String {
   @util.render_template(
     @assets.trap_messages.get("E3088_div_zero").unwrap().template,
     [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],

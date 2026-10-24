@@ -655,7 +655,7 @@ jobs:
           # tsv 对账/digest）。-check 均无写副作用，J9 11 种契约变异证红
           # 已在 c3601055 资产批留痕。
           node scripts/gen_icons/main.mts -check
-          go run ./scripts/icon_catalog
+          node scripts/icon_catalog/main.mts
 
       - name: MoonBit API surface audit (unpublished pkgs contracted)
 
@@ -786,7 +786,7 @@ jobs:
         # （shadow 未外置 JSON 是历史形态，外置化登记技术债随防线
         # 维护窗口——G-7 同族）。
         shell: bash
-        run: go run ./scripts/diff_ledger --selftest && go run ./scripts/diff_ledger
+        run: node scripts/diff_ledger/main.mts --selftest && node scripts/diff_ledger/main.mts
 
       - name: Check Bytecode Libc precompiled artifacts are up-to-date
 

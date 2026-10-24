@@ -12,6 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts+ci): #273 icon_catalog + diff_ledger .mts 化（805 行）与 CI 接线（2026-10-24）
+
+- **重写面**：`icon_catalog`（404 行 → 十项资产契约闸）与 `diff_ledger`
+  （401 行 → 台账 schema + 三防线 known 双向对账）迁 `.mts`，各带 `main.test.mts`。
+- **对拍证据**：`icon_catalog` 默认 / `-v`（五项 pass）与 Go 版**逐字零差**
+  （76 图标 / 108 catalog 条）；`diff_ledger` 默认（36 条 / 17 flags / shadow 3 +
+  clang_direct 16 + vm_diff 5）与 `--selftest`（六路注入）**逐字零差**。
+- **接线**：`ci.yml` 两处 `go run` → `node scripts/.../main.mts`（icon_catalog 在
+  static-gates gen slice，diff_ledger 在 bookkeeping slice；两片均已有 Node 24 前置）。
+- **顺带修掉的实现缺陷（fixture 测试抓出）**：`icon_catalog` 的 `readTsv` 原用
+  `projectRoot()` 全局解析路径，`run(root, …)` 的 root 参数没贯穿到底——合成
+  fixture 下会读到真实仓库的 `index.tsv`。改为 root 显式贯穿（同批另一处
+  `-v` 计数断言也踩了 `trim()` 吃掉行首两空格的坑，注释在案）。
+- **测试**：`node:test` +13 例，覆盖 icon_catalog 十项契约逐项红（属性/色值/
+  具名色/白名单外图元/rect rx/零长子路径/aria-hidden/title+desc/tsv 值域/
+  emoji 唯一/孤儿缺件/digest 过期/catalog 越界）+ diff_ledger 六路 selftest
+  对应的 validate 红路。
+
 ### fix(parser+codegen): A 线批一——#272 复合字面量指针初始化 + #278 匿名 union 变量 + #277 同名 static 遮蔽（2026-10-23）
 
 - **审阅处置批（用户五阶段审阅，PR #282 评论全档）**：P1=recorder 两处

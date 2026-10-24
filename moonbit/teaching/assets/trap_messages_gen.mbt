@@ -51,31 +51,31 @@ pub let trap_messages : Map[String, TrapMessage] = {
     template: "[warning] malloc(0) 返回 NULL。在 C 标准中，malloc(0) 的行为是实现定义的，可能返回 NULL 也可能返回一个不可解引用的非空指针。",
     placeholders: [],
   },
-  "E3060_null_deref": TrapMessage::{
-    template: "访问了 NULL 指针区域（地址 0x{addr}）。NULL 指针不能解引用。请确认指针已被正确初始化。",
+  "E3083_null_deref": TrapMessage::{
+    template: "[null-deref] NULL 指针解引用 (E3083)：访问了 NULL 指针区域（地址 0x{addr}）。NULL 指针不能解引用。请确认指针已被正确初始化。",
     placeholders: ["addr"],
   },
-  "E3060_oob_host": TrapMessage::{
-    template: "内存访问越界（地址 0x{addr}）。请检查数组下标或指针运算是否超出分配范围。",
+  "E3087_oob_host": TrapMessage::{
+    template: "[oob] 内存访问越界 (E3087)：你访问了地址 0x{addr}，它不属于任何变量、数组或堆块。请检查数组下标或指针运算是否超出分配范围。",
     placeholders: ["addr"],
   },
   "E3060_uaf": TrapMessage::{
     template: "[uaf] Use-After-Free (E3060)：你正在向一块已经在第 {freed_line} 行（第 {freed_step} 步）被 free 的内存{action}（由第 {alloc_line} 行的 malloc/realloc 分配）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。",
     placeholders: ["freed_line", "freed_step", "action", "alloc_line"],
   },
-  "bounds_array": TrapMessage::{
-    template: "[deny] 数组越界：你访问了 {name}[{index}]，但数组 '{name}' 只有 {count} 个元素，有效索引是 0~{max_index}。\n\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 {max_index} 之间。",
+  "E3086_bounds_array": TrapMessage::{
+    template: "[deny] 数组越界 (E3086)：你访问了 {name}[{index}]，但数组 '{name}' 只有 {count} 个元素，有效索引是 0~{max_index}。\n\n[cause] 原因：数组索引超出了合法范围。\n[fix] 检查方法：确认索引变量值在 0 到 {max_index} 之间。",
     placeholders: ["name", "index", "count", "max_index"],
   },
-  "bounds_generic": TrapMessage::{
-    template: "[deny] 内存访问越界：你访问了地址 0x{addr}，但合法内存范围是 0x{min} ~ 0x{max}。\n\n[fix] 检查方法：\n  • 确认数组索引小于数组大小\n  • 确认指针已经指向有效的内存地址\n  • 确认没有使用已经 free 的指针",
+  "E3087_bounds_generic": TrapMessage::{
+    template: "[deny] 内存访问越界 (E3087)：你访问了地址 0x{addr}，但合法内存范围是 0x{min} ~ 0x{max}。\n\n[fix] 检查方法：\n  • 确认数组索引小于数组大小\n  • 确认指针已经指向有效的内存地址\n  • 确认没有使用已经 free 的指针",
     placeholders: ["addr", "min", "max"],
   },
-  "E_div_zero": TrapMessage::{
-    template: "[divide-zero] 除零错误：你试图用 {a} 除以 0。\n\n{zero_section}[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
+  "E3088_div_zero": TrapMessage::{
+    template: "[divide-zero] 除零错误 (E3088)：你试图用 {a} 除以 0。\n\n{zero_section}[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
     placeholders: ["a", "zero_section"],
   },
-  "E_div_zero_inspect": TrapMessage::{
+  "E3088_div_zero_inspect": TrapMessage::{
     template: "[inspect] 当前作用域内值为 0 的变量：{vars}。请检查除法表达式中是否使用了这些变量。\n\n",
     placeholders: ["vars"],
   },

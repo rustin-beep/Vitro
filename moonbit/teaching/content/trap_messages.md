@@ -8,6 +8,9 @@ teaching/content·trap 教学文案模板（45 条）【真源】（#125 批 A�
 
 写作规则（解析器按**纯文本**切段，本文件不进渲染链；markdown 语法不生效）：
 - 一节一码位：`## <码位_形态>`（与 host_memory 装配点键一致）；
+  **键名规则（#261，2026-10-24）**：键带 `E####_` 前缀 ⇔ 渲染文案首段带
+  同码 `(E####)`（bounds/div_zero 族立码 E3086/E3087/E3088 起统一）；
+  无码文案（资源墙/附注/提示段）键名不带 E 前缀——键名即码位可信来源；
 - `placeholders:` 可选，逗号分隔；须与正文 `{name}` 占位符集双向相等
   （contract_wbtest 锚——写坏即红）；
 - `ends_with_newline: <1|2>` 可选 = 模板尾部补几个换行（缺省 0；正文后**不留**
@@ -94,17 +97,17 @@ ends_with_newline: 1
 
 [warning] malloc(0) 返回 NULL。在 C 标准中，malloc(0) 的行为是实现定义的，可能返回 NULL 也可能返回一个不可解引用的非空指针。
 
-## E3060_null_deref
+## E3083_null_deref
 
 placeholders: addr
 
-访问了 NULL 指针区域（地址 0x{addr}）。NULL 指针不能解引用。请确认指针已被正确初始化。
+[null-deref] NULL 指针解引用 (E3083)：访问了 NULL 指针区域（地址 0x{addr}）。NULL 指针不能解引用。请确认指针已被正确初始化。
 
-## E3060_oob_host
+## E3087_oob_host
 
 placeholders: addr
 
-内存访问越界（地址 0x{addr}）。请检查数组下标或指针运算是否超出分配范围。
+[oob] 内存访问越界 (E3087)：你访问了地址 0x{addr}，它不属于任何变量、数组或堆块。请检查数组下标或指针运算是否超出分配范围。
 
 ## E3060_uaf
 
@@ -115,31 +118,31 @@ placeholders: freed_line, freed_step, action, alloc_line
 [cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。
 [fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。
 
-## bounds_array
+## E3086_bounds_array
 
 placeholders: name, index, count, max_index
 
-[deny] 数组越界：你访问了 {name}[{index}]，但数组 '{name}' 只有 {count} 个元素，有效索引是 0~{max_index}。
+[deny] 数组越界 (E3086)：你访问了 {name}[{index}]，但数组 '{name}' 只有 {count} 个元素，有效索引是 0~{max_index}。
 
 [cause] 原因：数组索引超出了合法范围。
 [fix] 检查方法：确认索引变量值在 0 到 {max_index} 之间。
 
-## bounds_generic
+## E3087_bounds_generic
 
 placeholders: addr, min, max
 
-[deny] 内存访问越界：你访问了地址 0x{addr}，但合法内存范围是 0x{min} ~ 0x{max}。
+[deny] 内存访问越界 (E3087)：你访问了地址 0x{addr}，但合法内存范围是 0x{min} ~ 0x{max}。
 
 [fix] 检查方法：
   • 确认数组索引小于数组大小
   • 确认指针已经指向有效的内存地址
   • 确认没有使用已经 free 的指针
 
-## E_div_zero
+## E3088_div_zero
 
 placeholders: a, zero_section
 
-[divide-zero] 除零错误：你试图用 {a} 除以 0。
+[divide-zero] 除零错误 (E3088)：你试图用 {a} 除以 0。
 
 {zero_section}[cause] 原因：除数不能为 0。
 [fix] 检查你的除法表达式，确保除数在被除之前不是 0。
@@ -148,7 +151,7 @@ placeholders: a, zero_section
         result = a / b;
     }
 
-## E_div_zero_inspect
+## E3088_div_zero_inspect
 
 placeholders: vars
 ends_with_newline: 2

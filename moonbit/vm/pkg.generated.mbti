@@ -106,6 +106,7 @@ pub(all) struct VMSnapshot {
   finished : Bool
   exit_code : Int
   error : String
+  trap_code : String
   paused : Bool
   cancelled : Bool
   step_event_hit : Bool
@@ -186,6 +187,7 @@ pub struct VitroVM {
   mut cancelled : Bool
   mut step_event_hit : Bool
   mut error : String
+  mut trap_code : String
   mut current_line : Int
   mut argc : Int
   mut argv_addr : UInt

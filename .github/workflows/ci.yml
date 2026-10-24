@@ -643,6 +643,21 @@ jobs:
           node scripts/teaching_gen_check/main.mts
           node scripts/teaching_reconcile/main.mts
 
+      - name: Catalog closure gate (#256/#261——诊断码↔教学卡双向闭合)
+
+        if: matrix.slice == 'gen'
+        # 两套清单（error_codes.json 臂 + catalog.json 卡）各自演进的缺口由
+        # 此闸机判拦截：R1 正向=引擎可产码无卡（下游按码查卡落空）；R2 反向
+        # =卡零生产点（下游预渲染错误清单混入死码）；R3 同号异前缀撞键防
+        # （catalog 数字键）；R4 幽灵卡；R5 白名单僵尸条目。规则外置
+        # scripts/catalog_closure/rules.json（条目带 reason，白名单是债）。
+        # 生产点扫描两形态：[EWH]\d{4}_变体引用（诊断面枚举构造）+ "E\d{4}"
+        # 字面量（trap 面 #261 带码文案/trap_code 赋值）；排除 _build/_gen/测试面。
+        shell: bash
+        run: |
+          set -e
+          node scripts/catalog_closure/main.mts
+
       - name: Source hygiene (tracked files must be NUL-free)
 
         if: matrix.slice == 'contract'

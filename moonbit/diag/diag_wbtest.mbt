@@ -6,9 +6,9 @@
 /// 源漂移由 gen_diag fail loud 兜底。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
-  assert_eq(all.length(), 153) // #214：150→152（W3084/W3085）；#212：152→153（W1023）
-  assert_eq(catalog_codes().length(), 109) // #214：106→108（W3084/W3085 卡）；PR #284 审阅 P3：108→109（W1023 卡）
-  assert_eq(codes_without_catalog().length(), 44) // 153-109
+  assert_eq(all.length(), 156) // #214：150→152（W3084/W3085）；#212：152→153（W1023）；#261：153→156（运行期 trap 立码 E3086/E3087/E3088）
+  assert_eq(catalog_codes().length(), 114) // #214：106→108（W3084/W3085 卡）；PR #284 审阅 P3：108→109（W1023 卡）；#256/#261 闭合批：109→113（+E0/E3074–E3082/E3086–E3088，退役 E1022/E2001/E3026/W3056/E4100–E4104）；闭合闸摸底 +E1012（活码无卡同族缺口）
+  assert_eq(codes_without_catalog().length(), 42) // 156-114
   // 互补无交集
   let set : Map[Int32, Bool] = Map([])
   for c in catalog_codes() {
@@ -73,7 +73,7 @@ test "lang_segment_4xxx_cpp" {
     }
   }
   assert_eq(cpp, 38)
-  assert_eq(c_lang, 115) // #214 +W3084/W3085（C 段 3xxx）；#212 +W1023（C 段 1xxx）；前史见 CHANGELOG
+  assert_eq(c_lang, 118) // #214 +W3084/W3085（C 段 3xxx）；#212 +W1023（C 段 1xxx）；#261 +E3086/E3087/E3088（运行期 trap 立码，C 段 3xxx）；前史见 CHANGELOG
   assert_eq(csharp, 0) // 5xxx 段空置（CSharp 变体先行落位——P2-3）
   assert_eq(SourceLang::CSharp.to_str(), "csharp")
 }

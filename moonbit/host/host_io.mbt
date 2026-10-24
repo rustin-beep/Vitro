@@ -27,7 +27,8 @@
 pub(all) enum InputOutcome {
   Value(UInt64)
   Waiting
-  Trap(String)
+  /// (trap 文案, 结构化 E 码)——#261：与 HostMemReply.trap 同形态双件。
+  Trap(String, String)
 } derive(Debug, Eq)
 
 ///|
@@ -151,6 +152,7 @@ fn printf_pipeline(
         return Err(
           trap_only(
             "\{name}: 格式字符串要求的参数多于实际提供的参数。",
+            "",
           ),
         )
       }
@@ -158,7 +160,7 @@ fn printf_pipeline(
     None => ()
   }
   match validate_format_field_budget(fmt) {
-    Some(msg) => return Err(trap_only(msg))
+    Some(msg) => return Err(trap_only(msg, ""))
     None => ()
   }
   match format_printf_string(mem, map, fmt, args) {
@@ -217,6 +219,7 @@ pub fn host_fprintf_n(
         if n < 0 {
           return trap_only(
             "fprintf: stream 指向未打开的文件或文件不可写（FILE\\* 读取或写入失败）。",
+            "",
           )
         }
       }
@@ -833,7 +836,8 @@ pub fn host_scanf_n(
 ) -> InputOutcome {
   let fmt_bytes = match read_cstring(mem, map, fmt_addr) {
     Ok(b) => b
-    Err(f) => return InputOutcome::Trap(access_fault_text(f))
+    Err(f) =>
+      return InputOutcome::Trap(access_fault_text(f), access_fault_code(f))
   }
   let spec_types = parse_scanf_specs(lossy_codes(fmt_bytes))
   let mut arg_count = 0
@@ -846,7 +850,7 @@ pub fn host_scanf_n(
   }
   if ptrs.length() < arg_count {
     return InputOutcome::Trap(
-      "scanf: 格式字符串要求的参数多于实际提供的参数。",
+      "scanf: 格式字符串要求的参数多于实际提供的参数。", "",
     )
   }
   // 虚拟字节流 + 映射表（V-P1-13）
@@ -980,21 +984,29 @@ pub fn host_scanf_n(
               token.length() + 1,
               "scanf(\"%[\")",
             ) {
-            Some(t) => return InputOutcome::Trap(t)
+            Some(t) => return InputOutcome::Trap(t, "")
             None => ()
           }
         }
         if !sup {
           match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
             Ok(_) => ()
-            Err(e) => return InputOutcome::Trap(access_fault_text(e))
+            Err(e) =>
+              return InputOutcome::Trap(
+                access_fault_text(e),
+                access_fault_code(e),
+              )
           }
         }
         if !sup {
           match
             mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
             Ok(_) => ()
-            Err(e) => return InputOutcome::Trap(access_fault_text(e))
+            Err(e) =>
+              return InputOutcome::Trap(
+                access_fault_text(e),
+                access_fault_code(e),
+              )
           }
         }
         if !sup {
@@ -1066,7 +1078,8 @@ pub fn host_scanf_n(
       }
       match f {
         Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        Err(e) =>
+          return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_U {
       // u（病 13 失败语义 + #61 审阅 P1-3 符号面对齐 i/x/o 臂：+/- 记录、
@@ -1123,7 +1136,8 @@ pub fn host_scanf_n(
       }
       match f {
         Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        Err(e) =>
+          return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_F {
       // f
@@ -1173,7 +1187,8 @@ pub fn host_scanf_n(
       }
       match f {
         Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        Err(e) =>
+          return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_C {
       // c（不跳空白）
@@ -1186,7 +1201,11 @@ pub fn host_scanf_n(
       if !sl.2 {
         match mem.store_i8(map, ptr, ch.to_int()) {
           Ok(_) => ()
-          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+          Err(e) =>
+            return InputOutcome::Trap(
+              access_fault_text(e),
+              access_fault_code(e),
+            )
         }
       }
     } else if spec == SCANF_S {
@@ -1228,20 +1247,28 @@ pub fn host_scanf_n(
             token.length() + 1,
             "scanf(\"%s\")",
           ) {
-          Some(t) => return InputOutcome::Trap(t)
+          Some(t) => return InputOutcome::Trap(t, "")
           None => ()
         }
       }
       if !sl.2 {
         match mem.write_bytes(map, ptr, Bytes::from_array(token)) {
           Ok(_) => ()
-          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+          Err(e) =>
+            return InputOutcome::Trap(
+              access_fault_text(e),
+              access_fault_code(e),
+            )
         }
       }
       if !sl.2 {
         match mem.store_i8(map, ptr + token.length().reinterpret_as_uint(), 0) {
           Ok(_) => ()
-          Err(e) => return InputOutcome::Trap(access_fault_text(e))
+          Err(e) =>
+            return InputOutcome::Trap(
+              access_fault_text(e),
+              access_fault_code(e),
+            )
         }
       }
     } else if spec == SCANF_I || spec == SCANF_X || spec == SCANF_O {
@@ -1344,7 +1371,8 @@ pub fn host_scanf_n(
       }
       match f {
         Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        Err(e) =>
+          return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
     } else if spec == SCANF_N {
       // #269（2026-10-22）：`%n` 写回到该点**已读字符数**（C23 §7.23.6.2p12
@@ -1365,7 +1393,8 @@ pub fn host_scanf_n(
       }
       match f {
         Ok(_) => ()
-        Err(e) => return InputOutcome::Trap(access_fault_text(e))
+        Err(e) =>
+          return InputOutcome::Trap(access_fault_text(e), access_fault_code(e))
       }
       continue
     } else {

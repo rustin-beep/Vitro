@@ -41,8 +41,9 @@ fn VitroVM::apply_reply(self : VitroVM, reply : @host.HostMemReply) -> Unit {
   match reply.trap {
     // host 层 trap 传空 loc 对齐 oracle（execute_host_func 全族
     // SourceLoc::default() → trap() 回退 current_line——三轮审阅 P3：
-    // 指令 loc 更精确但属未登记差异，跨行表达式会渲染不同行号）
-    Some(msg) => self.trap(msg, 0, 0)
+    // 指令 loc 更精确但属未登记差异，跨行表达式会渲染不同行号）。
+    // #261：HostMemReply.trap_code（host 侧单点分派）透传给 trap 单点。
+    Some(msg) => self.trap(msg, 0, 0, code=reply.trap_code)
     None => ()
   }
   match reply.note {
@@ -156,7 +157,7 @@ fn VitroVM::execute_host_func(
       match reply.trap {
         // host 层 trap 空 loc 对齐 oracle（四轮审阅残留：free/unreachable
         // 与 apply_reply 同口径——SourceLoc::default() → 回退 current_line）
-        Some(msg) => self.trap(msg, 0, 0)
+        Some(msg) => self.trap(msg, 0, 0, code=reply.trap_code)
         None => ()
       }
       match reply.note {

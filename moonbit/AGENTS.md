@@ -135,6 +135,8 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 
 41. **moon 跨会话/跨 target 增量缓存毒化（2026-10-06 批二双臂对拍实锤）**：并发会话改源后（实例：批二-b 改 `host/host_format.mbt` 的 printf 旗标），本会话 `moon build --release --target wasm-gc` 增量判定 up-to-date——产物**仍是旧代码**，而同刻构建的 native 产物是对的——「同源不同果」酷似 wasm-gc 后端语义 bug，极易误诊；`rm -rf moonbit/_build/wasm-gc` 强制全量重建即愈。**纪律：跨会话接过工作区后消费 wasm-gc/native 产物做行为验证前，先清对应 `_build/<target>` 增量重建**（CI 干净检出天然免疫，本地是唯一暴露面）；「产物 mtime 新」不构成「含新代码」证据（指纹一致三方全旧的 #81 形态同族）。双臂对拍（同输入跑 wasm 壳 vs native exe，`scripts/vitro_cli_smoke`）是最便宜的行为指纹。连坐提醒：`cp` 到 demo/ 的 wasm.wasm 若源自毒化构建同样带毒，demo_smoke 用例不踩该面时不报警。
 
+42. **labeled argument（具名参数）的声明与调用两形态（#261 批实锤）**：声明 `fn trap(msg : String, code~ : String = "")`（参数名后 `~` + 可选默认值）；**调用侧写 `code="E3086"`**——写 `code~: "E3086"` 是**解析错误**（"unexpected token string, you may expect `{`, `loop`, `for` or `while`"——报错位置误导性强，看似控制流问题实为参数语法）；`code~` **单独**出现是合法的「同名变量按名传入」简写（等价 `code=code`，作用域须有同名绑定）。error 形态可辨：`This function has type (…, code? : String) -> Unit` 后跟同位置 Parse error 即此坑。
+
 
 ## 编码与架构纪律（S1 已定型）
 

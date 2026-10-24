@@ -384,7 +384,7 @@ fn VitroVM::execute_host_func3(
           ptrs,
         ) {
         Value(v) => self.push(v)
-        Trap(msg) => self.trap(msg, 0, 0)
+        Trap(msg, code) => self.trap(msg, 0, 0, code~)
         Waiting => {
           // 参数回推（逆序恢复原栈序）+ fmt 回推——ip 回退由 CallHost 臂统一
           for i = ptrs.length() - 1; i >= 0; i = i - 1 {
@@ -479,7 +479,7 @@ fn VitroVM::execute_host_func3(
       // getchar：ungetc 缓存 / EOF 粘滞 / Batch-Interactive 三分支
       match @host.host_getchar(self.input) {
         Value(v) => self.push(v)
-        Trap(msg) => self.trap(msg, 0, 0)
+        Trap(msg, code) => self.trap(msg, 0, 0, code~)
         Waiting => self.waiting_input = true
       }
     78 => {

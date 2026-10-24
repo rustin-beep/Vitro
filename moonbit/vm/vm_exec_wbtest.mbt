@@ -81,7 +81,9 @@ test "exec_div_zero_traps_with_diag" {
   let r = vm.step()
   assert_true(r is Trap)
   assert_true(
-    vm.error.contains("[divide-zero] 除零错误：你试图用 10 除以 0"),
+    vm.error.contains(
+      "[divide-zero] 除零错误 (E3088)：你试图用 10 除以 0",
+    ),
   )
 }
 
@@ -255,7 +257,7 @@ test "exec_trap_bounds_symbol_diag_v2" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "[deny] 数组越界：你访问了 a[4]，但数组 'a' 只有 4 个元素",
+      "[deny] 数组越界 (E3086)：你访问了 a[4]，但数组 'a' 只有 4 个元素",
     ),
   )
 }
@@ -377,7 +379,7 @@ test "exec_trap_bounds_negative_index_diag" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "[deny] 数组越界：索引 -1 超出了合法范围 0~3。",
+      "[deny] 数组越界 (E3086)：索引 -1 超出了合法范围 0~3。",
     ),
   )
 }
@@ -507,7 +509,7 @@ test "exec_loadmem_trap_bounds_negative_diag" {
   assert_true(r is Trap)
   assert_true(
     vm.error.contains(
-      "[deny] 数组越界：索引 -1 超出了合法范围 0~3。",
+      "[deny] 数组越界 (E3086)：索引 -1 超出了合法范围 0~3。",
     ),
   )
 }
@@ -989,6 +991,7 @@ test "apply_reply_note_dedup_all_text" {
     value: Some(0UL),
     note: Some("[warning] malloc(0) 返回 NULL。"),
     trap: None,
+    trap_code: "",
   }
   vm.apply_reply(r)
   vm.apply_reply(r)
@@ -1002,6 +1005,7 @@ test "apply_reply_note_dedup_all_text" {
     value: None,
     note: Some("另一条附注"),
     trap: None,
+    trap_code: "",
   })
   assert_eq(
     vm.output.chunks_of(@host.OutputKind::Note).length(),
@@ -1795,7 +1799,8 @@ test "bounds_message_no_embedded_location" {
   })
   // local 数组实际基址 = locals_base(0x8000) + sym.addr(4) = 0x8004；
   // 取 a[4] 元素地址（基址+16，越界一格）——命中 Some 臂尾部宽容窗
-  let s = vm.format_bounds_error(0x8018U)
+  let (s, s_code) = vm.format_bounds_error(0x8018U)
+  assert_eq(s_code, "E3086", msg="#261 数组命中带码")
   assert_true(
     s.contains("数组越界"),
     msg="锚有效性：须命中 Some 臂（符号扫描成功）",
@@ -1808,13 +1813,14 @@ test "bounds_message_no_embedded_location" {
 
 ///|
 /// trap 文案资产漂移锁（#60 批二，2026-10-10）：div_zero/inf_loop 无变量
-/// 场景的逐字节输出——改资产模板（E_div_zero/E_inf_loop）即红（模板的
-/// golden 面；有变量段的等价由既有锚 + 契约锚覆盖）。
+/// 场景的逐字节输出——改资产模板（E3088_div_zero/E_inf_loop）即红（模板的
+/// golden 面；有变量段的等价由既有锚 + 契约锚覆盖）。#261（2026-10-24）：
+/// div_zero 立码 E3088，文案首段带码。
 test "trap_asset_template_drift_lock" {
   let vm = VitroVM::new()
   let div = vm.format_div_zero_error(10)
   assert_eq(
-    div, "[divide-zero] 除零错误：你试图用 10 除以 0。\n\n[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
+    div, "[divide-zero] 除零错误 (E3088)：你试图用 10 除以 0。\n\n[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
   )
   let loop_msg = vm.format_infinite_loop_error()
   // #133 止血包翻新（2026-10-16）：资源墙/死循环分家——指引先分辨两种

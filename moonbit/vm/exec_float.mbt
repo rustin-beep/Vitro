@@ -260,7 +260,7 @@ fn VitroVM::execute_longlong(
       let a = self.pop()
       if b == 0UL {
         let msg = self.format_div_zero_error_u64(a)
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else {
         self.push(a / b)
       }
@@ -271,7 +271,7 @@ fn VitroVM::execute_longlong(
       let a = self.pop()
       if b == 0UL {
         let msg = self.format_div_zero_error_u64(a)
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else {
         self.push(a % b)
       }

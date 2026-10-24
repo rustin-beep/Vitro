@@ -12,6 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts+ci): #273 teaching_annotation_diff 982 行 .mts 化 + 三处 CI 接线（2026-10-24）
+
+- **重写面**：`scripts/teaching_annotation_diff/`（原 Go `main.go` 568 + `catalog_check.go`
+  414 = 982 行）拆 `main.mts`（对拍主路径：serve NDJSON 驱动 / 首现序列提取 /
+  双指针比对 / 豁免僵尸 / `--freeze`）+ `catalog.mts`（`--catalog-check` 三方
+  对账库 + `--catalog-selftest` 四路注入）。`loadRules` 上收到 catalog.mts 供
+  main 单向下依赖（避免 ESM 环）。
+- **对拍证据（全量真跑）**：82 模板首现序列输出**逐字零差**（TS 23.7s / Go 24.8s）；
+  `--catalog-check`（判据 43 ↔ 双臂 ↔ rules 43 ↔ demo 分组表）与
+  `--catalog-selftest`（四路注入均红）**逐字零差**。
+- **接线**：CI 3 处 `go run` → `node scripts/teaching_annotation_diff/main.mts`
+  （native 主步 / `--backend-wasm` 臂 / `--catalog-check`）；`gates-native` 新增
+  `actions/setup-node`（node-version-file 单点）。`gates-wasm` 已有 Node 24 复用。
+- **有意口径差异（两处，均注释在案）**：
+  1. 双臂互拍从 Go `fmt.Sprint(struct)` 改 `JSON.stringify` 深比较——语义等价且
+     更强（结构体打印会把零值差异藏进格式）；
+  2. `--freeze` 序列化按 Go `MarshalIndent` 口径复刻（map 键字节序 + 六字段
+     声明序 + 2 空格 + 尾换行），不交给 JSON.stringify 的自然键序。
+- **测试**：`node:test` +14 例（**249 → 263**，口径注：上一批记的 256 含 7 个误入
+  test 清单的 `main.mts`〔被 `node --test` 当测试文件跑，无断言假绿〕——本日
+  `c8f4e5df` 已剔除，故基线取 249 而非 256）。覆盖 parseArgs / compareTemplate 三类
+  记录 / recordString 文案 / extractBuildMatches（`evidence=` 第 6 参合法、参数数错、
+  括号未闭合）/ extractDemoGroups（7 组 + 两种 fail loud）/ loadRules（空与非法 kind）
+  / compareCatalogs 六类红 / 端到端 `--only bubble` 与 `--catalog-check`（缺产物
+  显式 skip 打印原因）。
+
 ### refactor(scripts+ci): #273 教学线与文本闸 7 件 .mts 接线（2026-10-24）
 
 - **接线面（本批重点）**：`teaching_gen_check` / `teaching_reconcile` /

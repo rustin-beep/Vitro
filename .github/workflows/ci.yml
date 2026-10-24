@@ -306,6 +306,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      # #273 接线批（2026-10-24）：annotation 对拍已切 .mts（node 直跑）——node
+      # 版本走 .node-version 单点（type stripping 需 ≥22.18，不 pin 会随 runner
+      # 预装漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -403,7 +410,7 @@ jobs:
       # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
       # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
       - name: Teaching annotation diff (family-incremental golden, Exit 1)
-        run: go run ./scripts/teaching_annotation_diff
+        run: node scripts/teaching_annotation_diff/main.mts
         shell: bash
 
       # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
@@ -501,7 +508,7 @@ jobs:
         shell: bash
       - name: teaching_annotation_diff wasm arm (shell serve)
         if: matrix.slice == 'serve_channel'
-        run: go run ./scripts/teaching_annotation_diff --backend-wasm
+        run: node scripts/teaching_annotation_diff/main.mts --backend-wasm
         shell: bash
 
       # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──
@@ -526,7 +533,7 @@ jobs:
       # 产物 EnsureFresh 自建。
       - name: algorithms.catalog three-way check (dual-arm)
         if: matrix.slice == 'cli_smoke'
-        run: go run ./scripts/teaching_annotation_diff --catalog-check
+        run: node scripts/teaching_annotation_diff/main.mts --catalog-check
         shell: bash
 
       # ── slice vm_diff / clang_direct = 差分双闸 wasm 臂（全语料）───────

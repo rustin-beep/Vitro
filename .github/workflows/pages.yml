@@ -96,8 +96,8 @@ jobs:
           # 现场发射——F4 新栈 vite/rolldown 把 demo/algorithms.js 当构建期
           # import 解析（旧栈运行时 <script> 加载，发射序无谓；2026-10-17
           # 云端 Deploy 红收口：构建后再发射 = ENOENT）。生成器完备性断言
-          # 即闸；生成器已于 #273 迁 .mts（node 由上面 setup-node 提供）。
-          node scripts/gen_demo_algorithms/main.mts
+          # 即闸；ubuntu runner 自带 Go。
+          go run ./scripts/gen_demo_algorithms
           # wasm 同为构建期资产（engine.worker.ts ?url import 触发 vite
           # emit）——**vite build 前必须就位**（同上 ENOENT 坑型：构建后
           # 才拷 = 资产化缺失，Pages 404 且 boot 静默，#139）。产物经

@@ -490,7 +490,7 @@ test "scanf_percent_s_stack_guard_and_ll_ull" {
   let span = StackBufferSpan::{ base: 0x9000U, size: 4, name: "buf", }
   put_bytes(mem, map, 0x6000U, b"%s", true)
   match host_scanf_n(map, mem, input2, [span], 0x6000U, [0x9000U]) {
-    InputOutcome::Trap(t) =>
+    InputOutcome::Trap(t, _) =>
       assert_true(t.contains("栈上缓冲区 'buf' 溢出"))
     _ => fail("%s 栈溢出必须 trap")
   }
@@ -780,7 +780,7 @@ test "scanf_n_rejects_insufficient_args" {
   let r = host_scanf_n(map, mem, InputState::new([], true), [], 0x2000U, [
     0x3000U,
   ])
-  guard r is InputOutcome::Trap(t) else { fail("实参不足必须 Trap") }
+  guard r is InputOutcome::Trap(t, _) else { fail("实参不足必须 Trap") }
   assert_true(
     t.contains("参数多于实际提供的参数"),
     msg="文案与 oracle 同形（B43）",
@@ -906,7 +906,7 @@ test "scanf_midstream_exhaust_waiting_b109" {
         v.to_string() +
         ")——中途耗尽未回退等待",
       )
-    InputOutcome::Trap(t) =>
+    InputOutcome::Trap(t, _) =>
       fail("首跑应为 Waiting，实得 Trap(" + t + ")")
     InputOutcome::Waiting => ()
   }

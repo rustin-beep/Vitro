@@ -106,7 +106,7 @@ fn serve_execute_run_via_engine(
   }
   let trap = if !err_msg.is_empty() { err_msg } else { s.vm.error }
   // 审阅 P3 下沉（2026-10-15）：与 serve_execute_run 共用 run_outcome_json
-  //（双出口单源——七字段组装/完成附注/#91 output_truncated 位只此一份）
+  //（双出口单源——八字段组装〔#261 +trap_code〕/完成附注/#91 output_truncated 位只此一份）
   run_outcome_json(s, trap)
 }
 

@@ -60,6 +60,8 @@ pub(all) struct VMSnapshot {
   finished : Bool
   exit_code : Int32
   error : String
+  /// trap 的结构化 E 码（#261——与 `error` 同生命周期，随快照往返）。
+  trap_code : String
   paused : Bool
   cancelled : Bool
   step_event_hit : Bool
@@ -167,6 +169,7 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
     finished: self.finished,
     exit_code: self.exit_code,
     error: self.error,
+    trap_code: self.trap_code,
     paused: self.paused,
     cancelled: self.cancelled,
     step_event_hit: self.step_event_hit,
@@ -241,6 +244,7 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
   self.finished = snap.finished
   self.exit_code = snap.exit_code
   self.error = snap.error
+  self.trap_code = snap.trap_code
   self.paused = snap.paused
   self.cancelled = snap.cancelled
   self.step_event_hit = snap.step_event_hit

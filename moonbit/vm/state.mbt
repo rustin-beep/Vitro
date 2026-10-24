@@ -93,6 +93,9 @@ pub struct VitroVM {
   mut step_event_hit : Bool
   /// trap 文案（首错优先——执行器批二号扩展结构化事件，文案渲染单点）。
   mut error : String
+  /// trap 的结构化 E 码（#261：与 `error` 同首错生命周期——带码 trap
+  /// 文案可按码归因/查教学卡；空串 = 无码形态（资源墙/装载错/内部形态））。
+  mut trap_code : String
   mut current_line : Int32
   /// `main(int argc, char *argv[])` 的 argc。
   mut argc : Int32
@@ -182,6 +185,7 @@ pub fn VitroVM::new() -> VitroVM {
     cancelled: false,
     step_event_hit: false,
     error: "",
+    trap_code: "",
     current_line: 0,
     argc: 0,
     argv_addr: 0U,
@@ -237,6 +241,7 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   self.cancelled = false
   self.step_event_hit = false
   self.error = ""
+  self.trap_code = ""
   self.current_line = 0
   self.argc = 0
   self.argv_addr = 0U
@@ -475,8 +480,10 @@ pub fn VitroVM::write_cstring(
   raw.push(b'\x00')
   match self.memory.write_bytes(self.mem_map, addr, Bytes::from_array(raw)) {
     Ok(_) => ()
-    Err(@memory.MemFault::UseAfterFree(_, _)) =>
+    Err(@memory.MemFault::UseAfterFree(_, _)) => {
       self.error = "运行时错误：E3060 Use-After-Free（字符串装载命中已释放区域）"
+      self.trap_code = "E3060"
+    }
     Err(_) => ()
   }
 }

@@ -294,7 +294,8 @@ test "elem_size_of_ll_array_b52" {
   let vm = VitroVM::new()
   vm.set_symbols([mksym("g", 1024U, false, ll_arr_ty, "", 1)])
   // g[6] 的字节 addr = base + 6*8 = 1072 → 反算 index 须为 6（旧 48/4=12）
-  let msg = vm.format_bounds_error(1024U + 48U)
+  let (msg, msg_code) = vm.format_bounds_error(1024U + 48U)
+  assert_eq(msg_code, "E3086", msg="#261 数组命中带码")
   assert_true(
     msg.contains("g[6]"),
     msg="LL 数组反算 index 须除 8：\{msg}",

@@ -99,11 +99,13 @@ test "text_exports_and_dedup" {
   let p = @host.host_malloc(map, 8, 3).value.unwrap().to_uint()
   ignore(@host.host_free(map, p, 4, 4))
   guard map.freed_logs_get(p) is Some(info) else { fail("窗口必须登记") }
-  let msg = @host.double_free_message(info)
+  let (msg, code) = @host.double_free_message(info)
   assert_true(msg.contains("E3061"))
+  assert_eq(code, "E3061")
   assert_true(msg.contains("第 4 行"))
-  let bad = @host.invalid_free_message(map, 0xA000U)
+  let (bad, bad_code) = @host.invalid_free_message(map, 0xA000U)
   assert_true(bad.contains("E3027"))
+  assert_eq(bad_code, "E3027")
   // calloc / realloc 也在同一接口内
   let c = @host.host_calloc(map, @memory.Memory::new(), 1, 8, 5)
   assert_true(c.trap is None)

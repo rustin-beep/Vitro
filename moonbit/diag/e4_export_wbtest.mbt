@@ -1,10 +1,11 @@
 ///|
 /// #130 批③b fixture（lean 载体默认空——wbtest 不可 import
-/// content_data）：三条已知卡（1001 首位字节锚 / 3051 W 前缀 / 4100
-/// C++ 段），内容 = 真源逐字节；测尾回装空段恢复 lean 态。
+/// content_data）：三条已知卡（1001 首位字节锚 / 3051 W 前缀 / 3086
+/// 运行期 trap 码〔#261 立码；原 4100 探针随 #256 C++ 死卡退役换锚〕），
+/// 内容 = 真源逐字节；测尾回装空段恢复 lean 态。
 fn e4_install_fixture() -> Unit raise {
   install_catalog_texts(
-    "{\"1001\":{\"icon\":\"unknown-char\",\"title\":\"未知字符\",\"explanation\":\"探针\",\"common_causes\":[]},\"3051\":{\"icon\":\"x\",\"title\":\"W 前缀探针\",\"explanation\":\"探针\",\"common_causes\":[]},\"4100\":{\"icon\":\"x\",\"title\":\"C++ 段探针\",\"explanation\":\"探针\",\"common_causes\":[]}}",
+    "{\"1001\":{\"icon\":\"unknown-char\",\"title\":\"未知字符\",\"explanation\":\"探针\",\"common_causes\":[]},\"3051\":{\"icon\":\"x\",\"title\":\"W 前缀探针\",\"explanation\":\"探针\",\"common_causes\":[]},\"3086\":{\"icon\":\"index\",\"title\":\"数组越界（运行期）\",\"explanation\":\"探针\",\"common_causes\":[]}}",
   ) catch {
     _ => fail("fixture 装载失败")
   }
@@ -44,15 +45,19 @@ test "e4_export_first_entry_bytes" {
 }
 
 ///|
-/// E4 4xxx 段 lang="c++"、category="C++"（语言段位对齐锚）。
+/// 4xxx 段退役锚（#256）：E4100–E4104 C++ 死卡已从真源退役——码臂仍在
+/// （from_code 命中，「臂在无卡」合法形态）但 catalog() 为 None，全量
+/// 导出不得再含 4xxx 条目（下游预渲染错误清单不列永不触发码）。
 test "e4_export_cpp_segment" {
   e4_install_fixture()
   let json = export_catalog_json()
   let probe = ErrorCode::from_code(4100).unwrap()
-  assert_true(probe.catalog() is Some(_))
-  // 4100 卡片存在，其导出片段必含 lang "c++"
-  let frag = ",{\"code\":4100,\"code_str\":\"E4100\",\"lang\":\"c++\",\"category\":\"C++\","
-  assert_true(json.contains(frag))
+  assert_true(probe.catalog() is None)
+  assert_false(json.contains("\"code\":4100"))
+  assert_false(json.contains("\"code\":410"))
+  e4_restore_lean() catch {
+    _ => ()
+  }
 }
 
 ///|

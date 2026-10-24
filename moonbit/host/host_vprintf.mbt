@@ -144,7 +144,7 @@ fn vprintf_pipeline(
     Err(f) => return Err(fault_reply(f))
   }
   match validate_format_field_budget(fmt) {
-    Some(msg) => return Err(trap_only(msg))
+    Some(msg) => return Err(trap_only(msg, ""))
     None => ()
   }
   match format_printf_string(mem, map, fmt, args) {
@@ -197,6 +197,7 @@ pub fn host_vfprintf_n(
         if n < 0 {
           return trap_only(
             "vfprintf: stream 指向未打开的文件或文件不可写（FILE\\* 读取或写入失败）。",
+            "",
           )
         }
       }

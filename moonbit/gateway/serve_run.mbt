@@ -40,7 +40,7 @@ fn not_compiled_json() -> Json {
 /// → vm.run → 六字段出口。
 
 ///|
-/// run/feed 七字段出口组装（审阅 P3 下沉，2026-10-15）——原
+/// run/feed 八字段出口组装（审阅 P3 下沉，2026-10-15；#261 +trap_code）——原
 /// serve_execute_run 与 serve_execute_run_via_engine 两份手写组装，
 /// 下一次改一侧就是静默分叉（C5 形态）。ret 为已完成计算的返回值；
 /// 完成/泄漏附注由调用方在 trap 空且非 waiting 时触发（run_one_outcome
@@ -67,6 +67,9 @@ fn run_outcome_json(s : @session.Session, trap : String) -> Json {
   m.set("status", Json::string(status))
   m.set("return_value", Json(ret))
   m.set("trap", Json::string(trap))
+  // #261（2026-10-24）：trap 的结构化 E 码（vm.trap_code 单源——空串 =
+  // 无码形态；下游按码归因/查教学卡，不必正则解析 trap 文案）。
+  m.set("trap_code", Json::string(s.vm.trap_code))
   m.set("waiting_input", Json(waiting))
   m.set("steps_executed", Json(s.vm.step_count))
   m.set(
@@ -129,7 +132,7 @@ fn serve_execute_run(s : @session.Session) -> Json {
     ()
   }
   let _ = s.vm.run()
-  // 审阅 P3 下沉（2026-10-15）：七字段出口 + 完成附注统一走
+  // 审阅 P3 下沉（2026-10-15）：八字段出口（#261 +trap_code）+ 完成附注统一走
   // run_outcome_json——原与 serve_execute_run_via_engine 两份手写组装，
   // 下一次改一侧就是静默分叉（C5 形态）
   run_outcome_json(s, s.vm.error)
@@ -186,7 +189,7 @@ fn serve_run_frame(
   if s.vm.input.batch != s.runtime_batch {
     s.vm.set_input(@host.InputState::new(s.vm.input.lines, s.runtime_batch))
   }
-  // run 帧七字段冻结面（#91）不带 clamped——run 内联配置的钳制静默
+  // run 帧八字段冻结面（#91 不带 clamped；#261 +trap_code）——run 内联配置的钳制静默
   // 登记在案（config.set 通道已显式化；run 帧扩面属协议变更另案）
   let (_cfg, _clamped) = serve_apply_config(s, params)
   (serve_ok(id, serve_execute_run(s)).stringify(), false)

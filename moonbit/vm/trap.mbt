@@ -46,14 +46,19 @@ fn VitroVM::push_i32(self : VitroVM, v : Int32) -> Unit {
 ///|
 /// trap 首错单点：`error` 已非空时不再覆盖（首错优先——后续连锁错误不
 /// 冲掉根因）；行号非正时回退 `current_line`（Rust `trap.rs:145-156`）。
+/// #261（2026-10-24）：`code~` 具名参数 = 结构化 trap 码（缺省空串 =
+/// 无码形态）；与 `error` 同首错生命周期——首错带码即记录，连锁 trap
+/// 不改写。
 fn VitroVM::trap(
   self : VitroVM,
   msg : String,
   line : Int32,
   column : Int32,
+  code~ : String = "",
 ) -> Unit {
   if self.error.is_empty() {
     self.error = msg
+    self.trap_code = code
     let l = if line > 0 { line } else { self.current_line }
     if l > 0 {
       self.error = self.error +
@@ -95,8 +100,13 @@ fn VitroVM::format_uaf_message(
 /// 扫符号表找**距 addr 最近的数组**（局部数组按当前帧基址展开），命中则
 /// 给出「数组名[算出的索引] / 有效索引 0~n-1」的精确诊断，否则回退
 /// 「内存访问越界 + 检查方法」通版。元素步长经 `@ast.Type::base_kind`
-/// 单源（Char=1 / Double=8 / 其余 4）。
-fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
+/// 单源（Char=1 / Double=8 / 其余 4）。#261（2026-10-24）：返回
+/// (文案, trap 码)——数组命中 E3086 / 泛地址回退 E3087（调用方传给
+/// trap() 的结构化码与文案首段码同源，不二次判型）。
+fn VitroVM::format_bounds_error(
+  self : VitroVM,
+  addr : UInt32,
+) -> (String, String) {
   let mut best : (@bytecode.Symbol, UInt32)? = None // (sym, base)
   let mut best_dist = 2147483647
   for sym in self.symbols {
@@ -133,26 +143,32 @@ fn VitroVM::format_bounds_error(self : VitroVM, addr : UInt32) -> String {
       let index = ((addr.to_int64() - base.to_int64()) / elem_size.to_int64()).to_int()
       // 病 10 修复（#47，2026-10-09）：location 统一由 trap() 追加（带列），
       // 与 exec_debug TrapBounds 臂同形。#60 批二：文案模板外置（键
-      // bounds_array——{name} 双占位符同值渲染）。
-      @util.render_template(
-        @assets.trap_messages.get("bounds_array").unwrap().template,
-        [
-          ("name", sym.name),
-          ("index", index.to_string()),
-          ("count", sym.ty.array_size().to_string()),
-          ("max_index", (sym.ty.array_size() - 1).to_string()),
-        ],
+      // E3086_bounds_array——{name} 双占位符同值渲染；#261 立码带前缀）。
+      (
+        @util.render_template(
+          @assets.trap_messages.get("E3086_bounds_array").unwrap().template,
+          [
+            ("name", sym.name),
+            ("index", index.to_string()),
+            ("count", sym.ty.array_size().to_string()),
+            ("max_index", (sym.ty.array_size() - 1).to_string()),
+          ],
+        ),
+        "E3086",
       )
     }
     None =>
-      // #60 批二：文案模板外置（键 bounds_generic）
-      @util.render_template(
-        @assets.trap_messages.get("bounds_generic").unwrap().template,
-        [
-          ("addr", addr.reinterpret_as_int().to_string()),
-          ("min", @bytecode.NULL_TRAP_SIZE.reinterpret_as_int().to_string()),
-          ("max", @bytecode.MEM_SIZE.reinterpret_as_int().to_string()),
-        ],
+      // #60 批二：文案模板外置（键 E3087_bounds_generic）
+      (
+        @util.render_template(
+          @assets.trap_messages.get("E3087_bounds_generic").unwrap().template,
+          [
+            ("addr", addr.reinterpret_as_int().to_string()),
+            ("min", @bytecode.NULL_TRAP_SIZE.reinterpret_as_int().to_string()),
+            ("max", @bytecode.MEM_SIZE.reinterpret_as_int().to_string()),
+          ],
+        ),
+        "E3087",
       )
   }
 }
@@ -173,10 +189,10 @@ fn VitroVM::elem_size_of_vm(self : VitroVM, ty : @ast.Type) -> Int32 {
 /// 除零教学文案（照搬 Rust `format_div_zero_error`，`trap.rs:63-102`）：
 /// 扫当前作用域值为 0 的变量附进诊断。
 fn VitroVM::format_div_zero_error(self : VitroVM, a : Int32) -> String {
-  // #60 批二（2026-10-10）：文案骨架/段落外置资产（E_div_zero 主骨架 +
-  // E_div_zero_inspect 变量段——zero_section 占位），扫描/、连接逻辑留代码。
+  // #60 批二（2026-10-10）：文案骨架/段落外置资产（E3088_div_zero 主骨架 +
+  // E3088_div_zero_inspect 变量段——zero_section 占位；#261 立码带前缀），扫描/、连接逻辑留代码。
   @util.render_template(
-    @assets.trap_messages.get("E_div_zero").unwrap().template,
+    @assets.trap_messages.get("E3088_div_zero").unwrap().template,
     [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],
   )
 }
@@ -224,7 +240,7 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
       names.write_string(name)
     }
     @util.render_template(
-      @assets.trap_messages.get("E_div_zero_inspect").unwrap().template,
+      @assets.trap_messages.get("E3088_div_zero_inspect").unwrap().template,
       [("vars", names.to_string())],
     )
   } else {
@@ -238,7 +254,7 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
 /// 4000000000u 渲染成负数）。
 fn VitroVM::format_div_zero_error_u64(self : VitroVM, a : UInt64) -> String {
   @util.render_template(
-    @assets.trap_messages.get("E_div_zero").unwrap().template,
+    @assets.trap_messages.get("E3088_div_zero").unwrap().template,
     [("a", a.to_string()), ("zero_section", self.div_zero_zero_section())],
   )
 }
@@ -397,12 +413,21 @@ fn VitroVM::render_mem_fault(
         addr_dec +
         "）。NULL 指针不能解引用。\n\n[cause] 原因：指针的值是 NULL（不指向任何对象），常见于声明后未初始化、malloc 返回 NULL 未检查、或 free 后未置 NULL。\n[fix] 解决方法：解引用前检查指针非空，如 `if (p != NULL) { x = *p; }`；malloc 后检查返回值。"
       }
-      self.trap(msg, line, column)
+      self.trap(msg, line, column, code="E3083")
     }
-    OutOfBounds(addr, _) =>
-      self.trap(self.format_bounds_error(addr), line, column)
+    OutOfBounds(addr, _) => {
+      // #261：数组命中 E3086 / 泛地址回退 E3087——码由 format_bounds_error
+      // 与文案同源返回（不二次判型）。
+      let (msg, code) = self.format_bounds_error(addr)
+      self.trap(msg, line, column, code~)
+    }
     UseAfterFree(info, kind) =>
-      self.trap(self.format_uaf_message(info, kind is Write), line, column)
+      self.trap(
+        self.format_uaf_message(info, kind is Write),
+        line,
+        column,
+        code="E3060",
+      )
   }
 }
 

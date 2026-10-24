@@ -74,7 +74,7 @@ fn VitroVM::execute_arithmetic(
       let a = self.pop_i32()
       if b == 0 {
         let msg = self.format_div_zero_error(a)
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else if a == -2147483648 && b == -1 {
         self.trap(
           "整数除法溢出。INT_MIN / -1 的结果超出了 int 能表示的范围。",
@@ -89,7 +89,7 @@ fn VitroVM::execute_arithmetic(
       let a = self.pop_addr()
       if b == 0U {
         let msg = self.format_div_zero_error(a.reinterpret_as_int())
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else {
         self.push((a / b).to_uint64())
       }
@@ -99,7 +99,7 @@ fn VitroVM::execute_arithmetic(
       let a = self.pop_i32()
       if b == 0 {
         let msg = self.format_div_zero_error(a)
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else if a == -2147483648 && b == -1 {
         // INT_MIN % -1 未定义——先拦截（坑 8：Rust % 在此处 panic）
         self.trap(
@@ -115,7 +115,7 @@ fn VitroVM::execute_arithmetic(
       let a = self.pop_addr()
       if b == 0U {
         let msg = self.format_div_zero_error(a.reinterpret_as_int())
-        self.trap(msg, line, column)
+        self.trap(msg, line, column, code="E3088")
       } else {
         self.push((a % b).to_uint64())
       }

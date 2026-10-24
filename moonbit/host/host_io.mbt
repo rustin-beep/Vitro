@@ -984,7 +984,7 @@ pub fn host_scanf_n(
               token.length() + 1,
               "scanf(\"%[\")",
             ) {
-            Some(t) => return InputOutcome::Trap(t, "")
+            Some((t, c)) => return InputOutcome::Trap(t, c)
             None => ()
           }
         }
@@ -1247,7 +1247,7 @@ pub fn host_scanf_n(
             token.length() + 1,
             "scanf(\"%s\")",
           ) {
-          Some(t) => return InputOutcome::Trap(t, "")
+          Some((t, c)) => return InputOutcome::Trap(t, c)
           None => ()
         }
       }

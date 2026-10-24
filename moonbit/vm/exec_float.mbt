@@ -208,7 +208,10 @@ fn VitroVM::execute_longlong(
       let b = self.pop_i64()
       let a = self.pop_i64()
       if b == 0L {
-        self.trap("long long 除以零", line, column)
+        // 审阅 P2-1（2026-10-24）：裸文案改教学段（i64 符号渲染）+ 补结构化码
+        // ——同族 i32/u32/u64 六臂带码独漏此臂。
+        let msg = self.format_div_zero_error_i64(a)
+        self.trap(msg, line, column, code="E3088")
       } else if a == -9223372036854775808L && b == -1L {
         self.trap(
           "long long 除法溢出。LLONG_MIN / -1 的结果超出了 long long 能表示的范围。",
@@ -222,7 +225,9 @@ fn VitroVM::execute_longlong(
       let b = self.pop_i64()
       let a = self.pop_i64()
       if b == 0L {
-        self.trap("long long 取模除以零", line, column)
+        // 审阅 P2-1 同款：裸文案改教学段 + 补结构化码。
+        let msg = self.format_div_zero_error_i64(a)
+        self.trap(msg, line, column, code="E3088")
       } else if a == -9223372036854775808L && b == -1L {
         self.trap(
           "long long 取模溢出。LLONG_MIN % -1 的结果未定义，超出了 long long 能表示的范围。",

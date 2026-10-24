@@ -98,6 +98,38 @@ export function programRC(stdout: string): number {
 }
 
 /**
+ * #261 审阅 P3-1（2026-10-24）：trap_messages 键名↔码位不变式静态校验——
+ * 每个 `## E####_*` 键的**正文首行**（跳过 placeholders/ends_with_newline
+ * 头部行、空行）须含 `(E####)` 同码。段落键（无 E 前缀）不校验。
+ * 返回违例串列表（空 = 合规）。
+ */
+export function checkTrapKeyCodeAlignment(src: string): string[] {
+  const viol: string[] = [];
+  const lines = src.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const head = /^## (E\d{4})[_A-Za-z]/.exec(lines[i] ?? "");
+    if (head === null) continue;
+    const code = head[1] ?? "";
+    // 找正文首行：跳过头注（placeholders:/ends_with_newline:）与空行
+    let body = "";
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = (lines[j] ?? "").trim();
+      if (l === "" || l.startsWith("placeholders:") || l.startsWith("ends_with_newline:")) {
+        continue;
+      }
+      body = l;
+      break;
+    }
+    if (!body.includes(`(${code})`)) {
+      viol.push(
+        `键 ${lines[i]?.slice(3)} 带前缀 ${code}，但正文首行无 (${code})——改键名（段落键去前缀）或文案补码`,
+      );
+    }
+  }
+  return viol;
+}
+
+/**
  * 帧重建：`--json` 的 delta 是 Latin-1 折叠字节，逐码点折回（<=0xFF → 单字节；
  * >0xFF → UTF-8 编码）。`frameType` 选 stdout / stderr 通道。
  */
@@ -222,6 +254,20 @@ export function main(argv: string[]): number {
   const root = projectRoot();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro_gencheck_"));
 
+  // #261 审阅 P3-1（2026-10-24）：trap_messages 键名↔码位不变式机判——
+  // 真源头注成文「键带 E####_ 前缀 ⇔ 文案首段带同码」，此前规则只写在
+  // 注释里、真源自违零拦截（div_zero_inspect 段落键曾带 E3088 前缀而
+  // 文案无码）。校验为纯静态（不动 C 解析器管线）：每个 `## E####_*`
+  // 键的正文首行须含 `(E####)` 同码。
+  const trapSrc = fs.readFileSync(
+    path.join(root, "moonbit", "teaching", "content", "trap_messages.md"),
+    "utf8",
+  );
+  const keyViolations = checkTrapKeyCodeAlignment(trapSrc);
+  if (keyViolations.length > 0) {
+    die(`trap_messages 键名↔码位不变式违例：\n  ${keyViolations.join("\n  ")}`);
+  }
+
   let drifted: string[] = [];
   try {
     for (const s of SPECS) {
@@ -240,7 +286,7 @@ export function main(argv: string[]): number {
     if (!writeMode) {
       for (const n of NEGATIVES) runNegative(root, n, backend, tmpDir);
       process.stdout.write(
-        "[teaching_gen_check] 全部通过：三 schema 产物 ≡ 解析器输出（fmt 后）+ 负例 fail-loud ×7\n",
+        "[teaching_gen_check] 全部通过：三 schema 产物 ≡ 解析器输出（fmt 后）+ 负例 fail-loud ×7 + 键名↔码位对账\n",
       );
     }
   } finally {

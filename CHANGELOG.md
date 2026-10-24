@@ -22,6 +22,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **接线**：corpus fuzz job 的 `go run` → node + `parity_gate --only scripts/corpus_fuzz`；文档补该驱动的清单行。
 - **测试 +11**：金样本 21 变体逐字节、DetRand（回绕/可复现/种子边界）、codeMask（注释/字符串/字符字面量/引号本体）、firstIntLit（跳 `#` 行与标识符中数字）、isSep·isAllDigits·replaceFirstBareType、latin1Fold、parseVitro 四态、bucketOf 六桶+恶化序、norm、迷你规则端到端、未知算子 fail loud。
 
+### fix(vm+host+infra): #256/#261 批用户审阅处置——P2×2 同族臂漏接 + P3×4 锚与闸补牙（2026-10-24）
+
+- **P2-1**：`DivQ`/`ModQ`（long long 有符号除/模零）补 `code="E3088"` 且裸文案
+  （「long long 除以零」）改教学段——新增 `format_div_zero_error_i64`（有符号
+  渲染，负值不得借 u64 版显示成巨大无符号数）；同族 i32/u32/u64 六臂带码
+  独漏此两臂坐实修复。红锚先行 `exec_divq_modq_zero_trap_code_e3088`。
+- **P2-2**：`stack_buffer_check` 返回 `(文案, "E3070")` 元组（strcpy/strcat/
+  scanf %s/%[ 四调用点随返）——消除「文案首段印着 (E3070)、trap_code 却是
+  空串」的自违（带码文案 ⇔ 结构化码不变式）；strcpy 堆/栈双路径锚补
+  `trap_code=="E3070"` 断言。
+- **P3-1**：`E3088_div_zero_inspect` 键改名 `div_zero_inspect`（段落键不带
+  码前缀——头注键名规则自违消除）；teaching_gen_check 新增**键名↔码位
+  对账机判**（带 `E####_` 前缀键的正文首行须含同码 `(E####)`）+ 负例
+  （旧自违形态 + 码位错配）。
+- **P3-2**：diag/README.mbt.md 注释 113→114（+14 卡含 E1012 漏连坐）。
+- **P3-3**：catalog_closure 的 `scanProduction` **剥注释**——`//` 行注释 +
+  块注释跨行状态机 + `.mbt.md` 只扫代码围栏（markdown 正文叙述不算生产
+  点）；注释形态负例先行证红。已知限制：字符串含 `//` 行尾误剥（收紧
+  方向漏报，R1 少抓优于注释假绿）。
+- **P3-4**：trap_code 传播链零锚面补牙——`access_fault_code` 三臂映射直调
+  锚 + snapshot→restore 往返/reset 清位锚 + i32 除零既有锚补 trap_code
+  断言；突变双证有牙（OutOfBounds 码改错/restore 删赋值各红一处，还原
+  全绿）。
+- 不处置（按审阅定性）：P3-5（step 帧 trap_code 与 demo 消费——本批承诺
+  面为 run/feed）；观察项三件（baseline.jsonl:8 历史形态非本批、demo/
+  README 卡数 B 线域、diag_wbtest 测试名历史锚）。
+- 探针复测（js 臂）：i64 除零→`"E3088"` 教学段 / 栈缓冲 strcat→`"E3070"`
+  / 数组越界→`"E3086"`。moon test 887/887（+3 锚）。
+
 ### refactor(scripts): #273 toolchain_probe .mts 化（178 行）+ 证红留痕（2026-10-24）
 
 - **迁移**：四项检查全量移植（版本锁定 vs `toolchain_baseline.txt` / registry 索引行为式预检（`moon update` + 索引非空）/ F8 ICE 特征识别 / 退出码 fail loud）。默认模式 **stdout/stderr/rc 逐字零差**（首轮即零差）。

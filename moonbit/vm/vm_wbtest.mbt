@@ -124,6 +124,23 @@ test "snapshot_restore_roundtrip_all_state" {
 }
 
 ///|
+/// 审阅 P3-4 补牙：trap_code 随快照往返 + reset 清位（#261——此前
+/// restore 删 trap_code 赋值突变全绿，零锚）。
+test "trap_code_snapshot_roundtrip_and_reset" {
+  let vm = VitroVM::new()
+  vm.trap("探针 trap 文案", 3, 1, code="E3086")
+  let snap = vm.snapshot()
+  // 快照后污染运行态，restore 须带回 trap_code
+  vm.trap_code = "E9999"
+  vm.restore(snap)
+  assert_eq(vm.trap_code, "E3086", msg="restore 须恢复 trap_code")
+  // reset 清位（会话复用 VM 不按旧 trap 归因）
+  vm.reset()
+  assert_eq(vm.trap_code, "", msg="reset 须清空 trap_code")
+  assert_eq(vm.error, "", msg="reset 须清空 error")
+}
+
+///|
 /// 快照独立性锚：restore 之后继续改运行态，**快照对象不被污染**
 /// （「拷贝即快照」纪律——restore 侧再拷一次的存在理由）。
 test "snapshot_independent_of_running_state" {

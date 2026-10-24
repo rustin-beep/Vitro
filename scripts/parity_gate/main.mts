@@ -42,6 +42,7 @@ export const TARGETS: Target[] = [
   { dir: "scripts/icon_catalog", modes: [[], ["-v"]] },
   { dir: "scripts/diff_ledger", modes: [[], ["--selftest"]] },
   { dir: "scripts/editorconfig_check", modes: [[]] },
+  { dir: "scripts/ci_checklist", modes: [[], ["-repo", "."]] },
   // #289 批（教学线 + 文本闸）：合并 master 后纳入
   { dir: "scripts/teaching_phase_vocab", modes: [[], ["-selftest"]] },
   { dir: "scripts/teaching_reconcile", modes: [[], ["-v"], ["-selftest"]] },

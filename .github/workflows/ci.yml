@@ -955,7 +955,7 @@ jobs:
         #（活行引用不存在的驱动）/ 僵尸例外 三向红；例外表 exceptions.json
         # 每条 reason 必填自证。J9 三向证红在案。
         shell: bash
-        run: go run ./scripts/ci_checklist
+        run: node scripts/ci_checklist/main.mts
 
       - name: Agent skills frontmatter audit (install_skills --list)
 

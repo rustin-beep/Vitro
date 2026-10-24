@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 ci_checklist .mts 化（263 行）+ 纳入 parity（2026-10-24）
+
+- **迁移**：注册表闸四向对账原样保留（漏登记 / 悬空 / 僵尸例外 / moon test 目标面），
+  `.mts` 入口判据（main.mts + node shebang）与「目录粒度归并」口径不变。
+- **对拍**：默认与 `-repo .` 两模式输出**逐字零差**（驱动 60 / 活行 53 / 例外 7 / 4 目标齐）。
+- **接线**：CI 引用切 node；Go 版留作回退面并登记进 parity TARGETS
+  （9 双轨 × 19 组参数全等价）。
+- **测试 +8**：临时仓库 fixture 覆盖四向红路 + 例外缺 reason + shebang 判据
+  （main.mts 计驱动、.test.mts 不计）。**fixture 形态坑**：moon test 必须写成
+  block 标量（行首 ）——行内 `- run: moon test` 不匹配闸的 `^\s*moon test`
+  正则，这条与 Go 版同源，不是我写错。
+
 ### feat(ci): 双轨 Go ↔ .mts 对拍闸 + 恢复两件 Go 版（2026-10-24）
 
 - **恢复**：`scripts/icon_catalog/main.go` / `scripts/diff_ledger/main.go` 从

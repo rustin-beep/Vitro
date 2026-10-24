@@ -75,7 +75,7 @@ pub let trap_messages : Map[String, TrapMessage] = {
     template: "[divide-zero] 除零错误 (E3088)：你试图用 {a} 除以 0。\n\n{zero_section}[cause] 原因：除数不能为 0。\n[fix] 检查你的除法表达式，确保除数在被除之前不是 0。\n[note] 示例：如果变量 b 可能为 0，先用 if 判断：\n    if (b != 0) {\n        result = a / b;\n    }",
     placeholders: ["a", "zero_section"],
   },
-  "E3088_div_zero_inspect": TrapMessage::{
+  "div_zero_inspect": TrapMessage::{
     template: "[inspect] 当前作用域内值为 0 的变量：{vars}。请检查除法表达式中是否使用了这些变量。\n\n",
     placeholders: ["vars"],
   },

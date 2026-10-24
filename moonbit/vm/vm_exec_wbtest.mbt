@@ -85,6 +85,34 @@ test "exec_div_zero_traps_with_diag" {
       "[divide-zero] 除零错误 (E3088)：你试图用 10 除以 0",
     ),
   )
+  // 审阅 P3-4 补牙：结构化码随文案（此前只断言文案，去掉 code= 全绿）。
+  assert_eq(vm.trap_code, "E3088")
+}
+
+///|
+/// i64 有符号除/模零 → E3088（审阅 P2-1 红锚先行：DivQ/ModQ 两臂曾漏
+/// code= 传参——同族 i32/u32/u64 六臂带码独漏这两臂，且文案是裸串无教学段）。
+test "exec_divq_modq_zero_trap_code_e3088" {
+  let vm = VitroVM::new()
+  vm.stack.push(10L.reinterpret_as_uint64())
+  vm.stack.push(0L.reinterpret_as_uint64())
+  vm.load_program(code_of([instr(DivQ, 0)]))
+  assert_true(vm.step() is Trap)
+  assert_eq(vm.trap_code, "E3088", msg="DivQ 除零须带结构化码")
+  assert_true(
+    vm.error.contains("(E3088)"),
+    msg="文案首段须带码（教学段）",
+  )
+  let vm2 = VitroVM::new()
+  vm2.stack.push(10L.reinterpret_as_uint64())
+  vm2.stack.push(0L.reinterpret_as_uint64())
+  vm2.load_program(code_of([instr(ModQ, 0)]))
+  assert_true(vm2.step() is Trap)
+  assert_eq(vm2.trap_code, "E3088", msg="ModQ 除零须带结构化码")
+  assert_true(
+    vm2.error.contains("(E3088)"),
+    msg="文案首段须带码（教学段）",
+  )
 }
 
 ///|

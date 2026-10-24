@@ -56,11 +56,51 @@ function readJson<T>(rel: string): T {
   return JSON.parse(fs.readFileSync(p, "utf8")) as T;
 }
 
-/** 扫描 moonbit/ 源码收集生产码（两类形态）。 */
+/** 扫描 moonbit/ 源码收集生产码（两类形态）。
+ *
+ * 审阅 P3-3（2026-10-24）：**注释不算生产点**——匹配前剥行注释与块注释
+ * （跨行状态机，行号保持）；`.mbt.md` 只扫代码围栏内（markdown 正文叙述
+ * 不算）。已知限制：字符串字面量含 `//` 的行尾会被误剥（URL 等——收紧
+ * 方向的漏报，R1 少抓优于注释假绿）。
+ */
 export function scanProduction(root: string): ProdMap {
   const variantPat = /\b([EWH])(\d{4})_[A-Za-z]\w*/g;
   const literalPat = /"([EWH])(\d{4})"/g;
   const out: ProdMap = new Map();
+  const add = (key: string, loc: string): void => {
+    const list = out.get(key) ?? [];
+    list.push(loc);
+    out.set(key, list);
+  };
+  const scanLines = (rel: string, lines: string[]): void => {
+    let inBlock = false;
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i] ?? "";
+      if (inBlock) {
+        const end = line.indexOf("*/");
+        if (end < 0) continue;
+        line = line.slice(end + 2);
+        inBlock = false;
+      }
+      const blockStart = line.indexOf("/*");
+      const lineStart = line.indexOf("//");
+      if (blockStart >= 0 && (lineStart < 0 || blockStart < lineStart)) {
+        const head = line.slice(0, blockStart);
+        const rest = line.slice(blockStart + 2);
+        const end = rest.indexOf("*/");
+        line = end >= 0 ? head + rest.slice(end + 2) : head;
+        if (end < 0) inBlock = true;
+      } else if (lineStart >= 0) {
+        line = line.slice(0, lineStart);
+      }
+      for (const m of line.matchAll(variantPat)) {
+        add(`${m[1]}${m[2]}`, `${rel}:${i + 1}`);
+      }
+      for (const m of line.matchAll(literalPat)) {
+        add(`${m[1]}${m[2]}`, `${rel}:${i + 1}`);
+      }
+    }
+  };
   const walk = (dir: string): void => {
     for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, ent.name);
@@ -69,29 +109,32 @@ export function scanProduction(root: string): ProdMap {
         walk(p);
         continue;
       }
-      if (!ent.name.endsWith(".mbt") && !ent.name.endsWith(".mbt.md")) continue;
-      if (ent.name.endsWith("_gen.mbt")) continue;
+      const isMbt = ent.name.endsWith(".mbt");
+      const isMbtMd = ent.name.endsWith(".mbt.md");
+      if (!isMbt && !isMbtMd) continue;
+      if (isMbt && ent.name.endsWith("_gen.mbt")) continue;
       if (ent.name.endsWith("_wbtest.mbt") || ent.name.endsWith("_test.mbt")) {
         continue;
       }
       const text = fs.readFileSync(p, "utf8");
-      const lines = text.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line === undefined) continue;
-        for (const m of line.matchAll(variantPat)) {
-          const key = `${m[1]}${m[2]}`;
-          const list = out.get(key) ?? [];
-          list.push(`${path.relative(root, p)}:${i + 1}`);
-          out.set(key, list);
-        }
-        for (const m of line.matchAll(literalPat)) {
-          const key = `${m[1]}${m[2]}`;
-          const list = out.get(key) ?? [];
-          list.push(`${path.relative(root, p)}:${i + 1}`);
-          out.set(key, list);
-        }
+      const rel = path.relative(root, p);
+      if (isMbt) {
+        scanLines(rel, text.split("\n"));
+        continue;
       }
+      // .mbt.md：只扫 ``` 代码围栏内（markdown 正文叙述不算生产点）
+      const all = text.split("\n");
+      const fenced: string[] = [];
+      let inFence = false;
+      for (const l of all) {
+        if (l.trimStart().startsWith("```")) {
+          inFence = !inFence;
+          continue;
+        }
+        if (inFence) fenced.push(l);
+      }
+      // 围栏行号已失真（压缩后重排）——定位标注为文件级（正讯以此为准）
+      scanLines(`${rel}（代码围栏）`, fenced);
     }
   };
   walk(path.join(root, "moonbit"));

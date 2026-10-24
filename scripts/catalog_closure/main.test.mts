@@ -127,3 +127,33 @@ test("scanProduction 形态锚：变体引用与字面量双形态各命中，�
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("审阅 P3-3：注释不算生产点（行注释/块注释/mbt.md 文档叙述均不命中）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "catcl-cmt-"));
+  try {
+    fs.mkdirSync(path.join(dir, "moonbit", "vm"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "moonbit", "vm", "comment.mbt"),
+      [
+        "// E3091_OnlyInComment 行注释里的变体不算生产点",
+        "/* E3092_InBlockComment 块注释同 */",
+        "fn f() {",
+        "  // 悬空字面量 'E3093' 也不算",
+        "}",
+      ].join("\n"),
+    );
+    fs.writeFileSync(
+      path.join(dir, "moonbit", "vm", "doc.mbt.md"),
+      ["# 文档", "", "正文叙述 E3095_OnlyInProse 形态不算生产点", ""].join("\n"),
+    );
+    // 真生产点对照（保证排除面收紧后仍有牙）
+    fs.writeFileSync(
+      path.join(dir, "moonbit", "vm", "live.mbt"),
+      'fn g() { report(E3086_BoundsArray) }',
+    );
+    const prod = scanProduction(dir);
+    assert.deepEqual([...prod.keys()].sort(), ["E3086"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

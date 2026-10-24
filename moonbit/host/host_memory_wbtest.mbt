@@ -587,6 +587,33 @@ test "host_note_access_snapshot_before" {
 }
 
 ///|
+/// 审阅 P3-4 补牙：access_fault_code 三臂映射直调锚（#261——此前该映射
+/// 零锚，突变 E3087→E3060 全绿）。码与 access_fault_text 文案首段同源。
+test "access_fault_code_three_arm_mapping" {
+  assert_eq(
+    access_fault_code(@memory.MemFault::NullDeref(0U, @memory.AccessKind::Read)),
+    "E3083",
+  )
+  assert_eq(access_fault_code(@memory.MemFault::OutOfBounds(0x10U, 0)), "E3087")
+  assert_eq(
+    access_fault_code(
+      @memory.MemFault::UseAfterFree(
+        @memory.FreedRegionInfo::{
+          addr: 0U,
+          size: 0,
+          alloc_line: 1,
+          freed_line: 2,
+          alloc_step: 0,
+          freed_step: 3,
+        },
+        @memory.AccessKind::Read,
+      ),
+    ),
+    "E3060",
+  )
+}
+
+///|
 /// #71 病 29 锚（2026-10-11）：realloc 负 new_size = 分配失败保原块
 ///（此前落「等价 free」分支误释放 → 后续读 UAF；glibc/UCRT 双实测
 /// tmp/i71_t1/b29m5：q=NULL p0=42）。oracle 同病已定责（round6 档案），

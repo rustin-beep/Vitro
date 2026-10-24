@@ -138,21 +138,25 @@ fn live_region_at_or_containing(
 
 ///|
 /// 栈缓冲区容量校验（V-P1-6 照搬）：`dest` 落在某缓冲区内时，`needed`
-/// 超容量即 E3070 trap（返回文本）；命中且容量足够则**停止查找**（oracle
-/// `check_stack_buffer_capacity` 的命中即停语义——第一个包含 dest 的缓冲区
-/// 说了算）。未命中任何缓冲区返回 `None` 继续。
+/// 超容量即 E3070 trap（返回 (文本, 码)——审阅 P2-2：文案首段印着
+/// (E3070)，结构化码随文案同返，调用方不再各自猜码）；命中且容量足够则
+/// **停止查找**（oracle `check_stack_buffer_capacity` 的命中即停语义——
+/// 第一个包含 dest 的缓冲区说了算）。未命中任何缓冲区返回 `None` 继续。
 fn stack_buffer_check(
   stack_buffers : Array[StackBufferSpan],
   dest : UInt32,
   needed : Int32,
   op : String,
-) -> String? {
+) -> (String, String)? {
   for buf in stack_buffers {
     if dest >= buf.base && dest < buf.base + buf.size.reinterpret_as_uint() {
       let available = buf.size - (dest - buf.base).reinterpret_as_int()
       if needed > available {
         return Some(
-          "[buffer-overflow] Buffer Overflow (E3070)：\{op} 写入栈上缓冲区 '\{buf.name}' 溢出。需要写入 \{needed} 字节，但该缓冲区从当前写入位置起仅剩 \{available} 字节（总大小 \{buf.size} 字节）。\n\n[cause] 原因：\{op} 不检查目标缓冲区大小，栈上数组越界会破坏相邻局部变量。\n[fix] 解决方法：增大数组大小，或改用带长度限制的版本（如 strncpy/fgets）。",
+          (
+            "[buffer-overflow] Buffer Overflow (E3070)：\{op} 写入栈上缓冲区 '\{buf.name}' 溢出。需要写入 \{needed} 字节，但该缓冲区从当前写入位置起仅剩 \{available} 字节（总大小 \{buf.size} 字节）。\n\n[cause] 原因：\{op} 不检查目标缓冲区大小，栈上数组越界会破坏相邻局部变量。\n[fix] 解决方法：增大数组大小，或改用带长度限制的版本（如 strncpy/fgets）。",
+            "E3070",
+          ),
         )
       }
       return None
@@ -250,7 +254,7 @@ pub fn host_strcpy(
   }
   // V-P1-6 栈缓冲容量检查
   match stack_buffer_check(stack_buffers, dest, src_len + 1, "strcpy") {
-    Some(t) => return trap_only(t, "")
+    Some((t, c)) => return trap_only(t, c)
     None => ()
   }
   // 写入（受检批量；oracle 是截断 store_i8 循环）
@@ -389,7 +393,7 @@ pub fn host_strcat(
   // V-P1-6 栈缓冲容量检查（end 为 dest 起已有内容末尾——oracle 以 dest 查块）
   match
     stack_buffer_check(stack_buffers, dest, dest_len + src_len + 1, "strcat") {
-    Some(t) => return trap_only(t, "")
+    Some((t, c)) => return trap_only(t, c)
     None => ()
   }
   // 追加 + 终止符（受检批量；oracle 是截断 store_i8 循环）

@@ -3,11 +3,12 @@
 // 端到端（跑 vitro + moon fmt）不在本测试内：scripts-ts job 无 moon 工具链，
 // 端到端由本地双跑对拍（Go ↔ .mts 输出逐字一致）与 CI gen slice 的生成闸承担。
 import { test } from "node:test";
+import fs from "node:fs";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { projectRoot } from "../internal/capi.mts";
-import { programRC, rebuildChannel } from "./main.mts";
+import { checkTrapKeyCodeAlignment, programRC, rebuildChannel } from "./main.mts";
 
 /** 造一帧 --json 输出行（与 CLI_PROTOCOL_V1 的 stdout/stderr 帧同形）。 */
 function frame(type: string, delta: string): string {
@@ -56,4 +57,27 @@ test("P3-1：-write 带 = 值显式拒绝（rc=2，不静默进入 write 模式�
   });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /布尔 flag -write 不接受值/);
+});
+
+test("#261 审阅 P3-1：键名↔码位不变式——带前缀键正文首行无同码即违例", () => {
+  // 绿态：带码键 + 文案首行含同码
+  const good = ["## E3086_bounds_array", "", "placeholders: a", "", "[deny] 数组越界 (E3086)：正文", ""].join("\n");
+  assert.deepEqual(checkTrapKeyCodeAlignment(good), []);
+  // 负例①（审阅实锤形态）：带前缀键 + 文案无码（旧 div_zero_inspect 自违）
+  const bad1 = ["## E3088_div_zero_inspect", "", "[inspect] 段落文案无码", ""].join("\n");
+  assert.deepEqual(checkTrapKeyCodeAlignment(bad1), [
+    "键 E3088_div_zero_inspect 带前缀 E3088，但正文首行无 (E3088)——改键名（段落键去前缀）或文案补码",
+  ]);
+  // 负例②：码位错配（键 E3083、文案印 E3060）
+  const bad2 = ["## E3083_null_deref", "", "访问 (E3060) 区域", ""].join("\n");
+  assert.equal(checkTrapKeyCodeAlignment(bad2).length, 1);
+  // 段落键（无 E 前缀）不校验
+  const sectionKey = ["## div_zero_inspect", "", "[inspect] 无码段落", ""].join("\n");
+  assert.deepEqual(checkTrapKeyCodeAlignment(sectionKey), []);
+  // 真源绿态
+  const src = fs.readFileSync(
+    path.join(projectRoot(), "moonbit", "teaching", "content", "trap_messages.md"),
+    "utf8",
+  );
+  assert.deepEqual(checkTrapKeyCodeAlignment(src), []);
 });

@@ -10,7 +10,7 @@ teaching/content·trap 教学文案模板（45 条）【真源】（#125 批 A�
 - 一节一码位：`## <码位_形态>`（与 host_memory 装配点键一致）；
   **键名规则（#261，2026-10-24）**：键带 `E####_` 前缀 ⇔ 渲染文案首段带
   同码 `(E####)`（bounds/div_zero 族立码 E3086/E3087/E3088 起统一）；
-  无码文案（资源墙/附注/提示段）键名不带 E 前缀——键名即码位可信来源；
+  无码文案（资源墙/附注/**段落键**——如 div_zero_inspect/_stale/_changed 等主文案的变量段）键名不带 E 前缀——键名即码位可信来源（teaching_gen_check 机判对账：带码键的正文首行须含同码）；
 - `placeholders:` 可选，逗号分隔；须与正文 `{name}` 占位符集双向相等
   （contract_wbtest 锚——写坏即红）；
 - `ends_with_newline: <1|2>` 可选 = 模板尾部补几个换行（缺省 0；正文后**不留**
@@ -151,7 +151,7 @@ placeholders: a, zero_section
         result = a / b;
     }
 
-## E3088_div_zero_inspect
+## div_zero_inspect
 
 placeholders: vars
 ends_with_newline: 2

@@ -42,6 +42,12 @@ export const TARGETS: Target[] = [
   { dir: "scripts/icon_catalog", modes: [[], ["-v"]] },
   { dir: "scripts/diff_ledger", modes: [[], ["--selftest"]] },
   { dir: "scripts/editorconfig_check", modes: [[]] },
+  // #289 批（教学线 + 文本闸）：合并 master 后纳入
+  { dir: "scripts/teaching_phase_vocab", modes: [[], ["-selftest"]] },
+  { dir: "scripts/teaching_reconcile", modes: [[], ["-v"], ["-selftest"]] },
+  { dir: "scripts/host_contract_map", modes: [[], ["-strict"], ["-selftest"]] },
+  { dir: "scripts/skill_path_check", modes: [[], ["-selftest"]] },
+  { dir: "scripts/gen_demo_tokens", modes: [["-check"], ["-selftest"]] },
 ];
 
 /**
@@ -60,6 +66,8 @@ export const EXCLUDED: Record<string, string> = {
   "scripts/moonbit/testcount": "依赖 moon test 实跑真值（CI hygiene 才有），本地无产物时不可比",
   "scripts/moonbit/vendor_drift": "出网依赖：CI 与本地出网策略不同，纳入会变不稳定假红；等价性靠本机 --use-system-ca 手工对拍",
   "scripts/precompile_bytecode_libc": "生成模式已随 Rust oracle 退役（需 checkout tag rust-oracle-freeze）",
+  "scripts/teaching_gen_check": "需 vitro js 臂产物 + 每次 ~6s 跑 3 产物与 7 负例；CI gen slice 已单独跑它，对拍另议",
+  "scripts/course_catalog": "需 demo/algorithms.js（gitignored 发射产物）先发射；lesson.c 分支还需 vitro/clang",
   "scripts/teaching_annotation_diff": "需 native cmd/serve 产物 + 82 模板全量（约 25s/次），单价过高，另设批次",
 };
 

@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
+  checkLineColInvariant,
   lexerTarget,
   loadLexDigest,
   makeLexGolden,
@@ -118,4 +119,32 @@ test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main
   const r = run(["vm", "--corpus", "gap"]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /vm_diff\[golden\]: SAME=20/);
+});
+
+test("checkLineColInvariant：同行 byte_off−col 恒等（#297 处方②）", () => {
+  // 正例：同行 token 自洽（int@1:1+0 / x@1:5+4 / 42@1:9+8——base 恒 0）
+  const ok =
+    "0\tInt\tint\t1\t1\t0\n" +
+    "1\tIdentifier\tx\t1\t5\t4\n" +
+    "2\tNumber\t42\t1\t9\t8\n" +
+    "count=2\terrors=0\twarnings=0\n";
+  assert.deepEqual(checkLineColInvariant("ok.c", ok), []);
+
+  // 负例：旧回推缺陷形态——0x1F 起始列 7（byte_off=6），旧回推 col 偏 +2 报 9
+  //（base = 6-(9-1) = -2 ≠ 同行基准 0）
+  const bad =
+    "0\tIdentifier\ta\t1\t5\t4\n" +
+    "1\tNumber\t31\t1\t9\t6\n" +
+    "count=1\terrors=0\twarnings=0\n";
+  const errs = checkLineColInvariant("bad.c", bad);
+  assert.ok(errs.length === 1, `应报一处失洽：${JSON.stringify(errs)}`);
+  const first = errs[0];
+  assert.ok(first !== undefined && first.includes("line 1"), "报错定位行号");
+
+  // 跨行 token：独占起始行分组，天然通过
+  const ml =
+    "0\tString\tab\t1\t11\t10\n" +
+    "1\tSemicolon\t;\t2\t4\t13\n" +
+    "count=1\terrors=0\twarnings=0\n";
+  assert.deepEqual(checkLineColInvariant("ml.c", ml), []);
 });

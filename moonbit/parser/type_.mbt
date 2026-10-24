@@ -906,15 +906,28 @@ fn Parser::interpret_declarator_node(
         for p in params {
           ts.push(p.ty)
         }
-        t = @ast.Type::pointer_to(
-          @ast.Type::Function(t, ts, false, is_variadic),
-        )
-        size_state = 0
+        let func = @ast.Type::Function(t, ts, false, is_variadic)
         match inner {
-          // 函数指针的 `*` 即 decay 层本身——吸收，不再额外包指针
-          Pointer(rest, _) => cur = rest
-          _ => cur = inner
+          // 函数指针的 `*` 即 decay 层本身——吸收，不再额外包指针。
+          // 该 `*` 声明符自身的 const（`int (* const fp)(void)`——const
+          // 函数指针，不可重绑定）是真实限定，传导到 decay 产物
+          // （#296：旧码 `Pointer(rest, _)` 丢弃 is_const ⇒ typed AST
+          // is_const=false，重绑定零诊断 vs clang error；传导后
+          // typeck E3049 现成路径（sym.ty.is_const()）接上）。
+          Pointer(rest, is_const) => {
+            t = if is_const {
+              @ast.Type::Pointer(func, true)
+            } else {
+              @ast.Type::pointer_to(func)
+            }
+            cur = rest
+          }
+          _ => {
+            t = @ast.Type::pointer_to(func)
+            cur = inner
+          }
         }
+        size_state = 0
       }
     }
   }

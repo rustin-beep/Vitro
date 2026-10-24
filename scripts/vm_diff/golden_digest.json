@@ -30,7 +30,6 @@
       "src_sha": "3bbc778e",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/array_bound_const_index.c": {
@@ -259,7 +258,6 @@
       "src_sha": "eb2f33b2",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/cast_char_pointer.c": {
@@ -369,6 +367,12 @@
       "exit_code": 0,
       "stdout_sha": "309e7e5f3332b6dd",
       "memory_sha": "66cfc80f5c57f9f4"
+    },
+    "baseline/col_snapshot_normalized_tokens.c": {
+      "src_sha": "145ee492",
+      "exit_code": 0,
+      "stdout_sha": "1d156e638d53b383",
+      "memory_sha": "319b0466b73d0311"
     },
     "baseline/col_utf8_units.c": {
       "src_sha": "91e44bdc",
@@ -764,7 +768,6 @@
       "src_sha": "49471035",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_cond_if_elif.c": {
@@ -795,7 +798,6 @@
       "src_sha": "edf98db3",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_include_guarded.c": {
@@ -808,14 +810,12 @@
       "src_sha": "d40ce468",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_include_not_found_quote.c": {
       "src_sha": "85c6bfc8",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e2_macro_nested_self.c": {
@@ -864,7 +864,6 @@
       "src_sha": "2b882579",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/e3_unreachable_dead.c": {
@@ -997,7 +996,6 @@
       "src_sha": "d9432565",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/float_basic.c": {
@@ -1023,6 +1021,12 @@
       "exit_code": 0,
       "stdout_sha": "005db8a3457c2472",
       "memory_sha": "1b964a88f0e70494"
+    },
+    "baseline/fn_ptr_const_rebind.c": {
+      "src_sha": "f32633c0",
+      "exit_code": 0,
+      "stdout_sha": "98a3a0d7becbeddf",
+      "memory_sha": "b073dcf290decdcc"
     },
     "baseline/fnptr_enum_int_param.c": {
       "src_sha": "2fd3cfc5",
@@ -1106,7 +1110,6 @@
       "src_sha": "a29681ba",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/func_return_as_arg.c": {
@@ -1311,35 +1314,30 @@
       "src_sha": "d8e77367",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/invalid_func_field_reject.c": {
       "src_sha": "bd0cf611",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/invalid_negative_array_reject.c": {
       "src_sha": "e0160fe3",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/invalid_two_symbol_kinds_reject.c": {
       "src_sha": "addb814c",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/invalid_void_var_reject.c": {
       "src_sha": "3f5b522e",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/is_prime.c": {
@@ -1352,7 +1350,6 @@
       "src_sha": "3db16a2b",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/jit_nested_counting_loop.c": {
@@ -1761,7 +1758,6 @@
       "src_sha": "e81fe59e",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/p2e_div_zero_scope.c": {
@@ -1780,7 +1776,6 @@
       "src_sha": "330f99b3",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/p71_tier3_scanf.c": {
@@ -1955,7 +1950,6 @@
       "src_sha": "794a7c6a",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/printf_char.c": {
@@ -2106,7 +2100,6 @@
       "src_sha": "63383dac",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/reverse_array.c": {
@@ -2365,14 +2358,12 @@
       "src_sha": "e82fdca6",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/static_forward_global.c": {
       "src_sha": "8fd6e158",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/static_global_basic.c": {
@@ -2589,7 +2580,6 @@
       "src_sha": "8f90f95b",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/struct_member_array.c": {
@@ -2602,7 +2592,6 @@
       "src_sha": "d0cb430a",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/struct_nested_2d_member_init.c": {
@@ -2759,7 +2748,6 @@
       "src_sha": "24d2feff",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "baseline/typedef_struct_anon.c": {
@@ -3018,14 +3006,12 @@
       "src_sha": "b5a7d055",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/failfast_chain.c": {
       "src_sha": "3fe877ff",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/file_fopen.c": {
@@ -3062,7 +3048,6 @@
       "src_sha": "ed15d81a",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/include_quote_sentinel.c": {
@@ -3081,7 +3066,6 @@
       "src_sha": "ce1212f3",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/loop_var_shadow.c": {
@@ -3094,7 +3078,6 @@
       "src_sha": "f629bffd",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/printf_scanf_type_mismatch.c": {
@@ -3137,7 +3120,6 @@
       "src_sha": "36f66bdb",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "knr/kr_1_10.c": {

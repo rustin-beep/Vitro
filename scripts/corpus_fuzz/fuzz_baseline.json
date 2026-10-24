@@ -650,6 +650,15 @@
     "baseline/e1_limits_macros.c|div2shift": {
       "bucket": "AGREE"
     },
+    "baseline/e1_llong_bitwise.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/e1_llong_bitwise.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e1_llong_bitwise.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/e1_string_concat.c|cast_strip": {
       "bucket": "AGREE"
     },
@@ -891,6 +900,15 @@
       "bucket": "AGREE"
     },
     "baseline/for_empty_cond.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/for_loop.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/for_loop.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/for_loop.c|memset_zero": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/for_no_incr.c|brace_wrap": {
@@ -1406,6 +1424,15 @@
     "baseline/modulo.c|static_inject": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/mul_by_var.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/mul_by_var.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/mul_by_var.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/mul_overflow_safe.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1649,6 +1676,15 @@
     "baseline/parentheses_priority.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/pointer_add_assign.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/pointer_add_assign.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/pointer_add_assign.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/pointer_add_assign_char.c|cmp_swap": {
       "bucket": "AGREE"
     },
@@ -1737,6 +1773,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/power_of_2.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/pragma_line_ignore.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/pragma_line_ignore.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/pragma_line_ignore.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/pre_decrement.c|brace_strip": {

@@ -48,7 +48,7 @@ export interface Rules {
   generators: Array<{ name: string; count: number }>;
 }
 
-interface BaselineEntry {
+export interface BaselineEntry {
   bucket: string;
   issue?: string;
   note?: string;
@@ -878,6 +878,27 @@ export function planVariants(
   return out;
 }
 
+/// 基线序列化（转义口径对齐 Go MarshalIndent + SetEscapeHTML——PR #289
+/// P2-1 立的口径，.mts 迁移时曾丢失：freeze 把既有 \u003e 形态条目反向
+/// 漂移成裸 `>` 3 处实锤）。`<` `>` `&` 与 U+2028/U+2029 在字符串值内转
+/// \uXXXX；这些字符不出现在 JSON 结构位（键为 ASCII 指纹），整体替换安全；
+/// U+2028/2029 JSON.stringify（ES2019 well-formed）本就转义，显式两行
+/// 是口径自述。键序 = 字节字典序（调用方已 sort）。
+export function marshalBaselineText(
+  entries: Record<string, BaselineEntry>,
+): string {
+  const ls = String.fromCharCode(0x2028);
+  const ps = String.fromCharCode(0x2029);
+  return (
+    JSON.stringify({ entries }, null, 2)
+      .replaceAll("<", "\\u003c")
+      .replaceAll(">", "\\u003e")
+      .replaceAll("&", "\\u0026")
+      .replaceAll(ls, "\\u2028")
+      .replaceAll(ps, "\\u2029") + "\n"
+  );
+}
+
 function mainFlow(argv: readonly string[]): number {
   const opts = parseArgs(argv);
 
@@ -1038,7 +1059,11 @@ function mainFlow(argv: readonly string[]): number {
       if (v.note !== undefined && v.note !== "") obj.note = v.note;
       entries[k] = obj;
     }
-    const text = JSON.stringify({ entries }, null, 2) + "\n";
+    // 转义口径对齐 Go MarshalIndent + SetEscapeHTML（PR #289 P2-1 立的口径，
+    // .mts 迁移时曾丢失——freeze 反向漂移既有 \u003e 形态条目 3 处实锤）：
+    // < > & 与 U+2028/U+2029 在字符串值内转 \uXXXX。这些字符不出现在 JSON
+    // 结构位（键为 ASCII 指纹），整体替换安全。
+    const text = marshalBaselineText(entries);
     try {
       fs.writeFileSync(opts.baseline, text, "utf8");
     } catch (e) {

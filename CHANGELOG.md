@@ -12,6 +12,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(lexer+parser): A 线批五——#297 token 起始列快照 + #296 函数指针 const 传导 + lexer 行列不变量闸（2026-10-24）
+
+- **#297（lexer）**：token 起始列的「扫描后列 − text 字节数」回推对 text
+  为规范化值的 token 必偏（`0x1F`→"31" +2 / `0b101`→"5" +4 / `07` 八进制
+  前缀剥 +1 / `5000000000U` 后缀剥 +1）；跨行 token（行拼接字符串）回推
+  更跨过换行列重置点得负列。修复 = `next_token` 入口起始快照
+  （`tok_line`/`tok_col`，Eof 含）取代 `make_token` / `make_token_col_basis`
+  两处回推——source_loc 契约 §3 禁回推的落实；ASCII 域与回推法逐位一致
+  （存量锚零漂移），快照对跨行 token 天然给起始行列。红→绿：E3074 实测
+  `5:16` → `5:14` 对齐 clang。锚：scanner wbtest 双锚（五形态数字起始列
+  + 跨行起始行列，J9 stash 双红）+ 语料 `col_snapshot_normalized_tokens.c`
+  （`1'000` 分隔符形态 gnu17 下 clang 编译失败不入 run 面，wbtest 锁）。
+- **#297 处方②——lexer 行列自洽不变量闸**：`diff_gate/targets/lexer.mts`
+  新增 `checkLineColInvariant`（L1 面逐 token：同行 `byte_off − col` 恒等
+  = 契约「col == byte_off − 行首 + 1」机判形态；跨行 token 独占起始行
+  分组天然通过），digest 化之前拦截——正/负/跨行三锚（负例=旧回推偏 +2
+  形态）；全量四套件 1478 case 零失洽（修复彻底性背书）。
+- **#296（parser）**：函数指针声明符的指针自身 const（`int (* const fp)(void)`
+  不可重绑定）被 `interpret_declarator_node` Function 吸收臂丢弃
+  （`Pointer(rest, _)`）⇒ typed AST `is_const=false`、重绑定零诊断（clang
+  error）。修复 = 传导到 decay 产物 `Pointer(Function, true)`——typeck
+  E3049 现成路径（`sym.ty.is_const()`）接上：实测重绑定 `E3049 4:5` 对齐
+  clang `4:7 error`；非 const 对照（重绑定合法）与首赋值/调用零回退。
+  锚：parser wbtest 双锚（const 传导 + 非 const 对照，J9 stash 红/绿）+
+  语料 `fn_ptr_const_rebind.c`（合法面 + 对照格）。
+- **fuzz 转义回归顺手修（#273 迁移收官批遗留）**：`corpus_fuzz/main.mts`
+  的 `-freeze` 序列化裸 `JSON.stringify`，丢 Go `MarshalIndent +
+  SetEscapeHTML` 口径（PR #289 P2-1 立）——freeze 把既有 `\u003e` 形态
+  条目反向漂移成裸 `>` 3 处实锤。修 = 抽 `marshalBaselineText`（五类
+  转义 `<`/`>`/`&`/U+2028/U+2029）+ 单测（含往返等值）；重 freeze 零
+  删除保形。
+- **基线连坐**：五家 digest 四套件（baseline/knr/leetcode/gap）重冻入账
+  两新语料 + 存量列漂合法重算（lexer 51 / parser·typeck 24 / codegen 21
+  / vm 全量）+ libc 自举 golden REFRESH stdlib.c（列号波及投影 hash，
+  --freeze-mb）；fuzz 基线 +45 零删除；clang_direct 四套件 DIFF=0；moon
+  test **895/895**（+4 wbtest 锚）；根 README 三文档 891→895 连坐；
+  package-lock engines 同步 `>=24 <25`（PR #289 P2-2 声明的滞后再生成）；
+  发布档案 exempt_docs 白名单与 PR #299 同款带入（#299 先合则合并去重，
+  后合则本笔兜底——facts --strict 绿不依赖合并序）。
+
 ### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
 
 **删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。

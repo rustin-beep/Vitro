@@ -28,6 +28,7 @@ import {
   bucketOf,
   codeMask,
   firstIntLit,
+  marshalBaselineText,
   isAllDigits,
   isSep,
   latin1Fold,
@@ -213,4 +214,22 @@ test("e2e：未知算子名 fail loud（exit 2，规则与实现失配不静默�
   });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /未知算子名 "no_such_mutator"/);
+});
+
+test("marshalBaselineText 转义口径对齐 Go SetEscapeHTML（#289 P2-1 迁移丢失回补）", () => {
+  const text = marshalBaselineText({
+    "suite/a.c|brace_strip": {
+      bucket: "AGREE",
+      note: "putchar 高位字节(>=0x80) <&> 序列",
+    },
+  });
+  assert.ok(text.includes("\\u003e=0x80"), `> 须转义为 \u003e：${text}`);
+  assert.ok(!text.includes(">=0x80"), "裸 > 不得残留");
+  assert.ok(text.includes("\\u0026"), "& 须转义为 \u0026");
+  assert.ok(!text.includes(" <&> "), "值内 < & > 不得裸存");
+  // 往返：转义形态 JSON.parse 回读等值
+  const back = JSON.parse(text) as { entries: Record<string, { note: string }> };
+  const entry = back.entries["suite/a.c|brace_strip"];
+  assert.ok(entry !== undefined, "往返键在位");
+  assert.equal(entry.note, "putchar 高位字节(>=0x80) <&> 序列");
 });

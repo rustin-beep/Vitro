@@ -108,3 +108,44 @@ test "issue_251_u_suffix_above_u32_unsigned_domain" {
   )
   assert_eq(r.errors.length(), 0)
 }
+
+///|
+/// #297 token 起始快照锚：text 为规范化值的数字 token（`0x1F`→"31" /
+/// `0b101`→"5" / `1'000`→"1000" / `5000000000U` 后缀剥 / `07` 八进制前缀剥）
+/// 列 = 源拼写起始列——旧「扫描后列 − 规范化 text 字节数」回推必偏
+///（`0x1F` +2、`0b101` +4、`1'000` +1、后缀/前缀剥 +1；E3074 实测
+/// vitro 5:16 vs clang 5:14 留证 issue 表）。
+test "issue_297_token_start_col_normalized_text" {
+  let r = scan_raw(@utf8.encode("  0x1F 0b101 1'000 5000000000U 07"))
+  let cols = r.tokens
+    .map(t => "\{t.ty.to_name()}:\{t.text}@\{t.loc.column}")
+    .join(" ")
+  inspect(
+    cols,
+    content=(
+      #|Number:31@3 Number:5@8 Number:1000@14 UnsignedLiteral:5000000000@20 Number:7@32 Eof:@34
+    ),
+  )
+  assert_eq(r.errors.length(), 0)
+}
+
+///|
+/// #297 跨行 token 起始快照锚：行拼接字符串 token 的 loc = 起始行列
+///（旧回推跨过换行 column 重置点——issue 实测报 line 3, column -3，
+/// 正确值 line 2 起始列）。
+test "issue_297_multiline_token_start_loc" {
+  let r = scan_raw(@utf8.encode("char *s = \"ab\\\ncd\"; x"))
+  // 字符串 token 起于 1:11（"ab\<LF>cd"），跨行后结束于行 2；分号与 x 在行 2
+  let s2 = r.tokens[4]
+  assert_true(s2.ty is String, msg="第 7 个 token 应为字符串")
+  assert_eq(s2.loc.line, 1, msg="跨行字符串 loc 取起始行")
+  assert_eq(s2.loc.column, 11, msg="跨行字符串 loc 取起始列")
+  let semi = r.tokens[5]
+  assert_true(semi.ty is Semicolon, msg="分号跟随")
+  assert_eq(
+    semi.loc.line,
+    2,
+    msg="行 2 的 token 行号不受前 token 跨行影响",
+  )
+  assert_eq(semi.loc.column, 4, msg="行 2 分号列（cd\" 后）")
+}

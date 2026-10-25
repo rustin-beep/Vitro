@@ -165,7 +165,7 @@
 | [`current/08-发布档案/0.6.0.md`](current/08-发布档案/0.6.0.md) | **0.6.0（2026-09-26 发版件 · 09-27 线上发布）**：执行层收官——memory/host/vm 三包 + util + cmd/run；HostMemReply.value 加宽 UInt?→UInt64?；兼容义务建册 + 性能披露双语落档 |
 | [`current/08-发布档案/0.7.0.md`](current/08-发布档案/0.7.0.md) | **0.7.0（2026-09-29 发版件 · 09-30 线上发布）**：协议层与 wasm-gc 单出口——fs/protocol/session/gateway/gateway-wasm 五新包（L0–L8 共 20 包）；module 依赖清零（vendored）；彩排 + 线上验收全绿实录 |
 | [`current/08-发布档案/0.8.0.md`](current/08-发布档案/0.8.0.md) | **0.8.0（S8 收官版 · 2026-10-04 发版件 · 2026-10-05 线上发布；实录全文已回填〔彩排 registry 投放法四件 + publish + 线上验收三件，search 在架 35 downloads〕）**：时间旅行与教学智能四域（time_travel/teaching/steps/diagnostics）+ CLI 出口总账（vitro 总入口/cmd/lib/cli/api 万能单帧/协议契约 spec）+ compile 帧 algorithm_matches（净增 4 包共 24 包） |
-| [`current/08-发布档案/0.9.0.md`](current/08-发布档案/0.9.0.md) | **0.9.0（S9 收官版 · 预写稿 2026-10-23——内容面锁定，未定版未发布，发布实录待回填）**：tag `vitro-engine-0.8.0`→`f87b16db` 窗口 **217 笔提交 / 186 条 issue** 收拢（含 4 个在途 PR 与工作区在途批的收录边界〔在途件入版与否属发版拍板点〕）；数字全景（测试 655→884〔facts 裸口径，发版时按 playbook 全量重采；含 #256/#261 闭合批〕、码表 137→156 臂、教学卡 77→114、包目录 37→45）+ 五大叙事线（S9 脱钩收官 / 缺陷海修复 / CLI 三后端单壳 / demo 前端换代 / 防线与工具链治理） |
+| [`current/08-发布档案/0.9.0.md`](current/08-发布档案/0.9.0.md) | **0.9.0（S9 收官版 · 数字已按 2026-10-25 master=`f008471c` 干净口径全量重采——未定版未发布，发布实录待回填）**：tag `vitro-engine-0.8.0`→`f008471c` 窗口 **233 笔提交 / 204 条 issue** 收拢；数字全景（测试 655→897〔facts 裸口径〕、码表 137→156 臂、教学卡 77→114、opcode 135→151、包目录 37→45、.mbti 净 +392/−18）+ 五大叙事线 + 收口批次补遗（10-24~10-25 落库 16 笔）+ 破坏面七条（已进两份 CHANGELOG 0.9.0 段） |
 
 ---
 ### 📁 moonbit/docs/spec/ — 语言中立协议（2026-10-25 搬包）

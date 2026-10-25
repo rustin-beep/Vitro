@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-25（S9 收官版；发布实录待彩排+publish 后回填 docs/current/08-发布档案/0.9.0.md）
+
+> S9 收官版：Rust oracle 脱钩 + 裁定 + 解锁修复面。发布档案：[0.9.0.md](docs/current/08-发布档案/0.9.0.md)。
+
+### 破坏面与下游可见行为变更（0.8.0 → 0.9.0）
+
+1. **仓库形态**：`native/` Rust 对照区整体删除（`feat(s9)!`）——oracle 差分工作流退役；档案 = tag `rust-oracle-freeze` + 分支 `frozen-oracle-snapshot`。
+2. **CLI 行为**：#129 通道分立——文本模式 stdout 只承载程序输出，编译诊断/note/标记行走 stderr（下游解析脚本须更新剥离逻辑；`--json` 出口不变）；#67/#68 错误帧带期望形状 + api help 双产物；#91 截断显式化（`output_truncated` 位）；#92 诊断 E 码前置；#94/#105 config 钳制/未知键 fail loud；#96 libc 缺口走 E3073 专用码；#133 preset 三档 + `run --max-steps`；rc 判据双臂一致化（#107~#110 族）。
+3. **协议面**：`code_file` 等 v0.2 预留位字段激活（「字段↔最低版本」表见 #116 销案文档）；`texts.install` 新方法（#130 批②）。
+4. **包面**：新增 `icons` / `stdlib` 两包；接口面 `.mbti` 净 +392/−18 pub fn（4 新包 + 21 包改动，0.8.0↔0.9.0 diff 实测）——删除/重排代表：`tokenize_with_vfs` → `tokenize_with[P : @token.SourceProvider]`、`UnifiedEngine::run_batch` 加 `SourceLineProvider` 约束、host printf 族通道化移位；`type_display_name` gateway→ast 上提；`format_fixed` pub 化。
+5. **opcode 契约**：U 系对偶段 138..150 扩容 + 151..153 char 字节粒度段，总数 135→151。
+6. **码表**：ErrorCode 137→156 臂；error_catalog 教学卡 77→114（补 14 退 9，双向闭合闸在岗）；gateway 方法表 21→30。
+7. **发布物内容面**：协议契约文档与 TS 消费绑定随包分发（`moonbit/docs/spec/` + `moonbit/bindings/ts/`；随 PR #307 合入生效）。
+
 ### perf(scripts,ci): corpus_fuzz 判定缓存 + moon 构建产物缓存——PR #310 审阅处置批（#309 P0+P1，2026-10-25）
 
 **审阅处置**（1 P1 + 4 P2 + 5 P3 全采纳）：
@@ -65,6 +79,7 @@
 - **测试**：七组件敏感性矩阵（J9 锚：抽走 shell 组件实测红）/ 条目双敏感 /
   get·put 拒收语义（窜条、损坏 JSON、非法桶名、原型链名一律 miss fail open
   到真跑）/ prune 清除面。18/18 绿；tsc/oxlint 严格档过。
+
 ### refactor(scripts,docs): #273 facts/clang_direct/install_skills Go→.mts 迁移 + CI 去 Go 化 + 文档插图页脚翻新（2026-10-25）
 
 - **迁移三件**：`scripts/facts`（2338 行 + 8 个 Go 测试直译为 node:test 49 例）、`scripts/clang_direct`（1142 行 + 自测 5 例）、`.agents/install_skills`（313 行 + 自测 5 例）落 `.mts` 四件套门；**Go/ts 双跑逐位对拍**——facts.json 22 键规范化（剔 generated_at/git/as_of；`moonbit_lexer_diff_tsv`/`moonbit_parser_diff_samples` 两键 `source` 为口径演进差异：Go=`scripts/lexer_diff`、TS=`scripts/diff_gate（lexer/parser 臂）`）逐位一致、`check` 子命令 stdout 在 pending=0 时逐位一致（pending≠0 时 `[待采集]` 行序不同：TS 按规则键字节序 = 有意修复，Go 按错位序——`facts` 子命令 stdout 亦含上述两键 source 行差异）、clang_direct native/wasm 双臂 `--sample`/`--cases` 报文逐位一致且 exit code 相同。
@@ -80,6 +95,7 @@
 - **非 MoonBit 资产搬包（真源迁移非复制）**：`docs/spec/`（CLI_PROTOCOL_V1 + STEP_PAYLOAD_SCHEMA + svg）→ `moonbit/docs/spec/`；根树 `protocol/` TS 绑定（index.d.ts/fields.mjs/consumer.mjs 等）→ `moonbit/bindings/ts/`（避与 MoonBit 包 protocol/ 撞名）——mooncakes zip 内 README 的 spec 链接由包外死链变包内活链（#217②根因）；生成器 rules.json 输入/输出双路径连坐、ci.yml consumer 活行、gen_svg protocol/panorama 两图输出路径与页脚、schema.mbt 文档锚注释连坐（协议出口资产 checklist 字符串**不动**——那是 capabilities 出口字节，变更须单独批连坐 protocol_frames 重冻，此处登记不越权）；产物重生成 + 双闸绿。
 - **文档死角收尾 + 用户域文档入库**：docs/README.md 索引五处 spec 死链修复（插图约定 15 张口径拆分 / CLI 手册行内链 / 主索引两行 / spec 小节整体改写为 moonbit/docs/spec 指向——spec 搬包后索引未连坐）；构建指南 Go 工具链行改「仅 Go 回退面」口径；workspace-review skill references 四件审阅沉淀入库（含 04-F10 示例路径换真实冻结基线文件名——skill_path_check 全绿）+《宿主工单与Rust最小实例》新文档入库（docs/README 索引行已在，随批跟踪）。
 - **#218 下游指引**：CLI 手册统一入口节补包消费者段——`.mooncakes` 点目录构建 rc=0 零产物陷阱显式警告 + 可行配方（拷出源码自建模块 / 库用法等价）。
+
 ### fix(scripts,docs): #307 二轮审阅处置——坏引用闸扩面 + 相对链接死链清零 + 补锚（2026-10-25）
 
 - **P1-1 坏引用闸扩面（抽取面塌缩根治）**：RE_SCRIPT_REF 扩 mts/mjs/ts/js/sh/cmd 扩展名 + .agents 域 + bare 形态（go run/node + 无扩展名包路径，命令语境限定）；RE_CMD_VERB 加 node/npm/npx；scriptRefAlive 包路径判定扩 .mts；负向前视防 `rules.json` 被贪婪截成 `rules.js`（首版实锤 37 处误报→0）；scanFiles 扫描域补 moonbit/docs/（搬包后 spec 退出扫描面的真空）+ diag/README.mbt.md；classifyFile docs/spec 死规则翻新 moonbit/docs/spec。**红证**：注入 `node scripts/pr307_probe_missing.mts` 扩面前 0 红漏过/扩面后即红；新增 broken_refs.test.mts 8 锚（扩面抽取/豁免/包路径/bare/.agents/json 边界）。

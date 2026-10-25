@@ -105,7 +105,7 @@ class SessionState {
    *  三通道）——$state 深代理进 structured clone 必炸
    *  「could not be cloned」（2026-10-18 argv_prog 100% 复现）；用例是
    *  只读快照、点课整体替换写入，raw 语义恰配。 */
-  currentCase = $state.raw<{ id: string; label: string; source: string; referenceOutput?: string; referenceTrap?: string; referenceKind?: string; configHint?: Record<string, unknown>; argv?: string[]; files?: Array<{ filename: string; source: string }> } | null>(null);
+  currentCase = $state.raw<{ id: string; label: string; source: string; referenceOutput?: string | undefined; referenceTrap?: string | undefined; referenceKind?: string | undefined; configHint?: Record<string, unknown> | undefined; argv?: string[] | undefined; files?: Array<{ filename: string; source: string }> | undefined } | null>(null);
   appliedCfg = $state.raw<Record<string, unknown> | null>(null); // A5：config.get 回读视图
   /** A15：回放全宽（播放中隐藏左栏，可视化独占整行——旧栈 replay-wide
    *  同语义；设置态由本层单点管理，与 playing 相与生效）。 */
@@ -142,8 +142,12 @@ class SessionState {
     const vs = this.viewFrames;
     if (!vs.length) return 0;
     const hasData = (f: StepPayload): boolean => (f.array_snapshots?.length ?? 0) > 0 || (f.local_vars?.length ?? 0) > 0;
-    if (hasData(vs[this.idx])) return this.idx;
-    for (let i = this.idx - 1; i >= 0; i -= 1) if (hasData(vs[i])) return i;
+    const at = vs[this.idx];
+    if (at !== undefined && hasData(at)) return this.idx;
+    for (let i = this.idx - 1; i >= 0; i -= 1) {
+      const f = vs[i];
+      if (f !== undefined && hasData(f)) return i;
+    }
     return this.idx;
   });
 }
@@ -246,7 +250,7 @@ function getWorker(): Worker {
 
 function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS): Promise<T> {
   const id = ++rpcId;
-  const op = String(msg.op ?? msg.method ?? "rpc");
+  const op = String(msg["op"] ?? msg["method"] ?? "rpc");
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       if (!pending.has(id)) return;
@@ -262,7 +266,7 @@ function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS
 export class RpcError extends Error {
   readonly frame: Record<string, unknown>;
   constructor(frame: Record<string, unknown>) {
-    super(String(frame.error ?? "协议错误帧（无错误文本）"));
+    super(String(frame["error"] ?? "协议错误帧（无错误文本）"));
     this.frame = frame;
   }
 }
@@ -271,8 +275,8 @@ export class RpcError extends Error {
  *  ok:false 抛 RpcError（帧原样挂 frame 供细读），成功回 result。 */
 export async function call<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   const resp = await rpc<Record<string, unknown>>({ op: "invoke", method, params });
-  if (resp.ok === false) throw new RpcError(resp);
-  return (resp.result ?? resp) as T;
+  if (resp["ok"] === false) throw new RpcError(resp);
+  return (resp["result"] ?? resp) as T;
 }
 
 // ── 对外动作 ────────────────────────────────────────────────
@@ -317,7 +321,7 @@ export async function loadCatalog(): Promise<void> {
   }
 }
 
-export async function collect(source: string, bpLines: number[] = [], opts: { autoplay?: boolean } = {}): Promise<void> {
+export async function collect(source: string, _bpLines: number[] = [], opts: { autoplay?: boolean } = {}): Promise<void> {
   if (session.collecting) return;
   const my = ++session.epoch;
   session.collecting = true;
@@ -353,8 +357,9 @@ export async function collect(source: string, bpLines: number[] = [], opts: { au
     // 不收 Proxy，必须 map 纯化为普通对象（工作区模式返回新建对象故无此坑）。
     if (!workspace.active && files && files.length > 0) {
       files = files.map((f) => ({ filename: f.filename, source: f.source }));
-      if (files[0].source !== source) {
-        files = [{ filename: files[0].filename, source }, ...files.slice(1)];
+      const first = files[0];
+      if (first !== undefined && first.source !== source) {
+        files = [{ filename: first.filename, source }, ...files.slice(1)];
       }
     }
     // A4/A6（#140）：config = UI 基准 + 用例 configHint 一次性合并（hint 不
@@ -491,7 +496,7 @@ export async function applyCfg(): Promise<void> {
     await call("config.set", { ...session.cfg });
     const c = await call<Record<string, unknown>>("config.get");
     session.appliedCfg = c;
-    session.cfgMsg = `已应用 ✓（deterministic=${String(c.deterministic)}，max_steps=${String(c.max_steps)}，call_depth=${String(c.call_depth_limit)}）`;
+    session.cfgMsg = `已应用 ✓（deterministic=${String(c["deterministic"])}，max_steps=${String(c["max_steps"])}，call_depth=${String(c["call_depth_limit"])}）`;
     toast("ok", "会话配置已应用");
   } catch (err) {
     session.cfgMsg = "应用失败：" + String((err as Error).message).slice(0, 80);

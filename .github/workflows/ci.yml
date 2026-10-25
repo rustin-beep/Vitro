@@ -198,6 +198,13 @@ jobs:
             needs_artifact: false
     steps:
       - uses: actions/checkout@v4
+      # #273 批（2026-10-25）：diff_gate 与 realcode 勘探均已切 .mts（node 直跑）
+      # ——node 版本走 .node-version 单点（type stripping 需 ≥22.18，不 pin 会
+      # 随 runner 预装漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -282,12 +289,11 @@ jobs:
               go run ./scripts/clang_direct
               ;;
             realcode_corpus)
-              # 仓内语料批运行时对拍（#273 双轨形态）：Go 勘探真跑（-corpus
-              # 产 result.json——内嵌对账 corpusCompareWithGold 同步判红）
-              # + TS 对账判红（compare_gold.mts——新代码新语言，CI 判红面
-              # 走 TS 版；双跑逐位互证，退役 Go 内嵌版待整工具迁移批裁定）。
-              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus chibicc -out tmp/rc_ci_chibicc
-              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus multifile -out tmp/rc_ci_multifile
+              # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账
+              # 均已切 TS（main.mts 内嵌 gold 对账 + compare_gold.mts 独立判红，
+              # 双跑逐位互证）。
+              node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc
+              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile
               node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
               node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
               ;;
@@ -874,7 +880,7 @@ jobs:
 
         if: matrix.slice == 'contract'
         shell: bash
-        run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+        run: node scripts/realcode_diff/main.mts -check
 
       # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
       # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一
@@ -1199,7 +1205,7 @@ jobs:
       # 逗号表达式 warning 已知不碰。oxfmt/Biome 不接——能力层分散判据（#132）。
       - name: F4 oxlint (zero-error gate)
         if: always()
-        run: cd demo && npm run lint
+        run: cd demo && npm run lint:all
         shell: bash
 
       # wasm 是构建期资产（engine.worker.ts ?url——#139 同款 fail loud）：
@@ -1299,7 +1305,7 @@ jobs:
             return 1
           }
           start_chrome
-          (cd demo && node tests/serve_static.mjs 8931 &)
+          (cd demo && node tests/serve_static.mts 8931 &)
           if ! wait_cdp; then
             echo "E2E：CDP 首启 90s 未就绪，清 profile 重启一次…" >&2
             taskkill //F //IM chrome.exe >/dev/null 2>&1 || true
@@ -1319,15 +1325,15 @@ jobs:
           # computed 属性（颜色/字体族/连字/字距/大小写）。取的是跨 OS 确定值
           # （不经栅格化），基线 demo/tests/style_contract.json 入库。
           # -selftest 先证完整性判定（残缺 doc 判红），再跑真比对。
-          node demo/tests/style_contract.mjs --selftest
-          node demo/tests/style_contract.mjs http://127.0.0.1:8931/
-          node demo/tests/e2e_diagcard.mjs http://127.0.0.1:8931/
-          node demo/tests/e2e_workspace.mjs http://127.0.0.1:8931/
-          node demo/tests/e2e_session.mjs http://127.0.0.1:8931/
-          node demo/tests/e2e_editor.mjs http://127.0.0.1:8931/
+          node demo/tests/style_contract.mts --selftest
+          node demo/tests/style_contract.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_diagcard.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_workspace.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_session.mts http://127.0.0.1:8931/
+          node demo/tests/e2e_editor.mts http://127.0.0.1:8931/
           # bootfail 末位跑：临时改名 dist wasm 产物造装载失败（finally 还原），
           # 串行步骤内安全；若前置步骤红，本步不执行无遗留改名。
-          node demo/tests/e2e_bootfail.mjs http://127.0.0.1:8931/
+          node demo/tests/e2e_bootfail.mts http://127.0.0.1:8931/
         shell: bash
 
       # demo UI 字符串契约对账（2026-10-02，防线维护）：JS↔CSS 类名/CSS

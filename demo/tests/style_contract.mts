@@ -11,8 +11,8 @@
 // 内存/协议/专注页不在选择器集内，由 E2E 结构锚 + ui_lint 守（审查 P3 项）。
 //
 // 用法：
-//   node demo/tests/style_contract.mjs http://127.0.0.1:8931/            # 比对（红即 exit 1）
-//   node demo/tests/style_contract.mjs http://127.0.0.1:8931/ --update   # 人工令：重写基线
+//   node demo/tests/style_contract.mts http://127.0.0.1:8931/            # 比对（红即 exit 1）
+//   node demo/tests/style_contract.mts http://127.0.0.1:8931/ --update   # 人工令：重写基线
 // 前提：demo dist 已构建 + 静态服在跑 + headless Chrome 的 CDP 9222（CI 为
 // windows-latest + Chrome/Edge）。
 //
@@ -24,18 +24,23 @@
 // 判定：深比较；任一路径不同即红并列期望/实际；--update 才写盘（与 E2E
 // golden 同款「快照不得测试内动态刷新」纪律）。
 
-import http from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { connectCdp, sleep, type CdpClient } from "./cdp.mts";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
 const UPDATE = process.argv.includes("--update");
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASELINE = resolve(HERE, "style_contract.json");
 // 主题清单单源 = tokens.json（审查 P3：旧脚本硬编码五主题，新增主题会漏测）
-const TOKENS = JSON.parse(readFileSync(new URL("../tokens.json", import.meta.url), "utf8"));
-const THEMES = Array.isArray(TOKENS.themeOrder) ? TOKENS.themeOrder : Object.keys(TOKENS.themes ?? {});
+const TOKENS = JSON.parse(readFileSync(new URL("../tokens.json", import.meta.url), "utf8")) as {
+  themeOrder?: unknown;
+  themes?: Record<string, unknown>;
+};
+const THEMES: string[] = Array.isArray(TOKENS.themeOrder)
+  ? TOKENS.themeOrder.filter((x): x is string => typeof x === "string")
+  : Object.keys(TOKENS.themes ?? {});
 if (!THEMES.length) {
   console.error("style_contract: demo/tokens.json 无 themeOrder/themes，拒绝空转");
   process.exit(2);
@@ -82,67 +87,29 @@ const PROPS = [
 // 关键 token 的解析值（documentElement computed）——主题色板被换掉即红。
 const VARS = ["--vr-bg", "--vr-panel", "--vr-ink", "--vr-ink-3", "--vr-amber", "--vr-rule", "--vr-mono"];
 
-let msgId = 0;
-const pending = new Map();
-let ws;
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-function send(method, params = {}) {
-  const id = ++msgId;
-  return new Promise((res, rej) => {
-    pending.set(id, { res, rej });
-    ws.send(JSON.stringify({ id, method, params }));
-  });
+interface ThemeStyle {
+  styles: Record<string, Record<string, string> | null>;
+  vars: Record<string, string>;
+}
+type StyleDoc = Record<string, ThemeStyle>;
+interface Diff {
+  path: string;
+  expected: unknown;
+  actual: unknown;
 }
 
-async function evaluate(expr) {
-  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) throw new Error("eval 异常: " + JSON.stringify(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
-  return r.result.value;
-}
+let send: CdpClient["send"] = () => Promise.reject(new Error("CDP 未连接"));
+let cdpEvaluate: CdpClient["evaluate"] = () => Promise.reject(new Error("CDP 未连接"));
+let cdpWaitFor: CdpClient["waitFor"] = () => Promise.reject(new Error("CDP 未连接"));
+let closeCdp: () => void = () => {};
 
-async function waitFor(expr, timeout = 60000) {
-  const t0 = Date.now();
-  for (;;) {
-    if (await evaluate(expr)) return;
-    if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 100));
-    await sleep(250);
-  }
-}
+const evaluate = <T = unknown,>(expr: string): Promise<T> => cdpEvaluate<T>(expr);
+const waitFor = (expr: string, timeout = 60000): Promise<boolean> => cdpWaitFor(expr, timeout, 250);
 
-async function connect(port = 9222) {
-  const targets = await new Promise((res, rej) => {
-    http
-      .get({ host: "127.0.0.1", port, path: "/json/list" }, (r) => {
-        let body = "";
-        r.on("data", (c) => (body += c));
-        r.on("end", () => {
-          try {
-            res(JSON.parse(body));
-          } catch (e) {
-            rej(e);
-          }
-        });
-      })
-      .on("error", rej);
-  });
-  const page = targets.filter((t) => t.type === "page").find((t) => t.url.includes("index.html")) ?? targets.filter((t) => t.type === "page")[0];
-  if (!page) throw new Error("CDP 无 page target");
-  ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((res, rej) => {
-    ws.onopen = res;
-    ws.onerror = rej;
-  });
-  ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) {
-      const p = pending.get(m.id);
-      pending.delete(m.id);
-      if (m.error) p.rej(new Error(JSON.stringify(m.error)));
-      else p.res(m.result);
-    }
-  };
+async function connect(port = 9222): Promise<void> {
+  const cdp = await connectCdp({ port });
+  closeCdp = () => cdp.close();
+  ({ send, evaluate: cdpEvaluate, waitFor: cdpWaitFor } = cdp);
   await send("Page.enable");
   await send("Runtime.enable");
 }
@@ -163,10 +130,12 @@ const COLLECT = `(() => {
   return { vars, styles: out };
 })()`;
 
-function walkDiff(expected, actual, path, diffs) {
+function walkDiff(expected: unknown, actual: unknown, path: string, diffs: Diff[]): void {
   if (typeof expected === "object" && expected !== null && typeof actual === "object" && actual !== null) {
-    const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
-    for (const k of keys) walkDiff(expected[k], actual[k], path ? path + "." + k : k, diffs);
+    const e = expected as Record<string, unknown>;
+    const a = actual as Record<string, unknown>;
+    const keys = new Set([...Object.keys(e), ...Object.keys(a)]);
+    for (const k of keys) walkDiff(e[k], a[k], path ? path + "." + k : k, diffs);
     return;
   }
   if (expected !== actual) diffs.push({ path, expected, actual });
@@ -174,8 +143,8 @@ function walkDiff(expected, actual, path, diffs) {
 
 /** 完整性判定（审查 P2-5）：返回缺失清单；空数组 = 完整。--selftest 直接
  *  调它证红，--update / 比对路径共用同一判定。 */
-function completenessProblems(doc) {
-  const problems = [];
+function completenessProblems(doc: StyleDoc | undefined): string[] {
+  const problems: string[] = [];
   for (const theme of THEMES) {
     const t = doc?.[theme];
     if (!t) {
@@ -191,7 +160,7 @@ function completenessProblems(doc) {
 /** 完整性断言：--update 写盘前 / 比对读基线后都必须通过——缺失选择器在
  *  COLLECT 里是 null、未定义 token 是空串，直接写进基线会让下一次比较自然
  *  全等（D8 更新侧塌缩）。任一缺失 fail loud。 */
-function assertComplete(doc, label) {
+function assertComplete(doc: StyleDoc | undefined, label: string): void {
   const problems = completenessProblems(doc);
   if (problems.length) {
     console.error(`style_contract: ${label}完整性断言失败（${problems.length} 处）——拒绝冻结/比对残缺基线：`);
@@ -206,8 +175,8 @@ function assertComplete(doc, label) {
 if (process.argv.includes("--selftest")) {
   const okStyles = Object.fromEntries(SELECTORS.map((s) => [s, { color: "rgb(0, 0, 0)" }]));
   const okVars = Object.fromEntries(VARS.map((v) => [v, "#000000"]));
-  const good = Object.fromEntries(THEMES.map((t) => [t, { styles: okStyles, vars: okVars }]));
-  const bad = { [THEMES[0]]: { styles: {}, vars: {} } };
+  const good: StyleDoc = Object.fromEntries(THEMES.map((t) => [t, { styles: okStyles, vars: okVars }]));
+  const bad: StyleDoc = { [THEMES[0] as string]: { styles: {}, vars: {} } };
   if (completenessProblems(good).length !== 0) {
     console.error("style_contract: -selftest 失败——完整 doc 被判残缺");
     process.exit(2);
@@ -229,7 +198,10 @@ async function connectWithRetry(port = 9222, timeoutMs = 30000) {
     try {
       return await connect(port);
     } catch (e) {
-      if (Date.now() - t0 > timeoutMs) throw new Error("CDP " + port + " 在 " + timeoutMs + "ms 内未就绪：" + (e && e.message ? e.message : e));
+      if (Date.now() - t0 > timeoutMs) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error("CDP " + port + " 在 " + timeoutMs + "ms 内未就绪：" + msg);
+      }
       await new Promise((r) => setTimeout(r, 500));
     }
   }
@@ -251,13 +223,13 @@ async function main() {
   // 字号档固定 14：em→px 的 computed 值随档位变（CI 新 profile 默认 14，本地
   // 持久化可能是 16）——不固定就会在「同一份代码」上出现假红。
   await evaluate('document.documentElement.setAttribute("data-size", "14"); true');
-  const actual = {};
+  const actual: StyleDoc = {};
   for (const theme of THEMES) {
     await evaluate(`document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)}); true`);
     await sleep(200);
-    actual[theme] = await evaluate(COLLECT);
+    actual[theme] = await evaluate<ThemeStyle>(COLLECT);
   }
-  ws.close();
+  closeCdp();
   assertComplete(actual, "采集");
 
   if (UPDATE) {
@@ -269,9 +241,9 @@ async function main() {
     console.error(`style_contract: 缺基线 ${BASELINE}——先在 CI（windows-latest + Chrome/Edge）跑 --update 生成`);
     process.exit(1);
   }
-  const expected = JSON.parse(readFileSync(BASELINE, "utf8"));
+  const expected = JSON.parse(readFileSync(BASELINE, "utf8")) as StyleDoc;
   assertComplete(expected, "基线");
-  const diffs = [];
+  const diffs: Diff[] = [];
   walkDiff(expected, actual, "", diffs);
   if (diffs.length) {
     console.error(`style_contract: FAIL——${diffs.length} 处样式契约漂移`);

@@ -22,7 +22,7 @@ const mdLoaders = import.meta.glob<() => Promise<string>>("../../../course/**/le
  *  不匹配的 key 跳过——glob 面只收 lesson.md，防御性兜底）。 */
 function keyOf(globKey: string): string {
   const m = globKey.match(/^(?:\.\.\/)+course\/(.+)\/lesson\.md$/);
-  return m ? m[1] : "";
+  return m ? (m[1] ?? "") : "";
 }
 
 const notes = new Map<string, () => Promise<string>>();

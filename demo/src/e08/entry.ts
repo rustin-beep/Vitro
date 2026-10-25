@@ -117,13 +117,19 @@ function normalize(html: string): string {
     .trim();
 }
 
+function snapAt(frameIdx: number, nameIdx: number): NonNullable<NonNullable<ReturnType<typeof frameAt>>["array_snapshots"]>[number] {
+  const snap = frameAt(frameIdx)?.array_snapshots?.[nameIdx];
+  if (snap === undefined) throw new Error(`e08 fixture: 帧 ${frameIdx} 缺数组快照 ${nameIdx}`);
+  return snap;
+}
+
 const CASES: Record<string, (p: CorePayload) => string> = {
   "varslist-multi": () => render(VarsList).body,
   "timeline-mid": () => render(Timeline, { props: { source: SOURCE_SAMPLE } }).body,
   "arraycells-bubble-a": () =>
     render(ArrayCells, {
       props: {
-        snap: frameAt(session.idx)?.array_snapshots[0],
+        snap: snapAt(session.idx, 0),
         frame: frameAt(session.idx),
         before: session.idx > 0 ? frameAt(session.idx - 1) : undefined,
         source: SOURCE_SAMPLE,
@@ -132,7 +138,7 @@ const CASES: Record<string, (p: CorePayload) => string> = {
   "arraycells-bubble-b": () =>
     render(ArrayCells, {
       props: {
-        snap: frameAt(session.idx)?.array_snapshots[1],
+        snap: snapAt(session.idx, 1),
         frame: frameAt(session.idx),
         before: session.idx > 0 ? frameAt(session.idx - 1) : undefined,
         source: SOURCE_SAMPLE,
@@ -143,7 +149,7 @@ const CASES: Record<string, (p: CorePayload) => string> = {
   "arraycells-focus": () =>
     render(ArrayCells, {
       props: {
-        snap: frameAt(2)?.array_snapshots[0],
+        snap: snapAt(2, 0),
         frame: frameAt(2),
         before: frameAt(1),
         source: SOURCE_SAMPLE,

@@ -1,15 +1,3 @@
-# Changelog
-
-All notable changes to the Vitro project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-
-> **读本须知（agent 必读）**：本文件是**过程记述编年史**——各条目内的路径、防线计数、设施状态只反映**撰写时点**，不作现况引用。已退役/已更名设施（Rust 对照区 \`native/\`〔2026-10-05 删除〕、Python 驱动〔D5 收官退役〕、Flutter 前端〔前端切割删除〕、Cide 旧名与 \`cide_*\` 符号〔2026-09-14 更名〕、C++ 支持面〔裁定砍除〕）的记述均为**历史快照非现况**；现况以 [AGENTS.md](AGENTS.md)「当前阶段与档案」与 \`docs/current/\` 为准；逐版详情见 [docs/current/08-发布档案/](docs/current/08-发布档案/)（0.1.0~0.8.0）。
->
-> **维护纪律**：\`[Unreleased]\` 全文**唯一一段**——新条目**追加**到该段既有小节，禁止新插第二个 \`[Unreleased]\` 标题；已发布内容随发版移入对应版本节。
-
 ## [Unreleased]
 
 ### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
@@ -32,6 +20,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   （AGREE/CLANG_REJECT），`-freeze` 收编 1248 条（含 `>` → `\u003e` 转义口径
   回补 3 处——#289 P2-1 口径上轮 freeze 反向漂移的修正）。
 
+### fix(scripts,docs): #303 审阅 P3 处置——probe 排序口径更正 + probes 纯逻辑单测 + run 覆盖缺口登记（2026-10-25）
+
+- **P3-1（CHANGELOG 口径）**：`-probe` 的 `probe_diff.md` 不再声称逐字节一致——Go 版 `sort.Slice` 不稳定 + map 随机迭代，同一二进制连跑三次得到三种哈希；TS 版补同计数按码名字节序定序是**修复**而非漂移。`result.json` 仍逐字节一致。
+- **P3-2（run 比对面不可达）**：chibicc/multifile 的 `run` 恒空（全为 parse/typeck 红样本），`compareWithGold` 的 `run` 面在 CI 不可达；外置 `gold_signatures.json` 仍有 208 条非空 `run`。缺口登记在 `README.corpus.md`、`corpora.json` `_note` 与 `compare_gold` 注释，**不删除比对面**；补双绿可运行样本另批。
+- **P3-3（probes 单测）**：抽 `clangDiagnosticCounts` / `gccErrorCount` / `resolveGcc` 纯函数并接线原实现；新增 `probes.test.mts` 覆盖错误/警告计数、CRT/deprecated 豁免、CRLF 首错、gcc 探测序与显式缺失 fail-loud 分支。
+### refactor(demo): #273 demo/tests 七个 `.mjs` 迁 `.mts` + 三套 TS 检测拉到最严（2026-10-25）
+
+**迁了什么**：`demo/tests/{e2e_bootfail,e2e_diagcard,e2e_editor,e2e_session,e2e_workspace,serve_static,style_contract}.mjs` → `.mts`；新增 `demo/tests/cdp.mts`，把 5 份重复的 CDP `msgId/pending/ws/send/evaluate/waitFor` 与 `/json/list` 重试连接块收成单源（类型化边界：`send<T>` / `evaluate<T>`）。CI 与 `demo/README.md`、`demo/DESIGN.md` 的调用面同步切 `.ts`/`.mts`。
+
+**检测拉满**：三套 tsconfig（`demo/tsconfig.json` / `demo/tests/tsconfig.json` / `demo/tsconfig.pilot.json`）统一到最严档——`strictNullChecks` 由 2026-10-04 的单档收窄翻回 `true`，并新增 `noUncheckedIndexedAccess` / `exactOptionalPropertyTypes` / `noImplicitOverride` / `noFallthroughCasesInSwitch` / `noImplicitReturns` / `noPropertyAccessFromIndexSignature` / `noUnusedParameters` / `noUncheckedSideEffectImports` / `forceConsistentCasingInFileNames` / `allowUnreachableCode:false` / `allowUnusedLabels:false`。`npm run check:all`（main + tests + svelte-check）与 `npm run lint:all`（`src/` + tests 显式清单）成为本地单入口；CI 的 oxlint 步切 `lint:all`。
+
+**连带修复**（最严档暴露的真实类型缺口）：`lessonMd` / `scenes` 的数组索引与正则分组显式断言；`golden` / `session.currentCase` / `OpenOpts` 的可选属性补 `| undefined`（`exactOptionalPropertyTypes` 语义）；`js/gw` 索引签名改 `["id"]`；`ArrayCells` / `StageHead` / `MemorySide` / `WorkScreen` / `RefScreen` / `App` / `main` 的 `?.`/索引访问补全；`Editor.svelte` 的 `GutterMarker.toDOM` 补 `override`；`vite-env.d.ts` 补 `*.css` 模块声明（`noUncheckedSideEffectImports`）。
+
+**验收**：`npm run check:all` 0 错（tsc 主面 / tests / svelte-check）；`npm run lint:all` 0 警告；`node --test demo/tests/pure.test.mts` 42/42；`style_contract --selftest` 通过；`vite build` 成功。E2E 七脚本的完整运行仍由 CI `demo` job 覆盖（本地需 Chrome/Edge + dist）。
+### refactor(scripts): #273 realcode_diff Go→TypeScript(.mts) 迁移 + 删除 2,206 行 Go 勘探器（2026-10-25）
+
+**迁了什么**：`scripts/realcode_diff/vitro_clang_diff.go`（2,206 行，四模式：`-repo` / `-corpus` / `-aggregate` / `-check`）整体迁为 `.mts`：
+- `main.mts`（CLI 四模式 + 勘探编排 + 报告 + 剥壳对照）、`probes.mts`（Clang/gcc 真值、serve 连发、运行对比）、`stmt_expr.mts`（stdbool/语句表达式消解、层判定、输出归一）、`check_gold.mts`（合规闸 + 三向对账）、`aggregate.mts`（金样本聚合）、`types.mts`（result.json 字段序单源）。
+- `compare_gold.mts` 抽出 `compareWithGold` 供 main 内嵌复用（对账单源，不再有 Go 内嵌版与 TS 版双份）。
+
+**对拍证据（切 CI 前逐项一致）**：
+- `-check`：stdout/stderr/rc 与 Go 版逐字一致（3 金样本 / 484 条目）。
+- `-aggregate`：同一 result.json 产物**逐字节一致**（含 Go map 键序、HTML 转义、结构体字段序、尾随换行）。
+- `-corpus chibicc`（单文件）：`result.json` **逐字节一致**，`report.md` 仅时间戳行不同（屏蔽后一致）。
+- `-corpus multifile`（多文件工程）：`result.json` **逐字节一致**。
+- `-probe`：`result.json` 逐字节一致；`probe_diff.md` 因旧 Go 实现排序不稳定（`sort.Slice` + map 随机迭代，同一二进制连跑三次三种哈希）顺序不同，TS 版已补同计数按码名字节序定序。
+- `-repo`：绝对路径入参 `result.json` **逐字节一致**。
+- J9：check_gold 红矩阵 12 形态（求和失账/渗漏键/码形态/total/buckets/漏冻/僵尸条目/登记悬空/license_file/corpora.total/gold 缺失）全 exit 2。
+
+**有意口径差异（在案）**：`-repo` 传**相对路径**时 Go 版 `filepath.Rel(abs, rel)` 报错致 `path` 全为空串；TS 版先解析仓库根为绝对路径，`path` 归位为正确的相对路径（绝对路径入参两版逐字节一致）。属存量 bug 修复，非语义漂移。另 `-corpus` 内嵌对账复用 `compareWithGold`，按独立判红面**比较 `gcc_ok`**（原 Go 内嵌函数漏比该字段；金样本已含 `gcc_ok`，全量 77 条实测一致）。
+
+**CI 接线**：`gates-diff` 的 `realcode_corpus` 两处 `go run` → `node scripts/realcode_diff/main.mts`；hygiene 的 `-check` 同步切 node；该 job 补 `actions/setup-node`（`.node-version` 单点——原 diff_gate 已跑 .mts 但未显式 pin）。**Go 版已删**；`scripts/` 剩余 Go 3 个（`facts` / `clang_direct` / `perf_baseline`，真值源/报告器，按触达另批）。
+
+**连带修复**：`editorconfig_check` 对嵌套 git worktree/submodule 整树跳过——仓库根下遗留审阅 worktree（`tmp_pr299*`）此前被当普通目录扫入，导致本地 pre-commit 全仓闸恒红（CI 干净检出无此形态，故长期未暴露）；新增 J9 用例锁住「worktree 内违规不计入本仓、外部违规仍命中」。
+
+**门禁**：tsc 0 错 / oxlint 153 文件 0 警告 / node:test 新增 30 例全绿（本地全量 493 例中 491 通过，2 例为环境红：`tmp_pr299wt` 审阅工作树被 editorconfig 扫入、Node 25.9.0 Windows `process.exit` 崩溃码 0xC0000409——均为在案环境项，非本批代码）/ `ci_checklist` PASS（驱动 55＝.go 3 / .mts 52）/ `-check` PASS / `go build ./scripts/...` PASS。
+
 ### fix(corpus+docs): #301 用户审阅处置——P1 llm_scale 四家 digest 补冻 + P2 README 测试数漏改 3 处（2026-10-25）
 
 - **P1**：批五重冻漏了 `corpus/llm_scale`（CI diff gate 跑五语料，
@@ -45,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **补验审阅未覆盖项**：wasm 臂列号同源（E3074 `5:14` 与 js/native
   对齐 + 新语料三臂同 md5）；`clang_direct llm_scale` DIFF=0；
   `libc_boot_diff` REFRESH 复现 PASS。
-
 ### chore(scripts): engines 放宽 26——本机 Node 25→26 切换验证伴生（2026-10-25）
 
 - `engines` 由 `>=24 <25` 放宽为 `>=24.0.0 <25.0.0 || >=26.0.0 <27.0.0`：
@@ -60,7 +84,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   嵌套 1.05x / 冒泡 1.02x / host 调用密集面持平）；wasm-gc 臂持平
   （±8% 内，fib 1.00x / 嵌套 1.04x / 冒泡 1.04x / 字符串 0.92x）——
   **零回退，js 臂小幅占优**；数字详见 #302 评论。
-
 ### fix(lexer+parser): A 线批五——#297 token 起始列快照 + #296 函数指针 const 传导 + lexer 行列不变量闸（2026-10-24）
 
 - **#297（lexer）**：token 起始列的「扫描后列 − text 字节数」回推对 text
@@ -100,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package-lock engines 同步 `>=24 <25`（PR #289 P2-2 声明的滞后再生成）；
   发布档案 exempt_docs 白名单与 PR #299 同款带入（#299 先合则合并去重，
   后合则本笔兜底——facts --strict 绿不依赖合并序）。
+
 ### fix(codegen): #283 static 局部遮蔽同名 global 解析链前置 + 语料/基线连坐（2026-10-24）
 
 - **静默错值修复**：函数级 `static int c` 与文件作用域 `int c` 同名时，

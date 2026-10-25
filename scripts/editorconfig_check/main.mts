@@ -134,6 +134,9 @@ export function checkTree(baseArg: string): string[] {
       if (rel.startsWith("tools" + path.sep + "cache")) continue;
       if (rel.split(path.sep).some((seg) => SKIP_SEGS.has(seg))) continue;
       if (e.isDirectory()) {
+        // 嵌套 git worktree / submodule：独立仓库，不属于本仓内容（根下审阅
+        // worktree 曾被当普通目录扫入，导致本地 pre-commit 恒红）。
+        if (fs.existsSync(path.join(p, ".git"))) continue;
         walk(p);
         continue;
       }

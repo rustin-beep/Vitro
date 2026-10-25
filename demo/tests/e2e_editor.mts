@@ -1,81 +1,35 @@
 // E2E 实测（编辑器真实输入面——#190 红锚批 2026-10-18）：
 // #190 实锤「E2E 的 setEditor 整段单事务绕过真实键入层」盲区——本文件专测
 // 逐字符键入 / 撤销重做 / 焦点保持 / 采集翻态不重建四条真实输入路径锚。
-// 用法同 e2e_workspace.mjs 三步（build / serve_static 8931 / headless chrome 9222）。
-import http from "node:http";
+// 用法同 e2e_workspace.mts 三步（build / serve_static 8931 / headless chrome 9222）。
+import { connectCdp, sleep, type CdpClient, type CheckResult } from "./cdp.mts";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
 const PAGE = BASE + "index.html";
 
-let msgId = 0;
-const pending = new Map();
-let ws;
+let send: CdpClient["send"] = () => Promise.reject(new Error("CDP 未连接"));
+let evaluate: CdpClient["evaluate"] = () => Promise.reject(new Error("CDP 未连接"));
+let waitFor: CdpClient["waitFor"] = () => Promise.reject(new Error("CDP 未连接"));
 
-function send(method, params = {}) {
-  const id = ++msgId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params }));
-  });
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function evaluate(expr) {
-  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) throw new Error("eval 异常: " + JSON.stringify(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
-  return r.result.value;
-}
-async function waitFor(expr, timeout = 20000, step = 250) {
-  const t0 = Date.now();
-  for (;;) {
-    if (await evaluate(expr)) return true;
-    if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 120));
-    await sleep(step);
-  }
-}
-
-const results = [];
-const check = (name, ok, detail) => { results.push({ name, ok }); console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail); };
-
-const docLen = () => evaluate("document.querySelector('.cm-content')?.textContent.length ?? -1");
-const focusInEditor = () => evaluate("document.activeElement?.classList?.contains('cm-content') ?? false");
-async function clickCmLine(idx) {
-  const box = await evaluate(`(() => { const e = document.querySelectorAll('.cm-content .cm-line')[${idx}]; if (!e) return null; const r = e.getBoundingClientRect(); return {x: Math.round(r.x + 130), y: Math.round(r.y + r.height/2)}; })()`);
+const docLen = (): Promise<number> => evaluate<number>("document.querySelector('.cm-content')?.textContent.length ?? -1");
+const focusInEditor = (): Promise<boolean> => evaluate<boolean>("document.activeElement?.classList?.contains('cm-content') ?? false");
+async function clickCmLine(idx: number): Promise<void> {
+  const box = await evaluate<{ x: number; y: number } | null>(`(() => { const e = document.querySelectorAll('.cm-content .cm-line')[${idx}]; if (!e) return null; const r = e.getBoundingClientRect(); return {x: Math.round(r.x + 130), y: Math.round(r.y + r.height/2)}; })()`);
   if (!box) throw new Error("找不到 .cm-line " + idx);
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: box.x, y: box.y, button: "left", clickCount: 1 });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x, y: box.y, button: "left", clickCount: 1 });
   await sleep(150);
 }
 
+const results: CheckResult[] = [];
+const check = (name: string, ok: boolean, detail: string): void => {
+  results.push({ name, ok });
+  console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail);
+};
+
 async function run() {
-  const targets = await (async () => {
-    // CI 竞态修复（2026-10-18）：chrome DevTools 端口就绪前连接会
-    // ECONNREFUSED（sleep 固定等待竞态）——拒绝即退避重试（10×500ms）
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await new Promise((resolve, reject) => {
-          http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
-    let b = ""; res.on("data", (c) => (b += c)); res.on("end", () => { try { resolve(JSON.parse(b)); } catch (e) { reject(e); } });
-          }).on("error", reject);
-        });
-        } catch (e) {
-          if (attempt >= 19 || !String(e).includes("ECONNREFUSED")) throw e;
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-      }
-  })();
-  const pages = targets.filter((t) => t.type === "page");
-  const page = pages.find((t) => t.url.includes("index.html")) ?? pages[pages.length - 1];
-  if (!page) throw new Error("CDP 无 page target");
-  ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) {
-      const p = pending.get(m.id); pending.delete(m.id);
-      if (m.error) p.reject(new Error(JSON.stringify(m.error))); else p.resolve(m.result);
-    }
-  };
+  const cdp = await connectCdp();
+  ({ send, evaluate, waitFor } = cdp);
 
   await send("Page.enable");
   await send("Runtime.enable");
@@ -105,11 +59,11 @@ async function run() {
   //   滚动页面，gutter 视口坐标失效曾致 N7 假绿/N8 点错行）。断言断点集精确
   //   内容而非 chip 数量（数量断言曾蒙混「设错行但恰好 1 个」的假绿）。──
   {
-    const bpSet = () => evaluate("window.__pilot.session.breakpoints");
-    const clickLineNo = async (no) => {
+    const bpSet = (): Promise<unknown> => evaluate("window.__pilot.session.breakpoints");
+    const clickLineNo = async (no: number): Promise<void> => {
       // ⚠️ 按行号文本定位：gutterElement[0] 是 CM6 宽度占位 filler（"99"），
       // 行号从 [1] 起——索引直取曾 off-by-one 点到行 5。
-      const r = await evaluate(`(() => { const e = [...document.querySelectorAll('.cm-lineNumbers .cm-gutterElement')].find(el => el.textContent.trim() === ${JSON.stringify(String(no))}); if (!e) return null; e.scrollIntoView({ block: "center" }); const rc = e.getBoundingClientRect(); return { x: Math.round(rc.x + rc.width / 2), y: Math.round(rc.y + rc.height / 2) }; })()`);
+      const r = await evaluate<{ x: number; y: number } | null>(`(() => { const e = [...document.querySelectorAll('.cm-lineNumbers .cm-gutterElement')].find(el => el.textContent.trim() === ${JSON.stringify(String(no))}); if (!e) return null; e.scrollIntoView({ block: "center" }); const rc = e.getBoundingClientRect(); return { x: Math.round(rc.x + rc.width / 2), y: Math.round(rc.y + rc.height / 2) }; })()`);
       if (!r) throw new Error("找不到行号 gutter element " + no);
       await send("Input.dispatchMouseEvent", { type: "mousePressed", x: r.x, y: r.y, button: "left", clickCount: 1 });
       await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: r.x, y: r.y, button: "left", clickCount: 1 });
@@ -118,7 +72,7 @@ async function run() {
     await clickLineNo(6);
     // ⚠️ CDP returnByValue 结构化克隆会把 $state Proxy 数组降为普通对象
     //（{"0":6}）——断言前归一化为数组。
-    const norm = (v) => (Array.isArray(v) ? v : Object.values(v ?? {}));
+    const norm = (v: unknown): number[] => (Array.isArray(v) ? (v as number[]) : Object.values((v ?? {}) as Record<string, number>));
     const bp1 = norm(await bpSet());
     check("N7 真实点击行号 6 → 断点集 {6}（#185）", bp1.length === 1 && bp1[0] === 6, JSON.stringify(bp1));
     await clickLineNo(6);
@@ -134,7 +88,7 @@ async function run() {
   // localStorage = 默认 paper，与线上首访同态。同时断言 keyword/类型/
   // 字符串/数字四类色度全部达标——单色排版是整板问题非单 token。
   {
-    const hl = await evaluate(`(() => {
+    const hl = await evaluate<{ theme: string | null; kw: number; ty: number; str: number }>(`(() => {
       const chroma = (c) => { const m = c.match(/\\d+/g)?.map(Number) ?? []; return m.length >= 3 ? Math.max(...m.slice(0, 3)) - Math.min(...m.slice(0, 3)) : -1; };
       const find = (t) => { const s = [...document.querySelectorAll('.cm-content span')].find(x => x.textContent === t); return s ? getComputedStyle(s).color : null; };
       return {

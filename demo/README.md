@@ -41,19 +41,19 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 
 - 解析在 `src/lib/lessonMd.ts`（demo 自家消费端，不走 `content_parser.c`）：`from..to` 是 `viewFrames` 闭区间，`lines` 是源码行范围；注释块解析时从 `blocks` 剥离，`CourseNote` / E-08 golden 逐字节不变。
 - 无 scene 的课 = `scenes: []`，回退现有长文；scene 范围重叠 / 格式错误 fail loud。锚在 `tests/pure.test.mts`（解析 / 无 scene / 格式错误 / bubble 0..41 覆盖）。
-- **消费面（P1 第二/四片，2026-10-21）**：左栏是**竖向分镜轨**（`src/lib/BeatRail.svelte`：点幕 = 跳到幕首帧；当前幕高亮 + 一句本幕要点 + 帧范围 + 幕内进度），时间轴上方是按帧格等分的**分幕带**（当前幕高亮）。样式走既有 `--vr-*` token，不新增主题变量。定位单点在 `src/lib/scenes.ts`（`sceneIndexAt` / `sceneProgress` / `sceneBand` / `sceneKicker`，纯函数，锚在 `tests/pure.test.mts`）；交互锚 `B0`（未迁移课无分镜条）/ `B1`（点幕跳首帧 + 当前幕/注记同步）在 `tests/e2e_session.mjs`。
-- **幕头与浅树压扁（P1 第三片，2026-10-21）**：代码上方是**幕头**（`src/lib/StageHead.svelte`：幕号 / 帧范围 / 源码行 + 标题 + 一句要点 + 上一幕/下一幕）；调用树节点 ≤3（`prog → main` 一族）时**不画 214px 画布**，压成一行面包屑 + 当前语句（深树仍走画布）——把首屏让给局部变量与输出。锚 `B2` 在 `tests/e2e_session.mjs`。
-- **三栏布局（P1 第四片，2026-10-21）**：工作台 = 左 rail（课头 + 运行条 + 分镜轨）/ 中 stage（幕头 + 代码 + 参数）/ 右 now（仪器三模式）+ 底栏 **dock**（时间轴 + 输出 strip，横跨三栏）+ 课文殿后；容器 ≥1180px 走三栏，窄容器回落单列（DOM 序即阅读序，无 `order` 重排）。1440×900 首屏量测：代码 187 / 数组 191 / 局部变量 487 / 时间轴 648–847 / 输出 strip 874。锚 `B3`（三栏几何 + 底栏通栏 + 首屏）在 `tests/e2e_session.mjs`。
-- **逐行注记（P1 第五片，2026-10-21）**：src/lib/annotations.ts 从帧流差分出「本幕每行最近一次执行改了什么」——局部量 t ← 5、数组元素 a[1] ← 1；只取当前帧及之前、跨函数不比较、首帧无前态不猜；**归行校验**（该行源码不写这个变量就不贴注记——语句级帧会把 for 的 j++ 并进循环体末行，实测 a[j+1] = t 帧里 j 已递增）。渲染走 CM6 **行装饰属性 + CSS ::after**（注记不进 .cm-content 文本面，E2E docLen 不被污染），源码编辑（docChanged）即整体作废。锚 B4（帧 12 的三行注记 = 拍板稿 08/09/10 形态）在 tests/e2e_session.mjs。
-- **本幕讲解 + 展开全文（P1 第六片，2026-10-21）**：scene 课程的课文改为「当前幕卡片（幕号/帧范围/源码行 + 标题 + 一句要点）+ 默认折叠的全文」（src/lib/SceneNote.svelte）——本幕卡片只读 lesson.md 真源字段，不手写第二份讲解；无 scene 的课 100% 回退现有长文。全文走 details（内容始终在 DOM，E-08/W9 锚不受折叠影响），换课自动回折叠。锚 B5（默认折叠 + 本幕跟随 + 可展开）在 tests/e2e_session.mjs。
+- **消费面（P1 第二/四片，2026-10-21）**：左栏是**竖向分镜轨**（`src/lib/BeatRail.svelte`：点幕 = 跳到幕首帧；当前幕高亮 + 一句本幕要点 + 帧范围 + 幕内进度），时间轴上方是按帧格等分的**分幕带**（当前幕高亮）。样式走既有 `--vr-*` token，不新增主题变量。定位单点在 `src/lib/scenes.ts`（`sceneIndexAt` / `sceneProgress` / `sceneBand` / `sceneKicker`，纯函数，锚在 `tests/pure.test.mts`）；交互锚 `B0`（未迁移课无分镜条）/ `B1`（点幕跳首帧 + 当前幕/注记同步）在 `tests/e2e_session.mts`。
+- **幕头与浅树压扁（P1 第三片，2026-10-21）**：代码上方是**幕头**（`src/lib/StageHead.svelte`：幕号 / 帧范围 / 源码行 + 标题 + 一句要点 + 上一幕/下一幕）；调用树节点 ≤3（`prog → main` 一族）时**不画 214px 画布**，压成一行面包屑 + 当前语句（深树仍走画布）——把首屏让给局部变量与输出。锚 `B2` 在 `tests/e2e_session.mts`。
+- **三栏布局（P1 第四片，2026-10-21）**：工作台 = 左 rail（课头 + 运行条 + 分镜轨）/ 中 stage（幕头 + 代码 + 参数）/ 右 now（仪器三模式）+ 底栏 **dock**（时间轴 + 输出 strip，横跨三栏）+ 课文殿后；容器 ≥1180px 走三栏，窄容器回落单列（DOM 序即阅读序，无 `order` 重排）。1440×900 首屏量测：代码 187 / 数组 191 / 局部变量 487 / 时间轴 648–847 / 输出 strip 874。锚 `B3`（三栏几何 + 底栏通栏 + 首屏）在 `tests/e2e_session.mts`。
+- **逐行注记（P1 第五片，2026-10-21）**：src/lib/annotations.ts 从帧流差分出「本幕每行最近一次执行改了什么」——局部量 t ← 5、数组元素 a[1] ← 1；只取当前帧及之前、跨函数不比较、首帧无前态不猜；**归行校验**（该行源码不写这个变量就不贴注记——语句级帧会把 for 的 j++ 并进循环体末行，实测 a[j+1] = t 帧里 j 已递增）。渲染走 CM6 **行装饰属性 + CSS ::after**（注记不进 .cm-content 文本面，E2E docLen 不被污染），源码编辑（docChanged）即整体作废。锚 B4（帧 12 的三行注记 = 拍板稿 08/09/10 形态）在 tests/e2e_session.mts。
+- **本幕讲解 + 展开全文（P1 第六片，2026-10-21）**：scene 课程的课文改为「当前幕卡片（幕号/帧范围/源码行 + 标题 + 一句要点）+ 默认折叠的全文」（src/lib/SceneNote.svelte）——本幕卡片只读 lesson.md 真源字段，不手写第二份讲解；无 scene 的课 100% 回退现有长文。全文走 details（内容始终在 DOM，E-08/W9 锚不受折叠影响），换课自动回折叠。锚 B5（默认折叠 + 本幕跟随 + 可展开）在 tests/e2e_session.mts。
 
 ## 设计契约与主题 token（P0 契约批，2026-10-21）
 
 - **token 单源 = `demo/tokens.json`**（W3C DTCG 子集：每 token = `{$value, $type}`；`base` 字体/尺寸/动效 + `themes` 五主题色板〔`colorScheme` + `tokens`〕+ `sizes` 三字号档；`themeOrder` 定序）。
-- 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `node scripts/gen_demo_tokens/main.mts` → `-check` 绿 → `node demo/tests/style_contract.mjs` 比对（computed 值；像素闸已退役，不再以截图作门）。
+- 产物 `demo/src/tokens.css` 由 `scripts/gen_demo_tokens` 生成（`@generated` 禁手改），`app.css` 顶部只 `@import`。改色板流程：改 `tokens.json` → `node scripts/gen_demo_tokens/main.mts` → `-check` 绿 → `node demo/tests/style_contract.mts` 比对（computed 值；像素闸已退役，不再以截图作门）。
 - 门：`node scripts/gen_demo_tokens/main.mts -check`（逐字节，CRLF 归一）+ `-selftest`（同集绿 + 篡改必红，J9）；`ci.yml` demo 段同步步。意图 / Do-Don't / 五主题语义见 [DESIGN.md](DESIGN.md)（不复制数值——数值只在 tokens.json）。
 - 本批迁移实测（一次性取证，非门）：五主题 1440×900 截图迁移前后逐字节一致（ice / rose / soft / paper / blueprint 五张 PNG 的 sha256 全等）；像素闸已于 2026-10-22 退役。
-- **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mjs http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。
+- **样式契约闸（P0 第二批）**：`node demo/tests/style_contract.mts http://127.0.0.1:8931/`——五主题 × 19 选择器 × 9 个 computed 属性（颜色 / 字体族 / 连字 / 字距 / 大小写）对账基线 `demo/tests/style_contract.json`；取跨 OS 确定值（不经栅格化），CI 与本地同基线，`--update` 为人工令。
 - **像素闸（P0 第三批）已于 2026-10-22 退役**（用户裁定：PNG 基线只能 CI 专用生成、入库体积与维护噪声大于收益）。画面语义改由样式契约（computed 值）+ E2E 行为锚 + `demo_ui_lint` 文本面守，不再保留截图基线目录与生成步骤。
 
 ## 本地预览
@@ -88,9 +88,15 @@ Firefox 134+），加载失败页面会显示降级提示。
 
 本页判定闸全部已接 CI（ci.yml `demo` job，与本地命令一一对应）：
 
-1. **tsc 类型检查**——`cd demo && npx tsc -p tsconfig.json --noEmit`（strict，
-   `strictNullChecks` 单档收窄——裁定见 tsconfig 注释；覆盖 `js/` 八个物理
-   保留纯函数模块的类型面）；`tests/` 另有独立 tsconfig（`@types/node` 面）。
+1. **TS 类型检查（三面，2026-10-25 起拉到最严）**——`npm run check:all`：
+   - `npm run check:main`：`js/` 八个物理保留纯函数模块；
+   - `npm run check:tests`：`tests/*.mts`（含 E2E/CDP）与 `@types/node` 面；
+   - `npm run check`：`src/` + `.svelte`（svelte-check）。
+   三套 tsconfig 共用最严档：`strict` + `strictNullChecks` +
+   `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` +
+   `noImplicitOverride` + `noImplicitReturns` +
+   `noPropertyAccessFromIndexSignature` + `noUnusedParameters` 等；
+   旧 2026-10-04 的 `strictNullChecks=false` 单档收窄已废止。
 2. `node scripts/gen_demo_algorithms/main.mts`——算法侧栏数据发射（**产物不入
    库**，CI/pages 消费前现场发射；分组并集 == rules.json 43 族 + 82 模板全
    集对账，发射即闸）。本地起页须先跑此步生成 `algorithms.js`。
@@ -100,7 +106,7 @@ Firefox 134+），加载失败页面会显示降级提示。
    （index.html script/img 面 + 入口 import 面逐项存在；HTML 抽取面哨兵；
    pages.yml 发布面加 `--no-ts` 断言源不随产物发布）。
 5. `npm run check`——F4 svelte-check（type + a11y gate，零错零警）。
-6. `npm run lint`——F4 oxlint（零错误 gate）。
+6. `npm run lint:all`——F4 oxlint（`src/` + `tests/*.mts` 显式清单；零错误 gate）。
 7. `npm run build`——F4 vite build（构建成功 gate；产物 `dist/` 不入库）。
 8. **E-08 快照闸**——`vite build --ssr src/e08/entry.ts` 产 node bundle 后
    `node --test demo/tests/e08.test.mts`：17 锚 = 16 组件用例 × 冻结 golden
@@ -130,10 +136,10 @@ Firefox 134+），加载失败页面会显示降级提示。
     连续与行界 / 第〇章 5 门 N 帧与四节 / 码表键与关联课；须 node 25，
     type stripping 直跑 .ts）。DOM 交互层不硬测，走第 13 条浏览器 E2E。
 13. **浏览器 E2E（已进 CI，2026-10-17 收口）**——`demo/tests/
-    e2e_diagcard.mjs`（诊断带 + 断点行为链 S1-S5，18 锚）+
-    `demo/tests/e2e_workspace.mjs`（工作区 + 点课叙述 + 回放交互 + 设置
+    e2e_diagcard.mts`（诊断带 + 断点行为链 S1-S5，18 锚）+
+    `demo/tests/e2e_workspace.mts`（工作区 + 点课叙述 + 回放交互 + 设置
     面板 + 主题持久化 + 分享往返 + **stdin 喂入/golden 对照/统计卡**
-    W1-W17，38 锚）+ `demo/tests/e2e_session.mjs`（会话/回放/分享族
+    W1-W17，38 锚）+ `demo/tests/e2e_session.mts`（会话/回放/分享族
     F1-F8 + B0-B11，21 锚——2026-10-18 实测立账批防线锚：坏分享 hash 横幅 /
     argv 采集零克隆崩 / 语句级 frameAt 口径〔突变证红留痕〕/ 播完
     status 提示 / char 数组**全帧 sweep** 零 each_key_duplicate /
@@ -141,11 +147,11 @@ Firefox 134+），加载失败页面会显示降级提示。
     structures/josephus 实测〕）。共 61 锚。
     ⚠️ 旧锚点（`.pilot-head` / `.tab` / `button.lesson` / `.bars`）随五 tab
     旧 DOM 在 2026-10-18 改造批退役；仍跑旧脚本会在 boot 等待即超时
-    （`.pilot-head .badge` 永不出现）——请以当前 `tests/e2e_*.mjs` 为准。
+    （`.pilot-head .badge` 永不出现）——请以当前 `tests/e2e_*.mts` 为准。
     CI 步用 ubuntu runner 预装 Google Chrome headless
     CDP（与 Edge 同协议，脚本零改动）；本地跑法：vite build 产物 →
-    `node tests/serve_static.mjs 8931` → Edge/Chrome `--headless=new
-    --remote-debugging-port=9222 --no-proxy-server` → `node tests/e2e_*.mjs
+    `node tests/serve_static.mts 8931` → Edge/Chrome `--headless=new
+    --remote-debugging-port=9222 --no-proxy-server` → `node tests/e2e_*.mts
     http://127.0.0.1:8931/`（**node 25**；环境带 HTTP_PROXY 时 CDP 与页面
     都禁走代理）。前置：`moonbit/_build` 的 wasm-gc 产物须已 cp 到
     `demo/wasm.wasm`（新鲜度闸缺口见 issue #123①——本地手 cp 无门禁，

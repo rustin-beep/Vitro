@@ -43,6 +43,19 @@ test("J9：非 UTF-8 / lone CR / 缺末行换行 / JSON 缩进 逐类命中；�
   assert.equal(offenders.length, 4, offenders.join("\n"));
 });
 
+test("嵌套 git worktree 整树跳过（独立仓库不入本仓扫描域）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-editorconfig-wt-"));
+  const w = (rel: string, data: string): void => {
+    const p = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, data);
+  };
+  w("ok.txt", "ok\n");
+  w("nested/.git", "gitdir: /somewhere/else\n");
+  w("nested/bad.txt", "no final newline");
+  assert.deepEqual(checkTree(dir), [], "嵌套 worktree 内的违规不应计入本仓");
+});
+
 test("CLI -root：违规 exit 1 且打印 FAIL", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-editorconfig-cli-"));
   fs.writeFileSync(path.join(dir, "x.txt"), "abc");

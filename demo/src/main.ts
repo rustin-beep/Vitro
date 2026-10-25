@@ -22,7 +22,7 @@ const app = mount(App, { target: (() => {
   return target;
 })() });
 
-(window as unknown as Record<string, unknown>).__pilot = {
+(window as unknown as Record<string, unknown>)["__pilot"] = {
   session, seek, collect, frameAt, DEFAULT_PROGRAM, ui, lessonSession, progress, workspace,
 };
 
@@ -45,7 +45,7 @@ if (q.has("autorun") || q.has("bench")) {
       session.perf.replayPerFrameUs = Math.round(per);
       // eslint-disable-next-line no-console
       console.log(`[pilot-bench] frames=${session.frames.length} total=${ms.toFixed(1)}ms perFrame=${per.toFixed(1)}µs`);
-      (window as unknown as Record<string, unknown>).__pilotBench = {
+      (window as unknown as Record<string, unknown>)["__pilotBench"] = {
         frames: session.frames.length,
         totalMs: ms,
         perFrameUs: per,

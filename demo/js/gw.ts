@@ -60,7 +60,7 @@ export async function loadGateway(wasmUrl: string = "wasm.wasm"): Promise<Gatewa
 
 export function invoke<T = unknown>(obj: Record<string, unknown>): Frame<T> {
   frameId += 1;
-  obj.id = frameId;
+  obj["id"] = frameId;
   return JSON.parse((gw as GatewayExports).invoke(JSON.stringify(obj)));
 }
 

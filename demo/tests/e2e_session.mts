@@ -18,43 +18,19 @@
 //   B9 目录/手册 P2 形态（章路径 + 章节面板 / 六段证据链，2026-10-22）
 //   B10 专注模式 F/Esc + ?focus=1（#222 P4，2026-10-22）
 //   B11 移动工作台 390 首屏顺序 + 代码折叠（#222 P3，2026-10-22）
-// 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
+// 用法同 e2e_diagcard.mts 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
-import http from "node:http";
+import { connectCdp, sleep, type CdpClient, type CheckResult } from "./cdp.mts";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
 const PAGE = BASE + "index.html";
 
-let msgId = 0;
-const pending = new Map();
-let ws;
-
-function send(method, params = {}) {
-  const id = ++msgId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params }));
-  });
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function evaluate(expr) {
-  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) throw new Error("eval 异常: " + JSON.stringify(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
-  return r.result.value;
-}
-
-async function waitFor(expr, timeout = 25000, step = 250) {
-  const t0 = Date.now();
-  for (;;) {
-    const v = await evaluate(expr);
-    if (v) return v;
-    if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 120));
-    await sleep(step);
-  }
-}
+let send: CdpClient["send"] = () => Promise.reject(new Error("CDP 未连接"));
+let evaluate: CdpClient["evaluate"] = () => Promise.reject(new Error("CDP 未连接"));
+let cdpWaitFor: CdpClient["waitFor"] = () => Promise.reject(new Error("CDP 未连接"));
+const waitFor = (expr: string, timeout = 25000, step = 250): Promise<boolean> =>
+  cdpWaitFor(expr, timeout, step);
 
 /** console.error / uncaught 收集（each_key_duplicate/postMessage 崩走这两通道）。 */
 const ERR_COLLECTOR = `(() => {
@@ -63,11 +39,11 @@ const ERR_COLLECTOR = `(() => {
   console.error = (...a) => { window.__errs.push(a.map((x) => String(x?.message ?? x)).join(" ").slice(0, 200)); oe(...a); };
   window.addEventListener("error", (e) => window.__errs.push("UNCAUGHT: " + e.message));
 })()`;
-const errs = () => evaluate("JSON.stringify(window.__errs ?? [\"收集器未挂\"])");
+const errs = (): Promise<string> => evaluate("JSON.stringify(window.__errs ?? [\"收集器未挂\"])");
 
 /** 打开课程目录（若已在目录态则跳过；参考态先返回实验台——顶栏「课程」
  *  只在工作态渲染，参考态只有「返回实验台 + 课程目录」链接）。 */
-async function openEntry() {
+async function openEntry(): Promise<void> {
   if (await evaluate("window.__pilot.ui.screen === 'entry'")) return;
   if (await evaluate("window.__pilot.ui.screen !== 'work'")) {
     await evaluate(`[...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === '返回实验台')?.click()`);
@@ -82,71 +58,72 @@ async function openEntry() {
 /** 目录选课 → 单击直接在实验台打开 → 等本课采集完成（epoch 判据，防上一课
  *  残留帧骗过 collecting=false 的空窗）。课程可能不在当前章：逐章扫描。
  *  #222 P2 起课列单击即开课（旧「预览 → .vr-open」两步已退役）。 */
-async function pickLesson(id, waitMs = 30000) {
+async function pickLesson(id: string, waitMs = 30000): Promise<void> {
   await openEntry();
   await waitFor("!window.__pilot.session.collecting", 30000); // 首访自动采集可能仍在跑
-  const chapters = await evaluate("document.querySelectorAll('.vr-chapter').length");
+  const chapters = await evaluate<number>("document.querySelectorAll('.vr-chapter').length");
   let found = false;
   for (let i = 0; i < chapters; i++) {
     await evaluate(`document.querySelectorAll('.vr-chapter')[${i}]?.click()`);
     await sleep(120);
-    found = await evaluate(`!![...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})`);
+    found = await evaluate<boolean>(`!![...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})`);
     if (found) break;
   }
   if (!found) throw new Error(`找不到课程 ${id}`);
-  const e0 = await evaluate("window.__pilot.session.epoch");
+  const e0 = await evaluate<number>("window.__pilot.session.epoch");
   await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
   await waitFor(`window.__pilot.ui.screen === 'work' && window.__pilot.lessonSession.lesson?.id === ${JSON.stringify(id)} && window.__pilot.session.epoch > ${e0} && !window.__pilot.session.collecting`, waitMs);
 }
 
+interface F1 { banner: string; close: boolean }
+interface F2 { stdout: string; stats: boolean; frames: number }
+interface B0 { beats: number; bands: number; annots: number; sceneNote: boolean; notePage: boolean }
+interface F3 { gran: string; view: number; raw: number; same: boolean; status: string; statusLine: string }
+interface B1Before { beats: number; bands: number; active: string }
+interface B1After { idx: number; active: string; note: string; bandsActive: number }
+interface B2 { kicker: string; title: string; prevDisabled?: boolean; compact: boolean; canvas: boolean }
+interface B2After { idx: number; kicker: string; title: string }
+interface B3 { railLeft: number; stageLeft: number; nowLeft: number; railW: number; nowW: number; dockW: number; benchW: number; codeTop: number; cellsTop: number; dockTop: number }
+interface B4 { idx: number; attrs: (string | null)[]; inText: boolean }
+interface B5 { card: string; open: boolean | null; fullInDom: boolean }
+interface B6 { n: number; beats: number; bands: number; first: string }
+interface B6Start { idx: number; stage: string; kicker: string; note: string }
+interface B6Free { idx: number; stage: string; kicker: string }
+interface B7Last { idx: number; stage: string; kicker: string; note: string; cells: number }
+interface B8Mem { mode: string; page: boolean; bench: boolean; tabs: number; tracks: number; stats: number; freed: number; alert: boolean; questions: number; overflow: number }
+interface B8Proto { mode: string; groups: number; methods: number; used: number; sideCount: string; facts: string; ledger: number; frame: boolean; overflow: number }
+interface B8Back { mode: string; bench: boolean; page: boolean }
+interface B9Entry { chapters: number; rows: number; panel: boolean; peek: number; preview: boolean; hero: string }
+interface B9Ref { secs: number; three: number; fam: number; side: boolean; discrim: number; back: boolean; h1: string }
+interface B10On { focus: boolean; bench: boolean; rail: string; badge: boolean; frame: string; modes: string; url: string }
+interface B10Off { focus: boolean; bench: boolean; rail: string; url: string }
+interface B10Mem { mode: string; focus: boolean; bench: boolean; url: string }
+interface F5 { cells: number; frames: number; view: number; snapAt: number }
+interface F6 { screen: string; refCode: string; active: string; h1: string }
+interface F8 { readyFrames: number | null; frames: number }
+interface B11 { title: string | null; code: string | null; line: string | null; lineText: string; btn: string | null; head: number; arr: number; lineTop: number; dock: number; overflow: number }
+interface B11Open { code: string; expanded: string | null }
+
 async function run() {
-  // CI 竞态修复（2026-10-18）：chrome DevTools 端口就绪前连接会
-  // ECONNREFUSED（sleep 4 固定等待竞态实锤——"DevTools listening"
-  // 出现在异常之后）——拒绝即退避重试（10×500ms）
-  const targets = await (async () => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await new Promise((resolve, reject) => {
-          http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
-            let body = "";
-            res.on("data", (c) => (body += c));
-            res.on("end", () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
-          }).on("error", reject);
-        });
-      } catch (e) {
-        if (attempt >= 19 || !String(e).includes("ECONNREFUSED")) throw e;
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    }
-  })();
-  const pages = targets.filter((t) => t.type === "page");
-  const page = pages.find((t) => t.url.includes("index.html")) ?? pages[pages.length - 1];
-  if (!page) throw new Error("CDP 无 page target");
-  ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) {
-      const p = pending.get(m.id);
-      pending.delete(m.id);
-      if (m.error) p.reject(new Error(JSON.stringify(m.error)));
-      else p.resolve(m.result);
-    }
-  };
+  const cdp = await connectCdp();
+  ({ send, evaluate, waitFor: cdpWaitFor } = cdp);
   await send("Page.enable");
   // 固定桌面视口（2026-10-18 布局对调后，窗口默认 800×600 会让编辑器落到
   // 视口外，鼠标点击无效——所有 E2E 统一 1440×900，与工作区脚本同口径）
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Runtime.enable");
 
-  const results = [];
-  const check = (name, ok, detail) => { results.push({ name, ok, detail }); console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail); };
+  const results: CheckResult[] = [];
+  const check = (name: string, ok: boolean, detail: string): void => {
+    results.push({ name, ok, detail });
+    console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail);
+  };
 
   // ── F1 坏分享 hash → 持久横幅（P1-3）——cache-bust 强制完整导航 ──
   await send("Page.navigate", { url: PAGE + "?cb=" + Date.now() + "#z1.BROKEN" });
   await waitFor("window.__pilot && window.__pilot.session.booted", 30000);
   await waitFor("document.querySelector('.vr-banner b')?.textContent?.includes('无法还原')", 20000);
-  const f1 = await evaluate(`(() => {
+  const f1 = await evaluate<F1>(`(() => {
     const b = document.querySelector('.vr-banner');
     return { banner: b?.textContent?.replace(/\\s+/g, ' ').trim().slice(0, 50) ?? '', close: !!b?.querySelector('.vr-btn') };
   })()`);
@@ -162,18 +139,18 @@ async function run() {
 
   // ── F2 argv 用例采集成功（P1-2）──
   await pickLesson("argv_prog");
-  const f2 = await evaluate(`(() => {
+  const f2 = await evaluate<F2>(`(() => {
     const s = window.__pilot.session;
     return { stdout: s.outputs.stdout.slice(0, 40), stats: !!s.runStats, frames: s.frames.length };
   })()`);
-  const f2errs = JSON.parse(await errs());
+  const f2errs = JSON.parse(await errs()) as string[];
   check("F2 argv 采集成功零克隆崩（P1-2）",
     f2.stdout.includes("hello-arg") && f2.stats && f2.frames > 0 && !f2errs.some((e) => e.includes("could not be cloned")),
     JSON.stringify(f2) + " errs=" + f2errs.length);
 
   // ── B0 未迁移课无分镜条（#222 P1 第二片：scene 真源 = lesson.md；无元数据
   //    的课 scenes=[] → 分镜条整段不渲染，回退现有长文）──
-  const b0 = await evaluate(`(() => ({
+  const b0 = await evaluate<B0>(`(() => ({
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
     annots: document.querySelectorAll('.cm-line[data-annot]').length,
@@ -185,7 +162,7 @@ async function run() {
   // ── F3+F4 语句级口径 + 播完提示（P1-1 / P2-9）──
   await pickLesson("bubble");
   await waitFor("(() => { const s = window.__pilot.session; return !s.playing && s.idx === s.viewFrames.length - 1; })()", 40000);
-  const f3 = await evaluate(`(() => {
+  const f3 = await evaluate<F3>(`(() => {
     const p = window.__pilot, s = p.session;
     return {
       gran: s.gran, view: s.viewFrames.length, raw: s.frames.length,
@@ -200,14 +177,14 @@ async function run() {
 
   // ── B1 分镜轨点幕 = 跳幕首帧（#222 P1 第四片把分镜条移进左栏竖排）：
   //    bubble 4 幕、4 条分幕带，点第 1 幕 → idx 归 0、当前幕/注记同步 ──
-  const b1before = await evaluate(`(() => ({
+  const b1before = await evaluate<B1Before>(`(() => ({
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
     active: document.querySelector('.vr-beat.is-active')?.textContent?.trim() ?? '',
   }))()`);
   await evaluate("document.querySelectorAll('.vr-beat')[0]?.click(); true");
   await sleep(250);
-  const b1after = await evaluate(`(() => ({
+  const b1after = await evaluate<B1After>(`(() => ({
     idx: window.__pilot.session.idx,
     active: document.querySelector('.vr-beat.is-active')?.textContent?.trim() ?? '',
     note: document.querySelector('.vr-beat.is-active .vr-beat-note')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
@@ -220,7 +197,7 @@ async function run() {
 
   // ── B2 幕头 + 浅树压扁（#222 P1 第三片）：当前幕随帧更新、上一幕/下一幕能跳；
   //    bubble 只有 prog → main（2 节点）→ 不画 214px 画布，压成一行面包屑 ──
-  const b2 = await evaluate(`(() => ({
+  const b2 = await evaluate<B2>(`(() => ({
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
     title: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
     prevDisabled: document.querySelectorAll('.vr-stagehead-nav button')[0]?.disabled,
@@ -229,7 +206,7 @@ async function run() {
   }))()`);
   await evaluate("document.querySelectorAll('.vr-stagehead-nav button')[1]?.click(); true");
   await sleep(250);
-  const b2after = await evaluate(`(() => ({
+  const b2after = await evaluate<B2After>(`(() => ({
     idx: window.__pilot.session.idx,
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
     title: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
@@ -241,7 +218,7 @@ async function run() {
 
   // ── B3 三栏 + 底栏时间轴（#222 P1 第四片）：1440 下 rail / stage / now 左中右
   //    并排、时间轴横跨三栏；代码/数组/时间轴都落在 900px 首屏内 ──
-  const b3 = await evaluate(`(() => {
+  const b3 = await evaluate<B3>(`(() => {
     const box = (sel) => document.querySelector(sel)?.getBoundingClientRect() ?? null;
     const rail = box('.vr-colrail'), stage = box('.vr-colstage'), now = box('.vr-colnow'), dock = box('.vr-coldock');
     const code = box('.vr-code'), cells = box('.vr-cells');
@@ -261,7 +238,7 @@ async function run() {
   //    注记走行属性 + CSS 伪元素（不进 .cm-content 文本面——E2E docLen 不被污染） ──
   await evaluate(`(() => { const s = document.querySelector('.vr-seek'); s.value = 12; s.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await sleep(300);
-  const b4 = await evaluate(`(() => ({
+  const b4 = await evaluate<B4>(`(() => ({
     idx: window.__pilot.session.idx,
     attrs: [...document.querySelectorAll('.cm-line[data-annot]')].map((l) => l.getAttribute('data-annot')),
     inText: (document.querySelector('.cm-content')?.textContent ?? '').includes('←'),
@@ -272,14 +249,14 @@ async function run() {
     JSON.stringify(b4));
   // ── B5 本幕讲解 + 展开全文（#222 P1 第六片）：scene 课默认折叠、本幕卡片随幕更新，
   //    全文在 DOM（折叠不丢内容——W9 锚不受影响）；点 summary 可展开 ──
-  const b5 = await evaluate(`(() => ({
+  const b5 = await evaluate<B5>(`(() => ({
     card: document.querySelector('.vr-scenenote')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
     open: document.querySelector('details.vr-notefull')?.open ?? null,
     fullInDom: (document.querySelector('.vr-note-page')?.textContent ?? '').includes('这门课在做什么'),
   }))()`);
   await evaluate("document.querySelector('details.vr-notefull > summary')?.click(); true");
   await sleep(200);
-  const b5open = await evaluate("document.querySelector('details.vr-notefull')?.open === true");
+  const b5open = await evaluate<boolean>("document.querySelector('details.vr-notefull')?.open === true");
   check("B5 本幕讲解 + 展开全文（#222）",
     b5.card.includes("本幕讲解") && b5.card.includes("交换不是瞬间完成的") && b5.open === false && b5.fullInDom === true && b5open === true,
     JSON.stringify({ b5, b5open }));
@@ -290,7 +267,7 @@ async function run() {
   // pickLesson 返回后仍有一段「落地定位」异步（首访中段 / 继续上次）会把 idx 再
   // 挪一次——等落定再点幕，否则点第 1 幕会被随后定位覆盖（实测 idx 0 → 5）。
   await sleep(900);
-  const b6 = await evaluate(`(() => ({
+  const b6 = await evaluate<B6>(`(() => ({
     n: window.__pilot.session.viewFrames.length,
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
@@ -298,7 +275,7 @@ async function run() {
   }))()`);
   await evaluate("document.querySelectorAll('.vr-beat')[0]?.click(); true");
   await sleep(250);
-  const b6start = await evaluate(`(() => ({
+  const b6start = await evaluate<B6Start>(`(() => ({
     idx: window.__pilot.session.idx,
     stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
@@ -306,7 +283,7 @@ async function run() {
   }))()`);
   await evaluate("document.querySelectorAll('.vr-beat')[1]?.click(); true");
   await sleep(250);
-  const b6free = await evaluate(`(() => ({
+  const b6free = await evaluate<B6Free>(`(() => ({
     idx: window.__pilot.session.idx,
     stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
@@ -328,7 +305,7 @@ async function run() {
     await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
     await sleep(150);
   }
-  const b7 = await evaluate(`(() => ({
+  const b7 = await evaluate<B6>(`(() => ({
     n: window.__pilot.session.viewFrames.length,
     beats: document.querySelectorAll('.vr-beat').length,
     bands: document.querySelectorAll('.vr-band').length,
@@ -336,7 +313,7 @@ async function run() {
   }))()`);
   await evaluate("document.querySelectorAll('.vr-beat')[4]?.click(); true");
   await sleep(250);
-  const b7last = await evaluate(`(() => ({
+  const b7last = await evaluate<B7Last>(`(() => ({
     idx: window.__pilot.session.idx,
     stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
@@ -345,7 +322,7 @@ async function run() {
   }))()`);
   await evaluate("document.querySelectorAll('.vr-beat')[5]?.click(); true");
   await sleep(250);
-  const b7end = await evaluate(`(() => ({
+  const b7end = await evaluate<B6Free>(`(() => ({
     idx: window.__pilot.session.idx,
     stage: document.querySelector('.vr-stagehead-title')?.textContent?.trim() ?? '',
     kicker: document.querySelector('.vr-stagehead-kicker')?.textContent?.trim() ?? '',
@@ -366,7 +343,7 @@ async function run() {
   await sleep(900);
   await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '内存')?.click(); true");
   await sleep(300);
-  const b8mem = await evaluate(`(() => ({
+  const b8mem = await evaluate<B8Mem>(`(() => ({
     mode: window.__pilot.ui.mode,
     page: !!document.querySelector('.vr-modebench'),
     bench: !!document.querySelector('.vr-bench'),
@@ -380,7 +357,7 @@ async function run() {
   }))()`);
   await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '协议')?.click(); true");
   await sleep(300);
-  const b8proto = await evaluate(`(() => ({
+  const b8proto = await evaluate<B8Proto>(`(() => ({
     mode: window.__pilot.ui.mode,
     groups: document.querySelectorAll('.vr-proto-group').length,
     methods: document.querySelectorAll('.vr-proto-method').length,
@@ -393,7 +370,7 @@ async function run() {
   }))()`);
   await evaluate("[...document.querySelectorAll('.vr-mode')].find(b => b.textContent.trim() === '执行')?.click(); true");
   await sleep(250);
-  const b8back = await evaluate(`(() => ({
+  const b8back = await evaluate<B8Back>(`(() => ({
     mode: window.__pilot.ui.mode,
     bench: !!document.querySelector('.vr-bench'),
     page: !!document.querySelector('.vr-modebench'),
@@ -412,7 +389,7 @@ async function run() {
   //    章节面板（旧预览面板退役；课列单击即开课）；手册 = 六段证据链 +
   //    三问并列 + 同族码 + 右栏阅读法 ──
   await openEntry();
-  const b9entry = await evaluate(`(() => ({
+  const b9entry = await evaluate<B9Entry>(`(() => ({
     chapters: document.querySelectorAll('.vr-path .vr-chapter').length,
     rows: document.querySelectorAll('.vr-lesson-row').length,
     panel: !!document.querySelector('.vr-chapterpanel'),
@@ -426,7 +403,7 @@ async function run() {
   // 会按「无示例则隐藏」少一段——那是数据面诚实，不是缺段）
   await evaluate("window.__pilot.ui.refCode = 'E3060'; true");
   await sleep(350);
-  const b9ref = await evaluate(`(() => ({
+  const b9ref = await evaluate<B9Ref>(`(() => ({
     secs: document.querySelectorAll('.vr-ref-sec').length,
     three: document.querySelectorAll('.vr-ref-three > .vr-ref-q').length,
     fam: document.querySelectorAll('.vr-ref-famchip').length,
@@ -447,14 +424,14 @@ async function run() {
   await evaluate(`[...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('返回实验台'))?.click(); true`);
   await waitFor("window.__pilot.ui.screen === 'work'", 20000);
   await sleep(300);
-  const pressKey = async (k, code, vk) => {
+  const pressKey = async (k: string, code: string, vk: number): Promise<void> => {
     await send("Input.dispatchKeyEvent", { type: "keyDown", key: k, code, windowsVirtualKeyCode: vk });
     await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code, windowsVirtualKeyCode: vk });
   };
   await pressKey("f", "KeyF", 70);
   await waitFor("window.__pilot.ui.focus === true", 10000);
   await sleep(250);
-  const b10on = await evaluate(`(() => ({
+  const b10on = await evaluate<B10On>(`(() => ({
     focus: window.__pilot.ui.focus,
     bench: !!document.querySelector('.vr-bench.is-focus'),
     rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
@@ -466,7 +443,7 @@ async function run() {
   await pressKey("Escape", "Escape", 27);
   await waitFor("window.__pilot.ui.focus === false", 10000);
   await sleep(250);
-  const b10off = await evaluate(`(() => ({
+  const b10off = await evaluate<B10Off>(`(() => ({
     focus: window.__pilot.ui.focus,
     bench: !!document.querySelector('.vr-bench.is-focus'),
     rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
@@ -479,7 +456,7 @@ async function run() {
   await sleep(200);
   await pressKey("f", "KeyF", 70);
   await sleep(250);
-  const b10mem = await evaluate(`(() => ({
+  const b10mem = await evaluate<B10Mem>(`(() => ({
     mode: window.__pilot.ui.mode,
     focus: window.__pilot.ui.focus,
     bench: !!document.querySelector('.vr-bench.is-focus'),
@@ -494,7 +471,7 @@ async function run() {
   await waitFor("window.__pilot?.ui?.ready === true", 40000);
   await waitFor("window.__pilot.ui.focus === true", 15000);
   await sleep(300);
-  const b10link = await evaluate(`(() => ({
+  const b10link = await evaluate<B10On>(`(() => ({
     focus: window.__pilot.ui.focus,
     bench: !!document.querySelector('.vr-bench.is-focus'),
     rail: getComputedStyle(document.querySelector('.vr-colrail')).display,
@@ -524,8 +501,8 @@ async function run() {
     await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
     await sleep(120);
   }
-  const f5total = await evaluate("window.__pilot.session.viewFrames.length");
-  const f5arr = await evaluate(`window.__pilot.session.viewFrames.findIndex((f) => (f.array_snapshots?.length ?? 0) > 0)`);
+  const f5total = await evaluate<number>("window.__pilot.session.viewFrames.length");
+  const f5arr = await evaluate<number>(`window.__pilot.session.viewFrames.findIndex((f) => (f.array_snapshots?.length ?? 0) > 0)`);
   for (let i = 0; i < f5total; i++) {
     await evaluate(`window.__pilot.seek(${i})`);
     await sleep(3);
@@ -534,13 +511,13 @@ async function run() {
     await evaluate(`window.__pilot.seek(${f5arr})`);
     await sleep(200);
   }
-  const f5 = await evaluate(`(() => ({
+  const f5 = await evaluate<F5>(`(() => ({
     cells: document.querySelectorAll(".vr-cell").length,
     frames: window.__pilot.session.frames.length,
     view: window.__pilot.session.viewFrames.length,
     snapAt: window.__pilot.session.viewFrames[window.__pilot.session.idx]?.array_snapshots?.length ?? 0,
   }))()`);
-  const f5errs = JSON.parse(await errs());
+  const f5errs = JSON.parse(await errs()) as string[];
   check("F5 char 数组全帧零 each_key_duplicate（P1-5）",
     f5.frames > 0 && f5.view === f5total && f5arr >= 0 && f5.cells > 0 && f5errs.every((e) => !e.includes("each_key_duplicate")),
     JSON.stringify(f5) + " sweep=" + f5total + " errs=" + JSON.stringify(f5errs.slice(0, 2)));
@@ -550,11 +527,11 @@ async function run() {
   await sleep(600);
   const hasCode = await waitFor("!!document.querySelector('.vr-trap-body .tp-code[data-ecode]')", 10000).catch(() => false);
   if (hasCode) {
-    const code = await evaluate("document.querySelector('.vr-trap-body .tp-code[data-ecode]').getAttribute('data-ecode')");
+    const code = await evaluate<string | null>("document.querySelector('.vr-trap-body .tp-code[data-ecode]').getAttribute('data-ecode')");
     await evaluate("document.querySelector('.vr-trap-body .tp-code[data-ecode]').click()");
     await waitFor("window.__pilot.ui.screen === 'ref'", 10000);
     await sleep(400);
-    const f6 = await evaluate(`(() => ({
+    const f6 = await evaluate<F6>(`(() => ({
       screen: window.__pilot.ui.screen,
       refCode: window.__pilot.ui.refCode,
       active: document.querySelector('.vr-ref-item.is-active .vr-code-id')?.textContent?.trim() ?? '',
@@ -571,14 +548,14 @@ async function run() {
   // 整页崩。此锚逐章点击渲染并要求每章都有课目行。
   await openEntry();
   await evaluate("window.__errs = []");
-  const f7chapters = await evaluate("document.querySelectorAll('.vr-chapter').length");
-  const f7rows = [];
+  const f7chapters = await evaluate<number>("document.querySelectorAll('.vr-chapter').length");
+  const f7rows: number[] = [];
   for (let i = 0; i < f7chapters; i++) {
     await evaluate(`document.querySelectorAll('.vr-chapter')[${i}]?.click()`);
     await sleep(160);
-    f7rows.push(await evaluate("document.querySelectorAll('.vr-lesson-row').length"));
+    f7rows.push(await evaluate<number>("document.querySelectorAll('.vr-lesson-row').length"));
   }
-  const f7errs = JSON.parse(await errs());
+  const f7errs = JSON.parse(await errs()) as string[];
   check("F7 目录全章可渲染（重名 id each_key_duplicate 防护）",
     f7chapters >= 9 && f7rows.every((n) => n > 0) && f7errs.every((e) => !e.includes("each_key_duplicate")),
     JSON.stringify({ chapters: f7chapters, rows: f7rows, errs: f7errs.slice(0, 2) }));
@@ -597,7 +574,7 @@ async function run() {
     await send("Page.navigate", { url: PAGE + "?f8=" + Date.now() });
     await waitFor("window.__pilot?.ui?.ready === true", 40000);
     await waitFor("window.__pilot.session.frames.length > 0", 40000);
-    const f8 = JSON.parse(await evaluate("JSON.stringify({ readyFrames: window.__readyFrames ?? null, frames: window.__pilot.session.frames.length })"));
+    const f8 = JSON.parse(await evaluate<string>("JSON.stringify({ readyFrames: window.__readyFrames ?? null, frames: window.__pilot.session.frames.length })")) as F8;
     check("F8 首访 shell 先行（ui.ready 不等首课采集）", f8.readyFrames === 0 && f8.frames > 0, JSON.stringify(f8));
     await sleep(400);
   }
@@ -607,7 +584,7 @@ async function run() {
   //    展开/收起整段源码（桌面恢复 1440） ──
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(500);
-  const b11 = await evaluate(`(() => {
+  const b11 = await evaluate<B11>(`(() => {
     const q = (s) => document.querySelector(s);
     const top = (s) => (q(s) ? Math.round(q(s).getBoundingClientRect().top) : null);
     const disp = (s) => (q(s) ? getComputedStyle(q(s)).display : null);
@@ -623,7 +600,7 @@ async function run() {
   })()`);
   await evaluate("document.querySelector('.vr-mobilecodebtn')?.click(); true");
   await sleep(250);
-  const b11open = await evaluate(`(() => ({
+  const b11open = await evaluate<B11Open>(`(() => ({
     code: getComputedStyle(document.querySelector('.vr-codebody')).display,
     expanded: document.querySelector('.vr-mobilecodebtn')?.getAttribute('aria-expanded'),
   }))()`);
@@ -639,7 +616,7 @@ async function run() {
 
   const fails = results.filter((r) => !r.ok);
   console.log(`===== ${results.length - fails.length}/${results.length} 通过 =====`);
-  ws.close();
+  cdp.close();
   process.exit(fails.length ? 1 : 0);
 }
 

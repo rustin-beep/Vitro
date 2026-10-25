@@ -87,7 +87,7 @@
 
 ### 2.4 gcc 裁判的接线（脚本改造点）
 
-`scripts/realcode_diff/vitro_clang_diff.go`：P2 Clang 真值后加 P2.5 gcc 分桶（`gcc -std=c11 -fsyntax-only`，探测顺序 `--gcc` 参数 → PATH → `D:\code\mingw64\bin`）；金样本条目增 `gcc_ok` 字段；`-check` 值域白名单同步。约 +60 行，防线维护通道。
+`scripts/realcode_diff/main.mts`（#273 迁移批前的原 `vitro_clang_diff.go`）：P2 Clang 真值后加 P2.5 gcc 分桶（`gcc -std=c11 -fsyntax-only`，探测顺序 `--gcc` 参数 → PATH → `D:\code\mingw64\bin`）；金样本条目增 `gcc_ok` 字段；`-check` 值域白名单同步。约 +60 行，防线维护通道。
 
 ## 三、验收锚与待拍板点
 

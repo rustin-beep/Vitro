@@ -50,7 +50,7 @@
     },
   });
   class BpMarker extends GutterMarker {
-    toDOM() {
+    override toDOM() {
       const s = document.createElement("span");
       s.textContent = "●";
       s.className = "bp-dot";

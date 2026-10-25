@@ -1,5 +1,14 @@
 {
   "entries": {
+    "baseline/abstract_array_param.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/abstract_array_param.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/abstract_array_param.c|char_escape": {
+      "bucket": "AGREE"
+    },
     "baseline/array_address.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -290,6 +299,15 @@
     "baseline/char_init_no_false_positive.c|paren_wrap": {
       "bucket": "AGREE"
     },
+    "baseline/char_literal.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/char_literal.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/char_literal.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/char_local_narrow_matrix.c|div2shift": {
       "bucket": "AGREE"
     },
@@ -308,6 +326,15 @@
     "baseline/circular_queue.c|paren_wrap": {
       "bucket": "AGREE"
     },
+    "baseline/col_utf8_units.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/col_utf8_units.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/col_utf8_units.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/comma_expr_stmt.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -324,6 +351,15 @@
       "bucket": "AGREE"
     },
     "baseline/comma_operator.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/compare_eq.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/compare_eq.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/compare_eq.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/compare_lt_eq.c|brace_strip": {
@@ -733,6 +769,15 @@
       "bucket": "AGREE"
     },
     "baseline/e2_include_not_found_angle.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_quote.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_quote.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/e2_include_not_found_quote.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/e2_macro_stringize.c|char_escape": {
@@ -1172,6 +1217,15 @@
     },
     "baseline/init_trailing_comma.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/int_div.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/int_div.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/int_div.c|static_inject": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/invalid_enum_redefine_reject.c|cast_strip": {
       "bucket": "AGREE"
@@ -1662,6 +1716,15 @@
     "baseline/p2f_review_regression_guards.c|init_partial": {
       "bucket": "VITRO_TRAP"
     },
+    "baseline/p2g_enum_float_reject.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/p2g_enum_float_reject.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/p2g_enum_float_reject.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/p71_tier3_scanf.c|brace_wrap": {
       "bucket": "WRONG_VALUE",
       "issue": "known-ub-domain",
@@ -1839,6 +1902,15 @@
     "baseline/pre_increment.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/precedence.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/precedence.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/precedence.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/predefined_macro.c|cast_strip": {
       "bucket": "AGREE"
     },
@@ -1968,17 +2040,17 @@
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|cast_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|div2shift": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/puts_basic.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2836,6 +2908,15 @@
     "baseline/utf8_latin1_output.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/variadic.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/variadic.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/variadic.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/vfs_io_extensions.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -2898,6 +2979,15 @@
     },
     "baseline/while_loop.c|init_partial": {
       "bucket": "AGREE"
+    },
+    "baseline/while_nested.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/while_nested.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/while_nested.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/whitespace_vtab_formfeed.c|div2shift": {
       "bucket": "AGREE"

@@ -12,6 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
+
+- **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）
+  合入后 fuzz 首次抽中 `col_utf8_units.c`，三算子指纹全 WRONG_VALUE（本地 +
+  CI run 40166369857 双份实证）。`-probe` 三方逐位对比实锤**假阳性**：程序
+  printf 输出 UTF-8 中文（`E4 B8 AD…`），clang 侧 runCmd 以 utf8 解码（U+4E2D
+  语义域）、vitro 侧 latin1Fold 末端以 latin1 解码（U+00E4 字节承载域），
+  byteCompare 统一按 utf8 编码比较 ⇒ 字节相同的输出因编码域不同判不一致——
+  **#273 Go→TS 迁移域失配**（Go 字符串即字节序列无此问题），非引擎缺陷
+  （引擎 JSON 出口 Latin-1 承载为协议设计；digest 闸走原始 stdout 通道故从未暴露）。
+- **修复**：`clangOutcome` run 步 stdout 改 latin1 解码（字节↔码点双射、无
+  U+FFFD 折叠——与 Go `bytes.Compare` 纯字节比较等价；utf8 解码会把裸高位
+  字节折叠成替换符造成假 AGREE 面，故选 latin1 对齐而非反向升域）；`runCmd`
+  加 `dec` 参数，缺省 utf8 其余消费面不动。
+- **红→绿**：单测新增管线域对齐锚（折回域 == clang 解码域逐位一致 + 三方
+  AGREE + 域失配反锚防闸钝化）；修复后全量 gate 复跑 col_utf8_units 三条
+  WRONG_VALUE 全部转 AGREE（AGREE 244→247），30 条新指纹全为抽样偏移良性族
+  （AGREE/CLANG_REJECT），`-freeze` 收编 1248 条（含 `>` → `\u003e` 转义口径
+  回补 3 处——#289 P2-1 口径上轮 freeze 反向漂移的修正）。
+
 ### fix(corpus+docs): #301 用户审阅处置——P1 llm_scale 四家 digest 补冻 + P2 README 测试数漏改 3 处（2026-10-25）
 
 - **P1**：批五重冻漏了 `corpus/llm_scale`（CI diff gate 跑五语料，

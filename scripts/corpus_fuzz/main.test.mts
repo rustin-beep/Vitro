@@ -182,6 +182,28 @@ test("parseVitro：diag reject → REJECT；缺 diag → CRASH；trap → TRAP�
   assert.deepEqual(parseVitro("不是 JSON"), parseVitro(""), "非法行静默跳过（与 Go continue 同）");
 });
 
+test("stdout 非 ASCII 三方同域：clang latin1 解码 ↔ 折回域对齐（col_utf8_units 假 WRONG_VALUE 根治锚）", () => {
+  // 程序真实 stdout 字节（UTF-8 中文——corpus/baseline/col_utf8_units.c 实证形态：
+  // printf("%s %d\n", "中文字符串", 7)。#301 merge 批前 clang 侧走 utf8 解码、
+  // 折回域是 latin1，byteCompare 统一按 utf8 编码比较 ⇒ 字节相同的输出被判
+  // WRONG_VALUE（本地 + CI run 40166369857 双份实证）。
+  const bytes = Buffer.from("中文字符串 7\n", "utf8");
+  // clang 侧（clangOutcome run 步口径）：latin1 解码 = 字节↔码点双射，无 U+FFFD 折叠
+  // ——与 Go 版 bytes.Compare 的纯字节比较等价。
+  const clangSide = bytes.toString("latin1");
+  // vitro 侧：引擎 JSON 出口 delta 以 Latin-1 码点承载字节 → parseVitro 折回
+  const vitroSide = latin1Fold(bytes.toString("latin1"));
+  assert.equal(vitroSide, clangSide, "折回域须与 clang 解码域逐位一致");
+  const ok = (out: string) => ({ status: "OK", out });
+  assert.equal(bucketOf(ok(clangSide), ok(vitroSide), ok(vitroSide)), "AGREE");
+  // 反向证锚：域失配（clang 误走 utf8 解码）须仍被判 WRONG_VALUE——防闸钝化
+  assert.equal(
+    bucketOf(ok(bytes.toString("utf8")), ok(vitroSide), ok(vitroSide)),
+    "WRONG_VALUE",
+    "域失配形态不得被吞（本缺陷的捕获依赖此分辨力）",
+  );
+});
+
 test("bucketOf：六桶分类 + 恶化序", () => {
   const ok = (out: string) => ({ status: "OK", out });
   const rej = { status: "REJECT", out: "" };

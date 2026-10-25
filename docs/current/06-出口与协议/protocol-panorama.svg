@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 990" role="img" aria-label="vitro 冻结协议层全景">
   <title>vitro — 冻结协议层全景 · 单源 × 对拍 × 出口</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 与 moonbit/protocol/README.mbt.md 演化纪律三条；结构图无数字锚（设计常量：十四字段 / v0.1 / 2026-09-12 冻结） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 与 moonbit/protocol/README.mbt.md 演化纪律三条；结构图无数字锚（设计常量：十四字段 / v0.1 / 2026-09-12 冻结） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -58,7 +58,7 @@
 <text class="tn" x="84" y="455" text-anchor="start">闸 gen_protocol_fields -check</text>
 <line class="edge" x1="330" y1="464" x2="330" y2="474" marker-end="url(#ah)"/>
 <rect class="card" x="64" y="474" width="532" height="52" rx="10"/>
-<text class="tn" x="84" y="495" text-anchor="start">protocol/index.d.ts + fields.mjs</text>
+<text class="tn" x="84" y="495" text-anchor="start">moonbit/bindings/ts/index.d.ts + fields.mjs</text>
 <text class="tn" x="84" y="517" text-anchor="start">闸 gen_protocol_ts -check（双向对账）</text>
 <line class="edge" x1="330" y1="526" x2="330" y2="536" marker-end="url(#ah)"/>
 <rect class="card" x="64" y="536" width="532" height="52" rx="10"/>
@@ -90,5 +90,5 @@
 <text class="t" x="600" y="866" text-anchor="middle">协议演化纪律三条（对 v0.2 激活与一切 v0.x 追加生效）</text>
 <text class="tc" x="600" y="892" text-anchor="middle">缺省字段双条件规则 · 未知容忍非对称（写侧宽容、读侧严格）· 单解码器佐证</text>
 <text class="tc" x="600" y="914" text-anchor="middle">纪律成文与依据见 moonbit/protocol/README.mbt.md（openseek 教训转译，2026-09-28）</text>
-<text class="tc" x="600" y="956" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：go run ./scripts/gen_svg panorama</text>
+<text class="tc" x="600" y="956" text-anchor="middle">对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：node scripts/gen_svg/main.mts panorama</text>
 </svg>

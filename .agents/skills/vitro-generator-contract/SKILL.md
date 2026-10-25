@@ -64,7 +64,7 @@ description: Vitro 代码生成器（scripts/gen_*）的 -check 硬契约与生�
   | `scripts/` | `gen_svg`、`gen_protocol_ts`、`gen_demo_algorithms`（发射形态） |
   | `scripts/moonbit/` | `gen_diag`、`gen_host_route`、`gen_libc_data`、`gen_protocol_fields`、`gen_stubs` |
 
-  （清单变更时同步更新此表；核对：`grep -oE "gen_[a-z_]+" .github/workflows/ci.yml \| sort -u`——发射步同样是 `go run` 形态可命中）
+  （清单变更时同步更新此表；核对：`grep -oE "gen_[a-z_]+" .github/workflows/ci.yml \| sort -u`——发射步是 `node scripts/<gen>/main.mts` 形态可命中（例：`node scripts/gen_icons/main.mts`））
 - **非 CI 生成器（人工跑，不入上表）**：`gen_course/main.mts`（课程叙述回退，`-check`）、`gen_icon_preview/main.mts`（图标图鉴，`-check`）——同守「`@generated` / 幂等 / `-check` 不落盘」契约；#273 起**新生成器默认 `.mts`**（四件套门：node 直跑 + tsc 严格档 + oxlint + node:test）。
 
 ## 权威源与时效

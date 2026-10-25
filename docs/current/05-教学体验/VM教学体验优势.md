@@ -5,7 +5,7 @@
 > **核心理念**：自研 VM 的优势不是省内存，而是做通用 IDE/可视化工具做不出来的教学体验。  
 > **性能原则**：中端手机 50MB 内存换零延迟交互，完全可接受。拒绝为省 47.5MB 做过度工程化。
 >
-> **2026-09-11 前端切割后现状**：教学体验的载体已从 Dart widget 转为**协议载荷 + 三出口 API**。本仓库负责在后端产出这些能力（快照/检查点/热力图/语义标注/变量历史/变量级高亮），经 C ABI、wasm32、`vitro_cli serve` 交付；渲染与交互由社区前端实现。载荷字段以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准。
+> **2026-09-11 前端切割后现状**：教学体验的载体已从 Dart widget 转为**协议载荷 + 三出口 API**。本仓库负责在后端产出这些能力（快照/检查点/热力图/语义标注/变量历史/变量级高亮），经 C ABI、wasm32、`vitro_cli serve` 交付；渲染与交互由社区前端实现。载荷字段以 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](../../../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准。
 >
 > **最后核对日期**：2026-10-04（S8 收官回灌——时间旅行消费面已随 S8 落地：step 族五方法 + payload 帧 + 调用树/信息卡 demo 形态，见[S8 总览](S8时间旅行与教学智能总览.md)。前一沿革 2026-09-29 全库逐份翻新复核）
 
@@ -312,7 +312,7 @@ pub fn get_variable_highlights(&self) -> Vec<VariableHighlight> {
 
 消费方在编辑器中按 `line` / `column` / `length` 绘制下划线、边框或底色——**渲染属消费方职责**（社区前端自行实现，原 Dart `VitroEditor.spanBuilder` 已随 `CideFlutter/` 迁出，历史资产，已迁出）。后端需保证的是：每步能给出"这一步访问了哪些变量、以何种方式访问"。
 
-> **已落地的等价载荷（口径需对齐）**：`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` 的 `accessed_vars[]`（`AccessedVar`）目前只有两个字段：`name` 与 `access_type`（枚举仅 `"Read"` / `"Write"`，见 schema §2.3、§3.2，大小写敏感，无第三种取值）。上例的 `VariableHighlight`（含 `line` / `column` / `length` / `Declare` / `Compare`）在仓库中**不存在**：**精确到列范围的高亮与"声明/比较"语义属未完成缺口**，消费方目前只能按"变量名 + 读写类型"高亮。
+> **已落地的等价载荷（口径需对齐）**：`moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` 的 `accessed_vars[]`（`AccessedVar`）目前只有两个字段：`name` 与 `access_type`（枚举仅 `"Read"` / `"Write"`，见 schema §2.3、§3.2，大小写敏感，无第三种取值）。上例的 `VariableHighlight`（含 `line` / `column` / `length` / `Declare` / `Compare`）在仓库中**不存在**：**精确到列范围的高亮与"声明/比较"语义属未完成缺口**，消费方目前只能按"变量名 + 读写类型"高亮。
 
 ---
 
@@ -361,7 +361,7 @@ pub struct StepPayload {
 | `meta: StepMeta` | **存在**于 `native/src/unified/types.rs`，字段为 `{code_line, func_name, loop_depth, semantic_label}`（设计稿中的 `step_index` / `loop_iters` / `is_loop_boundary` / `is_func_call` / `is_swap` **未实现**）；用途是进度条标签与智能检查点，不是 `StepPayload` 的字段 |
 | `debug_summary: DebugSummary` | **存在**于同一文件，字段为 `{local_vars, call_stack, output_len}`（设计稿中的 `memory_summary` **未实现**） |
 
-实际载荷是上表的扁平字段，**字段级口径以 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准**（该 schema 是对外承诺的 wire format）。
+实际载荷是上表的扁平字段，**字段级口径以 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](../../../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md) 为准**（该 schema 是对外承诺的 wire format）。
 
 > **命名债（诚实记录）**：`native/src/unified/types.rs` 中仍有 "传输到 Flutter 前端作为 FrameCache"、"FRB 友好的变量快照" 等注释（所述 Flutter 前端与 FRB 桥接均为历史资产，已迁出），以及 `ApiVariableSnapshot` 等 `Api*` 前缀命名——这些属切割前的遗留措辞，代码本身已是语言中立 Rust 层，**名称待后续重构收敛**（本次文档翻新不改 `.rs` 代码）。
 

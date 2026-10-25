@@ -14,6 +14,103 @@
 6. **码表**：ErrorCode 137→156 臂；error_catalog 教学卡 77→114（补 14 退 9，双向闭合闸在岗）；gateway 方法表 21→30。
 7. **发布物内容面**：协议契约文档与 TS 消费绑定随包分发（`moonbit/docs/spec/` + `moonbit/bindings/ts/`；随 PR #307 合入生效）。
 
+### perf(scripts,ci): corpus_fuzz 判定缓存 + moon 构建产物缓存——PR #310 审阅处置批（#309 P0+P1，2026-10-25）
+
+**审阅处置**（1 P1 + 4 P2 + 5 P3 全采纳）：
+
+- **P1-1**：`moon-build` restore-keys 删第二级（os 前缀）——该级恰在唯一不该
+  复用的场景（toolchain/clang 变更换血轮）跨过 key 声明的隔离维度兜底，与
+  设计自相矛盾；一级前缀已提供同 toolchain 滚动复用，收益零损失。
+- **P2-1**：`moon-build` key 并入 clang 版本（新增 clangver 采键步）——native
+  产物由 MOON_CC=clang 构建，runner 镜像换 clang 而 `.moonbit-version` 不变时
+  原设计会静默复用旧 clang 产物（与纪律 11「MSVC/clang 构建结局可漂」立论
+  冲突，与 P0 的 clang 入键不一致）。
+- **P2-2**：`collectJudgeEpochInputs` 采集面断言——`shell`/`script` 缺失即
+  die fail loud（M2 突变实证：原实现把 shell 组件改常量后单测仍 18/18 全绿，
+  J9 锚只锁纯函数不锁采集接线；`<missing:路径>` 常量会让 epoch 稳定失去该
+  组件敏感性）。引擎双产物允许缺失（构建前置场景合法）。
+- **P2-3（勘误）**：原「三层守门」实为**两层**——EnsureFresh 调用方全在
+  gates-native、消费 download-artifact（mtime 恒新），看不到 build job
+  restore 出的 `_build`，不在守门面。两层 = moon 增量内容 hash + 下游行为防线。
+- **P2-4（登记）**：P0 命中前提 = P1 命中——native exe 含 PE TimeDateStamp
+  不可复现，重建即字节变 → 引擎 hash 变 → epoch 换血；两缓存成「全命中或全
+  不命中」二态（偏保守，无正确性风险）。解耦的语义指纹方案评估后不采。
+- **P3**：`judgeCacheGet` 对合法 JSON `null` 补防护（原来抛 TypeError 打死
+  整轮，违背 fail open 契约）；「六组件」残留两处清零；CI 冷态实录与预期
+  口径分离（首轮 run 40181813519 = 冷态全量：fuzz 9m14s / build 2m32s /
+  wall 12m08s ≈ 基线——收益属 warm 轮预期，待后续 run 落数）；workflow
+  dispatch 增 `refresh` 输入（缓存疑似污染的手动逃生门，此前只有夜间一条道）。
+
+### perf(ci): moon 构建产物缓存——Build job 提速（#309 P1，2026-10-25）
+
+- **病灶**：Build artifacts 串行前置。run 40178073268 实测分布 = native 全量
+  108s + wasmopt 供给 44s（binaryen 下载）两大头。
+- **缓存设计（与 P0 判定缓存不同源理）**：path = `moonbit/_build`（195M）+
+  `tools/cache`（binaryen 供给）；**key 不含源 hash**——含则每次 miss 增量无
+  意义，源变面由 **moon 增量内容 hash** 自算重编；key = os + clang 版本 +
+  `.moonbit-version` + `github.sha`（逐轮新 entry），restore-keys 单级前缀
+  取最近，LRU 逐出。
+- **正确性边界（issue 前置评估义务，本地双臂实证）**：改 `cli_run.mbt` 一行 →
+  native 29 tasks / js 8 tasks 精准重编、产物行为随新源（run.exe 输出 P1PROBE）；
+  源还原回旧内容同样触发重编回旧产物——**无漏判假绿面**。源未变三目标增量合计
+  **~3.4s**（native `no work to do` 0.5s / js 0.9s / wasm-gc 1.9s）。守门两层
+  （见处置批勘误）。
+- **CI 从「每轮冷态全量」转为「依赖 moon 增量正确性」**——该依赖由两层覆盖，
+  风险显式登记于 ci.yml 注释。
+
+### perf(scripts,ci): corpus_fuzz 判定缓存——fuzz 闸增量 check（#309 P0，2026-10-25）
+
+- **病灶**：fuzz 判定轮 318 变体 × (clang 编译 + js/native 双臂执行) 每轮全量
+  重跑——CI 8.7m（单 job 之王、关键路径决定者），本地定性循环 9m/轮 × 3 轮
+  ≈30m。判定结果是确定性的，纯浪费。
+- **缓存设计**：`.corpus_fuzz_judge/`（gitignored）存判定 bucket。**epoch 键**
+  = clang 版本 + 双臂引擎产物（run.exe/vitro_js.js）+ sh 壳 + 规则 + 驱动脚本
+  + node 宿主**七组件 hash**——任一变化整体失效（保守：宁多跑不少跑；node
+  宿主入键防 CI 预装漂移携旧 bucket）；**条目键** = fp + 变体源字节——语料批
+  只失效变化单条。命中 ⇒ 跳过三方进程对拍直接判红。
+- **语义边界**：`-freeze` 不读缓存（冻结需完整指纹清单，全量语义不变）但写
+  （freeze 即真跑，结果供下轮 check 复用）；`CF_JUDGE_REFRESH=1`（CI 夜间
+  schedule 轮注入）全量重算覆写——防腐化第二道闸（复用 clang golden 缓存
+  方案 A 双闸形态）。
+- **CI 接线**：corpus-fuzz job 增 actions/cache（CI key = 引擎双产物 hash +
+  clang 版本 + main.mts/rules.json 源 hash；sh 壳与 node 宿主不进 CI key，
+  由脚本内层 epoch 兜底）+ node 单点 `.node-version`（type stripping 兼防
+  epoch 换血）。收益预期：引擎未变批（文档/脚本）8.7m → ~1m。
+- **测试**：七组件敏感性矩阵（J9 锚：抽走 shell 组件实测红）/ 条目双敏感 /
+  get·put 拒收语义（窜条、损坏 JSON、非法桶名、原型链名一律 miss fail open
+  到真跑）/ prune 清除面。18/18 绿；tsc/oxlint 严格档过。
+
+### refactor(scripts,docs): #273 facts/clang_direct/install_skills Go→.mts 迁移 + CI 去 Go 化 + 文档插图页脚翻新（2026-10-25）
+
+- **迁移三件**：`scripts/facts`（2338 行 + 8 个 Go 测试直译为 node:test 49 例）、`scripts/clang_direct`（1142 行 + 自测 5 例）、`.agents/install_skills`（313 行 + 自测 5 例）落 `.mts` 四件套门；**Go/ts 双跑逐位对拍**——facts.json 22 键规范化（剔 generated_at/git/as_of；`moonbit_lexer_diff_tsv`/`moonbit_parser_diff_samples` 两键 `source` 为口径演进差异：Go=`scripts/lexer_diff`、TS=`scripts/diff_gate（lexer/parser 臂）`）逐位一致、`check` 子命令 stdout 在 pending=0 时逐位一致（pending≠0 时 `[待采集]` 行序不同：TS 按规则键字节序 = 有意修复，Go 按错位序——`facts` 子命令 stdout 亦含上述两键 source 行差异）、clang_direct native/wasm 双臂 `--sample`/`--cases` 报文逐位一致且 exit code 相同。
+- **CI 去 Go 化**：`ci.yml` go run 活行清零（facts×3 / clang_direct×2 / install_skills×1 切 node）+ 全部 setup-go 摘除——**下游跑防线不再需要 Go 工具链**；hygiene 保留 go vet/test 验证 Go 回退面（runner 预装 + go.mod toolchain 声明兜底版本）。
+- **迁移顺带修正（口径演进，登记在案）**：① facts `--run` 采集器 4 处子进程旧 `go run` 死路径改现役 node 入口（死路径期间 `--run` 恒 unavailable，语义修复）；② facts 报告摘要表序修正——Go 版 `sort.SliceStable` 比较函数引用外部 order 数组与排序元素错位（真 bug，顺序由排序器内部行为决定），TS 按规则键字节序稳定排序；③ clang_direct `TrimRight` 全量剥行尾 `\r`（`printf("\r\n")` 经 Windows 文本模式成 `\r\r\n`，剥一个残一个会把工程语料 MF-HTTP 误判 DIFF）；④ 差异报文 `%q` 渲染对齐 `strconv.Quote` 的**可打印 UTF-8 面**——合法 UTF-8 可打印序列还原原字（教学 inspect 行中文进 digest 与 Go 对齐，known 台账 5fd9b345 命中回归）；已知边界：合法 UTF-8 但不可打印字符（NBSP/ZWSP 等）Go 输出 ` ` 转义形态、TS 原字——不可打印面不逐位（探针实测登记）。另：facts 根判据（git 根探测）从 Go 版读 `go.mod` 改读 `moonbit/moon.mod`（行为等价，判据锚点单点换——本条登记）。
+- **gen_svg 页脚翻新**：生成器本体早已 .mts，但 15 张入库 SVG 页脚的「漂移重生成」命令仍是 `go run ./scripts/gen_svg` 旧形态——生成器源码 12 处翻新为 `node scripts/gen_svg/main.mts` 后随批重生成；skills 图页脚的 install_skills 命令同步切 .mts。
+- **文档命令面翻新**：11 份现役文档/SKILL.md 的 facts / clang_direct / install_skills / gen_svg 指引切 node 形态（脚本埋雷验证记录等 AS-OF 域历史记录按冻结原则不动）；脚本总清单 Go 存量段改「回退面」口径；facts/clang_direct 的 .go 版加回退面横幅（不再随行为变更维护，Go 测试锚保留）。
+
+### refactor(docs,workflows): #307 审阅处置批 + 发布面失真治理 + 非 MoonBit 资产搬包（2026-10-25）
+
+- **审阅 P2 处置**：① facts 采集器 lexer/parser 两正则对齐现役 PASS 行形态（diff_gate 五族统一的「N 个 case hash 与冻结基线一致」——此前直译 Go 版旧样本，双跑两版同病 unavailable 互掩；测试样本换真实生产者行 + 旧形态反锚）；② `replay_assertions`/`serve_smoke_assertions` 移出 Rust 退役键表——两采集器现役（node .mts），此前被退役表无条件覆盖回 unavailable = `--run` 白跑丢弃；③ `docs-quick.yml` 两活行切 node + setup-go 摘除（「CI 去 Go 化」覆盖全 workflow 收口）；④ 门面文档命令面补齐（根 README×3 / moonbit/AGENTS.md / 标准库单源 / 模板与验证解耦——原「11 份」不含门面）。
+- **发布面失真治理（#217/#216 家族）**：moon.mod description 去 Rust oracle parity 句（换 Clang-golden + frozen digest 现役锚）；moonbit/README 英中双段首句、性能对照段改**历史档案口径**（Rust oracle 对照数字冻结为迁移期记录、CPython 对照补负载标注）、已知限制段 as-of 0.7.0→S9 修复批（活缺陷为零）、gen_diag 目录说明从 Rust 源改 diagnostics_data JSON 单源；**数字口径三连坐**——ErrorCode 137→**156 臂**、教学卡片 77→**114**、opcode 135→**151**（0..137 照搬段 + 138..150 U 系 + 151..153 char 字节粒度段；moonbit/AGENTS.md 的 148 同步）+ gateway 方法表 21→**30**（协议分发表现值）+ wasm 宿主断言 16→17（host.mts 自报实值）；`protocol/package.json` description「从权威 Rust 源生成」勘正 + `_generated` 命令切 node。
+- **非 MoonBit 资产搬包（真源迁移非复制）**：`docs/spec/`（CLI_PROTOCOL_V1 + STEP_PAYLOAD_SCHEMA + svg）→ `moonbit/docs/spec/`；根树 `protocol/` TS 绑定（index.d.ts/fields.mjs/consumer.mjs 等）→ `moonbit/bindings/ts/`（避与 MoonBit 包 protocol/ 撞名）——mooncakes zip 内 README 的 spec 链接由包外死链变包内活链（#217②根因）；生成器 rules.json 输入/输出双路径连坐、ci.yml consumer 活行、gen_svg protocol/panorama 两图输出路径与页脚、schema.mbt 文档锚注释连坐（协议出口资产 checklist 字符串**不动**——那是 capabilities 出口字节，变更须单独批连坐 protocol_frames 重冻，此处登记不越权）；产物重生成 + 双闸绿。
+- **文档死角收尾 + 用户域文档入库**：docs/README.md 索引五处 spec 死链修复（插图约定 15 张口径拆分 / CLI 手册行内链 / 主索引两行 / spec 小节整体改写为 moonbit/docs/spec 指向——spec 搬包后索引未连坐）；构建指南 Go 工具链行改「仅 Go 回退面」口径；workspace-review skill references 四件审阅沉淀入库（含 04-F10 示例路径换真实冻结基线文件名——skill_path_check 全绿）+《宿主工单与Rust最小实例》新文档入库（docs/README 索引行已在，随批跟踪）。
+- **#218 下游指引**：CLI 手册统一入口节补包消费者段——`.mooncakes` 点目录构建 rc=0 零产物陷阱显式警告 + 可行配方（拷出源码自建模块 / 库用法等价）。
+
+### fix(scripts,docs): #307 二轮审阅处置——坏引用闸扩面 + 相对链接死链清零 + 补锚（2026-10-25）
+
+- **P1-1 坏引用闸扩面（抽取面塌缩根治）**：RE_SCRIPT_REF 扩 mts/mjs/ts/js/sh/cmd 扩展名 + .agents 域 + bare 形态（go run/node + 无扩展名包路径，命令语境限定）；RE_CMD_VERB 加 node/npm/npx；scriptRefAlive 包路径判定扩 .mts；负向前视防 `rules.json` 被贪婪截成 `rules.js`（首版实锤 37 处误报→0）；scanFiles 扫描域补 moonbit/docs/（搬包后 spec 退出扫描面的真空）+ diag/README.mbt.md；classifyFile docs/spec 死规则翻新 moonbit/docs/spec。**红证**：注入 `node scripts/pr307_probe_missing.mts` 扩面前 0 红漏过/扩面后即红；新增 broken_refs.test.mts 8 锚（扩面抽取/豁免/包路径/bare/.agents/json 边界）。
+- **P2-1 相对链接死链 18 处清零**：搬包只改绝对前缀漏了 `](../../spec/` 相对形态——统一模式设计 6 / CSharp 计划 3 / 架构 2 / 路线图 2 / 内存安全 / S8 总览 / CLI 手册 / 快速入门 / 出口分档 / 0.8.0 档案各 1 统一改指 moonbit/docs/spec/。
+- **闸扩面战果（自伤修正在案）**：扩面即抓出两处本批引入的真死链——gen_diag 路径写错（`scripts/gen_diag/` 实为 `scripts/moonbit/gen_diag/`，moonbit/README + diag/README.mbt.md 双处，ls A||ls B fallback 误读引入）+ 工程债务 L82 shadow_verify 裸命令（补退役注）；另收编 U2 拍板 wasm_smoke 与埋雷台账三处历史死命令（行内退役注，红证据本体不改写）。
+- **P2-3 补锚**：normalizeLines 补 
+
+ 多重尾样本（突变 
++$→
+$ 证红 1/还原绿 5——A1-l 闭环）+ install_skills CLI 契约锚 5 条（-- 终止被吃/-tool= 两形态/布尔拒 =/未知 flag/%q 引号）+ clang_direct 头注声称面与实测面对齐。
+- **P2-4**：docs/README 与脚本总清单的「SVG 数字带 data-fact 锚、facts 机判漂移」失真措辞删（15 张零锚现状与 gen_svg/audit 头注对齐）。
+- **P3 清单**：CHANGELOG check 子命令收窄（pending≠0 时行序差=有意修复）；generator-contract SKILL 核对法切 node 形态；复现清单两处 grep 口径切 node|go run 双态；ci.yml clang-golden 缓存键补 main.mts（注释同步现役口径）；panorama 图内旧路径 protocol/index.d.ts 翻新随批重生成；facts lexer note 去「随机 2400 例」过时通道叙述；--sample/--jobs 非数值静默回落改 fail loud exit 2（Go 回退面同病不追，现役修）；docs/README 头部第七轮沿革补登。
+
+验收：node:test 563/563（+8 锚）+ moon test 897/897 + tsc/oxlint 168 文件零警告 + 六生成器 -check 全绿（裸 emit 测试污染经 moon fmt 收敛）+ facts --strict check 坏引用 0/漂移 4（既有）+ skill_path_check 绿 + gen_svg -check 绿。
+
 ### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
 
 - **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）

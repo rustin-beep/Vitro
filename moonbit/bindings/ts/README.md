@@ -3,7 +3,7 @@
 Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScript 类型定义。
 
 **本包的类型不是手写的**——由 `scripts/gen_protocol_ts` 从权威 MoonBit 源（`moonbit/protocol/types.mbt`）生成，
-并与 `docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` **双向对账**。手抄就是又一处分叉温床。
+并与 `moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` **双向对账**。手抄就是又一处分叉温床。
 
 > **真源沿革（#118 勘正，2026-10-15）**：初版生成链读 Rust 对照区结构体（`native/src/…`，
 > 当时受 Rust 字段冻结测试守护）；Rust 区已随 2026-10-05 工序④**物理删除**（档案 tag
@@ -12,8 +12,8 @@ Vitro **StepPayload 协议**（schema v0.1，冻结锚 `10591ad`）的 TypeScrip
 > ↔ schema 文档为准（`node scripts/gen_protocol_ts/main.mts -check` 即验）。
 
 **投放状态（#118 勘正）**：`@vitro/protocol` **尚未发布到 npm**（`npm view` 404 属预期）——
-消费形态现阶段 = 仓内 `protocol/` 目录直接引用（`index.d.ts`/`fields.mjs` 生成物 +
-`consumer.mjs` 消费者），npm 投放待下游需求出现时随批（勿按已上架接入）。
+消费形态现阶段 = 仓内 `moonbit/bindings/ts/` 目录直接引用（`index.d.ts`/`fields.mjs` 生成物 +
+`consumer.mjs` 消费者；2026-10-25 起随 moonbit module 随包分发），npm 投放待下游需求出现时随批（勿按已上架接入）。
 
 ## 文件
 
@@ -47,8 +47,8 @@ node scripts/gen_protocol_ts/main.mts --selftest
 # 第一个消费者：消费真实引擎输出（现役 MoonBit 产物——初版的 rust 臂
 # debug serve 已随 2026-10-05 删区退役）
 cd moonbit && moon build --target native cmd/serve && cd ..
-node protocol/consumer.mjs            # 字段级校验 + 最小渲染
-node protocol/consumer.mjs --selftest # 消费者判据证红（含正向）
+node moonbit/bindings/ts/consumer.mjs            # 字段级校验 + 最小渲染
+node moonbit/bindings/ts/consumer.mjs --selftest # 消费者判据证红（含正向）
 ```
 
 消费方（TS 侧）：

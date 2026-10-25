@@ -253,12 +253,12 @@ export function genTS(rd: RulesDoc, types: Map<string, ProtoType>): string {
   b.push(
     "// 权威源（MoonBit protocol 包结构体——S7 批四号切换；受 protocol 包 v0.1 十四字段\n",
   );
-  b.push("// 白名单锚 + 本生成器三向对账〔MoonBit ↔ schema 文档 ↔ Rust oracle 过渡期〕守护）：\n");
+  b.push("// 白名单锚 + 本生成器双向对账〔MoonBit ↔ schema 文档〕守护）：\n");
   for (const s of rd.type_sources) b.push("//   - " + s + "\n");
   b.push(`// schema：${rd.schema_doc}（v${rd.schema_version}，冻结锚 \`${rd.frozen_anchor}\`）\n`);
-  b.push("// 再生成：`go run ./scripts/gen_protocol_ts`；幂等校验：`-check`\n");
+  b.push("// 再生成：`node scripts/gen_protocol_ts/main.mts`；幂等校验：`-check`\n");
   b.push("\n");
-  b.push("/// StepPayload schema 版本（与 docs/spec 冻结版本一致）。\n");
+  b.push("/// StepPayload schema 版本（与 schema 文档冻结版本一致）。\n");
   b.push(`export const SCHEMA_VERSION = "${rd.schema_version}";\n`);
 
   // 先枚举，再 struct（消费顺序友好）
@@ -368,14 +368,14 @@ function writeOrCheck(rd: RulesDoc, rel: string, content: string, checkOnly: boo
     try {
       old = fs.readFileSync(abs, "utf8");
     } catch (e) {
-      process.stdout.write(`  !! ${rel} 不存在或不可读（${(e as Error).message}）——请跑 \`go run ./scripts/gen_protocol_ts\`\n`);
+      process.stdout.write(`  !! ${rel} 不存在或不可读（${(e as Error).message}）——请跑 \`node scripts/gen_protocol_ts/main.mts\`\n`);
       return false;
     }
     // 行尾归一化：core.autocrlf=true 的 checkout 会把 LF 产物翻成 CRLF，
     // 逐字节比较即假红（与 toolchain_probe 2026-09-22 假红同款）。
     if (old.split("\r\n").join("\n") !== content) {
       process.stdout.write(
-        `  !! ${rel} 与现场生成不一致（产物陈旧 / 手工改过）——请跑 \`go run ./scripts/gen_protocol_ts\`\n`,
+        `  !! ${rel} 与现场生成不一致（产物陈旧 / 手工改过）——请跑 \`node scripts/gen_protocol_ts/main.mts\`\n`,
       );
       return false;
     }

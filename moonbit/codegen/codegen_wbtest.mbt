@@ -1390,3 +1390,59 @@ test "skeleton: cast-to-void expr stmt keeps stack balanced (#238)" {
     msg="(void)expr; 不得泄漏栈（#200 验证器：\{violations.length()} 条违约——首条 \{@bytecode.verify_violations_json(violations)}）",
   )
 }
+
+///|
+/// #283 审阅 P1 补锚（PR #299，2026-10-25）：gen_addr Identifier 臂解析序
+/// local → static → global 的白盒直锚。该臂可达面极窄——运行期 `&x` 取址走
+/// unary Addr 臂、指针初始化器走 init 回填，语料与定向探针均无观察差异
+///（PR #299 审阅指令流差分 + 本批多形态探针双重实证），黑盒锚锁不住，
+/// 故白盒锁序防回退：同名 static local 与 global 双在表时 static 须抢先
+///（旧序 global 抢先）。
+test "wb gen_addr resolution order static before global (#283 review P1)" {
+  let gen = BytecodeGen::new()
+  // 同名双注册：static 槽偏移 8、global 槽偏移 100；local 表在但不命中
+  gen.static_local_indices.set("c", 8)
+  gen.static_local_types.set("c", @ast.Type::Pointer(@ast.Type::int(), false))
+  gen.global_indices.set("c", 100)
+  gen.global_types.set("c", @ast.Type::int())
+  gen.local_indices.set("other", 4)
+  gen.local_types.set("other", @ast.Type::int())
+  let loc = @source.SourceLoc::new(1, 1)
+  let n0 = gen.code.length()
+  gen.gen_addr(@ast.Expr::Identifier("c", loc, @ast.Type::int()), loc)
+  // static 命中：恰一条 PushConst(GLOBAL_START + 8)——无 GetFrameBase
+  //（local 命中形态是三指令 GetFrameBase/PushConst/Add），且偏移绝非
+  // global 槽（GLOBAL_START + 100）
+  assert_eq(
+    gen.code.length() - n0,
+    1,
+    msg="static 命中应恰 emit 一条 PushConst（多指令=误走 local 通路）",
+  )
+  let instr = gen.code[gen.code.length() - 1]
+  assert_true(instr.op is @opcode.OpCode::PushConst, msg="须为 PushConst")
+  assert_eq(
+    instr.operand,
+    @bytecode.GLOBAL_START.reinterpret_as_int() + 8,
+    msg="偏移须取 static 槽（8）——取 100 即 global 抢先（#283 回退）",
+  )
+}
+
+///|
+/// 对照臂：仅 global 在表（无 static）时 gen_addr 走 global 槽——static
+/// 前置不得外溢吞掉合法 global 取址。
+test "wb gen_addr global fallback intact (#283 review P1)" {
+  let gen = BytecodeGen::new()
+  gen.global_indices.set("g", 60)
+  gen.global_types.set("g", @ast.Type::int())
+  let loc = @source.SourceLoc::new(1, 1)
+  let n0 = gen.code.length()
+  gen.gen_addr(@ast.Expr::Identifier("g", loc, @ast.Type::int()), loc)
+  assert_eq(gen.code.length() - n0, 1, msg="global 命中恰一条 PushConst")
+  let instr = gen.code[gen.code.length() - 1]
+  assert_true(instr.op is @opcode.OpCode::PushConst)
+  assert_eq(
+    instr.operand,
+    @bytecode.GLOBAL_START.reinterpret_as_int() + 60,
+    msg="无 static 时取 global 槽（60）",
+  )
+}

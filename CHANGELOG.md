@@ -24,6 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   #277/#282 块内形态零回退（边界矩阵 p1b / p1c / p7 / 无块形双臂逐字
   一致）。红→绿：修复前 js 臂实测 `507/508/508`（主案 c 与块内
   `static c=100` 全被 global 吞），修复后 js + native 双臂九行全对。
+- **审阅 P1/P2 处置（2026-10-25）——锚判别力补全与覆盖声明勘正**：
+  审阅指令流差分实证初版红锚只反证 3/6 消费点（assign/unary/stmt），
+  addr/index_member/init 三处「改回即静默错值但全防线零红」；且 addr
+  臂黑盒可达面极窄（运行期 `&x` 走 unary Addr 臂、初始化器走 init
+  回填，多形态探针均无观察差异）。补锚 = ①语料扩消费点矩阵 4 形态
+  （同名 struct 成员读改写 / struct 整体拷贝 / 整体赋值 / struct 聚合
+  地址常量——突变还原三消费点实测全部静默错值 `1 3 / 1 3 1 3 / 500`，
+  修复态 clang 真值逐字一致）；②addr 臂 codegen wbtest 双白盒锚（同
+  名双注册断言 static 槽偏移抢先 + 无 static 时 global 回落不外溢——
+  突变态红「global 抢先」/恢复态绿）。覆盖矩阵入语料头注（P2：改了
+  ≠锚住，六处中语料反证五处+wbtest 锚一处，call 复核原序正确非修复
+  面）；两条 master 既有缺陷（文件作用域 `&s.x` 取成员地址 / 数组聚合
+  `{&c}` 地址常量 → NULL 解引用）补锚时已避开，另案处置。
 - **语料红锚**：`corpus/baseline/static_shadows_global.c`（无块形主案 +
   复合赋值/自增/取址/指针初始化器回填/struct 成员/数组传参消费点矩阵 +
   块内 local 遮蔽 static + 块内 static 层级 + 参数形防回退锚，clang 真值

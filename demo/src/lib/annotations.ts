@@ -65,7 +65,7 @@ function diffNotes(prev: StepLike, cur: StepLike, lineText: string): string[] {
     const old = arrBefore.get(s.name);
     if (!old || old.length !== s.elements.length) continue;
     for (let i = 0; i < s.elements.length; i += 1) {
-      if (old[i] !== s.elements[i]) out.push(`${s.name}[${i}] ← ${short(s.elements[i])}`);
+      if (old[i] !== s.elements[i]) out.push(`${s.name}[${i}] ← ${short(s.elements[i] as string)}`);
     }
   }
   return out;

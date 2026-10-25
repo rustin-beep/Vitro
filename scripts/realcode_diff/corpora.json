@@ -1,5 +1,5 @@
 {
-  "_note": "仓内语料批登记表（#25 义务链第⑤步：_meta.corpora 登记 + -check 多文件扫描）。三向对账：语料目录 ↔ 本表 ↔ 金样本文件——漏登记/悬空/僵尸例任一即红（scripts/realcode_diff -check 第四道）。",
+  "_note": "仓内语料批登记表（#25 义务链第⑤步：_meta.corpora 登记 + -check 多文件扫描）。三向对账：语料目录 ↔ 本表 ↔ 金样本文件——漏登记/悬空/僵尸例任一即红（scripts/realcode_diff -check 第四道）。已知覆盖缺口（#303 审阅 P3-2）：仓内语料 run 对账当前不可达（run 恒空），补双绿可运行样本另批。",
   "as_of": "2026-10-22",
   "corpora": {
     "chibicc": {

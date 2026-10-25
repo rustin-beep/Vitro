@@ -81,8 +81,9 @@
     const frames = session.viewFrames;
     if (!scenes.length || !frames.length) return [] as Array<{ line: number; text: string }>;
     const i = sceneIndexAt(scenes, session.idx);
-    if (i < 0) return [] as Array<{ line: number; text: string }>;
-    return sceneAnnotations(frames, scenes[i].from, scenes[i].to, session.idx, untrack(() => source.split("\n"))).map((a) => ({ line: a.line, text: a.text }));
+    const s = i < 0 ? undefined : scenes[i];
+    if (s === undefined) return [] as Array<{ line: number; text: string }>;
+    return sceneAnnotations(frames, s.from, s.to, session.idx, untrack(() => source.split("\n"))).map((a) => ({ line: a.line, text: a.text }));
   });
 
   const statusText = $derived(
@@ -106,7 +107,7 @@
     workspace.activePath
       ? workspace.activePath.split("/").pop() || workspace.activePath
       : session.currentCase?.files?.length
-        ? session.currentCase.files[0].filename
+        ? session.currentCase.files[0]?.filename ?? "main.c"
         : "main.c",
   );
   const codeStatus = $derived(

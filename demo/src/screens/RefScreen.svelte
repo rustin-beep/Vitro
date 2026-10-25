@@ -35,7 +35,8 @@
       return;
     }
     if (!session.catalog.some((c) => c.code_str === ui.refCode)) {
-      ui.refCode = session.catalog[0].code_str;
+      const first = session.catalog[0];
+      if (first) ui.refCode = first.code_str;
     }
   });
 

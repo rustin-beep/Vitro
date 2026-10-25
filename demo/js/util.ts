@@ -37,8 +37,10 @@ export function annotateGroups<F extends { code_line: number }>(frames: F[]): Gr
   const out: GranGroup<F>[] = [];
   let start = 0;
   for (let i = 1; i <= frames.length; i++) {
-    if (i === frames.length || frames[i].code_line !== frames[start].code_line) {
-      for (let j = start; j < i; j++) out.push({ f: frames[j], m: j - start + 1, k: i - start });
+    const cur = frames[i];
+    const head = frames[start];
+    if (i === frames.length || cur === undefined || head === undefined || cur.code_line !== head.code_line) {
+      for (let j = start; j < i; j++) out.push({ f: frames[j] as F, m: j - start + 1, k: i - start });
       start = i;
     }
   }

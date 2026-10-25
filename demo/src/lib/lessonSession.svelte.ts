@@ -23,11 +23,11 @@ import { ensureClosedForLesson } from "./workspace.svelte.ts";
 
 export interface OpenOpts {
   /** 采集完是否自动播放（首访/继续上次 = false：预载一帧、暂停）。 */
-  autoplay?: boolean;
+  autoplay?: boolean | undefined;
   /** 采集后定位帧（继续上次）。 */
-  frame?: number;
+  frame?: number | undefined;
   /** 采集完成后回调（首访中段帧定位用——帧流就绪前 frames=0 无从定位）。 */
-  onCollected?: () => void;
+  onCollected?: (() => void) | undefined;
 }
 
 class LessonSessionState {
@@ -66,12 +66,12 @@ class LessonSessionState {
           id: base.id,
           label: base.label,
           source: base.source,
-          referenceOutput: base.referenceOutput as string | undefined,
-          referenceTrap: base.referenceTrap as string | undefined,
-          referenceKind: base.referenceKind as string | undefined,
-          configHint: base.configHint as Record<string, unknown> | undefined,
-          argv: base.argv as string[] | undefined,
-          files: base.files as Array<{ filename: string; source: string }> | undefined,
+          referenceOutput: base["referenceOutput"] as string | undefined,
+          referenceTrap: base["referenceTrap"] as string | undefined,
+          referenceKind: base["referenceKind"] as string | undefined,
+          configHint: base["configHint"] as Record<string, unknown> | undefined,
+          argv: base["argv"] as string[] | undefined,
+          files: base["files"] as Array<{ filename: string; source: string }> | undefined,
         }
       : { id: l.id, label: l.title, source: l.source };
     // 叙述懒加载（无此课叙述 = null，诚实空态——不渲染假课文）
@@ -108,7 +108,7 @@ class LessonSessionState {
     // （采集后台化后本函数不再被采集挡住；中段帧定位链在采集完成点。）
     await this.open(target.lesson, {
       autoplay: false,
-      frame: hit ? last.frame : 0,
+      frame: hit ? (last?.frame ?? 0) : 0,
       onCollected: hit
         ? undefined
         : () => {
@@ -122,7 +122,7 @@ class LessonSessionState {
   async resumeLast(): Promise<void> {
     const last = progress.last;
     const hit = last ? findLesson(last.lessonId, last.chapId) : null;
-    if (!hit) return;
+    if (!hit || last === null) return;
     await this.open(hit.lesson, { autoplay: false, frame: last.frame });
   }
 

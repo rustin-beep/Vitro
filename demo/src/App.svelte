@@ -68,7 +68,7 @@
         // 测试观测面（与 main.ts 的 __pilot 同域）：记录 ready 翻态瞬间的帧数——
         // E2E F8「首访 shell 先行」用它判「ready 不等首课采集」，不再靠轮询抓瞬态
         // 窗口（CI 上采集快于轮询，锚会假红，2026-10-22 实锤）。
-        (window as unknown as Record<string, unknown>).__readyFrames = session.frames.length;
+        (window as unknown as Record<string, unknown>)["__readyFrames"] = session.frames.length;
         ui.ready = true;
       })
       .catch((err: unknown) => {
@@ -161,7 +161,8 @@
     } else if (e.key === "[" || e.key === "]") {
       e.preventDefault();
       const i = Math.max(0, FPS_STEPS.indexOf(session.fps));
-      setFps(FPS_STEPS[Math.max(0, Math.min(FPS_STEPS.length - 1, i + (e.key === "]" ? 1 : -1)))]);
+      const nextFps = FPS_STEPS[Math.max(0, Math.min(FPS_STEPS.length - 1, i + (e.key === "]" ? 1 : -1)))];
+      if (nextFps !== undefined) setFps(nextFps);
     }
   }
 
@@ -222,7 +223,10 @@
 
   // 诊断手册深链：组件内已落到首条；此处仅保证 refCode 有值
   $effect(() => {
-    if (ui.screen === "ref" && !ui.refCode && session.catalog.length) ui.refCode = session.catalog[0].code_str;
+    if (ui.screen === "ref" && !ui.refCode && session.catalog.length) {
+      const first = session.catalog[0];
+      if (first) ui.refCode = first.code_str;
+    }
   });
 </script>
 

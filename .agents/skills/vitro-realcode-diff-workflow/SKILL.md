@@ -2,8 +2,11 @@
 name: vitro-realcode-diff-workflow
 description: Vitro 实机代码对拍审阅与外部 C 仓库勘探的完整工作流——三方对拍(Clang 真值/Vitro/oracle 同病)、已知缺陷指纹归类、剥壳勘探、分层遮蔽实验、批量对比脚本。Use when 用户分发实际 C 代码要求与 Vitro/Clang 对比、开立新缺陷 issue、处理 demo 实测报错、或对外部 C 仓库跑批量勘探。触发词：实际代码、对拍、E 码归类、剥壳、勘探、TheAlgorithms、mismatch。
 metadata:
-  as_of: 2026-10-07
+  as_of: 2026-10-25
   演化日志: |
+    - 2026-10-25 脚本 Go→.mts 迁移（#273）：`main.mts` 四模式（-repo/-corpus/-aggregate/-check），
+      Go 版 `vitro_clang_diff.go` 删除；`realcode_corpus` CI 全 TS（main 内嵌对账 + compare_gold
+      独立判红）；脚本侧坑位改 Node 口径（spawn cwd/exe、字节序排序）。
     - 2026-10-01 初版：蒸馏 batch11~22 实机审阅（31 份样本、#11~#21 开立）+ TheAlgorithms/C 全量勘探
       （407 份、67 份全管线 match、#21 遮蔽缺陷）。后续修复批落地时须连坐更新本文
       「指纹表指向」与「剥壳变换」（缺陷清零后剥壳场景消失）。
@@ -59,21 +62,21 @@ metadata:
 - 运行对比 skip：交互程序（scanf/getchar/fgets→空 stdin 行为分歧）、网络（client_server）、无 main（链接不出）、rand() 驱动（C 标准不规定算法→数字归一后比）、TRAP 步数护栏（1000 万步，重循环 euler 类）与 calloc 大块（全局区上限 65536，超限返 NULL——C 语义内合法，登记边界）。
 - UB 样本（缺 return 等）：Clang 碰巧行为 ≠ 标准行为，**记 UB 差异不立案**（但"缺 return 无警告"可作 enhancement）。
 
-**脚本侧（Go 判定型，纪律 8）**：
-- `exec.Command` 的 cmd.Dir 相对路径会与 exe 相对路径叠加解析——tmpDir 一律 `filepath.Abs`。
-- MSYS 传 `/d/x` 变 `D:/x`（混斜杠）——路径过滤先 `filepath.ToSlash`。
-- flag 包 + fail loud + 零依赖；`@generated` 首行。
+**脚本侧（`.mts` 四件套，纪律 8；#273 迁移批 2026-10-25）**：
+- Node `spawn` 的相对 exe 路径按**父进程 cwd** 解析、`cwd` 只作用于子进程——可执行文件先 `path.resolve`，tmpDir 一律绝对路径。
+- MSYS 传 `/d/x` 变 `D:/x`（混斜杠）——路径过滤先 `.split(path.sep).join("/")`。
+- 手写 argv 解析（复刻 Go flag：`-x v` / `-x=v` / `--x` / 布尔 `=value` / 遇位置参数即止）+ fail loud + 零第三方依赖；字节序排序走 `scripts/internal/text.mts` 的 `byteCompare`。
 
 ## 四、批量勘探（外部仓库）
 
 **资产已入仓（2026-10-02，fork 方案）**：
 
-- 脚本：`scripts/realcode_diff/vitro_clang_diff.go`（仓内版本化；勘探产物 report.md/result.json 仍不进仓——诊断 message 可引用源码 token）。三模式：勘探 `-repo` / 聚合 `-aggregate <result.json>` / 合规 `-check`（CI hygiene）。
+- 脚本：`scripts/realcode_diff/main.mts`（#273 迁移批已删 Go 版 `vitro_clang_diff.go`；勘探产物 report.md/result.json 仍不进仓——诊断 message 可引用源码 token）。四模式：勘探 `-repo` / 仓内语料 `-corpus` / 聚合 `-aggregate <result.json>` / 合规 `-check`（CI hygiene）。对账单源 `compare_gold.mts`（供 CI 独立调用，main.mts 内嵌复用）。
 - 金样本：`scripts/realcode_diff/gold_signatures.json`（**只存码/数量/运行判定签名，不存源码文本——GPL 红线**；`-check` 四道校验：schema 键集白名单/值域/码形态 + `_meta` 与 files 重算对账（total/分桶计数，D18 补 2026-10-02），J9 多路证红在案）。用途：修复批后重跑，签名只应向绿迁移。
 - **provenance 锚（复现链）**：上游 TheAlgorithms/C@`e5dad3f`（2023-09 终态）→ fork [rustin-beep/C](https://github.com/rustin-beep/C) 分支 `vitro-probe-baseline`@`462074f6`（**默认分支**——clone 即得正确基线态）（89 文件探针态：补 include 128 处 + leetcode 注释内 struct 模板反注释为真定义——上游代码与探针 diff 都只在 fork，永不进 Vitro 仓）。重建命令见金样本 `_meta.regen`。
 - 勘探前置自检：clone fork 分支 → Vitro serve exe 在位（`cd moonbit && MOON_CC=clang moon build --target native cmd/serve`——纪律 11，**必须在 `moonbit/` 下**）→ Clang 22+ 在 PATH。任一缺失 → 本节降级跳过并在产出中明示（不静默）。
 - 基线（**2026-10-02 v2 勘探刷新**，autofix 补 include 后的分支态 `462074f6`；v1 的 122/155/130 退役）：407 份 → Clang 红 46 → 双绿 208 → Vitro 红 153；运行 match 53 + rand 6+3；mismatch 23 已定性（#21 遮蔽 1 / UB 1 / 护栏+资源上限 4 / 交互 16 / 方法 1）。gcc 分桶裁判（mingw64 16.2）交叉：双绿 358 / rescued 4 / divergence 3 / 双红 42——分歧=平台与版本敏感旗标（方案档 1.3 节）。
-- CI 现状：`-check` 合规闸已接 hygiene（只守仓内金样本静态合规，**不跑勘探本身**——维持拍板）；勘探 CI 化（pinned-sha clone 重跑断言，形态同 toolchain_probe）仍为二期待拍板。
+- CI 现状：`-check` 合规闸接 hygiene（仓内金样本静态合规）；`realcode_corpus` 闸跑**仓内语料批**（chibicc/multifile）运行时对拍 + gold 逐字段判红。**外置仓勘探仍不接 CI**（pinned-sha clone 重跑断言待拍板）。
 
 ## 五、已知缺陷指纹（指向单源，勿在此复制数字）
 

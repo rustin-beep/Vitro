@@ -54,14 +54,17 @@
     const out: number[] = [];
     const vars = new Map((frame?.local_vars ?? []).map((v) => [v.name, Number(v.value)]));
     for (const m of text.matchAll(re)) {
-      const expr = m[1].replace(/\s+/g, "");
+      const expr = (m[1] ?? "").replace(/\s+/g, "");
       if (!expr) continue;
       // 只认 常量 / 标识符 / 标识符±常量（a[j]、a[j+1]、a[0]、a[n-1]）
       const toks = expr.match(/^([A-Za-z_]\w*|\d+)(?:([+-])(\d+))?$/);
       if (!toks) continue;
-      const base = /^\d+$/.test(toks[1]) ? Number(toks[1]) : vars.get(toks[1]);
+      const baseTok = toks[1];
+      if (baseTok === undefined) continue;
+      const base = /^\d+$/.test(baseTok) ? Number(baseTok) : vars.get(baseTok);
       if (base == null || !Number.isFinite(base)) continue;
-      const idx = toks[2] ? base + (toks[2] === "-" ? -1 : 1) * Number(toks[3]) : base;
+      const off = toks[3];
+      const idx = toks[2] !== undefined && off !== undefined ? base + (toks[2] === "-" ? -1 : 1) * Number(off) : base;
       if (Number.isInteger(idx) && idx >= 0 && idx < elements.length) out.push(idx);
     }
     return [...new Set(out)].sort((a, b) => a - b);
@@ -108,7 +111,7 @@
           <span class="vr-idx">{snap.name}[{i}]</span>
           <span class="vr-val">{isChar ? charCellText(v) : v}</span>
           {#if numeric}
-            <span class="vr-bar" style:height="{Math.round(Math.max((Math.abs(nums[i]) / maxAbs) * 16, 2))}px"></span>
+            <span class="vr-bar" style:height="{Math.round(Math.max((Math.abs(nums[i] ?? 0) / maxAbs) * 16, 2))}px"></span>
           {/if}
         </div>
       {/each}

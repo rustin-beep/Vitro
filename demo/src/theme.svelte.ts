@@ -64,8 +64,9 @@ export function applyMotion(on: boolean): void {
 
 /** 头部主题按钮：按固定序循环五套（设置里可直接点名）。 */
 export function cycleTheme(): ThemeKey {
-  const i = (THEME_KEYS as readonly string[]).indexOf(themeState.current);
+  const i = (THEME_KEYS as readonly string[]).indexOf(themeState.current ?? "");
   const next = THEME_KEYS[(i + 1) % THEME_KEYS.length];
+  if (next === undefined) throw new Error("THEME_KEYS 为空");
   applyTheme(next);
   storeSet(KEYS.theme, next);
   return next;

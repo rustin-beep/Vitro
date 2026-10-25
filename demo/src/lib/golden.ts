@@ -17,16 +17,16 @@ export interface GoldenState {
   /** 展开对照时的两行真值预览（ok/bad 才有）。 */
   detail?: string;
   /** 期望值（数组「已就位」推断复用）。 */
-  expected?: string;
+  expected?: string | undefined;
 }
 
 export interface GoldenCase {
-  id?: string;
-  label?: string;
-  source?: string;
-  referenceOutput?: string;
-  referenceTrap?: string;
-  referenceKind?: string;
+  id?: string | undefined;
+  label?: string | undefined;
+  source?: string | undefined;
+  referenceOutput?: string | undefined;
+  referenceTrap?: string | undefined;
+  referenceKind?: string | undefined;
 }
 
 export interface GoldenInput {

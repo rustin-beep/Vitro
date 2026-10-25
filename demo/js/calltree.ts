@@ -54,7 +54,7 @@ export function buildCallTree(frames: CallTreeFrame[]): CallTree {
     while (lcp < path.length && lcp < curPath.length && path[lcp] === curPath[lcp]) lcp++;
     while (curPath.length > lcp) { curPath.pop(); cur = cur.parent as TreeNode; }
     while (curPath.length < path.length) {
-      const node: TreeNode = { name: path[curPath.length], parent: cur, children: [], depth: curPath.length + 1, firstStep: f.step_index, enterVars: f.local_vars || [], enterLabel: f.semantic_label || "执行" };
+      const node: TreeNode = { name: path[curPath.length] as string, parent: cur, children: [], depth: curPath.length + 1, firstStep: f.step_index, enterVars: f.local_vars || [], enterLabel: f.semantic_label || "执行" };
       cur.children.push(node);
       cur = node;
       curPath.push(node.name);

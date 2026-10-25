@@ -9,7 +9,7 @@
   import { toast } from "../toasts.svelte.ts";
   import { METHOD_LISTED, METHOD_ROWS, METHOD_TOTAL, METHOD_USED } from "./protoFacts.ts";
 
-  const schemaVersion = $derived(String(((session.capabilities as Record<string, unknown> | null)?.schema as Record<string, unknown> | undefined)?.version ?? "—"));
+  const schemaVersion = $derived(String(((session.capabilities as Record<string, unknown> | null)?.["schema"] as Record<string, unknown> | undefined)?.["version"] ?? "—"));
 
   async function copyCaps(): Promise<void> {
     try {

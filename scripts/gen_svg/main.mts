@@ -6,8 +6,14 @@
 // 注入，并以 <tspan data-fact="key">n</tspan> 显式锚定；scripts/facts check 逐锚
 // 机判漂移。漂移工作流：
 //
-//   跑防线（或 go run ./scripts/facts facts）→ facts check 红（SVG 数字过时）
+//   跑防线（或 node scripts/facts/main.mts facts）→ facts check 红（SVG 数字过时）
 //   → node scripts/gen_svg/main.mts → facts check 绿
+//
+// **锚定机制现状（2026-10-25 审阅勘误）**：f782e6f9「生成产物去采集时刻类
+// 内容」起，15 张入库图**零 data-fact 锚**（比对面只留跨环境稳定的设计常量
+// ——facts 数字随环境漂移会让 -check 假红）。textF 的 factKey 参数与 facts
+// 的 SVG 对账通道（audit.mts svgFactMeta）保留作机制面：新图要挂真值锚时
+// 仍走 textF(…, "key")，重发明前先读 f782e6f9 的教训。
 //
 // 建成状态类内容（包图实/虚线、在架版本徽标）同样 facts 派生——CI 重生成闸红
 // 不了「生成器源码过时」，故状态词一律不写死，改由 facts 采集器供给机械真值。

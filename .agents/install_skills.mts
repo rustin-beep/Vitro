@@ -39,7 +39,12 @@ interface Skill {
 class InstallerError extends Error {}
 
 function fail(format: string, ...args: unknown[]): never {
-  const msg = format.replace(/%[vqs]/g, () => String(args.shift()));
+  // %q 按_go 版 fmt 语义渲染（带引号）——审阅修正：此前裸值替换使错误文案
+  // 与 Go 版差一对引号（实锤：未知工具 "nosuch" vs nosuch）。
+  const msg = format.replace(/%[vqsg]/g, () => {
+    const a = args.shift();
+    return typeof a === "string" ? '"' + a.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"' : String(a);
+  });
   throw new InstallerError(msg);
 }
 
@@ -206,17 +211,19 @@ export function diffOne(s: Skill, dest: string): boolean {
 const BOOL_FLAGS = new Set(["-list", "--list", "-all", "--all", "-force", "--force", "-diff", "--diff"]);
 const VALUE_FLAGS = new Set(["-tool", "--tool", "-scope", "--scope", "-dest", "--dest"]);
 
-interface Flags {
-  has(name: string): boolean;
-  value(name: string): string | undefined;
-}
-
-function parseFlags(argv: string[]): Flags {
+function parseFlags(argv: string[]): { has: (n: string) => boolean; value: (n: string) => string | undefined } {
   const bools = new Set<string>();
   const values = new Map<string, string>();
-  for (let i = 0; i < argv.length; i++) {
+  const args: string[] = [];
+  let i = 0;
+  for (; i < argv.length; i++) {
     const a = argv[i]!;
-    if (a === "--") break;
+    // Go flag：`--` 终止解析且**被吃掉**（2026-10-25 审阅修正：此前 break 停在
+    // "--" 上、slice(i) 把它带进位置参数——与 Go Args() 语义差一个元素）。
+    if (a === "--") {
+      i++;
+      break;
+    }
     if (!a.startsWith("-")) break; // Go flag：第一个位置参数停止
     const eq = a.indexOf("=");
     const name = eq >= 0 ? a.slice(0, eq) : a;
@@ -236,6 +243,8 @@ function parseFlags(argv: string[]): Flags {
       fail("flag provided but not defined: %s", name);
     }
   }
+  args.push(...argv.slice(i));
+  void args; // 本工具不消费位置参数；保留收集以对齐 Go flag 语义（供未来子命令）
   return { has: (n) => bools.has(n), value: (n) => values.get(n) };
 }
 

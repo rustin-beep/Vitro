@@ -84,7 +84,7 @@ export function rules(): Rule[] {
   ];
 }
 
-// ─── SVG data-fact 对账（2026-09-20）────────────────────────────────────────
+// ─── SVG data-fact 对账（2026-09-20；2026-10-25 审阅勘误）───────────────────
 //
 // docs/ 下入库 SVG 由 scripts/gen_svg 从 facts 台账生成（已迁 .mts，与本工具
 // 同源读 reports/facts.json），跑批快照数字以 data-fact="key" 显式绑定真值。
@@ -95,6 +95,11 @@ export function rules(): Rule[] {
 //   - 漂移**不进自动 sync**（interactiveSync 跳过 .svg 命中）：SVG 的修复
 //     动作是重跑 node scripts/gen_svg/main.mts，手改数字会破坏模板一致性、
 //     下次再生成即回退。
+//
+// **通道现状（2026-10-25 审阅勘误）**：f782e6f9（生成产物去采集时刻类内容）
+// 起 15 张入库图零 data-fact 锚——本通道零命中空转（ensureSVGAudit 仅锚命中
+// 时建 audit，无僵尸红副作用）。svgFactMeta 表保留：gen_svg textF 的 factKey
+// 机制仍在，新图挂锚即恢复对账。
 interface SvgFactMeta { label: string; unit: string }
 
 const SVG_FACT_META: Record<string, SvgFactMeta> = {

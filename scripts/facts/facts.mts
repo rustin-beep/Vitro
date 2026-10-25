@@ -323,8 +323,7 @@ export function goDurationString(ms: number): string {
   if (v < 1) return sign + v + "ms";
   if (v < 1000) return sign + (v * 1000) + "µs";
   if (v < 60_000) {
-    const s = v / 1000;
-    return sign + (Number.isInteger(s) ? String(s) : String(s)) + "s";
+    return sign + v / 1000 + "s";
   }
   const h = Math.floor(v / 36e5);
   v -= h * 36e5;

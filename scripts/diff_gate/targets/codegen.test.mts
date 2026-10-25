@@ -88,7 +88,7 @@ test("真实仓库：codegen 在 gap 上 PASS 且 slot_strategy 对账通过", (
   );
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /slot_strategy=1×\d+（期望 1/);
-  assert.match(r.stdout, /codegen_diff\[golden\]: PASS——20 个 case hash 与冻结基线一致（语料 gap）/);
+  assert.match(r.stdout, /codegen_diff\[golden\]: PASS——21 个 case hash 与冻结基线一致（语料 gap）/);
 });
 
 test("真实仓库：codegen 在 baseline 上 PASS 且 fork 例单列", () => {

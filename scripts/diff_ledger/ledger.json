@@ -558,6 +558,33 @@
       "notes": "shadow known_issue + clang_direct known 双在册；E2E_FAILURES.md 同款登记"
     },
     {
+      "id": "DIFF-UB-MISSING-RETURN-01",
+      "title": "语料缺 return UB 结局差异（非 void 函数递归调用丢弃返回值——C99 6.9.1p12 返回值未定义；clang 残留值随构建环境漂、Vitro 恒 0，双侧皆合法值；锚「真值不可锚」形态防对拍误报）",
+      "class": "pedagogical",
+      "carry_over": "inherit",
+      "status": "verified-anchor",
+      "evidence": "anchor",
+      "rationale": "UB 域无确定真值可锚；登记防未来对拍把缺 return 族分歧误报为引擎缺陷（TheAlgorithms 对拍批 2026-10-25 勘误形态：doubly_linked_list.c search() 同款——基线曾误判『静默错值』）",
+      "subsystems": [
+        "vm"
+      ],
+      "clang_verdict": "不一致（UB 域正当形态）",
+      "source_docs": [
+        "clang_direct known_direct.json 归因（TheAlgorithms 对拍批 2026-10-25）"
+      ],
+      "anchors": {
+        "shadow_known": [],
+        "clang_direct_known": [
+          "ub_missing_return.c"
+        ],
+        "vm_diff_known": []
+      },
+      "detectable_by_defense": [
+        "clang_direct"
+      ],
+      "notes": "known_direct 第 17 条；CI 首跑实测 digest 618cd2c8 入跨环境集（本地 a5e36455——clang 侧残留值随构建环境漂属 UB 固有噪声面，同 DIFF-UB-BTREE-01 漂移史；手工等价变异抽查两侧输出全不变证非引擎病）"
+    },
+    {
       "id": "DIFF-VM-QSORT-RESIDUE-01",
       "title": "qsort/bsearch 比较器栈残渣（末次比较对参数残渣镜像 1-2 字节 @栈底——两侧压参序一致，排序算法内部比较序列不同致生命周期外栈数据差异；stdout/返回码一致）",
       "class": "architectural",

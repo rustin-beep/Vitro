@@ -1,7 +1,7 @@
 # Vitro CLI 使用手册
 
 > 最后核对日期：2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。前一沿革 2026-10-07（**图标语义批〔#27〕**——协议面两变：`error_catalog` 的 `emoji` 字段退役为 **`icon`**〔语义图标 id，业务帧只携带 id 不携带字形〕；新接 **`icons.get`** 方法帧〔图标资产单通道下发，digest 与真源一致；protocol_frames 基线 31→33 帧〕。前一沿革 2026-10-06 统一入口批〔#49 批一〕——`scripts/bin/vitro` launcher 落地：默认 **wasm 臂**〔node 壳 `scripts/vitro_cli/main.js` 消费 `gateway/wasm/wasm.wasm`，需 node ≥25〕，node 缺失/过旧自动降级 native exe〔stderr 明示 `backend=` 行〕，`--backend native|wasm` 显式选边；双臂输出同形由 CI 闸 `scripts/vitro_cli_smoke` 对拍锁定。wasm 臂 `--dump-memory` 已支持（#49 批二：gateway `memory.dump` 帧——1MB 映像 base64 承载，双臂落盘逐字节一致由 CI 闸锁；`--json` 模式下不适用与 native 同口径〔spec §3〕）。更前一沿革 2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
-> 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`docs/spec/CLI_PROTOCOL_V1.md`](../../spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
+> 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`CLI_PROTOCOL_V1.md`](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
 
@@ -23,6 +23,17 @@ cd moonbit && moon build --release --target js cmd/vitro_wasm            # wasm 
 
 防线插座（#49 批二起，三后端批续扩）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）；壳 `serve` 子命令（NDJSON 会话——与 cmd/serve 同形：shutdown 判停/EOF/空行回错误帧）；replay / serve_smoke / protocol_frames / teaching_annotation_diff wasm 臂同款插座（CI 并行）；codegen_diff/host_contract_map/diff_ledger 裁定不迁（#49 批三评论在案）。
 
+### 包消费者（mooncakes）如何拿到 CLI（#218）
+
+`moon add vitro/engine` 落地的包**附带** 9 个 cmd 工具源码，但 moon **不允许从依赖直接构建可执行**——两条路都是陷阱或没文档：
+
+- ⚠️ **`moon build .mooncakes/vitro/engine/cmd/vitro` 静默陷阱**：rc=0 但**零产物**（`.mooncakes` 是点目录，moon 静默忽略输入过滤器）——看起来成功、build 目录里什么都没有。不要用。
+- ⚠️ **`moon.mod` 写本地路径依赖**：工具链拒绝（`only supports versioned registry dependencies`）。
+- ✅ **可行配方 A（推荐——要 CLI 判分/批处理）**：把 `.mooncakes/vitro/engine/` 整目录拷出到任意独立目录（如 `tmp/engine-cli/`），在其中 `MOON_CC=clang moon build --release --target native cmd/vitro`——自建模块后构建不受点目录限制；产物路径见下节。
+- ✅ **可行配方 B（零构建——只要引擎能力）**：不走 CLI，直接以**库**形态消费（`vitro/engine/gateway` 的 `invoke` 单口或 `session` 会话族，配方见《快速入门·下游接入》）；`cmd/serve` 的 NDJSON 语义与 `gateway.invoke` 同源，CLI 能做的库都能做。
+
+> Windows/MSVC 冷态构建分钟级悬崖照旧适用（moon#2254）——配方 A 务必 `MOON_CC=clang`。
+
 ## MoonBit 侧 CLI（agent 主入口）
 
 ```bash
@@ -37,7 +48,7 @@ vitro step <f> [--max-steps N] [--json|--summary]                 一次性 step
 vitro api <method> [params-json] | api --batch < frames.ndjson    万能单帧 + 批式多帧（状态跨帧——seek/断点/喂入序列可脚本化）
 ```
 
-`api` 子命令是全部 serve 协议方法的**脚本统一测试出口**——单帧形态 `vitro api memory.regions`、`vitro api compile '{"source":"…"}'` 一行命令直出响应帧；**批式形态 `cat frames.ndjson | vitro api --batch`** 同进程顺序执行帧序列（状态跨帧保留——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等前置依赖序列全部可脚本化；与 serve 的区别 = 管道终止型，无逐行交互锁）。退出码 0=全帧 ok:true / 1=任一帧 ok:false / 4=用法错；单帧形态会话态跨调用不保留（会话序列走 --batch，长活驻留归 serve）。命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流、`-` stdin 源码形态（全命令通用）与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
+`api` 子命令是全部 serve 协议方法的**脚本统一测试出口**——单帧形态 `vitro api memory.regions`、`vitro api compile '{"source":"…"}'` 一行命令直出响应帧；**批式形态 `cat frames.ndjson | vitro api --batch`** 同进程顺序执行帧序列（状态跨帧保留——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等前置依赖序列全部可脚本化；与 serve 的区别 = 管道终止型，无逐行交互锁）。退出码 0=全帧 ok:true / 1=任一帧 ok:false / 4=用法错；单帧形态会话态跨调用不保留（会话序列走 --batch，长活驻留归 serve）。命令语义、标记行协议、退出码五值表（0=正常/1=编译错/2=trap/3=步数超限/4=用法 IO）、`--json` NDJSON 事件流、`-` stdin 源码形态（全命令通用）与 argv 偏移约定**一律见 [CLI_PROTOCOL_V1.md](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)**（本手册不重复协议内容）。dump 族与 serve 走独立 exe（`cmd/dump_*`、`cmd/serve`——B1 不收敛裁定）。
 
 ## Rust 侧 vitro_cli（已退役）
 
@@ -85,7 +96,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
 | `step.begin` | — | 初始化统一模式（时间旅行），需先编译成功 |
-| `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../../spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0/在场非整数（浮点·字符串·超 Int32 域）fail loud、超上限钳 `config.max_steps`（病 76 实现化 + 2026-10-17 审阅批值域补严——**在架 0.8.0 无此参数**，见下表） |
+| `step.next` | `frames`（可选，缺省 1） | 单步/多帧推进，返回 `payloads`（StepPayload，见 [`STEP_PAYLOAD_SCHEMA_V0_1.md`](../../../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md)）；`frames` ≤0/在场非整数（浮点·字符串·超 Int32 域）fail loud、超上限钳 `config.max_steps`（病 76 实现化 + 2026-10-17 审阅批值域补严——**在架 0.8.0 无此参数**，见下表） |
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
 | `ast.dump` / `typeck.dump` / `symbols.dump` | — | 静态 dump 族（AST / 类型检查 / 符号表导出——无需会话，只读语义不碰会话态） |

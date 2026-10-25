@@ -360,8 +360,10 @@ function runCmd(root: string, timeoutMs: number, ...args: string[]): RunResult {
 }
 
 function collectReplay(root: string, facts: Record<string, Fact>): void {
-  const how = "node scripts/replay/replay_s1_s5.mts --anchor <short-hash>";
-  const r = runCmd(root, 5 * 60_000, "node", "scripts/replay/replay_s1_s5.mts");
+  const how = "node scripts/replay/replay_s1_s5.mts -moonbit --anchor <short-hash>";
+  // 2026-10-25 #307 P2-2 连坐：Go 版裸调（无臂实参）在 rust 臂退役后恒 exit 2
+  // （用法错）——现役须显式 -moonbit（native cmd/serve 臂，需先构建产物）。
+  const r = runCmd(root, 5 * 60_000, "node", "scripts/replay/replay_s1_s5.mts", "-moonbit");
   if (!r.ok) {
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how, "node 不可用或超时");
     return;
@@ -381,8 +383,10 @@ function collectReplay(root: string, facts: Record<string, Fact>): void {
 function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
   // `断言数:` 自报行格式是本采集器的锚。
   const rel = "scripts/serve_smoke（TS 驱动）";
-  const how = "node scripts/serve_smoke/main.mts（需先构建 vitro_cli）";
-  const r = runCmd(root, 5 * 60_000, "node", "scripts/serve_smoke/main.mts");
+  // 2026-10-25 #307 P2-2 连坐：与 replay 同因——rust 臂退役后裸调恒用法错，
+  // 现役须显式 -moonbit（需先构建 release cmd/vitro 产物）。
+  const how = "node scripts/serve_smoke/main.mts -moonbit（需先构建 release cmd/vitro）";
+  const r = runCmd(root, 5 * 60_000, "node", "scripts/serve_smoke/main.mts", "-moonbit");
   if (!r.ok) {
     facts["serve_smoke_assertions"] = unavail("项", rel, how, "超时或 node 不可用");
     return;
@@ -507,8 +511,11 @@ function collectMoonbitLexerDiff(root: string, facts: Record<string, Fact>): voi
 }
 
 // parseLexerDiffPass 解析 diff_gate lexer 臂的 PASS 行（J9 埋雷覆盖假输出）。
+// 2026-10-25 #307 P2-1 修正：生产者 PASS 行早已 digest 化为「N 个 case hash
+// 与冻结基线一致」（diff_gate 五族统一形态）——旧「N 个 TSV」形态不匹配，
+// 双跑对拍两版同病 unavailable 掩盖（消费者测试直译 Go 样本未跟上生产者）。
 export function parseLexerDiffPass(out: string): { n: number; ok: boolean } {
-  const m = /PASS——(\d+) 个 TSV/.exec(out);
+  const m = /PASS——(\d+) 个 case hash 与冻结基线一致/.exec(out);
   if (m === null) return { n: 0, ok: false };
   return { n: Number.parseInt(m[1]!, 10), ok: true };
 }
@@ -564,10 +571,11 @@ function collectMoonbitParserDiff(root: string, facts: Record<string, Fact>): vo
 }
 
 // parseParserDiffPass 解析 parser_diff 的 PASS 行（J9 埋雷覆盖假输出）。
-// 2026-10-05 4e86d368 工序③ digest 化改 PASS 行形态（「N 个样本」→
-// 「N hash 一致（fork 跳过 K）」）——旧形态不匹配（防倒退）。
+// PASS 行形态沿革：4e86d368 工序③ digest 化（「N 个样本」→「N hash 一致」）
+// → diff_gate 五族统一再改为「N 个 case hash 与冻结基线一致（fork 跳过 K）」。
+// 2026-10-25 #307 P2-1：对齐现役第三形态（旧两形态均不匹配，防倒退）。
 export function parseParserDiffPass(out: string): { n: number; ok: boolean } {
-  const m = /PASS——(\d+) hash 一致/.exec(out);
+  const m = /PASS——(\d+) 个 case hash 与冻结基线一致/.exec(out);
   if (m === null) return { n: 0, ok: false };
   return { n: Number.parseInt(m[1]!, 10), ok: true };
 }
@@ -590,12 +598,14 @@ export const RUN_KEYS = [
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
+// 2026-10-25 #307 P2-2：replay_assertions / serve_smoke_assertions 移出本表——
+// 两采集器现役（node .mts 形态，--run 真跑），此前被本表无条件覆盖回
+// unavailable「真值源退役」= 白跑 + 丢弃（退役的只是 Rust 臂，非整键）。
 export function markRetiredFacts(facts: Record<string, Fact>): void {
   const how = "Rust oracle 已于工序④删区退役（2026-10-05）——历史值见 tag rust-oracle-freeze 与 0.8.0 发布档案";
   for (const k of [
     "shadow_c_cases", "shadow_c_match", "shadow_c_known_issue",
     "shadow_c_gap_extension", "shadow_c_gaps",
-    "replay_assertions", "serve_smoke_assertions",
     "cargo_test_passed", "cargo_test_suites",
   ]) {
     facts[k] = unavail("用例", "native/（已删除）", how, "真值源退役");

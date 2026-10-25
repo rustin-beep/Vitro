@@ -1,6 +1,6 @@
 // panorama.mts —— 图 M：冻结协议层全景（#273 存量 Go 重写批；原 panorama.go）。
 //
-// 源：docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md + docs/current/06-出口与协议/。
+// 源：moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md + docs/current/06-出口与协议/。
 // 本图零 facts 依赖（数字一律口径化，不制造第二份会漂移的数字拷贝）：图上
 // 出现的 14 字段 / v0.1 / 2026-09-12 均为设计常量（协议包 SCHEMA_V0_1_FROZEN_AT /
 // SCHEMA_VERSION 同源），非跑批快照。
@@ -22,7 +22,7 @@ export function genPanorama(root: string): void {
     990,
     "vitro 冻结协议层全景",
     "vitro — 冻结协议层全景 · 单源 × 对拍 × 出口",
-    "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 与 moonbit/protocol/README.mbt.md 演化纪律三条；结构图无数字锚（设计常量：十四字段 / v0.1 / 2026-09-12 冻结）",
+    "对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 与 moonbit/protocol/README.mbt.md 演化纪律三条；结构图无数字锚（设计常量：十四字段 / v0.1 / 2026-09-12 冻结）",
   );
   P.push(
     MARKER_DEF,
@@ -98,7 +98,7 @@ export function genPanorama(root: string): void {
     textF(600, 914, "tc", "纪律成文与依据见 moonbit/protocol/README.mbt.md（openseek 教训转译，2026-09-28）", ""),
   );
   P.push(
-    textF(600, 956, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：node scripts/gen_svg/main.mts panorama", ""),
+    textF(600, 956, "tc", "对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：node scripts/gen_svg/main.mts panorama", ""),
   );
   writeSVG(root, "docs/current/06-出口与协议/protocol-panorama.svg", P);
 }

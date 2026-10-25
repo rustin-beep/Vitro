@@ -760,8 +760,9 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
       res.staleSuspectExempts.push(`${e.path}（contains=${goQuote(e.contains)}, reason=${e.reason}）`);
     }
   }
-  // 按规则键字节序稳定排序（Go sort.SliceStable order[i]<order[j] 直译），
-  // 便于人工顺序核对。
+  // 按规则键字节序稳定排序（非直译——Go 版 sort.SliceStable 的比较函数引用
+  // 外部 order 数组与排序元素错位，顺序实由排序器内部行为决定；TS 版按规则键
+  // 字节序稳定排序是修正，见 #307 审阅 P2②），便于人工顺序核对。
   res.audits = stableSortBy(res.audits, (a, i) => order[i]!);
   res.broken = scanBrokenRefs(root, files);
   // 常量对账（版本号）：与数字对账平行的第二轴，漂移并入 DriftN 一票红。

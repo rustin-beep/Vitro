@@ -1,6 +1,6 @@
 # vitro/engine/diag — Vitro 诊断契约
 
-C 教学引擎的诊断错误码契约：**137 个错误码**（1xxx 词法 / 2xxx 语法 / 3xxx 语义 / 4xxx C++ 专属）+ 三档严重级 + 77 条教学卡片。码表由 Rust oracle 源生成（禁手抄），与 Vitro 引擎的诊断输出逐字节对齐。
+C 教学引擎的诊断错误码契约：**156 个错误码**（1xxx 词法 / 2xxx 语法 / 3xxx 语义 / 4xxx C++ 专属）+ 三档严重级 + 114 条教学卡片。码表由 gen_diag 从 `scripts/moonbit/diagnostics_data/{error_codes,catalog}.json` 单源生成（禁手抄，生成物带源 sha256 落款）。
 
 ## 安装
 
@@ -51,14 +51,14 @@ test {
 }
 ```
 
-### 3. 工具链：整目录导出（与 Rust oracle 逐字节对拍）
+### 3. 工具链：整目录导出（码升序 canonicalize 口径）
 
 ```mbt check
 ///|
 test {
   let json = @diag.export_catalog_json()
-  // {"catalog":[{...},…]} 码升序 114 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕）——与 Vitro Rust 版 error_catalog
-  // 出口经 canonicalize 归一后逐字节一致（E4 锚）
+  // {"catalog":[{...},…]} 码升序 114 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕）——E4 出口为
+  // canonicalize 归一单源口径（迁移期与 Rust oracle 逐字节对拍锁定；oracle 已退役，现役锚 = wbtest 数量断言 + gen_diag -check 单源不漂移）
   assert_true(json.has_prefix("{\"catalog\":["))
   assert_true(@diag.catalog_codes().length() == 114)
 }
@@ -73,4 +73,4 @@ test {
 
 ## 生成物说明
 
-`error_code_gen.mbt` / `catalog_gen.mbt` 由 `scripts/moonbit/gen_diag` 生成（**禁手改**，文件头有源 sha256 落款）。
+`error_code_gen.mbt` / `catalog_gen.mbt` 由 `scripts/gen_diag` 生成（**禁手改**，文件头有源 sha256 落款）。

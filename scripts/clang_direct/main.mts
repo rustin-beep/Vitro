@@ -769,7 +769,7 @@ export function quoteBody(s: string): string {
       : b >= 0xe0 && b <= 0xef ? 3
       : b >= 0xf0 && b <= 0xf4 ? 4
       : 0;
-    let ok = len > 0 && i + len <= bytes.length && len > 1;
+    let ok = len > 1 && i + len <= bytes.length;
     if (ok) {
       for (let k = 1; k < len; k++) {
         if ((bytes[i + k]! & 0xc0) !== 0x80) {

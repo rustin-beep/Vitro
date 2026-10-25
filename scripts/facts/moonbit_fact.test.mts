@@ -44,8 +44,12 @@ test("moonbit J9 埋雷：空输出 unavailable", () => {
 
 // S2：词法差分真值解析——绿路径 + J9 埋雷（FAIL 输出禁兜底）。
 test("lexer_diff PASS 行解析绿路径", () => {
-  const r = parseLexerDiffPass("lexer_diff: PASS——4800 个 TSV 逐字节一致（语料 x）");
-  assert.ok(r.ok && r.n === 4800, `绿路径解析失败: n=${r.n} ok=${r.ok}`);
+  // 2026-10-25 #307 P2-1 连坐翻锚：样本改用真实生产者行（diff_gate 五族统一
+  // 形态「N 个 case hash 与冻结基线一致」——此前直译 Go 版旧样本致锚幽灵形态）
+  const r = parseLexerDiffPass("lexer_diff[golden]: PASS——1002 个 case hash 与冻结基线一致（语料 baseline）");
+  assert.ok(r.ok && r.n === 1002, `绿路径解析失败: n=${r.n} ok=${r.ok}`);
+  // 旧形态（TSV 时代）不匹配（防倒退）
+  assert.ok(!parseLexerDiffPass("lexer_diff: PASS——4800 个 TSV 逐字节一致（语料 x）").ok, "旧 TSV 形态不应再匹配");
 });
 
 test("lexer_diff J9 埋雷：FAIL 输出不可采", () => {
@@ -55,9 +59,13 @@ test("lexer_diff J9 埋雷：FAIL 输出不可采", () => {
 
 // S3 审阅补线（2026-09-20，F7）：解析差分真值解析器——绿路径 + J9 埋雷。
 test("parser_diff PASS 行解析绿路径（含旧形态防倒退）", () => {
-  // 2026-10-12 连坐翻锚：PASS 行形态 4e86d368 digest 化改「N hash 一致」
-  const r = parseParserDiffPass("parser_diff[golden:corpus-x]: PASS——597 hash 一致（fork 跳过 1）");
-  assert.ok(r.ok && r.n === 597, `绿路径解析失败: n=${r.n} ok=${r.ok}`);
+  // 2026-10-25 #307 P2-1 连坐翻锚：现役形态 = diff_gate 五族统一「N 个 case
+  // hash 与冻结基线一致」（4e86d368 的「N hash 一致」亦成旧形态）
+  const r = parseParserDiffPass("parser_diff[golden]: PASS——500 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）");
+  assert.ok(r.ok && r.n === 500, `绿路径解析失败: n=${r.n} ok=${r.ok}`);
+  // 旧两形态均不匹配（防倒退）
+  assert.ok(!parseParserDiffPass("parser_diff[golden:corpus-x]: PASS——597 hash 一致（fork 跳过 1）").ok, "「N hash 一致」旧形态不应再匹配");
+  assert.ok(!parseParserDiffPass("PASS——597 个样本").ok, "「N 个样本」旧形态不应再匹配");
   // 旧形态不匹配（防倒退）
   assert.ok(!parseParserDiffPass("PASS——597 个样本").ok, "旧形态不应再匹配");
 });

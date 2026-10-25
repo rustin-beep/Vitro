@@ -11,10 +11,10 @@
 | 包 | 层 | 职责 | 状态 |
 |---|---|---|---|
 | `vitro/engine/source` | L0 | SourceLoc + 列单位契约（column = 行内 UTF-8 字节偏移+1）+ Pos 双坐标 | ✅ 已发布 0.1.1 |
-| `vitro/engine/opcode` | L0 | 148 条 opcode（0..137 照搬段：44–46 = C# 异常三件 reserved，47–49 空号；138..150 自扩 U 系对偶段——CastU2Q/U2D/U2F、LoadMemUByte、TruncByte/TruncUByte、UDivQ/UModQ/UNegQ、ULtQ~UGeQ，#71 病 31~34 批 2026-10-11）+ Instruction | ✅ 已发布 |
+| `vitro/engine/opcode` | L0 | 151 条 opcode（0..137 照搬段：44–46 = C# 异常三件 reserved，47–49 空号；138..150 自扩 U 系对偶段——CastU2Q/U2D/U2F、LoadMemUByte、TruncByte/TruncUByte、UDivQ/UModQ/UNegQ、ULtQ~UGeQ，#71 病 31~34 批 2026-10-11；151..153 全局 char 字节粒度段，#177 批 2026-10-19）+ Instruction | ✅ 已发布 |
 | `vitro/engine/util` | L0 | 零语义机械件单源（G-1）：`utf8_len` / `str_cmp`（真字典序——陷阱 #29 唯一正解）/ `i64_to_i32_bits`（Rust `as i32` 位截断）/ `le_u32_at`·`le_u64_at`（FixedArray[Byte] 小端拼装读——陷阱 #35）/ `json_escape`·`json_escape_into`（serde_json 口径 JSON 字符串转义单源——issue #55 六份收一，U+0000–001F 全转义）；**只许零语义机械件，新件入包先登记 G 表** | ✅ |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**——模块零外部依赖）：四文件搬迁，C 符号前缀 `vitro_engine_fs_*`；pub 面 7 函数+IOError（消费面 = cmd×5）；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希主口径）；Apache-2.0 合规 = 文件头保留+来源标注+`THIRD_PARTY.md` | ✅ |
-| `vitro/engine/diag` | L1 | ErrorCode 137 臂（gen_diag 生成）+ catalog 77 + E4 出口 | ✅ 已发布 |
+| `vitro/engine/diag` | L1 | ErrorCode 156 臂（gen_diag 生成）+ catalog 114 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size | ✅ 已发布 |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
 | `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；depth 参数化防护；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ 已发布 |
@@ -76,7 +76,7 @@ node scripts/diff_gate/main.mts parser --threshold  # E3+ 阈值样本（A/B 族
 node scripts/diff_gate/main.mts typeck <corpus>     # S4 类型检查差分（E1 诊断/E4 类型化 AST + E2/E3 投影；typeck 已全量收官——非预期 DIFF 即缺陷，处置走登记流程勿静默忽略）
 node scripts/diff_gate/main.mts codegen <corpus>     # S5 codegen 差分（A 级 14 键全量 + **槽位策略版本对账**〔读产物外层 slot_strategy ↔ scripts/codegen_diff/slot_strategy.json，不符或空集即红〕；CONTENT-DIFF 永不计豁免；`--baseline`（one-sided 豁免）随 oracle 面退役已拒收；仓库根跑，骨架语料 corpus/codegen_skeleton 为可通面）
 node scripts/diff_gate/main.mts vm [--sample N | --corpus dir | --cases f1.c,...] # S6 D 级运行期 diff（**四语料全量**：stdout 提取 + 返回码 + 1MB 自包含；verdict 三级 SAME/DIFF-known/DIFF-unexpected——skip/known 白名单外置 scripts/vm_diff/*.json，digest 漂移/空转条目即红；前置 `cd moonbit && moon build --target native cmd/run`，脚本自带 exe 新鲜度门禁；总计划 §7.1 层 1，2026-09-26 接 CI）
-go run ./scripts/clang_direct [--sample N | --corpus dir | --cases f1.c,...] # §7.1 层 2 Clang 直拍（2026-09-26 提前落地）：真值源=Clang 本尊，cmd/run 的 stdout+返回码 vs Clang golden（known_direct.json case+digest 锁定 + 双向监控；重试判据=shadow 同款〔编译失败也重试——Windows 并发 Defender 锁目标文件首跑 127 例瞬态误判实锤〕；MoonBit 侧 Latin-1 折回归一 + clang 侧文本模式 CRLF 归一；缓存 .clang_cache_cd/；J9 digest 篡改证红留痕）
+node scripts/clang_direct/main.mts [--sample N | --corpus dir | --cases f1.c,...] # §7.1 层 2 Clang 直拍（2026-09-26 提前落地）：真值源=Clang 本尊，cmd/run 的 stdout+返回码 vs Clang golden（known_direct.json case+digest 锁定 + 双向监控；重试判据=shadow 同款〔编译失败也重试——Windows 并发 Defender 锁目标文件首跑 127 例瞬态误判实锤〕；MoonBit 侧 Latin-1 折回归一 + clang 侧文本模式 CRLF 归一；缓存 .clang_cache_cd/；J9 digest 篡改证红留痕）
 ```
 
 测试计数真值入 facts 台账（`moonbit_test_passed` 键，`--run` 采集 / CI 每轮刷新）。**注意（2026-09-20 审阅实测）**：moonbit/README*.md 的测试数为**分解式**写法（逐包拆解 + `分解和 179 + doc test 4`），facts 规则将分解式归"人工维护"不机判——**机判抓红不覆盖该处**，改测试数同步 README 是人工义务；裸总数以 facts.json 真值为准。
@@ -141,7 +141,7 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 
 ## 编码与架构纪律（S1 已定型）
 
-1. **穷尽 match 无兜底臂**——枚举增删变体必须让全仓编译红（gen_diag 生成的 137 臂 / opcode 全表 / emitter 均如此）；`from_code` / `from_u8` 这类 Int→枚举允许 `_ => None`（值域无限，数学必然）。
+1. **穷尽 match 无兜底臂**——枚举增删变体必须让全仓编译红（gen_diag 生成的 156 臂 / opcode 全表 / emitter 均如此）；`from_code` / `from_u8` 这类 Int→枚举允许 `_ => None`（值域无限，数学必然）。
 2. **显式 emitter 纪律**（B 级锚前提）：结构化导出（JSON）两侧手写序列化，禁一侧 serde 一侧 ToJson 派生——字段序、转义、浮点文本化在 emitter 单点对齐 Rust oracle。对拍管道：Rust serve 出口 → Go 归一器归一 → diff。归一单源 = `scripts/internal/canonicalize`（各 diff 驱动**进程内调用**，2026-09-22 抽库）；`node scripts/canonicalize/main.mts` 仍是**可执行的 CLI 壳**（stdin 进 stdout 出 / `--check`）——原子进程消费方已随 Rust 对照区退役消失，壳保留为手工归一通道。
 3. **生成物纪律**：`diag/error_code_gen.mbt`、`diag/catalog_gen.mbt` 禁手改（文件头源 sha256 落款）；源（native 侧）变更后必须再生成并提交，`-check` 在 CI/审阅中防漂移；行尾归一双保险（.gitattributes 锁 moonbit/** LF + `-check` 比较前归一）。
 4. **照搬不私改**：从 Rust oracle 迁移的定义（opcode 编号、判等语义、Display 渲染口径、mangle）逐字照搬；发现 oracle 现状可疑（如 Display 丢 unsigned）**登记不修正**——差分对拍期两侧一致优先，裁定走差异台账。
@@ -162,7 +162,7 @@ cd moonbit && moon publish        # Server 200 OK 后：
 #       LICENSE / README.md / README.mbt.md / moon.mod
 ```
 
-版本语义：修复发布内容 → patch；新增包/公共 API → minor。137 码位等 versioned 常量只增不改。
+版本语义：修复发布内容 → patch；新增包/公共 API → minor。156 码位等 versioned 常量只增不改。
 
 ## facts 接线
 

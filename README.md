@@ -71,10 +71,10 @@
   <img src="docs/current/02-构建与上手/agent-skills-overview.svg" alt="Agent Skills 全景" width="900">
 </p>
 
-**Agent Skills（`.agents/skills/`）** —— 一组踩过实锤的项目专属操作手册（工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程），通用 Agent Skills 格式、不绑定特定工具；ZCode 直接扫描工作区，其他工具 `go run .agents/install_skills.go --all` 安装。图由 `gen_svg` 从盘上 skill 目录与 frontmatter 扫描生成——skill 增删改名 / 描述变更必使图失步、CI `-check` 即红，杜绝「AI 改了手册而人不知情」；skill 内容全部可读，frontmatter 校验同样入 CI。
+**Agent Skills（`.agents/skills/`）** —— 一组踩过实锤的项目专属操作手册（工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程），通用 Agent Skills 格式、不绑定特定工具；ZCode 直接扫描工作区，其他工具 `node .agents/install_skills.mts --all` 安装。图由 `gen_svg` 从盘上 skill 目录与 frontmatter 扫描生成——skill 增删改名 / 描述变更必使图失步、CI `-check` 即红，杜绝「AI 改了手册而人不知情」；skill 内容全部可读，frontmatter 校验同样入 CI。
 清单与安装：[.agents/README.md](.agents/README.md)
 
-> 以上插图由 `node scripts/gen_svg/main.mts` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`go run ./scripts/facts check` 机判漂移），勿手改；全部 15 张插图（另含 MoonBit 包切分两张 / 统一模式架构与状态机 / 内存布局 / MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 / 教学智能流水线）见 [`docs/README.md`](docs/README.md) 插图约定。
+> 以上插图由 `node scripts/gen_svg/main.mts` 从 `reports/facts.json` 生成（快照数字带 `data-fact` 锚，`node scripts/facts/main.mts check` 机判漂移），勿手改；全部 15 张插图（另含 MoonBit 包切分两张 / 统一模式架构与状态机 / 内存布局 / MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 / 教学智能流水线）见 [`docs/README.md`](docs/README.md) 插图约定。
 
 ## 技术栈
 
@@ -124,10 +124,10 @@ cd moonbit && moon check && moon test
 # 2. 端到端跑一个 C 程序（`vitro` 总入口：stdout / 返回码 / 1MB 内存映像三通道）
 cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro
 ./_build/native/release/build/cmd/vitro/vitro.exe run ../corpus/baseline/hello_world.c
-# 另有 compile / step / api（万能单帧）三个子命令，见 docs/spec/CLI_PROTOCOL_V1.md
+# 另有 compile / step / api（万能单帧）三个子命令，见 moonbit/docs/spec/CLI_PROTOCOL_V1.md
 
 # 3. 测试防线（Clang 直拍：与 Clang / Clang++ 对照全量语料 stdout，吸收原 Shadow 防线）
-go run ./scripts/clang_direct
+node scripts/clang_direct/main.mts
 ```
 
 > **Windows 提示**：`moon build --target native` 默认走 MSVC `cl` 链接后端，本仓实测病态慢（首跑 ~223s / 热态稳定 87–97s / 持续负载可漂至 180s 级——moon#2254 自述口径）；设 `MOON_CC=clang` 后全量约 17s（[moonbitlang/moon#2254](https://github.com/moonbitlang/moon/issues/2254)）。该配方是**本仓 workspace 语境**——下游独立项目的 MSVC 直连目标会忽略 `clang` 并回落 MSVC 探测，须设 `MOON_CC=clang-cl` 才生效（#117）。

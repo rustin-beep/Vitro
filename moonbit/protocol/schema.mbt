@@ -9,7 +9,7 @@
 //    必须走完清单，冻结测试主动失败提醒（tripwire）；
 // 3. 哪些行为不许被性能优化毁掉：BEHAVIOR_CONTRACTS + 可执行判据
 //    check_unwinding_granularity（"UNWINDING 不得合并单步"）。
-// 文档锚点：docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §7.x/§9/附录 B；
+// 文档锚点：moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §7.x/§9/附录 B；
 // 契约出处：CSharp前端引入计划.md §6-B、SharpTutor S4 §5。
 
 ///|

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" role="img" aria-label="vitro StepPayload v0.1 帧结构">
   <title>StepPayload Schema v0.1 · 单步快照帧（已冻结）</title>
-  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5；字段清单为 schema 冻结内容（非快照，无 data-fact 锚） -->
+  <!-- 由 scripts/gen_svg 生成（勿手改）：对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5；字段清单为 schema 冻结内容（非快照，无 data-fact 锚） -->
   <style>
     .bg     { fill: #FFFFFF; }
     .core   { fill: #155E86; fill-opacity: .07; stroke: #155E86; stroke-width: 3; }
@@ -94,5 +94,5 @@
 <text class="tc" x="820" y="788" text-anchor="start">serve · gateway wasm · vitro api</text>
 <text class="tc" x="820" y="812" text-anchor="start">任何第三方语言按本 schema 自行解析</text>
 <text class="tc" x="600" y="852" text-anchor="middle">实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）· session（会话状态机）· gateway（出口帧）</text>
-<text class="tc" x="600" y="878" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：node scripts/gen_svg/main.mts protocol</text>
+<text class="tc" x="600" y="878" text-anchor="middle">对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：node scripts/gen_svg/main.mts protocol</text>
 </svg>

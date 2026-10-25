@@ -896,7 +896,7 @@ export function genMemory(root: string): void {
   writeSVG(root, "docs/current/01-定位与路线/memory-layout-quarantine.svg", P);
 }
 
-// ─── 图 I：StepPayload v0.1 帧结构（源：docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5）──
+// ─── 图 I：StepPayload v0.1 帧结构（源：moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5）──
 
 export function genProtocol(root: string): void {
   const P: string[] = svgOpen(
@@ -904,7 +904,7 @@ export function genProtocol(root: string): void {
     940,
     "vitro StepPayload v0.1 帧结构",
     "StepPayload Schema v0.1 · 单步快照帧（已冻结）",
-    "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5；字段清单为 schema 冻结内容（非快照，无 data-fact 锚）",
+    "对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5；字段清单为 schema 冻结内容（非快照，无 data-fact 锚）",
   );
   P.push(
     textF(600, 56, "tt", "StepPayload Schema v0.1 · 单步快照帧", ""),
@@ -979,9 +979,9 @@ export function genProtocol(root: string): void {
   );
   P.push(
     textF(600, 852, "tc", "实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）· session（会话状态机）· gateway（出口帧）", ""),
-    textF(600, 878, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：node scripts/gen_svg/main.mts protocol", ""),
+    textF(600, 878, "tc", "对账 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：node scripts/gen_svg/main.mts protocol", ""),
   );
-  writeSVG(root, "docs/spec/step-payload-frame.svg", P);
+  writeSVG(root, "moonbit/docs/spec/step-payload-frame.svg", P);
 }
 
 // ─── 图 J：wasm 多实例并发隔离（源：wasm多实例并发模型与U2拍板.md §1–§2）──────

@@ -10,6 +10,6 @@ license = "MIT"
 
 keywords = [ "c-compiler", "teaching", "diagnostics", "moonbit" ]
 
-description = "MoonBit implementation of the Vitro C teaching engine: 137 diagnostic codes, 135 opcodes, full AST family, byte-for-byte parity with the Rust oracle"
+description = "MoonBit implementation of the Vitro C teaching engine: 156 diagnostic codes, 151 opcodes, full AST family, byte-exact against Clang-golden and frozen digest baselines"
 
 warnings = "@implicit_impl_as_method@deprecated_syntax"

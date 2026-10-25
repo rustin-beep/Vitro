@@ -992,7 +992,7 @@ jobs:
           cd scripts && npm ci --no-audit --no-fund
           cd ..
           node --test .agents/install_skills.test.mts
-          scripts/node_modules/.bin/tsc --ignoreConfig --noEmit --strict --strictNullChecks --noUncheckedIndexedAccess --noImplicitOverride --noFallthroughCasesInSwitch --target es2023 --module nodenext --moduleResolution nodenext --types node --allowImportingTsExtensions --skipLibCheck --forceConsistentCasingInFileNames .agents/install_skills.mts .agents/install_skills.test.mts
+          scripts/node_modules/.bin/tsc --ignoreConfig --noEmit --strict --strictNullChecks --noUncheckedIndexedAccess --noImplicitOverride --noFallthroughCasesInSwitch --target es2023 --module nodenext --moduleResolution nodenext --types node --typeRoots scripts/node_modules/@types --allowImportingTsExtensions --skipLibCheck --forceConsistentCasingInFileNames .agents/install_skills.mts .agents/install_skills.test.mts
           scripts/node_modules/.bin/oxlint .agents/install_skills.mts .agents/install_skills.test.mts
 
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），

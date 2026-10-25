@@ -56,10 +56,14 @@ export function rules(): Rule[] {
       ``, 30, 250, "用例"),
     mk("cpp_e2e_cases", "C++ E2E 用例数", `C\\+\\+\\s*E2E|cases/cpp`,
       `影子|shadow`, 30, 250, "用例"),
+    // Exclude 防线插座行（PR #312 审阅处置 2026-10-25）：CLI 使用手册「防线
+    // 插座」行含 replay / serve_smoke 词面但数字只有 issue 号 #49；脚本总清单
+    // gates-wasm 段的「纪律 14」同理（14 非断言数）——发版批真值采到 61/69
+    // 后这些行候选误锚漂移（master 曾被 parser 带宽红遮住未暴露，红遮红形态）。
     mk("replay_assertions", "回放断言数", `回放|replay|S1[-–]S5|S1/S5`,
-      ``, 20, 200, "条"),
+      `防线插座|批二起|纪律`, 20, 200, "条"),
     mk("serve_smoke_assertions", "serve 冒烟断言数",
-      `serve_smoke|serve 冒烟|协议断言|项断言`, ``, 10, 150, "项"),
+      `serve_smoke|serve 冒烟|协议断言|项断言`, `防线插座|批二起|纪律`, 10, 150, "项"),
     // "passed" 分支 2026-09-29 收紧为 `\d+\s*passed`：裸 passed 会命中
     // facts 键名 `moonbit_test_passed`（README.mbt.md:47 moon 分解式行
     // 因此被误圈进 cargo Manual/Suspect，--strict 假红）——真实 cargo 行
@@ -80,7 +84,11 @@ export function rules(): Rule[] {
     // + leetcode 138 + gap 15 = 597；语料增删会移动真值，文档数字须随动。
     // 2026-10-21 连坐：对抗生成域批（c2cb5be1）语料增长至真值 710，
     // 带宽上限 700→750（机械放宽，非语义变更）。
-    mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\\n]*样本|样本[^\\n]*解析差分|AST[^\\n]*诊断序列|parser_diff`, ``, 500, 750, "个"),
+    // 2026-10-25 连坐：TheAlgorithms 对拍批入 baseline +46、gap +1——真值
+    // 785（四目录 PASS 行实测：baseline 546 + knr 80 + leetcode 138 + gap 21，
+    // 各扣 1 例 known-fork 跳过；.c 文件数 787 非真值）超带宽，750→860
+    // （机械放宽，非语义变更；PR #312 审阅 P1-1 处置——带宽须改本 .mts 现役面）。
+    mk("moonbit_parser_diff_samples", "解析差分样本数", `解析差分[^\\n]*样本|样本[^\\n]*解析差分|AST[^\\n]*诊断序列|parser_diff`, ``, 500, 860, "个"),
   ];
 }
 

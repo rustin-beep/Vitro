@@ -65,6 +65,15 @@
     "baseline/array_index.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/array_index_increment.c|brace_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/array_index_increment.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/array_index_increment.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/array_max.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -199,6 +208,15 @@
     },
     "baseline/bubble_sort.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/bucket_sort.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/bucket_sort.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/bucket_sort.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/calloc_basic.c|brace_strip": {
       "bucket": "AGREE"
@@ -627,6 +645,15 @@
     "baseline/double_mul.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/doubly_linked_list.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/doubly_linked_list.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/doubly_linked_list.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/dp_fibonacci.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -924,6 +951,15 @@
     "baseline/fgets_fputs_basic.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/fibonacci_search.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/fibonacci_search.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/fibonacci_search.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/flexible_array_static_init_reject.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -1048,6 +1084,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/func_many_params.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_ptr_param_decay.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_ptr_param_decay.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/func_ptr_param_decay.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/func_return_as_arg.c|char_escape": {
@@ -1434,6 +1479,15 @@
     "baseline/llm_snprintf_struct_member.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/llm_struct_arg_sched2.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_struct_arg_sched2.c|init_partial": {
+      "bucket": "VITRO_TRAP"
+    },
+    "baseline/llm_struct_arg_sched2.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/llm_struct_nested_2d_init.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -1668,6 +1722,15 @@
     "baseline/nested_ternary.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/non_preemptive_priority_scheduling.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/non_preemptive_priority_scheduling.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/non_preemptive_priority_scheduling.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/not_equal.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1720,6 +1783,15 @@
       "bucket": "AGREE"
     },
     "baseline/offsetof_struct.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "baseline/other_binary_search.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/other_binary_search.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/other_binary_search.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/p2a_host_semantics.c|char_escape": {
@@ -2187,6 +2259,15 @@
     "baseline/scanf_digit_mismatch.c|char_escape": {
       "bucket": "AGREE"
     },
+    "baseline/scanf_eof_after_exhaust.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_eof_after_exhaust.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_eof_after_exhaust.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/scanf_float.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -2258,6 +2339,15 @@
     },
     "baseline/scope_shadowing_legal.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/seq_list.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/seq_list.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/seq_list.c|memset_zero": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/shift_31.c|brace_strip": {
       "bucket": "CLANG_REJECT",
@@ -2502,6 +2592,15 @@
     "baseline/static_nested_2d_init.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/static_shadows_global.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_shadows_global.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_shadows_global.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/static_string_pointer.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -2609,6 +2708,15 @@
     },
     "baseline/string_reverse.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/strong_number.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/strong_number.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/strong_number.c|div2shift": {
+      "bucket": "AGREE"
     },
     "baseline/strtol_prefix.c|brace_strip": {
       "bucket": "AGREE"
@@ -3282,13 +3390,16 @@
       "bucket": "AGREE"
     },
     "gap/ub_missing_return.c|brace_strip": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "WRONG_VALUE",
+      "note": "语料 UB 非 VARIANT_MISMATCH 可救域：源程序缺 return（C99 6.9.1p12 返回值未定义）——分歧源=UB 返回值本身（手工等价变异抽查两侧输出全不变），非引擎病（PR #312 审阅 P3-6 标注；known_direct/diff_ledger DIFF-UB-MISSING-RETURN-01 同源登记）"
     },
     "gap/ub_missing_return.c|cmp_swap": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "WRONG_VALUE",
+      "note": "语料 UB 非 VARIANT_MISMATCH 可救域：源程序缺 return（C99 6.9.1p12 返回值未定义）——分歧源=UB 返回值本身（手工等价变异抽查两侧输出全不变），非引擎病（PR #312 审阅 P3-6 标注；known_direct/diff_ledger DIFF-UB-MISSING-RETURN-01 同源登记）"
     },
     "gap/ub_missing_return.c|paren_wrap": {
-      "bucket": "WRONG_VALUE"
+      "bucket": "WRONG_VALUE",
+      "note": "语料 UB 非 VARIANT_MISMATCH 可救域：源程序缺 return（C99 6.9.1p12 返回值未定义）——分歧源=UB 返回值本身（手工等价变异抽查两侧输出全不变），非引擎病（PR #312 审阅 P3-6 标注；known_direct/diff_ledger DIFF-UB-MISSING-RETURN-01 同源登记）"
     },
     "gap/variadic_macro.c|brace_strip": {
       "bucket": "AGREE"

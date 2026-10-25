@@ -1,6 +1,6 @@
 ## [Unreleased]
 
-### feat(corpus): TheAlgorithms 407 份对拍批——46 份入 baseline + UB 锚入 gap + facts 采集器迁移税修复（2026-10-25）
+### feat(corpus): TheAlgorithms 407 份对拍批——45 份入 baseline + UB 锚入 gap + facts 带宽/误锚修复（2026-10-25，含审阅处置）
 
 - **对拍**：tmp 最大一块语料（rustin-beep/C fork `vitro-probe-baseline`，407 份）三方全量对拍
   （clang 22.1.4 / gcc 16.2 / vitro native serve，realcode_diff `-repo` 官方口径）并与 10-21
@@ -12,19 +12,27 @@
 - **勘误**：doubly_linked_list search()「静默错值」定性反转——语料递归调用缺 `return`
   （C99 6.9.1p12 UB），clang 同构最小复现实测残留值随构建环境漂（32758/32759 两轮）、
   Vitro 双臂恒 0，双侧皆合法值；非引擎缺陷不开案。
-- **入库**：非交互非 rand 的 match 子集 46 份入 `corpus/baseline/`（project_euler 族
-  `euler_N_solX` 前缀消歧；clang_direct 直拍 baseline 547 全量 SAME=541+新增全绿、五家
-  digest 四 suite 冻结存量零漂移）；`corpus/gap/ub_missing_return.c` UB 族锚（known_direct
-  第 17 条登记，clang 侧 digest 随环境漂属 UB 固有噪声面）；corpus_fuzz 基线 re-freeze
-  1248→1269（+21 零删除，3 条 WRONG_VALUE 为 UB 锚变异重演——手工等价变异抽查两侧
-  输出全不变，分歧源=UB 返回值本身，非引擎病，收编与 scanf_0x_retval 先例同构）。
-- **facts 采集器迁移税修复（#273 连坐）**：`moonbit_parser_diff_samples`/`moonbit_lexer_diff_tsv`
-  采集路径仍指已退役 Go CLI（`go run ./scripts/parser_diff|lexer_diff`——目录只剩
-  golden_digest.json）恒 unavailable；且 2026-10-12 lexer 修复只改 how 文案未换命令
-  （半截修复）。命令面切 `node scripts/diff_gate/main.mts`，PASS 正则放宽兼容
-  「N 个 case hash 与冻结基线一致」新文案（第二层漏连坐），parser 带宽 750→860
-  （真值 785）。采集恢复后待采集 4→0 处；路线图现值句连坐（直拍 785→832、
-  e2e 687→787〔baseline 448→547 / gap 20→21〕、moon test 825→897）。
+- **入库**：非交互非 rand 的 match 子集 45 份入 `corpus/baseline/`（project_euler 族
+  `euler_N_solX` 前缀消歧；**审阅 P2-2 处置：euler_21_sol1.c 移出**——printf 打印
+  `clock()` 计时，Windows 恒 0 属偶然稳定非真稳定，筛选口径补「非计时」一维）；
+  `corpus/gap/ub_missing_return.c` UB 族锚（known_direct 第 17 条 + diff_ledger
+  `DIFF-UB-MISSING-RETURN-01` 台账收编；clang 侧 digest 随环境漂属 UB 固有噪声面，
+  CI 实测形态 618cd2c8 入跨环境集）；corpus_fuzz 基线 re-freeze 1248→1305
+  （池变换血零删除；ub_missing_return 三算子 WRONG_VALUE 带 note 标注收编——
+  手工等价变异抽查两侧输出全不变，分歧源=UB 返回值本身非引擎病，P3-6 处置）。
+- **facts 带宽与误锚修复（审阅 P1-1/P3-1 处置）**：master（#307）已独立修复
+  `scripts/facts/facts.mts` 采集器（同族迁移税，Go 侧两笔丢弃不跟随）；本批补现役面
+  `audit.mts` 的 `moonbit_parser_diff_samples` 带宽 750→860——真值 784（四目录 PASS 行
+  实测 545+80+138+21，各扣 1 例 known-fork；.c 文件数非真值）；另修 replay/serve_smoke
+  两键 Exclude 误锚（CLI 手册「防线插座」行的 issue 号 #49、脚本总清单「纪律 14」
+  被当候选——master 曾被带宽红遮住未暴露，红遮红形态）。「待采集 4→0」为本地 `--run`
+  口径（CI 不带 `--run` 恒 unavailable 属既有形态）。
+- **vm digest LF 归一重冻（审阅 P2-1 处置）**：CRLF 工作区冻结曾改写存量 src_sha 620 条
+  （`srcSHAOf` 哈希磁盘原始字节，含 .in 伴随文件拼接——审阅后二次修正：.in 也须重检出
+  LF，半归一仍留 34 条半态）；全量重检出 LF 后四 suite 重冻，对 master 逐键对账
+  **ADDED 47 / REMOVED 0 / CHANGED 0**（exit/stdout/memory 三项本就不参与漂移）。
+- **连坐**：路线图现值句（直拍 923〔六目录口径，SAME=906/DIFF=0 实测〕、
+  e2e 740→786〔baseline 501→546、gap 20→21〕、moon test 825→897）。
 
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 docs/current/08-发布档案/0.9.0.md）
 

@@ -111,7 +111,7 @@ test("真实仓库：vm 在 gap 上全 SAME（exe 缺失时断言 fail loud 契�
     return;
   }
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /vm_diff\[golden\]: SAME=20 DIFF-KNOWN=0 DIFF=0 SKIP=0（共 20）/);
+  assert.match(r.stdout, /vm_diff\[golden\]: SAME=21 DIFF-KNOWN=0 DIFF=0 SKIP=0（共 21）/);
 });
 
 test("真实仓库：--backend wasm 缺产物时 fail loud（退出码 1）", () => {

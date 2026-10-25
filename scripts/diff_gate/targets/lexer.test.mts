@@ -118,7 +118,7 @@ test("target 分发：五个 target 名都进各自入口（审阅 P3-3 的 main
   }
   const r = run(["vm", "--corpus", "gap"]);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /vm_diff\[golden\]: SAME=20/);
+  assert.match(r.stdout, /vm_diff\[golden\]: SAME=21/);
 });
 
 test("checkLineColInvariant：同行 byte_off−col 恒等（#297 处方②）", () => {

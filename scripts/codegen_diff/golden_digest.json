@@ -170,7 +170,6 @@
         "escape_tab.c": "6eca02c4",
         "euler_15_sol1.c": "08e493e8",
         "euler_19_sol1.c": "8e799bb9",
-        "euler_21_sol1.c": "8cf8f1ec",
         "euler_5_sol3.c": "422086e3",
         "exit_function.c": "5ae58a28",
         "extern_func.c": "d1c8c55c",
@@ -1057,9 +1056,6 @@
         },
         "euler_19_sol1.c": {
           "result_sha": "568c6380cc1322c6"
-        },
-        "euler_21_sol1.c": {
-          "result_sha": "976d36b6d8cd75fb"
         },
         "euler_5_sol3.c": {
           "result_sha": "cd21344583b68f8c"

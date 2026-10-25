@@ -85,6 +85,6 @@ MoonBit/wasm-gc 终局只是延续同一模型。
 
 ## 4. 待办（拍板生效前的加固动作）
 
-- [x] N 实例并发实证锚——**单实例冒烟已固化**：`scripts/wasm_smoke/wasm_smoke.js`（R4 G2，2026-09-12 进 CI）；**同进程 N 实例互不干扰实证仍开放**（移入后续 wasm-gc 批随 S7 gateway 片实测——届时 MoonBit wasm-gc 产物为对拍主体）
+- [x] N 实例并发实证锚——**单实例冒烟已固化**：`scripts/wasm_smoke/wasm_smoke.js`（R4 G2，2026-09-12 进 CI；该脚本已随 Rust 区删区退役，现役 wasm 侧驱动 = `scripts/wasm_gateway/host.mts`）；**同进程 N 实例互不干扰实证仍开放**（移入后续 wasm-gc 批随 S7 gateway 片实测——届时 MoonBit wasm-gc 产物为对拍主体）
 - [ ] **SharpTutor 通知发出**（用户动作，非本仓库任务）：引用本文 §3。
 - [x] S1 `vitro/engine/source` 的列单位契约（双坐标 `Pos{byte_off, col_scalar, col_utf16}`）✅ 已随 S1 收官落地（`moonbit/source` 双坐标 wbtest 在库）——单实例单线程语义下坐标口径无需考虑并发快照一致性。

@@ -38,11 +38,11 @@
 vitro 侧走 api --batch 三帧（compile{files} → run → output.delta，#202 修复后的
 files 数组虚拟工程通道）；缓存 key = 目录全部源文件内容串联哈希；known 条目名
 = 工程目录名；比对尾换行经双侧对称 normalize（单文件路径口径不动）。 -->
-go run ./scripts/clang_direct
+node scripts/clang_direct/main.mts
 
 # CI 形态：先验白名单新鲜度再跑全量
-go run ./scripts/clang_direct --check-known
-go run ./scripts/clang_direct
+node scripts/clang_direct/main.mts --check-known
+node scripts/clang_direct/main.mts
 ```
 
 | 选项 | 说明 |

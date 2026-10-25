@@ -41,6 +41,10 @@
 //	（默认四语料全量 baseline+knr+leetcode+gap = 774 例；--jobs 默认 min(CPU,8)）
 package main
 
+// 【回退面】2026-10-25 #273 迁移批：clang_direct 已迁 .mts（scripts/clang_direct/main.mts，
+// 四件套 + node:test + Go/ts 双跑对拍），CI 引用已切 TS。本 Go 版仅作回退面
+// 暂留，不再随行为变更维护。
+
 import (
 	"bytes"
 	"crypto/sha256"

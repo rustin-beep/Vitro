@@ -120,7 +120,7 @@ export function genTeach(root: string): void {
     890,
     "vitro 教学智能算法族流水线",
     "教学智能 · detect 编译期识别 + infer 执行期推断",
-    `对账 S8时间旅行与教学智能总览.md §二；数字=盘上真值活值直读（rules.json ${nFamilies} 族 / golden ${nGolden} 条 / templates ${nTemplates} 模板），重生成 go run ./scripts/gen_svg teach`,
+    `对账 S8时间旅行与教学智能总览.md §二；数字=盘上真值活值直读（rules.json ${nFamilies} 族 / golden ${nGolden} 条 / templates ${nTemplates} 模板），重生成 node scripts/gen_svg/main.mts teach`,
   );
   P.push(
     MARKER_DEF,
@@ -207,7 +207,7 @@ export function genTeach(root: string): void {
   );
 
   P.push(
-    textF(600, 858, "tc", "对账 S8时间旅行与教学智能总览.md §二 · 漂移重生成：go run ./scripts/gen_svg teach", ""),
+    textF(600, 858, "tc", "对账 S8时间旅行与教学智能总览.md §二 · 漂移重生成：node scripts/gen_svg/main.mts teach", ""),
   );
   writeSVG(root, "docs/current/05-教学体验/teaching-detect-infer-pipeline.svg", P);
 }

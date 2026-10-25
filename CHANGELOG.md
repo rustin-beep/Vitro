@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(scripts,docs): #303 审阅 P3 处置——probe 排序口径更正 + probes 纯逻辑单测 + run 覆盖缺口登记（2026-10-25）
+
+- **P3-1（CHANGELOG 口径）**：`-probe` 的 `probe_diff.md` 不再声称逐字节一致——Go 版 `sort.Slice` 不稳定 + map 随机迭代，同一二进制连跑三次得到三种哈希；TS 版补同计数按码名字节序定序是**修复**而非漂移。`result.json` 仍逐字节一致。
+- **P3-2（run 比对面不可达）**：chibicc/multifile 的 `run` 恒空（全为 parse/typeck 红样本），`compareWithGold` 的 `run` 面在 CI 不可达；外置 `gold_signatures.json` 仍有 208 条非空 `run`。缺口登记在 `README.corpus.md`、`corpora.json` `_note` 与 `compare_gold` 注释，**不删除比对面**；补双绿可运行样本另批。
+- **P3-3（probes 单测）**：抽 `clangDiagnosticCounts` / `gccErrorCount` / `resolveGcc` 纯函数并接线原实现；新增 `probes.test.mts` 覆盖错误/警告计数、CRT/deprecated 豁免、CRLF 首错、gcc 探测序与显式缺失 fail-loud 分支。
+
 ### refactor(demo): #273 demo/tests 七个 `.mjs` 迁 `.mts` + 三套 TS 检测拉到最严（2026-10-25）
 
 **迁了什么**：`demo/tests/{e2e_bootfail,e2e_diagcard,e2e_editor,e2e_session,e2e_workspace,serve_static,style_contract}.mjs` → `.mts`；新增 `demo/tests/cdp.mts`，把 5 份重复的 CDP `msgId/pending/ws/send/evaluate/waitFor` 与 `/json/list` 重试连接块收成单源（类型化边界：`send<T>` / `evaluate<T>`）。CI 与 `demo/README.md`、`demo/DESIGN.md` 的调用面同步切 `.ts`/`.mts`。
@@ -33,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `-aggregate`：同一 result.json 产物**逐字节一致**（含 Go map 键序、HTML 转义、结构体字段序、尾随换行）。
 - `-corpus chibicc`（单文件）：`result.json` **逐字节一致**，`report.md` 仅时间戳行不同（屏蔽后一致）。
 - `-corpus multifile`（多文件工程）：`result.json` **逐字节一致**。
-- `-probe`：`result.json` 与 `probe_diff.md` 均**逐字节一致**（union.c 17 处消解）。
+- `-probe`：`result.json` 逐字节一致；`probe_diff.md` 因旧 Go 实现排序不稳定（`sort.Slice` + map 随机迭代，同一二进制连跑三次三种哈希）顺序不同，TS 版已补同计数按码名字节序定序。
 - `-repo`：绝对路径入参 `result.json` **逐字节一致**。
 - J9：check_gold 红矩阵 12 形态（求和失账/渗漏键/码形态/total/buckets/漏冻/僵尸条目/登记悬空/license_file/corpora.total/gold 缺失）全 exit 2。
 

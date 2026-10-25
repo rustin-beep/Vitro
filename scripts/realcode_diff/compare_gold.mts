@@ -110,6 +110,8 @@ export function compareWithGold(
     if (r.vitro_warnings !== g.vitro_warns) report(rel, `vitro_warnings ${g.vitro_warns} → ${r.vitro_warnings}`);
     const rLayer = r.vitro_layer ?? "";
     if (rLayer !== g.layer) report(rel, `layer "${g.layer}" → "${rLayer}"`);
+    // 仓内语料 run 当前恒空（见 README.corpus「已知覆盖缺口」）；外置
+    // gold_signatures 仍有真实 run 值，保留该比对面。
     const rRun = r.run_compare ?? "";
     if (rRun !== g.run) report(rel, `run "${g.run}" → "${rRun}"`);
     const rc = new Map<string, number>();

@@ -15,6 +15,59 @@ import { goTrimSpace } from "../internal/text.mts";
 import { firstLine, normalize, vnEqualIgnoreDigits } from "./stmt_expr.mts";
 import type { CompileFile, Diag, Project } from "./types.mts";
 
+export const GCC_FALLBACK = "D:\\code\\mingw64\\bin\\gcc.exe";
+
+export interface DiagnosticCounts {
+  errs: number;
+  warns: number;
+  first: string;
+}
+
+/** Clang 诊断行计数（P3-3 抽纯函数：错误/警告/首错；警告按 Go 口径豁免两类）。 */
+export function clangDiagnosticCounts(out: string): DiagnosticCounts {
+  let errs = 0;
+  let warns = 0;
+  let first = "";
+  for (const l of out.split("\n")) {
+    if (l.includes("error:")) {
+      errs++;
+      if (first === "") first = goTrimSpace(l);
+    } else if (l.includes("warning:") && !l.includes("_CRT_SECURE") && !l.includes("deprecated")) {
+      warns++;
+    }
+  }
+  return { errs, warns, first };
+}
+
+/** gcc 语法检查只数 error 行（与 gccCheck 口径一致）。 */
+export function gccErrorCount(out: string): number {
+  let errs = 0;
+  for (const l of out.split("\n")) if (l.includes("error:")) errs++;
+  return errs;
+}
+
+export interface GccResolution {
+  gcc: string;
+  source: "explicit" | "path" | "fallback" | "none";
+  missingExplicit?: string | undefined;
+}
+
+/** gcc 探测序（P3-3 抽纯函数）：--gcc 显式 → PATH → mingw64 回退；显式缺失不回退。 */
+export function resolveGcc(
+  explicit: string,
+  pathGcc: string | null,
+  fallback: string,
+  exists: (p: string) => boolean,
+): GccResolution {
+  if (explicit !== "") {
+    if (exists(explicit)) return { gcc: explicit, source: "explicit" };
+    return { gcc: "", source: "none", missingExplicit: explicit };
+  }
+  if (pathGcc !== null) return { gcc: pathGcc, source: "path" };
+  if (exists(fallback)) return { gcc: fallback, source: "fallback" };
+  return { gcc: "", source: "none" };
+}
+
 interface Finished {
   stdout: Buffer;
   stderr: Buffer;

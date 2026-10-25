@@ -58,6 +58,12 @@
 
 实测（2026-10-22 入库后）：防线域计数**未变**（baseline 483 / knr 81 / leetcode 138 / gap 20 / codegen_skeleton 13 / template_generated 82），且 `corpus/` 下**无** `chibicc` / `multifile` 目录 ⇒ 零混入。
 
+## 已知覆盖缺口（#303 审阅 P3-2）
+
+- 仓内 `chibicc` / `multifile` 两批语料当前 `run` 字段**恒为空**（全为 parse/typeck 红样本，`run_compare` 不产出）⇒ `compareWithGold` 的 `run` 比对面在 CI 上**不可达**。
+- 该比对面不是死代码：外置 `gold_signatures.json`（407 条）仍有 208 条非空 `run`（`match` / `mismatch` / `clang_timeout` / `clang_run_fail` / `clang_build_fail` / `rand_diff*`）。
+- 补一批「双绿可运行」的仓内语料后该面才会真正生效——另批处理，本批只在登记与文档中标明缺口，不删除比对面。
+
 ## 用法
 
 ```bash

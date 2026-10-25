@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### feat(corpus): TheAlgorithms 407 份对拍批——46 份入 baseline + UB 锚入 gap + facts 采集器迁移税修复（2026-10-25）
+
+- **对拍**：tmp 最大一块语料（rustin-beep/C fork `vitro-probe-baseline`，407 份）三方全量对拍
+  （clang 22.1.4 / gcc 16.2 / vitro native serve，realcode_diff `-repo` 官方口径）并与 10-21
+  基线逐文件对账：**零回归**——编译层绿→红 0 份，红→绿 7 份全为修复面（#250 const 深层
+  modified_binary_search、抽象数组形参 stooge_sort、qr×2/secant/lu/queue）；运行层 29 份
+  不一致全部存量同形（交互 scanf / step-limit·堆资源墙 8 / NaN·Inf 打印格式 3 / malloc(0)
+  实现定义 2 / 未初始化读 UB / rand 3），lcs.c 基线 mismatch→本轮逐字节 match（#248 逗号
+  TRAP 修复实锤，js+native 双臂复验）。
+- **勘误**：doubly_linked_list search()「静默错值」定性反转——语料递归调用缺 `return`
+  （C99 6.9.1p12 UB），clang 同构最小复现实测残留值随构建环境漂（32758/32759 两轮）、
+  Vitro 双臂恒 0，双侧皆合法值；非引擎缺陷不开案。
+- **入库**：非交互非 rand 的 match 子集 46 份入 `corpus/baseline/`（project_euler 族
+  `euler_N_solX` 前缀消歧；clang_direct 直拍 baseline 547 全量 SAME=541+新增全绿、五家
+  digest 四 suite 冻结存量零漂移）；`corpus/gap/ub_missing_return.c` UB 族锚（known_direct
+  第 17 条登记，clang 侧 digest 随环境漂属 UB 固有噪声面）；corpus_fuzz 基线 re-freeze
+  1248→1269（+21 零删除，3 条 WRONG_VALUE 为 UB 锚变异重演——手工等价变异抽查两侧
+  输出全不变，分歧源=UB 返回值本身，非引擎病，收编与 scanf_0x_retval 先例同构）。
+- **facts 采集器迁移税修复（#273 连坐）**：`moonbit_parser_diff_samples`/`moonbit_lexer_diff_tsv`
+  采集路径仍指已退役 Go CLI（`go run ./scripts/parser_diff|lexer_diff`——目录只剩
+  golden_digest.json）恒 unavailable；且 2026-10-12 lexer 修复只改 how 文案未换命令
+  （半截修复）。命令面切 `node scripts/diff_gate/main.mts`，PASS 正则放宽兼容
+  「N 个 case hash 与冻结基线一致」新文案（第二层漏连坐），parser 带宽 750→860
+  （真值 785）。采集恢复后待采集 4→0 处；路线图现值句连坐（直拍 785→832、
+  e2e 687→787〔baseline 448→547 / gap 20→21〕、moon test 825→897）。
+
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 docs/current/08-发布档案/0.9.0.md）
 
 > S9 收官版：Rust oracle 脱钩 + 裁定 + 解锁修复面。发布档案：[0.9.0.md](docs/current/08-发布档案/0.9.0.md)。

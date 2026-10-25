@@ -458,28 +458,33 @@ func collectMoonbitLexerDiff(root string, facts map[string]Fact) {
 		filepath.Join("corpus", "leetcode"),
 		filepath.Join("corpus", "gap"),
 	} {
-		out, code, ok := runCmd(root, 10*time.Minute, "go", "run", "./scripts/lexer_diff", corpus)
+		// 2026-10-25 迁移税修（与 parser 批同族）：lexer_diff Go 版已随 #273
+		// 退役（目录只剩 golden_digest.json/gen_corpus.mbtx）；2026-10-12 的
+		// 采集通道修复只改了 how 文案没换 runCmd 命令——采集恒 unavailable。
+		out, code, ok := runCmd(root, 10*time.Minute, "node", "scripts/diff_gate/main.mts", "lexer", corpus)
 		if !ok || code != 0 {
-			facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/lexer_diff", how,
+			facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/diff_gate/main.mts lexer", how,
 				fmt.Sprintf("差分失败（%s，exit=%d）：%s", corpus, code, firstLine(out)))
 			return
 		}
 		n, ok2 := parseLexerDiffPass(out)
 		if !ok2 {
-			facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/lexer_diff", how,
+			facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/diff_gate/main.mts lexer", how,
 				"未解析到 PASS 行（"+corpus+"）")
 			return
 		}
 		total += n
 	}
-	f := okFact(total, "个", "scripts/lexer_diff（Rust oracle ↔ MoonBit lexer）", "run", nowISO())
-	f.Note = "随机 2400 例（seed 20260919）+ baseline 366 + K&R 81 + leetcode 138 + gap 16，L1/L2 双层 TSV 逐字节一致（分项随语料目录增删，以 total 为准）"
+	f := okFact(total, "个", "scripts/diff_gate/main.mts lexer（golden digest 冻结基线）", "run", nowISO())
+	f.Note = "四目录（baseline+K&R+leetcode+gap）冻结基线 TSV/case hash 一致（#273 后 .mts 口径，case 数随语料目录增删，以 total 为准；随机 2400 例对拍已随 oracle 退役不可再生）"
 	facts["moonbit_lexer_diff_tsv"] = f
 }
 
 // parseLexerDiffPass 解析 lexer_diff 的 PASS 行（J9 埋雷覆盖假输出）。
 func parseLexerDiffPass(out string) (int, bool) {
-	m := regexp.MustCompile(`PASS——(\d+) 个 TSV`).FindStringSubmatch(out)
+	// 2026-10-25 迁移税修：#273 .mts 化改文案（「N 个 TSV」→「N 个 case
+	// hash 与冻结基线一致」），正则放宽兼容两形态（与 parser 批同族）。
+	m := regexp.MustCompile(`PASS——(\d+) 个 (?:TSV|case)`).FindStringSubmatch(out)
 	if m == nil {
 		return 0, false
 	}
@@ -505,44 +510,47 @@ func collectMoonbitParserDiff(root string, facts map[string]Fact) {
 		// 失效**：逐样本起进程成本消除（旧 CLI 224.6ms/次 → 进程内 4.6ms/次），
 		// 实测本调用已是秒级/模式。20min 现为纯慢机余量——调整阈值前请按新
 		// 成本模型复核，勿沿用旧依据。
-		out, code, ok := runCmd(root, 20*time.Minute, "go", "run", "./scripts/parser_diff", corpus)
+		// 2026-10-25 迁移税修：parser_diff Go 版已随 #273 退役（scripts/parser_diff
+		// 目录只剩 golden_digest.json），命令面换 diff_gate .mts 版；同批正则
+		// 连坐（见 parseParserDiffPass 注）。
+		out, code, ok := runCmd(root, 20*time.Minute, "node", "scripts/diff_gate/main.mts", "parser", corpus)
 		if !ok || code != 0 {
-			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate/main.mts parser", how,
 				fmt.Sprintf("E1/E2 差分失败（%s，exit=%d）：%s", corpus, code, firstLine(out)))
 			return
 		}
 		n, ok2 := parseParserDiffPass(out)
 		if !ok2 {
-			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+			facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate/main.mts parser", how,
 				"未解析到 PASS 行（"+corpus+"）")
 			return
 		}
 		total += n
 	}
 	// E3：病态 12 样本同等拒绝
-	out, code, ok := runCmd(root, 5*time.Minute, "go", "run", "./scripts/parser_diff", "--pathological")
+	out, code, ok := runCmd(root, 5*time.Minute, "node", "scripts/diff_gate/main.mts", "parser", "--pathological")
 	if !ok || code != 0 {
-		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate/main.mts parser", how,
 			fmt.Sprintf("E3 病态锚失败（exit=%d）：%s", code, firstLine(out)))
 		return
 	}
 	// E4：合法深嵌套反向锚
-	out, code, ok = runCmd(root, 5*time.Minute, "go", "run", "./scripts/parser_diff", "--legal-deep")
+	out, code, ok = runCmd(root, 5*time.Minute, "node", "scripts/diff_gate/main.mts", "parser", "--legal-deep")
 	if !ok || code != 0 {
-		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate/main.mts parser", how,
 			fmt.Sprintf("E4 反向锚失败（exit=%d）：%s", code, firstLine(out)))
 		return
 	}
 	// E3+：阈值样本（勘察 §8-E3"新语言重标定后的阈值样本"——S3 审阅
 	// 补齐：offsetof 深链 / enum 常量链两侧一致 + 指针多维数组 C 语义）
-	out, code, ok = runCmd(root, 5*time.Minute, "go", "run", "./scripts/parser_diff", "--threshold")
+	out, code, ok = runCmd(root, 5*time.Minute, "node", "scripts/diff_gate/main.mts", "parser", "--threshold")
 	if !ok || code != 0 {
-		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/parser_diff", how,
+		facts["moonbit_parser_diff_samples"] = unavail("个", "scripts/diff_gate/main.mts parser", how,
 			fmt.Sprintf("E3+ 阈值锚失败（exit=%d）：%s", code, firstLine(out)))
 		return
 	}
-	f := okFact(total, "个", "scripts/parser_diff（Rust oracle ↔ MoonBit parser）", "run", nowISO())
-	f.Note = "baseline 366 + K&R 81 + leetcode 138 + gap 16 的 AST dump + 诊断序列归一逐字节一致（含活性 stall=0；分项随语料目录增删，以 total 为准）；E3 病态 12 样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致；E3+ 阈值样本（offsetof 深链/常量链两侧一致 + 指针多维数组 C 语义折叠）"
+	f := okFact(total, "个", "scripts/diff_gate/main.mts parser（golden digest 冻结基线）", "run", nowISO())
+	f.Note = "baseline+K&R+leetcode+gap 四套件 AST hash 与冻结基线一致（#273 后 .mts 口径，case 数随语料目录增删以 total 为准）；E3 病态样本同等拒绝；E4 合法深嵌套两侧成功且 AST 一致；E3+ 阈值样本（offsetof 深链/常量链两侧一致 + 指针多维数组 C 语义折叠）"
 	facts["moonbit_parser_diff_samples"] = f
 }
 
@@ -551,7 +559,10 @@ func parseParserDiffPass(out string) (int, bool) {
 	// 2026-10-05 4e86d368 工序③ digest 化改 PASS 行形态（「N 个样本」→
 	// 「N hash 一致（fork 跳过 K）」）漏连坐本正则——采集恒失败回退沿用，
 	// as_of 停在 10-05 超 168h 降级待采集（本地实测 2026-10-12 追因）
-	m := regexp.MustCompile(`PASS——(\d+) hash 一致`).FindStringSubmatch(out)
+	// 2026-10-25 第二次连坐：#273 .mts 迁移再改文案（「N hash 一致」→
+	// 「N 个 case hash 与冻结基线一致」）又漏——Go 版退役后采集恒
+	// unavailable。正则放宽兼容两形态。
+	m := regexp.MustCompile(`PASS——(\d+) (?:个 case )?hash`).FindStringSubmatch(out)
 	if m == nil {
 		return 0, false
 	}

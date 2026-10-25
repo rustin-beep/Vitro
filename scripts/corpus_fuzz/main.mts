@@ -81,8 +81,8 @@ export const BUCKET_RANK: Record<string, number> = {
 
 class ExitErr extends Error {
   readonly code: number;
-  constructor(code: number) {
-    super("exit");
+  constructor(code: number, msg: string) {
+    super(msg);
     this.name = "ExitErr";
     this.code = code;
   }
@@ -91,7 +91,7 @@ class ExitErr extends Error {
 /** Go `die`：stderr 前缀 `corpus_fuzz: `，退出码 2。 */
 export function die(msg: string): never {
   process.stderr.write("corpus_fuzz: " + msg + "\n");
-  throw new ExitErr(2);
+  throw new ExitErr(2, msg);
 }
 
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -822,15 +822,19 @@ interface JudgeEntryFile {
  * 到真跑**（缓存是加速层不是真相源——基线判红仍以真跑为准）。
  */
 export function judgeCacheGet(dir: string, v: JudgeCacheable): string | null {
-  let raw: JudgeEntryFile;
+  let raw: unknown;
   try {
-    raw = JSON.parse(fs.readFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), "utf8")) as JudgeEntryFile;
+    raw = JSON.parse(fs.readFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), "utf8"));
   } catch {
     return null;
   }
-  if (raw.fp !== v.fp) return null;
-  if (typeof raw.bucket !== "string" || !Object.hasOwn(BUCKET_RANK, raw.bucket)) return null;
-  return raw.bucket;
+  // 合法 JSON 但非对象（null/数字/字符串/数组）一律 miss——null.fp 会抛 TypeError
+  // 把整轮打死，违背 fail open 契约（PR #310 审阅 P3-1）
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const ent = raw as JudgeEntryFile;
+  if (ent.fp !== v.fp) return null;
+  if (typeof ent.bucket !== "string" || !Object.hasOwn(BUCKET_RANK, ent.bucket)) return null;
+  return ent.bucket;
 }
 
 export function judgeCachePut(dir: string, v: JudgeCacheable, bucket: string): void {
@@ -846,17 +850,37 @@ function hashFileShort(p: string): string {
   }
 }
 
-/** 收集本机七组件算 epoch（clang 首行 + 四文件 hash + 规则字节 + node 版本）。 */
-export function collectJudgeEpochInputs(rulesBytes: Buffer): JudgeEpochInputs {
+/**
+ * 收集本机七组件算 epoch（clang 首行 + 四文件 hash + 规则字节 + node 版本）。
+ *
+ * 采集面断言（PR #310 审阅 P2-2）：`shell`/`script` 在任何检出态必然存在，
+ * 缺失即 die fail loud——否则 hashFileShort 的 `<missing:路径>` 常量会让 epoch
+ * 「稳定地失去该组件敏感性」（路径拼错/重命名静默降敏，M2 突变实测单测全绿）。
+ * 引擎双产物（native/js）允许缺失：构建前置场景合法（scripts-ts job 无产物），
+ * 缺失时判定轮自然红，不在这里拦。
+ *
+ * paths 参数仅供测试注入（验证 die 语义）；生产调用不传。
+ */
+export function collectJudgeEpochInputs(
+  rulesBytes: Buffer,
+  paths?: Partial<Record<"native" | "jsEngine" | "shell" | "script", string>>,
+): JudgeEpochInputs {
   const cv = runCmd(["clang", "--version"], ".", 10_000);
   const clangLine = cv.rc === 0 ? (cv.stdout.split("\n")[0] ?? "").trim() : "<no-clang>";
+  const mustExist = (p: string, what: string): string => {
+    const h = hashFileShort(p);
+    if (h.startsWith("<missing:")) {
+      die(`epoch 组件缺失：${what}（${p}）——采集面断裂，fail loud 不静默降敏`);
+    }
+    return h;
+  };
   return {
     clang: clangLine,
-    native: hashFileShort(RUNNER_EXE),
-    jsEngine: hashFileShort(JS_ENGINE),
-    shell: hashFileShort(VITRO_SH),
+    native: hashFileShort(paths?.native ?? RUNNER_EXE),
+    jsEngine: hashFileShort(paths?.jsEngine ?? JS_ENGINE),
+    shell: mustExist(paths?.shell ?? VITRO_SH, "sh 壳"),
     rules: crypto.createHash("sha256").update(rulesBytes).digest("hex").slice(0, 32),
-    script: hashFileShort(import.meta.filename),
+    script: mustExist(paths?.script ?? import.meta.filename, "驱动脚本"),
     node: process.version,
   };
 }
@@ -1122,7 +1146,7 @@ function mainFlow(argv: readonly string[]): number {
     die(`基线缺失（首跑用 -freeze 生成）：${opts.baseline}`);
   }
 
-  // 判定缓存 epoch（#309 P0）：六组件任一变化全量失效；freeze 轮不读但写
+  // 判定缓存 epoch（#309 P0）：七组件任一变化全量失效；freeze 轮不读但写
   // （freeze 即全量真跑，结果可复用）；CF_JUDGE_REFRESH=1（CI 夜间轮）无视
   // 缓存全量重算覆写——防缓存腐化的第二道闸。
   const judgeEpoch = judgeEpochKey(collectJudgeEpochInputs(ruleBytes));

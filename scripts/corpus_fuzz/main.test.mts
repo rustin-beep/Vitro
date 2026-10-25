@@ -310,6 +310,12 @@ test("判定缓存 get/put：命中 / 窜条拒收 / 损坏与非桶值按 miss�
   assert.equal(judgeCacheGet(dir, v), null, "非法桶名按 miss（防污染值直入判红）");
   fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "__proto__" }) + "\n");
   assert.equal(judgeCacheGet(dir, v), null, "原型链名按 miss");
+  // 合法 JSON 但非对象（PR #310 审阅 P3-1）：null 原实现抛 TypeError 打死整轮，
+  // 违背 fail open 契约——四个形态必须全部按 miss 走真跑
+  for (const bad of ["null", "42", '"x"', "[]"]) {
+    fs.writeFileSync(f, bad);
+    assert.equal(judgeCacheGet(dir, v), null, `合法 JSON 非对象 ${bad} 按 miss`);
+  }
 });
 
 test("pruneJudgeEpochs：只留当前 epoch 子目录，其余清除（防膨胀）", () => {
@@ -333,4 +339,28 @@ test("collectJudgeEpochInputs：产物缺失不炸（hash 记 missing，判定�
   assert.ok(x.native.startsWith("<missing:") || x.native.length === 32);
   assert.ok(x.jsEngine.startsWith("<missing:") || x.jsEngine.length === 32);
   assert.equal(judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), "同环境两次收集同 epoch");
+});
+
+test("collectJudgeEpochInputs：采集面断言——shell/script 缺失 die（PR #310 审阅 P2-2/M2 锚）", () => {
+  // M2 突变实证：原实现把 shell 组件改成常量后单测仍 18/18 全绿——J9 锚只锁
+  // judgeEpochKey 纯函数、不锁采集接线。本锚锁采集侧：<missing:> 常量对必然
+  // 在场的组件是静默降敏（路径拼错/重命名），必须 fail loud。
+  const bytes = Buffer.from("{}");
+  const x = collectJudgeEpochInputs(bytes);
+  assert.match(x.shell, /^[0-9a-f]{32}$/, "sh 壳 hash 须为 32-hex 实测值");
+  assert.match(x.script, /^[0-9a-f]{32}$/, "驱动脚本 hash 须为 32-hex 实测值");
+  // 注入缺失路径 → die（ExitErr，exit 2）
+  assert.throws(
+    () => collectJudgeEpochInputs(bytes, { shell: "no/such/file.sh" }),
+    (e: unknown) => e instanceof Error && e.name === "ExitErr" && /sh 壳/.test(e.message),
+    "shell 缺失须 die 不静默降敏",
+  );
+  assert.throws(
+    () => collectJudgeEpochInputs(bytes, { script: "no/such/file.mts" }),
+    (e: unknown) => e instanceof Error && e.name === "ExitErr" && /驱动脚本/.test(e.message),
+    "script 缺失须 die 不静默降敏",
+  );
+  // 引擎双产物允许缺失（构建前置场景合法——scripts-ts job 无产物）
+  const y = collectJudgeEpochInputs(bytes, { native: "no/such/exe", jsEngine: "no/such/js" });
+  assert.ok(y.native.startsWith("<missing:") && y.jsEngine.startsWith("<missing:"));
 });

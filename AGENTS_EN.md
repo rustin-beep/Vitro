@@ -17,4 +17,4 @@ Chinese output required; no git commits without permission; **measurement over s
 
 ## Current phase & archive
 
-S9 in progress: the Rust oracle zone was deleted on 2026-10-05 (archive = tag `rust-oracle-freeze` + branch `frozen-oracle-snapshot` + git history; 16 exploration docs live in commit `917251e`). Remaining: S9 rulings execution + unlocked fix backlog (#3–#24). Schedule authority: master plan §10.
+S9 concluded: vitro/engine 0.9.0 published to mooncakes on 2026-10-25 (tag `vitro-engine-0.9.0`, online acceptance all green — see `docs/current/08-发布档案/0.9.0.md`). Next: 1.0 = retirement (Go defense layer + final evaluation of the three external dependencies). Schedule authority: master plan §10.

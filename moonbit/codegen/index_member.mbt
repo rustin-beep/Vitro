@@ -203,7 +203,10 @@ fn BytecodeGen::gen_member_addr(
             self.emit(@opcode.OpCode::Add, 0, loc)
           }
           None =>
-            match self.global_indices.get(name) {
+            // static local 前置（#283）：无块形态 static 遮蔽同名 global
+            // ——序对齐 local → static → global（同 gen_addr）
+            match self.static_local_indices.get(name) {
+              // static 局部分支（批四 2026-10-07 销案——同 gen_addr）
               Some(offset) =>
                 self.emit(
                   @opcode.OpCode::PushConst,
@@ -211,8 +214,7 @@ fn BytecodeGen::gen_member_addr(
                   loc,
                 )
               None =>
-                match self.static_local_indices.get(name) {
-                  // static 局部分支（批四 2026-10-07 销案——同 gen_addr）
+                match self.global_indices.get(name) {
                   Some(offset) =>
                     self.emit(
                       @opcode.OpCode::PushConst,

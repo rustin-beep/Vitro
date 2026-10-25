@@ -254,7 +254,15 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
           None => self.emit(@opcode.OpCode::LoadLocal, local_offset, loc)
         }
       } else {
-        let global_offset = self.resolve_global(name)
+        // static local 前置（#283）：无块形态 static 遮蔽同名文件作用域
+        // global——命中即短路 global 查询（global_offset = -1 落下方
+        // static 臂）。旧序 local → global → static 垫底，global 抢先
+        // 命中（clang 8 / vitro 501 静默错值）；病 37 修正（#71）的
+        // local 居首保持不变，读值序 = local → static → global → 函数名。
+        let global_offset = match self.static_local_indices.get(name) {
+          Some(_) => -1
+          None => self.resolve_global(name)
+        }
         if global_offset >= 0 {
           match self.global_types.get(name) {
             Some(ty) =>
@@ -281,11 +289,8 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
             None => self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
         } else {
-          // static local 兜底（病 37 修正 #71 第三梯队，2026-10-11）：
-          // 读值序与 gen_addr 取址序对齐 = local → global → static →
-          // 函数名。此前 static 块在臂首=读值 static 优先，块内局部
-          // 遮蔽 static 时读值取 static、取址取局部（两序互斥——
-          // tmp/i71_t1/b37b 探针 inner_read=5/inner_addr=10 实锤）。
+          // static local 臂（病 37 修正 #71 第三梯队，2026-10-11 接线；
+          // #283 起前置于 global）。
           match self.static_local_indices.get(name) {
             Some(static_offset) =>
               match self.static_local_types.get(name) {

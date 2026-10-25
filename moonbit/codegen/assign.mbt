@@ -140,65 +140,11 @@ fn BytecodeGen::gen_assign_inner(
         }
         return
       }
-      let global_offset = self.resolve_global(name)
-      if global_offset >= 0 {
-        if !(op is Assign) {
-          if left_is_double {
-            self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
-          } else if left_is_long_long {
-            self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
-          } else if left_is_char {
-            // #177：char 全局 1 字节紧排，32 位读卷右侧邻居
-            if left_is_unsigned {
-              self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
-            } else {
-              self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
-            }
-          } else {
-            self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
-          }
-          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-          self.emit_compound(
-            op,
-            left_is_double,
-            left_ty.kind() is TK_Float,
-            left_is_long_long,
-            left_is_unsigned,
-            ptr_step,
-            left_is_ptr,
-            loc,
-          )
-        } else {
-          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-        }
-        if left_is_double {
-          self.emit(@opcode.OpCode::StoreGlobalD, global_offset, loc)
-        } else if left_is_long_long {
-          self.emit(@opcode.OpCode::StoreGlobalQ, global_offset, loc)
-        } else if left_is_char {
-          // #177：char 全局 1 字节紧排，4 字节写越权抹右侧池串/变量
-          self.emit(@opcode.OpCode::StoreGlobalByte, global_offset, loc)
-        } else {
-          self.emit(@opcode.OpCode::StoreGlobal, global_offset, loc)
-        }
-        if left_is_double {
-          self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
-        } else if left_is_long_long {
-          self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
-        } else if left_is_char {
-          if left_is_unsigned {
-            self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
-          } else {
-            self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
-          }
-        } else {
-          self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
-        }
-        return
-      }
-      // static local 兜底（病 37 修正 #71：读/写左值序与 gen_addr 对齐
-      // local → global → static——此前 static 块在臂首，块内局部遮蔽
-      // static 时赋值写穿到 static（b37c 探针 inner=10 static=21 实锤））
+      // static local 前置（#283）：无块形态 static 遮蔽同名文件作用域
+      // global——旧序 local → global → static 垫底，global 抢先命中
+      // （clang 8 / vitro 501 静默错值）。病 37 修正（#71）的 local 居首
+      // 保持不变（块内 local 遮蔽 static 的 b37c 探针面），本批只把
+      // static 提到 global 之前。
       match self.static_local_indices.get(name) {
         Some(static_offset) => {
           if !(op is Assign) {
@@ -254,6 +200,62 @@ fn BytecodeGen::gen_assign_inner(
           return
         }
         None => ()
+      }
+      let global_offset = self.resolve_global(name)
+      if global_offset >= 0 {
+        if !(op is Assign) {
+          if left_is_double {
+            self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
+          } else if left_is_long_long {
+            self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
+          } else if left_is_char {
+            // #177：char 全局 1 字节紧排，32 位读卷右侧邻居
+            if left_is_unsigned {
+              self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
+            } else {
+              self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
+            }
+          } else {
+            self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
+          }
+          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+          self.emit_compound(
+            op,
+            left_is_double,
+            left_ty.kind() is TK_Float,
+            left_is_long_long,
+            left_is_unsigned,
+            ptr_step,
+            left_is_ptr,
+            loc,
+          )
+        } else {
+          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
+        }
+        if left_is_double {
+          self.emit(@opcode.OpCode::StoreGlobalD, global_offset, loc)
+        } else if left_is_long_long {
+          self.emit(@opcode.OpCode::StoreGlobalQ, global_offset, loc)
+        } else if left_is_char {
+          // #177：char 全局 1 字节紧排，4 字节写越权抹右侧池串/变量
+          self.emit(@opcode.OpCode::StoreGlobalByte, global_offset, loc)
+        } else {
+          self.emit(@opcode.OpCode::StoreGlobal, global_offset, loc)
+        }
+        if left_is_double {
+          self.emit(@opcode.OpCode::LoadGlobalD, global_offset, loc)
+        } else if left_is_long_long {
+          self.emit(@opcode.OpCode::LoadGlobalQ, global_offset, loc)
+        } else if left_is_char {
+          if left_is_unsigned {
+            self.emit(@opcode.OpCode::LoadGlobalUByte, global_offset, loc)
+          } else {
+            self.emit(@opcode.OpCode::LoadGlobalByte, global_offset, loc)
+          }
+        } else {
+          self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
+        }
+        return
       }
     }
     Index(array, index, _, result_ty) => {

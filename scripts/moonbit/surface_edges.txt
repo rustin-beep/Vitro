@@ -11,6 +11,7 @@
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
 . vitro/engine/diag ErrorCode
+. vitro/engine/teaching/content_data install_baked
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
 vitro/engine/ast vitro/engine/util json_escape

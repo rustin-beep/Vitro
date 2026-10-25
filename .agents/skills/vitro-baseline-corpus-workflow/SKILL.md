@@ -25,7 +25,7 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
    语义统一（2026-10-11）：`--freeze-mb` 默认含存量重算，代码改动致存量漂移时同命令自动刷新——`--refresh` 已删，出现即说明心智过时。**本地验证面必须四 suite 全跑**（baseline 绿 ≠ knr/leetcode/gap 绿——CI 是四套件全量，kr_4_6 教训）；
 3. ~~`cargo test --test vitro_e2e`~~（已随删区退役——e2e 是 oracle 自身端到端防线，语义守护由 digest + clang_direct 双锚承接，见 S9冻结资产清单面四）；
 4. ~~`cargo build --release` 重建后 `go run ./scripts/shadow_verify`~~（**[Rust oracle 退役 2026-10-05]**——`native/` 已整体删除，`scripts/shadow_verify` 同批消失；oracle 正确性底线职责由 clang golden + clang_direct 直拍承接）；
-5. `go run ./scripts/facts --strict check` 漂移 0（CI 现役完整形态，flag 在子命令之前）。
+5. `node scripts/facts/main.mts --strict check` 漂移 0（CI 现役完整形态，flag 在子命令之前）。
 
 ## corpus_fuzz 基线 freeze 的语料集一致性（2026-10-20 CI 红教训）
 
@@ -48,7 +48,7 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 1. 落 `corpus/gap/`（clang_direct 直拍六目录含 gap 与 `template_generated`；gap 例通常须登记 `known_direct.json` 白名单〔case+digest 锁定〕）；
 2. 源内标 `// @category: arch_diff_bug`（shadow 的 known_issue 豁免通道）；
 3. golden = clang 实跑原始字节，不做任何归一。
-进 clang_direct known 台账的条目：`go run ./scripts/clang_direct --check-known` 做静态校验（悬空/格式）；known 是**双向监控**——缺陷修复转绿而台账未移除会红，这是自动提醒器，不是噪音。
+进 clang_direct known 台账的条目：`node scripts/clang_direct/main.mts --check-known` 做静态校验（悬空/格式）；known 是**双向监控**——缺陷修复转绿而台账未移除会红，这是自动提醒器，不是噪音。
 
 ## clang 实跑注意（Windows）
 - clang 编译的原生程序 stdout 是**文本模式**（`\n` 伸缩为 `\r\n`），直拍比对前剥行尾 `\r`；
@@ -58,4 +58,4 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 ## 权威源与时效
 - `scripts/clang_direct` / `scripts/facts` 头注（`shadow_verify` 已随 2026-10-05 删区退役）；原 `native/AGENTS.md` §测试防线（已删区，档案 tag `rust-oracle-freeze`）
 - **相关规程**：`vitro-facts-reconciliation`（连坐面的判读）、`vitro-generator-contract`（SVG 重生成属生成器闸）
-- as_of: 2026-10-18（五家 digest 冻结清单改写——lexer/parser/typeck 断供连红批）
+- as_of: 2026-10-25（#273 迁移批：facts / clang_direct 命令面切 .mts——义务链与判据不变；2026-10-18 记：五家 digest 冻结清单改写——lexer/parser/typeck 断供连红批）

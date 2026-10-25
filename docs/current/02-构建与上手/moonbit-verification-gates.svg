@@ -102,5 +102,5 @@
 <text class="t" x="600" y="744" text-anchor="middle">删区敞口清算（2026-10-05 删区批）</text>
 <text class="tc" x="600" y="772" text-anchor="middle">oracle 测试体量随删区消失——语料域差量经 clang_direct 吸收（shadow 685 ⊆ 698 差量 0）+ MoonBit 自建测试 + fuzz 不变量自检承接；</text>
 <text class="tc" x="600" y="796" text-anchor="middle">遗留敞口与逐项清算以总计划 §10 为权威</text>
-<text class="tc" x="600" y="848" text-anchor="middle">对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：go run ./scripts/gen_svg gates</text>
+<text class="tc" x="600" y="848" text-anchor="middle">对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：node scripts/gen_svg/main.mts gates</text>
 </svg>

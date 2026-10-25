@@ -99,5 +99,5 @@
 <rect class="warn" x="40" y="594" width="1120" height="66" rx="14"/>
 <text class="t" x="600" y="620" text-anchor="middle">Rust 冻结对照 oracle — 已退役（2026-10-05 工序④删区，native/ 物理删除）</text>
 <text class="tc" x="600" y="644" text-anchor="middle">档案：tag rust-oracle-freeze · 分支 frozen-oracle-snapshot · git 历史（探测档案提交 917251e）</text>
-<text class="tc" x="600" y="694" text-anchor="middle">对账 README 单轨口径节 + 架构设计.md §2 · 漂移重生成：go run ./scripts/gen_svg arch</text>
+<text class="tc" x="600" y="694" text-anchor="middle">对账 README 单轨口径节 + 架构设计.md §2 · 漂移重生成：node scripts/gen_svg/main.mts arch</text>
 </svg>

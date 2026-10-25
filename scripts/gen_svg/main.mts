@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // gen_svg.mts —— 文档插图生成器（#273 存量 Go 重写批；原 scripts/gen_svg/main.go，
-// 探针转正 Go 重写 2026-09-20 → 十四张图）。
+// 探针转正 Go 重写 2026-09-20 → 十五张图，2026-10-25 页脚命令翻新批）。
 //
 // 入库插图的跑批快照数字**只在此处为模板**：生成时从 reports/facts.json 读真值
 // 注入，并以 <tspan data-fact="key">n</tspan> 显式锚定；scripts/facts check 逐锚
 // 机判漂移。漂移工作流：
 //
 //   跑防线（或 go run ./scripts/facts facts）→ facts check 红（SVG 数字过时）
-//   → go run ./scripts/gen_svg → facts check 绿
+//   → node scripts/gen_svg/main.mts → facts check 绿
 //
 // 建成状态类内容（包图实/虚线、在架版本徽标）同样 facts 派生——CI 重生成闸红
 // 不了「生成器源码过时」，故状态词一律不写死，改由 facts 采集器供给机械真值。
@@ -134,7 +134,7 @@ export function genArch(root: string): void {
     box(40, 594, 1120, 66, "warn", 14),
     textF(600, 620, "t", "Rust 冻结对照 oracle — 已退役（2026-10-05 工序④删区，native/ 物理删除）", ""),
     textF(600, 644, "tc", "档案：tag rust-oracle-freeze · 分支 frozen-oracle-snapshot · git 历史（探测档案提交 917251e）", ""),
-    textF(600, 694, "tc", "对账 README 单轨口径节 + 架构设计.md §2 · 漂移重生成：go run ./scripts/gen_svg arch", ""),
+    textF(600, 694, "tc", "对账 README 单轨口径节 + 架构设计.md §2 · 漂移重生成：node scripts/gen_svg/main.mts arch", ""),
   );
   writeSVG(root, "docs/current/01-定位与路线/vitro-architecture.svg", P);
 }
@@ -389,7 +389,7 @@ export function genShadow(root: string): void {
     textF(600, 758, "tm", "工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役；语料域 698 例由本防线独挑", ""),
     textF(600, 788, "tm", "shadow 685 ⊆ clang_direct 698 差量 0 · 白名单逐条平移 · 瞬态异常（超时 / 启动失败 / 0xC0000005）重试不落缓存", ""),
   );
-  P.push(textF(600, 838, "tc", "对账 Clang直拍门禁.md §1–§5 · 漂移重生成： go run ./scripts/gen_svg shadow", ""));
+  P.push(textF(600, 838, "tc", "对账 Clang直拍门禁.md §1–§5 · 漂移重生成： node scripts/gen_svg/main.mts shadow", ""));
   writeSVG(root, "docs/current/04-标准库与防线/clang-direct-gate-flow.svg", P);
 }
 
@@ -647,7 +647,7 @@ export function genPackages(root: string, fd: FactsDoc): void {
     P.push(
       textF(600, y + 24, "tc", "硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量", ""),
       textF(600, y + 52, "tc", "虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）", ""),
-      textF(600, y + 80, "tc", "权威：总计划 §10 · 漂移重生成：go run ./scripts/gen_svg packages", ""),
+      textF(600, y + 80, "tc", "权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages", ""),
     );
     writeSVG(root, out, P);
   };
@@ -742,7 +742,7 @@ export function genUnifiedArch(root: string): void {
   );
   P.push(
     textF(600, 854, "tc", "一致性契约：seek 到第 N 步后 local_vars / call_stack / array_snapshots / pointer_snapshots / heatmap_count 以第 N 步快照为准（spec §4.3）", ""),
-    textF(600, 880, "tc", "对账 统一模式设计.md §3 · 漂移重生成：go run ./scripts/gen_svg uarch", ""),
+    textF(600, 880, "tc", "对账 统一模式设计.md §3 · 漂移重生成：node scripts/gen_svg/main.mts uarch", ""),
   );
   writeSVG(root, "docs/current/05-教学体验/unified-architecture.svg", P);
 }
@@ -885,7 +885,7 @@ export function genMemory(root: string): void {
   );
   P.push(
     textF(600, 848, "tc", "诚实记录：隔离窗口外 UAF 可能漏检——free 与误用之间 churn 超过 256KB 后，*p 落在已复用块（同 ASAN quarantine 行为）", ""),
-    textF(600, 874, "tc", "布局示意不按比例 · 对账 内存安全规范 §3.4 + 堆有界隔离决议 · 漂移重生成：go run ./scripts/gen_svg memory", ""),
+    textF(600, 874, "tc", "布局示意不按比例 · 对账 内存安全规范 §3.4 + 堆有界隔离决议 · 漂移重生成：node scripts/gen_svg/main.mts memory", ""),
   );
   writeSVG(root, "docs/current/01-定位与路线/memory-layout-quarantine.svg", P);
 }
@@ -973,7 +973,7 @@ export function genProtocol(root: string): void {
   );
   P.push(
     textF(600, 852, "tc", "实现锚 MoonBit 侧：vitro/engine/protocol（schema · stream · types · vocabulary）· session（会话状态机）· gateway（出口帧）", ""),
-    textF(600, 878, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：go run ./scripts/gen_svg protocol", ""),
+    textF(600, 878, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§5 · 漂移重生成：node scripts/gen_svg/main.mts protocol", ""),
   );
   writeSVG(root, "docs/spec/step-payload-frame.svg", P);
 }
@@ -1049,7 +1049,7 @@ export function genWasm(root: string): void {
     textL(60, 766, "tc", "宿主须按实例绑定输出回调；serve 的 session id 概念平移，宿主只做帧路由。"),
     textL(60, 798, "tc", "容量参考：serve RSS 预算 64MB、实测峰值 ~24MB/会话——N 的上限由内存决定，不是并发正确性。"),
     textL(60, 830, "tc", "实证缺口：同进程 N 实例并发互不干扰尚无实测记录（拍板生效前补锚）· wasm32 现产冒烟 3.75MB 即具备全部并发性质。"),
-    textF(600, 862, "tc", "对账 wasm多实例并发模型与U2拍板.md §1–§2 · 漂移重生成：go run ./scripts/gen_svg wasm", ""),
+    textF(600, 862, "tc", "对账 wasm多实例并发模型与U2拍板.md §1–§2 · 漂移重生成：node scripts/gen_svg/main.mts wasm", ""),
   );
   writeSVG(root, "docs/current/06-出口与协议/wasm-multi-instance-isolation.svg", P);
 }
@@ -1142,7 +1142,7 @@ export function genGates(root: string): void {
     textF(600, 796, "tc", "遗留敞口与逐项清算以总计划 §10 为权威", ""),
   );
   P.push(
-    textF(600, 848, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：go run ./scripts/gen_svg gates", ""),
+    textF(600, 848, "tc", "对账 脚本总清单与必跑防线.md §1/§2 · 漂移重生成：node scripts/gen_svg/main.mts gates", ""),
   );
   writeSVG(root, "docs/current/02-构建与上手/moonbit-verification-gates.svg", P);
 }
@@ -1299,7 +1299,7 @@ export function genSkills(root: string): void {
   );
   P.push(
     textF(600, 56, "tt", `Vitro Agent Skills · ${skills.length} 个项目专属操作手册`, ""),
-    textF(600, 94, "tm", "通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 go run .agents/install_skills.go --all 安装", ""),
+    textF(600, 94, "tm", "通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 node .agents/install_skills.mts --all 安装", ""),
   );
   skills.forEach((s, i) => {
     const x = 40 + (i % 2) * (cardW + gapX);
@@ -1313,8 +1313,8 @@ export function genSkills(root: string): void {
     box(40, warnY, 1120, warnH, "warn", 12),
     textF(600, warnY + 36, "t", "透明度与防漂移（CI 双闸）", ""),
     textF(600, warnY + 68, "tc", "skill 内容全部可读：.agents/skills/<name>/SKILL.md（+ references/）· 任何 skill 变更必经 git diff 人审", ""),
-    textF(600, warnY + 94, "tc", "frontmatter 校验 go run .agents/install_skills.go --list（CI）· 本图失步即 gen_svg -check 红（CI）", ""),
-    textF(600, n1, "tc", "权威清单与维护义务：.agents/README.md · 漂移重生成：go run ./scripts/gen_svg skills", ""),
+    textF(600, warnY + 94, "tc", "frontmatter 校验 node .agents/install_skills.mts --list（CI）· 本图失步即 gen_svg -check 红（CI）", ""),
+    textF(600, n1, "tc", "权威清单与维护义务：.agents/README.md · 漂移重生成：node scripts/gen_svg/main.mts skills", ""),
   );
   writeSVG(root, "docs/current/02-构建与上手/agent-skills-overview.svg", P);
 }
@@ -1406,7 +1406,7 @@ export function main(): void {
     const ds = drifts();
     if (ds.length > 0) {
       process.stderr.write(
-        `SVG 漂移 ${ds.length} 张（生成器输出与落盘不一致——禁手改，跑 go run ./scripts/gen_svg 重生成）：\n`,
+        `SVG 漂移 ${ds.length} 张（生成器输出与落盘不一致——禁手改，跑 node scripts/gen_svg/main.mts 重生成）：\n`,
       );
       for (const d of ds) process.stderr.write("  " + d + "\n");
       process.exit(1);

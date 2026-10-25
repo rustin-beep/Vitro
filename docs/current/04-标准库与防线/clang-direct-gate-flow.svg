@@ -96,5 +96,5 @@
 <rect class="warn" x="40" y="726" width="1120" height="84" rx="12"/>
 <text class="tm" x="600" y="758" text-anchor="middle">工序④删区批（2026-10-05）：shadow〔被测物 Rust DLL〕随区退役；语料域 698 例由本防线独挑</text>
 <text class="tm" x="600" y="788" text-anchor="middle">shadow 685 ⊆ clang_direct 698 差量 0 · 白名单逐条平移 · 瞬态异常（超时 / 启动失败 / 0xC0000005）重试不落缓存</text>
-<text class="tc" x="600" y="838" text-anchor="middle">对账 Clang直拍门禁.md §1–§5 · 漂移重生成： go run ./scripts/gen_svg shadow</text>
+<text class="tc" x="600" y="838" text-anchor="middle">对账 Clang直拍门禁.md §1–§5 · 漂移重生成： node scripts/gen_svg/main.mts shadow</text>
 </svg>

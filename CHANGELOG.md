@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### refactor(scripts,docs): #273 facts/clang_direct/install_skills Go→.mts 迁移 + CI 去 Go 化 + 文档插图页脚翻新（2026-10-25）
+
+- **迁移三件**：`scripts/facts`（2338 行 + 8 个 Go 测试直译为 node:test 49 例）、`scripts/clang_direct`（1142 行 + 自测 6 例）、`.agents/install_skills`（313 行 + 自测 5 例）落 `.mts` 四件套门；**Go/ts 双跑逐位对拍**——facts.json 22 键规范化（剔 generated_at/git/as_of）逐位一致、facts 与 check 两子命令 stdout 逐位一致、clang_direct native/wasm 双臂 `--sample`/`--cases` 报文逐位一致且 exit code 相同。
+- **CI 去 Go 化**：`ci.yml` go run 活行清零（facts×3 / clang_direct×2 / install_skills×1 切 node）+ 全部 setup-go 摘除——**下游跑防线不再需要 Go 工具链**；hygiene 保留 go vet/test 验证 Go 回退面（runner 预装 + go.mod toolchain 声明兜底版本）。
+- **迁移顺带修正（口径演进，登记在案）**：① facts `--run` 采集器 4 处子进程旧 `go run` 死路径改现役 node 入口（死路径期间 `--run` 恒 unavailable，语义修复）；② facts 报告摘要表序修正——Go 版 `sort.SliceStable` 比较函数引用外部 order 数组与排序元素错位（真 bug，顺序由排序器内部行为决定），TS 按规则键字节序稳定排序；③ clang_direct `TrimRight` 全量剥行尾 `\r`（`printf("\r\n")` 经 Windows 文本模式成 `\r\r\n`，剥一个残一个会把工程语料 MF-HTTP 误判 DIFF）；④ 差异报文 `%q` 渲染复刻 `strconv.Quote`——合法 UTF-8 序列还原原字（教学 inspect 行中文进 digest 与 Go 对齐，known 台账 5fd9b345 命中回归）。
+- **gen_svg 页脚翻新**：生成器本体早已 .mts，但 15 张入库 SVG 页脚的「漂移重生成」命令仍是 `go run ./scripts/gen_svg` 旧形态——生成器源码 12 处翻新为 `node scripts/gen_svg/main.mts` 后随批重生成；skills 图页脚的 install_skills 命令同步切 .mts。
+- **文档命令面翻新**：11 份现役文档/SKILL.md 的 facts / clang_direct / install_skills / gen_svg 指引切 node 形态（脚本埋雷验证记录等 AS-OF 域历史记录按冻结原则不动）；脚本总清单 Go 存量段改「回退面」口径；facts/clang_direct 的 .go 版加回退面横幅（不再随行为变更维护，Go 测试锚保留）。
 ### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
 
 - **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）

@@ -93,5 +93,5 @@
 <text class="tc" x="630" y="774" text-anchor="start">MemoryMap + check_access 单入口 + FreedLogs 二分</text>
 <text class="tc" x="630" y="798" text-anchor="start">地址布局常量定义点仍在 L6 bytecode</text>
 <text class="tc" x="600" y="848" text-anchor="middle">诚实记录：隔离窗口外 UAF 可能漏检——free 与误用之间 churn 超过 256KB 后，*p 落在已复用块（同 ASAN quarantine 行为）</text>
-<text class="tc" x="600" y="874" text-anchor="middle">布局示意不按比例 · 对账 内存安全规范 §3.4 + 堆有界隔离决议 · 漂移重生成：go run ./scripts/gen_svg memory</text>
+<text class="tc" x="600" y="874" text-anchor="middle">布局示意不按比例 · 对账 内存安全规范 §3.4 + 堆有界隔离决议 · 漂移重生成：node scripts/gen_svg/main.mts memory</text>
 </svg>

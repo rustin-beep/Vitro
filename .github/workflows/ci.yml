@@ -64,13 +64,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      # #132 声明层：go 版本走 go.mod toolchain 单点（此前随 runner 预装漂移）
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum，缓存无意义
-      # Go vet/test 归 hygiene（2026-10-23 提速批）：本 job 不跑测试，
-      # 测试红不阻塞产物构建；Go 纯函数锚仍由 hygiene 覆盖。
+      # Go vet/test 步已随 #273 迁移批（2026-10-25）失效摘除——CI go run
+      # 活行清零，下游跑防线不再需要 Go 工具链。
 
       # Clang Golden 缓存（方案 A）：结果是确定性的（同一源码 + 同一 clang 版本
       # ⇒ 同一结果），跨 CI 运行复用可把 Shadow 从分钟级降到秒级。
@@ -205,10 +200,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum
       - name: Install MoonBit toolchain (driver-embedded moon run)
         if: ${{ !matrix.needs_artifact }}
         shell: pwsh
@@ -286,7 +277,8 @@ jobs:
               node scripts/diff_gate/main.mts vm
               ;;
             clang_direct)
-              go run ./scripts/clang_direct
+              # 2026-10-25 #273 迁移批：Go→.mts（双跑对拍通过），CI 引用切 TS。
+              node scripts/clang_direct/main.mts
               ;;
             realcode_corpus)
               # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账
@@ -304,10 +296,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false
       - uses: actions/download-artifact@v4
         with:
           name: build-products
@@ -336,10 +324,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum
       # 拆批修复（2026-10-11 CI 实锤）：rules.json 不入仓（jsonmbt 真源
       # 纪律 13——.json 由本段再生），libc_boot 断供即此。regen 三步前置。
       - name: Install MoonBit toolchain (differential anchors)
@@ -473,10 +457,6 @@ jobs:
           - slice: serve_channel
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum
       # setup-node pin（2026-09-29 审阅 P3-3）：js-string 内建需较新 V8；
       # host.js 判定面在 25 上定版——版本走 .node-version 单点（#132 批
       # 降 LTS 24）。体积上限由 host.js 断言（1.5MB）——数字不进注释（无锚
@@ -583,7 +563,7 @@ jobs:
         shell: bash
       - name: clang_direct wasm arm (gateway product vs Clang)
         if: matrix.slice == 'clang_direct'
-        run: go run ./scripts/clang_direct --backend wasm
+        run: node scripts/clang_direct/main.mts --backend wasm
         shell: bash
   static-gates:
     # 二轮审阅 P2（2026-10-17）：红遮红治理——27 步单 job 串行，一步红
@@ -611,10 +591,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum
 
       - name: Install MoonBit toolchain (probe / fmt / facts --run)
         shell: pwsh
@@ -941,21 +917,23 @@ jobs:
         # 2026-10-01 --strict 接线（模块审阅 09 P2-1 处方① + 四决策点拍板 C）：
         # Manual 兜底层（整行无数字等于真值）自此进 CI 判红。合法误报面
         # （里程碑未来值行等）经 scripts/facts/suspect_exemptions.json 显式
-        # 过闸——条目零命中判僵尸、无条件红（防腐化），go test 锚
-        # suspect_exemptions_test.go 五路 J9。
+        # 过闸——条目零命中判僵尸、无条件红（防腐化），node:test 锚
+        # suspect_exemptions.test.mts 五路 J9。
+        # 2026-10-25 #273 迁移批：facts Go→.mts 双跑逐位对拍通过（facts.json
+        # 22 键规范化逐位一致 + facts/check stdout 逐位一致），CI 引用切 TS。
         shell: bash
-        run: go run ./scripts/facts --strict check
+        run: node scripts/facts/main.mts --strict check
 
       - name: Facts collect for gen_svg (slice 内自足落盘)
         # 2026-10-18 CI 红处置：c5f01fff 拆 matrix 三片时 gen_svg 与 facts
         # 分家——旧单 job 里 facts check 步顺带落盘 facts.json 喂 gen_svg
-        #（main.go 写盘在子命令分派前的公共段），拆后 gen slice 断供，
+        #（main.mts 写盘在子命令分派前的公共段），拆后 gen slice 断供，
         # gen_svg -check「读不到 reports/facts.json」必红（39052444299/
         # 39064277885 两 run 同根因）。修 = slice 内自足：前置纯采集落盘
         #（`facts facts` 子命令不判红——文档对账仍归 bookkeeping 单点）。
         if: matrix.slice == 'gen'
         shell: bash
-        run: go run ./scripts/facts facts
+        run: node scripts/facts/main.mts facts
 
       - name: Docs SVG freshness (gen_svg -check)
 
@@ -1000,7 +978,18 @@ jobs:
         # 结构坏，后者挡「AI 改了手册而清单图没跟上」。
         # J9 证红：删任一 SKILL.md 的 name 行 → 必红。
         shell: bash
-        run: go run .agents/install_skills.go --list
+        run: node .agents/install_skills.mts --list
+
+      - name: install_skills .mts selftest (node:test + tsc strict + oxlint)
+        # #273 迁移批：安装器 .mts 四件套面（frontmatter fail loud 三形态 +
+        # discover 排序 + diffOne 四态）。cwd=仓库根——node --test / oxlint
+        # 均不接受含 .. 的相对路径，scripts/ 清单外单步验证（bin 走
+        # scripts/node_modules/.bin，严格档参数与 scripts/tsconfig.json 对齐）。
+        shell: bash
+        run: |
+          node --test .agents/install_skills.test.mts
+          scripts/node_modules/.bin/tsc --ignoreConfig --noEmit --strict --strictNullChecks --noUncheckedIndexedAccess --noImplicitOverride --noFallthroughCasesInSwitch --target es2023 --module nodenext --moduleResolution nodenext --types node --allowImportingTsExtensions --skipLibCheck --forceConsistentCasingInFileNames .agents/install_skills.mts .agents/install_skills.test.mts
+          scripts/node_modules/.bin/oxlint .agents/install_skills.mts .agents/install_skills.test.mts
 
       # G11（R4）：工程健康度看板（生产 unwrap 计数/超长文件/失败记录口径），
       # 报告上传 artifact；阈值门禁待阈值基线固化后启用
@@ -1013,10 +1002,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum
       # 2026-10-23 提速批：Go vet/test 从 build job 迁来——测试红归 hygiene，
       # build 只负责产物，避免「测试红 → artifact 不产出 → 下游全 skipped」。
       - name: Go vet (scripts)
@@ -1410,11 +1395,6 @@ jobs:
       # gen_svg 的「真实仓库 -check」用例读 reports/facts.json（包切分图的实/虚
       # 线与在架徽标全部 facts 派生）——该文件 gitignored，CI 检出态不存在，
       # 故本 job 自带采集（`facts facts` 只采集落盘不判红，判红归 bookkeeping）。
-      # 与 hygiene 的 facts 步同命令同口径。
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false # 零第三方依赖仓无 go.sum，缓存无意义
       - name: npm ci (lockfile pinned)
         run: npm ci
         shell: bash
@@ -1439,14 +1419,15 @@ jobs:
           irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
           Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
 
-      # gen_svg -check 的 facts 输入（见上方 setup-go 注释）。放在 moon 之后：
+      # gen_svg -check 的 facts 输入。放在 moon 之后：
       # 采集链含 moon 相关项，缺工具链会把可用键降级成 unavailable。
       # working-directory 必须覆盖回仓库根——本 job 默认在 scripts/ 下跑，
-      # 直接 `go run ./scripts/facts facts` 会变成 scripts/scripts/facts
+      # 直接相对路径会变成 scripts/scripts/facts
       #（2026-10-23 CI 红实锤：stat D:\a\Vitro\Vitro\scripts\scripts\facts）。
+      # 2026-10-25 #273 迁移批：Go→.mts，命令切 node。
       - name: facts collect (gen_svg -check input)
         working-directory: ${{ github.workspace }}
-        run: go run ./scripts/facts facts
+        run: node scripts/facts/main.mts facts
         shell: bash
 
       - name: node:test (explicit file list)

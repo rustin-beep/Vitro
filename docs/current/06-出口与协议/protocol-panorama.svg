@@ -90,5 +90,5 @@
 <text class="t" x="600" y="866" text-anchor="middle">协议演化纪律三条（对 v0.2 激活与一切 v0.x 追加生效）</text>
 <text class="tc" x="600" y="892" text-anchor="middle">缺省字段双条件规则 · 未知容忍非对称（写侧宽容、读侧严格）· 单解码器佐证</text>
 <text class="tc" x="600" y="914" text-anchor="middle">纪律成文与依据见 moonbit/protocol/README.mbt.md（openseek 教训转译，2026-09-28）</text>
-<text class="tc" x="600" y="956" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：go run ./scripts/gen_svg panorama</text>
+<text class="tc" x="600" y="956" text-anchor="middle">对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：node scripts/gen_svg/main.mts panorama</text>
 </svg>

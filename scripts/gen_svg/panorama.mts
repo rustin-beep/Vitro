@@ -98,7 +98,7 @@ export function genPanorama(root: string): void {
     textF(600, 914, "tc", "纪律成文与依据见 moonbit/protocol/README.mbt.md（openseek 教训转译，2026-09-28）", ""),
   );
   P.push(
-    textF(600, 956, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：go run ./scripts/gen_svg panorama", ""),
+    textF(600, 956, "tc", "对账 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §0–§9 · 生成：node scripts/gen_svg/main.mts panorama", ""),
   );
   writeSVG(root, "docs/current/06-出口与协议/protocol-panorama.svg", P);
 }

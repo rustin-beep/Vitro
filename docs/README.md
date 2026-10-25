@@ -58,7 +58,7 @@
 > MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 /
 > 教学智能流水线）由 `node scripts/gen_svg/main.mts` 生成——插图自带深浅双底色
 > （亮色白底 / 深色品牌墨底，随查看环境自动切换）；Clang 直拍图内的跑批快照数字带 `data-fact`
-> 锚，由 `go run ./scripts/facts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
+> 锚，由 `node scripts/facts/main.mts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
 > 目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必使图失步（`gen_svg -check` 即红）；
 > **勿手改**入库 SVG（下次生成即回退）。
 
@@ -134,6 +134,7 @@
 |------|------|
 | [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | **StepPayload v0.1 语言中立协议 schema**（已冻结，S1–S5 签字回放 61/61；§9 v0.2 激活轨道 + **§9.4 字段↔最低版本对照**〔#116〕、附录 B 受控词汇表） |
 | [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行前缀【枚举权威=spec §1 白名单表，索引不写数】+ 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
+| [`current/06-出口与协议/宿主工单与Rust最小实例.md`](current/06-出口与协议/宿主工单与Rust最小实例.md) | **宿主侧工单席位职责书 + Rust 最小实例册（2026-10-25）**：R1 polyfill 宿主（wasmtime 一等供给 js-string builtins + 导入常量反射装载 + 装载门 + 单文件分发，三件未开工最小实例，开工信号=#4 立项）+ R2 delegate 加速核（契约核/三档帧锚采样/委派双接线/wasmopt 过闸**四件已建成**——与 Zig 四方终态 992237507·115000021 步逐位一致，委派 3.5-3.8 vs 11.1-11.6 ns/步，wasm 裸 35.7KB→过闸 27.8KB）+ γ 触发线与终裁同台探针；依据 §6.4「宿主侧语言不进版图」豁免，引擎侧零侵入；随文登记 zigprobe 档案三缺陷（bun readFileSync 不内嵌 /「16×」算术 / 交叉编译期权证否） |
 | [`current/06-出口与协议/堆有界隔离决议.md`](current/06-出口与协议/堆有界隔离决议.md) | 堆内存决议：bump 分配 + 有界隔离（三道墙；已拍板已实施，U2 不可破坏项）（原 `VITRO_HEAP_QUARANTINE_DECISION.md`） |
 | [`current/06-出口与协议/wasm多实例并发模型与U2拍板.md`](current/06-出口与协议/wasm多实例并发模型与U2拍板.md) | 宿主并发模型裁定：N 线程 × N 实例构造性隔离（三宿主形态 + 1实例=1线程=1会话铁律）+ U2 拍板（19 声明冻结现状、第二批 capi 裁不做、下游改道 wasm/serve）（2026-09-19） |
 | [`current/06-出口与协议/出口形态全景与选型研究.md`](current/06-出口与协议/出口形态全景与选型研究.md) | **出口形态全景 + 选型决策（2026-10-17）**：先把"出口"分三层（**制品 / 交付 / 宿主**——此前混淆的根源）；**9 类出口全景表**（浏览器 demo 站点〔现役第一交付〕/ Electron 桌面应用〔已裁定，150.6MB〕/ 系统 WebView 壳〔已否，Windows 单点除外〕/ **wasm-gc+Wasmtime 原生宿主**〔本次实测跑通〕/ 协议 sidecar〔零改造〕/ mooncakes 源码级 / 生成 SDK〔未启动〕/ C ABI〔不提供〕/ 移动端）；**§4 性能分歧**——实测 132.57ms vs native sidecar 150.67ms（**+12%，非 #41 的 3.3×**，原因未证实，禁止作立项收益）；贯穿判据 = **js-string builtins 版本矩阵**（"绑 JS 宿主"而非"绑 V8"）；**§6 选型决策树**；关键实测：决定性开关 `use-js-builtin-string`（`true`⇒imports 4117 失败 / `false`⇒**imports 0** 跑通）、Rust 宿主 JSON 往返成立（含中文）、两个集成硬约束（**wasm-gc 名义类型** / **String 是 array\<i16\> 须按 UTF-16 解**） |

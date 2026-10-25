@@ -33,7 +33,7 @@
   </style>
   <rect class="bg" width="1200" height="1096"/>
 <text class="tt" x="600" y="56" text-anchor="middle">Vitro Agent Skills · 8 个项目专属操作手册</text>
-<text class="tm" x="600" y="94" text-anchor="middle">通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 go run .agents/install_skills.go --all 安装</text>
+<text class="tm" x="600" y="94" text-anchor="middle">通用 Agent Skills 格式 · 不绑定特定工具 · ZCode 直接扫描工作区 · 其他工具 node .agents/install_skills.mts --all 安装</text>
 <rect class="card" x="40" y="128" width="550" height="170" rx="12"/>
 <text class="tn" x="64" y="170" text-anchor="start">vitro-baseline-corpus-workflow</text>
 <text class="tc" x="64" y="206" text-anchor="start">Vitro 新增/修改 C 测试语料用例的完整义务链（clang</text>
@@ -69,6 +69,6 @@
 <rect class="warn" x="40" y="896" width="1120" height="110" rx="12"/>
 <text class="t" x="600" y="932" text-anchor="middle">透明度与防漂移（CI 双闸）</text>
 <text class="tc" x="600" y="964" text-anchor="middle">skill 内容全部可读：.agents/skills/&lt;name&gt;/SKILL.md（+ references/）· 任何 skill 变更必经 git diff 人审</text>
-<text class="tc" x="600" y="990" text-anchor="middle">frontmatter 校验 go run .agents/install_skills.go --list（CI）· 本图失步即 gen_svg -check 红（CI）</text>
-<text class="tc" x="600" y="1038" text-anchor="middle">权威清单与维护义务：.agents/README.md · 漂移重生成：go run ./scripts/gen_svg skills</text>
+<text class="tc" x="600" y="990" text-anchor="middle">frontmatter 校验 node .agents/install_skills.mts --list（CI）· 本图失步即 gen_svg -check 红（CI）</text>
+<text class="tc" x="600" y="1038" text-anchor="middle">权威清单与维护义务：.agents/README.md · 漂移重生成：node scripts/gen_svg/main.mts skills</text>
 </svg>

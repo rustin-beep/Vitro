@@ -1,5 +1,70 @@
 ## [Unreleased]
 
+### perf(scripts,ci): corpus_fuzz 判定缓存 + moon 构建产物缓存——PR #310 审阅处置批（#309 P0+P1，2026-10-25）
+
+**审阅处置**（1 P1 + 4 P2 + 5 P3 全采纳）：
+
+- **P1-1**：`moon-build` restore-keys 删第二级（os 前缀）——该级恰在唯一不该
+  复用的场景（toolchain/clang 变更换血轮）跨过 key 声明的隔离维度兜底，与
+  设计自相矛盾；一级前缀已提供同 toolchain 滚动复用，收益零损失。
+- **P2-1**：`moon-build` key 并入 clang 版本（新增 clangver 采键步）——native
+  产物由 MOON_CC=clang 构建，runner 镜像换 clang 而 `.moonbit-version` 不变时
+  原设计会静默复用旧 clang 产物（与纪律 11「MSVC/clang 构建结局可漂」立论
+  冲突，与 P0 的 clang 入键不一致）。
+- **P2-2**：`collectJudgeEpochInputs` 采集面断言——`shell`/`script` 缺失即
+  die fail loud（M2 突变实证：原实现把 shell 组件改常量后单测仍 18/18 全绿，
+  J9 锚只锁纯函数不锁采集接线；`<missing:路径>` 常量会让 epoch 稳定失去该
+  组件敏感性）。引擎双产物允许缺失（构建前置场景合法）。
+- **P2-3（勘误）**：原「三层守门」实为**两层**——EnsureFresh 调用方全在
+  gates-native、消费 download-artifact（mtime 恒新），看不到 build job
+  restore 出的 `_build`，不在守门面。两层 = moon 增量内容 hash + 下游行为防线。
+- **P2-4（登记）**：P0 命中前提 = P1 命中——native exe 含 PE TimeDateStamp
+  不可复现，重建即字节变 → 引擎 hash 变 → epoch 换血；两缓存成「全命中或全
+  不命中」二态（偏保守，无正确性风险）。解耦的语义指纹方案评估后不采。
+- **P3**：`judgeCacheGet` 对合法 JSON `null` 补防护（原来抛 TypeError 打死
+  整轮，违背 fail open 契约）；「六组件」残留两处清零；CI 冷态实录与预期
+  口径分离（首轮 run 40181813519 = 冷态全量：fuzz 9m14s / build 2m32s /
+  wall 12m08s ≈ 基线——收益属 warm 轮预期，待后续 run 落数）；workflow
+  dispatch 增 `refresh` 输入（缓存疑似污染的手动逃生门，此前只有夜间一条道）。
+
+### perf(ci): moon 构建产物缓存——Build job 提速（#309 P1，2026-10-25）
+
+- **病灶**：Build artifacts 串行前置。run 40178073268 实测分布 = native 全量
+  108s + wasmopt 供给 44s（binaryen 下载）两大头。
+- **缓存设计（与 P0 判定缓存不同源理）**：path = `moonbit/_build`（195M）+
+  `tools/cache`（binaryen 供给）；**key 不含源 hash**——含则每次 miss 增量无
+  意义，源变面由 **moon 增量内容 hash** 自算重编；key = os + clang 版本 +
+  `.moonbit-version` + `github.sha`（逐轮新 entry），restore-keys 单级前缀
+  取最近，LRU 逐出。
+- **正确性边界（issue 前置评估义务，本地双臂实证）**：改 `cli_run.mbt` 一行 →
+  native 29 tasks / js 8 tasks 精准重编、产物行为随新源（run.exe 输出 P1PROBE）；
+  源还原回旧内容同样触发重编回旧产物——**无漏判假绿面**。源未变三目标增量合计
+  **~3.4s**（native `no work to do` 0.5s / js 0.9s / wasm-gc 1.9s）。守门两层
+  （见处置批勘误）。
+- **CI 从「每轮冷态全量」转为「依赖 moon 增量正确性」**——该依赖由两层覆盖，
+  风险显式登记于 ci.yml 注释。
+
+### perf(scripts,ci): corpus_fuzz 判定缓存——fuzz 闸增量 check（#309 P0，2026-10-25）
+
+- **病灶**：fuzz 判定轮 318 变体 × (clang 编译 + js/native 双臂执行) 每轮全量
+  重跑——CI 8.7m（单 job 之王、关键路径决定者），本地定性循环 9m/轮 × 3 轮
+  ≈30m。判定结果是确定性的，纯浪费。
+- **缓存设计**：`.corpus_fuzz_judge/`（gitignored）存判定 bucket。**epoch 键**
+  = clang 版本 + 双臂引擎产物（run.exe/vitro_js.js）+ sh 壳 + 规则 + 驱动脚本
+  + node 宿主**七组件 hash**——任一变化整体失效（保守：宁多跑不少跑；node
+  宿主入键防 CI 预装漂移携旧 bucket）；**条目键** = fp + 变体源字节——语料批
+  只失效变化单条。命中 ⇒ 跳过三方进程对拍直接判红。
+- **语义边界**：`-freeze` 不读缓存（冻结需完整指纹清单，全量语义不变）但写
+  （freeze 即真跑，结果供下轮 check 复用）；`CF_JUDGE_REFRESH=1`（CI 夜间
+  schedule 轮注入）全量重算覆写——防腐化第二道闸（复用 clang golden 缓存
+  方案 A 双闸形态）。
+- **CI 接线**：corpus-fuzz job 增 actions/cache（CI key = 引擎双产物 hash +
+  clang 版本 + main.mts/rules.json 源 hash；sh 壳与 node 宿主不进 CI key，
+  由脚本内层 epoch 兜底）+ node 单点 `.node-version`（type stripping 兼防
+  epoch 换血）。收益预期：引擎未变批（文档/脚本）8.7m → ~1m。
+- **测试**：七组件敏感性矩阵（J9 锚：抽走 shell 组件实测红）/ 条目双敏感 /
+  get·put 拒收语义（窜条、损坏 JSON、非法桶名、原型链名一律 miss fail open
+  到真跑）/ prune 清除面。18/18 绿；tsc/oxlint 严格档过。
 ### refactor(scripts,docs): #273 facts/clang_direct/install_skills Go→.mts 迁移 + CI 去 Go 化 + 文档插图页脚翻新（2026-10-25）
 
 - **迁移三件**：`scripts/facts`（2338 行 + 8 个 Go 测试直译为 node:test 49 例）、`scripts/clang_direct`（1142 行 + 自测 5 例）、`.agents/install_skills`（313 行 + 自测 5 例）落 `.mts` 四件套门；**Go/ts 双跑逐位对拍**——facts.json 22 键规范化（剔 generated_at/git/as_of；`moonbit_lexer_diff_tsv`/`moonbit_parser_diff_samples` 两键 `source` 为口径演进差异：Go=`scripts/lexer_diff`、TS=`scripts/diff_gate（lexer/parser 臂）`）逐位一致、`check` 子命令 stdout 在 pending=0 时逐位一致（pending≠0 时 `[待采集]` 行序不同：TS 按规则键字节序 = 有意修复，Go 按错位序——`facts` 子命令 stdout 亦含上述两键 source 行差异）、clang_direct native/wasm 双臂 `--sample`/`--cases` 报文逐位一致且 exit code 相同。

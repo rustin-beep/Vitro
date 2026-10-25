@@ -80,7 +80,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 |---|---|
 | **id 关联** | 请求可带 `id`（任意 JSON 值），响应原样回填 —— 便于异步/乱序对账 |
 | **帧同构** | 成功帧 `{"id":N,"ok":true,"result":{…}}`，错误帧 `{"id":N,"ok":false,"error":{"kind":…,"message":…}}` —— 解析路径统一 |
-| 错误 kind | `protocol`（请求格式/未知方法）/ `state`（会话状态不满足）/ `internal` |
+| 错误 kind | `protocol`（请求格式/未知方法/config.set 未知键）/ `state`（会话状态不满足，如未 step.begin 就 step.next）/ `texts`（texts.install 装载失败——payload 非法 JSON/顶层键缺失；#257 补登）/ `internal`（保留值——本轮多形态探测未观测到实例，登记为待实证） |
 | 入口语义 | 会话语义层单源（MoonBit 侧 = `vitro/engine/session` 包；运行结果/诊断/步 payload 形状各出口一致），出口间不产生语义分叉 |
 | 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` |
 | 重置语义 | `session.reset` 清空编译/运行状态，**保留会话级配置**（隔离预算、判分确定性、argv） |
@@ -90,7 +90,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 
 | 方法 | 参数 | 说明 |
 |---|---|---|
-| `ping` | — | 存活探测，返回引擎版本 |
+| `ping` | — | 存活探测，返回 `{"pong":true}`（**不带引擎版本**——版本自检走 mooncakes 版本号，见《已知限制与差异》④-4；#216 勘正） |
 | `compile` | `source`（或 `files:[{filename,source}]`） | 覆盖式编译当前单元集合，返回诊断 JSON |
 | `run` | `input` / `argv` / `batch_input` / `max_steps` / `deterministic` | 全速运行，返回 `status`/`return_value`/`steps_executed` |
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
@@ -100,7 +100,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `payload.get` | `start` / `end` | 取窗口内步 payload（窗口 2000 帧，越窗静默裁剪） |
 | `seek` | `step` | 时间旅行定位（窗口外走检查点恢复 + 正向重放） |
 | `ast.dump` / `typeck.dump` / `symbols.dump` | — | 静态 dump 族（AST / 类型检查 / 符号表导出——无需会话，只读语义不碰会话态） |
-| `diagnostics_probe` | 位置参数 | 诊断探针（补全/悬停位——M15 无实现面，fail loud） |
+| `diagnostics_probe` | 位置参数（source/line/column） | 诊断探针（补全/悬停位——**可用**（#226 勘正：旧文「M15 无实现面 fail loud」失实）：返回诊断数组（code/severity/line/column/fix_kind）与 `fixed_source`（自动修复后的完整源码），实测对缺分号等形态给出修复） |
 | `memory.dump` | — | 1MB 内存映像 base64（与 CLI `--dump-memory` 同通道） |
 | `breakpoints.set` | `lines:[int]` | 设置断点行集合（应在 `step.begin` 之后；**传 `[]` 清空断点 = 恢复执行**——命中暂停后的唯一"continue"口，见下方恢复语义） |
 | `memory.regions` | — | **三段式内存地图**（`kind` = `global`/`stack`/`heap`，见下方说明）+ 隔离区统计 |
@@ -110,7 +110,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时覆盖装载——批③b 扩诊断卡片段（码值域闸=catalog_codes——卡数随码表增长，2026-10-23 实测 108〔A 线 #214 批 +E3084/E3085〕，装前以 `error_catalog` 帧实数为准）——校验（suggestions/builtin_notes 两必到键 + trap_messages 可选段〔批③a：缺席=不碰引擎烘焙 trap，在场=校验后替换〕/suggestions 值域 43 名单/trap 占位符双向契约）全过后原子换装，失败 error 帧不落半装；成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持）。**段内 schema（#244，2026-10-22 成文——此前下游须试错三轮才能装上）**：`payload` 是 JSON 文本，顶层四段**每段都是「整表等键替换」**（少一条即整帧拒绝——与 `texts.install` 装载门「含未知 id 整帧拒绝」同族裁定，#130）：`suggestions` = `{<43 算法名>: string}`（43 名单单源）、`builtin_notes` = `{<12 名>: string}`、`trap_messages` = `{<45 整数码>: string}`、`error_catalog` = `{<108 整数码>: {icon,title,explanation,common_causes[]}}`（卡数随码表增长——装前以 `error_catalog` 方法帧的实数为准，审阅 P2-6）——**键必须整数码**（`"E1001"` 字符串键会被拒），装前对照 `error_catalog`/`semantic_labels` 方法帧拿当前键集。**覆盖面分工（#243，2026-10-22 成文）**：装载替换的是 **`error_catalog` 帧的卡与三张文本表**；**编译/运行诊断帧的 `message`（静态码表文案——「发生了什么」）与 `fix_suggestion` 不受语言包控制**（本地化生效的是「怎么教」层——卡与附注）。「装语言包 → 诊断 message 变中/英」不成立属既定分工，非缺陷 |
 | `semantic_labels` | — | `semantic_label` 受控词汇表导出（`{schema,discipline,labels:[{id,domain,template,example,status,since}]}`；词汇只增不改） |
 | `contracts` | — | schema 版本轨道与行为契约（预留位字段名、v0.2 激活清单与字段台账、行为契约表） |
-| `capabilities` | — | 机器可读能力清单（`engine_version`（含构建期 git 短哈希，可用于产物自检）、版本宏名义锚点、语言子集、内存模型常量、schema 轨道、行为契约） |
+| `capabilities` | — | 机器可读能力清单（顶层键 = `engine`/`schema`/`behavior_contracts`/`semantic_label_kinds`/`languages`/`memory_model`——**无 `engine_version` 键**，与《已知限制与差异》④-4 一致；#216 勘正：旧文承诺的 engine_version 从未存在） |
 | `session.create` / `session.reset` / `session.destroy` | — | 会话生命周期（响应带 `session` 拓扑语义字段，见上表"会话拓扑"）|
 | `shutdown` | — | 结束 serve 进程（EOF 亦可） |
 

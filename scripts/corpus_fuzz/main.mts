@@ -41,6 +41,7 @@ import { spawnSync } from "node:child_process";
 import type { SpawnSyncReturns } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { byteCompare } from "../internal/text.mts";
+import { projectRoot } from "../internal/capi.mts";
 
 // ── 规则（rules.json 单源）──
 
@@ -868,9 +869,13 @@ export function collectJudgeEpochInputs(
   const cv = runCmd(["clang", "--version"], ".", 10_000);
   const clangLine = cv.rc === 0 ? (cv.stdout.split("\n")[0] ?? "").trim() : "<no-clang>";
   const mustExist = (p: string, what: string): string => {
-    const h = hashFileShort(p);
+    // 相对路径锚仓根解析（CI 的 scripts-ts job working-directory=scripts 下，
+    // 裸相对路径会双拼成 scripts/scripts/... ——#273 批「stat scripts/scripts/
+    // facts」同款坑，run 40191315029 scripts-ts 红实锤）
+    const abs = path.isAbsolute(p) ? p : path.join(projectRoot(), p);
+    const h = hashFileShort(abs);
     if (h.startsWith("<missing:")) {
-      die(`epoch 组件缺失：${what}（${p}）——采集面断裂，fail loud 不静默降敏`);
+      die(`epoch 组件缺失：${what}（${abs}）——采集面断裂，fail loud 不静默降敏`);
     }
     return h;
   };

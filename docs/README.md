@@ -52,7 +52,7 @@
 > **命名约定**：`current/` 下文档自 2026-09-13 起使用中文文件名（专有名词如 C++/CLI/VM/schema 保留英文）；
 > 旧英文名在其他分支或本地检出中可能仍被引用，对照关系见各文档自身头部。
 >
-> **插图（SVG）约定**：`current/` 与 `spec/` 下的 15 张结构插图（架构总览〔原双轨格局图，2026-10-05 删区重画单轨〕 /
+> **插图（SVG）约定**：`current/` 下 14 张 + `moonbit/docs/spec/` 下 1 张（StepPayload 帧结构图随协议 spec 于 2026-10-25 搬包随 moonbit module 分发）共 15 张结构插图（架构总览〔原双轨格局图，2026-10-05 删区重画单轨〕 /
 > Clang 直拍门禁〔原影子验证图，随防线吸收更名〕 / 三态缓存 / 知识图谱 /
 > MoonBit 包切分编译侧 + 执行智能侧 / 统一模式架构 / 统一模式状态机 / 内存布局与有界隔离 /
 > MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 /
@@ -92,7 +92,7 @@
 | [`current/02-构建与上手/快速入门.md`](current/02-构建与上手/快速入门.md) | 快速入门：下游接入（moon add 配方，#115）/ 命令行 / JSON-lines 会话 / wasm-gc 出口（原 `QUICKSTART.md`） |
 | [`current/02-构建与上手/构建指南.md`](current/02-构建与上手/构建指南.md) | 构建指南：引擎、三臂 CLI（js/native/wasm）、测试防线与排障（原 `BUILD.md`；脚本清单已拆分至下方专册） |
 | [`current/02-构建与上手/脚本总清单与必跑防线.md`](current/02-构建与上手/脚本总清单与必跑防线.md) | **脚本总清单与必跑防线（2026-09-22 建册）**：`scripts/` 全量脚本入册（CI 门禁驱动 / 差分对拍 / 探针 / 生成器 / Python 残留处置）；CI 门禁全表与**本地提交前按改动区域的必跑矩阵**；用法权威源=各脚本头注，本册为一级索引与入册义务 |
-| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI 使用指南：**统一入口 launcher `scripts/bin/vitro`（缺省 js 臂，`--backend js|native|wasm` 三臂选边，#49+三后端批）** + MoonBit 侧 `vitro` 总入口（run/compile/step/api 四子命令）+ serve 会话方法面与**「字段 ↔ 最低版本」表**（#116；Rust `vitro_cli` 章节已随删区整体退役）（协议契约单源在 [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
+| [`current/02-构建与上手/CLI使用手册.md`](current/02-构建与上手/CLI使用手册.md) | CLI 使用指南：**统一入口 launcher `scripts/bin/vitro`（缺省 js 臂，`--backend js|native|wasm` 三臂选边，#49+三后端批）** + MoonBit 侧 `vitro` 总入口（run/compile/step/api 四子命令）+ serve 会话方法面与**「字段 ↔ 最低版本」表**（#116；Rust `vitro_cli` 章节已随删区整体退役）（协议契约单源在 [`moonbit/docs/spec/CLI_PROTOCOL_V1.md`](../moonbit/docs/spec/CLI_PROTOCOL_V1.md)）（原 `VITRO_CLI.md`） |
 
 #### 语言子集规范（行为契约）
 
@@ -132,8 +132,8 @@
 
 | 文档 | 说明 |
 |------|------|
-| [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | **StepPayload v0.1 语言中立协议 schema**（已冻结，S1–S5 签字回放 61/61；§9 v0.2 激活轨道 + **§9.4 字段↔最低版本对照**〔#116〕、附录 B 受控词汇表） |
-| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行前缀【枚举权威=spec §1 白名单表，索引不写数】+ 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
+| [`moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md)（2026-10-25 起——原 `docs/spec/`，随包分发） | **StepPayload v0.1 语言中立协议 schema**（已冻结，S1–S5 签字回放 61/61；§9 v0.2 激活轨道 + **§9.4 字段↔最低版本对照**〔#116〕、附录 B 受控词汇表） |
+| [`moonbit/docs/spec/CLI_PROTOCOL_V1.md`](../moonbit/docs/spec/CLI_PROTOCOL_V1.md)（2026-10-25 起——原 `docs/spec/`） | **CLI 输出协议 v1**（agent/shell/防线消费契约：标记行前缀【枚举权威=spec §1 白名单表，索引不写数】+ 退出码五值表 + `--json` NDJSON 事件流 + argv 偏移约定；帧语义引用 StepPayload 单源；CLI 出口总账 #37 三批随批冻结，2026-10-04） |
 | [`current/06-出口与协议/宿主工单与Rust最小实例.md`](current/06-出口与协议/宿主工单与Rust最小实例.md) | **宿主侧工单席位职责书 + Rust 最小实例册（2026-10-25）**：R1 polyfill 宿主（wasmtime 一等供给 js-string builtins + 导入常量反射装载 + 装载门 + 单文件分发，三件未开工最小实例，开工信号=#4 立项）+ R2 delegate 加速核（契约核/三档帧锚采样/委派双接线/wasmopt 过闸**四件已建成**——与 Zig 四方终态 992237507·115000021 步逐位一致，委派 3.5-3.8 vs 11.1-11.6 ns/步，wasm 裸 35.7KB→过闸 27.8KB）+ γ 触发线与终裁同台探针；依据 §6.4「宿主侧语言不进版图」豁免，引擎侧零侵入；随文登记 zigprobe 档案三缺陷（bun readFileSync 不内嵌 /「16×」算术 / 交叉编译期权证否） |
 | [`current/06-出口与协议/堆有界隔离决议.md`](current/06-出口与协议/堆有界隔离决议.md) | 堆内存决议：bump 分配 + 有界隔离（三道墙；已拍板已实施，U2 不可破坏项）（原 `VITRO_HEAP_QUARANTINE_DECISION.md`） |
 | [`current/06-出口与协议/wasm多实例并发模型与U2拍板.md`](current/06-出口与协议/wasm多实例并发模型与U2拍板.md) | 宿主并发模型裁定：N 线程 × N 实例构造性隔离（三宿主形态 + 1实例=1线程=1会话铁律）+ U2 拍板（19 声明冻结现状、第二批 capi 裁不做、下游改道 wasm/serve）（2026-09-19） |
@@ -167,14 +167,14 @@
 | [`current/08-发布档案/0.9.0.md`](current/08-发布档案/0.9.0.md) | **0.9.0（S9 收官版 · 预写稿 2026-10-23——内容面锁定，未定版未发布，发布实录待回填）**：tag `vitro-engine-0.8.0`→`f87b16db` 窗口 **217 笔提交 / 186 条 issue** 收拢（含 4 个在途 PR 与工作区在途批的收录边界〔在途件入版与否属发版拍板点〕）；数字全景（测试 655→884〔facts 裸口径，发版时按 playbook 全量重采；含 #256/#261 闭合批〕、码表 137→156 臂、教学卡 77→114、包目录 37→45）+ 五大叙事线（S9 脱钩收官 / 缺陷海修复 / CLI 三后端单壳 / demo 前端换代 / 防线与工具链治理） |
 
 ---
-### 📁 [spec/](spec/) — 语言中立协议
+### 📁 moonbit/docs/spec/ — 语言中立协议（2026-10-25 搬包）
 
-对外承诺的 wire format 定义，与任何前端实现解耦。当前：
+对外承诺的 wire format 定义，与任何前端实现解耦。**原 `docs/spec/` 已整体迁入 moonbit module**（真源迁移——mooncakes zip 内 README 的协议链接由死链变活链，#217②根因），本目录不再有 spec：
 
 | 文档 | 说明 |
 |------|------|
-| [`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | StepPayload v0.1（**已冻结**，2026-09-12，S1–S5 签字回放 61/61）；§9 v0.2 激活轨道 + §9.4 字段↔最低版本对照（#116）、附录 B 受控词汇表 |
-| [`spec/CLI_PROTOCOL_V1.md`](spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行前缀枚举权威=spec §1 表〔索引不写数——四说并存归一，#114〕/ 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
+| [`../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`](../moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md) | StepPayload v0.1（**已冻结**，2026-09-12，S1–S5 签字回放 61/61）；§9 v0.2 激活轨道 + §9.4 字段↔最低版本对照（#116）、附录 B 受控词汇表 |
+| [`../moonbit/docs/spec/CLI_PROTOCOL_V1.md`](../moonbit/docs/spec/CLI_PROTOCOL_V1.md) | CLI 输出协议 v1（标记行前缀枚举权威=spec §1 表〔索引不写数——四说并存归一，#114〕/ 退出码五值 / `--json` NDJSON 事件流 / argv 偏移约定——CLI 出口总账 #37 三批随批冻结，2026-10-04） |
 
 ---
 

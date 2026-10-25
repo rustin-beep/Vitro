@@ -45,7 +45,7 @@ export function genPanorama(root: string): void {
     { name: "STEP_PAYLOAD_SCHEMA_V0_1.md", sub: "权威 schema 文档 · 字段冻结测试主锚", subCls: "tc" },
     { name: "v01_payload_fields.json", sub: "字段真单源（JSON · 生成器输入）", subCls: "tc" },
     { name: "schema_fields_gen.mbt", sub: "闸 gen_protocol_fields -check", subCls: "tn" },
-    { name: "protocol/index.d.ts + fields.mjs", sub: "闸 gen_protocol_ts -check（双向对账）", subCls: "tn" },
+    { name: "moonbit/bindings/ts/index.d.ts + fields.mjs", sub: "闸 gen_protocol_ts -check（双向对账）", subCls: "tn" },
     { name: "consumer.mjs", sub: "TS 首个消费者 · 字段级校验真输出", subCls: "tc" },
   ];
   chain.forEach((n, i) => {

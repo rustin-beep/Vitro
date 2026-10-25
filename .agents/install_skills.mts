@@ -248,6 +248,10 @@ function parseFlags(argv: string[]): { has: (n: string) => boolean; value: (n: s
   return { has: (n) => bools.has(n), value: (n) => values.get(n) };
 }
 
+// export 仅供测试（CLI 契约锚在 install_skills.test.mts——#307 审阅 P2-3：
+// -- 终止 / -tool=值 / 布尔= / 未知 flag 四面曾零锚；生产消费走 main）。
+export const _internal = { parseFlags, fail, InstallerError };
+
 function main(): void {
   try {
     runMain();

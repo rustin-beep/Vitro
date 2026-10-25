@@ -120,7 +120,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 |---|---|---|---|
 | `run` 响应 `output_truncated` | run 帧 | **HEAD（未发布）** | #91 截断位 |
 | `run` 响应 `trap_code` | run 帧 | **HEAD（未发布）** | #261 trap 结构化 E 码（空串 = 无码形态；带码 trap 文案首段同步带 `(E####)`——按码查 error_catalog 教学卡） |
-| `output.delta` 响应 `truncated_bytes` | delta 帧 | **HEAD（未发布）** | [CLI_PROTOCOL_V1](../../spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
+| `output.delta` 响应 `truncated_bytes` | delta 帧 | **HEAD（未发布）** | [CLI_PROTOCOL_V1](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md) §8 DX ③（2026-10-11 追加） |
 | `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **HEAD（未发布）** | #27 语义图标 |
 | `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
 | `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |

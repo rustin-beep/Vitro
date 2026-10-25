@@ -144,7 +144,7 @@ moon info                  # .mbti 接口面（API 变更信号）
 
 ## 目录说明
 
-- `scripts/gen_diag/`：**仓库开发工具**（#39 真值源迁移后从 `scripts/moonbit/diagnostics_data/{error_codes,catalog}.json` 单源生成 diag 码表——包消费者无需也不应运行；生成物已随包分发且带源 sha256 落款，`node scripts/gen_diag/main.mts -check` 可校验其未漂移）；
+- `scripts/gen_diag/`：**仓库开发工具**（#39 真值源迁移后从 `scripts/moonbit/diagnostics_data/{error_codes,catalog}.json` 单源生成 diag 码表——包消费者无需也不应运行；生成物已随包分发且带源 sha256 落款，`node scripts/moonbit/gen_diag/main.mts -check` 可校验其未漂移）；
 - `*/pkg.generated.mbti`：`moon info` 生成的公共接口面。
 
 ## 上游与对拍

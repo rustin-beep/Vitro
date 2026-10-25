@@ -73,3 +73,40 @@ test("diffOne：未安装/一致/源新增/仅副本所有 四态", () => {
   fs.writeFileSync(path.join(diverged, "local.md"), "local");
   assert.equal(diffOne(s, diverged), true);
 });
+
+// ── CLI 契约锚（#307 审阅 P2-3：-- 终止 / -tool=值 / 布尔= / 未知 flag
+// 四面曾零锚——`i++; break` 吃掉 `--` 与 %q 引号两处修复突变时 5/5 绿）──
+import { _internal } from "./install_skills.mts";
+const { parseFlags, fail, InstallerError } = _internal;
+
+test("parseFlags CLI 契约：-- 终止且被吃掉（Go flag.Args 语义）", () => {
+  // 此前 bug：break 停在 "--" 上 → slice(i) 把 "--" 带进位置参数。
+  // Go 语义：-- 被吃掉、其后全为位置参数（本工具不消费，靠不炸来判形态）。
+  const r1 = parseFlags(["--all", "--"]);
+  assert.ok(r1.has("--all"), "--all 应被解析");
+  const r2 = parseFlags(["--", "--all"]); // -- 后的 --all 是位置参数不被解析
+  assert.ok(!r2.has("--all"), "-- 之后的 flag 不得再被解析");
+});
+
+test("parseFlags CLI 契约：-tool=值 与 -tool 值 两形态", () => {
+  assert.equal(parseFlags(["--tool=zed"]).value("--tool"), "zed", "= 形态");
+  assert.equal(parseFlags(["--tool", "zed"]).value("--tool"), "zed", "空格形态");
+});
+
+test("parseFlags CLI 契约：布尔 flag 带 = 值 fail loud", () => {
+  assert.throws(() => parseFlags(["--all=true"]), InstallerError, "布尔 flag 拒绝 = 值");
+});
+
+test("fail 的 %q 渲染带引号（与 Go fmt 逐字一致）", () => {
+  try {
+    fail("未知工具 %q", "nosuch");
+    assert.fail("应 throw");
+  } catch (e) {
+    assert.ok(e instanceof InstallerError);
+    assert.equal((e as Error).message, '未知工具 "nosuch"', "%q 须带引号——曾差一对引号");
+  }
+});
+
+test("parseFlags CLI 契约：未知 flag fail loud", () => {
+  assert.throws(() => parseFlags(["--no-such-flag"]), InstallerError, "未知 flag 须报错非静默");
+});

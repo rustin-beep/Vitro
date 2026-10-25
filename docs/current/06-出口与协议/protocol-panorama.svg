@@ -58,7 +58,7 @@
 <text class="tn" x="84" y="455" text-anchor="start">闸 gen_protocol_fields -check</text>
 <line class="edge" x1="330" y1="464" x2="330" y2="474" marker-end="url(#ah)"/>
 <rect class="card" x="64" y="474" width="532" height="52" rx="10"/>
-<text class="tn" x="84" y="495" text-anchor="start">protocol/index.d.ts + fields.mjs</text>
+<text class="tn" x="84" y="495" text-anchor="start">moonbit/bindings/ts/index.d.ts + fields.mjs</text>
 <text class="tn" x="84" y="517" text-anchor="start">闸 gen_protocol_ts -check（双向对账）</text>
 <line class="edge" x1="330" y1="526" x2="330" y2="536" marker-end="url(#ah)"/>
 <rect class="card" x="64" y="536" width="532" height="52" rx="10"/>

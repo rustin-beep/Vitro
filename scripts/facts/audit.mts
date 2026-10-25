@@ -222,10 +222,11 @@ export function loadSuspectExemptions(root: string): SuspectExemptEntry[] {
   return entries;
 }
 
-// scanFiles 扫描目标文档：docs/ 全部 + 根目录 md（归档目录与豁免白名单跳过）。
+// scanFiles 扫描目标文档：docs/ 全部 + moonbit/docs/（2026-10-25 搬包后
+// 协议 spec 的落点，#307 P3-9 连坐——原 docs/spec/ 退出扫描面成真空）+
+// 根目录 md（归档目录与豁免白名单跳过）。
 export function scanFiles(root: string): string[] {
   const out: string[] = [];
-  const docsDir = path.join(root, "docs");
   const walk = (dir: string): void => {
     let ents: fs.Dirent[];
     try {
@@ -244,8 +245,17 @@ export function scanFiles(root: string): string[] {
       if (p.endsWith(".md") || p.endsWith(".svg")) out.push(relOf(root, p));
     }
   };
-  if (fs.existsSync(docsDir)) walk(docsDir);
-  for (const n of ["AGENTS.md", "README.md", "moonbit/README.md", "moonbit/README.mbt.md"]) {
+  if (fs.existsSync(path.join(root, "docs"))) walk(path.join(root, "docs"));
+  if (fs.existsSync(path.join(root, "moonbit", "docs"))) {
+    walk(path.join(root, "moonbit", "docs"));
+  }
+  for (const n of [
+    "AGENTS.md",
+    "README.md",
+    "moonbit/README.md",
+    "moonbit/README.mbt.md",
+    "moonbit/diag/README.mbt.md", // 随包分发的可执行文档（含生成器命令指引）
+  ]) {
     if (fs.existsSync(path.join(root, ...n.split("/")))) out.push(n);
   }
   const sorted = byteSort(out);
@@ -267,10 +277,11 @@ export function classifyFile(rel: string): "ARCHIVE" | "AS-OF" | "CURRENT" {
   if (rel.includes("/archive/") || path.basename(rel).startsWith("ARCHIVE_")) {
     return "ARCHIVE";
   }
-  // docs/spec/ 是对外承诺的协议文档（wire format / 验收快照）：其中的
-  // 数字是 as-of 时点记录（且可能引用已退役的旧驱动路径），改数字等于
-  // 往旧快照里塞新事实——按行级日期判冻结之外，文件级整体按 AS-OF 处理。
-  if (rel.startsWith("docs/spec/")) return "AS-OF";
+  // 协议 spec 是对外承诺的 wire format 文档（2026-10-25 搬包至
+  // moonbit/docs/spec/，#307 P3-9 连坐）：其中的数字是 as-of 时点记录
+  // （且可能引用已退役的旧驱动路径），改数字等于往旧快照里塞新事实——
+  // 按行级日期判冻结之外，文件级整体按 AS-OF 处理。
+  if (rel.startsWith("moonbit/docs/spec/")) return "AS-OF";
   if (RE_HIST_FILE.test(path.basename(rel))) return "AS-OF";
   return "CURRENT";
 }
@@ -788,8 +799,19 @@ function stableSortBy<T>(xs: T[], keyOf: (x: T, i: number) => string): T[] {
 
 // ─── 坏引用扫描（文档指向不存在的脚本）────────────────────────────────────
 
+// 2026-10-25 #307 P1-1 扩面：迁移后主形态是 .mts/.mjs（node 直跑）——原正则
+// 只认 .py/.go/.ps1 导致 142 处 .mts 引用全部在闸外（抽取面塌缩，自报
+// 「坏引用 0」只证明没有 .go 坏引用）。扩展名扩 mts|mjs|ts|js|sh|cmd，
+// 路径头加 .agents（install_skills.mts）；另加 bare 形态（无扩展名包路径，
+// 如 `go run ./scripts/shadow_verify`——RE_SCRIPT_REF_BARE，仅命令语境）。
 const RE_SCRIPT_REF =
-  /(?:scripts|native\/tests|native\/scripts)\/[A-Za-z0-9_/.-]+\.(?:py|go|ps1)/g;
+  /(?:scripts|\.agents|native\/tests|native\/scripts)\/[A-Za-z0-9_/.-]+\.(?:py|go|ps1|mts|mjs|ts|js|sh|cmd)(?![A-Za-z0-9])/g;
+
+// bare 形态：node / go run 后紧跟的无扩展名脚本路径（包引用如
+// `go run ./scripts/facts`）。带已知扩展名的由 RE_SCRIPT_REF 覆盖，此处
+// 排除，避免同一路径双计。
+const RE_SCRIPT_REF_BARE =
+  /(?:\bnode|\bgo\s+run)\s+(?:\.\/|\.\\)?((?:scripts|\.agents)\/[A-Za-z0-9_/.$-]*[A-Za-z0-9_/-])/g;
 
 // RE_NARRATIVE_REF 叙述性引用豁免：该行本身就在说明"此脚本已删除/退役/
 // 规划中"时，路径出现是历史叙述而非失效指引。"取代/接替"刻意不在词表
@@ -798,7 +820,8 @@ const RE_SCRIPT_REF =
 const RE_NARRATIVE_REF = /不存在|已迁出|已移除|已失效|未恢复|仍缺|删除|退役|规划中/;
 
 // 命令动词前缀：路径紧跟其后即视为祈使指引（可复现命令形态）。
-const RE_CMD_VERB = /(?:python3?|py|go\s+run|cargo|bash|sh|pwsh|powershell)\s+(?:\.\/|\.\\)?$/i;
+// 2026-10-25 #307 P1-1：加 node / npm / npx（.mts 直跑 + npm run 通道）。
+const RE_CMD_VERB = /(?:python3?|py|node|npm|npx|go\s+run|cargo|bash|sh|pwsh|powershell)\s+(?:\.\/|\.\\)?$/i;
 
 // scanBrokenRefs 检查文档中引用的脚本路径是否真实存在。
 //
@@ -833,6 +856,14 @@ function scanBrokenRefs(root: string, files: string[]): BrokenRef[] {
       const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
       RE_SCRIPT_REF.lastIndex = 0;
       const refs = matchAllOf(RE_SCRIPT_REF, line).map((m) => m[0]);
+      // bare 形态（无扩展名包路径，命令动词紧跟）：排除已被主正则覆盖的
+      // 带扩展名匹配（bare 贪婪会吃到同一路径），只补漏。
+      RE_SCRIPT_REF_BARE.lastIndex = 0;
+      for (const bm of matchAllOf(RE_SCRIPT_REF_BARE, line)) {
+        const bare = bm[1]!;
+        if (/\.(py|go|ps1|mts|mjs|ts|js|sh|cmd)$/.test(bare)) continue;
+        if (!refs.includes(bare)) refs.push(bare);
+      }
       if (refs.length === 0) continue;
       const dead: string[] = [];
       let alive = false;
@@ -881,18 +912,25 @@ function scriptRefAlive(root: string, ref: string): boolean {
   const p = path.join(root, ...ref.split("/"));
   if (fs.existsSync(p)) return true;
   // 包路径引用：xxx.go 不存在但 xxx/ 是含 .go 文件的目录
-  if (ref.endsWith(".go")) {
-    const dir = p.slice(0, -".go".length);
+  // 2026-10-25 #307 P1-1：同判定扩 .mts（node 直跑单文件驱动同 .go 形态，
+  // 如 `scripts/facts/main.mts` 在、但 `scripts/facts.mts` 引用按目录兜底）。
+  const m = /\.(go|mts|mjs|ts|js)$/.exec(ref);
+  if (m !== null) {
+    const dir = p.slice(0, -m[0]!.length);
     let ents: fs.Dirent[];
     try {
       ents = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
       return false;
     }
-    if (ents.some((e) => !e.isDirectory() && e.name.endsWith(".go"))) return true;
+    if (ents.some((e) => !e.isDirectory() && e.name.endsWith(m[0]!))) return true;
   }
   return false;
 }
+
+// export 仅供测试（J9 锚在 broken_refs.test.mts——扩面形态的抽取/豁免/包路径
+// 判定全量锁；生产消费走 runAudit 的 broken 汇总）。
+export const _internal = { scanBrokenRefs, scriptRefAlive };
 
 // allDrift 展开为按位置排序的待改清单。
 export function allDrift(r: AuditResult): Hit[] {

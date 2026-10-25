@@ -1,6 +1,6 @@
 // main.test.mts —— clang_direct 纯逻辑面自测（#273 迁移批补口；Go 版无测试
-// 件，本件锁四件套门的判定面：标记行剥除 / 行级归一 / 缓存键确定性 /
-// known digest 集兼容 / 语料收集与采样确定性）。
+// 件。本件锁：标记行剥除 / 行级归一〔含 \r\r 多重尾——A1-l 入库锚〕两面；
+// 缓存键与 digest 集兼容、语料采样确定性由 CI 全量运行与 --check-known 承载）。
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { extractMoonStdout, normalizeClangStdout, normalizeLines } from "./main.mts";
@@ -30,6 +30,12 @@ test("normalizeLines：CRLF 归一 + 首尾空行剥 + 无尾换行 join", () =>
   assert.equal(normalizeLines(["\r", "a\r", "b", "", ""]), "a\nb");
   assert.equal(normalizeLines(["", "", "x"]), "x");
   assert.equal(normalizeLines([]), "");
+  // A1-l 入库锚（#307 审阅 P2-3：本批修复曾无锚——突变 /\r+$/→/\r$/ 时
+  // 旧样本 5/5 绿）。\r\r 形态 = printf("\r\n") 经 Windows 文本模式成
+  // \r\r\n——剥全部尾 \r，剥一个残一个会把工程语料 MF-HTTP 误判 DIFF。
+  assert.equal(normalizeLines(["a\r\r"]), "a", "单行多重 \\r 尾须全剥");
+  assert.equal(normalizeLines(["a\r\r", "b", "c\r\r\r"]), "a\nb\nc", "多行多重 \\r 尾须全剥");
+  assert.equal(normalizeLines(["HTTP/1.1 200\r\r", "body\r"]), "HTTP/1.1 200\nbody");
 });
 
 test("normalizeClangStdout：Windows 文本模式 CRLF 对齐", () => {

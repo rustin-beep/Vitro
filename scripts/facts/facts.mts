@@ -506,7 +506,7 @@ function collectMoonbitLexerDiff(root: string, facts: Record<string, Fact>): voi
     total += p.n;
   }
   const f = okFact(total, "个", "scripts/diff_gate（lexer 臂）", "run", nowISO());
-  f.note = "随机 2400 例（seed 20260919）+ baseline 366 + K&R 81 + leetcode 138 + gap 16，L1/L2 双层 TSV 逐字节一致（分项随语料目录增删，以 total 为准）";
+  f.note = "baseline + K&R + leetcode + gap 全语料 digest 对拍（diff_gate lexer 臂；随机 2400 例通道已随 2026-10-12 digest 化退役——分项随语料目录增删，以 total 为准）";
   facts["moonbit_lexer_diff_tsv"] = f;
 }
 

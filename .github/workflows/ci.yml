@@ -227,12 +227,10 @@ jobs:
           path: |
             .clang_cache_cd
           # key 含驱动脚本哈希：缓存 schema/口径变化时整体失效。
-          # #273 批（2026-10-23）：差分五驱动已切 TS 版，故 key 取 TS 侧源码
-          # （diff_gate/**/*.mts + internal/**/*.mts）+ 仍跑 Go 的 clang_direct
-          # 与其依赖的 internal/**/*.go。Go 版 diff 驱动（vm_diff 等）不再进 key
-          # ——它们已不被 CI 执行，其变更不影响产物；否则 ci_checklist 会把
-          # hashFiles 引用判成「活行」而报僵尸例外。
-          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/diff_gate/**/*.mts', 'scripts/internal/**/*.mts') }}
+          # #273 迁移批（2026-10-25）：clang_direct 主驱动已 .mts（node 直跑），
+          # key 取 main.mts + internal 双语侧（.mts 现役 / .go 回退面）+
+          # diff_gate TS 源码——回退面变更同样影响口径可比性。
+          key: clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ hashFiles('scripts/clang_direct/main.mts', 'scripts/clang_direct/main.go', 'scripts/internal/**/*.go', 'scripts/internal/**/*.mts', 'scripts/diff_gate/**/*.mts') }}
           restore-keys: |
             clang-golden-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
 

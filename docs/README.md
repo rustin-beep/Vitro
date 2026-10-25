@@ -2,7 +2,7 @@
 
 > 教学 C 子集参考执行引擎（白箱后端）——架构设计、语言子集规范、协议与测试防线
 >
-> 最后核对：2026-10-16（**第六轮：三臂单壳口径 + 下游接入 + 协议版本表批**——快速入门/构建指南/CLI 手册/脚本总清单/出口分档五册对三臂默认 js 口径〔main.js 退役、node 门槛 25→22 勘正、CI 八 job 指针式〕、快速入门新增《下游接入（MoonBit 宿主）》节〔#115〕、CLI 手册与 STEP_PAYLOAD spec 增设「字段 ↔ 最低版本」表〔#116〕、出口分档新增 §3.5 宿主可达性矩阵〔#124/#127，Safari 26.2 勘正 + instantiateStreaming 禁令〕、脚本总清单 .json.mbt/jmemit 三死条目划除）。
+> 最后核对：2026-10-25（**第七轮：spec 搬包连坐 + 命令面 node 化收口 + 五 issue 勘正**——`docs/spec/` 整体迁入 `moonbit/docs/spec/`〔随包分发，索引与 18 处文档引用连坐〕+ 根树 `protocol/` TS 绑定迁 `moonbit/bindings/ts/` + 全库命令面 go run → node〔#273 迁移批〕+ #216/#257/#226/#232/#229 文档勘正〔capabilities 承诺/错误 kind 域/diagnostics_probe 可用/端到端性能披露/VFS 内存态登记〕。前一沿革 2026-10-16（**第六轮：三臂单壳口径 + 下游接入 + 协议版本表批**——快速入门/构建指南/CLI 手册/脚本总清单/出口分档五册对三臂默认 js 口径〔main.js 退役、node 门槛 25→22 勘正、CI 八 job 指针式〕、快速入门新增《下游接入（MoonBit 宿主）》节〔#115〕、CLI 手册与 STEP_PAYLOAD spec 增设「字段 ↔ 最低版本」表〔#116〕、出口分档新增 §3.5 宿主可达性矩阵〔#124/#127，Safari 26.2 勘正 + instantiateStreaming 禁令〕、脚本总清单 .json.mbt/jmemit 三死条目划除）。
 > 前一沿革：2026-10-07（**全库逐份翻新第五轮：S9 修复批 + #27 图标批 + #49 统一入口批对齐**——《已知限制与差异》①表活缺陷清零〔22 条修复面销 20，头部真值锚脱 shadow〕/ 总计划 S9 行与路线图当前状态表对单轨真值〔脱钩工序①~④收官回灌〕/ CLI 手册与 CLI_PROTOCOL_V1 spec 补 icons.get + error_catalog.icon + trap 语义 id / 脚本总清单补登图标三脚本 + protocol_frames 33 帧 / 样本库·冻结资产清单·模板双册·golden 清单·认知推理·后端定位·工程债务册·C 规范定位段按删区后现状逐册回灌）。
 > 前一沿革：2026-10-05（**删区批文档翻新第四轮**：S9 工序④ native/ 物理删除后的文档面连坐——
 > 根 AGENTS 双区制改写为单区+退役档案、根 README oracle 节改退役档案与单轨格局、架构总图重画单轨并改名
@@ -57,8 +57,9 @@
 > MoonBit 包切分编译侧 + 执行智能侧 / 统一模式架构 / 统一模式状态机 / 内存布局与有界隔离 /
 > MoonBit 验证防线全景 / StepPayload 帧结构 / wasm 并发隔离 / 冻结协议层全景 / Agent Skills 全景 /
 > 教学智能流水线）由 `node scripts/gen_svg/main.mts` 生成——插图自带深浅双底色
-> （亮色白底 / 深色品牌墨底，随查看环境自动切换）；Clang 直拍图内的跑批快照数字带 `data-fact`
-> 锚，由 `node scripts/facts/main.mts check` 机判漂移；Agent Skills 全景图从 `.agents/skills/` 盘上
+> （亮色白底 / 深色品牌墨底，随查看环境自动切换）；插图数字现状为**口径化文本、零 `data-fact` 锚**
+>（f782e6f9 生成产物去采集时刻类内容——SVG 数字不进 facts 对账域，机判漂移以文档行级规则为准）；
+> Agent Skills 全景图从 `.agents/skills/` 盘上
 > 目录与 frontmatter 扫描生成，skill 增删改名 / 描述变更必使图失步（`gen_svg -check` 即红）；
 > **勿手改**入库 SVG（下次生成即回退）。
 

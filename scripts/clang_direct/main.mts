@@ -922,11 +922,25 @@ async function main(): Promise<void> {
     if (a === "--corpus" && i + 1 < args.length) {
       corpora = [args[++i]!];
     } else if (a === "--sample" && i + 1 < args.length) {
-      sample = Number.parseInt(args[++i]!, 10) || 0;
+      // fail loud（#307 P3-10）：非数值/负数不得静默回落 0（=全量跑）——
+      // Go 版 fmt.Sscanf 同病（回退面不追），现役 .mts 修：用法错 exit 2。
+      const v = Number.parseInt(args[++i]!, 10);
+      if (!Number.isFinite(v) || v < 0) {
+        process.stderr.write(`clang_direct: --sample 须为非负整数，得到 ${JSON.stringify(args[i]!)}\n`);
+        process.exit(2);
+      }
+      sample = v;
     } else if (a === "--cases" && i + 1 < args.length) {
       explicit.push(...args[++i]!.split(","));
     } else if (a === "--jobs" && i + 1 < args.length) {
-      jobs = Number.parseInt(args[++i]!, 10) || 0;
+      // fail loud（#307 P3-10）：同 --sample——非数值静默回落 0（自动档）
+      // 等于吞掉调用方的并发意图。
+      const v = Number.parseInt(args[++i]!, 10);
+      if (!Number.isFinite(v) || v <= 0) {
+        process.stderr.write(`clang_direct: --jobs 须为正整数，得到 ${JSON.stringify(args[i]!)}\n`);
+        process.exit(2);
+      }
+      jobs = v;
     } else if (a === "--check-known") {
       checkKnownFlag = true;
     } else if (a === "--backend" && i + 1 < args.length) {

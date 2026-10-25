@@ -27,7 +27,12 @@ import {
   DetRand,
   bucketOf,
   codeMask,
+  collectJudgeEpochInputs,
   firstIntLit,
+  judgeCacheGet,
+  judgeCachePut,
+  judgeEntryName,
+  judgeEpochKey,
   marshalBaselineText,
   isAllDigits,
   isSep,
@@ -35,6 +40,7 @@ import {
   norm,
   parseVitro,
   planVariants,
+  pruneJudgeEpochs,
   replaceFirstBareType,
 } from "./main.mts";
 import type { Rules } from "./main.mts";
@@ -254,4 +260,77 @@ test("marshalBaselineText 转义口径对齐 Go SetEscapeHTML（#289 P2-1 迁移
   const entry = back.entries["suite/a.c|brace_strip"];
   assert.ok(entry !== undefined, "往返键在位");
   assert.equal(entry.note, "putchar 高位字节(>=0x80) <&> 序列");
+});
+
+// ── 判定缓存（#309 P0）──────────────────────────────────────────────
+//
+// 缓存命中的正确性完全依赖键设计：bucket = (变体源, clang, js 引擎, native 引擎,
+// 壳, 判定口径, node 宿主) 的确定性函数——epoch 七组件敏感性就是这套设计的 J9
+// 锚：漏掉任何一个组件（实现退化）此测试必红。
+
+test("判定缓存 epoch：七组件敏感性——任一变化 ⇒ 整体失效（#309 P0 J9 锚）", () => {
+  const base = {
+    clang: "clang version 19.1.1",
+    native: "aa",
+    jsEngine: "bb",
+    shell: "cc",
+    rules: "dd",
+    script: "ee",
+    node: "v26.12.1",
+  };
+  const e0 = judgeEpochKey(base);
+  assert.equal(judgeEpochKey({ ...base }), e0, "同输入同键（确定性——否则缓存永不命中）");
+  const comps = ["clang", "native", "jsEngine", "shell", "rules", "script", "node"] as const;
+  for (const k of comps) {
+    const mutated = { ...base, [k]: (base[k] as string) + "!" };
+    assert.notEqual(judgeEpochKey(mutated), e0, `组件 ${k} 变化必须换 epoch（漏 hash = 缓存腐化面）`);
+  }
+});
+
+test("判定缓存条目键：fp 与源字节双敏感（语料批单条失效面）", () => {
+  const src = Buffer.from("int main(void){return 0;}\n");
+  const a = judgeEntryName("s/a.c|brace_wrap", src);
+  assert.equal(judgeEntryName("s/a.c|brace_wrap", Buffer.from(src)), a, "同 fp 同源同键");
+  assert.notEqual(judgeEntryName("s/a.c|cast_strip", src), a, "fp 变 ⇒ 键变");
+  assert.notEqual(judgeEntryName("s/a.c|brace_wrap", Buffer.concat([src, Buffer.from("// x\n")])), a, "源变 ⇒ 键变");
+});
+
+test("判定缓存 get/put：命中 / 窜条拒收 / 损坏与非桶值按 miss（fail open 到真跑）", () => {
+  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-"));
+  const v = { fp: "s/a.c|brace_wrap", bytes: Buffer.from("int x = 1;\n") };
+  assert.equal(judgeCacheGet(dir, v), null, "无条目 ⇒ miss");
+  judgeCachePut(dir, v, "VITRO_TRAP");
+  assert.equal(judgeCacheGet(dir, v), "VITRO_TRAP", "put 后命中");
+  const f = path.join(dir, judgeEntryName(v.fp, v.bytes));
+  fs.writeFileSync(f, JSON.stringify({ fp: "other", bucket: "AGREE" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "fp 窜条（手挪/撞名）须拒收");
+  fs.writeFileSync(f, "{broken");
+  assert.equal(judgeCacheGet(dir, v), null, "损坏 JSON 按 miss");
+  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "NOT_A_BUCKET" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "非法桶名按 miss（防污染值直入判红）");
+  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "__proto__" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "原型链名按 miss");
+});
+
+test("pruneJudgeEpochs：只留当前 epoch 子目录，其余清除（防膨胀）", () => {
+  const base = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-prune-"));
+  fs.mkdirSync(path.join(base, "keep0001"), { recursive: true });
+  fs.mkdirSync(path.join(base, "old0002", "nested"), { recursive: true });
+  fs.writeFileSync(path.join(base, "old0002", "nested", "x.json"), "{}");
+  fs.writeFileSync(path.join(base, "stray.txt"), "非目录不动");
+  pruneJudgeEpochs("keep0001", base);
+  assert.ok(fs.existsSync(path.join(base, "keep0001")), "keep 目录留存");
+  assert.ok(!fs.existsSync(path.join(base, "old0002")), "旧 epoch 递归清除");
+  assert.ok(fs.existsSync(path.join(base, "stray.txt")), "非目录文件不动");
+  assert.doesNotThrow(() => pruneJudgeEpochs("any", path.join(base, "no-such-dir")), "base 不存在不炸");
+});
+
+test("collectJudgeEpochInputs：产物缺失不炸（hash 记 missing，判定轮自然红）", () => {
+  const x = collectJudgeEpochInputs(Buffer.from("{}"));
+  assert.ok(x.rules.length > 0);
+  assert.ok(x.script.length > 0, "本脚本自身 hash 在位");
+  // 本测试运行环境不保证引擎产物已构建——两条都只断言「不炸 + 值形态」
+  assert.ok(x.native.startsWith("<missing:") || x.native.length === 32);
+  assert.ok(x.jsEngine.startsWith("<missing:") || x.jsEngine.length === 32);
+  assert.equal(judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), "同环境两次收集同 epoch");
 });

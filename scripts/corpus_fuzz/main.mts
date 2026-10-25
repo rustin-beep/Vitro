@@ -19,6 +19,11 @@
 // < WRONG_VALUE < ARM_DIVERGENCE。
 //
 // 缓存：.corpus_fuzz_cache/（gitignored）存变体源；键 = 种子集合 hash + 规则 hash。
+// 判定缓存（#309 P0）：.corpus_fuzz_judge/（gitignored）存**判定结果**——epoch 键 =
+// clang 版本 + 双臂引擎产物 + sh 壳 + 规则 + 本脚本 + node 宿主七组件 hash（任一
+// 变化全量失效，保守设计）；条目键 = fp + 变体源字节（语料批单条失效）。-freeze
+// 不读（全量语义）但写（freeze 即真跑，结果可复用）；CI 夜间轮 CF_JUDGE_REFRESH=1
+// 全量重算覆写防缓存腐化（复用 clang golden 缓存方案 A 的双闸形态）。
 //
 // 迁移口径（#292 批）：
 //   - **全程字节语义**：Go 侧 src 是 string（按字节索引），本版一律 Buffer——语料里
@@ -59,8 +64,10 @@ interface Baseline {
 }
 
 const RUNNER_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
+const JS_ENGINE = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const VITRO_SH = "scripts/bin/vitro";
 const CACHE_DIR = ".corpus_fuzz_cache";
+const JUDGE_CACHE_DIR = ".corpus_fuzz_judge";
 
 /** 桶恶化序（数值越大越坏）。 */
 export const BUCKET_RANK: Record<string, number> = {
@@ -768,6 +775,107 @@ export function bucketOf(c: Outcome, nj: Outcome, na: Outcome): string {
   return "WRONG_VALUE";
 }
 
+// ── 判定缓存（#309 P0）────────────────────────────────────────────
+//
+// bucket 是 (变体源, clang 版本, js 引擎, native 引擎, 壳, 判定口径, node 宿主)
+// 的确定性函数——把这七元组全部 hash 进 epoch 键，任一变化整体失效（保守：宁多
+// 跑不少跑；node 宿主入键 = CI 预装 node 漂移不携旧 bucket）；条目键再叠加
+// fp + 变体源字节，语料批只失效变化的单条。缓存命中 ⇒ 跳过三方进程对拍直接用
+// 历史 bucket 判红——本地定性循环 9m/轮 → 秒级，CI 引擎未变批 8.7m → ~1m。
+
+export interface JudgeEpochInputs {
+  clang: string;
+  native: string;
+  jsEngine: string;
+  shell: string;
+  rules: string;
+  script: string;
+  node: string;
+}
+
+/** epoch 键（纯函数，24 hex）：七组件任一变化 ⇒ 换目录全量失效。 */
+export function judgeEpochKey(x: JudgeEpochInputs): string {
+  const h = crypto.createHash("sha256");
+  h.update(`clang:${x.clang}\nnative:${x.native}\njs:${x.jsEngine}\n`);
+  h.update(`shell:${x.shell}\nrules:${x.rules}\nscript:${x.script}\n`);
+  h.update(`node:${x.node}\n`);
+  return h.digest("hex").slice(0, 24);
+}
+
+/** 条目键（纯函数）：fp + 变体源字节——同 fp 源变（语料批）单条失效。 */
+export function judgeEntryName(fp: string, src: Buffer): string {
+  return crypto.createHash("sha256").update(fp, "utf8").update(src).digest("hex") + ".json";
+}
+
+export interface JudgeCacheable {
+  fp: string;
+  bytes: Buffer;
+}
+
+interface JudgeEntryFile {
+  fp: string;
+  bucket: string;
+}
+
+/**
+ * 读条目；miss 返 null。损坏 JSON / fp 窜条 / 非法桶名一律按 miss **fail open
+ * 到真跑**（缓存是加速层不是真相源——基线判红仍以真跑为准）。
+ */
+export function judgeCacheGet(dir: string, v: JudgeCacheable): string | null {
+  let raw: JudgeEntryFile;
+  try {
+    raw = JSON.parse(fs.readFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), "utf8")) as JudgeEntryFile;
+  } catch {
+    return null;
+  }
+  if (raw.fp !== v.fp) return null;
+  if (typeof raw.bucket !== "string" || !Object.hasOwn(BUCKET_RANK, raw.bucket)) return null;
+  return raw.bucket;
+}
+
+export function judgeCachePut(dir: string, v: JudgeCacheable, bucket: string): void {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), JSON.stringify({ fp: v.fp, bucket }) + "\n", "utf8");
+}
+
+function hashFileShort(p: string): string {
+  try {
+    return crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex").slice(0, 32);
+  } catch {
+    return `<missing:${p}>`;
+  }
+}
+
+/** 收集本机七组件算 epoch（clang 首行 + 四文件 hash + 规则字节 + node 版本）。 */
+export function collectJudgeEpochInputs(rulesBytes: Buffer): JudgeEpochInputs {
+  const cv = runCmd(["clang", "--version"], ".", 10_000);
+  const clangLine = cv.rc === 0 ? (cv.stdout.split("\n")[0] ?? "").trim() : "<no-clang>";
+  return {
+    clang: clangLine,
+    native: hashFileShort(RUNNER_EXE),
+    jsEngine: hashFileShort(JS_ENGINE),
+    shell: hashFileShort(VITRO_SH),
+    rules: crypto.createHash("sha256").update(rulesBytes).digest("hex").slice(0, 32),
+    script: hashFileShort(import.meta.filename),
+    node: process.version,
+  };
+}
+
+/** 清掉非当前 epoch 的子目录（防本地/CI 缓存目录无限膨胀）。 */
+export function pruneJudgeEpochs(keepEpoch: string, base: string = JUDGE_CACHE_DIR): void {
+  let ents: fs.Dirent[];
+  try {
+    ents = fs.readdirSync(base, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of ents) {
+    if (e.isDirectory() && e.name !== keepEpoch) {
+      fs.rmSync(path.join(base, e.name), { recursive: true, force: true });
+    }
+  }
+}
+
 // ── 主流程 ────────────────────────────────────────────────────────
 
 export function runMain(argv: readonly string[]): number {
@@ -1014,6 +1122,15 @@ function mainFlow(argv: readonly string[]): number {
     die(`基线缺失（首跑用 -freeze 生成）：${opts.baseline}`);
   }
 
+  // 判定缓存 epoch（#309 P0）：六组件任一变化全量失效；freeze 轮不读但写
+  // （freeze 即全量真跑，结果可复用）；CF_JUDGE_REFRESH=1（CI 夜间轮）无视
+  // 缓存全量重算覆写——防缓存腐化的第二道闸。
+  const judgeEpoch = judgeEpochKey(collectJudgeEpochInputs(ruleBytes));
+  const judgeDir = path.join(JUDGE_CACHE_DIR, judgeEpoch);
+  const judgeRefresh = process.env["CF_JUDGE_REFRESH"] === "1";
+  let judgeHit = 0;
+  let judgeMiss = 0;
+
   let newFp = 0;
   let worsened = 0;
   let agree = 0;
@@ -1045,6 +1162,15 @@ function mainFlow(argv: readonly string[]): number {
       process.stdout.write(`TRACE: ${v.suite}/${v.seed} ${v.mutator}\n`);
     }
     total++;
+    if (!opts.freeze && !judgeRefresh) {
+      const cached = judgeCacheGet(judgeDir, v);
+      if (cached !== null) {
+        judgeHit++;
+        handle(v.fp, cached);
+        continue;
+      }
+    }
+    judgeMiss++;
     try {
       fs.writeFileSync(path.join(CACHE_DIR, v.filename), v.bytes);
     } catch (e) {
@@ -1054,8 +1180,11 @@ function mainFlow(argv: readonly string[]): number {
     const c = clangOutcome(variant, CACHE_DIR);
     const nj = vitroJs(variant);
     const na = vitroNative(variant);
-    handle(v.fp, bucketOf(c, nj, na));
+    const bucket = bucketOf(c, nj, na);
+    judgeCachePut(judgeDir, v, bucket);
+    handle(v.fp, bucket);
   }
+  pruneJudgeEpochs(judgeEpoch);
 
   if (opts.freeze) {
     const sortedKeys = [...base.entries.keys()].sort(byteCompare);
@@ -1078,10 +1207,14 @@ function mainFlow(argv: readonly string[]): number {
       die(`基线落盘失败：${errText(e)}`);
     }
     process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${base.entries.size} 条 → ${opts.baseline}\n`);
+    process.stdout.write(`判定缓存写盘 ${judgeMiss} 条（epoch=${judgeEpoch}，freeze 全量真跑值）\n`);
     return 0;
   }
 
-  process.stdout.write(`corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened}\n`);
+  process.stdout.write(
+    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened}` +
+      ` 判定缓存命中=${judgeHit} 未命中=${judgeMiss}（epoch=${judgeEpoch}${judgeRefresh ? "，REFRESH 全量重算" : ""}）\n`,
+  );
   for (const l of report) process.stdout.write(l + "\n");
   if (newFp > 0 || worsened > 0) {
     process.stdout.write("FAIL——新指纹须人工定性后 -freeze 收编（已知未修病带 issue 标注）；桶恶化=回归\n");

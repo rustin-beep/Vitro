@@ -1,5 +1,42 @@
 ## [Unreleased]
 
+### perf(ci): moon 构建产物缓存——Build job 关键路径 -2~3m（#309 P1，2026-10-25）
+
+- **病灶**：Build artifacts 3.7m 串行前置（全 job 依赖）。run 40178073268 实测
+  分布 = native 全量 108s + wasmopt 供给 44s（binaryen 下载）两大头。
+- **缓存设计（与 P0 判定缓存不同源理）**：path = `moonbit/_build`（195M）+
+  `tools/cache`（binaryen 供给）；**key 不含源 hash**——含则每次 miss 增量无
+  意义，源变面由 **moon 增量内容 hash** 自算重编；key = os + `.moonbit-version`
+  + `github.sha`（逐轮新 entry），restore-keys 两级前缀取最近，LRU 逐出。
+- **正确性边界（issue 前置评估义务，本地双臂实证）**：改 `cli_run.mbt` 一行 →
+  native 29 tasks / js 8 tasks 精准重编、产物行为随新源（run.exe 输出 P1PROBE）；
+  源还原回旧内容同样触发重编回旧产物——**无漏判假绿面**。源未变三目标增量合计
+  **~3.4s**（native `no work to do` 0.5s / js 0.9s / wasm-gc 1.9s）。三层守门：
+  moon 增量 hash + 下游 EnsureFresh（mtime 触发复核）+ 行为防线抓漏网。
+- **CI 从「每轮冷态全量」转为「依赖 moon 增量正确性」**——该依赖被上段三层
+  覆盖，风险显式登记于 ci.yml 注释。
+
+### perf(scripts,ci): corpus_fuzz 判定缓存——fuzz 闸增量 check（#309 P0，2026-10-25）
+
+- **病灶**：fuzz 判定轮 318 变体 × (clang 编译 + js/native 双臂执行) 每轮全量
+  重跑——CI 8.7m（单 job 之王、关键路径决定者），本地定性循环 9m/轮 × 3 轮
+  ≈30m。判定结果是确定性的，纯浪费。
+- **缓存设计**：`.corpus_fuzz_judge/`（gitignored）存判定 bucket。**epoch 键**
+  = clang 版本 + 双臂引擎产物（run.exe/vitro_js.js）+ sh 壳 + 规则 + 驱动脚本
+  + node 宿主**七组件 hash**——任一变化整体失效（保守：宁多跑不少跑；node
+  宿主入键防 CI 预装漂移携旧 bucket）；**条目键** = fp + 变体源字节——语料批
+  只失效变化单条。命中 ⇒ 跳过三方进程对拍直接判红。
+- **语义边界**：`-freeze` 不读缓存（冻结需完整指纹清单，全量语义不变）但写
+  （freeze 即真跑，结果供下轮 check 复用）；`CF_JUDGE_REFRESH=1`（CI 夜间
+  schedule 轮注入）全量重算覆写——防腐化第二道闸（复用 clang golden 缓存
+  方案 A 双闸形态）。
+- **CI 接线**：corpus-fuzz job 增 actions/cache（key 含引擎双产物 hash +
+  clang 版本 + 驱动源）+ node 单点 `.node-version`（type stripping 兼防 epoch
+  换血）。收益预期：引擎未变批（文档/脚本）8.7m → ~1m。
+- **测试**：七组件敏感性矩阵（J9 锚：抽走 shell 组件实测红）/ 条目双敏感 /
+  get·put 拒收语义（窜条、损坏 JSON、非法桶名、原型链名一律 miss fail open
+  到真跑）/ prune 清除面。18/18 绿；tsc/oxlint 严格档过。
+
 ### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
 
 - **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）

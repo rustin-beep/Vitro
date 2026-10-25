@@ -97,6 +97,35 @@ jobs:
       # 但下游 job 仍 `needs: build-artifacts`，build 整体红时依旧 skipped；
       # 这层只保证「本 job 内能跑的步都跑」。job 间遮蔽由末尾 ci-summary
       # 显式判 skipped/failure 为红兜底（不把 skipped 当绿）。
+      # ── moon 构建产物缓存（#309 P1，2026-10-25）──────────────────────
+      # Build job 大头 = native 全量 108s + wasmopt 供给 44s（run 40178073268
+      # 实测分布）。缓存 moonbit/_build（195M 级）+ tools/cache（binaryen 供给，
+      # 版本钉死）后：源未变批（文档/脚本）三目标增量合计 ~3.4s（本地实证），
+      # 关键路径 -2~3m。
+      #
+      # key 设计（与 P0 判定缓存不同源理）：**不含源 hash**——含源 hash 则每
+      # 次 restore miss，增量缓存毫无意义；源变面由 moon 增量内容 hash 自算
+      # 重编（本地双臂实验实证：改 cli_run.mbt 一行 → native 29 tasks / js 8
+      # tasks 精准重编、产物行为随新源；源还原回旧内容同样触发重编回旧产物，
+      # 无漏判假绿面）。toolchain 版本进 key（.moonbit-version 变 = 编译器
+      # 变 = 缓存换血）；sha 逐轮新 entry（actions/cache 同 key 不覆盖），
+      # restore-keys 两级前缀取最近，LRU 自动逐出。
+      #
+      # 正确性三层守门：① moon 增量内容 hash（上段实验）；② 下游 EnsureFresh
+      # （restore 产物 mtime 恒旧于 checkout 源 → 复核必触发，增量秒回——
+      # mtime 只触发、内容正确性归 ①）；③ 行为防线（digest 对拍/gates）抓
+      # 漏网。CI 从「每轮冷态全量」转为「依赖 moon 增量正确性」，此依赖已被
+      # 三层覆盖。
+      - name: Cache moon build tree + wasmopt supply
+        uses: actions/cache@v4
+        with:
+          path: |
+            moonbit/_build
+            tools/cache
+          key: moon-build-${{ runner.os }}-${{ hashFiles('.moonbit-version') }}-${{ github.sha }}
+          restore-keys: |
+            moon-build-${{ runner.os }}-${{ hashFiles('.moonbit-version') }}-
+            moon-build-${{ runner.os }}-
       - name: Full native release build gate (declared targets must build)
         if: always()
         # 2026-09-29 §12.6 建；同日拆包落地后转硬门（豁免分支已删——
@@ -317,9 +346,45 @@ jobs:
       # 面定向类——机械数值盲改类已按用户拍板剔除）三方对拍（clang × js ×
       # native）。指纹基线 fuzz_baseline.json 入库锁定：新指纹/桶恶化红，
       # 已知未修病条目带 issue 标注归档。CI 动态生成变体不落库（本地缓存
-      # .corpus_fuzz_cache/ gitignored）。js 臂依赖 runner 预装 node。
+      # .corpus_fuzz_cache/ gitignored）。
+      #
+      # 判定缓存（#309 P0，2026-10-25）：bucket 是 (变体源, clang, 双臂引擎,
+      # 壳, 判定口径, node 宿主) 的确定性函数——epoch 键七组件 hash（脚本内
+      # 单源计算），命中即跳过三方进程对拍。引擎未变批（文档/脚本）8.7m →
+      # ~1m。cache key 含引擎双产物 hash + clang 版本 + 驱动源（复用 clang
+      # golden 方案 A 的双闸形态）：第一道闸 = key 组件变化自动失效；第二道
+      # 闸 = 夜间 schedule 轮 CF_JUDGE_REFRESH=1 全量重算覆写防缓存腐化。
+      # node 走 .node-version 单点（本 job 直跑 .mts type stripping 需
+      # ≥22.18；预装 node 漂移既破坏 type stripping 又让 epoch 换血——单点后
+      # 两者都稳）。
+      - name: Install Node (fuzz gate driver)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Clang version (for judge cache key)
+        id: clangver
+        shell: bash
+        run: echo "value=$(clang --version | head -n1 | tr -d ' ' | cut -c1-48)" >> "$GITHUB_OUTPUT"
+      - name: Engine hashes (for judge cache key)
+        id: eng
+        shell: bash
+        run: |
+          cd moonbit/_build
+          h="$(sha256sum native/release/build/cmd/run/run.exe js/release/build/cmd/vitro_js/vitro_js.js | sha256sum | cut -c1-24)"
+          echo "value=$h" >> "$GITHUB_OUTPUT"
+      - name: Cache fuzz judge results
+        uses: actions/cache@v4
+        with:
+          path: .corpus_fuzz_judge
+          key: fuzz-judge-${{ runner.os }}-${{ steps.clangver.outputs.value }}-${{ steps.eng.outputs.value }}-${{ hashFiles('scripts/corpus_fuzz/main.mts', 'scripts/corpus_fuzz/rules.json') }}
+          restore-keys: |
+            fuzz-judge-${{ runner.os }}-${{ steps.clangver.outputs.value }}-
       - name: Run corpus fuzz gate (baseline check)
         shell: bash
+        env:
+          # 夜间 schedule 轮无视缓存全量重算覆写（防腐化第二道闸）；push/PR
+          # 轮空值 = 默认启用缓存。
+          CF_JUDGE_REFRESH: ${{ github.event_name == 'schedule' && '1' || '' }}
         run: |
           node scripts/corpus_fuzz/main.mts
 

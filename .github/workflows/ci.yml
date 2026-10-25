@@ -985,8 +985,12 @@ jobs:
         # discover 排序 + diffOne 四态）。cwd=仓库根——node --test / oxlint
         # 均不接受含 .. 的相对路径，scripts/ 清单外单步验证（bin 走
         # scripts/node_modules/.bin，严格档参数与 scripts/tsconfig.json 对齐）。
+        # npm ci 前置：static-gates 三片 matrix 此前无依赖安装步（首跑实锤
+        # exit 127——node_modules 不入 git，scripts 的 bin 在此 job 首次消费）。
         shell: bash
         run: |
+          cd scripts && npm ci --no-audit --no-fund
+          cd ..
           node --test .agents/install_skills.test.mts
           scripts/node_modules/.bin/tsc --ignoreConfig --noEmit --strict --strictNullChecks --noUncheckedIndexedAccess --noImplicitOverride --noFallthroughCasesInSwitch --target es2023 --module nodenext --moduleResolution nodenext --types node --allowImportingTsExtensions --skipLibCheck --forceConsistentCasingInFileNames .agents/install_skills.mts .agents/install_skills.test.mts
           scripts/node_modules/.bin/oxlint .agents/install_skills.mts .agents/install_skills.test.mts

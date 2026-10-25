@@ -27,7 +27,12 @@ import {
   DetRand,
   bucketOf,
   codeMask,
+  collectJudgeEpochInputs,
   firstIntLit,
+  judgeCacheGet,
+  judgeCachePut,
+  judgeEntryName,
+  judgeEpochKey,
   marshalBaselineText,
   isAllDigits,
   isSep,
@@ -35,6 +40,7 @@ import {
   norm,
   parseVitro,
   planVariants,
+  pruneJudgeEpochs,
   replaceFirstBareType,
 } from "./main.mts";
 import type { Rules } from "./main.mts";
@@ -254,4 +260,107 @@ test("marshalBaselineText 转义口径对齐 Go SetEscapeHTML（#289 P2-1 迁移
   const entry = back.entries["suite/a.c|brace_strip"];
   assert.ok(entry !== undefined, "往返键在位");
   assert.equal(entry.note, "putchar 高位字节(>=0x80) <&> 序列");
+});
+
+// ── 判定缓存（#309 P0）──────────────────────────────────────────────
+//
+// 缓存命中的正确性完全依赖键设计：bucket = (变体源, clang, js 引擎, native 引擎,
+// 壳, 判定口径, node 宿主) 的确定性函数——epoch 七组件敏感性就是这套设计的 J9
+// 锚：漏掉任何一个组件（实现退化）此测试必红。
+
+test("判定缓存 epoch：七组件敏感性——任一变化 ⇒ 整体失效（#309 P0 J9 锚）", () => {
+  const base = {
+    clang: "clang version 19.1.1",
+    native: "aa",
+    jsEngine: "bb",
+    shell: "cc",
+    rules: "dd",
+    script: "ee",
+    node: "v26.12.1",
+  };
+  const e0 = judgeEpochKey(base);
+  assert.equal(judgeEpochKey({ ...base }), e0, "同输入同键（确定性——否则缓存永不命中）");
+  const comps = ["clang", "native", "jsEngine", "shell", "rules", "script", "node"] as const;
+  for (const k of comps) {
+    const mutated = { ...base, [k]: (base[k] as string) + "!" };
+    assert.notEqual(judgeEpochKey(mutated), e0, `组件 ${k} 变化必须换 epoch（漏 hash = 缓存腐化面）`);
+  }
+});
+
+test("判定缓存条目键：fp 与源字节双敏感（语料批单条失效面）", () => {
+  const src = Buffer.from("int main(void){return 0;}\n");
+  const a = judgeEntryName("s/a.c|brace_wrap", src);
+  assert.equal(judgeEntryName("s/a.c|brace_wrap", Buffer.from(src)), a, "同 fp 同源同键");
+  assert.notEqual(judgeEntryName("s/a.c|cast_strip", src), a, "fp 变 ⇒ 键变");
+  assert.notEqual(judgeEntryName("s/a.c|brace_wrap", Buffer.concat([src, Buffer.from("// x\n")])), a, "源变 ⇒ 键变");
+});
+
+test("判定缓存 get/put：命中 / 窜条拒收 / 损坏与非桶值按 miss（fail open 到真跑）", () => {
+  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-"));
+  const v = { fp: "s/a.c|brace_wrap", bytes: Buffer.from("int x = 1;\n") };
+  assert.equal(judgeCacheGet(dir, v), null, "无条目 ⇒ miss");
+  judgeCachePut(dir, v, "VITRO_TRAP");
+  assert.equal(judgeCacheGet(dir, v), "VITRO_TRAP", "put 后命中");
+  const f = path.join(dir, judgeEntryName(v.fp, v.bytes));
+  fs.writeFileSync(f, JSON.stringify({ fp: "other", bucket: "AGREE" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "fp 窜条（手挪/撞名）须拒收");
+  fs.writeFileSync(f, "{broken");
+  assert.equal(judgeCacheGet(dir, v), null, "损坏 JSON 按 miss");
+  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "NOT_A_BUCKET" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "非法桶名按 miss（防污染值直入判红）");
+  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "__proto__" }) + "\n");
+  assert.equal(judgeCacheGet(dir, v), null, "原型链名按 miss");
+  // 合法 JSON 但非对象（PR #310 审阅 P3-1）：null 原实现抛 TypeError 打死整轮，
+  // 违背 fail open 契约——四个形态必须全部按 miss 走真跑
+  for (const bad of ["null", "42", '"x"', "[]"]) {
+    fs.writeFileSync(f, bad);
+    assert.equal(judgeCacheGet(dir, v), null, `合法 JSON 非对象 ${bad} 按 miss`);
+  }
+});
+
+test("pruneJudgeEpochs：只留当前 epoch 子目录，其余清除（防膨胀）", () => {
+  const base = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-prune-"));
+  fs.mkdirSync(path.join(base, "keep0001"), { recursive: true });
+  fs.mkdirSync(path.join(base, "old0002", "nested"), { recursive: true });
+  fs.writeFileSync(path.join(base, "old0002", "nested", "x.json"), "{}");
+  fs.writeFileSync(path.join(base, "stray.txt"), "非目录不动");
+  pruneJudgeEpochs("keep0001", base);
+  assert.ok(fs.existsSync(path.join(base, "keep0001")), "keep 目录留存");
+  assert.ok(!fs.existsSync(path.join(base, "old0002")), "旧 epoch 递归清除");
+  assert.ok(fs.existsSync(path.join(base, "stray.txt")), "非目录文件不动");
+  assert.doesNotThrow(() => pruneJudgeEpochs("any", path.join(base, "no-such-dir")), "base 不存在不炸");
+});
+
+test("collectJudgeEpochInputs：产物缺失不炸（hash 记 missing，判定轮自然红）", () => {
+  const x = collectJudgeEpochInputs(Buffer.from("{}"));
+  assert.ok(x.rules.length > 0);
+  assert.ok(x.script.length > 0, "本脚本自身 hash 在位");
+  // 本测试运行环境不保证引擎产物已构建——两条都只断言「不炸 + 值形态」
+  assert.ok(x.native.startsWith("<missing:") || x.native.length === 32);
+  assert.ok(x.jsEngine.startsWith("<missing:") || x.jsEngine.length === 32);
+  assert.equal(judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), judgeEpochKey(collectJudgeEpochInputs(Buffer.from("{}"))), "同环境两次收集同 epoch");
+});
+
+test("collectJudgeEpochInputs：采集面断言——shell/script 缺失 die（PR #310 审阅 P2-2/M2 锚）", () => {
+  // M2 突变实证：原实现把 shell 组件改成常量后单测仍 18/18 全绿——J9 锚只锁
+  // judgeEpochKey 纯函数、不锁采集接线。本锚锁采集侧：<missing:> 常量对必然
+  // 在场的组件是静默降敏（路径拼错/重命名），必须 fail loud。
+  const bytes = Buffer.from("{}");
+  const x = collectJudgeEpochInputs(bytes);
+  assert.match(x.shell, /^[0-9a-f]{32}$/, "sh 壳 hash 须为 32-hex 实测值");
+  assert.match(x.script, /^[0-9a-f]{32}$/, "驱动脚本 hash 须为 32-hex 实测值");
+  // 注入缺失路径 → die（ExitErr，exit 2）
+  assert.throws(
+    () => collectJudgeEpochInputs(bytes, { shell: "no/such/file.sh" }),
+    (e: unknown) => e instanceof Error && e.name === "ExitErr" && /sh 壳/.test(e.message),
+    "shell 缺失须 die 不静默降敏",
+  );
+  assert.throws(
+    () => collectJudgeEpochInputs(bytes, { script: "no/such/file.mts" }),
+    (e: unknown) => e instanceof Error && e.name === "ExitErr" && /驱动脚本/.test(e.message),
+    "script 缺失须 die 不静默降敏",
+  );
+  // 引擎双产物允许缺失（构建前置场景合法——scripts-ts job 无产物）
+  const y = collectJudgeEpochInputs(bytes, { native: "no/such/exe", jsEngine: "no/such/js" });
+  assert.ok(y.native.startsWith("<missing:") && y.jsEngine.startsWith("<missing:"));
 });

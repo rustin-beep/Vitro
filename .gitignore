@@ -219,3 +219,6 @@ demo/design/
 
 # corpus_fuzz 对抗分叉缓存（CI 动态生成不落库——scripts/corpus_fuzz）
 .corpus_fuzz_cache/
+
+# corpus_fuzz 判定结果缓存（#309 P0：epoch=七组件 hash，gitignored）
+.corpus_fuzz_judge/

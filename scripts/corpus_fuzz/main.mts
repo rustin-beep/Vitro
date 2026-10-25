@@ -19,6 +19,11 @@
 // < WRONG_VALUE < ARM_DIVERGENCE。
 //
 // 缓存：.corpus_fuzz_cache/（gitignored）存变体源；键 = 种子集合 hash + 规则 hash。
+// 判定缓存（#309 P0）：.corpus_fuzz_judge/（gitignored）存**判定结果**——epoch 键 =
+// clang 版本 + 双臂引擎产物 + sh 壳 + 规则 + 本脚本 + node 宿主七组件 hash（任一
+// 变化全量失效，保守设计）；条目键 = fp + 变体源字节（语料批单条失效）。-freeze
+// 不读（全量语义）但写（freeze 即真跑，结果可复用）；CI 夜间轮 CF_JUDGE_REFRESH=1
+// 全量重算覆写防缓存腐化（复用 clang golden 缓存方案 A 的双闸形态）。
 //
 // 迁移口径（#292 批）：
 //   - **全程字节语义**：Go 侧 src 是 string（按字节索引），本版一律 Buffer——语料里
@@ -36,6 +41,7 @@ import { spawnSync } from "node:child_process";
 import type { SpawnSyncReturns } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { byteCompare } from "../internal/text.mts";
+import { projectRoot } from "../internal/capi.mts";
 
 // ── 规则（rules.json 单源）──
 
@@ -59,8 +65,10 @@ interface Baseline {
 }
 
 const RUNNER_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
+const JS_ENGINE = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const VITRO_SH = "scripts/bin/vitro";
 const CACHE_DIR = ".corpus_fuzz_cache";
+const JUDGE_CACHE_DIR = ".corpus_fuzz_judge";
 
 /** 桶恶化序（数值越大越坏）。 */
 export const BUCKET_RANK: Record<string, number> = {
@@ -74,8 +82,8 @@ export const BUCKET_RANK: Record<string, number> = {
 
 class ExitErr extends Error {
   readonly code: number;
-  constructor(code: number) {
-    super("exit");
+  constructor(code: number, msg: string) {
+    super(msg);
     this.name = "ExitErr";
     this.code = code;
   }
@@ -84,7 +92,7 @@ class ExitErr extends Error {
 /** Go `die`：stderr 前缀 `corpus_fuzz: `，退出码 2。 */
 export function die(msg: string): never {
   process.stderr.write("corpus_fuzz: " + msg + "\n");
-  throw new ExitErr(2);
+  throw new ExitErr(2, msg);
 }
 
 const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -768,6 +776,135 @@ export function bucketOf(c: Outcome, nj: Outcome, na: Outcome): string {
   return "WRONG_VALUE";
 }
 
+// ── 判定缓存（#309 P0）────────────────────────────────────────────
+//
+// bucket 是 (变体源, clang 版本, js 引擎, native 引擎, 壳, 判定口径, node 宿主)
+// 的确定性函数——把这七元组全部 hash 进 epoch 键，任一变化整体失效（保守：宁多
+// 跑不少跑；node 宿主入键 = CI 预装 node 漂移不携旧 bucket）；条目键再叠加
+// fp + 变体源字节，语料批只失效变化的单条。缓存命中 ⇒ 跳过三方进程对拍直接用
+// 历史 bucket 判红——本地定性循环 9m/轮 → 秒级，CI 引擎未变批 8.7m → ~1m。
+
+export interface JudgeEpochInputs {
+  clang: string;
+  native: string;
+  jsEngine: string;
+  shell: string;
+  rules: string;
+  script: string;
+  node: string;
+}
+
+/** epoch 键（纯函数，24 hex）：七组件任一变化 ⇒ 换目录全量失效。 */
+export function judgeEpochKey(x: JudgeEpochInputs): string {
+  const h = crypto.createHash("sha256");
+  h.update(`clang:${x.clang}\nnative:${x.native}\njs:${x.jsEngine}\n`);
+  h.update(`shell:${x.shell}\nrules:${x.rules}\nscript:${x.script}\n`);
+  h.update(`node:${x.node}\n`);
+  return h.digest("hex").slice(0, 24);
+}
+
+/** 条目键（纯函数）：fp + 变体源字节——同 fp 源变（语料批）单条失效。 */
+export function judgeEntryName(fp: string, src: Buffer): string {
+  return crypto.createHash("sha256").update(fp, "utf8").update(src).digest("hex") + ".json";
+}
+
+export interface JudgeCacheable {
+  fp: string;
+  bytes: Buffer;
+}
+
+interface JudgeEntryFile {
+  fp: string;
+  bucket: string;
+}
+
+/**
+ * 读条目；miss 返 null。损坏 JSON / fp 窜条 / 非法桶名一律按 miss **fail open
+ * 到真跑**（缓存是加速层不是真相源——基线判红仍以真跑为准）。
+ */
+export function judgeCacheGet(dir: string, v: JudgeCacheable): string | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), "utf8"));
+  } catch {
+    return null;
+  }
+  // 合法 JSON 但非对象（null/数字/字符串/数组）一律 miss——null.fp 会抛 TypeError
+  // 把整轮打死，违背 fail open 契约（PR #310 审阅 P3-1）
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const ent = raw as JudgeEntryFile;
+  if (ent.fp !== v.fp) return null;
+  if (typeof ent.bucket !== "string" || !Object.hasOwn(BUCKET_RANK, ent.bucket)) return null;
+  return ent.bucket;
+}
+
+export function judgeCachePut(dir: string, v: JudgeCacheable, bucket: string): void {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, judgeEntryName(v.fp, v.bytes)), JSON.stringify({ fp: v.fp, bucket }) + "\n", "utf8");
+}
+
+function hashFileShort(p: string): string {
+  try {
+    return crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex").slice(0, 32);
+  } catch {
+    return `<missing:${p}>`;
+  }
+}
+
+/**
+ * 收集本机七组件算 epoch（clang 首行 + 四文件 hash + 规则字节 + node 版本）。
+ *
+ * 采集面断言（PR #310 审阅 P2-2）：`shell`/`script` 在任何检出态必然存在，
+ * 缺失即 die fail loud——否则 hashFileShort 的 `<missing:路径>` 常量会让 epoch
+ * 「稳定地失去该组件敏感性」（路径拼错/重命名静默降敏，M2 突变实测单测全绿）。
+ * 引擎双产物（native/js）允许缺失：构建前置场景合法（scripts-ts job 无产物），
+ * 缺失时判定轮自然红，不在这里拦。
+ *
+ * paths 参数仅供测试注入（验证 die 语义）；生产调用不传。
+ */
+export function collectJudgeEpochInputs(
+  rulesBytes: Buffer,
+  paths?: Partial<Record<"native" | "jsEngine" | "shell" | "script", string>>,
+): JudgeEpochInputs {
+  const cv = runCmd(["clang", "--version"], ".", 10_000);
+  const clangLine = cv.rc === 0 ? (cv.stdout.split("\n")[0] ?? "").trim() : "<no-clang>";
+  const mustExist = (p: string, what: string): string => {
+    // 相对路径锚仓根解析（CI 的 scripts-ts job working-directory=scripts 下，
+    // 裸相对路径会双拼成 scripts/scripts/... ——#273 批「stat scripts/scripts/
+    // facts」同款坑，run 40191315029 scripts-ts 红实锤）
+    const abs = path.isAbsolute(p) ? p : path.join(projectRoot(), p);
+    const h = hashFileShort(abs);
+    if (h.startsWith("<missing:")) {
+      die(`epoch 组件缺失：${what}（${abs}）——采集面断裂，fail loud 不静默降敏`);
+    }
+    return h;
+  };
+  return {
+    clang: clangLine,
+    native: hashFileShort(paths?.native ?? RUNNER_EXE),
+    jsEngine: hashFileShort(paths?.jsEngine ?? JS_ENGINE),
+    shell: mustExist(paths?.shell ?? VITRO_SH, "sh 壳"),
+    rules: crypto.createHash("sha256").update(rulesBytes).digest("hex").slice(0, 32),
+    script: mustExist(paths?.script ?? import.meta.filename, "驱动脚本"),
+    node: process.version,
+  };
+}
+
+/** 清掉非当前 epoch 的子目录（防本地/CI 缓存目录无限膨胀）。 */
+export function pruneJudgeEpochs(keepEpoch: string, base: string = JUDGE_CACHE_DIR): void {
+  let ents: fs.Dirent[];
+  try {
+    ents = fs.readdirSync(base, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of ents) {
+    if (e.isDirectory() && e.name !== keepEpoch) {
+      fs.rmSync(path.join(base, e.name), { recursive: true, force: true });
+    }
+  }
+}
+
 // ── 主流程 ────────────────────────────────────────────────────────
 
 export function runMain(argv: readonly string[]): number {
@@ -1014,6 +1151,15 @@ function mainFlow(argv: readonly string[]): number {
     die(`基线缺失（首跑用 -freeze 生成）：${opts.baseline}`);
   }
 
+  // 判定缓存 epoch（#309 P0）：七组件任一变化全量失效；freeze 轮不读但写
+  // （freeze 即全量真跑，结果可复用）；CF_JUDGE_REFRESH=1（CI 夜间轮）无视
+  // 缓存全量重算覆写——防缓存腐化的第二道闸。
+  const judgeEpoch = judgeEpochKey(collectJudgeEpochInputs(ruleBytes));
+  const judgeDir = path.join(JUDGE_CACHE_DIR, judgeEpoch);
+  const judgeRefresh = process.env["CF_JUDGE_REFRESH"] === "1";
+  let judgeHit = 0;
+  let judgeMiss = 0;
+
   let newFp = 0;
   let worsened = 0;
   let agree = 0;
@@ -1045,6 +1191,15 @@ function mainFlow(argv: readonly string[]): number {
       process.stdout.write(`TRACE: ${v.suite}/${v.seed} ${v.mutator}\n`);
     }
     total++;
+    if (!opts.freeze && !judgeRefresh) {
+      const cached = judgeCacheGet(judgeDir, v);
+      if (cached !== null) {
+        judgeHit++;
+        handle(v.fp, cached);
+        continue;
+      }
+    }
+    judgeMiss++;
     try {
       fs.writeFileSync(path.join(CACHE_DIR, v.filename), v.bytes);
     } catch (e) {
@@ -1054,8 +1209,11 @@ function mainFlow(argv: readonly string[]): number {
     const c = clangOutcome(variant, CACHE_DIR);
     const nj = vitroJs(variant);
     const na = vitroNative(variant);
-    handle(v.fp, bucketOf(c, nj, na));
+    const bucket = bucketOf(c, nj, na);
+    judgeCachePut(judgeDir, v, bucket);
+    handle(v.fp, bucket);
   }
+  pruneJudgeEpochs(judgeEpoch);
 
   if (opts.freeze) {
     const sortedKeys = [...base.entries.keys()].sort(byteCompare);
@@ -1078,10 +1236,14 @@ function mainFlow(argv: readonly string[]): number {
       die(`基线落盘失败：${errText(e)}`);
     }
     process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${base.entries.size} 条 → ${opts.baseline}\n`);
+    process.stdout.write(`判定缓存写盘 ${judgeMiss} 条（epoch=${judgeEpoch}，freeze 全量真跑值）\n`);
     return 0;
   }
 
-  process.stdout.write(`corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened}\n`);
+  process.stdout.write(
+    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened}` +
+      ` 判定缓存命中=${judgeHit} 未命中=${judgeMiss}（epoch=${judgeEpoch}${judgeRefresh ? "，REFRESH 全量重算" : ""}）\n`,
+  );
   for (const l of report) process.stdout.write(l + "\n");
   if (newFp > 0 || worsened > 0) {
     process.stdout.write("FAIL——新指纹须人工定性后 -freeze 收编（已知未修病带 issue 标注）；桶恶化=回归\n");

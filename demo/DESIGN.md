@@ -81,7 +81,7 @@ generated: src/tokens.css（@generated，禁手改）
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
 | 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（90 锚） |
-| 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mjs`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
+| 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mts`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
 
 > 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS
 > 需 CI 专用生成、入库体积与维护噪声大于收益。画面语义改由「样式契约（computed

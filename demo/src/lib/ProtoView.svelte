@@ -11,11 +11,11 @@
 
   type JsonRec = Record<string, unknown>;
   const cap = $derived((session.capabilities ?? {}) as JsonRec);
-  const schema = $derived((cap.schema ?? {}) as JsonRec);
-  const ledger = $derived((schema.v0_2_field_ledger ?? []) as JsonRec[]);
+  const schema = $derived((cap["schema"] ?? {}) as JsonRec);
+  const ledger = $derived((schema["v0_2_field_ledger"] ?? []) as JsonRec[]);
   const contracts = $derived((session.contracts ?? null) as JsonRec | null);
-  const bc = $derived((contracts?.behavior_contracts ?? []) as JsonRec[]);
-  const checklist = $derived((contracts?.v0_2_activation_checklist ?? []) as unknown[]);
+  const bc = $derived((contracts?.["behavior_contracts"] ?? []) as JsonRec[]);
+  const checklist = $derived((contracts?.["v0_2_activation_checklist"] ?? []) as unknown[]);
   const labels = $derived((session.labels ?? []) as JsonRec[]);
 
   const frame = $derived(frameAt(session.idx));
@@ -47,7 +47,7 @@
     <span>ENGINE <b>{session.versions.engine || "…"}</b></span>
     <span>PROTOCOL <b>{session.versions.protocol || "…"}</b></span>
     <span>STEPPAYLOAD <b>14 字段</b></span>
-    <span>SCHEMA <b>{String(schema.version ?? "—")} 冻结</b></span>
+    <span>SCHEMA <b>{String(schema["version"] ?? "—")} 冻结</b></span>
     <span>METHODS <b>{METHOD_TOTAL} · 本页 {METHOD_ROWS} 行 / {METHOD_LISTED} 方法</b></span>
     <span>TRANSPORT <b>wasm-gc · js-string</b></span>
   </div>
@@ -79,12 +79,12 @@
       <table class="vr-proto-table">
         <thead><tr><th>FIELD</th><th>BATCH</th><th>STATUS</th><th>NOTE</th></tr></thead>
         <tbody>
-          {#each ledger as f (String(f.field))}
+          {#each ledger as f (String(f["field"]))}
             <tr>
-              <td class="code">{String(f.field ?? "—")}</td>
-              <td>{String(f.batch ?? "—")}</td>
-              <td><span class="vr-proto-status is-{String(f.status ?? "unknown")}">{String(f.status ?? "—")}</span></td>
-              <td>{String(f.note ?? "")}</td>
+              <td class="code">{String(f["field"] ?? "—")}</td>
+              <td>{String(f["batch"] ?? "—")}</td>
+              <td><span class="vr-proto-status is-{String(f["status"] ?? "unknown")}">{String(f["status"] ?? "—")}</span></td>
+              <td>{String(f["note"] ?? "")}</td>
             </tr>
           {/each}
         </tbody>
@@ -97,15 +97,15 @@
   <section class="vr-proto-sec">
     <div class="vr-proto-seclabel">
       <h3>CONTRACTS 行为契约</h3>
-      <span class="vr-meta">schema {String(contracts?.schema ?? "—")} · {bc.length} 条</span>
+      <span class="vr-meta">schema {String(contracts?.["schema"] ?? "—")} · {bc.length} 条</span>
     </div>
     {#if contracts}
-      {#each bc as c (String(c.id))}
+      {#each bc as c (String(c["id"]))}
         <div class="vr-proto-contract">
-          <span class="code">{String(c.id ?? "—")}</span>
-          <span class="dim">（{String(c.status ?? "—")}）</span>
-          {String(c.statement ?? "")}
-          <div class="dim">守卫：{String(c.enforced_by ?? "—")}</div>
+          <span class="code">{String(c["id"] ?? "—")}</span>
+          <span class="dim">（{String(c["status"] ?? "—")}）</span>
+          {String(c["statement"] ?? "")}
+          <div class="dim">守卫：{String(c["enforced_by"] ?? "—")}</div>
         </div>
       {/each}
       {#if checklist.length > 0}
@@ -136,9 +136,9 @@
     {#if labels.length > 0}
       {#each labels as l, i (i)}
         <div class="vr-proto-contract">
-          <span class="code">{String(l.id ?? "—")}</span>
-          <span class="dim">（{String(l.domain ?? "—")} · {String(l.status ?? "—")}）</span>
-          模板 <code>{String(l.template ?? "—")}</code>{l.example ? ` · 例：${String(l.example)}` : ""}
+          <span class="code">{String(l["id"] ?? "—")}</span>
+          <span class="dim">（{String(l["domain"] ?? "—")} · {String(l["status"] ?? "—")}）</span>
+          模板 <code>{String(l["template"] ?? "—")}</code>{l["example"] ? ` · 例：${String(l["example"])}` : ""}
         </div>
       {/each}
     {:else}

@@ -145,7 +145,8 @@ export async function openWorkspace(): Promise<string | null> {
     // 首选 main.c 为 active，否则首个 .c，否则首个 .h（旧栈同规则）
     const main = collected.find((f) => /(^|\/)main\.c$/i.test(f.path));
     const firstC = collected.find((f) => /\.c$/i.test(f.path));
-    const target = main || firstC || collected[0];
+    const target = main ?? firstC ?? collected[0];
+    if (target === undefined) throw new Error("工作区无可用文件");
     workspace.activePath = target.path;
     toast("ok", `工作区：${workspace.dirName}（${collected.length} 文件）——active：${target.path}`);
     return target.source;

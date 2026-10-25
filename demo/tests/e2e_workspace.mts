@@ -2,8 +2,8 @@
 // CDP 驱动 Edge 无头，对 vite 产物做真页面验证。W1–W17 锚语义不变，选择器
 // 随新 IA（三态 + 诊断带 + vr-* 类名）迁移；workspace 条保留 ws-* 类名契约。
 //
-// 用法同 e2e_diagcard.mjs 三步（build / serve_static 8931 / headless Edge 9222）。
-import http from "node:http";
+// 用法同 e2e_diagcard.mts 三步（build / serve_static 8931 / headless Edge 9222）。
+import { connectCdp, sleep, type CdpClient, type CheckResult } from "./cdp.mts";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:8931/";
 const PAGE = BASE + "index.html";
@@ -13,45 +13,25 @@ const UTIL_H = "int add(int a, int b);\n";
 const UTIL_C = "int add(int a, int b) {\n  return a + b;\n}\n";
 const EXTRA_C = "int extra(void) {\n  return 42;\n}\n";
 
-let msgId = 0;
-const pending = new Map();
-let ws;
+let send: CdpClient["send"] = () => Promise.reject(new Error("CDP 未连接"));
+let evaluate: CdpClient["evaluate"] = () => Promise.reject(new Error("CDP 未连接"));
+let waitFor: CdpClient["waitFor"] = () => Promise.reject(new Error("CDP 未连接"));
 
-function send(method, params = {}) {
-  const id = ++msgId;
-  return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
-    ws.send(JSON.stringify({ id, method, params }));
-  });
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const results: CheckResult[] = [];
+const check = (name: string, ok: boolean, detail: string): void => {
+  results.push({ name, ok });
+  console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail);
+};
 
-async function evaluate(expr) {
-  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
-  if (r.exceptionDetails) throw new Error("eval 异常: " + JSON.stringify(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
-  return r.result.value;
-}
-async function waitFor(expr, timeout = 20000, step = 250) {
-  const t0 = Date.now();
-  for (;;) {
-    if (await evaluate(expr)) return true;
-    if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 120));
-    await sleep(step);
-  }
-}
-
-const results = [];
-const check = (name, ok, detail) => { results.push({ name, ok }); console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail); };
-
-const edText = () => evaluate("[...document.querySelectorAll('.cm-line')].map(e => e.textContent).join('\\n')");
-async function clickCm() {
-  const box = await evaluate("(() => { const r = document.querySelector('.cm-content')?.getBoundingClientRect(); return r ? {x: Math.round(r.x + r.width/2), y: Math.round(r.y + Math.min(r.height/2, 20))} : null; })()");
+const edText = (): Promise<string> => evaluate<string>("[...document.querySelectorAll('.cm-line')].map(e => e.textContent).join('\\n')");
+async function clickCm(): Promise<void> {
+  const box = await evaluate<{ x: number; y: number } | null>("(() => { const r = document.querySelector('.cm-content')?.getBoundingClientRect(); return r ? {x: Math.round(r.x + r.width/2), y: Math.round(r.y + Math.min(r.height/2, 20))} : null; })()");
   if (!box) throw new Error("找不到 .cm-content");
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: box.x, y: box.y, button: "left", clickCount: 1 });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x, y: box.y, button: "left", clickCount: 1 });
   await sleep(120);
 }
-async function setEditor(text) {
+async function setEditor(text: string): Promise<void> {
   await waitFor("!window.__pilot.session.collecting", 20000);
   await clickCm();
   await send("Input.dispatchKeyEvent", { type: "keyDown", modifiers: 2, key: "a", code: "KeyA", windowsVirtualKeyCode: 65 });
@@ -64,70 +44,60 @@ async function setEditor(text) {
   await sleep(300);
   // 回读校验（CM6 与 readOnly/焦点时序的坑：写不进去时立即红，不静默继续）
   const got = await edText();
-  const norm = (s) => s.replace(/\s+/g, " ").trim();
+  const norm = (s: string): string => s.replace(/\s+/g, " ").trim();
   if (norm(got) !== norm(text)) {
     throw new Error("编辑器内容写入失败（W3 族）：回读=" + JSON.stringify(got.slice(0, 80)));
   }
 }
 
-async function bootWait() {
+async function bootWait(): Promise<void> {
   await waitFor("window.__pilot && window.__pilot.session.booted", 30000);
   await waitFor("window.__pilot.lessonSession.lesson && !window.__pilot.session.collecting && window.__pilot.session.frames.length > 0", 40000);
   await sleep(400);
 }
-async function openEntry() {
+async function openEntry(): Promise<void> {
   if (await evaluate("window.__pilot.ui.screen === 'entry'")) return;
   await evaluate(`document.querySelector('[aria-label="课程目录"]')?.click()`);
   await waitFor("window.__pilot.ui.screen === 'entry'");
   await sleep(250);
 }
-async function pickLesson(id, waitMs = 30000) {
+async function pickLesson(id: string, waitMs = 30000): Promise<void> {
   await openEntry();
   await waitFor("!window.__pilot.session.collecting", 30000);
-  const chapters = await evaluate("document.querySelectorAll('.vr-chapter').length");
+  const chapters = await evaluate<number>("document.querySelectorAll('.vr-chapter').length");
   let found = false;
   for (let i = 0; i < chapters; i++) {
     await evaluate(`document.querySelectorAll('.vr-chapter')[${i}]?.click()`);
     await sleep(120);
-    found = await evaluate(`!![...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})`);
+    found = await evaluate<boolean>(`!![...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})`);
     if (found) break;
   }
   if (!found) throw new Error(`找不到课程 ${id}`);
-  const e0 = await evaluate("window.__pilot.session.epoch");
+  const e0 = await evaluate<number>("window.__pilot.session.epoch");
   // #222 P2：课列单击即开课（旧「预览 → .vr-open」两步已退役）
   await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === ${JSON.stringify(id)})?.click()`);
   await waitFor(`window.__pilot.ui.screen === 'work' && window.__pilot.lessonSession.lesson?.id === ${JSON.stringify(id)} && window.__pilot.session.epoch > ${e0} && !window.__pilot.session.collecting`, waitMs);
 }
 
+interface W1 { chips: string[]; name?: string; active?: string; editor: string }
+interface W3 { dirtyMain: boolean; saveEnabled: boolean }
+interface W4 { written: string; dirtyAfter: boolean; saveDisabled: boolean }
+interface W5A { active?: string; editor: string }
+interface W7B { chips: number; barGone: boolean }
+interface W9 { title: string; hasRealBlock: boolean; pageTitle: string; blocks: string[] }
+interface W10A { active: boolean; dirty: boolean; screen: string }
+interface W10B { chips: number; saved: boolean; lesson?: string }
+interface W18 { pop: boolean; aria: string | null }
+interface C0 { at: number; total: number }
+interface ThemeState { t: string | null; s: string | null; m: string | null }
+interface W15 { ret: number | null; steps: number; golden: string; badge: string; statline: string }
+interface W16A { draft: string; statline: string }
+interface W16C { stdout: string; ret: number | null; golden: string }
+interface W17 { kind: string; badge: string }
+
 async function run() {
-  const targets = await (async () => {
-    // CI 竞态修复（2026-10-18）：chrome DevTools 端口就绪前连接会
-    // ECONNREFUSED（sleep 固定等待竞态）——拒绝即退避重试（10×500ms）
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await new Promise((resolve, reject) => {
-          http.get({ host: "127.0.0.1", port: 9222, path: "/json/list" }, (res) => {
-    let b = ""; res.on("data", (c) => (b += c)); res.on("end", () => { try { resolve(JSON.parse(b)); } catch (e) { reject(e); } });
-          }).on("error", reject);
-        });
-        } catch (e) {
-          if (attempt >= 19 || !String(e).includes("ECONNREFUSED")) throw e;
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-      }
-  })();
-  const pages = targets.filter((t) => t.type === "page");
-  const page = pages.find((t) => t.url.includes("index.html")) ?? pages[pages.length - 1];
-  if (!page) throw new Error("CDP 无 page target");
-  ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) {
-      const p = pending.get(m.id); pending.delete(m.id);
-      if (m.error) p.reject(new Error(JSON.stringify(m.error))); else p.resolve(m.result);
-    }
-  };
+  const cdp = await connectCdp();
+  ({ send, evaluate, waitFor } = cdp);
   await send("Page.enable"); await send("Runtime.enable");
   // 新工作态比旧两栏页更高（标题/运行条/参数条）——固定 1440×900 视口，
   // 否则 headless 默认小窗口里编辑器中心落在视口外，真实点选失败（实测）。
@@ -167,7 +137,7 @@ async function run() {
   // ── W1 打开工作区 ──
   await evaluate("[...document.querySelectorAll('.ws-bar .ws-open')].find(b => b.textContent.includes('打开文件夹'))?.click()");
   await waitFor("document.querySelectorAll('.ws-chip').length === 4", 20000);
-  const w1 = await evaluate(`(() => ({
+  const w1 = await evaluate<W1>(`(() => ({
     chips: [...document.querySelectorAll('.ws-chip')].map(c => c.textContent.trim()),
     name: document.querySelector('.ws-name')?.textContent?.trim(),
     active: document.querySelector('.ws-chip.on')?.textContent?.trim(),
@@ -180,13 +150,13 @@ async function run() {
   // ── W2 多文件采集（compile.files + vfs include）──
   await evaluate("document.querySelector('[data-act=\"run\"]')?.click()");
   await waitFor("window.__pilot.session.outputs.stdout.length > 0", 20000);
-  const w2 = await evaluate("window.__pilot.session.outputs.stdout.trim()");
+  const w2 = await evaluate<string>("window.__pilot.session.outputs.stdout.trim()");
   check("W2 compile.files 多单元 + include 解析（stdout=5）", w2 === "5", JSON.stringify(w2));
 
   // ── W3 dirty 标记 + 编辑器键入同步 ──
   await setEditor(MAIN_C.replace("add(2, 3)", "add(20, 30)"));
   await sleep(300);
-  const w3 = await evaluate(`(() => ({
+  const w3 = await evaluate<W3>(`(() => ({
     dirtyMain: document.querySelector('.ws-chip')?.classList.contains('dirty'),
     saveEnabled: !document.querySelector('.ws-save')?.disabled,
   }))()`);
@@ -195,7 +165,7 @@ async function run() {
   // ── W4 保存写回磁盘（mock createWritable 记录）──
   await evaluate("document.querySelector('.ws-save')?.click()");
   await waitFor("(window.__wsWrites['main.c'] ?? '').includes('add(20, 30)')", 8000);
-  const w4 = await evaluate(`(() => ({
+  const w4 = await evaluate<W4>(`(() => ({
     written: window.__wsWrites['main.c'] ?? '',
     dirtyAfter: document.querySelector('.ws-chip')?.classList.contains('dirty'),
     saveDisabled: document.querySelector('.ws-save')?.disabled,
@@ -205,11 +175,11 @@ async function run() {
   // ── W5 切换文件：缓冲保留 + active 迁移 ──
   await evaluate("[...document.querySelectorAll('.ws-chip')].find(c => c.textContent.includes('util.c'))?.click()");
   await sleep(300);
-  const w5a = await evaluate(`(() => ({
+  const w5a = await evaluate<W5A>(`(() => ({
     active: document.querySelector('.ws-chip.on')?.textContent?.trim(),
     editor: [...document.querySelectorAll('.cm-line')].map(e => e.textContent).join('\\n'),
   }))()`);
-  check("W5 切到 util.c（编辑器 = util.c 内容）", w5a.active === "util.c" && w5a.editor.includes("int add(int a, int b)"), w5a.active);
+  check("W5 切到 util.c（编辑器 = util.c 内容）", w5a.active === "util.c" && w5a.editor.includes("int add(int a, int b)"), w5a.active ?? "");
   await evaluate("[...document.querySelectorAll('.ws-chip')].find(c => c.textContent.includes('main.c'))?.click()");
   await sleep(300);
   const w5b = await edText();
@@ -222,7 +192,7 @@ async function run() {
   await send("Input.dispatchKeyEvent", { type: "keyDown", modifiers: 2, key: "s", code: "KeyS", windowsVirtualKeyCode: 83 });
   await send("Input.dispatchKeyEvent", { type: "keyUp", modifiers: 2, key: "s", code: "KeyS", windowsVirtualKeyCode: 83 });
   await waitFor("(window.__wsWrites['util.c'] ?? '').includes('a * b')", 8000);
-  check("W6 Ctrl+S 写回 util.c（a*b）", true, (await evaluate("window.__wsWrites['util.c'] ?? ''")).slice(0, 50));
+  check("W6 Ctrl+S 写回 util.c（a*b）", true, (await evaluate<string>("window.__wsWrites['util.c'] ?? ''")).slice(0, 50));
 
   // ── W7 关闭 guard：dirty 时 confirm(false) 不关 / confirm(true) 关 ──
   await clickCm();
@@ -231,22 +201,22 @@ async function run() {
   await evaluate("window.__confirmAnswer = false");
   await evaluate("document.querySelector('.ws-close')?.click()");
   await sleep(300);
-  const w7a = await evaluate("document.querySelectorAll('.ws-chip').length");
+  const w7a = await evaluate<number>("document.querySelectorAll('.ws-chip').length");
   check("W7 confirm(false) → 工作区不关", w7a === 4, "chips=" + w7a);
   await evaluate("window.__confirmAnswer = true");
   await evaluate("document.querySelector('.ws-close')?.click()");
   await sleep(300);
-  const w7b = await evaluate("({ chips: document.querySelectorAll('.ws-chip').length, barGone: !document.querySelector('.ws-name') })");
+  const w7b = await evaluate<W7B>("({ chips: document.querySelectorAll('.ws-chip').length, barGone: !document.querySelector('.ws-name') })");
   check("W7 confirm(true) → 关闭 + chips/name 清", w7b.chips === 0 && w7b.barGone === true, JSON.stringify(w7b));
 
   // ── W8 关闭后入口仍在（可再开）──
-  const w8 = await evaluate("[...document.querySelectorAll('.ws-bar .ws-open')].some(b => b.textContent.includes('打开文件夹'))");
+  const w8 = await evaluate<boolean>("[...document.querySelectorAll('.ws-bar .ws-open')].some(b => b.textContent.includes('打开文件夹'))");
   check("W8 入口常驻（可重新打开）", w8 === true, String(w8));
 
   // ── W9 点课：叙述懒加载渲染（glob ?url 交付格式真源链）──
   await pickLesson("bubble");
   await sleep(400);
-  const w9 = await evaluate(`(() => ({
+  const w9 = await evaluate<W9>(`(() => ({
     title: document.querySelector('.vr-note-page h2')?.textContent?.trim() ?? '',
     hasRealBlock: (document.querySelector('.vr-note-page')?.textContent ?? '').includes('这门课在做什么'),
     pageTitle: document.querySelector('.vr-title')?.textContent?.trim() ?? '',
@@ -264,7 +234,7 @@ async function run() {
   await clickCm();
   await send("Input.insertText", { text: "\n// guard dirty" });
   await sleep(300);
-  const dirtyPre = await evaluate("!!document.querySelector('.ws-chip.dirty')");
+  const dirtyPre = await evaluate<boolean>("!!document.querySelector('.ws-chip.dirty')");
   if (!dirtyPre) throw new Error("W10 前置失败：工作区未进入 dirty 态");
   await sleep(300);
   await evaluate("window.__confirmAnswer = false");
@@ -274,7 +244,7 @@ async function run() {
   // #222 P2：课列单击即开课——guard 在 open() 内，confirm(false) 时中止在入口态
   await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === 'bubble_sort')?.click()`);
   await sleep(500);
-  const w10a = await evaluate(`(() => ({
+  const w10a = await evaluate<W10A>(`(() => ({
     active: window.__pilot.workspace.active,
     dirty: window.__pilot.workspace.dirty,
     screen: window.__pilot.ui.screen,
@@ -283,7 +253,7 @@ async function run() {
   await evaluate("window.__confirmAnswer = true");
   await evaluate(`[...document.querySelectorAll('.vr-lesson-row')].find(b => b.querySelector('.vr-id')?.textContent === 'bubble_sort')?.click()`);
   await waitFor("window.__pilot.ui.screen === 'work' && !window.__pilot.session.collecting", 20000);
-  const w10b = await evaluate(`(() => ({
+  const w10b = await evaluate<W10B>(`(() => ({
     chips: document.querySelectorAll('.ws-chip').length,
     saved: (window.__wsWrites['main.c'] ?? '').includes('guard dirty'),
     lesson: window.__pilot.lessonSession.lesson?.id,
@@ -291,14 +261,14 @@ async function run() {
   check("W10 confirm(true) → 保存 + 关工作区 + 切工作态", w10b.chips === 0 && w10b.saved === true && w10b.lesson === "bubble_sort", JSON.stringify(w10b));
 
   // ── W11 主题切换 + 刷新持久化（localStorage 真恢复）──
-  const theme0 = await evaluate("document.documentElement.getAttribute('data-theme')");
+  const theme0 = await evaluate<string | null>("document.documentElement.getAttribute('data-theme')");
   await evaluate("document.querySelector('[data-theme-toggle]')?.click()");
   await sleep(300);
-  const theme1 = await evaluate("document.documentElement.getAttribute('data-theme')");
+  const theme1 = await evaluate<string | null>("document.documentElement.getAttribute('data-theme')");
   check("W11 主题切换生效（data-theme 变更）", theme0 !== theme1, theme0 + " → " + theme1);
   await send("Page.navigate", { url: PAGE + "?r=" + Date.now() }); // cache-bust：同 URL 无 fragment 可能不重载
   await bootWait();
-  const theme2 = await evaluate("document.documentElement.getAttribute('data-theme')");
+  const theme2 = await evaluate<string | null>("document.documentElement.getAttribute('data-theme')");
   check("W11 刷新后主题保持（localStorage 持久化真恢复）", theme2 === theme1, "刷新后 " + theme2 + "（期望 " + theme1 + "）");
 
   // ── W12 分享往返（点分享 → #z1. 片段 → 重载还原编辑器）──
@@ -308,7 +278,7 @@ async function run() {
   await evaluate("document.querySelector('[data-act=\"share\"]')?.click()");
   await waitFor("document.querySelector('.vr-share-input')?.value?.startsWith('http')", 10000);
   await sleep(400);
-  const hash = await evaluate("location.hash");
+  const hash = await evaluate<string>("location.hash");
   check("W12 分享写入 #z1. 片段", typeof hash === "string" && hash.startsWith("#z1."), String(hash).slice(0, 46));
   // cache-bust query 强制完整导航（同路径仅变 fragment 是 same-document 导航，boot 链不重跑）
   await send("Page.navigate", { url: PAGE + "?share=" + Date.now() + hash });
@@ -325,20 +295,20 @@ async function run() {
   // 「点外」关掉；合成 click 单栈同步派发全程无检查点，W12 的合成路径测不出。
   {
     await waitFor("(() => { const b = document.querySelector('[data-act=\"share\"]'); return !!b && !b.disabled; })()", 20000);
-    const sb = await evaluate("(() => { const r = document.querySelector('[data-act=\"share\"]')?.getBoundingClientRect(); return r ? {x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2)} : null; })()");
+    const sb = await evaluate<{ x: number; y: number } | null>("(() => { const r = document.querySelector('[data-act=\"share\"]')?.getBoundingClientRect(); return r ? {x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2)} : null; })()");
     if (!sb) throw new Error("找不到分享按钮");
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x: sb.x, y: sb.y, button: "left", clickCount: 1 });
     await sleep(40);
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: sb.x, y: sb.y, button: "left", clickCount: 1 });
     await sleep(500);
-    const w18a = await evaluate("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
+    const w18a = await evaluate<W18>("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
     check("W18a 真实点击分享 → 浮层出现（#184）", w18a.pop === true && w18a.aria === "true", JSON.stringify(w18a));
-    const vw = await evaluate("({x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight - 60)})");
+    const vw = await evaluate<{ x: number; y: number }>("({x: Math.round(window.innerWidth / 2), y: Math.round(window.innerHeight - 60)})");
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x: vw.x, y: vw.y, button: "left", clickCount: 1 });
     await sleep(40);
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: vw.x, y: vw.y, button: "left", clickCount: 1 });
     await sleep(300);
-    const w18b = await evaluate("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
+    const w18b = await evaluate<W18>("({ pop: !!document.querySelector('.vr-share-input'), aria: document.querySelector('[data-act=\"share\"]')?.getAttribute('aria-expanded') })");
     check("W18b 真实点击浮层外 → 浮层关闭", w18b.pop === false && w18b.aria === "false", JSON.stringify(w18b));
   }
 
@@ -354,39 +324,39 @@ async function run() {
     }
     await evaluate("window.__pilot.seek(0)");
     await sleep(150);
-    const c0 = await evaluate("({ at: window.__pilot.session.idx, total: window.__pilot.session.viewFrames.length })");
+    const c0 = await evaluate<C0>("({ at: window.__pilot.session.idx, total: window.__pilot.session.viewFrames.length })");
     check("W13 采集后帧计数可见", c0.total > 1, JSON.stringify(c0));
     await evaluate("document.querySelector('[aria-label=\"下一帧\"]')?.click()");
     await sleep(200);
-    const c1 = await evaluate("window.__pilot.session.idx");
+    const c1 = await evaluate<number>("window.__pilot.session.idx");
     check("W13 下一帧 +1", c1 === c0.at + 1, JSON.stringify([c0.at, c1]));
     await evaluate("document.querySelector('[aria-label=\"上一帧\"]')?.click()");
     await sleep(200);
-    const c2 = await evaluate("window.__pilot.session.idx");
+    const c2 = await evaluate<number>("window.__pilot.session.idx");
     check("W13 上一帧 -1", c2 === c0.at, JSON.stringify([c1, c2]));
     // 播放 → 帧推进 → 暂停（默认 8 帧/秒：首帧间隔 125ms，且 headless 下
     // 定时器可能被渲染挤到 ~300ms——用 waitFor 等推进，不赌固定 sleep）
     await evaluate("document.querySelector('[data-act=\"play\"]')?.click()");
     await sleep(60);
-    const playing = await evaluate("window.__pilot.session.playing");
+    const playing = await evaluate<boolean>("window.__pilot.session.playing");
     const advanced = await waitFor(`window.__pilot.session.idx > ${c2}`, 4000).catch(() => false);
-    const c3 = await evaluate("window.__pilot.session.idx");
+    const c3 = await evaluate<number>("window.__pilot.session.idx");
     check("W13 播放推进帧", playing === true && c3 > c2, playing + " " + JSON.stringify([c2, c3]) + " advanced=" + advanced);
     if (await evaluate("window.__pilot.session.playing")) {
       await evaluate("document.querySelector('[data-act=\"play\"]')?.click()");
     }
     await sleep(300);
-    const c4 = await evaluate("window.__pilot.session.idx");
+    const c4 = await evaluate<number>("window.__pilot.session.idx");
     await sleep(300);
-    const c5 = await evaluate("window.__pilot.session.idx");
+    const c5 = await evaluate<number>("window.__pilot.session.idx");
     check("W13 暂停后帧不再推进", c4 === c5, JSON.stringify([c4, c5]));
     // 滑条 seek 到末帧
     await evaluate(`(() => { const r = document.querySelector('input[aria-label="帧滑条"]'); if (!r) return; r.value = r.max; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
     await sleep(300);
-    const c6 = await evaluate("({ at: window.__pilot.session.idx, total: window.__pilot.session.viewFrames.length })");
+    const c6 = await evaluate<C0>("({ at: window.__pilot.session.idx, total: window.__pilot.session.viewFrames.length })");
     check("W13 滑条 seek 到末帧", c6.at === c6.total - 1, JSON.stringify(c6));
     // 粒度切换：指令级帧数 > 语句级帧数
-    const totalOf = () => evaluate("window.__pilot.session.viewFrames.length");
+    const totalOf = (): Promise<number> => evaluate<number>("window.__pilot.session.viewFrames.length");
     await evaluate("[...document.querySelectorAll('.vr-grain button')].find(b => b.textContent.includes('指令级'))?.click()");
     await sleep(500);
     const tInsn = await totalOf();
@@ -405,7 +375,7 @@ async function run() {
     for (const [t, name] of themes) {
       await evaluate(`[...document.querySelectorAll('.vr-theme-btn')].find(b => b.textContent.trim() === '${name}')?.click()`);
       await sleep(150);
-      const st = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-shade') })");
+      const st = await evaluate<{ t: string | null; s: string | null }>("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-shade') })");
       if (st.t !== t) themeOk = false;
       const wantShade = (t === "soft" || t === "blueprint") ? "night" : "day";
       if (st.s !== wantShade) shadeOk = false;
@@ -415,20 +385,20 @@ async function run() {
     // 字号 16
     await evaluate("[...document.querySelectorAll('.vr-seg[aria-label=\"字号\"] button')].find(b => b.textContent.trim() === '16')?.click()");
     await sleep(150);
-    const size = await evaluate("document.documentElement.getAttribute('data-size')");
+    const size = await evaluate<string | null>("document.documentElement.getAttribute('data-size')");
     check("W14 字号 16 档生效", size === "16", String(size));
     // 动效关（先确保在开态，再点关）
-    const m0 = await evaluate("document.documentElement.getAttribute('data-motion')");
+    const m0 = await evaluate<string | null>("document.documentElement.getAttribute('data-motion')");
     if (m0 === "off") { await evaluate("document.querySelector('.vr-switch')?.click()"); await sleep(150); }
     await evaluate("document.querySelector('.vr-switch')?.click()");
     await sleep(150);
-    const motion = await evaluate("document.documentElement.getAttribute('data-motion')");
+    const motion = await evaluate<string | null>("document.documentElement.getAttribute('data-motion')");
     check("W14 动效关闭 → data-motion=off", motion === "off", String(motion));
     // 持久化：重载后 主题/字号/动效 三者保持
-    const before = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-size'), m: document.documentElement.getAttribute('data-motion') })");
+    const before = await evaluate<ThemeState>("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-size'), m: document.documentElement.getAttribute('data-motion') })");
     await send("Page.navigate", { url: PAGE });
     await bootWait();
-    const after = await evaluate("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-size'), m: document.documentElement.getAttribute('data-motion') })");
+    const after = await evaluate<ThemeState>("({ t: document.documentElement.getAttribute('data-theme'), s: document.documentElement.getAttribute('data-size'), m: document.documentElement.getAttribute('data-motion') })");
     check("W14 重载后主题/字号/动效三持久化", JSON.stringify(before) === JSON.stringify(after), JSON.stringify([before, after]));
   }
 
@@ -436,7 +406,7 @@ async function run() {
   await pickLesson("hello");
   await waitFor("!window.__pilot.session.playing", 20000);
   await sleep(300);
-  const w15 = await evaluate(`(() => {
+  const w15 = await evaluate<W15>(`(() => {
     const s = window.__pilot.session;
     return {
       ret: s.runStats?.return_value ?? null, steps: s.runStats?.steps_executed ?? 0,
@@ -449,7 +419,7 @@ async function run() {
   // W16 scanf 课：waiting_input → stdin 行（默认 42）→ 喂入续跑 → got 42
   await pickLesson("scanf");
   await waitFor("document.querySelector('.vr-stdin-row')", 20000);
-  const w16a = await evaluate(`(() => ({
+  const w16a = await evaluate<W16A>(`(() => ({
     draft: document.querySelector('.vr-stdin-row input')?.value ?? '',
     statline: document.querySelector('.vr-statline')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '',
   }))()`);
@@ -458,36 +428,32 @@ async function run() {
   // 源码与在跑帧流已绑定，改稿再喂入 = 按另一份程序续跑（golden stale 只诚实
   // 不解体验）——等待态必须 readOnly（disabled={collecting || waiting}）。
   {
-    const lenW = await evaluate("document.querySelector('.cm-content')?.textContent.length ?? -1");
+    const lenW = await evaluate<number>("document.querySelector('.cm-content')?.textContent.length ?? -1");
     await clickCm();
     await send("Input.insertText", { text: "X" });
     await sleep(300);
-    const lenW2 = await evaluate("document.querySelector('.cm-content')?.textContent.length ?? -1");
+    const lenW2 = await evaluate<number>("document.querySelector('.cm-content')?.textContent.length ?? -1");
     check("W16a2 等待态编辑器锁定（真实键入不落地）", lenW2 === lenW, `长度 ${lenW} → ${lenW2}（期望不变）`);
   }
   await evaluate("document.querySelector('.vr-stdin-row .vr-btn')?.click()");
   await waitFor("!window.__pilot.session.runStats?.waiting_input", 20000);
   await sleep(400);
-  const w16b = await evaluate(`(() => {
-    const s = window.__pilot.session;
-    return { stdout: s.outputs.stdout, ret: s.runStats?.return_value, golden: s.golden.kind, badge: document.querySelector('.vr-badge')?.textContent?.trim() ?? '' };
-  })()`);
   // golden 判定口径 = 末帧（设计说明 §12.2）——喂入重采后停在帧 0，需走到末帧
   await evaluate("window.__pilot.seek(window.__pilot.session.viewFrames.length - 1)");
   await sleep(400);
-  const w16c = await evaluate(`(() => ({ stdout: window.__pilot.session.outputs.stdout, ret: window.__pilot.session.runStats?.return_value, golden: window.__pilot.session.golden.kind }))()`);
+  const w16c = await evaluate<W16C>(`(() => ({ stdout: window.__pilot.session.outputs.stdout, ret: window.__pilot.session.runStats?.return_value, golden: window.__pilot.session.golden.kind }))()`);
   check("W16b 喂入续跑（stdout got 42 + 返回码 0 + golden ✓）", w16c.stdout === "got 42" && w16c.ret === 0 && w16c.golden === "ok", JSON.stringify(w16c));
 
   // W17 golden 失效态（诚实边界）：编辑器键入后不拿旧预期比新代码
   await clickCm();
   await send("Input.insertText", { text: " " });
   await sleep(500);
-  const w17 = await evaluate(`(() => ({ kind: window.__pilot.session.golden.kind, badge: document.querySelector('.vr-badge')?.textContent?.trim() ?? '' }))()`);
+  const w17 = await evaluate<W17>(`(() => ({ kind: window.__pilot.session.golden.kind, badge: document.querySelector('.vr-badge')?.textContent?.trim() ?? '' }))()`);
   check("W17 golden 失效文案（编辑器修改后）", w17.kind === "stale" && w17.badge.includes("已修改"), JSON.stringify(w17));
 
   const fails = results.filter((r) => !r.ok).length;
   console.log(`\n===== ${results.length - fails}/${results.length} 通过${fails ? "，失败 " + fails + " 项" : ""} =====`);
-  ws.close();
+  cdp.close();
   process.exit(fails ? 1 : 0);
 }
 

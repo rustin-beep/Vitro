@@ -39,7 +39,7 @@ export function urlLenWarning(urlLen: number): string {
 /** Uint8Array → base64url（无 padding）。btoa 只吃 latin1，故逐字节折字符串。 */
 export function bytesToB64url(bytes: Uint8Array): string {
   let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i] as number);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 

@@ -29,7 +29,7 @@ import {
   SHARE_URL_WARN,
   SHARE_VERSION,
 } from "../js/share.ts";
-import { LessonParseError, parseLessonMd, type Scene } from "../src/lib/lessonMd.ts";
+import { LessonParseError, parseLessonMd, type Block, type Scene } from "../src/lib/lessonMd.ts";
 import {
   resolveAnchor,
   resolveScenes,
@@ -42,6 +42,18 @@ import {
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
+
+/** noUncheckedIndexedAccess 下的显式断言点（测试夹具已知在界内）。 */
+function must<T>(v: T | undefined, msg = "预期值存在"): T {
+  if (v === undefined) throw new Error(msg);
+  return v;
+}
+
+/** 断言首块为 h2 并取其正文（Block 联合收窄）。 */
+function h2Text(b: Block | undefined): string {
+  if (b === undefined || b.type !== "h2") throw new Error("预期 h2 块");
+  return b.text;
+}
 
 // ── buildCallTree：路径序列 → trie（窝点：循环迭代同节点累 hit；返回后再
 // 调 = 新兄弟节点；空栈帧挂根）——renderCallTree 参数错位事故的函数层锚
@@ -57,16 +69,16 @@ test("buildCallTree：fib 形路径的增量 trie 语义", () => {
   const { root, frameNode } = buildCallTree(frames);
   assert.equal(root.name, "prog");
   assert.equal(root.children.length, 1);
-  const main = root.children[0];
+  const main = must(root.children[0]);
   assert.equal(main.name, "main");
   assert.equal(main.hitCount, 2); // hitCount=路径终点语义（帧 1/4）
   assert.equal(main.children.length, 2);
-  assert.equal(main.children[0].hitCount, 2);
-  assert.equal(main.children[1].hitCount, 1);
+  assert.equal(must(main.children[0]).hitCount, 2);
+  assert.equal(must(main.children[1]).hitCount, 1);
   assert.equal(frameNode[0], root);
-  assert.equal(frameNode[3], main.children[0]);
-  assert.equal(frameNode[5], main.children[1]);
-  assert.equal(main.children[0].parent, main);
+  assert.equal(frameNode[3], must(main.children[0]));
+  assert.equal(frameNode[5], must(main.children[1]));
+  assert.equal(must(main.children[0]).parent, main);
 });
 
 // ── isArrayAnimCase：声明命中（含紧凑形态——存量 bug 修复锁）/ 访问不误标
@@ -229,7 +241,7 @@ test("粒度分组：连续同行合并计数（headLines 实测形态 [0,0,3,4,
   const frames = [0, 0, 3, 4, 4, 4, 7, 8, 9, 7].map((code_line, i) => ({ code_line, step_index: i }));
   // 组：{0,0}{3}{4,4,4}{7}{8}{9}{7} = 7 组
   assert.equal(coalesceStmt(frames).length, 7);
-  assert.equal(coalesceStmt(frames)[2].code_line, 4); // {4,4,4} 组尾帧（第 4 行语句执行完的状态）
+  assert.equal(must(coalesceStmt(frames)[2]).code_line, 4); // {4,4,4} 组尾帧（第 4 行语句执行完的状态）
   assert.equal(annotateGroups(frames).length, frames.length); // 标注不丢帧
   const grp4 = annotateGroups(frames).filter((g) => g.f.code_line === 4);
   assert.deepEqual(grp4.map((g) => [g.m, g.k]), [[1, 3], [2, 3], [3, 3]]); // 组内序号/大小
@@ -263,7 +275,7 @@ title: 夹具
 `;
   const doc = parseLessonMd(md);
   assert.equal(doc.scenes.length, 2);
-  assert.deepEqual(doc.scenes[0], {
+  assert.deepEqual(must(doc.scenes[0]), {
     id: "01",
     title: "起点：数组与循环",
     from: 0,
@@ -271,10 +283,10 @@ title: 夹具
     lines: [3, 4],
     note: "数组初始化，i / j 还是 0。",
   });
-  assert.equal(doc.scenes[1].note, "a[1] 刚被覆盖，旧值 5 还在 t 里。");
+  assert.equal(must(doc.scenes[1]).note, "a[1] 刚被覆盖，旧值 5 还在 t 里。");
   // 注释块必须剥离：第一块仍是正文 h2，不能把 metadata 当段落渲染
-  assert.equal(doc.blocks[0].type, "h2");
-  assert.equal(doc.blocks[0].text, "正文");
+  assert.equal(must(doc.blocks[0]).type, "h2");
+  assert.equal(h2Text(doc.blocks[0]), "正文");
   assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
 });
 
@@ -290,7 +302,7 @@ title: 老课
 `;
   const doc = parseLessonMd(md);
   assert.deepEqual(doc.scenes, []);
-  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(must(doc.blocks[0]).type, "h2");
 });
 
 test("lessonMd：scene 元数据格式错误 fail loud（先红后绿）", () => {
@@ -432,8 +444,8 @@ test("lessonMd：bubble scene 为 v2 锚点形态（#238——写死下标结构
     assert.equal(s.from, -1, `幕 ${s.id} 应为锚点形态`);
     assert.ok(s.fromAnchor && s.toAnchor, `幕 ${s.id} 缺锚点表达式`);
   }
-  assert.equal(doc.scenes[0].fromAnchor, "@0");
-  assert.equal(doc.scenes[doc.scenes.length - 1].toAnchor, "@last");
+  assert.equal(must(doc.scenes[0]).fromAnchor, "@0");
+  assert.equal(must(doc.scenes[doc.scenes.length - 1]).toAnchor, "@last");
 });
 
 // 第二门旗舰课（#222 P1 内容扩面）：uaf 释放后读——6 帧、3 幕；帧数来自
@@ -452,10 +464,10 @@ test("lessonMd：uaf scene 覆盖 0..5（内容锚：悬垂指针三幕）", () 
     ],
   );
   for (let i = 1; i < doc.scenes.length; i += 1) {
-    assert.equal(doc.scenes[i].from, doc.scenes[i - 1].to + 1, `scene ${doc.scenes[i].id} 与上一幕之间有空洞/重叠`);
+    assert.equal(must(doc.scenes[i]).from, must(doc.scenes[i - 1]).to + 1, `scene ${must(doc.scenes[i]).id} 与上一幕之间有空洞/重叠`);
   }
   // 注释块剥离：正文首块仍是 h2（与本片 E-08/课文渲染口径一致）
-  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(must(doc.blocks[0]).type, "h2");
 });
 
 // 第三门旗舰课（#222 P1 内容扩面）：bubble_sort 冒泡——65 帧、6 幕。
@@ -485,7 +497,7 @@ test("lessonMd：bubble_sort scene 为 v2 锚点形态（六幕全锚点化，#2
     ],
   );
   // 元数据剥离 + 课文仍在：首块 h2，且六幕讲解不是正文段落
-  assert.equal(doc.blocks[0].type, "h2");
+  assert.equal(must(doc.blocks[0]).type, "h2");
   assert.equal(doc.blocks.some((b) => b.type === "p" && b.text.includes("vitri-scenes")), false);
 });
 
@@ -499,7 +511,7 @@ test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
   const persisted = readFileSync(path.resolve(here, "../src/persisted.svelte.ts"), "utf8");
   const m = persisted.match(/THEME_KEYS\s*=\s*\[([^\]]+)\]/);
   assert.ok(m, "persisted.svelte.ts 里找不到 THEME_KEYS");
-  const keys = m[1]
+  const keys = must(m[1])
     .split(",")
     .map((s) => s.trim().replace(/^["']|["']$/g, ""))
     .filter(Boolean);
@@ -536,19 +548,19 @@ test("lessonMd：全量 course 叙述 scene 连续、行界/注记非空（P2-1 
     assert.ok(doc.scenes.length >= 1, `${rel}: 无 scene`);
     // v1 数字课：首幕 0 起 + 逐幕无缝；v2 锚点课（#238）：锚点表达式齐全、
     // 覆盖校验移交 resolveScenes（帧流上动态求值——写死下标结构性必错）
-    if (doc.scenes[0].fromAnchor !== undefined) {
+    if (must(doc.scenes[0]).fromAnchor !== undefined) {
       for (const s of doc.scenes) {
         assert.ok(s.fromAnchor && s.toAnchor, `${rel}: v2 幕 ${s.id} 缺锚点表达式`);
         assert.equal(s.from, -1, `${rel}: v2 幕 ${s.id} from 应为 -1 占位`);
       }
       continue;
     }
-    assert.equal(doc.scenes[0].from, 0, `${rel}: 首幕不从 0 起`);
+    assert.equal(must(doc.scenes[0]).from, 0, `${rel}: 首幕不从 0 起`);
     let prev = -1;
     for (const s of doc.scenes) {
       assert.ok(s.to >= s.from, `${rel}: scene ${s.id} to < from`);
       assert.equal(s.from, prev + 1, `${rel}: scene ${s.id} 与上一幕不连续`);
-      assert.ok(s.lines[0] >= 1 && s.lines[1] >= s.lines[0], `${rel}: scene ${s.id} 行界非法`);
+      assert.ok(must(s.lines[0]) >= 1 && must(s.lines[1]) >= must(s.lines[0]), `${rel}: scene ${s.id} 行界非法`);
       assert.ok(s.title.trim() && s.note.trim(), `${rel}: scene ${s.id} 标题/注记为空`);
       prev = s.to;
     }
@@ -562,7 +574,7 @@ test("lessonMd：第〇章新 5 门 scene 帧数/四节（内容批锚）", () =
   for (const [id, n] of Object.entries(expectN)) {
     const doc = parseLessonMd(readFileSync(path.resolve(here, `../../course/basic/${id}/lesson.md`), "utf8"));
     assert.ok(doc.scenes.length >= 3 && doc.scenes.length <= 6, `${id}: 幕数 ${doc.scenes.length} 不在 3..6`);
-    assert.equal(doc.scenes[doc.scenes.length - 1].to, n - 1, `${id}: 末幕 to ≠ N-1`);
+    assert.equal(must(doc.scenes[doc.scenes.length - 1]).to, n - 1, `${id}: 末幕 to ≠ N-1`);
     assert.equal(doc.scenes.reduce((s, x) => s + (x.to - x.from + 1), 0), n, `${id}: scene 覆盖帧数 ≠ ${n}`);
     const h2 = doc.blocks.flatMap((b) => (b.type === "h2" ? [b.text] : []));
     for (const h of need) assert.ok(h2.includes(h), `${id}: 缺小节「${h}」`);
@@ -622,15 +634,15 @@ order: 1
 `;
   const doc = parseLessonMd(md);
   assert.equal(doc.scenes.length, 3);
-  assert.equal(doc.scenes[0].from, -1);
-  assert.equal(doc.scenes[0].to, -1);
-  assert.equal(doc.scenes[0].fromAnchor, "@0");
-  assert.equal(doc.scenes[0].toAnchor, "@func:bubbleSort-1");
-  assert.equal(doc.scenes[1].fromAnchor, "@first_swap-1");
-  assert.equal(doc.scenes[1].toAnchor, "@first_swap+6");
-  assert.equal(doc.scenes[2].from, 40);
-  assert.equal(doc.scenes[2].to, 50);
-  assert.equal(doc.scenes[2].fromAnchor, undefined);
+  assert.equal(must(doc.scenes[0]).from, -1);
+  assert.equal(must(doc.scenes[0]).to, -1);
+  assert.equal(must(doc.scenes[0]).fromAnchor, "@0");
+  assert.equal(must(doc.scenes[0]).toAnchor, "@func:bubbleSort-1");
+  assert.equal(must(doc.scenes[1]).fromAnchor, "@first_swap-1");
+  assert.equal(must(doc.scenes[1]).toAnchor, "@first_swap+6");
+  assert.equal(must(doc.scenes[2]).from, 40);
+  assert.equal(must(doc.scenes[2]).to, 50);
+  assert.equal(must(doc.scenes[2]).fromAnchor, undefined);
 });
 
 test("lessonMd：v2 混排（数字+锚点两端）fail loud", () => {
@@ -696,8 +708,8 @@ test("resolveScenes：v1 数字幂等直通 / v2 求值 / 未命中 -1 保持", 
     { id: "02", title: "幽灵", from: -1, to: -1, fromAnchor: "@swap:9", toAnchor: "@last", lines: [1, 2], note: "n" },
   ];
   const got = resolveScenes(v2, frames);
-  assert.deepEqual([got[0].from, got[0].to], [0, 2]); // 1-1=0、1+1=2
-  assert.deepEqual([got[1].from, got[1].to], [-1, -1]); // 未命中不猜
+  assert.deepEqual([must(got[0]).from, must(got[0]).to], [0, 2]); // 1-1=0、1+1=2
+  assert.deepEqual([must(got[1]).from, must(got[1]).to], [-1, -1]); // 未命中不猜
   assert.deepEqual(resolveScenes(v2, []), v2.map((s) => ({ ...s }))); // 空帧流原样（未采集）
 });
 

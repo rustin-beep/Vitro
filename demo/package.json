@@ -7,7 +7,12 @@
   "scripts": {
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.pilot.json",
+    "check:main": "tsc -p tsconfig.json --noEmit",
+    "check:tests": "tsc -p tests/tsconfig.json",
+    "check:all": "npm run check:main && npm run check:tests && npm run check",
     "lint": "oxlint src/",
+    "lint:tests": "oxlint tests/cdp.mts tests/pure.test.mts tests/e08.test.mts tests/e08-update.mts tests/e2e_bootfail.mts tests/e2e_diagcard.mts tests/e2e_editor.mts tests/e2e_session.mts tests/e2e_workspace.mts tests/serve_static.mts tests/style_contract.mts",
+    "lint:all": "npm run lint && npm run lint:tests",
     "dev": "vite"
   },
   "devDependencies": {

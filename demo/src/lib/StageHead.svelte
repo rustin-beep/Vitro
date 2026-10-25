@@ -25,8 +25,8 @@
       {#if s.note}<p class="vr-stagehead-note">{s.note}</p>{/if}
     </div>
     <div class="vr-stagehead-nav">
-      <button type="button" class="vr-btn vr-tiny" disabled={cur <= 0} onclick={() => seek(scenes[cur - 1].from)} title="跳到上一幕开头">上一幕</button>
-      <button type="button" class="vr-btn vr-tiny" disabled={cur >= scenes.length - 1} onclick={() => seek(scenes[cur + 1].from)} title="跳到下一幕开头">下一幕</button>
+      <button type="button" class="vr-btn vr-tiny" disabled={cur <= 0} onclick={() => seek(scenes[cur - 1]?.from ?? 0)} title="跳到上一幕开头">上一幕</button>
+      <button type="button" class="vr-btn vr-tiny" disabled={cur >= scenes.length - 1} onclick={() => seek(scenes[cur + 1]?.from ?? 0)} title="跳到下一幕开头">下一幕</button>
     </div>
   </section>
 {/if}

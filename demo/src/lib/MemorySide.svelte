@@ -49,7 +49,7 @@
     {#if freed.length > 0}
       <section class="vr-side-alert" role="status" aria-label="UAF 提示">
         <div class="vr-side-alerthead"><b>E3060</b><span>Use-After-Free</span></div>
-        <p>{freed[0].name || freed[0].ty} 已释放，但仍在隔离区（{mem.quarantine.bytes} B 保留）——再次访问会命中受检窗。</p>
+        <p>{freed[0]?.name || freed[0]?.ty} 已释放，但仍在隔离区（{mem.quarantine?.bytes ?? 0} B 保留）——再次访问会命中受检窗。</p>
         <button type="button" class="vr-linkbtn" onclick={() => showRef("E3060")}>查看诊断手册 →</button>
       </section>
     {:else}
@@ -71,7 +71,7 @@
       <h3>内存三问</h3>
       <dl>
         <div><dt>谁分配的</dt><dd>{allocBy.map((x) => `${x.name} ×${x.n}`).join(" · ") || "—"}</dd></div>
-        <div><dt>谁释放的</dt><dd>{freed.length ? `${freed.length} 块（隔离区 ${mem.quarantine.blocks} 块 / ${mem.quarantine.bytes} B）` : "0 块"}</dd></div>
+        <div><dt>谁释放的</dt><dd>{freed.length ? `${freed.length} 块（隔离区 ${mem.quarantine.blocks} 块 / ${mem.quarantine?.bytes ?? 0} B）` : "0 块"}</dd></div>
         <div><dt>谁还在指</dt><dd>—（memory.regions 不含别名表）</dd></div>
       </dl>
     </section>

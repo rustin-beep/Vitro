@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(demo): #273 demo/tests 七个 `.mjs` 迁 `.mts` + 三套 TS 检测拉到最严（2026-10-25）
+
+**迁了什么**：`demo/tests/{e2e_bootfail,e2e_diagcard,e2e_editor,e2e_session,e2e_workspace,serve_static,style_contract}.mjs` → `.mts`；新增 `demo/tests/cdp.mts`，把 5 份重复的 CDP `msgId/pending/ws/send/evaluate/waitFor` 与 `/json/list` 重试连接块收成单源（类型化边界：`send<T>` / `evaluate<T>`）。CI 与 `demo/README.md`、`demo/DESIGN.md` 的调用面同步切 `.ts`/`.mts`。
+
+**检测拉满**：三套 tsconfig（`demo/tsconfig.json` / `demo/tests/tsconfig.json` / `demo/tsconfig.pilot.json`）统一到最严档——`strictNullChecks` 由 2026-10-04 的单档收窄翻回 `true`，并新增 `noUncheckedIndexedAccess` / `exactOptionalPropertyTypes` / `noImplicitOverride` / `noFallthroughCasesInSwitch` / `noImplicitReturns` / `noPropertyAccessFromIndexSignature` / `noUnusedParameters` / `noUncheckedSideEffectImports` / `forceConsistentCasingInFileNames` / `allowUnreachableCode:false` / `allowUnusedLabels:false`。`npm run check:all`（main + tests + svelte-check）与 `npm run lint:all`（`src/` + tests 显式清单）成为本地单入口；CI 的 oxlint 步切 `lint:all`。
+
+**连带修复**（最严档暴露的真实类型缺口）：`lessonMd` / `scenes` 的数组索引与正则分组显式断言；`golden` / `session.currentCase` / `OpenOpts` 的可选属性补 `| undefined`（`exactOptionalPropertyTypes` 语义）；`js/gw` 索引签名改 `["id"]`；`ArrayCells` / `StageHead` / `MemorySide` / `WorkScreen` / `RefScreen` / `App` / `main` 的 `?.`/索引访问补全；`Editor.svelte` 的 `GutterMarker.toDOM` 补 `override`；`vite-env.d.ts` 补 `*.css` 模块声明（`noUncheckedSideEffectImports`）。
+
+**验收**：`npm run check:all` 0 错（tsc 主面 / tests / svelte-check）；`npm run lint:all` 0 警告；`node --test demo/tests/pure.test.mts` 42/42；`style_contract --selftest` 通过；`vite build` 成功。E2E 七脚本的完整运行仍由 CI `demo` job 覆盖（本地需 Chrome/Edge + dist）。
+
 ### refactor(scripts): #273 realcode_diff Go→TypeScript(.mts) 迁移 + 删除 2,206 行 Go 勘探器（2026-10-25）
 
 **迁了什么**：`scripts/realcode_diff/vitro_clang_diff.go`（2,206 行，四模式：`-repo` / `-corpus` / `-aggregate` / `-check`）整体迁为 `.mts`：

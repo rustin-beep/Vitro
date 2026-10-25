@@ -89,6 +89,16 @@ export function parseInline(text: string): Inline[] {
 export class LessonParseError extends Error {}
 
 /** 解析 lesson.md 全文。fail loud：缺 frontmatter 围栏 / 缺必填字段直接抛。 */
+/** 已知下标在界内时的读取（noUncheckedIndexedAccess 的显式断言点）。 */
+function lineAt(lines: readonly string[], i: number): string {
+  return lines[i] as string;
+}
+
+/** 已知分组存在时的读取（正则形态已由调用方校验）。 */
+function groupAt(m: RegExpMatchArray, i: number): string {
+  return m[i] as string;
+}
+
 export function parseLessonMd(src: string): LessonDoc {
   const s = src.replace(/\r\n/g, "\n").replace(/^\uFEFF/, "");
   if (!s.startsWith("---\n")) throw new LessonParseError("缺 frontmatter 开栏");
@@ -150,21 +160,21 @@ function extractScenes(body: string): { body: string; scenes: Scene[] } {
     if (ver === 2 && !t.includes("|")) continue;
     const m = t.match(/^([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|(.*)$/);
     if (!m) throw new LessonParseError(`scene 行不是 5 段形态: ${t}`);
-    const id = m[1].trim();
-    const title = m[2].trim();
-    const ft = m[3].trim();
+    const id = groupAt(m, 1).trim();
+    const title = groupAt(m, 2).trim();
+    const ft = groupAt(m, 3).trim();
     const fromTo = ft.match(/^(\S+)\.\.(\S+)$/);
-    const lineRange = m[4].trim().match(/^(\d+)\.\.(\d+)$/);
+    const lineRange = groupAt(m, 4).trim().match(/^(\d+)\.\.(\d+)$/);
     if (!id || !title) throw new LessonParseError(`scene 缺 id 或 title: ${t}`);
     if (ids.has(id)) throw new LessonParseError(`scene id 重复: ${id}`);
     if (!fromTo || !lineRange) throw new LessonParseError(`scene 范围须为 a..b: ${t}`);
-    const l0 = Number.parseInt(lineRange[1], 10);
-    const l1 = Number.parseInt(lineRange[2], 10);
+    const l0 = Number.parseInt(groupAt(lineRange, 1), 10);
+    const l1 = Number.parseInt(groupAt(lineRange, 2), 10);
     if (l0 < 1 || l1 < l0) throw new LessonParseError(`scene 行区间非法: ${t}`);
     // v1 / v2 纯数字：静态数字直存；v2 锚点：-1 占位 + 原文（resolveScenes 求值）
     const numeric = (s: string): number | null => /^\d+$/.test(s) ? Number.parseInt(s, 10) : null;
-    const fromN = numeric(fromTo[1]);
-    const toN = numeric(fromTo[2]);
+    const fromN = numeric(groupAt(fromTo, 1));
+    const toN = numeric(groupAt(fromTo, 2));
     if (ver === 1 && (fromN === null || toN === null)) {
       throw new LessonParseError(`v1 scene 帧范围须为数字 a..b: ${t}`);
     }
@@ -172,7 +182,7 @@ function extractScenes(body: string): { body: string; scenes: Scene[] } {
       throw new LessonParseError(`v2 scene 帧范围两端须同为数字或同为锚点: ${t}`);
     }
     if (ver === 2 && fromN === null) {
-      if (!anchorExpr.test(fromTo[1]) || !anchorExpr.test(fromTo[2])) {
+      if (!anchorExpr.test(groupAt(fromTo, 1)) || !anchorExpr.test(groupAt(fromTo, 2))) {
         throw new LessonParseError(`v2 锚点形态非法（@word(:arg)?(±K)?）: ${t}`);
       }
     }
@@ -188,11 +198,11 @@ function extractScenes(body: string): { body: string; scenes: Scene[] } {
       from: fromN ?? -1,
       to: toN ?? -1,
       lines: [l0, l1],
-      note: m[5].trim(),
+      note: groupAt(m, 5).trim(),
     };
     if (fromN === null) {
-      scene.fromAnchor = fromTo[1];
-      scene.toAnchor = fromTo[2];
+      scene.fromAnchor = groupAt(fromTo, 1);
+      scene.toAnchor = groupAt(fromTo, 2);
     } else {
       prevTo = toN as number;
     }
@@ -211,7 +221,7 @@ function parseBlocks(lines: string[]): Block[] {
   const blocks: Block[] = [];
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i];
+    const line = lineAt(lines, i);
     const t = line.trim();
     if (!t) {
       i += 1;
@@ -221,8 +231,8 @@ function parseBlocks(lines: string[]): Block[] {
       const lang = t.slice(3).trim();
       const buf: string[] = [];
       i += 1;
-      while (i < lines.length && !lines[i].trim().startsWith("```")) {
-        buf.push(lines[i]);
+      while (i < lines.length && !lineAt(lines, i).trim().startsWith("```")) {
+        buf.push(lineAt(lines, i));
         i += 1;
       }
       blocks.push({ type: "code", lang, text: buf.join("\n") });
@@ -239,12 +249,12 @@ function parseBlocks(lines: string[]): Block[] {
       i += 1;
       continue;
     }
-    if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+    if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lineAt(lines, i + 1))) {
       // GFM 表格：第二行为分隔栏
       const rows: string[][] = [splitTableRow(line)];
       i += 2;
-      while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) {
-        rows.push(splitTableRow(lines[i]));
+      while (i < lines.length && /^\|.*\|\s*$/.test(lineAt(lines, i))) {
+        rows.push(splitTableRow(lineAt(lines, i)));
         i += 1;
       }
       blocks.push({ type: "table", rows });
@@ -263,8 +273,8 @@ function parseBlocks(lines: string[]): Block[] {
     // 段落：连续非空非结构行合并
     const buf = [t];
     i += 1;
-    while (i < lines.length && lines[i].trim() && !/^(#{2,3} |[-*] |\d+\. |```|\|)/.test(lines[i].trim())) {
-      buf.push(lines[i].trim());
+    while (i < lines.length && lineAt(lines, i).trim() && !/^(#{2,3} |[-*] |\d+\. |```|\|)/.test(lineAt(lines, i).trim())) {
+      buf.push(lineAt(lines, i).trim());
       i += 1;
     }
     blocks.push({ type: "p", text: buf.join(" ") });
@@ -284,13 +294,14 @@ function collectList(lines: string[], start: number, re: RegExp, first: string):
   const items = [first];
   let i = start + 1;
   while (i < lines.length) {
-    const m = lines[i].match(re);
+    const m = lineAt(lines, i).match(re);
     if (m) {
-      items.push(lines[i].trim().replace(re, ""));
+      items.push(lineAt(lines, i).trim().replace(re, ""));
       i += 1;
-    } else if (lines[i].trim() && /^\s{2,}/.test(lines[i])) {
+    } else if (lineAt(lines, i).trim() && /^\s{2,}/.test(lineAt(lines, i))) {
       // 续行并入上一条
-      items[items.length - 1] += " " + lines[i].trim();
+      const lastIdx = items.length - 1;
+      items[lastIdx] = (items[lastIdx] ?? "") + " " + lineAt(lines, i).trim();
       i += 1;
     } else break;
   }
@@ -299,6 +310,6 @@ function collectList(lines: string[], start: number, re: RegExp, first: string):
 
 function skipList(lines: string[], i: number, re: RegExp): number {
   i += 1;
-  while (i < lines.length && (re.test(lines[i].trim()) || (lines[i].trim() && /^\s{2,}/.test(lines[i])))) i += 1;
+  while (i < lines.length && (re.test(lineAt(lines, i).trim()) || (lineAt(lines, i).trim() && /^\s{2,}/.test(lineAt(lines, i))))) i += 1;
   return i;
 }

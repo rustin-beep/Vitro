@@ -20,7 +20,8 @@ import { coalesceStmt } from "../../js/util.ts";
 /** 当前帧所在幕的下标；无幕 / 落在幕外 → -1。 */
 export function sceneIndexAt(scenes: Scene[], idx: number): number {
   for (let i = 0; i < scenes.length; i += 1) {
-    if (idx >= scenes[i].from && idx <= scenes[i].to) return i;
+    const s = scenes[i];
+    if (s !== undefined && idx >= s.from && idx <= s.to) return i;
   }
   return -1;
 }
@@ -50,9 +51,11 @@ function arrayDiffers(a: AnchorFrame, b: AnchorFrame): boolean {
   if (bs.length === 0) return false; // 有→无：不计
   if (as_.length !== bs.length) return true;
   for (let i = 0; i < as_.length; i += 1) {
-    if (as_[i].name !== bs[i].name) return true;
-    const x = as_[i].elements;
-    const y = bs[i].elements;
+    const a0 = as_[i];
+    const b0 = bs[i];
+    if (a0 === undefined || b0 === undefined || a0.name !== b0.name) return true;
+    const x = a0.elements;
+    const y = b0.elements;
     if (x.length !== y.length) return true;
     for (let k = 0; k < x.length; k += 1) if (x[k] !== y[k]) return true;
   }
@@ -82,8 +85,9 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
   // @N：数字直答锚（@0..@arr_change:2 的起点形态）——clamp 进帧域
   const pure = anchor.match(/^@(\d+)$/);
   if (pure) {
-    const k = Math.min(Number.parseInt(pure[1], 10), frames.length - 1);
-    return src.indexOf(frames[k]);
+    const k = Math.min(Number.parseInt(pure[1] as string, 10), frames.length - 1);
+    const target = frames[k];
+    return target === undefined ? -1 : src.indexOf(target);
   }
   const m = anchor.match(ANCHOR_RE);
   if (!m) return -1;
@@ -96,7 +100,7 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
     const want = word === "first_swap" ? 1 : Number.parseInt(arg as string, 10);
     let seen = 0;
     for (let i = 0; i < frames.length; i += 1) {
-      const f = frames[i];
+      const f = frames[i] as AnchorFrame;
       if (f.algorithm_step?.phase === "swap" || f.semantic_label.startsWith("交换")) {
         seen += 1;
         if (seen === want) {
@@ -109,7 +113,7 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
     const want = Number.parseInt(arg, 10);
     let seen = 0;
     for (let i = 0; i < frames.length; i += 1) {
-      if (frames[i].algorithm_step?.phase === "compare") {
+      if ((frames[i] as AnchorFrame).algorithm_step?.phase === "compare") {
         seen += 1;
         if (seen === want) {
           base = i;
@@ -126,17 +130,19 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
     const want = Number.parseInt(arg, 10);
     let seen = 0;
     for (let i = 1; i < stmt.length; i += 1) {
-      if (arrayDiffers(stmt[i - 1], stmt[i])) {
+      const prev = stmt[i - 1];
+      const cur = stmt[i];
+      if (prev !== undefined && cur !== undefined && arrayDiffers(prev, cur)) {
         seen += 1;
         if (seen === want) {
-          base = frames.indexOf(stmt[i]);
+          base = frames.indexOf(cur);
           break;
         }
       }
     }
   } else if (word === "func" && arg !== undefined) {
     for (let i = 0; i < frames.length; i += 1) {
-      if (frames[i].func_name === arg) {
+      if ((frames[i] as AnchorFrame).func_name === arg) {
         base = i;
         break;
       }
@@ -147,7 +153,8 @@ export function resolveAnchor(anchor: string, src: AnchorFrame[]): number {
     const k = Number.parseInt(off, 10) * (sign === "-" ? -1 : 1);
     base = Math.max(0, Math.min(last, base + k));
   }
-  return src.indexOf(frames[base]);
+  const target = frames[base];
+  return target === undefined ? -1 : src.indexOf(target);
 }
 
 /** 解析一课的分镜（v2 锚点 → 数字区间；v1 数字幂等直通）。

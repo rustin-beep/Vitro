@@ -3,7 +3,7 @@
   "private": true,
   "description": "Vitro 防线脚本工具链（#273 .mts 四件套门：node 直跑 + tsc 严格档 + oxlint + node:test）",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24.0.0 <25.0.0 || >=26.0.0 <27.0.0"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

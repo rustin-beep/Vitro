@@ -22,6 +22,16 @@ priv struct Scanner {
   mut line : Int32
   mut column : Int32
   mut real_line : Int32
+  /// 当前 token 起始快照（#297，2026-10-24）：next_token 入口在消费首字符
+  /// 前记录——token 的 loc 一律取快照，取代旧「扫描后 column − text 字节数」
+  /// 回推。回推法对 text 为规范化值的 token 必偏（`0x1F`→"31" 列 +2、
+  /// `1'000`→"1000" +1、`5000000000U` 后缀剥 +1——源拼写 ≠ 规范化 text，
+  /// 少减的字节数即偏差）；跨行 token（行拼接字符串）回推更会跨过 column
+  /// 重置点得出负列。快照法两形态天然正确，且 ASCII 域与回推法逐位一致
+  ///（advance 按字节计列，扫描后列 − 源字节数 = 起始列）。source_loc 契约
+  /// §3 本就禁回推（见 #242 引用同条）。
+  mut tok_line : Int32
+  mut tok_col : Int32
   /// 行级 fragment 模式（L2）：源不可见行尾换行由调用方告知——未闭合
   /// 字符串在"行后有换行"时补报 E1003（复刻 Rust 整源扫描的两条诊断，
   /// S2 审阅 P2）
@@ -223,6 +233,8 @@ fn Scanner::new(
     line: base_line,
     column: base_column,
     real_line: base_real_line,
+    tok_line: base_line,
+    tok_col: base_column,
     line_mode: false,
     line_has_newline: true,
     file_id,
@@ -298,21 +310,20 @@ fn Scanner::make_token_col_basis(
   start : Int32,
   col_basis : String,
 ) -> @token.Token {
+  ignore(col_basis) // 基准参数保留（调用方语义），列已由起始快照承载（#297）
   {
     ty,
     text,
-    loc: {
-      line: self.line,
-      column: self.column - utf8_len(col_basis),
-      file_id: self.file_id,
-    },
+    loc: { line: self.tok_line, column: self.tok_col, file_id: self.file_id, },
     byte_off: self.base_byte_off + start,
     real_line: self.real_line,
   }
 }
 
 ///|
-/// 组装 token。列号反推：`column - text 的 UTF-8 字节数`（复刻口径，见包注释）。
+/// 组装 token。loc 取 next_token 入口的起始快照（#297：text 可能为规范化
+/// 值——整数十进制化/分隔符滤除/后缀剥——「扫描后列 − text 字节数」回推
+/// 对这些 token 必偏；跨行 token 回推跨过列重置点得负列）。
 fn Scanner::make_token(
   self : Scanner,
   ty : @token.TokenType,
@@ -322,11 +333,7 @@ fn Scanner::make_token(
   {
     ty,
     text,
-    loc: {
-      line: self.line,
-      column: self.column - utf8_len(text),
-      file_id: self.file_id,
-    },
+    loc: { line: self.tok_line, column: self.tok_col, file_id: self.file_id, },
     byte_off: self.base_byte_off + start_byte,
     real_line: self.real_line,
   }
@@ -385,11 +392,15 @@ fn Scanner::skip_block_comment(self : Scanner) -> Unit {
 fn Scanner::next_token(self : Scanner, body_mode~ : Bool) -> @token.Token {
   for ;; {
     self.skip_whitespace()
+    // token 起始快照（#297）：消费任何字符之前记录——Eof 也在此（文件
+    // 末尾当前位置）。旧回推公式见 make_token 注释。
+    let start = self.pos
+    self.tok_line = self.line
+    self.tok_col = self.column
     if self.at_end() {
-      return self.make_token(Eof, "", self.pos)
+      return self.make_token(Eof, "", start)
     }
     let c = self.peek(0)
-    let start = self.pos
     if is_ascii_alphabetic(c) || c == '_' {
       return self.identifier_or_keyword(start)
     }

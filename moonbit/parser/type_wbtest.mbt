@@ -101,3 +101,55 @@ test "wb declarator spiral const level outer_and_single_forms" {
   guard ty3 is Pointer(_, c3) else { fail("期望指针") }
   inspect(c3, content="true")
 }
+
+///|
+/// issue #296 红锚（2026-10-24）：函数指针声明符的指针自身 const——
+/// `int (* const l)(void)` 的 decay 吸收臂（interpret_declarator_node
+/// Function 臂）旧码 `Pointer(rest, _)` 丢弃 is_const ⇒ typed AST
+/// is_const=false、重绑定零诊断（clang error）；修复=传导到 decay 产物
+/// Pointer(Function, true)，typeck E3049 现成路径接上。
+test "wb fn ptr declarator const decay absorb issue296" {
+  // `int (* const l)(void)` 声明符 token 流（base=int 由 parse_declarator 传入）
+  let toks = [
+    tok285(LParen, "(", 1, 1),
+    tok285(Star, "*", 1, 2),
+    tok285(Const, "const", 1, 4),
+    tok285(Identifier, "l", 1, 10),
+    tok285(RParen, ")", 1, 11),
+    tok285(LParen, "(", 1, 12),
+    tok285(Void, "void", 1, 13),
+    tok285(RParen, ")", 1, 17),
+    tok285(Eof, "", 1, 18),
+  ]
+  let q = Parser::with_mode(toks, false)
+  let (ty, name) = q.parse_declarator(@ast.Type::int(), 0)
+  inspect(name, content="l")
+  guard ty is Pointer(func, is_const) else {
+    fail("期望函数指针为指针承载（decay 表示）")
+  }
+  inspect(is_const, content="true")
+  guard func is Function(_, _, _, _) else {
+    fail("期望 pointee 为函数类型")
+  }
+}
+
+///|
+/// 对照格：`int (*l)(void)`（无 const）decay 产物 is_const=false——
+/// 重绑定合法（clang 零诊断），const 传导不得外溢。
+test "wb fn ptr declarator no const contrast issue296" {
+  let toks = [
+    tok285(LParen, "(", 1, 1),
+    tok285(Star, "*", 1, 2),
+    tok285(Identifier, "l", 1, 4),
+    tok285(RParen, ")", 1, 5),
+    tok285(LParen, "(", 1, 6),
+    tok285(Void, "void", 1, 7),
+    tok285(RParen, ")", 1, 11),
+    tok285(Eof, "", 1, 12),
+  ]
+  let q = Parser::with_mode(toks, false)
+  let (ty, name) = q.parse_declarator(@ast.Type::int(), 0)
+  inspect(name, content="l")
+  guard ty is Pointer(_, is_const) else { fail("期望指针承载") }
+  inspect(is_const, content="false")
+}

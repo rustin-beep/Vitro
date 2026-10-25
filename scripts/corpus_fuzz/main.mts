@@ -48,7 +48,7 @@ export interface Rules {
   generators: Array<{ name: string; count: number }>;
 }
 
-interface BaselineEntry {
+export interface BaselineEntry {
   bucket: string;
   issue?: string;
   note?: string;
@@ -624,7 +624,12 @@ interface CmdResult {
   rc: number;
 }
 
-export function runCmd(args: readonly string[], dir: string, timeoutMs = 20_000): CmdResult {
+export function runCmd(
+  args: readonly string[],
+  dir: string,
+  timeoutMs = 20_000,
+  dec: "utf8" | "latin1" = "utf8",
+): CmdResult {
   const r: SpawnSyncReturns<Buffer> = spawnSync(args[0] as string, args.slice(1), {
     cwd: dir,
     input: Buffer.alloc(0), // 显式空 stdin（Windows 上 null = 继承父句柄 → scanf 族挂死）
@@ -635,7 +640,7 @@ export function runCmd(args: readonly string[], dir: string, timeoutMs = 20_000)
   if (r.error !== undefined) rc = -98; // 超时/无法启动——单例有界
   else if ((r.status ?? -1) !== 0) rc = r.status as number;
   return {
-    stdout: (r.stdout ?? Buffer.alloc(0)).toString("utf8"),
+    stdout: (r.stdout ?? Buffer.alloc(0)).toString(dec),
     stderr: (r.stderr ?? Buffer.alloc(0)).toString("utf8"),
     rc,
   };
@@ -661,7 +666,10 @@ export function clangOutcome(src: string, workdir: string): Outcome {
     }
   }
   if (r.rc !== 0) return { status: "REJECT", out: norm(r.stderr) };
-  const run = runCmd([absPath(exe)], workdir);
+  // stdout 走 latin1 解码（字节↔码点双射，无 U+FFFD 折叠）——与 parseVitro 折回域
+  // 同域后 byteCompare 等价 Go 版纯字节比较。utf8 解码会与折回域失配：UTF-8 多字节
+  // 输出（col_utf8_units 中文形态）字节相同却被判 WRONG_VALUE（#301 merge 批实证）。
+  const run = runCmd([absPath(exe)], workdir, 20_000, "latin1");
   fs.rmSync(exe, { force: true });
   if (run.rc !== 0) {
     // 崩溃域（Windows 异常码 ~3.2e9）与合法非零 return（0..255）区分
@@ -878,6 +886,27 @@ export function planVariants(
   return out;
 }
 
+/// 基线序列化（转义口径对齐 Go MarshalIndent + SetEscapeHTML——PR #289
+/// P2-1 立的口径，.mts 迁移时曾丢失：freeze 把既有 \u003e 形态条目反向
+/// 漂移成裸 `>` 3 处实锤）。`<` `>` `&` 与 U+2028/U+2029 在字符串值内转
+/// \uXXXX；这些字符不出现在 JSON 结构位（键为 ASCII 指纹），整体替换安全；
+/// U+2028/2029 JSON.stringify（ES2019 well-formed）本就转义，显式两行
+/// 是口径自述。键序 = 字节字典序（调用方已 sort）。
+export function marshalBaselineText(
+  entries: Record<string, BaselineEntry>,
+): string {
+  const ls = String.fromCharCode(0x2028);
+  const ps = String.fromCharCode(0x2029);
+  return (
+    JSON.stringify({ entries }, null, 2)
+      .replaceAll("<", "\\u003c")
+      .replaceAll(">", "\\u003e")
+      .replaceAll("&", "\\u0026")
+      .replaceAll(ls, "\\u2028")
+      .replaceAll(ps, "\\u2029") + "\n"
+  );
+}
+
 function mainFlow(argv: readonly string[]): number {
   const opts = parseArgs(argv);
 
@@ -1038,7 +1067,11 @@ function mainFlow(argv: readonly string[]): number {
       if (v.note !== undefined && v.note !== "") obj.note = v.note;
       entries[k] = obj;
     }
-    const text = JSON.stringify({ entries }, null, 2) + "\n";
+    // 转义口径对齐 Go MarshalIndent + SetEscapeHTML（PR #289 P2-1 立的口径，
+    // .mts 迁移时曾丢失——freeze 反向漂移既有 \u003e 形态条目 3 处实锤）：
+    // < > & 与 U+2028/U+2029 在字符串值内转 \uXXXX。这些字符不出现在 JSON
+    // 结构位（键为 ASCII 指纹），整体替换安全。
+    const text = marshalBaselineText(entries);
     try {
       fs.writeFileSync(opts.baseline, text, "utf8");
     } catch (e) {

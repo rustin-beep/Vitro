@@ -368,6 +368,12 @@
       "stdout_sha": "309e7e5f3332b6dd",
       "memory_sha": "66cfc80f5c57f9f4"
     },
+    "baseline/col_snapshot_normalized_tokens.c": {
+      "src_sha": "145ee492",
+      "exit_code": 0,
+      "stdout_sha": "1d156e638d53b383",
+      "memory_sha": "319b0466b73d0311"
+    },
     "baseline/col_utf8_units.c": {
       "src_sha": "91e44bdc",
       "exit_code": 0,
@@ -1015,6 +1021,12 @@
       "exit_code": 0,
       "stdout_sha": "005db8a3457c2472",
       "memory_sha": "1b964a88f0e70494"
+    },
+    "baseline/fn_ptr_const_rebind.c": {
+      "src_sha": "f32633c0",
+      "exit_code": 0,
+      "stdout_sha": "98a3a0d7becbeddf",
+      "memory_sha": "b073dcf290decdcc"
     },
     "baseline/fnptr_enum_int_param.c": {
       "src_sha": "2fd3cfc5",
@@ -3000,14 +3012,12 @@
       "src_sha": "b5a7d055",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/failfast_chain.c": {
       "src_sha": "3fe877ff",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/file_fopen.c": {
@@ -3044,7 +3054,6 @@
       "src_sha": "ed15d81a",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/include_quote_sentinel.c": {
@@ -3063,7 +3072,6 @@
       "src_sha": "ce1212f3",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/loop_var_shadow.c": {
@@ -3076,7 +3084,6 @@
       "src_sha": "f629bffd",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "gap/printf_scanf_type_mismatch.c": {
@@ -3119,7 +3126,6 @@
       "src_sha": "36f66bdb",
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
-      "memory_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
     "knr/kr_1_10.c": {

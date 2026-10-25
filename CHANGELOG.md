@@ -1,23 +1,30 @@
-# Changelog
-
-All notable changes to the Vitro project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-
-> **读本须知（agent 必读）**：本文件是**过程记述编年史**——各条目内的路径、防线计数、设施状态只反映**撰写时点**，不作现况引用。已退役/已更名设施（Rust 对照区 \`native/\`〔2026-10-05 删除〕、Python 驱动〔D5 收官退役〕、Flutter 前端〔前端切割删除〕、Cide 旧名与 \`cide_*\` 符号〔2026-09-14 更名〕、C++ 支持面〔裁定砍除〕）的记述均为**历史快照非现况**；现况以 [AGENTS.md](AGENTS.md)「当前阶段与档案」与 \`docs/current/\` 为准；逐版详情见 [docs/current/08-发布档案/](docs/current/08-发布档案/)（0.1.0~0.8.0）。
->
-> **维护纪律**：\`[Unreleased]\` 全文**唯一一段**——新条目**追加**到该段既有小节，禁止新插第二个 \`[Unreleased]\` 标题；已发布内容随发版移入对应版本节。
-
 ## [Unreleased]
+
+### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
+
+- **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）
+  合入后 fuzz 首次抽中 `col_utf8_units.c`，三算子指纹全 WRONG_VALUE（本地 +
+  CI run 40166369857 双份实证）。`-probe` 三方逐位对比实锤**假阳性**：程序
+  printf 输出 UTF-8 中文（`E4 B8 AD…`），clang 侧 runCmd 以 utf8 解码（U+4E2D
+  语义域）、vitro 侧 latin1Fold 末端以 latin1 解码（U+00E4 字节承载域），
+  byteCompare 统一按 utf8 编码比较 ⇒ 字节相同的输出因编码域不同判不一致——
+  **#273 Go→TS 迁移域失配**（Go 字符串即字节序列无此问题），非引擎缺陷
+  （引擎 JSON 出口 Latin-1 承载为协议设计；digest 闸走原始 stdout 通道故从未暴露）。
+- **修复**：`clangOutcome` run 步 stdout 改 latin1 解码（字节↔码点双射、无
+  U+FFFD 折叠——与 Go `bytes.Compare` 纯字节比较等价；utf8 解码会把裸高位
+  字节折叠成替换符造成假 AGREE 面，故选 latin1 对齐而非反向升域）；`runCmd`
+  加 `dec` 参数，缺省 utf8 其余消费面不动。
+- **红→绿**：单测新增管线域对齐锚（折回域 == clang 解码域逐位一致 + 三方
+  AGREE + 域失配反锚防闸钝化）；修复后全量 gate 复跑 col_utf8_units 三条
+  WRONG_VALUE 全部转 AGREE（AGREE 244→247），30 条新指纹全为抽样偏移良性族
+  （AGREE/CLANG_REJECT），`-freeze` 收编 1248 条（含 `>` → `\u003e` 转义口径
+  回补 3 处——#289 P2-1 口径上轮 freeze 反向漂移的修正）。
 
 ### fix(scripts,docs): #303 审阅 P3 处置——probe 排序口径更正 + probes 纯逻辑单测 + run 覆盖缺口登记（2026-10-25）
 
 - **P3-1（CHANGELOG 口径）**：`-probe` 的 `probe_diff.md` 不再声称逐字节一致——Go 版 `sort.Slice` 不稳定 + map 随机迭代，同一二进制连跑三次得到三种哈希；TS 版补同计数按码名字节序定序是**修复**而非漂移。`result.json` 仍逐字节一致。
 - **P3-2（run 比对面不可达）**：chibicc/multifile 的 `run` 恒空（全为 parse/typeck 红样本），`compareWithGold` 的 `run` 面在 CI 不可达；外置 `gold_signatures.json` 仍有 208 条非空 `run`。缺口登记在 `README.corpus.md`、`corpora.json` `_note` 与 `compare_gold` 注释，**不删除比对面**；补双绿可运行样本另批。
 - **P3-3（probes 单测）**：抽 `clangDiagnosticCounts` / `gccErrorCount` / `resolveGcc` 纯函数并接线原实现；新增 `probes.test.mts` 覆盖错误/警告计数、CRT/deprecated 豁免、CRLF 首错、gcc 探测序与显式缺失 fail-loud 分支。
-
 ### refactor(demo): #273 demo/tests 七个 `.mjs` 迁 `.mts` + 三套 TS 检测拉到最严（2026-10-25）
 
 **迁了什么**：`demo/tests/{e2e_bootfail,e2e_diagcard,e2e_editor,e2e_session,e2e_workspace,serve_static,style_contract}.mjs` → `.mts`；新增 `demo/tests/cdp.mts`，把 5 份重复的 CDP `msgId/pending/ws/send/evaluate/waitFor` 与 `/json/list` 重试连接块收成单源（类型化边界：`send<T>` / `evaluate<T>`）。CI 与 `demo/README.md`、`demo/DESIGN.md` 的调用面同步切 `.ts`/`.mts`。
@@ -27,7 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **连带修复**（最严档暴露的真实类型缺口）：`lessonMd` / `scenes` 的数组索引与正则分组显式断言；`golden` / `session.currentCase` / `OpenOpts` 的可选属性补 `| undefined`（`exactOptionalPropertyTypes` 语义）；`js/gw` 索引签名改 `["id"]`；`ArrayCells` / `StageHead` / `MemorySide` / `WorkScreen` / `RefScreen` / `App` / `main` 的 `?.`/索引访问补全；`Editor.svelte` 的 `GutterMarker.toDOM` 补 `override`；`vite-env.d.ts` 补 `*.css` 模块声明（`noUncheckedSideEffectImports`）。
 
 **验收**：`npm run check:all` 0 错（tsc 主面 / tests / svelte-check）；`npm run lint:all` 0 警告；`node --test demo/tests/pure.test.mts` 42/42；`style_contract --selftest` 通过；`vite build` 成功。E2E 七脚本的完整运行仍由 CI `demo` job 覆盖（本地需 Chrome/Edge + dist）。
-
 ### refactor(scripts): #273 realcode_diff Go→TypeScript(.mts) 迁移 + 删除 2,206 行 Go 勘探器（2026-10-25）
 
 **迁了什么**：`scripts/realcode_diff/vitro_clang_diff.go`（2,206 行，四模式：`-repo` / `-corpus` / `-aggregate` / `-check`）整体迁为 `.mts`：
@@ -50,6 +56,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **连带修复**：`editorconfig_check` 对嵌套 git worktree/submodule 整树跳过——仓库根下遗留审阅 worktree（`tmp_pr299*`）此前被当普通目录扫入，导致本地 pre-commit 全仓闸恒红（CI 干净检出无此形态，故长期未暴露）；新增 J9 用例锁住「worktree 内违规不计入本仓、外部违规仍命中」。
 
 **门禁**：tsc 0 错 / oxlint 153 文件 0 警告 / node:test 新增 30 例全绿（本地全量 493 例中 491 通过，2 例为环境红：`tmp_pr299wt` 审阅工作树被 editorconfig 扫入、Node 25.9.0 Windows `process.exit` 崩溃码 0xC0000409——均为在案环境项，非本批代码）/ `ci_checklist` PASS（驱动 55＝.go 3 / .mts 52）/ `-check` PASS / `go build ./scripts/...` PASS。
+
+### fix(corpus+docs): #301 用户审阅处置——P1 llm_scale 四家 digest 补冻 + P2 README 测试数漏改 3 处（2026-10-25）
+
+- **P1**：批五重冻漏了 `corpus/llm_scale`（CI diff gate 跑五语料，
+  `llm_scale_db.c` 四家 FAIL——列号偏移全部为正确修复方向，审阅逐行
+  验算 `1000000000L` 列 21 / `0xff` 列 38 双侧对照证实）；补冻
+  lexer 2 / parser·typeck·codegen 各 1 例，五语料 × 五家（含 vm）
+  25 项对账全 PASS。
+- **P2**：根 README:141 / moonbit/README.md:141–142 / README.mbt.md:50
+  的 `891 测试`→895 与 `1047`→1051（+4 锚全在裸域，算术自洽
+  895+156=1051）；批注链补「A 线批五 +4」；`testcount` 闸 PASS。
+- **补验审阅未覆盖项**：wasm 臂列号同源（E3074 `5:14` 与 js/native
+  对齐 + 新语料三臂同 md5）；`clang_direct llm_scale` DIFF=0；
+  `libc_boot_diff` REFRESH 复现 PASS。
+### chore(scripts): engines 放宽 26——本机 Node 25→26 切换验证伴生（2026-10-25）
+
+- `engines` 由 `>=24 <25` 放宽为 `>=24.0.0 <25.0.0 || >=26.0.0 <27.0.0`：
+  #289 P2-2 收紧的原因（Node 25.9.0 libuv 退出崩溃族，#302 定位）已被
+  26 消除——26.12.1 下 scripts 全量 465 例 0 失败、teaching_reconcile
+  偶发红消案、host_contract_map selftest 绿（同族第一案同解）；
+  **25 线 EOL 且为崩溃版，维持排除**；`>=26 <27` 为实测验证域（升级
+  修复 commit 80d2173 随 26 线）。`.node-version`=24（CI 锚，防线基线）
+  不动。
+- **node26 vs node25 性能 A/B**（同机同产物单变量，交错轮 R=7 中位，
+  输出逐字节校验一致才计时——纪律 9）：js 臂 26 快 2~11%（fib 1.11x /
+  嵌套 1.05x / 冒泡 1.02x / host 调用密集面持平）；wasm-gc 臂持平
+  （±8% 内，fib 1.00x / 嵌套 1.04x / 冒泡 1.04x / 字符串 0.92x）——
+  **零回退，js 臂小幅占优**；数字详见 #302 评论。
+### fix(lexer+parser): A 线批五——#297 token 起始列快照 + #296 函数指针 const 传导 + lexer 行列不变量闸（2026-10-24）
+
+- **#297（lexer）**：token 起始列的「扫描后列 − text 字节数」回推对 text
+  为规范化值的 token 必偏（`0x1F`→"31" +2 / `0b101`→"5" +4 / `07` 八进制
+  前缀剥 +1 / `5000000000U` 后缀剥 +1）；跨行 token（行拼接字符串）回推
+  更跨过换行列重置点得负列。修复 = `next_token` 入口起始快照
+  （`tok_line`/`tok_col`，Eof 含）取代 `make_token` / `make_token_col_basis`
+  两处回推——source_loc 契约 §3 禁回推的落实；ASCII 域与回推法逐位一致
+  （存量锚零漂移），快照对跨行 token 天然给起始行列。红→绿：E3074 实测
+  `5:16` → `5:14` 对齐 clang。锚：scanner wbtest 双锚（五形态数字起始列
+  + 跨行起始行列，J9 stash 双红）+ 语料 `col_snapshot_normalized_tokens.c`
+  （`1'000` 分隔符形态 gnu17 下 clang 编译失败不入 run 面，wbtest 锁）。
+- **#297 处方②——lexer 行列自洽不变量闸**：`diff_gate/targets/lexer.mts`
+  新增 `checkLineColInvariant`（L1 面逐 token：同行 `byte_off − col` 恒等
+  = 契约「col == byte_off − 行首 + 1」机判形态；跨行 token 独占起始行
+  分组天然通过），digest 化之前拦截——正/负/跨行三锚（负例=旧回推偏 +2
+  形态）；全量四套件 1478 case 零失洽（修复彻底性背书）。
+- **#296（parser）**：函数指针声明符的指针自身 const（`int (* const fp)(void)`
+  不可重绑定）被 `interpret_declarator_node` Function 吸收臂丢弃
+  （`Pointer(rest, _)`）⇒ typed AST `is_const=false`、重绑定零诊断（clang
+  error）。修复 = 传导到 decay 产物 `Pointer(Function, true)`——typeck
+  E3049 现成路径（`sym.ty.is_const()`）接上：实测重绑定 `E3049 4:5` 对齐
+  clang `4:7 error`；非 const 对照（重绑定合法）与首赋值/调用零回退。
+  锚：parser wbtest 双锚（const 传导 + 非 const 对照，J9 stash 红/绿）+
+  语料 `fn_ptr_const_rebind.c`（合法面 + 对照格）。
+- **fuzz 转义回归顺手修（#273 迁移收官批遗留）**：`corpus_fuzz/main.mts`
+  的 `-freeze` 序列化裸 `JSON.stringify`，丢 Go `MarshalIndent +
+  SetEscapeHTML` 口径（PR #289 P2-1 立）——freeze 把既有 `\u003e` 形态
+  条目反向漂移成裸 `>` 3 处实锤。修 = 抽 `marshalBaselineText`（五类
+  转义 `<`/`>`/`&`/U+2028/U+2029）+ 单测（含往返等值）；重 freeze 零
+  删除保形。
+- **基线连坐**：五家 digest 四套件（baseline/knr/leetcode/gap）重冻入账
+  两新语料 + 存量列漂合法重算（lexer 51 / parser·typeck 24 / codegen 21
+  / vm 全量）+ libc 自举 golden REFRESH stdlib.c（列号波及投影 hash，
+  --freeze-mb）；fuzz 基线 +45 零删除；clang_direct 四套件 DIFF=0；moon
+  test **895/895**（+4 wbtest 锚）；根 README 三文档 891→895 连坐；
+  package-lock engines 同步 `>=24 <25`（PR #289 P2-2 声明的滞后再生成）；
+  发布档案 exempt_docs 白名单与 PR #299 同款带入（#299 先合则合并去重，
+  后合则本笔兜底——facts --strict 绿不依赖合并序）。
+
 ### fix(codegen): #283 static 局部遮蔽同名 global 解析链前置 + 语料/基线连坐（2026-10-24）
 
 - **静默错值修复**：函数级 `static int c` 与文件作用域 `int c` 同名时，

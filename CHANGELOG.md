@@ -12,6 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### refactor(scripts): #273 realcode_diff Go→TypeScript(.mts) 迁移 + 删除 2,206 行 Go 勘探器（2026-10-25）
+
+**迁了什么**：`scripts/realcode_diff/vitro_clang_diff.go`（2,206 行，四模式：`-repo` / `-corpus` / `-aggregate` / `-check`）整体迁为 `.mts`：
+- `main.mts`（CLI 四模式 + 勘探编排 + 报告 + 剥壳对照）、`probes.mts`（Clang/gcc 真值、serve 连发、运行对比）、`stmt_expr.mts`（stdbool/语句表达式消解、层判定、输出归一）、`check_gold.mts`（合规闸 + 三向对账）、`aggregate.mts`（金样本聚合）、`types.mts`（result.json 字段序单源）。
+- `compare_gold.mts` 抽出 `compareWithGold` 供 main 内嵌复用（对账单源，不再有 Go 内嵌版与 TS 版双份）。
+
+**对拍证据（切 CI 前逐项一致）**：
+- `-check`：stdout/stderr/rc 与 Go 版逐字一致（3 金样本 / 484 条目）。
+- `-aggregate`：同一 result.json 产物**逐字节一致**（含 Go map 键序、HTML 转义、结构体字段序、尾随换行）。
+- `-corpus chibicc`（单文件）：`result.json` **逐字节一致**，`report.md` 仅时间戳行不同（屏蔽后一致）。
+- `-corpus multifile`（多文件工程）：`result.json` **逐字节一致**。
+- `-probe`：`result.json` 与 `probe_diff.md` 均**逐字节一致**（union.c 17 处消解）。
+- `-repo`：绝对路径入参 `result.json` **逐字节一致**。
+- J9：check_gold 红矩阵 12 形态（求和失账/渗漏键/码形态/total/buckets/漏冻/僵尸条目/登记悬空/license_file/corpora.total/gold 缺失）全 exit 2。
+
+**有意口径差异（在案）**：`-repo` 传**相对路径**时 Go 版 `filepath.Rel(abs, rel)` 报错致 `path` 全为空串；TS 版先解析仓库根为绝对路径，`path` 归位为正确的相对路径（绝对路径入参两版逐字节一致）。属存量 bug 修复，非语义漂移。另 `-corpus` 内嵌对账复用 `compareWithGold`，按独立判红面**比较 `gcc_ok`**（原 Go 内嵌函数漏比该字段；金样本已含 `gcc_ok`，全量 77 条实测一致）。
+
+**CI 接线**：`gates-diff` 的 `realcode_corpus` 两处 `go run` → `node scripts/realcode_diff/main.mts`；hygiene 的 `-check` 同步切 node；该 job 补 `actions/setup-node`（`.node-version` 单点——原 diff_gate 已跑 .mts 但未显式 pin）。**Go 版已删**；`scripts/` 剩余 Go 3 个（`facts` / `clang_direct` / `perf_baseline`，真值源/报告器，按触达另批）。
+
+**连带修复**：`editorconfig_check` 对嵌套 git worktree/submodule 整树跳过——仓库根下遗留审阅 worktree（`tmp_pr299*`）此前被当普通目录扫入，导致本地 pre-commit 全仓闸恒红（CI 干净检出无此形态，故长期未暴露）；新增 J9 用例锁住「worktree 内违规不计入本仓、外部违规仍命中」。
+
+**门禁**：tsc 0 错 / oxlint 153 文件 0 警告 / node:test 新增 30 例全绿（本地全量 493 例中 491 通过，2 例为环境红：`tmp_pr299wt` 审阅工作树被 editorconfig 扫入、Node 25.9.0 Windows `process.exit` 崩溃码 0xC0000409——均为在案环境项，非本批代码）/ `ci_checklist` PASS（驱动 55＝.go 3 / .mts 52）/ `-check` PASS / `go build ./scripts/...` PASS。
+
 ### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
 
 **删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。

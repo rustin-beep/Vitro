@@ -1,21 +1,21 @@
 #!/usr/bin/env node
-// realcode_diff/compare_gold —— 仓内语料批 gold 对账判红（TS 版，2026-10-24 接线批）。
+// realcode_diff/compare_gold —— 仓内语料批 gold 对账判红（TS 版）。
 //
-// #273 纪律 8 形态：对账判据是功能结构变更（新增 CI 判红面）——新增代码
-// 新语言（.mts 四件套），Go 工具（vitro_clang_diff.go -corpus）保持勘探
-// 产出职责；CI 的 realcode_corpus 实例「Go 勘探 → TS 判红」分工，双轨期
-// Go 版内嵌对账（corpusCompareWithGold）与本 TS 版双跑逐位对拍互证。
+// #273 迁移批（2026-10-25）：原 Go 勘探器（vitro_clang_diff.go）已迁至
+// main.mts 并删除 Go 版；本文件是**对账单源**——CI 的 realcode_corpus 实例
+// 独立调用，main.mts 的 -corpus 内嵌对账 `compareWithGold` 亦复用本模块。
 //
 // 用法：
 //   node scripts/realcode_diff/compare_gold.mts <corpus 名> <result.json 路径>
 //   退出码：0=逐字段一致；1=漂移（已打印差异清单）；2=输入错误
 //
-// 对账面（与 Go 版 corpusCompareWithGold 逐位一致——双轨互证的契约）：
+// 对账面：
 //   键集双向 + clang_ok / gcc_ok / vitro_errs / vitro_warns / layer / run /
 //   码计数（vitro_diags 逐条累计 vs gold codes）。
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 
 interface Diag {
   code: string;
@@ -56,13 +56,21 @@ function fail(msg: string): never {
   process.exit(2);
 }
 
-function main(): number {
-  const [, , name, resultPath] = process.argv;
-  if (!name || !resultPath) {
-    fail("用法: node scripts/realcode_diff/compare_gold.mts <corpus 名> <result.json 路径>");
-  }
-  // gold 位置：corpora.json 的 gold 字段单源，缺省 gold_<name>.json
-  const dir = path.join("scripts", "realcode_diff");
+export interface CompareOptions {
+  /** gold/corpora.json 所在目录；缺省 `scripts/realcode_diff`（仓库根相对）。 */
+  dir?: string;
+  /** 汇总行通道；勘探内嵌对账走 stderr（与 Go corpusCompareWithGold 同通道）。 */
+  summary?: "stdout" | "stderr";
+}
+
+/** 本轮 []FileResult ↔ 在库 gold 逐字段对账。返回 0=一致；1=漂移（已打印差异清单）。 */
+export function compareWithGold(
+  name: string,
+  results: FileResult[],
+  opts: CompareOptions = {},
+): number {
+  const dir = opts.dir ?? path.join("scripts", "realcode_diff");
+  const summary = opts.summary === "stderr" ? console.error : console.log;
   let goldFile = `gold_${name}.json`;
   try {
     const reg = JSON.parse(readFileSync(path.join(dir, "corpora.json"), "utf8")) as CorporaReg;
@@ -73,16 +81,10 @@ function main(): number {
   }
   const goldPath = path.join(dir, goldFile);
   let gold: Gold;
-  let results: FileResult[];
   try {
     gold = JSON.parse(readFileSync(goldPath, "utf8")) as Gold;
   } catch (e) {
     fail(`金样本不可读 ${goldPath}（${String(e)}）——CI 形态下 gold 必须在库`);
-  }
-  try {
-    results = JSON.parse(readFileSync(resultPath, "utf8")) as FileResult[];
-  } catch (e) {
-    fail(`result.json 不可读 ${resultPath}（${String(e)}）`);
   }
 
   const now = new Map<string, FileResult>();
@@ -130,8 +132,26 @@ function main(): number {
     console.error(`realcode 对拍 FAIL：${bad.length} 处漂移（${goldPath} ↔ ${name}）`);
     return 1;
   }
-  console.log(`realcode 对拍 OK：${Object.keys(gold.files).length} 条逐字段一致（${goldPath}）`);
+  summary(`realcode 对拍 OK：${Object.keys(gold.files).length} 条逐字段一致（${goldPath}）`);
   return 0;
 }
 
-process.exit(main());
+function main(): number {
+  const [, , name, resultPath] = process.argv;
+  if (!name || !resultPath) {
+    fail("用法: node scripts/realcode_diff/compare_gold.mts <corpus 名> <result.json 路径>");
+  }
+  let results: FileResult[];
+  try {
+    results = JSON.parse(readFileSync(resultPath, "utf8")) as FileResult[];
+  } catch (e) {
+    fail(`result.json 不可读 ${resultPath}（${String(e)}）`);
+  }
+  return compareWithGold(name, results);
+}
+
+const invokedDirectly =
+  process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+if (invokedDirectly) {
+  process.exit(main());
+}

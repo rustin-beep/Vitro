@@ -62,20 +62,20 @@
 
 ```bash
 # 勘探（Clang 真值 + gcc 分桶 + Vitro 三方）
-go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus chibicc -out <目录>
+node scripts/realcode_diff/main.mts -corpus chibicc -out <目录>
 
 # 工程模式（多文件）
-go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus multifile -out <目录>
+node scripts/realcode_diff/main.mts -corpus multifile -out <目录>
 
 # 剥壳对照（GNU 语句表达式消解 → 识别被 parse 层洪水遮蔽的深层诊断）
-go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus chibicc -out <目录> -probe
+node scripts/realcode_diff/main.mts -corpus chibicc -out <目录> -probe
 
 # 聚合出金样本（-gold-out 指定产物名；-agg-repo 记语料源名）
-go run ./scripts/realcode_diff/vitro_clang_diff.go -aggregate <result.json> \
+node scripts/realcode_diff/main.mts -aggregate <result.json> \
   -gold-out gold_chibicc.json -agg-repo 'chibicc@RunThem/chibicc-repo'
 
 # 合规闸（CI hygiene）：扫全部 gold_*.json + corpora.json 三向对账
-go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+node scripts/realcode_diff/main.mts -check
 ```
 
 ## 探针态：GNU 语句表达式消解

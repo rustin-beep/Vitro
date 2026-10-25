@@ -198,6 +198,13 @@ jobs:
             needs_artifact: false
     steps:
       - uses: actions/checkout@v4
+      # #273 批（2026-10-25）：diff_gate 与 realcode 勘探均已切 .mts（node 直跑）
+      # ——node 版本走 .node-version 单点（type stripping 需 ≥22.18，不 pin 会
+      # 随 runner 预装漂移）。
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -282,12 +289,11 @@ jobs:
               go run ./scripts/clang_direct
               ;;
             realcode_corpus)
-              # 仓内语料批运行时对拍（#273 双轨形态）：Go 勘探真跑（-corpus
-              # 产 result.json——内嵌对账 corpusCompareWithGold 同步判红）
-              # + TS 对账判红（compare_gold.mts——新代码新语言，CI 判红面
-              # 走 TS 版；双跑逐位互证，退役 Go 内嵌版待整工具迁移批裁定）。
-              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus chibicc -out tmp/rc_ci_chibicc
-              go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus multifile -out tmp/rc_ci_multifile
+              # 仓内语料批运行时对拍（#273 迁移批 2026-10-25）：勘探与对账
+              # 均已切 TS（main.mts 内嵌 gold 对账 + compare_gold.mts 独立判红，
+              # 双跑逐位互证）。
+              node scripts/realcode_diff/main.mts -corpus chibicc -out tmp/rc_ci_chibicc
+              node scripts/realcode_diff/main.mts -corpus multifile -out tmp/rc_ci_multifile
               node scripts/realcode_diff/compare_gold.mts chibicc tmp/rc_ci_chibicc/result.json
               node scripts/realcode_diff/compare_gold.mts multifile tmp/rc_ci_multifile/result.json
               ;;
@@ -874,7 +880,7 @@ jobs:
 
         if: matrix.slice == 'contract'
         shell: bash
-        run: go run ./scripts/realcode_diff/vitro_clang_diff.go -check
+        run: node scripts/realcode_diff/main.mts -check
 
       # ── hygiene 侧 jsonmbt 再生（2026-10-09，修复 run 37883006515）──────
       # perf_budget/rules.json 已随 jsonmbt 迁移批②翻转遮蔽（.json.mbt 唯一

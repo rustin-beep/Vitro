@@ -14,10 +14,10 @@ Vitro 引擎 vs Clang 对 [TheAlgorithms/C](https://github.com/TheAlgorithms/C)�
 
 | 命令 | 用途 | 前置 |
 |---|---|---|
-| `go run ./scripts/realcode_diff/vitro_clang_diff.go -repo <fork克隆> -out <目录>` | 外置仓全量对比（P1 walk→P2 Clang 真值→P3 serve 连发→P4 剥壳重试→P5 运行对比→P6 report） | Clang 22+ + `moon build --target native cmd/serve` |
-| `go run ./scripts/realcode_diff/vitro_clang_diff.go -corpus <name> -out <目录> [-probe]` | **仓内语料批**对拍（Clang + gcc 分桶 + Vitro 三方；`-probe` 出语句表达式消解对照） | 同上 |
-| `go run ./scripts/realcode_diff/vitro_clang_diff.go -aggregate <result.json> [-gold-out <名>] [-agg-repo <名>]` | result → 金样本聚合（只取码计数，不透传诊断 message） | 无 |
-| `go run ./scripts/realcode_diff/vitro_clang_diff.go -check` | **仓内金样本静态合规闸**（CI hygiene）：schema 键集白名单 / 值域 / 诊断码形态 / provenance 锚四道 + **多金样本扫描** + `corpora.json` 三向对账 | 无 |
+| `node scripts/realcode_diff/main.mts -repo <fork克隆> -out <目录>` | 外置仓全量对比（P1 walk→P2 Clang 真值→P3 serve 连发→P4 剥壳重试→P5 运行对比→P6 report） | Clang 22+ + `moon build --target native cmd/serve` |
+| `node scripts/realcode_diff/main.mts -corpus <name> -out <目录> [-probe]` | **仓内语料批**对拍（Clang + gcc 分桶 + Vitro 三方；`-probe` 出语句表达式消解对照） | 同上 |
+| `node scripts/realcode_diff/main.mts -aggregate <result.json> [-gold-out <名>] [-agg-repo <名>]` | result → 金样本聚合（只取码计数，不透传诊断 message） | 无 |
+| `node scripts/realcode_diff/main.mts -check` | **仓内金样本静态合规闸**（CI hygiene）：schema 键集白名单 / 值域 / 诊断码形态 / provenance 锚四道 + **多金样本扫描** + `corpora.json` 三向对账 | 无 |
 
 ## 仓内语料批（2026-10-22 试点批落地）
 

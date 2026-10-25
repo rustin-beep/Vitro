@@ -4,7 +4,7 @@
     "source_fork": "https://github.com/rustin-beep/C/tree/vitro-probe-baseline",
     "source_commit": "462074f6201b72f6c7420cbcba7e9c8292f88ef2",
     "upstream_commit": "e5dad3fa8def3726ec850ca66a7f51521f8ad393",
-    "regen": "git clone -b vitro-probe-baseline https://github.com/rustin-beep/C && cd Vitro/moonbit && moon build --target native cmd/serve && go run ./scripts/realcode_diff/vitro_clang_diff.go -repo <clone> -out <out> && go run ./scripts/realcode_diff/vitro_clang_diff.go -aggregate <out>/result.json",
+    "regen": "git clone -b vitro-probe-baseline https://github.com/rustin-beep/C && cd Vitro/moonbit && moon build --target native cmd/serve && node scripts/realcode_diff/main.mts -repo <clone> -out <out> && node scripts/realcode_diff/main.mts -aggregate <out>/result.json",
     "note": "金样本签名清单——只存诊断码/数量/运行判定签名,不存源码文本(GPL 红线)。E1021×104 为勘探方法限制(serve 无 base_dir),断言时应豁免。",
     "buckets": {
       "clang_red": 46,

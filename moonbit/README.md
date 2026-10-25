@@ -101,10 +101,11 @@ gateway 产物的 node 壳、自动降级本 native exe，见仓库 CLI 手册�
 ## 快速上手（diag）
 
 ```moonbit
+@content_data.install_baked() // 教学卡片经装载门（#130 拆包：lean 默认空、引擎不兜底）——import "vitro/engine/teaching/content_data"
 let code = @diag.ErrorCode::from_code(3053).unwrap()
 code.display_code()          // "W3053"
 code.severity().to_str()     // "warning"
-code.catalog()               // Some(教学卡片) —— 标题 / 解释 / 常见原因
+code.catalog()               // Some(教学卡片)（装载后）—— 标题 / 解释 / 常见原因
 ```
 
 ## 契约要点

@@ -492,8 +492,10 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 > 引用的 `native/tests/shadow_verification/shadow_verify.py`、
 > `scripts/shadow_verify_cpp.py`、`scripts/replay/replay_s1_s5.py` 三个
 > Python 驱动已在 D5 工具链迁移（2026-09-13）中由 Go 版取代退役，文件已
-> 删除。现行复现命令：`go run ./scripts/shadow_verify`（C 侧）、
-> `go run ./scripts/shadow_verify_cpp`（C++ 侧）、
+> 删除。**二次勘误（2026-10-25，#307 P3-9）**：Go 版 shadow_verify /
+> shadow_verify_cpp 又已随 2026-10-05 Rust 对照区删区**物理删除**——影子
+> 验证防线整体退役，无现行等价命令（承接 = Clang golden + clang_direct
+> 直拍门禁，见仓库《脚本总清单与必跑防线》）。仍现役的复现命令：
 > `node scripts/replay/replay_s1_s5.mts`（签字回放，带 `--selftest`
 > 自检）。`node scripts/serve_smoke/main.mts` 仍在服役（CI 活性件）。
 

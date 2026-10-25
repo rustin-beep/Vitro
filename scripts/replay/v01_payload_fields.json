@@ -1,6 +1,6 @@
 {
   "schema": "v0.2",
-  "_comment": "STEP_PAYLOAD schema 字段白名单（单源资产）：S5 断言的判据，Go/Python 两个回放驱动共读同一份。语义快照随本文件 git 版本化——schema 激活 v0.2 时在此登记新字段，两驱动自动跟随；修改后须附 replay --selftest 与 61 断言全量回放证据（字段清单与 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §字段表对齐）。**v0.2 首批激活（#90，2026-10-17）**：v01_payload_fields 保持 14 条冻结不动（v0.1 历史基线），新增 v02_payload_fields 登记已激活的 v0.2 字段（additive-only——code_line 全局行号语义不变，code_file 附文件名归属）；当前 schema = v0.2（SCHEMA_VERSION 同源）。",
+  "_comment": "STEP_PAYLOAD schema 字段白名单（单源资产）：S5 断言的判据，Go/Python 两个回放驱动共读同一份。语义快照随本文件 git 版本化——schema 激活 v0.2 时在此登记新字段，两驱动自动跟随；修改后须附 replay --selftest 与 61 断言全量回放证据（字段清单与 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md §字段表对齐）。**v0.2 首批激活（#90，2026-10-17）**：v01_payload_fields 保持 14 条冻结不动（v0.1 历史基线），新增 v02_payload_fields 登记已激活的 v0.2 字段（additive-only——code_line 全局行号语义不变，code_file 附文件名归属）；当前 schema = v0.2（SCHEMA_VERSION 同源）。",
   "v01_payload_fields": [
     "step_index",
     "code_line",

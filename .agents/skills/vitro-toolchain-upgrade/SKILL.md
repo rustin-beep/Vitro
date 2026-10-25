@@ -36,8 +36,8 @@ moon bundle --warn-list -a --target wasm-gc --quiet
 ```bash
 node scripts/toolchain_probe/toolchain_probe.mts --update-baseline   # 写新基线（cwd=仓库根）
 node scripts/toolchain_probe/toolchain_probe.mts                     # 探针四项须全绿
-go run ./scripts/facts --run                         # ① 只采集、刷新真值（无子命令 ⇒ 不做对账）
-go run ./scripts/facts --run check                   # ② 采集 + 对账判红 —— 要"确认无回归"必须带 check 子命令
+node scripts/facts/main.mts --run                         # ① 只采集、刷新真值（无子命令 ⇒ 不做对账）
+node scripts/facts/main.mts --run check                   # ② 采集 + 对账判红 —— 要"确认无回归"必须带 check 子命令
 ```
 
 > ⚠️ `scripts/facts/main.go` 的 `switch cmd` 只有 `check` / `report` / `sync` 三个分支、**没有 default**：
@@ -54,4 +54,4 @@ go run ./scripts/facts --run check                   # ② 采集 + 对账判红
 - `scripts/toolchain_probe/toolchain_probe.mts` 头注（用法与 J9 埋雷记录）
 - `moonbit/AGENTS.md` §构建与验证命令
 - **相关规程**：`vitro-facts-reconciliation`（升级后刷新真值）、`vitro-release-playbook`（升级与发版的先后关系）
-- as_of: 2026-09-28（0.10.13→0.10.14 实战两轮沉淀；具体版本号会过时，流程长期有效）
+- as_of: 2026-10-25（#273 迁移批：facts 命令面切 `node scripts/facts/main.mts`——采集/对账流程不变；2026-09-28 记：0.10.13→0.10.14 实战两轮沉淀，具体版本号会过时，流程长期有效）

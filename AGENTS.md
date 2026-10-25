@@ -37,7 +37,7 @@
 
 ## Agent Skills（`.agents/skills/`，2026-09-28 建）
 
-踩过实锤的操作手册——工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程——按**通用 Agent Skills 格式**（目录 + `SKILL.md`）存放于 `.agents/skills/`，与分区手册分工：AGENTS.md 是每批都读的静态纪律，skills 是 agent 命中触发场景时才加载的详细手册。ZCode 直接扫描该目录无需安装；其他工具 `go run .agents/install_skills.go --all`（零依赖 Go 安装器，详见 [`.agents/README.md`](.agents/README.md)）。**维护义务**：改动 skill 覆盖的流程须连坐更新对应 `SKILL.md`（各文件尾部有 as_of）。
+踩过实锤的操作手册——工具链升级 / 生成器 `-check` 契约 / 语料用例义务链 / facts 判读 / 发版彩排 / 仓库审阅规程——按**通用 Agent Skills 格式**（目录 + `SKILL.md`）存放于 `.agents/skills/`，与分区手册分工：AGENTS.md 是每批都读的静态纪律，skills 是 agent 命中触发场景时才加载的详细手册。ZCode 直接扫描该目录无需安装；其他工具 `node .agents/install_skills.mts --all`（零依赖 .mts 安装器，详见 [`.agents/README.md`](.agents/README.md)）。**维护义务**：改动 skill 覆盖的流程须连坐更新对应 `SKILL.md`（各文件尾部有 as_of）。
 
 ## 当前阶段与档案
 

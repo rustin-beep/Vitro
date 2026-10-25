@@ -26,14 +26,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Go (facts gate)
-        uses: actions/setup-go@v5
+      - uses: actions/setup-node@v4
         with:
-          go-version: 'stable'
+          node-version-file: .node-version
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
-        run: go run ./scripts/facts check
+        run: node scripts/facts/main.mts check
       - name: Agent skills frontmatter audit (install_skills --list)
-        run: go run .agents/install_skills.go --list
+        run: node .agents/install_skills.mts --list
       # gen_svg -check 不入本薄通道：它读 teaching_annotation_diff/rules.json
       #（jsonmbt 再生域，主 CI static-gates 有三步再生链；薄通道不装 jsonmbt——
       # 首跑实锤缺文件红）。SVG 涉及面归主 CI。

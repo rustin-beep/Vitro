@@ -22,6 +22,10 @@
 //   - 维护义务：改动对应流程或文档时连坐更新 SKILL.md；新增 skill 后跑一次 --list 确认校验绿。
 package main
 
+// 【回退面】2026-10-25 #273 迁移批：安装器已迁 .mts（.agents/install_skills.mts），
+// CI 与 AGENTS/.agents/README 引用已切 TS。本 Go 版仅作回退面暂留，不再随
+// 行为变更维护。
+
 import (
 	"flag"
 	"fmt"

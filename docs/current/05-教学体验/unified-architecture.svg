@@ -82,5 +82,5 @@
 <text class="t" x="600" y="774" text-anchor="middle">VitroVM：step() · snapshot() / restore() · 内存读（check_access 单入口）</text>
 <text class="tc" x="600" y="800" text-anchor="middle">快照/恢复实现 vitro/engine/time_travel + vm · 隔离区 quarantine 必须随快照往返</text>
 <text class="tc" x="600" y="854" text-anchor="middle">一致性契约：seek 到第 N 步后 local_vars / call_stack / array_snapshots / pointer_snapshots / heatmap_count 以第 N 步快照为准（spec §4.3）</text>
-<text class="tc" x="600" y="880" text-anchor="middle">对账 统一模式设计.md §3 · 漂移重生成：go run ./scripts/gen_svg uarch</text>
+<text class="tc" x="600" y="880" text-anchor="middle">对账 统一模式设计.md §3 · 漂移重生成：node scripts/gen_svg/main.mts uarch</text>
 </svg>

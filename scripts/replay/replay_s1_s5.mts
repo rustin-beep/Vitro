@@ -4,7 +4,7 @@
 // 与 Go 版（及其 Python 前身）的断言编号与判定口径一一对应：
 //
 //	S1-防抖编译流 A1–A10 / S2-fixtures判分流 A1–A6 / S3-单步seek内存交错流 A1–A16 /
-//	S5-预留位缺省语义 A1–A5（schema v0.1，docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md）。
+//	S5-预留位缺省语义 A1–A5（schema v0.1，moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md）。
 //
 // 迁移要点：
 //   - serve 会话是**单进程时序协议流**（compile → step → seek 状态互相依赖），

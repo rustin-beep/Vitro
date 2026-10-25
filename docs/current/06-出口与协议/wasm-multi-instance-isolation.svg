@@ -92,5 +92,5 @@
 <text class="tc" x="60" y="766" text-anchor="start">宿主须按实例绑定输出回调；serve 的 session id 概念平移，宿主只做帧路由。</text>
 <text class="tc" x="60" y="798" text-anchor="start">容量参考：serve RSS 预算 64MB、实测峰值 ~24MB/会话——N 的上限由内存决定，不是并发正确性。</text>
 <text class="tc" x="60" y="830" text-anchor="start">实证缺口：同进程 N 实例并发互不干扰尚无实测记录（拍板生效前补锚）· wasm32 现产冒烟 3.75MB 即具备全部并发性质。</text>
-<text class="tc" x="600" y="862" text-anchor="middle">对账 wasm多实例并发模型与U2拍板.md §1–§2 · 漂移重生成：go run ./scripts/gen_svg wasm</text>
+<text class="tc" x="600" y="862" text-anchor="middle">对账 wasm多实例并发模型与U2拍板.md §1–§2 · 漂移重生成：node scripts/gen_svg/main.mts wasm</text>
 </svg>

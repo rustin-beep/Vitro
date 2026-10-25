@@ -1,5 +1,10 @@
 package main
 
+// 【回退面】2026-10-25 #273 迁移批：facts 已迁 .mts（scripts/facts/main.mts，
+// 四件套 + node:test 49 例 + Go/ts 双跑逐位对拍通过），CI 与文档引用已切 TS。
+// 本 Go 版仅作回退面暂留（纪律 8：CI 引用切换后才删，禁止僵尸双轨长期并存），
+// 不再随行为变更维护——新规则/新键只进 .mts 版。
+
 // 测试事实采集层 —— 把各防线的当前真值采进 reports/facts.json。
 //
 // 设计原则（与 Python 原型一致，此处为长期维护版）：

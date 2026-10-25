@@ -277,7 +277,7 @@ finally 里 return、`==` vs `Equals`、可变列表别名、循环边界 off-by
 ## 6. 协议增量（schema v0.1 预留位 + 行为契约）
 
 **A 档：StepPayload 增量字段（四项，随 v0.1 冻结以预留位写入
-`spec/STEP_PAYLOAD_SCHEMA_V0_1.md`，CS3b 激活）**：
+`moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`，CS3b 激活）**：
 1. `handler_depth: int`——"当前受几层 try 保护"直读；
 2. `unwinding: bool` + `unwind_frames_left: int`——展开态显式标记 + 剩余帧数，
    展开动画驱动字段；
@@ -408,12 +408,12 @@ C# 白箱独有画面。
 - **2026-09-11 v3 定稿**：吸收 SharpTutor 消费侧评审——三点决策答复（`throw;` 保留并
   连带轨迹考点进 CS3a；输出契约确认判分器依赖 `run_json` 三态 + `error_code`；
   CS3 拆 a/b 两段独立验收）；A 档三字段 + `addr` 微增，以 v0.1 预留位随 Phase 1
-  冻结写入（待办：编辑 `spec/STEP_PAYLOAD_SCHEMA_V0_1.md`）；B 档词汇表契约确认为
+  冻结写入（待办：编辑 `moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md`）；B 档词汇表契约确认为
   R3 收口方案；第四组回放场景进签字材料；G9 排期确认（CS5）；ARC 裁决（替代早期
   "计数只做可视化"方案）；Roslyn 定位（防线 golden + 编辑器诊断，不进引擎）。
 - **前置待办（2026-09-12 全部清账）**：① ✅ 定位扩展已同步进
   `后端定位与白箱计划.md` §2；② ✅ schema v0.1 预留位已写入
-  `spec/STEP_PAYLOAD_SCHEMA_V0_1.md` §7.x（四字段 + 消费方容忍要求）；③ ✅
+  `moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md` §7.x（四字段 + 消费方容忍要求）；③ ✅
   重构计划全批次交付完毕（R1→E1→R2→E2→R3→E3→R4，最终 CI 全绿 968a408）。
 - **语料调研完成（2026-09-12）**：CourseData 全量摸底（13 章 521 文件 / 76
   golden / 多 fixture 清单），章节→批次映射与 ch01–04 特性画像已录入 §5；

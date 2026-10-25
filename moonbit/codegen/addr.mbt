@@ -25,19 +25,23 @@ fn BytecodeGen::gen_addr(
           self.emit(@opcode.OpCode::Add, 0, loc)
         }
         None =>
-          match self.global_indices.get(name) {
+          // static local 前置（#283）：无块形态 static 遮蔽同名文件作用域
+          // global——旧序 local → global → static 垫底，global 抢先命中
+          // （clang 8 / vitro 501 静默错值）；取址序对齐 local →
+          // static → global（与 call.mbt / unary Addr 臂同款）
+          match self.static_local_indices.get(name) {
             Some(offset) =>
+              // static local 地址通路（DIFF-CODEGEN-STATIC-ADDR-01 销案，
+              // 批四 2026-10-07——Rust gen_addr 同位无此分支照搬；static
+              // 落全局数据段，地址形态同 global）
               self.emit(
                 @opcode.OpCode::PushConst,
                 @bytecode.GLOBAL_START.reinterpret_as_int() + offset,
                 loc,
               )
             None =>
-              match self.static_local_indices.get(name) {
+              match self.global_indices.get(name) {
                 Some(offset) =>
-                  // static local 地址通路（DIFF-CODEGEN-STATIC-ADDR-01 销案，
-                  // 批四 2026-10-07——Rust gen_addr 同位无此分支照搬；static
-                  // 落全局数据段，地址形态同 global）
                   self.emit(
                     @opcode.OpCode::PushConst,
                     @bytecode.GLOBAL_START.reinterpret_as_int() + offset,

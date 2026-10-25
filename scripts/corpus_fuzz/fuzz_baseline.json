@@ -353,6 +353,19 @@
     "baseline/compound_add_var.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/compound_assign_array.c|brace_wrap": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/compound_assign_array.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/compound_assign_array.c|nested2flat": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
     "baseline/compound_assign_struct.c|init_partial": {
       "bucket": "AGREE"
     },
@@ -1046,6 +1059,21 @@
     "baseline/gcd_euclidean.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/global_struct_member.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/global_struct_member.c|cast_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/global_struct_member.c|char_escape": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
     "baseline/global_var_init.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -1278,6 +1306,15 @@
       "bucket": "WRONG_VALUE"
     },
     "baseline/llm_corpus_rejects.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_fnptr_dispatch.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_fnptr_dispatch.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/llm_fnptr_dispatch.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/llm_snprintf_struct_member.c|brace_wrap": {
@@ -1931,17 +1968,17 @@
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|cast_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|div2shift": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/puts_basic.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2033,6 +2070,15 @@
     "baseline/scanf_float.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/scanf_literal_match.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_literal_match.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/scanf_literal_match.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/scanf_literal_mismatch.c|init_partial": {
       "bucket": "AGREE"
     },
@@ -2086,6 +2132,21 @@
     },
     "baseline/scope_shadowing_legal.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/shift_31.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/shift_31.c|char_escape": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/shift_31.c|memset_zero": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
     },
     "baseline/shl_rhs.c|char_escape": {
       "bucket": "CLANG_REJECT"
@@ -2296,6 +2357,15 @@
     },
     "baseline/static_local_init_once.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_local_shadow.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_local_shadow.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/static_local_shadow.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/static_nested_2d_init.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2549,6 +2619,21 @@
     },
     "baseline/swap_by_ptr.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/switch_break.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/switch_break.c|cmp_swap": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
+    },
+    "baseline/switch_break.c|paren_wrap": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 宽容收——#255 严格性差异域已知形态（PR #299 审阅 P3-1 标注，抽样 probe 三条同根因实证）"
     },
     "baseline/switch_default_first.c|brace_strip": {
       "bucket": "CLANG_REJECT"

@@ -12,6 +12,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### fix(corpus+docs): #301 用户审阅处置——P1 llm_scale 四家 digest 补冻 + P2 README 测试数漏改 3 处（2026-10-25）
+
+- **P1**：批五重冻漏了 `corpus/llm_scale`（CI diff gate 跑五语料，
+  `llm_scale_db.c` 四家 FAIL——列号偏移全部为正确修复方向，审阅逐行
+  验算 `1000000000L` 列 21 / `0xff` 列 38 双侧对照证实）；补冻
+  lexer 2 / parser·typeck·codegen 各 1 例，五语料 × 五家（含 vm）
+  25 项对账全 PASS。
+- **P2**：根 README:141 / moonbit/README.md:141–142 / README.mbt.md:50
+  的 `891 测试`→895 与 `1047`→1051（+4 锚全在裸域，算术自洽
+  895+156=1051）；批注链补「A 线批五 +4」；`testcount` 闸 PASS。
+- **补验审阅未覆盖项**：wasm 臂列号同源（E3074 `5:14` 与 js/native
+  对齐 + 新语料三臂同 md5）；`clang_direct llm_scale` DIFF=0；
+  `libc_boot_diff` REFRESH 复现 PASS。
+
+### chore(scripts): engines 放宽 26——本机 Node 25→26 切换验证伴生（2026-10-25）
+
+- `engines` 由 `>=24 <25` 放宽为 `>=24.0.0 <25.0.0 || >=26.0.0 <27.0.0`：
+  #289 P2-2 收紧的原因（Node 25.9.0 libuv 退出崩溃族，#302 定位）已被
+  26 消除——26.12.1 下 scripts 全量 465 例 0 失败、teaching_reconcile
+  偶发红消案、host_contract_map selftest 绿（同族第一案同解）；
+  **25 线 EOL 且为崩溃版，维持排除**；`>=26 <27` 为实测验证域（升级
+  修复 commit 80d2173 随 26 线）。`.node-version`=24（CI 锚，防线基线）
+  不动。
+- **node26 vs node25 性能 A/B**（同机同产物单变量，交错轮 R=7 中位，
+  输出逐字节校验一致才计时——纪律 9）：js 臂 26 快 2~11%（fib 1.11x /
+  嵌套 1.05x / 冒泡 1.02x / host 调用密集面持平）；wasm-gc 臂持平
+  （±8% 内，fib 1.00x / 嵌套 1.04x / 冒泡 1.04x / 字符串 0.92x）——
+  **零回退，js 臂小幅占优**；数字详见 #302 评论。
+
 ### fix(lexer+parser): A 线批五——#297 token 起始列快照 + #296 函数指针 const 传导 + lexer 行列不变量闸（2026-10-24）
 
 - **#297（lexer）**：token 起始列的「扫描后列 − text 字节数」回推对 text

@@ -6,9 +6,9 @@
 /// 源漂移由 gen_diag fail loud 兜底。
 test "coverage_baseline_137_77_60" {
   let all = ErrorCode::all()
-  assert_eq(all.length(), 156) // #214：150→152（W3084/W3085）；#212：152→153（W1023）；#261：153→156（运行期 trap 立码 E3086/E3087/E3088）
-  assert_eq(catalog_codes().length(), 114) // #214：106→108（W3084/W3085 卡）；PR #284 审阅 P3：108→109（W1023 卡）；#256/#261 闭合批：109→113（+E0/E3074–E3082/E3086–E3088，退役 E1022/E2001/E3026/W3056/E4100–E4104）；闭合闸摸底 +E1012（活码无卡同族缺口）
-  assert_eq(codes_without_catalog().length(), 42) // 156-114
+  assert_eq(all.length(), 119) // #214：150→152（W3084/W3085）；#212：152→153（W1023）；#261：153→156（运行期 trap 立码 E3086/E3087/E3088）；#223/#233 批：156→119（+E3089 已声明未定义立码；−38 条 4xxx C++ 死臂全数摘除——4001–4031 NotSupported 族 + 4100–4106 Cpp 族，C only 裁定后零生产点）
+  assert_eq(catalog_codes().length(), 115) // #214：106→108（W3084/W3085 卡）；PR #284 审阅 P3：108→109（W1023 卡）；#256/#261 闭合批：109→113（+E0/E3074–E3082/E3086–E3088，退役 E1022/E2001/E3026/W3056/E4100–E4104）；闭合闸摸底 +E1012（活码无卡同族缺口）；#223：+E3089 卡
+  assert_eq(codes_without_catalog().length(), 4) // 119-115（#223/#233 前 156-114=42，−38 死臂全数无卡）
   // 互补无交集
   let set : Map[Int32, Bool] = Map([])
   for c in catalog_codes() {
@@ -34,7 +34,8 @@ test "display_code_prefix_alignment" {
   assert_eq(H3057_ImplicitConversionHint.display_code(), "H3057")
   assert_eq(E1006_UnsupportedFeature.display_code(), "E1006")
   assert_eq(E3060_UseAfterFree.display_code(), "E3060")
-  assert_eq(E4022_TemplateRecursionDepthExceeded.display_code(), "E4022")
+  // #233：E4022 等模板族死臂已摘——E 前缀样例换新臂 E3089（#223 立码）
+  assert_eq(E3089_FunctionDeclaredNotDefined.display_code(), "E3089")
   assert_eq(Unknown.display_code(), "E0")
 }
 
@@ -72,8 +73,8 @@ test "lang_segment_4xxx_cpp" {
       C => c_lang += 1
     }
   }
-  assert_eq(cpp, 38)
-  assert_eq(c_lang, 118) // #214 +W3084/W3085（C 段 3xxx）；#212 +W1023（C 段 1xxx）；#261 +E3086/E3087/E3088（运行期 trap 立码，C 段 3xxx）；前史见 CHANGELOG
+  assert_eq(cpp, 0) // #233：4xxx 段 38 条 C++ 死臂全数摘除——Cpp 臂零在位（lang 派生仍按号段区间，5xxx CSharp 同理空置）
+  assert_eq(c_lang, 119) // #214 +W3084/W3085（C 段 3xxx）；#212 +W1023（C 段 1xxx）；#261 +E3086/E3087/E3088（运行期 trap 立码，C 段 3xxx）；#223 +E3089；前史见 CHANGELOG
   assert_eq(csharp, 0) // 5xxx 段空置（CSharp 变体先行落位——P2-3）
   assert_eq(SourceLang::CSharp.to_str(), "csharp")
 }

@@ -1,6 +1,7 @@
 import {
   "vitro/engine/ast",
   "vitro/engine/bytecode",
+  "vitro/engine/diag",
   "vitro/engine/opcode",
   "vitro/engine/source",
 }

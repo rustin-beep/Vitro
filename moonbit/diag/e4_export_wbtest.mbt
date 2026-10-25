@@ -44,16 +44,25 @@ test "e4_export_first_entry_bytes" {
 }
 
 ///|
-/// 4xxx 段退役锚（#256）：E4100–E4104 C++ 死卡已从真源退役——码臂仍在
-/// （from_code 命中，「臂在无卡」合法形态）但 catalog() 为 None，全量
-/// 导出不得再含 4xxx 条目（下游预渲染错误清单不列永不触发码）。
+/// 4xxx 段退役锚终态（#256 卡退役 → #233 臂摘除）：E4001–E4031
+/// NotSupported 族 + E4100–E4106 Cpp 族共 38 条 C++ 死臂已从枚举
+/// 真源整体摘除（C only 裁定 2026-09-20 后零生产点）——from_code 不再
+/// 命中，全量导出不得含 4xxx 条目（下游预渲染错误清单不列永不触发
+/// 码；E4 号段腾空 = #38 codegen 立码段的候选号段）。
 test "e4_export_cpp_segment" {
   e4_install_fixture()
   let json = export_catalog_json()
-  let probe = ErrorCode::from_code(4100).unwrap()
-  assert_true(probe.catalog() is None)
+  assert_true(
+    ErrorCode::from_code(4100) is None,
+    msg="E4100 死臂已摘（from_code 不命中）",
+  )
+  assert_true(
+    ErrorCode::from_code(4001) is None,
+    msg="E4001 死臂已摘（from_code 不命中）",
+  )
   assert_false(json.contains("\"code\":4100"))
   assert_false(json.contains("\"code\":410"))
+  assert_false(json.contains("\"code\":4001"))
   e4_restore_lean() catch {
     _ => ()
   }
@@ -100,6 +109,9 @@ test "e4_json_str_escapes_control_bytes" {
 
 ///|
 /// lang/category 四值探针（P2-3：防 5xxx 落地静默错——白盒直测私有派生）。
+/// PR #346 审阅 P3-2 登记（2026-10-28）：export_lang_of(4001)="c++" 等
+/// 4xxx 区间断言是**号段区间派生**的历史语义冻结——E4 号段已腾空给 #38
+/// （C 立码段），真启用时须连坐改派生与本锚（否则 C 码被错标 c++）。
 test "e4_lang_category_four_values" {
   inspect(export_lang_of(1001), content="c")
   inspect(export_lang_of(3999), content="c")

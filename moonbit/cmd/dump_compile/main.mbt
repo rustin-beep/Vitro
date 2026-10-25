@@ -169,7 +169,9 @@ fn dump_one(lexed : @lexer.LexResult, library : Bool) -> String {
       buf.write_string("}")
       buf.to_string()
     }
-    None => fail_json("gen", gen_errors.join("\n"))
+    None =>
+      // #223：gen_errors 结构化（GenError）——join 消费面取 message 域
+      fail_json("gen", gen_errors.map(fn(e) { e.message }).join("\n"))
   }
 }
 

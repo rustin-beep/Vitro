@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### fix(diag+codegen+typeck): 诊断码↔教学卡闭合批二——#223 E3089 立码 + #233 C++ 死面全数摘除（2026-10-25）
+
+**#223「函数已声明但未定义」立码 E3089**（旧 E0/Unknown 兜底——serve 层硬编码 code=0 包装，下游按码查卡落空、E0 通用卡「内部错误」文案教学面失准）：
+- codegen errors 结构化（`GenError{code,line,column,message}`——`pub(all)` 新面 + surface 边 2 条登记）：`report_error` 单点构造文案形态不变（`st.errors` 串消费面零扰动），新增 `report_coded_error`；serve 层消费 code/line/column 直存，**「第 N 行：」前缀手扫 `extract_gen_error_line` 退役**；列锚从恒 1 升 loc 真值（探针实测 column=21）；`dump_compile` join 面适配。
+- 数据三件：error_codes.json +`E3089_FunctionDeclaredNotDefined`（E3xxx 语义段顺延，3001–3088 连续占满）；catalog.json +卡（icon `func-undefined`）；fix_payloads.json +静态载荷（fix_suggestion 自动挂接，gateway `generate_fix` 按码取载）。
+- 码级锚：gateway `issue223_e3089_wbtest`（红→绿：error_code/line/column/fix 四断言）+ codegen #205 锚补 code==3089 连坐；语料锚 `corpus/baseline/func_declared_not_defined.c`（双侧构建失败判 match：vitro 编译期拒 / clang 链接期拒——有意收严，登记《已知限制与差异》③-9）。
+
+**#233 C++ 死面全数摘除**（卡已于 #256 闭合批退役，本批摘臂+清源）：
+- error_codes.json 删 **38 条 4xxx 死臂**（E4001–E4031 NotSupported 族 + E4100–E4106 Cpp 族——C only 裁定后零生产点）；fix_payloads.json 删 5 条 E4100–E4104 死载荷；臂 156→119 / 卡 114→115 / 无卡臂 42→4（恰为退役保臂族 E1022/E2001/E3026/W3056）。
+- typeck 清源：`Try` 臂改直通（reserved-for-csharp 变体保留——E4001 引用摘除，RangeFor 同款）；auto 推导块 + `deduce_auto_type` 整体退役（`Type::Auto` 仅 cpp_mode parser 构造、C 路径零生产——全局路径机制面保留）。
+- `catalog_closure` 闸 **prod 白名单清零**（E4001/E4025 两债清偿，零僵尸）；e4_export 退役锚终态（from_code(4100/4001) 不命中）。
+- 《学生错误用例集》§9 C++ 节加退役横幅；《已知限制与差异》③+2 行（已声明未定义有意差异登记 + C++ 诊断族全退役）；《CSharp 前端引入计划》D4「保哑臂」过渡条款加取代注（E5xxx 新段/不重映射核心裁定维持）。
+- E4 号段腾空 = #38（codegen 立码段）候选号段。
+
+**#234 同批验收销案**（无代码变更）：W1004 卡与闭合闸均已被病 118 降级批 + #256/#261 闭合批消化——实测 `if (a > 2 | b < 1)` 产 `W1004`/warning/fix_suggestion 全链在位，catalog 1004 卡在库，`catalog_closure` 双向闭合绿。回灌证据见 issue 评论。
+
+**连坐**：gen_diag/gen_diagnostics 基线 156→119 / 114→115 / 26→22；diag_wbtest 三计数锚 + e4_export_wbtest 退役锚 + README.mbt.md doc 测试 + teaching contract 114→115；mbti 再生（codegen +GenError 面 / diag −38 臂面）；五家 digest freeze（新样本 +1、存量重算零漂移）；SVG 等值再生零漂移。双臂 `moon test` **925（js）/ 1088（native）** 全绿（PR #346 审阅 P2-2 勘正：本节初稿数字 1047/887→891/157→119 系 rebase 前 736adfcc 时点旧值未随 rebase 重采；vm digest「24 条空 memory_sha 规范化」经核 base/HEAD 双侧均无该形态条目，声称撤回）。
+
+**PR #346 审阅补录（2026-10-28）**：
+- **pub API breaking 标注（审阅 P3-4）**：`codegen.compile`/`compile_library` 返回 `Array[String]` → `Array[GenError]`——0.9.0 已发布 pub 面的**破坏性变更**（下游 MoonBit 消费方须随迁；文本消费面 `dump_compile` 已适配同形）。
+- **fuzz 采样挤位（审阅 P3-3）**：新语料 `func_declared_not_defined.c` 按 `sha256(path)` 排第 19 入前 20，`enum_non_continuous.c` 被挤至 21 掉出采样面（`fuzz_baseline.json` 删其 3 条即此故——`-freeze` 合法产物非手改）；该语料自此不在 fuzz 监测面（内容寻址采样 + 容量上限的固有代价，闸绿不示警）。
+- **列锚口径（审阅 P3-5）**：diagnostics 的 `column` = 行内 **UTF-8 字节列**（与 clang 一致，中文注释列号数不出来——契约档案见《列号口径冻结》）；demo DiagBand 直接显示「行 L:C」消费该值。
+- **E4 号段腾空的后瞻登记（审阅 P3-2）**：`e4_export_wbtest` 的 `export_lang_of(4001)="c++"`/`category_of(4001)="C++"` 冻结预期仍是**号段区间派生**的历史语义——#38 真启用 E4 段立 C 码时须连坐改 lang/category 派生与该锚（届时冻结预期会把 C 码错标 c++）。
+
 ### fix(engine): PR #345 审阅处置批——P1 u64→fp 转换全链对偶补齐（B17 实例）（2026-10-28）
 
 - **P1（处方 2 修复，独立复现坐实）**：u64 位模式转 double/float 旧按
@@ -1068,7 +1092,6 @@ $ 证红 1/还原绿 5——A1-l 闭环）+ install_skills CLI 契约锚 5 条�
   `--strict check` 绿（master 上 0.9.0.md:13/:122 的既有 Suspect/漂移
   形态随白名单销案；CI 侧「待采集键缺位跳过漂移判定」的假绿面另行
   登记不在本批）。
-
 ### refactor(scripts)!: #273 差分族收尾——删除 diff 五驱动 Go 版（4,697 行）+ 退役双轨对拍闸 + 全册命令面切 `node`（2026-10-24）
 
 **删了什么**：`scripts/{vm,parser,typeck,codegen,lexer}_diff/main.go` 共 **5 文件 / 4,697 行**。判定面早已是 `scripts/diff_gate/main.mts`（`gates-diff` = 五 target × 五语料），Go 版零执行面；`go build ./...` 复验剩余 Go 全绿（`facts`(2338) / `clang_direct`(1142) / `realcode_diff`(2206) / `perf_baseline`(870) 四家真值源与报告器保留）。

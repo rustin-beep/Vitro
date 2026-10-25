@@ -306,10 +306,10 @@ test "skeleton: retired C++ stmt fails loud without in-flight wording" {
   assert_true(errors.length() > 0)
   // 行号为 0（stmt_loc 的 RangeFor 走 _ 兜底臂——Rust stmt_loc 同款
   // 语义，两侧一致，"第 0 行："）
-  assert_true(errors[0].has_prefix("第 0 行："))
+  assert_true(errors[0].message.has_prefix("第 0 行："))
   // 退役文案不含"未实现"（假承诺）
-  assert_true(!errors[0].contains("未实现"))
-  assert_true(errors[0].contains("退役"))
+  assert_true(!errors[0].message.contains("未实现"))
+  assert_true(errors[0].message.contains("退役"))
 }
 
 ///|
@@ -386,7 +386,7 @@ test "skeleton: __func__ resolves to current function name literal" {
   assert_eq(o.string_data[0].1, "f")
   // 无"未声明的标识符"错误（P1-3 修复前正是此诊断）
   for e in errors {
-    assert_true(!e.contains("未声明的标识符"))
+    assert_true(!e.message.contains("未声明的标识符"))
   }
 }
 
@@ -806,9 +806,9 @@ test "control-flow: retired C++ stmt fails loud without in-flight wording" {
   let (output, errors) = gen.generate(program)
   assert_true(output is None)
   assert_true(errors.length() > 0)
-  assert_true(errors[0].has_prefix("第 0 行："))
-  assert_true(!errors[0].contains("未实现"))
-  assert_true(errors[0].contains("退役"))
+  assert_true(errors[0].message.has_prefix("第 0 行："))
+  assert_true(!errors[0].message.contains("未实现"))
+  assert_true(errors[0].message.contains("退役"))
 }
 
 ///|
@@ -920,7 +920,7 @@ test "flatten_init_list_no_int_range_reject" {
       ),
     },
   ]
-  let errors : Array[String] = []
+  let errors : Array[GenError] = []
   let values = flatten_init_list(elems, errors)
   assert_eq(
     errors.length(),
@@ -1311,11 +1311,25 @@ test "skeleton: call to declared-but-undefined fn reports honest error (#205)" {
     templates: [],
     template_instantiations: [],
   })
-  let joined = errors.join("\n")
+  let joined = errors.map(fn(e) { e.message }).join("\n")
   assert_true(
     joined.contains("已声明但未定义"),
     msg="裸原型被调用须报「已声明但未定义」（旧文案谎报「未声明的标识符」）",
   )
+  // #223（2026-10-25）：该诊断立码 E3089（旧 E0 兜底）——码级锚
+  //（f/g 双错在场，按消息定位而非下标序）
+  let mut e3089_seen : Bool = false
+  for e in errors {
+    if e.message.contains("已声明但未定义") {
+      assert_eq(
+        e.code,
+        3089,
+        msg="已声明未定义带码 E3089（serve 层按码挂卡/fix）",
+      )
+      e3089_seen = true
+    }
+  }
+  assert_true(e3089_seen, msg="已声明未定义诊断在场")
   assert_true(
     !joined.contains("'f' 未声明") &&
     !joined.contains("未声明的标识符 'f'"),

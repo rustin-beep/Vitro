@@ -58,10 +58,10 @@ test {
 ///|
 test {
   let json = @diag.export_catalog_json()
-  // {"catalog":[{...},…]} 码升序 114 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕）——E4 出口为
+  // {"catalog":[{...},…]} 码升序 115 条（#50 批③ 77→102；病 15/19 +2；#96 +1；#178 +1；#214 +2；PR #284 审阅 P3 +1〔W1023〕；#256/#261 闭合批 +14〔E0/E1012/E3074–E3082/E3086–E3088〕退役 9〔E1022/E2001/E3026/W3056/E4100–E4104〕；#223 +E3089）——E4 出口为
   // canonicalize 归一单源口径（迁移期与 Rust oracle 逐字节对拍锁定；oracle 已退役，现役锚 = wbtest 数量断言 + gen_diag -check 单源不漂移）
   assert_true(json.has_prefix("{\"catalog\":["))
-  assert_true(@diag.catalog_codes().length() == 114)
+  assert_true(@diag.catalog_codes().length() == 115)
 }
 ```
 

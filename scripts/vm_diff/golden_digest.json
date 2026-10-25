@@ -1190,6 +1190,12 @@
       "stdout_sha": "b45b40215589712b",
       "memory_sha": "ed91c8c72ce2504c"
     },
+    "baseline/func_declared_not_defined.c": {
+      "src_sha": "52ad6535",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "baseline/func_many_params.c": {
       "src_sha": "2ba219ee",
       "exit_code": 0,

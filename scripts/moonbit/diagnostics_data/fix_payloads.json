@@ -155,36 +155,8 @@
       "text": ""
     },
     {
-      "code": 4100,
-      "suggestion": "new 与 delete 必须成对出现：构造函数中 new 的资源应在析构函数中 delete；必要时使用 unique_ptr 自动管理。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4101,
-      "suggestion": "避免返回局部变量的引用；如需返回引用，请确保被引用对象的生命周期覆盖引用的使用范围（如返回成员变量或全局对象）。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4102,
-      "suggestion": "把基类值对象改为基类指针/引用，或使用虚函数与多态；按值传递派生类时会发生对象切片。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4103,
-      "suggestion": "unique_ptr 不能被拷贝，只能被 move；move 后不要再访问原 unique_ptr，也不要手动 delete 其管理的对象。",
-      "fix_kind": 4,
-      "anchor": "Manual",
-      "text": ""
-    },
-    {
-      "code": 4104,
-      "suggestion": "std::move 后把源对象视为'已释放'，除非显式重新赋值，否则不要再读取或使用它的原值。",
+      "code": 3089,
+      "suggestion": "函数只有原型声明没有函数体：请补上函数体，或确认该函数由其他编译单元（链接对象）提供。",
       "fix_kind": 4,
       "anchor": "Manual",
       "text": ""

@@ -34,7 +34,7 @@ import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts"
 import { goFormatFloat, goIntSlice } from "../../internal/gofmt.mts";
 
 // ---- 基线（对源实测 2026-10-02；源冻结期漂移即红，人工核对后更新并登记） ----
-const EXPECTED_STATIC_CODES = 26; // 静态载荷码数（3060|3061 双码展开计 2；#96 +3073）
+const EXPECTED_STATIC_CODES = 22; // 静态载荷码数（3060|3061 双码展开计 2；#96 +3073；#223 +3089；#233 −E4100–E4104 五条 C++ 死载荷）
 const EXPECTED_NODES = 25;
 const EXPECTED_EDGES = 25;
 const EXPECTED_MAP_ENTRIES = 29; // 病 19 连坐（#61）

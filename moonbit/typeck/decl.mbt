@@ -476,14 +476,11 @@ fn TypeChecker::dispatch_stmt(
     RangeFor(_, _, _, _, _) =>
       // C++ 范围 for——C AST 不产（剔除登记，S9）；直通
       stmt
-    Try(_, _, loc) => {
-      self.report_error(
-        "try/catch 异常处理不被支持",
-        loc,
-        E4001_ExceptionNotSupported,
-      )
+    Try(_, _, _) =>
+      // try/catch：reserved-for-csharp 变体（C 解析路径零构造——parser
+      // 语法层即拒）；E4001_ExceptionNotSupported 臂已随 4xxx C++ 死面
+      // 摘除退役（#233），CS 批落地时重建诊断——直通（RangeFor 同款）。
       stmt
-    }
   }
 }
 
@@ -580,25 +577,11 @@ fn TypeChecker::process_var_decl(
   is_register~ : Bool = false,
 ) -> (@ast.Type, @ast.Expr?) {
   ignore(name)
-  // Auto type deduction（C++ auto / C 语法兼容路径照搬）
-  let var_type_1 : @ast.Type = if type_has_auto(var_type) {
-    match init {
-      Some(init_expr) => {
-        let deduced = self.deduce_auto_type(init_expr)
-        replace_auto_in_type(var_type, deduced)
-      }
-      None => {
-        self.report_error(
-          "auto 类型变量必须有初始化表达式",
-          loc,
-          E4025_AutoRequiresInitializer,
-        )
-        replace_auto_in_type(var_type, @ast.Type::int())
-      }
-    }
-  } else {
-    var_type
-  }
+  // Auto type deduction（#233 清源，2026-10-25）：Type::Auto 仅 cpp_mode
+  // parser 构造（C 模式下 auto 是存储类直接吞掉——parser/type_.mbt），
+  // C 解析路径零生产；E4025_AutoRequiresInitializer 臂已随 4xxx C++ 死
+  // 面摘除退役。全局路径的 auto 替换（typeck.mbt）保留——机制面共用。
+  let var_type_1 : @ast.Type = var_type
   // resolve_template_id：C++ 模板实例化（剔除登记，S9）
   // typeof type deduction
   let var_type_2 : @ast.Type = if type_has_typeof(var_type_1) {
@@ -1034,97 +1017,10 @@ fn replace_auto_in_type(ty : @ast.Type, replacement : @ast.Type) -> @ast.Type {
   }
 }
 
-///|
-/// 推导 auto 初始化表达式的具体类型（Rust `cpp_auto.rs` 的 **C 子集**
-/// 照搬：New/Lambda/MemberCall 臂剔除——C AST 不产；推导为纯定型，
-/// 不改写表达式）。
-fn TypeChecker::deduce_auto_type(
-  self : TypeChecker,
-  init : @ast.Expr,
-) -> @ast.Type {
-  match init {
-    Literal(_, _, _) => @ast.Type::int()
-    // E1：auto 按字面量后缀定型（无后缀 double，f/F 后缀 float）
-    FloatLiteral(_, _, ty) =>
-      if ty.kind() is TK_Double {
-        @ast.Type::double()
-      } else {
-        @ast.Type::float()
-      }
-    // 病 117（≡59）：auto 推导保留节点自带类型（u 后缀值域定型链）
-    LongLiteral(_, _, ty) => ty
-    StringLiteral(_, _, _) => @ast.Type::pointer_to(@ast.Type::char())
-    Identifier(name, loc, _) =>
-      match self.lookup_var(name) {
-        Some(sym) => sym.ty
-        None => {
-          self.report_error(
-            "auto 推导失败：未找到变量 '\{name}'",
-            loc,
-            E3004_TypeMismatch,
-          )
-          @ast.Type::int()
-        }
-      }
-    Call(_, _, _, ty) => ty
-    Unary(op, operand, loc, _) =>
-      match op {
-        // 病 39（#71）：一元 + 恒等——auto 推导透传操作数类型
-        Pos => self.deduce_auto_type(operand)
-        Addr => @ast.Type::pointer_to(self.deduce_auto_type(operand))
-        Deref => {
-          let inner = self.deduce_auto_type(operand)
-          match inner {
-            Pointer(pointee, _) => pointee
-            _ => {
-              self.report_error(
-                "auto 推导失败：解引用非指针类型",
-                loc,
-                E3004_TypeMismatch,
-              )
-              @ast.Type::int()
-            }
-          }
-        }
-        Neg | BitNot | Not | PostInc | PostDec | PreInc | PreDec =>
-          self.deduce_auto_type(operand)
-      }
-    Binary(_, left, right, _, _) => {
-      let left_ty = self.deduce_auto_type(left)
-      let right_ty = self.deduce_auto_type(right)
-      // Prefer the wider of the two scalar types
-      if left_ty.kind() is TK_Double || right_ty.kind() is TK_Double {
-        @ast.Type::double()
-      } else if left_ty.kind() is TK_Float || right_ty.kind() is TK_Float {
-        @ast.Type::float()
-      } else if left_ty.kind() is TK_LongLong || right_ty.kind() is TK_LongLong {
-        @ast.Type::long_long()
-      } else {
-        left_ty
-      }
-    }
-    Cast(_, target_type, _, _) => target_type
-    Ternary(_, then_branch, _, _, _) => self.deduce_auto_type(then_branch)
-    Member(_, _, _, _, ty) => ty
-    Index(_, _, _, ty) => ty
-    InitList(_, loc, _) => {
-      self.report_error(
-        "auto 推导失败：初始化列表需要显式类型",
-        loc,
-        E3004_TypeMismatch,
-      )
-      @ast.Type::int()
-    }
-    _ => {
-      self.report_error(
-        "auto 推导失败：不支持的初始化表达式",
-        init.loc(),
-        E3004_TypeMismatch,
-      )
-      @ast.Type::int()
-    }
-  }
-}
+// deduce_auto_type（auto 初始化表达式定型，Rust cpp_auto.rs C 子集照搬）
+// 已随 #233 清源退役（2026-10-25）：唯一消费点 = process_var_decl 的
+// auto 推导块（Type::Auto 仅 cpp_mode parser 构造，C 路径零生产——
+// 详见 process_var_decl 头注）；CS/C++ 前端批若复活 Auto 推导时重建。
 
 ///|
 /// 表达式是否涉及数组或指针（W3051 for-条件 Le off-by-one 判据；

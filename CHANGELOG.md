@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-25（S9 收官版；发布实录待彩排+publish 后回填 docs/current/08-发布档案/0.9.0.md）
+
+> S9 收官版：Rust oracle 脱钩 + 裁定 + 解锁修复面。发布档案：[0.9.0.md](docs/current/08-发布档案/0.9.0.md)。
+
+### 破坏面与下游可见行为变更（0.8.0 → 0.9.0）
+
+1. **仓库形态**：`native/` Rust 对照区整体删除（`feat(s9)!`）——oracle 差分工作流退役；档案 = tag `rust-oracle-freeze` + 分支 `frozen-oracle-snapshot`。
+2. **CLI 行为**：#129 通道分立——文本模式 stdout 只承载程序输出，编译诊断/note/标记行走 stderr（下游解析脚本须更新剥离逻辑；`--json` 出口不变）；#67/#68 错误帧带期望形状 + api help 双产物；#91 截断显式化（`output_truncated` 位）；#92 诊断 E 码前置；#94/#105 config 钳制/未知键 fail loud；#96 libc 缺口走 E3073 专用码；#133 preset 三档 + `run --max-steps`；rc 判据双臂一致化（#107~#110 族）。
+3. **协议面**：`code_file` 等 v0.2 预留位字段激活（「字段↔最低版本」表见 #116 销案文档）；`texts.install` 新方法（#130 批②）。
+4. **包面**：新增 `icons` / `stdlib` 两包；接口面 `.mbti` 净 +392/−18 pub fn（4 新包 + 21 包改动，0.8.0↔0.9.0 diff 实测）——删除/重排代表：`tokenize_with_vfs` → `tokenize_with[P : @token.SourceProvider]`、`UnifiedEngine::run_batch` 加 `SourceLineProvider` 约束、host printf 族通道化移位；`type_display_name` gateway→ast 上提；`format_fixed` pub 化。
+5. **opcode 契约**：U 系对偶段 138..150 扩容 + 151..153 char 字节粒度段，总数 135→151。
+6. **码表**：ErrorCode 137→156 臂；error_catalog 教学卡 77→114（补 14 退 9，双向闭合闸在岗）；gateway 方法表 21→30。
+7. **发布物内容面**：协议契约文档与 TS 消费绑定随包分发（`moonbit/docs/spec/` + `moonbit/bindings/ts/`；随 PR #307 合入生效）。
+
 ### fix(scripts): corpus_fuzz stdout 非 ASCII 三方域失配修复——col_utf8_units 假 WRONG_VALUE 根治（2026-10-25）
 
 - **定性（#301 merge 连坐暴露）**：master（#299 语料池 +1 ⇒ 确定性抽样整体偏移）

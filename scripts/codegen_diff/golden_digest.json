@@ -5,6 +5,7 @@
     "baseline": {
       "sources": {
         "abstract_array_param.c": "1d6d9fb9",
+        "addr_const_chains_global.c": "5f1f5ca7",
         "anon_member_promotion.c": "0142ec02",
         "anon_union_var_init.c": "607c47c8",
         "armstrong_number.c": "588fd641",
@@ -554,6 +555,9 @@
       "cases": {
         "abstract_array_param.c": {
           "result_sha": "6a6c7cd2d059bcac"
+        },
+        "addr_const_chains_global.c": {
+          "result_sha": "94f8db79a7d199be"
         },
         "anon_member_promotion.c": {
           "result_sha": "7b45d3d29192a760"

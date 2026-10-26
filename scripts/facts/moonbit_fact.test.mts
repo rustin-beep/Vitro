@@ -8,7 +8,7 @@ import path from "node:path";
 import { test } from "node:test";
 import {
   collectAbiVersion, collectAll, collectCargoTestFromLog,
-  collectMoonbitFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
+  collectMoonbitFromOutput, collectMoonbitNativeFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
 } from "./facts.mts";
 import { RUN_KEYS } from "./facts.mts";
 import type { Fact, FactsDoc } from "./facts.mts";
@@ -40,6 +40,26 @@ test("moonbit J9 埋雷：空输出 unavailable", () => {
   const facts = factsOf();
   collectMoonbitFromOutput("", 0, facts);
   assert.equal(facts["moonbit_test_passed"]!.status, "unavailable", "空输出应 unavailable");
+});
+
+// #308（2026-10-26）：native 口径全量键——绿路径 + J9（无 Total 行禁兜底）
+// + RUN_KEYS 登记（CI cached 沿用语义须在册）。
+test("moonbit native 口径绿路径（#308）", () => {
+  const facts = factsOf();
+  collectMoonbitNativeFromOutput("Total tests: 1053, passed: 1053, failed: 0", 0, facts);
+  const f = facts["moonbit_test_passed_native"];
+  assert.ok(f !== undefined && f.status === "ok" && f.value === 1053, `native 绿路径解析失败: ${JSON.stringify(f)}`);
+});
+
+test("moonbit native J9 埋雷：无 Total 行 unavailable（#308）", () => {
+  const facts = factsOf();
+  collectMoonbitNativeFromOutput("link-core failed", 1, facts);
+  const f = facts["moonbit_test_passed_native"];
+  assert.ok(f !== undefined && f.status === "unavailable", `native 无 Total 行应 unavailable: ${JSON.stringify(f)}`);
+});
+
+test("moonbit native 口径键在 RUN_KEYS 在册（#308）", () => {
+  assert.ok(RUN_KEYS.includes("moonbit_test_passed_native"), "moonbit_test_passed_native 须登记 RUN_KEYS（cached 沿用语义）");
 });
 
 // S2：词法差分真值解析——绿路径 + J9 埋雷（FAIL 输出禁兜底）。
@@ -146,6 +166,26 @@ test("runKeys 覆盖全部 --run 占位键", () => {
       continue; // 只管「--run 才执行」占位形态，非采集类 unavail 不在管辖
     }
     assert.ok(inRunKeys.has(k), `占位键 ${k} 漏登 runKeys——--run 采集的真值会在下次日常运行被覆盖丢弃`);
+  }
+});
+
+// #308（2026-10-26）：反向完整性锚——「--run 才执行」采集族键在非 --run
+// 的 else 占位**必须在场**：沿用逻辑只接「键在且 unavailable」形态，占位
+// 缺失 = 沿用跳过 ⇒ 落盘丢键 ⇒ 已采真值静默蒸发 + 文档引用进「待采集」
+// 假绿面（#298 病族第三例实锤：moonbit_test_passed_native --run 采到
+// 1053、下一次日常 check 键消失、毒数字 1077 无判定）。与上锚方向互补：
+// 上锚抓「占位漏登 runKeys」，本锚抓「runKeys 族漏占位」。
+test("RUN_KEYS 采集族键非 --run 时对称占位（#308 防落盘丢键）", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "facts-runkeys2-"));
+  fs.mkdirSync(path.join(root, "moonbit"));
+  const doc: FactsDoc = collectAll(root, false, false, "", null);
+  for (const k of [
+    "replay_assertions", "serve_smoke_assertions", "moonbit_test_passed",
+    "moonbit_test_passed_native", "moonbit_lexer_diff_tsv", "moonbit_parser_diff_samples",
+  ]) {
+    const f = doc.facts[k];
+    assert.ok(f !== undefined && f.status === "unavailable",
+      `键 ${k} 须在非 --run 时对称占位 unavailable（缺失=沿用跳过→落盘丢键）`);
   }
 });
 

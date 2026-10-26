@@ -1,5 +1,55 @@
 ## [Unreleased]
 
+### fix(scripts+docs): #308 测试计数 facts 化——native 口径键机判 + README 巨型批注链拆解 + 落盘丢键假绿治本（2026-10-26）
+
+- **真值键扩容**：新增 `moonbit_test_passed_native`（`MOON_CC=clang moon
+  test --target native` 全量口径，增量实测 13.8s；裸 897 + native-only
+  fs/gateway/cli = 1053）——`runCmdEnv` 通道（env 覆盖叠加）+ RUN_KEYS
+  登记 + else 对称占位三件齐；Go 回退面不含本键（unavailable 语义安全）。
+- **audit 规则**：`--target\s*native[^\n]{0,40}(全量|测试)` 语境 + 带宽
+  [800,2000]——就近绑定与裸键消歧（`moon test` 语境抢不走全量数：语境词
+  位置距离决胜）；纯命令行（无数字 span）不进候选，Suspect 假红面不存在
+  （全仓 grep 命中面核查：仅目标两行）。
+- **README 拆解**：`moonbit/README.md` + `README.mbt.md` 的巨型批注链行
+  （每批测试锚 +N 追加、多 PR 全撞——2026-10-25 三 PR 串行合并的
+  ≈10 分钟双口径实测成本主源）拆为两行裸数 + facts 键标注形态；批注明细
+  单源 CHANGELOG；native-only 逐包分解以 `moon test -p` 为准。**计数冲突
+  的解法从「双口径实测」降为「改数 + 闸逼真值」**（#308 立案主诉求）。
+- **落盘丢键假绿治本（#298 病族第三例实锤）**：`collectAll` 非 `--run`
+  路径的占位清单曾缺 native 键——沿用逻辑只接「键在且 unavailable」形态，
+  缺失=沿用跳过 ⇒ 落盘丢键 ⇒ 毒数字 1077 进「待采集」无判定（本地完整
+  复现 #298 形态：`--run` 采到 1053 → 日常 check 键蒸发）。修占位 + 反向
+  J9 锚（RUN_KEYS 采集族键非 --run 时必须占位在场——与既有「占位→
+  runKeys」正锚互补）。
+- **验证**：J9 红证闭环（毒 1077 → 漂移 1 处 + rc=1 双模式 → 恢复 1053
+  → rc=0 且 native 键入「沿用上次采集」清单）；moonbit_fact 新锚 ×4 全
+  绿；tsc 零错；facts `--run --strict` 漂移 0。AGENTS 两段连坐改写
+  （「分解式人工义务」段翻案为机判形态 + facts.go 过时引用刷 .mts）。
+
+### fix(codegen): #304 文件作用域地址常量链形态三路径回填——&s.x / &sa[1].x / &go.in.b / &garr[1] 运行期 NULL 解引用（2026-10-26）
+
+- **病根**：静态初始化器的地址常量回填只认裸名两形态（`Identifier` 数组名 /
+  `&g` 纯取址，#264 面），Member/Index 链形态在**三条路径**上分别静默不回填
+  （全局区零填 ⇒ 运行期 E3083 NULL 解引用，clang 全部正常给值）：顶层标量臂
+  （`int *p = &s.x`——gen.mbt 落 `_ => ()`）、数组逐元素臂（`int *agg[2] =
+  {&gm.v,...}`——落 flatten 折叠 0）、聚合递归 flatten 臂（`struct PtrBox
+  box = {&go.in.a}`——落 `_ => ()`）。typeck 侧整族放行（const_eval
+  「Unary(Addr,..) 整棵跳过」），纯 codegen 回填缺口。
+- **修复**：新增 `eval_global_addr_chain` 静态求值单源（init.mbt）——迭代
+  剥 Member/Index 链 + 末端 static local→global 符号（#283 前置序），偏移
+  语义与运行期同源（节点 ty 定型推进 + get_member_offset 单源；Index 步长
+  = 下标后类型尺寸）；**指针基座拦截**（`p[i]`/`ps->x` 的 p——值运行期才有，
+  get_member_offset 的 Pointer 一步解引用臂是运行期语义，静态复用必错值，
+  宁缺勿错 Unsupported）；前向引用挂 `pending_addr_chain_inits` 尾轮回填
+  （与 #264 裸名 pending 同轮幂等）。三路径统一接线。
+- **连坐**：函数内 static 聚合初始化器（复用 flatten 通路）自动受益；
+  `corpus/baseline/addr_const_chains_global.c` 红锚（三路径 × 六链形态，
+  J9 先证红——旧代码 E3083 双臂复现）+ 五家 digest 冻结（存量零漂移：
+  lexer 1094/parser·typeck·codegen 546/vm SAME=547）+ facts --strict
+  （--run 重采）漂移 0 + moon test 897/897。
+- **#305 勘误**：数组聚合 `{&c}` 形态双臂实测**已不复发**（js+native 均
+  clang 一致给值——后续批顺带修复），本案修复不涉其通路；issue 独立销案。
+
 ### feat(corpus): TheAlgorithms 407 份对拍批——45 份入 baseline + UB 锚入 gap + facts 带宽/误锚修复（2026-10-25，含审阅处置）
 
 - **对拍**：tmp 最大一块语料（rustin-beep/C fork `vitro-probe-baseline`，407 份）三方全量对拍

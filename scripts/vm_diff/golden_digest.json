@@ -8,6 +8,12 @@
       "stdout_sha": "75f3cdaf908ad49d",
       "memory_sha": "c218f44590c491c3"
     },
+    "baseline/addr_const_chains_global.c": {
+      "src_sha": "5f1f5ca7",
+      "exit_code": 0,
+      "stdout_sha": "9ac8fcb437e9b311",
+      "memory_sha": "2ff561d6ae012f6a"
+    },
     "baseline/anon_member_promotion.c": {
       "src_sha": "0142ec02",
       "exit_code": 10,

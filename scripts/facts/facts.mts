@@ -341,12 +341,20 @@ interface RunResult {
 }
 
 function runCmd(root: string, timeoutMs: number, ...args: string[]): RunResult {
+  return runCmdEnv(root, timeoutMs, {}, ...args);
+}
+
+// runCmdEnv：带附加环境变量的执行（#308 2026-10-26——native 口径采集须
+// MOON_CC=clang，纪律 11：Windows 裸探测绑 MSVC 撞 moon#2254 分钟级链接
+// 悬崖）。env 覆盖叠加于 process.env 之上。
+function runCmdEnv(root: string, timeoutMs: number, env: NodeJS.ProcessEnv, ...args: string[]): RunResult {
   const r = spawnSync(args[0]!, args.slice(1), {
     cwd: root,
     timeout: timeoutMs,
     encoding: "utf8",
     maxBuffer: 256 * 1024 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, ...env },
   });
   // Go runCmd：Start 失败 → ok=false；超时 kill → ok=false；Wait err 且非
   // ExitError → code=-1。spawnSync 的 error（ENOENT/超时 killed）映射 ok=false。
@@ -462,9 +470,21 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   const r = runCmd(path.join(root, "moonbit"), 5 * 60_000, "moon", "test");
   if (!r.ok) {
     facts["moonbit_test_passed"] = unavail("用例", "moonbit/（moon test）", how, "超时或 moon 不可用");
+  } else {
+    collectMoonbitFromOutput(r.out, r.code, facts);
+  }
+  // #308（2026-10-26）：native 口径全量测试数（裸 + native-only 包
+  // fs/gateway/cli）——moonbit/README 的 `--target native` 全量句机判锚，
+  // 多 PR 计数冲突的解法从「双口径实测 ≈10 分钟」降为「改数+闸逼真值」。
+  // 独立键独立采集（裸失败不阻断）；MOON_CC=clang 照纪律 11。
+  // Go 回退面（facts.go）不含本键——回退时 unavailable 待采集语义安全。
+  const howN = "cd moonbit && MOON_CC=clang moon test --target native";
+  const rN = runCmdEnv(path.join(root, "moonbit"), 5 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
+  if (!rN.ok) {
+    facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
     return;
   }
-  collectMoonbitFromOutput(r.out, r.code, facts);
+  collectMoonbitNativeFromOutput(rN.out, rN.code, facts);
 }
 
 export function collectMoonbitFromOutput(out: string, code: number, facts: Record<string, Fact>): void {
@@ -480,6 +500,23 @@ export function collectMoonbitFromOutput(out: string, code: number, facts: Recor
   const f = okFact(passed, "用例", "moonbit/（moon test）", "run", nowISO());
   f.note = `total=${total} failed=${failed} exit=${code}（裸 moon test 口径 = 默认目标后端，不含 native-only 包如 fs/gateway；逐包分解以 moon test -p 为准）`;
   facts["moonbit_test_passed"] = f;
+}
+
+// collectMoonbitNativeFromOutput：#308（2026-10-26）——`--target native`
+// 全量口径（裸 + native-only 包）的输出解析，与裸口径同构复用判读语义。
+export function collectMoonbitNativeFromOutput(out: string, code: number, facts: Record<string, Fact>): void {
+  const m = /Total tests: (\d+), passed: (\d+), failed: (\d+)/.exec(out);
+  if (m === null) {
+    facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）",
+      "cd moonbit && MOON_CC=clang moon test --target native", "未解析到 Total tests 行");
+    return;
+  }
+  const total = Number.parseInt(m[1]!, 10);
+  const passed = Number.parseInt(m[2]!, 10);
+  const failed = Number.parseInt(m[3]!, 10);
+  const f = okFact(passed, "用例", "moonbit/（moon test --target native）", "run", nowISO());
+  f.note = `total=${total} failed=${failed} exit=${code}（--target native 全量口径 = 裸 moonbit_test_passed + native-only 包〔fs/gateway/cli〕；CI 门禁口径）`;
+  facts["moonbit_test_passed_native"] = f;
 }
 
 // collectMoonbitLexerDiff 采集 S2 词法差分真值（2026-09-19）：
@@ -595,6 +632,7 @@ export const RUN_KEYS = [
   "cargo_test_passed", "cargo_test_suites",
   "moonbit_test_passed", "moonbit_lexer_diff_tsv",
   "moonbit_parser_diff_samples",
+  "moonbit_test_passed_native",
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
@@ -637,6 +675,12 @@ export function collectAll(
     facts["serve_smoke_assertions"] = unavail("项", "scripts/serve_smoke", "--run",
       "需 --run 才执行");
     facts["moonbit_test_passed"] = unavail("用例", "moonbit/（moon test）", "--run",
+      "需 --run 才执行");
+    // #308：native 口径键占位必须与裸键对称——沿用逻辑只接「新采
+    // unavailable + 旧值 ok」形态，缺失（键不存在）= 沿用被跳过 ⇒ 落盘
+    // 丢键 ⇒ 文档引用进「待采集」假绿面（#298 病族第三例，J9 锚
+    // moonbit_fact.test.mts「collectAll 非 --run 对称占位」）。
+    facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", "--run",
       "需 --run 才执行");
     facts["moonbit_lexer_diff_tsv"] = unavail("个", "scripts/diff_gate（lexer 臂）", "--run",
       "需 --run 才执行");

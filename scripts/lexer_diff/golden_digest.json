@@ -3,6 +3,7 @@
   "sources": {
     "baseline": {
       "abstract_array_param.c": "1d6d9fb9",
+      "addr_const_chains_global.c": "5f1f5ca7",
       "anon_member_promotion.c": "0142ec02",
       "anon_union_var_init.c": "607c47c8",
       "armstrong_number.c": "588fd641",
@@ -855,6 +856,8 @@
   "tsvs": {
     "baseline/abstract_array_param.l1.tsv": "025d3cadf1c48ad8",
     "baseline/abstract_array_param.l2.tsv": "78530396d2beec8e",
+    "baseline/addr_const_chains_global.l1.tsv": "e1d18e2c2208283b",
+    "baseline/addr_const_chains_global.l2.tsv": "24229b882ce6c0ec",
     "baseline/anon_member_promotion.l1.tsv": "dea2c2e9d4c58890",
     "baseline/anon_member_promotion.l2.tsv": "b670e28fbe896e29",
     "baseline/anon_union_var_init.l1.tsv": "64d05bdaf5512abd",

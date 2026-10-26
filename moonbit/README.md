@@ -138,8 +138,8 @@ VM 是为单步执行与时间旅行可观测性构建的**解释器**，不以�
 ## 验证
 
 ```bash
-moon check && moon test    # 897 测试（裸总数以 facts `moonbit_test_passed` 为准；逐包批注明细外迁 CHANGELOG——#45 裁定；裸分解：分解和 897 + 根 README doc test 0，catalog 4 已计入 teaching/steps 包内〔#36 批〕；2026-10-23 B 线批一 +12：sscanf %n 双锚 + vfs + 族锚 + 语义标签双锚 + 审阅批 +4 + PR#280 审阅 +3〔fwrite 追加通道锚 1 + +族 b 位锚 1 + 定义侧空白锚 1〕；2026-10-24 #256/#261 审阅处置批 +3〔锚明细见 CHANGELOG 对应段〕；2026-10-24 A 线批四 +4：#285 螺旋三形态锚〔parser〕+ #242 列量纲双场景锚〔lexer〕+ #251 U 域锚〔scanner wbtest〕；2026-10-24 A 线批五 +4：#297 scanner 双锚〔列快照+跨行〕+ parser 双锚〔#296 const 传导+对照〕；2026-10-25 #299 审阅处置批 +2：gen_addr 解析序双白盒锚〔codegen wbtest〕）
-                           # native-only 包测试 156 个（fs 0 / gateway 138 / cli 18——2026-10-23 B 线批一连坐：gateway +1〔output.delta 未知 stream 拒绝锚 #258〕+ cli +1〔--realtime 解析锚 #211〕；fs 0 / gateway / cli 域分解既注同前——2026-10-17 二轮审阅连坐：#130 批② texts.install 锚 +3 致 gateway 124→131〔批②时漏更〕；fs 因 fs_wasm 腿回流多目标〔裸已含 fs 10〕，gateway/cli 因 [js,native,wasm-gc] 不含裸 wasm 而独占 native 域）；`--target native` 全量 1053（CI 门禁口径；897+156=1053 算术自洽〔A 线批四 +4、A 线批五 +4、#299 +2 全在裸域〕，2026-10-25；PR #284 审阅批 +1：lexer #pragma once 尾随空白四形态锚〔裸内〕）
+moon check && moon test    # 897 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308）
+                           # moon test --target native 全量 1053（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

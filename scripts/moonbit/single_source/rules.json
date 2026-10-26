@@ -140,15 +140,16 @@
     },
     {
       "id": "stdout_stub_copies",
-      "concept": "stdout 字节直写 C stub 双副本（native-stub 禁 ../ 被迫复制——两份逐字节同；只有 run_main 出口消费〔cmd/run 与 cmd/vitro run 子命令〕，compile/step 无程序 stdout 物理输出）",
+      "concept": "stdout 字节直写 C stub 三副本（native-stub 禁 ../ 被迫复制——三份逐字节同；#315 批起含 cmd/step〔历史遗漏件，2026-10-26 补登记——与 run/vitro 同源逐字节同但不在机判面，漂移无人管〕；只有 run_main 出口消费〔cmd/run 与 cmd/vitro run 子命令〕，compile 无程序 stdout 物理输出）",
       "kind": "copies",
       "copies_must_match": [
         "moonbit/cmd/run/stdout_stub.c",
-        "moonbit/cmd/vitro/stdout_stub.c"
+        "moonbit/cmd/vitro/stdout_stub.c",
+        "moonbit/cmd/step/stdout_stub.c"
       ],
       "rust_source": "",
       "moonbit_source": "moonbit/cmd/run/stdout_stub.c",
-      "sync": "两份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）",
+      "sync": "三份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）",
       "consumers": [
         "moonbit/cmd/run",
         "moonbit/cmd/vitro（run 子命令）",

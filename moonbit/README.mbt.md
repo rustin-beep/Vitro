@@ -47,8 +47,8 @@ native CLI 1.5–6.3×**。诚实短板：全速执行慢 CPython 9.6–19.8×�
 ## 验证
 
 ```bash
-moon check && moon test    # 898 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308）
-                           # moon test --target native 全量 1054（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准）
+moon check && moon test    # 900 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308；2026-10-26 #314-#318 五案批 +2 裸域 +1 native-only）
+                           # moon test --target native 全量 1057（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

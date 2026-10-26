@@ -28,6 +28,16 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
     return Finished
   }
   self.step_count = self.step_count + 1
+  // #314（2026-10-26）：超限判定必须先于快照刷新——max_steps 为
+  // SNAPSHOT_INTERVAL 整数倍时（默认 10^7 必中），同一步「先刷新后
+  // 比较」会把快照刷成当前值 ⇒ stale/changed 分组恒全 stale（i 每步
+  // 自增也判「没有变化」，与 [cause] 指引自相矛盾）。trap 出口不刷新：
+  // 刷了也不会被消费；非倍数形态比较基线不变（仍是最近一次刷新）。
+  if self.step_count >= self.max_steps {
+    let msg = self.format_infinite_loop_error()
+    self.trap(msg, 0, 0)
+    return Trap
+  }
   // 每 SNAPSHOT_INTERVAL 步刷新变量快照（无限循环诊断的对比基线——
   // 与检查点间隔是两个频率，坑 14）
   if self.step_count % SNAPSHOT_INTERVAL == 0 {
@@ -42,11 +52,6 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
       )
     }
     self.last_snapshot_step = self.step_count
-  }
-  if self.step_count >= self.max_steps {
-    let msg = self.format_infinite_loop_error()
-    self.trap(msg, 0, 0)
-    return Trap
   }
   if self.cancelled {
     self.trap("执行已取消。", 0, 0)

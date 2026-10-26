@@ -6,9 +6,12 @@
 //
 //	A. 壳四子命令 rc 契约（CLI_PROTOCOL_V1 五值表的壳侧覆盖面）；
 //	B. **三臂同形对拍**——launcher 默认臂（wasm 壳）vs native exe vs js 臂跑同一
-//	   用例，stdout 归一（CRLF→LF）后逐行一致。这是「差异消灭在源头」的
-//	   机判锚：三臂消费同一 gateway/引擎语义（note 通道 UTF-8、trap 文本
-//	   同源、标记行协议同构），任何一臂漂移即红——零 canonicalize 特例。
+//	   用例，**语义层** = stdout/stderr CRLF 归一后逐行一致（三臂消费同一
+//	   gateway/引擎语义：note 通道 UTF-8、trap 文本同源、标记行协议同构，
+//	   任何一臂漂移即红——唯一允许差异 = backend 标注行）。**字节层** =
+//	   附 6 锚（#315/#316，2026-10-26）：三臂 stdout **原始字节逐位比较、
+//	   零归一**——CRLF/编码/二进制保真的壳层漂移在此可见（语义层的
+//	   normalize 不吸收本锚判定的任何差异）。
 //	C. launcher 语义：backend 标注行（stderr）+ --backend 覆盖转发。
 //
 // --corpus N：B 组语料级扩面（#49 批二）——corpus/baseline 按稳定序取前 N
@@ -49,9 +52,10 @@ function normalize(s: string): string {
 }
 
 /**
- * 剥 `[vitro] backend=…` 标注行——B 组对拍的**唯一**允许差异（backend 标注是
- * 设计差异非协议面：wasm 臂恒报 wasm、launcher 降级臂报 native；其余任何行
- * 差异都红——零 canonicalize 特例）。
+ * 剥 `[vitro] backend=…` 标注行——B 组**语义层**对拍的唯一允许差异
+ * （backend 标注是设计差异非协议面：wasm 臂恒报 wasm、launcher 降级臂
+ * 报 native；其余任何行差异都红）。注：本函数作用于归一后文本；字节层
+ * （附 6 锚）比 stdout 原始字节，不经此函数（#316）。
  */
 export function stripBackendLine(s: string): string {
   const kept: string[] = [];
@@ -356,6 +360,77 @@ export function runMain(argv: readonly string[]): number {
       }
     }
     process.stdout.write("ok  B[--realtime] 三臂分口径（js/native 真 t、wasm 恒 0、缺省恒 0）\n");
+  }
+
+  // B 组附 6：字节级三臂 stdout/stderr 对拍（#315/#316，2026-10-26；P2-2 审阅
+  // 处置扩双通道）——语义层锚的 normalize（CRLF→LF）曾把「native CRT 文本
+  // 模式每换行多 1 字节」吸收在判定处（注释宣称零 canonicalize 而代码有全局
+  // 归一——闸门失守面）；审阅实锤 stderr 半边无锚（只还原 stderr stub 仍全绿）。
+  // 本锚**零归一裸比**三臂两通道原始 Buffer：不 utf8 解码（0xC8 等非 UTF-8
+  // 字节保真比）、不做任何行尾处理。stdout 面 = 程序输出；stderr 面 = CLI
+  // 标记行（// STDERR // NOTE 等教学文案承载通道——程序 fprintf(stderr) 被引
+  // 擎包装为 // STDERR 行）；CLI 帧通道（api/serve 的 println 出口）不在此面
+  // （存量 P3，spec TrimRight 注记）。fixture 覆盖三形态：常规换行 / 非 UTF-8
+  // 字节 + 换行（最能区分 CRLF 改写）/ 尾部无换行。
+  {
+    const binC = path.join(tmpDir, "byte_probe.c");
+    fs.writeFileSync(
+      binC,
+      '#include <stdio.h>\nint main(){ printf("line1\\nline2\\n"); putchar(200); putchar(255); putchar(65); printf("\\n"); printf("tail-no-nl"); fprintf(stderr, "e\\n"); fputc(200, stderr); fputc(10, stderr); return 0; }\n',
+    );
+    const relBin = toSlash(path.relative(repoRoot, binC));
+    const armDefs = [
+      { label: "wasm", exe: nodeBin, argv: [shell, "run", relBin] },
+      { label: "native", exe: nativeExe, argv: ["run", relBin] },
+      { label: "js", exe: nodeBin, argv: [jsEntry, "run", relBin] },
+    ];
+    const outs: Buffer[] = [];
+    const errs: Buffer[] = [];
+    let byteProbeRc = 0;
+    for (const arm of armDefs) {
+      const r = spawnSync(arm.exe, arm.argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 });
+      if (r.error !== undefined || (r.status ?? -1) !== 0) {
+        fatalf(`B[字节对拍] ${arm.label}: rc=${String(r.status)}（${r.error?.message ?? ""}）`);
+        byteProbeRc = 1;
+      }
+      outs.push(r.stdout ?? Buffer.alloc(0));
+      errs.push(r.stderr ?? Buffer.alloc(0));
+    }
+    // stderr 侧唯一允许差异 = [vitro] backend= 前置行（wasm 壳打，#322）——
+    // latin1 双射按行剥（字节保真；行尾 \r 若在场仍保留——本锚不归一）
+    const stripBackendLineBytes = (b: Buffer): Buffer => {
+      const kept = b
+        .toString("latin1")
+        .split("\n")
+        .filter((ln) => !ln.startsWith("[vitro] backend="));
+      return Buffer.from(kept.join("\n"), "latin1");
+    };
+    if (byteProbeRc === 0) {
+      const w = outs[0] ?? Buffer.alloc(0);
+      const n = outs[1] ?? Buffer.alloc(0);
+      const j = outs[2] ?? Buffer.alloc(0);
+      if (!w.equals(n)) {
+        fatalf(
+          `B[字节对拍] wasm vs native stdout 原始字节不一致（len w=${w.length} n=${n.length} 首差 offset=${firstDiff(w, n)}——native CRT 文本模式 CRLF 改写形态，#315）`,
+        );
+      } else if (!w.equals(j)) {
+        fatalf(`B[字节对拍] wasm vs js stdout 原始字节不一致（len w=${w.length} j=${j.length} 首差 offset=${firstDiff(w, j)}）`);
+      } else {
+        process.stdout.write(`ok  B[字节对拍] 三臂 stdout 原始字节逐位一致（${w.length}B，含非 UTF-8 字节与无尾换行形态，零归一）\n`);
+      }
+      const we = stripBackendLineBytes(errs[0] ?? Buffer.alloc(0));
+      const ne = stripBackendLineBytes(errs[1] ?? Buffer.alloc(0));
+      const je = stripBackendLineBytes(errs[2] ?? Buffer.alloc(0));
+      if (!we.equals(ne)) {
+        fatalf(
+          `B[字节对拍 stderr] wasm vs native stderr 原始字节不一致（len w=${we.length} n=${ne.length} 首差 offset=${firstDiff(we, ne)}——stderr stub 的 CRLF 改写半边，P2-2）`,
+        );
+      } else if (!we.equals(je)) {
+        fatalf(`B[字节对拍 stderr] wasm vs js stderr 原始字节不一致（len w=${we.length} j=${je.length} 首差 offset=${firstDiff(we, je)}）`);
+      } else {
+        process.stdout.write(`ok  B[字节对拍 stderr] 三臂 stderr 原始字节逐位一致（${we.length}B 剥 backend 行后零归一，// STDERR // NOTE 教学文案面）\n`);
+      }
+    }
   }
 
   // B 组附 1：note 去重语义锚（审阅 P3-1）——note 通道语义不在 vm_diff /

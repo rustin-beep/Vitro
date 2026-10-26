@@ -160,6 +160,80 @@
 - **连坐**：路线图现值句（直拍 923〔六目录口径，SAME=906/DIFF=0 实测〕、
   e2e 740→786〔baseline 501→546、gap 20→21〕、moon test 825→897）。
 
+### fix(engine): #314 死循环诊断 stale/changed 分组恒误判——超限判定先于快照刷新（2026-10-26）
+
+- **病灶**：`vm/exec_step.mbt` 步数超限判定与快照刷新同在 `step()` 且刷新在前——
+  `max_steps` 为 `SNAPSHOT_INTERVAL`(100000) 整数倍时（**默认 10^7 = ×100 必中**），
+  超限那一步恰先刷快照再比较 ⇒ 快照已等于当前值 ⇒ stale/changed 分组**恒全 stale**
+  （「在最近 100000 步内没有变化的变量：i」——i 每步自增也被判没变，与同段
+  `[cause]`「计算量确实大 ⇒ 提高预算」指引自相矛盾，教学归因双态误导向「循环变量
+  没更新」一侧）。
+- **修复**：交换两判定块顺序——超限判定先于快照刷新（trap 出口不刷新：刷了也不会
+  被消费）；倍数形态比较基线回到「最近一次刷新」（间隔恰 100000，与文案口径一致），
+  非倍数形态（250000 等）比较基线不变。最小倍数 100000（快照从未建立）从「误判
+  全 stale」变为「无分组段」——诚实的无法判定而非误导。
+- **验证**：wbtest 三锚 `exec_inf_loop_snapshot_stale_changed_issue314`（倍数翻正
+  J9 证红 + 非倍数回归锁 + 最小倍数不伪造 stale）；js+native 双臂端到端四形态
+  逐字一致（200000/250000/默认 10^7 全「发生变化的变量：i = 18181/22726/909090」，
+  100000 无 [inspect] 段）；裸 moon test 898 / native 全量 1054 全绿；vm_diff 影响面
+  排查（corpus 循环形态三用例均正常完成，撞墙文案变化不触防线 golden）。
+- **连坐**：README 测试数 897→898 / native 全量 1053→1054（898+156 自洽，亲测）。
+
+### fix(host,gateway): #317+#318 三输入通道 BOM 剥离——run -i 静默无输出 / NDJSON 首帧被吞（2026-10-26）
+
+- **#317（程序 stdin 通道）**：`run -i` 输入文件带 UTF-8 BOM（Windows
+  PowerShell `Out-File` 等默认写）此前 BOM 泄入首行 ⇒ 首读 `scanf` 匹配失败
+  ⇒ 程序**静默无输出 rc=0 零线索**（判分主路径全盘错判；CI 表现为「结果全 0」
+  而非红）。修复 = `InputState::from_stdin_text` 单源剥流首 U+FEFF（仅一次，
+  行中 BOM 属内容不动）——run -i / serve `run{input}` 参数 / serve stdin 流
+  三消费者一次治本。与源码通道（lexer pp `strip_bom`）对齐：BOM 是编码标记
+  非内容。
+- **#318（NDJSON 帧通道）**：`api --batch` / `serve` 请求流首行带 BOM 此前
+  首帧整帧判「非法 JSON」被吞（`id:null` 错误帧顶替，下游按 id 匹配永远等
+  不到）+ 级联 `not_compiled`。修复 = `serve_handle` 解析前剥行首 U+FEFF
+  （两入口共同单源；恒剥行首——主形态流首，非首行 BOM 同剥属宽容，与
+  CRLF/尾部空行宽容同族，纯函数无状态）；真坏帧仍报非法 JSON（剥 BOM
+  不是放水，锚定）。
+- **验证**：双锚 J9 证红（`from_stdin_text_bom_stripped_issue317` /
+  `serve_ndjson_bom_first_frame_issue318`）；js+native 双臂端到端——#317
+  `run -i` 带/无 BOM 逐字节一致（`sum=15`）、#318 `api --batch` BOM 首帧
+  三帧全通、serve 长会话 BOM 首帧 ping 正常、api `run{input}` 参数内嵌
+  U+FEFF 与无 BOM 逐字节一致；裸 moon test 899 / native 全量 1056 全绿。
+- **防线影响**：corpus `.in` 伴随文件全 LF 无 BOM（vm digest 重冻批已归一），
+  无 BOM 帧零变化——防线 golden 不触。
+- **连坐**：README 测试数 898→899（裸，host +1）/ native-only gateway
+  138→139 / native 全量 1054→1056（899+157 自洽，亲测）。
+
+### fix(cli,scripts): #315+#316 native 壳 CRT 文本模式 CRLF 改写治本 + smoke 闸字节级锚——三臂 stdout 逐字节同形（2026-10-26）
+
+- **#315（CRT 文本模式）**：Windows 下 native 臂 fwrite stub 处于 CRT 文本
+  模式——程序 stdout / stderr 的每个 `\n` 被静默改写成 `\r\n`，与 js/wasm
+  臂**逐字节不同形**（6/6 用例全中、每换行 +1B），且与自身 `--json` delta
+  通道（引擎内存字节）也不同形——CLI_PROTOCOL_V1 §1「字节直写无 CRLF 转换」
+  承诺在 Windows 上与实现相反；stderr 走发布包内文件（`cmd/lib/cli/
+  stderr_stub.c`），下游无法自写 stub 规避。修复 = 四份 stub 首次调用时
+  `_setmode(_fileno(stdout/stderr), _O_BINARY)`（`_WIN32` 隔离，POSIX 零
+  变化）：`cmd/{run,vitro,step}/stdout_stub.c` 三份逐字节同源 +
+  `cmd/lib/cli/stderr_stub.c`。
+- **#316（闸门失守面）**：`vitro_cli_smoke` 的 B 组自称「三臂同形……零
+  canonicalize 特例」，但 `normalize()` 在判定处把 CRLF 抹成 LF——字节层
+  漂移被闸自己吸收（注释与实现自相矛盾）。修复 = 新增**附 6 字节级锚**：
+  三臂 stdout **原始 Buffer 逐位比较、零归一、不 utf8 解码**（非 UTF-8
+  字节保真比；fixture 覆盖常规换行/非 UTF-8 字节+换行/无尾换行三形态）；
+  语义层锚保留（归一口径明示）；头注与 `stripBackendLine` 注释同步改写
+  （语义层/字节层两声明各自对应可证的锚）。
+- **J9 证红**：字节锚先上，旧 stub 下红在预期位置（wasm 27B vs native
+  31B，首差 offset=5=首个 `\n` 处）；stub 修复重建后绿（三臂 27B 逐位
+  一致）。
+- **防线影响排查**：`vm_diff` 的 stdout 提取全程 CRLF 归一（`replace(/\r$/,
+  "")`）⇒ digest 不漂——抽样 102 例全 SAME 实证；clang_direct 两侧归一
+  既有；`--json` delta 通道三臂本就一致（差异纯在落盘层）。stderr/stdout
+  字节实测纯 LF（修复前各带 `\r`）。
+- **连坐**：`single_source` 条目 `stdout_stub_copies` 补登 `cmd/step`（历史
+  遗漏件——与 run/vitro 逐字节同但不在机判面，漂移无人管；登记后 copies
+  判定三份覆盖）；serve_smoke 双模式全过（69 断言 0 FAIL）；native 全量
+  1056/1056；ts 三件套（tsc/oxlint/node:test 8/8）。
+
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 docs/current/08-发布档案/0.9.0.md）
 
 > S9 收官版：Rust oracle 脱钩 + 裁定 + 解锁修复面。发布档案：[0.9.0.md](docs/current/08-发布档案/0.9.0.md)。

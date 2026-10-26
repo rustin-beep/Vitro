@@ -40,6 +40,26 @@ test "serve_illegal_json_error_frame" {
 }
 
 ///|
+/// #318（2026-10-26）：NDJSON 首行 UTF-8 BOM（U+FEFF）剥离——PowerShell
+/// 管道默认加 BOM，此前首帧整帧判「非法 JSON」被吞（id:null 错误帧
+/// 顶替，下游按 id 匹配永远等不到）+ 级联 not_compiled。两锚：BOM+合法
+/// 帧正常解析回 id（不被吞）/ BOM+真坏帧仍报非法 JSON（剥 BOM 不是放水）。
+test "serve_ndjson_bom_first_frame_issue318" {
+  let bom = Int32::unsafe_to_char(0xFEFF).to_string()
+  let s = @session.Session::new()
+  let (resp, stop) = serve_handle(s, bom + "{\"id\":1,\"method\":\"ping\"}")
+  assert_false(stop)
+  assert_true(
+    resp.contains("\"id\":1"),
+    msg="BOM 首帧不得被吞（id 回填）",
+  )
+  assert_true(resp.contains("\"pong\":true"), msg="剥 BOM 后帧正常解析")
+  // 剥 BOM 不是放水：真坏帧仍报非法 JSON
+  let (resp2, _) = serve_handle(s, bom + "{not json")
+  assert_true(resp2.contains("非法 JSON"))
+}
+
+///|
 test "serve_missing_method_rejected" {
   let s = @session.Session::new()
   let (resp, _) = serve_handle(s, "{\"id\":7}")

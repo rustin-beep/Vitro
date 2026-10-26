@@ -35,6 +35,10 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
         // auto is not const-qualifiable in our simplified model
         return @ast.Type::Auto
       }
+      // C 模式 auto 是纯存储类说明符（C11 起无推导语义）——记入
+      // pending 供声明入口收割（struct/union 成员位置收割即诊断，
+      // pending_static 同款）
+      self.pending_auto = true
       continue
     }
     if self.match_token(Inline) {
@@ -972,11 +976,27 @@ fn Parser::parse_param_list_inner(
     let base_type = self.parse_base_type(depth)
     // #77：参数声明不允许存储类说明符（C11 §6.7.1p5 函数定义参数仅
     // register）——限定符循环吞到的 static 在此收割并诊断（clang 同
-    // 判 storage class specified for parameter）
-    if self.take_pending_static() {
+    // 判 storage class specified for parameter）；auto 同条约束同点
+    //（register 参数合法不诊断）
+    let param_static = self.take_pending_static()
+    let param_auto = self.take_pending_auto()
+    // register 参数合法（同条约束唯一允许项）不诊断——但必须收割，
+    // 否则 pending 残留会被函数体内 struct/union 成员循环的收割点
+    // 误染成「成员存储类」误报
+    ignore(self.take_pending_register())
+    if param_static || param_auto {
+      let kw = if param_static {
+        if param_auto {
+          "static/auto"
+        } else {
+          "static"
+        }
+      } else {
+        "auto"
+      }
       let cur = self.current()
       self.errors.push({
-        message: "参数声明不允许存储类说明符 'static'",
+        message: "参数声明不允许存储类说明符 '\{kw}'",
         line: cur.loc.line,
         column: cur.loc.column,
         code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),

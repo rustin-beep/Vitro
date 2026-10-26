@@ -312,6 +312,10 @@ fn Parser::parse_var_decl_stmt(
   // shadowing 参数合并 is_static；#156 register 同款收割
   let is_static = is_static || self.take_pending_static()
   let is_register = self.take_pending_register()
+  // 局部 auto 合法 C（C89 存储类、C11 起无推导语义；gap 用例
+  // keyword_compat.c 锚「宽容接受」）——收割防残留染后续 struct
+  // 成员，语义忽略
+  ignore(self.take_pending_auto())
   // Detect C++ constructor initialization syntax: `Type name(args);`
   // 仅当声明符是裸标识符（无指针/引用/函数指针后缀）时才当构造调用；
   // `int (*fp)(int);` 类函数指针声明走 parse_var_declarator。

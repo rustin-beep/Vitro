@@ -94,7 +94,7 @@
     },
     {
       "method": "run",
-      "brief": "执行已编译单元（batch_input=输入耗尽即 EOF；返回七字段含 output_truncated——输出预算触顶=true，#91）",
+      "brief": "执行已编译单元（batch_input=输入耗尽即 EOF；返回八字段 ok/status/return_value/trap/trap_code/waiting_input/steps_executed/output_truncated——末者输出预算触顶=true，#91；#320 勘正：旧文「七字段」漏 trap_code）",
       "example": "{\"argv\":[\"main.c\"]}"
     },
     {
@@ -145,7 +145,8 @@
     {
       "method": "texts.install",
       "brief": "语言包装载（payload 顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——批③b 扩诊断卡片段；浏览器宿主懒加载注入通道，#130）",
-      "example": "{\"payload\":\"{\"suggestions\":{},\"builtin_notes\":{},\"error_catalog\":{}}\"}"
+      "example": "{\"payload\":\"{}\"}",
+      "params": "payload:string 必填（语言包 texts_json 同 schema 的 JSON 文本；顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——缺省段不动现表，携带段为整表替换且键集须全等现表；最小合法载荷 {\"payload\":\"{}\"} 即装载无变更回显计数）"
     },
     {
       "method": "typeck.dump",

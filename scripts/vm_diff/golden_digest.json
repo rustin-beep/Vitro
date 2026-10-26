@@ -1688,6 +1688,12 @@
       "stdout_sha": "137c9a52db534fe4",
       "memory_sha": "4f9061d51fc0fa1a"
     },
+    "baseline/member_storage_class_reject.c": {
+      "src_sha": "a962004c",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "baseline/memchr_negative_c.c": {
       "src_sha": "2e2e83d0",
       "exit_code": 0,
@@ -2245,6 +2251,12 @@
       "exit_code": 0,
       "stdout_sha": "e3b0c44298fc1c14",
       "memory_sha": "20a3152f171af734"
+    },
+    "baseline/ptr_to_array_deref.c": {
+      "src_sha": "84396c96",
+      "exit_code": 0,
+      "stdout_sha": "15a416fa78c62600",
+      "memory_sha": "ddb6af8ee932f097"
     },
     "baseline/ptr_to_struct_member.c": {
       "src_sha": "533e3ba0",

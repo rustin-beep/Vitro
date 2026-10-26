@@ -92,8 +92,9 @@ vitro compile <file.c | -> [--json]
 vitro api <method> [params-json]
 ```
 
-- **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把 21+4 方法全部拉平为「一行命令」）；响应帧 stdout 原样直出；
+- **用途（2026-10-04 用户拍板补）**：任何 serve 协议方法一次性调用——脚本统一测试出口（serve 交互式 stdio 需会话驱动胶水，前端测试人肉——api 把全部协议方法拉平为「一行命令」，现值 30——`api help` 清单首行即计数，与 `scripts/gen_api_help/rules.json` 的 `expected_method_count` 单源对账；#320 勘正：旧文「21+4」为 0.9.0 前快照已漂移 5 方法）；响应帧 stdout 原样直出；
 - params 缺省 `{}`；非 JSON 对象字面量 → 用法错 rc=4（fail loud）；
+- **解析失败帧 id=null 契约（#320 补登）**：`--batch`/serve 的 NDJSON 流按行解析，一行非法 JSON（无法解析出对象）→ 响应 `{"id":null,"ok":false,"error":{"kind":"protocol","message":"非法 JSON 请求"}}`——**id 恒 null**（帧解析失败时请求 id 不可知，不从残文提取）；含裸换行的非法行会被切成多行、每行各产一个 id=null 错误帧（逐行解析语义）。**下游按 id 匹配响应的，收到 id=null 帧须按序归位（或直接视为流级错误）——不得等同 id 等待，否则永久阻塞**；
 - **未知方法名预检（DX P2，2026-10-11）**：cli 层先行查生成方法表（单源同 api help——`api_help_gen.mbt`，main.js 退役批 2026-10-16 起三臂同表单产物），未知 → rc=4 用法错（不再落 gateway「未知方法」帧的 rc=1——shell 会把 1 误读为协议内失败/编译错同码位）；已知方法照常 invoke；
 - 退出码：0=帧全成功 / **1=帧含失败——两层判据：`result.ok:false`（协议内失败：编译错/trap/协议错，**外层 `ok:true` 也算**）或外层 `ok:false`（result 缺省的纯协议帧）；api 是透传层不细分语义** / 4=用法错。示例：成功帧 `{"ok":true,"result":{"ok":true,…}}` → rc=0；编译错帧 `{"ok":true,"result":{"ok":false,"diagnostics":[…]}}` → rc=1；协议错帧 `{"ok":false,"error":{…}}` → rc=1（#227，2026-10-22：实现判据自始为「响应文本含 `"ok":false`（含内层 result）」，本句旧措辞「0=帧 ok:true」按字面读与实现矛盾，已对齐；三臂同码由 `vitro_cli_smoke` B 组附 3 锚定）；
 - **`--batch` 批式（状态跨帧保留）**：stdin 喂 NDJSON 请求帧序列 → 同进程顺序 invoke → 响应 NDJSON → EOF 退出——step.begin→next→seek/payload.get/breakpoints.set/input.feed 续跑等**前置依赖序列自此全部可脚本化**（`cat frames.ndjson | vitro api --batch` 即全链）；与 serve 的区别 = 管道终止型（无逐行交互锁）；rc=0 全帧 ok / 1 任一帧 ok:false / 4 用法错；

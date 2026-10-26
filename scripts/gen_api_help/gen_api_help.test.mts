@@ -41,7 +41,7 @@ test("真实仓库：serve_param_err 形状面可提取", () => {
 
 test("J9：方法计数漂移即红", () => {
   const methods = ["a.b", "c.d"];
-  const errs = reconcile(methods, rules([{ method: "a.b", brief: "", example: "" }, { method: "c.d", brief: "", example: "" }], 3), new Map());
+  const errs = reconcile(methods, rules([{ method: "a.b", brief: "", example: "{}" }, { method: "c.d", brief: "", example: "{}" }], 3), new Map());
   assert.equal(errs.length, 1);
   assert.match(errs[0] ?? "", /方法计数漂移/);
 });
@@ -49,7 +49,7 @@ test("J9：方法计数漂移即红", () => {
 test("J9：dispatch 缺简介即红；僵尸简介亦红（双向）", () => {
   const errs = reconcile(
     ["a.b"],
-    rules([{ method: "zombie", brief: "b", example: "e" }], 1),
+    rules([{ method: "zombie", brief: "b", example: "{}" }], 1),
     new Map(),
   );
   assert.ok(errs.some((e) => /缺 rules 简介/.test(e)), errs.join(" / "));
@@ -59,7 +59,7 @@ test("J9：dispatch 缺简介即红；僵尸简介亦红（双向）", () => {
 test("J9：形状提取方法不在 dispatch 即红（真相源脱节）", () => {
   const errs = reconcile(
     ["a.b"],
-    rules([{ method: "a.b", brief: "", example: "" }], 1),
+    rules([{ method: "a.b", brief: "", example: "{}" }], 1),
     new Map([["ghost.method", "x:Int"]]),
   );
   assert.ok(errs.some((e) => /形状提取方法/.test(e)), errs.join(" / "));
@@ -131,4 +131,20 @@ test("真实仓库：-selftest 四路证红全过", () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /selftest 全过/);
   assert.doesNotMatch(r.stdout, /FAIL/);
+});
+
+// #320 闸锚：example 非法 JSON 即红（texts.install 内层引号漏转义曾入库的
+// 形态——照抄必失败的复制粘贴源不得再入库）；params 覆写优先于形状提取。
+test("J9：example 非法 JSON 即红（#320 闸）", () => {
+  const errs = reconcile(
+    ["a.b"],
+    rules([{ method: "a.b", brief: "", example: "{\"payload\":\"{\"x\":1}\"}" }], 1),
+    new Map(),
+  );
+  assert.ok(errs.some((e) => /example 非法 JSON/.test(e)), errs.join(" / "));
+});
+
+test("render：rules.params 覆写优先于形状提取（#320 texts.install 形态）", () => {
+  const out = render(["m.n"], rules([{ method: "m.n", brief: "b", example: "{}", params: "payload:string 必填" }], 1), new Map([["m.n", "x:Int"]]));
+  assert.ok(out.includes("params: payload:string 必填"), out.slice(0, 200));
 });

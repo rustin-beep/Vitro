@@ -1,5 +1,33 @@
 ## [Unreleased]
 
+### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
+
+- **P2-1 cast 包裹地址常量链**（`(int *)&garr[1]` 旧三臂落静默 0 ⇒ 运行
+  期 E3083）：`try_cast_addr_init` 单源（剥外层 Cast——类型包装非地址
+  偏移，可多层）+ 三臂 Cast 分支统一接线；语料补三路径 cast 断言（双臂
+  `20 7 30` 逐位对 clang）。
+- **P2-2 #159 防线补锚**：真实 C 语料 ×2（printf_star_member /
+  printf_star_precision——星号精度/宽度/双星号/负宽度/槽混排 × struct
+  成员组合，与手写 AST wbtest 锚互补）。
+- **语料战果——整数转换精度语义缺失（既有缺口，新锚直接抓红）**：
+  `printf("%.*d", 3, 9)` 给 `9` 而 clang 给 `009`（`%.*f`/`%*d` 正常
+  ⇒ 纯整数分支缺口）——d/i/u/x/X/o 六分支只 apply_width 整个忽略
+  precision。**修**：`pad_int_digits` 单源（C11 7.21.6.1——precision
+  = 最少数字位数、符号不占位〔-42 精度 4 ⇒ -0042〕、精度 0 值 0 ⇒
+  空串特例；# 前缀补零后拼接），moon test 898/898 无回归。
+- **登记**：#332（指向数组的指针 `int (*q)[3]` 消费面双重解引用——
+  #304 相邻面）；#333（文件作用域前向引用被静默接受——clang 报未声明
+  而 Vitro 落 0；pending_addr_chain_inits 经审阅定性合法 C 不可达，
+  保留为防御层）。
+- **P3-2/P3-3**：语料三路径各一行输出 + 头注短路边界（逐臂判别力经
+  审阅突变验证成立）；PR body 时点数字随批刷新。
+- **审阅者 skill 演化 4 件随批入册**（03-A1p 静态求值降级面无锚 /
+  01-§14 多路径锚逐路径验证 / 04-C17 本地 sh 臂红 / 07 演化日志）。
+- **义务链**：五家 digest 冻结（存量重算零漂移、addr_const 条目随源
+  刷新）+ clang_direct 三文件 SAME + fuzz 基线 1308→1329（+21 纯追加
+  零删除，桶全 AGREE/CLANG_REJECT 零错值信号）+ facts `--run --strict`
+  漂移 0。
+
 ### fix(scripts+ci): PR #313 首轮 CI 四红处置——testcount v3 双口径实跑 + fuzz 基线收编 + perf_budget 阈值恢复（2026-10-26）
 
 - **testcount v3**（bookkeeping 红——「裸分解」锚行数=0）：README 计数行

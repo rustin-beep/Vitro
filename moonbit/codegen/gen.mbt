@@ -596,6 +596,16 @@ fn BytecodeGen::pass1_register_global(
                             values[i]
                           }
                         }
+                        // #304 审阅 P2-1（2026-10-26）：cast 包裹的链元素
+                        //（`{(int *)&garr[1], ...}`）——穿透走同一单源
+                        Cast(_, _, _, _) => {
+                          addr_handled = self.try_cast_addr_init(addr, e.value)
+                          if addr_handled || i >= values.length() {
+                            0
+                          } else {
+                            values[i]
+                          }
+                        }
                         _ => if i < values.length() { values[i] } else { 0 }
                       }
                     None => 0
@@ -684,6 +694,12 @@ fn BytecodeGen::pass1_register_global(
               )
             AddrUnsupported => ()
           }
+          ()
+        }
+        // #304 审阅 P2-1（2026-10-26）：cast 包裹形态
+        //（int *m4 = (int *)&garr[1]）——穿透类型包装走同一单源求值
+        Cast(_, _, _, _) => {
+          let _ = self.try_cast_addr_init(offset.reinterpret_as_uint(), init)
           ()
         }
         _ => ()

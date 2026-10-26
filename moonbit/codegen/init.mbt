@@ -230,6 +230,13 @@ fn BytecodeGen::flatten_global_init(
                 // ——维持旧静默 0 行为（诊断面收口前不恶化）
                 ()
             }
+          // #304 审阅 P2-1（2026-10-26）：cast 包裹的地址常量链
+          //（`int *m4 = (int *)&garr[1]`）——旧落 _ 臂静默 0 ⇒ 运行期
+          // E3083；cast 是类型包装非地址偏移，穿透后走同一单源求值
+          Cast(_, _, _, _) => {
+            let _ = self.try_cast_addr_init(base_offset, init)
+            ()
+          }
           StringLiteral(value, _, _) =>
             // 延迟到 Pass 1 结束后分配地址，确保字符串区位于全局变量区之后
             self.pending_string_inits.push((base_offset, value))
@@ -339,6 +346,45 @@ fn BytecodeGen::eval_global_addr_chain(
     k = k - 1
   }
   AddrResolved(@bytecode.GLOBAL_START.reinterpret_as_int() + offset)
+}
+
+///|
+/// #304 审阅 P2-1（2026-10-26）：cast 包裹的地址常量初始化器统一接线点
+/// ——剥外层 Cast（`（int *)&garr[1]`——cast 是类型包装非地址偏移，可
+/// 多层）后命中 Unary(Addr) 则走 eval_global_addr_chain 单源求值：
+/// Resolved 直写 / Deferred 挂 pending / Unsupported 或非 Addr 形态
+/// 返回 false（调用方维持旧路径）。三消费点（flatten 兜底臂 / 顶层
+/// 标量臂 / 数组逐元素臂）共用，消三份分支重复。
+fn BytecodeGen::try_cast_addr_init(
+  self : BytecodeGen,
+  slot : UInt32,
+  init : @ast.Expr,
+) -> Bool {
+  let mut inner = init
+  while true {
+    match inner {
+      Cast(e, _, _, _) => {
+        inner = e
+        continue
+      }
+      _ => break
+    }
+  }
+  match inner {
+    Unary(@ast.UnaryOp::Addr, chain, _, _) =>
+      match self.eval_global_addr_chain(chain) {
+        AddrResolved(addr) => {
+          self.globals_init_32.push((slot, addr))
+          true
+        }
+        AddrDeferred => {
+          self.pending_addr_chain_inits.push((slot, chain))
+          true
+        }
+        AddrUnsupported => false
+      }
+    _ => false
+  }
 }
 
 ///|

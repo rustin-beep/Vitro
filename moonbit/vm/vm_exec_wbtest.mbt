@@ -2027,3 +2027,72 @@ test "exec_float_div_zero_ieee_issue163" {
   assert_true(r3 is Ok, msg="-1.0/0.0 不得 Trap（= -inf）")
   assert_eq(vm3.stack[0], 18442240474082181120UL, msg="应压 -inf 位模式")
 }
+
+///|
+/// #314（2026-10-26）：步数超限 trap 的 stale/changed 分组。病灶 =
+/// step() 里快照刷新先于超限判定，max_steps 为 SNAPSHOT_INTERVAL
+/// (100000) 整数倍时（默认 10^7 = ×100 必中），超限那一步恰先刷快照
+/// ⇒ 比较时快照已等于当前值 ⇒ 恒全 stale「没有变化的变量」（i 每步
+/// 自增也被判没变，与 [cause] 文案自相矛盾）。修复 = 超限判定先于
+/// 刷新（trap 出口不刷——刷了也不会被消费）。
+/// 三锚：① 倍数 max_steps=200000 分组须为 changed（修复前红——J9
+/// 证红现场）；② 非倍数 250000 现状已对，锁防回归；③ 最小倍数
+/// 100000（快照从未建立）无分组段——诚实的「无法判定」而非误判。
+test "exec_inf_loop_snapshot_stale_changed_issue314" {
+  // 全局 i 无限自增循环（每轮 6 步：读 i / 推 1 / 加 / 写 i / 推真 / 跳回 ip0）
+  fn loop_vm(max_steps : Int32) -> VitroVM {
+    let vm = VitroVM::new()
+    vm.set_symbols([
+      @bytecode.Symbol::{
+        name: "i",
+        addr: @bytecode.GLOBAL_START,
+        is_local: false,
+        ty: @ast.Type::Int(false, false),
+        scope_depth: 0,
+        func_name: "main",
+        decl_line: 1,
+      },
+    ])
+    vm.set_max_steps(max_steps)
+    vm.load_program(
+      code_of([
+        instr(LoadGlobal, 0),
+        instr(PushConst, 1),
+        instr(Add, 0),
+        instr(StoreGlobal, 0),
+        instr(PushConst, 1),
+        instr(JumpIfNotZero, 0),
+      ]),
+    )
+    vm
+  }
+  // ① 倍数形态（=2×SNAPSHOT_INTERVAL）：修复前第 200000 步先刷快照
+  // 再比较 → i 判 stale「没有变化的变量」；修复后快照停留在第
+  // 100000 步（间隔恰 100000，与文案口径一致）→ changed
+  let vm = loop_vm(200000)
+  ignore(vm.run())
+  assert_true(
+    vm.error.contains("发生变化的变量"),
+    msg="倍数 max_steps 下每步自增的 i 须判 changed（修复前恒全 stale）",
+  )
+  assert_false(
+    vm.error.contains("没有变化的变量"),
+    msg="倍数 max_steps 下不得把变化中的 i 误判为 stale",
+  )
+  // ② 非倍数形态 250000：现状即对（快照来自第 200000 步）——交换判定
+  // 顺序不得改坏此侧
+  let vm2 = loop_vm(250000)
+  ignore(vm2.run())
+  assert_true(
+    vm2.error.contains("发生变化的变量"),
+    msg="非倍数 max_steps 分组回归锚（现状已对）",
+  )
+  // ③ 最小倍数 100000：快照从未建立 → 两段皆空（无分组段），不得
+  // 出现「没有变化的变量」误判
+  let vm3 = loop_vm(100000)
+  ignore(vm3.run())
+  assert_false(
+    vm3.error.contains("没有变化的变量"),
+    msg="快照未建立时不得伪造 stale 分组",
+  )
+}

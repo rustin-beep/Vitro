@@ -1915,11 +1915,21 @@ pub fn host_sscanf(
 /// input 参数 / input.feed）与 cmd/run（`-i` headless 通道）——此前
 /// serve 层私有实现，runner 层缺口接线时上提为三消费者单源。
 pub fn InputState::from_stdin_text(text : String, batch : Bool) -> InputState {
+  let mut normalized = text
+  // #317（2026-10-26）：流首 UTF-8 BOM（U+FEFF）剥离——Windows 下游
+  // （PowerShell Out-File 等）默认写 BOM，此前 BOM 泄入首行 ⇒ 首读
+  // scanf 匹配失败 ⇒ 程序静默无输出 rc=0（判分主路径全盘错判零线索）。
+  // 与源码通道（lexer pp strip_bom）对齐：BOM 是编码标记非内容；仅流
+  // 首一次，行中 BOM 属内容不动。三消费者（run -i / serve input 参数 /
+  // serve stdin 流）经本单源一次治本。
+  let bom = Int32::unsafe_to_char(0xFEFF).to_string()
+  if normalized.has_prefix(bom) {
+    normalized = normalized[1:].to_owned()
+  }
   // **循环规整**（2026-09-29 stdin 34 例批实锤）：MoonBit String::replace
   // 只替换**首个**匹配（探针：a\rb\rc.replace → a-bc）——单次调用只消
   // 一个 CRLF，kr_1_19 实测第二行起 \r 泄入程序（输出多 \r 分叉）；
   // 循环到不含即全量（stdin 规模小，O(n^2) 最坏可忽略）
-  let mut normalized = text
   while normalized.contains("\r\n") {
     normalized = normalized.replace(old="\r\n", new="\n")
   }

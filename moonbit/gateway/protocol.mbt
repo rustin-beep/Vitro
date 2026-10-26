@@ -137,7 +137,14 @@ fn reset_session_preserving_config(s : @session.Session) -> Unit {
 /// 单行请求处理（纯函数——白盒直测协议层）。
 /// 返回 (响应 JSON 串, 是否继续)。
 fn serve_handle(s : @session.Session, line : String) -> (String, Bool) {
-  let req : Json = @util.json_parse(line) catch {
+  // #318（2026-10-26）：行首 UTF-8 BOM（U+FEFF）剥离——NDJSON 首帧带
+  // BOM（PowerShell 管道等默认加）此前整帧判「非法 JSON」被吞（id:null
+  // 错误帧顶替，下游按 id 匹配永远等不到）+ 级联 not_compiled。恒剥行
+  // 首：主形态=流首 BOM；非首行 BOM 同剥属宽容（与 CRLF/尾部空行宽容
+  // 同族——纯函数无状态，不跟踪流位置）。BOM 是编码标记非帧内容。
+  let bom = Int32::unsafe_to_char(0xFEFF).to_string()
+  let stripped = if line.has_prefix(bom) { line[1:].to_owned() } else { line }
+  let req : Json = @util.json_parse(stripped) catch {
     _ =>
       return (
         serve_err(Json::null(), "protocol", "非法 JSON 请求").stringify(),

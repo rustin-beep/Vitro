@@ -768,6 +768,33 @@ test "from_stdin_text_crlf_fully_normalized" {
   assert_true(InputState::from_stdin_text("", true).lines.is_empty())
 }
 
+///|
+/// #317（2026-10-26）：程序 stdin 通道流首 UTF-8 BOM（U+FEFF）剥离——
+/// Windows 下游（PowerShell Out-File 等默认写 BOM）此前首读 scanf 匹配
+/// 失败 ⇒ 程序静默无输出 rc=0（判分主路径全盘错判且零线索）。与源码
+/// 通道（lexer pp strip_bom）对齐：BOM 是编码标记非内容。三件锚：
+/// 流首 BOM 剥离不泄入首行 / 仅流首（行中 BOM 属内容不动）/ BOM-only
+/// 剥后零行。
+test "from_stdin_text_bom_stripped_issue317" {
+  let bom = Int32::unsafe_to_char(0xFEFF).to_string()
+  // 流首 BOM 剥离：首行内容纯净（修复前 BOM 泄入首行 ⇒ scanf 首读失败）
+  let st = InputState::from_stdin_text(bom + "7\n8\n", true)
+  assert_eq(st.lines.length(), 2)
+  assert_eq(st.lines[0], @utf8.encode("7\n"), msg="BOM 不得泄入首行")
+  assert_eq(st.lines[1], @utf8.encode("8\n"))
+  // 仅流首：非首位 BOM 是内容（UTF-8 文本中间的 U+FEFF 属内容），
+  // 行字节 = 3(BOM) + 1(b) + 1(\n) = 5
+  let st2 = InputState::from_stdin_text("a\n" + bom + "b\n", true)
+  assert_eq(
+    st2.lines[1].length(),
+    5,
+    msg="行中 BOM 保留（3 字节 UTF-8）",
+  )
+  // BOM-only：剥后空串 → 零行
+  let st3 = InputState::from_stdin_text(bom, true)
+  assert_true(st3.lines.is_empty())
+}
+
 // ── Host Contract 补锚段续（2026-10-04）：scanf 实参不足（B43）——
 // oracle host_contract_tests.rs:1394 断言照搬（mb 侧守卫在 ptrs 长度判定，
 // host_io.mbt:565——行为在、锚缺）。

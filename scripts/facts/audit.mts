@@ -57,13 +57,14 @@ export function rules(): Rule[] {
     mk("cpp_e2e_cases", "C++ E2E 用例数", `C\\+\\+\\s*E2E|cases/cpp`,
       `影子|shadow`, 30, 250, "用例"),
     // Exclude 防线插座行（PR #312 审阅处置 2026-10-25）：CLI 使用手册「防线
-    // 插座」行含 replay / serve_smoke 词面但数字只有 issue 号 #49；脚本总清单
-    // gates-wasm 段的「纪律 14」同理（14 非断言数）——发版批真值采到 61/69
-    // 后这些行候选误锚漂移（master 曾被 parser 带宽红遮住未暴露，红遮红形态）。
+    // 插座」行与脚本总清单 gates-wasm 段的数字只有 issue 号（#49）/纪律条号
+    // （14）——已由 numberSpans 的 RE_ISSUE/RE_DISCIPLINE 掩码治本（J9 锚
+    // numberspan.test.mts），此处行级排除仅作语义兜底（该行是插座清单非
+    // 计数句；发版批真值采到 61/69 后曾误锚漂移，master 被带宽红遮住未暴露）。
     mk("replay_assertions", "回放断言数", `回放|replay|S1[-–]S5|S1/S5`,
-      `防线插座|批二起|纪律`, 20, 200, "条"),
+      `防线插座`, 20, 200, "条"),
     mk("serve_smoke_assertions", "serve 冒烟断言数",
-      `serve_smoke|serve 冒烟|协议断言|项断言`, `防线插座|批二起|纪律`, 10, 150, "项"),
+      `serve_smoke|serve 冒烟|协议断言|项断言`, `防线插座`, 10, 150, "项"),
     // "passed" 分支 2026-09-29 收紧为 `\d+\s*passed`：裸 passed 会命中
     // facts 键名 `moonbit_test_passed`（README.mbt.md:47 moon 分解式行
     // 因此被误圈进 cargo Manual/Suspect，--strict 假红）——真实 cargo 行
@@ -131,6 +132,13 @@ const RE_SVG_NUM = /\d+/g;
 
 const RE_HIST_FILE = /裁定|决议|评估报告|工作记录|维护方案|追踪|审计计划|回执|登记|埋雷|事故|整备|审阅报告|执行记录|复审|CHANGELOG|ARCHIVE/i;
 const RE_DATE = /\d{4}-\d{2}-\d{2}|\d{4}\/\d{1,2}\/\d{1,2}|\d{8}/g;
+// 引用编号掩码（PR #312 审阅小尾巴，2026-10-26）：`#\d+` 是全仓 issue/PR
+// 引用形态（「#49 批二起」的 49 被 replay/serve_smoke 当断言数候选——真值
+// 61/69 采到后误锚漂移）；「纪律 N」是 AGENTS 全域纪律条号（纪律 14=三臂
+// 强制）。两者都不是文档陈述的真值，掩在 numberSpans 候选提取层（治本），
+// J9 证红锚 numberspan.test.mts。
+const RE_ISSUE = /#\d+/g;
+const RE_DISCIPLINE = /纪律\s*\d+/g;
 const RE_ASOF_WORD = /as[- ]?of|截至|原记|彼时|当时|历史|已废弃|旧口径|陈旧口径|归档|已过时|已被.*取代|口径已/i;
 const RE_PHASE = /(Phase|Stage|阶段|第)\s*\d+/g;
 const RE_NUM = /\d{2,6}/g;
@@ -345,7 +353,10 @@ function hitContainsTruth(cands: NumSpan[], truth: number): boolean {
 
 // numberSpans 提取候选数字：先抹掉日期与阶段序号，再按 16 进制安全的边界检查过滤。
 export function numberSpans(line: string): NumSpan[] {
-  const masked = blankOut(blankOut(line, RE_PHASE), RE_DATE);
+  const masked = blankOut(
+    blankOut(blankOut(blankOut(line, RE_PHASE), RE_DATE), RE_ISSUE),
+    RE_DISCIPLINE,
+  );
   const out: NumSpan[] = [];
   for (const m of matchAllOf(RE_NUM, masked)) {
     const s = m.index!;

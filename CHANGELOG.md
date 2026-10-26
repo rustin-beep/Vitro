@@ -24,9 +24,13 @@
   `scripts/facts/facts.mts` 采集器（同族迁移税，Go 侧两笔丢弃不跟随）；本批补现役面
   `audit.mts` 的 `moonbit_parser_diff_samples` 带宽 750→860——真值 784（四目录 PASS 行
   实测 545+80+138+21，各扣 1 例 known-fork；.c 文件数非真值）；另修 replay/serve_smoke
-  两键 Exclude 误锚（CLI 手册「防线插座」行的 issue 号 #49、脚本总清单「纪律 14」
-  被当候选——master 曾被带宽红遮住未暴露，红遮红形态）。「待采集 4→0」为本地 `--run`
-  口径（CI 不带 `--run` 恒 unavailable 属既有形态）。
+  假锚**治本面**：numberSpans 候选提取掩码补 `#\d+`（issue/PR 引用）与 `纪律\s*\d+`
+  （AGENTS 纪律条号）两类通用形态（CLI 手册「防线插座」行的 #49、脚本总清单的
+  「纪律 14」曾被当断言数候选——真值 61/69 采到后误锚漂移，master 曾被带宽红遮住
+  未暴露）；J9 证红锚 `facts/numberspan.test.mts`（先红后绿，含普通计数/日期阶段
+  掩码回归锚）+ 双清单登记；replay/serve_smoke 行级 Exclude 收敛为语义兜底
+  （`防线插座`）。「待采集 4→0」为本地 `--run` 口径（CI 不带 `--run` 恒
+  unavailable 属既有形态）。
 - **vm digest LF 归一重冻（审阅 P2-1 处置）**：CRLF 工作区冻结曾改写存量 src_sha 620 条
   （`srcSHAOf` 哈希磁盘原始字节，含 .in 伴随文件拼接——审阅后二次修正：.in 也须重检出
   LF，半归一仍留 34 条半态）；全量重检出 LF 后四 suite 重冻，对 master 逐键对账

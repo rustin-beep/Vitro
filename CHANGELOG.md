@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### fix(scripts+ci): PR #313 首轮 CI 四红处置——testcount v3 双口径实跑 + fuzz 基线收编 + perf_budget 阈值恢复（2026-10-26）
+
+- **testcount v3**（bookkeeping 红——「裸分解」锚行数=0）：README 计数行
+  #308 拆解后旧锚退场，闸判据适配——**双口径实跑对账**（裸 `moon test` +
+  `MOON_CC=clang moon test --target native` 各自对账两 README 声明行，
+  v2「不信 facts 制品」精神延伸到 native 面）+ 分解式算术检查条件化
+  （锚在则查/缺席跳过/多锚红）+ native 全量声明行强约束保留（两形态
+  共有）；锚 ×7 双形态覆盖。**首战实战**：#159 批 +1 测试锚连带双口径
+  漂移（897→898 / 1053→1054）被新闸精准逼真值——v2 只查裸口径会漏
+  native 面；全仓测试数引用连坐 6 处。
+- **fuzz 基线 re-freeze**（Adversarial corpus fuzz 红——新指纹未收编）：
+  新语料入池致抽样重排，+3 条目纯追加零删除（enum_non_continuous 三
+  算子，桶全 AGREE/CLANG_REJECT 一致类，无 WRONG_VALUE 信号）。
+- **perf_budget 阈值恢复 8/200**（contract/TS gate 红——0/0 实验态）：
+  压零实验在首轮 CI 实证闸真会红（struct 5>0 与 member 161>0 均抓出，
+  非假绿）——实验结论入 `_why` 留档，恢复设计阈值。
+- 本地插曲定性：fuzz check 首跑曾报 ARM_DIVERGENCE×2（AGREE→DIVERGENCE
+  再 AGREE 三态摆动）——跨会话产物基线瞬态混乱（陷阱 #41 形态，#159
+  typeck 修复的构建窗口），复跑 epoch 更换后全量真跑 PASS；CI 干净检出
+  +单源产物免疫。
+
 ### fix(typeck): #159 printf 星号参数槽零 resolve 回写——struct 成员作星号精度静默错值（回文 len=1 病根）+ 待深挖族重测定态批（2026-10-26）
 
 - **修复本体**：`check_printf_format` 类型臂只对「值参数槽」调

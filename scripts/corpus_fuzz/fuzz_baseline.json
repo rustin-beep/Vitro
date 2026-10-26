@@ -924,6 +924,15 @@
     "baseline/enum_const_array_dim.c|char_escape": {
       "bucket": "AGREE"
     },
+    "baseline/enum_non_continuous.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/enum_non_continuous.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/enum_non_continuous.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/enum_trailing_init.c|char_escape": {
       "bucket": "AGREE"
     },

@@ -232,11 +232,22 @@ pub fn TypeChecker::check_printf_format(
   }
   // 类型臂：值参数对位 = spec 序 + 此前星号消耗累计 + 当前 spec 星号数
   //（星号参数在值参数前——语义序 ("%*d", w, 42) 的值是组内最后一个；
-  // 星号参数本身为 int 宽度/精度，粗放行不查类型）
+  // 星号参数本身为 int 宽度/精度，不查类型但**必须 resolve 回写**——
+  // #159（2026-10-26）：旧连 resolve 也跳过，星号槽实参子树 ty 停在
+  // parse 默认 Void（codegen get_member_offset(Void) 落 `_ => 0` 字段
+  // 偏移静默丢——`printf("%.*s", p.bbb, s)` 的 p.bbb 读成 p.aaa）；
+  // 同族先例 = sscanf 尾参零回写（#161）
   let mut star_off = 0
   for j in 0..<specs.length() {
     let (spec, len_mod, ws, ps) = specs[j]
     let stars_here = (if ws { 1 } else { 0 }) + (if ps { 1 } else { 0 })
+    for k in 0..<stars_here {
+      let si = start + j + star_off + k
+      if si < args.length() {
+        let (_, new_arg) = self.resolve_expr_type(args[si])
+        args[si] = new_arg
+      }
+    }
     let idx = start + j + star_off + stars_here
     star_off += stars_here
     if idx >= args.length() {

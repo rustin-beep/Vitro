@@ -914,7 +914,7 @@
         "printf_flags.c": "c99676235833f016",
         "printf_percent_fold.c": "87fc37f6ff4eacf3",
         "printf_retval.c": "5f01635cea021a75",
-        "printf_star_family.c": "dba1a9f2c3507757",
+        "printf_star_family.c": "2b3b8e905bfaa387",
         "ptr_arith_char.c": "a3fe0a5a4dbd155a",
         "ptr_arith_struct.c": "874e41913ba7bc12",
         "ptr_assign_deref.c": "1864500bddfb1a24",

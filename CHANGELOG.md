@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### fix(typeck): #159 printf 星号参数槽零 resolve 回写——struct 成员作星号精度静默错值（回文 len=1 病根）+ 待深挖族重测定态批（2026-10-26）
+
+- **修复本体**：`check_printf_format` 类型臂只对「值参数槽」调
+  `resolve_expr_type` 回写，星号参数槽（宽度/精度位）连 resolve 也跳过
+  ——实参子树 ty 停在 parse 默认 Void，codegen `get_member_offset(Void)`
+  落 `_ => 0` 兜底，字段偏移段（`PushConst off; Add`）静默不发：
+  `printf("%.*s", p.bbb, s)` 的 `p.bbb` 读成首字段 `p.aaa`。星号槽补
+  resolve 回写（「不查类型」语义保持）；同族先例 #161 sscanf 尾参
+  （同款缺口 printf 族漏网点）。
+- **红锚**：`printf_star_member_typed`（抄 #161 锚骨架）——修复前红、
+  修复后绿；`moon test` 898/898、`moon check` 干净。
+- **验证**：探针矩阵双臂（js+native）逐位一致（`%d` 位/局部/下标/Arrow/
+  字面量全对，唯一错形态 =「. 点访问 struct 成员」在星号槽）；防线闸
+  全绿（codegen PASS 546 / vm SAME=547 / clang_direct DIFF=0）；typeck
+  golden 重冻 1 例（`printf_star_family.c`——星号槽字面量实参回写后
+  类型化 AST 标注良性漂移，行为零差）。
+- **重测定态批**（待深挖族 6 案，master 8b0e3a17 双臂重跑）：死案销案
+  ×3（#158 snprintf 堆地址 / #146 首行丢失 / #160 VM 轨迹错位——历史批
+  顺带，双臂 MATCH）；活案回填 ×2（#147 trap 位后移 3 行、病根收窄到
+  pts 数组指针访问；#152 行 31 同位 1 ULP 未变）。
+- **另案登记**：#326 `%.*d` 整数星号精度未应用（formatter 层）、
+  #327 api source 通道字符串 `\n` 转义词法错（排查批实锤）。
+
 ### fix(scripts+docs): #308 测试计数 facts 化——native 口径键机判 + README 巨型批注链拆解 + 落盘丢键假绿治本（2026-10-26）
 
 - **真值键扩容**：新增 `moonbit_test_passed_native`（`MOON_CC=clang moon

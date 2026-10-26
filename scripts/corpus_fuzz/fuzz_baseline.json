@@ -9,6 +9,15 @@
     "baseline/abstract_array_param.c|char_escape": {
       "bucket": "AGREE"
     },
+    "baseline/anon_member_promotion.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/anon_member_promotion.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/anon_member_promotion.c|nested2flat": {
+      "bucket": "AGREE"
+    },
     "baseline/array_address.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -969,6 +978,30 @@
     "baseline/enum_trailing_init.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/equal_var.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/equal_var.c|brace_wrap": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/equal_var.c|nested2flat": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/euler_19_sol1.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/euler_19_sol1.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/euler_19_sol1.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/extern_func.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -986,6 +1019,19 @@
     },
     "baseline/fgets_fputs_basic.c|init_partial": {
       "bucket": "AGREE"
+    },
+    "baseline/fibonacci.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/fibonacci.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/fibonacci.c|nested2flat": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
     },
     "baseline/fibonacci_search.c|cast_strip": {
       "bucket": "AGREE"
@@ -1407,6 +1453,15 @@
     "baseline/jit_single_hot_loop.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/jit_trace_overflow_abort.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/jit_trace_overflow_abort.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/jit_trace_overflow_abort.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
     "baseline/josephus_ring.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -1424,6 +1479,16 @@
     },
     "baseline/jump_search.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/kruskal.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/kruskal.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/kruskal.c|static_inject": {
+      "bucket": "AGREE",
+      "note": "#334 修复转绿（2026-10-26）：static_inject 注入 struct 成员——修前 vitro 静默误收（桶 CLANG_REJECT）；勘误：初判「运行期 CRASH」系 probe 用法错误产物（指纹串当文件名，三方因文件不存在而 CRASH），实际形态静默误收正常出值"
     },
     "baseline/libc_difftime.c|brace_strip": {
       "bucket": "AGREE"
@@ -2220,17 +2285,17 @@
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|cast_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|div2shift": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/puts_basic.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2627,6 +2692,21 @@
     },
     "baseline/static_local_array.c|nested2flat": {
       "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_local_counter.c|brace_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/static_local_counter.c|cast_strip": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
+    },
+    "baseline/static_local_counter.c|char_escape": {
+      "bucket": "CLANG_REJECT",
+      "issue": "known-arch-diff",
+      "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
     },
     "baseline/static_local_init_once.c|init_partial": {
       "bucket": "AGREE"
@@ -3877,8 +3957,8 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_21.c|static_inject": {
-      "bucket": "CLANG_REJECT",
-      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+      "bucket": "AGREE",
+      "note": "#334 修复转绿（2026-10-26）：注入点实为 struct 成员（旧 note「static 局部」系误描），修前误收桶 CLANG_REJECT → 双拒 AGREE"
     },
     "leetcode/lc_231.c|brace_wrap": {
       "bucket": "AGREE"
@@ -3943,8 +4023,8 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_404.c|static_inject": {
-      "bucket": "CLANG_REJECT",
-      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+      "bucket": "AGREE",
+      "note": "#334 修复转绿（2026-10-26）：注入点实为 struct 成员（旧 note「static 局部」系误描），修前误收桶 CLANG_REJECT → 双拒 AGREE"
     },
     "leetcode/lc_448.c|brace_wrap": {
       "bucket": "AGREE"
@@ -4018,8 +4098,8 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_83.c|static_inject": {
-      "bucket": "CLANG_REJECT",
-      "note": "static 局部 + 运行时初始化：clang 拒（非常量）/vitro 收——误收面候选，待定性"
+      "bucket": "AGREE",
+      "note": "#334 修复转绿（2026-10-26）：注入点实为 struct 成员（旧 note「static 局部」系误描），修前误收桶 CLANG_REJECT → 双拒 AGREE"
     },
     "leetcode/lc_84.c|cmp_swap": {
       "bucket": "AGREE"

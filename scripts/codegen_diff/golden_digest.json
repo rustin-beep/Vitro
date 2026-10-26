@@ -284,6 +284,7 @@
         "max_heap.c": "cf7147ae",
         "mcnaughton_yamada_thompson.c": "c8edc62a",
         "member_access_both_ops.c": "4370f0f6",
+        "member_storage_class_reject.c": "a962004c",
         "memchr_negative_c.c": "2e2e83d0",
         "memcpy_manual.c": "7b594bdc",
         "memset_basic.c": "354dda06",
@@ -377,6 +378,7 @@
         "ptr_diff.c": "4b21e61f",
         "ptr_init_null.c": "e780d44f",
         "ptr_member_widths.c": "baf2b97f",
+        "ptr_to_array_deref.c": "84396c96",
         "ptr_to_struct_member.c": "533e3ba0",
         "putchar_function.c": "57312241",
         "putchar_range.c": "d399594b",
@@ -1410,6 +1412,10 @@
         "member_access_both_ops.c": {
           "result_sha": "5b239495a31c1ec2"
         },
+        "member_storage_class_reject.c": {
+          "fail": true,
+          "fail_stage": "parse"
+        },
         "memchr_negative_c.c": {
           "result_sha": "3aaa722dff834b11"
         },
@@ -1691,6 +1697,9 @@
         },
         "ptr_member_widths.c": {
           "result_sha": "e1803e1ab1ab260b"
+        },
+        "ptr_to_array_deref.c": {
+          "result_sha": "417a38199fdfeb77"
         },
         "ptr_to_struct_member.c": {
           "result_sha": "a68bae3660f2c2e1"

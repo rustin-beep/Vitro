@@ -233,6 +233,69 @@
   遗漏件——与 run/vitro 逐字节同但不在机判面，漂移无人管；登记后 copies
   判定三份覆盖）；serve_smoke 双模式全过（69 断言 0 FAIL）；native 全量
   1056/1056；ts 三件套（tsc/oxlint/node:test 8/8）。
+### fix(scripts+cli): #320 api help 契约三面——texts.install 双错根治 + 解析失败帧契约补登 + example 合法性闸（2026-10-27）
+
+- **① texts.install help 双错根治**：rules.json 真源三改——params 声明从「无必填（缺省 {}）」（实现实为必填
+  payload:string——该校验是手写错误帧非 serve_param_err 调用点，形状提取覆盖不到）勘正为全档语义声明
+  （缺省段不动现表/携带段整表替换键集全等现表/最小合法载荷即装载无变更回显计数）；example 从非法 JSON
+  （内层引号漏转义、照抄必失败）改为 `{"payload":"{}"}`——**照抄终验 ok:true 回显 43/12/45/114**；生成器
+  渲染层新增 rules.params 覆写通道（形状提取之外的显式声明位）。
+- **② 解析失败帧 id=null 契约补登**：CLI_PROTOCOL_V1 §4.5 实测形态成文（id 恒 null——解析失败时请求 id
+  不可知；裸换行非法行逐行切分各产一帧；下游按 id 匹配须按序归位不得等同等待）；实测帧逐位对齐声明。
+- **③ 数字同步**：run 帮助「七字段」勘正八字段（补 trap_code）；spec §4.5「21+4 方法」勘正「30——api help
+  清单首行即计数，与 rules.json expected_method_count 单源对账」。
+- **新闸（issue 处方）**：gen_api_help 双向对账内嵌 **example 合法性 JSON.parse 断言**（非法即红，J9 注入
+  截断 example 实证 rc=2 fail loud / 恢复即绿）+ 测试锚 ×2（非法 example 红 + params 覆写优先）；生成器
+  产物头部与报错文案三处 `go run` 陈旧命令翻新为 `node scripts/gen_api_help/main.mts`（Go 版已删 2026-10-24）。
+- **验证**：gen_api_help -check 绿 + 测试 12/12；三臂 api help 同形（smoke 全绿——wasm 臂陈旧产物被 smoke
+  抓到后重刷）；moon test 898/898；facts strict 漂移 0。
+
+### docs+fix(cli): 0.9.0 发布批尾巴七 issue 销案——#226 api help 残留修 + #218 CLI 获取配方成文（2026-10-27）
+
+- **销案七关（验证全档见各 issue 评论）**：#216（手册 capabilities/ping 勘正+卡片 114+性能负载——PR #307 兑现面亲验）/ #217（线上 0.9.0 zip 三面亲验：README 现行态+docs/spec 入包链接可解析+description 已改）/ #232（README 端到端口径 26.6ms/0.28ms 披露）/ #257（error.kind 补 texts+internal 改保留值）/ #229（DIFF-VFS-MEMFS-01 三方影响登记）——以上五案 PR #307/发布批已兑现，本轮验证销案；#226/#218 本轮补齐后销案（见下）。
+- **#226 残留修**：`cmd/lib/cli/api_help_gen.mbt` 双处（清单+单方法详情）「M15 无实现面 fail loud」失实文案勘正（可用：诊断数组 + auto_fixes/fixed_source）+ params 声明补全（source 必填、line/column 可选——旧文漏两参，即 #320 诉求之一顺手清偿）；js/native 双臂 api help 同形实测 + vitro_cli_smoke 三臂闸绿。
+- **#218 成文**：《快速入门》「下游接入」节尾新增「包消费者如何拿到 CLI」小节（moon 不允许从依赖构建的两坑实录 + clone/拷源自建两条实测路径 + 库接入免 CLI 边界注）；《CLI 使用手册》统一入口节首补包消费者注（仓内路径边界互链）。
+- **moon test 898/898 零回归**；facts strict 漂移 0/坏引用 0。
+
+### fix(codegen): #330 指向数组的指针解引用地址直通——(*q)[0] 双重解引用 TRAP 根治（2026-10-26）
+
+- **病灶**：`int (*q)[3] = &g2d[1]; (*q)[0]` 双臂 TRAP 0x4——Deref 求值对 pointee 为数组的指针
+  落 `LoadMem` 兜底，把首元素值读出来当地址（双重解引用）；typeck 类型推导本就正确
+  （`Pointer(Array)` → `Array`），缺口单点在 `codegen/unary.mbt` Deref 臂——pointee 数组左值
+  C 语义随即 decay 为首地址，无值可 load（函数指针 `TK_Function` 直通先例同款补 `TK_Array`）。
+  #304 修复的 `&g2d[1]` 地址求值自此可用（此前「求值正确了、用户用不了」）。
+- **红→绿**：wbtest `#330` 锚（函数体恰一次 LoadMem——缺陷版 Deref+下标共两次，stash 回退
+  实证红）+ corpus 红锚 `corpus/baseline/ptr_to_array_deref.c`（修前 TRAP 0x12 实证 / 修后
+  js+native 双臂逐位 = clang：`(*q)[i]` 读、`(*q)[1]=40` 写入左值（g2d[0][1] 不受写穿的守成
+  证据）、`**q`、`(*&*q)[2]`、`*(r+1)` 跨行步进、`q[i][j]` 行指针直接下标守成面）。
+- **义务链**：五家 digest 冻结纯增量（17+/0-，零存量漂移）；clang_direct 全量实测
+  SAME=907/DIFF=0（共 924）；corpus_fuzz 基线 re-freeze 1305→1308（池变换血零删除；
+  kruskal 三算子新指纹轮到：cmp_swap/char_escape AGREE 良性 + static_inject CLANG_REJECT
+  定性收编——变体给 struct 成员注入 `static` 存储类（C11 6.7.2.1p1 禁），clang 正确拒、
+  vitro 误收后 CRASH，**独立误收缺口非本修复连坐**，note 标注待立案）。
+- **连坐**：路线图现值句（直拍 924〔SAME=907/DIFF=0 实测〕、e2e 787〔baseline 547〕、
+  moon test 897→898〔wbtest +1〕）+ 快速入门 897→898 两处。
+
+### fix(parser): #334 struct/union 成员声明存储类说明符三形态拒收——静默误收根治 + fuzz 定性勘误（2026-10-26）
+
+- **病灶**：`struct S { static int x; }` clang 按 C11 §6.7.2.1p1 拒（type name does not
+  allow storage class to be specified），Vitro 零诊断静默误收（static/register/auto 三者同病
+  ——parse_base_type 限定符循环吞入 pending 后成员循环无收割点，存储类无声丢弃成员正常
+  收录）；extern/typedef 成员双侧已拒不涉。局部 `auto int y = 10;` 是 gap 登记宽容面
+  （keyword_compat.c），修复保持接受。
+- **修复**：成员循环收割即诊断（参数列表 #77 先例同点，E1006）；残留网封堵——参数列表
+  收割 register（防函数体内 struct 成员误染）+ auto 新增 pending 网与 static 同构（局部/
+  顶层/函数声明入口收割忽略）；参数 auto 同条约束（6.7.1p5）顺带诊断。
+- **定性勘误（诚实记录）**：#330 批 fuzz 收编 note 初写「误收后运行期 CRASH」系误判——
+  probe 时指纹串被当文件名（用法错误），三方 CRASH 全因文件不存在，垃圾输出被当证据；
+  实际形态静默误收正常出值（kruskal 变体修前 finished rc=0）。issue #334 正文留勘误全档。
+- **红→绿**：corpus `member_storage_class_reject.c`（static/register/auto 三形态 + union +
+  局部 auto 对照组；修前 stash 实证零诊断正常跑 vs clang 拒、修后双臂 3×E1006）。
+- **义务链**：五家 digest 纯增量（vm 侧 compile_fail 形态入账）；clang_direct 全量实测
+  SAME=908/DIFF=0（共 925）；corpus_fuzz 基线重冻（kruskal|static_inject 桶 CLANG_REJECT →
+  AGREE——双拒一致化）；moon test 898/898 零回归；存量语料成员存储类形态零命中（node 全
+  目录扫描实证——新诊断零存量冲击）。
+- **连坐**：路线图现值句（直拍 925〔SAME=908〕、e2e 788〔baseline 548〕）。
 
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 docs/current/08-发布档案/0.9.0.md）
 

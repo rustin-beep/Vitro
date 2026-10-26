@@ -119,6 +119,15 @@
     "baseline/array_param_decay.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/assign_chain.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/assign_chain.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/assign_chain.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/atof_prefix.c|brace_wrap": {
       "bucket": "AGREE"
     },
@@ -261,6 +270,15 @@
       "bucket": "AGREE"
     },
     "baseline/case_const_expr.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "baseline/case_enum_constant.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/case_enum_constant.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/case_enum_constant.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/case_not_constant.c|brace_strip": {
@@ -993,6 +1011,15 @@
       "issue": "known-arch-diff",
       "note": "变体截 #include → clang（gnu17）拒隐式函数声明、vitro 预置宽容收——#255 严格性差异域已知形态（#334 批 2026-10-26 抽样轮换新轮到，probe 实证同根因）"
     },
+    "baseline/euler_15_sol1.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/euler_15_sol1.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/euler_15_sol1.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/euler_19_sol1.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -1327,6 +1354,15 @@
     "baseline/hash_table_linear.c|init_partial": {
       "bucket": "AGREE"
     },
+    "baseline/heap_sort.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/heap_sort.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/heap_sort.c|nested2flat": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/hex_literal.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -1515,6 +1551,15 @@
       "bucket": "AGREE"
     },
     "baseline/libc_vprintf.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_vsnprintf.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_vsnprintf.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/libc_vsnprintf.c|paren_wrap": {
       "bucket": "AGREE"
     },
     "baseline/linear_search.c|brace_strip": {
@@ -2285,17 +2330,17 @@
     "baseline/putchar_range.c|brace_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|cast_strip": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/putchar_range.c|div2shift": {
       "bucket": "AGREE",
       "issue": "known-arch-diff",
-      "note": "putchar 高位字节(>=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
+      "note": "putchar 高位字节(\u003e=0x80) vitro 走 UTF-8 重编码、clang 单字节直出——#166 已拍板差异面（String 载体同形两面二选一）；与 fprintf_persist %c 同族"
     },
     "baseline/puts_basic.c|brace_wrap": {
       "bucket": "AGREE"
@@ -2591,6 +2636,15 @@
     "baseline/sizeof_struct_union.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/sizeof_typedef.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_typedef.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/sizeof_typedef.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/snprintf_basic.c|div2shift": {
       "bucket": "AGREE"
     },
@@ -2743,6 +2797,15 @@
     },
     "baseline/static_shadows_global.c|nested2flat": {
       "bucket": "AGREE"
+    },
+    "baseline/static_str_member.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_str_member.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/static_str_member.c|init_partial": {
+      "bucket": "CLANG_REJECT"
     },
     "baseline/static_string_pointer.c|brace_wrap": {
       "bucket": "AGREE"
@@ -3139,6 +3202,15 @@
       "bucket": "AGREE"
     },
     "baseline/union_member_struct_assign.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/union_size_access.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/union_size_access.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/union_size_access.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/unsigned_add_wrap.c|brace_strip": {

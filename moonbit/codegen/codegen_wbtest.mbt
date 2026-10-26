@@ -1446,3 +1446,74 @@ test "wb gen_addr global fallback intact (#283 review P1)" {
     msg="无 static 时取 global 槽（60）",
   )
 }
+
+///|
+/// #330 回归锚（2026-10-26）：指向数组的指针解引用寻址——`(*q)[0]`
+///（q : int(*)[3] 形参）。Deref 的 pointee 是数组时须**地址直通零指令**
+///（数组左值随即 decay 为首地址）；缺陷版落 LoadMem 兜底把首元素值读出
+/// 来当地址（双重解引用 TRAP 0x4）。断言口径：整函数体恰一次 LoadMem
+///（下标取值那次）——缺陷版 Deref + 下标各一次共两次。
+test "skeleton: ptr-to-array deref passes address through (#330)" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let row_ty = @ast.Type::array_of(@ast.Type::int(), [3])
+  let q_deref = @ast.Expr::Unary(
+    @ast.UnaryOp::Deref,
+    @ast.Expr::Identifier("q", loc, @ast.Type::pointer_to(row_ty)),
+    loc,
+    row_ty,
+  )
+  let stmt : @ast.Stmt = @ast.Stmt::Expr(
+    @ast.Expr::Index(
+      q_deref,
+      @ast.Expr::Literal(0, loc, @ast.Type::int()),
+      loc,
+      @ast.Type::int(),
+    ),
+    loc,
+  )
+  let f : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::void_type(),
+    name: "f",
+    params: [
+      { ty: @ast.Type::pointer_to(row_ty), name: "q", loc, default: None, },
+    ],
+    body: Some(@ast.Stmt::Block([stmt, @ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(@ast.Stmt::Block([@ast.Stmt::Return(None, loc)], loc)),
+    source_file: "t.c",
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate({
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [f, main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let f_meta = o.func_table.get("f").unwrap()
+  let body_len = 32 // 防御上界——计数遍历窗口（#193 同款形态）
+  let mut load_mem_count = 0
+  for i in f_meta.ip..<(f_meta.ip + body_len) {
+    if i < o.code.length() && o.code[i].op is @opcode.OpCode::LoadMem {
+      load_mem_count = load_mem_count + 1
+    }
+  }
+  assert_eq(
+    load_mem_count,
+    1,
+    msg="(*q)[0] 恰一次 LoadMem（下标取值）；两次即缺陷版复发（Deref 多读一层）",
+  )
+}

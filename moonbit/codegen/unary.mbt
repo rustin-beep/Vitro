@@ -186,8 +186,13 @@ fn BytecodeGen::gen_unary(
         _ => false
       }
       match base_kind {
-        Some(TK_Function) => ()
         // 函数指针解引用：*fp 即函数本身，随即退化回同一指针——无 load
+        Some(TK_Function) => ()
+        // #330（2026-10-26）：指向数组的指针解引用 *q（q : T(*)[N]）——
+        // pointee 是数组左值，C 语义下随即 decay 为首地址（&*q ≡ q、
+        // (*q)[i] 以 q 值寻址），无值可 load；旧落 _ 兜底 LoadMem 把首
+        // 元素值读出来当地址——(*q)[0] 双重解引用 TRAP 0x4
+        Some(TK_Array) => ()
         Some(TK_Char) =>
           if pointee_unsigned {
             self.emit(@opcode.OpCode::LoadMemUByte, 0, loc)

@@ -5,6 +5,8 @@
 
 ## 统一入口（推荐——agent / 脚本默认形态）
 
+> **包消费者注（#218）**：本节路径（`scripts/bin/vitro`、`moonbit/…`）均为**仓内路径**，mooncakes 发布包不含——包内虽附带 `cmd/*` 源码但 moon 不允许从依赖构建（`.mooncakes` 路径 rc=0 零产物的静默陷阱）。拿到 CLI 的两条实测路径见[《快速入门》「包消费者如何拿到 CLI」](快速入门.md)。
+
 ```bash
 # sh 形态（Git Bash / Linux / macOS；Windows cmd 用 scripts\bin\vitro.cmd）
 scripts/bin/vitro run corpus/baseline/array_sum_loop.c     # 缺省 js 臂

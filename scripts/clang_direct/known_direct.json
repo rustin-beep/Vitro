@@ -95,5 +95,14 @@
     "case": "MF-SERIAL",
     "digest": "26aed0b3",
     "reason": "llm_multifile 工程模式直拍首跑 + 最小化改判（2026-10-22）：serial_pack 的 total=HEADER_SIZE(6)+length+3 但写入面仅到 frame[6+length]（HEADER 实际 4 字节布局）——memcpy 拷出 frame[8..9] 未初始化字节，clang 0x24 vs vitro 0x00；CRC16 本体两侧一致（0xb41a），UB 读未初始化结局漂移，语料缺陷非引擎缺陷"
+  },
+  {
+    "case": "ub_missing_return.c",
+    "digest": "a5e36455",
+    "reason": "TheAlgorithms 407 份对拍批（2026-10-25）UB 族锚：非 void 函数缺 return（C99 6.9.1p12 返回值未定义）——search() 递归调用丢弃返回值（doubly_linked_list.c 语料原文同款，search(20) 应 1 而 clang 残留 1 / Vitro 恒 0）。本锚最小复现实测 clang 侧残留值随构建环境漂（本地两轮 32758/32759；CI 首跑 digest 618cd2c8 入集——PR #312 run 40196625713 wasm/native 双臂同值），Vitro 双臂恒 0；双侧皆合法值，登记「真值不可锚」防未来对拍把缺 return 族分歧误报为引擎缺陷——同 bTree_default/MF-QUEUE 的 UB 结局漂移史（diff_ledger DIFF-UB-MISSING-RETURN-01 台账收编）",
+    "digests": [
+      "a5e36455",
+      "618cd2c8"
+    ]
   }
 ]

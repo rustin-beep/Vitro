@@ -20,6 +20,12 @@
       "stdout_sha": "67ed6b6494e564bc",
       "memory_sha": "f747d5bc400bc3b0"
     },
+    "baseline/armstrong_number.c": {
+      "src_sha": "588fd641",
+      "exit_code": 0,
+      "stdout_sha": "30130bd8f3dceb49",
+      "memory_sha": "d4ebfddd86e138e0"
+    },
     "baseline/array_address.c": {
       "src_sha": "0ba37ef8",
       "exit_code": 0,
@@ -134,6 +140,18 @@
       "stdout_sha": "2fed29bb974c3cfe",
       "memory_sha": "2ccad357a5d122ac"
     },
+    "baseline/binary_search.c": {
+      "src_sha": "4db72dd9",
+      "exit_code": 0,
+      "stdout_sha": "1ca4b64d4c209fce",
+      "memory_sha": "ae31056ca15e72e3"
+    },
+    "baseline/bisection_method.c": {
+      "src_sha": "3b5a017e",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "20083f9b22abdacc"
+    },
     "baseline/bit_not_zero.c": {
       "src_sha": "01df9ebd",
       "exit_code": 0,
@@ -194,6 +212,12 @@
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "6629896e6bcfd60d"
     },
+    "baseline/boyer_moore_search.c": {
+      "src_sha": "4f47404b",
+      "exit_code": 0,
+      "stdout_sha": "24337a0990df106e",
+      "memory_sha": "fff8092709e7e54c"
+    },
     "baseline/break_continue.c": {
       "src_sha": "cc946821",
       "exit_code": 0,
@@ -223,6 +247,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "67c870fb1c00bdce"
+    },
+    "baseline/bucket_sort.c": {
+      "src_sha": "ff7f542d",
+      "exit_code": 0,
+      "stdout_sha": "96317c05df99ba59",
+      "memory_sha": "18575d9451faa57f"
     },
     "baseline/c11_generic.c": {
       "src_sha": "c22101e8",
@@ -277,6 +307,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "e2791d02a6aeb1d2"
+    },
+    "baseline/celsius_to_fahrenheit.c": {
+      "src_sha": "f496435a",
+      "exit_code": 0,
+      "stdout_sha": "944b941dcad1a952",
+      "memory_sha": "b8c87c6bb045fef9"
     },
     "baseline/char2d_string_edge.c": {
       "src_sha": "506f92a3",
@@ -541,6 +577,12 @@
       "exit_code": 0,
       "stdout_sha": "87386e33b75deab6",
       "memory_sha": "9f3e73ad2a4b11db"
+    },
+    "baseline/create_node.c": {
+      "src_sha": "970f7f2e",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "6741f207505527ba"
     },
     "baseline/decrement_var.c": {
       "src_sha": "629e3563",
@@ -944,6 +986,30 @@
       "stdout_sha": "894891f8b78a9945",
       "memory_sha": "97c272567cdfcbf1"
     },
+    "baseline/euler_15_sol1.c": {
+      "src_sha": "08e493e8",
+      "exit_code": 0,
+      "stdout_sha": "2919a3ba0b2c8bc0",
+      "memory_sha": "36d3938febe5da52"
+    },
+    "baseline/euler_19_sol1.c": {
+      "src_sha": "8e799bb9",
+      "exit_code": 0,
+      "stdout_sha": "221cd4e78400f8d4",
+      "memory_sha": "b02570ea69a0b8e2"
+    },
+    "baseline/euler_21_sol1.c": {
+      "src_sha": "b0be278f",
+      "exit_code": 0,
+      "stdout_sha": "a2a287a899a394f8",
+      "memory_sha": "fa3c9e1d8714fb16"
+    },
+    "baseline/euler_5_sol3.c": {
+      "src_sha": "422086e3",
+      "exit_code": 0,
+      "stdout_sha": "1ba90ab11bfb2d24",
+      "memory_sha": "8945c76ad3b64118"
+    },
     "baseline/exit_function.c": {
       "src_sha": "5ae58a28",
       "exit_code": 0,
@@ -985,6 +1051,18 @@
       "exit_code": 0,
       "stdout_sha": "02d20bbd7e394ad5",
       "memory_sha": "68142c1b30ddd9a1"
+    },
+    "baseline/fibonacci_formula.c": {
+      "src_sha": "fb8c9172",
+      "exit_code": 0,
+      "stdout_sha": "c854ba641f3a582e",
+      "memory_sha": "9cf6fa2c78919285"
+    },
+    "baseline/fibonacci_search.c": {
+      "src_sha": "61c2ab25",
+      "exit_code": 0,
+      "stdout_sha": "42c39d8d3ff54cbb",
+      "memory_sha": "3b2a39a55c0cd6d6"
     },
     "baseline/file_fopen_modes.c": {
       "src_sha": "83ee39fc",
@@ -1214,6 +1292,12 @@
       "stdout_sha": "041b4850f7075a41",
       "memory_sha": "cfe93b5db72f58cc"
     },
+    "baseline/hamming_distance.c": {
+      "src_sha": "4a918e0d",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "38fc9796edd8821e"
+    },
     "baseline/hanoi_tower.c": {
       "src_sha": "78066ba3",
       "exit_code": 0,
@@ -1388,6 +1472,24 @@
       "stdout_sha": "bbe4d4792f58bcb5",
       "memory_sha": "382723b474b60963"
     },
+    "baseline/jump_search.c": {
+      "src_sha": "069306c3",
+      "exit_code": 0,
+      "stdout_sha": "779d943f80ca400b",
+      "memory_sha": "0cab1d38cb3c8cc7"
+    },
+    "baseline/kruskal.c": {
+      "src_sha": "3b8861bf",
+      "exit_code": 0,
+      "stdout_sha": "0eb04b5465559385",
+      "memory_sha": "0803104d43c3332f"
+    },
+    "baseline/lcs.c": {
+      "src_sha": "18fc1354",
+      "exit_code": 0,
+      "stdout_sha": "75bc41962e387ba1",
+      "memory_sha": "04f66065a9bd4ea7"
+    },
     "baseline/libc_difftime.c": {
       "src_sha": "8150eccb",
       "exit_code": 0,
@@ -1538,17 +1640,41 @@
       "stdout_sha": "8d969eef6ecad3c2",
       "memory_sha": "127a1e907616ae42"
     },
+    "baseline/longest_subsequence.c": {
+      "src_sha": "c63d6b5f",
+      "exit_code": 0,
+      "stdout_sha": "3f5da185a39c089e",
+      "memory_sha": "f231d6622f133f24"
+    },
     "baseline/malloc_free.c": {
       "src_sha": "a67dcb26",
       "exit_code": 0,
       "stdout_sha": "73475cb40a568e8d",
       "memory_sha": "c74a73fa48131525"
     },
+    "baseline/matrix_chain_order.c": {
+      "src_sha": "1b6fad8b",
+      "exit_code": 0,
+      "stdout_sha": "e406604732d9185d",
+      "memory_sha": "75ade695eb68d34c"
+    },
     "baseline/matrix_trace.c": {
       "src_sha": "effa73e3",
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "d476f784bcbfe298"
+    },
+    "baseline/max_heap.c": {
+      "src_sha": "cf7147ae",
+      "exit_code": 0,
+      "stdout_sha": "be3a0a8db5da35e6",
+      "memory_sha": "1f42f3cf3f96c65a"
+    },
+    "baseline/mcnaughton_yamada_thompson.c": {
+      "src_sha": "c8edc62a",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "93ca4e23c2c7810d"
     },
     "baseline/member_access_both_ops.c": {
       "src_sha": "4370f0f6",
@@ -1579,6 +1705,24 @@
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
       "memory_sha": "74f081b24f1fa786"
+    },
+    "baseline/merge_linked_lists.c": {
+      "src_sha": "78ea8cf7",
+      "exit_code": 0,
+      "stdout_sha": "23ed5ba656f2f2da",
+      "memory_sha": "d37403e740cd1427"
+    },
+    "baseline/middle_element_in_list.c": {
+      "src_sha": "70538122",
+      "exit_code": 0,
+      "stdout_sha": "27752772f2ea3c6c",
+      "memory_sha": "668c2ba5acf82339"
+    },
+    "baseline/min_heap.c": {
+      "src_sha": "14e2c337",
+      "exit_code": 0,
+      "stdout_sha": "d42b882eaf326a15",
+      "memory_sha": "e67ad3bb58f1d4de"
     },
     "baseline/mod_by_var.c": {
       "src_sha": "e104aaf1",
@@ -1640,6 +1784,12 @@
       "stdout_sha": "8527a891e2241369",
       "memory_sha": "592e2bb332dbd082"
     },
+    "baseline/naive_search.c": {
+      "src_sha": "f42e21b5",
+      "exit_code": 0,
+      "stdout_sha": "24337a0990df106e",
+      "memory_sha": "5cf683705199b0c9"
+    },
     "baseline/neg_hex.c": {
       "src_sha": "e54bb7d7",
       "exit_code": 0,
@@ -1694,6 +1844,12 @@
       "stdout_sha": "d4735e3a265e16ee",
       "memory_sha": "7c1b8847e641082a"
     },
+    "baseline/non_preemptive_priority_scheduling.c": {
+      "src_sha": "2edbc30f",
+      "exit_code": 0,
+      "stdout_sha": "c6753ec4400e2b88",
+      "memory_sha": "04d18b8d9239ac62"
+    },
     "baseline/not_equal.c": {
       "src_sha": "d14a5e7d",
       "exit_code": 0,
@@ -1741,6 +1897,12 @@
       "exit_code": 0,
       "stdout_sha": "b2a7c750c2fc773e",
       "memory_sha": "96831022bdd66aad"
+    },
+    "baseline/other_binary_search.c": {
+      "src_sha": "892e8515",
+      "exit_code": 0,
+      "stdout_sha": "f5232038f8b045bf",
+      "memory_sha": "f0ffe52003d646c4"
     },
     "baseline/p2a_host_semantics.c": {
       "src_sha": "d22a05b8",
@@ -1790,6 +1952,12 @@
       "stdout_sha": "5cdb7ffcc9c29922",
       "memory_sha": "75efd7badf828e4c"
     },
+    "baseline/palindrome.c": {
+      "src_sha": "31f6959b",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "f58aed95ca0553c9"
+    },
     "baseline/param_shadows_func.c": {
       "src_sha": "dbad2b64",
       "exit_code": 0,
@@ -1831,6 +1999,12 @@
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
       "memory_sha": "b6492cf76d81d78b"
+    },
+    "baseline/patience_sort.c": {
+      "src_sha": "5a9a3d5e",
+      "exit_code": 0,
+      "stdout_sha": "a1965ea1dde6c9eb",
+      "memory_sha": "12e37b4086c249cd"
     },
     "baseline/pointer_add_assign.c": {
       "src_sha": "509a7dff",
@@ -1898,11 +2072,23 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "514fa3601dc7028e"
     },
+    "baseline/poly_add.c": {
+      "src_sha": "da4f68f5",
+      "exit_code": 0,
+      "stdout_sha": "56cc867641fd6cfe",
+      "memory_sha": "6dcdbe71fb28ebdc"
+    },
     "baseline/post_inc_vs_pre_inc.c": {
       "src_sha": "4d545af4",
       "exit_code": 0,
       "stdout_sha": "c837649cce43f272",
       "memory_sha": "f53594823549571c"
+    },
+    "baseline/postfix_evaluation.c": {
+      "src_sha": "d027b2d9",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "70e946326693e5ec"
     },
     "baseline/power_of_2.c": {
       "src_sha": "10150c44",
@@ -1939,6 +2125,12 @@
       "exit_code": 0,
       "stdout_sha": "59d83f82f6646a8d",
       "memory_sha": "48b60c020320c890"
+    },
+    "baseline/prime.c": {
+      "src_sha": "a470b202",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "a0f72b77fd51ac4f"
     },
     "baseline/print_int_user_redefine.c": {
       "src_sha": "c6d73ef4",
@@ -2078,6 +2270,18 @@
       "stdout_sha": "031b4af5197ec30a",
       "memory_sha": "1d895debea9713a9"
     },
+    "baseline/queue.c": {
+      "src_sha": "5fea6ada",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
+    "baseline/rabin_karp_search.c": {
+      "src_sha": "d3971ea7",
+      "exit_code": 0,
+      "stdout_sha": "24337a0990df106e",
+      "memory_sha": "211c639be65faeb4"
+    },
     "baseline/realloc.c": {
       "src_sha": "d10f2cd4",
       "exit_code": 0,
@@ -2107,6 +2311,18 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "d0d35a757aba8f54"
+    },
+    "baseline/roman_numerals_to_decimal.c": {
+      "src_sha": "b0657576",
+      "exit_code": 0,
+      "stdout_sha": "f3bdf1f7318fe450",
+      "memory_sha": "5bd3cdac77311f92"
+    },
+    "baseline/rot13.c": {
+      "src_sha": "c5655957",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "a5fbec65788ccfe1"
     },
     "baseline/scalar_brace_init.c": {
       "src_sha": "2f45a293",
@@ -2185,6 +2401,18 @@
       "exit_code": 0,
       "stdout_sha": "4cf0211812968f72",
       "memory_sha": "89b8f2c24cb619c7"
+    },
+    "baseline/secant_method.c": {
+      "src_sha": "9f7df106",
+      "exit_code": 0,
+      "stdout_sha": "1ffc6a3462927377",
+      "memory_sha": "695839e71e6c7912"
+    },
+    "baseline/sentinel_linear_search.c": {
+      "src_sha": "7513eaf8",
+      "exit_code": 0,
+      "stdout_sha": "9298cef228b608bb",
+      "memory_sha": "74f5ce8f7095e183"
     },
     "baseline/seq_list.c": {
       "src_sha": "6926c18e",
@@ -2318,6 +2546,12 @@
       "stdout_sha": "a777d5a2d0a4836c",
       "memory_sha": "7d33b9d5e88ca97f"
     },
+    "baseline/sol.c": {
+      "src_sha": "60a7e9ac",
+      "exit_code": 0,
+      "stdout_sha": "537942be3eb323c5",
+      "memory_sha": "d4aae78d2a43c694"
+    },
     "baseline/sprintf_basic.c": {
       "src_sha": "5788e72b",
       "exit_code": 0,
@@ -2347,6 +2581,12 @@
       "exit_code": 0,
       "stdout_sha": "41112e99f1c7d121",
       "memory_sha": "02e85b187e9292c1"
+    },
+    "baseline/stack.c": {
+      "src_sha": "d55c11c4",
+      "exit_code": 0,
+      "stdout_sha": "3d5d43d6bd5a2162",
+      "memory_sha": "c77304ec9f825a97"
     },
     "baseline/static_assert_sizeof.c": {
       "src_sha": "eaff46b4",
@@ -2474,6 +2714,12 @@
       "stdout_sha": "3ef1fa170663eb88",
       "memory_sha": "b3561ab4afd32063"
     },
+    "baseline/stooge_sort.c": {
+      "src_sha": "d2cb7d19",
+      "exit_code": 0,
+      "stdout_sha": "d7d8d377704e83a9",
+      "memory_sha": "28768e3c0ae4321c"
+    },
     "baseline/strcat_empty.c": {
       "src_sha": "fba688cf",
       "exit_code": 0,
@@ -2533,6 +2779,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "e83c783b2ff6c3df"
+    },
+    "baseline/strong_number.c": {
+      "src_sha": "92107519",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "e747704a47500a69"
     },
     "baseline/strtol_prefix.c": {
       "src_sha": "4ab8b53d",
@@ -2720,6 +2972,18 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "119e987770ef905e"
     },
+    "baseline/ternary_search.c": {
+      "src_sha": "389c3b29",
+      "exit_code": 0,
+      "stdout_sha": "c34fc25cc30167a5",
+      "memory_sha": "0dc55ce6aa030d29"
+    },
+    "baseline/transitive_closure.c": {
+      "src_sha": "de4828e3",
+      "exit_code": 0,
+      "stdout_sha": "dc077633c08b007e",
+      "memory_sha": "c79d4eb38d05fc5d"
+    },
     "baseline/tree_level_order.c": {
       "src_sha": "54a06e5f",
       "exit_code": 0,
@@ -2779,6 +3043,12 @@
       "exit_code": 0,
       "stdout_sha": "6b86b273ff34fce1",
       "memory_sha": "6629896e6bcfd60d"
+    },
+    "baseline/union_find.c": {
+      "src_sha": "407093a9",
+      "exit_code": 0,
+      "stdout_sha": "c3d35921865215d1",
+      "memory_sha": "d37809eef2dc1d28"
     },
     "baseline/union_int_member.c": {
       "src_sha": "aeb30e27",
@@ -2899,6 +3169,12 @@
       "exit_code": 0,
       "stdout_sha": "e064cea1f0be1190",
       "memory_sha": "7d901927520f4067"
+    },
+    "baseline/vector.c": {
+      "src_sha": "71eefabc",
+      "exit_code": 0,
+      "stdout_sha": "f93423346c476bd8",
+      "memory_sha": "b34428cd230a759a"
     },
     "baseline/vfs_io_extensions.c": {
       "src_sha": "4e4c0144",
@@ -3121,6 +3397,12 @@
       "exit_code": 0,
       "stdout_sha": "4a44dc15364204a8",
       "memory_sha": "de280dad311b6644"
+    },
+    "gap/ub_missing_return.c": {
+      "src_sha": "54e79345",
+      "exit_code": 0,
+      "stdout_sha": "5feceb66ffc86f38",
+      "memory_sha": "ad82c44649d5315c"
     },
     "gap/variadic_macro.c": {
       "src_sha": "36f66bdb",

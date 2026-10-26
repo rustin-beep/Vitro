@@ -84,7 +84,7 @@ test("J9：detectable 值域 / evidence 值域 / schema / empty / 空锚串", ()
 });
 
 test("loadKnownCases：真实两文件可读；缺文件 exit 2", () => {
-  assert.equal(loadKnownCases("scripts/clang_direct/known_direct.json").length, 16);
+  assert.equal(loadKnownCases("scripts/clang_direct/known_direct.json").length, 17);
   assert.equal(loadKnownCases("scripts/vm_diff/known_diffs.json").length, 5);
 
   const missing = spawnSync(process.execPath, [MAIN, "scripts/diff_ledger/nope.json"], {
@@ -106,7 +106,7 @@ test("真实仓库端到端：默认 PASS 行逐字 + selftest 六路 + 自定�
   const root = projectRoot();
   const def = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });
   assert.equal(def.status, 0, def.stderr);
-  assert.match(def.stdout, /\[diff_ledger\] 条目 \d+ \| capability_flags 17 \| shadow 3 \+ clang_direct 16 \+ vm_diff 5 条 known 对账/);
+  assert.match(def.stdout, /\[diff_ledger\] 条目 \d+ \| capability_flags 17 \| shadow 3 \+ clang_direct 17 \+ vm_diff 5 条 known 对账/);
   assert.match(def.stdout, /\[diff_ledger\] PASS：schema \+ 双向对账全绿（守门规则机判化就位）/);
 
   const self = spawnSync(process.execPath, [MAIN, "--selftest"], { cwd: root, encoding: "utf8" });

@@ -7,6 +7,7 @@
         "abstract_array_param.c": "1d6d9fb9",
         "anon_member_promotion.c": "0142ec02",
         "anon_union_var_init.c": "607c47c8",
+        "armstrong_number.c": "588fd641",
         "array_address.c": "0ba37ef8",
         "array_assign_lvalue_reject.c": "3bbc778e",
         "array_bound_const_index.c": "25cc0c64",
@@ -26,6 +27,8 @@
         "atoi_function.c": "d4151a08",
         "atoi_negative.c": "02336071",
         "bfs_graph.c": "753681a3",
+        "binary_search.c": "4db72dd9",
+        "bisection_method.c": "3b5a017e",
         "bit_not_zero.c": "01df9ebd",
         "bit_xor.c": "905d87d5",
         "bitwise.c": "ee71a0b6",
@@ -36,11 +39,13 @@
         "block_enum_definition.c": "b8d32ec8",
         "block_static_typedef.c": "9da603c0",
         "bool_from_compare.c": "eaba9b4d",
+        "boyer_moore_search.c": "4f47404b",
         "break_continue.c": "cc946821",
         "break_in_nested_loop.c": "7f8a63a2",
         "bsearch_basic.c": "efac87e9",
         "bst_insert_search.c": "11594efc",
         "bubble_sort.c": "ccd66c07",
+        "bucket_sort.c": "ff7f542d",
         "c11_generic.c": "c22101e8",
         "calloc_basic.c": "efd7ccc6",
         "calloc_reuse_after_eviction.c": "773d72db",
@@ -50,6 +55,7 @@
         "cast_char_pointer.c": "ed433b8a",
         "cast_float_to_int.c": "fe7ab770",
         "cast_void_pointer.c": "5dd819b6",
+        "celsius_to_fahrenheit.c": "f496435a",
         "char2d_string_edge.c": "506f92a3",
         "char2d_string_init.c": "bd6c3c9b",
         "char_arr_no_size.c": "3886e7ed",
@@ -94,6 +100,7 @@
         "const_ptr_level_spiral.c": "2733a6ae",
         "continue_while.c": "f12c98b8",
         "counting_sort.c": "c43d54b1",
+        "create_node.c": "970f7f2e",
         "decrement_var.c": "629e3563",
         "designated_init.c": "1bb9fd6b",
         "designated_mixed_cont.c": "413bba13",
@@ -161,6 +168,9 @@
         "enum_trailing_init.c": "e000b96d",
         "equal_var.c": "674d6f88",
         "escape_tab.c": "6eca02c4",
+        "euler_15_sol1.c": "08e493e8",
+        "euler_19_sol1.c": "8e799bb9",
+        "euler_5_sol3.c": "422086e3",
         "exit_function.c": "5ae58a28",
         "extern_func.c": "d1c8c55c",
         "extern_var.c": "7445e769",
@@ -168,6 +178,8 @@
         "fclose_leak.c": "858d7156",
         "fgets_fputs_basic.c": "68b0a7bd",
         "fibonacci.c": "0fafa920",
+        "fibonacci_formula.c": "fb8c9172",
+        "fibonacci_search.c": "61c2ab25",
         "file_fopen_modes.c": "83ee39fc",
         "flexible_array_static_init_reject.c": "d9432565",
         "float_basic.c": "3016d3e3",
@@ -206,6 +218,7 @@
         "global_struct_member.c": "9440f980",
         "global_var_init.c": "0f96eae9",
         "goto_basic.c": "2b75c016",
+        "hamming_distance.c": "4a918e0d",
         "hanoi_tower.c": "78066ba3",
         "hash_table_linear.c": "c0d1c9c1",
         "heap_sort.c": "bf510db5",
@@ -235,6 +248,9 @@
         "jit_trace_overflow_abort.c": "2683b683",
         "jit_zero_init_trace_boundary.c": "4e806ee9",
         "josephus_ring.c": "d2c65ba0",
+        "jump_search.c": "069306c3",
+        "kruskal.c": "3b8861bf",
+        "lcs.c": "18fc1354",
         "libc_difftime.c": "8150eccb",
         "libc_extensions.c": "92bd8a38",
         "libc_func_pointer_value.c": "e7407a65",
@@ -260,13 +276,20 @@
         "logical_or_var.c": "70fec8ac",
         "long_long.c": "9aa10d56",
         "long_type.c": "6750967d",
+        "longest_subsequence.c": "c63d6b5f",
         "malloc_free.c": "a67dcb26",
+        "matrix_chain_order.c": "1b6fad8b",
         "matrix_trace.c": "effa73e3",
+        "max_heap.c": "cf7147ae",
+        "mcnaughton_yamada_thompson.c": "c8edc62a",
         "member_access_both_ops.c": "4370f0f6",
         "memchr_negative_c.c": "2e2e83d0",
         "memcpy_manual.c": "7b594bdc",
         "memset_basic.c": "354dda06",
         "memset_struct.c": "1e918104",
+        "merge_linked_lists.c": "78ea8cf7",
+        "middle_element_in_list.c": "70538122",
+        "min_heap.c": "14e2c337",
         "mod_by_var.c": "e104aaf1",
         "modulo.c": "b6ee5874",
         "mul_by_var.c": "e605636b",
@@ -277,6 +300,7 @@
         "multi_level_ptr_cast_struct.c": "c419d97d",
         "multi_var_decl.c": "97abe76a",
         "multidecl_array_pointer_mix.c": "f211eea3",
+        "naive_search.c": "f42e21b5",
         "neg_hex.c": "e54bb7d7",
         "neg_modulo.c": "5d33946c",
         "negate.c": "20a1f7fa",
@@ -286,6 +310,7 @@
         "nested_loop.c": "9618b456",
         "nested_ternary.c": "72656c5c",
         "nested_ternary2.c": "69f6f36b",
+        "non_preemptive_priority_scheduling.c": "2edbc30f",
         "not_equal.c": "d14a5e7d",
         "not_equal_var.c": "f3f6e9dd",
         "not_zero.c": "ecad3441",
@@ -294,6 +319,7 @@
         "null_pointer_constant.c": "3f600f45",
         "octal_literal.c": "64aa1f86",
         "offsetof_struct.c": "0d66de85",
+        "other_binary_search.c": "892e8515",
         "p2a_host_semantics.c": "d22a05b8",
         "p2b_typeck_false_positives.c": "60ce2b5e",
         "p2c_parser_lexer_batch.c": "e81fe59e",
@@ -302,6 +328,7 @@
         "p2g_enum_float_reject.c": "330f99b3",
         "p71_tier3_scanf.c": "ebb09917",
         "p71_tier3_semantics.c": "c752b120",
+        "palindrome.c": "31f6959b",
         "param_shadows_func.c": "dbad2b64",
         "parametric_macro_max.c": "959dd066",
         "parametric_macro_nested.c": "398f17d7",
@@ -309,6 +336,7 @@
         "parametric_macro_swap.c": "bdf2a2a9",
         "parentheses_priority.c": "b8b9271b",
         "partial_array_init.c": "a7680cc9",
+        "patience_sort.c": "5a9a3d5e",
         "pointer_add_assign.c": "509a7dff",
         "pointer_add_assign_char.c": "9aeea000",
         "pointer_add_assign_double.c": "b89c1309",
@@ -320,13 +348,16 @@
         "pointer_add_assign_void.c": "b8b09feb",
         "pointer_arith.c": "88c5cdcf",
         "pointer_deref.c": "ea66838e",
+        "poly_add.c": "da4f68f5",
         "post_inc_vs_pre_inc.c": "4d545af4",
+        "postfix_evaluation.c": "d027b2d9",
         "power_of_2.c": "10150c44",
         "pragma_line_ignore.c": "e4bee6c8",
         "pre_decrement.c": "c4c36fe5",
         "pre_increment.c": "3c0e8bcf",
         "precedence.c": "e7405d44",
         "predefined_macro.c": "9aee91b9",
+        "prime.c": "a470b202",
         "print_int_user_redefine.c": "c6d73ef4",
         "print_int_user_redefine_bad.c": "794a7c6a",
         "printf_char.c": "af37cd32",
@@ -350,11 +381,15 @@
         "qsort.c": "484056da",
         "qsort_strcmp_callback.c": "4bf4bd33",
         "qualifier_order_static.c": "fe576714",
+        "queue.c": "5fea6ada",
+        "rabin_karp_search.c": "d3971ea7",
         "realloc.c": "d10f2cd4",
         "realloc_shrink.c": "d7cb943b",
         "recursive_function.c": "7ef6ad96",
         "register_addr_of_reject.c": "63383dac",
         "reverse_array.c": "afd801dd",
+        "roman_numerals_to_decimal.c": "b0657576",
+        "rot13.c": "c5655957",
         "scalar_brace_init.c": "2f45a293",
         "scanf_0x_behavior.c": "d808487a",
         "scanf_digit_mismatch.c": "bf658db3",
@@ -368,6 +403,8 @@
         "scanf_string.c": "0ff6e57f",
         "scanf_u_sign_wrap.c": "a148f159",
         "scope_shadowing_legal.c": "93e6f19f",
+        "secant_method.c": "9f7df106",
+        "sentinel_linear_search.c": "7513eaf8",
         "seq_list.c": "6926c18e",
         "shell_sort.c": "d779018b",
         "shift_31.c": "31131417",
@@ -390,11 +427,13 @@
         "sizeof_typedef.c": "80b9fe9c",
         "sizeof_var.c": "8c6b5cf8",
         "snprintf_basic.c": "9c8c09b0",
+        "sol.c": "60a7e9ac",
         "sprintf_basic.c": "5788e72b",
         "srand_rand.c": "dfd66442",
         "sscanf_basic.c": "a6a32f5c",
         "sscanf_scanset.c": "5050f21f",
         "sscanf_struct_member_addr.c": "e73214b2",
+        "stack.c": "d55c11c4",
         "static_assert_sizeof.c": "eaff46b4",
         "static_forward_func.c": "e82fdca6",
         "static_forward_global.c": "8fd6e158",
@@ -416,6 +455,7 @@
         "stdio_fseek_macro.c": "082a0f54",
         "stdio_macro_file_ptr.c": "79a07309",
         "stdout_c1_byte_0x85.c": "55751ce6",
+        "stooge_sort.c": "d2cb7d19",
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
@@ -426,6 +466,7 @@
         "string_strcmp.c": "08a19bfe",
         "string_strcpy.c": "badba1ab",
         "string_strlen.c": "74038346",
+        "strong_number.c": "92107519",
         "strtol_prefix.c": "4ab8b53d",
         "struct_array_char_member_init.c": "1a085aa9",
         "struct_array_elem_byval.c": "30917e63",
@@ -457,6 +498,8 @@
         "ternary_as_expr.c": "c9996474",
         "ternary_mixed.c": "9e58872c",
         "ternary_nested.c": "9169d971",
+        "ternary_search.c": "389c3b29",
+        "transitive_closure.c": "de4828e3",
         "tree_level_order.c": "54a06e5f",
         "typedef.c": "c13fd5cb",
         "typedef_after_struct_decl.c": "f94c679e",
@@ -467,6 +510,7 @@
         "u_suffix_unsigned_domain.c": "c4415ca4",
         "union_array.c": "eb30623a",
         "union_basic.c": "d0a842c6",
+        "union_find.c": "407093a9",
         "union_int_member.c": "aeb30e27",
         "union_member_struct_assign.c": "25ea7de0",
         "union_member_widths.c": "40847cc3",
@@ -487,6 +531,7 @@
         "utf8_latin1_output.c": "7c27a07f",
         "variable_length_array.c": "08dc70e0",
         "variadic.c": "e1ee7b2a",
+        "vector.c": "71eefabc",
         "vfs_io_extensions.c": "4e4c0144",
         "vla_2d.c": "5f19f2c9",
         "vla_bounds.c": "19eeabf2",
@@ -515,6 +560,9 @@
         },
         "anon_union_var_init.c": {
           "result_sha": "2ce4a2dc1ee4b97f"
+        },
+        "armstrong_number.c": {
+          "result_sha": "ea0fdd63b42dfa64"
         },
         "array_address.c": {
           "result_sha": "37ce0c5a8f992ea5"
@@ -574,6 +622,12 @@
         "bfs_graph.c": {
           "result_sha": "24a5798eb74f8896"
         },
+        "binary_search.c": {
+          "result_sha": "e3eb2c7dd85c7b91"
+        },
+        "bisection_method.c": {
+          "result_sha": "2858f0bb983348f2"
+        },
         "bit_not_zero.c": {
           "result_sha": "9e52a1c28dad03d7"
         },
@@ -604,6 +658,9 @@
         "bool_from_compare.c": {
           "result_sha": "479f543823d7bb46"
         },
+        "boyer_moore_search.c": {
+          "result_sha": "42c1290df1ca019b"
+        },
         "break_continue.c": {
           "result_sha": "04d6a781dbedb1e2"
         },
@@ -618,6 +675,9 @@
         },
         "bubble_sort.c": {
           "result_sha": "f56e4a62c600370e"
+        },
+        "bucket_sort.c": {
+          "result_sha": "1eed9a8d7f1220c4"
         },
         "c11_generic.c": {
           "result_sha": "e1197bc166a0af4e"
@@ -646,6 +706,9 @@
         },
         "cast_void_pointer.c": {
           "result_sha": "5b1dd5d58de8a4ac"
+        },
+        "celsius_to_fahrenheit.c": {
+          "result_sha": "6ff0b5f7dd769bf4"
         },
         "char2d_string_edge.c": {
           "result_sha": "bbcabfbb4dca033a"
@@ -778,6 +841,9 @@
         },
         "counting_sort.c": {
           "result_sha": "b89a2c0a7ec58e97"
+        },
+        "create_node.c": {
+          "result_sha": "dc6370f34af05dbe"
         },
         "decrement_var.c": {
           "result_sha": "a3fdd4d33ea323c9"
@@ -985,6 +1051,15 @@
         "escape_tab.c": {
           "result_sha": "d7d0030460c485b4"
         },
+        "euler_15_sol1.c": {
+          "result_sha": "8801336d5e249a5e"
+        },
+        "euler_19_sol1.c": {
+          "result_sha": "568c6380cc1322c6"
+        },
+        "euler_5_sol3.c": {
+          "result_sha": "cd21344583b68f8c"
+        },
         "exit_function.c": {
           "result_sha": "edb5ad680bc58094"
         },
@@ -1005,6 +1080,12 @@
         },
         "fibonacci.c": {
           "result_sha": "d4b772e247fb30c9"
+        },
+        "fibonacci_formula.c": {
+          "result_sha": "5a2a3aa812f84778"
+        },
+        "fibonacci_search.c": {
+          "result_sha": "fd992766df24cfb9"
         },
         "file_fopen_modes.c": {
           "result_sha": "4e6d4c110a7b2b42"
@@ -1122,6 +1203,9 @@
         "goto_basic.c": {
           "result_sha": "cb050652ae8ce0b0"
         },
+        "hamming_distance.c": {
+          "result_sha": "76ea1a2143534efb"
+        },
         "hanoi_tower.c": {
           "result_sha": "89a00b0ac4a96e83"
         },
@@ -1215,6 +1299,15 @@
         "josephus_ring.c": {
           "result_sha": "ae86315f4e234ae2"
         },
+        "jump_search.c": {
+          "result_sha": "450e167567544b87"
+        },
+        "kruskal.c": {
+          "result_sha": "516f83b92a21d67a"
+        },
+        "lcs.c": {
+          "result_sha": "13f6bb0fbd151e22"
+        },
         "libc_difftime.c": {
           "result_sha": "5fd82356f8368a68"
         },
@@ -1290,11 +1383,23 @@
         "long_type.c": {
           "result_sha": "dddde0004b917e34"
         },
+        "longest_subsequence.c": {
+          "result_sha": "ba2ba288eecf4bb9"
+        },
         "malloc_free.c": {
           "result_sha": "5ca27109580cc1df"
         },
+        "matrix_chain_order.c": {
+          "result_sha": "8dff4177301fc5fb"
+        },
         "matrix_trace.c": {
           "result_sha": "863ef15f409eb615"
+        },
+        "max_heap.c": {
+          "result_sha": "4ad820a4a3207db6"
+        },
+        "mcnaughton_yamada_thompson.c": {
+          "result_sha": "1b210fc376a6220a"
         },
         "member_access_both_ops.c": {
           "result_sha": "5b239495a31c1ec2"
@@ -1310,6 +1415,15 @@
         },
         "memset_struct.c": {
           "result_sha": "0a34c56bd5e73156"
+        },
+        "merge_linked_lists.c": {
+          "result_sha": "69d356bd7c761a76"
+        },
+        "middle_element_in_list.c": {
+          "result_sha": "c0561385fbf863f8"
+        },
+        "min_heap.c": {
+          "result_sha": "9a85f494e29f13fb"
         },
         "mod_by_var.c": {
           "result_sha": "84a123713ea0cddb"
@@ -1341,6 +1455,9 @@
         "multidecl_array_pointer_mix.c": {
           "result_sha": "13e4567cffba0367"
         },
+        "naive_search.c": {
+          "result_sha": "3f4c0db97ba4052a"
+        },
         "neg_hex.c": {
           "result_sha": "13cf45226bbd0c64"
         },
@@ -1368,6 +1485,9 @@
         "nested_ternary2.c": {
           "result_sha": "7a7300c004dfdb7d"
         },
+        "non_preemptive_priority_scheduling.c": {
+          "result_sha": "4ecca5443ac90583"
+        },
         "not_equal.c": {
           "result_sha": "87b03dad0fd8a779"
         },
@@ -1391,6 +1511,9 @@
         },
         "offsetof_struct.c": {
           "result_sha": "b4db4324cc33d2dd"
+        },
+        "other_binary_search.c": {
+          "result_sha": "bba40ad9193e4867"
         },
         "p2a_host_semantics.c": {
           "result_sha": "042c3898587df3d0"
@@ -1418,6 +1541,9 @@
         "p71_tier3_semantics.c": {
           "result_sha": "6e78560115718f76"
         },
+        "palindrome.c": {
+          "result_sha": "5e3428ee15efb5b3"
+        },
         "param_shadows_func.c": {
           "result_sha": "f37f9b0200d3a20b"
         },
@@ -1438,6 +1564,9 @@
         },
         "partial_array_init.c": {
           "result_sha": "9a89f309ddee9d0d"
+        },
+        "patience_sort.c": {
+          "result_sha": "c12ac806a34bdbd1"
         },
         "pointer_add_assign.c": {
           "result_sha": "5d57c00245da55c7"
@@ -1472,8 +1601,14 @@
         "pointer_deref.c": {
           "result_sha": "8561920c2b0164d0"
         },
+        "poly_add.c": {
+          "result_sha": "7e177ce65a3170e9"
+        },
         "post_inc_vs_pre_inc.c": {
           "result_sha": "ecdcd2af586719c1"
+        },
+        "postfix_evaluation.c": {
+          "result_sha": "5a2d441ff437d143"
         },
         "power_of_2.c": {
           "result_sha": "533dde33575355c3"
@@ -1492,6 +1627,9 @@
         },
         "predefined_macro.c": {
           "result_sha": "34b60d8400abc414"
+        },
+        "prime.c": {
+          "result_sha": "5ccc53e8da584e2e"
         },
         "print_int_user_redefine.c": {
           "result_sha": "6295ef49e92b9724"
@@ -1563,6 +1701,13 @@
         "qualifier_order_static.c": {
           "result_sha": "0af3659f4cddbcc2"
         },
+        "queue.c": {
+          "fail": true,
+          "fail_stage": "lex"
+        },
+        "rabin_karp_search.c": {
+          "result_sha": "815a9803519a321d"
+        },
         "realloc.c": {
           "result_sha": "fe73a535c0b7247c"
         },
@@ -1578,6 +1723,12 @@
         },
         "reverse_array.c": {
           "result_sha": "86ae574cbcb8067a"
+        },
+        "roman_numerals_to_decimal.c": {
+          "result_sha": "6ba79abc18fb6644"
+        },
+        "rot13.c": {
+          "result_sha": "a65ffc4331f883d0"
         },
         "scalar_brace_init.c": {
           "result_sha": "2c78ec0c4974c5ed"
@@ -1617,6 +1768,12 @@
         },
         "scope_shadowing_legal.c": {
           "result_sha": "ba754ac10f52f43c"
+        },
+        "secant_method.c": {
+          "result_sha": "47d23d046b9ac502"
+        },
+        "sentinel_linear_search.c": {
+          "result_sha": "0964f33adfdbfe8d"
         },
         "seq_list.c": {
           "result_sha": "b37948174b553f05"
@@ -1684,6 +1841,9 @@
         "snprintf_basic.c": {
           "result_sha": "5c84b971c5b4e8ec"
         },
+        "sol.c": {
+          "result_sha": "dd23ee461b57b22a"
+        },
         "sprintf_basic.c": {
           "result_sha": "2eee47ba8f543fd2"
         },
@@ -1698,6 +1858,9 @@
         },
         "sscanf_struct_member_addr.c": {
           "result_sha": "019edee26fabeeb0"
+        },
+        "stack.c": {
+          "result_sha": "537c69776838dae1"
         },
         "static_assert_sizeof.c": {
           "result_sha": "c443b6f24cbc9aa9"
@@ -1764,6 +1927,9 @@
         "stdout_c1_byte_0x85.c": {
           "result_sha": "a86f3a0a70e50e40"
         },
+        "stooge_sort.c": {
+          "result_sha": "1d7005363de9500c"
+        },
         "strcat_empty.c": {
           "result_sha": "7d3bc7ee2bf55aed"
         },
@@ -1793,6 +1959,9 @@
         },
         "string_strlen.c": {
           "result_sha": "3c1db2497d2f7394"
+        },
+        "strong_number.c": {
+          "result_sha": "d76bf1c2e64beac4"
         },
         "strtol_prefix.c": {
           "result_sha": "19af73165c711102"
@@ -1889,6 +2058,12 @@
         "ternary_nested.c": {
           "result_sha": "1f904fae574e9800"
         },
+        "ternary_search.c": {
+          "result_sha": "1cb8c43719a0e6fd"
+        },
+        "transitive_closure.c": {
+          "result_sha": "4689aeaa309e19ba"
+        },
         "tree_level_order.c": {
           "result_sha": "b103b52bf190055e"
         },
@@ -1919,6 +2094,9 @@
         },
         "union_basic.c": {
           "result_sha": "d4f49ab83055c0b9"
+        },
+        "union_find.c": {
+          "result_sha": "56f4f0da72033ba9"
         },
         "union_int_member.c": {
           "result_sha": "192c87822c184069"
@@ -1979,6 +2157,9 @@
         },
         "variadic.c": {
           "result_sha": "08313faf21fc6719"
+        },
+        "vector.c": {
+          "result_sha": "a96fcd8ad7594812"
         },
         "vfs_io_extensions.c": {
           "result_sha": "1773faed339e0268"
@@ -2116,6 +2297,7 @@
         "static_assert.c": "4e388a20",
         "string_len_manual.c": "b5eb330a",
         "typeof_operator.c": "01ea6a44",
+        "ub_missing_return.c": "54e79345",
         "variadic_macro.c": "36f66bdb"
       },
       "cases": {
@@ -2180,6 +2362,9 @@
         },
         "typeof_operator.c": {
           "result_sha": "2ab395fd5be0521d"
+        },
+        "ub_missing_return.c": {
+          "result_sha": "997c603f952b787b"
         },
         "variadic_macro.c": {
           "fail": true,

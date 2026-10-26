@@ -2189,7 +2189,7 @@
     "baseline/printf_star_precision.c": {
       "src_sha": "04730cf7",
       "exit_code": 0,
-      "stdout_sha": "42d193eb75b8601a",
+      "stdout_sha": "0d9cf43797358711",
       "memory_sha": "2df42b651cf92717"
     },
     "baseline/ptr_arith_char.c": {

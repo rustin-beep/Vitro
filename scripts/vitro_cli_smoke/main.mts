@@ -362,17 +362,21 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write("ok  B[--realtime] 三臂分口径（js/native 真 t、wasm 恒 0、缺省恒 0）\n");
   }
 
-  // B 组附 6：字节级三臂 stdout 对拍（#315/#316，2026-10-26）——语义层锚的
-  // normalize（CRLF→LF）曾把「native CRT 文本模式每换行多 1 字节」吸收在判定
-  // 处（注释宣称零 canonicalize 而代码有全局归一——闸门失守面）。本锚**零归一
-  // 裸比**三臂 stdout 原始 Buffer：不 utf8 解码（putchar(0xC8) 非 UTF-8 字节
-  // 保真比）、不做任何行尾处理。fixture 覆盖三形态：常规换行 / 非 UTF-8 字节
-  // + 换行（最能区分 CRLF 改写）/ 尾部无换行。
+  // B 组附 6：字节级三臂 stdout/stderr 对拍（#315/#316，2026-10-26；P2-2 审阅
+  // 处置扩双通道）——语义层锚的 normalize（CRLF→LF）曾把「native CRT 文本
+  // 模式每换行多 1 字节」吸收在判定处（注释宣称零 canonicalize 而代码有全局
+  // 归一——闸门失守面）；审阅实锤 stderr 半边无锚（只还原 stderr stub 仍全绿）。
+  // 本锚**零归一裸比**三臂两通道原始 Buffer：不 utf8 解码（0xC8 等非 UTF-8
+  // 字节保真比）、不做任何行尾处理。stdout 面 = 程序输出；stderr 面 = CLI
+  // 标记行（// STDERR // NOTE 等教学文案承载通道——程序 fprintf(stderr) 被引
+  // 擎包装为 // STDERR 行）；CLI 帧通道（api/serve 的 println 出口）不在此面
+  // （存量 P3，spec TrimRight 注记）。fixture 覆盖三形态：常规换行 / 非 UTF-8
+  // 字节 + 换行（最能区分 CRLF 改写）/ 尾部无换行。
   {
     const binC = path.join(tmpDir, "byte_probe.c");
     fs.writeFileSync(
       binC,
-      '#include <stdio.h>\nint main(){ printf("line1\\nline2\\n"); putchar(200); putchar(255); putchar(65); printf("\\n"); printf("tail-no-nl"); return 0; }\n',
+      '#include <stdio.h>\nint main(){ printf("line1\\nline2\\n"); putchar(200); putchar(255); putchar(65); printf("\\n"); printf("tail-no-nl"); fprintf(stderr, "e\\n"); fputc(200, stderr); fputc(10, stderr); return 0; }\n',
     );
     const relBin = toSlash(path.relative(repoRoot, binC));
     const armDefs = [
@@ -381,6 +385,7 @@ export function runMain(argv: readonly string[]): number {
       { label: "js", exe: nodeBin, argv: [jsEntry, "run", relBin] },
     ];
     const outs: Buffer[] = [];
+    const errs: Buffer[] = [];
     let byteProbeRc = 0;
     for (const arm of armDefs) {
       const r = spawnSync(arm.exe, arm.argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 });
@@ -389,7 +394,17 @@ export function runMain(argv: readonly string[]): number {
         byteProbeRc = 1;
       }
       outs.push(r.stdout ?? Buffer.alloc(0));
+      errs.push(r.stderr ?? Buffer.alloc(0));
     }
+    // stderr 侧唯一允许差异 = [vitro] backend= 前置行（wasm 壳打，#322）——
+    // latin1 双射按行剥（字节保真；行尾 \r 若在场仍保留——本锚不归一）
+    const stripBackendLineBytes = (b: Buffer): Buffer => {
+      const kept = b
+        .toString("latin1")
+        .split("\n")
+        .filter((ln) => !ln.startsWith("[vitro] backend="));
+      return Buffer.from(kept.join("\n"), "latin1");
+    };
     if (byteProbeRc === 0) {
       const w = outs[0] ?? Buffer.alloc(0);
       const n = outs[1] ?? Buffer.alloc(0);
@@ -402,6 +417,18 @@ export function runMain(argv: readonly string[]): number {
         fatalf(`B[字节对拍] wasm vs js stdout 原始字节不一致（len w=${w.length} j=${j.length} 首差 offset=${firstDiff(w, j)}）`);
       } else {
         process.stdout.write(`ok  B[字节对拍] 三臂 stdout 原始字节逐位一致（${w.length}B，含非 UTF-8 字节与无尾换行形态，零归一）\n`);
+      }
+      const we = stripBackendLineBytes(errs[0] ?? Buffer.alloc(0));
+      const ne = stripBackendLineBytes(errs[1] ?? Buffer.alloc(0));
+      const je = stripBackendLineBytes(errs[2] ?? Buffer.alloc(0));
+      if (!we.equals(ne)) {
+        fatalf(
+          `B[字节对拍 stderr] wasm vs native stderr 原始字节不一致（len w=${we.length} n=${ne.length} 首差 offset=${firstDiff(we, ne)}——stderr stub 的 CRLF 改写半边，P2-2）`,
+        );
+      } else if (!we.equals(je)) {
+        fatalf(`B[字节对拍 stderr] wasm vs js stderr 原始字节不一致（len w=${we.length} j=${je.length} 首差 offset=${firstDiff(we, je)}）`);
+      } else {
+        process.stdout.write(`ok  B[字节对拍 stderr] 三臂 stderr 原始字节逐位一致（${we.length}B 剥 backend 行后零归一，// STDERR // NOTE 教学文案面）\n`);
       }
     }
   }

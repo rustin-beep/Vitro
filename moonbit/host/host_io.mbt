@@ -1919,9 +1919,12 @@ pub fn InputState::from_stdin_text(text : String, batch : Bool) -> InputState {
   // #317（2026-10-26）：流首 UTF-8 BOM（U+FEFF）剥离——Windows 下游
   // （PowerShell Out-File 等）默认写 BOM，此前 BOM 泄入首行 ⇒ 首读
   // scanf 匹配失败 ⇒ 程序静默无输出 rc=0（判分主路径全盘错判零线索）。
-  // 与源码通道（lexer pp strip_bom）对齐：BOM 是编码标记非内容；仅流
-  // 首一次，行中 BOM 属内容不动。三消费者（run -i / serve input 参数 /
-  // serve stdin 流）经本单源一次治本。
+  // 与源码通道（lexer pp strip_bom）对齐：BOM 是编码标记非内容。语义
+  // 边界（P3-3 审阅处置）：本函数无状态——剥的是**每次调用的首** U+FEFF
+  //（行中不动）；input.feed / serve stdin 流分块追加时每 chunk 各剥各自
+  // 首（chunk 间拼接处的 BOM 属内容保留——实际影响极小，语义取舍在
+  // 此明示）。三消费者（run -i / serve input 参数 / serve stdin 流）经
+  // 本单源一次治本。
   let bom = Int32::unsafe_to_char(0xFEFF).to_string()
   if normalized.has_prefix(bom) {
     normalized = normalized[1:].to_owned()

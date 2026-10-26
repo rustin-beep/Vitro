@@ -17,6 +17,8 @@
 
 MOONBIT_FFI_EXPORT void moonbit_vitro_cli_write_stderr(moonbit_bytes_t b) {
   static int stderr_binary = 0;
+  /* _setmode 失败（无效 fd——实际不可达）返回 -1 静默退回文本模式：
+     C stub 无诊断通道，fail-loud 无出口（P3-3 审阅注记） */
   if (!stderr_binary) {
 #ifdef _WIN32
     _setmode(_fileno(stderr), _O_BINARY);

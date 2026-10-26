@@ -92,6 +92,32 @@ fn Parser::parse_struct_body(
     }
     let field_checkpoint = self.pos
     let base_type = self.parse_base_type(depth)
+    // C11 §6.7.2.1p1 约束：struct/union 成员声明不允许存储类说明符
+    //（extern/typedef 走各自既有拒绝路径；static/register/auto 被
+    // 限定符循环吞入 pending——此处收割即诊断，参数列表 #77 同款；
+    // 三个 take 不可短路合并，漏 take 即残留染后续成员）
+    let member_static = self.take_pending_static()
+    let member_register = self.take_pending_register()
+    let member_auto = self.take_pending_auto()
+    if member_static || member_register || member_auto {
+      let mut kws = ""
+      if member_static {
+        kws = "static"
+      }
+      if member_register {
+        kws = if kws == "" { "register" } else { "\{kws}/register" }
+      }
+      if member_auto {
+        kws = if kws == "" { "auto" } else { "\{kws}/auto" }
+      }
+      let cur = self.current()
+      self.errors.push({
+        message: "成员声明不允许存储类说明符 '\{kws}'——C11 §6.7.2.1（clang 同判 type name does not allow storage class to be specified）",
+        line: cur.loc.line,
+        column: cur.loc.column,
+        code: @diag.ErrorCode::E1006_UnsupportedFeature.code(),
+      })
+    }
     // #182 D-5（2026-10-19，C11 §6.7.2.1p5 约束）：成员位置的裸函数
     // 声明器（`int f(void);`——非 `int (*f)(void);` 显式指针形态）是
     // 约束违反，clang/gcc 双 error "field declared as a function"。
@@ -839,6 +865,7 @@ fn Parser::parse_func_decl(
   // #77（2026-10-13）：限定符循环吞到的交错存储类 static 收割（幂等——
   // parse_global_var_or_func 已收割合并传入时，此处 re-parse 再置位）
   let is_static = is_static || self.take_pending_static()
+  ignore(self.take_pending_auto())
   let mut ret_type = base_type
   while self.match_token(Star) {
     ret_type = @ast.Type::pointer_to(ret_type)

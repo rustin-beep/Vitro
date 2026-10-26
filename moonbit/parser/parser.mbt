@@ -232,6 +232,11 @@ priv struct Parser {
   /// 同款：读点收割即复位，parse_program 每轮兜底清防跨声明残留，
   /// 不进 Rollback（试探路径 re-parse 幂等置位无害）
   mut pending_register : Bool
+  /// struct/union 成员位置的 auto 存储类（C 模式——parse_base_type 曾
+  /// 无声 continue 跳过，成员循环无收割点即静默误收）。pending_static
+  /// 同款：置位/收割即复位/每轮兜底清，不进 Rollback。cpp 模式 auto
+  /// 是类型推导（返回 Type::Auto）不置位
+  mut pending_auto : Bool
   /// #78（2026-10-13）：枚举常量表（成员名 → 值）——enum 声明注册，
   /// const_int_of/array_dim_info/eval_enum_const 的 Ident 叶子查表折叠
   /// （C11 §6.4.4.3 枚举常量是整型常量表达式——`t[N]` 非 VLA）。
@@ -314,6 +319,7 @@ fn Parser::with_mode(
     stall_count: 0,
     pending_static: false,
     pending_register: false,
+    pending_auto: false,
     enum_const_values: Map([]),
     enum_tags: Set([]),
   }
@@ -332,6 +338,14 @@ fn Parser::take_pending_static(self : Parser) -> Bool {
 fn Parser::take_pending_register(self : Parser) -> Bool {
   let v = self.pending_register
   self.pending_register = false
+  v
+}
+
+///|
+/// 收割 auto 存储类（pending_static 同款读即复位）。
+fn Parser::take_pending_auto(self : Parser) -> Bool {
+  let v = self.pending_auto
+  self.pending_auto = false
   v
 }
 
@@ -977,9 +991,11 @@ fn Parser::parse_program(self : Parser) -> @ast.ProgramNode? {
   self.program_sink = Some(program)
   while !self.is_at_end() {
     // #77：轮次兜底清交错存储类残留（非法输入如 cast 里的 static 触发
-    // 置位后无声明入口收割——残留不跨顶层声明传播）；#156 register 同款
+    // 置位后无声明入口收割——残留不跨顶层声明传播）；#156 register、
+    // auto 同款
     self.pending_static = false
     self.pending_register = false
+    self.pending_auto = false
     let round_start = self.pos
     // 跳过函数前缀修饰符 inline（可能出现在 static/extern 之前或之后）
     while self.check(Inline) {
@@ -1044,6 +1060,9 @@ fn Parser::parse_global_var_or_func(
   // 回退 pos 后 parse_func_decl 内 re-parse 会重新置位（幂等），合并值
   // 已由本次收割定形并随参数下传
   let is_static = is_static || self.take_pending_static()
+  // C 模式 auto 存储类在顶层无语义（C11 6.9 文件作用域禁 auto——该
+  // 约束面另行处置），此处收割防 pending 残留染后续 struct 成员
+  ignore(self.take_pending_auto())
   // C++ 构造函数类外定义：Counter::Counter() { ... }
   if self.try_parse_cpp_ctor_out_of_line(
       program, base_type, is_static, is_extern,

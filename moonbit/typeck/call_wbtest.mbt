@@ -211,6 +211,97 @@ test "printf_star_arg_count" {
 }
 
 ///|
+/// #159（2026-10-26）：printf 星号精度位的实参 Member 须定型回写——
+/// `printf("%.*s", p.bbb, s)` 的 p.bbb 在星号参数槽（非值参数槽），
+/// 旧「粗放行不查类型」连 resolve 也跳过：Member 的 object 保持 Void
+/// 占位 → codegen get_member_offset(Void) 落 `_ => 0` → 字段偏移静默
+/// 丢失（p.bbb 读成 p.aaa——回文 len=1 病根）。同族先例：sscanf 尾参
+/// 零回写（#161，见 sscanf_variadic_tail_member_typed）。本锚断言
+/// 定型树里星号槽 args[1] 的 Member(object=p) ty 回写为 struct P。
+test "printf_star_member_typed" {
+  let loc = @source.SourceLoc::new(5, 5)
+  // struct P { int aaa; int bbb; };
+  let p_decl : @ast.StructDecl = {
+    ..Default::default(),
+    loc,
+    name: "P",
+    fields: [
+      { ty: @ast.Type::int(), name: "aaa", },
+      { ty: @ast.Type::int(), name: "bbb", },
+    ],
+  }
+  // p.bbb：object 故意给 Void 占位（parser 初值形态——定型回写是被测面）
+  let p_bbb : @ast.Expr = @ast.Expr::Member(
+    @ast.Expr::Identifier("p", loc, @ast.Type::void_type()),
+    "bbb",
+    false,
+    loc,
+    @ast.Type::void_type(),
+  )
+  let printf_call : @ast.Expr = @ast.Expr::CallPtr(
+    @ast.Expr::Identifier("printf", loc, @ast.Type::void_type()),
+    [
+      @ast.Expr::StringLiteral("%.*s", loc, @ast.Type::void_type()),
+      p_bbb,
+      @ast.Expr::StringLiteral("x", loc, @ast.Type::void_type()),
+    ],
+    loc,
+    @ast.Type::void_type(),
+  )
+  // main：P p; printf("%.*s", p.bbb, "x");
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::struct_type("P"),
+            "p",
+            None,
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Expr(printf_call, loc),
+        ],
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check({
+    structs: [p_decl],
+    unions: [],
+    globals: [],
+    funcs: [main],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errs.filter(e => e.code >= 3000 && e.code < 4000).length(), 0)
+  guard typed.funcs[0].body is Some(@ast.Stmt::Block(stmts, _)) else {
+    fail("main body 缺失")
+  }
+  guard stmts[1] is @ast.Stmt::Expr(@ast.Expr::CallPtr(_, args, _, _), _) else {
+    fail("printf 调用语句形态不符")
+  }
+  guard args[1] is @ast.Expr::Member(object, "bbb", _, _, _) else {
+    fail("args[1] 非 p.bbb 形态")
+  }
+  // 核心断言：object（p）的 ty 已回写为 struct P（旧缺口 = Void）
+  assert_true(
+    object.ty().kind() is TK_Struct && object.ty().name() == "P",
+    msg="printf 星号槽 p.bbb 的 Member object 须定型为 struct P（#159：旧零回写留 Void → 字段偏移静默丢）",
+  )
+}
+
+///|
 /// issue #26：printf/scanf 格式不匹配诊断的**参数序号**（oracle 算式
 /// i+2 = 全参数 1-based，参数 1 是格式串——"%f" 配 int 报「第 2 个」）。
 /// 此前实现 start+j+2 系统性 +1（报「第 3 个」）；修复 = start+j+1。

@@ -70,6 +70,10 @@ priv struct BytecodeGen {
   /// &g 形态，`static const S s = { X };` 而 X 声明在 s 之后）——展开时
   /// 目标 offset 未定，延迟到 Pass 1/3 尾统一回填（同字符串字面量时机）
   mut pending_addr_inits : Array[(UInt32, String)]
+  /// #304（2026-10-26）：地址常量**链形态**（&s.x / &sa[1].x——Member/
+  /// Index 链）的前向引用——链整体延迟重求值（flatten 时 base 符号
+  /// 未登记），回填时机与 pending_addr_inits 同轮
+  mut pending_addr_chain_inits : Array[(UInt32, @ast.Expr)]
   /// 字面量池（value → 已分配地址；病 120 修，2026-10-16）：相同内容
   /// 的字符串字面量合并同址（clang 实测合并——`a=="twin" && b=="twin"`
   /// 的指针相等形态；C 标准不要求合但主流实现全合，教学对照避免分叉）
@@ -172,6 +176,7 @@ fn BytecodeGen::with_mode(is_library_mode : Bool) -> BytecodeGen {
     string_data: [],
     pending_string_inits: [],
     pending_addr_inits: [],
+    pending_addr_chain_inits: [],
     string_pool: Map([]),
     source_map: [],
     break_patches: [],
@@ -569,6 +574,38 @@ fn BytecodeGen::pass1_register_global(
                             values[i]
                           }
                         }
+                        // #304（2026-10-26）：聚合元素的地址常量**链形态**
+                        //（`int *arr[2] = {&gm.v, &later.x}`）——旧落 _ 臂
+                        // 取 flatten_init_list 折叠值（链形态折不出 ⇒ 0）
+                        // ⇒ 运行期 E3083；与顶层/flatten 两路径同款单源
+                        Unary(@ast.UnaryOp::Addr, chain, _, _) => {
+                          match self.eval_global_addr_chain(chain) {
+                            AddrResolved(a) => {
+                              self.globals_init_32.push((addr, a))
+                              addr_handled = true
+                            }
+                            AddrDeferred => {
+                              self.pending_addr_chain_inits.push((addr, chain))
+                              addr_handled = true
+                            }
+                            AddrUnsupported => ()
+                          }
+                          if addr_handled || i >= values.length() {
+                            0
+                          } else {
+                            values[i]
+                          }
+                        }
+                        // #304 审阅 P2-1（2026-10-26）：cast 包裹的链元素
+                        //（`{(int *)&garr[1], ...}`）——穿透走同一单源
+                        Cast(_, _, _, _) => {
+                          addr_handled = self.try_cast_addr_init(addr, e.value)
+                          if addr_handled || i >= values.length() {
+                            0
+                          } else {
+                            values[i]
+                          }
+                        }
                         _ => if i < values.length() { values[i] } else { 0 }
                       }
                     None => 0
@@ -642,6 +679,27 @@ fn BytecodeGen::pass1_register_global(
         // #264 同族：&g 顶层标量地址常量（旧落 _ => () 静默置 0）
         Unary(@ast.UnaryOp::Addr, Identifier(name, _, _), _, _) => {
           let _ = self.push_global_addr_init(offset.reinterpret_as_uint(), name)
+          ()
+        }
+        // #304（2026-10-26）：顶层标量地址常量**链形态**（int *p = &s.x
+        // / &sa[1].x / &go.in.b / &garr[1]）——旧落 _ => () 静默置 0 ⇒
+        // 运行期 E3083；与聚合内 flatten_global_init 同款单源求值
+        Unary(@ast.UnaryOp::Addr, chain, _, _) => {
+          match self.eval_global_addr_chain(chain) {
+            AddrResolved(addr) =>
+              self.globals_init_32.push((offset.reinterpret_as_uint(), addr))
+            AddrDeferred =>
+              self.pending_addr_chain_inits.push(
+                (offset.reinterpret_as_uint(), chain),
+              )
+            AddrUnsupported => ()
+          }
+          ()
+        }
+        // #304 审阅 P2-1（2026-10-26）：cast 包裹形态
+        //（int *m4 = (int *)&garr[1]）——穿透类型包装走同一单源求值
+        Cast(_, _, _, _) => {
+          let _ = self.try_cast_addr_init(offset.reinterpret_as_uint(), init)
           ()
         }
         _ => ()

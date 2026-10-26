@@ -78,6 +78,16 @@ export function rules(): Rule[] {
     // README.mbt.md:47 整行无候选等于真值 → Suspect 假红；S8/S9 后
     // 测试数仍会涨，带宽给足。锚 TestMoonbitTruthInRange。
     mk("moonbit_test_passed", "MoonBit 测试数", `moon\\s*test|moonbit[^\\n]*测试|测试[^\\n]*moonbit`, ``, 40, 2000, "用例"),
+    // #308（2026-10-26）：native 口径全量测试数机判——moonbit/README 的
+    // `--target native` 全量句（裸 + native-only fs/gateway/cli；0.9.0 期
+    // 实测 1053）。纯命令行（`moon build --target native`，无数字 span）
+    // 不进候选——Suspect 假红面不存在（spans 空则 byRule 不收录）。
+    // 多 PR 计数冲突的解法 = 手改任一侧 + 本闸逼真值（零 moon test 实测
+    // 成本——#308 立案主诉求：2026-10-25 三 PR 串行合并的 ≈10 分钟双口径
+    // 实测成本消解）。
+    mk("moonbit_test_passed_native", "MoonBit native 全量测试数",
+      `--target\\s*native[^\\n]{0,40}(全量|测试)`,
+      ``, 800, 2000, "用例"),
     // S2（2026-09-19）：词法差分 TSV 总数防漂移——随机 2400 例 ×2 层 +
     // baseline 363×2 + K&R 81×2 = 5688；语料增删会移动真值，文档数字须随动。
     mk("moonbit_lexer_diff_tsv", "词法差分 TSV 数", `差分[^\\n]*TSV|TSV[^\\n]*差分|逐字节一致[^\\n]*TSV|词法差分`, ``, 1000, 1600, "个"),

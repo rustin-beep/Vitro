@@ -5,6 +5,7 @@
     "corpus-baseline": {
       "sources": {
         "abstract_array_param.c": "1d6d9fb9",
+        "addr_const_chains_global.c": "eae1a436",
         "anon_member_promotion.c": "0142ec02",
         "anon_union_var_init.c": "607c47c8",
         "armstrong_number.c": "588fd641",
@@ -365,6 +366,8 @@
         "printf_percent_fold.c": "b6cb4e3b",
         "printf_retval.c": "4659d3b4",
         "printf_star_family.c": "6c4cf6f8",
+        "printf_star_member.c": "b3ae30e3",
+        "printf_star_precision.c": "04730cf7",
         "ptr_arith_char.c": "e459e224",
         "ptr_arith_struct.c": "10a54327",
         "ptr_assign_deref.c": "4a524e0b",
@@ -553,6 +556,7 @@
       },
       "resp_hashes": {
         "abstract_array_param.c": "87510cd2ab247344",
+        "addr_const_chains_global.c": "f0f5cf8d5fef0cfa",
         "anon_member_promotion.c": "7269e985c7088dcb",
         "anon_union_var_init.c": "b266029eb521f8f1",
         "armstrong_number.c": "2385a09a7ef44137",
@@ -912,7 +916,9 @@
         "printf_flags.c": "c99676235833f016",
         "printf_percent_fold.c": "87fc37f6ff4eacf3",
         "printf_retval.c": "5f01635cea021a75",
-        "printf_star_family.c": "dba1a9f2c3507757",
+        "printf_star_family.c": "2b3b8e905bfaa387",
+        "printf_star_member.c": "fb92312c84c5f997",
+        "printf_star_precision.c": "b9605ed7035bb10d",
         "ptr_arith_char.c": "a3fe0a5a4dbd155a",
         "ptr_arith_struct.c": "874e41913ba7bc12",
         "ptr_assign_deref.c": "1864500bddfb1a24",

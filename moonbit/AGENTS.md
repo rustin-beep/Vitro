@@ -79,7 +79,7 @@ node scripts/diff_gate/main.mts vm [--sample N | --corpus dir | --cases f1.c,...
 node scripts/clang_direct/main.mts [--sample N | --corpus dir | --cases f1.c,...] # §7.1 层 2 Clang 直拍（2026-09-26 提前落地）：真值源=Clang 本尊，cmd/run 的 stdout+返回码 vs Clang golden（known_direct.json case+digest 锁定 + 双向监控；重试判据=shadow 同款〔编译失败也重试——Windows 并发 Defender 锁目标文件首跑 127 例瞬态误判实锤〕；MoonBit 侧 Latin-1 折回归一 + clang 侧文本模式 CRLF 归一；缓存 .clang_cache_cd/；J9 digest 篡改证红留痕）
 ```
 
-测试计数真值入 facts 台账（`moonbit_test_passed` 键，`--run` 采集 / CI 每轮刷新）。**注意（2026-09-20 审阅实测）**：moonbit/README*.md 的测试数为**分解式**写法（逐包拆解 + `分解和 179 + doc test 4`），facts 规则将分解式归"人工维护"不机判——**机判抓红不覆盖该处**，改测试数同步 README 是人工义务；裸总数以 facts.json 真值为准。
+测试计数真值入 facts 台账（`moonbit_test_passed` 裸口径键 + `moonbit_test_passed_native` native 全量口径键〔#308 2026-10-26 起，`MOON_CC=clang moon test --target native` 采集〕，`--run` 采集 / CI 每轮刷新）。**形态（#308 2026-10-26 改写——原「分解式人工维护」段已翻案）**：moonbit/README*.md 的测试数行已是**裸数 + facts 键标注**形态（机判接管：裸数绑 `moon test` 语境、native 全量绑 `--target native…全量` 语境，就近绑定消歧），漂移即 CI 红——**改测试数后跑 `facts --strict check` 即可，不再需要人工核对分解式**；批注明细（「A 线批五 +4」类）单源 CHANGELOG，README 不再追加；native-only 逐包分解（fs/gateway/cli）以 `moon test -p` 为准（人工维护面，只此一处）。
 
 ## MoonBit 语言与工具链陷阱（全部一手实证，2026-09-19）
 
@@ -166,4 +166,4 @@ cd moonbit && moon publish        # Server 200 OK 后：
 
 ## facts 接线
 
-`moonbit_test_passed`（`--run` 门采集，cached 沿用）——新增防线产物时按 `moonbit_*` 前缀扩键（总计划 §10 每片回填义务），采集器在 `scripts/facts/facts.go::collectMoonbit`（改动属防线维护白名单）。
+`moonbit_test_passed` + `moonbit_test_passed_native`（`--run` 门采集，cached 沿用；#308 起 native 口径键在场）——新增防线产物时按 `moonbit_*` 前缀扩键（总计划 §10 每片回填义务），采集器在 `scripts/facts/facts.mts::collectMoonbit`（#307 迁移批起 .mts 现役，Go 版为回退面且不含 native 键；**新占位键须三处对称**：RUN_KEYS + else 占位 + 采集器——漏占位即落盘丢键假绿，#298 病族，反向 J9 锚 `moonbit_fact.test.mts`）。

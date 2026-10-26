@@ -214,12 +214,176 @@ fn BytecodeGen::flatten_global_init(
           // 值回填此前静默置 0
           Unary(@ast.UnaryOp::Addr, Identifier(name, _, _), _, _) =>
             ignore(self.push_global_addr_init(base_offset, name))
+          // #304（2026-10-26）：地址常量**链形态**（&s.x / &sa[1].x /
+          // &go.in.b / &garr[1]——Member/Index 链 + 末端静态符号）。
+          // 旧只认裸 Identifier（上一分支），链形态落 _ 臂静默不回填
+          // ⇒ 全零区运行期 E3083 NULL 解引用（typeck 侧整族放行）。
+          // 求值与前向引用挂起单源 eval_global_addr_chain
+          Unary(@ast.UnaryOp::Addr, chain, _, _) =>
+            match self.eval_global_addr_chain(chain) {
+              AddrResolved(addr) =>
+                self.globals_init_32.push((base_offset, addr))
+              AddrDeferred =>
+                self.pending_addr_chain_inits.push((base_offset, chain))
+              AddrUnsupported =>
+                // 动态指针基座 / 非字面量下标：值依赖运行期，静态不可求
+                // ——维持旧静默 0 行为（诊断面收口前不恶化）
+                ()
+            }
+          // #304 审阅 P2-1（2026-10-26）：cast 包裹的地址常量链
+          //（`int *m4 = (int *)&garr[1]`）——旧落 _ 臂静默 0 ⇒ 运行期
+          // E3083；cast 是类型包装非地址偏移，穿透后走同一单源求值
+          Cast(_, _, _, _) => {
+            let _ = self.try_cast_addr_init(base_offset, init)
+            ()
+          }
           StringLiteral(value, _, _) =>
             // 延迟到 Pass 1 结束后分配地址，确保字符串区位于全局变量区之后
             self.pending_string_inits.push((base_offset, value))
           _ => ()
         }
       }
+  }
+}
+
+///|
+/// #304（2026-10-26）：文件作用域地址常量链形态的静态求值结果。
+priv enum AddrChainEval {
+  /// GLOBAL_START + 总偏移（含 base 符号偏移与链上 Member/Index 偏移）
+  AddrResolved(Int32)
+  /// 链合法但 base 符号未登记（前向引用）——挂 pending 尾轮回填
+  AddrDeferred
+  /// 非静态可求形态（动态指针基座 / 负或非字面量下标 / 链外表达式）
+  /// ——调用方维持旧静默 0 路径
+  AddrUnsupported
+}
+
+///|
+/// #304：地址常量链形态静态求值单点（`&s.x` / `&sa[1].x` / `&go.in.b`
+/// / `&garr[1]`——Member/Index 链 + 末端 global/static 符号）。偏移语义
+/// 对齐运行期 gen_member_addr / gen_index：节点 ty 定型推进 +
+/// get_member_offset/struct_fields_prefix_offset 单源；迭代剥链（深结构
+/// 纪律，不递归）。base 符号序 static local → global（对齐
+/// push_global_addr_init 的 #283 前置）。指针基座（`p[i]`/`ps->x` 的
+/// p——值运行期才有）与非常量下标 Unsupported：get_member_offset 的
+/// Pointer 一步解引用臂是运行期语义，静态复用必错值，宁缺勿错。
+fn BytecodeGen::eval_global_addr_chain(
+  self : BytecodeGen,
+  inner : @ast.Expr,
+) -> AddrChainEval {
+  // 外→内剥链；steps[k] 的内邻 = steps[k+1]（链尾的内邻是 base 节点）
+  let steps : Array[@ast.Expr] = []
+  let mut cur = inner
+  let mut base : @ast.Expr? = None
+  while true {
+    match cur {
+      Member(obj, _, _, _, _) => {
+        steps.push(cur)
+        cur = obj
+      }
+      Index(arr, _, _, _) => {
+        steps.push(cur)
+        cur = arr
+      }
+      Identifier(_, _, _) => {
+        base = Some(cur)
+        break
+      }
+      _ => break
+    }
+  }
+  // 链不合法（含非 Member/Index/Identifier 节点）时 base 保持 None
+  let base = match base {
+    Some(b) => b
+    None => return AddrUnsupported
+  }
+  // base 符号：#283 序（static local 前置——文件作用域与函数内 static
+  // 聚合初始化器共用本通路）；全局指针 base（&p[0]——值动态）拦截
+  let base_name = match base {
+    Identifier(n, _, _) => n
+    _ => return AddrUnsupported
+  }
+  if base.ty().kind() is TK_Pointer {
+    return AddrUnsupported
+  }
+  let mut offset = match self.static_local_indices.get(base_name) {
+    Some(o) => o
+    None =>
+      match self.global_indices.get(base_name) {
+        Some(o) => o
+        None => return AddrDeferred
+      }
+  }
+  // 内→外应用：Index 步长 = 下标后类型尺寸（gen_index 的 result_ty 同
+  // 源）；Member 偏移 = 内邻节点 ty 的成员偏移（gen_member_addr 的
+  // object.ty() 同源）；内邻为 Pointer（ps->x 的 ps）拦截
+  let mut k = steps.length() - 1
+  while k >= 0 {
+    let inner_node : @ast.Expr = if k + 1 < steps.length() {
+      steps[k + 1]
+    } else {
+      base
+    }
+    match steps[k] {
+      Index(_, idx, _, result_ty) =>
+        match lit_num(idx) {
+          Some(LN_I(v)) =>
+            if v >= 0L {
+              offset = offset + v.to_int() * self.type_size(result_ty)
+            } else {
+              return AddrUnsupported
+            }
+          _ => return AddrUnsupported
+        }
+      Member(_, mname, _, _, _) => {
+        if inner_node.ty().kind() is TK_Pointer {
+          return AddrUnsupported
+        }
+        offset = offset + self.get_member_offset(inner_node.ty(), mname)
+      }
+      _ => return AddrUnsupported
+    }
+    k = k - 1
+  }
+  AddrResolved(@bytecode.GLOBAL_START.reinterpret_as_int() + offset)
+}
+
+///|
+/// #304 审阅 P2-1（2026-10-26）：cast 包裹的地址常量初始化器统一接线点
+/// ——剥外层 Cast（`（int *)&garr[1]`——cast 是类型包装非地址偏移，可
+/// 多层）后命中 Unary(Addr) 则走 eval_global_addr_chain 单源求值：
+/// Resolved 直写 / Deferred 挂 pending / Unsupported 或非 Addr 形态
+/// 返回 false（调用方维持旧路径）。三消费点（flatten 兜底臂 / 顶层
+/// 标量臂 / 数组逐元素臂）共用，消三份分支重复。
+fn BytecodeGen::try_cast_addr_init(
+  self : BytecodeGen,
+  slot : UInt32,
+  init : @ast.Expr,
+) -> Bool {
+  let mut inner = init
+  while true {
+    match inner {
+      Cast(e, _, _, _) => {
+        inner = e
+        continue
+      }
+      _ => break
+    }
+  }
+  match inner {
+    Unary(@ast.UnaryOp::Addr, chain, _, _) =>
+      match self.eval_global_addr_chain(chain) {
+        AddrResolved(addr) => {
+          self.globals_init_32.push((slot, addr))
+          true
+        }
+        AddrDeferred => {
+          self.pending_addr_chain_inits.push((slot, chain))
+          true
+        }
+        AddrUnsupported => false
+      }
+    _ => false
   }
 }
 
@@ -280,6 +444,18 @@ fn BytecodeGen::flush_pending_addr_inits(self : BytecodeGen) -> Unit {
   for entry in pending {
     let (base_offset, name) = entry
     let _ = self.push_global_addr_init(base_offset, name)
+  }
+  // #304（2026-10-26）：链形态 pending 同轮重求（幂等——仍 Deferred
+  // 的条目保留至下一轮，终轮后丢弃语义与裸名 pending 一致）
+  let chains = self.pending_addr_chain_inits
+  self.pending_addr_chain_inits = []
+  for entry in chains {
+    let (slot, chain) = entry
+    match self.eval_global_addr_chain(chain) {
+      AddrResolved(addr) => self.globals_init_32.push((slot, addr))
+      AddrDeferred => self.pending_addr_chain_inits.push(entry)
+      AddrUnsupported => ()
+    }
   }
 }
 

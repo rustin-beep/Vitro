@@ -593,6 +593,45 @@ fn precision_default6(prec : Int32) -> Int32 {
 }
 
 ///|
+/// 整数转换的精度语义（C11 7.21.6.1——PR #313 审阅 P2-2 语料战果，
+/// 2026-10-26）：precision = **最少数字位数**（不足前导零补足；符号不
+/// 占位数，-42 精度 4 ⇒ "-0042"）；精度 0 且值 0 ⇒ 空串（C 特例——
+/// 符号一并省）。旧 d/i/u/x/X/o 六分支只 apply_width，精度整个被忽略
+/// （`printf("%.*d", 3, 9)` 给 "9" 而 clang 给 "009"）。# 前缀（0x/0）
+/// 与 0 旗标的精度交互是更深边缘（C11：精度在场 0 旗标被忽略；# 的
+/// 八进制前导 0 被精度覆盖）——本单源只管 digits 补零，# 前缀由调用点
+/// 在补零后拼接（x/X/o 分支），0 旗标×精度组合暂不区分（语料不锚，
+/// 随差异台账登记）。
+fn pad_int_digits(raw : String, precision : Int32?) -> String {
+  let p = match precision {
+    Some(v) => if v >= 0 { v } else { return raw }
+    None => return raw
+  }
+  if raw.has_prefix("-") {
+    let digits = raw[1:].to_owned()
+    if p == 0 && digits == "0" {
+      return ""
+    }
+    let n = digits.length()
+    if n < p {
+      "-\{"0".repeat(p - n)}\{digits}"
+    } else {
+      raw
+    }
+  } else {
+    if p == 0 && raw == "0" {
+      return ""
+    }
+    let n = raw.length()
+    if n < p {
+      "0".repeat(p - n) + raw
+    } else {
+      raw
+    }
+  }
+}
+
+///|
 /// u64 小写十六进制（无前缀无填充）。
 fn u64_hex_lower(v : UInt64) -> String {
   u64_radix(v, "0123456789abcdef")
@@ -837,27 +876,31 @@ fn format_printf_string(
                 let arg = if used < args.length() { args[used] } else { 0UL }
                 if spec == 100 || spec == 105 {
                   // d / i（+ / 空格旗标：正数带符号前缀）
-                  let val = if is_ll {
+                  let val0 = if is_ll {
                     arg.reinterpret_as_int64().to_string()
                   } else {
                     arg.to_uint().reinterpret_as_int().to_string()
                   }
+                  // 精度 = 最少数字位数（#313 审阅 P2-2——pad 单源）
+                  let val = pad_int_digits(val0, precision)
                   push_str(apply_width(val, width, flags, signed_pos=true))
                 } else if spec == 117 {
                   // u
-                  let val = if is_ll {
+                  let val0 = if is_ll {
                     arg.to_string()
                   } else {
                     arg.to_uint().to_string()
                   }
+                  let val = pad_int_digits(val0, precision)
                   push_str(apply_width(val, width, flags))
                 } else if spec == 120 {
-                  // x（# → 0x 前缀，非零值）
-                  let raw = if is_ll {
+                  // x（# → 0x 前缀，非零值；精度补零在前缀之后——pad 先行）
+                  let raw0 = if is_ll {
                     u64_hex_lower(arg)
                   } else {
                     u64_hex_lower(arg.to_uint().to_uint64())
                   }
+                  let raw = pad_int_digits(raw0, precision)
                   let body = if flags.contains("#") && arg != 0UL {
                     "0x" + raw
                   } else {
@@ -866,11 +909,12 @@ fn format_printf_string(
                   push_str(apply_width(body, width, flags))
                 } else if spec == 88 {
                   // X（# → 0X）
-                  let raw = if is_ll {
+                  let raw0 = if is_ll {
                     u64_hex_upper(arg)
                   } else {
                     u64_hex_upper(arg.to_uint().to_uint64())
                   }
+                  let raw = pad_int_digits(raw0, precision)
                   let body = if flags.contains("#") && arg != 0UL {
                     "0X" + raw
                   } else {
@@ -879,11 +923,12 @@ fn format_printf_string(
                   push_str(apply_width(body, width, flags))
                 } else if spec == 111 {
                   // o（# → 前导 0，非零值）
-                  let raw = if is_ll {
+                  let raw0 = if is_ll {
                     u64_octal(arg)
                   } else {
                     u64_octal(arg.to_uint().to_uint64())
                   }
+                  let raw = pad_int_digits(raw0, precision)
                   let body = if flags.contains("#") && arg != 0UL {
                     "0" + raw
                   } else {

@@ -1,5 +1,127 @@
 ## [Unreleased]
 
+### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
+
+- **P2-1 cast 包裹地址常量链**（`(int *)&garr[1]` 旧三臂落静默 0 ⇒ 运行
+  期 E3083）：`try_cast_addr_init` 单源（剥外层 Cast——类型包装非地址
+  偏移，可多层）+ 三臂 Cast 分支统一接线；语料补三路径 cast 断言（双臂
+  `20 7 30` 逐位对 clang）。
+- **P2-2 #159 防线补锚**：真实 C 语料 ×2（printf_star_member /
+  printf_star_precision——星号精度/宽度/双星号/负宽度/槽混排 × struct
+  成员组合，与手写 AST wbtest 锚互补）。
+- **语料战果——整数转换精度语义缺失（既有缺口，新锚直接抓红）**：
+  `printf("%.*d", 3, 9)` 给 `9` 而 clang 给 `009`（`%.*f`/`%*d` 正常
+  ⇒ 纯整数分支缺口）——d/i/u/x/X/o 六分支只 apply_width 整个忽略
+  precision。**修**：`pad_int_digits` 单源（C11 7.21.6.1——precision
+  = 最少数字位数、符号不占位〔-42 精度 4 ⇒ -0042〕、精度 0 值 0 ⇒
+  空串特例；# 前缀补零后拼接），moon test 898/898 无回归。
+- **登记**：#332（指向数组的指针 `int (*q)[3]` 消费面双重解引用——
+  #304 相邻面）；#333（文件作用域前向引用被静默接受——clang 报未声明
+  而 Vitro 落 0；pending_addr_chain_inits 经审阅定性合法 C 不可达，
+  保留为防御层）。
+- **P3-2/P3-3**：语料三路径各一行输出 + 头注短路边界（逐臂判别力经
+  审阅突变验证成立）；PR body 时点数字随批刷新。
+- **审阅者 skill 演化 4 件随批入册**（03-A1p 静态求值降级面无锚 /
+  01-§14 多路径锚逐路径验证 / 04-C17 本地 sh 臂红 / 07 演化日志）。
+- **义务链**：五家 digest 冻结（存量重算零漂移、addr_const 条目随源
+  刷新）+ clang_direct 三文件 SAME + fuzz 基线 1308→1329（+21 纯追加
+  零删除，桶全 AGREE/CLANG_REJECT 零错值信号）+ facts `--run --strict`
+  漂移 0。
+
+### fix(scripts+ci): PR #313 首轮 CI 四红处置——testcount v3 双口径实跑 + fuzz 基线收编 + perf_budget 阈值恢复（2026-10-26）
+
+- **testcount v3**（bookkeeping 红——「裸分解」锚行数=0）：README 计数行
+  #308 拆解后旧锚退场，闸判据适配——**双口径实跑对账**（裸 `moon test` +
+  `MOON_CC=clang moon test --target native` 各自对账两 README 声明行，
+  v2「不信 facts 制品」精神延伸到 native 面）+ 分解式算术检查条件化
+  （锚在则查/缺席跳过/多锚红）+ native 全量声明行强约束保留（两形态
+  共有）；锚 ×7 双形态覆盖。**首战实战**：#159 批 +1 测试锚连带双口径
+  漂移（897→898 / 1053→1054）被新闸精准逼真值——v2 只查裸口径会漏
+  native 面；全仓测试数引用连坐 6 处。
+- **fuzz 基线 re-freeze**（Adversarial corpus fuzz 红——新指纹未收编）：
+  新语料入池致抽样重排，+3 条目纯追加零删除（enum_non_continuous 三
+  算子，桶全 AGREE/CLANG_REJECT 一致类，无 WRONG_VALUE 信号）。
+- **perf_budget 阈值恢复 8/200**（contract/TS gate 红——0/0 实验态）：
+  压零实验在首轮 CI 实证闸真会红（struct 5>0 与 member 161>0 均抓出，
+  非假绿）——实验结论入 `_why` 留档，恢复设计阈值。
+- 本地插曲定性：fuzz check 首跑曾报 ARM_DIVERGENCE×2（AGREE→DIVERGENCE
+  再 AGREE 三态摆动）——跨会话产物基线瞬态混乱（陷阱 #41 形态，#159
+  typeck 修复的构建窗口），复跑 epoch 更换后全量真跑 PASS；CI 干净检出
+  +单源产物免疫。
+
+### fix(typeck): #159 printf 星号参数槽零 resolve 回写——struct 成员作星号精度静默错值（回文 len=1 病根）+ 待深挖族重测定态批（2026-10-26）
+
+- **修复本体**：`check_printf_format` 类型臂只对「值参数槽」调
+  `resolve_expr_type` 回写，星号参数槽（宽度/精度位）连 resolve 也跳过
+  ——实参子树 ty 停在 parse 默认 Void，codegen `get_member_offset(Void)`
+  落 `_ => 0` 兜底，字段偏移段（`PushConst off; Add`）静默不发：
+  `printf("%.*s", p.bbb, s)` 的 `p.bbb` 读成首字段 `p.aaa`。星号槽补
+  resolve 回写（「不查类型」语义保持）；同族先例 #161 sscanf 尾参
+  （同款缺口 printf 族漏网点）。
+- **红锚**：`printf_star_member_typed`（抄 #161 锚骨架）——修复前红、
+  修复后绿；`moon test` 898/898、`moon check` 干净。
+- **验证**：探针矩阵双臂（js+native）逐位一致（`%d` 位/局部/下标/Arrow/
+  字面量全对，唯一错形态 =「. 点访问 struct 成员」在星号槽）；防线闸
+  全绿（codegen PASS 546 / vm SAME=547 / clang_direct DIFF=0）；typeck
+  golden 重冻 1 例（`printf_star_family.c`——星号槽字面量实参回写后
+  类型化 AST 标注良性漂移，行为零差）。
+- **重测定态批**（待深挖族 6 案，master 8b0e3a17 双臂重跑）：死案销案
+  ×3（#158 snprintf 堆地址 / #146 首行丢失 / #160 VM 轨迹错位——历史批
+  顺带，双臂 MATCH）；活案回填 ×2（#147 trap 位后移 3 行、病根收窄到
+  pts 数组指针访问；#152 行 31 同位 1 ULP 未变）。
+- **另案登记**：#326 `%.*d` 整数星号精度未应用（formatter 层）、
+  #327 api source 通道字符串 `\n` 转义词法错（排查批实锤）。
+
+### fix(scripts+docs): #308 测试计数 facts 化——native 口径键机判 + README 巨型批注链拆解 + 落盘丢键假绿治本（2026-10-26）
+
+- **真值键扩容**：新增 `moonbit_test_passed_native`（`MOON_CC=clang moon
+  test --target native` 全量口径，增量实测 13.8s；裸 897 + native-only
+  fs/gateway/cli = 1053）——`runCmdEnv` 通道（env 覆盖叠加）+ RUN_KEYS
+  登记 + else 对称占位三件齐；Go 回退面不含本键（unavailable 语义安全）。
+- **audit 规则**：`--target\s*native[^\n]{0,40}(全量|测试)` 语境 + 带宽
+  [800,2000]——就近绑定与裸键消歧（`moon test` 语境抢不走全量数：语境词
+  位置距离决胜）；纯命令行（无数字 span）不进候选，Suspect 假红面不存在
+  （全仓 grep 命中面核查：仅目标两行）。
+- **README 拆解**：`moonbit/README.md` + `README.mbt.md` 的巨型批注链行
+  （每批测试锚 +N 追加、多 PR 全撞——2026-10-25 三 PR 串行合并的
+  ≈10 分钟双口径实测成本主源）拆为两行裸数 + facts 键标注形态；批注明细
+  单源 CHANGELOG；native-only 逐包分解以 `moon test -p` 为准。**计数冲突
+  的解法从「双口径实测」降为「改数 + 闸逼真值」**（#308 立案主诉求）。
+- **落盘丢键假绿治本（#298 病族第三例实锤）**：`collectAll` 非 `--run`
+  路径的占位清单曾缺 native 键——沿用逻辑只接「键在且 unavailable」形态，
+  缺失=沿用跳过 ⇒ 落盘丢键 ⇒ 毒数字 1077 进「待采集」无判定（本地完整
+  复现 #298 形态：`--run` 采到 1053 → 日常 check 键蒸发）。修占位 + 反向
+  J9 锚（RUN_KEYS 采集族键非 --run 时必须占位在场——与既有「占位→
+  runKeys」正锚互补）。
+- **验证**：J9 红证闭环（毒 1077 → 漂移 1 处 + rc=1 双模式 → 恢复 1053
+  → rc=0 且 native 键入「沿用上次采集」清单）；moonbit_fact 新锚 ×4 全
+  绿；tsc 零错；facts `--run --strict` 漂移 0。AGENTS 两段连坐改写
+  （「分解式人工义务」段翻案为机判形态 + facts.go 过时引用刷 .mts）。
+
+### fix(codegen): #304 文件作用域地址常量链形态三路径回填——&s.x / &sa[1].x / &go.in.b / &garr[1] 运行期 NULL 解引用（2026-10-26）
+
+- **病根**：静态初始化器的地址常量回填只认裸名两形态（`Identifier` 数组名 /
+  `&g` 纯取址，#264 面），Member/Index 链形态在**三条路径**上分别静默不回填
+  （全局区零填 ⇒ 运行期 E3083 NULL 解引用，clang 全部正常给值）：顶层标量臂
+  （`int *p = &s.x`——gen.mbt 落 `_ => ()`）、数组逐元素臂（`int *agg[2] =
+  {&gm.v,...}`——落 flatten 折叠 0）、聚合递归 flatten 臂（`struct PtrBox
+  box = {&go.in.a}`——落 `_ => ()`）。typeck 侧整族放行（const_eval
+  「Unary(Addr,..) 整棵跳过」），纯 codegen 回填缺口。
+- **修复**：新增 `eval_global_addr_chain` 静态求值单源（init.mbt）——迭代
+  剥 Member/Index 链 + 末端 static local→global 符号（#283 前置序），偏移
+  语义与运行期同源（节点 ty 定型推进 + get_member_offset 单源；Index 步长
+  = 下标后类型尺寸）；**指针基座拦截**（`p[i]`/`ps->x` 的 p——值运行期才有，
+  get_member_offset 的 Pointer 一步解引用臂是运行期语义，静态复用必错值，
+  宁缺勿错 Unsupported）；前向引用挂 `pending_addr_chain_inits` 尾轮回填
+  （与 #264 裸名 pending 同轮幂等）。三路径统一接线。
+- **连坐**：函数内 static 聚合初始化器（复用 flatten 通路）自动受益；
+  `corpus/baseline/addr_const_chains_global.c` 红锚（三路径 × 六链形态，
+  J9 先证红——旧代码 E3083 双臂复现）+ 五家 digest 冻结（存量零漂移：
+  lexer 1094/parser·typeck·codegen 546/vm SAME=547）+ facts --strict
+  （--run 重采）漂移 0 + moon test 897/897。
+- **#305 勘误**：数组聚合 `{&c}` 形态双臂实测**已不复发**（js+native 均
+  clang 一致给值——后续批顺带修复），本案修复不涉其通路；issue 独立销案。
+
 ### feat(corpus): TheAlgorithms 407 份对拍批——45 份入 baseline + UB 锚入 gap + facts 带宽/误锚修复（2026-10-25，含审阅处置）
 
 - **对拍**：tmp 最大一块语料（rustin-beep/C fork `vitro-probe-baseline`，407 份）三方全量对拍

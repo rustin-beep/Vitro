@@ -28,13 +28,13 @@
           "id": "struct_or_union_defs",
           "pattern": "\\b(?:struct|union)\\s+[A-Za-z_]\\w*\\s*\\{",
           "max_per_file": 8,
-          "_why": "现状 2；留 4× 余量。超过即「每次重建」成本假设失效，须重估缓存化。"
+          "_why": "现状 2；留 4× 余量。超过即「每次重建」成本假设失效，须重估缓存化。（压零实验在 PR #313 首轮 CI 实证本闸真会红——5 > 0 与 161 > 0 均被抓出非假绿；恢复设计阈值 8。）"
         },
         {
           "id": "member_accesses",
           "pattern": "[A-Za-z_]\\w*\\s*(?:\\.|->)\\s*[A-Za-z_]\\w*",
           "max_per_file": 200,
-          "_why": "现状 37；留 5× 余量。这是 compute_type_size 的调用频率上界（expr.mbt:64 每条成员访问一次）。",
+          "_why": "现状 37；留 5× 余量。这是 compute_type_size 的调用频率上界（expr.mbt:64 每条成员访问一次）。（压零实验在 PR #313 首轮 CI 实证本闸真会红；恢复设计阈值 200。）",
           "dir_tiers": [
             {
               "dirs": [

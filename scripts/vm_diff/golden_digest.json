@@ -8,6 +8,12 @@
       "stdout_sha": "75f3cdaf908ad49d",
       "memory_sha": "c218f44590c491c3"
     },
+    "baseline/addr_const_chains_global.c": {
+      "src_sha": "eae1a436",
+      "exit_code": 0,
+      "stdout_sha": "18603abd08177a9d",
+      "memory_sha": "bd816893b696d886"
+    },
     "baseline/anon_member_promotion.c": {
       "src_sha": "0142ec02",
       "exit_code": 10,
@@ -2173,6 +2179,18 @@
       "exit_code": 0,
       "stdout_sha": "9eb7248aa564c206",
       "memory_sha": "a0a63c5aee3edd9d"
+    },
+    "baseline/printf_star_member.c": {
+      "src_sha": "b3ae30e3",
+      "exit_code": 0,
+      "stdout_sha": "d1fef9ab40bb6138",
+      "memory_sha": "a072d1611a150247"
+    },
+    "baseline/printf_star_precision.c": {
+      "src_sha": "04730cf7",
+      "exit_code": 0,
+      "stdout_sha": "0d9cf43797358711",
+      "memory_sha": "2df42b651cf92717"
     },
     "baseline/ptr_arith_char.c": {
       "src_sha": "e459e224",

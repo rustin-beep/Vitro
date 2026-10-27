@@ -9,6 +9,7 @@ fn make_payload(step : Int32, vars : Array[ApiVariableSnapshot]) -> StepPayload 
     code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "step \{step}",
+    semantic_label_id: "",
     algorithm_step: None,
     local_vars: vars,
     call_stack: [{ func_name: "main", return_line: 0, }],
@@ -40,6 +41,7 @@ fn clone_payload(p : StepPayload) -> StepPayload {
     code_file: p.code_file,
     func_name: p.func_name,
     semantic_label: p.semantic_label,
+    semantic_label_id: p.semantic_label_id,
     algorithm_step: match p.algorithm_step {
       Some(a) =>
         Some({
@@ -345,6 +347,7 @@ test "stream_symbol_table_full_content_anchor" {
     code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "step 0",
+    semantic_label_id: "",
     algorithm_step: Some({
       algorithm_name: "ALGO",
       display_name: "DISPLAY",

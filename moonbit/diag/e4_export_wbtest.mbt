@@ -2,9 +2,10 @@
 /// #130 批③b fixture（lean 载体默认空——wbtest 不可 import
 /// content_data）：三条已知卡（1001 首位字节锚 / 3051 W 前缀 / 3086
 /// 运行期 trap 码〔#261 立码；原 4100 探针随 #256 C++ 死卡退役换锚〕），
-/// 内容 = 真源逐字节；测尾回装空段恢复 lean 态。
+/// 内容 = 真源逐字节；测尾显式 __clear__ 恢复 lean 态（#323 起空段=
+/// 不覆盖，清场须 __clear__）。
 fn e4_install_fixture() -> Unit raise {
-  install_catalog_texts(
+  let _ = install_catalog_texts(
     "{\"1001\":{\"icon\":\"unknown-char\",\"title\":\"未知字符\",\"explanation\":\"探针\",\"common_causes\":[]},\"3051\":{\"icon\":\"x\",\"title\":\"W 前缀探针\",\"explanation\":\"探针\",\"common_causes\":[]},\"3086\":{\"icon\":\"index\",\"title\":\"数组越界（运行期）\",\"explanation\":\"探针\",\"common_causes\":[]}}",
   ) catch {
     _ => fail("fixture 装载失败")
@@ -13,9 +14,7 @@ fn e4_install_fixture() -> Unit raise {
 
 ///|
 fn e4_restore_lean() -> Unit raise {
-  install_catalog_texts("{}") catch {
-    _ => ()
-  }
+  let _ = install_catalog_texts("{\"__clear__\":true}") catch { _ => false }
 }
 
 ///|

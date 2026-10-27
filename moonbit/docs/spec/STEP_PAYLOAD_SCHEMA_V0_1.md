@@ -47,6 +47,7 @@
 | `code_file` | string | **是** | 本帧 `code_line` 所属编译单元文件名（v0.2 首批激活，见 §7.2.1）；单文件编译恒 `"main.c"`；`null` = 行号不落任何 file_range（序幕帧 code_line=0 的诚实空态） |
 | `func_name` | string | 否 | 当前函数名（教学可读名，如 `main` / `bubble_sort`）；未知时为空串 |
 | `semantic_label` | string | 否 | 教学语义标签，由源码行 + 变量值推断（如 `循环 i=0, j=1`、`交换 arr[1]↔arr[2]`、`调用 printf`、`内存分配`） |
+| `semantic_label_id` | string | 否 | **`semantic_label` 的受控词汇表 id**（附录 B 值域；v0.2 二批激活 #231，2026-10-27）——`classify` 单源映射，消费方按 id 聚合/过滤/着色不做文本前缀匹配；空串 = 无标签（与 `semantic_label` 空串同态） |
 | `algorithm_step` | object | **是** | 算法步骤语义快照（§2.6）；未命中算法模板时为 `null` |
 | `local_vars` | array | 否 | 当前作用域变量快照（§2.1）；无变量时为 `[]` |
 | `call_stack` | array | 否 | 调用栈（§2.2）；**自底向上**，最后一个元素为当前帧 |
@@ -70,6 +71,7 @@
   "code_line": 12,
   "func_name": "bubble_sort",
   "semantic_label": "循环 i=0, j=1",
+  "semantic_label_id": "loop",
   "algorithm_step": {
     "algorithm_name": "bubble_sort",
     "display_name": "冒泡排序",
@@ -400,6 +402,17 @@ NDJSON；请求带 `id`，响应回填同一 `id`；错误帧与成功帧**同�
 | 帧基线（mb 单臂） | `node scripts/protocol_frames/main.mts`（`--update-baseline` 重生后） | ✅ 47 帧全部一致（15 个 step 帧各增 `code_file`，其余逐字节不变） |
 | 差分往返（null/[]/新增键） | `moon test` 的 `stream_wbtest` 全锚（符号表全内容锚已含 `main.c`@index1） | ✅ |
 
+#### 7.2.2 v0.2 二批激活历史行（2026-10-27，#231 `semantic_label_id`）
+
+| 项 | 载体（可复现命令） | 结果 |
+|---|---|---|
+| 键集冻结（v0.1 十四字段 + v0.2 二字段并集） | `cd moonbit && moon test`（`contracts_json_byte_exact_rust_truth` 快照重锚〔碎块数组改 inspect 形态〕+ `v0_2_active_fields_match_single_source` 连坐 + 计数锚 8→9） | ✅ protocol 47/47 |
+| 帧面（id 值域对齐词汇表） | `serve_step_wbtest::serve_step_semantic_label_id_frame_field`（bubbleSort 400 帧：字段恒在场 + `loop`/`swap` 双命中；空 payloads 发布缓冲响应合法不判） | ✅ gateway 143/143（js/native 双臂） |
+| S1–S5 回放 | `node scripts/replay/replay_s1_s5.mts -moonbit`（读 v01_payload_fields.json 新 `v02_payload_fields` 两键） | ✅ 61 断言 60 PASS + 1 EXEMPT |
+| 帧基线（mb 单臂） | `node scripts/protocol_frames/main.mts`（`--update-baseline` 重生后） | ✅ 47 帧一致（step 帧各增 `semantic_label_id`；contracts 帧随台账 9 条） |
+| 差分往返 | `stream_wbtest` 全锚（`semantic_label_id_idx` 符号表差分，值集 ≤16 天然去重） | ✅ |
+| TS 绑定 | `node scripts/gen_protocol_ts/main.mts -check` + `node moonbit/bindings/ts/consumer.mjs`（399 步真实 payload 字段级校验） | ✅ |
+
 > 字段冻结的工程意义：`step_payload_schema_v0_1_test` 断言的是 **capi 出口 JSON 的键集合与枚举字面量**。任何字段改名/增删都会让该测试失败，从而强制走版本化流程（而不是让 schema 文档悄悄过期）。
 
 ### 7.3 对端接入前的预备结论
@@ -564,6 +577,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | `unwind_frames_left` | reserve | pending | CS3b | 剩余待展开帧数（展开动画驱动字段） |
 | `current_exception` | reserve | pending | CS3b | `{type_name, message, addr, origin_line} \| null`；`origin_line` 为原始抛点（`throw;` 保留 / `throw e;` 改写） |
 | `code_file` | add | **active** | v0.2 | 多文件行号归位（§8 #9）。**2026-10-17 #90 激活**：`code_line` 保持全局行号语义不变，`code_file` = 该行所属编译单元文件名（单文件恒 `main.c`；`code_line<=0` 的序幕帧为 `null`——诚实空态非缺陷）；`collect` 经 `SourceLineProvider.source_file_at` 同源解析；stream 差分格式同步扩 `code_file_idx`（None=未变） |
+| `semantic_label_id` | add | **active** | #231 | 语义标签受控词汇 id（附录 B 值域）。**2026-10-27 #231 激活**：`classify` 单源映射（空串 = 无标签，与 `semantic_label` 空串同态），`step_payload_json` 插在 `semantic_label` 之后；消费方按 id 聚合/过滤/着色，不再对渲染文本做前缀匹配；stream 差分格式同步扩 `semantic_label_id_idx`（符号表差分，值集 ≤16 天然去重） |
 | `call_stack[].return_line` | add | pending | v0.2 | 补值不改字段（§8 #1）：字段已在 v0.1，激活 = 记录 VM 帧返回行 |
 | `func_display_name / func_mangled_name` | add | pending | v0.2 | §8 #2：内部名与源码可读名双字段，保留 `func_name` 作 display 语义 |
 
@@ -599,6 +613,7 @@ v0.1 **字段集合未变**（本次为值语义增强与出口扩容），按 �
 | `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（tag `vitro-engine-0.8.0` 实证无此方法） |
 | 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
 | `step.next` 参数 `frames` | step.next | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
+| step 帧 `semantic_label_id` | step payload | **HEAD（未发布）** | #231 受控词汇 id（v0.2 台账第 9 条 / 附录 B 值域；`classify` 单源映射，空串 = 无标签） |
 
 > 维护义务：**新字段上帧时必须在此登记版本归属**；「HEAD」条目随发版改为实版号。
 > 导览版同步维护于 [CLI使用手册.md](../current/02-构建与上手/CLI使用手册.md)

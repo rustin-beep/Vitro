@@ -37,6 +37,7 @@ fn make_step(
     code_file: None,
     func_name: "main",
     semantic_label: "active",
+    semantic_label_id: "",
     algorithm_step: None,
     local_vars,
     call_stack: [],

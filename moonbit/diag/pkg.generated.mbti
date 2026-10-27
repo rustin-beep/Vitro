@@ -16,7 +16,7 @@ pub fn codes_without_catalog() -> Array[Int]
 
 pub fn export_catalog_json() -> String
 
-pub fn install_catalog_texts(String) -> Unit raise InstallCatalogTextsError
+pub fn install_catalog_texts(String) -> Bool raise InstallCatalogTextsError
 
 // Errors
 pub suberror InstallCatalogTextsError {

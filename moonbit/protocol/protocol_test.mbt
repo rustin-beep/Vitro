@@ -6,8 +6,10 @@ test "blackbox_schema_surface" {
   // 常量 + 白名单 + 台账
   assert_eq(@protocol.SCHEMA_VERSION, "v0.2") // #90 v0.2 首批激活（2026-10-17）
   let v02 = @protocol.step_payload_fields_v0_2()
-  assert_eq(v02.length(), 1)
+  // #231 二批激活（2026-10-27）：+semantic_label_id（受控词汇 id 同帧下发）
+  assert_eq(v02.length(), 2)
   assert_eq(v02[0], "code_file")
+  assert_eq(v02[1], "semantic_label_id")
   assert_eq(@protocol.SCHEMA_V0_1_FROZEN_AT, "2026-09-12")
   let fields = @protocol.step_payload_fields_v0_1()
   assert_eq(fields.length(), 14)
@@ -19,7 +21,7 @@ test "blackbox_schema_surface" {
   let checklist = @protocol.v0_2_activation_checklist()
   assert_eq(checklist.length(), 5)
   let ledger : Array[@protocol.SchemaFieldPlan] = @protocol.v0_2_field_ledger()
-  assert_eq(ledger.length(), 8) // 7 Rust 照搬 + error_catalog[].icon（#27 增补）
+  assert_eq(ledger.length(), 9) // 7 Rust 照搬 + error_catalog[].icon（#27）+ semantic_label_id（#231）
   // #90 激活复核：code_file 台账条 status=active（激活即单源登记）
   let cf = ledger.filter(p => p.field == "code_file")
   assert_eq(cf.length(), 1)
@@ -114,6 +116,7 @@ test "blackbox_dto_surface" {
     code_file: None,
     func_name: "main",
     semantic_label: "返回",
+    semantic_label_id: "return",
     algorithm_step: Some(algo),
     local_vars: [variable],
     call_stack: [frame],
@@ -179,6 +182,7 @@ test "blackbox_stream_surface" {
     code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "返回",
+    semantic_label_id: "return",
     algorithm_step: None,
     local_vars: [
       { name: "i", addr: 0, is_local: true, ty_name: "int", value: "0", },
@@ -199,6 +203,7 @@ test "blackbox_stream_surface" {
     code_file: Some("main.c"),
     func_name: "main",
     semantic_label: "返回",
+    semantic_label_id: "return",
     algorithm_step: None,
     local_vars: [
       { name: "i", addr: 0, is_local: true, ty_name: "int", value: "1", },

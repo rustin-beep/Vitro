@@ -704,3 +704,66 @@ test "serve_step_next_frames_domain_b76" {
     msg="frames=1000 须钳到预算 3（两调 ~6 步，长程序不得 finished）：\{r4}",
   )
 }
+
+///|
+/// #231 semantic_label_id 帧面锚（2026-10-27）：步帧 payload 须带
+/// `semantic_label_id`（受控词汇表 id——classify 单源映射〔protocol 包〕；
+/// 空串 = 无标签）。消费方按 id 聚合/过滤/着色，不再对渲染文本做
+/// 脆弱前缀匹配（「循环 n=5, i=0」无法反查是 loop 的硬伤）。
+test "serve_step_semantic_label_id_frame_field" {
+  let s = @session.Session::new()
+  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+    "void bubbleSort(int arr[], int n) {\\n" +
+    "  int i, j, temp;\\n" +
+    "  for (i = 0; i < n - 1; i++) {\\n" +
+    "    for (j = 0; j < n - i - 1; j++) {\\n" +
+    "      if (arr[j] > arr[j + 1]) {\\n" +
+    "        temp = arr[j];\\n" +
+    "        arr[j] = arr[j + 1];\\n" +
+    "        arr[j + 1] = temp;\\n" +
+    "      }\\n" +
+    "    }\\n" +
+    "  }\\n" +
+    "}\\n" +
+    "int main() {\\n" +
+    "  int arr[3] = {3, 1, 2};\\n" +
+    "  int n = 3;\\n" +
+    "  bubbleSort(arr, n);\\n" +
+    "  return arr[0];\\n" +
+    "}\\n" +
+    "\"}}"
+  let (cresp, _) = serve_handle(s, jsrc)
+  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":9,\"method\":\"run\"}"))
+  let (bresp, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
+  assert_true(bresp.contains("\"ready\":true"))
+  let mut saw_loop = false
+  let mut saw_swap = false
+  let mut field_every_frame = true
+  let mut sample = "（无帧）"
+  // 400 帧覆盖 main 序段 + bubbleSort 全程（3 元素冒泡 ~200 步——64 帧
+  // 只到 main 调用前后，交换行不在窗内）
+  for k = 0; k < 400; k = k + 1 {
+    let (r, _) = serve_handle(s, "{\"id\":\{30 + k},\"method\":\"step.next\"}")
+    // 只对含帧响应断言字段（payloads:[] 的发布缓冲响应是合法形态——
+    // 一帧发布缓冲语义下非末帧批不发布）
+    if r.contains("\"payloads\":[{") && !r.contains("\"semantic_label_id\":") {
+      field_every_frame = false
+      if sample == "（无帧）" && r.length() > 2 {
+        sample = r
+      }
+    }
+    if r.contains("\"semantic_label_id\":\"loop\"") {
+      saw_loop = true
+    }
+    if r.contains("\"semantic_label_id\":\"swap\"") {
+      saw_swap = true
+    }
+  }
+  assert_true(
+    field_every_frame,
+    msg="每帧须带 semantic_label_id 字段（#231）样例帧：\{sample}",
+  )
+  assert_true(saw_loop, msg="循环帧须带 semantic_label_id=loop（#231）")
+  assert_true(saw_swap, msg="交换帧须带 semantic_label_id=swap（#231）")
+}

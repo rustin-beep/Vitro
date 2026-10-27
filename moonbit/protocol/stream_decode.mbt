@@ -225,6 +225,10 @@ pub fn decode_batch(batch : StepStreamBatch) -> Array[StepPayload] {
       },
       func_name: get_sym(batch.symbol_table, delta.func_name_idx),
       semantic_label: get_sym(batch.symbol_table, delta.semantic_label_idx),
+      semantic_label_id: get_sym(
+        batch.symbol_table,
+        delta.semantic_label_id_idx,
+      ),
       algorithm_step: decode_algo_step(delta.algorithm_step, batch.symbol_table),
       local_vars,
       call_stack: current_call_stack.map(f => {
@@ -279,6 +283,7 @@ fn decode_step_payload_ref(
     },
     func_name: get_sym(sym, base.func_name_idx),
     semantic_label: get_sym(sym, base.semantic_label_idx),
+    semantic_label_id: get_sym(sym, base.semantic_label_id_idx),
     algorithm_step: decode_algo_step(base.algorithm_step, sym),
     local_vars: base.local_vars.map(v => {
       name: get_sym(sym, v.name_idx),

@@ -103,6 +103,13 @@ pub fn v0_2_field_ledger() -> Array[SchemaFieldPlan] {
       note: "多文件行号归位（§8 #9）：code_line 保持全局行号语义，另附文件名，避免破坏断点/heatmap 口径。2026-10-17 #90 激活（F2 供数批①）：collect 经 SourceLineProvider.source_file_at 同源解析，gateway step_payload_json 插在 code_line 之后；单文件编译恒给首单元文件名，null 仅结构性无映射的防御态；stream 差分格式同步扩 code_file_idx（None=未变）",
     },
     {
+      field: "semantic_label_id",
+      kind: "add",
+      status: "active",
+      batch: "#231",
+      note: "语义标签受控词汇 id（§B 附录 B 值域）：2026-10-27 #231 激活——collect 经 @protocol.classify(semantic_label) 单源映射（空串=无标签，与 code_line==0 同态），gateway step_payload_json 插在 semantic_label 之后；消费方按 id 聚合/过滤/着色，不再对渲染文本做前缀匹配；stream 差分格式同步扩 semantic_label_id_idx（符号表差分，值集 ≤16 天然去重）",
+    },
+    {
       field: "call_stack[].return_line",
       kind: "add",
       status: "pending",

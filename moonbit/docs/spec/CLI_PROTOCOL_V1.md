@@ -132,6 +132,8 @@ vitro step <file.c | -> [--max-steps N] [--json | --summary]
 
 Rust oracle 为 flag 形态（`-o`/`--raw`）；mb 为位置参数（`dump_tokens <dir|file> <out_dir> <raw|pp|both>` 等）——消费者是仓库内 Go 防线（调用面稳定优先），不收敛（#37 B1/B3）。
 
+**产物契约（#230，2026-10-27 成文）**：dump 族产物（`.l1/.l2.tsv` / `.ast/.typeck/.compile.json`）的文件名规则、TSV 列序与转义、JSON 顶层键与失败形态、编码行尾——单源见 [`DUMP_ARTIFACTS_V1.md`](DUMP_ARTIFACTS_V1.md)（随包分发）；用法错自该批起 = 一行原因 + rc=4（旧 PanicError 栈形态退役）。
+
 ## 8. 版本与演进
 
 - v1 冻结面：标记行前缀**九种**（§1 白名单表**单源**——本计数为表的行数，加前缀须两处连坐；历史三次「补登不跟账」：NOTE〔10-04〕/STDERR〔10-10〕/FIX〔10-11，第三次同形且漏进 §1 表致下游剥离器漏剥实锤，#114 补录〕）/ 退出码五值 / `--json` 事件 type 三种 + summary；

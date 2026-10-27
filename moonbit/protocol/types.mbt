@@ -188,12 +188,19 @@ pub extend ApiFrameInfo with Debug::{to_repr}
 /// 任何 file_range（结构性不可达的防御形态）。语义：additive-only，
 /// 消费方忽略未知字段；下游多文件当前行高亮据此归位，不再自行累加
 /// 前面文件行数反推（#90 现象段的未文档化拼接语义依赖在此切断）。
+///
+/// v0.2 二批激活字段（#231，2026-10-27）：semantic_label_id——
+/// semantic_label 的受控词汇表 id（classify 单源映射；空串 = 无标签，
+/// 与 semantic_label 空串同态）。消费方按 id 聚合/过滤/着色，不再对
+/// 渲染文本做脆弱前缀匹配；id 值域 = semantic_labels 方法帧（词汇只
+/// 增不改）。
 pub(all) struct StepPayload {
   step_index : Int32
   code_line : Int32
   code_file : String?
   func_name : String
   semantic_label : String
+  semantic_label_id : String
   algorithm_step : AlgorithmStepSnapshot?
   local_vars : Array[ApiVariableSnapshot]
   mut call_stack : Array[ApiFrameInfo]

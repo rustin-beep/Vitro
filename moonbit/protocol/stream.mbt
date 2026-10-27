@@ -107,6 +107,8 @@ pub(all) struct StepPayloadRef {
   code_file_idx : SymIdx?
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
+  /// #231（2026-10-27）：受控词汇 id 的符号表索引（值集小天然去重）。
+  semantic_label_id_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
   local_vars : Array[ApiVarSnapshotRef]
   call_stack : Array[ApiFrameInfoRef]
@@ -134,6 +136,8 @@ pub(all) struct StepPayloadDelta {
   code_file_idx : SymIdx?
   func_name_idx : SymIdx
   semantic_label_idx : SymIdx
+  /// #231：受控词汇 id（符号表差分——同串去重，值集 ≤16 收益最大）。
+  semantic_label_id_idx : SymIdx
   algorithm_step : AlgorithmStepSnapshotRef?
   /// 值发生变化的变量。
   var_deltas : Array[VarDelta]
@@ -232,6 +236,7 @@ pub fn encode_step_payload(
     },
     func_name_idx: sym.insert(payload.func_name),
     semantic_label_idx: sym.insert(payload.semantic_label),
+    semantic_label_id_idx: sym.insert(payload.semantic_label_id),
     algorithm_step: encode_algo_step(payload.algorithm_step, sym),
     local_vars: payload.local_vars.map(v => {
       name_idx: sym.insert(v.name),
@@ -390,6 +395,7 @@ pub fn encode_step_delta(
     code_file_idx,
     func_name_idx: sym.insert(curr.func_name),
     semantic_label_idx: sym.insert(curr.semantic_label),
+    semantic_label_id_idx: sym.insert(curr.semantic_label_id),
     algorithm_step: encode_algo_step(curr.algorithm_step, sym),
     var_deltas,
     new_vars,
@@ -591,6 +597,7 @@ fn clone_ref(base : StepPayloadRef) -> StepPayloadRef {
     code_file_idx: base.code_file_idx,
     func_name_idx: base.func_name_idx,
     semantic_label_idx: base.semantic_label_idx,
+    semantic_label_id_idx: base.semantic_label_id_idx,
     algorithm_step: base.algorithm_step,
     local_vars: base.local_vars.map(v => {
       name_idx: v.name_idx,

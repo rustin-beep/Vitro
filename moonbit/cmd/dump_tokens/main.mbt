@@ -3,11 +3,16 @@
 /// 与 Rust `vitro_cli dump-tokens` 逐字节同构，供 Go 差分驱动比对。
 ///
 /// 用法：moon run cmd/dump_tokens -- <corpus_dir|file.c> <out_dir> <raw|pp|both>
+/// 用法错（缺参/模式非法）= 用法行 + rc=4（#230 治理，2026-10-27——旧走
+/// 未捕获 Failure 的 PanicError 栈 + rc=127，对脚本与 IDE 都是噪声）。
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
+
+///|
 fn main raise {
   let args = @env.args()
   if args.length() < 4 {
     println("用法: dump_tokens <corpus_dir|file.c> <out_dir> <raw|pp|both>")
-    fail("参数不足")
+    c_exit(4)
   }
   let target = args[1]
   let out_dir = args[2]
@@ -15,7 +20,8 @@ fn main raise {
   let want_raw = mode == "raw" || mode == "both"
   let want_pp = mode == "pp" || mode == "both"
   if !want_raw && !want_pp {
-    fail("模式必须是 raw|pp|both，得到 '\{mode}'")
+    println("模式必须是 raw|pp|both，得到 '\{mode}'")
+    c_exit(4)
   }
   if !@fs.path_exists(out_dir) {
     @fs.create_dir(out_dir)

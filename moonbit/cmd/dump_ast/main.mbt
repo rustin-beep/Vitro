@@ -11,11 +11,16 @@
 ///   {"ok":bool,"parse_error_count":N,"ast":{...}|null,
 ///    "parse_errors":[{code,line,column,message},...],"stall_count":N}
 /// - 病态样本对齐：两侧崩溃即硬失败（E3 由 Go 驱动断言退出码）
+/// 用法错（缺参）= 用法行 + rc=4（#230 治理，2026-10-27——旧走未捕获
+/// Failure 的 PanicError 栈 + rc=127）。
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
+
+///|
 fn main raise {
   let args = @env.args()
   if args.length() < 3 {
     println("用法: dump_ast <corpus_dir|file.c> <out_dir>")
-    fail("参数不足")
+    c_exit(4)
   }
   let target = args[1]
   let out_dir = args[2]

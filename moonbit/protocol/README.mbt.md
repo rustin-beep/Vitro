@@ -71,7 +71,12 @@ test {
   // v0.2 首批激活 #90 升格——2026-10-17）
   inspect(@protocol.SCHEMA_VERSION, content="v0.2")
   // v0.2 已激活字段（#90 首批 = code_file；与 v0.1 十四字段冻结表并存）
-  inspect(@protocol.step_payload_fields_v0_2().length(), content="1")
+  inspect(
+    @protocol.step_payload_fields_v0_2().length(),
+    content=(
+      #|2
+    ),
+  )
 }
 ```
 

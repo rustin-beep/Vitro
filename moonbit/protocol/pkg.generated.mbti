@@ -261,6 +261,7 @@ pub(all) struct StepPayload {
   code_file : String?
   func_name : String
   semantic_label : String
+  semantic_label_id : String
   algorithm_step : AlgorithmStepSnapshot?
   local_vars : Array[ApiVariableSnapshot]
   mut call_stack : Array[ApiFrameInfo]
@@ -280,6 +281,7 @@ pub(all) struct StepPayloadDelta {
   code_file_idx : Int?
   func_name_idx : Int
   semantic_label_idx : Int
+  semantic_label_id_idx : Int
   algorithm_step : AlgorithmStepSnapshotRef?
   var_deltas : Array[VarDelta]
   new_vars : Array[ApiVarSnapshotRef]
@@ -303,6 +305,7 @@ pub(all) struct StepPayloadRef {
   code_file_idx : Int?
   func_name_idx : Int
   semantic_label_idx : Int
+  semantic_label_id_idx : Int
   algorithm_step : AlgorithmStepSnapshotRef?
   local_vars : Array[ApiVarSnapshotRef]
   call_stack : Array[ApiFrameInfoRef]

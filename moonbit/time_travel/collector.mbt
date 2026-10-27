@@ -191,6 +191,10 @@ pub fn[P : SourceLineProvider] collect(
     source_line,
     at_callee_entry,
   )
+  // #231（2026-10-27）：受控词汇 id 同帧下发——classify 单源映射
+  //（空串 label → None → ""；非空归类失败 = 词汇漂移，理论不可达，
+  // vocabulary 冻结测试断言分类器全输出可归类——此处 unwrap_or 防御）
+  let semantic_label_id = @protocol.classify(semantic_label).unwrap_or("")
   // 算法步骤推断（Rust collector.rs:83-118 照搬）：行入口快照维护（行变
   // 化时把上一行末帧固化）→ 变量映射（name/value 两字段）→ env 三类帧
   // 上下文 → 推断；last_frame_vars 无条件固化（find 失败也维护——Rust
@@ -262,6 +266,7 @@ pub fn[P : SourceLineProvider] collect(
     code_file,
     func_name,
     semantic_label,
+    semantic_label_id,
     algorithm_step,
     local_vars,
     call_stack,

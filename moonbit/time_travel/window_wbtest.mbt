@@ -15,6 +15,7 @@ fn mk_payload(step : Int32) -> @protocol.StepPayload {
     code_file: None,
     func_name: "main",
     semantic_label: "",
+    semantic_label_id: "",
     algorithm_step: None,
     local_vars: [],
     call_stack: [],

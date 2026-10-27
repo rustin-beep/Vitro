@@ -22,6 +22,13 @@
 /// Return + 四字面量/Identifier 表达式）+ 入口 wrapper；其余语句/表达式
 /// 族 fail loud（`…未实现（S5 在途）`错误文本）。语料大面积 gen 失败
 /// 属预期红面基线期（同 S4 typeck_diff 模式），扩展批逐族收敛。
+///
+/// 用法错（缺参/参数过多/输出目录与语料目录相同）= 原因行 + rc=4
+///（#230 治理，2026-10-27——旧走未捕获 Failure 的 PanicError 栈 +
+/// rc=127）。
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
+
+///|
 fn main raise {
   @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
@@ -41,20 +48,22 @@ fn main raise {
   }
   if positional.length() < 2 {
     println("用法: dump_compile <corpus_dir|file.c> <out_dir> [--library]")
-    fail("参数不足")
+    c_exit(4)
   }
   if positional.length() > 2 {
     // 防御（2026-09-21 实踩：两语料目录连传时 out_dir 落成语料目录，
     // 81 个 dump 产物污染 native/tests/cases——本工具契约单语料 + 单
     // 输出目录，多余参数直接 fail loud）
-    fail(
+    println(
       "参数过多：期望 <corpus_dir|file.c> <out_dir> [--library]（实测 \{positional.length()} 个位置参数）",
     )
+    c_exit(4)
   }
   let target = positional[0]
   let out_dir = positional[1]
   if target == out_dir {
-    fail("输出目录与语料目录相同——拒绝写入门禁")
+    println("输出目录与语料目录相同——拒绝写入门禁")
+    c_exit(4)
   }
   if !@fs.path_exists(out_dir) {
     @fs.create_dir(out_dir)

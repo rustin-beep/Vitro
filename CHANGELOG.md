@@ -192,6 +192,47 @@
   `__clear__` 形态被拒）+ assets/diag 编译红（新返回值断言）先行落袋；
   旧消费面连坐迁移（`e4_export_wbtest`/`serve_more_wbtest`/
   `diag/README.mbt.md` doc 测试的 `"{}"` 清场形态 → `__clear__`）。
+### test(engine): #338 批四——零测试包最小防线 12 例：pp 契约首锚 + tsv 转义表 + engine_direct BUG-A 语义 + StepStatus 四态穷尽（2026-10-27）
+
+- **`lexer/internal/pp` 首个直接单测**（此前 3425 行零直接锚，只经上层
+  黑盒间接覆盖）：`pp_contract_wbtest.mbt` 5 例——BOM 剥除、反斜杠
+  续行拼接（行号=首物理行）、#ifdef 真/假臂（假臂 token 不得进流）、
+  #define 对象宏展开（N→5 经 finish_pp）、未闭合 #ifdef E1013 按开启
+  行报错；MapProvider 内存表 SourceProvider 实现（trait 语义只查表）。
+  inspect 锚经 `--update` 冻结 + 人工核对。
+- **`lexer/tsv.mbt` 0/17 → 黑盒 3 例**：转义表四映射（真 tab→`\t` 文本、
+  `\`→`\\`）、L1 六列/L2 五列形态、errors 计数如实（禁粉饰）——TSV 是
+  差分锚点出口，此前形态只经差分驱动间接锁。
+- **`cmd/lib/engine_direct` 首个测试**（+js+native 域，3 例）：
+  compile_params 的 BUG-A 修复语义（`-` stdin 源不传 filename / 具名
+  文件传全路径——gateway base_dir 同目录 include）+ json_escape 转义面。
+- **`session` dto 追锚 1 例**：StepStatus::to_text 四态穷尽（此前仅
+  Paused 一态被踩）+ Compare 顺序不变量（对齐 Rust 声明序）。
+- **langpack 销案说明**（亲读后修正批四原计划）：零逻辑出口壳（头注
+  明令「改语义动 teaching/assets，勿在此加实现」），补单测=重复建设；
+  出口行为由 demo 前端消费面（texts_json→install_texts 装载门）覆盖。
+- **cmd 薄壳拍板 4 落实**：smoke 覆盖面清单化入 #338 台账（run
+  正常/trap/编译错、compile、step、api capabilities/bogus/batch 3 帧/
+  help 30 法清单 + 三臂同形 + 6 字节锚 + --corpus 30 语料级），不补单测。
+- **四臂**：裸 918（+9）/ native·js 1078（+12）/ wasm-gc 1075（+9，
+  engine_direct 不在此臂）。
+
+### test(host): #338 批三——vprintf 族白盒锚点 8 例：va_list 游标预取层锁死（0/131 → 96/131）（2026-10-27）
+
+- **#338 批三 P1**：`host_vprintf_wbtest.mbt` 新 8 例白盒锚——此前
+  `host_vprintf.mbt` 整文件 0/131 零单测域执行（行为只经 vm 对拍域
+  间接走）。主职责 = 锁死 `va_args_from_cursor` 的**步进与消费序**
+  （d/i/o/u/x/X→4、`ll`→8、f/e/E/g/G→8、c→4 提升、s/p→4；
+  `*` 宽度/精度各先吃一个 int，消费序 width* → precision* → 值）。
+- **锚面**：混排游标（同参 printf oracle 锚值对照）/ `%lld` 8 字节步进
+  对齐（错步进即错值直读红）/ 星号三态消费序（`%*d`、`%.*d`、`%*.*d`）/
+  `%%` 不取参不偏移 / NULL 陷阱区与上界双 fault 臂（v 族无参数计数
+  守卫的差异面本身）/ vfprintf stderr·stdout 通道分流 / vsnprintf
+  截断 C 语义（size-1+NUL、返回完整长度）/ size=0 不写（哨兵读回）。
+- **战果**：host_vprintf 96/131（73.3%，余 35 行 = FILE* 落盘臂与写
+  错误细分支——与 host_fprintf_n 同构，设计上不重复测）；四臂全绿
+  （裸 909 / native·js·wasm-gc 各 1066）；**未挖出新缺陷**——预取层
+  现状逻辑正确，本批为锁面性质（诚实记录）。
 
 ### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
 

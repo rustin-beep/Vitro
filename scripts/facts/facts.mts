@@ -535,6 +535,47 @@ export function collectMoonbitNativeFromOutput(out: string, code: number, facts:
   facts["moonbit_test_passed_native"] = f;
 }
 
+// ─── coverage 记账（#338 批二，2026-10-27）─────────────────────────────────
+// 口径锚 = `moon coverage report -f summary` 末行 `Total: covered/total`，
+// 键值 = total−covered。**两口径陷阱**：analyze 的 caret 输出末行是
+// 「Total: N uncovered line(s) in M file(s)」——展示层另一口径（实测
+// 4827 vs 12486 两数并存），正则须 x/y 形态、单数字形态天然不匹配（J9
+// 锚 moonbit_fact.test.mts）。覆盖域 = 默认 wasm 轮裸单测（native-only
+// 包 gateway/cli 的 157 例不在内）。coverage 仍属实验特性
+// （MOON_COVE 双引擎并存），按 #338 拍板只记账不判红。
+export function collectMoonbitCoverage(root: string, facts: Record<string, Fact>): void {
+  const how = "cd moonbit && moon coverage analyze && moon coverage report -f summary";
+  const rA = runCmd(path.join(root, "moonbit"), 15 * 60_000, "moon", "coverage", "analyze");
+  if (!rA.ok) {
+    facts["moonbit_coverage_uncovered_lines"] = unavail("行", "moonbit/（moon coverage）", how,
+      "coverage analyze 超时或 moon 不可用");
+    return;
+  }
+  const rR = runCmd(path.join(root, "moonbit"), 60_000, "moon", "coverage", "report", "-f", "summary");
+  if (!rR.ok) {
+    facts["moonbit_coverage_uncovered_lines"] = unavail("行", "moonbit/（moon coverage）", how,
+      "coverage report 超时或 moon 不可用");
+    return;
+  }
+  collectMoonbitCoverageFromOutput(rR.out, facts);
+}
+
+export function collectMoonbitCoverageFromOutput(out: string, facts: Record<string, Fact>): void {
+  const ms = [...out.matchAll(/Total:\s*(\d+)\/(\d+)/g)];
+  const m = ms[ms.length - 1];
+  if (m === undefined) {
+    facts["moonbit_coverage_uncovered_lines"] = unavail("行", "moonbit/（moon coverage）",
+      "cd moonbit && moon coverage analyze && moon coverage report -f summary",
+      "未解析到 Total: covered/total 行");
+    return;
+  }
+  const covered = Number.parseInt(m[1]!, 10);
+  const total = Number.parseInt(m[2]!, 10);
+  const f = okFact(total - covered, "行", "moonbit/（moon coverage）", "run", nowISO());
+  f.note = `covered/total=${covered}/${total}（${(100 * covered / total).toFixed(1)}%）——moon coverage report 末行口径（默认 wasm 轮裸单测域，native-only 包 gateway/cli 不在内）；analyze caret 的「N uncovered」是展示层另一口径不采`;
+  facts["moonbit_coverage_uncovered_lines"] = f;
+}
+
 // collectMoonbitLexerDiff 采集 S2 词法差分真值（2026-09-19）：
 // 四目录稳定语料对拍，值 = 逐字节一致的 TSV 总数（L1+L2 双层）。
 // 任一路 FAIL 即 unavailable（不兜底——fail loud 的差分驱动自身就是真值载体）。
@@ -649,6 +690,7 @@ export const RUN_KEYS = [
   "moonbit_test_passed", "moonbit_lexer_diff_tsv",
   "moonbit_parser_diff_samples",
   "moonbit_test_passed_native",
+  "moonbit_coverage_uncovered_lines",
 ];
 
 // markRetiredFacts：Rust 退役键统一 unavailable（工序④删区批 2026-10-05）。
@@ -715,6 +757,17 @@ export function collectAll(
     // J9 锚 cargo_fact_test）。
     facts["cargo_test_suites"] = unavail("个", "cargo test", "--run-slow 或 --cargo-log",
       "需 --run-slow 才执行（很慢）；CI 传 --cargo-log 解析已落盘日志");
+  }
+
+  // coverage 记账键（#338 批二，2026-10-27）：--run-slow 档采集——冷
+  // instrumentation 全量重编分钟级，不进 CI --run 关键路径（nightly
+  // coverage-sentinel job 消费）。只记账不判红：无 docs 声明引用，
+  // --strict 的待采集红仅对有消费点的键生效（#298 判定器语义）。
+  if (runSlow) {
+    collectMoonbitCoverage(root, facts);
+  } else {
+    facts["moonbit_coverage_uncovered_lines"] = unavail("行", "moonbit/（moon coverage）", "--run-slow",
+      "需 --run-slow 才执行（覆盖率 instrumentation 很慢）");
   }
 
   // 沿用上次采集（仅当本轮没拿到真值）

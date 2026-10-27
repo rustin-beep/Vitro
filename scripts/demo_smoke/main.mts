@@ -191,7 +191,7 @@ async function run(): Promise<void> {
         .map((x) => x.trim())
         .filter(Boolean).length ?? 0
     : 0;
-  check(methodCount === 25, "gateway 方法面 = 25（错误帧自报；algorithms.catalog 随 #36 上线计入）", "实得 " + methodCount);
+  check(methodCount === 26, "gateway 方法面 = 26（错误帧自报；algorithms.catalog 随 #36、texts.get 随 #323 上线计入）", "实得 " + methodCount);
   const pageTitle = fs.readFileSync(path.join(repoRoot, "demo/index.html"), "utf8");
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(
@@ -256,10 +256,10 @@ async function run(): Promise<void> {
       for (const f of ["payloads", "finished", "trapped", "trap_message"]) {
         check(f in lastBatch, `step.next 批字段 ${f}`, "缺键");
       }
-      // v0.2 首批激活（#90，2026-10-17）：键集 = v0.1 十四字段冻结表 +
-      // v0.2 激活字段（code_file）并集——additive-only 纪律的 smoke 侧判据。
-      // 单源 = scripts/replay/v01_payload_fields.json（v01_payload_fields
-      // + v02_payload_fields 两表；gen_protocol_fields 生成期联动）。
+      // v0.2 激活（#90 code_file 2026-10-17；#231 semantic_label_id
+      // 2026-10-27）：键集 = v0.1 十四字段冻结表 + v0.2 激活字段并集——
+      // additive-only 纪律的 smoke 侧判据。单源 = scripts/replay/
+      // v01_payload_fields.json（v01+v02 两表；gen_protocol_fields 联动）。
       const want15 = [
         "accessed_vars",
         "algorithm_step",
@@ -274,6 +274,7 @@ async function run(): Promise<void> {
         "pointer_snapshots",
         "root_cause_hint",
         "semantic_label",
+        "semantic_label_id",
         "step_index",
         "vis_events",
       ]
@@ -281,7 +282,7 @@ async function run(): Promise<void> {
         .join(",");
       check(
         Object.keys(p0).sort().join(",") === want15,
-        "StepPayload 顶层键集 = v0.1 十四字段 + v0.2 激活 code_file（#90）",
+        "StepPayload 顶层键集 = v0.1 十四字段 + v0.2 激活 code_file（#90）+ semantic_label_id（#231）",
         "实得 " + Object.keys(p0).sort().join(",")
       );
       // code_file 值域抽查（#90）：单文件用例恒 "main.c"（merge_units 对单

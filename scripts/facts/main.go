@@ -142,8 +142,14 @@ func main() {
 		// 733」）同样"整行不含真值"却是合法写法，误报面经 suspect_exemptions.json
 		// 显式过闸后 CI 启用（2026-10-01 接线）。僵尸豁免条目无条件红（数据
 		// 错误非口径问题，不随 --strict 开关）。
+		//
+		// #298（2026-10-27，.mts 现役面同款）：待采集（键真值缺位）有文档
+		// 消费点时 strict 判红——CI fresh 环境 27 键待采集静默跳过漂移判定
+		// 的假绿面（run 40409823786）。本 Go 版为回退面（无 CI 活行），
+		// 行为与现役 .mts 对称维护。
 		suspectRed := *strict && res.SuspectN > 0
-		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) || suspectRed || len(res.StaleSuspectExempts) > 0 {
+		pendingRed := *strict && res.PendingN > 0
+		if res.DriftN > 0 || len(res.Broken) > 0 || (staleN > 0 && !*allowStale) || suspectRed || pendingRed || len(res.StaleSuspectExempts) > 0 {
 			os.Exit(1)
 		}
 	case "report":

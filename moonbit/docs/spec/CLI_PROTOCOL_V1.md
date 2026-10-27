@@ -47,6 +47,7 @@
 - **`// TRAP ` 标记可跨多行**（trap 教学文案：首行 `[语义 id]` 徽章 + `[timeline]`/`[cause]`/`[fix]`/`[location]` 附注行——**#27 方案 C（2026-10-07）：原 emoji 码点已退役为语义图标 id**，字形由下游按 id 经 serve `icons.get` 自取，文本消费方按方括号 id 归一比对不受影响）——消费方剥离按首行前缀 + 后续无前缀行与 oracle 同形（归一比对不受影响）。
 - **stdout 通道尾换行形态**：`println(text)` 在程序输出后补一个换行（text 自带尾换行时双换行；空输出 2 个）——**两侧同形旧债**（Rust 同形态），防线归一器（首尾空行剥 + 恰一尾换行）吸收，退役随 Rust 消解。
 - **文本模式 stdout 行尾 CRLF 注记（#129 分立后适用面消失）**：程序输出走 write_stdout 字节直写（fwrite/Buffer——无 CRLF 转换）；标记行迁移 stderr（UTF-8 文本域 LF）。原注记存档（Windows native 的 println 文本模式产物，消费方归一器 `TrimRight(l,"\r")` 吸收——2026-10-04 二轮审 P3 登记）；旧 golden 经归一器吸收不受影响。
+- **帧通道行尾字节契约（#335 治本，2026-10-27）**：CLI 帧通道（`api --batch`/serve 的 println 响应行）三臂逐字节同形 LF——native 侧经 main 首行前置 `moonbit_vitro_ensure_binary_mode()`（stdout/stderr 双 fd `_setmode(_O_BINARY)`，幂等；stdin 不切——serve 的 fgets 行读取面维持 CRT 折行 + 手剥 `\r\n` 既有归一；**不用 constructor**——`moon test --target native` 的 stub 编译链固定 MSVC 探测，GNU 属性 C2143 编译红实测）；字节锚在 `scripts/vitro_cli_smoke`（B[帧通道字节] 三臂原始字节逐位一致 + native 零 0d）。**下游按行切分帧无需再做 `TrimRight(l,"\r")`**——上条旧注记的归一建议不再适用本通道；#335 前的存量消费方归一器继续无害（幂等剥）。
 - **`// TRAP ` 前导空行注记（#129 分立后消失）**：TRAP 行走 stderr 与 stdout 分流，跨流前导空行不复存在。原注记存档（println 尾换行与 TRAP 输出拼接形态——#103 实测登记）；旧 golden 经归一器吸收不受影响。
 - **note 管道注记（#129 分立后适用面消失）**：note 标记行走 stderr（UTF-8 文本域）——Windows 控制台 mojibake 形态随之消灭。原注记存档（Latin-1 折回与 stdout 同管道）。
 

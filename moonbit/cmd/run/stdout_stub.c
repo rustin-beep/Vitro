@@ -18,6 +18,27 @@
 #include <fcntl.h>
 #endif
 
+/* #335（2026-10-27）：帧通道行尾治本——CLI 帧通道（MoonBit println 出口：
+ * compile/step/api/serve 的响应帧）不走本 stub 的 fwrite，Windows CRT 文本
+ * 模式把 println 的每个 \n 静默改写 \r\n（native 帧尾 0d 0a vs js/wasm
+ * 0a）。进程启动早期（main.mbt 首行）调用本导出把 stdout/stderr 双 fd
+ * 切二进制；stdin 不切——serve 的 fgets 行读取面维持 CRT 折行 + 手剥
+ * \r\n 既有归一。POSIX 无此概念。
+ * **不用 __attribute__((constructor))**：moon test --target native 的 stub
+ * 编译链固定 MSVC 探测（MOON_CC=clang 不覆盖——2026-10-27 实测 C2143/
+ * C2091 编译红），GNU 属性不可移植；显式导出 + main 首行调用双编译器
+ * 兼容。幂等：重复调用无副作用（与下方首次调用切换语义叠加无害）。 */
+MOONBIT_FFI_EXPORT void moonbit_vitro_ensure_binary_mode(void) {
+#ifdef _WIN32
+  static int done = 0;
+  if (!done) {
+    _setmode(_fileno(stdout), _O_BINARY);
+    _setmode(_fileno(stderr), _O_BINARY);
+    done = 1;
+  }
+#endif
+}
+
 MOONBIT_FFI_EXPORT void moonbit_vitro_write_stdout(moonbit_bytes_t b) {
   static int stdout_binary = 0;
   /* _setmode 失败（无效 fd——实际不可达）返回 -1 静默退回文本模式：

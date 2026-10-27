@@ -51,6 +51,13 @@ pub struct TypeChecker {
   // #50 批①（2026-10-10）：static 全局首次声明行——E3059 前向序检查
   //（使用点早于任何声明 = 对齐 Clang use-before-declaration）
   static_global_decl_lines : Map[String, Int32]
+  // #331（2026-10-27）：文件作用域全局的首声明序（program.globals 数组
+  // 首现下标 = 声明点序，C11 6.2.1p4）——初始化器前向引用守卫判据
+  global_first_decl_idx : Map[String, Int32]
+  // #331：当前正在检查初始化器的文件作用域声明下标（Pass 2.5 检查段
+  // 逐 g 设置；函数体 Pass 4 语境为 None——局部声明点语义由 scope 栈
+  // 天然保证，不进守卫）
+  mut static_init_site_idx : Int32?
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   // 作用域栈
@@ -81,6 +88,8 @@ pub fn TypeChecker::new() -> TypeChecker {
     static_func_files: Map([]),
     static_global_files: Map([]),
     static_global_decl_lines: Map([]),
+    global_first_decl_idx: Map([]),
+    static_init_site_idx: None,
     structs: Map([]),
     unions: Map([]),
     scopes: [],
@@ -388,6 +397,11 @@ pub fn TypeChecker::check(
         E3003_FuncRedeclared,
       )
     }
+    // #331：首声明序登记（保持首值——tentative/extern 再声明不刷新，
+    // 对齐 static_global_decl_lines 的 #50 首值模式）
+    if !self.global_first_decl_idx.contains(g.name) {
+      self.global_first_decl_idx.set(g.name, i)
+    }
     self.declare_var(
       g.name,
       g.ty,
@@ -414,6 +428,9 @@ pub fn TypeChecker::check(
   // 不出 ⇒ 维持 0 哨兵、type_size 4、下标越界 TRAP——审阅 p8 实锤）
   for i in 0..<program.globals.length() {
     let g = program.globals[i]
+    // #331：进入本 g 的初始化器检查语境（前向引用守卫激活面——
+    // diagnose_static_init 的地址常量族按首声明序判定）
+    self.static_init_site_idx = Some(i)
     // #265（2026-10-22）：cast/sizeof 维数误判 VLA 的常量二次折叠——
     // 折在**尺寸推断循环内、逐个声明检查前**（sizeof 惯用法引用的先行
     // 全局此时已推断回写符号表）；折出后回写 program + 符号表，codegen
@@ -511,6 +528,10 @@ pub fn TypeChecker::check(
       }
     }
   }
+  // #331：退出文件作用域初始化器检查语境（后续 Pass 4 函数体内 static
+  // 走同一 fold/diagnose 链——site 置 None，局部声明点语义由 scope 栈
+  // 天然保证，不进守卫）
+  self.static_init_site_idx = None
   // #265/P1-5（审阅批 2026-10-23）：defer 移位二段——必须在全局尺寸
   // 推断循环**之后**（`static const char *TIPS[] = {...}` 的维数推断
   // 发生在该循环，之前跑 lookup_var 拿 [-1] 未定型 → sizeof 惯用法

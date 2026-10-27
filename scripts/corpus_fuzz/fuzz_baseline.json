@@ -137,6 +137,15 @@
     "baseline/atof_prefix.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/bisection_method.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/bisection_method.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/bisection_method.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/bit_not_zero.c|brace_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -144,6 +153,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/bit_not_zero.c|paren_wrap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/bit_xor.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/bit_xor.c|cmp_swap": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/bit_xor.c|static_inject": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/bitwise.c|char_escape": {
@@ -387,6 +405,15 @@
       "bucket": "AGREE"
     },
     "baseline/circular_queue.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/codegen_soundness_regression.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/codegen_soundness_regression.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/codegen_soundness_regression.c|init_partial": {
       "bucket": "AGREE"
     },
     "baseline/col_utf8_units.c|div2shift": {
@@ -1067,6 +1094,15 @@
       "bucket": "AGREE"
     },
     "baseline/fibonacci_search.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/file_fopen_modes.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/file_fopen_modes.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/file_fopen_modes.c|div2shift": {
       "bucket": "AGREE"
     },
     "baseline/flexible_array_static_init_reject.c|brace_strip": {
@@ -1805,6 +1841,15 @@
     "baseline/multi_dim_array.c|memset_zero": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/multi_if_else.c|brace_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_if_else.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/multi_if_else.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
     "baseline/multi_level_ptr_cast_struct.c|cast_strip": {
       "bucket": "CLANG_REJECT"
     },
@@ -2020,6 +2065,15 @@
       "bucket": "WRONG_VALUE",
       "issue": "known-ub-domain",
       "note": "scanf 全失败 + 未初始化变量读残留（clang 栈垃圾 b=32758/s=ç vs vitro 零初始化 0/空）——UB 域无义务一致，非病（skill P21 形态）"
+    },
+    "baseline/param_shadows_func.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/param_shadows_func.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/param_shadows_func.c|nested2flat": {
+      "bucket": "AGREE"
     },
     "baseline/parametric_macro_max.c|brace_strip": {
       "bucket": "CLANG_REJECT"
@@ -2253,6 +2307,15 @@
       "bucket": "AGREE"
     },
     "baseline/printf_retval.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "baseline/printf_star_precision.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/printf_star_precision.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/printf_star_precision.c|nested2flat": {
       "bucket": "AGREE"
     },
     "baseline/ptr_arith_char.c|div2shift": {
@@ -2625,6 +2688,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/sizeof_float_arr.c|div2shift": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_long_long.c|cast_strip": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_long_long.c|char_escape": {
+      "bucket": "CLANG_REJECT"
+    },
+    "baseline/sizeof_long_long.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/sizeof_struct_union.c|cast_strip": {
@@ -3337,6 +3409,15 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/vla_sizeof.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_sizeof_type.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_sizeof_type.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "baseline/vla_sizeof_type.c|memset_zero": {
       "bucket": "AGREE"
     },
     "baseline/while_continue.c|div2shift": {

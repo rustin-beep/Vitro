@@ -477,9 +477,12 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // fs/gateway/cli）——moonbit/README 的 `--target native` 全量句机判锚，
   // 多 PR 计数冲突的解法从「双口径实测 ≈10 分钟」降为「改数+闸逼真值」。
   // 独立键独立采集（裸失败不阻断）；MOON_CC=clang 照纪律 11。
+  // #298（2026-10-27）：超时 5min→15min——native 全量实测 ≈10 分钟
+  // （#308 批自注），5min 常态超时 ⇒ unavailable ⇒ strict 待采集即红
+  // （#298 判定器）会永红；15min 为冷机余量。
   // Go 回退面（facts.go）不含本键——回退时 unavailable 待采集语义安全。
   const howN = "cd moonbit && MOON_CC=clang moon test --target native";
-  const rN = runCmdEnv(path.join(root, "moonbit"), 5 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
+  const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
   if (!rN.ok) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
     return;

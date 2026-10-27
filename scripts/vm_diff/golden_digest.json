@@ -1028,6 +1028,12 @@
       "stdout_sha": "4a44dc15364204a8",
       "memory_sha": "fac2f047ce351d88"
     },
+    "baseline/extern_predecl_addr_init.c": {
+      "src_sha": "3e1b64fa",
+      "exit_code": 0,
+      "stdout_sha": "f82643c8db432341",
+      "memory_sha": "d08bcdd1e4ee4187"
+    },
     "baseline/extern_var.c": {
       "src_sha": "7445e769",
       "exit_code": 0,
@@ -1261,6 +1267,12 @@
       "exit_code": 0,
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "f2ef1dad0b6ccb43"
+    },
+    "baseline/fwd_ref_static_init.c": {
+      "src_sha": "22e94b2b",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "memory_sha": "9617c3ca067778c2"
     },
     "baseline/gcd_euclid.c": {
       "src_sha": "2381a5a0",
@@ -1691,8 +1703,8 @@
     "baseline/member_storage_class_reject.c": {
       "src_sha": "a962004c",
       "exit_code": 0,
-      "stdout_sha": "e3b0c44298fc1c14",
-      "compile_fail": true
+      "stdout_sha": "4a44dc15364204a8",
+      "memory_sha": "b8c0097ad2cd1da0"
     },
     "baseline/memchr_negative_c.c": {
       "src_sha": "2e2e83d0",
@@ -2255,8 +2267,8 @@
     "baseline/ptr_to_array_deref.c": {
       "src_sha": "84396c96",
       "exit_code": 0,
-      "stdout_sha": "15a416fa78c62600",
-      "memory_sha": "ddb6af8ee932f097"
+      "stdout_sha": "a6bdb18519bd8b26",
+      "memory_sha": "2b73bcdb02c1dde7"
     },
     "baseline/ptr_to_struct_member.c": {
       "src_sha": "533e3ba0",

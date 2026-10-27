@@ -225,6 +225,38 @@ export function runMain(argv: readonly string[]): number {
       process.stdout.write("ok  A[api --batch] ping+compile+run 状态跨帧\n");
     }
   }
+  // #335（2026-10-27）：帧通道字节锚——println 出口不走红/黑 write stub，
+  // native 修前 CRT 文本模式每换行 +0d（constructor 进程级二进制治本）。
+  // 三臂同喂 batch 序列，原始 stdout 字节逐位比对零归一 + native 零 0d。
+  {
+    const arms = [
+      { label: "js", exe: jsEntry },
+      { label: "wasm", exe: shell },
+      { label: "native", exe: nativeExe },
+    ];
+    const outs: Buffer[] = [];
+    for (const a of arms) {
+      const r = spawnSync(a.label === "native" ? a.exe : nodeBin, [
+        ...(a.label === "native" ? [] : [a.exe]),
+        "api",
+        "--batch",
+      ], { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024, input: batch });
+      if (r.error !== undefined || (r.status ?? -1) !== 0) {
+        fatalf(`B[帧通道字节] ${a.label} 启动/rc 异常: ${r.error?.message ?? `rc=${r.status}`}`);
+      }
+      outs.push(r.stdout);
+    }
+    const [j = Buffer.alloc(0), w = Buffer.alloc(0), n = Buffer.alloc(0)] = outs;
+    if (j.equals(w) && w.equals(n)) {
+      if (n.includes(13)) {
+        fatalf(`B[帧通道字节] native 帧输出含 0d（CRT 文本模式 CRLF 回潮，#335 治本回归）`);
+      }
+      process.stdout.write(`ok  B[帧通道字节] 三臂 api --batch 原始字节逐位一致（${n.length}B，native 零 0d，#335）\n`);
+    } else {
+      const fd = firstDiff(j, n);
+      fatalf(`B[帧通道字节] 三臂帧输出不一致（len j=${j.length} w=${w.length} n=${n.length} 首差 offset=${fd}——native 帧尾 CRLF 形态，#335）`);
+    }
+  }
 
   // ── B 组：三臂同形对拍（核心锚——差异消灭的机判）────────────
   const warnC = path.join(tmpDir, "warn_case.c");

@@ -19,11 +19,18 @@ extern "C" fn clock_millis_frac_stub() -> Int32 = "moonbit_vitro_clock_millis_fr
 extern "C" fn serve_flush_stdout() -> Unit = "moonbit_vitro_serve_flush"
 
 ///|
+/// #335（2026-10-27）：帧通道行尾治本——main 首行前置调用（stdout/stderr
+/// 双 fd 切二进制，Windows CRT 文本模式对 println 帧通道的换行改写
+/// （CRLF）消除；stub 见 serve_stdio.c 文件头）。
+extern "C" fn ensure_binary_mode_stub() -> Unit = "moonbit_vitro_ensure_binary_mode"
+
+///|
 const SERVE_LINE_CAP : Int32 = 65536
 
 ///|
 /// serve 主循环：stdin 逐行 → gateway.invoke → stdout 响应；shutdown 停。
 fn main {
+  ensure_binary_mode_stub()
   @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   // quote-include 的文件系统读取注册（2026-09-29 审阅 P2 修复——
   // native 形态恢复；gateway 侧经 include_reader 分叉，wasm-gc 不

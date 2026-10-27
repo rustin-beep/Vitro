@@ -1224,7 +1224,11 @@ jobs:
         # 冷态 instrumentation 全量重编（分钟级）+ 插桩跑全量裸单测；
         # report 末行 Total: covered/total = facts 键同源口径（本地实测
         # 热态 ~4s / 冷态数分钟）。归一 CRLF 后存 artifact 供逐日 diff。
+        # pipefail（#338 审阅批补）：管道 rc 是尾命令（纪律 9）——report
+        # 崩溃/超时不得被 tr 的 rc=0 吞成假绿（空 artifact 入库 = 记账
+        # 静默缺失，违背 fail loud）。
         run: |
+          set -o pipefail
           cd moonbit
           moon coverage analyze
           moon coverage report -f summary | tr -d '\r' > coverage_summary.txt

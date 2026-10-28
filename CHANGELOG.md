@@ -255,6 +255,78 @@
   错误细分支——与 host_fprintf_n 同构，设计上不重复测）；四臂全绿
   （裸 909 / native·js·wasm-gc 各 1066）；**未挖出新缺陷**——预取层
   现状逻辑正确，本批为锁面性质（诚实记录）。
+### docs(已知限制+矩阵): #58 时钟旁路注 + #219 clang golden 差异面登记（两案收口，2026-10-28）
+
+- **#58 状态考古**：核心诉求（可注入时间源）已由 #211 批落地——`vitro
+  run --realtime`（实测真 Unix 时间戳 + clock 自会话起微秒推进）与 serve
+  `deterministic:false`；CLI 缺省 `deterministic=true` 为判分可复现拍板。
+  已知限制 §5 补旁路注（引支持矩阵分臂口径）；localtime/struct tm 族
+  剩余面挂 #10。issue 评论建议关。
+- **#219 登记落地**：标准库矩阵新增 §六「与 Clang golden 逐字节判分的
+  差异面」（rand 序列 / ctype 宏返回值表示 / CLOCKS_PER_SEC 三处 + 判分
+  归一建议）+ rand/srand/ctype/CLOCKS_PER_SEC 行交叉引用；已知限制第
+  9 行收拢五处（含既有 sizeof 指针 4B / struct packed）。deterministic
+  rand 已天然跨臂稳定（引擎固定 LCG 无熵源），无需额外 config 位。issue
+  评论建议关。
+
+### feat(gateway+session): #87 批二——`max_checkpoints` 会话级旋钮暴露到 serve config（2026-10-28）
+
+- **协议面新增**（additive）：`config.set max_checkpoints:int(1..=1000)`
+  （超上界 fail loud——内存防线：每约 5 个检查点一个 Full = 1MB 内存
+  整拷，1000 ≈ 200MB/会话封顶；低下界钳 1 + clamped 显式）；`config.get`
+  回显现值；`preset:"algo"` 档展开 **200**（大搜索时间轴采样密度——近
+  似等距分布下最大重放距离 ≈ N/K），default/tiny 档拉回缺省 50，档推断
+  连坐五键。动机：#87 批一遗留——serve `run` 通道刻意零检查点（裸
+  `vm.run()` 性能设计），`step.begin` 只有 step-0 锚，随机时间轴采样每
+  点重放距离 ≈ N/K 由 K=50 锁死。
+- **单源与即时生效**：缺省值单源 `time_travel.DEFAULT_MAX_CHECKPOINTS`
+  （pub const）；`Session::set_max_checkpoints` 单一写入口（现存统一
+  模式引擎即时应用——不等下次 step.begin）；step.begin 建 engine 时
+  带上会话值；SessionConfig 持值（engine 专属——不进 apply_to_vm/from_vm
+  的 VM 投影）。
+- **连坐**：api help 真源（rules.json brief+params 覆写——形状提取
+  「同方法多形状后者覆盖」会把 max_steps 顶掉，params 覆写位双域拼全）+
+  再生成；CLI 使用手册（会话配置表 + config.get 响应示例）；统一模式
+  设计 §5.2 与 triple-cache SVG（「= 50」改「缺省 50·会话可调」）。
+  gateway 锚 141/141（js 口径）——突变证红（摘白名单键 →「未知配置键」
+  形态红）走完；preset algo 档锚连坐 mc=200。
+- **实测形状（20M 步程序，native serve）**：**前向首访无 K 收益**（锚点
+  「走到哪铺到哪」，K 只增固定开销——K=50 seek(16M) 3077ms vs K=500
+  3274ms）；**回访密集是真价值面**（K=500 回访 seek 87→28ms / 79→34ms /
+  100→**1ms**〔命中密锚〕，2-3× 至 100×）。algo 档 200 的定位 = 大搜索
+  调试的回访场景（学生来回拖时间轴）。
+- **facts 入口勘误（本批实锤）**：此前记录的「facts --run/--strict check
+  双绿」跑错入口（`facts.mts` 是纯导出模块，rc=0 恒假绿）——正确 CLI
+  是 `node scripts/facts/main.mts`；本批以正确入口重跑，机判真值
+  906（裸）/1064（native 全量）同步 7 处 + 根 README 列表行 901 手连坐，
+  `--strict check` 全绿。
+
+### perf(time_travel): #87 seek 检查点淘汰几何化 + 重放快道——重放距离 O(N)→~N/K 且中间步免 collect（2026-10-27）
+
+- **淘汰策略几何化**：`CheckpointManager::evict_over_limit` 从 FIFO（保
+  step-0 + 最近 49 个 ⇒ 长程序中段锚点全空洞，nearest(中段) 只能落
+  step-0 全程重放）改「贪心最小左间隙合并（平手取最老）」——均匀到达
+  下自平衡为近似等距分布（node 模拟器：4000 步 K=50 最大重放距离 140 ≈
+  1.7×N/K，FIFO 为 3020；78M 步最坏 2.86M ≈ 1.8×N/K）。淘汰不变量三
+  件套照旧（step-0 pinned / 删 Full 级联 drain / 链头 Full 防御——链
+  规则抽 `evict_at` 单点）。锚三/锚四补期望随策略改写（锚四补改「密区+
+  跳步」构造直证级联 drain，终态 `[0F,2D,4D]`），新增锚六（中段覆盖
+  红锚）/锚七（Delta base 悬空结构回归）。
+- **重放快道**：`seek_to` 对窗口边距之外的中间步跳过 collect/推帧——
+  这些帧终将被 finish_replay 裁出窗口（纯白干），跳过后每步成本降为裸
+  vm.step()。生效门 algo.matches 为空（AlgoInferCtx 演化此时是死状态，
+  跳过零可观测差；教学程序密采照旧）；语义等价面=仅排水 vis_events
+  （与密采落窗外丢弃同效）。快道→密采切换时窗口起点对齐（防
+  push_or_replace_at 缺口占位放大成 O(距离) 空帧分配）；越终结形态
+  （target 超程序终步一个窗口以上）输出面与密采版一致（锚 N 固化）。
+- **快道段存锚降频 25×**（FAST_SAVE_STRIDE）：重放途中每 20 步的动态
+  save 是快道最大成本（每 5 次 save 一次 Full = 1MB 内存整拷，20 万步
+  重放 = 2GB 白拷贝、95%+ 被几何化淘汰）——降频后密采段保持原频、全
+  程覆盖由 K=50 主导。
+- **实测**（native serve NDJSON 同机同程序、新旧响应逐位一致前提下的
+  计时）：2M 步程序 seek(200k) 3005→108ms / seek(600k) 6598→191ms /
+  seek(1M) 6620→188ms（28–35×）；20M 步程序 seek(15M) 2007ms（基线
+  外推 ~225s）。测试 901→906（裸）/1058→1064（native 全量）。
 
 ### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
 

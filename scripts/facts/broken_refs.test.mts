@@ -97,3 +97,28 @@ test(".agents 域：install_skills.mts 引用参与判定", () => {
   assert.equal(out.length, 1, ".agents 死路径应抓");
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+// PR #339 审阅 P2（2026-10-27）：.md 相对链接存在性闸。J9 双锚：
+// ①假链红（含中文文件名 decodeURI 面）；②外部 URL/锚点/绝对路径豁免不红。
+const { scanMarkdownLinks } = _internal;
+
+test("markdown 链接：坏链红 + 中文目标名 decodeURI", () => {
+  const root = mkTree({
+    "docs/current/05-x/nav.md": "见 [真文档](../07-y/已知限制.md) 与 [假链](../07-y/不存在.md)。\n",
+    "docs/current/07-y/已知限制.md": "# t\n",
+  });
+  const out = scanMarkdownLinks(root, ["docs/current/05-x/nav.md", "docs/current/07-y/已知限制.md"]);
+  assert.equal(out.length, 1, "只有假链红");
+  assert.equal(out[0]!.path, "../07-y/不存在.md");
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("markdown 链接：外部 URL / 锚点 / 绝对路径 / 归档豁免", () => {
+  const root = mkTree({
+    "docs/current/a.md": "[外](https://x/y.md) [锚](#sec) [绝对](/x/y.md) [盘符](C:/x.md) [邮](mailto:a@b)\n",
+    "docs/archive/b.md": "[死链](../nope.md)\n",
+  });
+  const out = scanMarkdownLinks(root, ["docs/current/a.md", "docs/archive/b.md"]);
+  assert.equal(out.length, 0, "豁免面全放行 + archive 跳过");
+  fs.rmSync(root, { recursive: true, force: true });
+});

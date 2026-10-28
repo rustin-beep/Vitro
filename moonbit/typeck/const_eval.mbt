@@ -574,7 +574,18 @@ fn TypeChecker::check_addr_base_decl_order(
   while true {
     match cur {
       Member(obj, _, _, _, _) => cur = obj
-      Index(arr, _, _, _) => cur = arr
+      Index(arr, idx, _, _) => {
+        // PR #339 审阅 P3-2（2026-10-27）：索引子表达式的裸标识符同过
+        // 守卫（`&arr[j]` 的 j 前向漏检——clang 报 use of undeclared）；
+        // 复杂索引表达式（含运算/函数名——函数表无声明序，funcs 全登记
+        // 是 Pass 2 早于 2.5 的既有形态）保守放行，函数名前向挂 #337。
+        match idx {
+          Identifier(name, _, _) =>
+            self.check_fwd_ref_decl_order(name, idx.loc())
+          _ => ()
+        }
+        cur = arr
+      }
       Identifier(name, _, _) => {
         self.check_fwd_ref_decl_order(name, cur.loc())
         break

@@ -621,7 +621,7 @@ jobs:
       - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
         if: matrix.slice == 'cli_smoke'
         run: |
-          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && MOON_CC=clang moon build --release --target native cmd/serve && cd ..
           node scripts/vitro_cli_smoke/main.mts --corpus 30
         shell: bash
 

@@ -925,3 +925,79 @@ test "issue331_extern_predecl_allowed" {
     msg="extern 先行声明 + 定义在后是合法形态，不得误报",
   )
 }
+
+///|
+/// PR #339 审阅 P3-2（2026-10-27）：`&arr[j]` 的**索引子表达式**前向引用
+/// ——j 声明在初始化器之后，clang 报 use of undeclared；守卫此前只沿
+/// 链脊（Member/Index 的 obj/arr 侧）取 base，索引位漏检。
+test "issue331_fwd_index_expr_rejected" {
+  let loc = @source.SourceLoc::new(1, 26)
+  let arr_decl = gdecl(
+    @ast.Type::Array(@ast.Type::int(), 4, [4], false, false, []),
+    "arr",
+    None,
+  )
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Index(
+          @ast.Expr::Identifier("arr", loc, @ast.Type::int()),
+          @ast.Expr::Identifier("j", loc, @ast.Type::int()),
+          loc,
+          @ast.Type::int(),
+        ),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let j_decl = gdecl(@ast.Type::int(), "j", None)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([arr_decl, p_decl, j_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="索引子表达式前向引用 j 应报 E3023（PR #339 审阅 P3-2）",
+  )
+}
+
+///|
+/// PR #339 审阅 P3-2 负锚：索引位先行声明（j 在前）零误报。
+test "issue331_fwd_index_expr_backref_allowed" {
+  let loc = @source.SourceLoc::new(2, 26)
+  let j_decl = gdecl(
+    @ast.Type::int(),
+    "j",
+    Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+  )
+  let arr_decl = gdecl(
+    @ast.Type::Array(@ast.Type::int(), 4, [4], false, false, []),
+    "arr",
+    None,
+  )
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Index(
+          @ast.Expr::Identifier("arr", loc, @ast.Type::int()),
+          @ast.Expr::Identifier("j", loc, @ast.Type::int()),
+          loc,
+          @ast.Type::int(),
+        ),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([j_decl, arr_decl, p_decl]))
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="索引位先行声明不得误报（PR #339 审阅 P3-2）",
+  )
+}

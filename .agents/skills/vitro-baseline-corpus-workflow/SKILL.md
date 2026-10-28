@@ -31,6 +31,10 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 
 `-freeze` 的抽样种子吃**磁盘语料文件集合**（非提交集）——工作区躺着未提交语料时 freeze，基线按「含未来语料」的抽样入账，而 CI 检出集更小 → 轮换差异 → 桶恶化假红（gap/file_fopen 族 VFS 预置差异面延迟两批才在 CI 轮到）。**freeze 前核 `git status --short corpus/` 为空**（未提交语料先提交或 stash 再 freeze）；口径级变更（如 clangOutcome 判定修复）会改变存量桶，须主动全量重算而非等抽样轮到。
 
+## vm digest freeze 前必须重建驱动产物（2026-10-27 PR #339 CI 红教训）
+
+`vm --freeze-mb` 的重算存量语义 = **用当前磁盘 `cmd/run` native exe 重跑全部条目并覆写**——引擎行为面批（typeck/codegen 改动）freeze 时若 cmd/run exe 陈旧（典型：只重建了 cmd/vitro_js/cmd/vitro 做行为验证，漏了 vm_diff 的驱动 cmd/run），551 条重算会把 master 冻好的行为面基线**覆盖成修复前旧行为**（PR #339 实锤：#334/#330 的两条基线被冻回修复前 + 新语料冻进旧形态，CI vm_diff 双臂 DIFF=3）。**freeze 前置**：`MOON_CC=clang moon build --release --target native cmd/run`（改动过引擎行为的批必做）；freeze 后**本地跑校验模式**（同命令去 `--freeze-mb`，含 wasm 臂 `vm --backend wasm`）复现 CI 判定面再提交。
+
 ## golden 规则
 - **stdout 为空的用例，golden 就是 0 字节文件，合法**（比对按 trim 后非空行）。
 - **必须 LF**：clang 在 Windows 直出 CRLF——现役形态下归一由 `clang_direct` 的 `normalizeClangStdout` 内置承接（原「落盘前 `tr -d '\r'`」随 `.out` 落盘形态消亡）；查形态仍是一律看字节，别信 Read 渲染。
@@ -58,4 +62,4 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 ## 权威源与时效
 - `scripts/clang_direct` / `scripts/facts` 头注（`shadow_verify` 已随 2026-10-05 删区退役）；原 `native/AGENTS.md` §测试防线（已删区，档案 tag `rust-oracle-freeze`）
 - **相关规程**：`vitro-facts-reconciliation`（连坐面的判读）、`vitro-generator-contract`（SVG 重生成属生成器闸）
-- as_of: 2026-10-25（#273 迁移批：facts / clang_direct 命令面切 .mts——义务链与判据不变；2026-10-18 记：五家 digest 冻结清单改写——lexer/parser/typeck 断供连红批）
+- as_of: 2026-10-27（新增「vm digest freeze 前必须重建 cmd/run」节——PR #339 CI 红教训；2026-10-25 记：facts / clang_direct 命令面切 .mts——义务链与判据不变；2026-10-18 记：五家 digest 冻结清单改写——lexer/parser/typeck 断供连红批）

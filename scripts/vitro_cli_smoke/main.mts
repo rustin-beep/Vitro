@@ -146,13 +146,14 @@ export function runMain(argv: readonly string[]): number {
   // main.js 退役批（2026-10-16）：wasm 臂被测物 = cmd/vitro_wasm js 产物
   const shell = path.join(repoRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_wasm", "vitro_wasm.js");
   const nativeExe = path.join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "vitro", "vitro.exe");
+  const serveExe = path.join(repoRoot, "moonbit", "_build", "native", "release", "build", "cmd", "serve", "serve.exe");
   const wasmMod = path.join(repoRoot, "moonbit", "_build", "wasm-gc", "release", "build", "gateway", "wasm", "wasm.wasm");
   const jsEntry = path.join(repoRoot, "moonbit", "_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js");
   const wasmGlue = shell;
-  for (const p of [wasmGlue, nativeExe, wasmMod, jsEntry]) {
+  for (const p of [wasmGlue, nativeExe, wasmMod, jsEntry, serveExe]) {
     if (!fs.existsSync(p)) {
       process.stdout.write(
-        `vitro_cli_smoke: 前置产物缺失 ${p}（先构建：moon build --release --target wasm-gc gateway/wasm + MOON_CC=clang moon build --release --target native cmd/vitro + moon build --release --target js cmd/vitro_js + moon build --release --target js cmd/vitro_wasm）\n`,
+        `vitro_cli_smoke: 前置产物缺失 ${p}（先构建：moon build --release --target wasm-gc gateway/wasm + MOON_CC=clang moon build --release --target native cmd/vitro + cmd/serve + moon build --release --target js cmd/vitro_js + moon build --release --target js cmd/vitro_wasm）\n`,
       );
       return 1;
     }
@@ -255,6 +256,27 @@ export function runMain(argv: readonly string[]): number {
     } else {
       const fd = firstDiff(j, n);
       fatalf(`B[帧通道字节] 三臂帧输出不一致（len j=${j.length} w=${w.length} n=${n.length} 首差 offset=${fd}——native 帧尾 CRLF 形态，#335）`);
+    }
+  }
+  // #335 审阅 P3-1（2026-10-27）：serve 帧——唯一 NDJSON 行协议 exe 此前
+  // 无字节锚（serve_smoke/protocol_frames 的 JSON 规范化吸收 CRLF，突变
+  // 实证摘 main 前置调用后仍 67 PASS 全绿）。两帧+shutdown 收尾，原始字节
+  // 零归一断言：帧内容 + 帧尾 LF + 全文零 0d。
+  {
+    const r = spawnSync(serveExe, [], {
+      cwd: repoRoot,
+      maxBuffer: 64 * 1024 * 1024,
+      input: '{"id":1,"method":"ping","params":{}}\n{"id":2,"method":"shutdown","params":{}}\n',
+    });
+    const ob = r.stdout.toString("latin1");
+    if (r.error !== undefined || (r.status ?? -1) !== 0) {
+      fatalf(`B[serve 帧字节] 启动/rc 异常: ${r.error?.message ?? `rc=${r.status}`}`);
+    } else if (!ob.includes('"pong":true') || !ob.includes('"shutdown":true')) {
+      fatalf(`B[serve 帧字节] 帧内容断言失败：${ob}`);
+    } else if (r.stdout.includes(13)) {
+      fatalf(`B[serve 帧字节] serve 帧输出含 0d（CRT 文本模式 CRLF 回潮，#335 治本回归——serve_stdio 的 main 前置调用被摘）`);
+    } else {
+      process.stdout.write(`ok  B[serve 帧字节] serve 两帧+shutdown 零 0d（${r.stdout.length}B，#335 审阅 P3-1）\n`);
     }
   }
 

@@ -101,6 +101,12 @@ const errText = (e: unknown): string => (e instanceof Error ? e.message : String
 
 const MASK64 = (1n << 64n) - 1n;
 
+// shaPath：内容寻址采样键（PR #339 审阅 P3-3）——sha256 十六进制前 32 位，
+// byteCompare 字节字典序稳定。
+function shaPath(p: string): string {
+  return crypto.createHash("sha256").update(p, "utf8").digest("hex").slice(0, 32);
+}
+
 export class DetRand {
   state: bigint;
   constructor(seed: bigint) {
@@ -1104,14 +1110,19 @@ function mainFlow(argv: readonly string[]): number {
   }
   for (const suite of rules.suites) {
     const list = bySuite.get(suite) ?? [];
-    const r = new DetRand(BigInt(rules.seed) + 0x9e3779b9n);
     if (rules.seeds_per_suite >= list.length) {
       pick.push(...list);
       continue;
     }
-    const chosen = new Set<number>();
-    while (chosen.size < rules.seeds_per_suite) chosen.add(r.intn(list.length));
-    for (let i = 0; i < list.length; i++) if (chosen.has(i)) pick.push(list[i] as SeedFile);
+    // PR #339 审阅 P3-3（2026-10-27）：内容寻址固定采样——sha256(path)
+    // 升序取前 N。旧形态 DetRand(seed).intn(len) 对语料**数量**敏感：集合
+    // +2 文件 → intn 域变 → 采样流整体换位（实测 baseline 551→553 后 20
+    // 个种子里 19 个被换掉），带 WRONG_VALUE/VITRO_TRAP 条目的种子掉出
+    // 监测面而闸照绿。hash 序只随「哪些文件存在」变化：新增文件仅在其
+    // hash 排进前 N 时挤掉一个尾部种子（增量式），删除种子文件才失位。
+    const ranked = [...list].sort((a, b) =>
+      byteCompare(shaPath(a.path), shaPath(b.path)));
+    for (let i = 0; i < rules.seeds_per_suite; i++) pick.push(ranked[i] as SeedFile);
   }
   pick.sort((a, b) => byteCompare(a.path, b.path));
 
@@ -1216,10 +1227,20 @@ function mainFlow(argv: readonly string[]): number {
   pruneJudgeEpochs(judgeEpoch);
 
   if (opts.freeze) {
+    // PR #339 审阅 P3-3 连坐：freeze 落盘剔除本轮采样集外的种子条目
+    // （僵尸——与校验侧计数口径对称，否则换采样后基线堆旧条目、校验
+    // 恒红）；gen: 段指纹无种子文件豁免保留。
+    const liveSeedsFz = new Set(pick.map((s) => `${s.suite}/${s.name}`));
     const sortedKeys = [...base.entries.keys()].sort(byteCompare);
     const entries: Record<string, BaselineEntry> = {};
+    let dropped = 0;
     for (const k of sortedKeys) {
       const v = base.entries.get(k) as BaselineEntry;
+      const seedPart = k.split("|")[0]!;
+      if (!seedPart.startsWith("gen:") && !liveSeedsFz.has(seedPart)) {
+        dropped++;
+        continue;
+      }
       const obj: BaselineEntry = { bucket: v.bucket };
       if (v.issue !== undefined && v.issue !== "") obj.issue = v.issue;
       if (v.note !== undefined && v.note !== "") obj.note = v.note;
@@ -1235,21 +1256,43 @@ function mainFlow(argv: readonly string[]): number {
     } catch (e) {
       die(`基线落盘失败：${errText(e)}`);
     }
-    process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${base.entries.size} 条 → ${opts.baseline}\n`);
+    process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${Object.keys(entries).length} 条（剔除采样集外僵尸 ${dropped} 条）→ ${opts.baseline}\n`);
     process.stdout.write(`判定缓存写盘 ${judgeMiss} 条（epoch=${judgeEpoch}，freeze 全量真跑值）\n`);
     return 0;
   }
 
+  // 僵尸计数（PR #339 审阅 P3-3，2026-10-27）：基线指纹的 seed 不在本轮
+  // 采样集 = 该条目永不再被跑到（旧 DetRand 采样对语料数量敏感换血 19/20
+  // 的病灶面；固定采样后仅「新增文件 hash 挤掉尾部」或「种子文件被删」
+  // 产生）——报告并红，逼基线随采样集变化重冻（-freeze 幂等收编）。
+  // gen:<域>/<序号> 段指纹无种子文件，豁免。
+  const liveSeeds = new Set(pick.map((s) => `${s.suite}/${s.name}`));
+  let zombies = 0;
+  const zombieSeeds: string[] = [];
+  for (const fp of base.entries.keys()) {
+    const seedPart = fp.split("|")[0]!;
+    if (seedPart.startsWith("gen:")) continue;
+    if (!liveSeeds.has(seedPart)) {
+      zombies++;
+      if (!zombieSeeds.includes(seedPart)) zombieSeeds.push(seedPart);
+    }
+  }
+
   process.stdout.write(
-    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened}` +
+    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened} 基线僵尸=${zombies}` +
       ` 判定缓存命中=${judgeHit} 未命中=${judgeMiss}（epoch=${judgeEpoch}${judgeRefresh ? "，REFRESH 全量重算" : ""}）\n`,
   );
   for (const l of report) process.stdout.write(l + "\n");
-  if (newFp > 0 || worsened > 0) {
-    process.stdout.write("FAIL——新指纹须人工定性后 -freeze 收编（已知未修病带 issue 标注）；桶恶化=回归\n");
+  if (zombies > 0) {
+    process.stdout.write(
+      `  基线僵尸 seed（未被本轮采样覆盖，-freeze 收编或清理）：${zombieSeeds.slice(0, 8).join(" ")}${zombieSeeds.length > 8 ? " …" : ""}\n`,
+    );
+  }
+  if (newFp > 0 || worsened > 0 || zombies > 0) {
+    process.stdout.write("FAIL——新指纹须人工定性后 -freeze 收编（已知未修病带 issue 标注）；桶恶化=回归；僵尸=采样集已变须重冻\n");
     return 1;
   }
-  process.stdout.write("corpus_fuzz: PASS——无新指纹、无桶恶化\n");
+  process.stdout.write("corpus_fuzz: PASS——无新指纹、无桶恶化、无僵尸\n");
   return 0;
 }
 

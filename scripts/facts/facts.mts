@@ -367,12 +367,21 @@ function runCmdEnv(root: string, timeoutMs: number, env: NodeJS.ProcessEnv, ...a
   return { out: (r.stdout ?? "") + (r.stderr ?? ""), code: r.status, ok: true };
 }
 
+// tailLines：采集失败 stderr 诊断用——输出末 3 行压一行（PR #339 审阅 P3-4）。
+function tailLines(out: string): string {
+  const lines = out.trimEnd().split("\n");
+  return lines.slice(-3).join(" | ").slice(0, 200);
+}
+
 function collectReplay(root: string, facts: Record<string, Fact>): void {
   const how = "node scripts/replay/replay_s1_s5.mts -moonbit --anchor <short-hash>";
   // 2026-10-25 #307 P2-2 连坐：Go 版裸调（无臂实参）在 rust 臂退役后恒 exit 2
   // （用法错）——现役须显式 -moonbit（native cmd/serve 臂，需先构建产物）。
   const r = runCmd(root, 5 * 60_000, "node", "scripts/replay/replay_s1_s5.mts", "-moonbit");
+  // PR #339 审阅 P3-4（2026-10-27）：失败可观测——note 只进 facts.json 对
+  // CI 日志不可见（「真值永久缺位」病族的静默面），stderr 补打原因+输出尾。
   if (!r.ok) {
+    console.error(`[facts] replay_assertions 采集失败：node 不可用或超时——${firstLine(r.out)}`);
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how, "node 不可用或超时");
     return;
   }
@@ -383,6 +392,7 @@ function collectReplay(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["replay_assertions"] = f;
   } else {
+    console.error(`[facts] replay_assertions 采集失败：未解析到汇总行（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how,
       `未解析到汇总行（exit=${r.code}）`);
   }
@@ -395,7 +405,9 @@ function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
   // 现役须显式 -moonbit（需先构建 release cmd/vitro 产物）。
   const how = "node scripts/serve_smoke/main.mts -moonbit（需先构建 release cmd/vitro）";
   const r = runCmd(root, 5 * 60_000, "node", "scripts/serve_smoke/main.mts", "-moonbit");
+  // PR #339 审阅 P3-4：同 replay——stderr 补打原因（fail loud 可观测）。
   if (!r.ok) {
+    console.error(`[facts] serve_smoke_assertions 采集失败：超时或 node 不可用——${firstLine(r.out)}`);
     facts["serve_smoke_assertions"] = unavail("项", rel, how, "超时或 node 不可用");
     return;
   }
@@ -406,6 +418,7 @@ function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["serve_smoke_assertions"] = f;
   } else {
+    console.error(`[facts] serve_smoke_assertions 采集失败：脚本未自报断言总数（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
     facts["serve_smoke_assertions"] = unavail("项", rel, how, "脚本未自报断言总数");
   }
 }

@@ -1,5 +1,42 @@
 ## [Unreleased]
 
+### fix(pr-review): PR #339 审阅处置批——P1 文案实证锚 + P2 .md 坏链闸 + P3×5（2026-10-27）
+
+- **P1 E1006 文案举例全不成立**（`#pragma`/`__attribute__`/VLA 实测零
+  诊断或错码——文案采信转述未逐一实证）：catalog 文案与《C 子集支持
+  清单》触发形态节重写为**四条亲验真锚**（成员存储类 / enum 初始化器
+  非常量 / 整数字面量超范围 / `_Static_assert` 非字符串第二参）；
+  清单页补「并非所有未支持面都报 E1006」的诚实边界（`__attribute__`
+  → E2005、内联汇编 → E3036、部分扩展静默跳过）。
+- **P2 断链防线成真**：`scanMarkdownLinks` 入 facts 坏引用闸（.md 相对
+  链接存在性；豁免外部 URL/锚点/绝对路径/archive；中文文件名
+  decodeURI）——首跑抓 5 处存量坏链顺修（README 三处归档改名 +
+  INCIDENTS 相对深度错 + README.mbt.md 归档未跟）；J9 注入假链红/
+  清除绿双态；node:test 双锚。
+- **P3-1 serve 帧锚补齐**（1/4 exe → serve 面有牙）：smoke 新增
+  B[serve 帧字节]（两帧+shutdown 零 0d，突变红实证）；CI cli_smoke
+  步连坐构建 cmd/serve。
+- **P3-2 索引子表达式前向**（`&arr[j]` 的 j 漏检）：Index 臂索引裸
+  标识符过守卫（wbtest 双锚，正负各一）；函数名前向（funcs 表 Pass 2
+  全登记无声明序）评论登记 #337。
+- **P3-3 fuzz 采样治本**：DetRand(seed).intn(len) 数量敏感（+2 语料
+  → 19/20 种子换血 → 带差异桶的种子掉出监测面）改 **sha256(path)
+  升序取前 N 内容寻址**；加**基线僵尸计数**（seed 不在采样集即红，
+  gen: 段豁免）逼重冻；基线重冻（旧采样全量失位，114 新指纹定性：
+  107 AGREE + 5 CLANG_REJECT 变体破坏域 + 1 VITRO_TRAP〔lc_108
+  div2shift 优先级破坏→无限递归双侧栈溢出〕+ 1 WRONG_VALUE〔lc_150
+  static_inject→top 跨调用残留→越界 UB，双侧无一致义务〕——均为
+  变体语义破坏域非引擎缺陷）。freeze 落盘同步剔除采样集外种子条目
+  （旧 1401 含 1197 条 DetRand 时代死条目——固定采样后永不再跑到），
+  基线终态 **318 条 = 本轮真跑全量**，校验 PASS（无新指纹/桶恶化/僵尸）。
+- **P3-4 采集失败可观测**：replay/serve_smoke 两 collector 失败分支
+  stderr 补打原因+输出尾（note 此前只进 facts.json 对 CI 日志不可见）。
+- **P3-5 E3067 错码 cause**：删「函数指针与对象指针混用」（实测走
+  E3044，误挂 E3067）。
+- **数字勘误**：前节 fuzz 基线实为 1374→1401 = **+27**（18 AGREE +
+  9 CLANG_REJECT），非 14——后台任务首段输出误当全量（PR 正文同误，
+  已在本节修正口径）。
+
 ### fix(teaching+docs): #260 E1006 断链指引落点 + #259 教学卡 C++ 残留清除（2026-10-27）
 
 - **#260**：E1006「请查阅支持列表」在 docs/current 全域零命中（教学链

@@ -497,10 +497,10 @@ pub fn infer_semantic_label(
       source_line.has_prefix("while ") ||
       source_line.has_prefix("while(")
     )
-  // 交换模式：temp + arr[/a[ + 赋值
-  let is_swap = source_line.contains("temp") &&
-    (source_line.contains("arr[") || source_line.contains("a[")) &&
-    source_line.contains("=")
+  // 交换模式：左侧下标写（PR #347 审阅 P2-c——与 infer 四通道同判据
+  // 单源 @steps.is_swap_assign_line，v2 收紧后单向读/求和/初值/注释/
+  // 字符串内 = 全排除；兜底标签与 algorithm_step 主判据语义对齐）
+  let is_swap = @steps.is_swap_assign_line(source_line)
   // 递归调用（排除 callee 入口首步〔S3 观测 #3：行归因调用点〕与定义行）
   let is_recursive = !at_callee_entry &&
     func_name != "" &&

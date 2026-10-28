@@ -36,13 +36,14 @@ pub fn has_word(String, String) -> Bool
 
 pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
 
+pub fn is_swap_assign_line(String) -> Bool
+
 // Errors
 
 // Types and methods
 type AlgoCatalogEntry
 
 pub(all) struct FuncFeatures {
-  mut loop_depth : Int
   mut max_loop_depth : Int
   mut has_nested_loops : Bool
   mut has_single_loop : Bool

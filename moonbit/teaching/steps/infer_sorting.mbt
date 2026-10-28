@@ -5,6 +5,114 @@
 // 拦截 / 枢轴落位文案 / 位权位序 / count[...]++ 收紧——逐条注释照搬）。
 
 ///|
+/// 裸赋值 = 位置（PR #347 审阅 P1 v2 抽公共段）：返回首个非比较
+///（==/<=/>=/!=）非复合（+= 等）赋值 = 的下标；无则 -1。s[i] 是
+/// UInt16 码元（陷阱 24）——与 Char 字面量的 == 比较合法、绑定赋值
+/// 不合法，故全部内联比较。
+fn bare_assign_eq(line : String) -> Int32 {
+  let n = line.length()
+  let mut i = 0
+  while i < n {
+    if line[i] == '=' {
+      let compound = (i + 1 < n && line[i + 1] == '=') ||
+        (
+          i > 0 &&
+          (
+            line[i - 1] == '=' ||
+            line[i - 1] == '<' ||
+            line[i - 1] == '>' ||
+            line[i - 1] == '!' ||
+            line[i - 1] == '+' ||
+            line[i - 1] == '-' ||
+            line[i - 1] == '*' ||
+            line[i - 1] == '/' ||
+            line[i - 1] == '%' ||
+            line[i - 1] == '&' ||
+            line[i - 1] == '|' ||
+            line[i - 1] == '^'
+          )
+        )
+      if !compound {
+        return i
+      }
+      i = i + 2
+    } else {
+      i = i + 1
+    }
+  }
+  -1
+}
+
+///|
+/// 交换赋值行判定 v2（PR #347 审阅 P1 处置，2026-10-28：v1「某一侧
+/// 下标」放宽出 7/16 误报面——单向读 `x=a[j]`/极值初值 `int min=arr[i]`/
+/// 求和 `sum=a[j]+a[j+1]`/字符串内 `=`/注释行/三目全被误标 swap）。
+/// **收紧为左侧下标写**：行非注释且含裸赋值 =（比较/复合算子排除）且
+/// **左侧**为下标访问——三行交换的主行（a[j]=a[j+1]）与回写行
+///（a[j+1]=t）命中（@swap:N 帧序完整），暂存读行（int t=a[j]）不命中
+///（单向读无交换语义）；教科书暂存名 t/tmp/temp 同权（不再字面量依赖）。
+pub fn is_swap_assign_line(line : String) -> Bool {
+  let trimmed = line.trim()
+  if trimmed.has_prefix("//") ||
+    trimmed.has_prefix("/*") ||
+    trimmed.has_prefix("*") {
+    return false
+  }
+  let eq = bare_assign_eq(line)
+  if eq < 0 {
+    return false
+  }
+  let left = line[0:eq].trim().to_owned()
+  is_index_text(left)
+}
+
+///|
+/// 声明暂存读判定（shell sort 的 insert 相位专用，PR #347 审阅 P2-c
+/// 连坐）：`int temp = arr[i];` 形——裸赋值 + **左侧为类型声明**（无
+/// 下标）+ **右侧下标访问**。shell 语境内该形态 = 保存当前元素准备同组
+/// 插入（教科书 shell 模板真实写法）；`x = a[j]` 纯赋值读不命中（须
+/// 显式类型前缀——与极值初值的区分靠 shell_matcher 语境隔离）。
+fn is_decl_index_read_line(line : String) -> Bool {
+  let trimmed = line.trim()
+  if trimmed.has_prefix("//") ||
+    trimmed.has_prefix("/*") ||
+    trimmed.has_prefix("*") {
+    return false
+  }
+  let eq = bare_assign_eq(line)
+  if eq < 0 {
+    return false
+  }
+  let left = line[0:eq].trim().to_owned()
+  let right_raw = line[eq + 1:line.length()].trim().to_owned()
+  let right = if right_raw.length() > 0 &&
+    right_raw[right_raw.length() - 1] == ';' {
+    right_raw[0:right_raw.length() - 1].trim().to_owned()
+  } else {
+    right_raw
+  }
+  // 左侧为类型声明（int/long/char/short/float/double/unsigned 前缀）且
+  // 无下标；右侧下标访问
+  let decl_types = [
+    "int", "long", "char", "short", "float", "double", "unsigned",
+  ]
+  let mut is_decl = false
+  for ty in decl_types {
+    if left.has_prefix(ty) {
+      is_decl = true
+      break
+    }
+  }
+  is_decl && !is_index_text(left) && is_index_text(right)
+}
+
+///|
+/// 下标访问文本形态（含 [...]——is_swap_assign_line 的侧判定）。
+fn is_index_text(s : String) -> Bool {
+  s.contains("[") && s.contains("]")
+}
+
+///|
 /// 冒泡排序。
 fn infer_bubble_sort(
   source_line : String,
@@ -65,7 +173,7 @@ fn infer_bubble_sort(
       build_step(algorithm, "compare", "比较 arr[\{j_str}] 与 arr[\{j1}]"),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     if !j_in_inner_range {
       return None
     }
@@ -150,7 +258,7 @@ fn infer_selection_sort(
       ),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     let i_str = if i >= 0 { "\{i}" } else { "?" }
     return Some(
       build_step(algorithm, "swap", "将最小元素交换到位置 \{i_str}"),
@@ -331,7 +439,7 @@ fn infer_quick_sort(
       ),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     return Some(
       build_step(
         algorithm, "partition_swap", "交换元素，调整分区位置",
@@ -440,7 +548,7 @@ fn infer_heap_sort(
       )
     }
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     return Some(build_step(algorithm, "swap", "交换元素，调整堆结构"))
   }
   if starts_with(line_lower, "return") {
@@ -470,9 +578,7 @@ fn infer_shell_sort(
       ),
     )
   }
-  if line_lower.contains("temp") &&
-    line_lower.contains("=") &&
-    !starts_with(line_lower, "for ") {
+  if is_decl_index_read_line(source_line) && !starts_with(line_lower, "for ") {
     return Some(
       build_step(
         algorithm, "insert", "保存当前元素，准备在同组内插入",

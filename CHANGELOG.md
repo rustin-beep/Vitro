@@ -1,5 +1,72 @@
 ## [Unreleased]
 
+### fix(teaching/steps+time_travel+demo): PR #347 审阅处置批——P1 判据收紧 v2（左侧下标写）+ P2×3 + P3×5（2026-10-28）
+
+- **P1（判据 v1 放宽出 7/16 误报面）**：`is_swap_assign_line` v1「某一
+  侧下标」把单向读（`x=a[j]`）/ 极值初值（`int min=arr[i]`——教科书
+  写法）/ 求和 / 字符串内 `=` / 注释行 / 三目全误标 swap。**v2 收紧为
+  左侧下标写**：三行交换的主行/回写行命中（@swap:N 帧序完整），暂存
+  读行不命中；反例矩阵（审阅七形态 + 天然排除面）进 wbtest。
+- **P2-c（同根因三通道统一）**：collector 的 infer_semantic_label 兜底
+  「交换」标签（issue #325 正文点名的兜底判据）改 @steps.
+  is_swap_assign_line 单源（主判据/兜底两通道语义对齐）；shell sort
+  的 insert 相位 `contains("temp")` → is_decl_index_read_line（声明
+  暂存读——模板真实写法 `int temp = arr[i]`）；demo scenes.ts 锚点
+  注释更新。连坐：collector_wbtest 锚二翻案（主行/回写行/暂存读三
+  断言）；annotation golden 重冻（swap 首现行从暂存行移到真主行——
+  bucketSort/heapSort/selection 三模板的行号前移）。
+- **P2-a（翻案锚 1/3 → 全判别力）**：selection 结构分支补命中锚
+  （myPick：嵌套 for + min/max 追踪 + 无内层交换 → structure 命中）；
+  insertion 结构分支**死分支登记**（审阅突变证零判别力——实锤逻辑
+  矛盾：is_shift_pattern 唯一形态 arr[j+1]=arr[j] 两侧皆下标 ⇒ 必然
+  置位 has_swap ⇒ `!has_swap` 恒假——既有缺陷非本批引入，锚升级为
+  死分支登记形态）。
+- **P2-b（golden 半错标注登记）**：bucketSort 模板被判 bubble_sort
+  （体内含内层冒泡段——结构特征真实存在）+ infer 文案索引编造
+  （j 残留拼 arr[0]/arr[1]——既有口径外现）。已知限制表新增 #10 登记
+  双层偏差（判据族粒度 + 文案索引粒度），golden 定位为**现状行为基线
+  而非语义正确性承诺**（本批 PR 描述措辞同步勘正）。
+- **P3×5**：detect 三处 `max_loop_depth >= 2` 与 `has_nested_loops`
+  同义反复 → 统一 has_nested_loops（消双源）；CHANGELOG 数字自洽勘正
+  （635 帧分布 / golden 16 条）；节尾空行归一；批一节补 **breaking 注**
+  （FuncFeatures 删 pub(all) 字段——实质破坏面为零）；测试 932→933
+  （裸）/1096→1097（native；rebase 到 #342+#325 后基线合流）。
+
+
+### fix(teaching/steps): #325 swap 相位结构判据 + detect 死字段翻案——教学标注去命名敏感（两层修复，2026-10-28）
+
+> **breaking（pub(all) 接口面）**：`FuncFeatures` 删除死字段 `loop_depth`
+>（mbti 已同步——mooncakes 消费方若反射该字段须随版本更新；该字段恒 0
+> 从无可观察语义，实质破坏面为零）。
+
+- **层一（detect 结构分支复活——比 #325 正文更深一层的新发现）**：
+  `FuncFeatures.loop_depth` 是死字段（全文件零赋值恒 0——oracle 时代
+  照搬死字段，features_wbtest 有「两侧同病」等价锚在案，修复归 0.8.0
+  脱钩批裁定）：detect.mbt 三处 `features.loop_depth >= 2` 恒假 ⇒
+  **bubble/selection/insertion 的结构分支（无名程序）全灭**——教科书
+  main-only/无名函数冒泡零算法标注。0.8.0 已发 + oracle 已退役（等价
+  锚前提消失）→ 删死字段、判据统一 `max_loop_depth`、等价锚翻案为
+  命中锚（evidence=structure）。实测：无名 mySort 冒泡（int t 暂存）
+  matches 空 → bubble_sort/structure 命中。
+- **层二（#325 正文病根）**：infer 四处（bubble/selection/quick/heap）
+  swap 相位判据 `source_line.contains("temp")` 字面量敏感——教科书暂
+  存名 t/tmp/x 全不命中 ⇒ `@first_swap`/`@swap:N` 前端锚点 0 帧。改
+  结构判据 `is_swap_assign_line`（裸赋值 = 且某一侧为下标访问——三行
+  交换每行命中；纯标量赋值不命中）。实测 `int t` 写法 swap 相位
+  **0 → 352 帧**（902 帧中有 algorithm_step 的 635 帧分布：outer_loop
+  14 / inner_loop 58 / compare 211 / swap 352——v1 口径；处置批后 swap
+  帧序收敛为交换主行/回写行）。
+- **连坐**：teaching_annotation_diff golden 重冻（bucketSort 模板为无
+  bubble 名形态——结构分支复活的正确新标注，golden 无条目致 16 条
+  extra（初记 17 系笔误）；按 #343 先例 --freeze 重冻吸收，+130 行全为 bubble_sort 合
+  理标注）；protocol_frames 47 帧一致零重冻；测试 925→926（裸）/
+  1088→1089（native 全量）。
+
+  bubble 名形态——结构分支复活的正确新标注，golden 无条目致 17 处
+  extra；按 #343 先例 --freeze 重冻吸收，+130 行全为 bubble_sort 合
+  理标注）；protocol_frames 47 帧一致零重冻；测试 931→932（裸）/
+  1095→1096（native 全量；rebase 到 #342 后基线合流）。
+
 ### docs(protocol): #322 `[vitro] backend=` 补登协议第十种 + #321 `code_file` 取值域定约（协议契约双案批，2026-10-28）
 
 - **#322（处方 A 登记）**：`CLI_PROTOCOL_V1` §1 白名单由单表九种改
@@ -44,7 +111,6 @@
   `max_checkpoints` 镜像字段；⑥`evict_at` 链头分支不可达注记（几何化
   后 i≥1，保留为白盒直调通道）。锚四补/lifecycle 锚随 ③ 的当场淘汰
   语义连坐更新。测试 930→931（裸）/1094→1095（native）。
-
 
 ### fix(scripts): fuzz 基线 lc_150|static_inject UB 抖动豁免——桶位非确定种子摘出对账面（2026-10-28，并入 PR #340）
 
@@ -1687,7 +1753,6 @@ E-08 golden 逐字节不变。**P2-2 登记**：数组形参快照污染
 - **editorconfig 豁免面按 writer 重构**（P3-2 根治）+ **worktree 假绿缺陷修复**：撤三个 writer=0 前缀豁免（diagnostics_data〔手改 JSON〕/teaching_annotation_diff/clang_direct〔known_direct 只读〕——文件按 .editorconfig 全项合规）；保留六前缀各附 writer 证据注（protocol_frames 的 jsonl 写回非 MarshalIndent 形态——审阅 grep 判据抓不到但写回实存，已注明）。**深挖实锤**：seg 剪枝循环对 worktree 形态的 `.git` **文件**返回 SkipDir——filepath.Walk 语义「对非目录返回 SkipDir=跳过所在目录余下」⇒ 整树只扫 43 entry、**缩进/尾换行项在 worktree 全部漏检**（主仓 .git 为目录不受影响、CI 故一直绿；审阅的缩进证红无效同根因）。修复：SkipDir 仅作用于目录 entry。闸复活后抓出 5 处真违规（4 手改 JSON 缩进 1）——全部 indent=2 合规化；证红（1 空格行插入→红）+还原复绿；gen_diag/teaching_annotation_diff 连坐闸按值载不受缩进影响实测绿。
 - 验证：moon test 裸 878/native 1031 不变（无 .mbt 改动）；vm_diff 734 SAME / clang_direct 849·16·0（865）；fuzz 318 PASS（1044 基线）；editorconfig 全仓真扫 PASS。
 
-
 ### fix(review+infra): PR #280 审阅批二——P1×1/P2×3/P3×6 全处置（2026-10-23）
 
 - **P1-1 数字三套并存**：CHANGELOG 时点句改「现值不落本文件」（PR/facts 单源）；:272 的 730/844 中间态值改注终态 733/848（gap 两例转绿的同一收敛，曾误记时点中间值）。
@@ -1697,7 +1762,6 @@ E-08 golden 逐字节不变。**P2-2 登记**：数组形参快照污染
 - **P3-1** spec §4.5 残句「stdout 用法错文案」改 stderr（自相矛盾勘误）。**P3-2** known_direct indent 恢复 2 空格（曾整文件重排 97±97 淹没真实 diff——vs master 重排抵消仅 12 行实质）。**P3-3** 词汇表 15 条两处陈旧 14 勘误。**P3-4** 注释矛盾六处（a+ 游标×5、%hn 宽度×2）与实现对齐。**P3-5** realcode 聚合器 provenance 闭合（-agg-source-fork/-commit 旗标——旧产物缺键被自家 -check 拒的重建配方断点）+ corpora 裸断言 panic 改 fail loud + note 死句改写。**P3-6** 金样本求和对账（Σ(E码)==vitro_errs / Σ(W+H)==vitro_warns——现库三制品实测满足后加断言，篡改 E2005→999 证红）+ CI 补 wasm 臂豁免审计步。
 - 流程面：悬空分支 revert-275-bline 已删；测试数 878/153/1031（+3 锚 +cli native-only 1）testcount 连坐。
 - 验证：moon test 裸 878/878 + native 1031/1031；smoke 全绿（含 --realtime 三臂探针）；realcode -check 双自证证红。
-
 
 ### fix(engine+ci): __FILE__ basename 跨臂归一 + CI 遮蔽面处理（2026-10-23）
 
@@ -2004,7 +2068,6 @@ catalog/gen_diag -check 全绿。
   基线随死规则收窄 28 条）、svelte-check 0 错、oxlint 0 错、editorconfig、
   ci.yml YAML 解析、vite build 全绿。
 
-
 ### feat(infra): realcode 勘探工具仓内语料批试点——-corpus 模式 + chibicc/multifile 双金样本（2026-10-22）
 
 - `vitro_clang_diff.go` 新 `-corpus <name>` 模式（Clang+gcc 分桶 + Vitro 三方对拍；子目录=多文件工程一次编译〔#237 零覆盖形态〕）；仓内语料批两批落地：`corpus/chibicc`（41 .c+5 .h，MIT）与 `corpus/multifile`（36 工程 74 .c+38 .h，本仓生成）；登记单源 `corpora.json` 三向对账；`-check` 闸扩多金样本扫描（gold_chibicc/gold_multifile 入库，484 条目）。**豁免定性（用户拍板方案 1，2026-10-23）**：本批为纪律 8 改写（#273 ts 裁定）前在途工作，先入库；ts 迁移义务挂 #273 台账按批序处置。
@@ -2148,7 +2211,6 @@ catalog/gen_diag -check 全绿。
 - **验证**：pure 34/34、e08 17/17、E2E 五套 88/88、style_contract
   5×19×9、ui_lint（含 `-selftest` 五路）、svelte-check 0 错、oxlint 0 错、
   tokens -check、editorconfig、vite build 全绿；visual entry/ref 两态截图（像素闸已退役，不再作为门）。
-
 
 ### feat(corpus): llm_multifile 工程面 4 倍扩容——realcode 对拍域 35 工程提升入防线（2026-10-22）
 
@@ -2298,7 +2360,6 @@ catalog/gen_diag -check 全绿。
   oxlint 0 错、`gen_demo_tokens -check`、vite build 全绿；视觉闸基线未武装
   按预期 `::warning::` 跳过（基线仍待 CI dispatch 生成）。
 
-
 ### feat(corpus): llm_scale/llm_multifile 全域接线 + #238 (void) 栈泄漏修复（2026-10-21）
 
 - **接线面**（用户令「有语料入库 你进行接线」）：`corpus/llm_scale`（6 个
@@ -2321,7 +2382,6 @@ catalog/gen_diag -check 全绿。
   fuzz 桶恶化 0）⇒ 纯内部状态修复，正是验证器独有的抓取面。
 - 两 docs（Clang 直拍门禁八目录 / 脚本总清单）口径同步。
 
-
 ### fix(ci): Demo E2E CDP 9222 连红处置——profile 清理 + 启动日志 + 就绪门 fail loud（2026-10-21）
 
 - **红因**（run 39612543937，master c246ef00）：`F4 browser E2E` 步骤
@@ -2340,7 +2400,6 @@ catalog/gen_diag -check 全绿。
   （18+38+15+10+3 = 84 项）；清理时 Edge 占用 profile 的 rm 报错在
   本地复现了同款「文件被占用」形态（佐证 profile 清理必要性）。
 
-
 ### feat(corpus+gate): #236/#237 落地——perf_budget 分档预算 + clang_direct 工程模式（千行与多文件语料入库解锁）（2026-10-21）
 
 - **#236 分档预算**：perf_budget counter 新增 `dir_tiers`（按 corpus 子目录
@@ -2356,7 +2415,6 @@ catalog/gen_diag -check 全绿。
   case，单文件口径冻结）。种子 MF-CONFIG 三文件工程 SAME；J9 单侧注入
   红证；全量 813 例 DIFF=0 零翻转。
 - 两 docs（脚本总清单/Clang 直拍门禁）口径同步。
-
 
 ### fix(host+gateway+time_travel): #210/#220 修复 + #204 销案——学生错误集新批一段（2026-10-21）
 
@@ -2376,7 +2434,6 @@ catalog/gen_diag -check 全绿。
   五通道 + 字节级（105 处 \n 两字符转义序列）全合法——MoonBit
   stringify 转义完备（裸 UTF-8 高位为 RFC 8259 合法形态）；判据脚本
   latin-1 读 UTF-8 管道是 mojibake 嫌疑面，附字节级复验路径销案。
-
 
 ### fix(codegen): #205 纯原型声明被调用的错误类别如实化（勘误定性 + declared_only 表）（2026-10-21）
 
@@ -3344,7 +3401,6 @@ SAME；facts --strict / ci_checklist / moonbit_surface 全绿。
 
 【验证】moon test 781/781（+1）；vm_diff/clang_direct native 双全量零漂移（knr 族 ungetc 语料均配 getchar、不踩 scanf 组合——666 SAME / 749 SAME+12 KNOWN+0 DIFF）；wasm 臂对拍随批。附带：病 24（scanf %f token）探针勘误——10-11 批已修（-i 注入下 %f/%lf/%d 与 clang 全对；此前"复现"系裸 pipe 探针姿势错误，vitro 的 stdin 注入通道是 -i/api input 参数）。
 
-
 ### feat(cli+scripts+spec): #129 通道分立——文本模式 stdout 只承载程序输出（#69 混流裁定翻案，用户拍板 2026-10-16）
 
 【翻案】#69（2026-10-11「混流是 display 流定义行为」）被 #129 推翻：
@@ -3649,7 +3705,6 @@ LLM 语料探针产物——#82 系 **Rust oracle 照搬面既有偏差翻面**�
 
 - 防线：moon test 756/756 · native 885 · wasm-gc 860 · clang_direct 740 SAME+12 KNOWN+0 DIFF（752）· 五家×四 corpus+skeleton freeze · smoke · testcount/facts 0 漂移 · diff_ledger/skill_path_check/gen_svg/vendor_drift/mbti/surface 全绿。
 
-
 ### Fixed（#77+#83 声明说明符任意序两病：限定符反序 + 块作用域 static·typedef，2026-10-14）
 
 LLM 语料探针产出（#77：250 例中 25 例命中、5 模型桶分布一致——系统性；#83：50 份长程序命中 1 份）——clang 22.1.4 / gcc 16.2.0 双收、vitro 双臂一致误拒：
@@ -3659,7 +3714,6 @@ LLM 语料探针产出（#77：250 例中 25 例命中、5 模型桶分布一致
 - **红锚**：parser 黑盒 +2（`issue77_qualifier_order_free` 七形状 / `issue83_block_static_typedef` 三形状+负例——证红 [2005]/[2003] 后修复转绿）；语料 +2（`qualifier_order_static.c` / `block_static_typedef.c`——clang 实跑 51 与 `4 1 1 40 6` 双臂逐字节同）；四 digest freeze 纯新增 28 行（存量 657+418×3 例 hash 零漂移——git diff 0 删除侧佐证）。
 - 同族登记不修：`const extern int` 交错 extern（Extern 关键字不在限定符循环，形态未命中语料）；尾部限定符提前 return 分支（LongLong/Typeof/struct 定义形态）const 尾不覆盖。
 - 防线：moon test 758/758 · native 887 · wasm-gc 862 · clang_direct 742 SAME+12 KNOWN+0 DIFF（754）· parser/typeck/codegen/vm_diff 四 digest freeze+全 PASS · smoke · facts --strict 0 漂移（测试数连坐 9 处 756→758 + 直拍 745→754 + native 885→887）· surface/mbti/gen_svg 全绿。
-
 
 ### Fixed（#78+#80 两病 + #63 验收销案：enum 常量维度 + const 丢弃降警告，2026-10-14）
 
@@ -3673,7 +3727,6 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 - **红锚与语料**：parser 黑盒 issue78 锚（b1~b8 + 真 VLA 反例——证红 is_vla=true 后转绿）+ typeck wbtest issue80 锚（三形态 W3053×2 + E3067/加宽两反例——证红 E3044 后转绿）；语料 +2（`enum_const_array_dim.c` clang=`1 9 5 7` / `const_array_decay_warn.c` clang=`1 4 1`，双臂逐字节同）；四 digest freeze 纯新增（存量零漂移，git diff 零删除侧佐证）。
 - 防线：moon test 760/760 · native 889 · wasm-gc 864 · clang_direct 744 SAME+12 KNOWN+0 DIFF（756）· parser/typeck/codegen/vm_diff 四 digest freeze+全 PASS · smoke · facts --strict 0 漂移（测试数连坐 10 处 758→760 + 直拍 754→756 + native 887→889）· surface/mbti/gen_svg 全绿。
 
-
 ### Changed（CI 红根除：vendor_drift 上游追平性漂移——moonbitlang/x promote #337，2026-10-13）
 
 上游 `5c64953a`（promote #337）对 fs/fs.mbt 与 fs/fs_native.mbt 做了 `encoding? → encoding~` 与 FFI 签名 `Int → Int32` 迁移——**与 f4dee085 工具链批对 vendored 面的同向迁移完全一致**（vitro 侧已是等价形态）。全文 diff 定性：本地与上游差异仅剩已登记五项机械改造（头标注/pub→priv 收窄/guard 回补/前缀/utf8 内联）——**无关漂移（已等价），零代码跟进**；`vendor_drift --update-baseline` 刷新两文件基线 sha（as_of 2026-10-14）。本条是「上游漂移雷达」设计目的的首次正常触发：红=人工评估令而非自动同步令，评估结论留档。
@@ -3685,7 +3738,6 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 - **零协议变更**：rc=4「参数不合法」语义已在 spec §2 契约表内——行为对齐非语义变更；与全域纪律 8（fail loud 禁静默 default）同构。
 - 锚 `b87_compile_step_strict_args`（合法路径回归走 stdin "-" 通道——wbtest 沙箱读不到磁盘文件，rc=4 会混入 IO 语义）；README 数字连坐 885/129。
 - 防线：moon test 756/756 · native 885 · wasm-gc 860 · clang_direct 739+11+0（750）· smoke · testcount/facts 0 漂移 全绿。
-
 
 ### Fixed（#71 台账批D·教学文案组两病：52/53，2026-10-13）
 
@@ -4045,7 +4097,6 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 - **语料转正 5 例**：func_redefinition / case_not_constant / static_forward_func / static_forward_global / array_bound_const_index——五套 digest 入账；linked_stack 等 10 例 digest 重冻（return NULL 误报消失，正确方向）；翻锚 9 处 wbtest（新通道/新前缀断言）。
 - 测试数连坐 719 / native 841（工作区含并发教学资产批测试 +14——真值优先如实连坐，并发批提交时自然携带）。
 
-
 ### Fixed（issue #54 Part B：警告严格度上锁——moon.mod warnings @ 升错误两类，2026-10-10）
 
 - **锁集**：`moon.mod` 增 `warnings = "@implicit_impl_as_method@deprecated_syntax"`——0079（A2 批 217 条全清）与 0027（A1 批 13 条全清）两类升错误防复发；**0020 deprecated 不锁**（余额 18 条为 inspect 系 Show→Debug 迁移期噪音，A3 带据豁免等 core 干净替代——升错误即误伤）。
@@ -4063,7 +4114,6 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 - **4 包内类型升 pub**（VfsMode / VfsFileMeta / VfsDesc / DeclaratorNode）：工具链语义实证——**derive 恒产 pub impl、提升方法本就包外可见**（裸 extend 的 priv 方法不消警告，提示原文注明 "private methods exist but the impl is public"）；`priv extend` 语法不存在。pub extend 只是显式化既成事实，类型升 `pub` 使面与事实一致（`pub struct` 不带 `(all)` 字段仍 priv，纯类型名可见性）。mbti 15 文件连坐（提升方法正式进接口面）。
 - **事故与防御**：批量插入首轮 python universal newlines 吞掉 `vfs.mbt` 源里 `b'<真 CR 字节>'` 的字节（CRLF 展开逻辑变 LF+LF，`fprintf_custom_file_persists` fread 期望 4 实得 5 抓红）——全部还原后以 `newline=''` 二进制安全重做。**教训：批量改 MoonBit 源一律 `newline=''` 读写**（仓内存在真控制字节字面量）。
 - 复验绿盘：moon test 705/705 · native 827/827 · vm_diff 四语料零 DIFF · clang_direct SAME · typeck/parser/codegen/lexer digest 全 PASS · protocol_frames 47 帧 · serve_smoke/CLI smoke/demo smoke/facts strict/surface/mbti_sync/gofmt/gen_diag -check 全绿。
-
 
 ### Fixed（issue #56：W3054 空指针常量误报——NULL/字面量 0 转指针的 C11 6.3.2.3 豁免，2026-10-10）
 

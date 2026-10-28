@@ -44,16 +44,29 @@ test "semantic_order_specific_before_loop_context" {
 
 ///|
 /// 锚二：交换分支 + P0-3 内层下标——源码行下标标识符优先于白名单序
-/// （`temp = arr[j];` 取 j=5 而非 first() 的 n 规模量）。
+///（交换**主行**取 j=5 而非 first() 的 n 规模量）。PR #347 审阅 P2-c
+/// 连坐翻案：判据 v2（左侧下标写）后暂存读行（`temp = arr[j];`——纯
+/// 赋值单向读）不再标交换，落循环上下文；主行/回写行标交换。
 test "semantic_swap_picks_inner_index" {
   let vars : Array[@protocol.ApiVariableSnapshot]? = Some([
     mkvar("n", "10"),
     mkvar("i", "2"),
     mkvar("j", "5"),
   ])
+  // 交换主行：左侧下标写——内层下标 j=5 优先
   assert_eq(
-    infer_semantic_label(7, vars, "main", "    temp = arr[j];", false),
+    infer_semantic_label(7, vars, "main", "    arr[j] = arr[j + 1];", false),
     "交换 arr[5]↔arr[6]",
+  )
+  // 回写行：左侧下标写（暂存名无关）
+  assert_eq(
+    infer_semantic_label(8, vars, "main", "    arr[j + 1] = t;", false),
+    "交换 arr[5]↔arr[6]",
+  )
+  // 暂存读行（v1 误报面）：不标交换，落循环上下文
+  assert_eq(
+    infer_semantic_label(9, vars, "main", "    temp = arr[j];", false),
+    "循环 n=10, i=2, j=5",
   )
 }
 

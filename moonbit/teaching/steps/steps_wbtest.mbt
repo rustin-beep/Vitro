@@ -1584,3 +1584,82 @@ test "teaching_infer_structures_phases_table" {
   }
   assert_eq(sp.phase, "update_len", msg="P1-89 表长更新挂真值行")
 }
+
+///|
+/// #325 锚 + PR #347 审阅 P1 反例矩阵（v2 左侧下标写语义）：三行交换
+/// 的主行/回写行命中（@swap:N 帧序完整），暂存读行与审阅实测的七类
+/// 误报形态（v1「某一侧下标」放宽面）全部不命中。
+test "issue325_swap_phase_structural_naming_free" {
+  let alg = mk_alg("bubble_sort", "冒泡排序")
+  let vars = [
+    { name: "i", value: "0", },
+    { name: "j", value: "2", },
+    { name: "n", value: "5", },
+  ]
+  let mk_env = {
+    prev_vars: [],
+    at_callee_entry: false,
+    caller_is_main: false,
+    lookahead: "",
+  }
+  // 命中面：主行/回写行 × 暂存名 t/tmp/temp（命名无关）
+  let swap_lines = [
+    "a[j] = a[j + 1];", "a[j + 1] = t;", "a[j + 1] = tmp;", "a[j + 1] = temp;", "arr[min_idx] = arr[i];",
+  ]
+  for line in swap_lines {
+    let r = infer_algorithm_step(9, vars, "bubbleSort", line, Some(alg), mk_env)
+    guard r is Some(s) else {
+      fail("交换主行/回写行必产步：\{line}")
+    }
+    assert_eq(s.phase, "swap", msg="左侧下标写——\{line}")
+  }
+  // 反例矩阵（PR #347 审阅 P1 实测的 v1 误报面 + 天然排除面）
+  let miss_lines = [
+    "int t = a[j];", // 暂存读（v2 语义：单向读无交换动作）
+     "int temp = a[j];", // 同上（temp 也不命中——判据无字面量依赖）
+     "x = a[j];", // 数组→标量单向读
+     "int min = arr[i];", // 选择排序极值初值（教科书标准写法）
+     "sum = a[j] + a[j + 1];", // 求和（右侧双下标）
+     "printf(\"i = %d\n\", a[i]);", // 字符串内的 =
+     "// a[j] = t;", // 注释行
+     "min_idx = a[j] < a[min] ? j : min;", // 三目右侧下标
+     "if (a[j] == a[j + 1]) {", // 比较算子（==）
+     "a[j] += 1;", // 复合赋值
+     "min_idx = j;", // 纯标量赋值
+  ]
+  for line in miss_lines {
+    let r = infer_algorithm_step(9, vars, "bubbleSort", line, Some(alg), mk_env)
+    assert_true(
+      !(r is Some(s) && s.phase == "swap"),
+      msg="反例不得产 swap：\{line}",
+    )
+  }
+  // shell sort 的 insert 相位（声明暂存读判据——模板真实写法）
+  let shell_alg = mk_alg("shell_sort", "希尔排序")
+  let r_shell = infer_algorithm_step(
+    6,
+    [{ name: "gap", value: "2", }, { name: "i", value: "2", }],
+    "shellSort",
+    "int temp = arr[i];",
+    Some(shell_alg),
+    mk_env,
+  )
+  guard r_shell is Some(ss) else { fail("shell 暂存读行必产 insert 步") }
+  assert_eq(
+    ss.phase,
+    "insert",
+    msg="shell：int temp = arr[i] 是声明暂存读",
+  )
+  let r_shell_neg = infer_algorithm_step(
+    6,
+    [{ name: "gap", value: "2", }, { name: "i", value: "2", }],
+    "shellSort",
+    "x = arr[i];",
+    Some(shell_alg),
+    mk_env,
+  )
+  assert_true(
+    !(r_shell_neg is Some(sn) && sn.phase == "insert"),
+    msg="shell：纯赋值读 x = arr[i] 不是声明暂存",
+  )
+}

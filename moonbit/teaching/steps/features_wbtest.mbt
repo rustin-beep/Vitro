@@ -198,17 +198,18 @@ test "teaching_features_bubble_structural_branch" {
     f.has_adjacent_index_compare,
     msg="arr[j] vs arr[j+1] 必须产相邻比较",
   )
-  // **oracle 死分支等价锚（2026-10-01 审阅 P2 深挖实锤）**：判据的
-  // `loop_depth >= 2` 在两侧永不满足——walk 从不写 f.loop_depth（oracle
-  // features.rs 同形：字段只在签名，恒 0），bubble/selection/insertion
-  // 三结构分支在 oracle 也是死分支。断言「不命中」= 等价的机器判据
-  //（两侧同病，修单侧即破等价——修复归 0.8.0 脱钩批裁定）。
+  // **等价锚翻案（#325，2026-10-28）**：原「oracle 死分支等价锚」（两侧
+  // 同病 loop_depth 恒 0——修复归 0.8.0 脱钩批裁定）——oracle 已退役
+  //（2026-10-05 删区）+ 0.8.0 已发，裁定到点：死字段 loop_depth 已删，
+  // 判据统一 max_loop_depth ⇒ 结构分支复活——无名 mySort 的教科书冒泡
+  //（int t 暂存三行交换）现命中 bubble_sort（evidence=structure）。
   let ms = detect_sorting("mysort", f, "mySort", 1)
   assert_eq(
     ms.length(),
-    0,
-    msg="loop_depth 恒 0——结构分支两侧同为死分支（等价）",
+    1,
+    msg="#325 翻案：结构分支命中（死字段 loop_depth 已删）",
   )
+  assert_eq(ms[0].evidence, "structure", msg="无名程序走结构证据")
 }
 
 ///|
@@ -344,13 +345,18 @@ test "teaching_features_insertion_structural_branch" {
     msg="arr[j+1] = arr[j] 必须产后移特征",
   )
   assert_true(f.has_nested_loops)
-  // 死分支等价锚（同 bubble 注——insertion 结构分支的 loop_depth >= 2
-  // 恒假；shift 特征断言锁 walk 正确性）
+  // **insertion 结构分支死分支登记（PR #347 审阅 P2-a 实锤，2026-10-28）**：
+  // 结构判据 `has_shift_pattern && … && !has_swap` 逻辑矛盾恒不可达——
+  // is_shift_pattern 的唯一形态 arr[j+1]=arr[j] 两侧皆下标 ⇒ 必然置位
+  // has_swap（features.mbt:325/341 同一 Assign 分支），!has_swap 恒假。
+  // 突变证（审阅）：insertion 判据改恒假 62/62 全绿（零判别力）——本锚
+  // 断言 0 命中即锁「该分支现状恒不命中」；**若未来修此矛盾**（如
+  // !has_swap 改为排除「非相邻下标交换」），本锚须翻案为命中锚。
   let ms = detect_sorting("myarrange", f, "myArrange", 1)
   assert_eq(
     ms.length(),
     0,
-    msg="loop_depth 恒 0——结构分支两侧同为死分支（等价）",
+    msg="insertion 结构分支逻辑矛盾（shift⇒swap）恒不命中——死分支登记",
   )
 }
 
@@ -395,4 +401,51 @@ test "teaching_detect_family_order_b13" {
     msg="oracle 族序 tree 先于 string——首元素必须是 bst_search（B13）",
   )
   assert_eq(ms[1].name, "string_match_kmp")
+}
+
+///|
+/// PR #347 审阅 P2-a 锚：selection 结构分支命中（翻案后第三分支的
+/// 判别力锚——突变证 selection 判据恒假时 62/62 全绿即零判别力）。
+/// 形态 = 嵌套 for + 内层 if (arr[j] < arr[min_idx]) + 分支体
+/// min_idx = j（min/max 追踪）+ 无下标间赋值（!has_swap_in_inner_loop）。
+test "teaching_features_selection_structural_branch_revived" {
+  // 内层体：if (arr[j] < arr[min_idx]) { min_idx = j; }
+  let cmp : @ast.Expr = @ast.Binary(
+    Lt,
+    mk_index("arr", mk_ident_expr("j")),
+    mk_index("arr", mk_ident_expr("min_idx")),
+    loc(1),
+    int_ty(),
+  )
+  let min_assign : @ast.Stmt = @ast.Expr(
+    @ast.Assign(
+      Assign,
+      @ast.Identifier("min_idx", loc(1), int_ty()),
+      mk_ident_expr("j"),
+      loc(1),
+      int_ty(),
+    ),
+    loc(1),
+  )
+  let inner_if = @ast.If(cmp, min_assign, None, loc(1))
+  let inner = mk_count_for("j", mk_ident_expr("n"), inner_if)
+  let outer = mk_count_for("i", mk_ident_expr("n"), inner)
+  let f = extract_of("myPick", @ast.Block([outer], loc(1)))
+  assert_true(f.has_nested_loops, msg="嵌套 for")
+  assert_true(f.has_array_compare, msg="arr[j] < arr[min_idx] 数组比较")
+  assert_true(
+    f.has_min_max_track,
+    msg="比较分支体 min_idx 赋值（极值追踪）",
+  )
+  assert_false(
+    f.has_swap_in_inner_loop,
+    msg="无下标间赋值（选择排序无内层交换）",
+  )
+  let ms = detect_sorting("mypick", f, "myPick", 1)
+  assert_eq(
+    ms.length(),
+    1,
+    msg="#347 P2-a：selection 结构分支须有判别力（无名程序命中）",
+  )
+  assert_eq(ms[0].evidence, "structure", msg="无名程序走结构证据")
 }

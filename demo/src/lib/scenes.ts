@@ -65,8 +65,10 @@ function arrayDiffers(a: AnchorFrame, b: AnchorFrame): boolean {
 /** 求值单个锚点表达式 → 帧号；未命中返回 -1（fail loud 由调用方提示）。
  *  词汇表（受控最小集，帧流可观测事件）：
  *  - `@first_swap` / `@swap:N`：第 N 个交换帧（N 从 1 起；algorithm_step
- *    .phase=="swap" 优先，semantic_label「交换」前缀兜底——依赖程序用
- *    temp 命名交换暂存；不满足时用 @arr_change:N）
+ *    .phase=="swap" 优先，semantic_label「交换」前缀兜底——#325 起
+ *    两判据同源结构判定（交换赋值主行/回写行，左侧下标写），与交换
+ *    暂存变量命名无关（旧形态依赖 temp 命名）；无标注算法兜底
+ *    @arr_change:N）
  *  - `@compare:N`：第 N 个比较帧（algorithm_step.phase=="compare"——仅
  *    行末标注帧携带，见行为契约 algorithm_step_line_end_sparsity）
  *  - `@arr_change:N`：第 N 次数组内容变化帧（相邻帧快照差分——不依赖

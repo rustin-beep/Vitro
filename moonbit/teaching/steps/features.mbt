@@ -7,7 +7,9 @@
 ///|
 /// 函数级特征集合（供各算法判据消费——cfg_* 四项恒默认：分叉登记）。
 pub(all) struct FuncFeatures {
-  mut loop_depth : Int32
+  /// #325 翻案（2026-10-28）：oracle 时代的死字段 `loop_depth` 已删——
+  /// 判据统一消费 max_loop_depth（等价锚「两侧同病」的前提随 oracle
+  /// 退役消失，0.8.0 脱钩批裁定到点）。
   mut max_loop_depth : Int32
   mut has_nested_loops : Bool
   mut has_single_loop : Bool
@@ -39,7 +41,6 @@ pub(all) struct FuncFeatures {
 ///|
 pub fn FuncFeatures::default() -> FuncFeatures {
   {
-    loop_depth: 0,
     max_loop_depth: 0,
     has_nested_loops: false,
     has_single_loop: false,

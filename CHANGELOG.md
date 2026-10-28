@@ -16,7 +16,7 @@
 
 **#234 同批验收销案**（无代码变更）：W1004 卡与闭合闸均已被病 118 降级批 + #256/#261 闭合批消化——实测 `if (a > 2 | b < 1)` 产 `W1004`/warning/fix_suggestion 全链在位，catalog 1004 卡在库，`catalog_closure` 双向闭合绿。回灌证据见 issue 评论。
 
-**连坐**：gen_diag/gen_diagnostics 基线 156→119 / 114→115 / 26→22；diag_wbtest 三计数锚 + e4_export_wbtest 退役锚 + README.mbt.md doc 测试 + teaching contract 114→115；mbti 再生（codegen +GenError 面 / diag −38 臂面）；五家 digest freeze（新样本 +1、存量重算零漂移）；SVG 等值再生零漂移。双臂 `moon test` **925（js）/ 1088（native）** 全绿（PR #346 审阅 P2-2 勘正：本节初稿数字 1047/887→891/157→119 系 rebase 前 736adfcc 时点旧值未随 rebase 重采；vm digest「24 条空 memory_sha 规范化」经核 base/HEAD 双侧均无该形态条目，声称撤回）。
+**连坐**：gen_diag/gen_diagnostics 基线 156→119 / 114→115 / 26→22；diag_wbtest 三计数锚 + e4_export_wbtest 退役锚 + README.mbt.md doc 测试 + teaching contract 114→115；mbti 再生（codegen +GenError 面 / diag −38 臂面）；五家 digest freeze（新样本 +1、存量重算零漂移）；SVG 等值再生零漂移。双臂 `moon test` **935（js）/ 1099（native）** 全绿（rebase 到 #342/#347/#345 后重采；PR #346 审阅 P2-2 勘正：本节初稿数字 1047/887→891/157→119 系 rebase 前 736adfcc 时点旧值未随 rebase 重采；vm digest「24 条空 memory_sha 规范化」经核 base/HEAD 双侧均无该形态条目，声称撤回）。
 
 **PR #346 审阅补录（2026-10-28）**：
 - **pub API breaking 标注（审阅 P3-4）**：`codegen.compile`/`compile_library` 返回 `Array[String]` → `Array[GenError]`——0.9.0 已发布 pub 面的**破坏性变更**（下游 MoonBit 消费方须随迁；文本消费面 `dump_compile` 已适配同形）。

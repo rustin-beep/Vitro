@@ -42,6 +42,7 @@ import {
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
+import { isTransientNavigationError } from "./cdp.mts";
 
 /** noUncheckedIndexedAccess 下的显式断言点（测试夹具已知在界内）。 */
 function must<T>(v: T | undefined, msg = "预期值存在"): T {
@@ -724,4 +725,22 @@ test("lessonMd：bubble 两课真源均为 v2 锚点（防回退写死下标）"
       assert.equal(s.to, -1);
     }
   }
+});
+
+test("cdp.isTransientNavigationError：导航切换窗瞬态判据（PR #344 CI 两次实锤形态）", () => {
+  // 真实形态：send 层 reject（Error.message = JSON.stringify 的 CDP error）——
+  // run 40691154018 / 40697364478 日志原文
+  assert.ok(
+    isTransientNavigationError(new Error('{"code":-32000,"message":"Inspected target navigated or closed"}')),
+  );
+  // evaluate 层包装形态（"eval 异常: " 前缀必须被 includes 穿透）
+  assert.ok(isTransientNavigationError(new Error("eval 异常: Uncaught SyntaxError: Execution context was destroyed")));
+  assert.ok(isTransientNavigationError(new Error("Cannot find context with specified id invalid context id")));
+  // 非 Error 载荷同样可判（String(err) 通道）
+  assert.ok(isTransientNavigationError('{"code":-32000,"message":"Inspected target navigated or closed"}'));
+  // 反例：普通失败必须 false（判据空转 = 等于吞掉一切 waitFor 失败）
+  assert.ok(!isTransientNavigationError(new Error("waitFor 超时: window.__pilot")));
+  assert.ok(!isTransientNavigationError(new Error("eval 异常: TypeError: Cannot read properties of undefined")));
+  assert.ok(!isTransientNavigationError(new Error("CDP 9222 在 30000ms 内未就绪：connect ECONNREFUSED")));
+  assert.ok(!isTransientNavigationError(new Error("CDP 无 page target")));
 });

@@ -18,6 +18,10 @@ struct VarSymbol {
   /// #156（2026-10-18）：register 存储类（§6.7.1p4 禁取地址）——Addr
   /// 臂查裸 Identifier 操作数读此位（scope 栈天然感知遮蔽）
   is_register : Bool
+  /// #343（2026-10-28）：文件作用域 tentative 定义位（C11 §6.9.2——
+  /// 无初始化器的文件作用域声明是 tentative 定义，与实定义/再 tentative
+  /// 共存；declare_var 同名共存分支判据。局部域恒 false）
+  is_tentative : Bool
 }
 
 ///|
@@ -29,6 +33,9 @@ struct VarSymbol {
 /// = E3003 重定义，对齐 Clang redefinition error）；first_decl_line（
 /// 首次登记行号——static 符号前向序检查：使用点早于任何声明/定义且
 /// 无原型 = E3058/E3059，对齐 Clang use-before-declaration）。
+/// PR #344 审阅 P2-1（2026-10-28）加 first_decl_col：同行前向判据
+///（line 严格小于在单行程序失效——`int main(void){ return f(); }
+/// int f(void){...}` 连 W3085 都不给；列级补位 col < decl_col）。
 struct FuncSymbol {
   return_type : @ast.Type
   param_types : Array[@ast.Type]
@@ -36,6 +43,7 @@ struct FuncSymbol {
   param_defaults : Array[@ast.Expr?]
   is_definition : Bool
   first_decl_line : Int32
+  first_decl_col : Int32
 }
 
 ///|

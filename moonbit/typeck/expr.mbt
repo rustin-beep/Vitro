@@ -238,22 +238,77 @@ fn TypeChecker::resolve_identifier(
           None => ()
         }
       }
+      // #337（2026-10-28）：非 static 全局的函数体前向引用守卫——Pass
+      // 2.5 全量登记后 lookup_var 命中后文声明的符号，C11 6.2.1p4 声明
+      // 点之前不可见（clang use of undeclared identifier）。仅在
+      // static_init_site_idx 为 None 的语境激活（函数体 / auto·typeof
+      // 预解析）——文件作用域初始化器语境由 #331 的
+      // diagnose_static_init 窄口负责，两守卫分治防双报；static 面走
+      // E3059 通道不进此臂；局部符号（非 _is_global）由 scope 栈内层
+      // 先行命中天然放行。extern/tentative 先行条目是首值，正常通过。
+      if !sym.is_static && sym._is_global && self.static_init_site_idx is None {
+        // PR #344 审阅 P2-1（2026-10-28）：(line, column) 文本位置序
+        //——行号严格小于在单行程序失效（同行按列判前向）
+        match self.global_decl_lines.get(name) {
+          Some((dl, dc)) =>
+            if loc.line < dl || (loc.line == dl && loc.column < dc) {
+              self.report_error(
+                "未声明的标识符 '\{name}'（其首次声明位于第 \{dl} 行，在本引用点之后——C 标识符自声明点起才可见）",
+                loc,
+                E3023_UndeclaredVar,
+              )
+            }
+          None => ()
+        }
+      }
       // Reference/RValueRef 表达值脱糖（C++——C 符号不产，剔除登记）
       sym.ty
     }
     None =>
       match self.funcs.get(name) {
-        Some(sym) =>
+        Some(sym) => {
+          // #337（2026-10-28，PR #339 审阅 P3-2 挂账销案）：函数名**作值**
+          // 前向引用——`int (*fp)(void) = f;`（f 后文声明）clang 报 use
+          // of undeclared identifier（作值面无隐式声明回退）。调用面是
+          // W3085 warning（#214 教学口径拍板，Call 的 callee 不走此臂，
+          // 不双报）；原型先行则首声明位置（Pass 2 首值）在前放行。
+          // PR #344 审阅 P2-1：列级判定（同行形态收口）
+          if loc.line < sym.first_decl_line ||
+            (loc.line == sym.first_decl_line && loc.column < sym.first_decl_col) {
+            self.report_error(
+              "未声明的标识符 '\{name}'（函数 '\{name}' 的首次声明位于第 \{sym.first_decl_line} 行，在本引用点之后——请前置原型或调整定义顺序）",
+              loc,
+              E3023_UndeclaredVar,
+            )
+          }
           // 函数名作值使用（函数指针）
           @ast.Type::function_pointer(sym.return_type, sym.param_types)
+        }
         None =>
           // issue #5 销案（2026-10-06）：static 函数名作值（`int (*fp)(int)
           // = helper;`）——static 注册在 static_func_sigs（funcs miss 后
           // 补查；旧直接 E3023「未声明的变量」）。同文件可见性检查豁免
-          //（E3058 检查在声明消费侧，值使用侧不重复）
+          //（E3058 检查在声明消费侧，值使用侧不重复）；前向序是 #337
+          // 新增维度（#5 销案时不存在），连坐补上——static 函数作值同样
+          // 无隐式声明回退
           match self.static_func_sigs.get(name) {
-            Some(sym) =>
+            Some(sym) => {
+              // #337：static 函数名作值前向守卫（首声明位置首值 =
+              // 原型或定义条目；跨文件可见性仍归调用面 E3058 不在此报；
+              // PR #344 审阅 P2-1 列级判定）
+              if loc.line < sym.first_decl_line ||
+                (
+                  loc.line == sym.first_decl_line &&
+                  loc.column < sym.first_decl_col
+                ) {
+                self.report_error(
+                  "未声明的标识符 '\{name}'（static 函数 '\{name}' 的首次声明位于第 \{sym.first_decl_line} 行，在本引用点之后——请前置原型或调整定义顺序）",
+                  loc,
+                  E3023_UndeclaredVar,
+                )
+              }
               @ast.Type::function_pointer(sym.return_type, sym.param_types)
+            }
             None =>
               // 隐式 this->field 改写（C++ name hiding——剔除登记，S9）
               if name == "__func__" {

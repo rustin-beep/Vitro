@@ -23,6 +23,7 @@ pub struct TypeChecker {
   static_func_files : Map[String, Array[String]]
   static_global_files : Map[String, Array[String]]
   static_global_decl_lines : Map[String, Int]
+  global_decl_lines : Map[String, (Int, Int)]
   global_first_decl_idx : Map[String, Int]
   mut static_init_site_idx : Int?
   structs : Map[String, StructSymbol]
@@ -48,7 +49,7 @@ pub fn TypeChecker::check_printf_format(Self, String, Array[@ast.Expr], @source.
 pub fn TypeChecker::check_scanf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
 pub fn TypeChecker::check_struct_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> @ast.Expr
 pub fn TypeChecker::compute_type_size(Self, @ast.Type) -> Int
-pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool, predeclared? : Bool, is_register? : Bool, loc? : @source.SourceLoc) -> Unit
+pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool, predeclared? : Bool, is_register? : Bool, is_tentative? : Bool, loc? : @source.SourceLoc) -> Unit
 pub fn TypeChecker::enter_scope(Self) -> Unit
 pub fn TypeChecker::exit_scope(Self) -> Unit
 pub fn TypeChecker::get_struct_field_type(Self, String, String) -> @ast.Type?

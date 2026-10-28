@@ -1,5 +1,66 @@
 ## [Unreleased]
 
+### fix(demo): E2E CDP waitFor 导航切换窗瞬态容错——style_contract 竞态红治本（2026-10-28）
+
+- **红根**：PR #344 CI pull_request 轮两次同形态红（run 40691154018 /
+  40697364478，同 commit 各自 workflow_dispatch 轮全绿）——
+  style_contract 在 `Page.navigate` / `Page.reload` 后的 waitFor 首查撞
+  导航切换窗（旧 execution context 已销毁、新 context 未 commit），CDP
+  报 -32000「Inspected target navigated or closed」直接 exit 1（E2E 步骤
+  bash -e 短路，后续 e2e_* 全 skip）。
+- **定性**：demo/tests/cdp.mts 的 waitFor 对 evaluate 错误零容错——导航
+  进行中的查询是**瞬态错误**不是页面故障。本地快机 Edge 探针 70 轮
+  （navigate/reload 双形态）零复现（窗口毫秒级），CI 慢机上概率显著；
+  master 30 轮 CI 该 job 从未红过此形态，小概率竞态非内容回归。
+- **修法**：`isTransientNavigationError` 判据（-32000 navigated or
+  closed / Execution context was destroyed / Cannot find context 三形态，
+  includes 穿透 evaluate 层「eval 异常: 」包装）+ waitFor 轮询捕瞬态当
+  「未就绪」继续等（永假表达式照旧超时 fail loud）；顶层稳态 evaluate
+  （COLLECT / localStorage.clear 等）不捕保持 fail loud。cdp.mts 单源
+  收口——style_contract + 5 份 e2e_* 六消费方全收益。
+- **红绿锚**：pure.test.mts 判据单测（CI 日志原文注入判 true + 超时/
+  类型错/ECONNREFUSED 反例必 false——防判据空转吞掉一切 waitFor 失败）；
+  本地 Edge waitFor 三路行为验证亲验（正路 true / navigate 后立即首查 /
+  永假 1.5s 超时报 waitFor 超时）。
+
+### fix(typeck): PR #344 审阅处置批——P1 linkage 守卫 + P2-1 同行列级判据 + P2-2 E3059 首值让位（2026-10-28）
+
+- **P1（本批引入的放行回归收口）**：`static int t; int t;` 等
+  static 先行 + 非 static 后随整族被 #343 共存分支静默放行（s1/s1b/
+  s1c 探针 rc=0，clang "non-static declaration of 't' follows
+  static declaration"）。declare_var 共存分支前插 linkage 守卫
+  （C11 6.2.2p7）：`existing.is_static && !is_static` 报 E3001 且
+  **不改写符号**。边界实测三条：extern 跟随 static 合法（6.2.2p4，
+  走前置 extern 分支不受波及，s10）；**反向**（非 static 先 + static
+  后随）clang 零诊断放行（6.2.2p5 后随 static 给 internal linkage，
+  s8/s9 探针——s8 且 EXIT 5 实证 static 生效值正确）。
+- **P2-2（E3059 歪码治本）**：`int t; … static int t = 5;`（s8）
+  旧报 E3059「static 全局在声明之前被使用（第 3 行才声明）」——
+  可见性锚本在第 1 行。static_global_decl_lines 建表加首值让位
+  （global_first_decl_idx 判本条是首声明才写——后随 static 条目
+  让位给更早的非 static 首声明）。
+- **P2-1（同行前向判据失效收口）**：行号严格小于在单行程序失效
+  （y1 `int main(void){ return s; } int s = 3;` 静默 EXIT 3、y6 连
+  W3085 都不给）。`global_decl_lines` 改 (line, column) 位置对 +
+  `FuncSymbol.first_decl_col` 新列，五消费点全改文本位置序判据
+  （`line < dl || (line == dl && col < dc)`）：expr.mbt 全局守卫 /
+  两作值臂、decl.mbt W3085 调用面与 E3058 static 调用面。同行
+  **声明先行**负例（y1neg）零误报。
+- **红锚（J9）**：const_fold_wbtest +8（六红：linkage 两形态 /
+  E3059 歪码负锚 / 同行全局·作值·调用三面——修复前全红；两负例：
+  同行声明先行 / extern 跟随 static）——typeck 117/117、全仓
+  960/960、native 1124/1124 亲验（rebase 到 #342/#347/#345 后重采）；十探针端到端 Vitro 与 clang
+  逐位对齐。
+- **P2-3（PR 冲突）**：已于 rebase 收尾笔（f5063360）处置——README/
+  CHANGELOG 冲突解、测试数合流 942/1105、fuzz_baseline 采 master
+  volatile 豁免机制版。
+- **P3 口径修正**：#337 段 legal 语料「5 55 40 100」系 tentative
+  回填**前**时点输出（#343 段 5 值为现值）；PR 正文数字随本批更新
+  （typeck/codegen 五段 800 case、vm 802 SAME 口径）。
+- 全防线复验：typeck/codegen 五段 PASS 零漂移、vm 双臂 556/556
+  SAME（wasm 臂产物重建后）、clang_direct 933 全绿、realcode 双闸
+  OK、fuzz PASS、testcount 950=1113 双验、facts 0 漂移。
+
 ### fix(diag+codegen+typeck): 诊断码↔教学卡闭合批二——#223 E3089 立码 + #233 C++ 死面全数摘除（2026-10-25）
 
 **#223「函数已声明但未定义」立码 E3089**（旧 E0/Unknown 兜底——serve 层硬编码 code=0 包装，下游按码查卡落空、E0 通用卡「内部错误」文案教学面失准）：
@@ -211,6 +272,85 @@
   锚）/ volatile 漂移=volatile-drift 不判红 / 新指纹·一致两态 / volatile
   条目 seed 掉出采样集仍僵尸 / e2e volatile 非 true fail loud（exit 2）。
   撤 volatile 突变即回恶化红——J9 双态自证。
+
+### fix(typeck): #343 文件作用域 tentative 定义共存——declare_var 补 tentative 分支（2026-10-28）
+
+- **主体**：`int t; int t = 7;`（tentative 定义 + 后文实定义）修复前
+  落 declare_var 同名语义四层的 E3001 兜底臂（clang 零诊断放行，C11
+  §6.9.2）。修复：`VarSymbol` 加 `is_tentative` 位（Pass 2.5 登记时
+  `g.init is None && !g.is_extern` 派生）+ declare_var 插 tentative
+  共存分支（三形态全放行：前 tent 后实 / 双 tent / 前实后 tent——
+  §6.9.2p2 例 2；类型不一致仍报 E3001〔extern 族 extern_type_compat
+  判等 + 不完整数组升级语义复用〕；**双实定义仍拒**〔兜底臂不变〕；
+  局部域无 tentative 概念〔§6.2.2 无链接同域重声明非法，is_global
+  限定〕）。符号 tentative 位取 AND——一旦有实定义即定稿。static
+  tentative 先于此分支命中（带类型检查，比旧双 static 盲放行更严）。
+- **红锚（J9 先证红后修）**：const_fold_wbtest +7（三红：共存三形态
+  修复前全红；四负例：双实定义 / 类型不一致 / 局部域 / static
+  tentative 防回归）——typeck 109/109、全仓 925/925。
+- **codegen 零连坐（实证非推断）**：`pass1_register_global` 对同名双
+  条目双槽分配 + `global_indices` 后写覆盖——运行行为正确（实定义槽
+  生效），仅浪费一槽（与双 static 分支宽松一致）；端到端探针双臂
+  `7 9` 与 clang 逐位一致。
+- **语料回填**：fwd_ref_funcbody_legal.c 加 tentative 先行形态
+  （挂账注释销案——#337 批因误拒暂避），双侧同输出 `5 55 40 100 7`；
+  五家 freeze 重跑（1 例重算、存量零漂移）；vm 双臂 556/556 SAME
+  （wasm 臂首跑 DIFF=1 系旧产物——**freeze 后换臂跑前必须重建该臂
+  产物**，教训入册）；fuzz PASS；clang_direct 933 全绿。
+- **realcode gold 重冻（CI 首轮红根）**：chibicc 语料 commonsym.c
+  正是 tentative 教科书形态（`int x; int x=5;` / `int y=7; int y;`）
+  ——修复消 E3001×2 误报（vitro_errs 3→1），gold_chibicc 重冻 + note
+  入档；chibicc 41 条 + multifile 36 条逐字段一致。**引擎诊断面批
+  连坐面须含 realcode 对拍**（不在 baseline 义务链——CI 独立防线，
+  本地首跑漏跑教训）。
+- **残留面登记（#343 评论）**：tentative 数组（`int arr[];` 后文
+  `int arr[2]={...}` 补全）仍被 E3081 拒——涉尺寸推断 + §6.9.2p3
+  size-1 完成语义，独立小批。
+- 测试数连坐：README ×3 / moonbit/README(.mbt).md ×2 / docs ×3
+  918→925（native 1078→1085 亲验）。
+
+### fix(typeck): #337 函数体前向引用守卫——#331 同病根的函数体/作值面全收口（2026-10-28）
+
+- **主体（issue 正文）**：函数体前向引用后文普通全局——
+  `int main(void){ return s; } int s = 3;` 修复前零诊断静默通过
+  （Pass 2.5 全量登记后函数体 lookup_var 直接命中已登记符号），
+  clang 报 use of undeclared identifier。修复：非 static 全局首声明行
+  表 `global_decl_lines`（set 首值——extern/tentative 先行条目给出
+  可见性）+ `resolve_identifier` 前向守卫（E3023，仅
+  `static_init_site_idx is None` 语境激活——文件作用域初始化器语境由
+  #331 窄口负责，两守卫分治防双报；static 面走既有 E3059 通道）。
+- **P3-2 连坐（PR #339 审阅挂账销案）**：函数名**作值**前向引用——
+  `int (*fp)(void) = f;`（f 后文声明）clang 报 use of undeclared
+  （作值面无隐式声明回退）；funcs / static_func_sigs 两作值臂加
+  `first_decl_line` 前向守卫（E3023；调用面维持 W3085 warning——
+  #214 教学口径拍板，Call 的 callee 不走此臂不双报；原型先行经首值
+  语义放行）。const_eval 索引守卫注释「函数名前向挂 #337」销账。
+- **红锚（J9 先证红后修）**：const_fold_wbtest +10（四红：函数体前向
+  全局 / 初始化器函数名作值 / 函数体内函数名作值 / static 函数名作值
+  ——修复前全红；六负例：后向引用 / extern 先行 / tentative 先行 /
+  原型先行 / 局部遮蔽 / 调用面不升级）——typeck 102/102、全仓裸
+  `moon test` 918/918、native 全量 1078/1078。
+- **语料三件**（baseline）：`fwd_ref_funcbody.c` / `fwd_func_addr.c`
+  （双侧编译失败判 match）+ `fwd_ref_funcbody_legal.c`（负例：extern
+  先行 / 原型先行 / 局部遮蔽，双侧同输出 `5 55 40 100`——本段为
+  tentative 回填**前**时点输出，#343 批回填后现值 5 值见下节）；五家
+  digest
+  freeze（Sources +3 / vm 重算 553 例零漂移、双臂 556/556 SAME）；
+  clang_direct 933 全绿；fuzz 基线重冻（318 条池轮换：enum_non_continuous
+  三条出池 + 新语料 case 进池全 AGREE）。
+- **fuzz 桶恶化定性（非引擎病）**：`lc_150.c|static_inject` AGREE→
+  WRONG_VALUE 重判为 UB 域——static top 残留后 `stack[--top]` 读未
+  初始化 malloc 内存，clang 同机五跑五值（4980828/5177426/9/9/
+  6946919）自身不稳；修复前基线产物复跑同值 0 证明非本批引入（本批
+  仅新增诊断零行为面）。**rebase 合流注**：与 #338 批（PR #340）独立
+  同判 UB——处置采其 `volatile: true` 豁免机制（桶比对豁免、存在性
+  对账保留，见上节），本批工作区的 WRONG_VALUE 改判作废、定性证据
+  （五跑五值）与其双观测证据链同源。
+- **连坐开案 #343**：负例入库实测撞 declare_var 既有病——文件作用域
+  tentative 定义（`int t; int t = 1;`）被判 E3001（clang 放行）；
+  负例暂避此形态（语料注释挂账）。
+- 测试数连坐：README ×3 / moonbit/README(.mbt).md ×2 / docs ×3
+  908→918（native 1068→1078 亲验）；facts --strict 全绿。
 
 ### fix(pr-review): PR #339 审阅处置批——P1 文案实证锚 + P2 .md 坏链闸 + P3×5（2026-10-27）
 

@@ -28,6 +28,7 @@ pub fn TypeChecker::declare_var(
   is_static~ : Bool,
   predeclared~ : Bool = false,
   is_register~ : Bool = false,
+  is_tentative~ : Bool = false,
   loc~ : @source.SourceLoc = @source.SourceLoc::new(0, 0),
 ) -> Unit {
   // #150 对抗补（2026-10-18）：extern 族类型判等——type_eq 之外加
@@ -110,6 +111,7 @@ pub fn TypeChecker::declare_var(
             is_static: existing.is_static,
             predeclared: existing.predeclared,
             is_register: existing.is_register,
+            is_tentative: existing.is_tentative,
           })
         }
         return
@@ -124,6 +126,7 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared,
           is_register,
+          is_tentative,
         })
         return
       }
@@ -139,6 +142,48 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared: false,
           is_register,
+          is_tentative,
+        })
+        return
+      }
+      // PR #344 审阅 P1（2026-10-28）：linkage 一致性守卫——static 先行
+      // 声明后随非 static 声明是 C11 6.2.2p7 linkage 冲突（clang
+      // "non-static declaration of 't' follows static declaration"，s1/
+      // s1b/s1c 三探针实测）——#343 共存分支只看 tentative 不看 linkage
+      // 整族静默放行。拒绝且**不改写符号**（P2-2：改写会使 E3059 的
+      // static 表首值锚到后随条目、报错理由比事实更歪）。extern 跟随
+      // static 合法（6.2.2p4 保持 internal linkage，走前置 extern 分支
+      // 不受此守卫波及，s10 探针）；**反向**（非 static 先 + static 后
+      // 随）clang 零诊断放行（6.2.2p5 后随 static 给出 internal
+      // linkage，s8/s9 探针实测）——由下方 tentative 共存分支承接。
+      if is_global && !is_extern && existing.is_static && !is_static {
+        self.report_error(
+          "非 static 声明 '\{name}' 跟随 static 声明——同一标识符的链接属性冲突（static 先行给出内部链接，后随声明不得改回外部链接）",
+          loc,
+          E3001_VarRedeclared,
+        )
+        return
+      }
+      // #343（2026-10-28，C11 §6.9.2）：文件作用域 tentative 定义共存
+      //——无初始化器的文件作用域声明是 tentative 定义，与实定义/再
+      // tentative 三形态（前 tent 后实 / 双 tent / 前实后 tent）均合法
+      // 共存（clang 零诊断）；双实定义仍走下方 E3001 兜底。类型不一致
+      // 仍报（clang redeclaration with a different type——extern 族
+      // extern_type_compat 判等 + 不完整数组升级语义复用）。局部域无
+      // tentative 概念（§6.2.2 无链接对象同域重声明非法），is_global
+      // 限定。符号 tentative 位取 AND——一旦有实定义即定稿（后随
+      // tentative 不降级）。static tentative 先于此分支命中（带类型
+      // 检查——比旧双 static 放行更严，朝 clang 方向收敛）。
+      if is_global && !is_extern && (existing.is_tentative || is_tentative) {
+        let effective = mismatch_report(self, existing.ty, ty, name, loc)
+        scope.set(name, {
+          ty: effective,
+          _is_global: is_global,
+          is_extern: false,
+          is_static,
+          predeclared: false,
+          is_register,
+          is_tentative: existing.is_tentative && is_tentative,
         })
         return
       }
@@ -151,6 +196,7 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared,
           is_register,
+          is_tentative,
         })
         return
       }
@@ -169,6 +215,7 @@ pub fn TypeChecker::declare_var(
         is_static,
         predeclared,
         is_register,
+        is_tentative,
       })
   }
 }
@@ -263,6 +310,7 @@ pub fn TypeChecker::update_var_type(
           is_static: sym.is_static,
           predeclared: sym.predeclared,
           is_register: sym.is_register,
+          is_tentative: sym.is_tentative,
         })
         return
       }

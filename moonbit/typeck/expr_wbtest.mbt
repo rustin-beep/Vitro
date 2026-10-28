@@ -165,6 +165,7 @@ test "resolve_identifier_shapes" {
     param_defaults: [],
     is_definition: true,
     first_decl_line: 1,
+    first_decl_col: 1,
   })
   // 变量：ty 写入重建节点
   let (ty, e) = tc.resolve_expr_type(

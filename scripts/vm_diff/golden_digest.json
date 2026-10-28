@@ -1280,6 +1280,24 @@
       "stdout_sha": "ef2d127de37b942b",
       "memory_sha": "f2ef1dad0b6ccb43"
     },
+    "baseline/fwd_func_addr.c": {
+      "src_sha": "0d6189ce",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
+    "baseline/fwd_ref_funcbody.c": {
+      "src_sha": "a0014f9d",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
+    "baseline/fwd_ref_funcbody_legal.c": {
+      "src_sha": "aa8443ca",
+      "exit_code": 0,
+      "stdout_sha": "63f1cb723f771efb",
+      "memory_sha": "b1964a3d0a90d2a5"
+    },
     "baseline/fwd_ref_static_init.c": {
       "src_sha": "22e94b2b",
       "exit_code": 0,

@@ -63,6 +63,15 @@
     "baseline/e2_include_guarded.c|nested2flat": {
       "bucket": "AGREE"
     },
+    "baseline/func_declared_not_defined.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "baseline/func_declared_not_defined.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/func_declared_not_defined.c|static_inject": {
+      "bucket": "AGREE"
+    },
     "baseline/function_pointer_decl.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
@@ -158,15 +167,6 @@
     },
     "baseline/typedef.c|static_inject": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/unsigned_mul_wrap.c|brace_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/unsigned_mul_wrap.c|cast_strip": {
-      "bucket": "AGREE"
-    },
-    "baseline/unsigned_mul_wrap.c|init_partial": {
-      "bucket": "AGREE"
     },
     "baseline/variable_length_array.c|brace_wrap": {
       "bucket": "CLANG_REJECT"

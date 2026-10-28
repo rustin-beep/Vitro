@@ -42,7 +42,6 @@ pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.A
 type AlgoCatalogEntry
 
 pub(all) struct FuncFeatures {
-  mut loop_depth : Int
   mut max_loop_depth : Int
   mut has_nested_loops : Bool
   mut has_single_loop : Bool

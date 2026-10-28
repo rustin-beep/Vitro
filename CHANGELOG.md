@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### fix(scripts): fuzz 基线 lc_150|static_inject UB 抖动豁免——桶位非确定种子摘出对账面（2026-10-28，并入 PR #340）
+
+- **红根**：master push CI（run 40633695540）fuzz 闸桶恶化
+  `leetcode/lc_150.c|static_inject` AGREE → WRONG_VALUE。定性：static_inject
+  算子使 RPN 栈游标 `top` 跨调用残留，第二次/第三次 `evalRPN` 调用读未初始化
+  堆内存（越界 UB），输出由脏值决定、双侧无一致语义义务——**桶位天生非
+  确定**：#339 P3-3 定性轮 WRONG_VALUE 与冻结轮 AGREE 双观测 + 四次 CI 全量
+  真跑 3 AGREE 1 WRONG_VALUE（本机 probe 三轮全 AGREE）实证。#341 合并非
+  回归（fuzz 面零改动），是 #339 重冻时按当轮 AGREE 入账、未给已知 UB 抖动
+  种子做豁免的雷被概率触发。
+- **修法**：基线条目新增 `volatile: true` 显式豁免字段（对账纯函数
+  `classifyAgainstBaseline`：volatile 条目桶漂移只报告「桶漂移豁免=N」不判
+  红；非 volatile 恶化照红不动）。**豁免的是桶比对、不是存在性**——僵尸
+  检查（`collectZombieSeeds` 抽纯函数）对 volatile 条目照常对账，采样集
+  变化仍逼重冻；freeze 写回/落盘连坐保留 volatile 字段；解析期 fail loud
+  （volatile 非 true 即 die，豁免须显式）。lc_150|static_inject 条目加
+  volatile + note（双观测与 CI run 证据链）。
+- **红绿锚**（node:test 五例）：非豁免恶化=worsened（master 红同形态回归
+  锚）/ volatile 漂移=volatile-drift 不判红 / 新指纹·一致两态 / volatile
+  条目 seed 掉出采样集仍僵尸 / e2e volatile 非 true fail loud（exit 2）。
+  撤 volatile 突变即回恶化红——J9 双态自证。
+
 ### fix(pr-review): PR #339 审阅处置批——P1 文案实证锚 + P2 .md 坏链闸 + P3×5（2026-10-27）
 
 - **P1 E1006 文案举例全不成立**（`#pragma`/`__attribute__`/VLA 实测零

@@ -58,6 +58,9 @@ export interface BaselineEntry {
   bucket: string;
   issue?: string;
   note?: string;
+  /** UB 抖动豁免：该变体输出由未初始化内存脏值决定（双侧无一致语义义务），
+   * 桶位跨 run 非确定——免桶对账；存在性对账（僵尸）不豁免。须显式 true。 */
+  volatile?: boolean;
 }
 
 interface Baseline {
@@ -79,6 +82,49 @@ export const BUCKET_RANK: Record<string, number> = {
   WRONG_VALUE: 4,
   ARM_DIVERGENCE: 5,
 };
+
+export type BaselineVerdict =
+  | { kind: "new"; fp: string; bucket: string }
+  | { kind: "worsened"; fp: string; from: string; to: string }
+  | { kind: "volatile-drift"; fp: string; from: string; to: string }
+  | { kind: "ok"; fp: string };
+
+/**
+ * 基线条目对账（纯函数，单测红绿锚挂点）：新指纹 / 桶恶化 / volatile 漂移
+ * / 一致。volatile 条目（UB 抖动，桶位非确定）漂移只报告不判红——豁免的
+ * 是桶比对，不是存在性（僵尸检查不受此影响）。
+ */
+export function classifyAgainstBaseline(
+  fp: string,
+  bucket: string,
+  ent: BaselineEntry | undefined,
+): BaselineVerdict {
+  if (ent === undefined) return { kind: "new", fp, bucket };
+  const rank = (b: string): number => BUCKET_RANK[b] ?? 0;
+  if (rank(bucket) > rank(ent.bucket)) {
+    return ent.volatile === true
+      ? { kind: "volatile-drift", fp, from: ent.bucket, to: bucket }
+      : { kind: "worsened", fp, from: ent.bucket, to: bucket };
+  }
+  return { kind: "ok", fp };
+}
+
+/**
+ * 僵尸 seed 收集（纯函数，单测锚挂点）：基线指纹的 seed 不在采样集即入列
+ * （gen: 段无种子文件豁免）。volatile 豁免不免存在性对账。
+ */
+export function collectZombieSeeds(
+  entries: ReadonlyMap<string, BaselineEntry>,
+  liveSeeds: ReadonlySet<string>,
+): string[] {
+  const out: string[] = [];
+  for (const fp of entries.keys()) {
+    const seedPart = fp.split("|")[0]!;
+    if (seedPart.startsWith("gen:")) continue;
+    if (!liveSeeds.has(seedPart) && !out.includes(seedPart)) out.push(seedPart);
+  }
+  return out;
+}
 
 class ExitErr extends Error {
   readonly code: number;
@@ -1157,7 +1203,12 @@ function mainFlow(argv: readonly string[]): number {
     } catch (e) {
       die(`基线 JSON 解析失败：${errText(e)}`);
     }
-    for (const [k, v] of Object.entries(parsed.entries ?? {})) base.entries.set(k, v);
+    for (const [k, v] of Object.entries(parsed.entries ?? {})) {
+      if (v.volatile !== undefined && v.volatile !== true) {
+        die(`基线条目 ${k} 的 volatile 仅接受 true（豁免须显式，不接受真值变体）`);
+      }
+      base.entries.set(k, v);
+    }
   } else if (!opts.freeze) {
     die(`基线缺失（首跑用 -freeze 生成）：${opts.baseline}`);
   }
@@ -1173,6 +1224,7 @@ function mainFlow(argv: readonly string[]): number {
 
   let newFp = 0;
   let worsened = 0;
+  let volatileDrift = 0;
   let agree = 0;
   let total = 0;
   const report: string[] = [];
@@ -1181,18 +1233,19 @@ function mainFlow(argv: readonly string[]): number {
     if (bucket === "AGREE") agree++;
     if (opts.freeze) {
       const old = base.entries.get(fp);
-      base.entries.set(fp, { bucket, issue: old?.issue, note: old?.note });
+      base.entries.set(fp, { bucket, issue: old?.issue, note: old?.note, volatile: old?.volatile });
       return;
     }
-    const ent = base.entries.get(fp);
-    if (ent === undefined) {
+    const v = classifyAgainstBaseline(fp, bucket, base.entries.get(fp));
+    if (v.kind === "new") {
       newFp++;
-      report.push(`  新指纹 ${fp} → ${bucket}`);
-      return;
-    }
-    if ((BUCKET_RANK[bucket] ?? 0) > (BUCKET_RANK[ent.bucket] ?? 0)) {
+      report.push(`  新指纹 ${v.fp} → ${v.bucket}`);
+    } else if (v.kind === "worsened") {
       worsened++;
-      report.push(`  桶恶化 ${fp}：${ent.bucket} → ${bucket}`);
+      report.push(`  桶恶化 ${v.fp}：${v.from} → ${v.to}`);
+    } else if (v.kind === "volatile-drift") {
+      volatileDrift++;
+      report.push(`  桶漂移（volatile 豁免，不判红）${v.fp}：${v.from} → ${v.to}`);
     }
   };
 
@@ -1244,6 +1297,7 @@ function mainFlow(argv: readonly string[]): number {
       const obj: BaselineEntry = { bucket: v.bucket };
       if (v.issue !== undefined && v.issue !== "") obj.issue = v.issue;
       if (v.note !== undefined && v.note !== "") obj.note = v.note;
+      if (v.volatile === true) obj.volatile = true;
       entries[k] = obj;
     }
     // 转义口径对齐 Go MarshalIndent + SetEscapeHTML（PR #289 P2-1 立的口径，
@@ -1265,21 +1319,14 @@ function mainFlow(argv: readonly string[]): number {
   // 采样集 = 该条目永不再被跑到（旧 DetRand 采样对语料数量敏感换血 19/20
   // 的病灶面；固定采样后仅「新增文件 hash 挤掉尾部」或「种子文件被删」
   // 产生）——报告并红，逼基线随采样集变化重冻（-freeze 幂等收编）。
-  // gen:<域>/<序号> 段指纹无种子文件，豁免。
+  // gen:<域>/<序号> 段指纹无种子文件，豁免。volatile 条目同受此对账
+  // （#340 批：豁免的是桶比对，不是存在性）。
   const liveSeeds = new Set(pick.map((s) => `${s.suite}/${s.name}`));
-  let zombies = 0;
-  const zombieSeeds: string[] = [];
-  for (const fp of base.entries.keys()) {
-    const seedPart = fp.split("|")[0]!;
-    if (seedPart.startsWith("gen:")) continue;
-    if (!liveSeeds.has(seedPart)) {
-      zombies++;
-      if (!zombieSeeds.includes(seedPart)) zombieSeeds.push(seedPart);
-    }
-  }
+  const zombieSeeds = collectZombieSeeds(base.entries, liveSeeds);
+  const zombies = zombieSeeds.length;
 
   process.stdout.write(
-    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened} 基线僵尸=${zombies}` +
+    `corpus_fuzz：total=${total} AGREE=${agree} 新指纹=${newFp} 桶恶化=${worsened} 桶漂移豁免=${volatileDrift} 基线僵尸=${zombies}` +
       ` 判定缓存命中=${judgeHit} 未命中=${judgeMiss}（epoch=${judgeEpoch}${judgeRefresh ? "，REFRESH 全量重算" : ""}）\n`,
   );
   for (const l of report) process.stdout.write(l + "\n");

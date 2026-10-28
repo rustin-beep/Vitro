@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### fix(demo): E2E CDP waitFor 导航切换窗瞬态容错——style_contract 竞态红治本（2026-10-28）
+
+- **红根**：PR #344 CI pull_request 轮两次同形态红（run 40691154018 /
+  40697364478，同 commit 各自 workflow_dispatch 轮全绿）——
+  style_contract 在 `Page.navigate` / `Page.reload` 后的 waitFor 首查撞
+  导航切换窗（旧 execution context 已销毁、新 context 未 commit），CDP
+  报 -32000「Inspected target navigated or closed」直接 exit 1（E2E 步骤
+  bash -e 短路，后续 e2e_* 全 skip）。
+- **定性**：demo/tests/cdp.mts 的 waitFor 对 evaluate 错误零容错——导航
+  进行中的查询是**瞬态错误**不是页面故障。本地快机 Edge 探针 70 轮
+  （navigate/reload 双形态）零复现（窗口毫秒级），CI 慢机上概率显著；
+  master 30 轮 CI 该 job 从未红过此形态，小概率竞态非内容回归。
+- **修法**：`isTransientNavigationError` 判据（-32000 navigated or
+  closed / Execution context was destroyed / Cannot find context 三形态，
+  includes 穿透 evaluate 层「eval 异常: 」包装）+ waitFor 轮询捕瞬态当
+  「未就绪」继续等（永假表达式照旧超时 fail loud）；顶层稳态 evaluate
+  （COLLECT / localStorage.clear 等）不捕保持 fail loud。cdp.mts 单源
+  收口——style_contract + 5 份 e2e_* 六消费方全收益。
+- **红绿锚**：pure.test.mts 判据单测（CI 日志原文注入判 true + 超时/
+  类型错/ECONNREFUSED 反例必 false——防判据空转吞掉一切 waitFor 失败）；
+  本地 Edge waitFor 三路行为验证亲验（正路 true / navigate 后立即首查 /
+  永假 1.5s 超时报 waitFor 超时）。
+
 ### fix(typeck): PR #344 审阅处置批——P1 linkage 守卫 + P2-1 同行列级判据 + P2-2 E3059 首值让位（2026-10-28）
 
 - **P1（本批引入的放行回归收口）**：`static int t; int t;` 等

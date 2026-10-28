@@ -38,6 +38,22 @@ interface RuntimeEvaluateResponse {
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** 导航切换窗瞬态错误：Page.navigate / Page.reload 进行中（旧 execution
+ *  context 已销毁、新 context 未 commit）时，Runtime.evaluate 报 CDP -32000
+ *  「Inspected target navigated or closed」等形态——页面没坏，是查询撞上
+ *  导航窗。waitFor 轮询把它当「未就绪」继续等；顶层稳态 evaluate 不捕，
+ *  保持 fail loud。实证：PR #344 CI 两次同形态红（run 40691154018 /
+ *  40697364478，同 commit），本地快机 Edge 不复现（窗口毫秒级，CI 慢机上
+ *  概率显著）；另两类是同窗口的历史形态，一并收编。 */
+export function isTransientNavigationError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    (msg.includes("-32000") && msg.includes("navigated or closed")) ||
+    msg.includes("Execution context was destroyed") ||
+    msg.includes("Cannot find context")
+  );
+}
+
 export interface ConnectOptions {
   port?: number;
   host?: string;
@@ -134,7 +150,14 @@ export async function connectCdp(opts: ConnectOptions = {}): Promise<CdpClient> 
     async waitFor(expr: string, timeout = 20000, step = 250): Promise<boolean> {
       const t0 = Date.now();
       for (;;) {
-        if (await client.evaluate<unknown>(expr)) return true;
+        let v: unknown;
+        try {
+          v = await client.evaluate<unknown>(expr);
+        } catch (e) {
+          // 撞导航切换窗（瞬态）：视为本轮未就绪继续轮询；其余错误照旧炸出。
+          if (!isTransientNavigationError(e)) throw e;
+        }
+        if (v) return true;
         if (Date.now() - t0 > timeout) throw new Error("waitFor 超时: " + expr.slice(0, 120));
         await sleep(step);
       }

@@ -49,7 +49,7 @@
 - **红锚（J9）**：const_fold_wbtest +8（六红：linkage 两形态 /
   E3059 歪码负锚 / 同行全局·作值·调用三面——修复前全红；两负例：
   同行声明先行 / extern 跟随 static）——typeck 117/117、全仓
-  950/950、native 1113/1113 亲验；十探针端到端 Vitro 与 clang
+  960/960、native 1124/1124 亲验（rebase 到 #342/#347/#345 后重采）；十探针端到端 Vitro 与 clang
   逐位对齐。
 - **P2-3（PR 冲突）**：已于 rebase 收尾笔（f5063360）处置——README/
   CHANGELOG 冲突解、测试数合流 942/1105、fuzz_baseline 采 master

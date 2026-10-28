@@ -28,6 +28,7 @@ pub fn TypeChecker::declare_var(
   is_static~ : Bool,
   predeclared~ : Bool = false,
   is_register~ : Bool = false,
+  is_tentative~ : Bool = false,
   loc~ : @source.SourceLoc = @source.SourceLoc::new(0, 0),
 ) -> Unit {
   // #150 对抗补（2026-10-18）：extern 族类型判等——type_eq 之外加
@@ -110,6 +111,7 @@ pub fn TypeChecker::declare_var(
             is_static: existing.is_static,
             predeclared: existing.predeclared,
             is_register: existing.is_register,
+            is_tentative: existing.is_tentative,
           })
         }
         return
@@ -124,6 +126,7 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared,
           is_register,
+          is_tentative,
         })
         return
       }
@@ -139,6 +142,30 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared: false,
           is_register,
+          is_tentative,
+        })
+        return
+      }
+      // #343（2026-10-28，C11 §6.9.2）：文件作用域 tentative 定义共存
+      //——无初始化器的文件作用域声明是 tentative 定义，与实定义/再
+      // tentative 三形态（前 tent 后实 / 双 tent / 前实后 tent）均合法
+      // 共存（clang 零诊断）；双实定义仍走下方 E3001 兜底。类型不一致
+      // 仍报（clang redeclaration with a different type——extern 族
+      // extern_type_compat 判等 + 不完整数组升级语义复用）。局部域无
+      // tentative 概念（§6.2.2 无链接对象同域重声明非法），is_global
+      // 限定。符号 tentative 位取 AND——一旦有实定义即定稿（后随
+      // tentative 不降级）。static tentative 先于此分支命中（带类型
+      // 检查——比旧双 static 放行更严，朝 clang 方向收敛）。
+      if is_global && !is_extern && (existing.is_tentative || is_tentative) {
+        let effective = mismatch_report(self, existing.ty, ty, name, loc)
+        scope.set(name, {
+          ty: effective,
+          _is_global: is_global,
+          is_extern: false,
+          is_static,
+          predeclared: false,
+          is_register,
+          is_tentative: existing.is_tentative && is_tentative,
         })
         return
       }
@@ -151,6 +178,7 @@ pub fn TypeChecker::declare_var(
           is_static,
           predeclared,
           is_register,
+          is_tentative,
         })
         return
       }
@@ -169,6 +197,7 @@ pub fn TypeChecker::declare_var(
         is_static,
         predeclared,
         is_register,
+        is_tentative,
       })
   }
 }
@@ -263,6 +292,7 @@ pub fn TypeChecker::update_var_type(
           is_static: sym.is_static,
           predeclared: sym.predeclared,
           is_register: sym.is_register,
+          is_tentative: sym.is_tentative,
         })
         return
       }

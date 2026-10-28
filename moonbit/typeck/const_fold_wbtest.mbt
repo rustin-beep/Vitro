@@ -1001,3 +1001,608 @@ test "issue331_fwd_index_expr_backref_allowed" {
     msg="索引位先行声明不得误报（PR #339 审阅 P3-2）",
   )
 }
+
+// ============================================================================
+// #337（2026-10-28）：函数体前向引用守卫——#331 同病根的函数体/作值面。
+// J9：本批先证红后修（issue337_fwd_* 四锚修复前全红，负例六锚防误拒）。
+// ============================================================================
+
+///|
+/// #337 主体：函数体前向引用后文全局——C11 6.2.1p4 声明点语义，clang 对
+/// `int main(void){ return s; } int s = 3;` 报 use of undeclared
+/// identifier 's'。Pass 2.5 全量登记后函数体 lookup_var 直接命中已登记
+/// 符号（#331 只收了初始化器地址常量族窄口——diagnose_static_init）。
+test "issue337_fwd_funcbody_global_rejected" {
+  let loc = @source.SourceLoc::new(1, 27)
+  let s_decl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "s",
+      Some(@ast.Expr::Literal(3, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    with_main(
+      gprog([s_decl]),
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("s", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="函数体前向引用后文全局 s 应报 E3023（#337 主体）",
+  )
+}
+
+///|
+/// #337（PR #339 审阅 P3-2 挂账）：初始化器**函数名作值**前向引用——
+/// `int (*fp)(void) = f; int f(void){...}`，clang 报 use of undeclared
+/// identifier 'f'。funcs 表 Pass 2 全量登记（早于 Pass 2.5），函数名
+/// 无声明序信息（const_eval.mbt 索引守卫注释明写「函数名前向挂 #337」）。
+test "issue337_fwd_funcname_addr_init_rejected" {
+  let loc = @source.SourceLoc::new(1, 22)
+  let fp_decl = gdecl(
+    @ast.Type::function_pointer(@ast.Type::int(), []),
+    "fp",
+    Some(@ast.Expr::Identifier("f", loc, @ast.Type::int())),
+  )
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc, @ast.Type::int())), loc),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([fp_decl]), funcs: [f_def], })
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="初始化器函数名作值前向引用 f 应报 E3023（P3-2 挂账销案）",
+  )
+}
+
+///|
+/// #337：函数体内**函数名作值**前向引用同族——
+/// `int main(void){ int (*fp)(void) = f; ... } int f(void){...}`。
+test "issue337_fwd_funcname_addr_funcbody_rejected" {
+  let loc = @source.SourceLoc::new(1, 30)
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc, @ast.Type::int())), loc),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::function_pointer(@ast.Type::int(), []),
+            "fp",
+            Some(@ast.Expr::Identifier("f", loc, @ast.Type::int())),
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+            loc,
+          ),
+        ],
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check({ ..gprog([]), funcs: [main, f_def], })
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="函数体内函数名作值前向引用 f 应报 E3023",
+  )
+}
+
+///|
+/// #337：static 函数名作值前向引用连坐——作值面无隐式声明回退（调用
+/// 面 E3058 前向序在 check_user_func，值使用侧此前零守卫——#5 销案的
+/// 「值使用侧不重复」指跨文件可见性维度，前向序是新增维度不违背）。
+test "issue337_fwd_static_funcname_addr_rejected" {
+  let loc = @source.SourceLoc::new(1, 30)
+  let h_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "h",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc, @ast.Type::int())), loc),
+    ),
+    is_static: true,
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::function_pointer(@ast.Type::int(), []),
+            "fp",
+            Some(@ast.Expr::Identifier("h", loc, @ast.Type::int())),
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Literal(0, loc, @ast.Type::int())),
+            loc,
+          ),
+        ],
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check({ ..gprog([]), funcs: [main, h_def], })
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="static 函数名作值前向引用 h 应报 E3023（连坐面）",
+  )
+}
+
+///|
+/// #337 负锚：全局先行声明 + 函数体后文引用——正常程序零误报。
+test "issue337_backref_global_allowed" {
+  let loc = @source.SourceLoc::new(2, 27)
+  let s_decl = gdecl(
+    @ast.Type::int(),
+    "s",
+    Some(@ast.Expr::Literal(3, @source.SourceLoc::new(1, 10), @ast.Type::int())),
+  )
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("s", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([s_decl]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="后文引用先行全局 s 不得误报",
+  )
+}
+
+///|
+/// #337 负锚：extern 先行声明（定义在后）+ 函数体引用——合法形态
+///（首声明行取 extern 条目，#331 的 global_first_decl_idx 首值模式同款）。
+test "issue337_extern_predecl_funcbody_allowed" {
+  let loc = @source.SourceLoc::new(2, 27)
+  let e_extern = gdecl(@ast.Type::int(), "e", None, is_extern=true)
+  let e_def = {
+    ..gdecl(
+      @ast.Type::int(),
+      "e",
+      Some(
+        @ast.Expr::Literal(7, @source.SourceLoc::new(3, 10), @ast.Type::int()),
+      ),
+    ),
+    loc: @source.SourceLoc::new(3, 1),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("e", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([e_extern, e_def]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="extern 先行声明 + 函数体引用是合法形态，不得误报",
+  )
+}
+
+///|
+/// #337 负锚：tentative 先行（`int s; ... int s = 3;`）+ 函数体引用
+/// ——首声明行取 tentative 条目（C11 §6.9.2）。
+test "issue337_tentative_predecl_funcbody_allowed" {
+  let loc = @source.SourceLoc::new(2, 27)
+  let s_tent = gdecl(@ast.Type::int(), "s", None)
+  let s_def = {
+    ..gdecl(
+      @ast.Type::int(),
+      "s",
+      Some(
+        @ast.Expr::Literal(3, @source.SourceLoc::new(3, 10), @ast.Type::int()),
+      ),
+    ),
+    loc: @source.SourceLoc::new(3, 1),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("s", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([s_tent, s_def]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="tentative 先行声明 + 函数体引用是合法形态，不得误报",
+  )
+}
+
+///|
+/// #337 负锚：函数原型先行 + 函数名作值——`int f(void); int (*fp)(void)
+/// = f; int f(void){...}`（first_decl_line 取原型条目，Pass 2 首值语义）。
+test "issue337_prototype_predecl_addr_allowed" {
+  let loc = @source.SourceLoc::new(2, 22)
+  let proto : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: None,
+    source_file: "t.c",
+  }
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(3, 1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc, @ast.Type::int())), loc),
+    ),
+    source_file: "t.c",
+  }
+  let fp_decl = gdecl(
+    @ast.Type::function_pointer(@ast.Type::int(), []),
+    "fp",
+    Some(@ast.Expr::Identifier("f", loc, @ast.Type::int())),
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([fp_decl]), funcs: [proto, f_def], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="原型先行 + 函数名作值是合法形态，不得误报",
+  )
+}
+
+///|
+/// #337 负锚：局部遮蔽——函数体内声明同名局部后引用命中 scope 栈内层，
+/// 不进全局前向守卫（`int main(void){ int s = 1; return s; } int s = 3;`）。
+test "issue337_local_shadow_fwd_global_allowed" {
+  let loc = @source.SourceLoc::new(1, 30)
+  let s_decl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "s",
+      Some(@ast.Expr::Literal(3, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    with_main(
+      gprog([s_decl]),
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(
+            @ast.Type::int(),
+            "s",
+            Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+            [],
+            false,
+            false,
+            loc,
+          ),
+          @ast.Stmt::Return(
+            Some(@ast.Expr::Identifier("s", loc, @ast.Type::int())),
+            loc,
+          ),
+        ],
+        loc,
+      ),
+    ),
+  )
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="局部遮蔽后文全局是合法形态，不得误报",
+  )
+}
+
+///|
+/// #337 负锚：后文函数**调用**面不升级 error——`int main(void){ return
+/// f(); } int f(void){...}` 调用走 check_user_func 的 W3085 warning
+///（#214 教学口径拍板），作值守卫不得渗入调用面（callee 不走
+/// resolve_identifier 的 funcs 臂）。
+test "issue337_call_face_not_escalated" {
+  let loc = @source.SourceLoc::new(1, 27)
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(Some(@ast.Expr::Literal(0, loc, @ast.Type::int())), loc),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Call("f", [], loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check({ ..gprog([]), funcs: [main, f_def], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="调用面前向引用维持 W3085 warning，不得升级 E3023 error",
+  )
+}
+
+// ============================================================================
+// #343（2026-10-28）：文件作用域 tentative 定义共存——C11 §6.9.2。
+// J9：本批先证红后修（issue343_tentative_* 三锚修复前全红，负例四锚
+// 防误放：双实定义/类型不一致/局部域仍拒）。
+// ============================================================================
+
+///|
+/// #343 主体：tentative 定义 + 后文实定义——`int tent; int tent = 7;`
+/// 合法共存（clang 零诊断）；Vitro 修复前 declare_var 落 E3001 兜底臂
+///（同名语义四层无 tentative 分支）。
+test "issue343_tentative_then_def_allowed" {
+  let loc = @source.SourceLoc::new(3, 27)
+  let t_tent = {
+    ..gdecl(@ast.Type::int(), "tent", None),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let t_def = {
+    ..gdecl(
+      @ast.Type::int(),
+      "tent",
+      Some(@ast.Expr::Literal(7, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(3, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("tent", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([t_tent, t_def]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3001),
+    msg="tentative 定义 + 后文实定义是合法共存形态（C11 6.9.2），不得报 E3001",
+  )
+}
+
+///|
+/// #343：双 tentative——`int a; int a;` 合法（两个均为 tentative 定义，
+/// 零初始化语义不变）。
+test "issue343_double_tentative_allowed" {
+  let a1 = {
+    ..gdecl(@ast.Type::int(), "a", None),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let a2 = {
+    ..gdecl(@ast.Type::int(), "a", None),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([a1, a2]))
+  assert_false(
+    errs.exists(e => e.code == 3001),
+    msg="双 tentative 定义是合法形态，不得报 E3001",
+  )
+}
+
+///|
+/// #343：实定义先行 + 后随 tentative——`int t = 7; int t;` 合法
+///（C11 §6.9.2p2 例 2 同款；后随 tentative 声明不构成重定义）。
+test "issue343_def_then_tentative_allowed" {
+  let loc = @source.SourceLoc::new(3, 27)
+  let t_def = {
+    ..gdecl(
+      @ast.Type::int(),
+      "t",
+      Some(@ast.Expr::Literal(7, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let t_tent = {
+    ..gdecl(@ast.Type::int(), "t", None),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(3, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("t", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([t_def, t_tent]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3001),
+    msg="实定义 + 后随 tentative 声明是合法形态（C11 6.9.2p2），不得报 E3001",
+  )
+}
+
+///|
+/// #343 负锚：双实定义仍拒——`int a = 1; int a = 2;` 是真重定义
+///（两声明均带初始化器，clang redefinition error），守卫不得误放。
+test "issue343_double_def_still_rejected" {
+  let loc = @source.SourceLoc::new(2, 10)
+  let a1 = {
+    ..gdecl(
+      @ast.Type::int(),
+      "a",
+      Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let a2 = {
+    ..gdecl(
+      @ast.Type::int(),
+      "a",
+      Some(@ast.Expr::Literal(2, loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([a1, a2]))
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="双实定义（均带初始化器）必须仍报 E3001",
+  )
+}
+
+///|
+/// #343 负锚：tentative 与实定义类型不一致仍拒——`int t; long long t = 7;`
+/// clang 报 redeclaration with a different type。
+test "issue343_tentative_type_mismatch_rejected" {
+  let loc = @source.SourceLoc::new(2, 11)
+  let t_tent = {
+    ..gdecl(@ast.Type::int(), "t", None),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let t_def = {
+    ..gdecl(
+      @ast.Type::long_long(),
+      "t",
+      Some(@ast.Expr::Literal(7, loc, @ast.Type::long_long())),
+    ),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([t_tent, t_def]))
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="tentative 与实定义类型不一致必须仍报 E3001",
+  )
+}
+
+///|
+/// #343 负锚：局部域无 tentative 概念——函数体内 `int t; int t;` 仍是
+/// 重复声明（C11 §6.2.2 无链接对象同域重声明非法，clang redefinition；
+/// tentative 仅文件作用域语义）。
+test "issue343_local_no_tentative" {
+  let loc = @source.SourceLoc::new(2, 5)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    with_main(
+      gprog([]),
+      @ast.Stmt::Block(
+        [
+          @ast.Stmt::VarDecl(@ast.Type::int(), "t", None, [], false, false, loc),
+          @ast.Stmt::VarDecl(@ast.Type::int(), "t", None, [], false, false, loc),
+        ],
+        loc,
+      ),
+    ),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="函数体内同名双声明（无 tentative 语义）必须仍报 E3001",
+  )
+}
+
+///|
+/// #343 负锚（现状面防回归）：static tentative——`static int t; static
+/// int t = 7;` 双 static 全局分支本就放行（内部链接保留最新）。
+test "issue343_static_tentative_allowed" {
+  let s1 = {
+    ..{ ..gdecl(@ast.Type::int(), "st", None), is_static: true, },
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let s2 = {
+    ..{ ..gdecl(@ast.Type::int(), "st", None), is_static: true, },
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([s1, s2]))
+  assert_false(
+    errs.exists(e => e.code == 3001),
+    msg="static tentative 共存维持既有放行行为",
+  )
+}

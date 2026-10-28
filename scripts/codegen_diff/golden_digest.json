@@ -216,6 +216,9 @@
         "function_pointer_multi_level.c": "4cb7c8f8",
         "function_pointer_return_ptr.c": "612b6d2b",
         "function_pointer_typedef.c": "03251b3f",
+        "fwd_func_addr.c": "0d6189ce",
+        "fwd_ref_funcbody.c": "a0014f9d",
+        "fwd_ref_funcbody_legal.c": "aa8443ca",
         "fwd_ref_static_init.c": "22e94b2b",
         "gcd_euclid.c": "2381a5a0",
         "gcd_euclidean.c": "e035c2fc",
@@ -1206,6 +1209,17 @@
         },
         "function_pointer_typedef.c": {
           "result_sha": "b4231751c3c008c4"
+        },
+        "fwd_func_addr.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
+        "fwd_ref_funcbody.c": {
+          "fail": true,
+          "fail_stage": "type"
+        },
+        "fwd_ref_funcbody_legal.c": {
+          "result_sha": "b7e32dabcd095983"
         },
         "fwd_ref_static_init.c": {
           "fail": true,

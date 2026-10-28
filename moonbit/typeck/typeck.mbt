@@ -51,6 +51,11 @@ pub struct TypeChecker {
   // #50 批①（2026-10-10）：static 全局首次声明行——E3059 前向序检查
   //（使用点早于任何声明 = 对齐 Clang use-before-declaration）
   static_global_decl_lines : Map[String, Int32]
+  // #337（2026-10-28）：非 static 文件作用域全局的首次声明行——函数体
+  // 前向引用守卫判据（set 保持首值：extern/tentative 再声明不刷新，
+  // 先行 extern/tentative 条目给出可见性，对齐 C11 6.2.1p4 声明点语义；
+  // static 面走 static_global_decl_lines 的 E3059 通道，两表分治防双报）
+  global_decl_lines : Map[String, Int32]
   // #331（2026-10-27）：文件作用域全局的首声明序（program.globals 数组
   // 首现下标 = 声明点序，C11 6.2.1p4）——初始化器前向引用守卫判据
   global_first_decl_idx : Map[String, Int32]
@@ -88,6 +93,7 @@ pub fn TypeChecker::new() -> TypeChecker {
     static_func_files: Map([]),
     static_global_files: Map([]),
     static_global_decl_lines: Map([]),
+    global_decl_lines: Map([]),
     global_first_decl_idx: Map([]),
     static_init_site_idx: None,
     structs: Map([]),
@@ -364,6 +370,15 @@ pub fn TypeChecker::check(
   // 定型再登记**；初始化器只解析一次，结果缓存给下面的检查循环复用
   // ——重复解析 = 诊断双份。
   self.enter_scope()
+  // #337（2026-10-28）：非 static 全局首声明行表——建表先于 auto/typeof
+  // 预解析（预解析语境 static_init_site_idx 为 None，守卫激活面包含它）
+  // 与 Pass 3/4 函数体检查；set 保持首值，extern/tentative 先行条目给出
+  // 可见性（clang 口径：首声明点即可见）
+  for g in program.globals {
+    if !g.is_static && !self.global_decl_lines.contains(g.name) {
+      self.global_decl_lines.set(g.name, g.loc.line)
+    }
+  }
   let precomputed_init_types : Map[String, @ast.Type] = Map([])
   for i in 0..<program.globals.length() {
     let g = program.globals[i]
@@ -408,6 +423,7 @@ pub fn TypeChecker::check(
       is_global=true,
       is_extern=g.is_extern,
       is_static=g.is_static,
+      is_tentative=g.init is None && !g.is_extern,
       loc=g.loc,
     )
     if g.is_static {

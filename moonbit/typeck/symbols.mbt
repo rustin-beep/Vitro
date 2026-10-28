@@ -18,6 +18,10 @@ struct VarSymbol {
   /// #156（2026-10-18）：register 存储类（§6.7.1p4 禁取地址）——Addr
   /// 臂查裸 Identifier 操作数读此位（scope 栈天然感知遮蔽）
   is_register : Bool
+  /// #343（2026-10-28）：文件作用域 tentative 定义位（C11 §6.9.2——
+  /// 无初始化器的文件作用域声明是 tentative 定义，与实定义/再 tentative
+  /// 共存；declare_var 同名共存分支判据。局部域恒 false）
+  is_tentative : Bool
 }
 
 ///|

@@ -29,6 +29,9 @@ vitro/engine/bytecode vitro/engine/opcode OpCode
 vitro/engine/bytecode vitro/engine/source SourceLoc
 vitro/engine/bytecode vitro/engine/util str_cmp
 vitro/engine/bytecode vitro/engine/util utf8_len
+vitro/engine/cmd/backend_triage vitro/engine/gateway engine_version
+vitro/engine/cmd/backend_triage vitro/engine/gateway invoke
+vitro/engine/cmd/backend_triage vitro/engine/gateway protocol_version
 vitro/engine/cmd/compile moonbitlang/core/env args
 vitro/engine/cmd/compile vitro/engine/cmd/lib/cli compile
 vitro/engine/cmd/compile vitro/engine/cmd/lib/engine_direct direct_channel

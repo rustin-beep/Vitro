@@ -6,6 +6,13 @@
 // 测试与引擎隔离，浅路径断言零引擎依赖）。
 
 ///|
+/// #366：api 帧出口注入通道的测试桩（白盒锚只判 rc 语义——stdout 字节
+/// 对拍由 vitro_cli_smoke 承担）。
+fn noop_write(_b : Bytes) -> Unit {
+  ()
+}
+
+///|
 fn fake_channel() -> EngineChannel {
   {
     invoke: fn(line : String) -> String {
@@ -100,15 +107,31 @@ test "cli_api_help_清单与详情_rc 三态" {
   // 走 invoke 得「未知方法」帧（rc=1）、`help compile` 的 compile 被当
   // params 非 JSON 对象（rc=4）。输出内容断言由 vitro_cli_smoke 双臂
   // 对拍承担（逻辑层 println 无捕获面，这里锚 rc 语义）。
-  assert_eq(api(["help"], () => b"", channel=fake_channel()), 0) // 改前红位：help 走 invoke=未知方法帧 rc=1
+  assert_eq(
+    api(["help"], () => b"", write_stdout=noop_write, channel=fake_channel()),
+    0,
+  ) // 改前红位：help 走 invoke=未知方法帧 rc=1
 }
 
 ///|
 test "cli_api_help_detail_单方法与未知方法" {
   // 接线后：help compile → 0；help no.such → 4（用法错）
-  assert_eq(api(["help", "compile"], () => b"", channel=fake_channel()), 0)
   assert_eq(
-    api(["help", "no.such.method"], () => b"", channel=fake_channel()),
+    api(
+      ["help", "compile"],
+      () => b"",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    0,
+  )
+  assert_eq(
+    api(
+      ["help", "no.such.method"],
+      () => b"",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
     4,
   )
 }

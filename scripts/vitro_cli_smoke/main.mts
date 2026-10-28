@@ -281,6 +281,117 @@ export function runMain(argv: readonly string[]): number {
       process.stdout.write(`ok  B[serve 帧字节] serve 两帧+shutdown 零 0d（${r.stdout.length}B，#335 审阅 P3-1）\n`);
     }
   }
+  // #366（2026-10-28）：大帧管道口径锚——api/step 帧出口走壳注入同步通道前，
+  // js/wasm 臂帧走 println → node 对管道是异步写，帧后立即 process.exit 丢弃
+  // 未刷写队列：>1MB 帧管道口径静默截断（WSL 实测 65808B/128KB 边界浮动、
+  // rc=0 零信号、产出非法 JSON；文件口径完整——node 对文件同步写）。本锚
+  // 同帧序列双口径对拍：管道（spawnSync 默认 stdout=pipe）vs 文件（fd 直
+  // 写），断言 rc=0 + 逐字节等长 + 每帧 JSON 可解析 + 帧量 >1MB（门量保证
+  // 覆盖截断边界）。native 臂 CRT exit 刷缓冲不受影响，一并入锚作对照。
+  {
+    const bigBatch =
+      `{"id":1,"method":"compile","params":{"source":"int main(){return 0;}"}}\n` +
+      `{"id":2,"method":"run","params":{"argv":["m.c"],"batch_input":true}}\n` +
+      `{"id":3,"method":"memory.dump","params":{}}\n`;
+    const bigFile = path.join(tmpDir, "b366_control.out");
+    const arms = [
+      { label: "js", exe: jsEntry },
+      { label: "wasm", exe: shell },
+      { label: "native", exe: nativeExe },
+    ];
+    const pipeOuts = new Map<string, Buffer>();
+    for (const a of arms) {
+      const argv = [...(a.label === "native" ? [] : [a.exe]), "api", "--batch"];
+      const exe = a.label === "native" ? a.exe : nodeBin;
+      // 文件口径（对照）：stdout 直写 fd——node 对文件同步写，完整性质押
+      const fd = fs.openSync(bigFile, "w");
+      const rf = spawnSync(exe, argv, {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+        input: bigBatch,
+        stdio: ["pipe", fd, "pipe"],
+      });
+      fs.closeSync(fd);
+      // 管道口径（被测）：spawnSync 默认 stdout=pipe——正是 #366 病灶形态
+      const rp = spawnSync(exe, argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024, input: bigBatch });
+      const fbytes = fs.readFileSync(bigFile);
+      const pbytes = rp.stdout ?? Buffer.alloc(0);
+      if (rf.error !== undefined || rp.error !== undefined || (rf.status ?? -1) !== 0 || (rp.status ?? -1) !== 0) {
+        fatalf(`B[大帧管道] ${a.label} rc 异常: file=${rf.status ?? rf.error?.message} pipe=${rp.status ?? rp.error?.message}`);
+        continue;
+      }
+      if (fbytes.length <= 1024 * 1024) {
+        fatalf(`B[大帧管道] ${a.label} 帧量 ${fbytes.length}B 未过 1MB 门量（锚失效——换更大帧源）`);
+        continue;
+      }
+      if (!pbytes.equals(fbytes)) {
+        fatalf(`B[大帧管道] ${a.label} 管道口径截断/漂移：pipe=${pbytes.length}B file=${fbytes.length}B（#366 帧出口未走同步通道）`);
+        continue;
+      }
+      let lines = 0;
+      let allJson = true;
+      for (const ln of pbytes.toString("utf8").split("\n")) {
+        if (ln.length === 0) continue;
+        lines++;
+        try {
+          JSON.parse(ln);
+        } catch {
+          allJson = false;
+          break;
+        }
+      }
+      if (!allJson || lines !== 3) {
+        fatalf(`B[大帧管道] ${a.label} 帧完整性失败：${lines} 帧可解析=${allJson}（截断产出非法 JSON）`);
+        continue;
+      }
+      pipeOuts.set(a.label, pbytes);
+      process.stdout.write(`ok  B[大帧管道] ${a.label} 双口径逐字节一致（${pbytes.length}B / 3 帧合法 JSON，#366）\n`);
+    }
+    // 三臂大帧内容同形（同帧序列同引擎——顺带锁 memory.dump 跨臂一致）
+    const j = pipeOuts.get("js");
+    const w = pipeOuts.get("wasm");
+    const n = pipeOuts.get("native");
+    if (j === undefined || w === undefined || n === undefined) {
+      // 上方已 fatalf 过对应臂——此处不重复计数
+    } else if (!j.equals(w) || !w.equals(n)) {
+      fatalf(`B[大帧管道] 三臂 memory.dump 帧不一致：j=${j.length} w=${w.length} n=${n.length}B`);
+    } else {
+      process.stdout.write(`ok  B[大帧管道] 三臂大帧内容逐位一致（#366+#14 三臂纪律）\n`);
+    }
+  }
+  // #363（2026-10-28）：invalid UTF-8 源码三臂同形锚——修前三臂三结局
+  //（native SIGABRT/0xC0000409、wasm 裸 unreachable、js 双态：3 字节截断
+  // 形态 E1001+E1003 / 4 字节越界形态 rc=0 静默容忍）；修后 fs 解码统一
+  // U+FFFD 替换、源码面 lexer E1001 拒收。断言：三臂 rc=1 + 输出剥
+  // backend 行后逐行一致 + 含 E1001（锁「同形」而非具体文案——文案属
+  // error_catalog 单源）。
+  {
+    const badSrc = path.join(tmpDir, "bad_utf8_363.c");
+    fs.writeFileSync(badSrc, Buffer.from([0x69, 0x6e, 0x74, 0x20, 0x6d, 0x61, 0x69, 0x6e, 0x28, 0x29, 0x7b, 0x72, 0x65, 0x74, 0x75, 0x72, 0x6e, 0x20, 0x30, 0x3b, 0x7d, 0xff, 0xfe, 0x80]));
+    const relBad = toSlash(path.relative(repoRoot, badSrc));
+    const arms = [
+      { label: "js", exe: nodeBin, pre: [jsEntry] },
+      { label: "wasm", exe: nodeBin, pre: [shell] },
+      { label: "native", exe: nativeExe, pre: [] as string[] },
+    ];
+    const outs363: string[] = [];
+    let rcs363: number[] = [];
+    for (const a of arms) {
+      const r = runOut(a.exe, [...a.pre, "compile", relBad]);
+      rcs363.push(r.rc);
+      outs363.push(stripBackendLine(r.out));
+    }
+    const [j363 = "", w363 = "", n363 = ""] = outs363;
+    if (!(rcs363[0] === 1 && rcs363[1] === 1 && rcs363[2] === 1)) {
+      fatalf(`B[坏字节源码] 三臂 rc 非 1：js=${rcs363[0]} wasm=${rcs363[1]} native=${rcs363[2]}（#363 应为 E1001 拒收）`);
+    } else if (!j363.includes("E1001") || !j363.includes("\u{FFFD}")) {
+      fatalf(`B[坏字节源码] 诊断不含 E1001/U+FFFD：${j363.slice(0, 200)}`);
+    } else if (j363 !== w363 || w363 !== n363) {
+      fatalf(`B[坏字节源码] 三臂输出不同形（#363 修复回归——native 崩/wasm 裸 trap/js 静默任一复发）`);
+    } else {
+      process.stdout.write(`ok  B[坏字节源码] 三臂 E1001 拒收同形（rc=1，#363）\n`);
+    }
+  }
 
   // ── B 组：三臂同形对拍（核心锚——差异消灭的机判）────────────
   const warnC = path.join(tmpDir, "warn_case.c");

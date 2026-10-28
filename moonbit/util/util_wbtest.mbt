@@ -94,6 +94,29 @@ test "utf8_text_partial_三态_基础中文代理对与截断止" {
 }
 
 ///|
+test "utf8_text_partial_中段非法_ufffd_替换_尾部截断止保留" {
+  // #363（2026-10-28）：partial 是流式前缀解码（serve_io 的 delta 增量
+  // 切片靠「尾部截断止」保证块界不切半个字符——该语义保留）；但**中段**
+  // 非法序列此前经 unsafe_to_char 产出代理段/越界码点（native panic /
+  // wasm 裸 trap / js 静默容忍三臂分叉）——中段非法自此 U+FFFD 替换 +
+  // 重同步。与 fs.to_utf8_string（整缓冲：非法与截断尾全替换）语义分立，
+  // 两侧头部注释互指。
+  // 非法 lead（FF）与孤立延续（FE、80）：FF 越出 F0..F7 lead 域 → U+FFFD；
+  // FE 同；80 孤立延续 → U+FFFD。
+  inspect(utf8_text_partial(b"\xff\xfe\x80"), content="���")
+  // 越界 4 字节形态（FF FE 64 65）→ ��de（js 修前静默容忍的病灶面）。
+  inspect(utf8_text_partial(b"\xff\xfe\x64\x65"), content="��de")
+  // 代理段（ED A0 80 = D800）→ 一个 U+FFFD（native 修前 panic 直击面）。
+  inspect(utf8_text_partial(b"\xed\xa0\x80"), content="�")
+  // 过长编码（C0 AF = '/'）→ U+FFFD。
+  inspect(utf8_text_partial(b"\xc0\xaf"), content="�")
+  // 合法前缀 + 中段非法 + 合法后缀（重同步验证："你" + 代理段 + "x"）。
+  inspect(utf8_text_partial(b"\xe4\xbd\xa0\xed\xa0\x80\x78"), content="你�x")
+  // 尾部截断止保留（流式契约不破坏）：半个「中」在尾 → 前缀止。
+  inspect(utf8_text_partial(b"hi\xe4\xb8"), content="hi")
+}
+
+///|
 test "base64_encode_rfc4648_向量全集" {
   inspect(base64_encode(b""), content="")
   inspect(base64_encode(b"f"), content="Zg==")

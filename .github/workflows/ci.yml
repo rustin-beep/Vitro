@@ -1525,6 +1525,36 @@ jobs:
           node --test demo/tests/pure.test.mts
         shell: bash
 
+  # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
+  # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）
+  # 在三个编译后端下执行、stdout 逐字节对拍：
+  #   native（MOON_CC=clang）/ js（node）/ wasm-gc（moonrun——moon 自带）
+  # 任两臂分叉 ⇒ 直接归因编译后端（现役 js/wasm 两臂同宿主 node，宿主层
+  # bug 两臂同报不可分——本臂 wasm 侧宿主异构）。新增不替换：现役
+  # gates-wasm 各 slice 不动，跑绿一阶段后另议收敛（#349 落地形态）。
+  backend-triage:
+    name: Backend triage (native-clang / js-node / wasm-gc-moonrun)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (moon run 三连 + moonrun)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+      - name: Refresh MoonBit registry index
+        shell: bash
+        run: cd moonbit && moon update
+      - name: Three-backend semantic triage (#349)
+        shell: bash
+        run: node scripts/backend_triage/main.mts
+
   # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
   # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +
   # oxlint（.mts 目录扫描缺口——显式列文件）+ node:test（Windows 目录模式
@@ -1588,7 +1618,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results

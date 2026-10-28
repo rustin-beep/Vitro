@@ -140,14 +140,18 @@ pub fn utf8_text(b : Bytes) -> String {
 }
 
 ///|
-/// UTF-8 字节序列解码——**最长合法前缀，截断尾静默止**（`utf8_text` 的
-/// 宽容变体：malformed/截断不 abort，返回已解码前缀）。消费场景 = 游标
-/// 可落在多字节序列中间的字节域切片（gateway output.delta 的 note 通道
+/// UTF-8 字节序列解码——**流式前缀语义**（`utf8_text` 的宽容变体：
+/// malformed 不 abort）。消费场景 = 游标可落在多字节序列中间的字节域
+/// 切片（gateway output.delta 的 note 通道
 /// cursor 增量；CLI note 聚合同款先例）。实现自 cmd/lib/cli `utf8_decode`
-/// 上提（三态锚随迁 util_wbtest）：ASCII 单字节 / 2–4 字节序列按续位
-/// 拼码点（Char = Unicode 码点，代理对由 String 内管）；**不校验续位
-/// 前缀字节合法性**（0xC0 0x41 会被拼出 U+041——宽容域语义，引擎文本
-/// 域实际恒合法，前缀截断是唯一现实形态）。
+/// 上提（三态锚随迁 util_wbtest）。
+/// #363（2026-10-28）语义改向：**中段非法序列 U+FFFD 替换 + 重同步**
+/// （孤立延续 / 非 lead 域 / 坏延续 / 过长 / 代理段 / 超上限——旧实现
+/// 不校验续位，经 unsafe_to_char 可产出代理段与越界码点：native panic、
+/// wasm-gc 裸 unreachable、js 静默容忍，三臂分叉 issue #363 实测）；
+/// **尾部不完整保留「截断止」**（serve_io 增量切片靠它保证块界不切
+/// 半个字符——下一块续上）。与 fs 包 to_utf8_string（整缓冲：非法与
+/// 截尾全替换 U+FFFD）语义分立，两侧头注互指。
 pub fn utf8_text_partial(b : Bytes) -> String {
   let buf = StringBuilder()
   let n = b.length()
@@ -157,27 +161,69 @@ pub fn utf8_text_partial(b : Bytes) -> String {
     if c0 < 0x80 {
       buf.write_char(c0.unsafe_to_char())
       i += 1
-    } else if c0 < 0xe0 && i + 1 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      buf.write_char((((c0 & 0x1f) << 6) | c1).unsafe_to_char())
-      i += 2
-    } else if c0 < 0xf0 && i + 2 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      let c2 = b[i + 2].to_int() & 0x3f
-      buf.write_char((((c0 & 0x0f) << 12) | (c1 << 6) | c2).unsafe_to_char())
-      i += 3
-    } else if i + 3 < n {
-      let c1 = b[i + 1].to_int() & 0x3f
-      let c2 = b[i + 2].to_int() & 0x3f
-      let c3 = b[i + 3].to_int() & 0x3f
-      let cp = ((c0 & 0x07) << 18) | (c1 << 12) | (c2 << 6) | c3
-      // MoonBit Char 是 Unicode 码点（非 UTF-16 码元）——直接写码点，
-      // String 内部自管 UTF-16 编码（wbtest 代理对锚抓过手拆形态的错）
-      buf.write_char(cp.unsafe_to_char())
-      i += 4
+      continue
+    }
+    if c0 < 0xC0 || c0 >= 0xF8 {
+      // 孤立延续字节（0x80..0xBF）/ 非 lead 域（0xF8..0xFF）→ 单字节替换
+      buf.write_char('\u{FFFD}')
+      i += 1
+      continue
+    }
+    let need : Int32 = if c0 < 0xE0 { 2 } else if c0 < 0xF0 { 3 } else { 4 }
+    let mask : Int32 = if c0 < 0xE0 {
+      0x1F
+    } else if c0 < 0xF0 {
+      0x0F
     } else {
+      0x07
+    }
+    let cp_min : Int32 = if c0 < 0xE0 {
+      0x80
+    } else if c0 < 0xF0 {
+      0x800
+    } else {
+      0x10000
+    }
+    let cp_max : Int32 = if c0 < 0xE0 {
+      0x7FF
+    } else if c0 < 0xF0 {
+      0xFFFF
+    } else {
+      0x10FFFF
+    }
+    if i + need > n {
+      // 尾部不完整 → 截断止（流式前缀契约：下一块续上，不折替换符）
       break
     }
+    let mut cp = c0 & mask
+    let mut bad_at = -1
+    let mut k = 1
+    while k < need {
+      let bk = b[i + k].to_int()
+      if bk < 0x80 || bk >= 0xC0 {
+        bad_at = k
+        break
+      }
+      cp = (cp << 6) | (bk & 0x3F)
+      k += 1
+    }
+    if bad_at >= 0 {
+      // 坏延续字节处重同步：已消费前缀折一个替换符，坏字节下一轮按
+      // lead 重判
+      buf.write_char('\u{FFFD}')
+      i += bad_at
+      continue
+    }
+    i += need
+    if cp < cp_min || cp > cp_max || (cp >= 0xD800 && cp <= 0xDFFF) {
+      // 过长编码 / 独立代理段 / 超上限——形态完整但码点非法，整序列折
+      // 一个替换符（unsafe_to_char 恒安全）
+      buf.write_char('\u{FFFD}')
+      continue
+    }
+    // MoonBit Char 是 Unicode 码点（非 UTF-16 码元）——直接写码点，
+    // String 内部自管 UTF-16 编码（wbtest 代理对锚抓过手拆形态的错）
+    buf.write_char(cp.unsafe_to_char())
   }
   buf.to_string()
 }

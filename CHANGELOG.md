@@ -1,5 +1,41 @@
 ## [Unreleased]
 
+### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28）
+
+- **#366（js/wasm 臂帧出口同步化）**：api/step/json 模式帧出口从
+  `println` 统一切壳注入的同步 write 通道（js/wasm=`fs.writeSync(1)`、
+  native=fwrite stub，`out_line` 单源编码——与 run 子命令 write_stdout
+  同款）。修前 node 对**管道**的 stdout 写是异步（文件同步），帧序列打完
+  立即 `process.exit` 丢弃未刷写队列：>1MB 帧管道口径静默截断（WSL
+  实测 pipe 65808B/731152B/146448B vs file 1398439B，rc=0 零信号、产出
+  非法 JSON）；native 臂 CRT exit 刷缓冲不受影响。`api` 子命令补
+  `write_stdout` 注入参数（三壳接线）。不迁面登记：print_usage（单笔
+  小写入）与 serve 流式（事件循环自然排空）仍走 println。
+  `vitro_cli_smoke` 新增 B[大帧管道] 锚：三臂双口径（管道 vs 文件 fd）
+  逐字节等长 + 3 帧合法 JSON + >1MB 门量 + 三臂大帧内容逐位一致。
+- **#363（invalid UTF-8 三臂分叉根治）**：`fs/utf8_compat.mbt`
+  `to_utf8_string` 重写为 U+FFFD 替换解码（每非法极大子部分一个替换
+  符；孤立延续/越界 lead/坏延续重同步/过长/代理段/超上限全覆盖）——
+  修前对 FF FE 64 65 与 ED A0 80 经 `unsafe_to_char` 产出代理段/越界
+  码点：native SIGABRT（Windows 0xC0000409）、wasm-gc 裸
+  unreachable、js 静默容忍，同一输入三臂三结局。`util.utf8_text_partial`
+  同向收口：**中段非法**同样 U+FFFD+重同步，**尾部截断止保留**（gateway
+  serve_io 增量 delta 切片的流式前缀契约）——两解码器语义分立互指。
+  修后实测：坏字节源码三臂一律 `E1001` 拒收同形（rc=1）、`-i` 坏输入
+  三臂一致；fs wbtest 翻锚 + util wbtest 新锚（10/10、17/17）。
+  smoke 新增 B[坏字节源码] 三臂同形锚。vendored 头注如实更新（④ 条）。
+- **#349（三面编译语义对拍臂落地）**：新 runner 包
+  `cmd/backend_triage`（gateway 四导出帧源级形态：ping/非法 JSON 错误
+  帧/protocol_version/engine_version——全确定性输出）+ 驱动
+  `scripts/backend_triage/main.mts`（.mts 四件套：node 直跑 + tsc 严格
+  档 + oxlint + node:test 七态锚）+ CI 新 job `backend-triage`：
+  `moon run --target native`（MOON_CC=clang）/ `js`（node）/ `wasm-gc`
+  （moonrun——moon 自带）三连，stdout 逐字节对拍（Windows native CRT
+  行尾 CRLF 显式归一登记，Linux CI 恒等）。**新增不替换**：现役
+  gates-wasm 各 slice 不动，跑绿一阶段后另议收敛。本地首跑三臂 127B
+  逐字节一致。surface_edges 三边/pkg_deps 46 包/ci_checklist/ci-summary
+  needs 连坐登记。
+
 ### fix(lexer): #356 normalize_path 保 POSIX 绝对锚——绝对路径主文件 quote-include 候选键不再剥前导 /（2026-10-29）
 
 - **红根**：`lexer/internal/pp/resolver.mbt` 的 `normalize_path` 按 `/`

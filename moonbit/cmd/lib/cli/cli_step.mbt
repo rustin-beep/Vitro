@@ -91,7 +91,7 @@ pub fn step(
     // ok:false 自明）；文本模式走 stderr（#129 通道分立：stdout 只承载
     // 程序输出）
     if json_mode {
-      println(comp)
+      out_line(write_stdout, comp)
     } else {
       say(comp)
     }
@@ -111,7 +111,7 @@ pub fn step(
     last = r
     frames += count_payloads(r)
     if json_mode {
-      println(r)
+      out_line(write_stdout, r)
     }
     if r.contains("\"finished\":true") {
       finished = true
@@ -128,9 +128,10 @@ pub fn step(
     // step.begin 的 output.clear() 清掉，重跑产物只在 vm 输出通道；本行
     // 与 run --json 的 type:stdout 帧同形，summary 收口行之前）
     let out = inv("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
-    println("{\"type\":\"stdout\",\"frame\":\{out}}")
+    out_line(write_stdout, "{\"type\":\"stdout\",\"frame\":\{out}}")
     // 摘要末行（type:summary——NDJSON 事件流收口）
-    println(
+    out_line(
+      write_stdout,
       "{\"type\":\"summary\",\"frames\":\{frames},\"finished\":\{finished},\"trapped\":\{trapped}}",
     )
   } else {

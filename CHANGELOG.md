@@ -236,6 +236,12 @@
   五家 freeze 重跑（1 例重算、存量零漂移）；vm 双臂 556/556 SAME
   （wasm 臂首跑 DIFF=1 系旧产物——**freeze 后换臂跑前必须重建该臂
   产物**，教训入册）；fuzz PASS；clang_direct 933 全绿。
+- **realcode gold 重冻（CI 首轮红根）**：chibicc 语料 commonsym.c
+  正是 tentative 教科书形态（`int x; int x=5;` / `int y=7; int y;`）
+  ——修复消 E3001×2 误报（vitro_errs 3→1），gold_chibicc 重冻 + note
+  入档；chibicc 41 条 + multifile 36 条逐字段一致。**引擎诊断面批
+  连坐面须含 realcode 对拍**（不在 baseline 义务链——CI 独立防线，
+  本地首跑漏跑教训）。
 - **残留面登记（#343 评论）**：tentative 数组（`int arr[];` 后文
   `int arr[2]={...}` 补全）仍被 E3081 拒——涉尺寸推断 + §6.9.2p3
   size-1 完成语义，独立小批。

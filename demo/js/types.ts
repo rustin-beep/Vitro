@@ -53,9 +53,12 @@ export interface StepPayload {
   step_index: number;
   code_line: number;
   // v0.2 首批（#90，2026-10-17 激活）：多文件编译时本帧 code_line（全局
-  // 行号）所属的编译单元文件名；单文件编译恒 "main.c"；null 仅引擎侧结构
-  // 性无映射的防御态。下游多文件当前行高亮据此归位，不再自行累加前面文件
-  // 行数反推。additive-only——v0.1 读者忽略未知字段不受影响。
+  // 行号）所属的编译单元文件名；null 仅引擎侧结构性无映射的防御态。下游
+  // 多文件当前行高亮据此归位，不再自行累加前面文件行数反推。
+  // 取值域（#321 定约 2026-10-28）= compile 请求 filename 原样透传：浏览器
+  // wasm 臂恒 basename（"main.c"——demo 固定样本即此形态）；native/js CLI
+  // 为参数原值（完整路径）。跨形态消费须自行取 basename 归一。
+  // additive-only——v0.1 读者忽略未知字段不受影响。
   code_file: string | null;
   func_name: string;
   semantic_label: SemanticLabel;

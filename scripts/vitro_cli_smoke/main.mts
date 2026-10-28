@@ -53,9 +53,11 @@ function normalize(s: string): string {
 
 /**
  * 剥 `[vitro] backend=…` 标注行——B 组**语义层**对拍的唯一允许差异
- * （backend 标注是设计差异非协议面：wasm 臂恒报 wasm、launcher 降级臂
- * 报 native；其余任何行差异都红）。注：本函数作用于归一后文本；字节层
- * （附 6 锚）比 stdout 原始字节，不经此函数（#316）。
+ * （#322 补登 2026-10-28：该行已是协议面第十种「壳层标注行」——壳层
+ * 三臂不对称是设计：仅 wasm 壳打（浏览器直调无 launcher 需判臂），js/
+ * native 壳不打、launcher 层恒打；对拍两侧一有一无，故剥后比。其余任何
+ * 行差异都红）。注：本函数作用于归一后文本；字节层（附 6 锚）比 stdout
+ * 原始字节，不经此函数（#316）。
  */
 export function stripBackendLine(s: string): string {
   const kept: string[] = [];

@@ -44,7 +44,7 @@
 |---|---|---|---|
 | `step_index` | int32 | 否 | 步号（0 起） |
 | `code_line` | int32 | 否 | 当前源码行号（1 起；0 = 无源码行）；**多文件 / 含头文件会话中为合并源码的全局行号**（见 §8 #9） |
-| `code_file` | string | **是** | 本帧 `code_line` 所属编译单元文件名（v0.2 首批激活，见 §7.2.1）；单文件编译恒 `"main.c"`；`null` = 行号不落任何 file_range（序幕帧 code_line=0 的诚实空态） |
+| `code_file` | string | **是** | 本帧 `code_line` 所属编译单元文件名（v0.2 首批激活，见 §7.2.1）；`null` = 行号不落任何 file_range（序幕帧 code_line=0 的诚实空态）。**取值域（#321 定约 2026-10-28）= compile 请求 `filename` 的原样透传（不归一）**——三出口形态差异是设计而非缺陷：serve 帧 = 客户端所传（缺省 `"main.c"`）；wasm CLI = basename（browser vfs 键不能带路径）；native/js CLI = 命令行参数原值（完整路径——filename 兼任同目录 include 的 base_dir 语义，归一即破坏 quote-include）。**跨形态帧不做逐字段直比**——需要可比的消费方自行取 basename 归一 |
 | `func_name` | string | 否 | 当前函数名（教学可读名，如 `main` / `bubble_sort`）；未知时为空串 |
 | `semantic_label` | string | 否 | 教学语义标签，由源码行 + 变量值推断（如 `循环 i=0, j=1`、`交换 arr[1]↔arr[2]`、`调用 printf`、`内存分配`） |
 | `semantic_label_id` | string | 否 | **`semantic_label` 的受控词汇表 id**（附录 B 值域；v0.2 二批激活 #231，2026-10-27）——`classify` 单源映射，消费方按 id 聚合/过滤/着色不做文本前缀匹配；空串 = 无标签（与 `semantic_label` 空串同态） |

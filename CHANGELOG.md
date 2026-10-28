@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### docs(protocol): #322 `[vitro] backend=` 补登协议第十种 + #321 `code_file` 取值域定约（协议契约双案批，2026-10-28）
+
+- **#322（处方 A 登记）**：`CLI_PROTOCOL_V1` §1 白名单由单表九种改
+  **两表十种**（九种引擎标记行 + 一种壳层标注行）——`[vitro] backend=`
+  补登为壳层标注行（壳层三臂不对称是设计：仅 wasm 壳打〔浏览器直调
+  无 launcher 需判臂〕，js/native 壳不打、launcher 层恒打）；§8 v1
+  冻结面计数「九种→十种」连坐 + 历史四次「补登不跟账」记账（本条即
+  第四次同形）。CLI 使用手册 :24「任何形态恒一行」改打点分层说明；
+  `vitro_cli_smoke` 的 `stripBackendLine` 注释「设计差异非协议面」翻案
+  （现是协议面）。
+- **#321（处方 2 定域，不归一）**：`STEP_PAYLOAD_SCHEMA_V0_1` 的
+  `code_file` 行定取值域 = compile 请求 `filename` **原样透传**——三
+  出口形态差异是设计：serve=客户端所传、wasm CLI=basename（browser
+  vfs 键约束）、native/js CLI=参数原值（**filename 兼任同目录 include
+  的 base_dir 语义，归一即破 quote-include**——处方 1 壳层归一被此
+  否掉）；跨形态帧不逐字段直比，归一义务在消费方。权威源
+  `protocol/types.mbt` doc 注释与 `demo/js/types.ts` 消费侧注释同款
+  连坐（「单文件编译恒 main.c」旧句退役）。
+- 生成器描述面（gen_protocol_ts 字段级注释透传）**留观**——当前生成
+  契约是字段集对账非注释透传，扩展属功能新增单独成批。
+- 全案零引擎行为变化（纯文档/注释层）；gen_protocol_ts 等值再生零
+  漂移；facts strict 漂移 0。
+
 ### fix(time_travel+gateway+docs): PR #342 审阅处置批——P2-1 恰命中锚点窗口塌缩 + P3×6（2026-10-28）
 
 - **P2-1（真缺陷）**：seek 恰命中锚点时回看窗口塌缩——几何化把锚铺满

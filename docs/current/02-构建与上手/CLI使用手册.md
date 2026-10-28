@@ -21,7 +21,7 @@ cd moonbit && moon build --release --target js cmd/vitro_wasm            # wasm 
 
 臂语义（2026-10-15 三后端单壳批——三臂壳全 MoonBit，真相源 = `cmd/lib/cli` 单源）：**js** = `cmd/vitro_js` 直编 JS、node 直跑，免 wasm 实例化层，CLI 缺省臂；**native** = `cmd/vitro` exe，防线基线臂（vm_diff / clang_direct 消费面）；**wasm** = `cmd/vitro_wasm` 胶水拉 gateway wasm-gc，与浏览器分发同源。
 
-降级链：node 不在 PATH 或 js 产物缺失 → 自动 fallback native exe，stderr 明示原因；wasm 壳 node <22 报 rc=5 哨兵降级（js-string builtins 的 V8 下界，node 24 实测全通）。任何形态 stderr 恒一行 `[vitro] backend=…` 标注（脚本可断言所在臂）；`--backend` 尾置 fail loud rc=4（#70）。三臂同形性由 CI 闸 `scripts/vitro_cli_smoke` 多臂对拍锁定（js/native/wasm 逐行一致）。
+降级链：node 不在 PATH 或 js 产物缺失 → 自动 fallback native exe，stderr 明示原因；wasm 壳 node <22 报 rc=5 哨兵降级（js-string builtins 的 V8 下界，node 24 实测全通）。`[vitro] backend=…` 标注行的**打点分层**（#322 登记 2026-10-28）：launcher 层（本脚本）任何形态恒打一行（脚本可断言所在臂）；壳层三臂不对称是设计——仅 wasm 壳打（浏览器直调形态无 launcher，需可判臂），js/native 壳不打（直接调壳时 stderr 无此行）。`--backend` 尾置 fail loud rc=4（#70）。三臂同形性由 CI 闸 `scripts/vitro_cli_smoke` 多臂对拍锁定（js/native/wasm 逐行一致，唯一允许差异 = backend 标注行）。
 
 防线插座（#49 批二起，三后端批续扩）：`vm_diff` / `clang_direct` 支持 `--backend native|wasm`（缺省 native）；壳 `serve` 子命令（NDJSON 会话——与 cmd/serve 同形：shutdown 判停/EOF/空行回错误帧）；replay / serve_smoke / protocol_frames / teaching_annotation_diff wasm 臂同款插座（CI 并行）；codegen_diff/host_contract_map/diff_ledger 裁定不迁（#49 批三评论在案）。
 

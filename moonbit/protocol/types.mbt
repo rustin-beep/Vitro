@@ -185,7 +185,12 @@ pub extend ApiFrameInfo with Debug::{to_repr}
 /// v0.2 首批激活字段（#90，2026-10-17）：code_file——多文件编译时本帧
 /// code_line（全局行号）所属的编译单元文件名；单文件编译同样给值（恒
 /// "main.c"——merge_units 对单 unit 也产 range）。null 仅当行号落不进
-/// 任何 file_range（结构性不可达的防御形态）。语义：additive-only，
+/// 任何 file_range（结构性不可达的防御形态）。**取值域（#321 定约
+/// 2026-10-28）= compile 请求 filename 的原样透传（不归一）**：serve 帧
+/// = 客户端所传（缺省 "main.c"）；wasm CLI = basename（browser vfs 键
+/// 不能带路径）；native/js CLI = 参数原值（完整路径——filename 兼任
+/// 同目录 include 的 base_dir，归一即破 quote-include）。跨形态帧不做
+/// 逐字段直比，可比归一义务在消费方。语义：additive-only，
 /// 消费方忽略未知字段；下游多文件当前行高亮据此归位，不再自行累加
 /// 前面文件行数反推（#90 现象段的未文档化拼接语义依赖在此切断）。
 ///

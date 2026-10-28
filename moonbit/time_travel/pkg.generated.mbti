@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub const DEFAULT_MAX_CHECKPOINTS : Int = 50
+
 pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx, code_line? : Int?, code_file? : String?) -> @protocol.StepPayload
 
 pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String
@@ -36,6 +38,7 @@ pub fn CheckpointManager::get_interval(Self) -> Int
 pub fn CheckpointManager::is_empty(Self) -> Bool
 pub fn CheckpointManager::length(Self) -> Int
 pub fn CheckpointManager::nearest(Self, Int) -> (Int, @vm.VMSnapshot)?
+pub fn CheckpointManager::nearest_for_window(Self, Int, Int) -> (Int, @vm.VMSnapshot)?
 pub fn CheckpointManager::new(Int) -> Self
 pub fn CheckpointManager::save(Self, Int, @vm.VitroVM) -> Unit
 pub fn CheckpointManager::set_max_checkpoints(Self, Int) -> Unit

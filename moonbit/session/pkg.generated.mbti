@@ -101,6 +101,7 @@ pub(all) struct Session {
 }
 pub fn Session::new() -> Self
 pub fn Session::set_call_depth_limit(Self, Int) -> Unit
+pub fn Session::set_max_checkpoints(Self, Int) -> Unit
 pub fn Session::set_max_steps(Self, Int) -> Unit
 pub fn Session::source_file_at(Self, Int) -> String?
 pub fn Session::source_line_at(Self, Int) -> String?
@@ -109,6 +110,7 @@ pub(all) struct SessionConfig {
   mut max_steps : Int
   mut call_depth_limit : Int
   mut deterministic : Bool
+  mut max_checkpoints : Int
 } derive(@debug.Debug)
 pub fn SessionConfig::apply_to_vm(Self, @vm.VitroVM) -> Unit
 pub fn SessionConfig::default() -> Self

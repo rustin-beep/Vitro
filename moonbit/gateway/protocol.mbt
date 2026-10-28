@@ -91,20 +91,30 @@ fn serve_config(s : @session.Session) -> Json {
   m.set("compiled", Json(s.compile.compiled))
   m.set("max_steps", Json(s.config.max_steps))
   m.set("call_depth_limit", Json(s.config.call_depth_limit))
+  // #87 批：检查点保留数现值（seek 重放距离的密度旋钮——判分方/前端
+  // 时间轴可提前判断采样密度）
+  m.set("max_checkpoints", Json(s.config.max_checkpoints))
   // #91（2026-10-14）：输出预算现值（判分方提前判断天花板——issue 建议①）
   m.set("output_budget", Json(s.vm.output.budget()))
   // #133（2026-10-16）：preset 档位回显——按当前配置值**推断**（显式
-  // 单键覆盖后档名可能与逐项值不一致，推断口径 = 四键全等于某档的
+  // 单键覆盖后档名可能与逐项值不一致，推断口径 = 五键全等于某档的
   // 展开值才认档，否则 "custom"——诚实呈现而非记名）。config.get 面
   // 是只读回显（协议「只增不改」），消费方可忽略。
   let ms = s.config.max_steps
   let cd = s.config.call_depth_limit
   let ob = s.vm.output.budget()
-  let preset = if ms == 10000000 && cd == 10000 && ob == 16777216 {
+  let mc = s.config.max_checkpoints
+  let preset = if ms == 10000000 &&
+    cd == 10000 &&
+    ob == 16777216 &&
+    mc == @time_travel.DEFAULT_MAX_CHECKPOINTS {
     "default"
-  } else if ms == 2000000000 && cd == 100000 && ob == 67108864 {
+  } else if ms == 2000000000 && cd == 100000 && ob == 67108864 && mc == 200 {
     "algo"
-  } else if ms == 100000 && cd == 1000 && ob == 4194304 {
+  } else if ms == 100000 &&
+    cd == 1000 &&
+    ob == 4194304 &&
+    mc == @time_travel.DEFAULT_MAX_CHECKPOINTS {
     "tiny"
   } else {
     "custom"
@@ -237,8 +247,8 @@ fn dispatch(
           (
             serve_param_err(
               id,
-              "config.set 收到未知配置键 '\{unknown}'（合法键：deterministic / quarantine_budget / max_steps / call_depth_limit / output_budget / input_mode_batch / preset〔default|algo|tiny——#133 档位开关〕）",
-              "{preset?:\"default|algo|tiny\", deterministic?:bool, quarantine_budget?:int, max_steps?:int, call_depth_limit?:int, output_budget?:int, input_mode_batch?:bool}",
+              "config.set 收到未知配置键 '\{unknown}'（合法键：deterministic / quarantine_budget / max_steps / call_depth_limit / output_budget / input_mode_batch / preset〔default|algo|tiny——#133 档位开关〕/ max_checkpoints〔#87 检查点保留数〕）",
+              "{preset?:\"default|algo|tiny\", deterministic?:bool, quarantine_budget?:int, max_steps?:int, call_depth_limit?:int, output_budget?:int, input_mode_batch?:bool, max_checkpoints?:int(1..=1000)}",
             ).stringify(),
             false,
           )
@@ -254,7 +264,9 @@ fn dispatch(
             false,
           )
         Ok(_) =>
-          // 值域预检：max_steps 1..=2147483647（引擎步数计数 Int32 顶）
+          // 值域预检：max_steps 1..=2147483647（引擎步数计数 Int32 顶）；
+          // max_checkpoints 1..=1000（#87——内存防线：每约 5 个检查点
+          // 一个 Full = 1MB 内存整拷，1000 ≈ 200MB/会话封顶）
           match config_int_field_overflow(params, "max_steps", 2147483647) {
             Err(msg) =>
               (
@@ -265,22 +277,34 @@ fn dispatch(
                 ).stringify(),
                 false,
               )
-            Ok(_) => {
-              // #94（2026-10-15）：回包 result 追加 clamped 键名数组（恒带；
-              // 空数组=无钳制）——协议「只增不改」。config.get 面零变更。
-              let (cfg, clamped_keys) = serve_apply_config(s, params)
-              match cfg {
-                Object(m) => {
-                  let arr : Array[Json] = []
-                  for k in clamped_keys {
-                    arr.push(Json::string(k))
+            Ok(_) =>
+              match config_int_field_overflow(params, "max_checkpoints", 1000) {
+                Err(msg) =>
+                  (
+                    serve_param_err(
+                      id,
+                      "config.set 的 max_checkpoints 值不可用：\{msg}（保留数上限 1000——每约 5 个检查点占 1MB 全量快照内存，1000 ≈ 200MB/会话封顶；时间轴采样密度不足请分批推进或缩小程序规模）",
+                      "max_checkpoints:int(1..=1000)",
+                    ).stringify(),
+                    false,
+                  )
+                Ok(_) => {
+                  // #94（2026-10-15）：回包 result 追加 clamped 键名数组（恒带；
+                  // 空数组=无钳制）——协议「只增不改」。config.get 面零变更。
+                  let (cfg, clamped_keys) = serve_apply_config(s, params)
+                  match cfg {
+                    Object(m) => {
+                      let arr : Array[Json] = []
+                      for k in clamped_keys {
+                        arr.push(Json::string(k))
+                      }
+                      m.set("clamped", Json::array(arr))
+                      (serve_ok(id, Json::object(m)).stringify(), false)
+                    }
+                    _ => (serve_ok(id, cfg).stringify(), false)
                   }
-                  m.set("clamped", Json::array(arr))
-                  (serve_ok(id, Json::object(m)).stringify(), false)
                 }
-                _ => (serve_ok(id, cfg).stringify(), false)
               }
-            }
           }
       }
     // 静态元数据族（三段）
@@ -369,7 +393,7 @@ fn config_int_field_overflow(
 fn config_set_unknown_key(params : Json) -> Result[Unit, String] {
   let legal = [
     "deterministic", "quarantine_budget", "max_steps", "call_depth_limit", "output_budget",
-    "input_mode_batch", "preset",
+    "input_mode_batch", "preset", "max_checkpoints",
   ]
   match params {
     Object(m) => {
@@ -412,18 +436,24 @@ fn serve_apply_config(
           s.set_call_depth_limit(10000)
           s.vm.mem_map.set_quarantine_budget(262144)
           s.vm.output.set_budget(16777216)
+          // #87 批：检查点保留数也拉回缺省（档语义=把档内会话拉回缺省）
+          s.set_max_checkpoints(@time_travel.DEFAULT_MAX_CHECKPOINTS)
         }
         "algo" => {
           s.set_max_steps(2000000000)
           s.set_call_depth_limit(100000)
           s.vm.mem_map.set_quarantine_budget(1048576)
           s.vm.output.set_budget(67108864)
+          // #87 批：算法作业大搜索档带大 K——时间轴采样/随机 seek 的锚点
+          // 密度（近似等距分布下最大重放距离 ≈ N/K；200 ≈ 40MB 快照内存）
+          s.set_max_checkpoints(200)
         }
         "tiny" => {
           s.set_max_steps(100000)
           s.set_call_depth_limit(1000)
           s.vm.mem_map.set_quarantine_budget(65536)
           s.vm.output.set_budget(4194304)
+          s.set_max_checkpoints(@time_travel.DEFAULT_MAX_CHECKPOINTS)
         }
         _ => ()
       }
@@ -454,6 +484,18 @@ fn serve_apply_config(
         clamped_keys.push("call_depth_limit")
       }
       s.set_call_depth_limit(v)
+    }
+    None => ()
+  }
+  // #87 批：检查点保留数——低下界钳 1 + clamped（同 max_steps 形态）；
+  // 上界 1000 在 config.set 预检拒绝（内存防线，见协议层头注）；现存
+  // engine 即时应用（Session::set_max_checkpoints 内聚）
+  match json_field(params, "max_checkpoints").as_int() {
+    Some(v) => {
+      if v < 1 {
+        clamped_keys.push("max_checkpoints")
+      }
+      s.set_max_checkpoints(v)
     }
     None => ()
   }

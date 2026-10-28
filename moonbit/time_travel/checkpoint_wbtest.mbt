@@ -108,7 +108,12 @@ test "checkpoint_incremental_dirty_page" {
 }
 
 ///|
-/// 门 3 锚三：淘汰不变量（step-0 锚点永不裁）。
+/// 门 3 锚三：淘汰不变量（step-0 锚点永不裁）。**#87 几何化淘汰改写**
+/// （2026-10-27）：淘汰从 FIFO 改「贪心最小左间隙（平手取最老）」——
+/// 0..7 连续等距保存（淘汰中途 len 回到 5 ⇒ save(6)/(7) 按 len%5 节律
+/// 落 Full）终态从 [0F,4D,5F,6F,7F] 变为 [0F,2D,4D,6F,7F]：第二轮起
+/// 最小间隙挪到 i2（隔一稀释）；第三轮删 5F 时后邻 6F 相邻——级联零
+/// drain（真实 drain 场景由锚四补 20D/40D/60D 构造覆盖）。
 test "checkpoint_eviction_invariants" {
   let vm = @vm.VitroVM::new()
   let cm = CheckpointManager::new(1)
@@ -119,47 +124,60 @@ test "checkpoint_eviction_invariants" {
     // step 走显式参数——赋值仅影响快照内 step_count 元数据，本锚零断言
     cm.save(st, vm)
   }
-  // 超限 8 > 5 → 淘汰 3 个
+  // 超限淘汰至 5：终态 [0F,2D,4D,6F,7F]
   assert_eq(cm.length(), 5)
   // step-0 锚点必须在（pinned）
   assert_eq(cm.checkpoints[0].0, 0)
   assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
-  // 链头是 Full
-  assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
+  // 幸存 Delta 的 base 仍落场内 Full
+  for pair in cm.checkpoints {
+    match pair.1.memory {
+      @vm.Full(_) => ()
+      @vm.Delta(base, _) => assert_eq(base, 0)
+    }
+  }
 }
 
 ///|
-/// 门 3 锚三补（六轮审阅 P2-1）：**删 Full 级联的 pinned 场景**——锚三
-/// 原构造是全 Full 链（full_every 节律被「len%5==0 且首个 is_empty」打
-/// 满），对 `removed_is_full` 分支零覆盖：突变注入 `&& false`（还原
-/// U2#5 缺陷版）原套 77/0 全绿。本锚构造 [0F,1D,2D,3D,4D,5F,6D,7D]
-/// 后收紧上限触发淘汰——删 5(F) 时 remove_idx=1（pinned 锚点后），
-/// 「删链头 Delta」防御分支只适用 remove_idx==0，唯一出口是级联
-/// drain：6D/7D/8D 悬空（base=5 已删）必须清掉，否则 nearest 给出的
-/// Delta 无法重建 = seek 静默错内存（U2#5 最坏调试器形状）。
+/// 门 3 锚三补（六轮审阅 P2-1；**#87 几何化淘汰改写构造**，2026-10-27）：
+/// **删 Full 级联 drain 的 pinned 场景**。FIFO 时代的旧构造（0..7 等距 +
+/// 收紧到 4）在新策略下由锚三覆盖；本锚改用「连续密区 + 跳步」构造，让
+/// 5F 的左间隙在密区稀释完后成为全场最小——删 5(F) 时其后 20D/40D/60D
+/// 悬空（base=5 已删）必须级联清掉，否则 nearest 给出的 Delta 无法重建
+/// = seek 静默错内存（U2#5 最坏调试器形状）。终态 [0F,2D,4D] 为模拟器
+/// 锁定真值（full:1 / delta:2 / drained:3）。
 test "checkpoint_evict_full_cascade_pinned" {
   let vm = @vm.VitroVM::new()
   let cm = CheckpointManager::new(1)
   cm.set_max_checkpoints(10)
-  for st = 0; st <= 7; st = st + 1 {
+  // 构造 [0F,1D,2D,3D,4D,5F,20D,40D]（full_every=5 节律：len0/len5 → Full）
+  for st in [0, 1, 2, 3, 4, 5, 20, 40] {
     // 同锚三：跨包只读，赋值等价删除（快照内 step_count 元数据，零断言）
     cm.save(st, vm)
   }
-  // full_every=5 节律：len0→F、len5→F，其余 D
   assert_eq(cm.length(), 8)
   assert_true(cm.checkpoints[5].1.memory is @vm.Full(_))
   assert_true(cm.checkpoints[6].1.memory is @vm.Delta(_, _))
-  // 收紧上限 + 再 save 触发淘汰
-  cm.set_max_checkpoints(4)
-  // vm.step_count = 8 已删（同上，等价删除）
-  cm.save(8, vm)
-  // 四轮删 Delta（1D..4D）→ 删 5(F) → 级联 drain 6D/7D/8D → 终态 [0(F)]
-  assert_eq(cm.length(), 1)
+  // 收紧上限触发淘汰（**P3-3 后当场发生**——set_max 即时淘汰，不等
+  // 下次 save）：删 1D（间隙 1）→ 删 3D（间隙 1）→ 5F 左间隙 1 成最小
+  // → 删 Full 级联 drain 20D/40D——悬空 Delta（base=5 已删）当场清除
+  cm.set_max_checkpoints(3)
+  // 终态 [0F,2D,4D]（级联已发生——链不变量当场成立）
+  assert_eq(cm.length(), 3)
   assert_eq(cm.checkpoints[0].0, 0)
   assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
-  // 淘汰后 seek 只能回 step-0 锚点（悬空 Delta 已清）
-  guard cm.nearest(7) is Some((s, _)) else { fail("nearest(7) 必须命中 0") }
-  assert_eq(s, 0)
+  for pair in cm.checkpoints {
+    match pair.1.memory {
+      @vm.Full(_) => ()
+      @vm.Delta(base, _) => assert_eq(base, 0)
+    }
+  }
+  // 再 save(60)（length 3 → Delta，push 4 > 3 → 淘汰最老 Delta 2D）：
+  // [0F,4D,60D]——nearest(60) 命中 60 且可重建（base=0 在场）
+  cm.save(60, vm)
+  assert_eq(cm.length(), 3)
+  guard cm.nearest(60) is Some((s, _)) else { fail("nearest(60) 必须命中") }
+  assert_eq(s, 60)
 }
 
 ///|
@@ -215,4 +233,93 @@ test "checkpoint_quarantine_triple_roundtrip" {
   assert_eq(vm.mem_map.quarantine_budget(), budget_before)
   // UAF 不出假阴性：回退后访问已释放块必命中 freed_logs
   assert_true(vm.mem_map.freed_logs_contains(a))
+}
+
+///|
+/// #87 锚六：淘汰策略几何化——均匀保存下中段锚点不空洞。**红锚**（旧
+/// FIFO 形态）：FIFO 保 {step-0} ∪ 最近 49 个 ⇒ 中段 [1500,2500) 零锚点
+/// ⇒ nearest(中段) 落 step-0 全程重放——issue #87 的 seek(1M)=13.8s
+/// 病灶（78M 步程序 500×）。几何化淘汰（最小左间隙合并）下近似等距
+/// 分布：期望值来自 node 模拟器（worst=140 @t=1140；界取 3×N/K=246）。
+test "checkpoint_eviction_geometric_coverage" {
+  let vm = @vm.VitroVM::new()
+  let cm = CheckpointManager::new(20)
+  // 0..4000 每 20 步一存（201 笔，固定间隔形态——smart 判据不参与）
+  for st = 0; st <= 4000; st = st + 20 {
+    cm.save(st, vm)
+  }
+  assert_eq(cm.length(), 50)
+  // step-0 锚点 pinned + 链头 Full
+  assert_eq(cm.checkpoints[0].0, 0)
+  assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
+  // 中段覆盖：[1500,2500) 至少一个锚点（旧 FIFO = 空 ⇒ 本锚红）
+  let mut mid = 0
+  for pair in cm.checkpoints {
+    if pair.0 >= 1500 && pair.0 < 2500 {
+      mid = mid + 1
+    }
+  }
+  assert_true(
+    mid > 0,
+    msg="中段 [1500,2500) 无锚点——淘汰策略中段空洞（#87 FIFO 形态）",
+  )
+  // 最大重放距离界：≤ 3×N/K（4000/49≈82 → 246；模拟实测 140）
+  let mut worst = 0
+  for t = 0; t <= 4000; t = t + 20 {
+    guard cm.nearest(t) is Some((s, _)) else {
+      fail("nearest(\{t}) 必须命中")
+    }
+    if t - s > worst {
+      worst = t - s
+    }
+  }
+  assert_true(
+    worst <= 246,
+    msg="最大重放距离 \{worst} 超 3×N/K 界 246（几何化失效）",
+  )
+}
+
+///|
+/// #87 锚七：几何化淘汰下 Full/Delta 链结构不变量——混合密度形态（固定
+/// 间隔 + 近距智能边界）长跑后：递增序 / 链头 Full / 每 Delta 的 base
+/// 锚仍在场内（悬空 Delta = seek 静默错内存，U2#5——几何化重写淘汰后
+/// 的结构回归锚）。
+test "checkpoint_eviction_chain_invariants_geometric" {
+  let vm = @vm.VitroVM::new()
+  let cm = CheckpointManager::new(7)
+  cm.set_max_checkpoints(12)
+  let mut k = 0
+  for st = 0; st <= 2100; st = st + 7 {
+    cm.save(st, vm)
+    k = k + 1
+    if k % 5 == 0 && st > 0 && st < 2000 {
+      cm.save(st + 2, vm)
+    }
+  }
+  assert_true(cm.length() <= 12)
+  // 递增序
+  for i = 1; i < cm.checkpoints.length(); i = i + 1 {
+    assert_true(cm.checkpoints[i].0 > cm.checkpoints[i - 1].0)
+  }
+  // 链头 Full + step 最小
+  assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
+  // 每 Delta 的 base 必须命中场内某 Full 的 step（U2#5）
+  for pair in cm.checkpoints {
+    match pair.1.memory {
+      @vm.Full(_) => ()
+      @vm.Delta(base, _) => {
+        let mut hit = false
+        for q in cm.checkpoints {
+          if q.0 == base && q.1.memory is @vm.Full(_) {
+            hit = true
+            break
+          }
+        }
+        assert_true(
+          hit,
+          msg="Delta(base=\{base}) 悬空——base 锚已被淘汰（U2#5）",
+        )
+      }
+    }
+  }
 }

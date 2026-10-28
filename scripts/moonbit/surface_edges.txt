@@ -266,6 +266,7 @@ vitro/engine/gateway vitro/engine/teaching/steps detect_algorithms
 vitro/engine/gateway vitro/engine/teaching/steps export_algorithms_catalog_json
 vitro/engine/gateway vitro/engine/time_travel SourceLineProvider
 vitro/engine/gateway vitro/engine/time_travel UnifiedEngine
+vitro/engine/gateway vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/gateway vitro/engine/typeck TypeChecker
 vitro/engine/gateway vitro/engine/typeck TypeError
 vitro/engine/gateway vitro/engine/util JsonParseError
@@ -425,6 +426,7 @@ vitro/engine/session vitro/engine/protocol AlgorithmMatch
 vitro/engine/session vitro/engine/protocol ApiVariableSnapshot
 vitro/engine/session vitro/engine/protocol StepPayload
 vitro/engine/session vitro/engine/time_travel UnifiedEngine
+vitro/engine/session vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/session vitro/engine/vm DEFAULT_MAX_STEPS
 vitro/engine/session vitro/engine/vm MAX_STACK_DEPTH
 vitro/engine/session vitro/engine/vm VitroVM

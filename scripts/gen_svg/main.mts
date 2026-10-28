@@ -214,7 +214,7 @@ export function genCache(root: string): void {
     box(120, 470, 960, 146, "warn", 12),
     textF(600, 508, "t", "CheckpointManager 落地机制（§5.2，MoonBit 侧随 S8 落地）", ""),
     textF(600, 540, "tc", "每 full_every 个检查点存完整 1MB 全量，其余仅存被修改的 4KB 脏页", ""),
-    textF(600, 566, "tc", "上限 max_checkpoints = 50 · smart_mode 语义关键点强制保存", ""),
+    textF(600, 566, "tc", "上限 max_checkpoints 缺省 50·会话可调(#87) · smart_mode 语义关键点强制保存", ""),
     textF(600, 592, "tc", "隔离区 quarantine 必须随快照往返，否则时间旅行回退后 UAF 检测出现假阴性", ""),
     textF(600, 640, "tc", "Frame Cache 权威副本在引擎内；消费方经 serve payload.get / gateway step 族取用，不得假设窗口外历史仍可查询", ""),
   );

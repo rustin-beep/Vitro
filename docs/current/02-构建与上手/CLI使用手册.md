@@ -84,7 +84,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | **帧同构** | 成功帧 `{"id":N,"ok":true,"result":{…}}`，错误帧 `{"id":N,"ok":false,"error":{"kind":…,"message":…}}` —— 解析路径统一 |
 | 错误 kind | `protocol`（请求格式/未知方法/config.set 未知键）/ `state`（会话状态不满足，如未 step.begin 就 step.next）/ `texts`（texts.install 装载失败——payload 非法 JSON/段形态与值域不符/占位符契约不符/`__clear__` 混用；#257 补登、#323 扩）/ `internal`（保留值——本轮多形态探测未观测到实例，登记为待实证） |
 | 入口语义 | 会话语义层单源（MoonBit 侧 = `vitro/engine/session` 包；运行结果/诊断/步 payload 形状各出口一致），出口间不产生语义分叉 |
-| 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` |
+| 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` / `max_checkpoints`（#87 检查点保留数——seek 重放距离的锚点密度旋钮，1..=1000 内存防线：每约 5 个检查点占 1MB 全量快照；algo 档展开 200） |
 | 重置语义 | `session.reset` 清空编译/运行状态，**保留会话级配置**（隔离预算、判分确定性、argv） |
 | **会话拓扑** | **单 serve 进程 = 单活跃会话**：方法表无并发句柄参数，`session.create`/`destroy` 都是"清空重建同一实例"；需要并发逻辑会话（如"长寿命诊断进程 + 瞬态运行进程"）时**起多个 serve 进程**——这是当前唯一受支持的并发形态（下游需求清单 D2）|
 
@@ -166,7 +166,7 @@ EOF
 {"id":4,"ok":true,"result":{"max_collected_step":-1,"ready":true}}
 {"id":5,"ok":true,"result":{"payloads":[],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}
 {"id":6,"ok":true,"result":{"payloads":[{"step_index":0,"code_line":0,"func_name":"","semantic_label":"","algorithm_step":null,"local_vars":[],"call_stack":[],"vis_events":[],"heatmap_line":0,"heatmap_count":0,"accessed_vars":[],"array_snapshots":[],"pointer_snapshots":[],"root_cause_hint":null}],"finished":false,"trapped":false,"waiting_input":false,"paused":false,"current_line":0,"trap_message":null,"cache_start_step":0}}
-{"id":7,"ok":true,"result":{"reset":true,"session":{"model":"single-active-session","active_sessions":1,"concurrent_sessions":false,"handle_parameter":false,"create_semantics":"clear-and-rebuild（清空重建同一实例）","reset_semantics":"清空编译/运行状态，保留会话级配置（隔离预算/deterministic/argv）","destroy_semantics":"清空重建（进程存活；如需回收进程请用 shutdown）","concurrency_recommendation":"并发场景起多个 serve 进程"},"config":{"deterministic":false,"quarantine_budget":262144,"input_mode_batch":false,"compiled":false,"max_steps":10000000,"call_depth_limit":10000,"output_budget":16777216}}}
+{"id":7,"ok":true,"result":{"reset":true,"session":{"model":"single-active-session","active_sessions":1,"concurrent_sessions":false,"handle_parameter":false,"create_semantics":"clear-and-rebuild（清空重建同一实例）","reset_semantics":"清空编译/运行状态，保留会话级配置（隔离预算/deterministic/argv）","destroy_semantics":"清空重建（进程存活；如需回收进程请用 shutdown）","concurrency_recommendation":"并发场景起多个 serve 进程"},"config":{"deterministic":false,"quarantine_budget":262144,"input_mode_batch":false,"compiled":false,"max_steps":10000000,"call_depth_limit":10000,"max_checkpoints":50,"output_budget":16777216}}}
 {"id":8,"ok":true,"result":{"shutdown":true}}
 ```
 

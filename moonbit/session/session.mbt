@@ -154,6 +154,22 @@ pub fn Session::set_call_depth_limit(self : Session, limit : Int32) -> Unit {
 }
 
 ///|
+/// 时间旅行检查点保留数（会话级，单一写入口，#87 批暴露）：下限 1；
+/// **现存统一模式引擎即时应用**（step.begin 后调 config.set 立即生效
+/// ——不等下次 step.begin）；裸 run 通道无检查点不受影响（见
+/// SessionConfig.max_checkpoints 注）。上界 1000 的内存防线在 serve
+/// 侧预检（config_int_field_overflow）——本 setter 是编译期库面，
+/// 只兜下界。
+pub fn Session::set_max_checkpoints(self : Session, max : Int32) -> Unit {
+  self.config.max_checkpoints = if max < 1 { 1 } else { max }
+  match self.unified {
+    Some(engine) =>
+      engine.checkpoints.set_max_checkpoints(self.config.max_checkpoints)
+    None => ()
+  }
+}
+
+///|
 /// 按全局行号取源码行（P0-4 多文件安全——Rust source_line_at 照搬）：
 /// file_ranges 命中区间 → 定位对应编译单元取行；单文件（file_ranges
 /// 空）保持「全局行号 == 文件内行号」原语义。越界/非正数返回 None。

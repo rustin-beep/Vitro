@@ -259,6 +259,9 @@ fn serve_step_begin_frame(
   // 到顶返回假 finished（程序只跑 35% 却报正常结束）；消费 config 后两层
   // 同源、min(engine,vm) 错配形态消除——到顶走 vm 层步数超限 trap 真语义）
   let engine = @time_travel.UnifiedEngine::with_max_steps(s.config.max_steps)
+  // #87 批：会话级检查点保留数应用（config.set max_checkpoints /
+  // preset 档展开值——algo 档 200；build 时一次性带上）
+  engine.checkpoints.set_max_checkpoints(s.config.max_checkpoints)
   // 算法检测产物注入（批四号接线——compile 通道产出 matches，引擎侧
   // AlgoInferCtx 消费；Rust 侧经 session AlgorithmContext::find_algorithm
   // 查询，本侧编排层直供同语义）

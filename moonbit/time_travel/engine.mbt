@@ -435,6 +435,13 @@ fn UnifiedEngine::rollback_before_trap(
 }
 
 ///|
+/// #87 重放快道的途中存锚降频倍数（快道段每 25×interval=500 步一存；
+/// 密采段维持每 interval 步——尾部密度供近距离 seek，几何化淘汰保留数
+/// K=50 主导全程覆盖率）。动机：每 5 次 save 一次 Full = 1MB 内存整拷，
+/// 二十万步重放按原频 = 2GB 白拷贝（99%+ 被淘汰），实测占快道成本 95%。
+const FAST_SAVE_STRIDE : Int32 = 25
+
+///|
 /// Seek 到指定步（engine.rs:267-407 seek_to 照搬——越窗五步契约见协议
 /// STEP_PAYLOAD_SCHEMA §4.2）。
 pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
@@ -453,8 +460,12 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   match self.frames.frame_at(target) {
     Some(p) => return { success: true, payload: Some(p), error: None, }
     None =>
-      // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败
-      match self.checkpoints.nearest(target) {
+      // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
+      // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
+      // 窗口塌缩（重放区间 = [cp..target]，cp==target ⇒ 1 帧）；下探
+      // 更早锚保证窗口恒满（代价 ≤ window−1 步快道重放）
+      match
+        self.checkpoints.nearest_for_window(target, self.frames.window_limit()) {
         None =>
           return {
             success: false,
@@ -462,6 +473,24 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
             error: Some("没有可用的检查点"),
           }
         Some((cp, snap)) => {
+          // #87 重放快道（2026-10-27）：窗口边距之外的中间步跳过
+          // collect/推帧——这些帧终将被 finish_replay 裁出窗口（纯白干），
+          // 跳过后重放每步成本降为裸 vm.step()。生效门：algo.matches 为
+          // 空——collect 的 AlgoInferCtx 三字段演化只被 algorithm_step
+          // 推断消费（matches 空 ⇒ 演化是死状态，跳过零可观测差）；非空
+          // 时密采照旧（教学程序规模小，密采可承受）。
+          // 语义等价面：跳步仅排水 vis_events（collect 本取走即清——中间
+          // 帧丢弃与密采落窗外丢弃同效）；last_accessed_vars 每步重置无
+          // 跨步积累（observe.mbt 口径）。**越终结边界形态**（target 超
+          // 程序终步一个窗口以上）：重放早遇 Finished/WaitingInput 于
+          // 密采段之前 ⇒ finish_replay 的 want_start 钳位把终步帧一并
+          // 裁出窗口——与旧密采版输出面一致（success + 终帧 payload +
+          // 空窗），差异仅在旧版白造 [cp..终步] 中间帧；target < window
+          // 的既有形态（锚 H 类）dense_from 钳 0 ⇒ 快道自然关闭行为
+          // 不变。锚 N 固化本边界。
+          let fast_ok = self.algo.matches.is_empty()
+          let dense_from = target - self.frames.window_limit() + 1
+          let dense_from = if dense_from < 0 { 0 } else { dense_from }
           // 第 2 步：恢复 VM 到该检查点
           vm.restore(snap)
           // 第 3 步前置：越窗重放前重置帧窗口到检查点步（否则 target <
@@ -479,10 +508,18 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                 error: Some("执行已取消"),
               }
             }
+            // #87 快道判定：本步是否落在窗口边距之外（快道段）
+            let fast = fast_ok && step < dense_from
             // 重放途中动态保存检查点（加速后续 seek；step > cp 判定
-            // 避免覆盖恢复源）
+            // 避免覆盖恢复源）。**快道段降频 25×**（#87）：间隔 20 步的
+            // save 在几十万步重放下是主要成本（每 5 次 save 一次 Full =
+            // 1MB 内存整拷），且绝大多数会被几何化淘汰白造——降频只
+            // 影响锚点尾部密度（保留数 K=50 主导覆盖率，实测覆盖无损）
             if step > cp && step % self.checkpoints.get_interval() == 0 {
-              self.checkpoints.save(step, vm)
+              if !fast ||
+                step % (self.checkpoints.get_interval() * FAST_SAVE_STRIDE) == 0 {
+                self.checkpoints.save(step, vm)
+              }
             }
             // U2#11 前半：重放步数同受引擎预算约束
             if vm.step_count >= self.max_steps {
@@ -494,30 +531,53 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
                 ),
               }
             }
+            if !fast && step == dense_from && dense_from > cp {
+              // 快道→密采切换：窗口起点对齐密采首步（快道零推帧；不对齐
+              // 会让 push_or_replace_at 的缺口占位把整段快道距离放大成
+              // O(距离) 空帧分配——blank_payload 缺口防御分支）
+              self.frames.reset_to(step)
+            }
             let pre_step = vm.step_count
             // 审阅 P2-4（2026-10-07）：seek 重放帧同源化（循环顶步进前
             // 行——#34 修复的补遗；与 run_batch 的 label/code_line 同源）
             let seek_line = vm.get_current_line()
             match vm.step() {
-              Ok | Paused => {
-                let l2 = vm.get_current_line()
-                self.frames.push_or_replace_at(
-                  pre_step,
-                  collect(
-                    vm,
-                    src,
-                    vm.heatmap_count_at(l2),
+              Ok | Paused =>
+                if fast {
+                  // 快道零操作（P3-1 审阅处置，2026-10-28）：vis 排水是
+                  // 死代码——vis 事件行只在 algorithm_matches 非空时随
+                  // setup 注入（project_vis_lines 单源），而 fast_ok 门
+                  // = matches 为空 ⇒ 快道段队列必然为空（审阅突变删除
+                  // 全绿 + 端到端 34,767 帧逐位一致实证）。**若未来快道
+                  // 门放宽到 matches 非空，须恢复 take_vis_events 排水**
+                  //（不排会跨步累积爆进密采首帧）。
+                  ignore(vm.step_count)
+                } else {
+                  let l2 = vm.get_current_line()
+                  self.frames.push_or_replace_at(
                     pre_step,
-                    self.algo,
-                    code_line=Some(seek_line),
-                  ),
-                )
-                // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
-                // push 后立即 trim 的修复形态结构化）
-              }
+                    collect(
+                      vm,
+                      src,
+                      vm.heatmap_count_at(l2),
+                      pre_step,
+                      self.algo,
+                      code_line=Some(seek_line),
+                    ),
+                  )
+                  // U2#1：push 自带 trim（FrameWindow 类型保证——Rust 侧
+                  // push 后立即 trim 的修复形态结构化）
+                }
               WaitingInput | Finished => {
                 // 协议 §4.2 第 4 步：以该步为终点返回 success
                 //（code_line 同源化——审阅 P2-4）
+                if fast {
+                  // #87 快道早终结：终步在密采段之前（target 超程序末尾
+                  // 一个窗口以上）——快道段无帧可补，以本步为窗首收集
+                  // 终帧；finish_replay 的 want_start 钳位随后照旧裁窗
+                  //（输出面与密采版一致，锚 N 固化；reset_to 防 blank 填充）
+                  self.frames.reset_to(pre_step)
+                }
                 let l2 = vm.get_current_line()
                 let payload = collect(
                   vm,

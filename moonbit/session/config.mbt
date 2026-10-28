@@ -16,6 +16,13 @@ pub(all) struct SessionConfig {
   mut call_depth_limit : Int32
   /// 确定性模式（时钟恒 0 / LCG 固定种子——教学可回放前提）。
   mut deterministic : Bool
+  /// 时间旅行检查点保留数（会话级，#87 批暴露）——seek 重放距离的锚点
+  /// 密度旋钮（近似等距分布下最大重放距离 ≈ N/K；每约 5 个检查点一个
+  /// Full = 1MB 内存整拷，值域 1..=1000 的内存权衡见 serve 侧预检）。
+  /// **engine 专属**：不进 apply_to_vm/from_vm 的 VM 投影（裸 run 通道
+  /// 无检查点——step.begin 建 engine 时应用 + 现存 engine 经
+  /// Session::set_max_checkpoints 即时应用）。
+  mut max_checkpoints : Int32
 } derive(Debug)
 
 ///|
@@ -33,6 +40,7 @@ pub fn SessionConfig::default() -> SessionConfig {
     max_steps: @vm.DEFAULT_MAX_STEPS,
     call_depth_limit: @vm.MAX_STACK_DEPTH,
     deterministic: false,
+    max_checkpoints: @time_travel.DEFAULT_MAX_CHECKPOINTS,
   }
 }
 
@@ -49,11 +57,13 @@ pub fn SessionConfig::apply_to_vm(
 }
 
 ///|
-/// 从 VM 现值投影（装载已有 VM 时的初始化通道）。
+/// 从 VM 现值投影（装载已有 VM 时的初始化通道）。max_checkpoints 是
+/// engine 专属（见字段注）——不投影，取缺省。
 pub fn SessionConfig::from_vm(vm : @vm.VitroVM) -> SessionConfig {
   {
     max_steps: vm.max_steps,
     call_depth_limit: vm.call_depth_limit,
     deterministic: vm.deterministic,
+    max_checkpoints: @time_travel.DEFAULT_MAX_CHECKPOINTS,
   }
 }

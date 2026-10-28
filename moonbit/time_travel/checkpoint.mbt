@@ -12,6 +12,8 @@
 ///
 /// **门 3 验收锚**（seek 往返五类相等）：checkpoint_wbtest.mbt——全量/
 /// 增量/淘汰后 seek/step-0 锚点/隔离区三件套随行（六锚自 vm_wbtest 迁入）。
+/// **#87 几何化淘汰**（2026-10-27）：`evict_over_limit` 从 FIFO 改最小
+/// 左间隙合并（淘汰不变量三件套不动——见 evict_at）。
 
 ///|
 /// 检查点管理器。
@@ -29,12 +31,17 @@ pub struct CheckpointManager {
 }
 
 ///|
+/// 检查点保留数缺省（#87 批暴露会话级旋钮——session/gateway 消费的
+/// 单源；内存账：每约 5 个检查点一个 Full = 1MB 内存整拷）。
+pub const DEFAULT_MAX_CHECKPOINTS : Int32 = 50
+
+///|
 pub fn CheckpointManager::new(interval : Int32) -> CheckpointManager {
   {
     checkpoints: [],
     interval,
     smart_mode: true,
-    max_checkpoints: 50,
+    max_checkpoints: DEFAULT_MAX_CHECKPOINTS,
     full_every: 5,
   }
 }
@@ -102,37 +109,69 @@ pub fn CheckpointManager::save(
 }
 
 ///|
-/// 超上限淘汰（U2#5 修复形态照搬——三条不变量见模块头注）。
+/// 超上限淘汰——**几何化淘汰（issue #87，2026-10-27）**：淘汰「左间隙
+/// 最小」的检查点（平手取最老），取代 FIFO 逐老淘汰。FIFO 只保 step-0 +
+/// 最近 max-1 个 ⇒ 长程序中段锚点全空洞（78M 步实测 nearest(1M) 只能落
+/// step-0 全程重放 = seek 13.8s / 500× 病灶）；最小左间隙合并在均匀到达
+/// 下自平衡为近似等距分布（node 模拟器：4000 步 K=50 最大重放距离 140 ≈
+/// 1.7×N/K，FIFO 为 3020；78M 步最坏 2.86M ≈ 1.8×N/K）。头锚（i=0）恒
+/// 不在候选（step-0 pinned）。三不变量照旧（模块头注）：删 Full 级联
+/// drain / 删 Delta 不级联 / 链头 Full 防御。
 fn CheckpointManager::evict_over_limit(self : CheckpointManager) -> Unit {
   while self.checkpoints.length() > self.max_checkpoints {
-    let pinned = self.checkpoints[0].0 == 0
-    let remove_idx = if pinned { 1 } else { 0 }
-    if remove_idx >= self.checkpoints.length() {
+    let n = self.checkpoints.length()
+    if n <= 1 {
       break
     }
-    let removed_is_full = self.checkpoints[remove_idx].1.memory is @vm.Full(_)
-    ignore(self.checkpoints.remove(remove_idx))
-    ignore(removed_is_full)
-    if removed_is_full {
-      // 删 Full：级联删其后 Delta 到下一个 Full（悬空 Delta = seek 静默
-      // 错内存——U2#5）
-      let mut next_full = self.checkpoints.length()
-      for i = remove_idx; i < self.checkpoints.length(); i = i + 1 {
-        if self.checkpoints[i].1.memory is @vm.Full(_) {
-          next_full = i
-          break
-        }
+    // 贪心：候选 [1, n-1]，argmin 左间隙；平手取最老（小下标）——旧区
+    // 密度优先稀释（等距化），尾部密度靠后续 save 自然补充
+    let mut remove_idx = 1
+    let mut best_gap = self.checkpoints[1].0 - self.checkpoints[0].0
+    for i = 2; i < n; i = i + 1 {
+      let gap = self.checkpoints[i].0 - self.checkpoints[i - 1].0
+      if gap < best_gap {
+        remove_idx = i
+        best_gap = gap
       }
-      // drain remove_idx..next_full
-      for k = 0; k < next_full - remove_idx; k = k + 1 {
-        ignore(self.checkpoints.remove(remove_idx))
+    }
+    self.evict_at(remove_idx)
+  }
+}
+
+///|
+/// 按链规则淘汰下标 remove_idx 的检查点（U2#5 修复形态照搬——三条不变
+/// 量见模块头注）：删 Full 级联删其后 Delta 到下一个 Full（悬空 Delta =
+/// seek 静默错内存）；删 Delta 不级联；删链头 Delta（防御）drain 到
+/// Full 维持链头不变量。
+fn CheckpointManager::evict_at(
+  self : CheckpointManager,
+  remove_idx : Int32,
+) -> Unit {
+  if remove_idx < 0 || remove_idx >= self.checkpoints.length() {
+    return
+  }
+  let removed_is_full = self.checkpoints[remove_idx].1.memory is @vm.Full(_)
+  ignore(self.checkpoints.remove(remove_idx))
+  if removed_is_full {
+    // 删 Full：级联删其后 Delta 到下一个 Full
+    let mut next_full = self.checkpoints.length()
+    for i = remove_idx; i < self.checkpoints.length(); i = i + 1 {
+      if self.checkpoints[i].1.memory is @vm.Full(_) {
+        next_full = i
+        break
       }
-    } else if remove_idx == 0 {
-      // 删链头 Delta（防御）：删到 Full 维持链头不变量
-      while self.checkpoints.length() > 0 &&
-            !(self.checkpoints[0].1.memory is @vm.Full(_)) {
-        ignore(self.checkpoints.remove(0))
-      }
+    }
+    // drain remove_idx..next_full
+    for k = 0; k < next_full - remove_idx; k = k + 1 {
+      ignore(self.checkpoints.remove(remove_idx))
+    }
+  } else if remove_idx == 0 {
+    // 删链头 Delta（防御）：删到 Full 维持链头不变量。**几何化后不可达**
+    //（PR #342 审阅 P3-6 注记：淘汰 argmin 的候选 i ≥ 1 ⇒ 链头恒不被选；
+    // 保留为白盒直调 evict_at(0) 的链不变量自洽通道 + FIFO 时代防御遗产）
+    while self.checkpoints.length() > 0 &&
+          !(self.checkpoints[0].1.memory is @vm.Full(_)) {
+      ignore(self.checkpoints.remove(0))
     }
   }
 }
@@ -147,6 +186,38 @@ pub fn CheckpointManager::nearest(
     Some(i) => i
     None => return None
   }
+  self.rebuild_at(idx)
+}
+
+///|
+/// 带回看窗口下限的取锚（PR #342 审阅 P2-1 处置，2026-10-28）：seek 的
+/// 重放区间 = [cp..target]，窗口宽度 = target−cp+1——**恰命中锚点**
+///（target−cp < window−1，几何化把锚铺满全程后非罕见）时窗口塌缩
+///（极端 1 帧）。本方法按 `min(target, target−window+1)` 取锚（下探更早
+/// 锚，恒有 step-0 兜底）：窗口恒满，代价是至多 window−1 步快道重放
+///（µs 级——快道段免 collect）。快道门与 finish_replay 语义不受影响
+///（cp < dense_from 恒成立 ⇒ 快道段非空）。
+pub fn CheckpointManager::nearest_for_window(
+  self : CheckpointManager,
+  target : Int32,
+  window : Int32,
+) -> (Int32, @vm.VMSnapshot)? {
+  let floor = target - window + 1
+  let effective = if floor > 0 { floor } else { 0 }
+  let idx = match last_le(self.checkpoints, effective) {
+    Some(i) => i
+    None => return None
+  }
+  self.rebuild_at(idx)
+}
+
+///|
+/// 按下标重建可直接恢复的全量快照（nearest / nearest_for_window 公共段：
+/// Full 深拷 / Delta 链回放 + 字段集独立性克隆）。
+fn CheckpointManager::rebuild_at(
+  self : CheckpointManager,
+  idx : Int32,
+) -> (Int32, @vm.VMSnapshot)? {
   let step = self.checkpoints[idx].0
   let snap = self.checkpoints[idx].1
   match snap.memory {
@@ -282,12 +353,14 @@ pub fn CheckpointManager::set_smart_mode(
 }
 
 ///|
-/// 设置最大检查点数（同上）。
+/// 设置最大检查点数（同上）。**收缩即时淘汰**（PR #342 审阅 P3-3 处置，
+/// 2026-10-28）：内存防线不等下次 save——收紧上限当场把超额锚淘汰掉。
 pub fn CheckpointManager::set_max_checkpoints(
   self : CheckpointManager,
   n : Int32,
 ) -> Unit {
   self.max_checkpoints = n
+  self.evict_over_limit()
 }
 
 ///|

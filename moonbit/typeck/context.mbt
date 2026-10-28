@@ -146,6 +146,24 @@ pub fn TypeChecker::declare_var(
         })
         return
       }
+      // PR #344 审阅 P1（2026-10-28）：linkage 一致性守卫——static 先行
+      // 声明后随非 static 声明是 C11 6.2.2p7 linkage 冲突（clang
+      // "non-static declaration of 't' follows static declaration"，s1/
+      // s1b/s1c 三探针实测）——#343 共存分支只看 tentative 不看 linkage
+      // 整族静默放行。拒绝且**不改写符号**（P2-2：改写会使 E3059 的
+      // static 表首值锚到后随条目、报错理由比事实更歪）。extern 跟随
+      // static 合法（6.2.2p4 保持 internal linkage，走前置 extern 分支
+      // 不受此守卫波及，s10 探针）；**反向**（非 static 先 + static 后
+      // 随）clang 零诊断放行（6.2.2p5 后随 static 给出 internal
+      // linkage，s8/s9 探针实测）——由下方 tentative 共存分支承接。
+      if is_global && !is_extern && existing.is_static && !is_static {
+        self.report_error(
+          "非 static 声明 '\{name}' 跟随 static 声明——同一标识符的链接属性冲突（static 先行给出内部链接，后随声明不得改回外部链接）",
+          loc,
+          E3001_VarRedeclared,
+        )
+        return
+      }
       // #343（2026-10-28，C11 §6.9.2）：文件作用域 tentative 定义共存
       //——无初始化器的文件作用域声明是 tentative 定义，与实定义/再
       // tentative 三形态（前 tent 后实 / 双 tent / 前实后 tent）均合法

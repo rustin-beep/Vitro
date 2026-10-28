@@ -768,10 +768,13 @@ fn TypeChecker::check_user_func(
   match self.funcs.get(name) {
     Some(sym) => {
       // #214（2026-10-22，C99 §6.5.1p2 隐式声明废弃）：非 static 函数的
-      // 前向序使用（调用点早于任何原型/定义，first_decl_line 之后无原型
-      // ——同文件近似）——clang C99 起默认 error，教学口径 warning 提示
-      // 补原型（static 形态已有 E3058 error 在下面分支）
-      if loc.line < sym.first_decl_line {
+      // 前向序使用（调用点早于任何原型/定义，首声明位置之后无原型
+      //——同文件近似）——clang C99 起默认 error，教学口径 warning 提示
+      // 补原型（static 形态已有 E3058 error 在下面分支）。PR #344 审阅
+      // P2-1（2026-10-28）：列级判定（同行形态连 W3085 都不给的漏报
+      // 收口）
+      if loc.line < sym.first_decl_line ||
+        (loc.line == sym.first_decl_line && loc.column < sym.first_decl_col) {
         self.report_warning(
           "函数 '\{name}' 在声明之前被调用（第 \{sym.first_decl_line} 行才声明）——C99 起隐式函数声明已废弃，请补前置原型",
           loc,
@@ -810,10 +813,15 @@ fn TypeChecker::check_user_func(
                   E3058_StaticFuncAccess,
                 )
                 return @ast.Type::void_type()
-              } else if loc.line < sym.first_decl_line {
+              } else if loc.line < sym.first_decl_line ||
+                (
+                  loc.line == sym.first_decl_line &&
+                  loc.column < sym.first_decl_col
+                ) {
                 // #50 批①（2026-10-10）：前向序——使用点早于任何声明/
                 // 定义（无前置原型）= 对齐 Clang use-before-declaration
-                //（同文件形态；原型先行则 first_decl_line 小、合法放行）
+                //（同文件形态；原型先行则 first_decl_line 小、合法放行）。
+                // PR #344 审阅 P2-1：列级判定（同行形态收口）
                 self.report_error(
                   "static 函数 '\{name}' 在声明之前被使用（第 \{sym.first_decl_line} 行才声明）",
                   loc,

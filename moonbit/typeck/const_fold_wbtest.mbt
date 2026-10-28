@@ -1606,3 +1606,285 @@ test "issue343_static_tentative_allowed" {
     msg="static tentative 共存维持既有放行行为",
   )
 }
+
+// ============================================================================
+// PR #344 审阅处置批（2026-10-28）：P1 linkage 守卫 + P2-2 E3059 首值让位
+// + P2-1 同行列级判据。J9：五锚修复前全红，三负例防误伤。
+// ============================================================================
+
+///|
+/// 审阅处置批辅助：带自定义 loc 的 main 包装（with_main 的 loc 写死
+/// (1,1)——同行列级判据锚需要非 (1,1) 起点）。
+fn with_main_at(
+  prog : @ast.ProgramNode,
+  body : @ast.Stmt,
+  loc : @source.SourceLoc,
+) -> @ast.ProgramNode {
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc,
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(body),
+    source_file: "t.c",
+  }
+  { ..prog, funcs: [main], }
+}
+
+///|
+/// 审阅 P1：static 先行 + 非 static 后随（tentative 形态）——clang
+/// "non-static declaration of 't' follows static declaration"（C11
+/// 6.2.2p7 linkage 冲突）；#343 共存分支只看 tentative 不看 linkage，
+/// 整族静默放行（s1/s1b/s1c 探针 rc=0 实锤）。
+test "review344_static_then_nonstatic_rejected" {
+  let st = {
+    ..{ ..gdecl(@ast.Type::int(), "t", None), is_static: true, },
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let nt = {
+    ..gdecl(@ast.Type::int(), "t", None),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([st, nt]))
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="static 先行 + 非 static 后随必须报 E3001（linkage 冲突）",
+  )
+}
+
+///|
+/// 审阅 P1：static 定义先行 + 非 static tentative 后随——同族（s1c）。
+test "review344_static_def_then_nonstatic_rejected" {
+  let loc = @source.SourceLoc::new(1, 16)
+  let st = {
+    ..{
+      ..gdecl(
+        @ast.Type::int(),
+        "t",
+        Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+      ),
+      is_static: true,
+    },
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let nt = {
+    ..gdecl(@ast.Type::int(), "t", None),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([st, nt]))
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="static 定义先行 + 非 static 后随必须报 E3001",
+  )
+}
+
+///|
+/// 审阅 P2-2：**反向**（非 static tentative 先 + static 定义后随）clang
+/// 零诊断放行（C11 6.2.2p5 后随 static 给 internal linkage——s8 探针
+/// 实测；s9 同向零诊断）；旧 Vitro 报 E3059「static 全局在声明之前被
+/// 使用」歪码（static_global_decl_lines 首值锚在后随条目）。
+test "review344_nonstatic_then_static_allowed" {
+  let loc = @source.SourceLoc::new(2, 27)
+  let nt = {
+    ..gdecl(@ast.Type::int(), "t", None),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let st = {
+    ..{
+      ..gdecl(
+        @ast.Type::int(),
+        "t",
+        Some(@ast.Expr::Literal(5, loc, @ast.Type::int())),
+      ),
+      is_static: true,
+    },
+    loc: @source.SourceLoc::new(3, 1),
+  }
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(2, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("t", loc, @ast.Type::int())),
+        loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([nt, st]), funcs: [main], })
+  assert_false(
+    errs.exists(e => e.code == 3059 || e.code == 3001),
+    msg="非 static 先行 + static 后随是 clang 零诊断形态，不得报 E3059/E3001",
+  )
+}
+
+///|
+/// 审阅 P2-1：同行前向引用后文全局——`int main(void){ return s; }
+/// int s = 3;` 单行形态，行号判据（严格小于）失效；列级判据（引用
+/// col < 声明 col）收口（y1 探针 clang 报 undeclared、Vitro 静默 EXIT 3）。
+test "review344_sameline_fwd_global_rejected" {
+  // 单行：main 声明 col 1；return s 的 s 在 col 21；int s = 3 声明 col 34
+  let use_loc = @source.SourceLoc::new(1, 21)
+  let s_decl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "s",
+      Some(@ast.Expr::Literal(3, use_loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(1, 34),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    with_main_at(
+      gprog([s_decl]),
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("s", use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+      @source.SourceLoc::new(1, 1),
+    ),
+  )
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="同行前向引用后文全局应报 E3023（列级判据）",
+  )
+}
+
+///|
+/// 审阅 P2-1 负例：同行**声明先行**——`int s = 3; int main(void){ return
+/// s; }`（声明 col 1 < 引用 col）零误报。
+test "review344_sameline_decl_first_allowed" {
+  let use_loc = @source.SourceLoc::new(1, 30)
+  let s_decl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "s",
+      Some(@ast.Expr::Literal(3, use_loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(
+    with_main_at(
+      gprog([s_decl]),
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Identifier("s", use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+      use_loc,
+    ),
+  )
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="同行声明先行是合法形态，不得误报",
+  )
+}
+
+///|
+/// 审阅 P2-1：同行函数名作值前向——`int (*fp)(void) = f; int f(void)
+/// {...}` 单行（y5 探针 clang 报 undeclared、Vitro 静默）。
+test "review344_sameline_fwd_func_addr_rejected" {
+  let use_loc = @source.SourceLoc::new(1, 22)
+  let fp_decl = {
+    ..gdecl(
+      @ast.Type::function_pointer(@ast.Type::int(), []),
+      "fp",
+      Some(@ast.Expr::Identifier("f", use_loc, @ast.Type::int())),
+    ),
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 28),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(1, use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check({ ..gprog([fp_decl]), funcs: [f_def], })
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="同行函数名作值前向引用应报 E3023（列级判据）",
+  )
+}
+
+///|
+/// 审阅 P2-1：同行调用前向——`int main(void){ return f(); } int f(void)
+/// {...}` 单行（y6 探针 clang 报 error、Vitro 连 W3085 都不给——
+/// first_decl_line 严格小于同行失效）。
+test "review344_sameline_call_warns" {
+  let use_loc = @source.SourceLoc::new(1, 27)
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 33),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(1, use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Call("f", [], use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, warns, _) = tc.check({ ..gprog([]), funcs: [main, f_def], })
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="调用面维持 error 零",
+  )
+  assert_true(
+    warns.exists(w => w.code == 3085),
+    msg="同行调用前向必须给 W3085（列级判据）",
+  )
+}
+
+///|
+/// 审阅 P1 负例：extern 跟随 static——`static int t; extern int t;`
+///（C11 6.2.2p4 extern 跟随 static 保持 internal linkage）clang 零
+/// 诊断，走既有 extern 共存分支不受 linkage 守卫波及（s10 探针）。
+test "review344_extern_follows_static_allowed" {
+  let st = {
+    ..{ ..gdecl(@ast.Type::int(), "t", None), is_static: true, },
+    loc: @source.SourceLoc::new(1, 1),
+  }
+  let et = {
+    ..gdecl(@ast.Type::int(), "t", None, is_extern=true),
+    loc: @source.SourceLoc::new(2, 1),
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([st, et]))
+  assert_false(
+    errs.exists(e => e.code == 3001),
+    msg="extern 跟随 static 是合法形态（6.2.2p4），不得报 E3001",
+  )
+}

@@ -750,6 +750,7 @@ test "issue79_print_int_user_redefine_priority" {
     param_defaults: [None],
     is_definition: true,
     first_decl_line: 1,
+    first_decl_col: 1,
   })
   let addr_of_v = @ast.Expr::Unary(
     @ast.UnaryOp::Addr,
@@ -769,6 +770,7 @@ test "issue79_print_int_user_redefine_priority" {
     param_defaults: [None],
     is_definition: true,
     first_decl_line: 1,
+    first_decl_col: 1,
   })
   let args2 : Array[@ast.Expr] = [@ast.Expr::Literal(42, loc, @ast.Type::int())]
   ignore(tc2.visit_call("print_int", args2, loc))

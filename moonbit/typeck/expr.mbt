@@ -247,9 +247,11 @@ fn TypeChecker::resolve_identifier(
       // E3059 通道不进此臂；局部符号（非 _is_global）由 scope 栈内层
       // 先行命中天然放行。extern/tentative 先行条目是首值，正常通过。
       if !sym.is_static && sym._is_global && self.static_init_site_idx is None {
+        // PR #344 审阅 P2-1（2026-10-28）：(line, column) 文本位置序
+        //——行号严格小于在单行程序失效（同行按列判前向）
         match self.global_decl_lines.get(name) {
-          Some(dl) =>
-            if loc.line < dl {
+          Some((dl, dc)) =>
+            if loc.line < dl || (loc.line == dl && loc.column < dc) {
               self.report_error(
                 "未声明的标识符 '\{name}'（其首次声明位于第 \{dl} 行，在本引用点之后——C 标识符自声明点起才可见）",
                 loc,
@@ -269,8 +271,10 @@ fn TypeChecker::resolve_identifier(
           // 前向引用——`int (*fp)(void) = f;`（f 后文声明）clang 报 use
           // of undeclared identifier（作值面无隐式声明回退）。调用面是
           // W3085 warning（#214 教学口径拍板，Call 的 callee 不走此臂，
-          // 不双报）；原型先行则 first_decl_line（Pass 2 首值）在前放行
-          if loc.line < sym.first_decl_line {
+          // 不双报）；原型先行则首声明位置（Pass 2 首值）在前放行。
+          // PR #344 审阅 P2-1：列级判定（同行形态收口）
+          if loc.line < sym.first_decl_line ||
+            (loc.line == sym.first_decl_line && loc.column < sym.first_decl_col) {
             self.report_error(
               "未声明的标识符 '\{name}'（函数 '\{name}' 的首次声明位于第 \{sym.first_decl_line} 行，在本引用点之后——请前置原型或调整定义顺序）",
               loc,
@@ -289,9 +293,14 @@ fn TypeChecker::resolve_identifier(
           // 无隐式声明回退
           match self.static_func_sigs.get(name) {
             Some(sym) => {
-              // #337：static 函数名作值前向守卫（first_decl_line 首值 =
-              // 原型或定义条目；跨文件可见性仍归调用面 E3058 不在此报）
-              if loc.line < sym.first_decl_line {
+              // #337：static 函数名作值前向守卫（首声明位置首值 =
+              // 原型或定义条目；跨文件可见性仍归调用面 E3058 不在此报；
+              // PR #344 审阅 P2-1 列级判定）
+              if loc.line < sym.first_decl_line ||
+                (
+                  loc.line == sym.first_decl_line &&
+                  loc.column < sym.first_decl_col
+                ) {
                 self.report_error(
                   "未声明的标识符 '\{name}'（static 函数 '\{name}' 的首次声明位于第 \{sym.first_decl_line} 行，在本引用点之后——请前置原型或调整定义顺序）",
                   loc,

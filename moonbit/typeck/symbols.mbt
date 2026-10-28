@@ -33,6 +33,9 @@ struct VarSymbol {
 /// = E3003 重定义，对齐 Clang redefinition error）；first_decl_line（
 /// 首次登记行号——static 符号前向序检查：使用点早于任何声明/定义且
 /// 无原型 = E3058/E3059，对齐 Clang use-before-declaration）。
+/// PR #344 审阅 P2-1（2026-10-28）加 first_decl_col：同行前向判据
+///（line 严格小于在单行程序失效——`int main(void){ return f(); }
+/// int f(void){...}` 连 W3085 都不给；列级补位 col < decl_col）。
 struct FuncSymbol {
   return_type : @ast.Type
   param_types : Array[@ast.Type]
@@ -40,6 +43,7 @@ struct FuncSymbol {
   param_defaults : Array[@ast.Expr?]
   is_definition : Bool
   first_decl_line : Int32
+  first_decl_col : Int32
 }
 
 ///|

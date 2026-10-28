@@ -51,11 +51,13 @@ pub struct TypeChecker {
   // #50 批①（2026-10-10）：static 全局首次声明行——E3059 前向序检查
   //（使用点早于任何声明 = 对齐 Clang use-before-declaration）
   static_global_decl_lines : Map[String, Int32]
-  // #337（2026-10-28）：非 static 文件作用域全局的首次声明行——函数体
-  // 前向引用守卫判据（set 保持首值：extern/tentative 再声明不刷新，
-  // 先行 extern/tentative 条目给出可见性，对齐 C11 6.2.1p4 声明点语义；
-  // static 面走 static_global_decl_lines 的 E3059 通道，两表分治防双报）
-  global_decl_lines : Map[String, Int32]
+  // #337（2026-10-28）：非 static 文件作用域全局的首次声明位置
+  //（(line, column) 对 = 文本位置序——PR #344 审阅 P2-1 起含列：行号
+  // 严格小于在单行程序失效，同行按列判前向）——函数体前向引用守卫
+  // 判据（set 保持首值：extern/tentative 再声明不刷新，先行 extern/
+  // tentative 条目给出可见性，对齐 C11 6.2.1p4 声明点语义；static 面
+  // 走 static_global_decl_lines 的 E3059 通道，两表分治防双报）
+  global_decl_lines : Map[String, (Int32, Int32)]
   // #331（2026-10-27）：文件作用域全局的首声明序（program.globals 数组
   // 首现下标 = 声明点序，C11 6.2.1p4）——初始化器前向引用守卫判据
   global_first_decl_idx : Map[String, Int32]
@@ -309,6 +311,7 @@ pub fn TypeChecker::check(
       param_defaults: f.params.map(p => p.default),
       is_definition: f.body is Some(_),
       first_decl_line: f.loc.line,
+      first_decl_col: f.loc.column,
     }
     if f.is_static {
       match self.static_func_sigs.get(f.name) {
@@ -370,13 +373,14 @@ pub fn TypeChecker::check(
   // 定型再登记**；初始化器只解析一次，结果缓存给下面的检查循环复用
   // ——重复解析 = 诊断双份。
   self.enter_scope()
-  // #337（2026-10-28）：非 static 全局首声明行表——建表先于 auto/typeof
-  // 预解析（预解析语境 static_init_site_idx 为 None，守卫激活面包含它）
-  // 与 Pass 3/4 函数体检查；set 保持首值，extern/tentative 先行条目给出
-  // 可见性（clang 口径：首声明点即可见）
+  // #337（2026-10-28）：非 static 全局首声明位置表（PR #344 审阅 P2-1
+  // 起 (line, column) 对）——建表先于 auto/typeof 预解析（预解析语境
+  // static_init_site_idx 为 None，守卫激活面包含它）与 Pass 3/4 函数体
+  // 检查；set 保持首值，extern/tentative 先行条目给出可见性（clang
+  // 口径：首声明点即可见）
   for g in program.globals {
     if !g.is_static && !self.global_decl_lines.contains(g.name) {
-      self.global_decl_lines.set(g.name, g.loc.line)
+      self.global_decl_lines.set(g.name, (g.loc.line, g.loc.column))
     }
   }
   let precomputed_init_types : Map[String, @ast.Type] = Map([])
@@ -431,8 +435,15 @@ pub fn TypeChecker::check(
         Some(files) => files.push(g.source_file)
         None => self.static_global_files.set(g.name, [g.source_file])
       }
-      // #50 批①：首次登记行（set 保持首值——原型/重复声明不刷新）
-      if !self.static_global_decl_lines.contains(g.name) {
+      // #50 批①：首次登记行（set 保持首值——原型/重复声明不刷新）。
+      // PR #344 审阅 P2-2（2026-10-28）首值让位：名字的首声明是**更早
+      // 的非 static 条目**（`int t; … static int t = 5;` 的 s8 形态——
+      // clang 零诊断，后随 static 生效但可见性锚在首声明）时，本 static
+      // 条目不写表——否则 E3059 前向判据锚到后随条目、对首声明后的
+      // 引用歪报「声明之前被使用」。判定用 #331 的 global_first_decl_idx
+      //（含全部 globals 的首现下标）：本条不是首声明即让位。
+      if !self.static_global_decl_lines.contains(g.name) &&
+        self.global_first_decl_idx.get(g.name) == Some(i) {
         self.static_global_decl_lines.set(g.name, g.loc.line)
       }
     }

@@ -1,5 +1,43 @@
 ## [Unreleased]
 
+### fix(typeck): PR #344 审阅处置批——P1 linkage 守卫 + P2-1 同行列级判据 + P2-2 E3059 首值让位（2026-10-28）
+
+- **P1（本批引入的放行回归收口）**：`static int t; int t;` 等
+  static 先行 + 非 static 后随整族被 #343 共存分支静默放行（s1/s1b/
+  s1c 探针 rc=0，clang "non-static declaration of 't' follows
+  static declaration"）。declare_var 共存分支前插 linkage 守卫
+  （C11 6.2.2p7）：`existing.is_static && !is_static` 报 E3001 且
+  **不改写符号**。边界实测三条：extern 跟随 static 合法（6.2.2p4，
+  走前置 extern 分支不受波及，s10）；**反向**（非 static 先 + static
+  后随）clang 零诊断放行（6.2.2p5 后随 static 给 internal linkage，
+  s8/s9 探针——s8 且 EXIT 5 实证 static 生效值正确）。
+- **P2-2（E3059 歪码治本）**：`int t; … static int t = 5;`（s8）
+  旧报 E3059「static 全局在声明之前被使用（第 3 行才声明）」——
+  可见性锚本在第 1 行。static_global_decl_lines 建表加首值让位
+  （global_first_decl_idx 判本条是首声明才写——后随 static 条目
+  让位给更早的非 static 首声明）。
+- **P2-1（同行前向判据失效收口）**：行号严格小于在单行程序失效
+  （y1 `int main(void){ return s; } int s = 3;` 静默 EXIT 3、y6 连
+  W3085 都不给）。`global_decl_lines` 改 (line, column) 位置对 +
+  `FuncSymbol.first_decl_col` 新列，五消费点全改文本位置序判据
+  （`line < dl || (line == dl && col < dc)`）：expr.mbt 全局守卫 /
+  两作值臂、decl.mbt W3085 调用面与 E3058 static 调用面。同行
+  **声明先行**负例（y1neg）零误报。
+- **红锚（J9）**：const_fold_wbtest +8（六红：linkage 两形态 /
+  E3059 歪码负锚 / 同行全局·作值·调用三面——修复前全红；两负例：
+  同行声明先行 / extern 跟随 static）——typeck 117/117、全仓
+  950/950、native 1113/1113 亲验；十探针端到端 Vitro 与 clang
+  逐位对齐。
+- **P2-3（PR 冲突）**：已于 rebase 收尾笔（f5063360）处置——README/
+  CHANGELOG 冲突解、测试数合流 942/1105、fuzz_baseline 采 master
+  volatile 豁免机制版。
+- **P3 口径修正**：#337 段 legal 语料「5 55 40 100」系 tentative
+  回填**前**时点输出（#343 段 5 值为现值）；PR 正文数字随本批更新
+  （typeck/codegen 五段 800 case、vm 802 SAME 口径）。
+- 全防线复验：typeck/codegen 五段 PASS 零漂移、vm 双臂 556/556
+  SAME（wasm 臂产物重建后）、clang_direct 933 全绿、realcode 双闸
+  OK、fuzz PASS、testcount 950=1113 双验、facts 0 漂移。
+
 ### fix(diag+codegen+typeck): 诊断码↔教学卡闭合批二——#223 E3089 立码 + #233 C++ 死面全数摘除（2026-10-25）
 
 **#223「函数已声明但未定义」立码 E3089**（旧 E0/Unknown 兜底——serve 层硬编码 code=0 包装，下游按码查卡落空、E0 通用卡「内部错误」文案教学面失准）：
@@ -271,7 +309,9 @@
   `moon test` 918/918、native 全量 1078/1078。
 - **语料三件**（baseline）：`fwd_ref_funcbody.c` / `fwd_func_addr.c`
   （双侧编译失败判 match）+ `fwd_ref_funcbody_legal.c`（负例：extern
-  先行 / 原型先行 / 局部遮蔽，双侧同输出 `5 55 40 100`）；五家 digest
+  先行 / 原型先行 / 局部遮蔽，双侧同输出 `5 55 40 100`——本段为
+  tentative 回填**前**时点输出，#343 批回填后现值 5 值见下节）；五家
+  digest
   freeze（Sources +3 / vm 重算 553 例零漂移、双臂 556/556 SAME）；
   clang_direct 933 全绿；fuzz 基线重冻（318 条池轮换：enum_non_continuous
   三条出池 + 新语料 case 进池全 AGREE）。

@@ -186,6 +186,7 @@ vitro/engine/codegen vitro/engine/bytecode host_func_id_by_user_name
 vitro/engine/codegen vitro/engine/bytecode is_host_rerouted
 vitro/engine/codegen vitro/engine/bytecode verify_compile_output
 vitro/engine/codegen vitro/engine/bytecode verify_violations_json
+vitro/engine/codegen vitro/engine/diag ErrorCode
 vitro/engine/codegen vitro/engine/opcode Instruction
 vitro/engine/codegen vitro/engine/opcode OpCode
 vitro/engine/codegen vitro/engine/source SourceLoc
@@ -210,6 +211,7 @@ vitro/engine/gateway vitro/engine/bytecode NULL_TRAP_SIZE
 vitro/engine/gateway vitro/engine/bytecode Symbol
 vitro/engine/gateway vitro/engine/bytecode compile_output_dump_json
 vitro/engine/gateway vitro/engine/bytecode compute_heap_base
+vitro/engine/gateway vitro/engine/codegen GenError
 vitro/engine/gateway vitro/engine/codegen compile
 vitro/engine/gateway vitro/engine/diag ErrorCode
 vitro/engine/gateway vitro/engine/diag catalog_texts

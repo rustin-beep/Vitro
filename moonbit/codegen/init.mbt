@@ -501,12 +501,16 @@ fn BytecodeGen::flush_pending_addr_inits(self : BytecodeGen) -> Unit {
 /// Rust 现状如此，迁移期不私改；S5 后续批随"无条件 gen_expr"改造收口）。
 fn flatten_init_list(
   elements : Array[@ast.InitElement],
-  errors : Array[String],
+  errors : Array[GenError],
 ) -> Array[Int32] {
   let result : Array[Int32] = []
   for elem in elements {
     if elem.designators.length() > 0 {
-      errors.push("Designated initializer 不支持在此上下文中扁平化")
+      errors.push(
+        GenError::plain(
+          "Designated initializer 不支持在此上下文中扁平化",
+        ),
+      )
     }
     match elem.value {
       Literal(value, _, _) => result.push(value)

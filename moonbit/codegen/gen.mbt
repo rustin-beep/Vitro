@@ -22,7 +22,7 @@ pub const SLOT_STRATEGY_VERSION : Int32 = 1
 ///|
 priv struct BytecodeGen {
   code : Array[@opcode.Instruction]
-  errors : Array[String]
+  errors : Array[GenError]
   func_table : Map[String, @bytecode.FuncMeta]
   func_index : Map[String, Int32]
   /// 纯原型声明名（body=None，无定义体）——调用/取值 miss func_index
@@ -200,7 +200,7 @@ fn BytecodeGen::new() -> BytecodeGen {
 fn BytecodeGen::generate(
   self : BytecodeGen,
   program : @ast.ProgramNode,
-) -> (@bytecode.CompileOutput?, Array[String]) {
+) -> (@bytecode.CompileOutput?, Array[GenError]) {
   self.code.push(
     @opcode.Instruction::new(@opcode.OpCode::Nop, 0, default_loc()),
   )
@@ -329,7 +329,7 @@ fn BytecodeGen::generate(
         default_loc(),
       )
     }
-    None => self.errors.push("缺少 main 函数入口")
+    None => self.errors.push(GenError::plain("缺少 main 函数入口"))
   }
   if self.errors.length() > 0 {
     return (None, self.errors)
@@ -451,7 +451,9 @@ fn BytecodeGen::pass1_register_global(
   g : @ast.GlobalDecl,
 ) -> Unit {
   if g.ty.is_vla() {
-    self.errors.push("全局作用域不支持变长数组(VLA) '\{g.name}'")
+    self.errors.push(
+      GenError::plain("全局作用域不支持变长数组(VLA) '\{g.name}'"),
+    )
     return
   }
   let sz = self.type_size(g.ty)
@@ -1000,7 +1002,30 @@ fn BytecodeGen::report_error(
   msg : String,
   loc : @source.SourceLoc,
 ) -> Unit {
-  self.errors.push("第 \{loc.line} 行：\{msg}")
+  self.errors.push(GenError::{
+    code: 0,
+    line: loc.line,
+    column: 1,
+    message: "第 \{loc.line} 行：\{msg}",
+  })
+}
+
+///|
+/// 带码错误（#223 首个具名码 E3089——函数已声明但未定义）：文案形态与
+/// report_error 一致（serve 层 message/st.errors 消费面零扰动），code /
+/// column 走真值（下游按码查卡；IDE 列锚不再恒 1）。
+fn BytecodeGen::report_coded_error(
+  self : BytecodeGen,
+  code : @diag.ErrorCode,
+  msg : String,
+  loc : @source.SourceLoc,
+) -> Unit {
+  self.errors.push(GenError::{
+    code: code.code(),
+    line: loc.line,
+    column: loc.column,
+    message: "第 \{loc.line} 行：\{msg}",
+  })
 }
 
 ///|
@@ -1153,7 +1178,7 @@ fn BytecodeGen::resolve_symbol_index(
 /// 错误为 Rust 同款文本数组（`第 N 行：…`）。
 pub fn compile(
   program : @ast.ProgramNode,
-) -> (@bytecode.CompileOutput?, Array[String]) {
+) -> (@bytecode.CompileOutput?, Array[GenError]) {
   let gen = BytecodeGen::new()
   gen.generate(program)
 }
@@ -1172,7 +1197,7 @@ pub fn compile(
 /// （libc 自举的 stub 口径见 `scripts/libc_boot_diff`）。
 pub fn compile_library(
   program : @ast.ProgramNode,
-) -> (@bytecode.CompileOutput?, Array[String]) {
+) -> (@bytecode.CompileOutput?, Array[GenError]) {
   let gen = BytecodeGen::with_mode(true)
   gen.generate(program)
 }

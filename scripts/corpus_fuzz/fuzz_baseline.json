@@ -63,14 +63,14 @@
     "baseline/e2_include_guarded.c|nested2flat": {
       "bucket": "AGREE"
     },
-    "baseline/enum_non_continuous.c|cast_strip": {
-      "bucket": "CLANG_REJECT"
-    },
-    "baseline/enum_non_continuous.c|init_partial": {
+    "baseline/func_declared_not_defined.c|brace_wrap": {
       "bucket": "AGREE"
     },
-    "baseline/enum_non_continuous.c|nested2flat": {
-      "bucket": "CLANG_REJECT"
+    "baseline/func_declared_not_defined.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/func_declared_not_defined.c|static_inject": {
+      "bucket": "AGREE"
     },
     "baseline/function_pointer_decl.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
@@ -797,7 +797,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_150.c|static_inject": {
-      "bucket": "AGREE",
+      "bucket": "WRONG_VALUE",
       "note": "UB 抖动：static_inject 使 RPN 栈游标 top 跨调用残留，第二次/第三次 evalRPN 读未初始化堆内存（越界 UB），输出由脏值决定、双侧无一致义务——#339 P3-3 定性 WRONG_VALUE 与冻结轮 AGREE 双观测 + 四次 CI 全量真跑 3 AGREE 1 WRONG_VALUE（run 40633695540）实证；#340 批起豁免桶对账（存在性对账保留）",
       "volatile": true
     },

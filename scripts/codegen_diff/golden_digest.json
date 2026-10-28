@@ -201,6 +201,7 @@
         "forward_decl_usage.c": "34b5bf79",
         "fprintf_basic.c": "853d5fe4",
         "fprintf_persist.c": "631bd070",
+        "func_declared_not_defined.c": "52ad6535",
         "func_many_params.c": "2ba219ee",
         "func_ptr_param_decay.c": "f6d41aad",
         "func_redefinition.c": "a29681ba",
@@ -1158,6 +1159,10 @@
         },
         "fprintf_persist.c": {
           "result_sha": "8f42e3a3bd0c7ecd"
+        },
+        "func_declared_not_defined.c": {
+          "fail": true,
+          "fail_stage": "gen"
         },
         "func_many_params.c": {
           "result_sha": "d6e2e0ea3958f995"

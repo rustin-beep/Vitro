@@ -349,9 +349,12 @@ fn BytecodeGen::gen_expr(self : BytecodeGen, expr : @ast.Expr) -> Unit {
                       // undefined），Vitro 一体化如实报「已声明但未定义」；
                       // 旧文案「未声明的标识符」是谎报（声明明明在场，#202
                       // 修复验收时曾被误读为 include 缺口——include 无辜：
-                      // 磁盘/文本直写同病）。
+                      // 磁盘/文本直写同病）。#223（2026-10-25）：E0 兜底
+                      // 升正式码 E3089——下游按码查卡（fix_suggestion 自动
+                      // 挂接）不再落空。
                       if self.declared_only.contains(name) {
-                        self.report_error(
+                        self.report_coded_error(
+                          E3089_FunctionDeclaredNotDefined,
                           "函数 '\{name}' 已声明但未定义——缺少函数体，调用无法生成（原型声明须有定义或由链接提供）",
                           loc,
                         )

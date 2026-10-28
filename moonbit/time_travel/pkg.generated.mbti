@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub const DEFAULT_MAX_CHECKPOINTS : Int = 50
+
 pub fn[P : SourceLineProvider] collect(@vm.VitroVM, P, UInt64, Int, AlgoInferCtx, code_line? : Int?, code_file? : String?) -> @protocol.StepPayload
 
 pub fn infer_semantic_label(Int, Array[@protocol.ApiVariableSnapshot]?, String, String, Bool) -> String

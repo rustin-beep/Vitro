@@ -138,8 +138,8 @@ VM 是为单步执行与时间旅行可观测性构建的**解释器**，不以�
 ## 验证
 
 ```bash
-moon check && moon test    # 925 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308；2026-10-26 #314-#318 五案批 +2 裸域 +1 native-only；#330/#336 四段批 +1 裸域 wbtest；#338 批三 vprintf 族 +8、批四零测试包 +9 裸域）
-                           # moon test --target native 全量 1088（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准）
+moon check && moon test    # 906 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308；2026-10-26 #314-#318 五案批 +2 裸域 +1 native-only；#330/#336 四段批 +1 裸域 wbtest；2026-10-27 #87 seek 几何化淘汰+重放快道 +5）
+                           # moon test --target native 全量 1064（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准）
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

@@ -39,8 +39,9 @@
     },
     {
       "method": "config.set",
-      "brief": "写会话配置（preset 档位一键：default|algo|tiny——#133；max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch 同帧可覆盖单项；未知键 fail loud #105；超上界 fail loud（可表示域）；低下界钳制回包带 clamped #94）",
-      "example": "{\"preset\":\"algo\"}"
+      "brief": "写会话配置（preset 档位一键：default|algo|tiny——#133，algo 档带 max_checkpoints=200；max_steps/call_depth_limit/deterministic/quarantine_budget/output_budget/input_mode_batch/max_checkpoints〔#87 检查点保留数——seek 重放距离的锚点密度旋钮，1..=1000 内存防线〕同帧可覆盖单项；未知键 fail loud #105；超上界 fail loud（可表示域/内存防线）；低下界钳制回包带 clamped #94）",
+      "example": "{\"preset\":\"algo\"}",
+      "params": "max_steps:int(1..=2147483647)；max_checkpoints:int(1..=1000)"
     },
     {
       "method": "contracts",

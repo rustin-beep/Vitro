@@ -362,6 +362,10 @@ test "config_preset_algo_expands" {
     msg="algo 档深度 100K",
   )
   assert_true(
+    g.contains("\"max_checkpoints\":200"),
+    msg="algo 档检查点保留数 200（#87 批——大搜索时间轴采样密度）",
+  )
+  assert_true(
     g.contains("\"preset\":\"algo\""),
     msg="config.get 回显 algo 档",
   )
@@ -432,4 +436,69 @@ test "config_preset_default_resets" {
     g.contains("\"max_steps\":10000000") && g.contains("\"preset\":\"default\""),
     msg="default 档拉回缺省（档内显式展开非空操作）",
   )
+}
+
+///|
+/// #87 批锚：config.set max_checkpoints 全生命周期——写入/回显/preset
+/// 推断、step.begin 建 engine 应用、现存 engine 即时应用、低下界钳制
+/// （clamped 显式）、上界 1000 fail loud（内存防线）。
+test "config_max_checkpoints_lifecycle" {
+  let s = @session.Session::new()
+  // 写入 + 回显（其余键全缺省 ⇒ preset 诚实推断 custom）
+  let (r1, _) = serve_handle(
+    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":200}}",
+  )
+  assert_true(r1.contains("\"ok\":true"), msg="合法值应 ok")
+  assert_true(r1.contains("\"clamped\":[]"), msg="200 无钳制")
+  let (g1, _) = serve_handle(s, "{\"id\":2,\"method\":\"config.get\"}")
+  assert_true(g1.contains("\"max_checkpoints\":200"), msg="get 回显 200")
+  assert_true(
+    g1.contains("\"preset\":\"custom\""),
+    msg="单键改档名诚实推断 custom",
+  )
+  // compile + step.begin：建 engine 时应用会话值
+  let (c, _) = serve_handle(
+    s, "{\"id\":3,\"method\":\"compile\",\"params\":{\"source\":\"int main() { int a = 1; a = a + 1; return a; }\\n\"}}",
+  )
+  assert_true(c.contains("\"ok\":true"), msg="编译须成功")
+  ignore(serve_handle(s, "{\"id\":4,\"method\":\"step.begin\"}"))
+  guard s.unified is Some(e1) else { fail("engine 须挂 Session") }
+  assert_eq(
+    e1.checkpoints.max_checkpoints,
+    200,
+    msg="step.begin 应用会话值",
+  )
+  // 现存 engine 即时应用（不等下次 step.begin）
+  let (r2, _) = serve_handle(
+    s, "{\"id\":5,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":300}}",
+  )
+  assert_true(r2.contains("\"ok\":true"))
+  guard s.unified is Some(e2) else { fail("engine 存活") }
+  assert_eq(
+    e2.checkpoints.max_checkpoints,
+    300,
+    msg="现存 engine 即时应用",
+  )
+  // 低下界钳 1 + clamped 显式（engine 与回显同步钳）
+  let (r3, _) = serve_handle(
+    s, "{\"id\":6,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":0}}",
+  )
+  assert_true(
+    r3.contains("\"clamped\":[\"max_checkpoints\"]"),
+    msg="钳制显式",
+  )
+  guard s.unified is Some(e3) else { fail("engine 存活") }
+  assert_eq(e3.checkpoints.max_checkpoints, 1, msg="engine 同步钳 1")
+  let (g3, _) = serve_handle(s, "{\"id\":7,\"method\":\"config.get\"}")
+  assert_true(g3.contains("\"max_checkpoints\":1"), msg="get 回显钳后值")
+  // 上界 1000 fail loud（内存防线：每约 5 个检查点 1MB Full 快照）
+  let (r4, _) = serve_handle(
+    s, "{\"id\":8,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":1001}}",
+  )
+  assert_true(
+    r4.contains("\"ok\":false") && r4.contains("max_checkpoints 值不可用"),
+    msg="超上界 fail loud（静默钳制=内存防线缺口）",
+  )
+  guard s.unified is Some(e4) else { fail("engine 存活") }
+  assert_eq(e4.checkpoints.max_checkpoints, 1, msg="失败帧不改变现值")
 }

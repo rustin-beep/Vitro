@@ -513,3 +513,131 @@ test "b3rv_code_line_matches_semantic_line" {
     assert_true(cl >= 0 && cl <= 3, msg="code_line 在行域内")
   }
 }
+
+///|
+/// #87 锚 L（重放快道·红锚）：窗口边距之外的中间步不推帧——预算在快道段
+/// 中途熔断时窗口必须仍空。**今日行为（密采重放）此处窗口已积 ~100 帧
+/// ⇒ 本锚红**。构造：K=6（锚点间距 ~4k）+ 窗口 100 + target 10_000 →
+/// 快道段 [cp≈8k, 9_901) 约 1.9k 步；预算断在段中点。
+test "engine_seek_fastpath_budget_break_empty_window" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(20_000))
+  let e = UnifiedEngine::with_limits(100_000, 100, 0.5)
+  e.checkpoints.set_max_checkpoints(6)
+  let src = fake_src()
+  guard e.run_batch(vm, src, 20_001) is Ok(_) else { fail("run 应 Ok") }
+  let target = 10_000
+  guard e.checkpoints.nearest(target) is Some((cp, _)) else {
+    fail("nearest(\{target}) 必须命中")
+  }
+  let dense_from = target - 100 + 1
+  assert_true(
+    cp + 50 < dense_from,
+    msg="构造前提：快道段非平凡（cp=\{cp}）",
+  )
+  let budget = cp + (dense_from - cp) / 2
+  e.set_max_steps(budget)
+  let sk = e.seek_to(target, vm, src)
+  assert_false(sk.success, msg="预算熔断应失败")
+  guard sk.error is Some(m) else { fail("错误文案必在") }
+  assert_true(m.contains("重放步数超过限制"))
+  // 快道段零推帧：窗口 reset_to(cp) 后未积任何中间帧
+  assert_eq(
+    e.frames.length(),
+    0,
+    msg="#87 快道：预算中断时窗口仍空（中间帧不推窗）",
+  )
+  // VM 停在预算步（快道照常执行、只跳过 collect/推帧）
+  assert_eq(vm.step_count, budget)
+}
+
+///|
+/// #87 锚 M（重放快道·等价回归）：快道 seek 与密采 seek 的目标帧及窗口
+/// 帧逐字段一致——跳过中间帧 collect 不改变可观测输出（vis_events 排水
+/// / algo 死状态跳过的等价面）。e1 默认参数全程密采（dense_from=8_001
+/// < cp），e2 快道 ~1.9k 步 + 密采尾段 100 帧。
+test "engine_seek_fastpath_dense_equivalence" {
+  // 密采基准
+  let vm1 = @vm.VitroVM::new()
+  vm1.load_program(nop_program(20_000))
+  let e1 = UnifiedEngine::new()
+  let src1 = fake_src()
+  guard e1.run_batch(vm1, src1, 20_001) is Ok(_) else { fail("run1 应 Ok") }
+  let r1 = e1.seek_to(10_000, vm1, src1)
+  assert_true(r1.success)
+  // 快道引擎：构造前提（cp < dense_from=9_901 ⇒ 快道段非空）
+  let vm2 = @vm.VitroVM::new()
+  vm2.load_program(nop_program(20_000))
+  let e2 = UnifiedEngine::with_limits(100_000, 100, 0.5)
+  e2.checkpoints.set_max_checkpoints(6)
+  let src2 = fake_src()
+  guard e2.run_batch(vm2, src2, 20_001) is Ok(_) else { fail("run2 应 Ok") }
+  guard e2.checkpoints.nearest(10_000) is Some((cp2, _)) else {
+    fail("nearest 必须命中")
+  }
+  assert_true(cp2 < 9_901, msg="构造前提：快道段非空（cp2=\{cp2}）")
+  let r2 = e2.seek_to(10_000, vm2, src2)
+  assert_true(r2.success)
+  assert_true(r2.error is None)
+  // 返回帧等价（step_index/code_line/语义标签/heatmap）
+  guard r1.payload is Some(p1) else { fail("r1 帧必在") }
+  guard r2.payload is Some(p2) else { fail("r2 帧必在") }
+  assert_eq(p2.step_index, p1.step_index)
+  assert_eq(p2.code_line, p1.code_line)
+  assert_eq(p2.semantic_label, p1.semantic_label)
+  assert_eq(p2.heatmap_count, p1.heatmap_count)
+  // 窗口帧等价：e2 窗 [9_901..10_000] 与 e1 密采同段逐帧一致
+  assert_eq(e2.frames.start_step(), 9_901)
+  assert_eq(e2.frames.length(), 100)
+  for k = 0; k < 100; k = k + 1 {
+    guard e1.frames.frame_at(9_901 + k) is Some(f1) else {
+      fail("e1 帧 \{9_901 + k} 必在")
+    }
+    guard e2.frames.frame_at(9_901 + k) is Some(f2) else {
+      fail("e2 帧 \{9_901 + k} 必在")
+    }
+    assert_eq(f2.step_index, f1.step_index)
+    assert_eq(f2.code_line, f1.code_line)
+    assert_eq(f2.semantic_label, f1.semantic_label)
+    // 空帧占位（code_line=0）不可现——缺口填充放大是快道的已知陷阱
+    assert_true(
+      f2.code_line >= 1,
+      msg="帧 \{k} 空帧占位泄漏（缺口填充未对齐）",
+    )
+  }
+  // VM 终态等价（重放计数一致 = 续跑连续性同构）
+  assert_eq(vm2.step_count, vm1.step_count)
+  assert_eq(vm2.step_count, 10_001)
+  assert_eq(vm2.get_current_line(), vm1.get_current_line())
+}
+
+///|
+/// #87 锚 N（重放快道·越终结边界回归）：target 超程序终步一个窗口以上
+/// 时重放早遇 Finished 于密采段之前——快道版输出面与密采版一致
+///（success + 终帧 payload + finish_replay 钳位空窗），差异仅在旧版
+/// 白造 [cp..终步] 全部中间帧。锚 H（target < window）形态 dense_from
+/// 钳 0，快道自然关闭，不在本锚面。
+test "engine_seek_fastpath_beyond_end_regression" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(2000))
+  let e = UnifiedEngine::with_limits(100_000, 100, 0.5)
+  let src = fake_src()
+  guard e.run_batch(vm, src, 2001) is Ok(r) else { fail("run 应 Ok") }
+  assert_true(r.finished)
+  // seek(2500)：终步 2000 < dense_from 2401 → 快道早终结分支
+  let sk = e.seek_to(2500, vm, src)
+  assert_true(
+    sk.success,
+    msg="越终结 seek 以终步为终点 success（§4.2 第 4 步）",
+  )
+  guard sk.payload is Some(p) else { fail("终帧必在") }
+  assert_eq(p.step_index, 2000)
+  // finish_replay(2500) 的 want_start=2401 钳位把终步帧一并裁出——空窗
+  //（与密采版同形；差异只在不白造中间帧）
+  assert_eq(
+    e.frames.length(),
+    0,
+    msg="越终结窗口被 want_start 钳位裁空",
+  )
+  assert_eq(vm.step_count, 2000, msg="Finished 探测步不推进计数")
+}

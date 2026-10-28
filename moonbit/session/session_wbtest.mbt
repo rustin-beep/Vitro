@@ -64,12 +64,14 @@ test "session_config_echo_roundtrip" {
 
 ///|
 test "session_config_apply_and_from_vm" {
-  // apply/from 投影往返
+  // apply/from 投影往返（max_checkpoints 是 engine 专属——不进 VM 投影，
+  // #87 批暴露后的字段在场性在此锚定）
   let vm = @vm.VitroVM::new()
   let cfg : SessionConfig = {
     max_steps: 777,
     call_depth_limit: 33,
     deterministic: false,
+    max_checkpoints: 120,
   }
   cfg.apply_to_vm(vm)
   assert_eq(vm.max_steps, 777)
@@ -78,6 +80,8 @@ test "session_config_apply_and_from_vm" {
   assert_eq(back.max_steps, 777)
   assert_eq(back.call_depth_limit, 33)
   assert_false(back.deterministic)
+  // engine 专属字段不随 VM 投影——from_vm 取缺省
+  assert_eq(back.max_checkpoints, @time_travel.DEFAULT_MAX_CHECKPOINTS)
 }
 
 ///|

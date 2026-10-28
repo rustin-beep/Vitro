@@ -12,7 +12,7 @@
       "divergence": 0,
       "rescued": 1
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。E1021×2 真子集边界豁免；union.c #278 重冻；vla/variable/struct/pointer 四文件 clang 判定口径统一重冻（-Wno-incompatible-pointer-types 跨版本稳定口径，2026-10-24 CI 接线批）；commonsym.c #343 重冻（tentative 定义共存修复——`int x; int x=5;`/`int y=7; int y;` 误报 E3001×2 消除，vitro 更贴 clang）。",
+    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。E1021×2 真子集边界豁免；union.c #278 重冻；vla 等 4 文件 clang 判定口径统一重冻（2026-10-24）；commonsym.c #343 重冻（tentative 共存修复消 E3001×2 误报）。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "total": 41,
     "source_fork": "https://github.com/RunThem/chibicc-repo",

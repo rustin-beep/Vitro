@@ -447,6 +447,11 @@ vitro/engine/teaching/content_data vitro/engine/teaching/assets texts_json
 vitro/engine/teaching/content_data vitro/engine/util json_parse
 vitro/engine/teaching/content_data vitro/engine/util str_cmp
 vitro/engine/teaching/langpack vitro/engine/teaching/content_data baked_payload_json
+vitro/engine/teaching/steps vitro/engine/ast If
+vitro/engine/teaching/steps vitro/engine/ast Identifier
+vitro/engine/teaching/steps vitro/engine/ast Block
+vitro/engine/teaching/steps vitro/engine/ast Binary
+vitro/engine/teaching/steps vitro/engine/ast Assign
 vitro/engine/teaching/steps vitro/engine/ast BinaryOp
 vitro/engine/teaching/steps vitro/engine/ast Expr
 vitro/engine/teaching/steps vitro/engine/ast FuncDecl
@@ -489,6 +494,7 @@ vitro/engine/time_travel vitro/engine/protocol StepPayload
 vitro/engine/time_travel vitro/engine/protocol VisEvent
 vitro/engine/time_travel vitro/engine/source SourceLoc
 vitro/engine/time_travel vitro/engine/teaching/assets trap_messages
+vitro/engine/time_travel vitro/engine/teaching/steps is_swap_assign_line
 vitro/engine/time_travel vitro/engine/teaching/steps InferEnv
 vitro/engine/time_travel vitro/engine/teaching/steps VarSnapshot
 vitro/engine/time_travel vitro/engine/teaching/steps infer_algorithm_step

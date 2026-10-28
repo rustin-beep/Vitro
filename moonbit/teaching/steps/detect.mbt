@@ -96,7 +96,7 @@ pub fn detect_sorting(
       features.has_nested_loops &&
       features.has_array_compare &&
       features.has_swap &&
-      features.max_loop_depth >= 2 &&
+      features.has_nested_loops &&
       features.has_adjacent_index_compare
     ) {
     matches.push(
@@ -124,7 +124,7 @@ pub fn detect_sorting(
     features.has_nested_loops &&
     features.has_array_compare &&
     features.has_min_max_track &&
-    features.max_loop_depth >= 2 &&
+    features.has_nested_loops &&
     !features.has_swap_in_inner_loop
   if sel_name || sel_struct {
     matches.push(
@@ -147,7 +147,7 @@ pub fn detect_sorting(
     (
       features.has_nested_loops &&
       features.has_shift_pattern &&
-      features.max_loop_depth >= 2 &&
+      features.has_nested_loops &&
       !features.has_swap
     ) {
     matches.push(

@@ -36,6 +36,8 @@ pub fn has_word(String, String) -> Bool
 
 pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
 
+pub fn is_swap_assign_line(String) -> Bool
+
 // Errors
 
 // Types and methods

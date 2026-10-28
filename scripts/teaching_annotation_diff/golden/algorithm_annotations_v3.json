@@ -435,8 +435,8 @@
       "display_name": "冒泡排序",
       "phase": "swap",
       "desc": "交换 arr[0]↔arr[1]，较大的元素向右移动",
-      "code_line": 7,
-      "src": "int temp = arr[j];"
+      "code_line": 8,
+      "src": "arr[j] = arr[j + 1];"
     },
     {
       "algorithm": "bubble_sort",
@@ -483,8 +483,8 @@
       "display_name": "冒泡排序",
       "phase": "swap",
       "desc": "交换 arr[2]↔arr[3]，较大的元素向右移动",
-      "code_line": 7,
-      "src": "int temp = arr[j];"
+      "code_line": 8,
+      "src": "arr[j] = arr[j + 1];"
     },
     {
       "algorithm": "bubble_sort",
@@ -629,8 +629,8 @@
       "display_name": "冒泡排序",
       "phase": "swap",
       "desc": "交换 arr[0]↔arr[1]，较大的元素向右移动",
-      "code_line": 17,
-      "src": "int temp = bucket[i][k];"
+      "code_line": 18,
+      "src": "bucket[i][k] = bucket[i][k + 1];"
     },
     {
       "algorithm": "bubble_sort",
@@ -1865,8 +1865,8 @@
       "display_name": "堆排序",
       "phase": "swap",
       "desc": "交换元素，调整堆结构",
-      "code_line": 12,
-      "src": "int temp = arr[i];"
+      "code_line": 13,
+      "src": "arr[i] = arr[largest];"
     },
     {
       "algorithm": "heap_sort",
@@ -2437,8 +2437,8 @@
       "display_name": "选择排序",
       "phase": "swap",
       "desc": "将最小元素交换到位置 0",
-      "code_line": 10,
-      "src": "int temp = arr[i];"
+      "code_line": 11,
+      "src": "arr[i] = arr[minIdx];"
     },
     {
       "algorithm": "selection_sort",

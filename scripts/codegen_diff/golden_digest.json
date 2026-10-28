@@ -174,6 +174,7 @@
         "euler_5_sol3.c": "422086e3",
         "exit_function.c": "5ae58a28",
         "extern_func.c": "d1c8c55c",
+        "extern_predecl_addr_init.c": "3e1b64fa",
         "extern_var.c": "7445e769",
         "factorial.c": "3e707e03",
         "fclose_leak.c": "858d7156",
@@ -213,6 +214,7 @@
         "function_pointer_multi_level.c": "4cb7c8f8",
         "function_pointer_return_ptr.c": "612b6d2b",
         "function_pointer_typedef.c": "03251b3f",
+        "fwd_ref_static_init.c": "22e94b2b",
         "gcd_euclid.c": "2381a5a0",
         "gcd_euclidean.c": "e035c2fc",
         "global_string_pointer.c": "92c98984",
@@ -1074,6 +1076,9 @@
         "extern_func.c": {
           "result_sha": "d9daa23f40fa049d"
         },
+        "extern_predecl_addr_init.c": {
+          "result_sha": "71fded29f299b732"
+        },
         "extern_var.c": {
           "result_sha": "d14a9ab6853ea1f5"
         },
@@ -1192,6 +1197,10 @@
         },
         "function_pointer_typedef.c": {
           "result_sha": "b4231751c3c008c4"
+        },
+        "fwd_ref_static_init.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "gcd_euclid.c": {
           "result_sha": "0aa80900851510ac"

@@ -1,5 +1,134 @@
 ## [Unreleased]
 
+### fix(pr-review): PR #339 审阅处置批——P1 文案实证锚 + P2 .md 坏链闸 + P3×5（2026-10-27）
+
+- **P1 E1006 文案举例全不成立**（`#pragma`/`__attribute__`/VLA 实测零
+  诊断或错码——文案采信转述未逐一实证）：catalog 文案与《C 子集支持
+  清单》触发形态节重写为**四条亲验真锚**（成员存储类 / enum 初始化器
+  非常量 / 整数字面量超范围 / `_Static_assert` 非字符串第二参）；
+  清单页补「并非所有未支持面都报 E1006」的诚实边界（`__attribute__`
+  → E2005、内联汇编 → E3036、部分扩展静默跳过）。
+- **P2 断链防线成真**：`scanMarkdownLinks` 入 facts 坏引用闸（.md 相对
+  链接存在性；豁免外部 URL/锚点/绝对路径/archive；中文文件名
+  decodeURI）——首跑抓 5 处存量坏链顺修（README 三处归档改名 +
+  INCIDENTS 相对深度错 + README.mbt.md 归档未跟）；J9 注入假链红/
+  清除绿双态；node:test 双锚。
+- **P3-1 serve 帧锚补齐**（1/4 exe → serve 面有牙）：smoke 新增
+  B[serve 帧字节]（两帧+shutdown 零 0d，突变红实证）；CI cli_smoke
+  步连坐构建 cmd/serve。
+- **P3-2 索引子表达式前向**（`&arr[j]` 的 j 漏检）：Index 臂索引裸
+  标识符过守卫（wbtest 双锚，正负各一）；函数名前向（funcs 表 Pass 2
+  全登记无声明序）评论登记 #337。
+- **P3-3 fuzz 采样治本**：DetRand(seed).intn(len) 数量敏感（+2 语料
+  → 19/20 种子换血 → 带差异桶的种子掉出监测面）改 **sha256(path)
+  升序取前 N 内容寻址**；加**基线僵尸计数**（seed 不在采样集即红，
+  gen: 段豁免）逼重冻；基线重冻（旧采样全量失位，114 新指纹定性：
+  107 AGREE + 5 CLANG_REJECT 变体破坏域 + 1 VITRO_TRAP〔lc_108
+  div2shift 优先级破坏→无限递归双侧栈溢出〕+ 1 WRONG_VALUE〔lc_150
+  static_inject→top 跨调用残留→越界 UB，双侧无一致义务〕——均为
+  变体语义破坏域非引擎缺陷）。freeze 落盘同步剔除采样集外种子条目
+  （旧 1401 含 1197 条 DetRand 时代死条目——固定采样后永不再跑到），
+  基线终态 **318 条 = 本轮真跑全量**，校验 PASS（无新指纹/桶恶化/僵尸）。
+- **P3-4 采集失败可观测**：replay/serve_smoke 两 collector 失败分支
+  stderr 补打原因+输出尾（note 此前只进 facts.json 对 CI 日志不可见）。
+- **P3-5 E3067 错码 cause**：删「函数指针与对象指针混用」（实测走
+  E3044，误挂 E3067）。
+- **数字勘误**：前节 fuzz 基线实为 1374→1401 = **+27**（18 AGREE +
+  9 CLANG_REJECT），非 14——后台任务首段输出误当全量（PR 正文同误，
+  已在本节修正口径）。
+
+### fix(teaching+docs): #260 E1006 断链指引落点 + #259 教学卡 C++ 残留清除（2026-10-27）
+
+- **#260**：E1006「请查阅支持列表」在 docs/current 全域零命中（教学链
+  断点）。新建[《C 子集支持清单》](docs/current/05-教学体验/C子集支持清单.md)
+  ——**导航页形态**（聚合《已知限制与差异》③④/《标准库支持矩阵》/
+  error_catalog 三权威源，不复制内容防过期）；E1006 文案改指清单名+
+  内嵌常见触发形态（#pragma 族/__attribute__/成员存储类/声明符超限）
+  ——学生拿到提示后有路可走。清单项维护约定成文（E1006 生产点变更
+  批次连坐；断链由 facts 坏引用闸按相对链接覆盖——69 份文档 0 坏引
+  实锚）。
+- **#259**：E3066 删「（以及 C++ 中的 lambda / 可调用对象）」；E3067
+  整段 C++ 继承/转型规则（向上/向下转型、static_cast/dynamic_cast——
+  C 里不存在且是不可执行建议）重写为 C 口径（void* 与任意对象指针
+  可隐式互转、无关类型指针显式转换）。E1022（模板实例化超限）实测
+  已不在 catalog 114 条（#233 域死卡已清，本条只涉活码正文）。
+- **连坐**：catalog.json 真源三卡 → gen_diag 再生成 + -check 绿；
+  js 臂 error_catalog 复核三卡新文案生效；catalog_closure 双向闭合
+  绿；moon test 906/906；docs/README 索引连坐。
+
+### fix(scripts+ci): #298 facts check 待采集假绿治本——strict 待采集即红 + bookkeeping 前置 --run 采集（2026-10-27）
+
+- **病**：check 遇「待采集」（键真值缺位）只提示不判红——CI fresh
+  环境（bookkeeping slice 无前置采集，无 reports/facts.json）27 键
+  待采集静默跳过漂移判定 → 漂移 0 → 假绿（master run 40409823786
+  实锤，「MoonBit 测试数」21 处引用的漂移防护整体失效；本地有缓存
+  故不红——CI 绿 ≠ 对账通过）。
+- **修（判定器）**：strict 下 `pendingN > 0` 进 exit 1（与超龄/suspect
+  同层；非 strict 保持提示——本地快查逃生门，与 `--allow-stale` 对称）；
+  .mts 现役面 + Go 回退面（main.go）对称同步。J9：fresh 形态
+  （删 facts.json）修前 rc=0 / 修后 rc=1 实锚。
+- **修（CI 接线）**：bookkeeping 的 facts 步改 `--run --strict check`
+  ——采集成本（moon test ×2 + diff_gate ×8 + replay/serve_smoke）与
+  gen slice 既有 `facts facts` 步等价（matrix 并行不阻塞总时长）。
+- **连坐**：`moonbit_test_passed_native` 采集超时 5min→15min——native
+  全量实测 ≈10 分钟（#308 批自注），5min 常态超时会让 strict 判红
+  永红；本机复采 native 键 ok（1063）+ strict 全绿 + 键集对账零丢失。
+
+### fix(cli): #335 native 帧通道行尾治本——main 前置二进制模式 + smoke 帧通道字节锚（2026-10-27）
+
+- **病**：CLI 帧通道（`api --batch`/serve 的 println 响应行）不走
+  #315 的四 write stub（首次调用 `_setmode` 覆盖不到 println 链），
+  Windows CRT 文本模式把每个 `\n` 改写 `\r\n`——native 帧尾 `7d 0d 0a`
+  vs js/wasm `7d 0a`，NDJSON 线协议逐字节判分必红（#329 治本批尾巴，
+  PR 审阅 P3-2 定档）。
+- **修（可移植形态）**：四 C stub（cmd/vitro|run|step 的 stdout_stub.c
+  三份同源 + cmd/serve/serve_stdio.c）各导出幂等
+  `moonbit_vitro_ensure_binary_mode()`（stdout/stderr 双 fd 切
+  `_O_BINARY`；**stdin 不切**——serve 的 fgets 行读取面维持 CRT 折行 +
+  手剥 `\r\n` 既有归一），四 exe 的 main.mbt 首行前置调用。**首版
+  `__attribute__((constructor))` 被 moon test --target native 的 stub
+  编译链击穿**（固定 MSVC 探测，MOON_CC=clang 不覆盖——C2143/C2091
+  编译红实测；GNU 属性不可移植），改显式导出 + main 首行调用双编译器
+  兼容，MSVC 链 native 全量 1063/1063 复绿。捎带销案：fs_native.c:207
+  的 fprintf(stderr) 绕 stub 面（stderr fd 已进程级二进制）。
+- **锚**：`vitro_cli_smoke` 新增 B[帧通道字节]——三臂同喂 batch 序列
+  原始 stdout 逐位比对零归一 + native 零 0d（突变证红双形态：constructor
+  版摘属性 / main 前置版摘调用，均 317B vs 314B 三帧各 +1 CR 实锤）；
+  spec §1 帧行尾字节契约成文（下游免 `TrimRight(l,"\r")`，存量归一器
+  幂等无害）。
+
+### fix(typeck): #331 文件作用域初始化器前向引用守卫 + pending_addr_chain_inits 死代码嫌疑证伪（2026-10-27）
+
+- **病**：`int *p = &s; int s;`（clang 报 use of undeclared
+  identifier）被 Vitro 零诊断静默接受——typeck Pass 2.5 两段式（先全
+  量登记 globals 再查初始化器）破坏 C11 6.2.1p4 声明点语义；地址常量
+  族（`&s` / 数组名 / `&s.x` 链）经 codegen pending 通道回填成合法地址
+  绕过常量性检查（标量前向引用已被 E3075 拦截，洞只在地址族——
+  #264 时代 diagnose_static_init 的 Addr 臂整棵放行）。
+- **修**：守卫按 **globals 数组序**（= 声明点序，include 展开序天然
+  正确）判前向——`global_first_decl_idx`（首声明序表，tentative/extern
+  保持首值）+ `static_init_site_idx`（检查语境位，仅 Pass 2.5 文件
+  作用域段激活；函数内 static 走 Pass 4 不进守卫）；Addr 臂剥链取
+  base + 数组名放行臂各接 `check_fwd_ref_decl_order`，前向报 E3023
+  （对齐 clang 文案）。负锚三面全绿：extern 先行声明（`extern int e;
+  int *p = &e;`——pending 回填活通道）、后向引用、函数内 static 链。
+- **死代码嫌疑证伪（突变实证）**：pending_addr_inits/chain 通道在
+  **合法 C 下可达**——extern 先行声明形态（codegen Pass 1 的 extern
+  循环在非 extern 之后，处理 p 时 e 未登记 → Deferred → 尾轮回填）
+  双臂 rc=7 与 clang 一致；短路 pending 后同探针 NULL 解引用 TRAP
+  坐实依赖。不摘代码，#333 销案口径（防御层）维持。
+- **语料 ×2**：fwd_ref_static_init.c（三形态前向——双侧编译失败
+  match）+ extern_predecl_addr_init.c（合法面负锚：extern 先行/后向
+  /函数内 static 链，双臂 `7 10 5 10 42` 对 clang）；wbtest 红锚
+  ×5（三正两负，J9 修前三红证）；typeck +5 测试（全仓 906 裸口径）。
+- **拆面 #337**：函数体前向引用（`int main(){return s;} int s=3;`
+  静默）同病根不同面（Pass 2.5 全登记 vs Pass 3/4 可见性），独立
+  处置。
+- **义务链**：五家 digest 冻结（typeck/codegen 存量重算零漂移）+
+  clang_direct 双语料 SAME + facts `--strict` 漂移 0 + fuzz 基线
+  收编（+2 语料换样 14 新指纹：9 AGREE + 5 CLANG_REJECT 变体剥
+  include 隐式声明域——#336 同族定性）。
+
 ### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
 
 - **P2-1 cast 包裹地址常量链**（`(int *)&garr[1]` 旧三臂落静默 0 ⇒ 运行

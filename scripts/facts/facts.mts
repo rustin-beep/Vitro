@@ -367,12 +367,21 @@ function runCmdEnv(root: string, timeoutMs: number, env: NodeJS.ProcessEnv, ...a
   return { out: (r.stdout ?? "") + (r.stderr ?? ""), code: r.status, ok: true };
 }
 
+// tailLines：采集失败 stderr 诊断用——输出末 3 行压一行（PR #339 审阅 P3-4）。
+function tailLines(out: string): string {
+  const lines = out.trimEnd().split("\n");
+  return lines.slice(-3).join(" | ").slice(0, 200);
+}
+
 function collectReplay(root: string, facts: Record<string, Fact>): void {
   const how = "node scripts/replay/replay_s1_s5.mts -moonbit --anchor <short-hash>";
   // 2026-10-25 #307 P2-2 连坐：Go 版裸调（无臂实参）在 rust 臂退役后恒 exit 2
   // （用法错）——现役须显式 -moonbit（native cmd/serve 臂，需先构建产物）。
   const r = runCmd(root, 5 * 60_000, "node", "scripts/replay/replay_s1_s5.mts", "-moonbit");
+  // PR #339 审阅 P3-4（2026-10-27）：失败可观测——note 只进 facts.json 对
+  // CI 日志不可见（「真值永久缺位」病族的静默面），stderr 补打原因+输出尾。
   if (!r.ok) {
+    console.error(`[facts] replay_assertions 采集失败：node 不可用或超时——${firstLine(r.out)}`);
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how, "node 不可用或超时");
     return;
   }
@@ -383,6 +392,7 @@ function collectReplay(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["replay_assertions"] = f;
   } else {
+    console.error(`[facts] replay_assertions 采集失败：未解析到汇总行（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
     facts["replay_assertions"] = unavail("条", "scripts/replay/replay_s1_s5.mts", how,
       `未解析到汇总行（exit=${r.code}）`);
   }
@@ -395,7 +405,9 @@ function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
   // 现役须显式 -moonbit（需先构建 release cmd/vitro 产物）。
   const how = "node scripts/serve_smoke/main.mts -moonbit（需先构建 release cmd/vitro）";
   const r = runCmd(root, 5 * 60_000, "node", "scripts/serve_smoke/main.mts", "-moonbit");
+  // PR #339 审阅 P3-4：同 replay——stderr 补打原因（fail loud 可观测）。
   if (!r.ok) {
+    console.error(`[facts] serve_smoke_assertions 采集失败：超时或 node 不可用——${firstLine(r.out)}`);
     facts["serve_smoke_assertions"] = unavail("项", rel, how, "超时或 node 不可用");
     return;
   }
@@ -406,6 +418,7 @@ function collectServeSmoke(root: string, facts: Record<string, Fact>): void {
     f.note = `exit=${r.code}`;
     facts["serve_smoke_assertions"] = f;
   } else {
+    console.error(`[facts] serve_smoke_assertions 采集失败：脚本未自报断言总数（exit=${r.code}）——输出尾：${tailLines(r.out)}`);
     facts["serve_smoke_assertions"] = unavail("项", rel, how, "脚本未自报断言总数");
   }
 }
@@ -477,9 +490,12 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // fs/gateway/cli）——moonbit/README 的 `--target native` 全量句机判锚，
   // 多 PR 计数冲突的解法从「双口径实测 ≈10 分钟」降为「改数+闸逼真值」。
   // 独立键独立采集（裸失败不阻断）；MOON_CC=clang 照纪律 11。
+  // #298（2026-10-27）：超时 5min→15min——native 全量实测 ≈10 分钟
+  // （#308 批自注），5min 常态超时 ⇒ unavailable ⇒ strict 待采集即红
+  // （#298 判定器）会永红；15min 为冷机余量。
   // Go 回退面（facts.go）不含本键——回退时 unavailable 待采集语义安全。
   const howN = "cd moonbit && MOON_CC=clang moon test --target native";
-  const rN = runCmdEnv(path.join(root, "moonbit"), 5 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
+  const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
   if (!rN.ok) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
     return;

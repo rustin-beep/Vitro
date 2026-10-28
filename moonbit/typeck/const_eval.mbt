@@ -479,8 +479,9 @@ fn find_field_ty(
 /// - Call（函数调用）出现在表达式树 → 报（静态初始化域恒非法）
 /// - Identifier 命中普通变量（enum 已折、函数名放行、未声明放行——
 ///   E3023 已报不双报）→ 报
-/// - Unary(Addr, ..) 整棵跳过（地址常量族合法：`&g` / `f` / `&arr[i]`；
-///   `&g` 的静态回填是另一缺陷线，不归 E3075）
+/// - Unary(Addr, ..) 合法（地址常量族：`&g` / `f` / `&arr[i]`）——但
+///   #331（2026-10-27）起 base 标识符做声明序守卫：前向引用（声明点
+///   在后）报 E3023，对齐 clang use-before-declaration
 /// - Index/Member/Deref 裸用（`arr[0]` / `s.x`）与除零等求值失败：
 ///   不报（保守，登记渐进）
 fn TypeChecker::diagnose_static_init(
@@ -522,13 +523,19 @@ fn TypeChecker::diagnose_static_init(
             expr.loc(),
             E3075_StaticInitNotConstant,
           )
+        } else {
+          // #331（2026-10-27）：数组名地址常量的前向引用守卫（声明点
+          // 在当前初始化器所属声明之后 = C11 6.2.1p4 不可见）
+          self.check_fwd_ref_decl_order(name, expr.loc())
         }
       }
     }
     Unary(op, inner, _, _) =>
       if op is @ast.UnaryOp::Addr {
-        // 地址常量族：合法形态不诊断
-        ()
+        // 地址常量族：合法形态不诊断——但 #331：base 标识符做声明序
+        // 守卫（两段式登记下前向引用的 &s / 数组名 / 链形态 base 此前
+        // 被 codegen pending 回填静默接受）
+        self.check_addr_base_decl_order(inner)
       } else {
         self.diagnose_static_init(inner)
       }
@@ -546,6 +553,68 @@ fn TypeChecker::diagnose_static_init(
     InitList(elements, _, _) =>
       for elem in elements {
         self.diagnose_static_init(elem.value)
+      }
+    _ => ()
+  }
+}
+
+///|
+/// #331（2026-10-27）：地址常量初始化器的 base 声明序守卫——剥 Member/
+/// Index 链（`&s.x` / `&sa[1].m`）取尾 base 标识符；链上出现其他节点
+///（Deref 包裹的指针基座等）保守放行（与 codegen eval_global_addr_chain
+/// 的链判定同构）。base 前向引用（首声明序在当前初始化器所属声明之后）
+/// = C11 6.2.1p4 声明点之前不可见，对齐 clang use of undeclared
+/// identifier。site 语境（static_init_site_idx）只在文件作用域检查段
+/// 激活——函数内 static 的初始化器（Pass 4）不进守卫。
+fn TypeChecker::check_addr_base_decl_order(
+  self : TypeChecker,
+  inner : @ast.Expr,
+) -> Unit {
+  let mut cur = inner
+  while true {
+    match cur {
+      Member(obj, _, _, _, _) => cur = obj
+      Index(arr, idx, _, _) => {
+        // PR #339 审阅 P3-2（2026-10-27）：索引子表达式的裸标识符同过
+        // 守卫（`&arr[j]` 的 j 前向漏检——clang 报 use of undeclared）；
+        // 复杂索引表达式（含运算/函数名——函数表无声明序，funcs 全登记
+        // 是 Pass 2 早于 2.5 的既有形态）保守放行，函数名前向挂 #337。
+        match idx {
+          Identifier(name, _, _) =>
+            self.check_fwd_ref_decl_order(name, idx.loc())
+          _ => ()
+        }
+        cur = arr
+      }
+      Identifier(name, _, _) => {
+        self.check_fwd_ref_decl_order(name, cur.loc())
+        break
+      }
+      _ => break
+    }
+  }
+}
+
+///|
+/// #331：前向引用守卫判定单点——名字命中文件作用域首声明序表且其首
+/// 声明序晚于当前检查位点（static_init_site_idx）时报 E3023。不在
+/// global_first_decl_idx 表的名字（函数名 / 局部符号 / 真未声明——后者
+/// E3023 已由 resolve 面另行报出不双报）放行；extern 先行声明（首声明
+/// 序在前）自然通过——codegen 的 pending 回填通道（extern 形态活代码，
+/// #331 销案评论突变实证）不受影响。
+fn TypeChecker::check_fwd_ref_decl_order(
+  self : TypeChecker,
+  name : String,
+  loc : @source.SourceLoc,
+) -> Unit {
+  match (self.global_first_decl_idx.get(name), self.static_init_site_idx) {
+    (Some(first_idx), Some(site)) =>
+      if first_idx > site {
+        self.report_error(
+          "未声明的标识符 '\{name}'（其首次声明位于本初始化器之后——文件作用域初始化器只能引用此前已声明的对象）",
+          loc,
+          E3023_UndeclaredVar,
+        )
       }
     _ => ()
   }

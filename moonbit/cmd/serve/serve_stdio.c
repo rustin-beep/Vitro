@@ -17,6 +17,30 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
+
+/* #335（2026-10-27）：帧通道行尾治本——serve 的响应帧（println 出口）
+ * 不走任何 write stub，Windows CRT 文本模式把每个 \n 静默改写 \r\n
+ * （native 帧尾 0d 0a vs js/wasm 0a，NDJSON 线协议逐字节判分必红；
+ * 与 cmd/vitro|run|step 的 stdout_stub.c 同款导出）。main.mbt 首行调用
+ * （**不用 constructor**——moon test --target native 的 stub 编译链固定
+ * MSVC 探测，GNU 属性 C2143 编译红，2026-10-27 实测）。stdin 不切——
+ * fgets 行读取面维持 CRT 折行 + 下方手剥 \r\n 既有归一。POSIX 无此
+ * 概念。幂等。 */
+void moonbit_vitro_ensure_binary_mode(void) {
+#ifdef _WIN32
+  static int done = 0;
+  if (!done) {
+    _setmode(_fileno(stdout), _O_BINARY);
+    _setmode(_fileno(stderr), _O_BINARY);
+    done = 1;
+  }
+#endif
+}
+
 int moonbit_vitro_serve_read_line(char *buf, int cap) {
     if (buf == NULL || cap <= 0) {
         return -1;

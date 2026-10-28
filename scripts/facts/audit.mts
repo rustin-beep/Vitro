@@ -805,6 +805,11 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
   // 字节序稳定排序是修正，见 #307 审阅 P2②），便于人工顺序核对。
   res.audits = stableSortBy(res.audits, (a, i) => order[i]!);
   res.broken = scanBrokenRefs(root, files);
+  // PR #339 审阅 P2（2026-10-27）：.md 相对链接存在性——纯链接导航页
+  // （#260 支持清单）的「只保链接有效」维护契约此前无机判（scanBrokenRefs
+  // 只扫脚本引用）。坏链并入 broken 一票红（check 既判）。豁免：外部
+  // URL（http/https/mailto）、纯锚点（#x）、绝对路径与 <> autolink。
+  res.broken.push(...scanMarkdownLinks(root, files));
   // 常量对账（版本号）：与数字对账平行的第二轴，漂移并入 DriftN 一票红。
   res.consts = auditConst(root, doc);
   for (const c of res.consts) {
@@ -817,6 +822,63 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
 // goQuote 复刻 fmt %q 的常见形态（可打印串直接双引号包裹；反斜杠/双引号转义）。
 function goQuote(s: string): string {
   return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+}
+
+// PR #339 审阅 P2（2026-10-27）：markdown 相对链接提取——`[text](target)` 与
+// `![alt](src)`（src 同规）；target 去尾部 `#fragment` 后按所在 md 文件
+// 目录解析。豁免形态：http(s)/mailto 外部 URL、纯锚点（#x）、绝对路径
+// （/x、盘符）、`<...>` autolink 与 `{#x}` 型。导出供 node:test 锚。
+export function extractMarkdownLinkTargets(line: string): string[] {
+  const out: string[] = [];
+  const re = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
+  for (const m of matchAllOf(re, line)) {
+    const t = m[3]!;
+    if (/^(https?:|mailto:|#|\/|[A-Za-z]:)/.test(t)) continue;
+    out.push(t.split("#")[0]!);
+  }
+  return out;
+}
+
+// scanMarkdownLinks：CURRENT 层 .md 文件的相对链接存在性扫描（归档跳过
+// 与 scanBrokenRefs 同款）。decodeURI 兼容中文文件名的 %XX 形态（编辑器
+// 侧自动编码）；存在性按 fs.existsSync（目录也认——链接到目录的索引形态）。
+function scanMarkdownLinks(root: string, files: string[]): BrokenRef[] {
+  const out: BrokenRef[] = [];
+  for (const rel of files) {
+    if (!rel.endsWith(".md")) continue;
+    if (rel.includes("/archive/") || path.basename(rel).startsWith("ARCHIVE_")) {
+      continue;
+    }
+    if (classifyFile(rel) !== "CURRENT") continue; // 历史文档叙述链接有意保留
+    let lines: string[];
+    try {
+      lines = splitLinesKeep(path.join(root, ...rel.split("/")));
+    } catch {
+      continue;
+    }
+    const baseDir = path.dirname(path.join(root, ...rel.split("/")));
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i]!;
+      const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+      for (const t of extractMarkdownLinkTargets(line)) {
+        let decoded = t;
+        try {
+          decoded = decodeURI(t);
+        } catch {
+          // 保留原样（畸形 % 序列按字面判）
+        }
+        const target = path.resolve(baseDir, decoded);
+        if (!fs.existsSync(target)) {
+          out.push({ file: rel, lineNo: i + 1, path: t, text: goTrimSpace(line) });
+        }
+      }
+    }
+  }
+  out.sort((a, b) => {
+    if (a.file !== b.file) return byteCompare(a.file, b.file);
+    return a.lineNo - b.lineNo;
+  });
+  return out;
 }
 
 function stableSortBy<T>(xs: T[], keyOf: (x: T, i: number) => string): T[] {
@@ -959,7 +1021,7 @@ function scriptRefAlive(root: string, ref: string): boolean {
 
 // export 仅供测试（J9 锚在 broken_refs.test.mts——扩面形态的抽取/豁免/包路径
 // 判定全量锁；生产消费走 runAudit 的 broken 汇总）。
-export const _internal = { scanBrokenRefs, scriptRefAlive };
+export const _internal = { scanBrokenRefs, scriptRefAlive, scanMarkdownLinks };
 
 // allDrift 展开为按位置排序的待改清单。
 export function allDrift(r: AuditResult): Hit[] {

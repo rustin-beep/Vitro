@@ -107,7 +107,7 @@ function parseGoFlags(argv: string[]): GoFlags {
   };
 }
 
-function summarize(res: AuditResult, doc: FactsDoc): void {
+function summarize(res: AuditResult, doc: FactsDoc, strict = false): void {
   console.log(`\n扫描 ${res.scanN} 份文档：漂移 ${res.driftN} 处 / 冻结 ${res.frozenN} 处 / 人工维护 ${res.manualN} 处（其中疑似未连坐 ${res.suspectN} 处）/ 待采集 ${res.pendingN} 处 / 坏引用 ${res.broken.length} 处`);
   for (const a of res.audits) {
     if (a.drift.length > 0) {
@@ -148,7 +148,7 @@ function summarize(res: AuditResult, doc: FactsDoc): void {
   }
   for (const a of res.audits) {
     if (a.truth === null && a.pending.length > 0) {
-      console.log(`  [待采集] ${a.rule.label}: ${a.pending.length} 处引用无真值 —— 用 --run 补（见 facts.json 的 how_to_get）`);
+      console.log(`  [待采集] ${a.rule.label}: ${a.pending.length} 处引用无真值 —— 用 --run 补（见 facts.json 的 how_to_get）${strict ? "〔--strict：待采集即红——漂移判定不得静默跳过，#298〕" : ""}`);
     }
   }
   const ck = cachedKeys(doc);
@@ -392,7 +392,7 @@ async function main(): Promise<void> {
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(reportPath, renderReport(root, doc, res, verbose), { mode: 0o644 });
 
-  summarize(res, doc);
+  summarize(res, doc, strict);
   if (staleN > 0) {
     if (allowStale) {
       console.log(`  [真值超龄] ${staleN} 项 as_of 超过预算，已降级为待采集（--allow-stale：本轮容忍；加 --run 刷新）`);
@@ -411,9 +411,17 @@ async function main(): Promise<void> {
       // --strict：再叠一层 Manual 兜底（分解式行整行无数字等于真值）。误报
       // 面经 suspect_exemptions.json 显式过闸后 CI 启用（2026-10-01 接线）。
       // 僵尸豁免条目无条件红（数据错误非口径问题，不随 --strict 开关）。
+      //
+      // #298（2026-10-27）：待采集（键真值缺位）有文档消费点时 strict 判红
+      // ——旧形态只提示不判红：CI fresh 环境（无 reports/facts.json）27 处
+      // 待采集静默跳过漂移判定 → 漂移 0 → 假绿（run 40409823786 实锤，
+      // 「MoonBit 测试数」21 处引用的漂移防护整体失效）。红 = 逼采集面
+      // （--run）与消费面同步；非 strict 保持提示（本地快查逃生门，
+      // 与 --allow-stale 对称）。
       {
         const suspectRed = strict && res.suspectN > 0;
-        if (res.driftN > 0 || res.broken.length > 0 || (staleN > 0 && !allowStale) || suspectRed || res.staleSuspectExempts.length > 0) {
+        const pendingRed = strict && res.pendingN > 0;
+        if (res.driftN > 0 || res.broken.length > 0 || (staleN > 0 && !allowStale) || suspectRed || pendingRed || res.staleSuspectExempts.length > 0) {
           process.exit(1);
         }
       }

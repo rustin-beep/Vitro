@@ -621,7 +621,7 @@ jobs:
       - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
         if: matrix.slice == 'cli_smoke'
         run: |
-          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && cd ..
+          cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro && MOON_CC=clang moon build --release --target native cmd/serve && cd ..
           node scripts/vitro_cli_smoke/main.mts --corpus 30
         shell: bash
 
@@ -1008,8 +1008,14 @@ jobs:
         # suspect_exemptions.test.mts 五路 J9。
         # 2026-10-25 #273 迁移批：facts Go→.mts 双跑逐位对拍通过（facts.json
         # 22 键规范化逐位一致 + facts/check stdout 逐位一致），CI 引用切 TS。
+        # 2026-10-27 #298 治本：check 前置 --run 现场采集——旧形态 fresh
+        # 环境（无 reports/facts.json）27 键待采集静默跳过漂移判定 → 假绿
+        # （run 40409823786 实锤，「MoonBit 测试数」21 处引用防护失效）；
+        # 判定器已改「strict 待采集即红」，本步不给 --run 会常态红。采集
+        # 成本（moon test ×2 + diff_gate ×8 + replay/serve_smoke）与 gen
+        # slice 的 `facts facts` 步等价（两片并行，不阻塞总时长）。
         shell: bash
-        run: node scripts/facts/main.mts --strict check
+        run: node scripts/facts/main.mts --run --strict check
 
       - name: Facts collect for gen_svg (slice 内自足落盘)
         # 2026-10-18 CI 红处置：c5f01fff 拆 matrix 三片时 gen_svg 与 facts

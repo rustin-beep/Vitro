@@ -23,6 +23,8 @@ pub struct TypeChecker {
   static_func_files : Map[String, Array[String]]
   static_global_files : Map[String, Array[String]]
   static_global_decl_lines : Map[String, Int]
+  global_first_decl_idx : Map[String, Int]
+  mut static_init_site_idx : Int?
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   scopes : Array[Map[String, VarSymbol]]

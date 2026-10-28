@@ -4,7 +4,14 @@
 // 进程退出码 = 子命令退出码透传（全表见各 lib 头注）；未知命令 = 4。
 
 ///|
+/// #335（2026-10-27）：帧通道行尾治本——main 首行前置调用（stdout/stderr
+/// 双 fd 切二进制，Windows CRT 文本模式对 println 帧通道的换行改写
+/// （CRLF）消除；stub 见 stdout_stub.c 文件头）。
+extern "C" fn ensure_binary_mode_stub() -> Unit = "moonbit_vitro_ensure_binary_mode"
+
+///|
 fn main {
+  ensure_binary_mode_stub()
   @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   if args.length() < 2 {

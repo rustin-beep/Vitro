@@ -783,3 +783,221 @@ test "issue249_double_anon_no_dup" {
     msg="双匿名成员（空名）不参与重名判——C11 6.7.2.1p13",
   )
 }
+
+///|
+/// #331（2026-10-27）：文件作用域初始化器**前向引用**守卫——C11 6.2.1p4
+/// 声明点语义（标识符自声明符完成才可见），clang 对 `int *p = &s; int s;`
+/// 报 use of undeclared identifier。typeck Pass 2.5 两段式（先全登记再查
+/// 初始化器）破坏序语义，地址常量族（&s / 数组名 / &s.x 链）经 codegen
+/// pending 回填被静默接受。守卫按 globals 数组序（= 声明点序）判前向。
+test "issue331_fwd_addr_init_rejected" {
+  let loc = @source.SourceLoc::new(1, 11)
+  // int *p = &s;  int s;
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("s", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let s_decl = gdecl(@ast.Type::int(), "s", None)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([p_decl, s_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="前向引用 &s 应报 E3023（声明点在其后）",
+  )
+}
+
+///|
+/// #331：数组名地址常量的前向引用同族——`int *p = arr; int arr[3];`。
+test "issue331_fwd_array_name_rejected" {
+  let loc = @source.SourceLoc::new(1, 11)
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(@ast.Expr::Identifier("arr", loc, @ast.Type::int())),
+  )
+  let arr_decl = gdecl(
+    @ast.Type::Array(@ast.Type::int(), 3, [3], false, false, []),
+    "arr",
+    None,
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([p_decl, arr_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="前向引用数组名 arr 应报 E3023",
+  )
+}
+
+///|
+/// #331：地址常量链形态前向引用——`int *p = &st.x; struct S st;` 的 base
+/// 前向（st 声明在后）。struct 类型面登记在 structs（无噪声），base 变量
+/// 序在 init 之后。
+test "issue331_fwd_chain_base_rejected" {
+  let loc = @source.SourceLoc::new(1, 11)
+  let s_ty = @ast.Type::Struct("S", false)
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Member(
+          @ast.Expr::Identifier("st", loc, s_ty),
+          "x",
+          false,
+          loc,
+          @ast.Type::int(),
+        ),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let st_decl = gdecl(s_ty, "st", None)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([p_decl, st_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="前向引用链 base st 应报 E3023",
+  )
+}
+
+///|
+/// #331 负锚：顺序合法（声明在前）的 &s 零 E3023——防守卫误拒正常程序。
+test "issue331_backref_addr_allowed" {
+  let loc = @source.SourceLoc::new(2, 11)
+  let s_decl = gdecl(@ast.Type::int(), "s", None)
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("s", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([s_decl, p_decl]))
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="后向引用 &s（s 先行声明）不得误报",
+  )
+}
+
+///|
+/// #331 负锚：extern 先行声明（定义在后）合法——`extern int e; int *p = &e;
+/// int e = 7;`（codegen pending 回填的活通道，见 #331 销案评论）。
+test "issue331_extern_predecl_allowed" {
+  let loc = @source.SourceLoc::new(2, 11)
+  let e_extern = gdecl(@ast.Type::int(), "e", None, is_extern=true)
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Identifier("e", loc, @ast.Type::int()),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let e_def = gdecl(
+    @ast.Type::int(),
+    "e",
+    Some(@ast.Expr::Literal(7, loc, @ast.Type::int())),
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([e_extern, p_decl, e_def]))
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="extern 先行声明 + 定义在后是合法形态，不得误报",
+  )
+}
+
+///|
+/// PR #339 审阅 P3-2（2026-10-27）：`&arr[j]` 的**索引子表达式**前向引用
+/// ——j 声明在初始化器之后，clang 报 use of undeclared；守卫此前只沿
+/// 链脊（Member/Index 的 obj/arr 侧）取 base，索引位漏检。
+test "issue331_fwd_index_expr_rejected" {
+  let loc = @source.SourceLoc::new(1, 26)
+  let arr_decl = gdecl(
+    @ast.Type::Array(@ast.Type::int(), 4, [4], false, false, []),
+    "arr",
+    None,
+  )
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Index(
+          @ast.Expr::Identifier("arr", loc, @ast.Type::int()),
+          @ast.Expr::Identifier("j", loc, @ast.Type::int()),
+          loc,
+          @ast.Type::int(),
+        ),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let j_decl = gdecl(@ast.Type::int(), "j", None)
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([arr_decl, p_decl, j_decl]))
+  assert_true(
+    errs.exists(e => e.code == 3023),
+    msg="索引子表达式前向引用 j 应报 E3023（PR #339 审阅 P3-2）",
+  )
+}
+
+///|
+/// PR #339 审阅 P3-2 负锚：索引位先行声明（j 在前）零误报。
+test "issue331_fwd_index_expr_backref_allowed" {
+  let loc = @source.SourceLoc::new(2, 26)
+  let j_decl = gdecl(
+    @ast.Type::int(),
+    "j",
+    Some(@ast.Expr::Literal(1, loc, @ast.Type::int())),
+  )
+  let arr_decl = gdecl(
+    @ast.Type::Array(@ast.Type::int(), 4, [4], false, false, []),
+    "arr",
+    None,
+  )
+  let p_decl = gdecl(
+    @ast.Type::pointer_to(@ast.Type::int()),
+    "p",
+    Some(
+      @ast.Expr::Unary(
+        @ast.UnaryOp::Addr,
+        @ast.Expr::Index(
+          @ast.Expr::Identifier("arr", loc, @ast.Type::int()),
+          @ast.Expr::Identifier("j", loc, @ast.Type::int()),
+          loc,
+          @ast.Type::int(),
+        ),
+        loc,
+        @ast.Type::pointer_to(@ast.Type::int()),
+      ),
+    ),
+  )
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([j_decl, arr_decl, p_decl]))
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="索引位先行声明不得误报（PR #339 审阅 P3-2）",
+  )
+}

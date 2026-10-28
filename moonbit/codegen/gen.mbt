@@ -522,7 +522,12 @@ fn BytecodeGen::pass1_register_global(
                     i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
                   let val64 = match elements.get(i) {
                     Some(elem) =>
-                      match literal_init_bits(elem.value, elem_ty.kind()) {
+                      match
+                        literal_init_bits(
+                          elem.value,
+                          elem_ty.kind(),
+                          elem.value.ty().is_unsigned(),
+                        ) {
                         Some(pair) => pair.0
                         None => 0
                       }
@@ -801,7 +806,8 @@ fn BytecodeGen::flatten_designated_global(
       )
       return
     }
-    match literal_init_bits(elem.value, elem_ty_kind) {
+    match
+      literal_init_bits(elem.value, elem_ty_kind, elem.value.ty().is_unsigned()) {
       Some((bits, _)) => {
         let addr = offset.reinterpret_as_uint() +
           next_index.reinterpret_as_uint() * elem_size.reinterpret_as_uint()

@@ -81,6 +81,13 @@ fn VitroVM::execute_float(
       let r = Float::from_double(a.to_double())
       self.push(Float::reinterpret_as_uint(r).to_uint64())
     }
+    CastUQ2F => {
+      // u64 位模式无符号转 f32（#345 P1：CastU2F 的 u64 源版——分派在
+      // execute_float（F 族）；pop() 即 UInt64 位模式（UDivQ 同款））
+      let a = self.pop()
+      let r = Float::from_double(a.to_double())
+      self.push(Float::reinterpret_as_uint(r).to_uint64())
+    }
     CastF2I => {
       let a = Float::reinterpret_from_uint(self.pop().to_uint())
       // 饱和语义（Rust as i32 = NaN→0 / inf→±MAX）
@@ -140,6 +147,13 @@ fn VitroVM::execute_double(
       // u32 零符号位转 f64（病 31：(double)3000000000u → 3000000000.0
       // 而非 -1294967296.0——对照 CastI2D 的符号语义）
       let a = self.pop_addr()
+      self.push(a.to_double().reinterpret_as_uint64())
+    }
+    CastUQ2D => {
+      // u64 位模式无符号转 f64（#345 审阅 P1，2026-10-28：B17「转换族缺
+      // 符号性对偶」补齐——(double)18446744073709551615 旧走 CastQ2D 有
+      // 符号解释产 -1；pop() 即 UInt64 位模式（UDivQ 同款），零解释成本）
+      let a = self.pop()
       self.push(a.to_double().reinterpret_as_uint64())
     }
     CastF2D => {

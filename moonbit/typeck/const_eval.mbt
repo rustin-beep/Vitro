@@ -17,7 +17,7 @@
 ///|
 /// 常量值域：整（Int64——int/long long/char 统一）与浮（Double）。
 priv enum CVal {
-  CI(Int64)
+  CI(Int64, Bool) // (位模式, 源是否无符号——#345 P1：fp 转换按源符号性取解释)
   CF(Double)
 }
 
@@ -75,11 +75,13 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
           None => return None
         }
         match (op, v) {
-          (Neg, CI(i)) => vals.push(CI(ce_normalize(i.neg(), ty)))
+          (Neg, CI(i, _)) =>
+            vals.push(CI(ce_normalize(i.neg(), ty), ce_is_unsigned(ty)))
           (Neg, CF(f)) => vals.push(CF(-f))
           (Pos, v) => vals.push(v) // 恒等（#71 病 39）
-          (Not, CI(i)) => vals.push(CI(if i == 0 { 1L } else { 0L }))
-          (BitNot, CI(i)) => vals.push(CI(ce_normalize(-1L * (i + 1L), ty))) // 二补码代数式
+          (Not, CI(i, _)) => vals.push(CI(if i == 0 { 1L } else { 0L }, false))
+          (BitNot, CI(i, _)) =>
+            vals.push(CI(ce_normalize(-1L * (i + 1L), ty), ce_is_unsigned(ty))) // 二补码代数式
           _ => return None // 位非/逻辑非的浮点操作数：教学域罕见，不折
         }
       }
@@ -94,16 +96,19 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
         }
         // 任一侧浮点 → double 域（C usual arithmetic promotions 简化）
         match (a, b) {
-          (CI(x), CI(y)) => {
+          (CI(x, _), CI(y, _)) => {
             // P1-2：整型混合符号——usual conversions 任一侧 unsigned 即
             // 升无符号域（位模式按 UInt64 重解释比较/除法/右移）
             let u_domain = ce_is_unsigned(lty) || ce_is_unsigned(rty)
             let xu = x.reinterpret_as_uint64()
             let yu = y.reinterpret_as_uint64()
             match op {
-              Add => vals.push(CI(ce_normalize(x + y, resty)))
-              Sub => vals.push(CI(ce_normalize(x - y, resty)))
-              Mul => vals.push(CI(ce_normalize(x * y, resty)))
+              Add =>
+                vals.push(CI(ce_normalize(x + y, resty), ce_is_unsigned(resty)))
+              Sub =>
+                vals.push(CI(ce_normalize(x - y, resty), ce_is_unsigned(resty)))
+              Mul =>
+                vals.push(CI(ce_normalize(x * y, resty), ce_is_unsigned(resty)))
               Div =>
                 if y != 0 {
                   vals.push(
@@ -116,6 +121,7 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
                         },
                         resty,
                       ),
+                      ce_is_unsigned(resty),
                     ),
                   )
                 } else {
@@ -133,17 +139,26 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
                         },
                         resty,
                       ),
+                      ce_is_unsigned(resty),
                     ),
                   )
                 } else {
                   return None
                 }
-              BitAnd => vals.push(CI(ce_normalize(x & y, resty)))
-              BitOr => vals.push(CI(ce_normalize(x | y, resty)))
-              BitXor => vals.push(CI(ce_normalize(x ^ y, resty)))
+              BitAnd =>
+                vals.push(CI(ce_normalize(x & y, resty), ce_is_unsigned(resty)))
+              BitOr =>
+                vals.push(CI(ce_normalize(x | y, resty), ce_is_unsigned(resty)))
+              BitXor =>
+                vals.push(CI(ce_normalize(x ^ y, resty), ce_is_unsigned(resty)))
               Shl =>
                 if y >= 0 && y <= 63 {
-                  vals.push(CI(ce_normalize(x << y.to_int(), resty)))
+                  vals.push(
+                    CI(
+                      ce_normalize(x << y.to_int(), resty),
+                      ce_is_unsigned(resty),
+                    ),
+                  )
                 } else {
                   return None
                 }
@@ -160,6 +175,7 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
                         },
                         resty,
                       ),
+                      ce_is_unsigned(resty),
                     ),
                   )
                 } else {
@@ -167,24 +183,25 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
                 }
               Lt => {
                 let hit = if u_domain { xu < yu } else { x < y }
-                vals.push(CI(if hit { 1L } else { 0L }))
+                vals.push(CI(if hit { 1L } else { 0L }, false))
               }
               Le => {
                 let hit = if u_domain { xu <= yu } else { x <= y }
-                vals.push(CI(if hit { 1L } else { 0L }))
+                vals.push(CI(if hit { 1L } else { 0L }, false))
               }
               Gt => {
                 let hit = if u_domain { xu > yu } else { x > y }
-                vals.push(CI(if hit { 1L } else { 0L }))
+                vals.push(CI(if hit { 1L } else { 0L }, false))
               }
               Ge => {
                 let hit = if u_domain { xu >= yu } else { x >= y }
-                vals.push(CI(if hit { 1L } else { 0L }))
+                vals.push(CI(if hit { 1L } else { 0L }, false))
               }
-              Eq => vals.push(CI(if x == y { 1L } else { 0L }))
-              Ne => vals.push(CI(if x != y { 1L } else { 0L }))
-              And => vals.push(CI(if x != 0 && y != 0 { 1L } else { 0L }))
-              Or => vals.push(CI(if x != 0 || y != 0 { 1L } else { 0L }))
+              Eq => vals.push(CI(if x == y { 1L } else { 0L }, false))
+              Ne => vals.push(CI(if x != y { 1L } else { 0L }, false))
+              And =>
+                vals.push(CI(if x != 0 && y != 0 { 1L } else { 0L }, false))
+              Or => vals.push(CI(if x != 0 || y != 0 { 1L } else { 0L }, false))
               _ => return None
             }
           }
@@ -197,12 +214,12 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
               Sub => vals.push(CF(xf - yf))
               Mul => vals.push(CF(xf * yf))
               Div => vals.push(CF(xf / yf))
-              Lt => vals.push(CI(if xf < yf { 1L } else { 0L }))
-              Le => vals.push(CI(if xf <= yf { 1L } else { 0L }))
-              Gt => vals.push(CI(if xf > yf { 1L } else { 0L }))
-              Ge => vals.push(CI(if xf >= yf { 1L } else { 0L }))
-              Eq => vals.push(CI(if xf == yf { 1L } else { 0L }))
-              Ne => vals.push(CI(if xf != yf { 1L } else { 0L }))
+              Lt => vals.push(CI(if xf < yf { 1L } else { 0L }, false))
+              Le => vals.push(CI(if xf <= yf { 1L } else { 0L }, false))
+              Gt => vals.push(CI(if xf > yf { 1L } else { 0L }, false))
+              Ge => vals.push(CI(if xf >= yf { 1L } else { 0L }, false))
+              Eq => vals.push(CI(if xf == yf { 1L } else { 0L }, false))
+              Ne => vals.push(CI(if xf != yf { 1L } else { 0L }, false))
               _ => return None // 位/移位/取模的浮点操作数非 C 合法形态
             }
           }
@@ -210,7 +227,7 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
       }
       Some(CE_TernSel(then_e, else_e)) => {
         let c = match vals.pop() {
-          Some(CI(i)) => i != 0
+          Some(CI(i, _)) => i != 0
           Some(CF(f)) => f != 0.0
           None => return None
         }
@@ -224,24 +241,37 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
         match target.kind() {
           TK_Double | TK_Float =>
             match v {
-              CI(i) => vals.push(CF(i.to_double()))
+              CI(i, su) =>
+                vals.push(
+                  CF(
+                    if su {
+                      i.reinterpret_as_uint64().to_double()
+                    } else {
+                      i.to_double()
+                    },
+                  ),
+                )
               CF(f) => vals.push(CF(f))
             }
           _ =>
             match v {
               // 截断语义（C 浮→整转换；超界环绕与 clang 常量折叠口径
               // 差异由对拍暴露再登记）
-              CF(f) => vals.push(CI(ce_normalize(f.to_int64(), target)))
+              CF(f) =>
+                vals.push(
+                  CI(ce_normalize(f.to_int64(), target), ce_is_unsigned(target)),
+                )
               // P1-2：整→整 cast 按目标宽度/符号性归一——旧恒等臂丢
               // unsigned 位（`(unsigned)-1` 值域该 4294967295）
-              CI(i) => vals.push(CI(ce_normalize(i, target)))
+              CI(i, _) =>
+                vals.push(CI(ce_normalize(i, target), ce_is_unsigned(target)))
             }
         }
       }
       Some(CE_E(e)) =>
         match e {
-          Literal(v, _, _) => vals.push(CI(v.to_int64()))
-          LongLiteral(v, _, _) => vals.push(CI(v))
+          Literal(v, _, _) => vals.push(CI(v.to_int64(), false))
+          LongLiteral(v, _, lty) => vals.push(CI(v, ce_is_unsigned(lty)))
           FloatLiteral(v, _, _) => vals.push(CF(v))
           Unary(op, inner, _, ty) => {
             st.push(CE_AppU(op, ty))
@@ -288,7 +318,7 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             if size <= 0 {
               return None
             }
-            vals.push(CI(size.to_int64()))
+            vals.push(CI(size.to_int64(), true))
           }
           Alignof(_, _, _, _) =>
             // alignof 与 sizeof 同域（自然对齐）；教学面罕见，取 4/8
@@ -309,7 +339,12 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
 ///|
 fn to_f64(v : CVal) -> Double {
   match v {
-    CI(i) => i.to_double()
+    CI(i, su) =>
+      if su {
+        i.reinterpret_as_uint64().to_double()
+      } else {
+        i.to_double()
+      }
     CF(f) => f
   }
 }
@@ -328,13 +363,39 @@ fn TypeChecker::fold_static_init(
     Some(v) => {
       let loc = init.loc()
       let keep_ty = init.ty()
+      // #345 审阅 P1（2026-10-28）：CI 源 fp 目标按**源符号性**取位模式
+      // 解释——u64 源（`double g = 18446744073709551615ULL`）旧一律
+      // Int64::to_double() 有符号解释把 -1 位模式折成 -1.0（错值在
+      // typeck 折叠层固化，codegen 全链无从纠正）；UInt64::to_double
+      // 正确舍入（双后端实证）
       match (v, target.kind()) {
-        (CI(i), TK_LongLong) => Some(@ast.Expr::LongLiteral(i, loc, keep_ty))
-        (CI(i), TK_Double) =>
-          Some(@ast.Expr::FloatLiteral(i.to_double(), loc, keep_ty))
-        (CI(i), TK_Float) =>
-          Some(@ast.Expr::FloatLiteral(i.to_double(), loc, keep_ty))
-        (CI(i), _) =>
+        (CI(i, su), TK_LongLong) =>
+          Some(@ast.Expr::LongLiteral(i, loc, keep_ty))
+        (CI(i, su), TK_Double) =>
+          Some(
+            @ast.Expr::FloatLiteral(
+              if su {
+                i.reinterpret_as_uint64().to_double()
+              } else {
+                i.to_double()
+              },
+              loc,
+              keep_ty,
+            ),
+          )
+        (CI(i, su), TK_Float) =>
+          Some(
+            @ast.Expr::FloatLiteral(
+              if su {
+                i.reinterpret_as_uint64().to_double()
+              } else {
+                i.to_double()
+              },
+              loc,
+              keep_ty,
+            ),
+          )
+        (CI(i, _), _) =>
           Some(@ast.Expr::Literal(@util.i64_to_i32_bits(i), loc, keep_ty))
         (CF(f), TK_Double | TK_Float) =>
           Some(@ast.Expr::FloatLiteral(f, loc, keep_ty))
@@ -652,7 +713,7 @@ fn TypeChecker::refold_vla_const_dims(
       for i in 0..<new_dims.length() {
         if new_dims[i] == 0 && cursor < vla_dims.length() {
           match self.const_eval(vla_dims[cursor]) {
-            Some(CI(v)) =>
+            Some(CI(v, _)) =>
               if v > 0L && v <= 2147483647L {
                 new_dims[i] = @util.i64_to_i32_bits(v)
               } else {
@@ -695,7 +756,7 @@ fn collect_case_labels(
       match label {
         Some(e) =>
           match tc.const_eval(e) {
-            Some(CI(v)) => labels.push((v, e.loc()))
+            Some(CI(v, _)) => labels.push((v, e.loc()))
             // 浮点 case 标签：E3046/E3047 已报，占位参与查重
             Some(CF(_)) => labels.push((0L, e.loc()))
             None => ()

@@ -590,6 +590,12 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "memory_sha": "6741f207505527ba"
     },
+    "baseline/dec_no_suffix_ull.c": {
+      "src_sha": "b15a2297",
+      "exit_code": 0,
+      "stdout_sha": "c172872749805f65",
+      "memory_sha": "81e09d13a1265797"
+    },
     "baseline/decrement_var.c": {
       "src_sha": "629e3563",
       "exit_code": 0,
@@ -3069,7 +3075,7 @@
       "memory_sha": "fac2f047ce351d88"
     },
     "baseline/u_suffix_unsigned_domain.c": {
-      "src_sha": "c4415ca4",
+      "src_sha": "deeaa7a1",
       "exit_code": 0,
       "stdout_sha": "1c1753d340cf12c7",
       "memory_sha": "281ba7b89c922d5d"

@@ -36,19 +36,55 @@ fn lit_num(expr : @ast.Expr) -> LitNum? {
 /// MoonBit 对应：Int64→UInt64 位重解释 `reinterpret_as_uint64`；Double
 /// →UInt64 `reinterpret_as_uint64`；f32 位模式 Float::from_double +
 /// reinterpret_as_uint。
+/// 字面量源的符号性（#345 P1）：递归剥 typeck 隐式转换 Cast——外层
+/// Cast 的 ty 是**目标类型**（`double g = ULLONG` 包 Cast 后 ty=Double，
+/// is_unsigned 恒 false），源符号性在内层数值字面量的 ty 上。Unary Neg
+/// 不剥（负 u64 字面量按 typeck 定型口径走）。
+fn lit_src_unsigned(expr : @ast.Expr) -> Bool {
+  match expr {
+    Cast(inner, _, _, _) => lit_src_unsigned(inner)
+    _ => expr.ty().is_unsigned()
+  }
+}
+
+///|
 fn literal_init_bits(
   expr : @ast.Expr,
   target_kind : @ast.TypeKind,
+  src_u : Bool,
 ) -> (UInt64, Bool)? {
+  // Cast 包裹时以剥壳后的内层源符号性为准（调用侧 expr.ty() 已被
+  // typeck 改写成目标类型——见 lit_src_unsigned 注）
+  let src_u = if expr is Cast(_, _, _, _) {
+    lit_src_unsigned(expr)
+  } else {
+    src_u
+  }
   let num = match lit_num(expr) {
     Some(n) => n
     None => return None
   }
   Some(
     match (num, target_kind) {
-      (LN_I(v), TK_Double) => (v.to_double().reinterpret_as_uint64(), true)
+      (LN_I(v), TK_Double) =>
+        // #345 审阅 P1 连坐：u64 位模式无符号源（static double d =
+        // ULLONG_MAX 旧按有符号折成 -1.0）——UInt64::to_double 正确舍入
+        if src_u {
+          (v.reinterpret_as_uint64().to_double().reinterpret_as_uint64(), true)
+        } else {
+          (v.to_double().reinterpret_as_uint64(), true)
+        }
       (LN_I(v), TK_Float) =>
-        (f32_bits_u64(Float::from_double(v.to_double())), false)
+        if src_u {
+          (
+            f32_bits_u64(
+              Float::from_double(v.reinterpret_as_uint64().to_double()),
+            ),
+            false,
+          )
+        } else {
+          (f32_bits_u64(Float::from_double(v.to_double())), false)
+        }
       // T-P0-2 根因：long long 目标必须写 i64 位模式，而非 f64 位模式
       (LN_I(v), TK_LongLong) => (v.reinterpret_as_uint64(), true)
       (LN_I(v), _) =>
@@ -91,7 +127,7 @@ fn BytecodeGen::push_literal_init(
   expr : @ast.Expr,
   target_ty : @ast.Type,
 ) -> Bool {
-  match literal_init_bits(expr, target_ty.kind()) {
+  match literal_init_bits(expr, target_ty.kind(), expr.ty().is_unsigned()) {
     Some(pair) => {
       let (bits, is64) = pair
       if is64 {

@@ -29,7 +29,13 @@ fn BytecodeGen::gen_cast_expr(
   if tk is TK_Double && ik is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if tk is TK_Double && ik is TK_LongLong {
-    self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    // #345 审阅 P1（2026-10-28）：u64 位模式无符号源走 UQ 系对偶——旧
+    // 无条件 CastQ2D 按有符号解释，(double)18446744073709551615 产 -1
+    if inner_u {
+      self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    }
   } else if tk is TK_Double && !(ik is TK_Double) {
     // ik ∈ {Int/Char/Pointer}：u32 源走 U 系；ik 已是 Double 则零转换
     if inner_u {
@@ -39,6 +45,13 @@ fn BytecodeGen::gen_cast_expr(
     }
   } else if tk is TK_Float && ik is TK_Double {
     self.emit(@opcode.OpCode::CastD2F, 0, loc)
+  } else if tk is TK_Float && ik is TK_LongLong {
+    // u64 源 f32 对偶（同 #345 P1；先 D 再窄——与 CastUQ2D 同值路径）
+    if inner_u {
+      self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    }
   } else if tk is TK_Float && !(ik is TK_Float) {
     // ik ∈ {Int/Char/Pointer}：u32 源走 U 系；ik 已是 Float 则零转换
     if inner_u {
@@ -306,7 +319,12 @@ fn BytecodeGen::gen_expr_with_cast(
   if tk is TK_Double && ek is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if tk is TK_Double && ek is TK_LongLong {
-    self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    // #345 P1 连坐（赋值/传参隐式收口同款）：u64 无符号源走 UQ 系
+    if expr_u {
+      self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    }
   } else if tk is TK_Double && !(ek is TK_Double) {
     // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Double 则零转换
     if expr_u {
@@ -316,6 +334,13 @@ fn BytecodeGen::gen_expr_with_cast(
     }
   } else if tk is TK_Float && ek is TK_Double {
     self.emit(@opcode.OpCode::CastD2F, 0, loc)
+  } else if tk is TK_Float && ek is TK_LongLong {
+    // u64 源 f32 对偶（同 #345 P1）
+    if expr_u {
+      self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastI2F, 0, loc)
+    }
   } else if tk is TK_Float && !(ek is TK_Float) {
     // ek ∈ {Int/Char/Pointer}：u32 源走 U 系；ek 已是 Float 则零转换
     if expr_u {

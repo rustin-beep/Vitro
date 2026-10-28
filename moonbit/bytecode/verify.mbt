@@ -228,6 +228,8 @@ fn v_effect(op : @opcode.OpCode) -> (Int32, Int32)? {
     | CastU2Q
     | CastU2D
     | CastU2F
+    | CastUQ2D
+    | CastUQ2F
     | TruncByte
     | TruncUByte
     | UNeg

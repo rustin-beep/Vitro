@@ -355,21 +355,24 @@ fn Scanner::number(self : Scanner, start : Int32) -> @token.Token {
     } else {
       // issue #24 销案（2026-10-06）：hex/oct/bin 无后缀的 C11 候选类型
       // 序列含 unsigned long long（§6.4.4.1——BLAKE2b IV 级大常量）——
-      // 64 位位模式承载为 UnsignedLiteral；十进制无后缀不含 unsigned 档
-      //（293 行路径维持报错——DIFF-LEX-DECL-BIGCONST-01 的十进制面）
+      // 64 位位模式承载为 UnsignedLiteral
       self.make_token(UnsignedLiteral, val_str, start)
     }
-    // Decimal 无后缀：不自动升 unsigned
+    // Decimal 无后缀：#251 翻案（2026-10-28）——超 i64 档不再报 E1006，
+    // 与 hex 档同款收 ULL（详见下方 else 分支注）
   } else if fits_i32(val) {
     self.make_token(Number, val_str, start)
   } else if fits_i64(val) {
     self.make_token(LongLiteral, val_str, start)
   } else {
-    self.err(
-      "整数常量 \{val_str} 超出可表示范围",
-      E1006_UnsupportedFeature,
-    )
-    self.make_token(Number, "0", start)
+    // issue #251 翻案落地（2026-10-28）：推翻 DIFF-LEX-DECL-BIGCONST-01
+    // 2026-10-04「保持 error」裁定——C11 §6.4.4.1 十进制无后缀候选序全
+    // 有符号、超出即实现定义，clang/gcc 双实现均收 unsigned long long
+    //（-Wimplicitly-unsigned-literal，rc=0 实测）；真实语料形态在用
+    //（djb2 比较值/ULLONG_MAX），拒绝挡整份程序。词法层无 warning 通道
+    // 静默收下（教学损失以 ledger 登记保留）；> ULLONG_MAX 的 parse_u64
+    // 溢出面（288-297 行）维持 E1006——真超范围 clang 亦 error。
+    self.make_token(UnsignedLiteral, val_str, start)
   }
 }
 

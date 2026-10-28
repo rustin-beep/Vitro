@@ -1584,3 +1584,45 @@ test "teaching_infer_structures_phases_table" {
   }
   assert_eq(sp.phase, "update_len", msg="P1-89 表长更新挂真值行")
 }
+
+///|
+/// #325 锚：swap 相位结构判据——教科书暂存名（t/tmp）与 temp 同权
+///（修复前 contains("temp") 字面量 ⇒ `int t` 写法 0 帧 swap——前端
+/// @first_swap/@swap:N 锚点全失效）。三行交换的每一行（暂存声明/中行/
+/// 回写行）都命中；纯标量赋值不命中。
+test "issue325_swap_phase_structural_naming_free" {
+  let alg = mk_alg("bubble_sort", "冒泡排序")
+  let vars = [
+    { name: "i", value: "0", },
+    { name: "j", value: "2", },
+    { name: "n", value: "5", },
+  ]
+  let mk_env = {
+    prev_vars: [],
+    at_callee_entry: false,
+    caller_is_main: false,
+    lookahead: "",
+  }
+  // 三行交换 × 暂存名 t/tmp（temp 是旧字面量判据唯一命中形态）
+  let swap_lines = [
+    "int t = a[j];", "a[j] = a[j + 1];", "a[j + 1] = t;", "int tmp = a[j];", "a[j + 1] = tmp;",
+  ]
+  for line in swap_lines {
+    let r = infer_algorithm_step(9, vars, "bubbleSort", line, Some(alg), mk_env)
+    guard r is Some(s) else { fail("交换行必产步：\{line}") }
+    assert_eq(s.phase, "swap", msg="暂存名无关——\{line}")
+  }
+  // 反面：纯标量赋值（下标两侧皆无）不产 swap
+  let r_neg = infer_algorithm_step(
+    9,
+    vars,
+    "bubbleSort",
+    "min_idx = j;",
+    Some(alg),
+    mk_env,
+  )
+  assert_true(
+    r_neg is None,
+    msg="min_idx = j 是标量赋值——不得冒充 swap",
+  )
+}

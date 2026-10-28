@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### fix(teaching/steps): #325 swap 相位结构判据 + detect 死字段翻案——教学标注去命名敏感（两层修复，2026-10-28）
+
+- **层一（detect 结构分支复活——比 #325 正文更深一层的新发现）**：
+  `FuncFeatures.loop_depth` 是死字段（全文件零赋值恒 0——oracle 时代
+  照搬死字段，features_wbtest 有「两侧同病」等价锚在案，修复归 0.8.0
+  脱钩批裁定）：detect.mbt 三处 `features.loop_depth >= 2` 恒假 ⇒
+  **bubble/selection/insertion 的结构分支（无名程序）全灭**——教科书
+  main-only/无名函数冒泡零算法标注。0.8.0 已发 + oracle 已退役（等价
+  锚前提消失）→ 删死字段、判据统一 `max_loop_depth`、等价锚翻案为
+  命中锚（evidence=structure）。实测：无名 mySort 冒泡（int t 暂存）
+  matches 空 → bubble_sort/structure 命中。
+- **层二（#325 正文病根）**：infer 四处（bubble/selection/quick/heap）
+  swap 相位判据 `source_line.contains("temp")` 字面量敏感——教科书暂
+  存名 t/tmp/x 全不命中 ⇒ `@first_swap`/`@swap:N` 前端锚点 0 帧。改
+  结构判据 `is_swap_assign_line`（裸赋值 = 且某一侧为下标访问——三行
+  交换每行命中；纯标量赋值不命中）。实测 `int t` 写法 swap 相位
+  **0 → 352 帧**（总帧 902：outer_loop 14 / inner_loop 58 / compare
+  211 / swap 352）。
+- **连坐**：teaching_annotation_diff golden 重冻（bucketSort 模板为无
+  bubble 名形态——结构分支复活的正确新标注，golden 无条目致 17 处
+  extra；按 #343 先例 --freeze 重冻吸收，+130 行全为 bubble_sort 合
+  理标注）；protocol_frames 47 帧一致零重冻；测试 931→932（裸）/
+  1095→1096（native 全量；rebase 到 #342 后基线合流）。
+
 ### docs(protocol): #322 `[vitro] backend=` 补登协议第十种 + #321 `code_file` 取值域定约（协议契约双案批，2026-10-28）
 
 - **#322（处方 A 登记）**：`CLI_PROTOCOL_V1` §1 白名单由单表九种改

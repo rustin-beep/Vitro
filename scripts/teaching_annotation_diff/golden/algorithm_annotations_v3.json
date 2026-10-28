@@ -543,6 +543,136 @@
       "src": "for (int i = 0; i \u003c n - 1; i++) {"
     }
   ],
+  "bucketSort": [
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 1 趟：将第 1 大的元素放到正确位置",
+      "code_line": 7,
+      "src": "for (int i = 1; i \u003c n; i++)"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 2 趟：将第 2 大的元素放到正确位置",
+      "code_line": 7,
+      "src": "for (int i = 1; i \u003c n; i++)"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 3 趟：将第 3 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 4 趟：将第 4 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 5 趟：将第 5 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 6 趟：将第 6 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 7 趟：将第 7 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 8 趟：将第 8 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "inner_loop",
+      "desc": "内层循环 j=0，比较相邻元素",
+      "code_line": 14,
+      "src": "for (int j = 0; j \u003c count[i] - 1; j++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "compare",
+      "desc": "比较 arr[0] 与 arr[1]",
+      "code_line": 16,
+      "src": "if (bucket[i][k] \u003e bucket[i][k + 1]) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "swap",
+      "desc": "交换 arr[0]↔arr[1]，较大的元素向右移动",
+      "code_line": 17,
+      "src": "int temp = bucket[i][k];"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "swap",
+      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
+      "code_line": 19,
+      "src": "bucket[i][k + 1] = temp;"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "inner_loop",
+      "desc": "内层循环 j=1，比较相邻元素",
+      "code_line": 14,
+      "src": "for (int j = 0; j \u003c count[i] - 1; j++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 9 趟：将第 ? 大的元素放到正确位置",
+      "code_line": 13,
+      "src": "for (int i = 0; i \u003c 10; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "outer_loop",
+      "desc": "第 10 趟：将第 ? 大的元素放到正确位置",
+      "code_line": 13,
+      "src": "for (int i = 0; i \u003c 10; i++) {"
+    },
+    {
+      "algorithm": "bubble_sort",
+      "display_name": "冒泡排序",
+      "phase": "inner_loop",
+      "desc": "内层循环 j=2，比较相邻元素",
+      "code_line": 26,
+      "src": "for (int j = 0; j \u003c count[i]; j++)"
+    }
+  ],
   "computeNextVal": [
     {
       "algorithm": "string_match_kmp",

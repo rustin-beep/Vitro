@@ -198,17 +198,18 @@ test "teaching_features_bubble_structural_branch" {
     f.has_adjacent_index_compare,
     msg="arr[j] vs arr[j+1] 必须产相邻比较",
   )
-  // **oracle 死分支等价锚（2026-10-01 审阅 P2 深挖实锤）**：判据的
-  // `loop_depth >= 2` 在两侧永不满足——walk 从不写 f.loop_depth（oracle
-  // features.rs 同形：字段只在签名，恒 0），bubble/selection/insertion
-  // 三结构分支在 oracle 也是死分支。断言「不命中」= 等价的机器判据
-  //（两侧同病，修单侧即破等价——修复归 0.8.0 脱钩批裁定）。
+  // **等价锚翻案（#325，2026-10-28）**：原「oracle 死分支等价锚」（两侧
+  // 同病 loop_depth 恒 0——修复归 0.8.0 脱钩批裁定）——oracle 已退役
+  //（2026-10-05 删区）+ 0.8.0 已发，裁定到点：死字段 loop_depth 已删，
+  // 判据统一 max_loop_depth ⇒ 结构分支复活——无名 mySort 的教科书冒泡
+  //（int t 暂存三行交换）现命中 bubble_sort（evidence=structure）。
   let ms = detect_sorting("mysort", f, "mySort", 1)
   assert_eq(
     ms.length(),
-    0,
-    msg="loop_depth 恒 0——结构分支两侧同为死分支（等价）",
+    1,
+    msg="#325 翻案：结构分支命中（死字段 loop_depth 已删）",
   )
+  assert_eq(ms[0].evidence, "structure", msg="无名程序走结构证据")
 }
 
 ///|
@@ -344,13 +345,15 @@ test "teaching_features_insertion_structural_branch" {
     msg="arr[j+1] = arr[j] 必须产后移特征",
   )
   assert_true(f.has_nested_loops)
-  // 死分支等价锚（同 bubble 注——insertion 结构分支的 loop_depth >= 2
-  // 恒假；shift 特征断言锁 walk 正确性）
+  // insertion 结构分支注记（#325 翻案后）：死字段 loop_depth 已删（判据
+  // 统一 max_loop_depth），但本锚形态（仅后移 + 无数组比较行）不满足
+  // insertion 结构判据的其余条件——断言 0 命中仍然成立（锁「特征缺则
+  // 不命中」的收紧面）；shift 特征断言锁 walk 正确性。
   let ms = detect_sorting("myarrange", f, "myArrange", 1)
   assert_eq(
     ms.length(),
     0,
-    msg="loop_depth 恒 0——结构分支两侧同为死分支（等价）",
+    msg="缺数组比较特征——insertion 结构分支不命中（收紧面）",
   )
 }
 

@@ -5,6 +5,70 @@
 // 拦截 / 枢轴落位文案 / 位权位序 / count[...]++ 收紧——逐条注释照搬）。
 
 ///|
+/// 交换赋值行判定（#325：结构判据取代 contains("temp") 字面量——教科书
+/// 暂存名 t/tmp/x 与 temp 同权；oracle 同款字面量判据随退役脱钩翻案）。
+/// 命中形态 = 行含**裸**赋值 =（比较算符 ==/<=/>=/!= 与复合赋值 += 等
+/// 不算）且等号某一侧为下标访问（含 [...] 文本）——三行交换的每一行
+///（t=a[j]、a[j]=a[j+1]、a[j+1]=t）都命中；纯标量赋值（min_idx=j、
+/// sum=x+y、循环变量更新）不命中。文本层判定（infer 无 AST——按行
+/// 文本+运行期变量推断的既有同层形态）。
+fn is_swap_assign_line(line : String) -> Bool {
+  let n = line.length()
+  let mut eq = -1
+  let mut i = 0
+  while i < n {
+    if line[i] == '=' {
+      // 裸 = 判定：右邻非 =（排除 ==），左邻非 =/</>/!/+/-/*/÷/%/&/|/^
+      //（排除比较算符与 += 等复合赋值）——s[i] 是 UInt16 码元（陷阱 24），
+      // 与 Char 字面量的 == 比较合法、绑定赋值不合法，故全部内联比较
+      let compound = (i + 1 < n && line[i + 1] == '=') ||
+        (
+          i > 0 &&
+          (
+            line[i - 1] == '=' ||
+            line[i - 1] == '<' ||
+            line[i - 1] == '>' ||
+            line[i - 1] == '!' ||
+            line[i - 1] == '+' ||
+            line[i - 1] == '-' ||
+            line[i - 1] == '*' ||
+            line[i - 1] == '/' ||
+            line[i - 1] == '%' ||
+            line[i - 1] == '&' ||
+            line[i - 1] == '|' ||
+            line[i - 1] == '^'
+          )
+        )
+      if !compound {
+        eq = i
+        break
+      }
+      i = i + 2
+    } else {
+      i = i + 1
+    }
+  }
+  if eq < 0 {
+    return false
+  }
+  let left = line[0:eq].trim().to_owned()
+  let right_raw = line[eq + 1:n].trim().to_owned()
+  let right = if right_raw.length() > 0 &&
+    right_raw[right_raw.length() - 1] == ';' {
+    right_raw[0:right_raw.length() - 1].trim().to_owned()
+  } else {
+    right_raw
+  }
+  is_index_text(left) || is_index_text(right)
+}
+
+///|
+/// 下标访问文本形态（含 [...]——is_swap_assign_line 的侧判定）。
+fn is_index_text(s : String) -> Bool {
+  s.contains("[") && s.contains("]")
+}
+
+///|
 /// 冒泡排序。
 fn infer_bubble_sort(
   source_line : String,
@@ -65,7 +129,7 @@ fn infer_bubble_sort(
       build_step(algorithm, "compare", "比较 arr[\{j_str}] 与 arr[\{j1}]"),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     if !j_in_inner_range {
       return None
     }
@@ -150,7 +214,7 @@ fn infer_selection_sort(
       ),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     let i_str = if i >= 0 { "\{i}" } else { "?" }
     return Some(
       build_step(algorithm, "swap", "将最小元素交换到位置 \{i_str}"),
@@ -331,7 +395,7 @@ fn infer_quick_sort(
       ),
     )
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     return Some(
       build_step(
         algorithm, "partition_swap", "交换元素，调整分区位置",
@@ -440,7 +504,7 @@ fn infer_heap_sort(
       )
     }
   }
-  if source_line.contains("temp") && source_line.contains("=") {
+  if is_swap_assign_line(source_line) {
     return Some(build_step(algorithm, "swap", "交换元素，调整堆结构"))
   }
   if starts_with(line_lower, "return") {

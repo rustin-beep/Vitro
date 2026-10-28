@@ -320,7 +320,7 @@ fn BytecodeGen::emit_static_scalar_array_init(
         i.reinterpret_as_uint() * elem_size.reinterpret_as_uint()
       let val64 = match flat.get(i) {
         Some(e) =>
-          match literal_init_bits(e, elem_ty.kind()) {
+          match literal_init_bits(e, elem_ty.kind(), e.ty().is_unsigned()) {
             Some(pair) => pair.0
             None => 0
           }
@@ -476,6 +476,15 @@ fn BytecodeGen::emit_scalar_cast_store(
   // u32 源零符号位（病 31）+ char/int 窄化截断（病 33）——与
   // gen_expr_with_cast 同口径（本函数是初始化声明的收口点）
   let init_u = init.ty().is_unsigned()
+  // #345 审阅 P1 连坐（2026-10-28）：u64 源 fp 目标——旧 LongLong 排除
+  // 分支下位模式直塞（float 目标产 NaN / double 目标产 -1 类错值）；
+  // 有符号 LL 源保持排除（存量路径正确——typeck 侧已收口）
+  if vty.kind() is TK_Float && ik is TK_LongLong && init_u {
+    self.emit(@opcode.OpCode::CastUQ2F, 0, loc)
+  }
+  if vty.kind() is TK_Double && ik is TK_LongLong && init_u {
+    self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
+  }
   if vty.kind() is TK_Float &&
     !(ik is TK_Float) &&
     !(ik is TK_Double) &&

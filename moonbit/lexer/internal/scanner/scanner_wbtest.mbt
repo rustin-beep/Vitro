@@ -97,8 +97,8 @@ test "scan_raw trailing dot boundaries" {
 /// LongLiteral（有符号 8B）符号域错置（`5000000000U < 0` 按无符号应为假、
 /// 除法/比较按符号域分流错）。token 裸 text 交 parser UnsignedLiteral 臂按
 /// 值域派生（≤UINT_MAX 定 uint、超档定 ULL）。注：十进制**无后缀**大常量
-/// 的 E1006 维持（DIFF-LEX-DECL-BIGCONST-01 2026-10-04 台账裁定，翻案
-/// 挂 issue #251 待拍板——与本格「U 后缀候选全无符号」的标准地位不同）。
+/// 已随 #251 翻案（2026-10-28）同款收 ULL——见
+/// issue_251_decimal_no_suffix_above_i64_ull 锚。
 test "issue_251_u_suffix_above_u32_unsigned_domain" {
   let r = scan_raw(@utf8.encode("5000000000U 0x1FFFFFFFFu 4294967295U"))
   let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
@@ -107,6 +107,46 @@ test "issue_251_u_suffix_above_u32_unsigned_domain" {
     content="UnsignedLiteral:5000000000 UnsignedLiteral:8589934591 UnsignedLiteral:4294967295 Eof:",
   )
   assert_eq(r.errors.length(), 0)
+}
+
+///|
+/// #251（2026-10-28 翻案落地）：无后缀十进制大常量（INT64_MAX < v ≤
+/// ULLONG_MAX）收 ULL 档——推翻 2026-10-04「保持 error」台账裁定
+///（DIFF-LEX-DECL-BIGCONST-01）。翻案依据：clang/gcc 双主流实现均
+/// warning + 收 unsigned long long（rc=0，实测 clang 22.1.4：
+/// `18446744073709551615` 打印全值、比较按无符号）；真实语料形态在用
+///（TheAlgorithms hash_djb2.c 四处 djb2 比较值、decimal_to_any_base.c
+/// ULLONG_MAX）；拒绝形态挡住整份真实程序。C11 §6.4.4.1 十进制无后缀
+/// 候选序（int→long→long long，全有符号）超出即实现定义——教学白箱的
+/// 严格 error 曾据此站住，但与「跑真实代码」定位冲突，翻案取实现主流。
+/// 词法层无 warning 通道，静默收下（教学损失=学习者不再被提示该常量
+/// 放不进有符号域——clang 同样仅 warning；差异以 ledger 登记形态保留）。
+test "issue_251_decimal_no_suffix_above_i64_ull" {
+  let r = scan_raw(
+    @utf8.encode(
+      "18446744073709551615 13827776004929097857 9223372036854775808",
+    ),
+  )
+  let summary = r.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(
+    summary,
+    content="UnsignedLiteral:18446744073709551615 UnsignedLiteral:13827776004929097857 UnsignedLiteral:9223372036854775808 Eof:",
+  )
+  assert_eq(r.errors.length(), 0)
+}
+
+///|
+/// #251 边界双侧锚：i64 档内维持 LongLiteral（有符号 8B——INT64_MAX
+/// 旧行为不变）；超 ULLONG_MAX 维持 E1006（parse_u64 溢出面——真超
+/// 范围 clang 亦 error，与翻案格无关）。
+test "issue_251_decimal_boundary_both_sides" {
+  let ok = scan_raw(@utf8.encode("9223372036854775807"))
+  let ok_summary = ok.tokens.map(t => "\{t.ty.to_name()}:\{t.text}").join(" ")
+  inspect(ok_summary, content="LongLiteral:9223372036854775807 Eof:")
+  assert_eq(ok.errors.length(), 0)
+  let over = scan_raw(@utf8.encode("18446744073709551616"))
+  assert_eq(over.errors.length(), 1)
+  assert_true(over.errors[0].code is E1006_UnsupportedFeature)
 }
 
 ///|

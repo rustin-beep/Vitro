@@ -1,5 +1,59 @@
 ## [Unreleased]
 
+### fix(engine): PR #345 审阅处置批——P1 u64→fp 转换全链对偶补齐（B17 实例）（2026-10-28）
+
+- **P1（处方 2 修复，独立复现坐实）**：u64 位模式转 double/float 旧按
+  有符号解释（`(double)18446744073709551615` 产 -1；`float f = ULL`
+  位模式直塞产 NaN）——本批翻案使无后缀十进制进入该路径，净效果从
+  「E1006 拒绝」变「能编译但错值」，修复面全链：
+  - **opcode**：+`CastUQ2D`(154)/`CastUQ2F`(155)（u64→fp 无符号对偶，
+    151→153 条；from_u8/from_name/name 三表 + wbtest 三锚连坐）
+  - **codegen**：`gen_cast_expr`/`gen_expr_with_cast`（显式 cast/隐式
+    收口）+ `binary`（混合运算左右操作数）+ `emit_scalar_cast_store`
+    （局部声明收口）四点 inner_u 双路
+  - **typeck**：`const_eval` CVal 扩 `CI(Int64, Bool)` 源符号位（43 处
+    连坐）——`CE_Cast` fp 分支与 `fold_static_init` 按源符号取位模式
+    解释（**static/全局 `double g = ULL` 的错值在 typeck 折叠层固化**，
+    codegen 无从纠正——真根因）；`literal_init_bits` 剥 Cast 取内层
+    符号（外层 Cast ty 是目标类型）
+  - **vm**：`CastUQ2D` 执行体（execute_double）；`CastUQ2F` 执行体
+    （execute_float——**分派组陷阱**：exec_step 按 F 族分派，写错函数
+    落 `_ => ()` 兜底无操作=位模式直通 NaN）
+- **验证**：三形态（显式/隐式初始化/混合运算/static 折叠/float）js/
+  native/clang 三方逐位一致；判等锚（位模式）全 1；语料
+  `dec_no_suffix_ull.c` 补四判等行（`%.17g` 打印末位 ULP 差系 printf
+  层独立面，**位模式已证一致**——判等锚定避开该面，ULP 面另行登记）
+- **边界面登记（审阅二）**：`#if 18446744073709551615 > 0` 仍 E1014
+  拒（求值器 i64 容量——S2 P1-5 有意「宁拒不错值」，known_diffs D14
+  在册）——翻案不覆盖 `#if` 面，clang 为真
+- **P3 连坐**：README 台账计数 36→37 / resolved-verified 12→13；
+  BIGCONST-01 `clang_verdict` 措辞改「一致（值域/rc）· warning 面差异
+  在册」；moonbit/README opcode 151→153 三处
+- opcode 151→153 的 0.9.0 发布档案数字不追改（实录时点真值）
+
+### fix(lexer): #251 十进制无后缀大常量翻案收 ULL——推翻 BIGCONST-01「保持 error」裁定（2026-10-28）
+
+- **翻案**：无后缀十进制常量落在 (INT64_MAX, ULLONG_MAX] 档不再报 E1006
+  拒绝，与 #24 十六进制档同款收 `UnsignedLiteral`（裸值交 parser 值域
+  派生 >4B 定 ULL）。推翻 DIFF-LEX-DECL-BIGCONST-01 2026-10-04 台账裁定
+  （`scripts/diff_ledger/ledger.json` 条目已翻案登记，status
+  → resolved-verified）。
+- **依据**：clang 22.1.4 实测 `18446744073709551615` 等值 warning
+  `-Wimplicitly-unsigned-literal` + rc=0 收 ULL（gcc 同款）；TheAlgorithms
+  批 hash_djb2.c 四处 djb2 比较值 / decimal_to_any_base.c 一处 ULLONG_MAX
+  命中该形态——旧拒绝挡整份真实程序。C11 §6.4.4.1 十进制无后缀候选序
+  全有符号、超出即实现定义——实现定义域内取双主流实现口径；教学损失
+  （不再提示常量放不进有符号域）以 ledger 登记保留（词法层无 warning
+  通道，静默收下）。
+- **边界不动**：> ULLONG_MAX 的 parse_u64 溢出面维持 E1006（真超范围
+  clang 亦 error，`p0_probe_wbtest` 两锚不受影响）；i64 档内维持
+  LongLiteral；U/UL 后缀格（2026-10-24 修）不变。
+- **锚**：scanner wbtest `issue_251_decimal_no_suffix_above_i64_ull`
+  （红→绿留痕：旧 Number:0+E1006）+ `_boundary_both_sides`（i64 档内/
+  超 UMAX 双侧锚）；baseline 语料 `dec_no_suffix_ull.c`（js/native/
+  clang 三方逐位一致：`1` / `18446744073709551615` /
+  `9223372036854775807`）；`u_suffix_unsigned_domain.c` 旧注连坐。
+
 ### fix(teaching/steps+time_travel+demo): PR #347 审阅处置批——P1 判据收紧 v2（左侧下标写）+ P2×3 + P3×5（2026-10-28）
 
 - **P1（判据 v1 放宽出 7/16 误报面）**：`is_swap_assign_line` v1「某一

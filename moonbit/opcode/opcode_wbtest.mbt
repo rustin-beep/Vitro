@@ -1,8 +1,9 @@
 ///|
-/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 151 个编号
+/// 0..255 全空间断言（T3 验收锚）：from_u8 恰好命中 153 个编号
 /// （132 原生 + C# 异常三件 44–46，S6 vm 批一号入位 + 138..150 自扩
 /// U 系对偶 13 条，#61 第一梯队 2026-10-11 + 151..153 全局 char 字节
-/// 粒度段 3 条，#177 2026-10-19），且命中的编号与 code() 互逆；
+/// 粒度段 3 条，#177 2026-10-19 + 154..155 u64→fp 无符号对偶 2 条
+/// CastUQ2D/CastUQ2F，#345 审阅 P1 2026-10-28——总 151+2），，且命中的编号与 code() 互逆；
 /// 其余全部 None。
 test "from_u8_full_space_0_to_255" {
   let mut hit = 0
@@ -15,7 +16,7 @@ test "from_u8_full_space_0_to_255" {
       None => ()
     }
   }
-  assert_eq(hit, 151)
+  assert_eq(hit, 153)
 }
 
 ///|
@@ -29,11 +30,11 @@ test "from_u8_holes_47_to_49" {
 }
 
 ///|
-/// 越界：>153 与负值 None（u8 表示域外的负值防御；138..150 自扩段
+/// 越界：>155 与负值 None（u8 表示域外的负值防御；138..150 自扩段
 /// 入位后旧 >137 边界随之扩张——#61 第一梯队连坐；151..153 字节粒度
-/// 段入位后边界再扩——#177 连坐）。
+/// 段入位后边界再扩——#177 连坐；154..155 u64→fp 对偶段——#345 连坐）。
 test "from_u8_out_of_range" {
-  assert_true(OpCode::from_u8(154) is None)
+  assert_true(OpCode::from_u8(156) is None)
   assert_true(OpCode::from_u8(255) is None)
   assert_true(OpCode::from_u8(-1) is None)
 }
@@ -43,7 +44,7 @@ test "from_u8_out_of_range" {
 /// 且名字唯一（from_name 不会两义）。
 test "name_from_name_roundtrip_all_148" {
   let mut seen = 0
-  for v in 0..<=153 {
+  for v in 0..<=155 {
     match OpCode::from_u8(v) {
       Some(op) => {
         seen += 1
@@ -55,7 +56,7 @@ test "name_from_name_roundtrip_all_148" {
       None => ()
     }
   }
-  assert_eq(seen, 151)
+  assert_eq(seen, 153)
 }
 
 ///|

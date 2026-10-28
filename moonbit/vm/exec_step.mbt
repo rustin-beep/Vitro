@@ -196,6 +196,7 @@ fn VitroVM::dispatch_single(
     | NegF
     | CastI2F
     | CastU2F
+    | CastUQ2F
     | CastF2I
     | EqF
     | NeF
@@ -212,6 +213,7 @@ fn VitroVM::dispatch_single(
     | NegD
     | CastI2D
     | CastU2D
+    | CastUQ2D
     | CastF2D
     | CastD2I
     | CastD2F

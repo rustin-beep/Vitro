@@ -124,7 +124,12 @@ fn BytecodeGen::gen_binary(
   } else if cast_is_double && lk is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if cast_is_double && lk is TK_LongLong {
-    self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    // #345 P1 连坐（混合运算提升面）：u64 无符号源走 UQ 系
+    if left_u {
+      self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    }
   } else if cast_is_long_long && (lk is TK_Int || lk is TK_Char) {
     if left_u {
       self.emit(@opcode.OpCode::CastU2Q, 0, loc)
@@ -154,7 +159,12 @@ fn BytecodeGen::gen_binary(
   } else if cast_is_double && rk is TK_Float {
     self.emit(@opcode.OpCode::CastF2D, 0, loc)
   } else if cast_is_double && rk is TK_LongLong {
-    self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    // #345 P1 连坐（同左操作数——u64 无符号源走 UQ 系）
+    if right_u {
+      self.emit(@opcode.OpCode::CastUQ2D, 0, loc)
+    } else {
+      self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+    }
   } else if cast_is_long_long && (rk is TK_Int || rk is TK_Char) {
     if right_u {
       self.emit(@opcode.OpCode::CastU2Q, 0, loc)

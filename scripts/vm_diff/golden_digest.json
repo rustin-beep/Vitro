@@ -1808,6 +1808,12 @@
       "stdout_sha": "4b227777d4dd1fc6",
       "memory_sha": "e8b59878a06124a7"
     },
+    "baseline/multi_error_mixed.c": {
+      "src_sha": "08fba57d",
+      "exit_code": 0,
+      "stdout_sha": "e3b0c44298fc1c14",
+      "compile_fail": true
+    },
     "baseline/multi_if_else.c": {
       "src_sha": "946da1a1",
       "exit_code": 0,

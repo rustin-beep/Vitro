@@ -56,7 +56,10 @@ test("layerOf：E1/E2/E3 层归并与顺序口径", () => {
   const d = (severity: string, code: string) => ({ severity, code, line: 1, column: 1, message: "" });
   assert.equal(layerOf([]), "ok");
   assert.equal(layerOf([d("warning", "W1018")]), "ok");
-  assert.equal(layerOf([d("error", "E2005"), d("error", "E3003")]), "typeck");
+  // PR #350 审阅 P2-1 翻案（2026-10-28）：首层语义——旧断言锚「末错覆盖」
+  //（E2 前置 E3 尾随 → typeck）与 codegen 闸 fail_stage:"parse" 对同一
+  // 事实相反；首失败层在 parse（E2005 先到），期望改 parse
+  assert.equal(layerOf([d("error", "E2005"), d("error", "E3003")]), "parse");
   assert.equal(layerOf([d("error", "E3003"), d("error", "E2005")]), "parse");
   assert.equal(layerOf([d("error", "E1005")]), "lex");
 });

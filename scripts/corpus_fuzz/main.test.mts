@@ -27,7 +27,9 @@ import {
   DetRand,
   bucketOf,
   codeMask,
+  classifyAgainstBaseline,
   collectJudgeEpochInputs,
+  collectZombieSeeds,
   firstIntLit,
   judgeCacheGet,
   judgeCachePut,
@@ -43,7 +45,7 @@ import {
   pruneJudgeEpochs,
   replaceFirstBareType,
 } from "./main.mts";
-import type { Rules } from "./main.mts";
+import type { BaselineEntry, Rules } from "./main.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
 const FIX = path.join("scripts", "corpus_fuzz", "testdata");
@@ -229,6 +231,60 @@ test("bucketOf：六桶分类 + 恶化序", () => {
 
 test("norm：CRLF / 裸 CR 归一", () => {
   assert.equal(norm("a\r\nb\rc"), "a\nbc");
+});
+
+// ---- 基线对账（#340 批：lc_150|static_inject UB 抖动豁免）----
+
+test("对账有牙：非豁免条目桶恶化 = worsened（闸回归锚，master run 40633695540 红的同形态）", () => {
+  const v = classifyAgainstBaseline("s/x|mut", "WRONG_VALUE", { bucket: "AGREE" });
+  assert.equal(v.kind, "worsened");
+  assert.equal(v.kind === "worsened" && v.from, "AGREE");
+  assert.equal(v.kind === "worsened" && v.to, "WRONG_VALUE");
+});
+
+test("volatile 豁免：UB 抖动条目桶漂移只报告不判红；恶化序以下仍 ok", () => {
+  const ent: BaselineEntry = { bucket: "AGREE", volatile: true };
+  const drift = classifyAgainstBaseline("s/x|mut", "WRONG_VALUE", ent);
+  assert.equal(drift.kind, "volatile-drift", "AGREE→WRONG_VALUE 漂移不判红");
+  const okV = classifyAgainstBaseline("s/x|mut", "AGREE", ent);
+  assert.equal(okV.kind, "ok");
+  // 恶化序以下（实跑比基线「好」）同样不红——单向闸口径不变
+  assert.equal(classifyAgainstBaseline("s/x|mut", "CLANG_REJECT", { bucket: "WRONG_VALUE" }).kind, "ok");
+});
+
+test("对账分类：新指纹 / 一致两态（纯函数全分支）", () => {
+  assert.equal(classifyAgainstBaseline("s/x|mut", "AGREE", undefined).kind, "new");
+  assert.equal(classifyAgainstBaseline("s/x|mut", "AGREE", { bucket: "AGREE" }).kind, "ok");
+});
+
+test("volatile 不豁免存在性：条目 seed 掉出采样集仍计僵尸（#340 批语义锚）", () => {
+  const entries = new Map<string, BaselineEntry>([
+    ["leetcode/lc_150.c|static_inject", { bucket: "AGREE", volatile: true }],
+    ["baseline/keep.c|brace_strip", { bucket: "AGREE" }],
+  ]);
+  const live = new Set(["baseline/keep"]);
+  const zs = collectZombieSeeds(entries, live);
+  assert.ok(zs.includes("leetcode/lc_150.c"), "volatile 条目 seed 消失仍僵尸");
+  assert.ok(!zs.includes("baseline/keep"));
+});
+
+test("e2e：基线 volatile 非 true fail loud（exit 2，豁免须显式）", () => {
+  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-vol-"));
+  const bad = path.join(dir, "baseline.json");
+  const r0 = rules();
+  // 迷你规则采样集首个指纹注入非法 volatile 值——解析期即红，不进真跑
+  fs.writeFileSync(
+    bad,
+    JSON.stringify({ entries: { [`${r0.suites[0]}/no_such_seed.c|brace_wrap`]: { bucket: "AGREE", volatile: "yes" } } }),
+    "utf8",
+  );
+  const r = spawnSync(process.execPath, [MAIN, "-rules", path.join(ROOT, FIX, "mini_rules.json"), "-baseline", bad], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  assert.notEqual(r.status, 0, "volatile 非 true 必须红");
+  assert.ok((r.stderr ?? "").includes("volatile"), "报错点名 volatile 字段");
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 test("e2e：未知算子名 fail loud（exit 2，规则与实现失配不静默）", () => {

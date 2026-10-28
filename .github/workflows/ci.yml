@@ -1188,6 +1188,57 @@ jobs:
       - name: moon test (latest compatibility probe)
         run: cd moonbit && moon test
         shell: bash
+      - name: Test-count reconciliation (README declared vs latest moon test truth)
+        # #338 批一（2026-10-27）：哨兵此前只看 rc——上游行为漂移（计数变化
+        # 但不红不崩）零感知通道。复用现役 testcount 闸（v3 双口径实跑对账
+        # 两 README 声明，本地 CI 均已 J9 双锚）：latest 实跑计数 != master
+        # README 声明即红 = 上游有兼容面外行为变化，走
+        # vitro-toolchain-upgrade 流程。期望值单源 = master README（pin
+        # 口径声明数），零新增单值文件；测试数变更批的 README 连坐义务
+        # 不变（testcount 闸主线本已强制）。node 用 runner 预装版（闸只
+        # 用 node:fs/path/child_process，无版本面）。
+        run: node scripts/moonbit/testcount/main.mts
+        shell: bash
+
+  # ── coverage-sentinel（#338 批二，2026-10-27）────────────────────────────
+  # 行覆盖率记账观察面（首测基线 18171/30657 = 59.3%，默认 wasm 轮裸单测
+  # 域）：nightly 跑 moon coverage analyze + report -f summary 存 artifact。
+  # 按拍板只记账不判红——观察 1~2 周波动形态后再议阈值闸；facts 键
+  # moonbit_coverage_uncovered_lines（--run-slow 档）同批接线。仅 schedule
+  # 触发、无下游 needs——红不阻塞任何主线 job。coverage 仍属实验特性
+  # （MOON_COVE 双引擎并存），报告形态冻结在本 job 的产物上。
+  coverage-sentinel:
+    name: Coverage sentinel (nightly, observe-only)
+    runs-on: windows-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (pinned)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+      - name: Coverage analyze + summary report
+        # 冷态 instrumentation 全量重编（分钟级）+ 插桩跑全量裸单测；
+        # report 末行 Total: covered/total = facts 键同源口径（本地实测
+        # 热态 ~4s / 冷态数分钟）。归一 CRLF 后存 artifact 供逐日 diff。
+        # pipefail（#338 审阅批补）：管道 rc 是尾命令（纪律 9）——report
+        # 崩溃/超时不得被 tr 的 rc=0 吞成假绿（空 artifact 入库 = 记账
+        # 静默缺失，违背 fail loud）。
+        run: |
+          set -o pipefail
+          cd moonbit
+          moon coverage analyze
+          moon coverage report -f summary | tr -d '\r' > coverage_summary.txt
+          tail -3 coverage_summary.txt
+        shell: bash
+      - name: Upload coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary-${{ github.run_id }}
+          path: moonbit/coverage_summary.txt
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)

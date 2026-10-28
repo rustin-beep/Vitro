@@ -166,4 +166,4 @@ cd moonbit && moon publish        # Server 200 OK 后：
 
 ## facts 接线
 
-`moonbit_test_passed` + `moonbit_test_passed_native`（`--run` 门采集，cached 沿用；#308 起 native 口径键在场）——新增防线产物时按 `moonbit_*` 前缀扩键（总计划 §10 每片回填义务），采集器在 `scripts/facts/facts.mts::collectMoonbit`（#307 迁移批起 .mts 现役，Go 版为回退面且不含 native 键；**新占位键须三处对称**：RUN_KEYS + else 占位 + 采集器——漏占位即落盘丢键假绿，#298 病族，反向 J9 锚 `moonbit_fact.test.mts`）。
+`moonbit_test_passed` + `moonbit_test_passed_native`（`--run` 门采集，cached 沿用；#308 起 native 口径键在场）+ `moonbit_coverage_uncovered_lines`（#338 批二 2026-10-27：**`--run-slow` 档采集**——冷 instrumentation 分钟级不进 CI `--run` 关键路径；值 = `moon coverage report` 末行 total−covered〔12486 基线，covered/total=18171/30657=59.3%〕，analyze caret 的「N uncovered」是展示层另一口径不采；只记账不判红——无 docs 声明引用即无 strict 消费点）——新增防线产物时按 `moonbit_*` 前缀扩键（总计划 §10 每片回填义务），采集器在 `scripts/facts/facts.mts::collectMoonbit`（#307 迁移批起 .mts 现役，Go 版为回退面且不含 native 键；**新占位键须三处对称**：RUN_KEYS + else 占位 + 采集器——漏占位即落盘丢键假绿，#298 病族，反向 J9 锚 `moonbit_fact.test.mts`）。

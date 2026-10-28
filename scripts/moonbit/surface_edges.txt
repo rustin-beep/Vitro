@@ -345,6 +345,7 @@ vitro/engine/lexer/internal/pp vitro/engine/lexer/token LexResult
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token LexWarning
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token LineSpan
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token MacroDef
+vitro/engine/lexer/internal/pp vitro/engine/lexer/token SourceError
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token SourceProvider
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token Token
 vitro/engine/lexer/internal/pp vitro/engine/lexer/token TokenType

@@ -106,3 +106,16 @@ test "blackbox_dto_surface" {
   assert_eq(cu.filename, "a.c")
   assert_eq(fr.end_line, 1)
 }
+
+///|
+/// #338 批四（2026-10-27）：StepStatus::to_text 四态穷尽锚——此前仅
+/// Paused 一态被踩（dto.mbt 3/6），协议文本形态（serve JSON 出口对齐
+/// Rust serde 裸字符串）须四臂全锁。
+test "step_status_to_text_all_variants" {
+  assert_eq(@session.StepStatus::WaitingInput.to_text(), "WaitingInput")
+  assert_eq(@session.StepStatus::Finished.to_text(), "Finished")
+  assert_eq(@session.StepStatus::Trap.to_text(), "Trap")
+  // 顺序不变量（Compare derive——四态序列化序对齐 Rust 声明序）
+  assert_true(@session.StepStatus::Paused < @session.StepStatus::WaitingInput)
+  assert_true(@session.StepStatus::Finished < @session.StepStatus::Trap)
+}

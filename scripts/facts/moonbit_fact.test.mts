@@ -8,7 +8,7 @@ import path from "node:path";
 import { test } from "node:test";
 import {
   collectAbiVersion, collectAll, collectCargoTestFromLog,
-  collectMoonbitFromOutput, collectMoonbitNativeFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
+  collectMoonbitCoverageFromOutput, collectMoonbitFromOutput, collectMoonbitNativeFromOutput, collectMoonbitPackages, parseLexerDiffPass, parseParserDiffPass,
 } from "./facts.mts";
 import { RUN_KEYS } from "./facts.mts";
 import type { Fact, FactsDoc } from "./facts.mts";
@@ -60,6 +60,32 @@ test("moonbit native J9 埋雷：无 Total 行 unavailable（#308）", () => {
 
 test("moonbit native 口径键在 RUN_KEYS 在册（#308）", () => {
   assert.ok(RUN_KEYS.includes("moonbit_test_passed_native"), "moonbit_test_passed_native 须登记 RUN_KEYS（cached 沿用语义）");
+});
+
+// #338（2026-10-27）：coverage 记账键——绿路径（report 末行 Total: c/t，
+// 值 = total−covered）+ J9 双埋雷（analyze 展示层口径「N uncovered」单数字
+// 形态不得匹配 / 无 Total 行 unavailable）+ RUN_KEYS 在册。
+test("moonbit coverage 绿路径（#338）", () => {
+  const facts = factsOf();
+  collectMoonbitCoverageFromOutput("util\\util.mbt: 146/160\nTotal: 18171/30657", facts);
+  const f = facts["moonbit_coverage_uncovered_lines"];
+  assert.ok(f !== undefined && f.status === "ok" && f.value === 12486,
+    `coverage 绿路径解析失败: ${JSON.stringify(f)}`);
+  assert.ok(f.note!.includes("18171/30657"), "note 须带 covered/total 三件（对账锚）");
+});
+
+test("moonbit coverage J9 埋雷：analyze 展示层口径不得采（#338）", () => {
+  const facts = factsOf();
+  // analyze caret 末行是「Total: N uncovered line(s)」单数字形态——
+  // 与 report 的 x/y 形态口径不同（实测 4827 vs 12486），混采即毒数字
+  collectMoonbitCoverageFromOutput("244\t_ => return None\t<-- UNCOVERED\nTotal: 4827 uncovered line(s) in 135 file(s)", facts);
+  assert.equal(facts["moonbit_coverage_uncovered_lines"]!.status, "unavailable",
+    "「N uncovered」展示层口径不应被匹配为真值");
+});
+
+test("moonbit coverage 口径键在 RUN_KEYS 在册（#338）", () => {
+  assert.ok(RUN_KEYS.includes("moonbit_coverage_uncovered_lines"),
+    "moonbit_coverage_uncovered_lines 须登记 RUN_KEYS（cached 沿用语义）");
 });
 
 // S2：词法差分真值解析——绿路径 + J9 埋雷（FAIL 输出禁兜底）。
@@ -182,6 +208,7 @@ test("RUN_KEYS 采集族键非 --run 时对称占位（#308 防落盘丢键）",
   for (const k of [
     "replay_assertions", "serve_smoke_assertions", "moonbit_test_passed",
     "moonbit_test_passed_native", "moonbit_lexer_diff_tsv", "moonbit_parser_diff_samples",
+    "moonbit_coverage_uncovered_lines",
   ]) {
     const f = doc.facts[k];
     assert.ok(f !== undefined && f.status === "unavailable",

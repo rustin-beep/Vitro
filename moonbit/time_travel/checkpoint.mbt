@@ -166,7 +166,9 @@ fn CheckpointManager::evict_at(
       ignore(self.checkpoints.remove(remove_idx))
     }
   } else if remove_idx == 0 {
-    // 删链头 Delta（防御）：删到 Full 维持链头不变量
+    // 删链头 Delta（防御）：删到 Full 维持链头不变量。**几何化后不可达**
+    //（PR #342 审阅 P3-6 注记：淘汰 argmin 的候选 i ≥ 1 ⇒ 链头恒不被选；
+    // 保留为白盒直调 evict_at(0) 的链不变量自洽通道 + FIFO 时代防御遗产）
     while self.checkpoints.length() > 0 &&
           !(self.checkpoints[0].1.memory is @vm.Full(_)) {
       ignore(self.checkpoints.remove(0))
@@ -184,6 +186,38 @@ pub fn CheckpointManager::nearest(
     Some(i) => i
     None => return None
   }
+  self.rebuild_at(idx)
+}
+
+///|
+/// 带回看窗口下限的取锚（PR #342 审阅 P2-1 处置，2026-10-28）：seek 的
+/// 重放区间 = [cp..target]，窗口宽度 = target−cp+1——**恰命中锚点**
+///（target−cp < window−1，几何化把锚铺满全程后非罕见）时窗口塌缩
+///（极端 1 帧）。本方法按 `min(target, target−window+1)` 取锚（下探更早
+/// 锚，恒有 step-0 兜底）：窗口恒满，代价是至多 window−1 步快道重放
+///（µs 级——快道段免 collect）。快道门与 finish_replay 语义不受影响
+///（cp < dense_from 恒成立 ⇒ 快道段非空）。
+pub fn CheckpointManager::nearest_for_window(
+  self : CheckpointManager,
+  target : Int32,
+  window : Int32,
+) -> (Int32, @vm.VMSnapshot)? {
+  let floor = target - window + 1
+  let effective = if floor > 0 { floor } else { 0 }
+  let idx = match last_le(self.checkpoints, effective) {
+    Some(i) => i
+    None => return None
+  }
+  self.rebuild_at(idx)
+}
+
+///|
+/// 按下标重建可直接恢复的全量快照（nearest / nearest_for_window 公共段：
+/// Full 深拷 / Delta 链回放 + 字段集独立性克隆）。
+fn CheckpointManager::rebuild_at(
+  self : CheckpointManager,
+  idx : Int32,
+) -> (Int32, @vm.VMSnapshot)? {
   let step = self.checkpoints[idx].0
   let snap = self.checkpoints[idx].1
   match snap.memory {
@@ -319,12 +353,14 @@ pub fn CheckpointManager::set_smart_mode(
 }
 
 ///|
-/// 设置最大检查点数（同上）。
+/// 设置最大检查点数（同上）。**收缩即时淘汰**（PR #342 审阅 P3-3 处置，
+/// 2026-10-28）：内存防线不等下次 save——收紧上限当场把超额锚淘汰掉。
 pub fn CheckpointManager::set_max_checkpoints(
   self : CheckpointManager,
   n : Int32,
 ) -> Unit {
   self.max_checkpoints = n
+  self.evict_over_limit()
 }
 
 ///|

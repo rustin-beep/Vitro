@@ -460,8 +460,12 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
   match self.frames.frame_at(target) {
     Some(p) => return { success: true, payload: Some(p), error: None, }
     None =>
-      // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败
-      match self.checkpoints.nearest(target) {
+      // 第 1 步：取最近检查点（增量快照在此重建为全量）；无 → 失败。
+      // P2-1（PR #342 审阅处置）：带回看窗口下限取锚——恰命中锚点时
+      // 窗口塌缩（重放区间 = [cp..target]，cp==target ⇒ 1 帧）；下探
+      // 更早锚保证窗口恒满（代价 ≤ window−1 步快道重放）
+      match
+        self.checkpoints.nearest_for_window(target, self.frames.window_limit()) {
         None =>
           return {
             success: false,
@@ -540,8 +544,14 @@ pub fn[P : SourceLineProvider] UnifiedEngine::seek_to(
             match vm.step() {
               Ok | Paused =>
                 if fast {
-                  // 快道：仅排水 vis_events（不排会跨步累积爆进密采首帧）
-                  ignore(vm.take_vis_events())
+                  // 快道零操作（P3-1 审阅处置，2026-10-28）：vis 排水是
+                  // 死代码——vis 事件行只在 algorithm_matches 非空时随
+                  // setup 注入（project_vis_lines 单源），而 fast_ok 门
+                  // = matches 为空 ⇒ 快道段队列必然为空（审阅突变删除
+                  // 全绿 + 端到端 34,767 帧逐位一致实证）。**若未来快道
+                  // 门放宽到 matches 非空，须恢复 take_vis_events 排水**
+                  //（不排会跨步累积爆进密采首帧）。
+                  ignore(vm.step_count)
                 } else {
                   let l2 = vm.get_current_line()
                   self.frames.push_or_replace_at(

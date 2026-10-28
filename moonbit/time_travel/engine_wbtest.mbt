@@ -641,3 +641,43 @@ test "engine_seek_fastpath_beyond_end_regression" {
   )
   assert_eq(vm.step_count, 2000, msg="Finished 探测步不推进计数")
 }
+
+///|
+/// PR #342 审阅 P2-1 锚（2026-10-28）：seek 恰命中锚点时回看窗口不得
+/// 塌缩。白盒构造确定性形态：锚集只留 {0, 2000}（标签内容一致——0 锚
+/// 由 run 首循环自动存，2000 锚跑到后手工存），窗口钉出 target 后
+/// seek(2000)——修复前 nearest(2000) 恰命中 2000 锚 ⇒ 重放 1 步 ⇒ 窗口
+/// 仅终帧（payload.get 回看 0 帧）；修复后取 0 锚重放 ⇒ 窗口恒满。
+test "engine_seek_anchor_hit_window_full" {
+  let vm = @vm.VitroVM::new()
+  vm.load_program(nop_program(3_000))
+  let e = UnifiedEngine::with_limits(100_000, 100, 0.5)
+  let src = fake_src()
+  // 跑 1 步（step-0 锚自动存）+ 续跑到 2000
+  guard e.run_batch(vm, src, 1) is Ok(_) else { fail("首步应 Ok") }
+  let zero_anchor = e.checkpoints.checkpoints[0]
+  ignore(e.run_batch(vm, src, 1_999))
+  assert_eq(vm.step_count, 2_000)
+  // 锚集重整为恰 {0, 2000}：先 clear（防 run 途中间隔锚与 K=50 淘汰
+  // 挤掉新锚），白盒回填 0 锚 + save(2000)（length=1 → Delta，base=0
+  // 链有效——重建语义同 Full）
+  e.checkpoints.clear()
+  e.checkpoints.checkpoints.push(zero_anchor)
+  e.checkpoints.save(2_000, vm)
+  assert_eq(e.checkpoints.length(), 2)
+  // 窗口钉出 target 后回看恰锚步
+  e.frames.reset_to(2_001)
+  let s = e.seek_to(2_000, vm, src)
+  assert_true(s.success, msg="回看 seek 应成功")
+  let want_start = 2_000 - 100 + 1
+  assert_eq(
+    e.frames.start_step(),
+    want_start,
+    msg="P2-1：恰命中锚点时窗口起点须为 target-window+1（修复前塌缩到 target）",
+  )
+  assert_true(
+    e.frames.frame_at(want_start) is Some(_),
+    msg="回看窗口首帧可达（payload.get 面）",
+  )
+  assert_true(e.frames.length() >= 99, msg="窗口近满（≥99 帧）")
+}

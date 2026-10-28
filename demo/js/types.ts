@@ -178,6 +178,8 @@ export interface EngineConfig {
   quarantine_budget: number;
   /** 输出预算字节（DX ③；#240 补——HEAD 新增） */
   output_budget: number;
+  /** 时间旅行检查点保留数（#87 批二补——config.get 回显面镜像，1..=1000） */
+  max_checkpoints: number;
   /** 预算档位 default|algo|tiny（#133；#240 补——HEAD 新增） */
   preset: string;
   /** 会话已编译位（#240 补——HEAD 新增） */

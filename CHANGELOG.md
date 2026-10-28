@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### fix(time_travel+gateway+docs): PR #342 审阅处置批——P2-1 恰命中锚点窗口塌缩 + P3×6（2026-10-28）
+
+- **P2-1（真缺陷）**：seek 恰命中锚点时回看窗口塌缩——几何化把锚铺满
+  全程后 `nearest(target)` 可恰落 target ⇒ 重放 1 步 ⇒ 窗口仅终帧
+  （实测同会话 seek(180k)→seek(90k) 后 payload.get 回看 **0 帧**，旧臂
+  1200）。修法：`nearest_for_window(target, window)` 按回看下限取锚
+  （`min(target, target−window+1)`，恒有 step-0 兜底）——窗口恒满，
+  代价 ≤ window−1 步快道重放（µs 级）；`nearest` 抽公共 `rebuild_at`，
+  trap 回退路径保持最近锚语义（最短回退）。端到端复验 0→**1200 帧**
+  （与旧臂同值）。红锚：白盒构造锚集 {0,2000} + seek(2000)——修复前
+  起点塌缩到 2000，修复后 1901 满窗。
+- **P3 组**：①快道 vis 排水删除（死代码——vis 事件行只在
+  algorithm_matches 非空时注入而 fast_ok 门 = matches 空 ⇒ 队列必空；
+  审阅突变删除全绿 + 34,767 帧逐位一致实证，注释留依赖关系警示）；
+  ②CHANGELOG「新旧响应逐位一致」措辞勘正（返回帧逐位一致——
+  cache_start_step 随锚点位置系统性不同）；③`set_max_checkpoints`
+  收缩**即时淘汰**（内存防线不等下次 save）；④已知限制表重复 `#9`
+  勘正（#219 行移序改 `#10`）；⑤demo `js/types.ts` EngineConfig 补
+  `max_checkpoints` 镜像字段；⑥`evict_at` 链头分支不可达注记（几何化
+  后 i≥1，保留为白盒直调通道）。锚四补/lifecycle 锚随 ③ 的当场淘汰
+  语义连坐更新。测试 930→931（裸）/1094→1095（native）。
+
+
 ### fix(scripts): fuzz 基线 lc_150|static_inject UB 抖动豁免——桶位非确定种子摘出对账面（2026-10-28，并入 PR #340）
 
 - **红根**：master push CI（run 40633695540）fuzz 闸桶恶化
@@ -323,10 +346,12 @@
   save 是快道最大成本（每 5 次 save 一次 Full = 1MB 内存整拷，20 万步
   重放 = 2GB 白拷贝、95%+ 被几何化淘汰）——降频后密采段保持原频、全
   程覆盖由 K=50 主导。
-- **实测**（native serve NDJSON 同机同程序、新旧响应逐位一致前提下的
-  计时）：2M 步程序 seek(200k) 3005→108ms / seek(600k) 6598→191ms /
-  seek(1M) 6620→188ms（28–35×）；20M 步程序 seek(15M) 2007ms（基线
-  外推 ~225s）。测试 901→906（裸）/1058→1064（native 全量）。
+- **实测**（native serve NDJSON 同机同程序、**返回帧逐位一致**前提下
+  的计时——`cache_start_step` 随锚点位置系统性不同，非逐位口径〔PR
+  #342 审阅 P3-2 勘正〕）：2M 步程序 seek(200k) 3005→108ms /
+  seek(600k) 6598→191ms / seek(1M) 6620→188ms（28–35×）；20M 步程序
+  seek(15M) 2007ms（基线外推 ~225s）。测试 901→906（裸）/1058→1064
+  （native 全量）。
 
 ### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
 

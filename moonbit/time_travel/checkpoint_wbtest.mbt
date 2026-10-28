@@ -158,11 +158,11 @@ test "checkpoint_evict_full_cascade_pinned" {
   assert_eq(cm.length(), 8)
   assert_true(cm.checkpoints[5].1.memory is @vm.Full(_))
   assert_true(cm.checkpoints[6].1.memory is @vm.Delta(_, _))
-  // 收紧上限 + 再 save(60) 触发：删 1D（间隙 1）→ 删 3D（间隙 1）→
-  // 5F 左间隙 1 成最小 → 删 Full 级联 drain 20D/40D/60D
+  // 收紧上限触发淘汰（**P3-3 后当场发生**——set_max 即时淘汰，不等
+  // 下次 save）：删 1D（间隙 1）→ 删 3D（间隙 1）→ 5F 左间隙 1 成最小
+  // → 删 Full 级联 drain 20D/40D——悬空 Delta（base=5 已删）当场清除
   cm.set_max_checkpoints(3)
-  cm.save(60, vm)
-  // 终态 [0F,2D,4D]：悬空 Delta（base=5 已删）必须已被级联清除
+  // 终态 [0F,2D,4D]（级联已发生——链不变量当场成立）
   assert_eq(cm.length(), 3)
   assert_eq(cm.checkpoints[0].0, 0)
   assert_true(cm.checkpoints[0].1.memory is @vm.Full(_))
@@ -172,10 +172,12 @@ test "checkpoint_evict_full_cascade_pinned" {
       @vm.Delta(base, _) => assert_eq(base, 0)
     }
   }
-  // 淘汰后 seek 只能落 step-0 锚点前的幸存检查点（悬空 Delta 已清，
-  // nearest(60) 命中 4 且可重建——base=0 在场）
+  // 再 save(60)（length 3 → Delta，push 4 > 3 → 淘汰最老 Delta 2D）：
+  // [0F,4D,60D]——nearest(60) 命中 60 且可重建（base=0 在场）
+  cm.save(60, vm)
+  assert_eq(cm.length(), 3)
   guard cm.nearest(60) is Some((s, _)) else { fail("nearest(60) 必须命中") }
-  assert_eq(s, 4)
+  assert_eq(s, 60)
 }
 
 ///|

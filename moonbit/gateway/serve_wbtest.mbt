@@ -501,4 +501,25 @@ test "config_max_checkpoints_lifecycle" {
   )
   guard s.unified is Some(e4) else { fail("engine 存活") }
   assert_eq(e4.checkpoints.max_checkpoints, 1, msg="失败帧不改变现值")
+  // P3-3（PR #342 审阅处置）：收缩即时淘汰——放宽存 8 锚后收紧到 5，
+  // 内存防线不等下次 save 当场回收
+  let (r6, _) = serve_handle(
+    s, "{\"id\":9,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":10}}",
+  )
+  assert_true(r6.contains("\"ok\":true"))
+  guard s.unified is Some(e5) else { fail("engine 存活") }
+  e5.checkpoints.clear()
+  for st in [1, 2, 3, 4, 5, 6, 7, 8] {
+    e5.checkpoints.save(st, s.vm)
+  }
+  assert_eq(e5.checkpoints.length(), 8, msg="K=10 下 8 锚全保留")
+  ignore(
+    serve_handle(
+      s, "{\"id\":10,\"method\":\"config.set\",\"params\":{\"max_checkpoints\":5}}",
+    ),
+  )
+  assert_true(
+    e5.checkpoints.length() <= 5,
+    msg="收缩即时淘汰（不等下次 save 回收）",
+  )
 }

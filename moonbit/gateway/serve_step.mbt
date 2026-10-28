@@ -66,6 +66,8 @@ fn step_payload_json(p : @protocol.StepPayload) -> Json {
   )
   m.set("func_name", Json(p.func_name))
   m.set("semantic_label", Json(p.semantic_label))
+  // #231（2026-10-27）：受控词汇 id 同帧下发（classify 单源；空串=无标签）
+  m.set("semantic_label_id", Json(p.semantic_label_id))
   m.set(
     "algorithm_step",
     match p.algorithm_step {

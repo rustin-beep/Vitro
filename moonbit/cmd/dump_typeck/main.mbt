@@ -28,12 +28,18 @@
 /// dirname_of(path)（dump_tokens 先例同款），哨兵 gap/include_quote_
 /// sentinel.c 已翻转并随 golden 重刷（哨兵设计兑现：任一侧 vfs 行为
 /// 独立变化即红）。
+///
+/// 用法错（缺参）= 用法行 + rc=4（#230 治理，2026-10-27——旧走未捕获
+/// Failure 的 PanicError 栈 + rc=127）。
+extern "C" fn c_exit(code : Int32) -> Unit = "exit"
+
+///|
 fn main raise {
   @content_data.install_baked() // #130 批③a：烘焙教学表装载（lean 拆包后引擎默认空表）
   let args = @env.args()
   if args.length() < 3 {
     println("用法: dump_typeck <corpus_dir|file.c> <out_dir>")
-    fail("参数不足")
+    c_exit(4)
   }
   let target = args[1]
   let out_dir = args[2]

@@ -53,6 +53,7 @@ test "engine_reset_clears_all" {
       code_file: None,
       func_name: "main",
       semantic_label: "",
+      semantic_label_id: "",
       algorithm_step: None,
       local_vars: [],
       call_stack: [],

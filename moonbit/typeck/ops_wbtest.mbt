@@ -405,7 +405,9 @@ test "assign_null_pointer_constant_no_w3054" {
 /// count 释义句与参数位句——改造前逐字节基线（错误串取 tc.errors[0]）。
 /// #130 批③a 起 builtin_notes 拆 content_data（wbtest 不可跨包 import
 /// ——fixture-install 技法：装载内联载荷后断言，测试自此与烘焙数据
-/// 解耦且更 hermetic）。测尾回装空表（lean 初始态，不污染同包后续）。
+/// 解耦且更 hermetic）。测尾显式 __clear__ 回 lean 初始态（#323 起空段=
+/// 不覆盖——旧「回装空表」在整表替换语义下被 trap 键集闸整帧拒且
+/// catch 吞错，恢复实为空转，本批顺手治真）。
 test "builtin_notes_migration_snapshot_before" {
   let fixture = Json::object({
     "suggestions": Json::object({}),
@@ -429,10 +431,10 @@ test "builtin_notes_migration_snapshot_before" {
         ]),
       }),
     }),
-    // trap_messages 段缺席（二轮审阅 P2 起在场段须与烘焙表键集全等——
-    // 本 fixture 只装 builtin 两键，trap 不碰）
+    // trap_messages 段缺席（不碰引擎烘焙 trap——#323 合并语义下段缺席
+    // 同义；本 fixture 只装 builtin 三键）
   })
-  @assets.install_texts(fixture.stringify()) catch {
+  let _ = @assets.install_texts(fixture.stringify()) catch {
     _ => fail("fixture 装载失败")
   }
   let loc = @source.SourceLoc::new(1, 1)
@@ -456,11 +458,9 @@ test "builtin_notes_migration_snapshot_before" {
   ignore(tc3.check_builtin_rewind([dlit], loc))
   assert_true(tc3.errors.length() > 0, msg="rewind int 实参须报错")
   assert_eq(tc3.errors[0].message, "rewind 参数必须是文件指针")
-  // 回装空表（lean 初始态）
-  @assets.install_texts(
-    "{\"suggestions\":{},\"builtin_notes\":{},\"trap_messages\":{}}",
-  ) catch {
-    _ => ()
+  // 显式清空 builtin_notes（恢复 lean 初始态——#323 __clear__ 形态）
+  let _ = @assets.install_texts("{\"builtin_notes\":{\"__clear__\":true}}") catch {
+    _ => []
   }
 }
 

@@ -82,7 +82,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 |---|---|
 | **id 关联** | 请求可带 `id`（任意 JSON 值），响应原样回填 —— 便于异步/乱序对账 |
 | **帧同构** | 成功帧 `{"id":N,"ok":true,"result":{…}}`，错误帧 `{"id":N,"ok":false,"error":{"kind":…,"message":…}}` —— 解析路径统一 |
-| 错误 kind | `protocol`（请求格式/未知方法/config.set 未知键）/ `state`（会话状态不满足，如未 step.begin 就 step.next）/ `texts`（texts.install 装载失败——payload 非法 JSON/顶层键缺失；#257 补登）/ `internal`（保留值——本轮多形态探测未观测到实例，登记为待实证） |
+| 错误 kind | `protocol`（请求格式/未知方法/config.set 未知键）/ `state`（会话状态不满足，如未 step.begin 就 step.next）/ `texts`（texts.install 装载失败——payload 非法 JSON/段形态与值域不符/占位符契约不符/`__clear__` 混用；#257 补登、#323 扩）/ `internal`（保留值——本轮多形态探测未观测到实例，登记为待实证） |
 | 入口语义 | 会话语义层单源（MoonBit 侧 = `vitro/engine/session` 包；运行结果/诊断/步 payload 形状各出口一致），出口间不产生语义分叉 |
 | 会话配置 | `quarantine_budget` / `deterministic` / `max_steps` / `call_depth_limit` |
 | 重置语义 | `session.reset` 清空编译/运行状态，**保留会话级配置**（隔离预算、判分确定性、argv） |
@@ -109,7 +109,8 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `config.get` / `config.set` | 同上配置项 | 读写会话级配置 |
 | `error_catalog` | — | 错误码表机器可读导出（`{catalog:[{code,code_str,lang,category,icon,title,explanation,common_causes[]}]}`，按 code 升序；`icon` = 语义图标 id（#27 方案 C——原 `emoji` 码点字段已退役），字形经 `icons.get` 单通道下发） |
 | `icons.get` | `ids:[string]`（可选，缺省/空 = 全量） | **图标资产帧（#27 方案 C，2026-10-07）**：响应 `{schema,digest,viewBox,stroke_width,stroke_linecap,stroke_linejoin,fill,icons:{<id>:{paths:[…]}}}`——SVG path 数据 + 统一渲染参数按 digest 锁定下发；值域 = `moonbit/icons/index.tsv` 单源（icon_catalog 闸锁）；按请求序输出、重复 id 去重、含未知 id 整帧拒绝（fail loud 不静默缩水） |
-| `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时覆盖装载——批③b 扩诊断卡片段（码值域闸=catalog_codes——卡数随码表增长，2026-10-23 实测 108〔A 线 #214 批 +E3084/E3085〕，装前以 `error_catalog` 帧实数为准）——校验（suggestions/builtin_notes 两必到键 + trap_messages 可选段〔批③a：缺席=不碰引擎烘焙 trap，在场=校验后替换〕/suggestions 值域 43 名单/trap 占位符双向契约）全过后原子换装，失败 error 帧不落半装；成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持）。**段内 schema（#244，2026-10-22 成文——此前下游须试错三轮才能装上）**：`payload` 是 JSON 文本，顶层四段**每段都是「整表等键替换」**（少一条即整帧拒绝——与 `texts.install` 装载门「含未知 id 整帧拒绝」同族裁定，#130）：`suggestions` = `{<43 算法名>: string}`（43 名单单源）、`builtin_notes` = `{<12 名>: string}`、`trap_messages` = `{<45 整数码>: string}`、`error_catalog` = `{<108 整数码>: {icon,title,explanation,common_causes[]}}`（卡数随码表增长——装前以 `error_catalog` 方法帧的实数为准，审阅 P2-6）——**键必须整数码**（`"E1001"` 字符串键会被拒），装前对照 `error_catalog`/`semantic_labels` 方法帧拿当前键集。**覆盖面分工（#243，2026-10-22 成文）**：装载替换的是 **`error_catalog` 帧的卡与三张文本表**；**编译/运行诊断帧的 `message`（静态码表文案——「发生了什么」）与 `fix_suggestion` 不受语言包控制**（本地化生效的是「怎么教」层——卡与附注）。「装语言包 → 诊断 message 变中/英」不成立属既定分工，非缺陷 |
+| `texts.get` | — | **四表现值回读（#323，2026-10-27）**：`texts.install` 的读-改-写闭环读口——result = 四段对象（suggestions/builtin_notes/trap_messages/error_catalog 现值），`JSON.stringify(result)` 后**直接是 `texts.install` 的合法 payload**（get→install 幂等闭环）。此前 30 方法零教学文案表读接口，非 MoonBit 宿主无法自查键集 ⇒ 「改一条文案」的合法载荷不可构造——本口治该协议闭环缺口 |
+| `texts.install` | `payload:string`（四段可选集：suggestions/builtin_notes/trap_messages/error_catalog） | **语言包装载帧（#130 批②/③b，2026-10-17；#323 段级合并语义改版，2026-10-27）**：四段（suggestions/builtin_notes/trap_messages/error_catalog）运行时装载。**#323 语义（段级合并 + 显式清空）**：① 顶层四段**全部可选**——缺省段不动现表，空段对象 = 不覆盖（**不再静默清空**——旧语义下 `{"suggestions":{},"builtin_notes":{}}` 会清空两表，是最易踩的静默破坏面）；② 携带段**逐键合并覆盖**（未提供键保持）——「改一条文案」只带那一个键即可，不再要求整表全键集；③ 段恰为 `{"__clear__":true}`（单键布尔）= **显式清空**该段，与数据键混用整帧拒绝；④ 成功回 `{suggestions,builtin_notes,trap_messages,error_catalog}` 四表装后计数 + `cleared` 数组（被清空段名，无清空 = `[]`——清空类操作显式可观测）。**值域闸（fail loud 不落半装）**：suggestions 键域 = 43 算法名单（单源）、trap_messages 仅可覆盖**现有键**（值域 = 现表键集，幽灵键拒——host 侧 unwrap 消费面防护：合并只增改不删）、error_catalog 键域 = catalog_codes 整数码（**键必须整数码**——`"E1001"` 字符串键会被拒；卡数随码表增长，装前以 `error_catalog` 帧实数为准）、trap 占位符双向契约。查现表键集用 `texts.get`。浏览器宿主懒加载语言包 js（`teaching/langpack` 产物）后经本帧注入；CLI wasm 臂启动即注入（烘焙语义保持，全量段在合并语义下幂等）。**覆盖面分工（#243，2026-10-22 成文）**：装载替换的是 **`error_catalog` 帧的卡与三张文本表**；**编译/运行诊断帧的 `message`（静态码表文案——「发生了什么」）与 `fix_suggestion` 不受语言包控制**（本地化生效的是「怎么教」层——卡与附注）。「装语言包 → 诊断 message 变中/英」不成立属既定分工，非缺陷 |
 | `semantic_labels` | — | `semantic_label` 受控词汇表导出（`{schema,discipline,labels:[{id,domain,template,example,status,since}]}`；词汇只增不改） |
 | `contracts` | — | schema 版本轨道与行为契约（预留位字段名、v0.2 激活清单与字段台账、行为契约表） |
 | `capabilities` | — | 机器可读能力清单（顶层键 = `engine`/`schema`/`behavior_contracts`/`semantic_label_kinds`/`languages`/`memory_model`——**无 `engine_version` 键**，与《已知限制与差异》④-4 一致；#216 勘正：旧文承诺的 engine_version 从未存在） |
@@ -128,7 +129,10 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |
 | 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
 | `step.next` 参数 `frames` | 方法参数 | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
+| step 帧 `semantic_label_id` | step payload | **HEAD（未发布）** | #231 受控词汇 id（`semantic_label` 的可编程伴生字段——`classify` 单源映射，空串 = 无标签；值域 = `semantic_labels` 方法帧附录 B，词汇只增不改） |
 | `texts.install` 方法帧 | 方法表 | **HEAD（未发布）** | #130 装载门（protocol_frames 基线 47 帧内容位更新） |
+| `texts.get` 方法帧 | 方法表 | **HEAD（未发布）** | #323 读口（install 的读-改-写闭环半边；方法清单 30→31，protocol_frames 基线第 25 帧方法列表更新） |
+| `texts.install` 段级合并语义 + `cleared` 响应字段 | 方法语义 | **HEAD（未发布）** | #323 治②/④（整表替换 → 逐键合并；空段 ≠ 清空；`__clear__` 显式清空）——0.9.0 在架版仍是整表替换语义，升级须注意载荷形态差异 |
 
 > 本表人工维护、以 `vitro api help` 生成物与 protocol_frames 基线为行为权威；**新字段上帧时必须在此登记版本归属**（#116），「HEAD」条目随发版改为实版号。表中未列出 = 0.8.0 在架已携带。
 
@@ -206,11 +210,11 @@ EOF
 > 区分「程序没输出」与「流名写错」——`std_out`/`out` 等误拼会被吞）。大小写与首尾
 > 空白经归一，别名仅 `note|notes`。
 >
-> **通道容量（#235/#241，2026-10-22 成文）**：单帧形态 `vitro api <method> '<params>'`
+> **通道容量（#235/#241，2026-10-22 成文；#323 连坐）**：单帧形态 `vitro api <method> '<params>'`
 > 的参数走**进程命令行（argv）**，受 OS 命令行长度上限约束——Windows 约 32K 字符
 >（实测约 27KB 源码，JSON 转义后）、Linux 约 2MB、macOS 约 256KB。**整表语言包
 >（`texts.install` 四段全发，error_catalog 108 张卡实测 18.7KB 量级〔卡数随码表增长〕）与大源码必须走
-> `--batch`（stdin 帧序列）**：
+> `--batch`（stdin 帧序列）；#323 合并语义下单键/少键载荷量级轻，单帧形态即可**：
 >
 > ```bash
 > cat langpack.ndjson | vitro api --batch   # {"id":1,"method":"texts.install","params":{"payload":"…"}}

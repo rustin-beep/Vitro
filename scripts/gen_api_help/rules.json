@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "expected_method_count": 30,
+  "expected_method_count": 31,
   "methods": [
     {
       "method": "algorithms.catalog",
@@ -143,10 +143,15 @@
       "example": "{\"source\":\"int main(){return 0;}\"}"
     },
     {
+      "method": "texts.get",
+      "brief": "四表现值回读（suggestions/builtin_notes/trap_messages/error_catalog 四段对象——texts.install 的读-改-写闭环读口；result stringify 后可直接作 install 的 payload，#323）",
+      "example": "{}"
+    },
+    {
       "method": "texts.install",
-      "brief": "语言包装载（payload 顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——批③b 扩诊断卡片段；浏览器宿主懒加载注入通道，#130）",
+      "brief": "语言包装载（段级合并语义：顶层四段可选集，携带段逐键合并覆盖、未提供键保持；浏览器宿主懒加载注入通道，#130；段恰 {\"__clear__\":true} 显式清空并在响应 cleared 数组回告，#323）",
       "example": "{\"payload\":\"{}\"}",
-      "params": "payload:string 必填（语言包 texts_json 同 schema 的 JSON 文本；顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——缺省段不动现表，携带段为整表替换且键集须全等现表；最小合法载荷 {\"payload\":\"{}\"} 即装载无变更回显计数）"
+      "params": "payload:string 必填（语言包 texts_json 同 schema 的 JSON 文本；顶层四段可选集：suggestions/builtin_notes/trap_messages/error_catalog——缺省段不动现表，空段对象=不覆盖；携带段逐键合并覆盖：suggestions 键域=43 算法名单、trap_messages 仅可覆盖现有键（值域=现表键集）、error_catalog 键域=catalog_codes 整数码；段恰 {\"__clear__\":true}（单键布尔）=显式清空该段，不得与数据键混用；响应回四表装后计数 + cleared 数组（被清空段名，无清空=[]）。读现表用 texts.get——get 的 result stringify 后即是合法 payload）"
     },
     {
       "method": "typeck.dump",

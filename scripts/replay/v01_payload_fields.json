@@ -24,6 +24,7 @@
     "current_exception"
   ],
   "v02_payload_fields": [
-    "code_file"
+    "code_file",
+    "semantic_label_id"
   ]
 }

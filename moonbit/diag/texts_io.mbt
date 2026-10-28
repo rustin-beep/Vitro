@@ -66,12 +66,15 @@ pub fn catalog_texts_json() -> String {
 }
 
 ///|
-/// 段装载：payload = 段对象（不含段名）。校验：键为整数且 ∈
-/// catalog_codes() 值域（防拼写/幽灵码静默入表）、四字段恰、形态对；
-/// 全过后原子换装（clear+fill）。空对象合法（lean 态）。
+/// 段装载（#323 起段级合并语义，2026-10-27）：payload = 段对象（不含
+/// 段名）。校验：键为整数且 ∈ catalog_codes() 值域（防拼写/幽灵码静默
+/// 入表）、四字段恰、形态对；全过后**逐键合并覆盖**（未提供码保持——
+/// 治整表替换下「改一张卡须带全 108 张」的不可用形态）。段恰为
+/// {"__clear__":true} = 显式清空（返回 true；空对象 = 不覆盖 ≠ 清空）。
+/// 校验全过后原子应用，返回是否发生清空。
 pub fn install_catalog_texts(
   payload : String,
-) -> Unit raise InstallCatalogTextsError {
+) -> Bool raise InstallCatalogTextsError {
   let top = @util.json_parse(payload) catch {
     _ =>
       raise InstallCatalogTextsError::SchemaFail(message="段不是合法 JSON")
@@ -82,6 +85,23 @@ pub fn install_catalog_texts(
       raise InstallCatalogTextsError::SchemaFail(
         message="段须为 JSON 对象",
       )
+  }
+  // __clear__ 哨兵（#323）：恰单键 true = 清空；混数据键/值非 true = 拒
+  match m.get("__clear__") {
+    Some(Json::True) => {
+      if m.length() != 1 {
+        raise InstallCatalogTextsError::SchemaFail(
+          message="__clear__ 不得与数据键混用（清空 = 恰 {\"__clear__\":true} 单键）",
+        )
+      }
+      catalog_texts.clear()
+      return true
+    }
+    Some(_) =>
+      raise InstallCatalogTextsError::SchemaFail(
+        message="__clear__ 须为布尔 true",
+      )
+    None => ()
   }
   let codes = catalog_codes()
   let new_entries : Map[Int32, CatalogEntry] = Map([])
@@ -100,10 +120,10 @@ pub fn install_catalog_texts(
     let e = parse_entry(code, v)
     new_entries.set(code, e)
   }
-  catalog_texts.clear()
   for k, v in new_entries {
     catalog_texts.set(k, v)
   }
+  false
 }
 
 ///|

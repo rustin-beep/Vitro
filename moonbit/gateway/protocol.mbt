@@ -288,6 +288,8 @@ fn dispatch(
     "error_catalog" => serve_error_catalog_frame(id)
     // #130 批② 注入通道：语言包装载门（进程级表——会话无关同 static 族）
     "texts.install" => serve_texts_install_frame(id, params)
+    // #323 读口：四表现值回读（install 的读-改-写闭环半边）
+    "texts.get" => serve_texts_get_frame(id)
     "semantic_labels" => serve_semantic_labels_frame(id)
     "contracts" => serve_contracts_frame(id)
     // 43 族算法目录（#36——判据源码即数据源的静态导出）
@@ -321,7 +323,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/texts.get/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
         ).stringify(),
         false,
       )

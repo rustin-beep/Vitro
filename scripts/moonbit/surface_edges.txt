@@ -213,6 +213,7 @@ vitro/engine/gateway vitro/engine/bytecode compute_heap_base
 vitro/engine/gateway vitro/engine/codegen compile
 vitro/engine/gateway vitro/engine/diag ErrorCode
 vitro/engine/gateway vitro/engine/diag catalog_texts
+vitro/engine/gateway vitro/engine/diag catalog_texts_json
 vitro/engine/gateway vitro/engine/diag export_catalog_json
 vitro/engine/gateway vitro/engine/diag install_catalog_texts
 vitro/engine/gateway vitro/engine/diagnostics CompileRecord
@@ -671,3 +672,5 @@ vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/teaching/assets trap_messages
 vitro/engine/vm vitro/engine/util render_template
 vitro/engine/vm vitro/engine/util utf8_len
+
+vitro/engine/time_travel vitro/engine/protocol classify

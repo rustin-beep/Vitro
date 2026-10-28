@@ -4,7 +4,7 @@ package "vitro/engine/teaching/assets"
 // Values
 pub let builtin_notes : Map[String, BuiltinNote]
 
-pub fn install_texts(String) -> Unit raise InstallTextsError
+pub fn install_texts(String) -> Array[String] raise InstallTextsError
 
 pub let known_suggestion_keys : Array[String]
 

@@ -16,8 +16,9 @@ moon add vitro/engine/diag
 ///|
 test {
   // #130 批③b：卡片数据已拆 content_data（lean 载体默认空）——doc 测试
-  // 自装 fixture 后验证（装载门 pub 面）
-  @diag.install_catalog_texts(
+  // 自装 fixture 后验证（装载门 pub 面；#323 起段级合并语义，测尾
+  // 显式 __clear__ 恢复 lean 态）
+  let _ = @diag.install_catalog_texts(
     "{\"3007\":{\"icon\":\"x\",\"title\":\"字符串初始化非字符数组\",\"explanation\":\"e\",\"common_causes\":[]}}",
   ) catch {
     _ => fail("fixture 装载失败")
@@ -30,8 +31,8 @@ test {
       inspect(card.title, content="字符串初始化非字符数组")
     None => fail("E3007 应有教学卡片")
   }
-  @diag.install_catalog_texts("{}") catch {
-    _ => ()
+  let _ = @diag.install_catalog_texts("{\"__clear__\":true}") catch {
+    _ => false
   }
 }
 ```

@@ -319,7 +319,7 @@ export function runMain(argv: readonly string[]): number {
   // 「双臂查表打印逐字节同形」+ 三态 rc + 内容锚（形状漂移双闸之一）。
   for (const c of [
     // 方法计数随 gen_api_help rules.json 走（#52 codegen.dump 29，2026-10-17 合并批连坐）
-    { name: "api help 清单", args: ["api", "help"], wantRc: 0, needle: "api 方法清单（30）" },
+    { name: "api help 清单", args: ["api", "help"], wantRc: 0, needle: "api 方法清单（31）" },
     {
       name: "api help compile 详情",
       args: ["api", "help", "compile"],

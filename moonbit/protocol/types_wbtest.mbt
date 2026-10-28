@@ -11,6 +11,7 @@ test "step_payload_all_fourteen_fields_constructible" {
     code_file: Some("util.c"),
     func_name: "main",
     semantic_label: "调用 printf",
+    semantic_label_id: "call",
     algorithm_step: Some({
       algorithm_name: "bubble_sort",
       display_name: "冒泡排序",
@@ -101,6 +102,7 @@ test "step_payload_optional_fields_default_none" {
     code_file: None,
     func_name: "",
     semantic_label: "",
+    semantic_label_id: "",
     algorithm_step: None,
     local_vars: [],
     call_stack: [],

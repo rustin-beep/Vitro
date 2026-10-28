@@ -83,6 +83,7 @@ export interface StepPayload {
   code_file: string | null;
   func_name: string;
   semantic_label: string;
+  semantic_label_id: string;
   algorithm_step: AlgorithmStepSnapshot | null;
   local_vars: ApiVariableSnapshot[];
   call_stack: ApiFrameInfo[];

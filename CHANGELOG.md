@@ -129,6 +129,70 @@
   收编（+2 语料换样 14 新指纹：9 AGREE + 5 CLANG_REJECT 变体剥
   include 隐式声明域——#336 同族定性）。
 
+### feat(protocol): #231 step 帧 `semantic_label_id`——v0.2 二批激活（受控词汇 id 同帧下发，2026-10-27）
+
+- **激活**（`classify` 单源映射——函数早在 vocabulary 建批已定，本批把
+  它接到帧上）：StepPayload 加 `semantic_label_id`（空串 = 无标签，与
+  `semantic_label` 空串同态）；`collect` 供数、`step_payload_json` 发射
+  （插 `semantic_label` 后）、stream 差分扩 `semantic_label_id_idx`
+  （符号表差分，值集 ≤16 天然去重）+ decode 重建、TS 绑定
+  （gen_protocol_ts 再生成，consumer 399 步字段级校验绿）。消费方按 id
+  聚合/过滤/着色，不再对「循环 n=5, i=0」渲染文本做脆弱前缀匹配。
+- **v0.2 激活五条清单走完**：v01_payload_fields.json `v02_payload_fields`
+  +semantic_label_id（gen_protocol_fields 再生成 + 激活数基线闸 1→2 登记）；
+  台账第 9 条（active/#231）；冻结断言连坐（黑盒计数 1→2/台账 8→9/
+  contracts_json 逐字符锚——碎块数组改 inspect 快照形态重锚，锁语义
+  不变）；STEP_PAYLOAD_SCHEMA §字段表/§示例/§7.2.2 激活历史行/§9.2
+  台账/§9.4 版本表；S1–S5 回放 61 断言（60 PASS+1 EXEMPT）。
+- **帧面锚**：`serve_step_semantic_label_id_frame_field`（bubbleSort
+  400 帧——字段恒在场〔空 payloads 发布缓冲响应合法不判〕+ `loop`/
+  `swap` 双命中；gateway 143/143 js+native 双臂）。protocol_frames 基线
+  重冻（15 帧更新 = step 帧族 + contracts 台账帧），双臂 47 帧一致。
+- **红锚**：实现前帧面断言红（字段缺位）；过程中两个假红自纠——
+  断言误把 `payloads:[]` 发布缓冲响应判进字段面、64 帧窗未覆盖到交换
+  行（bubbleSort 3 元素 ~200 步,扩 400）。
+
+### fix(cli+docs): #230 dump 族产物契约成文 + 用法错 panic→rc=4 治理（2026-10-27）
+
+- **契约成文（治①③）**：新增随包分发 spec
+  [`moonbit/docs/spec/DUMP_ARTIFACTS_V1.md`](moonbit/docs/spec/DUMP_ARTIFACTS_V1.md)
+  ——四工具用法与 rc 契约、文件名两族约定（tokens 剥 `.c` / 其余三族
+  含 `.c`，F11 对拍键差异显式成文）、L1/L2 TSV 列序/text 四字符转义/
+  末行 count 口径（= 非 Eof token 数）/col 回推公式、ast.json 顶层五键
+  （ok=结构可得含错占位、诊断以 parse_errors 为准）/typeck.json 七键
+  （管线语义：parse 错即止）/compile.json 外层四键 + dump 14 键与
+  stage 失败形态、编码行尾总则；产物形态定为 B 级对拍锚（改形须连坐
+  golden 重冻）。全部键序/列序/转义按亲跑四工具真产物逐位核成（非源
+  码推断）；`CLI_PROTOCOL_V1.md` §7 与 `docs/README.md` 索引连坐指针。
+- **用法错治理（治②）**：四壳（dump_tokens/ast/typeck/compile）argv
+  形态错（缺参/模式非法/参数过多/输出目录=语料目录）从未捕获
+  `Failure` 的 **PanicError 栈 + rc=127** 改为 **一行原因 + rc=4**（与
+  `vitro` 总入口 #215 同口径，`c_exit` 绑定照 cmd/compile 先例）——
+  六分支实测全转绿，成功路径零回归。
+
+### fix(engine+api): #323 texts.install 三硬伤——段级合并语义 + texts.get 读口 + 清空可观测（2026-10-27）
+
+- **治①（协议闭环缺口）**：新增 `texts.get` 方法帧（方法清单 30→31，
+  dispatch + api help + protocol_frames 基线第 25 帧连坐重冻）——四表
+  现值回读，result stringify 后直接是 install 的合法 payload（读-改-写
+  幂等闭环 wbtest 锚）。此前 30 方法零教学文案表读接口，非 MoonBit 宿主
+  无法自查键集 ⇒ 「改一条文案」合法载荷不可构造。
+- **治②（静默清空）**：`install_texts`/`install_catalog_texts` 整表
+  替换 → **段级合并语义**——顶层段全可选（单段/空对象载荷合法）、携带段
+  逐键合并覆盖（未提供键保持）；**空段对象 ≠ 清空**。host 侧 unwrap
+  消费面防护换形态保留：trap_messages 仅可覆盖现有键（幽灵键拒）、
+  suggestions 43 名单值域闸、error_catalog catalog_codes 整数码闸、
+  占位符双向契约不变；校验全过后原子应用（禁半装）。
+- **治③/④（help 失真 + 可观测）**：`{"__clear__":true}`（段恰单键
+  布尔）= 显式清空该段、混数据键整帧拒；install 响应恒带 `cleared`
+  数组（被清空段名，无清空 = []）；api help（rules.json 再生成 +
+  expected_method_count 31）与《CLI使用手册》方法表/版本归属表/通道
+  容量注记同步改版。
+- **红锚**：gateway 运行红 ×3（texts.get 未知方法 / 单段载荷被拒 /
+  `__clear__` 形态被拒）+ assets/diag 编译红（新返回值断言）先行落袋；
+  旧消费面连坐迁移（`e4_export_wbtest`/`serve_more_wbtest`/
+  `diag/README.mbt.md` doc 测试的 `"{}"` 清场形态 → `__clear__`）。
+
 ### fix(codegen+host): PR #313 审阅处置批——P2-1 cast 包裹链穿透 + P2-2 星号语料×2 战果（整数精度语义修复）+ P2-3/P3-1 登记（2026-10-26）
 
 - **P2-1 cast 包裹地址常量链**（`(int *)&garr[1]` 旧三臂落静默 0 ⇒ 运行

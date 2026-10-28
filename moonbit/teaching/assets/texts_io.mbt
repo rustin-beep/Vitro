@@ -5,10 +5,11 @@
 /// - `texts_json()`——三表现值 → 规范 JSON（键 str_cmp 字典序、字段序
 ///   固定、compact 无空白）——未来语言包 js 模块（foreign_library
 ///   --target js）的导出载体，浏览器懒加载注入的内容形态。
-/// - `install_texts(payload)`——解析 + 三段校验（schema 严格 / suggestions
-///   值域闸 / trap 占位符双向契约）全过后**原子换装**：三 Map 原地
-///   clear+refill（`pub let` 绑定对象同一性保持——steps/typeck/
-///   trace_analyzer 全部消费面零改动即见覆盖结果）。
+/// - `install_texts(payload)`——解析 + 段级校验（schema 严格 / suggestions
+///   值域闸 / trap 占位符双向契约）全过后**原子合并**（#323：段全可选、
+///   逐键覆盖未提供键保持、`__clear__` 显式清空；三 Map 原地变更——
+///   `pub let` 绑定对象同一性保持——steps/typeck/trace_analyzer 全部
+///   消费面零改动即见覆盖结果；返回清空段名列表）。
 /// - 烘焙启动态不变：本批 native/CLI 仍走 `*_gen.mbt` 烘焙表；install
 ///   是覆盖通道（#130「装载门」），lean 双形态拆包（数据包分离 +
 ///   DCE）随后续批。
@@ -204,11 +205,18 @@ fn placeholders_contract_ok(
 }
 
 ///|
-/// 装载门：payload = texts_json 同 schema 的 JSON——顶层恰三键
-/// （suggestions/builtin_notes/trap_messages），校验全过原子换装三表。
-/// 空对象合法（三键皆可空——lean/空文案诚实暴露形态的装载通道）；
-/// 未知 suggestion 键 / 形态不符 / 占位符契约不符一律 raise 整体不装。
-pub fn install_texts(payload : String) -> Unit raise InstallTextsError {
+/// 装载门（#323 起段级合并语义，2026-10-27；原整表替换语义 2026-10-17
+/// #130 批①）：payload = texts_json 同 schema 的 JSON——顶层键 ⊆
+/// {suggestions,builtin_notes,trap_messages}（**全部可选**：缺省段不碰
+/// 现表，顶层空对象 = 全 no-op——texts.get 读-改-写闭环的零动作形态）。
+/// 段一旦提供 = **逐键合并覆盖**（未提供键保持）：suggestions 键域 =
+/// 43 名单（值域闸防拼写漂移）、builtin_notes 形态校验、trap_messages
+/// 仅可覆盖**现表已有键**（host 侧 20+ 处 unwrap 消费面防护换形态保留
+/// ——合并只增改不删，幽灵键拒）。段对象恰为 {"__clear__":true} =
+/// 显式清空该段（**空段对象 ≠ 清空**——治 #323 硬伤②「最易写的载荷
+/// 静默清空教学表」）。校验全过后原子应用（禁半装），返回被清空段名
+/// 列表（固定序；未清空 = []——可观测回告）。
+pub fn install_texts(payload : String) -> Array[String] raise InstallTextsError {
   let top = @util.json_parse(payload) catch {
     _ => raise InstallTextsError::SchemaFail(message="载荷不是合法 JSON")
   }
@@ -216,16 +224,7 @@ pub fn install_texts(payload : String) -> Unit raise InstallTextsError {
     Object(m) => m
     _ => raise InstallTextsError::SchemaFail(message="顶层须为 JSON 对象")
   }
-  // schema 严格：两必到键 + trap 段可选（批③a 语义：trap 模板留引擎
-  // 烘焙——#120 切分线；段缺席 = 不碰引擎烘焙 trap，在场 = 校验后整体
-  // 替换）。**键名白名单**（二轮审阅 P2：旧只判键数 2||3——junk 键顶位
-  // 静默通过）与 **trap 键集全等闸**（host 侧 20+ 处 unwrap 消费——
-  // 部分条目替换 = 运行期 panic 面；语言包全量段天然全等）
-  if top_map.length() != 2 && top_map.length() != 3 {
-    raise InstallTextsError::SchemaFail(
-      message="顶层须含 suggestions/builtin_notes（trap_messages 可选），实得 \{top_map.length()} 键",
-    )
-  }
+  // 键名白名单（二轮审阅 P2 沿革：junk 键顶位须拒；段全可选——0..3 键）
   for k, _v in top_map {
     if k != "suggestions" && k != "builtin_notes" && k != "trap_messages" {
       raise InstallTextsError::SchemaFail(
@@ -233,103 +232,132 @@ pub fn install_texts(payload : String) -> Unit raise InstallTextsError {
       )
     }
   }
-  let sugg_j = get_object_field(top_map, "suggestions")
-  let note_j = get_object_field(top_map, "builtin_notes")
-  let trap_j : Map[String, Json]? = match top_map.get("trap_messages") {
-    Some(Object(m)) => Some(m)
-    Some(_) =>
-      raise InstallTextsError::SchemaFail(
-        message="顶层 'trap_messages' 须为对象",
-      )
-    None => None
-  }
-  // trap 键集全等闸：在场段须与现表键集**双向全等**（替换语义 = 整表，
-  // 不收部分表——防宿主 unwrap 消费面被打崩；空表起始态〔lean 测试
-  // 环境〕时现表为空、空段亦全等）
-  match trap_j {
-    Some(tj) => {
-      if tj.length() != trap_messages.length() {
-        raise InstallTextsError::SchemaFail(
-          message="trap_messages 段键集不全等（段 \{tj.length()} 键 vs 现表 \{trap_messages.length()} 键）——整表替换语义，拒绝部分表",
-        )
-      }
-      for k, _v in tj {
-        if !(trap_messages.get(k) is Some(_)) {
-          raise InstallTextsError::SchemaFail(
-            message="trap_messages 段含现表没有的键 '\{k}'（整表替换语义）",
-          )
-        }
-      }
-    }
-    None => ()
-  }
+  // 段形态与 __clear__ 哨兵（清空 = 恰单键 true；混数据键 = 拒）
+  let sugg_j = optional_object(top_map, "suggestions")
+  let note_j = optional_object(top_map, "builtin_notes")
+  let trap_j = optional_object(top_map, "trap_messages")
+  let sugg_clear = segment_clear_flag(sugg_j, "suggestions")
+  let note_clear = segment_clear_flag(note_j, "builtin_notes")
+  let trap_clear = segment_clear_flag(trap_j, "trap_messages")
   // —— 收集与校验（未动表）——
   let new_suggestions : Map[String, String] = Map([])
-  for k, v in sugg_j {
-    match v {
-      String(s) => {
-        if !known_suggestion_keys.contains(k) {
-          raise InstallTextsError::SchemaFail(
-            message="suggestions 未知键 '\{k}'（值域 = KNOWN_SUGGESTION_KEYS 43 族）",
-          )
+  match sugg_j {
+    Some(m) if !sugg_clear =>
+      for k, v in m {
+        match v {
+          String(s) => {
+            if !known_suggestion_keys.contains(k) {
+              raise InstallTextsError::SchemaFail(
+                message="suggestions 未知键 '\{k}'（值域 = KNOWN_SUGGESTION_KEYS 43 族）",
+              )
+            }
+            new_suggestions.set(k, s)
+          }
+          _ =>
+            raise InstallTextsError::SchemaFail(
+              message="suggestions['\{k}'] 须为字符串",
+            )
         }
-        new_suggestions.set(k, s)
       }
-      _ =>
-        raise InstallTextsError::SchemaFail(
-          message="suggestions['\{k}'] 须为字符串",
-        )
-    }
+    _ => ()
   }
   let new_notes : Map[String, BuiltinNote] = Map([])
-  for k, v in note_j {
-    let note = parse_builtin_note(k, v)
-    new_notes.set(k, note)
+  match note_j {
+    Some(m) if !note_clear =>
+      for k, v in m {
+        let note = parse_builtin_note(k, v)
+        new_notes.set(k, note)
+      }
+    _ => ()
   }
   let new_traps : Map[String, TrapMessage] = Map([])
   match trap_j {
-    Some(tj) =>
-      for k, v in tj {
+    Some(m) if !trap_clear =>
+      for k, v in m {
+        // 值域 = 现表键集（host unwrap 消费面：合并只增改不删，键必须在场）
+        if !(trap_messages.get(k) is Some(_)) {
+          raise InstallTextsError::SchemaFail(
+            message="trap_messages 段含现表没有的键 '\{k}'（合并语义——仅可覆盖现有键）",
+          )
+        }
         let msg = parse_trap_message(k, v)
         new_traps.set(k, msg)
       }
-    None => ()
+    _ => ()
   }
-  // —— 原子换装（三 Map 原地 clear+refill：pub let 对象同一性保持，
-  //    消费面零改动即见覆盖）——
-  suggestion_map.clear()
-  for k, v in new_suggestions {
-    suggestion_map.set(k, v)
-  }
-  builtin_notes.clear()
-  for k, v in new_notes {
-    builtin_notes.set(k, v)
-  }
-  match trap_j {
-    Some(_) => {
-      trap_messages.clear()
-      for k, v in new_traps {
-        trap_messages.set(k, v)
-      }
+  // —— 原子应用（校验全过才动表：清空段 clear、携带段逐键覆盖——
+  //    pub let 对象同一性保持，消费面零改动即见覆盖）——
+  let cleared : Array[String] = []
+  if sugg_clear {
+    suggestion_map.clear()
+    cleared.push("suggestions")
+  } else {
+    for k, v in new_suggestions {
+      suggestion_map.set(k, v)
     }
-    None => ()
   }
+  if note_clear {
+    builtin_notes.clear()
+    cleared.push("builtin_notes")
+  } else {
+    for k, v in new_notes {
+      builtin_notes.set(k, v)
+    }
+  }
+  if trap_clear {
+    trap_messages.clear()
+    cleared.push("trap_messages")
+  } else {
+    for k, v in new_traps {
+      trap_messages.set(k, v)
+    }
+  }
+  cleared
 }
 
 ///|
-/// 顶层字段取对象形态（缺键/非对象即拒）。
-fn get_object_field(
+/// 顶层可选段取对象形态（缺键 = None；非对象即拒）。
+fn optional_object(
   top : Map[String, Json],
   name : String,
-) -> Map[String, Json] raise InstallTextsError {
+) -> Map[String, Json]? raise InstallTextsError {
   match top.get(name) {
-    Some(Object(m)) => m
+    Some(Object(m)) => Some(m)
     Some(_) =>
       raise InstallTextsError::SchemaFail(
         message="顶层 '\{name}' 须为对象",
       )
-    None =>
-      raise InstallTextsError::SchemaFail(message="顶层缺 '\{name}' 键")
+    None => None
+  }
+}
+
+///|
+/// 段级 __clear__ 哨兵判定（#323）：段对象恰含 {"__clear__": true} 单键
+/// → true（清空）；含 __clear__ 键但混数据键/值非 true → 拒（半清空
+/// 歧义形态）；不含 → false。空段对象由调用方按「不覆盖」处理——与
+/// 清空显式分离即治「静默清空」硬伤。
+fn segment_clear_flag(
+  seg : Map[String, Json]?,
+  name : String,
+) -> Bool raise InstallTextsError {
+  match seg {
+    Some(m) =>
+      match m.get("__clear__") {
+        Some(Json::True) => {
+          if m.length() != 1 {
+            raise InstallTextsError::SchemaFail(
+              message="\{name} 段 __clear__ 不得与数据键混用（清空 = 恰 {\"__clear__\":true} 单键）",
+            )
+          }
+          true
+        }
+        Some(_) =>
+          raise InstallTextsError::SchemaFail(
+            message="\{name} 段 __clear__ 须为布尔 true",
+          )
+        None => false
+      }
+    None => false
   }
 }
 

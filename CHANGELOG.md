@@ -1,5 +1,95 @@
 ## [Unreleased]
 
+### fix(scripts+ci+typeck): PR #375 审阅处置批——P1×3 / P2×5 / P3×4 全清（2026-10-30）
+
+- **P1-1（引擎闸二级杀阵结构性不可达）**：旧版突变体在一级判定后、
+  二级 digest 前**即被还原**——digest 永远编译干净源码（killedDigest 恒 0，
+  digest-only 锚全成假 survived）。修：还原挪到二级判定后（try/finally 兜
+  全路径）+ **digest 前不变量自证**（磁盘必须仍突变态，否则 fatal）+
+  **干净树 digest 先验**（golden 漂移/环境缺件时拒绝判锚——否则一级幸存者
+  全被误判 killed-digest）。二级正向击杀向量：审阅者与我各试 2-3 个候选
+  均被 wbtest 先杀，全文件猎杀批补证据（见 PR 评论）。
+- **P1-2（豁免条目理由不成立，可达面比登记的宽）**：decl.mbt:818
+  `&&→||` 的真实可达面是**日常单行「先定义后调用」**（审阅探针
+  `static int f(void){...} int main(void){ return f(); }` 突变树误报
+  E3058）——「限缩进原型实践不可达」定性错误，且此前「双绿」是 P1-1
+  假绿。处置：锚 `review375_sameline_define_then_use_legal` 转正（突变
+  重放红/还原绿双向验）+ **豁免条目删除**（engine_equivalents.json 清空
+  ——首条登记即翻案：白名单翻案权在锚不在登记）。
+- **P1-3（CI 零匹配红步骤）**：GitHub bash 实为 `--noprofile --norc -e -o
+  pipefail`，零匹配时 grep exit 1 ⇒ 短路步红（任何不碰 scripts 的 PR）。
+  修：grep×2 → awk 单段（恒 exit 0）。
+- **P2-1**：engine.mts 入 ci_checklist exceptions（本地工具·试点观察期
+  理由；checklist PASS 57 驱动/8 例外）。**P2-2**：timeoutMS 按杀阵干跑
+  净时长动态给（max(120s, ×2+30s)）+ Timeout>0 显式标「该文件未被完整
+  测量」（大闭包假干净防线）。**P2-3**：survived 清单改用 replacement
+  字段（Stryker 10 报告无 description——实测 684/0）。
+- **P2-4（本批自评披露）**：本批即突变闸首例自检对象——CI 实测 1174
+  突变体 / killed 371 / **survived 797 / score 31.6%**（对象=闸自身两个
+  新文件；survived 大头为注释/文案类 StringLiteral，属预期信噪比原料，
+  逐条定性随观察期滚动）。**P2-5（artifact 与 console 不相容）**：本地
+  同序复现批落 CI 后以新 artifact 判读。
+- **P3×4**：提交信息计数勘误（962/1126→实测口径）；`--max-mutants`
+  截断大声（⚠ 非全量）；`--files` 路径过 `toScriptsRel` 归一（与 diff
+  模式同口径）；白名单条目可选 `col` 精确匹配（防 ±2 行内同算子误豁免）。
+
+### feat(scripts): #368 第三层试点——引擎面 mutant 闸 engine.mts（typeck 先行，report-only 观察期）（2026-10-29）
+
+- **形态**：MoonBit 无现成 mutation 工具（查证 2026-10-29），自研行级算子
+  （`==`↔`!=`、`<`→`<=`、`>`→`>=`、`&&`↔`||`、`true`↔`false`、整数字面
+  量 ±1——字符串/注释内遮蔽、更长 token 边界排除）对 diff 触达的
+  `moonbit/<pkg>/*.mbt` 改动行逐点突变；两级杀阵 = 一级 `moon test -p`
+  （wbtest 锚，~35s/突变体）→ 全绿才升二级 digest 锚（M3 实证锚可能在
+  另一道闸，杀阵必须全锚面）。CLI 含 `--only file:line` 定点重放（J9 用）。
+- **四条纪律内嵌**：快照还原（非 git checkout——防抹并发未提交 wbtest）；
+  写后 sleep ≥1.2s（moon mtime 增量漏检假绿）；CompileError ≠ killed
+  （无 "Total tests:" 行判弃置，防文本算子打坏语法被当有锚）；等价突变
+  白名单 `engine_equivalents.json`（file+op+行±2 匹配，耦合对成对登记）。
+- **J9 四向（验收向量全过）**：① #369 重放（context.mbt:186 AND→OR）
+  被 issue369 锚**点名击杀**；② #370 同位（decl.mbt:818 ==→!=）被
+  issue370 锚点名击杀；③ 白名单豁免证效（818 的 &&→|| survived→登记
+  →重跑豁免清零——且该 survivor 是**闸自己挖出的新面**：后随合法引用
+  「用点列<声明列」误报 E3058，可达面限缩进原型、实践等价入册）；④
+  linkage 守卫（context.mbt:159）三 && 突变全灭。expr.mbt:249 两 && 突变
+  亦全灭——`_is_global` 条件非冗余（局部遮蔽锚在），M4 精确冗余
+  （`!is_static`）无文本算子直达、由建表侧双保险保护。
+- **成本与挂点**：~40s/突变体（wbtest 级）+ digest 级仅对 wbtest 幸存者；
+  试点 report-only 本地/nightly 驱动，暂不入 PR 阻断面（阈值阻断批随
+  观察期数据拍板）。四件套：单测 7/7 + tsc + oxlint + package.json
+  lint/test 连坐。
+
+### feat(scripts+ci): #368 第一层落地——mutation_gate 突变闸（report-only 观察期）+ #369/#370 零锚面锚转正（2026-10-29）
+
+- **背景（#368 突变抽查实测）**：对最新合入的 #344 批 13 点注入
+  （wbtest 117 + digest 557 双杀阵）——7 killed / **2 真·零锚面** /
+  4 等价突变（含 M4/M12 耦合对：双保险各删一侧无行为差、同删才变）。
+  「每个修复批携带 1-3 个静默零锚面、现有防线全放过」从推断变实测。
+- **#369 锚转正**：tentative「AND 定稿」三声明形态（前实→tent→实，
+  双实定义仍拒）——AND→OR 突变下静默放行、双闸全绿；锚
+  `issue369_real_tent_real_rejected`（突变重放红/还原绿双向验）。
+- **#370 锚转正**：#344 列级判据同族两处只锚了 W3085 侧——E3058 侧
+  （static 函数同行先用后声明）列级删除后静默漏报；锚
+  `issue370_sameline_static_call_e3058`（同 J9 双向验；端到端对照：
+  干净树 E3058 col26 / 突变树零诊断）。
+- **mutation_gate（`scripts/mutation_gate/`，四件套）**：diff 触达的
+  scripts 源文件 → Stryker 行级突变 → **传递导入闭包内全部 node:test
+  为杀阵**（M3 教训内嵌：锚可能在别的包的测试里，单包杀阵批量假
+  survivor）→ survived 清单即新扩散面机判定义。杀阵干跑先验：环境红
+  （本地 sh 缺失等 C17 形态）跳过并报告单列，不静默不误报。CLI：
+  `node scripts/mutation_gate/main.mts [--base origin/master] [--files a.mts]`
+  （`--files` 整文件模式供 J9/手动）。依赖：`@stryker-mutator/core`
+  10.1.1 dev 钉版（§2.7 依赖白名单已登记）。
+- **J9 四向（闸自证）**：① 已知 survivor（canonicalize/main.mts:25
+  USAGE 串）必报；② 已知 killed（:28 BooleanLiteral）不误报且与独立
+  pilot 基线 75/45/25/5 逐位一致；③ 环境红降级大声跳过；④ 单测 6/6 +
+  tsc 严格档 + oxlint 零警告。已知边界：等价突变会进 survived 清单
+  （观察期人工定性，白名单随阈值批落地）；`.test.mts` 不突变；闭包
+  为空的文件单列「零测试可达」。
+- **CI**：mutation-gate job（windows-latest，diff 零 .mts 源改动快速
+  短路；闭包可能含 moon/facts 依赖用例故镜像 scripts-ts 前置步骤；
+  报告上传 artifact）。**观察期不入 ci-summary needs**——survived
+  不阻断，基础设施失败红；阈值阻断批再连坐。
+
 ### fix(gateway+lexer): #364 compile{files} 被引用 .c unit 双重拼接剔除——include 展开集出口 + 不动点（2026-10-29）
 
 - **红根**：`#include "sibling.c"` 的工程在 wasm 臂报 E3003 函数重复

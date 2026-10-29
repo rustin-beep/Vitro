@@ -31,5 +31,9 @@
     "driver": "scripts/vm_diff",
     "kind": "superseded-by-mts",
     "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts vm，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
+  },
+  {
+    "driver": "scripts/mutation_gate/engine.mts",
+    "reason": "本地工具（#368 第三层试点观察期）：引擎面 mutant 闸按批本地/nightly 驱动（~40s/突变体，暂不入 PR 阻断面）；阈值阻断批拍板时接线或重估——PR #375 审阅 P2-1 登记"
   }
 ]

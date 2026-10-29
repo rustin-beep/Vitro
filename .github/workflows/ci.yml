@@ -1569,6 +1569,67 @@ jobs:
         run: npm run test
         shell: bash
 
+  # ── mutation-gate（#368 第一层：scripts 面 diff 级突变闸，report-only 观察期）──
+  # 对 PR diff 触达的 scripts 源文件生成行级突变（Stryker），以「传递导入
+  # 闭包内全部 node:test」为杀阵逐突变体判定——survived 清单 = 新扩散面的
+  # 机判定义（#368：引入瞬间无基线，既有测试对新面零判别力）。**survived
+  # 不阻断**（观察期看信噪比；等价突变经人工定性入白名单后才切阈值阻断）；
+  # 基础设施失败（stryker 崩/判分失败）红。观察期不入 ci-summary needs
+  # ——阈值阻断批（#368 阶段 1 收口）再连坐。杀阵干跑红 = 环境缺口跳过
+  # 并在报告单列（不静默、不误报 survived——本地/CI 异构资产口径）。
+  mutation-gate:
+    name: Mutation gate (scripts diff, report-only)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # 快速短路：diff 零 .mts 源改动（纯测试/文档批）不进重步骤
+      - id: changed
+        name: changed scripts sources?
+        shell: bash
+        run: |
+          git fetch origin master --quiet
+          # awk 恒 exit 0——PR #375 审阅 P1-3：GitHub bash 实为 -e -o pipefail，
+          # 零匹配时 grep exit 1 会把这条 report-only 快速短路步弄红
+          n=$(git diff --name-only origin/master...HEAD -- scripts | awk '/\.mts$/ && !/\.test\.mts$/' | wc -l)
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+          echo "changed scripts sources: $n"
+      - if: steps.changed.outputs.count != '0'
+        name: npm ci (lockfile pinned, incl. @stryker-mutator/core)
+        working-directory: scripts
+        run: npm ci
+        shell: bash
+      # 闭包可能含生成器簇「真实仓库 -check」用例（moon fmt 归一）与
+      # gen_svg 的 facts 输入——与 scripts-ts 同因（2026-10-23 五红同根实锤）
+      - if: steps.changed.outputs.count != '0'
+        name: Install MoonBit toolchain
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+      - if: steps.changed.outputs.count != '0'
+        name: facts collect (gen_svg -check input)
+        working-directory: ${{ github.workspace }}
+        run: node scripts/facts/main.mts facts
+        shell: bash
+      - if: steps.changed.outputs.count != '0'
+        name: run mutation gate (report-only)
+        working-directory: ${{ github.workspace }}
+        run: node scripts/mutation_gate/main.mts --base origin/master
+        shell: bash
+      - if: steps.changed.outputs.count != '0'
+        name: upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-gate-report
+          path: tmp/mutation_gate/
+
   # ── ci-summary（防「skipped 当绿」，2026-10-23）────────────────────────
   # 只做汇总、不重跑闸：所有上游 job 必须 success；任一 failure/skipped 即红。
   # 这样 build 红导致下游 skipped 时不会显示成「其余全绿可合并」。

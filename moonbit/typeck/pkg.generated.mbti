@@ -22,17 +22,17 @@ pub struct TypeChecker {
   static_func_sigs : Map[String, FuncSymbol]
   static_func_files : Map[String, Array[String]]
   static_global_files : Map[String, Array[String]]
-  static_global_decl_lines : Map[String, Int]
-  global_decl_lines : Map[String, (Int, Int)]
-  global_first_decl_idx : Map[String, Int]
-  mut static_init_site_idx : Int?
+  static_global_decl_lines : Map[String, Int32]
+  global_decl_lines : Map[String, (Int32, Int32)]
+  global_first_decl_idx : Map[String, Int32]
+  mut static_init_site_idx : Int32?
   structs : Map[String, StructSymbol]
   unions : Map[String, StructSymbol]
   scopes : Array[Map[String, VarSymbol]]
   mut current_func_return : @ast.Type?
   mut current_file : String
-  mut loop_depth : Int
-  mut switch_depth : Int
+  mut loop_depth : Int32
+  mut switch_depth : Int32
   current_func_params : @set.Set[String]
   mut char_narrow_suppress : Bool
   func_labels : Map[String, @source.SourceLoc]
@@ -45,10 +45,10 @@ pub fn TypeChecker::check(Self, @ast.ProgramNode) -> (@ast.ProgramNode, Array[Ty
 pub fn TypeChecker::check_array_dims_legality(Self, @ast.Type, Bool, @source.SourceLoc) -> Unit
 pub fn TypeChecker::check_array_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> (@ast.Type, @ast.Expr)
 pub fn TypeChecker::check_assignable(Self, @ast.Type, @ast.Type, @source.SourceLoc, value_expr? : @ast.Expr) -> Bool
-pub fn TypeChecker::check_printf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
-pub fn TypeChecker::check_scanf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int) -> Unit
+pub fn TypeChecker::check_printf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int32) -> Unit
+pub fn TypeChecker::check_scanf_format(Self, String, Array[@ast.Expr], @source.SourceLoc, Int32) -> Unit
 pub fn TypeChecker::check_struct_initializer(Self, @ast.Type, @ast.Expr, @source.SourceLoc) -> @ast.Expr
-pub fn TypeChecker::compute_type_size(Self, @ast.Type) -> Int
+pub fn TypeChecker::compute_type_size(Self, @ast.Type) -> Int32
 pub fn TypeChecker::declare_var(Self, String, @ast.Type, is_global~ : Bool, is_extern~ : Bool, is_static~ : Bool, predeclared? : Bool, is_register? : Bool, is_tentative? : Bool, loc? : @source.SourceLoc) -> Unit
 pub fn TypeChecker::enter_scope(Self) -> Unit
 pub fn TypeChecker::exit_scope(Self) -> Unit
@@ -68,9 +68,9 @@ pub fn TypeChecker::visit_call(Self, String, Array[@ast.Expr], @source.SourceLoc
 
 pub(all) struct TypeError {
   message : String
-  line : Int
-  column : Int
-  code : Int
+  line : Int32
+  column : Int32
+  code : Int32
 }
 
 type VarSymbol

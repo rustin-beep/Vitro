@@ -22,7 +22,7 @@ pub(all) struct CompileState {
   mut output : @bytecode.CompileOutput?
   mut diagnostics : Array[Diagnostic]
   mut algorithm_matches : Array[@protocol.AlgorithmMatch]
-  mut struct_fields : Map[String, Array[(String, Int)]]
+  mut struct_fields : Map[String, Array[(String, Int32)]]
   mut file_ranges : Array[FileRange]
   mut preprocessor_trace : Array[String]
 } derive(@debug.Debug)
@@ -36,17 +36,17 @@ pub(all) struct CompileUnit {
 pub fn CompileUnit::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Diagnostic {
-  line : Int
-  column : Int
-  error_code : Int
-  severity : Int
+  line : Int32
+  column : Int32
+  error_code : Int32
+  severity : Int32
   message : String
   fix_suggestion : String
-  fix_kind : Int
-  replace_start_line : Int
-  replace_start_column : Int
-  replace_end_line : Int
-  replace_end_column : Int
+  fix_kind : Int32
+  replace_start_line : Int32
+  replace_start_column : Int32
+  replace_end_line : Int32
+  replace_end_column : Int32
   replacement_text : String
   filename : String
 } derive(@debug.Debug)
@@ -54,34 +54,34 @@ pub fn Diagnostic::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FileRange {
   filename : String
-  start_line : Int
-  end_line : Int
+  start_line : Int32
+  end_line : Int32
 } derive(@debug.Debug)
 pub fn FileRange::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeapStats {
-  heap_base : Int
-  total_heap : Int
-  allocated : Int
-  fragmented : Int
-  fragmentation_rate : Int
+  heap_base : Int32
+  total_heap : Int32
+  allocated : Int32
+  fragmented : Int32
+  fragmentation_rate : Int32
 } derive(@debug.Debug)
 pub fn HeapStats::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryFragment {
-  addr : UInt
-  size : Int
+  addr : UInt32
+  size : Int32
 } derive(@debug.Debug)
 pub fn MemoryFragment::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemoryRegion {
-  addr : UInt
-  size : Int
+  addr : UInt32
+  size : Int32
   name : String
   ty : String
   is_heap : Bool
   is_freed : Bool
-  alloc_line : Int
+  alloc_line : Int32
   alloc_by : String
   kind : String
 } derive(@debug.Debug)
@@ -93,24 +93,24 @@ pub(all) struct Session {
   vm : @vm.VitroVM
   mut unified : @time_travel.UnifiedEngine?
   mut unified_pending : @protocol.StepPayload?
-  mut unified_last_line : Int
+  mut unified_last_line : Int32
   mut unified_last_frame_vars : Array[@protocol.ApiVariableSnapshot]
   mut unified_row_entry_vars : Array[@protocol.ApiVariableSnapshot]
   mut runtime_argv : Array[String]
   mut runtime_batch : Bool
 }
 pub fn Session::new() -> Self
-pub fn Session::set_call_depth_limit(Self, Int) -> Unit
-pub fn Session::set_max_checkpoints(Self, Int) -> Unit
-pub fn Session::set_max_steps(Self, Int) -> Unit
-pub fn Session::source_file_at(Self, Int) -> String?
-pub fn Session::source_line_at(Self, Int) -> String?
+pub fn Session::set_call_depth_limit(Self, Int32) -> Unit
+pub fn Session::set_max_checkpoints(Self, Int32) -> Unit
+pub fn Session::set_max_steps(Self, Int32) -> Unit
+pub fn Session::source_file_at(Self, Int32) -> String?
+pub fn Session::source_line_at(Self, Int32) -> String?
 
 pub(all) struct SessionConfig {
-  mut max_steps : Int
-  mut call_depth_limit : Int
+  mut max_steps : Int32
+  mut call_depth_limit : Int32
   mut deterministic : Bool
-  mut max_checkpoints : Int
+  mut max_checkpoints : Int32
 } derive(@debug.Debug)
 pub fn SessionConfig::apply_to_vm(Self, @vm.VitroVM) -> Unit
 pub fn SessionConfig::default() -> Self
@@ -119,7 +119,7 @@ pub fn SessionConfig::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepResult {
   status : StepStatus
-  current_line : Int
+  current_line : Int32
   output : String
   waiting_input : Bool
 } derive(@debug.Debug)
@@ -131,7 +131,7 @@ pub(all) enum StepStatus {
   Finished
   Trap
 } derive(Compare, Eq, @debug.Debug)
-pub fn StepStatus::compare(Self, Self) -> Int
+pub fn StepStatus::compare(Self, Self) -> Int32
 pub fn StepStatus::equal(Self, Self) -> Bool
 pub fn StepStatus::not_equal(Self, Self) -> Bool
 pub fn StepStatus::op_ge(Self, Self) -> Bool
@@ -142,14 +142,14 @@ pub fn StepStatus::to_repr(Self) -> @debug.Repr
 pub fn StepStatus::to_text(Self) -> String
 
 pub(all) struct TraceEntry {
-  line : Int
+  line : Int32
   operation : String
 } derive(@debug.Debug)
 pub fn TraceEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VariableSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64

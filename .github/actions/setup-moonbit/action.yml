@@ -1,0 +1,31 @@
+name: Setup MoonBit toolchain
+description: >-
+  Install MoonBit CLI on Windows runners (all MoonBit-consuming jobs in this
+  repo run windows-latest). version input empty = read .moonbit-version pin;
+  "latest" = deliberately unpinned (toolchain-latest-sentinel only).
+inputs:
+  version:
+    description: 'Explicit version; empty reads .moonbit-version pin. "latest" is unpinned on purpose — sentinel use only.'
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Install MoonBit CLI (Windows, pin via .moonbit-version)
+      if: runner.os == 'Windows'
+      shell: powershell
+      env:
+        MOONBIT_SETUP_VERSION: ${{ inputs.version }}
+      run: |
+        Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+        # #132 声明层 pin：上游脚本 env 优先、缺省 latest（漂移实证=2026-10-16
+        # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
+        # 全闸背书，禁止裸 latest。本 action 是该纪律的单一实现点——调用处
+        # 一律 uses 引用，禁止再内联 irm 安装三行（2026-10-29 收敛 12 处）。
+        $v = "$env:MOONBIT_SETUP_VERSION"
+        if ([string]::IsNullOrWhiteSpace($v)) {
+          $v = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
+        }
+        $env:MOONBIT_INSTALL_VERSION = $v
+        irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+        Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"

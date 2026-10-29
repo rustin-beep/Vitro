@@ -10,7 +10,7 @@ pub fn bytecode_libc_sig(String) -> (@ast.Type, Array[@ast.Type])?
 
 pub fn is_libc_func(String) -> Bool
 
-pub fn sig_of(String) -> (Int, String, @ast.Type)?
+pub fn sig_of(String) -> (Int32, String, @ast.Type)?
 
 pub fn unsupported_libc_sig(String) -> (@ast.Type, Array[@ast.Type])?
 

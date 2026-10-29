@@ -8,23 +8,23 @@ import {
 }
 
 // Values
-pub fn build_match(String, String, String, Int, Array[(Int, Int, String)], evidence? : String) -> @protocol.AlgorithmMatch
+pub fn build_match(String, String, String, Int32, Array[(Int32, Int32, String)], evidence? : String) -> @protocol.AlgorithmMatch
 
 pub fn detect_algorithms(@ast.ProgramNode) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_graph(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_graph(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_math(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_math(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_search(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_search(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_sorting(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_sorting(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_string(String, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_string(String, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_structures(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_structures(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
-pub fn detect_tree(String, FuncFeatures, String, Int) -> Array[@protocol.AlgorithmMatch]
+pub fn detect_tree(String, FuncFeatures, String, Int32) -> Array[@protocol.AlgorithmMatch]
 
 pub fn export_algorithms_catalog_json() -> String
 
@@ -34,7 +34,7 @@ pub fn extract_features(@ast.FuncDecl, @ast.Stmt) -> FuncFeatures
 
 pub fn has_word(String, String) -> Bool
 
-pub fn infer_algorithm_step(Int, Array[VarSnapshot], String, String, @protocol.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
+pub fn infer_algorithm_step(Int32, Array[VarSnapshot], String, String, @protocol.AlgorithmMatch?, InferEnv) -> @protocol.AlgorithmStepSnapshot?
 
 pub fn is_swap_assign_line(String) -> Bool
 
@@ -44,7 +44,7 @@ pub fn is_swap_assign_line(String) -> Bool
 type AlgoCatalogEntry
 
 pub(all) struct FuncFeatures {
-  mut max_loop_depth : Int
+  mut max_loop_depth : Int32
   mut has_nested_loops : Bool
   mut has_single_loop : Bool
   mut has_array_compare : Bool
@@ -61,7 +61,7 @@ pub(all) struct FuncFeatures {
   mut has_dp_array : Bool
   mut has_heap_index_pattern : Bool
   mut is_treenode_ctx : Bool
-  mut compare_lines : Array[(Int, Int, String)]
+  mut compare_lines : Array[(Int32, Int32, String)]
 }
 pub fn FuncFeatures::default() -> Self
 
@@ -76,8 +76,8 @@ pub fn InferEnv::to_repr(Self) -> @debug.Repr
 pub struct VarMap {
   vars : Array[VarSnapshot]
 }
-pub fn VarMap::get_int(Self, String) -> Int?
-pub fn VarMap::get_int_any(Self, Array[String]) -> Int?
+pub fn VarMap::get_int(Self, String) -> Int32?
+pub fn VarMap::get_int_any(Self, Array[String]) -> Int32?
 pub fn VarMap::get_str(Self, String) -> String?
 pub fn VarMap::new(Array[VarSnapshot]) -> Self
 

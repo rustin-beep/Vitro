@@ -170,3 +170,88 @@ test "host_reader_mem_table_takes_precedence_issue202" {
   )
   set_include_reader(fn(_path : String) -> String? { None })
 }
+
+///|
+test "posix_absolute_main_include_candidate_key_issue356" {
+  // #356 行为锚（2026-10-29）：POSIX 绝对路径主文件的 quote-include 候选
+  // 键须保留前导 / ——记录型 reader 直证 resolver 产键。修前键
+  // "home/x/hd.h"（剥 /）⇒ Linux 宿主 100% E1021；Windows 盘符形态
+  // （首段 "D:" 非空本就保留，绝对性靠盘符侥幸保住）为守卫锚。
+  let asked : Array[String] = []
+  set_include_reader(fn(path : String) -> String? {
+    asked.push(path)
+    if path == "/home/x/hd.h" || path == "D:/x/hd.h" {
+      Some("#define V 7\n")
+    } else {
+      None
+    }
+  })
+  let (resp, _) = serve_handle(
+    session, "{\"id\":12,\"method\":\"compile\",\"params\":{\"source\":\"#include \\\"hd.h\\\"\\nint main(){ return V; }\\n\",\"filename\":\"/home/x/main.c\"}}",
+  )
+  assert_false(
+    resp.contains("E1021"),
+    msg="绝对路径主文件 include 可解析（修前红：E1021）",
+  )
+  assert_true(session.compile.compiled, msg="宏 V 展开后编译通过")
+  assert_true(
+    asked.contains("/home/x/hd.h"),
+    msg="候选键保留前导 /（修前被剥：home/x/hd.h）",
+  )
+  // 守卫：Windows 盘符绝对路径同链路（既有行为不回归）
+  let asked2 : Array[String] = []
+  set_include_reader(fn(path : String) -> String? {
+    asked2.push(path)
+    if path == "D:/x/hd.h" {
+      Some("#define W 9\n")
+    } else {
+      None
+    }
+  })
+  let (resp2, _) = serve_handle(
+    session, "{\"id\":13,\"method\":\"compile\",\"params\":{\"source\":\"#include \\\"hd.h\\\"\\nint main(){ return W; }\\n\",\"filename\":\"D:/x/main.c\"}}",
+  )
+  assert_false(
+    resp2.contains("E1021"),
+    msg="盘符绝对路径 include 可解析（守卫）",
+  )
+  assert_true(session.compile.compiled, msg="守卫形态编译通过")
+  assert_true(
+    asked2.contains("D:/x/hd.h"),
+    msg="盘符候选键形态不变（守卫）",
+  )
+  // 自恢复：None-reader 等效未注册（后续锚不受全局状态污染）
+  set_include_reader(fn(_path : String) -> String? { None })
+}
+
+///|
+test "root_level_absolute_main_include_issue356r2" {
+  // 审阅 P2-1（2026-10-29）：根级绝对主文件 "/main.c" 的 base_dir 须取
+  // "/"——修前 gateway dir_of 对唯一分隔符在 0 位的路径返回 "." ⇒ 候选
+  // 键按 cwd 相对解析（"hd.h"）⇒ Linux 真 fs 下 E1021。记录型 reader
+  // 直证候选键 "/hd.h"。既有 include 锚的 filename 全带目录段，根级
+  // 形态此前零覆盖。
+  let asked : Array[String] = []
+  set_include_reader(fn(path : String) -> String? {
+    asked.push(path)
+    if path == "/hd.h" {
+      Some("#define R 4\n")
+    } else {
+      None
+    }
+  })
+  let (resp, _) = serve_handle(
+    session, "{\"id\":14,\"method\":\"compile\",\"params\":{\"source\":\"#include \\\"hd.h\\\"\\nint main(){ return R; }\\n\",\"filename\":\"/main.c\"}}",
+  )
+  assert_false(
+    resp.contains("E1021"),
+    msg="根级绝对主文件 include 可解析（修前红：E1021）",
+  )
+  assert_true(session.compile.compiled, msg="宏 R 展开后编译通过")
+  assert_true(
+    asked.contains("/hd.h"),
+    msg="根级候选键为绝对形态（修前：hd.h 相对 cwd）",
+  )
+  // 自恢复：None-reader 等效未注册（后续锚不受全局状态污染）
+  set_include_reader(fn(_path : String) -> String? { None })
+}

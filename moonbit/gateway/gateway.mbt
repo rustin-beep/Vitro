@@ -169,7 +169,10 @@ fn lex_full_source(
 
 ///|
 /// 路径目录段（cmd/run/main.mbt dir_of 的复制件——等价性经 7 形态
-/// 端到端探针实证，见彼处头注；修改须两处同步）。
+/// 端到端探针实证，见彼处头注；修改须两处同步）。#373 审阅 P2-1
+/// （2026-10-29）：唯一分隔符在 0 位 = POSIX 根级文件（"/main.c"），
+/// 目录段取 "/" 不取 "."——否则根级主文件的 quote-include 候选键按
+/// cwd 相对解析（Linux 真 fs 下 100% E1021）。
 fn dir_of(path : String) -> String {
   let mut last = -1
   for i = 0; i < path.length(); i = i + 1 {
@@ -178,7 +181,9 @@ fn dir_of(path : String) -> String {
       last = i
     }
   }
-  if last <= 0 {
+  if last == 0 {
+    "/"
+  } else if last < 0 {
     "."
   } else {
     let buf = StringBuilder()

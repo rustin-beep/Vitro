@@ -109,3 +109,83 @@ test "pp_unclosed_ifdef_reports_open_line" {
   assert_eq(e.loc.line, 1)
   assert_true(e.code is E1013_UnclosedConditional)
 }
+
+///|
+test "normalize_path_posix_absolute_anchor_issue356" {
+  // #356 红锚（2026-10-29）：normalize_path 不得丢 POSIX 绝对路径前导 /
+  // ——修前 "/home/x/h.h" → "home/x/h.h"，绝对路径主文件的 quote-include
+  // 候选键与 reader/VFS 侧键永不相等（Linux 宿主 100% E1021）。盘符/
+  // 相对/.. 回退三形态为既有行为守卫（修前后均须绿）。
+  assert_eq(
+    normalize_path("/home/x/h.h"),
+    "/home/x/h.h",
+    msg="绝对锚保留（修前红）",
+  )
+  assert_eq(normalize_path("/h.h"), "/h.h", msg="根级文件绝对锚保留")
+  assert_eq(normalize_path("/"), "/", msg="根本身")
+  assert_eq(
+    normalize_path("D:/x/h.h"),
+    "D:/x/h.h",
+    msg="盘符形态不变（守卫）",
+  )
+  assert_eq(
+    normalize_path("./h.h"),
+    "h.h",
+    msg="相对形态不变（守卫）",
+  )
+  assert_eq(
+    normalize_path("a/../b.h"),
+    "b.h",
+    msg="相对 .. 回退不变（守卫）",
+  )
+  assert_eq(
+    normalize_path("/a/../b.h"),
+    "/b.h",
+    msg="绝对 .. 回退到根不越锚",
+  )
+}
+
+///|
+test "resolver_posix_absolute_quote_include_issue356" {
+  // #356 行为红锚：base_dir 为 POSIX 绝对路径时，quote-include 候选键
+  // 保留前导 / 才能命中 provider（修前键 "home/x/hd.h" ⇒ E1021）
+  let pp = Pp::new(
+    provider=MapProvider::of([("/home/x/hd.h", "#define V 7\n")]),
+    cpp_mode=false,
+    base_dir="/home/x",
+  )
+  let toks = pp.run_pp("#include \"hd.h\"\nint a[V];\n", emit_eof=true)
+  let r = pp.finish_pp(toks)
+  assert_eq(
+    r.errors.length(),
+    0,
+    msg="绝对 base_dir 下 include 可解析（修前红：E1021）",
+  )
+  assert_true(
+    r.tokens.any(t => t.ty is Number && t.text == "7"),
+    msg="宏 V 自绝对路径头展开",
+  )
+}
+
+///|
+test "resolver_absolute_operand_include_issue356r2" {
+  // 审阅 P2-2（2026-10-29）：绝对路径 include 操作数直接取（C11
+  // §6.10.2p3——clang/gcc 对 `#include "/abs/h.h"` 不搜索候选链）——
+  // 修前无条件 cur_dir 拼接得 "/home/x/abs/h.h" ⇒ E1021
+  let pp = Pp::new(
+    provider=MapProvider::of([("/abs/h.h", "#define A 3\n")]),
+    cpp_mode=false,
+    base_dir="/home/x",
+  )
+  let toks = pp.run_pp("#include \"/abs/h.h\"\nint a[A];\n", emit_eof=true)
+  let r = pp.finish_pp(toks)
+  assert_eq(
+    r.errors.length(),
+    0,
+    msg="绝对 include 操作数直接命中（修前红：E1021）",
+  )
+  assert_true(
+    r.tokens.any(t => t.ty is Number && t.text == "3"),
+    msg="宏 A 自绝对路径头展开",
+  )
+}

@@ -53,7 +53,10 @@
 - **锚**：gateway wbtest `issue213_syntax_error_does_not_mask_semantic`
   （红→绿留痕：旧形态 E3023 不在列）；语料 `multi_error_mixed.c`
   （双侧编译失败判 match，clang_direct SAME）；五家 digest freeze
-  存量零漂移；facts native 1088→1089 两处连坐。
+  存量零漂移；facts native 连坐（rebase 到 c8825924 后实测 960/1126——
+  native +2 native-only gateway wbtest）；gold_chibicc 重冻（2026-10-29
+  终轮 rebase 后 22 处漂移：#213 语法错照跑 typeck 使 chibicc 语料
+  E3001 族新增可见，叠加 #344/#346 声明点语义批，随批全量吸收）。
 - **issue 建议 3（学生错误用例集 28 条接防线）不在本批**：管线行为修复
   先行；用例集接入是独立防线工程，单独成批。
 

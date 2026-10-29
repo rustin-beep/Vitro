@@ -24,6 +24,10 @@ generated: src/tokens.css（@generated，禁手改）
 - 结构色一律走 `--vr-bg / panel / panel-2 / ink / ink-2 / ink-3 / rule / rule-2`，
   **禁止**在组件里写裸 hex（五主题会各错一次）。
 - 语义底色一律用 `*-tint` 变体，不手调透明度。
+- `--vr-swap` 是交换事件标记色（D1）：ice/rose/soft/paper 四主题当前**有意复用**
+  `--vr-ty` 同值（语法青），blueprint 独立取青蓝（不与 `--vr-ty` 同值）。
+  **改 `--vr-ty` 时须同步四主题 `--vr-swap`**——tokens.json 没有 alias 机制，
+  等值关系是设计约定；五主题存在性由 pure 测试锁，等值关系不在机判面。
 - 语法色 `--vr-kw/ty/str/num/cmt` 是**主题化 token**：paper 主题用印刷批注色系
   （朱批/青碧/墨绿/赭石），e2e_editor N9 以「色度 ≥40」守门。
 
@@ -88,7 +92,7 @@ generated: src/tokens.css（@generated，禁手改）
 | 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `node scripts/demo_ui_lint/main.mts`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
-| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（101 锚） |
+| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（102 锚） |
 | 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mts`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
 
 > 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS

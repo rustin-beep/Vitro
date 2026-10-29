@@ -44,6 +44,32 @@
   处置后：裸 963/963、native 1131/1131、`--target all` 绿、vm 805
   SAME、clang_direct 919+17+0 零漂移。
 
+### feat(demo): #122 D0–D2 动效地基 + 事件驱动交换 + 结构过渡（102 锚，2026-10-29）
+
+- **D0 动效治理**：`src/lib/motion.svelte.ts` 单点（用户开关 / 系统
+  prefers-reduced-motion / 脉冲预算 / WAAPI+Svelte 过渡门控）；tokens 扩
+  `--vr-t-fast/slow` + 三缓动 + 五主题 `--vr-swap`。兜底常量抽
+  `motionTokens.ts`，pure 测试锁与 tokens.json 等值；CSS 变量与 matchMedia
+  加缓存（P3-2/P3-5）。
+- **D1 交换事件**：`session.eventsAt` 语句级**组内聚合**（VM 事件落在组内
+  指令、组尾帧恒空——bubble 7 个 ty=2 全中此形态）；ArrayCells 双格静态
+  高亮 + 连线 + WAAPI 脉冲 + 块头读数，无事件才回落差分闪烁；Editor 左缘
+  按 ty 分色；多数组按 context `name[` 归属（D1b 合成课接线锚，P3-1）。
+- **D2 结构过渡**：CallTree Tween 相机（Svelte Spring damping 上限 1，
+  快速档必过冲，改 Tween+cubicOut）/ 树节点父位生长 / visited 链过渡；
+  VarsList 行进出 + 值变化脉冲。连带修 `frameNode` view→raw 错帧
+  （`session.rawIndexAt`，deep 帧 view 10 ↔ raw 56）。
+- **边界**：MemoryView 帧级 alloc/free 动效暂缓——数据仅会话结束态
+  `memory.regions`，伪造生命周期违反「动效不撒谎」；相机只平滑取景、
+  不插值帧数据。
+- **验收**：pure 46/46、E-08 17/17（golden 零重刷）、E2E 102/102
+  （session 30）；`--force-prefers-reduced-motion` 宿主 30/30；
+  check/lint/style/ui_lint/assemble/tokens 全绿。
+- **PR #374 审阅处置**：P1-1 显式双向钉 reduced 偏好；P2-1 D 段异常不吞
+  后续锚 + 声明/实跑对账；P2-2 连线断言去几何宽度、改结构语义；P3-1 见上；
+  P3-2 兜底等值纯测；P3-3 `--vr-swap` 四主题 alias 说明；P3-4 本条；
+  P3-5 缓存。
+
 ### fix(gateway+scripts): PR #350 审阅处置——P1 恢复噪音潮过滤 + layerOf 首层语义 + _meta 审计锚恢复（2026-10-28）
 
 - **P1-1（非法定位诊断过滤，J9 红锚先行）**：#213 语法错后照跑 typeck

@@ -6,7 +6,8 @@
 //   2. 预算：状态类高亮（class/attr）恒亮；脉冲类动效在播放 / 批量推进 /
 //      拖拽 scrub 时让位——满屏闪会盖掉正在读的语义。
 //   3. 呈现原语：pulse() 给单元素单动画键控（重复触发先取消上一次），
-//      时长/缓动从 tokens.css 运行期读取（单源 demo/tokens.json，不在 JS 抄数）。
+//      时长/缓动从 tokens.css 运行期读取；读不到时用 motionTokens.ts 的
+//      兜底值（与 tokens.json 等值由 pure.test 锁死，防静默分叉）。
 //
 // 为什么 spring 参数不放 tokens.json：Svelte spring 要的是 JS 数值，CSS 变量
 // 无法回读成数值参数；硬塞进 token 只会制造第二真相源。回调参数单源在本文件。
@@ -15,6 +16,7 @@
 import { KEYS, storeGet, storeSet } from "../persisted.svelte.ts";
 import { session } from "../session.svelte.ts";
 import { cubicOut } from "svelte/easing";
+import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS } from "./motionTokens.ts";
 
 export type MotionTier = "fast" | "base" | "slow";
 export type MotionEasing = "standard" | "emphasis" | "enter";
@@ -28,26 +30,23 @@ export const SPRING = {
   pointer: { stiffness: 0.28, damping: 0.86 },
 } as const;
 
-const FALLBACK_MS: Record<MotionTier, number> = { fast: 90, base: 160, slow: 280 };
-const FALLBACK_EASE: Record<MotionEasing, string> = {
-  standard: "cubic-bezier(.2, .7, .3, 1)",
-  emphasis: "cubic-bezier(.2, .9, .25, 1)",
-  enter: "cubic-bezier(.22, 1, .36, 1)",
-};
-const EASE_VAR: Record<MotionEasing, string> = {
-  standard: "--vr-ease",
-  emphasis: "--vr-ease-emphasis",
-  enter: "--vr-ease-enter",
-};
-
+// 基座 token（--vr-t* / --vr-ease*）不随主题变化，页面生命周期内可永久缓存；
+// 若未来把它们挪进 themes，缓存必须改按 data-theme 分键。
+const CSS_CACHE = new Map<string, string>();
 function cssVar(name: string): string {
+  const cached = CSS_CACHE.get(name);
+  if (cached !== undefined) return cached;
   if (typeof getComputedStyle !== "function" || typeof document === "undefined") return "";
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || "";
+  if (v) CSS_CACHE.set(name, v);
+  return v;
 }
 
+let reducedMql: MediaQueryList | null = null;
 function prefersReduced(): boolean {
-  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (typeof matchMedia !== "function") return false;
+  reducedMql ??= matchMedia("(prefers-reduced-motion: reduce)");
+  return reducedMql.matches;
 }
 
 /** token 时长（ms）：CSS 变量单源，读不到才用兜底值。 */
@@ -108,8 +107,8 @@ export function initMotion(): void {
   motion.systemReduced = prefersReduced();
   if (watchingSystem || typeof matchMedia !== "function") return;
   watchingSystem = true;
-  const mq = matchMedia("(prefers-reduced-motion: reduce)");
-  mq.addEventListener?.("change", (e) => {
+  reducedMql ??= matchMedia("(prefers-reduced-motion: reduce)");
+  reducedMql.addEventListener?.("change", (e) => {
     motion.systemReduced = e.matches;
   });
 }

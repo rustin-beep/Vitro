@@ -109,7 +109,7 @@ interface B11Open { code: string; expanded: string | null }
 interface D1Swap {
   idx: number; n: number; evTy: number[]; evPair: number[];
   swapCount: number; swapLabels: string[]; fallback: number;
-  dataSwap: string; linkFrom: string; linkTo: string; linkW: number;
+  dataSwap: string; linkFrom: string; linkTo: string; linkW: number; legend: boolean;
   meta: string; visTy: string; visSwap: number; pulses: number;
   motionOn: boolean; sys: boolean;
 }
@@ -127,6 +127,12 @@ interface D2Tree {
 }
 interface D2Cam { vb: string | null; moves: number }
 interface D2ReducedTree { nodes: number; transitions: number }
+interface D1Multi { idx: number; secs: Array<{ title: string; swap: string; cells: number; legend: boolean }> }
+
+// P2-1（PR #374 审阅）：声明锚数与实跑对账——waitFor 抛错会中断脚本，
+// 不报「实跑 n / 声明 N」时 CI 只能看到一条异常、看不到覆盖静默缺失。
+const DECLARED_ANCHORS = 30;
+const results: CheckResult[] = [];
 
 async function run() {
   const cdp = await connectCdp();
@@ -137,7 +143,6 @@ async function run() {
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Runtime.enable");
 
-  const results: CheckResult[] = [];
   const check = (name: string, ok: boolean, detail: string): void => {
     results.push({ name, ok, detail });
     console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail);
@@ -310,6 +315,9 @@ async function run() {
     b5.card.includes("本幕讲解") && b5.card.includes("交换不是瞬间完成的") && b5.open === false && b5.fullInDom === true && b5open === true,
     JSON.stringify({ b5, b5open }));
 
+  // P2-1：D 段任一锚异常不吞后续锚——记录失败后继续 B6+；覆盖缺口由收尾
+  // 「声明/实跑」对账报出，不让一条环境异常静默吃掉十几条锚。
+  try {
   // ── D1 交换事件（#122 D1，2026-10-29）：语句级组内事件聚合 + 双格/连线/分色 ──
   // bubble 课首次交换 = 语句帧 7（42 帧口径）。该组组的组尾快照只有 a[0] 变了
   // （半完成中间态：a[0] 已覆盖、a[1] 还是旧值）——修前差分只亮 1 格，且没有
@@ -338,6 +346,9 @@ async function run() {
       linkFrom: link?.getAttribute('data-from') ?? '',
       linkTo: link?.getAttribute('data-to') ?? '',
       linkW: link ? Math.round(link.getBoundingClientRect().width) : 0,
+      // P2-2：连线入场是 scaleX(0)→1，动画前段 rect 宽为 0——不断几何宽度，
+      // 改断结构语义（data-swap / data-from/to / 图例），宽度只作诊断。
+      legend: !!document.querySelector('[data-swap-legend]'),
       meta: document.querySelector('[aria-label="数组可视化"] .vr-meta')?.textContent ?? '',
       visTy: document.querySelector('.cm-line[data-vis]')?.getAttribute('data-vis') ?? '',
       visSwap: document.querySelectorAll('.cm-line.cm-visline-swap').length,
@@ -349,7 +360,7 @@ async function run() {
   check("D1 交换帧：事件双格 + 连线 + 编辑分色（组内聚合；修前只有 1 格差分）",
     d1.idx === 7 && d1.n === 42 && d1.evTy.includes(2) && d1.evPair.join(",") === "0,1" &&
       d1.swapCount === 2 && d1.swapLabels.join("|").includes("a[0] =") && d1.swapLabels.join("|").includes("a[1] =") &&
-      d1.fallback === 0 && d1.dataSwap === "0-1" && d1.linkFrom === "0" && d1.linkTo === "1" && d1.linkW > 0 &&
+      d1.fallback === 0 && d1.dataSwap === "0-1" && d1.linkFrom === "0" && d1.linkTo === "1" && d1.legend === true &&
       d1.meta.includes("本帧交换 a[0] ↔ a[1]") && d1.visTy === "swap" && d1.visSwap >= 1 &&
       d1.motionOn === true && d1.sys === false && d1.pulses >= 2,
     JSON.stringify(d1));
@@ -576,6 +587,64 @@ async function run() {
       d2h.nodes > 3 && d2h.transitions === 0,
     JSON.stringify({ d2vb0, d2vb1, d2camMoves, d2camR, d2h }));
   await setReduced(false);
+  } catch (err) {
+    await setReduced(false).catch(() => undefined);
+    await setUserMotion(true).catch(() => undefined);
+    const msg = String((err as Error)?.message ?? err).slice(0, 200);
+    results.push({ name: "D1/D0/D2 段异常（后续锚继续）", ok: false, detail: msg });
+    console.log("FAIL  D1/D0/D2 段异常（后续锚继续）  — " + msg);
+  }
+
+  // ── D1b 多数组归属接线（P3-1）：ty=2 的 extras 无数组名，ArrayCells 必须
+  //    把 snap.name 传给 swapPairs——去掉第三参时两个数组会同时点亮同号格。
+  //    用合成课（a 交换 / b 不动）做接线锚；纯函数锚只能证明函数对，证明不了接上。
+  try {
+    await setReduced(false);
+    await setUserMotion(true);
+    await pickLesson("bubble");
+    const multiSrc = [
+      "int main() {",
+      "  int a[3] = {3, 1, 2};",
+      "  int b[3] = {9, 8, 7};",
+      "  for (int i = 0; i < 1; i++)",
+      "    for (int j = 0; j < 2; j++)",
+      "      if (a[j] > a[j + 1]) {",
+      "        int t = a[j];",
+      "        a[j] = a[j + 1];",
+      "        a[j + 1] = t;",
+      "      }",
+      "  return 0;",
+      "}",
+    ].join("\n");
+    await evaluate(`window.__pilot.collect(${JSON.stringify(multiSrc)}, [], { autoplay: false })`);
+    await waitFor("!window.__pilot.session.collecting && window.__pilot.session.viewFrames.length > 0", 60000);
+    const mi = await evaluate<number>(`(() => {
+      const s = window.__pilot.session;
+      return s.viewFrames.findIndex((_, i) => s.eventsAt(i).some((e) => e.ty === 2 && e.context.includes('a[')));
+    })()`);
+    await evaluate(`window.__pilot.seek(${mi})`);
+    await sleep(400);
+    const d1m = await evaluate<D1Multi>(`(() => ({
+      idx: window.__pilot.session.idx,
+      secs: [...document.querySelectorAll('[aria-label="数组可视化"]')].map((sec) => ({
+        title: sec.querySelector('.vr-label')?.textContent ?? '',
+        swap: sec.querySelector('.vr-cells')?.getAttribute('data-swap') ?? '',
+        cells: sec.querySelectorAll('.vr-cell.is-swap-event').length,
+        legend: !!sec.querySelector('[data-swap-legend]'),
+      })),
+    }))()`);
+    const sa = d1m.secs.find((s) => s.title.includes("数组 a"));
+    const sb = d1m.secs.find((s) => s.title.includes("数组 b"));
+    check("D1b 多数组归属：只有事件点名的 a 亮交换面，b 不串格（P3-1）",
+      mi >= 0 && d1m.idx === mi && d1m.secs.length === 2 &&
+        sa !== undefined && sa.swap === "0-1" && sa.cells === 2 && sa.legend === true &&
+        sb !== undefined && sb.swap === "" && sb.cells === 0 && sb.legend === false,
+      JSON.stringify(d1m));
+  } catch (err) {
+    const msg = String((err as Error)?.message ?? err).slice(0, 200);
+    results.push({ name: "D1b 多数组归属（P3-1）段异常", ok: false, detail: msg });
+    console.log("FAIL  D1b 多数组归属（P3-1）段异常  — " + msg);
+  }
 
   // ── B6 第二门旗舰课 uaf（#222 P1 内容扩面）：3 幕（申请写入 / 释放 / 悬垂读），
   //    点幕 → 幕头与分幕带同步；幕首帧 = 0、第 2 幕首帧 = 3（释放帧）──
@@ -930,10 +999,23 @@ async function run() {
       b11.overflow <= 1 && b11open.code === "flex" && b11open.expanded === "true",
     JSON.stringify({ b11, b11open }));
 
+  const executed = results.length;
+  if (executed !== DECLARED_ANCHORS) {
+    results.push({
+      name: "锚点覆盖完整（声明/实跑）",
+      ok: false,
+      detail: `声明 ${DECLARED_ANCHORS} / 实跑 ${executed}`,
+    });
+    console.log(`FAIL  锚点覆盖完整（声明/实跑）  — 声明 ${DECLARED_ANCHORS} / 实跑 ${executed}`);
+  }
   const fails = results.filter((r) => !r.ok);
   console.log(`===== ${results.length - fails.length}/${results.length} 通过 =====`);
   cdp.close();
   process.exit(fails.length ? 1 : 0);
 }
 
-run().catch((e) => { console.error("E2E 异常:", e.message); process.exit(2); });
+run().catch((e) => {
+  console.error("E2E 异常:", e.message);
+  console.error(`实跑 ${results.length} / 声明 ${DECLARED_ANCHORS}——覆盖静默缺失，按失败处理`);
+  process.exit(2);
+});

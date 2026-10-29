@@ -42,6 +42,7 @@ import {
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvents.ts";
+import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS } from "../src/lib/motionTokens.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 import { isTransientNavigationError } from "./cdp.mts";
 import type { VisEvent } from "../js/types.ts";
@@ -583,6 +584,28 @@ test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
   for (const name of ["--vr-t-fast", "--vr-t", "--vr-t-slow", "--vr-ease", "--vr-ease-emphasis", "--vr-ease-enter"]) {
     assert.ok(base[name]?.$value, `tokens.base 缺 ${name}（D0 动效 token）`);
   }
+});
+
+// P3-2（PR #374 审阅）：motion 层的兜底常量是 tokens 的 JS 抄本——改 token
+// 漏改兜底会静默分叉（只在 CSS 变量读不到时显影）。这里把两面包死。
+test("motionTokens：兜底时长/缓动与 tokens.json 等值（防 JS 抄本静默分叉）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8")) as {
+    base?: { tokens?: Record<string, { $value: string }> };
+  };
+  const base = tokens.base?.tokens ?? {};
+  const msOf = (name: string): number => Number.parseFloat(must(base[name], `tokens.base 缺 ${name}`).$value);
+  assert.equal(FALLBACK_MS.base, msOf("--vr-t"));
+  assert.equal(FALLBACK_MS.fast, msOf("--vr-t-fast"));
+  assert.equal(FALLBACK_MS.slow, msOf("--vr-t-slow"));
+  assert.equal(FALLBACK_EASE.standard, must(base["--vr-ease"]).$value);
+  assert.equal(FALLBACK_EASE.emphasis, must(base["--vr-ease-emphasis"]).$value);
+  assert.equal(FALLBACK_EASE.enter, must(base["--vr-ease-enter"]).$value);
+  assert.deepEqual(EASE_VAR, {
+    standard: "--vr-ease",
+    emphasis: "--vr-ease-emphasis",
+    enter: "--vr-ease-enter",
+  });
 });
 
 // ── 内容批回归闸（2026-10-23 审阅 P2）：课程 scene 与码表附属内容此前只有

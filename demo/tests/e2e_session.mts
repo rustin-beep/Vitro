@@ -111,6 +111,7 @@ interface D1Swap {
   swapCount: number; swapLabels: string[]; fallback: number;
   dataSwap: string; linkFrom: string; linkTo: string; linkW: number;
   meta: string; visTy: string; visSwap: number; pulses: number;
+  motionOn: boolean; sys: boolean;
 }
 interface D1Compare { idx: number; ty: string; swapLines: number; link: boolean; swapCells: number }
 interface D0Base { attr: string | null; enabled: boolean; sys: boolean; stored: string; pulses: number }
@@ -140,6 +141,15 @@ async function run() {
   const check = (name: string, ok: boolean, detail: string): void => {
     results.push({ name, ok, detail });
     console.log((ok ? "PASS" : "FAIL") + "  " + name + "  — " + detail);
+  };
+  // 显式双向设置减少动效偏好：headless Chrome 默认可能是 reduce（CI 实测
+  // 2026-10-29：D1 脉冲被判预算旁路），`features: []` 也不保证回到
+  // no-preference——测试必须自己钉两边，不赌浏览器默认。
+  const setReduced = async (on: boolean): Promise<void> => {
+    await send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: on ? "reduce" : "no-preference" }],
+    });
+    await waitFor(`window.__pilot.motion.systemReduced === ${on}`, 5000);
   };
 
   // ── F1 坏分享 hash → 持久横幅（P1-3）——cache-bust 强制完整导航 ──
@@ -288,6 +298,7 @@ async function run() {
   // bubble 课首次交换 = 语句帧 7（42 帧口径）。该组组的组尾快照只有 a[0] 变了
   // （半完成中间态：a[0] 已覆盖、a[1] 还是旧值）——修前差分只亮 1 格，且没有
   // 任何事件语义；修后 ty=2 extras 双格、连线、编辑左缘 swap 色。本锚即红→绿锚。
+  await setReduced(false); // headless Chrome 可能默认 reduce——先钉回 no-preference
   if (await evaluate("window.__pilot.session.playing")) {
     await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
     await sleep(150);
@@ -314,13 +325,16 @@ async function run() {
       visTy: document.querySelector('.cm-line[data-vis]')?.getAttribute('data-vis') ?? '',
       visSwap: document.querySelectorAll('.cm-line.cm-visline-swap').length,
       pulses: window.__pilot.motion.pulseCount,
+      motionOn: window.__pilot.motion.enabled,
+      sys: window.__pilot.motion.systemReduced,
     };
   })()`);
   check("D1 交换帧：事件双格 + 连线 + 编辑分色（组内聚合；修前只有 1 格差分）",
     d1.idx === 7 && d1.n === 42 && d1.evTy.includes(2) && d1.evPair.join(",") === "0,1" &&
       d1.swapCount === 2 && d1.swapLabels.join("|").includes("a[0] =") && d1.swapLabels.join("|").includes("a[1] =") &&
       d1.fallback === 0 && d1.dataSwap === "0-1" && d1.linkFrom === "0" && d1.linkTo === "1" && d1.linkW > 0 &&
-      d1.meta.includes("本帧交换 a[0] ↔ a[1]") && d1.visTy === "swap" && d1.visSwap >= 1 && d1.pulses >= 2,
+      d1.meta.includes("本帧交换 a[0] ↔ a[1]") && d1.visTy === "swap" && d1.visSwap >= 1 &&
+      d1.motionOn === true && d1.sys === false && d1.pulses >= 2,
     JSON.stringify(d1));
 
   // 比较帧（语句帧 3 = 第 5 行循环条件）：左缘走 compare 色，不画交换面。
@@ -384,8 +398,7 @@ async function run() {
 
   // 系统 reduced-motion：脉冲旁路，静态语义仍在；解除后脉冲恢复。
   const d0sysBefore = await evaluate<number>("window.__pilot.motion.pulseCount");
-  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await setReduced(true);
   await evaluate("window.__pilot.seek(28)");
   await sleep(200);
   const d0sys = await evaluate<D0Sys>(`(() => ({
@@ -395,8 +408,7 @@ async function run() {
     swapCells: document.querySelectorAll('.vr-cell.is-swap-event').length,
     link: !!document.querySelector('.vr-swap-link'),
   }))()`);
-  await send("Emulation.setEmulatedMedia", { features: [] });
-  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
+  await setReduced(false);
   await evaluate("window.__pilot.seek(33)");
   await sleep(200);
   const d0resume = await evaluate<number>("window.__pilot.motion.pulseCount");
@@ -444,8 +456,7 @@ async function run() {
       d2v6.transitions === d2v5.transitions + 1 && d2v6.pulses === d2v5.pulses,
     JSON.stringify({ d2v5, d2v6 }));
 
-  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await setReduced(true);
   await evaluate("window.__pilot.seek(5)"); await sleep(220);
   const d2r5 = await varsSnap();
   await evaluate("window.__pilot.seek(6)"); await sleep(220);
@@ -458,8 +469,7 @@ async function run() {
     d2r6.rows.includes("t") && d2r6.transitions === d2r5.transitions &&
       d2r8.changed.join(",") === "a,j" && d2r8.pulses === d2r7.pulses,
     JSON.stringify({ d2r5, d2r6, d2r7, d2r8 }));
-  await send("Emulation.setEmulatedMedia", { features: [] });
-  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
+  await setReduced(false);
 
   // ── D2 CallTree（#122 D2）：深树 visited 链 + view→raw 当前节点 + 相机平滑/旁路 ──
   // 修前缺陷：frameNode 按指令帧建，语句级拿 view 下标直查 ⇒ 当前节点/路径/
@@ -515,8 +525,7 @@ async function run() {
   await sleep(300);
   const d2vb1 = await evaluate<string | null>("document.querySelector('.vr-canvas svg')?.getAttribute('viewBox') ?? null");
   const d2camMoves = await evaluate<number>("window.__pilot.motion.cameraAnimations");
-  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await setReduced(true);
   await evaluate("window.__pilot.motion.cameraAnimations = 0; window.__pilot.seek(0); true");
   await sleep(200);
   await evaluate(`window.__pilot.seek(${deep})`);
@@ -547,8 +556,7 @@ async function run() {
     d2camMoves >= 1 && d2vb0 !== d2vb1 && d2camR.moves === 0 && nearVb(d2camR.vb, d2vb1) &&
       d2h.nodes > 3 && d2h.transitions === 0,
     JSON.stringify({ d2vb0, d2vb1, d2camMoves, d2camR, d2h }));
-  await send("Emulation.setEmulatedMedia", { features: [] });
-  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
+  await setReduced(false);
 
   // ── B6 第二门旗舰课 uaf（#222 P1 内容扩面）：3 幕（申请写入 / 释放 / 悬垂读），
   //    点幕 → 幕头与分幕带同步；幕首帧 = 0、第 2 幕首帧 = 3（释放帧）──

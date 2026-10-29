@@ -31,6 +31,7 @@ pub(all) struct LexResult {
   warnings : Array[LexWarning]
   trace : Array[TraceEntry]
   line_map : LineMap
+  included_files : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn LexResult::equal(Self, Self) -> Bool
 pub fn LexResult::not_equal(Self, Self) -> Bool

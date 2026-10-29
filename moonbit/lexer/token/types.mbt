@@ -189,6 +189,10 @@ pub(all) struct LexResult {
   warnings : Array[LexWarning]
   trace : Array[TraceEntry]
   line_map : LineMap
+  /// 实际被 include 拼接进 token 流的文件键（规范路径、拼接序；存根
+  /// `stub:<名>` 不含）——#364（2026-10-29）：gateway 多文件 compile 以
+  /// 此判「unit 既被物理拼接又被 include 展开」的双重定义面。
+  included_files : Array[String]
 } derive(Eq, @debug.Debug)
 
 ///|

@@ -151,6 +151,22 @@ async function run() {
     });
     await waitFor(`window.__pilot.motion.systemReduced === ${on}`, 5000);
   };
+  // 用户开关钉位：E2E 套件共享浏览器 profile，前序 workspace 套件可能把动效
+  // 留成 off（CI 实测 2026-10-29：D1 motionOn:false、D0 状态全反转）。走真实
+  // 设置开关（会同步 data-motion 与 localStorage），已为目标态则 no-op。
+  const setUserMotion = async (on: boolean): Promise<void> => {
+    if ((await evaluate<boolean>("window.__pilot.motion.enabled")) === on) return;
+    await evaluate("document.querySelector('[data-settings]')?.click(); true");
+    await sleep(150);
+    const pressed = await evaluate<boolean>("document.querySelector('.vr-switch')?.getAttribute('aria-pressed') === 'true'");
+    if (pressed !== on) {
+      await evaluate("document.querySelector('.vr-switch')?.click(); true");
+      await sleep(150);
+    }
+    await evaluate(`document.querySelector('.vr-popover [aria-label="关闭设置"]')?.click(); true`);
+    await sleep(100);
+    await waitFor(`window.__pilot.motion.enabled === ${on}`, 5000);
+  };
 
   // ── F1 坏分享 hash → 持久横幅（P1-3）——cache-bust 强制完整导航 ──
   await send("Page.navigate", { url: PAGE + "?cb=" + Date.now() + "#z1.BROKEN" });
@@ -299,6 +315,7 @@ async function run() {
   // （半完成中间态：a[0] 已覆盖、a[1] 还是旧值）——修前差分只亮 1 格，且没有
   // 任何事件语义；修后 ty=2 extras 双格、连线、编辑左缘 swap 色。本锚即红→绿锚。
   await setReduced(false); // headless Chrome 可能默认 reduce——先钉回 no-preference
+  await setUserMotion(true); // 共享 profile：前序套件可能把用户开关留成 off
   if (await evaluate("window.__pilot.session.playing")) {
     await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
     await sleep(150);
@@ -353,6 +370,7 @@ async function run() {
 
   // ── D0 动效治理（#122 D0）：开关持久化 + 预算裁决 + reduced-motion 旁路 ──
   // 语义优先级：脉冲可被预算旁路，静态交换高亮/连线不可丢（动效不撒谎）。
+  await setUserMotion(true);
   const d0base = await evaluate<D0Base>(`(() => ({
     attr: document.documentElement.getAttribute('data-motion'),
     enabled: window.__pilot.motion.enabled,
@@ -475,6 +493,7 @@ async function run() {
   // 修前缺陷：frameNode 按指令帧建，语句级拿 view 下标直查 ⇒ 当前节点/路径/
   // 相机取景错帧（deep 帧 view 10 ↔ raw 56）。本锚用 frameAt 的 call_stack
   // 真值对 DOM 路径全等断言。
+  await setUserMotion(true); // D0 收尾应已为 on；防前序套件/异常遗留
   await evaluate("window.__pilot.motion.transitionCount = 0; window.__pilot.motion.cameraAnimations = 0; true");
   await pickLesson("global_struct");
   await sleep(800);

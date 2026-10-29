@@ -1,5 +1,65 @@
 ## [Unreleased]
 
+### fix(gateway+scripts): PR #350 审阅处置——P1 恢复噪音潮过滤 + layerOf 首层语义 + _meta 审计锚恢复（2026-10-28）
+
+- **P1-1（非法定位诊断过滤，J9 红锚先行）**：#213 语法错后照跑 typeck
+  把 O3 登记债「零位置报错」（typeck/context 逐字照搬）从几乎不触发
+  引爆成 **570 条非法定位**（E3001 L0:0 ×551 / E3003 L-4:5 ×19 / 荒谬
+  参数数 ×20，19/41 chibicc 样本中招且全被首轮重冻进了 gold）。修：
+  `serve_compile` 语法错在场时对 typeck 补报面过滤 `line < 1` 条目
+  （正行号语义错照报）；O3 债治本（造合法 loc）另批。红锚
+  `issue350_parse_recovery_no_illegal_loc`（最小样本 E3001 L0:0 先红
+  后绿）+ issue213 锚加强 error 级 ≤2 上限（审阅 P2-2：只 contains
+  挡得住完全早退、挡不住多报千条）。
+- **P1-2（gold_chibicc _meta 审计锚恢复）**：首轮重冻把 `upstream_base`
+  pin / note 三条豁免依据（E1021×2 真子集边界、union.c #278、四文件
+  clang 口径统一）/ `source_fork` URL 形态整体降级——重冻模板覆盖所
+  致（`-agg-source-fork` 误传非 URL 值）。修后重冻恢复全部审计锚
+  （gcc_buckets 20/4 为自洽新值保留——master 的 24/0 才是陈旧不自洽）。
+- **P2-1（layerOf 首层语义）**：`stmt_expr.mts` E3 分支无条件覆盖改
+  「仅未定层时设置」——旧「末错类别胜出」使 #213 起 E2+E3 混合文件
+  layer 全被 E3 尾覆盖成 typeck（16 文件），与 codegen 闸
+  `fail_stage:"parse"` 对同一事实相反。测试断言翻案（首层=parse，
+  依据=codegen 闸与首错语义）。
+- **P3①**：`解析失败：无法生成 AST` 文案恢复（AST 缺席早退路径的
+  可观察面不变）。**P2-3 勘正**：vm「554/554 SAME」分母含
+  `multi_error_mixed.c` 等**双侧编译失败判 match** 的零检测力样本
+  （vm.mts 对该类直接 continue 不比 exit/stdout）——验证强度声明降
+  级为「该类样本等价判定，无运行比对」。**P3②**：§8.1 预期 5 条
+  实测 4 条——第 5 条「for 缩进歧义」原文即标注可选警告，Vitro 无
+  此警告面（缺位非缺陷，不虚报）。
+- chibicc 修后重冻：非法定位族全消（vla.c E3001×55+E3003×1 归零、
+  errs 700→644），layer 首层语义生效（16 文件回 parse）；双闸
+  （check_gold/compare_gold）41 条逐字段一致；protocol_frames 47 帧
+  零漂移；native 1089→1090 两处连坐。
+
+### fix(gateway): #213 语法错不再遮蔽语义错——语法错在场照跑 typeck（§8.1 多重错误混合一次全报）（2026-10-28）
+
+- **红根**：`serve_compile` 语法错非空即早退 `return false`，语义面零
+  报告——而 `parse_program` 恒返部分 AST（残缺声明跳过、后续语句照收），
+  typeck 本可跑。「缺分号 + 未声明变量」只看到 1 类错，教学引擎「一次
+  告诉学生所有错」卖点最常见的破口（《学生错误用例集》§8.1 预期 5 条
+  实测 2 条）。
+- **修法**：语法错照报后若 AST 有值继续跑 typeck（errors/warnings/hints
+  照既有逻辑报出）；typeck 后语法错在场即收口不进 codegen（半解析程序
+  不生成，防残缺 AST 触发未接线族噪音）；真「AST 缺席」形态（深度预算
+  熔断等）维持早退。单源改 `serve_compile` 一处——cli compile 走
+  frame_pipeline 单源，三臂壳全生效。
+- **语义决定**：语义错属 cascading 形态（缺分号粘连可能产误导性条目）
+  ——clang recovery 语义分析同款形态，可解释优于漏报。
+- **修后形态**（§8.1 完整样本）：E2005×2（缺分号）+ E3023（c 未声明）
+  + W3063（scanf %d 与 int 不匹配）四条同帧；协议帧 2（`int x = ;`
+  语法错帧）恢复后空体零语义错，帧基线零漂移。
+- **锚**：gateway wbtest `issue213_syntax_error_does_not_mask_semantic`
+  （红→绿留痕：旧形态 E3023 不在列）；语料 `multi_error_mixed.c`
+  （双侧编译失败判 match，clang_direct SAME）；五家 digest freeze
+  存量零漂移；facts native 连坐（rebase 到 c8825924 后实测 960/1126——
+  native +2 native-only gateway wbtest）；gold_chibicc 重冻（2026-10-29
+  终轮 rebase 后 22 处漂移：#213 语法错照跑 typeck 使 chibicc 语料
+  E3001 族新增可见，叠加 #344/#346 声明点语义批，随批全量吸收）。
+- **issue 建议 3（学生错误用例集 28 条接防线）不在本批**：管线行为修复
+  先行；用例集接入是独立防线工程，单独成批。
+
 ### fix(demo): E2E CDP waitFor 导航切换窗瞬态容错——style_contract 竞态红治本（2026-10-28）
 
 - **红根**：PR #344 CI pull_request 轮两次同形态红（run 40691154018 /

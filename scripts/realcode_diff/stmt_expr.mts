@@ -367,6 +367,11 @@ function hasControlFlow(body: string): boolean {
 }
 
 // ---------- 层判定（码段粗分：E1=lex / E2=parse / E3=typeck） ----------
+// PR #350 审阅 P2-1（2026-10-28）：**首个失败层**语义——旧 E3 分支无条件
+// 覆盖使「最后一个 error 的类别」胜出（#213 语法错后照跑 typeck 起，
+// E2+E3 混合文件被 E3 尾覆盖成 typeck——realcode parse 面分诊清零，且
+// 与 codegen 闸 fail_stage:"parse" 对同一事实给相反答案）。E1/E2 分支的
+// 既有守卫正是首层序（低层被更高优先的既有值顶住）；E3 补同款守卫。
 export function layerOf(diags: readonly Diag[]): string {
   let layer = "ok";
   for (const d of diags) {
@@ -376,7 +381,7 @@ export function layerOf(diags: readonly Diag[]): string {
     } else if (d.code.startsWith("E2")) {
       if (layer === "ok" || layer === "typeck") layer = "parse";
     } else if (d.code.startsWith("E3")) {
-      layer = "typeck";
+      if (layer === "ok") layer = "typeck";
     }
   }
   return layer;

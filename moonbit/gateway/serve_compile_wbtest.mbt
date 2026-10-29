@@ -358,3 +358,78 @@ test "serve_compile_include_variadic_macro_issue164" {
   )
   assert_true(resp.contains("\"diagnostics\":[]"), msg="零诊断")
 }
+
+///|
+/// #213（2026-10-28）：语法错不得遮蔽语义错——「缺分号 + 未声明变量」
+/// 混合形态下两条都要报（§8.1 多重错误混合的简化样本）。旧形态：语法错
+/// 早退只报 E2005，语义面（c 未声明 E3023）零报告——教学引擎「一次告诉
+/// 学生所有错」卖点最常见的破口。parse_program 恒返部分 AST（残缺声明的
+/// 语句跳过、后续语句照收），typeck 跑部分 AST 安全。
+test "issue213_syntax_error_does_not_mask_semantic" {
+  let s = @session.Session::new()
+  let srclines = [
+    "int main() {", "    int a = 10", "    int b;", "    b = a + c;", "    return 0;",
+    "}",
+  ]
+  let src = srclines.join("\n") + "\n"
+  let src_json = @ast.json_escape_string(src)
+  let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":" +
+    src_json +
+    "}}"
+  let (resp, _) = serve_handle(s, req)
+  assert_true(
+    resp.contains("\"ok\":false"),
+    msg="语法错在场必然编译失败",
+  )
+  assert_true(resp.contains("E2005"), msg="语法错在列（缺分号）")
+  assert_true(
+    resp.contains("E3023"),
+    msg="#213 语义错（c 未声明 E3023）不因语法错被遮蔽",
+  )
+  // PR #350 审阅 P2-2（2026-10-28）：锚加强——只 contains 挡得住「完全
+  // 早退」，挡不住「多报 1000 条」（E3001 line=0 级噪音潮）。error 级
+  // 条数上限 2（E2005×1 + E3023×1——本样本恰两条；涨面须显式重估）
+  let e_count = resp.split("\"severity\":\"error\"").length() - 1
+  assert_true(
+    e_count <= 2,
+    msg="error 级 ≤2 条（实得 \{e_count}——恢复噪音潮须重估锚）",
+  )
+  // E 前置不变式：语义错加入后 error 级仍先于 warning 级（若有）
+  let e = resp.find("\"severity\":\"error\"")
+  let w = resp.find("\"severity\":\"warning\"")
+  let ordered = match (e, w) {
+    (Some(ei), Some(wi)) => ei < wi
+    (Some(_), None) => true
+    _ => false
+  }
+  assert_true(ordered, msg="error 前置不变式")
+}
+
+///|
+/// #350 审阅 P1-1（2026-10-28）：语法错在场时 typeck 补报的**非法定位**
+/// 诊断（E3001 line=0 / E3003 line=-4——O3 登记债「零位置报错」在残缺
+/// AST 上被引爆，clang 对同输入零报）不得进入诊断列表——恢复残缺 AST
+/// 的 cascading 噪音按 line≥1 过滤（合法语义错 E3023 等正行号照报）。
+test "issue350_parse_recovery_no_illegal_loc" {
+  let s = @session.Session::new()
+  let srclines = [
+    "int main() {", "    int a = 10", "    int a;", "    a = a + 1;", "    return 0;",
+    "}",
+  ]
+  let src = srclines.join("\n") + "\n"
+  let src_json = @ast.json_escape_string(src)
+  let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":" +
+    src_json +
+    "}}"
+  let (resp, _) = serve_handle(s, req)
+  assert_true(resp.contains("\"ok\":false"))
+  assert_true(resp.contains("E2005"), msg="语法错在列")
+  assert_false(
+    resp.contains("\"line\":0"),
+    msg="#350 语法错在场时零位置诊断（E3001 L0:0）须被过滤",
+  )
+  assert_false(
+    resp.contains("\"line\":-"),
+    msg="#350 负行号诊断须被过滤",
+  )
+}

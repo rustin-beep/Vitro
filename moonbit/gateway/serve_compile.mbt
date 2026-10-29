@@ -351,27 +351,63 @@ fn serve_compile_pipeline(
   }
   // ── 2. Parser ──
   let r = @parser.parse(lexed.tokens)
-  if !r.errors.is_empty() {
+  let has_parse_errors = !r.errors.is_empty()
+  if has_parse_errors {
     let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in r.errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
     push_code_errors(s, rows, 0, ranges, source_lines)
     st.errors = st.errors + "语法错误\n"
-    reorder_errors_before_warnings(s)
-    return false
   }
   let program = match r.program {
     Some(p) => p
     None => {
-      st.errors = "解析失败：无法生成 AST"
+      // 真「AST 缺席」形态（深度预算熔断等）——无 AST 可查，维持早退。
+      // #350 审阅 P3①：st.errors 文案恢复原「解析失败：无法生成 AST」
+      //（可观察面不变——grep 全仓无测试/前端消费，但下游日志检索依赖）
+      st.errors = st.errors + "解析失败：无法生成 AST\n"
       reorder_errors_before_warnings(s)
       return false
     }
   }
+  // #213（2026-10-28）：语法错在场但 AST 有值时**不早退**——照跑 typeck
+  // 把语义错一并报出（「一次告诉学生所有错」；parse_program 恒返部分
+  // AST：残缺声明的语句跳过、后续语句照收，typeck 查部分 AST 安全）。
+  // 语义错属 cascading 形态（缺分号粘连可能产误导性条目——clang recovery
+  // 语义分析同款形态，可解释优于漏报）。codegen 不进：语法错在场编译
+  // 必然失败，半解析程序不生成。
   // ── 3. TypeChecker（errors/warnings/hints 三段 severity 0/1/2）──
   let tc = @typeck.TypeChecker::new()
   let (typed, type_errors, type_warnings, type_hints) = tc.check(program)
+  // #350 审阅 P1-1（2026-10-28）：语法错在场时，typeck 补报面过滤
+  // **非法定位**诊断（line < 1——E3001 零位置族 L0:0 / E3003 负行号
+  // L-4:x）。根因是 O3 登记债（typeck/context「零位置报错」逐字照搬）
+  // 在 parser 恢复的残缺 AST 上被引爆（畸形声明节点撞名/签名比对），
+  // clang 对同输入零报——非可解释 cascading 而是噪音；正行号语义错
+  //（E3023 等）照报。O3 债的治本（造合法 loc）另批；本处只做出口过滤
+  if has_parse_errors {
+    let kept : Array[@typeck.TypeError] = []
+    for e in type_errors {
+      if e.line >= 1 {
+        kept.push(e)
+      }
+    }
+    type_errors.clear()
+    for e in kept {
+      type_errors.push(e)
+    }
+    let kept_w : Array[@typeck.TypeError] = []
+    for w in type_warnings {
+      if w.line >= 1 {
+        kept_w.push(w)
+      }
+    }
+    type_warnings.clear()
+    for w in kept_w {
+      type_warnings.push(w)
+    }
+  }
   if !type_errors.is_empty() {
     let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in type_errors {
@@ -406,6 +442,12 @@ fn serve_compile_pipeline(
       rows.push((e.code, e.line, e.column, e.message))
     }
     push_code_errors(s, rows, 2, ranges, source_lines)
+  }
+  // #213：语法错在场时编译必然失败（typeck 只是补充报错面）——到此
+  // 收口，不进 codegen（半解析程序不生成，防残缺 AST 触发未接线族噪音）
+  if has_parse_errors {
+    reorder_errors_before_warnings(s)
+    return false
   }
   // ── 4. BytecodeGen ──
   let (output_opt, gen_errors) = @codegen.compile(typed)

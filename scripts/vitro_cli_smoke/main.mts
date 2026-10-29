@@ -389,7 +389,87 @@ export function runMain(argv: readonly string[]): number {
     } else if (j363 !== w363 || w363 !== n363) {
       fatalf(`B[坏字节源码] 三臂输出不同形（#363 修复回归——native 崩/wasm 裸 trap/js 静默任一复发）`);
     } else {
-      process.stdout.write(`ok  B[坏字节源码] 三臂 E1001 拒收同形（rc=1，#363）\n`);
+      process.stdout.write(`ok  B[大帧管道] 三臂大帧内容逐位一致（#366+#14 三臂纪律）\n`);
+    }
+  }
+  // PR #367 审阅 P2-3/P3-1（2026-10-28）：① stderr 通道同族锚——node 对
+  // 管道的 stderr 写同样异步，实测分界 = 单次写大小 vs 管道缓冲 64KB
+  //（超长标识符诊断单段 70106B 修前截断于 65536B；小段多写不触发）——
+  // 三臂编译错风暴 + 单段大写双口径（pipe vs fd 文件）逐字节比对。
+  // ② run --json 大帧（type:stdout 帧 >1MB）——api --batch 之外的帧出
+  // 口路径（frame_pipeline）此前零锚。
+  {
+    const arms = [
+      { label: "js", exe: jsEntry },
+      { label: "wasm", exe: shell },
+      { label: "native", exe: nativeExe },
+    ];
+    const armCmd = (a: { label: string; exe: string }, argv: readonly string[]): { exe: string; pre: string[] } =>
+      a.label === "native" ? { exe: a.exe, pre: [] } : { exe: nodeBin, pre: [a.exe] };
+    // ① stderr 双形态：编译错风暴（小段多写）+ 超长标识符（单段 >64KB）
+    const bigErrC = path.join(tmpDir, "big_err_storm.c");
+    const stormLines: string[] = ["int main(){"];
+    for (let i = 0; i < 600; i++) stormLines.push(`  undefined_var_${i} = ${i};`);
+    stormLines.push("  return 0; }");
+    fs.writeFileSync(bigErrC, stormLines.join("\n") + "\n");
+    const hugeIdentC = path.join(tmpDir, "huge_ident.c");
+    fs.writeFileSync(hugeIdentC, `int main(){ ${"a".repeat(70000)} = 1; return 0; }\n`);
+    for (const spec of [
+      { name: "stderr 风暴", file: bigErrC, min: 60000 },
+      { name: "stderr 单段大写", file: hugeIdentC, min: 65536 },
+    ]) {
+      for (const a of arms) {
+        const { exe, pre } = armCmd(a, []);
+        const argv = [...pre, "compile", toSlash(path.relative(repoRoot, spec.file))];
+        const errFile = path.join(tmpDir, "p2_3_control.err");
+        const fd = fs.openSync(errFile, "w");
+        const rf = spawnSync(exe, argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "ignore", fd] });
+        fs.closeSync(fd);
+        const rp = spawnSync(exe, argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 });
+        const fbytes = fs.readFileSync(errFile);
+        const pbytes = rp.stderr ?? Buffer.alloc(0);
+        if (rf.error !== undefined || rp.error !== undefined) {
+          fatalf(`B[stderr 通道] ${a.label} ${spec.name} 启动异常: ${String(rf.error ?? rp.error)}`);
+          continue;
+        }
+        if (fbytes.length <= spec.min) {
+          fatalf(`B[stderr 通道] ${a.label} ${spec.name} 量 ${fbytes.length}B 未过门量 ${spec.min}B（锚失效）`);
+          continue;
+        }
+        if (!pbytes.equals(fbytes)) {
+          fatalf(`B[stderr 通道] ${a.label} ${spec.name} 管道口径截断/漂移：pipe=${pbytes.length}B file=${fbytes.length}B（P2-3 stderr 未走同步通道）`);
+          continue;
+        }
+        process.stdout.write(`ok  B[stderr 通道] ${a.label} ${spec.name} 双口径一致（${pbytes.length}B，P2-3）\n`);
+      }
+    }
+    // ② run --json 大 stdout 帧（frame_pipeline 路径）：程序输出 >1MB →
+    // type:stdout 帧 >1MB，三臂双口径比对
+    const bigOutC = path.join(tmpDir, "big_stdout.c");
+    fs.writeFileSync(bigOutC, '#include <stdio.h>\nint main(){ for(int i=0;i<25000;i++) printf("line-%06d-abcdefghijklmnopqrstuvwxyz-0123456789\\n", i); return 0; }\n');
+    for (const a of arms) {
+      const { exe, pre } = armCmd(a, []);
+      const argv = [...pre, "run", "--json", toSlash(path.relative(repoRoot, bigOutC))];
+      const outFile = path.join(tmpDir, "p3_1_control.out");
+      const fd = fs.openSync(outFile, "w");
+      const rf = spawnSync(exe, argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", fd, "ignore"] });
+      fs.closeSync(fd);
+      const rp = spawnSync(exe, argv, { cwd: repoRoot, maxBuffer: 64 * 1024 * 1024 });
+      const fbytes = fs.readFileSync(outFile);
+      const pbytes = rp.stdout ?? Buffer.alloc(0);
+      if (rf.error !== undefined || rp.error !== undefined || (rf.status ?? -1) !== 0 || (rp.status ?? -1) !== 0) {
+        fatalf(`B[run json 大帧] ${a.label} rc 异常: ${String(rf.status)} / ${String(rp.status)}`);
+        continue;
+      }
+      if (fbytes.length <= 1024 * 1024) {
+        fatalf(`B[run json 大帧] ${a.label} 帧量 ${fbytes.length}B 未过 1MB 门量（锚失效）`);
+        continue;
+      }
+      if (!pbytes.equals(fbytes)) {
+        fatalf(`B[run json 大帧] ${a.label} 管道口径截断/漂移：pipe=${pbytes.length}B file=${fbytes.length}B（frame_pipeline 出口回归）`);
+        continue;
+      }
+      process.stdout.write(`ok  B[run json 大帧] ${a.label} 双口径逐字节一致（${pbytes.length}B，P3-1）\n`);
     }
   }
 

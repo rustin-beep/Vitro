@@ -1555,6 +1555,41 @@ jobs:
         shell: bash
         run: node scripts/backend_triage/main.mts
 
+  # ── cli-smoke-linux（PR #367 审阅 P1-1，2026-10-28）───────────────────
+  # #366 锚的 Linux 判别力 lane：vitro_cli_smoke 的 B[大帧管道]/B[stderr
+  # 通道] 锚依赖 POSIX 管道的异步写丢弃机理——Windows 上 libuv 对 stdio
+  # 管道走同步句柄（WriteFile 直通、不排队），锚在 windows-latest lane
+  # 恒绿无牙（审阅反向突变实测：out_line→println 回退后 Windows 锚仍
+  # 绿、CI 全绿）。本 job 在 ubuntu 上重跑同一 smoke 全集，管道口径锚
+  # 自此有 Linux 判别力；Windows lane 保留（平台面双覆盖）。产物四件 +
+  # serve 同 cli_smoke slice 自建形态。
+  cli-smoke-linux:
+    name: CLI smoke (ubuntu — pipe anchors need POSIX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (unix)
+        run: |
+          export MOONBIT_INSTALL_VERSION="$(tr -d '[:space:]' < .moonbit-version)"
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Refresh MoonBit registry index
+        run: cd moonbit && moon update
+      - name: Build four arms + serve exe
+        run: |
+          cd moonbit
+          moon build --release --target js cmd/vitro_js
+          moon build --release --target js cmd/vitro_wasm
+          moon build --release --target wasm-gc gateway/wasm
+          MOON_CC=clang moon build --release --target native cmd/vitro
+          MOON_CC=clang moon build --release --target native cmd/serve
+      - name: unified CLI smoke (ubuntu lane, #366 anchors with teeth)
+        run: node scripts/vitro_cli_smoke/main.mts --corpus 30
+
   # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
   # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +
   # oxlint（.mts 目录扫描缺口——显式列文件）+ node:test（Windows 目录模式
@@ -1618,7 +1653,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1632,10 +1667,11 @@ jobs:
           HYGIENE: ${{ needs.hygiene.result }}
           DEMO: ${{ needs.demo.result }}
           SCRIPTS_TS: ${{ needs.scripts-ts.result }}
+          CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
         run: |
           set +e
           bad=0
-          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS"; do
+          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS" "cli-smoke-linux:$CLI_SMOKE_LINUX"; do
             name="${pair%%:*}"; result="${pair#*:}"
             echo "$name=$result"
             if [ "$result" != "success" ]; then bad=1; fi

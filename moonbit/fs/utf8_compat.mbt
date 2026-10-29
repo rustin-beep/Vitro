@@ -30,7 +30,8 @@
 //   非法码点——native 运行时 panic、wasm-gc 裸 unreachable、js 静默
 //   容忍，同一输入三臂三结局（issue #363 实测）。重写后解码永不产出
 //   非法码点（unsafe_to_char 恒安全）。行为锚见 fs_wbtest.mbt
-//   「utf8_decode_replaces_malformed_with_ufffd」。与 util 包
+//   「utf8_decode_replaces_malformed_with_ufffd」（PR #367 审阅
+//   P2-5 起，替换计数与 WHATWG 最大子部分规则逐例对齐）。与 util 包
 //   utf8_text_partial（流式前缀解码——尾部截断止保留、中段非法同样
 //   U+FFFD）语义分立，两侧头注互指。
 
@@ -74,11 +75,15 @@ fn to_utf8_bytes(s : String) -> Bytes {
 ///|
 /// Decode UTF-8 bytes into a string.
 ///
-/// #363（2026-10-28）：非法/不完整序列以 U+FFFD 替换（每个非法极大
-/// 子部分一个替换符）——孤立延续字节与越界 lead（≥0xF8）各占一个
-/// 替换符；序列内首个坏延续字节处重同步（坏字节自身下一轮按 lead
-/// 重判）；延续字节合法但码点非法（过长/代理段/超上限）时整个序列
-/// 折一个替换符；尾部不完整折一个替换符止。解码永不产出非法码点。
+/// #363（2026-10-28）：非法/不完整序列以 U+FFFD 替换——**WHATWG 最大
+/// 子部分语义**（PR #367 审阅 P2-5 对齐：与 node `TextDecoder` /
+/// `readFileSync('utf8')`、Rust、Python 的替换计数逐例一致，16 例字节
+/// 矩阵对拍基准在案）。规则：孤立延续（80..BF）与非法 lead（C0..C1
+/// 过长专用 / F5..FF 越界）各折一个替换符、前进一字节；**第二字节域
+/// 检查**（E0→A0..BF、ED→80..9F、F0→90..BF、F4→80..8F——过长/代理段/
+/// 超上限的早期拦截点）失败时只消费 lead 本身折一个替换符、失败字节
+/// 下一轮按 lead 重判；后续坏延续同款重同步；尾部不完整折一个替换符
+/// 止。解码永不产出非法码点。
 fn to_utf8_string(bytes : Bytes) -> String {
   let res : Array[Char] = []
   let len = bytes.length()
@@ -90,8 +95,9 @@ fn to_utf8_string(bytes : Bytes) -> String {
       i += 1
       continue
     }
-    if b0 < 0xC0 || b0 >= 0xF8 {
-      // 孤立延续字节（0x80..0xBF）/ 非 lead 域（0xF8..0xFF）→ 单字节替换
+    if b0 < 0xC2 || b0 > 0xF4 {
+      // 孤立延续字节（0x80..0xBF）/ 非法 lead（0xC0..0xC1 过长专用 /
+      // 0xF5..0xFF 越界）→ 单字节替换（WHATWG lead 域 C2..F4）
       res.push('\u{FFFD}')
       i += 1
       continue
@@ -123,12 +129,30 @@ fn to_utf8_string(bytes : Bytes) -> String {
       res.push('\u{FFFD}')
       break
     }
+    // WHATWG 第二字节域（E0/ED/F0/F4 的收紧界——过长/代理段/超上限
+    // 的早期拦截点；其余 lead 的第二字节域即 80..BF 缺省）
+    let s_lo : Int32 = if b0 == 0xE0 {
+      0xA0
+    } else if b0 == 0xF0 {
+      0x90
+    } else {
+      0x80
+    }
+    let s_hi : Int32 = if b0 == 0xED {
+      0x9F
+    } else if b0 == 0xF4 {
+      0x8F
+    } else {
+      0xBF
+    }
     let mut cp = b0 & mask
     let mut bad_at = -1
     let mut k = 1
     while k < need {
       let bk = bytes[i + k].to_int()
-      if bk < 0x80 || bk >= 0xC0 {
+      let cont_ok = bk >= 0x80 && bk <= 0xBF
+      let dom_ok = k != 1 || (bk >= s_lo && bk <= s_hi)
+      if !cont_ok || !dom_ok {
         bad_at = k
         break
       }
@@ -144,8 +168,8 @@ fn to_utf8_string(bytes : Bytes) -> String {
     }
     i += need
     if cp < cp_min || cp > cp_max || (cp >= 0xD800 && cp <= 0xDFFF) {
-      // 过长编码 / 独立代理段 / 超出 Unicode 上限（F4..F7 lead 可组出
-      // >0x10FFFF）——形态完整但码点非法，整个序列折一个替换符
+      // 兜底（WHATWG 第二字节域拦截后理论不可达——防御性保留）：
+      // 形态完整但码点非法，整个序列折一个替换符
       res.push('\u{FFFD}')
       continue
     }

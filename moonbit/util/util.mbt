@@ -146,12 +146,13 @@ pub fn utf8_text(b : Bytes) -> String {
 /// cursor 增量；CLI note 聚合同款先例）。实现自 cmd/lib/cli `utf8_decode`
 /// 上提（三态锚随迁 util_wbtest）。
 /// #363（2026-10-28）语义改向：**中段非法序列 U+FFFD 替换 + 重同步**
-/// （孤立延续 / 非 lead 域 / 坏延续 / 过长 / 代理段 / 超上限——旧实现
-/// 不校验续位，经 unsafe_to_char 可产出代理段与越界码点：native panic、
+/// （孤立延续 / 非法 lead / 坏延续 / WHATWG 第二字节域——旧实现不校验
+/// 续位，经 unsafe_to_char 可产出代理段与越界码点：native panic、
 /// wasm-gc 裸 unreachable、js 静默容忍，三臂分叉 issue #363 实测）；
 /// **尾部不完整保留「截断止」**（serve_io 增量切片靠它保证块界不切
-/// 半个字符——下一块续上）。与 fs 包 to_utf8_string（整缓冲：非法与
-/// 截尾全替换 U+FFFD）语义分立，两侧头注互指。
+/// 半个字符——下一块续上）。替换计数与 WHATWG 最大子部分规则逐例
+/// 对齐（PR #367 审阅 P2-5，基准同 fs 包头注）。与 fs 包 to_utf8_string
+/// （整缓冲：非法与截尾全替换 U+FFFD）语义分立，两侧头注互指。
 pub fn utf8_text_partial(b : Bytes) -> String {
   let buf = StringBuilder()
   let n = b.length()
@@ -163,8 +164,9 @@ pub fn utf8_text_partial(b : Bytes) -> String {
       i += 1
       continue
     }
-    if c0 < 0xC0 || c0 >= 0xF8 {
-      // 孤立延续字节（0x80..0xBF）/ 非 lead 域（0xF8..0xFF）→ 单字节替换
+    if c0 < 0xC2 || c0 > 0xF4 {
+      // 孤立延续字节（0x80..0xBF）/ 非法 lead（C0..C1 过长专用 /
+      // F5..FF 越界）→ 单字节替换（WHATWG lead 域 C2..F4）
       buf.write_char('\u{FFFD}')
       i += 1
       continue
@@ -195,12 +197,29 @@ pub fn utf8_text_partial(b : Bytes) -> String {
       // 尾部不完整 → 截断止（流式前缀契约：下一块续上，不折替换符）
       break
     }
+    // WHATWG 第二字节域（E0/ED/F0/F4 收紧界——PR #367 审阅 P2-5）
+    let s_lo : Int32 = if c0 == 0xE0 {
+      0xA0
+    } else if c0 == 0xF0 {
+      0x90
+    } else {
+      0x80
+    }
+    let s_hi : Int32 = if c0 == 0xED {
+      0x9F
+    } else if c0 == 0xF4 {
+      0x8F
+    } else {
+      0xBF
+    }
     let mut cp = c0 & mask
     let mut bad_at = -1
     let mut k = 1
     while k < need {
       let bk = b[i + k].to_int()
-      if bk < 0x80 || bk >= 0xC0 {
+      let cont_ok = bk >= 0x80 && bk <= 0xBF
+      let dom_ok = k != 1 || (bk >= s_lo && bk <= s_hi)
+      if !cont_ok || !dom_ok {
         bad_at = k
         break
       }
@@ -216,8 +235,8 @@ pub fn utf8_text_partial(b : Bytes) -> String {
     }
     i += need
     if cp < cp_min || cp > cp_max || (cp >= 0xD800 && cp <= 0xDFFF) {
-      // 过长编码 / 独立代理段 / 超上限——形态完整但码点非法，整序列折
-      // 一个替换符（unsafe_to_char 恒安全）
+      // 兜底（第二字节域拦截后理论不可达——防御性保留，unsafe_to_char
+      // 恒安全）
       buf.write_char('\u{FFFD}')
       continue
     }

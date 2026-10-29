@@ -184,17 +184,85 @@ test "utf8_decode_replaces_malformed_with_ufffd" {
     (0x65).to_byte(),
   ])
   inspect(to_utf8_string(issue_b), content="��de")
-  // 代理段编码（ED A0 80 = D800）：延续字节合法但码点非法 → 整序列一个
-  // U+FFFD（native 修前 unsafe_to_char(0xD800) panic 的直击面）。
+  // PR #367 审阅 P2-5：替换计数与 WHATWG 最大子部分规则逐例对齐
+  //（基准 = node TextDecoder 16 例矩阵，与 Rust/Python 同计数）——
+  // 「第二字节域」类失败只消费 lead 本身，越界字节各自孤立重判。
+  // 代理段编码（ED A0 80 = D800）：ED 的第二字节域 80..9F，A0 越界 →
+  // 消费 ED 折 1 个 U+FFFD，A0/80 各孤立 → 共 3 个（native 修前
+  // unsafe_to_char(0xD800) panic 的直击面）。
   let surrogate = Bytes::from_array([
     (0xED).to_byte(),
     (0xA0).to_byte(),
     (0x80).to_byte(),
   ])
-  inspect(to_utf8_string(surrogate), content="�")
-  // 过长编码（C0 AF = "/" 的 2 字节过长形）：码点 < 0x80 → 非法 → U+FFFD。
+  inspect(to_utf8_string(surrogate), content="���")
+  // 过长编码（C0 AF = "/" 的 2 字节过长形）：C0 是非法 lead（WHATWG
+  // lead 域自 C2 起）→ C0/AF 各孤立 → 2 个。
   let overlong = Bytes::from_array([(0xC0).to_byte(), (0xAF).to_byte()])
-  inspect(to_utf8_string(overlong), content="�")
+  inspect(to_utf8_string(overlong), content="��")
+  // E0 80 AF（"/" 的 3 字节过长形）：E0 第二字节域 A0..BF，80 越界 →
+  // E0 折 1 + 80/AF 孤立 → 3 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([(0xE0).to_byte(), (0x80).to_byte(), (0xAF).to_byte()]),
+    ),
+    content="���",
+  )
+  // F0 80 80 80（4 字节过长）：F0 第二字节域 90..BF，80 越界 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF0).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // F4 90 80 80（>0x10FFFF 越界）：F4 第二字节域 80..8F，90 越界 →
+  // F4 折 1 + 90/80/80 各孤立 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF4).to_byte(),
+        (0x90).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // F5 80 80 80：F5 非 lead（域至 F4 止）→ F5 孤立 + 80×3 孤立 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF5).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // 合法 lead + 坏延续（C2 41）：最大子部分 = C2 本身折 1 个，41 重判
+  // 为 'A' → 1 个 U+FFFD + "A"。
+  inspect(
+    to_utf8_string(Bytes::from_array([(0xC2).to_byte(), (0x41).to_byte()])),
+    content="�A",
+  )
+  // FE FF：双双非法 lead → 2 个。
+  inspect(
+    to_utf8_string(Bytes::from_array([(0xFE).to_byte(), (0xFF).to_byte()])),
+    content="��",
+  )
+  // 合法 3 字节下界码点（E1 80 80 = U+1000）：零替换。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([(0xE1).to_byte(), (0x80).to_byte(), (0x80).to_byte()]),
+    ),
+    content="က",
+  )
   // 合法序列紧邻非法序列：好字节不受伤（前缀 "你" + 代理段 + 尾 "x"）。
   let mixed = Bytes::from_array([
     (0xE4).to_byte(),
@@ -205,7 +273,7 @@ test "utf8_decode_replaces_malformed_with_ufffd" {
     (0x80).to_byte(),
     (0x78).to_byte(),
   ])
-  inspect(to_utf8_string(mixed), content="你�x")
+  inspect(to_utf8_string(mixed), content="你���x")
 }
 
 ///|

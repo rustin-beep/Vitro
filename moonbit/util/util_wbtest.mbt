@@ -106,12 +106,23 @@ test "utf8_text_partial_中段非法_ufffd_替换_尾部截断止保留" {
   inspect(utf8_text_partial(b"\xff\xfe\x80"), content="���")
   // 越界 4 字节形态（FF FE 64 65）→ ��de（js 修前静默容忍的病灶面）。
   inspect(utf8_text_partial(b"\xff\xfe\x64\x65"), content="��de")
-  // 代理段（ED A0 80 = D800）→ 一个 U+FFFD（native 修前 panic 直击面）。
-  inspect(utf8_text_partial(b"\xed\xa0\x80"), content="�")
-  // 过长编码（C0 AF = '/'）→ U+FFFD。
-  inspect(utf8_text_partial(b"\xc0\xaf"), content="�")
+  // PR #367 审阅 P2-5：替换计数对齐 WHATWG 最大子部分（基准同 fs 包
+  // 头注的 node 16 例矩阵）——第二字节域类失败只消费 lead、其余孤立。
+  // 代理段（ED A0 80 = D800）→ 3 个 U+FFFD（ED 折 1 + A0/80 孤立）。
+  inspect(utf8_text_partial(b"\xed\xa0\x80"), content="���")
+  // 过长编码（C0 AF = '/'）→ 2 个（C0 非法 lead + AF 孤立）。
+  inspect(utf8_text_partial(b"\xc0\xaf"), content="��")
+  // E0 80 AF → 3 个；F0 80 80 80 → 4 个；F4 90 80 80 → 4 个。
+  inspect(utf8_text_partial(b"\xe0\x80\xaf"), content="���")
+  inspect(utf8_text_partial(b"\xf0\x80\x80\x80"), content="����")
+  inspect(utf8_text_partial(b"\xf4\x90\x80\x80"), content="����")
+  // 合法 lead + 坏延续（C2 41）→ 1 个 U+FFFD + 'A'。
+  inspect(utf8_text_partial(b"\xc2\x41"), content="�A")
   // 合法前缀 + 中段非法 + 合法后缀（重同步验证："你" + 代理段 + "x"）。
-  inspect(utf8_text_partial(b"\xe4\xbd\xa0\xed\xa0\x80\x78"), content="你�x")
+  inspect(
+    utf8_text_partial(b"\xe4\xbd\xa0\xed\xa0\x80\x78"),
+    content="你���x",
+  )
   // 尾部截断止保留（流式契约不破坏）：半个「中」在尾 → 前缀止。
   inspect(utf8_text_partial(b"hi\xe4\xb8"), content="hi")
 }

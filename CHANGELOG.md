@@ -1,6 +1,6 @@
 ## [Unreleased]
 
-### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28）
+### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28；审阅处置批同日见段末）
 
 - **#366（js/wasm 臂帧出口同步化）**：api/step/json 模式帧出口从
   `println` 统一切壳注入的同步 write 通道（js/wasm=`fs.writeSync(1)`、
@@ -8,33 +8,62 @@
   同款）。修前 node 对**管道**的 stdout 写是异步（文件同步），帧序列打完
   立即 `process.exit` 丢弃未刷写队列：>1MB 帧管道口径静默截断（WSL
   实测 pipe 65808B/731152B/146448B vs file 1398439B，rc=0 零信号、产出
-  非法 JSON）；native 臂 CRT exit 刷缓冲不受影响。`api` 子命令补
-  `write_stdout` 注入参数（三壳接线）。不迁面登记：print_usage（单笔
-  小写入）与 serve 流式（事件循环自然排空）仍走 println。
-  `vitro_cli_smoke` 新增 B[大帧管道] 锚：三臂双口径（管道 vs 文件 fd）
-  逐字节等长 + 3 帧合法 JSON + >1MB 门量 + 三臂大帧内容逐位一致。
+  非法 JSON；**Windows 上 libuv 对 stdio 管道走同步句柄——本地与
+  windows-latest lane 天然免疫，这正是防线从未见过它的原因**）。
+  `api` 子命令补 `write_stdout` 注入参数（三壳接线）。
+  **⚠ breaking**：`cmd/lib/cli` 的 `pub fn api` 新增**必填**具名参数
+  `write_stdout~ : (Bytes) -> Unit`——下游源码级调用须补注入（先例
+  #325 pub(all) 字段删改同款破坏形态，随下一版本发布）。
+  不迁面登记：print_usage（单笔小写入）与 serve 流式（事件循环自然
+  排空）仍走 println。
+- **#366 审阅 P2-3（stderr 同族，实测分界修正）**：node 对管道的
+  stderr 写同样异步——实测分界 = **单次写大小 vs 管道缓冲 64KB**：
+  say 的小段多写（编译错风暴 500 段 ×~150B，总量 74KB）管道口径完整；
+  **单段 >64KB**（超长标识符诊断 70106B）修前截断于 65536B（WSL 实测，
+  红锚在案）。`stderr_js.mbt` 改 `fs.writeSync(2, …)` 同步写（native
+  stub 不受影响）。
 - **#363（invalid UTF-8 三臂分叉根治）**：`fs/utf8_compat.mbt`
-  `to_utf8_string` 重写为 U+FFFD 替换解码（每非法极大子部分一个替换
-  符；孤立延续/越界 lead/坏延续重同步/过长/代理段/超上限全覆盖）——
+  `to_utf8_string` 重写为 U+FFFD 替换解码——**WHATWG 最大子部分语义**
+  （审阅 P2-5 对齐：孤立延续/非法 lead（C0..C1、F5..FF）各折一、前进
+  一字节；**第二字节域**（E0→A0..BF、ED→80..9F、F0→90..BF、F4→80..8F）
+  失败只消费 lead 本身、失败字节重判；后续坏延续同款重同步；尾部不
+  完整折一止）——替换计数与 node `TextDecoder`/`readFileSync('utf8')`
+  /Rust/Python 逐例一致（16 例字节矩阵对拍基准在案：ED A0 80→3、
+  C0 AF→2、E0 80 AF→3、F0 80 80 80→4、F4 90 80 80→4、F5 80 80 80→4）。
   修前对 FF FE 64 65 与 ED A0 80 经 `unsafe_to_char` 产出代理段/越界
-  码点：native SIGABRT（Windows 0xC0000409）、wasm-gc 裸
-  unreachable、js 静默容忍，同一输入三臂三结局。`util.utf8_text_partial`
-  同向收口：**中段非法**同样 U+FFFD+重同步，**尾部截断止保留**（gateway
-  serve_io 增量 delta 切片的流式前缀契约）——两解码器语义分立互指。
+  码点：native SIGABRT（Windows 0xC0000409）、wasm-gc 裸 unreachable、
+  js 静默容忍，同一输入三臂三结局。`util.utf8_text_partial` 同向收口：
+  **中段非法**同款 U+FFFD+重同步，**尾部截断止保留**（gateway serve_io
+  增量 delta 切片的流式前缀契约）——两解码器语义分立互指。
   修后实测：坏字节源码三臂一律 `E1001` 拒收同形（rc=1）、`-i` 坏输入
-  三臂一致；fs wbtest 翻锚 + util wbtest 新锚（10/10、17/17）。
-  smoke 新增 B[坏字节源码] 三臂同形锚。vendored 头注如实更新（④ 条）。
+  三臂一致。**已知限制登记（审阅 P3-5）**：替换后诊断列号按解码后文本
+  计（FF FE 80 → 3×U+FFFD 各 3 字节，列号 25/28/31——原字节位 23 起），
+  与源文件原字节位存在漂移；列号口径契约（source 包：UTF-8 字节偏移
+  +1）以解码后字符串为基准，属替换语义的固有投影，diag 侧不另折算。
 - **#349（三面编译语义对拍臂落地）**：新 runner 包
-  `cmd/backend_triage`（gateway 四导出帧源级形态：ping/非法 JSON 错误
-  帧/protocol_version/engine_version——全确定性输出）+ 驱动
-  `scripts/backend_triage/main.mts`（.mts 四件套：node 直跑 + tsc 严格
-  档 + oxlint + node:test 七态锚）+ CI 新 job `backend-triage`：
-  `moon run --target native`（MOON_CC=clang）/ `js`（node）/ `wasm-gc`
-  （moonrun——moon 自带）三连，stdout 逐字节对拍（Windows native CRT
-  行尾 CRLF 显式归一登记，Linux CI 恒等）。**新增不替换**：现役
-  gates-wasm 各 slice 不动，跑绿一阶段后另议收敛。本地首跑三臂 127B
-  逐字节一致。surface_edges 三边/pkg_deps 46 包/ci_checklist/ci-summary
-  needs 连坐登记。
+  `cmd/backend_triage`（gateway 四导出帧源级形态 + 审阅 P2-2 扩容：
+  Int64 除乘模链 / `1.0/3.0` 与 `-0.0` 的 double 文本化 / CJK+astral
+  拼接长度 / 真实 compile+run 会话帧——常量之外的可观测运算面）+
+  驱动 `scripts/backend_triage/main.mts`（.mts 四件套 + node:test
+  十一态锚）+ CI 新 job `backend-triage`：`moon run` 三连 native
+  （MOON_CC=clang）/ js（node）/ wasm-gc（moonrun）——**字节域**口径
+  （spawnSync encoding buffer、逐字节比对、长度/偏移按字节计，纪律
+  8）；**形状门量**（审阅 P2-1：恰好 10 行 + ping 帧 + 版本行 +
+  compile/run 帧在位——空输出/静默突变即红）；CRLF 归一**仅 native
+  臂介入且显式标注**（审阅 P3-3：js/wasm 臂 CRLF 是真红不经归一；
+  Linux CI 上恒不介入）。本地首跑三臂 440B 逐字节一致（i64/double/
+  CJK/会话帧全同形）。**新增不替换**：现役 gates-wasm 各 slice 不动。
+- **#366 锚的 Linux 判别力（审阅 P1-1）**：`vitro_cli_smoke` 的管道
+  口径锚（B[大帧管道]/B[stderr 通道]/B[run json 大帧]）依赖 POSIX
+  管道异步写丢弃机理，windows-latest lane 恒绿无牙（审阅反向突变
+  实证：out_line→println 回退后 Windows 锚仍绿）——新增 ubuntu lane
+  CI job `cli-smoke-linux` 重跑同一 smoke 全集（--corpus 30），Windows
+  lane 保留双覆盖。smoke 锚组新增：B[stderr 通道]（风暴+单段大写双
+  形态三臂双口径）、B[run json 大帧]（frame_pipeline 路径 >1MB 帧、
+  审阅 P3-1 补零锚面）、B[坏字节源码]（#363 三臂同形）。
+- 计数连坐：961（裸，master 960 + 本批 util_wbtest +1）/1125（native
+  全量，master 1124 + 1）共 10 处；moon test 双口径 961/961+1125/1125；
+  protocol_frames 47 帧零漂移；facts --strict 零漂移。
 
 ### fix(lexer): #356 normalize_path 保 POSIX 绝对锚——绝对路径主文件 quote-include 候选键不再剥前导 /（2026-10-29）
 

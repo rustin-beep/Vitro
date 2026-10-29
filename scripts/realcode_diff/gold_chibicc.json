@@ -12,7 +12,7 @@
       "divergence": 4,
       "rescued": 1
     },
-    "note": "金样本签名清单——只存诊断码/数量/运行判定签名,零源码文本。E1021×2 真子集边界豁免；union.c #278 重冻；vla 等 4 文件 clang 判定口径统一重冻（2026-10-24）；commonsym.c #343 重冻（tentative 共存修复消 E3001×2 误报）；2026-10-29 全量重冻（#213 语法错照跑 typeck + rebase 到 #344/#346 后 E3001 族新增 22 处漂移随批吸收）。",
+    "note": "金样本签名清单,零源码文本。E1021×2 豁免;#278/#343 重冻;2026-10-29 全量重冻(#213 照跑 typeck+#344/#346 叠加,E3001 族 22 处随批吸收)。",
     "repo": "chibicc@RunThem/chibicc-repo",
     "source_commit": "b9c1f0311709dbc0aab7ff4501f920f30444ae1b",
     "source_fork": "https://github.com/RunThem/chibicc-repo",

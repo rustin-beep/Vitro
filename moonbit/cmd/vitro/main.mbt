@@ -42,7 +42,12 @@ fn main {
         channel=@engine_direct.direct_channel(),
       )
     "api" =>
-      @cli.api(rest, make_stdin(), channel=@engine_direct.direct_channel())
+      @cli.api(
+        rest,
+        make_stdin(),
+        write_stdout=write_stdout_stub,
+        channel=@engine_direct.direct_channel(),
+      )
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       // #215：rc=4 用法错语境的指引走 stderr（stdout 恒空不变式）
       @cli.usage_err(

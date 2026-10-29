@@ -139,29 +139,141 @@ test "utf8_roundtrip_ascii_cjk_emoji" {
 }
 
 ///|
-test "utf8_decode_truncates_malformed_tail" {
-  // ⚠️ 0.5.5 vs 上游 main 的行为分界锚：非法/不完整 UTF-8 序列在 0.5.5
-  // 语义下**静默截断尾部**；上游 main 已改为 U+FFFD 替换（其 CHANGELOG
-  // Unreleased 记载）。本包裁定保持 0.5.5 语义（cmd 工具读合法源文件，
-  // 该域无感）——若上游跟进批切换语义，本锚必须连同翻转。
-  // "你" = E4 BD A0：截去尾字节 A0 后只剩不完整三字节序列。
+test "utf8_decode_replaces_malformed_with_ufffd" {
+  // #363（2026-10-28）语义翻锚：0.5.5 的「非法/不完整序列静默截断」→
+  // U+FFFD 替换（上游 main 同向）。翻案动因：to_utf8_string 是三后端
+  // read_file_to_string 唯一解码口，0.5.5 语义下 4 字节越界序列
+  // （FF FE 64 65）经 unsafe_to_char 产出代理段/越界码点——native 运行时
+  // panic（SIGABRT）、wasm-gc 裸 unreachable、js 静默容忍，三臂分叉
+  // （issue 实测三形态）。替换策略 = 每个非法极大子部分一个 U+FFFD，
+  // 永不产出非法码点（unsafe_to_char 恒安全）。
+  // "你" = E4 BD A0：截去尾字节 A0 → 尾部不完整 → 一个 U+FFFD。
   let truncated_ni = Bytes::from_array([
     (0x61).to_byte(),
     (0xE4).to_byte(),
     (0xBD).to_byte(),
   ])
-  inspect(to_utf8_string(truncated_ni), content="a")
-  // 孤立延续字节同样截断。
+  inspect(to_utf8_string(truncated_ni), content="a�")
+  // 孤立延续字节 → 各自一个 U+FFFD（61 80 → "a�"）。
   let lone_cont = Bytes::from_array([(0x61).to_byte(), (0x80).to_byte()])
-  inspect(to_utf8_string(lone_cont), content="a")
-  // 四字节序列（emoji U+1F600 = F0 9F 98 80）截去尾字节 → 截断。
+  inspect(to_utf8_string(lone_cont), content="a�")
+  // 四字节序列（emoji U+1F600 = F0 9F 98 80）截去尾字节 → 尾部不完整 →
+  // 一个 U+FFFD（旧锚期望 "a"）。
   let truncated_emoji = Bytes::from_array([
     (0x61).to_byte(),
     (0xF0).to_byte(),
     (0x9F).to_byte(),
     (0x98).to_byte(),
   ])
-  inspect(to_utf8_string(truncated_emoji), content="a")
+  inspect(to_utf8_string(truncated_emoji), content="a�")
+  // #363 现场形态一：FF FE 80（全非法 lead/孤立延续）→ 三个 U+FFFD。
+  // （native 修前 SIGABRT、wasm 修前裸 unreachable、js 修前 3 字节
+  // 截断止空串——三臂三种结局。）
+  let issue_a = Bytes::from_array([
+    (0xFF).to_byte(),
+    (0xFE).to_byte(),
+    (0x80).to_byte(),
+  ])
+  inspect(to_utf8_string(issue_a), content="���")
+  // #363 现场形态二：FF FE 64 65（4 字节越界序列 FF FE 64 65 组不出
+  // 合法码点）→ 两 U+FFFD + "de"（js 修前静默容忍 rc=0 的病灶面）。
+  let issue_b = Bytes::from_array([
+    (0xFF).to_byte(),
+    (0xFE).to_byte(),
+    (0x64).to_byte(),
+    (0x65).to_byte(),
+  ])
+  inspect(to_utf8_string(issue_b), content="��de")
+  // PR #367 审阅 P2-5：替换计数与 WHATWG 最大子部分规则逐例对齐
+  //（基准 = node TextDecoder 16 例矩阵，与 Rust/Python 同计数）——
+  // 「第二字节域」类失败只消费 lead 本身，越界字节各自孤立重判。
+  // 代理段编码（ED A0 80 = D800）：ED 的第二字节域 80..9F，A0 越界 →
+  // 消费 ED 折 1 个 U+FFFD，A0/80 各孤立 → 共 3 个（native 修前
+  // unsafe_to_char(0xD800) panic 的直击面）。
+  let surrogate = Bytes::from_array([
+    (0xED).to_byte(),
+    (0xA0).to_byte(),
+    (0x80).to_byte(),
+  ])
+  inspect(to_utf8_string(surrogate), content="���")
+  // 过长编码（C0 AF = "/" 的 2 字节过长形）：C0 是非法 lead（WHATWG
+  // lead 域自 C2 起）→ C0/AF 各孤立 → 2 个。
+  let overlong = Bytes::from_array([(0xC0).to_byte(), (0xAF).to_byte()])
+  inspect(to_utf8_string(overlong), content="��")
+  // E0 80 AF（"/" 的 3 字节过长形）：E0 第二字节域 A0..BF，80 越界 →
+  // E0 折 1 + 80/AF 孤立 → 3 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([(0xE0).to_byte(), (0x80).to_byte(), (0xAF).to_byte()]),
+    ),
+    content="���",
+  )
+  // F0 80 80 80（4 字节过长）：F0 第二字节域 90..BF，80 越界 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF0).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // F4 90 80 80（>0x10FFFF 越界）：F4 第二字节域 80..8F，90 越界 →
+  // F4 折 1 + 90/80/80 各孤立 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF4).to_byte(),
+        (0x90).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // F5 80 80 80：F5 非 lead（域至 F4 止）→ F5 孤立 + 80×3 孤立 → 4 个。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([
+        (0xF5).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+        (0x80).to_byte(),
+      ]),
+    ),
+    content="����",
+  )
+  // 合法 lead + 坏延续（C2 41）：最大子部分 = C2 本身折 1 个，41 重判
+  // 为 'A' → 1 个 U+FFFD + "A"。
+  inspect(
+    to_utf8_string(Bytes::from_array([(0xC2).to_byte(), (0x41).to_byte()])),
+    content="�A",
+  )
+  // FE FF：双双非法 lead → 2 个。
+  inspect(
+    to_utf8_string(Bytes::from_array([(0xFE).to_byte(), (0xFF).to_byte()])),
+    content="��",
+  )
+  // 合法 3 字节下界码点（E1 80 80 = U+1000）：零替换。
+  inspect(
+    to_utf8_string(
+      Bytes::from_array([(0xE1).to_byte(), (0x80).to_byte(), (0x80).to_byte()]),
+    ),
+    content="က",
+  )
+  // 合法序列紧邻非法序列：好字节不受伤（前缀 "你" + 代理段 + 尾 "x"）。
+  let mixed = Bytes::from_array([
+    (0xE4).to_byte(),
+    (0xBD).to_byte(),
+    (0xA0).to_byte(),
+    (0xED).to_byte(),
+    (0xA0).to_byte(),
+    (0x80).to_byte(),
+    (0x78).to_byte(),
+  ])
+  inspect(to_utf8_string(mixed), content="你���x")
 }
 
 ///|

@@ -58,7 +58,8 @@ fn main {
       @cli.run(rest, wasm_clock, js_read_stdin, js_write_stdout, channel~)
     "compile" => @cli.compile(rest, js_read_stdin, channel~)
     "step" => @cli.step(rest, js_read_stdin, js_write_stdout, channel~)
-    "api" => @cli.api(rest, js_read_stdin, channel~)
+    "api" =>
+      @cli.api(rest, js_read_stdin, write_stdout=js_write_stdout, channel~)
     "serve" => {
       // NDJSON 流式会话：main 返回后 node 事件循环由 readline 持续
       //（shutdown 判停后自然退——此臂不调 js_exit）

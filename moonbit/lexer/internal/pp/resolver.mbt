@@ -12,10 +12,20 @@ const MAX_INCLUDE_GRAPH_NODES : Int32 = 512
 ///|
 /// quote-include 候选链：当前文件目录（include 栈顶）→ 源文件目录（base_dir）。
 /// 路径规范化为 `/` 分隔（VFS 语义纯字符串；差分驱动喂数统一正斜杠）。
+/// #373 审阅 P2-2（2026-10-29）：**绝对路径操作数直接取**（C11 §6.10.2p3
+/// ——clang/gcc 对 `#include "/abs/h.h"` 不走候选链搜索），不与
+/// cur_dir/base_dir 拼接。
 fn[P : @token.SourceProvider] Pp::resolve_path(
   self : Pp[P],
   path : String,
 ) -> String? {
+  if path.length() > 0 && path[0] == '/' {
+    let abs = normalize_path(path)
+    match self.try_read(abs) {
+      Some(_) => return Some(abs)
+      None => return None
+    }
+  }
   let cur_dir : String = if self.include_stack.length() > 0 {
     self.include_stack[self.include_stack.length() - 1].dir
   } else {
@@ -63,7 +73,15 @@ fn[P : @token.SourceProvider] Pp::read_cached(
 
 ///|
 /// 路径规范化：折叠 `//`、`.`；`..` 回退一层（超出根不回退——VFS 近似）。
+/// #356（2026-10-29）：POSIX 绝对锚保留——前导 `/` 不随空段丢弃（修前
+/// "/home/x/h.h" → "home/x/h.h"，绝对路径主文件的 quote-include 候选键
+/// 与 reader/VFS 侧保留前导 `/` 的键永不相等 ⇒ Linux 宿主 100% E1021；
+/// 普通 Windows 盘符路径首段 "D:" 非空本就不丢——绝对性由本锚显式保护，
+/// 与普通盘符形态对称；越根例外（`D:/..` 的盘符段可被 `..` 弹掉、
+/// `normalize_path("D:/..") == ""`——既有近似，修前修后一致）。
+/// `..` 回退到根时锚不丢（"/a/../b.h" → "/b.h"）。
 fn normalize_path(p : String) -> String {
+  let abs = p.length() > 0 && p[0] == '/'
   let parts : Array[String] = []
   for seg in p.split("/") {
     match seg {
@@ -72,7 +90,12 @@ fn normalize_path(p : String) -> String {
       _ => parts.push(seg.to_owned())
     }
   }
-  parts.join("/")
+  let joined = parts.join("/")
+  if abs {
+    "/" + joined
+  } else {
+    joined
+  }
 }
 
 ///|

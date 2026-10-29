@@ -275,7 +275,10 @@ fn scan_quote_includes(src : String) -> Array[String] {
 }
 
 ///|
-/// 目录段（最后 / 或 \ 之前；无分隔符 = "."——cwd 相对）。
+/// 目录段（最后 / 或 \ 之前；无分隔符 = "."——cwd 相对）。#373 审阅
+/// P2-1（2026-10-29）：唯一分隔符在 0 位 = POSIX 根级文件（"/main.c"）
+/// 取 "/"——与 gateway dir_of 同修（否则根级主文件的 include 磁盘
+/// 读取按 cwd 相对拼接）。
 fn dir_of(p : String) -> String {
   let cs = p.to_array()
   let mut idx = -1
@@ -284,7 +287,9 @@ fn dir_of(p : String) -> String {
       idx = i
     }
   }
-  if idx <= 0 {
+  if idx == 0 {
+    "/"
+  } else if idx < 0 {
     "."
   } else {
     p[:idx].to_owned()

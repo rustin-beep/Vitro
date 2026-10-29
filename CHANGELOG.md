@@ -1,5 +1,49 @@
 ## [Unreleased]
 
+### fix(lexer): #356 normalize_path 保 POSIX 绝对锚——绝对路径主文件 quote-include 候选键不再剥前导 /（2026-10-29）
+
+- **红根**：`lexer/internal/pp/resolver.mbt` 的 `normalize_path` 按 `/`
+  切段并丢弃空段——POSIX 绝对路径前导 `/` 被剥（`/home/x/h.h` →
+  `home/x/h.h`），resolver 候选键与 include reader/VFS 侧保留前导 `/` 的
+  键永不相等 ⇒ Linux 宿主臂（js/native）以绝对路径传主文件时 quote-
+  include 100% E1021（#356 三反证在案：剥 `/` 目录形态人造后立刻成功）。
+  Windows 不触发是盘符路径首段 `D:` 非空被保留——绝对性靠盘符侥幸保住
+  非设计保护。连坐影响面（#356 在案）：Linux 侧 diff_gate 8 case 假红、
+  realcode gold 71+137 处漂移、facts 4 个差分类键恒待采集。
+- **修法**：`normalize_path` 前导 `/` 识别为绝对锚不随空段丢弃（`/a/../b.h`
+  → `/b.h` 回退到根不越锚；`/` 本体保持 `/`）；盘符/相对/`..` 回退三形态
+  既有行为零变化。修复消费点全在候选键生产侧（resolve_path 两处 +
+  walk_cycle 依赖边一处），processed/file_ids 键身份随锚统一，无分叉。
+- **红绿锚**：三层——pp 单测 `normalize_path` 七断言（POSIX 绝对/根级/
+  根本体 修前红；盘符/相对/`..` 回退守卫恒绿）+ pp provider 级（绝对
+  base_dir 下 include 可解析 + 宏展开，修前红 E1021）+ gateway 记录型
+  reader（绝对路径主文件候选键直证保留前导 `/`，修前红；盘符守卫锚）。
+- **验收**：裸 `moon test` 962/962、native 全量 1129/1129（+2 裸域 pp 锚
+  +1 native-only gateway 锚，README×2 计数连坐）；`moon check --target
+  all` + mbti_sync/single_source/moonbit_surface/pkg_deps 四闸绿（私有
+  函数零接口面漂移）；防线零漂移实测 vm 805/805 SAME、clang_direct
+  919 SAME+17 KNOWN+0 DIFF。**Linux E2E（绝对路径主文件真解析）本地
+  Windows 不可达，留 CI/Linux 侧收敛**——本地锚已锁键形态（记录型
+  reader 直证），行为等价。
+- **过程坑（登记）**：clang_direct 工程模式依赖 `cmd/vitro/vitro.exe`，
+  exe 缺失时以 36 条「单侧编译失败（moonbit）」DIFF 形态呈现而非 fail
+  loud——首次跑误判回归，补建后全绿（harness fail-loud 缺口候选另批）。
+- **审阅处置（2026-10-29，PR #373）**：P2-1 同根因第二产生点——根级
+  绝对主文件（"/main.c"）仍 100% 失败，`gateway dir_of` 与 pp `dirname_of`
+  对唯一分隔符在 0 位的路径回 `"."`/`""` ⇒ 候选键按 cwd 相对解析——
+  两处（+cmd/vitro_wasm 同形态）改回 `"/"`，补 gateway 记录型 reader 锚
+  （修前红；既有 include 锚 filename 全带目录段，根级形态零覆盖）。
+  P2-2 绝对 include 操作数（`#include "/abs/h.h"`）直接取（C11
+  §6.10.2p3——clang/gcc 不走候选链），`resolve_path` 前置绝对分支，补
+  pp provider 锚（修前红：无条件 cur_dir 拼接）。P3-1 注释「与盘符
+  对称」收窄为「普通盘符形态」（越根 `D:/..` 盘符段可被 `..` 弹掉，
+  `normalize_path("D:/..")==""` 既有近似）。P3-2 `dir_of`/`dirname_of`
+  同名不同义（无分隔符 `"."` vs `""`）根级口径已对齐、命名统一与
+  cmd/dump_* 四胞胎同族面另案。P3-4 issue #356「wasm 臂不受影响」
+  收窄为仅相对 filename（绝对 filename 修前同 E1021，突变态实测）。
+  处置后：裸 963/963、native 1131/1131、`--target all` 绿、vm 805
+  SAME、clang_direct 919+17+0 零漂移。
+
 ### fix(gateway+scripts): PR #350 审阅处置——P1 恢复噪音潮过滤 + layerOf 首层语义 + _meta 审计锚恢复（2026-10-28）
 
 - **P1-1（非法定位诊断过滤，J9 红锚先行）**：#213 语法错后照跑 typeck

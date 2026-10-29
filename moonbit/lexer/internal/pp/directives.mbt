@@ -651,6 +651,9 @@ fn count_char(s : String, target : Char) -> Int32 {
 
 ///|
 /// 路径的目录部分（最后一个 '/' 之前；无 '/' 返回 ""——同目录相对语义）。
+/// #373 审阅 P2-1（2026-10-29）：唯一 '/' 在 0 位 = POSIX 根级文件
+/// （"/x.c"）返回 "/" 不返回 ""——否则根级被 include 文件内的继续
+/// include 会跳过当前目录候选（cur_dir "" 被判空）退到 base_dir。
 fn dirname_of(path : String) -> String {
   let mut last : Int32? = None
   for i = 0; i < path.length(); i = i + 1 {
@@ -659,6 +662,7 @@ fn dirname_of(path : String) -> String {
     }
   }
   match last {
+    Some(0) => "/"
     Some(i) => path[0:i].to_owned()
     None => ""
   }

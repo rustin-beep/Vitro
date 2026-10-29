@@ -18,6 +18,9 @@
 //   B9 目录/手册 P2 形态（章路径 + 章节面板 / 六段证据链，2026-10-22）
 //   B10 专注模式 F/Esc + ?focus=1（#222 P4，2026-10-22）
 //   B11 移动工作台 390 首屏顺序 + 代码折叠（#222 P3，2026-10-22）
+//   D1 交换事件：语句级组内聚合 + 双格/连线/编辑分色（#122 D1，2026-10-29）
+//   D0 动效治理：开关持久化 + 预算/reduced-motion 旁路（#122 D0，2026-10-29）
+//   D2 结构过渡：变量行/脉冲、深树 view→raw 映射与相机平滑（#122 D2，2026-10-29）
 // 用法同 e2e_diagcard.mts 三步（build / serve_static 8931 / headless Edge 9222）。
 // ⚠️ 旧锚点 .pilot-head/.tab/.bars/button.lesson 已随旧五 tab DOM 退役。
 // 说明：CDP WebSocket 用 Node 22+ 全局 WebSocket；/json/list 走 node:http 直连。
@@ -103,6 +106,26 @@ interface F6 { screen: string; refCode: string; active: string; h1: string }
 interface F8 { readyFrames: number | null; frames: number }
 interface B11 { title: string | null; code: string | null; line: string | null; lineText: string; btn: string | null; head: number; arr: number; lineTop: number; dock: number; overflow: number }
 interface B11Open { code: string; expanded: string | null }
+interface D1Swap {
+  idx: number; n: number; evTy: number[]; evPair: number[];
+  swapCount: number; swapLabels: string[]; fallback: number;
+  dataSwap: string; linkFrom: string; linkTo: string; linkW: number;
+  meta: string; visTy: string; visSwap: number; pulses: number;
+}
+interface D1Compare { idx: number; ty: string; swapLines: number; link: boolean; swapCells: number }
+interface D0Base { attr: string | null; enabled: boolean; sys: boolean; stored: string; pulses: number }
+interface D0Static { attr: string | null; enabled: boolean; stored: string; pulses: number; swapCells: number; link: boolean }
+interface D0Sys { attr: string | null; enabled: boolean; pulses: number; swapCells: number; link: boolean }
+interface D0On { attr: string | null; enabled: boolean; stored: string; pulses: number }
+interface D2Vars { idx: number; changed: string[]; rows: string[]; pulses: number; transitions: number }
+interface D2Tree {
+  nodes: number; edges: number; current: number; visited: number; edgesVisited: number;
+  compact: boolean; canvas: boolean; transitions: number;
+  idx: number; rawIdx: number; path: string; expected: string; currentNode: string;
+  vb: string | null; cameraMoves: number;
+}
+interface D2Cam { vb: string | null; moves: number }
+interface D2ReducedTree { nodes: number; transitions: number }
 
 async function run() {
   const cdp = await connectCdp();
@@ -260,6 +283,272 @@ async function run() {
   check("B5 本幕讲解 + 展开全文（#222）",
     b5.card.includes("本幕讲解") && b5.card.includes("交换不是瞬间完成的") && b5.open === false && b5.fullInDom === true && b5open === true,
     JSON.stringify({ b5, b5open }));
+
+  // ── D1 交换事件（#122 D1，2026-10-29）：语句级组内事件聚合 + 双格/连线/分色 ──
+  // bubble 课首次交换 = 语句帧 7（42 帧口径）。该组组的组尾快照只有 a[0] 变了
+  // （半完成中间态：a[0] 已覆盖、a[1] 还是旧值）——修前差分只亮 1 格，且没有
+  // 任何事件语义；修后 ty=2 extras 双格、连线、编辑左缘 swap 色。本锚即红→绿锚。
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(150);
+  }
+  await evaluate("window.__pilot.seek(7)");
+  await sleep(350);
+  const d1 = await evaluate<D1Swap>(`(() => {
+    const s = window.__pilot.session;
+    const cells = [...document.querySelectorAll('.vr-cell')];
+    const ev = s.eventsAt(s.idx);
+    const link = document.querySelector('.vr-swap-link');
+    return {
+      idx: s.idx, n: s.viewFrames.length,
+      evTy: ev.map((e) => e.ty),
+      evPair: ev.filter((e) => e.ty === 2).map((e) => [e.extra0, e.extra1]).flat(),
+      swapCount: cells.filter((c) => c.classList.contains('is-swap-event')).length,
+      swapLabels: cells.filter((c) => c.classList.contains('is-swap-event')).map((c) => c.getAttribute('aria-label') ?? ''),
+      fallback: cells.filter((c) => c.classList.contains('is-swap')).length,
+      dataSwap: document.querySelector('.vr-cells')?.getAttribute('data-swap') ?? '',
+      linkFrom: link?.getAttribute('data-from') ?? '',
+      linkTo: link?.getAttribute('data-to') ?? '',
+      linkW: link ? Math.round(link.getBoundingClientRect().width) : 0,
+      meta: document.querySelector('[aria-label="数组可视化"] .vr-meta')?.textContent ?? '',
+      visTy: document.querySelector('.cm-line[data-vis]')?.getAttribute('data-vis') ?? '',
+      visSwap: document.querySelectorAll('.cm-line.cm-visline-swap').length,
+      pulses: window.__pilot.motion.pulseCount,
+    };
+  })()`);
+  check("D1 交换帧：事件双格 + 连线 + 编辑分色（组内聚合；修前只有 1 格差分）",
+    d1.idx === 7 && d1.n === 42 && d1.evTy.includes(2) && d1.evPair.join(",") === "0,1" &&
+      d1.swapCount === 2 && d1.swapLabels.join("|").includes("a[0] =") && d1.swapLabels.join("|").includes("a[1] =") &&
+      d1.fallback === 0 && d1.dataSwap === "0-1" && d1.linkFrom === "0" && d1.linkTo === "1" && d1.linkW > 0 &&
+      d1.meta.includes("本帧交换 a[0] ↔ a[1]") && d1.visTy === "swap" && d1.visSwap >= 1 && d1.pulses >= 2,
+    JSON.stringify(d1));
+
+  // 比较帧（语句帧 3 = 第 5 行循环条件）：左缘走 compare 色，不画交换面。
+  await evaluate("window.__pilot.seek(3)");
+  await sleep(200);
+  const d1c = await evaluate<D1Compare>(`(() => ({
+    idx: window.__pilot.session.idx,
+    ty: document.querySelector('.cm-line[data-vis]')?.getAttribute('data-vis') ?? '',
+    swapLines: document.querySelectorAll('.cm-line.cm-visline-swap').length,
+    link: !!document.querySelector('.vr-swap-link'),
+    swapCells: document.querySelectorAll('.vr-cell.is-swap-event').length,
+  }))()`);
+  check("D1 比较帧：左缘 compare 标记、无交换面（ty 分色不混）",
+    d1c.idx === 3 && d1c.ty === "compare" && d1c.swapLines === 0 && d1c.link === false && d1c.swapCells === 0,
+    JSON.stringify(d1c));
+
+  // ── D0 动效治理（#122 D0）：开关持久化 + 预算裁决 + reduced-motion 旁路 ──
+  // 语义优先级：脉冲可被预算旁路，静态交换高亮/连线不可丢（动效不撒谎）。
+  const d0base = await evaluate<D0Base>(`(() => ({
+    attr: document.documentElement.getAttribute('data-motion'),
+    enabled: window.__pilot.motion.enabled,
+    sys: window.__pilot.motion.systemReduced,
+    stored: localStorage.getItem('vitro-motion') ?? '',
+    pulses: window.__pilot.motion.pulseCount,
+  }))()`);
+  await evaluate("window.__pilot.seek(11)");
+  await sleep(200);
+  const d0pulse = await evaluate<number>("window.__pilot.motion.pulseCount");
+  // 批量推进（bench/scrub 同类预算）时脉冲让位：帧照走，pulseCount 不动。
+  await evaluate("window.__pilot.session.batching = true; window.__pilot.seek(15); true");
+  await sleep(200);
+  const d0batch = await evaluate<number>("window.__pilot.motion.pulseCount");
+  await evaluate("window.__pilot.session.batching = false; true");
+
+  // 用户开关：设置浮层 → 关动效；data-motion 落 html、偏好落 localStorage。
+  await evaluate("document.querySelector('[data-settings]')?.click(); true");
+  await sleep(150);
+  await evaluate("document.querySelector('.vr-switch')?.click(); true");
+  await sleep(150);
+  await evaluate("window.__pilot.seek(24)");
+  await sleep(200);
+  const d0off = await evaluate<D0Static>(`(() => ({
+    attr: document.documentElement.getAttribute('data-motion'),
+    enabled: window.__pilot.motion.enabled,
+    stored: localStorage.getItem('vitro-motion') ?? '',
+    pulses: window.__pilot.motion.pulseCount,
+    swapCells: document.querySelectorAll('.vr-cell.is-swap-event').length,
+    link: !!document.querySelector('.vr-swap-link'),
+  }))()`);
+  // 恢复开关（后续锚还要动效），关浮层。
+  await evaluate("document.querySelector('.vr-switch')?.click(); true");
+  await sleep(150);
+  await evaluate(`document.querySelector('.vr-popover [aria-label="关闭设置"]')?.click(); true`);
+  await sleep(100);
+  const d0on = await evaluate<D0On>(`(() => ({
+    attr: document.documentElement.getAttribute('data-motion'),
+    enabled: window.__pilot.motion.enabled,
+    stored: localStorage.getItem('vitro-motion') ?? '',
+    pulses: window.__pilot.motion.pulseCount,
+  }))()`);
+
+  // 系统 reduced-motion：脉冲旁路，静态语义仍在；解除后脉冲恢复。
+  const d0sysBefore = await evaluate<number>("window.__pilot.motion.pulseCount");
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await evaluate("window.__pilot.seek(28)");
+  await sleep(200);
+  const d0sys = await evaluate<D0Sys>(`(() => ({
+    attr: document.documentElement.getAttribute('data-motion'),
+    enabled: window.__pilot.motion.enabled,
+    pulses: window.__pilot.motion.pulseCount,
+    swapCells: document.querySelectorAll('.vr-cell.is-swap-event').length,
+    link: !!document.querySelector('.vr-swap-link'),
+  }))()`);
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
+  await evaluate("window.__pilot.seek(33)");
+  await sleep(200);
+  const d0resume = await evaluate<number>("window.__pilot.motion.pulseCount");
+  check("D0 动效治理：开关持久化 + 预算/reduced 旁路（静态语义不丢）",
+    d0base.attr === null && d0base.enabled === true && d0base.sys === false &&
+      d0pulse >= d0base.pulses + 2 && d0batch === d0pulse &&
+      d0off.attr === "off" && d0off.enabled === false && d0off.stored === "off" &&
+      d0off.pulses === d0batch && d0off.swapCells === 2 && d0off.link === true &&
+      d0on.attr === null && d0on.enabled === true && d0on.stored === "on" &&
+      d0sys.attr === null && d0sys.enabled === true && d0sys.pulses === d0sysBefore &&
+      d0sys.swapCells === 2 && d0sys.link === true &&
+      d0resume >= d0sysBefore + 2,
+    JSON.stringify({ d0base, d0pulse, d0batch, d0off, d0on, d0sysBefore, d0sys, d0resume }));
+
+  // ── D2 VarsList（#122 D2）：值变化脉冲 + 行进出过渡 + reduced 旁路 ──
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(150);
+  }
+  const varsSnap = () => evaluate<D2Vars>(`(() => {
+    const s = window.__pilot.session;
+    return {
+      idx: s.idx,
+      changed: [...document.querySelectorAll('.vr-vars tbody tr.is-changed')].map((r) => r.children[0]?.textContent ?? ''),
+      rows: [...document.querySelectorAll('.vr-vars tbody tr')].map((r) => r.children[0]?.textContent ?? ''),
+      pulses: window.__pilot.motion.pulseCount,
+      transitions: window.__pilot.motion.transitionCount,
+    };
+  })()`);
+  await evaluate("window.__pilot.seek(7)"); await sleep(300);
+  const d2v7 = await varsSnap();
+  await evaluate("window.__pilot.seek(8)"); await sleep(300);
+  const d2v8 = await varsSnap();
+  check("D2 变量值变化：脉冲只给变化行（a/j）；行集不变不演过渡",
+    d2v8.idx === 8 && d2v8.changed.join(",") === "a,j" && d2v8.rows.join(",") === "a,i,j,t" &&
+      d2v8.pulses === d2v7.pulses + 2 && d2v8.transitions === d2v7.transitions,
+    JSON.stringify({ d2v7, d2v8 }));
+
+  await evaluate("window.__pilot.seek(5)"); await sleep(300);
+  const d2v5 = await varsSnap();
+  await evaluate("window.__pilot.seek(6)"); await sleep(300);
+  const d2v6 = await varsSnap();
+  check("D2 变量行进出：t 行出现 = 一次过渡（无脉冲）",
+    d2v6.rows.includes("t") && !d2v5.rows.includes("t") &&
+      d2v6.transitions === d2v5.transitions + 1 && d2v6.pulses === d2v5.pulses,
+    JSON.stringify({ d2v5, d2v6 }));
+
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await evaluate("window.__pilot.seek(5)"); await sleep(220);
+  const d2r5 = await varsSnap();
+  await evaluate("window.__pilot.seek(6)"); await sleep(220);
+  const d2r6 = await varsSnap();
+  await evaluate("window.__pilot.seek(7)"); await sleep(220);
+  const d2r7 = await varsSnap();
+  await evaluate("window.__pilot.seek(8)"); await sleep(220);
+  const d2r8 = await varsSnap();
+  check("D2 reduced-motion：行过渡与值脉冲都旁路，静态 is-changed 仍在",
+    d2r6.rows.includes("t") && d2r6.transitions === d2r5.transitions &&
+      d2r8.changed.join(",") === "a,j" && d2r8.pulses === d2r7.pulses,
+    JSON.stringify({ d2r5, d2r6, d2r7, d2r8 }));
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
+
+  // ── D2 CallTree（#122 D2）：深树 visited 链 + view→raw 当前节点 + 相机平滑/旁路 ──
+  // 修前缺陷：frameNode 按指令帧建，语句级拿 view 下标直查 ⇒ 当前节点/路径/
+  // 相机取景错帧（deep 帧 view 10 ↔ raw 56）。本锚用 frameAt 的 call_stack
+  // 真值对 DOM 路径全等断言。
+  await evaluate("window.__pilot.motion.transitionCount = 0; window.__pilot.motion.cameraAnimations = 0; true");
+  await pickLesson("global_struct");
+  await sleep(800);
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(200);
+  }
+  const deep = await evaluate<number>("window.__pilot.session.viewFrames.findIndex((f) => (f.call_stack ?? []).length >= 4)");
+  await evaluate(`window.__pilot.seek(${deep})`);
+  await sleep(500);
+  const d2t = await evaluate<D2Tree>(`(() => {
+    const s = window.__pilot.session;
+    const f = window.__pilot.frameAt(s.idx);
+    const names = ["prog", ...((f?.call_stack ?? []).map((x) => x.func_name))];
+    return {
+      nodes: document.querySelectorAll('.vr-node').length,
+      edges: document.querySelectorAll('.vr-edge').length,
+      current: document.querySelectorAll('.vr-node.is-current').length,
+      visited: document.querySelectorAll('.vr-node.is-visited').length,
+      edgesVisited: document.querySelectorAll('.vr-edge.is-visited').length,
+      compact: !!document.querySelector('.vr-tree-compact'),
+      canvas: !!document.querySelector('.vr-canvas svg'),
+      transitions: window.__pilot.motion.transitionCount,
+      idx: s.idx,
+      rawIdx: s.rawIndexAt(s.idx),
+      path: document.querySelector('.vr-treefoot .vr-path')?.textContent?.trim() ?? '',
+      expected: names.join(' → '),
+      currentNode: document.querySelector('.vr-node.is-current text')?.textContent ?? '',
+      vb: document.querySelector('.vr-canvas svg')?.getAttribute('viewBox') ?? null,
+      cameraMoves: window.__pilot.motion.cameraAnimations,
+    };
+  })()`);
+  const d2tPath = d2t.path.replace(/\s*×\d+$/, "");
+  check("D2 深树：view→raw 映射当前节点/路径全等 + visited 链 + 树进出场",
+    deep >= 0 && d2t.idx === deep && d2t.rawIdx !== d2t.idx &&
+      d2t.nodes > 10 && d2t.edges > 10 && d2t.current === 1 &&
+      d2t.visited >= 4 && d2t.edgesVisited >= 3 && d2t.compact === false && d2t.canvas === true &&
+      d2tPath === d2t.expected && d2t.currentNode.includes(d2t.expected.split(" → ").pop() ?? "\u0000") &&
+      d2t.transitions >= 100,
+    JSON.stringify(d2t));
+
+  // 相机：正常 seek 走 Tween（cameraAnimations 增量 + viewBox 改变）；
+  // reduced 下瞬时到同一目标（零动画，viewBox 与正常收敛值一致）。
+  await evaluate("window.__pilot.motion.cameraAnimations = 0; window.__pilot.seek(0); true");
+  await sleep(400);
+  const d2vb0 = await evaluate<string | null>("document.querySelector('.vr-canvas svg')?.getAttribute('viewBox') ?? null");
+  await evaluate(`window.__pilot.seek(${deep})`);
+  await sleep(300);
+  const d2vb1 = await evaluate<string | null>("document.querySelector('.vr-canvas svg')?.getAttribute('viewBox') ?? null");
+  const d2camMoves = await evaluate<number>("window.__pilot.motion.cameraAnimations");
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await waitFor("window.__pilot.motion.systemReduced === true", 5000);
+  await evaluate("window.__pilot.motion.cameraAnimations = 0; window.__pilot.seek(0); true");
+  await sleep(200);
+  await evaluate(`window.__pilot.seek(${deep})`);
+  await sleep(200);
+  const d2camR = await evaluate<D2Cam>(`(() => ({
+    vb: document.querySelector('.vr-canvas svg')?.getAttribute('viewBox') ?? null,
+    moves: window.__pilot.motion.cameraAnimations,
+  }))()`);
+  const vbNum = (s: string | null): number[] => (s ?? "").split(/\s+/).map(Number);
+  const nearVb = (a: string | null, b: string | null): boolean => {
+    const x = vbNum(a); const y = vbNum(b);
+    return x.length === 4 && y.length === 4 && x.every((v, i) => Math.abs(v - (y[i] ?? Number.NaN)) <= 1);
+  };
+
+  // reduced 树过渡：换到另一门深树课（hanoi），树照建、JS 过渡零放行。
+  await evaluate("window.__pilot.motion.transitionCount = 0; true");
+  await pickLesson("hanoi");
+  await sleep(800);
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(200);
+  }
+  const d2h = await evaluate<D2ReducedTree>(`(() => ({
+    nodes: document.querySelectorAll('.vr-node').length,
+    transitions: window.__pilot.motion.transitionCount,
+  }))()`);
+  check("D2 相机：正常 Tween 平滑、reduced 瞬时；换树过渡 reduced 全旁路",
+    d2camMoves >= 1 && d2vb0 !== d2vb1 && d2camR.moves === 0 && nearVb(d2camR.vb, d2vb1) &&
+      d2h.nodes > 3 && d2h.transitions === 0,
+    JSON.stringify({ d2vb0, d2vb1, d2camMoves, d2camR, d2h }));
+  await send("Emulation.setEmulatedMedia", { features: [] });
+  await waitFor("window.__pilot.motion.systemReduced === false", 5000);
 
   // ── B6 第二门旗舰课 uaf（#222 P1 内容扩面）：3 幕（申请写入 / 释放 / 悬垂读），
   //    点幕 → 幕头与分幕带同步；幕首帧 = 0、第 2 幕首帧 = 3（释放帧）──

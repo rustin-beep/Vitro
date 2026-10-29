@@ -56,12 +56,6 @@ export function applySize(v: string): void {
   root().setAttribute("data-size", size);
 }
 
-/** 动效开关（关 = data-motion="off"，CSS 一刀切停动画/过渡）。 */
-export function applyMotion(on: boolean): void {
-  if (!on) root().setAttribute("data-motion", "off");
-  else root().removeAttribute("data-motion");
-}
-
 /** 头部主题按钮：按固定序循环五套（设置里可直接点名）。 */
 export function cycleTheme(): ThemeKey {
   const i = (THEME_KEYS as readonly string[]).indexOf(themeState.current ?? "");
@@ -81,5 +75,4 @@ export function initTheme(): void {
   const size = migrateSize(storeGet(KEYS.size) || storeGet(KEYS.edFont));
   applySize(size);
   storeSet(KEYS.size, size);
-  applyMotion(storeGet(KEYS.motion) !== "off");
 }

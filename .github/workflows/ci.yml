@@ -1389,11 +1389,14 @@ jobs:
         run: node scripts/demo_smoke/main.mts
         shell: bash
 
-      # F4 浏览器 E2E（61 锚：诊断带 S1-S5（18）+ 工作区/回放/设置/主链面
-      # W1-W17（35）+ 会话族 F1-F7 + F4b（8）〔2026-10-18 实测立账批防线锚：
+      # F4 浏览器 E2E（101 锚：诊断带 S1-S5（18）+ 工作区/回放/设置/主链面
+      # W1-W17（38）+ 会话族 F1-F8 + B0-B11 + D0/D1/D2（29）+ 编辑器（10）+
+      # 装载失败（6）〔2026-10-18 实测立账批防线锚：
       # 坏 hash 横幅/argv 克隆崩/语句级口径/播完 status/char 数组全帧 sweep/
-      # E 码联动/目录全章重名 id 防护〕，含断点行为链/stdin 喂入/golden 对照/
-      # 统计卡）——2026-10-18 前端改造批按新 IA（三态 + vr-* 类名）重定向
+      # E 码联动/目录全章重名 id 防护；D0/D1/D2：交换双格+连线+编辑分色、
+      # 动效开关/预算/reduced-motion 旁路、变量行/脉冲、深树 raw 映射+相机〕，
+      # 含断点行为链/stdin 喂入/golden 对照/统计卡）——2026-10-18 前端改造批
+      # 按新 IA（三态 + vr-* 类名）重定向
       # 选择器，锚语义不变（旧 .pilot-head/.tab/.bars 锚已退役，旧脚本会在
       # boot 等待即超时，非回归）；
       # 「CI 无 Edge 不进流水线」的旧既定收口（2026-10-17 收口批）：runner
@@ -1404,7 +1407,7 @@ jobs:
       # 探测链：PATH google-chrome（ubuntu 形态）→ Windows Chrome 标准
       # 安装路径（runner 镜像自带）→ Edge 兜底（CDP 同源，注释既定口径）。
       # 闸内显式回显所用浏览器——静默兜底违反 fail loud 纪律。
-      - name: F4 browser E2E (headless chrome, 90 anchors)
+      - name: F4 browser E2E (headless chrome, 101 anchors)
         if: always()
         run: |
           CHROME_BIN="$(command -v google-chrome || true)"

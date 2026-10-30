@@ -42,6 +42,17 @@
   力）——改锚 E3089 缺席。P2-2 诊断归属（被 include 文件内错误现挂
   main.c + 负行号，`.h` 既有口径）另案开 issue；P3-4 典型轮数一句入
   实现注释（命中形态一轮收敛，二轮防御性）。
+
+### fix(ci+toolchain): 工具链批审阅处置——setup-moonbit 双形态收敛 + pwsh 等价恢复 + 死安装/陈旧注释清除 + 收敛保险丝（2026-10-30，PR #384 处置批）
+
+- **P2-1「单源」补 POSIX 半边**：action 描述「all MoonBit-consuming jobs run windows-latest」立论为误（cli-smoke-linux 与 pages 均在 ubuntu 装 moon）——action 补 `if: runner.os != 'Windows'` bash 分支（unix.sh + 同一 `.moonbit-version` pin），删两处内联 unix 副本改 uses 引用；描述改双形态。
+- **P2-2 执行载体等价恢复**：action 的 `shell: powershell`（5.1）→ `pwsh`（7）——与收敛前 12 处 `shell: pwsh` 逐类等价（5.1 的 Get-Content 默认 ANSI 解码、irm 走 IE 引擎，pin 文件加非 ASCII 注释即静默错值）。
+- **P3-1 gates-native 死安装删除**：#125 收尾后首装（rules.json regen 前置）零消费者——同 runner 装两遍（40MB×2）；删首装，统一由 download-artifact 后的安装步承担。
+- **P3-2 memory/moon.pkg 陈旧注释勘正**：「core/abort（load 的 fail loud 中止）」→「abort（语言内建原语）」——0.10.18 上游已删该包，照旧注释加 import 会编译失败。回退注意：`.mbti` 已与 0.10.18 强耦合，单独回退 `.moonbit-version` 会让 mbti_sync 判红（回退须连坐 24 个接口面文件）。
+- **P3-3 收敛保险丝**：hygiene 新增断言步——`.github/workflows/` 零 `cli.moonbitlang.com` 命中（唯一合法实现点 = action 双形态），「内联安装清零」从一次性计数升格为常驻闸。
+- **P3-4 actionlint 局限注记**：actionlint 不校验 composite action 本体（input 面红探针有效、body 面无覆盖）——写进 action 头注，勿把「已过 actionlint」读成「action 没问题」。
+- **skill 演化连坐**：`vitro-workspace-review` references——04 新增 F11（actionlint composite 盲区+查法）、03 新增 E14（「逐类等价」声称必须含执行载体维度：shell 解释器版本/超时/env 作用域）。
+
 ### fix(corpus+docs+ci): 审计批——GPL 语料出仓 45 份 + README 声明面数字/发布链对真值 + fuzz 返回码入比对域 + ci-summary 三面失衡治本（2026-10-30）
 
 - **GPL 语料出仓（红线执法）**：`corpus/baseline/` 中 45 份 TheAlgorithms/C

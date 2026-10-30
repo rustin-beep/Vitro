@@ -2,7 +2,9 @@
 // + checked_access 单入口 + freed_logs 有序结构（有序数组 + 二分 + 精确裁剪）
 // + 快照批量装载 load_*（vm 片：VMSnapshot restore 的 memory 侧单点）。
 // 依赖严格单向：bytecode（L6：布局常量单源 + 动态堆起点纯函数）+ core/deque
-// （隔离区 FIFO）+ core/abort（load 的 fail loud 中止）。
+// （隔离区 FIFO）；load 的 fail loud 中止走 abort（语言内建原语——审阅
+// P3-2 勘正：core/abort 包已随 0.10.18 上游移除，旧注释指向不存在的包，
+// 照抄加 import 会编译失败）。
 // 被 host / vm 消费，不反向依赖。
 // 分层登记：scripts/moonbit/pkg_deps rules.json（L7，总计划 §4）。
 import {

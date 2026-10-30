@@ -53,18 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MoonBit toolchain (unix, pinned)
-        # #132 同款声明层 pin（2026-10-29 实锤接线）：本步此前裸 latest——
-        # latest 工具链拉新 core 后 core/abort 解析断（run 40824081754
-        # 「Cannot find import 'moonbitlang/core/abort' in
-        # vitro/engine/time_travel@0.9.0」），与 ci.yml（.moonbit-version
-        # pin 全绿）单点漂移。unix.sh 105 行支持 MOONBIT_INSTALL_VERSION；
-        # export 使管道右端 bash 继承（`VAR=x curl|bash` 前缀只作用于 curl）。
-        run: |
-          export MOONBIT_INSTALL_VERSION="$(tr -d '[:space:]' < .moonbit-version)"
-          echo "pin: $MOONBIT_INSTALL_VERSION"
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+      # P2-1（2026-10-30 处置批）：内联 unix.sh 收敛到 action 的 POSIX 分支
+      # （uses 引用，.moonbit-version pin 单源）。史：本步曾裸 latest——
+      # run 40824081754「core/abort in time_travel@0.9.0 解析断」实锤后
+      # 2026-10-29 接 pin（#132 声明层纪律，实锤档案见 CHANGELOG）。
+      - name: Install MoonBit toolchain (action, POSIX arm)
+        uses: ./.github/actions/setup-moonbit
 
       - name: Build wasm-gc gateway (release)
         run: cd moonbit && moon build --release --target wasm-gc gateway/wasm

@@ -168,8 +168,8 @@ fn lex_full_source(
 }
 
 ///|
-/// 路径目录段（dir_of 族六处复制件之一——gateway/vitro_wasm/
-/// dump_tokens/dump_ast/dump_typeck/dump_compile 五处 + 本处；cmd 层互
+/// 路径目录段（dir_of 族六处复制件之一——本处 + vitro_wasm/dump_tokens/
+/// dump_ast/dump_typeck/dump_compile 五处；cmd 层互
 /// 不可 import 故复制。根级（0 位→"/"）与无分隔符（→"."）语义六处一致；
 /// **中段形态有意分叉**：本处归一反斜杠（serve 侧候选键经 normalize_path
 /// 消费，POSIX 形态），dump/vitro_wasm 系原文透传（base_dir 须与各自

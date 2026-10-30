@@ -228,10 +228,7 @@ fn dir_of(path : String) -> String {
 ///|
 fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
   for name in @fs.read_dir(dir) {
-    // 审阅 P2-b（2026-10-06）：dir 为 "."（裸名/./x.c 形态的 dir_of 产物）
-    // 时键用裸名——与 resolver 候选键经 normalize_path（丢 "." 段）一致；
-    // 旧 "./hdr.h" 键结构性失配致同目录 include 恒 lex-fail
-    let full = if dir == "." { name } else { "\{dir}/\{name}" }
+    let full = vfs_join(dir, name)
     let sub_is_dir = @fs.is_dir(full) catch { _ => false }
     if sub_is_dir {
       collect_files(full, vfs)
@@ -240,6 +237,24 @@ fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
       // 两侧同无解析属偶然对齐，哨兵用例在 gap 监测）
       vfs.set(full, @fs.read_file_to_string(full))
     }
+  }
+}
+
+///|
+/// collect_files 的 VFS 键拼装（PR #380 审阅 P2-1 从内联提取单点锚定）：
+/// "." 裸名（与 resolver 候选键 normalize_path 丢 "." 段一致——2026-10-06
+/// 审阅 P2-b，旧 "./hdr.h" 键结构性失配致同目录 include 恒 lex-fail）；
+/// "/"（dir_of 根级产物）直拼 "/"+name——中段风格拼装会产 "//x.h"，与
+/// 候选键经 normalize_path 折叠的 "/x.h" 失配（VfsProvider 纯内存精确
+/// 匹配无回落）⇒ 根级 include 恒 E1021；其余 dir+"/"+name 原文（中段
+/// 原文透传——与目录模式 VFS 收集键=target 原文同源约束，#378 回归实证）。
+fn vfs_join(dir : String, name : String) -> String {
+  if dir == "." {
+    name
+  } else if dir == "/" {
+    "/" + name
+  } else {
+    "\{dir}/\{name}"
   }
 }
 

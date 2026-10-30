@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
+
+- **病**：CLI smoke ubuntu lane 的 wasm stderr 风暴锚稳定红
+  （pipe=36091B vs file=74220B，CI run 41058751614；#385/#387 两轮复现，
+  Windows 本地不复现）。根因=cmd/vitro_wasm 的 `js_write_stderr` 走
+  `process.stderr.write`（**异步**）+ `js_exit` 的 `process.exit` 立即
+  退——74KB 风暴未刷写完即被砍，ubuntu node 24 管道只收到 ~36KB；
+  Windows node 26 调度恰好排空故本地绿。**#366 同族第三处**（P2-3 治了
+  lib/cli 的 cli_stderr_write 与 stdout 出口，wasm 壳的独立 String 形态
+  extern 漏网）。
+- **修**：`js_write_stderr` 改 `fs.writeSync(2, Buffer.from(s))`——与
+  stdout 出口（fd=1 同款）/lib/cli stderr（fd=2）三处原语全部同步化；
+  调用面（String 签名）零改。js 壳走 lib/cli 已同步、native 臂 CRT
+  fwrite+exit 刷缓冲天然安全——三臂 stderr 出口原语同步化就此收口。
+- **验**：本地 --corpus 30 全绿（wasm stderr 风暴双口径一致 74220B）；
+  CI ubuntu lane 复跑同锚 = 治本终验。
+
 ### fix(corpus+docs+ci): 审计批——GPL 语料出仓 45 份 + README 声明面数字/发布链对真值 + fuzz 返回码入比对域 + ci-summary 三面失衡治本（2026-10-30）
 
 - **GPL 语料出仓（红线执法）**：`corpus/baseline/` 中 45 份 TheAlgorithms/C

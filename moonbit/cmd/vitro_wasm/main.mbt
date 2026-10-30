@@ -368,7 +368,7 @@ extern "js" fn js_node_version() -> String =
 ///|
 extern "js" fn js_write_stderr(s : String) -> Unit =
   #| function(s) {
-  #|   process.stderr.write(s);
+  #|   process.getBuiltinModule("fs").writeSync(2, Buffer.from(s));
   #| }
 
 ///|

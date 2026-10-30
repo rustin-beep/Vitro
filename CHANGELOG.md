@@ -90,6 +90,49 @@
   报告上传 artifact）。**观察期不入 ci-summary needs**——survived
   不阻断，基础设施失败红；阈值阻断批再连坐。
 
+### fix(gateway+lexer): #364 compile{files} 被引用 .c unit 双重拼接剔除——include 展开集出口 + 不动点（2026-10-29）
+
+- **红根**：`#include "sibling.c"` 的工程在 wasm 臂报 E3003 函数重复
+  定义（js/native 臂正常）——gateway `serve_compile_pipeline` 只把
+  `.h` unit 剔出拼接，被主文件（或传递闭包内任一 unit）quote-include
+  的 **`.c` unit 既被物理拼接又被 include 点展开**各一份 ⇒ 双重定义。
+  缺陷面覆盖全部 `compile{files}` 消费方：wasm 臂 CLI（collect_walk 把
+  include 目标登记为独立编译单元）、浏览器工作区（全量文件送 files）、
+  `api compile` 调用方（#364 实测三臂：js/native return 7、wasm E3003）。
+  语义定界（审阅 P3-3）：clang 对 `main.c sibling.c` 两 TU 是**链接期
+  duplicate symbol**；本仓 compile{files} = 拼接单 TU + include 展开
+  （unity-build 模型），故不复制 clang 的跨 TU 重复定义判定——被引用
+  unit 转 vfs-only 是该模型的既定语义而非对 clang 的偏离。
+- **修法（两层）**：① `LexResult` 新增 `included_files`（实际被 include
+  拼接进 token 流的文件键，拼接序、存根键剔除）——展开命中集出自词法
+  **真实决策**（注释剥离与 `#if` 跳过之后；行级预扫描会与真实展开分叉：
+  块注释内的 `#include` 不展开却会被误剔 ⇒ 静默丢码，故不用）；②
+  serve_compile 合并段改**不动点**：拼接 → lex → 展开命中 unit 剔出
+  拼接集（vfs 仍全量注入，include 照常拉入）→ 重跑至交集空。每轮至少
+  剔一个 unit，≤ 单元数收敛；单文件/无互引形态首轮空集零额外开销、
+  零行为差（corpus 防线全部单文件，digest 零漂移实测）。
+- **红绿锚**：`gateway/include_wbtest.mbt` 三锚——E3003 主锚（修前红）
+  + 链式（main→sibling→grand 传递闭包，修前红）+ 独立 .c unit 仍拼接
+  守卫锚（防过度剔除，修前后均绿）；锚定 `file_ranges` 不含被引用 unit
+  （vfs-only 语义与 `.h` 同款）。首版锚曾误判 RPC 信封 `ok:true` 为
+  result.ok（链式锚假绿）——改锚 E3003 缺席 + compiled 态。
+- **验收**：gateway 151/151（native 臂口径；处置 +2 设计理由锚）、裸 `moon test` 964/964、
+  native 全量 1137/1137（+5 锚；rebase 到 1a2cfcd4 后基线合流重采，README×2 计数连坐）；
+  三臂同形验收 js/native/wasm `return_value:7, steps_executed:9` 逐位
+  一致；`moon check --target all` + mbti_sync/moonbit_surface/pkg_deps
+  三闸绿（mbti 漂移恰一行 = LexResult 新字段）；防线零漂移实测
+  vm 805/805 SAME、clang_direct 919 SAME + 17 KNOWN + 0 DIFF（936）。
+  （rebase 接手：终轮基线 e2d5ae9f 重跑全部验证面）
+- **审阅处置（2026-10-29，PR #372）**：P2-1 本批核心设计理由（「不用
+  行级预扫描——块注释内 include 会被误剔 ⇒ 静默丢码」）原在锚面上不可
+  区分（换回朴素预扫描既有 149 锚全绿的突变实证）——补 issue364r2 双锚
+  （块注释 / #if 0 内 include：断言 compiled 且 `file_ranges` 仍含目标
+  unit）；突变证牙：预扫描注入下恰双锚红（149/151）、还原复绿
+  （151/151）。P3-1 守卫锚首断言原写 RPC 信封 `ok:true`（恒真零判别
+  力）——改锚 E3089 缺席。P2-2 诊断归属（被 include 文件内错误现挂
+  main.c + 负行号，`.h` 既有口径）另案开 issue；P3-4 典型轮数一句入
+  实现注释（命中形态一轮收敛，二轮防御性）。
+
 ### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28；审阅处置批同日见段末）
 
 - **#366（js/wasm 臂帧出口同步化）**：api/step/json 模式帧出口从

@@ -247,12 +247,21 @@ pub fn[P] Pp::finish_pp(
     self.cond_stack.clear()
   }
   let expanded = self.expand_tokens_all(tokens)
+  // 实际拼接文件集（file_ids 插入序 = 拼接序；存根键 `stub:<名>` 剔除
+  // ——消费面（gateway #364）只关心真实文件的展开命中）
+  let included_files : Array[String] = []
+  for k in self.file_ids.keys() {
+    if !k.has_prefix("stub:") {
+      included_files.push(k)
+    }
+  }
   {
     tokens: expanded,
     errors: self.errors,
     warnings: self.warnings,
     trace: self.trace,
     line_map: { spans: self.spans, },
+    included_files,
   }
 }
 

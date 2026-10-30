@@ -125,6 +125,138 @@ test "wasm_files_vfs_subdir_base_dir_chain" {
 }
 
 ///|
+test "wasm_files_c_unit_included_not_double_defined_issue364" {
+  // #364 红锚（2026-10-29）：main.c quote-include sibling.c 且 sibling.c
+  // 同时作为 unit 登记——wasm 臂 collect_walk（include 目标逐个登记为
+  // 独立编译单元）与浏览器工作区「全量文件送 files」两形态共有。修前
+  // sibling.c 拼接 + main.c 内 include 展开各一份 ⇒ E3003 重复定义；
+  // 修后被展开命中的 .c unit 与 .h 同语义（只进 vfs 不进拼接）。
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":9,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"#include \\\"sibling.c\\\"\\nint main(){ return sibling_value(); }\\n\"}," +
+    "{\"filename\":\"sibling.c\",\"source\":\"int sibling_value(){ return 7; }\\n\"}]}}",
+  )
+  assert_false(
+    resp.contains("E3003"),
+    msg="被 include 的 .c unit 不双重定义（修前红：E3003）",
+  )
+  assert_true(session.compile.compiled, msg="编译通过（返回 7）")
+  let has_sibling_range = session.compile.file_ranges
+    .iter()
+    .any(r => r.filename == "sibling.c")
+  assert_false(
+    has_sibling_range,
+    msg="被 include 的 .c unit 不产 file_ranges 区间（vfs-only）",
+  )
+}
+
+///|
+test "wasm_files_c_unit_chain_include_not_double_defined_issue364" {
+  // #364 链式形态：main.c → sibling.c → grand.c 两级 quote-include——
+  // 不动点剔除须传导到传递闭包（grand.c 由 sibling.c 的展开拉入，本身
+  // 也不得再拼接）
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":10,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"#include \\\"sibling.c\\\"\\nint main(){ return sibling_value() + grand_value(); }\\n\"}," +
+    "{\"filename\":\"sibling.c\",\"source\":\"#include \\\"grand.c\\\"\\nint sibling_value(){ return grand_value() + 1; }\\n\"}," +
+    "{\"filename\":\"grand.c\",\"source\":\"int grand_value(){ return 6; }\\n\"}]}}",
+  )
+  assert_false(
+    resp.contains("E3003"),
+    msg="链式 include 的 .c unit 全部只展开一次（修前红：E3003）",
+  )
+  assert_true(
+    session.compile.compiled,
+    msg="链式编译通过（sibling_value=7+grand_value=6）",
+  )
+}
+
+///|
+test "wasm_files_c_unit_independent_still_merged_issue364" {
+  // #364 守卫锚（修前后均须绿）：无互引的独立 .c unit 仍全量拼接——
+  // main.c 声明+调用 lib.c 定义的函数，lib.c 若被误剔出拼接即 E3089
+  //（已声明未定义）/链接面失败。防不动点过度剔除。审阅 P3-1（PR #372）
+  // ：首断言原写 resp.contains("\"ok\":true") 命中的是 RPC 信封（恒
+  // true，零判别力）——改锚 E3089 缺席（过度剔除突变 M2 直红）。
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":11,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"int lib_fn(void);\\nint main(){ return lib_fn(); }\\n\"}," +
+    "{\"filename\":\"lib.c\",\"source\":\"int lib_fn(){ return 7; }\\n\"}]}}",
+  )
+  assert_false(
+    resp.contains("E3089"),
+    msg="独立 .c unit（无互引）不被剔出拼接（防过度剔除）",
+  )
+  assert_true(session.compile.compiled, msg="守卫形态编译通过")
+}
+
+///|
+test "wasm_files_block_comment_include_target_still_merged_issue364r2" {
+  // 审阅 P2-1（PR #372，2026-10-29）：钉住「不用行级预扫描」的设计理由
+  // ——块注释内的 #include 不被词法展开，其目标 unit **不得被剔出拼接**
+  // （预扫描实现按行匹配会把 sib.c 误剔 ⇒ 其定义静默丢失 ⇒ E3089）。
+  // 断言 compiled 且 file_ranges 仍含 sib.c（未被剔除）。
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":15,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"int sib_value(void);\\n/* #include \\\"sib.c\\\" */\\nint main(){ return sib_value(); }\\n\"}," +
+    "{\"filename\":\"sib.c\",\"source\":\"int sib_value(){ return 7; }\\n\"}]}}",
+  )
+  assert_false(
+    resp.contains("E3089"),
+    msg="块注释内 include 的目标不被误剔（预扫描突变红：E3089）",
+  )
+  assert_true(
+    session.compile.compiled,
+    msg="编译通过（拼接供给定义）",
+  )
+  let has_sib_range = session.compile.file_ranges
+    .iter()
+    .any(r => r.filename == "sib.c")
+  assert_true(
+    has_sib_range,
+    msg="sib.c 仍进拼接（file_ranges 含其区间——未被剔除）",
+  )
+}
+
+///|
+test "wasm_files_if0_guarded_include_target_still_merged_issue364r2" {
+  // 审阅 P2-1（PR #372，2026-10-29）：同上——#if 0 包住的 #include 同样
+  // 不被词法展开（条件栈跳过态），目标 unit 不得被剔出拼接。预扫描按行
+  // 匹配两形态都误剔 ⇒ 本锚与块注释锚共同钉死「展开命中集必须出自词法
+  // 真实决策」的设计理由。
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":16,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"#if 0\\n#include \\\"sib.c\\\"\\n#endif\\nint sib_value(void);\\nint main(){ return sib_value(); }\\n\"}," +
+    "{\"filename\":\"sib.c\",\"source\":\"int sib_value(){ return 7; }\\n\"}]}}",
+  )
+  assert_false(
+    resp.contains("E3089"),
+    msg="#if 0 内 include 的目标不被误剔（预扫描突变红：E3089）",
+  )
+  assert_true(
+    session.compile.compiled,
+    msg="编译通过（拼接供给定义）",
+  )
+  let has_sib_range = session.compile.file_ranges
+    .iter()
+    .any(r => r.filename == "sib.c")
+  assert_true(
+    has_sib_range,
+    msg="sib.c 仍进拼接（file_ranges 含其区间——未被剔除）",
+  )
+}
+
+///|
 test "host_reader_files_vheader_resolves_issue202" {
   // #202 红锚（2026-10-21）：宿主形态（reader 已注册——js/native CLI 壳
   // 经 ensure_include_reader 都注册）下 files 数组内的虚拟头文件须可被

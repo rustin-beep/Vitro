@@ -38,9 +38,9 @@ pub const SCHEMA_V0_1_FROZEN_AT : String = "2026-09-12"
 pub fn v0_2_activation_checklist() -> Array[String] {
   [
     "① 只增事件：不得改动 v0.1 既有 14 字段的名称/类型/语义；预留位激活一律以新增字段形态落地（消费方须忽略未知字段）",
-    "② 同步更新 docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md：§9 台账状态 active + §7 校验表追加 v0.2 历史行",
-    "③ 重跑引擎侧 C1–C3：cargo test --test step_payload_schema_v0_1_test / --test unified_engine_window_test + go run ./scripts/serve_smoke",
-    "④ 重跑签字回放 S1–S5：go run ./scripts/replay/replay_s1_s5.go --anchor <新短哈希>（异常域还需 S4 §5 激活契约 A1–A8）",
+    "② 同步更新 moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md：§9 台账状态 active + §7 校验表追加 v0.2 历史行",
+    "③ 重跑引擎侧协议契约面：cd moonbit && moon test -p vitro/engine/protocol（schema/contracts 冻结锚）+ node scripts/serve_smoke/main.mts -moonbit",
+    "④ 重跑签字回放 S1–S5：node scripts/replay/replay_s1_s5.mts -moonbit 与 --backend wasm 双臂（异常域还需 S4 §5 激活契约 A1–A8）",
     "⑤ 解除冻结测试中的预留位断言（v0.1 断言 → v0.2 断言），并知会下游按容忍矩阵回归 T4 投影",
   ]
 }

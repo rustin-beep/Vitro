@@ -99,7 +99,7 @@
   {
     "case": "ub_missing_return.c",
     "digest": "a5e36455",
-    "reason": "TheAlgorithms 407 份对拍批（2026-10-25）UB 族锚：非 void 函数缺 return（C99 6.9.1p12 返回值未定义）——search() 递归调用丢弃返回值（doubly_linked_list.c 语料原文同款，search(20) 应 1 而 clang 残留 1 / Vitro 恒 0）。本锚最小复现实测 clang 侧残留值随构建环境漂（本地两轮 32758/32759；CI 首跑 digest 618cd2c8 入集——PR #312 run 40196625713 wasm/native 双臂同值），Vitro 双臂恒 0；双侧皆合法值，登记「真值不可锚」防未来对拍把缺 return 族分歧误报为引擎缺陷——同 bTree_default/MF-QUEUE 的 UB 结局漂移史（diff_ledger DIFF-UB-MISSING-RETURN-01 台账收编）",
+    "reason": "TheAlgorithms 407 份对拍批（2026-10-25）UB 族锚：非 void 函数缺 return（C99 6.9.1p12 返回值未定义）——递归调用丢弃返回值（形态源自外部 GPL 语料库观察；2026-10-30 审计批改写为独立表达 walk()，本锚最小复现实测 clang 侧残留值随构建环境漂（本地两轮 32758/32759；CI 首跑 digest 618cd2c8 入集——PR #312 run 40196625713 wasm/native 双臂同值），Vitro 双臂恒 0；双侧皆合法值，登记「真值不可锚」防未来对拍把缺 return 族分歧误报为引擎缺陷——同 bTree_default/MF-QUEUE 的 UB 结局漂移史（diff_ledger DIFF-UB-MISSING-RETURN-01 台账收编）",
     "digests": [
       "a5e36455",
       "618cd2c8"

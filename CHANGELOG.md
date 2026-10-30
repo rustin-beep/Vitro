@@ -1,5 +1,77 @@
 ## [Unreleased]
 
+### fix(corpus+docs+ci): 审计批——GPL 语料出仓 45 份 + README 声明面数字/发布链对真值 + fuzz 返回码入比对域 + ci-summary 三面失衡治本（2026-10-30）
+
+- **GPL 语料出仓（红线执法）**：`corpus/baseline/` 中 45 份 TheAlgorithms/C
+  派生语料（8b0e3a17 / PR #312 入库）`git rm` 出仓——上游 GPL-3.0（GitHub
+  API 亲证），违反本仓既定分流规则「有毒（GPL 系）→ fork 孤儿分支外置」
+  （《实机勘探语料扩充方案》§2.1）与根 README「GPL 语料外置不进仓」自述。
+  连坐：五家 golden digest 重冻（baseline/gap 两套件）、corpus_fuzz 基线
+  重冻（池随语料集变化全量重算）、known_direct 零条目命中（无需清理）；
+  `corpus/gap/ub_missing_return.c` 同批改写为独立表达（原锚自称「语料
+  原文」形态——派生风险一并清除，UB 锚语义不变：clang 残值 32758 实测
+  保持、Vitro 恒 0）。语料仍可经外部 fork（rustin-beep/C
+  vitro-probe-baseline）+ `scripts/realcode_diff` 消费——防线覆盖损失
+  明知接受（红线优先）。gold_signatures.json 只存签名不存源码文本，
+  合规保留。
+- **fuzz 返回码盲区（双侧对称修复，红锚先行）**：`corpus_fuzz` 的
+  `clangOutcome`/`parseVitro` 修前都丢弃合法返回码 1..255（clang 侧只比
+  stdout、vitro 侧 run 帧的 `return_value` 字段读了不用）——同 stdout 异码
+  程序对拍假 AGREE。新增双侧单源 `exitDomainOf`（rc 0=纯 stdout /
+  1..255=stdout 追 `EXIT:n` 行 / 崩溃域=EXIT 整替）+ `exitWordOf`
+  （win32 保 uint32、POSIX 取低 8 位——镜像真实进程码，负返回/大返回
+  跨平台形态由此对齐）；vitro 臂从 run 帧 `return_value` 取值。node:test
+  红锚 4 条（修复前 export 缺失即红）→ 绿 28/28。fuzz 基线随口径级变更
+  全量重冻。
+- **README 声明面对真值（审计三项 + 连带）**：根 README 135→153 opcode
+  （L84/L94；L27 收官片历史快照豁免不动）+ 发布链 0.8.0→0.9.0（L19/L26/
+  L33，S9 收官态）+ 结构树 `docs/spec/` 死目录勘正（已随包迁
+  `moonbit/docs/spec/`）；moonbit/README 156 码/114 卡→119/115（L16/L53/
+  L82）；moonbit/AGENTS.md 同族三处（opcode 151→153 含 154..155 段补登 /
+  diag 156/114→119/115 / vm executor 135→153，顺带 #71→#61 笔误勘正）；
+  `opcode.mbt` 头注 151→153 与 `>153`→`>155`；`moon.mod` description
+  「156 diagnostic codes, 151 opcodes」→「119 …, 153 …」（mooncakes 注册
+  表元数据随下版发布生效）。
+- **ci-summary 三面失衡治本**：`needs` 11 项 vs env/for 循环各 10 对——
+  backend-triage（#349 引入 2026-10-28）红/skipped 时汇总不判红。补
+  `BACKEND_TRIAGE` env + 循环对；计数文案改由 pairs 数组长度推导（旧
+  硬编码「9 个上游 job」曾随扩容两度陈旧——结构性根治）。
+- **ci.yml serve smoke 补 `MOON_CC=clang`**（纪律 11 一律口径——同 job
+  紧邻两步均已带，唯此步漏）。
+- **STEP_PAYLOAD 死链 3 处 + 冻结 checklist 死命令**：`demo/src/lib/
+  ProtoSide.svelte` 展示路径、`gen_protocol_ts` 头注、`protocol/schema.mbt`
+  v0.2 激活清单 ② 的 `docs/spec/` 旧路径→`moonbit/docs/spec/`；同清单
+  ③④ 的 `cargo test`/`go run …replay_s1_s5.go` Rust/Go 时代死命令→现役
+  node/moon 命令。**协议出口字节变更连坐**：schema_wbtest inspect 快照
+  `moon test --update` 重锚 + protocol_frames `--update-baseline` 重冻。
+- **content_parser.c 头注两处勘正**：「CI 三臂产物对拍」→「CI js 缺省
+  单臂（`-backend` 换臂为本地动作）」——CI 行不带 -backend、main.mts
+  缺省 js，旧句名不副实；再生命令 `go run ./scripts/teaching_gen_check
+  -write`→`node scripts/teaching_gen_check/main.mts -write`（Go 版已随
+  #273 迁移批删除）。
+- **demo.mbtx 接 CI 冒烟（workspace 臂）+ 零克隆断供披露**：
+  examples/demo.mbtx（README 快速开始第 0 步门面）此前 CI 零引用；实测
+  **零克隆形态当前即断**——已发布 0.9.0 的 `time_travel/moon.pkg` 携
+  `moonbitlang/core/abort` import（#374 病，源码侧已摘、registry core
+  无该模块），干净环境 `moon run demo.mbtx` 必遇解析失败（moon update
+  刷新索引后复现，双环境实证）。README 第 0 步加 ⚠ 披露（下一版发布
+  自愈）；CI 接 workspace 臂冒烟（脚本复制进 workspace 剥源内 import 块
+  成临时 main 包跑 wasm-gc + 输出主标记断言，本地干跑等价通过）——
+  零克隆升格留待 0.9.1 后。
+- **快速开始第 ③ 步补 cmd/run 构建铺垫**：clang_direct 被测物是
+  `cmd/run` runner（freshness 门禁缺产物即红），README 旧序只构建
+  cmd/vitro——照抄必红；补前置构建行。
+
+### fix(ci+toolchain): 工具链批审阅处置——setup-moonbit 双形态收敛 + pwsh 等价恢复 + 死安装/陈旧注释清除 + 收敛保险丝（2026-10-30，PR #384 处置批）
+
+- **P2-1「单源」补 POSIX 半边**：action 描述「all MoonBit-consuming jobs run windows-latest」立论为误（cli-smoke-linux 与 pages 均在 ubuntu 装 moon）——action 补 `if: runner.os != 'Windows'` bash 分支（unix.sh + 同一 `.moonbit-version` pin），删两处内联 unix 副本改 uses 引用；描述改双形态。
+- **P2-2 执行载体等价恢复**：action 的 `shell: powershell`（5.1）→ `pwsh`（7）——与收敛前 12 处 `shell: pwsh` 逐类等价（5.1 的 Get-Content 默认 ANSI 解码、irm 走 IE 引擎，pin 文件加非 ASCII 注释即静默错值）。
+- **P3-1 gates-native 死安装删除**：#125 收尾后首装（rules.json regen 前置）零消费者——同 runner 装两遍（40MB×2）；删首装，统一由 download-artifact 后的安装步承担。
+- **P3-2 memory/moon.pkg 陈旧注释勘正**：「core/abort（load 的 fail loud 中止）」→「abort（语言内建原语）」——0.10.18 上游已删该包，照旧注释加 import 会编译失败。回退注意：`.mbti` 已与 0.10.18 强耦合，单独回退 `.moonbit-version` 会让 mbti_sync 判红（回退须连坐 24 个接口面文件）。
+- **P3-3 收敛保险丝**：hygiene 新增断言步——`.github/workflows/` 零 `cli.moonbitlang.com` 命中（唯一合法实现点 = action 双形态），「内联安装清零」从一次性计数升格为常驻闸。
+- **P3-4 actionlint 局限注记**：actionlint 不校验 composite action 本体（input 面红探针有效、body 面无覆盖）——写进 action 头注，勿把「已过 actionlint」读成「action 没问题」。
+- **skill 演化连坐**：`vitro-workspace-review` references——04 新增 F11（actionlint composite 盲区+查法）、03 新增 E14（「逐类等价」声称必须含执行载体维度：shell 解释器版本/超时/env 作用域）。
+
 ### refactor(engine+cmd): #378 路径目录段函数族收口——dump×4 并入 dir_of 同义族（根级 POSIX 对齐）（2026-10-29）
 
 - **红根**：`cmd/dump_{tokens,ast,typeck,compile}` 四胞胎的 `dirname_of`

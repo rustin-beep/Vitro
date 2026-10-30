@@ -2,10 +2,12 @@
  *
  * 地位：本文件是**随包发布的引擎侧资产**（moonbit/** 入 mooncakes），
  * 由 Vitro 自己编译运行——自己吃自己狗粮。CI 现役覆盖 =
- * teaching_gen_check 三臂产物对拍（happy path）+ teaching_reconcile 键集
+ * teaching_gen_check 产物对拍（happy path，CI js 缺省单臂——换臂
+ * `-backend native|wasm` 为本地动作）+ teaching_reconcile 键集
  * 对账——clang 侧亲编译对拍为**离线审阅动作**非常驻闸（2026-10-15 审阅
  * 勘正：头注旧句「CI 以 vitro ≡ clang 双臂对拍本文件」名不副实；
- * 常驻化与否随 #129/#20 处置批另议）。
+ * 常驻化与否随 #129/#20 处置批另议。2026-10-30 审计批再勘正：旧句
+ * 「三臂产物对拍」同为名不副实——CI 行不带 -backend，缺省 js 单臂）。
  *
  * 三 schema 模式（argv[1] 选，缺省/未知 = 红）：
  *   trap          stdin=content/trap_messages.md  → assets/trap_messages_gen.mbt
@@ -25,13 +27,13 @@
  *   - 正文：trap = 模板原样（空行=文案里空行；尾部空行至多 1 行=节间分隔）。
  *
  * 产出（stdout）：@generated 的 .mbt；验收判据 = 输出经 moon fmt 后与
- * 入库 assets/*_gen.mbt 逐字节一致（teaching_gen_check 三臂锁；#125 批 B
+ * 入库 assets/*_gen.mbt 逐字节一致（teaching_gen_check 锁；#125 批 B
  * 后 .json.mbt 载体已退役，旧「双出口期逐字节一致」判据随转）。
  * 注意：数组换行形态以 moon fmt 为准——驱动管线 = 本输出 → moon fmt →
  * 与入库产物比对（生成器契约第 2 条；trap 实测 fmt 恒等）。
  *
  * 用法（再生一律走正规管线）：
- *   go run ./scripts/teaching_gen_check -write
+ *   node scripts/teaching_gen_check/main.mts -write
  * （勿走下方裸跑形态——vitro run 文本模式 stdout 混引擎标记行（W3053
  * 警告/NOTE/STDERR），人手重定向必得污染产物（#129 在档未修）：
  *   scripts/bin/vitro run moonbit/teaching/tools/content_parser.c \

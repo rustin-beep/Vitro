@@ -41,7 +41,7 @@
     <h3>三个入口</h3>
     <div><span>CLI</span><code>scripts/bin/vitro --json</code></div>
     <div><span>浏览器</span><code>gateway wasm-gc 实例</code></div>
-    <div><span>帧文档</span><code>docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md</code></div>
+    <div><span>帧文档</span><code>moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md</code></div>
   </div>
 
   <div class="vr-side-actions">

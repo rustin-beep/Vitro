@@ -16,7 +16,7 @@
       "bucket": "CLANG_REJECT"
     },
     "baseline/cast_float_to_int.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/char_escape_quote.c|brace_strip": {
       "bucket": "AGREE"
@@ -55,40 +55,40 @@
       "bucket": "AGREE"
     },
     "baseline/e2_include_guarded.c|char_escape": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/e2_include_guarded.c|div2shift": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/e2_include_guarded.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/func_declared_not_defined.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/func_declared_not_defined.c|char_escape": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/func_declared_not_defined.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/function_pointer_decl.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/function_pointer_decl.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/function_pointer_decl.c|nested2flat": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/fwd_func_addr.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/fwd_func_addr.c|cast_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/fwd_func_addr.c|div2shift": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/memset_struct.c|brace_strip": {
       "bucket": "CLANG_REJECT"
@@ -98,15 +98,6 @@
     },
     "baseline/memset_struct.c|div2shift": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/middle_element_in_list.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/middle_element_in_list.c|nested2flat": {
-      "bucket": "AGREE"
-    },
-    "baseline/middle_element_in_list.c|paren_wrap": {
-      "bucket": "AGREE"
     },
     "baseline/pointer_add_assign_side_effect.c|brace_wrap": {
       "bucket": "AGREE"
@@ -168,11 +159,20 @@
     "baseline/typedef.c|static_inject": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/unsigned_mul_wrap.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_mul_wrap.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/unsigned_mul_wrap.c|init_partial": {
+      "bucket": "AGREE"
+    },
     "baseline/variable_length_array.c|brace_wrap": {
       "bucket": "CLANG_REJECT"
     },
     "baseline/variable_length_array.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "baseline/variable_length_array.c|nested2flat": {
       "bucket": "CLANG_REJECT"
@@ -187,22 +187,22 @@
       "bucket": "AGREE"
     },
     "gap/complex_number.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/complex_number.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/complex_number.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/failfast_chain.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/failfast_chain.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/failfast_chain.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/file_fread.c|cmp_swap": {
       "bucket": "AGREE",
@@ -253,22 +253,22 @@
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
     },
     "gap/implicit_int.c|char_escape": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/implicit_int.c|cmp_swap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/implicit_int.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/include_quote_sentinel.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/include_quote_sentinel.c|cast_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/include_quote_sentinel.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/inline_asm.c|cmp_swap": {
       "bucket": "CLANG_REJECT",
@@ -283,13 +283,13 @@
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
     },
     "gap/keyword_compat.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/keyword_compat.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/keyword_compat.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/loop_var_shadow.c|brace_wrap": {
       "bucket": "CLANG_REJECT",
@@ -300,16 +300,16 @@
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
     },
     "gap/loop_var_shadow.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/p2d_parser_preproc_batch.c|cast_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/p2d_parser_preproc_batch.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/p2d_parser_preproc_batch.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/printf_scanf_type_mismatch.c|brace_wrap": {
       "bucket": "CLANG_REJECT",
@@ -380,7 +380,7 @@
       "note": "gap 套件固有 UB/arch_diff 域（源程序本身双侧行为不同）——非病"
     },
     "gap/typeof_operator.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/ub_missing_return.c|brace_strip": {
       "bucket": "WRONG_VALUE",
@@ -395,13 +395,13 @@
       "note": "语料 UB 非 VARIANT_MISMATCH 可救域：源程序缺 return（C99 6.9.1p12 返回值未定义）——分歧源=UB 返回值本身（手工等价变异抽查两侧输出全不变），非引擎病（PR #312 审阅 P3-6 标注；known_direct/diff_ledger DIFF-UB-MISSING-RETURN-01 同源登记）"
     },
     "gap/variadic_macro.c|brace_strip": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/variadic_macro.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gap/variadic_macro.c|nested2flat": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:char_arith/000": {
       "bucket": "AGREE"
@@ -539,7 +539,7 @@
       "bucket": "AGREE"
     },
     "gen:diag_legal/005": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:diag_legal/006": {
       "bucket": "AGREE"
@@ -548,7 +548,7 @@
       "bucket": "AGREE"
     },
     "gen:diag_legal/008": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:diag_legal/009": {
       "bucket": "AGREE"
@@ -557,7 +557,7 @@
       "bucket": "AGREE"
     },
     "gen:diag_legal/011": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:diag_legal/012": {
       "bucket": "AGREE"
@@ -566,7 +566,7 @@
       "bucket": "AGREE"
     },
     "gen:diag_legal/014": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:diag_legal/015": {
       "bucket": "AGREE"
@@ -575,7 +575,7 @@
       "bucket": "AGREE"
     },
     "gen:diag_legal/017": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "gen:diag_legal/018": {
       "bucket": "AGREE"
@@ -692,7 +692,7 @@
       "bucket": "AGREE"
     },
     "knr/kr_5_6.c|cmp_swap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "knr/kr_5_6.c|memset_zero": {
       "bucket": "AGREE"
@@ -710,7 +710,7 @@
       "bucket": "AGREE"
     },
     "knr/kr_5_itoa.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "knr/kr_5_itoa.c|char_escape": {
       "bucket": "AGREE"
@@ -767,10 +767,10 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_108.c|div2shift": {
-      "bucket": "VITRO_TRAP"
+      "bucket": "ARM_DIVERGENCE"
     },
     "leetcode/lc_108.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_111.c|brace_wrap": {
       "bucket": "AGREE"
@@ -779,7 +779,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_111.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_118.c|brace_wrap": {
       "bucket": "AGREE"
@@ -797,7 +797,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_150.c|static_inject": {
-      "bucket": "WRONG_VALUE",
+      "bucket": "AGREE",
       "note": "UB 抖动：static_inject 使 RPN 栈游标 top 跨调用残留，第二次/第三次 evalRPN 读未初始化堆内存（越界 UB），输出由脏值决定、双侧无一致义务——#339 P3-3 定性 WRONG_VALUE 与冻结轮 AGREE 双观测 + 四次 CI 全量真跑 3 AGREE 1 WRONG_VALUE（run 40633695540）实证；#340 批起豁免桶对账（存在性对账保留）",
       "volatile": true
     },
@@ -808,7 +808,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_199.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_20.c|cmp_swap": {
       "bucket": "AGREE"
@@ -826,10 +826,10 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_237.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_263.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_263.c|div2shift": {
       "bucket": "AGREE"
@@ -844,7 +844,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_268.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_292.c|brace_wrap": {
       "bucket": "AGREE"
@@ -856,13 +856,13 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_31.c|cmp_swap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_31.c|memset_zero": {
       "bucket": "AGREE"
     },
     "leetcode/lc_31.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_349.c|brace_wrap": {
       "bucket": "AGREE"
@@ -892,7 +892,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_401.c|brace_wrap": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_401.c|div2shift": {
       "bucket": "AGREE"
@@ -907,7 +907,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_404.c|static_inject": {
-      "bucket": "AGREE",
+      "bucket": "CLANG_REJECT",
       "note": "#334 修复转绿（2026-10-26）：注入点实为 struct 成员（旧 note「static 局部」系误描），修前误收桶 CLANG_REJECT → 双拒 AGREE"
     },
     "leetcode/lc_50.c|cmp_swap": {
@@ -917,7 +917,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_50.c|static_inject": {
-      "bucket": "AGREE"
+      "bucket": "CLANG_REJECT"
     },
     "leetcode/lc_53.c|cmp_swap": {
       "bucket": "AGREE"
@@ -944,7 +944,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_84.c|static_inject": {
-      "bucket": "VITRO_REJECT",
+      "bucket": "ARM_DIVERGENCE",
       "note": "等价变换/定向域分叉——真病候选，待下批深挖定性"
     },
     "llm_scale/llm_scale_compiler.c|cast_strip": {

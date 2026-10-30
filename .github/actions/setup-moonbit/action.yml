@@ -1,8 +1,15 @@
 name: Setup MoonBit toolchain
 description: >-
-  Install MoonBit CLI on Windows runners (all MoonBit-consuming jobs in this
-  repo run windows-latest). version input empty = read .moonbit-version pin;
-  "latest" = deliberately unpinned (toolchain-latest-sentinel only).
+  Install MoonBit CLI on Windows (pwsh irm) and POSIX (unix.sh) runners — both
+  arms read the .moonbit-version pin. version input empty = pin; "latest" =
+  deliberately unpinned (toolchain-latest-sentinel only).
+# 审阅 P2-1/P2-4（2026-10-30 处置批）：原描述「all MoonBit-consuming jobs in
+# this repo run windows-latest」立论为误——cli-smoke-linux 与 pages 均在
+# ubuntu 装 moon；本 action 补 POSIX 分支成为双形态单源，两处内联副本删除。
+# 注意：actionlint 不校验 composite action 本体（把 action.yml 当 workflow
+# 扫会报 on/jobs missing；删掉 run 步 shell: 后对 ci.yml 仍 rc=0——审阅
+# P3-4 实测）——本文件的元数据/步面**没有静态闸**，改动靠 review + CI 首跑
+# 兜底，勿以「已过 actionlint」自居。
 inputs:
   version:
     description: 'Explicit version; empty reads .moonbit-version pin. "latest" is unpinned on purpose — sentinel use only.'
@@ -13,7 +20,7 @@ runs:
   steps:
     - name: Install MoonBit CLI (Windows, pin via .moonbit-version)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       env:
         MOONBIT_SETUP_VERSION: ${{ inputs.version }}
       run: |
@@ -22,6 +29,9 @@ runs:
         # 三笔连红 4021 警告升格）。版本变更走 .moonbit-version 单点 + 本地
         # 全闸背书，禁止裸 latest。本 action 是该纪律的单一实现点——调用处
         # 一律 uses 引用，禁止再内联 irm 安装三行（2026-10-29 收敛 12 处）。
+        # shell 用 pwsh 7（审阅 P2-2：原 powershell=5.1 与收敛前 12 处不等价
+        # ——5.1 的 Get-Content 默认 ANSI 解码、irm 走 IE 引擎，pin 文件一旦
+        # 加非 ASCII 注释即静默错值）。
         $v = "$env:MOONBIT_SETUP_VERSION"
         if ([string]::IsNullOrWhiteSpace($v)) {
           $v = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
@@ -29,3 +39,20 @@ runs:
         $env:MOONBIT_INSTALL_VERSION = $v
         irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
         Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+    - name: Install MoonBit CLI (POSIX, pin via .moonbit-version)
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        MOONBIT_SETUP_VERSION: ${{ inputs.version }}
+      run: |
+        # P2-1 收敛：与 Windows 分支同源同语义（空 input = 读 pin；unix.sh
+        # 上游支持 MOONBIT_INSTALL_VERSION——pages 接线批实证，export 使
+        # 管道右端 bash 继承）。
+        v="${MOONBIT_SETUP_VERSION}"
+        if [ -z "$v" ]; then
+          v="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/.moonbit-version")"
+        fi
+        export MOONBIT_INSTALL_VERSION="$v"
+        echo "pin: $MOONBIT_INSTALL_VERSION"
+        curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+        echo "$HOME/.moon/bin" >> "$GITHUB_PATH"

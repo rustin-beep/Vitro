@@ -30,6 +30,8 @@ import {
   classifyAgainstBaseline,
   collectJudgeEpochInputs,
   collectZombieSeeds,
+  exitDomainOf,
+  exitWordOf,
   firstIntLit,
   judgeCacheGet,
   judgeCachePut,
@@ -227,6 +229,40 @@ test("bucketOf：六桶分类 + 恶化序", () => {
   // 两臂都非 OK 且含 CRASH ⇒ vt 保持 CRASH ⇒ ARM_DIVERGENCE
   assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, { status: "TRAP", out: "t" }), "ARM_DIVERGENCE");
   assert.ok((BUCKET_RANK["ARM_DIVERGENCE"] as number) > (BUCKET_RANK["WRONG_VALUE"] as number));
+});
+
+test("返回码进比对域：return_value 1..255 追加 EXIT 行（2026-10-30 审计批红锚——修复前合法返回码被丢）", () => {
+  const frames = (rv: unknown) =>
+    JSON.stringify({ type: "diag", frame: { result: { ok: true } } }) + "\n" +
+    JSON.stringify({ type: "stdout", frame: { result: { delta: "out" } } }) + "\n" +
+    JSON.stringify({ type: "run", frame: { result: { status: "finished", return_value: rv } } });
+  assert.equal(parseVitro(frames(42)).out, "out\nEXIT:42", "return 42 须 stdout+码双入域");
+  assert.equal(parseVitro(frames(0)).out, "out", "return 0 不追加（与旧域同形）");
+  assert.equal(parseVitro(frames(undefined)).out, "out", "字段缺省 = 0（旧帧兼容）");
+});
+
+test("出口码平台镜像 exitWordOf：win32 保 uint32、POSIX 取低 8 位（与真实进程码同形）", () => {
+  assert.equal(exitWordOf(-1, "win32"), 4294967295);
+  assert.equal(exitWordOf(-1, "linux"), 255);
+  assert.equal(exitWordOf(300, "win32"), 300);
+  assert.equal(exitWordOf(300, "linux"), 44);
+  assert.equal(exitWordOf(42, "darwin"), 42);
+});
+
+test("exitDomainOf 三形：rc 0 / 1..255 / 崩溃域（clang 与 vitro 两侧单源）", () => {
+  assert.equal(exitDomainOf("s", 0), "s");
+  assert.equal(exitDomainOf("s", 42), "s\nEXIT:42");
+  assert.equal(exitDomainOf("", 42), "\nEXIT:42");
+  assert.equal(exitDomainOf("s", 3221225477), "EXIT:3221225477", "崩溃域整替（部分 stdout 不可信）");
+  assert.equal(exitDomainOf("s", -98), "EXIT:-98");
+});
+
+test("返回码盲区不钝化：带码与丢码形态须可分辨（bucketOf 端到端）", () => {
+  const ok = (out: string) => ({ status: "OK", out });
+  // 修复前的盲区形态：clang 丢码只有 stdout、vitro 带码——必须不是 AGREE
+  assert.equal(bucketOf(ok("x"), ok("x\nEXIT:42"), ok("x\nEXIT:42")), "WRONG_VALUE");
+  assert.equal(bucketOf(ok("x\nEXIT:42"), ok("x\nEXIT:42"), ok("x\nEXIT:42")), "AGREE");
+  assert.equal(bucketOf(ok("x\nEXIT:1"), ok("x\nEXIT:2"), ok("x\nEXIT:2")), "WRONG_VALUE", "return 1 vs 2 须可分辨");
 });
 
 test("norm：CRLF / 裸 CR 归一", () => {

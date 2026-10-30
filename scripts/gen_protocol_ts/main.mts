@@ -8,7 +8,7 @@
 // 是 TS 侧有**从权威源生成**的类型，而不是手抄。手抄就是又一处分叉温床。
 //
 // 权威源（2026-10-05 删区后勘正——#118）：moonbit/protocol/types.mbt（MoonBit
-// 结构体，protocol 包零依赖自持）。docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md 是
+// 结构体，protocol 包零依赖自持）。moonbit/docs/spec/STEP_PAYLOAD_SCHEMA_V0_1.md 是
 // **表述层**（人工维护的 markdown 表格）。故取「从实现生成 + 与文档双向对账」：
 // 任一方向不同步都判红——把「文档与实现是否一致」变成机器判据。
 //

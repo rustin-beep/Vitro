@@ -394,18 +394,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      # 拆批修复（2026-10-11 CI 实锤）：rules.json 不入仓（jsonmbt 真源
-      # 纪律 13——.json 由本段再生），libc_boot 断供即此。regen 三步前置。
-      - name: Install MoonBit toolchain (differential anchors)
-        uses: ./.github/actions/setup-moonbit
-
-
-
       # ── gen_api_help rules.json（#125 收尾，2026-10-15）───────────
-      # gen_api_help 内容批收敛（rules.json ≡ 原 .json.mbt 零漂移）后随
-      # jsonmbt 退场翻转出库——scripts 侧 .json.mbt 清零，本 job 的
-      # .json.mbt static gate 步随之摘除（moon 需求由差分驱动内嵌
-      # moon run 承担，工具链安装保留）。
+      # gen_api_help 内容批收敛后随 jsonmbt 退场翻转出库——本 job 原首装
+      # （rules.json regen 前置）已无消费者成死安装（审阅 P3-1，2026-10-30
+      # 处置批删）；工具链安装统一由下方 download-artifact 后的安装步承担。
 
       - uses: actions/download-artifact@v4
         with:
@@ -457,7 +449,7 @@ jobs:
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
       - name: MoonBit serve smoke (dual-host, Exit 3)
         run: |
-          cd moonbit && moon build --target native cmd/serve && cd ..
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/serve_smoke/main.mts -moonbit
         shell: bash
 
@@ -1057,6 +1049,38 @@ jobs:
         run: go vet ./scripts/...
       - name: Go test (scripts)
         run: go test ./scripts/...
+      # P3-3（2026-10-30 处置批）保险丝：「内联安装清零」原是一次性计数无闸
+      # 把守（ci_checklist 只扫 scripts/ 包）——下一个 job 照抄三行内联安装
+      # 会静默复活。断言：workflows 目录零内联安装（动词锚定 irm|curl + 域名
+      # ——正则形态防自噬：本步自身只以字面量形态携带域名，不被命中；唯一
+      # 合法实现点 = .github/actions/setup-moonbit 双形态）。
+      # 诊断版（首红 run 41042777552 复盘：本地 Git Bash/WSL/脚本逐字节三路
+      # 复刻皆绿、merge ref 文件等价——环境因子未定位，故 fail 时全量证据
+      # 打印 + 计数为空显式红，两路径可分辨）。
+      - name: Workflow install convergence (no inline moon installs)
+        shell: bash
+        run: |
+          # 修复注（run 41045815814 定案）：GitHub 的 shell:bash 默认 -eo
+          # pipefail，而 grep -c 零命中（=本断言的**正确态**）退出码为 1
+          # ——管道被 pipefail 判死、-e 杀 step ⇒ 零命中必红（本地裸 bash
+          # 无此二旗故三路复刻皆绿）。修法：grep 组内 `|| true` 消退出码，
+          # 判定只认 awk 汇总的 n。
+          echo "== workflows 目录清单："; ls -1 .github/workflows/
+          n=$({ grep -rEc '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; } | awk -F: '{s+=$NF} END{print s}')
+          echo "convergence n=[$n]"
+          hits=$({ grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; })
+          if [ -n "$hits" ]; then echo "-- 动词锚定命中行："; echo "$hits"; fi
+          echo "-- 字面量全量（仅观察不计红）："
+          grep -rnF 'cli.moonbitlang.com' .github/workflows/ || echo "（零字面量命中）"
+          if [ "$n" = "" ]; then
+            echo "::error::convergence 计数为空——grep/awk 管道异常（证据见上）"
+            exit 1
+          fi
+          if [ "$n" != "0" ]; then
+            echo "::error::workflows 内联 moon 安装 $n 处——收敛到 .github/actions/setup-moonbit（uses 引用）"
+            exit 1
+          fi
+          echo "convergence OK: workflows 零内联安装"
       - name: Install MoonBit toolchain
         uses: ./.github/actions/setup-moonbit
 
@@ -1202,6 +1226,38 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+      # 2026-10-30 审计批接线：examples/demo.mbtx 是 README 快速开始第 0 步的
+      # 门面，此前 CI 零引用——示例脚本烂了没人知道。零克隆形态（moon run
+      # demo.mbtx 拉 mooncakes 发布包）当前被 0.9.0 的 time_travel→core/abort
+      # 解析病挡住（#374；源码侧已摘 import，下一版发布自愈）——先接
+      # workspace 臂：脚本复制进 workspace 剥源内 import 块成临时 main 包跑
+      # wasm-gc，护住示例与 gateway API 的同步（跑完即删，不入库）。
+      - name: demo.mbtx quickstart smoke (workspace arm)
+        if: always()
+        run: |
+          set -e
+          pkg=cmd/demo_mbtx_smoke
+          mkdir -p "moonbit/$pkg"
+          sed '/^import {$/,/^}$/d' examples/demo.mbtx > "moonbit/$pkg/main.mbt"
+          cat > "moonbit/$pkg/moon.pkg" <<'PKGEOF'
+          // CI 冒烟临时包（demo.mbtx workspace 臂）——跑完即删，不入库。
+          import {
+            "moonbitlang/core/json",
+            "vitro/engine/gateway",
+          }
+
+          supported_targets = "wasm-gc"
+
+          pkgtype(kind: "executable")
+          PKGEOF
+          cd moonbit
+          out=$(moon run "$pkg" --target wasm-gc 2>&1)
+          echo "$out" | tail -5
+          echo "$out" | grep -q '全程.*帧' || { echo '::error::demo.mbtx 冒烟输出缺回放主标记'; exit 1; }
+          cd ..
+          rm -rf "moonbit/$pkg"
+        shell: bash
+
       # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
       # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
       - name: demo TS check (tsc --noEmit = js/ 模块类型面)
@@ -1499,11 +1555,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Install MoonBit toolchain (unix)
-        run: |
-          export MOONBIT_INSTALL_VERSION="$(tr -d '[:space:]' < .moonbit-version)"
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      # P2-1（2026-10-30 处置批）：内联 unix.sh 三行副本收敛——action 补
+      # POSIX 分支后此处统一 uses 引用（.moonbit-version pin 单源不变）。
+      - name: Install MoonBit toolchain (action, POSIX arm)
+        uses: ./.github/actions/setup-moonbit
       - name: Refresh MoonBit registry index
         run: cd moonbit && moon update
       - name: Build four arms + serve exe
@@ -1606,13 +1661,8 @@ jobs:
       # 闭包可能含生成器簇「真实仓库 -check」用例（moon fmt 归一）与
       # gen_svg 的 facts 输入——与 scripts-ts 同因（2026-10-23 五红同根实锤）
       - if: steps.changed.outputs.count != '0'
-        name: Install MoonBit toolchain
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-          $env:MOONBIT_INSTALL_VERSION = (Get-Content "$env:GITHUB_WORKSPACE/.moonbit-version" -Raw).Trim()
-          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.moon\bin"
+        name: Install MoonBit toolchain (action, converged)
+        uses: ./.github/actions/setup-moonbit
       - if: steps.changed.outputs.count != '0'
         name: facts collect (gen_svg -check input)
         working-directory: ${{ github.workspace }}
@@ -1650,11 +1700,20 @@ jobs:
           HYGIENE: ${{ needs.hygiene.result }}
           DEMO: ${{ needs.demo.result }}
           SCRIPTS_TS: ${{ needs.scripts-ts.result }}
+          BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
         run: |
           set +e
+          # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
+          # backend-triage 红/跳过时汇总不判红）；计数文案改由数组推导防再陈旧。
+          pairs=(
+            "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE"
+            "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"
+            "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
+            "cli-smoke-linux:$CLI_SMOKE_LINUX"
+          )
           bad=0
-          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS" "cli-smoke-linux:$CLI_SMOKE_LINUX"; do
+          for pair in "${pairs[@]}"; do
             name="${pair%%:*}"; result="${pair#*:}"
             echo "$name=$result"
             if [ "$result" != "success" ]; then bad=1; fi
@@ -1663,7 +1722,7 @@ jobs:
             echo "::error::CI 汇总红：有 job failure/skipped——skipped 不算绿（防遮蔽）"
             exit 1
           fi
-          echo "CI 汇总：9 个上游 job 全部 success"
+          echo "CI 汇总：${#pairs[@]} 个上游 job 全部 success"
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

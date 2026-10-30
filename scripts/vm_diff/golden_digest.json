@@ -3477,10 +3477,10 @@
       "memory_sha": "de280dad311b6644"
     },
     "gap/ub_missing_return.c": {
-      "src_sha": "54e79345",
+      "src_sha": "44e7cbbb",
       "exit_code": 0,
       "stdout_sha": "5feceb66ffc86f38",
-      "memory_sha": "ad82c44649d5315c"
+      "memory_sha": "95254d59cd5b8735"
     },
     "gap/variadic_macro.c": {
       "src_sha": "36f66bdb",

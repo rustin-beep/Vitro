@@ -66,14 +66,10 @@ fn main raise {
         shared_vfs
       } else {
         let v : Map[String, String] = Map([])
-        collect_files(dirname_of(path), v)
+        collect_files(dir_of(path), v)
         v
       }
-      let r = @lexer.tokenize_with_vfs(
-        src,
-        files=vfs,
-        base_dir=dirname_of(path),
-      )
+      let r = @lexer.tokenize_with_vfs(src, files=vfs, base_dir=dir_of(path))
       @fs.write_string_to_file(
         "\{out_dir}/\{stem}.l2.tsv",
         @lexer.dump_lex_tsv(r),
@@ -84,17 +80,30 @@ fn main raise {
 }
 
 ///|
-/// 路径的目录部分（无分隔符返回 "."）。
-fn dirname_of(path : String) -> String {
-  let mut i = path.length() - 1
-  while i >= 0 {
-    let c = path[i].to_int()
-    if c == '/' || c == '\\' {
-      return path[0:i].to_owned()
+/// 路径目录段（dir_of 族同义复制件——cmd 层互不可 import；唯一分隔符
+/// 在 0 位 = POSIX 根级文件（"/x.c"）返回 "/"——#378：旧 dirname_of 返回
+/// "" 作 base_dir ⇒ 根级主文件 quote-include 候选链失配；无分隔符返回
+/// "."（collect_files 裸名键约定依赖此值）。**中段原文透传不归一**——
+/// 目录模式 VFS 键 = target 参数原文拼装（Windows 反斜杠形态），base_dir
+/// 须与其同源；归一会让候选键与 VFS 键结构性失配 ⇒ include 恒 miss
+/// （2026-10-29 diff_gate typeck 五案例回归实证后回退，与 gateway 系
+/// dir_of 的归一形态有意分叉：gateway 侧候选键经 normalize_path 消费）。
+/// 修改须与其余 dump 三包的 dir_of 同步）。
+fn dir_of(path : String) -> String {
+  let mut last = -1
+  for i = 0; i < path.length(); i = i + 1 {
+    let c = path[i]
+    if c.to_int() == 47 || c.to_int() == 92 {
+      last = i
     }
-    i -= 1
   }
-  "."
+  if last == 0 {
+    "/"
+  } else if last < 0 {
+    "."
+  } else {
+    path[0:last].to_owned()
+  }
 }
 
 ///|
@@ -132,7 +141,7 @@ fn basename_no_ext(path : String) -> String {
 /// 跳过）。
 fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
   for name in @fs.read_dir(dir) {
-    // 审阅 P2-b（2026-10-06）：dir 为 "."（裸名/./x.c 形态的 dirname_of 产物）
+    // 审阅 P2-b（2026-10-06）：dir 为 "."（裸名/./x.c 形态的 dir_of 产物）
     // 时键用裸名——与 resolver 候选键经 normalize_path（丢 "." 段）一致；
     // 旧 "./hdr.h" 键结构性失配致同目录 include 恒 lex-fail
     let full = if dir == "." { name } else { "\{dir}/\{name}" }

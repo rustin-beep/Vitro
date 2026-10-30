@@ -1,5 +1,40 @@
 ## [Unreleased]
 
+### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30）
+
+- **#376 诊断归属治本**：`gateway/serve_compile` 的 `resolve_location`
+  此前查 merge_units 拼接坐标 `ranges`，而错误 `loc.line` 是词法仿古
+  坐标（include 展开段被 Rust splice 补偿缺陷复刻改写——短文件展开段
+  为负行号、长文件展开段尾可翻正），两坐标系错位 ⇒ 展开文件内错误
+  归属 `main.c` 且行号为负直出（js 臂 api compile 实测
+  `{"filename":"main.c","line":-1}`）。修后双坐标系共存：LineMap.spans
+  （词法真坐标——探针实证展开段主坐标区间即 `[-2..-1]`）`file_id ≥ 1`
+  展开段命中优先（翻正段先走 ranges 会误归主文件拼接段），铺底段
+  （fid=0）回落 ranges 原语义——多 .c 纯拼接的分段归属只在 ranges，
+  P0-4 既有锚（b.c 反查）保位；单文件无 include 形态出口与修前逐位
+  一致（protocol_frames 47 帧全一致实证）。连带口径：① errors 富化串
+  行号改映射后值（与 diagnostics.line 一致）；② resolve 未命中回落从
+  `"main.c"` 硬编码改 `main_name`（files 形态主名）；③ fix 族
+  （generate_fix/replace_*）保持拼接坐标（多文件形态 fix 行字段对前端
+  文件内定位无意义——既有口径非本批引入，治本需 fix 行表按文件切分，
+  另批）。锚 `issue376_included_file_diag_attributed`（sib.c 首行语法
+  错断言归属 `(sib.c, 1)`，修前红 `(main.c, -1)`）。
+- **#377 修前定性勘正 + 治本**：issue 声称的「嵌套 include vfs 键失配
+  E1021」**不复现**——resolver 候选链 base_dir 臂对主文件根相对的原文
+  键恒兜底（wasm 臂主文件登记名恒 basename ⇒ base_dir 恒 "."）。真实
+  存活缺陷 = `collect_walk` 以 include 原文为全局 `seen` 键 ⇒ 跨目录
+  同名 include（`sub/a.h` 与 `other/c.h` 各 include 同名 `"b.h"`）
+  **静默吞文件**——第二个 b.h 不进 vfs，clang 零诊断 vs wasm 臂 E3023
+  （`ob_val` 未声明）实测。修后登记键 = 父键目录 + include 原文规范化
+  （`vfs_key_for`，resolver cur_dir 臂同式：`..` 回退/`//` 折叠/`.` 丢），
+  键/查找两侧直接命中不再依赖 base_dir 巧合，同名各得独立键。锚
+  `issue377_vfs_key_follows_resolver_candidate`（六形态 inspect；J9：
+  旧逻辑突变红 → 新逻辑绿）。
+- **验证面**：gateway native 154/154（+1 锚）、vitro_wasm js 3/3（+1
+  锚）、裸口径 967 持平、native 全量 1157/1157；protocol_frames 47 帧
+  一致；CLI smoke 三臂同形全绿；E2E 三场景（同名转 COMPILE-OK 对齐
+  clang / 嵌套回归 / 归属 `(sib.c,1/2)`）双产物亲验。
+
 ### fix(corpus+docs+ci): 审计批——GPL 语料出仓 45 份 + README 声明面数字/发布链对真值 + fuzz 返回码入比对域 + ci-summary 三面失衡治本（2026-10-30）
 
 - **GPL 语料出仓（红线执法）**：`corpus/baseline/` 中 45 份 TheAlgorithms/C

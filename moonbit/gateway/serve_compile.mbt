@@ -91,10 +91,29 @@ fn resolve_filename(
 /// 病 42 修正（#71 第三梯队，2026-10-11）：合并坐标 → (文件名, 文件内行号)。
 /// 此前诊断 line 直出合并坐标（多文件时=错值；单文件巧合正确掩盖）——
 /// filename 解析对了而行号没映射（resolve_filename 只回名）。
+///
+/// #376（2026-10-30）：错误 loc.line 是词法仿古坐标（include 展开段行
+/// 号被仿古补偿改写——短文件展开段为负行号、长文件展开段尾可翻正，
+/// Rust splice 补偿缺陷的忠实复刻），与 merge_units 拼接坐标系错位 ⇒
+/// 展开文件内的错误归属 main.c 且行号为负。修后**双坐标系共存**：
+/// LineMap.spans 按仿古坐标记录区间（探针实证展开段主坐标区间即
+/// [-2..-1]），lookup 返回 (file_id, 文件内行号)——**file_id ≥ 1（展开
+/// 段）命中优先**（翻正段若先走 ranges 会误归主文件拼接段）；file_id
+/// 0（铺底段）不直接放行——多 .c 纯拼接的分段归属只在 ranges 坐标系
+/// （LineMap 无拼接段概念），回落 ranges 原语义（含行内偏移公式），
+/// P0-4 既有锚（b.c 反查）保位。两系都未命中 → None（回落主名，病 42
+/// 语义）；单文件无 include 形态两系出口与修前逐位一致。
 fn resolve_location(
   line : Int32,
   ranges : Array[@session.FileRange],
+  line_map : @token.LineMap,
+  main_name : String,
+  included : Array[String],
 ) -> (String, Int32)? {
+  let (fid, file_line) = line_map.lookup(line)
+  if fid >= 1 && fid <= included.length() {
+    return Some((included[fid - 1], file_line))
+  }
   for r in ranges {
     if line >= r.start_line && line <= r.end_line {
       return Some((r.filename, line - r.start_line + 1))
@@ -142,12 +161,18 @@ fn push_one_diag(
   message : String,
   severity : Int32,
   ranges : Array[@session.FileRange],
+  line_map : @token.LineMap,
+  main_name : String,
+  included : Array[String],
   source_lines : Array[String],
 ) -> Unit {
   let entry = match @diag.ErrorCode::from_code(code) {
     Some(e) => e.catalog()
     None => None
   }
+  // fix 族行表（source_lines=拼接全源）与 replace_* 出口保持拼接坐标
+  //（#376 登记：多文件形态下 fix 行字段对前端文件内定位无意义——既有
+  // 口径，非本批回归；治本需 fix 行表按文件切分，另批）
   let fix = @diagnostics.generate_fix(code, line, column, message, source_lines)
   let fix_suggestion = if fix.suggestion == "" {
     match entry {
@@ -157,9 +182,12 @@ fn push_one_diag(
   } else {
     fix.suggestion
   }
-  let (filename, mapped_line) = match resolve_location(line, ranges) {
+  let (filename, mapped_line) = match
+    resolve_location(line, ranges, line_map, main_name, included) {
     Some((f, l)) => (f, l)
-    None => ("main.c", line)
+    // 回落主名（#376 前 = "main.c" 硬编码；files 形态主名 = 首个拼接
+    // unit——多 .c 工程主名非 main.c 时随主名更准确）
+    None => (main_name, line)
   }
   s.compile.diagnostics.push(@session.Diagnostic::{
     line: mapped_line,
@@ -178,8 +206,9 @@ fn push_one_diag(
   })
   let rich = match entry {
     Some(i) =>
-      "[\{i.icon}] \{i.title} — 错误 E\{code} (第\{line}行, 第\{column}列): \{message}"
-    None => "错误 E\{code} (第\{line}行, 第\{column}列): \{message}"
+      "[\{i.icon}] \{i.title} — 错误 E\{code} (第\{mapped_line}行, 第\{column}列): \{message}"
+    None =>
+      "错误 E\{code} (第\{mapped_line}行, 第\{column}列): \{message}"
   }
   s.compile.errors = s.compile.errors + rich + "\n"
 }
@@ -190,6 +219,9 @@ fn push_lex_errors(
   s : @session.Session,
   errors : Array[@token.LexError],
   ranges : Array[@session.FileRange],
+  line_map : @token.LineMap,
+  main_name : String,
+  included : Array[String],
   source_lines : Array[String],
 ) -> Unit {
   for e in errors {
@@ -201,6 +233,9 @@ fn push_lex_errors(
       e.message,
       0,
       ranges,
+      line_map,
+      main_name,
+      included,
       source_lines,
     )
   }
@@ -212,6 +247,9 @@ fn push_lex_warnings(
   s : @session.Session,
   warnings : Array[@token.LexWarning],
   ranges : Array[@session.FileRange],
+  line_map : @token.LineMap,
+  main_name : String,
+  included : Array[String],
   source_lines : Array[String],
 ) -> Unit {
   for w in warnings {
@@ -223,6 +261,9 @@ fn push_lex_warnings(
       w.message,
       1,
       ranges,
+      line_map,
+      main_name,
+      included,
       source_lines,
     )
   }
@@ -235,12 +276,16 @@ fn push_code_errors(
   errors : Array[(Int32, Int32, Int32, String)],
   severity : Int32,
   ranges : Array[@session.FileRange],
+  line_map : @token.LineMap,
+  main_name : String,
+  included : Array[String],
   source_lines : Array[String],
 ) -> Unit {
   for pair in errors {
     let (code, line, column, message) = pair
     push_one_diag(
-      s, code, line, column, message, severity, ranges, source_lines,
+      s, code, line, column, message, severity, ranges, line_map, main_name, included,
+      source_lines,
     )
   }
 }
@@ -389,10 +434,26 @@ fn serve_compile_pipeline(
     st.preprocessor_trace.push(t.render())
   }
   if !lexed.warnings.is_empty() {
-    push_lex_warnings(s, lexed.warnings, ranges, source_lines)
+    push_lex_warnings(
+      s,
+      lexed.warnings,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
   }
   if !lexed.errors.is_empty() {
-    push_lex_errors(s, lexed.errors, ranges, source_lines)
+    push_lex_errors(
+      s,
+      lexed.errors,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
     st.errors = st.errors + "词法错误\n"
     reorder_errors_before_warnings(s)
     return false
@@ -405,7 +466,16 @@ fn serve_compile_pipeline(
     for e in r.errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 0, ranges, source_lines)
+    push_code_errors(
+      s,
+      rows,
+      0,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
     st.errors = st.errors + "语法错误\n"
   }
   let program = match r.program {
@@ -461,7 +531,16 @@ fn serve_compile_pipeline(
     for e in type_errors {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 0, ranges, source_lines)
+    push_code_errors(
+      s,
+      rows,
+      0,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
     // 失败路径的 type_warnings 同帧透出（2026-10-06 审阅 P2：此前早退丢弃
     // ——native cli_run 的 typeck-error 分支显式输出 warns，壳逐帧渲染即
     // 拿不到；「错误 + 警告」同出对齐 native 失败路径形态。帧序 [lexW,
@@ -471,7 +550,16 @@ fn serve_compile_pipeline(
       wrows.push((w.code, w.line, w.column, w.message))
     }
     if !wrows.is_empty() {
-      push_code_errors(s, wrows, 1, ranges, source_lines)
+      push_code_errors(
+        s,
+        wrows,
+        1,
+        ranges,
+        lexed.line_map,
+        main_name,
+        lexed.included_files,
+        source_lines,
+      )
     }
     st.errors = st.errors + "类型错误\n"
     reorder_errors_before_warnings(s)
@@ -482,14 +570,32 @@ fn serve_compile_pipeline(
     for e in type_warnings {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 1, ranges, source_lines)
+    push_code_errors(
+      s,
+      rows,
+      1,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
   }
   if !type_hints.is_empty() {
     let rows : Array[(Int32, Int32, Int32, String)] = []
     for e in type_hints {
       rows.push((e.code, e.line, e.column, e.message))
     }
-    push_code_errors(s, rows, 2, ranges, source_lines)
+    push_code_errors(
+      s,
+      rows,
+      2,
+      ranges,
+      lexed.line_map,
+      main_name,
+      lexed.included_files,
+      source_lines,
+    )
   }
   // #213：语法错在场时编译必然失败（typeck 只是补充报错面）——到此
   // 收口，不进 codegen（半解析程序不生成，防残缺 AST 触发未接线族噪音）
@@ -514,7 +620,19 @@ fn serve_compile_pipeline(
       // reorder_errors_before_warnings——四条早退路径共用，审阅 P1-①）
       for e in gen_errors {
         st.errors = st.errors + "生成错误: \{e.message}\n"
-        push_one_diag(s, e.code, e.line, e.column, e.message, 0, [], [])
+        push_one_diag(
+          s,
+          e.code,
+          e.line,
+          e.column,
+          e.message,
+          0,
+          ranges,
+          lexed.line_map,
+          main_name,
+          lexed.included_files,
+          source_lines,
+        )
       }
       reorder_errors_before_warnings(s)
       st.errors = st.errors + "字节码生成错误\n"

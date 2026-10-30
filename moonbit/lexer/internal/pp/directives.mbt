@@ -654,6 +654,10 @@ fn count_char(s : String, target : Char) -> Int32 {
 /// #373 审阅 P2-1（2026-10-29）：唯一 '/' 在 0 位 = POSIX 根级文件
 /// （"/x.c"）返回 "/" 不返回 ""——否则根级被 include 文件内的继续
 /// include 会跳过当前目录候选（cur_dir "" 被判空）退到 base_dir。
+/// #378（2026-10-29）命名收口：全仓 `dir_of` 族六处（gateway/vitro_wasm/
+/// dump×4；根级 0 位→"/" + 无分隔符 "."）与本函数语义**有意不同**——
+/// include 指令行路径已归一，只认 '/'；同目录相对语义须空串（下游判空
+/// 选路），故保留 `dirname_of` 专名不并入 dir_of 族，两族勿混改。
 fn dirname_of(path : String) -> String {
   let mut last : Int32? = None
   for i = 0; i < path.length(); i = i + 1 {

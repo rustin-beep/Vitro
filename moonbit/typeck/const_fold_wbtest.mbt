@@ -1888,3 +1888,135 @@ test "review344_extern_follows_static_allowed" {
     msg="extern 跟随 static 是合法形态（6.2.2p4），不得报 E3001",
   )
 }
+
+///|
+/// #369（2026-10-29，#368 突变抽查）：tentative「AND 定稿」三声明形态——
+/// `int x = 5; int x; int x = 6;`（前实 → tent → 实）第三笔实定义必须落
+/// E3001 兜底（双实定义仍拒）。AND→OR 突变（后随 tentative 把已定稿符号
+/// 降级回 tentative）下本锚红——此前 wbtest+digest 双绿放过的零锚面。
+test "issue369_real_tent_real_rejected" {
+  let loc1 = @source.SourceLoc::new(1, 1)
+  let loc2 = @source.SourceLoc::new(2, 1)
+  let loc3 = @source.SourceLoc::new(3, 1)
+  let real1 : @ast.GlobalDecl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "x",
+      Some(@ast.Expr::Literal(5, loc1, @ast.Type::int())),
+    ),
+    loc: loc1,
+  }
+  let tent : @ast.GlobalDecl = {
+    ..gdecl(@ast.Type::int(), "x", None),
+    loc: loc2,
+  }
+  let real2 : @ast.GlobalDecl = {
+    ..gdecl(
+      @ast.Type::int(),
+      "x",
+      Some(@ast.Expr::Literal(6, loc3, @ast.Type::int())),
+    ),
+    loc: loc3,
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, _, _) = tc.check(gprog([real1, tent, real2]))
+  assert_true(
+    errs.exists(e => e.code == 3001),
+    msg="前实→tentative→实（第三笔实定义）必须报 E3001（双实定义仍拒，AND 定稿语义）",
+  )
+}
+
+///|
+/// #370（2026-10-29，#368 突变抽查）：列级判据同族两处的 E3058 侧——
+/// `int main(void){ return f(); } static int f(void){...}` 同行、用点列
+/// 先于声明列，必须报 E3058（W3085 侧已有 review344_sameline_call_warns
+/// 锚；本侧列级判据删除后静默漏报，wbtest+digest 双绿放过的零锚面）。
+test "issue370_sameline_static_call_e3058" {
+  let use_loc = @source.SourceLoc::new(1, 27)
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 33),
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(7, use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+    is_static: true,
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 1),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Call("f", [], use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check({ ..gprog([]), funcs: [main, f_def], })
+  assert_true(
+    errs.exists(e => e.code == 3058),
+    msg="同行 static 函数先用后声明必须报 E3058（列级判据 E3058 侧）",
+  )
+}
+
+///|
+/// PR #375 审阅 P1-2（2026-10-30）：单行「先定义后调用」合法形态——
+/// `static int f(void){ return 7; } int main(void){ return f(); }`
+/// （clang 零诊断）。E3058 同行列级判据的 &&→|| 突变会让
+/// `loc.line == first_decl_line` 单条件成立 ⇒ 对**一切同行使用**（含合法的
+/// 定义后调用）误报 E3058——此前该突变双杀阵全绿（引擎闸 P1-1 缺陷期假绿）
+/// 且被误登记为「实践等价」豁免；本锚落地后该豁免条目已删。
+test "review375_sameline_define_then_use_legal" {
+  let def_loc = @source.SourceLoc::new(1, 1)
+  let use_loc = @source.SourceLoc::new(1, 46)
+  let f_def : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: def_loc,
+    return_type: @ast.Type::int(),
+    name: "f",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Literal(7, def_loc, @ast.Type::int())),
+        def_loc,
+      ),
+    ),
+    source_file: "t.c",
+    is_static: true,
+  }
+  let tc = TypeChecker::new()
+  let main : @ast.FuncDecl = {
+    ..Default::default(),
+    loc: @source.SourceLoc::new(1, 28),
+    return_type: @ast.Type::int(),
+    name: "main",
+    params: [],
+    body: Some(
+      @ast.Stmt::Return(
+        Some(@ast.Expr::Call("f", [], use_loc, @ast.Type::int())),
+        use_loc,
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let (_, errs, _, _) = tc.check({ ..gprog([]), funcs: [f_def, main], })
+  assert_false(
+    errs.exists(e => e.code == 3058),
+    msg="单行先定义后调用（合法）不得报 E3058——列级判据 &&→|| 突变的杀伤锚",
+  )
+  assert_false(
+    errs.exists(e => e.code == 3023),
+    msg="单行先定义后调用（合法）不得报 E3023",
+  )
+}

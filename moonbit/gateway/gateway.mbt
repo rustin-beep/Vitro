@@ -168,11 +168,16 @@ fn lex_full_source(
 }
 
 ///|
-/// 路径目录段（cmd/run/main.mbt dir_of 的复制件——等价性经 7 形态
-/// 端到端探针实证，见彼处头注；修改须两处同步）。#373 审阅 P2-1
-/// （2026-10-29）：唯一分隔符在 0 位 = POSIX 根级文件（"/main.c"），
-/// 目录段取 "/" 不取 "."——否则根级主文件的 quote-include 候选键按
-/// cwd 相对解析（Linux 真 fs 下 100% E1021）。
+/// 路径目录段（dir_of 族六处复制件之一——本处 + vitro_wasm/dump_tokens/
+/// dump_ast/dump_typeck/dump_compile 五处；cmd 层互
+/// 不可 import 故复制。根级（0 位→"/"）与无分隔符（→"."）语义六处一致；
+/// **中段形态有意分叉**：本处归一反斜杠（serve 侧候选键经 normalize_path
+/// 消费，POSIX 形态），dump/vitro_wasm 系原文透传（base_dir 须与各自
+/// VFS 收集键/target 原文同源，归一即结构性失配——2026-10-29 #378 回归
+/// 实证），修改须按族核对消费方键形态）。
+/// #373 审阅 P2-1（2026-10-29）：唯一分隔符在 0 位 = POSIX 根级文件
+/// （"/main.c"），目录段取 "/" 不取 "."——否则根级主文件的 quote-include
+/// 候选键按 cwd 相对解析（Linux 真 fs 下 100% E1021）。
 fn dir_of(path : String) -> String {
   let mut last = -1
   for i = 0; i < path.length(); i = i + 1 {

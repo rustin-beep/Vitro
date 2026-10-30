@@ -276,24 +276,28 @@ fn scan_quote_includes(src : String) -> Array[String] {
 }
 
 ///|
-/// 目录段（最后 / 或 \ 之前；无分隔符 = "."——cwd 相对）。#373 审阅
-/// P2-1（2026-10-29）：唯一分隔符在 0 位 = POSIX 根级文件（"/main.c"）
-/// 取 "/"——与 gateway dir_of 同修（否则根级主文件的 include 磁盘
-/// 读取按 cwd 相对拼接）。
-fn dir_of(p : String) -> String {
-  let cs = p.to_array()
-  let mut idx = -1
-  for i = 0; i < cs.length(); i = i + 1 {
-    if cs[i] == '/' || cs[i] == '\\' {
-      idx = i
+/// 目录段（dir_of 族六处同义复制件之一，见 gateway/gateway.mbt dir_of
+/// 头注——#378 起 dump×4 已并入同义族（中段原文透传形态），修改须六处
+/// 同步）。最后 / 或 \
+/// 之前；无分隔符 = "."——cwd 相对。#373 审阅 P2-1（2026-10-29）：唯一
+/// 分隔符在 0 位 = POSIX 根级文件（"/main.c"）取 "/"——与 gateway dir_of
+/// 同修（否则根级主文件的 include 磁盘读取按 cwd 相对拼接）。
+fn dir_of(path : String) -> String {
+  let mut last = -1
+  for i = 0; i < path.length(); i = i + 1 {
+    let c = path[i]
+    if c.to_int() == 47 || c.to_int() == 92 {
+      last = i
     }
   }
-  if idx == 0 {
+  if last == 0 {
     "/"
-  } else if idx < 0 {
+  } else if last < 0 {
     "."
   } else {
-    p[:idx].to_owned()
+    // 中段原文透传不归一（#378：与 dump 系同款——base_dir 与 collect_walk
+    // VFS 键同源约束；2026-10-29 diff_gate 五案例回归实证后回退）
+    path[:last].to_owned()
   }
 }
 

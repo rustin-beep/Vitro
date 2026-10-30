@@ -160,19 +160,19 @@
     },
     {
       "id": "dirname_of_copies",
-      "concept": "路径目录段函数 7 复制件三语义组（审阅 P3-3 登记义务补全）：dump_ast/dump_compile/dump_typeck/dump_tokens 四份 dirname_of（宿主双分隔符版，逐份同型人工同步）+ cli_run/gateway 两份 dir_of（同语义异名——宿主双分隔符版）+ lexer/internal/pp/directives 的 dirname_of（VFS 正斜杠纯字符串域——语义故意不同非同源，勿「统一」）",
+      "concept": "路径目录段函数 7 复制件两组（#378 收口后形态）：dir_of 六份——dump_ast/dump_compile/dump_typeck/dump_tokens 四份（cmd 层互不可 import 逐份同型：根级 0 位→\"/\" + 无分隔符 \".\" + 中段原文透传不归一——与目录模式 VFS 收集键同源约束）+ gateway 一份（根级/无分隔符同语义，中段归一反斜杠——候选键经 normalize_path 消费，形态要求不同）+ cmd/vitro_wasm 一份（原文透传）；lexer/internal/pp/directives 的 dirname_of 一份（VFS 正斜杠纯字符串域、无分隔符空串——语义故意不同非同源，勿「统一」）",
       "kind": "registered",
       "copies_must_match": [],
       "rust_source": "",
       "moonbit_source": "moonbit/cmd/dump_tokens/main.mbt",
-      "sync": "dump 四份 + dir_of 两份改其一须连坐全部六处（宿主双分隔符组）；pp 版独立演化（VFS 语义）；函数级复制无法走 copies 文件级机判——registered 登记 + 审阅复核",
+      "sync": "根级/无分隔符语义六处一致，改其一须连坐核对六处；中段形态按族分叉（gateway 归一 / dump×4+vitro_wasm 原文透传——#378/#380 键形态=结构依赖实证，勿跨族「统一」）；dump×4 的 VFS 键拼装同步连坐（vfs_join 四份同型，含根级 \"/\"+name 特例）；pp 版独立演化（VFS 语义）；函数级复制无法走 copies 文件级机判——registered 登记 + 审阅复核",
       "consumers": [
         "moonbit/cmd/dump_* 四工具",
-        "moonbit/cmd/lib/cli",
+        "moonbit/cmd/vitro_wasm",
         "moonbit/gateway",
         "moonbit/lexer/internal/pp"
       ],
-      "anchor": "2026-10-05 审阅 P3-3（本批新增 3 份未登记而同批登记了 stdout_stub 两份——登记义务不一致实锤）",
+      "anchor": "2026-10-05 审阅 P3-3 登记；2026-10-30 PR #380 审阅 P2-2 连坐更新（#378 收口：dump×4 改名 dir_of、cli_run 副本已随薄壳化消失、中段形态按族分叉实证）",
       "upstream_ref": "用户审阅报告 2026-10-05 P3-3"
     }
   ]

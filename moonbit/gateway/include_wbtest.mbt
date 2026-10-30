@@ -387,3 +387,29 @@ test "root_level_absolute_main_include_issue356r2" {
   // 自恢复：None-reader 等效未注册（后续锚不受全局状态污染）
   set_include_reader(fn(_path : String) -> String? { None })
 }
+
+///|
+test "issue376_included_file_diag_attributed" {
+  // #376（2026-10-30）：被 include 展开文件内的错误必须归属自身文件 +
+  // 文件内正行号——此前 resolve_location 查 merge_units 拼接坐标 ranges，
+  // 而错误 loc.line 是词法仿古坐标（展开段为负行号），两坐标系永不相交
+  // ⇒ 回落 ("main.c", 负行号) 直出。修后走 LineMap.spans（词法真坐标，
+  // 探针实证展开段主坐标区间即负区间 [-2..-1]）+ file_id → 主名/included
+  // 键映射。锚断言 sib.c 首行语法错归属 ("sib.c", 1)——修前红：
+  // filename=="main.c" 且 line==-1。
+  include_reader.val = None
+  let (resp, _) = serve_handle(
+    session,
+    "{\"id\":15,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"#include \\\"sib.c\\\"\\nint main(void){ return 0; }\\n\"}," +
+    "{\"filename\":\"sib.c\",\"source\":\"int f( {\\nint g(void){ return 1; }\\n\"}]}}",
+  )
+  assert_false(session.compile.compiled, msg="语法错在场编译必败")
+  let hit = session.compile.diagnostics
+    .iter()
+    .any(fn(d) { d.filename == "sib.c" && d.line == 1 && d.error_code != 0 })
+  assert_true(
+    hit,
+    msg="sib.c 首行语法错归属 (sib.c, 1)——修前 (main.c, -1)",
+  )
+}

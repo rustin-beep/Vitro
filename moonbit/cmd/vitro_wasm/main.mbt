@@ -187,10 +187,45 @@ fn collect_walk(
     if inc_src != "" {
       // 病 111（#71，2026-10-16）：登记名归一——gateway resolver 对
       // include 键剥 `./` 段后查找，include 原文（`./x.h`）作 vfs 键即
-      // 失配 E1021（native 臂经 fs reader 无此问题）
-      collect_walk(inc_path, strip_dot_segments(inc), inc_src, entries, seen)
+      // 失配 E1021（native 臂经 fs reader 无此问题）。
+      // #377（2026-10-30）：登记键升级为父键目录 + include 原文规范化
+      //（vfs_key_for，resolver cur_dir 臂同式）——include 原文键在嵌套
+      // include 下仅靠 base_dir 臂巧合兜底，且跨目录同名 include 共键
+      // ⇒ seen 误吞（clang clean vs E3023 实锤）
+      collect_walk(inc_path, vfs_key_for(name, inc), inc_src, entries, seen)
     }
   }
+}
+
+///|
+/// vfs 登记键（#377，2026-10-30）：父登记键目录 + include 原文的规范化
+/// 拼写——gateway resolver 候选链 cur_dir 臂同式
+///（normalize(dir_of(父键) + "/" + inc)，lexer/internal/pp/resolver.mbt）。
+/// 旧逻辑（登记 strip_dot_segments(inc) = include 原文）下键与查找两侧
+/// 仅靠 base_dir 臂巧合兜底，且跨目录同名 include 共键 ⇒ seen 误吞
+///（clang clean vs E3023 实锤）；对齐后各文件独立键、resolver cur_dir
+/// 臂直接命中。`..` 回退与 `//` 折叠 = resolver normalize_path 同语义
+///（cmd 层不可 import lexer/internal——复制件，dir_of 族先例）。
+fn vfs_key_for(parent_name : String, inc : String) -> String {
+  let parts : Array[String] = []
+  for seg in (dir_of(parent_name) + "/" + inc).split("/") {
+    let s : String = seg.to_owned()
+    if s == ".." {
+      if parts.length() > 0 {
+        ignore(parts.pop())
+      }
+    } else if s != "." && s != "" {
+      parts.push(s)
+    }
+  }
+  let b = StringBuilder()
+  for i, seg in parts {
+    if i > 0 {
+      b.write_char('/')
+    }
+    b.write_string(seg)
+  }
+  b.to_string()
 }
 
 ///|

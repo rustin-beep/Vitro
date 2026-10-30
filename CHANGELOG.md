@@ -24,11 +24,12 @@
   golden ✓ → moon run DIFF → moonbit cwd 下直接 exe 复现 DIFF）后回退
   归一、仅保留根级修复，typeck_diff 复绿。**教训**：复制件"语义对齐"
   必须先核对各消费方的键形态同源约束，形态差异可能是结构依赖而非漂移。
-- **红绿锚**：dump×4 各 2 test wbtest（native-only 口径
+- **红绿锚**：dump×4 wbtest（native-only 口径
   `MOON_CC=clang moon test --target native -p dump_*`——裸 moon test
   静默跳过）+ vitro_wasm 2 test（`--target js` 口径）：根级 `"/x.c" →
-  "/"` 修前红；无分隔符 `"."`、中段原文透传存量语义钉住。dump 族红证
-  四包全红（各 2 failed）后转绿。
+  "/"` 修前红；无分隔符 `"."`、中段原文透传存量语义钉住。红证口径
+  修正（#380 审阅 P3-3）：初版锚组实测四包各 2 failed 系**含随后回退
+  的归一断言**；终态锚组在旧实现下仅根级 1 条红（复测实证 1 failed/包）。
 - **验收**：`moon check` 绿（39 警告全豁免族）；裸 `moon test`
   964/964；native 全量 1140/1140（README×2 native 计数连坐 1132→1140，
   facts --strict 漂移 0）；`typeck_diff` 558/558 PASS、`codegen_diff`
@@ -38,6 +39,28 @@
   clang 22.1.4 与 moon 自带 runtime（process.c LPDWORD 指针类型）不兼容
   阻塞（CI runner 自带 clang 版本无此问题，#379 工具链环境遗留，非本批
   引入；cmd/run 不在 dir_of 消费链，留 CI lane 收敛）。
+- **审阅处置（2026-10-30，PR #380）P2-1 根级修复链路补全**：只修
+  `dir_of` 未连坐 VFS 键拼装——`dir="/"` 时 `collect_files` 仍按中段
+  风格拼 `"//hd.h"`，与 resolver 候选键经 normalize_path 折叠的
+  `"/hd.h"` 失配（VfsProvider 纯内存精确匹配无磁盘回落）⇒ 根级 VFS
+  通道两版互补双败（旧版键 `"/name"` 对、`base_dir=""` 错；新版
+  `base_dir="/"` 对、键 `"//name"` 错）。修法：键拼装提取 `vfs_join`
+  单点 + 根级特例 `"/"+name`（四包连坐，collect_files 体各自保留）；
+  锚升级**行为级**（`tokenize_with_vfs` + `base_dir="/"` + 键
+  `"/hd.h"` 纯内存可解析，三平台可跑）——锚打链路不打返回值，纯函数
+  断言证明不了键形态两侧一致（typeck_diff 语料路径全含目录段，走不到
+  `dir="/"`，此即门禁未抓根因）。红证：旧拼装下 `vfs_join("/","hd.h")`
+  断言红（实得 `"//hd.h"`）+ 行为锚同场绿（证链路本身通）。影响面
+  诚实登记：POSIX 根级主文件现实极罕见、Windows `read_dir("/")`
+  error 161 不可达——修复为正确性完备而非现网止血。
+  **P2-2**：single_source `dirname_of_copies` 登记连坐更新（「四份
+  dirname_of + cli_run/gateway 两份 dir_of」→ 六份 dir_of 两组形态 +
+  pp 独立；consumers 摘 `cmd/lib/cli`〔副本已消失〕换 `vitro_wasm`）。
+  **P3×4**：wbtest 头注「归一」措辞改原文透传（自相矛盾消）/vitro_wasm
+  锚注「七处」→「六处」/gateway 头注列举重复计数（gateway 在列又加
+  「本处」）/红证数字修正（见上）。**P3-5 登记**：盘符根不对称
+  `dir_of("D:/x.c") → "D:"`（非 `"D:/"`，Windows 下 `D:` 为当前目录
+  语义）——既有近似，本批未触及不修。
 
 ### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28；审阅处置批同日见段末）
 

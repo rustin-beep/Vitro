@@ -1060,10 +1060,15 @@ jobs:
       - name: Workflow install convergence (no inline moon installs)
         shell: bash
         run: |
+          # 修复注（run 41045815814 定案）：GitHub 的 shell:bash 默认 -eo
+          # pipefail，而 grep -c 零命中（=本断言的**正确态**）退出码为 1
+          # ——管道被 pipefail 判死、-e 杀 step ⇒ 零命中必红（本地裸 bash
+          # 无此二旗故三路复刻皆绿）。修法：grep 组内 `|| true` 消退出码，
+          # 判定只认 awk 汇总的 n。
           echo "== workflows 目录清单："; ls -1 .github/workflows/
-          n=$(grep -rEc '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ | awk -F: '{s+=$NF} END{print s}')
+          n=$({ grep -rEc '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; } | awk -F: '{s+=$NF} END{print s}')
           echo "convergence n=[$n]"
-          hits=$(grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true)
+          hits=$({ grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; })
           if [ -n "$hits" ]; then echo "-- 动词锚定命中行："; echo "$hits"; fi
           echo "-- 字面量全量（仅观察不计红）："
           grep -rnF 'cli.moonbitlang.com' .github/workflows/ || echo "（零字面量命中）"

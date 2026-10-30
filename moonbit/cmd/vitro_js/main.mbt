@@ -37,7 +37,12 @@ fn main {
         channel=@engine_direct.direct_channel(),
       )
     "api" =>
-      @cli.api(rest, js_read_stdin, channel=@engine_direct.direct_channel())
+      @cli.api(
+        rest,
+        js_read_stdin,
+        write_stdout=js_write_stdout,
+        channel=@engine_direct.direct_channel(),
+      )
     "serve" | "dump-tokens" | "dump-ast" | "dump-typeck" | "dump-compile" => {
       // #215：rc=4 用法错语境的指引走 stderr（stdout 恒空不变式）
       @cli.usage_err(

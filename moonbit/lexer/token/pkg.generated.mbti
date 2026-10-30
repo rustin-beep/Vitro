@@ -49,15 +49,15 @@ pub(all) struct LineMap {
   spans : Array[LineSpan]
 } derive(Eq, @debug.Debug)
 pub fn LineMap::equal(Self, Self) -> Bool
-pub fn LineMap::lookup(Self, Int) -> (Int, Int)
+pub fn LineMap::lookup(Self, Int32) -> (Int32, Int32)
 pub fn LineMap::not_equal(Self, Self) -> Bool
 pub fn LineMap::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LineSpan {
-  main_first : Int
-  main_last : Int
-  file_id : Int
-  file_line : Int
+  main_first : Int32
+  main_last : Int32
+  file_id : Int32
+  file_line : Int32
 } derive(Eq, @debug.Debug)
 pub fn LineSpan::equal(Self, Self) -> Bool
 pub fn LineSpan::not_equal(Self, Self) -> Bool
@@ -83,8 +83,8 @@ pub(all) struct Token {
   ty : TokenType
   text : String
   loc : @source.SourceLoc
-  byte_off : Int
-  real_line : Int
+  byte_off : Int32
+  real_line : Int32
 } derive(Eq, @debug.Debug)
 pub fn Token::equal(Self, Self) -> Bool
 pub fn Token::not_equal(Self, Self) -> Bool
@@ -214,7 +214,7 @@ pub fn TokenType::to_name(Self) -> String
 pub fn TokenType::to_repr(Self) -> @debug.Repr
 
 pub(all) enum TraceEntry {
-  Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int)
+  Expand(name~ : String, args~ : String?, result~ : String, depth~ : Int32)
   CondBranch(expr~ : String, value~ : Bool, reason~ : String)
 } derive(Eq, @debug.Debug)
 pub fn TraceEntry::equal(Self, Self) -> Bool

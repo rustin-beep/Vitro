@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+### fix(scripts+ci+typeck): PR #375 审阅处置批——P1×3 / P2×5 / P3×4 全清（2026-10-30）
+
+- **P1-1（引擎闸二级杀阵结构性不可达）**：旧版突变体在一级判定后、
+  二级 digest 前**即被还原**——digest 永远编译干净源码（killedDigest 恒 0，
+  digest-only 锚全成假 survived）。修：还原挪到二级判定后（try/finally 兜
+  全路径）+ **digest 前不变量自证**（磁盘必须仍突变态，否则 fatal）+
+  **干净树 digest 先验**（golden 漂移/环境缺件时拒绝判锚——否则一级幸存者
+  全被误判 killed-digest）。二级正向击杀向量：审阅者与我各试 2-3 个候选
+  均被 wbtest 先杀，全文件猎杀批补证据（见 PR 评论）。
+- **P1-2（豁免条目理由不成立，可达面比登记的宽）**：decl.mbt:818
+  `&&→||` 的真实可达面是**日常单行「先定义后调用」**（审阅探针
+  `static int f(void){...} int main(void){ return f(); }` 突变树误报
+  E3058）——「限缩进原型实践不可达」定性错误，且此前「双绿」是 P1-1
+  假绿。处置：锚 `review375_sameline_define_then_use_legal` 转正（突变
+  重放红/还原绿双向验）+ **豁免条目删除**（engine_equivalents.json 清空
+  ——首条登记即翻案：白名单翻案权在锚不在登记）。
+- **P1-3（CI 零匹配红步骤）**：GitHub bash 实为 `--noprofile --norc -e -o
+  pipefail`，零匹配时 grep exit 1 ⇒ 短路步红（任何不碰 scripts 的 PR）。
+  修：grep×2 → awk 单段（恒 exit 0）。
+- **P2-1**：engine.mts 入 ci_checklist exceptions（本地工具·试点观察期
+  理由；checklist PASS 57 驱动/8 例外）。**P2-2**：timeoutMS 按杀阵干跑
+  净时长动态给（max(120s, ×2+30s)）+ Timeout>0 显式标「该文件未被完整
+  测量」（大闭包假干净防线）。**P2-3**：survived 清单改用 replacement
+  字段（Stryker 10 报告无 description——实测 684/0）。
+- **P2-4（本批自评披露）**：本批即突变闸首例自检对象——CI 实测 1174
+  突变体 / killed 371 / **survived 797 / score 31.6%**（对象=闸自身两个
+  新文件；survived 大头为注释/文案类 StringLiteral，属预期信噪比原料，
+  逐条定性随观察期滚动）。**P2-5（artifact 与 console 不相容）**：本地
+  同序复现批落 CI 后以新 artifact 判读。
+- **P3×4**：提交信息计数勘误（962/1126→实测口径）；`--max-mutants`
+  截断大声（⚠ 非全量）；`--files` 路径过 `toScriptsRel` 归一（与 diff
+  模式同口径）；白名单条目可选 `col` 精确匹配（防 ±2 行内同算子误豁免）。
+
 ### feat(scripts): #368 第三层试点——引擎面 mutant 闸 engine.mts（typeck 先行，report-only 观察期）（2026-10-29）
 
 - **形态**：MoonBit 无现成 mutation 工具（查证 2026-10-29），自研行级算子
@@ -56,6 +89,115 @@
   短路；闭包可能含 moon/facts 依赖用例故镜像 scripts-ts 前置步骤；
   报告上传 artifact）。**观察期不入 ci-summary needs**——survived
   不阻断，基础设施失败红；阈值阻断批再连坐。
+
+### fix(cli+engine+infra): #366 帧出口管道截断治本 + #363 invalid UTF-8 三臂统一 U+FFFD + #349 三面编译语义对拍臂（三案批，2026-10-28；审阅处置批同日见段末）
+
+- **#366（js/wasm 臂帧出口同步化）**：api/step/json 模式帧出口从
+  `println` 统一切壳注入的同步 write 通道（js/wasm=`fs.writeSync(1)`、
+  native=fwrite stub，`out_line` 单源编码——与 run 子命令 write_stdout
+  同款）。修前 node 对**管道**的 stdout 写是异步（文件同步），帧序列打完
+  立即 `process.exit` 丢弃未刷写队列：>1MB 帧管道口径静默截断（WSL
+  实测 pipe 65808B/731152B/146448B vs file 1398439B，rc=0 零信号、产出
+  非法 JSON；**Windows 上 libuv 对 stdio 管道走同步句柄——本地与
+  windows-latest lane 天然免疫，这正是防线从未见过它的原因**）。
+  `api` 子命令补 `write_stdout` 注入参数（三壳接线）。
+  **⚠ breaking**：`cmd/lib/cli` 的 `pub fn api` 新增**必填**具名参数
+  `write_stdout~ : (Bytes) -> Unit`——下游源码级调用须补注入（先例
+  #325 pub(all) 字段删改同款破坏形态，随下一版本发布）。
+  不迁面登记：print_usage（单笔小写入）与 serve 流式（事件循环自然
+  排空）仍走 println。
+- **#366 审阅 P2-3（stderr 同族，实测分界修正）**：node 对管道的
+  stderr 写同样异步——实测分界 = **单次写大小 vs 管道缓冲 64KB**：
+  say 的小段多写（编译错风暴 500 段 ×~150B，总量 74KB）管道口径完整；
+  **单段 >64KB**（超长标识符诊断 70106B）修前截断于 65536B（WSL 实测，
+  红锚在案）。`stderr_js.mbt` 改 `fs.writeSync(2, …)` 同步写（native
+  stub 不受影响）。
+- **#363（invalid UTF-8 三臂分叉根治）**：`fs/utf8_compat.mbt`
+  `to_utf8_string` 重写为 U+FFFD 替换解码——**WHATWG 最大子部分语义**
+  （审阅 P2-5 对齐：孤立延续/非法 lead（C0..C1、F5..FF）各折一、前进
+  一字节；**第二字节域**（E0→A0..BF、ED→80..9F、F0→90..BF、F4→80..8F）
+  失败只消费 lead 本身、失败字节重判；后续坏延续同款重同步；尾部不
+  完整折一止）——替换计数与 node `TextDecoder`/`readFileSync('utf8')`
+  /Rust/Python 逐例一致（16 例字节矩阵对拍基准在案：ED A0 80→3、
+  C0 AF→2、E0 80 AF→3、F0 80 80 80→4、F4 90 80 80→4、F5 80 80 80→4）。
+  修前对 FF FE 64 65 与 ED A0 80 经 `unsafe_to_char` 产出代理段/越界
+  码点：native SIGABRT（Windows 0xC0000409）、wasm-gc 裸 unreachable、
+  js 静默容忍，同一输入三臂三结局。`util.utf8_text_partial` 同向收口：
+  **中段非法**同款 U+FFFD+重同步，**尾部截断止保留**（gateway serve_io
+  增量 delta 切片的流式前缀契约）——两解码器语义分立互指。
+  修后实测：坏字节源码三臂一律 `E1001` 拒收同形（rc=1）、`-i` 坏输入
+  三臂一致。**已知限制登记（审阅 P3-5）**：替换后诊断列号按解码后文本
+  计（FF FE 80 → 3×U+FFFD 各 3 字节，列号 25/28/31——原字节位 23 起），
+  与源文件原字节位存在漂移；列号口径契约（source 包：UTF-8 字节偏移
+  +1）以解码后字符串为基准，属替换语义的固有投影，diag 侧不另折算。
+- **#349（三面编译语义对拍臂落地）**：新 runner 包
+  `cmd/backend_triage`（gateway 四导出帧源级形态 + 审阅 P2-2 扩容：
+  Int64 除乘模链 / `1.0/3.0` 与 `-0.0` 的 double 文本化 / CJK+astral
+  拼接长度 / 真实 compile+run 会话帧——常量之外的可观测运算面）+
+  驱动 `scripts/backend_triage/main.mts`（.mts 四件套 + node:test
+  十一态锚）+ CI 新 job `backend-triage`：`moon run` 三连 native
+  （MOON_CC=clang）/ js（node）/ wasm-gc（moonrun）——**字节域**口径
+  （spawnSync encoding buffer、逐字节比对、长度/偏移按字节计，纪律
+  8）；**形状门量**（审阅 P2-1：恰好 10 行 + ping 帧 + 版本行 +
+  compile/run 帧在位——空输出/静默突变即红）；CRLF 归一**仅 native
+  臂介入且显式标注**（审阅 P3-3：js/wasm 臂 CRLF 是真红不经归一；
+  Linux CI 上恒不介入）。本地首跑三臂 440B 逐字节一致（i64/double/
+  CJK/会话帧全同形）。**新增不替换**：现役 gates-wasm 各 slice 不动。
+- **#366 锚的 Linux 判别力（审阅 P1-1）**：`vitro_cli_smoke` 的管道
+  口径锚（B[大帧管道]/B[stderr 通道]/B[run json 大帧]）依赖 POSIX
+  管道异步写丢弃机理，windows-latest lane 恒绿无牙（审阅反向突变
+  实证：out_line→println 回退后 Windows 锚仍绿）——新增 ubuntu lane
+  CI job `cli-smoke-linux` 重跑同一 smoke 全集（--corpus 30），Windows
+  lane 保留双覆盖。smoke 锚组新增：B[stderr 通道]（风暴+单段大写双
+  形态三臂双口径）、B[run json 大帧]（frame_pipeline 路径 >1MB 帧、
+  审阅 P3-1 补零锚面）、B[坏字节源码]（#363 三臂同形）。
+- 计数连坐：961（裸，master 960 + 本批 util_wbtest +1）/1125（native
+  全量，master 1124 + 1）共 10 处；moon test 双口径 961/961+1125/1125；
+  protocol_frames 47 帧零漂移；facts --strict 零漂移。
+
+### fix(lexer): #356 normalize_path 保 POSIX 绝对锚——绝对路径主文件 quote-include 候选键不再剥前导 /（2026-10-29）
+
+- **红根**：`lexer/internal/pp/resolver.mbt` 的 `normalize_path` 按 `/`
+  切段并丢弃空段——POSIX 绝对路径前导 `/` 被剥（`/home/x/h.h` →
+  `home/x/h.h`），resolver 候选键与 include reader/VFS 侧保留前导 `/` 的
+  键永不相等 ⇒ Linux 宿主臂（js/native）以绝对路径传主文件时 quote-
+  include 100% E1021（#356 三反证在案：剥 `/` 目录形态人造后立刻成功）。
+  Windows 不触发是盘符路径首段 `D:` 非空被保留——绝对性靠盘符侥幸保住
+  非设计保护。连坐影响面（#356 在案）：Linux 侧 diff_gate 8 case 假红、
+  realcode gold 71+137 处漂移、facts 4 个差分类键恒待采集。
+- **修法**：`normalize_path` 前导 `/` 识别为绝对锚不随空段丢弃（`/a/../b.h`
+  → `/b.h` 回退到根不越锚；`/` 本体保持 `/`）；盘符/相对/`..` 回退三形态
+  既有行为零变化。修复消费点全在候选键生产侧（resolve_path 两处 +
+  walk_cycle 依赖边一处），processed/file_ids 键身份随锚统一，无分叉。
+- **红绿锚**：三层——pp 单测 `normalize_path` 七断言（POSIX 绝对/根级/
+  根本体 修前红；盘符/相对/`..` 回退守卫恒绿）+ pp provider 级（绝对
+  base_dir 下 include 可解析 + 宏展开，修前红 E1021）+ gateway 记录型
+  reader（绝对路径主文件候选键直证保留前导 `/`，修前红；盘符守卫锚）。
+- **验收**：裸 `moon test` 962/962、native 全量 1129/1129（+2 裸域 pp 锚
+  +1 native-only gateway 锚，README×2 计数连坐）；`moon check --target
+  all` + mbti_sync/single_source/moonbit_surface/pkg_deps 四闸绿（私有
+  函数零接口面漂移）；防线零漂移实测 vm 805/805 SAME、clang_direct
+  919 SAME+17 KNOWN+0 DIFF。**Linux E2E（绝对路径主文件真解析）本地
+  Windows 不可达，留 CI/Linux 侧收敛**——本地锚已锁键形态（记录型
+  reader 直证），行为等价。
+- **过程坑（登记）**：clang_direct 工程模式依赖 `cmd/vitro/vitro.exe`，
+  exe 缺失时以 36 条「单侧编译失败（moonbit）」DIFF 形态呈现而非 fail
+  loud——首次跑误判回归，补建后全绿（harness fail-loud 缺口候选另批）。
+- **审阅处置（2026-10-29，PR #373）**：P2-1 同根因第二产生点——根级
+  绝对主文件（"/main.c"）仍 100% 失败，`gateway dir_of` 与 pp `dirname_of`
+  对唯一分隔符在 0 位的路径回 `"."`/`""` ⇒ 候选键按 cwd 相对解析——
+  两处（+cmd/vitro_wasm 同形态）改回 `"/"`，补 gateway 记录型 reader 锚
+  （修前红；既有 include 锚 filename 全带目录段，根级形态零覆盖）。
+  P2-2 绝对 include 操作数（`#include "/abs/h.h"`）直接取（C11
+  §6.10.2p3——clang/gcc 不走候选链），`resolve_path` 前置绝对分支，补
+  pp provider 锚（修前红：无条件 cur_dir 拼接）。P3-1 注释「与盘符
+  对称」收窄为「普通盘符形态」（越根 `D:/..` 盘符段可被 `..` 弹掉，
+  `normalize_path("D:/..")==""` 既有近似）。P3-2 `dir_of`/`dirname_of`
+  同名不同义（无分隔符 `"."` vs `""`）根级口径已对齐、命名统一与
+  cmd/dump_* 四胞胎同族面另案。P3-4 issue #356「wasm 臂不受影响」
+  收窄为仅相对 filename（绝对 filename 修前同 E1021，突变态实测）。
+  处置后：裸 963/963、native 1131/1131、`--target all` 绿、vm 805
+  SAME、clang_direct 919+17+0 零漂移。
 
 ### fix(gateway+scripts): PR #350 审阅处置——P1 恢复噪音潮过滤 + layerOf 首层语义 + _meta 审计锚恢复（2026-10-28）
 

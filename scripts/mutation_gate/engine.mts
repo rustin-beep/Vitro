@@ -150,12 +150,21 @@ export interface EquivEntry {
   file: string;
   op: string;
   line: number; // 与突变体行号差 ≤2 即匹配（diff 位移容差）
+  col?: number; // 可选列精确匹配——防 ±2 行内**另一个同算子**突变被一并豁免（PR #375 审阅 P3）
   reason: string;
   pair?: string; // 耦合对另一侧描述
 }
 
 export function isWhitelisted(mu: Mutant, list: EquivEntry[]): EquivEntry | null {
-  return list.find((e) => e.file === mu.file && e.op === mu.op && Math.abs(e.line - mu.line) <= 2) ?? null;
+  return (
+    list.find(
+      (e) =>
+        e.file === mu.file &&
+        e.op === mu.op &&
+        Math.abs(e.line - mu.line) <= 2 &&
+        (e.col === undefined || e.col === mu.col),
+    ) ?? null
+  );
 }
 
 function sleep(ms: number): void {
@@ -241,10 +250,18 @@ function main(): void {
   const onlyFile = onlyParts?.[0] ?? "";
   const onlyLn = onlyParts !== null && onlyParts.length > 1 ? Number(onlyParts[1]) : -1;
   const whitelistedCount = all.filter((mu) => isWhitelisted(mu, equivs) !== null).length;
+  const eligible = all.filter(
+    (mu) => (onlyParts === null || (mu.file === onlyFile && mu.line === onlyLn)) && isWhitelisted(mu, equivs) === null,
+  ).length;
   const selected = all
     .filter((mu) => onlyParts === null || (mu.file === onlyFile && mu.line === onlyLn))
     .filter((mu) => isWhitelisted(mu, equivs) === null)
     .slice(0, maxMutants);
+  if (eligible > selected.length) {
+    process.stdout.write(
+      `  ⚠ --max-mutants ${maxMutants} 截断：可跑 ${eligible} 只跑 ${selected.length}——survived 清单非全量（PR #375 审阅 P3；提高 --max-mutants 或分批）\n`,
+    );
+  }
   process.stdout.write(
     `engine-mutant-gate[${pkg}]: 目标 ${realTargets.length} 文件 / 突变体 ${all.length}（白名单豁免 ${whitelistedCount}，本轮跑 ${selected.length}）\n`,
   );
@@ -254,8 +271,21 @@ function main(): void {
   if (baseline.status !== 0 || !baseline.stdout.includes("Total tests:")) {
     fatal(`基线 moon test 红（杀阵先验失败）: exit ${baseline.status}\n${baseline.stdout.slice(-500)}`);
   }
+  // P1-1 反面防线（PR #375 审阅）：二级 digest 杀阵的干净树先验——不验则 golden
+  // 漂移/环境缺件时每个一级幸存者都会被误判 killed-digest（真零锚面被静默抹掉）
+  const digestBase = run(process.execPath, [path.join("scripts", "diff_gate", "main.mts"), "typeck", "corpus/baseline"], {
+    cwd: root,
+  });
+  if (digestBase.status !== 0) {
+    fatal(
+      "干净树 typeck digest 红（二级杀阵基线先验失败——此状态下判锚全为假 killed-digest，拒绝继续）:\n" +
+        digestBase.stdout.slice(-400),
+    );
+  }
 
-  // 4) 逐突变体：apply → 一级 wbtest → 二级 digest → 快照还原
+  // 4) 逐突变体：apply → 一级 wbtest →（仍突变态跑）二级 digest → 快照还原。
+  //    PR #375 审阅 P1-1：还原必须在二级判定**之后**——旧版一级后即还原，
+  //    digest 永远编译干净源码（killedDigest 恒 0、digest-only 锚全成假 survived）
   const results: MutantResult[] = [];
   try {
     for (const mu of selected) {
@@ -266,21 +296,29 @@ function main(): void {
       fs.writeFileSync(abs, applyMutant(lines, mu).join("\n"));
       sleep(1300); // moon mtime 增量漏检防线
       const t1 = run("moon", ["test", "-p", enginePkg], { cwd: moonbitDir });
-      fs.writeFileSync(abs, lines.join("\n"));
       if (!t1.stdout.includes("Total tests:")) {
+        fs.writeFileSync(abs, lines.join("\n"));
         process.stdout.write(tag + "compile-error\n");
         results.push({ mutant: mu, verdict: "compile-error" });
         continue;
       }
       if (t1.status !== 0) {
+        fs.writeFileSync(abs, lines.join("\n"));
         const firstFail = /FAILED:?\s*(.*)/.exec(t1.stdout)?.[1] ?? "";
         process.stdout.write(tag + "killed-wbtest（" + firstFail.slice(0, 70) + "）\n");
         results.push({ mutant: mu, verdict: "killed-wbtest", killedBy: firstFail.slice(0, 90) });
         continue;
       }
+      // P1-1 不变量自证（PR #375 审阅）：二级判定时磁盘必须仍是突变态——
+      // 旧版一级后即还原，digest 永远编译干净源码（killedDigest 恒 0）
+      if (fs.readFileSync(abs, "utf8") === lines.join("\n")) {
+        fs.writeFileSync(abs, lines.join("\n"));
+        fatal(`P1-1 回归：digest 判定时磁盘已还原（${mu.file}:${mu.line}）——二级必须在突变态运行`);
+      }
       const digest = run(process.execPath, [path.join("scripts", "diff_gate", "main.mts"), "typeck", "corpus/baseline"], {
         cwd: root,
       });
+      fs.writeFileSync(abs, lines.join("\n"));
       if (digest.status !== 0) {
         process.stdout.write(tag + "killed-digest\n");
         results.push({ mutant: mu, verdict: "killed-digest", killedBy: "typeck digest" });

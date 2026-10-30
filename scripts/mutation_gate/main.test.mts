@@ -80,7 +80,8 @@ test("testClosureFor：传递闭包到测试文件为止；测试不再上溯其
 });
 
 test("buildStrykerConfig：mutate 区间条目与杀阵命令形状", () => {
-  const cfg = buildStrykerConfig(["a.test.mts", "b/c.test.mts"], ["x.mts:1-3", "y.mts:10-12"], "out/m.json", 4);
+  const cfg = buildStrykerConfig(["a.test.mts", "b/c.test.mts"], ["x.mts:1-3", "y.mts:10-12"], "out/m.json", 4, 250_000);
+  assert.equal(cfg.timeoutMS, 250_000); // P2-2：timeoutMS 由调用方按闭包净时长动态给
   assert.equal(cfg.testRunner, "command");
   assert.equal(cfg.commandRunner.command, "node --test --test-concurrency=1 a.test.mts b/c.test.mts");
   assert.deepEqual(cfg.mutate, ["x.mts:1-3", "y.mts:10-12"]);

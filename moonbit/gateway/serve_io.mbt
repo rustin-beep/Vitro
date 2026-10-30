@@ -167,8 +167,10 @@ fn serve_output_delta_frame(
   //   分叉登记①——消费方在字节域归一，putchar(200) 单字节保真）
   // - Note = 引擎文本域（push_note_str 以 UTF-8 编码入通道）：delta 解码
   //   回原文（cmd/lib/cli note 消费同款先例——两通道不同源，Latin-1 折回
-  //   中文必 mojibake）；cursor/total 保持字节域口径（游标契约不变，中段
-  //   cursor 切进多字节序列由前缀止语义消化）
+  //   中文必 mojibake）；cursor/total 保持字节域口径（游标契约不变；切点
+  //   落在多字节序列上：尾部不完整由「截断止」消化、下一块续上；切点
+  //   落在**中段非法序列**时 U+FFFD 替换 + 重同步——#363 语义，PR #367
+  //   审阅 P3-6 连坐注）
   // - display = 混合域投影：保持 Latin-1 现状（note 部分的 UTF-8 字节仍
   //   逐字节折回——display 无逐通道解码语义，该差异并入分叉登记①）
   let delta : String = match kind_opt {

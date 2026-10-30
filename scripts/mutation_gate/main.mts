@@ -23,6 +23,7 @@
 // 产物：<out>/report.md + <out>/results.json（默认 tmp/mutation_gate/，gitignored）
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 import { projectRoot, fatal } from "../internal/capi.mts";
@@ -146,6 +147,7 @@ export function buildStrykerConfig(
   mutateSpecs: string[],
   reportRelPath: string,
   concurrency: number,
+  timeoutMS: number,
 ): StrykerConfig {
   return {
     testRunner: "command",
@@ -155,7 +157,7 @@ export function buildStrykerConfig(
     reporters: ["json"],
     jsonReporter: { fileName: reportRelPath },
     concurrency,
-    timeoutMS: 120_000,
+    timeoutMS,
     tempDirName: ".stryker-tmp",
   };
 }
@@ -199,11 +201,13 @@ export function summarizeMutationReport(json: {
     });
     for (const mu of mutants) {
       if (mu.status === "Survived") {
-        survivedList.push(
-          `${normalizeSlashes(file)}:${mu.location.start.line} [${mu.mutatorName ?? "?"}] ${
-            (mu.description ?? "").slice(0, 90)
-          }`,
-        );
+        // PR #375 审阅 P2-3：Stryker 10 报告无 description 字段（实测 684 replacement / 0 description）
+        // ——人工定性靠 replacement 区分同算子多处，缺则回退 description
+        const detail =
+          mu.replacement !== undefined
+            ? "→ " + mu.replacement.slice(0, 60)
+            : (mu.description ?? "").slice(0, 90);
+        survivedList.push(`${normalizeSlashes(file)}:${mu.location.start.line} [${mu.mutatorName ?? "?"}] ${detail}`);
       }
     }
   }
@@ -232,6 +236,8 @@ interface FileRunResult {
   tests: string[];
   summaries: FileSummary[];
   survivedList: string[];
+  /** P2-5 钉子：summarize 所读 mutation.json 的内容哈希——artifact 判读时与 json 比对，不匹配=落盘后被改写 */
+  reportSha256: string;
 }
 
 function main(): void {
@@ -260,9 +266,10 @@ function main(): void {
   // 1) 变更面
   let targets: Array<{ file: string; whole: boolean; ranges: Array<[number, number]> }> = [];
   if (filesOverride !== null) {
+    // PR #375 审阅 P3：--files 传 scripts/ 前缀路径同样归一（与 diff 模式同口径）
     targets = filesOverride
       .filter((f) => !f.endsWith(".test.mts"))
-      .map((file) => ({ file, whole: true, ranges: [] }));
+      .map((file) => ({ file: toScriptsRel(file), whole: true, ranges: [] }));
   } else {
     const diff = spawnSync("git", ["-C", root, "diff", "--unified=0", base, head, "--", "scripts"], {
       encoding: "utf8",
@@ -315,19 +322,24 @@ function main(): void {
       zeroTest.push(t.file);
       continue;
     }
-    // 杀阵干跑先验（环境红跳过——不静默）
+    // 杀阵干跑先验（环境红跳过——不静默）；同时计时——timeoutMS 按闭包净时长
+    // 动态给（PR #375 审阅 P2-2：大闭包〔如 internal/text.mts 72 测试文件 ~186s〕
+    // 超过固定 120s ⇒ 全部 Timeout ⇒ 不进 survived 清单 ⇒ 假干净）
+    const dryStart = Date.now();
     const dry = spawnSync("node", ["--test", "--test-concurrency=1", ...tests], {
       cwd: scriptsDir,
       encoding: "utf8",
     });
+    const dryMs = Date.now() - dryStart;
     if (dry.status !== 0) {
       envRed.push(t.file);
       process.stdout.write(`杀阵干跑红（环境缺口，跳过突变——CI 侧 Linux 覆盖）: ${t.file}\n`);
       continue;
     }
+    const timeoutMS = Math.max(120_000, dryMs * 2 + 30_000);
     const mutateSpecs = t.whole ? [t.file] : t.ranges.map(([a, b]) => `${t.file}:${a}-${b}`);
     const slug = t.file.replaceAll("/", "__").replace(/\.mts$/, "");
-    const cfg = buildStrykerConfig(tests, mutateSpecs, `${outRelFromScripts}/${slug}.mutation.json`, concurrency);
+    const cfg = buildStrykerConfig(tests, mutateSpecs, `${outRelFromScripts}/${slug}.mutation.json`, concurrency, Math.ceil(timeoutMS));
     const cfgPath = path.join(outAbs, `${slug}.stryker.json`);
     fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 1));
     const strykerBin = path.join(scriptsDir, "node_modules", "@stryker-mutator", "core", "bin", "stryker.js");
@@ -344,11 +356,17 @@ function main(): void {
     }
     const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as { files: Record<string, { mutants?: MutantLike[] }> };
     const { summaries, survivedList } = summarizeMutationReport(report);
-    results.push({ file: t.file, tests, summaries, survivedList });
+    const reportSha256 = createHash("sha256").update(fs.readFileSync(reportPath)).digest("hex").slice(0, 16);
+    results.push({ file: t.file, tests, summaries, survivedList, reportSha256 });
     const tot = summaries[0] ?? null;
     process.stdout.write(
       `[${t.file}] mutants=${tot?.total ?? 0} killed=${tot?.killed ?? 0} survived=${tot?.survived ?? 0} timeout=${tot?.timeout ?? 0} nocov=${tot?.noCoverage ?? 0} err=${tot?.errors ?? 0}\n`,
     );
+    if ((tot?.timeout ?? 0) > 0) {
+      process.stdout.write(
+        `  ⚠ Timeout 突变体 ${tot?.timeout} 个——该文件**未被完整测量**（大闭包超时面，PR #375 审阅 P2-2；survived 清单不含 Timeout 项，勿据此判干净）\n`,
+      );
+    }
     fs.rmSync(path.join(scriptsDir, ".stryker-tmp"), { recursive: true, force: true });
   }
 
@@ -372,6 +390,11 @@ function main(): void {
     `- 突变体：${agg.total}（killed ${agg.killed} / survived ${agg.survived} / timeout ${agg.timeout} / nocov ${agg.noCoverage} / err ${agg.errors}）——score ${score}%`,
     `- 环境红跳过：${envRed.length > 0 ? envRed.join(", ") : "无"}`,
     `- 零测试可达：${zeroTest.length > 0 ? zeroTest.join(", ") : "无"}`,
+    `- Timeout 未测量文件：${
+      results.some((r) => (r.summaries[0]?.timeout ?? 0) > 0)
+        ? results.filter((r) => (r.summaries[0]?.timeout ?? 0) > 0).map((r) => `${r.file}(${r.summaries[0]?.timeout})`).join(", ")
+        : "无"
+    }（Timeout 项不进 survived——大闭包超时 ≠ 干净）`,
     "",
     "## survived 清单（新扩散面机判定义——人工定性：真缺口补锚 / 等价突变白名单）",
     "",

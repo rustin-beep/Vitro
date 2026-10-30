@@ -163,7 +163,7 @@ fn frame_pipeline(
   // ── compile 帧 ──
   if json_mode {
     let comp = inv_raw("compile", compile_params)
-    println("{\"type\":\"diag\",\"frame\":\{comp}}")
+    out_line(write_stdout, "{\"type\":\"diag\",\"frame\":\{comp}}")
     if comp.contains("\"ok\":false") {
       return 1
     }
@@ -228,13 +228,13 @@ fn frame_pipeline(
   // ── 输出三帧拉取（stdout/stderr/note）──
   if json_mode {
     let run = inv_raw("run", run_req)
-    println("{\"type\":\"run\",\"frame\":\{run}}")
+    out_line(write_stdout, "{\"type\":\"run\",\"frame\":\{run}}")
     let out = inv_raw("output.delta", "{\"cursor\":0,\"stream\":\"stdout\"}")
-    println("{\"type\":\"stdout\",\"frame\":\{out}}")
+    out_line(write_stdout, "{\"type\":\"stdout\",\"frame\":\{out}}")
     let err = inv_raw("output.delta", "{\"cursor\":0,\"stream\":\"stderr\"}")
-    println("{\"type\":\"stderr\",\"frame\":\{err}}")
+    out_line(write_stdout, "{\"type\":\"stderr\",\"frame\":\{err}}")
     let note = inv_raw("output.delta", "{\"cursor\":0,\"stream\":\"note\"}")
-    println("{\"type\":\"note\",\"frame\":\{note}}")
+    out_line(write_stdout, "{\"type\":\"note\",\"frame\":\{note}}")
     if run.contains("\"status\":\"trap\"") {
       if run.contains("\"steps_executed\":\{ms_cap}") {
         return 3

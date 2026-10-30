@@ -1,0 +1,22 @@
+// cmd/backend_triage：#349 三面编译语义对拍 runner——同一份 MoonBit 源在
+// 三个编译后端下执行，stdout 逐字节对拍（驱动 = scripts/backend_triage）：
+//
+//   native   → MoonBit → native（MOON_CC=clang）→ 原生 exe
+//   js       → MoonBit → js → node
+//   wasm-gc  → MoonBit → wasm-gc → moonrun（官方 runner——`moon run
+//              --target wasm-gc` 的内部执行器）
+//
+// 价值（#349 依据）：现役 wasm 臂（vitro_wasm 壳）验证「产物在 node 宿主
+// 里的行为」——js/wasm 两臂同宿主 node，宿主层 bug 两臂同报不可分；本臂
+// 是**源码级**三后端语义对拍，任两臂分叉直接归因编译后端，且 wasm 侧
+// 脱离 node 版本矩阵（moonrun 随 moon 安装自带）。
+//
+// 新增不替换（#349 落地形态）：现役 gates-wasm 各 slice 不动；本包是
+// 防线调用面（非 CLI 出口），不进 scripts/bin/vitro 分派。
+import {
+  "vitro/engine/gateway",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+js +native +wasm-gc"

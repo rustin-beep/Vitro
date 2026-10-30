@@ -25,7 +25,6 @@
 import {
   "vitro/engine/teaching/assets",
   "vitro/engine/util",
-  "moonbitlang/core/abort",
   "moonbitlang/core/string",
   "moonbitlang/core/deque",
   "vitro/engine/ast",

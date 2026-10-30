@@ -13,12 +13,15 @@
 // serve 长会话。
 //
 // 退出码：0=全部帧 ok:true / 1=任一帧 ok:false（协议内错误统一——api 是
-// 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）。
+// 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）；
+// write_stdout 同由薄壳注入（#366：帧出口同步直写——管道口径防截断，
+// js/wasm=fs.writeSync / native=fwrite stub，out_line 单源编码）。
 
 ///|
 pub fn api(
   args : Array[String],
   read_stdin : () -> Bytes,
+  write_stdout~ : (Bytes) -> Unit,
   channel~ : EngineChannel,
 ) -> Int32 {
   ensure_include_reader(channel)
@@ -51,14 +54,14 @@ pub fn api(
   // 手抄）。wasm 臂同数据（api_help.json），双臂同形由 vitro_cli_smoke 锁。
   if method_name == "help" && !batch {
     if help_target == "" {
-      // 生成文本不带尾换行，println 补单尾——与 wasm 壳 write 加换行
+      // 生成文本不带尾换行，out_line 补单尾——与 wasm 壳 write 加换行
       // 逐字节同形（B 组零特例纪律）
-      println(api_help_list())
+      out_line(write_stdout, api_help_list())
       return 0
     }
     return match api_help_detail(help_target) {
       Some(text) => {
-        println(text)
+        out_line(write_stdout, text)
         0
       }
       None => {
@@ -95,7 +98,7 @@ pub fn api(
         continue
       }
       let resp = (channel.invoke)(l)
-      println(resp)
+      out_line(write_stdout, resp)
       if resp.contains("\"ok\":false") {
         rc = 1
       }
@@ -127,7 +130,7 @@ pub fn api(
   let resp = (channel.invoke)(
     "{\"id\":1,\"method\":\"\{method_name}\",\"params\":\{params}}",
   )
-  println(resp)
+  out_line(write_stdout, resp)
   if resp.contains("\"ok\":false") {
     return 1
   }

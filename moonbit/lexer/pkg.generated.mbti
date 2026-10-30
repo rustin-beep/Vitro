@@ -14,9 +14,9 @@ pub fn tokenize(String, cpp_mode? : Bool) -> @token.LexResult
 
 pub fn tokenize_raw(String, cpp_mode? : Bool) -> @token.RawResult
 
-pub fn[P : @token.SourceProvider] tokenize_with(String, provider~ : P, cpp_mode? : Bool, base_dir? : String, main_name? : String, merged_spans? : Array[(Int, Int, String)]) -> @token.LexResult
+pub fn[P : @token.SourceProvider] tokenize_with(String, provider~ : P, cpp_mode? : Bool, base_dir? : String, main_name? : String, merged_spans? : Array[(Int32, Int32, String)]) -> @token.LexResult
 
-pub fn tokenize_with_vfs(String, files~ : Map[String, String], cpp_mode? : Bool, base_dir? : String, main_name? : String, merged_spans? : Array[(Int, Int, String)]) -> @token.LexResult
+pub fn tokenize_with_vfs(String, files~ : Map[String, String], cpp_mode? : Bool, base_dir? : String, main_name? : String, merged_spans? : Array[(Int32, Int32, String)]) -> @token.LexResult
 
 // Errors
 

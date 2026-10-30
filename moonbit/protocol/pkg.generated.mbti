@@ -20,9 +20,9 @@ pub fn contracts_json() -> String
 
 pub fn decode_batch(StepStreamBatch) -> Array[StepPayload]
 
-pub fn encode_payloads(Array[StepPayload], Int) -> StepStreamBatch
+pub fn encode_payloads(Array[StepPayload], Int32) -> StepStreamBatch
 
-pub fn encode_step_delta(StepPayload, StepPayload, SymbolTable, Map[Int, String]) -> StepPayloadDelta
+pub fn encode_step_delta(StepPayload, StepPayload, SymbolTable, Map[Int32, String]) -> StepPayloadDelta
 
 pub fn encode_step_payload(StepPayload, SymbolTable) -> StepPayloadRef
 
@@ -56,8 +56,8 @@ pub(all) struct AccessedVar {
 pub fn AccessedVar::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AccessedVarRef {
-  name_idx : Int
-  access_type_idx : Int
+  name_idx : Int32
+  access_type_idx : Int32
 } derive(@debug.Debug)
 pub fn AccessedVarRef::to_repr(Self) -> @debug.Repr
 
@@ -65,9 +65,9 @@ pub(all) struct AlgorithmMatch {
   name : String
   display_name : String
   func_name : String
-  confidence : Int
+  confidence : Int32
   suggestion : String
-  line : Int
+  line : Int32
   vis_events : Array[VisEvent]
   evidence : String
 } derive(@debug.Debug)
@@ -82,37 +82,37 @@ pub(all) struct AlgorithmStepSnapshot {
 pub fn AlgorithmStepSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AlgorithmStepSnapshotRef {
-  algorithm_name_idx : Int
-  display_name_idx : Int
-  phase_idx : Int
-  description_idx : Int
+  algorithm_name_idx : Int32
+  display_name_idx : Int32
+  phase_idx : Int32
+  description_idx : Int32
 } derive(@debug.Debug)
 pub fn AlgorithmStepSnapshotRef::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ApiFrameInfo {
   func_name : String
-  return_line : Int
+  return_line : Int32
 } derive(@debug.Debug)
 pub fn ApiFrameInfo::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ApiFrameInfoRef {
-  func_name_idx : Int
-  return_line : Int
+  func_name_idx : Int32
+  return_line : Int32
 } derive(@debug.Debug)
 pub fn ApiFrameInfoRef::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ApiVarSnapshotRef {
-  name_idx : Int
-  addr : UInt
+  name_idx : Int32
+  addr : UInt32
   is_local : Bool
-  ty_name_idx : Int
+  ty_name_idx : Int32
   mut value : String
 } derive(@debug.Debug)
 pub fn ApiVarSnapshotRef::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ApiVariableSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty_name : String
   mut value : String
@@ -128,8 +128,8 @@ pub(all) struct ArraySnapshot {
 pub fn ArraySnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ArraySnapshotRef {
-  name_idx : Int
-  element_ty_idx : Int
+  name_idx : Int32
+  element_ty_idx : Int32
   elements : Array[String]
   truncated : Bool
 } derive(@debug.Debug)
@@ -141,9 +141,9 @@ pub(all) struct AutoStepResult {
   trapped : Bool
   waiting_input : Bool
   paused : Bool
-  current_line : Int
+  current_line : Int32
   trap_message : String?
-  cache_start_step : Int
+  cache_start_step : Int32
 } derive(@debug.Debug)
 pub fn AutoStepResult::to_repr(Self) -> @debug.Repr
 
@@ -159,38 +159,38 @@ pub fn BehaviorContract::to_repr(Self) -> @debug.Repr
 pub(all) struct DebugSummary {
   local_vars : Array[ApiVariableSnapshot]
   call_stack : Array[ApiFrameInfo]
-  output_len : Int
+  output_len : Int32
 } derive(@debug.Debug)
 pub fn DebugSummary::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeatmapData {
-  line_counts : Array[(Int, UInt64)]
+  line_counts : Array[(Int32, UInt64)]
   max_count : UInt64
 } derive(@debug.Debug)
 pub fn HeatmapData::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeatmapDelta {
-  line : Int
+  line : Int32
   count : UInt64
 } derive(@debug.Debug)
 pub fn HeatmapDelta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PointerSnapshot {
   name : String
-  addr : UInt
+  addr : UInt32
   ty_name : String
-  mut target_addr : UInt
+  mut target_addr : UInt32
   target_name : String
   status : PointerStatus
 } derive(@debug.Debug)
 pub fn PointerSnapshot::to_repr(Self) -> @debug.Repr
 
 pub(all) struct PointerSnapshotRef {
-  name_idx : Int
-  addr : UInt
-  ty_name_idx : Int
-  target_addr : UInt
-  target_name_idx : Int
+  name_idx : Int32
+  addr : UInt32
+  ty_name_idx : Int32
+  target_addr : UInt32
+  target_name_idx : Int32
   status : PointerStatus
 } derive(@debug.Debug)
 pub fn PointerSnapshotRef::to_repr(Self) -> @debug.Repr
@@ -201,7 +201,7 @@ pub(all) enum PointerStatus {
   Null
   Dangling
 } derive(Compare, Eq, @debug.Debug)
-pub fn PointerStatus::compare(Self, Self) -> Int
+pub fn PointerStatus::compare(Self, Self) -> Int32
 pub fn PointerStatus::equal(Self, Self) -> Bool
 pub fn PointerStatus::not_equal(Self, Self) -> Bool
 pub fn PointerStatus::op_ge(Self, Self) -> Bool
@@ -214,9 +214,9 @@ pub fn PointerStatus::to_repr(Self) -> @debug.Repr
 pub(all) struct RootCauseHint {
   category : String
   one_liner : String
-  related_lines : Array[Int]
+  related_lines : Array[Int32]
   suggested_fix_kind : String
-  suggested_fix_line : Int?
+  suggested_fix_line : Int32?
   suggested_fix_desc : String?
 } derive(@debug.Debug)
 pub fn RootCauseHint::to_repr(Self) -> @debug.Repr
@@ -248,16 +248,16 @@ pub(all) struct SemanticLabelKind {
 pub fn SemanticLabelKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepMeta {
-  code_line : Int
+  code_line : Int32
   func_name : String
-  loop_depth : Int
+  loop_depth : Int32
   semantic_label : String
 } derive(@debug.Debug)
 pub fn StepMeta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepPayload {
-  step_index : Int
-  code_line : Int
+  step_index : Int32
+  code_line : Int32
   code_file : String?
   func_name : String
   semantic_label : String
@@ -266,7 +266,7 @@ pub(all) struct StepPayload {
   local_vars : Array[ApiVariableSnapshot]
   mut call_stack : Array[ApiFrameInfo]
   mut vis_events : Array[VisEvent]
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   mut accessed_vars : Array[AccessedVar]
   mut array_snapshots : Array[ArraySnapshot]
@@ -276,41 +276,41 @@ pub(all) struct StepPayload {
 pub fn StepPayload::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepPayloadDelta {
-  step_index : Int
-  code_line : Int
-  code_file_idx : Int?
-  func_name_idx : Int
-  semantic_label_idx : Int
-  semantic_label_id_idx : Int
+  step_index : Int32
+  code_line : Int32
+  code_file_idx : Int32?
+  func_name_idx : Int32
+  semantic_label_idx : Int32
+  semantic_label_id_idx : Int32
   algorithm_step : AlgorithmStepSnapshotRef?
   var_deltas : Array[VarDelta]
   new_vars : Array[ApiVarSnapshotRef]
-  removed_var_name_indices : Array[Int]
+  removed_var_name_indices : Array[Int32]
   call_stack : Array[ApiFrameInfoRef]?
   vis_events : Array[VisEvent]?
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   accessed_vars : Array[AccessedVarRef]?
   array_snapshots : Array[ArraySnapshotRef]?
-  removed_array_name_indices : Array[Int]
+  removed_array_name_indices : Array[Int32]
   pointer_snapshots : Array[PointerSnapshotRef]?
-  removed_pointer_name_indices : Array[Int]
+  removed_pointer_name_indices : Array[Int32]
   root_cause_hint : RootCauseHint?
 } derive(@debug.Debug)
 pub fn StepPayloadDelta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct StepPayloadRef {
-  step_index : Int
-  code_line : Int
-  code_file_idx : Int?
-  func_name_idx : Int
-  semantic_label_idx : Int
-  semantic_label_id_idx : Int
+  step_index : Int32
+  code_line : Int32
+  code_file_idx : Int32?
+  func_name_idx : Int32
+  semantic_label_idx : Int32
+  semantic_label_id_idx : Int32
   algorithm_step : AlgorithmStepSnapshotRef?
   local_vars : Array[ApiVarSnapshotRef]
   call_stack : Array[ApiFrameInfoRef]
   vis_events : Array[VisEvent]
-  heatmap_line : Int
+  heatmap_line : Int32
   heatmap_count : UInt64
   accessed_vars : Array[AccessedVarRef]
   array_snapshots : Array[ArraySnapshotRef]
@@ -327,9 +327,9 @@ pub(all) struct StepStreamBatch {
   trapped : Bool
   waiting_input : Bool
   paused : Bool
-  current_line : Int
+  current_line : Int32
   trap_message : String?
-  cache_start_step : Int
+  cache_start_step : Int32
 } derive(@debug.Debug)
 pub fn StepStreamBatch::to_repr(Self) -> @debug.Repr
 
@@ -338,17 +338,17 @@ type SymbolTable
 pub(all) struct UnifiedRunResult {
   success : Bool
   error : String?
-  total_steps : Int
+  total_steps : Int32
   finished : Bool
 } derive(@debug.Debug)
 pub fn UnifiedRunResult::to_repr(Self) -> @debug.Repr
 
 pub(all) struct UnwindSample {
-  step_index : Int
+  step_index : Int32
   unwinding : Bool
-  unwind_frames_left : Int
+  unwind_frames_left : Int32
 } derive(Compare, Eq, @debug.Debug)
-pub fn UnwindSample::compare(Self, Self) -> Int
+pub fn UnwindSample::compare(Self, Self) -> Int32
 pub fn UnwindSample::equal(Self, Self) -> Bool
 pub fn UnwindSample::not_equal(Self, Self) -> Bool
 pub fn UnwindSample::op_ge(Self, Self) -> Bool
@@ -358,22 +358,22 @@ pub fn UnwindSample::op_lt(Self, Self) -> Bool
 pub fn UnwindSample::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VarDelta {
-  name_idx : Int
+  name_idx : Int32
   value : String
 } derive(@debug.Debug)
 pub fn VarDelta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VisEvent {
-  ty : Int
-  line : Int
-  extra0 : Int
-  extra1 : Int
-  extra2 : Int
+  ty : Int32
+  line : Int32
+  extra0 : Int32
+  extra1 : Int32
+  extra2 : Int32
   context : String
 } derive(@debug.Debug)
 pub fn VisEvent::to_repr(Self) -> @debug.Repr
 
 // Type aliases
-pub type SymIdx = Int
+pub type SymIdx = Int32
 
 // Traits

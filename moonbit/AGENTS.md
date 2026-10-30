@@ -69,6 +69,7 @@ node scripts/moonbit/mbti_sync/main.mts -check      # 接口面同步闸（.mbt 
 node scripts/perf_budget/main.mts -check            # 性能假设预算闸（语料规模前提守护：typeck O2 债裁决依据 struct 定义 ≤2 / 成员访问 ≤37；超预算即红迫使重估；J9 证红 ✅）
 node scripts/wasmopt/main.mts <wasm.wasm>           # wasm-gc 产物构建后置优化（#120 批①：binaryen 132 钉版本 + sha256 + 二跑确定性；lean 产物实测 -19.3% raw；moon build 后跑——moon 增量重建会覆盖须重跑；-check=新鲜度校验）
 node scripts/toolchain_probe/toolchain_probe.mts    # 工具链健康探针（版本锁定/索引预检/ICE 特征；升 moon 后必跑，漂移须 --update-baseline + 全门禁）
+node scripts/backend_triage/main.mts             # #349 三面编译语义对拍（native-clang/js-node/wasm-gc-moonrun 三连 moon run 输出逐字节对拍——源码级后端归因；新增不替换，现役 gates-wasm 不动）
 node scripts/diff_gate/main.mts parser <corpus>     # S3 解析差分（E1/E2/活性；仓库根跑）
 node scripts/diff_gate/main.mts parser --pathological # E3 病态 12 样本同等拒绝
 node scripts/diff_gate/main.mts parser --legal-deep # E4 合法深嵌套反向锚

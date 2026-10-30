@@ -9,53 +9,53 @@ import {
 }
 
 // Values
-pub const ALIGN4_MASK : UInt = 0xFFFFFFFC
+pub const ALIGN4_MASK : UInt32 = 0xFFFFFFFC
 
-pub const BYTECODE_LIBC_BASE_INDEX : Int = 1000
+pub const BYTECODE_LIBC_BASE_INDEX : Int32 = 1000
 
-pub const BYTECODE_LIBC_FUNC_COUNT : Int = 88
+pub const BYTECODE_LIBC_FUNC_COUNT : Int32 = 88
 
-pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt = 1024
+pub const BYTECODE_LIBC_GLOBALS_RESERVED : UInt32 = 1024
 
-pub const GLOBAL_REGION_LIMIT : UInt = 65536
+pub const GLOBAL_REGION_LIMIT : UInt32 = 65536
 
-pub const GLOBAL_START : UInt = 0x1000
+pub const GLOBAL_START : UInt32 = 0x1000
 
-pub const HEAP_START : UInt = 0x5000
+pub const HEAP_START : UInt32 = 0x5000
 
-pub const HOST_FUNC_NAME_COUNT : Int = 114
+pub const HOST_FUNC_NAME_COUNT : Int32 = 114
 
-pub const HOST_FUNC_PTR_BASE : Int = 1_000_000
+pub const HOST_FUNC_PTR_BASE : Int32 = 1_000_000
 
-pub const MEM_SIZE : UInt = 1048576
+pub const MEM_SIZE : UInt32 = 1048576
 
-pub const NULL_TRAP_SIZE : UInt = 0x1000
+pub const NULL_TRAP_SIZE : UInt32 = 0x1000
 
-pub const SHADOWED_HOST_NAME_COUNT : Int = 16
+pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
 
-pub const STACK_START : UInt = 1048576
+pub const STACK_START : UInt32 = 1048576
 
-pub fn align4(UInt) -> UInt
+pub fn align4(UInt32) -> UInt32
 
-pub fn argv_region_footprint(Int, Array[String]) -> UInt
+pub fn argv_region_footprint(Int32, Array[String]) -> UInt32
 
 pub fn builtin_name_union() -> Array[String]
 
 pub let bytecode_libc_all_funcs : Array[String]
 
-pub fn bytecode_libc_index(String) -> Int?
+pub fn bytecode_libc_index(String) -> Int32?
 
 pub fn call_route(String) -> CallRoute?
 
 pub fn compile_output_dump_json(CompileOutput) -> String
 
-pub fn compute_heap_base(UInt, Int, Array[String]) -> UInt
+pub fn compute_heap_base(UInt32, Int32, Array[String]) -> UInt32
 
 pub fn cstring_bytes(String) -> Array[Byte]
 
-pub fn cstring_len(String) -> Int
+pub fn cstring_len(String) -> Int32
 
-pub fn host_func_id_by_user_name(String) -> Int?
+pub fn host_func_id_by_user_name(String) -> Int32?
 
 pub fn is_host_func_name(String) -> Bool
 
@@ -71,8 +71,8 @@ pub fn verify_violations_json(Array[VerifyViolation]) -> String
 
 // Types and methods
 pub(all) enum CallRoute {
-  BytecodeLibc(Int)
-  Host(Int)
+  BytecodeLibc(Int32)
+  Host(Int32)
 } derive(Eq, @debug.Debug)
 pub fn CallRoute::equal(Self, Self) -> Bool
 pub fn CallRoute::not_equal(Self, Self) -> Bool
@@ -80,27 +80,27 @@ pub fn CallRoute::to_repr(Self) -> @debug.Repr
 
 pub(all) struct CompileOutput {
   code : Array[@opcode.Instruction]
-  globals_init_32 : Array[(UInt, Int)]
-  globals_init_64 : Array[(UInt, UInt64)]
+  globals_init_32 : Array[(UInt32, Int32)]
+  globals_init_64 : Array[(UInt32, UInt64)]
   func_table : Map[String, FuncMeta]
-  func_index : Map[String, Int]
-  string_data : Array[(UInt, String)]
-  source_map : Array[(UInt, @source.SourceLoc)]
+  func_index : Map[String, Int32]
+  string_data : Array[(UInt32, String)]
+  source_map : Array[(UInt32, @source.SourceLoc)]
   symbols : Array[Symbol]
   struct_defs : Map[String, Array[@ast.StructField]]
   union_defs : Map[String, Array[@ast.StructField]]
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
-  global_data_end : UInt
+  global_data_end : UInt32
 } derive(@debug.Debug)
 pub fn CompileOutput::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FuncMeta {
-  mut ip : Int
-  mut arg_count : Int
-  mut param_count : Int
-  mut local_count : Int
-  mut param_sizes : Array[Int]
+  mut ip : Int32
+  mut arg_count : Int32
+  mut param_count : Int32
+  mut local_count : Int32
+  mut param_sizes : Array[Int32]
   return_type : @ast.Type
   mut is_variadic : Bool
   local_buffers : Array[LocalBuffer]
@@ -108,8 +108,8 @@ pub(all) struct FuncMeta {
 pub fn FuncMeta::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LocalBuffer {
-  offset : Int
-  size : Int
+  offset : Int32
+  size : Int32
   name : String
 } derive(Eq, @debug.Debug)
 pub fn LocalBuffer::equal(Self, Self) -> Bool
@@ -118,19 +118,19 @@ pub fn LocalBuffer::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Symbol {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
-  scope_depth : Int
+  scope_depth : Int32
   func_name : String
-  decl_line : Int
+  decl_line : Int32
 } derive(@debug.Debug)
 pub fn Symbol::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VerifyViolation {
   kind : String
   func : String
-  ip : Int
+  ip : Int32
   detail : String
 } derive(Eq, @debug.Debug)
 pub fn VerifyViolation::equal(Self, Self) -> Bool

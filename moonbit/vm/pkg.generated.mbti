@@ -12,15 +12,15 @@ import {
 }
 
 // Values
-pub const DEFAULT_MAX_STEPS : Int = 10_000_000
+pub const DEFAULT_MAX_STEPS : Int32 = 10_000_000
 
-pub const MAX_FUNCTIONS : Int = 65_536
+pub const MAX_FUNCTIONS : Int32 = 65_536
 
-pub const MAX_STACK_DEPTH : Int = 10_000
+pub const MAX_STACK_DEPTH : Int32 = 10_000
 
-pub const SNAPSHOT_INTERVAL : Int = 100_000
+pub const SNAPSHOT_INTERVAL : Int32 = 100_000
 
-pub const VIS_EVENT_LIMIT : Int = 1024
+pub const VIS_EVENT_LIMIT : Int32 = 1024
 
 pub fn load_libc_artifact() -> LibcArtifact
 
@@ -35,12 +35,12 @@ pub(all) struct ArraySnapshotData {
 }
 
 pub(all) struct CallFrame {
-  return_ip : Int?
-  locals_base : UInt
-  local_count : Int
+  return_ip : Int32?
+  locals_base : UInt32
+  local_count : Int32
   func_name : String
-  original_stack_top : UInt
-  caller_line : Int
+  original_stack_top : UInt32
+  caller_line : Int32
   local_buffers : Array[@bytecode.LocalBuffer]
 } derive(Eq, @debug.Debug)
 pub fn CallFrame::equal(Self, Self) -> Bool
@@ -56,10 +56,10 @@ pub fn ExecMode::not_equal(Self, Self) -> Bool
 pub fn ExecMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HandlerFrame {
-  catch_ip : Int
-  frame_idx : Int
-  stack_depth : Int
-  mem_stack_top : UInt
+  catch_ip : Int32
+  frame_idx : Int32
+  stack_depth : Int32
+  mem_stack_top : UInt32
 } derive(Eq, @debug.Debug)
 pub fn HandlerFrame::equal(Self, Self) -> Bool
 pub fn HandlerFrame::not_equal(Self, Self) -> Bool
@@ -67,16 +67,16 @@ pub fn HandlerFrame::to_repr(Self) -> @debug.Repr
 
 pub(all) struct LibcArtifact {
   code : Array[@opcode.Instruction]
-  funcs : Array[(String, Int, @bytecode.FuncMeta)]
-  globals_32 : Array[(UInt, Int)]
-  globals_64 : Array[(UInt, UInt64)]
+  funcs : Array[(String, Int32, @bytecode.FuncMeta)]
+  globals_32 : Array[(UInt32, Int32)]
+  globals_64 : Array[(UInt32, UInt64)]
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
 }
 
 pub(all) enum MemoryImage {
   Full(FixedArray[Byte])
-  Delta(Int, Array[(Int, FixedArray[Byte])])
+  Delta(Int32, Array[(Int32, FixedArray[Byte])])
 } derive(Eq, @debug.Debug)
 pub fn MemoryImage::apply_to(Self, VitroVM) -> Unit
 pub fn MemoryImage::equal(Self, Self) -> Bool
@@ -99,33 +99,33 @@ pub(all) struct VMSnapshot {
   mem : @memory.MemorySnapshot
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
-  ip : Int
-  mem_stack_top : UInt
-  step_count : Int
-  current_line : Int
+  ip : Int32
+  mem_stack_top : UInt32
+  step_count : Int32
+  current_line : Int32
   finished : Bool
-  exit_code : Int
+  exit_code : Int32
   error : String
   trap_code : String
   paused : Bool
   cancelled : Bool
   step_event_hit : Bool
   waiting_input : Bool
-  qsort_depth : Int
-  argc : Int
-  argv_addr : UInt
+  qsort_depth : Int32
+  argc : Int32
+  argv_addr : UInt32
   vis_event_queue : Array[VisEventData]
-  breakpoints : Array[Int]
-  heatmap : Map[Int, UInt64]
+  breakpoints : Array[Int32]
+  heatmap : Map[Int32, UInt64]
   snapshot_vars : Map[String, UInt64]
-  last_snapshot_step : Int
+  last_snapshot_step : Int32
   output : @host.OutputLog
   input : @host.InputState
-  rand_seed : UInt
+  rand_seed : UInt32
   vfs : @host.VfsSnapshot
   exec_mode : ExecMode
-  exception_ref : UInt?
-  unwind_remaining_frames : Int
+  exception_ref : UInt32?
+  unwind_remaining_frames : Int32
   unwind_target : HandlerFrame?
   handler_stack : Array[HandlerFrame]
 }
@@ -140,7 +140,7 @@ pub fn VariableAccess::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VariableSnapshotData {
   name : String
-  addr : UInt
+  addr : UInt32
   is_local : Bool
   ty : @ast.Type
   value : Int64
@@ -148,11 +148,11 @@ pub(all) struct VariableSnapshotData {
 pub fn VariableSnapshotData::to_repr(Self) -> @debug.Repr
 
 pub(all) struct VisEventData {
-  ty : Int
-  line : Int
-  extra0 : Int
-  extra1 : Int
-  extra2 : Int
+  ty : Int32
+  line : Int32
+  extra0 : Int32
+  extra1 : Int32
+  extra2 : Int32
   context : String
 } derive(Eq, @debug.Debug)
 pub fn VisEventData::equal(Self, Self) -> Bool
@@ -161,43 +161,43 @@ pub fn VisEventData::to_repr(Self) -> @debug.Repr
 
 pub struct VitroVM {
   code : Array[@opcode.Instruction]
-  mut ip : Int
+  mut ip : Int32
   memory : @memory.Memory
   mut mem_map : @memory.MemoryMap
-  mut mem_stack_top : UInt
+  mut mem_stack_top : UInt32
   stack : Array[UInt64]
   call_stack : Array[CallFrame]
-  mut qsort_depth : Int
+  mut qsort_depth : Int32
   func_table : Array[@bytecode.FuncMeta?]
   func_names : Array[String?]
   symbols : Array[@bytecode.Symbol]
   f64_constants : Array[Double]
   i64_constants : Array[Int64]
-  locals_by_func : Map[String, Map[Int, String]]
-  global_syms : Map[Int, String]
+  locals_by_func : Map[String, Map[Int32, String]]
+  global_syms : Map[Int32, String]
   mut struct_defs : Map[String, Array[@ast.StructField]]
   mut union_defs : Map[String, Array[@ast.StructField]]
-  arc_cleanup : Map[String, Array[Int]]
-  mut step_count : Int
-  mut max_steps : Int
-  mut call_depth_limit : Int
+  arc_cleanup : Map[String, Array[Int32]]
+  mut step_count : Int32
+  mut max_steps : Int32
+  mut call_depth_limit : Int32
   mut finished : Bool
-  mut exit_code : Int
+  mut exit_code : Int32
   mut paused : Bool
   mut cancelled : Bool
   mut step_event_hit : Bool
   mut error : String
   mut trap_code : String
-  mut current_line : Int
-  mut argc : Int
-  mut argv_addr : UInt
+  mut current_line : Int32
+  mut argc : Int32
+  mut argv_addr : UInt32
   mut vis_event_queue : Array[VisEventData]
-  vis_event_lines : Array[(Int, Int, String)]
-  breakpoints : @set.Set[Int]
+  vis_event_lines : Array[(Int32, Int32, String)]
+  breakpoints : @set.Set[Int32]
   last_accessed_vars : Array[VariableAccess]
-  heatmap : Map[Int, UInt64]
+  heatmap : Map[Int32, UInt64]
   snapshot_vars : Map[String, UInt64]
-  mut last_snapshot_step : Int
+  mut last_snapshot_step : Int32
   mut output : @host.OutputLog
   mut input : @host.InputState
   mut rand : @host.RandState
@@ -208,52 +208,52 @@ pub struct VitroVM {
   mut clock_start_millis : UInt64
   handler_stack : Array[HandlerFrame]
   mut exec_mode : ExecMode
-  mut exception_ref : UInt?
-  mut unwind_remaining_frames : Int
+  mut exception_ref : UInt32?
+  mut unwind_remaining_frames : Int32
   mut unwind_target : HandlerFrame?
 }
-pub fn VitroVM::accessed_at(Self, Int) -> VariableAccess
-pub fn VitroVM::accessed_len(Self) -> Int
-pub fn VitroVM::add_breakpoint(Self, Int) -> Unit
-pub fn VitroVM::breakpoints_sorted(Self) -> Array[Int]
-pub fn VitroVM::call_stack_at(Self, Int) -> CallFrame
-pub fn VitroVM::call_stack_len(Self) -> Int
+pub fn VitroVM::accessed_at(Self, Int32) -> VariableAccess
+pub fn VitroVM::accessed_len(Self) -> Int32
+pub fn VitroVM::add_breakpoint(Self, Int32) -> Unit
+pub fn VitroVM::breakpoints_sorted(Self) -> Array[Int32]
+pub fn VitroVM::call_stack_at(Self, Int32) -> CallFrame
+pub fn VitroVM::call_stack_len(Self) -> Int32
 pub fn VitroVM::clear_breakpoints(Self) -> Unit
 pub fn VitroVM::clear_waiting_input(Self) -> Unit
 pub fn VitroVM::dump_memory_raw(Self) -> Bytes
-pub fn VitroVM::final_return_value(Self) -> Int
-pub fn VitroVM::find_variable_name_at_addr(Self, UInt) -> String?
+pub fn VitroVM::final_return_value(Self) -> Int32
+pub fn VitroVM::find_variable_name_at_addr(Self, UInt32) -> String?
 pub fn VitroVM::get_array_snapshots(Self) -> Array[ArraySnapshotData]
-pub fn VitroVM::get_current_line(Self) -> Int
+pub fn VitroVM::get_current_line(Self) -> Int32
 pub fn VitroVM::get_variable_snapshot(Self) -> Array[VariableSnapshotData]
-pub fn VitroVM::heatmap_count_at(Self, Int) -> UInt64
+pub fn VitroVM::heatmap_count_at(Self, Int32) -> UInt64
 pub fn VitroVM::load_program(Self, Array[@opcode.Instruction]) -> Unit
 pub fn VitroVM::new() -> Self
-pub fn VitroVM::register_function(Self, Int, @bytecode.FuncMeta) -> Bool
-pub fn VitroVM::register_function_name(Self, Int, String) -> Bool
+pub fn VitroVM::register_function(Self, Int32, @bytecode.FuncMeta) -> Bool
+pub fn VitroVM::register_function_name(Self, Int32, String) -> Bool
 pub fn VitroVM::reset(Self) -> Unit
 pub fn VitroVM::reset_vfs(Self) -> Unit
 pub fn VitroVM::restore(Self, VMSnapshot) -> Unit
-pub fn VitroVM::run(Self) -> Int
-pub fn VitroVM::set_call_depth_limit(Self, Int) -> Unit
+pub fn VitroVM::run(Self) -> Int32
+pub fn VitroVM::set_call_depth_limit(Self, Int32) -> Unit
 pub fn VitroVM::set_clock_source(Self, () -> UInt64) -> Unit
 pub fn VitroVM::set_deterministic(Self, Bool) -> Unit
 pub fn VitroVM::set_f64_constants(Self, Array[Double]) -> Unit
-pub fn VitroVM::set_globals_32(Self, Array[(UInt, Int)]) -> Unit
-pub fn VitroVM::set_globals_64(Self, Array[(UInt, UInt64)]) -> Unit
+pub fn VitroVM::set_globals_32(Self, Array[(UInt32, Int32)]) -> Unit
+pub fn VitroVM::set_globals_64(Self, Array[(UInt32, UInt64)]) -> Unit
 pub fn VitroVM::set_i64_constants(Self, Array[Int64]) -> Unit
 pub fn VitroVM::set_input(Self, @host.InputState) -> Unit
-pub fn VitroVM::set_max_steps(Self, Int) -> Unit
+pub fn VitroVM::set_max_steps(Self, Int32) -> Unit
 pub fn VitroVM::set_symbols(Self, Array[@bytecode.Symbol]) -> Unit
-pub fn VitroVM::set_vis_event_lines(Self, Array[(Int, Int, String)]) -> Unit
-pub fn VitroVM::setup_argv(Self, Int, Array[String], UInt) -> Unit
-pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int, Array[String], Array[(Int, Int, String)]) -> Unit
+pub fn VitroVM::set_vis_event_lines(Self, Array[(Int32, Int32, String)]) -> Unit
+pub fn VitroVM::setup_argv(Self, Int32, Array[String], UInt32) -> Unit
+pub fn VitroVM::setup_from_output(Self, @bytecode.CompileOutput, Int32, Array[String], Array[(Int32, Int32, String)]) -> Unit
 pub fn VitroVM::snapshot(Self) -> VMSnapshot
-pub fn VitroVM::snapshot_incremental(Self, Int) -> VMSnapshot
+pub fn VitroVM::snapshot_incremental(Self, Int32) -> VMSnapshot
 pub fn VitroVM::step(Self) -> StepResult
 pub fn VitroVM::take_vis_events(Self) -> Array[VisEventData]
 pub fn VitroVM::unpause(Self) -> Unit
-pub fn VitroVM::write_cstring(Self, UInt, String) -> Unit
+pub fn VitroVM::write_cstring(Self, UInt32, String) -> Unit
 
 // Type aliases
 

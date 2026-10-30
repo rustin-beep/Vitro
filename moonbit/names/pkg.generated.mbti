@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub fn ctor_call_name(String, Int) -> String
+pub fn ctor_call_name(String, Int32) -> String
 
 pub fn ctor_def_name(String) -> String
 

@@ -48,7 +48,7 @@ native CLI 1.5–6.3×**。诚实短板：全速执行慢 CPython 9.6–19.8×�
 
 ```bash
 moon check && moon test    # 967 测试（裸口径，facts 键 moonbit_test_passed 机判，漂移即 CI 红；批注明细单源 CHANGELOG——#308；2026-10-26 #314-#318 五案批 +2 裸域 +1 native-only；#330/#336 四段批 +1 裸域 wbtest；#338 批三 vprintf 族 +8、批四零测试包 +9 裸域；2026-10-27 #87 seek 几何化淘汰+重放快道 +5；2026-10-28 #342 审阅处置 P2-1 窗口塌缩锚 +1；2026-10-28 #325 swap 相位结构判据 +1；2026-10-28 #347 审阅处置 selection 判别力锚 +1；2026-10-28 #251 ULL 翻案批 +2；2026-10-28 #337/#343 声明点语义双案批 +17；2026-10-28 PR #344 审阅处置批 +8；2026-10-28 #213 语法错照跑 typeck 批 +2 native-only；2026-10-29 #356 POSIX 绝对锚批 +2 裸域 +1 native-only；同日审阅处置 +1 裸域 +1 native-only；2026-10-29 #366/#363/#349 三案批 +1 裸 +1 native；2026-10-29 #369/#370 零锚面锚 +2；2026-10-30 PR #375 审阅处置锚 +1；2026-10-29 #364 compile{files} 批 裸持平；2026-10-30 #382 mutation 闸批 +3 裸；2026-10-30 #380 dir_of 批 裸持平、审阅处置 裸持平；2026-10-30 #377/#376 include 归属批 +2 js/native 域（gateway 1 + vitro_wasm 壳 1），裸持平）
-                           # moon test --target native 全量 1156（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准；2026-10-29 #369/#370 零锚面锚 +2；2026-10-30 PR #375 审阅处置锚 +1；2026-10-29 #364 compile{files} 批 +5 native-only）
+                           # moon test --target native 全量 1157（CI 门禁口径，facts 键 moonbit_test_passed_native 机判；native-only 包〔fs/gateway/cli〕逐包分解以 moon test -p 为准；2026-10-29 #369/#370 零锚面锚 +2；2026-10-30 PR #375 审阅处置锚 +1；2026-10-29 #364 compile{files} 批 +5 native-only；2026-10-30 #377/#376 include 归属批 +1（gateway 锚））
 moon info                  # .mbti 接口面（API 变更信号）
 ```
 

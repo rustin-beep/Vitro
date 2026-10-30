@@ -513,18 +513,33 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-keys span { display: inline-flex; align-items: center; gap: 4px; }
 
 /* ---------- 数组索引格 ---------- */
-.vr-cells { display: flex; gap: 8px; flex-wrap: wrap; }
+.vr-cells { display: flex; gap: 8px; flex-wrap: wrap; position: relative; }
 .vr-cell {
   width: 56px; height: 56px; padding: 3px 0 0; text-align: center;
   border: 1px solid var(--vr-rule-2); background: var(--vr-panel); border-radius: 2px;
-  position: relative; transition: background var(--vr-t) var(--vr-ease), border-color var(--vr-t) var(--vr-ease);
+  position: relative; transition: background var(--vr-t-fast) var(--vr-ease), border-color var(--vr-t-fast) var(--vr-ease);
 }
 .vr-cell .vr-idx { display: block; font-family: var(--vr-mono); font-size: 9px; font-variant-ligatures: none; color: var(--vr-ink-3); line-height: 1.4; position: relative; z-index: 1; }
 .vr-cell .vr-val { display: block; font-family: var(--vr-mono); font-size: 19px; line-height: 1.35; font-weight: 600; font-variant-ligatures: none; font-variant-numeric: tabular-nums; color: var(--vr-ink); position: relative; z-index: 1; }
 .vr-cell .vr-bar { position: absolute; left: 50%; bottom: 3px; width: 4px; background: var(--vr-amber); opacity: .42; transform: translateX(-50%); }
 .vr-cell.is-current { border-color: var(--vr-amber-2); background: var(--vr-amber-tint); box-shadow: inset 0 -2px 0 var(--vr-amber-2); }
 .vr-cell.is-current .vr-bar { opacity: .9; }
+/* 差分兜底（无事件时的猜测）：短暂闪烁；事件帧不再走这条 */
 .vr-cell.is-swap { animation: vr-flash 520ms var(--vr-ease); }
+/* 本帧交换（ty=2 事件，静态语义）：主题 swap 色边框 + 淡底 + 底部实条 */
+.vr-cell.is-swap-event {
+  border-color: var(--vr-swap);
+  background: color-mix(in srgb, var(--vr-swap) 14%, var(--vr-panel));
+  box-shadow: inset 0 -2px 0 var(--vr-swap);
+}
+.vr-cell.is-swap-event .vr-bar { opacity: .9; }
+/* 交换连线：两格之间的短横线（新节点插入时绘制一次；动效关由全局规则切断） */
+.vr-swap-link {
+  position: absolute; height: 2px; background: var(--vr-swap); opacity: .9;
+  transform-origin: left center; border-radius: 1px; pointer-events: none;
+  animation: vr-swap-draw var(--vr-t-slow) var(--vr-ease-enter) both;
+}
+@keyframes vr-swap-draw { from { transform: scaleX(0); opacity: .25; } to { transform: scaleX(1); opacity: .9; } }
 .vr-cell.is-sorted .vr-val { color: var(--vr-ink-2); }
 .vr-cell.is-sorted .vr-bar { opacity: .25; }
 .vr-cell.is-sorted::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 12px; height: 1px; background: var(--vr-green); transform: translateX(-50%); }
@@ -534,6 +549,7 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-legend { display: inline-flex; align-items: center; gap: 5px; }
 .vr-legend i { width: 8px; height: 8px; display: inline-block; border: 1px solid var(--vr-rule-2); background: var(--vr-panel); }
 .vr-legend i.is-cur { border-color: var(--vr-amber-2); background: var(--vr-amber-tint); }
+.vr-legend i.is-swap { border-color: var(--vr-swap); background: color-mix(in srgb, var(--vr-swap) 18%, var(--vr-panel)); }
 .vr-legend i.is-sorted { border: 0; background: var(--vr-green); height: 2px; width: 12px; }
 .vr-arrayfoot .vr-note-mini { margin-left: auto; color: var(--vr-ink-3); text-align: right; }
 
@@ -564,10 +580,13 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-tree-mobile .vr-now { font-family: var(--vr-mono); font-size: 8px; font-variant-ligatures: none; border: 1px solid var(--vr-amber-2); color: var(--vr-amber); padding: 0 3px; }
 .vr-node rect { fill: var(--vr-panel); stroke: var(--vr-rule-2); stroke-width: 1; }
 .vr-node text { fill: var(--vr-ink-2); font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; text-anchor: middle; }
+/* visited 祖先链逐级点亮（D2）：状态类过渡；动效关由 :root[data-motion] 与
+   prefers-reduced-motion 的全局规则切断 */
+.vr-node rect, .vr-node text { transition: fill var(--vr-t-fast) var(--vr-ease), stroke var(--vr-t-fast) var(--vr-ease), stroke-width var(--vr-t-fast) var(--vr-ease); }
 .vr-node.is-visited rect { stroke: var(--vr-ink-3); }
 .vr-node.is-current rect { fill: var(--vr-amber-tint); stroke: var(--vr-amber-2); stroke-width: 1.6; }
 .vr-node.is-current text { fill: var(--vr-ink); font-weight: 600; }
-.vr-edge { stroke: var(--vr-rule-2); stroke-width: 1; fill: none; }
+.vr-edge { stroke: var(--vr-rule-2); stroke-width: 1; fill: none; transition: stroke var(--vr-t-fast) var(--vr-ease); }
 .vr-edge.is-visited { stroke: var(--vr-ink-3); }
 .vr-treefoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-family: var(--vr-mono); font-size: 10px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-treefoot .vr-path { color: var(--vr-ink-2); }
@@ -866,6 +885,7 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-editor .cm-diagline { background: var(--vr-red-tint); box-shadow: inset 3px 0 0 var(--vr-red); animation: diag-flash 1.2s ease-out; }
 @keyframes diag-flash { 0% { background: transparent; } 12%, 45% { background: var(--vr-amber-tint); } 70% { background: var(--vr-red-tint); } 82% { background: var(--vr-amber-tint); } 100% { background: var(--vr-red-tint); } }
 .vr-editor .cm-visline { box-shadow: inset 3px 0 0 var(--vr-amber-2); }
+.vr-editor .cm-visline-swap { box-shadow: inset 3px 0 0 var(--vr-swap); }
 .vr-editor .cm-selectionBackground, .vr-editor .cm-content ::selection { background: var(--vr-sel) !important; }
 .vr-editor .cm-cursor { border-left-color: var(--vr-ink); }
 .vr-editor .tok-k, .vr-editor .ͼb { color: var(--vr-kw); }

@@ -8,11 +8,11 @@
 //     $derived 经 frameAt() 读它时依赖跟踪照常生效。
 "use strict";
 
-import type { Diagnostic, StepPayload } from "../js/types.ts";
+import type { Diagnostic, StepPayload, VisEvent } from "../js/types.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
-import { annotateGroups } from "../js/util.ts";
+import { statementEvents } from "./lib/visEvents.ts";
 import { ICONS_DIGEST } from "../js/icons.ts";
 import { ui } from "./ui.svelte.ts";
 import { goldenOf, type GoldenState } from "./lib/golden.ts";
@@ -60,18 +60,33 @@ class SessionState {
   compileOk = $state(true);
   gran = $state<"stmt" | "insn">(initGran()); // 粒度：insn=指令级（帧全集）/ stmt=语句级（按行合并组尾帧）
   /** 播放帧序列（粒度派生——审阅 A-P2-12 处方：派生生成不 mutate 真源）。
-   *  语句级 = 按行合并组尾帧（coalesceStmt 物理保留 util.ts，tests 锚零改动）。 */
-  /** 当前帧的 vis_events 行集（编辑器左缘事件标记装饰消费）。 */
-  visLines = $derived.by(() => {
-    const s = new Set<number>();
-    for (const ev of this.viewFrames[session.idx]?.vis_events ?? []) s.add(ev.line);
-    return s;
-  });
-  viewFrames = $derived.by(() => {
+   *  语句级 = 按行合并组尾帧（coalesceStmt 物理保留 util.ts，tests 锚零改动）。
+   *  事件表与帧序列**同一次派生**，保证逐位对齐（见 lib/visEvents.ts 头注：
+   *  组尾帧自身常无 vis_events，语句级必须组内聚合，否则 ty=2 交换全丢）。 */
+  private view = $derived.by((): { frames: StepPayload[]; events: VisEvent[][]; rawIndex: number[] } => {
     const raw = this.frames;
-    if (this.gran === "stmt") return annotateGroups(raw).filter((g) => g.m === g.k).map((g) => g.f);
-    return raw;
+    if (this.gran === "insn") {
+      return {
+        frames: raw,
+        events: raw.map((f) => f.vis_events ?? []),
+        rawIndex: raw.map((_, i) => i),
+      };
+    }
+    return statementEvents(raw);
   });
+  viewFrames = $derived(this.view.frames);
+  /** 与 viewFrames 逐位对齐的帧事件全集。 */
+  viewEvents = $derived(this.view.events);
+  /** 与 viewFrames 逐位对齐的原流帧下标（raw 表查表用）。 */
+  viewRawIndex = $derived(this.view.rawIndex);
+  /** 第 i 个回放帧的事件全集（组件/动效消费的单点；空帧返回空数组）。 */
+  eventsAt(i: number): VisEvent[] {
+    return this.viewEvents[i] ?? [];
+  }
+  /** view 下标 → 原流帧下标（调用树 frameNode / time_travel 等 raw 表查表用）。 */
+  rawIndexAt(i: number): number {
+    return this.viewRawIndex[i] ?? i;
+  }
   capabilities = $state.raw<Record<string, unknown> | null>(null);
   contracts = $state.raw<Record<string, unknown> | null>(null);
   /** semantic_labels 词表（A19：引擎帧为对象数组 {id,domain,status,template,

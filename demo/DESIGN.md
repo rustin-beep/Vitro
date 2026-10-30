@@ -24,6 +24,10 @@ generated: src/tokens.css（@generated，禁手改）
 - 结构色一律走 `--vr-bg / panel / panel-2 / ink / ink-2 / ink-3 / rule / rule-2`，
   **禁止**在组件里写裸 hex（五主题会各错一次）。
 - 语义底色一律用 `*-tint` 变体，不手调透明度。
+- `--vr-swap` 是交换事件标记色（D1）：ice/rose/soft/paper 四主题当前**有意复用**
+  `--vr-ty` 同值（语法青），blueprint 独立取青蓝（不与 `--vr-ty` 同值）。
+  **改 `--vr-ty` 时须同步四主题 `--vr-swap`**——tokens.json 没有 alias 机制，
+  等值关系是设计约定；五主题存在性由 pure 测试锁，等值关系不在机判面。
 - 语法色 `--vr-kw/ty/str/num/cmt` 是**主题化 token**：paper 主题用印刷批注色系
   （朱批/青碧/墨绿/赭石），e2e_editor N9 以「色度 ≥40」守门。
 
@@ -39,8 +43,16 @@ generated: src/tokens.css（@generated，禁手改）
 
 - 圆角 `--vr-r`（纸/实验台系与手账系两档；具体数值唯一真源 `tokens.json`），阴影只给**锚定浮层**
   （`--vr-shadow`）；卡片/面板一律不投影。
-- 动效只用于状态过渡，时长/曲线走 `--vr-t` / `--vr-ease`；`data-motion="off"`
-  必须整体关断（设置与 `prefers-reduced-motion` 双入口）。
+- 动效只用于**状态过渡**与**事件指示**，不插值数据语义（柱高/格值永不 tween）；
+  时长/曲线走 `--vr-t-fast / --vr-t / --vr-t-slow` + `--vr-ease / -emphasis /
+  -enter`。相机平滑用 Tween（Svelte Spring damping 上限 1，快速档会过冲）；
+  spring 数值参数（D3 时间轴指针）在 `src/lib/motion.svelte.ts`。
+- `data-motion="off"` 必须整体关断（用户设置与 `prefers-reduced-motion` 双入口）；
+  WAAPI 脉冲与 Svelte JS 过渡同样走 motion 层预算/门（播放 / 批量 / scrub 旁路），
+  但**静态语义（class/attr/连线）不得随动效一起消失**——动效让位，语义不让位。
+- **事件驱动优先**：交换/比较指示以引擎 `vis_events` 为准，相邻帧差分闪烁只在
+  无事件时作兜底（差分是猜测，事件是引擎说的原话）。**没有帧级数据的地方不
+  伪造生命周期动效**（MemoryView 用会话结束态，不做 alloc/free 进出场）。
 
 ## 5. 五主题的意图（不是五套皮肤）
 
@@ -80,7 +92,7 @@ generated: src/tokens.css（@generated，禁手改）
 | 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `node scripts/demo_ui_lint/main.mts`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
-| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（90 锚） |
+| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（102 锚） |
 | 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mts`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
 
 > 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS

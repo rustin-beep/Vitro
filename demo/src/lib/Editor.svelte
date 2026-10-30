@@ -179,19 +179,30 @@
     provide: (f) => EditorView.decorations.from(f),
   });
 
-  // ── vis_events 左缘标记（A14，#140）：当前帧 vis_events 行集 → 行左缘
-  // accent 竖条（旧栈 .cl.vis-on::before 同形态）。session.visLines 派生
-  // 驱动（此前死派生——呈现面在此接线）。
-  const setVisLinesEffect = StateEffect.define<number[]>();
+  // ── vis_events 左缘标记（A14 #140；D1 按 ty 分色，2026-10-29 refs #122）：
+  // 当前帧事件行集 → 行左缘竖条。compare（ty=1）琥珀、swap（ty=2）主题
+  // --vr-swap 色（同线多事件时 swap 优先——交换是比比较更强的事件）。
+  // 事件全集来自 session.eventsAt（语句级已做组内聚合）。
+  const setVisEventsEffect = StateEffect.define<Array<{ line: number; ty: number }>>();
   const visLineField = StateField.define<DecorationSet>({
     create: () => Decoration.none,
     update(decos, tr) {
       decos = decos.map(tr.changes);
       for (const e of tr.effects) {
-        if (e.is(setVisLinesEffect)) {
-          const ranges = e.value
-            .filter((ln) => ln >= 1 && ln <= tr.state.doc.lines)
-            .map((ln) => Decoration.line({ class: "cm-visline" }).range(tr.state.doc.line(ln).from));
+        if (e.is(setVisEventsEffect)) {
+          const byLine = new Map<number, number>();
+          for (const ev of e.value) {
+            if (ev.line < 1 || ev.line > tr.state.doc.lines) continue;
+            const prev = byLine.get(ev.line);
+            if (prev === undefined || ev.ty === 2) byLine.set(ev.line, ev.ty);
+          }
+          const ranges = [...byLine.entries()].map(([ln, ty]) => {
+            const kind = ty === 2 ? "swap" : ty === 1 ? "compare" : "event";
+            return Decoration.line({
+              class: ty === 2 ? "cm-visline cm-visline-swap" : "cm-visline",
+              attributes: { "data-vis": kind },
+            }).range(tr.state.doc.line(ln).from);
+          });
           decos = Decoration.set(ranges, true);
         }
       }
@@ -369,11 +380,11 @@
     });
   }
 
-  /** vis_events 左缘标记（A14，#140）：当前帧事件行集全量替换（session
-   *  visLines 派生经 App $effect 下发）。 */
-  export function setVisLines(lines: number[]): void {
+  /** vis_events 左缘标记（A14 #140）：当前帧事件全集全量替换（WorkScreen
+   *  经 session.eventsAt 下发；ty 决定标记色）。 */
+  export function setVisEvents(events: Array<{ line: number; ty: number }>): void {
     if (!view) return;
-    view.dispatch({ effects: [setVisLinesEffect.of(lines)] });
+    view.dispatch({ effects: [setVisEventsEffect.of(events)] });
   }
 </script>
 

@@ -21,6 +21,10 @@ class UiState {
   /** 首访落地位：boot 链（协议面 + 首课装载/采集）走完后才撤加载遮罩——
    *  否则遮罩先撤、默认示例先闪一帧再被 bubble 覆盖（2026-10-18 实测形态）。 */
   ready = $state(false);
+  /** 用户导航代次：首次落地（boot 链直接写 screen）为 0；showEntry/showWork/
+   *  showRef 递增。动效层用它区分「页面首帧」与「用户换页」——首帧不做结构
+   *  生长动画，换课/换页才演（D2，#122）。 */
+  navEpoch = $state(0);
   /** 专注模式（#222 P4）：工作态内隐藏导航/参数，只留讲解 + 执行面；
    *  F 进 / Esc 出，URL ?focus=1 可直达（课堂投屏/录屏）。 */
   focus = $state(false);
@@ -40,17 +44,20 @@ class UiState {
 export const ui = new UiState();
 
 export function showWork(): void {
+  ui.navEpoch += 1;
   ui.screen = "work";
   ui.settingsOpen = false;
 }
 
 export function showEntry(): void {
+  ui.navEpoch += 1;
   ui.screen = "entry";
   ui.settingsOpen = false;
 }
 
 /** 打开诊断手册（code 非空则定位该条目——一句话诊断 / trap 报告跳转）。 */
 export function showRef(code = ""): void {
+  ui.navEpoch += 1;
   if (code) ui.refCode = code;
   ui.screen = "ref";
   ui.settingsOpen = false;

@@ -11,6 +11,7 @@
   //     处理在 App，本块只给提示）。
   import { seek, session, setFps, setGran, step, togglePlay } from "../session.svelte.ts";
   import { lessonSession } from "./lessonSession.svelte.ts";
+  import { setScrubbing } from "./motion.svelte.ts";
   import { sceneBand, sceneIndexAt } from "./scenes.ts";
 
   const FPS_STEPS = [2, 8, 30, 60, 120, 240];
@@ -168,6 +169,11 @@
       max={Math.max(n - 1, 0)}
       value={idx}
       oninput={(e) => seek(Number(e.currentTarget.value))}
+      onpointerdown={() => setScrubbing(true)}
+      onpointerup={() => setScrubbing(false)}
+      onpointercancel={() => setScrubbing(false)}
+      onchange={() => setScrubbing(false)}
+      onblur={() => setScrubbing(false)}
       disabled={n === 0}
       aria-label="帧滑条" title="拖动到任意帧"
     />

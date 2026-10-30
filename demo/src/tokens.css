@@ -3,6 +3,8 @@
 
 :root {
   --vr-ease: cubic-bezier(.2, .7, .3, 1);
+  --vr-ease-emphasis: cubic-bezier(.2, .9, .25, 1);
+  --vr-ease-enter: cubic-bezier(.22, 1, .36, 1);
   --vr-fs: 14px;
   --vr-fs-code: 12.5px;
   --vr-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -11,6 +13,8 @@
   --vr-serif: "Iowan Old Style", "Palatino Linotype", "Songti SC", "STSong", "SimSun", Georgia, serif;
   --vr-shadow: 0 14px 34px rgba(30, 24, 12, .16), 0 2px 6px rgba(30, 24, 12, .08);
   --vr-t: 160ms;
+  --vr-t-fast: 90ms;
+  --vr-t-slow: 280ms;
 }
 
 :root[data-theme="ice"] {
@@ -43,6 +47,7 @@
   --vr-sel: rgba(37, 99, 235, .18);
   --vr-shadow: 0 16px 40px rgba(30, 58, 95, .16), 0 3px 10px rgba(30, 58, 95, .12);
   --vr-str: #15803d;
+  --vr-swap: #0e7490;
   --vr-ty: #0e7490;
 }
 
@@ -79,6 +84,7 @@
   --vr-sel: rgba(212, 89, 122, .18);
   --vr-shadow: 0 16px 40px rgba(142, 82, 92, .16), 0 3px 10px rgba(142, 82, 92, .12);
   --vr-str: #2e7a52;
+  --vr-swap: #1f7a76;
   --vr-ty: #1f7a76;
 }
 
@@ -112,6 +118,7 @@
   --vr-sel: rgba(122, 148, 230, .20);
   --vr-shadow: 0 22px 50px rgba(3, 6, 16, .55), 0 2px 8px rgba(3, 6, 16, .5);
   --vr-str: #98d89a;
+  --vr-swap: #6fc9d8;
   --vr-ty: #6fc9d8;
 }
 
@@ -145,6 +152,7 @@
   --vr-sel: rgba(150, 82, 10, .18);
   --vr-shadow: 0 14px 34px rgba(30, 24, 12, .16), 0 2px 6px rgba(30, 24, 12, .08);
   --vr-str: #4c6338;
+  --vr-swap: #2a6b74;
   --vr-ty: #2a6b74;
 }
 
@@ -178,6 +186,7 @@
   --vr-sel: rgba(255, 138, 60, .22);
   --vr-shadow: 0 0 0 1px var(--vr-rule-2), 0 22px 50px rgba(0, 0, 0, .55);
   --vr-str: #a4b8cc;
+  --vr-swap: #58c4dc;
   --vr-ty: #a4b8cc;
 }
 

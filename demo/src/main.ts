@@ -10,6 +10,7 @@ import App from "./App.svelte";
 import { boot, collect, frameAt, seek, session } from "./session.svelte.ts";
 import { ui } from "./ui.svelte.ts";
 import { lessonSession } from "./lib/lessonSession.svelte.ts";
+import { motion } from "./lib/motion.svelte.ts";
 import { progress } from "./lib/progress.svelte.ts";
 import { workspace } from "./lib/workspace.svelte.ts";
 import { BENCH_PROGRAM, DEFAULT_PROGRAM } from "./program.ts";
@@ -23,7 +24,7 @@ const app = mount(App, { target: (() => {
 })() });
 
 (window as unknown as Record<string, unknown>)["__pilot"] = {
-  session, seek, collect, frameAt, DEFAULT_PROGRAM, ui, lessonSession, progress, workspace,
+  session, seek, collect, frameAt, DEFAULT_PROGRAM, ui, lessonSession, progress, workspace, motion,
 };
 
 const q = new URLSearchParams(location.search);

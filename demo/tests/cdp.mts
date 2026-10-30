@@ -62,9 +62,11 @@ export interface ConnectOptions {
   retryDelayMs?: number;
 }
 
-/** 连上 headless Chrome/Edge 的 page target；端口未就绪时按 ECONNREFUSED 退避重试。 */
+/** 连上 headless Chrome/Edge 的 page target；端口未就绪时按 ECONNREFUSED 退避重试。
+ *  CDP_PORT 环境变量可改端口（默认 9222）——多会话并行跑 E2E 时各用各的浏览器。 */
 export async function connectCdp(opts: ConnectOptions = {}): Promise<CdpClient> {
-  const port = opts.port ?? 9222;
+  const envPort = Number.parseInt(process.env["CDP_PORT"] ?? "", 10);
+  const port = opts.port ?? (Number.isFinite(envPort) && envPort > 0 ? envPort : 9222);
   const host = opts.host ?? "127.0.0.1";
   const pageUrlIncludes = opts.pageUrlIncludes ?? "index.html";
   const retries = opts.retries ?? 20;

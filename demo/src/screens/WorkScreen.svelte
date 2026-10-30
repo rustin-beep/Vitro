@@ -184,7 +184,7 @@
   });
   $effect(() => {
     if (session.collecting) return;
-    editorRef?.setVisLines([...session.visLines]);
+    editorRef?.setVisEvents(session.eventsAt(session.idx));
   });
   // 「继续上次」记帧（去抖；播放中不写——暂停/末帧/离开时落盘）
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -311,7 +311,7 @@
     <DiagBand onjump={(ln) => editorRef?.revealLine(ln)} />
     {#if snaps.length > 0}
       {#each snaps as s, si (s.name + "#" + si)}
-        <ArrayCells snap={s} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} {source} />
+        <ArrayCells snap={s} frame={dataFrame} before={dataIdx > 0 ? frameAt(dataIdx - 1) : undefined} heldFrom={heldFrom} frameIdx={dataIdx} {source} />
       {/each}
     {:else}
       <section class="vr-block" aria-label="数组可视化">

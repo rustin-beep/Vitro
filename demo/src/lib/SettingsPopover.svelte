@@ -6,10 +6,9 @@
   // 五主题（2026-10-18 用户拍板）：明亮实验室 / 奶油手账 / 绒面深蓝
   // 三套旧色板原样 + 白天（纸） / 夜航图 两套设计稿新增。
   import { ui } from "../ui.svelte.ts";
-  import { KEYS, THEME_KEYS, storeGet, storeSet } from "../persisted.svelte.ts";
-  import { SIZE_LABELS, SIZE_STEPS, THEME_DOTS, THEME_LABELS, applyMotion, applySize, applyTheme, themeState } from "../theme.svelte.ts";
-
-  let motion = $state(storeGet(KEYS.motion) !== "off");
+  import { KEYS, THEME_KEYS, storeSet } from "../persisted.svelte.ts";
+  import { SIZE_LABELS, SIZE_STEPS, THEME_DOTS, THEME_LABELS, applySize, applyTheme, themeState } from "../theme.svelte.ts";
+  import { motion, setMotion } from "./motion.svelte.ts";
 
   function pickTheme(v: (typeof THEME_KEYS)[number]): void {
     applyTheme(v);
@@ -19,15 +18,10 @@
     applySize(px);
     storeSet(KEYS.size, px);
   }
-  function pickMotion(on: boolean): void {
-    motion = on;
-    applyMotion(on);
-    storeSet(KEYS.motion, on ? "on" : "off");
-  }
   function reset(): void {
     pickTheme("paper");
     pickSize("14");
-    pickMotion(true);
+    setMotion(true);
   }
 </script>
 
@@ -74,8 +68,8 @@
 
   <div class="vr-poprow">
     <span>动效</span>
-    <button type="button" class="vr-switch" aria-pressed={motion} onclick={() => pickMotion(!motion)}>
-      {motion ? "开" : "关"}
+    <button type="button" class="vr-switch" aria-pressed={motion.enabled} onclick={() => setMotion(!motion.enabled)}>
+      {motion.enabled ? "开" : "关"}
     </button>
   </div>
 

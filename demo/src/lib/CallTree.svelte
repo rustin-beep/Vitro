@@ -8,8 +8,11 @@
   //   - 390：SVG 隐藏，改渲染调用路径链（同一棵树数据推导，不写第二份）；
   //   - 滚轮锚点缩放 / 拖拽平移 / 双击复位（保留旧栈手势能力，相机单一真相）。
   import type { CallTree } from "../../js/calltree.ts";
+  import { Tween } from "svelte/motion";
+  import { cubicOut } from "svelte/easing";
   import { session, frameAt } from "../session.svelte.ts";
-  import { layoutCallTree } from "./calltreeLayout.ts";
+  import { layoutCallTree, type LayoutNode } from "./calltreeLayout.ts";
+  import { motion, motionMs, gatedFade } from "./motion.svelte.ts";
   import { SvelteSet } from "svelte/reactivity";
   import { ui } from "../ui.svelte.ts";
 
@@ -20,12 +23,19 @@
   let wrapW = $state(0);
 
   const layout = $derived(layoutCallTree(tree?.root ?? null));
+  // 首帧落地（navEpoch=0）不做树生长动画；用户换页/换课（navEpoch>0）才演。
+  // 用导航代次而不是「组件首次渲染」——进目录再开课会重建 WorkScreen/CallTree，
+  // 按组件生命周期判定会把每次换课误判成首帧。
+  const transitionsArmed = $derived(ui.navEpoch > 0);
   // 浅树压扁（#222 P1 第三片，2026-10-21）：节点 ≤3（prog → main 一族）时
   // 画布没有信息量却吃 214px 高——压成一行面包屑 + 当前语句，把首屏让给
   // 数组/变量/输出。深树（fib/dfs/递归）保持原画布。
   const compact = $derived(!!layout && layout.nodes.length <= 3);
   const frame = $derived(frameAt(idx));
-  const curNode = $derived(tree && tree.frameNode[idx] ? tree.frameNode[idx] : null);
+  // frameNode 按**指令帧**下标建；语句级下 idx 是 view 下标，必须经
+  // rawIndexAt 映射（否则当前节点/路径/相机取景整体错帧——D2 实测）。
+  const rawIdx = $derived(session.rawIndexAt(idx));
+  const curNode = $derived(tree && tree.frameNode[rawIdx] ? tree.frameNode[rawIdx] : null);
   const curPos = $derived(curNode && layout ? (layout.nodes.find((n) => n.node === curNode) ?? null) : null);
 
   /** DFS 序里同名节点出现次数（节点标签 `printf #3` 与 footer `×5` 同源）。 */
@@ -105,11 +115,30 @@
     const c = clampCam(wantX, wantY, kk);
     return { k: kk, cx: c.cx, cy: c.cy };
   });
+
+  // 相机平滑（D2，refs #122）：跟随/全览切换平滑；手工拖拽/缩放/scrub/
+  // 批量/动效关 = 瞬时（直接操作不该有拖尾；seek 是跳转语义）。平滑只作
+  // 用于**取景**，不插值任何帧数据。用 Tween 而非 Spring：Svelte Spring 的
+  // damping 上限 1，快速档必过冲；Tween+cubicOut 无过冲、时长走 token。
+  const camTween = new Tween({ k: 1, cx: 0, cy: 0 }, { duration: 0, easing: cubicOut });
+  let camTree = $state.raw<CallTree | null | undefined>(undefined);
+  $effect(() => {
+    const target = cam;
+    const prev = camTween.target;
+    const changed = target.k !== prev.k || target.cx !== prev.cx || target.cy !== prev.cy;
+    const instant = !motion.allowed || motion.scrubbing || session.batching || manual !== null || dragging || camTree !== tree;
+    camTree = tree;
+    if (!changed) return;
+    if (!instant) motion.cameraAnimations += 1;
+    void camTween.set(target, { duration: instant ? 0 : motionMs("base"), easing: cubicOut });
+  });
+
   const viewBox = $derived.by(() => {
     if (!layout || wrapW <= 0) return null;
-    const vw = wrapW / cam.k;
-    const vh = H / cam.k;
-    return `${cam.cx - vw / 2} ${cam.cy - vh / 2} ${vw} ${vh}`;
+    const c = camTree === tree ? camTween.current : cam;
+    const vw = wrapW / c.k;
+    const vh = H / c.k;
+    return `${c.cx - vw / 2} ${c.cy - vh / 2} ${vw} ${vh}`;
   });
 
   function overview(): void {
@@ -151,6 +180,42 @@
   }
   function up(): void {
     dragging = false;
+  }
+
+  // ── 结构进出（D2）：树节点从父节点位置生长 / 退场回落；边淡入淡出 ────
+  // 只在**树对象换新**（采集/换课）时触发——当前数据模型整树一次建好，回放
+  // 只切 visited/current 类，不伪造「逐帧长节点」（动效不撒谎）。
+  // ⚠️ 模板里必须 `|global`：树在 `{#if layout && viewBox}` 块首次创建时注册，
+  // Svelte 局部过渡会被「块仍在初始化」判定跳过（实测 179 节点 0 次调用）；
+  // global 才在换树时演。JS 过渡不吃 CSS 媒体查询，duration 由 motion.allowed
+  // 直接裁决（0 = 关）。
+  interface GrowParams { dx: number; dy: number; armed: boolean }
+  const layoutIndex = $derived(
+    new Map<LayoutNode["node"], LayoutNode>((layout?.nodes ?? []).map((n): [LayoutNode["node"], LayoutNode] => [n.node, n])),
+  );
+  function parentOffset(nd: LayoutNode): GrowParams {
+    const parent = nd.node.parent;
+    const pl = parent ? layoutIndex.get(parent) : undefined;
+    return { dx: pl ? pl.x - nd.x : 0, dy: pl ? pl.y - nd.y : 0, armed: transitionsArmed };
+  }
+  function growFromParent(el: Element, { dx, dy, armed }: GrowParams): { duration: number; easing: typeof cubicOut; tick: (t: number, u: number) => void } {
+    motion.transitionStarts += 1;
+    const duration = armed && motion.allowed ? motionMs("fast") : 0;
+    if (duration > 0) motion.transitionCount += 1;
+    return {
+      duration,
+      easing: cubicOut,
+      tick: (t, u) => {
+        if (u === 0) {
+          // 收尾清除：不把动画用的 transform/opacity 留在 DOM 上
+          el.removeAttribute("transform");
+          (el as SVGGElement).style.opacity = "";
+          return;
+        }
+        el.setAttribute("transform", `translate(${(dx * u).toFixed(2)} ${(dy * u).toFixed(2)})`);
+        (el as SVGGElement).style.opacity = String(t);
+      },
+    };
   }
 
   // ── rail：源码片段 ──────────────────────────────────────────
@@ -219,11 +284,11 @@
     >
       {#if layout && viewBox}
         <svg viewBox={viewBox} width={wrapW} height={H}>
-          {#each layout.edges as e (e.id)}
-            <path class="vr-edge" class:is-visited={isVisited(e.from) && isVisited(e.to)} d={e.path} />
+          {#each layout.edges as e (e)}
+            <path class="vr-edge" class:is-visited={isVisited(e.from) && isVisited(e.to)} d={e.path} transition:gatedFade|global={{ armed: transitionsArmed }} />
           {/each}
-          {#each layout.nodes as nd (nd.id)}
-            <g class="vr-node" class:is-current={nd.node === curNode} class:is-visited={isVisited(nd.node)}>
+          {#each layout.nodes as nd (nd)}
+            <g class="vr-node" class:is-current={nd.node === curNode} class:is-visited={isVisited(nd.node)} transition:growFromParent|global={parentOffset(nd)}>
               <rect x={nd.x - 39} y={nd.y - 14} width="78" height="28" rx="2" />
               <text x={nd.x} y={nd.y + 3.5}>{(nameCount.get(nd.label) ?? 0) > 1 ? `${nd.label} #${nameSeq.get(nd.id) ?? 1}` : nd.label}</text>
             </g>

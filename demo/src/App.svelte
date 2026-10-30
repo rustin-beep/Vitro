@@ -16,6 +16,7 @@
   import { sceneIndexAt } from "./lib/scenes.ts";
   import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
   import { NIGHT_THEMES, cycleTheme, initTheme, themeState } from "./theme.svelte.ts";
+  import { initMotion } from "./lib/motion.svelte.ts";
   import WorkScreen from "./screens/WorkScreen.svelte";
   import EntryScreen from "./screens/EntryScreen.svelte";
   import RefScreen from "./screens/RefScreen.svelte";
@@ -37,6 +38,7 @@
   // 主题/字号/动效引导（旧值迁移 + 落盘规范化）。旧 glass 用户收到一次说明。
   const rawTheme = storeGet(KEYS.theme);
   initTheme();
+  initMotion();
   if (rawTheme && rawTheme !== themeState.current && storeGet("vitro-theme-migrated") !== "1") {
     storeSet("vitro-theme-migrated", "1");
     const from = rawTheme === "glass" ? "深夜书房" : rawTheme === "light" ? "明亮" : rawTheme;

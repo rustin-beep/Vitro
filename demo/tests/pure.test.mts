@@ -41,8 +41,11 @@ import {
   type AnchorFrame,
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
+import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvents.ts";
+import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS } from "../src/lib/motionTokens.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 import { isTransientNavigationError } from "./cdp.mts";
+import type { VisEvent } from "../js/types.ts";
 
 /** noUncheckedIndexedAccess 下的显式断言点（测试夹具已知在界内）。 */
 function must<T>(v: T | undefined, msg = "预期值存在"): T {
@@ -379,6 +382,56 @@ test("annotations：at 在幕前 = 空表（未走到本幕不出旧注记）", 
   assert.deepEqual(sceneAnnotations(frames, 1, 1, 0), []);
 });
 
+// ── visEvents：语句级组内事件聚合（D1，#122）──────────────────────────
+// 先红形状：组尾帧自身 vis_events=[]，事件落在组内首帧。只读组尾时 ty=2
+// 交换全丢（bubble 课实测 7 个 swap 全中此形态）；聚合后必须与 coalesceStmt
+// 的帧序列逐位对齐、对象同一（frameAt/锚点解析依赖对象同一性）。
+test("visEvents：语句级事件按组聚合到组尾（swap 不再丢），帧序列与 coalesceStmt 同源", () => {
+  const ev = (over: Partial<VisEvent>): VisEvent => ({ ty: 1, line: 8, extra0: 0, extra1: 0, extra2: 0, context: "", ...over });
+  const frames: EventFrame[] = [
+    { code_line: 8, vis_events: [ev({ ty: 2, line: 9, extra0: 0, extra1: 1, extra2: -1, context: "a[j]:a[j + 1]" })] },
+    { code_line: 8, vis_events: [] },
+    { code_line: 8, vis_events: [] }, // 组尾：自身无事件（坑的正身）
+    { code_line: 9, vis_events: [ev({ ty: 1, line: 8 })] },
+    { code_line: 9, vis_events: [] },
+  ];
+  const v = statementEvents(frames);
+  assert.equal(v.frames.length, 2);
+  assert.equal(v.frames[0], frames[2]); // 组尾对象同一性（viewFrames/frameAt 口径）
+  assert.deepEqual(v.frames, coalesceStmt(frames)); // 与既有语句级序列完全同源
+  assert.deepEqual(v.rawIndex, [2, 4]); // view 下标 → 原流帧下标（frameNode 查表用）
+  assert.equal(v.events[0]?.length, 1);
+  assert.equal(v.events[0]?.[0]?.ty, 2);
+  assert.equal(v.events[1]?.[0]?.ty, 1);
+  // 组内重复事件去重（同一条 StepEvent 被多指令命中时只留一条）
+  const dup = statementEvents([
+    { code_line: 1, vis_events: [ev({}), ev({})] },
+    { code_line: 1, vis_events: [ev({})] },
+  ]);
+  assert.equal(dup.events[0]?.length, 1);
+  // 空流 / 单帧边界
+  assert.deepEqual(statementEvents([]), { frames: [], events: [], rawIndex: [] });
+  assert.equal(statementEvents([{ code_line: 3, vis_events: [] }]).frames.length, 1);
+});
+
+test("visEvents：swapPairs 只认 ty=2 合法相邻对（-1 哨兵/越界/同格/重复剔除）", () => {
+  const e = (ty: number, a: number, b: number, ctx = ""): VisEvent => ({ ty, line: 9, extra0: a, extra1: b, extra2: -1, context: ctx });
+  assert.deepEqual(swapPairs([], 5), []);
+  assert.deepEqual(swapPairs([e(2, 0, 1)], 5), [{ a: 0, b: 1 }]);
+  assert.deepEqual(swapPairs([e(2, 1, 0)], 5), [{ a: 0, b: 1 }]); // 逆序归一（恒 a<b）
+  assert.deepEqual(swapPairs([e(1, 0, 1)], 5), []); // compare 不是交换
+  assert.deepEqual(swapPairs([e(2, -1, -1)], 5), []); // 运行期读不到 j 的诚实空态
+  assert.deepEqual(swapPairs([e(2, 4, 5)], 5), []); // 右格越界
+  assert.deepEqual(swapPairs([e(2, -2, 0)], 5), []); // 左格越界
+  assert.deepEqual(swapPairs([e(2, 2, 2)], 5), []); // 同格不是交换
+  assert.deepEqual(swapPairs([e(2, 0, 1), e(2, 0, 1)], 5), [{ a: 0, b: 1 }]); // 同帧去重
+  // 多数组归属：extras 没有数组名，靠 context 的 `name[` 判定；同号格不得串数组。
+  assert.deepEqual(swapPairs([e(2, 0, 1, "a[j]:a[j + 1]")], 5, "a"), [{ a: 0, b: 1 }]);
+  assert.deepEqual(swapPairs([e(2, 0, 1, "a[j]:a[j + 1]")], 5, "b"), []);
+  assert.deepEqual(swapPairs([e(2, 0, 1, "obj.arr[j]:obj.arr[j + 1]")], 5, "arr"), []); // 成员数组不冒充独立数组
+  assert.deepEqual(swapPairs([e(2, 0, 1, "")], 5, "a"), []); // 无 context 不归因（宁可静态不亮）
+});
+
 // ── scenes：帧 → 幕定位（时间轴分幕 / 分镜条共用单点，P1 第二片）
 test("scenes：sceneIndexAt 边界（首帧/幕尾/幕缝/幕外/空表），先红后绿", () => {
   const scenes: Scene[] = [
@@ -522,7 +575,37 @@ test("tokens：五主题集合 = THEME_KEYS，且每主题都有 token", () => {
     const t = tokens.themes[k]?.tokens ?? {};
     assert.ok(Object.keys(t).length > 0, `主题 ${k} 在 tokens.json 里没有 token`);
     assert.ok(["--vr-bg", "--vr-panel", "--vr-ink", "--vr-rule", "--vr-amber"].every((v) => t[v]), `主题 ${k} 缺核心 token`);
+    // D0（#122）：交换标记色是事件语义的呈现面，五主题都必须有——漏一个
+    // 主题会让该主题下 swap 标记静默退化（var 未定义 → 边框不显示）。
+    assert.ok(t["--vr-swap"]?.$value, `主题 ${k} 缺 --vr-swap（D1 交换标记）`);
   }
+  // D0 动效三档 + 三缓动：presentation 层（CSS）与 motion 层（WAAPI）同源。
+  const base = tokens.base?.tokens ?? {};
+  for (const name of ["--vr-t-fast", "--vr-t", "--vr-t-slow", "--vr-ease", "--vr-ease-emphasis", "--vr-ease-enter"]) {
+    assert.ok(base[name]?.$value, `tokens.base 缺 ${name}（D0 动效 token）`);
+  }
+});
+
+// P3-2（PR #374 审阅）：motion 层的兜底常量是 tokens 的 JS 抄本——改 token
+// 漏改兜底会静默分叉（只在 CSS 变量读不到时显影）。这里把两面包死。
+test("motionTokens：兜底时长/缓动与 tokens.json 等值（防 JS 抄本静默分叉）", () => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const tokens = JSON.parse(readFileSync(path.resolve(here, "../tokens.json"), "utf8")) as {
+    base?: { tokens?: Record<string, { $value: string }> };
+  };
+  const base = tokens.base?.tokens ?? {};
+  const msOf = (name: string): number => Number.parseFloat(must(base[name], `tokens.base 缺 ${name}`).$value);
+  assert.equal(FALLBACK_MS.base, msOf("--vr-t"));
+  assert.equal(FALLBACK_MS.fast, msOf("--vr-t-fast"));
+  assert.equal(FALLBACK_MS.slow, msOf("--vr-t-slow"));
+  assert.equal(FALLBACK_EASE.standard, must(base["--vr-ease"]).$value);
+  assert.equal(FALLBACK_EASE.emphasis, must(base["--vr-ease-emphasis"]).$value);
+  assert.equal(FALLBACK_EASE.enter, must(base["--vr-ease-enter"]).$value);
+  assert.deepEqual(EASE_VAR, {
+    standard: "--vr-ease",
+    emphasis: "--vr-ease-emphasis",
+    enter: "--vr-ease-enter",
+  });
 });
 
 // ── 内容批回归闸（2026-10-23 审阅 P2）：课程 scene 与码表附属内容此前只有

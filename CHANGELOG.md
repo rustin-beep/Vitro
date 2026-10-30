@@ -1,5 +1,44 @@
 ## [Unreleased]
 
+### refactor(engine+cmd): #378 路径目录段函数族收口——dump×4 并入 dir_of 同义族（根级 POSIX 对齐）（2026-10-29）
+
+- **红根**：`cmd/dump_{tokens,ast,typeck,compile}` 四胞胎的 `dirname_of`
+  （#373 审阅 P3-2 登记残留）：唯一分隔符在 0 位（POSIX 根级主文件
+  `"/x.c"`）返回 `""` 作 base_dir ⇒ 根级主文件 quote-include 候选链失配
+  （gateway/vitro_wasm/pp 三处同族面 #373 已修，dump 族漏网）。cmd 层互
+  不可 import 故四份独立复制件，改名 `dir_of` 并补根级分支（0 位→`"/"`）。
+- **收口**：全仓目录函数族从「2 名 7 处 3 种语义」收敛为「dir_of 六处
+  （gateway/vitro_wasm/dump×4，根级 `"/"` + 无分隔符 `"."` 语义一致）+
+  dirname_of 一处（pp 层，语义有意独有：include 指令行路径已归一只认
+  `/`、同目录相对须空串判选路）」——两族头注互指声明勿混改；gateway
+  过时头注修正（「cmd/run 复制件」原件已随薄壳化下沉消失）。
+- **中段形态分叉（登记，勿"统一"）**：gateway 系 dir_of 归一反斜杠
+  （serve 侧候选键经 normalize_path 消费），dump/vitro_wasm 系**原文
+  透传**——base_dir 须与各自目录模式 VFS 收集键（target 参数原文拼装）
+  同源，归一即候选键↔VFS 键结构性失配 ⇒ include 恒 miss。
+- **回归实证与回退（本批最有价值发现）**：初版曾把 dump×4 对齐 gateway
+  的归一形态，`typeck_diff` 五案例（e2_guarded_* 三件 + e2_include_
+  guarded + include_custom_header）即红——目录模式 VFS 键为 target 原文
+  混合分隔符形态（`D:\...\baseline/x.h`），归一后的候选键（`D:/...`）
+  与之永不相等，VFS miss 落磁盘回落通道（cwd 敏感）。三步定位（直接 exe
+  golden ✓ → moon run DIFF → moonbit cwd 下直接 exe 复现 DIFF）后回退
+  归一、仅保留根级修复，typeck_diff 复绿。**教训**：复制件"语义对齐"
+  必须先核对各消费方的键形态同源约束，形态差异可能是结构依赖而非漂移。
+- **红绿锚**：dump×4 各 2 test wbtest（native-only 口径
+  `MOON_CC=clang moon test --target native -p dump_*`——裸 moon test
+  静默跳过）+ vitro_wasm 2 test（`--target js` 口径）：根级 `"/x.c" →
+  "/"` 修前红；无分隔符 `"."`、中段原文透传存量语义钉住。dump 族红证
+  四包全红（各 2 failed）后转绿。
+- **验收**：`moon check` 绿（39 警告全豁免族）；裸 `moon test`
+  964/964；native 全量 1140/1140（README×2 native 计数连坐 1132→1140，
+  facts --strict 漂移 0）；`typeck_diff` 558/558 PASS、`codegen_diff`
+  558/558 PASS（零漂移——回退后基线逐位一致）；mbti_sync（私有函数零
+  接口面漂移）/ single_source / pkg_deps / moonbit_surface 四闸绿；
+  `moon fmt` 收敛。**vm_diff 本地未跑**：release native 构建被本机
+  clang 22.1.4 与 moon 自带 runtime（process.c LPDWORD 指针类型）不兼容
+  阻塞（CI runner 自带 clang 版本无此问题，#379 工具链环境遗留，非本批
+  引入；cmd/run 不在 dir_of 消费链，留 CI lane 收敛）。
+
 ### fix(scripts+ci+typeck): PR #375 审阅处置批——P1×3 / P2×5 / P3×4 全清（2026-10-30）
 
 - **P1-1（引擎闸二级杀阵结构性不可达）**：旧版突变体在一级判定后、

@@ -11,7 +11,7 @@ pub fn baked_payload_json() -> String
 
 pub let builtin_notes : Map[String, @assets.BuiltinNote]
 
-pub let catalog_data : Map[Int, @diag.CatalogEntry]
+pub let catalog_data : Map[Int32, @diag.CatalogEntry]
 
 pub fn install_baked() -> Unit
 

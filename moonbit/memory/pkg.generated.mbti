@@ -7,19 +7,19 @@ import {
 }
 
 // Values
-pub const DEFAULT_QUARANTINE_BUDGET : Int = 262144
+pub const DEFAULT_QUARANTINE_BUDGET : Int32 = 262144
 
-pub const DIRTY_WORD_COUNT : Int = 4
+pub const DIRTY_WORD_COUNT : Int32 = 4
 
-pub const PAGE_COUNT : Int = 256
+pub const PAGE_COUNT : Int32 = 256
 
-pub const PAGE_SHIFT : Int = 12
+pub const PAGE_SHIFT : Int32 = 12
 
-pub const PAGE_SIZE : Int = 4096
+pub const PAGE_SIZE : Int32 = 4096
 
-pub fn sat_u32_add(UInt, UInt) -> UInt
+pub fn sat_u32_add(UInt32, UInt32) -> UInt32
 
-pub fn sat_u32_sub(UInt, UInt) -> UInt
+pub fn sat_u32_sub(UInt32, UInt32) -> UInt32
 
 // Errors
 
@@ -33,8 +33,8 @@ pub fn AccessKind::not_equal(Self, Self) -> Bool
 pub fn AccessKind::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FreeBlock {
-  mut addr : UInt
-  mut size : Int
+  mut addr : UInt32
+  mut size : Int32
 } derive(Eq, @debug.Debug)
 pub fn FreeBlock::equal(Self, Self) -> Bool
 pub fn FreeBlock::not_equal(Self, Self) -> Bool
@@ -43,45 +43,45 @@ pub fn FreeBlock::to_repr(Self) -> @debug.Repr
 pub struct FreedLogs {
   entries : Array[FreedRegionInfo]
 }
-pub fn FreedLogs::at(Self, Int) -> FreedRegionInfo
+pub fn FreedLogs::at(Self, Int32) -> FreedRegionInfo
 pub fn FreedLogs::clear(Self) -> Unit
-pub fn FreedLogs::contains(Self, UInt) -> Bool
-pub fn FreedLogs::find_overlapping(Self, UInt, UInt) -> FreedRegionInfo?
-pub fn FreedLogs::get(Self, UInt) -> FreedRegionInfo?
+pub fn FreedLogs::contains(Self, UInt32) -> Bool
+pub fn FreedLogs::find_overlapping(Self, UInt32, UInt32) -> FreedRegionInfo?
+pub fn FreedLogs::get(Self, UInt32) -> FreedRegionInfo?
 pub fn FreedLogs::insert(Self, FreedRegionInfo) -> Unit
 pub fn FreedLogs::is_empty(Self) -> Bool
-pub fn FreedLogs::length(Self) -> Int
+pub fn FreedLogs::length(Self) -> Int32
 pub fn FreedLogs::load_entries(Self, Array[FreedRegionInfo]) -> Result[Unit, String]
 pub fn FreedLogs::new() -> Self
-pub fn FreedLogs::remove_overlapping(Self, UInt, UInt) -> Unit
+pub fn FreedLogs::remove_overlapping(Self, UInt32, UInt32) -> Unit
 pub fn FreedLogs::to_array(Self) -> Array[FreedRegionInfo]
 
 pub(all) struct FreedRegionInfo {
-  addr : UInt
-  mut size : Int
-  alloc_line : Int
-  freed_line : Int
-  alloc_step : Int
-  freed_step : Int
+  addr : UInt32
+  mut size : Int32
+  alloc_line : Int32
+  freed_line : Int32
+  alloc_step : Int32
+  freed_step : Int32
 } derive(Eq, @debug.Debug)
 pub fn FreedRegionInfo::equal(Self, Self) -> Bool
 pub fn FreedRegionInfo::not_equal(Self, Self) -> Bool
 pub fn FreedRegionInfo::to_repr(Self) -> @debug.Repr
 
 pub(all) struct HeapStatsData {
-  heap_base : Int
-  total_heap : Int
-  allocated : Int
-  fragmented : Int
-  fragmentation_rate : Int
+  heap_base : Int32
+  total_heap : Int32
+  allocated : Int32
+  fragmented : Int32
+  fragmentation_rate : Int32
 } derive(Eq, @debug.Debug)
 pub fn HeapStatsData::equal(Self, Self) -> Bool
 pub fn HeapStatsData::not_equal(Self, Self) -> Bool
 pub fn HeapStatsData::to_repr(Self) -> @debug.Repr
 
 pub(all) enum MemFault {
-  NullDeref(UInt, AccessKind)
-  OutOfBounds(UInt, UInt)
+  NullDeref(UInt32, AccessKind)
+  OutOfBounds(UInt32, UInt32)
   UseAfterFree(FreedRegionInfo, AccessKind)
 } derive(Eq, @debug.Debug)
 pub fn MemFault::equal(Self, Self) -> Bool
@@ -94,98 +94,98 @@ pub struct Memory {
 }
 pub fn Memory::clear_dirty(Self) -> Unit
 pub fn Memory::clone_raw(Self) -> FixedArray[Byte]
-pub fn Memory::copy(Self, MemoryMap, UInt, UInt, Int) -> Result[Unit, MemFault]
-pub fn Memory::dirty_pages(Self) -> Array[Int]
-pub fn Memory::dirty_word(Self, Int) -> UInt64
-pub fn Memory::dirty_word_count(Self) -> Int
-pub fn Memory::fill(Self, MemoryMap, UInt, Int, Byte) -> Result[Unit, MemFault]
-pub fn Memory::length(Self) -> Int
-pub fn Memory::load_i8(Self, MemoryMap, UInt) -> Result[Int, MemFault]
-pub fn Memory::load_u32(Self, MemoryMap, UInt) -> Result[UInt, MemFault]
-pub fn Memory::load_u64(Self, MemoryMap, UInt) -> Result[UInt64, MemFault]
-pub fn Memory::mark_dirty(Self, UInt, UInt) -> Unit
+pub fn Memory::copy(Self, MemoryMap, UInt32, UInt32, Int32) -> Result[Unit, MemFault]
+pub fn Memory::dirty_pages(Self) -> Array[Int32]
+pub fn Memory::dirty_word(Self, Int32) -> UInt64
+pub fn Memory::dirty_word_count(Self) -> Int32
+pub fn Memory::fill(Self, MemoryMap, UInt32, Int32, Byte) -> Result[Unit, MemFault]
+pub fn Memory::length(Self) -> Int32
+pub fn Memory::load_i8(Self, MemoryMap, UInt32) -> Result[Int32, MemFault]
+pub fn Memory::load_u32(Self, MemoryMap, UInt32) -> Result[UInt32, MemFault]
+pub fn Memory::load_u64(Self, MemoryMap, UInt32) -> Result[UInt64, MemFault]
+pub fn Memory::mark_dirty(Self, UInt32, UInt32) -> Unit
 pub fn Memory::new() -> Self
-pub fn Memory::page(Self, Int) -> FixedArray[Byte]
+pub fn Memory::page(Self, Int32) -> FixedArray[Byte]
 pub fn Memory::reset(Self) -> Unit
 pub fn Memory::restore_raw(Self, FixedArray[Byte]) -> Unit
-pub fn Memory::store_i8(Self, MemoryMap, UInt, Int) -> Result[Unit, MemFault]
-pub fn Memory::store_u32(Self, MemoryMap, UInt, UInt) -> Result[Unit, MemFault]
-pub fn Memory::store_u64(Self, MemoryMap, UInt, UInt64) -> Result[Unit, MemFault]
-pub fn Memory::write_bytes(Self, MemoryMap, UInt, Bytes) -> Result[Unit, MemFault]
-pub fn Memory::write_page(Self, Int, FixedArray[Byte]) -> Unit
+pub fn Memory::store_i8(Self, MemoryMap, UInt32, Int32) -> Result[Unit, MemFault]
+pub fn Memory::store_u32(Self, MemoryMap, UInt32, UInt32) -> Result[Unit, MemFault]
+pub fn Memory::store_u64(Self, MemoryMap, UInt32, UInt64) -> Result[Unit, MemFault]
+pub fn Memory::write_bytes(Self, MemoryMap, UInt32, Bytes) -> Result[Unit, MemFault]
+pub fn Memory::write_page(Self, Int32, FixedArray[Byte]) -> Unit
 
 pub struct MemoryMap {
-  regions : Map[UInt, MemoryRegionData]
+  regions : Map[UInt32, MemoryRegionData]
   free_list : Array[FreeBlock]
   quarantine : @deque.Deque[FreeBlock]
-  mut quarantine_bytes : Int
-  mut quarantine_budget : Int
-  mut heap_base : UInt
-  mut heap_offset : UInt
-  mut alloc_counter : Int
+  mut quarantine_bytes : Int32
+  mut quarantine_budget : Int32
+  mut heap_base : UInt32
+  mut heap_offset : UInt32
+  mut alloc_counter : Int32
   freed_logs : FreedLogs
 }
-pub fn MemoryMap::alloc_counter(Self) -> Int
-pub fn MemoryMap::allocate_raw(Self, UInt, UInt) -> UInt?
+pub fn MemoryMap::alloc_counter(Self) -> Int32
+pub fn MemoryMap::allocate_raw(Self, UInt32, UInt32) -> UInt32?
 pub fn MemoryMap::build_heap_stats(Self) -> HeapStatsData
-pub fn MemoryMap::check_access(Self, UInt, UInt, AccessKind) -> Result[Unit, MemFault]
+pub fn MemoryMap::check_access(Self, UInt32, UInt32, AccessKind) -> Result[Unit, MemFault]
 pub fn MemoryMap::dump(Self) -> MemorySnapshot
-pub fn MemoryMap::find_live_region_containing(Self, UInt) -> (UInt, MemoryRegionData)?
-pub fn MemoryMap::fragmentation_rate(Self) -> Int
-pub fn MemoryMap::free_list_at(Self, Int) -> FreeBlock
-pub fn MemoryMap::free_list_len(Self) -> Int
-pub fn MemoryMap::freed_logs_at(Self, Int) -> FreedRegionInfo
-pub fn MemoryMap::freed_logs_contains(Self, UInt) -> Bool
-pub fn MemoryMap::freed_logs_find_overlapping(Self, UInt, UInt) -> FreedRegionInfo?
-pub fn MemoryMap::freed_logs_get(Self, UInt) -> FreedRegionInfo?
-pub fn MemoryMap::freed_logs_len(Self) -> Int
-pub fn MemoryMap::freed_logs_remove_overlapping(Self, UInt, UInt) -> Unit
-pub fn MemoryMap::has_region(Self, UInt) -> Bool
-pub fn MemoryMap::heap_base(Self) -> UInt
-pub fn MemoryMap::heap_offset(Self) -> UInt
+pub fn MemoryMap::find_live_region_containing(Self, UInt32) -> (UInt32, MemoryRegionData)?
+pub fn MemoryMap::fragmentation_rate(Self) -> Int32
+pub fn MemoryMap::free_list_at(Self, Int32) -> FreeBlock
+pub fn MemoryMap::free_list_len(Self) -> Int32
+pub fn MemoryMap::freed_logs_at(Self, Int32) -> FreedRegionInfo
+pub fn MemoryMap::freed_logs_contains(Self, UInt32) -> Bool
+pub fn MemoryMap::freed_logs_find_overlapping(Self, UInt32, UInt32) -> FreedRegionInfo?
+pub fn MemoryMap::freed_logs_get(Self, UInt32) -> FreedRegionInfo?
+pub fn MemoryMap::freed_logs_len(Self) -> Int32
+pub fn MemoryMap::freed_logs_remove_overlapping(Self, UInt32, UInt32) -> Unit
+pub fn MemoryMap::has_region(Self, UInt32) -> Bool
+pub fn MemoryMap::heap_base(Self) -> UInt32
+pub fn MemoryMap::heap_offset(Self) -> UInt32
 pub fn MemoryMap::load(Self, MemorySnapshot) -> Unit
 pub fn MemoryMap::new() -> Self
-pub fn MemoryMap::quarantine_at(Self, Int) -> FreeBlock
-pub fn MemoryMap::quarantine_budget(Self) -> Int
-pub fn MemoryMap::quarantine_bytes(Self) -> Int
-pub fn MemoryMap::quarantine_len(Self) -> Int
-pub fn MemoryMap::region(Self, UInt) -> MemoryRegionData?
-pub fn MemoryMap::regions_len(Self) -> Int
-pub fn MemoryMap::regions_to_array(Self) -> Array[(UInt, MemoryRegionData)]
-pub fn MemoryMap::register_alloc(Self, UInt, Int, Int, String, Bool) -> Unit
-pub fn MemoryMap::release(Self, UInt, Int, Int) -> Int?
-pub fn MemoryMap::set_heap_base(Self, UInt) -> Unit
-pub fn MemoryMap::set_quarantine_budget(Self, Int) -> Unit
-pub fn MemoryMap::set_region(Self, UInt, MemoryRegionData) -> Unit
-pub fn MemoryMap::total_allocated(Self) -> Int
-pub fn MemoryMap::total_fragmented(Self) -> Int
+pub fn MemoryMap::quarantine_at(Self, Int32) -> FreeBlock
+pub fn MemoryMap::quarantine_budget(Self) -> Int32
+pub fn MemoryMap::quarantine_bytes(Self) -> Int32
+pub fn MemoryMap::quarantine_len(Self) -> Int32
+pub fn MemoryMap::region(Self, UInt32) -> MemoryRegionData?
+pub fn MemoryMap::regions_len(Self) -> Int32
+pub fn MemoryMap::regions_to_array(Self) -> Array[(UInt32, MemoryRegionData)]
+pub fn MemoryMap::register_alloc(Self, UInt32, Int32, Int32, String, Bool) -> Unit
+pub fn MemoryMap::release(Self, UInt32, Int32, Int32) -> Int32?
+pub fn MemoryMap::set_heap_base(Self, UInt32) -> Unit
+pub fn MemoryMap::set_quarantine_budget(Self, Int32) -> Unit
+pub fn MemoryMap::set_region(Self, UInt32, MemoryRegionData) -> Unit
+pub fn MemoryMap::total_allocated(Self) -> Int32
+pub fn MemoryMap::total_fragmented(Self) -> Int32
 pub fn MemoryMap::verify(Self) -> Result[Unit, String]
 
 pub(all) struct MemoryRegionData {
-  mut size : Int
+  mut size : Int32
   mut name : String
   mut ty : String
   is_heap : Bool
   mut is_freed : Bool
-  mut alloc_line : Int
+  mut alloc_line : Int32
   mut alloc_by : String
   mut kind : String
-  mut refcount : Int
+  mut refcount : Int32
 } derive(Eq, @debug.Debug)
 pub fn MemoryRegionData::equal(Self, Self) -> Bool
-pub fn MemoryRegionData::heap_block(Int, String, String, Int, String) -> Self
+pub fn MemoryRegionData::heap_block(Int32, String, String, Int32, String) -> Self
 pub fn MemoryRegionData::not_equal(Self, Self) -> Bool
 pub fn MemoryRegionData::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MemorySnapshot {
-  regions : Array[(UInt, MemoryRegionData)]
+  regions : Array[(UInt32, MemoryRegionData)]
   free_list : Array[FreeBlock]
   quarantine : Array[FreeBlock]
-  quarantine_bytes : Int
-  quarantine_budget : Int
-  heap_base : UInt
-  heap_offset : UInt
-  alloc_counter : Int
+  quarantine_bytes : Int32
+  quarantine_budget : Int32
+  heap_base : UInt32
+  heap_offset : UInt32
+  alloc_counter : Int32
   freed : Array[FreedRegionInfo]
 } derive(Eq, @debug.Debug)
 pub fn MemorySnapshot::equal(Self, Self) -> Bool

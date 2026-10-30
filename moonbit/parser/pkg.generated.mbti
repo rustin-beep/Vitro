@@ -25,9 +25,9 @@ pub fn DeclaratorNode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct ParseError {
   message : String
-  line : Int
-  column : Int
-  code : Int
+  line : Int32
+  column : Int32
+  code : Int32
 } derive(Eq, @debug.Debug)
 pub fn ParseError::equal(Self, Self) -> Bool
 pub fn ParseError::not_equal(Self, Self) -> Bool
@@ -36,7 +36,7 @@ pub fn ParseError::to_repr(Self) -> @debug.Repr
 pub(all) struct ParseResult {
   program : @ast.ProgramNode?
   errors : Array[ParseError]
-  stall_count : Int
+  stall_count : Int32
 }
 
 // Type aliases

@@ -7,7 +7,7 @@ import {
 }
 
 // Values
-pub const SLOT_STRATEGY_VERSION : Int = 1
+pub const SLOT_STRATEGY_VERSION : Int32 = 1
 
 pub fn compile(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[GenError])
 
@@ -17,9 +17,9 @@ pub fn compile_library(@ast.ProgramNode) -> (@bytecode.CompileOutput?, Array[Gen
 
 // Types and methods
 pub(all) struct GenError {
-  code : Int
-  line : Int
-  column : Int
+  code : Int32
+  line : Int32
+  column : Int32
   message : String
 }
 pub fn GenError::plain(String) -> Self

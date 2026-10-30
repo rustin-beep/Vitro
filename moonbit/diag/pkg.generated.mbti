@@ -6,13 +6,13 @@ import {
 }
 
 // Values
-pub fn catalog_codes() -> Array[Int]
+pub fn catalog_codes() -> Array[Int32]
 
-pub let catalog_texts : Map[Int, CatalogEntry]
+pub let catalog_texts : Map[Int32, CatalogEntry]
 
 pub fn catalog_texts_json() -> String
 
-pub fn codes_without_catalog() -> Array[Int]
+pub fn codes_without_catalog() -> Array[Int32]
 
 pub fn export_catalog_json() -> String
 
@@ -25,7 +25,7 @@ pub suberror InstallCatalogTextsError {
 
 // Types and methods
 pub(all) struct CatalogEntry {
-  code : Int
+  code : Int32
   icon : String
   title : String
   explanation : String
@@ -33,7 +33,7 @@ pub(all) struct CatalogEntry {
 } derive(Eq, @debug.Debug)
 pub fn CatalogEntry::equal(Self, Self) -> Bool
 pub fn CatalogEntry::not_equal(Self, Self) -> Bool
-pub fn CatalogEntry::of(Int, String, String, String, Array[String]) -> Self
+pub fn CatalogEntry::of(Int32, String, String, String, Array[String]) -> Self
 pub fn CatalogEntry::to_repr(Self) -> @debug.Repr
 
 pub(all) enum ErrorCode {
@@ -159,12 +159,12 @@ pub(all) enum ErrorCode {
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?
-pub fn ErrorCode::code(Self) -> Int
-pub fn ErrorCode::compare(Self, Self) -> Int
+pub fn ErrorCode::code(Self) -> Int32
+pub fn ErrorCode::compare(Self, Self) -> Int32
 pub fn ErrorCode::display_code(Self) -> String
 pub fn ErrorCode::equal(Self, Self) -> Bool
-pub fn ErrorCode::from_code(Int) -> Self?
-pub fn ErrorCode::hash(Self) -> Int
+pub fn ErrorCode::from_code(Int32) -> Self?
+pub fn ErrorCode::hash(Self) -> Int32
 pub fn ErrorCode::hash_combine(Self, Hasher) -> Unit
 pub fn ErrorCode::lang(Self) -> SourceLang
 pub fn ErrorCode::name(Self) -> String
@@ -181,7 +181,7 @@ pub(all) enum Severity {
   Warning
   Hint
 } derive(Compare, Eq, @debug.Debug)
-pub fn Severity::compare(Self, Self) -> Int
+pub fn Severity::compare(Self, Self) -> Int32
 pub fn Severity::equal(Self, Self) -> Bool
 pub fn Severity::not_equal(Self, Self) -> Bool
 pub fn Severity::op_ge(Self, Self) -> Bool
@@ -197,7 +197,7 @@ pub(all) enum SourceLang {
   Cpp
   CSharp
 } derive(Compare, Eq, @debug.Debug)
-pub fn SourceLang::compare(Self, Self) -> Int
+pub fn SourceLang::compare(Self, Self) -> Int32
 pub fn SourceLang::equal(Self, Self) -> Bool
 pub fn SourceLang::not_equal(Self, Self) -> Bool
 pub fn SourceLang::op_ge(Self, Self) -> Bool

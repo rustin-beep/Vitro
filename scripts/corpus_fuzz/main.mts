@@ -672,6 +672,24 @@ export function norm(s: string): string {
   return s.split("\r\n").join("\n").split("\r").join("");
 }
 
+/** OK 域出口组合（clang 与 vitro 两侧单源，2026-10-30 审计批——修前合法
+ * 返回码 1..255 被丢、只比 stdout）：rc 0 = 纯 stdout；1..255 = stdout 追
+ * `EXIT:n` 行；崩溃域（>255 / <0，Windows 异常码 ~3.2e9 族）= EXIT 整替
+ * （崩溃时的部分 stdout 不可信，不进比对域——沿旧语义）。 */
+export function exitDomainOf(stdoutNorm: string, rc: number): string {
+  if (rc === 0) return stdoutNorm;
+  if (rc > 255 || rc < 0) return "EXIT:" + String(rc);
+  return stdoutNorm + "\nEXIT:" + String(rc);
+}
+
+/** C 出口码的平台进程镜像：win32 进程码保 uint32 全量；POSIX wait 只取
+ * 低 8 位（WEXITSTATUS）——vitro 臂按「本平台真实进程会报告的码」入域，
+ * 与 clang 臂实跑同形（负返回/大返回跨平台形态差异由此对齐）。 */
+export function exitWordOf(v: number, platform: string = process.platform): number {
+  const u = v >>> 0;
+  return platform === "win32" ? u : u & 0xff;
+}
+
 /** 同步 sleep（Go 的重试退避用；主流程是同步的，不能让出事件循环）。 */
 function sleepSync(ms: number): void {
   const sab = new SharedArrayBuffer(4);
@@ -731,12 +749,7 @@ export function clangOutcome(src: string, workdir: string): Outcome {
   // 输出（col_utf8_units 中文形态）字节相同却被判 WRONG_VALUE（#301 merge 批实证）。
   const run = runCmd([absPath(exe)], workdir, 20_000, "latin1");
   fs.rmSync(exe, { force: true });
-  if (run.rc !== 0) {
-    // 崩溃域（Windows 异常码 ~3.2e9）与合法非零 return（0..255）区分
-    if (run.rc > 255 || run.rc < 0) return { status: "OK", out: "EXIT:" + String(run.rc) };
-    return { status: "OK", out: norm(run.stdout) };
-  }
-  return { status: "OK", out: norm(run.stdout) };
+  return { status: "OK", out: exitDomainOf(norm(run.stdout), run.rc) };
 }
 
 export function vitroNative(src: string): Outcome {
@@ -749,11 +762,12 @@ export function vitroJs(src: string): Outcome {
   return parseVitro(r.stdout);
 }
 
-export function parseVitro(ndjson: string): Outcome {
+export function parseVitro(ndjson: string, platform: string = process.platform): Outcome {
   let diagOK = "";
   let stdout = "";
   let status = "";
   let trap = "";
+  let returnValue = 0;
   for (const rawLine of ndjson.split("\n")) {
     const line = rawLine.trim();
     if (!line.startsWith("{")) continue;
@@ -774,12 +788,16 @@ export function parseVitro(ndjson: string): Outcome {
     } else if (t === "run") {
       status = typeof result?.["status"] === "string" ? (result["status"] as string) : "";
       trap = typeof result?.["trap"] === "string" ? (result["trap"] as string) : "";
+      // run 帧八字段的 return_value（finished 时携带 C 程序返回值；trap/
+      // waiting 恒 0）——2026-10-30 审计批起入比对域（与 clang 侧对称）。
+      const rv = result?.["return_value"];
+      if (typeof rv === "number") returnValue = rv;
     }
   }
   if (diagOK === "reject") return { status: "REJECT", out: "" };
   if (diagOK === "") return { status: "CRASH", out: "" };
   if (status === "trap") return { status: "TRAP", out: trap };
-  return { status: "OK", out: norm(stdout) };
+  return { status: "OK", out: exitDomainOf(norm(stdout), exitWordOf(returnValue, platform)) };
 }
 
 type Rec = Record<string, unknown>;

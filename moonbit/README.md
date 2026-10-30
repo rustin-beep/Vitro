@@ -13,7 +13,7 @@
 | `vitro/engine/opcode` | L0 | 153 opcodes with stable numbering (0..137 inherited segment: 44–46 = C# exception triple, 47–49 reserved; 138..150 unsigned-dual extensions; 151..153 global-char byte-granule segment; 154..155 u64→fp unsigned-dual CastUQ2D/CastUQ2F) + `Instruction` |
 | `vitro/engine/util` | L0 | Zero-semantic mechanical helpers: `utf8_len` (UTF-8 byte length) / `str_cmp` (true lexicographic order — built-in String compare is not) / `i64_to_i32_bits` / little-endian byte reads |
 | `vitro/engine/fs` | L0 | Native-only file-system helpers **vendored from moonbitlang/x@0.5.5** (2026-09-28): 7 public functions + `IOError`; C symbols prefixed `vitro_engine_fs_*`; upstream drift watched by `scripts/moonbit/vendor_drift` (content-hash probe, CI hygiene) |
-| `vitro/engine/diag` | L1 | 156-arm `ErrorCode` + severity/lang + teaching catalog (114 cards), byte-exact export |
+| `vitro/engine/diag` | L1 | 119-arm `ErrorCode` + severity/lang + teaching catalog (115 cards), byte-exact export |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 family + depth metrics + `type_eq` + C rendering & mangle + JSON dump |
 | `vitro/engine/names` | L3 | Naming single source: `__ctor__`/`__dtor__` family + 17-variant type-mangle suffix |
 | `vitro/engine/lexer` | L4 | Standalone preprocessor pass + `LineMap` + host IO; token contract in `lexer/token` |
@@ -50,7 +50,7 @@ The rest of this README is in Chinese.
 
 ---
 
-C 教学引擎的 MoonBit 实现——156 个诊断错误码、153 条字节码操作码、Type/Expr/Stmt 全族 AST 与 C 渲染/mangle；码表经迁移期 Rust oracle 逐字节对拍锁定（oracle 已于 2026-10-05 删区退役，档案 tag `rust-oracle-freeze`），现役防线 = Clang golden 直拍 + 冻结 digest 基线。
+C 教学引擎的 MoonBit 实现——119 个诊断错误码、153 条字节码操作码、Type/Expr/Stmt 全族 AST 与 C 渲染/mangle；码表经迁移期 Rust oracle 逐字节对拍锁定（oracle 已于 2026-10-05 删区退役，档案 tag `rust-oracle-freeze`），现役防线 = Clang golden 直拍 + 冻结 digest 基线。
 
 ## 安装
 
@@ -79,7 +79,7 @@ gateway 产物的 node 壳、自动降级本 native exe，见仓库 CLI 手册�
 | `vitro/engine/opcode` | L0 | 153 条 opcode（0..137 照搬段不重排；44–46 = C# 异常三件 TryBegin/TryEnd/Throw，47–49 空号；138..150 自扩 U 系对偶段；151..153 全局 char 字节粒度段；154..155 u64→fp 无符号对偶 CastUQ2D/CastUQ2F，#345 审阅 P1）+ 双向映射 + Instruction |
 | `vitro/engine/util` | L0 | 零语义机械件单点（G-1）：`utf8_len`（UTF-8 字节长度）/ `str_cmp`（真字典序——内置 String 比较非字典序）/ `i64_to_i32_bits`（位截断）/ `le_u32_at`·`le_u64_at`（小端拼装读） |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**，2026-09-28）：pub 面 7 函数 + `IOError`；C 符号前缀 `vitro_engine_fs_*`；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希探针，CI hygiene）；Apache-2.0 合规见 `THIRD_PARTY.md` |
-| `vitro/engine/diag` | L1 | ErrorCode 156 臂 + Severity/SourceLang + 教学卡片 114 条 + 目录导出（gen_diag 单源生成） |
+| `vitro/engine/diag` | L1 | ErrorCode 119 臂 + Severity/SourceLang + 教学卡片 115 条 + 目录导出（gen_diag 单源生成） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth + type_eq + to_c_string + mangle + JSON dump |
 | `vitro/engine/names` | L3 | 产名族唯一出口（`__ctor__`/`__dtor__`）+ type_mangle_suffix 17 变体 + method_mangled_name |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） |

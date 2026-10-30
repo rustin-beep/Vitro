@@ -457,7 +457,7 @@ jobs:
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
       - name: MoonBit serve smoke (dual-host, Exit 3)
         run: |
-          cd moonbit && moon build --target native cmd/serve && cd ..
+          cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/serve_smoke/main.mts -moonbit
         shell: bash
 
@@ -1202,6 +1202,38 @@ jobs:
         with:
           name: build-products
           path: moonbit/_build
+      # 2026-10-30 审计批接线：examples/demo.mbtx 是 README 快速开始第 0 步的
+      # 门面，此前 CI 零引用——示例脚本烂了没人知道。零克隆形态（moon run
+      # demo.mbtx 拉 mooncakes 发布包）当前被 0.9.0 的 time_travel→core/abort
+      # 解析病挡住（#374；源码侧已摘 import，下一版发布自愈）——先接
+      # workspace 臂：脚本复制进 workspace 剥源内 import 块成临时 main 包跑
+      # wasm-gc，护住示例与 gateway API 的同步（跑完即删，不入库）。
+      - name: demo.mbtx quickstart smoke (workspace arm)
+        if: always()
+        run: |
+          set -e
+          pkg=cmd/demo_mbtx_smoke
+          mkdir -p "moonbit/$pkg"
+          sed '/^import {$/,/^}$/d' examples/demo.mbtx > "moonbit/$pkg/main.mbt"
+          cat > "moonbit/$pkg/moon.pkg" <<'PKGEOF'
+          // CI 冒烟临时包（demo.mbtx workspace 臂）——跑完即删，不入库。
+          import {
+            "moonbitlang/core/json",
+            "vitro/engine/gateway",
+          }
+
+          supported_targets = "wasm-gc"
+
+          pkgtype(kind: "executable")
+          PKGEOF
+          cd moonbit
+          out=$(moon run "$pkg" --target wasm-gc 2>&1)
+          echo "$out" | tail -5
+          echo "$out" | grep -q '全程.*帧' || { echo '::error::demo.mbtx 冒烟输出缺回放主标记'; exit 1; }
+          cd ..
+          rm -rf "moonbit/$pkg"
+        shell: bash
+
       # 防遮蔽（2026-10-23）：tsc 及之后每道 demo 闸 always()——此前 E-08 一红
       # 直接 skipped smoke/E2E/pure，后面的红看不到；现在逐闸跑完再汇总。
       - name: demo TS check (tsc --noEmit = js/ 模块类型面)
@@ -1589,11 +1621,20 @@ jobs:
           HYGIENE: ${{ needs.hygiene.result }}
           DEMO: ${{ needs.demo.result }}
           SCRIPTS_TS: ${{ needs.scripts-ts.result }}
+          BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
         run: |
           set +e
+          # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
+          # backend-triage 红/跳过时汇总不判红）；计数文案改由数组推导防再陈旧。
+          pairs=(
+            "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE"
+            "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"
+            "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
+            "cli-smoke-linux:$CLI_SMOKE_LINUX"
+          )
           bad=0
-          for pair in "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE" "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO" "scripts-ts:$SCRIPTS_TS" "cli-smoke-linux:$CLI_SMOKE_LINUX"; do
+          for pair in "${pairs[@]}"; do
             name="${pair%%:*}"; result="${pair#*:}"
             echo "$name=$result"
             if [ "$result" != "success" ]; then bad=1; fi
@@ -1602,7 +1643,7 @@ jobs:
             echo "::error::CI 汇总红：有 job failure/skipped——skipped 不算绿（防遮蔽）"
             exit 1
           fi
-          echo "CI 汇总：9 个上游 job 全部 success"
+          echo "CI 汇总：${#pairs[@]} 个上游 job 全部 success"
         shell: bash
 
   # ── hygiene（记账型，2026-09-23 拆分）────────────────────────────────────

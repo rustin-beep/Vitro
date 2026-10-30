@@ -1051,16 +1051,28 @@ jobs:
         run: go test ./scripts/...
       # P3-3（2026-10-30 处置批）保险丝：「内联安装清零」原是一次性计数无闸
       # 把守（ci_checklist 只扫 scripts/ 包）——下一个 job 照抄三行内联安装
-      # 会静默复活。断言：workflows 目录零内联安装（动词锚定 irm|curl +
-      # 域名——正则形态防自噬：本步自身只以字面量形态携带域名，不被命中；
-      # 唯一合法实现点 = .github/actions/setup-moonbit 双形态）。
+      # 会静默复活。断言：workflows 目录零内联安装（动词锚定 irm|curl + 域名
+      # ——正则形态防自噬：本步自身只以字面量形态携带域名，不被命中；唯一
+      # 合法实现点 = .github/actions/setup-moonbit 双形态）。
+      # 诊断版（首红 run 41042777552 复盘：本地 Git Bash/WSL/脚本逐字节三路
+      # 复刻皆绿、merge ref 文件等价——环境因子未定位，故 fail 时全量证据
+      # 打印 + 计数为空显式红，两路径可分辨）。
       - name: Workflow install convergence (no inline moon installs)
         shell: bash
         run: |
+          echo "== workflows 目录清单："; ls -1 .github/workflows/
           n=$(grep -rEc '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ | awk -F: '{s+=$NF} END{print s}')
+          echo "convergence n=[$n]"
+          hits=$(grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true)
+          if [ -n "$hits" ]; then echo "-- 动词锚定命中行："; echo "$hits"; fi
+          echo "-- 字面量全量（仅观察不计红）："
+          grep -rnF 'cli.moonbitlang.com' .github/workflows/ || echo "（零字面量命中）"
+          if [ "$n" = "" ]; then
+            echo "::error::convergence 计数为空——grep/awk 管道异常（证据见上）"
+            exit 1
+          fi
           if [ "$n" != "0" ]; then
             echo "::error::workflows 内联 moon 安装 $n 处——收敛到 .github/actions/setup-moonbit（uses 引用）"
-            grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true
             exit 1
           fi
           echo "convergence OK: workflows 零内联安装"

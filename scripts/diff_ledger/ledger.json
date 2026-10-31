@@ -633,7 +633,8 @@
       "anchors": {
         "shadow_known": [],
         "clang_direct_known": [
-          "string_escape_octal_hex.c"
+          "string_escape_octal_hex.c",
+          "string_escape_nul_term.c"
         ],
         "vm_diff_known": [
           "engine_note_lookalike.c"

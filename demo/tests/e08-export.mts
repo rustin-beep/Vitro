@@ -102,6 +102,11 @@ const midLineLabeled = live.frames.filter((f, i) => {
   const next = live.frames[i + 1];
   return has && next !== undefined && next["code_line"] === f["code_line"];
 }).length;
+// 健康位 fail loud（审阅 P3-1：旧稿只打印不断言——这正是 step.next 批=1
+// 行末不变量缺陷〔issue #399〕的机判位，非 0 即引擎语义破坏，导出必须拦）
+if (midLineLabeled !== 0) {
+  throw new Error(`[e08-export] 行末不变量健康位非 0：${midLineLabeled} 帧行中间帧带标注（单批口径应恒 0）——引擎行末语义破坏（issue #399 同族），禁止导出带病夹具`);
+}
 const anchorFrame = live.frames[idx] as Record<string, unknown> | undefined;
 if (anchorFrame === undefined) throw new Error(`[e08-export] idx=${idx} 越界（帧域 [0,${live.frames.length})）——锚点帧缺失`);
 const anchorSnap = (anchorFrame["array_snapshots"] as Array<{ name?: unknown; elements?: unknown }> | undefined)?.[0];

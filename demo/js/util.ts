@@ -58,21 +58,34 @@ export function esc(s: string): string {
 
 /** A17（#140）：[语义id] → 内联 SVG 徽章（旧栈 icon.ts decorateBadges 同
  *  语义，白名单 = icons.ts ICONS 表）。**输入必须先 esc**——本函数只做
- *  表替换不引入转义义务（{@html} 消费面的转义责任在调用方）。 */
+ *  表替换不引入转义义务（{@html} 消费面的转义责任在调用方）。
+ *  套壳义务（PR #397 审阅 P2-2，2026-10-31）：ICONS 契约「本表只存 body
+ *  片段，消费方自行套 svg 壳」（icons.ts 头注）——壳由**本函数**套（旧稿
+ *  直接拼 body ⇒ 裸 <path> 无 viewBox/描边属性，CSS 又无 .icon-svg 规则，
+ *  徽章不可见；OutputView note 徽章与 formatTrap trap 详报两消费面同病）。
+ *  属性面对齐 CodeIcon.svelte 正确范例（viewBox 24 / stroke 1.8 /
+ *  currentColor / aria-hidden），尺寸由 .icon-svg CSS 管。 */
 export function decorateBadges(escaped: string): string {
   return escaped.replace(/\[([a-z0-9_-]+)\]/gi, (m, id: string) => {
-    const svg = ICONS[id];
-    return svg ? `<span class="icon-svg">${svg}</span>` : m;
+    const body = ICONS[id];
+    return body
+      ? `<span class="icon-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg></span>`
+      : m;
   });
 }
 
 /** trap 详报格式化（#140 收口批：语义徽章 + E 码 mono 徽章 + 结构标签加粗）。
  *  输入必须先 esc（同 decorateBadges 契约）。[cause]/[fix]/[location] 是
- *  结构化字段标记（非语义 id，不在 ICONS 表——保留文本只做视觉区分）；
- *  E 码（E3xxx 族）渲染为等宽徽章「码表」样式，data-ecode 供 RunMeta 事件
- *  委托跳诊断手册（P2-10 轻量联动）。 */
+ *  结构化字段标记——**在 ICONS 表同名在场**（icons.ts cause/fix/location
+ *  三键），直接走 decorateBadges 会被抢跑替换成徽章，头注承诺的「保留
+ *  文本只做视觉区分」从未生效（PR #397 审阅 P2-2 定谳）——先以私有区
+ *  占位符吃掉三标签、徽章替换后再回填为 tp-tag 加粗。E 码（E3xxx 族）
+ *  渲染为等宽徽章「码表」样式，data-ecode 供 RunMeta 事件委托跳诊断手册
+ *  （P2-10 轻量联动）。 */
 export function formatTrap(escaped: string): string {
-  return decorateBadges(escaped)
-    .replace(/\[(cause|fix|location)\]/g, '<b class="tp-tag">[$1]</b>')
+  return decorateBadges(
+    escaped.replace(/\[(cause|fix|location)\]/g, "\uE000TP_TAG_$1\uE000"),
+  )
+    .replace(/\uE000TP_TAG_(cause|fix|location)\uE000/g, '<b class="tp-tag">[$1]</b>')
     .replace(/\b(E[1-9][0-9]{3})\b/g, '<code class="tp-code" data-ecode="$1">$1</code>');
 }

@@ -37,7 +37,7 @@ export const METHOD_GROUPS: MethodGroup[] = [
     items: [
       { name: "memory.regions", desc: "内存白箱：三段式区域 + free_list + 隔离区", used: true },
       { name: "error_catalog", desc: "诊断目录（C 卡按 lang 过滤；含 common_causes 与修复建议）", used: true },
-      { name: "semantic_labels", desc: "步进语义标注词表（14 类——S8 step 流的呈现层词汇）", used: true },
+      { name: "semantic_labels", desc: "步进语义标注词表（条数见下方词表区——S8 step 流的呈现层词汇）", used: true },
       { name: "step.begin / next / seek / breakpoints.set", desc: "时间旅行采集：重建 / 批次推进 / 引擎级跳转 / 断点下发", used: true },
     ],
   },

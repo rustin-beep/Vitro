@@ -286,6 +286,32 @@
     位——1.6MB JSON 逐行 diff 事实上不可审）。
   - 演化登记：「帧内容依赖 `step.next` 批量参数（跨批 pending 判定批=1
     退化）」新缺陷形态入 workspace-review references 03/07。
+- **PR #397 审阅处置批（2026-10-31 二轮，P1/P2-1/P2-2/P3 逐条独立复证后处置）**：
+  - **P1 S8 假断言面治本**：S8「trap 帧 ≡ 实产字段集」实为并集比对——
+    trap 单帧缺字段注入曾闸绿（上轮 P2-2 的 J9 只注入过 core.json，trap
+    面零注入），且基准误用 bubble.c 而非 trap 用例自己的输入 uaf.c（两
+    程序帧模板恰好同形才未假红）。改：S8 复用 S2 逐帧判据 + 基准
+    `engineLive(UAF_C)` + 帧模板恒定自检；J9 双注入（trap 帧 5 删
+    code_file / memory.regions 键改名）均红→复原绿。
+  - **P2-1 UI 病根数字治本**：ProtoView 硬编码「STEPPAYLOAD **14 字段**」
+    与实产 16 矛盾（#324 病根数字冻进 golden）；protoFacts 词表 desc 另有
+    静态「14 类」（同屏 summary 动态 15 类自相矛盾）。改：字段数从
+    `session.frames[0]` 派生（v0.2 预留位激活时自动跟随）、desc 去数字
+    （条数由 summary `labels.length` 动态承载）；golden 重冻（16 字段 ✓）。
+  - **P2-2 trap 徽章既有缺陷连坐修**（#140 批引入，本批上轮冻进 golden
+    属该拦未拦）：`decorateBadges` 输出裸 ICONS body 片段（icons.ts 契约
+    「消费方自行套 svg 壳」未履行）且 CSS 无 `.icon-svg` 规则 ⇒ 徽章
+    不可见——**壳改由 decorateBadges 统一套**（CodeIcon 范例属性面，
+    OutputView note 徽章与 formatTrap 两消费面同治）；`formatTrap` 的
+    `[cause]/[fix]/[location]` 被 ICONS 同名键抢跑（表内三键在场，第二段
+    正则永不命中，「保留文本只做视觉区分」头注承诺从未生效）——改私有
+    区占位符先吃三标签、徽章替换后回填 tp-tag；golden 重冻（svg 壳 ✓ /
+    tp-tag 文本 ✓ / 裸 path 零残留 ✓）。
+  - **P3**：导出器「标注健康位」加牙（行中间帧带标注非 0 即 throw——
+    正是 issue #399 行末不变量缺陷的机判位，旧稿只打印不断言）；S10 新增
+    memory 段键集 ≡ 实产 memory.regions（嵌套段键改名此前无声）；演化
+    B20/07 日志一次性测量值回落成形状判据（03 头注「实例写法四条」禁
+    数字）。
 
 ### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30；同日 PR #390 审阅批勘正）
 

@@ -7,12 +7,13 @@
 // 金标准从此锚在真实协议流形态上。
 //
 // 断言面（形态，非值全等——帧窗口/裁剪合法，形态漂移不合法）：
-//   S1 frames 非空            S2 帧字段集全等（并集双向）
+//   S1 frames 非空            S2 帧字段集逐帧≡实产模板（恒定先自检）
 //   S3 label/label_id 值域⊆   S4 phase 值域⊆
 //   S5 labels 段=对象数组且 id∈受控词表
 //   S6 capabilities=对象且顶层键≡实产
 //   S7 catalog 卡字段集⊆且 code_str∈实产码集
-//   S8 diagband-trap 帧同 S2  S9 outputs 三流为字符串
+//   S8 diagband-trap 帧逐帧≡UAF 实产（基准=engineLive(UAF_C)）
+//   S9 outputs 三流为字符串   S10 memory 段键集≡实产 memory.regions
 //
 // 引擎臂：缺省 js（CI artifact 同形）；VITRO_E08_BACKEND=native 双臂对拍
 // （AGENTS 三臂纪律——防线验收结论须双臂一致）。
@@ -21,7 +22,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { engineLive, liveShape } from "./e08_live.mts";
+import { engineLive, liveShape, UAF_C } from "./e08_live.mts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const payloadDir = path.resolve(here, "..", "e08", "payloads");
@@ -160,21 +161,50 @@ test("E-08 同形性：core.json ≡ 引擎实产形态", () => {
     }
   }
 
+  // S10 memory 段键集 ≡ 实产 memory.regions（审阅 P3-2：嵌套段一排键
+  // 漂移此前完全无声——regions/heap_base 等键改名不红）
+  const memory = core["memory"] as Record<string, unknown> | undefined;
+  if (typeof memory !== "object" || memory === null || Array.isArray(memory)) {
+    diffs.push(`S10 memory 段形态非对象（实产 = memory.regions 七键对象）：${typeof memory}`);
+  } else {
+    const liveMemKeys = Object.keys(shape.memory).sort();
+    const fixtureMemKeys = Object.keys(memory).sort();
+    if (JSON.stringify(liveMemKeys) !== JSON.stringify(fixtureMemKeys)) {
+      diffs.push(`S10 memory 段键集不符：实产 [${liveMemKeys.join(",")}] vs 夹具 [${fixtureMemKeys.join(",")}]`);
+    }
+  }
+
   assert.deepEqual(diffs, [], `E-08 夹具与引擎实产形态漂移（处置：node demo/tests/e08-export.mts 重导后人工审定）：\n${diffs.map((d) => `  - ${d}`).join("\n")}`);
 });
 
-test("E-08 同形性：diagband-trap 帧（若在场）≡ 实产字段集", () => {
-  const shape = liveShape(engineLive());
+test("E-08 同形性：diagband-trap 帧（若在场）≡ UAF 实产字段集（逐帧）", () => {
+  // 审阅 P1（PR #397，2026-10-31）：旧 S8 是并集比对——trap 单帧缺字段注入
+  // 曾闸绿（P2-2 的 J9 只注入过 core.json，trap 面零注入）；且基准取的是
+  // bubble.c 实产而非 trap 用例自己的输入（uaf.c）——两个程序帧模板当前
+  // 恰好同形才没假红。改：基准 = engineLive(UAF_C)（与 core 用例同款
+  // 逐帧判据 + 帧模板恒定自检）。
+  const shape = liveShape(engineLive(UAF_C, { argv0: "main.c" }));
   const trap = loadPayload("diagband-trap");
   const frames = trap["frames"] as Array<Record<string, unknown>> | undefined;
   if (!Array.isArray(frames) || frames.length === 0) return; // 空帧形态合法（trap 场景可零帧）
-  const fixtureFields = new Set<string>();
-  for (const f of frames) for (const k of Object.keys(f)) fixtureFields.add(k);
-  const missing = shape.frameFields.filter((k) => !fixtureFields.has(k));
-  const extra = [...fixtureFields].filter((k) => !shape.frameFields.includes(k));
-  assert.deepEqual(
-    { missing, extra },
-    { missing: [], extra: [] },
-    `diagband-trap.json 帧字段集与实产不符（缺 [${missing.join(",")}] / 多 [${extra.join(",")}]）`,
-  );
+  const liveTemplates = new Set<string>();
+  for (const f of shape.frames) liveTemplates.add(Object.keys(f).sort().join(","));
+  if (liveTemplates.size !== 1) {
+    assert.fail(`S8 自检失败：UAF 实产帧字段集不恒定（${liveTemplates.size} 种模板）——同形性基准本身不稳定，须先查引擎`);
+  }
+  const liveTemplate = shape.frameFields.join(",");
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    if (f === undefined) {
+      assert.fail(`S8 diagband-trap 帧 ${i} 为 undefined（数组空洞）`);
+    }
+    const keys = Object.keys(f).sort().join(",");
+    if (keys !== liveTemplate) {
+      const missing = liveTemplate.split(",").filter((k) => !keys.split(",").includes(k));
+      const extra = keys.split(",").filter((k) => !liveTemplate.split(",").includes(k));
+      assert.fail(
+        `S8 diagband-trap 帧 ${i} 字段集不符（UAF 实产模板 ${liveTemplate}）：缺 [${missing.join(",")}] 多 [${extra.join(",")}]`,
+      );
+    }
+  }
 });

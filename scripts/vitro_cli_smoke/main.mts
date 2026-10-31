@@ -799,31 +799,46 @@ export function runMain(argv: readonly string[]): number {
       process.stdout.write("skip B[SIGABRT 桩]（clang 不可用——handler 本体未验；CI windows/ubuntu 预装，#391）\n");
     } else {
       const probeExe = path.join(tmpDir, "abort_probe_bin.exe");
-      const cc = spawnSync("clang", ["-o", probeExe, probeSrc], { encoding: "utf8", timeout: 60000 });
+      // -I 桩目录：stub 的 #include "moonbit.h" 在标准 C 只搜「发出文件所在
+      // 目录」（stdout_stub.c 的 cmd/run/——无此头）；Windows clang 靠
+      // Microsoft 非移植搜索规则多搜主文件目录侥幸命中桩假头（ubuntu CI
+      // 实锤红：fatal error 'moonbit.h' file not found）——显式 -I 双平台
+      // 一致（#391 处置批修后复跑）。
+      const cc = spawnSync("clang", ["-I", path.dirname(probeSrc), "-o", probeExe, probeSrc], { encoding: "utf8", timeout: 60000 });
       if (cc.error !== undefined || cc.status !== 0) {
         fatalf(`B[SIGABRT 桩] 编译失败（真源 stub 或桩漂移）：${cc.stderr?.slice(0, 400) ?? cc.error?.message ?? ""}`);
       } else {
         const probeOut = path.join(tmpDir, "abort_probe_out.txt");
         const fd = fs.openSync(probeOut, "w");
         let st: number | null = null;
+        let sig: string | null = null;
+        let spawnErr: string | undefined;
         try {
           const r = spawnSync(probeExe, [], { stdio: ["ignore", fd, fd], timeout: 30000 });
           st = r.status;
+          sig = r.signal;
+          spawnErr = r.error?.message;
         } finally {
           fs.closeSync(fd);
         }
         const body = fs.readFileSync(probeOut, "utf8");
         const flushed = body.includes("probe-line-1-in-buffer") && body.includes("probe-line-2-in-buffer");
         const PROTO_RC = new Set([0, 1, 2, 3, 4]);
-        const hitProto = st !== null && PROTO_RC.has(st);
-        if (st === null) {
-          fatalf(`B[SIGABRT 桩] 运行无 status（spawn 失败/超时）——handler 链路断裂形态`);
+        // 死形态合法集（双平台）：Windows crash 形态 status=3221226505
+        // （0xC0000409）signal=null；POSIX 信号终止形态 status=null +
+        // signal="SIGABRT"（node 对被信号杀的子进程 status 恒 null——首版
+        // 锚把 null 一律判 fail 即 ubuntu 第二红因）；其余非零非五值（如
+        // _exit(134) 类）也不撞协议面。0/五值/其他 signal/无 status 均红。
+        const diedOk =
+          (st !== null && st !== 0 && !PROTO_RC.has(st)) || (st === null && sig === "SIGABRT");
+        if (spawnErr !== undefined || (st === null && sig === null)) {
+          fatalf(`B[SIGABRT 桩] 运行异常（spawn 失败/超时）：${spawnErr ?? "无 status 无 signal"}——handler 链路断裂形态`);
         } else if (!flushed) {
           fatalf(`B[SIGABRT 桩] 刷出实效丢失：重定向文件 ${JSON.stringify(body.slice(0, 80))}——handler 未挂上或未 flush（#357 现象 A 复发形态）`);
-        } else if (hitProto) {
-          fatalf(`B[SIGABRT 桩] rc=${st} 落协议五值 {0..4}——崩溃形态撞协议码（P1-1 形态：UCRT raise 走 _exit(3) 与 step-limit 同码，#391 审阅）`);
+        } else if (!diedOk) {
+          fatalf(`B[SIGABRT 桩] 死形态走样：status=${String(st)} signal=${String(sig)}——rc 落协议五值 {0..4}（P1-1：UCRT raise 走 _exit(3) 撞 step-limit 形态）或非 SIGABRT 终止（#391 审阅）`);
         } else {
-          process.stdout.write(`ok  B[SIGABRT 桩] handler 本体：字节全刷 + rc=${st} 不落协议五值（Windows 0xC0000409 / POSIX 134，#391 P1-1/P1-2）\n`);
+          process.stdout.write(`ok  B[SIGABRT 桩] handler 本体：字节全刷 + 死形态合法（status=${String(st)} signal=${String(sig)}，Windows 0xC0000409 / POSIX SIGABRT，#391 P1-1/P1-2）\n`);
         }
       }
     }

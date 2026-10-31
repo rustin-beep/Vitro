@@ -267,6 +267,15 @@
   批实测存档：native 全量 1157、protocol_frames 47 帧一致、CLI smoke
   三臂同形全绿（二轮全量复跑随 CI）。
 
+### fix(cli+spec): #207+#319 run 文本模式 stdout 补行退役——原样零修饰四口径统一（2026-10-31）
+
+- **病（#207/#319 同根因两案）**：run 文本模式无条件补尾换行——`printf("abc")` 输出 4 字节 `61 62 63 0a`（clang 真值 3 字节）、空输出 1~2 字节（clang 0 字节），与 clang / `--json` delta / step 文本模式**三口径分叉**（下游逐字节判分必红）；spec §1 同节两段自相矛盾（#129 段「字节精确·无需剥离」vs 旧注记段「尾换行形态……退役随 Rust 消解」——承诺自 2026-10-05 删区后未兑现）。根因 `cli_frame.mbt` run 路径补 `\n`（空输出也补、native 经 CRT 翻成 CRLF），step 路径原样直写——两子命令契约不一致。
+- **修（方向 ①：不补行——兑现既有承诺而非新裁定）**：`cli_frame.mbt` 补行逻辑删除，与 step 同款原样直写（空输出零写出）；头注「尾换行保形，壳 writeStdoutBytes 同款」历史锚连坐改写。spec §1 旧注记段按存档惯例改写为「#207/#319 治本」条目（原形态存档 + 四口径契约 + 锚位）——两段二选一落地，与 #129 段不再矛盾。`已知限制与差异.md` ③-9 的「配套债 #207 在册」改「已修」。
+- **锚（红→绿双证，J9）**：`cli_wbtest` 三态锚（无换行 3B 原样 / 空输出零调用 / 自带换行不双补——修前红实锤 17/18）；`vitro_cli_smoke` 新增 **B[run 文本口径]** 字节锚——三臂 × 2 用例 stdout 与**预期字面量**比对（3B `abc` / 0B；**非臂间互比**——补行年代三臂同补、互比结构上抓不到口径分叉，#207 实测登记），修前六条 FAIL（`"abc\n"`/`"\n"` 补行回潮全捕获）→ 修后全绿（50 ok / 0 FAIL）。
+- **零重冻论证**：vm_diff/clang_direct 的 stdout 判分域为**对称归一**（首尾空行剥 + join 无尾换行）——补行在归一中被剥除、与有无无关，golden digest 零漂移；corpus_fuzz 走 `--json` delta 不碰文本模式 stdout。step 的 node 壳不补行自始（#57-1 批）——本批后 run/step 两子命令同口径。
+- **下游影响**：0.9.0 发布物下游若已适配「run 恒带尾换行」，升版后末行无换行程序与空输出程序的 stdout 各少 1~2 字节（`printf("a\n")` 自带换行形态不变）——spec §1 例外登记 #207 条为迁移指引。
+- **审阅处置（PR #394，2026-10-31）**：① P2-1 两流边界换行——run 文本模式 stdout 非空且末字节非 `\n` 时首条 stderr 标记行前补 1 字节 `\n` 到 **stderr**（`stderr_boundary_newline`；stdout 字节不动），`2>&1` 合流人读形态行对齐（修前 js 臂 `abc// NOTE …` 粘连实测复现、native 臂 CRT 缓冲序反转）；消费方 `mergeMoonOutput` 幂等化（stderr 自带前导换行不再补 stdout 边界，Go 版同款）——合流产出与修前逐字节一致，golden 零重冻；锚三层红→绿（wbtest 决策三态突变红 / smoke 三臂 stderr 首字节 0x0A·0x2F 修前三红 / vm.test 幂等锚修前红）。② spec §1「四口径一致」补 **LF 语义**限定（Windows clang CRT 直跑产 CRLF）+ 剥离器参考实现路径勘误（`scripts/vm_diff`→`scripts/diff_gate/targets`）。③ `mergeMoonOutput` 下沉 `scripts/internal/moon_output.mts`（原落 diff_gate/targets 被 clang_direct 跨驱动 import 的结构债）。④ P2-2（stdout 非 UTF-8 字节经 delta 通道失真，`ff fe`→`ef bf` 三臂同形 vs clang `ff fe`——delta 层码点已错，引擎 IO 捕获层病灶）判既有、issue 登记。
+
 ### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
 
 - **病**：CLI smoke ubuntu lane 的 wasm stderr 风暴锚稳定红

@@ -260,6 +260,69 @@ export function runMain(argv: readonly string[]): number {
       fatalf(`B[帧通道字节] 三臂帧输出不一致（len j=${j.length} w=${w.length} n=${n.length} 首差 offset=${fd}——native 帧尾 CRLF 形态，#335）`);
     }
   }
+  // #207/#319（2026-10-31）：run 文本模式 stdout 口径字节锚——补行退役。
+  // 修前 run 文本路径无条件补 `\n`（空输出也补，native 经 CRT 翻成 2 字节
+  // CRLF），与 clang / `--json` delta / step 文本模式三口径分叉（下游逐字节
+  // 判分必红）。本锚与**预期字面量**比对（非臂间互比——补行年代三臂同补、
+  // 互比结构上抓不到口径分叉，#207 实测登记）：`printf("abc")` 无换行程序
+  // stdout 严格 3 字节 `61 62 63`、空输出程序严格 0 字节（clang 同口径）。
+  {
+    const noNl = path.join(tmpDir, "out_no_newline.c");
+    fs.writeFileSync(noNl, '#include <stdio.h>\nint main(){ printf("abc"); return 0; }\n');
+    const silent = path.join(tmpDir, "out_silent.c");
+    fs.writeFileSync(silent, "int main(){ return 0; }\n");
+    const arms = [
+      { label: "js", exe: jsEntry },
+      { label: "wasm", exe: shell },
+      { label: "native", exe: nativeExe },
+    ];
+    const wantNoNl = Buffer.from("abc", "latin1");
+    const fails0 = failures;
+    for (const a of arms) {
+      const isNative = a.label === "native";
+      const r = spawnSync(isNative ? a.exe : nodeBin, [...(isNative ? [] : [a.exe]), "run", noNl], {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      if (r.error !== undefined || (r.status ?? -1) !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 无换行用例启动/rc 异常: ${r.error?.message ?? `rc=${r.status}`}`);
+      } else if (!r.stdout.equals(wantNoNl)) {
+        const got = r.stdout.toString("latin1");
+        const kind = got === "abc\n" || got === "abc\r\n" ? "补行回潮" : "意外字节形态";
+        fatalf(`B[run 文本口径] ${a.label} stdout ${r.stdout.length}B ≠ 3B 原样 \`abc\`（#207 ${kind}: ${JSON.stringify(got)}）`);
+      }
+      const r2 = spawnSync(isNative ? a.exe : nodeBin, [...(isNative ? [] : [a.exe]), "run", silent], {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      if (r2.error !== undefined || (r2.status ?? -1) !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 空输出用例启动/rc 异常: ${r2.error?.message ?? `rc=${r2.status}`}`);
+      } else if (r2.stdout.length !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 空输出 stdout ${r2.stdout.length}B ≠ 0 字节（#207 补行回潮: ${JSON.stringify(r2.stdout.toString("latin1"))}）`);
+      }
+      // #394 审阅 P2-1（2026-10-31）：两流边界行对齐锚——剥壳层 backend
+      // 标注行（wasm 臂）后，无尾换行用例 stderr 首字节必须是 \n（0x0A——
+      // CLI 在首条 stderr 标记行前补的边界换行，stdout 字节不动；修前
+      // 首字节直接是 `/`，2>&1 合流形态 `abc// NOTE …` 粘连、native 臂
+      // 缓冲序反转，三臂人读形态互不一致）；空输出用例不补（首字节即
+      // `/`——无行可粘）。与预期字节比对非臂间互比。
+      const stripHead = (b: Buffer): Buffer => {
+        const kept = b.toString("latin1").split("\n").filter((ln) => !ln.startsWith("[vitro] backend="));
+        return Buffer.from(kept.join("\n"), "latin1");
+      };
+      const e1 = stripHead(r.stderr ?? Buffer.alloc(0));
+      if (e1.length === 0 || e1[0] !== 0x0a) {
+        fatalf(`B[run 文本口径] ${a.label} 无换行用例 stderr 首字节 ${e1.length === 0 ? "空" : `0x${(e1[0] ?? 0).toString(16)}`} ≠ 0x0a（P2-1 边界换行缺失——2>&1 合流粘连形态: ${JSON.stringify(e1.toString("latin1").slice(0, 40))}）`);
+      }
+      const e2 = stripHead(r2.stderr ?? Buffer.alloc(0));
+      if (e2.length === 0 || e2[0] !== 0x2f) {
+        fatalf(`B[run 文本口径] ${a.label} 空输出用例 stderr 首字节 ${e2.length === 0 ? "空" : `0x${(e2[0] ?? 0).toString(16)}`} ≠ 0x2f '/'（P2-1 空输出不应补边界换行: ${JSON.stringify(e2.toString("latin1").slice(0, 40))}）`);
+      }
+    }
+    if (fails0 === failures) {
+      process.stdout.write("ok  B[run 文本口径] 三臂 run 文本 stdout 原样字节（3B/0B 对齐 clang，#207/#319）\n");
+    }
+  }
   // #335 审阅 P3-1（2026-10-27）：serve 帧——唯一 NDJSON 行协议 exe 此前
   // 无字节锚（serve_smoke/protocol_frames 的 JSON 规范化吸收 CRLF，突变
   // 实证摘 main 前置调用后仍 67 PASS 全绿）。两帧+shutdown 收尾，原始字节

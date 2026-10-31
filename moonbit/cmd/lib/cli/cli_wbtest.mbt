@@ -265,3 +265,112 @@ test "frame_pipeline_realtime_reaches_config_set" {
     msg="缺省下行 deterministic:true（判分口径）",
   )
 }
+
+///|
+/// #207/#319（2026-10-31）：run 文本模式 stdout 原样直写锚——不补尾换行。
+/// spec §1 契约「stdout 只承载程序输出（字节精确，下游无需剥离）」四口径
+/// 统一（clang / `--json` delta / step 文本 / run 文本）。修前形态 = run
+/// 文本路径无条件补 `\n`（空输出也补 1 字节，native 经 CRT 再翻成 2 字节
+/// CRLF）——下方三断言修前全红（J9：原样 3 字节 / 空输出零调用 / 自带
+/// 换行不双补）。
+fn stdout_passthrough_channel(stdout_delta : String) -> EngineChannel {
+  let delta_json = @util.json_escape(stdout_delta)
+  let frame_of = fn(line : String) -> String {
+    if line.contains("\"method\":\"compile\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[],\"preprocessor_trace\":[]}}"
+    } else if line.contains("\"method\":\"run\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"status\":\"finished\",\"return_value\":0,\"trap\":\"\",\"waiting_input\":false,\"steps_executed\":1}}"
+    } else if line.contains("\"stream\":\"stdout\"") {
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\{delta_json}\",\"cursor\":0,\"total\":0,\"stream\":\"stdout\",\"truncated_bytes\":0}}"
+    } else {
+      "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\",\"cursor\":0,\"total\":0,\"stream\":\"stderr\",\"truncated_bytes\":0}}"
+    }
+  }
+  {
+    invoke: fn(line : String) -> String { frame_of(line) },
+    invoke_parsed: fn(line : String) -> Json? {
+      Some(@util.json_parse(frame_of(line)) catch { _ => Json::number(0) })
+    },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, _src : String) -> String {
+      "{\"source\":\"\",\"filename\":\"\{file}\"}"
+    },
+  }
+}
+
+///|
+/// #394 审阅 P2-1 锚（2026-10-31）：stdout 直写后首条 stderr 标记行前的
+/// 边界换行决策——无尾换行补 1 字节 `\n`（到 stderr，stdout 字节不动）、
+/// 空 stdout 与自带尾换行不补。修前该决策不存在（js 臂 `2>&1` 实测
+/// `abc// NOTE …` 粘连成行、native 臂缓冲序反转——三臂合流形态互不一致）。
+/// stderr 侧行为锚（子进程捕获字节）在 vitro_cli_smoke B[run 文本口径]。
+test "stderr_boundary_newline_三态" {
+  // ① 无尾换行：恰 1 字节 \n
+  assert_eq(stderr_boundary_newline(b"abc"), b"\n", msg="无尾换行补边界")
+  // ② 空 stdout：不补（无行可粘——空输出 stderr 首字节即 //）
+  assert_eq(stderr_boundary_newline(b""), b"", msg="空输出不补")
+  // ③ 自带尾换行：不双补（行已对齐）
+  assert_eq(stderr_boundary_newline(b"a\n"), b"", msg="自带换行不双补")
+  // ④ 尾字节恰 \n 前有内容的复合形态
+  assert_eq(
+    stderr_boundary_newline(b"x\r"),
+    b"\n",
+    msg="CR 结尾同属无换行形态",
+  )
+}
+
+///|
+test "frame_pipeline_text_stdout_passthrough_no_newline" {
+  // ① 程序输出无尾换行：stdout 恰 3 字节原样（修前补 \n 成 4 字节）
+  let s1 : Array[Bytes] = []
+  let rc1 = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(b : Bytes) { s1.push(b) },
+    false,
+    channel=stdout_passthrough_channel("abc"),
+  )
+  assert_true(rc1 == 0, msg="正常结束 rc=0")
+  assert_true(s1.length() == 1, msg="stdout 恰一次写出")
+  assert_eq(s1[0], b"abc", msg="无尾换行原样直写（#207：不补行）")
+  // ② 空输出：write_stdout 零调用（修前写 1 字节 \\n——空输出多 1~2 字节）
+  let s2 : Array[Bytes] = []
+  let rc2 = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(b : Bytes) { s2.push(b) },
+    false,
+    channel=stdout_passthrough_channel(""),
+  )
+  assert_true(rc2 == 0, msg="正常结束 rc=0")
+  assert_true(
+    s2.length() == 0,
+    msg="空输出零写出（clang 同口径 0 字节）",
+  )
+  // ③ 自带尾换行：原样保留不双补
+  let s3 : Array[Bytes] = []
+  let rc3 = frame_pipeline(
+    "int main(){return 0;}",
+    "x.c",
+    "",
+    [],
+    "",
+    fn() { 0UL },
+    fn(b : Bytes) { s3.push(b) },
+    false,
+    channel=stdout_passthrough_channel("a\n"),
+  )
+  assert_true(rc3 == 0, msg="正常结束 rc=0")
+  assert_true(s3.length() == 1, msg="stdout 恰一次写出")
+  assert_eq(s3[0], b"a\n", msg="自带换行原样（不双补）")
+}

@@ -145,6 +145,15 @@ export function extractMoonBitStdout(s: string): string {
   return normalizeLines(kept);
 }
 
+/**
+ * Moon 侧两流合流（单源）——#394 审阅 P3-② 下沉 internal（2026-10-31）：
+ * 实现与完整头注在 scripts/internal/moon_output.mts（原落本文件，被
+ * clang_direct 跨驱动 import 的结构债）。此处 re-export 维持既有
+ * import 面（本文件内部消费 + clang_direct/main.mts + vm.test.mts 锚）。
+ */
+export { mergeMoonOutput } from "../../internal/moon_output.mts";
+import { mergeMoonOutput } from "../../internal/moon_output.mts";
+
 /** 映像 sha16（argv 区脱敏后）。 */
 export function memorySHA(p: string): string {
   let b: Buffer;
@@ -235,11 +244,7 @@ export function runOne(file: string, opts: VmRunOpts): RunResult {
 
     // stdout + stderr 合并（#129 后标记行走 stderr）；wasm 臂的 backend 标注行剥除。
     // 走 exe 直跑时 stderr 只有协议标记与程序自身输出，**不再按前缀过滤**。
-    let text = r.stdout ?? "";
-    for (const line of (r.stderr ?? "").split("\n")) {
-      if (line.startsWith("[vitro] backend=")) continue;
-      text += line + "\n";
-    }
+    const text = mergeMoonOutput(r.stdout ?? "", r.stderr ?? "");
     const compileFail = text.includes("// COMPILE-ERROR");
     let exitCode = 0;
     for (const line of text.trim().split("\n")) {

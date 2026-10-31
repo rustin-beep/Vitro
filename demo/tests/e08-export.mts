@@ -81,8 +81,10 @@ const trapPrev = JSON.parse(readFileSync(trapPath, "utf8")) as Record<string, un
 const trapOut = {
   ...trapPrev,
   catalog: trapLive.catalog,
-  frames: [trapFrame],
-  idx: 0,
+  // 审阅 P3：frames 全量 + idx=trap 帧下标——旧稿裁 1 帧+idx=0 与真机
+  // 24 帧不同形（DiagBand 当前只判 frames.length 非空属碰巧等价）
+  frames: trapLive.frames,
+  idx: trapLive.frames.length - 1,
   compileOk: true,
   // stopped 组装对齐 demo worker 前端口径（engine.worker.ts drainSteps：
   // trap 分支 stopped = "受检终止：" + trap_message 全文——session.trapped
@@ -92,13 +94,26 @@ const trapOut = {
 };
 writeFileSync(trapPath, `${JSON.stringify(trapOut, null, 2)}\n`, "utf8");
 
-console.log(`core.json 已重导（人工审定 diff 后入库）：${path.relative(process.cwd(), corePath)}`);
+// 语义摘要（审阅 P3：1.6MB JSON 的 git diff 事实上不可人工逐行审定——
+// 审定走本摘要 + golden diff 抽样：帧数/标注健康位/锚点帧数组值/trap 位）
+const labeledCount = live.frames.filter((f) => f["algorithm_step"] !== null && f["algorithm_step"] !== undefined).length;
+const midLineLabeled = live.frames.filter((f, i) => {
+  const has = f["algorithm_step"] !== null && f["algorithm_step"] !== undefined;
+  const next = live.frames[i + 1];
+  return has && next !== undefined && next["code_line"] === f["code_line"];
+}).length;
+const anchorFrame = live.frames[idx] as Record<string, unknown> | undefined;
+if (anchorFrame === undefined) throw new Error(`[e08-export] idx=${idx} 越界（帧域 [0,${live.frames.length})）——锚点帧缺失`);
+const anchorSnap = (anchorFrame["array_snapshots"] as Array<{ name?: unknown; elements?: unknown }> | undefined)?.[0];
+
+console.log(`core.json 已重导（审定走下方语义摘要 + golden diff 抽样，非逐行 diff）：${path.relative(process.cwd(), corePath)}`);
 console.log(`  frames: ${live.frames.length} 帧（${shape.frameFields.length} 字段：${shape.frameFields.join(",")}）`);
-console.log(`  idx: ${idx}${argIdx !== -1 ? "（--idx 显式）" : "（缺省=首个 swap 帧）"}`);
+console.log(`  标注健康位: 标注帧 ${labeledCount} / 行中间帧带标注 ${midLineLabeled}（单批口径应恒 0——非 0 即行末不变量崩塌，见 e08_live 头注口径声明）`);
+console.log(`  idx: ${idx}${argIdx !== -1 ? "（--idx 显式）" : "（缺省=首个 swap 帧）"} | 锚点帧 code_line=${String(anchorFrame["code_line"])} label=${JSON.stringify(anchorFrame["semantic_label"])} 快照=${JSON.stringify(anchorSnap?.elements ?? "(无)")}`);
 console.log(`  label 值域: ${shape.labelValues.length} 种 | label_id 值域: ${shape.labelIds.length} 种 | phase 值域: ${shape.phases.join(",")}`);
 console.log(`  outputs.stdout: ${JSON.stringify(live.outputs.stdout)} | stderr: ${live.outputs.stderr.length} B | note: ${live.outputs.note.length} B`);
 console.log(`  memory 键: ${Object.keys(live.memory).join(",")}`);
 console.log(`  catalog: ${live.catalog.length} 卡 | semantic_labels: ${live.semanticLabels.length} 条`);
 console.log(`diagband-trap.json 已重导：${path.relative(process.cwd(), trapPath)}`);
-console.log(`  trap 帧: step_index=${String(trapFrame["step_index"])} label_id=${JSON.stringify(trapFrame["semantic_label_id"])} | runStats: ${JSON.stringify(trapLive.run)}`);
+console.log(`  frames 全量 ${trapLive.frames.length} 帧 | idx=trap 帧 ${trapLive.frames.length - 1} | trap 帧 step_index=${String(trapFrame["step_index"])} label_id=${JSON.stringify(trapFrame["semantic_label_id"])} | runStats: ${JSON.stringify(trapLive.run)}`);
 console.log(`连坐：vite build --ssr + e08-update.mts 重冻 golden → e08-shape.test.mts 必须绿`);

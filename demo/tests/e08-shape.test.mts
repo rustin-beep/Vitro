@@ -41,13 +41,29 @@ test("E-08 同形性：core.json ≡ 引擎实产形态", () => {
     assert.fail("S1 core.json frames 缺失或为空——E-08 输入不是 step 帧流");
   }
 
-  // S2 帧字段集全等（夹具字段并集 vs 实产字段并集，双向）
-  const fixtureFields = new Set<string>();
-  for (const f of frames) for (const k of Object.keys(f)) fixtureFields.add(k);
-  const missing = shape.frameFields.filter((k) => !fixtureFields.has(k));
-  const extra = [...fixtureFields].filter((k) => !shape.frameFields.includes(k));
-  if (missing.length > 0) diffs.push(`S2 夹具帧缺字段（实产有）：${missing.join(",")}`);
-  if (extra.length > 0) diffs.push(`S2 夹具帧多字段（实产无）：${extra.join(",")}`);
+  // S2 帧字段集逐帧全等（审阅 P2-2：并集比对下「单帧缺字段」双闸皆盲——
+  // #324 病根〔缺 code_file/semantic_label_id〕的缩小版注入曾闸绿。逐帧
+  // 比对：实产帧字段集逐帧恒定先自检，夹具每帧 ≡ 该模板）
+  const liveTemplates = new Set<string>();
+  for (const f of shape.frames) liveTemplates.add(Object.keys(f).sort().join(","));
+  if (liveTemplates.size !== 1) {
+    assert.fail(`S2 自检失败：实产帧字段集不恒定（${liveTemplates.size} 种模板）——同形性基准本身不稳定，须先查引擎`);
+  }
+  const liveTemplate = shape.frameFields.join(",");
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    if (f === undefined) {
+      diffs.push(`S2 夹具帧 ${i} 为 undefined（数组空洞）`);
+      break;
+    }
+    const keys = Object.keys(f).sort().join(",");
+    if (keys !== liveTemplate) {
+      const missing = liveTemplate.split(",").filter((k) => !keys.split(",").includes(k));
+      const extra = keys.split(",").filter((k) => !liveTemplate.split(",").includes(k));
+      diffs.push(`S2 夹具帧 ${i} 字段集不符（实产模板 ${liveTemplate}）：缺 [${missing.join(",")}] 多 [${extra.join(",")}]`);
+      break;
+    }
+  }
 
   // S3 semantic_label / semantic_label_id 值域 ⊆ 实产
   for (const [field, domain] of [
@@ -109,11 +125,14 @@ test("E-08 同形性：core.json ≡ 引擎实产形态", () => {
     }
   }
 
-  // S7 catalog 卡字段集 ⊆ 实产且 code_str ∈ 实产码集
+  // S7 catalog 卡字段集 ⊆ 实产且 code_str ∈ 实产码集（审阅 P3：实产
+  // catalog 为空时旧写法整条断言蒸发 fail-silent——空基准本身即红）
   const catalog = core["catalog"] as Array<Record<string, unknown>> | undefined;
   if (!Array.isArray(catalog) || catalog.length === 0) {
     diffs.push("S7 catalog 段缺失或为空（实产 = error_catalog 卡集）");
-  } else if (shape.catalog.length > 0) {
+  } else if (shape.catalog.length === 0) {
+    diffs.push("S7 实产 error_catalog 为空——同形性基准缺失，须先查引擎（不应静默跳过）");
+  } else {
     const liveFields = new Set<string>();
     for (const c of shape.catalog) for (const k of Object.keys(c)) liveFields.add(k);
     const liveCodes = new Set<string>(

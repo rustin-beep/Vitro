@@ -1,17 +1,27 @@
-// E-08 引擎实产拉取（#324 治本批，2026-10-31）——同形性闸
-// （e08-shape.test.mts）与导出器（e08-export.mts）的共用单源：以 demo
-// 前端 worker 同款的方法序列（engine.worker.ts collect 通道口径）经
-// `api --batch` 现场跑引擎，返回帧流与协议面真值。
+// E-08 引擎实产拉取（#324 治本批，2026-10-31；审阅处置批 2026-10-31 二修
+// 口径声称）——同形性闸（e08-shape.test.mts）与导出器（e08-export.mts）
+// 的共用单源：经 `api --batch` 现场跑引擎，返回帧流与协议面真值。
+//
+// **口径声明（与前端 worker 的已知差异，2026-10-31 审阅 P2-1/P1 定谳）**：
+// 本模块的 step 推进 = `step.next {frames:N}` 单批（CLI step 子命令同款），
+// **不是** demo worker 的 `step.next {}` 逐帧循环。两口径在引擎缺陷
+// 「algorithm_step 行末不变量在批=1 下崩塌」（独立立案，见 PR #396 审阅）
+// 修复前**不同构**：单批 = 行末语义正确形态（1041 帧仅 36 标注帧、零行
+// 中间帧）；逐帧 = 标注过密形态（832 标注帧、796 行中间帧带标注）。
+// 夹具锚定**正确形态**（与协议契约「跨批拼接与单帧流同构」的承诺一致），
+// 待该缺陷修复后两口径同构、本声明随之退役。其余差异已对齐或实测等价：
+// config（deterministic true/false 帧流全等、max_steps 两值均远未触顶）；
+// output.delta（serve 侧单次即全量 all[cursor:total]，worker 的循环拉与
+// 本模块单次拉等价；stdout/stderr 的 Latin-1 折回还原同款复刻，note 直传）。
 //
 // 臂选择（AGENTS 三臂纪律的批内验证通道）：缺省 js 臂（node 直跑
 // vitro_js.js——CI demo job 的 build-products artifact 与本地 worktree 同
 // 形态，零 shell 依赖）；`VITRO_E08_BACKEND=native` 切 native exe（防线
-// 基线臂，双臂形态对拍用）。产物缺失 fail loud 并给重建指引。
+// 基线臂，双臂形态对拍用；审阅补充实测 wasm 臂两口径亦逐字节一致——
+// 批量形状分叉非臂分叉）。产物缺失 fail loud 并给重建指引。
 //
-// 方法序列与 cmd/lib/cli/cli_step.mbt 同口径（config deterministic /
-// run argv[0] 语义 / step.next 批量 frames）；compile 走前端口径
-// {source}（不带 filename——demo worker 单文件通道同形，code_file 实产
-// 值为 null）。
+// compile 走前端单文件通道口径 {source}（不带 filename——code_file 实产
+// 值为 null）；run argv[0] 语义与 cmd/lib/cli/cli_step.mbt 同款。
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -185,10 +195,28 @@ export function engineLive(sourcePath: string = BUBBLE_C, opts: LiveOptions = { 
   }
   const frames = (step["payloads"] as Array<Record<string, unknown>>) ?? [];
   if (frames.length === 0) throw new Error("[e08-live] 实产帧流为空——闸失去对照基准");
+  // delta 消费（worker 同款分域解码）：stdout/stderr = Latin-1 折回形态，
+  // 逐码元 &0xff 还原字节再 UTF-8 解码（demo/js/util.ts latin1ToUtf8 同源
+  // 复刻——putchar(200) 单字节保真口径）；note = 引擎文本域真 UTF-8 直传。
+  // serve 侧单次 delta = all[cursor:total] 全量（无分页）——cursor!==total
+  // 或环形丢弃计数非零即 fail loud（防未来分页/预算触顶静默截断）。
+  const latin1ToUtf8 = (s: string): string => {
+    const bytes = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i) & 0xff;
+    return new TextDecoder("utf-8").decode(bytes);
+  };
   const delta = (stream: string): string => {
     const id = stream === "stdout" ? 7 : stream === "stderr" ? 8 : 9;
-    const r = byId.get(id) as { delta?: unknown } | undefined;
-    return typeof r?.delta === "string" ? r.delta : "";
+    const r = byId.get(id) as { delta?: unknown; cursor?: unknown; total?: unknown; truncated_bytes?: unknown } | undefined;
+    if (r === undefined) return "";
+    if (r.cursor !== r.total) {
+      throw new Error(`[e08-live] output.delta ${stream} 单次未拉全（cursor=${String(r.cursor)} total=${String(r.total)}）——serve 分页语义变更，消费侧须改循环拉`);
+    }
+    if (r.truncated_bytes !== undefined && r.truncated_bytes !== 0) {
+      throw new Error(`[e08-live] output.delta ${stream} truncated_bytes=${String(r.truncated_bytes)}——输出预算触顶环形丢弃，payload 不完整`);
+    }
+    const d = typeof r.delta === "string" ? r.delta : "";
+    return stream === "note" ? d : latin1ToUtf8(d);
   };
   const need = (id: number, what: string): Record<string, unknown> => {
     const r = byId.get(id);

@@ -254,6 +254,38 @@
   `"ok":false` 子串」的宽判定——run 帧 trap 时 result 内嵌 ok:false（信封
   层 ok:true、协议帧成功）也误报 rc=1；e08_live 侧按信封层判定容错。
   CLI 侧判定收窄（解析信封而非子串）另案处置。
+- **审阅处置批（PR #396 review，2026-10-31，P1/P2/P3 逐条独立复证后处置）**：
+  - **P1 独立立案不混批**（引擎缺陷，本批仅验证与登记）：`algorithm_step`
+    行末不变量在 `step.next {}` 逐帧口径下崩塌——同源码同臂只改批量参数，
+    标注帧 36/1041（单批、零行中间帧）vs **832/1041（逐帧、796 行中间帧
+    带标注）**，唯一差异字段 `algorithm_step`；根因 `serve_step.mbt` 跨批
+    pending 同行清标注判 `payloads.length()>0`（pop 后），批=1 时恒空被
+    跳过。前端 worker（`engine.worker.ts`）真实口径即 `step.next {}` ⇒
+    浏览器真机标注过密 20 倍（全站时间轴/phase 徽标受影响，不止 E-08）。
+    修复（同行判定改 pop 前参照 + 批=1 形态锚）另案；协议契约文
+    「跨批拼接与单帧流同构」自述当前为假。
+  - **P2-1 口径声称改写**（CHANGELOG/README/e08_live 头注三处）：本批
+    「前端 worker 同款方法序列」声称**不成立**——worker 是 `step.next {}`
+    逐帧 + delta 循环 + `deterministic:false/max_steps:1e7`；e08_live 是
+    单批 + 单次 delta + `true/1e5`。帧流差异 796/1041 帧唯一字段即 P1。
+    夹具**锚定单批口径**（=行末语义正确形态、与协议契约承诺一致），头注
+    改为显式口径声明（差异指向 P1，修复后两口径同构、声明退役）；
+    `deterministic` true/false 帧流全等与 wasm 臂两口径逐字节一致均经
+    审阅实测背书。
+  - **P2-2 S2 改逐帧字段集比对**：并集比对下「单帧缺字段」双闸皆盲
+    （注入删 `frames[500].code_file` 曾闸绿——#324 病根缩小版）；改逐帧
+    ≡ 实产模板（实产帧字段集恒定先自检），同注入证红→复原绿。
+  - **P3 四项**：delta 消费补 Latin-1 折回还原（worker `latin1ToUtf8`
+    同源复刻——stdout/stderr 分域，note 直传）+ `cursor!==total` 与
+    `truncated_bytes>0` 双 fail loud（「大输出静默截断」实测不成立——
+    serve 侧 `all[cursor:total]` 单次即全量、21KB 探针复核，校验为防
+    未来分页语义变更）；S7 实产 catalog 为空时 fail loud（旧 `else if`
+    空基准断言蒸发）；diagband-trap frames 全量 24 帧 + idx=trap 帧
+    下标（旧 1 帧+idx=0 与真机不同形——DiagBand 渲染等价、golden 零
+    漂移实测）；导出器报告改**语义摘要**（标注健康位/锚点帧快照值/trap
+    位——1.6MB JSON 逐行 diff 事实上不可审）。
+  - 演化登记：「帧内容依赖 `step.next` 批量参数（跨批 pending 判定批=1
+    退化）」新缺陷形态入 workspace-review references 03/07。
 
 ### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30；同日 PR #390 审阅批勘正）
 

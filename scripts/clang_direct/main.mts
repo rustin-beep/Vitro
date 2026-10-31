@@ -36,6 +36,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ensureFresh } from "../internal/freshness.mts";
 import { byteSort } from "../internal/text.mts";
+import { mergeMoonOutput } from "../diff_gate/targets/vm.mts";
 
 const runnerExe = "moonbit/_build/native/release/build/cmd/run/run.exe";
 
@@ -605,12 +606,7 @@ async function runMoon(c: CaseRef): Promise<MoonResult> {
     process.stderr.write(`clang_direct: Moon 侧运行超时（120s）：${c.rel}\n`);
     return { compileFail: false, stdout: "// RUN-TIMEOUT", exitCode: 0, memoryPath: "", skipMemoryCheck: false };
   }
-  let s = r.stdout.toString("latin1");
-  for (const l of r.stderr.toString("latin1").split("\n")) {
-    if (!l.startsWith("[vitro] backend=")) {
-      s += l + "\n";
-    }
-  }
+  const s = mergeMoonOutput(r.stdout.toString("latin1"), r.stderr.toString("latin1"));
   const res: MoonResult = { compileFail: false, stdout: s, exitCode: 0, memoryPath: memPath, skipMemoryCheck: false };
   if (s.includes("// COMPILE-ERROR")) {
     res.compileFail = true;

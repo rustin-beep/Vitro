@@ -11,6 +11,7 @@ import {
   extractMoonBitStdout,
   mbWholeDigest,
   memorySHA,
+  mergeMoonOutput,
   relOf,
   sampleN,
   stdinFor,
@@ -28,6 +29,22 @@ test("extractMoonBitStdout：剥精确前缀标记行 + 末行 EXIT + 不加尾�
   assert.equal(extractMoonBitStdout("abc\n// EXIT 2\n\n"), "abc");
   // 全标记行 → 空串
   assert.equal(extractMoonBitStdout("// COMPILE-ERROR E2005 1:1 x\n"), "");
+});
+
+test("mergeMoonOutput：#207 补行退役后的两流边界（无换行不粘连 stderr 首行）", () => {
+  // stdout 末行无换行（#207 后合法形态）→ 续接前补边界换行：
+  // NOTE 完成附注每例必有，粘连会让 extractMoonBitStdout 的标记行剥除失效。
+  // 尾部 \n\n = stderr split 尾空串元素的自然产物（Go/mts 同形态），extract
+  // 归一剥尾空行吸收
+  const merged = mergeMoonOutput("abc", "// NOTE 程序运行完成，返回值：0\n");
+  assert.equal(merged, "abc\n// NOTE 程序运行完成，返回值：0\n\n");
+  assert.equal(extractMoonBitStdout(merged), "abc");
+  // 自带尾换行：不双补
+  assert.equal(mergeMoonOutput("abc\n", "// NOTE x\n"), "abc\n// NOTE x\n\n");
+  // 空输出：零前导（不造空行），stderr 行原样续接
+  assert.equal(mergeMoonOutput("", "// NOTE x\n"), "// NOTE x\n\n");
+  // backend 标注行剥除（wasm 臂差异面）
+  assert.equal(mergeMoonOutput("abc", "[vitro] backend=wasm (node 26)\n// EXIT 2\n"), "abc\n// EXIT 2\n\n");
 });
 
 test("memorySHA：argv 区 0xF000..0x10000 脱敏后再算，且不改原文件", () => {

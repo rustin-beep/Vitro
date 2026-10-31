@@ -260,6 +260,51 @@ export function runMain(argv: readonly string[]): number {
       fatalf(`B[帧通道字节] 三臂帧输出不一致（len j=${j.length} w=${w.length} n=${n.length} 首差 offset=${fd}——native 帧尾 CRLF 形态，#335）`);
     }
   }
+  // #207/#319（2026-10-31）：run 文本模式 stdout 口径字节锚——补行退役。
+  // 修前 run 文本路径无条件补 `\n`（空输出也补，native 经 CRT 翻成 2 字节
+  // CRLF），与 clang / `--json` delta / step 文本模式三口径分叉（下游逐字节
+  // 判分必红）。本锚与**预期字面量**比对（非臂间互比——补行年代三臂同补、
+  // 互比结构上抓不到口径分叉，#207 实测登记）：`printf("abc")` 无换行程序
+  // stdout 严格 3 字节 `61 62 63`、空输出程序严格 0 字节（clang 同口径）。
+  {
+    const noNl = path.join(tmpDir, "out_no_newline.c");
+    fs.writeFileSync(noNl, '#include <stdio.h>\nint main(){ printf("abc"); return 0; }\n');
+    const silent = path.join(tmpDir, "out_silent.c");
+    fs.writeFileSync(silent, "int main(){ return 0; }\n");
+    const arms = [
+      { label: "js", exe: jsEntry },
+      { label: "wasm", exe: shell },
+      { label: "native", exe: nativeExe },
+    ];
+    const wantNoNl = Buffer.from("abc", "latin1");
+    const fails0 = failures;
+    for (const a of arms) {
+      const isNative = a.label === "native";
+      const r = spawnSync(isNative ? a.exe : nodeBin, [...(isNative ? [] : [a.exe]), "run", noNl], {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      if (r.error !== undefined || (r.status ?? -1) !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 无换行用例启动/rc 异常: ${r.error?.message ?? `rc=${r.status}`}`);
+      } else if (!r.stdout.equals(wantNoNl)) {
+        const got = r.stdout.toString("latin1");
+        const kind = got === "abc\n" || got === "abc\r\n" ? "补行回潮" : "意外字节形态";
+        fatalf(`B[run 文本口径] ${a.label} stdout ${r.stdout.length}B ≠ 3B 原样 \`abc\`（#207 ${kind}: ${JSON.stringify(got)}）`);
+      }
+      const r2 = spawnSync(isNative ? a.exe : nodeBin, [...(isNative ? [] : [a.exe]), "run", silent], {
+        cwd: repoRoot,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      if (r2.error !== undefined || (r2.status ?? -1) !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 空输出用例启动/rc 异常: ${r2.error?.message ?? `rc=${r2.status}`}`);
+      } else if (r2.stdout.length !== 0) {
+        fatalf(`B[run 文本口径] ${a.label} 空输出 stdout ${r2.stdout.length}B ≠ 0 字节（#207 补行回潮: ${JSON.stringify(r2.stdout.toString("latin1"))}）`);
+      }
+    }
+    if (fails0 === failures) {
+      process.stdout.write("ok  B[run 文本口径] 三臂 run 文本 stdout 原样字节（3B/0B 对齐 clang，#207/#319）\n");
+    }
+  }
   // #335 审阅 P3-1（2026-10-27）：serve 帧——唯一 NDJSON 行协议 exe 此前
   // 无字节锚（serve_smoke/protocol_frames 的 JSON 规范化吸收 CRLF，突变
   // 实证摘 main 前置调用后仍 67 PASS 全绿）。两帧+shutdown 收尾，原始字节

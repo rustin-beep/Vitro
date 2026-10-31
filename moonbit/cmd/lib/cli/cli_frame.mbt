@@ -4,10 +4,11 @@
 // + println）拆除：诊断出口从此单源（#64「双臂不对账」的病根——同一
 // codegen 失败 exe 打印 / gateway 吞诊断——两出口自此同帧同渲染）。
 //
-// 文本模式契约（逐字节对齐拆除前行形态——vm_diff/clang_direct 剥离器与
-// 全量语料即锚）：`// COMPILE-ERROR|WARNING|HINT <code|codegen> <l>:<c> <msg>`
-// + `// COMPILE-OK`；run 段 `// STDERR/NOTE/TRAP/EXIT` 行 + stdout 字节
-// 直写（Latin-1 折回还原 + 尾换行保形，壳 writeStdoutBytes 同款）。
+// 文本模式契约（拆除期「逐字节对齐旧壳形态」锚已随 #207/#319 契约翻新——
+// 尾换行不再对齐旧形态）：`// COMPILE-ERROR|WARNING|HINT <code|codegen>
+// <l>:<c> <msg>` + `// COMPILE-OK`；run 段 `// STDERR/NOTE/TRAP/EXIT` 行 +
+// stdout 字节直写（Latin-1 折回还原，原样零修饰——与 clang / `--json`
+// delta / step 文本模式四口径一致，spec §1「字节精确·无需剥离」）。
 //
 // 退出码与 json 模式同表（diag 失败=1 / trap=2 / 步数超限=3 / 正常=0）。
 
@@ -260,13 +261,14 @@ fn frame_pipeline(
       None => b""
     }
   }
-  // stdout：字节直写 + 尾换行保形（壳 writeStdoutBytes 同款）
+  // stdout：字节直写，原样零修饰（#207/#319，2026-10-31——文本模式
+  // stdout 只承载程序输出，不补尾换行：末行无换行保持原样、空输出
+  // 0 字节。与 clang / `--json` delta / step 文本模式四口径一致；
+  // cli_step.mbt 直写同款）
   let raw = delta_bytes("output.delta", "stdout")
-  let mut buf = raw
-  if buf.length() == 0 || buf[buf.length() - 1] != b'\n' {
-    buf = buf.add(b"\n")
+  if raw.length() > 0 {
+    write_stdout(raw)
   }
-  write_stdout(buf)
   // stderr：还原字节 → UTF-8 优先解码 → `// STDERR` 标记行
   //（与拆除前 utf8_text_partial 同源形态）
   let etext = @util.utf8_text_partial(delta_bytes("output.delta", "stderr"))

@@ -826,6 +826,12 @@ func runMoon(c caseRef) *moonResult {
 		return &moonResult{stdout: "// RUN-TIMEOUT"}
 	}
 	s := out.String()
+	// #207 补行退役适配（2026-10-31，与 main.mts 同款）：文本模式 stdout
+	// 原样零修饰后末行可无换行——与 stderr 合流前补边界换行（否则标记行与
+	// stdout 末行粘连，extractMoonStdout 剥除失效）
+	if len(s) > 0 && !strings.HasSuffix(s, "\n") {
+		s += "\n"
+	}
 	for _, l := range strings.Split(se.String(), "\n") {
 		if !strings.HasPrefix(l, "[vitro] backend=") {
 			s += l + "\n"

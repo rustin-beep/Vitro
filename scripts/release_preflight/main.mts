@@ -10,28 +10,32 @@
 // ——该缺陷形态在发布彩排里**没有任何闸能抓**（彩排只验 registry 投放与包
 // 自身 check，没验「publish 视角健康」与「发布件非退化」）。本闸两档补面：
 //
-//  日常档（默认）：
-//   1. `moon publish --dry-run`（cwd=moonbit/）断言输出含 "Check passed"
-//      ——缺失即红（抓 import 断供 / publish 视角构建红——0.9.0 型防线）；
-//   2. 版本重复 409（「is duplicated with an existing version」）不红，
-//      报「版本未 bump（发版预期态）」提示——兼任 bump 状态探针；
-//   3. 其余失败（无 Check passed 且无 409——网络/未知构建红）fail loud。
-//
-//  --release 档（发版彩排）：
-//   1. dry-run 须 rc=0（版本已 bump 且 registry 无冲突——409 即红，先 bump）；
-//   2. `moon package` 产物非退化：zip >100KB 且 >400 文件——非 git 管理面
+//  日常档（默认，CI 跑，**零网络**——CI 无 moon login，dry-run 会 login 拦截
+//  〔2026-10-31 CI 实锤：Registry login is required〕；import 断供防线由
+//  moon check/moon test 的 Hygiene job 承担，本档增量 = 发布件面）：
+//   1. `moon package` 产物非退化：zip >100KB 且 >400 文件——非 git 管理面
 //      `moon package` 曾实测 22 字节空 zip 且 rc=0 静默成功（报告 §4.1.1-3）；
-//   3. 根级四件在位：LICENSE / README.md / README.mbt.md / moon.mod
-//      （T5 发布验收四件，mooncakes 模块页渲染依赖）。
+//   2. 根级四件在位：LICENSE / README.md / README.mbt.md / moon.mod
+//      （T5 发布验收四件，mooncakes 模块页渲染依赖）；
+//   3. 版本状态探针（不判红）：moon.mod version vs 本地 registry index 尾行
+//      （`~/.moon/registry/index/user/vitro/engine.index`，moon update 后在场）
+//      ——同号 = 未 bump（发版前预期态）/ 异号 = 已 bump。
+//
+//  --release 档（发版彩排，发版本机跑——本机有 moon login）：
+//   1. `moon publish --dry-run` 须 rc=0（版本已 bump 且 registry 无冲突
+//      ——409 版本重复即红「先 bump」；Check passed 断言兜底）；
+//   2. 日常档全部三件（package 非退化 + 根级四件 + 版本探针）。
 //
 // 反刷量设计约束（用户拍板 2026-10-31，refs riantr 家 CI 刷量实锤）：本闸
-// 全程**零 mooncakes zip GET**——dry-run 只打 publish 查重 API（版本重复
-// 409），package 是本地打包；「干净消费工程 moon add + build」会产生真实
-// zip GET（下载计数 +1），**不自动化进 CI**——人工步骤落在 vitro-release-
-// playbook skill 的发版 checklist（发版当日一次，真实语义下载）。
+// 全程**零 mooncakes zip GET**——日常档完全零网络（package 本地打包 + 本地
+// index 探针），release 档的 dry-run 只打 publish 查重 API；「干净消费工程
+// moon add + build」会产生真实 zip GET（下载计数 +1），**不自动化进 CI**
+// ——人工步骤落在 vitro-release-playbook skill 的发版 checklist（发版当日
+// 一次，真实语义下载）。
 //
 // 纪律：零第三方依赖；fail loud；禁静默 default；rc=0 绿 / 1 判红 / 2 致命。
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -83,12 +87,50 @@ export function parseDryRun(out: string): DryRunVerdict {
   };
 }
 
-/** `tar -tf` 清单文本 → 条目数组（CRLF 归一；空行剔除）。 */
-export function parseZipListing(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+/** registry index JSONL → 在架最新版本（尾行 version；空/坏 → null）。 */
+export function latestPublishedVersion(jsonl: string): string | null {
+  const lines = jsonl.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  const last = lines[lines.length - 1];
+  if (last === undefined) return null;
+  try {
+    const v = (JSON.parse(last) as { version?: unknown }).version;
+    return typeof v === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// zip central directory 解析（零依赖替代 tar——Git Bash GNU tar 不读 zip、
+// bsdtar 路径跨环境不可控；moon package 产物 <2MB 无 ZIP64 顾虑）。
+const EOCD_SIG = 0x06054b50;
+const CDE_SIG = 0x02014b50;
+
+/** zip 字节 → 条目名数组（EOCD 反向扫描 + central directory 逐条读名）。 */
+export function zipEntries(buf: Buffer): string[] {
+  // EOCD（22B 定长尾）在最尾部 64KB 内——注释段最长 65535
+  const scanStart = Math.max(0, buf.length - 66_000);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= scanStart; i--) {
+    if (buf.readUInt32LE(i) === EOCD_SIG) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error("zipEntries: EOCD 签名未找到（非 zip 或损坏）");
+  const count = buf.readUInt16LE(eocd + 10);
+  let off = buf.readUInt32LE(eocd + 16);
+  const names: string[] = [];
+  for (let i = 0; i < count; i++) {
+    if (off + 46 > buf.length || buf.readUInt32LE(off) !== CDE_SIG) {
+      throw new Error(`zipEntries: central directory 条目 ${i} 签名错位（损坏？）`);
+    }
+    const nameLen = buf.readUInt16LE(off + 28);
+    const extraLen = buf.readUInt16LE(off + 30);
+    const commentLen = buf.readUInt16LE(off + 32);
+    names.push(buf.subarray(off + 46, off + 46 + nameLen).toString("utf8"));
+    off += 46 + nameLen + extraLen + commentLen;
+  }
+  return names;
 }
 
 /** zip 清单 → 非空闸判定（大小由调用方 stat）。 */
@@ -113,43 +155,25 @@ function main(): void {
   const modVer = moonModVersion(fs.readFileSync(path.join(moonbit, "moon.mod"), "utf8"));
   if (modVer === null) fatal("moon.mod 无 version 字段——无法对拍 bump 状态");
 
-  process.stdout.write(`release_preflight: 档位=${release ? "release（发版彩排）" : "daily（CI 日常）"} · 待发版本=${modVer}\n`);
+  process.stdout.write(`release_preflight: 档位=${release ? "release（发版彩排）" : "daily（CI 日常·零网络）"} · 待发版本=${modVer}\n`);
 
-  // ── 1. dry-run（两档共用；release 档要求 rc=0）──
-  const dry = run("moon", ["publish", "--dry-run"], moonbit);
-  const v = parseDryRun(dry.out);
-  if (!release) {
-    // 日常档三态：健康+未 bump（409，预期）/ 健康+已 bump / 不健康（红）
-    if (!v.checkPassed) {
+  // ── release 档前置：dry-run 须 rc=0（本机有 moon login；CI 无登录会
+  //    「Registry login is required」拦——故 dry-run 只进 release 档）──
+  if (release) {
+    const dry = run("moon", ["publish", "--dry-run"], moonbit);
+    const v = parseDryRun(dry.out);
+    if (dry.code !== 0) {
       fatal(
         v.versionConflict !== null
-          ? `dry-run 未过 Check 且版本重复之外另有失败（异常组合）：\n${dry.out.slice(-1200)}`
-          : `dry-run 无 "Check passed" 且非版本重复——publish 视角构建红（0.9.0 型断供防线）：\n${dry.out.slice(-1200)}`,
+          ? `版本 ${v.version} 与在架重复——先 bump moon.mod version（发布流程 T5：修复发布 patch / 新增面 minor）`
+          : `dry-run rc=${dry.code}（login/网络/构建失败——发版本机须 moon login 后重跑）：\n${dry.out.slice(-1200)}`,
       );
     }
-    if (v.versionConflict === null && dry.code !== 0) {
-      fatal(`dry-run Check passed 但 rc=${dry.code}（非 409 形态的未知失败）：\n${dry.out.slice(-600)}`);
-    }
-    process.stdout.write(
-      v.versionConflict !== null
-        ? `release_preflight: Check passed ✓ · 版本 ${v.version} 与在架重复（未 bump——发版前预期态，release 档将红）\n`
-        : `release_preflight: Check passed ✓ · 版本 ${v.version}（registry 无冲突——已 bump 形态）\n`,
-    );
-    process.stdout.write("release_preflight: PASS（日常档）\n");
-    return;
+    if (!v.checkPassed) fatal(`dry-run rc=0 但无 "Check passed"（异常形态）：\n${dry.out.slice(-600)}`);
+    process.stdout.write(`release_preflight: dry-run rc=0 · Check passed ✓（registry 无冲突）\n`);
   }
 
-  // ── release 档 ──
-  if (dry.code !== 0) {
-    fatal(
-      v.versionConflict !== null
-        ? `版本 ${v.version} 与在架重复——先 bump moon.mod version（发布流程 T5：修复发布 patch / 新增面 minor）`
-        : `dry-run rc=${dry.code}：\n${dry.out.slice(-1200)}`,
-    );
-  }
-  process.stdout.write(`release_preflight: dry-run rc=0 ✓（版本 ${v.version} registry 无冲突）\n`);
-
-  // ── 2. moon package 非退化闸 ──
+  // ── package 非退化闸（两档共用，零网络）──
   const pkg = run("moon", ["package"], moonbit);
   if (pkg.code !== 0) fatal(`moon package rc=${pkg.code}：\n${pkg.out.slice(-800)}`);
   const zipMatch = /Package to (\S+)/.exec(pkg.out);
@@ -157,16 +181,41 @@ function main(): void {
   const zipPath = zipMatch[1]!.replace(/^\\\\\?\\/, "");
   if (!fs.existsSync(zipPath)) fatal(`package 产物不存在：${zipPath}`);
   const size = fs.statSync(zipPath).size;
-  // bsdtar（Windows 10+ 自带）列 zip 清单；Git Bash tar 同源
-  const list = run("tar", ["-tf", zipPath]);
-  if (list.code !== 0) fatal(`tar -tf 失败（zip 损坏？）：\n${list.out.slice(-400)}`);
-  const zv = verdictFromListing(parseZipListing(list.out), size);
+  // 条目清单走 node 手写 zip central directory 解析（零依赖；外部 tar
+  // 跨环境不可控——Git Bash GNU tar 不读 zip、绝对路径盘符被当远程主机）
+  let entries: string[];
+  try {
+    entries = zipEntries(fs.readFileSync(zipPath));
+  } catch (e) {
+    fatal(`package 产物 zip 不可解析（${(e as Error).message}）：${zipPath}`);
+  }
+  const zv = verdictFromListing(entries, size);
   if (zv.fileCount < ZIP_MIN_FILES || zv.size < ZIP_MIN_BYTES) {
     fatal(`package 产物疑似退化空包：${zv.fileCount} 条 / ${zv.size}B（阈值 ≥${ZIP_MIN_FILES} 条 / ≥${ZIP_MIN_BYTES}B；非 git 管理面 22 字节空 zip 实锤形态）`);
   }
   if (zv.missingRoot.length > 0) fatal(`package 产物缺根级件：${zv.missingRoot.join(", ")}（T5 验收四件）`);
   process.stdout.write(`release_preflight: package ✓ ${zv.fileCount} 条 / ${Math.round(zv.size / 1024)}KB · 根级四件在位\n`);
-  process.stdout.write("release_preflight: PASS（release 档）——干净消费验收（moon add + build，真实 zip GET）按 playbook 人工执行，不进 CI（反刷量约束）\n");
+
+  // ── 版本状态探针（不判红）：moon.mod vs 本地 registry index 尾行 ──
+  const idx = path.join(os.homedir(), ".moon", "registry", "index", "user", "vitro", "engine.index");
+  if (fs.existsSync(idx)) {
+    const pub = latestPublishedVersion(fs.readFileSync(idx, "utf8"));
+    if (pub === null) {
+      process.stdout.write("release_preflight: 版本探针 · index 尾行不可解析（moon update 后重试）\n");
+    } else if (pub === modVer) {
+      process.stdout.write(`release_preflight: 版本探针 · ${modVer} == 在架 ${pub}（未 bump——发版前预期态，release 档 dry-run 将 409）\n`);
+    } else {
+      process.stdout.write(`release_preflight: 版本探针 · ${modVer} ≠ 在架 ${pub}（已 bump 形态——release 档可验 registry 冲突）\n`);
+    }
+  } else {
+    process.stdout.write("release_preflight: 版本探针 · 本地 index 缺席（先 moon update；探针跳过不判红）\n");
+  }
+
+  process.stdout.write(
+    release
+      ? "release_preflight: PASS（release 档）——干净消费验收（moon add + 双目标 build，真实 zip GET）按 playbook 人工执行，不进 CI（反刷量约束）\n"
+      : "release_preflight: PASS（日常档）\n",
+  );
 }
 
 // 直接执行时跑 main；被 import（node:test）时不跑。

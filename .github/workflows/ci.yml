@@ -1586,14 +1586,15 @@ jobs:
         run: node scripts/vitro_cli_smoke/main.mts --corpus 30
 
   # ── release-preflight（ds 批③：发布前置闸，2026-10-31）──────────────────
-  # moon publish --dry-run 的 Check passed 断言——抓 0.9.0 型断供（工具链
-  # 升级删 core/abort 而包内仍 import ⇒ 下游 moon add 后 build 必红的形态，
-  # 在发布彩排里此前零闸能抓）；409 版本重复 = 未 bump 预期态不红（兼任
-  # bump 状态探针）。**反刷量约束（用户拍板）**：全程零 mooncakes zip GET
-  # ——dry-run 只有 publish 查重 API；干净消费验收（moon add + build =
-  # 真实下载计数）不进 CI，人工步骤落 vitro-release-playbook。
+  # moon package 非退化闸 + 根级四件 + 版本状态探针（**零网络零 login**——
+  # dry-run 在 CI 无 moon login 会被「Registry login is required」拦，故只进
+  # release 档〔发版本机〕）。import 断供防线由 moon check/test 的 Hygiene
+  # job 承担，本 job 增量 = 发布件面（非 git 管理面 22 字节空 zip rc=0 静默
+  # 成功实锤）。**反刷量约束（用户拍板）**：全程零 mooncakes zip GET；
+  # 干净消费验收（moon add + build = 真实下载计数）不进 CI，人工步骤落
+  # vitro-release-playbook。
   release-preflight:
-    name: Release preflight (publish dry-run, zero zip GET)
+    name: Release preflight (package integrity, zero net)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -1604,7 +1605,7 @@ jobs:
         uses: ./.github/actions/setup-moonbit
       - name: Refresh MoonBit registry index
         run: cd moonbit && moon update
-      - name: Publish dry-run gate (Check passed assert)
+      - name: Package integrity gate (non-degenerate zip + root files + version probe)
         run: node scripts/release_preflight/main.mts
 
   # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────

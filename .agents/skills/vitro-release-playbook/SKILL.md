@@ -15,9 +15,9 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
 ## 2. 发布前置
 - 防线全绿：CI 两 job + `toolchain_probe`；本地 = `moon check --target all` 干净、`moon test` 全绿、`moon info` 无意外 diff、`gen_diag -check` 绿。
 - **`release_preflight` 双档闸（ds 批③ 2026-10-31 建，CI release-preflight job 常驻日常档）**：
-  - 日常档 `node scripts/release_preflight/main.mts`——`moon publish --dry-run` 断言 `Check passed`（抓 0.9.0 型断供：工具链升级删 core/abort 而包内仍 import ⇒ 下游 build 必红，此前彩排零闸能抓）；409 版本重复 = 未 bump 预期态不红（兼任 bump 探针）。
-  - 发版彩排档 `--release`——dry-run 须 rc=0（版本已 bump 且 registry 无冲突）+ `moon package` 产物非退化（>400 条/>100KB——非 git 管理面 22 字节空 zip rc=0 实锤形态）+ 根级四件在位。**发版日 bump 版本后、publish 前必跑绿**。
-  - **反刷量约束（用户拍板 2026-10-31）**：闸全程零 mooncakes zip GET（dry-run 只有 publish 查重 API）；「干净消费工程 `moon add` + build」是真实下载计数，**永不进 CI**——只在发版日人工跑一次（§5 验收）。
+  - 日常档 `node scripts/release_preflight/main.mts`——**零网络零 login**：`moon package` 产物非退化（>400 条/>100KB——非 git 管理面 22 字节空 zip rc=0 实锤形态）+ 根级四件在位 + 版本状态探针（moon.mod vs 本地 registry index 尾行，同号=未 bump 预期态，不判红）。import 断供防线由 moon check/test 的 Hygiene job 承担。
+  - 发版彩排档 `--release`——dry-run 须 rc=0（版本已 bump 且 registry 无冲突；**须发版本机有 moon login**——CI 无登录会被 `Registry login is required` 拦，实测 2026-10-31）+ 日常档全部三件。**发版日 bump 版本后、publish 前必跑绿**。
+  - **反刷量约束（用户拍板 2026-10-31）**：闸全程零 mooncakes zip GET（日常档完全零网络，release 档 dry-run 只有 publish 查重 API）；「干净消费工程 `moon add` + build」是真实下载计数，**永不进 CI**——只在发版日人工跑一次（§5 验收）。
 - **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02-构建与上手/脚本总清单与必跑防线.md`。
 - **README 示例里的 API 调用 = 消费边（2026-10-26 实锤，0.9.0 发版批）**：改 `moonbit/README.md` 示例代码若引入包从未被根 README 消费过的符号（如快速上手补 `@content_data.install_baked()`），即新增一条 surface 消费边——须连坐登记 `scripts/moonbit/surface_edges.txt`（根 README 的 consumer 记 `.`），否则 `moonbit_surface -check` 双向对账红（Scripts TS gate e2e ×2 + Static gates 同根双红）。**主 CI concurrency cancel-in-progress 会把前一提交的被红 run 掩成静默**——push 前逐提交核验触发面，别只看最新 run。
 

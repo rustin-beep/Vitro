@@ -6,11 +6,34 @@ import { test } from "node:test";
 import {
   ZIP_MIN_BYTES,
   ZIP_MIN_FILES,
+  latestPublishedVersion,
   moonModVersion,
   parseDryRun,
-  parseZipListing,
   verdictFromListing,
+  zipEntries,
 } from "./main.mts";
+
+/** 拼最小合法 zip：local header 省略，central directory + EOCD（解析只读 CD）。 */
+function mkZip(names: readonly string[]): Buffer {
+  const cdParts: Buffer[] = [];
+  for (const n of names) {
+    const name = Buffer.from(n, "utf8");
+    const e = Buffer.alloc(46);
+    e.writeUInt32LE(0x02014b50, 0);
+    e.writeUInt16LE(name.length, 28);
+    cdParts.push(e, name);
+  }
+  const cd = Buffer.concat(cdParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(names.length, 8); // 盘内条目数
+  eocd.writeUInt16LE(names.length, 10); // 总条目数
+  eocd.writeUInt32LE(cd.length, 12); // cd 尺寸
+  eocd.writeUInt32LE(0, 16); // cd 偏移（CD 紧贴 EOCD 前 = 0 起）
+  // 注：偏移语义 = CD 起点绝对偏移；此拼法 CD 在(假想的)文件头——用
+  // Buffer.concat([cd, eocd]) 时 CD 偏移 0 正确
+  return Buffer.concat([cd, eocd]);
+}
 
 test("parseDryRun：健康 + 版本重复 409（master 0.9.0 实测样本）", () => {
   const out = [
@@ -56,9 +79,34 @@ test("moonModVersion：TOML 裸键提取（容忍注释与字段序）", () => {
   assert.equal(moonModVersion("module = \"x\"\n"), null);
 });
 
-test("parseZipListing：CRLF 归一 + 空行剔除", () => {
-  const text = "LICENSE\r\nmoon.mod\r\n\r\nvm/vm.mbt\n\ndiag/diag.mbt\r\n";
-  assert.deepEqual(parseZipListing(text), ["LICENSE", "moon.mod", "vm/vm.mbt", "diag/diag.mbt"]);
+test("zipEntries：central directory 逐条读名（含目录条目/中文/空清单）", () => {
+  assert.deepEqual(zipEntries(mkZip(["LICENSE", "moon.mod", "vm/vm.mbt"])), [
+    "LICENSE",
+    "moon.mod",
+    "vm/vm.mbt",
+  ]);
+  // 目录条目（尾 /）与非 ASCII 名照常读出（UTF-8 名段）
+  assert.deepEqual(zipEntries(mkZip(["dir/", "说明.md"])), ["dir/", "说明.md"]);
+  assert.deepEqual(zipEntries(mkZip([])), []);
+  // 非 zip 字节 → throw（EOCD 未找到）
+  assert.throws(() => zipEntries(Buffer.from("not a zip at all........")));
+});
+
+test("zipEntries：EOCD 前有数据体（模拟真实布局：files…+CD+EOCD）", () => {
+  const fakeBody = Buffer.alloc(300, 0x41); // 假 local 段
+  const cd = (() => {
+    const name = Buffer.from("moon.mod", "utf8");
+    const e = Buffer.alloc(46);
+    e.writeUInt32LE(0x02014b50, 0);
+    e.writeUInt16LE(name.length, 28);
+    return Buffer.concat([e, name]);
+  })();
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(cd.length, 12);
+  eocd.writeUInt32LE(fakeBody.length, 16);
+  assert.deepEqual(zipEntries(Buffer.concat([fakeBody, cd, eocd])), ["moon.mod"]);
 });
 
 test("verdictFromListing：根级四件缺位检出 + 非空阈值常量在场", () => {
@@ -75,4 +123,15 @@ test("verdictFromListing：四件齐备零缺位", () => {
   const entries = ["LICENSE", "README.md", "README.mbt.md", "moon.mod", "vm/vm.mbt"];
   const zv = verdictFromListing(entries, 1_567_591);
   assert.deepEqual(zv.missingRoot, []);
+});
+
+test("latestPublishedVersion：JSONL 尾行版本（CRLF/空行容忍·坏行 null）", () => {
+  const good = '{"version":"0.8.0","deps":[]}\r\n{"version":"0.9.0","deps":[]}\r\n';
+  assert.equal(latestPublishedVersion(good), "0.9.0");
+  assert.equal(latestPublishedVersion('{"version":"0.8.0"}\n{"version":"0.9.0"}\n'), "0.9.0");
+  assert.equal(latestPublishedVersion(""), null);
+  assert.equal(latestPublishedVersion("\r\n\n"), null);
+  assert.equal(latestPublishedVersion("not-json"), null);
+  // 尾行 version 非字符串（形态异常）→ null
+  assert.equal(latestPublishedVersion('{"version":123}'), null);
 });

@@ -74,17 +74,19 @@ EAD
   `moon add` 后 build 必红）且发布物零工具链声明——该形态在既有发布彩排里
   **零闸能抓**（彩排只验 registry 投放与包自身 check，不验 publish 视角）。
 - **新闸 `scripts/release_preflight/main.mts`**（#273 .mts 四件套：零依赖 +
-  tsc 严格档 + oxlint + node:test 7 测）：
-  - **日常档**（CI 常驻）：`moon publish --dry-run` 断言 `Check passed`
-    ——缺失即红（实测 0.9.0 型断供在 dry-run 下 Check failed，master 候选件
-    Check passed——83 tasks）；**409 版本重复不红**（未 bump 预期态，兼任
-    bump 状态探针，提示行报在架冲突版本号）。
-  - **`--release` 档**（发版彩排，人工/dispatch）：dry-run 须 rc=0（版本已
-    bump 且 registry 无冲突）+ `moon package` 产物非退化（>400 条/>100KB——
-    非 git 管理面 22 字节空 zip rc=0 静默成功实锤形态）+ 根级四件在位
-    （LICENSE/README.md/README.mbt.md/moon.mod，T5 验收件）。
+  tsc 严格档 + oxlint + node:test 8 测）：
+  - **日常档**（CI 常驻，**零网络零 login**）：`moon package` 产物非退化
+    （>400 条/>100KB——非 git 管理面 22 字节空 zip rc=0 静默成功实锤形态，
+    发布件面 CI 此前零覆盖）+ 根级四件在位（LICENSE/README.md/
+    README.mbt.md/moon.mod，T5 验收件）+ 版本状态探针（moon.mod vs 本地
+    registry index 尾行——同号=未 bump 预期态，不判红）。dry-run 不进 CI
+    的原因（实测）：`moon publish --dry-run` 需 moon login，CI 无凭证被
+    「Registry login is required」拦；import 断供防线由 Hygiene job 的
+    moon check/test 承担。
+  - **`--release` 档**（发版本机跑，须 moon login）：dry-run 须 rc=0
+    （版本已 bump 且 registry 无冲突）+ 日常档全部三件。
   - **J9 证红**：release 档在当前同号态（0.9.0）实测 rc=2「先 bump
-    moon.mod version」；日常档 master 实测 rc=0（Check passed + 409 预期态）。
+    moon.mod version」；日常档阈值埋雷（ZIP_MIN_FILES 临时改 999）实测红。
 - **反刷量约束（用户拍板）**：闸全程**零 mooncakes zip GET**——dry-run 只有
   publish 查重 API；「干净消费工程 `moon add` + build」是真实下载计数
   （+1/次），**永不进 CI**——发版日人工一次（对照 riantr 家被自家 CI 刷出

@@ -534,7 +534,7 @@ serve 线协议只读方法（`memory.regions` 同族——观测面，不碰会
 ← {"id":3,"ok":true,"result":{"files":[{"name":"test.txt","size":12},{"name":"numbers.txt","size":10}]}}
 ```
 
-- `files` 数组：当前会话 VFS 全部文件，**插入序**（预置在前、程序自建在后——core `Map` 迭代序即插入序）；
+- `files` 数组：当前会话 VFS 全部文件，**插入序**（预置在前、程序自建在后——core `Map` 迭代序即插入序，三臂实测一致；`rename` 实现上是删除+新建——**改名文件移至清单末尾**）；
 - 每项 `{name, size}`：`size` 为**逻辑长度**（逻辑域字节——文本模式写入的 `\r\n` 物理双字节计一）；
 - **时机语义**：预置文件随 `run` / `step.begin` 注入（VFS 每 run 重建）——`run` 前调用清单为空，`run` 后含预置两件（`test.txt` 12 字节 / `numbers.txt` 10 字节）+ 程序自建文件；同会话再 `run` 自建文件消失、预置复位；
 - 预置清单单源：`gateway/serve_vfs.mbt::preset_vfs_files`（与 `C语言子集规范` §2.6 文档互为登记）；CLI `run` 子命令不注入预置（serve/api 通道专属）；

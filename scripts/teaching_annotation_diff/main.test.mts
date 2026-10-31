@@ -17,7 +17,7 @@ import {
 import { compareTemplate, filterMigrated, goJSONMarshalIndent, parseArgs, recordString } from "./main.mts";
 import type { FirstOccurrence } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
-import { deriveGroups, fetchCatalog } from "../gen_demo_algorithms/main.mts";
+import { catalogArtifactPath, deriveGroups, fetchCatalog } from "../gen_demo_algorithms/main.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
 
@@ -115,9 +115,16 @@ test("extractBuildMatches：evidence= 第 6 参合法；参数数错 / 未闭合
   assert.throws(() => extractBuildMatches(dir), /未闭合/);
 });
 
-test("分组派生直连：引擎 catalog 派生 7 组，组内族非空（#36 收编后 GROUPS 硬编码退役）", () => {
+test("分组派生直连：引擎 catalog 派生 7 组，组内族非空（#36 收编后 GROUPS 硬编码退役）", (t) => {
   // #36 收编批（2026-10-31）：生成器分组 = 引擎出口派生（deriveGroups），
   // 本锚随源迁移——锁「引擎拉取 → 派生」链路形态（7 组/组内非空）。
+  // P1-1（PR #403 审阅）：缺产物显式 skip（ensureFresh 的 die 是
+  // process.exit(1)，会吞掉同文件其余锚）。
+  const artifact = catalogArtifactPath(projectRoot());
+  if (!fs.existsSync(artifact)) {
+    t.skip(`前置缺失：${artifact}（先跑 cd moonbit && moon build --release --target js cmd/vitro_js）`);
+    return;
+  }
   const groups = deriveGroups(fetchCatalog(projectRoot()));
   assert.equal(groups.length, 7);
   for (const g of groups) {

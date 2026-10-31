@@ -8,6 +8,7 @@ import path from "node:path";
 import {
   camel,
   jsBacktick,
+  catalogArtifactPath,
   catalogConsistencyErrors,
   deriveGroups,
   fetchCatalog,
@@ -109,7 +110,15 @@ test("deriveGroups：分组按引擎 groups 派生，组内序 = 引擎 catalog 
   assert.equal(sorting?.label, "排序");
 });
 
-test("真实仓库：引擎出口（api --batch 拉取）↔ rules.json 43 族双向零误差", () => {
+test("真实仓库：引擎出口（api --batch 拉取）↔ rules.json 43 族双向零误差", (t) => {
+  // P1-1（PR #403 审阅）：缺产物显式 skip——ensureFresh 的 die 是
+  // process.exit(1)，直接调会吞掉同文件其余锚（干净检出 npm test 必红）。
+  // 真拉取端到端锚保留给有产物的环境（catalog-check / demo 发射 / 本地）。
+  const artifact = catalogArtifactPath(projectRoot());
+  if (!fs.existsSync(artifact)) {
+    t.skip(`前置缺失：${artifact}（先跑 cd moonbit && moon build --release --target js cmd/vitro_js）`);
+    return;
+  }
   const cat = fetchCatalog(projectRoot());
   const errs = catalogConsistencyErrors(cat, realMigrated());
   assert.deepEqual(errs, []);

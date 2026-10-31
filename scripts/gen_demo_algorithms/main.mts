@@ -58,13 +58,22 @@ export interface CatalogExport {
 const VITRO_JS = ["_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js"].join(path.sep);
 
 /**
+ * catalog 拉取产物路径（测试 prereq guard 用：缺产物显式 skip 而非
+ * `process.exit(1)` 吞掉同文件其余锚——PR #403 审阅 P1-1，干净检出
+ * `npm test` 必红的根因；真拉取端到端锚保留给有产物的环境）。
+ */
+export function catalogArtifactPath(root: string): string {
+  return path.join(root, "moonbit", VITRO_JS);
+}
+
+/**
  * 拉取引擎 algorithms.catalog 出口（#36：族集/display_name/分组三源收编——
  * 此前 rules.json 族集 + golden display_name + detect_*.mbt 兜底 + GROUPS
  * 硬编码四源拼装）。ensureFresh 前置（mtime 触发 + moon 内容 hash 复核）——
  * 陈旧产物假红/假绿由此封死（陷阱 41）。
  */
 export function fetchCatalog(root: string): CatalogExport {
-  const artifact = path.join(root, "moonbit", VITRO_JS);
+  const artifact = catalogArtifactPath(root);
   ensureFresh("gen_demo_algorithms", artifact, [
     "build",
     "--release",
@@ -128,19 +137,14 @@ export function catalogConsistencyErrors(cat: CatalogExport, migrated: Set<strin
     seen.add(a.family);
     fams.add(a.family);
   }
-  const rulesOnly = sortBytesStable([...migrated].filter((x) => !fams.has(x)));
-  const engOnly = sortBytesStable([...fams].filter((x) => !migrated.has(x)));
+  const rulesOnly = sortBytes([...migrated].filter((x) => !fams.has(x)));
+  const engOnly = sortBytes([...fams].filter((x) => !migrated.has(x)));
   if (rulesOnly.length > 0 || engOnly.length > 0) {
     errs.push(
       `族集漂移：rules.json 有而引擎无 [${rulesOnly.join(" ")}]；引擎有而 rules.json 无 [${engOnly.join(" ")}]`,
     );
   }
   return errs;
-}
-
-/** 字节字典序排序（canonicalize 口径——与 gofmt sortBytes 同语义的本地拷贝）。 */
-function sortBytesStable(xs: string[]): string[] {
-  return [...xs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 interface GoldenEntry {

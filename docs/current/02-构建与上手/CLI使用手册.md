@@ -106,6 +106,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `memory.dump` | — | 1MB 内存映像 base64（与 CLI `--dump-memory` 同通道） |
 | `breakpoints.set` | `lines:[int]` | 设置断点行集合（应在 `step.begin` 之后；**传 `[]` 清空断点 = 恢复执行**——命中暂停后的唯一"continue"口，见下方恢复语义） |
 | `memory.regions` | — | **三段式内存地图**（`kind` = `global`/`stack`/`heap`，见下方说明）+ 隔离区统计 |
+| `vfs.list` | — | **VFS 文件列举（#95，2026-10-31）**：`{files:[{name,size}...]}` 插入序（预置在前、程序自建在后；`rename` = 删+建——改名文件移至末尾）。预置随 `run`/`step.begin` 注入（run 前清单为空），每 run 重建；`size` 为逻辑长度。CLI `run` 子命令不注入预置（serve/api 通道教学演示语义）——详见《C语言子集规范》§2.6 与 STEP_PAYLOAD_SCHEMA §7.x5 |
 | `config.get` / `config.set` | 同上配置项 | 读写会话级配置 |
 | `error_catalog` | — | 错误码表机器可读导出（`{catalog:[{code,code_str,lang,category,icon,title,explanation,common_causes[]}]}`，按 code 升序；`icon` = 语义图标 id（#27 方案 C——原 `emoji` 码点字段已退役），字形经 `icons.get` 单通道下发） |
 | `icons.get` | `ids:[string]`（可选，缺省/空 = 全量） | **图标资产帧（#27 方案 C，2026-10-07）**：响应 `{schema,digest,viewBox,stroke_width,stroke_linecap,stroke_linejoin,fill,icons:{<id>:{paths:[…]}}}`——SVG path 数据 + 统一渲染参数按 digest 锁定下发；值域 = `moonbit/icons/index.tsv` 单源（icon_catalog 闸锁）；按请求序输出、重复 id 去重、含未知 id 整帧拒绝（fail loud 不静默缩水） |
@@ -127,6 +128,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | `error_catalog[].icon`（替代 `emoji` 码点） | error_catalog 帧 | **HEAD（未发布）** | #27 语义图标 |
 | `icons.get` 方法帧 | 方法表 | **HEAD（未发布）** | #27 图标资产单通道（protocol_frames 基线 33 帧） |
 | `memory.dump` 方法帧 | 方法表 | **HEAD（未发布）** | #49 批二（git tag `vitro-engine-0.8.0` 实证无此方法） |
+| `vfs.list` 方法帧 | 方法表 | **HEAD（未发布）** | #95 VFS 列举口（protocol_frames 基线 48 帧） |
 | 错误帧 `error.expected` | 错误帧 | **HEAD（未发布）** | #68 机器可读期望形状（错误帧白名单三键 kind/message/expected） |
 | `step.next` 参数 `frames` | 方法参数 | **HEAD（未发布）** | 病 76（2026-10-16 实现化） |
 | step 帧 `semantic_label_id` | step payload | **HEAD（未发布）** | #231 受控词汇 id（`semantic_label` 的可编程伴生字段——`classify` 单源映射，空串 = 无标签；值域 = `semantic_labels` 方法帧附录 B，词汇只增不改） |

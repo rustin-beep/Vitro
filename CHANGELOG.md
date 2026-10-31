@@ -3,6 +3,38 @@
 EAD
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
 
+### fix(scripts+docs+demo): PR #403 审阅处置批——P1-1 干净检出 npm test 必红治本 + 根 README/docs 测试数漏连坐 + P2/P3 六件（2026-10-31）
+
+- **P1-1（CI Scripts TS gate 红）**：`fetchCatalog` 的 `ensureFresh` 在产物缺失
+  时 `die()`=`process.exit(1)`——干净检出 `npm test` 必红且**吞掉同文件其余锚**
+  （亲验复现：9 锚只报 1 条）。修：`catalogArtifactPath()` 导出 + 两处真拉取锚
+  （gen_demo_algorithms / teaching main.test）前置产物存在性 guard——缺产物
+  **显式 skip**（`teaching e2e「缺产物显式 skip」先例模式**，非审阅处方的纯
+  fake 替代——端到端真源对账锚保留给有产物的环境）；亲验：移产物 → tests
+  24 / pass 21 / fail 0 / **skipped 3**（零吞锚）。
+- **CI bookkeeping 红（审阅漏项之外自抓）**：根 `README.md` ×3 + 项目路线图
+  ×4 + 快速入门 ×2 + 标准库架构 ×1 共 **10 处 967→968 漏连坐**（首批只连坐了
+  moonbit/ 双 README——facts doc-truth audit 闸 CI 实红抓回）；修后 strict
+  漂移 0 处。
+- **P2-1**：`demo/src/lib/protoFacts.ts` `METHOD_TOTAL` 26→27（零闸副本——
+  喂 ProtoView/ProtoSide 的「x/27 方法」文案）+ e08 golden 连坐重建
+  （`vite build --ssr` + `e08-update.mts`，diff 纯净：16 份 golden 仅
+  protoview-caps.html 一行 `METHODS 26→27`）。
+- **P2-2**：CLI使用手册补 `vfs.list` 两表登记（方法一览行 + #116「字段↔最低
+  版本」表 HEAD 行）——该手册自规定「新方法必须在此登记」而本批漏登。
+- **P3-1**：C语言子集规范 §2.6 交叉引用笔误 §7.x4→**§7.x5**。
+- **P3-2**：CHANGELOG 口径统一——frames「47→48」标明双口径（请求表 48→49 /
+  基线行 47→48，capabilities skip 不入基线）；「四处计数连坐」→五处（与列举
+  一致）。
+- **P3-3**：`rename` 列举序语义成文（实现=删+建——**改名文件移至清单末尾**；
+  代码亲读 `vfs.mbt` remove+set 实证 + 审阅探针数据互证）——规范 §2.6 与
+  schema §7.x5 两处。
+- **P3-4**：`sortBytesStable` 本地拷贝删除——复用既有 `gofmt.sortBytes`
+  （同语义，消重复实现）。
+- **P2-3（呈现序产品取舍）不擅动**：侧栏组内呈现序从教学进展序变引擎目录序
+  （5 组）、分组归属失去第二真相——三选项（引擎表按教学序重排 / catalog 加
+  显式 order 字段 / 接受引擎序）待用户拍板，PR 评论登记。
+
 ### refactor(tools): #36 gen_demo_algorithms 收编——族集/display_name/分组三源切引擎 algorithms.catalog 出口（2026-10-31）
 
 - **数据源收编**：生成器主源改引擎静态导出（`vitro_js api --batch` 拉取 +
@@ -51,15 +83,17 @@ EAD
   语义/**CLI `run` 不注入**的通道分叉在案）；顺手修 §4.1 :664 与 §2.6 :364
   互斥（「不模拟 CRLF」错误行改「文本模式模拟、二进制原样」——实现与 §2.6 为准）；
   STEP_PAYLOAD_SCHEMA 新增 §7.x5 `vfs.list` 帧形态。
-- **frames 重冻**：请求序列尾追加 vfs.list 帧（47→48；id 25 未知方法文案随
-  dispatch 连坐变化，其余零漂移）；name/size 均常量，零 mask 需求。
+- **frames 重冻**：请求序列尾追加 vfs.list 帧——**请求表 48→49**（main.mts
+  requestTable）/ **基线冻结行 47→48**（baseline.jsonl——capabilities 整帧
+  skip 不入基线，两口径数字相差 1 属常态）；id 25 未知方法文案随 dispatch
+  连坐变化，其余零漂移；name/size 均常量，零 mask 需求。
 - **验收**：红→绿双证（host 编译红 `has no method list_files` / gateway 运行
   红「未知方法」帧→全绿）；`moon check` 0 错；裸 `moon test` 968/968（+1 裸域）、
   native 1164/1164（+3：host 1 + gateway 2）；`moonbit_surface -check` / mbti
   同步（`list_files` 单行增量）/ facts --strict 绿；demo_smoke 197/197；npm test
-  626/626；vitro_cli_smoke 全绿。**方法面四处计数连坐**（demo_smoke 26→27 锚 +
+  626/626；vitro_cli_smoke 全绿。**方法面五处计数连坐**（demo_smoke 26→27 锚 +
   demo/index.html 页面句 + gen_api_help rules.json 31→32 与 `api_help_gen.mbt`
-  再生 + protocol_frames test 48→49 帧 + vitro_cli_smoke「清单（31）」内容锚）
+  再生 + protocol_frames test 帧数 48→49 + vitro_cli_smoke「清单（31）」内容锚）
   ——首跑漏三处（demo_smoke/api help/cli_smoke），#36 批 npm test 全量对账时
   逐条抓回；又一实锤：改 dispatch 面 = 五处计数锚全连坐（自报清单/rules 表/
   页面句/帧数/内容锚）。

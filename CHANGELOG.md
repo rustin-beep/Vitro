@@ -1520,6 +1520,16 @@
   目录扫描实证——新诊断零存量冲击）。
 - **连坐**：路线图现值句（直拍 925〔SAME=908〕、e2e 788〔baseline 548〕）。
 
+### docs: 全库文档翻新第八轮——S9 收官态全库对齐 + 三图模板翻新 + 行为契约连坐（2026-10-31）
+
+- **基准与真值**：origin/master `32f20b34`；facts 亲采（worktree 冷构建全链）= 967〔裸 `moon test`〕/ 1156〔native 全量〕/ replay 61 / serve_smoke 69；`facts --strict check` 漂移 0 / 坏引用 0。gen_svg 重生成 15 张（12 张逐字节零漂移——活值直读设计生效），四件套绿〔tsc 严格档 / oxlint / node:test 11/11 / `-check` 幂等〕。
+- **状态回灌**：路线图当前状态表与版本表 S9 行 ✅ 收官〔0.9.0 线上发布 2026-10-25；新增 1.0 退役评估行；时间线补 10-25 / 10-28~30 / 10-31 三条〕；**总计划 §10 S9 行收官回灌**〔0.9.0 发布事实 + #47 母跟踪 2026-10-16 关闭态 + 下一阶段 1.0 = 退役评估指针——排期权威此前停在 10-07〕。
+- **SVG 三图模板翻新**〔`scripts/gen_svg` 源码级，改后重生成〕：架构图「Go 防线」→「脚本防线」+「S8 已落」→「S9 收官」+ 出口行改三臂形态；防线全景图闸卫家族 **9→13 项**对账 ci.yml 现役闸单（补 teaching×4 / libc_single_source / single_source+boot_diff / host_route_coverage / toolchain+vendor / mutation_gate）+ 画布 900→940；包分层图仓库外条改「.mts 现役 · Go 存量触达即迁」。
+- **数字勘误（实测大于脑测）**：路线图 clang_direct 句「925 语料（六目录口径）」**数与口径双误**——亲证 `corporaDefault` 实为**八目录 929**（baseline 514 + knr 81 + leetcode 138 + gap 21 + codegen_skeleton 13 + template_generated 82 + llm_multifile 74 + llm_scale 6，逐目录亲数；known 白名单 17 条亲数证实）；e2e 788→754〔baseline 548→514，#387 GPL 45 份出仓后 facts `c_e2e_*`〕；测试数 782→967。SAME=908/DIFF=0 保留为 2026-10-26 实测记录并标注时点。
+- **行为契约连坐**：CLI 手册 compile 行补 **unity-build 语义**〔#364：被引用 `.c` unit 转 vfs-only + 不动点 + `#if 0`/注释内 include 不剔除〕+ 新增「源码与输入的 UTF-8 解码语义」节〔#363：三臂 U+FFFD 替换解码、坏字节源码 E1001 同形、与输出通道 Latin-1 无损的分界〕；C 规范新增 **§2.13 源码编码与解码语义**；《已知限制与差异》增补 **③-13**〔替换解码列号投影——首条 0.9.0 后增补条目，头部增补规则注明〕。
+- **防线册对账**：脚本总清单 §1.1 job 清单 **8→15** 对 ci.yml 现状〔补 corpus-fuzz / backend-triage / cli-smoke-linux / scripts-ts / mutation-gate / coverage-sentinel / ci-summary；build-and-unit 更名 build-artifacts〕+ §2.1 补登 `backend_triage`〔#349〕+ facts 行语言列勘正〔.mts 现役 · Go 双轨〕+ demo 行补 demo.mbtx workspace 冒烟〔#387〕。
+- **表述与头部**：架构设计 / 根 README「Go 司法防线层」→「脚本防线」随 #273 ts 统一翻新〔scripts/ 结构树同步 + 语料清单补全〕；快速入门 / 构建指南头部翻新（内容面复核无漂移——工具链经 `.moonbit-version` pin 引用）；VM教学体验优势补记 #374 动效地基 D0–D2 与「动效不撒谎」边界；实机勘探语料扩充方案 §2.1 补 #387 执法记录；docs/README.md 第八轮沿革总账。
+
 ## [0.9.0] - 2026-10-25（S9 收官版；已发布——实录见 docs/current/08-发布档案/0.9.0.md）
 
 > S9 收官版：Rust oracle 脱钩 + 裁定 + 解锁修复面。发布档案：[0.9.0.md](docs/current/08-发布档案/0.9.0.md)。

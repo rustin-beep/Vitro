@@ -87,7 +87,7 @@
 <text class="tc" x="175" y="534" text-anchor="start">── 经 VmObserver / SourceProvider / AlgorithmContext 三接口依赖反转，不依赖 session</text>
 <rect class="warn" x="20" y="568" width="1160" height="60" rx="12"/>
 <text class="t" x="40" y="604" text-anchor="start">仓库外</text>
-<text class="tm" x="175" y="604" text-anchor="start">Go 驱动层（保留·司法/驱动语言）· Node engine-host（新增薄层·golden 生成宿主）· spike 目录</text>
+<text class="tm" x="175" y="604" text-anchor="start">脚本防线层（.mts 现役 · Go 存量触达即迁 #273）· Node engine-host（golden 生成宿主）· spike 目录</text>
 <text class="tc" x="600" y="670" text-anchor="middle">硬约束：依赖严格单向无环 · .mbti 只暴露 protocol / lexer.tokenize / typeck.check 三面 · 版本锚 protocol_version 编译期常量</text>
 <text class="tc" x="600" y="698" text-anchor="middle">虚线框 = 包目录未建（机器对账 facts: moonbit_built_packages）</text>
 <text class="tc" x="600" y="726" text-anchor="middle">权威：总计划 §10 · 漂移重生成：node scripts/gen_svg/main.mts packages</text>

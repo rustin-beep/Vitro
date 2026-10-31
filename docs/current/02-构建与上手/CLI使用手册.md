@@ -1,6 +1,6 @@
 # Vitro CLI 使用手册
 
-> 最后核对日期：2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。前一沿革 2026-10-07（**图标语义批〔#27〕**——协议面两变：`error_catalog` 的 `emoji` 字段退役为 **`icon`**〔语义图标 id，业务帧只携带 id 不携带字形〕；新接 **`icons.get`** 方法帧〔图标资产单通道下发，digest 与真源一致；protocol_frames 基线 31→33 帧〕。前一沿革 2026-10-06 统一入口批〔#49 批一〕——`scripts/bin/vitro` launcher 落地：默认 **wasm 臂**〔node 壳 `scripts/vitro_cli/main.js` 消费 `gateway/wasm/wasm.wasm`，需 node ≥25〕，node 缺失/过旧自动降级 native exe〔stderr 明示 `backend=` 行〕，`--backend native|wasm` 显式选边；双臂输出同形由 CI 闸 `scripts/vitro_cli_smoke` 对拍锁定。wasm 臂 `--dump-memory` 已支持（#49 批二：gateway `memory.dump` 帧——1MB 映像 base64 承载，双臂落盘逐字节一致由 CI 闸锁；`--json` 模式下不适用与 native 同口径〔spec §3〕）。更前一沿革 2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
+> 最后核对日期：2026-10-31（**第八轮全库翻新批**——compile 多单元 unity-build 语义补注〔#364：被引用 .c unit 转 vfs-only + 不动点剔除〕+ 源码/输入 UTF-8 解码语义成节〔#363：三臂统一 U+FFFD 替换解码，坏字节源码 E1001 三臂同形〕。前一沿革 2026-10-16（**三臂单壳口径对齐 + 字段↔最低版本表批**——统一入口缺省臂 wasm→**js**〔三后端单壳批，三臂壳全 MoonBit〕、node ≥25 门槛勘正为 wasm 壳 MIN_NODE=22〔js-string builtins V8 下界，#132 降版批实测 node 24 全通〕、`scripts/vitro_cli/main.js` 已随 main.js 退役批删除、serve 节新增「字段 ↔ 最低版本」表〔#116〕、`step.next` 补 `frames` 参数〔病 76 实现化，2026-10-16〕。更前 2026-10-07 图标语义批〔#27〕、2026-10-06 统一入口批〔#49 批一〕、2026-10-05 S9 工序④删区整篇改单轨——Rust `vitro_cli` 章节整体退役〔历史形态见 tag `rust-oracle-freeze`〕；serve JSON-lines 协议语义章节保留——`moonbit/cmd/serve` 为同构现役实现））
 > 出口定位：本文档是 CLI **使用指南**；输出协议契约（标记行/退出码/`--json` 事件流）见 [`CLI_PROTOCOL_V1.md`](../../../moonbit/docs/spec/CLI_PROTOCOL_V1.md)——协议语义以 spec 为单一权威。完整出口清单与职责边界见 [出口分档与宿主策略.md](../06-出口与协议/出口分档与宿主策略.md)。
 
 ## 统一入口（推荐——agent / 脚本默认形态）
@@ -93,7 +93,7 @@ cd moonbit && MOON_CC=clang moon build --release --target native cmd/serve
 | 方法 | 参数 | 说明 |
 |---|---|---|
 | `ping` | — | 存活探测，返回 `{"pong":true}`（**不带引擎版本**——版本自检走 mooncakes 版本号，见《已知限制与差异》④-4；#216 勘正） |
-| `compile` | `source`（或 `files:[{filename,source}]`） | 覆盖式编译当前单元集合，返回诊断 JSON |
+| `compile` | `source`（或 `files:[{filename,source}]`） | 覆盖式编译当前单元集合，返回诊断 JSON。**多单元 = unity-build 模型**（拼接单 TU + quote-include 展开）：被引用（含传递闭包）的 `.c` unit 自动剔出拼接集转 vfs-only（include 点照常拉入），防双重定义 E3003——`#if 0`/注释内的 include 不展开也不剔除（词法真实决策，#364 不动点语义；`.h` 存根 unit 同款既有行为） |
 | `run` | `input` / `argv` / `batch_input` / `max_steps` / `deterministic` | 全速运行，返回 `status`/`return_value`/`steps_executed` |
 | `input.feed` | `text` | 增量喂入交互输入并续跑（`run` 返回 `waiting_input` 后调用；`text` 可多行，省略则仅续推进一步） |
 | `output.delta` | `cursor` | 增量取输出（`cursor`/`total` 按**字节**计；`delta` 字符串为**逐字节 Latin-1 折回**——见 E-P1-5 字节语义） |
@@ -243,6 +243,14 @@ EOF
 > 里始终无损。直接拿 `delta` 字符串与 golden 比对，中文程序必 mismatch。
 > 同语义覆盖三出口：serve NDJSON 帧 / `vitro api output.delta` / `vitro run --json`
 > 的 stdout/stderr/note 事件帧（见 CLI_PROTOCOL_V1 §6 通道总则）。
+>
+> **源码与输入的 UTF-8 解码语义（#363，2026-10-28 起）**：与上节输出通道的 Latin-1 无损折回不同，
+> **输入侧**（`compile`/`run` 的源码、`-i` 注入的 stdin 文本）遇到 invalid UTF-8 时按 **U+FFFD 替换解码**
+> （WHATWG 最大子部分语义——孤立延续/非法 lead 各折一、失败字节重同步，与 node `TextDecoder`/
+> Rust/Python 替换计数逐例一致）：**坏字节源码三臂一律 `E1001` 拒收同形（rc=1）**，`-i` 坏输入三臂一致——
+> 修前同一输入 js 静默容忍 / wasm-gc 裸 unreachable / native SIGABRT 的三臂分叉已根治。
+> 已知投影：替换后诊断**列号按解码后文本计**（每个坏序列折为一个 3 字节 U+FFFD），与源文件原字节位
+> 存在漂移（列号口径契约 = source 包「UTF-8 字节偏移+1」以解码后字符串为基准，见[已知限制与差异](../07-质量与裁定/已知限制与差异.md)）。
 >
 > 与 `jq` 配合：`serve < session.ndjson | jq -c 'select(.ok|not)'` 可只筛错误帧。
 >

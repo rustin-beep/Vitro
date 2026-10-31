@@ -64,6 +64,8 @@
 
 依据：根仓 MIT（实测 LICENSE）；GPL 进树会强迫整个分发转 GPL——"毒"的准确定义；MIT 收 MIT/BSD 仅归属义务。
 
+> **执法记录（2026-10-30，#387 审计批）**：`corpus/baseline/` 中 45 份 TheAlgorithms/C 派生语料（PR #312 / 8b0e3a17 入库时违反本规则误入）已 `git rm` 出仓——红线执法，五家 golden digest 重冻、corpus_fuzz 基线随语料集重算；防线覆盖损失明知接受，语料经外部 fork（rustin-beep/C `vitro-probe-baseline`）+ `scripts/realcode_diff` 继续消费。
+
 ### 2.2 进 Vitro 的落位与义务链（每语料五步）
 
 1. 许可 triage 三级核验（1.1 表为已完成件）；

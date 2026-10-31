@@ -4,18 +4,22 @@
 //
 // 输入（全部机判真值源，禁手画——侧栏列表 = 渲染产物）：
 //
-//   ① scripts/teaching_annotation_diff/rules.json → migrated_algorithms 43 族全集
-//   ② scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json →
-//      模板→族映射 + display_name 中文名（工序③固化迁出冻结区 2026-10-05）
-//   ③ templates/<tpl>/source.c → 每族代表示例源码
-//   ④ moonbit/teaching/steps/detect*.mbt → build_match("<族>", "<中文名>") 兜底
+//   ① 引擎 algorithms.catalog 出口（#36 收编批 2026-10-31 起）——43 族全集 /
+//      display_name 中文名 / 七组分组全部单源自引擎（vitro_js api --batch 拉取；
+//      判据源码即数据源，天然零漂移）
+//   ② scripts/teaching_annotation_diff/rules.json → 引擎↔rules 双向对账锚
+//      （rules 仍是 teaching 43 族权威——teaching_annotation_diff 闸输入地位不变）
+//   ③ scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json →
+//      模板→族映射（display_name 消费已随 #36 退役，引擎出口承担）
+//   ④ templates/<tpl>/source.c → 每族代表示例源码（内容资产非引擎逻辑，不进 wasm）
 //
 // 输出：demo/algorithms.js（浏览器脚本形态，同 cases.js：全局 const 无导出）——
 //
 //   DEMO_ALGORITHMS = { groups: [{ id, label, items: [{ id, name, source }] }] }
 //
-// 完备性断言（漂移即红）：分组并集 == rules.json 43 族集合（漏/多/改名即红）；
-// 每族须有代表模板（golden 首现）与非空 source.c；模板三桶对账 == templates 全集。
+// 完备性断言（漂移即红）：引擎出口自洽（display_name 非空/分组引用/无重复）+
+// 引擎↔rules.json 43 族双向一致；每族须有代表模板（golden 首现）与非空
+// source.c；模板三桶对账 == templates 全集。
 //
 // 产物不入库（2026-10-04 发射化）：ci.yml 与 pages.yml 消费前现场发射，发射即
 // 检查闸（断言失败即红）。.gitignore 有 demo/algorithms.js。
@@ -24,83 +28,120 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { goQuote, sortBytes } from "../internal/gofmt.mts";
 import { makeFail } from "../internal/genio.mts";
+import { ensureFresh } from "../internal/freshness.mts";
 
-/** 七组呈现层分组（组概念属 UI 非引擎语义；完备性由断言机判）。 */
+/** 呈现层分组形态（#36 收编批 2026-10-31 起由引擎 catalog 派生，硬编码退役）。 */
 export interface Group {
   id: string;
   label: string;
   algos: string[];
 }
-export const GROUPS: Group[] = [
-  {
-    id: "sorting",
-    label: "排序",
-    algos: [
-      "bubble_sort",
-      "insertion_sort",
-      "merge_sort",
-      "quick_sort",
-      "selection_sort",
-      "heap_sort",
-      "counting_sort",
-      "shell_sort",
-      "radix_sort",
-    ],
-  },
-  { id: "search", label: "查找", algos: ["binary_search", "is_prime"] },
-  {
-    id: "graph",
-    label: "图",
-    algos: [
-      "bfs",
-      "dfs",
-      "dijkstra",
-      "floyd",
-      "kruskal_mst",
-      "prim_mst",
-      "topological_sort",
-    ],
-  },
-  {
-    id: "tree",
-    label: "树",
-    algos: [
-      "bst_insert",
-      "bst_search",
-      "bst_delete",
-      "bst_validate",
-      "avl_tree",
-      "huffman_tree",
-      "level_order",
-      "threaded_binary_tree",
-    ],
-  },
-  {
-    id: "structures",
-    label: "结构",
-    algos: [
-      "linked_list_append",
-      "linked_list_delete",
-      "static_linked_list",
-      "circular_linked_list",
-      "linked_stack",
-      "linked_queue",
-      "circular_queue",
-      "hash_table",
-      "seq_list",
-      "union_find",
-      "josephus",
-    ],
-  },
-  {
-    id: "string",
-    label: "字符串",
-    algos: ["string_match_bf", "string_match_kmp", "string_reverse"],
-  },
-  { id: "mathdp", label: "数学与动态规划", algos: ["gcd", "hanoi", "dp"] },
-];
+
+/** 引擎 algorithms.catalog 出口帧（steps catalog emitter 单源——判据源码即数据源）。 */
+export interface CatalogAlgo {
+  family: string;
+  display_name: string;
+  group: string;
+  vis_events: boolean;
+}
+export interface CatalogExport {
+  schema: string;
+  total: number;
+  groups: Array<{ id: string; label: string }>;
+  algorithms: CatalogAlgo[];
+}
+
+/** vitro_js.js 产物路径（js 臂统一入口——CI build-products artifact 含此件）。 */
+const VITRO_JS = ["_build", "js", "release", "build", "cmd", "vitro_js", "vitro_js.js"].join(path.sep);
+
+/**
+ * 拉取引擎 algorithms.catalog 出口（#36：族集/display_name/分组三源收编——
+ * 此前 rules.json 族集 + golden display_name + detect_*.mbt 兜底 + GROUPS
+ * 硬编码四源拼装）。ensureFresh 前置（mtime 触发 + moon 内容 hash 复核）——
+ * 陈旧产物假红/假绿由此封死（陷阱 41）。
+ */
+export function fetchCatalog(root: string): CatalogExport {
+  const artifact = path.join(root, "moonbit", VITRO_JS);
+  ensureFresh("gen_demo_algorithms", artifact, [
+    "build",
+    "--release",
+    "--target",
+    "js",
+    "cmd/vitro_js",
+  ]);
+  const r = spawnSync(process.execPath, [artifact, "api", "--batch"], {
+    input: '{"id":1,"method":"algorithms.catalog"}',
+    encoding: "utf8",
+  });
+  if (r.status !== 0 || r.stdout === undefined || r.stdout === "") {
+    die(`algorithms.catalog 拉取失败（vitro_js api --batch exit ${r.status}）：${(r.stderr ?? "").slice(0, 300)}`);
+  }
+  let frame: { ok?: boolean; result?: CatalogExport };
+  try {
+    frame = JSON.parse(r.stdout.split("\n", 1)[0] ?? "") as { ok?: boolean; result?: CatalogExport };
+  } catch (e) {
+    return die(`algorithms.catalog 响应非 JSON: ${(e as Error).message}`);
+  }
+  if (frame.ok !== true || frame.result === undefined) {
+    die("algorithms.catalog 响应帧 ok:false / 缺 result");
+  }
+  const cat = frame.result;
+  if (cat.schema !== "algorithms.catalog/1") {
+    die(`algorithms.catalog schema 不识别: ${cat.schema}`);
+  }
+  if (!Array.isArray(cat.algorithms) || cat.algorithms.length === 0) {
+    die("algorithms.catalog algorithms 为空");
+  }
+  return cat;
+}
+
+/**
+ * 引擎分组派生（组序 = 引擎 groups 序；组内序 = 引擎 catalog 序——
+ * #36 起侧栏呈现序即引擎目录序，呈现层不再自带排序真相）。
+ */
+export function deriveGroups(cat: CatalogExport): Group[] {
+  return cat.groups.map((g) => ({
+    id: g.id,
+    label: g.label,
+    algos: cat.algorithms.filter((a) => a.group === g.id).map((a) => a.family),
+  }));
+}
+
+/**
+ * 引擎出口自洽 + 引擎↔rules.json 双向对账（错误清单，供 node:test 注入证红）：
+ *   ① display_name 非空 ② group 引用落在 groups ③ 无同族重复
+ *   ④ 引擎族集 ↔ rules migrated 集双向一致（rules 仍是 teaching 43 族权威——
+ *      teaching_annotation_diff 闸输入地位不变，此处是过渡期互证锚）
+ */
+export function catalogConsistencyErrors(cat: CatalogExport, migrated: Set<string>): string[] {
+  const errs: string[] = [];
+  const groupIds = new Set(cat.groups.map((g) => g.id));
+  const seen = new Set<string>();
+  const fams = new Set<string>();
+  for (const a of cat.algorithms) {
+    if (a.display_name === "") errs.push(`族 ${a.family} display_name 为空`);
+    if (!groupIds.has(a.group)) errs.push(`族 ${a.family} 引用未知分组 "${a.group}"`);
+    if (seen.has(a.family)) errs.push(`族 ${a.family} 重复登记`);
+    seen.add(a.family);
+    fams.add(a.family);
+  }
+  const rulesOnly = sortBytesStable([...migrated].filter((x) => !fams.has(x)));
+  const engOnly = sortBytesStable([...fams].filter((x) => !migrated.has(x)));
+  if (rulesOnly.length > 0 || engOnly.length > 0) {
+    errs.push(
+      `族集漂移：rules.json 有而引擎无 [${rulesOnly.join(" ")}]；引擎有而 rules.json 无 [${engOnly.join(" ")}]`,
+    );
+  }
+  return errs;
+}
+
+/** 字节字典序排序（canonicalize 口径——与 gofmt sortBytes 同语义的本地拷贝）。 */
+function sortBytesStable(xs: string[]): string[] {
+  return [...xs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
 
 interface GoldenEntry {
   algorithm: string;
@@ -111,41 +152,9 @@ interface RulesFile {
 }
 
 const PARAM_MARK_RE = /\/\*__PARAM_[a-z_0-9]+__\*\//g;
-const BUILD_MATCH_RE = /build_match\(\s*"([a-z_0-9]+)",\s*"([^"]+)"/g;
 
 function die(msg: string): never {
   return makeFail("gen_demo_algorithms: ", 1)(msg);
-}
-
-/**
- * 完备性断言一（纯函数，供 node:test 内存注入证红）：分组并集 == rules.json 族
- * 集合——同族双挂 / 漏族 / 多族各自成条。返回错误清单，main 里首条即 fail loud。
- */
-export function groupCoverageErrors(migrated: Set<string>): string[] {
-  const errs: string[] = [];
-  const union = new Map<string, string>(); // algo → group id
-  for (const grp of GROUPS) {
-    for (const a of grp.algos) {
-      const prev = union.get(a);
-      if (prev !== undefined) {
-        errs.push(`算法 ${a} 同时出现在组 ${prev} 与 ${grp.id}`);
-        continue;
-      }
-      union.set(a, grp.id);
-    }
-  }
-  const missing: string[] = [];
-  const extra: string[] = [];
-  for (const a of migrated) if (!union.has(a)) missing.push(a);
-  for (const a of union.keys()) if (!migrated.has(a)) extra.push(a);
-  if (missing.length > 0 || extra.length > 0) {
-    sortBytes(missing);
-    sortBytes(extra);
-    errs.push(
-      `分组表漂移：rules.json 有而分组缺 [${missing.join(" ")}]；分组有而 rules.json 无 [${extra.join(" ")}]`,
-    );
-  }
-  return errs;
 }
 
 /**
@@ -269,7 +278,11 @@ function main(): void {
   const root = findRoot();
   const g = (p: string): string => path.join(root, p);
 
-  // ① rules.json 43 族全集
+  // ① 引擎 algorithms.catalog 出口（#36 收编：族集/display_name/分组三源单点）
+  const cat = fetchCatalog(root);
+
+  // ② rules.json——teaching 43 族权威（teaching_annotation_diff 闸输入地位不变），
+  // 此处降为引擎↔rules 双向对账参照（漂移任一侧即红）
   const rulesRaw = readText(g("scripts/teaching_annotation_diff/rules.json"), "rules.json");
   let rl: RulesFile;
   try {
@@ -282,7 +295,17 @@ function main(): void {
   }
   const migrated = new Set(rl.migrated_algorithms);
 
-  // ② golden：模板→族 + display_name
+  // 完备性断言一：引擎出口自洽 + 引擎↔rules 族集双向一致
+  const coverageErrs = catalogConsistencyErrors(cat, migrated);
+  if (coverageErrs.length > 0) die(coverageErrs[0] ?? "引擎 catalog 对账失败");
+
+  // 引擎派生：中文名（display_name）与七组分组（组内序 = 引擎 catalog 序）
+  const GROUPS = deriveGroups(cat);
+  const nameByAlgo = new Map<string, string>(
+    cat.algorithms.map((a) => [a.family, a.display_name] as const),
+  );
+
+  // ③ golden：模板→族映射（#36 起 display_name 消费退役——引擎出口承担）
   const goldenRaw = readText(
     g("scripts/teaching_annotation_diff/golden/algorithm_annotations_v3.json"),
     "golden",
@@ -294,44 +317,13 @@ function main(): void {
     return die(`golden 坏 JSON: ${(e as Error).message}`);
   }
   const tplByAlgo = new Map<string, string>();
-  const nameByAlgo = new Map<string, string>();
   const tpls = sortBytes(Object.keys(golden)); // 稳定序：同族多模板取字典序首
   for (const tpl of tpls) {
     for (const e of golden[tpl] ?? []) {
       if (e.algorithm === "") continue;
       if (!tplByAlgo.has(e.algorithm)) tplByAlgo.set(e.algorithm, tpl);
-      if (!nameByAlgo.has(e.algorithm) && e.display_name !== "") {
-        nameByAlgo.set(e.algorithm, e.display_name);
-      }
     }
   }
-
-  // ③ 中文名兜底：引擎判据源 detect_*.mbt 的 build_match（Go Glob 返回排序结果，
-  // 首次命中优先——TS 侧显式补排序，否则「谁先谁赢」口径漂移）
-  let detectFiles: string[];
-  try {
-    detectFiles = sortBytes(
-      fs
-        .readdirSync(g("moonbit/teaching/steps"))
-        .filter((n) => /^detect.*\.mbt$/.test(n))
-        .map((n) => g(path.join("moonbit/teaching/steps", n))),
-    );
-  } catch (e) {
-    return die(`detect_*.mbt 不可读: ${(e as Error).message}`);
-  }
-  if (detectFiles.length === 0) die("detect_*.mbt 不可读: 零命中");
-  for (const df of detectFiles) {
-    const db = readText(df, `读 ${df}`);
-    for (const m of db.matchAll(BUILD_MATCH_RE)) {
-      const algo = m[1] ?? "";
-      const cn = m[2] ?? "";
-      if (!nameByAlgo.has(algo)) nameByAlgo.set(algo, cn);
-    }
-  }
-
-  // 完备性断言一：分组并集 == rules.json 族集合
-  const coverageErrs = groupCoverageErrors(migrated);
-  if (coverageErrs.length > 0) die(coverageErrs[0] ?? "分组表漂移");
 
   // ── 模板全量纳入（2026-10-04 拍板「资源放着浪费」：82 个 .c 模板全进侧栏；
   // cpp_ 前缀 6 个不进——source.cpp 无 source.c 自然出局 + F-2 已裁砍 C++）。
@@ -387,11 +379,12 @@ function main(): void {
   // ── 发射 ────────────────────────────────────────────────────────────────
   const b: string[] = [];
   b.push("// @generated by scripts/gen_demo_algorithms — 勿手改（产物不入库：CI/pages 现场发射）\n");
-  b.push("// 43 算法族 = teaching/steps 全集（rules.json 机判）；中文名 = golden display_name\n");
-  b.push("// + detect_*.mbt build_match 提取；示例源码 = templates/ 代表（golden 首现）\n");
-  b.push("// + extra/ 覆盖源；同族其余模板 = variants；未归类模板 = 扩展练习组\n");
-  b.push("//（2026-10-04，refs #28 + 用户拍板全量纳入：82 个 .c 模板全覆盖——\n");
-  b.push("// cpp_ 前缀不进，F-2 已裁砍 C++，class/template 编译必败）。\n");
+  b.push("// 43 算法族/中文名/七组分组 = 引擎 algorithms.catalog 出口单源（#36 收编，\n");
+  b.push("// 2026-10-31）；引擎↔rules.json 双向对账；示例源码 = templates/ 代表\n");
+  b.push("//（golden 首现）+ extra/ 覆盖源；同族其余模板 = variants；未归类模板 = 扩展\n");
+  b.push("// 练习组（2026-10-04，refs #28 + 用户拍板全量纳入：82 个 .c 模板全覆盖——\n");
+  b.push("// cpp_ 前缀不进，F-2 已裁砍 C++，class/template 编译必败）。组内呈现序 =\n");
+  b.push("// 引擎 catalog 序（#36 起呈现层不再自带排序真相）。\n");
   b.push('"use strict";\n\n');
   b.push("// 分组 × 族清单；source = 可直接载入编辑器的判据命中示例；\n");
   b.push("// variants = 同族其它模板（点击切换示例形态）；xlab = 扩展练习。\n");
@@ -400,7 +393,7 @@ function main(): void {
     b.push(`    { id: ${goQuote(grp.id)}, label: ${goQuote(grp.label)}, items: [\n`);
     for (const a of grp.algos) {
       const name = nameByAlgo.get(a) ?? "";
-      if (name === "") die(`族 ${a} 无 display_name（golden 首现条目缺中文名）`);
+      if (name === "") die(`族 ${a} 无 display_name（引擎 catalog——上游对账已断言非空，此处死防御）`);
       // 变体 = 该族模板列表 - 代表（extra 族代表为 extra 源，golden 模板全作变体）
       let variants: string[];
       if (extraSrcFor(root, a).ok) {

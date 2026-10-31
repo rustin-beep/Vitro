@@ -17,7 +17,7 @@ import {
 import { compareTemplate, filterMigrated, goJSONMarshalIndent, parseArgs, recordString } from "./main.mts";
 import type { FirstOccurrence } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
-import { GROUPS } from "../gen_demo_algorithms/main.mts";
+import { deriveGroups, fetchCatalog } from "../gen_demo_algorithms/main.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
 
@@ -115,9 +115,12 @@ test("extractBuildMatches：evidence= 第 6 参合法；参数数错 / 未闭合
   assert.throws(() => extractBuildMatches(dir), /未闭合/);
 });
 
-test("GROUPS 直连：7 组，组内族非空（终局批删 Go 后不再文本解析）", () => {
-  assert.equal(GROUPS.length, 7);
-  for (const g of GROUPS) {
+test("分组派生直连：引擎 catalog 派生 7 组，组内族非空（#36 收编后 GROUPS 硬编码退役）", () => {
+  // #36 收编批（2026-10-31）：生成器分组 = 引擎出口派生（deriveGroups），
+  // 本锚随源迁移——锁「引擎拉取 → 派生」链路形态（7 组/组内非空）。
+  const groups = deriveGroups(fetchCatalog(projectRoot()));
+  assert.equal(groups.length, 7);
+  for (const g of groups) {
     assert.ok(g.id.length > 0);
     assert.ok(g.label.length > 0);
     assert.ok(g.algos.length > 0, g.id);
@@ -141,7 +144,7 @@ test("loadRules：真实 rules.json 43 族 / budget>0；空 migrated 与非法 k
   assert.throws(() => loadRules(p), /豁免 kind 非法/);
 });
 
-test("compareCatalogs：绿集零错；六类红各自成条（条数/display/vis/rules/demo 幽灵/归属分叉）", () => {
+test("compareCatalogs：绿集零错；四类红各自成条（条数/display/vis/rules——D 路两形态随 #36 收编退役）", () => {
   const b = {
     schema: "v1",
     total: 2,
@@ -159,32 +162,20 @@ test("compareCatalogs：绿集零错；六类红各自成条（条数/display/vi
     { family: "f2", displayName: "二", visEvents: false },
   ];
   const migrated = new Set(["f1", "f2"]);
-  const demo = [
-    { id: "g1", label: "组一", algos: ["f1"] },
-    { id: "g2", label: "组二", algos: ["f2"] },
-  ];
-  assert.deepEqual(compareCatalogs(a, b, migrated, demo), []);
+  assert.deepEqual(compareCatalogs(a, b, migrated), []);
 
   // 条数
-  assert.match(compareCatalogs(a.slice(0, 1), b, migrated, demo).join("\n"), /条数：判据提取物 1 ≠ 引擎导出 2/);
+  assert.match(compareCatalogs(a.slice(0, 1), b, migrated).join("\n"), /条数：判据提取物 1 ≠ 引擎导出 2/);
   // display_name
   const badDisp = a.map((x) => ({ ...x }));
   badDisp[0]!.displayName = "改";
-  assert.match(compareCatalogs(badDisp, b, migrated, demo).join("\n"), /f1 display_name：判据 "改" ≠ 引擎 "一"/);
+  assert.match(compareCatalogs(badDisp, b, migrated).join("\n"), /f1 display_name：判据 "改" ≠ 引擎 "一"/);
   // vis_events
   const badVis = a.map((x) => ({ ...x }));
   badVis[1]!.visEvents = true;
-  assert.match(compareCatalogs(badVis, b, migrated, demo).join("\n"), /f2 vis_events：判据第 5 参恒空=false ≠ 引擎 false/);
+  assert.match(compareCatalogs(badVis, b, migrated).join("\n"), /f2 vis_events：判据第 5 参恒空=false ≠ 引擎 false/);
   // rules 缺键
-  assert.match(compareCatalogs(a, b, new Set(["f1"]), demo).join("\n"), /族数：rules.json 1 ≠ 引擎导出 2/);
-  // demo 幽灵族
-  const ghost = demo.map((g) => ({ ...g, algos: [...g.algos] }));
-  ghost[0]!.algos.push("phantom");
-  assert.match(compareCatalogs(a, b, migrated, ghost).join("\n"), /列族 "phantom" 不在引擎导出/);
-  // demo 归属分叉
-  const misfile = demo.map((g) => ({ ...g, algos: [...g.algos] }));
-  misfile[1]!.algos.push("f1");
-  assert.match(compareCatalogs(a, b, migrated, misfile).join("\n"), /列族 "f1" 引擎归组为 "g1"（归属分叉）/);
+  assert.match(compareCatalogs(a, b, new Set(["f1"])).join("\n"), /族数：rules.json 1 ≠ 引擎导出 2/);
 });
 
 /** 端到端前置：debug serve exe（主对拍）/ release vitro + vivo_js（catalog）。 */
@@ -226,7 +217,7 @@ test("端到端 --catalog-check：判据 43 ↔ 双臂 ↔ rules 43（缺产物�
   }
   const r = spawnSync(process.execPath, [MAIN, "--catalog-check"], { cwd: root, encoding: "utf8" });
   assert.equal(r.status, 0, (r.stdout ?? "") + (r.stderr ?? ""));
-  assert.match(r.stdout, /绿（判据 43 条 ↔ 双臂导出一致 ↔ rules 43 ↔ demo 分组表）/);
+  assert.match(r.stdout, /绿（判据 43 条 ↔ 双臂导出一致 ↔ rules 43）/, "#36 收编批起 D 路退役文案");
 });
 
 test("用法错 exit 2", () => {

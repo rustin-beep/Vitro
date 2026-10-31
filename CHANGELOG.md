@@ -3,6 +3,36 @@
 EAD
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
 
+### refactor(tools): #36 gen_demo_algorithms 收编——族集/display_name/分组三源切引擎 algorithms.catalog 出口（2026-10-31）
+
+- **数据源收编**：生成器主源改引擎静态导出（`vitro_js api --batch` 拉取 +
+  ensureFresh 前置——mtime 触发 + moon 内容 hash 复核，陈旧产物假红/假绿封死）；
+  旧三源退役——① rules.json 族全集 → 降**双向对账参照**（rules 仍是 teaching
+  43 族权威、teaching_annotation_diff 闸输入地位不变，引擎↔rules 漂移任一侧即红）
+  ② golden display_name（首现）+ detect_*.mbt build_match 兜底链 → 整体退役
+  （引擎 display_name 即判据源码真值）③ GROUPS 七组硬编码 → `deriveGroups`
+  引擎派生（组序 = 引擎 groups 序、**组内呈现序 = 引擎 catalog 序**——呈现层
+  不再自带排序真相，侧栏 5 组族序变化为预期行为）。
+- **产物对拍（收编零数据损失实证）**：改造前后 demo/algorithms.js 语义级对账
+  ——43 族集合相等、每族 name/template/source/variants **逐位零差异**、xlab
+  完全相等；唯一变化 = 5 组组内呈现序。
+- **catalog-check D 路退役**：生成器分组既为引擎派生，两侧无独立真相可对
+  （自我对拍恒真）——`teaching_annotation_diff --catalog-check` 的 D 路（分组
+  表对账）与其 selftest 两形态注入随批退役，缩为「判据源码 ↔ 双臂引擎导出 ↔
+  rules 43」；防发射漂移由生成器自断言（`catalogConsistencyErrors`）+ demo_smoke
+  族集对账承接。
+- **测试锚**：gen_demo_algorithms.test.mts 重构——旧 GROUPS 对账四锚随源退役，
+  新七锚（自洽零误差 / display_name 空 / 未知分组 / 引擎↔rules 双向 / 同族
+  重复 / deriveGroups 组内序 / 真实仓库引擎拉取 ↔ rules 43 双向零误差）；J9
+  先证红（`does not provide an export named 'catalogConsistencyErrors'`）后转绿
+  9/9。
+- **CI 连坐**：pages.yml 发射 job 补 `cmd/vitro_js` js 臂构建（无 artifact 的
+  部署面现场构建——ci.yml demo job 走 build-products artifact 同件零改动）；
+  ci.yml catalog-check 步注释 D 路退役说明；脚本总清单数据源描述更新。
+- **验收**：catalog-check 绿（判据 43 ↔ 双臂导出一致 ↔ rules 43）+ selftest
+  两路注入均红；demo_smoke 197/197（序变化不破断言——族集/计数不锁序）；
+  demo_assemble_check 绿；oxlint 0 警告。
+
 ### feat(host+gateway): #95 VFS 预置文件列举口——`vfs.list` 协议方法 + 预置清单单源 + 文档成文（2026-10-31）
 
 - **host 列举口**：`VirtualFileSystem::list_files() -> Array[(String, Int32)]`

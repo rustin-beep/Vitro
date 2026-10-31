@@ -661,7 +661,7 @@ Shadow（e3_* 用例）。
 | 指针基础教学 | &、*、指针作为参数 | ✅ |
 | 内存布局教学 | 变量、数组、指针、malloc | ✅ |
 | 字符串操作 | char、char*、字符串字面量、printf/scanf | ✅ |
-| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式与二进制模式行为一致，不模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换） |
+| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式完整模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换，二进制模式不转换——与 §文件操作「支持细节」一致；ds 批 2026-10-31 勘正：本行旧文「行为一致、不模拟」与支持细节节互斥） |
 | 浮点运算 | float/double | ✅ |
 | 枚举与状态机 | enum | ✅ |
 | 类型抽象 | typedef | ✅ |

@@ -597,15 +597,18 @@ fn TypeChecker::resolve_float_literal_ty(
 }
 
 ///|
-/// 字符串字面量（P4：C 语义字节长度——\xHH ≥ 0x80 单字节 Latin-1 通道，
-/// `cstring_len` 照搬；+1 结尾 NUL）定型 char 数组。
+/// 字符串字面量定型 char 数组（ds 批 2026-10-31：尺寸口径与字节产出层
+/// 同源 = 整串 UTF-8（`@util.utf8_len`，#66 连坐完）——旧私有 Latin-1
+/// 混合口径（≤0xFF 计 1）与 bytecode 包 cstring_bytes（UTF-8 全编码，
+/// \xff 落 C3 BF 双字节）失配，char 数组定型尺寸少 1 ⇒ NUL 终止符被
+/// 挤出 ⇒ strlen/printf("%s") 越界读（亲验 len=20 vs clang 9）；+1 NUL）。
 fn TypeChecker::resolve_string_literal(
   self : TypeChecker,
   value : String,
   loc : @source.SourceLoc,
 ) -> (@ast.Type, @ast.Expr) {
   ignore(self)
-  let array_size = c_string_len(value) + 1
+  let array_size = @util.utf8_len(value) + 1
   let ty = @ast.Type::Array(
     Char(false, false),
     array_size,
@@ -615,27 +618,6 @@ fn TypeChecker::resolve_string_literal(
     [],
   )
   (ty, StringLiteral(value, loc, ty))
-}
-
-///|
-/// C 语义字节长度（不含结尾 NUL）——Rust `vitro_shared::cstring_len`
-/// 照搬（唯一真相源约定同源：码点 ≤ 0xFF 单字节，> 0xFF 按 UTF-8；
-/// 无歧义依据：源按 UTF-8 解码，多字节源字符码点必然 > 0xFF）。
-fn c_string_len(s : String) -> Int32 {
-  let mut n = 0
-  for c in s {
-    let cp = c.to_int()
-    if cp <= 0xFF {
-      n += 1
-    } else if cp <= 0x7FF {
-      n += 2
-    } else if cp <= 0xFFFF {
-      n += 3
-    } else {
-      n += 4
-    }
-  }
-  n
 }
 
 ///|

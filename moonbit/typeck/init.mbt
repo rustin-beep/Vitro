@@ -559,7 +559,9 @@ fn TypeChecker::validate_nested_init_list(
         // 注意本臂的 dims 参数已是本子数组层维度（InitList 臂递归时
         // 已剥过外层）——char[N] 层即 dims=[N] 本身
         if dims.length() == 1 && element_type.kind() is TK_Char {
-          let str_len = c_string_len(value)
+          // ds 批 2026-10-31：UTF-8 口径（与 cstring_bytes 同源）——
+          // \xff 计 2，W3008 判定与实际装载需求一致
+          let str_len = @util.utf8_len(value)
           if str_len + 1 > dims[0] {
             self.report_warning(
               "字符串字面量长度超过数组大小",
@@ -815,8 +817,9 @@ pub fn TypeChecker::check_array_initializer(
         )
         return (arr_type, init)
       }
-      // P4：C 语义字节长度（\xHH >= 0x80 转义单字节）
-      let str_len = c_string_len(value)
+      // ds 批 2026-10-31：UTF-8 口径（与 cstring_bytes 同源，#66 连坐完）
+      // ——旧 Latin-1 计长使 char g[] 定型少 1、NUL 被挤 ⇒ 越界读
+      let str_len = @util.utf8_len(value)
       if arr_type.array_size() <= 0 {
         // 仅回写 array_size（Rust 同形——dims 不动）
         match arr_type {

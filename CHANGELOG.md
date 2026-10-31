@@ -1,5 +1,49 @@
 ## [Unreleased]
 
+### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
+
+- **P1 越界读治本（#66 尺寸口径连坐）**：`typeck` 字符串字面量定型尺寸
+  旧用私有 `c_string_len`（Latin-1 混合计长：码点 ≤0xFF 计 1 字节），而
+  字节产出层 `bytecode/cstring_bytes` 已随 #66 改整串 UTF-8（`\xff` 落
+  `C3 BF` 双字节）——**两层失配 ⇒ `char g[]="…\xff"` 定型尺寸少 1 ⇒ NUL
+  终止符被挤出 ⇒ `strlen`/`printf("%s")` 越界读相邻内存**（三臂亲验：
+  `len=20` vs clang 9、`%s` 打出相邻字符串池；源字符面 `°` 同中招——
+  不限转义）。修复：删私有函数，三消费点（`expr.mbt` resolve_string_literal
+  / `init.mbt` char[N] 越界警告 / `init.mbt` 数组定型回写）改 `@util.utf8_len`
+  （与 parser M12 / bytecode 三处同口径，#66 尾巴的尺寸面闭合）。修复后
+  NUL 恒在场（`sizeof("\xff")` = 3 = 字节 2 + NUL），仅存值差（`C3 BF`
+  vs clang `FF`）——单字节值语义需词法层转义通道（载体改 Bytes 跨 6 包），
+  挂 #66 尾巴另批。
+- **红→绿**：wbtest `string_literal_byte_len` 改行为定型锚（`"\xff"` 定型
+  3——旧口径给 2 即红）修前实测红 1 例（119/120）→ 修复后 120/120。
+- **语料锚**：新增 `corpus/baseline/string_escape_nul_term.c`（strlen/%s
+  路径——锁「NUL 在场不越界」不变量：尺寸口径回退则 digest 红）；
+  `string_escape_octal_hex.c` digest 连坐重算（sizeof 10→11）。
+  known_direct 登记勘误三处：字节值 `C3 83`→`C3 BF`（笔误）、「octal 面
+  不受影响」证伪（`\377` 同码点 U+00FF 同落双字节）、归因精确化（非提取
+  器可吸收差异，系引擎层字节语义——diff_ledger DIFF-TOOL-EXTRACT-01
+  notes 连坐）。
+- **防线回归**：moon test 967/967、moon info 零漂移（删私有函数）、
+  clang_direct baseline DIFF=0（KNOWN=7）、vm_diff 515/515（freeze 新增
+  1 重算 2）、typeck_diff/codegen_diff PASS（freeze 连坐 utf8_latin1_output
+  等 3 例）、corpus_fuzz PASS、libc_boot PASS、surface 新边
+  typeck→util.utf8_len 登记、**三臂（js/native/wasm）端到端夹具逐字节一致**。
+- **规范矛盾勘正**：C 子集规范 :664 总表行「文本模式与二进制一致、不模拟
+  CRLF」与 §文件操作「已完整模拟 Windows CRT 换行」（#393 改）互斥——
+  勘正为与实测一致（文本模拟/二进制不转），注明勘误来源。
+- **快速入门「验证健康」三命令修复**（ds 报告实锤两条红）：serve_smoke
+  补 `--backend-wasm` 臂旗标 + 产物构建两行前置（脚本 fail loud 只提示
+  不代建）；facts 改引导普通 `check`（干净克隆 `--strict` 因 reports/ 不
+  入库必红——#298 待采集即红，全真值口径属 CI；clang_direct 补 native
+  产物构建行含 MOON_CC=clang）。三命令均在 worktree 亲验 rc=0。
+- **launcher 执行位**：`scripts/bin/vitro` 100644→100755（Linux/macOS
+  克隆后按文档直跑 `scripts/bin/vitro` 不再 Permission denied）。
+- **披露补登**：《已知限制与差异》新增 ③-14（`\xHH`/高位源字符 UTF-8
+  字节通道值差——NUL 终止已修、值差挂账）；同文 ①-10 rand 数字经 ds
+  报告「勘误」**复核后不采信**（报告探针 `printf("...",rand(),rand(),rand())`
+  右到左求值致显示逆序，把序列后值当首值；分离变量版实测 Vitro 首值
+  16838 / clang 首值 41——原文档正确，不改）。
+
 ### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
 - **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`

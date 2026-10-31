@@ -11,12 +11,35 @@
 // 自身 --json delta 通道（引擎内存字节）不同形。首次调用切 stdout 二进
 // 制模式（POSIX 无此概念，_WIN32 隔离）；CLI_PROTOCOL_V1 §1「字节直写
 // 无 CRLF 转换」承诺自此在 Windows 上成立。
+// #357（2026-10-30）：fwrite 后即刷 + SIGABRT 崩溃路径刷出——重定向/管道
+// 下 stdout 对非 tty 全缓冲（glibc/UCRT 同），stderr 标记行（无缓冲）反超
+// 程序输出致 `> f 2>&1` 合并流错序；panic→abort 不刷 stdio 缓冲致诊断
+// 蒸发（双流 0 字节 + rc=134 静默崩溃）。两防线均落本 stub。
 #include <stdio.h>
+#include <signal.h>
 #include "moonbit.h"
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
 #endif
+
+/* #357（2026-10-30）：崩溃路径防线——MoonBit 运行时 panic 走 abort，而
+ * glibc/UCRT 的 abort 不刷 stdio 缓冲：重定向下 panic 诊断（runtime 打印
+ * 走 stdout）连同未刷输出一并蒸发。先 fflush(NULL) 刷全部输出流再恢复
+ * 默认处置并 re-raise——进程仍死于 SIGABRT（shell 视角 134 / core dump
+ * 语义保真）。strict POSIX 下 fflush 非 async-signal-safe，但 SIGABRT 是
+ * 同步 raise、栈完好，工程惯例可靠。诊断通道归属（panic 文案在 stdout
+ * 而非 stderr）是 moon runtime 上游行为，本仓不可治——此处只保「不蒸发」。
+ * 触发面现状：#363 批后 invalid UTF-8 已 U+FFFD 折回不再 panic，本防线
+ * 面向未来 panic（数组越界等引擎缺陷场景）。MSVC 兼容：signal/SIGABRT/
+ * SIG_DFL 均标准 C（#335 注记——stub 编译链固定 MSVC 探测，GNU 属性不可
+ * 用，本形态纯 C89）。 */
+static void vitro_abort_flush(int sig) {
+  (void)sig;
+  fflush(NULL);
+  signal(SIGABRT, SIG_DFL);
+  raise(SIGABRT);
+}
 
 /* #335（2026-10-27）：帧通道行尾治本——CLI 帧通道（MoonBit println 出口：
  * compile/step/api/serve 的响应帧）不走本 stub 的 fwrite，Windows CRT 文本
@@ -27,16 +50,19 @@
  * **不用 __attribute__((constructor))**：moon test --target native 的 stub
  * 编译链固定 MSVC 探测（MOON_CC=clang 不覆盖——2026-10-27 实测 C2143/
  * C2091 编译红），GNU 属性不可移植；显式导出 + main 首行调用双编译器
- * 兼容。幂等：重复调用无副作用（与下方首次调用切换语义叠加无害）。 */
+ * 兼容。幂等：重复调用无副作用（与下方首次调用切换语义叠加无害）。
+ * #357（2026-10-30）：同点挂 SIGABRT handler（三薄壳 main 首行皆调本
+ * 导出——单一挂点覆盖 cmd/run、cmd/vitro、cmd/step 全部 native 壳）。 */
 MOONBIT_FFI_EXPORT void moonbit_vitro_ensure_binary_mode(void) {
-#ifdef _WIN32
   static int done = 0;
   if (!done) {
+#ifdef _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
     _setmode(_fileno(stderr), _O_BINARY);
+#endif
+    signal(SIGABRT, vitro_abort_flush);
     done = 1;
   }
-#endif
 }
 
 MOONBIT_FFI_EXPORT void moonbit_vitro_write_stdout(moonbit_bytes_t b) {
@@ -52,5 +78,12 @@ MOONBIT_FFI_EXPORT void moonbit_vitro_write_stdout(moonbit_bytes_t b) {
   int32_t len = Moonbit_array_length(b);
   if (len > 0) {
     fwrite(b, 1, (size_t)len, stdout);
+    /* #357（2026-10-30）：fwrite 后即刷——重定向/管道下 stdout 对非 tty
+     * 全缓冲，stderr 标记行（无缓冲）反超程序输出：`> f 2>&1` 合并流里
+     * // STDERR // NOTE 抢在 printf 输出之前（js/wasm 臂出口同步写无此
+     * 病）。逐写即刷后与 stderr 的相对序由写出序决定——三臂同形。代价：
+     * stdout 从「进程退出一次刷」变逐次刷——run 的 stdout 是 run 结束后
+     * 的批量导出 + 帧序列（行协议语义），本就无中途吞吐收益。 */
+    fflush(stdout);
   }
 }

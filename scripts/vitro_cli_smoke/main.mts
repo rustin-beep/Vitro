@@ -680,6 +680,101 @@ export function runMain(argv: readonly string[]): number {
     }
   }
 
+  // B 组附 7：2>&1 合流顺序锚（#357，2026-10-30）——重定向/管道消费形态
+  // （CI `2>&1 | tee`、`> out 2>&1`）下，C 语义的 stdout 对非 tty 全缓冲与
+  // stderr 无缓冲天然错序：native 臂程序 stdout（stdout_stub fwrite 落 CRT
+  // 缓冲、进程退出才刷）被 stderr 标记行（// STDERR // NOTE——stderr 无缓冲
+  // 立即落盘）反超，合并流里标记行抢在程序输出之前；js/wasm 臂出口同步写
+  // （#366/#388 后 writeSync 形态）无此病。附 6 与 B 组语义层对拍均为**分通道
+  // 抓取**（spawnSync stdout/stderr 分离捕获），抓不到交错序——本锚以两 fd
+  // 指向同一文件复现 shell 级 `> f 2>&1`：断言合并文本中程序输出行全部先于
+  // stderr 标记行，且三臂合并文本（剥 backend 行、CRLF 归一）逐位一致。
+  {
+    const ordC = path.join(tmpDir, "order_probe.c");
+    fs.writeFileSync(
+      ordC,
+      '#include <stdio.h>\nint main(){ printf("A-line-1\\n"); printf("A-line-2\\n"); fprintf(stderr, "E-line\\n"); return 0; }\n',
+    );
+    const relOrd = toSlash(path.relative(repoRoot, ordC));
+    const mergedFile = path.join(tmpDir, "order_merged.txt");
+    const mergedByArm: string[] = [];
+    let orderRc = 0;
+    for (const arm of [
+      { label: "wasm", argv: [shell, "run", relOrd], exe: nodeBin },
+      { label: "native", argv: ["run", relOrd], exe: nativeExe },
+      { label: "js", argv: [jsEntry, "run", relOrd], exe: nodeBin },
+    ]) {
+      const fd = fs.openSync(mergedFile, "w");
+      let spawnOk = true;
+      try {
+        const r = spawnSync(arm.exe, arm.argv, { cwd: repoRoot, stdio: ["ignore", fd, fd], maxBuffer: 64 * 1024 * 1024 });
+        if (r.error !== undefined || (r.status ?? -1) !== 0) {
+          fatalf(`B[合流序] ${arm.label}: rc=${String(r.status)}（${r.error?.message ?? ""}）`);
+          spawnOk = false;
+        }
+      } finally {
+        fs.closeSync(fd);
+      }
+      if (!spawnOk) {
+        orderRc = 1;
+        mergedByArm.push("");
+        continue;
+      }
+      const merged = normalize(stripBackendLine(fs.readFileSync(mergedFile, "utf8")));
+      mergedByArm.push(merged);
+      const firstOut = merged.indexOf("A-line-1");
+      const markPos: number[] = [];
+      for (const m of ["// STDERR", "// NOTE"]) {
+        const i = merged.indexOf(m);
+        if (i >= 0) markPos.push(i);
+      }
+      // fail loud：两标记行均缺席 = fixture/通道漂移，不静默绿
+      const firstMark = markPos.length === 0 ? -1 : Math.min(...markPos);
+      if (!(firstOut >= 0 && firstMark >= 0 && firstOut < firstMark)) {
+        orderRc = 1;
+        fatalf(`B[合流序] ${arm.label}: 合并流顺序错乱（程序输出首位=${firstOut} 标记行首位=${firstMark}——native stdout 全缓冲被 stderr 反超形态，#357）:\n${merged}`);
+      }
+    }
+    if (orderRc === 0) {
+      if (mergedByArm[0] !== mergedByArm[1]) {
+        fatalf(`B[合流序] wasm vs native 合并文本不一致（归一后）:\n--- wasm ---\n${mergedByArm[0]}\n--- native ---\n${mergedByArm[1]}`);
+      } else if (mergedByArm[0] !== mergedByArm[2]) {
+        fatalf(`B[合流序] wasm vs js 合并文本不一致（归一后）:\n--- wasm ---\n${mergedByArm[0]}\n--- js ---\n${mergedByArm[2]}`);
+      } else {
+        process.stdout.write("ok  B[合流序] 三臂 2>&1 合并流：程序输出先于标记行、三臂同形（#357）\n");
+      }
+    }
+  }
+
+  // B 组附 8：SIGABRT 崩溃路径防线锚（#357，2026-10-30；Linux only）——
+  // stdout_stub 的 ensure_binary_mode 现同点挂 SIGABRT handler（fflush(NULL)
+  // 刷全部输出流 + 恢复默认处置 + re-raise，防 panic→abort 下 stdio 缓冲
+  // 诊断蒸发）。本锚锁「死形态保真」面：外部注入 ABRT 后进程仍须死于
+  // SIGABRT（shell 视角 rc=134），不得因 handler 偏差（只刷不 re-raise /
+  // _exit 顶替）变成退出码形态或挂死。**边界登记**：防线「刷出实效」
+  // （panic 诊断不蒸发）当前 master 无端到端触面——唯一已知 panic 触点
+  // （invalid surrogate pair）已被 #363 批治成 U+FFFD 折回，缓冲无货可刷；
+  // 待未来真实 panic 语料回补端到端锚。Windows skip：node/MSYS 的信号是
+  // 进程终止模拟、不进 CRT handler，判定无意义（CI ubuntu 覆盖）。
+  if (process.platform !== "linux") {
+    process.stdout.write("skip B[SIGABRT 防线]（非 Linux——信号模拟不进 CRT handler；CI ubuntu 覆盖，#357）\n");
+  } else {
+    const loopC = path.join(tmpDir, "abort_probe.c");
+    fs.writeFileSync(loopC, "int main(){ int i=0; while(1){ i=i+1; } return 0; }\n");
+    const relLoop = toSlash(path.relative(repoRoot, loopC));
+    // 大步数预算（缺省 10M 步 0.7s 即 trap，kill 窗口不稳；2G 步 ≈ 分钟级）
+    const script = `"${nativeExe}" run --max-steps 2000000000 "${relLoop}" & p=$!; sleep 0.5; kill -ABRT $p; wait $p; echo "RC=$?"`;
+    const r = spawnSync("/bin/bash", ["-c", script], { cwd: repoRoot, encoding: "utf8", timeout: 60000 });
+    const m = /RC=(\d+)/.exec(r.stdout ?? "");
+    if (r.error !== undefined || m === null) {
+      fatalf(`B[SIGABRT 防线] 运行失败（spawn 超时/错误）：${r.error?.message ?? ""} out=${(r.stdout ?? "").trim()}`);
+    } else if (m[1] !== "134") {
+      fatalf(`B[SIGABRT 防线] 死形态走样：期望 shell rc=134（SIGABRT），实得 ${m[1]}——handler 只许刷 + 恢复默认 + re-raise，不得改死形态（#357）`);
+    } else {
+      process.stdout.write("ok  B[SIGABRT 防线] 外部 abort 死形态保真（rc=134，handler 刷 + re-raise 链）\n");
+    }
+  }
+
   // B 组附 1：note 去重语义锚（审阅 P3-1）——note 通道语义不在 vm_diff /
   // clang_direct 比对面，apply_reply 全量同文本去重此前零闸。
   {

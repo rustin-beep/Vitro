@@ -222,3 +222,6 @@ demo/design/
 
 # corpus_fuzz 判定结果缓存（#309 P0：epoch=七组件 hash，gitignored）
 .corpus_fuzz_judge/
+
+# agent 个人工具箱（agent 会话杂活脚本/探针模板，不属于仓库资产；性质约定见 toolbox/README.md）
+/toolbox/

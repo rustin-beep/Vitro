@@ -389,7 +389,9 @@ export function runMain(argv: readonly string[]): number {
     } else if (j363 !== w363 || w363 !== n363) {
       fatalf(`B[坏字节源码] 三臂输出不同形（#363 修复回归——native 崩/wasm 裸 trap/js 静默任一复发）`);
     } else {
-      process.stdout.write(`ok  B[大帧管道] 三臂大帧内容逐位一致（#366+#14 三臂纪律）\n`);
+      // #391 审阅 P3：ok 文案此前错贴为「B[大帧管道]」（复制粘贴残留——
+      // 本块是坏字节源码锚；大帧管道锚在下方 #367 审阅块）
+      process.stdout.write(`ok  B[坏字节源码] 三臂同形（E1001 + U+FFFD，#363）\n`);
     }
   }
   // PR #367 审阅 P2-3/P3-1（2026-10-28）：① stderr 通道同族锚——node 对
@@ -746,20 +748,20 @@ export function runMain(argv: readonly string[]): number {
     }
   }
 
-  // B 组附 8：SIGABRT 崩溃路径防线锚（#357，2026-10-30；Linux only）——
-  // stdout_stub 的 ensure_binary_mode 现同点挂 SIGABRT handler（fflush(NULL)
-  // 刷全部输出流 + 恢复默认处置 + re-raise，防 panic→abort 下 stdio 缓冲
-  // 诊断蒸发）。本锚锁「死形态保真」面：外部注入 ABRT 后进程仍须死于
-  // SIGABRT（shell 视角 rc=134），不得因 handler 偏差（只刷不 re-raise /
-  // _exit 顶替）变成退出码形态或挂死。**边界登记**：防线「刷出实效」
-  // （panic 诊断不蒸发）当前 master 无端到端触面——唯一已知 panic 触点
-  // （invalid surrogate pair）已被 #363 批治成 U+FFFD 折回，缓冲无货可刷；
-  // 待未来真实 panic 语料回补端到端锚。Windows skip：node/MSYS 的信号是
-  // 进程终止模拟、不进 CRT handler，判定无意义（CI ubuntu 覆盖）。
+  // B 组附 8：SIGABRT 崩溃路径防线锚·壳装载面（#357，2026-10-30；Linux only）
+  // ——stdout_stub 的 ensure_binary_mode 挂 SIGABRT handler（fflush(NULL) 刷
+  // 全部输出流 + 恢复默认 + abort()，防 panic→abort 下 stdio 缓冲诊断蒸发）。
+  // 本锚锁**壳装载面**：vitro.exe 真壳外部注入 ABRT 后须死于 SIGABRT（shell
+  // 视角 rc=134），不得因 handler 偏差（只刷不终止 / _exit 顶替）变成退出码
+  // 形态或挂死。**零区分度边界（#391 审阅 P2-1）**：无 handler 的默认 SIGABRT
+  // 处置同为 134——本锚区分不了「handler 没挂上」，挂载实效与刷出实效由
+  // 附 9 C 桩锚承担（桩 include 真源单源锁，双平台跑）；本锚留任壳装载 +
+  // 外部注入形态。Windows skip：node/MSYS 的信号是进程终止模拟、不进 CRT
+  // handler，判定无意义（CI ubuntu 覆盖）。
   if (process.platform !== "linux") {
     process.stdout.write("skip B[SIGABRT 防线]（非 Linux——信号模拟不进 CRT handler；CI ubuntu 覆盖，#357）\n");
   } else {
-    const loopC = path.join(tmpDir, "abort_probe.c");
+    const loopC = path.join(tmpDir, "abort_loop.c");
     fs.writeFileSync(loopC, "int main(){ int i=0; while(1){ i=i+1; } return 0; }\n");
     const relLoop = toSlash(path.relative(repoRoot, loopC));
     // 大步数预算（缺省 10M 步 0.7s 即 trap，kill 窗口不稳；2G 步 ≈ 分钟级）
@@ -769,9 +771,61 @@ export function runMain(argv: readonly string[]): number {
     if (r.error !== undefined || m === null) {
       fatalf(`B[SIGABRT 防线] 运行失败（spawn 超时/错误）：${r.error?.message ?? ""} out=${(r.stdout ?? "").trim()}`);
     } else if (m[1] !== "134") {
-      fatalf(`B[SIGABRT 防线] 死形态走样：期望 shell rc=134（SIGABRT），实得 ${m[1]}——handler 只许刷 + 恢复默认 + re-raise，不得改死形态（#357）`);
+      fatalf(`B[SIGABRT 防线] 死形态走样：期望 shell rc=134（SIGABRT），实得 ${m[1]}——handler 只许刷 + 恢复默认 + abort()，不得改死形态（#357）`);
     } else {
-      process.stdout.write("ok  B[SIGABRT 防线] 外部 abort 死形态保真（rc=134，handler 刷 + re-raise 链）\n");
+      process.stdout.write("ok  B[SIGABRT 防线] 外部 abort 死形态保真（rc=134，壳装载链）\n");
+    }
+  }
+
+  // B 组附 9：SIGABRT 崩溃路径防线锚·handler 本体面（#391 审阅 P1-2/P2-1，
+  // 2026-10-31；双平台）——C 桩（scripts/vitro_cli_smoke/abort_probe/
+  // abort_probe.c）#include 真源 stdout_stub.c（cmd/run 真源，三副本 single_source
+  // 逐字节锁）单翻译单元编入：桩 main 调 ensure_binary_mode()（挂 handler +
+  // Windows 切二进制）→ printf 两行进 CRT 缓冲（模拟 panic 诊断已在缓冲——
+  // **不需要任何 panic 语料**，#363 后 master 无端到端触面的「刷出实效」
+  // 由此可回归）→ raise(SIGABRT)。双断言：
+  //   ① 刷出实效：重定向文件含全部 printf 字节（handler 没挂上/没 flush
+  //      即丢字节红——附 8 零区分度面的补齐）；
+  //   ② rc 不落 CLI_PROTOCOL_V1 §2 协议五值 {0,1,2,3,4}——UCRT 下 raise 形态
+  //      曾走 _exit(3) 撞 step-limit 码（P1-1 实锤，修前桩实测 status=3）；
+  //      abort() 形态 Windows 保 0xC0000409（node status=3221226505）/ POSIX
+  //      134——均不在五值域。修前形态 J9 留痕：status=3 字节全刷但撞码红。
+  // clang 门控：工具缺失明示 skip（gofmt 先例——不静默）；CI windows/ubuntu
+  // runner 均预装 clang。
+  {
+    const probeSrc = path.join(repoRoot, "scripts", "vitro_cli_smoke", "abort_probe", "abort_probe.c");
+    const clangProbe = spawnSync("clang", ["--version"], { encoding: "utf8", timeout: 15000 });
+    if (clangProbe.error !== undefined) {
+      process.stdout.write("skip B[SIGABRT 桩]（clang 不可用——handler 本体未验；CI windows/ubuntu 预装，#391）\n");
+    } else {
+      const probeExe = path.join(tmpDir, "abort_probe_bin.exe");
+      const cc = spawnSync("clang", ["-o", probeExe, probeSrc], { encoding: "utf8", timeout: 60000 });
+      if (cc.error !== undefined || cc.status !== 0) {
+        fatalf(`B[SIGABRT 桩] 编译失败（真源 stub 或桩漂移）：${cc.stderr?.slice(0, 400) ?? cc.error?.message ?? ""}`);
+      } else {
+        const probeOut = path.join(tmpDir, "abort_probe_out.txt");
+        const fd = fs.openSync(probeOut, "w");
+        let st: number | null = null;
+        try {
+          const r = spawnSync(probeExe, [], { stdio: ["ignore", fd, fd], timeout: 30000 });
+          st = r.status;
+        } finally {
+          fs.closeSync(fd);
+        }
+        const body = fs.readFileSync(probeOut, "utf8");
+        const flushed = body.includes("probe-line-1-in-buffer") && body.includes("probe-line-2-in-buffer");
+        const PROTO_RC = new Set([0, 1, 2, 3, 4]);
+        const hitProto = st !== null && PROTO_RC.has(st);
+        if (st === null) {
+          fatalf(`B[SIGABRT 桩] 运行无 status（spawn 失败/超时）——handler 链路断裂形态`);
+        } else if (!flushed) {
+          fatalf(`B[SIGABRT 桩] 刷出实效丢失：重定向文件 ${JSON.stringify(body.slice(0, 80))}——handler 未挂上或未 flush（#357 现象 A 复发形态）`);
+        } else if (hitProto) {
+          fatalf(`B[SIGABRT 桩] rc=${st} 落协议五值 {0..4}——崩溃形态撞协议码（P1-1 形态：UCRT raise 走 _exit(3) 与 step-limit 同码，#391 审阅）`);
+        } else {
+          process.stdout.write(`ok  B[SIGABRT 桩] handler 本体：字节全刷 + rc=${st} 不落协议五值（Windows 0xC0000409 / POSIX 134，#391 P1-1/P1-2）\n`);
+        }
+      }
     }
   }
 

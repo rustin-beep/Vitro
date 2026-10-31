@@ -16,11 +16,26 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
 #endif
+
+/* #357/#391 审阅 P2-2（2026-10-31）：崩溃路径防线——与 cmd/vitro|run|step
+ * 的 stdout_stub.c 同款 SIGABRT handler（本文件是 ensure_binary_mode 的
+ * 第四份独立实现，stdout_stub_copies 按文件名锁锁不到此处——连坐义务
+ * 在 single_source rules.json 该条目注释登记）。UCRT 下 abort 不刷 stdio
+ * 缓冲且 raise 形态走 _exit(3) 撞 step-limit 码（P1-1）——先刷全部输出
+ * 流，恢复默认后 abort() 保 crash 形态（Windows 0xC0000409 / POSIX 134
+ * + core）。锚 = vitro_cli_smoke B 组附 9。 */
+static void serve_abort_flush(int sig) {
+  (void)sig;
+  fflush(NULL);
+  signal(SIGABRT, SIG_DFL);
+  abort();
+}
 
 /* #335（2026-10-27）：帧通道行尾治本——serve 的响应帧（println 出口）
  * 不走任何 write stub，Windows CRT 文本模式把每个 \n 静默改写 \r\n
@@ -29,16 +44,18 @@
  * （**不用 constructor**——moon test --target native 的 stub 编译链固定
  * MSVC 探测，GNU 属性 C2143 编译红，2026-10-27 实测）。stdin 不切——
  * fgets 行读取面维持 CRT 折行 + 下方手剥 \r\n 既有归一。POSIX 无此
- * 概念。幂等。 */
+ * 概念。幂等。#357（2026-10-31）：同点挂 SIGABRT handler（上方
+ * serve_abort_flush——POSIX 侧函数体自此非空）。 */
 void moonbit_vitro_ensure_binary_mode(void) {
-#ifdef _WIN32
   static int done = 0;
   if (!done) {
+#ifdef _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
     _setmode(_fileno(stderr), _O_BINARY);
+#endif
+    signal(SIGABRT, serve_abort_flush);
     done = 1;
   }
-#endif
 }
 
 int moonbit_vitro_serve_read_line(char *buf, int cap) {

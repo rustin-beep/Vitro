@@ -16,7 +16,9 @@
 // 程序输出致 `> f 2>&1` 合并流错序；panic→abort 不刷 stdio 缓冲致诊断
 // 蒸发（双流 0 字节 + rc=134 静默崩溃）。两防线均落本 stub。
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
+#include <stdint.h>
 #include "moonbit.h"
 #ifdef _WIN32
 #include <io.h>
@@ -26,19 +28,27 @@
 /* #357（2026-10-30）：崩溃路径防线——MoonBit 运行时 panic 走 abort，而
  * glibc/UCRT 的 abort 不刷 stdio 缓冲：重定向下 panic 诊断（runtime 打印
  * 走 stdout）连同未刷输出一并蒸发。先 fflush(NULL) 刷全部输出流再恢复
- * 默认处置并 re-raise——进程仍死于 SIGABRT（shell 视角 134 / core dump
- * 语义保真）。strict POSIX 下 fflush 非 async-signal-safe，但 SIGABRT 是
- * 同步 raise、栈完好，工程惯例可靠。诊断通道归属（panic 文案在 stdout
+ * 默认处置并终止。strict POSIX 下 fflush 非 async-signal-safe，但 SIGABRT
+ * 是同步 raise、栈完好，工程惯例可靠。诊断通道归属（panic 文案在 stdout
  * 而非 stderr）是 moon runtime 上游行为，本仓不可治——此处只保「不蒸发」。
  * 触发面现状：#363 批后 invalid UTF-8 已 U+FFFD 折回不再 panic，本防线
  * 面向未来 panic（数组越界等引擎缺陷场景）。MSVC 兼容：signal/SIGABRT/
  * SIG_DFL 均标准 C（#335 注记——stub 编译链固定 MSVC 探测，GNU 属性不可
- * 用，本形态纯 C89）。 */
+ * 用，本形态纯 C89）。
+ * #391 审阅 P1-1（2026-10-31）：终末形态勘正——恢复默认后用 abort() 而
+ * 非 raise(SIGABRT)：UCRT 下 raise 在 SIG_DFL 后走 _exit(3)，panic 码从
+ * 0xC0000409（crash）变 3，与 CLI_PROTOCOL_V1 §2 协议五值的 step-limit
+ * 撞码（消费方把崩溃判成步数超限）；abort() 在无用户 handler 时走
+ * __fastfail 保 0xC0000409 crash 形态。POSIX 侧 abort() 与 raise 同为
+ * 默认处置（shell 视角 134 + core dump 语义保真）——三态探针实测
+ * （Windows：handler+raise=rc3 / handler+abort=crash 形态，两态字节均
+ * 全刷；Linux：两形态均 134 全刷）。锚 = vitro_cli_smoke B 组附 9
+ * （C 桩 include 本文件单源锁：刷出实效 + rc 不落协议五值）。 */
 static void vitro_abort_flush(int sig) {
   (void)sig;
   fflush(NULL);
   signal(SIGABRT, SIG_DFL);
-  raise(SIGABRT);
+  abort();
 }
 
 /* #335（2026-10-27）：帧通道行尾治本——CLI 帧通道（MoonBit println 出口：
@@ -51,8 +61,10 @@ static void vitro_abort_flush(int sig) {
  * 编译链固定 MSVC 探测（MOON_CC=clang 不覆盖——2026-10-27 实测 C2143/
  * C2091 编译红），GNU 属性不可移植；显式导出 + main 首行调用双编译器
  * 兼容。幂等：重复调用无副作用（与下方首次调用切换语义叠加无害）。
- * #357（2026-10-30）：同点挂 SIGABRT handler（三薄壳 main 首行皆调本
- * 导出——单一挂点覆盖 cmd/run、cmd/vitro、cmd/step 全部 native 壳）。 */
+ * #357（2026-10-30）：同点挂 SIGABRT handler——cmd/run、cmd/vitro、
+ * cmd/step 三薄壳 main 首行皆调本导出（#391 审阅 P2-2 勘正：serve 是
+ * 第四份独立实现 serve_stdio.c——同款 handler 连坐在那边；cmd/dump_*
+ * 四壳为开发工具无防线，P3 登记不修）。 */
 MOONBIT_FFI_EXPORT void moonbit_vitro_ensure_binary_mode(void) {
   static int done = 0;
   if (!done) {

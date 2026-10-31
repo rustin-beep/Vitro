@@ -64,8 +64,13 @@
   },
   {
     "case": "string_escape_octal_hex.c",
-    "digest": "38dfc934",
-    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）：cstring_bytes 改整串 UTF-8 encode（修源内 ·/×/° 等字符与 clang execution charset 的分叉）后，\\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 83 双字节 vs C 单字节 FF（g[8]=195 vs 255 一格）。源字符面（教学高频）已对齐；转义裸字节的正确修法需词法层转义语义通道，另批（#66 尾巴登记）。octal 转义面全对齐不受影响"
+    "digest": "8069244d",
+    "reason": "F2 差异面换位（#66 落盘直通批，2026-10-10）+ ds 批尺寸连坐（2026-10-31，勘正旧登记三处）：cstring_bytes 整串 UTF-8 encode 后 \\xHH 转义与源字符在 String 载体同形（U+00FF）——\\xff 落 C3 BF 双字节（旧登记误写 C3 83）vs C 单字节 FF（g[8]=195 vs 255）；octal 同面受影响（旧登记「octal 全对齐」证伪：\\377 同码点 U+00FF 同落 C3 BF）；sizeof(g) 11 vs 10（vitro vs clang，方向与本条各例一致；ds 批修复前 vivo 误给 10 = Latin-1 计长少 1）为 ds 批 typeck 尺寸口径连坐（c_string_len Latin-1 计长未随 #66 迁移 ⇒ NUL 被挤出越界读，2026-10-31 修复——尺寸与字节两层同口径，本 digest 为修复后形态）。源字符面（教学高频）已对齐；转义裸字节的单字节值语义（C3 BF→FF）需词法层转义语义通道另批（#66 尾巴，载体改 Bytes）"
+  },
+  {
+    "case": "string_escape_nul_term.c",
+    "digest": "f167b20b",
+    "reason": "ds 批新增锚（2026-10-31）+ 审阅批第二形态（2026-10-31 PR #401 P1-2）：\\xff 转义 NUL 终止与 strlen/%s 路径——sizeof=11 vs clang 10、strlen=10 vs 9、字节 C3 BF vs FF 均为 #66 换位已知值差（与 string_escape_octal_hex.c 同面）；第一形态（char g[] 推导）锁「NUL 终止符在场、不越界」不变量：尺寸口径回退（Latin-1 计长）则首差行移位（sizeof 追平 clang）、NUL 被挤、len 读到相邻内存 ⇒ digest 变红。第二形态（char b[2] 显式恰满，审阅批补）：vitro 口径字面量 2 字节 == 数组尺寸 ⇒ NUL 无空间被挤（C11 §6.7.9p14 合法形态）——b_nul=0（strlen 越界判定）+ b_bytes=195 191 + W3008 误警 vs clang b_nul=1（NUL 在场）+ 255 0 + 零警：终止语义差全系值差（W3008 判据两侧同款「字节+NUL 计入比较」），治本挂 #66 尾巴（词法层转义通道）；判定输出形态（不打印越界内容）保相邻布局改动不漂移 digest"
   },
   {
     "case": "MF-AUDIO",

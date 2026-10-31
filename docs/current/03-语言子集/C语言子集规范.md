@@ -361,7 +361,7 @@ fclose(fp);
 **支持细节**：
 - `fopen` / `fclose` / `fread` / `fwrite` / `fgets` / `fputs` / `fgetc` / `fputc` / `fseek` / `ftell` / `rewind` / `feof`
 - 所有文件操作在 VitroVM 虚拟文件系统（VFS）沙盒内进行，路径相对于 VFS 根目录
-- `"r"` / `"w"` / `"a"` / `"rb"` / `"wb"` 等模式均可识别；**文本模式已完整模拟 Windows CRT 的 `\n` ↔ `\r\n` 自动换行转换**
+- `"r"` / `"w"` / `"a"` / `"rb"` / `"wb"` 等模式均可识别；**文本模式模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换（仅此一项——不含 Ctrl-Z EOF 等其余 CRT 文本模式行为；ds 审阅批 2026-10-31 措辞收窄）**
   - 写入 `"w"` 时 `\n` 自动展开为 `\r\n`
   - 读取 `"r"` 时 `\r\n` 自动压缩为 `\n`
   - `fseek` 使用逻辑位置，`ftell` 返回物理位置，匹配 Windows CRT 行为
@@ -661,7 +661,7 @@ Shadow（e3_* 用例）。
 | 指针基础教学 | &、*、指针作为参数 | ✅ |
 | 内存布局教学 | 变量、数组、指针、malloc | ✅ |
 | 字符串操作 | char、char*、字符串字面量、printf/scanf | ✅ |
-| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式与二进制模式行为一致，不模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换） |
+| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换（仅换行转换，不含 Ctrl-Z EOF 等——ds 审阅批 2026-10-31 措辞收窄），二进制模式不转换——与 §文件操作「支持细节」一致；ds 批 2026-10-31 勘正：本行旧文「行为一致、不模拟」与支持细节节互斥） |
 | 浮点运算 | float/double | ✅ |
 | 枚举与状态机 | enum | ✅ |
 | 类型抽象 | typedef | ✅ |

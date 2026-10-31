@@ -432,6 +432,7 @@
         "strcat_empty.c": "fba688cf",
         "strcat_function.c": "64d863aa",
         "strcpy_retval_chain.c": "e642bd01",
+        "string_escape_nul_term.c": "5b6a628b",
         "string_escape_octal_hex.c": "9dda4d23",
         "string_literal.c": "fc69622a",
         "string_pool_intern.c": "7c576dcf",
@@ -1831,8 +1832,11 @@
         "strcpy_retval_chain.c": {
           "result_sha": "58f462c8236aeb23"
         },
+        "string_escape_nul_term.c": {
+          "result_sha": "625e85b677483853"
+        },
         "string_escape_octal_hex.c": {
-          "result_sha": "ede7fbf6a66b2f0c"
+          "result_sha": "6dcb344d70edbe28"
         },
         "string_literal.c": {
           "result_sha": "f5426821ad500ce8"

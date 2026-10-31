@@ -633,7 +633,8 @@
       "anchors": {
         "shadow_known": [],
         "clang_direct_known": [
-          "string_escape_octal_hex.c"
+          "string_escape_octal_hex.c",
+          "string_escape_nul_term.c"
         ],
         "vm_diff_known": [
           "engine_note_lookalike.c"
@@ -643,7 +644,7 @@
         "clang_direct",
         "vm_diff"
       ],
-      "notes": "〔2026-10-10 #66 连坐：clang 侧随 stdout-only 捕获分离转绿删 known；string_escape_octal_hex 因落盘 UTF-8 直通的 \\xHH 载体同形换位入账（g[8]=195 vs 255，源字符面已对齐）；vm 侧提取器限制不受影响维持〕"
+      "notes": "〔2026-10-10 #66 连坐：clang 侧随 stdout-only 捕获分离转绿删 known；string_escape_octal_hex 因落盘 UTF-8 直通的 \\xHH 载体同形换位入账（g[8]=195 vs 255，源字符面已对齐）；vm 侧提取器限制不受影响维持〕〔ds 批 2026-10-31 连坐勘误三处：① 上注字节值 C3 83 系笔误（U+00FF 的 UTF-8 为 C3 BF）；② #66 时认为 octal 面不受影响系误判（\\377 同码点 U+00FF 同落 C3 BF）；③ 归因精确化——转义面不是提取器可吸收的归一化差异，是引擎层字节语义（#66 换位决定）；同批修复尺寸面：typeck 定型口径 Latin-1→UTF-8 与字节层对齐（旧两层失配致 char[] 定型少 1、NUL 被挤出、strlen/%s 越界读相邻内存——亲验 len=20 vs clang 9），修复后仅存值差（C3 BF vs FF），单字节值语义挂 #66 尾巴（词法层转义通道另批）；string_escape_octal_hex digest 连坐重算 + string_escape_nul_term 锚新增〕"
     },
     {
       "id": "DIFF-PREPROC-INCLUDE-DEPTH-01",

@@ -204,15 +204,47 @@ test "resolve_identifier_shapes" {
 }
 
 ///|
-/// string 字面量字节长度（P4 Latin-1 通道：\xHH ≥ 0x80 单字节、
-/// 多字节源字符按 UTF-8；+1 结尾 NUL）。
+/// string 字面量字节长度（ds 批 2026-10-31：口径与 bytecode/cstring.mbt
+/// 同源 = 整串 UTF-8（#66 连坐完）——\xff（码点 U+00FF）计 2 字节 C3 BF。
+/// 旧私有 Latin-1 混合口径计 1，与字节层产出（2 字节）失配 ⇒ char 数组
+/// 定型尺寸少 1 ⇒ NUL 终止符被挤出 ⇒ strlen/printf("%s") 越界读
+/// （亲验：len=20 vs clang 9、%s 打出相邻字符串池）。尺寸/字节两层
+/// 必须同口径——本测试锁「定型尺寸 == 字节层长度 + NUL」不变量。
 test "string_literal_byte_len" {
-  assert_eq(c_string_len("hi"), 2)
-  assert_eq(c_string_len(""), 0)
-  // \xff（码点 0xFF）单字节（Latin-1 通道——与 Rust cstring_len 同源）
-  assert_eq(c_string_len("\u00ff"), 1)
-  // 中文（码点 > 0xFF）按 UTF-8 三字节
-  assert_eq(c_string_len("中"), 3)
+  // 红锚："\u00ff" 字节层产出 2 字节（C3 BF）+ NUL = 3——Latin-1
+  // 旧口径定型 2（NUL 被挤）即红
+  let tc0 = TypeChecker::new()
+  let (ty0, _) = tc0.resolve_expr_type(
+    @ast.Expr::StringLiteral(
+      "\u00ff",
+      @source.SourceLoc::new(1, 1),
+      @ast.Type::void_type(),
+    ),
+  )
+  match ty0 {
+    Array(_, size0, dims0, _, _, _) => {
+      assert_eq(
+        size0,
+        3,
+        msg="\\xff 字面量定型尺寸须为字节层 2 + NUL",
+      )
+      assert_eq(dims0[0], 3)
+    }
+    _ => fail("\\xff string 应定型 char 数组")
+  }
+  // 中文（码点 > 0xFF）按 UTF-8 三字节不变
+  let tc1 = TypeChecker::new()
+  let (ty1, _) = tc1.resolve_expr_type(
+    @ast.Expr::StringLiteral(
+      "中",
+      @source.SourceLoc::new(1, 1),
+      @ast.Type::void_type(),
+    ),
+  )
+  match ty1 {
+    Array(_, size1, _, _, _, _) => assert_eq(size1, 4)
+    _ => fail("中文 string 应定型 char 数组")
+  }
   // 定型：char 数组 dims=[len+1]
   let tc = TypeChecker::new()
   let (ty, e) = tc.resolve_expr_type(

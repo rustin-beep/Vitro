@@ -262,6 +262,9 @@ pub fn[P] Pp::finish_pp(
     trace: self.trace,
     line_map: { spans: self.spans, },
     included_files,
+    // #390 审阅 P1：file_id → 显示名全表（stub 占号同导）——诊断归属
+    // 的直查单源；included_files 是过滤后数组，与 id 空间不同域
+    file_names: self.file_names,
   }
 }
 

@@ -394,8 +394,9 @@ test "issue376_included_file_diag_attributed" {
   // 文件内正行号——此前 resolve_location 查 merge_units 拼接坐标 ranges，
   // 而错误 loc.line 是词法仿古坐标（展开段为负行号），两坐标系永不相交
   // ⇒ 回落 ("main.c", 负行号) 直出。修后走 LineMap.spans（词法真坐标，
-  // 探针实证展开段主坐标区间即负区间 [-2..-1]）+ file_id → 主名/included
-  // 键映射。锚断言 sib.c 首行语法错归属 ("sib.c", 1)——修前红：
+  // 探针实证展开段主坐标区间即负区间 [-2..-1]）+ file_id → file_names
+  // 直查（#390 审阅 P1 勘正：included 下标换算在 stub 占号下错位，见
+  // 下两锚）。锚断言 sib.c 首行语法错归属 ("sib.c", 1)——修前红：
   // filename=="main.c" 且 line==-1。
   include_reader.val = None
   let (resp, _) = serve_handle(
@@ -411,5 +412,58 @@ test "issue376_included_file_diag_attributed" {
   assert_true(
     hit,
     msg="sib.c 首行语法错归属 (sib.c, 1)——修前 (main.c, -1)",
+  )
+}
+
+///|
+test "issue376_stub_header_diag_attributed" {
+  // #390 审阅 P1（2026-10-31）T1 主场景：含标准库头的程序——file_id
+  // 分配时 stub 头也占号（directives stub 注入 fid=1），included[fid-1]
+  // 把过滤后数组当下标域 ⇒ sib.c 展开段 fid=2 被错位换算吞掉，归属
+  // main.c|-1 零改善。file_names 全表直查后 sib.c 首行语法错必须归
+  // ("sib.c", 1)。
+  include_reader.val = None
+  let _ = serve_handle(
+    session,
+    "{\"id\":16,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"main.c\",\"source\":\"#include <stdio.h>\\n#include \\\"sib.c\\\"\\nint main(void){ return 0; }\\n\"}," +
+    "{\"filename\":\"sib.c\",\"source\":\"int f( {\\nint g(void){ return 1; }\\n\"}]}}",
+  )
+  let hit = session.compile.diagnostics
+    .iter()
+    .any(fn(d) { d.filename == "sib.c" && d.line == 1 && d.error_code != 0 })
+  assert_true(
+    hit,
+    msg="stub 占号下 sib.c 仍须归属 (sib.c, 1)——included 下标错位形态修前 (main.c, -1)",
+  )
+}
+
+///|
+test "issue376_stub_sibling_misattribution" {
+  // #390 审阅 P1（2026-10-31）T2 兄弟文件反向锚：错误在 a.c（第 1 行
+  // <stdio.h> 展开补偿把错误行的仿古坐标改写），included 下标错位形态
+  // 把它错报成 b.c 第 1 行（真实文件 + 合法行号——用户会去改没错的文
+  // 件，比负行号更难发现）。file_names 直查后 a.c 的错误归 ("a.c", 2)
+  // 且 b.c 不得承接 E2005。
+  include_reader.val = None
+  let _ = serve_handle(
+    session,
+    "{\"id\":17,\"method\":\"compile\",\"params\":{\"files\":[" +
+    "{\"filename\":\"a.c\",\"source\":\"#include <stdio.h>\\nint f( {\\n\"}," +
+    "{\"filename\":\"b.c\",\"source\":\"int main(void){ return 0; }\\n\"}]}}",
+  )
+  let hit_a = session.compile.diagnostics
+    .iter()
+    .any(fn(d) { d.filename == "a.c" && d.line == 2 && d.error_code == 2005 })
+  assert_true(
+    hit_a,
+    msg="a.c 第 2 行语法错归属 (a.c, 2)——included 下标错位形态错报 (b.c, 1)",
+  )
+  let mis = session.compile.diagnostics
+    .iter()
+    .any(fn(d) { d.filename == "b.c" && d.error_code == 2005 })
+  assert_false(
+    mis,
+    msg="b.c 不得承接 a.c 的 E2005（兄弟文件错报回潮闸）",
   )
 }

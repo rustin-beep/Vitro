@@ -107,12 +107,14 @@ fn resolve_location(
   line : Int32,
   ranges : Array[@session.FileRange],
   line_map : @token.LineMap,
-  main_name : String,
-  included : Array[String],
+  file_names : Map[Int32, String],
 ) -> (String, Int32)? {
   let (fid, file_line) = line_map.lookup(line)
-  if fid >= 1 && fid <= included.length() {
-    return Some((included[fid - 1], file_line))
+  if fid >= 1 {
+    match file_names.get(fid) {
+      Some(name) => return Some((name, file_line))
+      None => ()
+    }
   }
   for r in ranges {
     if line >= r.start_line && line <= r.end_line {
@@ -162,17 +164,18 @@ fn push_one_diag(
   severity : Int32,
   ranges : Array[@session.FileRange],
   line_map : @token.LineMap,
-  main_name : String,
-  included : Array[String],
+  file_names : Map[Int32, String],
   source_lines : Array[String],
 ) -> Unit {
   let entry = match @diag.ErrorCode::from_code(code) {
     Some(e) => e.catalog()
     None => None
   }
-  // fix 族行表（source_lines=拼接全源）与 replace_* 出口保持拼接坐标
-  //（#376 登记：多文件形态下 fix 行字段对前端文件内定位无意义——既有
-  // 口径，非本批回归；治本需 fix 行表按文件切分，另批）
+  // fix 族（#376 登记，#390 审阅 P3 措辞勘正）：generate_fix 的 line
+  // 实为词法仿古坐标、source_lines 是拼接全源——两系本就错位（既有
+  // 问题，非本批引入），多文件形态下 fix 行字段对前端文件内定位无
+  // 意义且行引用可能错位；治本需 fix 行表按文件切分 + 错误携带
+  // real_line（错误结构改造），另批。replace_* 出口同病同登记。
   let fix = @diagnostics.generate_fix(code, line, column, message, source_lines)
   let fix_suggestion = if fix.suggestion == "" {
     match entry {
@@ -183,11 +186,18 @@ fn push_one_diag(
     fix.suggestion
   }
   let (filename, mapped_line) = match
-    resolve_location(line, ranges, line_map, main_name, included) {
+    resolve_location(line, ranges, line_map, file_names) {
     Some((f, l)) => (f, l)
-    // 回落主名（#376 前 = "main.c" 硬编码；files 形态主名 = 首个拼接
-    // unit——多 .c 工程主名非 main.c 时随主名更准确）
-    None => (main_name, line)
+    // 回落主名（#376 前 = "main.c" 硬编码）——file_names[0] 即主名
+    //（pp 预置 id=0；两系都未命中才落到这里，防御性 None → "main.c"）
+    None =>
+      (
+        match file_names.get(0) {
+          Some(n) => n
+          None => "main.c"
+        },
+        line,
+      )
   }
   s.compile.diagnostics.push(@session.Diagnostic::{
     line: mapped_line,
@@ -220,8 +230,7 @@ fn push_lex_errors(
   errors : Array[@token.LexError],
   ranges : Array[@session.FileRange],
   line_map : @token.LineMap,
-  main_name : String,
-  included : Array[String],
+  file_names : Map[Int32, String],
   source_lines : Array[String],
 ) -> Unit {
   for e in errors {
@@ -234,8 +243,7 @@ fn push_lex_errors(
       0,
       ranges,
       line_map,
-      main_name,
-      included,
+      file_names,
       source_lines,
     )
   }
@@ -248,8 +256,7 @@ fn push_lex_warnings(
   warnings : Array[@token.LexWarning],
   ranges : Array[@session.FileRange],
   line_map : @token.LineMap,
-  main_name : String,
-  included : Array[String],
+  file_names : Map[Int32, String],
   source_lines : Array[String],
 ) -> Unit {
   for w in warnings {
@@ -262,8 +269,7 @@ fn push_lex_warnings(
       1,
       ranges,
       line_map,
-      main_name,
-      included,
+      file_names,
       source_lines,
     )
   }
@@ -277,15 +283,13 @@ fn push_code_errors(
   severity : Int32,
   ranges : Array[@session.FileRange],
   line_map : @token.LineMap,
-  main_name : String,
-  included : Array[String],
+  file_names : Map[Int32, String],
   source_lines : Array[String],
 ) -> Unit {
   for pair in errors {
     let (code, line, column, message) = pair
     push_one_diag(
-      s, code, line, column, message, severity, ranges, line_map, main_name, included,
-      source_lines,
+      s, code, line, column, message, severity, ranges, line_map, file_names, source_lines,
     )
   }
 }
@@ -439,8 +443,7 @@ fn serve_compile_pipeline(
       lexed.warnings,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
   }
@@ -450,8 +453,7 @@ fn serve_compile_pipeline(
       lexed.errors,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
     st.errors = st.errors + "词法错误\n"
@@ -472,8 +474,7 @@ fn serve_compile_pipeline(
       0,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
     st.errors = st.errors + "语法错误\n"
@@ -537,8 +538,7 @@ fn serve_compile_pipeline(
       0,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
     // 失败路径的 type_warnings 同帧透出（2026-10-06 审阅 P2：此前早退丢弃
@@ -556,8 +556,7 @@ fn serve_compile_pipeline(
         1,
         ranges,
         lexed.line_map,
-        main_name,
-        lexed.included_files,
+        lexed.file_names,
         source_lines,
       )
     }
@@ -576,8 +575,7 @@ fn serve_compile_pipeline(
       1,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
   }
@@ -592,8 +590,7 @@ fn serve_compile_pipeline(
       2,
       ranges,
       lexed.line_map,
-      main_name,
-      lexed.included_files,
+      lexed.file_names,
       source_lines,
     )
   }
@@ -629,8 +626,7 @@ fn serve_compile_pipeline(
           0,
           ranges,
           lexed.line_map,
-          main_name,
-          lexed.included_files,
+          lexed.file_names,
           source_lines,
         )
       }

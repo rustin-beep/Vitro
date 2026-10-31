@@ -84,6 +84,7 @@
   （tsc -p 严格档 / oxlint / node:test 8/8）。spec §1 连坐「合流顺序
   契约」注记。
 
+<<<<<<< HEAD
 ### fix(ci+scripts): PR #392 审阅处置批——P2-1 protocol_frames 三元同族 / P2-2 moon 守卫三处 fail-open / P2-3 终验承诺勘正 / P3 四件（2026-10-31）
 
 - **P2-1（#359 同族漏改）**：`protocol_frames` 三处平台三元改直取
@@ -168,8 +169,21 @@
   -moonbit 61 断言 PASS 60+EXEMPT 1 / teaching_annotation_diff rc=0）；
   single_source -check 12 条 PASS（canon 改动零判定漂移）。
 
-### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30）
+### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30；同日 PR #390 审阅批勘正）
 
+- **审阅批勘正（#390 P1，2026-10-31）**：首版修复的 `included[fid-1]`
+  下标换算**在含标准库头的程序上整体错位**——file_id 分配时 stub 头
+  （`<stdio.h>` 等系统头教学桩）也占号，而 `included_files` 剔除 stub
+  键，两套编号空间错开 ⇒ 三形态实测：T1 `<stdio.h>`+`sib.c` 归属
+  `main.c|-1`（修复零改善）、T2 `<stdio.h>`+`a.c`(错)+`b.c` **错报
+  `b.c|1`**（真实文件+合法行号，比负行号更危险）、T3 亦误。首版锚
+  只用纯自定义形态恰好绕过 stub 路径（判别力缺口）。修后 `LexResult`
+  新增 `file_names : Map[Int32, String]` 出口（pp 的 id→显示名全表，
+  stub 同导——`__FILE__` 单源同表），`resolve_location` 按 id 直查
+  （id 分配集合 = 表键集，无下标语义；顺带消「Map.keys() 迭代序 ==
+  插入序」的无断言契约依赖与 `main_name` 死参数）。三形态复测：T1
+  `sib.c|1` ✓、T2 `a.c|2` 且 b.c 不承接 E2005 ✓、T3 `b.c|2` ✓。锚
+  扩为三形态（T0 纯自定义 / T1 stub 主场景 / T2 兄弟文件反向闸）。
 - **#376 诊断归属治本**：`gateway/serve_compile` 的 `resolve_location`
   此前查 merge_units 拼接坐标 `ranges`，而错误 `loc.line` 是词法仿古
   坐标（include 展开段被 Rust splice 补偿缺陷复刻改写——短文件展开段
@@ -198,10 +212,24 @@
   键/查找两侧直接命中不再依赖 base_dir 巧合，同名各得独立键。锚
   `issue377_vfs_key_follows_resolver_candidate`（六形态 inspect；J9：
   旧逻辑突变红 → 新逻辑绿）。
-- **验证面**：gateway native 154/154（+1 锚）、vitro_wasm js 3/3（+1
-  锚）、裸口径 967 持平、native 全量 1157/1157；protocol_frames 47 帧
-  一致；CLI smoke 三臂同形全绿；E2E 三场景（同名转 COMPILE-OK 对齐
-  clang / 嵌套回归 / 归属 `(sib.c,1/2)`）双产物亲验。
+- **审阅批补锚（#390 P2）**：`collect_walk` 走依赖注入重构（`read`
+  读取器参数——生产传真 fs、wbtest 传内存表），#377 真缺陷（同名吞
+  文件）自此有自动化 E2E 锚 `issue377_collect_walk_registry_e2e`（三
+  场景登记键集断言：嵌套 / 跨目录同名 / `..` 回退——旧逻辑回潮即红，
+  替代此前一次性手工 E2E）；gateway 三形态锚本身即与真 resolver 的
+  端到端对拍。附带：`normalize_rel` 抽出（`vfs_key_for` 与 mem_read
+  复刻 OS 路径解析共用）。
+- **审阅批登记（#390 P3）**：① `gen_errors` 分支的 `ranges`/行表入参
+  从 `[], []` 变真实值（codegen 错误自此走真实归属而非恒落 main.c——
+  与 #376 同根的顺带改进，随本批生效无独立锚）；② fix 族
+  （`generate_fix`/`replace_*`）的 line 实为词法仿古坐标、行表是拼接
+  全源，两系本就错位（既有问题非本批引入），多文件形态 fix 行字段对
+  前端文件内定位无意义——治本需 fix 行表按文件切分 + 错误结构携带
+  real_line，另批。
+- **验证面（审阅批后）**：gateway native 156/156（三形态锚）、
+  vitro_wasm js 4/4（collect_walk E2E 锚）、裸口径 967 持平；第一轮
+  批实测存档：native 全量 1157、protocol_frames 47 帧一致、CLI smoke
+  三臂同形全绿（二轮全量复跑随 CI）。
 
 ### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
 

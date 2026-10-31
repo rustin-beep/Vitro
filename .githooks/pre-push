@@ -7,10 +7,12 @@
 # 同款（本仓不做 --quick 改动面裁剪，2026-10-11 用户裁定：单仓耦合面切不准）。
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
-if command -v moon >/dev/null 2>&1; then
-  if ! (cd moonbit && moon check >/dev/null 2>&1); then
-    echo "moon check 红——本地 cd moonbit && moon check 看明细（--no-verify 可跳过）" >&2
-    exit 1
-  fi
+# #392 审阅 P2-2（2026-10-31）：守卫缺失时零提示 = 静默 fail-open（与 #358
+# gofmt 同形）——缺失即 stderr 明示跳过，禁静默。
+if ! command -v moon >/dev/null 2>&1; then
+  echo "skip moon check（moon 不可用——类型面未检查）" >&2
+elif ! (cd moonbit && moon check >/dev/null 2>&1); then
+  echo "moon check 红——本地 cd moonbit && moon check 看明细（--no-verify 可跳过）" >&2
+  exit 1
 fi
 exit 0

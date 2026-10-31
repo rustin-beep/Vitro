@@ -84,6 +84,90 @@
   （tsc -p 严格档 / oxlint / node:test 8/8）。spec §1 连坐「合流顺序
   契约」注记。
 
+### fix(ci+scripts): PR #392 审阅处置批——P2-1 protocol_frames 三元同族 / P2-2 moon 守卫三处 fail-open / P2-3 终验承诺勘正 / P3 四件（2026-10-31）
+
+- **P2-1（#359 同族漏改）**：`protocol_frames` 三处平台三元改直取
+  `serve.exe`——`main.mts:334`（Linux 指向不存在的 serve 且本闸无
+  VITRO_SERVE_MB override → 完全跑不了）+ `main.test.mts:13`（HAS_SERVE
+  恒 false → 端到端用例整块 t.skip 的**静默面**）+
+  `replay_s1_s5.test.mts:23`（路径指向不存在文件）。首批四元 grep 漏了
+  test 文件与 protocol_frames 族（issue #359「对照」段亦漏点）。
+- **P2-2（#358 只修了 2/4 守卫）**：moon 三处 `command -v moon` 短路
+  缺失时零提示的静默 fail-open（pre-commit:35 moon fmt / pre-push:10 /
+  pre-merge-commit:10 moon check）——同款明示 skip 补齐（隔离实测：
+  PATH 剥 moon + staged .mbt → `skip moon fmt（moon 不可用…）` stderr
+  明示 rc=0，pre-push 同形）。
+- **P2-3（终验承诺勘正）**：PR body「Linux 侧终验由 CI ubuntu lane 承担」
+  **不成立**——ci.yml 唯一 ubuntu job 是 cli-smoke-linux（只跑
+  vitro_cli_smoke），serve_smoke / replay / teaching_annotation_diff /
+  protocol_frames 全部 windows-latest，本批 CI 对 #359 四行零 Linux
+  判别力。勘正：核心假定（Linux native 产物带 .exe）由 cli-smoke-linux
+  的 `main.mts:151` 硬编码 serve.exe 且 2026-10-28 起绿背书成立；但
+  「终验」表述收回——**四闸 Linux 真跑的可持续终验 = 开 ubuntu lane
+  （涉及产物构建矩阵，立项登记不在本批）**，一次性 WSL 真跑待装 moon
+  后可补。
+- **P3-1（canon「双平台同语义」证伪）**：首版 `.replace(/\\/g,"/")` 只
+  转斜杠未让反斜杠段参与 `..` 折叠——`a\..\b.mbt` posix 得
+  `a/../b.mbt` / win 得 `b.mbt`。采纳审阅处方 `path.posix.normalize(
+  p.replace(/\\/g,"/"))`（实测消全部 3 个跨平台差；UNC 副作用域无引用）；
+  单测补 `a\..\b`→`b.mbt` 折叠锚 + 混合分隔符 + 正斜杠 `..` 三断言。
+- **P3-2**：`demo_ui_lint/main.test.mts:369` 同族 TEMP（#360 未触达面）
+  → `os.tmpdir()`（realpathSync 8.3 短路径展开保留）。
+- **P3-3（口径勘正）**：上批「修后 28/28 绿零残留」缺平台前提——Windows
+  上 `env -u TEMP -u TMP` 时 `os.tmpdir()` 落 `C:\WINDOWS\temp` EPERM
+  24/28（审阅判非缺陷：fail loud 优于静默污染，真实 Windows 恒有 TEMP）。
+  正确口径：**Linux/WSL 下 28/28 零残留**。
+- **P3-4（顺手修）**：pre-commit 的 `(cd moonbit && moon fmt >/dev/null
+  2>&1)` 丢 rc——fmt 自身失败（语法错）静默放行 → rc 检出非零即红
+  （fmt 失败与漂移两种病分开报）。
+- **验**：三钩子 bash -n + moon 缺失态实测双钩子明示 skip；canon 新锚
+  双平台跑（Windows 6/6）；protocol_frames Windows 47 帧回归；tsc/
+  oxlint/node:test 复跑绿。
+
+### fix(ci+scripts): #358+#359+#360+#362 Linux 断供族四案批——提交钩子 exec 位 / serve 产物寻址 / TEMP 临时目录 / canon 平台耦合（2026-10-30）
+
+- **#358 提交防线 Linux 失明三件**：① `.githooks/` 三钩子入库 mode
+  `100644` → Linux git 整体忽略（`core.hooksPath` 设置了也不触发，Windows
+  靠 shebang fallback 从未暴露）——`git update-index --chmod=+x` 三钩子
+  落 `100755`（索引位为准）；② pre-commit 的 editorconfig 子闸守卫
+  `command -v go` 勘正为 `node`（实现早已是 main.mts——无 Go 的 Linux
+  环境该闸整体静默跳过，漂移真实存在仍放行的 fail-open 实锤）；③ gofmt
+  分支补存在性守卫（无 gofmt 时 `gofmt -l` 的报错文本被 `$()` 捕空 +
+  `[ -n "" ]` 判假 = 静默放行）→ 缺失即 stderr 明示跳过，禁静默。本机
+  三态实测：node+go 双在 = editorconfig 抓真漂移 rc=1（构造无末行换行
+  .md 探针）；gofmt 缺 = `skip gofmt` stderr 明示；干净 staged = rc=0。
+- **#359 serve 产物寻址四元断供**：`serve_smoke`/`replay_s1_s5`/
+  `teaching_annotation_diff`（main + catalog 的 vitro.exe 同形态）四处
+  `process.platform === "win32" ? "serve.exe" : "serve"` 平台三元——
+  MoonBit native 后端产物**统一带 .exe 与平台无关**（Linux 也产
+  serve.exe），Linux 分支指向不存在的 `serve` 断供（注入
+  VITRO_SERVE_MB 才能跑的 issue 实测）。四元改直取常量
+  （`scripts/bin/vitro` 先例形态）。**断言数 68/69 定性销案**：Windows
+  同 commit（32f20b34）实测 69 = PASS 67 + 豁免 2，issue 的 Linux 68 =
+  PASS 66 + 豁免 2——差值恰为 `RSS 护栏`断言（`process.platform !==
+  "win32"` 直接 SKIP，psapi 采样 Windows-only，代码 935 行在案）——
+  **设计内平台面，非文档漂移非缺陷**；总计划声明 69 = CI
+  （windows-latest）口径一致不动。若未来开 ubuntu lane 跑 serve_smoke，
+  断言数须按平台分档（此处登记）。
+- **#360 corpus_fuzz 单测 TEMP 假设**：四处
+  `process.env["TEMP"] ?? "."` → `os.tmpdir()`（Linux 无 TEMP，fallback
+  "." 在 cwd=scripts 的 npm test 姿势下落相对路径）；四处补 try/finally
+  清理（修前三处断言失败路径不清理 + 一处成功路径也残留）。**WSL 红绿
+  双证**：修前 cwd=scripts 姿势恰 2 例假红（volatile fail loud / 未知
+  算子——issue 原报两例）+ `scripts/cf-*` 残留目录 4 个；修后 28/28 绿
+  零残留（仓库根 cwd 姿势修前不红——残留落仓库根且断言自洽，issue 形态
+  依赖 npm test 的 cwd=scripts，已按真姿势复现）。
+- **#362 single_source canon 平台耦合**：`path.normalize(p)
+  .split(path.sep).join("/")` → `.replace(/\\/g, "/")`——Linux
+  （sep=/）对含反斜杠输入原样返回（Windows 路径引用同样出现在规则表
+  域），单测期望 a/b/c.mbt 即红。WSL 红绿双证：修前 `✖ canon：反斜杠
+  与 ./ 归一` fail 1；修后 6/6 绿；Windows 侧恒绿（两侧同语义）。
+- **验**：tsc -p 严格档 rc=0；oxlint 点名六文件 0 warning；Windows
+  node:test 34/34（corpus_fuzz 28 + single_source 6）；受影响三闸
+  Windows 回归全过（serve_smoke -moonbit 69 断言 rc=0 / replay
+  -moonbit 61 断言 PASS 60+EXEMPT 1 / teaching_annotation_diff rc=0）；
+  single_source -check 12 条 PASS（canon 改动零判定漂移）。
+
 ### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
 
 - **病**：CLI smoke ubuntu lane 的 wasm stderr 风暴锚稳定红

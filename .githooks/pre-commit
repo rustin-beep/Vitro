@@ -32,40 +32,68 @@ fi
 # 定**限定 staged 文件**：别会话未 staged 的在制品即使被 fmt 重排也不判
 # 红（并发分档纪律——不替别人的会话出红；fmt 幂等重排无破坏面）。
 staged_mbt="$(git diff --cached --name-only --diff-filter=ACM -- 'moonbit/*.mbt' 'moonbit/**/*.mbt' 'moonbit/*.mbt.md' 'moonbit/**/*.mbt.md' 'scripts/*.mbt' 'scripts/**/*.mbt')"
-if [ -n "$staged_mbt" ] && command -v moon >/dev/null 2>&1; then
-  (cd moonbit && moon fmt >/dev/null 2>&1)
-  fmt_drift=""
-  for f in $staged_mbt; do
-    git diff --quiet -- "$f" 2>/dev/null || fmt_drift="$fmt_drift  $f"$'
+# #392 审阅 P2-2/P3-4（2026-10-31）：①moon 缺失时零提示 = 静默 fail-open
+#（#358 gofmt 同形——本闸是钩子自述「CI fmt 历史红最高频」面，比 gofmt 更
+# 该明示）→ stderr 明示 skip 禁静默；②fmt 真跑的 rc 此前被 `( ) >/dev/null`
+# 丢弃——fmt 自身失败（语法错等）静默放行 → rc 检出非零即红（fmt 失败与
+# 漂移是两种病，分开报）。
+if [ -n "$staged_mbt" ]; then
+  if ! command -v moon >/dev/null 2>&1; then
+    echo "skip moon fmt（moon 不可用——staged .mbt 未检查）" >&2
+  else
+    fmt_rc=0
+    (cd moonbit && moon fmt >/dev/null 2>&1) || fmt_rc=$?
+    if [ "$fmt_rc" -ne 0 ]; then
+      echo "moon fmt 自身失败（rc=$fmt_rc——工具链/语法错，非漂移）：本地 cd moonbit && moon fmt 看明细" >&2
+      status=1
+    fi
+    fmt_drift=""
+    for f in $staged_mbt; do
+      git diff --quiet -- "$f" 2>/dev/null || fmt_drift="$fmt_drift  $f"$'
 '
-  done
-  if [ -n "$fmt_drift" ]; then
-    echo "moon fmt 漂移——已代为格式化，重新 git add 后再提交：" >&2
-    printf '%s' "$fmt_drift" >&2
-    status=1
+    done
+    if [ -n "$fmt_drift" ]; then
+      echo "moon fmt 漂移——已代为格式化，重新 git add 后再提交：" >&2
+      printf '%s' "$fmt_drift" >&2
+      status=1
+    fi
   fi
 fi
 
 # ── gofmt（staged .go 单文件 --check——精确形态，非全仓）──
 staged_go="$(git diff --cached --name-only --diff-filter=ACM -- 'scripts/*.go' 'scripts/**/*.go' '*.go')"
 if [ -n "$staged_go" ]; then
-  unformatted=""
-  for file in $staged_go; do
-    [ -f "$file" ] || continue
-    [ -n "$(gofmt -l "$file")" ] && unformatted="$unformatted  $file"$'\n'
-  done
-  if [ -n "$unformatted" ]; then
-    echo "not gofmt-clean（gofmt -w 后重新 add）:" >&2
-    printf '%s' "$unformatted" >&2
-    status=1
+  # #358（2026-10-30）：无 gofmt 环境 `gofmt -l` 的 command-not-found 文本
+  # 被 $(...) 捕空 + [ -n "" ] 判假 → 静默放行（fail-open 实锤）。入口
+  # 存在性守卫：缺失即 stderr 明示跳过——禁静默（最小 node-only 环境
+  # 不因工具缺失卡提交，但要说出来）。
+  if ! command -v gofmt >/dev/null 2>&1; then
+    echo "skip gofmt（gofmt 不可用——staged .go 未检查）" >&2
+  else
+    unformatted=""
+    for file in $staged_go; do
+      [ -f "$file" ] || continue
+      [ -n "$(gofmt -l "$file")" ] && unformatted="$unformatted  $file"$'\n'
+    done
+    if [ -n "$unformatted" ]; then
+      echo "not gofmt-clean（gofmt -w 后重新 add）:" >&2
+      printf '%s' "$unformatted" >&2
+      status=1
+    fi
   fi
 fi
 
 # ── editorconfig 硬性项（staged 含文本面时全仓快扫 0.5s——与 CI 同口径）──
 # E6（JSON 缩进/末行换行）历史复发 4 次全靠 CI 红——本闸前移。
+# #358（2026-10-30）：守卫从 `command -v go` 勘正为 node——实现已是
+# scripts/editorconfig_check/main.mts（node），无 Go 的 Linux 环境整个
+# 分支被跳过（漂移真实存在仍静默放过的 fail-open 形态，钩子外直跑
+# 同闸可正确报漂移的实测）。
 staged_text="$(git diff --cached --name-only --diff-filter=ACM -- '*.json' '*.json.mbt' '*.md' '*.yml' '*.yaml')"
-if [ -n "$staged_text" ] && command -v go >/dev/null 2>&1; then
-  if ! node scripts/editorconfig_check/main.mts >/dev/null 2>&1; then
+if [ -n "$staged_text" ]; then
+  if ! command -v node >/dev/null 2>&1; then
+    echo "skip editorconfig（node 不可用——文本面未检查）" >&2
+  elif ! node scripts/editorconfig_check/main.mts >/dev/null 2>&1; then
     echo "editorconfig 硬性项漂移（UTF-8/LF/末行换行/JSON 缩进）——node scripts/editorconfig_check/main.mts 看明细" >&2
     status=1
   fi

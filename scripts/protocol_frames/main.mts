@@ -331,7 +331,10 @@ export async function main(argv: string[]): Promise<number> {
     }
   }
   const root = projectRoot();
-  let mbServe = path.join(root, "moonbit/_build/native/debug/build/cmd/serve", process.platform === "win32" ? "serve.exe" : "serve");
+  // #392 审阅 P2-1（2026-10-31）：MoonBit native 产物统一带 .exe（跨平台）——
+  // 平台三元 Linux 指向不存在的 serve 断供（#359 同 root cause，且本闸无
+  // VITRO_SERVE_MB override → Linux 完全跑不了）
+  let mbServe = path.join(root, "moonbit/_build/native/debug/build/cmd/serve", "serve.exe");
   if (backendWasm) {
     const shell = path.join(root, "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js");
     const wasmMod = path.join(root, "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm");

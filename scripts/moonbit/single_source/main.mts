@@ -66,9 +66,19 @@ function abs(p: string): string {
   return path.isAbsolute(p) ? p : path.join(projectRoot(), p);
 }
 
-/** POSIX 风格规范化（Go filepath.Clean + ToSlash）。 */
+/** POSIX 风格规范化（Go filepath.Clean + ToSlash）。
+ * #362（2026-10-30）：归一不得依赖当前平台分隔符——`split(path.sep)` 在
+ * Linux（sep=/）对含反斜杠的输入原样返回（Windows 路径引用同样可能出现
+ * 在规则表/诊断文案），单测期望 a/b/c.mbt 即红。
+ * #392 审阅 P3-1（2026-10-31）：首版 `.replace(/\\/g, "/")` 只做反斜杠
+ * 转斜杠，未让反斜杠段参与 `..` 折叠——`a\..\b.mbt` 在 posix 归一为
+ * `a/../b.mbt` 而 win 为 `b.mbt`（path.normalize 平台语义分叉），「双
+ * 平台同语义」被证伪。改 `path.posix.normalize` 先统一分隔符再按 POSIX
+ * 语义折叠（审阅处方，实测消全部 3 个跨平台差）；副作用 UNC
+ * `\\s\s\x` → `/s/s/x`——canon 域无 UNC 引用，可接受。锚：
+ * 单测 `a\..\b` 折叠断言（双平台同期望 b.mbt）。 */
 export function canon(p: string): string {
-  return path.normalize(p).split(path.sep).join("/");
+  return path.posix.normalize(p.replace(/\\/g, "/"));
 }
 
 function orNone(s: string | undefined): string {

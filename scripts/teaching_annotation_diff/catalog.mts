@@ -173,7 +173,8 @@ export function extractBuildMatches(stepsDir: string): BuildMatchSource[] {
 }
 
 function exeName(): string {
-  return process.platform === "win32" ? "vitro.exe" : "vitro";
+  // #359（2026-10-30）：MoonBit native 产物统一带 .exe（跨平台）——平台三元 Linux 断供
+  return "vitro.exe";
 }
 
 /** 跑 `api algorithms.catalog {}` 并解析响应帧 result。 */

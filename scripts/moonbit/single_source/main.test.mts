@@ -15,6 +15,12 @@ test("canon：反斜杠与 ./ 归一", () => {
   const bs = String.fromCharCode(92);
   assert.equal(canon(`a${bs}b` + `${bs}c.mbt`), "a/b/c.mbt");
   assert.equal(canon("./a/./b.mbt"), "a/b.mbt");
+  // #392 审阅 P3-1（2026-10-31）：反斜杠段必须参与 .. 折叠——首版
+  // replace-only 形态下 posix 得 "a/../b.mbt" / win 得 "b.mbt"（平台分叉，
+  // 「双平台同语义」证伪锚）；path.posix.normalize 形态双平台恒 "b.mbt"
+  assert.equal(canon(`a${bs}..${bs}b.mbt`), "b.mbt");
+  assert.equal(canon(`a${bs}b/.${bs}${bs}c${bs}${bs}..${bs}d`), "a/b/d");
+  assert.equal(canon(`a/b/../c//../d`), "a/d", "正斜杠段同样折叠（posix 语义恒定）");
 });
 
 function tmpTree(files: Record<string, string>): string {

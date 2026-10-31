@@ -9,8 +9,10 @@ import { diffAgainstBase, readBaseline, requestTable, writeBaseline } from "./ma
 import { projectRoot } from "../internal/capi.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
+// #392 审阅 P2-1（2026-10-31）：native 产物统一带 .exe（跨平台）——平台三元
+// 在 Linux 恒 false → 端到端用例整块 t.skip（静默面不是红）
 const HAS_SERVE = ((): boolean => {
-  const exe = path.join(projectRoot(), "moonbit/_build/native/debug/build/cmd/serve", process.platform === "win32" ? "serve.exe" : "serve");
+  const exe = path.join(projectRoot(), "moonbit/_build/native/debug/build/cmd/serve", "serve.exe");
   return fs.existsSync(exe);
 })();
 

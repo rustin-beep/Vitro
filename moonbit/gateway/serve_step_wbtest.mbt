@@ -279,64 +279,77 @@ test "serve_step_algorithm_step_annotated" {
 }
 
 ///|
-/// #225 行末不变量锚：step.next 发布流中 algorithm_step 是**行末帧语义**
-/// （behavior_contracts 第 7 条契约的可执行判据）——同一 code_line 的
-/// 连续帧段内，非段尾帧标注必为 null（serve 层一帧发布缓冲的同行清标注
-/// 机制：行执行完毕、变量为行末态才携带标注）。防两种退化：清不足
-///（行中间帧带标注 = 半执行态宣称语义）与塌零（全程无标注帧）。
-/// 同时锚密度下限：3 元素冒泡全程标注帧 ≥ 8（compare×3 + swap×2×2 +
-/// 趟/循环帧——#225 实测密度 5% 量级的结构性下界，防标注面整体蒸发）。
-test "serve_step_algorithm_step_line_end_invariant" {
+/// 行末不变量锚素材：3 元素冒泡（#225 原锚同款源码）。
+fn bubble3_compile_json() -> String {
+  "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
+  "void bubbleSort(int arr[], int n) {\\n" +
+  "  int i, j, temp;\\n" +
+  "  for (i = 0; i < n - 1; i++) {\\n" +
+  "    for (j = 0; j < n - i - 1; j++) {\\n" +
+  "      if (arr[j] > arr[j + 1]) {\\n" +
+  "        temp = arr[j];\\n" +
+  "        arr[j] = arr[j + 1];\\n" +
+  "        arr[j + 1] = temp;\\n" +
+  "      }\\n" +
+  "    }\\n" +
+  "  }\\n" +
+  "}\\n" +
+  "int main() {\\n" +
+  "  int arr[3] = {3, 1, 2};\\n" +
+  "  int n = 3;\\n" +
+  "  bubbleSort(arr, n);\\n" +
+  "  return arr[0];\\n" +
+  "}\\n" +
+  "\"}}"
+}
+
+///|
+/// 建立已完成 compile → run → step.begin 的冒泡步进会话（run 先行 =
+/// Rust golden test 提取序照搬，run 建立会话运行态）。返回编译响应供
+/// 调用侧断言（编译失败后续全空的假绿防线）。
+fn bubble3_step_session() -> (@session.Session, String) {
   let s = @session.Session::new()
-  let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +
-    "void bubbleSort(int arr[], int n) {\\n" +
-    "  int i, j, temp;\\n" +
-    "  for (i = 0; i < n - 1; i++) {\\n" +
-    "    for (j = 0; j < n - i - 1; j++) {\\n" +
-    "      if (arr[j] > arr[j + 1]) {\\n" +
-    "        temp = arr[j];\\n" +
-    "        arr[j] = arr[j + 1];\\n" +
-    "        arr[j + 1] = temp;\\n" +
-    "      }\\n" +
-    "    }\\n" +
-    "  }\\n" +
-    "}\\n" +
-    "int main() {\\n" +
-    "  int arr[3] = {3, 1, 2};\\n" +
-    "  int n = 3;\\n" +
-    "  bubbleSort(arr, n);\\n" +
-    "  return arr[0];\\n" +
-    "}\\n" +
-    "\"}}"
-  let (cresp, _) = serve_handle(s, jsrc)
-  assert_true(cresp.contains("\"ok\":true"), msg="编译须成功")
+  let (cresp, _) = serve_handle(s, bubble3_compile_json())
   ignore(serve_handle(s, "{\"id\":9,\"method\":\"run\"}"))
-  let (bresp, _) = serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}")
-  assert_true(bresp.contains("\"ready\":true"))
-  // 发布流收集（frames=50 批推进；段判定在拼接后的全流上，跨批拼接
-  // 与单帧流同構——清标注的「下一帧」判断在 serve 内部按发布序进行）
+  ignore(serve_handle(s, "{\"id\":2,\"method\":\"step.begin\"}"))
+  (s, cresp)
+}
+
+///|
+/// 按给定 step.next params 段形态收集**发布流**到终结，返回
+///（code_line 流, 标注在位流, 是否终结）。params_seg 形态示例：
+/// `,"params":{"frames":50}`（批推进）/ `,"params":{}`（批=1 逐帧，
+/// frames 缺省 1——demo 前端 worker 真实口径）。响应解析失败/形状异常
+/// 的批次静默跳帧、finished 不置位——调用侧以「终结 + 帧数下限」断言
+/// 兜假绿（哨兵惯例：辅助函数无断言）。
+fn step_collect_published(
+  s : @session.Session,
+  params_seg : String,
+  max_calls : Int32,
+) -> (Array[Int32], Array[Bool], Bool) {
   let lines : Array[Int32] = []
   let annos : Array[Bool] = []
   let mut finished = false
-  for k = 0; k < 40; k = k + 1 {
+  for k = 0; k < max_calls; k = k + 1 {
     let (r, _) = serve_handle(
       s,
-      "{\"id\":\{100 + k},\"method\":\"step.next\",\"params\":{\"frames\":50}}",
+      "{\"id\":\{100 + k},\"method\":\"step.next\"\{params_seg}}",
     )
-    let v = @util.json_parse(r) catch {
-      _ => fail("step.next 响应解析失败")
-    }
+    let v = @util.json_parse(r) catch { _ => Json::object(Map([])) }
     let result = json_field(v, "result")
     let payloads = json_field(result, "payloads")
-    guard payloads.as_array() is Some(arr) else { fail("payloads 非数组") }
-    for p in arr {
-      let cl = json_field(p, "code_line").as_int().unwrap_or(-1)
-      let anno = match json_field(p, "algorithm_step") {
-        Null => false
-        _ => true
-      }
-      lines.push(cl)
-      annos.push(anno)
+    match payloads.as_array() {
+      Some(arr) =>
+        for p in arr {
+          let cl = json_field(p, "code_line").as_int().unwrap_or(-1)
+          let anno = match json_field(p, "algorithm_step") {
+            Null => false
+            _ => true
+          }
+          lines.push(cl)
+          annos.push(anno)
+        }
+      None => ()
     }
     let fin = json_field(result, "finished").as_bool().unwrap_or(false)
     if fin {
@@ -344,12 +357,13 @@ test "serve_step_algorithm_step_line_end_invariant" {
       break
     }
   }
-  assert_true(finished, msg="40×50 帧应跑完 3 元素冒泡")
-  assert_true(
-    lines.length() > 100,
-    msg="帧流非空（实得 \{lines.length()}）",
-  )
-  // 行末不变量：同行连续段内非段尾帧不得带标注
+  (lines, annos, finished)
+}
+
+///|
+/// 行末不变量检查：返回首个违例描述（None = 通过）——同一 code_line
+/// 连续段内非段尾帧不得带标注（拼接后的全发布流上判定）。
+fn line_end_violation(lines : Array[Int32], annos : Array[Bool]) -> String? {
   let mut i = 0
   while i < lines.length() {
     let mut j = i
@@ -361,7 +375,7 @@ test "serve_step_algorithm_step_line_end_invariant" {
       let mut k = i
       while k < j {
         if annos[k] {
-          fail(
+          return Some(
             "行中间帧带标注（line=\{lines[i]} 段长 \{seg} 第 \{k - i + 1} 帧）——行末语义破坏",
           )
         }
@@ -370,24 +384,99 @@ test "serve_step_algorithm_step_line_end_invariant" {
     }
     i = j + 1
   }
-  // 密度下限
-  let mut annotated = 0
-  for a in annos {
-    if a {
-      annotated = annotated + 1
-    }
-  }
-  assert_true(
-    annotated >= 6,
-    msg="全程标注帧 ≥ 6（实测 8，下限留余量防文案/判据微调的零余量假红）",
-  )
+  None
 }
 
 ///|
-/// 批四号接线锚二（反向）：**判据不命中的函数**帧 algorithm_step 恒
-/// null（None 降级是协议合法形态）。素材随批翻新至终结：批四号=gcd、
-/// 批五号=static_list_insert、批六号 structures 迁移后 43/43 全量——
-/// 「未迁移族」语义终结，素材改为无任何算法特征的普通函数 compute。
+/// 标注在位帧计数（密度下限断言的提取件）。
+fn annotated_count(annos : Array[Bool]) -> Int32 {
+  let mut n = 0
+  for a in annos {
+    if a {
+      n = n + 1
+    }
+  }
+  n
+}
+
+///|
+/// #225 行末不变量锚：step.next 发布流中 algorithm_step 是**行末帧语义**
+/// （behavior_contracts 第 7 条契约的可执行判据）——同一 code_line 的
+/// 连续帧段内，非段尾帧标注必为 null（serve 层一帧发布缓冲的同行清标注
+/// 机制：行执行完毕、变量为行末态才携带标注）。防两种退化：清不足
+///（行中间帧带标注 = 半执行态宣称语义）与塌零（全程无标注帧）。
+/// 同时锚密度下限：3 元素冒泡全程标注帧 ≥ 6（compare×3 + swap×2×2 +
+/// 趟/循环帧——#225 实测 8，下限留余量防文案/判据微调的零余量假红）。
+///
+/// #399（2026-10-31）锚参数化双形态：原锚只跑 frames=50 批形态，批=1
+/// 逐帧形态（params:{}——demo 前端 worker 真实口径）零锚——修复前批=1
+/// 下跨批 pending 的清标注判据（pop 后判 payloads 空）恒跳过，行中间
+/// 帧带标注漏出（demo/e08 bubble.c 实测 79.9% 帧带标注、密度过密 20
+/// 倍）。**锚只在一种批量下绿 ≠ 不变量成立**——双形态各自全程收集与
+/// 断言，并断言两形态行号流与标注流逐位一致（「跨批拼接与单帧流
+/// 同构」契约的可执行判据）。
+test "serve_step_algorithm_step_line_end_invariant" {
+  // 形态一（#225 原锚口径）：frames=50 批推进
+  let (s1, c1) = bubble3_step_session()
+  assert_true(c1.contains("\"ok\":true"), msg="批形态：编译须成功")
+  let (l1, a1, f1) = step_collect_published(
+    s1, ",\"params\":{\"frames\":50}", 40,
+  )
+  assert_true(f1, msg="批形态：40×50 帧应跑完 3 元素冒泡")
+  assert_true(
+    l1.length() > 100,
+    msg="批形态：帧流非空（实得 \{l1.length()}）",
+  )
+  guard line_end_violation(l1, a1) is None else {
+    fail("批形态 frames=50：" + line_end_violation(l1, a1).unwrap_or(""))
+  }
+  assert_true(
+    annotated_count(a1) >= 6,
+    msg="批形态：全程标注帧 ≥ 6（实得 \{annotated_count(a1)}）",
+  )
+  // 形态二（#399 修复锚）：批=1 逐帧推进——params:{} = frames 缺省 1
+  let (s2, c2) = bubble3_step_session()
+  assert_true(c2.contains("\"ok\":true"), msg="批=1 形态：编译须成功")
+  let (l2, a2, f2) = step_collect_published(s2, ",\"params\":{}", 2100)
+  assert_true(
+    f2,
+    msg="批=1 形态：2100 次调用应跑完 3 元素冒泡（实得 \{l2.length()} 帧）",
+  )
+  assert_true(
+    l2.length() > 100,
+    msg="批=1 形态：帧流非空（实得 \{l2.length()}）",
+  )
+  guard line_end_violation(l2, a2) is None else {
+    fail("批=1 逐帧形态：" + line_end_violation(l2, a2).unwrap_or(""))
+  }
+  assert_true(
+    annotated_count(a2) >= 6,
+    msg="批=1 形态：全程标注帧 ≥ 6（实得 \{annotated_count(a2)}）",
+  )
+  // 同构判据：同一程序的发布流（code_line 序列 + 标注在位）不因批参数
+  // 而变——批参数只改发布分批粒度，不改帧序列与行末语义
+  assert_eq(
+    l1.length(),
+    l2.length(),
+    msg="双形态帧数应一致（实得 \{l1.length()} vs \{l2.length()}）",
+  )
+  for idx, cl in l1 {
+    assert_eq(
+      cl,
+      l2[idx],
+      msg="双形态行号流第 \{idx} 帧不一致——同构破坏",
+    )
+  }
+  for idx, a in a1 {
+    assert_eq(
+      a,
+      a2[idx],
+      msg="双形态标注在位流第 \{idx} 帧不一致——同构破坏",
+    )
+  }
+}
+
+///|
 test "serve_step_unmigrated_family_stays_null" {
   let s = @session.Session::new()
   let jsrc = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"" +

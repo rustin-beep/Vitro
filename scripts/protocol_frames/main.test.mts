@@ -16,12 +16,12 @@ const HAS_SERVE = ((): boolean => {
   return fs.existsSync(exe);
 })();
 
-test("requestTable：48 帧、id 连续且方法族覆盖 compile/run/step/dump/leak/icons", () => {
+test("requestTable：49 帧、id 连续且方法族覆盖 compile/run/step/dump/leak/icons/vfs", () => {
   const t = requestTable();
-  assert.equal(t.length, 48);
+  assert.equal(t.length, 49);
   t.forEach((r, i) => assert.equal(r.id, i + 1, `帧 ${i + 1} id 不连续`));
   const methods = new Set(t.map((r) => r.method));
-  for (const m of ["compile", "run", "step.next", "ast.dump", "output.delta", "icons.get", "session.reset"]) {
+  for (const m of ["compile", "run", "step.next", "ast.dump", "output.delta", "icons.get", "session.reset", "vfs.list"]) {
     assert.ok(methods.has(m), `缺方法 ${m}`);
   }
 });

@@ -1,6 +1,5 @@
 ## [Unreleased]
 
-EAD
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
 
 - **P1 越界读治本（#66 尺寸口径连坐）**：`typeck` 字符串字面量定型尺寸
@@ -67,6 +66,115 @@ EAD
   右到左求值致显示逆序，把序列后值当首值；分离变量版实测 Vitro 首值
   16838 / clang 首值 41——原文档正确，不改）。
 
+
+### fix(scripts+docs+demo): PR #403 审阅处置批——P1-1 干净检出 npm test 必红治本 + 根 README/docs 测试数漏连坐 + P2/P3 六件（2026-10-31）
+
+- **P1-1（CI Scripts TS gate 红）**：`fetchCatalog` 的 `ensureFresh` 在产物缺失
+  时 `die()`=`process.exit(1)`——干净检出 `npm test` 必红且**吞掉同文件其余锚**
+  （亲验复现：9 锚只报 1 条）。修：`catalogArtifactPath()` 导出 + 两处真拉取锚
+  （gen_demo_algorithms / teaching main.test）前置产物存在性 guard——缺产物
+  **显式 skip**（`teaching e2e「缺产物显式 skip」先例模式**，非审阅处方的纯
+  fake 替代——端到端真源对账锚保留给有产物的环境）；亲验：移产物 → tests
+  24 / pass 21 / fail 0 / **skipped 3**（零吞锚）。
+- **CI 838 二段红（P1-1 吞锚掩盖面，复刻环境自抓）**：`course_catalog` 三处
+  同族——① 自发射前置（`ensureAlgoEmitted` 硬 assert）在 #36 收编后生成器需
+  引擎产物 ⇒ scripts-ts job 发射必败；② J9 纯函数锚经 `reconcile` 内部读盘
+  打真产物；③ CLI 端到端 spawn 同链。修：① 改 `algoEmitPrereq` 形态（缺产物
+  显式 skip，lessonPrereq 同款先例）；② `reconcile` 键集参数化（缺省读盘/
+  可注入——J9 注入 fake 键集后**干净检出也咬**，锚不降级）；③ 端到端接
+  prereq skip。复刻 CI 条件（干净 worktree + facts 采集态）实测：
+  **618 pass / 8 skipped / 0 fail**；主环境全跑 626/626。
+- **CI bookkeeping 红（审阅漏项之外自抓）**：根 `README.md` ×3 + 项目路线图
+  ×4 + 快速入门 ×2 + 标准库架构 ×1 共 **10 处 967→968 漏连坐**（首批只连坐了
+  moonbit/ 双 README——facts doc-truth audit 闸 CI 实红抓回）；修后 strict
+  漂移 0 处。
+- **P2-1**：`demo/src/lib/protoFacts.ts` `METHOD_TOTAL` 26→27（零闸副本——
+  喂 ProtoView/ProtoSide 的「x/27 方法」文案）+ e08 golden 连坐重建
+  （`vite build --ssr` + `e08-update.mts`，diff 纯净：16 份 golden 仅
+  protoview-caps.html 一行 `METHODS 26→27`）。
+- **P2-2**：CLI使用手册补 `vfs.list` 两表登记（方法一览行 + #116「字段↔最低
+  版本」表 HEAD 行）——该手册自规定「新方法必须在此登记」而本批漏登。
+- **P3-1**：C语言子集规范 §2.6 交叉引用笔误 §7.x4→**§7.x5**。
+- **P3-2**：CHANGELOG 口径统一——frames「47→48」标明双口径（请求表 48→49 /
+  基线行 47→48，capabilities skip 不入基线）；「四处计数连坐」→五处（与列举
+  一致）。
+- **P3-3**：`rename` 列举序语义成文（实现=删+建——**改名文件移至清单末尾**；
+  代码亲读 `vfs.mbt` remove+set 实证 + 审阅探针数据互证）——规范 §2.6 与
+  schema §7.x5 两处。
+- **P3-4**：`sortBytesStable` 本地拷贝删除——复用既有 `gofmt.sortBytes`
+  （同语义，消重复实现）。
+- **P2-3 ✅ 拍板 A 落地（用户闸窗拍板「选 a」）**：引擎表按**教学进展序**重排
+  ——`catalog.mbt` 静态表 43 条一次性重排（组间 = detect 分派组序不动〔B13
+  契约〕，组内 = 原 gen_demo GROUPS 硬编码教学呈现序上移入表；表序与判据
+  分派序自此解耦，头注成文）。**终极对拍**：重排后重发射产物 vs 收编前旧
+  版（a25760a2 旧生成器产出）——**diff 仅头注 5 行，43 族×7 组数据体逐字节
+  一致**（教学序完全恢复、单源保持、呈现层零排序真相）。catalog-check 双臂 /
+  demo_smoke / npm test 全绿。
+
+### refactor(tools): #36 gen_demo_algorithms 收编——族集/display_name/分组三源切引擎 algorithms.catalog 出口（2026-10-31）
+
+- **数据源收编**：生成器主源改引擎静态导出（`vitro_js api --batch` 拉取 +
+  ensureFresh 前置——mtime 触发 + moon 内容 hash 复核，陈旧产物假红/假绿封死）；
+  旧三源退役——① rules.json 族全集 → 降**双向对账参照**（rules 仍是 teaching
+  43 族权威、teaching_annotation_diff 闸输入地位不变，引擎↔rules 漂移任一侧即红）
+  ② golden display_name（首现）+ detect_*.mbt build_match 兜底链 → 整体退役
+  （引擎 display_name 即判据源码真值）③ GROUPS 七组硬编码 → `deriveGroups`
+  引擎派生（组序 = 引擎 groups 序、**组内呈现序 = 引擎 catalog 序**——呈现层
+  不再自带排序真相，侧栏 5 组族序变化为预期行为）。
+- **产物对拍（收编零数据损失实证）**：改造前后 demo/algorithms.js 语义级对账
+  ——43 族集合相等、每族 name/template/source/variants **逐位零差异**、xlab
+  完全相等；唯一变化 = 5 组组内呈现序。
+- **catalog-check D 路退役**：生成器分组既为引擎派生，两侧无独立真相可对
+  （自我对拍恒真）——`teaching_annotation_diff --catalog-check` 的 D 路（分组
+  表对账）与其 selftest 两形态注入随批退役，缩为「判据源码 ↔ 双臂引擎导出 ↔
+  rules 43」；防发射漂移由生成器自断言（`catalogConsistencyErrors`）+ demo_smoke
+  族集对账承接。
+- **测试锚**：gen_demo_algorithms.test.mts 重构——旧 GROUPS 对账四锚随源退役，
+  新七锚（自洽零误差 / display_name 空 / 未知分组 / 引擎↔rules 双向 / 同族
+  重复 / deriveGroups 组内序 / 真实仓库引擎拉取 ↔ rules 43 双向零误差）；J9
+  先证红（`does not provide an export named 'catalogConsistencyErrors'`）后转绿
+  9/9。
+- **CI 连坐**：pages.yml 发射 job 补 `cmd/vitro_js` js 臂构建（无 artifact 的
+  部署面现场构建——ci.yml demo job 走 build-products artifact 同件零改动）；
+  ci.yml catalog-check 步注释 D 路退役说明；脚本总清单数据源描述更新。
+- **验收**：catalog-check 绿（判据 43 ↔ 双臂导出一致 ↔ rules 43）+ selftest
+  两路注入均红；demo_smoke 197/197（序变化不破断言——族集/计数不锁序）；
+  demo_assemble_check 绿；oxlint 0 警告。
+
+### feat(host+gateway): #95 VFS 预置文件列举口——`vfs.list` 协议方法 + 预置清单单源 + 文档成文（2026-10-31）
+
+- **host 列举口**：`VirtualFileSystem::list_files() -> Array[(String, Int32)]`
+  ——全部文件 `(名, 逻辑 size)` 清单，**插入序**（core `Map` 迭代序即插入序：
+  预置在前、程序自建在后）；此前下游枚举 VFS 只能逐名试探（issue #95 核心诉求）。
+  wbtest 锚：空表/注入序/size 断言/remove 退列不扰余序（`vfs_list_files_insertion_order_and_sizes`）。
+- **`vfs.list` 方法帧**（serve/api 通道）：`{files:[{name,size}...]}` 只读观测
+  （`memory.regions` 同族）；dispatch 接线 + 未知方法「已接」清单连坐。wbtest
+  双锚：预置可见性（run 后 test.txt 12 / numbers.txt 10）+ 时机语义（run 前
+  `files:[]`、程序自建文件进列、每 run 重建——**换程序观测**：同程序重跑无法
+  区分「重建+重执行」与「累加」）。
+- **预置注入单源化（C5 收口）**：`serve_run` / `serve_step` 两处手写同款注入
+  （改一侧漏一侧的分叉形态）收口 `serve_vfs.mbt::preset_vfs_files`——清单/
+  注入序唯一定义，run/step.begin 两通道共用；行为零变化（frames 基线零漂移佐证）。
+- **文档成文**：C语言子集规范 §2.6 补预置清单段（内容/字节数/生命周期/覆盖
+  语义/**CLI `run` 不注入**的通道分叉在案）；顺手修 §4.1 :664 与 §2.6 :364
+  互斥（「不模拟 CRLF」错误行改「文本模式模拟、二进制原样」——实现与 §2.6 为准）；
+  STEP_PAYLOAD_SCHEMA 新增 §7.x5 `vfs.list` 帧形态。
+- **frames 重冻**：请求序列尾追加 vfs.list 帧——**请求表 48→49**（main.mts
+  requestTable）/ **基线冻结行 47→48**（baseline.jsonl——capabilities 整帧
+  skip 不入基线，两口径数字相差 1 属常态）；id 25 未知方法文案随 dispatch
+  连坐变化，其余零漂移；name/size 均常量，零 mask 需求。
+- **验收**：红→绿双证（host 编译红 `has no method list_files` / gateway 运行
+  红「未知方法」帧→全绿）；`moon check` 0 错；裸 `moon test` 968/968（+1 裸域）、
+  native 1164/1164（+3：host 1 + gateway 2）；`moonbit_surface -check` / mbti
+  同步（`list_files` 单行增量）/ facts --strict 绿；demo_smoke 197/197；npm test
+  626/626；vitro_cli_smoke 全绿。**方法面五处计数连坐**（demo_smoke 26→27 锚 +
+  demo/index.html 页面句 + gen_api_help rules.json 31→32 与 `api_help_gen.mbt`
+  再生 + protocol_frames test 帧数 48→49 + vitro_cli_smoke「清单（31）」内容锚）
+  ——首跑漏三处（demo_smoke/api help/cli_smoke），#36 批 npm test 全量对账时
+  逐条抓回；又一实锤：改 dispatch 面 = 五处计数锚全连坐（自报清单/rules 表/
+  页面句/帧数/内容锚）。
+
+
 ### feat(scripts+ci): ds 批③——release_preflight 发布前置闸（publish dry-run 双档 + package 非退化 + 反刷量约束）（2026-10-31）
 
 - **背景**（ds 报告 §4.1.1 七项前置缺口）：0.9.0 在架包被工具链升级打死
@@ -95,7 +203,6 @@ EAD
 - **接线**：ci.yml 新 `release-preflight` job（windows，setup-moonbit
   composite + registry 刷新 + 闸）；package.json lint/test 清单登记；
   ci_checklist 三向对账过（驱动 58）。
-EAD
 eat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
 - **审阅处置批（PR #402，2026-10-31）**：

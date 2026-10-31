@@ -76,9 +76,17 @@ jobs:
       - name: Build langpack (moon js target)
         run: cd moonbit && moon build --release --target js teaching/langpack
 
-      # gen_demo_algorithms 读 scripts/teaching_annotation_diff/rules.json——
-      # 已随 #125 批 B 入库为真源（.json.mbt 出库），本 job 的 jsonmbt
-      # clone/build/再生步随之摘除（干净检出即自洽）。
+      # #36 收编批（2026-10-31）：gen_demo_algorithms 数据源切引擎
+      # algorithms.catalog 出口（族集/display_name/分组三源单点）——发射前
+      # 置建 js 臂统一入口壳供 catalog 拉取（ci.yml demo job 走 build-products
+      # artifact 同件，本 job 无 artifact 故现场构建）。
+      - name: Build vitro_js (moon js target, catalog fetch for generator)
+        run: cd moonbit && moon build --release --target js cmd/vitro_js
+
+      # gen_demo_algorithms 数据源（#36 收编后）：主源 = 引擎 algorithms.catalog
+      # 出口（上步 vitro_js）；scripts/teaching_annotation_diff/rules.json 降为
+      # 引擎↔rules 双向对账参照（teaching 闸输入地位不变，仍随 #125 批 B 入库
+      # 为真源——干净检出即自洽）。
 
       # #273 批二：docs_preview 已迁 .mts（marked 渲染）——本 job 需 node ≥24
       # + scripts 依赖锁文件（仅运行期 marked，--omit=dev 不装工具链）。

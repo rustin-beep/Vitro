@@ -327,6 +327,8 @@ fn dispatch(
     "output.delta" => serve_output_delta_frame(s, id, params)
     "memory.regions" => serve_memory_regions_frame(s, id)
     "memory.dump" => serve_memory_dump_frame(s, id)
+    // #95（2026-10-31）：VFS 文件列举口——预置可见性 + 程序自建文件
+    "vfs.list" => serve_vfs_list_frame(s, id)
     // step 族五方法（S8 批一号接线——编排本体 time_travel.UnifiedEngine）
     "step.begin" => serve_step_begin_frame(s, id, params)
     "step.next" => serve_step_next_frame(s, id, params)
@@ -347,7 +349,7 @@ fn dispatch(
         serve_err(
           id,
           "protocol",
-          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/texts.get/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
+          "未知方法：\{method_name}（已接：ping/capabilities/error_catalog/texts.install/texts.get/semantic_labels/contracts/algorithms.catalog/icons.get/session.create/reset/destroy/config.get/config.set/compile/run/input.feed/output.delta/memory.regions/memory.dump/vfs.list/step.begin/step.next/payload.get/seek/breakpoints.set/shutdown；dump 族已接：ast/typeck/symbols/diagnostics_probe/codegen）",
         ).stringify(),
         false,
       )

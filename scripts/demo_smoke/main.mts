@@ -191,7 +191,7 @@ async function run(): Promise<void> {
         .map((x) => x.trim())
         .filter(Boolean).length ?? 0
     : 0;
-  check(methodCount === 26, "gateway 方法面 = 26（错误帧自报；algorithms.catalog 随 #36、texts.get 随 #323 上线计入）", "实得 " + methodCount);
+  check(methodCount === 27, "gateway 方法面 = 27（错误帧自报；algorithms.catalog 随 #36、texts.get 随 #323、vfs.list 随 #95 上线计入）", "实得 " + methodCount);
   const pageTitle = fs.readFileSync(path.join(repoRoot, "demo/index.html"), "utf8");
   const claim = pageTitle.match(/方法面（(\d+) 个，本页消费 (\d+) 个）/);
   check(

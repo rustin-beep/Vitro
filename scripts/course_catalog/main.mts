@@ -122,10 +122,16 @@ export function collectNotes(): SrcNote[] {
   return out;
 }
 
-/** 判据 1：叙述→课目对账。 */
-export function reconcile(notes: SrcNote[], verbose: boolean): JudgeFail[] {
-  const casesKeys = readKeys("demo/cases.js", [RE_CASE_ID]);
-  const algoKeys = readKeys("demo/algorithms.js", [RE_ALGO_ID, RE_VAR_TPL]);
+/** 判据 1：叙述→课目对账。键集缺省读盘（cases.js/algorithms.js）——
+ * 可注入（node:test 纯函数化：J9 锚不依赖发射产物在场，CI scripts-ts
+ * job 干净检出也能咬——#403 CI 838 红 P1-1 同族处置，2026-10-31）。 */
+export function reconcile(
+  notes: SrcNote[],
+  verbose: boolean,
+  keys?: { cases: Set<string>; algo: Set<string> },
+): JudgeFail[] {
+  const casesKeys = keys?.cases ?? readKeys("demo/cases.js", [RE_CASE_ID]);
+  const algoKeys = keys?.algo ?? readKeys("demo/algorithms.js", [RE_ALGO_ID, RE_VAR_TPL]);
   const fails: JudgeFail[] = [];
   for (const n of notes) {
     let ok: boolean;

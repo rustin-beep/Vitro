@@ -577,11 +577,12 @@ jobs:
           node scripts/vitro_cli_smoke/main.mts --corpus 30
         shell: bash
 
-      # algorithms.catalog 三方对账（#36，2026-10-16）：判据源码 build_match
-      # 提取物 ↔ 引擎导出（native vitro.exe + js vitro_js.js 双臂互拍）↔
-      # rules.json 43 族 ↔ gen_demo_algorithms 分组表。J9：--catalog-selftest
-      # 两路内存注入证红。前置：node（上方）+ native vitro（上一步）+ js
-      # 产物 EnsureFresh 自建。
+      # algorithms.catalog 对账（#36，2026-10-16 建；2026-10-31 收编批 D 路
+      # 退役）：判据源码 build_match 提取物 ↔ 引擎导出（native vitro.exe +
+      # js vitro_js.js 双臂互拍）↔ rules.json 43 族。D 路（生成器分组表对账）
+      # 随生成器数据源切引擎出口退役——防发射漂移由生成器自断言 + demo_smoke
+      # 族集对账承接。J9：--catalog-selftest 两路内存注入证红。前置：node
+      # （上方）+ native vitro（上一步）+ js 产物 EnsureFresh 自建。
       - name: algorithms.catalog three-way check (dual-arm)
         if: matrix.slice == 'cli_smoke'
         run: node scripts/teaching_annotation_diff/main.mts --catalog-check

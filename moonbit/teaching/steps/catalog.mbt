@@ -8,8 +8,11 @@
 // ——组概念属 UI，引擎只出建议值，消费方自由重组）；vis_events = 判据
 // 第 5 参是否恒空（`[]` ⇒ vis_events 恒空——dp/string 三族/math 三族共
 // 7 族；其余族传 features.compare_lines，vis_events = compare 投影）。
-// 排列序 = detect_in_func 分派序（sorting → search → graph → tree →
-// structures → string → math，dp 尾挂——B13 契约同构）。
+// 排列序（PR #403 审阅 P2-3 拍板 A，2026-10-31 重排）：**组间** = detect
+// 分派组序（sorting → search → graph → tree → structures → string →
+// math，dp 尾挂——B13 契约同构）；**组内** = 教学进展序（原 gen_demo
+// GROUPS 硬编码呈现序上移入表——呈现序回数据，呈现层零排序真相；组内
+// 序与 detect 分派序自此解耦，判据分派序仍在 detect_in_func 原地）。
 
 ///|
 struct AlgoCatalogEntry {
@@ -41,20 +44,8 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "selection_sort",
-    display_name: "选择排序",
-    group: "sorting",
-    vis_events: true,
-  },
-  {
     family: "insertion_sort",
     display_name: "插入排序",
-    group: "sorting",
-    vis_events: true,
-  },
-  {
-    family: "quick_sort",
-    display_name: "快速排序",
     group: "sorting",
     vis_events: true,
   },
@@ -65,20 +56,32 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
+    family: "quick_sort",
+    display_name: "快速排序",
+    group: "sorting",
+    vis_events: true,
+  },
+  {
+    family: "selection_sort",
+    display_name: "选择排序",
+    group: "sorting",
+    vis_events: true,
+  },
+  {
     family: "heap_sort",
     display_name: "堆排序",
     group: "sorting",
     vis_events: true,
   },
   {
-    family: "shell_sort",
-    display_name: "希尔排序",
+    family: "counting_sort",
+    display_name: "计数排序",
     group: "sorting",
     vis_events: true,
   },
   {
-    family: "counting_sort",
-    display_name: "计数排序",
+    family: "shell_sort",
+    display_name: "希尔排序",
     group: "sorting",
     vis_events: true,
   },
@@ -95,6 +98,14 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
+    // 呈现归 search——跟 gen_demo_algorithms 现役分组（分组建议的意义 =
+    // demo 切换 catalog 消费后侧栏呈现零变化）
+    family: "is_prime",
+    display_name: "素数判断",
+    group: "search",
+    vis_events: false,
+  },
+  {
     family: "bfs",
     display_name: "BFS 广度优先搜索",
     group: "graph",
@@ -103,18 +114,6 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
   {
     family: "dfs",
     display_name: "DFS 深度优先搜索",
-    group: "graph",
-    vis_events: true,
-  },
-  {
-    family: "prim_mst",
-    display_name: "Prim 最小生成树",
-    group: "graph",
-    vis_events: true,
-  },
-  {
-    family: "kruskal_mst",
-    display_name: "Kruskal 最小生成树",
     group: "graph",
     vis_events: true,
   },
@@ -131,15 +130,21 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "topological_sort",
-    display_name: "拓扑排序",
+    family: "kruskal_mst",
+    display_name: "Kruskal 最小生成树",
     group: "graph",
     vis_events: true,
   },
   {
-    family: "bst_validate",
-    display_name: "BST 合法性校验",
-    group: "tree",
+    family: "prim_mst",
+    display_name: "Prim 最小生成树",
+    group: "graph",
+    vis_events: true,
+  },
+  {
+    family: "topological_sort",
+    display_name: "拓扑排序",
+    group: "graph",
     vis_events: true,
   },
   {
@@ -161,8 +166,8 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "level_order",
-    display_name: "层序遍历",
+    family: "bst_validate",
+    display_name: "BST 合法性校验",
     group: "tree",
     vis_events: true,
   },
@@ -179,21 +184,15 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "threaded_binary_tree",
-    display_name: "线索二叉树",
+    family: "level_order",
+    display_name: "层序遍历",
     group: "tree",
     vis_events: true,
   },
   {
-    family: "linked_list_delete",
-    display_name: "链表删除",
-    group: "structures",
-    vis_events: true,
-  },
-  {
-    family: "seq_list",
-    display_name: "顺序表",
-    group: "structures",
+    family: "threaded_binary_tree",
+    display_name: "线索二叉树",
+    group: "tree",
     vis_events: true,
   },
   {
@@ -203,8 +202,20 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "circular_queue",
-    display_name: "循环队列",
+    family: "linked_list_delete",
+    display_name: "链表删除",
+    group: "structures",
+    vis_events: true,
+  },
+  {
+    family: "static_linked_list",
+    display_name: "静态链表",
+    group: "structures",
+    vis_events: true,
+  },
+  {
+    family: "circular_linked_list",
+    display_name: "循环链表",
     group: "structures",
     vis_events: true,
   },
@@ -221,26 +232,20 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
+    family: "circular_queue",
+    display_name: "循环队列",
+    group: "structures",
+    vis_events: true,
+  },
+  {
     family: "hash_table",
     display_name: "哈希表",
     group: "structures",
     vis_events: true,
   },
   {
-    family: "josephus",
-    display_name: "约瑟夫环",
-    group: "structures",
-    vis_events: true,
-  },
-  {
-    family: "circular_linked_list",
-    display_name: "循环链表",
-    group: "structures",
-    vis_events: true,
-  },
-  {
-    family: "static_linked_list",
-    display_name: "静态链表",
+    family: "seq_list",
+    display_name: "顺序表",
     group: "structures",
     vis_events: true,
   },
@@ -251,10 +256,10 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: true,
   },
   {
-    family: "string_reverse",
-    display_name: "字符串反转",
-    group: "string",
-    vis_events: false,
+    family: "josephus",
+    display_name: "约瑟夫环",
+    group: "structures",
+    vis_events: true,
   },
   {
     family: "string_match_bf",
@@ -269,18 +274,15 @@ let algo_catalog : Array[AlgoCatalogEntry] = [
     vis_events: false,
   },
   {
-    family: "gcd",
-    display_name: "最大公约数",
-    group: "mathdp",
+    family: "string_reverse",
+    display_name: "字符串反转",
+    group: "string",
     vis_events: false,
   },
   {
-    // is_prime 分组分歧登记：判据属 math 族（detect_math.mbt 分派序），
-    // 呈现归 search——跟 gen_demo_algorithms 现役分组（分组建议的意义 =
-    // demo 切换 catalog 消费后侧栏呈现零变化）
-    family: "is_prime",
-    display_name: "素数判断",
-    group: "search",
+    family: "gcd",
+    display_name: "最大公约数",
+    group: "mathdp",
     vis_events: false,
   },
   {

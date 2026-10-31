@@ -73,6 +73,9 @@ export function requestTable(): Req[] {
     { id: 35, method: "compile", params: `{"source":"int main() { int a = 0; return 1 / a; }"}` },
     ...Array.from({ length: 1 }, () => ({ id: 36, method: "step.begin", params: `` })),
     ...Array.from({ length: 12 }, (_, i) => ({ id: 37 + i, method: "step.next", params: `` })),
+    // #95（2026-10-31）：VFS 列举口——step.begin 后预置两件在列（确定性
+    // 帧：name/size 均常量，无地址类字段，零 mask 需求）
+    { id: 49, method: "vfs.list", params: `` },
   ];
 }
 

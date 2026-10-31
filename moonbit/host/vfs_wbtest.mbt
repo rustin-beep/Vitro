@@ -582,3 +582,34 @@ test "vfs_plus_modes_binary_flag" {
   assert_eq(n, 2, msg="二进制模式无 CRLF 展开")
   assert_eq(peek(mem, map, 0x8600U, 2), b"aX")
 }
+
+///|
+/// #95 VFS 列举口锚：`list_files` 返回 (文件名, 逻辑 size) 清单，
+/// **插入序**（core `Map` 迭代序即插入序——预置在前、动态文件在后，
+/// 与 serve 注入序一致）；remove 后退出列举。
+test "vfs_list_files_insertion_order_and_sizes" {
+  let (map, mem, vfs) = vfs_fresh()
+  // 空表：列举口返回空清单（零文件会话态）
+  assert_eq(vfs.list_files().length(), 0, msg="空 VFS 列举为空")
+  // 预置注入两件（serve 同款清单/同款序）
+  assert_true(vfs.inject_preset_file(map, mem, "test.txt", b"hello\nworld\n"))
+  assert_true(vfs.inject_preset_file(map, mem, "numbers.txt", b"1 2 3 4 5\n"))
+  // fopen("w") 建空文件（动态文件进列举——size 0）
+  let fd = vfs.fopen(map, "out.txt", "w")
+  assert_true(fd != 0U, msg="w 模式建文件")
+  let listed = vfs.list_files()
+  assert_eq(listed.length(), 3)
+  // 插入序：预置在前（注入序），动态文件在后
+  assert_eq(listed[0].0, "test.txt")
+  assert_eq(listed[0].1, 12, msg="hello\\nworld\\n = 12 字节")
+  assert_eq(listed[1].0, "numbers.txt")
+  assert_eq(listed[1].1, 10, msg="1 2 3 4 5\\n = 10 字节")
+  assert_eq(listed[2].0, "out.txt")
+  assert_eq(listed[2].1, 0, msg="新建文件逻辑长度 0")
+  // remove 后退出列举（其余保持原序）
+  assert_eq(vfs.remove(map, "test.txt"), 0)
+  let listed2 = vfs.list_files()
+  assert_eq(listed2.length(), 2)
+  assert_eq(listed2[0].0, "numbers.txt", msg="remove 不扰余下文件序")
+  assert_eq(listed2[1].0, "out.txt")
+}

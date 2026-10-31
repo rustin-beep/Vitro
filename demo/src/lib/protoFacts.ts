@@ -62,8 +62,8 @@ export const METHOD_GROUPS: MethodGroup[] = [
   },
 ];
 
-/** 协议方法面（错误帧自报口径；#323 texts.get 起 = 26，未入本页分组清单——本页不消费）。 */
-export const METHOD_TOTAL = 26;
+/** 协议方法面（错误帧自报口径；#95 vfs.list 起 = 27，未入本页分组清单——本页不消费）。 */
+export const METHOD_TOTAL = 27;
 
 /** 本页组清单行数（四组之和；一行可能展开多个方法，如 step.* 一行 4 个）。 */
 export const METHOD_ROWS = METHOD_GROUPS.reduce((s, g) => s + g.items.length, 0);

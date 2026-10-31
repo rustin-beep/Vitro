@@ -576,8 +576,8 @@ export function runMain(argv: readonly string[]): number {
   // B 组附 2：api help 三态双臂对拍（#67）——数据 = 生成器双产物，此处锁
   // 「双臂查表打印逐字节同形」+ 三态 rc + 内容锚（形状漂移双闸之一）。
   for (const c of [
-    // 方法计数随 gen_api_help rules.json 走（#52 codegen.dump 29，2026-10-17 合并批连坐）
-    { name: "api help 清单", args: ["api", "help"], wantRc: 0, needle: "api 方法清单（31）" },
+    // 方法计数随 gen_api_help rules.json 走（#52 codegen.dump 29→#95 vfs.list 32）
+    { name: "api help 清单", args: ["api", "help"], wantRc: 0, needle: "api 方法清单（32）" },
     {
       name: "api help compile 详情",
       args: ["api", "help", "compile"],

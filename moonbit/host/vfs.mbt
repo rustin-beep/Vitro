@@ -995,3 +995,17 @@ pub fn VirtualFileSystem::get_file_name(
     None => None
   }
 }
+
+///|
+/// 列举口（#95）：全部文件 `(名, 逻辑 size)` 清单——**插入序**（core
+/// `Map` 迭代序即插入序：预置在前、程序自建在后，与注入序一致）。下游
+/// 枚举 VFS 从此不靠逐名试探；`vfs.list` 协议帧的唯一定义点。
+pub fn VirtualFileSystem::list_files(
+  self : VirtualFileSystem,
+) -> Array[(String, Int32)] {
+  let out : Array[(String, Int32)] = []
+  for name, meta in self.files {
+    out.push((name, meta.size))
+  }
+  out
+}

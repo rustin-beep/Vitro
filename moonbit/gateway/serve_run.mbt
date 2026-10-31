@@ -109,23 +109,9 @@ fn serve_execute_run(s : @session.Session) -> Json {
     s.vm.mem_map.set_heap_base(
       @bytecode.compute_heap_base(global_data_end, argc, s.runtime_argv),
     )
-    // vfs 预设注入（Rust execute_run 无条件注入——教学演示通道）
-    ignore(
-      s.vm.vfs.inject_preset_file(
-        s.vm.mem_map,
-        s.vm.memory,
-        "test.txt",
-        b"hello\nworld\n",
-      ),
-    )
-    ignore(
-      s.vm.vfs.inject_preset_file(
-        s.vm.mem_map,
-        s.vm.memory,
-        "numbers.txt",
-        b"1 2 3 4 5\n",
-      ),
-    )
+    // vfs 预设注入（Rust execute_run 无条件注入——教学演示通道；
+    // #95 单源化：清单收口 serve_vfs.mbt，与 step 通道共用）
+    inject_preset_vfs_files(s)
   } else {
     // resume 分支：参数回推 + ip 回退已就位（CallHost 臂统一处理），
     // 直接再 run 即续跑；无 input 时重跑会立刻再 waiting（同 Rust）

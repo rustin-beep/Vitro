@@ -297,22 +297,8 @@ fn serve_step_begin_frame(
   s.vm.mem_map.set_heap_base(
     @bytecode.compute_heap_base(output.global_data_end, argc, s.runtime_argv),
   )
-  ignore(
-    s.vm.vfs.inject_preset_file(
-      s.vm.mem_map,
-      s.vm.memory,
-      "test.txt",
-      b"hello\nworld\n",
-    ),
-  )
-  ignore(
-    s.vm.vfs.inject_preset_file(
-      s.vm.mem_map,
-      s.vm.memory,
-      "numbers.txt",
-      b"1 2 3 4 5\n",
-    ),
-  )
+  // #95 单源化：预置清单收口 serve_vfs.mbt，与 run 通道共用
+  inject_preset_vfs_files(s)
   engine.checkpoints.save(0, s.vm)
   s.unified = Some(engine)
   let m : Map[String, Json] = Map([])

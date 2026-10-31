@@ -146,22 +146,13 @@ export function extractMoonBitStdout(s: string): string {
 }
 
 /**
- * Moon 侧两流合流（#129 后标记行走 stderr）：剥壳层 backend 标注行，
- * stderr 逐行续接。
- * #207 补行退役适配（2026-10-31）：文本模式 stdout 原样零修饰后末行可
- * 无换行——续接前补边界换行，否则 stderr 首行（`// NOTE` 完成附注每例
- * 必有）与 stdout 末行粘连成行，extractMoonBitStdout 的标记行剥除失效
- * （修前 760 例 vm diff 302 例红实锤）。
+ * Moon 侧两流合流（单源）——#394 审阅 P3-② 下沉 internal（2026-10-31）：
+ * 实现与完整头注在 scripts/internal/moon_output.mts（原落本文件，被
+ * clang_direct 跨驱动 import 的结构债）。此处 re-export 维持既有
+ * import 面（本文件内部消费 + clang_direct/main.mts + vm.test.mts 锚）。
  */
-export function mergeMoonOutput(stdout: string, stderr: string): string {
-  let text = stdout;
-  if (text.length > 0 && !text.endsWith("\n")) text += "\n";
-  for (const line of stderr.split("\n")) {
-    if (line.startsWith("[vitro] backend=")) continue;
-    text += line + "\n";
-  }
-  return text;
-}
+export { mergeMoonOutput } from "../../internal/moon_output.mts";
+import { mergeMoonOutput } from "../../internal/moon_output.mts";
 
 /** 映像 sha16（argv 区脱敏后）。 */
 export function memorySHA(p: string): string {

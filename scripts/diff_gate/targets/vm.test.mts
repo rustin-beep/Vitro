@@ -47,6 +47,20 @@ test("mergeMoonOutput：#207 补行退役后的两流边界（无换行不粘连
   assert.equal(mergeMoonOutput("abc", "[vitro] backend=wasm (node 26)\n// EXIT 2\n"), "abc\n// EXIT 2\n\n");
 });
 
+test("mergeMoonOutput：P2-1 后 stderr 自带前导换行的幂等边界（不双补）", () => {
+  // #394 审阅 P2-1（2026-10-31）：CLI 侧已单源负责两流边界——stdout 无
+  // 尾换行时首条 stderr 标记行前补 1 字节 \n 到 stderr。此后真实 stderr
+  // 以 \n 开头，本函数再补 stdout 边界即恒双补（多一空行）——幂等条件：
+  // stderr 自带前导换行则不补。产出与旧形态逐字节一致（vm diff golden
+  // 零重冻的前提）。
+  assert.equal(mergeMoonOutput("abc", "\n// NOTE 程序运行完成，返回值：0\n"), "abc\n// NOTE 程序运行完成，返回值：0\n\n");
+  assert.equal(extractMoonBitStdout(mergeMoonOutput("abc", "\n// NOTE 程序运行完成，返回值：0\n")), "abc");
+  // stderr 空时边界由本函数兜底（极端形态：note 通道空——防御位）
+  assert.equal(mergeMoonOutput("abc", ""), "abc\n\n");
+  // 自带尾换行 + stderr 前导换行：各自幂等，零多余字节
+  assert.equal(mergeMoonOutput("abc\n", "\n// EXIT 2\n"), "abc\n\n// EXIT 2\n\n");
+});
+
 test("memorySHA：argv 区 0xF000..0x10000 脱敏后再算，且不改原文件", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vm-mem-"));
   try {

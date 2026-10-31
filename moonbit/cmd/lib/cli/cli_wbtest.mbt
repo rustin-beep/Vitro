@@ -301,6 +301,27 @@ fn stdout_passthrough_channel(stdout_delta : String) -> EngineChannel {
 }
 
 ///|
+/// #394 审阅 P2-1 锚（2026-10-31）：stdout 直写后首条 stderr 标记行前的
+/// 边界换行决策——无尾换行补 1 字节 `\n`（到 stderr，stdout 字节不动）、
+/// 空 stdout 与自带尾换行不补。修前该决策不存在（js 臂 `2>&1` 实测
+/// `abc// NOTE …` 粘连成行、native 臂缓冲序反转——三臂合流形态互不一致）。
+/// stderr 侧行为锚（子进程捕获字节）在 vitro_cli_smoke B[run 文本口径]。
+test "stderr_boundary_newline_三态" {
+  // ① 无尾换行：恰 1 字节 \n
+  assert_eq(stderr_boundary_newline(b"abc"), b"\n", msg="无尾换行补边界")
+  // ② 空 stdout：不补（无行可粘——空输出 stderr 首字节即 //）
+  assert_eq(stderr_boundary_newline(b""), b"", msg="空输出不补")
+  // ③ 自带尾换行：不双补（行已对齐）
+  assert_eq(stderr_boundary_newline(b"a\n"), b"", msg="自带换行不双补")
+  // ④ 尾字节恰 \n 前有内容的复合形态
+  assert_eq(
+    stderr_boundary_newline(b"x\r"),
+    b"\n",
+    msg="CR 结尾同属无换行形态",
+  )
+}
+
+///|
 test "frame_pipeline_text_stdout_passthrough_no_newline" {
   // ① 程序输出无尾换行：stdout 恰 3 字节原样（修前补 \n 成 4 字节）
   let s1 : Array[Bytes] = []

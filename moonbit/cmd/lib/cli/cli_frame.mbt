@@ -55,6 +55,23 @@ fn latin1_to_bytes(delta : String) -> Bytes {
 }
 
 ///|
+/// #394 审阅 P2-1（2026-10-31）：stdout 直写后、首条 stderr 标记行前的
+/// 边界换行决策——stdout 非空且末字节非 `\n` 时返回 1 字节 `\n`（写入
+/// **stderr**，stdout 字节不动）。`2>&1` 合流人读形态防粘连：修前 js 臂
+/// `abc// NOTE …` 粘连成行（fs.writeSync(1) 先落、say 后落）、native 臂
+/// CRT 缓冲序反转 `// NOTE …\nabc`——三臂合流形态互不一致；空 stdout
+/// 不补（无行可粘）、自带尾换行不补（行已对齐）。三臂同补字节同形
+///（js/wasm = fs.writeSync(2)、native = CRT 二进制模式 fwrite——#315
+/// 治本后 `\n` 不翻 CRLF）。
+fn stderr_boundary_newline(raw : Bytes) -> Bytes {
+  if raw.length() > 0 && raw[raw.length() - 1].to_int() != 0x0A {
+    b"\n"
+  } else {
+    b""
+  }
+}
+
+///|
 /// compile 帧诊断行渲染（返回 has_error——error 级存在即编译失败 rc=1）。
 /// codegen 过渡码（E0/Unknown）渲染为 spec 在册无码形态（#70 第一步与壳
 /// 同款）；其余按帧 code_str 原样（与拆除前 `E\{code}` / `W\{code}` 同形）。
@@ -268,6 +285,12 @@ fn frame_pipeline(
   let raw = delta_bytes("output.delta", "stdout")
   if raw.length() > 0 {
     write_stdout(raw)
+    // P2-1（#394 审阅处置）：stdout 末字节非 \n 时首条 stderr 标记行前补
+    // 边界换行到 stderr——stdout 字节不动（spec §1 字节精确承诺不破）
+    let bnd = stderr_boundary_newline(raw)
+    if bnd.length() > 0 {
+      cli_stderr_write(bnd)
+    }
   }
   // stderr：还原字节 → UTF-8 优先解码 → `// STDERR` 标记行
   //（与拆除前 utf8_text_partial 同源形态）

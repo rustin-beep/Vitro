@@ -828,11 +828,15 @@ func runMoon(c caseRef) *moonResult {
 	s := out.String()
 	// #207 补行退役适配（2026-10-31，与 main.mts 同款）：文本模式 stdout
 	// 原样零修饰后末行可无换行——与 stderr 合流前补边界换行（否则标记行与
-	// stdout 末行粘连，extractMoonStdout 剥除失效）
-	if len(s) > 0 && !strings.HasSuffix(s, "\n") {
+	// stdout 末行粘连，extractMoonStdout 剥除失效）。
+	// #394 审阅 P2-1 幂等化（2026-10-31，与 main.mts 同款）：CLI 侧已
+	// 单源负责两流边界（stdout 无尾换行时首条 stderr 标记行前自带前导
+	// \n）——stderr 自带前导换行则不再补 stdout 边界（恒双补多一空行）
+	seText := se.String()
+	if len(s) > 0 && !strings.HasSuffix(s, "\n") && !strings.HasPrefix(seText, "\n") {
 		s += "\n"
 	}
-	for _, l := range strings.Split(se.String(), "\n") {
+	for _, l := range strings.Split(seText, "\n") {
 		if !strings.HasPrefix(l, "[vitro] backend=") {
 			s += l + "\n"
 		}

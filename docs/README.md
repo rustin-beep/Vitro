@@ -169,6 +169,7 @@
 | [`current/08-发布档案/0.6.0.md`](current/08-发布档案/0.6.0.md) | **0.6.0（2026-09-26 发版件 · 09-27 线上发布）**：执行层收官——memory/host/vm 三包 + util + cmd/run；HostMemReply.value 加宽 UInt?→UInt64?；兼容义务建册 + 性能披露双语落档 |
 | [`current/08-发布档案/0.7.0.md`](current/08-发布档案/0.7.0.md) | **0.7.0（2026-09-29 发版件 · 09-30 线上发布）**：协议层与 wasm-gc 单出口——fs/protocol/session/gateway/gateway-wasm 五新包（L0–L8 共 20 包）；module 依赖清零（vendored）；彩排 + 线上验收全绿实录 |
 | [`current/08-发布档案/0.8.0.md`](current/08-发布档案/0.8.0.md) | **0.8.0（S8 收官版 · 2026-10-04 发版件 · 2026-10-05 线上发布；实录全文已回填〔彩排 registry 投放法四件 + publish + 线上验收三件，search 在架 35 downloads〕）**：时间旅行与教学智能四域（time_travel/teaching/steps/diagnostics）+ CLI 出口总账（vitro 总入口/cmd/lib/cli/api 万能单帧/协议契约 spec）+ compile 帧 algorithm_matches（净增 4 包共 24 包） |
+| [`current/08-发布档案/0.9.1.md`](current/08-发布档案/0.9.1.md) | **0.9.1（在架事故修复版 · 2026-10-31；发布中——实录回填后去此注）**：在架事故动因（moonc ≥0.10.18 删 core/abort 致 0.9.0 包下游断供）+ **版本号口径（用户拍板：非准备充足新版本，新增 API 系 mooncakes 不能拆分发包的无奈随版带出，纪律口径应视 0.10.0）**；窗口 38 笔 / 65 issue / 测试 897→970、opcode 151→153、方法表 30→31（`vfs.list`）；release_preflight 新闸本版首战 |
 | [`current/08-发布档案/0.9.0.md`](current/08-发布档案/0.9.0.md) | **0.9.0（S9 收官版 · 2026-10-25 线上发布；实录全文已回填〔彩排 registry 投放法四件 + publish Server 200 + 线上验收三件全绿、zip 506 条目/1439KB、README catalog 装载前置失真修正〕）**：tag `vitro-engine-0.8.0`→`4d1670c1` 窗口 **235 笔提交 / 204 条 issue** 收拢；数字全景（测试 655→897〔facts 裸口径〕、码表 137→156 臂、教学卡 77→114、opcode 135→151、包目录 37→45、.mbti 净 +392/−18）+ 五大叙事线 + 收口批次补遗（10-23 夜~10-25 落库 18 笔）+ 破坏面七条（已进两份 CHANGELOG 0.9.0 段） |
 
 ---

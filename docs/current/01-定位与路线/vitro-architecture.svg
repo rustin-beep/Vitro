@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 724" role="img" aria-label="vitro 架构总览图">
-  <title>vitro — MoonBit 现役单轨 · 引擎 + Go 防线 + Clang 真值</title>
+  <title>vitro — MoonBit 现役单轨 · 引擎 + 脚本防线 + Clang 真值</title>
   <!-- 由 scripts/gen_svg 生成（勿手改）：内容对账 README.md 单轨口径节 与 架构设计.md §2；进度与版本以 README / 总计划 §10 为权威（无快照数字，无 data-fact 锚） -->
   <style>
     .bg     { fill: #FFFFFF; }
@@ -37,7 +37,7 @@
       <path d="M0,0 L10,5 L0,10 z" class="ahf"/>
     </marker>
   </defs>
-<text class="tt" x="600" y="56" text-anchor="middle">vitro — MoonBit 现役单轨 · 引擎 + Go 防线 + Clang 真值</text>
+<text class="tt" x="600" y="56" text-anchor="middle">vitro — MoonBit 现役单轨 · 引擎 + 脚本防线 + Clang 真值</text>
 <rect class="core" x="40" y="96" width="1120" height="300" rx="14"/>
 <text class="t" x="600" y="128" text-anchor="middle">MoonBit 现役引擎 · vitro/engine（mooncakes 源码级发布）</text>
 <rect class="card" x="64" y="148" width="190" height="60" rx="10"/>
@@ -69,12 +69,12 @@
 <text class="tn" x="964" y="250" text-anchor="middle">vm</text>
 <text class="tc" x="964" y="274" text-anchor="middle">穷尽 executor + VMSnapshot</text>
 <rect class="card" x="64" y="302" width="1072" height="32" rx="10"/>
-<text class="tm" x="600" y="324" text-anchor="middle">S8 已落：time_travel 时间旅行 · teaching/steps 教学判据 · diagnostics 教学诊断 · protocol/session/gateway 会话协议</text>
+<text class="tm" x="600" y="324" text-anchor="middle">S9 收官（0.9.0 · 2026-10-25）：脱钩删区 · 缺陷海修复 · 三后端单壳 · S8 教学四件（time_travel / teaching / diagnostics / protocol）</text>
 <rect class="card" x="64" y="348" width="1072" height="32" rx="10"/>
-<text class="tm" x="600" y="370" text-anchor="middle">出口：wasm-gc 单出口多宿主（浏览器 Worker · Node · .NET）+ native stdio 壳 cmd/serve · cmd/vitro</text>
+<text class="tm" x="600" y="370" text-anchor="middle">出口三臂：js（CLI 缺省）· native（防线基线）· wasm-gc（浏览器交付同源）——统一入口 scripts/bin/vitro · serve 双臂</text>
 <line class="line" x1="600" y1="396" x2="600" y2="420"/>
 <rect class="zone" x="40" y="420" width="1120" height="150" rx="14"/>
-<text class="t" x="600" y="450" text-anchor="middle">Go 司法与防线层（归一化器 · 对拍驱动 · 生成器）</text>
+<text class="t" x="600" y="450" text-anchor="middle">脚本司法与防线层（归一化器 · 对拍驱动 · 生成器 · ts 统一 #273）</text>
 <rect class="card" x="64" y="470" width="190" height="56" rx="10"/>
 <text class="tn" x="159" y="494" text-anchor="middle">lexer_diff</text>
 <text class="tc" x="159" y="516" text-anchor="middle">token TSV</text>

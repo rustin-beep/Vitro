@@ -35,10 +35,10 @@
 ## 架构总览与 Rust oracle 退役档案
 
 <p align="center">
-  <img src="docs/current/01-定位与路线/vitro-architecture.svg" alt="vitro 架构总览：MoonBit 现役引擎 × Go 司法防线层 × Clang 真值源" width="900">
+  <img src="docs/current/01-定位与路线/vitro-architecture.svg" alt="vitro 架构总览：MoonBit 现役引擎 × 脚本防线层 × Clang 真值源" width="900">
 </p>
 
-**单轨格局** —— 主体 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；中带 **Go 司法与防线层**（差分 golden 对拍 · Clang 直拍 · 生成器 · facts 对账）；真值源 **Clang**（golden 唯一来源）。迁移期的下轨 **Rust 冻结对照 oracle** 已于 2026-10-05（S9 工序④删区）物理删除。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
+**单轨格局** —— 主体 **MoonBit 现役引擎**（`vitro/engine`：编译管线 → 字节码 → VM，memory/host 底座；出口收敛为 wasm-gc 单出口多宿主）；中带 **脚本司法与防线层**（差分 golden 对拍 · Clang 直拍 · 生成器 · facts 对账；ts 统一 #273 · 存量 Go 触达即迁）；真值源 **Clang**（golden 唯一来源）。迁移期的下轨 **Rust 冻结对照 oracle** 已于 2026-10-05（S9 工序④删区）物理删除。详图与决策：[架构设计.md](docs/current/01-定位与路线/架构设计.md)
 
 **Rust oracle 历史快照（删区前终态，2026-09-23 实测口径）**：C Shadow Verification 685 用例（680 匹配 + 4 known_issue + 1 gap_extension）、cargo test 1029 用例全绿、capi ABI 2.1.0、wasm32 构建 3.75MB——完整终态见 tag `rust-oracle-freeze` 与 [0.8.0 发布档案](docs/current/08-发布档案/0.8.0.md)；语料域差量已由 clang_direct 吸收（shadow 685 ⊆ 698，差量 0），历史失败记录见 tag 内 `native/tests/*_FAILURES.md`。现行差异台账 = `scripts/diff_ledger/ledger.json`。
 
@@ -98,9 +98,9 @@ moonbit/                   MoonBit 活跃区（vitro/engine workspace）——�
 ├── protocol/ session/ gateway/ 协议冻结层、会话与 wasm-gc 单出口（S7 批一~五已落：StepPayload 契约 + 词汇表 / 会话状态 / gateway 4 导出 + wasm 薄壳；step 族与 dump 族 S8 已接）
 ├── time_travel/ teaching/ steps/ diagnostics/ 时间旅行与教学智能（S8 收官：检查点 + FrameWindow / 43 算法族识别推断 / 教学诊断七元组）
 └── cmd/                   差分对拍工具 ×4（dump_tokens / dump_ast / dump_typeck / dump_compile）+ cmd/run 端到端 runner + cmd/serve JSON-lines 出口 + `vitro` 总入口（run/compile/step/api 四子命令，#37 CLI 出口总账）
-corpus/                    C 语料（baseline / knr / leetcode / gap / cpp；Clang golden 与 e2e 驱动的输入，原 native/tests/cases 迁入）
+corpus/                    C 语料（baseline / knr / leetcode / gap / cpp / llm_multifile / llm_scale 等；Clang golden 与 e2e 驱动的输入，原 native/tests/cases 迁入）
 templates/                 算法模板源（source.c + meta.yaml；待社区前端或 wasm 出口认领）
-scripts/                   Go 防线驱动与工具脚本（clang_direct Clang 直拍、五差分 golden 对拍、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
+scripts/                   防线驱动与工具脚本（.mts 为主 · 存量 Go 触达即迁 #273；clang_direct Clang 直拍、五差分 golden 对拍、facts 对账、gen_diag / gen_svg 生成器；清单见 docs/current/02-构建与上手/脚本总清单与必跑防线.md）
 .agents/                   Agent Skills（踩过实锤的项目专属操作手册 + 零依赖安装器；清单与安装见 .agents/README.md）
 docs/                      设计文档、规范与事故报告
   ├── current/             当前有效文档

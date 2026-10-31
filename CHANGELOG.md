@@ -121,7 +121,6 @@
   （tsc -p 严格档 / oxlint / node:test 8/8）。spec §1 连坐「合流顺序
   契约」注记。
 
-<<<<<<< HEAD
 ### fix(ci+scripts): PR #392 审阅处置批——P2-1 protocol_frames 三元同族 / P2-2 moon 守卫三处 fail-open / P2-3 终验承诺勘正 / P3 四件（2026-10-31）
 
 - **P2-1（#359 同族漏改）**：`protocol_frames` 三处平台三元改直取

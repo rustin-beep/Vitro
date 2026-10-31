@@ -168,14 +168,6 @@
       "algorithm": "binary_search",
       "display_name": "二分查找",
       "phase": "mid_calc",
-      "desc": "计算中点 mid=0",
-      "code_line": 6,
-      "src": "int mid = left + (right - left) / 2;"
-    },
-    {
-      "algorithm": "binary_search",
-      "display_name": "二分查找",
-      "phase": "mid_calc",
       "desc": "计算中点 mid=2",
       "code_line": 6,
       "src": "int mid = left + (right - left) / 2;"
@@ -458,14 +450,6 @@
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
       "phase": "compare",
-      "desc": "比较 arr[1] 与 arr[2]",
-      "code_line": 6,
-      "src": "if (arr[j] \u003e arr[j + 1]) {"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
-      "phase": "compare",
       "desc": "比较 arr[2] 与 arr[3]",
       "code_line": 6,
       "src": "if (arr[j] \u003e arr[j + 1]) {"
@@ -521,10 +505,10 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
-      "phase": "inner_loop",
-      "desc": "内层循环 j=4，比较相邻元素",
-      "code_line": 5,
-      "src": "for (int j = 0; j \u003c n - i - 1; j++) {"
+      "phase": "compare",
+      "desc": "比较 arr[1] 与 arr[2]",
+      "code_line": 6,
+      "src": "if (arr[j] \u003e arr[j + 1]) {"
     },
     {
       "algorithm": "bubble_sort",
@@ -548,7 +532,7 @@
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
       "phase": "outer_loop",
-      "desc": "第 1 趟：将第 1 大的元素放到正确位置",
+      "desc": "第 2 趟：将第 2 大的元素放到正确位置",
       "code_line": 7,
       "src": "for (int i = 1; i \u003c n; i++)"
     },
@@ -556,9 +540,9 @@
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
       "phase": "outer_loop",
-      "desc": "第 2 趟：将第 2 大的元素放到正确位置",
-      "code_line": 7,
-      "src": "for (int i = 1; i \u003c n; i++)"
+      "desc": "第 1 趟：将第 1 大的元素放到正确位置",
+      "code_line": 9,
+      "src": "for (int i = 0; i \u003c n; i++) {"
     },
     {
       "algorithm": "bubble_sort",
@@ -635,22 +619,6 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
-      "phase": "swap",
-      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
-      "code_line": 19,
-      "src": "bucket[i][k + 1] = temp;"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
-      "phase": "inner_loop",
-      "desc": "内层循环 j=1，比较相邻元素",
-      "code_line": 14,
-      "src": "for (int j = 0; j \u003c count[i] - 1; j++) {"
-    },
-    {
-      "algorithm": "bubble_sort",
-      "display_name": "冒泡排序",
       "phase": "outer_loop",
       "desc": "第 9 趟：将第 ? 大的元素放到正确位置",
       "code_line": 13,
@@ -667,10 +635,10 @@
     {
       "algorithm": "bubble_sort",
       "display_name": "冒泡排序",
-      "phase": "inner_loop",
-      "desc": "内层循环 j=2，比较相邻元素",
-      "code_line": 26,
-      "src": "for (int j = 0; j \u003c count[i]; j++)"
+      "phase": "swap",
+      "desc": "交换 arr[1]↔arr[2]，较大的元素向右移动",
+      "code_line": 27,
+      "src": "arr[idx++] = bucket[i][j];"
     }
   ],
   "computeNextVal": [
@@ -801,14 +769,6 @@
       "desc": "构建 nextval 数组，nextval[0]=-1",
       "code_line": 23,
       "src": "nextval[0] = -1;"
-    },
-    {
-      "algorithm": "string_match_kmp",
-      "display_name": "KMP 模式匹配",
-      "phase": "build_nextval",
-      "desc": "构建 nextval 数组，nextval[1]",
-      "code_line": 28,
-      "src": "nextval[j] = next[j];"
     },
     {
       "algorithm": "string_match_kmp",
@@ -1126,14 +1086,6 @@
       "algorithm": "dp",
       "display_name": "动态规划",
       "phase": "inner_loop",
-      "desc": "遍历金额 j=0",
-      "code_line": 10,
-      "src": "for (int j = coins[i]; j \u003c= amount; j++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "inner_loop",
       "desc": "遍历金额 j=1",
       "code_line": 10,
       "src": "for (int j = coins[i]; j \u003c= amount; j++) {"
@@ -1237,14 +1189,6 @@
     {
       "algorithm": "dp",
       "display_name": "动态规划",
-      "phase": "inner_loop",
-      "desc": "遍历金额 j=12",
-      "code_line": 10,
-      "src": "for (int j = coins[i]; j \u003c= amount; j++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
       "phase": "outer_loop",
       "desc": "遍历币种 i=2",
       "code_line": 9,
@@ -1260,14 +1204,6 @@
     }
   ],
   "dpFib": [
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
-      "desc": "遍历子问题 i=0",
-      "code_line": 8,
-      "src": "for (int i = 2; i \u003c= n; i++) {"
-    },
     {
       "algorithm": "dp",
       "display_name": "动态规划",
@@ -1362,14 +1298,6 @@
       "algorithm": "dp",
       "display_name": "动态规划",
       "phase": "outer_loop",
-      "desc": "遍历物品 i=0",
-      "code_line": 18,
-      "src": "for (int i = 1; i \u003c= n; i++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
       "desc": "遍历物品 i=1",
       "code_line": 18,
       "src": "for (int i = 1; i \u003c= n; i++) {"
@@ -1396,25 +1324,9 @@
       "algorithm": "dp",
       "display_name": "动态规划",
       "phase": "outer_loop",
-      "desc": "遍历子问题 i=0",
-      "code_line": 13,
-      "src": "for (int i = 1; i \u003c= m; i++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
       "desc": "遍历子问题 i=1",
       "code_line": 13,
       "src": "for (int i = 1; i \u003c= m; i++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "inner_loop",
-      "desc": "遍历子问题维度 j=0",
-      "code_line": 14,
-      "src": "for (int j = 1; j \u003c= n; j++) {"
     },
     {
       "algorithm": "dp",
@@ -1483,14 +1395,6 @@
     {
       "algorithm": "dp",
       "display_name": "动态规划",
-      "phase": "inner_loop",
-      "desc": "遍历子问题维度 j=7",
-      "code_line": 14,
-      "src": "for (int j = 1; j \u003c= n; j++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
       "phase": "outer_loop",
       "desc": "遍历子问题 i=3",
       "code_line": 13,
@@ -1506,14 +1410,6 @@
     }
   ],
   "dpLIS": [
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
-      "desc": "遍历子问题 i=0",
-      "code_line": 9,
-      "src": "for (int i = 1; i \u003c n; i++) {"
-    },
     {
       "algorithm": "dp",
       "display_name": "动态规划",
@@ -1698,14 +1594,6 @@
       "algorithm": "gcd",
       "display_name": "最大公约数",
       "phase": "mod",
-      "desc": "计算 48 % 18 = 18（余数作为新的 b）",
-      "code_line": 6,
-      "src": "b = a % b;"
-    },
-    {
-      "algorithm": "gcd",
-      "display_name": "最大公约数",
-      "phase": "mod",
       "desc": "计算 48 % 18 = 12（余数作为新的 b）",
       "code_line": 6,
       "src": "b = a % b;"
@@ -1722,14 +1610,6 @@
       "algorithm": "gcd",
       "display_name": "最大公约数",
       "phase": "mod",
-      "desc": "计算 18 % 12 = 12（余数作为新的 b）",
-      "code_line": 6,
-      "src": "b = a % b;"
-    },
-    {
-      "algorithm": "gcd",
-      "display_name": "最大公约数",
-      "phase": "mod",
       "desc": "计算 18 % 12 = 6（余数作为新的 b）",
       "code_line": 6,
       "src": "b = a % b;"
@@ -1741,14 +1621,6 @@
       "desc": "辗转相除：a=12, b=6",
       "code_line": 4,
       "src": "while (b != 0) {"
-    },
-    {
-      "algorithm": "gcd",
-      "display_name": "最大公约数",
-      "phase": "mod",
-      "desc": "计算 12 % 6 = 6（余数作为新的 b）",
-      "code_line": 6,
-      "src": "b = a % b;"
     },
     {
       "algorithm": "gcd",
@@ -1788,14 +1660,6 @@
       "algorithm": "hanoi",
       "display_name": "汉诺塔",
       "phase": "recursive",
-      "desc": "递归移动 2 个盘子",
-      "code_line": 8,
-      "src": "hanoi(n - 1, from, aux, to);"
-    },
-    {
-      "algorithm": "hanoi",
-      "display_name": "汉诺塔",
-      "phase": "recursive",
       "desc": "递归移动 1 个盘子",
       "code_line": 8,
       "src": "hanoi(n - 1, from, aux, to);"
@@ -1823,6 +1687,14 @@
       "desc": "移动第 2 个盘子",
       "code_line": 9,
       "src": "printf(\"Move disk %d from %c to %c\\n\", n, from, to);"
+    },
+    {
+      "algorithm": "hanoi",
+      "display_name": "汉诺塔",
+      "phase": "recursive",
+      "desc": "递归移动 2 个盘子",
+      "code_line": 8,
+      "src": "hanoi(n - 1, from, aux, to);"
     },
     {
       "algorithm": "hanoi",
@@ -1888,14 +1760,6 @@
     }
   ],
   "insertion": [
-    {
-      "algorithm": "insertion_sort",
-      "display_name": "插入排序",
-      "phase": "outer_loop",
-      "desc": "第 0 个元素：准备插入到已排序部分",
-      "code_line": 4,
-      "src": "for (int i = 1; i \u003c n; i++) {"
-    },
     {
       "algorithm": "insertion_sort",
       "display_name": "插入排序",
@@ -2058,14 +1922,6 @@
       "algorithm": "dp",
       "display_name": "动态规划",
       "phase": "outer_loop",
-      "desc": "遍历子问题 i=0",
-      "code_line": 9,
-      "src": "for (int i = 1; i \u003c n - len + 1; i++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
       "desc": "遍历子问题 i=1",
       "code_line": 9,
       "src": "for (int i = 1; i \u003c n - len + 1; i++) {"
@@ -2109,14 +1965,6 @@
       "desc": "遍历子问题 i=5",
       "code_line": 9,
       "src": "for (int i = 1; i \u003c n - len + 1; i++) {"
-    },
-    {
-      "algorithm": "dp",
-      "display_name": "动态规划",
-      "phase": "outer_loop",
-      "desc": "遍历子问题 i=6",
-      "code_line": 9,
-      "src": "for (int i = 1; i \u003c n - len + 1; i++) {"
     }
   ],
   "merge": [
@@ -2127,14 +1975,6 @@
       "desc": "启动归并：处理区间 [0, 4]",
       "code_line": 30,
       "src": "mergeSort(arr, 0, n - 1);"
-    },
-    {
-      "algorithm": "merge_sort",
-      "display_name": "归并排序",
-      "phase": "recursive_split",
-      "desc": "将数组区间 [0, 4] 递归分成两半",
-      "code_line": 21,
-      "src": "mergeSort(arr, left, mid);"
     },
     {
       "algorithm": "merge_sort",
@@ -2159,6 +1999,14 @@
       "desc": "合并两个有序子数组",
       "code_line": 23,
       "src": "merge(arr, left, mid, right);"
+    },
+    {
+      "algorithm": "merge_sort",
+      "display_name": "归并排序",
+      "phase": "recursive_split",
+      "desc": "将数组区间 [0, 4] 递归分成两半",
+      "code_line": 21,
+      "src": "mergeSort(arr, left, mid);"
     },
     {
       "algorithm": "merge_sort",
@@ -2298,14 +2146,6 @@
       "algorithm": "radix_sort",
       "display_name": "基数排序",
       "phase": "digit_loop",
-      "desc": "按第 0 位进行分配-收集",
-      "code_line": 11,
-      "src": "for (exp = 1; max / exp \u003e 0; exp *= 10) {"
-    },
-    {
-      "algorithm": "radix_sort",
-      "display_name": "基数排序",
-      "phase": "digit_loop",
       "desc": "按第 1 位进行分配-收集",
       "code_line": 11,
       "src": "for (exp = 1; max / exp \u003e 0; exp *= 10) {"
@@ -2364,14 +2204,6 @@
       "algorithm": "selection_sort",
       "display_name": "选择排序",
       "phase": "inner_loop",
-      "desc": "扫描 j=0，当前最小值在 min_idx=0",
-      "code_line": 6,
-      "src": "for (int j = i + 1; j \u003c n; j++) {"
-    },
-    {
-      "algorithm": "selection_sort",
-      "display_name": "选择排序",
-      "phase": "inner_loop",
       "desc": "扫描 j=1，当前最小值在 min_idx=0",
       "code_line": 6,
       "src": "for (int j = i + 1; j \u003c n; j++) {"
@@ -2407,14 +2239,6 @@
       "desc": "扫描 j=3，当前最小值在 min_idx=2",
       "code_line": 6,
       "src": "for (int j = i + 1; j \u003c n; j++) {"
-    },
-    {
-      "algorithm": "selection_sort",
-      "display_name": "选择排序",
-      "phase": "compare",
-      "desc": "比较 arr[3] 与当前最小值 arr[2]",
-      "code_line": 7,
-      "src": "if (arr[j] \u003c arr[minIdx])"
     },
     {
       "algorithm": "selection_sort",
@@ -2459,14 +2283,6 @@
     {
       "algorithm": "selection_sort",
       "display_name": "选择排序",
-      "phase": "inner_loop",
-      "desc": "扫描 j=5，当前最小值在 min_idx=1",
-      "code_line": 6,
-      "src": "for (int j = i + 1; j \u003c n; j++) {"
-    },
-    {
-      "algorithm": "selection_sort",
-      "display_name": "选择排序",
       "phase": "swap",
       "desc": "将最小元素交换到位置 2",
       "code_line": 12,
@@ -2483,10 +2299,10 @@
     {
       "algorithm": "selection_sort",
       "display_name": "选择排序",
-      "phase": "inner_loop",
-      "desc": "扫描 j=5，当前最小值在 min_idx=2",
-      "code_line": 6,
-      "src": "for (int j = i + 1; j \u003c n; j++) {"
+      "phase": "compare",
+      "desc": "比较 arr[3] 与当前最小值 arr[2]",
+      "code_line": 7,
+      "src": "if (arr[j] \u003c arr[minIdx])"
     },
     {
       "algorithm": "selection_sort",
@@ -2495,14 +2311,6 @@
       "desc": "扫描 j=4，当前最小值在 min_idx=3",
       "code_line": 6,
       "src": "for (int j = i + 1; j \u003c n; j++) {"
-    },
-    {
-      "algorithm": "selection_sort",
-      "display_name": "选择排序",
-      "phase": "compare",
-      "desc": "比较 arr[4] 与当前最小值 arr[3]",
-      "code_line": 7,
-      "src": "if (arr[j] \u003c arr[minIdx])"
     },
     {
       "algorithm": "selection_sort",
@@ -2519,14 +2327,6 @@
       "desc": "第 3 趟：从第 3 个位置开始找最小值",
       "code_line": 4,
       "src": "for (int i = 0; i \u003c n - 1; i++) {"
-    },
-    {
-      "algorithm": "selection_sort",
-      "display_name": "选择排序",
-      "phase": "inner_loop",
-      "desc": "扫描 j=5，当前最小值在 min_idx=3",
-      "code_line": 6,
-      "src": "for (int j = i + 1; j \u003c n; j++) {"
     },
     {
       "algorithm": "selection_sort",
@@ -2556,14 +2356,6 @@
     }
   ],
   "shellSort": [
-    {
-      "algorithm": "shell_sort",
-      "display_name": "希尔排序",
-      "phase": "outer_loop",
-      "desc": "取增量 gap=0，分组进行插入排序",
-      "code_line": 4,
-      "src": "for (int gap = n / 2; gap \u003e 0; gap /= 2) {"
-    },
     {
       "algorithm": "shell_sort",
       "display_name": "希尔排序",
@@ -2807,14 +2599,6 @@
       "desc": "比较主串与模式串字符",
       "code_line": 26,
       "src": "if (j == -1 || S[i] == T[j]) {"
-    },
-    {
-      "algorithm": "string_match_kmp",
-      "display_name": "KMP 模式匹配",
-      "phase": "build_next",
-      "desc": "构建 next 数组，next[4]=-1",
-      "code_line": 30,
-      "src": "j = next[j];"
     }
   ],
   "topologicalSort": [

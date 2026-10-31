@@ -209,10 +209,10 @@ pub fn behavior_contracts() -> Array[BehaviorContract] {
     },
     {
       id: "algorithm_step_line_end_sparsity",
-      statement: "algorithm_step 是行末帧语义（#225 定性 + 审阅 P2-1 定谳）：同一 code_line 的连续指令帧序列仅段尾帧携带非 null 标注（行执行完毕、变量为行末态），行中间帧为 null——下游应沿用最近非 null 标注；标注整体是稀疏的（指令级步进下密度 = 行数/指令数量级），勿按「逐步都有语义」设计交互。step.next 发布流与 payload.get 窗口流**行为一致**（批内去重单源于 FrameWindow.push_batch；跨批 pending 的行末性由 serve 发布缓冲按批首帧判定——变异实验 + 双 probe 定谳）",
+      statement: "algorithm_step 是行末帧语义（#225 定性 + 审阅 P2-1 定谳）：同一 code_line 的连续指令帧序列仅段尾帧携带非 null 标注（行执行完毕、变量为行末态），行中间帧为 null——下游应沿用最近非 null 标注；标注整体是稀疏的（指令级步进下密度 = 行数/指令数量级），勿按「逐步都有语义」设计交互。step.next 发布流与 payload.get 窗口流**行为一致**（批内去重单源于 FrameWindow.push_batch；跨批 pending 的行末性由 serve 发布缓冲按批首帧判定——变异实验 + 双 probe 定谳）；批参数（frames=N 批推进 vs 批=1 逐帧——demo 前端 worker 口径）不改变发布流本身，两形态 code_line 流与标注在位流逐位同构（#399 锚定）",
       status: "active",
       batch: "#225",
-      enforced_by: "gateway::serve_step_wbtest::serve_step_algorithm_step_line_end_invariant（行末不变量 + 密度下限——跨批 pending 参照帧错位形态批>1 可达）",
+      enforced_by: "gateway::serve_step_wbtest::serve_step_algorithm_step_line_end_invariant（行末不变量 + 密度下限 + 双形态逐位同构——frames=50 批与批=1 逐帧两形态各跑全程断言；#225 跨批 pending 参照帧错位形态批>1 可达 + #399 批=1 判空恒跳过形态）",
     },
   ]
 }

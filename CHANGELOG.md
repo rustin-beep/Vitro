@@ -1,5 +1,40 @@
 ## [Unreleased]
 
+### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
+
+- **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后
+  读 `payloads[0]` 且以 `length()>0` 守卫——批=1（`params:{}`，demo 前端
+  worker `engine.worker.ts` 真实口径）时 pop 走唯一帧后守卫恒 false ⇒ 清标注
+  恒跳过、pending 帧永远带标注发布。同源码（bubble.c 1041 帧）只换批量参数：
+  单批 36 标注帧/0 违例 vs 逐帧 **832 标注帧/796 行中间违例**——前端真机语义
+  标注过密 20 倍（时间轴密度/phase 徽标/锚点兜底通道全站受影响）。
+- **修复**（`gateway/serve_step.mbt`）：参照改 **pop 前批首帧**——批=1 时批首帧
+  即 curr 本身（pending 的发布后继，帧发布滞后一帧语义），frames>1 时与旧判据
+  逐位等价，两形态统一；非 flushed ⇒ payloads 必非空，`[0]` 恒安全。
+- **锚双形态化**（`gateway/serve_step_wbtest.mbt`）：`#225` 行末不变量锚原本只跑
+  `frames=50` 批形态、批=1 形态零锚（本缺陷漏网根因）——重构为参数化收集
+  （哨兵惯例辅助函数）+ 双形态各跑全程断言，并新增**同构判据**：两形态
+  code_line 流与标注在位流逐位一致（修复前红锚：批=1 形态「行中间帧带标注
+  line=3 段长 13 第 1 帧」，修复后 156/156 绿）。**锚只在一种批量下绿 ≠
+  不变量成立**。
+- **契约文升级**（`protocol/schema.mbt`）：`algorithm_step_line_end_sparsity`
+  尾句补「批参数不改变发布流本身，两形态逐位同构（#399 锚定）」——原「行为
+  一致」声称从无锚升级为锚定事实；enforced_by 补双形态信息（快照
+  `schema_wbtest.mbt` 连坐更新，diff 纯增量两处）。
+- **密度回归**（js 臂 `cmd/vitro_js api --batch` 探针）：逐帧口径标注帧
+  832→36、行中间违例 796→0、双口径帧流差异字段分布 `[]`（修复前唯一差异
+  字段即 algorithm_step）——与单批口径逐位一致。
+- 连坐（PR #397 合并后衔接）：`demo/tests/e08_live.mts` 头注「两口径不同构
+  待修复退役」口径声明**退役**（改为已同构注记——本批处方第 4 点闭环）；
+  e08-export 标注健康位机判保留（防复发闸，注释引用同步）。
+- 演化归族：B20「输出内容依赖拉取形状」（#324 审阅批登记，随 PR #397 落库）
+  ——本修复即该族治理件。
+
+- 防线连坐（CI 红补）：`protocol_frames` 基线重锚（帧 11 contracts 契约文
+  连坐，native/wasm 双臂 47 帧一致）；`teaching_annotation_diff` golden 重冻
+（闸采集为裸 step.next 批=1 口径，golden 系修复前病态形态——重冻后 82/82、
+  净 -216 行标注收敛，missing@旧行号/extra@正确行末的错位修复形态）。
+
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）

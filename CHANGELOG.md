@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（106 锚，2026-10-30）
+
+- **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`
+  ——指针轨道逐帧（travel = min(帧间隔×0.85, slow token)）；事件轨道以
+  「指针到达该帧」为唯一前驱做最早到达松弛，同目标事件串行成链，等待超
+  `chainBudgetMs` 即种子兜底（放弃等待、接受重叠，WAAPI 单键控保证不叠播）；
+  `minGapMs` 对同 kind 密集事件按到达时刻抽稀（播放期脉冲节流）；`maxMs`
+  超限全表等比压缩（事件层预留，指针轨道不压缩——fps 是用户语义）；
+  `scalePlan` 变速 = 整表乘系数，不重排。
+- **play（播放器）**：`src/lib/playhead.svelte.ts` 常驻 rAF 按表执行——播放中
+  单帧 travel 取自计划表、暂停 seek 用 base token 短滑、scrub/批量/reduced
+  瞬时、落后 >1.5 帧直接对齐；浮点位置只做视觉补间，读数/画面帧/幕切换仍以
+  `session.idx` 为准；无 rAF 环境（SSR/E-08 快照）读取面退化为整数帧。
+- **事件层（swap）**：播放期预算从「全关」改「节拍放行」——`motion.allowPulse`
+  经 playhead 注入的节拍门裁决：计划表按 slow token 抽稀、同帧同键只放行一次；
+  变量脉冲与树过渡播放中仍让位（每帧都有值变化，抽稀后仍是噪声）。D0 段
+  锚显式停播钉位，防后台拍脉冲污染批量/关闭计数。
+- **接线**：Timeline 指针/已播放段与 BeatRail 幕进度改用 `playhead.at`；删
+  `.vr-pointer/.vr-played` 的 CSS 80ms transition（避免双层补间串联固定滞后）。
+- **连带修复（D0 潜伏缺陷）**：`motionMs` 直取
+  `parseFloat(getComputedStyle(...))`——浏览器把 `280ms` 规范化成 `0.28s`，
+  WAAPI 脉冲实际只播 **0.28ms**（D3 实测 `travelMs=0.28` 曝光；此前脉冲面只有
+  计数器锚，测不到时长）。抽 `parseCssMs` 修之，pure 锚锁 `0.28s` / `280ms` /
+  非法文本。同步删除 #374 预留的 `SPRING.pointer`（表驱动不再需要 spring 参数）。
+- **验收**：pure 52/52（+6：parseCssMs×1 + relayPlan×5）、E-08 17/17（golden
+  零重刷）、E2E 106/106（session 30→34：播放连续 / seek 短滑 / scrub+reduced
+  瞬时 / 播放期事件拍抽稀四锚）、style_contract / check:all / lint:all /
+  ui_lint / assemble / tokens -check 全绿。
+- **边界**：变量脉冲（VarsList）与树过渡未进事件层——播放中仍让位；9s 上限
+  只在纯函数单测锁定，未接 UI。
+
 ### fix(cmd 壳/native): PR #391 审阅处置批——P1-1 UCRT 撞码治本（abort 形态）+ P1-2/P2-1 C 桩锚 + P2-2 serve 连坐 + P3 两件（2026-10-31）
 
 - **P1-1（协议面回归，独立复证 + 红→绿）**：SIGABRT handler 终末

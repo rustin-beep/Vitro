@@ -47,9 +47,10 @@ Source 设为 "GitHub Actions"——`GITHUB_TOKEN` 无法自动启用 Pages）�
 - **逐行注记（P1 第五片，2026-10-21）**：src/lib/annotations.ts 从帧流差分出「本幕每行最近一次执行改了什么」——局部量 t ← 5、数组元素 a[1] ← 1；只取当前帧及之前、跨函数不比较、首帧无前态不猜；**归行校验**（该行源码不写这个变量就不贴注记——语句级帧会把 for 的 j++ 并进循环体末行，实测 a[j+1] = t 帧里 j 已递增）。渲染走 CM6 **行装饰属性 + CSS ::after**（注记不进 .cm-content 文本面，E2E docLen 不被污染），源码编辑（docChanged）即整体作废。锚 B4（帧 12 的三行注记 = 拍板稿 08/09/10 形态）在 tests/e2e_session.mts。
 - **本幕讲解 + 展开全文（P1 第六片，2026-10-21）**：scene 课程的课文改为「当前幕卡片（幕号/帧范围/源码行 + 标题 + 一句要点）+ 默认折叠的全文」（src/lib/SceneNote.svelte）——本幕卡片只读 lesson.md 真源字段，不手写第二份讲解；无 scene 的课 100% 回退现有长文。全文走 details（内容始终在 DOM，E-08/W9 锚不受折叠影响），换课自动回折叠。锚 B5（默认折叠 + 本幕跟随 + 可展开）在 tests/e2e_session.mts。
 - **交换事件优先（D1，#122，2026-10-29）**：`session.eventsAt(i)` 暴露第 i 个回放帧的 vis_events 全集。语句级按**组内聚合**：VM 的 StepEvent 落在组内命中的那条指令上，组尾帧自身常无事件——bubble 课实测 7 个 ty=2 交换全部落在非尾帧，只读组尾会全丢（`src/lib/visEvents.ts` 的 `statementEvents`，帧序列与 `coalesceStmt` 同源同序）。ArrayCells 在 ty=2 时用 extras（j/j+1）做双格静态高亮 + 两格连线 + WAAPI 脉冲，「本帧交换 a[0] ↔ a[1]」进入块头读数；**无事件才回落相邻帧差分闪烁**（猜测降级为兜底）。extras 只有下标没有数组名——多数组课按事件 `context` 的 `name[` 归属过滤（A 数组的交换不会点亮 B 数组的同号格；D1b 用合成课做接线锚）。Editor 左缘按 ty 分色：compare 琥珀 / swap `--vr-swap`（五主题各一枚）。纯函数锚 `statementEvents` / `swapPairs` 在 `tests/pure.test.mts`。
-- **动效治理层（D0，#122，2026-10-29）**：`src/lib/motion.svelte.ts` 单点管三件事——①用户开关 + 系统 `prefers-reduced-motion`（`data-motion="off"` 的唯一写口，CSS 一刀切）；②脉冲预算（播放 / 批量推进 / 时间轴 scrub 时 WAAPI 脉冲让位，静态高亮与连线不让位）；③`pulse()` 原语（同元素单动画键控，重复触发先取消上一次）。时长/缓动**运行期**读 tokens.css（`--vr-t-fast/base/slow` + `--vr-ease / -emphasis / -enter`），不在 JS 抄数；spring 数值参数在 motion 层（CSS 变量无法回喂 Svelte spring）。
+- **动效治理层（D0，#122，2026-10-29）**：`src/lib/motion.svelte.ts` 单点管三件事——①用户开关 + 系统 `prefers-reduced-motion`（`data-motion="off"` 的唯一写口，CSS 一刀切）；②脉冲预算（批量推进 / 时间轴 scrub 时全关；播放期 swap 脉冲由计划表节拍门按 slow token 抽稀放行，变量/树过渡仍让位——静态高亮与连线始终不让位）；③`pulse()` 原语（同元素单动画键控，重复触发先取消上一次）。时长/缓动**运行期**读 tokens.css（`--vr-t-fast/base/slow` + `--vr-ease / -emphasis / -enter`），不在 JS 抄数；读不到时走 `motionTokens.ts` 兜底（与 tokens.json 等值由 pure 锁死）。`parseCssMs` 处理 computed style 把 `280ms` 规范化成 `0.28s` 的形态——修前 `parseFloat` 直取得 0.28，WAAPI 脉冲实际只播 0.28ms（D3 实测 `travelMs=0.28` 才曝光；此前脉冲只有计数器锚，测不到时长）。
 - **结构过渡（D2，#122，2026-10-29）**：CallTree 相机跟随/全览切换走 `Tween`（160ms cubicOut）——Svelte Spring 的 damping 被钳在 0..1，快速档必然过冲，做不出「过阻尼仪器感」（改动理由写在 motion 头注）；拖拽/缩放/scrub/批量/reduced 一律瞬时。树节点换树时从父节点旧位置生长、边淡入；**首帧落地不演**（`ui.navEpoch` 区分首帧与用户换页），visited 祖先链走 CSS 过渡。VarsList 行进出 `gatedFade` + 值变化 WAAPI 脉冲（预算外只留静态左缘线）。**MemoryView 的 alloc/free 帧级进出场本轮不做**：组件数据源是会话结束态 `memory.regions`（非帧级），按 `pointer_snapshots` 伪造生命周期会违反「动效不撒谎」——等 D4/#53 的帧级内存数据。
 - **view→raw 映射修正（D2 连带）**：CallTree 的 `frameNode` 按指令帧建，语句级拿 view 下标直查会错帧（global_struct deep 帧 view 10 ↔ raw 56）——新增 `session.rawIndexAt` 单点映射，路径/当前节点/相机取景同源修正；D2 深树锚以 `frameAt().call_stack` 真值全等断言。
+- **回放播放头（D3，#122，2026-10-30）**：时间轴指针/已播放段/分镜进度改走**两段式计划表**——`src/lib/relayPlan.ts` 纯函数把帧事件排成 `{depart, travel}` 计划（指针轨道逐帧、事件轨道以「指针到达」为唯一前驱做最早到达松弛，同目标事件串行成链、等待超预算即种子兜底；`maxMs` 上限为事件层预留，指针轨道不压缩）；`src/lib/playhead.svelte.ts` 的 rAF 播放器只按表执行（播放中 travel = min(帧间隔×0.85, slow token)，暂停 seek 用 base token 短滑，scrub/批量/reduced 瞬时；落后 >1.5 帧直接对齐不拖尾）。**浮点位置只是视觉补间**：读数、画面帧、幕切换仍以整数 `session.idx` 为准；SSR/E-08 快照无 rAF 时读取面退化为整数帧。变速 = `scalePlan` 整表乘系数（不重排）。**事件层**：播放期 swap 脉冲（ty=2）由计划表按 `minGapMs`（slow token）抽稀后逐拍放行（D3d 锚断有放行、有上限）；变量脉冲与树过渡播放中仍让位。取代 #374 预留的 `SPRING.pointer`（表驱动不再需要 spring 参数）。
 
 ## 设计契约与主题 token（P0 契约批，2026-10-21）
 
@@ -153,15 +154,16 @@ Firefox 134+），加载失败页面会显示降级提示。
     `demo/tests/e2e_workspace.mts`（工作区 + 点课叙述 + 回放交互 + 设置
     面板 + 主题持久化 + 分享往返 + **stdin 喂入/golden 对照/统计卡**
     W1-W17，38 锚）+ `demo/tests/e2e_session.mts`（会话/回放/分享族
-    F1-F8 + B0-B11 + **D0/D1/D2**，30 锚——2026-10-18 实测立账批防线锚：
+    F1-F8 + B0-B11 + **D0/D1/D2/D3**，34 锚——2026-10-18 实测立账批防线锚：
     坏分享 hash 横幅 / argv 采集零克隆崩 / 语句级 frameAt 口径〔突变证红
     留痕〕/ 播完 status 提示 / char 数组**全帧 sweep** 零
     each_key_duplicate / trap E 码联动手册 / **课程目录全章渲染**〔重名
     课 id 防护，structures/josephus 实测〕；D0/D1/D2 锚：交换帧双格 + 连线 +
     编辑分色〔修前只有 1 格差分，红→绿留痕〕、动效开关持久化 +
     预算/reduced-motion 旁路、变量值脉冲/行进出、深树 view→raw 当前节点与
-    相机平滑/reduced 旁路、多数组归属接线）+ `e2e_editor.mts`（10 锚）+
-    `e2e_bootfail.mts`（6 锚）。共 102 锚。
+    相机平滑/reduced 旁路、多数组归属接线、播放头连续补间/seek 短滑/scrub 与
+    reduced 瞬时/播放期事件拍抽稀）+ `e2e_editor.mts`（10 锚）+
+    `e2e_bootfail.mts`（6 锚）。共 106 锚。
     ⚠️ 旧锚点（`.pilot-head` / `.tab` / `button.lesson` / `.bars`）随五 tab
     旧 DOM 在 2026-10-18 改造批退役；仍跑旧脚本会在 boot 等待即超时
     （`.pilot-head .badge` 永不出现）——请以当前 `tests/e2e_*.mts` 为准。

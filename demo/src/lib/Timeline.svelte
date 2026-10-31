@@ -12,6 +12,7 @@
   import { seek, session, setFps, setGran, step, togglePlay } from "../session.svelte.ts";
   import { lessonSession } from "./lessonSession.svelte.ts";
   import { setScrubbing } from "./motion.svelte.ts";
+  import { playhead } from "./playhead.svelte.ts";
   import { sceneBand, sceneIndexAt } from "./scenes.ts";
 
   const FPS_STEPS = [2, 8, 30, 60, 120, 240];
@@ -21,7 +22,9 @@
 
   const n = $derived(session.viewFrames.length);
   const idx = $derived(Math.min(session.idx, Math.max(n - 1, 0)));
-  const pct = $derived(n > 1 ? (idx / (n - 1)) * 100 : 0);
+  // D3：指针/已播放段走 playhead 的浮点帧坐标（表驱动补间）；读数与画面帧
+  // 仍以整数 idx 为准——补间中间态只是视觉过渡，不承载语义。
+  const posPct = $derived(n > 1 ? (Math.max(0, Math.min(n - 1, playhead.at)) / (n - 1)) * 100 : 0);
   const ended = $derived(n > 0 && idx >= n - 1);
 
   // 本课分镜（scene 真源 = lesson.md；未迁移课 = []，整条分幕面不渲染）。
@@ -151,11 +154,11 @@
         <span class="vr-tick-label" class:is-first={t.i === 0} style:left="{t.at}%">{t.i}</span>
       {/each}
     </div>
-    <div class="vr-played" style:width="{pct}%"></div>
+    <div class="vr-played" style:width="{posPct}%"></div>
     {#each events as ev (ev)}
       <span class="vr-event" class:is-current={ev === idx} style:left="{n > 1 ? (ev / (n - 1)) * 100 : 0}%" title="第 {ev + 1} 帧 · 数组值发生变化"></span>
     {/each}
-    <div class="vr-pointer" style:left="{pct}%"></div>
+    <div class="vr-pointer" style:left="{posPct}%"></div>
     <div class="vr-endflag"><span>{Math.max(n - 1, 0)}</span></div>
     {#if hoverInfo}
       <div class="vr-scrub" style:left="{n > 1 ? Math.max(3, Math.min(97, (hoverInfo.i / (n - 1)) * 100)) : 50}%">

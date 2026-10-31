@@ -3,32 +3,21 @@
 // 三条职责（与呈现层分工，见 demo/DESIGN.md 动效章）：
 //   1. 开关：用户偏好（localStorage vitro-motion）+ 系统 prefers-reduced-motion
 //      双层禁用；html data-motion="off" 仍是 CSS 一刀切的唯一写口（本层写）。
-//   2. 预算：状态类高亮（class/attr）恒亮；脉冲类动效在播放 / 批量推进 /
-//      拖拽 scrub 时让位——满屏闪会盖掉正在读的语义。
+//   2. 预算：状态类高亮（class/attr）恒亮；脉冲类动效在批量推进 / 拖拽
+//      scrub 时全关，播放期由计划表节拍门抽稀放行（D3 事件层）——满屏闪
+//      会盖掉正在读的语义。
 //   3. 呈现原语：pulse() 给单元素单动画键控（重复触发先取消上一次），
 //      时长/缓动从 tokens.css 运行期读取；读不到时用 motionTokens.ts 的
 //      兜底值（与 tokens.json 等值由 pure.test 锁死，防静默分叉）。
-//
-// 为什么 spring 参数不放 tokens.json：Svelte spring 要的是 JS 数值，CSS 变量
-// 无法回读成数值参数；硬塞进 token 只会制造第二真相源。回调参数单源在本文件。
 "use strict";
 
 import { KEYS, storeGet, storeSet } from "../persisted.svelte.ts";
 import { session } from "../session.svelte.ts";
 import { cubicOut } from "svelte/easing";
-import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS } from "./motionTokens.ts";
+import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS, parseCssMs } from "./motionTokens.ts";
 
 export type MotionTier = "fast" | "base" | "slow";
 export type MotionEasing = "standard" | "emphasis" | "enter";
-
-/** Svelte spring 参数（数值面单源；D3 时间轴指针消费）。
- *  相机用 Tween 而非 spring：Svelte Spring 的 damping 被钳在 0..1，可用
- *  stiffness 下必然欠阻尼（快速档过冲），做不出「过阻尼仪器感」；Tween +
- *  cubicOut 无过冲且时长可 token 化（见 CallTree 相机段）。 */
-export const SPRING = {
-  /** 时间轴指针 / 分镜进度：轻一点，跟手但不跳 */
-  pointer: { stiffness: 0.28, damping: 0.86 },
-} as const;
 
 // 基座 token（--vr-t* / --vr-ease*）不随主题变化，页面生命周期内可永久缓存；
 // 若未来把它们挪进 themes，缓存必须改按 data-theme 分键。
@@ -49,11 +38,11 @@ function prefersReduced(): boolean {
   return reducedMql.matches;
 }
 
-/** token 时长（ms）：CSS 变量单源，读不到才用兜底值。 */
+/** token 时长（ms）：CSS 变量单源，读不到才用兜底值。
+ *  单位解析走 parseCssMs——computed style 的 `0.28s` 形态不能直取数值。 */
 export function motionMs(tier: MotionTier = "base"): number {
   const raw = cssVar(tier === "base" ? "--vr-t" : `--vr-t-${tier}`);
-  const n = Number.parseFloat(raw);
-  return Number.isFinite(n) ? n : FALLBACK_MS[tier];
+  return parseCssMs(raw, FALLBACK_MS[tier]);
 }
 
 /** token 缓动串：WAAPI 与 CSS 共用同一组曲线。 */
@@ -84,13 +73,28 @@ class MotionState {
     return this.enabled && !this.systemReduced && !prefersReduced();
   }
 
-  /** 脉冲类动效预算：播放 / 批量推进 / scrub 时让位；状态类高亮不受影响。 */
+  /** 脉冲类动效预算：批量推进 / scrub 时全关；播放期改由计划表节拍门裁决
+   *  （D3 事件层：swap 事件按 minGap 抽稀后放行，见 allowPulse）。 */
   get transientAllowed(): boolean {
-    return this.allowed && !session.playing && !session.batching && !this.scrubbing;
+    return this.allowed && !session.batching && !this.scrubbing;
+  }
+
+  /** 事件动效放行：非播放态预算内直接放行；播放态交给节拍门
+   *  （playhead 注入；未注入时播放中不放行，保持旧语义兜底）。 */
+  allowPulse(kind: string, key: string): boolean {
+    if (!this.transientAllowed) return false;
+    if (!session.playing) return true;
+    return beatGate !== null && beatGate(kind, key);
   }
 }
 
 export const motion = new MotionState();
+
+/** 播放期节拍门（playhead 注入；motion 不反向 import playhead——避免循环依赖）。 */
+let beatGate: ((kind: string, key: string) => boolean) | null = null;
+export function setBeatGate(fn: ((kind: string, key: string) => boolean) | null): void {
+  beatGate = fn;
+}
 
 /** 唯一写口：html data-motion（CSS 一刀切停动画/过渡）。 */
 function writeRootFlag(on: boolean): void {
@@ -144,7 +148,9 @@ export function gatedFade(_el: Element, params: { armed?: boolean } = {}): { dur
 const running = new WeakMap<Element, Animation>();
 
 /** 单次脉冲：同一元素重复触发先取消上一次（不叠播）；预算关闭时返回 null。
- *  调用方负责静态状态（class/attr）——动效只是强调，不是语义的载体。 */
+ *  调用方负责静态状态（class/attr）——动效只是强调，不是语义的载体。
+ *  播放期的事件组须先经 allowPulse(kind, key) 取得节拍放行（本函数只查
+ *  批量/scrub/动效开关，不重复扣节拍额度——一次放行覆盖整组脉冲）。 */
 export function pulse(
   el: Element | null | undefined,
   keyframes: Keyframe[],

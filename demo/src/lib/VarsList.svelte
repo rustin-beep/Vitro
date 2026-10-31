@@ -30,7 +30,7 @@
       flashPrimed = true; // 首帧是「进入页面」不是「值变了」，不闪
       return;
     }
-    if (!motion.transientAllowed) return;
+    if (!motion.allowPulse("vars", "*")) return;
     const tint = getComputedStyle(document.documentElement).getPropertyValue("--vr-amber-tint").trim() || "transparent";
     for (let i = 0; i < list.length; i += 1) {
       const v = list[i];

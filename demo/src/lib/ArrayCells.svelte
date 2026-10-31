@@ -152,7 +152,10 @@
   }
 
   // 交换脉冲（WAAPI）：按「帧号 + 交换对」键控，同一对不因预算翻态重播；
-  // 播放/批量/scrub 时预算关闭——静态高亮与连线仍在（动效让位，语义不让位）。
+  // 批量/scrub 时预算全关；播放期由计划表节拍门放行（D3 事件层：8fps 连续
+  // 交换按 slow token 抽稀，不会每帧都闪）——静态高亮与连线始终在。
+  // 记账必须先于预算裁决：effect 订阅了 batching/playing（allowPulse 读 $state），
+  // 预算解除会让 effect 重跑——先记账才不会补播「让位期」那一帧（D0 锚）。
   let lastSwapKey = "";
   $effect(() => {
     const pairs = pairList;
@@ -164,7 +167,7 @@
       .filter((el): el is HTMLDivElement => el !== undefined);
     if (els.length === 0) return;
     lastSwapKey = key;
-    if (!motion.transientAllowed) return;
+    if (!motion.allowPulse("swap", snap.name)) return;
     const color = swapColor();
     for (const el of els) {
       pulse(

@@ -484,8 +484,10 @@ html { --vr-masthead-h: 65px; scroll-padding-top: calc(var(--vr-masthead-h) + 12
 .vr-tick-label { position: absolute; bottom: 0; transform: translateX(-50%); font-family: var(--vr-mono); font-size: 9px; font-variant-ligatures: none; color: var(--vr-ink-3); }
 .vr-tick-label.is-first { transform: none; }
 .vr-axis { position: absolute; left: 0; right: 0; bottom: 16px; height: 1px; background: var(--vr-rule); }
-.vr-played { position: absolute; left: 0; bottom: 15px; height: 2px; background: var(--vr-amber-2); width: 0; transition: width 80ms linear; }
-.vr-pointer { position: absolute; top: 4px; bottom: 14px; width: 1px; background: var(--vr-amber-2); left: 0; transition: left 80ms linear; }
+.vr-played { position: absolute; left: 0; bottom: 15px; height: 2px; background: var(--vr-amber-2); width: 0; }
+/* 指针/已播放段位置由 playhead 按计划表逐帧写入（D3）——CSS 不再叠加
+   transition，否则两层补间串联会让指针固定滞后一个 token 时长。 */
+.vr-pointer { position: absolute; top: 4px; bottom: 14px; width: 1px; background: var(--vr-amber-2); left: 0; }
 .vr-pointer::before { content: ""; position: absolute; left: -3px; top: -1px; width: 7px; height: 7px; background: var(--vr-amber-2); transform: rotate(45deg); }
 .vr-timeline.is-playing .vr-pointer::before { animation: vr-breathe 1.4s var(--vr-ease) infinite; }
 @keyframes vr-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }

@@ -131,7 +131,7 @@ interface D1Multi { idx: number; secs: Array<{ title: string; swap: string; cell
 
 // P2-1（PR #374 审阅）：声明锚数与实跑对账——waitFor 抛错会中断脚本，
 // 不报「实跑 n / 声明 N」时 CI 只能看到一条异常、看不到覆盖静默缺失。
-const DECLARED_ANCHORS = 30;
+const DECLARED_ANCHORS = 34;
 const results: CheckResult[] = [];
 
 async function run() {
@@ -381,6 +381,12 @@ async function run() {
 
   // ── D0 动效治理（#122 D0）：开关持久化 + 预算裁决 + reduced-motion 旁路 ──
   // 语义优先级：脉冲可被预算旁路，静态交换高亮/连线不可丢（动效不撒谎）。
+  // D3 起播放期脉冲按计划表节拍放行，本段必须显式停播——否则后台播放的
+  // 拍脉冲会污染「批量/关闭时不动」的计数断言（先钉状态，不赌前序套件）。
+  if (await evaluate("window.__pilot.session.playing")) {
+    await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+    await sleep(250);
+  }
   await setUserMotion(true);
   const d0base = await evaluate<D0Base>(`(() => ({
     attr: document.documentElement.getAttribute('data-motion'),
@@ -644,6 +650,111 @@ async function run() {
     const msg = String((err as Error)?.message ?? err).slice(0, 200);
     results.push({ name: "D1b 多数组归属（P3-1）段异常", ok: false, detail: msg });
     console.log("FAIL  D1b 多数组归属（P3-1）段异常  — " + msg);
+  }
+
+  // ── D3 回放播放头（#122）：指针位置由计划表驱动补间。三条纪律各一锚：
+  //    播放中连续推进；暂停 seek 短滑到位；直接操作（scrub）/reduced 瞬时。
+  //    读数与画面帧仍以整数 idx 为准（pos 只是视觉过渡）——锚同时验证这点。
+  try {
+    await setReduced(false);
+    await setUserMotion(true);
+    await pickLesson("bubble");
+    if (await evaluate("window.__pilot.session.playing")) {
+      await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+      await sleep(200);
+    }
+    await evaluate("window.__pilot.seek(0)");
+    await sleep(400);
+
+    // D3a 播放中：页面内 rAF 采样 ~400ms（8fps 约 3 帧），pos 必须出现
+    // 非整数中间态且 moves 增长——证明补间真的由 rAF 驱动，不是 CSS 跳格。
+    await evaluate("window.__pilot.playhead.moves = 0; true");
+    await evaluate(`document.querySelector('[data-act="play"]')?.click(); true`);
+    const d3play = await evaluate<{ samples: number[]; moves: number }>(`(async () => {
+      const m0 = window.__pilot.playhead.moves;
+      const samples = [];
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        const step = () => {
+          samples.push(window.__pilot.playhead.pos);
+          if (performance.now() - t0 > 400) resolve(true);
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+      return { samples, moves: window.__pilot.playhead.moves - m0 };
+    })()`);
+    if (await evaluate("window.__pilot.session.playing")) {
+      await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+      await sleep(200);
+    }
+    const d3fractional = d3play.samples.filter((v) => Math.abs(v - Math.round(v)) > 1e-6).length;
+    check("D3 播放中指针连续补间（pos 非整数中间态 + moves 增长）",
+      d3play.samples.length >= 8 && d3fractional >= 2 && d3play.moves >= 2,
+      JSON.stringify({ n: d3play.samples.length, fractional: d3fractional, moves: d3play.moves, head: d3play.samples.slice(0, 6) }));
+
+    // D3b 暂停 seek：补间中（两帧 rAF 后 pos 仍在起终点之间），随后精确到位。
+    await evaluate("window.__pilot.seek(0)");
+    await sleep(400);
+    const d3seek = await evaluate<{ mid: number; during: number; moves: number }>(`(async () => {
+      const m0 = window.__pilot.playhead.moves;
+      window.__pilot.seek(40);
+      const mid = window.__pilot.playhead.pos;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return { mid, during: window.__pilot.playhead.pos, moves: window.__pilot.playhead.moves - m0 };
+    })()`);
+    await sleep(400);
+    const d3end = await evaluate<number>("window.__pilot.playhead.pos");
+    check("D3 暂停 seek 短滑补间后精确到位（读数仍走整数 idx）",
+      d3seek.mid < 40 && d3seek.during > d3seek.mid && d3seek.during < 40 &&
+        d3seek.moves >= 1 && d3end === 40 &&
+        (await evaluate<number>("window.__pilot.session.idx")) === 40,
+      JSON.stringify({ ...d3seek, end: d3end }));
+
+    // D3c 直接操作与 reduced 一律瞬时：scrub 中 seek 两帧内到位；reduced 同。
+    const d3scrub = await evaluate<{ pos: number; idx: number }>(`(async () => {
+      const s = document.querySelector('.vr-seek');
+      s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      window.__pilot.seek(12);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const out = { pos: window.__pilot.playhead.pos, idx: window.__pilot.session.idx };
+      s.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      return out;
+    })()`);
+    await setReduced(true);
+    const d3reduced = await evaluate<{ pos: number; idx: number }>(`(async () => {
+      window.__pilot.seek(30);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return { pos: window.__pilot.playhead.pos, idx: window.__pilot.session.idx };
+    })()`);
+    check("D3 scrub 与 reduced 瞬时到位（直接操作不拖尾）",
+      d3scrub.pos === 12 && d3scrub.idx === 12 && d3reduced.pos === 30 && d3reduced.idx === 30,
+      JSON.stringify({ d3scrub, d3reduced }));
+    await setReduced(false);
+
+    // D3d 播放期事件拍（事件层）：8fps 连续交换不再全关、也不再每帧都闪——
+    // 计划表按 slow token（280ms）抽稀后逐拍放行。断「有放行」+「有上限」两端：
+    // 1600ms 播放最多 ceil(1600/280)+1 ≈ 6 拍。
+    await evaluate("window.__pilot.motion.pulseCount = 0; window.__pilot.seek(6); true");
+    await sleep(400);
+    const d3beatBefore = await evaluate<number>("window.__pilot.motion.pulseCount");
+    await evaluate(`document.querySelector('[data-act="play"]')?.click(); true`);
+    await sleep(1600);
+    const d3beatMid = await evaluate<number>("window.__pilot.motion.pulseCount");
+    const d3beatPlaying = await evaluate<boolean>("window.__pilot.session.playing");
+    if (d3beatPlaying) {
+      await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+      await sleep(200);
+    }
+    check("D3 播放期 swap 脉冲按计划表抽稀放行（不全关，也不每帧闪）",
+      d3beatMid - d3beatBefore >= 1 && d3beatMid - d3beatBefore <= 6,
+      JSON.stringify({ before: d3beatBefore, after: d3beatMid, playing: d3beatPlaying }));
+  } catch (err) {
+    await setReduced(false).catch(() => undefined);
+    await setUserMotion(true).catch(() => undefined);
+    const msg = String((err as Error)?.message ?? err).slice(0, 200);
+    results.push({ name: "D3 段异常（后续锚继续）", ok: false, detail: msg });
+    console.log("FAIL  D3 段异常（后续锚继续）  — " + msg);
   }
 
   // ── B6 第二门旗舰课 uaf（#222 P1 内容扩面）：3 幕（申请写入 / 释放 / 悬垂读），

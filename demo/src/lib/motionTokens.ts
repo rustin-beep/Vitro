@@ -18,3 +18,15 @@ export const EASE_VAR = {
   emphasis: "--vr-ease-emphasis",
   enter: "--vr-ease-enter",
 } as const;
+
+/** CSS 时长文本 → 毫秒。computed style 会把 `280ms` 规范化成 `0.28s`，
+ *  直接 parseFloat 得到 0.28——WAAPI 拿到 0.28ms 的脉冲等于不播（D3 实测：
+ *  travelMs=0.28 才暴露；此前脉冲只靠计数器断言，测不到时长）。 */
+export function parseCssMs(raw: string, fallback: number): number {
+  const t = raw.trim();
+  const n = Number.parseFloat(t);
+  if (!Number.isFinite(n)) return fallback;
+  if (t.endsWith("ms")) return n;
+  if (t.endsWith("s")) return n * 1000;
+  return n;
+}

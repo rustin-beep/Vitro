@@ -42,7 +42,8 @@ import {
 } from "../src/lib/scenes.ts";
 import { sceneAnnotations, writesName, type StepLike } from "../src/lib/annotations.ts";
 import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvents.ts";
-import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS } from "../src/lib/motionTokens.ts";
+import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS, parseCssMs } from "../src/lib/motionTokens.ts";
+import { planRelay, scalePlan } from "../src/lib/relayPlan.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
 import { isTransientNavigationError } from "./cdp.mts";
 import type { VisEvent } from "../js/types.ts";
@@ -608,11 +609,171 @@ test("motionTokens：兜底时长/缓动与 tokens.json 等值（防 JS 抄本�
   });
 });
 
+test("motionTokens：CSS 时长文本解析（computed style 的 0.28s 形态；D3 实锤）", () => {
+  // 浏览器把 tokens.css 里的 `280ms` 规范化成 `0.28s` 后交 getComputedStyle。
+  // 修前 motionMs 直取 parseFloat = 0.28 → 所有 WAAPI 脉冲实际 0.28ms（不播）。
+  assert.equal(parseCssMs("280ms", 999), 280);
+  assert.equal(parseCssMs("0.28s", 999), 280);
+  assert.equal(parseCssMs("1.5s", 999), 1500);
+  assert.equal(parseCssMs(" 90ms ", 999), 90);
+  assert.equal(parseCssMs("0", 999), 0);
+  assert.equal(parseCssMs("", 999), 999);
+  assert.equal(parseCssMs("abc", 999), 999);
+});
+
+// D3（#122）：两段式回放排程——plan 是纯函数，播放器只按表执行。
+// 这里锁排程算术本身（指针逐帧、事件链松弛、种子兜底、同目标抽稀、变速乘系数），
+// 播放器的视觉面由 E2E 的 playhead 计数锚守。全片硬上限不在本层（见 relayPlan 头注）。
+test("relayPlan：指针轨道逐帧排程，travel 三重钳制（比例/token/帧间隔）", () => {
+  const p = planRelay({ frames: 5, fps: 8 });
+  assert.equal(p.intervalMs, 125);
+  assert.deepEqual(p.beats.map((b) => b.frame), [0, 1, 2, 3, 4]);
+  assert.deepEqual(p.beats.map((b) => b.depart), [0, 0, 125, 250, 375]);
+  // travel = min(125*0.85, 280, 125) = 106.25；帧 0 无移动
+  assert.deepEqual(p.beats.map((b) => b.travel), [0, 106.25, 106.25, 106.25, 106.25]);
+  assert.equal(p.totalMs, 500); // (n-1)*interval 兜底，末次移动在 481.25 收尾
+  // 低帧率：travel 被 token 上限（280）钳住，不让指针整段都在滑
+  const slow = planRelay({ frames: 3, fps: 2 });
+  assert.deepEqual(slow.beats.map((b) => b.travel), [0, 280, 280]);
+  assert.equal(slow.totalMs, 1000);
+});
+
+test("relayPlan：事件轨道依赖指针到达——同键串行、异键并行、预算超限种子兜底", () => {
+  // 高帧率下 280ms 的脉冲远长于一帧（4.17ms）：同键第二次触发等不起，
+  // 默认 chainBudget=一帧 → 种子兜底（depart 回到自然到达时刻，接受重叠）。
+  const overlap = planRelay({
+    frames: 10,
+    fps: 240,
+    eventMs: 280,
+    events: [
+      { frame: 1, kind: "swap", key: "a" },
+      { frame: 2, kind: "swap", key: "a" },
+    ],
+  });
+  const ev = overlap.beats.filter((b) => b.kind === "swap");
+  assert.equal(must(ev[0]).depart, 1000 / 240);
+  assert.equal(must(ev[1]).depart, (2 * 1000) / 240); // 兜底：不等待上一条完成
+  // 链式松弛生效（预算放宽）：第二条推到上一条完成时刻
+  const chained = planRelay({
+    frames: 10,
+    fps: 240,
+    eventMs: 100,
+    chainBudgetMs: 1000,
+    events: [
+      { frame: 1, kind: "swap", key: "a" },
+      { frame: 2, kind: "swap", key: "a" },
+    ],
+  });
+  const ch = chained.beats.filter((b) => b.kind === "swap");
+  assert.equal(must(ch[1]).depart, must(ch[0]).depart + 100);
+  // 不同目标键互不等待
+  const parallel = planRelay({
+    frames: 10,
+    fps: 240,
+    eventMs: 100,
+    chainBudgetMs: 1000,
+    events: [
+      { frame: 1, kind: "swap", key: "a" },
+      { frame: 2, kind: "swap", key: "b" },
+    ],
+  });
+  const pa = parallel.beats.filter((b) => b.kind === "swap");
+  assert.equal(must(pa[1]).depart, (2 * 1000) / 240);
+  // 事件乱序输入按帧序排；越界帧钳到末帧
+  const messy = planRelay({
+    frames: 5,
+    fps: 8,
+    events: [
+      { frame: 99, kind: "tree", key: "t" },
+      { frame: 2, kind: "vars", key: "v" },
+    ],
+  });
+  const kinds = messy.beats.filter((b) => b.kind !== "pointer");
+  assert.deepEqual(kinds.map((b) => b.kind), ["vars", "tree"]);
+  assert.equal(must(kinds[1]).frame, 4);
+});
+
+test("relayPlan：minGap 按 (kind,key) 抽稀——每个实体独立节流（P2-1）", () => {
+  const p = planRelay({
+    frames: 20,
+    fps: 8,
+    eventMs: 280,
+    minGapMs: 280,
+    events: [
+      { frame: 1, kind: "swap", key: "a" }, // 125
+      { frame: 2, kind: "swap", key: "b" }, // 250：异 key → 保留（修前按 kind 抽稀被整类丢弃）
+      { frame: 3, kind: "swap", key: "a" }, // 375−125=250 < 280 → 同 key 密集，丢弃
+      { frame: 5, kind: "swap", key: "a" }, // 625−125=500 → 保留
+      { frame: 2, kind: "vars", key: "v" }, // 异 kind → 保留
+    ],
+  });
+  const evs = p.beats.filter((b) => b.kind !== "pointer");
+  assert.deepEqual(
+    evs.map((b) => `${b.kind}|${b.key}@${b.frame}`),
+    ["swap|a@1", "swap|b@2", "vars|v@2", "swap|a@5"],
+  );
+  // 不传 minGap：一个不丢
+  const all = planRelay({
+    frames: 20,
+    fps: 8,
+    events: [
+      { frame: 1, kind: "swap", key: "a" },
+      { frame: 2, kind: "swap", key: "b" },
+      { frame: 3, kind: "swap", key: "a" },
+    ],
+  });
+  assert.equal(all.beats.filter((b) => b.kind === "swap").length, 3);
+});
+
+test("relayPlan：边界与非法输入不产出 NaN/Infinity 表（P3-1/P3-2）", () => {
+  const frameOf = (f: number): number =>
+    must(planRelay({ frames: 5, fps: 8, events: [{ frame: f, kind: "vars", key: "v" }] }).beats.find((b) => b.kind === "vars")).frame;
+  assert.equal(frameOf(99), 4); // 有限越界 → 末帧
+  assert.equal(frameOf(Infinity), 4); // +Infinity 同向钳到末帧（修前回落帧 0）
+  assert.equal(frameOf(-5), 0);
+  assert.equal(frameOf(Number.NaN), 0); // NaN 无方向，保守回 lo
+  // 非法可选值回默认，不把 NaN 带进表
+  const bad = planRelay({
+    frames: 3,
+    fps: Number.NaN,
+    travelRatio: Number.NaN,
+    travelMaxMs: Number.NaN,
+    eventMs: Number.NaN,
+    chainBudgetMs: Number.NaN,
+    minGapMs: Number.NaN,
+  });
+  assert.equal(bad.intervalMs, 1000); // fps 非法 → 1
+  assert.deepEqual(bad.beats.map((b) => b.travel), [0, 280, 280]); // ratio 回 0.85、上限回 280
+  assert.ok(bad.beats.every((b) => Number.isFinite(b.depart) && Number.isFinite(b.travel)));
+  assert.deepEqual(planRelay({ frames: Infinity, fps: 8 }).beats, []); // 帧数非有限 → 空表
+});
+
+test("relayPlan：变速 = 整表乘系数（不重排）；空集/单帧", () => {
+  const p = planRelay({ frames: 5, fps: 8 });
+  const q = scalePlan(p, 2);
+  assert.equal(q.intervalMs, 250);
+  assert.equal(q.totalMs, 1000);
+  assert.deepEqual(q.beats.map((b) => b.depart), [0, 0, 250, 500, 750]);
+  assert.deepEqual(q.beats.map((b) => b.travel), [0, 212.5, 212.5, 212.5, 212.5]);
+  // fps 8→4 的系数 = 8/4 = 2：整表时刻翻倍（playhead 的 rescaleForFps 同式）
+  assert.equal(scalePlan(p, 8 / 4).intervalMs, 250);
+  assert.equal(scalePlan(p, 1), p); // 1 倍原样（引用稳定，不制造新表）
+  assert.equal(scalePlan(p, 0), p); // 非正系数不缩放
+  assert.equal(scalePlan(p, Infinity), p); // 非有限系数原样（不得乘出 Infinity totalMs）
+  assert.equal(scalePlan(p, Number.NaN), p);
+  const empty = planRelay({ frames: 0, fps: 8 });
+  assert.deepEqual(empty.beats, []);
+  assert.equal(empty.totalMs, 0);
+  const one = planRelay({ frames: 1, fps: 8 });
+  assert.equal(one.beats.length, 1);
+  assert.equal(must(one.beats[0]).travel, 0);
+  assert.equal(one.totalMs, 0);
+});
+
 // ── 内容批回归闸（2026-10-23 审阅 P2）：课程 scene 与码表附属内容此前只有
 // tmp/ 探针，没有任何 CI 锚——scene 帧号改坏、catalog 键写错都能全绿。
 // 这里补两个纯函数闸：不依赖浏览器/引擎，只锁结构面（帧号连续/行界/键命中/
 // 关联课存在）；引擎帧数锚另由各课的 N 常量显式钉住，帧流变化会先红。
-
 test("lessonMd：全量 course 叙述 scene 连续、行界/注记非空（P2-1 闸）", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const root = path.resolve(here, "../../course");

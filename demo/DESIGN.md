@@ -45,11 +45,14 @@ generated: src/tokens.css（@generated，禁手改）
   （`--vr-shadow`）；卡片/面板一律不投影。
 - 动效只用于**状态过渡**与**事件指示**，不插值数据语义（柱高/格值永不 tween）；
   时长/曲线走 `--vr-t-fast / --vr-t / --vr-t-slow` + `--vr-ease / -emphasis /
-  -enter`。相机平滑用 Tween（Svelte Spring damping 上限 1，快速档会过冲）；
-  spring 数值参数（D3 时间轴指针）在 `src/lib/motion.svelte.ts`。
+  -enter`。相机平滑用 Tween（Svelte Spring damping 上限 1，快速档会过冲）。
+  时间轴指针（D3）由 `src/lib/relayPlan.ts` 的计划表排程、`playhead.svelte.ts`
+  按表执行（plan/play 两段分离；变速 = 整表乘系数）；指针的浮点位置只做视觉
+  补间，读数与画面帧仍以整数帧为准，scrub 与 reduced 一律瞬时。
 - `data-motion="off"` 必须整体关断（用户设置与 `prefers-reduced-motion` 双入口）；
-  WAAPI 脉冲与 Svelte JS 过渡同样走 motion 层预算/门（播放 / 批量 / scrub 旁路），
-  但**静态语义（class/attr/连线）不得随动效一起消失**——动效让位，语义不让位。
+  WAAPI 脉冲与 Svelte JS 过渡同样走 motion 层预算/门（批量 / scrub 全关；播放期
+  swap 脉冲按计划表节拍抽稀放行，变量/树过渡仍让位），但**静态语义
+  （class/attr/连线）不得随动效一起消失**——动效让位，语义不让位。
 - **事件驱动优先**：交换/比较指示以引擎 `vis_events` 为准，相邻帧差分闪烁只在
   无事件时作兜底（差分是猜测，事件是引擎说的原话）。**没有帧级数据的地方不
   伪造生命周期动效**（MemoryView 用会话结束态，不做 alloc/free 进出场）。
@@ -92,7 +95,7 @@ generated: src/tokens.css（@generated，禁手改）
 | 裸值棘轮（禁裸 hex / 禁裸 px 字号） | `node scripts/demo_ui_lint/main.mts`（基线 `scripts/demo_ui_lint/raw_literals_baseline.json`：存量冻结、只减不增；清理后 `-update-raw` 收窄为人工令；`-selftest` 五路证红） |
 | 类型 + a11y | `cd demo && npm run check` |
 | 语义 lint | `cd demo && npm run lint` |
-| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（102 锚） |
+| 行为 | `node --test demo/tests/pure.test.mts` + E2E 五套（107 锚） |
 | 样式契约（令牌 → 组件接线） | `node demo/tests/style_contract.mts`（五主题 × 选择器集 × computed 颜色/字体族/连字/字距；基线 `demo/tests/style_contract.json` 入库；`--update` 为人工令）。覆盖面只取工作态 exec 首课 DOM；目录/手册/内存/协议/专注页不在选择器集内（由 E2E 结构锚 + ui_lint 守，审查 P3 显式登记） |
 
 > 像素闸（PNG 基线入库）已于 2026-10-22 由用户裁定退役：逐状态 PNG 基线跨 OS

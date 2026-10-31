@@ -7,6 +7,7 @@
   // 定位/进度/文案单点在 lib/scenes.ts；本组件零判据。
   import { seek, session } from "../session.svelte.ts";
   import { lessonSession } from "./lessonSession.svelte.ts";
+  import { playhead } from "./playhead.svelte.ts";
   import { sceneIndexAt, sceneProgress, sceneRangeLabel } from "./scenes.ts";
 
   const scenes = $derived(lessonSession.scenes);
@@ -39,7 +40,7 @@
               {#if i === cur && s.note}<span class="vr-beat-note">{s.note}</span>{/if}
               <span class="vr-beat-range">{sceneRangeLabel(s)}{i === cur ? " · 当前" : ""}</span>
               {#if i === cur && n > 0}
-                <span class="vr-beat-prog" aria-hidden="true"><span style:width="{sceneProgress(s, session.idx) * 100}%"></span></span>
+                <span class="vr-beat-prog" aria-hidden="true"><span style:width="{sceneProgress(s, playhead.at) * 100}%"></span></span>
               {/if}
             </span>
           </button>

@@ -1585,6 +1585,32 @@ jobs:
       - name: unified CLI smoke (ubuntu lane, #366 anchors with teeth)
         run: node scripts/vitro_cli_smoke/main.mts --corpus 30
 
+  # ── release-preflight（ds 批③：发布前置闸，2026-10-31）──────────────────
+  # moon package 非退化闸 + 根级四件 + 版本状态探针（**闸进程零网络零
+  # login**——dry-run 在 CI 无 moon login 会被「Registry login is required」
+  # 拦，故只进 release 档〔发版本机〕；本 job 的 registry 刷新属 job 依赖面
+  # 非闸行为）。import 断供防线由 moon check/test 的 Hygiene job 承担，本
+  # job 增量 = 发布件面（**模块目录被 .gitignore 覆盖时 22 字节空 zip rc=0
+  # 静默成功实锤**——审阅批 2026-10-31 勘正归因：与是否 git 仓库无关〔无
+  # git 目录打包正常〕，CI 在 checkout 树里跑，本闸 CI 可达形态 = 忽略规则
+  # 误伤 moonbit/）。**反刷量约束（用户拍板）**：全程零 mooncakes zip GET；
+  # 干净消费验收（moon add + build = 真实下载计数）不进 CI，人工步骤落
+  # vitro-release-playbook。
+  release-preflight:
+    name: Release preflight (package integrity, zero net)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install MoonBit toolchain (action)
+        uses: ./.github/actions/setup-moonbit
+      - name: Refresh MoonBit registry index
+        run: cd moonbit && moon update
+      - name: Package integrity gate (non-degenerate zip + root files + version probe)
+        run: node scripts/release_preflight/main.mts
+
   # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
   # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +
   # oxlint（.mts 目录扫描缺口——显式列文件）+ node:test（Windows 目录模式
@@ -1699,7 +1725,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1715,15 +1741,19 @@ jobs:
           SCRIPTS_TS: ${{ needs.scripts-ts.result }}
           BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
+          RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
           # backend-triage 红/跳过时汇总不判红）；计数文案改由数组推导防再陈旧。
+          # 2026-10-31 审阅批 P2-1：release-preflight 三面连坐补入（mutation-gate
+          # 有「观察期不入 needs」豁免注记，本 job 无豁免理由——漏登记即同形复发）。
           pairs=(
             "build:$BUILD" "diff:$DIFF" "fuzz:$FUZZ" "native:$NATIVE"
             "wasm:$WASM" "static:$STATIC" "hygiene:$HYGIENE" "demo:$DEMO"
             "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
             "cli-smoke-linux:$CLI_SMOKE_LINUX"
+            "release-preflight:$RELEASE_PREFLIGHT"
           )
           bad=0
           for pair in "${pairs[@]}"; do

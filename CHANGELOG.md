@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+### fix(scripts): #361 corpus_fuzz 采样键平台归一——path 恒 POSIX 相对形态，冻结基线可跨平台迁移（Windows/Linux 对拍实测，2026-10-31）
+
+- **缺陷**：`collectSeeds`（原 main() 内联）用 `path.join` 拼种子路径——win32
+  产出 `\` 分隔符、POSIX 产出 `/`，分隔符直接进 sha256 采样键（shaPath 排序）
+  与字节序主排序/gen 缓存键：同一语料集合两平台采样序不同 ⇒ 指纹集/僵尸集
+  必然漂移、冻结基线不可跨平台迁移（#361 实测：Linux 101 变体新指纹/僵尸
+  53/53 等量互换、桶恶化 0——纯采样序漂移非判桶回归）。
+- **修复**（`scripts/corpus_fuzz/main.mts`）：种子收集 + 确定性采样抽纯函数
+  `collectSeeds`/`pickSeeds`（readdir 注入——单测锚挂点），path 恒 POSIX
+  相对形态（`corpus/<suite>/<name>.c`）。归一后采样序、缓存键、DetRand 的
+  path.length RNG 种子全链跨平台一致（`\`→`/` 等长，RNG 种子不变量保持）。
+- **J9 红→绿**：新锚「采样键平台归一」（win32 上直接锚「path 无 `\`」）——
+  突变验证：归一拼回 `path.join` 后锚红（`corpus\wn361a\...` 反斜杠实锤），
+  恢复后 29/29 绿（含既有 Go 金样本逐字节锚——重构零破坏）。
+- **跨平台对拍实证**：探针（collectSeeds/pickSeeds 纯函数 + 真 rules + 真
+  语料 760 种子）双平台跑——win32 node 26.12.1 与 WSL2 linux node 25.9.0
+  采得 pick 集 sha256 **逐位一致**（86 pick）——治本实证且对 node 大版本
+  不敏感。
+- **基线重冻（换键口径声明）**：采样键由「win32 path.join 形态」换为「POSIX
+  归一形态」⇒ 采样集变化 ⇒ 基线指纹集整体换血，`-freeze` 重冻
+  （旧基线 318 条 → 新基线 N 条，数字见 PR 描述实录）；重冻后旧键口径
+  基线退役。CI corpus-fuzz job（windows-latest）与新键自动一致。
+- 四件套：tsc strict / oxlint / node:test（29/29 + 全清单绿）/
+  npm ci lockfile 钉版。
+
 ### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
 - **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`

@@ -30,6 +30,8 @@ import {
   codeMask,
   classifyAgainstBaseline,
   collectJudgeEpochInputs,
+  collectSeeds,
+  pickSeeds,
   collectZombieSeeds,
   exitDomainOf,
   exitWordOf,
@@ -474,4 +476,44 @@ test("collectJudgeEpochInputs：采集面断言——shell/script 缺失 die（P
   // 引擎双产物允许缺失（构建前置场景合法——scripts-ts job 无产物）
   const y = collectJudgeEpochInputs(bytes, { native: "no/such/exe", jsEngine: "no/such/js" });
   assert.ok(y.native.startsWith("<missing:") && y.jsEngine.startsWith("<missing:"));
+});
+
+test("采样键平台归一（#361）：collectSeeds 的 path 恒 POSIX 相对形态——win32 的 path.join 反斜杠分隔符曾直接进 sha256 采样键与字节序主排序，同一语料两平台采样序漂移、冻结基线不可迁移", () => {
+  const rules = {
+    suites: ["wn361a", "wn361b"],
+    seeds_per_suite: 2,
+    mutators: [],
+    mutators_per_seed: 1,
+    seed: 1,
+    generators: [],
+  } as unknown as Rules;
+  const files: Record<string, string[]> = {
+    "corpus/wn361a": ["zeta.c", "alpha.c", "beta.c", "readme.txt"],
+    "corpus/wn361b": ["only.c"],
+  };
+  const seeds = collectSeeds(rules, (d) => files[d] ?? []);
+  // 归一（win32 上修复前即红）：无平台分隔符，恒 corpus/<suite>/<name>
+  assert.ok(
+    seeds.every((s) => !s.path.includes("\\") && !s.path.includes(":")),
+    `path 含平台相关形态: ${seeds.map((s) => s.path).join(" ")}`,
+  );
+  // .c 过滤 + path 字节字典序主排序
+  assert.deepEqual(
+    seeds.map((s) => s.path),
+    [
+      "corpus/wn361a/alpha.c",
+      "corpus/wn361a/beta.c",
+      "corpus/wn361a/zeta.c",
+      "corpus/wn361b/only.c",
+    ],
+  );
+  // 采样：sha256(path) 升序取前 2（zeta=4d18.. < alpha=4988.. < beta=91ae..
+  // ——beta 掉出）+ 小于 seeds_per_suite 的套件全取（wn361b）+ 终序字节序
+  const pick = pickSeeds(seeds, rules);
+  assert.deepEqual(
+    pick.map((s) => s.path),
+    ["corpus/wn361a/alpha.c", "corpus/wn361a/zeta.c", "corpus/wn361b/only.c"],
+  );
+  // 确定性：同输入同输出（跨平台一致的可复现基础）
+  assert.deepEqual(pickSeeds(seeds, rules), pick);
 });

@@ -66,9 +66,14 @@ function abs(p: string): string {
   return path.isAbsolute(p) ? p : path.join(projectRoot(), p);
 }
 
-/** POSIX 风格规范化（Go filepath.Clean + ToSlash）。 */
+/** POSIX 风格规范化（Go filepath.Clean + ToSlash）。
+ * #362（2026-10-30）：归一不得依赖当前平台分隔符——`split(path.sep)` 在
+ * Linux（sep=/）对含反斜杠的输入原样返回（Windows 路径引用同样可能出现
+ * 在规则表/诊断文案），单测期望 a/b/c.mbt 即红。显式双分隔符归一：
+ * normalize 处理平台语义（./、重复段）后反斜杠一律转 /（与 path.sep 解耦，
+ * 双平台同语义）。 */
 export function canon(p: string): string {
-  return path.normalize(p).split(path.sep).join("/");
+  return path.normalize(p).replace(/\\/g, "/");
 }
 
 function orNone(s: string | undefined): string {

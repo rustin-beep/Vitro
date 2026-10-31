@@ -239,8 +239,9 @@ export function loadMBExemptions(): void {
 export function resolveMoonBitServeExe(): string {
   const override = process.env["VITRO_SERVE_MB"];
   if (override !== undefined && override !== "") return override;
-  const name = process.platform === "win32" ? "serve.exe" : "serve";
-  return path.join(projectRoot(), "moonbit", "_build", "native", "debug", "build", "cmd", "serve", name);
+  // #359（2026-10-30）：MoonBit native 后端产物统一带 .exe（与平台无关）
+  // ——平台三元在 Linux 指向不存在的 serve 断供；直取 serve.exe（scripts/bin/vitro 先例）
+  return path.join(projectRoot(), "moonbit", "_build", "native", "debug", "build", "cmd", "serve", "serve.exe");
 }
 
 export class Report {

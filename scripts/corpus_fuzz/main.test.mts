@@ -19,6 +19,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { projectRoot } from "../internal/capi.mts";
@@ -305,35 +306,45 @@ test("volatile 不豁免存在性：条目 seed 掉出采样集仍计僵尸（#3
 });
 
 test("e2e：基线 volatile 非 true fail loud（exit 2，豁免须显式）", () => {
-  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-vol-"));
-  const bad = path.join(dir, "baseline.json");
-  const r0 = rules();
-  // 迷你规则采样集首个指纹注入非法 volatile 值——解析期即红，不进真跑
-  fs.writeFileSync(
-    bad,
-    JSON.stringify({ entries: { [`${r0.suites[0]}/no_such_seed.c|brace_wrap`]: { bucket: "AGREE", volatile: "yes" } } }),
-    "utf8",
-  );
-  const r = spawnSync(process.execPath, [MAIN, "-rules", path.join(ROOT, FIX, "mini_rules.json"), "-baseline", bad], {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
-  assert.notEqual(r.status, 0, "volatile 非 true 必须红");
-  assert.ok((r.stderr ?? "").includes("volatile"), "报错点名 volatile 字段");
-  fs.rmSync(dir, { recursive: true, force: true });
+  // #360（2026-10-30）：TEMP 环境变量 Linux 不存在（fallback "." 落相对路径
+  // 污染 scripts/ 且断言失败路径残留——连带 editorconfig 假红）→ os.tmpdir()
+  // 跨平台 + try/finally 保证失败路径也清理
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-vol-"));
+  try {
+    const bad = path.join(dir, "baseline.json");
+    const r0 = rules();
+    // 迷你规则采样集首个指纹注入非法 volatile 值——解析期即红，不进真跑
+    fs.writeFileSync(
+      bad,
+      JSON.stringify({ entries: { [`${r0.suites[0]}/no_such_seed.c|brace_wrap`]: { bucket: "AGREE", volatile: "yes" } } }),
+      "utf8",
+    );
+    const r = spawnSync(process.execPath, [MAIN, "-rules", path.join(ROOT, FIX, "mini_rules.json"), "-baseline", bad], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    assert.notEqual(r.status, 0, "volatile 非 true 必须红");
+    assert.ok((r.stderr ?? "").includes("volatile"), "报错点名 volatile 字段");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("e2e：未知算子名 fail loud（exit 2，规则与实现失配不静默）", () => {
-  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-bad-"));
-  const bad = path.join(dir, "rules.json");
-  const r0 = rules();
-  fs.writeFileSync(bad, JSON.stringify({ ...r0, mutators: ["no_such_mutator"] }), "utf8");
-  const r = spawnSync(process.execPath, [MAIN, "-rules", bad, "-baseline", path.join(dir, "b.json")], {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
-  assert.equal(r.status, 2);
-  assert.match(r.stderr, /未知算子名 "no_such_mutator"/);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-bad-"));
+  try {
+    const bad = path.join(dir, "rules.json");
+    const r0 = rules();
+    fs.writeFileSync(bad, JSON.stringify({ ...r0, mutators: ["no_such_mutator"] }), "utf8");
+    const r = spawnSync(process.execPath, [MAIN, "-rules", bad, "-baseline", path.join(dir, "b.json")], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /未知算子名 "no_such_mutator"/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("marshalBaselineText 转义口径对齐 Go SetEscapeHTML（#289 P2-1 迁移丢失回补）", () => {
@@ -388,39 +399,47 @@ test("判定缓存条目键：fp 与源字节双敏感（语料批单条失效�
 });
 
 test("判定缓存 get/put：命中 / 窜条拒收 / 损坏与非桶值按 miss（fail open 到真跑）", () => {
-  const dir = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-"));
-  const v = { fp: "s/a.c|brace_wrap", bytes: Buffer.from("int x = 1;\n") };
-  assert.equal(judgeCacheGet(dir, v), null, "无条目 ⇒ miss");
-  judgeCachePut(dir, v, "VITRO_TRAP");
-  assert.equal(judgeCacheGet(dir, v), "VITRO_TRAP", "put 后命中");
-  const f = path.join(dir, judgeEntryName(v.fp, v.bytes));
-  fs.writeFileSync(f, JSON.stringify({ fp: "other", bucket: "AGREE" }) + "\n");
-  assert.equal(judgeCacheGet(dir, v), null, "fp 窜条（手挪/撞名）须拒收");
-  fs.writeFileSync(f, "{broken");
-  assert.equal(judgeCacheGet(dir, v), null, "损坏 JSON 按 miss");
-  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "NOT_A_BUCKET" }) + "\n");
-  assert.equal(judgeCacheGet(dir, v), null, "非法桶名按 miss（防污染值直入判红）");
-  fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "__proto__" }) + "\n");
-  assert.equal(judgeCacheGet(dir, v), null, "原型链名按 miss");
-  // 合法 JSON 但非对象（PR #310 审阅 P3-1）：null 原实现抛 TypeError 打死整轮，
-  // 违背 fail open 契约——四个形态必须全部按 miss 走真跑
-  for (const bad of ["null", "42", '"x"', "[]"]) {
-    fs.writeFileSync(f, bad);
-    assert.equal(judgeCacheGet(dir, v), null, `合法 JSON 非对象 ${bad} 按 miss`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-judge-"));
+  try {
+    const v = { fp: "s/a.c|brace_wrap", bytes: Buffer.from("int x = 1;\n") };
+    assert.equal(judgeCacheGet(dir, v), null, "无条目 ⇒ miss");
+    judgeCachePut(dir, v, "VITRO_TRAP");
+    assert.equal(judgeCacheGet(dir, v), "VITRO_TRAP", "put 后命中");
+    const f = path.join(dir, judgeEntryName(v.fp, v.bytes));
+    fs.writeFileSync(f, JSON.stringify({ fp: "other", bucket: "AGREE" }) + "\n");
+    assert.equal(judgeCacheGet(dir, v), null, "fp 窜条（手挪/撞名）须拒收");
+    fs.writeFileSync(f, "{broken");
+    assert.equal(judgeCacheGet(dir, v), null, "损坏 JSON 按 miss");
+    fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "NOT_A_BUCKET" }) + "\n");
+    assert.equal(judgeCacheGet(dir, v), null, "非法桶名按 miss（防污染值直入判红）");
+    fs.writeFileSync(f, JSON.stringify({ fp: v.fp, bucket: "__proto__" }) + "\n");
+    assert.equal(judgeCacheGet(dir, v), null, "原型链名按 miss");
+    // 合法 JSON 但非对象（PR #310 审阅 P3-1）：null 原实现抛 TypeError 打死整轮，
+    // 违背 fail open 契约——四个形态必须全部按 miss 走真跑
+    for (const bad of ["null", "42", '"x"', "[]"]) {
+      fs.writeFileSync(f, bad);
+      assert.equal(judgeCacheGet(dir, v), null, `合法 JSON 非对象 ${bad} 按 miss`);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("pruneJudgeEpochs：只留当前 epoch 子目录，其余清除（防膨胀）", () => {
-  const base = fs.mkdtempSync(path.join(process.env["TEMP"] ?? ".", "cf-judge-prune-"));
-  fs.mkdirSync(path.join(base, "keep0001"), { recursive: true });
-  fs.mkdirSync(path.join(base, "old0002", "nested"), { recursive: true });
-  fs.writeFileSync(path.join(base, "old0002", "nested", "x.json"), "{}");
-  fs.writeFileSync(path.join(base, "stray.txt"), "非目录不动");
-  pruneJudgeEpochs("keep0001", base);
-  assert.ok(fs.existsSync(path.join(base, "keep0001")), "keep 目录留存");
-  assert.ok(!fs.existsSync(path.join(base, "old0002")), "旧 epoch 递归清除");
-  assert.ok(fs.existsSync(path.join(base, "stray.txt")), "非目录文件不动");
-  assert.doesNotThrow(() => pruneJudgeEpochs("any", path.join(base, "no-such-dir")), "base 不存在不炸");
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "cf-judge-prune-"));
+  try {
+    fs.mkdirSync(path.join(base, "keep0001"), { recursive: true });
+    fs.mkdirSync(path.join(base, "old0002", "nested"), { recursive: true });
+    fs.writeFileSync(path.join(base, "old0002", "nested", "x.json"), "{}");
+    fs.writeFileSync(path.join(base, "stray.txt"), "非目录不动");
+    pruneJudgeEpochs("keep0001", base);
+    assert.ok(fs.existsSync(path.join(base, "keep0001")), "keep 目录留存");
+    assert.ok(!fs.existsSync(path.join(base, "old0002")), "旧 epoch 递归清除");
+    assert.ok(fs.existsSync(path.join(base, "stray.txt")), "非目录文件不动");
+    assert.doesNotThrow(() => pruneJudgeEpochs("any", path.join(base, "no-such-dir")), "base 不存在不炸");
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });
 
 test("collectJudgeEpochInputs：产物缺失不炸（hash 记 missing，判定轮自然红）", () => {

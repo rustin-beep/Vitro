@@ -91,8 +91,8 @@ export function recordString(d: DiffRecord): string {
 function serveExe(root: string): string {
   const override = process.env["VITRO_SERVE_MB"];
   if (override !== undefined && override !== "") return override;
-  const name = process.platform === "win32" ? "serve.exe" : "serve";
-  return path.join(root, "moonbit", "_build", "native", "debug", "build", "cmd", "serve", name);
+  // #359（2026-10-30）：MoonBit native 产物统一带 .exe（跨平台）——平台三元 Linux 断供
+  return path.join(root, "moonbit", "_build", "native", "debug", "build", "cmd", "serve", "serve.exe");
 }
 
 /** 批量 serve 驱动（serve_smoke 同款）：stdin 喂 NDJSON，收集 stdout。 */

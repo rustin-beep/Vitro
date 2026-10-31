@@ -17,6 +17,12 @@
   const bc = $derived((contracts?.["behavior_contracts"] ?? []) as JsonRec[]);
   const checklist = $derived((contracts?.["v0_2_activation_checklist"] ?? []) as unknown[]);
   const labels = $derived((session.labels ?? []) as JsonRec[]);
+  /** StepPayload 帧字段数（PR #397 审阅 P2-1：旧稿硬编码「14 字段」与实产
+   *  16 字段矛盾——#324 病根数字冻进 golden。改从当前帧实数据派生，字段
+   *  面演进（如 v0.2 预留位激活）时 UI 静态认知自动跟随）。 */
+  const stepFieldCount = $derived(
+    session.frames[0] ? Object.keys(session.frames[0]).length : 0,
+  );
 
   const frame = $derived(frameAt(session.idx));
   const frameJson = $derived.by(() => {
@@ -46,7 +52,7 @@
   <div class="vr-proto-facts">
     <span>ENGINE <b>{session.versions.engine || "…"}</b></span>
     <span>PROTOCOL <b>{session.versions.protocol || "…"}</b></span>
-    <span>STEPPAYLOAD <b>14 字段</b></span>
+    <span>STEPPAYLOAD <b>{stepFieldCount || "…"} 字段</b></span>
     <span>SCHEMA <b>{String(schema["version"] ?? "—")} 冻结</b></span>
     <span>METHODS <b>{METHOD_TOTAL} · 本页 {METHOD_ROWS} 行 / {METHOD_LISTED} 方法</b></span>
     <span>TRANSPORT <b>wasm-gc · js-string</b></span>

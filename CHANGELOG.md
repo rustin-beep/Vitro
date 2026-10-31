@@ -204,6 +204,114 @@
   Windows 回归全过（serve_smoke -moonbit 69 断言 rc=0 / replay
   -moonbit 61 断言 PASS 60+EXEMPT 1 / teaching_annotation_diff rc=0）；
   single_source -check 12 条 PASS（canon 改动零判定漂移）。
+### fix(demo+tests+ci): #324 E-08 渲染金标准夹具治本——手写夹具整体换引擎实产 + 同形性机判闸（2026-10-31）
+
+- **病（#324 全项复现 + 两处新发现）**：`demo/e08/payloads/core.json` 是
+  手写夹具，与引擎实产（js/native 双臂一致，1041 帧）**值形态完全相反**：
+  3 帧 vs 1041 帧、14 字段 vs 16 字段（缺 `code_file` 与 `semantic_label_id`
+  ——后者为 #324 之后 #341 批新增的缺口）、`semantic_label` 英文 id
+  （decl/compare/swap）vs 中文 36 种、`algorithm_step.phase` 中文（比较/
+  交换）vs 英文 id（outer_loop/…/finish）、`local_vars.addr` 4096 vs
+  1048532。**新发现两处**：`labels` 段字符串数组 vs 实产对象数组 15 条
+  （{id,domain,status,template}）、`capabilities` 段字符串数组 vs 实产
+  对象（{engine,schema,behavior_contracts,…}）——「同一概念三种形态、
+  夹具那两种在真实 step 帧里都不出现」覆盖协议面全域。E-08 闸（渲染
+  快照逐字节比对）把这层差异完全吸收 ⇒ **恒绿假绿面**：前端锚点判据
+  （scenes.ts 英文 phase 主判 + 中文 label 兜底）与 trapCard/E3060 详报
+  路径在闸内全部不可达。
+- **治本三件**：
+  1. **真源落位**：`demo/e08/bubble.c`（core 帧流输入）与 `demo/e08/uaf.c`
+     （diagband-trap 的 UAF 教学标准案）——E-08 输入有了与引擎同源的真值
+     文件；entry.ts 的 SOURCE_SAMPLE 手写数组改 `?raw` 内联同源。
+  2. **导出器 `demo/tests/e08-export.mts`（人工令，E-04 纪律）**：现场跑
+     引擎（前端 worker 同款方法序列：compile{source} → run{argv} →
+     step.next{frames:N} → output.delta 三流 → memory.regions +
+     capabilities/semantic_labels/error_catalog），core.json 的
+     frames/outputs/memory/capabilities/labels/catalog 六段整体换实产
+     （diagband-trap 同款换 frames[末帧=trap 帧，带实产 root_cause_hint
+     与 pointer_snapshots Freed 态]/stopped[worker 前缀口径
+     「受检终止：」+trap_message]/runStats）；手写保留段仅教学锚
+     （currentCase.id/label/referenceOutput=实产 stdout 与展示帧 idx，
+     缺省=首个 swap 帧）。
+  3. **同形性闸 `demo/tests/e08-shape.test.mts`（CI 常跑）**：闸内现场跑
+     引擎与 payloads 做形态对拍——帧字段集全等（双向）、label/label_id/
+     phase 值域 ⊆ 实产值域、labels 段对象形态且 id∈受控词表、
+     capabilities 顶层键 ≡、catalog 卡字段集 ⊆ 且 code_str∈实产码集、
+     outputs 三流字符串、trap 夹具帧字段集同款；任一漂移即红。**J9 证红
+     留痕**：旧夹具首跑 6+1 项断点全数命中。共享单源 `e08_live.mts`
+     （缺省 js 臂直跑 vitro_js.js 零 shell 依赖；`VITRO_E08_BACKEND=
+     native` 切 native exe 双臂对拍——批内双臂形态全一致已验）。
+- **连坐**：golden 16 份重冻（e08-update.mts 人工令，逐用例语义审定——
+  arraycells-bubble-a 交换中 `is-current`×2 / bubble-b 终态 `is-sorted`
+  升序 / diagband-trap `is-bad`+`运行期 E3060`+trap 详报卡〔495B→3172B，
+  trapCard 路径首次真机激活〕/ protoview 词表 15 类实产）；arraycells
+  三用例帧定位改语义锚（首个 swap 帧/末个快照帧/首个 compare 帧——旧稿
+  硬编码「第 3 帧」在实产流上语义失效）；`loadPayload` 显式钉
+  `gran="insn"`（idx 与 payload.frames 下标一一对应——不钉则随粒度派生
+  漂移）；lint:tests 清单与 ci.yml demo job 接线（`F4 E-08 fixture shape
+  gate` step，`if: always()` 防遮蔽）。
+- **伴生发现（登记不修）**：`api --batch` 的 rc=1 判定是「响应文本含
+  `"ok":false` 子串」的宽判定——run 帧 trap 时 result 内嵌 ok:false（信封
+  层 ok:true、协议帧成功）也误报 rc=1；e08_live 侧按信封层判定容错。
+  CLI 侧判定收窄（解析信封而非子串）另案处置。
+- **审阅处置批（PR #396 review，2026-10-31，P1/P2/P3 逐条独立复证后处置）**：
+  - **P1 独立立案不混批**（引擎缺陷，本批仅验证与登记）：`algorithm_step`
+    行末不变量在 `step.next {}` 逐帧口径下崩塌——同源码同臂只改批量参数，
+    标注帧 36/1041（单批、零行中间帧）vs **832/1041（逐帧、796 行中间帧
+    带标注）**，唯一差异字段 `algorithm_step`；根因 `serve_step.mbt` 跨批
+    pending 同行清标注判 `payloads.length()>0`（pop 后），批=1 时恒空被
+    跳过。前端 worker（`engine.worker.ts`）真实口径即 `step.next {}` ⇒
+    浏览器真机标注过密 20 倍（全站时间轴/phase 徽标受影响，不止 E-08）。
+    修复（同行判定改 pop 前参照 + 批=1 形态锚）另案；协议契约文
+    「跨批拼接与单帧流同构」自述当前为假。
+  - **P2-1 口径声称改写**（CHANGELOG/README/e08_live 头注三处）：本批
+    「前端 worker 同款方法序列」声称**不成立**——worker 是 `step.next {}`
+    逐帧 + delta 循环 + `deterministic:false/max_steps:1e7`；e08_live 是
+    单批 + 单次 delta + `true/1e5`。帧流差异 796/1041 帧唯一字段即 P1。
+    夹具**锚定单批口径**（=行末语义正确形态、与协议契约承诺一致），头注
+    改为显式口径声明（差异指向 P1，修复后两口径同构、声明退役）；
+    `deterministic` true/false 帧流全等与 wasm 臂两口径逐字节一致均经
+    审阅实测背书。
+  - **P2-2 S2 改逐帧字段集比对**：并集比对下「单帧缺字段」双闸皆盲
+    （注入删 `frames[500].code_file` 曾闸绿——#324 病根缩小版）；改逐帧
+    ≡ 实产模板（实产帧字段集恒定先自检），同注入证红→复原绿。
+  - **P3 四项**：delta 消费补 Latin-1 折回还原（worker `latin1ToUtf8`
+    同源复刻——stdout/stderr 分域，note 直传）+ `cursor!==total` 与
+    `truncated_bytes>0` 双 fail loud（「大输出静默截断」实测不成立——
+    serve 侧 `all[cursor:total]` 单次即全量、21KB 探针复核，校验为防
+    未来分页语义变更）；S7 实产 catalog 为空时 fail loud（旧 `else if`
+    空基准断言蒸发）；diagband-trap frames 全量 24 帧 + idx=trap 帧
+    下标（旧 1 帧+idx=0 与真机不同形——DiagBand 渲染等价、golden 零
+    漂移实测）；导出器报告改**语义摘要**（标注健康位/锚点帧快照值/trap
+    位——1.6MB JSON 逐行 diff 事实上不可审）。
+  - 演化登记：「帧内容依赖 `step.next` 批量参数（跨批 pending 判定批=1
+    退化）」新缺陷形态入 workspace-review references 03/07。
+- **PR #397 审阅处置批（2026-10-31 二轮，P1/P2-1/P2-2/P3 逐条独立复证后处置）**：
+  - **P1 S8 假断言面治本**：S8「trap 帧 ≡ 实产字段集」实为并集比对——
+    trap 单帧缺字段注入曾闸绿（上轮 P2-2 的 J9 只注入过 core.json，trap
+    面零注入），且基准误用 bubble.c 而非 trap 用例自己的输入 uaf.c（两
+    程序帧模板恰好同形才未假红）。改：S8 复用 S2 逐帧判据 + 基准
+    `engineLive(UAF_C)` + 帧模板恒定自检；J9 双注入（trap 帧 5 删
+    code_file / memory.regions 键改名）均红→复原绿。
+  - **P2-1 UI 病根数字治本**：ProtoView 硬编码「STEPPAYLOAD **14 字段**」
+    与实产 16 矛盾（#324 病根数字冻进 golden）；protoFacts 词表 desc 另有
+    静态「14 类」（同屏 summary 动态 15 类自相矛盾）。改：字段数从
+    `session.frames[0]` 派生（v0.2 预留位激活时自动跟随）、desc 去数字
+    （条数由 summary `labels.length` 动态承载）；golden 重冻（16 字段 ✓）。
+  - **P2-2 trap 徽章既有缺陷连坐修**（#140 批引入，本批上轮冻进 golden
+    属该拦未拦）：`decorateBadges` 输出裸 ICONS body 片段（icons.ts 契约
+    「消费方自行套 svg 壳」未履行）且 CSS 无 `.icon-svg` 规则 ⇒ 徽章
+    不可见——**壳改由 decorateBadges 统一套**（CodeIcon 范例属性面，
+    OutputView note 徽章与 formatTrap 两消费面同治）；`formatTrap` 的
+    `[cause]/[fix]/[location]` 被 ICONS 同名键抢跑（表内三键在场，第二段
+    正则永不命中，「保留文本只做视觉区分」头注承诺从未生效）——改私有
+    区占位符先吃三标签、徽章替换后回填 tp-tag；golden 重冻（svg 壳 ✓ /
+    tp-tag 文本 ✓ / 裸 path 零残留 ✓）。
+  - **P3**：导出器「标注健康位」加牙（行中间帧带标注非 0 即 throw——
+    正是 issue #399 行末不变量缺陷的机判位，旧稿只打印不断言）；S10 新增
+    memory 段键集 ≡ 实产 memory.regions（嵌套段键改名此前无声）；演化
+    B20/07 日志一次性测量值回落成形状判据（03 头注「实例写法四条」禁
+    数字）。
 
 ### fix(gateway+vitro_wasm): #376 include 展开诊断归属治本（LineMap 双坐标系）+ #377 vfs 登记键对齐 resolver 候选链——同名 include 误吞（2026-10-30；同日 PR #390 审阅批勘正）
 

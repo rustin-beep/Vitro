@@ -127,6 +127,20 @@ Firefox 134+），加载失败页面会显示降级提示。
    **课程叙述真源链**（2026-10-16 换真值）：coursenote 三用例
    （blocks/sorting/h3）直读 `course/*.md` 真源解析渲染；块型覆盖矩阵登记
    在 `src/e08/entry.ts` 头注。
+   **输入同形性治本**（#324，2026-10-31）：payload 输入真源 =
+   `demo/e08/bubble.c`（core 帧流）与 `demo/e08/uaf.c`（diagband-trap 的
+   UAF 案）——`tests/e08-export.mts` 人工令现场跑引擎重导六段
+   （frames/outputs/memory/capabilities/labels/catalog），禁手改；配套
+   **同形性闸** `node --test demo/tests/e08-shape.test.mts`（CI 常跑，缺省
+   js 臂、`VITRO_E08_BACKEND=native` 双臂对拍）：夹具与引擎实产形态
+   （帧字段集逐帧/label 与 phase 值域/labels 与 capabilities 段/catalog 卡）
+   任一漂移即红——手写夹具与实产形态相反的假绿面根除。
+   **口径声明**（审阅 P2-1/P1 定谳）：拉取走 `step.next {frames:N}` 单批
+   （行末语义正确形态），**非** worker 的 `step.next {}` 逐帧——后者当前
+   因引擎缺陷（批=1 时跨批 pending 行末清标注退化，标注过密 20 倍，
+   独立立案待修）与单批不同构；修复后两口径同构、`e08_live.mts` 头注
+   声明退役。stdout/stderr 消费含 Latin-1 折回还原（worker
+   `latin1ToUtf8` 同源）。
 9. `node scripts/demo_smoke/main.mts`——**协议层实跑闸**：对 `cases.js` 每个
    预置用例经 wasm gateway 实跑协议链并逐字节比对 golden，断言渲染所需的
    响应字段存在，含 **step 族字段契约**（StepPayload 顶层 = 协议 v0.1 十四

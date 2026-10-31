@@ -389,7 +389,9 @@ export function runMain(argv: readonly string[]): number {
     } else if (j363 !== w363 || w363 !== n363) {
       fatalf(`B[坏字节源码] 三臂输出不同形（#363 修复回归——native 崩/wasm 裸 trap/js 静默任一复发）`);
     } else {
-      process.stdout.write(`ok  B[大帧管道] 三臂大帧内容逐位一致（#366+#14 三臂纪律）\n`);
+      // #391 审阅 P3：ok 文案此前错贴为「B[大帧管道]」（复制粘贴残留——
+      // 本块是坏字节源码锚；大帧管道锚在下方 #367 审阅块）
+      process.stdout.write(`ok  B[坏字节源码] 三臂同形（E1001 + U+FFFD，#363）\n`);
     }
   }
   // PR #367 审阅 P2-3/P3-1（2026-10-28）：① stderr 通道同族锚——node 对
@@ -676,6 +678,168 @@ export function runMain(argv: readonly string[]): number {
         fatalf(`B[字节对拍 stderr] wasm vs js stderr 原始字节不一致（len w=${we.length} j=${je.length} 首差 offset=${firstDiff(we, je)}）`);
       } else {
         process.stdout.write(`ok  B[字节对拍 stderr] 三臂 stderr 原始字节逐位一致（${we.length}B 剥 backend 行后零归一，// STDERR // NOTE 教学文案面）\n`);
+      }
+    }
+  }
+
+  // B 组附 7：2>&1 合流顺序锚（#357，2026-10-30）——重定向/管道消费形态
+  // （CI `2>&1 | tee`、`> out 2>&1`）下，C 语义的 stdout 对非 tty 全缓冲与
+  // stderr 无缓冲天然错序：native 臂程序 stdout（stdout_stub fwrite 落 CRT
+  // 缓冲、进程退出才刷）被 stderr 标记行（// STDERR // NOTE——stderr 无缓冲
+  // 立即落盘）反超，合并流里标记行抢在程序输出之前；js/wasm 臂出口同步写
+  // （#366/#388 后 writeSync 形态）无此病。附 6 与 B 组语义层对拍均为**分通道
+  // 抓取**（spawnSync stdout/stderr 分离捕获），抓不到交错序——本锚以两 fd
+  // 指向同一文件复现 shell 级 `> f 2>&1`：断言合并文本中程序输出行全部先于
+  // stderr 标记行，且三臂合并文本（剥 backend 行、CRLF 归一）逐位一致。
+  {
+    const ordC = path.join(tmpDir, "order_probe.c");
+    fs.writeFileSync(
+      ordC,
+      '#include <stdio.h>\nint main(){ printf("A-line-1\\n"); printf("A-line-2\\n"); fprintf(stderr, "E-line\\n"); return 0; }\n',
+    );
+    const relOrd = toSlash(path.relative(repoRoot, ordC));
+    const mergedFile = path.join(tmpDir, "order_merged.txt");
+    const mergedByArm: string[] = [];
+    let orderRc = 0;
+    for (const arm of [
+      { label: "wasm", argv: [shell, "run", relOrd], exe: nodeBin },
+      { label: "native", argv: ["run", relOrd], exe: nativeExe },
+      { label: "js", argv: [jsEntry, "run", relOrd], exe: nodeBin },
+    ]) {
+      const fd = fs.openSync(mergedFile, "w");
+      let spawnOk = true;
+      try {
+        const r = spawnSync(arm.exe, arm.argv, { cwd: repoRoot, stdio: ["ignore", fd, fd], maxBuffer: 64 * 1024 * 1024 });
+        if (r.error !== undefined || (r.status ?? -1) !== 0) {
+          fatalf(`B[合流序] ${arm.label}: rc=${String(r.status)}（${r.error?.message ?? ""}）`);
+          spawnOk = false;
+        }
+      } finally {
+        fs.closeSync(fd);
+      }
+      if (!spawnOk) {
+        orderRc = 1;
+        mergedByArm.push("");
+        continue;
+      }
+      const merged = normalize(stripBackendLine(fs.readFileSync(mergedFile, "utf8")));
+      mergedByArm.push(merged);
+      const firstOut = merged.indexOf("A-line-1");
+      const markPos: number[] = [];
+      for (const m of ["// STDERR", "// NOTE"]) {
+        const i = merged.indexOf(m);
+        if (i >= 0) markPos.push(i);
+      }
+      // fail loud：两标记行均缺席 = fixture/通道漂移，不静默绿
+      const firstMark = markPos.length === 0 ? -1 : Math.min(...markPos);
+      if (!(firstOut >= 0 && firstMark >= 0 && firstOut < firstMark)) {
+        orderRc = 1;
+        fatalf(`B[合流序] ${arm.label}: 合并流顺序错乱（程序输出首位=${firstOut} 标记行首位=${firstMark}——native stdout 全缓冲被 stderr 反超形态，#357）:\n${merged}`);
+      }
+    }
+    if (orderRc === 0) {
+      if (mergedByArm[0] !== mergedByArm[1]) {
+        fatalf(`B[合流序] wasm vs native 合并文本不一致（归一后）:\n--- wasm ---\n${mergedByArm[0]}\n--- native ---\n${mergedByArm[1]}`);
+      } else if (mergedByArm[0] !== mergedByArm[2]) {
+        fatalf(`B[合流序] wasm vs js 合并文本不一致（归一后）:\n--- wasm ---\n${mergedByArm[0]}\n--- js ---\n${mergedByArm[2]}`);
+      } else {
+        process.stdout.write("ok  B[合流序] 三臂 2>&1 合并流：程序输出先于标记行、三臂同形（#357）\n");
+      }
+    }
+  }
+
+  // B 组附 8：SIGABRT 崩溃路径防线锚·壳装载面（#357，2026-10-30；Linux only）
+  // ——stdout_stub 的 ensure_binary_mode 挂 SIGABRT handler（fflush(NULL) 刷
+  // 全部输出流 + 恢复默认 + abort()，防 panic→abort 下 stdio 缓冲诊断蒸发）。
+  // 本锚锁**壳装载面**：vitro.exe 真壳外部注入 ABRT 后须死于 SIGABRT（shell
+  // 视角 rc=134），不得因 handler 偏差（只刷不终止 / _exit 顶替）变成退出码
+  // 形态或挂死。**零区分度边界（#391 审阅 P2-1）**：无 handler 的默认 SIGABRT
+  // 处置同为 134——本锚区分不了「handler 没挂上」，挂载实效与刷出实效由
+  // 附 9 C 桩锚承担（桩 include 真源单源锁，双平台跑）；本锚留任壳装载 +
+  // 外部注入形态。Windows skip：node/MSYS 的信号是进程终止模拟、不进 CRT
+  // handler，判定无意义（CI ubuntu 覆盖）。
+  if (process.platform !== "linux") {
+    process.stdout.write("skip B[SIGABRT 防线]（非 Linux——信号模拟不进 CRT handler；CI ubuntu 覆盖，#357）\n");
+  } else {
+    const loopC = path.join(tmpDir, "abort_loop.c");
+    fs.writeFileSync(loopC, "int main(){ int i=0; while(1){ i=i+1; } return 0; }\n");
+    const relLoop = toSlash(path.relative(repoRoot, loopC));
+    // 大步数预算（缺省 10M 步 0.7s 即 trap，kill 窗口不稳；2G 步 ≈ 分钟级）
+    const script = `"${nativeExe}" run --max-steps 2000000000 "${relLoop}" & p=$!; sleep 0.5; kill -ABRT $p; wait $p; echo "RC=$?"`;
+    const r = spawnSync("/bin/bash", ["-c", script], { cwd: repoRoot, encoding: "utf8", timeout: 60000 });
+    const m = /RC=(\d+)/.exec(r.stdout ?? "");
+    if (r.error !== undefined || m === null) {
+      fatalf(`B[SIGABRT 防线] 运行失败（spawn 超时/错误）：${r.error?.message ?? ""} out=${(r.stdout ?? "").trim()}`);
+    } else if (m[1] !== "134") {
+      fatalf(`B[SIGABRT 防线] 死形态走样：期望 shell rc=134（SIGABRT），实得 ${m[1]}——handler 只许刷 + 恢复默认 + abort()，不得改死形态（#357）`);
+    } else {
+      process.stdout.write("ok  B[SIGABRT 防线] 外部 abort 死形态保真（rc=134，壳装载链）\n");
+    }
+  }
+
+  // B 组附 9：SIGABRT 崩溃路径防线锚·handler 本体面（#391 审阅 P1-2/P2-1，
+  // 2026-10-31；双平台）——C 桩（scripts/vitro_cli_smoke/abort_probe/
+  // abort_probe.c）#include 真源 stdout_stub.c（cmd/run 真源，三副本 single_source
+  // 逐字节锁）单翻译单元编入：桩 main 调 ensure_binary_mode()（挂 handler +
+  // Windows 切二进制）→ printf 两行进 CRT 缓冲（模拟 panic 诊断已在缓冲——
+  // **不需要任何 panic 语料**，#363 后 master 无端到端触面的「刷出实效」
+  // 由此可回归）→ raise(SIGABRT)。双断言：
+  //   ① 刷出实效：重定向文件含全部 printf 字节（handler 没挂上/没 flush
+  //      即丢字节红——附 8 零区分度面的补齐）；
+  //   ② rc 不落 CLI_PROTOCOL_V1 §2 协议五值 {0,1,2,3,4}——UCRT 下 raise 形态
+  //      曾走 _exit(3) 撞 step-limit 码（P1-1 实锤，修前桩实测 status=3）；
+  //      abort() 形态 Windows 保 0xC0000409（node status=3221226505）/ POSIX
+  //      134——均不在五值域。修前形态 J9 留痕：status=3 字节全刷但撞码红。
+  // clang 门控：工具缺失明示 skip（gofmt 先例——不静默）；CI windows/ubuntu
+  // runner 均预装 clang。
+  {
+    const probeSrc = path.join(repoRoot, "scripts", "vitro_cli_smoke", "abort_probe", "abort_probe.c");
+    const clangProbe = spawnSync("clang", ["--version"], { encoding: "utf8", timeout: 15000 });
+    if (clangProbe.error !== undefined) {
+      process.stdout.write("skip B[SIGABRT 桩]（clang 不可用——handler 本体未验；CI windows/ubuntu 预装，#391）\n");
+    } else {
+      const probeExe = path.join(tmpDir, "abort_probe_bin.exe");
+      // -I 桩目录：stub 的 #include "moonbit.h" 在标准 C 只搜「发出文件所在
+      // 目录」（stdout_stub.c 的 cmd/run/——无此头）；Windows clang 靠
+      // Microsoft 非移植搜索规则多搜主文件目录侥幸命中桩假头（ubuntu CI
+      // 实锤红：fatal error 'moonbit.h' file not found）——显式 -I 双平台
+      // 一致（#391 处置批修后复跑）。
+      const cc = spawnSync("clang", ["-I", path.dirname(probeSrc), "-o", probeExe, probeSrc], { encoding: "utf8", timeout: 60000 });
+      if (cc.error !== undefined || cc.status !== 0) {
+        fatalf(`B[SIGABRT 桩] 编译失败（真源 stub 或桩漂移）：${cc.stderr?.slice(0, 400) ?? cc.error?.message ?? ""}`);
+      } else {
+        const probeOut = path.join(tmpDir, "abort_probe_out.txt");
+        const fd = fs.openSync(probeOut, "w");
+        let st: number | null = null;
+        let sig: string | null = null;
+        let spawnErr: string | undefined;
+        try {
+          const r = spawnSync(probeExe, [], { stdio: ["ignore", fd, fd], timeout: 30000 });
+          st = r.status;
+          sig = r.signal;
+          spawnErr = r.error?.message;
+        } finally {
+          fs.closeSync(fd);
+        }
+        const body = fs.readFileSync(probeOut, "utf8");
+        const flushed = body.includes("probe-line-1-in-buffer") && body.includes("probe-line-2-in-buffer");
+        const PROTO_RC = new Set([0, 1, 2, 3, 4]);
+        // 死形态合法集（双平台）：Windows crash 形态 status=3221226505
+        // （0xC0000409）signal=null；POSIX 信号终止形态 status=null +
+        // signal="SIGABRT"（node 对被信号杀的子进程 status 恒 null——首版
+        // 锚把 null 一律判 fail 即 ubuntu 第二红因）；其余非零非五值（如
+        // _exit(134) 类）也不撞协议面。0/五值/其他 signal/无 status 均红。
+        const diedOk =
+          (st !== null && st !== 0 && !PROTO_RC.has(st)) || (st === null && sig === "SIGABRT");
+        if (spawnErr !== undefined || (st === null && sig === null)) {
+          fatalf(`B[SIGABRT 桩] 运行异常（spawn 失败/超时）：${spawnErr ?? "无 status 无 signal"}——handler 链路断裂形态`);
+        } else if (!flushed) {
+          fatalf(`B[SIGABRT 桩] 刷出实效丢失：重定向文件 ${JSON.stringify(body.slice(0, 80))}——handler 未挂上或未 flush（#357 现象 A 复发形态）`);
+        } else if (!diedOk) {
+          fatalf(`B[SIGABRT 桩] 死形态走样：status=${String(st)} signal=${String(sig)}——rc 落协议五值 {0..4}（P1-1：UCRT raise 走 _exit(3) 撞 step-limit 形态）或非 SIGABRT 终止（#391 审阅）`);
+        } else {
+          process.stdout.write(`ok  B[SIGABRT 桩] handler 本体：字节全刷 + 死形态合法（status=${String(st)} signal=${String(sig)}，Windows 0xC0000409 / POSIX SIGABRT，#391 P1-1/P1-2）\n`);
+        }
       }
     }
   }

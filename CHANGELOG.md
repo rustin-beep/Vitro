@@ -1,5 +1,89 @@
 ## [Unreleased]
 
+### fix(cmd 壳/native): PR #391 审阅处置批——P1-1 UCRT 撞码治本（abort 形态）+ P1-2/P2-1 C 桩锚 + P2-2 serve 连坐 + P3 两件（2026-10-31）
+
+- **P1-1（协议面回归，独立复证 + 红→绿）**：SIGABRT handler 终末
+  `raise(SIGABRT)` 在 UCRT 下走 `_exit(3)`——Windows panic 码从
+  0xC0000409（crash）变 3，**与 CLI_PROTOCOL_V1 §2 协议五值的 step-limit
+  撞码**（消费方把崩溃判成步数超限）。亲跑三态探针复证（审阅者探针
+  同结论）：handler+raise = rc3 / handler+abort = crash 形态 + 字节
+  全刷；裸 abort() 无 handler 同为 crash——**终末改 `abort()`**（UCRT
+  无 handler 走 __fastfail 保 0xC0000409；POSIX 与 raise 同为默认处置
+  134 + core，WSL 三态复证），无需平台分支。修前桩实测 status=3
+  （J9 留痕）。连带：真源 stub 此前 `abort()`/`int32_t` 依赖传递包含
+  （MSVC 链侥幸过、plain clang 严格档红——桩锚首编译即抓），补
+  `<stdlib.h>`/`<stdint.h>` 显式 include；「死形态保真 shell rc=134」
+  表述勘正（Windows 是 0xC0000409 非 134——平台限定词补齐）。
+- **P1-2 + P2-1（C 桩锚，附 9）**：现象 A「重定向下崩溃诊断可见」此前
+  零锚（附 8 只断死形态、与刷出正交；且无 handler 与有 handler 同为
+  134 零区分度）。新 C 桩（`scripts/vitro_cli_smoke/abort_probe/`）
+  **#include 真源 stdout_stub.c 单翻译单元单源锁**（假 moonbit.h 假头
+  编译面）——桩 main 挂 handler → printf 两行进缓冲 → raise(SIGABRT)，
+  **不需任何 panic 语料**。双断言：①重定向文件含全部 printf 字节
+  （handler 没挂上/没 flush 即红）②rc 不落协议五值（修前 status=3
+  红 / 修后 Windows 3221226505 = 0xC0000409、POSIX 134 绿）。clang
+  门控（缺失明示 skip）；Windows 本机首跑绿；附 8 注释收窄为「壳装载
+  面」（与桩锚互补分工：桩锁 handler 逻辑本体、附 8 锁壳 main 首行
+  挂载 + 外部注入形态）。
+- **P2-2（serve 第四份实现连坐）**：`ensure_binary_mode` 实为四份——
+  三份同名 stdout_stub.c（机判 copies 锁）+ cmd/serve 的 serve_stdio.c
+  （独立实现，按文件名锁不到）。serve_stdio 同款 handler 连坐
+  （POSIX 侧函数体自此非空）；single_source `stdout_stub_copies` 条目
+  concept/sync 登记人工连坐义务；首批 CHANGELOG「单一挂点覆盖全部
+  native 壳」表述勘正（cmd/dump_* 四壳为开发工具无防线，P3 登记
+  不修）。
+- **P3-1（967 vs facts 964 核数闭环）**：964 = master `5ae0857c`
+  （#367 批，10-29 22:25 合入——审阅者 facts as_of 10-29T23:10 的
+  HEAD）裸口径值；967 = 本 PR base `32f20b34` 值，差 3 = 其间四批
+  净增（README.mbt.md:141 批注链：#369/#370 +2、PR #375 审阅处置
+  +1 等）——**非来源不明，本批零 .mbt 改动无涉**。附注：5ae0857c
+  本地复跑撞工具链代差（core #4425 删 abort 包，moon 0.10.18 编不过
+  0.10.15 代码）——历史核数走台账证据链。
+- **P3-2**：smoke `main.mts` ok 文案错贴勘正（`B[坏字节源码]` 块打的
+  是 `B[大帧管道]` 的串——复制粘贴残留）。
+- **验**：smoke 全闸绿（附 9 首跑：字节全刷 + rc=3221226505 不落五值）；
+  moon test 967/967；vm_diff 760/760 SAME；serve_smoke 69 断言
+  rc=0（serve_stdio 连坐回归）；protocol_frames 47 帧；single_source
+  -check 12 条 + 单测 6/6；node:test 8/8；tsc 严格档 rc=0；facts 漂移 0。
+  spec §1「合流顺序契约」段连坐勘正（abort 形态 + 平台限定词 + 附 9 +
+  serve 连坐登记）。
+
+### fix(cmd 壳/native): #357 native 臂 stdout 全缓冲治本——重定向合流顺序恢复 + SIGABRT 崩溃路径刷出防线（2026-10-30）
+
+- **病 B（双平台共有，红锚实证）**：`vitro run x.c > out 2>&1` 合并流里
+  stderr 标记行（`// STDERR`/`// NOTE`——stderr 无缓冲立即落盘）反超程序
+  stdout（本机 Windows 复现：标记行首位=0 vs 程序输出首位=38；issue WSL2
+  Ubuntu 同形态）——native 臂 `stdout_stub.c` 的 fwrite 落 CRT 缓冲（对
+  非 tty 全缓冲）、进程退出才刷；js/wasm 臂出口同步写（#366/#388）无此
+  病。既有对拍（smoke B 组/附 6、vm_diff、clang_direct）全是**分通道
+  抓取**（spawnSync stdout/stderr 分离捕获），抓不到交错序——零防线覆盖面。
+- **病 A（Linux，防线预置）**：panic→abort 不刷 stdio 缓冲（glibc/UCRT
+  abort 语义），重定向下诊断整段蒸发（issue 实测双流 0 字节 + rc=134
+  静默崩溃）。触发面现状：issue 报的 invalid surrogate pair 已被 #363
+  批治成 U+FFFD 折回（本机复验 rc=0），当前 master 无已知 panic→abort
+  端到端触面——本批防线面向未来（数组越界等引擎缺陷场景）。
+- **修**：三份 `stdout_stub.c` 连坐（cmd/run〔真源〕+ cmd/vitro +
+  cmd/step，single_source `stdout_stub_copies` 逐字节闸绿）：①
+  `moonbit_vitro_write_stdout` 的 fwrite 后即 `fflush(stdout)`——与
+  stderr 的相对序由写出序决定，三臂同形（run 的 stdout 本就是结束后
+  批量导出 + 帧序列行协议语义，无中途吞吐收益损失）；②
+  `moonbit_vitro_ensure_binary_mode` 同点挂 SIGABRT handler
+  （`fflush(NULL)` 刷全部输出流 + 恢复默认处置 + re-raise——死形态保真
+  shell rc=134；strict POSIX 下 fflush 非 async-signal-safe 但 SIGABRT
+  同步 raise 栈完好，工程惯例形态；signal/SIGABRT/SIG_DFL 纯 C89，#335
+  MSVC 探测约束内）。panic 文案通道归属（stdout 而非 stderr）是 moon
+  runtime 上游行为，本仓不可治——只保「不蒸发」。
+- **锚**：smoke 闸 B 组附 7（合流顺序：两 fd 指向同一文件复现 shell 级
+  `> f 2>&1`，断言程序输出先于标记行 + 三臂合并文本同形——修前 native
+  红 J9 留痕「合并流顺序错乱（程序输出首位=38 标记行首位=0）」）+ 附 8
+  （SIGABRT 防线死形态保真，Linux only：外部注入 ABRT 后 shell rc=134；
+  Windows skip——node/MSYS 信号模拟不进 CRT handler，CI ubuntu 覆盖）。
+- **验**：smoke 全闸绿（A/B/C/G/D 组 + 附 1-8）；moon test 967/967；
+  vm_diff 760/760 SAME；clang_direct 采样 20/20；protocol_frames 47 帧；
+  realcode check_gold rc=0；single_source 12 条 PASS；.mts 四件套绿
+  （tsc -p 严格档 / oxlint / node:test 8/8）。spec §1 连坐「合流顺序
+  契约」注记。
+
 ### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
 
 - **病**：CLI smoke ubuntu lane 的 wasm stderr 风暴锚稳定红

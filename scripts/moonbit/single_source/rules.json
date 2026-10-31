@@ -140,7 +140,7 @@
     },
     {
       "id": "stdout_stub_copies",
-      "concept": "stdout 字节直写 C stub 三副本（native-stub 禁 ../ 被迫复制——三份逐字节同；#315 批起含 cmd/step〔历史遗漏件，2026-10-26 补登记——与 run/vitro 同源逐字节同但不在机判面，漂移无人管〕；只有 run_main 出口消费〔cmd/run 与 cmd/vitro run 子命令〕，compile 无程序 stdout 物理输出）",
+      "concept": "stdout 字节直写 C stub 三副本（native-stub 禁 ../ 被迫复制——三份逐字节同；#315 批起含 cmd/step〔历史遗漏件，2026-10-26 补登记——与 run/vitro 同源逐字节同但不在机判面，漂移无人管〕；只有 run_main 出口消费〔cmd/run 与 cmd/vitro run 子命令〕，compile 无程序 stdout 物理输出。#391 审阅 P2-2〔2026-10-31〕：cmd/serve 的 serve_stdio.c 是 ensure_binary_mode 的**第四份独立实现**（不同文件名，本闸 copies 判定锁不到）——其 SIGABRT handler（#357 崩溃防线）与 _WIN32 _setmode 段**人工连坐义务**在此登记：改本三副本的 ensure_binary_mode/abort handler 须同步 serve_stdio.c；cmd/dump_* 四壳为开发工具无防线〔P3 登记不修〕。锚 = vitro_cli_smoke B 组附 9 C 桩〔include 真源，三副本语义本体〕）",
       "kind": "copies",
       "copies_must_match": [
         "moonbit/cmd/run/stdout_stub.c",
@@ -149,7 +149,7 @@
       ],
       "rust_source": "",
       "moonbit_source": "moonbit/cmd/run/stdout_stub.c",
-      "sync": "三份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）",
+      "sync": "三份逐字节同步（改一份须连坐全部——本闸 copies 判定机判红线）+ serve_stdio.c 的 ensure_binary_mode/handler 段人工连坐（文件名不同锁不到，见 concept #391 注记）",
       "consumers": [
         "moonbit/cmd/run",
         "moonbit/cmd/vitro（run 子命令）",

@@ -31,9 +31,13 @@ EAD
   schema §7.x5 两处。
 - **P3-4**：`sortBytesStable` 本地拷贝删除——复用既有 `gofmt.sortBytes`
   （同语义，消重复实现）。
-- **P2-3（呈现序产品取舍）不擅动**：侧栏组内呈现序从教学进展序变引擎目录序
-  （5 组）、分组归属失去第二真相——三选项（引擎表按教学序重排 / catalog 加
-  显式 order 字段 / 接受引擎序）待用户拍板，PR 评论登记。
+- **P2-3 ✅ 拍板 A 落地（用户闸窗拍板「选 a」）**：引擎表按**教学进展序**重排
+  ——`catalog.mbt` 静态表 43 条一次性重排（组间 = detect 分派组序不动〔B13
+  契约〕，组内 = 原 gen_demo GROUPS 硬编码教学呈现序上移入表；表序与判据
+  分派序自此解耦，头注成文）。**终极对拍**：重排后重发射产物 vs 收编前旧
+  版（a25760a2 旧生成器产出）——**diff 仅头注 5 行，43 族×7 组数据体逐字节
+  一致**（教学序完全恢复、单源保持、呈现层零排序真相）。catalog-check 双臂 /
+  demo_smoke / npm test 全绿。
 
 ### refactor(tools): #36 gen_demo_algorithms 收编——族集/display_name/分组三源切引擎 algorithms.catalog 出口（2026-10-31）
 

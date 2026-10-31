@@ -74,7 +74,7 @@ EAD
   `moon add` 后 build 必红）且发布物零工具链声明——该形态在既有发布彩排里
   **零闸能抓**（彩排只验 registry 投放与包自身 check，不验 publish 视角）。
 - **新闸 `scripts/release_preflight/main.mts`**（#273 .mts 四件套：零依赖 +
-  tsc 严格档 + oxlint + node:test 8 测）：
+  tsc 严格档 + oxlint + node:test 12 测——审阅批 +3 judge 档，原 9）：
   - **日常档**（CI 常驻，**零网络零 login**）：`moon package` 产物非退化
     （>400 条/>100KB——非 git 管理面 22 字节空 zip rc=0 静默成功实锤形态，
     发布件面 CI 此前零覆盖）+ 根级四件在位（LICENSE/README.md/
@@ -95,9 +95,35 @@ EAD
 - **接线**：ci.yml 新 `release-preflight` job（windows，setup-moonbit
   composite + registry 刷新 + 闸）；package.json lint/test 清单登记；
   ci_checklist 三向对账过（驱动 58）。
+EAD
 eat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
-- **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`
+- **审阅处置批（PR #402，2026-10-31）**：
+  - P2-1 **ci-summary 三面连坐**：needs/env/pairs 三处补入
+    `release-preflight`（12 项——此前三面全漏，新闸红汇总仍绿；mutation-gate
+    有「观察期不入 needs」豁免注记，本 job 无豁免理由，属漏登记）。
+  - P2-2 **退化根因勘正**：「非 git 管理面 22 字节空 zip」归因证伪——
+    三态实测（审阅批独立复证：仓库外无 git 目录 → 1.5MB 正常包；gitignore
+    覆盖目录 → 22 字节空包）：唯一致空因素是**模块目录被 .gitignore 覆盖**
+    （与是否 git 仓库无关）。CI 恒在 checkout git 树里跑 ⇒ 本闸 CI 可达
+    形态 = 忽略规则误伤 moonbit/。四处文案（脚本头注/ci.yml 注释/
+    CHANGELOG/playbook）+ fatal 判定信息同步改写。
+  - P2-3 **judgePackage 纯函数抽取**：主流程「zv → 判红/放行」判定抽
+    `judgePackage` + node:test 三档（绿/退化/纯缺件）——M2 突变（缺件臂
+    `if(false)`）注入实测 1 红（原 9 测全绿盲区闭合）。
+  - P3 五件：node:test 计数连坐 8→12；rc 表落地（fatal=2 致命 / fail=1
+    判红分流——409 版本冲突与「无 Check passed」走 rc=1，实测 release 档
+    409 形态 rc=2→1；旧 J9 记录的 rc=2 为当时实现，语义已迁）；「零网络」
+    措辞精确化（闸进程零网络，CI job 前置 registry 刷新属 job 依赖面）；
+    退化判红附缺件清单（3 条/374B 小包报「退化且缺根级件」——根因定位
+    准确化）；阈值注释写明余量与连坐义务（条目数 22%/字节 93%——正当
+    瘦身越过即假红，调整须连坐 main.test.mts 阈值锚；环比口径挂账未做）。
+  - 验证：node:test 12/12、tsc 严格档 rc=0、oxlint 本批文件零告警
+    （基线 vitro_cli_smoke 1 warning 为 a25760a2 自带、非本批面）、
+    日常档 rc=0（520 条/1533KB）、release 档 409 形态 rc=1。
+
+### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
+lan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`
   ——指针轨道逐帧（travel = min(帧间隔×0.85, slow token)）；事件轨道以
   「指针到达该帧」为唯一前驱做最早到达松弛，同目标事件串行成链，等待超
   `chainBudgetMs` 即种子兜底（放弃等待、接受重叠，WAAPI 单键控保证不叠播）；

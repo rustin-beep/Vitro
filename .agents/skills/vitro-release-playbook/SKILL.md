@@ -15,7 +15,7 @@ description: Vitro mooncakes（vitro/engine）发版与彩排手册——版本�
 ## 2. 发布前置
 - 防线全绿：CI 两 job + `toolchain_probe`；本地 = `moon check --target all` 干净、`moon test` 全绿、`moon info` 无意外 diff、`gen_diag -check` 绿。
 - **`release_preflight` 双档闸（ds 批③ 2026-10-31 建，CI release-preflight job 常驻日常档）**：
-  - 日常档 `node scripts/release_preflight/main.mts`——**零网络零 login**：`moon package` 产物非退化（>400 条/>100KB——非 git 管理面 22 字节空 zip rc=0 实锤形态）+ 根级四件在位 + 版本状态探针（moon.mod vs 本地 registry index 尾行，同号=未 bump 预期态，不判红）。import 断供防线由 moon check/test 的 Hygiene job 承担。
+  - 日常档 `node scripts/release_preflight/main.mts`——**闸进程零网络零 login**：`moon package` 产物非退化（>400 条/>100KB——**模块目录被 .gitignore 覆盖时** 22 字节空 zip rc=0 实锤形态〔审阅批 2026-10-31 勘正归因：与是否 git 仓库无关，无 git 目录打包正常；CI 可达形态 = 忽略规则误伤 moonbit/〕）+ 根级四件在位 + 版本状态探针（moon.mod vs 本地 registry index 尾行，同号=未 bump 预期态，不判红）。import 断供防线由 moon check/test 的 Hygiene job 承担。
   - 发版彩排档 `--release`——dry-run 须 rc=0（版本已 bump 且 registry 无冲突；**须发版本机有 moon login**——CI 无登录会被 `Registry login is required` 拦，实测 2026-10-31）+ 日常档全部三件。**发版日 bump 版本后、publish 前必跑绿**。
   - **反刷量约束（用户拍板 2026-10-31）**：闸全程零 mooncakes zip GET（日常档完全零网络，release 档 dry-run 只有 publish 查重 API）；「干净消费工程 `moon add` + build」是真实下载计数，**永不进 CI**——只在发版日人工跑一次（§5 验收）。
 - **连坐面**：`moon.mod` description（模块页直接展示）、CHANGELOG（破坏面置顶）、README 包表与测试数、包图徽标（facts 锚机械派生，改包集/版本必连坐）、`docs/current/02-构建与上手/脚本总清单与必跑防线.md`。

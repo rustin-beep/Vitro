@@ -6,6 +6,7 @@ import { test } from "node:test";
 import {
   ZIP_MIN_BYTES,
   ZIP_MIN_FILES,
+  judgePackage,
   latestPublishedVersion,
   moonModVersion,
   parseDryRun,
@@ -123,6 +124,39 @@ test("verdictFromListing：四件齐备零缺位", () => {
   const entries = ["LICENSE", "README.md", "README.mbt.md", "moon.mod", "vm/vm.mbt"];
   const zv = verdictFromListing(entries, 1_567_591);
   assert.deepEqual(zv.missingRoot, []);
+});
+
+// ── judgePackage 三档（审阅批 2026-10-31 P2-3：主流程判红分支曾零自动锚
+//    ——M2 突变〔缺件判红 if(false)〕时 9 测全绿的盲区；本三档把
+//    「zv → 判红/放行」的出口判定钉进纯函数层）──
+test("judgePackage：绿（量过阈值 + 四件齐）放行", () => {
+  const entries = ["LICENSE", "README.md", "README.mbt.md", "moon.mod"];
+  for (let i = 0; i < 600; i++) entries.push(`pkg${i}/f${i}.mbt`);
+  const zv = verdictFromListing(entries, 1_567_591);
+  assert.equal(judgePackage(zv), null);
+});
+
+test("judgePackage：退化（量不过阈值）判红且附缺件定位（P3-4）", () => {
+  // 审阅实测形态：3 条 / 374B 缺 LICENSE 小包——须报「退化」为根因，
+  // 附缺根级件清单辅助定位（而非单报缺件误导治向）
+  const zv = verdictFromListing(["a.mbt", "b.mbt", "c.mbt"], 374);
+  const g = judgePackage(zv);
+  assert.notEqual(g, null);
+  assert.equal(g!.kind, "degenerate");
+  assert.ok(g!.reason.includes("退化"), "根因须是退化");
+  assert.ok(g!.reason.includes("LICENSE"), "须附缺件清单（P3-4 定位）");
+  assert.ok(g!.reason.includes("README.md"), "缺件清单含 README.md");
+});
+
+test("judgePackage：量过阈值但缺根级件 → 独立缺件判红（不涉退化）", () => {
+  const entries = ["LICENSE", "README.md", "README.mbt.md"];
+  for (let i = 0; i < 600; i++) entries.push(`pkg${i}/f${i}.mbt`);
+  const zv = verdictFromListing(entries, 1_567_591);
+  const g = judgePackage(zv);
+  assert.notEqual(g, null);
+  assert.equal(g!.kind, "missing-root");
+  assert.ok(g!.reason.includes("moon.mod"));
+  assert.ok(!g!.reason.includes("退化"), "量过阈值不得再报退化");
 });
 
 test("latestPublishedVersion：JSONL 尾行版本（CRLF/空行容忍·坏行 null）", () => {

@@ -10,11 +10,18 @@
 // ——该缺陷形态在发布彩排里**没有任何闸能抓**（彩排只验 registry 投放与包
 // 自身 check，没验「publish 视角健康」与「发布件非退化」）。本闸两档补面：
 //
-//  日常档（默认，CI 跑，**零网络**——CI 无 moon login，dry-run 会 login 拦截
-//  〔2026-10-31 CI 实锤：Registry login is required〕；import 断供防线由
-//  moon check/moon test 的 Hygiene job 承担，本档增量 = 发布件面）：
-//   1. `moon package` 产物非退化：zip >100KB 且 >400 文件——非 git 管理面
-//      `moon package` 曾实测 22 字节空 zip 且 rc=0 静默成功（报告 §4.1.1-3）；
+//  日常档（默认，CI 跑——**本闸进程零网络零 login**：不触 mooncakes API；
+//  CI job 前置的 registry 刷新 `moon update` 属 job 依赖面而非本闸行为，
+//  版本探针只读其落地的本地 index 文件。CI 无 moon login，dry-run 会 login
+//  拦截〔2026-10-31 CI 实锤：Registry login is required〕；import 断供防线
+//  由 moon check/moon test 的 Hygiene job 承担，本档增量 = 发布件面）：
+//   1. `moon package` 产物非退化：zip >100KB 且 >400 文件——**模块目录被
+//      .gitignore 忽略规则覆盖时** `moon package` 出 22 字节空 zip 且 rc=0
+//      静默成功（报告 §4.1.1-3；审阅批 2026-10-31 勘正归因：与「是否 git
+//      仓库」无关——仓库外无 git 目录打包正常〔实测 1.5MB 正常包〕，仓库内
+//      未跟踪文件也入包，唯一致空因素是忽略覆盖。CI 恒在 checkout git 树
+//      里跑，本闸在 CI 的可达形态 = 忽略规则误伤 moonbit/〔如误加 .gitignore
+//      条目〕；发版机从被忽略目录打包的形态由 release 档同一闸段覆盖）；
 //   2. 根级四件在位：LICENSE / README.md / README.mbt.md / moon.mod
 //      （T5 发布验收四件，mooncakes 模块页渲染依赖）；
 //   3. 版本状态探针（不判红）：moon.mod version vs 本地 registry index 尾行
@@ -33,7 +40,10 @@
 // ——人工步骤落在 vitro-release-playbook skill 的发版 checklist（发版当日
 // 一次，真实语义下载）。
 //
-// 纪律：零第三方依赖；fail loud；禁静默 default；rc=0 绿 / 1 判红 / 2 致命。
+// 纪律：零第三方依赖；fail loud；禁静默 default；rc=0 绿 / 1 判红（闸判定
+// 失败：退化/缺件/版本冲突/无 Check passed——可修复后重跑）/ 2 致命（环境
+// 破坏：moon.mod 缺失、产物路径异常、moon package 自身失败——审阅批
+// 2026-10-31 P3-2 落地：旧头注写 1/2 分流但实现全走 fatal(2)，rc=1 不可达）。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -57,14 +67,24 @@ export type ZipVerdict = {
 
 const ROOT_FILES = ["LICENSE", "README.md", "README.mbt.md", "moon.mod"] as const;
 
-/** zip 条目下限（git 管理面实测 520 条目；非 git 面退化 22 字节/0 条目） */
+/** zip 条目下限（实测 515 条〔2026-10-31 审阅批口径，不同树 515~520〕——
+ * 阈值=绝对下限，余量约 22%：正当瘦身（拆包/文档出仓）越过即假红，调整须
+ * 连坐 main.test.mts 阈值锚与本注释；环比口径（对拍跟踪条目数）挂账未做） */
 export const ZIP_MIN_FILES = 400;
-/** zip 字节下限（git 管理面实测 ~1.5MB；退化 22 字节） */
+/** zip 字节下限（实测 ~1.5MB——阈值余量约 93%，同上连坐义务；退化 22 字节） */
 export const ZIP_MIN_BYTES = 100 * 1024;
 
 export function fatal(msg: string): never {
   process.stderr.write("release_preflight: " + msg + "\n");
   process.exit(2);
+}
+
+/** 判红出口（rc=1）：闸判定失败——可修复后重跑（bump/补件/治退化）。
+ *  与 fatal（rc=2，环境破坏）分流——审阅批 2026-10-31 P3-2：旧实现全走
+ *  fatal 致 rc=1 不可达，头注表失真。 */
+export function fail(msg: string): never {
+  process.stderr.write("release_preflight: " + msg + "\n");
+  process.exit(1);
 }
 
 /** moon.mod 文本 → version 字段（TOML 裸键，容忍注释/引号）。 */
@@ -140,6 +160,29 @@ export function verdictFromListing(entries: readonly string[], size: number): Zi
   return { size, fileCount: entries.length, missingRoot: [...missingRoot] };
 }
 
+/** package 闸判定（审阅批 2026-10-31 P2-3 抽取——主流程判红分支零自动锚，
+ *  纯函数化供 node:test 三档锚）。判红优先序：退化（条数/字节双阈值，附
+ *  缺件清单辅助定位——退化常伴根级件全缺，P3-4：3 条小包报「退化且缺
+ *  X,Y」比单报缺件归因准）→ 缺件（条数/字节正常但根级件缺）。 */
+export type PkgGateFailure = { kind: "degenerate" | "missing-root"; reason: string };
+
+export function judgePackage(zv: ZipVerdict): PkgGateFailure | null {
+  if (zv.fileCount < ZIP_MIN_FILES || zv.size < ZIP_MIN_BYTES) {
+    const extra = zv.missingRoot.length > 0 ? `；且缺根级件 ${zv.missingRoot.join(", ")}（退化形态常伴根级件全缺——先治退化）` : "";
+    return {
+      kind: "degenerate",
+      reason: `package 产物疑似退化空包：${zv.fileCount} 条 / ${zv.size}B（阈值 ≥${ZIP_MIN_FILES} 条 / ≥${ZIP_MIN_BYTES}B；模块目录被 .gitignore 覆盖时 22 字节空 zip rc=0 静默成功实锤形态${extra}）`,
+    };
+  }
+  if (zv.missingRoot.length > 0) {
+    return {
+      kind: "missing-root",
+      reason: `package 产物缺根级件：${zv.missingRoot.join(", ")}（T5 验收四件）`,
+    };
+  }
+  return null;
+}
+
 function run(name: string, args: readonly string[], cwd?: string): { code: number; out: string } {
   const r = spawnSync(name, args, { cwd, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 });
   const out = Buffer.concat([r.stdout ?? Buffer.alloc(0), r.stderr ?? Buffer.alloc(0)]).toString("utf8");
@@ -163,13 +206,12 @@ function main(): void {
     const dry = run("moon", ["publish", "--dry-run"], moonbit);
     const v = parseDryRun(dry.out);
     if (dry.code !== 0) {
-      fatal(
-        v.versionConflict !== null
-          ? `版本 ${v.version} 与在架重复——先 bump moon.mod version（发布流程 T5：修复发布 patch / 新增面 minor）`
-          : `dry-run rc=${dry.code}（login/网络/构建失败——发版本机须 moon login 后重跑）：\n${dry.out.slice(-1200)}`,
-      );
+      if (v.versionConflict !== null) {
+        fail(`版本 ${v.version} 与在架重复——先 bump moon.mod version（发布流程 T5：修复发布 patch / 新增面 minor）`);
+      }
+      fatal(`dry-run rc=${dry.code}（login/网络/构建失败——发版本机须 moon login 后重跑）：\n${dry.out.slice(-1200)}`);
     }
-    if (!v.checkPassed) fatal(`dry-run rc=0 但无 "Check passed"（异常形态）：\n${dry.out.slice(-600)}`);
+    if (!v.checkPassed) fail(`dry-run rc=0 但无 "Check passed"（异常形态）：\n${dry.out.slice(-600)}`);
     process.stdout.write(`release_preflight: dry-run rc=0 · Check passed ✓（registry 无冲突）\n`);
   }
 
@@ -190,10 +232,8 @@ function main(): void {
     fatal(`package 产物 zip 不可解析（${(e as Error).message}）：${zipPath}`);
   }
   const zv = verdictFromListing(entries, size);
-  if (zv.fileCount < ZIP_MIN_FILES || zv.size < ZIP_MIN_BYTES) {
-    fatal(`package 产物疑似退化空包：${zv.fileCount} 条 / ${zv.size}B（阈值 ≥${ZIP_MIN_FILES} 条 / ≥${ZIP_MIN_BYTES}B；非 git 管理面 22 字节空 zip 实锤形态）`);
-  }
-  if (zv.missingRoot.length > 0) fatal(`package 产物缺根级件：${zv.missingRoot.join(", ")}（T5 验收四件）`);
+  const gate = judgePackage(zv);
+  if (gate !== null) fail(gate.reason);
   process.stdout.write(`release_preflight: package ✓ ${zv.fileCount} 条 / ${Math.round(zv.size / 1024)}KB · 根级四件在位\n`);
 
   // ── 版本状态探针（不判红）：moon.mod vs 本地 registry index 尾行 ──

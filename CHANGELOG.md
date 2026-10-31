@@ -3,6 +3,39 @@
 EAD
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
 
+### feat(host+gateway): #95 VFS 预置文件列举口——`vfs.list` 协议方法 + 预置清单单源 + 文档成文（2026-10-31）
+
+- **host 列举口**：`VirtualFileSystem::list_files() -> Array[(String, Int32)]`
+  ——全部文件 `(名, 逻辑 size)` 清单，**插入序**（core `Map` 迭代序即插入序：
+  预置在前、程序自建在后）；此前下游枚举 VFS 只能逐名试探（issue #95 核心诉求）。
+  wbtest 锚：空表/注入序/size 断言/remove 退列不扰余序（`vfs_list_files_insertion_order_and_sizes`）。
+- **`vfs.list` 方法帧**（serve/api 通道）：`{files:[{name,size}...]}` 只读观测
+  （`memory.regions` 同族）；dispatch 接线 + 未知方法「已接」清单连坐。wbtest
+  双锚：预置可见性（run 后 test.txt 12 / numbers.txt 10）+ 时机语义（run 前
+  `files:[]`、程序自建文件进列、每 run 重建——**换程序观测**：同程序重跑无法
+  区分「重建+重执行」与「累加」）。
+- **预置注入单源化（C5 收口）**：`serve_run` / `serve_step` 两处手写同款注入
+  （改一侧漏一侧的分叉形态）收口 `serve_vfs.mbt::preset_vfs_files`——清单/
+  注入序唯一定义，run/step.begin 两通道共用；行为零变化（frames 基线零漂移佐证）。
+- **文档成文**：C语言子集规范 §2.6 补预置清单段（内容/字节数/生命周期/覆盖
+  语义/**CLI `run` 不注入**的通道分叉在案）；顺手修 §4.1 :664 与 §2.6 :364
+  互斥（「不模拟 CRLF」错误行改「文本模式模拟、二进制原样」——实现与 §2.6 为准）；
+  STEP_PAYLOAD_SCHEMA 新增 §7.x5 `vfs.list` 帧形态。
+- **frames 重冻**：请求序列尾追加 vfs.list 帧（47→48；id 25 未知方法文案随
+  dispatch 连坐变化，其余零漂移）；name/size 均常量，零 mask 需求。
+- **验收**：红→绿双证（host 编译红 `has no method list_files` / gateway 运行
+  红「未知方法」帧→全绿）；`moon check` 0 错；裸 `moon test` 968/968（+1 裸域）、
+  native 1164/1164（+3：host 1 + gateway 2）；`moonbit_surface -check` / mbti
+  同步（`list_files` 单行增量）/ facts --strict 绿；demo_smoke 197/197；npm test
+  626/626；vitro_cli_smoke 全绿。**方法面四处计数连坐**（demo_smoke 26→27 锚 +
+  demo/index.html 页面句 + gen_api_help rules.json 31→32 与 `api_help_gen.mbt`
+  再生 + protocol_frames test 48→49 帧 + vitro_cli_smoke「清单（31）」内容锚）
+  ——首跑漏三处（demo_smoke/api help/cli_smoke），#36 批 npm test 全量对账时
+  逐条抓回；又一实锤：改 dispatch 面 = 五处计数锚全连坐（自报清单/rules 表/
+  页面句/帧数/内容锚）。
+
+### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
+
 - **P1 越界读治本（#66 尺寸口径连坐）**：`typeck` 字符串字面量定型尺寸
   旧用私有 `c_string_len`（Latin-1 混合计长：码点 ≤0xFF 计 1 字节），而
   字节产出层 `bytecode/cstring_bytes` 已随 #66 改整串 UTF-8（`\xff` 落

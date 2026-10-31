@@ -445,6 +445,7 @@ pub fn VirtualFileSystem::ftell(Self, UInt32) -> Int32
 pub fn VirtualFileSystem::fwrite(Self, @memory.Memory, @memory.MemoryMap, UInt32, UInt32, Int32, Int32) -> Int32
 pub fn VirtualFileSystem::get_file_name(Self, UInt32) -> String?
 pub fn VirtualFileSystem::inject_preset_file(Self, @memory.MemoryMap, @memory.Memory, String, Bytes) -> Bool
+pub fn VirtualFileSystem::list_files(Self) -> Array[(String, Int32)]
 pub fn VirtualFileSystem::new() -> Self
 pub fn VirtualFileSystem::remove(Self, @memory.MemoryMap, String) -> Int32
 pub fn VirtualFileSystem::rename(Self, String, String) -> Int32

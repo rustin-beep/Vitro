@@ -365,6 +365,12 @@ fclose(fp);
   - 写入 `"w"` 时 `\n` 自动展开为 `\r\n`
   - 读取 `"r"` 时 `\r\n` 自动压缩为 `\n`
   - `fseek` 使用逻辑位置，`ftell` 返回物理位置，匹配 Windows CRT 行为
+- **预置文件**（#95，2026-10-31 起成文——行为早已在架，此前无文档无列举口）：serve/api 会话每次 `run` / `step.begin` 时 VFS 重建并自动注入两个教学演示文件——
+  - `test.txt`：内容 `hello\nworld\n`（12 字节）
+  - `numbers.txt`：内容 `1 2 3 4 5\n`（10 字节）
+  - 程序未创建任何文件即可直接 `fopen` 读到；用不存在的其他名字则正常打开失败
+  - 生效范围与生命周期：**每 run 重建**（程序自建文件不跨 run 存活，预置恒复位为这两件）；`"w"` 模式打开同名文件即覆盖预置、`"a"` 追加（预置不被特殊保护）；**CLI `run` 子命令不注入**（预置是 serve/api 通道的教学演示语义，随 Rust `execute_run` 照搬——两通道行为分叉在案）
+  - 列举口：协议方法 `vfs.list`（帧形态见 STEP_PAYLOAD_SCHEMA_V0_1 §7.x4）——不必逐名试探
 
 **已知限制**：
 - 已修复：文本模式换行转换差异已消除，`vfs_io_extensions.c` 与 `file_fread.c` 已恢复匹配
@@ -661,7 +667,7 @@ Shadow（e3_* 用例）。
 | 指针基础教学 | &、*、指针作为参数 | ✅ |
 | 内存布局教学 | 变量、数组、指针、malloc | ✅ |
 | 字符串操作 | char、char*、字符串字面量、printf/scanf | ✅ |
-| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换（仅换行转换，不含 Ctrl-Z EOF 等——ds 审阅批 2026-10-31 措辞收窄），二进制模式不转换——与 §文件操作「支持细节」一致；ds 批 2026-10-31 勘正：本行旧文「行为一致、不模拟」与支持细节节互斥） |
+| 文件读写 | VFS 沙盒文件 I/O：`fopen`/`fclose`/`fread`/`fwrite`/`fgets`/`fputs`/`fgetc`/`fputc`/`fseek`/`ftell`/`rewind` | ✅（文本模式模拟 Windows CRT 的 `\n` ↔ `\r\n` 换行转换（仅换行转换，不含 Ctrl-Z EOF 等），二进制模式原样——详见 §2.6） |
 | 浮点运算 | float/double | ✅ |
 | 枚举与状态机 | enum | ✅ |
 | 类型抽象 | typedef | ✅ |

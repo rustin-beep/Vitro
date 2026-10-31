@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "expected_method_count": 31,
+  "expected_method_count": 32,
   "methods": [
     {
       "method": "algorithms.catalog",
@@ -158,6 +158,11 @@
       "method": "typeck.dump",
       "brief": "类型检查导出（静态 dump 族）",
       "example": "{\"source\":\"int main(){return 0;}\"}"
+    },
+    {
+      "method": "vfs.list",
+      "brief": "VFS 文件列举（#95）——files:[{name,size}] 插入序：预置（test.txt/numbers.txt）在前、程序自建在后；预置随 run/step.begin 注入，每 run 重建",
+      "example": "{}"
     }
   ],
   "shape_skip_allow": [

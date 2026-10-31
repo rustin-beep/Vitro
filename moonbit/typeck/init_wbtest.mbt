@@ -392,3 +392,118 @@ test "char_array_braced_string_init_issue196b" {
   })
   assert_true(errs3.length() > 0, msg="int 数组收字符串仍须拒绝")
 }
+
+///|
+/// ds 审阅批 2026-10-31（PR #401 P2）：init.mbt 定型回写路径行为锚——
+/// `char g[] = {"\xff"}` 推导形态（空 dims ⇒ array_size 0）走
+/// check_array_init StringLiteral 臂的回写分支：array_size 必须 =
+/// utf8_len("\xff") + 1 = 3（字节层 C3 BF 双字节 + NUL）。红条件：
+/// 计长口径回退 Latin-1（\xff 计 1）⇒ 回写 2 ⇒ 本锚红（与
+/// expr_wbtest `string_literal_byte_len` 分别锁 init 回写/expr 定型
+/// 两条路径——ds 批 P1 修复的真实落点，修前此处零锚）。
+test "char_arr_deduce_size_writeback_utf8_ds" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let g : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::array_of(@ast.Type::char(), []), // char g[]——空 dims 推导
+    name: "g",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::StringLiteral(
+              "\u00ff",
+              loc,
+              @ast.Type::void_type(),
+            ),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (prog, errs, _, _) = tc.check({
+    structs: [],
+    unions: [],
+    globals: [g],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errs.length(), 0, msg="推导形态不得报错")
+  match prog.globals[0].ty {
+    Array(_, size, dims, _, _, _) => {
+      assert_eq(
+        size,
+        3,
+        msg="char g[] 回写尺寸须为 UTF-8 字节 2 + NUL（Latin-1 旧口径给 2 即红）",
+      )
+      assert_eq(
+        dims.length(),
+        0,
+        msg="dims 不动（Rust 同形——仅回写 array_size）",
+      )
+    }
+    _ => fail("char g[] 定型后应为 char 数组")
+  }
+}
+
+///|
+/// ds 审阅批 2026-10-31（PR #401 P2）：init.mbt 多维子数组 W3008 路径
+/// 行为锚——`char w[1][2] = {"\xff"}`：外层 InitList 单元素经
+/// check_array_elem_value 进 char[N] 子数组臂，W3008 判定须用 UTF-8
+/// 口径（utf8_len("\xff")=2，2+1>2 ⇒ 警告）。红条件：计长回退
+/// Latin-1（计 1，1+1>2 为假 ⇒ 零警）⇒ 本锚红。注：该形态 clang 口径
+/// （单字节 FF + NUL = 2 ≤ 2）零警——vitro 警告为 #66 值差连带（已知
+/// 限制 ③-14 显式恰满形态），本锚只锁 vitro 口径行为不锁跨侧一致。
+test "char_arr2d_substring_w3008_utf8_ds" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let w : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::array_of(@ast.Type::char(), [1, 2]), // char w[1][2]
+    name: "w",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::StringLiteral(
+              "\u00ff",
+              loc,
+              @ast.Type::void_type(),
+            ),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, warns, _) = tc.check({
+    structs: [],
+    unions: [],
+    globals: [w],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(
+    errs.length(),
+    0,
+    msg="恰满形态合法不报错（C11 §6.7.9p14）",
+  )
+  assert_true(
+    warns.length() == 1 && warns[0].code == 3008,
+    msg="多维子数组 W3008 判定须用 UTF-8 口径（Latin-1 回退即零警红）",
+  )
+}

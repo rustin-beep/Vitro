@@ -602,6 +602,12 @@ fn TypeChecker::resolve_float_literal_ty(
 /// 混合口径（≤0xFF 计 1）与 bytecode 包 cstring_bytes（UTF-8 全编码，
 /// \xff 落 C3 BF 双字节）失配，char 数组定型尺寸少 1 ⇒ NUL 终止符被
 /// 挤出 ⇒ strlen/printf("%s") 越界读（亲验 len=20 vs clang 9）；+1 NUL）。
+/// **等价约束（审阅批 2026-10-31 P3-1）**：本处 `@util.utf8_len` 与
+/// bytecode 包的 `cstring_len`（分配/对齐计算用）是「同实现两符号」——
+/// 语义上恒等（整串 UTF-8 字节数），typeck 不能 import bytecode
+/// （L5→L6 反向依赖），故各自显式调 `@util.utf8_len`；改任何一侧的
+/// 口径 = 重新制造两层失配（ds 批修复的就是这个），连带锚：
+/// typeck `string_literal_byte_len` / 语料 `string_escape_nul_term.c`。
 fn TypeChecker::resolve_string_literal(
   self : TypeChecker,
   value : String,

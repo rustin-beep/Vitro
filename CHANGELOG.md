@@ -11,9 +11,13 @@
   不限转义）。修复：删私有函数，三消费点（`expr.mbt` resolve_string_literal
   / `init.mbt` char[N] 越界警告 / `init.mbt` 数组定型回写）改 `@util.utf8_len`
   （与 parser M12 / bytecode 三处同口径，#66 尾巴的尺寸面闭合）。修复后
-  NUL 恒在场（`sizeof("\xff")` = 3 = 字节 2 + NUL），仅存值差（`C3 BF`
-  vs clang `FF`）——单字节值语义需词法层转义通道（载体改 Bytes 跨 6 包），
-  挂 #66 尾巴另批。
+  **推导尺寸形态**（`char g[]`）NUL 恒在场（`sizeof("\xff")` = 3 = 字节
+  2 + NUL），仅存值差（`C3 BF` vs clang `FF`）；**显式尺寸恰满形态仍越界**
+  （审阅批 2026-10-31 补披露：`char b[2]="\xff"`——vitro 口径字面量
+  2 字节恰等于数组尺寸，NUL 无空间被挤 ⇒ `strlen` 越界 + W3008 误警，
+  clang 口径 1 字节 + NUL 恰好放下；C11 §6.7.9p14 两侧均合法形态，
+  差异全系 #66 值差）——单字节值语义需词法层转义通道（载体改 Bytes
+  跨 6 包），挂 #66 尾巴另批。
 - **红→绿**：wbtest `string_literal_byte_len` 改行为定型锚（`"\xff"` 定型
   3——旧口径给 2 即红）修前实测红 1 例（119/120）→ 修复后 120/120。
 - **语料锚**：新增 `corpus/baseline/string_escape_nul_term.c`（strlen/%s
@@ -38,6 +42,24 @@
   产物构建行含 MOON_CC=clang）。三命令均在 worktree 亲验 rc=0。
 - **launcher 执行位**：`scripts/bin/vitro` 100644→100755（Linux/macOS
   克隆后按文档直跑 `scripts/bin/vitro` 不再 Permission denied）。
+- **审阅处置批（PR #401，2026-10-31）**：P1-2 过度声称改口——「NUL 恒
+  在场」限定推导尺寸形态；显式恰满形态（`char b[2]="\xff"`，vitro 口径
+  2 字节==尺寸）NUL 仍被挤、`strlen` 越界 + W3008 误警（clang 口径 NUL
+  在场零警；判据两侧同款「字节+NUL 计入」，差异全系 #66 值差）——
+  CHANGELOG/已知限制 ③-14 双处披露 + 语料 `string_escape_nul_term.c`
+  增第二形态（判定输出 `b_nul` 锁 NUL 被/未被挤，不打印越界内容保
+  digest 稳）+ known_direct reason 连坐（digest 不变——summarize 首差行
+  口径，回退 Latin-1 时首差行移位仍必红）。P2 补 init 回写/多维 W3008
+  两行为锚（`char_arr_deduce_size_writeback_utf8_ds` /
+  `char_arr2d_substring_w3008_utf8_ds`——反向注入 utf8_len→length() 各
+  红，红→绿闭环；修前两处零锚）。P3 三件：expr.mbt 等价约束注释
+  （utf8_len 与 bytecode cstring_len 同实现两符号）；known_direct
+  「sizeof(g) 10 vs 11」方向勘正（统一 vitro 在前）；规范「完整模拟
+  Windows CRT」两处措辞收窄（仅 \n↔\r\n，不含 Ctrl-Z EOF 等）。
+  连坐：五 diff 闸 freeze 重算（vm/typeck/codegen/parser/lexer 各 1 例）、
+  测试计数 967→969 / 1161→1163（README×3+docs×4+README.mbt.md 批注）、
+  facts --strict 0 漂移、surface/fuzz/libc_boot/check/fmt/info 全绿、
+  新语料 js+native 双臂逐字节一致。
 - **披露补登**：《已知限制与差异》新增 ③-14（`\xHH`/高位源字符 UTF-8
   字节通道值差——NUL 终止已修、值差挂账）；同文 ①-10 rand 数字经 ds
   报告「勘误」**复核后不采信**（报告探针 `printf("...",rand(),rand(),rand())`

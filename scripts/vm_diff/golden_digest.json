@@ -2817,10 +2817,10 @@
       "memory_sha": "7ba335d9ea4769a9"
     },
     "baseline/string_escape_nul_term.c": {
-      "src_sha": "44534df9",
+      "src_sha": "5b6a628b",
       "exit_code": 0,
-      "stdout_sha": "48aba8006c3cda0e",
-      "memory_sha": "0fd4c8a97cb908ee"
+      "stdout_sha": "6b253a3c0b08287a",
+      "memory_sha": "a602381b010c9c22"
     },
     "baseline/string_escape_octal_hex.c": {
       "src_sha": "9dda4d23",

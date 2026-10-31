@@ -1,14 +1,14 @@
 ## [Unreleased]
 
-### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（106 锚，2026-10-30）
+### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
 - **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`
   ——指针轨道逐帧（travel = min(帧间隔×0.85, slow token)）；事件轨道以
   「指针到达该帧」为唯一前驱做最早到达松弛，同目标事件串行成链，等待超
   `chainBudgetMs` 即种子兜底（放弃等待、接受重叠，WAAPI 单键控保证不叠播）；
-  `minGapMs` 对同 kind 密集事件按到达时刻抽稀（播放期脉冲节流）；`maxMs`
-  超限全表等比压缩（事件层预留，指针轨道不压缩——fps 是用户语义）；
-  `scalePlan` 变速 = 整表乘系数，不重排。
+  `minGapMs` 对同目标（kind|key）密集事件按到达时刻抽稀（播放期脉冲节流，
+  **每个实体独立节流**——按 kind 抽稀会把多数组课交替出现的第二个数组整类
+  丢弃，PR #395 审阅 P2-1）；`scalePlan` 变速 = 整表乘系数，不重排。
 - **play（播放器）**：`src/lib/playhead.svelte.ts` 常驻 rAF 按表执行——播放中
   单帧 travel 取自计划表、暂停 seek 用 base token 短滑、scrub/批量/reduced
   瞬时、落后 >1.5 帧直接对齐；浮点位置只做视觉补间，读数/画面帧/幕切换仍以
@@ -25,11 +25,17 @@
   计数器锚，测不到时长）。抽 `parseCssMs` 修之，pure 锚锁 `0.28s` / `280ms` /
   非法文本。同步删除 #374 预留的 `SPRING.pointer`（表驱动不再需要 spring 参数）。
 - **验收**：pure 52/52（+6：parseCssMs×1 + relayPlan×5）、E-08 17/17（golden
-  零重刷）、E2E 106/106（session 30→34：播放连续 / seek 短滑 / scrub+reduced
-  瞬时 / 播放期事件拍抽稀四锚）、style_contract / check:all / lint:all /
-  ui_lint / assemble / tokens -check 全绿。
-- **边界**：变量脉冲（VarsList）与树过渡未进事件层——播放中仍让位；9s 上限
-  只在纯函数单测锁定，未接 UI。
+  零重刷）、E2E 107/107（session 30→35：播放连续 / seek 短滑 / scrub+reduced
+  瞬时 / 播放期事件拍抽稀 / 多数组事件拍五锚）、style_contract / check:all /
+  lint:all / ui_lint / assemble / tokens -check 全绿。
+- **PR #395 审阅处置**：P2-1 抽稀粒度改 (kind,key) 并补双数组播放锚（D3e）；
+  P2-2 删除 `maxMs` 全片压缩能力（零调用点，且「全片硬上限」与 fps 用户语义
+  不可兼得——留待整段回放模式与播放器定时器同源改造再设计）；P2-3 变速真接线
+  （planKey 去 fps，fps 变化对现有表乘系数，不再声称未接线路径）；P3 六条
+  （clamp 非有限值方向钳制 / NaN 参数回默认 / scalePlan 拒非有限系数 /
+  pointerTravels 缓存去隐式索引 / 换课 epoch 瞬时对齐 / planKey 含 slow token /
+  D3d 上限留余量）。
+- **边界**：变量脉冲（VarsList）与树过渡未进事件层——播放中仍让位。
 
 ### fix(cmd 壳/native): PR #391 审阅处置批——P1-1 UCRT 撞码治本（abort 形态）+ P1-2/P2-1 C 桩锚 + P2-2 serve 连坐 + P3 两件（2026-10-31）
 

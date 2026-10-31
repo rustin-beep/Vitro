@@ -131,7 +131,7 @@ interface D1Multi { idx: number; secs: Array<{ title: string; swap: string; cell
 
 // P2-1（PR #374 审阅）：声明锚数与实跑对账——waitFor 抛错会中断脚本，
 // 不报「实跑 n / 声明 N」时 CI 只能看到一条异常、看不到覆盖静默缺失。
-const DECLARED_ANCHORS = 34;
+const DECLARED_ANCHORS = 35;
 const results: CheckResult[] = [];
 
 async function run() {
@@ -747,8 +747,42 @@ async function run() {
       await sleep(200);
     }
     check("D3 播放期 swap 脉冲按计划表抽稀放行（不全关，也不每帧闪）",
-      d3beatMid - d3beatBefore >= 1 && d3beatMid - d3beatBefore <= 6,
+      d3beatMid - d3beatBefore >= 1 && d3beatMid - d3beatBefore <= 8,
       JSON.stringify({ before: d3beatBefore, after: d3beatMid, playing: d3beatPlaying }));
+
+    // D3e 多数组事件拍（P2-1 回归锚）：抽稀必须按 (kind,key)——修前按 kind
+    // 全局节流，两数组交换段写在一行时 a/b 事件相邻帧（125ms < slow 280ms），
+    // 计划表里 swap:b 会整类消失（b 数组 100% 不闪）。锚断两端：
+    // ① planKeys 同时含 swap:a / swap:b（修前只有 a）；② 播放后确有脉冲放行。
+    const dualSrc = [
+      "int main() {",
+      "  int a[4] = {4, 3, 2, 1};",
+      "  int b[4] = {8, 7, 6, 5};",
+      "  for (int i = 0; i < 3; i++)",
+      "    for (int j = 0; j < 3 - i; j++) {",
+      "      if (a[j] > a[j + 1]) { int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t; }",
+      "      if (b[j] > b[j + 1]) { int t = b[j]; b[j] = b[j + 1]; b[j + 1] = t; }",
+      "    }",
+      "  return 0;",
+      "}",
+    ].join("\n");
+    await evaluate(`window.__pilot.collect(${JSON.stringify(dualSrc)}, [], { autoplay: false })`);
+    await waitFor("!window.__pilot.session.collecting && window.__pilot.session.viewFrames.length > 0", 60000);
+    const d3dualKeys = await evaluate<string[]>("window.__pilot.playhead.planKeys");
+    await evaluate("window.__pilot.motion.pulseCount = 0; window.__pilot.seek(0); true");
+    await sleep(300);
+    const d3dualBefore = await evaluate<number>("window.__pilot.motion.pulseCount");
+    await evaluate(`document.querySelector('[data-act="play"]')?.click(); true`);
+    await sleep(2600);
+    const d3dualAfter = await evaluate<number>("window.__pilot.motion.pulseCount");
+    if (await evaluate<boolean>("window.__pilot.session.playing")) {
+      await evaluate(`document.querySelector('[data-act="play"]')?.click()`);
+      await sleep(200);
+    }
+    check("D3 多数组事件拍：a/b 各自的交换都放行（P2-1）",
+      d3dualKeys.includes("swap:a") && d3dualKeys.includes("swap:b") &&
+        d3dualAfter - d3dualBefore >= 4,
+      JSON.stringify({ keys: d3dualKeys, before: d3dualBefore, after: d3dualAfter }));
   } catch (err) {
     await setReduced(false).catch(() => undefined);
     await setUserMotion(true).catch(() => undefined);

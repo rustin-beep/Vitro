@@ -113,7 +113,7 @@ const anchorSnap = (anchorFrame["array_snapshots"] as Array<{ name?: unknown; el
 
 console.log(`core.json 已重导（审定走下方语义摘要 + golden diff 抽样，非逐行 diff）：${path.relative(process.cwd(), corePath)}`);
 console.log(`  frames: ${live.frames.length} 帧（${shape.frameFields.length} 字段：${shape.frameFields.join(",")}）`);
-console.log(`  标注健康位: 标注帧 ${labeledCount} / 行中间帧带标注 ${midLineLabeled}（单批口径应恒 0——非 0 即行末不变量崩塌，见 e08_live 头注口径声明）`);
+console.log(`  标注健康位: 标注帧 ${labeledCount} / 行中间帧带标注 ${midLineLabeled}（单批口径应恒 0——非 0 即行末不变量崩塌，#399 治本后批=1 逐帧口径同构，见 e08_live 头注口径注记）`);
 console.log(`  idx: ${idx}${argIdx !== -1 ? "（--idx 显式）" : "（缺省=首个 swap 帧）"} | 锚点帧 code_line=${String(anchorFrame["code_line"])} label=${JSON.stringify(anchorFrame["semantic_label"])} 快照=${JSON.stringify(anchorSnap?.elements ?? "(无)")}`);
 console.log(`  label 值域: ${shape.labelValues.length} 种 | label_id 值域: ${shape.labelIds.length} 种 | phase 值域: ${shape.phases.join(",")}`);
 console.log(`  outputs.stdout: ${JSON.stringify(live.outputs.stdout)} | stderr: ${live.outputs.stderr.length} B | note: ${live.outputs.note.length} B`);

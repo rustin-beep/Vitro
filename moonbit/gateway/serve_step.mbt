@@ -439,6 +439,16 @@ fn serve_step_next_frame(
     }
     result.payloads.insert(0, to_flush)
   } else {
+    // 跨批 pending 的行末性参照 = **批首帧**（pop 前取——非 flushed ⇒
+    // payloads 必非空，[0] 恒安全）。#399（2026-10-31）：批=1 逐帧口径
+    //（params:{}——demo 前端 worker 真实形态）下批首帧即本批唯一帧、
+    // 也就是即将入缓冲的 curr 本身（pending 的发布后继在批=1 下就是
+    // curr，帧发布滞后一帧语义）。旧判据 pop 后读 payloads[0] 且以
+    // length()>0 守卫——批=1 时 pop 走唯一帧后守卫恒 false ⇒ 清标注
+    // 恒跳过、pending 永远带标注发布（bubble.c 实测 79.9% 帧行带标注、
+    // 密度过密 20 倍；行末不变量锚批=1 形态证红）。pop 前取批首帧，
+    // 两形态统一。
+    let successor_line = result.payloads[0].code_line
     let curr = result.payloads.pop()
     guard s.unified_pending is Some(pending) else {
       // 首调：curr 仅入缓冲、不发布（R2 修正语义）
@@ -451,14 +461,13 @@ fn serve_step_next_frame(
     // §7.3 append 语义：pending 前插发布位；curr 移入缓冲
     //（#225 审阅 P2-1 定谳：批内帧的行末清标注由 FrameWindow.push_batch
     // 两段去重单源保证，serve 不重复；serve 只管自己持有的跨批 pending
-    // ——其行末性参照**批首帧**（pop 后 payloads[0] 是 pending 在发布流
-    // 中的真实后继）。旧判据用批尾 curr，frames>1 时批尾与 pending 中隔
-    // 整批帧、同行性错位——跨批边界的行中间 pending 帧带标注漏出（行末
-    // 不变量锚 frames=50 批形态证红；probe frames=300 恰未跨段复现，
-    // 变异实验 + 锚双证据定谳）
+    // ——其行末性参照批首帧（上方 pop 前取出）。旧判据用批尾 curr，
+    // frames>1 时批尾与 pending 中隔整批帧、同行性错位——跨批边界的
+    // 行中间 pending 帧带标注漏出（行末不变量锚 frames=50 批形态证红；
+    // probe frames=300 恰未跨段复现，变异实验 + 锚双证据定谳）；
+    // #399 再补批=1 形态红锚（pop 后判空恒跳过形态）后 pop 前参照收口）
     let mut to_publish = pending
-    if result.payloads.length() > 0 &&
-      result.payloads[0].code_line == to_publish.code_line {
+    if successor_line == to_publish.code_line {
       to_publish = { ..to_publish, algorithm_step: None, }
     }
     result.payloads.insert(0, to_publish)

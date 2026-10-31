@@ -158,7 +158,11 @@ fn wasm_compile_params(file : String, src : String) -> String {
   let seen : Array[String] = []
   // 登记名 = basename（main.js path.basename 语义——gateway 的 include
   // 查找相对「当前文件目录」，主文件带目录路径会让 include 键错位）
-  collect_walk(file, base_name(file), src, entries, seen)
+  collect_walk(file, base_name(file), src, entries, seen, read=fn(
+    path : String,
+  ) -> String? {
+    Some(@fs.read_file_to_string(path) catch { _ => "" })
+  })
   if entries.is_empty() {
     return files_json([(file, src)])
   }
@@ -168,13 +172,16 @@ fn wasm_compile_params(file : String, src : String) -> String {
 ///|
 /// 递归收集：p = 磁盘路径（include 相对基准）、name = 登记文件名
 ///（basename——gateway vfs 键）。读失败跳过（主文件必读成功——lib/cli
-/// 已预读非空 src）；seen 防守卫环的合法自引用库。
+/// 已预读非空 src）；seen 防守卫环的合法自引用库。read = 文件读取器
+///（#390 审阅 P2 可测性注入：生产传真 fs 读，wbtest 传内存表——
+/// collect_walk 的登记键集自此可自动化锚定，不再依赖一次性手工 E2E）。
 fn collect_walk(
   p : String,
   name : String,
   src : String,
   entries : Array[(String, String)],
   seen : Array[String],
+  read~ : (String) -> String?,
 ) -> Unit {
   if seen.contains(name) {
     return
@@ -183,14 +190,65 @@ fn collect_walk(
   entries.push((name, src))
   for inc in scan_quote_includes(src) {
     let inc_path = join_dir(dir_of(p), inc)
-    let inc_src = @fs.read_file_to_string(inc_path) catch { _ => "" }
+    let inc_src = match read(inc_path) {
+      Some(s) => s
+      None => ""
+    }
     if inc_src != "" {
       // 病 111（#71，2026-10-16）：登记名归一——gateway resolver 对
       // include 键剥 `./` 段后查找，include 原文（`./x.h`）作 vfs 键即
-      // 失配 E1021（native 臂经 fs reader 无此问题）
-      collect_walk(inc_path, strip_dot_segments(inc), inc_src, entries, seen)
+      // 失配 E1021（native 臂经 fs reader 无此问题）。
+      // #377（2026-10-30）：登记键升级为父键目录 + include 原文规范化
+      //（vfs_key_for，resolver cur_dir 臂同式）——include 原文键在嵌套
+      // include 下仅靠 base_dir 臂巧合兜底，且跨目录同名 include 共键
+      // ⇒ seen 误吞（clang clean vs E3023 实锤）
+      collect_walk(
+        inc_path,
+        vfs_key_for(name, inc),
+        inc_src,
+        entries,
+        seen,
+        read~,
+      )
     }
   }
+}
+
+///|
+/// posix 相对路径规范化：折 `//`、丢 `.`、`..` 回退一层（resolver
+/// normalize_path 同语义——cmd 层不可 import lexer/internal，复制件）。
+/// vfs_key_for 与 wbtest 的 mem_read（复刻 OS 路径解析查表）共用。
+fn normalize_rel(p : String) -> String {
+  let parts : Array[String] = []
+  for seg in p.split("/") {
+    let s : String = seg.to_owned()
+    if s == ".." {
+      if parts.length() > 0 {
+        ignore(parts.pop())
+      }
+    } else if s != "." && s != "" {
+      parts.push(s)
+    }
+  }
+  let b = StringBuilder()
+  for i, seg in parts {
+    if i > 0 {
+      b.write_char('/')
+    }
+    b.write_string(seg)
+  }
+  b.to_string()
+}
+
+///|
+/// vfs 登记键（#377，2026-10-30）：父登记键目录 + include 原文的规范化
+/// 拼写——gateway resolver 候选链 cur_dir 臂同式
+///（normalize(dir_of(父键) + "/" + inc)，lexer/internal/pp/resolver.mbt）。
+/// 旧逻辑（登记 include 原文）下键与查找两侧仅靠 base_dir 臂巧合兜底，
+/// 且跨目录同名 include 共键 ⇒ seen 误吞（clang clean vs E3023 实锤）；
+/// 对齐后各文件独立键、resolver cur_dir 臂直接命中。
+fn vfs_key_for(parent_name : String, inc : String) -> String {
+  normalize_rel(dir_of(parent_name) + "/" + inc)
 }
 
 ///|

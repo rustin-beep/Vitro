@@ -193,6 +193,11 @@ pub(all) struct LexResult {
   /// `stub:<名>` 不含）——#364（2026-10-29）：gateway 多文件 compile 以
   /// 此判「unit 既被物理拼接又被 include 展开」的双重定义面。
   included_files : Array[String]
+  /// file_id → 显示名（`__FILE__` 同源单源；**stub 头也占号**——
+  /// file_id 分配集合 = 本表键集，与 `included_files` 的过滤后集合**不
+  /// 同域**，#390 审阅 P1：诊断归属按 id 直查本表，禁止 `included[id-1]`
+  /// 下标换算）。主文件 id=0 预置名。
+  file_names : Map[Int32, String]
 } derive(Eq, @debug.Debug)
 
 ///|

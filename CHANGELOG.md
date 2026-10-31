@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+EAD
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）
 
 - **P1 越界读治本（#66 尺寸口径连坐）**：`typeck` 字符串字面量定型尺寸
@@ -66,7 +67,33 @@
   右到左求值致显示逆序，把序列后值当首值；分离变量版实测 Vitro 首值
   16838 / clang 首值 41——原文档正确，不改）。
 
-### feat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
+### feat(scripts+ci): ds 批③——release_preflight 发布前置闸（publish dry-run 双档 + package 非退化 + 反刷量约束）（2026-10-31）
+
+- **背景**（ds 报告 §4.1.1 七项前置缺口）：0.9.0 在架包被工具链升级打死
+  （moonc ≥0.10.18 删 core/abort，包内 time_travel 仍 import ⇒ 下游
+  `moon add` 后 build 必红）且发布物零工具链声明——该形态在既有发布彩排里
+  **零闸能抓**（彩排只验 registry 投放与包自身 check，不验 publish 视角）。
+- **新闸 `scripts/release_preflight/main.mts`**（#273 .mts 四件套：零依赖 +
+  tsc 严格档 + oxlint + node:test 7 测）：
+  - **日常档**（CI 常驻）：`moon publish --dry-run` 断言 `Check passed`
+    ——缺失即红（实测 0.9.0 型断供在 dry-run 下 Check failed，master 候选件
+    Check passed——83 tasks）；**409 版本重复不红**（未 bump 预期态，兼任
+    bump 状态探针，提示行报在架冲突版本号）。
+  - **`--release` 档**（发版彩排，人工/dispatch）：dry-run 须 rc=0（版本已
+    bump 且 registry 无冲突）+ `moon package` 产物非退化（>400 条/>100KB——
+    非 git 管理面 22 字节空 zip rc=0 静默成功实锤形态）+ 根级四件在位
+    （LICENSE/README.md/README.mbt.md/moon.mod，T5 验收件）。
+  - **J9 证红**：release 档在当前同号态（0.9.0）实测 rc=2「先 bump
+    moon.mod version」；日常档 master 实测 rc=0（Check passed + 409 预期态）。
+- **反刷量约束（用户拍板）**：闸全程**零 mooncakes zip GET**——dry-run 只有
+  publish 查重 API；「干净消费工程 `moon add` + build」是真实下载计数
+  （+1/次），**永不进 CI**——发版日人工一次（对照 riantr 家被自家 CI 刷出
+  2009 假下载的形态）。写入 vitro-release-playbook skill §2/§5（验收三件
+  补双目标 build——0.9.0 实锤是 add 成功 build 必红，只验 add 等于没验）。
+- **接线**：ci.yml 新 `release-preflight` job（windows，setup-moonbit
+  composite + registry 刷新 + 闸）；package.json lint/test 清单登记；
+  ci_checklist 三向对账过（驱动 58）。
+eat(demo): #122 D3 回放播放头——两段式计划表 + 指针/事件层表驱动（107 锚，2026-10-30）
 
 - **plan（纯函数）**：`src/lib/relayPlan.ts` 把帧事件排成 `{depart, travel}`
   ——指针轨道逐帧（travel = min(帧间隔×0.85, slow token)）；事件轨道以

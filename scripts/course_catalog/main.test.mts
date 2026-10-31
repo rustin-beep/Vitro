@@ -14,15 +14,28 @@ const MAIN = path.join(import.meta.dirname, "main.mts");
 /**
  * demo/algorithms.js 是发射产物（gitignored，CI 由 demo job 现场发射）。
  * scripts-ts job 不做发射——测试自己补，否则读真源即 ENOENT（假红）。
+ * #36 收编批（2026-10-31）起生成器数据源 = 引擎 algorithms.catalog 出口
+ * （需 vitro_js 产物）——产物缺失的环境发射必失败，改走 prereq 形态：
+ * 调用方据 {ok,why} 显式 skip（lessonPrereq 同款先例），不再硬 assert。
  */
-function ensureAlgoEmitted(root: string): void {
+function algoEmitPrereq(root: string): { ok: boolean; why: string } {
   const p = path.join(root, "demo/algorithms.js");
-  if (fs.existsSync(p)) return;
+  if (fs.existsSync(p)) return { ok: true, why: "" };
+  const jsArm = path.join(root, "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js");
+  if (!fs.existsSync(jsArm)) {
+    return {
+      ok: false,
+      why: "vitro js 臂产物缺（cd moonbit && moon build --release --target js cmd/vitro_js）——gen_demo_algorithms 引擎出口拉取前置",
+    };
+  }
   const r = spawnSync(process.execPath, [path.join(root, "scripts/gen_demo_algorithms/main.mts")], {
     cwd: root,
     encoding: "utf8",
   });
-  assert.equal(r.status, 0, "发射 demo/algorithms.js 失败：" + (r.stdout ?? "") + (r.stderr ?? ""));
+  if (r.status !== 0) {
+    return { ok: false, why: "发射失败：" + (r.stdout ?? "") + (r.stderr ?? "") };
+  }
+  return { ok: true, why: "" };
 }
 
 /** lesson.c 双臂对拍的前置：vitro js 臂产物 + clang。 */
@@ -75,8 +88,12 @@ test("真实仓库：collectNotes 解析 8 课 frontmatter（id/kind 齐、目�
   }
 });
 
-test("真实仓库：对账全绿（叙述 → cases.js/algorithms.js）", () => {
-  ensureAlgoEmitted(projectRoot());
+test("真实仓库：对账全绿（叙述 → cases.js/algorithms.js）", (t) => {
+  const pre = algoEmitPrereq(projectRoot());
+  if (!pre.ok) {
+    t.skip(`前置缺失：${pre.why}（发射面常规覆盖归 demo job 的发射步 + demo_smoke）`);
+    return;
+  }
   assert.deepEqual(reconcile(collectNotes(), false), []);
 });
 
@@ -94,7 +111,11 @@ test("lesson.c 双臂对拍：临时课绿 + 坏 lesson.c 红", (t) => {
     t.skip(`前置缺失：${pre.why}（该路径的常规覆盖归 static-gates/demo job）`);
     return;
   }
-  ensureAlgoEmitted(root);
+  const emit = algoEmitPrereq(root);
+  if (!emit.ok) {
+    t.skip(`前置缺失：${emit.why}（发射面常规覆盖归 demo job 的发射步 + demo_smoke）`);
+    return;
+  }
   const dir = path.join(root, "course", "__j9_lesson__", "extra");
   const run = (): { status: number | null; out: string } => {
     const r = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });
@@ -127,15 +148,25 @@ test("J9 红：未知 id / 未知 kind 各自成条，且文案带定位", () =>
     { id: "strng-typo", kind: "algo", dir: "course/x/y", stdin: "", hasC: false },
     { id: "bubble", kind: "weird", dir: "course/x/z", stdin: "", hasC: false },
   ];
-  const fails = reconcile(bad, false);
+  // 键集注入（纯函数化）：J9 锚不依赖发射产物在场——CI scripts-ts job
+  // 干净检出也咬（strng-typo 不在注入集 = 「不命中」形态可判）
+  const fails = reconcile(bad, false, {
+    cases: new Set(["demo_case"]),
+    algo: new Set(["bubble_sort"]),
+  });
   assert.equal(fails.length, 2);
   assert.equal(fails[0]?.judge, "对账");
   assert.match(fails[0]?.msg ?? "", /course\/x\/y: 叙述 \(kind=algo, id=strng-typo\) 不命中任何课目/);
   assert.match(fails[1]?.msg ?? "", /course\/x\/z: 未知 kind "weird"/);
 });
 
-test("真实仓库端到端：默认绿 / selftest 绿 / 未知参数 exit 2", () => {
+test("真实仓库端到端：默认绿 / selftest 绿 / 未知参数 exit 2", (t) => {
   const root = projectRoot();
+  const emit = algoEmitPrereq(root);
+  if (!emit.ok) {
+    t.skip(`前置缺失：${emit.why}（CLI 全链需发射产物——常规覆盖归 demo job 发射步 + demo_smoke）`);
+    return;
+  }
   const run = (args: string[]): { status: number | null; out: string } => {
     const r = spawnSync(process.execPath, [MAIN, ...args], { cwd: root, encoding: "utf8" });
     return { status: r.status, out: (r.stdout ?? "") + (r.stderr ?? "") };

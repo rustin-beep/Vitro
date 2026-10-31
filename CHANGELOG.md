@@ -12,6 +12,14 @@ EAD
   **显式 skip**（`teaching e2e「缺产物显式 skip」先例模式**，非审阅处方的纯
   fake 替代——端到端真源对账锚保留给有产物的环境）；亲验：移产物 → tests
   24 / pass 21 / fail 0 / **skipped 3**（零吞锚）。
+- **CI 838 二段红（P1-1 吞锚掩盖面，复刻环境自抓）**：`course_catalog` 三处
+  同族——① 自发射前置（`ensureAlgoEmitted` 硬 assert）在 #36 收编后生成器需
+  引擎产物 ⇒ scripts-ts job 发射必败；② J9 纯函数锚经 `reconcile` 内部读盘
+  打真产物；③ CLI 端到端 spawn 同链。修：① 改 `algoEmitPrereq` 形态（缺产物
+  显式 skip，lessonPrereq 同款先例）；② `reconcile` 键集参数化（缺省读盘/
+  可注入——J9 注入 fake 键集后**干净检出也咬**，锚不降级）；③ 端到端接
+  prereq skip。复刻 CI 条件（干净 worktree + facts 采集态）实测：
+  **618 pass / 8 skipped / 0 fail**；主环境全跑 626/626。
 - **CI bookkeeping 红（审阅漏项之外自抓）**：根 `README.md` ×3 + 项目路线图
   ×4 + 快速入门 ×2 + 标准库架构 ×1 共 **10 处 967→968 漏连坐**（首批只连坐了
   moonbit/ 双 README——facts doc-truth audit 闸 CI 实红抓回）；修后 strict

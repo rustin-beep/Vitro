@@ -1364,6 +1364,18 @@ jobs:
           cd .. && node --test demo/tests/e08.test.mts
         shell: bash
 
+      # E-08 夹具同形性闸（#324 治本批，2026-10-31）：payloads/core.json 与
+      # 引擎实产形态机判对拍——现场以 demo/e08/bubble.c 跑 js 臂（artifact
+      # 的 vitro_js.js，经 tests/e08_live.mts api --batch 通道，前端 worker
+      # 同款方法序列），帧字段集/label 与 phase 值域/labels 段/capabilities/
+      # catalog 任一形态漂移即红。根除「手写夹具与实产形态相反、闸恒绿」
+      # 的假绿面（J9 已证红：旧夹具 6+1 项断点全数命中）。重导走
+      # tests/e08-export.mts 人工令（E-04 同款纪律：审定 diff 再入库）。
+      - name: F4 E-08 fixture shape gate (payload ≡ engine live shape)
+        if: always()
+        run: node --test demo/tests/e08-shape.test.mts
+        shell: bash
+
       # 审阅 P1-2（2026-09-30）：demo 静态资产的判定闸（03-D17 形态——
       # HTML/JS/CSS 原不在任何闸的扫描面）。对 cases.js 每个预置用例实跑
       # 协议链：golden 逐字节 + 页面渲染所需响应字段存在性。J9 证红：篡改

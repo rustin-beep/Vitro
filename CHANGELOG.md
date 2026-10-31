@@ -1,5 +1,56 @@
 ## [Unreleased]
 
+### fix(demo+tests+ci): #324 E-08 渲染金标准夹具治本——手写夹具整体换引擎实产 + 同形性机判闸（2026-10-31）
+
+- **病（#324 全项复现 + 两处新发现）**：`demo/e08/payloads/core.json` 是
+  手写夹具，与引擎实产（js/native 双臂一致，1041 帧）**值形态完全相反**：
+  3 帧 vs 1041 帧、14 字段 vs 16 字段（缺 `code_file` 与 `semantic_label_id`
+  ——后者为 #324 之后 #341 批新增的缺口）、`semantic_label` 英文 id
+  （decl/compare/swap）vs 中文 36 种、`algorithm_step.phase` 中文（比较/
+  交换）vs 英文 id（outer_loop/…/finish）、`local_vars.addr` 4096 vs
+  1048532。**新发现两处**：`labels` 段字符串数组 vs 实产对象数组 15 条
+  （{id,domain,status,template}）、`capabilities` 段字符串数组 vs 实产
+  对象（{engine,schema,behavior_contracts,…}）——「同一概念三种形态、
+  夹具那两种在真实 step 帧里都不出现」覆盖协议面全域。E-08 闸（渲染
+  快照逐字节比对）把这层差异完全吸收 ⇒ **恒绿假绿面**：前端锚点判据
+  （scenes.ts 英文 phase 主判 + 中文 label 兜底）与 trapCard/E3060 详报
+  路径在闸内全部不可达。
+- **治本三件**：
+  1. **真源落位**：`demo/e08/bubble.c`（core 帧流输入）与 `demo/e08/uaf.c`
+     （diagband-trap 的 UAF 教学标准案）——E-08 输入有了与引擎同源的真值
+     文件；entry.ts 的 SOURCE_SAMPLE 手写数组改 `?raw` 内联同源。
+  2. **导出器 `demo/tests/e08-export.mts`（人工令，E-04 纪律）**：现场跑
+     引擎（前端 worker 同款方法序列：compile{source} → run{argv} →
+     step.next{frames:N} → output.delta 三流 → memory.regions +
+     capabilities/semantic_labels/error_catalog），core.json 的
+     frames/outputs/memory/capabilities/labels/catalog 六段整体换实产
+     （diagband-trap 同款换 frames[末帧=trap 帧，带实产 root_cause_hint
+     与 pointer_snapshots Freed 态]/stopped[worker 前缀口径
+     「受检终止：」+trap_message]/runStats）；手写保留段仅教学锚
+     （currentCase.id/label/referenceOutput=实产 stdout 与展示帧 idx，
+     缺省=首个 swap 帧）。
+  3. **同形性闸 `demo/tests/e08-shape.test.mts`（CI 常跑）**：闸内现场跑
+     引擎与 payloads 做形态对拍——帧字段集全等（双向）、label/label_id/
+     phase 值域 ⊆ 实产值域、labels 段对象形态且 id∈受控词表、
+     capabilities 顶层键 ≡、catalog 卡字段集 ⊆ 且 code_str∈实产码集、
+     outputs 三流字符串、trap 夹具帧字段集同款；任一漂移即红。**J9 证红
+     留痕**：旧夹具首跑 6+1 项断点全数命中。共享单源 `e08_live.mts`
+     （缺省 js 臂直跑 vitro_js.js 零 shell 依赖；`VITRO_E08_BACKEND=
+     native` 切 native exe 双臂对拍——批内双臂形态全一致已验）。
+- **连坐**：golden 16 份重冻（e08-update.mts 人工令，逐用例语义审定——
+  arraycells-bubble-a 交换中 `is-current`×2 / bubble-b 终态 `is-sorted`
+  升序 / diagband-trap `is-bad`+`运行期 E3060`+trap 详报卡〔495B→3172B，
+  trapCard 路径首次真机激活〕/ protoview 词表 15 类实产）；arraycells
+  三用例帧定位改语义锚（首个 swap 帧/末个快照帧/首个 compare 帧——旧稿
+  硬编码「第 3 帧」在实产流上语义失效）；`loadPayload` 显式钉
+  `gran="insn"`（idx 与 payload.frames 下标一一对应——不钉则随粒度派生
+  漂移）；lint:tests 清单与 ci.yml demo job 接线（`F4 E-08 fixture shape
+  gate` step，`if: always()` 防遮蔽）。
+- **伴生发现（登记不修）**：`api --batch` 的 rc=1 判定是「响应文本含
+  `"ok":false` 子串」的宽判定——run 帧 trap 时 result 内嵌 ok:false（信封
+  层 ok:true、协议帧成功）也误报 rc=1；e08_live 侧按信封层判定容错。
+  CLI 侧判定收窄（解析信封而非子串）另案处置。
+
 ### fix(demo+ci): wasm 壳 stderr 同步化——ubuntu node 24 管道截断治本（#366 同族第三处，2026-10-30）
 
 - **病**：CLI smoke ubuntu lane 的 wasm stderr 风暴锚稳定红

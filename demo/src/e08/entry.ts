@@ -34,6 +34,7 @@ import { parseLessonMd, type Block, type LessonDoc } from "../lib/lessonMd.ts";
 import { buildCallTree } from "../../js/calltree.ts";
 import bubbleMd from "../../../course/basic/bubble/lesson.md?raw";
 import bubbleSortMd from "../../../course/sorting/bubble_sort/lesson.md?raw";
+import bubbleC from "../../e08/bubble.c?raw";
 import type { Diagnostic, MemoryRegions, StepPayload } from "../../js/types.ts";
 import type { CatalogCard } from "../session.svelte.ts";
 
@@ -41,26 +42,10 @@ import type { CatalogCard } from "../session.svelte.ts";
 const BUBBLE: LessonDoc = parseLessonMd(bubbleMd);
 const BUBBLE_SORT: LessonDoc = parseLessonMd(bubbleSortMd);
 
-// 数组格快照的源码面（frame.code_line 定位当前行；与 core.json 帧同一课）
-const SOURCE_SAMPLE = [
-  "#include <stdio.h>",
-  "",
-  "int main(void) {",
-  "  int a[5] = {5, 3, 1, 4, 2};",
-  "  int n = 5;",
-  "  for (int i = 0; i < n - 1; i++) {",
-  "    for (int j = 0; j < n - 1 - i; j++) {",
-  "      if (a[j] > a[j + 1]) {",
-  "        int t = a[j];",
-  "        a[j] = a[j + 1];",
-  "        a[j + 1] = t;",
-  "      }",
-  "    }",
-  "  }",
-  '  for (int k = 0; k < n; k++) printf("%d ", a[k]);',
-  "  return 0;",
-  "}",
-].join("\n");
+// 数组格快照的源码面（frame.code_line 定位当前行）——真源 = demo/e08/bubble.c
+// （#324 治本：与 core.json frames 段同一引擎输入，行号自洽；文件带
+// editorconfig 尾换行，此处对称剥离——golden 尾换行同款口径）
+const SOURCE_SAMPLE = bubbleC.replace(/\n$/, "");
 
 export interface CorePayload {
   frames?: StepPayload[];
@@ -85,6 +70,10 @@ export interface CaseResult {
 
 // 单例装载 + 全段清场——renderCase 之间互不串染
 function loadPayload(p: CorePayload): void {
+  // 粒度显式钉指令级（#324 治本）：frameAt/idx 语义 = payload.frames 的
+  // 原始下标一一对应——缺省 gran 是持久化态（浏览器 localStorage / node
+  // 侧 initGran 兜底），不钉则 idx 锚随粒度派生（语句级组尾帧）漂移。
+  session.gran = "insn";
   session.frames = p.frames ?? [];
   session.idx = p.idx ?? 0;
   session.outputs = p.outputs ?? { stdout: "", stderr: "", note: "" };
@@ -123,9 +112,32 @@ function snapAt(frameIdx: number, nameIdx: number): NonNullable<NonNullable<Retu
   return snap;
 }
 
+// 帧定位（#324 治本批）：实产帧流下标不硬编码——按 algorithm_step.phase
+// 语义定位（首个命中），payload 重导后锚点自愈（旧稿硬编码「第 3 帧」在
+// 实产 1041 帧流上指向 main 入口期，锚点语义已失效）。
+function firstFrameIdx(phase: string): number {
+  const i = session.frames.findIndex(
+    (f) => (f?.algorithm_step as { phase?: string } | undefined)?.phase === phase,
+  );
+  if (i === -1) throw new Error(`e08 fixture: 实产帧流无 phase==="${phase}" 帧——payload 与 bubble.c 失配`);
+  return i;
+}
+
+/** 末个带数组快照的帧（终态数组视图——finish/return 帧常无快照，语句
+ * 中间帧清标注语义见 serve_step；从尾向前找首个有快照帧）。 */
+function lastSnapshotFrameIdx(): number {
+  for (let i = session.frames.length - 1; i >= 0; i -= 1) {
+    const f = session.frames[i];
+    if (f && (f.array_snapshots?.length ?? 0) > 0) return i;
+  }
+  throw new Error("e08 fixture: 实产帧流无任何数组快照帧——payload 与 bubble.c 失配");
+}
+
 const CASES: Record<string, (p: CorePayload) => string> = {
   "varslist-multi": () => render(VarsList).body,
   "timeline-mid": () => render(Timeline, { props: { source: SOURCE_SAMPLE } }).body,
+  // 交换瞬间：session.idx（导出器缺省 = 首个 phase==="swap" 帧——交换
+  // 中间的数组格快照；单数组 a——实产 bubble.c 只有一个数组快照位）。
   "arraycells-bubble-a": () =>
     render(ArrayCells, {
       props: {
@@ -135,26 +147,32 @@ const CASES: Record<string, (p: CorePayload) => string> = {
         source: SOURCE_SAMPLE,
       },
     }).body,
-  "arraycells-bubble-b": () =>
-    render(ArrayCells, {
+  // 终态就位：末个带快照帧（排序完成后的数组升序终值——对照 bubble-a
+  // 的交换中间态；finish/return 帧无数组快照故不取物理末帧）。
+  "arraycells-bubble-b": () => {
+    const last = lastSnapshotFrameIdx();
+    return render(ArrayCells, {
       props: {
-        snap: snapAt(session.idx, 1),
-        frame: frameAt(session.idx),
-        before: session.idx > 0 ? frameAt(session.idx - 1) : undefined,
+        snap: snapAt(last, 0),
+        frame: frameAt(last),
+        before: last > 0 ? frameAt(last - 1) : undefined,
         source: SOURCE_SAMPLE,
       },
-    }).body,
-  // 当前比较的自动指认（本稿新增）：第 3 帧 line 8 `a[j] > a[j+1]`、j=2 →
-  // a[2] / a[3] 两个格亮 current（props 显式取第 3 帧，不依赖 session.idx）。
-  "arraycells-focus": () =>
-    render(ArrayCells, {
+    }).body;
+  },
+  // 当前比较的自动指认：首个 phase==="compare" 帧（比较行上的两个格亮
+  // current；props 显式取帧，不依赖 session.idx）。
+  "arraycells-focus": () => {
+    const i = firstFrameIdx("compare");
+    return render(ArrayCells, {
       props: {
-        snap: snapAt(2, 0),
-        frame: frameAt(2),
-        before: frameAt(1),
+        snap: snapAt(i, 0),
+        frame: frameAt(i),
+        before: i > 0 ? frameAt(i - 1) : undefined,
         source: SOURCE_SAMPLE,
       },
-    }).body,
+    }).body;
+  },
   "memoryview-mallocfree": () => render(MemoryView).body,
   "outputview-three": () => render(OutputView).body,
   "outputview-empty": () => render(OutputView).body,

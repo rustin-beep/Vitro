@@ -1,46 +1,1606 @@
 {
   "catalog": [
     {
+      "code": 0,
+      "code_str": "E0",
+      "lang": "unknown",
+      "category": "其它",
+      "icon": "unsupported",
+      "title": "内部错误（未分类）",
+      "explanation": "编译器在处理你的代码时遇到无法归入已知类别的内部错误。这类错误通常意味着编译器自身的边界被触碰（极深的嵌套、罕见的语法组合等），而不是你的代码有明确的语义错误。请把可复现的最小代码片段反馈给维护者。",
+      "common_causes": [
+        "极深嵌套或超长表达式触发编译器内部限制",
+        "少见语法组合命中未分类路径",
+        "编译器缺陷——欢迎反馈最小复现片段"
+      ]
+    },
+    {
+      "code": 1001,
+      "code_str": "E1001",
       "lang": "c",
-      "category": "指针与内存",
+      "category": "词法",
+      "icon": "unknown-char",
+      "title": "未知字符",
+      "explanation": "源代码中出现了编译器不认识的字符。C 语言只允许特定的字符集合，超出范围的字符无法被解析。",
+      "common_causes": [
+        "使用了中文全角标点（如；，（））代替英文半角",
+        "复制粘贴时带入了不可见的特殊字符",
+        "变量名或注释中使用了非法字符"
+      ]
+    },
+    {
+      "code": 1002,
+      "code_str": "E1002",
+      "lang": "c",
+      "category": "词法",
+      "icon": "string",
+      "title": "字符串未闭合",
+      "explanation": "字符串的双引号只写了一个开头，没有找到配对的结尾。字符串必须在一对双引号之间。",
+      "common_causes": [
+        "忘记写结尾双引号",
+        "字符串跨行（应使用 \\n 或拼接）"
+      ]
+    },
+    {
+      "code": 1003,
+      "code_str": "E1003",
+      "lang": "c",
+      "category": "词法",
+      "icon": "string-multiline",
+      "title": "字符串跨行",
+      "explanation": "C 语言的字符串不能直接在代码中换行。如果需要多行文本，请使用 \\n 转义或分成多个字符串拼接。",
+      "common_causes": [
+        "字符串字面量中直接按了回车"
+      ]
+    },
+    {
+      "code": 1004,
+      "code_str": "E1004",
+      "lang": "c",
+      "category": "词法",
+      "icon": "operator",
+      "title": "不支持的操作符",
+      "explanation": "检测到可能是逻辑运算符的误写。在 C 语言中，逻辑或写为 ||，逻辑与写为 &&。单个 | 和 & 是位运算符，很少在条件里使用。",
+      "common_causes": [
+        "把 || 写成了 |",
+        "把 && 写成了 &"
+      ]
+    },
+    {
+      "code": 1005,
+      "code_str": "E1005",
+      "lang": "c",
+      "category": "词法",
+      "icon": "macro",
+      "title": "无效的宏定义",
+      "explanation": "#define 宏定义格式不正确。简单宏应该是 #define NAME value 的形式。",
+      "common_causes": [
+        "宏名称缺失",
+        "宏值包含不支持的语法"
+      ]
+    },
+    {
+      "code": 1006,
+      "code_str": "E1006",
+      "lang": "c",
+      "category": "词法",
+      "icon": "unsupported",
+      "title": "暂不支持的功能",
+      "explanation": "你使用了当前 C IDE 子集尚未支持的语法。请使用标准 C 的替代写法；支持范围与已知限制见《C 子集支持清单》文档。",
+      "common_causes": [
+        "使用了当前编译器未实现的 C 特性"
+      ]
+    },
+    {
+      "code": 1007,
+      "code_str": "E1007",
+      "lang": "c",
+      "category": "词法",
+      "icon": "complex",
+      "title": "声明过于复杂",
+      "explanation": "此声明符的嵌套层数超出了当前编译器的直接支持范围。当声明中出现多层括号交叉（如 (*(*fp)[2])(int)），代码会变得难以阅读。建议拆分为 typedef 链。",
+      "common_causes": [
+        "多层括号与指针交叉嵌套",
+        "函数指针数组直接声明"
+      ]
+    },
+    {
+      "code": 1010,
+      "code_str": "E1010",
+      "lang": "c",
+      "category": "词法",
+      "icon": "comment",
+      "title": "块注释未闭合",
+      "explanation": "块注释 /* 开始后没有找到配对的 */。请检查是否遗漏了结束标记。",
+      "common_causes": [
+        "忘记写 */",
+        "注释嵌套导致不匹配"
+      ]
+    },
+    {
+      "code": 1011,
+      "code_str": "E1011",
+      "lang": "c",
+      "category": "词法",
+      "icon": "preproc-cond",
+      "title": "条件指令无匹配",
+      "explanation": "出现了 #elif 指令，但前面没有与之匹配的 #if/#ifdef/#ifndef。条件编译指令必须成对出现。",
+      "common_causes": [
+        "删除了 #if 却保留了 #elif",
+        "#elif 误写在了 #if 之前",
+        "嵌套条件编译时配对错乱"
+      ]
+    },
+    {
+      "code": 1012,
+      "code_str": "E1012",
+      "lang": "c",
+      "category": "词法",
+      "icon": "preproc-cond",
+      "title": "#else/#elif 位置错误",
+      "explanation": "#else 或 #elif 出现在了错误的位置。条件编译块的结构是 #if → 若干 #elif → 至多一个 #else → #endif：#else 之后不能再出现 #elif，#else 本身也只能出现一次。",
+      "common_causes": [
+        "把 #elif 写在了 #else 之后",
+        "同一个 #if 块里写了两个 #else",
+        "嵌套 #if 时漏写 #endif，导致块边界错乱"
+      ]
+    },
+    {
+      "code": 1013,
+      "code_str": "E1013",
+      "lang": "c",
+      "category": "词法",
+      "icon": "preproc-cond",
+      "title": "条件编译未闭合",
+      "explanation": "#if/#ifdef/#ifndef 开启的条件编译块没有用 #endif 结束。每个开启的条件都必须显式关闭。",
+      "common_causes": [
+        "忘记写 #endif",
+        "#endif 被误删",
+        "#if 与 #endif 数量不匹配"
+      ]
+    },
+    {
+      "code": 1014,
+      "code_str": "E1014",
+      "lang": "c",
+      "category": "词法",
+      "icon": "preproc-cond",
+      "title": "条件表达式错误",
+      "explanation": "#if 后面的表达式无法求值。条件编译的表达式必须是能计算出整数值的常量表达式。",
+      "common_causes": [
+        "表达式中使用了未定义的宏",
+        "括号不匹配",
+        "在 #if 中使用了 C 函数调用（不被允许）"
+      ]
+    },
+    {
+      "code": 1015,
+      "code_str": "E1015",
+      "lang": "c",
+      "category": "词法",
+      "icon": "include-cycle",
+      "title": "头文件循环包含",
+      "explanation": "头文件之间相互包含形成环。A 包含 B，B 又包含 A，编译器会陷入无限展开。",
+      "common_causes": [
+        "两个头文件互相 #include",
+        "缺少包含守卫（#ifndef/#define/#endif）",
+        "头文件职责划分不清导致互相依赖"
+      ]
+    },
+    {
+      "code": 1016,
+      "code_str": "E1016",
+      "lang": "c",
+      "category": "词法",
+      "icon": "token-paste",
+      "title": "记号粘贴无效",
+      "explanation": "## 运算符的操作数不符合要求。## 只能用于宏定义中把两个记号粘贴成一个。",
+      "common_causes": [
+        "在宏定义外使用了 ##",
+        "## 前后缺少操作数",
+        "试图粘贴出不合法的记号"
+      ]
+    },
+    {
+      "code": 1017,
+      "code_str": "E1017",
+      "lang": "c",
+      "category": "词法",
+      "icon": "depth-limit",
+      "title": "宏展开深度超限",
+      "explanation": "宏嵌套展开的层数超过了限制。宏展开自身会形成递归时，编译器会设置深度上限以避免无限展开。",
+      "common_causes": [
+        "宏 A 展开为宏 B，B 又展开为 A（递归宏）",
+        "宏展开链条过长",
+        "试图用宏递归模拟循环"
+      ]
+    },
+    {
+      "code": 1018,
+      "code_str": "W1018",
+      "lang": "c",
+      "category": "词法",
+      "icon": "shadow",
+      "title": "宏名遮蔽",
+      "explanation": "宏定义的名字与代码中的变量或函数同名，宏展开会悄悄替换掉这些标识符，改变程序行为。",
+      "common_causes": [
+        "#define 的名字与局部变量同名",
+        "#define 的名字与函数同名",
+        "不知道某个名字已被头文件定义为宏"
+      ]
+    },
+    {
+      "code": 1019,
+      "code_str": "W1019",
+      "lang": "c",
+      "category": "词法",
+      "icon": "side-effect",
+      "title": "宏参数副作用",
+      "explanation": "宏参数在展开中出现多次，带有副作用（如 a++）的实参会被求值多次，与函数调用的语义不同。",
+      "common_causes": [
+        "向宏传入 a++ / a-- 这类自增自减表达式",
+        "向宏传入函数调用等有副作用的表达式",
+        "期望宏参数像函数参数一样只求值一次"
+      ]
+    },
+    {
+      "code": 1020,
+      "code_str": "E1020",
+      "lang": "c",
+      "category": "词法",
+      "icon": "static-assert",
+      "title": "静态断言失败",
+      "explanation": "_Static_assert 的条件在编译期求值为假。静态断言用于在编译时检查常量条件，失败即说明程序假设被违反。",
+      "common_causes": [
+        "断言的条件表达式写错",
+        "被检查的常量值与预期不符",
+        "用静态断言检查的约束实际不成立"
+      ]
+    },
+    {
+      "code": 1021,
+      "code_str": "E1021",
+      "lang": "c",
+      "category": "词法",
+      "icon": "include-missing",
+      "title": "找不到头文件",
+      "explanation": "#include 指定的文件不存在或无法读取。编译器按路径查找头文件，找不到即报错。",
+      "common_causes": [
+        "文件名拼写错误",
+        "文件不在编译器搜索的路径下",
+        "项目配置中缺少该头文件所在目录"
+      ]
+    },
+    {
+      "code": 1023,
+      "code_str": "W1023",
+      "lang": "c",
+      "category": "词法",
+      "icon": "unsupported",
+      "title": "预处理指令已忽略",
+      "explanation": "#pragma 的参数（如 pack/STDC）或 #line 指令的语义在当前 C 子集中未实现，该行已被忽略——程序按默认口径继续编译，不会因此失败。布局/对齐类 pragma 与行号映射的行为可能与支持它们的编译器不同；#pragma once 不受影响（正常生效，防重复包含）。",
+      "common_causes": [
+        "#pragma pack(n) 期望改变结构体布局（当前子集恒按紧缩布局——pack(1) 恰好同值，其他 n 不同）",
+        "#line 期望改写后续诊断行号（当前按原文件行号报告）",
+        "STDC 等标准 pragma 期望切换浮点约定/方言开关"
+      ]
+    },
+    {
+      "code": 2002,
+      "code_str": "W2002",
+      "lang": "c",
+      "category": "语法",
+      "icon": "array-size",
+      "title": "预期数组大小",
+      "explanation": "声明数组时方括号内需要一个常量大小（如 int arr[5]）。当前子集不支持变量长度数组（VLA）。",
+      "common_causes": [
+        "数组方括号为空",
+        "用变量当数组大小"
+      ]
+    },
+    {
+      "code": 2003,
+      "code_str": "E2003",
+      "lang": "c",
+      "category": "语法",
+      "icon": "expr-expected",
+      "title": "预期表达式",
+      "explanation": "这里需要一个表达式（如变量、数字、计算式）。请检查是否遗漏了操作数或写错了运算符。",
+      "common_causes": [
+        "运算符后面缺少操作数",
+        "括号不匹配导致表达式解析失败"
+      ]
+    },
+    {
+      "code": 2004,
+      "code_str": "E2004",
+      "lang": "c",
+      "category": "语法",
+      "icon": "switch-clause",
+      "title": "预期 case 或 default",
+      "explanation": "switch 语句内部的标签必须是 case 或 default。请检查是否拼写错误或遗漏了关键字。",
+      "common_causes": [
+        "case 拼写错误",
+        "switch 内写了普通语句作为标签"
+      ]
+    },
+    {
+      "code": 2005,
+      "code_str": "E2005",
+      "lang": "c",
+      "category": "语法",
+      "icon": "semicolon",
+      "title": "预期分号",
+      "explanation": "C 语言的每条语句末尾都需要分号 ; 作为结束标志。就像中文一句话末尾需要句号。",
+      "common_causes": [
+        "语句末尾忘记写分号",
+        "上一行的分号写在了注释里"
+      ]
+    },
+    {
+      "code": 2006,
+      "code_str": "E2006",
+      "lang": "c",
+      "category": "语法",
+      "icon": "bracket",
+      "title": "预期右花括号",
+      "explanation": "代码块由一对花括号 { } 包裹。编译器读到了块的末尾，但没有找到配对的 }。",
+      "common_causes": [
+        "忘记写右花括号",
+        "花括号嵌套层次过多导致遗漏"
+      ]
+    },
+    {
+      "code": 2007,
+      "code_str": "E2007",
+      "lang": "c",
+      "category": "语法",
+      "icon": "paren-close",
+      "title": "预期右圆括号",
+      "explanation": "圆括号 ( ) 必须成对出现。常见于 if/while/for 的条件表达式或函数调用参数列表。",
+      "common_causes": [
+        "if/while/for 的条件后缺少 )",
+        "函数调用参数后缺少 )"
+      ]
+    },
+    {
+      "code": 2008,
+      "code_str": "E2008",
+      "lang": "c",
+      "category": "语法",
+      "icon": "bracket-close",
+      "title": "预期右方括号",
+      "explanation": "方括号 [ ] 必须成对出现。常见于数组声明和数组索引访问。",
+      "common_causes": [
+        "数组声明时缺少 ]",
+        "数组索引访问时缺少 ]"
+      ]
+    },
+    {
+      "code": 3001,
+      "code_str": "E3001",
+      "lang": "c",
+      "category": "语义",
+      "icon": "duplicate",
+      "title": "变量重复声明",
+      "explanation": "同一个作用域内重复声明了同名变量。每个变量在一个作用域内只能声明一次。",
+      "common_causes": [
+        "复制粘贴代码后忘记修改变量名",
+        "在不同位置声明了同名变量但实际想要不同的变量",
+        "循环中或函数内重复声明了外层已有的变量"
+      ]
+    },
+    {
+      "code": 3002,
+      "code_str": "E3002",
+      "lang": "c",
+      "category": "语义",
+      "icon": "duplicate",
+      "title": "结构体重复定义",
+      "explanation": "同一个结构体类型名只能定义一次。如果需要在多处使用，请在开头定义一次，之后直接声明变量。",
+      "common_causes": [
+        "struct 定义写在头文件并被多次包含",
+        "同一个 .c 文件里重复写 struct"
+      ]
+    },
+    {
+      "code": 3003,
+      "code_str": "E3003",
+      "lang": "c",
+      "category": "语义",
+      "icon": "duplicate",
+      "title": "函数重复定义",
+      "explanation": "同一个函数名只能有一个定义（函数体）。如果需要提前让编译器知道函数签名，请使用前向声明（只写函数头加分号）。",
+      "common_causes": [
+        "函数定义写了两次",
+        "忘记用分号结束函数原型声明"
+      ]
+    },
+    {
+      "code": 3004,
+      "code_str": "E3004",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-mismatch",
+      "title": "类型不匹配",
+      "explanation": "赋值或传参时，左右两边的类型不一致。C 语言对类型检查比较严格，int* 和 int 不能直接混用。",
+      "common_causes": [
+        "把指针赋给了整数变量",
+        "把整数赋给了指针变量",
+        "struct 类型不一致"
+      ]
+    },
+    {
+      "code": 3005,
+      "code_str": "W3005",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "数组初始化项过多",
+      "explanation": "大括号里的初始化值数量超过了数组声明的大小。例如 int arr[3] = {1,2,3,4} 就是错误的。",
+      "common_causes": [
+        "初始化列表里的数字个数比数组大小多"
+      ]
+    },
+    {
+      "code": 3006,
+      "code_str": "E3006",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "数组初始化类型不匹配",
+      "explanation": "数组初始化列表中的某个值与数组元素类型不兼容。例如 int 数组里放了一个字符串。",
+      "common_causes": [
+        "初始化列表中混入了字符串",
+        "类型混用"
+      ]
+    },
+    {
+      "code": 3007,
+      "code_str": "E3007",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "字符串初始化非字符数组",
+      "explanation": "只有 char 类型的数组才能用字符串初始化。例如 int arr[] = \"hello\" 是错误的。",
+      "common_causes": [
+        "非 char 数组用双引号字符串初始化"
+      ]
+    },
+    {
+      "code": 3008,
+      "code_str": "W3008",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "字符串太长",
+      "explanation": "用于初始化的字符串长度超过了数组声明的大小。注意字符串末尾还有一个隐含的 \\0 终止符。",
+      "common_causes": [
+        "char s[5] = \"hello\"（需要至少 6 个字节）"
+      ]
+    },
+    {
+      "code": 3009,
+      "code_str": "E3009",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "无效的数组初始化",
+      "explanation": "数组初始化列表格式不正确。请确保使用大括号 {} 包裹初始化值，且值之间用逗号分隔。",
+      "common_causes": [
+        "初始化列表格式错误",
+        "缺少大括号"
+      ]
+    },
+    {
+      "code": 3010,
+      "code_str": "E3010",
+      "lang": "c",
+      "category": "语义",
+      "icon": "jump-outside",
+      "title": "break 在循环外",
+      "explanation": "break 语句只能用在循环（for/while/do-while）或 switch 语句内部，用于跳出当前结构。",
+      "common_causes": [
+        "break 写在了循环外面",
+        "花括号不匹配导致 break 跑到了错误的位置"
+      ]
+    },
+    {
+      "code": 3011,
+      "code_str": "E3011",
+      "lang": "c",
+      "category": "语义",
+      "icon": "jump-outside",
+      "title": "continue 在循环外",
+      "explanation": "continue 语句只能用在循环内部，用于跳过本次循环的剩余代码，进入下一次循环。",
+      "common_causes": [
+        "continue 写在了循环外面"
+      ]
+    },
+    {
+      "code": 3012,
+      "code_str": "E3012",
+      "lang": "c",
+      "category": "语义",
+      "icon": "return",
+      "title": "void 函数返回了值",
+      "explanation": "void 函数表示'不返回任何值'，所以不能在函数体里写 return 某个值。只能写 return; 或不写。",
+      "common_causes": [
+        "void 函数里写了 return x;"
+      ]
+    },
+    {
+      "code": 3013,
+      "code_str": "E3013",
+      "lang": "c",
+      "category": "语义",
+      "icon": "return",
+      "title": "非 void 函数缺少返回值",
+      "explanation": "声明了返回类型（如 int）的函数，必须在所有执行路径上都返回一个对应类型的值。",
+      "common_causes": [
+        "函数末尾缺少 return",
+        "if 分支里 return 了但 else 分支没有"
+      ]
+    },
+    {
+      "code": 3014,
+      "code_str": "E3014",
+      "lang": "c",
+      "category": "语义",
+      "icon": "return",
+      "title": "返回值类型不匹配",
+      "explanation": "return 后面的表达式类型与函数声明的返回类型不一致。",
+      "common_causes": [
+        "函数声明返回 int 但 return 了指针",
+        "忘记写 return 值"
+      ]
+    },
+    {
+      "code": 3015,
+      "code_str": "E3015",
+      "lang": "c",
+      "category": "语义",
+      "icon": "cond-invalid",
+      "title": "条件表达式不合法",
+      "explanation": "if/while/for 的条件位置需要一个能判断真假的表达式。常见错误是把赋值 = 误写成了比较 ==。",
+      "common_causes": [
+        "条件中使用了赋值 = 而不是比较 ==",
+        "条件表达式类型不是整数或指针"
+      ]
+    },
+    {
+      "code": 3016,
+      "code_str": "E3016",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "算术运算类型错误",
+      "explanation": "加减乘除等算术运算要求操作数是整数或浮点数类型。指针和结构体不能直接做算术运算（指针只能加减整数）。",
+      "common_causes": [
+        "对指针使用了 * 或 /",
+        "对结构体使用了算术运算符"
+      ]
+    },
+    {
+      "code": 3017,
+      "code_str": "E3017",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "比较运算类型错误",
+      "explanation": "== 和 != 比较要求两边类型兼容。不能比较指针和整数，也不能比较不相关的结构体类型。",
+      "common_causes": [
+        "用 == 比较指针和整数",
+        "比较了不兼容的结构体"
+      ]
+    },
+    {
+      "code": 3018,
+      "code_str": "E3018",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "关系运算类型错误",
+      "explanation": "< <= > >= 要求操作数是整数或浮点数（或同类型指针）。不能混用整数和指针进行大小比较。",
+      "common_causes": [
+        "整数和指针比大小",
+        "结构体比大小"
+      ]
+    },
+    {
+      "code": 3019,
+      "code_str": "E3019",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "逻辑运算类型错误",
+      "explanation": "&& 和 || 要求操作数是整数或指针类型（0 为假，非 0 为真）。不能对结构体或数组使用逻辑运算。",
+      "common_causes": [
+        "对结构体使用 && 或 ||",
+        "对数组名使用逻辑运算"
+      ]
+    },
+    {
+      "code": 3020,
+      "code_str": "E3020",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "单目运算类型错误",
+      "explanation": "! - ~ 等单目运算符要求操作数是整数或指针（! 和 ~）或整数（-）。",
+      "common_causes": [
+        "对结构体取反",
+        "对数组使用负号"
+      ]
+    },
+    {
+      "code": 3021,
+      "code_str": "E3021",
+      "lang": "c",
+      "category": "语义",
+      "icon": "deref",
+      "title": "对非指针解引用",
+      "explanation": "*p 表示访问指针 p 指向的内存。如果 p 不是指针类型，就不能用 *。",
+      "common_causes": [
+        "对 int 变量使用 *",
+        "对结构体变量使用 *"
+      ]
+    },
+    {
+      "code": 3022,
+      "code_str": "E3022",
+      "lang": "c",
+      "category": "语义",
+      "icon": "incdec",
+      "title": "自增自减类型错误",
+      "explanation": "++ 和 -- 只能用于整数变量或指针变量。不能用于结构体、数组名或常量。",
+      "common_causes": [
+        "对结构体使用 ++",
+        "对数组名使用 ++"
+      ]
+    },
+    {
+      "code": 3023,
+      "code_str": "E3023",
+      "lang": "c",
+      "category": "语义",
+      "icon": "undeclared",
+      "title": "变量未声明",
+      "explanation": "在使用变量之前，必须先声明它的类型（如 int x;）。C 语言不会自动创建变量。",
+      "common_causes": [
+        "忘记写 int/char 等类型声明",
+        "变量名拼写错误",
+        "变量声明在使用之后且没有前向声明"
+      ]
+    },
+    {
+      "code": 3024,
+      "code_str": "E3024",
+      "lang": "c",
+      "category": "语义",
+      "icon": "alloc-args",
+      "title": "malloc 参数个数错误",
+      "explanation": "malloc 函数只需要一个参数：要分配的字节数。常见写法是 malloc(sizeof(int))。",
+      "common_causes": [
+        "malloc() 传了太多参数",
+        "漏写了 sizeof"
+      ]
+    },
+    {
+      "code": 3025,
+      "code_str": "E3025",
+      "lang": "c",
+      "category": "语义",
+      "icon": "alloc-args",
+      "title": "malloc 参数类型错误",
+      "explanation": "malloc 的参数应该是整数（表示字节数）。请使用 sizeof 计算大小，如 malloc(sizeof(int) * n)。",
+      "common_causes": [
+        "把指针传给了 malloc",
+        "传了字符串给 malloc"
+      ]
+    },
+    {
+      "code": 3027,
+      "code_str": "E3027",
+      "lang": "c",
+      "category": "语义",
+      "icon": "alloc-args",
+      "title": "free 参数类型错误",
+      "explanation": "free 的参数必须是指针类型（由 malloc 返回的地址）。",
+      "common_causes": [
+        "把整数传给了 free",
+        "传了未初始化的指针给 free"
+      ]
+    },
+    {
+      "code": 3028,
+      "code_str": "E3028",
+      "lang": "c",
+      "category": "语义",
+      "icon": "call-args",
+      "title": "内置函数参数个数错误",
+      "explanation": "printf/scanf/strlen/strcpy/strcmp 等内置函数有固定的参数个数要求。请查阅它们的正确用法。",
+      "common_causes": [
+        "printf 缺少格式字符串或参数",
+        "strcpy 缺少 src 或 dest"
+      ]
+    },
+    {
+      "code": 3029,
+      "code_str": "E3029",
+      "lang": "c",
+      "category": "语义",
+      "icon": "call-args",
+      "title": "内置函数参数类型错误",
+      "explanation": "内置函数的某个参数类型不符合要求。例如 printf 第一个参数必须是字符串，scanf 后面必须传指针。",
+      "common_causes": [
+        "printf 第一个参数不是字符串",
+        "scanf 参数没有加 &"
+      ]
+    },
+    {
+      "code": 3030,
+      "code_str": "E3030",
+      "lang": "c",
+      "category": "语义",
+      "icon": "printf",
+      "title": "printf 参数个数不匹配",
+      "explanation": "printf 的格式字符串中的占位符（如 %d %s）数量与实际传入的参数数量不一致。",
+      "common_causes": [
+        "格式占位符比参数多",
+        "参数比格式占位符多"
+      ]
+    },
+    {
+      "code": 3031,
+      "code_str": "E3031",
+      "lang": "c",
+      "category": "语义",
+      "icon": "printf",
+      "title": "printf 第一个参数必须是字符串",
+      "explanation": "printf(\"...\", ...) 的第一个参数必须是格式字符串（用双引号包裹）。",
+      "common_causes": [
+        "printf 第一个参数是变量或数字"
+      ]
+    },
+    {
+      "code": 3032,
+      "code_str": "W3032",
+      "lang": "c",
+      "category": "语义",
+      "icon": "printf",
+      "title": "printf 参数类型不匹配",
+      "explanation": "格式占位符与实际参数类型不对应。例如 %d 对应 int，%s 对应字符串（char*），%f 对应 float/double。",
+      "common_causes": [
+        "%d 但传了字符串",
+        "%s 但传了 int",
+        "%f 但传了 int"
+      ]
+    },
+    {
+      "code": 3033,
+      "code_str": "E3033",
+      "lang": "c",
+      "category": "语义",
+      "icon": "scanf",
+      "title": "scanf 参数个数不匹配",
+      "explanation": "scanf 的格式字符串中的占位符数量与实际传入的参数数量不一致。",
+      "common_causes": [
+        "格式占位符比参数多",
+        "参数比格式占位符多"
+      ]
+    },
+    {
+      "code": 3034,
+      "code_str": "E3034",
+      "lang": "c",
+      "category": "语义",
+      "icon": "scanf",
+      "title": "scanf 第一个参数必须是字符串",
+      "explanation": "scanf(\"...\", ...) 的第一个参数必须是格式字符串。",
+      "common_causes": [
+        "scanf 第一个参数是变量"
+      ]
+    },
+    {
+      "code": 3035,
+      "code_str": "W3035",
+      "lang": "c",
+      "category": "语义",
+      "icon": "scanf",
+      "title": "scanf 参数类型错误",
+      "explanation": "scanf 的参数必须是变量的地址（加 & 符号）。例如 scanf(\"%d\", &a);。如果参数已经是指针，则不需要 &。",
+      "common_causes": [
+        "scanf 参数忘记加 &",
+        "类型不匹配（如 %d 但变量是 char）"
+      ]
+    },
+    {
+      "code": 3036,
+      "code_str": "E3036",
+      "lang": "c",
+      "category": "语义",
+      "icon": "func-undefined",
+      "title": "调用了未定义的函数",
+      "explanation": "调用函数前，编译器需要知道函数的签名。请在调用前添加函数原型声明（函数头加分号），或将函数定义移到调用之前。",
+      "common_causes": [
+        "函数定义在使用之后",
+        "函数名拼写错误",
+        "忘记 #include 头文件"
+      ]
+    },
+    {
+      "code": 3037,
+      "code_str": "E3037",
+      "lang": "c",
+      "category": "语义",
+      "icon": "call-args",
+      "title": "函数参数个数不匹配",
+      "explanation": "调用函数时传入的参数个数与函数声明的参数个数不一致。",
+      "common_causes": [
+        "参数个数太多",
+        "参数个数太少",
+        "漏写了某个参数"
+      ]
+    },
+    {
+      "code": 3038,
+      "code_str": "E3038",
+      "lang": "c",
+      "category": "语义",
+      "icon": "call-args",
+      "title": "函数参数类型不匹配",
+      "explanation": "调用函数时传入的参数类型与函数声明的形参类型不兼容。",
+      "common_causes": [
+        "传了 int 但需要指针",
+        "传了 float 但需要 int",
+        "struct 类型不匹配"
+      ]
+    },
+    {
+      "code": 3039,
+      "code_str": "E3039",
+      "lang": "c",
+      "category": "语义",
+      "icon": "index",
+      "title": "数组索引类型错误",
+      "explanation": "数组下标必须是整数类型（int、char 等）。不能用浮点数或指针作为下标。",
+      "common_causes": [
+        "数组下标是 float/double",
+        "数组下标是字符串"
+      ]
+    },
+    {
+      "code": 3040,
+      "code_str": "E3040",
+      "lang": "c",
+      "category": "语义",
+      "icon": "index",
+      "title": "对非数组使用索引",
+      "explanation": "只有数组和指针才能用 [ ] 访问元素。普通变量和结构体不能用方括号。",
+      "common_causes": [
+        "对 int 变量使用了 []",
+        "对结构体使用了 []"
+      ]
+    },
+    {
+      "code": 3041,
+      "code_str": "E3041",
+      "lang": "c",
+      "category": "语义",
+      "icon": "struct-member",
+      "title": "对非结构体使用成员访问",
+      "explanation": ". 和 -> 只能用于结构体类型。请检查变量是否为结构体，以及是否该用 ->（指针）或 .（变量）。",
+      "common_causes": [
+        "对普通变量使用 .",
+        "对数组使用 .",
+        "指针应该用 -> 而不是 ."
+      ]
+    },
+    {
+      "code": 3042,
+      "code_str": "E3042",
+      "lang": "c",
+      "category": "语义",
+      "icon": "struct-member",
+      "title": "未知的结构体成员",
+      "explanation": "访问的结构体成员名称不存在。请检查成员名拼写，以及是否使用了正确的结构体类型。",
+      "common_causes": [
+        "成员名拼写错误",
+        "混淆了不同的结构体类型"
+      ]
+    },
+    {
+      "code": 3043,
+      "code_str": "E3043",
+      "lang": "c",
+      "category": "语义",
+      "icon": "assign-readonly",
+      "title": "向右值赋值",
+      "explanation": "赋值号 = 左边必须是可修改的变量（左值）。不能给常量、表达式结果或数组名赋值。",
+      "common_causes": [
+        "给常量赋值",
+        "给表达式结果赋值（如 a+b=5）",
+        "给数组名赋值"
+      ]
+    },
+    {
+      "code": 3044,
+      "code_str": "E3044",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-mismatch",
+      "title": "赋值类型不匹配",
+      "explanation": "赋值号左右两边的类型不兼容。例如 int 变量不能接收 float* 指针。",
+      "common_causes": [
+        "整数和指针混用",
+        "不兼容的结构体类型互相赋值"
+      ]
+    },
+    {
+      "code": 3045,
+      "code_str": "E3045",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-mismatch",
+      "title": "复合赋值类型错误",
+      "explanation": "+= -= *= /= 等复合赋值要求操作数类型兼容。",
+      "common_causes": [
+        "对指针使用了 *= 或 /=",
+        "类型不兼容的复合赋值"
+      ]
+    },
+    {
+      "code": 3046,
+      "code_str": "E3046",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-mismatch",
+      "title": "switch 条件类型错误",
+      "explanation": "switch 的条件表达式必须是整数类型（int、char 等）。",
+      "common_causes": [
+        "switch 条件使用了浮点数",
+        "switch 条件使用了字符串"
+      ]
+    },
+    {
+      "code": 3047,
+      "code_str": "E3047",
+      "lang": "c",
+      "category": "语义",
+      "icon": "case-const",
+      "title": "case 标签不是常量",
+      "explanation": "case 后面的值必须是编译期常量（如数字或枚举值），不能是变量。",
+      "common_causes": [
+        "case 后面写了变量",
+        "case 后面写了表达式"
+      ]
+    },
+    {
+      "code": 3048,
+      "code_str": "E3048",
+      "lang": "c",
+      "category": "语义",
+      "icon": "op-type",
+      "title": "位运算类型错误",
+      "explanation": "& | ^ ~ << >> 是位运算符，要求操作数是整数类型。不能对指针、浮点数或结构体使用位运算。",
+      "common_causes": [
+        "对浮点数使用位运算",
+        "对指针使用位运算",
+        "混淆了 &（位与）和 &&（逻辑与）"
+      ]
+    },
+    {
+      "code": 3049,
+      "code_str": "E3049",
+      "lang": "c",
+      "category": "语义",
+      "icon": "const-qual",
+      "title": "对常量赋值",
+      "explanation": "试图修改被 const 修饰的变量。const 变量在初始化后不可再被赋值。",
+      "common_causes": [
+        "忘记变量声明时加了 const",
+        "误以为函数内可以修改 const 参数",
+        "把只读配置变量误当作可修改状态"
+      ]
+    },
+    {
+      "code": 3050,
+      "code_str": "W3050",
+      "lang": "c",
+      "category": "语义",
+      "icon": "cond-assign",
+      "title": "条件中的赋值",
+      "explanation": "if/while 的条件里使用了 =（赋值）而不是 ==（比较）。赋值结果几乎总为真，条件判断失去意义。",
+      "common_causes": [
+        "把 == 误写成 =",
+        "本意是比较两个值是否相等",
+        "打字遗漏了一个等号"
+      ]
+    },
+    {
+      "code": 3051,
+      "code_str": "W3051",
+      "lang": "c",
+      "category": "语义",
+      "icon": "off-by-one",
+      "title": "Off-by-One 错误",
+      "explanation": "循环条件可能是 <=，导致数组访问越界。大小为 n 的数组，有效下标是 0 ~ n-1。",
+      "common_causes": [
+        "循环条件写成了 <= 而不是 <",
+        "数组大小和循环边界混淆"
+      ]
+    },
+    {
+      "code": 3052,
+      "code_str": "W3052",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-decay",
+      "title": "数组退化为指针",
+      "explanation": "数组名在大多数表达式中会自动退化为指向首元素的指针。这可能导致 sizeof 结果与预期不符。",
+      "common_causes": [
+        "函数参数中数组退化为指针",
+        "sizeof(arr) 在参数中变为 sizeof(int*)"
+      ]
+    },
+    {
+      "code": 3053,
+      "code_str": "W3053",
+      "lang": "c",
+      "category": "语义",
+      "icon": "implicit-cast",
+      "title": "隐式转换警告（窄化或 const 限定符差异）",
+      "explanation": "赋值/传参发生了隐式转换：可能是数值窄化（int 赋值给 char 截断高位），或指针间 const 限定符差异——两侧类型剥除全部 const 位后相同，但限定符保护存在被绕过的通道（C11 §6.5.16.1 约束违反，clang/gcc 默认仅警告放行）。",
+      "common_causes": [
+        "int 赋值给 char（截断）",
+        "float 赋值给 int（丢失小数）",
+        "const 指针赋给非 const 指针，或嵌套指针层 const 差异（如 int** 传给 const int** 形参）",
+        "const 数组 decay 给非 const 指针"
+      ]
+    },
+    {
+      "code": 3054,
+      "code_str": "E3054",
+      "lang": "c",
+      "category": "语义",
+      "icon": "implicit-cast",
+      "title": "整数转指针",
+      "explanation": "把整数直接转换为指针类型是危险的，因为整数可能不代表有效的内存地址。",
+      "common_causes": [
+        "(int*)123 这类硬编码地址",
+        "NULL 未用 0 表示"
+      ]
+    },
+    {
+      "code": 3055,
+      "code_str": "W3055",
+      "lang": "c",
+      "category": "语义",
+      "icon": "implicit-cast",
+      "title": "void 指针转换",
+      "explanation": "void* 可以隐式转换为任何指针类型，这是 C 标准允许的，但建议显式转换以增加代码可读性。",
+      "common_causes": [
+        "malloc 返回值没有显式强制转换"
+      ]
+    },
+    {
+      "code": 3057,
+      "code_str": "H3057",
+      "lang": "c",
+      "category": "语义",
+      "icon": "promote",
+      "title": "隐式类型提升",
+      "explanation": "代码中发生了安全的隐式类型转换（如 char → int、int → float 或 void* → 具体指针）。这在 C 语言中是允许的，但如果你希望代码更明确，可以使用显式强制转换。",
+      "common_causes": [
+        "char 自动提升为 int 参与运算",
+        "int 自动提升为 float 参与运算",
+        "malloc 返回值未显式转换"
+      ]
+    },
+    {
+      "code": 3058,
+      "code_str": "E3058",
+      "lang": "c",
+      "category": "语义",
+      "icon": "static-linkage",
+      "title": "static 函数前向使用",
+      "explanation": "static 函数在它的声明或定义之前被使用。static 函数只在本文件内可见，必须先声明（原型）再使用。",
+      "common_causes": [
+        "函数定义写在了调用点之后但没有前置原型",
+        "删除原型时没有调整定义位置",
+        "不了解 static 函数同样要求先声明后使用"
+      ]
+    },
+    {
+      "code": 3059,
+      "code_str": "E3059",
+      "lang": "c",
+      "category": "语义",
+      "icon": "static-linkage",
+      "title": "static 全局变量前向使用",
+      "explanation": "static 全局变量在它的声明之前被使用。变量必须先声明再使用，与是否 static 无关。",
+      "common_causes": [
+        "变量定义写在了使用点之后",
+        "文件顶部的声明被误删",
+        "以为全局变量全文件可见就不需要声明顺序"
+      ]
+    },
+    {
+      "code": 3060,
       "code_str": "E3060",
+      "lang": "c",
+      "category": "语义",
+      "icon": "uaf",
       "title": "使用已释放的内存 (Use-After-Free)",
       "explanation": "你正在读取或写入一块已经被 free() 的内存。这块内存可能还保留着旧数据，但它已经不再属于你。继续使用它会导致不可预测的行为。",
-      "icon": "uaf",
       "common_causes": [
         "指针在 free 后没有置为 NULL，后续又解引用",
         "多个指针指向同一块内存，其中一个释放了，另一个还在用"
+      ]
+    },
+    {
+      "code": 3061,
+      "code_str": "E3061",
+      "lang": "c",
+      "category": "语义",
+      "icon": "double-free",
+      "title": "重复释放内存 (Double-Free)",
+      "explanation": "同一块内存被 free() 了两次。这会破坏内存管理器的内部数据结构，可能导致程序崩溃或后续分配出错。",
+      "common_causes": [
+        "free(p) 后没有置 NULL，再次 free(p)",
+        "两个指针指向同一地址，都执行了 free"
+      ]
+    },
+    {
+      "code": 3062,
+      "code_str": "W3062",
+      "lang": "c",
+      "category": "语义",
+      "icon": "printf-format",
+      "title": "printf 格式不匹配",
+      "explanation": "printf 的格式说明符与实际参数类型不一致。%d 对应 int、%f 对应 double、%s 对应字符串指针，错配会输出错误结果。",
+      "common_causes": [
+        "用 %d 输出 double 或指针",
+        "用 %s 输出 char 数组之外的类型",
+        "格式串中说明符个数与参数个数不对应"
+      ]
+    },
+    {
+      "code": 3063,
+      "code_str": "W3063",
+      "lang": "c",
+      "category": "语义",
+      "icon": "scanf-format",
+      "title": "scanf 格式不匹配",
+      "explanation": "scanf 的格式说明符与实参类型不一致。scanf 的参数必须是对应类型变量的地址。",
+      "common_causes": [
+        "用 %d 读入 double 变量",
+        "忘记取地址（传了变量而不是 &变量）",
+        "%ld 与 %d 在 long 与 int 之间混用"
+      ]
+    },
+    {
+      "code": 3064,
+      "code_str": "W3064",
+      "lang": "c",
+      "category": "语义",
+      "icon": "pointer-compat",
+      "title": "指针与浮点互转",
+      "explanation": "显式把指针转换成浮点数，或把浮点数转换成指针，是实现定义的行为——结果依赖平台，可能不可移植。",
+      "common_causes": [
+        "把指针强制转换成 double（如 (double)p）",
+        "把浮点数强制转换成指针（如 (int *)d）",
+        "试图用指针与浮点互转来传递地址"
+      ]
+    },
+    {
+      "code": 3065,
+      "code_str": "E3065",
+      "lang": "c",
+      "category": "语义",
+      "icon": "const-qual",
+      "title": "违反 const 限定",
+      "explanation": "试图通过指针修改 const 修饰的数据。指向 const 的指针不能用来修改所指向的内容。",
+      "common_causes": [
+        "把 const 数据的地址赋给非 const 指针后写入",
+        "函数参数是 const 指针却在函数内写入",
+        "const int* 与 int* 混用"
+      ]
+    },
+    {
+      "code": 3066,
+      "code_str": "E3066",
+      "lang": "c",
+      "category": "语义",
+      "icon": "call-target",
+      "title": "调用目标不是函数",
+      "explanation": "只有函数名和函数指针才能被 () 调用。",
+      "common_causes": [
+        "把普通变量当成函数调用，如 int x; x();",
+        "函数指针未初始化，或类型与实际函数不匹配",
+        "函数名拼写错误，被当成变量解析"
+      ]
+    },
+    {
+      "code": 3067,
+      "code_str": "E3067",
+      "lang": "c",
+      "category": "语义",
+      "icon": "pointer-compat",
+      "title": "指针类型不兼容",
+      "explanation": "把一种对象指针赋给另一种不相关的对象指针类型，需要显式转换（强制类型转换运算符）。C 语言中 void* 可以与任意对象指针隐式互相转换；除此之外的无关类型指针之间（如 int* 与 double*）必须显式转换。",
+      "common_causes": [
+        "无关类型的指针互相赋值未写强制转换（如 int* ← double*）"
+      ]
+    },
+    {
+      "code": 3068,
+      "code_str": "W3068",
+      "lang": "c",
+      "category": "语义",
+      "icon": "pointer-compat",
+      "title": "整数传给文件指针参数",
+      "explanation": "文件函数的文件指针参数位应是 FILE*（fopen 的返回值）或标准流宏 stdin/stdout/stderr。预处理后标准流宏就是 0/1/2 三个字面量，除此之外的整数传给文件指针位在 C 里是不兼容转换（Clang 至少警告），通常意味着把句柄、下标或普通整数误当成了文件指针。",
+      "common_causes": [
+        "把 int 变量或常数直接当 FILE* 传给 fseek/fclose 等函数",
+        "误以为 open 风格的整数句柄能用于 FILE* 系函数"
+      ]
+    },
+    {
+      "code": 3069,
+      "code_str": "H3069",
+      "lang": "c",
+      "category": "语义",
+      "icon": "off-by-one",
+      "title": "循环边界 Off-by-One 提示",
+      "explanation": "循环条件使用了 '<=' 且涉及数组/指针——大小为 n 的数组有效下标是 0 ~ n-1，'<= n' 会使循环多跑一次。这是教学提示（H 级）：Clang 默认不对此发警告；静态可判定的常数下标越界另由 E/W 级诊断覆盖。",
+      "common_causes": [
+        "循环条件写成了 <= 而不是 <",
+        "数组大小和循环边界混淆"
+      ]
+    },
+    {
+      "code": 3070,
+      "code_str": "E3070",
+      "lang": "c",
+      "category": "语义",
+      "icon": "buffer-overflow",
+      "title": "缓冲区溢出",
+      "explanation": "写入超过了缓冲区的容量。数组、malloc 的内存块都有边界，越界写入会破坏相邻内存。",
+      "common_causes": [
+        "strcpy 目标缓冲区小于源字符串",
+        "循环写入次数超过数组长度",
+        "memcpy 的长度参数算错"
+      ]
+    },
+    {
+      "code": 3071,
+      "code_str": "E3071",
+      "lang": "c",
+      "category": "语义",
+      "icon": "label-undefined",
+      "title": "标签未定义",
+      "explanation": "goto 跳转到的标签在函数内不存在。goto 与标签必须在同一个函数内配对。",
+      "common_causes": [
+        "标签名拼写错误",
+        "goto 写在了另一个函数里",
+        "标签被删除后 goto 没有清理"
+      ]
+    },
+    {
+      "code": 3072,
+      "code_str": "E3072",
+      "lang": "c",
+      "category": "语义",
+      "icon": "struct-member",
+      "title": "结构体自包含",
+      "explanation": "结构体的成员包含了结构体自身。这样的类型大小无法计算（无限递归），应使用指针代替。",
+      "common_causes": [
+        "struct S 的成员写了 struct S 而不是 struct S*",
+        "链表/树节点忘记加指针符号",
+        "误以为结构体可以按值包含自身"
+      ]
+    },
+    {
+      "code": 3073,
+      "code_str": "E3073",
+      "lang": "c",
+      "category": "语义",
+      "icon": "unsupported",
+      "title": "标准库函数未实现",
+      "explanation": "你调用的函数是 C 标准库函数，但它在 vitro 的教学子集支持面之外（沙盒环境不提供其依赖的系统能力，或教学价值有限被明确排除）。这不是「忘了声明」——添加函数原型无法修复，因为引擎没有实现这个函数。请查阅标准库支持矩阵的排除清单，改用支持面内的替代方案（如 strtok 可用 strchr/strcspn 组合替代）。",
+      "common_causes": [
+        "调用了 getenv/system 等沙盒无意义的系统接口",
+        "调用了被教学子集排除的函数（strtok/atexit/math 高级函数）",
+        "误以为加原型声明能解决"
+      ]
+    },
+    {
+      "code": 3074,
+      "code_str": "E3074",
+      "lang": "c",
+      "category": "语义",
+      "icon": "duplicate",
+      "title": "switch 的 case 标签重复",
+      "explanation": "同一个 switch 语句里出现了两个相同的 case 常量。C 语言要求每个 case 标签在同一个 switch 内唯一——重复标签会让编译器不知道该跳转到哪一个分支。",
+      "common_causes": [
+        "复制粘贴 case 分支后忘了改常量值",
+        "宏展开后多个 case 得到相同常量",
+        "本想写不同值但打错了数字"
+      ]
+    },
+    {
+      "code": 3075,
+      "code_str": "E3075",
+      "lang": "c",
+      "category": "语义",
+      "icon": "const-qual",
+      "title": "全局/静态变量的初始化必须是常量",
+      "explanation": "全局变量和 static 变量在程序进入 main 之前初始化，此时不能调用函数、也不能使用运行期才能确定的值——初始化表达式必须是编译期常量。",
+      "common_causes": [
+        "用函数调用初始化全局变量（如 int gx = compute();）",
+        "用另一个非常量表达式初始化全局变量",
+        "把运行期才能算出的值误当作编译期常量"
+      ]
+    },
+    {
+      "code": 3076,
+      "code_str": "E3076",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-expected",
+      "title": "使用了不完整类型",
+      "explanation": "类型只有声明（如 struct S;）而没有定义（成员列表）时是不完整类型，不能用它创建变量——编译器不知道这种类型占多少字节。先给出带成员列表的完整定义，再定义变量。",
+      "common_causes": [
+        "只写了 struct S; 前向声明就定义 struct S s;",
+        "头文件里漏掉了结构体的完整定义",
+        "类型名拼写错误被当成了新的前向声明"
+      ]
+    },
+    {
+      "code": 3077,
+      "code_str": "E3077",
+      "lang": "c",
+      "category": "语义",
+      "icon": "duplicate",
+      "title": "typedef 重定义且类型不同",
+      "explanation": "同一个 typedef 名字再次定义时必须与原类型完全一致——完全相同的重复定义是允许的，但改成不同的类型是错误的。",
+      "common_causes": [
+        "在头文件和源文件里对同一名字给了不同类型",
+        "复制代码后修改了 typedef 的目标类型",
+        "想重用名字却忘了它已经被定义过"
+      ]
+    },
+    {
+      "code": 3078,
+      "code_str": "E3078",
+      "lang": "c",
+      "category": "语义",
+      "icon": "deref",
+      "title": "不能对 register 变量取地址",
+      "explanation": "register 提示编译器把变量放进寄存器，而寄存器没有内存地址，所以对 register 变量用 & 取地址是非法的。现代编译器大多会忽略 register 提示，但取地址这个动作仍然是硬性错误。",
+      "common_causes": [
+        "对 register int x 写了 scanf(\"%d\", &x) 或 &x",
+        "从别的代码复制了 register 声明又对其取地址",
+        "不需要 register 就删掉它，需要取地址就别用 register"
+      ]
+    },
+    {
+      "code": 3079,
+      "code_str": "E3079",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-init",
+      "title": "弹性数组成员不能在初始化里赋值",
+      "explanation": "结构体最后一个成员写成 int a[]（弹性数组）表示长度由运行期 malloc 决定，它不占结构体尺寸，也不能在声明初始化时用大括号给它填元素。需要用 malloc 分配足够空间后手动填充。",
+      "common_causes": [
+        "struct F { int n; int a[]; }; 后写 struct F f = {1, {2,3}};",
+        "误以为弹性数组能像普通数组一样初始化",
+        "需要固定长度就写成 int a[N]，或改用指针成员 int *a"
+      ]
+    },
+    {
+      "code": 3080,
+      "code_str": "E3080",
+      "lang": "c",
+      "category": "语义",
+      "icon": "struct-member",
+      "title": "结构体成员重名",
+      "explanation": "同一个结构体里每个成员的名字必须唯一——两个同名成员会让 a.x 无法确定指哪一个。",
+      "common_causes": [
+        "复制成员声明后忘了改名",
+        "合并两份结构体定义时撞了名",
+        "成员较多时手误重复写了一行"
+      ]
+    },
+    {
+      "code": 3081,
+      "code_str": "E3081",
+      "lang": "c",
+      "category": "语义",
+      "icon": "array-size",
+      "title": "数组长度不能为负",
+      "explanation": "声明数组时方括号里的长度必须是正整数（或值为正的常量表达式），负数长度没有意义、无法分配空间。",
+      "common_causes": [
+        "常量表达式算出了负数（如 a[N-4] 而 N<4）",
+        "符号或数字写错",
+        "把访问下标误写进了声明里"
+      ]
+    },
+    {
+      "code": 3082,
+      "code_str": "E3082",
+      "lang": "c",
+      "category": "语义",
+      "icon": "type-expected",
+      "title": "结构体成员不能是函数类型",
+      "explanation": "C 的结构体成员不能是函数本身，只能放函数指针。把 int f(int); 写进结构体是 C++ 的成员函数语法；C 里应写成 int (*f)(int);。",
+      "common_causes": [
+        "把 C++ 成员函数写法带进了 C",
+        "想存回调函数却漏了星号",
+        "应改为函数指针成员 int (*f)(int);"
+      ]
+    },
+    {
+      "code": 3083,
+      "code_str": "E3083",
+      "lang": "c",
+      "category": "语义",
+      "icon": "null-deref",
+      "title": "NULL 指针解引用 (Null Dereference)",
+      "explanation": "程序通过 NULL 指针（地址 0x0）读写了内存。NULL 是「不指向任何对象」的哨兵值，解引用它没有合法的内存可访问。这是 C 初学者最常见的运行期错误。",
+      "common_causes": [
+        "指针声明后未初始化就被解引用（局部指针默认不是 NULL，但教学沙盒零初始化为 NULL）",
+        "malloc 返回 NULL（内存耗尽）未检查就使用",
+        "free(p) 后继续通过 p 访问（应立即置 NULL）"
+      ]
+    },
+    {
+      "code": 3084,
+      "code_str": "W3084",
+      "lang": "c",
+      "category": "语义",
+      "icon": "return",
+      "title": "非 void 函数存在未返回路径",
+      "explanation": "返回类型不是 void 的函数，必须保证每条出口路径都有 return——否则函数结束时返回值是未定义的（C 标准不保证任何值）。编译器可能返回 0、垃圾值或寄存器残留，恰好得到 0 只是巧合不是契约。补全缺失分支的 return，或把返回类型改为 void（如果本就不需要返回值）。",
+      "common_causes": [
+        "函数末尾忘了写 return 语句",
+        "if/else 分支只在一侧写了 return，落空的分支直坠到函数末尾",
+        "switch 漏写 default 或某个 case 忘了 return 后贯穿到末尾"
+      ]
+    },
+    {
+      "code": 3085,
+      "code_str": "W3085",
+      "lang": "c",
+      "category": "语义",
+      "icon": "undeclared",
+      "title": "隐式函数声明（C99 起已废弃）",
+      "explanation": "调用一个此前没有原型声明的函数是 C89 的隐式函数声明——C99 起已废弃、C11 起属约束违规，现代编译器默认直接报错。隐式声明假定函数返回 int 并按默认提升传参，一旦真实签名不同（返回指针/参数类型不同）就会产生未定义行为。在文件开头（或头文件里）补上函数原型即可。",
+      "common_causes": [
+        "在函数定义之前调用它，且没有前置原型声明",
+        "函数名拼写错误，恰好又没有原型可供比对",
+        "跨文件调用时忘记 #include 对应的头文件"
+      ]
+    },
+    {
+      "code": 3086,
+      "code_str": "E3086",
+      "lang": "c",
+      "category": "语义",
+      "icon": "index",
+      "title": "数组越界（运行期）",
+      "explanation": "程序运行中访问了数组边界之外的元素。C 不会在运行期自动检查下标，越界读写属于未定义行为——可能立刻被终止，也可能悄悄改坏相邻内存。有效下标是 0 到 数组长度-1。",
+      "common_causes": [
+        "循环条件写了 <=（应为 <）",
+        "循环变量的初始值或步长算错",
+        "用变量做下标且没有检查范围"
+      ]
+    },
+    {
+      "code": 3087,
+      "code_str": "E3087",
+      "lang": "c",
+      "category": "语义",
+      "icon": "buffer-overflow",
+      "title": "内存访问越界（运行期）",
+      "explanation": "程序通过指针访问了不属于任何变量、数组或堆块的地址——常见于指针算术走过头、解引用野指针或未初始化的指针。越界访问是未定义行为，教学运行时会在此处安全终止程序。",
+      "common_causes": [
+        "指针加减后越出了分配范围",
+        "解引用了未初始化或已失效的指针",
+        "栈上数组越界波及相邻区域"
+      ]
+    },
+    {
+      "code": 3088,
+      "code_str": "E3088",
+      "lang": "c",
+      "category": "语义",
+      "icon": "operator",
+      "title": "除零（运行期）",
+      "explanation": "除法或取模运算的除数为 0。整数除以 0 在 C 中是未定义行为（教学运行时会在此处安全终止程序）；浮点除零会得到 inf/nan，但通常也是逻辑错误的信号。计算前先确认除数不为 0。",
+      "common_causes": [
+        "循环或递推中除数变量可能变成 0",
+        "输入数据没有校验就直接当除数用",
+        "求平均数时计数还没累加就先做了除法"
+      ]
+    },
+    {
+      "code": 3089,
+      "code_str": "E3089",
+      "lang": "c",
+      "category": "语义",
+      "icon": "func-undefined",
+      "title": "函数已声明但未定义",
+      "explanation": "代码里只有函数的原型声明（如 int f(int x);），没有函数体。声明只告诉编译器「函数长什么样」，定义（函数体）才提供真正的实现——调用没有定义的函数时，编译器无法生成调用代码，传统编译器会在链接期报 undefined reference。请补上函数体，或确认该函数由其他编译单元提供。",
+      "common_causes": [
+        "只写了函数原型，忘记补函数体",
+        "函数体在另一个文件里，该文件没有加入编译",
+        "定义处的函数名拼写与声明不一致，被当成了另一个函数"
       ]
     }
   ],
   "frames": [
     {
-      "step_index": 12,
-      "code_line": 10,
+      "step_index": 23,
+      "code_line": 15,
       "code_file": "main.c",
       "func_name": "main",
-      "semantic_label": "执行",
+      "semantic_label": "调用 printf",
+      "semantic_label_id": "call",
       "algorithm_step": null,
-      "local_vars": [{ "name": "p", "addr": 4096, "is_local": true, "ty_name": "int*", "value": "0x1000" }],
-      "call_stack": [{ "func_name": "main", "return_line": 0 }],
+      "local_vars": [
+        {
+          "name": "p",
+          "addr": 1048572,
+          "is_local": true,
+          "ty_name": "int*",
+          "value": "65560"
+        }
+      ],
+      "call_stack": [
+        {
+          "func_name": "main",
+          "return_line": 0
+        }
+      ],
       "vis_events": [],
-      "heatmap_line": 10,
-      "heatmap_count": 1,
+      "heatmap_line": 15,
+      "heatmap_count": 6,
       "accessed_vars": [],
       "array_snapshots": [],
-      "pointer_snapshots": [],
+      "pointer_snapshots": [
+        {
+          "name": "p",
+          "addr": 1048572,
+          "ty_name": "int*",
+          "target_addr": 65560,
+          "target_name": "",
+          "status": "Freed"
+        }
+      ],
       "root_cause_hint": {
-        "category": "memory",
-        "one_liner": "访问已释放的堆块",
-        "related_lines": [8, 10],
-        "suggested_fix_kind": "reset_pointer",
-        "suggested_fix_line": 8,
-        "suggested_fix_desc": "free(p) 后立即 p = NULL"
+        "category": "UseAfterFree",
+        "one_liner": "这块内存在第 12 行被分配，在第 14 行被释放，现在又被访问了。free 后请立即将指针置为 NULL，避免继续使用。 相关指针: p。",
+        "related_lines": [
+          12,
+          14,
+          15
+        ],
+        "suggested_fix_kind": "SetNullAfterFree",
+        "suggested_fix_line": 14,
+        "suggested_fix_desc": "free 后执行 p = NULL"
       }
     }
   ],
   "idx": 0,
   "compileOk": true,
-  "stopped": "受检终止：E3060 访问已释放的堆内存 p[0]（分配于 line 6，释放于 line 8）",
-  "runStats": { "status": "trap", "return_value": 0, "steps_executed": 13, "waiting_input": false }
+  "stopped": "受检终止：[uaf] Use-After-Free (E3060)：你正在向一块已经在第 14 行（第 17 步）被 free 的内存读取（由第 12 行的 malloc/realloc 分配）。\n\n[timeline] 时间轴：分配 → 释放（第 17 步）→ 继续访问（第 24 步）。\n\n[cause] 原因：指针在 free 后没有置为 NULL，或者存在别名指针（另一个指针也指向同一块内存）。\n[fix] 解决方法：free(p) 后立即写 p = NULL;，并确保不再通过其他指针访问这块内存。\n[location] 发生在第 15 行 第 23 列",
+  "runStats": {
+    "status": "trap",
+    "return_value": 0,
+    "steps_executed": 24,
+    "waiting_input": false
+  }
 }

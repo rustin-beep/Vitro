@@ -11,6 +11,8 @@ import { projectRoot } from "../internal/capi.mts";
 import { Report, abiVersionAtLeast, deepEqual, diagErrors, head3, selfTest, stepIndexOf } from "./replay_s1_s5.mts";
 
 const MAIN = path.join(import.meta.dirname, "replay_s1_s5.mts");
+// #392 审阅 P2-1（2026-10-31）：native 产物统一带 .exe（跨平台）——平台三元
+// Linux 指向不存在文件（#359 同 root cause）
 const SERVE = path.join(
   projectRoot(),
   "moonbit",
@@ -20,7 +22,7 @@ const SERVE = path.join(
   "build",
   "cmd",
   "serve",
-  process.platform === "win32" ? "serve.exe" : "serve",
+  "serve.exe",
 );
 
 test("abiVersionAtLeast：下限语义（更高 major 过 / 同 major 比 minor / 垃圾串拒）", () => {

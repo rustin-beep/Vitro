@@ -32,17 +32,31 @@ fi
 # 定**限定 staged 文件**：别会话未 staged 的在制品即使被 fmt 重排也不判
 # 红（并发分档纪律——不替别人的会话出红；fmt 幂等重排无破坏面）。
 staged_mbt="$(git diff --cached --name-only --diff-filter=ACM -- 'moonbit/*.mbt' 'moonbit/**/*.mbt' 'moonbit/*.mbt.md' 'moonbit/**/*.mbt.md' 'scripts/*.mbt' 'scripts/**/*.mbt')"
-if [ -n "$staged_mbt" ] && command -v moon >/dev/null 2>&1; then
-  (cd moonbit && moon fmt >/dev/null 2>&1)
-  fmt_drift=""
-  for f in $staged_mbt; do
-    git diff --quiet -- "$f" 2>/dev/null || fmt_drift="$fmt_drift  $f"$'
+# #392 审阅 P2-2/P3-4（2026-10-31）：①moon 缺失时零提示 = 静默 fail-open
+#（#358 gofmt 同形——本闸是钩子自述「CI fmt 历史红最高频」面，比 gofmt 更
+# 该明示）→ stderr 明示 skip 禁静默；②fmt 真跑的 rc 此前被 `( ) >/dev/null`
+# 丢弃——fmt 自身失败（语法错等）静默放行 → rc 检出非零即红（fmt 失败与
+# 漂移是两种病，分开报）。
+if [ -n "$staged_mbt" ]; then
+  if ! command -v moon >/dev/null 2>&1; then
+    echo "skip moon fmt（moon 不可用——staged .mbt 未检查）" >&2
+  else
+    fmt_rc=0
+    (cd moonbit && moon fmt >/dev/null 2>&1) || fmt_rc=$?
+    if [ "$fmt_rc" -ne 0 ]; then
+      echo "moon fmt 自身失败（rc=$fmt_rc——工具链/语法错，非漂移）：本地 cd moonbit && moon fmt 看明细" >&2
+      status=1
+    fi
+    fmt_drift=""
+    for f in $staged_mbt; do
+      git diff --quiet -- "$f" 2>/dev/null || fmt_drift="$fmt_drift  $f"$'
 '
-  done
-  if [ -n "$fmt_drift" ]; then
-    echo "moon fmt 漂移——已代为格式化，重新 git add 后再提交：" >&2
-    printf '%s' "$fmt_drift" >&2
-    status=1
+    done
+    if [ -n "$fmt_drift" ]; then
+      echo "moon fmt 漂移——已代为格式化，重新 git add 后再提交：" >&2
+      printf '%s' "$fmt_drift" >&2
+      status=1
+    fi
   fi
 fi
 

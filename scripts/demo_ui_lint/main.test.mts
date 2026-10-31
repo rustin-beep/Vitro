@@ -366,7 +366,9 @@ test("relForBaseline：相对 demoDir 原样落相对路径，绝对 demoDir 归
 });
 
 test("writeRawBaseline：键序 = Go struct 声明序 + SetEscapeHTML 转义 + 尾换行", () => {
-  const dir = fs.mkdtempSync(path.join(fs.realpathSync(process.env["TEMP"] ?? "."), "dul-raw-"));
+  // #392 审阅 P3-2（2026-10-31）：TEMP 环境变量 Linux 不存在（#360 同族）
+  // → os.tmpdir() 跨平台；realpathSync（Windows 8.3 短路径展开）保留
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "dul-raw-"));
   const p = path.join(dir, "baseline.json");
   writeRawBaseline(p, [{ file: "demo/src/a.css", kind: "color", literal: "#fff", count: 1 }]);
   const text = fs.readFileSync(p, "utf8");

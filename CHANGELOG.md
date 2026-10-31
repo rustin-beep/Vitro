@@ -84,6 +84,46 @@
   （tsc -p 严格档 / oxlint / node:test 8/8）。spec §1 连坐「合流顺序
   契约」注记。
 
+### fix(ci+scripts): PR #392 审阅处置批——P2-1 protocol_frames 三元同族 / P2-2 moon 守卫三处 fail-open / P2-3 终验承诺勘正 / P3 四件（2026-10-31）
+
+- **P2-1（#359 同族漏改）**：`protocol_frames` 三处平台三元改直取
+  `serve.exe`——`main.mts:334`（Linux 指向不存在的 serve 且本闸无
+  VITRO_SERVE_MB override → 完全跑不了）+ `main.test.mts:13`（HAS_SERVE
+  恒 false → 端到端用例整块 t.skip 的**静默面**）+
+  `replay_s1_s5.test.mts:23`（路径指向不存在文件）。首批四元 grep 漏了
+  test 文件与 protocol_frames 族（issue #359「对照」段亦漏点）。
+- **P2-2（#358 只修了 2/4 守卫）**：moon 三处 `command -v moon` 短路
+  缺失时零提示的静默 fail-open（pre-commit:35 moon fmt / pre-push:10 /
+  pre-merge-commit:10 moon check）——同款明示 skip 补齐（隔离实测：
+  PATH 剥 moon + staged .mbt → `skip moon fmt（moon 不可用…）` stderr
+  明示 rc=0，pre-push 同形）。
+- **P2-3（终验承诺勘正）**：PR body「Linux 侧终验由 CI ubuntu lane 承担」
+  **不成立**——ci.yml 唯一 ubuntu job 是 cli-smoke-linux（只跑
+  vitro_cli_smoke），serve_smoke / replay / teaching_annotation_diff /
+  protocol_frames 全部 windows-latest，本批 CI 对 #359 四行零 Linux
+  判别力。勘正：核心假定（Linux native 产物带 .exe）由 cli-smoke-linux
+  的 `main.mts:151` 硬编码 serve.exe 且 2026-10-28 起绿背书成立；但
+  「终验」表述收回——**四闸 Linux 真跑的可持续终验 = 开 ubuntu lane
+  （涉及产物构建矩阵，立项登记不在本批）**，一次性 WSL 真跑待装 moon
+  后可补。
+- **P3-1（canon「双平台同语义」证伪）**：首版 `.replace(/\\/g,"/")` 只
+  转斜杠未让反斜杠段参与 `..` 折叠——`a\..\b.mbt` posix 得
+  `a/../b.mbt` / win 得 `b.mbt`。采纳审阅处方 `path.posix.normalize(
+  p.replace(/\\/g,"/"))`（实测消全部 3 个跨平台差；UNC 副作用域无引用）；
+  单测补 `a\..\b`→`b.mbt` 折叠锚 + 混合分隔符 + 正斜杠 `..` 三断言。
+- **P3-2**：`demo_ui_lint/main.test.mts:369` 同族 TEMP（#360 未触达面）
+  → `os.tmpdir()`（realpathSync 8.3 短路径展开保留）。
+- **P3-3（口径勘正）**：上批「修后 28/28 绿零残留」缺平台前提——Windows
+  上 `env -u TEMP -u TMP` 时 `os.tmpdir()` 落 `C:\WINDOWS\temp` EPERM
+  24/28（审阅判非缺陷：fail loud 优于静默污染，真实 Windows 恒有 TEMP）。
+  正确口径：**Linux/WSL 下 28/28 零残留**。
+- **P3-4（顺手修）**：pre-commit 的 `(cd moonbit && moon fmt >/dev/null
+  2>&1)` 丢 rc——fmt 自身失败（语法错）静默放行 → rc 检出非零即红
+  （fmt 失败与漂移两种病分开报）。
+- **验**：三钩子 bash -n + moon 缺失态实测双钩子明示 skip；canon 新锚
+  双平台跑（Windows 6/6）；protocol_frames Windows 47 帧回归；tsc/
+  oxlint/node:test 复跑绿。
+
 ### fix(ci+scripts): #358+#359+#360+#362 Linux 断供族四案批——提交钩子 exec 位 / serve 产物寻址 / TEMP 临时目录 / canon 平台耦合（2026-10-30）
 
 - **#358 提交防线 Linux 失明三件**：① `.githooks/` 三钩子入库 mode

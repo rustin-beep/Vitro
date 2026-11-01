@@ -28,6 +28,7 @@ import {
   DetRand,
   bucketMigrationOf,
   bucketOf,
+  clangRunCrashOf,
   codeMask,
   classifyAgainstBaseline,
   collectJudgeEpochInputs,
@@ -35,6 +36,8 @@ import {
   pickSeeds,
   collectZombieSeeds,
   exitDomainOf,
+  FREEZE_FLIP_GATE,
+  gateWorseningFlips,
   exitWordOf,
   firstIntLit,
   judgeCacheGet,
@@ -228,8 +231,9 @@ test("bucketOf：六桶分类 + 恶化序", () => {
   assert.equal(bucketOf(ok("1"), rej, rej), "VITRO_REJECT");
   assert.equal(bucketOf(ok("1"), { status: "TRAP", out: "t" }, { status: "TRAP", out: "t" }), "VITRO_TRAP");
   assert.equal(bucketOf(ok("1"), ok("2"), ok("2")), "WRONG_VALUE");
-  // CRASH 单臂：vt 被 na(OK) 替换 ⇒ 与 clang 同值即 AGREE（Go 口径如实登记）
-  assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, ok("1")), "AGREE");
+  // CRASH 单臂：#410 P2-2 臂选择对称化——js 臂 CRASH 不再被 native OK 吞成 AGREE
+  // （原「vt 被 na(OK) 替换 ⇒ AGREE」形态失真，issue #410 评论亲跑六组表第 2 行）
+  assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, ok("1")), "ARM_DIVERGENCE");
   // 两臂都非 OK 且含 CRASH ⇒ vt 保持 CRASH ⇒ ARM_DIVERGENCE
   assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, { status: "TRAP", out: "t" }), "ARM_DIVERGENCE");
   assert.ok((BUCKET_RANK["ARM_DIVERGENCE"] as number) > (BUCKET_RANK["WRONG_VALUE"] as number));
@@ -259,6 +263,76 @@ test("exitDomainOf 三形：rc 0 / 1..255 / 崩溃域（clang 与 vitro 两侧�
   assert.equal(exitDomainOf("", 42), "\nEXIT:42");
   assert.equal(exitDomainOf("s", 3221225477), "EXIT:3221225477", "崩溃域整替（部分 stdout 不可信）");
   assert.equal(exitDomainOf("s", -98), "EXIT:-98");
+});
+
+// ---- #410：clang 侧崩溃域识别（CLANG_CRASH）+ 臂选择对称化（P2-2）----
+
+test("#410 红锚：clang 运行段崩溃域识别 clangRunCrashOf——超时/NT 异常码/负哨兵/POSIX 信号", () => {
+  // 超时：runCmd 哨兵 -98 + ETIMEDOUT 须语义化 TIMEOUT（不再产出不可读的 EXIT:-98）
+  assert.equal(clangRunCrashOf(-98, "ETIMEDOUT", null), "TIMEOUT");
+  // 无法启动（ENOENT 等 spawn error）同为进程级异常
+  assert.equal(clangRunCrashOf(-98, "ENOENT", null), "CRASH");
+  // win32 NT 异常码域：STATUS_STACK_OVERFLOW 0xC00000FD = 3221225725（lc_108|div2shift 实锤形态）
+  assert.equal(clangRunCrashOf(3221225725, null, null), "CRASH");
+  assert.equal(clangRunCrashOf(3221225477, null, null), "CRASH", "0xC0000005 访问违例同域");
+  // POSIX 被信号杀死（wait status 无 rc、signal 携带死因）
+  assert.equal(clangRunCrashOf(-1, null, "SIGSEGV"), "CRASH");
+  // 正常退出域不误伤：rc 0 与 1..255
+  assert.equal(clangRunCrashOf(0, null, null), null);
+  assert.equal(clangRunCrashOf(42, null, null), null);
+  assert.equal(clangRunCrashOf(255, null, null), null);
+});
+
+test("#410 红锚：bucketOf clang CLANG_CRASH 分桶——两侧等价死不再失真为 VITRO_TRAP", () => {
+  const ok = (out: string) => ({ status: "OK", out });
+  const clangCrash = { status: "CLANG_CRASH", out: "EXIT:3221225725" };
+  const trap = { status: "TRAP", out: "值栈溢出" };
+  // 两侧等价死（clang 栈溢出真崩 + vitro 值栈溢出 trap）→ AGREE，非 VITRO_TRAP
+  assert.equal(bucketOf(clangCrash, trap, trap), "AGREE", "lc_108|div2shift 实锤形态：等价死");
+  // 两侧等价超时死（clang 20s 超时 + vitro 步数耗尽 trap）→ AGREE
+  assert.equal(
+    bucketOf({ status: "CLANG_CRASH", out: "EXIT:TIMEOUT" }, { status: "TRAP", out: "步数耗尽" }, { status: "TRAP", out: "步数耗尽" }),
+    "AGREE",
+    "lc_704|div2shift 实锤形态：等价超时",
+  );
+  // clang 崩而 vitro 两臂活着跑完 → 行为分歧面（值比对不可行，非 AGREE）
+  assert.equal(bucketOf(clangCrash, ok("1"), ok("1")), "WRONG_VALUE");
+  // 防钝化：CLANG_CRASH 不得被 vt CRASH 折进 ARM_DIVERGENCE（那是臂间分歧桶）
+  assert.equal(bucketOf(clangCrash, { status: "CRASH", out: "" }, { status: "CRASH", out: "" }), "AGREE", "两侧全崩同归等价死");
+});
+
+test("#410 P2-2 红锚：bucketOf 臂选择对称化——js 臂异常不再被 native OK 吞成 AGREE", () => {
+  const ok = (out: string) => ({ status: "OK", out });
+  // 亲跑六组表（#410 评论）：nj TRAP + na OK → 应为 VITRO_TRAP（修前 AGREE）
+  assert.equal(bucketOf(ok("1"), { status: "TRAP", out: "t" }, ok("1")), "VITRO_TRAP");
+  // nj CRASH + na OK → 应为 ARM_DIVERGENCE（修前 AGREE）
+  assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, ok("1")), "ARM_DIVERGENCE");
+  // 对称面回归锚：native 臂异常 + js OK 原逻辑不变
+  assert.equal(bucketOf(ok("1"), ok("1"), { status: "TRAP", out: "t" }), "VITRO_TRAP");
+  assert.equal(bucketOf(ok("1"), ok("1"), { status: "CRASH", out: "" }), "ARM_DIVERGENCE");
+});
+
+// ---- #412：freeze 恶化翻桶闸 ----
+
+test("#412 红锚：gateWorseningFlips 恶化方向过滤 + volatile 豁免 + 闸值边界", () => {
+  const f = (fp: string, from: string, to: string, volatile = false) => ({ fp, from, to, volatile });
+  // 恶化（rank 升高）计入；改善（rank 下降）不计
+  const rows = [
+    f("a|x", "AGREE", "CLANG_REJECT"), // 恶化 0→1
+    f("b|x", "AGREE", "ARM_DIVERGENCE"), // 恶化 0→5
+    f("c|x", "CLANG_REJECT", "AGREE"), // 改善 1→0（演进修正）
+    f("d|x", "VITRO_TRAP", "AGREE"), // 改善 3→0（#410 等价死翻桶）
+    f("e|x", "AGREE", "WRONG_VALUE"), // 恶化 0→4
+  ];
+  const worse = gateWorseningFlips(rows);
+  assert.deepEqual(worse.map((r) => r.fp), ["a|x", "b|x", "e|x"], "只有 rank 升高入闸面");
+  // volatile 条目（UB 抖动桶位非确定）不计入——与对账侧 classifyAgainstBaseline 豁免语义对称
+  const withVolatile = [...rows, f("v|x", "AGREE", "ARM_DIVERGENCE", true)];
+  assert.equal(gateWorseningFlips(withVolatile).length, 3, "volatile 恶化行不入闸面");
+  // 闸值边界：FREEZE_FLIP_GATE=5，≥5 条恶化须被拦（1f61dfb3 一次 55 条伪影翻转的病灶面）
+  assert.equal(FREEZE_FLIP_GATE, 5);
+  assert.equal(gateWorseningFlips(Array.from({ length: 4 }, (_, i) => f(`n${i}|x`, "AGREE", "WRONG_VALUE"))).length, 4, "4 条<5 闸不拦");
+  assert.equal(gateWorseningFlips(Array.from({ length: 5 }, (_, i) => f(`n${i}|x`, "AGREE", "WRONG_VALUE"))).length, 5, "5 条=闸值入拦截面");
 });
 
 test("返回码盲区不钝化：带码与丢码形态须可分辨（bucketOf 端到端）", () => {

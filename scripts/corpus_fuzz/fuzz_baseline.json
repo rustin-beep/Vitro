@@ -766,9 +766,9 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_108.c|div2shift": {
-      "bucket": "VITRO_TRAP",
+      "bucket": "AGREE",
       "issue": "known-mutator-trap",
-      "note": "div2shift 文本替换不改括号：/（优先级高于 +）→>>（低于 +）重绑定，mid=(left+right-left)>>1=right>>1 不依赖 left ⇒ build(4,6) 形态无限自递归——两侧等价死：vitro 值栈溢出 trap；clang win32 运行栈溢出真崩 EXIT:3221225725=STATUS_STACK_OVERFLOW（clangOutcome 崩溃记 OK 致桶名 VITRO_TRAP 语义失真——clang 非无事，#410）。旧基线 ARM_DIVERGENCE（两臂都跑完输出不同）=真病候选被栈 trap 盖住，挂账 #409；volatile=true：桶位随栈余量在 trap/分叉间翻转（PR #405 审阅 P1-B）",
+      "note": "div2shift 文本替换不改括号：/（优先级高于 +）→\u003e\u003e（低于 +）重绑定，mid=(left+right-left)\u003e\u003e1=right\u003e\u003e1 不依赖 left ⇒ build(4,6) 形态无限自递归——两侧等价死：vitro 值栈溢出 trap；clang win32 运行栈溢出真崩 EXIT:3221225725=STATUS_STACK_OVERFLOW（clangOutcome 崩溃记 OK 致桶名 VITRO_TRAP 语义失真——clang 非无事，#410）。旧基线 ARM_DIVERGENCE（两臂都跑完输出不同）=真病候选被栈 trap 盖住，挂账 #409；volatile=true：桶位随栈余量在 trap/分叉间翻转（PR #405 审阅 P1-B）",
       "volatile": true
     },
     "leetcode/lc_108.c|static_inject": {
@@ -913,9 +913,9 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_704.c|div2shift": {
-      "bucket": "VITRO_TRAP",
+      "bucket": "AGREE",
       "issue": "known-mutator-trap",
-      "note": "div2shift 优先级重绑定（同 lc_108）：mid=right>>1 不依赖 left，target 大于全部元素时 left 恒回摆——两侧等价死：vitro 步数耗尽 trap；clang 死循环，win32 侧 runCmd spawnSync 20s 超时哨兵 EXIT:-98（非进程退出码）、POSIX 侧 timeout 命令形态 rc=124（平台口径双注，PR #405 审阅 P2-3）；算子陷阱域非引擎病（#361 换键批定性）；超时一律记 OK 的判定面失真挂 #410"
+      "note": "div2shift 优先级重绑定（同 lc_108）：mid=right\u003e\u003e1 不依赖 left，target 大于全部元素时 left 恒回摆——两侧等价死：vitro 步数耗尽 trap；clang 死循环，win32 侧 runCmd spawnSync 20s 超时哨兵 EXIT:-98（非进程退出码）、POSIX 侧 timeout 命令形态 rc=124（平台口径双注，PR #405 审阅 P2-3）；算子陷阱域非引擎病（#361 换键批定性）；超时一律记 OK 的判定面失真挂 #410"
     },
     "leetcode/lc_704.c|static_inject": {
       "bucket": "CLANG_REJECT"

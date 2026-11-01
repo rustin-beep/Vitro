@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
+
+- **#410 主案（clangOutcome 崩溃域失明）**：clang 运行段进程崩溃/超时一律
+  `status:"OK"`、退出码只作 `EXIT:<code>` 尾行进比对域——两侧等价死被判
+  `VITRO_TRAP`（桶语义「vitro 挂 clang 无事」失真）。新纯函数
+  `clangRunCrashOf(rc, errCode, signal)`（rc<0 哨兵域〔ETIMEDOUT 语义化
+  TIMEOUT〕/ win32 NT 异常码域 ≥0x80000000 / POSIX 信号形态）→ clangOutcome
+  运行段崩溃态改判 `CLANG_CRASH`（与 parseVitro 的 CRASH 对称）；`bucketOf`
+  新分支：vitro 侧 TRAP/CRASH = 两侧等价死 → **AGREE**（vitro 活着跑完 =
+  行为分歧面归 WRONG_VALUE）。
+- **#410 EXIT 哨兵可读化 + 超时收割**：`EXIT:TIMEOUT` / `EXIT:<信号名>` /
+  `EXIT:SPAWN:<code>` / `EXIT:<NT码>` 人类可读优先（原 `EXIT:-98` 读者
+  误读为平台差异崩溃码）；win32 超时路径 `taskkill /T /F /IM` 收割（运行中
+  exe 文件被锁，收割须在 rmSync 前——死循环变体超时残留实锤，本批重冻
+  实战触发 1 次）。
+- **#410 P2-2（bucketOf 臂选择不对称）**：删「js 非 OK + native OK → 取
+  native」第二分支——js 臂 TRAP/CRASH 在「native 输出同 clang」时被静默
+  吞成 AGREE（只有 native 臂异常会报警）。既有锚 1 处随语义翻新
+  （`bucketOf(ok, CRASH_js, ok_native)` AGREE→ARM_DIVERGENCE，依据 issue
+  评论亲跑六组表第 2 行）。
+- **#412（freeze 恶化翻桶无闸）**：1f61dfb3 一次 55 条环境伪影翻转静默入库
+  的病灶面——新 `FREEZE_FLIP_GATE=5` 常量 + `gateWorseningFlips`（rank
+  升高且非 volatile；改善方向不拦）+ freeze 落盘前恶化 ≥5 条 fail loud
+  （rc=2 逐条清单），`-confirm-flips` 显式放行；volatile 豁免与对账侧
+  classifyAgainstBaseline 语义对称；非 freeze 传 `-confirm-flips` 即红。
+- **基线重冻**（判定域语义变更连坐）：318 条全量真跑，翻桶 2 条全为预测
+  改善方向——`lc_108|div2shift`、`lc_704|div2shift` 均 `VITRO_TRAP→AGREE`
+  （clang 栈溢出真崩/20s 超时 = 两侧等价死归位）；`lc_75|static_inject`
+  保持（clang UB 碰幸不崩）；P2-2 零恶化翻桶（无存量吞条目，修复为防
+  未来面）；重冻后对账轮 PASS（AGREE 251→253、判缓存 318 全命中）。
+- 锚：新增 4 测试（clangRunCrashOf 域 / CLANG_CRASH 分桶等价死 / P2-2
+  臂对称 / #412 闸边界 4-5-豁免三态），J9 双层红实录（SyntaxError 层 +
+  行为断言层 VITRO_TRAP↔AGREE 双红）；`scripts/corpus_fuzz` 测试 34 绿。
 ### test(moonbit): 审阅 v2 批 A2——测试锚诚实化（修锚不修行为：双形态锚 + KNOWN_DIVERGENCE 标注，2026-11-01）
 
 - **语义**：锚断言值 = 当前实际行为（CI 真绿非假绿），与 C 真值不一致处紧邻注释标

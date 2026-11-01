@@ -18,7 +18,7 @@
 | `vitro-baseline-corpus-workflow` | 新增/修改 `native/tests/cases/` 语料、补 golden、加用例后防线红 |
 | `vitro-facts-reconciliation` | `scripts/facts` 红/绿判读、写文档数字、J9 埋雷 |
 | `vitro-release-playbook` | mooncakes 发版、publish 前彩排、下载计数排查 |
-| `vitro-workspace-review` | 审阅未提交改动/最近提交批/人写脚本与方案主张（五阶段规程+演化机制） |
+| `vitro-workspace-review` | 审阅未提交改动/最近提交批/人写脚本与方案主张（五阶段规程+演化机制）；全仓深审/周期体检（多代理并行+主控验证层） |
 
 ## 安装
 

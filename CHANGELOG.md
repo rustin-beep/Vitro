@@ -114,8 +114,21 @@
   两份机改；facts `--strict check` 绿 + testcount 闸 PASS。
 - **挂账**：级联伪错误（`bump_global_offset` 返 None 后符号未登记，带出
   4 条「未声明的标识符」噪音——clang 无此形态）挂 #38 评论；freeze 大面积
-  翻桶无闸（55 条翻转静默入库、`bucketMigrationOf` 只覆盖换键路径）新开
-  issue（#410 同族）。
+  翻桶无闸（55 条恶化向伪影翻转静默入库〔含 lc_150 UB 合法抖动改善向共
+  56〕、`bucketMigrationOf` 只覆盖换键路径）立案 #412（#410 判定域同族）。
+- **PR #411 审阅处置（2026-11-02）**：**P2-1 采纳**——新 explanation 曾把
+  「标识符未声明」列为「指向你的代码」举例，与 causes 第 2 条「级联伪错误」
+  自相矛盾（级联归用户账 = 半撒谎）：举例只留容量上限，级联语义只落
+  causes 第 2 条；锚加第四断言 `explanation` 不得含「未声明」（修前红）+
+  **P3③ 连坐注释**（causes 第 2 条描述 #38 立码前引擎级联缺陷行为，#38 修
+  后须连坐改写）；e08 payload 两份各 1 行重导（golden 零变——explanation
+  不进渲染）。**P2-2 登记 #410**（不本批修——判定域结构变更）：
+  `bucketOf` 臂选择不对称——`js TRAP/CRASH + native OK → AGREE`（js 臂异常
+  被吞），反向才 VITRO_TRAP/ARM_DIVERGENCE；#409 机理句不受影响（lc_84
+  语境 native 必 REJECT，`js CRASH + native REJECT → ARM_DIVERGENCE` 亲验
+  成立，任一臂 CRASH 均可达）。P3① E0 卡级联重复 N 次（FIX 行按码去重）
+  登记 #38；P3② icon `unsupported` 不动（protocol_frames 帧 9 结构锚，
+  且「未分类」语义不撒谎）。
 
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 

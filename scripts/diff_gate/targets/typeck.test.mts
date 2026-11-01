@@ -12,6 +12,7 @@ import {
   makeTypeckGolden,
   saveTypeckDigest,
   serializeTypeckDigest,
+  typeckTarget,
   type TypeckDigest,
 } from "./typeck.mts";
 import { projectRoot } from "../../internal/capi.mts";
@@ -99,6 +100,12 @@ test("真实仓库：typeck 在 baseline 上 PASS 且 fork 例单列（与 Go �
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /FORK\(known-golden-skip\) function_pointer_return_ptr\.c/);
   assert.match(r.stdout, /typeck_diff\[golden\]: PASS——\d+ 个 case hash 与冻结基线一致（语料 baseline，1 例 known-fork 跳过）/);
+});
+
+test("S05-C7（2026-11-01 审阅 v2）：sourcesPolicy 显式 strict（防线强度不依赖骨架默认值）", () => {
+  // 原为隐式依赖骨架默认 strict（探针实证语料加注释即红）——默认值若未来
+  // 变更，typeck 防线强度无锚可拦（对照 parser 的显式 presence + test 锚）。
+  assert.equal(typeckTarget.sourcesPolicy, "strict");
 });
 
 test("真实仓库：typeck --selftest 必红（J9；判红码 2 → 由 compareGolden 返 1）", () => {

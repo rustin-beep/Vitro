@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// host_route_coverage：110 路由 ↔ host 实现覆盖闸（#273 存量 Go 重写批）。
+// host_route_coverage：路由表 ↔ host 实现覆盖闸（#273 存量 Go 重写批）。
+//（路由计数不进注释——数字必陈旧，闸自锁 ≥100 下限；2026-11-01 审阅 v2 R1e-Y6 清注。）
 //
 // 判据：路由表每个名字必须解析到 moonbit/host 下的 `pub fn host_<name>`
 // （或经 host_route_rules.json 的 aliases 命中实现名）；vm_whitelist 豁免但

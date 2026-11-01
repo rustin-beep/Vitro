@@ -131,7 +131,12 @@ export function checkTree(baseArg: string): string[] {
       const rel = path.relative(base, p);
       if (gitIgnored(rel)) continue;
       if (rel === "demo-evidence" || rel.startsWith("demo-evidence" + path.sep)) continue;
-      if (rel.startsWith("tools" + path.sep + "cache")) continue;
+      // tools/cache = 外部工具下载缓存（binaryen 等）：原根下形态 + wasmopt .mts 化后
+      // 的 moonbit/tools/cache 形态（2026-11-01 审阅 v2 批 A1 实锤：后者的
+      // package/LICENSE 缺末行换行，「本地跑过一次 wasmopt」即本闸与 npm test 恒红；
+      // git ls-files --ignored 面实测未列出该目录故须硬编码——按路径前缀精确剪，
+      // 不按段名「tools」剪：moonbit/teaching/tools 是 content_parser.c 真源树）
+      if (rel.startsWith("tools" + path.sep + "cache") || rel.startsWith(path.join("moonbit", "tools", "cache"))) continue;
       if (rel.split(path.sep).some((seg) => SKIP_SEGS.has(seg))) continue;
       if (e.isDirectory()) {
         // 嵌套 git worktree / submodule：独立仓库，不属于本仓内容（根下审阅

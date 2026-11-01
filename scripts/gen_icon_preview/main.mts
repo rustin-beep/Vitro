@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// 图鉴生成器 —— 展示层排版（非判定型；判定型闸是 Go 的 scripts/icon_catalog）。
+// 图鉴生成器 —— 展示层排版（非判定型；判定型闸是 scripts/icon_catalog/main.mts——
+// 2026-11-01 审阅 v2 S08 次级勘正：原注「Go 的」已随 #273 .mts 化失实）。
 //
 // 读 moonbit/icons/*.svg + moonbit/icons/index.tsv，按 category 分组排卡片，产出
 // assets/icons-preview.svg：每卡 = 图标 + 英文 id + 中文短标签，深色底（图鉴是唯一
@@ -28,7 +29,12 @@ const CH = 96;
 const COLS = 6;
 const GAP = 4.8;
 const X0 = 40;
-const ORDER = ["词法", "语法", "语义", "C++", "运行时"];
+// 分组顺序单源 = scripts/icon_catalog/rules.json 的 categories（2026-11-01 审阅 v2
+// S08 次级）：原硬编码五组缺 rules 的 "ui" 值——加 ui 图标时会静默从图鉴消失且
+// -check 两边同丢仍绿（丢弃行为有测试锚但无告警）。读规则后空组由 buildSvg 的
+// 长度过滤自然跳过（当前 tsv 无 ui 行 ⇒ 产物零变化）。
+const RULES = path.join(ROOT, "scripts", "icon_catalog", "rules.json");
+const ORDER: readonly string[] = (JSON.parse(fs.readFileSync(RULES, "utf8")) as { categories: string[] }).categories;
 
 // 图鉴专用中文短标签：tsv 的 desc 是完整语义（最长 9 字，96px 卡装不下），
 // 这里给一个 4~6 字的短标签。新增 id 时必须补，否则回落成 id 本身（可接受的退化）。

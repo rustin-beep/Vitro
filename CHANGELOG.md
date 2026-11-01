@@ -120,6 +120,44 @@
   判 survived——survived 清单含 e2e-only 可杀体，杀阵由常规轮 CI test 步
   全量跑 + 本地突变实录（M6/M7 双实证）保证。
 
+#### 同批第二笔：遗留清账（用户拍板「不登记直接修」，2026-11-02）
+
+- **R1e 黄 7 条 CI 措辞遗产全清**：Y1 protocol_frames 步名去 dual-host；Y2 serve
+  smoke 步名去 dual-host/Exit 3；Y3 libc parity 步名与注释去 Rust oracle 口径
+  （改 golden digest 基线比）；Y4 gates-native 三块注-步错位归位（teaching 注↔
+  teaching 步、D19 注↔豁免审计步，S7 批五号 wasm 冒烟孤儿注删除——现役形态
+  = serve_channel host.js 冒烟）；Y5 wasmopt.mts / ci.yml「全量 440 例」数字出
+  注释；Y6 ci.yml 两处 + host_route_coverage 头注「110 路由」数字出注释；Y7
+  cli_smoke 步内注释双臂→三臂。
+- **S13b 四低危 + P6 + P10**：P4 保险丝升格为**域名白名单断言**（原只锚 irm|curl
+  两动词且只扫 workflows/——iwr/wget/actions 内联均漏；现 moon 安装域字面量
+  在 .github/ 下任何出现含注释须位于 setup-moonbit/，拆串写法防 grep 自咬；
+  J9：注入注释行即红）；P5 go.mod toolchain 注释勘正（setup-go 为幻觉，实为
+  GOTOOLCHAIN=auto 隐式）；P6 concurrency group 加事件后缀（schedule 全量重算
+  轮不再被 push 取消，L37 注释语义误读改写）；P13 pages.yml paths 补
+  .moonbit-version/.node-version；**P10 包外散 .mbt 静态闸**（source_hygiene
+  检查面②：git 跟踪 moonbit/**/*.mbt 向上找 moon.pkg 到 moon.mod 仍无即红——
+  AGENTS 13.5 从人肉纪律变机判，J9 fixture 红/补 moon.pkg 绿，真实仓库零散件）。
+- **S09-A2/S05 探针 p14 rc=3 零锚**：cli_smoke A 组补 9——`run --max-steps 1000`
+  死循环 fixture 三臂同守 want 3（五值表唯一无壳侧锚的值；壳误折 rc=2 即红）。
+- **S05 四残留**：C1 vm wasm 臂引擎产物（gateway/wasm/wasm.wasm）缺件 fail loud
+  （原缺引擎时 21 例同文误导性 DIFF；J9 改名产物即 fail loud、还原绿）；C2
+  freshness 头注撤 moon run 时代论证 + 全树 mtime 软警告（排除 _build/tools/
+  *_gen.mbt/*_wbtest.mbt——三处实测误报源；touch 源码即警告，正常态零警告）；
+  C4 codegen_skeleton 节 CI 接线（gates-diff codegen 单独补行，13 例本地 PASS）；
+  C7 typeck sourcesPolicy 显式 strict + test 锚；C8 moonDump 补 timeout 600s。
+- **S08 三件 + 三次级**：S08-3 icons_gen.mbt 头注「52 枚」→ `${ids.length}` 传导
+  （产物再生 1 行 diff，-check/icon_catalog/moon check 绿）；S08-4 icons.ts 缺失
+  即红（J9：删文件修前 rc=0 → 修后 rc=1）；S08-6 gen_course 补 shebang 入驱动集
+  + exceptions.json kind=retired-fallback 登记 + 头注补 npm ci 自举前置；次级：
+  icon_catalog RE_ZERO_LEN 补负号形态（J9 h-.01 修前红→修后绿）、gen_icon_preview
+  ORDER 改读 rules.json categories 单源（空组自然过滤，产物零变化）+ 头注 Go→.mts
+  勘正、goJSONString 下沉 genio（gen_icons/gen_course 两份逐字重复收编）。
+- **杂项**：editorconfig_check 补 moonbit/tools/cache 前缀剪枝（binaryen 下载缓存
+  LICENSE 缺末行换行致本地恒红；按路径前缀不按段名——moonbit/teaching/tools 是
+  content_parser.c 真源树，探针证未误剪）；cli_smoke armCmd 删死参（oxlint 存量
+  警告归零）。
+
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 
 - **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后

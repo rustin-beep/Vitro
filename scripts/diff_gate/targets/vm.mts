@@ -8,11 +8,13 @@
 // 无位置参数默认遍历五语料。骨架只提供工具（语料扫描 / sha / 输出协议）。
 //
 // **不迁（oracle 侧）**：runOracle / compare 的 oracle 分支 / freezeDigest
-//（需 vivo_cli）/ 新鲜度门禁。工序④删区后 oracle 永不存在，`--freeze` 必然
-// fail；而**新鲜度门禁的动机随 moon run 消失**——实测 node spawnSync 下
-// moon run 稳定（8+5 次全 0，`--dump-memory` 产精确 1MB，`-i` 注入有效，
-// 单次 ~125ms），moon run 自带构建检查，「构建失败照跑旧 exe 报假绿」的死角
-// 不存在。wasm 臂仍消费 build 产物（CI 由 build job 保证），故只查存在性。
+//（需 vivo_cli）。工序④删区后 oracle 永不存在，`--freeze` 必然 fail。
+// **freshness 口径勘正（2026-11-01 审阅 v2 S05-C2）**：本文件自 2026-10-23 起
+// native 臂已改**预编译 run.exe 直跑**（原「moon run 消除假绿死角」的论证随之
+// 失效——exe 直跑不自带构建检查）：CI 由 build-artifacts 每轮重建闭环；本地
+// 侧补**源码 mtime 新于产物即警告**的软检查（warnStaleExe，不判红——mtime 是
+// 提示不是证据）。wasm 臂消费 build 产物（存在性检查 + S05-C1 引擎产物缺件
+// fail loud），mtime 面同警告覆盖。
 //
 // 三通道（golden 模式 = mb 当前值 ≡ 清单登记值）：
 //   1. stdout：剥引擎标记行后的纯程序输出（sha16）
@@ -38,6 +40,8 @@ const DIGEST_REL = "scripts/vm_diff/golden_digest.json";
 const SKIP_REL = "scripts/vm_diff/skip_list.json";
 const KNOWN_REL = "scripts/vm_diff/known_diffs.json";
 const WASM_SHELL = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js";
+/** wasm 臂引擎产物：壳 js__load__gateway 的默认解析目标（VITRO_WASM_MOD 可覆盖）。 */
+const WASM_ENGINE = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm";
 /** native 臂被测物：预编译 exe 直跑（Go 版同路径；CI 由 build artifact 保证存在）。 */
 const RUN_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
 const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale"];
@@ -315,12 +319,23 @@ export function runVm(argv: string[], root: string): number {
   }
   void golden;
 
-  if (backend === "wasm" && !fs.existsSync(path.join(root, WASM_SHELL))) {
-    fail(`${WASM_SHELL} 不存在（wasm 臂需 build 产物：moon build --release --target js cmd/vitro_wasm）`);
+  if (backend === "wasm") {
+    if (!fs.existsSync(path.join(root, WASM_SHELL))) {
+      fail(`${WASM_SHELL} 不存在（wasm 臂需 build 产物：moon build --release --target js cmd/vitro_wasm）`);
+    }
+    // 引擎产物存在性 fail loud（2026-11-01 审阅 v2 S05-C1）：原实现只查壳不查
+    // 引擎 wasm——缺引擎时全部例呈「stdout 同一 hash=壳错误输出」的同文误导性
+    // DIFF（方向红但形态谎报行为漂移）；与 native 臂的 run.exe 缺件检查对称。
+    if ((process.env.VITRO_WASM_MOD ?? "") === "" && !fs.existsSync(path.join(root, WASM_ENGINE))) {
+      fail(
+        `${WASM_ENGINE} 不存在（wasm 臂引擎产物，壳默认加载它——先 moon build --release --target wasm-gc gateway/wasm && node scripts/wasmopt/main.mts <产物>；或 VITRO_WASM_MOD 显式指定）`,
+      );
+    }
   }
   process.stderr.write(
     "vm_diff: [裁判切换] oracle 面已随工序④退役——本判定固定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）\n",
   );
+  warnStaleExe(root, backend);
 
   const skips = loadJSON<SkipEntry[]>(root, SKIP_REL, fail);
   const known = loadJSON<KnownEntry[]>(root, KNOWN_REL, fail);
@@ -479,8 +494,48 @@ export function runVm(argv: string[], root: string): number {
   return diff > 0 ? 1 : 0;
 }
 
-function srcSHAOf(file: string): string {
-  const h = crypto.createHash("sha256");
+/**
+ * 本地 freshness 软警告（S05-C2，2026-11-01 审阅 v2）：exe 直跑不自带构建
+ * 检查——moonbit/ 全树（排除 _build）最新 .mbt mtime 新于被测产物时提示
+ * 「测的可能是旧产物」。不判红：mtime 是提示不是证据（checkout 会刷源码
+ * mtime）；CI 由 build-artifacts 每轮重建闭环，不触此警告。
+ */
+function warnStaleExe(root: string, backend: "native" | "wasm"): void {
+  const rel = backend === "native" ? RUN_EXE : WASM_ENGINE;
+  let prodM: number;
+  try {
+    prodM = fs.statSync(path.join(root, rel)).mtimeMs;
+  } catch {
+    return; // 缺件由各自的存在性检查 fail loud
+  }
+  let newest = 0;
+  const walk = (d: string): void => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      // _build = 构建产物；tools = 工具缓存（binaryen 等，gitignored）——均非源码
+      if (e.name === "_build" || e.name === "tools") continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      // *_gen.mbt = @generated 产物（新鲜度由各自 -check 闸保证，生成器重跑只
+      // 刷 mtime 不改语义）；*_wbtest.mbt = 白盒测试文件（只进 moon test 构建，
+      // 不进 release 产物）——均非被测产物的输入，不计入（两者均实测误报过）
+      else if (e.name.endsWith(".mbt") && !e.name.endsWith("_gen.mbt") && !e.name.endsWith("_wbtest.mbt")) {
+        newest = Math.max(newest, fs.statSync(p).mtimeMs);
+      }
+    }
+  };
+  try {
+    walk(path.join(root, "moonbit"));
+  } catch {
+    return;
+  }
+  if (newest > prodM) {
+    process.stderr.write(
+      `vm_diff: ⚠ moonbit/ 源码新于 ${rel}（本地 freshness 软警告——测的可能是旧产物；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/run / wasm-gc gateway/wasm 等）\n`,
+    );
+  }
+}
+
+function srcSHAOf(file: string): string {  const h = crypto.createHash("sha256");
   for (const p of [file, stdinFor(file)]) {
     if (p === "") continue;
     h.update(fs.readFileSync(p));

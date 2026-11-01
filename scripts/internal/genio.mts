@@ -8,6 +8,8 @@
 //                   gen_host_route 两份是逐字复制），支持 `-k v` 与 `-k=v`
 //   ③ emitWithMoonFmt —— 转 3 份「写盘 → moon fmt → 回读 → LF 归一比较 →
 //                   无条件还原」同构段（单产物 = 长度 1 的数组）
+//   ④ goJSONString —— 转 2 份逐字重复的 Go encoding/json 字符串形态复刻
+//                   （gen_icons / gen_course；2026-11-01 审阅 v2 S08 次级下沉）
 //
 // 明确**不**收：-check 的成功/失败文案、退出码分流（fatal vs 汇总 bool）、
 // -selftest 调度。那些是各生成器的真实设计差异，统一会变成参数迷宫——判据是
@@ -31,6 +33,27 @@ export function makeFail(prefix: string, code = 2): GenFail {
     process.stderr.write(prefix + msg + "\n");
     process.exit(code);
   };
+}
+
+/**
+ * Go encoding/json 字符串形态（HTML 三字符 `<>&` 与 U+2028/U+2029 转义）——
+ * 产物与旧 Go 生成器保持同一编码口径（icons.json / lessons.ts 逐字节锁）。
+ */
+export function goJSONString(s: string): string {
+  return JSON.stringify(s).replace(/[<>&\u2028\u2029]/g, (c) => {
+    switch (c) {
+      case "<":
+        return "\\u003c";
+      case ">":
+        return "\\u003e";
+      case "&":
+        return "\\u0026";
+      case "\u2028":
+        return "\\u2028";
+      default:
+        return "\\u2029";
+    }
+  });
 }
 
 export interface FlagSpec {

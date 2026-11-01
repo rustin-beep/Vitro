@@ -14,7 +14,7 @@ import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../internal/capi.mts";
-import { emitWithMoonFmt, makeFail } from "../internal/genio.mts";
+import { emitWithMoonFmt, goJSONString, makeFail } from "../internal/genio.mts";
 
 interface Rules {
   assets_dir: string;
@@ -81,24 +81,6 @@ function goJSONFloat(f: number): string {
     return f.toExponential().replace(/e([+-])0+(\d)/, "e$1$2");
   }
   return String(f);
-}
-
-// Go encoding/json 字符串（HTML 三字符与 U+2028/U+2029 转义）。
-function goJSONString(s: string): string {
-  return JSON.stringify(s).replace(/[<>&\u2028\u2029]/g, (c) => {
-    switch (c) {
-      case "<":
-        return "\\u003c";
-      case ">":
-        return "\\u003e";
-      case "&":
-        return "\\u0026";
-      case "\u2028":
-        return "\\u2028";
-      default:
-        return "\\u2029";
-    }
-  });
 }
 
 export function extractPaths(svg: string): string[] {
@@ -214,7 +196,7 @@ const MBT_TEMPLATE = (ids: string[], icons: Map<string, IconEntry>, digest: stri
   out += "// 图标资产 MoonBit 单源（issue #27 方案 C）：digest 与 moonbit/icons/icons.json\n";
   out += "// 同源同值，gen_icons -check 锁两产物字节一致。本包 L0 纯数据零依赖。\n";
   out += `// digest ${digest}\n`;
-  out += "\n///|\n/// icons.get 帧契约常量（icons/v1——几何层契约的 MoonBit 单源）。\nconst ICONS_SCHEMA : String = \"icons/v1\"\n\n///|\n/// 资产表 digest（52 枚 svg 按 id 字典序逐个 sha256 汇总，与 icons.json 同算法同值）。\n";
+  out += `\n///|\n/// icons.get 帧契约常量（icons/v1——几何层契约的 MoonBit 单源）。\nconst ICONS_SCHEMA : String = "icons/v1"\n\n///|\n/// 资产表 digest（${ids.length} 枚 svg 按 id 字典序逐个 sha256 汇总，与 icons.json 同算法同值）。\n`;
   out += `const ICONS_DIGEST : String = ${q(digest)}\n`;
   out += `\nconst ICONS_VIEWBOX : String = ${q(attrs["viewBox"] ?? "")}\n`;
   out += `\n///|\n/// 描边宽度（相对 24 viewBox；消费端换算 strokeWidth = ${attrs["stroke-width"] ?? ""} × S / 24）。\nconst ICONS_STROKE_WIDTH_TEXT : String = ${q(attrs["stroke-width"] ?? "")}\n`;
@@ -445,8 +427,17 @@ if (invokedDirectly) {
         fs.rmSync(tmp, { force: true });
       }
     }
-    if (demoTsPath && fs.existsSync(demoTsPath)) {
-      const curTs = fs.readFileSync(demoTsPath, "utf8");
+    if (demoTsPath) {
+      // 缺失即红（S08-4，2026-11-01 审阅 v2）：原「存在才验」豁免——删 icons.ts
+      // 后 -check 静默绿（探针实锤 rc=0），防线退化为 svelte-check 的构建失败
+      // 形态（排障线索差一跳）。icons.ts 是入库产物（renderDemoTs 头注声明），
+      // 与 icons.json/icons_gen.mbt 同口径：三产物缺失均红。
+      let curTs: string;
+      try {
+        curTs = fs.readFileSync(demoTsPath, "utf8");
+      } catch (e) {
+        fail(`${rules.demo_ts} 缺失：${e instanceof Error ? e.message : String(e)}（跑 node scripts/gen_icons/main.mts -demo 生成）`);
+      }
       const want = renderDemoTs(ids, geo.icons, geo.digest);
       if (curTs.replace(/\r\n/g, "\n") !== want.replace(/\r\n/g, "\n")) {
         fail(`${rules.demo_ts} 与真源不一致，跑 node scripts/gen_icons/main.mts -demo 同步`);

@@ -51,8 +51,10 @@ test "serve_static_catalogs_parse_channels" {
     r3.contains("v0.2") || r3.contains("reserved"),
     msg="预留位台账在表",
   )
+  // 清场失败须 fail loud（审阅 v2 批 A2 / M28 B4：原 `_ => false` 静默吞，
+  // catalog 表残留会污染后续测试且无信号；对齐本测试头部装载的 fail 形态）
   let _ = @diag.install_catalog_texts("{\"__clear__\":true}") catch {
-    _ => false
+    _ => fail("清场失败：catalog 表残留将污染后续测试")
   }
 }
 
@@ -315,9 +317,18 @@ test "serve_memory_dump_roundtrip" {
   // #49 批二：memory.dump 帧 = dump_memory_raw 单源的 base64 投影——
   // 往返锚（帧值 == @util.base64_encode(vm.dump_memory_raw())）+ 常量
   //（1MB）+ 未 run 态零前置（诚实语义，对齐 memory.regions 形态）
+  // 修活（审阅 v2 批 A2 / M28 B1）：旧帧 source 用单反斜杠 `\n`（MoonBit
+  // 字符串内即裸 LF），json_parse 按 RFC 8259 拒字符串内裸 LF → compile
+  // 从未发生（证失效：加 compiled 断言即红 158/157/1）→ 三断言一直在「未
+  // 编译默认映像」上恒绿。改 `\\n`（JSON 转义形态，与本文件头注口径一致）
+  // + 前置 compiled 可观测断言，使往返锚真正锁「run 后内存映像」。
   let s = @session.Session::new()
   let _ = serve_handle(
-    s, "{\"id\":0,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\nint main() { printf(\\\"hi\\\"); return 0; }\n\"}}",
+    s, "{\"id\":0,\"method\":\"compile\",\"params\":{\"source\":\"#include <stdio.h>\\nint main() { printf(\\\"hi\\\"); return 0; }\\n\"}}",
+  )
+  assert_true(
+    s.compile.compiled,
+    msg="前置可观测：compile 必须真的发生",
   )
   let _ = serve_handle(s, "{\"id\":1,\"method\":\"run\"}")
   let (r, _) = serve_handle(s, "{\"id\":2,\"method\":\"memory.dump\"}")

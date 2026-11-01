@@ -180,8 +180,6 @@ test "serve_compile_struct_fields_populated" {
 // 的 line 断言承接（构造即真值，无需回扫）。
 
 ///|
-
-///|
 /// #92（2026-10-14 报/修）：codegen 错误（E0 无码——#38 立码段拍板前的
 /// 过渡形态）与 typeck 警告共存时 W 在 E 前——下游按首条/严重级分流把
 /// 阻断态显示成黄色提示（issue 实测 UI 形态）。修复：gen 失败路径对

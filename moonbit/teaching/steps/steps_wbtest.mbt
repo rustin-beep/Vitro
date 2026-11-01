@@ -2,6 +2,18 @@
 // 切分表（Rust features.rs tests 21 例照搬——U1#1 P0-1 连续大写缩写
 // 修复的等价性表格化锚）+ sorting 判据双锚（Rust detector/sorting tests
 // 同款）+ infer 语义锚 + parse_int/is_signature_line 边界。
+//
+// ── 锚值来源声明（审阅 v2 批 A2 标注，2026-11-01；M34b §三）──
+// 本文件全部「照搬 Rust tests」的锚值，自 Rust 对照区 2026-10-05 物理删区
+// （档案 tag `rust-oracle-freeze`）起已是**无 oracle 的历史快照**——教学推断
+// 器（infer_* 判据/文案）没有 C 编译器那样的外部真值源，锚只能防回归、
+// 不能证正确（Vitro 自证循环）。M34b 以探针实锤的推断失真面（gcd 余数取
+// 错变量 A1、冒泡 j 域守卫 A2、BFS/DFS visit 判据 A3、KMP skip 死分支 A4、
+// 快排 partition_init A5、string_reverse swap 误标 A6、下标硬编码 A7）在
+// 本文件**零锚覆盖**（覆盖缺口即病灶温床）。本批只做标注登记不改锚值
+// 不补锚——实质修复与真值源建设（md+.c 教学真源扩到推断器层）留教学
+// 真值源批。再生命格锚翻面规则：判据修复批须同时给出「修前错形态」
+// 反例锚（PR #347 swap 反例矩阵形态）。
 
 ///|
 /// 锚一：has_word 等价性表（Rust has_word_segmentation_table 21 例逐条）。

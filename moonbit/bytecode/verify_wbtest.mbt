@@ -371,3 +371,385 @@ test "verify: 三元/条件表达式 else 块不假红" {
     msg="else 块形态必须零违约（入口权威化失效即假红）：\{verify_violations_json(vs)}",
   )
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// 审阅 v2 批 A2（2026-11-01）——M15 C-1 红锚覆盖缺口补齐（J9 会红义务）
+// 规则总表 27 条中原 15 注入锚之外的检查点逐条注入违约；形态沿用
+// kind+detail 双断言。两条特殊：
+//  · L609 常规模式用户段 Call 栈深——**双形态锚**（当前被 `>=1000 无上界`
+//    的 libc 判定吞成 Unknown，零违约；KNOWN_DIVERGENCE 注明 B 批翻面），
+//    并以 library 模式同构造红锚证明规则本体活着（M15 E1/E1b 复刻）。
+//  · wrapper_ip 远越界（E6 形态 wrapper_ip=99）当前自崩（Array::at panic，
+//    M15 A-2），**本批不锚**——留 B 批修 verify_function_segment 访问顺序后
+//    补；此处只锚 wrapper_ip=0 的结构化红形态（E6b）。
+//  · 补锚过程实锤两条规则为**结构性死分支**（M15 规则总表 27 条实活 25）：
+//    L359 段间无缝（idx≥1 不可达）/ L377 wrapper 起点（恒假）——对应锚改锁
+//    真实兜底规则（L538 段尾非控制类 / L824 wrapper 越界），死分支登记 B 批。
+// ═══════════════════════════════════════════════════════════════════════
+
+///|
+/// 双函数夹具（main 1089 + helper 1090，helper 两参）：
+/// code：[0]Jump 6 / [1]Call 1090 [2]PushConst 0 [3]Ret（main 段 [1,4)）/
+/// [4]PushConst 7 [5]Ret（helper 段 [4,6)）/ [6]Call 1089 [7]Ret（wrapper）。
+/// main 体 Call helper 时栈深 0 却要弹 2——Call 栈深规则的违约构造。
+fn mk_two_func_call_underflow() -> CompileOutput {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  let code : Array[@opcode.Instruction] = [
+    @opcode.Instruction::new(Jump, 6, loc),
+    @opcode.Instruction::new(Call, 1090, loc),
+    @opcode.Instruction::new(PushConst, 0, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+    @opcode.Instruction::new(PushConst, 7, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+    @opcode.Instruction::new(Call, 1089, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+  ]
+  o.func_index.set("helper", 1090)
+  o.func_table.set("helper", {
+    ip: 4,
+    arg_count: 2,
+    param_count: 2,
+    local_count: 8,
+    param_sizes: [1, 1],
+    return_type: @ast.Type::int(),
+    is_variadic: false,
+    local_buffers: [],
+  })
+  { ..o, code, }
+}
+
+///|
+/// KNOWN_DIVERGENCE（M15 A-1，verify.mbt:609）：常规模式下 `Call 1090`
+/// （用户段）因 `operand >= BYTECODE_LIBC_BASE_INDEX` 无上界被整体判为
+/// libc 段 → depth=Unknown → 栈深 0 弹 2 的违约**零报**。头注意图是
+/// [1000,1088) 闭区间；真实产物用户段 idx 从 1089 递增（gen.mbt:133），
+/// 故常规产物**所有**用户函数调用都落 Unknown——主战场检查面失效。
+/// 本锚锁当前「零违约」行为；B 批按 meta 可得性改判（idx2meta 有 ⇒
+/// 静态检查）后翻面为 `expect_violation(vs, "stack-underflow",
+/// "Call 弹 2 word 但栈深仅 0")`（与下一条 library 模式锚同文案）。
+test "verify: [KNOWN_DIVERGENCE] 常规模式用户段 Call 栈深被 libc 判定吞" {
+  let vs = verify_compile_output(mk_two_func_call_underflow(), false)
+  assert_eq(
+    vs.length(),
+    0,
+    msg="当前行为=零违约（A-1 吞）；若此处红说明 A-1 已修，请翻面为 expect_violation：\{verify_violations_json(vs)}",
+  )
+}
+
+///|
+/// A-1 对照正锚：同一夹具 library 模式（无 `>=1000` 短路）走 idx2meta
+/// 静态检查 → 红 underflow——证明 Call 栈深规则本体活着，只是常规模式
+/// 的判定式把它关掉了（M15 E1b 复刻）。
+test "verify: library 模式用户段 Call 栈深 underflow 红" {
+  expect_violation(
+    verify_compile_output(mk_two_func_call_underflow(), true),
+    "stack-underflow",
+    "Call 弹 2 word 但栈深仅 0",
+  )
+}
+
+///|
+test "verify: 字符串区末尾越 global_data_end" {
+  let o = mk_clean_output()
+  // 单条串从 GLOBAL_START 起 3 字节（"ab"+NUL），global_data_end 仍 =
+  // GLOBAL_START ⇒ 末尾 0x1003 > 0x1000
+  o.string_data.push((GLOBAL_START, "ab"))
+  expect_violation(
+    verify_compile_output(o, false),
+    "data-overlap",
+    "越 global_data_end",
+  )
+}
+
+///|
+test "verify: globals_init_32 越 MEM_SIZE" {
+  let o = mk_clean_output()
+  // 相对偏移 = MEM_SIZE - GLOBAL_START ⇒ 绝对 addr = MEM_SIZE，+4 越界
+  o.globals_init_32.push((MEM_SIZE - GLOBAL_START, 0))
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "globals_init_32 偏移",
+  )
+}
+
+///|
+test "verify: globals_init_64 越 MEM_SIZE" {
+  let o = mk_clean_output()
+  o.globals_init_64.push((MEM_SIZE - GLOBAL_START, 0UL))
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "globals_init_64 偏移",
+  )
+}
+
+///|
+test "verify: 键集分叉——func_table 有而 func_index 无" {
+  let o = mk_clean_output()
+  o.func_table.set("ghost", {
+    ip: 3,
+    arg_count: 0,
+    param_count: 0,
+    local_count: 0,
+    param_sizes: [],
+    return_type: @ast.Type::int(),
+    is_variadic: false,
+    local_buffers: [],
+  })
+  expect_violation(
+    verify_compile_output(o, false),
+    "meta-inconsistent",
+    "func_table 有而 func_index 无",
+  )
+}
+
+///|
+test "verify: 键集分叉——func_index 有而 func_table 无且非 libc 预注册" {
+  let o = mk_clean_output()
+  // 1089 是用户段（≥ 1000+88），不享受 libc 预注册豁免
+  o.func_index.set("ghost", 1089)
+  expect_violation(
+    verify_compile_output(o, false),
+    "meta-inconsistent",
+    "func_index 有而 func_table 无",
+  )
+}
+
+///|
+test "verify: code 段为空" {
+  let o = mk_clean_output()
+  let o = { ..o, code: [], }
+  expect_violation(
+    verify_compile_output(o, false),
+    "segment-fallthrough",
+    "code 段为空",
+  )
+}
+
+///|
+test "verify: 首个函数段未从 ip=1 起" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  m.ip = 2
+  expect_violation(
+    verify_compile_output(o, false),
+    "segment-fallthrough",
+    "首个函数段未从 ip=1 起",
+  )
+}
+
+///|
+/// 段间游离指令形态。**审阅 v2 批 A2 结构性发现（M15 未列）**：规则总表
+/// 「段间无缝 L359」`ip != expected_ip` 对 idx≥1 **不可达**——expected_ip
+/// 每轮被赋为 seg_end = metas[idx+1].ip，下一轮的 ip 恒等于它；仅 idx=0
+/// 可红且与 L345「首段非 1」完全重叠。游离指令实际由 L538「段尾非控制
+/// 类」兜住（前一段的 seg_end 直抵下一函数 ip，游离指令成为前段段尾）。
+/// 本锚锁真实兜底规则；L359 死分支登记给 B 批（删或改为 ip 重复检测）。
+test "verify: 段间游离指令（由段尾非控制类兜住；L359 死分支登记）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  // main ip=1 / helper ip=4：main 段实为 [1,4)，[3] PushConst 9 成 main 段尾
+  let code : Array[@opcode.Instruction] = [
+    @opcode.Instruction::new(Jump, 6, loc),
+    @opcode.Instruction::new(PushConst, 1, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+    @opcode.Instruction::new(PushConst, 9, loc),
+    @opcode.Instruction::new(PushConst, 1, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+    @opcode.Instruction::new(Call, 1089, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+  ]
+  o.func_index.set("helper", 1090)
+  o.func_table.set("helper", {
+    ip: 4,
+    arg_count: 0,
+    param_count: 0,
+    local_count: 0,
+    param_sizes: [],
+    return_type: @ast.Type::int(),
+    is_variadic: false,
+    local_buffers: [],
+  })
+  let o = { ..o, code, }
+  expect_violation(
+    verify_compile_output(o, false),
+    "segment-fallthrough",
+    "段尾指令 PushConst 非控制类",
+  )
+}
+
+///|
+/// wrapper 起点错位形态。**审阅 v2 批 A2 结构性发现（M15 未列）**：规则
+/// 总表「wrapper 起点 L377」`expected_ip != wrapper_ip` **恒假不可达**——
+/// 最后函数的 seg_end 定义即 wrapper_ip（L367-371），expected_ip 赋值后
+/// 恒等。错位形态实际由 L824「wrapper 越界」（wrapper_ip ≥ code 长）或
+/// 段尾/栈守恒规则（wrapper_ip 落段内）兜住。本锚锁真实兜底规则；L377
+/// 死分支登记给 B 批。
+test "verify: wrapper 起点错位（由 wrapper 越界兜住；L377 死分支登记）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  // code 长 5，Jump 5 ⇒ main 段 [1,5) 段尾 Ret 合法、wrapper_ip=5 越界
+  o.code[0] = @opcode.Instruction::new(Jump, 5, loc)
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "wrapper 起点 5 越界（code 长 5）",
+  )
+}
+
+///|
+test "verify: FuncMeta ip=0 未注册陷阱位" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  m.ip = 0
+  expect_violation(
+    verify_compile_output(o, false),
+    "meta-inconsistent",
+    "ip=0（未注册陷阱位",
+  )
+}
+
+///|
+test "verify: FuncMeta param_sizes 含非正 word 数" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  m.param_sizes = [0]
+  m.param_count = 1
+  expect_violation(
+    verify_compile_output(o, false),
+    "meta-inconsistent",
+    "param_sizes 含非正 word 数 0",
+  )
+}
+
+///|
+test "verify: FuncMeta param_count ≠ param_sizes 长度" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  m.param_sizes = [1]
+  m.arg_count = 1
+  m.local_count = 4
+  // param_count 仍 0
+  expect_violation(
+    verify_compile_output(o, false),
+    "meta-inconsistent",
+    "param_count 0 ≠ param_sizes 长度 1",
+  )
+}
+
+///|
+test "verify: FuncMeta local_count 不覆盖参数区" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  // 两参 8 word = 32 字节，local_count 4 不够
+  m.param_sizes = [4, 4]
+  m.param_count = 2
+  m.arg_count = 8
+  m.local_count = 4
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "local_count 4 不覆盖参数区 32 字节",
+  )
+}
+
+///|
+test "verify: local_buffer 越帧（正尺寸）" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  m.local_count = 8
+  m.local_buffers.push({ offset: 0, size: 24, name: "buf", })
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "local_buffer 'buf' [0,24) 越帧 8",
+  )
+}
+
+///|
+test "verify: i64 常量池越界（PushConstQ）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = with_main_body(mk_clean_output(), [
+    @opcode.Instruction::new(PushConstQ, 9, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+  ])
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "PushConstQ 常量索引 9 越 i64_constants [0]",
+  )
+}
+
+///|
+test "verify: TrapBounds 符号下标越界" {
+  let loc = @source.SourceLoc::new(1, 1)
+  // TrapBounds 零栈效应，可直接夹在 PushConst/Ret 之间
+  let o = with_main_body(mk_clean_output(), [
+    @opcode.Instruction::new(PushConst, 0, loc),
+    @opcode.Instruction::new(TrapBounds, 3, loc),
+    @opcode.Instruction::new(Ret, 0, loc),
+  ])
+  expect_violation(
+    verify_compile_output(o, false),
+    "ref-out-of-range",
+    "TrapBounds 符号下标 3 越 symbols [0]",
+  )
+}
+
+///|
+test "verify: wrapper——func_index 无 main" {
+  let o = mk_clean_output()
+  o.func_index.remove("main")
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "func_index 无 main",
+  )
+}
+
+///|
+test "verify: wrapper——PushArgv/PushArgc 前缀与 main 参数数不匹配" {
+  let o = mk_clean_output()
+  guard o.func_table.get("main") is Some(m) else { fail("夹具坏") }
+  // main 两参（argc/argv）但 wrapper 无 PushArgv/PushArgc 前缀
+  m.param_sizes = [1, 1]
+  m.param_count = 2
+  m.arg_count = 2
+  m.local_count = 8
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "前缀(false) 与 main 参数数(2) 不匹配",
+  )
+}
+
+///|
+test "verify: wrapper——Call 后有多余指令（段尾非 Ret）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  // wrapper [3,6)：Call Ret Nop——Call 后不是紧接段尾 Ret
+  o.code.push(@opcode.Instruction::new(Nop, 0, loc))
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "wrapper 段尾非 Ret 或 Call 后有多余指令",
+  )
+}
+
+///|
+/// wrapper_ip 越界的**结构化红**形态（M15 E6b：wrapper_ip=0 < 1）。远越界
+/// 形态（wrapper_ip ≥ code.length()+1，E6）当前在 verify_function_segment
+/// L538 先行 `code[seg_end-1]` 自崩（A-2），本批不锚——B 批前移越界检查后
+/// 补「wrapper_ip=99 必红不崩」锚。
+test "verify: wrapper 起点越界（wrapper_ip=0）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  o.code[0] = @opcode.Instruction::new(Jump, 0, loc)
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "wrapper 起点 0 越界",
+  )
+}

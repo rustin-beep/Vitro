@@ -38,8 +38,11 @@ test("renderImpl/renderAnchor：常量/对/纯名/锚排除 PURE 的形态", () 
   assert.match(impl, /const HOST_FOO : Int = 7\nconst HOST_BAR : Int = 9/);
   assert.match(impl, /    \("a", HOST_FOO\),\n    \("b", HOST_FOO\),\n    \("c", HOST_BAR\),/);
   assert.match(impl, /let bytecode_libc_pure_funcs : Array\[String\] = \[\n    "a", "c"\n\]/);
+  // 审阅 v2 批 A2 / M15 B-1：PURE 计数改动态（夹具 2 名），实现头注同步
+  assert.match(impl, /对 2 个 PURE 名\*\*短路返回 None\*\*/);
   const anchor = renderAnchor(p, "deadbeef");
-  assert.match(anchor, /3 对逐条断言 Some\(id\) \+ 2 PURE 名断言/);
+  // 锚头注措辞：全表 N 对 = (N−PURE) 非 PURE 断 Some(id) + PURE 断 None（原「N 对逐条断言 Some(id)」与锚体 101/13 分断不符）
+  assert.match(anchor, /3 对全表逐条断言——1 非 PURE 名断 Some\(id\) \+ 2 PURE 名断/);
   assert.match(anchor, /        \("b", 7\),/);
   assert.doesNotMatch(anchor, /        \("a", 7\),/);
 });

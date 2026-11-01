@@ -1,5 +1,45 @@
 ## [Unreleased]
 
+### test(moonbit): 审阅 v2 批 A2——测试锚诚实化（修锚不修行为：双形态锚 + KNOWN_DIVERGENCE 标注，2026-11-01）
+
+- **语义**：锚断言值 = 当前实际行为（CI 真绿非假绿），与 C 真值不一致处紧邻注释标
+  `KNOWN_DIVERGENCE` + clang 真值 + 出处——即 B 批行为修复的现成红锚清单；本批零引擎
+  代码改动（vm_diff golden SAME=147 DIFF=0；libc_boot_diff/gen_diag/gen_stubs/gen_host_route/
+  single_source/perf_budget/mbti_sync/surface/hygiene/libc_single_source/pkg_deps 全绿）。
+- **M20 host_io_wbtest**：`format_g_powi_oracle_alignment` 7 处 + `format_fixed` NaN 1 处偏差锚
+  加 KNOWN_DIVERGENCE（Win clang 22.1.4-UCRT 真值表；报告点名 5 处 + A2 探针新增
+  `1.5e126`/`8.88e-320`/`2.5e-323` 三处 `%.17g` 分叉）；变异证红：锚换 clang 值即红（183/182/1）。
+- **M26 serve_step_wbtest**：`serve_step_seek_roundtrip_and_payload_get` 尾断言
+  `assert_false(contains("error"))` 恒真（auto_step_result_json 无 error 键；nx 置垃圾串仍绿实证）
+  → 换 `step_index` 在 + `finished:false` 双断言。
+- **M28 serve_more_wbtest**：`serve_memory_dump_roundtrip` 帧 source 单反斜杠 `\n`（裸 LF）致
+  compile 从未发生、三断言在默认映像上恒绿（加 compiled 断言即红 158/157/1）→ `\\n` 转义修活
+  + 前置可观测断言（修活后真实 run 映像往返仍绿，非行为缺陷）；B4 清场 catch 改 fail loud；
+  B2 死变量 s2 改真实消费；B3 孤立 `///|` 删。
+- **M23 vfs_wbtest**：38 行定责——形态是**短读**（请求 100 仅得 6）非恰满，clang feof=1 与 vitro
+  一致，**非病锚**（与 M23 报告「病锚」结论不同，A2 探针 feof.c 亲证），仅改误导 msg；新锚
+  `vfs_feof_exact_fill_known_divergence` 锁 fread 恰满 / fgetc 末字节后 / fgets 恰到尾三形态
+  （vitro 1 / clang 0，KNOWN_DIVERGENCE；过读形态双侧一致）；B2 perror 注释对齐实现 `No error\n`
+  + 断言由 length>0 升为完整 stderr 逐字节。
+- **M15 verify_wbtest**：补 22 条红锚（C-1 缺口全覆盖：串区上界 / globals32·64 越 MEM_SIZE /
+  键集⊇⊂ / code 空 / 首段非 1 / meta.ip=0 / param_sizes 非正 / param_count≠len / local_count
+  不覆盖参数区 / local_buffer 越帧 / PushConstQ / TrapBounds / func_index 无 main / PushArgv⇔2 参
+  / wrapper 段尾 / wrapper_ip=0）+ **L609 用户段 Call 栈深双形态锚**（当前零违约 = A-1 被
+  `>=1000` 无上界吞；library 模式同构造红 = 规则存在性正锚）；**结构性发现**：L359 段间无缝
+  （idx≥1 不可达）/ L377 wrapper 起点（expected_ip 恒等 wrapper_ip）两条规则为死分支，对应锚
+  改锁真实兜底规则（L538 段尾非控制类 / L824 wrapper 越界）；变异抽样证红（关 L415 即对应锚红
+  58/57/1）。E6 远越界自崩形态（A-2）本批不锚留 B 批。
+- **M15 B-1/B-2**：gen_host_route 模板「14 个 PURE 名」/「114 对逐条断言 Some(id)」改动态计数
+  （13 / 101+13，产物再生成 -check OK）；bytecode_test 同款勘误；libc_pair_anchor 头注退役路径
+  `native/...` 改指档案 tag `rust-oracle-freeze` + 现役单源。
+- **M09 typeck**：init_wbtest 两条 `\xff` hex-escape 锚统一 KNOWN_DIVERGENCE（clang 1 字节口径：
+  `char g[]` 定型尺寸 2 / `char w[1][2]` 恰满零警）；`errs2`→`warns2` 命名勘误（3 处 warnings
+  通道）；decl_wbtest 两处脚手架残留（`fn run` 即 ignore / `tc3` 即 ignore）删。
+- **M34b teaching/steps**：steps_wbtest 头注「锚值来源声明」——Rust 删区后锚为无 oracle 历史快照
+  + M34b 七处推断失真面零锚登记；**只标不修**（实质修复留教学真值源批）。
+- **计数连坐**：裸 971→994、native 1167→1190（+23 = verify 22 + vfs 1）；根 README×3 / moonbit
+  双 README / docs/current×3；testcount + facts `--run --strict check` 双绿。
+
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 
 - **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后
@@ -2670,7 +2710,7 @@ $ 证红 1/还原绿 5——A1-l 闭环）+ install_skills CLI 契约锚 5 条�
 - **踩到并修掉的保真坑（本批最大收获）**：Go `json.Unmarshal→map[string]RawMessage→json.Marshal` 只对**被解码成 map 的那一层**排序键，值以原始字节内嵌——首版按「全层排序」实现，`proj_sha` 三例全错（`{"loc":{"line":0,"column":0,…}}` 的内层被重排成 `column,file_id,line`）。正解：`internal/canonicalize` 新增 **RawMessage 面**（`JsonRaw` 原始切片 + `compactGoJson` 复刻 Go `compact(escapeHTML)` + `emitSortedObject` 只排该层），三例 `proj_sha` 随即与冻结清单逐字节对上。
 - **parity 机制补 `exclusive`**：把「需 artifacts / 需 moon 现场编译、单价高」的目标标成点名跑（默认跳过并打印留痕），注册 `libc_boot_diff` 两模式；CI 在 gates-native 的 libc 步点名对拍（该 job 已有 moon 与构建缓存）。
 - **接线**：gates-native 的 libc 自举步 `go run` → `node`；文档三处处方同步。
-- **测试 +18**（canonicalize +3 / libc_boot_diff +15）：嵌套键序保真（回归锚）、大整数 token 直通（`9007199254740993` 不丢末位）、wrapper 截断、func_table/func_index 删 main、注入 +1、CRLF 归一 sha、`listC` 字节序、CLI 退出码、golden 端到端。
+- **测试 +18**（canonicalize +3 / libc_boot_diff +15）：嵌套键序保真（回归锚）、大整数 token 直通（`9007199254740994` 不丢末位）、wrapper 截断、func_table/func_index 删 main、注入 +1、CRLF 归一 sha、`listC` 字节序、CLI 退出码、golden 端到端。
 - **四件套**：tsc 0 错 / oxlint 全绿 / node:test 391 → 409 例 0 失败 / ci_checklist + editorconfig + facts --strict 绿。
 
 ### refactor(scripts): #273 vitro_cli_smoke .mts 化（617 行）+ parity artifact 组（2026-10-24）
@@ -3374,7 +3414,7 @@ catalog/gen_diag -check 全绿。
 - **测试面新增**：wasm_load 合成 wasm（`_` 常量枚举/过滤/实例化）、
   assemble_check 三判据正反 6 例、wasmopt 缺参 rc=4。
 - **双跑对拍**：host 16/16、demo_smoke 197/197 逐字节同输出；wasmopt
-  执行器新旧产物 sha256 一致（993206→798895 B）；Go 驱动 `-check`
+  执行器新旧产物 sha256 一致（994206→798895 B）；Go 驱动 `-check`
   白/红双路复跑（无 sidecar 即红）。
 
 ### fix(host+vm+cli+infra): PR #275 审阅批——P1×4 + P2×6 全处置（2026-10-23）
@@ -8644,7 +8684,7 @@ PR 评审认定的三项技术债全部落地（评审意见：ptrToGoString UB 
 
 - **仓库根新建 `go.mod`**（`module vitro`，零第三方依赖不变），新增共享包
   `scripts/internal/{capi,pyrandom,probeutil}`：DLL 绑定 + 字符串读取 + 产物新鲜度、
-  CPython random 逐比特复刻（MT19937 双 seeding 路径单源）、探针 CLI 定位 + psapi
+  CPython random 逐比特复刻（MT19947 双 seeding 路径单源）、探针 CLI 定位 + psapi
   采样。六个 Go 驱动迁入各自子目录（`scripts/shadow_verify/main.go` 等，
   git mv 保历史），同目录 package main 符号冲突随之消除，`go vet ./scripts/...`
   达成全绿。删除跨文件重复约 **600 行**（pyRandom 整份 ×2、capi helper ×3-4、
@@ -8754,7 +8794,7 @@ PR 评审认定的三项技术债全部落地（评审意见：ptrToGoString UB 
 - **新增 `scripts/core_asset_verdict/random_diff.go`**：10 族生成器 × 100 例 + 语义模型求值 +
   clang / Vitro 三路对照，判定口径对齐（`model_clang_mismatch` / `clang_vitro_mismatch` / `agree`，
   mismatch 落 `.findings/` 最小复现，报告 `random_diff.json` 字段同名）。
-- **RNG 逐比特复刻**：MT19937 + CPython 字符串 seeding（sha512 → init_by_array）与
+- **RNG 逐比特复刻**：MT19947 + CPython 字符串 seeding（sha512 → init_by_array）与
   getrandbits/_randbelow/randint/choice/random 全链路——**同 seed 生成同一用例集合**，
   双轨对账达逐用例精度。selftest 内置 CPython 3.14 实测金标（random()×3 / randint×5 /
   choice / 大范围 randint），复刻破坏即 exit 2 拒绝运行（J9）。

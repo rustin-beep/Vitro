@@ -2,8 +2,11 @@
 /// **Rust 源硬编码对拍锚**（P1-4 审阅修复：原断言 `index(all[i]) == 1000+i`
 /// 由同一数组派生——同义反复，变异实测（memcpy/memmove 换位）不红。
 /// 本锚把 Rust `bytecode_libc_index.rs` 的全部 88 个 (name, idx) 显式
-/// 对硬编码：MoonBit 侧数组/派生规则任一漂移即红。源头：
-/// native/crates/vitro_runtime/src/bytecode_libc_index.rs（源变须同步再生成）。
+/// 对硬编码：MoonBit 侧数组/派生规则任一漂移即红。源头（档案态，审阅
+/// v2 批 A2 / M15 B-2 勘误——原指针 `native/...` 已随 2026-10-05 删区失效）：
+/// tag `rust-oracle-freeze` 下 native/crates/vitro_runtime/src/
+/// bytecode_libc_index.rs；本锚 88 对即其冻结快照，现役单源 = 本包
+/// `libc_index.mbt` 的 `BYTECODE_LIBC_ALL_FUNCS` 数组（变更须同步本锚）。
 test "libc index: hardcoded 88 pairs from Rust source" {
   let pairs : Array[(String, Int32)] = [
     ("isdigit", 1000),

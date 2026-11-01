@@ -120,11 +120,6 @@ test "stmt_return_checks" {
 /// 合法（while 体）。
 test "stmt_break_continue_guards" {
   let loc = @source.SourceLoc::new(2, 5)
-  fn run(body : @ast.Stmt) -> Array[@diag.ErrorCode] {
-    ignore(body)
-    []
-  }
-  ignore(run)
   // 裸 break/continue
   let tc = TypeChecker::new()
   let (_, errs, _, _) = tc.check(
@@ -372,8 +367,6 @@ test "cond_bitop_e1004_wiring_b118" {
     msg="裸位测试（exp & 1 形态）不误伤",
   )
   // 不误伤：位运算在非条件位置合法（resolve 正常）；条件内比较/逻辑或零报
-  let tc3 = TypeChecker::new()
-  ignore(tc3)
   // 条件内比较零报（回归面）
   let tc4 = TypeChecker::new()
   ignore(tc4.check_condition(bin(Lt, num(1), num(2)), "if 条件", loc))

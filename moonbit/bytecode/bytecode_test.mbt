@@ -108,8 +108,10 @@ test "shadowed_host_names_are_declared" {
 ///|
 /// **`by_user_name` 带 PURE 短路 ⇒ 不能当成员判定**（route.mbt 的派生前提）。
 ///
-/// 这条锚锁住"为什么需要 `host_func_pairs` 全表"：14 个 PURE 名在
+/// 这条锚锁住"为什么需要 `host_func_pairs` 全表"：13 个 PURE 名在
 /// `host_func_id_by_user_name` 上一律返回 `None`，但它们**确实在 host 表里**。
+/// （计数勘误：审阅 v2 批 A2 / M15 B-1——原注「14 个」与
+/// `bytecode_libc_pure_funcs` 实表 13 名不符，生成器模板同步改动态计数。）
 test "pure_shortcircuit_blocks_membership_test" {
   assert_true(
     @bytecode.is_host_func_name("isdigit"),

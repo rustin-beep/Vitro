@@ -81,6 +81,55 @@
 - 四件套：tsc strict / oxlint / node:test（30/30 + 全清单绿）/
   npm ci lockfile 钉版。
 
+### fix(teaching+scripts): #409 ARM_DIVERGENCE 真病候选销案（freeze 环境伪影实证，零代码）+ N1 E0 兜底卡「内部错误」撒谎文案治本（2026-11-01）
+
+- **#409 定性（零代码销案）**：`leetcode/lc_84.c|static_inject` 旧基线
+  ARM_DIVERGENCE 只在 2026-10-30 审计批（1f61dfb3）一版存在——10-18→10-29
+  十二版稳定 VITRO_REJECT；master 与 1f61dfb3 两时点干净构建三臂亲跑均
+  **一致 REJECT**（`static int stack[100000]` 400KB 超 60KB 全局数据区上限
+  ——#271 设计边界，五条诊断逐字相同，js↔native diag 帧 sha 逐位一致）。
+  同版 freeze 另有 **53 条 AGREE→CLANG_REJECT** 风暴（当前基线 32 条已自愈
+  回 AGREE、21 条退役——真拒不会自愈）+ 2 条 CRASH 型翻桶：单机环境灾难
+  （clang 侧锁文件连败 + 某臂 20s 超时 rc=-98 → NDJSON 无 diag 帧 →
+  `parseVitro` CRASH → `bucketOf:861` 归 ARM_DIVERGENCE），非引擎病。真实
+  桶 VITRO_REJECT 监测面已有 `issue92_gen_error_orders_before_warnings`
+  白盒锚（容量文案在列）。
+- **N1 E0 兜底卡撒谎治本**（真源 `scripts/moonbit/diagnostics_data/catalog.json`
+  → gen_diag 再生成 `content_data/catalog_data_gen.mbt`）：codegen 无码错误
+  （#38 立码前：容量超限 / 级联未声明等**用户代码错误**）统一落 E0 卡，旧
+  title「内部错误（未分类）」+ explanation 断言「而不是你的代码有明确的
+  语义错误。请反馈维护者」与 message「请减小全局数组」自相矛盾（#409 深挖
+  实证：static 400KB 超限五条 E0 全挂此文案）。改中性引导：title「未分类
+  错误」/ explanation「以上方错误信息为准…指向你的代码则按提示修改；难以
+  理解或确认无误再反馈」/ common_causes 换用户侧两条成因（容量上限 +
+  级联未声明「优先修第一条」）+ 编译器边界一条。红锚
+  `content_data/contract_wbtest::e0_fallback_card_neutral_not_blaming_compiler`
+  （修前红于「不得断言『不是你的代码问题』」，修后 7/7 绿）。
+- **e08 连坐**：payload 两份重导（`core.json`/`diagband-trap.json` catalog
+  段 E0 卡——经 `e08-export` js 臂实产；`core.json` 顺带对齐 #399 批
+  contracts 段实产〔#399 改 `schema.mbt` 文案未连坐重导的欠账〕）+ golden
+  `refindex-diagnostics.html` 重冻 1 行（E0 title）；e08 测试 19/19 绿。
+- **计数连坐**：测试数 +1（裸 970→971、native 全量 1166→1167）——根
+  README×2 行 + `moonbit/README.md`/`README.mbt.md` 双口径 + docs/current
+  两份机改；facts `--strict check` 绿 + testcount 闸 PASS。
+- **挂账**：级联伪错误（`bump_global_offset` 返 None 后符号未登记，带出
+  4 条「未声明的标识符」噪音——clang 无此形态）挂 #38 评论；freeze 大面积
+  翻桶无闸（55 条恶化向伪影翻转静默入库〔含 lc_150 UB 合法抖动改善向共
+  56〕、`bucketMigrationOf` 只覆盖换键路径）立案 #412（#410 判定域同族）。
+- **PR #411 审阅处置（2026-11-02）**：**P2-1 采纳**——新 explanation 曾把
+  「标识符未声明」列为「指向你的代码」举例，与 causes 第 2 条「级联伪错误」
+  自相矛盾（级联归用户账 = 半撒谎）：举例只留容量上限，级联语义只落
+  causes 第 2 条；锚加第四断言 `explanation` 不得含「未声明」（修前红）+
+  **P3③ 连坐注释**（causes 第 2 条描述 #38 立码前引擎级联缺陷行为，#38 修
+  后须连坐改写）；e08 payload 两份各 1 行重导（golden 零变——explanation
+  不进渲染）。**P2-2 登记 #410**（不本批修——判定域结构变更）：
+  `bucketOf` 臂选择不对称——`js TRAP/CRASH + native OK → AGREE`（js 臂异常
+  被吞），反向才 VITRO_TRAP/ARM_DIVERGENCE；#409 机理句不受影响（lc_84
+  语境 native 必 REJECT，`js CRASH + native REJECT → ARM_DIVERGENCE` 亲验
+  成立，任一臂 CRASH 均可达）。P3① E0 卡级联重复 N 次（FIX 行按码去重）
+  登记 #38；P3② icon `unsupported` 不动（protocol_frames 帧 9 结构锚，
+  且「未分类」语义不撒谎）。
+
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）

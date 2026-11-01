@@ -88,3 +88,51 @@ test "catalog_content_escape_probe" {
   let e3007 = @diag.ErrorCode::from_code(3007).unwrap().catalog().unwrap()
   assert_true(e3007.explanation.contains("char"))
 }
+
+///|
+/// #409 N1 红→绿锚（2026-11-01）：E0 兜底卡中性化。E0 是 codegen 无码错误
+/// 的统一兜底（#38 立码前：容量超限 / 级联未声明等**用户代码错误**全落
+/// 此卡），旧 explanation 断言「而不是你的代码有明确的语义错误」+ title
+/// 「内部错误」——与 message「请减小全局数组」自相矛盾，对学生撒谎
+///（#409 深挖实证：static 局部 400KB 超限五条 E0 全挂此文案）。锚锁四件：
+/// 不含旧断言句 / 含「以上方错误信息为准」引导句 / common_causes 含容量
+/// 上限与级联未声明两条用户侧成因 / **explanation 不得把「未声明」列为
+/// 「指向你的代码」的举例**（PR #411 审阅 P2-1：级联伪错误归用户账 =
+/// 半撒谎——级联语义只许落 causes 第 2 条）。
+///
+/// 连坐登记（PR #411 审阅 P3③）：causes 第 2 条「前一条错误使标识符未能
+/// 登记，带出连锁未声明」描述的是 #38 立码前 `bump_global_offset` 返 None
+/// 后符号未登记的**引擎级联缺陷行为**——#38 修级联抑制/符号登记后本条
+/// 文案随之失真，须连坐改写（本锚 `has_cascade` 断言届时同步调整）。
+test "e0_fallback_card_neutral_not_blaming_compiler" {
+  install_baked()
+  let e0 = @diag.ErrorCode::from_code(0).unwrap().catalog().unwrap()
+  assert_false(
+    e0.explanation.contains("而不是你的代码有明确的语义错误"),
+    msg="E0 兜底不得断言『不是你的代码问题』",
+  )
+  assert_false(
+    e0.title.contains("内部错误"),
+    msg="E0 title 不得预设『内部错误』",
+  )
+  assert_true(
+    e0.explanation.contains("以上方错误信息为准"),
+    msg="E0 兜底须引导读上方错误信息",
+  )
+  assert_false(
+    e0.explanation.contains("未声明"),
+    msg="explanation 不得把级联『未声明』列为指向用户代码的举例（P2-1）",
+  )
+  let mut has_cap = false
+  let mut has_cascade = false
+  for c in e0.common_causes {
+    if c.contains("容量上限") {
+      has_cap = true
+    }
+    if c.contains("未声明") {
+      has_cascade = true
+    }
+  }
+  assert_true(has_cap, msg="common_causes 须含容量上限成因")
+  assert_true(has_cascade, msg="common_causes 须含级联未声明成因")
+}

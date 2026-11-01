@@ -110,6 +110,24 @@ export function classifyAgainstBaseline(
 }
 
 /**
+ * freeze 桶值迁移行（PR #405 审阅 P1-A，纯函数——单测锚挂点）：同键旧新
+ * 桶不同即返回「fp: old -> new」，新条目（旧缺省）与同桶返 null。**双向
+ * 入列**（rank 下降=引擎演进修正旧陈旧值、rank 上升=现象翻转），与
+ * classifyAgainstBaseline 的单向恶化闸互补——freeze 落盘会无声吸收一切
+ * 桶值变化（#361 换键重冻实测静默吸收 33 条：32 条 CLANG_REJECT→AGREE
+ * 演进修正 + lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP 现象翻转，校验面
+ * 因「变好即 ok」永不报），落盘前必须打印让人看见。
+ */
+export function bucketMigrationOf(
+  fp: string,
+  oldBucket: string | undefined,
+  newBucket: string,
+): string | null {
+  if (oldBucket === undefined || oldBucket === newBucket) return null;
+  return `${fp}: ${oldBucket} -> ${newBucket}`;
+}
+
+/**
  * 僵尸 seed 收集（纯函数，单测锚挂点）：基线指纹的 seed 不在采样集即入列
  * （gen: 段无种子文件豁免）。volatile 豁免不免存在性对账。
  */
@@ -1058,17 +1076,19 @@ export interface SeedFile {
  * （`\`→`/` 等长，RNG 种子不变量保持；Windows fs 吃 `/`）。
  *
  * readdir 注入：单测锚挂点（Windows 上直接锚「无 `\`」——修复前红）；
- * 读盘失败的 fail loud 责任在注入方（die 带 suite 语境）。
+ * 注入签名保留 Dirent 结构面（`{ name, isFile() }`——PR #405 审阅 P2-5：
+ * 只收 string[] 会丢掉「目录条目以 .c 结尾」的过滤能力）；读盘失败的
+ * fail loud 责任在注入方（die 带 suite 语境）。
  */
 export function collectSeeds(
   rules: Rules,
-  readdir: (dir: string) => string[],
+  readdir: (dir: string) => Array<{ name: string; isFile(): boolean }>,
 ): SeedFile[] {
   const seeds: SeedFile[] = [];
   for (const suite of rules.suites) {
     const dir = `corpus/${suite}`;
-    for (const name of readdir(dir)) {
-      if (name.endsWith(".c")) seeds.push({ suite, name, path: `${dir}/${name}` });
+    for (const e of readdir(dir)) {
+      if (e.isFile() && e.name.endsWith(".c")) seeds.push({ suite, name: e.name, path: `${dir}/${e.name}` });
     }
   }
   seeds.sort((a, b) => byteCompare(a.path, b.path));
@@ -1219,7 +1239,7 @@ function mainFlow(argv: readonly string[]): number {
   // 契约与原内联形态一致——path 相对 cwd 消费，projectRoot 不掺入）
   const seeds = collectSeeds(rules, (d) => {
     try {
-      return fs.readdirSync(d, { withFileTypes: true }).map((e) => e.name);
+      return fs.readdirSync(d, { withFileTypes: true });
     } catch (e) {
       die(`读套件 ${d} 失败：${errText(e)}`);
     }
@@ -1282,11 +1302,14 @@ function mainFlow(argv: readonly string[]): number {
   let agree = 0;
   let total = 0;
   const report: string[] = [];
+  const migrations: string[] = [];
 
   const handle = (fp: string, bucket: string): void => {
     if (bucket === "AGREE") agree++;
     if (opts.freeze) {
       const old = base.entries.get(fp);
+      const mig = bucketMigrationOf(fp, old?.bucket, bucket);
+      if (mig !== null) migrations.push(mig);
       base.entries.set(fp, { bucket, issue: old?.issue, note: old?.note, volatile: old?.volatile });
       return;
     }
@@ -1365,6 +1388,8 @@ function mainFlow(argv: readonly string[]): number {
       die(`基线落盘失败：${errText(e)}`);
     }
     process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${Object.keys(entries).length} 条（剔除采样集外僵尸 ${dropped} 条）→ ${opts.baseline}\n`);
+    process.stdout.write(`桶值迁移 ${migrations.length} 条（freeze 实测覆写旧基线——演进修正与现象翻转都须过目，PR #405 审阅 P1-A）\n`);
+    for (const m of migrations) process.stdout.write(`  ${m}\n`);
     process.stdout.write(`判定缓存写盘 ${judgeMiss} 条（epoch=${judgeEpoch}，freeze 全量真跑值）\n`);
     return 0;
   }

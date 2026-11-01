@@ -40,7 +40,9 @@
       "bucket": "AGREE"
     },
     "baseline/conditional_compile.c|init_partial": {
-      "bucket": "AGREE"
+      "bucket": "AGREE",
+      "note": "init_partial UB 抖动域（#285 先例同族）：处置批 epoch 换血全量真跑一次判 WRONG_VALUE，probe 三方 + 删缓存单条重判双复跑均 AGREE（1 3 6 8 三方一致）——桶位非确定的瞬态抖动非回归；volatile=true：漂移只报告不判红（PR #405 处置批定性，2026-11-01）",
+      "volatile": true
     },
     "baseline/conditional_compile.c|nested2flat": {
       "bucket": "AGREE"
@@ -766,7 +768,8 @@
     "leetcode/lc_108.c|div2shift": {
       "bucket": "VITRO_TRAP",
       "issue": "known-mutator-trap",
-      "note": "div2shift 文本替换不改括号：/（优先级高于 +）→>>（低于 +）重绑定，mid=(left+right-left)>>1=right>>1 不依赖 left ⇒ build(4,6) 形态无限自递归——vitro 值栈溢出 trap 与 clang 死递归等价死（clang -Wshift-op-parentheses 自证）；算子陷阱域非引擎病（#361 换键批定性）"
+      "note": "div2shift 文本替换不改括号：/（优先级高于 +）→>>（低于 +）重绑定，mid=(left+right-left)>>1=right>>1 不依赖 left ⇒ build(4,6) 形态无限自递归——两侧等价死：vitro 值栈溢出 trap；clang win32 运行栈溢出真崩 EXIT:3221225725=STATUS_STACK_OVERFLOW（clangOutcome 崩溃记 OK 致桶名 VITRO_TRAP 语义失真——clang 非无事，#410）。旧基线 ARM_DIVERGENCE（两臂都跑完输出不同）=真病候选被栈 trap 盖住，挂账 #409；volatile=true：桶位随栈余量在 trap/分叉间翻转（PR #405 审阅 P1-B）",
+      "volatile": true
     },
     "leetcode/lc_108.c|static_inject": {
       "bucket": "AGREE"
@@ -912,7 +915,7 @@
     "leetcode/lc_704.c|div2shift": {
       "bucket": "VITRO_TRAP",
       "issue": "known-mutator-trap",
-      "note": "div2shift 优先级重绑定（同 lc_108）：mid=right>>1 不依赖 left，target 大于全部元素时 left 恒回摆——clang timeout 死循环（rc=124 亲测）与 vitro 步数耗尽等价死；算子陷阱域非引擎病（#361 换键批定性）"
+      "note": "div2shift 优先级重绑定（同 lc_108）：mid=right>>1 不依赖 left，target 大于全部元素时 left 恒回摆——两侧等价死：vitro 步数耗尽 trap；clang 死循环，win32 侧 runCmd spawnSync 20s 超时哨兵 EXIT:-98（非进程退出码）、POSIX 侧 timeout 命令形态 rc=124（平台口径双注，PR #405 审阅 P2-3）；算子陷阱域非引擎病（#361 换键批定性）；超时一律记 OK 的判定面失真挂 #410"
     },
     "leetcode/lc_704.c|static_inject": {
       "bucket": "CLANG_REJECT"

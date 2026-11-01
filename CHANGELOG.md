@@ -20,9 +20,30 @@
   不敏感。
 - **基线重冻（换键口径声明）**：采样键由「win32 path.join 形态」换为「POSIX
   归一形态」⇒ 采样集变化 ⇒ 基线指纹集整体换血，`-freeze` 重冻
-  （旧基线 318 条 → 新基线 N 条，数字见 PR 描述实录）；重冻后旧键口径
-  基线退役。CI corpus-fuzz job（windows-latest）与新键自动一致。
-- 四件套：tsc strict / oxlint / node:test（29/29 + 全清单绿）/
+  （318 条 → 318 条：同键 159 条掉出 + 159 条新增——86 个 pick 种换血
+  53 个 62%，条目数相等恰好掩盖换血事实）；重冻后旧键口径基线退役。
+  CI corpus-fuzz job（windows-latest）与新键自动一致。
+- **同键桶值迁移 33 条披露（PR #405 审阅 P1-A）**：32 条 CLANG_REJECT→
+  AGREE（引擎演进修正旧陈旧值——校验面「变好即 ok」永不报，重冻曾静默
+  吸收零披露）+ lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP（现象翻转
+  ——旧「两臂都跑完输出不同」的真病候选被栈 trap 盖住，挂账 #409）。
+  **freeze 侧治本**：新增纯函数 `bucketMigrationOf`——freeze 落盘前打印
+  「桶值迁移 N 条（fp: 旧 → 新）」明细，**双向入列**（rank 降=演进修正、
+  rank 升=现象翻转都须过目）；单测锚挂点 + 突变证红（改成单向报即红）。
+- **PR #405 审阅处置（2026-11-01）**：P1-B lc_84|static_inject
+  ARM_DIVERGENCE 真病候选随采样退役——**挂账 #409 不静默销案**，
+  lc_108|div2shift 标 `volatile:true`（桶位随栈余量在 trap/分叉间翻转）
+  + note 写实两侧真实现象；P2 lc_704 note 平台口径双注（win32
+  `EXIT:-98`=runCmd spawnSync 超时哨兵**非进程退出码**；POSIX rc=124=
+  timeout 命令形态）、clangOutcome 崩溃/超时一律记 OK 的判定面失真挂
+  #410、`collectSeeds` readdir 注入保留 Dirent 结构面（`isFile()` 过滤
+  ——目录条目撞 `.c` 后缀形态有判别锚）、`pickSeeds` 输入序不敏感锚
+  （全取套件双文件）替换恒真断言；**处置批瞬态定性**：`baseline/
+  conditional_compile.c|init_partial` epoch 换血全量真跑一次判 WRONG_VALUE、
+  probe 三方 + 删缓存单条重判双复跑均 AGREE（`1 3 6 8` 三方一致）——
+  init_partial UB 抖动域（#285 先例同族），标 `volatile:true` 漂移只报告
+  不判红。跨平台 CI 面（ubuntu lane）另案拍板。
+- 四件套：tsc strict / oxlint / node:test（30/30 + 全清单绿）/
   npm ci lockfile 钉版。
 
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）

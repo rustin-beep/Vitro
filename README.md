@@ -119,7 +119,7 @@ docs/                      设计文档、规范与事故报告
 curl -O https://raw.githubusercontent.com/rustin-beep/Vitro/master/examples/demo.mbtx
 moon run demo.mbtx --target wasm-gc
 
-# 1. MoonBit 现役引擎：970 测试用例 + 全部闸门绿（构建/闸门/发布全流程见 moonbit/AGENTS.md；闸清单以 ci.yml 为权威，不锚闸数）cd moonbit && moon check && moon test
+# 1. MoonBit 现役引擎：971 测试用例 + 全部闸门绿（构建/闸门/发布全流程见 moonbit/AGENTS.md；闸清单以 ci.yml 为权威，不锚闸数）cd moonbit && moon check && moon test
 
 # 2. 端到端跑一个 C 程序（`vitro` 总入口：stdout / 返回码 / 1MB 内存映像三通道）
 cd moonbit && MOON_CC=clang moon build --release --target native cmd/vitro
@@ -144,7 +144,7 @@ node scripts/clang_direct/main.mts
 
 **MoonBit 侧（现役）**：
 
-1. **`moon test` 970 用例 + 全部闸门绿**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍 + `clang_direct` 层 2 直拍（全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（闸随批增长不锚闸数）2. **运行期双防线**：`scripts/vm_diff` 差分（引擎 vs 冻结 golden——工序③固化锚，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
+1. **`moon test` 971 用例 + 全部闸门绿**：token TSV / E1 AST dump / E1–E4 诊断 / A 级 codegen（含 code 段逐指令）逐层对拍 + `clang_direct` 层 2 直拍（全量语料逐例对照，已知差异清单与计数见 scripts/clang_direct/known_direct.json〔活文档，数字不锚此处〕）；闸清单以 [ci.yml](.github/workflows/ci.yml) 为权威（闸随批增长不锚闸数）2. **运行期双防线**：`scripts/vm_diff` 差分（引擎 vs 冻结 golden——工序③固化锚，stdout / 返回码 / 1MB 映像逐字节）与 `scripts/clang_direct` 层 2 直拍（引擎 vs Clang 本尊），共同被测物 = `cmd/run` 端到端 runner
 3. **实机代码勘探**（防线外的实测补充——登记制非门禁制）：真实世界 C 语料（[TheAlgorithms/C 的 fork 基线](https://github.com/rustin-beep/C/tree/vitro-probe-baseline)）与 demo 实测用户代码的逐文件 vs Clang 差分——累计开立 **20 个缺陷 issue**（见 [issue 台账](https://github.com/rustin-beep/Vitro/issues?q=is%3Aissue)，as_of 2026-10-02，台账为活文档）；缺陷形态呈**收敛**而非蔓延：后期实测以存量 issue 的实例增补为主，全量勘探的运行差异全部可归因定性（已知缺陷 / UB / 护栏与资源上限 / 交互依赖——零未知形态）；配测量金样本回归锚（缺陷只应向绿迁移），fork 语料在修复批全量重跑即为各 issue 修复的**外部语料印证**；GPL 语料外置不进仓，工具见 [`scripts/realcode_diff`](scripts/realcode_diff/)
 4. **对外面对账**：`node scripts/moonbit/moonbit_surface/moonbit_surface.mts -check` 机判 `.mbti` 接口面
 

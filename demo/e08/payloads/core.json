@@ -73753,12 +73753,12 @@
       "lang": "unknown",
       "category": "其它",
       "icon": "unsupported",
-      "title": "内部错误（未分类）",
-      "explanation": "编译器在处理你的代码时遇到无法归入已知类别的内部错误。这类错误通常意味着编译器自身的边界被触碰（极深的嵌套、罕见的语法组合等），而不是你的代码有明确的语义错误。请把可复现的最小代码片段反馈给维护者。",
+      "title": "未分类错误",
+      "explanation": "这条错误尚未分配专属错误码（E0 = 未分类），具体原因以上方错误信息为准。如果错误信息已经指向你的代码（例如静态数组或字符串超出容量上限、标识符未声明），请按提示修改；若错误信息难以理解、或你确认代码无误，则可能是编译器自身的边界被触碰（极深的嵌套、罕见的语法组合等），请把可复现的最小代码片段反馈给维护者。",
       "common_causes": [
-        "极深嵌套或超长表达式触发编译器内部限制",
-        "少见语法组合命中未分类路径",
-        "编译器缺陷——欢迎反馈最小复现片段"
+        "全局/静态数据超出容量上限（如超大 static 数组或字符串字面量）——错误信息给出已用与上限字节数",
+        "前一条错误使标识符未能登记，带出连锁『未声明的标识符』——优先修第一条，后续常随之消失",
+        "极深嵌套或少见语法组合触碰编译器内部边界——欢迎反馈最小复现片段"
       ]
     },
     {
@@ -75410,10 +75410,10 @@
       },
       {
         "id": "algorithm_step_line_end_sparsity",
-        "statement": "algorithm_step 是行末帧语义（#225 定性 + 审阅 P2-1 定谳）：同一 code_line 的连续指令帧序列仅段尾帧携带非 null 标注（行执行完毕、变量为行末态），行中间帧为 null——下游应沿用最近非 null 标注；标注整体是稀疏的（指令级步进下密度 = 行数/指令数量级），勿按「逐步都有语义」设计交互。step.next 发布流与 payload.get 窗口流**行为一致**（批内去重单源于 FrameWindow.push_batch；跨批 pending 的行末性由 serve 发布缓冲按批首帧判定——变异实验 + 双 probe 定谳）",
+        "statement": "algorithm_step 是行末帧语义（#225 定性 + 审阅 P2-1 定谳）：同一 code_line 的连续指令帧序列仅段尾帧携带非 null 标注（行执行完毕、变量为行末态），行中间帧为 null——下游应沿用最近非 null 标注；标注整体是稀疏的（指令级步进下密度 = 行数/指令数量级），勿按「逐步都有语义」设计交互。step.next 发布流与 payload.get 窗口流**行为一致**（批内去重单源于 FrameWindow.push_batch；跨批 pending 的行末性由 serve 发布缓冲按批首帧判定——变异实验 + 双 probe 定谳）；批参数（frames=N 批推进 vs 批=1 逐帧——demo 前端 worker 口径）不改变发布流本身，两形态 code_line 流与标注在位流逐位同构（#399 锚定）",
         "status": "active",
         "batch": "#225",
-        "enforced_by": "gateway::serve_step_wbtest::serve_step_algorithm_step_line_end_invariant（行末不变量 + 密度下限——跨批 pending 参照帧错位形态批>1 可达）"
+        "enforced_by": "gateway::serve_step_wbtest::serve_step_algorithm_step_line_end_invariant（行末不变量 + 密度下限 + 双形态逐位同构——frames=50 批与批=1 逐帧两形态各跑全程断言；#225 跨批 pending 参照帧错位形态批>1 可达 + #399 批=1 判空恒跳过形态）"
       }
     ],
     "semantic_label_kinds": 15,

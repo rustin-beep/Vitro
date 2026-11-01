@@ -5,8 +5,10 @@
 // 可 go run 的判定型驱动；对账目标 = 全部 workflow 里 `go run ./scripts/...`
 // 与 `node scripts/...mts` 活行。**双向红**：
 //   ① 漏登记：驱动存在但零活行引用（例外表可豁免，reason 必填）；
-//   ② 悬空：活行引用的驱动不存在；
-//   ③ 僵尸例外：例外驱动同时被活行引用；
+//   ② 悬空：活行引用的驱动不存在（go run 按驱动集判、node 按文件存在性判
+//      ——形态分流见活行集段注释，2026-11-01 审阅 v2 S13b-P1/R1e-R2 修复）；
+//   ③ 僵尸例外：例外驱动同时被活行引用；幽灵例外：例外驱动不在
+//      驱动集∪活行集∪磁盘 三者之并（死条目即红，S13b-P2）；
 //   ④ moon test 目标面：全部 `moon test` 活行的 --target 并集必须覆盖四目标
 //      {js, native, wasm, wasm-gc}（后端集加员连坐测试面，AGENTS §14）。
 //
@@ -25,8 +27,6 @@ export interface Exception {
 
 const PRUNE = new Set(["_build", "__pycache__", "node_modules", "bin"]);
 
-/** matrix 模板行（gates-diff）：driver 枚举在 matrix.include 段，静态展开。 */
-const MATRIX_DRIVERS = ["parser_diff", "lexer_diff", "typeck_diff", "codegen_diff", "vm_diff", "clang_direct"];
 const MOON_TARGETS = ["js", "native", "wasm", "wasm-gc"];
 
 const LIVE_RE = /go run (\.\/)?scripts\/[a-zA-Z0-9_/${}.-]+/g;
@@ -126,30 +126,34 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
   }
 
   // ── 活行集 ──
+  // ② 悬空判据按形态分流（2026-11-01 审阅 v2 S13b-P1/R1e-R2 修复）：原实现对
+  // node 活行 force-add 其目录进驱动集——被检引用自己就在 drivers 里，悬空检查
+  // 恒 found，全部现役 node 活行上防线结构性空转（ghost 探针实锤：go run 形态
+  // 红、同不存在程度的 node 形态零报告）。现改为：
+  //   go run 活行 → 驱动集判据（package main 目录形态，历史行为保留）；
+  //   node  活行 → 文件存在性判据（引用的 .mts 在磁盘上不存在即红，含非
+  //                main.mts 散件）；目录仍进 liveSet 供 ①③ 判据豁免。
+  // 含 ${{ 的动态形态静态不可判，跳过（现役零活行——go run 已随 #273 迁移批
+  // 2026-10-25 清零；原 MATRIX_DRIVERS 静态展开表因缺 realcode_corpus 漂移且
+  // 无消费面，随之删除——复活 matrix 形态时须先补静态展开来源）。
   const liveSet = new Set<string>();
+  const liveNodeFiles: string[] = [];
+  const liveGoDirs: string[] = [];
   for (const wb of wfBytes.values()) {
     for (const m of wb.matchAll(LIVE_RE)) {
       let p = (m[0] ?? "").replace(/^go run /, "").replace(/^\.\//, "");
-      if (p.includes("${{")) {
-        for (const d of MATRIX_DRIVERS) {
-          if (wb.includes("- driver: " + d)) liveSet.add("scripts/" + d);
-        }
-        continue;
-      }
+      if (p.includes("${{")) continue;
       if (p.endsWith(".go")) {
         p = p.slice(0, p.lastIndexOf("/"));
       }
       liveSet.add(p);
+      liveGoDirs.push(p);
     }
     for (const m of wb.matchAll(NODE_RE)) {
       const p = (m[0] ?? "").replace(/^node /, "").replace(/^\.\//, "");
       const dir = toSlash(path.dirname(p));
       liveSet.add(dir);
-      if (!driverSet.has(dir)) {
-        driverSet.add(dir);
-        drivers.push(dir);
-        mtsDrivers.push(dir);
-      }
+      liveNodeFiles.push(p);
     }
   }
 
@@ -182,18 +186,30 @@ export function check(repo: string): { failed: boolean; lines: string[]; summary
     lines.push(`漏登记: ${d}（scripts 下存在 main 驱动，ci.yml 零活行——要么接线要么进例外表自证）`);
     failed = true;
   }
-  // ② 悬空（排序输出：Go 侧 map 序随机，此处收紧可复现性）
-  for (const p of [...liveSet].sort()) {
+  // ② 悬空（排序输出：Go 侧 map 序随机，此处收紧可复现性）——形态分流见活行集段
+  for (const p of [...liveGoDirs].sort()) {
     const found = drivers.some((d) => d === p || d.startsWith(p + "/"));
     if (!found) {
-      lines.push(`悬空: workflow 活行 ./${p} 但该驱动不存在`);
+      lines.push(`悬空: workflow 活行 go run ./${p} 但该驱动不存在`);
       failed = true;
     }
   }
-  // ③ 僵尸例外
+  for (const p of [...liveNodeFiles].sort()) {
+    if (!fs.existsSync(path.join(repo, p))) {
+      lines.push(`悬空: workflow 活行 node ${p} 但该文件不存在`);
+      failed = true;
+    }
+  }
+  // ③ 僵尸例外（被活行引用）+ 幽灵例外（S13b-P2 2026-11-01：原检查只查僵尸向，
+  // 对「例外指向的驱动已不存在」的死条目零检出——superseded-by-mts 五条的 Go
+  // 驱动已删而例外残留即此形态，纯虚构条目探针 rc=0 通过。幽灵判据 = 不在
+  // 驱动集∪活行集∪磁盘 三者之并）
   for (const e of exceptions) {
     if (liveSet.has(e.driver)) {
       lines.push(`僵尸例外: ${e.driver} 已被 ci.yml 活行引用，例外条目应删`);
+      failed = true;
+    } else if (!driverSet.has(e.driver) && !fs.existsSync(path.join(repo, e.driver))) {
+      lines.push(`幽灵例外: ${e.driver} 既非驱动也无活行且磁盘上不存在——死条目（删除或修正）`);
       failed = true;
     }
   }

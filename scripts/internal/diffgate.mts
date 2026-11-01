@@ -175,9 +175,12 @@ export function sha16(b: Buffer): string {
 
 /** `moon -C moonbit run --target native <sub> -- <args…>` */
 export function moonDump(root: string, sub: string, args: string[], fail: Fail): void {
+  // MOON_CC=clang（AGENTS §11）：Windows 上 moon 探测默认绑 MSVC 撞 moon#2254
+  // 冷态构建悬崖（链闭包 exe ~130s 级）——2026-11-01 审阅 v2 S05-C3 补（原全族 0 处）
   const r = spawnSync("moon", ["-C", "moonbit", "run", "--target", "native", sub, "--", ...args], {
     cwd: root,
     encoding: "utf8",
+    env: { ...process.env, MOON_CC: "clang" },
   });
   if (r.status !== 0) {
     fail(`moon run ${sub} 执行失败: exit ${r.status}\n${(r.stdout ?? "") + (r.stderr ?? "")}`);

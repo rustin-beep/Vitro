@@ -18,7 +18,10 @@
 //   1. stdout：剥引擎标记行后的纯程序输出（sha16）
 //   2. 返回码：`// EXIT N`
 //   3. 1MB 映像：argv 区（0xF000..0x10000）脱敏后 sha16
-// known 分叉例额外登记 mb 侧整例指纹（known_mb_digest），漂移即降级 DIFF。
+// known 分叉例在 golden 模式下与普通例同走三通道比对（known_diffs.json 登记
+// 分叉归因并供 diff_ledger 对账；其 digest / memory_stack_only 为 oracle 时代
+// 档案字段，无消费方）。曾声称的 known_mb_digest「整例指纹漂移即降级 DIFF」
+// 机制从未启用（golden 全零条目、读侧死路径），2026-11-01 审阅 v2 S05-C5 删除。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -44,7 +47,7 @@ const ARGV_MASK_LO = 0xf000;
 const ARGV_MASK_HI = 0x10000;
 // 内存差异区间机判（knownEntry.memory_stack_only + 顶部 4KB 栈窗口）**未迁**——
 // 它在 Go 版的 compare() 里，只服务 oracle 双侧路径（随删区不可达）；golden 模式
-// 的 known 例走 known_mb_digest 整体指纹，不涉及区间判定。
+// 的 known 例与普通例同走三通道比对，无特殊分支。
 
 const MOON_RUN_TIMEOUT_MS = 120_000;
 const MOON_RUN_ATTEMPTS = 3;
@@ -60,7 +63,6 @@ interface DigestEntry {
   stdout_sha: string;
   memory_sha?: string;
   compile_fail?: boolean;
-  known_mb_digest?: string;
 }
 
 interface DigestDoc {
@@ -73,6 +75,7 @@ interface SkipEntry {
   case: string;
   reason: string;
 }
+/** digest / memory_stack_only 为 oracle 时代档案字段（golden 模式无消费方，S05-C5）。 */
 interface KnownEntry {
   case: string;
   digest: string;
@@ -164,11 +167,6 @@ export function memorySHA(p: string): string {
   }
   for (let i = ARGV_MASK_LO; i < ARGV_MASK_HI && i < b.length; i++) b[i] = 0;
   return sha16(b);
-}
-
-/** known 分叉例的整例指纹（exit + stdout + mem + cf）。 */
-export function mbWholeDigest(exit: number, stdoutSHA: string, memSHA: string, cf: boolean): string {
-  return sha16(`${exit}|${stdoutSHA}|${memSHA}|${String(cf)}`);
 }
 
 function digestOf(r: RunResult): { exit: number; stdout: string; mem: string; cf: boolean } {
@@ -418,16 +416,23 @@ export function runVm(argv: string[], root: string): number {
 
   // ---- golden 比对 ----
   if (selftest && cases.length > 0) {
-    const k = cases[0]?.rel ?? "";
-    const e = doc.cases[k];
-    if (e !== undefined && (e.known_mb_digest ?? "") === "") {
+    // 篡改目标 = 首个非 compile_fail 例（2026-11-01 审阅 v2 S05-A1 修复）：
+    // 原实现篡改 cases[0]——gap 语料首例 complex_number.c 是 cf 例，比对循环的
+    // 「双侧编译失败——等价」短路先于任何通道字段，篡改被吞、exit 0 假绿（探针
+    // 实锤：打印「已篡改」后 SAME=21 全绿）。cf 例不参与三通道字段比对。
+    const t = cases.find((c) => doc.cases[c.rel]?.compile_fail !== true);
+    // return fail(...)：fail 是属性调用，TS 不认 never，需显式 return 收窄（同上文口径）
+    if (t === undefined) {
+      return fail("--selftest: 本轮用例全部为 compile_fail 例——篡改面为空（换语料或 --cases 指定非 cf 例）");
+    }
+    const e = doc.cases[t.rel];
+    if (e !== undefined) {
       e.stdout_sha = "deadbeef12345678";
-      process.stdout.write(`[selftest][golden] 已篡改清单条目: ${k} ——随后比对必须 FAIL\n`);
+      process.stdout.write(`[selftest][golden] 已篡改清单条目: ${t.rel} ——随后比对必须 FAIL\n`);
     }
   }
 
   let same = 0;
-  let knownN = 0;
   let diff = 0;
   let skipN = 0;
   for (const c of cases) {
@@ -451,19 +456,6 @@ export function runVm(argv: string[], root: string): number {
       same++;
       continue;
     }
-    const whole = mbWholeDigest(d.exit, d.stdout, d.mem, d.cf);
-    if ((e.known_mb_digest ?? "") !== "") {
-      if (whole === e.known_mb_digest) {
-        process.stdout.write(`DIFF-KNOWN ${c.rel}（mb 分叉指纹一致；归因见 known_diffs.json）\n`);
-        knownN++;
-      } else {
-        process.stdout.write(
-          `DIFF  ${c.rel}：known 分叉形状已变（登记 mb 指纹 ${e.known_mb_digest ?? ""} 实测 ${whole}）——重新归因后重跑 --freeze-mb\n`,
-        );
-        diff++;
-      }
-      continue;
-    }
     if (d.exit === e.exit_code && d.stdout === e.stdout_sha && d.mem === (e.memory_sha ?? "") && d.cf === (e.compile_fail === true)) {
       process.stdout.write(`SAME  ${c.rel}\n`);
       same++;
@@ -475,7 +467,7 @@ export function runVm(argv: string[], root: string): number {
     diff++;
   }
   process.stdout.write(
-    `\nvm_diff[golden]: SAME=${same} DIFF-KNOWN=${knownN} DIFF=${diff} SKIP=${skipN}（共 ${same + knownN + diff + skipN}）\n`,
+    `\nvm_diff[golden]: SAME=${same} DIFF=${diff} SKIP=${skipN}（共 ${same + diff + skipN}）\n`,
   );
 
   // **不迁动态白名单防腐化**：Go 版那段（跑完全量后检查 known.hit / skip.hit）
@@ -509,7 +501,6 @@ function writeDigest(root: string, doc: DigestDoc, fail: (m: string) => never): 
       parts.push(`      "stdout_sha": ${q(e.stdout_sha)}`);
       if (e.memory_sha !== undefined && e.memory_sha !== "") parts.push(`      "memory_sha": ${q(e.memory_sha)}`);
       if (e.compile_fail === true) parts.push(`      "compile_fail": true`);
-      if ((e.known_mb_digest ?? "") !== "") parts.push(`      "known_mb_digest": ${q(e.known_mb_digest ?? "")}`);
       return "{\n" + parts.join(",\n") + "\n    }";
     };
     const casesBody =

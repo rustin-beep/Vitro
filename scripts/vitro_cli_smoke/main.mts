@@ -1023,11 +1023,6 @@ export function runMain(argv: readonly string[]): number {
     else process.stdout.write("ok  C[launcher cmd] 默认臂（Windows）\n");
   }
 
-  if (failures > 0) {
-    process.stdout.write(`vitro_cli_smoke: ${failures} 失败\n`);
-    return 1;
-  }
-
   // ── G 组：#129 通道分立（2026-10-16 用户拍板，推翻 #69 混流裁定）──
   // 文本模式 stdout 只承载被测程序输出（无 // 标记行——字节精确）；诊断行/note/
   // EXIT 标记行/用法错走 stderr（gcc/clang 先例）。J9：本断言先于实现存在。
@@ -1078,6 +1073,14 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write("skip D[薄壳 step]（release exe 未构建——本地非全量态）\n");
   }
 
+  // 失败复查点（2026-11-01 审阅 v2 S09-A1 修复）：原检查位于 G/D 组之前，两组
+  // fatalf 累计 failures 后再无复查——G/D 失败与「全绿」行同屏、exit 0，CI 恒假绿
+  //（探针实锤：G 组语料注入语法错 → 三臂 FAIL + RC=0）。G/D 与 A/B/C 共用
+  // failures 统计，检查移至全组跑完之后。
+  if (failures > 0) {
+    process.stdout.write(`vitro_cli_smoke: ${failures} 失败\n`);
+    return 1;
+  }
   process.stdout.write("vitro_cli_smoke: 全绿（rc 契约 + 双臂同形对拍 + launcher + 薄壳 include）\n");
   return 0;
 }

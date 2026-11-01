@@ -26,10 +26,13 @@ import { projectRoot } from "../internal/capi.mts";
 import {
   BUCKET_RANK,
   DetRand,
+  bucketMigrationOf,
   bucketOf,
   codeMask,
   classifyAgainstBaseline,
   collectJudgeEpochInputs,
+  collectSeeds,
+  pickSeeds,
   collectZombieSeeds,
   exitDomainOf,
   exitWordOf,
@@ -474,4 +477,73 @@ test("collectJudgeEpochInputs：采集面断言——shell/script 缺失 die（P
   // 引擎双产物允许缺失（构建前置场景合法——scripts-ts job 无产物）
   const y = collectJudgeEpochInputs(bytes, { native: "no/such/exe", jsEngine: "no/such/js" });
   assert.ok(y.native.startsWith("<missing:") && y.jsEngine.startsWith("<missing:"));
+});
+
+test("采样键平台归一（#361）：collectSeeds 的 path 恒 POSIX 相对形态——win32 的 path.join 反斜杠分隔符曾直接进 sha256 采样键与字节序主排序，同一语料两平台采样序漂移、冻结基线不可迁移", () => {
+  const rules = {
+    suites: ["wn361a", "wn361b"],
+    seeds_per_suite: 2,
+    mutators: [],
+    mutators_per_seed: 1,
+    seed: 1,
+    generators: [],
+  } as unknown as Rules;
+  const files: Record<string, string[]> = {
+    // 乱序注入 + readme.txt（非 .c）+ subdir.c（**目录**，名字撞 .c 后缀
+    // ——isFile 过滤的判别锚，PR #405 审阅 P2-5：签名只收 string[] 时
+    // 此形态会被当种子收进）；wn361b 两文件 = 恰等于 seeds_per_suite 走
+    // 「全取」分支——push(...list) 直通输入序，终序 sort 有排序面可锚
+    "corpus/wn361a": ["zeta.c", "subdir.c", "alpha.c", "beta.c", "readme.txt"],
+    "corpus/wn361b": ["only.c", "b2.c"],
+  };
+  const dirents = (names: string[]): Array<{ name: string; isFile(): boolean }> =>
+    names.map((n) => ({ name: n, isFile: () => n !== "subdir.c" }));
+  const seeds = collectSeeds(rules, (d) => dirents(files[d] ?? []));
+  // 归一（win32 上修复前即红）：无平台分隔符，恒 corpus/<suite>/<name>
+  assert.ok(
+    seeds.every((s) => !s.path.includes("\\") && !s.path.includes(":")),
+    `path 含平台相关形态: ${seeds.map((s) => s.path).join(" ")}`,
+  );
+  // .c 过滤（文件 + 目录排除）+ path 字节字典序主排序（注入序乱序仍稳定）
+  assert.deepEqual(
+    seeds.map((s) => s.path),
+    [
+      "corpus/wn361a/alpha.c",
+      "corpus/wn361a/beta.c",
+      "corpus/wn361a/zeta.c",
+      "corpus/wn361b/b2.c",
+      "corpus/wn361b/only.c",
+    ],
+  );
+  // 采样：sha256(path) 升序取前 2（zeta=4d18.. < alpha=4988.. < beta=91ae..
+  // ——beta 掉出）+ 恰等于 seeds_per_suite 的套件全取（wn361b 两文件）+
+  // 终序字节序
+  const pick = pickSeeds(seeds, rules);
+  assert.deepEqual(
+    pick.map((s) => s.path),
+    ["corpus/wn361a/alpha.c", "corpus/wn361a/zeta.c", "corpus/wn361b/b2.c", "corpus/wn361b/only.c"],
+  );
+  // 输入序不敏感（PR #405 审阅 P2-5：原「两次调用相同」恒真无判别力——
+  // 纯函数同输入必同输出；改锚 pick 终序只由 path 决定，种子注入序打乱
+  // 不变，跨平台一致的可复现基础在此）
+  assert.deepEqual(pickSeeds([...seeds].reverse(), rules), pick);
+});
+
+// ---- freeze 桶值迁移透明化（PR #405 审阅 P1-A）----
+
+test("freeze 桶值迁移双向入列：演进修正（rank 降）与现象翻转（rank 升）都报——freeze 落盘不得无声吸收", () => {
+  assert.equal(bucketMigrationOf("s/x|mut", undefined, "AGREE"), null, "新条目（旧缺省）不算迁移");
+  assert.equal(bucketMigrationOf("s/x|mut", "AGREE", "AGREE"), null, "同桶不算");
+  // rank 下降：引擎演进修正旧陈旧值——#361 换键重冻被静默吸收的 32 条形态
+  assert.equal(
+    bucketMigrationOf("s/x|mut", "CLANG_REJECT", "AGREE"),
+    "s/x|mut: CLANG_REJECT -> AGREE",
+  );
+  // rank 上升：现象翻转——lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP 形态
+  assert.equal(
+    bucketMigrationOf("leetcode/lc_108.c|div2shift", "ARM_DIVERGENCE", "VITRO_TRAP"),
+    "leetcode/lc_108.c|div2shift: ARM_DIVERGENCE -> VITRO_TRAP",
+  );
+  // 恶化向同报（freeze 覆写同样须过目）
+  assert.equal(bucketMigrationOf("s/x|mut", "AGREE", "WRONG_VALUE"), "s/x|mut: AGREE -> WRONG_VALUE");
 });

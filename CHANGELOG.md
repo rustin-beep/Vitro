@@ -1,5 +1,51 @@
 ## [Unreleased]
 
+### fix(scripts): #361 corpus_fuzz 采样键平台归一——path 恒 POSIX 相对形态，冻结基线可跨平台迁移（Windows/Linux 对拍实测，2026-10-31）
+
+- **缺陷**：`collectSeeds`（原 main() 内联）用 `path.join` 拼种子路径——win32
+  产出 `\` 分隔符、POSIX 产出 `/`，分隔符直接进 sha256 采样键（shaPath 排序）
+  与字节序主排序/gen 缓存键：同一语料集合两平台采样序不同 ⇒ 指纹集/僵尸集
+  必然漂移、冻结基线不可跨平台迁移（#361 实测：Linux 101 变体新指纹/僵尸
+  53/53 等量互换、桶恶化 0——纯采样序漂移非判桶回归）。
+- **修复**（`scripts/corpus_fuzz/main.mts`）：种子收集 + 确定性采样抽纯函数
+  `collectSeeds`/`pickSeeds`（readdir 注入——单测锚挂点），path 恒 POSIX
+  相对形态（`corpus/<suite>/<name>.c`）。归一后采样序、缓存键、DetRand 的
+  path.length RNG 种子全链跨平台一致（`\`→`/` 等长，RNG 种子不变量保持）。
+- **J9 红→绿**：新锚「采样键平台归一」（win32 上直接锚「path 无 `\`」）——
+  突变验证：归一拼回 `path.join` 后锚红（`corpus\wn361a\...` 反斜杠实锤），
+  恢复后 29/29 绿（含既有 Go 金样本逐字节锚——重构零破坏）。
+- **跨平台对拍实证**：探针（collectSeeds/pickSeeds 纯函数 + 真 rules + 真
+  语料 760 种子）双平台跑——win32 node 26.12.1 与 WSL2 linux node 25.9.0
+  采得 pick 集 sha256 **逐位一致**（86 pick）——治本实证且对 node 大版本
+  不敏感。
+- **基线重冻（换键口径声明）**：采样键由「win32 path.join 形态」换为「POSIX
+  归一形态」⇒ 采样集变化 ⇒ 基线指纹集整体换血，`-freeze` 重冻
+  （318 条 → 318 条：同键 159 条掉出 + 159 条新增——86 个 pick 种换血
+  53 个 62%，条目数相等恰好掩盖换血事实）；重冻后旧键口径基线退役。
+  CI corpus-fuzz job（windows-latest）与新键自动一致。
+- **同键桶值迁移 33 条披露（PR #405 审阅 P1-A）**：32 条 CLANG_REJECT→
+  AGREE（引擎演进修正旧陈旧值——校验面「变好即 ok」永不报，重冻曾静默
+  吸收零披露）+ lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP（现象翻转
+  ——旧「两臂都跑完输出不同」的真病候选被栈 trap 盖住，挂账 #409）。
+  **freeze 侧治本**：新增纯函数 `bucketMigrationOf`——freeze 落盘前打印
+  「桶值迁移 N 条（fp: 旧 → 新）」明细，**双向入列**（rank 降=演进修正、
+  rank 升=现象翻转都须过目）；单测锚挂点 + 突变证红（改成单向报即红）。
+- **PR #405 审阅处置（2026-11-01）**：P1-B lc_84|static_inject
+  ARM_DIVERGENCE 真病候选随采样退役——**挂账 #409 不静默销案**，
+  lc_108|div2shift 标 `volatile:true`（桶位随栈余量在 trap/分叉间翻转）
+  + note 写实两侧真实现象；P2 lc_704 note 平台口径双注（win32
+  `EXIT:-98`=runCmd spawnSync 超时哨兵**非进程退出码**；POSIX rc=124=
+  timeout 命令形态）、clangOutcome 崩溃/超时一律记 OK 的判定面失真挂
+  #410、`collectSeeds` readdir 注入保留 Dirent 结构面（`isFile()` 过滤
+  ——目录条目撞 `.c` 后缀形态有判别锚）、`pickSeeds` 输入序不敏感锚
+  （全取套件双文件）替换恒真断言；**处置批瞬态定性**：`baseline/
+  conditional_compile.c|init_partial` epoch 换血全量真跑一次判 WRONG_VALUE、
+  probe 三方 + 删缓存单条重判双复跑均 AGREE（`1 3 6 8` 三方一致）——
+  init_partial UB 抖动域（#285 先例同族），标 `volatile:true` 漂移只报告
+  不判红。跨平台 CI 面（ubuntu lane）另案拍板。
+- 四件套：tsc strict / oxlint / node:test（30/30 + 全清单绿）/
+  npm ci lockfile 钉版。
+
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 
 ### fix(engine+docs): ds 批——#66 尺寸口径连坐（`\xHH` 字面量 NUL 终止修复·越界读治本）+ 规范矛盾勘正 + 快速入门命令修复 + launcher 执行位（2026-10-31）

@@ -110,6 +110,24 @@ export function classifyAgainstBaseline(
 }
 
 /**
+ * freeze 桶值迁移行（PR #405 审阅 P1-A，纯函数——单测锚挂点）：同键旧新
+ * 桶不同即返回「fp: old -> new」，新条目（旧缺省）与同桶返 null。**双向
+ * 入列**（rank 下降=引擎演进修正旧陈旧值、rank 上升=现象翻转），与
+ * classifyAgainstBaseline 的单向恶化闸互补——freeze 落盘会无声吸收一切
+ * 桶值变化（#361 换键重冻实测静默吸收 33 条：32 条 CLANG_REJECT→AGREE
+ * 演进修正 + lc_108|div2shift ARM_DIVERGENCE→VITRO_TRAP 现象翻转，校验面
+ * 因「变好即 ok」永不报），落盘前必须打印让人看见。
+ */
+export function bucketMigrationOf(
+  fp: string,
+  oldBucket: string | undefined,
+  newBucket: string,
+): string | null {
+  if (oldBucket === undefined || oldBucket === newBucket) return null;
+  return `${fp}: ${oldBucket} -> ${newBucket}`;
+}
+
+/**
  * 僵尸 seed 收集（纯函数，单测锚挂点）：基线指纹的 seed 不在采样集即入列
  * （gen: 段无种子文件豁免）。volatile 豁免不免存在性对账。
  */
@@ -1037,6 +1055,77 @@ export interface PlannedVariant {
   mutator: string;
 }
 
+export interface SeedFile {
+  suite: string;
+  name: string;
+  /** 仓库内相对路径，恒 POSIX 形态（`corpus/<suite>/<name>`）——见 collectSeeds 头注 */
+  path: string;
+}
+
+/**
+ * 种子收集（#361 抽纯函数）：语料套件目录 → 种子清单（`.c` 过滤 + path
+ * 字节字典序主排序）。
+ *
+ * **path 恒 POSIX 相对形态**（`corpus/<suite>/<name>.c`）：此前用
+ * `path.join`，win32 产出 `\` 分隔符、POSIX 产出 `/`——分隔符直接进
+ * sha256 采样键（pickSeeds）与字节序主排序/gen 缓存键，同一语料集合两
+ * 平台采样序不同 ⇒ 指纹集/僵尸集必然漂移、冻结基线不可跨平台迁移
+ * （#361 实测：Linux 101 变体新指纹/僵尸 53/53 等量互换、桶恶化 0——
+ * 纯采样序漂移非判桶回归）。归一后采样序（shaPath）、缓存键
+ * （Buffer.from(path)）、DetRand 的 path.length RNG 种子全链跨平台一致
+ * （`\`→`/` 等长，RNG 种子不变量保持；Windows fs 吃 `/`）。
+ *
+ * readdir 注入：单测锚挂点（Windows 上直接锚「无 `\`」——修复前红）；
+ * 注入签名保留 Dirent 结构面（`{ name, isFile() }`——PR #405 审阅 P2-5：
+ * 只收 string[] 会丢掉「目录条目以 .c 结尾」的过滤能力）；读盘失败的
+ * fail loud 责任在注入方（die 带 suite 语境）。
+ */
+export function collectSeeds(
+  rules: Rules,
+  readdir: (dir: string) => Array<{ name: string; isFile(): boolean }>,
+): SeedFile[] {
+  const seeds: SeedFile[] = [];
+  for (const suite of rules.suites) {
+    const dir = `corpus/${suite}`;
+    for (const e of readdir(dir)) {
+      if (e.isFile() && e.name.endsWith(".c")) seeds.push({ suite, name: e.name, path: `${dir}/${e.name}` });
+    }
+  }
+  seeds.sort((a, b) => byteCompare(a.path, b.path));
+  return seeds;
+}
+
+/**
+ * 确定性采样（#361 抽纯函数）：每套件 sha256(path) 内容寻址升序取前
+ * seeds_per_suite（PR #339 审阅 P3-3：hash 序只随「哪些文件存在」变化，
+ * 对语料数量不敏感——旧 DetRand 采样集合 +2 文件即整体换位 19/20），
+ * 全 pick 终序按 path 字节字典序。path 的平台归一见 collectSeeds 头注
+ * ——排序键跨平台一致是冻结基线可迁移的前提（#361）。
+ */
+export function pickSeeds(
+  seeds: ReadonlyArray<SeedFile>,
+  rules: Rules,
+): SeedFile[] {
+  const bySuite = new Map<string, SeedFile[]>();
+  for (const s of seeds) {
+    const cur = bySuite.get(s.suite);
+    if (cur === undefined) bySuite.set(s.suite, [s]);
+    else cur.push(s);
+  }
+  const pick: SeedFile[] = [];
+  for (const suite of rules.suites) {
+    const list = bySuite.get(suite) ?? [];
+    if (rules.seeds_per_suite >= list.length) {
+      pick.push(...list);
+      continue;
+    }
+    const ranked = [...list].sort((a, b) => byteCompare(shaPath(a.path), shaPath(b.path)));
+    for (let i = 0; i < rules.seeds_per_suite; i++) pick.push(ranked[i] as SeedFile);
+  }
+  pick.sort((a, b) => byteCompare(a.path, b.path));
+  return pick;
+}
+
 /**
  * 生成计划：算子段（每种子确定性抽 mutators_per_seed 个算子）+ 生成器段。
  * **纯函数**（不编译、不落盘）——测试以它逐字节比对 Go 侧金样本。
@@ -1145,50 +1234,17 @@ function mainFlow(argv: readonly string[]): number {
     if (mutatorByName(mn) === null) die(`未知算子名 ${JSON.stringify(mn)}（规则与实现失配——fail loud）`);
   }
 
-  // 种子收集 + 确定性抽样
-  interface SeedFile {
-    suite: string;
-    name: string;
-    path: string;
-  }
-  const seeds: SeedFile[] = [];
-  for (const suite of rules.suites) {
-    const dir = path.join("corpus", suite);
-    let ents: fs.Dirent[];
+  // 种子收集 + 确定性抽样（#361 抽纯函数 collectSeeds/pickSeeds——path
+  // POSIX 归一，采样键跨平台一致；读盘 fail loud 在注入方。cwd=仓库根
+  // 契约与原内联形态一致——path 相对 cwd 消费，projectRoot 不掺入）
+  const seeds = collectSeeds(rules, (d) => {
     try {
-      ents = fs.readdirSync(dir, { withFileTypes: true });
+      return fs.readdirSync(d, { withFileTypes: true });
     } catch (e) {
-      die(`读套件 ${suite} 失败：${errText(e)}`);
+      die(`读套件 ${d} 失败：${errText(e)}`);
     }
-    for (const e of ents) {
-      if (e.name.endsWith(".c")) seeds.push({ suite, name: e.name, path: path.join(dir, e.name) });
-    }
-  }
-  seeds.sort((a, b) => byteCompare(a.path, b.path));
-  const pick: SeedFile[] = [];
-  const bySuite = new Map<string, SeedFile[]>();
-  for (const s of seeds) {
-    const cur = bySuite.get(s.suite);
-    if (cur === undefined) bySuite.set(s.suite, [s]);
-    else cur.push(s);
-  }
-  for (const suite of rules.suites) {
-    const list = bySuite.get(suite) ?? [];
-    if (rules.seeds_per_suite >= list.length) {
-      pick.push(...list);
-      continue;
-    }
-    // PR #339 审阅 P3-3（2026-10-27）：内容寻址固定采样——sha256(path)
-    // 升序取前 N。旧形态 DetRand(seed).intn(len) 对语料**数量**敏感：集合
-    // +2 文件 → intn 域变 → 采样流整体换位（实测 baseline 551→553 后 20
-    // 个种子里 19 个被换掉），带 WRONG_VALUE/VITRO_TRAP 条目的种子掉出
-    // 监测面而闸照绿。hash 序只随「哪些文件存在」变化：新增文件仅在其
-    // hash 排进前 N 时挤掉一个尾部种子（增量式），删除种子文件才失位。
-    const ranked = [...list].sort((a, b) =>
-      byteCompare(shaPath(a.path), shaPath(b.path)));
-    for (let i = 0; i < rules.seeds_per_suite; i++) pick.push(ranked[i] as SeedFile);
-  }
-  pick.sort((a, b) => byteCompare(a.path, b.path));
+  });
+  const pick = pickSeeds(seeds, rules);
 
   // 缓存键：种子集合 + 规则内容
   const keyParts: Buffer[] = [];
@@ -1246,11 +1302,14 @@ function mainFlow(argv: readonly string[]): number {
   let agree = 0;
   let total = 0;
   const report: string[] = [];
+  const migrations: string[] = [];
 
   const handle = (fp: string, bucket: string): void => {
     if (bucket === "AGREE") agree++;
     if (opts.freeze) {
       const old = base.entries.get(fp);
+      const mig = bucketMigrationOf(fp, old?.bucket, bucket);
+      if (mig !== null) migrations.push(mig);
       base.entries.set(fp, { bucket, issue: old?.issue, note: old?.note, volatile: old?.volatile });
       return;
     }
@@ -1329,6 +1388,8 @@ function mainFlow(argv: readonly string[]): number {
       die(`基线落盘失败：${errText(e)}`);
     }
     process.stdout.write(`corpus_fuzz -freeze：基线落盘 ${Object.keys(entries).length} 条（剔除采样集外僵尸 ${dropped} 条）→ ${opts.baseline}\n`);
+    process.stdout.write(`桶值迁移 ${migrations.length} 条（freeze 实测覆写旧基线——演进修正与现象翻转都须过目，PR #405 审阅 P1-A）\n`);
+    for (const m of migrations) process.stdout.write(`  ${m}\n`);
     process.stdout.write(`判定缓存写盘 ${judgeMiss} 条（epoch=${judgeEpoch}，freeze 全量真跑值）\n`);
     return 0;
   }

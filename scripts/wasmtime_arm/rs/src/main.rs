@@ -2,7 +2,7 @@
 // `wasm:js-string` 内建与 `_` 字符串常量，NDJSON 请求流逐行 invoke、响应
 // 逐行写出，与 node/V8 侧跑器（../host_node.mts）同形，供对比器逐位对拍。
 //
-// 来��：R3b 探针 v4（D:/tmp/vitro-downstream-gui/probes/wasmtime_rs，决定性
+// 来源：R3b 探针 v4（D:/tmp/vitro-downstream-gui/probes/wasmtime_rs，决定性
 // 探针——证明 Rust 原生 API 可供给 GC 引用宿主值面，C API 家族不行）。固化时
 // 相对探针的三处改动：
 //   ① 供给层语义对齐 js-string-builtins 提案 Overview.md（2026-11-02 拉取）：
@@ -679,7 +679,7 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
         cfg.compiler_inlining(wasmtime::Inlining::Yes);
     }
     // GC 堆初始大小（wasmtime 默认 0——从零按需增长；copying collector 每次
-    // 收集/增长整体拷���跃集，大字符串活跃集下抖动：src_500k_many_lines compile
+    // 收集/增长整体拷活跃集，大字符串活跃集下抖动：src_500k_many_lines compile
     // 8.7s vs node 0.17s 实锤）。内存惰性提交，调大无实际代价。W4_GC_HEAP_MB 覆盖。
     let gc_mb: u64 = std::env::var("W4_GC_HEAP_MB").ok().and_then(|s| s.parse().ok()).unwrap_or(256);
     cfg.gc_heap_initial_size(gc_mb << 20);

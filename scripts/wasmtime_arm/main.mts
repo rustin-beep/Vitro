@@ -26,9 +26,11 @@ import {
   adversarialFrames,
   buildFrames,
   byteOrder,
+  checkBaseline,
   collectFiles,
   compareResponses,
   frameMethods,
+  freezeBaseline,
   mulberry32,
   sampleK,
   sha256Hex,
@@ -41,6 +43,7 @@ import {
   type ManifestCase,
   type Profile,
   type SuiteFiles,
+  type SynthBaseline,
 } from "./lib.mts";
 
 const REPO = resolve(import.meta.dirname, "..", "..");
@@ -77,6 +80,9 @@ interface Opts {
   quota: Record<string, number>;
   profile: Profile;
   synth: boolean;
+  all: boolean;
+  baseline: string | null;
+  freezeBaseline: string | null;
   json: boolean;
 }
 
@@ -91,6 +97,9 @@ function parseArgs(argv: string[]): Opts {
     quota: { ...DEFAULT_QUOTA },
     profile: "run",
     synth: false,
+    all: false,
+    baseline: null,
+    freezeBaseline: null,
     json: false,
   };
   for (let i = 1; i < argv.length; i++) {
@@ -117,8 +126,12 @@ function parseArgs(argv: string[]): Opts {
       }
     } else if (a === "--json") o.json = true;
     else if (a === "--synth") o.synth = true;
+    else if (a === "--all") o.all = true;
+    else if (a === "--baseline") o.baseline = resolve(next());
+    else if (a === "--freeze-baseline") o.freezeBaseline = resolve(next());
     else throw new Error(`未知参数 ${a}`);
   }
+  if (o.all) for (const k of Object.keys(o.quota)) o.quota[k] = 999999;
   return o;
 }
 
@@ -200,7 +213,7 @@ function cmdGen(o: Opts): void {
   const wasmSha = existsSync(o.wasm) ? sha256Hex(readFileSync(o.wasm)) : "";
   const cases: ManifestCase[] = [];
   const lines: string[] = [];
-  // 静态族前导（一次性）—���进程级表 / `_` 常量供给面 / fail-loud 错误帧；
+  // 静态族前导（一次性）——进程级表 / `_` 常量供给面 / fail-loud 错误帧；
   // synth 模式再追加请求行级对抗帧（深 JSON / 编码边界 / 参数域错误）
   {
     const sf = staticFrames();
@@ -265,7 +278,7 @@ function cmdRun(o: Opts): void {
   );
 }
 
-function cmdDiff(o: Opts): DiffReport {
+function cmdDiff(o: Opts): { report: DiffReport; ok: boolean } {
   const manifest = JSON.parse(readFileSync(join(o.out, "manifest.json"), "utf8")) as Manifest;
   const left = readFileSync(join(o.out, "responses.wasmtime.ndjson"));
   const right = readFileSync(join(o.out, "responses.node.ndjson"));
@@ -294,7 +307,28 @@ function cmdDiff(o: Opts): DiffReport {
     }
     process.stdout.write(lines.join("\n") + "\n");
   }
-  return report;
+  // 冻结基线：本轮 verdict 落盘（DIFF 拒冻）
+  if (o.freezeBaseline !== null) {
+    const base = freezeBaseline(report, manifest.profile, `frozen ${new Date().toISOString().slice(0, 10)} from --synth; 重冻：node scripts/wasmtime_arm/main.mts all --synth --freeze-baseline <此文件>`);
+    writeFileSync(o.freezeBaseline, JSON.stringify(base, null, 2) + "\n");
+    process.stderr.write(`[w4 baseline] 冻结 ${Object.keys(base.cases).length} 例 → ${o.freezeBaseline}\n`);
+    return { report, ok: true };
+  }
+  // 基线判定：五类问题任一即红（DIFF 恒红；改善亦红指引重冻）
+  if (o.baseline !== null) {
+    const base = JSON.parse(readFileSync(o.baseline, "utf8")) as SynthBaseline;
+    if (base.schema !== "w4-synth-baseline-v1") throw new Error(`基线 schema 不符：${base.schema}`);
+    if (base.profile !== manifest.profile) throw new Error(`基线 profile=${base.profile} 与本轮 ${manifest.profile} 不符`);
+    const problems = checkBaseline(report, base);
+    for (const p of problems) {
+      const arrow = p.from !== undefined && p.to !== undefined ? ` ${p.from}→${p.to}` : p.to !== undefined ? ` ${p.to}` : p.from !== undefined ? ` (基线 ${p.from})` : "";
+      process.stdout.write(`  [baseline:${p.kind}] ${p.name}${arrow}\n`);
+    }
+    const ok = problems.length === 0;
+    process.stdout.write(`[w4 baseline] ${ok ? "PASS" : "FAIL"}——${Object.keys(base.cases).length} 例基线 / ${problems.length} 问题${ok ? "" : "（DIFF/恶化/未登记/僵尸 必红；改善须 --freeze-baseline 重冻）"}\n`);
+    return { report, ok };
+  }
+  return { report, ok: report.identical };
 }
 
 function main(): number {
@@ -307,13 +341,13 @@ function main(): number {
       cmdRun(o);
       return 0;
     case "diff":
-      return cmdDiff(o).identical ? 0 : 3;
+      return cmdDiff(o).ok ? 0 : 3;
     case "all":
       cmdGen(o);
       cmdRun(o);
-      return cmdDiff(o).identical ? 0 : 3;
+      return cmdDiff(o).ok ? 0 : 3;
     default:
-      process.stderr.write("usage: main.mts gen|run|diff|all [--out D] [--wasm P] [--exe P] [--seed N] [--profile run|deep-nomem|deep] [--cases a.c,b.c] [--quota s=N,...] [--json]\n");
+      process.stderr.write("usage: main.mts gen|run|diff|all [--out D] [--wasm P] [--exe P] [--seed N] [--profile run|deep-nomem|deep] [--all | --cases a.c,b.c | --quota s=N,...] [--synth] [--baseline F | --freeze-baseline F] [--json]\n");
       return 2;
   }
 }

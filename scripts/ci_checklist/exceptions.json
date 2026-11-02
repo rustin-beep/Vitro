@@ -15,9 +15,5 @@
     "driver": "scripts/gen_course",
     "kind": "retired-fallback",
     "reason": "退役回退预案（#125 批 A 2026-10-15 lessons.ts 渲染角色退役，CI/pages 接线已摘）：课程叙述层生成器本体保留供宿主运行时方案失败时回退——node 直跑可用、npm test 跑其测试；**-check 在干净检出必 rc=1**（产物 demo/src/data/lessons.ts 不入库 .gitignore，须先跑生成再 -check——PR #416 审阅 P3 勘正原「-check 可跑」误导）。按裁定不入 CI 判定面。原无 shebang 逃过扫描面致三向对账恒绿脱管（2026-11-01 审阅 v2 S08-6 补 shebang 入驱动集并登记）。救急前置：cd scripts && npm ci（依赖 marked）"
-  },
-  {
-    "driver": "scripts/wasmtime_arm",
-    "reason": "本地工具（W4 批 2026-11-02 探针固化）：第四臂 wasmtime(Cranelift) vs V8 同产物对拍——跑器为 Rust crate（rs/，需 rustc≥1.97 + cargo 冷编 wasmtime 50.0.1 ~3min），CI 无 Rust 链且 wasmtime 侧大输入 50×+ 慢；闸形态（全量/spot/不建）待普查报告拍板后另批接线"
   }
 ]

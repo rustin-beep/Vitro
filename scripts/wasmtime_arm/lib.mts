@@ -146,7 +146,7 @@ export function collectFiles(
   return entries;
 }
 
-// ── 帧构造 ──────────────────────────────��─────────────────────────────
+// ── 帧构造 ─────────────────────────────────────────────────────────────
 
 export interface CaseInput {
   name: string; // 相对 corpus/ 的 posix 路径（语料身份）
@@ -569,4 +569,59 @@ export function compareResponses(
     summary,
     cases,
   };
+}
+
+// ── 行为基线（synth 对抗面）────────────────────────────────────────────
+//
+// 对抗集天然含 TRAP_ONE（栈预算）/ TRAP_BOTH / CASCADE，不能要求 identical；
+// 按 corpus_fuzz 分桶基线纪律锁定每例 verdict：DIFF 恒红（永不可登记）、
+// 恶化（秩序上升）红、未登记（新例无基线）红、僵尸（基线有本轮无）红、
+// 改善（秩序下降）亦红并指引 --freeze-baseline（基线漂移即红——与 golden
+// digest 同口径，改善不静默吞）。
+
+export interface SynthBaseline {
+  schema: "w4-synth-baseline-v1";
+  profile: Profile;
+  note: string;
+  cases: Record<string, FrameVerdict>;
+}
+
+export interface BaselineProblem {
+  kind: "diff" | "worsened" | "improved" | "unregistered" | "zombie";
+  name: string;
+  from?: FrameVerdict;
+  to?: FrameVerdict;
+}
+
+export function checkBaseline(report: DiffReport, base: SynthBaseline): BaselineProblem[] {
+  const problems: BaselineProblem[] = [];
+  const seen = new Set<string>();
+  for (const c of report.cases) {
+    seen.add(c.name);
+    if (c.verdict === "DIFF") {
+      problems.push({ kind: "diff", name: c.name, to: c.verdict });
+      continue;
+    }
+    const b = base.cases[c.name];
+    if (b === undefined) {
+      problems.push({ kind: "unregistered", name: c.name, to: c.verdict });
+      continue;
+    }
+    if (VERDICT_RANK[c.verdict] > VERDICT_RANK[b]) problems.push({ kind: "worsened", name: c.name, from: b, to: c.verdict });
+    else if (VERDICT_RANK[c.verdict] < VERDICT_RANK[b]) problems.push({ kind: "improved", name: c.name, from: b, to: c.verdict });
+  }
+  for (const name of Object.keys(base.cases)) {
+    if (!seen.has(name)) problems.push({ kind: "zombie", name, from: base.cases[name] });
+  }
+  return problems.sort((a, b) => byteOrder(a.name, b.name));
+}
+
+/** 由本轮报告冻结基线（键按字节序；DIFF 例拒绝冻结——fail loud）。 */
+export function freezeBaseline(report: DiffReport, profile: Profile, note: string): SynthBaseline {
+  const cases: Record<string, FrameVerdict> = {};
+  for (const c of report.cases.slice().sort((a, b) => byteOrder(a.name, b.name))) {
+    if (c.verdict === "DIFF") throw new Error(`拒绝冻结：${c.name} 为 DIFF（语义分叉不可登记为基线）`);
+    cases[c.name] = c.verdict;
+  }
+  return { schema: "w4-synth-baseline-v1", profile, note, cases };
 }

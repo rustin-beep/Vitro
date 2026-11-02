@@ -10,11 +10,13 @@ import {
   adversarialFrames,
   buildFrames,
   byteOrder,
+  checkBaseline,
   classifyFrame,
   collectFiles,
   compareResponses,
   firstDiff,
   frameMethods,
+  freezeBaseline,
   isTrapLine,
   mulberry32,
   sampleK,
@@ -24,6 +26,7 @@ import {
   synthCases,
   vfsKeyFor,
   type Manifest,
+  type SynthBaseline,
 } from "./lib.mts";
 
 const B = (s: string): Buffer => Buffer.from(s, "utf8");
@@ -190,4 +193,32 @@ test("splitLines：无尾换行最后一行也计入；空行保留", () => {
   assert.deepEqual(splitLines(B("a\n\nb")).map((x) => x.toString()), ["a", "", "b"]);
   assert.deepEqual(splitLines(B("a\n")).map((x) => x.toString()), ["a"]);
   assert.equal(STATIC_CASE, "__static__");
+});
+
+test("基线证红：DIFF/恶化/改善/未登记/僵尸 五类各自判出；全匹配零问题；冻结拒 DIFF", () => {
+  // 四例：c0 AGREE / c1 TRAP_BOTH（双侧 trap，epoch 同步）/ c2 DIFF（须在任何单侧 trap 之前，否则按设计判 CASCADE）/ c3 TRAP_ONE
+  const m = mkManifest([1, 1, 1, 1]);
+  const left = B('{"a":1}\n{"__host_trap__":"x","kind":"w"}\n{"c":1}\n{"__host_trap__":"y","kind":"w"}\n');
+  const right = B('{"a":1}\n{"__host_trap__":"x","kind":"v"}\n{"c":2}\n{"d":2}\n');
+  const report = compareResponses(m, left, right, { left: "L", right: "R" });
+  assert.deepEqual(report.cases.map((c) => c.verdict), ["AGREE", "TRAP_BOTH", "DIFF", "TRAP_ONE"]);
+  // 冻结拒 DIFF
+  assert.throws(() => freezeBaseline(report, "run", "t"), /拒绝冻结.*c2.*DIFF/);
+  // 无 DIFF 的三例（AGREE / TRAP_BOTH / TRAP_ONE）可冻结，且自检零问题
+  const m3 = mkManifest([1, 1, 1]);
+  const r3 = compareResponses(m3, B('{"a":1}\n{"__host_trap__":"x","kind":"w"}\n{"__host_trap__":"y","kind":"w"}\n'), B('{"a":1}\n{"__host_trap__":"x","kind":"v"}\n{"d":2}\n'), { left: "L", right: "R" });
+  assert.deepEqual(r3.cases.map((c) => c.verdict), ["AGREE", "TRAP_BOTH", "TRAP_ONE"]);
+  const base = freezeBaseline(r3, "run", "t");
+  assert.deepEqual(base.cases, { c0: "AGREE", c1: "TRAP_BOTH", c2: "TRAP_ONE" });
+  assert.deepEqual(checkBaseline(r3, base), []);
+  // 改善：基线 c0=TRAP_BOTH 本轮 AGREE；恶化：基线 c1=AGREE 本轮 TRAP_BOTH；僵尸：zz
+  const tampered: SynthBaseline = { ...base, cases: { c0: "TRAP_BOTH", c1: "AGREE", c2: "TRAP_ONE", zz: "AGREE" } };
+  const probs = checkBaseline(r3, tampered);
+  assert.deepEqual(probs.map((p) => `${p.kind}:${p.name}`), ["improved:c0", "worsened:c1", "zombie:zz"]);
+  // 未登记：基线缺 c2
+  const missing: SynthBaseline = { ...base, cases: { c0: "AGREE", c1: "TRAP_BOTH" } };
+  assert.deepEqual(checkBaseline(r3, missing).map((p) => p.kind), ["unregistered"]);
+  // DIFF 恒红（即使基线写了 DIFF）
+  const withDiff: SynthBaseline = { ...base, cases: { c0: "AGREE", c1: "TRAP_BOTH", c2: "DIFF", c3: "TRAP_ONE" } };
+  assert.deepEqual(checkBaseline(report, withDiff).map((p) => p.kind), ["diff"]);
 });

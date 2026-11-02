@@ -614,6 +614,54 @@ jobs:
         if: matrix.slice == 'clang_direct'
         run: node scripts/clang_direct/main.mts --backend wasm
         shell: bash
+  arm4-wasmtime:
+    name: 4th-arm wasmtime parity (gateway wasm x Cranelift vs V8)
+    needs: build-artifacts
+    runs-on: windows-latest
+    # 冷编 wasmtime 50（release，~3-5min 慢机）+ corpus deep-nomem 双侧
+    #（本地 36s+13s，慢机 ~3x）+ synth 基线轮（本地 70s 含 55s GC 病态例）
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # 产物含 wasmopt 后的 wasm.wasm（build-artifacts 步）；本 job 无需 moon。
+      # rust：windows-latest 预装 stable（wasmtime 50.0.1 MSRV 1.97 ≤ stable）。
+      - name: Rust toolchain (runner 预装)
+        run: rustc --version && cargo --version
+        shell: bash
+      - name: Cache cargo registry + wasmtime_arm target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            scripts/wasmtime_arm/rs/target
+          key: w4-cargo-${{ runner.os }}-${{ hashFiles('scripts/wasmtime_arm/rs/Cargo.lock') }}-${{ hashFiles('scripts/wasmtime_arm/rs/src/main.rs') }}
+          restore-keys: |
+            w4-cargo-${{ runner.os }}-${{ hashFiles('scripts/wasmtime_arm/rs/Cargo.lock') }}-
+      - name: Build wasmtime_arm runner
+        env:
+          CARGO_INCREMENTAL: "0"
+        run: cd scripts/wasmtime_arm/rs && cargo build --release --locked
+        shell: bash
+      # corpus 全量（run 6 帧扩展为 deep-nomem 21 帧：dump 族/step 族/memory.regions/
+      # vfs 面）——严格逐位（identical），零 DIFF/TRAP/CASCADE 才绿。
+      - name: 4th-arm corpus parity (deep-nomem, strict identical)
+        run: node scripts/wasmtime_arm/main.mts all --profile deep-nomem --all --out tmp/w4ci/corpus
+        shell: bash
+      # 对抗集（栈梯度/lone surrogate/大输入/fail-loud 帧域）——行为基线锁定
+      #（scripts/wasmtime_arm/synth_baseline.json；DIFF 恒红、恶化/未登记/僵尸/
+      # 改善红——重冻走 --freeze-baseline，J9 三形态篡改证红）。
+      - name: 4th-arm synth adversarial (baseline-locked)
+        run: node scripts/wasmtime_arm/main.mts all --profile run --synth --baseline scripts/wasmtime_arm/synth_baseline.json --out tmp/w4ci/synth
+        shell: bash
   static-gates:
     # 二轮审阅 P2（2026-10-17）：红遮红治理——27 步单 job 串行，一步红
     # 后续全 skipped（surface 红曾遮 single_source/testcount 至 HEAD）。
@@ -1754,7 +1802,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1771,6 +1819,7 @@ jobs:
           BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
           RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
+          ARM4_WASMTIME: ${{ needs.arm4-wasmtime.result }}
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
@@ -1783,6 +1832,7 @@ jobs:
             "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
             "cli-smoke-linux:$CLI_SMOKE_LINUX"
             "release-preflight:$RELEASE_PREFLIGHT"
+            "arm4-wasmtime:$ARM4_WASMTIME"
           )
           bad=0
           for pair in "${pairs[@]}"; do

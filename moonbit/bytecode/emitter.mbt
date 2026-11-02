@@ -1,16 +1,17 @@
 ///|
 /// CompileOutput → dump JSON emitter（S5，A 级产物对拍面）。
 ///
-/// 与 Rust `vitro_cli dump-compile` 的 `CompileDump`（serde derive，14 键）
-/// 逐字段同构——显式 emitter 纪律（B 级锚）：键名/字段序/元组数组形态/
-/// Type externally-tagged（经 `@ast.type_json` 单源）/浮点文本化（经
+/// 与历史蓝本 Rust `vitro_cli dump-compile` 的 `CompileDump`（serde derive，14 键；
+/// tag rust-oracle-freeze）逐字段同形——显式 emitter 纪律（B 级锚）：键名/字段序/
+/// 元组数组形态/Type externally-tagged（经 `@ast.type_json` 单源）/浮点文本化（经
 /// `@ast.double_to_json_text` 单源）/字符串转义（经 `@ast.json_escape_string`
-/// 单源）在此对齐；两侧产物各过 Go canonicalize 后 diff。
+/// 单源）在此对齐；产物过 Go canonicalize 后与 golden 冻结基线 diff。
 ///
 /// 确定性（F6 / 勘察 §⑤-5）：`func_table`/`func_index`/`struct_defs`/
 /// `union_defs` 的 Map 键序 unspecified——emit 前按键升序排序（本 emitter
-/// 产物天然 canonical，不依赖 canonicalizer 补排序；Rust 侧 HashMap 键序
-/// 随机，仍须 canonicalize 归一）。
+/// 产物在 **ASCII 键域内**天然 canonical〔`str_cmp` 为 UTF-16 码元序，非 BMP
+/// 键与 Go sort.Strings 码点序分叉——util.mbt 已声明边界〕，不依赖
+/// canonicalizer 补排序；历史蓝本 HashMap 键序随机，须 canonicalize 归一）。
 
 ///|
 /// 键升序排序（插入排序——Map 规模为函数/结构体数十级，无需快排；
@@ -126,8 +127,8 @@ fn emit_struct_defs(
 }
 
 ///|
-/// CompileOutput 13 字段全量 dump（version=1 前缀键与 Rust CompileDump
-/// 同序）。pretty-print 由 canonicalize 統一，本 emitter 输出紧凑形态。
+/// CompileOutput 13 字段全量 dump（version=1 前缀键与历史蓝本 CompileDump
+/// 同序）。pretty-print 由 canonicalize 统一，本 emitter 输出紧凑形态。
 pub fn compile_output_dump_json(o : CompileOutput) -> String {
   let buf = StringBuilder()
   buf.write_string("{\"version\":1,\"code\":[")

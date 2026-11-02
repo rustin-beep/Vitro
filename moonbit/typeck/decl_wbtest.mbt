@@ -270,7 +270,7 @@ test "condition_warnings" {
     loc,
     @ast.Type::void_type(),
   )
-  // W3051 判据是**条件两侧**含数组/指针表达式（Rust 同构——body 内的
+  // W3051 判据是**条件两侧**含数组/指针表达式（历史蓝本同形——body 内的
   // a[i] 不参与判定）；构造 i <= a[0]
   let le : @ast.Expr = @ast.Expr::Binary(
     Le,

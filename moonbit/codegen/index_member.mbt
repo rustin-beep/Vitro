@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 数组索引与成员访问（S5 扩展批四号·Index/Member——剩余面主要拦截者）
 /// ——Rust `expr.rs` 的 gen_index/gen_vla_stride/gen_member_addr 与

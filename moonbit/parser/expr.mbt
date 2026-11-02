@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 表达式优先级瀑布（照搬 Rust `expr/` 五文件：mod/ops/primary/postfix/
 /// unary）。21 帧瀑布中 4 个壳挂点（assign/ternary/unary/primary）按
@@ -1005,8 +1007,8 @@ fn Parser::parse_double_or_report(
       // 此处 parse 失败只可能是**上溢**（含指数字段超 int），按 C/clang
       // 语义（文档《标准库支持矩阵》推荐 `1e309` 作 INFINITY 替代）产
       // +inf（负号由一元运算符承担，字面量本身无符号）；下溢（1e-400）
-      // MoonBit 不抛错、直接返 0.0（实测，与 Rust 一致）。非合法拼写
-      // （理论不可达——防御）保留原格式错误。
+      // MoonBit 不抛错、直接返 0.0（实测 MoonBit 行为；C 字面量下溢亦归 0）。
+      // 非合法拼写（理论不可达——防御）保留原格式错误。
       if is_float_literal_shape(text) {
         return 1.0 / 0.0
       }

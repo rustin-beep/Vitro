@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// bytecode 白盒测试（S5）——libc 固定索引锚 / R1 布局纯函数（r1 第 7 道
 /// `test_compute_heap_base_layout_rules` 等价断言全量照搬）/ dump emitter

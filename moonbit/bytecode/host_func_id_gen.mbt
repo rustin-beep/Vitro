@@ -359,8 +359,8 @@ const HOST_VSNPRINTF : Int32 = 148
 /// `print_int`/`__vitro_output` 同指 OUTPUT、`labs` 同指 ABS）。
 ///
 /// **为什么不复用下面的 `host_func_id_by_user_name` 做成员判定**：那个
-/// 函数照搬 Rust 语义，对 13 个 PURE 名**短路返回 None**（`by_user_name`
-/// 的第一条分支），因此无法回答"这个名字在不在 host 表里"。路由派生
+/// 函数沿用历史蓝本 `by_user_name` 语义（tag rust-oracle-freeze），对 13 个 PURE 名**短路返回 None**
+/// （其第一条分支），因此无法回答"这个名字在不在 host 表里"。路由派生
 /// （`route.mbt`）要的是原始成员关系，故另出本表。
 let host_func_pairs : Array[(String, Int32)] = [
   ("print_int", HOST_OUTPUT),

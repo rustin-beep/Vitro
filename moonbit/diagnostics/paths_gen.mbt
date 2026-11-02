@@ -2,8 +2,8 @@
 // 源：scripts/moonbit/diagnostics_data/ 四 JSON 真源（#39 迁出冻结区 2026-10-05；联合 sha256/78f3a297，行尾归一）。
 // legacy：Rust oracle 四 .rs 结构对账至工序④删区（值级文案为修复批合法演化面，不比）。
 // 基线：学习路径 6 条（漂移时本脚本 fail loud）。target_misconception_
-// id/name 运行时由检出误区带过（Rust d.pattern_id.clone() 同义），不冗余入表。
-// 分叉登记：target_id 悬空引用（勘察 ③-D5）照搬不修。
+// id/name 运行时由检出误区带过（历史蓝本 d.pattern_id.clone() 同义），不冗余入表。
+// 已知限制（历史蓝本 tag rust-oracle-freeze）：target_id 悬空引用（勘察 ③-D5），修复走真源再生（工单 R1b W3-2）。
 
 ///|
 /// 预置学习路径表（key = 误区模式 id，M01..M06）。

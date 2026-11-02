@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // NDJSON 帧协议层（自 cmd/serve 上提，S7 批五号——gateway 为 wasm-gc 单出口载体）。
 // 照搬 vitro_cli.rs serve 段的帧协议与会话语义；一段方法族 = 协议静态面
 //（ping/session.create/reset/destroy/shutdown/config.get/config.set）；

@@ -1,5 +1,6 @@
 ///|
-/// Vitro 字节码操作码（153 条；0..137 照搬 Rust oracle `vitro_runtime/src/opcode.rs` 不重排，
+/// Vitro 字节码操作码（153 条；0..137 为历史蓝本 Rust oracle `vitro_runtime/src/opcode.rs`
+/// 段〔tag rust-oracle-freeze 可回溯〕不重排，
 /// 138..150 为本仓自扩 U 系对偶段——2026-10-11 #61 第一梯队病 31~34 批新增，非照搬编号；
 /// 151..153 为全局 char 字节粒度段——2026-10-19 #177 批新增；154..155 为
 /// u64→fp 无符号对偶段——2026-10-28 #345 审阅批新增，均非照搬编号）。
@@ -513,7 +514,7 @@ pub fn OpCode::from_u8(value : Int32) -> OpCode? {
 }
 
 ///|
-/// 变体名（与 Rust 变体名逐字一致——诊断显示与差分锚的稳定标识）。
+/// 变体名（沿用历史蓝本变体名逐字不改——诊断显示与差分锚的稳定标识）。
 pub fn OpCode::name(self : OpCode) -> String {
   match self {
     Nop => "Nop"

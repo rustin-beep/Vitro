@@ -1,7 +1,7 @@
 ///|
-/// 函数进出与帧原语（Rust `vitro_codegen/src/func.rs` + lib.rs:710-759
-/// 槽位段照搬；C only 剔除 class 判定中的 is_class 伴生分支——is_struct
-/// 判定保留，C 的 struct 返回值同走 __ret_ptr）。
+/// 函数进出与帧原语（历史蓝本 Rust `vitro_codegen/src/func.rs` + lib.rs:710-759
+/// 槽位段，tag rust-oracle-freeze；C only 剔除 class 判定中的 is_class 伴生分支
+/// ——is_struct 判定保留，C 的 struct 返回值同走 __ret_ptr）。
 fn BytecodeGen::enter_function(
   self : BytecodeGen,
   name : String,

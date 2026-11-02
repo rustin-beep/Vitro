@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 二元运算生成（S5 表达式核心批·二元——剩余首错第 1 位 72 例）——Rust
 /// `expr/binary.rs` 全量照搬：隐式数值提升链（int→float/double/long long

@@ -1,6 +1,7 @@
 ///| L9 time_travel·**UnifiedEngine 状态定形**（S8 批一号二段，2026-10-01；
-/// 照搬蓝本 native/src/unified/engine.rs:13-32 十一字段，**按目标架构收拢
-/// 与裁剪**——总计划 §5「直接按目标架构实现」清单）：
+/// 历史蓝本 native/src/unified/engine.rs:13-32 十一字段〔tag rust-oracle-freeze
+/// 可回溯，2026-10-05 删区〕，**按目标架构收拢与裁剪**——总计划 §5「直接按
+/// 目标架构实现」清单）：
 ///
 /// **字段收拢 11 → 6**：
 /// - `frame_cache` + `frame_cache_start_step` + `frame_cache_window_size` +

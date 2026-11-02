@@ -1,21 +1,23 @@
-///| printf 引擎（Rust `host/utils.rs:33-344` 照搬）——`parse_format_spec` /
-/// `apply_width` / `format_g` / `format_printf_string` + U2#9 预算闸。
+///| printf 引擎（历史蓝本 Rust `host/utils.rs:33-344`，tag rust-oracle-freeze）——
+/// `parse_format_spec` / `apply_width` / `format_g` / `format_printf_string`
+/// + U2#9 预算闸。
 ///
 /// **定点格式化 [`format_fixed`]（本文件的核心新件）**：Rust `{:.*}` 无
 /// MoonBit 等价 API——用 `@bigint` 做**精确十进制展开**（每个 double 都是
 /// 精确的有理数：`m × 2^e`；`e < 0` 时 `m × 5^k / 10^k`），再在 prec 位上
-/// **half-even 舍入**（Rust flt2dec 的舍入语义）。oracle 真值锚（release
+/// **half-even 舍入**（Rust flt2dec 的舍入语义）。历史蓝本真值锚（release
 /// 二进制实测 2026-09-23）：`%.2f` 0.125→`0.12`、`%.0f` 3.5→`4`、
 /// 999999.5（%g 内部）→`1000000`、`%.0f` -0.0→`-0`——half-even 与符号
 /// 保留双双实证。
 ///
-/// **照搬的 oracle 既有偏差（差异台账域，不修）**：`%+d`/`% d`/`%#` 旗标
-/// 无效（`apply_width` 只实现 `-`/`0`——oracle 实测 `%+d`→`42`）；
-/// `%.1s` 忽略精度（'s' 分支不取 precision——实测整串输出）；`%c` 高位
-/// 字节经 char 通道变 UTF-8 两字节（`putchar(200)` 实测落 `C3 88`——
-/// DIFF-LIB-PRINTF 族）。
+/// **历史蓝本既有偏差三病已修（#47 批一/批二-b 销案，旧照搬形态见 tag
+/// rust-oracle-freeze；现行为以 Clang 直拍为准）**：`%+d`/`% d`/`%#` 旗标
+/// （批二-b 2026-10-05 `apply_width` 补全五旗标——蓝本实测 `%+d`→`42`，
+/// 现 `+42`）；`%.1s` 精度（现生效——蓝本整串输出）；`%c`/`putchar` 高位
+/// 字节（批一 Bytes 载体化——蓝本 `putchar(200)` 落 `C3 88`，现单字节
+/// `C8` == Clang；DIFF-LIB-PRINTF 族销案）。
 ///
-/// **与 oracle 的登记分叉**：`%s` 实参串按受检读（oracle `read_cstring`
+/// **与历史蓝本的登记分叉**：`%s` 实参串按受检读（蓝本 `read_cstring`
 /// 裸读不 trap）——`format_printf_string` 因此返回 `Result`，读故障由
 /// 调用方转 trap；格式串本身的读同（批一号读侧口径）。
 
@@ -398,8 +400,8 @@ fn trim_trailing_zeros_and_dot(s : String) -> String {
 /// `infe-320` 泄漏）。
 ///
 /// 实现 = `@bigint` 精确有理数 + 最近舍入（`2r ≥ d` 进位，即平局向上），
-/// 次正规区按 2^-1074 网格直接舍入（`e=-324` 得 0 与 Rust 一致 → DBL_TRUE_MIN
-/// 上两侧同形输出 `infe-324`，照搬 oracle 泄漏形状）。
+/// 次正规区按 2^-1074 网格直接舍入（`e=-324` 得 0——历史蓝本同值，tag
+/// rust-oracle-freeze → DBL_TRUE_MIN 上输出 `infe-324`，沿用蓝本泄漏形状，已知边界）。
 ///
 /// **验证口径**：与本机 Rust 1.95.0（oracle 同工具链）的 `10f64.powi(e)`
 /// 位模式全量对拍 —— e ∈ [-324, 308] 633 点仅 e=126 差异（已锁定）；

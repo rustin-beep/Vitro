@@ -1,6 +1,6 @@
 ///|
-/// 字节码指令（L0：op + operand + loc 三元组，照搬 Rust oracle
-/// `vitro_runtime/src/instruction.rs`）。
+/// 字节码指令（L0：op + operand + loc 三元组，历史蓝本 Rust oracle
+/// `vitro_runtime/src/instruction.rs`，tag rust-oracle-freeze）。
 ///
 /// operand 为单 i32 槽位：常量池索引 / 跳转目标 / 立即值，语义随 op 而定
 /// （语义校验待 S5 发射侧实证后落地，见 opcode.mbt 包注释）。

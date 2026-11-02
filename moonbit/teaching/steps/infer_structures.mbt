@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer structures 族（S8 teaching 批六号收官，2026-10-02）：
 // 十一算法照搬 vitro_algorithm_steps/src/structures.rs:1-301——seq_list 的
 // 表长更新挂真值行（U1#1 P1-89：旧判据命中后移循环，真值在 L->length--，

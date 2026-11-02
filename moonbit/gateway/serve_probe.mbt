@@ -1,5 +1,6 @@
 // S8 diagnostics 批段三（2026-10-02）：diagnostics_probe——dump 族第四
-// 方法（认知链最小导出，U1 对拍锚面）。照搬源：native/src/session_api.rs
+// 方法（认知链最小导出，U1 对拍锚面）。历史蓝本（tag rust-oracle-freeze
+// 可回溯，2026-10-05 删区；现为本仓自主基线）：native/src/session_api.rs
 // 的 diagnostics_probe（303-500 行）八段输出。
 //
 // **只读语义（dump 族 2026-09-29 契约拍板）**：独立跑编译管线取诊断，

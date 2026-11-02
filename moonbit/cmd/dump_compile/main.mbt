@@ -52,7 +52,8 @@ fn main raise {
   }
   if positional.length() > 2 {
     // 防御（2026-09-21 实踩：两语料目录连传时 out_dir 落成语料目录，
-    // 81 个 dump 产物污染 native/tests/cases——本工具契约单语料 + 单
+    // 81 个 dump 产物污染 native/tests/cases〔当时的 Rust 对照区语料目录，
+    // tag rust-oracle-freeze〕——本工具契约单语料 + 单
     // 输出目录，多余参数直接 fail loud）
     println(
       "参数过多：期望 <corpus_dir|file.c> <out_dir> [--library]（实测 \{positional.length()} 个位置参数）",

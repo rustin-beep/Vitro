@@ -44,7 +44,9 @@ fn main raise {
         files.push("\{target}/\{name}")
       }
     }
-    files.sort() // 确定性顺序（与 Rust 侧 sort 对齐）
+    // 确定性顺序。注：内置 String sort 非字典序（陷阱 #29），与 dump_compile
+    // 的 sort_files_lex 口径不一——行为债登记 R1b W1-3 待修（本批只改注释）
+    files.sort()
   } else {
     files.push(target)
   }

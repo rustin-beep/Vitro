@@ -3,9 +3,10 @@
 // （非 Rust oracle）：编译并运行语料得 golden，与 MoonBit cmd/run 的
 // stdout + 返回码比对。与 vm_diff 的分工——
 //
-//	vm_diff      = 引擎 vs Rust oracle（同构对拍，抓迁移偏差）；
-//	clang_direct = 引擎 vs Clang（真值直拍，抓两侧共同偏差——oracle 本身
-//	               错而 Clang 对的形态只有本防线能抓）。
+//	vm_diff      = 引擎 vs golden 冻结基线（历史 oracle 对拍已随工序④退役，
+//	               档案 tag rust-oracle-freeze；抓行为漂移）；
+//	clang_direct = 引擎 vs Clang（真值直拍，抓历史蓝本与引擎的共同偏差——
+//	               蓝本错而 Clang 对的形态只有本防线能抓）。
 //
 // Clang 侧口径（照搬 shadow_verify）：
 //   - 编译参数 clangCompileArgs 同款（-Wno-implicit-function-declaration +

@@ -1,7 +1,8 @@
 ///|
 /// 字符级词法扫描器（L1/L2 共用底座）。
 ///
-/// 契约（S2 差分对拍口径，与 Rust oracle `vitro_lexer/src/lib.rs` 精确对齐）：
+/// 契约（S2 差分对拍口径，历史蓝本 Rust oracle `vitro_lexer/src/lib.rs`，tag
+/// rust-oracle-freeze；现为本仓自主基线）：
 /// - 承载 `Bytes`（UTF-8 字节流）；`byte_off` 为 0 起字节偏移；
 /// - `column` 按 **UTF-8 字节**计数（多字节序列一次 +n）——issue #242
 ///   （2026-10-24）改定：source 包 SourceLoc 契约「column = 行内字节偏移+1，
@@ -144,7 +145,7 @@ fn utf8_len(s : String) -> Int32 {
 ///|
 /// L1 入口：全源原始词法（macro_body_mode = true——`#` 产出 Hash/HashHash，
 /// 与 Rust `tokenize_raw` 出口同构；不做行拼接/指令消费/展开）。
-/// BOM **不剥离**（与 Rust raw 同构：BOM → E1001 + Unknown）。
+/// BOM **不剥离**（历史蓝本 raw 同形：BOM → E1001 + Unknown）。
 pub fn scan_raw(
   src : Bytes,
   cpp_mode~ : Bool = false,

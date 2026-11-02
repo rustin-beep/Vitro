@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·骨架（S8 teaching 批一号，2026-10-01）：类型 + 共享
 // 工具 + 步骤推断主口。照搬源 vitro_algorithm_steps/src/lib.rs:1-202
 //（AlgorithmMatch 消费 session 预埋形态；VariableSnapshot/InferEnv/

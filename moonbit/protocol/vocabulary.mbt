@@ -1,5 +1,6 @@
 // semantic_label 受控词汇表 —— 词汇即契约（schema 附录 B，词汇只增不改）。
-// 照搬 native/src/unified/vocabulary.rs（2026-09-27）。
+// 历史蓝本 native/src/unified/vocabulary.rs（tag rust-oracle-freeze 可回溯，
+// 2026-10-05 删区；现为本仓自主基线，2026-09-27 建）。
 // 背景：semantic_label 长期是"自由文本启发"，消费方只能对 label 做模式
 // 匹配，词汇一旦漂移（「循环边界」→「循环」）下游知识卡片静默失效。
 // 本模块把词汇升级为受控词汇表：
@@ -260,7 +261,7 @@ pub fn kind_by_id(id : String) -> SemanticLabelKind? {
 
 ///| domain/example/id/since/status/template；数组元素序保持插入序）。
 
-///| 紧凑无空格；与 Rust 真值的逐字节对拍锚在 vocabulary_wbtest（探针
+///| 紧凑无空格；迁移期与 Rust 真值逐字节对拍锁定的锚在 vocabulary_wbtest（探针
 
 ///| tmp/review_20260927/json_order，2026-09-27 用户审阅 P2-1 实测锁定）。
 

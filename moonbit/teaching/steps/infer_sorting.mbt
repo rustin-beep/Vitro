@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer sorting 族（S8 teaching 批一号）：九算法步骤
 // 推断照搬 vitro_algorithm_steps/src/sorting.rs:1-507（含全部用户审阅
 // 修复语义：j 合法上界越界描述拦截 / minIdx 别名表 / 插入收紧

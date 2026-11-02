@@ -1,13 +1,14 @@
 ///|
-/// 类型节点（17 变体，照搬 Rust oracle `vitro_ast/src/types.rs`）。
+/// 类型节点（17 变体，历史蓝本 Rust oracle `vitro_ast/src/types.rs`，tag
+/// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）。
 ///
 /// 契约：
 /// - C 子集 11 变体（Void..Function + Struct/Union）+ C++ 6 变体
 ///   （Class/Reference/RValueRef/Auto/TemplateId/Typeof）；
 /// - `Array.array_size` 由 dims 派生（`Type::array_of` 单点计算，消费方
-///   禁自算——Rust 侧同构）；
+///   禁自算）；
 /// - `vla_dims` 只在 VLA 形态携带（判等**显式忽略**，见 types_eq.mbt——
-///   表达式维度不参与类型判等，Rust PartialEq 同语义）；
+///   表达式维度不参与类型判等，历史蓝本 PartialEq 同语义）；
 /// - `Typeof` 判等恒不等（typeof 表达式不做结构判等），自反即 false——
 ///   调用方须先用 typeck 归一再比较。
 ///
@@ -46,7 +47,7 @@ pub extend Type with Default::{default}
 ///| `impl Default for Type`（G-2：AST Default 化基座；derive 对 17 变体
 
 ///|
-/// enum 的默认选择不可控，显式 impl 与 Rust 单点对齐）。
+/// enum 的默认选择不可控，显式 impl 沿用历史蓝本单点口径）。
 pub impl Default for Type with fn default() -> Type {
   Void(false)
 }

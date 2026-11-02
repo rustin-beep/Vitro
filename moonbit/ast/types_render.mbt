@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 类型 → C 声明形渲染**单源**（`to_c_string`；对齐 Rust `Display for Type`
 /// 语义——MoonBit 侧禁第二轨道（Rust 侧 Display + 散点手拼的双轨教训，

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 控制流语句生成（S5 扩展批三号·控制流——if 17 / while 12 / do-while 4 /
 /// for 30 / switch 5 例）——Rust `stmt/control.rs` + `stmt/switch.rs` 照搬。

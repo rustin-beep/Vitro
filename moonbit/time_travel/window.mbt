@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L9 time_travel·**帧窗口（FrameWindow）**——StepPayload 帧缓存的自带
 /// 不变量类型（S8 批一号二段，2026-10-01）。
 ///

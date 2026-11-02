@@ -1,6 +1,7 @@
 ///| L9 time_travel·**StepCollector**（S8 批一号三段-b，2026-10-01）——
 /// StepPayload 十四字段的采集器 + `infer_semantic_label` 全库唯一语义
-/// 分类器。照搬 native/src/unified/collector.rs（478 行）。
+/// 分类器。历史蓝本 native/src/unified/collector.rs（478 行；tag
+/// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）。
 ///
 /// **依赖反转落地**（§4 L9 行硬约束：不依赖 session）：
 /// - 源码行：`SourceLineProvider` trait（session 的 source_line_at 由

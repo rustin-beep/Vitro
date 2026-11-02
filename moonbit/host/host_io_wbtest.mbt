@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// S6 host 余量批二号·printf 引擎与 IO 族白盒锚点。
 ///
@@ -58,7 +60,7 @@ test "format_g_oracle_truth" {
   assert_eq(format_g(0.0, 6, false), "0")
 }
 
-// ── apply_width / 旗标（oracle 既有偏差照搬）──────────────────────────────
+// ── apply_width / 旗标（批二-b 起五旗标有效；本组锚验 None 早退路径）────────
 
 ///|
 test "apply_width_flags_oracle_truth" {

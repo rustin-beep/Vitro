@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 二元运算符（19 个，照搬 Rust BinaryOp）。
 pub(all) enum BinaryOp {
@@ -102,11 +104,12 @@ pub(all) struct InitElement {
 pub extend InitElement with Debug::{to_repr}
 
 ///|
-/// 表达式节点（26 变体，照搬 Rust `vitro_ast/src/expr.rs`；每节点携带
-/// `@source.SourceLoc` 与推导后 `Type`——typeck 前的 ty 为 Void 默认值）。
+/// 表达式节点（26 变体，历史蓝本 Rust `vitro_ast/src/expr.rs`，tag
+/// rust-oracle-freeze；每节点携带 `@source.SourceLoc` 与推导后 `Type`——
+/// typeck 前的 ty 为 Void 默认值）。
 ///
-/// 字段序与 Rust 对齐（Binary: op, left, right, loc, ty），E1 dump 的
-/// 键序即此序（canonicalize 归一后与 serde 侧对齐）。
+/// 字段序即 E1 dump 键序（Binary: op, left, right, loc, ty；沿用历史蓝本
+/// serde 字段序，canonicalize 归一后锁 golden）。
 pub(all) enum Expr {
   Binary(BinaryOp, Expr, Expr, @source.SourceLoc, Type)
   Unary(UnaryOp, Expr, @source.SourceLoc, Type)

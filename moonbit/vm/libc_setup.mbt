@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域：**Bytecode Libc 装载器 + setup 组装**（批四号——
 /// 照搬 Rust `bytecode_libc_loader.rs` + `compile_pipeline.rs::setup_vm`
 /// 的 12 步协议）。

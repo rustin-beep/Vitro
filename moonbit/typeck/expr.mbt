@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 表达式类型解析 + lowering（照搬 Rust `expr/{mod,var,literal,cast}.rs`
 /// 的 C 部分；**函数式重建**：visitor 值进值出 `resolve_expr_type(Expr)
@@ -466,7 +468,7 @@ fn TypeChecker::resolve_member(
     )
   }
   // 目标类型名 + struct/union 判定（含指针解引；Reference 解引为 C++ 剔除；
-  // E3041 报错后按 int 定型继续——Rust 同构）
+  // E3041 报错后按 int 定型继续——历史蓝本同形）
   let target : (String, Bool)? = if obj_kind is TK_Struct ||
     obj_kind is TK_Union {
     Some((obj_type.name(), obj_kind is TK_Union))

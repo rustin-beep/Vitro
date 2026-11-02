@@ -110,7 +110,8 @@ pub(all) struct PathStep {
   step_type : String
   title : String
   detail : String
-  /// 卡片/模板/练习 id（oracle 现状存在悬空引用——照搬不修，登记在案）
+  /// 卡片/模板/练习 id（已知限制：历史蓝本数据存在悬空引用，tag rust-oracle-freeze；
+  /// 修复走真源 `scripts/moonbit/diagnostics_data/` 再生——工单 R1b W3-1/W3-2）
   target_id : String
   /// 1-based 高亮行（StudyTemplate 用）
   highlight_lines : Array[Int32]

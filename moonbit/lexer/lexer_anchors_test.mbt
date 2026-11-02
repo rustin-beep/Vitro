@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// Rust `lexer_unit_test.rs` 57 用例迁移的**红锚补集**：其余形态已由
 /// `lexer_test.mbt` 与 `scanner_wbtest.mbt` 覆盖（对照清单见 S2 执行记录）。
@@ -6,7 +8,7 @@
 ///|
 test "preprocessor depth fuse nested self reference" {
   // 同名自引用：蓝漆停止（C99 6.10.3.1）——有限展开零错误、不熔断不崩
-  //（Rust 同构；深度保险丝防的是**不同名**链，见下一个测试）
+  //（历史蓝本同形；深度保险丝防的是**不同名**链，见下一个测试）
   let r = @lexer.tokenize("#define ID(x) ID(ID(x))\nint y = ID(1);\n")
   assert_eq(r.errors.length(), 0)
 }

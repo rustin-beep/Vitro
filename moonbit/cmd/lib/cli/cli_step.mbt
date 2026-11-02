@@ -14,8 +14,8 @@ pub fn step(
   ensure_include_reader(channel)
   let mut file = ""
   let mut json_mode = false
-  // 默认 100_000 对齐 Rust unified（手册口径——2026-10-04 对照复核修正：
-  // 初版硬编码 2_000_000 系实现自拍未登记形态差）
+  // 默认 100_000（2026-10-04 对照复核拍板值，历史蓝本 unified 同值〔tag
+  // rust-oracle-freeze〕；初版硬编码 2_000_000 系实现自拍未登记形态差）
   let mut max_steps = 100000
   let mut i = 0
   while i < args.length() {

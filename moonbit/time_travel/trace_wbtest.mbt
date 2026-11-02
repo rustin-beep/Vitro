@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // M14 根因提示锚（S8 analysis 批，2026-10-03）：analyze_trap 六臂单元锚
 //（直调——构造 StepPayload 历史与 trap 文案，免 vm 程序装配）+ 除零端到端。
 // 照搬忠实度：文案子串判据/字段值全部对齐 oracle trace_analyzer tests.rs

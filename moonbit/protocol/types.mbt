@@ -1,10 +1,11 @@
-// 协议 DTO 族（照搬 native/src/unified/types.rs + root_cause.rs +
-// session.rs::VisEvent，2026-09-27）。StepPayload 在内存中的完整表示用于
+// 协议 DTO 族（历史蓝本 native/src/unified/types.rs + root_cause.rs +
+// session.rs::VisEvent，tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为
+// 本仓自主基线，2026-09-27 建）。StepPayload 在内存中的完整表示用于
 // 前端解码后的状态；跨 FFI 传输时经 stream 差分编码（S7 批一号段二）。
-// 字段名/类型/语义与 Rust 侧逐字段对齐（serde 字段名 = 原名 snake_case）；
+// 字段名/类型/语义即协议面（serde 字段名 = 原名 snake_case）；
 // emitter（显式 JSON 序列化）随 gateway serve 批落地，本批先定形数据面。
 
-///| 可视化事件（Rust 侧定义在 session.rs；本包因 StepPayload.vis_events
+///| 可视化事件（历史蓝本定义在 session.rs；本包因 StepPayload.vis_events
 
 ///|
 /// 字段自持收拢至此——落点裁定见 moon.pkg 头注）。
@@ -147,7 +148,7 @@ pub(all) struct ApiVariableSnapshot {
   addr : UInt32
   is_local : Bool
   ty_name : String
-  /// mut：decode 差分应用与消费方 clone+mutate 使用形态（Rust 同构）
+  /// mut：decode 差分应用与消费方 clone+mutate 使用形态（历史蓝本同形）
   mut value : String
 } derive(Debug)
 

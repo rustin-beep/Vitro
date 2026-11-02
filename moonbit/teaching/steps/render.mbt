@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·render（S8 teaching 批一号）：表达式近似文本化——
 // 结构比较的稳定键（features.rs:540-644 expr_to_string 照搬；穷尽 27
 // 变体无兜底——新增变体编译红）。C++ 六变体照 Rust "<cpp-expr>" 占位。

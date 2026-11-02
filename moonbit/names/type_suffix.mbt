@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 类型 → mangled 名后缀片段（**单源**；照搬 Rust `type_mangle_suffix`
 /// ——typeck cpp/methods.rs:96-130，D1 修复 2026-09-12，语义冻结）。

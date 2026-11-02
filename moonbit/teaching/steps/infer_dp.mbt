@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer dp 族（S8 teaching 批五号，2026-10-02）：泛型
 // 动态规划照搬 vitro_algorithm_steps/src/dp.rs:1-146——外/内循环初始化体
 // 排除（二审 P1-1：多行 for 体经 lookahead 找首个非循环头行；§6-2 同款

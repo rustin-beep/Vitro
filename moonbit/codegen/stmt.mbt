@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 语句与表达式分派（S5 骨架最小集）——Rust `stmt/mod.rs` + `expr.rs`
 /// 照搬的分派形态：gen_stmt 入口先发 StepEvent（loc.line > 0 时），

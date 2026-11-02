@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| 宿主内存族：`malloc` / `calloc` / `realloc` / `free` 的语义实现。
 ///
 /// **本层不碰值栈**（与 Rust 现版的关键结构差异）：Rust 的 handler 把"弹参数 /
@@ -11,7 +13,7 @@
 /// **受检访问一律经 `memory` 包的单一入口**（勘察 §9.2 约束 #1）：本文件不出现
 /// 裸字节读写；`calloc` 的置零走 `Memory::fill`（段级一次判定 + 载体原生填充），
 /// `realloc` 的搬运走 `Memory::copy`（memmove 语义）——即勘察 §5.1 的
-/// "无检查快路径 + 一次前置检查"。Rust 现版在这两处是**逐字节 `store_i8` 循环**
+/// "无检查快路径 + 一次前置检查"。历史蓝本在这两处是**逐字节 `store_i8` 循环**
 /// （`host/memory.rs:240-247`、`:331-333`），每条字节重跑一次 NULL/上界/UAF 判定。
 ///
 /// **两条 oracle 存量缺陷（S6 建包时发现并照搬固化，2026-09-23 审阅批两侧同修）**：
@@ -209,7 +211,7 @@ pub fn host_calloc(
   // Rust 侧原顺序是置零在前（`host/memory.rs:330-336`），本批两侧同修换位，
   // 与 malloc/realloc 的次序对齐）
   map.freed_logs_remove_overlapping(addr, addr + aligned)
-  // 置零（段级一次判定 + 载体原生填充；Rust 侧是逐字节 store_i8）
+  // 置零（段级一次判定 + 载体原生填充；历史蓝本是逐字节 store_i8）
   //
   // `aligned == 0` 的跳过是**防御性**保留：尺寸链已在前置 `total > MEM_SIZE`
   // 拦截（total ≥ 1 时 aligned ≥ 4），理论不可达；保留是为防未来路径变化时
@@ -282,7 +284,7 @@ pub fn host_realloc(
     // 32 位截断成 i32 负值）此前落入本分支=「等价 free」误释放原块 →
     // 后续读原块 UAF trap。C 语义（glibc 2.43/UCRT 双实测，tmp/i71_t1/
     // b29m5 探针）：分配失败返 NULL 且**原块保留可读**（p0=42）。round6
-    // 档案定责坐实 oracle 同病（`new_size <= 0` 逐字同构），按「定责后
+    // 档案定责坐实历史蓝本同病（`new_size <= 0` 逐字同形），按「定责后
     // 按缺陷修」收窄：**零值**维持等价 free（C11 明确语义），**负值**
     // 走分配失败（返 NULL + note，不碰原块）。
     if new_size < 0 {

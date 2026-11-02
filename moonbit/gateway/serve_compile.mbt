@@ -1,12 +1,13 @@
 // S7 批三号二段：serve compile 方法——多文件合并编译管线 + 诊断出口。
-// 照搬源：native/src/engine/compile_pipeline.rs 的 merge_compile_units/
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/engine/compile_pipeline.rs 的 merge_compile_units/
 // run_multi_file_pipeline 主体 + native/src/bin/vitro_cli.rs 的 compile
 // 方法帧 + native/src/session_api.rs 的 compile 出口 emitter。
 //
 // **file_ranges 生产者义务**（总计划 S7 行登记）：session 批二号备了
-// 换算逻辑（source_line_at）但无生产者——写入方在 Rust 侧
+// 换算逻辑（source_line_at）但无生产者——历史蓝本的写入方在
 // compile_pipeline.rs:557；本文件落 MoonBit 侧合并通道，P0-4 多文件
-// 行号定位自此两侧闭环。
+// 行号定位自此闭环。
 //
 // 登记分叉（本段不搬，诚实记录）：
 // ① algorithm_matches——**已接线**（2026-10-01 批四号）：compile 成功

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // 会话骨架白盒锚（S7 批二号）：session_config_test.rs 四锚的纯配置
 // 三锚（存活/回显/编译前不丢）+ 多文件 source_line_at 锚。
 // 「2000 步真停」端到端锚（test_max_steps_survives_run_and_actually_

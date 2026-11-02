@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域：**trap 单点与文案渲染**（Rust `core/trap.rs` 照搬 +
 /// `core/memory.rs` 访问器文案上收）。
 ///
@@ -205,7 +207,7 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
   // 病 53（2026-10-13）：局部符号按**当前帧函数名**过滤——旧扫全符号
   // 表且一律用栈顶帧 locals_base，跨函数局部变量（other 的 far_var 在
   // main 帧错位读值）被错位列进「值为 0 的变量」（错作用域+错值双错；
-  // oracle 同病，S9 脱钩修正）。全局符号（func_name=""）不过滤。
+  // 历史蓝本同病，S9 脱钩已修正）。全局符号（func_name=""）不过滤。
   // 空栈形态（wbtest 直调/宿主回调边界）退化为不过滤——局部符号由下方
   // 既有 guard 栈空跳过，行为不崩。
   let cur_frame : CallFrame? = if self.call_stack.length() > 0 {

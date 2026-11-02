@@ -1,8 +1,10 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域·executor：**F（f32）/ D（f64）/ Q（i64）三族**
 /// （Rust `executor/float.rs` 逐句照搬）。
 ///
 /// **转换契约（探针实证，2026-09-26）**：MoonBit `Double::to_int` =
-/// `%f64_to_i32_saturate`（**饱和**语义，与 Rust `as i32` 一致——NaN→0 /
+/// `%f64_to_i32_saturate`（**饱和**语义，与 Rust 语言 `as i32` 转换一致——NaN→0 /
 /// inf→±MAX / 2.7→2）；`Int64::to_int` = 低 32 位截断；f32 位模式经
 /// `UInt::reinterpret_as_float` / `Float::reinterpret_as_uint`；f64 位模式经
 /// `reinterpret_as_double` / `reinterpret_as_uint64`（host 包同款）。

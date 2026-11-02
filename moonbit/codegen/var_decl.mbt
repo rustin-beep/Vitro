@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 局部变量声明语句生成（S5 扩展批·VarDecl——baseline 363 归因首要阻塞
 /// 245 例）——Rust `stmt/var_decl.rs` 全量照搬 + C only 裁剪：

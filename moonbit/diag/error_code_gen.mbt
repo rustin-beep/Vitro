@@ -521,7 +521,7 @@ pub fn ErrorCode::lang(self : ErrorCode) -> SourceLang {
 }
 
 ///|
-/// 变体名（与 Rust 逐字一致——稳定标识，诊断序列差分锚的 key）。
+/// 变体名（沿用历史蓝本变体名逐字不改——稳定标识，诊断序列差分锚的 key）。
 pub fn ErrorCode::name(self : ErrorCode) -> String {
   match self {
     Unknown => "Unknown"
@@ -647,7 +647,7 @@ pub fn ErrorCode::name(self : ErrorCode) -> String {
 }
 
 ///|
-/// 显示码串（P3 段位前缀单源：E1001 / W3053 / H3057——与 Rust
+/// 显示码串（P3 段位前缀单源：E1001 / W3053 / H3057——历史蓝本
 /// code_prefix + 码值拼接同形）。
 pub fn ErrorCode::display_code(self : ErrorCode) -> String {
   match self {

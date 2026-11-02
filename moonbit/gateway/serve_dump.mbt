@@ -1,9 +1,11 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // S8 dump 族三方法（2026-10-01）：ast.dump / symbols.dump / typeck.dump。
 // **只读语义（2026-09-29 契约拍板）**：独立编译通道，**不碰会话状态**——
 // oracle 三处错误路径副作用（run_multi_file_pipeline 写 session 诊断）
 // 按「已知限制与差异」④表登记不照搬（dump 族无对拍断言锁定，无红线
 // 代价）。诊断/产物 emitter 单源复用：ast 字段 = @ast.ast_dump_json
-//（E1 面，597 语料与 Rust serde 逐字节一致——零新 emitter）；
+//（E1 面，迁移期 597 语料与 Rust serde 逐字节对拍锁定——零新 emitter）；
 // wire 形态 = 拼 cmd/dump_{ast,typeck} 同构 JSON 串后 json_parse 转值。
 // diagnostics_probe 已随 S8 段三接线（serve_probe.mbt，2026-10-02——
 // 一次性会话承载管线的只读形态）。

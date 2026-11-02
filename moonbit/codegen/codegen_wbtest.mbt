@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// codegen 骨架白盒测试（S5 开工批）——手工构造 AST（不经 parser，
 /// 同 typeck 白盒先例）走 generate 全流程，锚定骨架通路不变量：

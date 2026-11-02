@@ -1,17 +1,18 @@
 ///| 调用形态单一路由表（勘察 §5.5「三实现合一」）。
 ///
-/// **要解决的问题**：现版同一函数最多三条实现路径（VM opcode 内联 / Rust host /
-/// Bytecode Libc），而路由分叉**不可见**——`vitro_codegen/src/lib.rs:136-143` 把
-/// 88 个 Bytecode Libc 名预注册进 `func_index`（只跳过 `strcpy`/`strcat`），调用点
-/// 先查 `func_index` 命中即发 `Call <固定索引>`，未命中才查 `by_user_name` 发
-/// `CallHost`。结果：**110 个 host handler 里有 20 个在"用户按名调用"路径上被
-/// 静默遮蔽**（两者各写一张表，无一处能列出这 17 个名字——2026-10-06 三函数
-/// 改判出表后 20→17，名单锚 `shadowed_host_names_are_declared`）。同族分裂也由此而来
+/// **要解决的问题**：历史蓝本（tag rust-oracle-freeze）同一函数最多三条实现路径
+/// （VM opcode 内联 / host / Bytecode Libc），而路由分叉**不可见**——蓝本
+/// `vitro_codegen/src/lib.rs:136-143` 把 88 个 Bytecode Libc 名预注册进
+/// `func_index`（只跳过 `strcpy`/`strcat`），调用点先查 `func_index` 命中即发
+/// `Call <固定索引>`，未命中才查 `by_user_name` 发 `CallHost`。结果：**host
+/// handler 里有 20 个在"用户按名调用"路径上被静默遮蔽**（两者各写一张表，无一处
+/// 能列出这些名字——2026-10-06 三函数改判出表后 20→17，2026-10-13 strcmp 改判
+/// 出表后 17→16，名单锚 `shadowed_host_names_are_declared`）。同族分裂也由此而来
 /// （`atoi` 走 Bytecode 而 `atof/atol` 走 Host；`memcpy` 走 Bytecode 而 `memset` 走 Host）。
 ///
 /// **本表把隐式覆盖变成显式声明**：`call_route(name)` 对每个名字给出**唯一**形态，
-/// 派生规则只有一条 + 一个显式例外集，`shadowed_host_names()` 把那 17 个名字
-/// 列成可断言清单（`SHADOWED_HOST_NAME_COUNT = 17` 双常量锚）。
+/// 派生规则只有一条 + 一个显式例外集，`shadowed_host_names()` 把那 16 个名字
+/// 列成可断言清单（`SHADOWED_HOST_NAME_COUNT = 16` 双常量锚）。
 ///
 /// **落点裁定（与总计划 L7 行字面表述相左，已登记）**：总计划写"host(110 路由表
 /// 单源)"，但 §4 的硬约束"依赖严格单向"禁止 codegen(L6) → host(L7)，而 codegen
@@ -25,7 +26,7 @@
 pub(all) enum CallRoute {
   /// 走 `Call <固定索引>`——Bytecode Libc 预编译产物（`libc_index.mbt` 的 88 名）。
   BytecodeLibc(Int32)
-  /// 走 `CallHost <id>`——host handler（`host_func_id_gen.mbt` 的 110 名）。
+  /// 走 `CallHost <id>`——host handler（`host_func_id_gen.mbt` 的 114 名）。
   Host(Int32)
 } derive(Debug, Eq)
 
@@ -36,25 +37,28 @@ pub extend CallRoute with Debug::{to_repr}
 pub extend CallRoute with Eq::{not_equal, equal}
 
 ///|
-/// host 名表规模（Rust `host_func_id.rs`：110 常量 / 110 名映射，**含别名**——
-/// `print_int`/`__vitro_output` 同指 OUTPUT、`labs` 同指 ABS）。
+/// host 名表规模（历史蓝本 `host_func_id.rs` 110 名起步，#10 P1 批 2026-10-10
+/// +4〔difftime + vprintf 族〕→ 114，**含别名**——`print_int`/`__vitro_output`
+/// 同指 OUTPUT、`labs` 同指 ABS）。
 pub const HOST_FUNC_NAME_COUNT : Int32 = 114
 
 ///|
-/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 5）。
+/// 被固定索引段遮蔽的 host 名数（= 两表交集 22 − 改判集 6）。
 ///
-/// 这 17 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
+/// 这 16 个名字**有 host handler 但按名调用到不了**（`func_index` 先命中）：
 /// `isdigit isalpha islower isupper tolower toupper isspace isalnum isprint
-/// iscntrl isxdigit abs atoi srand rand strlen strcmp`。
+/// iscntrl isxdigit abs atoi srand rand strlen`。
 ///（2026-10-06 strncpy/memcpy/memmove 改判 Host——负 n 越界写 trap 的
-/// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；改判集 5。）
+/// 教学语义在 Host 版（Bytecode 预编译段对负 n 静默穿过实测）；2026-10-13
+/// strcmp 改判 Host——病 45 unsigned char 差，自此按名可达；改判集 6。）
 pub const SHADOWED_HOST_NAME_COUNT : Int32 = 16
 
 ///|
 /// 从固定索引段**改判回 Host** 的显式例外集。
 ///
-/// strcpy/strcat 两条理由在 Rust 侧有明文：Host 版带 **E3070 栈缓冲区
-/// 校验**（`vitro_codegen/src/lib.rs:136-143` 只跳过这两个名字的预注册）。
+/// strcpy/strcat 两条理由在历史蓝本有明文：Host 版带 **E3070 栈缓冲区
+/// 校验**（蓝本 `vitro_codegen/src/lib.rs:136-143` 只跳过这两个名字的预注册，
+/// tag rust-oracle-freeze）。
 /// 2026-10-06 新增三条（S9 修复批新病批）：`strncpy`/`memcpy`/`memmove`
 /// 改判——Host 版负 n 越界写 trap（DIFF-LIB-STRNCPY-01 教学语义；Bytecode
 /// 预编译段对负 n 静默穿过，memcpy(-1) 实测无 trap）。
@@ -86,8 +90,8 @@ pub fn is_host_rerouted(name : String) -> Bool {
 ///|
 /// 原始 host 表查询（**全表**，不做 PURE 短路）。
 ///
-/// 与 `host_func_id_by_user_name` 的区别是刻意的：后者照搬 Rust `by_user_name`
-/// 语义，对 14 个 PURE 名**短路返回 None**，因此**不能**用来回答"这个名字在不在
+/// 与 `host_func_id_by_user_name` 的区别是刻意的：后者沿用历史蓝本 `by_user_name`
+/// 语义，对 13 个 PURE 名**短路返回 None**，因此**不能**用来回答"这个名字在不在
 /// host 表里"——路由派生要的正是原始成员关系。
 fn host_id_raw(name : String) -> Int32? {
   for pair in host_func_pairs {
@@ -109,9 +113,10 @@ pub fn is_host_func_name(name : String) -> Bool {
 ///
 /// 派生规则（全表唯一）：
 /// 1. 在 Bytecode Libc 88 名表内：
-///    - 命中改判集（`strcpy`/`strcat`）→ `Host`；
+///    - 命中改判集（`is_host_rerouted` 六名：strcpy/strcat/strncpy/memcpy/
+///      memmove/strcmp）→ `Host`；
 ///    - 否则 → `BytecodeLibc(固定索引)`；
-/// 2. 不在 88 名表内但在 host 110 名表内 → `Host(id)`；
+/// 2. 不在 88 名表内但在 host 114 名表内 → `Host(id)`；
 /// 3. 两表都不在 → `None`。
 pub fn call_route(name : String) -> CallRoute? {
   match bytecode_libc_index(name) {
@@ -133,9 +138,9 @@ pub fn call_route(name : String) -> CallRoute? {
 }
 
 ///|
-/// 被固定索引段遮蔽的 host 名清单（升序，序 = 88 名表序）。
+/// 被固定索引段遮蔽的 host 名清单（序 = 88 名表序，非字母升序）。
 ///
-/// **显式登记的意义**：这 20 个 handler 是"写了但按名调用到不了"的死面——现版
+/// **显式登记的意义**：这 16 个 handler 是"写了但按名调用到不了"的死面——此前
 /// 无一处能列出它们。声明成本清单后，"遮蔽面扩大/缩小"变成可断言的事实。
 pub fn shadowed_host_names() -> Array[String] {
   let out : Array[String] = []
@@ -148,7 +153,8 @@ pub fn shadowed_host_names() -> Array[String] {
 }
 
 ///|
-/// 两表名并集（去重后升序）：即"按名可达的内置函数全集"。`None` 路由的补集。
+/// 两表名并集（去重；序 = 88 名表序 + host 追加段在后，非字母升序）：即"按名
+/// 可达的内置函数全集"。`None` 路由的补集。
 ///
 /// 与 `vitro/engine/libc` 的放行名全集（175）差一个 `print_int`——后者是
 /// `by_user_name` 里的别名而非 libc 放行名（`libc.mbt` 有明文）。该关系由

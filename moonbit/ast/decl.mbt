@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 函数参数（C++ 默认参数表达式仅用于函数/方法/构造函数声明）。
 pub(all) struct Param {
@@ -44,7 +46,7 @@ pub(all) struct StructField {
 pub extend StructField with Debug::{to_repr}
 
 ///|
-/// struct 声明（union 复用本结构——Rust 侧同构，ProgramNode.unions
+/// struct 声明（union 复用本结构——历史蓝本同形，ProgramNode.unions
 /// 同承载 StructDecl）。`is_forward`：`struct S;` 前向声明位（#145，
 /// 2026-10-18）——parser 前向分支置 true、完整定义 false；E1/E4
 /// 投影 emitter 不输出该位（#134 is_arrow 同款——golden 零翻）。
@@ -211,7 +213,7 @@ pub extend CaptureMode with Eq::{not_equal, equal}
 // ============================================================================
 
 ///|
-/// 编译单元根（七集合；unions 复用 StructDecl——Rust 侧同构）。
+/// 编译单元根（七集合；unions 复用 StructDecl——历史蓝本同形）。
 pub(all) struct ProgramNode {
   structs : Array[StructDecl]
   unions : Array[StructDecl]

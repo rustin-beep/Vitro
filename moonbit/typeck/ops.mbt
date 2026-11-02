@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 运算符类型解析（照搬 Rust `expr/ops.rs` 的 C 部分——二元/三目/一元/
 /// 赋值/_Generic；函数式重建：返回定型类型与重建节点）。
@@ -594,7 +596,7 @@ fn TypeChecker::resolve_generic(
     Array(element, _, _, _, _, _) => @ast.Type::pointer_to(element)
     _ => control_type
   }
-  // 选中的关联（判等命中即止——未选中的**不解析**，Rust iter_mut 同构；
+  // 选中的关联（判等命中即止——未选中的**不解析**，历史蓝本 iter_mut 同形；
   // 选中的 resolve 后写回数组元素）
   let mut hit : Int32 = -1
   for i in 0..<associations.length() {

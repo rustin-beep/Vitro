@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| printf/scanf/字符 IO 族 10 个 handler（Rust `host/io.rs` 照搬，勘察
 /// §1.7 族 C）。
 ///
@@ -14,12 +16,13 @@
 /// （2026-09-28 审阅批 P1 对齐后的正统形态）不补；仅无换行行（直接
 /// 构造/末行无换行）兜底补一个流终止 `\n`。
 ///
-/// **栈深守卫的族内不一致（坑 17，照搬不修）**：printf/fprintf/scanf 有
+/// **栈深守卫的族内不一致（坑 17，已知限制——历史蓝本同病，tag rust-oracle-freeze；
+/// 修复工单 R1b W3-5 三函数守卫统一）**：printf/fprintf/scanf 有
 /// 参数计数守卫（教学文案 trap）；**sprintf/snprintf/sscanf 没有**——参数
 /// 不足时落到 format 引擎的"实参耗尽即原样输出"路径（`%d` 字面透传）。
 ///
-/// **登记分叉**：fmt/`%s` 实参/`%c` 的读侧受检化（oracle 裸读）；sscanf
-/// 的源串按字节扫描（oracle 经 lossy char——非 ASCII 的 `%c` 落点与空白
+/// **登记分叉**：fmt/`%s` 实参/`%c` 的读侧受检化（蓝本裸读）；sscanf
+/// 的源串按字节扫描（蓝本经 lossy char——非 ASCII 的 `%c` 落点与空白
 /// 判定不同，A-10 族）；scanf `%s` 的栈缓冲校验保留（V-P1-6）。
 
 ///|

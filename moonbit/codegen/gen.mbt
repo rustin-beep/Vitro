@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// BytecodeGen 状态机（S5 骨架，C only 裁剪）——Rust `vitro_codegen::lib.rs`
 /// 的 `BytecodeGen` 照搬：**形态等价优先**（S4 同款纪律），47 字段中剔除
@@ -1187,10 +1189,10 @@ pub fn compile(
 /// library mode 编译入口（预编译 Bytecode Libc 自身用）——与 `compile` 的
 /// 唯一差别是初始化按 library mode 走：不预注册 `BYTECODE_LIBC_ALL_FUNCS`
 /// 固定索引段（`next_func_idx` 自 0 起）、全局偏移自 0 起（不预留
-/// `BYTECODE_LIBC_GLOBALS_RESERVED`）。语义与 Rust `BytecodeGen::with_mode(true)`
-/// 逐项同构（Rust 侧该标志也**只改这两个初值**）。
+/// `BYTECODE_LIBC_GLOBALS_RESERVED`）。语义沿用历史蓝本 `BytecodeGen::with_mode(true)`
+/// （蓝本该标志也**只改这两个初值**）。
 ///
-/// **main 检查不豁免**（有意与 Rust 同构）：Rust 侧 `generate` 的「缺少 main
+/// **main 检查不豁免**（沿用历史蓝本同形）：蓝本 `generate` 的「缺少 main
 /// 函数入口」检查同样无 library 分支——`vitro_cli export` 是靠**注入 stub
 /// main 再过滤**（`__export_main_stub.c` + code 截断 + func_table/func_index
 /// 删 main）绕过的，而非在 codegen 内放行。故本入口也要求调用方自带 main

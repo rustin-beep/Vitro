@@ -1,5 +1,6 @@
 ///|
-/// AST 深度测量（照搬 Rust `vitro_ast/src/depth.rs`，U1#8）：迭代式 DFS，
+/// AST 深度测量（历史蓝本 Rust `vitro_ast/src/depth.rs`，tag rust-oracle-freeze，
+/// U1#8）：迭代式 DFS，
 /// 显式栈而非递归——被测的就是病态深 AST，递归测量自身会先溢出
 /// （左结合链 5000 项实测崩在 typeck / AST Drop，同等深度的测量递归同理）。
 ///

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·判据 tree 族（S8 teaching 批三号，2026-10-01）：
 // detector/tree.rs:6-120 照搬——bst 家族「名字+语义双条件」（二审 P0-B
 // 方案②：valid 优先于 insert；裸命名靠 TreeNode 参数语境补齐——

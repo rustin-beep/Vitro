@@ -1,8 +1,9 @@
 // 会话骨架（S7 批二号，2026-09-27）：Session 状态聚合 + 会话级保险丝
 // 单一写入口 + 多文件安全的源码行定位。
-// 照搬 native/src/session.rs 的 Session/CompileState/source_line_at/
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/session.rs 的 Session/CompileState/source_line_at/
 // set_max_steps/set_call_depth_limit；形态差异（MoonBit 侧设计红利）：
-// ① vm 非 Option——Rust 的 `vm: Option<VitroVM>` + get_or_insert 语义
+// ① vm 非 Option——蓝本的 `vm: Option<VitroVM>` + get_or_insert 语义
 // 本质是「确保有 VM」，MoonBit 直接持有（构造即建，配置永有所宿）；
 // ② CompileState 聚合 @bytecode.CompileOutput 而非散装复制 17 产物字段；
 // ③ 统一模式（unified）帧缓冲族字段照搬，引擎本体（UnifiedEngine）

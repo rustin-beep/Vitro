@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| S6 内存域白盒锚点（`vitro/engine/memory`）。
 ///
 /// **锚点来源**：Rust 冻结区已有的红锚测试逐条照搬（勘察 §2.2 判据可搬清单），
@@ -14,7 +16,8 @@
 ///
 /// **本包不含 host**（host 是 S6 后续批），故这些锚以"显式列出 host 的调用
 /// 次序"的方式驱动 `MemoryMap`——下面的 `alloc` / `free` 两个辅助函数就是
-/// `host/memory.rs` 的内存侧最小复现，次序与 Rust 逐行对应。
+/// 历史蓝本 `host/memory.rs` 的内存侧最小复现（迁移期逐行对应其次序，tag
+/// rust-oracle-freeze；现为自主锚）。
 
 ///|
 /// `host_malloc` 的内存侧最小复现（`host/memory.rs:5-58` 的次序）。

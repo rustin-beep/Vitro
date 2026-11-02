@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer tree 族（S8 teaching 批三号，2026-10-01）：八算法
 // 照搬 vitro_algorithm_steps/src/tree.rs:1-259——含全部审阅修复语义：
 // bst_validate 三 phase 锚定模板行（二审 P0-B 方案②）+ 顶层调用帧入口

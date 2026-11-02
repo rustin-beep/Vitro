@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // DTO 族白盒锚（S7 批一号）：StepPayload 全 14 字段构造与读取锚
 // （字段名/类型语义逐一对齐 Rust types.rs）+ PointerStatus 序列化文本。
 // v0.2 首批（#90，2026-10-17）：+code_file 可空字段——本锚随激活扩为
@@ -58,7 +60,7 @@ test "step_payload_all_fourteen_fields_constructible" {
       suggested_fix_desc: Some("将 <= 改为 <"),
     }),
   }
-  // 读取锚：14 字段逐一（字段名语义与 Rust 侧逐一对齐）
+  // 读取锚：14 字段逐一（字段名语义沿用历史蓝本逐一对应）
   assert_eq(payload.step_index, 42)
   assert_eq(payload.code_line, 12)
   assert_eq(payload.code_file, Some("util.c")) // #90 v0.2 首批新增字段

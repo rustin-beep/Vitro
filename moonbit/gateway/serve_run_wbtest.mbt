@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // serve run 白盒锚（S7 批三号二段）：execute_run 等价五步 + 六字段出口 +
 // 「2000 步真停」端到端锚（会话批登记义务——Rust 事故形态的对照锚：
 // capi/serve 曾在 compile 前设置的 max_steps 被静默丢弃、程序跑满默认

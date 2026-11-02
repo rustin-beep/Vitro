@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 赋值与三目生成（S5 扩展批三号·赋值——剩余首错第 1 位 67 例 + 三目
 /// 10 例）——Rust `expr/assign.rs` 的 C only 子集照搬：
@@ -8,7 +10,7 @@
 /// - struct 整体赋值（gen_struct_copy——本批补全双形态版）；
 /// - reference 两段（ref 返回调用左值 / Identifier ref 判定）不迁移
 ///   （C 零出现）；Index/Member 左值随其批接线（fail loud）；
-/// - 赋值后回读（store 后同型 load 回栈）保持 Rust 指令序逐条一致。
+/// - 赋值后回读（store 后同型 load 回栈）沿用历史蓝本指令序（golden 冻结锁定）。
 fn BytecodeGen::gen_ternary_expr(
   self : BytecodeGen,
   cond : @ast.Expr,

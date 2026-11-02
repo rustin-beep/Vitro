@@ -1,5 +1,7 @@
 # vitro/engine/bytecode — 字节码产物层与调用路由
 
+> 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 C 教学引擎的产物层：**CompileOutput 产物 schema**（13 字段，与 Rust oracle 的 dump 逐字段同构）+ **Bytecode Libc 固定索引**（88 函数名单源，索引 = 1000 + 名单序）+ **R1 内存布局纯函数** + **调用形态单一路由表**（"一个名字走预编译 libc 还是 Host handler"从隐式覆盖变成可查询事实）。地址布局常量（`MEM_SIZE` / `HEAP_START` / 对齐）的单源也在这里，下游（memory / host）只消费不复制。
 
 ## 安装

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域：**增量快照原语**——批四号二段照搬 Rust
 /// `core/snapshot.rs:38-78`（脏页 Delta）；S8 批一号一段（2026-09-30）
 /// CheckpointManager **迁出**至 L9 `time_travel`（落点裁定：智能判据是

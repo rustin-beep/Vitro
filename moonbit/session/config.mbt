@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // SessionConfig 值对象（S7 批二号，2026-09-27）——总计划 §4 L8 行
 // 「session(SessionConfig 值对象)」的目标架构落形。
 // Rust 侧此物不存在（配置散在 VitroVM 字段 + Session::set_* 两方法），

@@ -30,6 +30,16 @@ function check(name: string, ok: boolean, detail: string): void {
   if (!ok) failures.push(name);
 }
 
+// 5173 被占 fail-fast（strictPort 下 vite 起不来，proton_cli 会空等——本地
+// 被打断的上一跑残留 vite 实锤；120s 超时前 2s 内就该说清）
+try {
+  const r = await fetch("http://127.0.0.1:5173/", { signal: AbortSignal.timeout(1500) });
+  console.error(`smoke: 127.0.0.1:5173 已有服务在应答（HTTP ${r.status}）——残留 vite？先清再跑`);
+  process.exit(2);
+} catch {
+  // 未占用 = 正常
+}
+
 // ── 起 dev：proton_cli dev（进程树归本探针，finally taskkill /T 收树） ──
 console.log(`[smoke] spawn: ${PROTON_CLI} dev（CDP 端口 ${PORT}）`);
 const dev = spawn(PROTON_CLI, ["dev"], {
@@ -72,6 +82,28 @@ async function waitCdp(): Promise<boolean> {
   return false;
 }
 
+/** cdp-ready 失败时的现场诊断（三轮 CI 红实锤：vite 只绑 ::1 而 proton_cli
+ *  探 127.0.0.1 永远拒连——日志里只有「Waiting for frontend dev server」，
+ *  无进一步信息）。端口监听态 + 进程表 + 两地址探活，下次红自解释。 */
+async function diagnoseNotReady(): Promise<void> {
+  const probe = async (url: string): Promise<string> => {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      return `${url} → HTTP ${r.status}`;
+    } catch (e) {
+      return `${url} → ${(e as Error).message}`;
+    }
+  };
+  console.error("[smoke/diag] 前端探活：", await probe("http://127.0.0.1:5173/"), "|", await probe("http://localhost:5173/"));
+  const netstat = spawnSync("netstat", ["-an"], { encoding: "utf8" }).stdout ?? "";
+  const listening = netstat
+    .split(/\r?\n/)
+    .filter((l) => /LISTEN/.test(l) && (l.includes(":5173 ") || l.includes(`:${PORT} `)));
+  console.error("[smoke/diag] 监听端口（5173/CDP）：", listening.length > 0 ? listening.map((l) => l.trim()).join(" || ") : "无");
+  const tasks = spawnSync("tasklist", ["/FI", "IMAGENAME eq app.exe", "/FI", "IMAGENAME eq node.exe"], { encoding: "utf8" }).stdout ?? "";
+  console.error("[smoke/diag] 进程表（app/node）：", tasks.split(/\r?\n/).filter((l) => /app\.exe|node\.exe/.test(l)).join(" || ") || "无");
+}
+
 /** 跑一个探针脚本（同 node），回其 stdout 解析出的 JSON（eval 字段原样字符串）。 */
 function runProbe(script: string, args: string[]): { rc: number; stdout: string } {
   const r = spawnSync(process.execPath, [script, PORT, ...args], {
@@ -108,7 +140,10 @@ try {
   // ① CDP 就绪
   const cdpOk = await waitCdp();
   check("cdp-ready", cdpOk, cdpOk ? `ws://127.0.0.1:${PORT}` : `${DEV_TIMEOUT_MS}ms 内未就绪`);
-  if (!cdpOk) throw new Error("CDP 未就绪，后续断言跳过");
+  if (!cdpOk) {
+    await diagnoseNotReady();
+    throw new Error("CDP 未就绪，后续断言跳过");
+  }
 
   // ② 缺省读数（transport=ipc 证明走的是 native IPC 而非 wasm Worker）
   const base = runProbe("tools/cdp_probe.mts", []);

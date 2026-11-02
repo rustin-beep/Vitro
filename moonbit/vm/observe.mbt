@@ -359,12 +359,14 @@ pub fn VitroVM::accessed_at(self : VitroVM, idx : Int32) -> VariableAccess {
 }
 
 ///|
-/// 执行热力图读口（窄口——`heatmap` 是可变 Map，字段直读会泄漏可写句柄，
-/// call_stack_at 同款纪律）。行未命中返回 0（Rust `unwrap_or(0)` 同口径）。
+/// 执行热力图读口（窄口——`heatmap` 是可变定长数组〔P0b-1〕，字段直读会
+/// 泄漏可写句柄，call_stack_at 同款纪律）。行未命中（未记/未扩容/负值）
+/// 返回 0（Rust `unwrap_or(0)` 同口径；原 Map None→0 等价）。
 pub fn VitroVM::heatmap_count_at(self : VitroVM, line : Int32) -> UInt64 {
-  match self.heatmap.get(line) {
-    Some(v) => v
-    None => 0UL
+  if line >= 0 && line < self.heatmap.length() {
+    self.heatmap[line]
+  } else {
+    0UL
   }
 }
 

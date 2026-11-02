@@ -53,7 +53,7 @@
 | `call_stack` | array | 否 | 调用栈（§2.2）；**自底向上**，最后一个元素为当前帧 |
 | `vis_events` | array | 否 | 本步产生的可视化事件（§2.7）；**取走式**：同一步数据不会被重复投递 |
 | `heatmap_line` | int32 | 否 | 热力图行号（当前实现恒等于 `code_line`；多文件 / 含头文件会话中随之使用全局行号，见 §8 #9） |
-| `heatmap_count` | uint64 | 否 | 该行**截至本步**的累计执行次数 |
+| `heatmap_count` | uint64 | 否 | 该行**截至本步**的累计执行次数（**仅 step 态累计**——#176 P0 起 `run` 全速态不记热力图，run 后 `step.begin` 经 setup 重置从零起算；2026-11-02） |
 | `accessed_vars` | array | 否 | 本步读写的变量（§2.3） |
 | `array_snapshots` | array | 否 | 数组快照（§2.4），供条形图/可视化 |
 | `pointer_snapshots` | array | 否 | 指针快照（§2.5），四状态见 §3.1 |

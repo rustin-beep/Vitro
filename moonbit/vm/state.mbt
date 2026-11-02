@@ -104,6 +104,13 @@ pub struct VitroVM {
   /// argv 指针数组起始地址（R1 ③：自 `GLOBAL_REGION_LIMIT` 向下分配）。
   mut argv_addr : UInt32
   // ── 教学观测 ──
+  /// 教学观测开关（P0 观测落闸，#176，2026-11-02）：true = 全观测
+  /// （step 态缺省——heatmap / last_accessed_vars / vis 事件队列照记）；
+  /// false = `run` 全速态落闸（三件在 run 态零消费方——消费面全在
+  /// time_travel/serve_step 的 step 态；#176 §5 亲证）。`run` 进出自管
+  /// （入口置 false、任意出口恢复 true），其余路径恒 true；不入快照、
+  /// `reset` 不碰（调用方契约，非执行状态）。
+  mut observe : Bool
   /// 可视化事件队列（环形 `VIS_EVENT_LIMIT`——超限丢最老）。
   mut vis_event_queue : Array[VisEventData]
   /// 可视化事件行登记（**会话注入配置**，快照不含——Rust `VMSnapshot`
@@ -113,9 +120,17 @@ pub struct VitroVM {
   breakpoints : Set[Int32]
   /// 最近一步的变量访问记录（瞬时观测，快照不含；每步清空重记）。
   last_accessed_vars : Array[VariableAccess]
-  /// 执行热力图（行 → 计数；每步一次增量——MoonBit 可变 Map 直更，
-  /// 无 Rust `Arc::make_mut` 的 COW 克隆点，快照时整表拷贝）。
-  heatmap : Map[Int32, UInt64]
+  /// 执行热力图（行号 → 计数；P0b-1〔#176 §6-P0b，2026-11-02〕Map→定长
+  /// 数组——step 热路径数组自增免哈希，#176 micro 实测 native 37.8→0.67ns /
+  /// wasm-gc 11.5→2.2ns；**惰性扩容**（装载期行号上界未知——load_program
+  /// 直装 / setup 两条通道都可能先记后扩，见 `ensure_heat`）；快照/restore
+  /// 均**深拷贝**数组（FixedArray 引用语义——restore 若共享引用，后续自增
+  /// 会污染检查点快照，time_travel 复用面）。
+  mut heatmap : FixedArray[UInt64]
+  /// vis 事件行索引（P0b-2：StepEvent 命中 O(1) 查——派生自
+  /// `vis_event_lines`（行内登记序），`set_vis_event_lines` 单点重建、
+  /// reset 同清；不入快照〔与真源同口径——会话注入配置〕）。
+  vis_events_by_line : Map[Int32, Array[(Int32, String)]]
   /// 无限循环诊断的变量快照（每 `SNAPSHOT_INTERVAL`(10 万) 步刷新；
   /// 与 CheckpointManager 的检查点间隔是两个频率，坑 14——口径独立保留）。
   snapshot_vars : Map[String, UInt64]
@@ -191,11 +206,13 @@ pub fn VitroVM::new() -> VitroVM {
     current_line: 0,
     argc: 0,
     argv_addr: 0U,
+    observe: true,
     vis_event_queue: [],
     vis_event_lines: [],
     breakpoints: Set([]),
     last_accessed_vars: [],
-    heatmap: Map([]),
+    heatmap: FixedArray::make(0, 0UL),
+    vis_events_by_line: Map([]),
     snapshot_vars: Map([]),
     last_snapshot_step: 0,
     output: @host.OutputLog::new(),
@@ -253,7 +270,12 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   self.vis_event_lines.clear()
   self.breakpoints.clear()
   self.last_accessed_vars.clear()
-  self.heatmap.clear()
+  // P0b-1：长度归零 = 清空（数组形态）；vis 行索引同清（派生自
+  // vis_event_lines——上面已清真源）
+  self.heatmap = FixedArray::make(0, 0UL)
+  self.vis_events_by_line.clear()
+  // PR #439 审阅 P1-1（2026-11-02）：P0b 改写上两行时本行被一并吞掉——
+  // 无限循环诊断的变量基线跨程序残留（锚 p1_reset_clears_every_observation_field）
   self.snapshot_vars.clear()
   self.last_snapshot_step = 0
   self.waiting_input = false
@@ -411,6 +433,38 @@ pub fn VitroVM::set_vis_event_lines(
   for l in lines {
     self.vis_event_lines.push((l.0, l.1, l.2))
   }
+  self.rebuild_vis_index()
+}
+
+///|
+/// vis 行索引重建（P0b-2：`vis_events_by_line` 与真源 `vis_event_lines`
+/// 单点同步——set_vis_event_lines 尾调用；行内登记序即命中 push 序，与
+/// 原 StepEvent 线性扫逐字节等价〔锚 p0b_vis_lines_index_multi_entry_order〕）。
+fn VitroVM::rebuild_vis_index(self : VitroVM) -> Unit {
+  self.vis_events_by_line.clear()
+  for entry in self.vis_event_lines {
+    match self.vis_events_by_line.get(entry.0) {
+      Some(arr) => arr.push((entry.1, entry.2))
+      None => self.vis_events_by_line.set(entry.0, [(entry.1, entry.2)])
+    }
+  }
+}
+
+///|
+/// 热力图容量确保（P0b-1：定长数组惰性扩容——首记任意行 / 再扩容保旧值；
+/// 倍增 + 覆盖目标行取大者，摊还 O(1)；行号域已由调用方保证 > 0）。
+fn VitroVM::ensure_heat(self : VitroVM, line : Int32) -> Unit {
+  let len = self.heatmap.length()
+  if line < len {
+    return
+  }
+  let want = line + 1
+  let new_len = if 2 * len > want { 2 * len } else { want }
+  let grown : FixedArray[UInt64] = FixedArray::make(new_len, 0UL)
+  for i = 0; i < len; i = i + 1 {
+    grown[i] = self.heatmap[i]
+  }
+  self.heatmap = grown
 }
 
 ///|

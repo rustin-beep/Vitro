@@ -75,8 +75,8 @@ pub(all) struct VMSnapshot {
   vis_event_queue : Array[VisEventData]
   /// 断点（Set 无序 ⇒ 排序后存数组；restore 重建 Set）。
   breakpoints : Array[Int32]
-  /// 执行热力图（行 → 计数）。
-  heatmap : Map[Int32, UInt64]
+  /// 执行热力图（行号 → 计数；P0b-1 定长数组——snapshot/restore 双向深拷贝）。
+  heatmap : FixedArray[UInt64]
   /// 无限循环诊断的变量快照。
   snapshot_vars : Map[String, UInt64]
   last_snapshot_step : Int32
@@ -140,9 +140,13 @@ pub fn VitroVM::snapshot(self : VitroVM) -> VMSnapshot {
     bps.push(bp)
   }
   bps.sort_by(fn(a, b) { a.compare(b) })
-  let heatmap_copy : Map[Int32, UInt64] = Map([])
-  for k, v in self.heatmap {
-    heatmap_copy.set(k, v)
+  // P0b-1：整组深拷贝（FixedArray 引用语义——快照与活体必须独立）
+  let heatmap_copy : FixedArray[UInt64] = FixedArray::make(
+    self.heatmap.length(),
+    0UL,
+  )
+  for i = 0; i < self.heatmap.length(); i = i + 1 {
+    heatmap_copy[i] = self.heatmap[i]
   }
   let vars_copy : Map[String, UInt64] = Map([])
   for k, v in self.snapshot_vars {
@@ -269,10 +273,16 @@ pub fn VitroVM::restore(self : VitroVM, snap : VMSnapshot) -> Unit {
   for bp in snap.breakpoints {
     self.breakpoints.add(bp)
   }
-  self.heatmap.clear()
-  for k, v in snap.heatmap {
-    self.heatmap.set(k, v)
+  // P0b-1：深拷贝回放——restore 后的自增不得回写 snap（检查点复用面，
+  // 锚 p0b_heat_snapshot_deep_copy_no_alias）
+  let heat_restore : FixedArray[UInt64] = FixedArray::make(
+    snap.heatmap.length(),
+    0UL,
+  )
+  for i = 0; i < snap.heatmap.length(); i = i + 1 {
+    heat_restore[i] = snap.heatmap[i]
   }
+  self.heatmap = heat_restore
   self.snapshot_vars.clear()
   for k, v in snap.snapshot_vars {
     self.snapshot_vars.set(k, v)

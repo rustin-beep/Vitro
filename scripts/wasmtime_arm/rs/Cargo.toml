@@ -1,0 +1,15 @@
+[package]
+name = "wasmtime_arm"
+version = "0.1.0"
+edition = "2024"
+# W4 第四臂对拍跑器：同一 wasm-gc 产物 × wasmtime（Cranelift）供给版。
+# 宿主手工供给 wasm:js-string 六函数 + "_" 字符串常量（UTF-16 code unit
+# 语义，与 V8 内建对齐）。源自 R3b 探针 v4（D:/tmp/vitro-downstream-gui/
+# probes/wasmtime_rs），固化为 NDJSON 流入→流出形态。
+# wasmtime 50.0.1 = crates.io max_stable（2026-11-02 核）；MSRV 1.97。
+
+[dependencies]
+wasmtime = "50.0.1"
+
+[profile.release]
+opt-level = 3

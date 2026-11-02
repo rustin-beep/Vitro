@@ -19,10 +19,11 @@
 //   ③ 双向对账：dispatch 方法缺 rules 简介红；rules 简介无对应 dispatch
 //      方法红（多/缺两个方向都咬合）
 //   ④ -check 幂等：磁盘双产物 == 现场生成，否则红并给再生命令
-//   ⑤ --selftest 三路内存注入证红 + 一路可提取性（方法计数漂移〔注入〕/
-//      形状面可提取性〔非空——篡改检测由 -check 幂等与 reconcile 承担，
-//      审阅 v2 S07 P3-3 头注如实化〕/ 简介缺失〔注入〕/ 非规范形态静默
-//      塌缩〔注入〕）——J9 义务
+//   ⑤ --selftest 五路 = 四路内存注入证红 + 一路可提取性（路 1 方法计数
+//      漂移〔注入〕/ 路 2 形状面可提取性〔非空——篡改检测由 -check 幂等
+//      与 reconcile 承担，非注入面〕/ 路 3 简介缺失〔注入〕/ 路 4 未豁免
+//      跳过红〔注入〕/ 路 5 僵尸豁免红〔注入〕）——J9 义务（PR #441 审阅
+//      P3-2 勘正：原注「四路注入」漏计路 4/5 拆分）
 //
 // 产物：moonbit/cmd/lib/cli/api_help_gen.mbt（cmd/lib/cli 查表）
 // 规则外置 scripts/gen_api_help/rules.json（#125 批 B 后 = 入库真源手改面）。
@@ -347,8 +348,8 @@ function selftestAll(): void {
     process.stdout.write(`selftest 路 3 OK（简介缺失红：${errs3[0]}）\n`);
   }
 
-  // 路 4（2026-10-17 审阅 P3-⑥）：非规范形态静默塌缩闸——未豁免跳过红 +
-  // 僵尸豁免红（双向）
+  // 路 4（2026-10-17 审阅 P3-⑥）：非规范形态静默塌缩闸——未豁免跳过红；
+  // 僵尸豁免红是路 5（PR #441 审阅 P3-2：原注合述「双向」，标签已拆两路）。
   const rules4 = readJSON<Rules>(RULES_PATH);
   rules4.shape_skip_allow = [];
   const errs4 = checkShapeSkips(rules4, [

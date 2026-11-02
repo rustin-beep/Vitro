@@ -71,7 +71,11 @@ const RUNNER_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
 const JS_ENGINE = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const VITRO_SH = "scripts/bin/vitro";
 const CACHE_DIR = ".corpus_fuzz_cache";
-const JUDGE_CACHE_DIR = ".corpus_fuzz_judge";
+// CF_JUDGE_DIR 覆盖口（PR #441 审阅 P3-4）：e2e/并行轮次注入独立判定缓存
+// 目录——#412 三连轮 e2e 的「闸红零写副作用」mtime 断言对**共享** judge 目录
+// 敏感（同机 corpus_fuzz 全量/另一测试进程写缓存即翻红，一轮 663/4→666/1→
+// 667/0 抖动实录）；缺省形态与线上行为不变。
+const JUDGE_CACHE_DIR = process.env["CF_JUDGE_DIR"] ?? ".corpus_fuzz_judge";
 
 /** 桶恶化序（数值越大越坏）。 */
 export const BUCKET_RANK: Record<string, number> = {

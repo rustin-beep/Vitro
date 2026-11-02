@@ -95,6 +95,9 @@ test("quoteBody：单字节转义面回归（引号/控制字符）", () => {
 // readFileSync(latin1) + 后续 utf8 编码 = 每个 ≥0x80 字节膨胀 2 字节，非
 // ASCII 工程语料即与 Go 侧 digest 分歧（现役语料全 ASCII 零触发）。锚 =
 // 读取路径的字节语义（孤字节 0xC8 → U+FFFD、合法中文原样）。
+// PR #441 审阅 P2-1（2026-11）扩锚：Node 原生 utf8 解码对**截断多字节序列**
+// 按最大子部分合并成单个 U+FFFD（WHATWG 口径），Go 逐字节每字节一个
+// U+FFFD（DecodeRune 失败前进 1 字节）——E1 80 双侧 1 vs 2 分歧实测。
 test("readProjectSources：Go json.Marshal 字节语义（孤字节 U+FFFD、合法 UTF-8 原样）", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clang-direct-a3-"));
   const f = path.join(dir, "main.c");
@@ -104,4 +107,31 @@ test("readProjectSources：Go json.Marshal 字节语义（孤字节 U+FFFD、合
   if (!r.ok) return;
   assert.equal(r.ents[0]!.filename, "main.c");
   assert.equal(r.ents[0]!.source, "\uFFFD中\n", "孤字节 0xC8 须 U+FFFD（Go json.Marshal 同款），合法中文原样");
+});
+
+// P2-1 截断序列展开口径：Go 逐字节 N 个 U+FFFD，不得走 Node 合并口径。
+test("readProjectSources：截断多字节序列逐字节 U+FFFD（Go 口径，非 WHATWG 合并）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clang-direct-a3t-"));
+  const mk = (name: string, bytes: number[]) => {
+    const f = path.join(dir, name);
+    fs.writeFileSync(f, Buffer.from(bytes));
+    return f;
+  };
+  const read1 = (f: string): string => {
+    const r = readProjectSources([f]);
+    assert.ok(r.ok);
+    if (!r.ok) throw new Error("unreachable");
+    return r.ents[0]!.source;
+  };
+  // 截断 3 字节（E1 80，缺尾）→ 2 个 U+FFFD（Node 合并口径只给 1 个）
+  assert.equal(read1(mk("t1.c", [0xe1, 0x80])), "\uFFFD\uFFFD", "E1 80 须逐字节 2 个 U+FFFD");
+  // 截断 4 字节（F0 9F 92，缺尾）→ 3 个
+  assert.equal(read1(mk("t2.c", [0xf0, 0x9f, 0x92])), "\uFFFD\uFFFD\uFFFD", "F0 9F 92 须 3 个 U+FFFD");
+  // 截断 3 字节 + 合法中文 → 2 个 U+FFFD + 中（Node 给 1 个 + 中）
+  assert.equal(read1(mk("t3.c", [0xe1, 0x80, 0xe4, 0xb8, 0xad])), "\uFFFD\uFFFD中", "截断段逐字节展开后合法段原样");
+  // 回归：代理区/过短/超 MaxRune 全序列形态两侧本就同形（每字节一个）
+  assert.equal(read1(mk("t4.c", [0xed, 0xa0, 0x80])), "\uFFFD\uFFFD\uFFFD");
+  assert.equal(read1(mk("t5.c", [0xe0, 0x80, 0x80])), "\uFFFD\uFFFD\uFFFD", "E0 80 80 过短（E0 域 [A0,BF]）逐字节 3 个");
+  // E1 80 80 是合法序列（U+1000 域）——防过拒
+  assert.equal(read1(mk("t6.c", [0xe1, 0x80, 0x80])), "က");
 });

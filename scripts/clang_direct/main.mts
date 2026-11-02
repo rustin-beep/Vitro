@@ -774,6 +774,56 @@ function goAccept(b: number): { lo: number; hi: number } {
   return { lo: 0x80, hi: 0xbf };
 }
 
+// goUtf8SeqAt：Go utf8.DecodeRune 在 buf[i] 处的序列判定（PR #441 审阅
+// P2-1 起与 quoteBody 单源共用）——len=序列长度（0=无效起始字节，1=ASCII），
+// ok=多字节序列是否完整合法（长度足够 + 次字节过接受域 + 其余续字节 10xx）。
+function goUtf8SeqAt(buf: Buffer, i: number): { len: number; ok: boolean } {
+  const b = buf[i]!;
+  const len = b < 0x80 ? 1
+    : b >= 0xc2 && b <= 0xdf ? 2
+    : b >= 0xe0 && b <= 0xef ? 3
+    : b >= 0xf0 && b <= 0xf4 ? 4
+    : 0;
+  let ok = len > 1 && i + len <= buf.length;
+  if (ok) {
+    // 次字节先过接受域（代理区/过短/超 MaxRune 拒），其余连续字节查 10xx。
+    const acc = goAccept(b);
+    const b1 = buf[i + 1]!;
+    if (b1 < acc.lo || b1 > acc.hi) ok = false;
+    for (let k = 2; ok && k < len; k++) {
+      if ((buf[i + k]! & 0xc0) !== 0x80) ok = false;
+    }
+  }
+  return { len, ok };
+}
+
+// goDecodeUtf8：Go `string([]byte)` + json.Marshal 的解码语义——合法序列按
+// rune 还原；解码失败（无效起始/过短/代理区/超 MaxRune/**截断续字节**）每
+// 前进 1 字节产 1 个 U+FFFD（Go DecodeRune 失败口径）。PR #441 审阅 P2-1
+// 实测：Node 原生 utf8 解码对截断多字节序列按最大子部分合并成单个 U+FFFD
+//（WHATWG 口径）——E1 80 双侧 2 vs 1 分歧，工程源非 ASCII + 截断即静默
+// digest 分叉，故工程源通道必须走本解码而非 readFileSync("utf8")。
+function goDecodeUtf8(buf: Buffer): string {
+  let out = "";
+  let i = 0;
+  while (i < buf.length) {
+    const { len, ok } = goUtf8SeqAt(buf, i);
+    if (len === 1) {
+      out += String.fromCharCode(buf[i]!);
+      i++;
+      continue;
+    }
+    if (ok) {
+      out += buf.subarray(i, i + len).toString("utf8");
+      i += len;
+      continue;
+    }
+    out += "\uFFFD";
+    i++;
+  }
+  return out;
+}
+
 // quoteBody：goQuote 的引号内体（clip 截断尾巴 "…" 由调用方在引号内补——
 // U+2026 经 latin1 编码会截成 0x26（"&"），绝不能进 latin1 字节域）。
 export function quoteBody(s: string): string {
@@ -781,23 +831,9 @@ export function quoteBody(s: string): string {
   let out = "";
   let i = 0;
   while (i < bytes.length) {
-    const b = bytes[i]!;
-    const len = b < 0x80 ? 1
-      : b >= 0xc2 && b <= 0xdf ? 2
-      : b >= 0xe0 && b <= 0xef ? 3
-      : b >= 0xf0 && b <= 0xf4 ? 4
-      : 0;
-    let ok = len > 1 && i + len <= bytes.length;
-    if (ok) {
-      // 次字节先过接受域（代理区/过短/超 MaxRune 拒），其余连续字节查 10xx。
-      const acc = goAccept(b);
-      const b1 = bytes[i + 1]!;
-      if (b1 < acc.lo || b1 > acc.hi) ok = false;
-      for (let k = 2; ok && k < len; k++) {
-        if ((bytes[i + k]! & 0xc0) !== 0x80) ok = false;
-      }
-    }
+    const { len, ok } = goUtf8SeqAt(bytes, i);
     if (len === 1) {
+      const b = bytes[i]!;
       if (b === 0x22) out += '\\"';
       else if (b === 0x5c) out += "\\\\";
       else if (b === 0x0a) out += "\\n";
@@ -817,7 +853,7 @@ export function quoteBody(s: string): string {
       i += len;
       continue;
     }
-    out += "\\x" + b.toString(16).padStart(2, "0");
+    out += "\\x" + bytes[i]!.toString(16).padStart(2, "0");
     i++;
   }
   return out;
@@ -852,19 +888,22 @@ interface ApiFrame {
 
 // readProjectSources：工程模式源读取（读失败 → ok:false = FILEREAD-FAIL）。
 // 审阅 v2 S03-A3（2026-11）：Go json.Marshal(string(b)) 语义 = 合法 UTF-8
-// 原样、无效孤字节 U+FFFD——readFileSync utf8 同款解码。原 latin1 读取 +
-// 后续 Buffer.from(frames,"utf8") 让每个 ≥0x80 字节膨胀 2 字节，非 ASCII
-// 工程语料的 compile 帧 source 与 Go 侧 digest 分歧（现役语料全 ASCII 零触发）。
+// 原样、无效字节 U+FFFD。原 latin1 读取 + 后续 Buffer.from(frames,"utf8")
+// 让每个 ≥0x80 字节膨胀 2 字节，非 ASCII 工程语料的 compile 帧 source 与
+// Go 侧 digest 分歧（现役语料全 ASCII 零触发）。PR #441 审阅 P2-1（2026-11）
+// 再勘正：readFileSync("utf8") 也不等价——Node 对**截断多字节序列**按最大
+// 子部分合并成单个 U+FFFD（WHATWG），Go 逐字节每字节一个；改 goDecodeUtf8
+// 逐字节 Go 式解码（锚 main.test.mts 截断形态三例）。
 export function readProjectSources(files: string[]): { ok: true; ents: { filename: string; source: string }[] } | { ok: false } {
   const ents: { filename: string; source: string }[] = [];
   for (const f of files) {
-    let b: string;
+    let buf: Buffer;
     try {
-      b = fs.readFileSync(f, "utf8");
+      buf = fs.readFileSync(f);
     } catch {
       return { ok: false };
     }
-    ents.push({ filename: path.basename(f), source: b });
+    ents.push({ filename: path.basename(f), source: goDecodeUtf8(buf) });
   }
   return { ok: true, ents };
 }

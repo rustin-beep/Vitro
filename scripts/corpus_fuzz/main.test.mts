@@ -739,7 +739,11 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
   // rc 断言红；副作用后置突变（judgeCachePut 挪回循环内）⇒ mtime 断言红。
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-flipgate-"));
   const rulesPath = path.join(ROOT, FIX, "mini_rules.json");
-  const judgeDir = path.join(ROOT, ".corpus_fuzz_judge");
+  // PR #441 审阅 P3-4：mtime 断言改监视**本测试独占**的 judge 目录（CF_JUDGE_DIR
+  // 注入）——原监视仓内共享 .corpus_fuzz_judge，同机 corpus_fuzz 全量/另一测试
+  // 进程写缓存即翻红（一轮 663/4→666/1→667/0 抖动实录）。
+  const judgeDir = path.join(dir, "judge");
+  const env = { ...process.env, CF_JUDGE_DIR: judgeDir };
   const mtimeMax = (): number => {
     let m = 0;
     if (!fs.existsSync(judgeDir)) return 0;
@@ -751,9 +755,9 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
     return m;
   };
   try {
-    // 轮 1：freeze 生成真 mini 基线（判定缓存可能已命中，秒级）
+    // 轮 1：freeze 生成真 mini 基线（独占 judge 目录无历史缓存，必真跑）
     const b1 = path.join(dir, "b1.json");
-    const r1 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b1], { cwd: ROOT, encoding: "utf8" });
+    const r1 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b1], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r1.status, 0, `轮 1 freeze 须绿：${r1.stderr ?? ""}`);
     // mini 真跑分布须含 ≥ 闸值条非 AGREE（12 AGREE / 9 CLANG_REJECT 实测分布；
     // 若未来分布漂移至不足，本 e2e 须重造而非静默过闸）
@@ -766,15 +770,18 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
     fs.writeFileSync(b2, JSON.stringify(e1), "utf8");
     // 轮 2：闸红（fail loud rc=2）且零写副作用（mtime 不动）
     const m0 = mtimeMax();
-    const r2 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    const r2 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r2.status, 2, "恶化 ≥ 闸值须 fail loud（M6 突变此处红）");
     assert.match(r2.stderr ?? "", /confirm-flips/, "提示须点名放行参数");
     assert.match(r2.stderr ?? "", /#412/);
     assert.equal(mtimeMax(), m0, "闸红路径零写副作用——缓存不得先于闸落盘（P3-2 突变此处红）");
     // 轮 3：--confirm-flips（双破折号形态顺带锚）显式放行 ⇒ rc=0
-    const r3 = spawnSync(process.execPath, [MAIN, "-freeze", "--confirm-flips", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    const r3 = spawnSync(process.execPath, [MAIN, "-freeze", "--confirm-flips", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r3.status, 0, `confirm 放行后须落盘（M7 突变此处红）：${r3.stderr ?? ""}`);
     assert.match(r3.stdout ?? "", /显式放行/);
+    // 独占目录真被用过（防 CF_JUDGE_DIR 注入失效退回共享目录——mtime 断言
+    // 将恒真，锚自杀）
+    assert.ok(mtimeMax() > 0, "独占 judge 目录须有缓存写入（注入失效即红）");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

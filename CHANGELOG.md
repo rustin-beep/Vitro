@@ -1,5 +1,56 @@
 ## [Unreleased]
 
+### feat(desktop+ci): proton 桌面捉虫壳入仓（`desktop/` 独立下游 module，非发包面）+ CI `desktop` check-only 哨兵 job（2026-11-02）
+
+- **落位**：新顶层 `desktop/`（与 `demo/` 并列——demo 走 wasm/js 产物，
+  desktop 走原生同进程直调），独立 MoonBit module `vitro/desktop`，
+  `import vitro/engine@0.9.1 + moonbit-community/proton@0.6.0`。**零污染语义**：
+  不在 `moonbit/moon.work` 成员里、`moonbit/moon.mod` 不引用、publish 流程
+  零涉及、本条目只进根 CHANGELOG（`moonbit/CHANGELOG.md` 发包面不动）；
+  依赖方向单向 `desktop → mooncakes 已发布包`。副作用=**发包哨兵**：
+  `moon check` 红即已发布包在下游独立 module 装不上（0.9.0 core/abort
+  断供事故当时零 CI 信号的事前形态）。
+- **壳形态**（P 线实测 2026-11-02 六项零败点后前进拍板；同批 P2 升级为
+  demo 承载）：proton/CEF Chromium 150 窗口，**UI = `demo/`（Svelte 5 +
+  Vite）原样承载**（`proton_cli dev` 起 vite dev server + `PROTON_FRONTEND_URL`
+  覆盖 entry）。引擎命令层官方 app-owned 形态（`..commands()`，op 名
+  `app:<name>`）四命令：`vitro_versions / vitro_invoke`（网关单口原样转发，
+  错误帧不折叠）`/ vitro_collect / vitro_feed`——**collect/feed 的编排**
+  （session.create→config.set→compile→run→step.begin→breakpoints.set→
+  step.next 采帧循环→output.delta 四通道分页）**移植到 native 端闭环**，
+  序列照抄 demo Worker 不做协议面发明；输出 stdout/stderr 通道 Latin-1→UTF-8
+  分域还原。**不要改走 `@cli.run`**：其诊断行落进程 stderr GUI 拿不到
+  （P 线 v1 形态实锤）。端到端实测（CDP 读数字）：demo UI 全量装载 + 桥注入，
+  点「运行」→ `编译 ✓ 运行 ✓ golden ✓`、stdout=`1 2 3 4 5`、**42 帧**时间
+  旅行可用、`引擎 0.9.1 协议 v0.2` native 真值、目录 114 透传递归亦通；
+  合体 build 21.5–26s / 4.9MB（**#2254 MSVC 悬崖不随下游独立工程迁移**），
+  冷启 943ms 见窗，内存树 289MB，160fps。
+- **demo 侧适配点**（浏览器形态零变化，svelte-check/oxlint 双绿）：新增
+  `demo/src/protocol/engine.ipc.ts`——与 `engine.worker.ts` 消息协议逐字相同
+  （`{id,op,...}→{id,ok,data|error}`）的 Worker 同形 IPC shim（桥就绪 5s
+  轮询兜底）；`session.svelte.ts` 引擎构造点一处二选一
+  （`hasDesktopBridge()` ? IPC : Worker）。字段映射（bpLines→bp_lines /
+  method→api）在 shim 层完成，UI 代码零改动。
+- **CDP 捉虫面**：builder `debug=true` 缺省开；`PROTON_REMOTE_DEBUGGING_PORT`
+  钉端口（env 非空亦可把 release 产物 debug 翻开——四形态矩阵见
+  `desktop/README.md`）。探针 `desktop/tools/*.mts`（node 直跑，tsc 严档 +
+  oxlint 闸）：`cdp_probe`（求值/`@file` 表达式）、`find_cdp`（PID 监听端口
+  扫描+协议指纹发现临时端口）、`cdp_catch`（不开 DevTools 窗口订阅
+  exceptionThrown/console/Log 三域，实测抓 4 事件）；页内表达式
+  `tools/page/{demo_run,fps_probe}.js`（demo 采集断言 / 帧率）。
+- **CI**：新 `desktop` job（windows-latest，不 needs 上游——不消费本仓产物）
+  = `moon update + moon check --target native` + `moon fmt --check`（hygiene
+  的 fmt 只扫 moonbit/）+ `npm ci && npm run check:all`；`ci-summary`
+  needs/env/pairs 三面连坐登记。本批 check-only（零 CEF 依赖、分钟级）；
+  CEF 真窗口 CDP smoke 另批（带 actions/cache 存 ~/.proton）。
+- **连坐**：AGENTS.md 仓库分区表加「桌面壳区」行 + 路由规则一句；
+  editorconfig / actionlint / ci_checklist 三闸本地绿。
+- **坑表（README「已知坑」）**：agent 会话沙箱对工作区内 exe 的写围栏致
+  `failed to create temporary browser storage: 5`（TEMP 指进工作区即解，
+  CI/开发机无此现象）；MSYS bash 直 spawn 产物 exe 伪 apiset 加载错；
+  PowerShell 重定向句柄随会话关闭连坐杀树；探针表达式多级转义吃反斜杠
+  一律 `@file`。
+
 ### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
 
 - **#410 主案（clangOutcome 崩溃域失明）**：clang 运行段进程崩溃/超时一律

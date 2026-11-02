@@ -1642,6 +1642,42 @@ jobs:
           node --test demo/tests/pure.test.mts
         shell: bash
 
+  # ── desktop（proton 捉虫壳，P 线前进拍板 2026-11-02）──────────────────
+  # 定位：独立下游 module（desktop/，与 demo/ 并列），`import vitro/engine@pin`
+  # 消费 **mooncakes 已发布包**——非发包面、不在 moonbit/moon.work 成员里、
+  # 引擎 publish 流程零涉及（零污染语义与依赖方向见 desktop/README.md）。
+  # 本 job 红的含义 = 已发布 vitro/engine@pin 在下游独立 module 装不上/
+  # 解析不过（0.9.0 core/abort 断供事故的事前哨兵形态——该事故当时零 CI
+  # 信号，靠下游报告才知）。不 needs 任何上游 job：不消费本仓产物。
+  # 本批 check-only（类型面 + fmt + 探针 TS 面，零 CEF 依赖、分钟级）；CEF
+  # 真窗口 CDP smoke 另批加（带 actions/cache 存 ~/.proton 164MB）。
+  desktop:
+    name: Desktop shell gates (moon check native / fmt / probe TS)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain
+        uses: ./.github/actions/setup-moonbit
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # moon update 刷注册表索引后按 moon.mod pin 拉 vitro/engine + proton 族；
+      # check 不编 C stub、不碰 CEF runtime——P 线实测 ~2s（91 任务）。
+      - name: desktop moon check (native; vitro/engine@pin from mooncakes)
+        shell: bash
+        run: |
+          cd desktop
+          moon update
+          moon check --target native --diagnostic-limit 80
+      # hygiene job 的 moon fmt --check 只扫 moonbit/——独立 module 自带一道
+      - name: desktop moon fmt --check
+        shell: bash
+        run: cd desktop && moon fmt --check
+      - name: desktop probe TS gates (tsc strict + oxlint)
+        shell: bash
+        run: cd desktop && npm ci && npm run check:all
+
   # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
   # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）
   # 在三个编译后端下执行、stdout 逐字节对拍：
@@ -1841,7 +1877,11 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
+<<<<<<< HEAD
     needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime]
+=======
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, desktop]
+>>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1858,7 +1898,11 @@ jobs:
           BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
           RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
+<<<<<<< HEAD
           ARM4_WASMTIME: ${{ needs.arm4-wasmtime.result }}
+=======
+          DESKTOP: ${{ needs.desktop.result }}
+>>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
@@ -1871,7 +1915,11 @@ jobs:
             "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
             "cli-smoke-linux:$CLI_SMOKE_LINUX"
             "release-preflight:$RELEASE_PREFLIGHT"
+<<<<<<< HEAD
             "arm4-wasmtime:$ARM4_WASMTIME"
+=======
+            "desktop:$DESKTOP"
+>>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
           )
           bad=0
           for pair in "${pairs[@]}"; do

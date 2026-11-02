@@ -9,6 +9,7 @@
 "use strict";
 
 import type { Diagnostic, StepPayload, VisEvent } from "../js/types.ts";
+import { createIpcTransport, hasDesktopBridge, type EngineTransport } from "./protocol/engine.ipc.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
@@ -211,7 +212,11 @@ export function invalidate(): void {
 }
 
 // ── Worker RPC ───────────────────────────────────────────────
-let worker: Worker | null = null;
+// 通道二选一（desktop 批 2026-11-02）：proton 桌面壳内走 native IPC
+// （engine.ipc.ts，Worker 同形接口）；浏览器形态维持 Web Worker 不变。
+// 引擎侧编排（collect/feed 的 step 采帧循环）在两种形态下都在「引擎侧」
+// 闭环——Worker 内 / 壳进程 native 内，消息形状逐字相同。
+let worker: EngineTransport | null = null;
 let rpcId = 0;
 const pending = new Map<number, { resolve: (v: never) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
@@ -239,9 +244,11 @@ function rejectAllPending(err: Error): void {
   pending.clear();
 }
 
-function getWorker(): Worker {
+function getWorker(): EngineTransport {
   if (!worker) {
-    worker = new Worker(new URL("./protocol/engine.worker.ts", import.meta.url), { type: "module" });
+    worker = hasDesktopBridge()
+      ? createIpcTransport()
+      : new Worker(new URL("./protocol/engine.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent) => {
       const { id, ok, data, error } = e.data as { id: number; ok: boolean; data?: never; error?: string };
       const p = pending.get(id);

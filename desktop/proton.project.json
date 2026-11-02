@@ -1,0 +1,19 @@
+{
+  "identifier": "vitro.desktop",
+  "backend": {
+    "path": ".",
+    "package": "app"
+  },
+  "frontend": {
+    "path": "../demo",
+    "dev_url": "http://127.0.0.1:5173",
+    "before_dev": "npm run dev -- --port 5173 --strictPort",
+    "before_build": "npm run build",
+    "dist": "dist"
+  },
+  "package": {
+    "product_name": "Vitro Desktop",
+    "version": "0.1.0",
+    "output": "dist"
+  }
+}

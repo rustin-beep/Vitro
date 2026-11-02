@@ -315,12 +315,17 @@ pub fn TypeChecker::check(
     }
     if f.is_static {
       match self.static_func_sigs.get(f.name) {
-        Some(existing) =>
+        Some(existing) => {
           if !@ast.type_eq(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-            !params_eq(existing.param_types, new_sym.param_types) {
+            !params_eq(
+              existing.param_types,
+              new_sym.param_types,
+              va=existing.is_variadic,
+              vb=new_sym.is_variadic,
+            ) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
               f.loc,
@@ -336,7 +341,38 @@ pub fn TypeChecker::check(
               E3003_FuncRedeclared,
             )
           }
-        None => self.static_func_sigs.set(f.name, new_sym)
+          // M10c A-3c 处方（2026-11-02，#433 第二批）：Some 分支回写
+          // is_definition——原型先注册后，表内恒 false ⇒ 「原型+定义+
+          // 定义」的第二个定义漏检（三方 error redefinition，旧零诊断）；
+          // FuncSymbol 值语义须 set 回（升级时重建）
+          if new_sym.is_definition && !existing.is_definition {
+            self.static_func_sigs.set(f.name, {
+              ..existing,
+              is_definition: true,
+            })
+          }
+          // M10c A-3b 处方：static/非 static 双表交叉查——同名两表互斥
+          //（C11 §6.2.2p7 同一标识符不得兼具 internal/external 链接性
+          // 声明，clang error；旧双表分治零交叉 ⇒ static+非 static
+          // 双定义零诊断且执行取非 static 版）
+          if self.funcs.contains(f.name) {
+            self.report_error(
+              "函数 '\{f.name}' 同时存在 static 与非 static 声明（链接性冲突）",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          }
+        }
+        None => {
+          if self.funcs.contains(f.name) {
+            self.report_error(
+              "函数 '\{f.name}' 同时存在 static 与非 static 声明（链接性冲突）",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          }
+          self.static_func_sigs.set(f.name, new_sym)
+        }
       }
       match self.static_func_files.get(f.name) {
         Some(files) => files.push(f.source_file)
@@ -344,12 +380,17 @@ pub fn TypeChecker::check(
       }
     } else {
       match self.funcs.get(f.name) {
-        Some(existing) =>
+        Some(existing) => {
           if !@ast.type_eq(
               strip_top_const(existing.return_type),
               strip_top_const(new_sym.return_type),
             ) ||
-            !params_eq(existing.param_types, new_sym.param_types) {
+            !params_eq(
+              existing.param_types,
+              new_sym.param_types,
+              va=existing.is_variadic,
+              vb=new_sym.is_variadic,
+            ) {
             self.report_error(
               "函数 '\{f.name}' 的声明与之前定义签名不一致",
               f.loc,
@@ -363,7 +404,29 @@ pub fn TypeChecker::check(
               E3003_FuncRedeclared,
             )
           }
-        None => self.funcs.set(f.name, new_sym)
+          // M10c A-3c 处方：is_definition 回写（static 分支同款）
+          if new_sym.is_definition && !existing.is_definition {
+            self.funcs.set(f.name, { ..existing, is_definition: true, })
+          }
+          // M10c A-3b 处方：交叉查 static 表（bsearch 式互斥语义对称）
+          if self.static_func_sigs.contains(f.name) {
+            self.report_error(
+              "函数 '\{f.name}' 同时存在 static 与非 static 声明（链接性冲突）",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          }
+        }
+        None => {
+          if self.static_func_sigs.contains(f.name) {
+            self.report_error(
+              "函数 '\{f.name}' 同时存在 static 与非 static 声明（链接性冲突）",
+              f.loc,
+              E3003_FuncRedeclared,
+            )
+          }
+          self.funcs.set(f.name, new_sym)
+        }
       }
     }
   }
@@ -576,8 +639,18 @@ pub fn TypeChecker::check(
 }
 
 ///|
-/// 参数类型序列判等。
-fn params_eq(a : Array[@ast.Type], b : Array[@ast.Type]) -> Bool {
+/// 参数类型序列判等（M10c A-3a 处方 2026-11-02，#433 第二批：variadic
+/// 位入签名判等——`int f(int,...)` 与 `int f(int)` 旧判等放行零诊断，
+/// clang 三方 "conflicting types"；C11 §6.7.6.3 函数类型含变参位）。
+fn params_eq(
+  a : Array[@ast.Type],
+  b : Array[@ast.Type],
+  va~ : Bool = false,
+  vb~ : Bool = false,
+) -> Bool {
+  if va != vb {
+    return false
+  }
   if a.length() != b.length() {
     return false
   }

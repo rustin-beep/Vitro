@@ -113,7 +113,25 @@ fn Parser::parse_base_type(self : Parser, depth : Int32) -> @ast.Type {
   } else if self.match_token(Double) {
     @ast.Type::double()
   } else if self.match_token(Union) {
-    if self.check(Identifier) && !self.peek_is_lbrace_after_id() {
+    if self.check(Identifier) && self.peek_is_lbrace_after_id() {
+      // M03-A2 处方（2026-11-02，#433 第二批）：`union TAG { ... }` 定义带
+      // 声明器形态——tag+body 就地解析并注册（对称 struct 臂病 38 修复，
+      // 2026-10-11；旧两分支均不命中落 union_type("") 丢 tag 且不解析
+      // body ⇒ `typedef union VV{...} VV;` 全形态炸穿 E2005×3+E3042×2，
+      // clang rc=0；typedef 习语教学高频）。收集通道 anonymous_unions
+      // （union 布局语义——灌 program.unions 非 structs）。
+      let name_tok = self.advance()
+      let loc = @source.SourceLoc::new(name_tok.loc.line, name_tok.loc.column)
+      let decl = self.parse_struct_body(
+        name_tok.text,
+        loc,
+        depth,
+        is_union=true,
+      )
+      self.anonymous_unions.push(decl)
+      return @ast.Type::union_type(name_tok.text)
+    } else if self.check(Identifier) {
+      // tag 引用（tag 后非 LBrace——旧首分支的剩余形态）
       let name_tok = self.advance()
       @ast.Type::union_type(name_tok.text)
     } else if self.check(LBrace) {

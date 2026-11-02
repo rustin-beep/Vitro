@@ -59,13 +59,25 @@ pub fn TypeChecker::declare_var(
       _ => false
     }
   }
-  // 维度更完整侧判定：新声明带实际维度而已有是不完整数组 → 采用新
+  // 维度更完整侧判定：新声明带实际维度而已有是不完整数组 → 采用新。
+  // M10c A-1 处方（2026-11-02，#433 第二批）双修：
+  // ①判据 es==-1 → ed[0]==-1——parser size_state 对 `int m[][3]` 的
+  //   array_size 锁内层积 3（≠-1），旧判据多维永不升级（`extern int
+  //   m[][3]; int m[2][3];` sizeof 得 12 vs clang 24）；dims[0]==-1
+  //   是「不完整」的精确表达（一维 `extern int a[]` dims=[-1] 同覆盖）
+  // ②重建 size 用 dims 各维乘积（ast/types.mbt array_size 口径=各维
+  //   乘积；旧写 bd[0] 首维，即便判据修好二维仍得 2 ≠ 6）
   fn more_complete(existing : @ast.Type, incoming : @ast.Type) -> @ast.Type {
     match (existing, incoming) {
-      (Array(ee, es, _ed, ec, ev, ea), Array(_, _, bd, _, _, _)) =>
-        if es == -1 && bd.length() > 0 && bd[0] != -1 {
-          // 用 incoming 的维度重建元素类型一致的完整形态
-          Array(ee, if bd[0] > 0 { bd[0] } else { es }, bd, ec, ev, ea)
+      (Array(ee, _es, ed, ec, ev, ea), Array(_, _, bd, _, _, _)) =>
+        if ed.length() > 0 && ed[0] == -1 && bd.length() > 0 && bd[0] != -1 {
+          let mut total = 1
+          for d in bd {
+            if d > 0 {
+              total *= d
+            }
+          }
+          Array(ee, total, bd, ec, ev, ea)
         } else {
           existing
         }

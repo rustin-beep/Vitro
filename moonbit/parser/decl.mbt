@@ -65,6 +65,12 @@ fn Parser::parse_struct_body(
           decl_name,
           @source.SourceLoc::new(kw_loc.line, kw_loc.column),
           depth,
+          // M03-A1 处方（2026-11-02，#433 第二批）：is_union 透传——旧用
+          // 参数默认 false，union 记进 parsed_aggregates 为 struct ⇒
+          // snapshot_unions_table 查无 ⇒ 嵌套/局部 union 的
+          // _Static_assert(sizeof(...)) 折叠断链 E1006 假阳性（运行时
+          // sizeof 正确；clang 全形态接受）
+          is_union~,
         )
         let base = if is_union {
           self.anonymous_unions.push(decl)
@@ -693,21 +699,29 @@ fn Parser::parse_template_decl(
 }
 
 ///|
+/// `typedef struct|union [名] { ... } 别名...;` 定义别名（M03-A2 处方
+/// 2026-11-02，#433 第二批：is_union~ 泛化——旧只收 struct，
+/// `typedef union TAG{...} alias;` 落 TypedefPlain 后 Union 臂丢 tag
+/// 炸穿 E2005×3+E3042×2，clang rc=0；处方③「dispatch 认 typedef union
+/// 后复用本函数并传 is_union」——dispatch 前瞻已补 Union 同判）。
 fn Parser::parse_typedef_struct_decl(
   self : Parser,
   program : @ast.ProgramNode,
   depth : Int32,
+  is_union~ : Bool = false,
 ) -> Unit {
   let cur = self.current()
   let loc = @source.SourceLoc::new(cur.loc.line, cur.loc.column)
   ignore(self.advance()) // typedef
-  ignore(self.advance()) // struct
+  ignore(self.advance()) // struct | union
   let name = if self.check(Identifier) {
     self.advance().text
+  } else if is_union {
+    "__anon_union_\{self.pos}"
   } else {
     "__anon_struct_\{self.pos}"
   }
-  let decl = self.parse_struct_body(name, loc, depth)
+  let decl = self.parse_struct_body(name, loc, depth, is_union~)
   // 病 65（2026-10-13）：typedef 多声明器——`typedef struct Node{…} Node,
   // *NodePtr;` 链表教学高频习语；旧只吃单标识符（decl.mbt:622 同族）。
   // 收窄面：Identifier 与 `*`Identifier 两形态循环（数组/函数指针 typedef
@@ -717,11 +731,12 @@ fn Parser::parse_typedef_struct_decl(
   while expect_more {
     let is_ptr = self.match_token(Star)
     let alias_tok = self.consume(Identifier, "typedef 后预期标识符名称")
-    let alias_ty = if is_ptr {
-      @ast.Type::pointer_to(@ast.Type::struct_type(name))
+    let base_ty = if is_union {
+      @ast.Type::union_type(name)
     } else {
       @ast.Type::struct_type(name)
     }
+    let alias_ty = if is_ptr { @ast.Type::pointer_to(base_ty) } else { base_ty }
     self.declare_typedef(
       alias_tok.text,
       alias_ty,
@@ -733,7 +748,13 @@ fn Parser::parse_typedef_struct_decl(
     expect_more = false
   }
   ignore(self.consume(Semicolon, "typedef 后预期 ';'"))
-  program.structs.push(decl)
+  if is_union {
+    // union 布局语义——灌 program.unions 非 structs（与 parse_union_decl /
+    // anonymous_unions 消费通道一致；snapshot_unions_table 只收 is_union 条目）
+    program.unions.push(decl)
+  } else {
+    program.structs.push(decl)
+  }
 }
 
 ///|

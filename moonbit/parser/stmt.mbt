@@ -284,6 +284,10 @@ fn Parser::parse_var_decl_stmt(
         decl_name,
         @source.SourceLoc::new(kw_loc.line, kw_loc.column),
         depth,
+        // M03-A1 处方（2026-11-02，#433 第二批）：is_union 透传（成员嵌套
+        // 臂 decl.mbt 同款）——局部 union 记 struct 表 ⇒ sizeof 编译期
+        // 折叠断链 E1006 假阳性（M03-A1 第 2 处）
+        is_union~,
       )
       let base = if is_union {
         self.anonymous_unions.push(decl)

@@ -587,6 +587,19 @@ jobs:
           node scripts/vitro_cli_smoke/main.mts --corpus 30
         shell: bash
 
+      # CLI 参数面对称性冒烟（审阅 v2 批 A7 / R1a 处方 R5，2026-11-02）：run/compile/
+      # step/api × {未知旗标, 多余位置参数} × 三臂（wasm 壳 / js / native）——臂间 rc 必
+      # 须一致 + 必须等于声明表 want + rc4 须有 fail loud 文案。病 87 批「四子命令修了
+      # 三家漏 api」（F4：api --zz-bogus 静默吞 rc=0）以 known gap 形态登记在
+      # scripts/cli_symmetry/rules.json，B3 批修复后 rc 变 4 与声明分叉红→升声明锁面。
+      # run 的多余位置参数 = argv 透传契约（2026-10-04 拍板），声明 rc0 带 reason 非缺口。
+      # 前置 = 上一步三臂产物；24 探针进程 ~2s。J9：盘上删 run 守卫只重建 js 臂 →
+      # 「臂间分叉 native=4 js=0 wasm=4」红（batch_A7_REPORT 留痕）。
+      - name: CLI argument-face symmetry (4 cmds × 2 probes × 3 arms)
+        if: matrix.slice == 'cli_smoke'
+        run: node scripts/cli_symmetry/main.mts -check
+        shell: bash
+
       # algorithms.catalog 对账（#36，2026-10-16 建；2026-10-31 收编批 D 路
       # 退役）：判据源码 build_match 提取物 ↔ 引擎导出（native vitro.exe +
       # js vitro_js.js 双臂互拍）↔ rules.json 43 族。D 路（生成器分组表对账）
@@ -867,6 +880,31 @@ jobs:
         # 空集不得绿）；规则外置 rules.json，J9 三路证红已留痕。
         shell: bash
         run: node scripts/moonbit/libc_single_source/main.mts -check
+
+      - name: Fix-diffusion gates ×4 (twin fingerprint / cast matrix / conv specs / host shared guard)
+
+        if: matrix.slice == 'contract'
+        # 审阅 v2 批 A7（2026-11-02，R1a 处方 R1-R4 落地）：修复扩散面防扩散机判化
+        # ——R1a 审计 11 起种子 + 新挖 F1-F10 共同形态 = 「修复只覆盖触发报告的那个
+        # 成员，同构集合其余成员靠人肉记忆连坐」。四道静态闸各治一形态：
+        #   twin_fingerprint  M1 孪生复制件（cast.mbt 两链 / dump 四家参数段）——
+        #                     集内指纹差集逐条登记，单边改一份即红、修好忘删僵尸红
+        #   cast_matrix       M2 对偶矩阵缺格——分支链 (T,S,u) 全组合求值抓零发射
+        #                     （F1 float→LL 位模式直出当场可见）+ opcode CastX2Y 对偶
+        #   conv_specs        M3 枚举表成员不全——printf/scanf 转换符四消费面 ↔
+        #                     单源声明表逐字母对账（scanf %e 两面漂移 F3/F7 登记在册）
+        #   host_shared_guard M4 函数族口径分叉——host_string 带 n 参数函数负域 trap
+        #                     三态（memset F6 登记）+ json_escape/utf8 族消费方账实对账
+        # 现行缺口（F1/F2/F3/F5/F6/F7/F9）均以 known/divergence 形态**公开登记**在各
+        # rules.json（非豁免）——B 轮修复后条目变僵尸即红逼清账。J9：每闸 --selftest
+        # 内存注入 3-4 路 + 盘上源码注入各 2-3 路全红（batch_A7_REPORT 留痕）。
+        # 四闸纯静态源码解析，合计 <1s；三臂行为面见 cli_smoke slice 的 cli_symmetry。
+        shell: bash
+        run: |
+          node scripts/moonbit/twin_fingerprint/main.mts -check
+          node scripts/moonbit/cast_matrix/main.mts -check
+          node scripts/moonbit/conv_specs/main.mts -check
+          node scripts/moonbit/host_shared_guard/main.mts -check
 
       - name: Host route coverage (routes vs host impls)
 

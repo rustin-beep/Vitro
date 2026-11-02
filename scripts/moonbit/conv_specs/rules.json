@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "_doc": [
+    "conv_specs 真源表（审阅 v2 批 A7 / R1a-R3，2026-11-02）：printf/scanf 转换符族的**单源声明**。",
+    "成员 = C11 §7.21.6.1 p8（printf）/ §7.21.6.2 p12（scanf）全集（% 自身不列——%% 由各面单独处理，非转换符）。",
+    "每成员两个消费面布尔：host（运行时实现是否认此字母）/ typeck（静态检查器是否有判据臂）。",
+    "判据：①每面源码实际枚举 == 本表该面标 true 的字母集（双向差集红）；②host≠typeck 的成员必须带非空 divergence（无 reason 红）；",
+    "③divergence 在场但两面已一致 = 僵尸 reason 红（逼着清账）；④C11 全集成员缺位红（防『只枚举见过的』——M3 形态根因）；⑤任一面抽取空集红。",
+    "修 F3 类缺陷的固定流程：改 host 实现 → 本表该字母 host 置 true、删 divergence → 闸逼着 typeck 面同步。",
+    "本表**只声明现状不粉饰**：divergence 条目 = 公开待修清单（R1a F3/F7 族），不是豁免。"
+  ],
+  "sources": {
+    "printf_host": {
+      "file": "moonbit/host/host_format.mbt",
+      "anchor_start": "fn is_known_conv_code(",
+      "anchor_end": "",
+      "kind": "codepoint_eq_chain",
+      "note": "病 26 白名单（2026-10-13）；vprintf 预取层 host_format.mbt:~1091 复用同函数（单源，不算独立面）"
+    },
+    "printf_typeck": {
+      "file": "moonbit/typeck/builtin.mbt",
+      "anchor_start": "pub fn TypeChecker::check_printf_format(",
+      "anchor_end": "",
+      "kind": "match_char_arms",
+      "note": "match spec 臂的单字符字面量并集（三个 len_mod 段）；`_ => true` 兜底放行的字母不算有判据臂"
+    },
+    "scanf_host": {
+      "file": "moonbit/host/host_io.mbt",
+      "anchor_start": "// scanf/sscanf 转换符 ASCII 码",
+      "anchor_end": "/// scanf 写目标按长度修饰分宽",
+      "kind": "scanf_consts",
+      "extra_by_marker": [
+        { "marker": "ScanfItem::Scanset(", "letter": "[", "note": "scanset %[...] 是独立 ScanfItem 变体（#149），不经 SCANF_ 常量" }
+      ],
+      "note": "病 14 具名化常量集（#61）；host_sscanf / host_scanf 两条消费链只认此集（host_io.mbt ~1027-1377 / ~1572-1885），未知字母落 else 兜底『不消费不计数』但 arg_idx 已前置递增（R1a-F7）"
+    },
+    "scanf_typeck": {
+      "file": "moonbit/typeck/builtin.mbt",
+      "anchor_start": "pub fn TypeChecker::check_scanf_format(",
+      "anchor_end": "",
+      "kind": "match_char_arms",
+      "note": "W3063 match spec 臂的单字符字面量并集"
+    }
+  },
+  "families": {
+    "printf": {
+      "c11_ref": "C11 §7.21.6.1 p8",
+      "host_face": "printf_host",
+      "typeck_face": "printf_typeck",
+      "letters": {
+        "d": { "host": true, "typeck": true },
+        "i": { "host": true, "typeck": true },
+        "o": { "host": true, "typeck": true },
+        "u": { "host": true, "typeck": true },
+        "x": { "host": true, "typeck": true },
+        "X": { "host": true, "typeck": true },
+        "f": { "host": true, "typeck": true },
+        "F": { "host": true, "typeck": true },
+        "e": { "host": true, "typeck": true },
+        "E": { "host": true, "typeck": true },
+        "g": { "host": true, "typeck": true },
+        "G": { "host": true, "typeck": true },
+        "a": {
+          "host": true,
+          "typeck": false,
+          "divergence": "typeck check_printf_format 无 a/A（十六进制浮点）类型判据臂——落 `_ => true` 兜底放行零警告；host is_known_conv_code 认并输出（host_format.mbt）。补 typeck 判据臂（fp 族同款）时置 typeck:true 删本字段。R1a-M3 枚举进度漂移登记（2026-11-02）"
+        },
+        "A": {
+          "host": true,
+          "typeck": false,
+          "divergence": "同 a：typeck 无 A 判据臂（兜底放行），host 认。R1a-M3 登记（2026-11-02）"
+        },
+        "c": { "host": true, "typeck": true },
+        "s": { "host": true, "typeck": true },
+        "p": { "host": true, "typeck": true },
+        "n": { "host": true, "typeck": true }
+      }
+    },
+    "scanf": {
+      "c11_ref": "C11 §7.21.6.2 p12",
+      "host_face": "scanf_host",
+      "typeck_face": "scanf_typeck",
+      "letters": {
+        "d": { "host": true, "typeck": true },
+        "i": { "host": true, "typeck": true },
+        "o": { "host": true, "typeck": true },
+        "u": { "host": true, "typeck": true },
+        "x": { "host": true, "typeck": true },
+        "X": {
+          "host": false,
+          "typeck": true,
+          "divergence": "R1a-F3 枚举轴同族：host SCANF_ 常量集无大写 X（C11 scanf %X ≡ %x），%X 落 host_sscanf else 兜底『不消费不计数』；typeck W3063 认 X 合法零警告——用户零诊断静默失败。B 轮修复批治：host 补 SCANF_X_UPPER 臂（与 x 同实现）后置 host:true 删本字段（2026-11-02）"
+        },
+        "a": { "host": false, "typeck": false, "note": "C11 成员双面均未实现（十六进制浮点输入）——两面一致无漂移；属 R1a-F3 枚举轴缺口，B 轮修复批治" },
+        "A": { "host": false, "typeck": false, "note": "同 a" },
+        "e": {
+          "host": false,
+          "typeck": true,
+          "divergence": "R1a-F3 实锤：host 缺 e 实现——sscanf(\"2.5\",\"%e\",&d) vitro 双臂返 0 不写 / clang(ucrt) 返 1 成功；typeck W3063 认 e 合法零警告（fp 族臂）。B 轮修复批治：host 补 e/E/g/G 臂（与 f 同实现——strtod 不区分记法）后置 host:true 删本字段（2026-11-02）"
+        },
+        "E": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
+        "f": { "host": true, "typeck": true },
+        "F": {
+          "host": false,
+          "typeck": true,
+          "divergence": "R1a-F3：host 无 F（C11 scanf %F ≡ %f）；typeck 认 F 合法。B 轮修复批治（2026-11-02）"
+        },
+        "g": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
+        "G": { "host": false, "typeck": true, "divergence": "同 e（R1a-F3）" },
+        "c": { "host": true, "typeck": true },
+        "s": { "host": true, "typeck": true },
+        "p": {
+          "host": false,
+          "typeck": true,
+          "divergence": "host 无 %p scanf（指针值输入）实现，落 else 兜底；typeck 认 p 合法（s|p 臂）。教学语料零需求面，登记不急修——补实现或 typeck 改报 W 级『不支持』时清账（2026-11-02）"
+        },
+        "n": { "host": true, "typeck": true },
+        "[": {
+          "host": true,
+          "typeck": false,
+          "divergence": "typeck parse_format_specs 无 scanset 解析臂——`[` 被当作普通字母 spec 落 `_ => true` 兜底放行（零警告亦零误报）；host #149（2026-10-18）已实现 ScanfItem::Scanset。补 typeck scanset 解析（集合体跳过至 `]`）时置 typeck:true 删本字段（2026-11-02）"
+        }
+      }
+    }
+  }
+}

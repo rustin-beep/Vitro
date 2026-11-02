@@ -493,7 +493,7 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // #298（2026-10-27）：超时 5min→15min——native 全量实测 ≈10 分钟
   // （#308 批自注），5min 常态超时 ⇒ unavailable ⇒ strict 待采集即红
   // （#298 判定器）会永红；15min 为冷机余量。
-  // Go 回退面（facts.go）不含本键——回退时 unavailable 待采集语义安全。
+  // （原「Go 回退面不含本键」注随 Go 版双轨收口删除——2026-11 审阅 v2 A6 批。）
   const howN = "cd moonbit && MOON_CC=clang moon test --target native";
   const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
   if (!rN.ok) {

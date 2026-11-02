@@ -614,12 +614,22 @@ async function runMoon(c: CaseRef): Promise<MoonResult> {
   for (const line of s.split("\n")) {
     const t = line.replace(/\r+$/, "");
     if (t.startsWith("// EXIT ")) {
-      const m = /^\/\/ EXIT (\d+)/.exec(t);
-      if (m !== null) res.exitCode = Number.parseInt(m[1]!, 10);
+      const ec = parseExitLine(t);
+      if (ec !== null) res.exitCode = ec;
     }
   }
   res.stdout = extractMoonStdout(s);
   return res;
+}
+
+// parseExitLine：`// EXIT N` 标记行解析（null = 非 EXIT 形态，exitCode 不动）。
+// 审阅 v2 S03-A1（2026-11）：引擎 return -1 原样输出负数（cmd/run 实测），
+// Go fmt.Sscanf("%d") 认负号而原正则 (\d+) 吞负数保持 0——负 return 族
+// known digest 跨轨分歧（探针：go「!= -1」vs mts「!= 0」）。vm.mts 同款
+// 解析已是 (-?\d+)，移植时未跟齐。
+export function parseExitLine(t: string): number | null {
+  const m = /^\/\/ EXIT (-?\d+)/.exec(t);
+  return m === null ? null : Number.parseInt(m[1]!, 10);
 }
 
 // extractMoonStdout：剥协议标记行（// EXIT / // TRAP / // COMPILE-ERROR 族）
@@ -752,6 +762,18 @@ export function goQuote(s: string): string {
   return '"' + quoteBody(s) + '"';
 }
 
+// goAccept：Go utf8.DecodeRune 首字节对应的次字节接受域（acceptRange）。
+// 四条关键边界（审阅 v2 S03-A2，2026-11）：E0 拒 80-9F（overlong 过短）、
+// ED 拒 A0-BF（**代理区**——报文分歧主面：Go %q 逐字节 \xNN，Node 解码
+// U+FFFD）、F0 拒 80-8F（过短）、F4 拒 90-BF（超 U+10FFFF）。其余 [80,BF]。
+function goAccept(b: number): { lo: number; hi: number } {
+  if (b === 0xe0) return { lo: 0xa0, hi: 0xbf };
+  if (b === 0xed) return { lo: 0x80, hi: 0x9f };
+  if (b === 0xf0) return { lo: 0x90, hi: 0xbf };
+  if (b === 0xf4) return { lo: 0x80, hi: 0x8f };
+  return { lo: 0x80, hi: 0xbf };
+}
+
 // quoteBody：goQuote 的引号内体（clip 截断尾巴 "…" 由调用方在引号内补——
 // U+2026 经 latin1 编码会截成 0x26（"&"），绝不能进 latin1 字节域）。
 export function quoteBody(s: string): string {
@@ -767,11 +789,12 @@ export function quoteBody(s: string): string {
       : 0;
     let ok = len > 1 && i + len <= bytes.length;
     if (ok) {
-      for (let k = 1; k < len; k++) {
-        if ((bytes[i + k]! & 0xc0) !== 0x80) {
-          ok = false;
-          break;
-        }
+      // 次字节先过接受域（代理区/过短/超 MaxRune 拒），其余连续字节查 10xx。
+      const acc = goAccept(b);
+      const b1 = bytes[i + 1]!;
+      if (b1 < acc.lo || b1 > acc.hi) ok = false;
+      for (let k = 2; ok && k < len; k++) {
+        if ((bytes[i + k]! & 0xc0) !== 0x80) ok = false;
       }
     }
     if (len === 1) {
@@ -827,20 +850,34 @@ interface ApiFrame {
   } | null;
 }
 
+// readProjectSources：工程模式源读取（读失败 → ok:false = FILEREAD-FAIL）。
+// 审阅 v2 S03-A3（2026-11）：Go json.Marshal(string(b)) 语义 = 合法 UTF-8
+// 原样、无效孤字节 U+FFFD——readFileSync utf8 同款解码。原 latin1 读取 +
+// 后续 Buffer.from(frames,"utf8") 让每个 ≥0x80 字节膨胀 2 字节，非 ASCII
+// 工程语料的 compile 帧 source 与 Go 侧 digest 分歧（现役语料全 ASCII 零触发）。
+export function readProjectSources(files: string[]): { ok: true; ents: { filename: string; source: string }[] } | { ok: false } {
+  const ents: { filename: string; source: string }[] = [];
+  for (const f of files) {
+    let b: string;
+    try {
+      b = fs.readFileSync(f, "utf8");
+    } catch {
+      return { ok: false };
+    }
+    ents.push({ filename: path.basename(f), source: b });
+  }
+  return { ok: true, ents };
+}
+
 // runMoonProject：compile{files} → run → output.delta 三帧经 api --batch；
 // stdout = delta 拼接（单帧 cursor:0 全量），exitCode = run 帧 return_value
 //（trap 帧记入 stdout 让 DIFF 响亮红——与单文件 trap 形态对齐由 digest 消化）。
 async function runMoonProject(c: CaseRef): Promise<MoonResult> {
-  const ents: { filename: string; source: string }[] = [];
-  for (const f of c.files) {
-    let b: string;
-    try {
-      b = fs.readFileSync(f, "latin1");
-    } catch {
-      return { compileFail: true, stdout: "// FILEREAD-FAIL", exitCode: 0, memoryPath: "", skipMemoryCheck: true };
-    }
-    ents.push({ filename: path.basename(f), source: b });
+  const rp = readProjectSources(c.files);
+  if (!rp.ok) {
+    return { compileFail: true, stdout: "// FILEREAD-FAIL", exitCode: 0, memoryPath: "", skipMemoryCheck: true };
   }
+  const ents = rp.ents;
   // Go json.Marshal 直译：HTML 转义 + 键序 filename/source。
   const cj = goJSONCompact({ files: ents });
   const frames =

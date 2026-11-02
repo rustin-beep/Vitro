@@ -40,7 +40,7 @@ node scripts/facts/main.mts --run                         # ① 只采集、刷�
 node scripts/facts/main.mts --run check                   # ② 采集 + 对账判红 —— 要"确认无回归"必须带 check 子命令
 ```
 
-> ⚠️ `scripts/facts/main.go` 的 `switch cmd` 只有 `check` / `report` / `sync` 三个分支、**没有 default**：
+> ⚠️ `scripts/facts/main.mts` 的 `switch cmd`（原 main.go 已随 2026-11 双轨收口删除） 只有 `check` / `report` / `sync` 三个分支、**没有 default**：
 > 不带子命令时**不执行任何对账、恒 exit 0**。只想刷新真值用 ①，要判红必须用 ②。
 > （CI 的现役完整形态见 `ci.yml`：`facts --strict check`——**flag 写在子命令之前**；删区批已去 `--run`/`--cargo-log`，cargo 族真值源随 Rust 区退役。）
 

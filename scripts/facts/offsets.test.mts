@@ -66,3 +66,29 @@ test("applyHit：单条多 span 倒序替换长度安全", () => {
   const got = fs.readFileSync(path.join(root, file), "utf8");
   assert.equal(got.trim(), "C Shadow 671 用例 / 671 通过", "单条多 span 替换错误");
 });
+
+// 审阅 v2 S01-A1（2026-11）：applyHit 原只按 [Lo,Hi] 过滤候选、**不复算就近
+// 绑定**——区间重叠规则对（cargo[500,2500] × moonbit[40,2000]）共行时，对
+// moonbit 条目替换会顺带毒化 cargo 的数字（探针实测：本夹具行对 moonbit
+// applyHit(1054) 后 cargo 的 1027 也被改成 1054）。audit 阶段每个 span 经
+// 就近绑定唯一归属规则，替换必须同口径——只动归属本键的 span。
+test("applyHit：区间重叠规则对共行时只改归属本键的数字", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "facts-offsets4-"));
+  const file = "t4.md";
+  // 1027 与 1053 同落 cargo/moonbit 两区间；就近绑定：1027 归 "cargo test"，
+  // 1053 归 "moon test"（均紧邻左侧关键词）。
+  const line = "- 防线快照：cargo test 1027 与 moon test 1053 两侧对照";
+  fs.writeFileSync(path.join(root, file), line + "\n");
+  const i1053 = line.indexOf("1053");
+  const h: Hit = {
+    key: "moonbit_test_passed", file, lineNo: 1,
+    spans: [span(i1053, i1053 + 4, 1053)], text: line, cooccur: [], warn: "",
+  };
+  applyHit(root, h, 1054);
+  const got = fs.readFileSync(path.join(root, file), "utf8");
+  assert.equal(
+    got.trim(),
+    "- 防线快照：cargo test 1027 与 moon test 1054 两侧对照",
+    "moonbit 替换毒化了 cargo 的数字（跨规则击穿）",
+  );
+});

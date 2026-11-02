@@ -51,7 +51,9 @@ pub fn api(
   // 无 target 打印全方法清单、有 target 打印单方法详情（形状来自 #68
   // serve_param_err 的 expected）；数据 = gateway 生成表 api_help_gen.mbt
   //（权威源 dispatch+serve_param_err，scripts/gen_api_help -check 锁——禁
-  // 手抄）。wasm 臂同数据（api_help.json），双臂同形由 vitro_cli_smoke 锁。
+  // 手抄）。三臂壳全 MoonBit 单源同数据，三臂同形由 vitro_cli_smoke 锁
+  //（审阅 v2 S07 P2-1 勘正：原注「wasm 臂同数据（api_help.json）」指向已删
+  // 路径——e92fe728 三臂壳全 MoonBit 批）。
   if method_name == "help" && !batch {
     if help_target == "" {
       // 生成文本不带尾换行，out_line 补单尾——与 wasm 壳 write 加换行

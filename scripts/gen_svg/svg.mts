@@ -33,7 +33,7 @@ export function loadFacts(root: string): FactsDoc {
   try {
     b = fs.readFileSync(p, "utf8");
   } catch (e) {
-    return fatal(`读不到 reports/facts.json（先跑 go run ./scripts/facts facts 采集）: ${(e as Error).message}`);
+    return fatal(`读不到 reports/facts.json（先跑 node scripts/facts/main.mts facts 采集）: ${(e as Error).message}`);
   }
   try {
     return JSON.parse(b) as FactsDoc;

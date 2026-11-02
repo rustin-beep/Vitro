@@ -12,7 +12,7 @@
 |---|---|
 | `moonbit/moon.mod` | 不 import 本工程；`moonbit/moon.work` 成员无本目录 |
 | mooncakes publish | 只发 `moonbit/`（`vitro/engine`）；`desktop/` 不在任何 publish 流程 |
-| CHANGELOG | 本工程条目只进根 `CHANGELOG.md`，**不进 `moonbit/CHANGELOG.md`**（发包 CHANGELOG） |
+| CHANGELOG | 批次不写根 CHANGELOG（2026-11-02 拍板：记录=commit+PR）；`moonbit/CHANGELOG.md` 是发包面、与本区无关 |
 | 依赖方向 | `desktop → mooncakes vitro/engine@pin`（单向）；引擎 HEAD 变化不影响本壳，壳崩不影响引擎 |
 
 副作用=**发包哨兵**：本壳 `moon check` 红 ⇒ 已发布 `vitro/engine@pin` 在下游独立 module 里装不上/解析不过（0.9.0 core/abort 断供事故形态——见 `docs/current/08-发布档案/0.9.1.md`）。

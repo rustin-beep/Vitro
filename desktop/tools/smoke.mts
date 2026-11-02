@@ -8,7 +8,7 @@
 //
 // 断言集（fail loud，逐条 stderr 标注后 rc=1）：
 //   ① CDP 就绪（120s 内 /json/version 协议指纹——vite+壳+桥全链）
-//   ② 缺省读数：页面现场信息行（title/url——不作断言，见 ③ transport）
+//   ② page-ready：title 非空且非 about:blank（≤90s，冷 runner vite 首访慢）
 //   ③ demo_run.js 驱动完整采集：transport=ipc（读 window.__vitroTransport
 //      实际选择结果，非桥存在性）/ golden ✓ / 42 帧 / 引擎 0.9.1 / stdout
 //   ④ cdp_catch：注入虫精确锚（probe-boom-uncaught 异常带堆栈 /
@@ -154,13 +154,21 @@ try {
     throw new Error("CDP 未就绪，后续断言跳过");
   }
 
-  // ② 现场信息行（页面加载前 title 可为空、桥可能未注入——不作断言，
-  //    断言挂 ③ demo_run 的 transport 字段：页面加载后采样，桥在必命中）
-  const base = runProbe("tools/cdp_probe.mts", []);
-  const baseEval = base.rc === 0 ? evalField(base.stdout) : null;
-  console.log(
-    `INFO  page — ${baseEval === null ? `probe rc=${base.rc}` : `title=${String(baseEval["title"])} url=${String(baseEval["url"])}`}`,
-  );
+  // ② 页面就绪等待（cdp-ready 只证 DevTools 端点——窗口刚建时页面可仍
+  //    about:blank；冷 runner 上 vite 首访 optimize+挂载可 >30s，demo_run
+  //    的按钮轮询窗曾在此翻车〔CI 六轮实锤〕）。显式等 title 非空 ≤90s，
+  //    把「页面就绪」做成可诊断断言再谈 UI 驱动。
+  let pageReady = false;
+  let pageInfo = "n/a";
+  for (let k = 0; k < 30 && !pageReady; k++) {
+    const b = runProbe("tools/cdp_probe.mts", []);
+    const be = b.rc === 0 ? evalField(b.stdout) : null;
+    pageInfo = be === null ? `probe rc=${b.rc}` : `title=${String(be["title"])} url=${String(be["url"])}`;
+    pageReady = be !== null && String(be["title"] ?? "").trim() !== "" && String(be["url"] ?? "") !== "about:blank";
+    if (!pageReady) await sleep(3000);
+  }
+  check("page-ready", pageReady, pageReady ? pageInfo : `90s 内未就绪（${pageInfo}）`);
+  console.log(`INFO  page — ${pageInfo}`);
 
   // ③ demo 完整采集断言（transport/golden/帧数/版本/stdout——基线 2026-11-02）
   const run = runProbe("tools/cdp_probe.mts", ["@tools/page/demo_run.js"]);

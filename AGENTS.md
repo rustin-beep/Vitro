@@ -9,7 +9,7 @@
 | 区 | 范围 | 状态 | 规则来源 |
 |---|---|---|---|
 | **MoonBit 活跃区** | `moonbit/`（MoonBit workspace，已发布 mooncakes `vitro/engine`） | **唯一实现区**，全部新开发在此 | [`moonbit/AGENTS.md`](moonbit/AGENTS.md)（**按需读取**：命令 / 语言与工具链陷阱 / 编码纪律 / 发布流程）+ [`MoonBit迁移总计划`](docs/current/01-定位与路线/MoonBit迁移总计划.md)（含包切分 / 锚点体系 / 工程约定 / 工具陷阱） |
-| **桌面壳区** | `desktop/`（独立 MoonBit module，与 `demo/` 并列；proton/CEF 捉虫测试壳，**非发包面**——`import vitro/engine@pin` 消费 mooncakes 已发布包，2026-11-02 P 线前进拍板。UI = `demo/` 原样承载：demo 侧仅 `engine.ipc.ts` 通道适配点 + `session.svelte.ts` 构造点二选一，浏览器形态零变化） | 活跃（测试资产，CI `desktop` job 全量防线：check/build/CEF 真窗口 CDP smoke） | [`desktop/README.md`](desktop/README.md)（定位/零污染语义/四命令编排/CDP 矩阵/探针用法/坑表）——**无分区手册，勿在 `moonbit/moon.work` 挂成员** |
+| **桌面壳区** | `desktop/`（独立 MoonBit module，与 `demo/` 并列；proton/CEF 捉虫测试壳，**非发包面**——`import vitro/engine@pin` 消费 mooncakes 已发布包，2026-11-02 P 线前进拍板。UI = `demo/` 原样承载：demo 侧仅 `engine.ipc.ts` 通道适配点 + `session.svelte.ts` 构造点经 `createEngineTransport()` 三段式选择，浏览器形态零等待） | 活跃（测试资产，CI `desktop` job 全量防线：check/build/CEF 真窗口 CDP smoke） | [`desktop/README.md`](desktop/README.md)（定位/零污染语义/四命令编排/CDP 矩阵/探针用法/坑表）——**无分区手册，勿在 `moonbit/moon.work` 挂成员** |
 | **Rust 对照区（已退役）** | 原 `native/` 已于 2026-10-05 工序④删区**物理删除**；`scripts/`、`.github/` 为 Go 防线层（语言中立，无分区手册） | 档案态：tag `rust-oracle-freeze` · 分支 `frozen-oracle-snapshot` · git 历史 | 无手册可读；Rust 语义问题查档案 tag 与 [S9冻结资产清单](docs/current/07-质量与裁定/S9冻结资产清单.md) |
 
 **路由规则**：触碰 `moonbit/` → **先读** [`moonbit/AGENTS.md`](moonbit/AGENTS.md)；触碰 `desktop/`（含 demo 的 `engine.ipc.ts`/`session.svelte.ts` 通道适配点）→ 读 [`desktop/README.md`](desktop/README.md)（引擎命令层锁四命令编排、禁回 `@cli.run`；批次不写根 CHANGELOG——记录=commit+PR，2026-11-02 拍板）；只在文档 / 讨论中工作 → **不要读**（避免上下文挤占）。

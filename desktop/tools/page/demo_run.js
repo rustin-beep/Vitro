@@ -14,7 +14,7 @@
     .map(e => e.textContent.trim()).join('|');
   // ① 「运行」就绪（smoke 场景探针可能早于 UI 挂载）
   let run = null;
-  for (let k = 0; k < 60 && !run; k++) {
+  for (let k = 0; k < 120 && !run; k++) {
     run = btn('运行') || btn('从头采集帧流（编译 + run + step 闭环）');
     if (!run) await sleep(500);
   }

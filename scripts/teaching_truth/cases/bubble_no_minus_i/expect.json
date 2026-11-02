@@ -1,0 +1,12 @@
+{
+  "case": "bubble_no_minus_i",
+  "source": "./source.c",
+  "note": "M34b A2 红例：内层界 j < n-1（无 -i）变体，i≥1 后半程比较帧被模板界守卫吞",
+  "step_budget": 2000,
+  "detect": ["bubble_sort"],
+  "frames": [
+    { "id": "bubble_noi_i1_j3_compare", "kind": "expect", "phase": "compare", "vars": { "i": 1, "j": 3 }, "note": "i=1 j=3 域内比较（j+1=4 ≤ n-1），守卫 j<n-1-i=3 误吞" },
+    { "id": "bubble_noi_i2_j2_compare", "kind": "expect", "phase": "compare", "vars": { "i": 2, "j": 2 }, "note": "i=2 j=2 域内比较，守卫 j<2 误吞" },
+    { "id": "bubble_noi_i3_j0_compare", "kind": "expect", "phase": "compare", "vars": { "i": 3, "j": 0 }, "note": "i=3 j=0 域内比较，守卫 j<1 误吞" }
+  ]
+}

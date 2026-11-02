@@ -1,0 +1,9 @@
+{
+  "case": "topo_std",
+  "source": "templates/topologicalSort/source.c",
+  "note": "正例主干：Kahn 拓扑排序（output「输出顶点 N」的 N 须有出处——M34b C2 p17 debug printf -1 直拼面由通用不变量 index_claims_grounded 覆盖）",
+  "step_budget": 4000,
+  "detect": [
+    "topological_sort"
+  ]
+}

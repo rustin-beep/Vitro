@@ -481,6 +481,17 @@ jobs:
         run: node scripts/teaching_annotation_diff/main.mts
         shell: bash
 
+      # B11 教学真值源对拍（issue #435，2026-11-02）：annotation_diff 锁当前
+      # 行为（防回归——golden 是 Vitro 自证历史快照），本闸锁真值——期望 =
+      # 算术事实/帧状态可推导标注（cases/*/expect.json），已知失真面
+      # known_divergences.json 显式豁免（#436 翻面索引；失败命中 = EXPECTED_RED
+      # 放行、未登记红 = RED、豁免未命中 = ZOMBIE 红）。selftest = J9 双步：
+      # ① j9 锚条目无豁免跑必须全部红（七处失真面红例全命中）② 有豁免跑
+      # 零红零僵尸。serve exe 复用上一步构建（ensureFresh 兜底）。
+      - name: Teaching truth gate (engine-behavior ground truth, Exit 1)
+        run: node scripts/teaching_truth/main.mts --selftest
+        shell: bash
+
       # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
       # 注-步错位修正（2026-11-01 审阅 v2 R1e-Y4）：本段三块注释曾整体上移
       # 一位（D19 审计注挂在 teaching 步、wasm 冒烟注挂在豁免审计步、S8

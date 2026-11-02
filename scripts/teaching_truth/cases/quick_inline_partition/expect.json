@@ -1,0 +1,11 @@
+{
+  "case": "quick_inline_partition",
+  "source": "./source.c",
+  "note": "M34b A5 红例：内联分区取枢轴行 int pivot = arr[high]（pivot=50 是值），判据不区分取枢轴与落位，文案把值当落位下标",
+  "step_budget": 4000,
+  "array_len": 5,
+  "detect": ["quick_sort"],
+  "frames": [
+    { "id": "quick_inline_no_pivot_value_as_index", "kind": "forbid", "phase": "partition_init", "line": 10, "note": "取枢轴行（arr[high]=50 是值非下标）不得产 partition_init「落位下标 pivot=50」" }
+  ]
+}

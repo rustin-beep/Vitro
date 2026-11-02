@@ -1,0 +1,16 @@
+{
+  "case": "heap_std",
+  "source": "templates/heapSort/source.c",
+  "note": "正例主干：教科书堆排序（heapify 递归 + 主函数建堆/取顶）",
+  "step_budget": 2500,
+  "detect": [
+    "heap_sort"
+  ],
+  "frames": [
+    {
+      "id": "heap_std_build_heap",
+      "kind": "expect",
+      "phase": "build_heap"
+    }
+  ]
+}

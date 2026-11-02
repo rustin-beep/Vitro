@@ -1,0 +1,11 @@
+{
+  "case": "bubble_std",
+  "source": "templates/bubble/source.c",
+  "note": "正例主干：教科书 j < n-i-1 冒泡——相邻下标 j/j+1 与行文本一致",
+  "step_budget": 2000,
+  "detect": ["bubble_sort"],
+  "frames": [
+    { "id": "bubble_std_compare_j0", "kind": "expect", "phase": "compare", "vars": { "i": 0, "j": 0 }, "desc": "比较 arr\\[0\\] 与 arr\\[1\\]" },
+    { "id": "bubble_std_finish", "kind": "expect", "phase": "outer_loop", "vars": { "i": 3 } }
+  ]
+}

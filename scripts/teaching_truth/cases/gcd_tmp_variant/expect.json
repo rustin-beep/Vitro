@@ -1,0 +1,10 @@
+{
+  "case": "gcd_tmp_variant",
+  "source": "./source.c",
+  "note": "M34b A1 红例：t 暂存形态 mod 算式余数锚定 b 变量，每帧错（真余数在 t）",
+  "step_budget": 200,
+  "detect": ["gcd"],
+  "frames": [
+    { "id": "gcd_t_mod_frames", "kind": "expect", "phase": "mod", "desc": "计算 48 % 18", "note": "真值 12：帧 local_vars t=12" }
+  ]
+}

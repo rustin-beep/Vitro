@@ -1,0 +1,381 @@
+{
+  "as_of": "2026-11-02",
+  "fix_batch": "#436",
+  "_doc": [
+    "B11 教学真值源机制（issue #435）——已知失真面登记表 = #436 文案修复批的翻面索引。",
+    "键 = (case, assertion)：失败命中即 EXPECTED_RED 放行；条目当轮未命中即 ZOMBIE 红（豁免必须活着——翻面后删条目）。",
+    "j9=true 的条目是 J9 证红锚：`--selftest` 断言它们在无豁免跑中全部出现（红例必须全部命中）。",
+    "翻面流程：修推断器/collector → 跑本闸 → 对应条目转 ZOMBIE → 删条目 → 闸绿（红→绿纪律：期望即先行红锚）。",
+    "通道注：steps = teaching/steps 的 algorithm_step.description；collector = time_travel/collector 的 semantic_label。"
+  ],
+  "entries": [
+    {
+      "id": "M34b-A1",
+      "j9": true,
+      "case": "gcd_tmp_variant",
+      "assertion": "mod_arithmetic",
+      "title": "gcd t 暂存形态 mod 算式余数锚定 b 变量——每帧错",
+      "current": "计算 48 % 18 = 18（余数作为新的 b）",
+      "truth": "计算 48 % 18 = 12（帧 local_vars t=12 正是真余数；三帧 18/12/6 全错）",
+      "root": "moonbit/teaching/steps/infer_math.mbt infer_gcd：b_now = vars.get_int(\"b\")（行末 b 在 t 形态未更新）",
+      "source": "M34b A1 [P1] / 探针 p09 p10 e3",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A2-i1j3",
+      "j9": true,
+      "case": "bubble_no_minus_i",
+      "assertion": "bubble_noi_i1_j3_compare",
+      "title": "冒泡 j 域守卫把模板界 n-1-i 当合法界——无 -i 变体 i≥1 后半程比较帧全灭",
+      "current": "i=1 j=3 的 compare 帧不产出（帧流中 L8 inner_loop j=3 在、L9 compare 灭）",
+      "truth": "j+1=4 ≤ n-1=4 数组内合法，应产「比较 arr[3] 与 arr[4]」",
+      "root": "moonbit/teaching/steps/infer_sorting.mbt infer_bubble_sort：j_in_inner_range = j < n - 1 - i",
+      "source": "M34b A2 [P2] / 探针 p02 p03",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A2-i2j2",
+      "j9": true,
+      "case": "bubble_no_minus_i",
+      "assertion": "bubble_noi_i2_j2_compare",
+      "title": "同 M34b-A2-i1j3（i=2 j=2 点）",
+      "source": "M34b A2 [P2]",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A2-i3j0",
+      "j9": true,
+      "case": "bubble_no_minus_i",
+      "assertion": "bubble_noi_i3_j0_compare",
+      "title": "同 M34b-A2-i1j3（i=3 j=0 点——守卫 j<1 下整趟仅 j=0 却也灭：第 4 趟全无 compare）",
+      "source": "M34b A2 [P2]",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A3-reset",
+      "j9": true,
+      "case": "bfs_reset_visited",
+      "assertion": "bfs_reset_visit_no_false_node",
+      "title": "BFS visit 宽判据 contains(visited)&&contains(=) 把重置行 visited[i]=0 标「标记节点 N 为已访问」",
+      "current": "L19 visited[i] = 0 → visit「标记节点 0 为已访问」（i=1..4 全部显示 0）",
+      "truth": "重置行无访问语义不产 visit；dijkstra 同族判据已收紧 visited[u] 字面（U1#1 P0-1），BFS/DFS 漏修",
+      "root": "moonbit/teaching/steps/infer_graph.mbt infer_bfs visit 分支（宽判据）",
+      "source": "M34b A3 [P2] / 探针 b4 b8",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A3-cond",
+      "case": "bfs_reset_visited",
+      "assertion": "bfs_cond_line_no_visit",
+      "title": "同族：判断行 if (graph[u][v]==1 && visited[v]==0) 含 visited 与 ==，被标 visit",
+      "current": "L27 判断行 → visit「标记节点 0 为已访问」",
+      "truth": "判断行非标记动作不产 visit",
+      "root": "同 M34b-A3-reset（contains(\"=\") 对 == 命中）",
+      "source": "B11 落闸新发现（M34b A3 同族，端到端）",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A3-value",
+      "j9": true,
+      "case": "bfs_reset_visited",
+      "assertion": "bfs_reset_visit_v1_node_value",
+      "title": "BFS visit 文案节点值取错变量——真标记行 visited[v]=1 显示的不是 v",
+      "current": "L28 visited[v] = 1（v=1）→「标记节点 0 为已访问」",
+      "truth": "「标记节点 1 为已访问」（白盒无 u 时为 -1 直拼〔M34b b4〕，端到端取到 start/u=0——同根因两形态）",
+      "root": "moonbit/teaching/steps/infer_graph.mbt infer_bfs：节点值 vars.get_int_any([...]) 顺序取 u/start 而非行下标变量 v",
+      "source": "M34b A3 [P2]",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A3-value-std",
+      "case": "bfs_std",
+      "assertion": "bfs_std_visit_v1_node_value",
+      "title": "同 M34b-A3-value（标准 BFS 模板即触发）",
+      "current": "templates/bfs L22 visited[v] = 1（v=1）→「标记节点 0」",
+      "source": "M34b A3 [P2]（标准模板面）",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A4-skip",
+      "j9": true,
+      "case": "kmp_std",
+      "assertion": "kmp_backtrack_is_skip",
+      "title": "KMP skip 分支不可达——匹配阶段回溯行 j = next[j] 被 build_next 判据吞",
+      "current": "L30 j = next[j]; → 无 skip 帧",
+      "truth": "回溯（skip）帧；skip 词汇在协议中存在但实际死分支",
+      "root": "moonbit/teaching/steps/infer_search.mbt infer_string_match_kmp：build_next 判据 contains(\"next[\")&&contains(\"=\") 先于 skip 分支",
+      "source": "M34b A4 [P2] / 探针 b1",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A4-build",
+      "case": "kmp_std",
+      "assertion": "kmp_backtrack_not_build_next",
+      "title": "同 M34b-A4-skip 的正面形态：回溯行被标 build_next，文案把回溯后 j 当下标、next 值当值",
+      "current": "L30 → build_next「构建 next 数组，next[0]=-1」（j 已回溯到 0）",
+      "truth": "skip「回溯 j → next[j]」",
+      "source": "M34b A4 [P2]",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A4-getnext",
+      "case": "kmp_std",
+      "assertion": "kmp_getnext_backtrack_not_build_next",
+      "title": "同族：getNext 体内回溯行 k = next[k] 也被标 build_next",
+      "current": "L14 k = next[k]; → build_next「构建 next 数组，next[1]=-1」（1 是 j 值，行内无 j 下标）",
+      "truth": "回溯 k 不建表",
+      "source": "B11 落闸新发现（M34b A4 同族）",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A5-bound",
+      "j9": true,
+      "case": "quick_inline_partition",
+      "assertion": "index_bound",
+      "title": "快排 partition_init 判据不区分取枢轴与落位——取枢轴行 int pivot = arr[high] 的值被当落位下标",
+      "current": "L10 → partition_init「分区完成，枢轴落位下标 pivot=50」（50 是 arr[4] 的值，越出下标域 [0,4]）",
+      "truth": "取枢轴行不产 partition_init（或产「取枢轴值 50」）；落位语义只在 RHS 含 partition( 调用形态",
+      "root": "moonbit/teaching/steps/infer_sorting.mbt infer_quick_sort：contains(\"pivot\")&&contains(\"=\")&&!for 对任何 pivot 赋值行命中（#93 只改文案未收判据）",
+      "source": "M34b A5 [P2] / 探针 p01 p19",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A5-frame",
+      "case": "quick_inline_partition",
+      "assertion": "quick_inline_no_pivot_value_as_index",
+      "title": "同 M34b-A5-bound（定点形态：L10 不得产 partition_init）",
+      "source": "M34b A5 [P2]",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A6",
+      "j9": true,
+      "case": "string_reverse_print_loop",
+      "assertion": "reverse_print_no_swap",
+      "title": "string_reverse 的 for+len 判据把打印循环误标 swap",
+      "current": "L17 for (i < len) printf → swap「交换位置 0 和 4 / 1 和 3 / 2 和 2 / 3 和 1 / 4 和 0」五帧（含自交换与镜像重复）",
+      "truth": "打印循环无交换语义不产 swap；真模板是半长循环 i < len/2",
+      "root": "moonbit/teaching/steps/infer_search.mbt infer_string_reverse：starts_with(\"for \")&&contains(\"len\") 无交换语义证据",
+      "source": "M34b A6 [P2] / 探针 p11",
+      "channel": "steps"
+    },
+    {
+      "id": "M34b-A7",
+      "j9": true,
+      "case": "bubble_nonadjacent_swap",
+      "assertion": "index_claims_grounded",
+      "title": "冒泡 compare/swap 文案右侧下标硬编码 j+1，与行内容脱钩（steps 通道）+ collector 同病（M30 A1-1）",
+      "current": "L10 if (arr[i] > arr[j])（i=0,j=1）→ compare「比较 arr[1] 与 arr[2]」；L12 arr[i] = arr[j] → swap「交换 arr[1]↔arr[2]」；collector 通道 L13 arr[j]=temp →「交换 arr[1]↔arr[2]」×200",
+      "truth": "文案下标 ⊆ 行下标表达式求值集 {0,1}——真对 (i,j)=(0,1)",
+      "root": "moonbit/teaching/steps/infer_sorting.mbt infer_bubble_sort：j1 = j + 1 恒拼；moonbit/time_travel/collector.mbt is_swap 分支 idx_val + 1",
+      "source": "M34b A7 [P2] / 探针 p14b；M30 A1-1",
+      "channel": "steps+collector"
+    },
+    {
+      "id": "M33b-A1",
+      "j9": true,
+      "case": "is_prime_std",
+      "assertion": "detect_set",
+      "title": "isPrime 素数判定被误标 Prim 最小生成树——contains(\"prim\") 裸子串命中 isprime",
+      "current": "algorithm_matches = [prim_mst@isPrime(name, confidence 85, 完整 MST 教学文案 + 3 条 vis_events), is_prime@isPrime]",
+      "truth": "[is_prime]",
+      "root": "moonbit/teaching/steps/detect_graph.mbt:48 name_lower.contains(\"prim\")（处方 has_word 整词）",
+      "source": "M33b A1 [P1] / 探针 4 + 端到端",
+      "channel": "detect"
+    },
+    {
+      "id": "M30-A1-bfs-reset",
+      "case": "bfs_reset_visited",
+      "assertion": "index_claims_grounded",
+      "title": "collector 交换 label 三重失真（非交换误标 + 常量/回退末位 + 右侧硬编码 +1）——BFS 变体全形态",
+      "current": "L19 visited[i]=0 →「交换 arr[0]↔arr[1]」；L21 visited[start]=1 →「交换 arr[5]↔arr[6]」（越界）；L22 queue[rear++]=start →「交换 arr[5]↔arr[6]」；L28/L29 同款",
+      "truth": "赋值/入队行非交换；数组名 visited/queue 非 arr；下标须 ⊆ 行下标表达式求值集",
+      "root": "moonbit/time_travel/collector.mbt:555-559 is_swap 分支 + pick_inner_index 回退末位 + array_index_var 数字当标识符",
+      "source": "M30 A1 [P2] / 探针 C + e2e（B11 端到端扩面：标准 BFS/quick/KMP/reverse 模板全部触发）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-bfs-std",
+      "case": "bfs_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30-A1-bfs-reset（标准 BFS 模板即触发）",
+      "source": "M30 A1 [P2]（标准模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-kmp",
+      "case": "kmp_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：KMP 建表行 next[0]=-1 / next[j]=k 被标「交换 arr[N]↔arr[N+1]」",
+      "current": "L6 next[0] = -1 →「交换 arr[0]↔arr[1]」×12；L12 next[j] = k →「交换 arr[1]↔arr[2]」×76",
+      "source": "M30 A1 [P2]（KMP 模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-quick-inline",
+      "case": "quick_inline_partition",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：partition 交换组 (i,j)=(0,0) 自交换标「arr[0]↔arr[1]」、末段 arr[i+1]↔arr[high]=(1,4) 标「arr[4]↔arr[5]」（越界）",
+      "source": "M30 A1 [P2]（快排内联面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-quick-std",
+      "case": "quick_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30-A1-quick-inline（标准 quick 模板 partition 函数内即触发）",
+      "source": "M30 A1 [P2]（标准模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-reverse-print",
+      "case": "string_reverse_print_loop",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：字符串反转三行组 str[len-i-1]=temp（i=1 真对 (1,3)）被标「交换 arr[1]↔arr[2]」——数组名与右侧下标双错",
+      "source": "M30 A1 [P2]（string 族面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-reverse-std",
+      "case": "string_reverse_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30-A1-reverse-print（标准半长循环即触发）",
+      "source": "M30 A1 [P2]（标准模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M33b-A2",
+      "j9": true,
+      "case": "detect_binary_structural",
+      "assertion": "detect_set",
+      "title": "binary_search 结构分支对真实二分恒不可达——has_left_right_update 只认 arr[mid]=x，真二分是 left = mid + 1（Identifier 赋值）",
+      "current": "algorithm_matches = []（myFind 零标注）",
+      "truth": "[binary_search]",
+      "root": "moonbit/teaching/steps/features.mbt:344-351 walk_expr Assign 臂只在 left is Index 且含 mid 时置位；features_wbtest 锚二十九锁的是人为可达形态",
+      "source": "M33b A2 [P1] / 探针 2 + 端到端 myFind2",
+      "channel": "detect"
+    },
+    {
+      "id": "M30-A1-binary-cond",
+      "case": "detect_binary_structural",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：二分判断行 else if (arr[mid] < target) left = mid + 1 被标「交换 arr[2]↔arr[3]」",
+      "source": "M30 A1 [P2]（二分面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M33b-A4",
+      "j9": true,
+      "case": "detect_merge_linkedlist",
+      "assertion": "detect_set",
+      "title": "merge_sort 结构分支误命中递归链表归并——结构分支缺 sort 语境门槛",
+      "current": "algorithm_matches = [merge_sort@mergeTwoLists(structure)]（recursive_split「启动归并：处理整个数组」帧照投）",
+      "truth": "[]",
+      "root": "moonbit/teaching/steps/detect.mbt:187-191 is_recursive && has_merge_pattern && !has_partition_pattern 无语境排他（call_pattern_flags contains 包含性）",
+      "source": "M33b A4 [P2] / 探针 3",
+      "channel": "detect"
+    },
+    {
+      "id": "M33b-A3",
+      "j9": true,
+      "case": "detect_quick_structural",
+      "assertion": "detect_set",
+      "title": "quick_sort 结构分支对两类教科书快排双双漏检——is_recursive && has_partition_pattern && has_nested_loops 三特征同函数共存不可满足",
+      "current": "algorithm_matches = []（mySort/myPartition 零标注；形态 A 递归调 partition 无循环）",
+      "truth": "[quick_sort]",
+      "root": "moonbit/teaching/steps/detect.mbt:167-171（嵌套循环在 partition 内、内联后无 partition 名——同族 bubble/selection/heap 结构分支已修到真实可达，quick/merge 实为死分支无登记）",
+      "source": "M33b A3 [P2] / 探针 1",
+      "channel": "detect"
+    },
+    {
+      "id": "M30-A1-quick-struct",
+      "case": "detect_quick_structural",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1（myPartition 交换组面）",
+      "source": "M30 A1 [P2]",
+      "channel": "collector"
+    },
+    {
+      "id": "M34b-A3-dfs-reset",
+      "j9": true,
+      "case": "dfs_reset_visited",
+      "assertion": "dfs_reset_visit_no_false_node",
+      "title": "同 M34b-A3-reset（DFS 侧）：visited[i]=0 重置行误标 visit「标记节点 0/1」",
+      "current": "L16 visited[i] = 0 → visit「标记节点 0 为已访问」（递归层 u=1 时显示 1——取的是 u 非 i）",
+      "truth": "重置行不产 visit",
+      "root": "moonbit/teaching/steps/infer_graph.mbt infer_dfs visit 分支（宽判据，与 BFS 同款漏修）",
+      "source": "M34b A3 [P2] / 探针 b8",
+      "channel": "steps"
+    },
+    {
+      "id": "M30-A1-dfs",
+      "case": "dfs_reset_visited",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1（DFS 变体面：重置行/标记行标交换、回退末位 arr[5]↔arr[6]）",
+      "source": "M30 A1 [P2]",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-heap",
+      "case": "heap_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：heapify 交换 arr[i]↔arr[largest]=(0,2) 标「arr[0]↔arr[1]」；取顶 arr[0]↔arr[i]=(0,4) 标「arr[4]↔arr[5]」（越界）",
+      "source": "M30 A1 [P2]（标准 heapSort 模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-insertion",
+      "case": "insertion_std",
+      "assertion": "index_claims_grounded",
+      "title": "M30 A1-3 插入移位形态：arr[j+1] = key 落位行标「交换」且下标 j+1 与 j+2 均非真（j=-1 时 arr[-1]）",
+      "current": "L11 arr[j + 1] = key（j=-1）→「交换 arr[-1]↔arr[0]」×48；（j=0）→「交换 arr[0]↔arr[1]」",
+      "truth": "落位写非交换；真下标 j+1",
+      "source": "M30 A1 [P2] 探针 C 第三形态（标准 insertion 模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-insertion-neg",
+      "case": "insertion_std",
+      "assertion": "no_sentinel_minus_one",
+      "title": "同 M30-A1-insertion 的负下标形态：「交换 arr[-1]↔arr[0]」负哨兵直拼",
+      "source": "M30 A1 [P2]；M34b A3/C2 -1 直拼族同形",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-selection",
+      "case": "selection_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：选择排序 arr[i]↔arr[minIdx]=(0,4) 标「arr[0]↔arr[1]」、回退末位「arr[5]↔arr[6]」",
+      "source": "M30 A1 [P2]（标准 selection 模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-topo",
+      "case": "topo_std",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1：声明行 int indegree[MAXV] = {0} 与入队行 queue[rear++] = i 被标「交换 arr[6]↔arr[7]」——数组名/语义/下标三错",
+      "source": "M30 A1 [P2]（标准 topologicalSort 模板面）",
+      "channel": "collector"
+    },
+    {
+      "id": "M30-A1-offbyone",
+      "case": "trace_offbyone_hint",
+      "assertion": "index_claims_grounded",
+      "title": "同 M30 A1-3：初始化行 arr[i] = i 被标「交换 arr[0]↔arr[1]」（M30 e2e 初始化段 45+ 帧误标同形）",
+      "source": "M30 A1 [P2] 探针 e2e 初始化段",
+      "channel": "collector"
+    },
+    {
+      "id": "M31-A1",
+      "j9": true,
+      "case": "trace_offbyone_hint",
+      "assertion": "root_cause",
+      "title": "bounds 历史切片按帧数回看 20 帧致 WrongInit 误判——给 i 本来从 0 起的 OffByOne 程序建议「将初始值 4 改为 0」",
+      "current": "root_cause_hint.category = WrongInit「循环变量 'i' 从 4 开始……建议将第 9 行的初始值改为 0」",
+      "truth": "OffByOne（i<=5 经典越界，建议 <= 改 <）",
+      "root": "moonbit/time_travel/trace_analyzer.mbt:83-102 slice_variable_history lookback=20 帧截得 [4×7,5×13]；infer_bounds_category:475-513 第二判据先于第四判据",
+      "source": "M31 A-1 [P2] / 探针 outD",
+      "channel": "trace_analyzer"
+    }
+  ]
+}

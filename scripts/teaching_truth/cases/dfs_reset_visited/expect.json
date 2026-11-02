@@ -1,0 +1,12 @@
+{
+  "case": "dfs_reset_visited",
+  "source": "./source.c",
+  "note": "M34b A3 红例（DFS 侧）：visited 重置循环 + 递归 DFS——重置行误标 visit、真标记行节点值取错变量",
+  "step_budget": 1500,
+  "detect": ["dfs"],
+  "frames": [
+    { "id": "dfs_reset_visit_no_false_node", "kind": "forbid", "phase": "visit", "line": 16, "note": "重置行 visited[i]=0 非访问语义（M34b b8 白盒同款）" },
+    { "id": "dfs_cond_line_no_visit", "kind": "forbid", "phase": "visit", "line": 20, "note": "判断行 graph[u][v]==1 && visited[v]==0 非标记动作" },
+    { "id": "dfs_reset_visit_u0_node_value", "kind": "expect", "phase": "visit", "line": 18, "desc": "标记节点 0 ", "note": "真标记行 visited[u]=1（u=0）节点值须为 u——真值断言（该帧当前恰好正确则为正锚）" }
+  ]
+}

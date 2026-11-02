@@ -1,0 +1,7 @@
+{
+  "case": "trace_offbyone_hint",
+  "source": "./source.c",
+  "note": "M31 A-1 红例：经典 i<=5 OffByOne（i 从 0 起）被标 WrongInit「建议将初始值改为 0」——误导修复方向",
+  "step_budget": 300,
+  "root_cause": { "category": "OffByOne", "note": "i 初始值本来就是 0；bounds 历史切片按帧数回看 20 帧截得起点 4 误读" }
+}

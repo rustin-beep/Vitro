@@ -1,0 +1,7 @@
+{
+  "case": "detect_binary_structural",
+  "source": "./source.c",
+  "note": "M33b A2 红例：无命名教科书二分（left = mid + 1 形态）——binary_search 结构分支恒不可达，零检测",
+  "step_budget": 300,
+  "detect": ["binary_search"]
+}

@@ -1,0 +1,7 @@
+{
+  "case": "bubble_nonadjacent_swap",
+  "source": "./source.c",
+  "note": "M34b A7 / M30 A1-1 红例：行文本 arr[i]>arr[j] / arr[i]=arr[j] 非相邻下标，compare/swap 文案右侧下标恒拼 j+1 与行脱钩",
+  "step_budget": 2000,
+  "detect": ["bubble_sort"]
+}

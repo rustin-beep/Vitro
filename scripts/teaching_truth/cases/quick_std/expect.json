@@ -1,0 +1,11 @@
+{
+  "case": "quick_std",
+  "source": "templates/quick/source.c",
+  "note": "正例主干：独立 partition 函数的教科书快排——quickSort 内 int pivot = partition(...) 行（落位语义）产 partition_init 用返回值下标，当前正确；partition 函数内帧不分派（collector 按帧所在函数名找匹配）",
+  "step_budget": 4000,
+  "array_len": 5,
+  "detect": ["quick_sort"],
+  "frames": [
+    { "id": "quick_std_partition_init_line5", "kind": "expect", "phase": "partition_init", "line": 5 }
+  ]
+}

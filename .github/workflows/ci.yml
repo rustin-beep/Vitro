@@ -1652,7 +1652,12 @@ jobs:
   # 本批 check-only（类型面 + fmt + 探针 TS 面，零 CEF 依赖、分钟级）；CEF
   # 真窗口 CDP smoke 另批加（带 actions/cache 存 ~/.proton 164MB）。
   desktop:
-    name: Desktop shell gates (moon check native / fmt / probe TS)
+    name: Desktop shell gates (check / build / CEF CDP smoke)
+    # 全量批（2026-11-02 PR #417 CI 绿后升格，用户拍板「上全量测试防线」）：
+    # check-only 轻形态退役。smoke 需要 demo 的构建期资产（wasm.wasm/langpack
+    # ——vite 模块图静态资产，缺失即 dev/build 红，与 demo job 同款 fail loud
+    # cp），故 needs build-artifacts（此前「不消费本仓产物」的注记随之作废）。
+    needs: build-artifacts
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -1662,6 +1667,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # ── demo 构建期资产（与 demo job 两 cp 同款——engine.worker 模块图的
+      #    vite 静态资产；桌面 IPC 通道不消费 wasm，但模块图在即资产必须在）──
+      - name: demo wasm asset in place (build-time asset)
+        shell: bash
+        run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+      - name: demo langpack asset (build artifact → cp)
+        shell: bash
+        run: |
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js
       # moon update 刷注册表索引后按 moon.mod pin 拉 vitro/engine + proton 族；
       # check 不编 C stub、不碰 CEF runtime——P 线实测 ~2s（91 任务）。
       - name: desktop moon check (native; vitro/engine@pin from mooncakes)
@@ -1677,6 +1696,37 @@ jobs:
       - name: desktop probe TS gates (tsc strict + oxlint)
         shell: bash
         run: cd desktop && npm ci && npm run check:all
+      # ── 全量段：CEF 真窗口 CDP smoke（P 线四形态/捉虫/端到端的 CI 化）──
+      - name: Install proton_cli (mooncakes 0.6.0)
+        shell: bash
+        run: moon install moonbit-community/proton_cli@0.6.0
+      # CEF runtime store 缓存（869MB 解压物——key 双锚 proton 版本 + CEF
+      # 版本号；失配重下属正确行为。helper 不缓存：14s 原生构建且随 pin 变）
+      - name: CEF runtime store cache
+        uses: actions/cache@v4
+        with:
+          path: ~\.proton\store
+          key: proton-store-win32-x64-0.6.0-cef-150.0.19
+      - name: cef setup (download + assemble on cache miss)
+        shell: bash
+        run: cd desktop && proton_cli cef setup
+      - name: demo deps (vite dev server)
+        shell: bash
+        run: cd demo && npm ci
+      - name: desktop release build (proton + vitro/engine in-process)
+        shell: bash
+        run: cd desktop && proton_cli build -- --release
+      # 断言集：CDP 就绪 / transport=ipc / demo 完整采集（golden ✓ 42 帧
+      # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3——tools/smoke.mts 头注。
+      # 基线数字漂移（帧数/版本）须连坐更新 smoke.mts 断言与 README 基线表。
+      - name: CDP smoke (real CEF window, pinned port)
+        shell: bash
+        run: cd desktop && node tools/smoke.mts 9335
+      # 兜底清树（CEF 子进程模型：dev 树收不净的残余同名进程）
+      - name: cleanup stray processes
+        if: always()
+        shell: bash
+        run: taskkill /IM app.exe /IM cef_process.exe /IM proton_cli.exe /F 2>/dev/null; true
 
   # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
   # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）

@@ -38,11 +38,17 @@
   扫描+协议指纹发现临时端口）、`cdp_catch`（不开 DevTools 窗口订阅
   exceptionThrown/console/Log 三域，实测抓 4 事件）；页内表达式
   `tools/page/{demo_run,fps_probe}.js`（demo 采集断言 / 帧率）。
-- **CI**：新 `desktop` job（windows-latest，不 needs 上游——不消费本仓产物）
-  = `moon update + moon check --target native` + `moon fmt --check`（hygiene
-  的 fmt 只扫 moonbit/）+ `npm ci && npm run check:all`；`ci-summary`
-  needs/env/pairs 三面连坐登记。本批 check-only（零 CEF 依赖、分钟级）；
-  CEF 真窗口 CDP smoke 另批（带 actions/cache 存 ~/.proton）。
+- **CI**：`desktop` job（windows-latest）**全量形态**（PR #417 一轮 check-only
+  绿后同 PR 升格，用户拍板「上全量测试防线」）：`needs: build-artifacts`
+  → demo 构建期资产两 cp（wasm.wasm / langpack，与 demo job 同款 fail loud）
+  → `moon update + moon check native` / `moon fmt --check` / `npm ci + check:all`
+  → `moon install proton_cli@0.6.0` → `actions/cache` 存 `~/.proton/store`
+  （869MB，key 双锚 proton 0.6.0 + CEF 150.0.19）→ `cef setup` → demo `npm ci`
+  → `proton_cli build -- --release` → **`tools/smoke.mts 9335` 真 CEF 窗口 CDP
+  smoke**（八断言：CDP 就绪 / transport=ipc / demo 采集 golden ✓·42 帧·引擎
+  0.9.1·stdout / 无 DevTools 窗口捉虫 ≥3；本地三跑定型——按钮就绪轮询 +
+  golden 末帧等待两处时序修）→ `always()` 清树。`ci-summary` needs/env/pairs
+  三面连坐登记。
 - **连坐**：AGENTS.md 仓库分区表加「桌面壳区」行 + 路由规则一句；
   editorconfig / actionlint / ci_checklist 三闸本地绿。
 - **坑表（README「已知坑」）**：agent 会话沙箱对工作区内 exe 的写围栏致

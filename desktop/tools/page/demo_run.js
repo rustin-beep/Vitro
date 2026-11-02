@@ -3,14 +3,20 @@
 // 期望（2026-11-02 实测基线）：status 含 "编译 ✓ 运行 ✓ golden ✓"、
 // stdout="1 2 3 4 5 \n"、42 帧、transport=ipc、引擎 0.9.1。
 (async () => {
-  const run = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '运行');
+  // 按钮就绪轮询：smoke 场景下探针可能早于 UI 挂载（boot/数据装载中）
+  let run = null;
+  for (let k = 0; k < 60 && !run; k++) {
+    run = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === '运行');
+    if (!run) await new Promise(r => setTimeout(r, 500));
+  }
   if (!run) return JSON.stringify({ error: '运行按钮未找到' });
   run.click();
   let status = '';
   for (let k = 0; k < 150; k++) {
     await new Promise(r => setTimeout(r, 200));
     status = [...document.querySelectorAll('[class*=status],[class*=pill]')].map(e => e.textContent.trim()).join('|');
-    if (!status.includes('采集中') && !status.includes('运行 …')) break;
+    // golden 判定在末帧：采集完成≠回放到末帧（待末帧=播放头未达）——一并等掉
+    if (!status.includes('采集中') && !status.includes('运行 …') && !status.includes('golden 待末帧')) break;
   }
   const pres = [...document.querySelectorAll('pre,code')].map(e => e.textContent).filter(t => t && t.length > 10);
   return JSON.stringify({

@@ -51,6 +51,7 @@ npm ci && npm run check:all                        # tsc 严档 + oxlint（CI �
 proton_cli build -- --release                      # 原生构建（~26s，app.exe ~4.9MB）
 PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev server + 壳窗口
                                                    #（dev_url=http://127.0.0.1:5173，首跑前 demo 需 npm ci）
+node tools/smoke.mts 9335                          # CI 同款全链 smoke：起 dev → 八断言 → 杀树（~10-20s 不含 build）
 ```
 
 不经 `proton_cli` 直跑 `_build/.../app.exe` 需环境四件套：`PROTON_RUNTIME_ROOT=<store>/runtime`、`PROTON_HELPER_PATH=<helpers>/0.6.0/cef_process.exe`、`PROTON_PROJECT_CONFIG=<本目录>/proton.project.json`、`PATH` 前置 `<runtime>/bin`（缺 config 时 `load_config()` 直读 exe 同目录，缺即 abort）。`proton_cli package` 打包后内嵌元数据可免——打包形态验证列下批。
@@ -74,7 +75,8 @@ PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev se
 | `cdp_probe.mts` | 在 page 目标上 `Runtime.evaluate`（awaitPromise）；缺省表达式读 url/title/通道形态/引擎版本 | `node tools/cdp_probe.mts 9335 [expr \| @file]` |
 | `find_cdp.mts` | 按 PID 扫 LISTEN 端口 + `/json/version` 协议指纹 ⇒ 发现临时端口 | `node tools/find_cdp.mts <pid>` |
 | `cdp_catch.mts` | 不开 DevTools 窗口，订阅 exceptionThrown/consoleAPICalled/Log 三域并注入三枚虫 | `node tools/cdp_catch.mts 9335` ⇒ `caught_count ≥ 3` |
-| `page/demo_run.js` | 页内表达式：驱动 demo UI 完整采集（点运行→轮询→读 golden/stdout/帧数/版本） | `node tools/cdp_probe.mts 9335 @tools/page/demo_run.js` |
+| `smoke.mts` | CI 全量防线编排：spawn `proton_cli dev` → 等 CDP → 八断言（复用上三脚本 + page 资产为单源）→ `taskkill /T` 收树 | `node tools/smoke.mts 9335`（cwd=desktop/） |
+| `page/demo_run.js` | 页内表达式：驱动 demo UI 完整采集（等按钮就绪→点运行→等采集与 golden 末帧→读 golden/stdout/帧数/版本） | `node tools/cdp_probe.mts 9335 @tools/page/demo_run.js` |
 | `page/fps_probe.js` | 页内表达式：CSS 动画 + rAF 计数 2s ⇒ fps/min/max 帧间隔（窗口须可见） | 同上 |
 
 **表达式一律走 `@file`**：bash→node argv→JSON→JS 串→C 串多级转义必吃反斜杠（P 线实锤 `\n` 变真换行 ⇒ `E1002 字符串未闭合` 假阳性）。
@@ -101,4 +103,4 @@ PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev se
 
 ## 下批（拍板后）
 
-打包形态验证（`proton_cli package --dry-run` → `--format app`，**含 `../demo/dist` 跨目录前端装配**、dist 内嵌元数据免四件套、CDP env 钉端口在打包产物上复验）· CEF 真窗口 CDP smoke 进 CI（带 `actions/cache` 存 `~/.proton`；demo UI 采集断言用 `tools/page/demo_run.js` 的 golden/stdout/帧数契约）· feed 通道（scanf 续跑）E2E 锚 · 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场）。
+打包形态验证（`proton_cli package --dry-run` → `--format app`，**含 `../demo/dist` 跨目录前端装配**、dist 内嵌元数据免四件套、CDP env 钉端口在打包产物上复验）· feed 通道（scanf 续跑）E2E 锚进 smoke · 探针收编 `vitro-demo-mcp` 工具面 · native vs wasm 双臂对拍（demo 通道形态运行时可切——GUI 内 `arm_divergence` 的第三现场）。

@@ -6,7 +6,7 @@
   "description": "Vitro 桌面壳（proton 捉虫/测试）探针工具面——tools/*.mts node 直跑（type stripping），tsc 严档 + oxlint 为闸；非发包面",
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint tools/cdp_probe.mts tools/find_cdp.mts tools/cdp_catch.mts",
+    "lint": "oxlint tools/cdp_probe.mts tools/find_cdp.mts tools/cdp_catch.mts tools/smoke.mts",
     "check:all": "npm run check && npm run lint"
   },
   "devDependencies": {

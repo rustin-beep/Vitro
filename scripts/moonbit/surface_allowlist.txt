@@ -37,15 +37,6 @@
 # 进架（moon publish 是 module 级）⇒ 收面 = 对已发布包的破坏性变更；0.x 阶段
 # 键形态（S6 批一段，2026-09-23）：`包全名 sym`（原 `pkg 末段 sym`）。
 # （锚保留注记：libc 的 LibcSig/lookup 已 priv 化——白盒 wbtest 消费
-# arith 共享算术核（#426 B3' 批 0，2026-11-02）：新包落地即 pub——批 1（const_eval 接核）与
-# 批 3（VM 接核）接线后出现跨包消费边，届时本 7 条随接线批撤销（消费后条目自动过期红）。
-vitro/engine/arith common_domain
-vitro/engine/arith eval_int_binary
-vitro/engine/arith eval_int_unary
-vitro/engine/arith f2i_saturate_i32
-vitro/engine/arith f2i_saturate_i64
-vitro/engine/arith integer_promote
-vitro/engine/arith normalize
 vitro/engine/host realloc_invalid_message
 vitro/engine/protocol encode_step_delta
 vitro/engine/protocol encode_step_payload

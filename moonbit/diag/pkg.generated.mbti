@@ -156,6 +156,7 @@ pub(all) enum ErrorCode {
   E3087_BoundsGeneric
   E3088_DivideZero
   E3089_FunctionDeclaredNotDefined
+  W3090_ConstIntOverflow
 } derive(Compare, Eq, Hash, @debug.Debug)
 pub fn ErrorCode::all() -> Array[Self]
 pub fn ErrorCode::catalog(Self) -> CatalogEntry?

@@ -79,7 +79,7 @@ gateway 产物的 node 壳、自动降级本 native exe，见仓库 CLI 手册�
 | `vitro/engine/opcode` | L0 | 153 条 opcode（0..137 照搬段不重排；44–46 = C# 异常三件 TryBegin/TryEnd/Throw，47–49 空号；138..150 自扩 U 系对偶段；151..153 全局 char 字节粒度段；154..155 u64→fp 无符号对偶 CastUQ2D/CastUQ2F，#345 审阅 P1）+ 双向映射 + Instruction |
 | `vitro/engine/util` | L0 | 零语义机械件单点（G-1）：`utf8_len`（UTF-8 字节长度）/ `str_cmp`（真字典序——内置 String 比较非字典序）/ `i64_to_i32_bits`（位截断）/ `le_u32_at`·`le_u64_at`（小端拼装读） |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**，2026-09-28）：pub 面 7 函数 + `IOError`；C 符号前缀 `vitro_engine_fs_*`；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希探针，CI hygiene）；Apache-2.0 合规见 `THIRD_PARTY.md` |
-| `vitro/engine/diag` | L1 | ErrorCode 119 臂 + Severity/SourceLang + 教学卡片 115 条 + 目录导出（gen_diag 单源生成） |
+| `vitro/engine/diag` | L1 | ErrorCode 120 臂 + Severity/SourceLang + 教学卡片 115 条 + 目录导出（gen_diag 单源生成） |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 / decl 全族 + depth + type_eq + to_c_string + mangle + JSON dump |
 | `vitro/engine/names` | L3 | 产名族唯一出口（`__ctor__`/`__dtor__`）+ type_mangle_suffix 17 变体 + method_mangled_name |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） |

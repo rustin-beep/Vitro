@@ -29,7 +29,7 @@
 ///|
 /// 整型运算域（char/uchar 经 integer_promote 后不再出现——C11 §6.3.1.1
 /// 整型提升，unsigned 位随提升消失）。
-pub enum IntDomain {
+pub(all) enum IntDomain {
   I32
   U32
   I64
@@ -48,7 +48,7 @@ pub extend IntDomain with Debug::{to_repr}
 ///|
 /// C 整型 kind（教学 C 子集三档宽度）——AST Type 到 IntDomain 薄壳
 /// 映射的输入（typeck 侧查表两行，核不 import ast）。
-pub enum IntKind {
+pub(all) enum IntKind {
   KChar
   KInt
   KLongLong
@@ -68,7 +68,7 @@ pub extend IntKind with Debug::{to_repr}
 /// 溢出文案）；折叠器 → E3075 族诊断（除零/移位/Div 溢出）或 W 级溢出
 /// 警告（Add/Sub/Mul/Neg 溢出，#426 拍板①：W 级照折对齐 clang
 /// -Winteger-overflow）。
-pub enum ArithFault {
+pub(all) enum ArithFault {
   DivByZero
   DivOverflow // INT_MIN/-1（I32）/ LLONG_MIN/-1（I64）——UB 域，两侧同故障
   ShiftOutOfRange(Int64) // 越界移位量原值随故障带回（诊断渲染用）
@@ -89,7 +89,7 @@ pub extend ArithFault with Debug::{to_repr}
 
 ///|
 /// 整型二元算子（16）。
-pub enum IntBinOp {
+pub(all) enum IntBinOp {
   OpAdd
   OpSub
   OpMul
@@ -110,7 +110,7 @@ pub enum IntBinOp {
 
 ///|
 /// 整型一元算子（2）。
-pub enum IntUnOp {
+pub(all) enum IntUnOp {
   OpNeg
   OpBitNot
 }

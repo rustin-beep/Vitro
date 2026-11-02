@@ -1,5 +1,6 @@
 import {
   "vitro/engine/teaching/assets",
+  "vitro/engine/arith",
   "vitro/engine/ast",
   "vitro/engine/diag",
   "vitro/engine/libc",

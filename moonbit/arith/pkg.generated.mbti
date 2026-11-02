@@ -23,7 +23,7 @@ pub fn normalize(Int64, IntDomain) -> Int64
 // Errors
 
 // Types and methods
-pub enum ArithFault {
+pub(all) enum ArithFault {
   DivByZero
   DivOverflow
   ShiftOutOfRange(Int64)
@@ -41,7 +41,7 @@ pub fn ArithFault::op_le(Self, Self) -> Bool
 pub fn ArithFault::op_lt(Self, Self) -> Bool
 pub fn ArithFault::to_repr(Self) -> @debug.Repr
 
-pub enum IntBinOp {
+pub(all) enum IntBinOp {
   OpAdd
   OpSub
   OpMul
@@ -60,7 +60,7 @@ pub enum IntBinOp {
   OpNe
 }
 
-pub enum IntDomain {
+pub(all) enum IntDomain {
   I32
   U32
   I64
@@ -75,7 +75,7 @@ pub fn IntDomain::op_le(Self, Self) -> Bool
 pub fn IntDomain::op_lt(Self, Self) -> Bool
 pub fn IntDomain::to_repr(Self) -> @debug.Repr
 
-pub enum IntKind {
+pub(all) enum IntKind {
   KChar
   KInt
   KLongLong
@@ -89,7 +89,7 @@ pub fn IntKind::op_le(Self, Self) -> Bool
 pub fn IntKind::op_lt(Self, Self) -> Bool
 pub fn IntKind::to_repr(Self) -> @debug.Repr
 
-pub enum IntUnOp {
+pub(all) enum IntUnOp {
   OpNeg
   OpBitNot
 }

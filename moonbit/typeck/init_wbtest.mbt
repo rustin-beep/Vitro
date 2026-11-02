@@ -62,9 +62,9 @@ test "init_array_size_inference" {
   let prog2 : @ast.ProgramNode = { ..prog, globals: [g2], }
   let tc2 = TypeChecker::new()
   // #50 批②：E3005→W3005（Clang 默认 warning）——断言移 warnings 通道
-  let (_, _, errs2, _) = tc2.check(prog2)
-  assert_eq(errs2.length(), 1)
-  assert_true(errs2[0].code == 3005)
+  let (_, _, warns2, _) = tc2.check(prog2)
+  assert_eq(warns2.length(), 1)
+  assert_true(warns2[0].code == 3005)
 }
 
 ///|
@@ -110,9 +110,9 @@ test "init_string_literal_track" {
   let prog2 : @ast.ProgramNode = { ..prog, globals: [t], }
   let tc2 = TypeChecker::new()
   // #50 批②：E3008→W3008——断言移 warnings 通道
-  let (_, _, errs2, _) = tc2.check(prog2)
-  assert_eq(errs2.length(), 1)
-  assert_true(errs2[0].code == 3008)
+  let (_, _, warns2, _) = tc2.check(prog2)
+  assert_eq(warns2.length(), 1)
+  assert_true(warns2[0].code == 3008)
 }
 
 ///|
@@ -253,9 +253,9 @@ test "init_multidim_flat_scalar" {
     init: Some(flat([1, 2, 3, 4, 5, 6, 7], loc)),
   }
   let tc2 = TypeChecker::new()
-  let (_, _, errs2, _) = tc2.check({ ..prog, globals: [m2], })
-  assert_eq(errs2.length(), 1)
-  assert_true(errs2[0].code == 3005)
+  let (_, _, warns2, _) = tc2.check({ ..prog, globals: [m2], })
+  assert_eq(warns2.length(), 1)
+  assert_true(warns2[0].code == 3005)
 }
 
 ///|
@@ -401,6 +401,12 @@ test "char_array_braced_string_init_issue196b" {
 /// 计长口径回退 Latin-1（\xff 计 1）⇒ 回写 2 ⇒ 本锚红（与
 /// expr_wbtest `string_literal_byte_len` 分别锁 init 回写/expr 定型
 /// 两条路径——ds 批 P1 修复的真实落点，修前此处零锚）。
+///
+/// KNOWN_DIVERGENCE（审阅 v2 批 A2 / M09 D1；#66 ③-14 已知限制）：clang
+/// 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8 三方对 hex escape `"\xff"` 按
+/// 字节值计 1 字节 ⇒ `char g[]` 定型尺寸 **2**（FF + NUL）；vitro 以 String
+/// 承载 C 字节串（expr.mbt:116）按 UTF-8 U+00FF 计 2 字节 ⇒ 3。本锚锁
+/// vitro 口径（防 Latin-1 回退回归），B 批修字面量承载层后翻面为 2。
 test "char_arr_deduce_size_writeback_utf8_ds" {
   let loc = @source.SourceLoc::new(1, 1)
   let g : @ast.GlobalDecl = {
@@ -462,6 +468,12 @@ test "char_arr_deduce_size_writeback_utf8_ds" {
 /// Latin-1（计 1，1+1>2 为假 ⇒ 零警）⇒ 本锚红。注：该形态 clang 口径
 /// （单字节 FF + NUL = 2 ≤ 2）零警——vitro 警告为 #66 值差连带（已知
 /// 限制 ③-14 显式恰满形态），本锚只锁 vitro 口径行为不锁跨侧一致。
+///
+/// KNOWN_DIVERGENCE（审阅 v2 批 A2 / M09 D1 P9a）：三方编译器（Win clang
+/// 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8）该形态**零警**（1+1 ≤ 2 恰满
+/// 合法）；vitro 报 W3008 为 `\xff` UTF-8 承载连带假阳性。B 批修字面量承载
+/// 层后本锚翻面为 `warns.length() == 0`。真实 UTF-8 多字节（`"中"`）面 vitro
+/// 与 clang 对齐（M09 D2），分叉仅 hex escape 口径。
 test "char_arr2d_substring_w3008_utf8_ds" {
   let loc = @source.SourceLoc::new(1, 1)
   let w : @ast.GlobalDecl = {

@@ -101,8 +101,19 @@ test "serve_step_seek_roundtrip_and_payload_get" {
   assert_true(sk.contains("\"success\":true"))
   assert_true(sk.contains("\"step_index\":0"))
   // seek 后 step.next 续跑（is_finished 复位 + 帧连续）
+  // 修锚（审阅 v2 批 A2 / M26 W1）：旧断言 assert_false(nx.contains("error"))
+  // 恒真——auto_step_result_json 响应 schema 根本不含 error 键（变异实证：
+  // nx 置任意垃圾串断言仍绿），对续跑语义零判别力；换发布帧 + finished
+  // 双断言：payloads 为空（is_finished 粘性形态）即无 step_index 键 → 红。
   let (nx, _) = serve_handle(s, "{\"id\":22,\"method\":\"step.next\"}")
-  assert_false(nx.contains("\"error\""))
+  assert_true(
+    nx.contains("\"step_index\""),
+    msg="续跑必须发布帧（step_index 在）",
+  )
+  assert_true(
+    nx.contains("\"finished\":false"),
+    msg="seek 回退后 is_finished 复位",
+  )
 }
 
 ///|

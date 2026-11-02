@@ -35,9 +35,64 @@ test "vfs_preset_inject_fread_binary_roundtrip" {
   let n = vfs.fread(mem, map, fd, buf, 1, 100)
   assert_eq(n, 6, msg="6 元素（size=1）")
   assert_eq(peek(mem, map, buf, 6), b"ABCDEF")
-  assert_eq(vfs.feof(fd), 1, msg="读满即 EOF")
+  // 短读形态（请求 100 仅得 6）置 EOF——与 C 同形（A2 探针 clang 22.1.4
+  // feof=1）。注：审阅 M23 曾把本行定性为「恰满即 EOF」病锚，A2 批复核
+  // 此形态是短读非恰满，锚值正确，仅原 msg「读满即 EOF」描述机制有误导
+  // 已改；真正的恰满偏差见下方 vfs_feof_exact_fill_known_divergence。
+  assert_eq(
+    vfs.feof(fd),
+    1,
+    msg="短读（请求 100 仅得 6）置 EOF——C 同形",
+  )
   // 尺寸链防护：size*nmemb 超 MEM_SIZE → 0
   assert_eq(vfs.fread(mem, map, fd, buf, 0x100000, 16), 0)
+}
+
+///|
+/// EOF 粘滞位「恰满即置」族双形态锚（审阅 v2 批 A2 / M23 A1；真值 =
+/// A2 探针 `D:/tmp/a2probe/feof.c` Win clang 22.1.4-UCRT，与 M23b 四端
+/// 表〔WSL gcc 15.2 / clang 21.1.8 glibc〕逐位一致）。
+///
+/// C11 7.21.10.2：EOF 指示器仅在**尝试读过文件尾**后置位，恰满不置。
+/// vitro `vfs.mbt` fread/fgets/fgetc 尾部 `cursor >= size ⇒ eof=true` 把
+/// 三形态都提前一圈置位（教学经典 `while(!feof)` 反模式少跑一圈——M23b
+/// a1_loop 实锤 loops 3 vs 真机 4）。本锚锁当前行为（三处 1），B 批修复
+/// 后三处翻面为 0；过读形态（n=0 / fgetc=-1 后）双侧一致为 1 不翻。
+test "vfs_feof_exact_fill_known_divergence" {
+  let (map, mem, vfs) = vfs_fresh()
+  ignore(vfs.inject_preset_file(map, mem, "e6.bin", b"ABCDEF"))
+  let fd = vfs.fopen(map, "e6.bin", "rb")
+  let buf = 0x8000U
+  // 恰满：请求 6 得 6
+  assert_eq(vfs.fread(mem, map, fd, buf, 1, 6), 6)
+  // KNOWN_DIVERGENCE：clang fread 恰满 feof=0；vitro 1
+  assert_eq(vfs.feof(fd), 1, msg="恰满即置 EOF（当前 vitro；clang 0）")
+  // 过读：n=0 且 feof=1（双侧一致）
+  assert_eq(vfs.fread(mem, map, fd, buf, 1, 6), 0)
+  assert_eq(vfs.feof(fd), 1, msg="过读置 EOF（C 同形）")
+  // fgetc 读完末字节
+  ignore(vfs.inject_preset_file(map, mem, "e2.bin", b"xy"))
+  let fd2 = vfs.fopen(map, "e2.bin", "rb")
+  assert_eq(vfs.fgetc(mem, map, fd2), 120)
+  assert_eq(vfs.fgetc(mem, map, fd2), 121)
+  // KNOWN_DIVERGENCE：clang 读完末字节 feof=0；vitro 1
+  assert_eq(
+    vfs.feof(fd2),
+    1,
+    msg="末字节后即置 EOF（当前 vitro；clang 0）",
+  )
+  assert_eq(vfs.fgetc(mem, map, fd2), -1)
+  assert_eq(vfs.feof(fd2), 1, msg="fgetc 返 EOF 后置位（C 同形）")
+  // fgets 停于 \n 且恰到文件尾
+  ignore(vfs.inject_preset_file(map, mem, "e3.txt", b"ab\n"))
+  let fd3 = vfs.fopen(map, "e3.txt", "r")
+  assert_eq(vfs.fgets(mem, map, fd3, buf, 100), buf)
+  // KNOWN_DIVERGENCE：clang fgets 停于 \n 恰到尾 feof=0；vitro 1
+  assert_eq(
+    vfs.feof(fd3),
+    1,
+    msg="fgets 恰到尾即置 EOF（当前 vitro；clang 0）",
+  )
 }
 
 ///|
@@ -317,12 +372,17 @@ test "file_fputs_stdout_stderr_split_and_perror" {
     b"to-erropen failed: No error\n",
     msg="stderr 追加",
   )
-  // perror(NULL) 形态：空前缀（空串）→ "Error\n"
+  // perror(NULL) 形态：空前缀（空串）→ "No error\n"（病 49 UCRT 口径，
+  // M23b 四端复证：vitro 与 Win-UCRT 逐字节同形，glibc 为 "Success"——
+  // 既定锁定非缺陷。审阅 v2 批 A2 / M23 B2：原注释写 "Error\n" 系实现改
+  // 后漏改的残留，原断言仅 length>0 未锁内容——此处双修：注释对齐实现，
+  // 断言锚完整 stderr 累积（含前段 perror 残留，逐字节））
   put_bytes(mem, map, 0x6300U, b"\x00", false)
   ignore(host_perror(map, mem, log, 0x6300U))
-  assert_true(
-    @utf8.encode(log.join(OutputKind::Stderr).to_unchecked_string()).length() >
-    0,
+  assert_eq(
+    log.join(OutputKind::Stderr),
+    b"to-erropen failed: No error\nNo error\n",
+    msg="空前缀 perror 全量 stderr 累积（UCRT 口径）",
   )
 }
 

@@ -1,5 +1,45 @@
 ## [Unreleased]
 
+### test(moonbit): 审阅 v2 批 A2——测试锚诚实化（修锚不修行为：双形态锚 + KNOWN_DIVERGENCE 标注，2026-11-01）
+
+- **语义**：锚断言值 = 当前实际行为（CI 真绿非假绿），与 C 真值不一致处紧邻注释标
+  `KNOWN_DIVERGENCE` + clang 真值 + 出处——即 B 批行为修复的现成红锚清单；本批零引擎
+  代码改动（vm_diff golden SAME=147 DIFF=0；libc_boot_diff/gen_diag/gen_stubs/gen_host_route/
+  single_source/perf_budget/mbti_sync/surface/hygiene/libc_single_source/pkg_deps 全绿）。
+- **M20 host_io_wbtest**：`format_g_powi_oracle_alignment` 7 处 + `format_fixed` NaN 1 处偏差锚
+  加 KNOWN_DIVERGENCE（Win clang 22.1.4-UCRT 真值表；报告点名 5 处 + A2 探针新增
+  `1.5e126`/`8.88e-320`/`2.5e-323` 三处 `%.17g` 分叉）；变异证红：锚换 clang 值即红（183/182/1）。
+- **M26 serve_step_wbtest**：`serve_step_seek_roundtrip_and_payload_get` 尾断言
+  `assert_false(contains("error"))` 恒真（auto_step_result_json 无 error 键；nx 置垃圾串仍绿实证）
+  → 换 `step_index` 在 + `finished:false` 双断言。
+- **M28 serve_more_wbtest**：`serve_memory_dump_roundtrip` 帧 source 单反斜杠 `\n`（裸 LF）致
+  compile 从未发生、三断言在默认映像上恒绿（加 compiled 断言即红 158/157/1）→ `\\n` 转义修活
+  + 前置可观测断言（修活后真实 run 映像往返仍绿，非行为缺陷）；B4 清场 catch 改 fail loud；
+  B2 死变量 s2 改真实消费；B3 孤立 `///|` 删。
+- **M23 vfs_wbtest**：38 行定责——形态是**短读**（请求 100 仅得 6）非恰满，clang feof=1 与 vitro
+  一致，**非病锚**（与 M23 报告「病锚」结论不同，A2 探针 feof.c 亲证），仅改误导 msg；新锚
+  `vfs_feof_exact_fill_known_divergence` 锁 fread 恰满 / fgetc 末字节后 / fgets 恰到尾三形态
+  （vitro 1 / clang 0，KNOWN_DIVERGENCE；过读形态双侧一致）；B2 perror 注释对齐实现 `No error\n`
+  + 断言由 length>0 升为完整 stderr 逐字节。
+- **M15 verify_wbtest**：补 23 条红锚（C-1 缺口全覆盖 + 审阅 P3-1 补漏列「wrapper 段缺 Call main」1 条：串区上界 / globals32·64 越 MEM_SIZE /
+  键集⊇⊂ / code 空 / 首段非 1 / meta.ip=0 / param_sizes 非正 / param_count≠len / local_count
+  不覆盖参数区 / local_buffer 越帧 / PushConstQ / TrapBounds / func_index 无 main / PushArgv⇔2 参
+  / wrapper 段尾 / wrapper_ip=0）+ **L609 用户段 Call 栈深双形态锚**（当前零违约 = A-1 被
+  `>=1000` 无上界吞；library 模式同构造红 = 规则存在性正锚）；**结构性发现**：L359 段间无缝
+  （idx≥1 不可达）/ L377 wrapper 起点（expected_ip 恒等 wrapper_ip）两条规则为死分支，对应锚
+  改锁真实兜底规则（L538 段尾非控制类 / L824 wrapper 越界）；变异抽样证红（关 L415 即对应锚红
+  58/57/1）。E6 远越界自崩形态（A-2）本批不锚留 B 批。
+- **M15 B-1/B-2**：gen_host_route 模板「14 个 PURE 名」/「114 对逐条断言 Some(id)」改动态计数
+  （13 / 101+13，产物再生成 -check OK）；bytecode_test 同款勘误；libc_pair_anchor 头注退役路径
+  `native/...` 改指档案 tag `rust-oracle-freeze` + 现役单源。
+- **M09 typeck**：init_wbtest 两条 `\xff` hex-escape 锚统一 KNOWN_DIVERGENCE（clang 1 字节口径：
+  `char g[]` 定型尺寸 2 / `char w[1][2]` 恰满零警）；`errs2`→`warns2` 命名勘误（3 处 warnings
+  通道）；decl_wbtest 两处脚手架残留（`fn run` 即 ignore / `tc3` 即 ignore）删。
+- **M34b teaching/steps**：steps_wbtest 头注「锚值来源声明」——Rust 删区后锚为无 oracle 历史快照
+  + M34b 七处推断失真面零锚登记；**只标不修**（实质修复留教学真值源批）。
+- **计数连坐**：裸 971→995、native 1167→1191（+24 = verify 23 + vfs 1）；根 README×3 / moonbit
+  双 README / docs/current×3；testcount + facts `--run --strict check` 双绿。
+
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 
 - **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后

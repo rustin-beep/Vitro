@@ -228,10 +228,11 @@ test "issue105_config_set_unknown_key_fail_loud" {
     r2.contains("\"status\":\"finished\""),
     msg="batch 模式下 scanf 耗尽即 EOF 收尾（旧 waiting 死等）",
   )
-  // 未知键 fail loud
+  // 未知键 fail loud（独立新会话——未知键拒绝与会话状态无关；审阅 v2 批
+  // A2 / M28 B2：s2 原为死变量，改为真实消费）
   let s2 = @session.Session::new()
   let (r3, _) = serve_handle(
-    s, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"nosuch_key\":1}}",
+    s2, "{\"id\":1,\"method\":\"config.set\",\"params\":{\"nosuch_key\":1}}",
   )
   assert_true(
     r3.contains("\"ok\":false"),

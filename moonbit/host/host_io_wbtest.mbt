@@ -25,6 +25,13 @@ test "format_fixed_half_even_oracle_truth" {
   assert_eq(format_fixed(123456.789, 2), "123456.79")
   assert_eq(format_fixed(5.0, 2), "5.00", msg="整数补零")
   assert_eq(format_fixed(0.5, 2), "0.50", msg="左补零路径")
+  // KNOWN_DIVERGENCE（M20 A-12；探针 Win clang 22.1.4-UCRT `%.2f` NAN →
+  // "nan"）：本锚锁当前 vitro 拼法 "NaN"（Rust `{:?}` 照搬）——B 批修复翻面
+  // 目标 "nan"（大小写随转换符）；inf/-inf 双侧一致非偏差。
+  // 口径注（PR #415 审阅 P4-③）：真值取自 `NAN` 宏/常量折叠形态（符号位 0 ⇒
+  // "nan"）；若用**运行时** `0.0/0.0` 复现，x86 硬件产 NaN 符号位置 1，glibc
+  // 打 "-nan"（MSVC/UCRT 仍 "nan"）——那是 M20 D-4 的平台符号位差，不是本锚
+  // 的翻面目标，勿据此误判锚值。
   assert_eq(format_fixed(@double.not_a_number, 2), "NaN")
   assert_eq(format_fixed(@double.infinity, 2), "inf")
   assert_eq(format_fixed(@double.neg_infinity, 2), "-inf")
@@ -654,6 +661,13 @@ test "sscanf_i_x_o_conversions" {
 /// 路径与 oracle `10f64.powi` 逐位对齐——含 exp 平局（e=23）、已知偏离
 /// （e=126）、次正规（powi(-320..-323)）与 oracle 自身的泄漏形状
 /// （DBL_TRUE_MIN：powi(-324)=0 → `infe-324`，两侧照搬同形）。
+///
+/// **KNOWN_DIVERGENCE 汇总（审阅 v2 批 A2，2026-11-01；M20 A-7/A-8 +
+/// A2 探针 `D:/tmp/a2probe/g17.c`，Win clang 22.1.4-UCRT）**：下表 7 条
+/// 锚值 = 当前 vitro 行为 ≠ C 真值——锚只防回归不证正确；B 批修复
+/// （十进制精确路径 + 尾数规格化 + powi10 下溢档）时逐条翻面为 clang 值。
+/// 双形态写法：断言当前值 + 紧邻注释给 clang 真值。变异实证：锚值换
+/// clang 真值即红（1e23 抽样，183/182/1）——锚有判别力，不是恒真。
 fn gf(lit : String, prec : Int32) -> String {
   let v : Double = @string.parse_double(lit) catch { _ => 0.0 }
   format_g(v, prec, false)
@@ -662,21 +676,37 @@ fn gf(lit : String, prec : Int32) -> String {
 ///|
 test "format_g_powi_oracle_alignment" {
   // e=23 精确平局：Rust powi 取上（非 half-even）→ oracle 输出 0.9999...e+23
+  // KNOWN_DIVERGENCE：clang `%.17g` 1e23 → "9.9999999999999992e+22"
+  //（vitro 尾数 <1 违反 [1,10) 规格化、指数差 1——M20 A-7）
   assert_eq(gf("1e23", 17), "0.9999999999999998e+23")
   // e=126 已知偏离（Rust std powi 1 ulp 高——显式锁定）
+  // KNOWN_DIVERGENCE：clang `%.17g` 1e126 → "9.9999999999999992e+125"
   assert_eq(gf("1e126", 17), "0.9999999999999999e+126")
+  // KNOWN_DIVERGENCE：clang `%.17g` 1.5e126 → "1.5000000000000001e+126"
+  //（vitro 丢 15 位有效数字——M20 A-7）
   assert_eq(gf("1.5e126", 17), "1.5e+126")
-  // 大指数与 DBL_MAX
+  // 大指数与 DBL_MAX（clang 同值，非偏差）
   assert_eq(gf("1.2345678901234567e30", 17), "1.2345678901234567e+30")
   assert_eq(gf("1.7976931348623157e308", 17), "1.7976931348623157e+308")
+  // KNOWN_DIVERGENCE：clang `%.17g` 9.999999999999999e29 →
+  // "9.9999999999999988e+29"（vitro 尾数未规格化——M20 A-7）
   assert_eq(gf("9.999999999999999e29", 17), "0.9999999999999999e+30")
   assert_eq(gf("1e30", 17), "1e+30")
   // 次正规（powi(-320..-323) 非零）
+  // KNOWN_DIVERGENCE：clang `%.17g` 8.8817841970012523e-320 →
+  // "8.8818181152880891e-320"（次正规区 powi10 精度损失，两侧均非输入
+  // 字面量但值不同——A2 探针新增，报告未列）
   assert_eq(gf("8.8817841970012523e-320", 17), "8.8819169960474316e-320")
+  // KNOWN_DIVERGENCE：clang `%.17g` 2.5e-323 → "2.4703282292062327e-323"
+  //（真二进制值 5×2^-1074 的 17 位展开；vitro 给最短形态——默认精度 %g
+  // 两侧一致 "2.5e-323"，仅 %.17g 分叉——A2 探针新增，报告未列）
   assert_eq(gf("2.5e-323", 17), "2.5e-323")
   // DBL_TRUE_MIN：oracle 自身 powi(-324)=0 → inf 泄漏（照搬同形）
+  // KNOWN_DIVERGENCE：clang `%.17g` 4.9406564584124654e-324 →
+  // "4.9406564584124654e-324"；默认精度 `%g` → "4.94066e-324"（M20 A-8：
+  // powi10(-324)=0 → 除 0 → inf 粘进字符串）
   assert_eq(gf("4.9406564584124654e-324", 17), "infe-324")
-  // 默认精度出口
+  // 默认精度出口（clang 同值，非偏差）
   assert_eq(gf("1e23", 6), "1e+23")
   assert_eq(gf("1.5e126", 6), "1.5e+126")
   // %.2f 大整数路径（format_fixed，bigint 精确——不受 powi 影响）

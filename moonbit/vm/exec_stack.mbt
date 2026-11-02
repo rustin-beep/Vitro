@@ -71,6 +71,39 @@ fn VitroVM::global_var_name(self : VitroVM, offset : Int32) -> String {
 }
 
 ///|
+/// 局部变量访问观测登记（P0 观测落闸单点，#176，2026-11-02）：观测态推
+/// `last_accessed_vars`（含 `local_var_name` 双 Map 查找——#176 §5 实测
+/// js 45 / native 30 ns 每次）；run 全速态整段短路（零消费方）。十臂
+/// 调用点只换此一行，Read/Write 语义与推入时序逐字保留。
+fn VitroVM::note_local_access(
+  self : VitroVM,
+  operand : Int32,
+  kind : @memory.AccessKind,
+) -> Unit {
+  if self.observe {
+    self.last_accessed_vars.push(VariableAccess::{
+      name: self.local_var_name(operand),
+      access_type: kind,
+    })
+  }
+}
+
+///|
+/// 全局变量访问观测登记（同 `note_local_access`——global_syms 单 Map 查找）。
+fn VitroVM::note_global_access(
+  self : VitroVM,
+  operand : Int32,
+  kind : @memory.AccessKind,
+) -> Unit {
+  if self.observe {
+    self.last_accessed_vars.push(VariableAccess::{
+      name: self.global_var_name(operand),
+      access_type: kind,
+    })
+  }
+}
+
+///|
 /// 局部变量族（LoadLocal / StoreLocal / D / Q 四型 + GetFrameBase）。
 /// 地址越界文案带 opcode 名（Rust `stack.rs:50-57` 手写预检同款——
 /// 受检访存的兜底渲染在先，正常路径不会触达）。
@@ -83,11 +116,7 @@ fn VitroVM::execute_local(
 ) -> Unit {
   match op {
     LoadLocal => {
-      let var_name = self.local_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Read,
-      })
+      self.note_local_access(operand, Read)
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -102,11 +131,7 @@ fn VitroVM::execute_local(
       }
     }
     StoreLocal => {
-      let var_name = self.local_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Write,
-      })
+      self.note_local_access(operand, Write)
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -125,11 +150,7 @@ fn VitroVM::execute_local(
       // last_accessed_vars——此前 8 臂零观测，double/long long 变量的访问
       // 记录在 observe/时间旅行面静默缺失（oracle 同源缺失，Rust 已退役
       // 无对侧——单侧修）
-      let var_name = self.local_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Read,
-      })
+      self.note_local_access(operand, Read)
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -147,11 +168,7 @@ fn VitroVM::execute_local(
     }
     StoreLocalD | StoreLocalQ => {
       // 病 91 观测缺失修（同上）——写侧同推
-      let var_name = self.local_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Write,
-      })
+      self.note_local_access(operand, Write)
       if self.call_stack.length() > 0 {
         let frame = self.call_stack[self.call_stack.length() - 1]
         let addr = frame.locals_base + operand.reinterpret_as_uint()
@@ -191,11 +208,7 @@ fn VitroVM::execute_global(
   let addr = @bytecode.GLOBAL_START + operand.reinterpret_as_uint()
   match op {
     LoadGlobal => {
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Read,
-      })
+      self.note_global_access(operand, Read)
       if addr + 4U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("LoadGlobal: 地址越界", line, column)
       } else {
@@ -204,11 +217,7 @@ fn VitroVM::execute_global(
       }
     }
     StoreGlobal => {
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Write,
-      })
+      self.note_global_access(operand, Write)
       if addr + 4U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("StoreGlobal: 地址越界", line, column)
       } else {
@@ -218,11 +227,7 @@ fn VitroVM::execute_global(
     }
     LoadGlobalD | LoadGlobalQ => {
       // 病 91 观测缺失修（#71，2026-10-16）：全局 D/Q 同推观测
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Read,
-      })
+      self.note_global_access(operand, Read)
       let nm = if op is LoadGlobalD { "LoadGlobalD" } else { "LoadGlobalQ" }
       if addr + 8U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("\{nm}: 地址越界", line, column)
@@ -233,11 +238,7 @@ fn VitroVM::execute_global(
     }
     StoreGlobalD | StoreGlobalQ => {
       // 病 91 观测缺失修（同上）——写侧同推
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Write,
-      })
+      self.note_global_access(operand, Write)
       let nm = if op is StoreGlobalD { "StoreGlobalD" } else { "StoreGlobalQ" }
       if addr + 8U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("\{nm}: 地址越界", line, column)
@@ -249,11 +250,7 @@ fn VitroVM::execute_global(
     LoadGlobalByte | LoadGlobalUByte => {
       // #177：char 全局 1 字节读——i8 符号扩展 / u8 零扩展
       //（语义对齐 LoadMemByte/LoadMemUByte）
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Read,
-      })
+      self.note_global_access(operand, Read)
       let nm = if op is LoadGlobalByte {
         "LoadGlobalByte"
       } else {
@@ -268,11 +265,7 @@ fn VitroVM::execute_global(
     }
     StoreGlobalByte => {
       // #177：char 全局 1 字节写——只落低 8 位，不越权抹右侧邻居
-      let var_name = self.global_var_name(operand)
-      self.last_accessed_vars.push(VariableAccess::{
-        name: var_name,
-        access_type: Write,
-      })
+      self.note_global_access(operand, Write)
       if addr + 1U > @bytecode.MEM_SIZE || addr < @bytecode.NULL_TRAP_SIZE {
         self.trap("StoreGlobalByte: 地址越界", line, column)
       } else {

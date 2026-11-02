@@ -104,6 +104,13 @@ pub struct VitroVM {
   /// argv 指针数组起始地址（R1 ③：自 `GLOBAL_REGION_LIMIT` 向下分配）。
   mut argv_addr : UInt32
   // ── 教学观测 ──
+  /// 教学观测开关（P0 观测落闸，#176，2026-11-02）：true = 全观测
+  /// （step 态缺省——heatmap / last_accessed_vars / vis 事件队列照记）；
+  /// false = `run` 全速态落闸（三件在 run 态零消费方——消费面全在
+  /// time_travel/serve_step 的 step 态；#176 §5 亲证）。`run` 进出自管
+  /// （入口置 false、任意出口恢复 true），其余路径恒 true；不入快照、
+  /// `reset` 不碰（调用方契约，非执行状态）。
+  mut observe : Bool
   /// 可视化事件队列（环形 `VIS_EVENT_LIMIT`——超限丢最老）。
   mut vis_event_queue : Array[VisEventData]
   /// 可视化事件行登记（**会话注入配置**，快照不含——Rust `VMSnapshot`
@@ -191,6 +198,7 @@ pub fn VitroVM::new() -> VitroVM {
     current_line: 0,
     argc: 0,
     argv_addr: 0U,
+    observe: true,
     vis_event_queue: [],
     vis_event_lines: [],
     breakpoints: Set([]),

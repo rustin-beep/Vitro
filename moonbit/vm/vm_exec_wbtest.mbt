@@ -27,6 +27,22 @@ fn instr(op : @opcode.OpCode, operand : Int32) -> @opcode.Instruction {
 }
 
 ///|
+/// 逐步跑完（P0 观测落闸，#176，2026-11-02）：`run` 全速态自此不记
+/// last_accessed_vars——本文件两处「run 后断言最近访问记录」的观测内容语义
+/// 锚改走逐步形态（出口语义复刻 run：Finished → final_return_value /
+/// 其余 → 0），断言内容逐字不动。
+fn run_stepping(vm : VitroVM) -> Int32 {
+  while true {
+    match vm.step() {
+      Finished => return vm.final_return_value()
+      Ok => continue
+      Trap | Paused | WaitingInput => return 0
+    }
+  }
+  0
+}
+
+///|
 test "exec_push_add_run_returns_last" {
   let vm = VitroVM::new()
   vm.load_program(
@@ -160,7 +176,8 @@ test "exec_local_store_load_roundtrip" {
   vm.load_program(
     code_of([instr(PushConst, 99), instr(StoreLocal, 4), instr(LoadLocal, 4)]),
   )
-  let ret = vm.run()
+  // P0 落闸后观测内容锚走逐步形态（run 态不记 last_accessed_vars）
+  let ret = run_stepping(vm)
   assert_eq(ret, 99)
   // last_accessed_vars：最后一步是 LoadLocal（Read）
   assert_eq(vm.last_accessed_vars.length(), 1)
@@ -200,7 +217,8 @@ test "exec_global_byte_ops_extents_and_bounds" {
       instr(LoadGlobalByte, 1),
     ]),
   )
-  let ret = vm.run()
+  // P0 落闸后观测内容锚走逐步形态（run 态不记 last_accessed_vars）
+  let ret = run_stepping(vm)
   // 最后一步 LoadGlobalByte(0xC8) → -56（i8 符号扩展）
   assert_eq(ret, -56)
   // 写侧：g0 只写 1 字节 0x30，g1 的 0xC8 哨兵不被 4 字节写窗抹掉

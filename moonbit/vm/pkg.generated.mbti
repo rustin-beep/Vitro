@@ -191,6 +191,7 @@ pub struct VitroVM {
   mut current_line : Int32
   mut argc : Int32
   mut argv_addr : UInt32
+  mut observe : Bool
   mut vis_event_queue : Array[VisEventData]
   vis_event_lines : Array[(Int32, Int32, String)]
   breakpoints : @set.Set[Int32]

@@ -37,30 +37,35 @@ fn VitroVM::execute_debug(
         self.paused = true
       }
       self.step_event_hit = true
-      for entry in self.vis_event_lines {
-        if entry.0 == operand {
-          // #51 批②首片（2026-10-17）：ty=2（相邻交换）带运行期 extras
-          // （j/j+1/-1——swap_event_extras）；其余 ty 维持 0,0,0 冻结面
-          let (e0, e1, e2) = if entry.1 == 2 {
-            self.swap_event_extras()
-          } else {
-            (0, 0, 0)
+      // P0 观测落闸（#176，2026-11-02）：vis 事件登记 + 环形淘汰仅在观测态
+      // （run 全速态 take_vis_events 零消费方）；上方 current_line / 断点 /
+      // step_event_hit 三件是执行协议，不在落闸面。
+      if self.observe {
+        for entry in self.vis_event_lines {
+          if entry.0 == operand {
+            // #51 批②首片（2026-10-17）：ty=2（相邻交换）带运行期 extras
+            // （j/j+1/-1——swap_event_extras）；其余 ty 维持 0,0,0 冻结面
+            let (e0, e1, e2) = if entry.1 == 2 {
+              self.swap_event_extras()
+            } else {
+              (0, 0, 0)
+            }
+            self.vis_event_queue.push(VisEventData::{
+              ty: entry.1,
+              line: operand,
+              extra0: e0,
+              extra1: e1,
+              extra2: e2,
+              context: entry.2,
+            })
           }
-          self.vis_event_queue.push(VisEventData::{
-            ty: entry.1,
-            line: operand,
-            extra0: e0,
-            extra1: e1,
-            extra2: e2,
-            context: entry.2,
-          })
         }
-      }
-      // 环形丢最旧（U2#8：超上限 drain 头部 overflow 条）
-      let overflow = self.vis_event_queue.length() - VIS_EVENT_LIMIT
-      if overflow > 0 {
-        for k = 0; k < overflow; k = k + 1 {
-          ignore(self.vis_event_queue.remove(0))
+        // 环形丢最旧（U2#8：超上限 drain 头部 overflow 条）
+        let overflow = self.vis_event_queue.length() - VIS_EVENT_LIMIT
+        if overflow > 0 {
+          for k = 0; k < overflow; k = k + 1 {
+            ignore(self.vis_event_queue.remove(0))
+          }
         }
       }
       if self.paused {

@@ -61,18 +61,23 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
   }
   let inst = self.code[self.ip]
   self.ip = self.ip + 1
-  // 热力图：只统计用户主文件（file_id == 0）的行号，避免 Bytecode Libc
-  // 行号混入导致覆盖率超 100%（Rust 同口径；MoonBit 直更可变 Map——
-  // 无 Arc COW 克隆点，快照时整表拷贝）
-  if inst.loc.line > 0 && inst.loc.file_id == 0 {
-    let cur = match self.heatmap.get(inst.loc.line) {
-      Some(v) => v
-      None => 0UL
+  // P0 观测落闸（#176，2026-11-02）：`observe` 为 false（run 全速态）则
+  // 短路热力图与变量访问记录——两件在 run 态零消费方；step 态恒 true，
+  // 下方逻辑逐字保留。
+  if self.observe {
+    // 热力图：只统计用户主文件（file_id == 0）的行号，避免 Bytecode Libc
+    // 行号混入导致覆盖率超 100%（Rust 同口径；MoonBit 直更可变 Map——
+    // 无 Arc COW 克隆点，快照时整表拷贝）
+    if inst.loc.line > 0 && inst.loc.file_id == 0 {
+      let cur = match self.heatmap.get(inst.loc.line) {
+        Some(v) => v
+        None => 0UL
+      }
+      self.heatmap.set(inst.loc.line, cur + 1UL)
     }
-    self.heatmap.set(inst.loc.line, cur + 1UL)
+    // 清空上一步的变量访问记录（瞬时观测）
+    self.last_accessed_vars.clear()
   }
-  // 清空上一步的变量访问记录（瞬时观测）
-  self.last_accessed_vars.clear()
   let r = self.dispatch_single(
     inst.op,
     inst.operand,
@@ -88,7 +93,23 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
 
 ///|
 /// 完整运行（Rust `run` 砍 JIT fast path；宿主域内聚故无 session 参数）。
+///
+/// **P0 观测落闸**（#176，2026-11-02）：全速态入口置 `observe = false`
+/// ——heatmap / last_accessed_vars / StepEvent vis 事件队列三件在此态
+/// 零消费方（run 出口八字段不含三件；消费面全在 step 态 engine/collector）
+/// ——任意出口恢复 true（`run_loop` 单出口包裹，Finished/Trap/Paused/
+/// WaitingInput 四形态无遗漏）。断点暂停 / current_line / 步数预算 /
+/// 无限循环快照诊断不在落闸面——run 态 trap 文案与 Paused 协议原样。
 pub fn VitroVM::run(self : VitroVM) -> Int32 {
+  self.observe = false
+  let rc = self.run_loop()
+  self.observe = true
+  rc
+}
+
+///|
+/// `run` 的步进循环本体（出口语义不变——拆出仅为 `observe` 进出单点包裹）。
+fn VitroVM::run_loop(self : VitroVM) -> Int32 {
   while true {
     let result = self.step()
     match result {

@@ -79,9 +79,12 @@ pub fn parse_run_args(args : Array[String]) -> RunArgs {
       i += 1
       match parse_int(args[i]) {
         Some(v) =>
-          if v < 1 || v > 2147483647 {
+          // 只判下界：上界由 parse_int 的 Int32 溢出预检承担（#133，超顶即 None
+          // 走「需要整数」臂）——旧 `|| v > 2147483647` 恒假、文案「1..=2147483647」
+          // 把不可达上界说成域检面（PR #450 审阅 P3-1 存量同形，随 cli_step 连坐）
+          if v < 1 {
             unknown_flag = Some(
-              "--max-steps 值 '\{args[i]}' 超范围（1..=2147483647——更大负载用 serve/api 的 config.set preset:algo）",
+              "--max-steps 须 ≥ 1，得到 '\{args[i]}'（上限 2147483647 由整数域钳制；更大负载用 serve/api 的 config.set preset:algo）",
             )
             break
           } else {

@@ -3,8 +3,8 @@
 //
 // 真值 = 本闸自跑 `moon test` 解析 Total tests（facts 制品只作参考打印，
 // 不参与判定——v1 的「复述」缺陷来源）。v3（2026-10-26）：双口径实跑——
-// 裸口径（`moon test`）+ native 全量口径（`MOON_CC=clang moon test
-// --target native`，纪律 11）各自对账两 README 的声明行；README 计数行
+// 裸口径（`moon test`）+ native 全量口径（`MOON_CC=<clang|clang-cl> moon test
+// --target native`——Windows 须 clang-cl，裸 clang 被 moon 忽略回落 MSVC：纪律 11 + moonbit/AGENTS.md 陷阱 43，runMoonTest 按平台分叉）各自对账两 README 的声明行；README 计数行
 // 已是「裸数 + facts 键标注」形态（#308——巨型批注链/分解式退场），分解
 // 式算术自洽检查随之条件化：锚行在则查（旧形态兼容）、不在则跳过；
 // native 全量声明行两形态都有，保留强约束（唯一 + 对实跑真值）。

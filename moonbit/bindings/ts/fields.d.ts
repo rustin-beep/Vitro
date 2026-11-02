@@ -3,6 +3,14 @@
 
 export declare const SCHEMA_VERSION: "0.1";
 
+export declare const PointerStatus: {
+  readonly Valid: "Valid";
+  readonly Freed: "Freed";
+  readonly Null: "Null";
+  readonly Dangling: "Dangling";
+};
+export type PointerStatus = "Valid" | "Freed" | "Null" | "Dangling";
+
 export declare const ENUMS: {
   readonly PointerStatus: readonly ["Valid", "Freed", "Null", "Dangling"];
 };

@@ -233,9 +233,21 @@ vitro_engine_fs_create_dir_ffi(vitro_engine_fs_os_string_t path) {
 // 改动 ④ (B3 批): read_dir 单遍历——边遍历边收进倍增缓冲, 遍历结束后按
 // 实测条目数一次性拷入定长 ref_array。旧两遍历 (先计数再填充) 在两遍之间
 // 目录变化即 TOCTOU: 收缩 → 尾部 NULL 槽; 增长 → 越界写。
-// 缓冲元素是已分配的 MoonBit 对象指针, 分配失败路径须释放已建条目 (与
-// ref_array 持有语义对称——未进 array 的对象无人回收)。
+// 缓冲元素是已分配的 MoonBit 对象指针 (moonbit_make_string/bytes 新对象 RC=1),
+// 成功路径逐条**移动**进 ref_array (不 incref); 分配失败路径须对已建条目逐条
+// moonbit_decref 再 free 缓冲本体——否则未进 array 的对象无人回收 (PR #450 审阅
+// P3-3: 初版注释写了该义务而代码只 free(items), 本版兑现)。
 #define VITRO_ENGINE_FS_READ_DIR_INITIAL_CAP 16
+
+// read_dir 失败路径的缓冲清理: 已建 MoonBit 对象逐条 decref (RC=1 → 0 释放) 后
+// free 缓冲本体。两平台分支共用 (元素类型 moonbit_string_t / moonbit_bytes_t 均为
+// 对象指针, 以 void* 接)。
+static void vitro_engine_fs_read_dir_drop_items(void **items, int count) {
+  for (int i = 0; i < count; i++) {
+    moonbit_decref(items[i]);
+  }
+  free(items);
+}
 
 MOONBIT_FFI_EXPORT vitro_engine_fs_os_string_t *
 vitro_engine_fs_read_dir_ffi(vitro_engine_fs_os_string_t path) {
@@ -279,7 +291,7 @@ vitro_engine_fs_read_dir_ffi(vitro_engine_fs_os_string_t path) {
         moonbit_string_t *grown = (moonbit_string_t *)realloc(
             items, new_cap * sizeof(moonbit_string_t));
         if (grown == NULL) {
-          free(items);
+          vitro_engine_fs_read_dir_drop_items((void **)items, count);
           FindClose(dir);
           return NULL;
         }
@@ -297,7 +309,7 @@ vitro_engine_fs_read_dir_ffi(vitro_engine_fs_os_string_t path) {
 
   result = (moonbit_string_t *)moonbit_make_ref_array(count, NULL);
   if (result == NULL) {
-    free(items);
+    vitro_engine_fs_read_dir_drop_items((void **)items, count);
     return NULL;
   }
   for (int i = 0; i < count; i++) {
@@ -338,7 +350,7 @@ vitro_engine_fs_read_dir_ffi(vitro_engine_fs_os_string_t path) {
       moonbit_bytes_t *grown =
           (moonbit_bytes_t *)realloc(items, new_cap * sizeof(moonbit_bytes_t));
       if (grown == NULL) {
-        free(items);
+        vitro_engine_fs_read_dir_drop_items((void **)items, count);
         closedir(dir);
         return NULL;
       }
@@ -356,7 +368,7 @@ vitro_engine_fs_read_dir_ffi(vitro_engine_fs_os_string_t path) {
   // create moonbit_ref_array sized by the actual count, then move items in
   result = (moonbit_bytes_t *)moonbit_make_ref_array(count, NULL);
   if (result == NULL) {
-    free(items);
+    vitro_engine_fs_read_dir_drop_items((void **)items, count);
     return NULL;
   }
   for (int i = 0; i < count; i++) {

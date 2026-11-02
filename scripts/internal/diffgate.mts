@@ -182,8 +182,10 @@ export const DEFAULT_SOURCES_POLICY: "strict" | "presence" = "strict";
 
 /** `moon -C moonbit run --target native <sub> -- <args…>` */
 export function moonDump(root: string, sub: string, args: string[], fail: Fail): void {
-  // MOON_CC=clang（AGENTS §11）：Windows 上 moon 探测默认绑 MSVC 撞 moon#2254
-  // 冷态构建悬崖（链闭包 exe ~130s 级）——2026-11-01 审阅 v2 S05-C3 补（原全族 0 处）
+  // MOON_CC（AGENTS §11）：Windows 上 moon 探测默认绑 MSVC 撞 moon#2254
+  // 冷态构建悬崖（链闭包 exe ~130s 级）——2026-11-01 审阅 v2 S05-C3 补（原全族 0 处）。
+  // B3 审阅 P2-2：moon run 的 Windows native 直连目标同样忽略裸 clang（陷阱 43
+  // 实测同款警告），须 cl 兼容驱动 clang-cl；非 Windows 沿用 clang。
   // timeout（S05-C8 同批）：moon run 挂死时本地闸不再无限等待（codegen 600s /
   // vm 120s 均已有，此处对齐 codegen 档——dump 面同族）；CI 另有 job 级超时兜底
   const r = spawnSync("moon", ["-C", "moonbit", "run", "--target", "native", sub, "--", ...args], {
@@ -191,7 +193,7 @@ export function moonDump(root: string, sub: string, args: string[], fail: Fail):
     encoding: "utf8",
     timeout: 600_000,
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, MOON_CC: "clang" },
+    env: { ...process.env, MOON_CC: process.platform === "win32" ? "clang-cl" : "clang" },
   });
   if (r.status !== 0) {
     fail(`moon run ${sub} 执行失败: exit ${r.status}\n${(r.stdout ?? "") + (r.stderr ?? "")}`);

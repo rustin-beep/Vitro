@@ -511,7 +511,7 @@ test "m35_a2_step_rc3_step_limit_文案匹配" {
     channel=step_trap_channel("[divide-zero] 整数除以零"),
   )
   assert_eq(rc2, 2, msg="非 step-limit trap 仍 rc=2")
-  // ③ M35 A2 红→绿：--max-steps 域检对齐 run 的 1..=2147483647——修前
+  // ③ M35 A2 红→绿：--max-steps 下界域检对齐 run（上界由 parse_int Int32 预检承担——PR #450 审阅 P3-1 勘正）——修前
   // `0` 无下界检查、下发 config.set 被 gateway #94 钳成 1 静默按 1 步跑
   //（fake_channel 下 finished → rc=0）；修后 rc=4 用法错（run 同参数同码）
   assert_eq(

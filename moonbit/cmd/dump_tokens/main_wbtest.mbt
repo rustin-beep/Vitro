@@ -64,3 +64,23 @@ test "basename_no_ext 两段式：裸名与带目录同果（去扩展名）" {
   inspect(basename_no_ext("x/Makefile"), content="Makefile")
   inspect(basename_no_ext("x/.hidden"), content=".hidden")
 }
+
+///|
+/// PR #450 审阅 P2-3 锚：out==target 门禁的归一比较——同义路径（./ 前缀、尾分隔符、
+/// 重复分隔符、.. 折返、反斜杠）必须判等；相对上溯（栈空 ..）保留不吞。旧裸字符串
+/// 相等形态下 `dump_ast corpus ./corpus` rc=0 且产物写进语料目录（审阅实测）。
+test "norm_path 同义路径归一（out==target 门禁不裸比）" {
+  inspect(norm_path("corpus"), content="corpus")
+  inspect(norm_path("./corpus"), content="corpus")
+  inspect(norm_path("corpus/"), content="corpus")
+  inspect(norm_path("corpus//"), content="corpus")
+  inspect(norm_path("a/../corpus"), content="corpus")
+  inspect(norm_path(".\\corpus\\"), content="corpus")
+  inspect(norm_path("sub/corpus"), content="sub/corpus")
+  inspect(norm_path("../out"), content="../out")
+  inspect(norm_path("../../out"), content="../../out")
+  inspect(norm_path("a/../../out"), content="../out")
+  // 门禁判据：两侧归一后相等即拒
+  assert_true(norm_path("corpus") == norm_path("./corpus/"))
+  assert_true(norm_path("corpus") != norm_path("corpus_out"))
+}

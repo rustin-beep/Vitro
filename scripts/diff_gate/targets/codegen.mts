@@ -307,11 +307,13 @@ let lastSlotSeen = new Map<number, number>();
 let lastVerifyErrors: string[] = [];
 
 function spawnMoon(ctx: GateContext, fail: Fail): void {
-  // MOON_CC=clang（AGENTS §11，moon#2254 冷态悬崖）——2026-11-01 审阅 v2 S05-C3 补
+  // MOON_CC（AGENTS §11，moon#2254 冷态悬崖）——2026-11-01 审阅 v2 S05-C3 补；
+  // B3 审阅 P2-2：moon run 的 Windows native 直连目标忽略裸 clang（陷阱 43），
+  // 平台分叉——win32 须 cl 兼容驱动 clang-cl，非 Windows 沿用 clang。
   const r = spawnSync(
     "moon",
     ["-C", "moonbit", "run", "--target", "native", DUMP_SUB, "--", ctx.corpus, ctx.workDir],
-    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, MOON_CC: "clang" } },
+    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, MOON_CC: process.platform === "win32" ? "clang-cl" : "clang" } },
   );
   if (r.status !== 0) fail(`moon run ${DUMP_SUB} 执行失败: exit ${String(r.status)}\n${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }

@@ -38,13 +38,15 @@ pub fn step(
       // 「禁止静默 default」纪律——对齐 Rust unified 的 eprintln+exit）
       match parse_int(args[i]) {
         Some(v) =>
-          // B3 批（M35 A2）：域检对齐 run 的 1..=2147483647——旧形态无下界，
-          // `--max-steps 0` 下发 config.set 后被 gateway #94 低下界钳成 1、
-          // 钳制回包被 ignore 吞，静默按 1 步跑（run 同参数 rc=4 拒绝——同参
-          // 数两子命令行为分叉）
-          if v < 1 || v > 2147483647 {
+          // B3 批（M35 A2）：下界域检对齐 run——旧形态无下界，`--max-steps 0`
+          // 下发 config.set 后被 gateway #94 低下界钳成 1、钳制回包被 ignore 吞，
+          // 静默按 1 步跑（run 同参数 rc=4 拒绝——同参数两子命令行为分叉）。
+          // 上界由 parse_int 的 Int32 溢出预检承担（#133：超 2147483647 直接
+          // None 走「需要整数」臂）——此处只判下界，不写不可达的 `v > 2147483647`
+          //（PR #450 审阅 P3-1：旧写法把「1..=2147483647」说成域检面，实为夸大）。
+          if v < 1 {
             say(
-              "用法错: --max-steps 值 '\{args[i]}' 超范围（1..=2147483647——更大负载用 serve/api 的 config.set preset:algo）",
+              "用法错: --max-steps 须 ≥ 1，得到 '\{args[i]}'（上限 2147483647 由整数域钳制；更大负载用 serve/api 的 config.set preset:algo）",
             )
             return 4
           } else {

@@ -7,8 +7,9 @@
 // 运行（本目录）：
 //   moon run cmd/pipeline                   # 默认 wasm 目标（moonrun）
 //   moon run --target js cmd/pipeline       # node
-//   MOON_CC=clang moon run --target native cmd/pipeline   # Windows 下 native 直连目标
-//                                           # 须 MOON_CC=clang-cl（见 README「目标面」）
+//   MOON_CC=clang-cl moon run --target native cmd/pipeline   # Windows（下游独立项目=MSVC 直连
+//                                              # 目标，裸 clang 被 moon 忽略——README「目标面」）
+//   MOON_CC=clang moon run --target native cmd/pipeline      # Linux/macOS
 // 三目标输出逐字一致（R3 实测 + B3 复验）。
 
 ///|

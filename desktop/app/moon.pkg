@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/json",
+  "moonbit-community/proton",
+  "moonbit-community/proton_contract",
+  "vitro/engine/teaching/content_data",
+  "vitro/engine/gateway",
+  "vitro/engine/util",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

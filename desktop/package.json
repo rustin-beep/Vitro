@@ -1,0 +1,17 @@
+{
+  "name": "vitro-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vitro 桌面壳（proton 捉虫/测试）探针工具面——tools/*.mts node 直跑（type stripping），tsc 严档 + oxlint 为闸；非发包面",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint tools/cdp_probe.mts tools/find_cdp.mts tools/cdp_catch.mts tools/smoke.mts",
+    "check:all": "npm run check && npm run lint"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.9",
+    "oxlint": "1.88.0",
+    "typescript": "^5.9.3"
+  }
+}

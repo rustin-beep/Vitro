@@ -1,0 +1,6 @@
+
+# 构建产物与依赖（独立 module 本地解析——不回写、不入库）
+.mooncakes/
+_build/
+dist/
+node_modules/

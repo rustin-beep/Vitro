@@ -1642,6 +1642,144 @@ jobs:
           node --test demo/tests/pure.test.mts
         shell: bash
 
+  # ── desktop（proton 捉虫壳，P 线前进拍板 2026-11-02）──────────────────
+  # 定位：独立下游 module（desktop/，与 demo/ 并列），`import vitro/engine@pin`
+  # 消费 **mooncakes 已发布包**——非发包面、不在 moonbit/moon.work 成员里、
+  # 引擎 publish 流程零涉及（零污染语义与依赖方向见 desktop/README.md）。
+  # 本 job 红的含义 = 已发布 vitro/engine@pin 在下游独立 module 装不上/
+  # 解析不过（0.9.0 core/abort 断供事故的事前哨兵形态——该事故当时零 CI
+  # 信号，靠下游报告才知）。不 needs 任何上游 job：不消费本仓产物。
+  # 本批 check-only（类型面 + fmt + 探针 TS 面，零 CEF 依赖、分钟级）；CEF
+  # 真窗口 CDP smoke 另批加（带 actions/cache 存 ~/.proton 164MB）。
+  desktop:
+    name: Desktop shell gates (check / build / CEF CDP smoke)
+    # 全量批（2026-11-02 PR #417 CI 绿后升格，用户拍板「上全量测试防线」）：
+    # check-only 轻形态退役。smoke 需要 demo 的构建期资产（wasm.wasm/langpack
+    # ——vite 模块图静态资产，缺失即 dev/build 红，与 demo job 同款 fail loud
+    # cp），故 needs build-artifacts（此前「不消费本仓产物」的注记随之作废）。
+    # timeout：CEF 下载在坏网络可长停滞（PR #417 审阅 P3）——25min 硬顶防挂死。
+    needs: build-artifacts
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain
+        uses: ./.github/actions/setup-moonbit
+      - name: Install Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      # ── mooncakes 零自拉（CI 离线化，2026-11-03 拍板：下载只允许发版彩排
+      #    两次 + 依赖 pin 变化时人工预热）——自家 CI 每轮全量拉 13 包
+      #    （vitro/engine@pin + proton 族）会机械刷高 mooncakes 下载量
+      #    （riantr 同款机制形态，用户上站实证计数上涨）。机制依据（moon
+      #    源码 crates/mooncake/src/registry/client.rs）：registry cache zip
+      #    命中走 Using cached 分支零网络，miss 才 Downloading。三层缓存：
+      #    registry/cache（zip 层——零 GET 的关键）+ registry/index（moon
+      #    update 索引增量）+ cache/deps（sources 展开层）。key 锚
+      #    desktop/moon.mod（依赖 pin 变=换 key）+ proton_cli 版本字面。
+      #    save-always：miss 预热轮回填后 post 也保存（否则「miss 即红」与
+      #    post save 的 success() 门互锁成死循环）。
+      - name: mooncakes package cache (zero self-pull)
+        id: moonpkgs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.moon\registry\cache
+            ~\.moon\registry\index
+            ~\.moon\cache\deps
+          key: moon-pkgs-v1-${{ hashFiles('desktop/moon.mod') }}-pc0.6.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-products
+          path: moonbit/_build
+      # ── demo 构建期资产（与 demo job 两 cp 同款——engine.worker 模块图的
+      #    vite 静态资产；桌面 IPC 通道不消费 wasm，但模块图在即资产必须在）──
+      - name: demo wasm asset in place (build-time asset)
+        shell: bash
+        run: cp moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm demo/wasm.wasm
+      - name: demo langpack asset (build artifact → cp)
+        shell: bash
+        run: |
+          mkdir -p demo/teaching/langpack
+          cp moonbit/_build/js/release/build/teaching/langpack/langpack.js demo/teaching/langpack/langpack.js
+      # moon update 刷注册表索引后按 moon.mod pin 拉 vitro/engine + proton 族；
+      # check 不编 C stub、不碰 CEF runtime——P 线实测 ~2s（91 任务）。
+      - name: desktop moon check (native; vitro/engine@pin from mooncakes)
+        shell: bash
+        run: |
+          cd desktop
+          moon update
+          moon check --target native --diagnostic-limit 80 2>&1 | tee /tmp/moon_pull_check.log
+      # hygiene job 的 moon fmt --check 只扫 moonbit/——独立 module 自带一道
+      - name: desktop moon fmt --check
+        shell: bash
+        run: cd desktop && moon fmt --check
+      - name: desktop probe TS gates (tsc strict + oxlint)
+        shell: bash
+        run: cd desktop && npm ci && npm run check:all
+      # ── 全量段：CEF 真窗口 CDP smoke（P 线四形态/捉虫/端到端的 CI 化）──
+      - name: Install proton_cli (mooncakes 0.6.0)
+        shell: bash
+        run: moon install moonbit-community/proton_cli@0.6.0 2>&1 | tee /tmp/moon_pull_install.log
+      # CEF runtime store 缓存（869MB 解压物——key 双锚 proton 版本 + CEF
+      # 版本号；失配重下属正确行为。helper 不缓存：14s 原生构建且随 pin 变）
+      - name: CEF runtime store cache
+        uses: actions/cache@v4
+        with:
+          path: ~\.proton\store
+          key: proton-store-win32-x64-0.6.0-cef-150.0.19
+      - name: cef setup (download + assemble on cache miss)
+        shell: bash
+        run: cd desktop && proton_cli cef setup 2>&1 | tee /tmp/moon_pull_cef.log
+      - name: demo deps (vite dev server)
+        shell: bash
+        run: cd demo && npm ci
+      # algorithms.js 是 gitignored 生成物（.gitignore:185），vite 的
+      # demoGlobals 插件构建期 readFileSync 硬依赖——本地盘上有产物故
+      # dev 绿，CI 全新 checkout 缺席即 ENOENT（二轮红根因）。与 demo job
+      # 的发射步同款；生成器内部 ensureFresh 自跑 vitro_js 构建（#36 三真值
+      # 源机判），moon 工具链本 job 已装。
+      - name: demo algorithms data emit (generator assertions = gate)
+        shell: bash
+        run: node scripts/gen_demo_algorithms/main.mts
+      - name: desktop release build (proton + vitro/engine in-process)
+        shell: bash
+        run: cd desktop && proton_cli build -- --release 2>&1 | tee /tmp/moon_pull_build.log
+      # 断言集：CDP 就绪 / transport=ipc / demo 完整采集（golden ✓ 42 帧
+      # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3——tools/smoke.mts 头注。
+      # 基线数字漂移（帧数/版本）须连坐更新 smoke.mts 断言与 README 基线表。
+      - name: CDP smoke (real CEF window, pinned port)
+        shell: bash
+        run: cd desktop && node tools/smoke.mts 9335
+      # ── 零自拉断言（fail loud）：缓存命中轮全程不得出现 Downloading
+      #    （zip GET=mooncakes 计数入账动作）。miss 轮=预热显形（warning +
+      #    回填，post save 后下轮起严格）——绝不静默重下；驱逐/换 pin 同
+      #    形态回落一轮预热。
+      - name: zero self-pull assertion (cache hit => 0 Downloading)
+        if: always()
+        shell: bash
+        run: |
+          pulls=$(cat /tmp/moon_pull_*.log 2>/dev/null | grep -c "Downloading" || true)
+          if [ "${{ steps.moonpkgs.outputs.cache-hit }}" = "true" ]; then
+            if [ "$pulls" != "0" ]; then
+              echo "::error::缓存命中却发生 ${pulls} 次 mooncakes 拉取（缓存驱逐/缺包）——本轮回填已保存，重跑即绿；持续红=依赖 pin 变化，按需人工预热（拍板口径：下载只允许彩排两次）"
+              exit 1
+            fi
+            echo "零自拉 ✓ 缓存命中且全程 0 次 Downloading（mooncakes 计数不动）"
+          else
+            echo "::warning::预热跑——本轮自 mooncakes 拉取回填缓存（${pulls} 次 Downloading），save-always 保存后下轮起零自拉"
+          fi
+      # 兜底清树（CEF 子进程模型：dev 树收不净的残余同名进程）。
+      # MSYS_NO_PATHCONV=1：/IM 是 taskkill 旗标非路径——Git Bash 的 MSYS
+      # 路径转换会把它吃成盘符路径（二轮 cleanup 红 rc=1 根因）。
+      - name: cleanup stray processes
+        if: always()
+        shell: bash
+        run: |
+          export MSYS_NO_PATHCONV=1
+          taskkill /IM app.exe /IM cef_process.exe /IM proton_cli.exe /F 2>/dev/null || true
+
   # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
   # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）
   # 在三个编译后端下执行、stdout 逐字节对拍：
@@ -1841,7 +1979,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime]
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime, desktop]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1859,6 +1997,7 @@ jobs:
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
           RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
           ARM4_WASMTIME: ${{ needs.arm4-wasmtime.result }}
+          DESKTOP: ${{ needs.desktop.result }}
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
@@ -1872,6 +2011,7 @@ jobs:
             "cli-smoke-linux:$CLI_SMOKE_LINUX"
             "release-preflight:$RELEASE_PREFLIGHT"
             "arm4-wasmtime:$ARM4_WASMTIME"
+            "desktop:$DESKTOP"
           )
           bad=0
           for pair in "${pairs[@]}"; do

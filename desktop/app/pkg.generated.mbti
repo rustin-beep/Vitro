@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/desktop/app"
+
+import {
+  "moonbit-community/proton/command",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn register_engine_commands(@command.CommandRegistrar) -> Unit raise
+
+// Errors
+type EngineError derive(@debug.Debug)
+pub fn EngineError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+type CollectRequest derive(ToJson, @json.FromJson)
+pub fn CollectRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CollectRequest::to_json(Self) -> Json
+
+type CompileFile derive(ToJson, @json.FromJson)
+pub fn CompileFile::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn CompileFile::to_json(Self) -> Json
+
+type FeedRequest derive(ToJson, @json.FromJson)
+pub fn FeedRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn FeedRequest::to_json(Self) -> Json
+
+type InvokeRequest derive(ToJson, @json.FromJson)
+pub fn InvokeRequest::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn InvokeRequest::to_json(Self) -> Json
+
+type VersionsReply derive(ToJson, @json.FromJson)
+pub fn VersionsReply::from_json(Json, @json.JsonPath) -> Self raise @json.JsonDecodeError
+pub fn VersionsReply::to_json(Self) -> Json
+
+// Type aliases
+
+// Traits

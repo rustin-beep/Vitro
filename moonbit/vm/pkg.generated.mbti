@@ -116,7 +116,7 @@ pub(all) struct VMSnapshot {
   argv_addr : UInt32
   vis_event_queue : Array[VisEventData]
   breakpoints : Array[Int32]
-  heatmap : Map[Int32, UInt64]
+  heatmap : FixedArray[UInt64]
   snapshot_vars : Map[String, UInt64]
   last_snapshot_step : Int32
   output : @host.OutputLog
@@ -196,7 +196,8 @@ pub struct VitroVM {
   vis_event_lines : Array[(Int32, Int32, String)]
   breakpoints : @set.Set[Int32]
   last_accessed_vars : Array[VariableAccess]
-  heatmap : Map[Int32, UInt64]
+  mut heatmap : FixedArray[UInt64]
+  vis_events_by_line : Map[Int32, Array[(Int32, String)]]
   snapshot_vars : Map[String, UInt64]
   mut last_snapshot_step : Int32
   mut output : @host.OutputLog

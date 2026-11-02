@@ -40,7 +40,8 @@ test "snapshot_restore_roundtrip_all_state" {
   })
   vm.breakpoints.add(5)
   vm.breakpoints.add(2)
-  vm.heatmap.set(3, 17UL)
+  vm.ensure_heat(3)
+  vm.heatmap[3] = 17UL
   vm.snapshot_vars.set("i", 4UL)
   vm.last_snapshot_step = 40
   vm.waiting_input = true
@@ -68,7 +69,7 @@ test "snapshot_restore_roundtrip_all_state" {
   vm.call_stack.clear()
   vm.step_count = 1000
   vm.error = ""
-  vm.heatmap.set(3, 999UL)
+  vm.heatmap[3] = 999UL
   vm.breakpoints.clear()
   vm.exec_mode = Running
   vm.exception_ref = None
@@ -98,7 +99,7 @@ test "snapshot_restore_roundtrip_all_state" {
   assert_eq(vm.argv_addr, 0xFF00U)
   assert_eq(vm.vis_event_queue.length(), 1)
   assert_eq(vm.vis_event_queue[0].context, "compare")
-  assert_eq(vm.heatmap.get(3), Some(17UL))
+  assert_eq(vm.heatmap_count_at(3), 17UL)
   assert_eq(vm.snapshot_vars.get("i"), Some(4UL))
   assert_eq(vm.last_snapshot_step, 40)
   assert_true(vm.waiting_input)

@@ -41,26 +41,34 @@ fn VitroVM::execute_debug(
       // （run 全速态 take_vis_events 零消费方）；上方 current_line / 断点 /
       // step_event_hit 三件是执行协议，不在落闸面。
       if self.observe {
-        for entry in self.vis_event_lines {
-          if entry.0 == operand {
-            // #51 批②首片（2026-10-17）：ty=2（相邻交换）带运行期 extras
-            // （j/j+1/-1——swap_event_extras）；其余 ty 维持 0,0,0 冻结面
-            let (e0, e1, e2) = if entry.1 == 2 {
-              self.swap_event_extras()
-            } else {
-              (0, 0, 0)
+        // P0b-2（#176 §4-2/§6-P0b）：按行号索引 O(1) 命中——原线性扫
+        // vis_event_lines（观测全开 js +154% 的主导项之一）；同命中多条
+        // 按登记序入队（rebuild_vis_index 保序——与线性扫逐字节等价，
+        // 锚 p0b_vis_lines_index_multi_entry_order）。
+        match self.vis_events_by_line.get(operand) {
+          Some(list) =>
+            for pair in list {
+              // #51 批②首片（2026-10-17）：ty=2（相邻交换）带运行期 extras
+              // （j/j+1/-1——swap_event_extras）；其余 ty 维持 0,0,0 冻结面
+              let (e0, e1, e2) = if pair.0 == 2 {
+                self.swap_event_extras()
+              } else {
+                (0, 0, 0)
+              }
+              self.vis_event_queue.push(VisEventData::{
+                ty: pair.0,
+                line: operand,
+                extra0: e0,
+                extra1: e1,
+                extra2: e2,
+                context: pair.1,
+              })
             }
-            self.vis_event_queue.push(VisEventData::{
-              ty: entry.1,
-              line: operand,
-              extra0: e0,
-              extra1: e1,
-              extra2: e2,
-              context: entry.2,
-            })
-          }
+          None => ()
         }
-        // 环形丢最旧（U2#8：超上限 drain 头部 overflow 条）
+        // 环形丢最旧（U2#8：超上限 drain 头部 overflow 条；P0 落闸后 run
+        // 态不入队、step 态每帧 take 清空——溢出路径实际不可达，保留环形
+        // 语义作防御）
         let overflow = self.vis_event_queue.length() - VIS_EVENT_LIMIT
         if overflow > 0 {
           for k = 0; k < overflow; k = k + 1 {

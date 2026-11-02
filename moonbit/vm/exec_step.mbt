@@ -66,14 +66,12 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
   // 下方逻辑逐字保留。
   if self.observe {
     // 热力图：只统计用户主文件（file_id == 0）的行号，避免 Bytecode Libc
-    // 行号混入导致覆盖率超 100%（Rust 同口径；MoonBit 直更可变 Map——
-    // 无 Arc COW 克隆点，快照时整表拷贝）
+    // 行号混入导致覆盖率超 100%（Rust 同口径）。P0b-1：定长数组自增免
+    // 哈希（#176 micro：native 37.8→0.67ns / wasm-gc 11.5→2.2ns），
+    // 惰性扩容见 ensure_heat；快照时整组深拷贝
     if inst.loc.line > 0 && inst.loc.file_id == 0 {
-      let cur = match self.heatmap.get(inst.loc.line) {
-        Some(v) => v
-        None => 0UL
-      }
-      self.heatmap.set(inst.loc.line, cur + 1UL)
+      self.ensure_heat(inst.loc.line)
+      self.heatmap[inst.loc.line] = self.heatmap[inst.loc.line] + 1UL
     }
     // 清空上一步的变量访问记录（瞬时观测）
     self.last_accessed_vars.clear()

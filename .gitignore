@@ -152,6 +152,8 @@ moonbit/.mooncakes/
 scripts/**/_build/
 moonbit/target/
 moonbit/.repos/
+# W4 第四臂 wasmtime 跑器（Rust crate）的 cargo 产物——Cargo.lock 入库锁版本，target/ 不入
+scripts/wasmtime_arm/rs/target/
 
 # fs 包测试临时目录（vendored 批 2026-09-28）：黑盒无 pub remove 自清能力（收窄），
 # 白盒断言中途失败也会留残骸——统一忽略任意包目录下的 tmp_vitro_fs_*

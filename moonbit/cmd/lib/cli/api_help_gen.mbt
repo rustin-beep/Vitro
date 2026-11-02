@@ -2,7 +2,9 @@
 // #67 api help 离线可发现性出口：方法清单/形状权威源 = gateway dispatch
 // + serve_param_err（#68 expected 字段），简介/示例 = scripts/gen_api_help/rules。
 // 本文件只承载预渲染文本（渲染单源在生成器）；消费面 = cmd/lib/cli
-// 的 api help 子命令（wasm 臂同数据走 scripts/vitro_cli/api_help.json）。
+// 的 api help 子命令（三臂壳全 MoonBit 单源同数据；三臂同形由
+// scripts/vitro_cli_smoke 多臂对拍锁。审阅 v2 S07 P2-1 勘正：原注指向
+// 已删的 scripts/vitro_cli/api_help.json——e92fe728 三臂壳全 MoonBit 批）。
 
 ///|
 /// 全方法清单文本（api help 无参时打印）。

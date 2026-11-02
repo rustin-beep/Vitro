@@ -77,17 +77,38 @@ function baselineSeeds(): Array<{ suite: string; name: string; path: string; abs
     .map((n) => ({ suite: "baseline", name: n, path: path.join(rel, n), absPath: path.join(abs, n) }));
 }
 
-test("生成保真：planVariants 重算的变体与 Go 金样本逐字节相同（21 个）", () => {
+test("生成保真：planVariants 重算的变体与 Go 金样本逐字节相同（24 个）", () => {
   const plan = planVariants(rules(), baselineSeeds());
   const byName = new Map(plan.map((v) => [v.filename, v.bytes]));
   const goldenDir = path.join(ROOT, FIX, "variants");
   const files = fs.readdirSync(goldenDir).filter((n) => n.endsWith(".c"));
-  assert.equal(files.length, 21, "金样本集规模（Go -freeze 实跑产物）");
+  // 24 = 21（Go -freeze 实跑产物）+ 003-005（S04-F1 批 2026-11 扩面：diag_legal
+  // count 3→6 使 k=5 序号 005 入金样本集防 %% 转义再退化——003-005 为修后
+  // 产物，与 Go fmt.Sprintf 语义一致〔原 000-002 的 Go 实跑产物不含 k=5 序号〕）。
+  assert.equal(files.length, 24, "金样本集规模（21 Go 实跑 + 3 S04-F1 扩面）");
   for (const f of files) {
     const got = byName.get(f);
     assert.ok(got !== undefined, `planVariants 未产出 ${f}`);
     assert.ok((got as Buffer).equals(fs.readFileSync(path.join(goldenDir, f))), `${f} 字节不一致`);
   }
+});
+
+// ── 审阅 v2 S04-F1（2026-11）：linef 的 %% 字面百分号转义 ──────────────────
+// genDiagLegal k===5 的 printf 模板行：Go fmt.Sprintf 语义 %%d→%d 字面
+// （正是 C printf 需要的格式串），a[%d] 消费唯一参数。原实现裸 /%[sd]/
+// 全局替换——一行 4 处命中分食 1 个 arg，产物 printf("%3 %undefined
+// %undefined\n", a[undefined], ...) 是非法 C（基线五条 CLANG_REJECT
+// 005/008/011/014/017 与真值脱钩，5/20 序号「合法邻域防误伤」域目标反转）。
+// 锚=005 序号产物（与现役 rules.json 同 seed 同派生，k=5 恰在 005）。
+test("linef：%% 字面百分号转义（genDiagLegal k=5 序号产物合法）", () => {
+  const mr = rules();
+  for (const g of mr.generators) if (g.name === "diag_legal") g.count = 6;
+  const plan = planVariants(mr, baselineSeeds());
+  const v = plan.find((x) => x.filename === "gen_diag_legal_005.c");
+  assert.ok(v !== undefined, "mini 规则 count=6 下须产出 gen_diag_legal_005.c（k=5 序号）");
+  const s = v.bytes.toString("latin1");
+  assert.ok(!s.includes("undefined"), `k=5 产物不得含 undefined（%% 击穿形态）：\n${s}`);
+  assert.ok(s.includes('printf("%d %s %d'), "k=5 产物须含合法 printf 格式串（%%d→%d 字面）");
 });
 
 test("算子覆盖：11 个算子各有一个「实际改变字节」的金样本（#292 审阅 P2-1）", () => {
@@ -239,6 +260,21 @@ test("bucketOf：六桶分类 + 恶化序", () => {
   assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, ok("1")), "ARM_DIVERGENCE");
   // 两臂都非 OK 且含 CRASH ⇒ vt 保持 CRASH ⇒ ARM_DIVERGENCE
   assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, { status: "TRAP", out: "t" }), "ARM_DIVERGENCE");
+  // 审阅 v2 S04-F2（2026-11）：状态级分歧先判——#414 批修了 CRASH 单臂吞并
+  // （上面两条），但 vt 折叠仍吞两类形态：clang 拒+js 收+native 拒 → AGREE
+  // （js 误收失明——恰是 fuzz 核心使命「误收面」最该报警的引擎不同步形态）；
+  // js REJECT+native CRASH → VITRO_REJECT（native 崩溃不可见）。两臂状态
+  // 不一致即 ARM_DIVERGENCE，先于值比对。
+  assert.equal(
+    bucketOf(rej, ok("1"), rej),
+    "ARM_DIVERGENCE",
+    "clang 拒+js 收+native 拒 = 状态分歧（js 误收），不得折叠成 AGREE",
+  );
+  assert.equal(
+    bucketOf(ok("1"), rej, { status: "CRASH", out: "" }),
+    "ARM_DIVERGENCE",
+    "js REJECT+native CRASH = 状态分歧（native 崩溃），不得折叠成 VITRO_REJECT",
+  );
   assert.ok((BUCKET_RANK["ARM_DIVERGENCE"] as number) > (BUCKET_RANK["WRONG_VALUE"] as number));
 });
 
@@ -306,13 +342,18 @@ test("#410 红锚：bucketOf clang CLANG_CRASH 分桶——两侧等价死不再
 
 test("#410 P2-2 红锚：bucketOf 臂选择对称化——js 臂异常不再被 native OK 吞成 AGREE", () => {
   const ok = (out: string) => ({ status: "OK", out });
-  // 亲跑六组表（#410 评论）：nj TRAP + na OK → 应为 VITRO_TRAP（修前 AGREE）
-  assert.equal(bucketOf(ok("1"), { status: "TRAP", out: "t" }, ok("1")), "VITRO_TRAP");
+  // 亲跑六组表（#410 评论）：nj TRAP + na OK → #410 批修吞并为 VITRO_TRAP；
+  // S04-F2（2026-11）状态分歧先判再升格 ARM_DIVERGENCE（js trap + native
+  // 正常 = 两臂不同步的直接信号；VITRO_TRAP 保留给双臂同 trap 形态）。
+  assert.equal(bucketOf(ok("1"), { status: "TRAP", out: "t" }, ok("1")), "ARM_DIVERGENCE");
   // nj CRASH + na OK → 应为 ARM_DIVERGENCE（修前 AGREE）
   assert.equal(bucketOf(ok("1"), { status: "CRASH", out: "" }, ok("1")), "ARM_DIVERGENCE");
-  // 对称面回归锚：native 臂异常 + js OK 原逻辑不变
-  assert.equal(bucketOf(ok("1"), ok("1"), { status: "TRAP", out: "t" }), "VITRO_TRAP");
+  // 对称面回归锚：native 臂异常 + js OK 同为状态分歧 → ARM_DIVERGENCE
+  //（S04-F2 起与 js 侧对称；#410 时曾为 VITRO_TRAP）。
+  assert.equal(bucketOf(ok("1"), ok("1"), { status: "TRAP", out: "t" }), "ARM_DIVERGENCE");
   assert.equal(bucketOf(ok("1"), ok("1"), { status: "CRASH", out: "" }), "ARM_DIVERGENCE");
+  // 双臂同 trap（状态一致）仍 VITRO_TRAP——ARM_DIVERGENCE 只管分歧
+  assert.equal(bucketOf(ok("1"), { status: "TRAP", out: "t" }, { status: "TRAP", out: "t" }), "VITRO_TRAP");
 });
 
 // ---- #412：freeze 恶化翻桶闸 ----
@@ -698,7 +739,11 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
   // rc 断言红；副作用后置突变（judgeCachePut 挪回循环内）⇒ mtime 断言红。
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-flipgate-"));
   const rulesPath = path.join(ROOT, FIX, "mini_rules.json");
-  const judgeDir = path.join(ROOT, ".corpus_fuzz_judge");
+  // PR #441 审阅 P3-4：mtime 断言改监视**本测试独占**的 judge 目录（CF_JUDGE_DIR
+  // 注入）——原监视仓内共享 .corpus_fuzz_judge，同机 corpus_fuzz 全量/另一测试
+  // 进程写缓存即翻红（一轮 663/4→666/1→667/0 抖动实录）。
+  const judgeDir = path.join(dir, "judge");
+  const env = { ...process.env, CF_JUDGE_DIR: judgeDir };
   const mtimeMax = (): number => {
     let m = 0;
     if (!fs.existsSync(judgeDir)) return 0;
@@ -710,9 +755,9 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
     return m;
   };
   try {
-    // 轮 1：freeze 生成真 mini 基线（判定缓存可能已命中，秒级）
+    // 轮 1：freeze 生成真 mini 基线（独占 judge 目录无历史缓存，必真跑）
     const b1 = path.join(dir, "b1.json");
-    const r1 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b1], { cwd: ROOT, encoding: "utf8" });
+    const r1 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b1], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r1.status, 0, `轮 1 freeze 须绿：${r1.stderr ?? ""}`);
     // mini 真跑分布须含 ≥ 闸值条非 AGREE（12 AGREE / 9 CLANG_REJECT 实测分布；
     // 若未来分布漂移至不足，本 e2e 须重造而非静默过闸）
@@ -725,15 +770,18 @@ test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confi
     fs.writeFileSync(b2, JSON.stringify(e1), "utf8");
     // 轮 2：闸红（fail loud rc=2）且零写副作用（mtime 不动）
     const m0 = mtimeMax();
-    const r2 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    const r2 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r2.status, 2, "恶化 ≥ 闸值须 fail loud（M6 突变此处红）");
     assert.match(r2.stderr ?? "", /confirm-flips/, "提示须点名放行参数");
     assert.match(r2.stderr ?? "", /#412/);
     assert.equal(mtimeMax(), m0, "闸红路径零写副作用——缓存不得先于闸落盘（P3-2 突变此处红）");
     // 轮 3：--confirm-flips（双破折号形态顺带锚）显式放行 ⇒ rc=0
-    const r3 = spawnSync(process.execPath, [MAIN, "-freeze", "--confirm-flips", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    const r3 = spawnSync(process.execPath, [MAIN, "-freeze", "--confirm-flips", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8", env });
     assert.equal(r3.status, 0, `confirm 放行后须落盘（M7 突变此处红）：${r3.stderr ?? ""}`);
     assert.match(r3.stdout ?? "", /显式放行/);
+    // 独占目录真被用过（防 CF_JUDGE_DIR 注入失效退回共享目录——mtime 断言
+    // 将恒真，锚自杀）
+    assert.ok(mtimeMax() > 0, "独占 judge 目录须有缓存写入（注入失效即红）");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

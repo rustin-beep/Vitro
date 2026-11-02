@@ -2,7 +2,7 @@
 // 真实仓库 -check（15 张图逐字节）。
 //
 // 真实仓库用例需要 reports/facts.json（gitignored，本地先跑
-// `go run ./scripts/facts facts` 采集）——缺失时该用例 fail loud，不静默跳过：
+// `node scripts/facts/main.mts facts` 采集）——缺失时该用例 fail loud，不静默跳过：
 // 环境缺口静默通过就是假绿。
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -123,7 +123,7 @@ test("真实仓库：-check 通过（15 张图与落盘逐字节一致）", () =
   const facts = path.join(projectRoot(), "reports", "facts.json");
   assert.ok(
     fs.existsSync(facts),
-    "缺 reports/facts.json（gitignored）——先跑 go run ./scripts/facts facts 采集（不做 skip 兜底）",
+    "缺 reports/facts.json（gitignored）——先跑 node scripts/facts/main.mts facts 采集（不做 skip 兜底）",
   );
   const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "main.mts"), "-check"], {
     cwd: projectRoot(),

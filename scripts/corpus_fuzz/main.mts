@@ -71,7 +71,11 @@ const RUNNER_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
 const JS_ENGINE = "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js";
 const VITRO_SH = "scripts/bin/vitro";
 const CACHE_DIR = ".corpus_fuzz_cache";
-const JUDGE_CACHE_DIR = ".corpus_fuzz_judge";
+// CF_JUDGE_DIR 覆盖口（PR #441 审阅 P3-4）：e2e/并行轮次注入独立判定缓存
+// 目录——#412 三连轮 e2e 的「闸红零写副作用」mtime 断言对**共享** judge 目录
+// 敏感（同机 corpus_fuzz 全量/另一测试进程写缓存即翻红，一轮 663/4→666/1→
+// 667/0 抖动实录）；缺省形态与线上行为不变。
+const JUDGE_CACHE_DIR = process.env["CF_JUDGE_DIR"] ?? ".corpus_fuzz_judge";
 
 /** 桶恶化序（数值越大越坏）。 */
 export const BUCKET_RANK: Record<string, number> = {
@@ -594,8 +598,18 @@ class SourceBuilder {
     this.lines.push(s);
   }
   linef(fmt: string, ...args: Array<string | number>): void {
+    // 审阅 v2 S04-F1（2026-11）：复刻 Go fmt.Sprintf 的 %% 字面百分号转义——
+    // 先按 %% 切段（各段内 %[sd] 逐个消费参数），段间还原单个 %。原实现裸
+    // /%[sd]/ 全局替换，genDiagLegal k===5 的 printf("%%d %%s %%d\n"...) 行
+    // 4 处命中分食 1 个 arg ⇒ 产物 a[undefined]（非法 C，基线五条 CLANG_REJECT
+    // 与真值脱钩）。Go 原版产物为合法 C——此为 #292 迁移批丢失的 Go 语义。
     let i = 0;
-    this.lines.push(fmt.replace(/%[sd]/g, () => String(args[i++])));
+    this.lines.push(
+      fmt
+        .split("%%")
+        .map((seg) => seg.replace(/%[sd]/g, () => String(args[i++])))
+        .join("%"),
+    );
   }
   build(): Buffer {
     return Buffer.from(this.lines.map((l) => l + "\n").join(""), "utf8");
@@ -930,11 +944,15 @@ export function latin1Fold(s: string): string {
 /** 三方分类。 */
 export function bucketOf(c: Outcome, nj: Outcome, na: Outcome): string {
   if (nj.status === "OK" && na.status === "OK" && nj.out !== na.out) return "ARM_DIVERGENCE";
-  // 臂代表选择：一 OK 一非 OK 时取非 OK 臂（两侧对称）——修前第二分支把
-  // native OK 臂顶替 js 非 OK 臂，js 臂 TRAP/CRASH 在「native 输出同 clang」
-  // 时被静默吞成 AGREE（#410 P2-2：只有 native 臂异常会报警，不对称）。
-  let vt = nj;
-  if (vt.status === "OK" && na.status !== "OK") vt = na;
+  // 审阅 v2 S04-F2（2026-11）：状态级分歧先判——两臂 status 不一致即
+  // ARM_DIVERGENCE，先于值比对。#410 P2-2/#414 批把「一 OK 一非 OK 取非 OK
+  // 臂」后仍吞两类形态：clang 拒+js 收+native 拒 → AGREE（js 误收失明——
+  // 恰是 fuzz 核心使命「误收面」最该报警的引擎不同步形态）；js REJECT+
+  // native CRASH → VITRO_REJECT（native 崩溃不可见）。js 臂产物损坏/缺失时
+  // 若 native 正常不再整轮静默绿。
+  if (nj.status !== na.status) return "ARM_DIVERGENCE";
+  // 到这里两臂状态一致（含双 OK 值同）：vt 取任一臂等价；保持 js 侧。
+  const vt = nj;
   // clang 进程级异常（#410）：比对域失效（clang 无正常产出），按 vitro 侧形态分——
   // TRAP/CRASH = 两侧等价死（并 AGREE 语义，不再失真为 VITRO_TRAP「vitro 挂
   // clang 无事」）；REJECT = vitro 编译拒绝（PR #414 审阅 P3-4：与「值不同」

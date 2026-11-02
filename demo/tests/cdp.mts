@@ -38,6 +38,22 @@ interface RuntimeEvaluateResponse {
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** 审阅 v2 S10 P2-2（2026-11）：ws 关闭后 undici 的 send() 静默 no-op，
+ * pending 里的 promise 既不 resolve 也不 reject——浏览器崩溃/OOM 被杀时
+ * 在途请求全部悬死，进程挂到 CI 整机超时才红（最不 loud 的失败形态，与
+ * 本模块「顶层稳态 evaluate 不捕，保持 fail loud」纪律相悖）。
+ * onclose 一并 reject 全部在途请求（send 前的 readyState 检查是双保险）。
+ * 纯函数抽出供 pure.test.mts 锚（返回拒绝条数）。 */
+export function flushPendingOnClose(pending: Map<number, Pending>, reason: string): number {
+  let n = 0;
+  for (const p of pending.values()) {
+    p.reject(new Error(reason));
+    n++;
+  }
+  pending.clear();
+  return n;
+}
+
 /** 导航切换窗瞬态错误：Page.navigate / Page.reload 进行中（旧 execution
  *  context 已销毁、新 context 未 commit）时，Runtime.evaluate 报 CDP -32000
  *  「Inspected target navigated or closed」等形态——页面没坏，是查询撞上
@@ -123,6 +139,10 @@ export async function connectCdp(opts: ConnectOptions = {}): Promise<CdpClient> 
     if (m.error) p.reject(new Error(JSON.stringify(m.error)));
     else p.resolve(m.result);
   };
+  // S10 P2-2：连接断开（浏览器崩溃/被杀）时在途请求 fail loud，不悬挂。
+  ws.onclose = () => {
+    flushPendingOnClose(pending, "CDP 连接已关闭（在途请求拒绝——浏览器崩溃或 ws 断开）");
+  };
 
   const client: CdpClient = {
     send<T = Record<string, unknown>>(
@@ -131,6 +151,10 @@ export async function connectCdp(opts: ConnectOptions = {}): Promise<CdpClient> 
     ): Promise<T> {
       const id = ++msgId;
       return new Promise<T>((resolve, reject) => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          reject(new Error(`CDP 连接非 OPEN（readyState=${String(ws.readyState)}），send 拒绝：${method}`));
+          return;
+        }
         pending.set(id, { resolve: (value) => resolve(value as T), reject });
         ws.send(JSON.stringify({ id, method, params }));
       });

@@ -14,7 +14,7 @@
 // 续跑）+ 两条真教学 trap 断言（E3070 strcpy 越界 / E3061 NULL 解引用
 // 受检）+ 4 导出面 + 体积上限（防依赖性膨胀回归）。
 //
-// 自报口径（CI 断言口径，格式稳定勿改；facts 键未接——如需机器采集在 facts.go runKeys 登记）：
+// 自报口径（CI 断言口径，格式稳定勿改；facts 键未接——如需机器采集在 scripts/facts/facts.mts runKeys 登记）：
 //   wasm_gateway 冒烟: N (PASS x / FAIL y)
 
 import fs from "node:fs";

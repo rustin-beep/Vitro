@@ -24,8 +24,16 @@
 //	   `<=` 渲染成 `≤`（#121① 教学硬伤同族）。
 //
 // 扫描面（2026-10-16 扩）：旧栈三件套（index.html + app.ts + js/*.ts + *.css）
-// ∪ 新栈 F4 面（src/**/*.svelte 模板段并入 html 面、<style> 块并入 css 面、
-// src/**/*.ts 并入 js 面——排除 src/data/ 生成物）。
+// ∪ 新栈 F4 面（src/**/*.svelte 与 src/**/*.ts 全文并入 **html 面**〔剥
+// <style> 块后〕、<style> 块并入 css 面——排除 src/data/ 生成物）。
+// 审阅 v2 S10 P2-1 勘正（2026-11）：原注「src/**/*.ts 并入 js 面」与实现
+// 不符——检查 B/C 的 JS 正则族（getElementById/classList）只跑 js 面
+//（= demo/js/*.ts）；新栈 ts 源的 id/class **消费面**不在本闸扫描承诺内
+//（其 class="..." 字面量经 html 面进**定义面**）。实测口径（PR #441 审阅
+// P3-3 勘正：原「demo/src 现存零 getElementById」系未实测断言）：demo/src
+// 现存唯一消费点 = src/main.ts:20 的挂载 `document.getElementById("app")`
+//（app 是 index.html 静态 id，属受控面）；新代码引入更多该类调用时此处是
+// 已知边界，须先扩 js 面（防双计）再依赖。
 //
 // 规则外置 rules.json：动态 className 拼接簇、动态 id 前缀、显式白名单；
 // **僵尸条目（登记的类/id 已无任何引用或定义）无条件红**。

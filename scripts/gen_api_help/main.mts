@@ -19,8 +19,11 @@
 //   ③ 双向对账：dispatch 方法缺 rules 简介红；rules 简介无对应 dispatch
 //      方法红（多/缺两个方向都咬合）
 //   ④ -check 幂等：磁盘双产物 == 现场生成，否则红并给再生命令
-//   ⑤ --selftest 四路内存注入证红（方法计数漂移 / 形状面可提取性 / 简介缺失 /
-//      非规范形态静默塌缩）——J9 义务
+//   ⑤ --selftest 五路 = 四路内存注入证红 + 一路可提取性（路 1 方法计数
+//      漂移〔注入〕/ 路 2 形状面可提取性〔非空——篡改检测由 -check 幂等
+//      与 reconcile 承担，非注入面〕/ 路 3 简介缺失〔注入〕/ 路 4 未豁免
+//      跳过红〔注入〕/ 路 5 僵尸豁免红〔注入〕）——J9 义务（PR #441 审阅
+//      P3-2 勘正：原注「四路注入」漏计路 4/5 拆分）
 //
 // 产物：moonbit/cmd/lib/cli/api_help_gen.mbt（cmd/lib/cli 查表）
 // 规则外置 scripts/gen_api_help/rules.json（#125 批 B 后 = 入库真源手改面）。
@@ -271,7 +274,9 @@ function renderMoonBit(list: string, detail: Map<string, string>): string {
   b += "// #67 api help 离线可发现性出口：方法清单/形状权威源 = gateway dispatch\n";
   b += "// + serve_param_err（#68 expected 字段），简介/示例 = scripts/gen_api_help/rules。\n";
   b += "// 本文件只承载预渲染文本（渲染单源在生成器）；消费面 = cmd/lib/cli\n";
-  b += "// 的 api help 子命令（wasm 臂同数据走 scripts/vitro_cli/api_help.json）。\n\n";
+  b += "// 的 api help 子命令（三臂壳全 MoonBit 单源同数据；三臂同形由\n";
+  b += "// scripts/vitro_cli_smoke 多臂对拍锁。审阅 v2 S07 P2-1 勘正：原注指向\n";
+  b += "// 已删的 scripts/vitro_cli/api_help.json——e92fe728 三臂壳全 MoonBit 批）。\n\n";
   b += "///|\n/// 全方法清单文本（api help 无参时打印）。\npub fn api_help_list() -> String {\n";
   b += '  "' + mbtEscape(list) + '"\n}\n\n';
   b +=
@@ -343,8 +348,8 @@ function selftestAll(): void {
     process.stdout.write(`selftest 路 3 OK（简介缺失红：${errs3[0]}）\n`);
   }
 
-  // 路 4（2026-10-17 审阅 P3-⑥）：非规范形态静默塌缩闸——未豁免跳过红 +
-  // 僵尸豁免红（双向）
+  // 路 4（2026-10-17 审阅 P3-⑥）：非规范形态静默塌缩闸——未豁免跳过红；
+  // 僵尸豁免红是路 5（PR #441 审阅 P3-2：原注合述「双向」，标签已拆两路）。
   const rules4 = readJSON<Rules>(RULES_PATH);
   rules4.shape_skip_allow = [];
   const errs4 = checkShapeSkips(rules4, [
@@ -359,10 +364,10 @@ function selftestAll(): void {
 
   const errs5 = checkShapeSkips({ shape_skip_allow: [{ prefix: "zzz 前缀", reason: "r" }] } as Rules, []);
   if (errs5.length === 0) {
-    process.stdout.write("selftest 路 4 FAIL：僵尸豁免未红\n");
+    process.stdout.write("selftest 路 5 FAIL：僵尸豁免未红\n");
     fail++;
   } else {
-    process.stdout.write(`selftest 路 4 OK（僵尸豁免红：${errs5[0]}）\n`);
+    process.stdout.write(`selftest 路 5 OK（僵尸豁免红：${errs5[0]}）\n`);
   }
 
   if (fail > 0) process.exit(2);

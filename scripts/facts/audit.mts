@@ -19,10 +19,12 @@ import type { FactsDoc } from "./facts.mts";
 
 // retiredKeys：Rust 退役键（工序④删区 2026-10-05）——真值源永久消失，
 // 待采集（--run 可补）语义不适用；引用面按历史句豁免，不进 Pending 红。
+// 审阅 v2 S01-A2（2026-11）：replay/serve_smoke 两键移出——#307 P2-2 已把
+// 两键采集器现役化（facts.mts），真值缺位须进 pending（#298 strict 判红）；
+// 留在退役表会把采集失败静默吞成 check 绿（audit 与 facts 两侧退役表自此同源）。
 const RETIRED_KEYS = new Set([
   "shadow_c_cases", "shadow_c_match", "shadow_c_known_issue",
   "shadow_c_gap_extension", "shadow_c_gaps",
-  "replay_assertions", "serve_smoke_assertions",
   "cargo_test_passed", "cargo_test_suites",
   "shadow_cpp_cases",
 ]);
@@ -380,6 +382,51 @@ export function numberSpans(line: string): NumSpan[] {
   return out;
 }
 
+// ─── 就近绑定（audit 判定与 applyHit 替换单源共用）──────────────────────────
+//
+// 审阅 v2 S01-A1（2026-11）：原 nearestKeyOf 是 auditDocs 行内闭包，applyHit
+// 只按 [Lo,Hi] 过滤候选、不复算绑定——区间重叠规则对（cargo[500,2500] ×
+// moonbit[40,2000] 等）共行时替换会跨规则毒化他键数字（offsets.test.mts
+// 区间重叠锚）。抽出为模块级单源，两侧同口径。
+
+// 行内全部规则关键词的命中位置（就近绑定的输入面）。
+function lineKeywordsOf(rs: Rule[], line: string): { pos: number; end: number; key: string }[] {
+  const kws: { pos: number; end: number; key: string }[] = [];
+  for (const r of rs) {
+    if (!r.context.test(line)) continue;
+    if (r.exclude !== null && r.exclude.test(line)) continue;
+    for (const loc of matchAllOf(r.context, line)) {
+      kws.push({ pos: loc.index!, end: loc.index! + loc[0].length, key: r.key });
+    }
+  }
+  kws.sort((a, b) => a.pos - b.pos);
+  return kws;
+}
+
+// 数字 span 与哪个关键词（双向）最近。左距 = 数字起点减关键词终点；
+// 右距 = 关键词起点减数字终点。平局取右："cargo test 70 套件" 的 70
+// 左右等距，后置的"套件"才是它的计量单位（前置的 "cargo test" 是行首状语）。
+function nearestKeyOfSpan(kws: { pos: number; end: number; key: string }[], s: NumSpan): string {
+  let best = "";
+  let bestDist = -1;
+  for (const k of kws) {
+    if (k.end <= s.start) {
+      const d = s.start - k.end;
+      if (bestDist < 0 || d < bestDist) {
+        best = k.key;
+        bestDist = d;
+      }
+    } else {
+      const d = k.pos - s.end;
+      if (bestDist < 0 || d <= bestDist) {
+        best = k.key;
+        bestDist = d;
+      }
+    }
+  }
+  return best;
+}
+
 // ─── 对账 ────────────────────────────────────────────────────────────────────
 
 export interface Hit {
@@ -584,48 +631,16 @@ export function auditDocs(root: string, doc: FactsDoc): AuditResult {
 
       // 这一行对每个事实各命中哪些候选数字。
       // P1 批（2026-09-18）：数字**就近绑定**——每个候选数字只归属
-      // （双向）距离最近的规则关键词，平局取左。
-      interface KwPos { pos: number; end: number; key: string }
-      const kws: KwPos[] = [];
-      for (const r of rs) {
-        if (!r.context.test(line)) continue;
-        if (r.exclude !== null && r.exclude.test(line)) continue;
-        for (const loc of matchAllOf(r.context, line)) {
-          kws.push({ pos: loc.index!, end: loc.index! + loc[0].length, key: r.key });
-        }
-      }
-      kws.sort((a, b) => a.pos - b.pos);
-      // nearestKeyOf：数字 span 与哪个关键词（双向）最近。左距 = 数字
-      // 起点减关键词终点；右距 = 关键词起点减数字终点。平局取右：
-      // "cargo test 70 套件" 的 70 左右等距，后置的"套件"才是它的
-      // 计量单位（前置的 "cargo test" 是行首状语）。
-      const nearestKeyOf = (s: NumSpan): string => {
-        let best = "";
-        let bestDist = -1;
-        for (const k of kws) {
-          if (k.end <= s.start) {
-            const d = s.start - k.end;
-            if (bestDist < 0 || d < bestDist) {
-              best = k.key;
-              bestDist = d;
-            }
-          } else {
-            const d = k.pos - s.end;
-            if (bestDist < 0 || d <= bestDist) {
-              best = k.key;
-              bestDist = d;
-            }
-          }
-        }
-        return best;
-      };
+      // （双向）距离最近的规则关键词（口径见 lineKeywordsOf /
+      // nearestKeyOfSpan——审阅 v2 S01-A1 起与 applyHit 单源共用）。
+      const kws = lineKeywordsOf(rs, line);
       const byRule = new Map<string, NumSpan[]>();
       for (const r of rs) {
         if (!r.context.test(line)) continue;
         if (r.exclude !== null && r.exclude.test(line)) continue;
         const c: NumSpan[] = [];
         for (const s of spans) {
-          if (nearestKeyOf(s) !== r.key) continue;
+          if (nearestKeyOfSpan(kws, s) !== r.key) continue;
           if (s.value >= r.lo && s.value <= r.hi) c.push(s);
         }
         if (c.length > 0) byRule.set(r.key, c);
@@ -1193,9 +1208,13 @@ export function applyHit(root: string, h: Hit, truth: number): void {
     throw new Error(`${h.file}:${h.lineNo} 已不再匹配规则 ${h.key}（可能已被其他条目改动），请重跑`);
   }
 
+  // 审阅 v2 S01-A1：与 audit 阶段同口径——数字就近绑定归属唯一规则，只替换
+  // 归属本键的 span。仅按 [Lo,Hi] 过滤会在区间重叠规则对（cargo×moonbit 等）
+  // 共行时把别的键的数字一并毒化（offsets.test.mts 区间重叠锚）。
+  const kws = lineKeywordsOf(rules(), line);
   const spans: NumSpan[] = [];
   for (const s of numberSpans(line)) {
-    if (s.value >= r.lo && s.value <= r.hi) spans.push(s);
+    if (s.value >= r.lo && s.value <= r.hi && nearestKeyOfSpan(kws, s) === h.key) spans.push(s);
   }
   // 倒序替换，避免前面的替换影响后面的偏移
   for (let i = spans.length - 1; i >= 0; i--) {

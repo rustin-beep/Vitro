@@ -45,7 +45,7 @@ import { statementEvents, swapPairs, type EventFrame } from "../src/lib/visEvent
 import { EASE_VAR, FALLBACK_EASE, FALLBACK_MS, parseCssMs } from "../src/lib/motionTokens.ts";
 import { planRelay, scalePlan } from "../src/lib/relayPlan.ts";
 import { EXAMPLES, RELATED } from "../src/lib/catalogDetail.ts";
-import { isTransientNavigationError } from "./cdp.mts";
+import { flushPendingOnClose, isTransientNavigationError } from "./cdp.mts";
 import type { VisEvent } from "../js/types.ts";
 
 /** noUncheckedIndexedAccess 下的显式断言点（测试夹具已知在界内）。 */
@@ -987,4 +987,27 @@ test("cdp.isTransientNavigationError：导航切换窗瞬态判据（PR #344 CI 
   assert.ok(!isTransientNavigationError(new Error("eval 异常: TypeError: Cannot read properties of undefined")));
   assert.ok(!isTransientNavigationError(new Error("CDP 9222 在 30000ms 内未就绪：connect ECONNREFUSED")));
   assert.ok(!isTransientNavigationError(new Error("CDP 无 page target")));
+});
+
+// 审阅 v2 S10 P2-2（2026-11）：ws 关闭后 undici send() 静默 no-op——在途
+// 请求永悬挂（探针：close 后 evaluate 2.5s race settled=false），浏览器
+// 崩溃时 5 份 E2E 挂到 CI 整机超时。onclose 挂 flushPendingOnClose：全部
+// 在途请求 reject（fail loud）。锚=纯函数语义（拒绝 + 清空 + 计数）。
+test("cdp.flushPendingOnClose：在途请求全部 reject 且清空（挂死→fail loud）", async () => {
+  const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  const mk = (): Promise<unknown> =>
+    new Promise((_, reject) => {
+      const id = pending.size + 1;
+      pending.set(id, { resolve: () => {}, reject });
+    });
+  const p1 = mk();
+  const p2 = mk();
+  assert.equal(pending.size, 2, "夹具：两条在途");
+  const n = flushPendingOnClose(pending, "CDP 连接已关闭（在途请求拒绝——浏览器崩溃或 ws 断开）");
+  assert.equal(n, 2, "拒绝条数");
+  assert.equal(pending.size, 0, "pending 须清空（后续 onclose 不重复 reject）");
+  await assert.rejects(p1, /CDP 连接已关闭/);
+  await assert.rejects(p2, /CDP 连接已关闭/);
+  // 空态幂等
+  assert.equal(flushPendingOnClose(pending, "x"), 0);
 });

@@ -128,6 +128,30 @@ test("truthsInRange 自检：越界两侧均检出、在界不误报", () => {
   assert.ok(!r3.out, "真值 508 在区间 [40,2000] 内，不应误报越界");
 });
 
+// 审阅 v2 S01-A2（2026-11）：RETIRED_KEYS 曾含现役采集键 replay/serve_smoke
+// （#307 P2-2 把两键采集器现役化时 audit 侧未连坐）——真值缺位时引用行被
+// 退役豁免吞掉、不进 pending，#298 strict「待采集即红」对两键失效（探针：
+// 采集失败 → unavailable → 引用行自由漂移且 check 绿）。两键移出退役表后
+// 恢复：缺真值必进 pending。
+test("pending：现役采集键真值缺位必进 pending（不被退役豁免吞掉）", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "facts-pending-"));
+  const p = path.join(root, "docs", "current", "01-定位与路线", "夹具.md");
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, "- 回放 61 条断言；moon test 970 用例全绿\n");
+  const doc: FactsDoc = {
+    schema: "vitro.facts.v1", generated_at: "", git: { rev: "", branch: "", dirty: false },
+    facts: {
+      moonbit_test_passed: { value: 970, unit: "", source: "", provenance: "", as_of: "", status: "ok", note: "", how_to_get: "" } as Fact,
+    },
+  };
+  const res = auditDocs(root, doc);
+  assert.equal(
+    findAudit(res, "replay_assertions")!.pending.length, 1,
+    "replay_assertions 真值缺位应进 pending（#298 strict 判红面）——被 RETIRED_KEYS 吞掉即采集失败静默化",
+  );
+  assert.equal(findAudit(res, "moonbit_test_passed")!.matched, 1, "moonbit 有真值应正常对账（对照组）");
+});
+
 // 供其他测试文件复用的 findAudit re-export 形态（Go 版同文件 helper）。
 export { auditDocs, findAudit };
 export type { AuditResult, FactAudit };

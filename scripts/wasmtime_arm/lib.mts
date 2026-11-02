@@ -346,6 +346,9 @@ export function synthCases(): SynthCase[] {
     // 超长源码（大 buffer 路径——fromCharCodeArray / concat）
     { name: "src_2MB_comment", src: "int main() { return 0; }\n/* " + rep("x", 2 * 1024 * 1024) + " */" },
     { name: "src_1MB_many_lines", src: Array.from({ length: 40000 }, (_, i) => `int v${i} = ${i};`).join("\n") + "\nint main() { return v39999 & 1; }" },
+    // 规模缩放探针（O(n²) 判据：2× 规模 → 4× 时间）——src_1MB_many_lines 的 1/4、1/2
+    { name: "src_250k_many_lines", src: Array.from({ length: 10000 }, (_, i) => `int v${i} = ${i};`).join("\n") + "\nint main() { return v9999 & 1; }" },
+    { name: "src_500k_many_lines", src: Array.from({ length: 20000 }, (_, i) => `int v${i} = ${i};`).join("\n") + "\nint main() { return v19999 & 1; }" },
     { name: "src_long_string_literal", src: 'int main() { const char *s = "' + rep("ab", 200000) + '"; return s[0]; }' },
     // stdin 域
     { name: "stdin_1MB", src: "#include <stdio.h>\nint main() { long s = 0; int c; while ((c = getchar()) != EOF) s += c; printf(\"%ld\\n\", s); return 0; }", stdin: rep("0123456789\n", 100000) },

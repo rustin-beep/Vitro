@@ -942,8 +942,9 @@ fn collect_case_labels(
         Some(e) =>
           match tc.const_eval(e) {
             Some(CI(v, _)) => labels.push((v, e.loc()))
-            // 浮点 case 标签：E3046/E3047 已报，占位参与查重
-            Some(CF(_)) => labels.push((0L, e.loc()))
+            // 浮点 case 标签：E3047 已报；**不入查重表**（#426 批 2 修 M08 A8：
+            // 旧两个浮点 case 共占位 0 互撞多报假 E3074「重复的 case 值 0」）
+            Some(CF(_)) => ()
             None => ()
           }
         None => default_count = default_count + 1

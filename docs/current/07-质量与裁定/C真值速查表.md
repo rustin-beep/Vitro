@@ -125,10 +125,10 @@
 | Z9 | `int g2 = (unsigned char)200 / -1;` | `-200`（uchar 提升为 signed int） | ✅ 折叠 **-200** = 运行期（#426 批 1 integer_promote；修前 0） | M08 A1 |
 | Z10 | `int g4 = (-1 == 4294967295u);` | `1`（-1 转 unsigned 比较） | ✅ 折叠 **1** = 运行期（#426 批 1 Eq/Ne 入公共域；修前 0） | M08 A2 / V1#7 |
 | Z11 | `int f1 = (int)1e300;` | 静态折值 **2147483647**（四端一致） | ✅ 折叠 **2147483647** = 运行期（#426 批 1 f2i_saturate_i32 两处；修前 -1） | M08 A5 / V1#10 |
-| Z12 | `int t1 = ((unsigned char)255 << 24) < 0;` | **1**（uchar 提升为 signed int，移位结果为负） | **0**（静态=运行期同错，类型面丢提升） | M08 A7 / V1#11 |
-| Z13 | `(~0u) < 0` / `(~0u) > 0` | `0` / `1`（~0u 保持 unsigned） | `1` / `0`（BitNot 恒定 signed int） | M08 A7 |
-| Z14 | `(-(unsigned char)1) < 0` | **1** | **0**（Neg 按操作数 unsigned 归 unsigned） | M08 A7 |
-| Z15 | `-1ULL`（printf %llu） | `18446744073709551615` | 同（位模式侥幸对；下游比较面错值待证） | M08 A7.3（防误翻注：只判下游比较，位模式别动） |
+| Z12 | `int t1 = ((unsigned char)255 << 24) < 0;` | **1**（uchar 提升为 signed int，移位结果为负） | ✅ **1**（#426 批 2：Shl 定型走 integer_promote_type；修前 0） | M08 A7 / V1#11 |
+| Z13 | `(~0u) < 0` / `(~0u) > 0` | `0` / `1`（~0u 保持 unsigned） | ✅ `0` / `1`（#426 批 2：BitNot 定型保 unsigned；修前 1/0） | M08 A7 |
+| Z14 | `(-(unsigned char)1) < 0` | **1** | ✅ **1**（#426 批 2：Neg 定型 uchar 提升 signed int；修前 0） | M08 A7 |
+| Z15 | `-1ULL`（printf %llu） | `18446744073709551615` | 同；✅ 定型面已修（#426 批 2：Neg 保留 ULL unsigned 位，类型锚 `a7_neg_promotes_uchar_and_keeps_ull`——M08 推断 P2「下游比较错值」面随定型修复一并闭合） | M08 A7.3 |
 | Z16 | `char a=300; char b;`（全局标量静态初始化） | `a=44 b=0 c=66` | `a=44 **b=1** c=66`（4 字节写泄漏 0x01 到相邻无初值全局） | M13 A-3 / V1#29 |
 | Z17 | `char a[4]={[1]=-1}; char b[2]={0,0};` | `0 -1 0 0 0` | `0 -1 -1 -1 0`（designated 4B 越权写污染自身尾部） | M11 A1 / V1#20 |
 | Z18 | `char a[4]={[3]=-1}; char b[2];`（无初值邻居） | `-1 0 0 2` | `-1 -1 -1 2`（**b 被写成 -1，污染永久**） | M11 A1 / V1#20 |

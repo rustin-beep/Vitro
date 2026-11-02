@@ -14,6 +14,26 @@ fn type_is_int_or_ll(t : @ast.Type) -> Bool {
 }
 
 ///|
+/// #426 B3' 批 2（M08 A7）：整型提升定型单点——经共享算术核
+/// `@arith.integer_promote` 导出 AST 类型（C11 §6.3.1.1：char 系 → signed
+/// int、int/long long 保符号位）。一元 Neg/BitNot 与移位左操作数的结果定型
+/// 统一走此处；旧三处各自特判（Shl char 按 is_unsigned 定 uint / Neg LL 丢
+/// unsigned / BitNot 非 LL 恒 int）与 promote_type（病 30 修）规则分叉。
+/// 非整型原样返回（浮点/指针分支由调用方另判）。
+fn integer_promote_type(t : @ast.Type) -> @ast.Type {
+  match t.kind() {
+    TK_Char | TK_Int | TK_LongLong =>
+      match ce_domain(t) {
+        @arith.I32 => @ast.Type::int()
+        @arith.U32 => @ast.Type::unsigned_int()
+        @arith.I64 => @ast.Type::long_long()
+        @arith.U64 => LongLong(true, false)
+      }
+    _ => t
+  }
+}
+
+///|
 /// 二元运算（19 op：算术 promote / 指针±整数 / 比较 int / 逻辑 / 位 /
 /// 移位左提升 / 逗号右值）。
 fn TypeChecker::resolve_binary(
@@ -143,12 +163,10 @@ fn TypeChecker::resolve_binary(
           E3048_BitOpTypeError,
         )
       }
-      // 结果 = 提升后的左操作数类型（C 语义：char 提升 int）
-      if left_type.kind() is TK_Char {
-        Int(left_type.is_unsigned(), false)
-      } else {
-        left_type
-      }
+      // 结果 = 提升后的左操作数类型（C11 §6.5.7 + §6.3.1.1：char 系提升
+      // **signed int**——#426 批 2 修 A7.1：旧 `Int(left.is_unsigned())` 把
+      // unsigned char 定成 unsigned int，`((uchar)255<<24)<0` 真值 1 折 0）
+      integer_promote_type(left_type)
     }
     Comma => right_type // 求值左侧弃结果，取右侧类型
   }
@@ -301,10 +319,11 @@ fn TypeChecker::resolve_unary(
         @ast.Type::double()
       } else if operand_type.kind() is TK_Float {
         @ast.Type::float()
-      } else if operand_type.kind() is TK_LongLong {
-        @ast.Type::long_long()
-      } else if operand_type.is_unsigned() {
-        @ast.Type::unsigned_int()
+      } else if type_is_int_or_ll(operand_type) {
+        // #426 批 2 修 A7.3：整型提升单点——uchar → signed int（旧按
+        // is_unsigned 归 unsigned int，`(-(uchar)1)<0` 真值 1 折 0）；
+        // ULL 保留 unsigned 位（旧 `long_long()` 丢位——`-1ULL` 定 signed LL）
+        integer_promote_type(operand_type)
       } else {
         @ast.Type::int()
       }
@@ -330,8 +349,11 @@ fn TypeChecker::resolve_unary(
           E3020_UnaryTypeError,
         )
       }
-      if operand_type.kind() is TK_LongLong {
-        operand_type
+      // #426 批 2 修 A7.2：整型提升单点——`~0u` 保持 unsigned int（旧非 LL
+      // 一律 signed int，`(~0u)<0` 真值 0 折 1）；char 系提升 signed int；
+      // 非整型（已报 E3020）回落 int
+      if type_is_int_or_ll(operand_type) {
+        integer_promote_type(operand_type)
       } else {
         @ast.Type::int()
       }

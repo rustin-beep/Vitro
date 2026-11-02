@@ -145,16 +145,15 @@ try {
     throw new Error("CDP 未就绪，后续断言跳过");
   }
 
-  // ② 缺省读数（transport=ipc 证明走的是 native IPC 而非 wasm Worker）
+  // ② 现场信息行（页面加载前 title 可为空、桥可能未注入——不作断言，
+  //    断言挂 ③ demo_run 的 transport 字段：页面加载后采样，桥在必命中）
   const base = runProbe("tools/cdp_probe.mts", []);
   const baseEval = base.rc === 0 ? evalField(base.stdout) : null;
-  check(
-    "transport-ipc",
-    baseEval !== null && baseEval["transport"] === "ipc",
-    baseEval === null ? `probe rc=${base.rc}` : `transport=${String(baseEval["transport"])} title=${String(baseEval["title"])}`,
+  console.log(
+    `INFO  page — ${baseEval === null ? `probe rc=${base.rc}` : `title=${String(baseEval["title"])} url=${String(baseEval["url"])}`}`,
   );
 
-  // ③ demo 完整采集断言（golden/帧数/版本/stdout——基线 2026-11-02）
+  // ③ demo 完整采集断言（transport/golden/帧数/版本/stdout——基线 2026-11-02）
   const run = runProbe("tools/cdp_probe.mts", ["@tools/page/demo_run.js"]);
   const dr: DemoRunResult | null = run.rc === 0 ? (evalField(run.stdout) as DemoRunResult | null) : null;
   if (dr === null) {
@@ -162,6 +161,9 @@ try {
   } else if (dr.error !== undefined) {
     check("demo-run", false, String(dr.error));
   } else {
+    // transport=ipc = 走 native 同进程引擎；worker = 桥缺席静默回退 wasm 臂
+    // （四轮前缺省读数时序假阴性实锤——构造点已改等待式选择，此处兜底）
+    check("transport-ipc", dr.transport === "ipc", `transport=${dr.transport}`);
     check("demo-golden", (dr.status ?? "").includes("golden ✓"), `status=${dr.status}`);
     check("demo-frames", dr.frames === "42", `frames=${dr.frames}`);
     check("demo-engine", (dr.ver ?? "").includes("0.9.1"), `ver=${dr.ver}`);

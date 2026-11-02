@@ -29,7 +29,7 @@
   `demo/src/protocol/engine.ipc.ts`——与 `engine.worker.ts` 消息协议逐字相同
   （`{id,op,...}→{id,ok,data|error}`）的 Worker 同形 IPC shim（桥就绪 5s
   轮询兜底）；`session.svelte.ts` 引擎构造点一处二选一
-  （`hasDesktopBridge()` ? IPC : Worker）。字段映射（bpLines→bp_lines /
+  （`createEngineTransport()` 等待式选择：首条 rpc 前轮询桥 2s，有桥走 IPC、超时回 Worker——CI runner 实锤页面脚本可快于桥注入，单次同步探测会永久误选 wasm 臂）。字段映射（bpLines→bp_lines /
   method→api）在 shim 层完成，UI 代码零改动。
 - **CDP 捉虫面**：builder `debug=true` 缺省开；`PROTON_REMOTE_DEBUGGING_PORT`
   钉端口（env 非空亦可把 release 产物 debug 翻开——四形态矩阵见

@@ -9,7 +9,7 @@
 "use strict";
 
 import type { Diagnostic, StepPayload, VisEvent } from "../js/types.ts";
-import { createIpcTransport, hasDesktopBridge, type EngineTransport } from "./protocol/engine.ipc.ts";
+import { createEngineTransport, type EngineTransport } from "./protocol/engine.ipc.ts";
 import { KEYS, storeGet, storeSet } from "./persisted.svelte.ts";
 import { toast } from "./toasts.svelte.ts";
 import { buildCallTree } from "../js/calltree.ts";
@@ -244,11 +244,9 @@ function rejectAllPending(err: Error): void {
   pending.clear();
 }
 
-function getWorker(): EngineTransport {
+async function getWorker(): Promise<EngineTransport> {
   if (!worker) {
-    worker = hasDesktopBridge()
-      ? createIpcTransport()
-      : new Worker(new URL("./protocol/engine.worker.ts", import.meta.url), { type: "module" });
+    worker = await createEngineTransport();
     worker.onmessage = (e: MessageEvent) => {
       const { id, ok, data, error } = e.data as { id: number; ok: boolean; data?: never; error?: string };
       const p = pending.get(id);
@@ -281,7 +279,7 @@ function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS
       reject(new Error(`引擎 ${op} 无响应（${timeoutMs}ms 超时）——Worker 可能未启动或被浏览器策略拦截，可点「重试」`));
     }, timeoutMs);
     pending.set(id, { resolve: resolve as never, reject, timer });
-    getWorker().postMessage({ id, ...msg });
+    void getWorker().then((t) => t.postMessage({ id, ...msg }));
   });
 }
 

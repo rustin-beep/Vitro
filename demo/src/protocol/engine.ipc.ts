@@ -58,6 +58,23 @@ export function engineTransportKind(): "ipc" | "worker" {
   return hasDesktopBridge() ? "ipc" : "worker";
 }
 
+// 通道选择等待窗口：渲染早期页面脚本可能快于 proton 桥注入（CI runner
+// 实锤——首条 rpc 时 __MoonBit__ 仍缺席 ⇒ 单次同步探测会永久误选 wasm
+// Worker）。选择挂在首条 rpc 前，轮询桥最多 2s：有桥走 IPC，超时回 Worker。
+const BRIDGE_SELECT_WAIT_MS = 2_000;
+const BRIDGE_SELECT_POLL_MS = 25;
+
+/** 构造引擎通道（等待式选择）：proton 桌面壳内（桥在）走 native IPC，
+ *  否则回 Web Worker——浏览器形态零变化。 */
+export async function createEngineTransport(): Promise<EngineTransport> {
+  const t0 = Date.now();
+  while (Date.now() - t0 < BRIDGE_SELECT_WAIT_MS) {
+    if (hasDesktopBridge()) return createIpcTransport();
+    await new Promise((r) => setTimeout(r, BRIDGE_SELECT_POLL_MS));
+  }
+  return new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
+}
+
 type InvokeOp = (op: string, payload: unknown) => Promise<unknown>;
 
 // 桥就绪等待：demo 的 boot() 在模块顶层就发首帖——桥注入可能晚于脚本

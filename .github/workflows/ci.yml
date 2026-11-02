@@ -953,6 +953,19 @@ jobs:
             exit 1
           fi
 
+      - name: Build serve.exe (debug native) for facts replay/serve_smoke collectors
+        if: matrix.slice == 'bookkeeping'
+        # 审阅 v2 A6 批（2026-11）S01-A2 连坐：replay/serve_smoke 两键移出
+        # RETIRED_KEYS 后，采集失败不再被退役豁免吞掉（strict 待采集即红）。
+        # 本 job 此前从不构建 cmd/serve 产物——两键在 CI 上常态采集失败、
+        # 一直靠 RETIRED_KEYS 静默吞成绿（master run 41392942638 bookkeeping
+        # 日志实锤同款「serve.exe 不存在」两行、待采集 0 处假象）。构建步
+        # 补齐采集链（写法同 protocol_frames 族三处先例；本地实证：构建后
+        # facts --run --strict check rc=0、replay 22 处 + serve 14 处引用
+        # 全部对上真值）。
+        shell: bash
+        run: cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
+
       - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
 
         if: matrix.slice == 'bookkeeping'

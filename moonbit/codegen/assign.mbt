@@ -728,7 +728,12 @@ fn BytecodeGen::emit_compound(
 
 ///|
 /// struct 整体赋值（s1 = s2）——Rust `gen_struct_copy` 照搬：dst 地址经
-/// gen_addr 存 temp_slot1，src 经 copy_common 循环逐字拷贝。
+/// gen_addr 存 dst 槽，src 经 copy_common 循环逐字拷贝。
+/// #424（2026-11-02，审阅 v2 B1 / M12-A4）：dst 槽按赋值嵌套深度分层
+/// （get_assign_addr_slot，T-P0-6 机制接入）——旧固定 temp_slot1 在求值
+/// 右侧**之前**存入，内层 struct 赋值（call 实参位置 `a = id(b = c)`）
+/// 复用同槽覆写 → 外层拷贝写错目标（a 未更新）。src 槽无此问题（在
+/// gen_addr(right) 之后存入，拷贝循环内无嵌套发射）。
 fn BytecodeGen::gen_struct_copy(
   self : BytecodeGen,
   left : @ast.Expr,
@@ -739,7 +744,7 @@ fn BytecodeGen::gen_struct_copy(
   if size <= 0 {
     return
   }
-  let dst_temp = self.get_temp_slot(1)
+  let dst_temp = self.get_assign_addr_slot()
   self.gen_addr(left, loc)
   self.emit(@opcode.OpCode::StoreLocal, dst_temp, loc)
   let src_temp = self.get_temp_slot(0)

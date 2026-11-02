@@ -166,8 +166,10 @@ fn BytecodeGen::emit_static_init(
         let values = flatten_init_list(elements, self.errors)
         for i in 0..<self.type_size(vty) {
           let v = if i < values.length() { values[i] } else { 0 }
-          self.globals_init_32.push(
-            (global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(), v),
+          // #424（2026-11-02）：static 局部 char 数组同走合并字通道
+          self.push_char_init_byte(
+            global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(),
+            v,
           )
         }
       } else if vty.is_array() &&
@@ -207,11 +209,10 @@ fn BytecodeGen::emit_static_init(
         let bytes = @bytecode.cstring_bytes(value)
         for i in 0..<self.type_size(vty) {
           let byte = if i < bytes.length() { bytes[i].to_int() } else { 0 }
-          self.globals_init_32.push(
-            (
-              global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(),
-              byte,
-            ),
+          // #424（2026-11-02）：static 局部字符串直写同走合并字通道
+          self.push_char_init_byte(
+            global_offset.reinterpret_as_uint() + i.reinterpret_as_uint(),
+            byte,
           )
         }
       } else {
@@ -253,7 +254,18 @@ fn BytecodeGen::emit_static_init(
       match self.func_index.get(id_name) {
         Some(idx) =>
           self.globals_init_32.push((global_offset.reinterpret_as_uint(), idx))
-        None => ()
+        // #424（2026-11-02，审阅 v2 B1 / M11-A2）：裸数组名（无
+        // func_index 命中）——旧 `None => ()` 静默置 NULL ⇒ 运行期
+        // E3083；全局路径 #264 已有 push_global_addr_init 兜底，static
+        // 路径漏连坐——同源补上（前向引用挂 pending，Pass 3 尾
+        // flush_pending_addr_inits 回填）
+        None => {
+          let _ = self.push_global_addr_init(
+            global_offset.reinterpret_as_uint(),
+            id_name,
+          )
+          ()
+        }
       }
     _ => {
       self.gen_expr(init)
@@ -361,6 +373,39 @@ fn BytecodeGen::emit_static_scalar_array_init(
             Literal(value, _, _) => self.globals_init_32.push((addr, -value))
             _ => self.globals_init_32.push((addr, 0))
           }
+        // #424（2026-11-02，审阅 v2 B1 / M11-A3）：函数名/地址常量元素
+        // ——与全局路径（gen.mbt 逐元素臂）同源；旧 `_ => push((addr, 0))`
+        // 静默落 0 ⇒ CallPtr「索引 0 越界」TRAP（#201-B 修了全局漏了
+        // static，本批连坐）
+        Identifier(name, _, _) =>
+          match self.func_index.get(name) {
+            Some(idx) => self.globals_init_32.push((addr, idx))
+            None => {
+              let _ = self.push_global_addr_init(addr, name)
+              ()
+            }
+          }
+        // #264 同族：&g 取址元素（与裸名同源单源）
+        Unary(@ast.UnaryOp::Addr, Identifier(aname, _, _), _, _) => {
+          let _ = self.push_global_addr_init(addr, aname)
+          ()
+        }
+        // #304 同族：地址常量链形态（&g.x / &ga[1]）——链整体求值或挂
+        // pending（Pass 3 尾回填）
+        Unary(@ast.UnaryOp::Addr, chain, _, _) =>
+          match self.eval_global_addr_chain(chain) {
+            AddrResolved(a) => self.globals_init_32.push((addr, a))
+            AddrDeferred => {
+              self.pending_addr_chain_inits.push((addr, chain))
+              ()
+            }
+            AddrUnsupported => self.globals_init_32.push((addr, 0))
+          }
+        // #304 审阅 P2-1 同族：cast 包裹的链元素——穿透类型包装
+        Cast(_, _, _, _) => {
+          let _ = self.try_cast_addr_init(addr, e)
+          ()
+        }
         _ => self.globals_init_32.push((addr, 0))
       }
     }

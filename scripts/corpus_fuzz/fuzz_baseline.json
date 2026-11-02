@@ -36,6 +36,15 @@
     "baseline/break_continue.c|paren_wrap": {
       "bucket": "CLANG_REJECT"
     },
+    "baseline/char_global_scalar_literal_byte.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/char_global_scalar_literal_byte.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/char_global_scalar_literal_byte.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "baseline/conditional_compile.c|cast_strip": {
       "bucket": "AGREE"
     },

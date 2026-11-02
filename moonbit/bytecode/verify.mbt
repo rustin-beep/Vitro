@@ -422,9 +422,10 @@ fn verify_data_layout(o : CompileOutput, v : Array[VerifyViolation]) -> Unit {
   }
   for pair in o.globals_init_32 {
     // 第一元是相对偏移（装载 = store_u32(GLOBAL_START+off)——受检写、越
-    // MEM_SIZE 被静默丢）。条目允许重叠（char[] 逐字节初始化用相邻覆盖
-    // 手法——mini_char_array 形态）也允许越 global_data_end（紧排），病界
-    // 只有物理可写域
+    // MEM_SIZE 被静默丢）。条目允许重叠（紧排布局下 char 合并字与非 char
+    // 条目可共享同一个 4 字节字——#424 起装载序 char 字在前、后续条目
+    // 精确覆盖自身范围收敛；旧「char[] 逐字节相邻覆盖手法」已随合并字
+    // 通道退役）也允许越 global_data_end（紧排），病界只有物理可写域
     let addr = GLOBAL_START + pair.0
     if addr + 4U > MEM_SIZE {
       v.push({

@@ -17,8 +17,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { projectRoot } from "../internal/capi.mts";
 
-const ROOT = path.resolve(import.meta.dirname, "../..");
+// ROOT 走 projectRoot()（cwd 上溯单源，2026-11-02 PR #416 mutation gate 治本）：
+// 原 `import.meta.dirname/../..` 在 Stryker sandbox（scripts/.stryker-tmp/sandbox-*/
+// 复制树）里解析到 .stryker-tmp——真实仓库测试在 initial run 即 ENOENT 崩。
+const ROOT = projectRoot();
 const ASSETS = path.join(ROOT, "moonbit", "icons");
 const TSV = path.join(ASSETS, "index.tsv");
 const OUT = path.join(ROOT, "assets", "icons-preview.svg");
@@ -32,9 +36,12 @@ const X0 = 40;
 // 分组顺序单源 = scripts/icon_catalog/rules.json 的 categories（2026-11-01 审阅 v2
 // S08 次级）：原硬编码五组缺 rules 的 "ui" 值——加 ui 图标时会静默从图鉴消失且
 // -check 两边同丢仍绿（丢弃行为有测试锚但无告警）。读规则后空组由 buildSvg 的
-// 长度过滤自然跳过（当前 tsv 无 ui 行 ⇒ 产物零变化）。
+// 长度过滤自然跳过（当前 tsv 无 ui 行 ⇒ 产物零变化）。lazy 化（2026-11-02）：
+// 顶层读会让纯函数 import 即触盘——sandbox/缺规则环境直接模块加载崩。
 const RULES = path.join(ROOT, "scripts", "icon_catalog", "rules.json");
-const ORDER: readonly string[] = (JSON.parse(fs.readFileSync(RULES, "utf8")) as { categories: string[] }).categories;
+let orderCache: readonly string[] | null = null;
+const order = (): readonly string[] =>
+  (orderCache ??= (JSON.parse(fs.readFileSync(RULES, "utf8")) as { categories: string[] }).categories);
 
 // 图鉴专用中文短标签：tsv 的 desc 是完整语义（最长 9 字，96px 卡装不下），
 // 这里给一个 4~6 字的短标签。新增 id 时必须补，否则回落成 id 本身（可接受的退化）。
@@ -95,7 +102,7 @@ export function fmtG(n: number): string {
 }
 
 export function buildSvg(rows: IconRow[], bodyOf: Map<string, string>): string {
-  const groups = ORDER.map((c) => [c, rows.filter((r) => r.category === c).map((r) => r.id)] as [string, string[]])
+  const groups = order().map((c) => [c, rows.filter((r) => r.category === c).map((r) => r.id)] as [string, string[]])
     .filter(([, ids]) => ids.length > 0);
   const h =
     66 + groups.reduce((acc, [, ids]) => acc + 18 + Math.ceil(ids.length / COLS) * (CH + 12) + 10, 0) + 56;
@@ -184,7 +191,7 @@ function main(check: boolean): void {
   } catch (e) {
     fail(1, `FAIL: 写出失败 ${OUT}: ${String(e)}`);
   }
-  const groups = ORDER.filter((c) => rows.some((r) => r.category === c)).length;
+  const groups = order().filter((c) => rows.some((r) => r.category === c)).length;
   console.log(`生成 ${OUT}：${rows.length} 个图标，${out.length} B，${groups} 组`);
 }
 

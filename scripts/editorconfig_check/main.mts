@@ -29,6 +29,9 @@ const SKIP_SEGS = new Set([
   // 换行）——不剪枝则「本地跑过一次 fuzz」后本闸恒红，属与提交内容无关的环境
   // 盲区（同 .build/.workbuddy 一族）。
   ".corpus_fuzz_cache",
+  // Stryker sandbox（mutation gate 复制 scripts/ 整树 + instrument 注入）——
+  // 跑突变期间/FATAL 残留时本闸不得扫副本（2026-11-02 PR #416 同族）
+  ".stryker-tmp",
 ]);
 
 const JSON_EXEMPT_PREFIXES = [

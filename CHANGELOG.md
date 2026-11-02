@@ -158,6 +158,31 @@
   content_parser.c 真源树，探针证未误剪）；cli_smoke armCmd 删死参（oxlint 存量
   警告归零）。
 
+#### 同批第三笔：PR #416 CI mutation gate FATAL 治本 + 突变副作用护栏（2026-11-02）
+
+PR #416 首轮 CI 唯一红 = mutation gate（report-only，不入 ci-summary needs 不阻合并；
+匿名 REST 拿不到 job 日志故本地复现定位）——两处 Stryker sandbox 不兼容 + 一个
+真实危险面：
+
+- **ci_checklist 扫描面漏剪 `.stryker-tmp`**：mutation gate 把 scripts/ 整树复制进
+  sandbox 跑突变，本闸端到端测试在 Stryker initial run 把副本驱动全判「漏登记」
+  （数十条）⇒ initial run 必红 ⇒ 本文件任何改动令 mutation gate 恒 FATAL。PRUNE
+  补 `.stryker-tmp` + J9 锚（fixture 造 sandbox 副本驱动断言不进驱动集；修前红→12/12）。
+- **gen_icon_preview / gen_course 根解析不兼容 sandbox**：`import.meta.dirname/../..`
+  在 sandbox 里解析到 .stryker-tmp——前者顶层读 rules.json import 即 ENOENT 崩（本地
+  FATAL 实锤），后者同形态潜伏。统一切 `projectRoot()`（cwd 上溯单源）；ORDER 读取
+  lazy 化（纯函数 import 不触盘）。
+- **突变副作用污染真仓产物**（本地复现实锤）：Stryker 突变 genio.mts 的 restore 逻辑
+  后，突变体执行生成器「真实仓库 -check」测试写真仓 `moonbit/**/*_gen.mbt` 且不还原
+  ——8 个产物被静默写成未 fmt 模板，`git add -A` 即误提交。mutation_gate 补护栏：
+  跑前后 `git status --porcelain --untracked-files=no` 对比，新增脏文件 stderr 警告
+  列出 + 写进 report.md（不自动恢复——不动用户文件；report-only 不改退出码）。
+- **`.stryker-tmp` 未 ignore**：FATAL 中断残留且 untracked——.gitignore 补条目 +
+  mutation_gate FATAL 路径也清 sandbox + editorconfig SKIP_SEGS 同剪。
+- 验证：本地 `mutation_gate --base origin/master` 从 FATAL → **RC=0**（14 改动文件
+  零基础设施失败；vm 88 survived 为既有 spawnSync 真仓路径绕 sandbox 的假 survivor
+  盲区，#368 观察期已知）。
+
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 
 - **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后

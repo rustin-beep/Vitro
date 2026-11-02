@@ -144,6 +144,19 @@ test("main.mts 也算驱动（shebang 判据）；.test.mts 不算", () => {
   assert.match(r.summary, /\.mts 1/, "有 shebang 的 main.mts 计入 mtsDrivers（与 Go 版同口径）");
 });
 
+test("Stryker sandbox（scripts/.stryker-tmp）不进扫描面（PR #416 mutation gate FATAL 治本）", () => {
+  // mutation gate 把 scripts/ 整树复制进 .stryker-tmp/sandbox-*/ 再跑本闸的端到端
+  // 测试——不剪枝则副本驱动全判「漏登记」，Stryker initial run 必红 ⇒ 本文件任何
+  // 改动都让 mutation gate 基础设施红（2026-11-02 PR #416 CI 实锤 + 本地复现）。
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/.stryker-tmp/sandbox-abc/ghost"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/.stryker-tmp/sandbox-abc/ghost/main.mts"), "#!/usr/bin/env node\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0）/, "sandbox 副本不得计入驱动集");
+});
+
 test("真实仓库端到端：默认绿 + 未知参数 exit 2", () => {
   const root = projectRoot();
   const def = spawnSync(process.execPath, [MAIN], { cwd: root, encoding: "utf8" });

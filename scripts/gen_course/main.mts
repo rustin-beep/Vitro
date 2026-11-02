@@ -33,8 +33,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { fragment } from "../docs_preview/render.mts";
 import { goJSONString } from "../internal/genio.mts";
+import { projectRoot } from "../internal/capi.mts";
 
-const rootDir = path.resolve(import.meta.dirname, "../..");
+// rootDir 走 projectRoot()（cwd 上溯单源）：原 `import.meta.dirname/../..` 在 Stryker
+// sandbox（scripts/.stryker-tmp/sandbox-*/）里解析错——与 gen_icon_preview 同形态
+//（2026-11-02 PR #416 mutation gate 实锤后统一）
+const rootDir = projectRoot();
 const courseDir = path.join(rootDir, "course");
 const outPath = path.join(rootDir, "demo", "src", "data", "lessons.ts");
 

@@ -25,7 +25,11 @@ export interface Exception {
   kind?: string;
 }
 
-const PRUNE = new Set(["_build", "__pycache__", "node_modules", "bin"]);
+// .stryker-tmp = Stryker sandbox（mutation gate 把 scripts/ 整树复制进去再跑测试）
+// ——不剪枝则 sandbox 内的驱动副本全被当「漏登记」，本闸的真实仓库端到端测试在
+// Stryker initial run 里必红 ⇒ mutation gate 对本文件任何改动恒 FATAL（PR #416
+// CI 实锤 + 本地复现：sandbox-*/backend_triage 等数十条漏登记）。
+const PRUNE = new Set(["_build", "__pycache__", "node_modules", "bin", ".stryker-tmp"]);
 
 const MOON_TARGETS = ["js", "native", "wasm", "wasm-gc"];
 

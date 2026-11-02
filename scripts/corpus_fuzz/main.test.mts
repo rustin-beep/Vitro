@@ -38,6 +38,9 @@ import {
   exitDomainOf,
   FREEZE_FLIP_GATE,
   gateWorseningFlips,
+  clangOutcome,
+  parseArgs,
+  shouldBlockFreezeFlips,
   exitWordOf,
   firstIntLit,
   judgeCacheGet,
@@ -620,4 +623,118 @@ test("freeze 桶值迁移双向入列：演进修正（rank 降）与现象翻�
   );
   // 恶化向同报（freeze 覆写同样须过目）
   assert.equal(bucketMigrationOf("s/x|mut", "AGREE", "WRONG_VALUE"), "s/x|mut: AGREE -> WRONG_VALUE");
+});
+
+// ---- PR #414 审阅处置批（2026-11-02）：P1 判据收窄 / P2 编译段+收割 / P3 六条 ----
+
+test("#414 P1 红锚：合法 uint32 返回码不得误判崩溃——win32 负返回值域与 NT STATUS 域重叠", () => {
+  // `return -1` 的 win32 进程码 4294967295 = 0xFFFFFFFF：合法返回值，非 NT 异常
+  assert.equal(clangRunCrashOf(4294967295, null, null), null, "return -1 形态（审阅 probe_negrc 四形态之一）");
+  // INT_MIN = 2147483648 = 0x80000000：同样合法
+  assert.equal(clangRunCrashOf(2147483648, null, null), null, "INT_MIN 形态");
+  assert.equal(clangRunCrashOf(3221225477, null, null), "CRASH", "0xC0000005 访问违例仍在域内");
+  assert.equal(clangRunCrashOf(3221225725, null, null), "CRASH", "0xC00000FD 栈溢出仍在域内");
+  assert.equal(clangRunCrashOf(3221225489, null, null), "CRASH", "0xC0000011 段错误仍在域内");
+});
+
+test("#414 P1 红锚（端到端）：return -1 三方同形须 AGREE——大码误判崩溃即翻 WRONG_VALUE（修前形态）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-negrc-"));
+  try {
+    const f = path.join(dir, "negrc.c");
+    fs.writeFileSync(f, "int main(void){ return -1; }\n", "utf8");
+    const c = clangOutcome(f, dir);
+    // clang 正常退出：win32 进程码 4294967295 → OK + EXIT 尾行（非 CLANG_CRASH）
+    assert.equal(c.status, "OK", "合法负返回码是正常退出，非进程级异常");
+    assert.equal(c.out, "EXIT:4294967295");
+    const nj = { status: "OK", out: "EXIT:4294967295" };
+    const na = { status: "OK", out: "EXIT:4294967295" };
+    assert.equal(bucketOf(c, nj, na), "AGREE", "三方同 return -1 必 AGREE（修前被误判 WRONG_VALUE）");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#414 P3-4 红锚：CLANG_CRASH × vitro REJECT 归 VITRO_REJECT——编译拒绝与值不同不得混桶", () => {
+  const ok = (out: string) => ({ status: "OK", out });
+  const clangCrash = { status: "CLANG_CRASH", out: "EXIT:3221225725" };
+  const rej = { status: "REJECT", out: "" };
+  // clang 崩 + vitro 编译拒绝：现象是「vitro 拒收」，非「值不同」——rank 2 而非 4
+  assert.equal(bucketOf(clangCrash, rej, rej), "VITRO_REJECT");
+  // 防钝化：两臂活着但互不相同 → ARM_DIVERGENCE 抢先（臂间分歧优先于 clang 状态）
+  assert.equal(bucketOf(clangCrash, ok("1"), ok("2")), "ARM_DIVERGENCE");
+});
+
+test("#414 P3-1 红锚：shouldBlockFreezeFlips 四态——闸判定纯函数（突变 M6/M7 杀阵的判定面）", () => {
+  assert.equal(shouldBlockFreezeFlips(0, false), false, "零恶化不拦");
+  assert.equal(shouldBlockFreezeFlips(FREEZE_FLIP_GATE - 1, false), false, "4 条<闸值不拦");
+  assert.equal(shouldBlockFreezeFlips(FREEZE_FLIP_GATE, false), true, "5 条=闸值拦");
+  assert.equal(shouldBlockFreezeFlips(55, false), true, "55 条伪影形态拦（1f61dfb3）");
+  assert.equal(shouldBlockFreezeFlips(55, true), false, "显式确认放行（M7 删守卫即红）");
+});
+
+test("#414 P3-3 红锚：--confirm-flips 双破折号形态可收（issue 处方文案与 CLI 惯例兼容）", () => {
+  assert.equal(parseArgs(["-freeze", "--confirm-flips"]).confirmFlips, true);
+  assert.equal(parseArgs(["-freeze", "-confirm-flips"]).confirmFlips, true, "单破折号原形态不回归");
+});
+
+test("#414 P2-1 红锚：clang 编译段 spawn 失败判 CLANG_CRASH——环境灾难不得混入 REJECT 桶（55 条伪影机理）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-noclang-"));
+  const savedPath = process.env["PATH"];
+  try {
+    const f = path.join(dir, "x.c");
+    fs.writeFileSync(f, "int main(void){ return 0; }\n", "utf8");
+    process.env["PATH"] = ""; // clang 不可达 → spawn ENOENT（PATH 清空形态，审阅 probe_compile）
+    const c = clangOutcome(f, dir);
+    assert.equal(c.status, "CLANG_CRASH", "编译段进程级异常非编译拒绝（修前 REJECT）");
+    assert.match(c.out, /^EXIT:SPAWN:/, "spawn 错误码并入 out（可诊断）");
+  } finally {
+    process.env["PATH"] = savedPath;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confirm 放行（PR #414 审阅 P3-1/P3-2 接线杀阵）", () => {
+  // 突变杀阵：M6（闸条件恒假）⇒ 轮 2 rc 断言红；M7（删 confirm 守卫）⇒ 轮 3
+  // rc 断言红；副作用后置突变（judgeCachePut 挪回循环内）⇒ mtime 断言红。
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-flipgate-"));
+  const rulesPath = path.join(ROOT, FIX, "mini_rules.json");
+  const judgeDir = path.join(ROOT, ".corpus_fuzz_judge");
+  const mtimeMax = (): number => {
+    let m = 0;
+    if (!fs.existsSync(judgeDir)) return 0;
+    for (const ep of fs.readdirSync(judgeDir)) {
+      const epd = path.join(judgeDir, ep);
+      if (!fs.statSync(epd).isDirectory()) continue;
+      for (const f of fs.readdirSync(epd)) m = Math.max(m, fs.statSync(path.join(epd, f)).mtimeMs);
+    }
+    return m;
+  };
+  try {
+    // 轮 1：freeze 生成真 mini 基线（判定缓存可能已命中，秒级）
+    const b1 = path.join(dir, "b1.json");
+    const r1 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b1], { cwd: ROOT, encoding: "utf8" });
+    assert.equal(r1.status, 0, `轮 1 freeze 须绿：${r1.stderr ?? ""}`);
+    // mini 真跑分布须含 ≥ 闸值条非 AGREE（12 AGREE / 9 CLANG_REJECT 实测分布；
+    // 若未来分布漂移至不足，本 e2e 须重造而非静默过闸）
+    const e1 = JSON.parse(fs.readFileSync(b1, "utf8")) as { entries: Record<string, { bucket: string }> };
+    const nonAgree = Object.values(e1.entries).filter((v) => v.bucket !== "AGREE");
+    assert.ok(nonAgree.length >= FREEZE_FLIP_GATE, `mini 分布已变（非 AGREE ${nonAgree.length} 条 < 闸值），闸 e2e 须重造`);
+    // 篡改基线：非 AGREE 全改 AGREE ⇒ 真跑出即恶化翻桶 ≥ 闸值
+    const b2 = path.join(dir, "b2.json");
+    for (const v of Object.values(e1.entries)) if (v.bucket !== "AGREE") v.bucket = "AGREE";
+    fs.writeFileSync(b2, JSON.stringify(e1), "utf8");
+    // 轮 2：闸红（fail loud rc=2）且零写副作用（mtime 不动）
+    const m0 = mtimeMax();
+    const r2 = spawnSync(process.execPath, [MAIN, "-freeze", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    assert.equal(r2.status, 2, "恶化 ≥ 闸值须 fail loud（M6 突变此处红）");
+    assert.match(r2.stderr ?? "", /confirm-flips/, "提示须点名放行参数");
+    assert.match(r2.stderr ?? "", /#412/);
+    assert.equal(mtimeMax(), m0, "闸红路径零写副作用——缓存不得先于闸落盘（P3-2 突变此处红）");
+    // 轮 3：--confirm-flips（双破折号形态顺带锚）显式放行 ⇒ rc=0
+    const r3 = spawnSync(process.execPath, [MAIN, "-freeze", "--confirm-flips", "-rules", rulesPath, "-baseline", b2], { cwd: ROOT, encoding: "utf8" });
+    assert.equal(r3.status, 0, `confirm 放行后须落盘（M7 突变此处红）：${r3.stderr ?? ""}`);
+    assert.match(r3.stdout ?? "", /显式放行/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

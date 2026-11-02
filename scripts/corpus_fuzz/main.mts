@@ -143,10 +143,16 @@ export interface FlipRow {
 
 /** 恶化方向过滤（#412，纯函数）：rank 升高且非 volatile 的翻转行。
  * 改善方向（引擎演进修正旧陈旧值）不拦只打印——#361 换键重冻 33 条中
- * 32 条 CLANG_REJECT→AGREE 属此类，拦了就把日常演进全卡死。 */
+ * 32 条 CLANG_REJECT→AGREE 属此类，拦了就是把日常演进全卡死。 */
 export function gateWorseningFlips(flips: readonly FlipRow[]): FlipRow[] {
   const rank = (b: string): number => BUCKET_RANK[b] ?? 0;
   return flips.filter((f) => !f.volatile && rank(f.to) > rank(f.from));
+}
+
+/** 闸判定（#412，纯函数——PR #414 审阅 P3-1：接线突变 M6/M7 杀阵的判定面）：
+ * 恶化条数达闸值且未显式确认 → 拦截落盘。 */
+export function shouldBlockFreezeFlips(worseCount: number, confirmed: boolean): boolean {
+  return worseCount >= FREEZE_FLIP_GATE && !confirmed;
 }
 
 /**
@@ -704,7 +710,7 @@ export function generatorByName(name: string): ((r: DetRand, idx: number) => Buf
 // ── 进程对拍 ──────────────────────────────────────────────────────
 
 export interface Outcome {
-  status: string; // OK / REJECT / TRAP / CRASH
+  status: string; // OK / REJECT / TRAP / CRASH / CLANG_CRASH（clang 侧进程级异常）
   out: string;
 }
 
@@ -730,11 +736,16 @@ export function exitWordOf(v: number, platform: string = process.platform): numb
   return platform === "win32" ? u : u & 0xff;
 }
 
-/** clang 运行段进程级异常判定（#410，纯函数）：返回 "TIMEOUT" / "CRASH"，
+/** clang 进程级异常判定（#410，纯函数）：返回 "TIMEOUT" / "CRASH"，
  * 正常退出域返 null。形态域——
  * - rc=-98 是 runCmd 的超时/无法启动哨兵（非进程退出码，errCode 区分两者：
  *   ETIMEDOUT=超时须语义化 TIMEOUT，不再产出不可读的 EXIT:-98）；
- * - rc>=0x80000000 = win32 NT 异常码域（栈溢出 0xC00000FD=3221225725 等）；
+ * - win32 NT 异常码域：**(rc & 0xFFFF0000) === 0xC0000000**（0xC00000FD
+ *   栈溢出 / 0xC0000005 访问违例 / 0xC0000011 段错误）——PR #414 审阅 P1
+ *   收窄：原 `rc >= 0x80000000` 把合法负返回值（`return -1` 的进程码
+ *   0xFFFFFFFF、INT_MIN 的 0x80000000）误判崩溃，win32 正常退出回完整
+ *   uint32 码、0x80000000–0xFFFFFFFF 同时是「合法返回值域」与「NT STATUS
+ *   域」，只有 0xC000xxxx 严重码子域无区分力问题；
  * - signal 非 null = POSIX 被信号杀死（wait status 无 rc）。
  * 修前这些形态一律 status:"OK" + EXIT:<code> 尾行进比对域，两侧等价死被
  * 判 VITRO_TRAP（桶名失真：该桶语义是「vitro 挂 clang 无事」）。 */
@@ -744,7 +755,9 @@ export function clangRunCrashOf(
   signal: string | null,
 ): "TIMEOUT" | "CRASH" | null {
   if (rc < 0) return errCode === "ETIMEDOUT" ? "TIMEOUT" : "CRASH";
-  if (rc >= 0x80000000) return "CRASH";
+  // `>>> 0` 必要：`&` 结果是 int32（0xC0000000 位型 = 负数），而字面量
+  // 0xc0000000 是正 double——不转 uint32 比较恒 false（单测实测踩中）
+  if ((rc & 0xffff0000) >>> 0 === 0xc0000000) return "CRASH";
   if (signal !== null) return "CRASH";
   return null;
 }
@@ -796,9 +809,21 @@ export function absPath(p: string): string {
   return path.isAbsolute(p) ? p : path.resolve(p);
 }
 
+/** 进程级异常的 out 组装（#410/#414 审阅 P2-1：编译段/运行段单源）：
+ * TIMEOUT / 信号名 / spawn 错误码 / 真实 NT 码，人类可读优先。 */
+function crashOutOf(crash: "TIMEOUT" | "CRASH", run: CmdResult): string {
+  if (crash === "TIMEOUT") return "EXIT:TIMEOUT";
+  if (run.signal !== null) return `EXIT:${run.signal}`;
+  if (run.errCode !== null) return `EXIT:SPAWN:${run.errCode}`;
+  return `EXIT:${String(run.rc)}`;
+}
+
 /**
  * clang 侧判定（-O0 编译 + 运行）。编译失败按 clang_direct 同判据退避重试 2 次
- * （Defender 实时扫描锁 a.exe 令 clang 瞬态非零）。
+ * （Defender 实时扫描锁 a.exe 令 clang 瞬态非零）。**编译段进程级异常
+ * （spawn 失败/超时）判 CLANG_CRASH 非 REJECT**（PR #414 审阅 P2-1：PATH 竭尽/
+ * 锁文件连败等环境灾难不得混入 CLANG_REJECT 桶——1f61dfb3 一次 55 条
+ * AGREE→CLANG_REJECT 伪影的机理面）。
  */
 export function clangOutcome(src: string, workdir: string): Outcome {
   const exe = path.join(workdir, "a.exe");
@@ -810,35 +835,23 @@ export function clangOutcome(src: string, workdir: string): Outcome {
       if (r.rc === 0) break;
     }
   }
-  if (r.rc !== 0) return { status: "REJECT", out: norm(r.stderr) };
+  if (r.rc !== 0) {
+    const crash = clangRunCrashOf(r.rc, r.errCode, r.signal);
+    if (crash !== null) return { status: "CLANG_CRASH", out: crashOutOf(crash, r) };
+    return { status: "REJECT", out: norm(r.stderr) };
+  }
   // stdout 走 latin1 解码（字节↔码点双射，无 U+FFFD 折叠）——与 parseVitro 折回域
   // 同域后 byteCompare 等价 Go 版纯字节比较。utf8 解码会与折回域失配：UTF-8 多字节
   // 输出（col_utf8_units 中文形态）字节相同却被判 WRONG_VALUE（#301 merge 批实证）。
   const run = runCmd([absPath(exe)], workdir, 20_000, "latin1");
   const crash = clangRunCrashOf(run.rc, run.errCode, run.signal);
-  // 超时收割须在 rmSync 前：win32 上运行中的 exe 文件被锁，删不动也杀不净——
-  // spawnSync 超时 kill 只 TerminateProcess 直接子进程，残留实锤（#410 观察点 2：
-  // 死循环变体超时后 a.exe 仍存活，taskkill 才清掉）。
-  if (crash === "TIMEOUT" && process.platform === "win32") {
-    const tk = spawnSync("taskkill", ["/T", "/F", "/IM", path.basename(exe)], { timeout: 5_000 });
-    process.stderr.write(
-      `corpus_fuzz：clang 运行段超时，taskkill 收割 ${path.basename(exe)}（rc=${tk.status ?? "?"}）\n`,
-    );
-  }
   fs.rmSync(exe, { force: true });
-  if (crash !== null) {
-    // #410：进程级异常不再折进 OK 比对域——CLANG_CRASH 与 parseVitro 的 CRASH
-    // 对称。out 人类可读优先：TIMEOUT / 信号名 / spawn 错误码 / 真实 NT 码。
-    const out =
-      crash === "TIMEOUT"
-        ? "EXIT:TIMEOUT"
-        : run.signal !== null
-          ? `EXIT:${run.signal}`
-          : run.errCode !== null
-            ? `EXIT:SPAWN:${run.errCode}`
-            : `EXIT:${String(run.rc)}`;
-    return { status: "CLANG_CRASH", out };
-  }
+  // #410：进程级异常不再折进 OK 比对域——CLANG_CRASH 与 parseVitro 的 CRASH
+  // 对称。超时不做主动收割（PR #414 审阅 P2-2 处置）：`taskkill /IM` 按映像名
+  // 会误杀并发 worktree 的同名 a.exe（审阅 probe_taskkill 实测杀到无辜进程、
+  // 目标早被 spawnSync 清掉），且 #410 登记的残留形态在 node 26.12.1 + 典型
+  // 死循环未复现——残留观察降级为「环境特定未复现」，误杀面是实锤，删。
+  if (crash !== null) return { status: "CLANG_CRASH", out: crashOutOf(crash, run) };
   return { status: "OK", out: exitDomainOf(norm(run.stdout), run.rc) };
 }
 
@@ -924,8 +937,11 @@ export function bucketOf(c: Outcome, nj: Outcome, na: Outcome): string {
   if (vt.status === "OK" && na.status !== "OK") vt = na;
   // clang 进程级异常（#410）：比对域失效（clang 无正常产出），按 vitro 侧形态分——
   // TRAP/CRASH = 两侧等价死（并 AGREE 语义，不再失真为 VITRO_TRAP「vitro 挂
-  // clang 无事」）；vitro 活着跑完 = 行为分歧面（值比对不可行）归 WRONG_VALUE。
+  // clang 无事」）；REJECT = vitro 编译拒绝（PR #414 审阅 P3-4：与「值不同」
+  // 分桶，rank 2 非 4——混桶既失真又更易误触发 freeze 恶化闸）；vitro 两臂
+  // 一致活着跑完 = 行为分歧面（值比对不可行）归 WRONG_VALUE。
   if (c.status === "CLANG_CRASH") {
+    if (vt.status === "REJECT") return "VITRO_REJECT";
     if (vt.status === "TRAP" || vt.status === "CRASH") return "AGREE";
     return "WRONG_VALUE";
   }
@@ -1107,7 +1123,10 @@ export function parseArgs(argv: readonly string[]): Opts {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] as string;
     const eq = a.indexOf("=");
-    const name = eq >= 0 ? a.slice(0, eq) : a;
+    const name0 = eq >= 0 ? a.slice(0, eq) : a;
+    // 双破折号归一（PR #414 审阅 P3-3）：issue #412 处方文案写 `--confirm-flips`，
+    // CLI 惯例也是 --——单破折号是本仓原形态，两形态都收，不再照文案敲即「未知参数」
+    const name = name0.startsWith("--") ? "-" + name0.slice(2) : name0;
     const inline = eq >= 0 ? a.slice(eq + 1) : undefined;
     const take = (): string => {
       if (inline !== undefined) return inline;
@@ -1383,6 +1402,10 @@ function mainFlow(argv: readonly string[]): number {
   const judgeRefresh = process.env["CF_JUDGE_REFRESH"] === "1";
   let judgeHit = 0;
   let judgeMiss = 0;
+  // freeze 轮缓存写后置（PR #414 审阅 P3-2）：闸红（die）前不得落任何副作用
+  // ——逐条 judgeCachePut 先写新桶、基线仍旧值 ⇒ 下轮 check 对旧基线误报「桶
+  // 恶化」。收集到闸判定通过后统一写盘（含 pruneJudgeEpochs）。
+  const judgePending: Array<[JudgeCacheable, string]> = [];
 
   let newFp = 0;
   let worsened = 0;
@@ -1444,24 +1467,29 @@ function mainFlow(argv: readonly string[]): number {
     const nj = vitroJs(variant);
     const na = vitroNative(variant);
     const bucket = bucketOf(c, nj, na);
-    judgeCachePut(judgeDir, v, bucket);
+    if (opts.freeze) judgePending.push([v, bucket]); // 闸后统一写（P3-2 零副作用）
+    else judgeCachePut(judgeDir, v, bucket);
     handle(v.fp, bucket);
   }
-  pruneJudgeEpochs(judgeEpoch);
+  if (!opts.freeze) pruneJudgeEpochs(judgeEpoch);
 
   if (opts.freeze) {
-    // #412 恶化翻桶闸：恶化方向（BUCKET_RANK 升高）≥ FREEZE_FLIP_GATE 条即
+    // #412 恶化翻桶闸：恶化方向（BUCKET_RANK 升高）达 FREEZE_FLIP_GATE 条即
     // fail loud——1f61dfb3 一次 55 条环境伪影翻转（clang 侧锁文件连败）静默
     // 入库的病灶面；volatile 条目豁免（与对账侧语义对称）。改善方向不拦
-    // （引擎演进修正旧陈旧值的日常形态）。
+    // （引擎演进修正旧陈旧值的日常形态）。闸判定走 shouldBlockFreezeFlips
+    // 纯函数（PR #414 审阅 P3-1：接线突变 M6/M7 的单测杀阵面）。
     const worse = gateWorseningFlips(flips);
-    if (worse.length >= FREEZE_FLIP_GATE && !opts.confirmFlips) {
+    if (shouldBlockFreezeFlips(worse.length, opts.confirmFlips)) {
       die(
         `freeze 桶恶化翻转 ${worse.length} 条 ≥ 闸值 ${FREEZE_FLIP_GATE}（#412）——环境伪影/真回归须逐条过目：\n` +
           worse.map((f) => `  ${f.fp}: ${f.from} -> ${f.to}`).join("\n") +
-          `\n确认全部为预期（环境伪影销案或已知演进）后，-confirm-flips 显式放行才落盘`,
+          `\n确认全部为预期（环境伪影销案或已知演进）后，-confirm-flips（或 --confirm-flips）显式放行才落盘`,
       );
     }
+    // 闸已过：副作用统一落盘（P3-2——die 路径零写盘）
+    for (const [v, b] of judgePending) judgeCachePut(judgeDir, v, b);
+    pruneJudgeEpochs(judgeEpoch);
     if (worse.length > 0 && opts.confirmFlips) {
       process.stdout.write(`freeze 恶化翻转 ${worse.length} 条已 -confirm-flips 显式放行（#412）\n`);
       for (const f of worse) process.stdout.write(`  ${f.fp}: ${f.from} -> ${f.to}\n`);

@@ -73,6 +73,46 @@
 - **计数连坐**：裸 971→995、native 1167→1191（+24 = verify 23 + vfs 1）；根 README×3 / moonbit
   双 README / docs/current×3；testcount + facts `--run --strict check` 双绿。
 
+### fix(scripts): PR #414 审阅处置批——#410/#412 判定域语义修正九案（2026-11-02）
+
+- **P1（合法 uint32 返回码误判崩溃，真回归）**：原判据 `rc >= 0x80000000`
+  把 `return -1` 的 win32 进程码 0xFFFFFFFF / INT_MIN 的 0x80000000 误判
+  CLANG_CRASH（合法返回值域与 NT STATUS 域重叠、无区分力）——收窄为
+  **`(rc & 0xFFFF0000) >>> 0 === 0xC0000000`**（NT 严重码子域 0xC000xxxx：
+  栈溢出 0xC00000FD / 访问违例 0xC0000005 / 段错误 0xC0000011）。反例锚
+  4294967295/INT_MIN→null + `return -1` 三方同形端到端 AGREE 锚。**坑：
+  JS `&` 结果是 int32（0xC0000000 位型为负），与正数字面量比较恒 false，
+  须 `>>> 0` 转 uint32——单测实测踩中**。
+- **P2-1（编译段进程级异常混入 REJECT 桶）**：clang spawn 失败/超时
+  （PATH 竭尽/锁文件连败）原判 REJECT——正是 1f61dfb3 一次 55 条
+  AGREE→CLANG_REJECT 伪影的机理面；编译段同走 `clangRunCrashOf` →
+  CLANG_CRASH（`EXIT:SPAWN:<code>` 并入 out 可诊断）。
+- **P2-2（taskkill /IM 误杀，收割移除）**：`taskkill /T /F /IM a.exe`
+  按映像名收割会误杀并发 worktree 的同名 a.exe（审阅 probe_taskkill
+  实测杀到无辜进程、目标早被 spawnSync 清掉、全量 freeze 实战 rc=128
+  无匹配）；#410 登记的残留形态在 node 26.12.1+典型死循环未复现——
+  误杀面实锤 vs 残留未复现，删收割。
+- **P3-1（闸接线无锚）**：抽 `shouldBlockFreezeFlips(worseCount, confirmed)`
+  纯函数 + 闸三连轮 e2e（mini 真跑 9 条 CLANG_REJECT 篡改基线构造恶化 ≥5
+  → 闸红 rc=2 + **mtime 零写副作用断言** + `--confirm-flips` 放行 rc=0）；
+  **突变实验 M6（闸恒假）/M7（删 confirm 守卫）双实证被 e2e 杀**。
+- **P3-2（die 前已落副作用）**：freeze 轮 judgeCachePut 收集 pending、
+  闸判定通过后统一写盘（含 pruneJudgeEpochs）——闸红路径零写副作用，
+  杜绝「缓存新桶+基线旧值 ⇒ 下轮误报桶恶化」。
+- **P3-3（`--confirm-flips` 双破折号）**：parseArgs 双破折号归一（issue
+  处方文案与 CLI 惯例兼容，单破折号原形态不回归）。
+- **P3-4（CLANG_CRASH × REJECT 混桶）**：clang 崩 + vitro 编译拒绝归
+  **VITRO_REJECT**（rank 2，原 WRONG_VALUE rank 4——「编译拒绝」与
+  「值不同」分桶，且不再易误触发 freeze 恶化闸）；两臂 OK 但互不相同仍
+  ARM_DIVERGENCE 抢先（臂间分歧优先）。
+- **P3-5 挂账（等价死不看死因）**：crash 类别 × trap 类别配对表待 trap
+  结构化出口（机器可读 trap_code）后落地——现「clang 段错误(UB) + vitro
+  步数耗尽」同判 AGREE 的粗糙面保留，由对账轮与 #412 闸兜底。
+- **P3-6**：`Outcome.status` 注释补 CLANG_CRASH。
+- 锚：处置批新增 7 测试（P1 反例/端到端、P3-4、P3-1 纯函数四态、P3-3、
+  P2-1 编译段 e2e、闸三连轮 e2e），分案红实录 5 红（35 绿）；全量 41/41
+  绿；tsc/oxlint 全绿。
+
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 
 - **缺陷**：`serve_step_next` 跨批 pending 分支的同行清标注判据在 pop 之后

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 函数体检查（照搬 Rust `decl.rs` 的 visit_func_decl/dispatch_stmt/
 /// check_user_func 族 + `decl_types.rs` 的 auto/typeof 推导 + `cpp_auto.rs`
@@ -1032,7 +1034,7 @@ fn replace_auto_in_type(ty : @ast.Type, replacement : @ast.Type) -> @ast.Type {
 
 ///|
 /// 表达式是否涉及数组或指针（W3051 for-条件 Le off-by-one 判据；
-/// Rust convert.rs 同构）。
+/// 历史蓝本 convert.rs 同形）。
 fn TypeChecker::expr_involves_array_or_pointer(
   self : TypeChecker,
   expr : @ast.Expr,

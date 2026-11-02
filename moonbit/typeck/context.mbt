@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 作用域管理 + 符号表桥接（照搬 Rust `context.rs`——declare_var 的
 /// extern/static 覆盖语义与 E3001 零位置报错（O3 登记债）逐字照搬）。

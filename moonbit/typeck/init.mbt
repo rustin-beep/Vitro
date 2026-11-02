@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 初始化器形状检查（照搬 Rust `init.rs` + `expr/literal.rs` 的
 /// resolve_compound_literal；**函数式重建**：InitList 的 elements 数组

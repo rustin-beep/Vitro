@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer math 族（S8 teaching 批五号，2026-10-02）：
 // 三算法照搬 vitro_algorithm_steps/src/math.rs:1-148——gcd 的 prev_vars
 // 算式收口（U1#1 P0-4——行末帧 b 已被赋值，用行入口操作数拼 48 % 18 = 12）

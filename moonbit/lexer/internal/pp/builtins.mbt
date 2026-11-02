@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 内置宏表（照搬 `macros.rs` + `macro_table.rs::builtin` 全量语义）。
 /// 纯数据表驱动（勘察 ⑤-8：521 行手写 token 构造改表驱动）——对象宏以
@@ -134,7 +136,7 @@ fn builtin_macro_table() -> Map[String, @token.MacroDef] {
 }
 
 ///|
-/// 合成 token（内置宏体专用——line/column/file_id 全 0，Rust 同构）。
+/// 合成 token（内置宏体专用——line/column/file_id 全 0，历史蓝本同形）。
 fn synth_token(ty : @token.TokenType, text : String) -> @token.Token {
   {
     ty,

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// builtin 调用检查分派（照搬 Rust `builtin/{mod,io,string,math,memory,
 /// file}.rs`——`visit_call` 逐臂 + 同名检查器；**诊断文案逐字照搬**，E1

@@ -237,7 +237,7 @@ export function renderErrorCode(
 
   b +=
     "\n///|\n" +
-    "/// 变体名（与 Rust 逐字一致——稳定标识，诊断序列差分锚的 key）。\n" +
+    "/// 变体名（沿用历史蓝本变体名逐字不改——稳定标识，诊断序列差分锚的 key）。\n" +
     "pub fn ErrorCode::name(self : ErrorCode) -> String {\n  match self {\n";
   for (const a of sorted) {
     const line = `    ${a.name} => "${a.name}"`;
@@ -249,7 +249,7 @@ export function renderErrorCode(
 
   b +=
     "\n///|\n" +
-    "/// 显示码串（P3 段位前缀单源：E1001 / W3053 / H3057——与 Rust\n" +
+    "/// 显示码串（P3 段位前缀单源：E1001 / W3053 / H3057——历史蓝本\n" +
     "/// code_prefix + 码值拼接同形）。\n" +
     "pub fn ErrorCode::display_code(self: ErrorCode) -> String {\n  match self {\n";
   for (const a of sorted) b += `    ${a.name} => "${prefixOf(a, wSet, hSet)}${a.code}"\n`;

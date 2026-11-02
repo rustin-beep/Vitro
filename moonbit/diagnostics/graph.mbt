@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // M5 概念图激活（knowledge_graph.rs 照搬，2026-10-02）：错误码/AST 特征
 // 激活 + 1-hop 邻居收集 + 前置路径 DFS。**遍历序契约**：边遍历 = 源声明
 // 序（concepts_gen 保序生成）——Rust Vec 声明序遍历的等价物，DFS 前置

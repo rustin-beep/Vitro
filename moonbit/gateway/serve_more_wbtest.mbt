@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // serve 三段白盒锚（S7 批三号三段）：静态元数据族（capabilities/
 // error_catalog/semantic_labels/contracts）+ 交互 IO 族（input.feed 续跑
 // / output.delta 四通道游标）+ memory.regions 三段式（C2）。

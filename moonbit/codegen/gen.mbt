@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// BytecodeGen 状态机（S5 骨架，C only 裁剪）——Rust `vitro_codegen::lib.rs`
 /// 的 `BytecodeGen` 照搬：**形态等价优先**（S4 同款纪律），47 字段中剔除

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·detect graph 族（S8 teaching 批四号）：七算法判据照搬
 // detector/graph.rs:6-76——U1#1 P0-2 收紧后的**全命名主导**形态（BFS/DFS
 // 旧结构分支已删——收紧注释语义照搬；features 仅贡献 compare_lines 投影，

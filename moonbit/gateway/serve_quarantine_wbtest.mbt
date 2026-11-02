@@ -1,6 +1,6 @@
 // quarantine_budget 通道锚（2026-09-28 一段欠账销项）：config.set 直写
 // MemoryMap 定义点（clamp 0..1MB，Rust serve_apply_config 同形）+ 回显
-// 六字段补齐（quarantine_budget / input_mode_batch——Rust config() 同构）
+// 六字段补齐（quarantine_budget / input_mode_batch——历史蓝本 config() 同形）
 // + reset 保留语义（vm reset 跨重建保留 = 会话级配置）。
 // 销项联动：serve_smoke 豁免表删两条（「config.set 生效」/「reset 保留
 // 会话级配置（隔离预算）」）——MoonBit 臂 43→45 断言。

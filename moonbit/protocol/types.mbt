@@ -148,7 +148,7 @@ pub(all) struct ApiVariableSnapshot {
   addr : UInt32
   is_local : Bool
   ty_name : String
-  /// mut：decode 差分应用与消费方 clone+mutate 使用形态（Rust 同构）
+  /// mut：decode 差分应用与消费方 clone+mutate 使用形态（历史蓝本同形）
   mut value : String
 } derive(Debug)
 

@@ -47,7 +47,7 @@ pub extend Type with Default::{default}
 ///| `impl Default for Type`（G-2：AST Default 化基座；derive 对 17 变体
 
 ///|
-/// enum 的默认选择不可控，显式 impl 与 Rust 单点对齐）。
+/// enum 的默认选择不可控，显式 impl 沿用历史蓝本单点口径）。
 pub impl Default for Type with fn default() -> Type {
   Void(false)
 }

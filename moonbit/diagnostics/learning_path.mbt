@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // M4 学习路径组装（learning_path.rs 照搬，2026-10-02）：检出误区 →
 // 路径表查询 → 填运行时字段（target id/name 从检出误区带过——Rust
 // d.pattern_id.clone() 同义）。无对应路径的误区跳过（filter_map）。

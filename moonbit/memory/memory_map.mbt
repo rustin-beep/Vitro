@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| S6 执行层·内存域：**堆内存元数据（`MemoryMap`）**。
 ///
 /// 与 Rust 的对应关系：本类型合并了 `vitro_runtime::MemoryState`
@@ -50,7 +52,7 @@ pub struct MemoryMap {
 }
 
 ///|
-/// 空堆（`heap_base == heap_offset == HEAP_START`，与 Rust `Default` 一致）。
+/// 空堆（`heap_base == heap_offset == HEAP_START`，历史蓝本 `Default` 同值）。
 pub fn MemoryMap::new() -> MemoryMap {
   MemoryMap::{
     regions: Map([]),

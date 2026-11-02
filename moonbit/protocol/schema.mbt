@@ -319,7 +319,7 @@ pub fn check_unwinding_granularity(
 
 ///| batch/enforced_by/id/statement/status，SchemaFieldPlan 条目
 
-///| batch/field/kind/note/status。紧凑无空格。与 Rust 真值的**逐字节对拍锚**
+///| batch/field/kind/note/status。紧凑无空格。迁移期与 Rust 真值逐字节对拍锁定的锚
 
 ///| 在 schema_wbtest（探针 tmp/review_20260927/json_order，serde_json ~1.0.149
 

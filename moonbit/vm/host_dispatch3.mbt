@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域·executor：**CallHost 分发三段**（printf/scanf/字符 IO
 /// 族 10 + qsort/bsearch + guards×2/STEP——批三号第三段收官，CallHost
 /// 110 臂全接线）。

@@ -2,8 +2,8 @@
 // 源：scripts/moonbit/diagnostics_data/ 四 JSON 真源（#39 迁出冻结区 2026-10-05；联合 sha256/78f3a297，行尾归一）。
 // legacy：Rust oracle 四 .rs 结构对账至工序④删区（值级文案为修复批合法演化面，不比）。
 // 基线：节点 25 / 边 25 / 错误码映射 29（漂移时本脚本 fail loud）。
-// 分叉登记：3020→Recursion 系 oracle 存量语义错（勘察 ⑥-5），照搬不修——
-// 修复走差异台账两侧同修批。
+// 已知限制（历史蓝本 tag rust-oracle-freeze）：3020→Recursion 系蓝本存量语义错
+// （勘察 ⑥-5）——修复走真源 scripts/moonbit/diagnostics_data/ 再生（工单 R1b W3-1）。
 
 ///|
 /// 概念节点全集（源声明序）。

@@ -300,7 +300,7 @@ fn[P] Pp::parent_skipping(self : Pp[P]) -> Bool {
 }
 
 ///|
-/// BOM（EF BB BF）剥离——仅 L2 管线（L1 raw 保持 Rust 同构的"当普通字符"行为）。
+/// BOM（EF BB BF）剥离——仅 L2 管线（L1 raw 保持历史蓝本的"当普通字符"行为）。
 fn strip_bom(src : String) -> String {
   let b = @utf8.encode(src)
   if b.length() >= 3 && b[0] == b'\xEF' && b[1] == b'\xBB' && b[2] == b'\xBF' {

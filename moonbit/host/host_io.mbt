@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| printf/scanf/字符 IO 族 10 个 handler（Rust `host/io.rs` 照搬，勘察
 /// §1.7 族 C）。
 ///

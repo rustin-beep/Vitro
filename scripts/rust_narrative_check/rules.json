@@ -1,33 +1,53 @@
 {
-  "_comment": "rust_narrative_check 规则表（R1b §⑥ 三规则闸，审阅 v2 批 A7'）。扫描面 = moonbit/ 手写源码的注释段（.mbt 取不在字符串内的首个 // 之后；.mbt.md 整行叙事）。@generated 文件跳过（生成物叙事归生成器模板治理）。命中行 ±window 行的注释段内出现任一 tag_markers 即视为合法档案引用（#47 批五三件套：历史出处 + tag 可回溯 + 自主基线）过闸。",
+  "_comment": "rust_narrative_check 规则表（R1b §⑥ 三规则闸，审阅 v2 批 A7'；PR #431 审阅处置扩面 R1b/R4 + 文件头 tag 形态 + @generated 扫入）。扫描面 = moonbit/ 源码的注释段（.mbt 取不在字符串内的首个 // 之后；.mbt.md 整行叙事；@generated 文件照扫——命中即改生成器模板再生，禁手改）。过闸形态 = #47 批五三件套（历史出处 + tag 可回溯 + 自主基线）：命中行 ±window 行注释段内出现任一 tag_markers；对 file_head_tag_exempt 规则，文件头 file_head_lines 行叙事段内出现 tag 即整文件过闸（量大且带技术价值的行号/符号级蓝本引用——文件头一次声明）。",
   "scan_roots": ["moonbit"],
   "extensions": [".mbt", ".mbt.md"],
   "prune_dirs": ["_build", ".mooncakes", "target", "node_modules"],
   "generated_marker": "@generated",
   "generated_marker_head_lines": 5,
-  "tag_markers": ["rust-oracle-freeze", "frozen-oracle-snapshot", "917251e", "冻结区"],
+  "tag_markers": ["rust-oracle-freeze", "frozen-oracle-snapshot", "917251e"],
   "window": 3,
+  "file_head_lines": 15,
   "rules": [
     {
       "id": "R1",
       "name": "死引用",
       "pattern": "native/(src|crates|tests)|crates/vitro_|vitro_(ast|codegen|lexer|parser|runtime|vm)/src/",
       "exempt_words": [],
-      "hint": "指向已删除的 native/ 或 crates/vitro_*（含省 crates/ 前缀的 vitro_xxx/src/ 形态）路径且窗口内无档案 tag——补「历史蓝本 …（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）」三件套，或改写为 MoonBit 语境"
+      "file_head_tag_exempt": false,
+      "hint": "指向已删除的 native/ 或 crates/vitro_*（含省 crates/ 前缀的 vitro_xxx/src/ 形态）路径且 ±3 行无档案 tag——补「历史蓝本 …（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）」三件套，或改写为 MoonBit 语境"
+    },
+    {
+      "id": "R1b",
+      "name": "蓝本文件引用",
+      "pattern": "\\b[a-z_][a-z_0-9]*(/[a-z_][a-z_0-9]*)*(?<!snapshot)\\.rs\\b",
+      "exempt_words": [],
+      "file_head_tag_exempt": true,
+      "hint": "裸 `*.rs[:行号]` 蓝本引用——文件已随 2026-10-05 删区不存在；行号引用有技术价值可保留，但须可回溯：文件头 15 行内补一次「历史蓝本注记（tag rust-oracle-freeze）」声明即整文件过闸，或命中行 ±3 行补 tag"
     },
     {
       "id": "R2",
       "name": "照搬不修活体",
       "pattern": "照搬不修|照搬在案|oracle 同病",
       "exempt_words": ["已修", "销案", "已翻转", "已废弃", "~~"],
+      "file_head_tag_exempt": false,
       "hint": "「照搬不修/在案/同病」的等 oracle 两侧同修义务已随删区死亡——要么修要么改写为「已知限制（工单锚）」口径；销案留痕须同窗出现 已修/销案/已翻转/已废弃"
     },
     {
       "id": "R3",
       "name": "对齐声明",
-      "pattern": "与 Rust( 侧|侧)? ?(一致|同构|对齐|逐字节|逐行对应|sort 对齐)|Rust ?侧 ?(同构|对应|一致|对齐)",
-      "exempt_words": ["历史", "曾", "旧", "蓝本"],
-      "hint": "「与 Rust 一致/同构/对齐」「Rust 侧同构/对应」的对拍对象已删、机判已死——改为自主基线口径（与 Clang/行为契约一致）或加历史限定词（历史/曾/旧/蓝本）"
+      "pattern": "与 Rust( 侧|侧)? ?(一致|同构|对齐|逐字节|逐行对应|sort 对齐)|Rust ?侧 ?(同构|对应|一致|对齐)|Rust[^。，；）\\n]{0,12}(同构|一致|对齐|逐字节)",
+      "exempt_words": ["历史", "曾", "旧", "蓝本", "语言", "迁移期"],
+      "file_head_tag_exempt": false,
+      "hint": "「与 Rust 一致/同构/对齐」「Rust 侧同构」及 12 字内非紧邻形态——对拍对象已删、机判已死——改为自主基线口径（与 Clang/行为契约/golden 一致）或加历史限定词（历史/曾/旧/蓝本）；对 Rust **语言**语义的活引用（如 `as i32` 饱和转换）写明「Rust 语言」"
+    },
+    {
+      "id": "R4",
+      "name": "照搬来源叙事",
+      "pattern": "照搬 ?Rust",
+      "exempt_words": [],
+      "file_head_tag_exempt": true,
+      "hint": "「照搬 Rust X」符号级来源陈述——历史出处属实但缺 tag 不可回溯（#47 三件套缺一）：文件头 15 行内补一次「历史蓝本注记（tag rust-oracle-freeze）」声明即整文件过闸"
     }
   ]
 }

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·判据 search + string 族（S8 teaching 批二号，2026-10-01）：
 // detector/search.rs:6-23（binary_search——命名三分支 + 结构分支
 // 〔单循环 + mid 计算 + left/right 更新〕）+ detector/string.rs:6-27

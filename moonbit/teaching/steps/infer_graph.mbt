@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer graph 族（S8 teaching 批四号，2026-10-01）：
 // 七算法照搬 vitro_algorithm_steps/src/graph.rs:1-222——含全部审阅修复
 // 语义：BFS 起点入队文案区分（U1#1 P1-6）/ prim 的 lowcost[k]=0 收紧

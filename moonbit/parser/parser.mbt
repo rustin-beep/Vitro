@@ -130,7 +130,7 @@ priv struct Rollback {
 ///|
 /// 递归深度上限（照搬 Rust 256；勘察 7-S1 实测 wasm-gc 21 帧瀑布 854 层，
 /// 余量充足）。计数口径 = 活跃壳数（每层括号嵌套 4 计数：assign+ternary+
-/// unary+primary 壳），与 Rust 共享计数器同构——阈值样本（62/63 层括号）
+/// unary+primary 壳），与历史蓝本共享计数器同形——阈值样本（62/63 层括号）
 /// 的触发边界逐位一致是 E3 对拍前提。
 const MAX_PARSE_DEPTH : Int32 = 256
 

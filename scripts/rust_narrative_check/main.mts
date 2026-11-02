@@ -1,27 +1,32 @@
 #!/usr/bin/env node
-// rust_narrative_check —— Rust 叙事三规则闸（审阅 v2 批 A7'，R1b §⑥ 口径固化）。
+// rust_narrative_check —— Rust 叙事闸（审阅 v2 批 A7'，R1b §⑥ 口径固化；PR #431 审阅处置扩面）。
 //
-// 问题本质：Rust 对照区 2026-10-05 工序④物理删除后，moonbit/ 手写源码注释里
-// 仍遍布「照搬源：native/src/*.rs」死路径（A 类）、「与 Rust 一致/同构」失实
-// 背书（B 类）、「照搬不修/在案/同病」僵尸义务（D 类）。#47 批五三件套
-// （历史出处 + tag 可回溯 + 自主基线）此前是手工口径，CI 零拦截——新批次随时
-// 再引入。本闸把三件套机判化：
-//   R1（死引用）  注释段匹配 native/(src|crates|tests) 或 crates/vitro_ 路径形态，
-//                 且命中行 ±window 行注释段内无档案 tag → 红；
-//   R2（照搬不修活体）匹配 照搬不修|照搬在案|oracle 同病，且无 tag 且窗口内无
-//                 已修|销案|已翻转|已废弃|~~ 销案留痕 → 红；
-//   R3（对齐声明）匹配 与 Rust(侧)? (一致|同构|对齐|逐字节|逐行对应|sort 对齐)，
-//                 且无 tag 且窗口内无 历史|曾|旧|蓝本 限定词 → 红。
+// 问题本质：Rust 对照区 2026-10-05 工序④物理删除后，moonbit/ 源码注释里仍遍布
+// 「照搬源：native/src/*.rs」死路径（A 类）、「与 Rust 一致/同构」失实背书（B 类）、
+// 「照搬不修/在案/同病」僵尸义务（D 类）。#47 批五三件套（历史出处 + tag 可回溯 +
+// 自主基线）此前是手工口径，CI 零拦截——新批次随时再引入。本闸把三件套机判化：
+//   R1（死引用）     native/(src|crates|tests)|crates/vitro_|vitro_xxx/src/ 路径形态，
+//                    ±window 行注释段内无档案 tag → 红；
+//   R1b（蓝本文件引用）裸 `*.rs` 文件名/行号引用（排真文件 snapshot.rs）——量大且
+//                    带算法来源技术价值：**文件头 file_head_lines 行内一次 tag 声明即
+//                    整文件过闸**（PR #431 审阅 P2-1 处方 A），否则 ±window 同 R1；
+//   R2（照搬不修活体）照搬不修|照搬在案|oracle 同病，无 tag 且窗口无 已修|销案|
+//                    已翻转|已废弃|~~ 留痕 → 红；
+//   R3（对齐声明）   与 Rust(侧)? (一致|同构|…)、Rust 侧(同构|…)、及 12 字内非紧邻
+//                    `Rust…(同构|一致|对齐|逐字节)`，无 tag 且窗口无 历史|曾|旧|蓝本|
+//                    语言 限定词 → 红（「Rust 语言」= 对语言语义的活引用，非 oracle 叙事）；
+//   R4（照搬来源叙事）照搬 ?Rust 符号级来源陈述——三件套缺 tag：同 R1b 文件头形态。
 // 规则外置 rules.json；存量过闸 exemptions.json（reason 必填）与命中集三向对账：
 //   漏登记（命中未登记）红 / 僵尸例外（登记项不再命中）红 / 例外缺 reason 红。
-// 扫描面 = 手写源：.mbt 只看不在字符串字面量内的首个 `//` 之后（多行字符串
-// `#|`/`$|` 行跳过）；.mbt.md 整行叙事；@generated 文件跳过（生成物叙事归生成器
-// 模板治理——改模板再生，禁手改）。
+// 扫描面：.mbt 只看不在字符串字面量内的首个 `//` 之后（多行字符串 `#|`/`$|` 行跳过）；
+// .mbt.md 整行叙事；**@generated 文件照扫**（PR #431 审阅 P2-2：跳过=对再生源结构性
+// 失明；命中即改生成器模板再生，禁手改——输出带〔@generated〕标记）。
 //
 // 用法（仓库根）：
 //   node scripts/rust_narrative_check/main.mts            # 扫描并列出命中
-//   node scripts/rust_narrative_check/main.mts -check     # 同（与兄弟闸形态一致）
-//   node scripts/rust_narrative_check/main.mts --json     # 机器可读（命中/过闸/跳过）
+//   node scripts/rust_narrative_check/main.mts -check     # 同上（本闸只读无写模式，
+//                                                         #  -check 是与兄弟闸形态一致的别名）
+//   node scripts/rust_narrative_check/main.mts --json     # 机器可读（命中/过闸/僵尸）
 // 退出码：0 零命中且例外表无僵尸 / 1 任一向红 / 2 环境错（规则表坏/仓库根找不到）。
 import fs from "node:fs";
 import path from "node:path";
@@ -33,6 +38,7 @@ export interface Rule {
   name: string;
   pattern: string;
   exempt_words: string[];
+  file_head_tag_exempt?: boolean;
   hint: string;
 }
 
@@ -44,6 +50,7 @@ export interface Rules {
   generated_marker_head_lines: number;
   tag_markers: string[];
   window: number;
+  file_head_lines: number;
   rules: Rule[];
 }
 
@@ -60,11 +67,12 @@ export interface Hit {
   rule: string;
   text: string;
   exempted: boolean;
+  generated: boolean;
 }
 
 export interface ScanResult {
   files: number;
-  skippedGenerated: number;
+  generatedScanned: number;
   hits: Hit[];
   zombies: Exemption[];
 }
@@ -155,6 +163,7 @@ export function loadRules(dir: string): Rules {
   }
   if (!Array.isArray(r.tag_markers) || r.tag_markers.length === 0) fatal("tag_markers 为空");
   if (!Number.isInteger(r.window) || r.window < 0) fatal("window 须为非负整数");
+  if (!Number.isInteger(r.file_head_lines) || r.file_head_lines < 1) fatal("file_head_lines 须为正整数");
   return r;
 }
 
@@ -214,9 +223,16 @@ function windowHas(narr: string[], idx: number, window: number, words: string[])
   return false;
 }
 
+/** 文件头 N 行叙事段内是否有档案 tag（R1b/R4 的整文件过闸判据）。 */
+export function fileHeadHasTag(narr: string[], rules: Rules): boolean {
+  const head = narr.slice(0, rules.file_head_lines);
+  return head.some((s) => rules.tag_markers.some((t) => s.includes(t)));
+}
+
 /** 单文件判定（纯函数，测试直调）。 */
-export function scanFile(relFile: string, body: string, rules: Rules): Hit[] {
+export function scanFile(relFile: string, body: string, rules: Rules, generated = false): Hit[] {
   const narr = narrativeLines(relFile, body);
+  const headTag = fileHeadHasTag(narr, rules);
   const hits: Hit[] = [];
   const compiled = rules.rules.map((r) => ({ r, re: new RegExp(r.pattern) }));
   for (let i = 0; i < narr.length; i++) {
@@ -224,9 +240,10 @@ export function scanFile(relFile: string, body: string, rules: Rules): Hit[] {
     if (seg === "") continue;
     for (const { r, re } of compiled) {
       if (!re.test(seg)) continue;
+      if (r.file_head_tag_exempt === true && headTag) continue;
       if (windowHas(narr, i, rules.window, rules.tag_markers)) continue;
       if (windowHas(narr, i, rules.window, r.exempt_words)) continue;
-      hits.push({ file: relFile, line: i + 1, rule: r.id, text: seg.trim(), exempted: false });
+      hits.push({ file: relFile, line: i + 1, rule: r.id, text: seg.trim(), exempted: false, generated });
     }
   }
   return hits;
@@ -235,7 +252,7 @@ export function scanFile(relFile: string, body: string, rules: Rules): Hit[] {
 export function scanRepo(root: string, rules: Rules, exemptions: Exemption[]): ScanResult {
   const files = listFiles(root, rules);
   if (files.length === 0) fatal("扫描面为空——fail loud（空集不得绿）");
-  let skippedGenerated = 0;
+  let generatedScanned = 0;
   const hits: Hit[] = [];
   for (const abs of files) {
     const rel = toSlash(path.relative(root, abs));
@@ -245,11 +262,9 @@ export function scanRepo(root: string, rules: Rules, exemptions: Exemption[]): S
     } catch {
       continue;
     }
-    if (isGenerated(body, rules.generated_marker, rules.generated_marker_head_lines)) {
-      skippedGenerated++;
-      continue;
-    }
-    hits.push(...scanFile(rel, body, rules));
+    const gen = isGenerated(body, rules.generated_marker, rules.generated_marker_head_lines);
+    if (gen) generatedScanned++;
+    hits.push(...scanFile(rel, body, rules, gen));
   }
   // 三向对账：命中 ↔ 例外
   const used = new Set<number>();
@@ -261,7 +276,7 @@ export function scanRepo(root: string, rules: Rules, exemptions: Exemption[]): S
     }
   }
   const zombies = exemptions.filter((_, idx) => !used.has(idx));
-  return { files: files.length, skippedGenerated, hits, zombies };
+  return { files: files.length, generatedScanned, hits, zombies };
 }
 
 export function main(argv: string[]): number {
@@ -269,7 +284,7 @@ export function main(argv: string[]): number {
   let repo = "";
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? "";
-    if (a === "-check" || a === "--check") continue;
+    if (a === "-check" || a === "--check") continue; // 只读闸：别名，无写模式
     if (a === "--json") {
       json = true;
       continue;
@@ -296,12 +311,13 @@ export function main(argv: string[]): number {
   const byRule = new Map<string, number>();
   for (const h of live) byRule.set(h.rule, (byRule.get(h.rule) ?? 0) + 1);
   const ruleSummary = rules.rules.map((r) => `${r.id} ${byRule.get(r.id) ?? 0}`).join(" / ");
+  const genLive = live.filter((h) => h.generated).length;
 
   if (json) {
     const out = {
       files: res.files,
-      skipped_generated: res.skippedGenerated,
-      live: live.map((h) => ({ file: h.file, line: h.line, rule: h.rule, text: h.text })),
+      generated_scanned: res.generatedScanned,
+      live: live.map((h) => ({ file: h.file, line: h.line, rule: h.rule, text: h.text, generated: h.generated })),
       exempted,
       zombies: res.zombies,
     };
@@ -309,7 +325,8 @@ export function main(argv: string[]): number {
   } else {
     for (const h of live) {
       const rule = rules.rules.find((r) => r.id === h.rule);
-      process.stdout.write(`${h.file}:${h.line} [${h.rule} ${rule?.name ?? ""}] ${h.text}\n`);
+      const tag = h.generated ? "〔@generated：改模板再生〕" : "";
+      process.stdout.write(`${h.file}:${h.line} [${h.rule} ${rule?.name ?? ""}]${tag} ${h.text}\n`);
     }
     for (const z of res.zombies) {
       process.stdout.write(`僵尸例外: ${z.file} [${z.rule}] ${JSON.stringify(z.line_text)}——不再命中，例外条目应删\n`);
@@ -326,12 +343,12 @@ export function main(argv: string[]): number {
   if (json) return failed ? 1 : 0;
   if (failed) {
     process.stdout.write(
-      `rust_narrative_check: FAIL——扫描 ${res.files} 文件（@generated 跳过 ${res.skippedGenerated}）/ 活命中 ${live.length}（${ruleSummary}）/ 过闸 ${exempted} / 僵尸例外 ${res.zombies.length}\n`,
+      `rust_narrative_check: FAIL——扫描 ${res.files} 文件（@generated 扫入 ${res.generatedScanned}）/ 活命中 ${live.length}（${ruleSummary}；@generated 内 ${genLive}）/ 过闸 ${exempted} / 僵尸例外 ${res.zombies.length}\n`,
     );
     return 1;
   }
   process.stdout.write(
-    `rust_narrative_check: PASS——扫描 ${res.files} 文件（@generated 跳过 ${res.skippedGenerated}）/ 活命中 0 / 过闸 ${exempted} / 例外表 ${exemptions.length} 零僵尸\n`,
+    `rust_narrative_check: PASS——扫描 ${res.files} 文件（@generated 扫入 ${res.generatedScanned}）/ 活命中 0 / 过闸 ${exempted} / 例外表 ${exemptions.length} 零僵尸\n`,
   );
   return 0;
 }

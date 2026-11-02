@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·判据主口 + sorting 族（S8 teaching 批一号）：
 // detect_algorithms / detect_in_func 照搬 algorithm_detector/mod.rs
 //（批一号仅 sorting 臂——后续族随批逐个 extend）；sorting 判据照搬

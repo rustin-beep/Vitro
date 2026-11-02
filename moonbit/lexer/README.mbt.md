@@ -20,7 +20,7 @@ test {
   )
   inspect(@lexer.TokenType::to_name(r.tokens[3].ty), content="LParen")
   inspect(r.tokens[5].text, content="3")
-  // 宏展开产物的位置钉在调用点（与 Rust oracle 对拍口径一致）
+  // 宏展开产物的位置钉在调用点（迁移期与 Rust oracle 对拍锁定的口径）
   inspect(r.tokens[8].loc.line, content="2")
   inspect(r.errors.length(), content="0")
 }

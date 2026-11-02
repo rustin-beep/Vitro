@@ -145,7 +145,7 @@ fn utf8_len(s : String) -> Int32 {
 ///|
 /// L1 入口：全源原始词法（macro_body_mode = true——`#` 产出 Hash/HashHash，
 /// 与 Rust `tokenize_raw` 出口同构；不做行拼接/指令消费/展开）。
-/// BOM **不剥离**（与 Rust raw 同构：BOM → E1001 + Unknown）。
+/// BOM **不剥离**（历史蓝本 raw 同形：BOM → E1001 + Unknown）。
 pub fn scan_raw(
   src : Bytes,
   cpp_mode~ : Bool = false,

@@ -261,7 +261,7 @@ pub fn kind_by_id(id : String) -> SemanticLabelKind? {
 
 ///| domain/example/id/since/status/template；数组元素序保持插入序）。
 
-///| 紧凑无空格；与 Rust 真值的逐字节对拍锚在 vocabulary_wbtest（探针
+///| 紧凑无空格；迁移期与 Rust 真值逐字节对拍锁定的锚在 vocabulary_wbtest（探针
 
 ///| tmp/review_20260927/json_order，2026-09-27 用户审阅 P2-1 实测锁定）。
 

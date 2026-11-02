@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| VFS 文件族 17 个 handler（Rust `host/file.rs` 照搬，勘察 §1.7 族 D）。
 ///
 /// **FILE\* 协议**：`fopen` 在堆上分配 4 字节存 fd（区域名 `FILE:<path>`），

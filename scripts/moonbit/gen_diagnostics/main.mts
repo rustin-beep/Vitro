@@ -200,8 +200,8 @@ export function renderConcepts(
   let b = banner(srcHash);
   b += `// 基线：节点 ${nodes.length} / 边 ${edges.length} / 错误码映射 ${conceptMap.length}（漂移时本脚本 fail loud）。\n`;
   b +=
-    "// 分叉登记：3020→Recursion 系 oracle 存量语义错（勘察 ⑥-5），照搬不修——\n" +
-    "// 修复走差异台账两侧同修批。\n\n";
+    "// 已知限制（历史蓝本 tag rust-oracle-freeze）：3020→Recursion 系蓝本存量语义错\n" +
+    "// （勘察 ⑥-5）——修复走真源 scripts/moonbit/diagnostics_data/ 再生（工单 R1b W3-1）。\n\n";
 
   b += "///|\n/// 概念节点全集（源声明序）。\npub fn concept_nodes() -> Array[ConceptNode] {\n  [\n";
   for (const n of nodes) {
@@ -262,7 +262,7 @@ export function renderPatterns(patterns: PatternEntry[], srcHash: string): strin
 
 export function renderPaths(paths: PathEntry[], srcHash: string): string {
   let b = banner(srcHash);
-  b += `// 基线：学习路径 ${paths.length} 条（漂移时本脚本 fail loud）。target_misconception_\n// id/name 运行时由检出误区带过（Rust d.pattern_id.clone() 同义），不冗余入表。\n// 分叉登记：target_id 悬空引用（勘察 ③-D5）照搬不修。\n\n`;
+  b += `// 基线：学习路径 ${paths.length} 条（漂移时本脚本 fail loud）。target_misconception_\n// id/name 运行时由检出误区带过（历史蓝本 d.pattern_id.clone() 同义），不冗余入表。\n// 已知限制（历史蓝本 tag rust-oracle-freeze）：target_id 悬空引用（勘察 ③-D5），修复走真源再生（工单 R1b W3-2）。\n\n`;
   b +=
     "///|\n/// 预置学习路径表（key = 误区模式 id，M01..M06）。\npub fn default_paths() -> Map[String, LearningPath] {\n  let m : Map[String, LearningPath] = Map([])\n";
   for (const p of paths) {

@@ -14,7 +14,7 @@
 // error_catalog/semantic_labels/contracts 三方法走 @util.json_parse(emitter
 // String) 通道：emitter 是已对齐 Rust serde 的单源（批一号双显式
 // emitter + diag gen_diag 三件套），parse 后对象内嵌 serve 帧——字段
-// 序 = emitter 序 = Rust serde 序（对拍一致的前提不变）。
+// 序 = emitter 序 = 历史蓝本 serde 序（golden 对拍的前提不变）。
 
 ///|
 /// capabilities 方法帧（E2：「版本宏当能力探测」三层配套之一）。
@@ -50,7 +50,7 @@ fn serve_capabilities_frame(id : Json) -> (String, Bool) {
     cm.set("enforced_by", Json::string(c.enforced_by))
     contracts.push(Json::object(cm))
   }
-  // 预处理器能力清单（S2 lexer 与 Rust 预处理器差分对齐的描述面照搬）
+  // 预处理器能力清单（描述面沿用迁移期 S2 lexer 对拍口径）
   let preproc : Map[String, Json] = Map([])
   preproc.set("object_macros", Json::boolean(true))
   preproc.set("function_macros", Json::boolean(true))

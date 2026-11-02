@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| S6 宿主内存族白盒锚点（`vitro/engine/host`）。
 ///
 /// **锚点来源**：Rust 冻结区的 host 契约测试逐条照搬（`host_contract_tests.rs`

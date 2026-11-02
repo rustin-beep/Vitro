@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·detect math 族（S8 teaching 批五号）：三算法判据照搬
 // detector/math.rs:6-28——全命名主导；与 graph 族差异：build_match 的
 // compare_lines 传**空数组**（Rust `&[]` 同款——math 族判据零特征消费，

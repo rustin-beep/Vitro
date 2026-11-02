@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 表达式优先级瀑布（照搬 Rust `expr/` 五文件：mod/ops/primary/postfix/
 /// unary）。21 帧瀑布中 4 个壳挂点（assign/ternary/unary/primary）按

@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// C 关键字查找（照搬 `keyword.rs:32-81`——43 条映射含同义拼写与 C23 锚定）。
 fn keyword_type(text : String) -> @token.TokenType? {

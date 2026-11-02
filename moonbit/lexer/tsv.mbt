@@ -13,7 +13,7 @@
 /// 2. `col` = `column - text 的 UTF-8 字节数`（回推公式；列计数自 #242
 ///    2026-10-24 起按字节——非 ASCII 量纲混算已修；规范化 text 的回推偏差
 ///    为已知残留，PR #294 审阅 P2-2 待处置；无缺陷坐标用 byte_off）；
-/// 3. L2 位置钉宏调用点（与 Rust 展开器行为一致）。
+/// 3. L2 位置钉宏调用点（历史蓝本展开器同形）。
 pub fn dump_raw_tsv(result : @token.RawResult) -> String {
   let buf = StringBuilder()
   for i in 0..<result.tokens.length() {

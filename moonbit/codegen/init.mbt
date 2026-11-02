@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| C 字符串字节通道已上提为 bytecode 包单源（S6 vm 批一号——vm 片 argv
 /// 装载需要同一字节口径，跨 L6/L7 复用须独立单源）：本包消费
 /// `@bytecode.cstring_bytes` / `@bytecode.cstring_len`，禁再私写。

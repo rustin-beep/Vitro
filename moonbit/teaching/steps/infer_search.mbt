@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·infer search 族（S8 teaching 批二号，2026-10-01）：
 // 四算法照搬 vitro_algorithm_steps/src/search.rs:1-225——含全部审阅修复
 // 语义：mid_calc 收紧（三分支不可达修复——比较行不再被短路）/ narrow

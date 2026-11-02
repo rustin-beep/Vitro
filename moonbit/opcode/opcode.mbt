@@ -514,7 +514,7 @@ pub fn OpCode::from_u8(value : Int32) -> OpCode? {
 }
 
 ///|
-/// 变体名（与 Rust 变体名逐字一致——诊断显示与差分锚的稳定标识）。
+/// 变体名（沿用历史蓝本变体名逐字不改——诊断显示与差分锚的稳定标识）。
 pub fn OpCode::name(self : OpCode) -> String {
   match self {
     Nop => "Nop"

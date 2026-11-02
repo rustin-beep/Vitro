@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 类型形状判别枚举（16 变体，照搬 Rust `TypeKind`——vitro_ast types.rs:9-28）。
 ///
@@ -40,7 +42,7 @@ pub extend TypeKind with Hash::{hash, hash_combine}
 
 ///|
 /// Type → TypeKind 投影（穷尽 17 臂无兜底——加 Type 变体必须表态 kind，
-/// 编译期强制；Rust kind() 同构，Typeof → TK_Auto）。
+/// 编译期强制；历史蓝本 kind() 同形，Typeof → TK_Auto）。
 pub fn Type::kind(self : Type) -> TypeKind {
   match self {
     Void(_) => TK_Void

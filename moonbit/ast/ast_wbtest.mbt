@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///|
 /// 构造器与 array_size 单点派生：dims→size 乘积（非正维按 1）。
 test "type_constructors_and_array_size" {

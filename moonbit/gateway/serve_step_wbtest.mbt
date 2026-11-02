@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // serve step 族白盒锚（S8 批一号接线批，2026-10-01）：五方法协议面 +
 // U1#1 一帧发布缓冲（R2 首调空帧语义）+ seek 往返 + trap 帧。编排本体
 // 的行为锚在 time_travel/engine_wbtest（九锚）；本族锁 serve 层帧结构、

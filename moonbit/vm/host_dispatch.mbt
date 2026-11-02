@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 ///| L7 执行层·VM 域·executor：**CallHost 分发**（批三号第一段）。
 ///
 /// Rust `execute_host_func`（`host_funcs.rs:33-147`）每 handler 自管弹参；

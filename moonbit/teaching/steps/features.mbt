@@ -1,3 +1,5 @@
+// 蓝本注记：文内 Rust 源引用（`*.rs` 路径/行号/符号）均为档案态蓝本——tag rust-oracle-freeze（2026-10-05 删区），现为本仓自主基线。
+
 // teaching/steps·features（S8 teaching 批一号）：函数级特征提取——
 // 判据各族共享的 FuncFeatures + AST 遍历。照搬源
 // algorithm_detector/features.rs:1-644（CFG 四特征分叉登记见 moon.pkg

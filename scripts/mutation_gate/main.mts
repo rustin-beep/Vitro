@@ -324,11 +324,17 @@ function main(): void {
     }
     // 杀阵干跑先验（环境红跳过——不静默）；同时计时——timeoutMS 按闭包净时长
     // 动态给（PR #375 审阅 P2-2：大闭包〔如 internal/text.mts 72 测试文件 ~186s〕
-    // 超过固定 120s ⇒ 全部 Timeout ⇒ 不进 survived 清单 ⇒ 假干净）
+    // 超过固定 120s ⇒ 全部 Timeout ⇒ 不进 survived 清单 ⇒ 假干净）。
+    // CF_SKIP_E2E=1（PR #414 处置批）：跳过 corpus_fuzz 闸三连轮 e2e——该轮
+    // 真跑 ~130s，survived 突变体逐个跑满完整闭包 ⇒ 乘法爆炸（首轮 2.4min →
+    // 含三连轮 26min+ 未完实锤）；干跑与 Stryker 两处同设，否则干跑抬高超时
+    // 基线。代价：M6/M7 类只有 e2e 能杀的接线突变在本轮判 survived——由
+    // 常规轮 e2e（CI test 步全量跑）保证杀阵，突变报告口径见 CHANGELOG 注记。
     const dryStart = Date.now();
     const dry = spawnSync("node", ["--test", "--test-concurrency=1", ...tests], {
       cwd: scriptsDir,
       encoding: "utf8",
+      env: { ...process.env, CF_SKIP_E2E: "1" },
     });
     const dryMs = Date.now() - dryStart;
     if (dry.status !== 0) {
@@ -345,6 +351,7 @@ function main(): void {
     const strykerBin = path.join(scriptsDir, "node_modules", "@stryker-mutator", "core", "bin", "stryker.js");
     const run = spawnSync(process.execPath, [strykerBin, "run", path.relative(scriptsDir, cfgPath).replaceAll("\\", "/")], {
       cwd: scriptsDir,
+      env: { ...process.env, CF_SKIP_E2E: "1" }, // 同干跑：突变轮跳过重 e2e（见上注）
       encoding: "utf8",
     });
     const reportPath = path.join(outAbs, `${slug}.mutation.json`);

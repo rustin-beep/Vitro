@@ -112,6 +112,13 @@
 - 锚：处置批新增 7 测试（P1 反例/端到端、P3-4、P3-1 纯函数四态、P3-3、
   P2-1 编译段 e2e、闸三连轮 e2e），分案红实录 5 红（35 绿）；全量 41/41
   绿；tsc/oxlint 全绿。
+- **突变轮与重 e2e 解耦**（Mutation gate 时长爆炸治本）：闸三连轮 e2e
+  真跑 ~130s，survived 突变体逐个跑满完整闭包 ⇒ 乘法爆炸（同批无三连轮
+  2.4min vs 含三连轮 26min+ 未完实锤）——mutation_gate 干跑与 Stryker
+  spawn 两处设 `CF_SKIP_E2E=1`，三连轮在该轮 skip（40 pass + 1 skipped，
+  秒级）；**代价（诚实口径）**：M6/M7 类只有 e2e 能杀的接线突变在突变轮
+  判 survived——survived 清单含 e2e-only 可杀体，杀阵由常规轮 CI test 步
+  全量跑 + 本地突变实录（M6/M7 双实证）保证。
 
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 

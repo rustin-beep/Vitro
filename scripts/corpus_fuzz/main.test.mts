@@ -693,7 +693,7 @@ test("#414 P2-1 红锚：clang 编译段 spawn 失败判 CLANG_CRASH——环境
   }
 });
 
-test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confirm 放行（PR #414 审阅 P3-1/P3-2 接线杀阵）", () => {
+test("e2e：#412 freeze 恶化翻桶闸三连轮——闸红零副作用 + confirm 放行（PR #414 审阅 P3-1/P3-2 接线杀阵）", { skip: process.env["CF_SKIP_E2E"] === "1" ? "突变轮跳过（CF_SKIP_E2E）：三连轮真跑 ~130s × survived 突变体逐个重跑 = 乘法爆炸（26min 实锤）；M6/M7 杀阵由常规轮 CI test 步全量 + 本地突变实录保证" : false }, () => {
   // 突变杀阵：M6（闸条件恒假）⇒ 轮 2 rc 断言红；M7（删 confirm 守卫）⇒ 轮 3
   // rc 断言红；副作用后置突变（judgeCachePut 挪回循环内）⇒ mtime 断言红。
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cf-flipgate-"));

@@ -1713,6 +1713,14 @@ jobs:
       - name: demo deps (vite dev server)
         shell: bash
         run: cd demo && npm ci
+      # algorithms.js 是 gitignored 生成物（.gitignore:185），vite 的
+      # demoGlobals 插件构建期 readFileSync 硬依赖——本地盘上有产物故
+      # dev 绿，CI 全新 checkout 缺席即 ENOENT（二轮红根因）。与 demo job
+      # 的发射步同款；生成器内部 ensureFresh 自跑 vitro_js 构建（#36 三真值
+      # 源机判），moon 工具链本 job 已装。
+      - name: demo algorithms data emit (generator assertions = gate)
+        shell: bash
+        run: node scripts/gen_demo_algorithms/main.mts
       - name: desktop release build (proton + vitro/engine in-process)
         shell: bash
         run: cd desktop && proton_cli build -- --release
@@ -1722,11 +1730,15 @@ jobs:
       - name: CDP smoke (real CEF window, pinned port)
         shell: bash
         run: cd desktop && node tools/smoke.mts 9335
-      # 兜底清树（CEF 子进程模型：dev 树收不净的残余同名进程）
+      # 兜底清树（CEF 子进程模型：dev 树收不净的残余同名进程）。
+      # MSYS_NO_PATHCONV=1：/IM 是 taskkill 旗标非路径——Git Bash 的 MSYS
+      # 路径转换会把它吃成盘符路径（二轮 cleanup 红 rc=1 根因）。
       - name: cleanup stray processes
         if: always()
         shell: bash
-        run: taskkill /IM app.exe /IM cef_process.exe /IM proton_cli.exe /F 2>/dev/null; true
+        run: |
+          export MSYS_NO_PATHCONV=1
+          taskkill /IM app.exe /IM cef_process.exe /IM proton_cli.exe /F 2>/dev/null || true
 
   # ── backend-triage（#349 三面编译语义对拍臂，2026-10-28）──────────────
   # 同一份 MoonBit 源（cmd/backend_triage runner——gateway 四导出帧源级形态）

@@ -753,3 +753,19 @@ test "verify: wrapper 起点越界（wrapper_ip=0）" {
     "wrapper 起点 0 越界",
   )
 }
+
+///|
+/// PR #415 审阅处置 P3-1：verify.mbt:842「wrapper 段缺 Call main」规则可达
+/// 但仓内零锚（审阅临时锚实证 59/59）——C-1 缺口清单漏列的第 23 条。构造
+/// wrapper 首指令非 Call（也非 PushArgv/PushArgc 前缀）即红。
+test "verify: wrapper 段缺 Call main（首指令非 Call）" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let o = mk_clean_output()
+  // wrapper [3,5)：code[3] 由 Call 1089 改为 PushConst——缺 Call main
+  o.code[3] = @opcode.Instruction::new(PushConst, 0, loc)
+  expect_violation(
+    verify_compile_output(o, false),
+    "wrapper-shape",
+    "wrapper 段缺 Call main（3 起）",
+  )
+}

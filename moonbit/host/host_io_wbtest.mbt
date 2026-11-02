@@ -26,9 +26,12 @@ test "format_fixed_half_even_oracle_truth" {
   assert_eq(format_fixed(5.0, 2), "5.00", msg="整数补零")
   assert_eq(format_fixed(0.5, 2), "0.50", msg="左补零路径")
   // KNOWN_DIVERGENCE（M20 A-12；探针 Win clang 22.1.4-UCRT `%.2f` NAN →
-  // "nan"，glibc 对 0.0/0.0 给 "-nan"〔符号位另计 M20 D-4〕）：本锚锁当前
-  // vitro 拼法 "NaN"（Rust `{:?}` 照搬）——B 批修复翻面目标 "nan"（大小写
-  // 随转换符）；inf/-inf 双侧一致非偏差。
+  // "nan"）：本锚锁当前 vitro 拼法 "NaN"（Rust `{:?}` 照搬）——B 批修复翻面
+  // 目标 "nan"（大小写随转换符）；inf/-inf 双侧一致非偏差。
+  // 口径注（PR #415 审阅 P4-③）：真值取自 `NAN` 宏/常量折叠形态（符号位 0 ⇒
+  // "nan"）；若用**运行时** `0.0/0.0` 复现，x86 硬件产 NaN 符号位置 1，glibc
+  // 打 "-nan"（MSVC/UCRT 仍 "nan"）——那是 M20 D-4 的平台符号位差，不是本锚
+  // 的翻面目标，勿据此误判锚值。
   assert_eq(format_fixed(@double.not_a_number, 2), "NaN")
   assert_eq(format_fixed(@double.infinity, 2), "inf")
   assert_eq(format_fixed(@double.neg_infinity, 2), "-inf")

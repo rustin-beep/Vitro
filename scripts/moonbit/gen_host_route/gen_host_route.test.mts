@@ -42,7 +42,10 @@ test("renderImpl/renderAnchor：常量/对/纯名/锚排除 PURE 的形态", () 
   assert.match(impl, /对 2 个 PURE 名\*\*短路返回 None\*\*/);
   const anchor = renderAnchor(p, "deadbeef");
   // 锚头注措辞：全表 N 对 = (N−PURE) 非 PURE 断 Some(id) + PURE 断 None（原「N 对逐条断言 Some(id)」与锚体 101/13 分断不符）
-  assert.match(anchor, /3 对全表逐条断言——1 非 PURE 名断 Some\(id\) \+ 2 PURE 名断/);
+  assert.match(anchor, /全表 3 = 1 非 PURE 名断 Some\(id\) \+ 2 PURE 名断 None（两组循环：/);
+  // PR #415 审阅处置 C8：Go 版再生成命令已退役（#273 ts 迁移），头注须指 node 直跑
+  assert.match(anchor, /再生成：仓库根 node scripts\/moonbit\/gen_host_route\/main\.mts）/);
+  assert.doesNotMatch(anchor, /go run/);
   assert.match(anchor, /        \("b", 7\),/);
   assert.doesNotMatch(anchor, /        \("a", 7\),/);
 });

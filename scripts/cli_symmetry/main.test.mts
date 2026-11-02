@@ -1,12 +1,22 @@
-// cli_symmetry.test.mts —— 判据纯函数（内存注入）+ 真实仓库三臂判定 + 子进程 rc
+// cli_symmetry.test.mts —— 判据纯函数（内存注入）+ 真实仓库三臂判定（双分档）+ 子进程 rc
+//
+// 双分档（A1 S05-A1 / cli_smoke CLI 测试同形态，不静默 skip）：三臂产物在位 → 真跑
+// 24 探针判定绿；产物缺失（Scripts TS gate job 不建 moonbit 产物）→ 断言 fail loud
+// 契约（resolveArms 抛「前置产物缺失」+ 子进程 rc=2）——两档都是真断言。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { allCells, loadRules, resolveArms, verdict, type ArmResult } from "./main.mts";
 import { projectRoot } from "../internal/capi.mts";
 
 const MAIN = path.join(import.meta.dirname, "main.mts");
+
+/** 三臂产物是否全部在位（分档开关——不是 skip 开关，两档都断言）。 */
+function armsReady(rd: ReturnType<typeof loadRules>): boolean {
+  return Object.values(rd.arms).every((a) => fs.existsSync(path.join(projectRoot(), a.path)));
+}
 
 /** 三臂同 rc 的假真值。 */
 function fakeCells(rd: ReturnType<typeof loadRules>, rc: number, out = "用法错: 探针"): Record<string, ArmResult[]> {
@@ -48,8 +58,13 @@ test("verdict：声明全绿形态过；声明 want 与真值分叉双向红；�
   assert.equal(verdict(rd2, fakeCells(rd2, 4)).ok, false);
 });
 
-test("真实仓库：三臂 24 探针全跑、四命令全绿（含 F4 现状 rc0 与声明一致）", () => {
+test("真实仓库双分档：产物在位→三臂 24 探针全绿（含 F4 现状 rc0）；缺失→fail loud 前置产物缺失", () => {
   const rd = loadRules();
+  if (!armsReady(rd)) {
+    // 缺失档：契约 = 不静默、不假绿——resolveArms 必抛带构建指引的 fatal
+    assert.throws(() => resolveArms(rd), /前置产物缺失/);
+    return;
+  }
   const arms = resolveArms(rd);
   const cells = allCells(rd, arms);
   assert.equal(Object.keys(cells).length, rd.commands.length * Object.keys(rd.probes).length);
@@ -63,12 +78,19 @@ test("真实仓库：三臂 24 探针全跑、四命令全绿（含 F4 现状 rc
   }
 });
 
-test("子进程：-check rc=0 / --selftest rc=0 / 未知参数 rc=2 / 产物缺失 rc=2（假臂路径）", () => {
-  const run = (args: string[], cwd = projectRoot()): number => {
-    const r = spawnSync(process.execPath, [MAIN, ...args], { cwd });
-    return r.status ?? -1;
+test("子进程双分档：产物在位→-check/--selftest rc=0；缺失→rc=2 + 前置产物缺失文案；未知参数两档皆 rc=2", () => {
+  const rd = loadRules();
+  const run = (args: string[]): { rc: number; err: string } => {
+    const r = spawnSync(process.execPath, [MAIN, ...args], { cwd: projectRoot() });
+    return { rc: r.status ?? -1, err: r.stderr?.toString("utf8") ?? "" };
   };
-  assert.equal(run(["-check"]), 0);
-  assert.equal(run(["--selftest"]), 0);
-  assert.equal(run(["--wat"]), 2);
+  assert.equal(run(["--wat"]).rc, 2, "未知参数 rc=2（两档同）");
+  if (armsReady(rd)) {
+    assert.equal(run(["-check"]).rc, 0);
+    assert.equal(run(["--selftest"]).rc, 0);
+  } else {
+    const c = run(["-check"]);
+    assert.equal(c.rc, 2, "产物缺失须 fail loud rc=2 而非假绿/假红");
+    assert.match(c.err, /前置产物缺失/);
+  }
 });

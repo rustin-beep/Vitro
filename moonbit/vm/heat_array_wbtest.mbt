@@ -81,3 +81,52 @@ test "p0b_vis_lines_index_multi_entry_order" {
   assert_true(vm.step() is Ok) // StepEvent 5 → 未登记不入队
   assert_eq(vm.vis_event_queue.length(), 3)
 }
+
+///|
+/// PR #439 审阅 P1-1 锚（2026-11-02）：reset 必须逐字段归零教学观测面——
+/// P0b 改写 reset 时相邻一行 `snapshot_vars.clear()` 被一并吞掉（无限循环诊断
+/// 的变量基线跨程序残留：serve 编译新程序 → run 撞步数墙，`[inspect]` 文案
+/// 把上一程序的基线当本程序的——同名变量 + max_steps < 100_000 即命中，
+/// 双臂探针实锤）。预置非零 → reset → 逐字段断言，任一字段漏清即红。
+test "p1_reset_clears_every_observation_field" {
+  let vm = VitroVM::new()
+  // 预置：观测面全部非零
+  vm.ensure_heat(3)
+  vm.heatmap[3] = 17UL
+  vm.snapshot_vars.set("i", 999UL)
+  vm.last_snapshot_step = 40
+  vm.last_accessed_vars.push(VariableAccess::{ name: "i", access_type: Read, })
+  vm.vis_event_queue.push(VisEventData::{
+    ty: 1,
+    line: 3,
+    extra0: 0,
+    extra1: 0,
+    extra2: 0,
+    context: "c",
+  })
+  vm.set_vis_event_lines([(3, 1, "c")])
+  vm.breakpoints.add(5)
+  vm.current_line = 12
+  vm.step_event_hit = true
+  vm.paused = true
+  vm.reset()
+  assert_eq(vm.heatmap.length(), 0, msg="heatmap")
+  assert_eq(
+    vm.snapshot_vars.length(),
+    0,
+    msg="snapshot_vars（P1-1：曾漏清）",
+  )
+  assert_eq(vm.last_snapshot_step, 0, msg="last_snapshot_step")
+  assert_eq(vm.last_accessed_vars.length(), 0, msg="last_accessed_vars")
+  assert_eq(vm.vis_event_queue.length(), 0, msg="vis_event_queue")
+  assert_eq(vm.vis_event_lines.length(), 0, msg="vis_event_lines")
+  assert_eq(vm.vis_events_by_line.length(), 0, msg="vis_events_by_line")
+  assert_eq(vm.breakpoints.length(), 0, msg="breakpoints")
+  assert_eq(vm.current_line, 0, msg="current_line")
+  assert_false(vm.step_event_hit, msg="step_event_hit")
+  assert_false(vm.paused, msg="paused")
+  assert_true(
+    vm.observe,
+    msg="observe 非执行态——reset 不碰且恒 true",
+  )
+}

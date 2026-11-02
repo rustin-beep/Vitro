@@ -107,3 +107,50 @@ test "p0_step_observed_three_gates_on" {
   assert_eq(vm.final_return_value(), 7)
   assert_true(vm.observe)
 }
+
+///|
+/// PR #439 审阅 P2-2 锚：全局变量访问臂（`note_global_access`）在 run 态同样
+/// 短路——原锚只覆盖局部臂，突变 M5（全局臂 observe 恒真）全绿 = 该臂零锚。
+/// 性能开关型短路**逐臂各一条锚**。全局编址无需帧；无符号表时名字回退
+/// `global_<offset>`。
+test "p0_run_unobserved_global_access_not_recorded" {
+  let vm = VitroVM::new()
+  vm.load_program(
+    code_of([instr(PushConst, 7), instr(StoreGlobal, 8), instr(LoadGlobal, 8)]),
+  )
+  let ret = vm.run()
+  assert_eq(ret, 7)
+  assert_eq(vm.last_accessed_vars.length(), 0, msg="run 态全局访问不记")
+  // 对照：同程序逐步 → Write / Read 照记
+  vm.load_program(
+    code_of([instr(PushConst, 7), instr(StoreGlobal, 8), instr(LoadGlobal, 8)]),
+  )
+  assert_true(vm.step() is Ok)
+  assert_true(vm.step() is Ok) // StoreGlobal → Write
+  assert_eq(vm.last_accessed_vars.length(), 1)
+  assert_eq(vm.last_accessed_vars[0].name, "global_8")
+  assert_true(vm.last_accessed_vars[0].access_type is Write)
+  assert_true(vm.step() is Ok) // LoadGlobal → Read（每步重置）
+  assert_eq(vm.last_accessed_vars.length(), 1)
+  assert_true(vm.last_accessed_vars[0].access_type is Read)
+}
+
+///|
+/// PR #439 审阅 P3-6 锚：run 入口必清 `last_accessed_vars`——clear 移进
+/// observe 分支后 run 态「既不清也不记」，step 态残留会越过 run 留到下一次
+/// 观测读取（pub 字段，下游不可见语义漂移）。
+test "p3_run_entry_clears_prior_step_accessed" {
+  let vm = p0_observed_vm()
+  assert_true(vm.step() is Ok) // StepEvent
+  assert_true(vm.step() is Ok) // PushConst
+  assert_true(vm.step() is Ok) // StoreLocal → 记 Write i
+  assert_eq(vm.last_accessed_vars.length(), 1)
+  // 不 reset，直接换程序全速跑
+  vm.load_program(code_of([instr(PushConst, 1)]))
+  ignore(vm.run())
+  assert_eq(
+    vm.last_accessed_vars.length(),
+    0,
+    msg="run 入口必清 step 态残留",
+  )
+}

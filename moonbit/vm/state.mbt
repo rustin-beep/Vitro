@@ -274,6 +274,9 @@ pub fn VitroVM::reset(self : VitroVM) -> Unit {
   // vis_event_lines——上面已清真源）
   self.heatmap = FixedArray::make(0, 0UL)
   self.vis_events_by_line.clear()
+  // PR #439 审阅 P1-1（2026-11-02）：P0b 改写上两行时本行被一并吞掉——
+  // 无限循环诊断的变量基线跨程序残留（锚 p1_reset_clears_every_observation_field）
+  self.snapshot_vars.clear()
   self.last_snapshot_step = 0
   self.waiting_input = false
   self.handler_stack.clear()

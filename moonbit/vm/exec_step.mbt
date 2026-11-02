@@ -98,7 +98,11 @@ pub fn VitroVM::step(self : VitroVM) -> StepResult {
 /// ——任意出口恢复 true（`run_loop` 单出口包裹，Finished/Trap/Paused/
 /// WaitingInput 四形态无遗漏）。断点暂停 / current_line / 步数预算 /
 /// 无限循环快照诊断不在落闸面——run 态 trap 文案与 Paused 协议原样。
+/// **入口清一次 last_accessed_vars**（PR #439 审阅 P3-6：clear 移进 observe
+/// 分支后 run 态「既不清也不记」，step 态残留会越过 run——零成本归零，
+/// run 后三件恒空的语义对 pub 字段读者成立）。
 pub fn VitroVM::run(self : VitroVM) -> Int32 {
+  self.last_accessed_vars.clear()
   self.observe = false
   let rc = self.run_loop()
   self.observe = true

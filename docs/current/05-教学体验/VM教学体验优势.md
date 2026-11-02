@@ -63,7 +63,7 @@
 
 ### 1.3 技术实现
 
-后端（Rust）在 VM 执行时收集行号计数，并把**截至本步**的累计值放进协议载荷：
+后端在 VM **step 态**执行时收集行号计数（#176 P0 起 `run` 全速态不记——零消费方落闸，2026-11-02），并把**截至本步**的累计值放进协议载荷：
 
 ```rust
 // 后端：行号 → 执行次数
@@ -80,7 +80,7 @@ pub struct ExecutionHeatmap {
 | 字段 | 含义 |
 |------|------|
 | `heatmap_line` | 热力图行号（当前实现恒等于 `code_line`） |
-| `heatmap_count` | 该行**截至本步**的累计执行次数（单调不减） |
+| `heatmap_count` | 该行**截至本步**的累计执行次数（单调不减；仅 step 态累计——run 全速态不记，#176 P0） |
 | 归一化/配色/悬浮提示 | **消费方职责**（社区前端 / Web / headless 各自实现） |
 
 > **口径保证（后端已完成）**：heatmap 只统计用户源码行（`SourceLoc.file_id == 0 && line > 0`），标准库/预编译字节码行号不会混入，消费方**不需要**再按总行数做过滤（见 `模板维护指南.md` §6.3）。
@@ -411,7 +411,7 @@ impl CheckpointManager {
     ↓
 [自动执行模式] VM 连续执行
     ├── 每步：构造 StepPayload → 三出口（capi / serve / wasm）→ 消费方缓存
-    ├── 每步：更新 Heatmap（heatmap_line / heatmap_count，截至本步）
+    ├── 每步（step 态）：更新 Heatmap（heatmap_line / heatmap_count，截至本步；run 全速态不记——#176 P0）
     ├── 每步：产出 semantic_label（语义标签）/ algorithm_step
     ├── 每步：产出 accessed_vars + local_vars（变量历史由消费方按窗口推导）
     ├── 每 20 步（且语义边界命中）：保存 VM 快照（智能检查点）

@@ -1,7 +1,8 @@
 ///|
 /// 字符级词法扫描器（L1/L2 共用底座）。
 ///
-/// 契约（S2 差分对拍口径，与 Rust oracle `vitro_lexer/src/lib.rs` 精确对齐）：
+/// 契约（S2 差分对拍口径，历史蓝本 Rust oracle `vitro_lexer/src/lib.rs`，tag
+/// rust-oracle-freeze；现为本仓自主基线）：
 /// - 承载 `Bytes`（UTF-8 字节流）；`byte_off` 为 0 起字节偏移；
 /// - `column` 按 **UTF-8 字节**计数（多字节序列一次 +n）——issue #242
 ///   （2026-10-24）改定：source 包 SourceLoc 契约「column = 行内字节偏移+1，

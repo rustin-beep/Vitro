@@ -149,7 +149,7 @@ test "tokenize macro arity mismatch diagnosed" {
   )
   assert_eq(r.errors.length(), 1)
   inspect(@diag.ErrorCode::code(r.errors[0].code), content="1005")
-  // fail-soft：L2 token 流保留原样（与 Rust 一致——只有诊断不同）
+  // fail-soft：L2 token 流保留原样（历史蓝本同形——只有诊断不同）
   let texts = r.tokens.map(t => t.text).join(" ")
   inspect(
     texts,

@@ -1,10 +1,11 @@
 // 统一模式 StepPayload 差分编码（S7 批一号段二，2026-09-27）。
-// 照搬 native/src/unified/stream.rs + stream/encode.rs + stream/diff.rs。
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/unified/stream.rs + stream/encode.rs + stream/diff.rs。
 // 编码规则：base_payloads 含每 batch 第 1 个完整快照（step 0）；deltas 含
 // 后续步差分（基于前一步局部变量状态）；symbol_table 全局去重字符串池
 // （索引 0 预留空字符串）。MoonBit 侧 Map 即 LinkedHashMap（陷阱 #33，
-// 符号表插入序 = symbols 数组序，index 仅做 O(1) 反查——与 Rust HashMap
-// 的无序性不构成差分面：导出以 symbols 数组序为准，两侧一致）。
+// 符号表插入序 = symbols 数组序，index 仅做 O(1) 反查——导出以 symbols
+// 数组序为准，蓝本 HashMap 的无序性不构成差分面）。
 // 消费方向：gateway serve 出口（批三号 JSON 序列化）与前端 FrameCache
 // 解码（TS @vitro/protocol 消费面）；encode/decode 往返等价锚在
 // stream_wbtest（8 锚照搬 Rust tests 模块）。

@@ -616,7 +616,7 @@ test "access_fault_code_three_arm_mapping" {
 ///|
 /// #71 病 29 锚（2026-10-11）：realloc 负 new_size = 分配失败保原块
 ///（此前落「等价 free」分支误释放 → 后续读 UAF；glibc/UCRT 双实测
-/// tmp/i71_t1/b29m5：q=NULL p0=42）。oracle 同病已定责（round6 档案），
+/// tmp/i71_t1/b29m5：q=NULL p0=42）。历史蓝本同病已定责（round6 档案），
 /// 按「定责后按缺陷修」处置；零值等价 free 语义不变（既有锚在案）。
 test "realloc_negative_size_preserves_block_issue71_b29" {
   let map = @memory.MemoryMap::new()

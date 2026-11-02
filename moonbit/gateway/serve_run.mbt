@@ -1,10 +1,11 @@
 // S7 批三号二段：serve run 方法——全速运行 + 六字段出口。
-// 照搬源：native/src/bin/vitro_cli.rs 的 run 臂 + native/src/
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/bin/vitro_cli.rs 的 run 臂 + native/src/
 // session_api.rs::run + native/src/engine/session_ops.rs::execute_run
 // （非 resume 五步：reset_runtime 等价 → setup → 动态堆起点 → vfs 预设
 // → vm.run）。
 // 三段重构：execute_run 公共段抽出（serve_execute_run）——input.feed 帧
-// （serve_io.mbt）与 run 帧共用（Rust input_feed 尾调 run(session) 同构）。
+// （serve_io.mbt）与 run 帧共用（历史蓝本 input_feed 尾调 run(session) 同形）。
 //
 // **「2000 步真停」端到端锚**（总计划 S7 行登记的会话批遗留义务）：
 // Rust 事故形态 = `config.set {"max_steps": 2000}` 写在 compile 之前，

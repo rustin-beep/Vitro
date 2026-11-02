@@ -1,0 +1,33 @@
+{
+  "_comment": "rust_narrative_check 规则表（R1b §⑥ 三规则闸，审阅 v2 批 A7'）。扫描面 = moonbit/ 手写源码的注释段（.mbt 取不在字符串内的首个 // 之后；.mbt.md 整行叙事）。@generated 文件跳过（生成物叙事归生成器模板治理）。命中行 ±window 行的注释段内出现任一 tag_markers 即视为合法档案引用（#47 批五三件套：历史出处 + tag 可回溯 + 自主基线）过闸。",
+  "scan_roots": ["moonbit"],
+  "extensions": [".mbt", ".mbt.md"],
+  "prune_dirs": ["_build", ".mooncakes", "target", "node_modules"],
+  "generated_marker": "@generated",
+  "generated_marker_head_lines": 5,
+  "tag_markers": ["rust-oracle-freeze", "frozen-oracle-snapshot", "917251e", "冻结区"],
+  "window": 3,
+  "rules": [
+    {
+      "id": "R1",
+      "name": "死引用",
+      "pattern": "native/(src|crates|tests)|crates/vitro_|vitro_(ast|codegen|lexer|parser|runtime|vm)/src/",
+      "exempt_words": [],
+      "hint": "指向已删除的 native/ 或 crates/vitro_*（含省 crates/ 前缀的 vitro_xxx/src/ 形态）路径且窗口内无档案 tag——补「历史蓝本 …（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）」三件套，或改写为 MoonBit 语境"
+    },
+    {
+      "id": "R2",
+      "name": "照搬不修活体",
+      "pattern": "照搬不修|照搬在案|oracle 同病",
+      "exempt_words": ["已修", "销案", "已翻转", "已废弃", "~~"],
+      "hint": "「照搬不修/在案/同病」的等 oracle 两侧同修义务已随删区死亡——要么修要么改写为「已知限制（工单锚）」口径；销案留痕须同窗出现 已修/销案/已翻转/已废弃"
+    },
+    {
+      "id": "R3",
+      "name": "对齐声明",
+      "pattern": "与 Rust( 侧|侧)? ?(一致|同构|对齐|逐字节|逐行对应|sort 对齐)|Rust ?侧 ?(同构|对应|一致|对齐)",
+      "exempt_words": ["历史", "曾", "旧", "蓝本"],
+      "hint": "「与 Rust 一致/同构/对齐」「Rust 侧同构/对应」的对拍对象已删、机判已死——改为自主基线口径（与 Clang/行为契约一致）或加历史限定词（历史/曾/旧/蓝本）"
+    }
+  ]
+}

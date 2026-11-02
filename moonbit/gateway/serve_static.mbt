@@ -1,6 +1,7 @@
 // S7 批三号三段：serve 静态元数据族——capabilities（E2 机器可读能力
 // 清单）/ error_catalog（B1）/ semantic_labels（B2-3）/ contracts（B2-1/2）。
-// 照搬源：native/src/session_api.rs 的 capabilities/error_catalog_json/
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/session_api.rs 的 capabilities/error_catalog_json/
 // semantic_labels/contracts + vitro_cli.rs 对应分发臂。
 //
 // 登记分叉（capabilities 节选）：

@@ -1,11 +1,12 @@
 ///| L7 执行层·VM 域：**教学观测面**（S8 批一号三段-a，2026-10-01）——
-/// 照搬 Rust `crates/vitro_vm/src/core/{state,memory}.rs` 的观测方法族
-/// （get_current_line/get_call_stack/take_vis_events/get_variable_snapshot/
+/// 历史蓝本 Rust `crates/vitro_vm/src/core/{state,memory}.rs` 的观测方法族
+/// （tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线：
+/// get_current_line/get_call_stack/take_vis_events/get_variable_snapshot/
 /// find_variable_name_at_addr/get_array_snapshots）——time_travel collector
 /// （批一号三段-b）的 VM 调用面，StepPayload 十四字段的引擎侧数据源。
 ///
-/// **与 Rust 的实现差登记（2026-10-01）**：
-/// - Rust 侧观测裸读 `self.memory[...]`（前置地址检查后直接索引）；MoonBit
+/// **与历史蓝本的实现差登记（2026-10-01）**：
+/// - 蓝本观测裸读 `self.memory[...]`（前置地址检查后直接索引）；MoonBit
 ///   载体 `bytes` priv（memory 包白箱纪律），本侧走受检 `load_*`——Err
 ///   （freed 堆窗口等）防御跳过该符号。活作用域变量的地址经前置过滤
 ///   （NULL 区/上界）后 Err 概率≈0；Rust 裸读 freed 区展示陈旧值的形态

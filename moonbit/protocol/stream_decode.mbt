@@ -1,9 +1,9 @@
 // StepStreamBatch 解码器（S7 批一号段二，2026-09-27）。
-// 照搬 native/src/unified/stream/decode.rs：维护 current_vars（SymIdx ->
+// 历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
+// native/src/unified/stream/decode.rs：维护 current_vars（SymIdx ->
 // 快照）+ var_order（base 序 + 新增追加）+ 各快照当前态，逐 delta 应用后
-// 重建完整 StepPayload 列表。get_sym 越界返回空串（Rust unwrap_or_default
-// 同义——容错读，不 fail loud：流数据由本方编码器产出，越界属上游 bug，
-// 解码侧按 Rust 现状照搬不私改）。
+// 重建完整 StepPayload 列表。get_sym 越界返回空串（容错读，不 fail loud：
+// 流数据由本方编码器产出，越界属上游 bug，解码侧沿用蓝本的容错口径）。
 
 ///|
 /// 将 StepStreamBatch 解码为完整的 StepPayload 列表。

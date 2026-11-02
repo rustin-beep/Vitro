@@ -265,8 +265,8 @@ fn[P] Pp::handle_elifdef(
   if negated {
     active = !active
   }
-  // trace 不记（#if/#elif 之外的新指令形状——Rust wire format 未覆盖，
-  // 保持 trace 输出与 Rust 逐字节一致）
+  // trace 不记（#if/#elif 之外的新指令形状——历史蓝本 wire format 未覆盖，
+  // trace 输出锁 golden 冻结基线保持逐字节一致）
   self.cond_stack[n - 1].active = active
   self.cond_stack[n - 1].taken = active
 }

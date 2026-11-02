@@ -1,7 +1,7 @@
 ///|
 /// 类型谓词与消费面取值（S3 消费驱动补齐——此前 T4 按"消费面函数待 S4/S5
-/// 按需补"延后；parser 片是首个消费者，语义照搬 Rust oracle
-/// `vitro_ast/src/types.rs` 的同名方法，含 C++ 分支）。
+/// 按需补"延后；parser 片是首个消费者，语义的历史蓝本为 Rust oracle
+/// `vitro_ast/src/types.rs` 的同名方法〔tag rust-oracle-freeze〕，含 C++ 分支）。
 ///
 /// 不引入 `TypeKind` 枚举：其 16 变体与 `Type` 的 17 构造器大面积同名，
 /// 枚举入包会污染裸构造器名空间（Type::Array 与 TypeKind::Array 歧义，

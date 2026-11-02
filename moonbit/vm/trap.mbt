@@ -205,7 +205,7 @@ fn VitroVM::div_zero_zero_section(self : VitroVM) -> String {
   // 病 53（2026-10-13）：局部符号按**当前帧函数名**过滤——旧扫全符号
   // 表且一律用栈顶帧 locals_base，跨函数局部变量（other 的 far_var 在
   // main 帧错位读值）被错位列进「值为 0 的变量」（错作用域+错值双错；
-  // oracle 同病，S9 脱钩修正）。全局符号（func_name=""）不过滤。
+  // 历史蓝本同病，S9 脱钩已修正）。全局符号（func_name=""）不过滤。
   // 空栈形态（wbtest 直调/宿主回调边界）退化为不过滤——局部符号由下方
   // 既有 guard 栈空跳过，行为不崩。
   let cur_frame : CallFrame? = if self.call_stack.length() > 0 {

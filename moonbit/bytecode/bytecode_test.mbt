@@ -5,7 +5,8 @@
 /// 每个 pub 符号都在这里被点名。
 ///
 /// **三条跨包对账锚**（S4 坑② 的"以 libc 为单源回填"接续）：
-/// ① `@bytecode.shadowed_host_names()` 必须恰是勘察 §1.7 点名的 20 个；
+/// ① `@bytecode.shadowed_host_names()` 必须恰是遮蔽清单 16 个（勘察 §1.7 点名
+///    20 个起步，2026-10-06 三函数 + 2026-10-13 strcmp 两轮改判出表）；
 /// ② `@bytecode.builtin_name_union()` 与 `vitro/engine/libc` 的放行名全集逐名对齐
 ///    （差 `print_int` 一个别名）；
 /// ③ 每个表内名都有**唯一**形态（`@bytecode.call_route` 恒返回恰一个分支）。
@@ -72,7 +73,7 @@ test "host_rerouted_exceptions" {
 }
 
 ///|
-/// **遮蔽集显式化**：20 个 host handler 有实现但按名调用到不了。
+/// **遮蔽集显式化**：16 个 host handler 有实现但按名调用到不了。
 ///
 /// 现版这条事实**无处可查**（两张表各自手写、无一处列出交集）。本锚把它钉死：
 /// 名单或数量任一漂移即红，且新增例外必须改 `@bytecode.is_host_rerouted` 并在此登记。

@@ -1,6 +1,7 @@
 // S8 批一号接线批（2026-10-01）：serve step 族五方法——step.begin /
 // step.next / payload.get / seek / breakpoints.set。编排本体 = time_travel
-// 批一号三段-c 的 UnifiedEngine（run_batch/seek_to）；照搬源：
+// 批一号三段-c 的 UnifiedEngine（run_batch/seek_to）；历史蓝本（tag
+// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）：
 // native/src/bin/vitro_cli.rs serve 段五臂 + native/src/session_api.rs
 // step_begin(646)/step_next(669)/payloads(850)/seek(862)/set_breakpoints(874)。
 //
@@ -413,10 +414,10 @@ fn serve_step_next_frame(
     guard outcome is Err(msg) else { abort("unreachable") }
     return (serve_err(id, "state", msg).stringify(), false)
   }
-  // 一帧发布缓冲（Rust `session_api.rs:678-721` 同位；**有意偏离 oracle**：
-  // oracle 的 flushed = is_empty||finished **不含 trapped**、trap 分支只置
-  // trapped 不置 finished——trap 帧同样永不发布，属 oracle 同病。本侧
-  // issue #35 修正（2026-10-09）补 `||result.trapped` 主动纠偏，非照搬——
+  // 一帧发布缓冲（历史蓝本 `session_api.rs:678-721` 同位，tag rust-oracle-freeze；
+  // **有意偏离蓝本**：蓝本的 flushed = is_empty||finished **不含 trapped**、trap 分支只置
+  // trapped 不置 finished——trap 帧同样永不发布，属蓝本同病。本侧
+  // issue #35 已修正（2026-10-09）补 `||result.trapped` 主动纠偏，非照搬——
   // trap 是终态，trap 批必须连同缓冲帧一起冲刷发布。旧判定只认
   // is_empty||finished，trap 批（payloads=[trap 帧]）走 else 把 trap 帧
   // 吞进 unified_pending，而消费方见 trapped=true 即停、无人再调

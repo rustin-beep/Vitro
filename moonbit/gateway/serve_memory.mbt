@@ -1,6 +1,7 @@
 // S7 批三号三段：serve memory.regions——内存地图三段式（C2）导出 +
-// 堆统计。照搬源：native/src/session_api.rs::memory_regions +
-// global_region_entries/stack_region_entries（合成口径的注释一并照搬：
+// 堆统计。历史蓝本（tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓
+// 自主基线）：native/src/session_api.rs::memory_regions +
+// global_region_entries/stack_region_entries（合成口径的注释一并沿用：
 // 栈/全局不写回 mem_map.regions——该清单是堆统计单源，混入栈帧会让
 // "已分配堆内存"把栈算进去；全局/栈区域只在导出层合成）。
 //

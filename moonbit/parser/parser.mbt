@@ -1,18 +1,20 @@
 ///|
 /// Vitro 语法分析器（S3 片）——从 token 流解析 AST。
 ///
-/// 照搬 Rust oracle `native/crates/vitro_parser/src/lib.rs`（4,879 行十文件）
+/// 历史蓝本 Rust oracle `native/crates/vitro_parser/src/lib.rs`（4,879 行十文件；
+/// tag rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）
 /// 的解析语义；**防护形态不复刻**（勘察 parser 报告 M1，第一阶段计划 P1）：
 ///
-/// 1. **深度统一入口**：Rust 的共享计数器字段 + 8 处壳挂点
+/// 1. **深度统一入口**：蓝本的共享计数器字段 + 8 处壳挂点
 ///    （statement/assign/ternary/unary/primary/init_list/abstract_declarator/
-///    param_list）改为显式 `depth` 参数沿调用链传递——计数语义与 Rust
-///    **同构**（壳函数检查 `depth >= MAX_PARSE_DEPTH` 对应 Rust 先检
+///    param_list）改为显式 `depth` 参数沿调用链传递——计数语义沿用
+///    蓝本（壳函数检查 `depth >= MAX_PARSE_DEPTH` 对应蓝本先检
 ///    后增；body 与下层传 `depth+1`；offsetof/sizeof/alignof 等类型
 ///    通道透传 body depth——F1 教训：类型系统只强制"传了 depth"，
-///    不强制"取值正确"，形参硬编码 0 会静默失效，故同构性以阈值锚
-///    `parser_diff --threshold` 机判，不靠声明形态保证）。
-/// 2. **回滚快照全量**：Rust 三元快照（pos/errors/anonymous_structs）+
+///    不强制"取值正确"，形参硬编码 0 会静默失效，故深度语义以阈值
+///    样本锚兜底（`diff_gate parser --threshold`，golden 冻结基线；本地
+///    可跑、未进 CI 活行），不靠声明形态保证）。
+/// 2. **回滚快照全量**：蓝本三元快照（pos/errors/anonymous_structs）+
 ///    三处手工补 typedef_names——本实现单一 Rollback 含全部七类解析期
 ///    副作用（typedef_names/template_names 不可变结构共享快照 + pos/
 ///    errors/anon/current_class 长度 + next_lambda_id），A5 回滚面缺口

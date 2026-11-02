@@ -14,7 +14,8 @@
 ///
 /// **本包不含 host**（host 是 S6 后续批），故这些锚以"显式列出 host 的调用
 /// 次序"的方式驱动 `MemoryMap`——下面的 `alloc` / `free` 两个辅助函数就是
-/// `host/memory.rs` 的内存侧最小复现，次序与 Rust 逐行对应。
+/// 历史蓝本 `host/memory.rs` 的内存侧最小复现（迁移期逐行对应其次序，tag
+/// rust-oracle-freeze；现为自主锚）。
 
 ///|
 /// `host_malloc` 的内存侧最小复现（`host/memory.rs:5-58` 的次序）。

@@ -8,7 +8,7 @@
 ///|
 test "serve_config_set_quarantine_budget_effective" {
   let s = @session.Session::new()
-  // 默认 256KB（MemoryMap::new 的 DEFAULT_QUARANTINE_BUDGET——与 Rust 一致）
+  // 默认 256KB（MemoryMap::new 的 DEFAULT_QUARANTINE_BUDGET 常量自证）
   let (r0, _) = serve_handle(s, "{\"id\":1,\"method\":\"config.get\"}")
   assert_true(
     r0.contains("\"quarantine_budget\":262144"),

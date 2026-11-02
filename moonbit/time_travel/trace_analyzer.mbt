@@ -1,10 +1,11 @@
 // M14 根因提示（S8 analysis 批，2026-10-03）：trap 帧的 root_cause_hint
 // 接线——此前 StepPayload.root_cause_hint 恒 None（gateway serve_step 头注
-// 分叉登记）。照搬源 = native/src/unified/trace_analyzer/ 六件
+// 分叉登记）。历史蓝本 = native/src/unified/trace_analyzer/ 六件（tag
+// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）
 //（mod 55 / bounds ~230 / div_zero 40 / double_free 36 / null_deref 36 /
 // use_after_free 33 / utils 213 行）→ 本单文件。
 //
-// **session 依赖形态**：Rust 侧 bounds/div_zero 取 session.source_line_at
+// **session 依赖形态**：蓝本 bounds/div_zero 取 session.source_line_at
 // 查源码——本侧经 `get_line : (Int) -> String` 闭包注入（engine 接线处
 // 包装 SourceLineProvider，诊断域零 session 依赖）。
 //

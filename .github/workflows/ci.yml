@@ -760,6 +760,17 @@ jobs:
         shell: bash
         run: node scripts/moonbit/source_hygiene/main.mts
 
+      - name: Rust narrative check (dead native/ refs / zombie 照搬不修 / stale 与 Rust 对齐)
+
+        if: matrix.slice == 'contract'
+        # 审阅 v2 批 A7'（2026-11-02，R1b §⑥ 口径固化）：Rust 对照区删区后手写源码
+        # 注释的三类叙事病——R1 死路径裸引 / R2 照搬不修僵尸义务 / R3 与 Rust 对齐
+        # 失实背书——把 #47 批五三件套（历史出处 + tag 可回溯 + 自主基线）机判化。
+        # 规则外置 scripts/rust_narrative_check/rules.json；存量过闸 exemptions.json
+        # 三向对账（漏登记/僵尸例外红）。J9：建闸红 54（R1 35/R2 6/R3 13）→清注后绿。
+        shell: bash
+        run: node scripts/rust_narrative_check/main.mts -check
+
       - name: Bytecode libc data generation idempotency
 
         if: matrix.slice == 'gen'

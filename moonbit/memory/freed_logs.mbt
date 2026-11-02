@@ -171,7 +171,7 @@ pub fn FreedLogs::find_overlapping(
 /// 精确命中（Double-Free 拦截的输入；host 侧据此报 E3061）。
 ///
 /// 注意口径与 `find_overlapping` 的区别：这里是"块**起点**恰为 addr"，
-/// Rust 侧对应 `freed_logs.contains_key(&addr)`（`host/memory.rs:66`）。
+/// 历史蓝本对应 `freed_logs.contains_key(&addr)`（`host/memory.rs:66`）。
 pub fn FreedLogs::contains(self : FreedLogs, addr : UInt32) -> Bool {
   let i = self.lower_bound(addr)
   i < self.entries.length() && self.entries[i].addr == addr

@@ -339,7 +339,7 @@ pub fn host_atof(
 /// `0x`/`0X`+十六进制数字 → 16、`0` 前缀 → 8、否则 10；**base=16 允许
 /// 可选 `0x`/`0X` 前缀**（`0x` 后无数字则回退为只消费 `'0'`）。
 /// 2026-10-05 批二-a 修复（#47 新病销案）：旧「base=0 恒 10、base=16
-/// 不剥 0x」系 oracle 照搬在案。无数字时写 `errno=1`（EINVAL）。
+/// 不剥 0x」系历史蓝本照搬（批二-a 已销案）。无数字时写 `errno=1`（EINVAL）。
 /// `endptr` 非 NULL 时写入停止位（str 起始 + 扫描位数）。
 pub fn host_strtol(
   mem : @memory.Memory,

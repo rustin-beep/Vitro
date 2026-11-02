@@ -1,7 +1,8 @@
 // 会话侧 DTO 族（S7 批二号）：诊断/追踪/快照/内存地图/堆统计/步进结果
-// 的协议形态。照搬 native/src/session.rs 的 serde 形态（serve 批的
+// 的协议形态。历史蓝本 native/src/session.rs 的 serde 形态（tag
+// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线；serve 批的
 // JSON 出口消费）；与 vm 侧 Data 型的互转 impl 随 serve 批接线落地
-//（Rust 侧 From 双向 impl 是 capi/serve 的消费面，此处先定形数据面）。
+//（蓝本 From 双向 impl 是 capi/serve 的消费面，此处先定形数据面）。
 // VisEvent 已在 protocol（批一号收拢），本包消费不重定义。
 
 ///|

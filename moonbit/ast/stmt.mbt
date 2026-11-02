@@ -1,5 +1,6 @@
 ///|
-/// 语句节点（16 变体，照搬 Rust `vitro_ast/src/stmt.rs`）。
+/// 语句节点（16 变体，历史蓝本 Rust `vitro_ast/src/stmt.rs`，tag
+/// rust-oracle-freeze 可回溯，2026-10-05 删区；现为本仓自主基线）。
 ///
 /// `Try` 为 **reserved-for-csharp**：C++ 子集不发射（异常走 E4001 拒绝），
 /// 节点形态保留给 C# 批次——禁删除禁改语义（总计划 §5 拍板）。

@@ -53,9 +53,10 @@ test "ids_are_unique" {
 
 ///|
 test "vocabulary_table_matches_rust_source" {
-  // 对账锚：15 条 (id, domain, status) 三元组硬编码对齐
-  // native/src/unified/vocabulary.rs SEMANTIC_LABEL_VOCABULARY
-  // 合法追加；Rust 对照区退役后此锚转为插入序/域/状态自洽冻结）
+  // 对账锚：15 条 (id, domain, status) 三元组硬编码（历史蓝本
+  // native/src/unified/vocabulary.rs SEMANTIC_LABEL_VOCABULARY，tag
+  // rust-oracle-freeze；Rust 对照区退役后此锚转为插入序/域/状态自洽冻结，
+  // 合法追加）
   let expected : Array[(String, String, String)] = [
     ("swap", "c", "active"),
     ("recursive_call", "c", "active"),

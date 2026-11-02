@@ -1,7 +1,7 @@
 # vitro/engine/parser
 
 Vitro C 教学引擎的语法分析器（S3 片）——token 流（`vitro/engine/lexer/token`）→ AST（`vitro/engine/ast`）。
-解析语义照搬 Rust oracle `native/crates/vitro_parser`（差异对拍：597 真实语料样本的 AST dump + 诊断序列归一后逐字节一致）。
+解析语义的历史蓝本为 Rust oracle `native/crates/vitro_parser`（tag rust-oracle-freeze 可回溯，2026-10-05 删区；迁移期差异对拍 597 真实语料样本的 AST dump + 诊断序列归一后逐字节一致，现为本仓自主基线 + golden 冻结对拍）。
 
 ## 快速上手
 

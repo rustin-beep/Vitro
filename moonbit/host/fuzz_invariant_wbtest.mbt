@@ -2,9 +2,9 @@
 /// fuzz_invariant_wbtest —— 工序④准出件·路 A：安全检测不变量自检
 /// （判定书 §4.3 / 冻结资产清单配套；Rust fuzz A/B/D/E 的 MoonBit 迁移）。
 ///
-/// 与 Rust 版（native/tests/fuzz_stress_test.rs，随区退役）的关系：
-/// **同不变量、独立实现**——Rust 版走 Session+VM 装载；本版 wbtest 直调
-/// host/memory 面。随机源 = 自带 LCG（同 @host rand 族参数），seed 固定
+/// 与历史蓝本（native/tests/fuzz_stress_test.rs，tag rust-oracle-freeze，随区
+/// 退役）的关系：**同不变量、独立实现**——蓝本走 Session+VM 装载；本版 wbtest
+/// 直调 host/memory 面。随机源 = 自带 LCG（同 @host rand 族参数），seed 固定
 /// ⇒ 序列可复现（确定性随机测试，判定书原文口径）。
 ///
 /// 三核心不变量：①UAF 必报（E3060）②1MB 墙必 NULL（不崩不越墙）

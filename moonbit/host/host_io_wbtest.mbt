@@ -58,7 +58,7 @@ test "format_g_oracle_truth" {
   assert_eq(format_g(0.0, 6, false), "0")
 }
 
-// ── apply_width / 旗标（oracle 既有偏差照搬）──────────────────────────────
+// ── apply_width / 旗标（批二-b 起五旗标有效；本组锚验 None 早退路径）────────
 
 ///|
 test "apply_width_flags_oracle_truth" {

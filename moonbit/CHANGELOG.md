@@ -3,6 +3,7 @@
 ### 破坏面与下游可见行为变更
 
 1. **诊断卡文案**：E0（未分类——codegen 无码错误兜底卡，#409 N1）三字段中性化——title「内部错误（未分类）」→「未分类错误」；explanation 去除「而不是你的代码有明确的语义错误」断言（对容量超限/级联未声明等用户代码错误撒谎），改「以上方错误信息为准…指向你的代码则按提示修改」；common_causes 换容量上限 + 级联未声明两条用户侧成因 + 编译器边界一条。`error_catalog` 方法与 compile 诊断 `fix_suggestion`（空 suggestion 回退链）出口文案随之变化。
+2. **typeck 声明/初始化四处（审阅 v2 批 B9，#433；M09 报告四处方，clang/gcc 三方对拍）**：① 具名 union 字段 brace elision 从 E3006 硬拒 → 接受（`struct S{union U u; int x;} s={1,2,3,4};` 扁平流按首成员叶数重组，C11 §6.7.9p17/p20，clang 仅 -Wmissing-braces）；② `static int a=1, b=n;` 的 extra 变量从丢 static 轨（非常量初始化零诊断误收+静默置 0）→ 整条声明同轨（C11 §6.7.1，非常量初始化器报 E3075 对齐 clang）；③ W3084「可能缺少 return」判据不再下钻嵌套循环（`while(1){while(c)break;}` 假警消除）且 Block 遇 return 即停（其后不可达 break 不再假警）；④ W3005「初始化列表元素超量」判定移到 brace elision 重组之后按重组后元素数判（`struct Out{struct In in; int c;} o={1,2,3};` 假警消除；真超量仍警）。
 
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 包下游 `moon add` 后 build 必红；版本号口径见 [0.9.1.md](../docs/current/08-发布档案/0.9.1.md)）
 

@@ -180,22 +180,49 @@ fn switch_all_cases_return(body : @ast.Stmt) -> Bool {
 /// 语句树内是否含 break（while(true){...break...} 的返回必然性撤销）。
 fn stmt_contains_break(stmt : @ast.Stmt) -> Bool {
   match stmt {
+    // M09-A3 处方（2026-11-02，#433）：顶层传入的是循环节点本身——剥一层
+    // 进 body，用「不下钻嵌套循环」扫描。旧实现无条件下钻：内层循环的
+    // break 被算到外层（`while(1){while(c)break;}` 外层永不落尾却判
+    // 「含 break」⇒ W3084 假阳性，clang/gcc -Wall -Wextra 零警）。
+    While(_, body, _) => body_has_own_break(body)
+    DoWhile(body, _, _) => body_has_own_break(body)
+    For(_, _, _, body, _) => body_has_own_break(body)
+    Switch(_, body, _) => body_has_own_break(body)
+    other => body_has_own_break(other)
+  }
+}
+
+///|
+/// M09-A3 处方：循环体**自身**的 break（不下钻嵌套 While/DoWhile/For/
+/// Switch——其 break 属内层；Block 顺序扫描遇 Return 即停——其后不可达，
+/// `while(1){return 1;break;}` 不再假警）。已知权衡：嵌套循环体内含
+/// switch 内 break 的混合形态保守侧判（宁可多警不漏警）。
+fn body_has_own_break(stmt : @ast.Stmt) -> Bool {
+  match stmt {
     Break(_) => true
-    Block(stmts, _) => stmts.exists(s => stmt_contains_break(s))
+    Block(stmts, _) => {
+      for s in stmts {
+        if s is Return(_, _) {
+          return false
+        }
+        if body_has_own_break(s) {
+          return true
+        }
+      }
+      false
+    }
     If(_, t, e, _) => {
-      let tb = stmt_contains_break(t)
+      let tb = body_has_own_break(t)
       let eb = match e {
-        Some(x) => stmt_contains_break(x)
+        Some(x) => body_has_own_break(x)
         None => false
       }
       tb || eb
     }
-    While(_, body, _) => stmt_contains_break(body)
-    DoWhile(body, _, _) => stmt_contains_break(body)
-    For(_, _, _, body, _) => stmt_contains_break(body)
-    Switch(_, body, _) => stmt_contains_break(body)
-    Case(_, inner, _) => stmt_contains_break(inner)
-    Label(_, inner, _) => stmt_contains_break(inner)
+    While(_, _, _) | DoWhile(_, _, _) | For(_, _, _, _, _) | Switch(_, _, _) =>
+      false
+    Case(_, inner, _) => body_has_own_break(inner)
+    Label(_, inner, _) => body_has_own_break(inner)
     _ => false
   }
 }
@@ -225,8 +252,11 @@ fn TypeChecker::dispatch_stmt(
         is_static~,
         is_register~,
       )
-      // extra_vars 逐个处理（同主路径；declare 无 static 轨——Rust 同形）；
-      // #156：extra 同属一句声明，register 存储类随整句
+      // extra_vars 逐个处理（同主路径）；#156：extra 同属一句声明，
+      // register 存储类随整句。M09-A1 处方（2026-11-02，#433）：static
+      // 同轨——C11 §6.7.1 存储类说明符作用于**整条声明**（extra 同为
+      // static；旧 is_static=false 系 Rust 无源同形照搬：`static int
+      // x=1, y=n;` 旧零诊断误收 + 静默置 0，clang 三方 error）。
       let processed_extras : Array[@ast.VarDeclExtra] = []
       for extra in extra_vars {
         let (ety, einit) = self.process_var_decl(
@@ -234,7 +264,7 @@ fn TypeChecker::dispatch_stmt(
           extra.name,
           extra.init,
           loc,
-          is_static=false,
+          is_static~,
           is_register~,
         )
         processed_extras.push({ var_type: ety, name: extra.name, init: einit, })

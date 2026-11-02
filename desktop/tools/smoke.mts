@@ -133,6 +133,7 @@ interface DemoRunResult {
   stdout?: string;
   frames?: string;
   ver?: string;
+  seek?: string;
   error?: string;
 }
 
@@ -164,7 +165,7 @@ try {
     // transport=ipc = 走 native 同进程引擎；worker = 桥缺席静默回退 wasm 臂
     // （四轮前缺省读数时序假阴性实锤——构造点已改等待式选择，此处兜底）
     check("transport-ipc", dr.transport === "ipc", `transport=${dr.transport}`);
-    check("demo-golden", (dr.status ?? "").includes("golden ✓"), `status=${dr.status}`);
+    check("demo-golden", (dr.status ?? "").includes("golden ✓"), `status=${dr.status} seek=${dr.seek}`);
     check("demo-frames", dr.frames === "42", `frames=${dr.frames}`);
     check("demo-engine", (dr.ver ?? "").includes("0.9.1"), `ver=${dr.ver}`);
     check("demo-stdout", (dr.stdout ?? "").startsWith("1 2 3 4 5"), `stdout=${dr.stdout}`);

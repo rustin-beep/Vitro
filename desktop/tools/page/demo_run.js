@@ -27,11 +27,26 @@
     status = statusLine();
     if (/运行 ✓|编译 ✗|受检终止|采集失败/.test(status)) break;
   }
-  // ③ 主动跳末帧，再等 golden 判定落定
-  const last = btn('末帧');
-  if (last) last.click();
-  for (let k = 0; k < 50; k++) {
-    await sleep(200);
+  // ③ 驱动到末帧（循环而非单击：帧流到达后播放器自动从头播并在幕边界
+  //    暂停——单次点「末帧」与自动播放竞态，CI runner 实锤停在 22/42）。
+  //    每轮：暂停（若在播放）→ 点「末帧」→ 滑条拉满兜底 → 等 → 读状态，
+  //    直到 golden 落定且不再「待末帧」。
+  let seekMax = '?', seekVal = '?';
+  for (let k = 0; k < 25; k++) {
+    const pause = btn('暂停（空格）');
+    if (pause) pause.click();
+    const last = btn('末帧');
+    if (last) last.click();
+    const seek = document.querySelector('input.vr-seek, input[type=range]');
+    if (seek) {
+      seekMax = seek.max; seekVal = seek.value;
+      if (seek.value !== seek.max) {
+        seek.value = seek.max;
+        seek.dispatchEvent(new Event('input', { bubbles: true }));
+        seek.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    await sleep(400);
     status = statusLine();
     if (/golden [✓✗]/.test(status) && !status.includes('golden 待末帧')) break;
   }
@@ -42,6 +57,6 @@
     stdout: (pres.find(s => /^\d/.test(s)) || '').slice(0, 100),
     frames: (document.body.textContent.match(/(\d+)\s*帧/) || ['', '?'])[1],
     ver: (document.body.textContent.match(/引擎 [\d.]+ 协议 [\w.]+/) || [''])[0],
-    lastFrameClicked: !!last,
+    seek: `${seekVal}/${seekMax}`,
   });
 })()

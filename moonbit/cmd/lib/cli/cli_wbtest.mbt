@@ -145,6 +145,7 @@ test "b87_compile_step_strict_args" {
   let rc1 = compile(
     ["tmp_probe.c", "extra.c"],
     () => b"int main(){return 0;}",
+    write_stdout=noop_write,
     channel=fake_channel(),
   )
   assert_eq(rc1, 4, msg="compile 多余位置参数须 rc=4")
@@ -152,6 +153,7 @@ test "b87_compile_step_strict_args" {
   let rc2 = compile(
     ["--bogus", "a.c"],
     () => b"int main(){return 0;}",
+    write_stdout=noop_write,
     channel=fake_channel(),
   )
   assert_eq(rc2, 4, msg="compile 未知旗标须 rc=4")
@@ -165,17 +167,16 @@ test "b87_compile_step_strict_args" {
   )
   assert_eq(rc3, 4, msg="step 未知旗标须 rc=4")
   // 合法参数不受影响（回归面：--max-steps 正常路径；源走 stdin "-"
-  // 通道——wbtest 沙箱读不到磁盘 a.c，rc=4 会是 IO 语义混入参数断言）
+  // 通道——wbtest 沙箱读不到磁盘 a.c，rc=4 会是 IO 语义混入参数断言）。
+  // B3 批（M35 C5）：原 `rc4 != 4` 宽松断言收紧——fake_channel 的 step.next
+  // 回 finished:true，合法路径确定 rc=0
   let rc4 = step(
     ["-", "--max-steps", "50"],
     () => b"int main(){return 0;}",
     channel=fake_channel(),
     fn(_b) { () },
   )
-  assert_true(
-    rc4 != 4,
-    msg="合法路径不因参数被拒（引擎态 rc 任意）",
-  )
+  assert_eq(rc4, 0, msg="合法路径 finished → rc=0")
 }
 
 ///|
@@ -373,4 +374,214 @@ test "frame_pipeline_text_stdout_passthrough_no_newline" {
   assert_true(rc3 == 0, msg="正常结束 rc=0")
   assert_true(s3.length() == 1, msg="stdout 恰一次写出")
   assert_eq(s3[0], b"a\n", msg="自带换行原样（不双补）")
+}
+
+///|
+/// B3 批 M35 A6 红→绿锚（2026-11-02）：compile --json 的 diag 帧出口。
+/// 修前形态：compile 签名无 write_stdout 注入、frame_pipeline 的 type:diag
+/// 帧落 lib 内 drop 通道——失败/成功两路 stdout 均 0 字节（js 臂子进程实测
+/// `compile err.c --json` rc=1 且 stdout 0B / stderr 0B，下游拿 rc=1 却无法
+/// 得知失败原因；对照 `run err.c --json` 同路径 diag 帧 463B 正常）。本锚
+/// 断言注入通道收到 type:diag 帧——帧字节三臂对拍由 vitro_cli_smoke 承担。
+fn compile_fail_channel() -> EngineChannel {
+  {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"compile\"") {
+        // 真实 gateway 形态：外层 ok:true（协议成功执行）+ result.ok:false
+        //（编译失败）——frame_pipeline 以 result 段 ok:false 子串判 rc=1
+        "{\"id\":1,\"ok\":true,\"result\":{\"ok\":false,\"diagnostics\":[{\"code\":\"E3004\"}]}}"
+      } else {
+        "{\"id\":1,\"ok\":true,\"result\":{}}"
+      }
+    },
+    invoke_parsed: fn(_line : String) -> Json? { None },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, _src : String) -> String {
+      "{\"source\":\"\",\"filename\":\"\{file}\"}"
+    },
+  }
+}
+
+///|
+test "m35_a6_compile_json_diag_帧落注入通道" {
+  // ① 失败路径：diag 帧必须落 stdout（修前 0 字节——rc=1 只剩退出码）
+  let captured : Array[Bytes] = []
+  let rc = compile(
+    ["-", "--json"],
+    () => b"int main() { int x = \"s\"; return 0; }",
+    write_stdout=fn(b : Bytes) { captured.push(b) },
+    channel=compile_fail_channel(),
+  )
+  assert_eq(rc, 1, msg="编译失败 rc=1")
+  assert_true(
+    captured.length() >= 1,
+    msg="diag 帧须落注入通道（修前 drop 通道 0 字节）",
+  )
+  let text = @util.utf8_text_partial(captured[0])
+  assert_true(
+    text.contains("\"type\":\"diag\""),
+    msg="首帧 type:diag 包装（与 run --json 同形）",
+  )
+  assert_true(text.contains("E3004"), msg="诊断码随帧透出")
+  // ② 成功路径：diag 帧同样落 stdout（compile --json 恒出一帧——下游 NDJSON
+  // 消费面不因编译成功而拿空流；修前同样 0 字节）
+  let ok_captured : Array[Bytes] = []
+  let rc_ok = compile(
+    ["-", "--json"],
+    () => b"int main(){return 0;}",
+    write_stdout=fn(b : Bytes) { ok_captured.push(b) },
+    channel=fake_channel(),
+  )
+  assert_eq(rc_ok, 0, msg="编译通过 rc=0")
+  assert_true(
+    ok_captured.length() >= 1,
+    msg="成功路径 diag 帧同样落注入通道",
+  )
+  // ③ 文本模式不受影响：COMPILE-OK 走 stderr（say），stdout 零写出（文本
+  // 模式 compile 帧走 inv_tree——须 invoke_parsed 桩，fake_channel 恒 None
+  // 会落「协议破损」臂，故用 stdout_passthrough_channel）
+  let txt_captured : Array[Bytes] = []
+  let rc_txt = compile(
+    ["-"],
+    () => b"int main(){return 0;}",
+    write_stdout=fn(b : Bytes) { txt_captured.push(b) },
+    channel=stdout_passthrough_channel(""),
+  )
+  assert_eq(rc_txt, 0, msg="文本模式 rc=0")
+  assert_true(
+    txt_captured.length() == 0,
+    msg="文本模式 stdout 恒空（spec §1 不变式）",
+  )
+}
+
+///|
+/// B3 批 M35 A2' 红→绿锚（2026-11-02）：step 子命令 rc=3（步数超限）判定串
+/// 与引擎现行文案失配——修前匹配「程序执行步数超过限制」，而引擎 step-limit
+/// 模板（teaching/assets/trap_messages_gen.mbt）已是「[step-limit] 程序执行
+/// 步数**达到预算上限**（N 步）被安全截断」形态，子串永不命中 → 所有 step-limit
+/// 恒落 rc=2；js 臂子进程实测 `step spin.c --max-steps 100` rc=2（契约 §2
+/// 应 3），shell 判 `$? == 3` 的教学预算墙脚本全部失灵。
+fn step_trap_channel(trap_message_json : String) -> EngineChannel {
+  {
+    invoke: fn(line : String) -> String {
+      if line.contains("\"method\":\"compile\"") {
+        "{\"id\":1,\"ok\":true,\"result\":{\"ok\":true,\"diagnostics\":[]}}"
+      } else if line.contains("\"method\":\"step.next\"") {
+        "{\"id\":1,\"ok\":true,\"result\":{\"payloads\":[],\"finished\":false,\"trapped\":true,\"waiting_input\":false,\"trap_message\":\"\{trap_message_json}\"}}"
+      } else if line.contains("\"method\":\"output.delta\"") {
+        "{\"id\":1,\"ok\":true,\"result\":{\"delta\":\"\"}}"
+      } else {
+        "{\"id\":1,\"ok\":true,\"result\":{}}"
+      }
+    },
+    invoke_parsed: fn(_line : String) -> Json? { None },
+    reset: fn() { () },
+    set_clock: fn(_c) { () },
+    set_include_reader: fn(_r) { () },
+    compile_params: fn(file : String, src : String) -> String {
+      "{\"source\":\"\{@util.json_escape(src)}\",\"filename\":\"\{@util.json_escape(file)}\"}"
+    },
+  }
+}
+
+///|
+test "m35_a2_step_rc3_step_limit_文案匹配" {
+  // ① step-limit trap：引擎现行模板渲染形态（trap_messages_gen.mbt 单源；
+  // 值内 \n 为 JSON 转义——extract_json_string_field 可见）→ 必须 rc=3
+  let rc3 = step(
+    ["-", "--max-steps", "100"],
+    () => b"int main(){while(1){}return 0;}",
+    fn(_b : Bytes) { () },
+    channel=step_trap_channel(
+      "[step-limit] 程序执行步数达到预算上限（100 步）被安全截断——这是资源墙，不一定是你程序的错误。\\n\\n[cause] 两种可能",
+    ),
+  )
+  assert_eq(
+    rc3,
+    3,
+    msg="step-limit 必须 rc=3（修前匹配旧文案恒 rc=2）",
+  )
+  // ② 对照：普通 trap（divide-zero 文案）仍 rc=2——判定窄面不外溢
+  let rc2 = step(
+    ["-"],
+    () => b"int main(){int a=1,b=0;return a/b;}",
+    fn(_b : Bytes) { () },
+    channel=step_trap_channel("[divide-zero] 整数除以零"),
+  )
+  assert_eq(rc2, 2, msg="非 step-limit trap 仍 rc=2")
+  // ③ M35 A2 红→绿：--max-steps 域检对齐 run 的 1..=2147483647——修前
+  // `0` 无下界检查、下发 config.set 被 gateway #94 钳成 1 静默按 1 步跑
+  //（fake_channel 下 finished → rc=0）；修后 rc=4 用法错（run 同参数同码）
+  assert_eq(
+    step(
+      ["-", "--max-steps", "0"],
+      () => b"int main(){return 0;}",
+      fn(_b : Bytes) { () },
+      channel=fake_channel(),
+    ),
+    4,
+    msg="--max-steps 0 须 rc=4（修前静默钳 1 跑 rc=0）",
+  )
+  // ④ M35 A3：尾置缺值 rc=4（修前也 4——但走「未知旗标：--max-steps」误报
+  // 臂；文案无捕获面，本锚只锚 rc 回归，文案对齐 run 由代码注释自证）
+  assert_eq(
+    step(
+      ["-", "--max-steps"],
+      () => b"int main(){return 0;}",
+      fn(_b : Bytes) { () },
+      channel=fake_channel(),
+    ),
+    4,
+    msg="--max-steps 尾置缺值 rc=4",
+  )
+}
+
+///|
+/// B3 批 M35 A1 红→绿锚（2026-11-02）：api 子命令旗标 fail loud——修前解析
+/// 循环无未知旗标分支：前置形态 `api --xyz ping` 旗标静默吞、正常执行 rc=0
+///（病 87 形态——用户以为旗标生效，零信号最危险）；尾随形态 `api ping --bogus`
+/// 被抓进 params 位再被前缀校验拦下 rc=4、但文案「params 须为 JSON 对象字面量」
+/// 把旗标误报成 params（run/compile/step 三子命令 2026-10-13 方案 A 已 fail
+/// loud，api 独漏）。js 臂子进程实测 `api --xyz ping` rc=0。
+test "m35_a1_api_未知旗标_fail_loud" {
+  // ① 前置旗标（修前 rc=0 静默吞）
+  assert_eq(
+    api(
+      ["--xyz", "ping"],
+      () => b"",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    4,
+    msg="前置未知旗标须 rc=4（修前静默吞 rc=0）",
+  )
+  // ② 尾随旗标（修前 rc=4 碰巧对但走 params 误报路径）
+  assert_eq(
+    api(
+      ["ping", "--bogus"],
+      () => b"",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    4,
+    msg="尾随未知旗标须 rc=4",
+  )
+  // ③ 合法形态不受影响：--batch 仍认（回归面）；单帧 ping 正常 rc=0
+  assert_eq(
+    api(["ping"], () => b"", write_stdout=noop_write, channel=fake_channel()),
+    0,
+    msg="合法单帧不受影响",
+  )
+  assert_eq(
+    api(
+      ["--batch"],
+      () => b"{\"id\":1,\"method\":\"ping\",\"params\":{}}\n",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    0,
+    msg="--batch 仍为合法旗标",
+  )
 }

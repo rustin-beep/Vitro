@@ -233,10 +233,15 @@ fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
     let sub_is_dir = @fs.is_dir(full) catch { _ => false }
     if sub_is_dir {
       collect_files(full, vfs)
-    } else if name.length() > 2 && name[name.length() - 2:] == ".h" {
-      // 目录级 vfs：同目录头文件供 quote-include 候选（S2 §7-5 教训：
-      // 两侧同无解析属偶然对齐，哨兵用例在 gap 监测）
-      vfs.set(full, @fs.read_file_to_string(full))
+    } else {
+      // 目录级 vfs：同目录文件供 quote-include 候选（S2 §7-5 教训：
+      // 两侧同无解析属偶然对齐，哨兵用例在 gap 监测）。B3 批（2026-11-02，
+      // M36 A2）：旧只收 `.h`——`#include "part.c"` 病态语料下 ast/typeck/
+      // tokens 三家解析 ok 而本家 lex 失败 E1021（part.c 不在 VFS），跨层
+      // 差分不可比；现与另三家同形收全部文件（VFS 只供 include 解析、不
+      // 影响 files 主列表，收 .c 无副作用）；不可读项跳过
+      let content = @fs.read_file_to_string(full) catch { _ => continue }
+      vfs.set(full, content)
     }
   }
 }

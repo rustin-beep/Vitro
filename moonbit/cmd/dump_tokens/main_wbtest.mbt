@@ -1,6 +1,7 @@
 // #378/#380 锚：目录段函数 + VFS 键拼装的根级 POSIX 全链路。
 // dump 包 native-only——裸 moon test 静默跳过本文件，
-// 验证口径 `MOON_CC=clang moon test --target native -p dump_tokens`。
+// 验证口径 `MOON_CC=clang-cl moon test --target native -p dump_tokens`（Windows——
+// test 面须 cl 兼容驱动，裸 clang 被忽略回落 MSVC，M37 D-6；Linux 用 clang）。
 
 ///|
 /// #378：唯一分隔符在 0 位 = POSIX 根级文件（"/x.c"），目录段须返回
@@ -47,4 +48,19 @@ test "根级链路：base_dir=/ + 键 /hd.h 可解析 include" {
     base_dir="/",
   )
   inspect(r.errors.length(), content="0")
+}
+
+///|
+/// B3 批（2026-11-02，M36 A1 对照面）basename 锚：dump_tokens 产物名
+/// `<name>.l1.tsv` stem **去扩展名**——两段式 basename_no_ext（先剥目录段
+/// 再剥最后一个点之后），裸名与带目录段同果，是本工具既定契约（与
+/// ast/typeck/compile 三家「stem 含 .c」F11 口径有意不同，正名面不含此处）。
+test "basename_no_ext 两段式：裸名与带目录同果（去扩展名）" {
+  inspect(basename_no_ext("good.c"), content="good")
+  inspect(basename_no_ext("corpus/good.c"), content="good")
+  inspect(basename_no_ext("a\\b\\good.c"), content="good")
+  // 多点名只剥最后一段；无扩展名原样；点在 0 位（隐藏文件形态）不剥
+  inspect(basename_no_ext("x/good.min.c"), content="good.min")
+  inspect(basename_no_ext("x/Makefile"), content="Makefile")
+  inspect(basename_no_ext("x/.hidden"), content=".hidden")
 }

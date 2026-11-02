@@ -8,6 +8,7 @@
 pub fn compile(
   args : Array[String],
   read_stdin : () -> Bytes,
+  write_stdout~ : (Bytes) -> Unit,
   channel~ : EngineChannel,
 ) -> Int32 {
   ensure_include_reader(channel)
@@ -53,10 +54,13 @@ pub fn compile(
     say("// COMPILE-ERROR io 1:1 源文件不可读或为空：\{file}")
     return 4
   }
-  // compile 子命令无 clock/stdout 语义——占位注入（compile_mode 段不消费
-  // run 输出通道）
+  // compile 子命令无 clock 语义——零钟占位注入。write_stdout 由薄壳注入
+  //（B3 批 2026-11-02，M35 A6）：--json 的 type:diag 帧经此落 stdout——旧
+  // 形态此处 drop_stdout 占位把 frame_pipeline 的帧写丢弃，失败/成功两路
+  // stdout 均 0 字节（下游拿 rc=1 却无诊断可读；run --json 同路径正常）。
+  // 文本模式 frame_pipeline compile_mode 段不写 stdout（COMPILE-OK/诊断行
+  // 走 say → stderr），spec §1 stdout 恒净不变式照旧。
   let zero_clock : () -> UInt64 = fn() { 0UL }
-  let drop_stdout : (Bytes) -> Unit = fn(_b) { () }
   return frame_pipeline(
     src,
     file,
@@ -64,7 +68,7 @@ pub fn compile(
     [],
     "",
     zero_clock,
-    drop_stdout,
+    write_stdout,
     json_mode,
     compile_mode=true,
     channel~,

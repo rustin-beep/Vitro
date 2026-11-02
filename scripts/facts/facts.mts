@@ -489,13 +489,18 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // #308（2026-10-26）：native 口径全量测试数（裸 + native-only 包
   // fs/gateway/cli）——moonbit/README 的 `--target native` 全量句机判锚，
   // 多 PR 计数冲突的解法从「双口径实测 ≈10 分钟」降为「改数+闸逼真值」。
-  // 独立键独立采集（裸失败不阻断）；MOON_CC=clang 照纪律 11。
+  // 独立键独立采集（裸失败不阻断）；MOON_CC 照纪律 11——B3 批（2026-11-02，
+  // 审阅 v2 M37 D-6）平台分叉：Windows 的 `moon test --target native` 自
+  // moon 0.1.20261028 起走 MSVC direct object 路径、`clang` 非 cl 兼容驱动被
+  // **忽略**回落 MSVC（警告原文见 testcount/main.mts runMoonTest 注），须
+  // `clang-cl`；非 Windows 沿用 clang。build 面不受影响。
   // #298（2026-10-27）：超时 5min→15min——native 全量实测 ≈10 分钟
   // （#308 批自注），5min 常态超时 ⇒ unavailable ⇒ strict 待采集即红
   // （#298 判定器）会永红；15min 为冷机余量。
   // （原「Go 回退面不含本键」注随 Go 版双轨收口删除——2026-11 审阅 v2 A6 批。）
-  const howN = "cd moonbit && MOON_CC=clang moon test --target native";
-  const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: "clang" }, "moon", "test", "--target", "native");
+  const ccN = process.platform === "win32" ? "clang-cl" : "clang";
+  const howN = `cd moonbit && MOON_CC=${ccN} moon test --target native`;
+  const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
   if (!rN.ok) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
     return;
@@ -524,7 +529,7 @@ export function collectMoonbitNativeFromOutput(out: string, code: number, facts:
   const m = /Total tests: (\d+), passed: (\d+), failed: (\d+)/.exec(out);
   if (m === null) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）",
-      "cd moonbit && MOON_CC=clang moon test --target native", "未解析到 Total tests 行");
+      "cd moonbit && MOON_CC=<clang|clang-cl(Windows)> moon test --target native", "未解析到 Total tests 行");
     return;
   }
   const total = Number.parseInt(m[1]!, 10);

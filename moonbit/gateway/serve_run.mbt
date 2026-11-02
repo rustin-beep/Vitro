@@ -194,7 +194,11 @@ fn serve_run_frame(
 /// 仍为全量。极端形态（1MB 堆最小 4B 对齐块全泄漏）理论上限约 26 万行
 /// 明细——封顶后报告自身有界（~80KB），教学无损（前 1000 行样本 + 全量
 /// 计数足以定位泄漏模式）。
-pub fn append_leak_report(vm : @vm.VitroVM) -> Unit {
+///
+/// B3 批（2026-11-02）收 priv：消费面仅同包 serve_run（run 收尾）与同包
+/// wbtest，零跨包消费——gateway 补 .mbti 进入 moonbit_surface 判定面后暴露
+/// 为「无主 pub」（此前 gateway 无 .mbti、不在闸的 provider 面内）。
+fn append_leak_report(vm : @vm.VitroVM) -> Unit {
   let leaks : Array[@memory.MemoryRegionData] = []
   let addrs : Array[UInt32] = []
   for addr, r in vm.mem_map.regions {

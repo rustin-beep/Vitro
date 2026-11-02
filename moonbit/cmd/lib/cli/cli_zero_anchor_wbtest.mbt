@@ -56,21 +56,50 @@ test "parse_run_args_P1A_零透传不吞文件位" {
 
 ///|
 test "api_params_解析形态" {
-  // api 参数解析抽验：无 params → "{}"；params 非 { 开头 → 用法错路径的
-  // 判定输入（cli 层轻锚——api 主体是 gateway.invoke 透传，协议面锚在
-  // serve_smoke/gateway wbtest 在案）
-  inspect("{}".has_prefix("{"), content="true")
-  inspect("not-json".has_prefix("{"), content="false")
+  // B3 批（2026-11-02，M35 C5）：安慰性锚升级——旧形态只 inspect core
+  // `String::has_prefix` 行为，不触达 api 解析循环（A1 未知旗标缺陷恰落此
+  // 零覆盖区而锚全绿）。现改真实调用：params 非 `{` 开头 → rc=4 用法错；
+  // 缺省 params → "{}" 正常执行 rc=0。
+  assert_eq(
+    api(
+      ["ping", "not-json"],
+      () => b"",
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    4,
+    msg="params 非 JSON 对象字面量 → rc=4",
+  )
+  assert_eq(
+    api(["ping"], () => b"", write_stdout=noop_write, channel=fake_channel()),
+    0,
+    msg="缺省 params 走 {} 正常执行",
+  )
 }
 
 ///|
 test "api_batch_行解析形态" {
-  // 批式行级预处理抽验：CRLF/空白行耐受（\r 由 Windows 管道常见——
-  // trim " \t\r" 后空行跳过；NDJSON 帧本体不受影响）
-  let l1 : String = "  {\"id\":1}  ".trim(chars=" \t\r").to_owned()
-  inspect(l1, content="{\"id\":1}")
-  let l2 : String = "\r".trim(chars=" \t\r").to_owned()
-  inspect(l2.is_empty(), content="true")
+  // B3 批（M35 C5）同款升级：旧形态只 inspect core `String::trim`。现真实
+  // 走 --batch：CRLF 行尾 + 空白行 + 尾换行混合 NDJSON，空行跳过、每非空行
+  // 一次 invoke——fake_channel 全 ok 帧 → rc=0；喂空 stdin → rc=4 用法错。
+  // （Bytes 字面量直写——不经 util 包的 utf8_bytes，免给 surface 边表添一条
+  // wbtest 消费边；帧文本纯 ASCII，字节即文本。）
+  let frames : Bytes = b"{\"id\":1,\"method\":\"ping\",\"params\":{}}\r\n\r\n  \t\n{\"id\":2,\"method\":\"ping\",\"params\":{}}\n"
+  assert_eq(
+    api(
+      ["--batch"],
+      () => frames,
+      write_stdout=noop_write,
+      channel=fake_channel(),
+    ),
+    0,
+    msg="CRLF/空白行耐受，非空帧全 ok → rc=0",
+  )
+  assert_eq(
+    api(["--batch"], () => b"", write_stdout=noop_write, channel=fake_channel()),
+    4,
+    msg="--batch 空 stdin → rc=4",
+  )
 }
 
 ///|

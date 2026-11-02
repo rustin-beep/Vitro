@@ -308,3 +308,119 @@ test "write_to_unwritable_path_raises" {
   }
   inspect(raised2, content="true")
 }
+
+///|
+/// B3 批（2026-11-02，审阅 v2 M37 A-3）stat 族 errno 污染锚（fs_native.c
+/// 改动 ③）：native 臂 Win32 分支 GetFileAttributesW 失败**不设 CRT errno**，
+/// is_dir(不存在) 的 IOError 消息读到前序 CRT 调用残留——实测序列
+/// create_dir(已存在)→EEXIST 后 is_dir(不存在) 报 "File exists"；remove_dir
+/// (非空)→ENOTEMPTY 后 is_file(不存在) 报 "Directory not empty"（张冠李戴，
+/// 排障误导）。修后按 GetLastError 映射 errno → "No such file or directory"。
+/// 三臂消息文本各异（js=node ENOENT 英文 / wasm=moonrun os error 系统
+/// locale / native=strerror），故锚用**否定断言**排除两种残留形态——修前
+/// native 红、js/wasm 本就绿（各宿主 API 即取即报）；三臂同跑同期望。
+test "stat_族_errno_不被前序操作污染" {
+  let dir = "tmp_vitro_fs_errno_stale"
+  if path_exists(dir) {
+    remove_file("\{dir}/f.txt") catch {
+      _ => ()
+    }
+    remove_dir(dir) catch {
+      _ => ()
+    }
+  }
+  create_dir(dir)
+  // ① 前序：create_dir 已存在 → native EEXIST（js/wasm 幂等不 raise）
+  create_dir(dir) catch {
+    _ => ()
+  }
+  let mut msg1 = ""
+  let r1 = is_dir("\{dir}/no_such_entry") catch {
+    IOError(m) => {
+      msg1 = m
+      false
+    }
+  }
+  // 不存在路径：三臂一律 raise（返回值不可达）；消息不得是 EEXIST 残留
+  assert_false(r1, msg="不存在路径 is_dir 不得为 true")
+  assert_true(msg1.length() > 0, msg="不存在路径须 raise IOError")
+  assert_false(
+    msg1.contains("File exists"),
+    msg="is_dir(不存在) 不得报前序 EEXIST 残留：\{msg1}",
+  )
+  // ② 前序：remove_dir 非空 → native ENOTEMPTY（js/wasm 递归删——为保三臂
+  // 同序列先写文件再尝试删目录，js/wasm 删成功后重建）
+  write_string_to_file("\{dir}/f.txt", "x")
+  remove_dir(dir) catch {
+    _ => ()
+  }
+  if !path_exists(dir) {
+    create_dir(dir)
+  }
+  let mut msg2 = ""
+  let r2 = is_file("\{dir}/no_such_entry") catch {
+    IOError(m) => {
+      msg2 = m
+      false
+    }
+  }
+  assert_false(r2, msg="不存在路径 is_file 不得为 true")
+  assert_true(msg2.length() > 0, msg="不存在路径须 raise IOError")
+  assert_false(
+    msg2.contains("Directory not empty"),
+    msg="is_file(不存在) 不得报前序 ENOTEMPTY 残留：\{msg2}",
+  )
+  remove_file("\{dir}/f.txt") catch {
+    _ => ()
+  }
+  remove_dir(dir) catch {
+    _ => ()
+  }
+}
+
+///|
+/// B3 批（2026-11-02，审阅 v2 V3-③-A1）read_dir 单遍历动态缓冲锚
+///（fs_native.c 改动 ④）：旧两遍历（先计数再填充）在两遍之间目录变化即
+/// TOCTOU——收缩 → 尾部 NULL 槽（MoonBit 侧撞 null）、增长 → 越界写。竞态
+/// 窗口不可在单测稳定复现，本锚钉**动态缓冲路径正确性**：条目数 > 初始
+/// 容量 16（触发 realloc 倍增两次：16→32→64）时全量返回、无 NULL、无重复、
+/// 无 "."/".."。TOCTOU 消灭本身由单遍历结构保证（无第二遍即无窗口）。
+test "read_dir_超初始容量_倍增路径全量返回" {
+  let dir = "tmp_vitro_fs_read_dir_many"
+  let n = 40
+  if path_exists(dir) {
+    for i = 0; i < n; i = i + 1 {
+      remove_file("\{dir}/e\{i}.txt") catch {
+        _ => ()
+      }
+    }
+    remove_dir(dir) catch {
+      _ => ()
+    }
+  }
+  create_dir(dir)
+  for i = 0; i < n; i = i + 1 {
+    write_string_to_file("\{dir}/e\{i}.txt", "\{i}")
+  }
+  let names = read_dir(dir).to_owned()
+  assert_eq(
+    names.length(),
+    n,
+    msg="read_dir 须返回全部 \{n} 条（倍增路径）",
+  )
+  let seen : Map[String, Bool] = Map([])
+  for name in names {
+    assert_true(
+      name.length() > 0,
+      msg="条目不得为空名（NULL 槽形态）",
+    )
+    assert_true(name != "." && name != "..", msg="不得含 ./..")
+    assert_false(seen.contains(name), msg="条目不得重复：\{name}")
+    seen.set(name, true)
+  }
+  for i = 0; i < n; i = i + 1 {
+    assert_true(seen.contains("e\{i}.txt"), msg="缺条目 e\{i}.txt")
+    remove_file("\{dir}/e\{i}.txt")
+  }
+  remove_dir(dir)
+}

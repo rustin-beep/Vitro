@@ -56,7 +56,8 @@ fn main {
   let code = match cmd {
     "run" =>
       @cli.run(rest, wasm_clock, js_read_stdin, js_write_stdout, channel~)
-    "compile" => @cli.compile(rest, js_read_stdin, channel~)
+    "compile" =>
+      @cli.compile(rest, js_read_stdin, write_stdout=js_write_stdout, channel~)
     "step" => @cli.step(rest, js_read_stdin, js_write_stdout, channel~)
     "api" =>
       @cli.api(rest, js_read_stdin, write_stdout=js_write_stdout, channel~)

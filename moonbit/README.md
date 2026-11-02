@@ -93,10 +93,10 @@ gateway 产物的 node 壳、自动降级本 native exe，见仓库 CLI 手册�
 | `vitro/engine/vm` | L7 | 执行器状态机（值栈 u64 位模式 / 调用栈 / 教学观测 / 宿主域三态）+ 快照体系（`VMSnapshot`/`MemoryImage` 两端单点）+ C# 异常三执行状态（handler 栈 / 异常寄存器 / UNWINDING——CS 批硬前置 v1 入形）+ ARC 帧退出清理占位（S6 vm 批一号） |
 | `vitro/engine/session` | L8 | 会话骨架 + `SessionConfig` 值对象（单一真相源 + 单一写入口——Rust「配置散在 VM 字段 + setup 硬编码覆盖 + capi 静默丢弃」事故链结构性消除）+ 多文件安全 `source_line_at` + 会话侧 DTO 九型（S7 批二号） |
 | `vitro/engine/protocol` | L8 | StepPayload schema 契约（v0.1 冻结白名单 + v0.2 台账/激活清单 + 行为契约表）+ semantic_label 受控词汇表（15 条）+ 协议 DTO 族 + 展开粒度判据（S7 批一号，零依赖自持） |
-| `vitro/engine/gateway` | L8 | wasm-gc 单出口（F-5 裁定落点）：NDJSON 帧协议层上提为引擎无关载体（`invoke` String→String 单口承载 30 方法表 / `reset` / `protocol_version` / `engine_version` 四导出），js-builtin-string 零拷贝直传、零功能性 imports；`library` 形态由 native 消费者（cmd/serve 壳）与 wasm 外壳共用（S7 批五号） |
+| `vitro/engine/gateway` | L8 | wasm-gc 单出口（F-5 裁定落点）：NDJSON 帧协议层上提为引擎无关载体（`invoke` String→String 单口承载 30 方法表 / `reset` / `protocol_version` / `engine_version` 四导出），js-builtin-string 零拷贝直传、零功能性 imports；`library` 形态由 native 消费者（cmd/serve 壳）与 wasm 外壳共用（S7 批五号）。**下游可直接 `import "vitro/engine/gateway"` 调 `invoke`**——帧流 / 断点 / `input.feed` 续跑 / 输出分页等会话能力对库用户全部可达（协议面见随包 `docs/spec/CLI_PROTOCOL_V1.md`）；目标面 `+wasm-gc +native +js +wasm`（B3 批起含 wasm——此前无默认目标致 `moon info` 不落盘本包 .mbti，下游不可发现） |
 | `vitro/engine/gateway/wasm` | L8 | wasm-gc 单目标薄壳：四个 `#export_name` 导出面所在（foreign_library）；Node 宿主驱动见仓库 `scripts/wasm_gateway/host.mts`（17 断言） |
 
-各包 API 概览见对应目录的 `pkg.generated.mbti`；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）。
+各包 API 概览见对应目录的 `pkg.generated.mbti`（moon info 生成面不含 doc comment——参数语义去源码 `///` 注释找）；`diag` 的三上下文用法示例见 [`diag/README.mbt.md`](diag/README.mbt.md)（可执行文档测试）；`session` 包是 gateway 的**内部件**（导出 `StepResult` 等类型但无产生它们的方法——高层入口是 gateway，勿从 session 起手）。
 
 ## 快速上手（diag）
 
@@ -107,6 +107,33 @@ code.display_code()          // "W3053"
 code.severity().to_str()     // "warning"
 code.catalog()               // Some(教学卡片)（装载后）—— 标题 / 解释 / 常见原因
 ```
+
+## 端到端（喂 C 源码 → 诊断 + stdout + 退出码）
+
+五步库直连最小形态（完整可跑版 + gateway NDJSON 形态 + 参数语义表见仓库
+[`examples/downstream-mini-c/`](https://github.com/rustin-beep/Vitro/tree/master/examples/downstream-mini-c)——
+独立 module、`import "vitro/engine@<ver>"`，三目标输出逐字一致）：
+
+```moonbit
+// import：lexer / parser / typeck / codegen / vm / host / util
+let lex = @lexer.tokenize(src)                 // 词法+预处理；cpp_mode~ 缺省 false
+guard lex.errors.is_empty() else { ... }
+let parse = @parser.parse(lex.tokens)
+guard parse.program is Some(program) && parse.errors.is_empty() else { ... }
+let (lowered, errs, _warns, _hints) = @typeck.TypeChecker::new().check(program)
+guard errs.is_empty() else { ... }           // errs[i].code → @diag.ErrorCode::from_code → .catalog()
+let (output, gerrs) = @codegen.compile(lowered) // 必须喂 lowered（函数式重建的新树）
+guard output is Some(o) else { ... }
+let vm = @vm.VitroVM::new()
+vm.setup_from_output(o, 0, [], [])             // (产物, argc, argv, vis_lines——库直连传 [])
+// InputState / OutputKind 来自 vitro/engine/host 包（示例省略别名前缀——
+// 工作区内 `host` 末段与 lexer/internal/host 撞车，surface 闸对根 README 不解析歧义别名）
+vm.set_input(InputState::from_stdin_text("21\n", true)) // batch=true：流尽即 EOF（headless）
+let rc = vm.run()
+let out = @util.utf8_text_partial(vm.output.join(OutputKind::Stdout)) // 输出面是 Bytes
+```
+
+Windows 下游项目的 native 目标须 `MOON_CC=clang-cl`（独立项目走 MSVC 直连目标，裸 `clang` 被 moon 静默忽略——与仓内 workspace 的 `MOON_CC=clang` 口径不同）。
 
 ## 契约要点
 

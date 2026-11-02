@@ -36,4 +36,13 @@ import {
   "moonbitlang/core/encoding/utf8",
 }
 
-supported_targets = "+wasm-gc +native +js"
+// B3 批（2026-11-02，审阅 v2 R3 P1-1）补 `+wasm`：moon info 只给支持 canonical
+// backend（默认 wasm）的包落盘 pkg.generated.mbti——本包此前 `+wasm-gc +native
+// +js` 无 wasm ⇒ 下游 `moon add vitro/engine` 后 gateway 是唯一无接口面的
+// 库包，`invoke` 这个 NDJSON 单口不可发现（R3 实测下游只能 grep 源码找签名）。
+// 加 wasm 目标后：① .mbti 落盘入库（mbti_sync 闸纳管）；② 裸 `moon test` 自此
+// 纳入本包（此前默认 wasm 跳过，M35 报告口径——测试数双口径随之上调）；
+// ③ moonbit_surface 的 provider 面纳入本包 pub 符号。wasm（非 gc）目标无
+// 交付产物（gateway/wasm 外壳仍 wasm-gc 单目标），仅服务接口面与测试面。
+
+supported_targets = "+wasm-gc +native +js +wasm"

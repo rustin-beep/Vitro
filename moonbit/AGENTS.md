@@ -81,7 +81,7 @@ node scripts/diff_gate/main.mts vm [--sample N | --corpus dir | --cases f1.c,...
 node scripts/clang_direct/main.mts [--sample N | --corpus dir | --cases f1.c,...] # §7.1 层 2 Clang 直拍（2026-09-26 提前落地）：真值源=Clang 本尊，cmd/run 的 stdout+返回码 vs Clang golden（known_direct.json case+digest 锁定 + 双向监控；重试判据=shadow 同款〔编译失败也重试——Windows 并发 Defender 锁目标文件首跑 127 例瞬态误判实锤〕；MoonBit 侧 Latin-1 折回归一 + clang 侧文本模式 CRLF 归一；缓存 .clang_cache_cd/；J9 digest 篡改证红留痕）
 ```
 
-测试计数真值入 facts 台账（`moonbit_test_passed` 裸口径键 + `moonbit_test_passed_native` native 全量口径键〔#308 2026-10-26 起，`MOON_CC=clang moon test --target native` 采集〕，`--run` 采集 / CI 每轮刷新）。**形态（#308 2026-10-26 改写——原「分解式人工维护」段已翻案）**：moonbit/README*.md 的测试数行已是**裸数 + facts 键标注**形态（机判接管：裸数绑 `moon test` 语境、native 全量绑 `--target native…全量` 语境，就近绑定消歧），漂移即 CI 红——**改测试数后跑 `facts --strict check` 即可，不再需要人工核对分解式**；批注明细（「A 线批五 +4」类）单源 CHANGELOG，README 不再追加；native-only 逐包分解（fs/gateway/cli）以 `moon test -p` 为准（人工维护面，只此一处）。
+测试计数真值入 facts 台账（`moonbit_test_passed` 裸口径键 + `moonbit_test_passed_native` native 全量口径键〔#308 2026-10-26 起，`MOON_CC=clang moon test --target native` 采集——**Windows 本地须 `MOON_CC=clang-cl`**（陷阱 43：test 面裸 clang 被忽略回落 MSVC），facts/testcount 采集器已按平台分叉〕，`--run` 采集 / CI 每轮刷新）。**形态（#308 2026-10-26 改写——原「分解式人工维护」段已翻案）**：moonbit/README*.md 的测试数行已是**裸数 + facts 键标注**形态（机判接管：裸数绑 `moon test` 语境、native 全量绑 `--target native…全量` 语境，就近绑定消歧），漂移即 CI 红——**改测试数后跑 `facts --strict check` 即可，不再需要人工核对分解式**；批注明细（「A 线批五 +4」类）单源 CHANGELOG，README 不再追加；native-only 逐包分解（fs/gateway/cli）以 `moon test -p` 为准（人工维护面，只此一处）。
 
 ## MoonBit 语言与工具链陷阱（全部一手实证，2026-09-19）
 
@@ -139,6 +139,8 @@ c`.replace 得 `a-bc`）——全量替换必须循环 `while contains { replace
 41. **moon 跨会话/跨 target 增量缓存毒化（2026-10-06 批二双臂对拍实锤）**：并发会话改源后（实例：批二-b 改 `host/host_format.mbt` 的 printf 旗标），本会话 `moon build --release --target wasm-gc` 增量判定 up-to-date——产物**仍是旧代码**，而同刻构建的 native 产物是对的——「同源不同果」酷似 wasm-gc 后端语义 bug，极易误诊；`rm -rf moonbit/_build/wasm-gc` 强制全量重建即愈。**纪律：跨会话接过工作区后消费 wasm-gc/native 产物做行为验证前，先清对应 `_build/<target>` 增量重建**（CI 干净检出天然免疫，本地是唯一暴露面）；「产物 mtime 新」不构成「含新代码」证据（指纹一致三方全旧的 #81 形态同族）。双臂对拍（同输入跑 wasm 壳 vs native exe，`scripts/vitro_cli_smoke`）是最便宜的行为指纹。连坐提醒：`cp` 到 demo/ 的 wasm.wasm 若源自毒化构建同样带毒，demo_smoke 用例不踩该面时不报警。
 
 42. **labeled argument（具名参数）的声明与调用两形态（#261 批实锤）**：声明 `fn trap(msg : String, code~ : String = "")`（参数名后 `~` + 可选默认值）；**调用侧写 `code="E3086"`**——写 `code~: "E3086"` 是**解析错误**（"unexpected token string, you may expect `{`, `loop`, `for` or `while`"——报错位置误导性强，看似控制流问题实为参数语法）；`code~` **单独**出现是合法的「同名变量按名传入」简写（等价 `code=code`，作用域须有同名绑定）。error 形态可辨：`This function has type (…, code? : String) -> Unit` 后跟同位置 Parse error 即此坑。
+
+43. **Windows 的 `moon test --target native` 忽略 `MOON_CC=clang`（moon 0.1.20261028 实锤，B3 批 2026-11-02 / 审阅 v2 M37 D-6）**：警告原文「MOON_CC is ignored for Windows MSVC direct object native target because it is not a cl-compatible driver; set MOON_CC to cl.exe or clang-cl.exe to override MSVC discovery」——test 面被 moon 归入「MSVC 直连目标」（根 AGENTS 纪律 11 / #117 原口径只说下游独立项目），裸 `clang` 非 cl 兼容驱动被静默回落 MSVC 探测；**`moon build`/`moon run` 面不受影响**（同机 `MOON_CC=clang moon build --release --target native cmd/dump_ast` 8.6s、clang 风格 warning、零忽略警告——本批亲验）。处方：Windows 本地 test 面写 `MOON_CC=clang-cl`（LLVM 的 MSVC 兼容驱动，仍是 clang 后端）；跨平台脚本按 `process.platform === "win32"` 分叉（facts.mts / testcount 已改）；Linux/CI 沿用 clang。被忽略时**构建仍成功**（走 MSVC 链），危害是「以为在用 clang」的意图失真——M37 审阅期全部 native test 实经 MSVC 链编译而无人察觉。
 
 
 ## 编码与架构纪律（S1 已定型）

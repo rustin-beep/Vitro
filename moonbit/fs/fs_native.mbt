@@ -16,9 +16,14 @@
 // 来源：moonbitlang/x@0.5.5 的 fs/fs_native.mbt（0.5.5 锁定版 sha256
 // 29dbb4f906524fdce548e4809fe25f4225e294e486c25b202d9c5138ab79ba84）。
 //   注：上游 main 已漂移至 5f20626e…（unicode 包 → core/encoding/utf8 迁移，
-//   非法 UTF-8 从「截断」变「U+FFFD 替换」）——已评估**不跟进**：本仓保持
-//   0.5.5 截断语义（cmd 工具读的是合法源文件，该域无感），且内联 unicode
-//   两函数后 vendor 边界闭合、零外部依赖。分界行为锚见 fs_wbtest.mbt。
+//   非法 UTF-8 从「截断」变「U+FFFD 替换」）——vendored 批（2026-09-28）曾评估
+//   「不跟进、保持 0.5.5 截断语义」；**该裁定已于 #363（2026-10-28）翻案**：
+//   to_utf8_string 重写为 U+FFFD 替换（WHATWG 最大子部分对齐，16 例矩阵锚
+//   在 fs_wbtest.mbt），本仓解码语义现与上游 main 同向——旧「不跟进」陈述
+//   作废（B3 批 2026-11-02 补注，审阅 v2 M37 A-4：注释比翻案早一月未随改）。
+//   编码方向（to_utf8_bytes）上游同病原样：孤立前导代理 panic（M37 A-1
+//   登记，正常域不可达——vitro 产出 String 经 to_utf8_string 永不含代理项）。
+//   内联 unicode 两函数后 vendor 边界闭合、零外部依赖。
 // 改动：① unicode 包的 to_utf8_bytes / to_utf8_string 两函数改调本包
 //   utf8_compat.mbt 内联实现（原样搬自 x@0.5.5 的 unicode/utf8.mbt+basic.mbt）；
 //   ② C 符号前缀 moonbitlang_x_fs_* → vitro_engine_fs_*（防与任何同时链接

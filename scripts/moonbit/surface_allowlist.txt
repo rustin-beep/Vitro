@@ -57,3 +57,10 @@ vitro/engine/teaching/steps extract_features
 vitro/engine/teaching/steps has_word
 vitro/engine/time_travel infer_semantic_label
 vitro/engine/vm load_libc_artifact
+# gateway ENGINE_VERSION（B3 批 2026-11-02，审阅 v2 R3 P1-1 连坐）：gateway 补 `+wasm`
+#   目标后 .mbti 首次落盘、本包 pub 面进入闸的 provider 面——发版锁步常量
+#   （release 机械件 bump 面 + facts engine_version 键 + gateway/wasm export
+#   engine_version 的单源），同包 engine_version() 包裹对外、下游可直读；
+#   本仓内无跨包 MoonBit 消费（scripts/wasm_gateway/host.mts 的版本失联锚走
+#   运行时导出比对非 import），保留 pub。同批 append_leak_report 收 priv（纯同包消费）。
+vitro/engine/gateway ENGINE_VERSION

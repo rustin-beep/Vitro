@@ -175,14 +175,17 @@ function makeParserGolden(root: string): GoldenStore {
 
 export { makeParserGolden };
 
-/** 单样本产物定位：`<stem>.c.ast.json` 优先，退 `<stem>.ast.json`。 */
+/**
+ * 单样本产物定位：`<stem>.c.ast.json`（F11：stem 含 .c）。B3 批（2026-11-02，
+ * M36 A1）起 dump_ast 的 basename 两模式（目录/裸名单文件）同果恒保留 .c，
+ * 旧退路 `<stem>.ast.json`（裸名丢 .c 的分裂形态兜底）成死分支，随之收口——
+ * 本驱动恒走目录模式，退路从未命中。
+ */
 function astRawOf(moonDir: string, file: string, fail: Fail): Buffer {
   const base = path.basename(file);
   const stem = base.slice(0, base.length - path.extname(base).length);
-  for (const name of [`${stem}.c.ast.json`, `${stem}.ast.json`]) {
-    const p = path.join(moonDir, name);
-    if (fs.existsSync(p)) return fs.readFileSync(p);
-  }
+  const p = path.join(moonDir, `${stem}.c.ast.json`);
+  if (fs.existsSync(p)) return fs.readFileSync(p);
   return fail(`MoonBit 侧输出缺失: ${stem}`);
 }
 

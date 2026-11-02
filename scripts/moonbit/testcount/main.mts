@@ -125,7 +125,15 @@ function tailN(s: string, n: number): string {
 
 export function runMoonTest(target: "bare" | "native" = "bare"): number {
   const args = target === "native" ? ["test", "--target", "native"] : ["test"];
-  const env = target === "native" ? { ...process.env, MOON_CC: "clang" } : process.env;
+  // test 面 C 编译器（B3 批 2026-11-02，审阅 v2 M37 D-6）：moon 0.1.20261028 起
+  // Windows 的 `moon test --target native` 走「MSVC direct object」路径，
+  // `MOON_CC=clang` 被**忽略**（警告原文「MOON_CC is ignored for Windows MSVC
+  // direct object native target because it is not a cl-compatible driver」）回落
+  // MSVC 探测——须 cl 兼容驱动 `clang-cl` 才生效；build 面（moon build）不受
+  // 影响仍认 clang（本批亲验）。非 Windows 沿用 clang（纪律 11）。facts.mts
+  // 的 native 采集同款分叉。
+  const cc = process.platform === "win32" ? "clang-cl" : "clang";
+  const env = target === "native" ? { ...process.env, MOON_CC: cc } : process.env;
   const r = spawnSync("moon", args, {
     cwd: path.join(projectRoot(), "moonbit"),
     encoding: "utf8",

@@ -5,25 +5,25 @@
     "面 A：neg_len_exemptions = 带 n/size 长度参数但无负域 trap 的 pub host_ 函数（必须带 reason，known 缺口须带 issue 指向）；",
     "  修好（补 trap / 转发覆盖）后条目变僵尸红，逼着清账。",
     "面 B：shared_functions 消费方清单 = 改共享函数（json_escape/utf8 族）时的强制对账面；",
-    "  新增/删除消费方不更新登记即红（消费含定义、调用、引用、测试四种形态——全要能被 grep 到才算）。"
+    "  新增/删除消费方不更新登记即红（消费含定义、调用、引用、测试四种形态——全要能被 grep 到才算）。",
+    "面 A 判据两形态：Int32 `if n < 0 {` / u64 `if (n|size) > 0x… {` 均须块内紧跟 return trap_only（clamp 表达式 if 不算）。审阅 P3-3 扩展判据后当场抓出 host_strncat 误豁免（它有 u64 巨量 trap）——首版判据盲于 u64 形态即失实登记一条，已删。"
   ],
-  "neg_len_source": { "file": "moonbit/host/host_string.mbt" },
+  "neg_len_source": {
+    "file": "moonbit/host/host_string.mbt"
+  },
   "neg_len_exemptions": {
     "host_memset": {
       "reason": "R1a-F6 实锤：memset(buf,0x41,-1) 的 u64 巨量被 clamp 0xFFFFFFFF 软夹后截断到内存尾静写满——clang 同形 segfault rc=139，vitro 双臂 rc=0 静默成功（最差形态：学生无感知）。同族 strncpy/memcpy/memmove 已 trap（705582d6）而 memset 漏。修法：u64 域巨量（>0x7FFFFFFF，i32 负域符号扩展）→ trap_only 同款教学文案。B 轮修复批治",
       "issue": "R1a-F6（tmp/review_v2_R1a/report.md）"
     },
-    "host_strncat": {
-      "reason": "u64 域无负域 trap（巨量语义 = 截断到界内，与 oracle 照搬形态）。R1a 未探针实锤行为分叉——B 轮 F6 批统一 u64 巨量口径时连坐定责（同 trap 或同登记），届时本条要么删（已修）要么改写 reason（裁定软夹合法）"
-    },
     "host_strncmp": {
-      "reason": "同 host_strncat：u64 域巨量语义未定责（比较族越界读方向），B 轮 F6 批连坐评估"
+      "reason": "只读族（审阅 P3-3 判据扩展后亲读更正，2026-11-03）：巨量 n 走 `while i < n` 受检 load，越界即 fault_reply（非静默、非写坏内存）——与 F6 写族（memset 软夹静写满）形态不同，无 strncpy 同款前置 trap。是否补前置 trap（教学文案优于 fault 通用文案）由 F6 批连坐裁定；裁定不补则本条改写为合法分叉长期保留（比较族）"
     },
     "host_memcmp": {
-      "reason": "同 host_strncmp（比较族）"
+      "reason": "只读族（审阅 P3-3 判据扩展后亲读更正，2026-11-03）：巨量 n 走 `while i < n` 受检 load，越界即 fault_reply（非静默、非写坏内存）——与 F6 写族（memset 软夹静写满）形态不同，无 strncpy 同款前置 trap。是否补前置 trap（教学文案优于 fault 通用文案）由 F6 批连坐裁定；裁定不补则本条改写为合法分叉长期保留（比较族）"
     },
     "host_memchr": {
-      "reason": "同 host_strncat（查找族，只读方向）"
+      "reason": "只读族（审阅 P3-3 判据扩展后亲读更正，2026-11-03）：巨量 n 走 `while i < n` 受检 load，越界即 fault_reply（非静默、非写坏内存）——与 F6 写族（memset 软夹静写满）形态不同，无 strncpy 同款前置 trap。是否补前置 trap（教学文案优于 fault 通用文案）由 F6 批连坐裁定；裁定不补则本条改写为合法分叉长期保留（查找族）"
     }
   },
   "shared_functions": {
@@ -84,12 +84,17 @@
     "utf8_bytes": {
       "def": "util/util.mbt",
       "def_anchor": "pub fn utf8_bytes(",
-      "consumers": ["diagnostics/auto_fix.mbt", "diagnostics/fix_gen.mbt"]
+      "consumers": [
+        "diagnostics/auto_fix.mbt",
+        "diagnostics/fix_gen.mbt"
+      ]
     },
     "utf8_text": {
       "def": "util/util.mbt",
       "def_anchor": "pub fn utf8_text(",
-      "consumers": ["diagnostics/auto_fix.mbt"]
+      "consumers": [
+        "diagnostics/auto_fix.mbt"
+      ]
     },
     "utf8_text_partial": {
       "def": "util/util.mbt",

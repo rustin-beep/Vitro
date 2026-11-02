@@ -84,12 +84,13 @@ export function resolveArms(rd: RulesDoc): Record<string, { exe: string; argv: s
   return out;
 }
 
-export function runArm(arm: { exe: string; argv: string[] }, cmd: string, probeArgv: string[], corpusFile: string): ArmResult {
+/** 跑一臂一探针，返回 (rc, 合流输出)——臂名由 probeCell 装配。 */
+export function runArm(arm: { exe: string; argv: string[] }, cmd: string, probeArgv: string[], corpusFile: string): { rc: number; out: string } {
   const argv = [...arm.argv, cmd, ...probeArgv.map((a) => (a === "FILE" ? corpusFile : a))];
   const r = spawnSync(arm.exe, argv, { cwd: projectRoot(), maxBuffer: 16 * 1024 * 1024, input: "" });
   if (r.error !== undefined) fatal(`启动失败 ${arm.exe} ${argv.join(" ")}: ${r.error.message}`);
   const out = `${r.stdout?.toString("utf8") ?? ""}\n${r.stderr?.toString("utf8") ?? ""}`;
-  return { arm: argv.join(" ").slice(0, 0), rc: r.status ?? -1, out }; // arm 名由调用方填
+  return { rc: r.status ?? -1, out };
 }
 
 /** 单元格真值：三臂跑齐（cell.argv 覆写探针模板）。 */
@@ -109,7 +110,10 @@ export function probeCell(
   return results;
 }
 
-const FAIL_LOUD_RE = /未知旗标|多余|用法|JSON 对象字面量/;
+/** fail loud 文案字样（审阅 P2-1 收窄，2026-11-02）：对齐四子命令实际输出——run「未知旗标或缺值」/
+ * compile「未知旗标或多余参数」/ step「未知旗标：」「多余位置参数」/ api「用法错: …」。
+ * 旧形态含裸「用法」过宽（正常 usage 输出也算命中，两臂哑失败可被第三臂的正常 usage 掩盖）。 */
+const FAIL_LOUD_RE = /未知旗标|多余位置参数|多余参数|用法错/;
 
 /** 全判据：三臂一致 + 与声明一致 + rc4 须有 fail loud 文案 + 声明引用有效。 */
 export function verdict(rd: RulesDoc, cells: Record<string, ArmResult[]>): { ok: boolean; issues: string[] } {
@@ -139,11 +143,13 @@ export function verdict(rd: RulesDoc, cells: Record<string, ArmResult[]>): { ok:
         const hint = cell.want === 0 ? `声明为现状 rc=0（${cell.reason ?? "?"}）——若已修复请把 want 升为 4 并清 reason（锁面）` : `声明 rc=4（fail loud 契约）——防线倒退或壳映射错`;
         issues.push(`[rc 漂移] ${key} 实测 rc=${rc} ≠ 声明 want=${cell.want}。${hint}`);
       }
-      // ③ rc4 须有 fail loud 文案
+      // ③ rc4 须有 fail loud 文案——**every 而非 some**（审阅 P2-1 修复，2026-11-02）：
+      // 某臂壳映射 rc=4 却吞文案时 some 放行（两臂哑失败不可见）；三臂壳逻辑单源
+      // （cmd/lib/cli），任一臂哑即异常。
       if (cell.want === 4 && rc === 4) {
-        const spoke = rs.some((r) => FAIL_LOUD_RE.test(r.out));
-        if (!spoke) {
-          issues.push(`[哑失败] ${key} rc=4 但三臂输出均无 fail loud 字样（未知旗标/多余/用法）——rc 对但文案撒谎`);
+        const dumb = rs.filter((r) => !FAIL_LOUD_RE.test(r.out)).map((r) => r.arm);
+        if (dumb.length > 0) {
+          issues.push(`[哑失败] ${key} rc=4 但臂 [${dumb.join(", ")}] 输出无 fail loud 字样（未知旗标/多余位置参数/用法错）——rc 对但文案撒谎`);
         }
       }
       void probe;

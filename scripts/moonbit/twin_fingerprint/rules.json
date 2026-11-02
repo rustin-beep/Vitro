@@ -13,12 +13,22 @@
       "extractor": "cast_chain",
       "note": "R1a-M1 点名高险集①：#345 在这对孪生间做对了连坐（两处同加 inner_u 双路），但新缺口同样两处同漏（F1）——单边改一份即本集红",
       "members": [
-        { "name": "gen_cast_expr", "file": "moonbit/codegen/cast.mbt", "anchor_start": "fn BytecodeGen::gen_cast_expr(", "note": "显式 cast 表达式分派" },
-        { "name": "gen_expr_with_cast", "file": "moonbit/codegen/cast.mbt", "anchor_start": "fn BytecodeGen::gen_expr_with_cast(", "note": "赋值/传参隐式转换收口（孪生）" }
+        {
+          "name": "gen_cast_expr",
+          "file": "moonbit/codegen/cast.mbt",
+          "anchor_start": "fn BytecodeGen::gen_cast_expr(",
+          "note": "显式 cast 表达式分派"
+        },
+        {
+          "name": "gen_expr_with_cast",
+          "file": "moonbit/codegen/cast.mbt",
+          "anchor_start": "fn BytecodeGen::gen_expr_with_cast(",
+          "note": "赋值/传参隐式转换收口（孪生）"
+        }
       ],
       "divergences": [
         {
-          "item": "T is TK_Void => Pop",
+          "item": "T is TK_Void => Pop [!(S is TK_Void)]",
           "only_in": "gen_cast_expr",
           "reason": "合法分叉：显式 (void)expr 丢弃（#238 弹栈）只存在于显式 cast 路径——隐式赋值无 void 目标（C 语法不存在 void 赋值），不是漏连坐"
         },
@@ -28,7 +38,7 @@
           "reason": "合法分叉：隐式 `long long x = d;` 的 fp→LL 转换由 typeck 插入显式 Cast 节点走本臂承接，gen_expr_with_cast 该组合实际不可达（探针实证 2026-11-02 /d/tmp/a7_probe/p1.c B 行：double d=2.5; long long b=d 双臂输出 2 == clang）"
         },
         {
-          "item": "T is TK_LongLong && !(S is TK_LongLong) && !(S is TK_Float) => CastU2Q,CastI2Q",
+          "item": "T is TK_LongLong && !(S is TK_LongLong) && !(S is TK_Float) => CastU2Q,CastI2Q [SRC_U]",
           "only_in": "gen_cast_expr",
           "reason": "合法分叉：隐式整型加宽（int/char→LL）零发射行为正确——i64 槽符号扩展假设实证（同探针 A 行：int i=-1; long long a=i 双臂 -1 == clang），隐式链无需发射（与上条同由 typeck 显式节点机制承接的镜像面）"
         }
@@ -39,10 +49,27 @@
       "extractor": "dump_arg_guards",
       "note": "R1a-M1/M5 点名高险集②：dump_compile 2026-09-21 批的三道门禁（参数过多 fail loud——81 产物污染语料事故实踩 / target==out_dir 拒写）与 sort_files_lex 字典序口径（陷阱 #29）只落一家，其余三家同构参数面靠人肉记忆连坐",
       "members": [
-        { "name": "dump_compile", "file": "moonbit/cmd/dump_compile/main.mbt", "anchor_start": "fn main raise {", "note": "门禁先例家（三道全 + 字典序）" },
-        { "name": "dump_ast", "file": "moonbit/cmd/dump_ast/main.mbt", "anchor_start": "fn main raise {" },
-        { "name": "dump_tokens", "file": "moonbit/cmd/dump_tokens/main.mbt", "anchor_start": "fn main raise {" },
-        { "name": "dump_typeck", "file": "moonbit/cmd/dump_typeck/main.mbt", "anchor_start": "fn main raise {" }
+        {
+          "name": "dump_compile",
+          "file": "moonbit/cmd/dump_compile/main.mbt",
+          "anchor_start": "fn main raise {",
+          "note": "门禁先例家（三道全 + 字典序）"
+        },
+        {
+          "name": "dump_ast",
+          "file": "moonbit/cmd/dump_ast/main.mbt",
+          "anchor_start": "fn main raise {"
+        },
+        {
+          "name": "dump_tokens",
+          "file": "moonbit/cmd/dump_tokens/main.mbt",
+          "anchor_start": "fn main raise {"
+        },
+        {
+          "name": "dump_typeck",
+          "file": "moonbit/cmd/dump_typeck/main.mbt",
+          "anchor_start": "fn main raise {"
+        }
       ],
       "divergences": [
         {
@@ -59,6 +86,11 @@
           "item": "sort:lexical",
           "only_in": "dump_compile",
           "reason": "known 缺口（R1a-F9）：三家用内置 files.sort()（陷阱 #29 非字典序；dump_tokens:47 注释写「与 Rust 侧 sort 对齐」与实现矛盾）。ASCII 文件名域等价、非 ASCII 才分叉，低危——统一 sort_files_lex 后删"
+        },
+        {
+          "item": "sort:builtin",
+          "only_in": "dump_compile",
+          "reason": "F9 镜像面（审阅 P1 缺项向新暴露，2026-11-02）：缺项视角下 dump_compile 是不一致方——三家内置 files.sort() 而它用字典序 sort_files_lex（后者才是陷阱 #29 正确口径）。与上条 sort:lexical 独有是同一分叉的两面；三家统一 sort_files_lex 后两条同删"
         }
       ]
     }

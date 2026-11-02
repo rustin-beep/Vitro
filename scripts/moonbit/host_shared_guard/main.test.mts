@@ -49,15 +49,25 @@ pub fn host_strlen(
 ) -> HostMemReply {
   value_only(1)
 }
+
+pub fn host_u64probe(
+  n : UInt64,
+) -> HostMemReply {
+  if n > 0x7FFFFFFFUL {
+    return trap_only("u64 巨量", "")
+  }
+  value_only(1)
+}
 `;
 
-test("parseHostFns：长度参数识别 / trap 三态 / 转发识别 / memset 软夹不算 trap", () => {
+test("parseHostFns：长度参数识别 / trap 三态 / 转发识别 / memset 软夹不算 trap / u64 巨量 trap 形态（P3-3）", () => {
   const fns = parseHostFns(SAMPLE);
   const by = (n: string) => fns.find((f) => f.name === n);
   assert.equal(by("host_strncpy")?.hasTrap, true);
   assert.equal(by("host_memcpy")?.forwardsTo, "host_memmove");
   assert.equal(by("host_memset")?.hasTrap, false, "NULL 区 trap_only + clamp 0xFFFF 是软夹不是负域 trap（F6）");
   assert.equal(by("host_strlen")?.hasLenParam, false, "无长度参数的函数不进面 A");
+  assert.equal(by("host_u64probe")?.hasTrap, true, "u64 域 `if n > 0x…` + trap_only 形态须算覆盖（审阅 P3-3 判据扩展——F6 修复批补守卫时即生效）");
 });
 
 test("negLenVerdict：三态全过 / 缺守卫未登记红 / 僵尸豁免红 / 空集红", () => {
@@ -75,7 +85,7 @@ test("negLenVerdict：三态全过 / 缺守卫未登记红 / 僵尸豁免红 / �
   assert.equal(negLenVerdict([], {}).ok, false);
 });
 
-test("sharedVerdict：幽灵消费方红 / def 缺失红 / 空表红", () => {
+test("sharedVerdict：幽灵消费方红 / def 缺失红 / 空表红 / def_anchor 不命中红（审阅 P3-2 真校验锚）", () => {
   const rd = loadRules();
   const rd2 = JSON.parse(JSON.stringify(rd)) as typeof rd;
   rd2.shared_functions["json_escape"]!.consumers.push("ghost/zz.mbt");
@@ -86,14 +96,25 @@ test("sharedVerdict：幽灵消费方红 / def 缺失红 / 空表红", () => {
   const rd4 = JSON.parse(JSON.stringify(rd)) as typeof rd;
   rd4.shared_functions = {};
   assert.equal(sharedVerdict(rd4).ok, false);
+  // def_anchor 真校验：名字仍在文件（\b 命中）但锚点改名 → 必红（装饰性字段退役）
+  const rd5 = JSON.parse(JSON.stringify(rd)) as typeof rd;
+  rd5.shared_functions["utf8_len"]!.def_anchor = "pub fn utf8_len_renamed(";
+  const r5 = sharedVerdict(rd5);
+  assert.equal(r5.ok, false);
+  assert.ok(r5.issues.some((s) => s.includes("定义锚点失效") && s.includes("utf8_len")));
 });
 
-test("真实仓库：面 A 三态全覆盖（strncpy/memmove trap + memcpy 转发 + 5 u64 豁免）+ 面 B 账实相符", () => {
+test("真实仓库：面 A 三态全覆盖（strncpy/memmove/strncat trap + memcpy 转发 + memset/三只读族豁免）+ 面 B 账实相符", () => {
   const rd = loadRules();
   const text = fs.readFileSync(path.join(projectRoot(), rd.neg_len_source.file), "utf8");
   const fns = parseHostFns(text);
   const lenFns = fns.filter((f) => f.hasLenParam);
   assert.ok(lenFns.length >= 8, `带长度参数函数 ${lenFns.length}`);
+  // 审阅 P3-3 收获锚：strncat 真有 u64 巨量 trap（if n > 0x7FFFFFFFUL { return trap_only）——
+  // 首版判据盲于 u64 形态曾把它误登豁免；判据②须在真实源码命中，防回退再误豁免
+  assert.equal(fns.find((f) => f.name === "host_strncat")?.hasTrap, true, "strncat u64 巨量 trap 须被判据②识别");
+  assert.equal(fns.find((f) => f.name === "host_memset")?.hasTrap, false, "memset clamp 软夹不得被判据②误认（F6 现状）");
+  assert.ok(rd.neg_len_exemptions["host_strncat"] === undefined, "strncat 有守卫，不得在豁免表（僵尸）");
   const a = negLenVerdict(fns, rd.neg_len_exemptions);
   assert.equal(a.ok, true, a.issues.join("; "));
   const b = sharedVerdict(rd);

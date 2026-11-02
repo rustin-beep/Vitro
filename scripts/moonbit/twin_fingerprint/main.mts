@@ -25,6 +25,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
 import { normalizeCond } from "../cast_matrix/main.mts";
+import { stripLineComments } from "../conv_specs/main.mts";
 
 export const RULES_PATH = "scripts/moonbit/twin_fingerprint/rules.json";
 
@@ -136,7 +137,12 @@ export function demorganNorm(s: string): string {
   return s.replace(/!\(([TS]) is (TK_\w+) \|\| ([TS]) is (TK_\w+)\)/g, "!($1 is $2) && !($3 is $4)");
 }
 
-/** cast 链指纹：归一化条件 => 臂体 OpCode 发射序列（嵌套指令全算）。 */
+/** cast 链指纹：归一化条件 => 臂体 OpCode 发射序列 + [嵌套条件序列]（嵌套指令全算）。
+ *
+ * 嵌套条件（≥4 空格缩进的 if/else-if，如 TK_Char 臂内 S 分型 + TGT_U 的
+ * TruncByte/TruncUByte 选择）归一后按序拼进指纹——审阅 P3-4 收窄（2026-11-02）：
+ * 原指纹只对齐指令**出现序列**，同一序列不同「嵌套条件⇄指令」配对会同指纹（假绿）。
+ * 追加嵌套条件序列后配对错乱大幅可辨；完整配对需 AST，此为文本层边界（注释即账）。 */
 export function castChainFingerprint(member: MemberSpec): Fingerprint {
   const raw = readSlice(member.file, member.anchor_start);
   const mFn = /^fn /m.exec(raw);
@@ -145,8 +151,10 @@ export function castChainFingerprint(member: MemberSpec): Fingerprint {
   if (conds.length === 0) fatal(`${member.name}（${member.file}）链抽取 0 臂——锚点或链形态已变`);
   const items: string[] = [];
   for (let k = 0; k < conds.length; k++) {
-    const ops = [...((bodies[k] ?? "").matchAll(/OpCode::(\w+)/g))].map((m) => m[1] ?? "").join(",");
-    items.push(`${demorganNorm(normalizeCond(conds[k] ?? ""))} => ${ops}`);
+    const armBody = bodies[k] ?? "";
+    const ops = [...armBody.matchAll(/OpCode::(\w+)/g)].map((m) => m[1] ?? "").join(",");
+    const nested = [...armBody.matchAll(/^    (?:\} else )?if (.*) \{$/gm)].map((m) => demorganNorm(normalizeCond(m[1] ?? "")));
+    items.push(`${demorganNorm(normalizeCond(conds[k] ?? ""))} => ${ops}${nested.length > 0 ? ` [${nested.join("; ")}]` : ""}`);
   }
   return { member: member.name, items };
 }
@@ -160,11 +168,14 @@ const DUMP_PREDICATES: { key: string; test: RegExp; desc: string }[] = [
   { key: "rc:usage_4", test: /c_exit\(4\)/, desc: "用法错 rc=4" },
 ];
 
-/** dump 参数段指纹：门禁谓词集合（参数个数差异不进指纹——各家参数面本不同）。 */
+/** dump 参数段指纹：门禁谓词集合（参数个数差异不进指纹——各家参数面本不同）。
+ *  谓词在**剥行注释后**的函数体上匹配（2026-11-03 实锤：A7' 批把 dump_tokens 的注释改成
+ *  「…与 dump_compile 的 sort_files_lex 口径不一…」，行为未变而 /sort_files_lex/ 被注释
+ *  命中——rebase 后本闸假红一次；谓词面必须只看代码）。 */
 export function dumpGuardsFingerprint(member: MemberSpec): Fingerprint {
   const raw = readSlice(member.file, member.anchor_start); // 已从锚点后起算
   const mFn = /^(pub )?fn /m.exec(raw); // 下一个顶层 fn 收尾（main 若是最后一个 fn 则到文件尾）
-  const body = mFn !== null && mFn.index > 0 ? raw.slice(0, mFn.index) : raw;
+  const body = stripLineComments(mFn !== null && mFn.index > 0 ? raw.slice(0, mFn.index) : raw);
   const items: string[] = [];
   for (const p of DUMP_PREDICATES) {
     if (p.test.test(body)) items.push(p.key);
@@ -179,15 +190,34 @@ export function fingerprintOf(member: MemberSpec, extractor: string): Fingerprin
   fatal(`未知 extractor: ${extractor}`);
 }
 
-/** 差集：只在某成员出现的指纹项 → "only_in <member> :: <item>"。 */
-export function diffOf(set: TwinSet, fps: Fingerprint[]): { item: string; only_in: string }[] {
-  const out: { item: string; only_in: string }[] = [];
+/** 差集双向（审阅 P1 修复，2026-11-02）：
+ *  ① 独有向——只在某成员出现的指纹项（原判据）；
+ *  ② 缺项向——出现次数 ≥2 的项、某成员没有。多成员集只看「独有」会放行中间态：
+ *     修了两三家漏最后一家时，缺项方项集里没有该项、有项方互相看见不算独有 ⇒ 零报告
+ *     ——正是 R1a 要治的形态。两向同样要求在 divergences 登记（only_in = 不一致方）。 */
+export interface DiffEntry {
+  item: string;
+  only_in: string;
+  /** only = 独有向（只有 only_in 有）；missing = 缺项向（其他 ≥2 家有、only_in 缺） */
+  kind: "only" | "missing";
+}
+
+export function diffOf(set: TwinSet, fps: Fingerprint[]): DiffEntry[] {
+  const itemCount = new Map<string, number>();
   for (const fp of fps) {
-    const others = new Set(fps.filter((f) => f.member !== fp.member).flatMap((f) => f.items));
+    for (const it of new Set(fp.items)) itemCount.set(it, (itemCount.get(it) ?? 0) + 1);
+  }
+  const out: DiffEntry[] = [];
+  for (const fp of fps) {
+    const own = new Set(fp.items);
     for (const it of fp.items) {
-      if (!others.has(it)) out.push({ item: it, only_in: fp.member });
+      if ((itemCount.get(it) ?? 0) === 1) out.push({ item: it, only_in: fp.member, kind: "only" });
+    }
+    for (const [it, cnt] of itemCount) {
+      if (cnt >= 2 && !own.has(it)) out.push({ item: it, only_in: fp.member, kind: "missing" });
     }
   }
+  void set;
   return out.sort((a, b) => (a.only_in + a.item < b.only_in + b.item ? -1 : 1));
 }
 
@@ -212,7 +242,10 @@ export function verdict(rd: RulesDoc, fpsBySet: Record<string, Fingerprint[]>): 
       const declared = set.divergences.some((x) => x.only_in === d.only_in && x.item === d.item);
       if (!declared) {
         ok = false;
-        say(`[孪生分叉未登记] ${set.name}: 只在 ${d.only_in} 有 "${d.item}"——改一份没跟另一份（M1 形态）。同步另一份，或在 divergences 带 reason 登记`);
+        const shape = d.kind === "only"
+          ? `只在 ${d.only_in} 有 "${d.item}"——改一份没跟另一份`
+          : `${d.only_in} 缺 "${d.item}"（集内其他成员已有）——修了几家漏这家`;
+        say(`[孪生分叉未登记] ${set.name}: ${shape}（M1 形态）。同步，或在 divergences 带 reason 登记（only_in=${d.only_in}）`);
       }
     }
     for (const dec of set.divergences) {
@@ -279,11 +312,23 @@ export function selftestRun(rd: RulesDoc, fpsBySet: Record<string, Fingerprint[]
     process.stdout.write(`  注入③ 加僵尸 divergence 条目 → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
+  // 注入④（审阅 P1 缺项向常驻锚）：四成员集 2 有 2 无——dump_compile/dump_ast 补
+  // upper_bound 而 tokens/typeck 仍缺 ⇒ 原独有登记变僵尸 + 两条缺项未登记，双红
+  {
+    const m2 = cloneFps(fpsBySet);
+    const dump = m2["dump_four"];
+    if (dump === undefined || dump.length < 4) return 2;
+    dump[0]!.items.push("guard:upper_bound");
+    dump[1]!.items.push("guard:upper_bound");
+    const red = !quiet(() => verdict(rd, m2));
+    process.stdout.write(`  注入④ dump 四家 2 有 2 无中间态（F5 修一半）→ ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    if (!red) fails++;
+  }
   if (fails > 0) {
     process.stdout.write(`twin_fingerprint: selftest FAIL——${fails} 路注入未被捕获\n`);
     return 1;
   }
-  process.stdout.write("twin_fingerprint: selftest PASS——三路注入全部捕获（红），J9 证红成立\n");
+  process.stdout.write("twin_fingerprint: selftest PASS——四路注入全部捕获（红），J9 证红成立\n");
   return 0;
 }
 

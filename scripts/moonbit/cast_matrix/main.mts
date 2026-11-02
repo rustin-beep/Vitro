@@ -249,13 +249,21 @@ export interface ZeroEmitHit {
   S_u: boolean;
 }
 
-/** 对全 (T,S,S_u) 组合求值：任一 pred 命中即「有发射」；全不命中 = 零发射。 */
+/** 对全 (T,S,S_u) 组合求值：任一 pred 命中即「有发射」；全不命中 = 零发射。
+ *
+ * 目标符号性维度（T_u）**不枚举**（审阅 P3 勘误，2026-11-02——原代码此处是
+ * `srcUnsigned(T).includes(true) ? false : false` 恒假死表达式）：cast.mbt 两条
+ * 顶层链的条件里 TGT_U 只出现在 TK_Char 臂**嵌套**的 TruncByte/TruncUByte 选择
+ * （4 空格缩进，不进顶层链抽取），枚举 T_u 两档对命中判定无差别、零判别力；
+ * (unsigned) 目标的缺口（R1a-F2 的 `(unsigned)3.9e9` 饱和）由面 B 指令对偶
+ * （dual_known_gaps 的 D2U/F2U 族）看守。若未来顶层链引入 TGT_U 条件，须把
+ * T_u 纳入求值域（求值器已支持，只差这里展开组合）。 */
 export function zeroEmitOf(chain: Chain, kinds: readonly string[]): ZeroEmitHit[] {
   const hits: ZeroEmitHit[] = [];
   for (const T of kinds) {
     for (const S of kinds) {
       for (const S_u of srcUnsigned(S)) {
-        const b: Bindings = { T, S, S_u, T_u: srcUnsigned(T).includes(true) ? false : false };
+        const b: Bindings = { T, S, S_u, T_u: false };
         const covered = chain.preds.some((p) => p(b));
         if (!covered) hits.push({ key: `${T}|${S}|${S_u ? "u" : "s"}`, T, S, S_u });
       }

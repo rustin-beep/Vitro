@@ -48,6 +48,21 @@ test("verdict：声明全绿形态过；声明 want 与真值分叉双向红；�
   let sawDumb = false;
   for (const s of verdict(rd, cells3).issues) if (s.includes("哑失败")) sawDumb = true;
   assert.ok(sawDumb);
+  // 审阅 P2-1 回归锚：三臂 rc=4 一致、仅一臂有文案、两臂哑 → every 判据必红（some 会放行）
+  {
+    const c = fakeCells(rd, 4, "vitro run: 未知旗标或缺值：--zz-bogus");
+    const run = c["run|unknown_flag"]!;
+    run[1]!.out = "";
+    run[2]!.out = "";
+    const r = verdict(rd, c);
+    assert.equal(r.ok, false);
+    assert.ok(r.issues.some((s) => s.includes("哑失败") && s.includes("run|unknown_flag") && s.includes(run[1]!.arm) && s.includes(run[2]!.arm)), "须点名两只哑臂");
+  }
+  // 审阅 P2-1 收窄锚：裸「用法」（正常 usage 输出）不算 fail loud 文案
+  {
+    const c = fakeCells(rd, 4, "用法: vitro run <file>");
+    assert.equal(verdict(rd, c).ok, false, "正常 usage 文案不得冒充 fail loud");
+  }
   // 臂间分叉 → 红
   const cells4 = fakeCells(rd, 4);
   cells4["compile|unknown_flag"]![0]!.rc = 0;

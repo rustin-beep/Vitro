@@ -1743,6 +1743,7 @@ jobs:
       # 本地 Windows 绿排除不了 ubuntu 调度差异）。产物由上一步四臂构建提供。
       - name: CLI argument-face symmetry (ubuntu lane)
         run: node scripts/cli_symmetry/main.mts -check
+        shell: bash
 
   # ── release-preflight（ds 批③：发布前置闸，2026-10-31）──────────────────
   # moon package 非退化闸 + 根级四件 + 版本状态探针（**闸进程零网络零

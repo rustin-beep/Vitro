@@ -5,7 +5,7 @@
 //   面 A（负 n 守卫覆盖）——带 n 内存写族 strncpy/memcpy/memmove/strncat 修了负号形
 //     trap（705582d6，DIFF-LIB-STRNCPY-01），但同族的 memset 走 clamp 0xFFFFFFFF 软夹
 //     静写满（F6：memset(buf,0x41,-1) clang segfault rc=139 / vitro 双臂静默成功 rc=0
-//     ——最差形态：学生无感知）；strncat/strncmp/memcmp/memchr 同 u64 域无守卫。判据：
+//     ——最差形态：学生无感知）；strncmp/memcmp/memchr 只读族无前置 trap（受检 load 兜底）。判据：
 //     **全部带长度参数的 pub host_ 函数**必须 ①体内有负域 trap 守卫、或 ②转发给有
 //     守卫的同族函数（memcpy→memmove 形态）、或 ③豁免表带 reason——三态机判，新函数
 //     带长度参数入库即被枚举抓面。
@@ -35,6 +35,7 @@ export interface NegLenExemption {
 
 export interface SharedFn {
   def: string;
+  /** 定义锚点（须在 def 文件命中——防「文件里只是注释提及函数名」被 \b 匹配误当定义在位；审阅 P3-2 真校验） */
   def_anchor: string;
   consumers: string[];
   note?: string;
@@ -64,6 +65,8 @@ function abs(p: string): string {
 }
 
 const RE_PUB_FN = /^pub fn (host_\w+)\(/gm;
+/** 负域 trap 守卫形态：`if n < 0 {` 或 `if (n|size) > 0x… {`，块内**紧跟** `return trap_only(`。 */
+const RE_NEG_TRAP = /if (?:n < 0|(?:n|size) > 0x[0-9A-Fa-f]+U?L?) \{\s*\n\s*return trap_only\(/;
 
 /** 解析 host_string.mbt：带长度参数（n/size/count : Int32|UInt64）的 pub host_ 函数三态。 */
 export function parseHostFns(text: string): HostFn[] {
@@ -81,7 +84,14 @@ export function parseHostFns(text: string): HostFn[] {
     // 负域 trap 判据只认仓内已有先例形态：`if n < 0`（strncpy/memmove，Int32 域）。
     // 注意 memset 的 NULL 区 trap_only + `size > 0xFFFFFFFF` clamp 是**软夹**（F6）
     // 不是负域 trap——不得因「含 trap_only 且含 0xFFFF」误判覆盖（首版实错，已修）。
-    const trap = /if n < 0/.test(body) && /trap_only\(/.test(body);
+    // 判据两形态（审阅 P3-3 扩展，2026-11-02）：①Int32 域 `if n < 0 {` + 块内紧跟 return trap
+    // （strncpy/memmove 先例）；②u64 域巨量 `if (n|size) > 0x… {` + 块内紧跟 return trap
+    // （**现仓零实例**——F6 修复批给 u64 族补守卫时本判据即生效；在此之前 u64 函数一律
+    // 经豁免入账，豁免 reason 须注明 u64 域）。
+    // **块内紧跟 return trap_only** 是关键：memset/strncat 的 clamp 是表达式 if
+    // （`if size > 0xFFFFFFFFUL { 0xFFFFFFFFUL } else { size }`——块内是值非 return），
+    // 松判据「含比较 + 含 trap_only」会被 NULL 区 trap_only 搭配 clamp 误判覆盖（本批实踩两次）。
+    const trap = RE_NEG_TRAP.test(body);
     let forwards = "";
     for (const c of body.matchAll(/\b(host_\w+)\(/g)) {
       if ((c[1] ?? "") !== name) {
@@ -187,6 +197,13 @@ export function sharedVerdict(rd: RulesDoc): { ok: boolean; issues: string[] } {
       issues.push(`[定义缺失] ${fnName} 在 ${decl.def} 中无出现——改名后忘更新登记`);
       continue;
     }
+    // 审阅 P3-2 真校验（2026-11-02）：def_anchor 必须命中——\b 名字匹配会被
+    // 「文件里注释提及该函数」误当定义在位（json_escape_string 在 util/json_escape.mbt
+    // 的注释里被提及即此类）；锚点未中 = 定义不在/已改名。
+    if (decl.def_anchor === "" || !defText.includes(decl.def_anchor)) {
+      issues.push(`[定义锚点失效] ${fnName} 的 def_anchor ${JSON.stringify(decl.def_anchor)} 在 ${decl.def} 不命中——函数定义改名/移位后登记失实`);
+      continue;
+    }
     const actual = actualConsumers(fnName, decl.def);
     const want = new Set(decl.consumers);
     const extra = actual.filter((c) => !want.has(c));
@@ -214,12 +231,12 @@ export function selftestRun(rd: RulesDoc, fns: HostFn[]): number {
     return 2;
   }
   let fails = 0;
-  // 注入①：给 strncat 去掉豁免（→ 守卫缺失未登记）
+  // 注入①：给 memset（F6 known）去掉豁免（→ 守卫缺失未登记）
   {
     const ex2 = { ...rd.neg_len_exemptions };
-    delete ex2["host_strncat"];
+    delete ex2["host_memset"];
     const r = negLenVerdict(fns, ex2);
-    process.stdout.write(`  注入① 删 strncat 豁免 → ${!r.ok ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    process.stdout.write(`  注入① 删 memset 豁免 → ${!r.ok ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (r.ok) fails++;
   }
   // 注入②：给 memmove（已有守卫）加豁免（→ 僵尸向）

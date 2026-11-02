@@ -138,7 +138,7 @@
 | Z22 | Duff device（case 在 do-while 体内） | `yzxyzxyzxyzxyz` n=0 | **零输出** n=5 零诊断（collect_cases 只递归 Block） | M13 A-2 / V1#28 |
 | Z23 | `int d3 = 1/0;` / `int arr[3]; int x = arr[0];`（静态初始化器） | **error**（initializer element is not a compile-time constant） | ✅ **E3075**（#426 批 1：纯常量树折叠失败补报 + Index/Member 裸用臂；修前零诊断置 0） | M08 A4 / V1#9 |
 | Z24 | `int g = 2147483647 + 1;`（静态初始化器） | 折 **-2147483648** + **-Winteger-overflow 警告**；运行期回绕不 trap | ✅ 折 -2147483648 + **W3090**（#426 批 1 拍板①；修前零诊断）；运行期**教学 trap**（既有裁定口径不变——两上下文分裂从静默变有提示，防误翻） | #426 B3' 扫描 S2（双臂探针） |
-| Z25 | `int a[3]; int x = a[!0];` | 零警告，值 20 | **W3051 假警「下标为负数 -1」**（typeck const_int_value 的 Not 臂按 `~` 求值——decl.mbt:1127 注释与匹配错位；运行值 20 对）——**#426 批 4 待修** | #426 B3' 扫描 S1（双臂探针） |
+| Z25 | `int a[3]; int x = a[!0];` | 零警告，值 20 | ✅ 零警告（#426 批 4：const_int_value Not 臂改逻辑非、BitNot 补臂；修前 W3051 假警「下标为负数 -1」）；同批 parser const_int_of 加 INT_MIN/-1 与移位越界防御（`int arr[1<<32]` 旧静默折定长 1，现回退 VLA） | #426 B3' 扫描 S1/S3/S4（双臂探针） |
 
 ## 八、已知差异登记面（**非缺陷，防误翻**）
 

@@ -762,13 +762,30 @@ fn const_int_of(
           Add => vals.push(a + b)
           Sub => vals.push(a - b)
           Mul => vals.push(a * b)
-          Div => if b != 0 { vals.push(a / b) } else { return None }
-          Mod => if b != 0 { vals.push(a % b) } else { return None }
+          // #426 批 4 防御（S3）：INT_MIN / -1 与 % -1 一并拒折——MoonBit
+          // Int32 除法在 wasm 后端 trap、JS 后端回绕，同引擎按后端分叉；
+          // 拒折 → 维度回退 VLA 诚实形态（拍板②：只防御不接核——E2 无
+          // 类型信息，数组维度教学域几乎全 int）
+          Div =>
+            if b != 0 && !(a == -2147483648 && b == -1) {
+              vals.push(a / b)
+            } else {
+              return None
+            }
+          Mod =>
+            if b != 0 && !(a == -2147483648 && b == -1) {
+              vals.push(a % b)
+            } else {
+              return None
+            }
           BitAnd => vals.push(a & b)
           BitOr => vals.push(a | b)
           BitXor => vals.push(a ^ b)
-          Shl => vals.push(a << b)
-          Shr => vals.push(a >> b)
+          // #426 批 4 防御（S4）：移位量越界/负数拒折——MoonBit Int 移位按
+          // 低 5 位掩码，旧 `1<<32` 算成 `1<<0`=1 **静默折出定长 1**（而非
+          // VLA），与 typeck 折叠（拒折）/ VM（trap）三方各异
+          Shl => if b >= 0 && b < 32 { vals.push(a << b) } else { return None }
+          Shr => if b >= 0 && b < 32 { vals.push(a >> b) } else { return None }
           _ => return None
         }
       }

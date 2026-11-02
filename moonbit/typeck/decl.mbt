@@ -1140,7 +1140,8 @@ fn is_const_int_binary_op(op : @ast.BinaryOp) -> Bool {
 
 ///|
 /// 常量下标求值（#50 审阅 P2-3 修复：`a[-1]` 的 -1 是 Unary(Neg, Literal)，
-/// 原仅匹配 Literal 使负值臂不可达）。Literal/Neg/Pos 三形求值；其余常量
+/// 原仅匹配 Literal 使负值臂不可达）。Literal/Neg/Pos/Not/BitNot 五形求值
+/// （#426 批 4：Not 逻辑非 0/1 与 BitNot 位非分臂——旧 Not 臂误按 ~ 求值）；其余常量
 /// 结构（Binary 如 1+2）返回 None——常量性由 is_int_constant_expr 放行、
 /// 值域不比（渐进：求值面留白除零）。
 fn const_int_value(e : @ast.Expr) -> Int32? {
@@ -1157,7 +1158,16 @@ fn const_int_value(e : @ast.Expr) -> Int32? {
         // 实无 Pos 分支——补齐（恒等透传）
         const_int_value(inner)
       } else if op is Not {
-        // ~（按位取反）一元常量：求值按 C 整型提升语义 ~v = -v - 1
+        // #426 批 4 修 S1：`!`（逻辑非）→ 0/1——旧此臂注释写「~（按位
+        // 取反）」却匹配 Not，按 ~v=-v-1 求值致 `a[!0]` 折 -1 触发 W3051
+        // 「下标为负数」假警（clang 零警告；js/native 双臂实锤）
+        match const_int_value(inner) {
+          Some(v) => Some(if v == 0 { 1 } else { 0 })
+          None => None
+        }
+      } else if op is BitNot {
+        // ~（按位取反）：二补码代数式 ~v = -v - 1（旧落 else None——
+        // is_int_constant_expr 放行 BitNot 但求值面缺臂）
         match const_int_value(inner) {
           Some(v) => Some(-v - 1)
           None => None

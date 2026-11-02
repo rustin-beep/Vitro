@@ -1102,7 +1102,7 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write(`vitro_cli_smoke: ${failures} 失败\n`);
     return 1;
   }
-  process.stdout.write("vitro_cli_smoke: 全绿（rc 契约 + 双臂同形对拍 + launcher + 薄壳 include）\n");
+  process.stdout.write("vitro_cli_smoke: 全绿（rc 契约 + 三臂同形对拍 + launcher + 薄壳 include）\n");
   return 0;
 }
 

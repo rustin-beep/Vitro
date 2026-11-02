@@ -10,8 +10,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import os from "node:os";
-import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../internal/capi.mts";
 import { emitWithMoonFmt, goJSONString, makeFail } from "../internal/genio.mts";
@@ -398,34 +396,23 @@ if (invokedDirectly) {
       fail(`几何层与真源不一致（${cur.length} B vs ${Buffer.byteLength(out)} B），跑 node scripts/gen_icons/main.mts 同步`);
     }
     if (mbtPath) {
-      let curMbt: Buffer;
-      try {
-        curMbt = fs.readFileSync(mbtPath);
-      } catch (e) {
-        fail(`icons_gen.mbt 缺失 ${rules.icons_mbt}：${e instanceof Error ? e.message : String(e)}（跑 gen_icons 生成）`);
-      }
-      // 产物本体零触碰（2026-11-01 审阅 v2 S08-1/S08-2 修复）：原实现「写产物 →
-      // moon fmt → 回读 → 还原」在 fmt 失败窗口把产物覆盖为未 fmt 模板后直接
-      // exit（探针实锤 hash 变），且每跑一次 -check 必刷 mtime（扰动
-      // gen_demo_algorithms 的 ensureFresh 构建复核链）。改为期望内容写**系统
-      // 临时目录**的 standalone .mbtx（moon fmt 对 .mbtx 支持无包语境格式化——
-      // 与包内 .mbt 的 fmt 输出逐字节等价已实测），对临时件跑 fmt 后回读 LF
-      // 归一比对，临时件即删。仓库内产物的 mtime/hash 全程不动；fmt 失败
-      //（如 moon 缺失）只红不破坏。
-      const want = MBT_TEMPLATE(ids, geo.icons, geo.digest, rules.svg_attrs);
-      const tmp = path.join(os.tmpdir(), `icons_gen_check_${process.pid}.mbtx`);
-      try {
-        fs.writeFileSync(tmp, want);
-        const fmt = spawnSync("moon", ["fmt", tmp], { cwd: path.join(root, "moonbit"), encoding: "utf8" });
-        if (fmt.status !== 0) {
-          fail(`moon fmt 失败（moon 须在 PATH）: exit ${fmt.status}\n${(fmt.stdout ?? "") + (fmt.stderr ?? "")}`);
-        }
-        const gotLF = fs.readFileSync(tmp, "latin1").replace(/\r\n/g, "\n");
-        const curLF = curMbt.toString("latin1").replace(/\r\n/g, "\n");
-        if (gotLF !== curLF) fail(`icons_gen.mbt 与真源不一致，跑 node scripts/gen_icons/main.mts 同步`);
-      } finally {
-        fs.rmSync(tmp, { force: true });
-      }
+      // 产物本体零触碰（2026-11-01 审阅 v2 S08-1/S08-2 修复；2026-11-02 PR #416 审阅
+      // P2-2 下沉 genio.emitWithMoonFmt check 模式——.mbtx 临时件直比由单源持有，
+      // gen_libc_data 等全部消费者同治）：原「写产物 → moon fmt → 回读 → 还原」在
+      // fmt 失败窗口把产物覆盖为未 fmt 模板（探针实锤 hash 变），且每跑一次 -check
+      // 必刷 mtime（扰动 gen_demo_algorithms 的 ensureFresh 构建复核链）。
+      emitWithMoonFmt({
+        root,
+        products: [
+          {
+            rel: path.relative(path.join(root, "moonbit"), mbtPath),
+            content: MBT_TEMPLATE(ids, geo.icons, geo.digest, rules.svg_attrs),
+          },
+        ],
+        check: true,
+        fail,
+        driftHint: "跑 node scripts/gen_icons/main.mts 同步",
+      });
     }
     if (demoTsPath) {
       // 缺失即红（S08-4，2026-11-01 审阅 v2）：原「存在才验」豁免——删 icons.ts

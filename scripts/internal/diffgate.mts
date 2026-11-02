@@ -173,6 +173,13 @@ export function sha16(b: Buffer): string {
   return crypto.createHash("sha256").update(b).digest("hex").slice(0, 16);
 }
 
+/**
+ * 未声明 sourcesPolicy 的 target 走的默认档（PR #416 审阅 P3 锚定，2026-11-02）：
+ * typeck 已显式 strict，但 vm/lexer 等仍吃本默认值——默认若被改成 presence，
+ * 它们会静默退化为「只查新样本」；diffgate.test 以常量锚锁死，改默认必动锚。
+ */
+export const DEFAULT_SOURCES_POLICY: "strict" | "presence" = "strict";
+
 /** `moon -C moonbit run --target native <sub> -- <args…>` */
 export function moonDump(root: string, sub: string, args: string[], fail: Fail): void {
   // MOON_CC=clang（AGENTS §11）：Windows 上 moon 探测默认绑 MSVC 撞 moon#2254
@@ -358,7 +365,7 @@ function compareGolden(
       process.stdout.write(`[selftest][golden] 已篡改清单条目: ${k} ——随后比对必须 FAIL\n`);
     }
   }
-  checkSources(sec, ctx, fail, store.missingHint, target.sourcesPolicy ?? "strict");
+  checkSources(sec, ctx, fail, store.missingHint, target.sourcesPolicy ?? DEFAULT_SOURCES_POLICY);
 
   const got = runCases(ctx);
   let failures = 0;

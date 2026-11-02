@@ -11,10 +11,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
-import { makeFail, parseFlags } from "../../internal/genio.mts";
+import { emitWithMoonFmt, makeFail, parseFlags } from "../../internal/genio.mts";
 import { goFormatFloat } from "../../internal/gofmt.mts";
 
 interface Instr {
@@ -150,57 +149,12 @@ export function renderArtifact(art: Artifact, srcSha: string, ops: Map<string, n
   return b.join("\n") + "\n";
 }
 
-// moon fmt 作用于整模块：check 路径 fmt 前快照全部 .mbt（排除 keep），fmt 后
-// 还原被重排的无关文件——保证 -check 零工作区副作用。
-function snapshotMbts(moonbit: string, keep: string[]): Map<string, Buffer> {
-  const keepAbs = new Set(keep.map((k) => path.join(moonbit, k)));
-  const snap = new Map<string, Buffer>();
-  const walk = (dir: string, rel: string): void => {
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const p = path.join(dir, e.name);
-      const r = path.join(rel, e.name);
-      if (e.isDirectory()) {
-        if (e.name === "_build" || e.name === "target") continue;
-        walk(p, r);
-        continue;
-      }
-      if (!e.name.endsWith(".mbt") || keepAbs.has(p)) continue;
-      try {
-        snap.set(p, fs.readFileSync(p));
-      } catch {
-        // 读失败跳过（与 WalkDir 出错一致）
-      }
-    }
-  };
-  walk(moonbit, "");
-  return snap;
-}
-
-function restoreMbts(snap: Map<string, Buffer>): void {
-  for (const [p, content] of snap) {
-    let cur: Buffer | null = null;
-    try {
-      cur = fs.readFileSync(p);
-    } catch {
-      cur = null;
-    }
-    if (cur === null || !cur.equals(content)) fs.writeFileSync(p, content);
-  }
-}
-
-function runMoonFmt(moonbit: string, keep: string[]): void {
-  const snap = keep.length > 0 ? snapshotMbts(moonbit, keep) : null;
-  const args = keep.length > 0 ? ["fmt", ...keep] : ["fmt"];
-  const r = spawnSync("moon", args, { cwd: moonbit, encoding: "utf8" });
-  if (r.status !== 0) throw new Error(`moon fmt: exit ${r.status}: ${(r.stdout ?? "") + (r.stderr ?? "")}`);
-  if (snap) restoreMbts(snap);
-}
+// 写盘/fmt/-check 统一走 genio.emitWithMoonFmt（2026-11-02 PR #416 审阅 P2-2 收敛）：
+// 原自写形态把真产物与包内临时件 vm/libc_data_gen_check_tmp.mbt 一起交给 moon fmt
+// 再回写还原——每次 -check 必刷产物 mtime（D20 同族，gen_icons 先治本批漏此一处），
+// 崩溃残留的临时件是会被 moon 编译的野 .mbt；生成模式 `moon fmt` 整模块更会连带
+// 重排无关文件（靶标快照还原机制即为此而生）。genio check 模式 = 期望内容经系统
+// 临时目录 .mbtx fmt 后与产物直比，产物零触碰；生成模式 = 单文件参数 fmt + 失败还原。
 
 const invokedDirectly =
   process.argv[1] !== undefined && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
@@ -220,8 +174,6 @@ if (invokedDirectly) {
   const moonbit = path.join(root, "moonbit");
   const srcPath = path.join(root, "scripts/moonbit/libc_data/bytecode_libc_data.json");
   const outPath = path.join(moonbit, "vm/libc_data_gen.mbt");
-  const tmpRel = "vm/libc_data_gen_check_tmp.mbt";
-  const tmpPath = path.join(moonbit, tmpRel);
 
   let raw: Buffer;
   try {
@@ -260,39 +212,23 @@ if (invokedDirectly) {
   }
 
   if (check) {
-    let origCur: Buffer | null = null;
-    try {
-      origCur = fs.readFileSync(outPath);
-    } catch {
-      origCur = null;
-    }
-    try {
-      fs.writeFileSync(tmpPath, out);
-      runMoonFmt(moonbit, ["vm/libc_data_gen.mbt", tmpRel]);
-      const cur = fs.readFileSync(outPath);
-      const tmp = fs.readFileSync(tmpPath);
-      fs.rmSync(tmpPath, { force: true });
-      const drifted = origCur === null || norm(cur) !== norm(tmp);
-      // 文件参数 fmt 与整包 fmt 形态不同：无论成败都还原 fmt 前原产物
-      //（-check 零副作用；cur 已被 fmt 改写，不能拿它当还原基准）
-      if (origCur !== null) fs.writeFileSync(outPath, origCur);
-      if (drifted) {
-        process.stderr.write("gen_libc_data: 产物漂移（源变或产物被篡改）——重跑生成\n");
-        process.exit(1);
-      }
-      console.log("gen_libc_data: check OK（产物与源一致）");
-    } catch (e) {
-      fs.rmSync(tmpPath, { force: true });
-      fatal(e instanceof Error ? e.message : String(e));
-    }
+    emitWithMoonFmt({
+      root,
+      products: [{ rel: "vm/libc_data_gen.mbt", content: out }],
+      check: true,
+      fail: fatal,
+      driftHint: "源变或产物被篡改——重跑 node scripts/moonbit/gen_libc_data/main.mts 再生",
+    });
+    console.log("gen_libc_data: check OK（产物与源一致）");
     process.exitCode = 0;
   } else {
-    try {
-      fs.writeFileSync(outPath, out);
-      runMoonFmt(moonbit, []);
-    } catch (e) {
-      fatal(e instanceof Error ? e.message : String(e));
-    }
+    emitWithMoonFmt({
+      root,
+      products: [{ rel: "vm/libc_data_gen.mbt", content: out }],
+      check: false,
+      fail: fatal,
+      driftHint: "",
+    });
     console.log(`gen_libc_data: 写 ${path.relative(root, outPath)}（${art.code.length} 指令 / ${namesCount(art)} 函数）`);
   }
 }

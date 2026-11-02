@@ -125,7 +125,7 @@ if (invokedDirectly) {
     console.log(`包外散 .mbt: ${o}——向上无 moon.pkg，moon fmt/构建/测试全链不可见（落进有 moon.pkg 的包，AGENTS 13.5）`);
   }
   if (hits.length > 0 || orphans.length > 0) {
-    fatal(`source_hygiene: ${hits.length} 个被跟踪文件含真 NUL（git 将判二进制，diff 不可见）；${orphans.length} 个包外散 .mbt`);
+    fatal(`${hits.length} 个被跟踪文件含真 NUL（git 将判二进制，diff 不可见）；${orphans.length} 个包外散 .mbt`);
   }
   console.log(`source_hygiene: OK（${files} 个被跟踪文件零真 NUL；moonbit/ 下 .mbt 零包外散件）`);
 }

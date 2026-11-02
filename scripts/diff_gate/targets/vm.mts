@@ -290,6 +290,7 @@ export function runVm(argv: string[], root: string): number {
   let golden = false;
   let freezeMB = false;
   let selftest = false;
+  let pruneStale = false;
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? "";
@@ -313,6 +314,8 @@ export function runVm(argv: string[], root: string): number {
       backend = v === "wasm" ? "wasm" : "native";
     } else if (a === "--golden") {
       golden = true;
+    } else if (a === "--prune-stale") {
+      pruneStale = true;
     } else {
       fail(`未知参数 ${JSON.stringify(a)}`);
     }
@@ -389,6 +392,34 @@ export function runVm(argv: string[], root: string): number {
 
   const doc = loadJSON<DigestDoc>(root, DIGEST_REL, fail);
   if (doc.version !== 1) fail("清单坏或版本不识");
+
+  // ---- golden 僵死条目防腐化（PR #416 审阅 P2-3，2026-11-02）----
+  // vm 只遍历语料：清单中语料已不存在的键永不校验，而汇总「共 N」令人误以为全
+  // 覆盖（实锤：#387 GPL 出仓 45 份删语料未连坐清单 ⇒ 807 条中 46 条僵死，全在
+  // baseline）。skip/known 有静态防腐化而 golden 没有——补 cases ⊆ 语料集（全量
+  // 模式）；清理走 --prune-stale（纯减法：只删语料不存在的键，不动任何存活 hash，
+  // 与「重冻」语义严格区分）。
+  if (pruneStale) {
+    if (!full) return fail("--prune-stale 须在全量模式跑（默认五语料，不带 --corpus/--sample/--cases）——非全量会把本轮外语料全判僵死");
+    const live = new Set(cases.map((c) => c.rel));
+    const stale = Object.keys(doc.cases).filter((k) => !live.has(k));
+    if (stale.length === 0) return fail("--prune-stale: 零僵死条目——清单已与语料对齐，无需清理");
+    for (const k of stale) delete doc.cases[k];
+    writeDigest(root, doc, fail);
+    process.stdout.write(
+      `vm_diff --prune-stale: 删除 ${stale.length} 条语料已不存在的僵死条目 → ${DIGEST_REL}（纯减法；存活 ${Object.keys(doc.cases).length} 条 hash 零改动）\n${stale.map((k) => "  - " + k).join("\n")}\n`,
+    );
+    return 0;
+  }
+  if (full) {
+    const live = new Set(cases.map((c) => c.rel));
+    const stale = Object.keys(doc.cases).filter((k) => !live.has(k));
+    if (stale.length > 0) {
+      return fail(
+        `golden 僵死条目 ${stale.length} 条（语料已删而清单未连坐，永不校验）——跑 node scripts/diff_gate/main.mts vm --prune-stale 清理；首 5 条：${stale.slice(0, 5).join(", ")}`,
+      );
+    }
+  }
 
   // ---- --freeze-mb：mb 侧三通道入账 ----
   if (freezeMB) {
@@ -535,7 +566,8 @@ function warnStaleExe(root: string, backend: "native" | "wasm"): void {
   }
 }
 
-function srcSHAOf(file: string): string {  const h = crypto.createHash("sha256");
+function srcSHAOf(file: string): string {
+  const h = crypto.createHash("sha256");
   for (const p of [file, stdinFor(file)]) {
     if (p === "") continue;
     h.update(fs.readFileSync(p));

@@ -369,6 +369,8 @@ function main(): void {
       // scripts/.stryker-tmp 让 ci_checklist（扫到副本驱动）/ editorconfig 本地假红，
       // 且未 ignore 时会被 `git add -A scripts/` 误加整棵副本树
       fs.rmSync(path.join(scriptsDir, ".stryker-tmp"), { recursive: true, force: true });
+      // 副作用护栏在早退路径同样执行（PR #416 审阅 P3：最可能留污染的恰是 FATAL 路径）
+      warnPollution(root, dirtyBefore, outAbs);
       process.exit(EXIT_INFRA);
     }
     const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as { files: Record<string, { mutants?: MutantLike[] }> };
@@ -425,13 +427,7 @@ function main(): void {
   process.stdout.write(
     `mutation_gate: ${results.length} 文件 / ${agg.total} 突变体——survived ${agg.survived}（report-only 不阻断）；报告 ${normalizeSlashes(path.relative(root, outAbs))}/report.md\n`,
   );
-  const polluted = [...trackedDirty(root)].filter((f) => !dirtyBefore.has(f)).sort();
-  if (polluted.length > 0) {
-    process.stderr.write(
-      `mutation_gate: ⚠ 突变副作用污染了 ${polluted.length} 个已跟踪文件（突变体执行写真仓产物且还原被突变掉）——勿提交，恢复：git checkout -- ${polluted.join(" ")}\n`,
-    );
-    fs.appendFileSync(path.join(outAbs, "report.md"), `\n## ⚠ 突变副作用污染（已跟踪文件新增脏）\n\n${polluted.map((f) => "- " + f).join("\n")}\n`);
-  }
+  warnPollution(root, dirtyBefore, outAbs);
 }
 
 /** 已跟踪文件脏集（排除 tmp/ 报告产物）——副作用护栏用。git 不可用时返回空集（不阻断）。 */
@@ -444,6 +440,20 @@ function trackedDirty(root: string): Set<string> {
     if (f !== "" && !f.startsWith("tmp/")) out.add(normalizeSlashes(f));
   }
   return out;
+}
+
+/** 副作用护栏：对比跑前脏集，新增已跟踪脏文件即 stderr 警告 + 追加 report.md（正常收尾与 FATAL 早退两处共用）。 */
+function warnPollution(root: string, dirtyBefore: Set<string>, outAbs: string): void {
+  const polluted = [...trackedDirty(root)].filter((f) => !dirtyBefore.has(f)).sort();
+  if (polluted.length === 0) return;
+  process.stderr.write(
+    `mutation_gate: ⚠ 突变副作用污染了 ${polluted.length} 个已跟踪文件（突变体执行写真仓产物且还原被突变掉）——勿提交，恢复：git checkout -- ${polluted.join(" ")}\n`,
+  );
+  try {
+    fs.appendFileSync(path.join(outAbs, "report.md"), `\n## ⚠ 突变副作用污染（已跟踪文件新增脏）\n\n${polluted.map((f) => "- " + f).join("\n")}\n`);
+  } catch {
+    // report.md 尚未生成（FATAL 早退）——stderr 已告警，不因附录写失败再抛
+  }
 }
 
 if (normalizeSlashes(process.argv[1] ?? "").endsWith("mutation_gate/main.mts")) {

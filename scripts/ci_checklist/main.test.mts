@@ -59,7 +59,7 @@ test("J9 ①漏登记：新驱动无活行 → 红", () => {
 
 test("J9 ②悬空：活行引用不存在的驱动 → 红", () => {
   const f = makeFixture((x) => {
-    x.edit(".github/workflows/ci.yml", "steps:/n  - run: go run ./scripts/ghost\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/ghost\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n");
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
@@ -72,7 +72,7 @@ test("J9 ②悬空（node 形态，S13b-P1/R1e-R2 2026-11-01）：node 活行文
   const f = makeFixture((x) => {
     x.edit(
       ".github/workflows/ci.yml",
-      "steps:/n  - run: node scripts/ghost_mts/main.mts --probe\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n",
+      "steps:\n  - run: node scripts/ghost_mts/main.mts --probe\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n",
     );
   });
   const r = check(f.root);
@@ -126,7 +126,7 @@ test("J9 例外缺 reason → 直接判红（exit 1 语义）", () => {
 
 test("J9 ④目标面缺口：缺 --target wasm-gc → 红", () => {
   const f = makeFixture((x) => {
-    x.edit(".github/workflows/ci.yml", "steps:/n  - run: go run ./scripts/alpha\n  - run: moon test --target js\n  - run: moon test --target native\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/alpha\n  - run: moon test --target js\n  - run: moon test --target native\n");
   });
   const r = check(f.root);
   assert.equal(r.failed, true);

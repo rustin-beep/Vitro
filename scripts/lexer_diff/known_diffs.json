@@ -1,11 +1,11 @@
 {
   "_meta": {
     "title": "S2 词法差分已知差异清单（单一来源）",
-    "updated": "2026-09-19",
+    "updated": "2026-11-02",
     "consumer": [
       "scripts/lexer_diff/gen_corpus.mbtx —— 运行时读取本 JSON 的 forbidden_markers 做产物自检（fail loud；单源）",
       "docs/current/07-质量与裁定/20260919_S2词法器执行记录.md —— 差异表格以本文件为准",
-      "scripts/lexer_diff/main.go —— 差分驱动的白名单依据（人工核对）"
+      "（历史）scripts/lexer_diff/main.go —— 原差分驱动的白名单依据，已随 #273（2026-10-24）物理删除；现役 scripts/diff_gate/targets/lexer.mts 不消费本表（lexer 无 known-fork 机制，diffs 段 D1-D18 为 Rust oracle 时代档案）——2026-11-02 审阅 v2 S05-C6 勘正僵尸引用"
     ],
     "classes": {
       "fixed-diff": "MoonBit 已按目标架构修复而 Rust oracle 保持缺陷——差分必红，语料必须避开",

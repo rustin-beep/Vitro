@@ -1090,13 +1090,26 @@ jobs:
           hits=$({ grep -rnF "$DOM" .github/ || true; })
           echo "-- 域名字面量全量出现："
           if [ -n "$hits" ]; then echo "$hits"; else echo "（零字面量命中）"; fi
+          # fail-open 封堵 + 正向锚（PR #416 审阅 P2-1，2026-11-02）：白名单升格时删掉了原
+          # `n 为空即红` 保护——grep 目标目录不存在/grep 异常时 hits 空 ⇒ bad 空 ⇒ 恒绿
+          # （探针实锤）。且原断言只防「外溢」不防「锚点丢失」：唯一合法点的域名被改
+          # （换 CDN/改命令）照样绿。两层：① hits 空即红；② setup-moonbit 内至少一处命中。
+          if [ -z "$hits" ]; then
+            echo "::error::moon 安装域字面量在 .github/ 下零命中——grep 异常或 setup-moonbit 锚点丢失（唯一合法实现点必须含安装域）"
+            exit 1
+          fi
+          good=$({ echo "$hits" | grep '^\.github/actions/setup-moonbit/' || true; })
+          if [ -z "$good" ]; then
+            echo "::error::setup-moonbit 内零命中（安装域被改/实现点迁移）——正向锚失守，先对齐 .github/actions/setup-moonbit 再改本断言"
+            exit 1
+          fi
           bad=$({ echo "$hits" | grep -v '^\.github/actions/setup-moonbit/' || true; })
           if [ -n "$bad" ]; then
             echo "::error::setup-moonbit 之外发现 moon 安装域引用（任意动词形态均算——收敛到 .github/actions/setup-moonbit 的 uses 引用）："
             echo "$bad"
             exit 1
           fi
-          echo "convergence OK: moon 安装域唯一出现在 setup-moonbit"
+          echo "convergence OK: moon 安装域唯一且确实出现在 setup-moonbit（$(echo "$good" | grep -c .) 处）"
       - name: Install MoonBit toolchain
         uses: ./.github/actions/setup-moonbit
 

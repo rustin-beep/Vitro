@@ -719,6 +719,14 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
         let line = line?;
         let t_line = Instant::now();
         lines += 1;
+        // 每例实例复位标记（lib.mts RESET_LINE/RESET_ACK 同字面）：重建 Store+Instance
+        // 并回固定 ack——两侧在 case 边界同起点（审阅 P2-3）
+        if line == "{\"__w4_reset__\":true}" {
+            rt = instantiate(&engine, &module)?;
+            out.write_all(b"{\"__w4_reset__\":\"ok\"}\n")?;
+            timings.push((lines - 1, t_line.elapsed().as_millis()));
+            continue;
+        }
         let res: wasmtime::Result<String> = (|| {
             let mut scope = RootScope::new(&mut rt.store);
             let arg = rt.strings.make(&mut scope, utf16(&line))?;

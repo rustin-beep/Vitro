@@ -43,6 +43,19 @@ export interface SampleSpec {
   mustInclude: string[];
 }
 
+/** 工程模式目录（一级子目录 = 一个工程 case；与 clang_direct projectCorpusDirs 同约定）。 */
+export const PROJECT_SUITES: ReadonlySet<string> = new Set(["llm_multifile"]);
+
+/** 配额键必须是 corpus 根目录（审阅 P3：未知 suite 静默忽略 = 抽样面无声塌缩，fail loud）。 */
+export function validateQuotaKeys(quota: Record<string, number>, roots: readonly string[]): void {
+  const known = new Set(roots);
+  for (const k of Object.keys(quota)) {
+    if (!known.has(k)) {
+      throw new Error(`--quota 未知 suite '${k}'（corpus 根目录全集：${roots.slice().sort(byteOrder).join(" / ")}）`);
+    }
+  }
+}
+
 /** 分层抽样：每 suite 独立 seed 派生（suite 名哈希），加 mustInclude 去重并稳定排序。 */
 export function stratifiedSample(suites: SuiteFiles[], spec: SampleSpec, seed: number): string[] {
   const chosen = new Set<string>(spec.mustInclude);
@@ -146,6 +159,26 @@ export function collectFiles(
   return entries;
 }
 
+// ── 每例实例复位标记（审阅 P2-3 处置）────────────────────────────────
+//
+// 单侧 trap 重建实例后两侧会话态历史不对称，期间的字节差判 CASCADE 本意是
+// 归因级联；但 epoch 长期不等（实测 synth 轮 5/1 → 10/6）会把真分叉（如
+// #420 note 泄漏）整段吸收。治本：每 case 首帧前双方强制重建实例——两侧在
+// case 边界永远同一起点，CASCADE 面收敛到「case 内单侧 trap 之后」（语义正确
+// 的窗口）。跑器识别 RESET_LINE 请求行即重建实例并回 RESET_ACK（两侧字面
+// 相同，对比器据此把 epoch 归零）。`--shared` 退回共享实例形态（serve 真实
+// 形态，观察用）。
+
+export const RESET_LINE = '{"__w4_reset__":true}';
+export const RESET_ACK = '{"__w4_reset__":"ok"}';
+export const RESET_METHOD = "__reset__";
+
+const RESET_ACK_BUF = Buffer.from(RESET_ACK, "utf8");
+
+export function isResetAck(b: Buffer): boolean {
+  return b.length === RESET_ACK_BUF.length && b.equals(RESET_ACK_BUF);
+}
+
 // ── 帧构造 ─────────────────────────────────────────────────────────────
 
 export interface CaseInput {
@@ -195,13 +228,14 @@ export const STATIC_METHODS: readonly string[] = [
   "config.get#3", "output.delta:bogus", "no.such.method", "session.destroy",
 ];
 
-/** 每语料帧序列（按 profile）；键序显式构造。 */
-export function buildFrames(c: CaseInput, profile: Profile = "run"): string[] {
+/** 每语料帧序列（按 profile）；键序显式构造。reset=true 时首帧为实例复位标记。 */
+export function buildFrames(c: CaseInput, profile: Profile = "run", reset = true): string[] {
   const f = (id: number, method: string, params: unknown = {}): string => JSON.stringify({ id, method, params });
   const main = c.files[0];
   const mainSrc = main?.source ?? "";
   const mainName = main?.filename ?? "main.c";
   const frames: string[] = [];
+  if (reset) frames.push(RESET_LINE);
   let id = 1;
   frames.push(f(id++, "session.create"));
   frames.push(f(id++, "compile", { files: c.files.map((x) => ({ filename: x.filename, source: x.source })) }));
@@ -234,8 +268,9 @@ export function buildFrames(c: CaseInput, profile: Profile = "run"): string[] {
 }
 
 /** 与 buildFrames 同序的帧标签（对比报告用）。 */
-export function frameMethods(profile: Profile): string[] {
-  const out = ["session.create", "compile"];
+export function frameMethods(profile: Profile, reset = true): string[] {
+  const out: string[] = reset ? [RESET_METHOD] : [];
+  out.push("session.create", "compile");
   if (profile !== "run") out.push("ast.dump", "typeck.dump", "symbols.dump", "codegen.dump");
   out.push("run", "output.delta:stdout", "output.delta:stderr", "output.delta:note");
   if (profile !== "run") {
@@ -421,6 +456,27 @@ export function isTrapLine(b: Buffer): boolean {
   return b.length >= TRAP_PREFIX.length && b.subarray(0, TRAP_PREFIX.length).equals(TRAP_PREFIX);
 }
 
+/**
+ * trap 归因类别（审阅 P2-4 处置）：TRAP_BOTH 不再只判「同帧都 trap」，两侧归一化
+ * 类别须相同，否则判 DIFF（如一侧栈溢出另一侧 unreachable = 真分叉）。类别由
+ * 两侧 runtime 的 kind/文案归一：
+ *   stack       wasmtime StackOverflow / V8 RangeError "Maximum call stack"
+ *   unreachable wasmtime UnreachableCodeReached / V8 RuntimeError "unreachable"
+ *   oob         wasmtime ArrayOutOfBounds·MemoryOutOfBounds / V8 "out of bounds"
+ *   host        供给层 bail（js-string 规范 trap 的宿主实现，仅 W4_STRINGS=host）
+ *   other       其余（文案见 left_trap/right_trap）
+ */
+export type TrapCategory = "stack" | "unreachable" | "oob" | "host" | "other";
+
+export function trapCategory(b: Buffer): TrapCategory {
+  const s = b.toString("utf8");
+  if (/StackOverflow|Maximum call stack|stack overflow/i.test(s)) return "stack";
+  if (/UnreachableCodeReached|RuntimeError: unreachable|"unreachable"|unreachable instruction/i.test(s)) return "unreachable";
+  if (/OutOfBounds|out of bounds|out-of-bounds/i.test(s)) return "oob";
+  if (/"kind":"host-err"|js-string /.test(s)) return "host";
+  return "other";
+}
+
 export interface FirstDiff {
   byte_offset: number;
   left: string; // 首差附近 ±ctx 的 UTF-8 解码片段（展示用；判定在 Buffer 层）
@@ -446,11 +502,13 @@ export interface FrameReport {
   verdict: FrameVerdict;
   left_len: number;
   right_len: number;
-  /** 此前两侧各自的 trap（=实例重建）次数——不等即实例历史不对称。 */
+  /** 此前两侧各自的 trap（=实例重建）次数——不等即实例历史不对称；复位标记归零。 */
   epoch: { left: number; right: number };
   first_diff?: FirstDiff;
   left_trap?: string;
   right_trap?: string;
+  /** 双侧 trap 时的归一化类别（不同即 DIFF）。 */
+  trap_kind?: { left: TrapCategory; right: TrapCategory };
 }
 
 export interface CaseReport {
@@ -475,7 +533,8 @@ export interface DiffReport {
 export function classifyFrame(l: Buffer, r: Buffer): FrameVerdict {
   const lt = isTrapLine(l);
   const rt = isTrapLine(r);
-  if (lt && rt) return "TRAP_BOTH";
+  // 双侧 trap：归因类别须相同（P2-4）——栈溢出 vs unreachable 是真分叉
+  if (lt && rt) return trapCategory(l) === trapCategory(r) ? "TRAP_BOTH" : "DIFF";
   if (lt !== rt) return "TRAP_ONE";
   return l.equals(r) ? "AGREE" : "DIFF";
 }
@@ -516,7 +575,9 @@ export function compareResponses(
   const rl = splitLines(right);
   const summary: DiffReport["summary"] = { AGREE: 0, TRAP_BOTH: 0, CASCADE: 0, DIFF: 0, TRAP_ONE: 0, cases: 0, frames: 0 };
   const cases: CaseReport[] = [];
-  // 实例历史：每个 trap 行 = 该侧重建一次实例；两侧计数不等期间的 DIFF 降级为 CASCADE
+  // 实例历史：每个 trap 行 = 该侧重建一次实例；两侧计数不等期间的 DIFF 降级为
+  // CASCADE；复位标记帧（两侧同回 RESET_ACK）把两侧计数归零（P2-3：CASCADE 窗口
+  // 收敛到 case 内单侧 trap 之后，不再跨 case 吸收真分叉）
   let trapL = 0;
   let trapR = 0;
   for (const c of manifest.cases) {
@@ -526,6 +587,10 @@ export function compareResponses(
       const idx = c.frame_start + k;
       const l = ll[idx] ?? Buffer.alloc(0);
       const r = rl[idx] ?? Buffer.alloc(0);
+      if (isResetAck(l) && isResetAck(r)) {
+        trapL = 0;
+        trapR = 0;
+      }
       let verdict: FrameVerdict = ll[idx] === undefined || rl[idx] === undefined ? "DIFF" : classifyFrame(l, r);
       if (verdict === "DIFF" && trapL !== trapR) verdict = "CASCADE";
       const fr: FrameReport = {
@@ -540,6 +605,7 @@ export function compareResponses(
         const fd = firstDiff(l, r);
         if (fd) fr.first_diff = fd;
       }
+      if (isTrapLine(l) && isTrapLine(r)) fr.trap_kind = { left: trapCategory(l), right: trapCategory(r) };
       if (isTrapLine(l)) {
         fr.left_trap = trapMsg(l);
         trapL += 1;

@@ -4,6 +4,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  RESET_ACK,
+  RESET_LINE,
+  RESET_METHOD,
   STATIC_CASE,
   STATIC_METHODS,
   VERDICT_RANK,
@@ -17,6 +20,7 @@ import {
   firstDiff,
   frameMethods,
   freezeBaseline,
+  isResetAck,
   isTrapLine,
   mulberry32,
   sampleK,
@@ -24,6 +28,8 @@ import {
   staticFrames,
   stratifiedSample,
   synthCases,
+  trapCategory,
+  validateQuotaKeys,
   vfsKeyFor,
   type Manifest,
   type SynthBaseline,
@@ -67,21 +73,25 @@ test("collectFiles：quote-include 闭包按 vfs 键登记，环路/重复只收
   assert.equal(vfsKeyFor("main.c", "./x/./y.h"), "x/y.h");
 });
 
-test("buildFrames × frameMethods：三 profile 帧数与标签一一对应，id 连续从 1 起", () => {
+test("buildFrames × frameMethods：三 profile 帧数与标签一一对应，首帧复位标记，id 连续从 1 起", () => {
   const c = { name: "t.c", files: [{ filename: "t.c", source: "int main(){return 0;}" }], stdin: "1\n" };
   for (const p of ["run", "deep-nomem", "deep"] as const) {
     const frames = buildFrames(c, p);
     const methods = frameMethods(p);
     assert.equal(frames.length, methods.length, p);
-    frames.forEach((line, i) => {
+    assert.equal(frames[0], RESET_LINE);
+    assert.equal(methods[0], RESET_METHOD);
+    frames.slice(1).forEach((line, i) => {
       const j = JSON.parse(line) as { id: number; method: string; params: Record<string, unknown> };
       assert.equal(j.id, i + 1);
-      assert.equal(j.method, (methods[i] as string).split(":")[0]?.split("#")[0]);
+      assert.equal(j.method, (methods[i + 1] as string).split(":")[0]?.split("#")[0]);
     });
   }
-  assert.equal(buildFrames(c, "run").length, 6);
+  assert.equal(buildFrames(c, "run").length, 7);
+  assert.equal(buildFrames(c, "run", false).length, 6);
+  assert.equal(frameMethods("run", false)[0], "session.create");
   assert.equal(buildFrames(c, "deep").length, buildFrames(c, "deep-nomem").length + 1);
-  const run = JSON.parse(buildFrames(c, "run")[2] as string) as { params: { input?: string } };
+  const run = JSON.parse(buildFrames(c, "run")[3] as string) as { params: { input?: string } };
   assert.equal(run.params.input, "1\n");
 });
 
@@ -106,7 +116,7 @@ test("synthCases：名字唯一、含栈梯度与 lone surrogate 样本、源码
   for (const c of cs) assert.ok(!JSON.stringify(c.src).includes("\n"));
 });
 
-test("classifyFrame/isTrapLine：四桶判定在 Buffer 层", () => {
+test("classifyFrame/isTrapLine：四桶判定在 Buffer 层；双侧 trap 归因类别异 → DIFF（P2-4）", () => {
   const ok = B('{"id":1,"ok":true}');
   const ok2 = B('{"id":1,"ok":true }');
   const tr = B('{"__host_trap__":"x","kind":"k"}');
@@ -117,6 +127,46 @@ test("classifyFrame/isTrapLine：四桶判定在 Buffer 层", () => {
   assert.equal(classifyFrame(tr, ok), "TRAP_ONE");
   assert.ok(isTrapLine(tr) && !isTrapLine(ok));
   assert.ok(VERDICT_RANK.TRAP_ONE > VERDICT_RANK.DIFF && VERDICT_RANK.DIFF > VERDICT_RANK.CASCADE && VERDICT_RANK.CASCADE > VERDICT_RANK.TRAP_BOTH);
+  // 归因类别：wasmtime 与 V8 文案归一到同类
+  const wtStack = B('{"__host_trap__":"error while executing at wasm backtrace:...","kind":"wasm-trap StackOverflow"}');
+  const v8Stack = B('{"__host_trap__":"Maximum call stack size exceeded","kind":"v8-RangeError"}');
+  const wtUnr = B('{"__host_trap__":"wasm trap: wasm `unreachable` instruction executed","kind":"wasm-trap UnreachableCodeReached"}');
+  const v8Unr = B('{"__host_trap__":"unreachable","kind":"v8-RuntimeError"}');
+  const hostErr = B('{"__host_trap__":"js-string charCodeAt: index 9 >= length 3","kind":"host-err"}');
+  assert.equal(trapCategory(wtStack), "stack");
+  assert.equal(trapCategory(v8Stack), "stack");
+  assert.equal(trapCategory(wtUnr), "unreachable");
+  assert.equal(trapCategory(v8Unr), "unreachable");
+  assert.equal(trapCategory(hostErr), "host");
+  assert.equal(classifyFrame(wtStack, v8Stack), "TRAP_BOTH");
+  assert.equal(classifyFrame(wtUnr, v8Unr), "TRAP_BOTH");
+  // 一侧栈溢出另一侧 unreachable = 真分叉
+  assert.equal(classifyFrame(wtStack, v8Unr), "DIFF");
+});
+
+test("复位标记：两侧同回 RESET_ACK 把 epoch 归零——CASCADE 窗口不跨 case（P2-3）", () => {
+  const m = mkManifest([2, 3]);
+  // case0：左侧 trap（epoch 1/0）；case1 首帧复位 ack → 归零 → 其后字节差判 DIFF 而非 CASCADE
+  const left = B(`{"a":1}\n{"__host_trap__":"so","kind":"wasm-trap StackOverflow"}\n${RESET_ACK}\n{"c":1}\n{"d":1}\n`);
+  const right = B(`{"a":1}\n{"b":2}\n${RESET_ACK}\n{"c":2}\n{"d":1}\n`);
+  const r = compareResponses(m, left, right, { left: "L", right: "R" });
+  assert.equal(r.cases[0]?.verdict, "TRAP_ONE");
+  assert.equal(r.cases[1]?.frames[0]?.verdict, "AGREE");
+  assert.deepEqual(r.cases[1]?.frames[0]?.epoch, { left: 0, right: 0 });
+  assert.equal(r.cases[1]?.frames[1]?.verdict, "DIFF");
+  assert.equal(r.summary.CASCADE, 0);
+  // 无复位标记（--shared 形态）同序列：case1 字节差被判 CASCADE
+  const m2 = mkManifest([2, 2]);
+  const l2 = B('{"a":1}\n{"__host_trap__":"so","kind":"wasm-trap StackOverflow"}\n{"c":1}\n{"d":1}\n');
+  const r2 = B('{"a":1}\n{"b":2}\n{"c":2}\n{"d":1}\n');
+  assert.equal(compareResponses(m2, l2, r2, { left: "L", right: "R" }).cases[1]?.verdict, "CASCADE");
+  assert.ok(isResetAck(B(RESET_ACK)) && !isResetAck(B('{"__w4_reset__":"ok" }')));
+});
+
+test("validateQuotaKeys：未知 suite fail loud（静默忽略 = 抽样面无声塌缩）", () => {
+  const roots = ["baseline", "knr", "llm_multifile"];
+  assert.doesNotThrow(() => validateQuotaKeys({ baseline: 1, knr: 2 }, roots));
+  assert.throws(() => validateQuotaKeys({ baseline: 1, foo: 3 }, roots), /未知 suite 'foo'/);
 });
 
 test("firstDiff：字节偏移口径（多字节字符中段也按字节计）", () => {

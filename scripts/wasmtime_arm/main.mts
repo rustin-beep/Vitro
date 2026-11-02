@@ -1,26 +1,34 @@
 #!/usr/bin/env node
 // W4 第四臂对拍驱动：同一 wasm-gc 产物 × wasmtime（Cranelift，rs/ 供给版跑器）
-// vs V8（node，host_node.mts）——分叉面普查工具（纯探针资产，不接 CI 活行；
-// 例外登记见 scripts/ci_checklist/exceptions.json）。
+// vs V8（node，host_node.mts）——gateway NDJSON 协议层逐位对拍。CI 接线 =
+// `.github/workflows/ci.yml` job `arm4-wasmtime`（corpus deep-nomem --all 严格
+// identical + synth 对抗集 --baseline 锁定）。
 //
-//   node scripts/wasmtime_arm/main.mts gen  [--out D] [--seed N] [--cases a.c,b.c] [--quota s=N,...]
+//   node scripts/wasmtime_arm/main.mts gen  [--out D] [--seed N] [--profile P] [--all | --cases a.c,b.c | --quota s=N,...] [--synth] [--shared]
 //   node scripts/wasmtime_arm/main.mts run  [--out D] [--wasm P] [--exe P]
-//   node scripts/wasmtime_arm/main.mts diff [--out D] [--json]
+//   node scripts/wasmtime_arm/main.mts diff [--out D] [--json] [--baseline F | --freeze-baseline F] [--expect-min-cases N] [--expect-min-frames N]
 //   node scripts/wasmtime_arm/main.mts all  [上述全部]
 //
 // 产出（--out 目录）：requests.ndjson / manifest.json / responses.wasmtime.ndjson /
-// responses.node.ndjson / report.json。verdict 四桶：AGREE < TRAP_BOTH（双侧 trap、
-// 文案不比）< DIFF（双侧正常但字节不等）< TRAP_ONE（单侧 trap）。
+// responses.node.ndjson / report.json。verdict 五桶：AGREE < TRAP_BOTH（双侧 trap 且
+// 归因类别同）< CASCADE（case 内单侧 trap 之后的级联字节差）< DIFF（字节不等 /
+// 双侧 trap 类别异）< TRAP_ONE（单侧 trap）。每 case 首帧为实例复位标记（两侧
+// 同起点；--shared 关）。
 //
-// 前置：rs/ 需 `cargo build --release`（rustc ≥1.97，wasmtime 50.0.1）；wasm 产物
-// 按 AGENTS.md 纪律 12 两件（moon build --release --target wasm-gc gateway/wasm
-// + node scripts/wasmopt/main.mts <产物>）。
+// 语料面：--all = corpus 根目录**全集**枚举（含工程模式目录 llm_multifile——一级
+// 子目录 = 一个工程，files = .c 字节序 + .h 字节序，clang_direct #237 同约定）；
+// 抽样模式配额键须为根目录名（未知 suite fail loud）。
+//
+// 前置：rs/ 需 `cargo build --release --locked`（rustc ≥1.97，wasmtime 50.0.1）；
+// wasm 产物按 AGENTS.md 纪律 12 两件（moon build --release --target wasm-gc
+// gateway/wasm + node scripts/wasmopt/main.mts <产物>）。
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import {
   PROFILES,
+  PROJECT_SUITES,
   STATIC_CASE,
   STATIC_METHODS,
   adversarialFrames,
@@ -37,8 +45,10 @@ import {
   staticFrames,
   stratifiedSample,
   synthCases,
+  validateQuotaKeys,
   type CaseInput,
   type DiffReport,
+  type FileEntry,
   type Manifest,
   type ManifestCase,
   type Profile,
@@ -57,7 +67,8 @@ const DEFAULT_EXE = join(
   process.platform === "win32" ? "wasmtime_arm.exe" : "wasmtime_arm",
 );
 const DEFAULT_SEED = 20261102;
-/** 分层配额（≈92 份 + mustInclude）——覆盖 stdin / include / cpp / 模板 / 规模语料。 */
+/** 分层配额（≈115 份 + mustInclude）——覆盖 corpus 全部 10 个根目录（stdin / include /
+ * cpp / 模板 / 规模 / 骨架 / 多文件工程）。键必须是根目录名（gen 时对账 fail loud）。 */
 const DEFAULT_QUOTA: Record<string, number> = {
   baseline: 40,
   knr: 15,
@@ -67,8 +78,9 @@ const DEFAULT_QUOTA: Record<string, number> = {
   template_generated: 8,
   llm_scale: 3,
   mutator_probe: 1,
+  codegen_skeleton: 13,
+  llm_multifile: 10,
 };
-const SUITES = Object.keys(DEFAULT_QUOTA);
 
 interface Opts {
   cmd: string;
@@ -81,8 +93,11 @@ interface Opts {
   profile: Profile;
   synth: boolean;
   all: boolean;
+  shared: boolean;
   baseline: string | null;
   freezeBaseline: string | null;
+  expectMinCases: number;
+  expectMinFrames: number;
   json: boolean;
 }
 
@@ -98,9 +113,17 @@ function parseArgs(argv: string[]): Opts {
     profile: "run",
     synth: false,
     all: false,
+    shared: false,
     baseline: null,
     freezeBaseline: null,
+    expectMinCases: 0,
+    expectMinFrames: 0,
     json: false,
+  };
+  const posInt = (flag: string, v: string): number => {
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0) throw new Error(`${flag} 须为非负整数：${v}`);
+    return n;
   };
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i] as string;
@@ -127,15 +150,55 @@ function parseArgs(argv: string[]): Opts {
     } else if (a === "--json") o.json = true;
     else if (a === "--synth") o.synth = true;
     else if (a === "--all") o.all = true;
+    else if (a === "--shared") o.shared = true;
     else if (a === "--baseline") o.baseline = resolve(next());
     else if (a === "--freeze-baseline") o.freezeBaseline = resolve(next());
+    else if (a === "--expect-min-cases") o.expectMinCases = posInt(a, next());
+    else if (a === "--expect-min-frames") o.expectMinFrames = posInt(a, next());
     else throw new Error(`未知参数 ${a}`);
   }
-  if (o.all) for (const k of Object.keys(o.quota)) o.quota[k] = 999999;
   return o;
 }
 
+/** corpus 根目录全集（审阅 P2-1：「全量」不再由硬编码白名单驱动）。 */
+function listCorpusRoots(): string[] {
+  return readdirSync(CORPUS, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort(byteOrder);
+}
+
+/** 工程模式：一级子目录含 ≥1 .c 即一个工程 case（名 `<suite>/<dir>`）。 */
+function listProjects(suite: string): string[] {
+  const dir = join(CORPUS, suite);
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    if (!ent.isDirectory()) continue;
+    const hasC = readdirSync(join(dir, ent.name)).some((f) => f.endsWith(".c"));
+    if (hasC) out.push(`${suite}/${ent.name}`);
+  }
+  return out.sort(byteOrder);
+}
+
+/** 工程 case 的 files：.c 字节序在前 + .h 字节序在后（clang_direct #237 同约定）；
+ * 登记名 = basename（gateway vfs 键，与 include 查找对齐）。 */
+function projectFiles(name: string): FileEntry[] {
+  const dir = join(CORPUS, name);
+  const names = readdirSync(dir).filter((f) => !statSync(join(dir, f)).isDirectory());
+  const cs = names.filter((f) => f.endsWith(".c")).sort(byteOrder);
+  const hs = names.filter((f) => f.endsWith(".h")).sort(byteOrder);
+  const out: FileEntry[] = [];
+  for (const f of [...cs, ...hs]) {
+    const src = readOrNull(join(dir, f));
+    if (src === null) throw new Error(`工程文件不可读：${name}/${f}`);
+    out.push({ filename: f, source: src });
+  }
+  return out;
+}
+
 function listSuite(suite: string): string[] {
+  if (PROJECT_SUITES.has(suite)) return listProjects(suite);
   const dir = join(CORPUS, suite);
   if (!existsSync(dir)) return [];
   const out: string[] = [];
@@ -194,20 +257,31 @@ function cmdGen(o: Opts): void {
     }
   } else {
     let names: string[];
+    const roots = listCorpusRoots();
     if (o.cases !== null) {
       names = o.cases.slice().sort(byteOrder);
+    } else if (o.all) {
+      // 全量 = 根目录全集逐一枚举（P2-1：不经白名单）
+      names = roots.flatMap((s) => listSuite(s)).sort(byteOrder);
     } else {
-      const suites: SuiteFiles[] = SUITES.map((s) => ({ suite: s, files: listSuite(s) }));
+      validateQuotaKeys(o.quota, roots);
+      const suites: SuiteFiles[] = Object.keys(o.quota).map((s) => ({ suite: s, files: listSuite(s) }));
       names = stratifiedSample(suites, { quotas: o.quota, mustInclude: mustIncludeList(o.seed) }, o.seed);
     }
     for (const name of names) {
+      const suite = name.split("/")[0] ?? "";
+      if (PROJECT_SUITES.has(suite)) {
+        // 工程 case：目录内全部 .c/.h 作 files（多翻译单元），无 stdin 约定
+        inputs.push({ name, suite, input: { name, files: projectFiles(name), stdin: null } });
+        continue;
+      }
       const full = join(CORPUS, name);
       const src = readOrNull(full);
       if (src === null) throw new Error(`语料不可读：${name}`);
       const files = collectFiles(full, src, readOrNull);
       const stdinPath = full.replace(/\.(c|cpp|cc)$/, ".in");
       const stdin = stdinPath !== full ? readOrNull(stdinPath) : null;
-      inputs.push({ name, suite: name.split("/")[0] ?? "", input: { name, files, stdin } });
+      inputs.push({ name, suite, input: { name, files, stdin } });
     }
   }
   const wasmSha = existsSync(o.wasm) ? sha256Hex(readFileSync(o.wasm)) : "";
@@ -226,9 +300,9 @@ function cmdGen(o: Opts): void {
     cases.push({ name: STATIC_CASE, suite: "static", has_stdin: false, file_count: 0, frame_start: 0, frame_count: sf.length, methods });
     lines.push(...sf);
   }
-  const methods = frameMethods(o.profile);
+  const methods = frameMethods(o.profile, !o.shared);
   for (const it of inputs) {
-    const frames = buildFrames(it.input, o.profile);
+    const frames = buildFrames(it.input, o.profile, !o.shared);
     cases.push({
       name: it.name,
       suite: it.suite,
@@ -306,6 +380,14 @@ function cmdDiff(o: Opts): { report: DiffReport; ok: boolean } {
       }
     }
     process.stdout.write(lines.join("\n") + "\n");
+  }
+  // 抽样集塌缩自证（审阅 P2-5）：identical 对「两侧皆空」也绿——锁最小 cases/frames
+  const collapsed: string[] = [];
+  if (o.expectMinCases > 0 && report.summary.cases < o.expectMinCases) collapsed.push(`cases=${report.summary.cases} < ${o.expectMinCases}`);
+  if (o.expectMinFrames > 0 && report.summary.frames < o.expectMinFrames) collapsed.push(`frames=${report.summary.frames} < ${o.expectMinFrames}`);
+  if (collapsed.length > 0) {
+    process.stdout.write(`[w4 collapse] FAIL——对拍面低于下限：${collapsed.join("；")}（语料目录/白名单/路径变动？）\n`);
+    return { report, ok: false };
   }
   // 冻结基线：本轮 verdict 落盘（DIFF 拒冻）
   if (o.freezeBaseline !== null) {

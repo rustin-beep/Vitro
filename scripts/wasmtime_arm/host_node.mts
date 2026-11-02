@@ -13,6 +13,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { compileGateway, stringConstsOf, type GatewayExports } from "../wasm_load.mts";
+import { RESET_ACK, RESET_LINE } from "./lib.mts";
 
 function instantiate(buf: BufferSource): GatewayExports {
   const mod = compileGateway(buf);
@@ -58,6 +59,13 @@ function main(): number {
     const raw = lines[i] as string;
     const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
     const tLine = performance.now();
+    // 每例实例复位标记（lib.mts RESET_LINE/RESET_ACK 同字面；Rust 侧同款）
+    if (line === RESET_LINE) {
+      gw = instantiate(buf);
+      outs.push(RESET_ACK);
+      timings.push([i, performance.now() - tLine]);
+      continue;
+    }
     try {
       outs.push(gw.invoke(line));
     } catch (e) {

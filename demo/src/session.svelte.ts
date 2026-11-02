@@ -217,6 +217,12 @@ export function invalidate(): void {
 // 引擎侧编排（collect/feed 的 step 采帧循环）在两种形态下都在「引擎侧」
 // 闭环——Worker 内 / 壳进程 native 内，消息形状逐字相同。
 let worker: EngineTransport | null = null;
+// 创建中的通道 Promise（PR #417 审阅 P2-2）：getWorker async 化后 await 间隙
+// 内并发首帖（?autorun=1/?bench=1 下 main.ts 与 App.svelte 双发 boot）会建两个
+// Worker、首个永不 terminate——in-flight 缓存让并发调用共享同一次创建。
+let workerInflight: Promise<EngineTransport> | null = null;
+// 代际：killWorker 作废创建中的实例（kill 与建成的竞态不再覆盖/泄漏）
+let workerGeneration = 0;
 let rpcId = 0;
 const pending = new Map<number, { resolve: (v: never) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
@@ -230,8 +236,10 @@ const RPC_TIMEOUT_LONG_MS = 120_000;
 /** Worker 实例已不可信（超时/onerror）——terminate 销毁，下次 getWorker
  *  重建。「重试」按钮必须真的重建引擎，而不是继续撞同一个死实例。 */
 function killWorker(): void {
+  workerGeneration += 1;
   worker?.terminate();
   worker = null;
+  workerInflight = null;
 }
 
 /** Worker 级故障（加载失败 / 运行期未捕获异常 / 消息无法反序列化）——
@@ -244,28 +252,49 @@ function rejectAllPending(err: Error): void {
   pending.clear();
 }
 
-async function getWorker(): Promise<EngineTransport> {
-  if (!worker) {
-    worker = await createEngineTransport();
-    worker.onmessage = (e: MessageEvent) => {
-      const { id, ok, data, error } = e.data as { id: number; ok: boolean; data?: never; error?: string };
-      const p = pending.get(id);
-      if (!p) return;
-      pending.delete(id);
-      clearTimeout(p.timer);
-      if (ok) p.resolve(data as never);
-      else p.reject(new Error(error ?? "worker 无错误信息"));
-    };
-    worker.onerror = (e: ErrorEvent) => {
-      rejectAllPending(new Error(`引擎 Worker 异常（${e.message || e.filename || "未知错误"}）——可点「重试」重建引擎`));
-      killWorker();
-    };
-    worker.onmessageerror = () => {
-      rejectAllPending(new Error("引擎 Worker 消息无法反序列化——可点「重试」重建引擎"));
-      killWorker();
-    };
+function attachTransport(t: EngineTransport): EngineTransport {
+  t.onmessage = (e: MessageEvent) => {
+    const { id, ok, data, error } = e.data as { id: number; ok: boolean; data?: never; error?: string };
+    const p = pending.get(id);
+    if (!p) return;
+    pending.delete(id);
+    clearTimeout(p.timer);
+    if (ok) p.resolve(data as never);
+    else p.reject(new Error(error ?? "worker 无错误信息"));
+  };
+  t.onerror = (e: ErrorEvent) => {
+    rejectAllPending(new Error(`引擎 Worker 异常（${e.message || e.filename || "未知错误"}）——可点「重试」重建引擎`));
+    killWorker();
+  };
+  t.onmessageerror = () => {
+    rejectAllPending(new Error("引擎 Worker 消息无法反序列化——可点「重试」重建引擎"));
+    killWorker();
+  };
+  return t;
+}
+
+function getWorker(): Promise<EngineTransport> {
+  if (worker !== null) return Promise.resolve(worker);
+  if (workerInflight === null) {
+    const generation = workerGeneration;
+    workerInflight = createEngineTransport().then(
+      (t) => {
+        if (generation !== workerGeneration) {
+          // 创建期间已被 killWorker 作废——迟到实例就地销毁，不覆盖新代
+          t.terminate();
+          throw new Error("引擎通道创建期间被重置——请重试");
+        }
+        worker = attachTransport(t);
+        workerInflight = null;
+        return worker;
+      },
+      (err: unknown) => {
+        workerInflight = null;
+        throw err;
+      },
+    );
   }
-  return worker;
+  return workerInflight;
 }
 
 function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS): Promise<T> {
@@ -276,10 +305,17 @@ function rpc<T>(msg: Record<string, unknown>, timeoutMs: number = RPC_TIMEOUT_MS
       if (!pending.has(id)) return;
       pending.delete(id);
       killWorker(); // 永不回帖的实例不可信——销毁，重试走重建
-      reject(new Error(`引擎 ${op} 无响应（${timeoutMs}ms 超时）——Worker 可能未启动或被浏览器策略拦截，可点「重试」`));
+      reject(new Error(`引擎 ${op} 无响应（${timeoutMs}ms 超时）——引擎通道可能未启动或被策略拦截，可点「重试」`));
     }, timeoutMs);
     pending.set(id, { resolve: resolve as never, reject, timer });
-    void getWorker().then((t) => t.postMessage({ id, ...msg }));
+    void getWorker().then(
+      (t) => t.postMessage({ id, ...msg }),
+      (err: unknown) => {
+        // 创建失败（Worker 构造异常 / 创建期间被重置）：在途帖全部立即带因
+        // reject——不再退化成 unhandled rejection + 15s 超时干等（审阅 P3）
+        rejectAllPending(new Error(`引擎通道创建失败（${(err as Error)?.message ?? String(err)}）——可点「重试」重建引擎`));
+      },
+    );
   });
 }
 

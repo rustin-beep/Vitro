@@ -30,7 +30,7 @@
 | `app:vitro_collect` | collect | reset→session.create→config.set→compile→run→step.begin→breakpoints.set→**step.next 采帧循环（native 内闭环）**→output.delta 四通道分页拉取 |
 | `app:vitro_feed` | feed | input.feed→step.begin→重采循环 |
 
-- **demo 侧适配点**（浏览器形态零变化）：`src/protocol/engine.ipc.ts`（Worker 同形 IPC shim——`{id,op,...}→{id,ok,data|error}` 消息形状逐字相同，桥就绪 5s 轮询兜底）+ `session.svelte.ts` 构造点一处二选一（`hasDesktopBridge()` ? IPC : Worker）。字段映射（bpLines→bp_lines / method→api）在 shim 层完成。
+- **demo 侧适配点**（浏览器形态零变化）：`src/protocol/engine.ipc.ts`（Worker 同形 IPC shim——`{id,op,...}→{id,ok,data|error}` 消息形状逐字相同）+ `session.svelte.ts` 构造点经 `createEngineTransport()` **三段式选择**（PR #417 审阅 P1-1/P1-2 处置）：①桥已在⇒IPC 零等待；②壳内（dev_url `?shell=proton` 标记 / 打包形态 proton.localhost）桥未到⇒轮询 2s；③浏览器⇒立即 Worker（零固定等待）。实际分支写入 `window.__vitroTransport`（smoke 断言读它，与「桥存在」解耦）；`waitBridge` 失败弃负缓存（重试可复活）；session 侧 in-flight 缓存+代际守卫（双发 boot 不双建、kill 不泄漏）。字段映射（bpLines→bp_lines / method→api）在 shim 层完成。
 - **桌面真实做法**（与 proton isomorphic 模板同构）：编排归 native 端——IPC 往返 = 整段一次而非每帧一次；demo 浏览器形态里这段循环在 Web Worker 内闭环，消息形状不变。
 - 引擎调用**不要**改走 `@cli.run`：其 `COMPILE-ERROR` 行走 `say()`→进程 stderr，GUI 侧拿不到（P 线 v1 形态实锤 rc=1 而 output 空）。
 
@@ -76,6 +76,7 @@ node tools/smoke.mts 9335                          # CI 同款全链 smoke：起
 | `find_cdp.mts` | 按 PID 扫 LISTEN 端口 + `/json/version` 协议指纹 ⇒ 发现临时端口 | `node tools/find_cdp.mts <pid>` |
 | `cdp_catch.mts` | 不开 DevTools 窗口，订阅 exceptionThrown/consoleAPICalled/Log 三域并注入三枚虫 | `node tools/cdp_catch.mts 9335` ⇒ `caught_count ≥ 3` |
 | `smoke.mts` | CI 全量防线编排：spawn `proton_cli dev` → 等 CDP → 八断言（复用上三脚本 + page 资产为单源）→ `taskkill /T` 收树 | `node tools/smoke.mts 9335`（cwd=desktop/） |
+| `page/demo_matrix.js` | 页内表达式：命令层矩阵（四命令 invokeOp 直调：argv 透传〔契约=数组含 argv[0〕/ feed 续跑 / 断点停采 / invoke 透传——#451 stdin 残留缺陷注意单轮语义） | `node tools/cdp_probe.mts 9335 @tools/page/demo_matrix.js` |
 | `page/demo_run.js` | 页内表达式：驱动 demo UI 完整采集（等按钮就绪→点运行→等采集与 golden 末帧→读 golden/stdout/帧数/版本） | `node tools/cdp_probe.mts 9335 @tools/page/demo_run.js` |
 | `page/fps_probe.js` | 页内表达式：CSS 动画 + rAF 计数 2s ⇒ fps/min/max 帧间隔（窗口须可见） | 同上 |
 

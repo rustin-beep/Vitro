@@ -1657,8 +1657,10 @@ jobs:
     # check-only 轻形态退役。smoke 需要 demo 的构建期资产（wasm.wasm/langpack
     # ——vite 模块图静态资产，缺失即 dev/build 红，与 demo job 同款 fail loud
     # cp），故 needs build-artifacts（此前「不消费本仓产物」的注记随之作废）。
+    # timeout：CEF 下载在坏网络可长停滞（PR #417 审阅 P3）——25min 硬顶防挂死。
     needs: build-artifacts
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Install MoonBit toolchain
@@ -1939,11 +1941,7 @@ jobs:
   ci-summary:
     name: CI summary (all gates must be success)
     if: always()
-<<<<<<< HEAD
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime]
-=======
-    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, desktop]
->>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
+    needs: [build-artifacts, gates-diff, corpus-fuzz, gates-native, gates-wasm, static-gates, hygiene, demo, scripts-ts, backend-triage, cli-smoke-linux, release-preflight, arm4-wasmtime, desktop]
     runs-on: ubuntu-latest
     steps:
       - name: summarize gate results
@@ -1960,11 +1958,8 @@ jobs:
           BACKEND_TRIAGE: ${{ needs.backend-triage.result }}
           CLI_SMOKE_LINUX: ${{ needs.cli-smoke-linux.result }}
           RELEASE_PREFLIGHT: ${{ needs.release-preflight.result }}
-<<<<<<< HEAD
           ARM4_WASMTIME: ${{ needs.arm4-wasmtime.result }}
-=======
           DESKTOP: ${{ needs.desktop.result }}
->>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
         run: |
           set +e
           # 2026-10-30 审计批：needs/env/循环三面曾失衡（needs 11 而循环 10——
@@ -1977,11 +1972,8 @@ jobs:
             "scripts-ts:$SCRIPTS_TS" "backend-triage:$BACKEND_TRIAGE"
             "cli-smoke-linux:$CLI_SMOKE_LINUX"
             "release-preflight:$RELEASE_PREFLIGHT"
-<<<<<<< HEAD
             "arm4-wasmtime:$ARM4_WASMTIME"
-=======
             "desktop:$DESKTOP"
->>>>>>> 88529ef7 (feat(desktop+demo+ci): proton 桌面壳入仓——demo UI 承载 + native 同进程引擎四命令 + CI desktop 哨兵 job（P 线前进批）)
           )
           bad=0
           for pair in "${pairs[@]}"; do

@@ -42,6 +42,9 @@ interface ProtonBridge {
 declare global {
   interface Window {
     __MoonBit__?: ProtonBridge;
+    /** 实际选定的引擎通道（选择结果非桥存在性——PR #417 审阅 P1-2：
+     *  取值式 __MoonBit__?ipc:worker 对「真走哪臂」零判别力）。 */
+    __vitroTransport?: "ipc" | "worker";
   }
 }
 
@@ -53,25 +56,60 @@ export function hasDesktopBridge(): boolean {
   );
 }
 
-/** 探针/诊断用：当前引擎通道形态。 */
+/** 是否**可能**处于 proton 桌面壳（不等桥）：dev 形态入口由 desktop 的
+ *  proton.project.json dev_url 带 ?shell 标记（proton_cli 以 PROTON_FRONTEND_URL
+ *  覆盖窗口 entry）；打包形态页面在 proton.localhost 自定义 scheme 宿主。
+ *  浏览器直开（无标记）不满足——通道选择零等待回 Worker。 */
+function maybeInDesktopShell(): boolean {
+  // 非浏览器环境（探针 stub）两者皆缺——判否走零等待 Worker 分支
+  if (typeof window === "undefined" || typeof location === "undefined") return false;
+  return location.host === "proton.localhost" || new URLSearchParams(location.search).has("shell");
+}
+
+/** 探针/诊断用：桥**当前**是否在（注意：这不等于通道选择结果）。 */
 export function engineTransportKind(): "ipc" | "worker" {
   return hasDesktopBridge() ? "ipc" : "worker";
 }
 
-// 通道选择等待窗口：渲染早期页面脚本可能快于 proton 桥注入（CI runner
-// 实锤——首条 rpc 时 __MoonBit__ 仍缺席 ⇒ 单次同步探测会永久误选 wasm
-// Worker）。选择挂在首条 rpc 前，轮询桥最多 2s：有桥走 IPC，超时回 Worker。
+// 通道选择（PR #417 审阅 P1-1/P1-2 处置）三段式：
+// ① 桥已在（壳内注入早于页面脚本——常见）⇒ IPC，零等待；
+// ② 桥未在但处于壳（dev_url 标记 / proton.localhost）⇒ 轮询 2s 等注入
+//    （CI runner 实锤注入可晚于首条 rpc，2s 窗口内命中即 IPC）；
+// ③ 浏览器（无标记无桥）⇒ 立即 Worker——零固定等待（旧形态所有宿主都
+//    白等满窗，线上首屏 +2s——审阅探针 A_no_bridge 实测 2011ms）。
 const BRIDGE_SELECT_WAIT_MS = 2_000;
 const BRIDGE_SELECT_POLL_MS = 25;
 
-/** 构造引擎通道（等待式选择）：proton 桌面壳内（桥在）走 native IPC，
- *  否则回 Web Worker——浏览器形态零变化。 */
+let activeKind: "ipc" | "worker" = "worker";
+
+/** 实际选定的通道形态（选择结果，供 smoke/探针断言）。 */
+export function activeTransportKind(): "ipc" | "worker" {
+  return activeKind;
+}
+
+function markKind(kind: "ipc" | "worker"): void {
+  activeKind = kind;
+  if (typeof window !== "undefined") window.__vitroTransport = kind;
+}
+
+/** 构造引擎通道（三段式选择，见上）：壳内桥在/将到走 native IPC，
+ *  浏览器零等待回 Web Worker。 */
 export async function createEngineTransport(): Promise<EngineTransport> {
-  const t0 = Date.now();
-  while (Date.now() - t0 < BRIDGE_SELECT_WAIT_MS) {
-    if (hasDesktopBridge()) return createIpcTransport();
-    await new Promise((r) => setTimeout(r, BRIDGE_SELECT_POLL_MS));
+  if (hasDesktopBridge()) {
+    markKind("ipc");
+    return createIpcTransport();
   }
+  if (maybeInDesktopShell()) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < BRIDGE_SELECT_WAIT_MS) {
+      await new Promise((r) => setTimeout(r, BRIDGE_SELECT_POLL_MS));
+      if (hasDesktopBridge()) {
+        markKind("ipc");
+        return createIpcTransport();
+      }
+    }
+  }
+  markKind("worker");
   return new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" });
 }
 
@@ -86,17 +124,25 @@ const BRIDGE_POLL_MS = 25;
 let bridgeWait: Promise<InvokeOp> | null = null;
 
 function waitBridge(): Promise<InvokeOp> {
-  bridgeWait ??= new Promise<InvokeOp>((resolve, reject) => {
-    const t0 = Date.now();
-    const probe = (): void => {
-      const fn = window.__MoonBit__?.core?.invokeOp;
-      if (typeof fn === "function") resolve(fn);
-      else if (Date.now() - t0 > BRIDGE_WAIT_TIMEOUT_MS)
-        reject(new Error("proton 桥 5s 内未就绪（__MoonBit__.core.invokeOp 缺席）"));
-      else setTimeout(probe, BRIDGE_POLL_MS);
-    };
-    probe();
-  });
+  if (bridgeWait === null) {
+    const p = new Promise<InvokeOp>((resolve, reject) => {
+      const t0 = Date.now();
+      const probe = (): void => {
+        const fn = window.__MoonBit__?.core?.invokeOp;
+        if (typeof fn === "function") resolve(fn);
+        else if (Date.now() - t0 > BRIDGE_WAIT_TIMEOUT_MS)
+          reject(new Error("proton 桥 5s 内未就绪（__MoonBit__.core.invokeOp 缺席）"));
+        else setTimeout(probe, BRIDGE_POLL_MS);
+      };
+      probe();
+    });
+    // 负缓存（PR #417 审阅 P2-1）：失败的 Promise 若留在模块级，「重试」
+    // 重建通道后仍拿到旧失败值——重试永久失效。失败即弃缓存，下次重探。
+    void p.catch(() => {
+      if (bridgeWait === p) bridgeWait = null;
+    });
+    bridgeWait = p;
+  }
   return bridgeWait;
 }
 

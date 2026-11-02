@@ -52,7 +52,10 @@
   }
   const pres = [...document.querySelectorAll('pre,code')].map(e => e.textContent).filter(t => t && t.length > 10);
   return JSON.stringify({
-    transport: window.__MoonBit__ ? 'ipc' : 'worker',
+    // 实际选定的通道（engine.ipc.ts markKind 写入——与「桥存在」解耦，
+    // 审阅 P1-2：旧取值式对真走哪臂零判别力）；__vitroTransport 缺席
+    // （旧页缓存/极端时序）才退回桥存在性
+    transport: window.__vitroTransport || (window.__MoonBit__ ? 'ipc' : 'worker'),
     status: status.slice(0, 200),
     stdout: (pres.find(s => /^\d/.test(s)) || '').slice(0, 100),
     frames: (document.body.textContent.match(/(\d+)\s*帧/) || ['', '?'])[1],

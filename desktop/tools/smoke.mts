@@ -8,9 +8,11 @@
 //
 // 断言集（fail loud，逐条 stderr 标注后 rc=1）：
 //   ① CDP 就绪（120s 内 /json/version 协议指纹——vite+壳+桥全链）
-//   ② 缺省读数：transport=ipc（IPC 通道激活而非 wasm Worker）+ 页 title
-//   ③ demo_run.js 驱动完整采集：golden ✓ / 42 帧 / 引擎 0.9.1 / stdout=1 2 3 4 5
-//   ④ cdp_catch：无 DevTools 窗口 caught_count ≥ 3（exceptionThrown/console/Log）
+//   ② 缺省读数：页面现场信息行（title/url——不作断言，见 ③ transport）
+//   ③ demo_run.js 驱动完整采集：transport=ipc（读 window.__vitroTransport
+//      实际选择结果，非桥存在性）/ golden ✓ / 42 帧 / 引擎 0.9.1 / stdout
+//   ④ cdp_catch：注入虫精确锚（probe-boom-uncaught 异常带堆栈 /
+//      probe-console-err / net::ERR 网络域失败——三域各一）
 // 退出码：0=全过；1=断言失败；2=用法/环境错。
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -52,12 +54,11 @@ dev.stdout.on("data", (d: Buffer) => process.stdout.write(`[dev] ${d}`));
 dev.stderr.on("data", (d: Buffer) => process.stderr.write(`[dev] ${d}`));
 
 function killTree(): void {
+  // 只收自己的树（taskkill /PID /T）——不做 /IM 全局兜底：同名进程在
+  // 开发者机上会误杀无关应用（审阅 P3）；CI 的残留清理由 job 的
+  // cleanup 步在 runner 隔离环境里做
   if (dev.pid !== undefined && !dev.killed) {
     spawnSync("taskkill", ["/PID", String(dev.pid), "/T", "/F"], { stdio: "ignore" });
-  }
-  // 兜底：逃逸树外的同名进程（CEF 子进程模型下 dev 树收不净的残余）
-  for (const img of ["app.exe", "cef_process.exe", "proton_cli.exe"]) {
-    spawnSync("taskkill", ["/IM", img, "/F"], { stdio: "ignore" });
   }
 }
 
@@ -137,6 +138,13 @@ interface DemoRunResult {
   error?: string;
 }
 
+interface CaughtEvent {
+  kind?: string;
+  desc?: string;
+  args?: string[];
+  text?: string;
+}
+
 try {
   // ① CDP 就绪
   const cdpOk = await waitCdp();
@@ -162,8 +170,8 @@ try {
   } else if (dr.error !== undefined) {
     check("demo-run", false, String(dr.error));
   } else {
-    // transport=ipc = 走 native 同进程引擎；worker = 桥缺席静默回退 wasm 臂
-    // （四轮前缺省读数时序假阴性实锤——构造点已改等待式选择，此处兜底）
+    // transport = window.__vitroTransport（engine.ipc.ts markKind 写的实际
+    // 选择结果——审阅 P1-2：旧「桥存在?ipc:worker」对真走哪臂零判别力）
     check("transport-ipc", dr.transport === "ipc", `transport=${dr.transport}`);
     check("demo-golden", (dr.status ?? "").includes("golden ✓"), `status=${dr.status} seek=${dr.seek}`);
     check("demo-frames", dr.frames === "42", `frames=${dr.frames}`);
@@ -171,10 +179,45 @@ try {
     check("demo-stdout", (dr.stdout ?? "").startsWith("1 2 3 4 5"), `stdout=${dr.stdout}`);
   }
 
-  // ④ 无 DevTools 窗口捉虫
+  // ④ 命令层矩阵（审阅 P2-3）：四命令/argv 透传/feed 续跑/断点停采——
+  //    直接 invokeOp 断言（零编辑器 DOM 依赖；demo 编辑器是 CodeMirror）。
+  //    注意 feed 案依赖「此前本会话未 feed 过」的干净 stdin——smoke 每次
+  //    全新 app 进程跑一次矩阵，自洽；引擎侧 stdin 跨 session.create 残留
+  //    缺陷见 demo_matrix.js 头注 #451（矩阵内 feed 案排最后消费）。
+  const mx = runProbe("tools/cdp_probe.mts", ["@tools/page/demo_matrix.js"]);
+  const mxParsed = mx.rc === 0 ? (evalField(mx.stdout) as Record<string, { pass?: boolean; detail?: string }> | null) : null;
+  if (mxParsed === null) {
+    check("matrix", false, `probe rc=${mx.rc}（矩阵探针失败）`);
+  } else {
+    for (const [name, item] of Object.entries(mxParsed)) {
+      check(`matrix-${name}`, item.pass === true, String(item.detail ?? "").slice(0, 60));
+    }
+  }
+
+  // ⑤ 无 DevTools 窗口捉虫——精确锚（审阅 P3：caught_count>=N 在页面有
+  //    有机异常时也 PASS，须锚到注入的三枚具体虫）
   const catchRun = runProbe("tools/cdp_catch.mts", []);
-  const caught = Number((catchRun.stdout.match(/"caught_count"\s*:\s*(\d+)/) ?? ["", "-1"])[1]);
-  check("cdp-catch", catchRun.rc === 0 && caught >= 3, `caught_count=${caught}`);
+  let caughtParsed: { caught_count?: number; caught?: CaughtEvent[] } | null = null;
+  if (catchRun.rc === 0) {
+    const start = catchRun.stdout.indexOf("{");
+    const end = catchRun.stdout.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        caughtParsed = JSON.parse(catchRun.stdout.slice(start, end + 1)) as { caught_count?: number; caught?: CaughtEvent[] };
+      } catch {
+        caughtParsed = null;
+      }
+    }
+  }
+  const caught = caughtParsed?.caught ?? [];
+  const hasBoom = caught.some((e) => e.kind === "exceptionThrown" && (e.desc ?? "").includes("probe-boom-uncaught"));
+  const hasConsoleErr = caught.some(
+    (e) => e.kind === "consoleAPICalled" && (e.args ?? []).some((a) => a.includes("probe-console-err")),
+  );
+  const hasNetErr = caught.some((e) => e.kind === "logEntry" && (e.text ?? "").includes("net::ERR"));
+  check("cdp-catch-boom", catchRun.rc === 0 && hasBoom, hasBoom ? "exceptionThrown@probe-boom-uncaught 命中" : `未命中（共 ${caught.length} 事件）`);
+  check("cdp-catch-console", catchRun.rc === 0 && hasConsoleErr, `consoleAPICalled@probe-console-err ${hasConsoleErr ? "命中" : "未命中"}`);
+  check("cdp-catch-neterr", catchRun.rc === 0 && hasNetErr, `logEntry@net::ERR ${hasNetErr ? "命中" : "未命中"}`);
 } finally {
   killTree();
 }

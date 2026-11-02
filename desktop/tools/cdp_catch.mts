@@ -103,12 +103,14 @@ await send("Runtime.evaluate", {
   expression: "setTimeout(()=>{ throw new Error('probe-boom-uncaught') },0); console.error('probe-console-err'); 1",
 });
 await sleep(1200);
-// 虫③ 资源 404（网络域形态——proton.localhost 自定义 scheme 对未知资源回 404）
+// 虫③ 网络域资源失败——连接层必拒（127.0.0.1:1 无人听 ⇒ net::ERR_*）：
+// dev 形态 vite 对缺失路径回 200+index.html（SPA fallback，实测），
+// 404 只在打包形态（proton.localhost）可达；连接拒绝两形态皆成立
 await send("Runtime.evaluate", {
-  expression: "fetch('https://proton.localhost/nonexistent-probe.json').catch(e=>console.warn('probe-fetch-fail:'+e.message)); 1",
+  expression: "fetch('http://127.0.0.1:1/nonexistent-probe.json').catch(e=>console.warn('probe-fetch-fail:'+e.message)); 1",
 });
-await sleep(800);
-console.log(
-  JSON.stringify({ port: Number(port), devtools_window_opened: false, caught_count: events.length, caught: events }, null, 2),
-);
-ws.close();
+  await sleep(800);
+  // 输出只含事实字段（原 devtools_window_opened 恒真常量无信息——审阅 P3 已删；
+  // 「不开 DevTools」是方法学约定，由调用方保证）
+  console.log(JSON.stringify({ port: Number(port), caught_count: events.length, caught: events }, null, 2));
+  ws.close();

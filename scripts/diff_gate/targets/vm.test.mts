@@ -9,7 +9,6 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
   extractMoonBitStdout,
-  mbWholeDigest,
   memorySHA,
   mergeMoonOutput,
   relOf,
@@ -91,13 +90,6 @@ test("memorySHA：argv 区 0xF000..0x10000 脱敏后再算，且不改原文件"
   }
 });
 
-test("mbWholeDigest：exit|stdout|mem|cf 联合指纹（cf 参与）", () => {
-  const a = mbWholeDigest(0, "aa", "bb", false);
-  const b = mbWholeDigest(0, "aa", "bb", true);
-  assert.notEqual(a, b);
-  assert.equal(a, mbWholeDigest(0, "aa", "bb", false));
-});
-
 test("relOf：语料内 = corpus/name.c；外部路径 = basename", () => {
   assert.equal(relOf("corpus/gap/x.c"), "gap/x.c");
   assert.equal(relOf("tmp/other/x.c"), "x.c");
@@ -142,7 +134,28 @@ test("真实仓库：vm 在 gap 上全 SAME（exe 缺失时断言 fail loud 契�
     return;
   }
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /vm_diff\[golden\]: SAME=21 DIFF-KNOWN=0 DIFF=0 SKIP=0（共 21）/);
+  assert.match(r.stdout, /vm_diff\[golden\]: SAME=21 DIFF=0 SKIP=0（共 21）/);
+});
+
+test("S05-A1（2026-11-01 审阅 v2）：vm --corpus gap --selftest 必红（cf 首例短路吞篡改的假绿治本）", () => {
+  // 修复前形态：selftest 篡改 cases[0]（gap 首例 complex_number.c 是 cf 例），
+  // 比对循环「双侧编译失败——等价」短路先于通道字段——篡改被吞、exit 0 假绿
+  //（探针实锤：打印「已篡改」后 SAME=21 全绿）。修后篡改首个非 cf 例。
+  const exe = path.join(projectRoot(), "moonbit/_build/native/release/build/cmd/run/run.exe");
+  const r = spawnSync(
+    process.execPath,
+    [path.join(projectRoot(), "scripts/diff_gate/main.mts"), "vm", "--corpus", "gap", "--selftest"],
+    { cwd: projectRoot(), encoding: "utf8", timeout: 600_000 },
+  );
+  if (!fs.existsSync(exe)) {
+    // CI scripts-ts job 不构建 native exe：fail loud 契约（与上一用例同分档）
+    assert.equal(r.status, 1, `exe 缺失时应 fail loud，实际 exit=${String(r.status)}`);
+    assert.match(r.stderr, /run\.exe 不存在/);
+    return;
+  }
+  assert.equal(r.status, 1, "selftest 篡改后比对必须 FAIL（修复前 exit 0 假绿——本锚即其 J9 证据）");
+  assert.match(r.stdout, /已篡改清单条目/);
+  assert.match(r.stdout, /DIFF  gap\//);
 });
 
 test("真实仓库：--backend wasm 缺产物时 fail loud（退出码 1）", () => {

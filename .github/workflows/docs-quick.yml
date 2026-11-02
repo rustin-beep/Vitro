@@ -29,7 +29,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Facts doc-truth audit (CURRENT docs must equal machine truth)
+      # 步骤名与判定面诚实登记（2026-11-01 审阅 v2 S13b-P9/R1e-R1 修复）：
+      # 本薄通道 fresh 检出态无 reports/facts.json（gitignored），裸 check 只判
+      # 坏引用/冻结行，N 处待采集键静默跳过（探针实证 rc=0、--strict 同环境
+      # rc=1）——「数字=机器真值」对账归主 CI bookkeeping 的 --run --strict
+      # 单点（#298 治本形态，run 40409823786 假绿实锤）。不要把本步改回
+      # doc-truth 命名，除非同时接采集链（装 moon + --run）。
+      - name: Docs link & frozen-line audit (number-truth audit 归主 CI --strict)
         run: node scripts/facts/main.mts check
       - name: Agent skills frontmatter audit (install_skills --list)
         run: node .agents/install_skills.mts --list

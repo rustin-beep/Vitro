@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-// source_hygiene：源码卫生扫描（NUL 字节 / i/-text 事故族；#273 存量 Go 重写批）。
+// source_hygiene：源码卫生扫描（① NUL 字节 / i/-text 事故族；② 包外散 .mbt——
+// #273 存量 Go 重写批；② 为 2026-11-01 审阅 v2 S13b-P10 新增）。
 //
 // 用法（仓库根）：
 //   node scripts/moonbit/source_hygiene/main.mts          # 扫描并列出命中
 //   node scripts/moonbit/source_hygiene/main.mts -check   # 同（与兄弟闸调用形态一致）
 //
-// 事故族：含真 NUL 的文件被 git 判二进制（w/-text）⇒ .gitattributes 的
+// ① 事故族：含真 NUL 的文件被 git 判二进制（w/-text）⇒ .gitattributes 的
 // text eol=lf 失效 + diff/PR 审阅不可见。扫描集 = git 跟踪的全部文件
 // （fail-safe：新文件类型自动进闸）；确需入库含 NUL 的产物在
 // scripts/moonbit/source_hygiene_allowlist.txt 显式登记。
+// ② 包外散 .mbt：git 跟踪的 moonbit/**/*.mbt 从所在目录向上找 moon.pkg（moon
+// 的包发现以包为单位），走到 moon.mod（workspace 根）仍未遇到即红——包外文件
+// 对 moon fmt 全量形态不可见（pre-commit 钩子与 CI hygiene 的 fmt 闸同机制同
+// 盲；AGENTS 13.5 此前只有人肉纪律，探针 E 实锤烂格式包外 .mbt 全链零检出，
+// 无人 import 即静默裸奔入库）。
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -74,6 +80,33 @@ export function scanRepo(root: string): { files: number; hits: Array<{ p: string
   return { files: files.length, hits };
 }
 
+/**
+ * 检查面 ②：包外散 .mbt（S13b-P10）。返回 git 跟踪、位于 moonbit/ 下、向上
+ * 直到 moon.mod 都找不到 moon.pkg 的 .mbt 路径（正斜杠形态）。
+ */
+export function findOrphanMbt(root: string, tracked: string[] = listTracked(root)): string[] {
+  const out: string[] = [];
+  for (const p of tracked) {
+    const norm = p.split("\\").join("/");
+    if (!norm.startsWith("moonbit/") || !norm.endsWith(".mbt")) continue;
+    let dir = path.dirname(path.join(root, norm));
+    for (;;) {
+      if (fs.existsSync(path.join(dir, "moon.pkg"))) break; // 包内
+      if (fs.existsSync(path.join(dir, "moon.mod"))) {
+        out.push(norm); // 到 workspace 根仍未遇 moon.pkg
+        break;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        out.push(norm); // 越过文件系统根（防御）
+        break;
+      }
+      dir = parent;
+    }
+  }
+  return out;
+}
+
 function fatal(msg: string): never {
   process.stderr.write("source_hygiene: " + msg + "\n");
   process.exit(2);
@@ -87,6 +120,12 @@ if (invokedDirectly) {
   for (const h of hits) {
     console.log(`含真 NUL: ${h.p}（首个偏移 ${h.offset}，共 ${h.count} 个）——改转义写法（如 \\x00）或登记 allowlist`);
   }
-  if (hits.length > 0) fatal(`source_hygiene: ${hits.length} 个被跟踪文件含真 NUL（git 将判二进制，diff 不可见）`);
-  console.log(`source_hygiene: OK（${files} 个被跟踪文件零真 NUL）`);
+  const orphans = findOrphanMbt(root);
+  for (const o of orphans) {
+    console.log(`包外散 .mbt: ${o}——向上无 moon.pkg，moon fmt/构建/测试全链不可见（落进有 moon.pkg 的包，AGENTS 13.5）`);
+  }
+  if (hits.length > 0 || orphans.length > 0) {
+    fatal(`${hits.length} 个被跟踪文件含真 NUL（git 将判二进制，diff 不可见）；${orphans.length} 个包外散 .mbt`);
+  }
+  console.log(`source_hygiene: OK（${files} 个被跟踪文件零真 NUL；moonbit/ 下 .mbt 零包外散件）`);
 }

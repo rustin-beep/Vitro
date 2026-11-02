@@ -59,11 +59,51 @@ test("J9 ①漏登记：新驱动无活行 → 红", () => {
 
 test("J9 ②悬空：活行引用不存在的驱动 → 红", () => {
   const f = makeFixture((x) => {
-    x.edit(".github/workflows/ci.yml", "steps:/n  - run: go run ./scripts/ghost\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/ghost\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n");
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
-  assert.match(r.lines.join("\n"), /悬空: workflow 活行 \.\/scripts\/ghost 但该驱动不存在/);
+  assert.match(r.lines.join("\n"), /悬空: workflow 活行 go run \.\/scripts\/ghost 但该驱动不存在/);
+});
+
+test("J9 ②悬空（node 形态，S13b-P1/R1e-R2 2026-11-01）：node 活行文件不存在 → 红", () => {
+  // 修复前形态：node 活行目录被 force-add 进驱动集，悬空检查恒 found——
+  // 全部现役 node 活行上②结构性空转（ghost 探针：go 形态红、node 形态零报告）。
+  const f = makeFixture((x) => {
+    x.edit(
+      ".github/workflows/ci.yml",
+      "steps:\n  - run: node scripts/ghost_mts/main.mts --probe\n  - run: moon test --target js\n  - run: moon test --target native\n  - run: moon test\n  - run: moon test --target wasm-gc\n",
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true, "node 形态悬空必须红（修复前 force-add 形态恒绿——本锚即其 J9 证据）");
+  assert.match(r.lines.join("\n"), /悬空: workflow 活行 node scripts\/ghost_mts\/main\.mts 但该文件不存在/);
+});
+
+test("J9 ②悬空（node 形态·绿路径）：文件存在的散件活行不红（非 main.mts 亦合法）", () => {
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/util_probe"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/util_probe/run.mts"), "#!/usr/bin/env node\n");
+    // 在既有 ci.yml（go run alpha 活行 + 四目标块形态 moon test）上追加 node 散件活行
+    const ci = fs.readFileSync(path.join(x.root, ".github/workflows/ci.yml"), "utf8");
+    fs.writeFileSync(path.join(x.root, ".github/workflows/ci.yml"), ci + "  - run: node scripts/util_probe/run.mts\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+});
+
+test("J9 ③幽灵例外（S13b-P2 2026-11-01）：例外指向不存在的驱动 → 红", () => {
+  // 修复前形态：③只查僵尸向（被活行引用），纯虚构条目 rc=0 通过——例外表
+  // 只增不减零验活（五条 superseded-by-mts 幽灵即此形态存活）。
+  const f = makeFixture((x) => {
+    x.edit(
+      "scripts/ci_checklist/exceptions.json",
+      JSON.stringify([{ driver: "scripts/totally_ghost_never_existed", reason: "r" }]),
+    );
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, true);
+  assert.match(r.lines.join("\n"), /幽灵例外: scripts\/totally_ghost_never_existed 既非驱动也无活行且磁盘上不存在/);
 });
 
 test("J9 ③僵尸例外：例外驱动同时被引用 → 红", () => {
@@ -86,7 +126,7 @@ test("J9 例外缺 reason → 直接判红（exit 1 语义）", () => {
 
 test("J9 ④目标面缺口：缺 --target wasm-gc → 红", () => {
   const f = makeFixture((x) => {
-    x.edit(".github/workflows/ci.yml", "steps:/n  - run: go run ./scripts/alpha\n  - run: moon test --target js\n  - run: moon test --target native\n");
+    x.edit(".github/workflows/ci.yml", "steps:\n  - run: go run ./scripts/alpha\n  - run: moon test --target js\n  - run: moon test --target native\n");
   });
   const r = check(f.root);
   assert.equal(r.failed, true);
@@ -102,6 +142,19 @@ test("main.mts 也算驱动（shebang 判据）；.test.mts 不算", () => {
   const r = check(f.root);
   assert.match(r.lines.join("\n"), /漏登记: scripts\/gamma/);
   assert.match(r.summary, /\.mts 1/, "有 shebang 的 main.mts 计入 mtsDrivers（与 Go 版同口径）");
+});
+
+test("Stryker sandbox（scripts/.stryker-tmp）不进扫描面（PR #416 mutation gate FATAL 治本）", () => {
+  // mutation gate 把 scripts/ 整树复制进 .stryker-tmp/sandbox-*/ 再跑本闸的端到端
+  // 测试——不剪枝则副本驱动全判「漏登记」，Stryker initial run 必红 ⇒ 本文件任何
+  // 改动都让 mutation gate 基础设施红（2026-11-02 PR #416 CI 实锤 + 本地复现）。
+  const f = makeFixture((x) => {
+    fs.mkdirSync(path.join(x.root, "scripts/.stryker-tmp/sandbox-abc/ghost"), { recursive: true });
+    fs.writeFileSync(path.join(x.root, "scripts/.stryker-tmp/sandbox-abc/ghost/main.mts"), "#!/usr/bin/env node\n");
+  });
+  const r = check(f.root);
+  assert.equal(r.failed, false, r.lines.join("\n"));
+  assert.match(r.summary, /驱动 1（\.go 1 \/ \.mts 0）/, "sandbox 副本不得计入驱动集");
 });
 
 test("真实仓库端到端：默认绿 + 未知参数 exit 2", () => {

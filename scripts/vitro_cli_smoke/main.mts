@@ -189,6 +189,10 @@ export function runMain(argv: readonly string[]): number {
   const incH = path.join(tmpDir, "util.h");
   fs.writeFileSync(incH, "#define MAGIC 42\n");
   fs.writeFileSync(incC, '#include <stdio.h>\n#include "util.h"\nint main(){ printf("MAGIC=%d\\n", MAGIC); return 0; }\n');
+  // 死循环 fixture（S09-A2 2026-11-01：rc=3 step-limit 正路锚——五值表唯一
+  // 此前零壳侧锚的值；若壳把 step-limit 误折 rc=2（trap 通用码）本锚必红）
+  const loopC = path.join(tmpDir, "loop_case.c");
+  fs.writeFileSync(loopC, "int main(){ for(;;){} return 0; }\n");
   const plainC = path.join(repoRoot, "corpus", "baseline", "array_sum_loop.c");
 
   // ── A 组：壳 rc 契约 ─────────────────────────────────────────
@@ -207,6 +211,23 @@ export function runMain(argv: readonly string[]): number {
     const { rc } = runOut(nodeBin, [shell, ...c.argv]);
     if (rc !== c.want) fatalf(`A[壳 rc] ${c.name}: rc=${rc} want ${c.want}`);
     else process.stdout.write(`ok  A[壳 rc] ${c.name} rc=${rc}\n`);
+  }
+
+  // ── A 组补 9（S09-A2，2026-11-01 审阅 v2）：rc=3 step-limit 正路锚，三臂同守 ──
+  // CLI_PROTOCOL_V1 五值表中 rc=3（step-limit trap 正路）此前零壳侧锚：corpus 30
+  // 为普通语料不超步数，壳层若把 step-limit 误折 rc=2（trap 通用码）本闸不红。
+  // 壳逻辑单源 cmd/lib/cli（三后端单壳批），三臂锚同时锁三份产物的映射出口。
+  {
+    for (const g of [
+      { name: "wasm", argv: [nodeBin, shell] },
+      { name: "js", argv: [nodeBin, jsEntry] },
+      { name: "native", argv: [] as string[] },
+    ]) {
+      const argv = g.name === "native" ? [nativeExe, "run", "--max-steps", "1000", loopC] : [...g.argv, "run", "--max-steps", "1000", loopC];
+      const { rc } = runOut(argv[0] ?? "", argv.slice(1));
+      if (rc !== 3) fatalf(`A[rc=3 step-limit] ${g.name}: rc=${rc} want 3（step-limit 正路——误折 rc=2 即壳映射错）`);
+      else process.stdout.write(`ok  A[rc=3 step-limit] ${g.name} 臂 rc=3\n`);
+    }
   }
   // api --batch（stdin 帧序列——状态跨帧：compile→run 连续）
   const batch = `{"id":1,"method":"ping","params":{}}
@@ -469,7 +490,7 @@ export function runMain(argv: readonly string[]): number {
       { label: "wasm", exe: shell },
       { label: "native", exe: nativeExe },
     ];
-    const armCmd = (a: { label: string; exe: string }, argv: readonly string[]): { exe: string; pre: string[] } =>
+    const armCmd = (a: { label: string; exe: string }): { exe: string; pre: string[] } =>
       a.label === "native" ? { exe: a.exe, pre: [] } : { exe: nodeBin, pre: [a.exe] };
     // ① stderr 双形态：编译错风暴（小段多写）+ 超长标识符（单段 >64KB）
     const bigErrC = path.join(tmpDir, "big_err_storm.c");
@@ -484,7 +505,7 @@ export function runMain(argv: readonly string[]): number {
       { name: "stderr 单段大写", file: hugeIdentC, min: 65536 },
     ]) {
       for (const a of arms) {
-        const { exe, pre } = armCmd(a, []);
+        const { exe, pre } = armCmd(a);
         const argv = [...pre, "compile", toSlash(path.relative(repoRoot, spec.file))];
         const errFile = path.join(tmpDir, "p2_3_control.err");
         const fd = fs.openSync(errFile, "w");
@@ -513,7 +534,7 @@ export function runMain(argv: readonly string[]): number {
     const bigOutC = path.join(tmpDir, "big_stdout.c");
     fs.writeFileSync(bigOutC, '#include <stdio.h>\nint main(){ for(int i=0;i<25000;i++) printf("line-%06d-abcdefghijklmnopqrstuvwxyz-0123456789\\n", i); return 0; }\n');
     for (const a of arms) {
-      const { exe, pre } = armCmd(a, []);
+      const { exe, pre } = armCmd(a);
       const argv = [...pre, "run", "--json", toSlash(path.relative(repoRoot, bigOutC))];
       const outFile = path.join(tmpDir, "p3_1_control.out");
       const fd = fs.openSync(outFile, "w");
@@ -1023,11 +1044,6 @@ export function runMain(argv: readonly string[]): number {
     else process.stdout.write("ok  C[launcher cmd] 默认臂（Windows）\n");
   }
 
-  if (failures > 0) {
-    process.stdout.write(`vitro_cli_smoke: ${failures} 失败\n`);
-    return 1;
-  }
-
   // ── G 组：#129 通道分立（2026-10-16 用户拍板，推翻 #69 混流裁定）──
   // 文本模式 stdout 只承载被测程序输出（无 // 标记行——字节精确）；诊断行/note/
   // EXIT 标记行/用法错走 stderr（gcc/clang 先例）。J9：本断言先于实现存在。
@@ -1078,7 +1094,15 @@ export function runMain(argv: readonly string[]): number {
     process.stdout.write("skip D[薄壳 step]（release exe 未构建——本地非全量态）\n");
   }
 
-  process.stdout.write("vitro_cli_smoke: 全绿（rc 契约 + 双臂同形对拍 + launcher + 薄壳 include）\n");
+  // 失败复查点（2026-11-01 审阅 v2 S09-A1 修复）：原检查位于 G/D 组之前，两组
+  // fatalf 累计 failures 后再无复查——G/D 失败与「全绿」行同屏、exit 0，CI 恒假绿
+  //（探针实锤：G 组语料注入语法错 → 三臂 FAIL + RC=0）。G/D 与 A/B/C 共用
+  // failures 统计，检查移至全组跑完之后。
+  if (failures > 0) {
+    process.stdout.write(`vitro_cli_smoke: ${failures} 失败\n`);
+    return 1;
+  }
+  process.stdout.write("vitro_cli_smoke: 全绿（rc 契约 + 三臂同形对拍 + launcher + 薄壳 include）\n");
   return 0;
 }
 

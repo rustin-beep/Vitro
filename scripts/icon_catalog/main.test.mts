@@ -125,6 +125,8 @@ test("J9 红：属性契约 / 具体色值 / 具名色 / 白名单外图元 / re
     ["白名单外图元", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace("</svg>", "<script/></svg>")), /图元白名单外的 <script>/],
     ["rect 带 rx", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace("</svg>", '<rect x="1" y="1" rx="2"/></svg>')), /<rect> 带 rx/],
     ["零长度子路径", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace('d="M4 4h16"', 'd="M4 4h.01"')), /零长度子路径/],
+    // 负号形态（2026-11-01 审阅 v2 S08 次级 P14）：原正则漏 h-.01——与正形态对称收口
+    ["零长度子路径（负号）", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace('d="M4 4h16"', 'd="M4 4h-.01"')), /零长度子路径/],
     ["aria-hidden", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace("<svg ", '<svg aria-hidden="true" ')), /不得写死 aria-hidden/],
     ["缺 title", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace("<title>甲</title>", "")), /缺 <title>/],
     ["缺 desc", (f) => f.edit("moonbit/icons/a.svg", (s) => s.replace("<desc>a</desc>", "")), /缺 <desc>/],

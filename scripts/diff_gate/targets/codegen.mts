@@ -307,10 +307,11 @@ let lastSlotSeen = new Map<number, number>();
 let lastVerifyErrors: string[] = [];
 
 function spawnMoon(ctx: GateContext, fail: Fail): void {
+  // MOON_CC=clang（AGENTS §11，moon#2254 冷态悬崖）——2026-11-01 审阅 v2 S05-C3 补
   const r = spawnSync(
     "moon",
     ["-C", "moonbit", "run", "--target", "native", DUMP_SUB, "--", ctx.corpus, ctx.workDir],
-    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024 },
+    { cwd: ctx.root, encoding: "utf8", timeout: 600_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, MOON_CC: "clang" } },
   );
   if (r.status !== 0) fail(`moon run ${DUMP_SUB} 执行失败: exit ${String(r.status)}\n${(r.stdout ?? "") + (r.stderr ?? "")}`);
 }

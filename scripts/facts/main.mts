@@ -151,6 +151,12 @@ function summarize(res: AuditResult, doc: FactsDoc, strict = false): void {
       console.log(`  [待采集] ${a.rule.label}: ${a.pending.length} 处引用无真值 —— 用 --run 补（见 facts.json 的 how_to_get）${strict ? "〔--strict：待采集即红——漂移判定不得静默跳过，#298〕" : ""}`);
     }
   }
+  // 非 strict 且存在待采集键时的醒目行（2026-11-01 审阅 v2 S13b-P9/R1e-R1）：
+  // #298 假绿曾在 docs-quick 薄通道存活——裸 check 的绿不含待采集键的漂移判定，
+  // 此行防第二处同形再生（消费方扫 stdout 即见判定面边界）。
+  if (!strict && res.pendingN > 0) {
+    console.log(`  ❗[非 strict] 本判定不含 ${res.pendingN} 处待采集键的漂移判定（真值缺位静默跳过）——数字真值对账归 --run --strict 单点（#298）`);
+  }
   const ck = cachedKeys(doc);
   if (ck.length > 0) {
     console.log(`  [沿用上次采集] ${ck.join("、")}（加 --run 可刷新）`);

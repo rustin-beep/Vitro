@@ -1,39 +1,19 @@
 [
   {
     "driver": "scripts/canonicalize",
-    "reason": "库目录：各差分驱动进程内 import（canonicalize 函数库），main.go 仅 CLI 壳（手册登记的可执行壳，无 CI 判定面）"
+    "reason": "CLI 资产壳：canonicalize 的 .mts 驱动零 CI 活行（对照工具，人工跑）；canonicalize 函数库本体已内化为 scripts/internal/canonicalize.mts，由各差分驱动进程内 import（原 reason 的『main.go CLI 壳 / Go 版暂留』口径已随 #273 Go 版删除失实——2026-11-01 审阅 v2 S13b-P2 清账改写）"
   },
   {
     "driver": "scripts/perf_baseline",
     "reason": "本地工具：性能基线采集（人工跑、产物 reports/ 不入仓），非 CI 判定面"
   },
   {
-    "driver": "scripts/lexer_diff",
-    "kind": "superseded-by-mts",
-    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts lexer，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
-  },
-  {
-    "driver": "scripts/typeck_diff",
-    "kind": "superseded-by-mts",
-    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts typeck，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
-  },
-  {
-    "driver": "scripts/parser_diff",
-    "kind": "superseded-by-mts",
-    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts parser，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
-  },
-  {
-    "driver": "scripts/codegen_diff",
-    "kind": "superseded-by-mts",
-    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts codegen，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
-  },
-  {
-    "driver": "scripts/vm_diff",
-    "kind": "superseded-by-mts",
-    "reason": "已被 .mts 双轨版取代（scripts/diff_gate/main.mts vm，CI gates-diff 引用已切）；Go 版暂留作回退面，退役另批裁定"
-  },
-  {
     "driver": "scripts/mutation_gate/engine.mts",
-    "reason": "本地工具（#368 第三层试点观察期）：引擎面 mutant 闸按批本地/nightly 驱动（~40s/突变体，暂不入 PR 阻断面）；阈值阻断批拍板时接线或重估——PR #375 审阅 P2-1 登记"
+    "reason": "本地工具（#368 第三层试点观察期）：引擎面 mutant 闸按批本地/nightly 驱动（~40s/突变体，暂不入 PR 阻断面）；阈值阻断批拍板时接线或重估——PR #375 审阅 P2-1 登记。注：本条目为扫描面外登记（驱动识别只认 main.mts，engine.mts 非 main 形态故永不进驱动集——此例外是存在性声明而非漏登记豁免，幽灵例外判据以磁盘存在性验活）"
+  },
+  {
+    "driver": "scripts/gen_course",
+    "kind": "retired-fallback",
+    "reason": "退役回退预案（#125 批 A 2026-10-15 lessons.ts 渲染角色退役，CI/pages 接线已摘）：课程叙述层生成器本体保留供宿主运行时方案失败时回退——node 直跑可用、npm test 跑其测试；**-check 在干净检出必 rc=1**（产物 demo/src/data/lessons.ts 不入库 .gitignore，须先跑生成再 -check——PR #416 审阅 P3 勘正原「-check 可跑」误导）。按裁定不入 CI 判定面。原无 shebang 逃过扫描面致三向对账恒绿脱管（2026-11-01 审阅 v2 S08-6 补 shebang 入驱动集并登记）。救急前置：cd scripts && npm ci（依赖 marked）"
   }
 ]

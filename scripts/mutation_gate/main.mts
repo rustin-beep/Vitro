@@ -262,6 +262,12 @@ function main(): void {
   const outAbs = path.resolve(root, outDir !== "" ? outDir : "tmp/mutation_gate");
   fs.mkdirSync(outAbs, { recursive: true });
   const outRelFromScripts = path.relative(scriptsDir, outAbs).replaceAll("\\", "/");
+  // 副作用护栏（2026-11-02 PR #416 实锤）：突变体执行会跑生成器的「真实仓库 -check」
+  // 测试——emitWithMoonFmt 的 restore 被突变掉时，真仓 moonbit/**/*_gen.mbt 被写成
+  // 未 fmt 模板且不还原（本地复现 8 个产物被静默污染，`git add -A` 即误提交）。
+  // 跑前快照已跟踪文件脏集，跑后对比，新增即警告列出（不自动恢复——不动用户文件；
+  // report-only 不改退出码：CI runner 一次性无害，本地看警告手动 checkout）。
+  const dirtyBefore = trackedDirty(root);
 
   // 1) 变更面
   let targets: Array<{ file: string; whole: boolean; ranges: Array<[number, number]> }> = [];
@@ -359,6 +365,12 @@ function main(): void {
       process.stdout.write(run.stdout ?? "");
       process.stderr.write(run.stderr ?? "");
       process.stderr.write(`FATAL: stryker 失败（${t.file}）exit ${run.status}\n`);
+      // FATAL 也清 sandbox（2026-11-02 PR #416）：原只在成功路径末尾清理，中断残留的
+      // scripts/.stryker-tmp 让 ci_checklist（扫到副本驱动）/ editorconfig 本地假红，
+      // 且未 ignore 时会被 `git add -A scripts/` 误加整棵副本树
+      fs.rmSync(path.join(scriptsDir, ".stryker-tmp"), { recursive: true, force: true });
+      // 副作用护栏在早退路径同样执行（PR #416 审阅 P3：最可能留污染的恰是 FATAL 路径）
+      warnPollution(root, dirtyBefore, outAbs);
       process.exit(EXIT_INFRA);
     }
     const report = JSON.parse(fs.readFileSync(reportPath, "utf8")) as { files: Record<string, { mutants?: MutantLike[] }> };
@@ -415,6 +427,33 @@ function main(): void {
   process.stdout.write(
     `mutation_gate: ${results.length} 文件 / ${agg.total} 突变体——survived ${agg.survived}（report-only 不阻断）；报告 ${normalizeSlashes(path.relative(root, outAbs))}/report.md\n`,
   );
+  warnPollution(root, dirtyBefore, outAbs);
+}
+
+/** 已跟踪文件脏集（排除 tmp/ 报告产物）——副作用护栏用。git 不可用时返回空集（不阻断）。 */
+function trackedDirty(root: string): Set<string> {
+  const r = spawnSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" });
+  const out = new Set<string>();
+  if (r.status !== 0) return out;
+  for (const line of (r.stdout ?? "").split("\n")) {
+    const f = line.slice(3).trim();
+    if (f !== "" && !f.startsWith("tmp/")) out.add(normalizeSlashes(f));
+  }
+  return out;
+}
+
+/** 副作用护栏：对比跑前脏集，新增已跟踪脏文件即 stderr 警告 + 追加 report.md（正常收尾与 FATAL 早退两处共用）。 */
+function warnPollution(root: string, dirtyBefore: Set<string>, outAbs: string): void {
+  const polluted = [...trackedDirty(root)].filter((f) => !dirtyBefore.has(f)).sort();
+  if (polluted.length === 0) return;
+  process.stderr.write(
+    `mutation_gate: ⚠ 突变副作用污染了 ${polluted.length} 个已跟踪文件（突变体执行写真仓产物且还原被突变掉）——勿提交，恢复：git checkout -- ${polluted.join(" ")}\n`,
+  );
+  try {
+    fs.appendFileSync(path.join(outAbs, "report.md"), `\n## ⚠ 突变副作用污染（已跟踪文件新增脏）\n\n${polluted.map((f) => "- " + f).join("\n")}\n`);
+  } catch {
+    // report.md 尚未生成（FATAL 早退）——stderr 已告警，不因附录写失败再抛
+  }
 }
 
 if (normalizeSlashes(process.argv[1] ?? "").endsWith("mutation_gate/main.mts")) {

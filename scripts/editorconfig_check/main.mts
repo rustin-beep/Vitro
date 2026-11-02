@@ -29,6 +29,9 @@ const SKIP_SEGS = new Set([
   // 换行）——不剪枝则「本地跑过一次 fuzz」后本闸恒红，属与提交内容无关的环境
   // 盲区（同 .build/.workbuddy 一族）。
   ".corpus_fuzz_cache",
+  // Stryker sandbox（mutation gate 复制 scripts/ 整树 + instrument 注入）——
+  // 跑突变期间/FATAL 残留时本闸不得扫副本（2026-11-02 PR #416 同族）
+  ".stryker-tmp",
 ]);
 
 const JSON_EXEMPT_PREFIXES = [
@@ -131,7 +134,12 @@ export function checkTree(baseArg: string): string[] {
       const rel = path.relative(base, p);
       if (gitIgnored(rel)) continue;
       if (rel === "demo-evidence" || rel.startsWith("demo-evidence" + path.sep)) continue;
-      if (rel.startsWith("tools" + path.sep + "cache")) continue;
+      // tools/cache = 外部工具下载缓存（binaryen 等）：原根下形态 + wasmopt .mts 化后
+      // 的 moonbit/tools/cache 形态（2026-11-01 审阅 v2 批 A1 实锤：后者的
+      // package/LICENSE 缺末行换行，「本地跑过一次 wasmopt」即本闸与 npm test 恒红；
+      // git ls-files --ignored 面实测未列出该目录故须硬编码——按路径前缀精确剪，
+      // 不按段名「tools」剪：moonbit/teaching/tools 是 content_parser.c 真源树）
+      if (rel.startsWith("tools" + path.sep + "cache") || rel.startsWith(path.join("moonbit", "tools", "cache"))) continue;
       if (rel.split(path.sep).some((seg) => SKIP_SEGS.has(seg))) continue;
       if (e.isDirectory()) {
         // 嵌套 git worktree / submodule：独立仓库，不属于本仓内容（根下审阅

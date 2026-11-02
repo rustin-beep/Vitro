@@ -99,6 +99,10 @@ export const typeckTarget: DiffTarget = {
   fail: fatal,
   golden: (root: string) => makeTypeckGolden(root),
   corpusExts: [".c"],
+  // 显式声明（S05-C7，2026-11-01 审阅 v2）：typeck 依赖骨架默认值 strict（探针
+  // P11 实证——语料加注释即红「已变更而清单未重刷」）。原为隐式依赖：骨架
+  // 默认值若未来变更，本闸防线强度无锚可拦（对照 parser 显式 presence + test 锚）。
+  sourcesPolicy: "strict",
   knownForks: KNOWN_FORKS,
   runCases: (ctx: GateContext) => runTypeckCases(ctx),
 };

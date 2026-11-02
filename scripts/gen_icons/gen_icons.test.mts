@@ -70,6 +70,18 @@ test("renderDemoTs：digest + body 片段表", () => {
   assert.match(out, /  "a": '<path d="M0 0"x"\/>',/);
 });
 
+test("S08-5（2026-11-01 审阅 v2）：renderDemoTs 单引号/反斜杠转义（demo ts 臂注入面封堵）", () => {
+  // 修复前：d 含单引号时产出行 `'<path d="M0'+alert(1)+'"/>'` 被 JS 解析为
+  // 字符串拼接（new Function 求值即执行）——当前资产靠字符集习惯挡住而非契约。
+  const out = renderDemoTs(
+    ["a"],
+    new Map([["a", { title: "", category: "", scope: "", paths: ["M0 0'x\\y"] }]]),
+    "sha256:y",
+  );
+  // 期望行：`  "a": '<path d="M0 0\'x\\y"/>',` —— 单引号与反斜杠均被转义
+  assert.ok(out.includes(`  "a": '<path d="M0 0\\'x\\\\y"/>',`), `转义形态不符：${out}`);
+});
+
 test("真实仓库：-check 通过（与 CI 同门径）", () => {
   const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "main.mts"), "-check"], {
     cwd: projectRoot(),
@@ -77,4 +89,22 @@ test("真实仓库：-check 通过（与 CI 同门径）", () => {
   });
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /OK：几何层与真源一致/);
+});
+
+test("S08-2（2026-11-01 审阅 v2）：-check 对 icons_gen.mbt 零写副作用（mtime+hash 不变）", () => {
+  // 原实现「写产物 → moon fmt → 回读 → 还原」每跑一次 -check 必刷 mtime，扰动
+  // gen_demo_algorithms 的 ensureFresh 构建复核链；fmt 失败窗口更把产物覆盖为
+  // 未 fmt 模板（S08-1，剥离 moon 探针实锤 hash 变）。现形态 = 期望内容写系统
+  // 临时目录 .mbtx 比对，仓库产物全程只读。本锚锁零写契约。
+  const p = path.join(projectRoot(), "moonbit/icons/icons_gen.mbt");
+  const h1 = crypto.createHash("md5").update(fs.readFileSync(p)).digest("hex");
+  const m1 = fs.statSync(p).mtimeMs;
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "main.mts"), "-check"], {
+    cwd: projectRoot(),
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const h2 = crypto.createHash("md5").update(fs.readFileSync(p)).digest("hex");
+  assert.equal(h2, h1, "icons_gen.mbt 内容不得被 -check 改写");
+  assert.equal(fs.statSync(p).mtimeMs, m1, "icons_gen.mbt 的 mtime 不得被 -check 刷新");
 });

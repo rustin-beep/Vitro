@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // gen_course —— 课程叙述层生成器（#120 课程内容管线，2026-10-15；#273 批二 .mts 化）。
 //
 // **【2026-10-15 退役标注】lessons.ts 渲染角色退役（#125 批 A 形态修正）**：
@@ -6,6 +7,14 @@
 // 作为**失败回退预案**（content.json 静态发射形态，宿主运行时方案
 // （parser.c + demo 运行时喂引擎解析）失败时可用）；CI/pages 接线已摘。
 // course_catalog（防线）不受影响继续在役。
+//
+// **治理登记（S08-6，2026-11-01 审阅 v2）**：本文件原无 shebang——ci_checklist
+// 的 .mts 驱动识别只认 `#!/usr/bin/env node` 首行，摘线后既无活行也无例外登记
+// 即三向对账恒绿（靶标无声脱管，违背 AGENTS §8.5「要么接线要么带 reason 自证」）。
+// 现补 shebang 进驱动集 + exceptions.json 带 kind=retired-fallback 登记。
+// **回退预案自举前置**：本生成器经 docs_preview/render.mts 引第三方 `marked`
+//（scripts/package.json dependencies）——fresh 检出直接跑必 ERR_MODULE_NOT_FOUND，
+// 真到救急时第一步是 `cd scripts && npm ci`（探针实锤，装依赖后链路完整）。
 //
 // 真源 = course/<chap>/<id>/lesson.md（frontmatter + 正文，教师手写面）；
 // 产物 = demo/src/data/lessons.ts（类型化 ESM，demo 侧按 id 与 cases.js /
@@ -23,8 +32,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { fragment } from "../docs_preview/render.mts";
+import { goJSONString } from "../internal/genio.mts";
+import { projectRoot } from "../internal/capi.mts";
 
-const rootDir = path.resolve(import.meta.dirname, "../..");
+// rootDir 走 projectRoot()（cwd 上溯单源）：原 `import.meta.dirname/../..` 在 Stryker
+// sandbox（scripts/.stryker-tmp/sandbox-*/）里解析错——与 gen_icon_preview 同形态
+//（2026-11-02 PR #416 mutation gate 实锤后统一）
+const rootDir = projectRoot();
 const courseDir = path.join(rootDir, "course");
 const outPath = path.join(rootDir, "demo", "src", "data", "lessons.ts");
 
@@ -155,24 +169,8 @@ function collect(): Lesson[] {
   return out;
 }
 
-// goJSONString 复刻 Go json.Marshal 的字符串形态（HTML 三字符与 U+2028/U+2029
-// 转义）——产物与旧 Go 生成器保持同一编码口径。
-function goJSONString(s: string): string {
-  return JSON.stringify(s).replace(/[<>&\u2028\u2029]/g, (c) => {
-    switch (c) {
-      case "<":
-        return "\\u003c";
-      case ">":
-        return "\\u003e";
-      case "&":
-        return "\\u0026";
-      case "\u2028":
-        return "\\u2028";
-      default:
-        return "\\u2029";
-    }
-  });
-}
+// goJSONString 已下沉 scripts/internal/genio.mts（与 gen_icons 逐字重复两份，
+// 2026-11-01 审阅 v2 S08 次级）——产物与旧 Go 生成器保持同一编码口径不变。
 
 function emit(lessons: Lesson[]): string {
   let out = headerNote;

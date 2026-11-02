@@ -51,7 +51,9 @@ export interface Rules {
 }
 
 const RE_COLOR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/;
-const RE_ZERO_LEN = /[hv]0*\.0+/;
+// 负号形态（2026-11-01 审阅 v2 S08 次级）：原 /[hv]0*\.0+/ 漏 h-.01 / v-0.05——
+// 绝对值与正形态同级（0.1 以下），跨端 round cap 同样消失，补 -? 对称收口。
+const RE_ZERO_LEN = /[hv]-?0*\.0+/;
 const RE_ELEM = /<(path|circle|rect|line|polyline|polygon|ellipse|text|g|image|use|script|style)\b/gs;
 const RE_ATTR = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*"([^"]*)"/g;
 const RE_TITLE = /<title>(.*?)<\/title>/s;

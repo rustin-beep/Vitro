@@ -34,9 +34,13 @@ on:
 # 迁移流程了」，不是「代码坏了」。
 # 过时 push 的 run 自动取消（2026-10-03 拆批接线）：连续 push 时只有最新
 # commit 的 run 跑满全程（此前每笔 push 都烧满 ~19 分钟——9981ac2 三笔连红
-# 实证）；schedule 夜间全量重算与手动触发不受取消。
+# 实证）。group 加事件后缀（2026-11-01 审阅 v2 S13b-P6 修正）：GitHub 语义
+# 是「新 run 的 cancel 表达式决定是否取消组内正在跑的旧 run」——不加后缀时
+# schedule 轮（cancel=false）只保护它前面的 run，不保护它自己，夜间全量
+# 重算轮（CF_JUDGE_REFRESH 覆写 / Clang Golden 强制重算）可被任何到达的
+# push 轮取消且无留痕；加后缀后各事件分流取消，同事件同 ref 互斥不变。
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
 
@@ -165,7 +169,7 @@ jobs:
         if: always()
         # 产物出口后置优化（#120 批①）：-19.3% raw / -20.4% gzip（lean
         # 产物实测）；等价性背书 = 下游 gates-wasm 四 slice（vm_diff wasm
-        # 全量 440 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
+        # 全量语料 + cli_smoke 三臂对拍 + serve_channel 体积/通道断言）
         # 消费本优化产物。二跑确定性自检内置；sidecar 指纹随产物进
         # artifact（wasmopt -check 可验）。moon 增量缓存对产物外部替换
         # 无感知（判 up-to-date 不重建）——下游 EnsureFresh 复核不回退。
@@ -303,6 +307,12 @@ jobs:
               for c in baseline knr leetcode gap llm_scale; do
                 node scripts/diff_gate/main.mts "$t" "corpus/$c" || rc=1
               done
+              # codegen_skeleton 节接线（2026-11-01 审阅 v2 S05-C4）：该语料只
+              # 进 codegen golden（其余三闸 golden 无此节，不能进公共循环）——
+              # 冻结后从未被任何闸消费，13 例零防腐化；接线恢复「冻结即有主」。
+              if [ "${{ matrix.driver }}" = "codegen_diff" ]; then
+                node scripts/diff_gate/main.mts codegen "corpus/codegen_skeleton" || rc=1
+              fi
               exit $rc
               ;;
             vm_diff)
@@ -406,13 +416,12 @@ jobs:
       - name: Install MoonBit toolchain
         uses: ./.github/actions/setup-moonbit
 
-      - name: libc bootstrap parity (MoonBit library mode vs Rust export)
+      - name: libc bootstrap parity (MoonBit library mode vs golden digest)
         # 2026-09-22 S5 尾项『libc 自举』接线：命题是「MoonBit 引擎能否编译
-        # 自己的标准库 C 源，且产物与 Rust oracle 逐字节一致」。两侧形态不
-        # 同（Rust export 11 键 / MoonBit dump 14 键），故以 stub main +
-        # wrapper 截断 + 删 main 的 export 口径过滤后，投影到 9 个交集字段
+        # 自己的标准库 C 源，且产物与冻结 golden digest 一致」（Rust oracle
+        # 已随工序④删区退役——oracle 缺失时自动切 golden 基线比，判定器内
+        # [裁判切换] 横幅明示；正确性主锚仍为 Clang）。投影到 9 个交集字段
         # 比对（含 code 段逐指令）。J9 证红：注入 code[1].operand +1 必红。
-        # 依赖 Rust release 二进制（与 codegen_diff 同）。
         # moon 与构建缓存，artifact-free 的 exclusive 目标在此最省）。
         shell: bash
         run: |
@@ -439,7 +448,7 @@ jobs:
       # 比对。差分性质（消费 oracle 臂）——归 core 随 Rust 退役转单臂基线比
       # （退役时删 rust 臂采集段即成）。前置：release vitro_cli（上一步）+
       # moonbit cmd/serve（本步自建 debug 形态，与 moonbit job 同产物）。
-      - name: Protocol frames freeze (dual-host, canonicalized)
+      - name: Protocol frames freeze (canonicalized baseline)
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/protocol_frames/main.mts
@@ -447,7 +456,7 @@ jobs:
 
       # G2（R4）：出口 2 守护——wasm32 构建 + Node 冒烟（ABI 导出 + capi 全链路，
       # 纯 stdout 通道断言；wasm-bindgen 占位导入以 Proxy 桩通过）
-      - name: MoonBit serve smoke (dual-host, Exit 3)
+      - name: MoonBit serve smoke (single host)
         run: |
           cd moonbit && MOON_CC=clang moon build --target native cmd/serve && cd ..
           node scripts/serve_smoke/main.mts -moonbit
@@ -462,28 +471,28 @@ jobs:
           node scripts/replay/replay_s1_s5.mts -moonbit
         shell: bash
 
-      # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
-      # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
-      # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
-      - name: Teaching annotation diff (family-incremental golden, Exit 1)
-        run: node scripts/teaching_annotation_diff/main.mts
-        shell: bash
-
-      # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
-      # S7 批五号（2026-09-29）：wasm-gc 单出口（F-5）——gateway 4 函数导出
-      # （invoke/reset/protocol_version/engine_version，js-string builtins 直传）
-      # + Node 宿主冒烟（R11 证据链：NDJSON 全链 + E3070/E3061 真 trap 断言 +
-      # 体积上限；J9 双路证红：坏产物 exit 2 CompileError + 断言注入 FAIL）。
-      - name: MoonBit exemption audit (zombie detector, D19)
-        run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
-        shell: bash
-
       # S8 teaching 批四号（2026-10-01）：算法标注族级增量对拍——MoonBit
       # cmd/serve 与 Rust golden（algorithm_annotations_v3.json）的首现序列
       # 比对（compile→run→step.begin→step.next×4000；只比已迁移族——
       # rules.json 外置迁移集+豁免面；双向模板集断言；serve exe 由上一步
       # 构建）。J9 双路证红：golden desc 篡改 → exit 1（连锁红）；
       # step_budget 40 → exit 1（首现缺失）。
+      - name: Teaching annotation diff (family-incremental golden, Exit 1)
+        run: node scripts/teaching_annotation_diff/main.mts
+        shell: bash
+
+      # ── wasm-gc / demo 闸族（产物复用链内构建）────────────────────────
+      # 注-步错位修正（2026-11-01 审阅 v2 R1e-Y4）：本段三块注释曾整体上移
+      # 一位（D19 审计注挂在 teaching 步、wasm 冒烟注挂在豁免审计步、S8
+      # teaching 注孤儿悬于 job 尾）——已归位；原 S7 批五号 wasm-gc 出口冒烟
+      # 注为孤儿删除（该防线现役形态 = gates-wasm serve_channel 的
+      # host.js 冒烟步及其 R4 注释，信息无损失）。
+      # 豁免面僵尸审计（D19，2026-10-01 审阅 P2 处方）：豁免全部失效真跑
+      # 一轮——原豁免条目 PASS/未触达即僵尸红，FAIL=合法豁免。J9 留痕：
+      # 注入假豁免（真 PASS 断言）→ ZOMBIE(PASS) exit 1；净表 exit 0。
+      - name: MoonBit exemption audit (zombie detector, D19)
+        run: node scripts/serve_smoke/main.mts -moonbit -audit-exemptions
+        shell: bash
 
   gates-wasm:
     name: wasm-arm gate (${{ matrix.slice }})
@@ -563,11 +572,12 @@ jobs:
         shell: bash
 
       # ── slice cli_smoke = 统一 CLI 入口闸 + algorithms.catalog 三方对账 ──
-      # 统一 CLI 入口闸（#49 批一，2026-10-06）：wasm 壳（scripts/vitro_cli/
-      # main.js）四子命令 rc 契约 + **双臂同形对拍**（壳 vs native cmd/vitro
-      # exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize 特例；
-      # 唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
-      # note 前缀 → B 组双臂对拍红（已留痕）。前置 = gateway wasm 产物
+      # 统一 CLI 入口闸（#49 批一，2026-10-06；js 臂连坐 2026-10-15 三后端批）：
+      # wasm 壳（scripts/vitro_cli/
+      # main.js）四子命令 rc 契约 + **三臂同形对拍**（wasm 壳 / js / native
+      # cmd/vitro exe——note 通道/TRAP 文本/标记行协议逐行一致，零 canonicalize
+      # 特例；唯一剥离 = backend 标注行）+ launcher 双形态语义。J9 证红：篡改壳
+      # note 前缀 → B 组对拍红（已留痕）。前置 = gateway wasm 产物
       # （artifact）+ 本步自建 cmd/vitro native exe（纪律 11 MOON_CC=clang）
       # + Go + node（上方公共步）。
       - name: unified CLI smoke (三臂同形：wasm shell / js / native exe)
@@ -700,10 +710,10 @@ jobs:
 
         if: matrix.slice == 'gen'
         # 2026-09-23 审阅批接线（S6 审阅 P5）：三个生成器（diag 码表 /
-        # host 路由 110 对 / 标准库存根表）此前均无 CI 步骤——产物被手改或
+        # host 路由表 / 标准库存根表）此前均无 CI 步骤——产物被手改或
         # 源变更后未再生成，只能靠人跑 -check 才发现（S6 批的 host_func_id_gen
         # 自 codegen 上提 bytecode 即高风险期）。三脚本均内置 moon fmt 且
-        # -check 无写副作用；J9 证红：gen_host_route 注入 HOST_ACOS 110→999
+        # -check 无写副作用；J9 证红：gen_host_route 注入 HOST_ACOS 常量值改写
         # 必红（本批实测）、gen_stubs 注入篡改注释必红（本批实测）、gen_diag
         # 四雷证红已在先例留痕。前置修复：gen_stubs 原手工只认 --check 且
         # 生成输出未过 fmt（干净仓库上 --check 必红）——本批改为 flag 包 +
@@ -784,10 +794,10 @@ jobs:
         shell: bash
         run: node scripts/moonbit/libc_single_source/main.mts -check
 
-      - name: Host route coverage (110 routes vs host impls)
+      - name: Host route coverage (routes vs host impls)
 
         if: matrix.slice == 'contract'
-        # P2-memchr 事故族（2026-09-23 修复批）：110 路由表中 memchr 整批
+        # P2-memchr 事故族（2026-09-23 修复批）：路由表中 memchr 整批
         # 漏实现——既有对账锚只校验「常量 ↔ 名字」双表一致，不校验
         # 「路由名 ↔ 有实现」。规则外置 host_route_rules.json（别名 /
         # vm 白名单，白名单双向对账防腐化）；J9 双路证红留痕。
@@ -1062,26 +1072,44 @@ jobs:
         shell: bash
         run: |
           # 修复注（run 41045815814 定案）：GitHub 的 shell:bash 默认 -eo
-          # pipefail，而 grep -c 零命中（=本断言的**正确态**）退出码为 1
+          # pipefail，而 grep 零命中（=本断言的**正确态**）退出码为 1
           # ——管道被 pipefail 判死、-e 杀 step ⇒ 零命中必红（本地裸 bash
-          # 无此二旗故三路复刻皆绿）。修法：grep 组内 `|| true` 消退出码，
-          # 判定只认 awk 汇总的 n。
-          echo "== workflows 目录清单："; ls -1 .github/workflows/
-          n=$({ grep -rEc '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; } | awk -F: '{s+=$NF} END{print s}')
-          echo "convergence n=[$n]"
-          hits=$({ grep -rnE '(irm|curl)[^|]*cli\.moonbitlang\.com' .github/workflows/ || true; })
-          if [ -n "$hits" ]; then echo "-- 动词锚定命中行："; echo "$hits"; fi
-          echo "-- 字面量全量（仅观察不计红）："
-          grep -rnF 'cli.moonbitlang.com' .github/workflows/ || echo "（零字面量命中）"
-          if [ "$n" = "" ]; then
-            echo "::error::convergence 计数为空——grep/awk 管道异常（证据见上）"
+          # 无此二旗故三路复刻皆绿）。修法：grep/管道组内一律 `|| true`
+          # 消退出码，判定只认变量内容（2026-11-01 S13b-P4 白名单升格后
+          # 从「awk 汇总计数」改为「$bad 非空即红」）。
+          echo "== workflows/actions 目录清单："; ls -1 .github/workflows/ .github/actions/
+          # 收敛判据 = 域名出现位置白名单断言（2026-11-01 审阅 v2 S13b-P4 升格）：
+          # 原形态只锚 irm|curl 两个动词且只扫 workflows/——iwr/Invoke-WebRequest/
+          # wget 形态与 .github/actions/ 新建 composite action 内联安装均漏网。
+          # 白名单断言与动词无关：moon 安装域字面量在 .github/ 下的任何出现
+          # （含注释——防「注释贴安装命令被人照抄」，即本保险丝使命）必须
+          # 位于 .github/actions/setup-moonbit/（唯一合法实现点）之内。
+          # DOM 拆串写法 = 防自咬：grep 命令行若含完整域名字面量，本步扫
+          # ci.yml 自身时必命中自己（首次接线即实测自咬）。
+          DOM="cli.moonbitlang".com
+          hits=$({ grep -rnF "$DOM" .github/ || true; })
+          echo "-- 域名字面量全量出现："
+          if [ -n "$hits" ]; then echo "$hits"; else echo "（零字面量命中）"; fi
+          # fail-open 封堵 + 正向锚（PR #416 审阅 P2-1，2026-11-02）：白名单升格时删掉了原
+          # `n 为空即红` 保护——grep 目标目录不存在/grep 异常时 hits 空 ⇒ bad 空 ⇒ 恒绿
+          # （探针实锤）。且原断言只防「外溢」不防「锚点丢失」：唯一合法点的域名被改
+          # （换 CDN/改命令）照样绿。两层：① hits 空即红；② setup-moonbit 内至少一处命中。
+          if [ -z "$hits" ]; then
+            echo "::error::moon 安装域字面量在 .github/ 下零命中——grep 异常或 setup-moonbit 锚点丢失（唯一合法实现点必须含安装域）"
             exit 1
           fi
-          if [ "$n" != "0" ]; then
-            echo "::error::workflows 内联 moon 安装 $n 处——收敛到 .github/actions/setup-moonbit（uses 引用）"
+          good=$({ echo "$hits" | grep '^\.github/actions/setup-moonbit/' || true; })
+          if [ -z "$good" ]; then
+            echo "::error::setup-moonbit 内零命中（安装域被改/实现点迁移）——正向锚失守，先对齐 .github/actions/setup-moonbit 再改本断言"
             exit 1
           fi
-          echo "convergence OK: workflows 零内联安装"
+          bad=$({ echo "$hits" | grep -v '^\.github/actions/setup-moonbit/' || true; })
+          if [ -n "$bad" ]; then
+            echo "::error::setup-moonbit 之外发现 moon 安装域引用（任意动词形态均算——收敛到 .github/actions/setup-moonbit 的 uses 引用）："
+            echo "$bad"
+            exit 1
+          fi
+          echo "convergence OK: moon 安装域唯一且确实出现在 setup-moonbit（$(echo "$good" | grep -c .) 处）"
       - name: Install MoonBit toolchain
         uses: ./.github/actions/setup-moonbit
 

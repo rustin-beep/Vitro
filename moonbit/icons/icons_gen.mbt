@@ -8,7 +8,7 @@
 const ICONS_SCHEMA : String = "icons/v1"
 
 ///|
-/// 资产表 digest（52 枚 svg 按 id 字典序逐个 sha256 汇总，与 icons.json 同算法同值）。
+/// 资产表 digest（76 枚 svg 按 id 字典序逐个 sha256 汇总，与 icons.json 同算法同值）。
 const ICONS_DIGEST : String = "sha256:15ae4ed38f4ec292d32304122f8eedfb7d73acf4c6266f95cd5276bf50ea8a44"
 
 ///|

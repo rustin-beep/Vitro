@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { corpusSHAs, normalizeCorpusTo, parseGateArgs, sha16, sha8, type Fail } from "./diffgate.mts";
+import { DEFAULT_SOURCES_POLICY, corpusSHAs, normalizeCorpusTo, parseGateArgs, sha16, sha8, type Fail } from "./diffgate.mts";
 import {
   loadLexDigest,
   makeLexGolden,
@@ -24,6 +24,12 @@ const boom: Fail = (msg: string): never => {
 test("sha8 / sha16：长度与已知向量", () => {
   assert.equal(sha8(Buffer.from("")), "e3b0c442");
   assert.equal(sha16(Buffer.from("")), "e3b0c44298fc1c14");
+});
+
+test("骨架 sourcesPolicy 默认档 = strict（PR #416 审阅 P3：未声明的 vm/lexer 等吃此默认）", () => {
+  // typeck 显式锁只锁自身；默认值若被改成 presence，未声明的 target 会静默退化为
+  // 「只查新样本」——本锚锁死默认档，改默认必动锚。
+  assert.equal(DEFAULT_SOURCES_POLICY, "strict");
 });
 
 test("parseGateArgs：语料位置参数 + 三模式 + 互斥", () => {

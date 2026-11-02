@@ -79,6 +79,10 @@ packages/
 # shadow 驱动自管目录在 native/tests/shadow_verification/ 下，另有规则）
 .shadow_tmp/
 node_modules/
+# Stryker sandbox（scripts/mutation_gate 把 scripts/ 整树复制进去跑突变）：成功路径
+# 自清理，FATAL 中断会残留——未 ignore 时 `git add -A scripts/` 会把整棵副本树误加
+#（PR #416 本地复现实锤残留，2026-11-02）
+scripts/.stryker-tmp/
 
 # Blazor / static web assets generated from NuGet packages
 **/wwwroot/_content/

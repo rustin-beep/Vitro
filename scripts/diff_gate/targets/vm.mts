@@ -8,17 +8,22 @@
 // 无位置参数默认遍历五语料。骨架只提供工具（语料扫描 / sha / 输出协议）。
 //
 // **不迁（oracle 侧）**：runOracle / compare 的 oracle 分支 / freezeDigest
-//（需 vivo_cli）/ 新鲜度门禁。工序④删区后 oracle 永不存在，`--freeze` 必然
-// fail；而**新鲜度门禁的动机随 moon run 消失**——实测 node spawnSync 下
-// moon run 稳定（8+5 次全 0，`--dump-memory` 产精确 1MB，`-i` 注入有效，
-// 单次 ~125ms），moon run 自带构建检查，「构建失败照跑旧 exe 报假绿」的死角
-// 不存在。wasm 臂仍消费 build 产物（CI 由 build job 保证），故只查存在性。
+//（需 vivo_cli）。工序④删区后 oracle 永不存在，`--freeze` 必然 fail。
+// **freshness 口径勘正（2026-11-01 审阅 v2 S05-C2）**：本文件自 2026-10-23 起
+// native 臂已改**预编译 run.exe 直跑**（原「moon run 消除假绿死角」的论证随之
+// 失效——exe 直跑不自带构建检查）：CI 由 build-artifacts 每轮重建闭环；本地
+// 侧补**源码 mtime 新于产物即警告**的软检查（warnStaleExe，不判红——mtime 是
+// 提示不是证据）。wasm 臂消费 build 产物（存在性检查 + S05-C1 引擎产物缺件
+// fail loud），mtime 面同警告覆盖。
 //
 // 三通道（golden 模式 = mb 当前值 ≡ 清单登记值）：
 //   1. stdout：剥引擎标记行后的纯程序输出（sha16）
 //   2. 返回码：`// EXIT N`
 //   3. 1MB 映像：argv 区（0xF000..0x10000）脱敏后 sha16
-// known 分叉例额外登记 mb 侧整例指纹（known_mb_digest），漂移即降级 DIFF。
+// known 分叉例在 golden 模式下与普通例同走三通道比对（known_diffs.json 登记
+// 分叉归因并供 diff_ledger 对账；其 digest / memory_stack_only 为 oracle 时代
+// 档案字段，无消费方）。曾声称的 known_mb_digest「整例指纹漂移即降级 DIFF」
+// 机制从未启用（golden 全零条目、读侧死路径），2026-11-01 审阅 v2 S05-C5 删除。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -35,6 +40,8 @@ const DIGEST_REL = "scripts/vm_diff/golden_digest.json";
 const SKIP_REL = "scripts/vm_diff/skip_list.json";
 const KNOWN_REL = "scripts/vm_diff/known_diffs.json";
 const WASM_SHELL = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js";
+/** wasm 臂引擎产物：壳 js__load__gateway 的默认解析目标（VITRO_WASM_MOD 可覆盖）。 */
+const WASM_ENGINE = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm";
 /** native 臂被测物：预编译 exe 直跑（Go 版同路径；CI 由 build artifact 保证存在）。 */
 const RUN_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
 const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale"];
@@ -44,7 +51,7 @@ const ARGV_MASK_LO = 0xf000;
 const ARGV_MASK_HI = 0x10000;
 // 内存差异区间机判（knownEntry.memory_stack_only + 顶部 4KB 栈窗口）**未迁**——
 // 它在 Go 版的 compare() 里，只服务 oracle 双侧路径（随删区不可达）；golden 模式
-// 的 known 例走 known_mb_digest 整体指纹，不涉及区间判定。
+// 的 known 例与普通例同走三通道比对，无特殊分支。
 
 const MOON_RUN_TIMEOUT_MS = 120_000;
 const MOON_RUN_ATTEMPTS = 3;
@@ -60,7 +67,6 @@ interface DigestEntry {
   stdout_sha: string;
   memory_sha?: string;
   compile_fail?: boolean;
-  known_mb_digest?: string;
 }
 
 interface DigestDoc {
@@ -73,6 +79,7 @@ interface SkipEntry {
   case: string;
   reason: string;
 }
+/** digest / memory_stack_only 为 oracle 时代档案字段（golden 模式无消费方，S05-C5）。 */
 interface KnownEntry {
   case: string;
   digest: string;
@@ -164,11 +171,6 @@ export function memorySHA(p: string): string {
   }
   for (let i = ARGV_MASK_LO; i < ARGV_MASK_HI && i < b.length; i++) b[i] = 0;
   return sha16(b);
-}
-
-/** known 分叉例的整例指纹（exit + stdout + mem + cf）。 */
-export function mbWholeDigest(exit: number, stdoutSHA: string, memSHA: string, cf: boolean): string {
-  return sha16(`${exit}|${stdoutSHA}|${memSHA}|${String(cf)}`);
 }
 
 function digestOf(r: RunResult): { exit: number; stdout: string; mem: string; cf: boolean } {
@@ -288,6 +290,7 @@ export function runVm(argv: string[], root: string): number {
   let golden = false;
   let freezeMB = false;
   let selftest = false;
+  let pruneStale = false;
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i] ?? "";
@@ -311,18 +314,31 @@ export function runVm(argv: string[], root: string): number {
       backend = v === "wasm" ? "wasm" : "native";
     } else if (a === "--golden") {
       golden = true;
+    } else if (a === "--prune-stale") {
+      pruneStale = true;
     } else {
       fail(`未知参数 ${JSON.stringify(a)}`);
     }
   }
   void golden;
 
-  if (backend === "wasm" && !fs.existsSync(path.join(root, WASM_SHELL))) {
-    fail(`${WASM_SHELL} 不存在（wasm 臂需 build 产物：moon build --release --target js cmd/vitro_wasm）`);
+  if (backend === "wasm") {
+    if (!fs.existsSync(path.join(root, WASM_SHELL))) {
+      fail(`${WASM_SHELL} 不存在（wasm 臂需 build 产物：moon build --release --target js cmd/vitro_wasm）`);
+    }
+    // 引擎产物存在性 fail loud（2026-11-01 审阅 v2 S05-C1）：原实现只查壳不查
+    // 引擎 wasm——缺引擎时全部例呈「stdout 同一 hash=壳错误输出」的同文误导性
+    // DIFF（方向红但形态谎报行为漂移）；与 native 臂的 run.exe 缺件检查对称。
+    if ((process.env.VITRO_WASM_MOD ?? "") === "" && !fs.existsSync(path.join(root, WASM_ENGINE))) {
+      fail(
+        `${WASM_ENGINE} 不存在（wasm 臂引擎产物，壳默认加载它——先 moon build --release --target wasm-gc gateway/wasm && node scripts/wasmopt/main.mts <产物>；或 VITRO_WASM_MOD 显式指定）`,
+      );
+    }
   }
   process.stderr.write(
     "vm_diff: [裁判切换] oracle 面已随工序④退役——本判定固定走 --golden 冻结基线（结构裁判自 oracle 切为 digest 清单；正确性主锚仍为 Clang/shadow）\n",
   );
+  warnStaleExe(root, backend);
 
   const skips = loadJSON<SkipEntry[]>(root, SKIP_REL, fail);
   const known = loadJSON<KnownEntry[]>(root, KNOWN_REL, fail);
@@ -377,6 +393,34 @@ export function runVm(argv: string[], root: string): number {
   const doc = loadJSON<DigestDoc>(root, DIGEST_REL, fail);
   if (doc.version !== 1) fail("清单坏或版本不识");
 
+  // ---- golden 僵死条目防腐化（PR #416 审阅 P2-3，2026-11-02）----
+  // vm 只遍历语料：清单中语料已不存在的键永不校验，而汇总「共 N」令人误以为全
+  // 覆盖（实锤：#387 GPL 出仓 45 份删语料未连坐清单 ⇒ 807 条中 46 条僵死，全在
+  // baseline）。skip/known 有静态防腐化而 golden 没有——补 cases ⊆ 语料集（全量
+  // 模式）；清理走 --prune-stale（纯减法：只删语料不存在的键，不动任何存活 hash，
+  // 与「重冻」语义严格区分）。
+  if (pruneStale) {
+    if (!full) return fail("--prune-stale 须在全量模式跑（默认五语料，不带 --corpus/--sample/--cases）——非全量会把本轮外语料全判僵死");
+    const live = new Set(cases.map((c) => c.rel));
+    const stale = Object.keys(doc.cases).filter((k) => !live.has(k));
+    if (stale.length === 0) return fail("--prune-stale: 零僵死条目——清单已与语料对齐，无需清理");
+    for (const k of stale) delete doc.cases[k];
+    writeDigest(root, doc, fail);
+    process.stdout.write(
+      `vm_diff --prune-stale: 删除 ${stale.length} 条语料已不存在的僵死条目 → ${DIGEST_REL}（纯减法；存活 ${Object.keys(doc.cases).length} 条 hash 零改动）\n${stale.map((k) => "  - " + k).join("\n")}\n`,
+    );
+    return 0;
+  }
+  if (full) {
+    const live = new Set(cases.map((c) => c.rel));
+    const stale = Object.keys(doc.cases).filter((k) => !live.has(k));
+    if (stale.length > 0) {
+      return fail(
+        `golden 僵死条目 ${stale.length} 条（语料已删而清单未连坐，永不校验）——跑 node scripts/diff_gate/main.mts vm --prune-stale 清理；首 5 条：${stale.slice(0, 5).join(", ")}`,
+      );
+    }
+  }
+
   // ---- --freeze-mb：mb 侧三通道入账 ----
   if (freezeMB) {
     let added = 0;
@@ -418,16 +462,23 @@ export function runVm(argv: string[], root: string): number {
 
   // ---- golden 比对 ----
   if (selftest && cases.length > 0) {
-    const k = cases[0]?.rel ?? "";
-    const e = doc.cases[k];
-    if (e !== undefined && (e.known_mb_digest ?? "") === "") {
+    // 篡改目标 = 首个非 compile_fail 例（2026-11-01 审阅 v2 S05-A1 修复）：
+    // 原实现篡改 cases[0]——gap 语料首例 complex_number.c 是 cf 例，比对循环的
+    // 「双侧编译失败——等价」短路先于任何通道字段，篡改被吞、exit 0 假绿（探针
+    // 实锤：打印「已篡改」后 SAME=21 全绿）。cf 例不参与三通道字段比对。
+    const t = cases.find((c) => doc.cases[c.rel]?.compile_fail !== true);
+    // return fail(...)：fail 是属性调用，TS 不认 never，需显式 return 收窄（同上文口径）
+    if (t === undefined) {
+      return fail("--selftest: 本轮用例全部为 compile_fail 例——篡改面为空（换语料或 --cases 指定非 cf 例）");
+    }
+    const e = doc.cases[t.rel];
+    if (e !== undefined) {
       e.stdout_sha = "deadbeef12345678";
-      process.stdout.write(`[selftest][golden] 已篡改清单条目: ${k} ——随后比对必须 FAIL\n`);
+      process.stdout.write(`[selftest][golden] 已篡改清单条目: ${t.rel} ——随后比对必须 FAIL\n`);
     }
   }
 
   let same = 0;
-  let knownN = 0;
   let diff = 0;
   let skipN = 0;
   for (const c of cases) {
@@ -451,19 +502,6 @@ export function runVm(argv: string[], root: string): number {
       same++;
       continue;
     }
-    const whole = mbWholeDigest(d.exit, d.stdout, d.mem, d.cf);
-    if ((e.known_mb_digest ?? "") !== "") {
-      if (whole === e.known_mb_digest) {
-        process.stdout.write(`DIFF-KNOWN ${c.rel}（mb 分叉指纹一致；归因见 known_diffs.json）\n`);
-        knownN++;
-      } else {
-        process.stdout.write(
-          `DIFF  ${c.rel}：known 分叉形状已变（登记 mb 指纹 ${e.known_mb_digest ?? ""} 实测 ${whole}）——重新归因后重跑 --freeze-mb\n`,
-        );
-        diff++;
-      }
-      continue;
-    }
     if (d.exit === e.exit_code && d.stdout === e.stdout_sha && d.mem === (e.memory_sha ?? "") && d.cf === (e.compile_fail === true)) {
       process.stdout.write(`SAME  ${c.rel}\n`);
       same++;
@@ -475,7 +513,7 @@ export function runVm(argv: string[], root: string): number {
     diff++;
   }
   process.stdout.write(
-    `\nvm_diff[golden]: SAME=${same} DIFF-KNOWN=${knownN} DIFF=${diff} SKIP=${skipN}（共 ${same + knownN + diff + skipN}）\n`,
+    `\nvm_diff[golden]: SAME=${same} DIFF=${diff} SKIP=${skipN}（共 ${same + diff + skipN}）\n`,
   );
 
   // **不迁动态白名单防腐化**：Go 版那段（跑完全量后检查 known.hit / skip.hit）
@@ -485,6 +523,47 @@ export function runVm(argv: string[], root: string): number {
   // 静态防腐化（跑之前查条目名是否在语料内）在 golden 路径**保留**——Go 版那段
   // 在 freeze/golden 分支之前。
   return diff > 0 ? 1 : 0;
+}
+
+/**
+ * 本地 freshness 软警告（S05-C2，2026-11-01 审阅 v2）：exe 直跑不自带构建
+ * 检查——moonbit/ 全树（排除 _build）最新 .mbt mtime 新于被测产物时提示
+ * 「测的可能是旧产物」。不判红：mtime 是提示不是证据（checkout 会刷源码
+ * mtime）；CI 由 build-artifacts 每轮重建闭环，不触此警告。
+ */
+function warnStaleExe(root: string, backend: "native" | "wasm"): void {
+  const rel = backend === "native" ? RUN_EXE : WASM_ENGINE;
+  let prodM: number;
+  try {
+    prodM = fs.statSync(path.join(root, rel)).mtimeMs;
+  } catch {
+    return; // 缺件由各自的存在性检查 fail loud
+  }
+  let newest = 0;
+  const walk = (d: string): void => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      // _build = 构建产物；tools = 工具缓存（binaryen 等，gitignored）——均非源码
+      if (e.name === "_build" || e.name === "tools") continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      // *_gen.mbt = @generated 产物（新鲜度由各自 -check 闸保证，生成器重跑只
+      // 刷 mtime 不改语义）；*_wbtest.mbt = 白盒测试文件（只进 moon test 构建，
+      // 不进 release 产物）——均非被测产物的输入，不计入（两者均实测误报过）
+      else if (e.name.endsWith(".mbt") && !e.name.endsWith("_gen.mbt") && !e.name.endsWith("_wbtest.mbt")) {
+        newest = Math.max(newest, fs.statSync(p).mtimeMs);
+      }
+    }
+  };
+  try {
+    walk(path.join(root, "moonbit"));
+  } catch {
+    return;
+  }
+  if (newest > prodM) {
+    process.stderr.write(
+      `vm_diff: ⚠ moonbit/ 源码新于 ${rel}（本地 freshness 软警告——测的可能是旧产物；重建：cd moonbit && MOON_CC=clang moon build --release --target native cmd/run / wasm-gc gateway/wasm 等）\n`,
+    );
+  }
 }
 
 function srcSHAOf(file: string): string {
@@ -509,7 +588,6 @@ function writeDigest(root: string, doc: DigestDoc, fail: (m: string) => never): 
       parts.push(`      "stdout_sha": ${q(e.stdout_sha)}`);
       if (e.memory_sha !== undefined && e.memory_sha !== "") parts.push(`      "memory_sha": ${q(e.memory_sha)}`);
       if (e.compile_fail === true) parts.push(`      "compile_fail": true`);
-      if ((e.known_mb_digest ?? "") !== "") parts.push(`      "known_mb_digest": ${q(e.known_mb_digest ?? "")}`);
       return "{\n" + parts.join(",\n") + "\n    }";
     };
     const casesBody =

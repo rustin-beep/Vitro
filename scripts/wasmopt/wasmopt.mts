@@ -2,8 +2,9 @@
 // 供给 = tools/cache/binaryen-<ver>/package（Go 驱动下载钉版本 + sha256 校验）。
 // 特征位组合 = #120 实测可用集（GC|ReferenceTypes|Strings|BulkMemory|
 // SignExt|MutableGlobals——Features.All 撞 exact heap type V8 拒收在案）。
-// 等价性背书 = CI vm_diff wasm 臂全量 440 例 + vitro_cli_smoke 三臂对拍
-// （本执行器不做行为对拍——防线职责分离）。
+// 等价性背书 = CI vm_diff wasm 臂全量语料 + vitro_cli_smoke 三臂对拍
+// （本执行器不做行为对拍——防线职责分离；语料计数不进注释——数字必陈旧，
+// 2026-11-01 审阅 v2 R1e-Y5 清注）。
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 

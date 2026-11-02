@@ -665,7 +665,7 @@ fn TypeChecker::resolve_sizeof(
     Some(op) => {
       let (_, new_op) = self.resolve_expr_type(op)
       match new_op {
-        Identifier(name, _, _) =>
+        Identifier(name, _, _) => {
           if self.current_func_params.contains(name) {
             match self.lookup_var(name) {
               Some(sym) =>
@@ -679,6 +679,33 @@ fn TypeChecker::resolve_sizeof(
               None => ()
             }
           }
+          // M10c A-2 处方（2026-11-02，#433 第二批）：表达式形态补不完整
+          // 数组查——`extern int a[]; sizeof(a)` 旧零诊断 rv=4（clang
+          // 三方 error "invalid application of 'sizeof' to an incomplete
+          // type"；显式类型形态 #145 已查，表达式形态同款缺口）。VLA
+          // 走 is_vla 位不受扰；声明处已报的形态（完整定义）dims 首维
+          // 非 -1 不触发——不双报口径维持。
+          match self.lookup_var(name) {
+            Some(sym) =>
+              match sym.ty {
+                // 判据 = array_size<=0 且 dims[0]==-1：
+                // 的定型尺寸回写通道「仅回写 array_size（dims 不动）」
+                // （init.mbt:855 注释自证）——回写后 dims 仍 [-1] 但
+                // array_size=12>0 已完整，单看 dims 会误伤（string_escape
+                // 语料 sizeof(g) 实锤）；extern a[] sz=-1 真不完整仍报。
+                Array(_, sz, dims, _, is_vla, _) =>
+                  if !is_vla && sz <= 0 && dims.length() > 0 && dims[0] == -1 {
+                    self.report_error(
+                      "对不完整数组类型使用 sizeof（数组缺少数组大小）",
+                      loc,
+                      E3076_IncompleteType,
+                    )
+                  }
+                _ => ()
+              }
+            None => ()
+          }
+        }
         _ => ()
       }
       let ty = @ast.Type::int()

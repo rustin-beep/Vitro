@@ -787,9 +787,13 @@ fn Parser::classify_top_level(self : Parser) -> TopLevelKind {
     return AttributePrefix
   }
   if self.check(Typedef) {
-    // typedef struct [名] { → struct 定义别名；否则掉回普通 typedef
+    // typedef struct [名] { → struct 定义别名；否则掉回普通 typedef。
+    // M03-A2 处方（2026-11-02，#433 第二批）：union 同判——`typedef
+    // union [名] {` 走同一 TypedefStructDecl 分发（parse_typedef_struct_decl
+    // 按 is_union 泛化；旧前瞻只查 Struct ⇒ typedef union 落 TypedefPlain
+    // → parse_base_type Union 臂旧丢 tag 不解析 body 炸穿）。
     let mut la = self.pos + 1
-    if ty_at(la) == Struct {
+    if ty_at(la) == Struct || ty_at(la) == Union {
       la += 1
       if ty_at(la) == Identifier {
         la += 1
@@ -925,7 +929,12 @@ fn Parser::dispatch_top_level(
   match kind {
     StaticAssertDecl => self.parse_static_assert(0)
     AttributePrefix => self.skip_attributes()
-    TypedefStructDecl => self.parse_typedef_struct_decl(program, 0)
+    TypedefStructDecl =>
+      self.parse_typedef_struct_decl(
+        program,
+        0,
+        is_union=self.peek(1).ty == Union,
+      )
     TypedefEnumDecl => self.parse_typedef_enum_decl(program, 0)
     TypedefPlain => self.parse_typedef(0)
     EnumDecl => self.parse_enum_decl(program, 0)

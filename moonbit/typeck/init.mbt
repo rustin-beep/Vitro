@@ -168,13 +168,6 @@ pub fn TypeChecker::check_struct_initializer(
         }
         return init
       }
-      if elements.length() > fields.length() {
-        self.report_warning(
-          "初始化列表元素数量超过结构体字段数",
-          loc,
-          W3005_ArrayInitTooMany,
-        )
-      }
       // #180（2026-10-18 探针第七批，C99 §6.7.9p20 brace elision）：
       // 纯标量扁平流（无子 InitList / 无 designator / 无字符串字面量）且
       // 存在聚合字段时，按字段序重组——标量字段吃 1 个、聚合字段按
@@ -188,13 +181,21 @@ pub fn TypeChecker::check_struct_initializer(
       // char u[2][3] 的 LLM 高频形态）；聚合值元素（#143 锚的
       // `{my_rect.tl, my_rect.br}`）仍排除。resolve 幂等且顺带回写
       // 定型（重组组内用回写后节点）。
+      // M09-A2 处方（2026-11-02，#433）：聚合字段触发条件补 TK_Union——
+      // C11 §6.7.9p17/p20 union 是聚合，扁平流按**首成员**吃叶数
+      // （`struct S{union U u; int x;} s={1,2,3,4};`（U 首成员 int[3]）
+      // clang/gcc 接受 s.x==4；旧漏 TK_Union ⇒ union 字段收标量 E3006
+      // 硬拒）。匿名 union 字段（fields[i].1 == ""）走 #266 透传路径
+      // 不受此影响（can_elide 语义仅具名重组面）。
       let can_elide = !has_designators &&
         !elements.exists(e => {
           e.value is InitList(_, _, _) ||
           e.value is StringLiteral(_, _, _) ||
           !self.is_scalar_init_expr(e.value)
         }) &&
-        fields.exists(f => f.0.is_array() || f.0.kind() is TK_Struct)
+        fields.exists(f => {
+          f.0.is_array() || f.0.kind() is TK_Struct || f.0.kind() is TK_Union
+        })
       if can_elide && elements.length() > 1 {
         // 顺带回写：组内元素用 resolve 后的定型节点
         for i = 0; i < elements.length(); i = i + 1 {
@@ -212,7 +213,9 @@ pub fn TypeChecker::check_struct_initializer(
           // C99 流式消耗：吃满或流尽（部分填充余下零填）——
           // min(need, 剩余)
           let take = if need > 0 && need < remaining { need } else { remaining }
-          let is_aggregate = f.0.is_array() || f.0.kind() is TK_Struct
+          let is_aggregate = f.0.is_array() ||
+            f.0.kind() is TK_Struct ||
+            f.0.kind() is TK_Union
           if !is_aggregate {
             // 标量字段原样（包 InitList 会被 else 臂按 void 误报）
             rebuilt.push(elements[pos])
@@ -244,6 +247,20 @@ pub fn TypeChecker::check_struct_initializer(
         for k = 0; k < drop_n; k = k + 1 {
           ignore(elements.pop())
         }
+      }
+      // M09-A4 处方（2026-11-02，#433）：超量判定移到 elision 重组**之后**
+      // ——按重组后元素数判。旧前置判定对 `{1,2,3}` 填
+      // `struct Out{struct In{a,b}; int c;}` 的合法 elision 形态报假
+      // 「超量」（3 元素 > 2 字段，重组后 u 吃 2、c 吃 1 恰满；clang/gcc
+      // 仅 -Wmissing-braces）；真超量 `{1,2,3}` 填 2 字段仍警（反向锚
+      // p10_true_excess 保持）。重组未触发（非扁平流）时元素数即原数，
+      // 判定语义不变。
+      if elements.length() > fields.length() {
+        self.report_warning(
+          "初始化列表元素数量超过结构体字段数",
+          loc,
+          W3005_ArrayInitTooMany,
+        )
       }
       // #157（2026-10-18，C23 §6.7.2.1p23）：柔性数组成员不可初始化
       //（clang "initialization of flexible array member" / gcc "non-
@@ -446,8 +463,10 @@ fn TypeChecker::unwrap_scalar_braces(
 ///|
 /// 聚合类型的「叶标量总数」（#180 brace elision 重组的消耗计量）：
 /// 标量 1；数组 = 全维积（total_elements 已是 base 叶数）；struct =
-/// 递归各字段之和；union 取 1（C 语义 union 初始化只填第一成员——
-/// 教学近似）；其余（函数/void 等）按 1 计。
+/// 递归各字段之和；union = 首成员叶数（M09-A2 处方，2026-11-02，#433
+/// ——C11 §6.7.9p17 union 初始化填第一成员，首成员 int[3] 应吃 3 个
+/// 扁平元素；旧落 else 臂按 1 计致 elision 重组元素错位）；其余
+/// （函数/void 等）按 1 计。
 fn TypeChecker::agg_scalar_leaf_count(
   self : TypeChecker,
   ty : @ast.Type,
@@ -472,6 +491,18 @@ fn TypeChecker::agg_scalar_leaf_count(
           1
         }
       }
+      None => 1
+    }
+  } else if ty.kind() is TK_Union {
+    // M09-A2 处方：union 叶数 = 首成员叶数（C11 §6.7.9p17——union 初始化
+    // 填第一成员）；缺表/空成员按 1 兜底
+    match self.unions.get(ty.name()) {
+      Some(sym) =>
+        if sym.fields.length() > 0 {
+          self.agg_scalar_leaf_count(sym.fields[0].0)
+        } else {
+          1
+        }
       None => 1
     }
   } else {

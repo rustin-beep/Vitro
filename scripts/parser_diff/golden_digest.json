@@ -999,7 +999,7 @@
         "union_array.c": "457bf51f8b712729",
         "union_basic.c": "2ef192dacbf76421",
         "union_int_member.c": "1818b7cf879e65ab",
-        "union_member_struct_assign.c": "10daf301abb9c686",
+        "union_member_struct_assign.c": "7bca700ee036f7ce",
         "union_member_widths.c": "f6a1b4bd15dd79a6",
         "union_size_access.c": "0ce058706e4c49b3",
         "unsigned_add_wrap.c": "bc002fdbaf38f164",

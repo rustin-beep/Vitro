@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
+
+- **#410 主案（clangOutcome 崩溃域失明）**：clang 运行段进程崩溃/超时一律
+  `status:"OK"`、退出码只作 `EXIT:<code>` 尾行进比对域——两侧等价死被判
+  `VITRO_TRAP`（桶语义「vitro 挂 clang 无事」失真）。新纯函数
+  `clangRunCrashOf(rc, errCode, signal)`（rc<0 哨兵域〔ETIMEDOUT 语义化
+  TIMEOUT〕/ win32 NT 异常码域 ≥0x80000000 / POSIX 信号形态）→ clangOutcome
+  运行段崩溃态改判 `CLANG_CRASH`（与 parseVitro 的 CRASH 对称）；`bucketOf`
+  新分支：vitro 侧 TRAP/CRASH = 两侧等价死 → **AGREE**（vitro 活着跑完 =
+  行为分歧面归 WRONG_VALUE）。
+- **#410 EXIT 哨兵可读化 + 超时收割**：`EXIT:TIMEOUT` / `EXIT:<信号名>` /
+  `EXIT:SPAWN:<code>` / `EXIT:<NT码>` 人类可读优先（原 `EXIT:-98` 读者
+  误读为平台差异崩溃码）；win32 超时路径 `taskkill /T /F /IM` 收割（运行中
+  exe 文件被锁，收割须在 rmSync 前——死循环变体超时残留实锤，本批重冻
+  实战触发 1 次）。
+- **#410 P2-2（bucketOf 臂选择不对称）**：删「js 非 OK + native OK → 取
+  native」第二分支——js 臂 TRAP/CRASH 在「native 输出同 clang」时被静默
+  吞成 AGREE（只有 native 臂异常会报警）。既有锚 1 处随语义翻新
+  （`bucketOf(ok, CRASH_js, ok_native)` AGREE→ARM_DIVERGENCE，依据 issue
+  评论亲跑六组表第 2 行）。
+- **#412（freeze 恶化翻桶无闸）**：1f61dfb3 一次 55 条环境伪影翻转静默入库
+  的病灶面——新 `FREEZE_FLIP_GATE=5` 常量 + `gateWorseningFlips`（rank
+  升高且非 volatile；改善方向不拦）+ freeze 落盘前恶化 ≥5 条 fail loud
+  （rc=2 逐条清单），`-confirm-flips` 显式放行；volatile 豁免与对账侧
+  classifyAgainstBaseline 语义对称；非 freeze 传 `-confirm-flips` 即红。
+- **基线重冻**（判定域语义变更连坐）：318 条全量真跑，翻桶 2 条全为预测
+  改善方向——`lc_108|div2shift`、`lc_704|div2shift` 均 `VITRO_TRAP→AGREE`
+  （clang 栈溢出真崩/20s 超时 = 两侧等价死归位）；`lc_75|static_inject`
+  保持（clang UB 碰幸不崩）；P2-2 零恶化翻桶（无存量吞条目，修复为防
+  未来面）；重冻后对账轮 PASS（AGREE 251→253、判缓存 318 全命中）。
+- 锚：新增 4 测试（clangRunCrashOf 域 / CLANG_CRASH 分桶等价死 / P2-2
+  臂对称 / #412 闸边界 4-5-豁免三态），J9 双层红实录（SyntaxError 层 +
+  行为断言层 VITRO_TRAP↔AGREE 双红）；`scripts/corpus_fuzz` 测试 34 绿。
 ### test(moonbit): 审阅 v2 批 A2——测试锚诚实化（修锚不修行为：双形态锚 + KNOWN_DIVERGENCE 标注，2026-11-01）
 
 - **语义**：锚断言值 = 当前实际行为（CI 真绿非假绿），与 C 真值不一致处紧邻注释标
@@ -39,6 +72,53 @@
   + M34b 七处推断失真面零锚登记；**只标不修**（实质修复留教学真值源批）。
 - **计数连坐**：裸 971→995、native 1167→1191（+24 = verify 23 + vfs 1）；根 README×3 / moonbit
   双 README / docs/current×3；testcount + facts `--run --strict check` 双绿。
+
+### fix(scripts): PR #414 审阅处置批——#410/#412 判定域语义修正九案（2026-11-02）
+
+- **P1（合法 uint32 返回码误判崩溃，真回归）**：原判据 `rc >= 0x80000000`
+  把 `return -1` 的 win32 进程码 0xFFFFFFFF / INT_MIN 的 0x80000000 误判
+  CLANG_CRASH（合法返回值域与 NT STATUS 域重叠、无区分力）——收窄为
+  **`(rc & 0xFFFF0000) >>> 0 === 0xC0000000`**（NT 严重码子域 0xC000xxxx：
+  栈溢出 0xC00000FD / 访问违例 0xC0000005 / 段错误 0xC0000011）。反例锚
+  4294967295/INT_MIN→null + `return -1` 三方同形端到端 AGREE 锚。**坑：
+  JS `&` 结果是 int32（0xC0000000 位型为负），与正数字面量比较恒 false，
+  须 `>>> 0` 转 uint32——单测实测踩中**。
+- **P2-1（编译段进程级异常混入 REJECT 桶）**：clang spawn 失败/超时
+  （PATH 竭尽/锁文件连败）原判 REJECT——正是 1f61dfb3 一次 55 条
+  AGREE→CLANG_REJECT 伪影的机理面；编译段同走 `clangRunCrashOf` →
+  CLANG_CRASH（`EXIT:SPAWN:<code>` 并入 out 可诊断）。
+- **P2-2（taskkill /IM 误杀，收割移除）**：`taskkill /T /F /IM a.exe`
+  按映像名收割会误杀并发 worktree 的同名 a.exe（审阅 probe_taskkill
+  实测杀到无辜进程、目标早被 spawnSync 清掉、全量 freeze 实战 rc=128
+  无匹配）；#410 登记的残留形态在 node 26.12.1+典型死循环未复现——
+  误杀面实锤 vs 残留未复现，删收割。
+- **P3-1（闸接线无锚）**：抽 `shouldBlockFreezeFlips(worseCount, confirmed)`
+  纯函数 + 闸三连轮 e2e（mini 真跑 9 条 CLANG_REJECT 篡改基线构造恶化 ≥5
+  → 闸红 rc=2 + **mtime 零写副作用断言** + `--confirm-flips` 放行 rc=0）；
+  **突变实验 M6（闸恒假）/M7（删 confirm 守卫）双实证被 e2e 杀**。
+- **P3-2（die 前已落副作用）**：freeze 轮 judgeCachePut 收集 pending、
+  闸判定通过后统一写盘（含 pruneJudgeEpochs）——闸红路径零写副作用，
+  杜绝「缓存新桶+基线旧值 ⇒ 下轮误报桶恶化」。
+- **P3-3（`--confirm-flips` 双破折号）**：parseArgs 双破折号归一（issue
+  处方文案与 CLI 惯例兼容，单破折号原形态不回归）。
+- **P3-4（CLANG_CRASH × REJECT 混桶）**：clang 崩 + vitro 编译拒绝归
+  **VITRO_REJECT**（rank 2，原 WRONG_VALUE rank 4——「编译拒绝」与
+  「值不同」分桶，且不再易误触发 freeze 恶化闸）；两臂 OK 但互不相同仍
+  ARM_DIVERGENCE 抢先（臂间分歧优先）。
+- **P3-5 挂账（等价死不看死因）**：crash 类别 × trap 类别配对表待 trap
+  结构化出口（机器可读 trap_code）后落地——现「clang 段错误(UB) + vitro
+  步数耗尽」同判 AGREE 的粗糙面保留，由对账轮与 #412 闸兜底。
+- **P3-6**：`Outcome.status` 注释补 CLANG_CRASH。
+- 锚：处置批新增 7 测试（P1 反例/端到端、P3-4、P3-1 纯函数四态、P3-3、
+  P2-1 编译段 e2e、闸三连轮 e2e），分案红实录 5 红（35 绿）；全量 41/41
+  绿；tsc/oxlint 全绿。
+- **突变轮与重 e2e 解耦**（Mutation gate 时长爆炸治本）：闸三连轮 e2e
+  真跑 ~130s，survived 突变体逐个跑满完整闭包 ⇒ 乘法爆炸（同批无三连轮
+  2.4min vs 含三连轮 26min+ 未完实锤）——mutation_gate 干跑与 Stryker
+  spawn 两处设 `CF_SKIP_E2E=1`，三连轮在该轮 skip（40 pass + 1 skipped，
+  秒级）；**代价（诚实口径）**：M6/M7 类只有 e2e 能杀的接线突变在突变轮
+  判 survived——survived 清单含 e2e-only 可杀体，杀阵由常规轮 CI test 步
+  全量跑 + 本地突变实录（M6/M7 双实证）保证。
 
 ### fix(gateway): #399 step.next 批=1 逐帧口径行末不变量治本——跨批 pending 清标注改 pop 前批首帧参照 + 锚双形态化（2026-10-31）
 

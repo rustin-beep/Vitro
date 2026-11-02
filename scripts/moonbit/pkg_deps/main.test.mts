@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { findCycle, longestPrefixLevel, loadRules, parseDeps, scan, verdict } from "./main.mts";
+import { findCycle, longestPrefixLevel, loadRules, parseDeps, scan, scanBridges, verdict, verdictBridges } from "./main.mts";
 import type { PkgInfo, RulesDoc } from "./main.mts";
 import { projectRoot } from "../../internal/capi.mts";
 
@@ -68,12 +68,48 @@ test("findCycle：造 A→B→A 必须报环；无环返回空", () => {
   assert.deepEqual(findCycle(dag, ["a", "b"]), []);
 });
 
+test("scanBridges：只认 marker(\"name\") 完整形态，注释裸字样与 _build 不算", () => {
+  const root = tmp({
+    "root/gw/export.mbt": '#export_name("invoke")\n// 提到 #export_name 但无完整形态\n#export_name( "reset" )\n',
+    "root/_build/x/export.mbt": '#export_name("built")\n',
+    "root/plain/a.mbt": "fn f() {}\n",
+  });
+  const rd = rules({ root: path.join(root, "root").replace(/\\/g, "/"), bridges: { marker: "#export_name", files: {} } });
+  const found = scanBridges(rd);
+  assert.deepEqual([...found.keys()], ["gw/export.mbt"]);
+  assert.deepEqual(found.get("gw/export.mbt"), ["invoke", "reset"]);
+});
+
+test("verdictBridges：绿 / 第二座桥 / 桥缺席 / 导出面漂移 / 空表 五路（判据⑤，refs #438）", () => {
+  const b = { marker: "#export_name", files: { "gw/export.mbt": ["invoke", "reset"] } };
+  const good = new Map([["gw/export.mbt", ["invoke", "reset"]]]);
+  assert.equal(verdictBridges(b, good), true);
+  // 第二座桥：登记外文件出现（pure-py 规则 2b「>1 红」对位）
+  assert.equal(verdictBridges(b, new Map([["gw/export.mbt", ["invoke", "reset"]], ["sneaky/export.mbt", ["x"]]])), false);
+  // 桥缺席：登记文件零 marker（「=0 红」对位）
+  assert.equal(verdictBridges(b, new Map()), false);
+  // 导出面漂移：多/少一个名都红
+  assert.equal(verdictBridges(b, new Map([["gw/export.mbt", ["invoke"]]])), false);
+  assert.equal(verdictBridges(b, new Map([["gw/export.mbt", ["invoke", "reset", "zz"]]])), false);
+  // 空登记表：空集不得绿
+  assert.equal(verdictBridges({ marker: "#export_name", files: {} }, good), false);
+});
+
+test("真实 rules.json 带 bridges 段且真仓两桥逐项相等（判据⑤真实面）", () => {
+  const rd = loadRules();
+  assert.ok(rd.bridges !== undefined, "真实 rules.json 必须带 bridges 登记表（缺席 = 判据⑤脱管）");
+  assert.ok(Object.keys(rd.bridges.files).length >= 2, "至少两座合法出口桥（gateway/wasm + teaching/langpack）");
+  const found = scanBridges(rd);
+  assert.equal(verdictBridges(rd.bridges, found), true, `真仓桥面应与登记相等，实际：${JSON.stringify([...found])}`);
+});
+
 test("真实仓库端到端：默认 / -check / --selftest 全绿；未知参数 exit 2", () => {
   const root = projectRoot();
   const rd = loadRules();
   const { pkgs, order } = scan(rd);
   assert.ok(pkgs.size > 10);
-  assert.equal(verdict(rd, pkgs, order), true, "真实包图应满足三判据");
+  const bridges = scanBridges(rd);
+  assert.equal(verdict(rd, pkgs, order, bridges), true, "真实包图应满足五判据");
   for (const args of [[], ["-check"], ["--selftest"]]) {
     const r = spawnSync(process.execPath, [MAIN, ...args], { cwd: root, encoding: "utf8" });
     assert.equal(r.status, 0, `${args.join(" ") || "(默认)"}: ${r.stdout}${r.stderr}`);

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "_comment": "消费侧冒烟基线（审阅 v2 A8 批 refs #438——同业 wax embed-smoke『workspace 外假想消费者真装载/真调用，证链接面不带』的 Vitro 对位）。export 面基线不在此重复——单源 = scripts/moonbit/pkg_deps/rules.json 的 bridges（源码 #export_name 登记），本闸拿产物 export/exports 段与之对账（源码声明 ↔ 产物字节双向）。改宿主供给面/教学载荷顶层结构须改本表。",
+  "wasm": {
+    "_note": "gateway/wasm 产物（wasm-gc）裸编译 Module.imports() 的模块集须 ⊆ allowed_import_modules（出现别的模块 = 宿主被迫供给规范外桥，链接面膨胀）；wasm:js-string 函数名集须 == js_string_functions（js-string builtins 提案的 13 内建里引擎实际只要这 6 个——多一个即宿主负担扩大，少一个即产物形态变）。「_」常量模块只断言在场，条数随文案走不锚。",
+    "allowed_import_modules": ["_", "wasm:js-string"],
+    "js_string_functions": ["charCodeAt", "concat", "equals", "fromCharCodeArray", "fromCodePoint", "length"]
+  },
+  "langpack": {
+    "_note": "teaching/langpack 产物（js）经动态 import() 消费：导出键集与 bridges 登记相等；texts_json() 返回可解析 JSON，顶层键集 == payload_top_keys（content_data.baked_payload_json 四段并装——#130 批③b 口径）。",
+    "payload_top_keys": ["builtin_notes", "error_catalog", "suggestions", "trap_messages"]
+  }
+}

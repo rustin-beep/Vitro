@@ -40,6 +40,14 @@
     "cmd"
   ],
   "_exempt_note": "cmd/* 是差分工具层（dump_tokens / dump_ast / dump_typeck / dump_compile），按定义消费者，可依赖任意层。",
+  "bridges": {
+    "marker": "#export_name",
+    "files": {
+      "gateway/wasm/export.mbt": ["engine_version", "invoke", "protocol_version", "reset"],
+      "teaching/langpack/export.mbt": ["texts_json"]
+    }
+  },
+  "_bridges_note": "桥唯一性登记（审阅 v2 A8 批 refs #438——同业 pure-py tools/boundary-check.sh 规则 2b『适配器文件数 >1 红、=0 红』的 Vitro 对位）：#export_name 是引擎→宿主的出口桥标记（foreign_library 壳包独有），全 workspace 出现 #export_name(\"…\") 的 .mbt 文件集与各自导出名集须与本表逐项相等——登记外文件出现 = 悄悄长出第二座桥（红）；登记文件缺席或零标记 = 桥没了、宿主断供（红）；导出名集漂移 = 出口 ABI 变更未登记（红）；files 空表亦红（空集不得绿）。加桥/改导出面须改本表并连坐 scripts/consumer_smoke 的消费侧基线。",
   "_level_source_note": "分层数值取自总计划 §4：L0 零依赖（source/opcode/util/fs——fs 为 vendored 自 moonbitlang/x@0.5.5 的 native-only 文件系统件，2026-09-28 唯一依赖清除 B 路线批）→ L1 诊断契约（diag）→ L2 抽象语法（ast）→ L3 名字单源（names）+ 标准库事实包（stdlib——方案 A P1 起，设计稿《标准库单源与头文件多文件设计20261010》）→ L4 前端（lexer/parser）→ L5 语义（typeck/containers/libc）→ L6 发射（codegen/bytecode）→ L7 执行（memory/host/vm）→ L8 会话协议（session/protocol/gateway/time_travel/teaching·steps/diagnostics）→ L9 教学智能（analysis——time_travel 与 teaching/steps 于 2026-10-01、diagnostics 于 2026-10-02 先后降 L8〔gateway 消费所致〕）。",
   "_subpackage_note": "子包（lexer/token、lexer/internal/* 等）按最长前缀匹配继承父包层号；同层内依赖合法。",
   "_known_conflict": "moonbit/AGENTS.md『包清单与状态』表把 lexer 标为 L2、parser 标为 L3，与本表（总计划 §4 的 L4）相差 1–2 档——本表以总计划为准；该手册标注已同批修正为 L4。",

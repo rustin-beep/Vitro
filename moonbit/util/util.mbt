@@ -3,7 +3,11 @@
 // G 表登记。四族件的来历：
 //
 // - `utf8_len`：`@utf8.encode(s).length()` 散拼 ≥8 处收口（encode 对非法
-//   UTF-8 静默产空串——S2/S5 事故同族根源，单点化后口径只剩一处可审计）；
+//   UTF-8（孤立代理）**panic "invalid surrogate pair"**——abort 不可恢复，
+//   M38b 两轮探针实测推翻旧「静默产空串」叙事〔S2/S5 时代的 core 语义
+//   已变：js 替换 U+FFFD / native panic / wasm trap 三后端分叉，M06 A1〕；
+//   协议输入侧孤代理入口已由 json_parse 拒绝掐断〔B6 批 #429〕，本薄包
+//   的 panic 面对协议输入不可达；单点化后口径只剩一处可审计）；
 // - `str_cmp`：bytecode/emitter 与 cmd/dump_compile 两份孪生收口；
 // - `i64_to_i32_bits`：parser/decl 上提（`Int64::to_int` 语义未文档化，
 //   位截断自己写——陷阱 #25）；
@@ -17,8 +21,13 @@
 /// String 的 UTF-8 字节长度（与 Rust `String::len()` 同口径；与
 /// `String::length()` 的码元数区分——多字节字符两者不等）。
 ///
-/// 非法 UTF-8 的现状照 `@utf8.encode` 语义（静默产空串 ⇒ 长度 0），
-/// 本包不新增判定——「非法 UTF-8 怎么算」的审计点只有这里。
+/// 非法 UTF-8（孤立代理码元）现状照 `@utf8.encode` 语义 = **panic
+/// "invalid surrogate pair"**（abort 不可恢复——M38b 两轮探针实测，
+/// 推翻本头注旧称的「静默产空串 ⇒ 长度 0」；core encode 现按后端
+/// 原语实现，js 替换 U+FFFD / native panic / wasm trap 三臂分叉，
+/// M06 A1）。协议输入侧的孤代理入口已由 json_parse 拒绝掐断
+/// （B6 批 #429）——本 panic 面对协议输入不可达。「非法 UTF-8
+/// 怎么算」的审计点只有这里。
 pub fn utf8_len(s : String) -> Int32 {
   @utf8.encode(s).length()
 }

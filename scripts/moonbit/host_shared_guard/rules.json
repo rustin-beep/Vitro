@@ -62,15 +62,11 @@
       "def": "util/util.mbt",
       "def_anchor": "pub fn utf8_len(",
       "consumers": [
-        "bytecode/cstring.mbt",
         "bytecode/memory.mbt",
         "host/host_format.mbt",
         "lexer/internal/pp/expander.mbt",
         "lexer/internal/pp/pp.mbt",
         "lexer/internal/scanner/scanner.mbt",
-        "parser/expr.mbt",
-        "typeck/expr.mbt",
-        "typeck/init.mbt",
         "util/util_qc_test.mbt",
         "util/util_wbtest.mbt",
         "vm/state.mbt"

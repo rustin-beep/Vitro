@@ -187,7 +187,34 @@ fn parse_array(c : JsonCursor) -> Json raise JsonParseError {
 }
 
 ///|
-/// JSON 字符串（含全套转义；\uXXXX 产 BMP 码元，代理对原样透传拼接）。
+/// \u 后 4 位十六进制 → 码值（非 hex 字符 raise；B6 批从 117 分支抽出，
+/// 高/低代理两段解析共用）。
+fn parse_hex4(c : JsonCursor) -> Int32 raise JsonParseError {
+  let mut code = 0
+  for _ in 0..<4 {
+    let h = advance(c)
+    let d = if h >= 48 && h <= 57 {
+      h - 48
+    } else if h >= 97 && h <= 102 {
+      h - 87
+    } else if h >= 65 && h <= 70 {
+      h - 55
+    } else {
+      -1
+    }
+    if d < 0 {
+      raise JsonParseError::Fail(
+        message="\\u 转义含非十六进制字符",
+        offset=c.pos,
+      )
+    }
+    code = code * 16 + d
+  }
+  code
+}
+
+///|
+/// JSON 字符串（含全套转义；\uXXXX 产 BMP 码元，代理对校验后透传拼接）。
 fn parse_string(c : JsonCursor) -> String raise JsonParseError {
   expect(c, 34) // "
   let buf = StringBuilder()
@@ -220,28 +247,53 @@ fn parse_string_body(
         114 => buf.write_char('\r')
         116 => buf.write_char('\t')
         117 => {
-          // \uXXXX
-          let mut code = 0
-          for _ in 0..<4 {
-            let h = advance(c)
-            let d = if h >= 48 && h <= 57 {
-              h - 48
-            } else if h >= 97 && h <= 102 {
-              h - 87
-            } else if h >= 65 && h <= 70 {
-              h - 55
-            } else {
-              -1
-            }
-            if d < 0 {
+          // \uXXXX（B6 批 #429：孤立代理拒绝——serde_json / RFC 8259 §8.2
+          // 口径。高代理 D800-DBFF 后必须紧跟 \uDC00-DFFF 转义（代理对，
+          // 两码元透传拼接 = 合法增补平面字符）；孤立高代理/低代理一律
+          // JsonParseError——放行会让 String 携带孤立代理，下游
+          // utf8_len/utf8_bytes（@utf8.encode 薄包）panic "invalid
+          // surrogate pair"（abort 不可恢复，M38 A2 两轮探针实录），且
+          // core encode 三后端分叉（js U+FFFD / native panic / wasm
+          // trap，M06 A1）——本入口即全仓孤代理唯一闸门（gateway
+          // protocol / cmd vitro_wasm invoke 等不受信面全经此函数）。
+          // 同族另一面（lexer 源码侧 lone surrogate）归 #419 W4 批。
+          let code = parse_hex4(c)
+          if code >= 0xD800 && code <= 0xDBFF {
+            // 高代理：前瞻消费 \uXXXX，非低代理转义即拒（serde_json
+            // "lone leading surrogate" 同口径——无回退替换语义）
+            if peek(c) != 92 {
               raise JsonParseError::Fail(
-                message="\\u 转义含非十六进制字符",
+                message="孤立高代理 \\uD800-\\uDBFF 须紧跟低代理转义",
                 offset=c.pos,
               )
             }
-            code = code * 16 + d
+            ignore(advance(c)) // \
+            if peek(c) != 117 {
+              raise JsonParseError::Fail(
+                message="孤立高代理 \\uD800-\\uDBFF 须紧跟低代理转义",
+                offset=c.pos,
+              )
+            }
+            ignore(advance(c)) // u
+            let low = parse_hex4(c)
+            if !(low >= 0xDC00 && low <= 0xDFFF) {
+              raise JsonParseError::Fail(
+                message="高代理后须为低代理转义 \\uDC00-\\uDFFF",
+                offset=c.pos - 1,
+              )
+            }
+            // 代理对两码元透传拼接（合法 String 形态——for-in 迭代出
+            // 单码点，与修复前合法路径行为不变）
+            buf.write_char(code.unsafe_to_char())
+            buf.write_char(low.unsafe_to_char())
+          } else if code >= 0xDC00 && code <= 0xDFFF {
+            raise JsonParseError::Fail(
+              message="孤立低代理 \\uDC00-\\uDFFF 不允许",
+              offset=c.pos - 1,
+            )
+          } else {
+            buf.write_char(code.unsafe_to_char())
           }
-          buf.write_char(code.unsafe_to_char())
         }
         _ =>
           raise JsonParseError::Fail(
@@ -359,8 +411,13 @@ fn accumulate_double(text : String) -> Double {
       exp_neg = text[i] == '-'
       i += 1
     }
+    // B6 批（#429 / M38 A1）：指数**饱和累积**——旧裸 `exp*10+d` 在
+    // Int32 回绕（"1e4294967297" wrap 成 1 ⇒ 静默错值 10.0）；饱和上界
+    // 1e6（|exp|>400 的值域已必 inf/0，见下方应用段，精度无损）。
     while i < text.length() && text[i] >= '0' && text[i] <= '9' {
-      exp = exp * 10 + (text[i] - '0').to_int()
+      if exp < 1_000_000 {
+        exp = exp * 10 + (text[i] - '0').to_int()
+      }
       i += 1
     }
     if exp_neg {
@@ -368,13 +425,24 @@ fn accumulate_double(text : String) -> Double {
     }
   }
   let mut v = int_part + frac
-  // 指数应用（10^|exp| 逐乘——|exp| 协议域内个位到百位）
+  // 指数应用（10^|exp| 逐乘）。B6 批（#429 / M38 A1）：域边界 break——
+  // v 到 inf/±0 后继续乘除是恒等空转（inf*10=inf、0/10=0），旧循环对
+  // `1e2147483647` 跑 ~21 亿次（11 字节换 ~3s CPU 的线性 DoS，js 臂
+  // 实测 2.9s）。Double 域内最多 ~700 次迭代即达边界，循环 O(1)；
+  // 与 strtod 的 ±inf/0 语义一致（值域超限不报错——repr 保真通道
+  // 恒输出原文，stringify 不受影响）。
   let mut k = 0
   while k < exp {
+    if v.is_inf() || v == 0.0 {
+      break
+    }
     v = v * 10
     k += 1
   }
   while k > exp {
+    if v.is_inf() || v == 0.0 {
+      break
+    }
     v = v / 10
     k -= 1
   }

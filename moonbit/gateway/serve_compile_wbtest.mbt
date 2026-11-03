@@ -438,14 +438,47 @@ test "issue350_parse_recovery_no_illegal_loc" {
 /// strip_bom 经 @utf8.encode 对孤立代理项 abort（core 编码器，W4 第四臂
 /// 钉出）；修后：UTF-16 合法性清洗（孤立代理 → U+FFFD，#363 口径）后续跑，
 /// 注释位代理项被替换后编译照常通过。
+///
+/// **B6 批（#429，2026-11-04 rebase 翻面）**：`\uD800` **转义形态**在
+/// json_parse 层改判**拒绝**（serde_json / RFC 8259 §8.2 口径，fail loud
+/// 优于静默有损替换）——本锚期望翻面为协议错「非法 JSON 请求」；#419
+/// 的清洗续跑语义保留给**码元直排形态**（真孤代理码元走普通字符路径
+/// 透传，见 `serve_compile_lone_surrogate_raw_b6`）——两通道分工：
+/// 转义=json_parse 拒（#429）、直排=透传+边界清洗（#419）。「不 abort」
+/// 不变量两形态均成立（转义形态入口即拒，到不了 encode）。
 test "serve_compile_lone_surrogate_no_abort" {
   let s = @session.Session::new()
-  // JSON 转义 \uD800 → String 含孤立高代理项（json_parse 原样透传）
+  // JSON 转义 \uD800 → json_parse 拒绝（B6 #429）→ 协议错回包
   let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { /* \\uD800 */ return 0; }\\n\"}}"
   let (r, _) = serve_handle(s, req)
   assert_true(
+    r.contains("非法 JSON 请求"),
+    msg="转义形态孤代理须入口拒绝（B6 #429 翻面 #466/#419 透传锚）",
+  )
+  assert_false(r.contains("\"ok\":true"), msg="不得续跑")
+}
+
+///|
+/// #419 直排形态锚（B6 批 #429 补，2026-11-04）：帧文本含**真孤代理码元**
+/// （宿主不经 JSON 文本化直接拼帧——js 侧 `String.fromCharCode(0xD800)`
+/// 拼入的形态）→ json_parse 普通字符路径透传 → dispatch/pp 边界清洗
+/// （#419 修复体）替换 U+FFFD → 编译续跑 ok:true。#419 的清洗语义由本锚
+/// 承接（原转义形态锚已翻面为拒绝）。
+test "serve_compile_lone_surrogate_raw_b6" {
+  let s = @session.Session::new()
+  // 真孤代理码元直排进帧文本（宿主 fromCharCode 拼帧形态；MoonBit 源层
+  // \u{D800} 字面量非法〔要求标量值〕，经 unsafe_to_char 构造——json_parse
+  // 旧透传路径同款 API）
+  let sb = StringBuilder()
+  sb.write_string(
+    "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { /* ",
+  )
+  sb.write_char((0xD800).unsafe_to_char())
+  sb.write_string(" */ return 0; }\\n\"}}")
+  let (r, _) = serve_handle(s, sb.to_string())
+  assert_true(
     r.contains("\"ok\":true"),
-    msg="孤立代理项替换后续跑，编译通过",
+    msg="码元直排形态清洗续跑（#419 语义保留）",
   )
 }
 
@@ -453,12 +486,34 @@ test "serve_compile_lone_surrogate_no_abort" {
 /// #419 续（2026-11-03）：多文件承载形态 `params.files[].source` 的
 /// 孤立代理清洗——arm4 语料帧实锤（首修只洗顶层 source，files 形态
 /// compile 帧 trap 于 diagnostics.split_lines 的 @utf8.encode）。
+///
+/// **B6 批（#429，2026-11-04 rebase 翻面）**：转义形态入口拒绝（同
+/// `serve_compile_lone_surrogate_no_abort` 翻面注）；files 形态的直排
+/// 清洗语义由 `serve_compile_lone_surrogate_files_raw_b6` 承接。
 test "serve_compile_lone_surrogate_files_no_abort" {
   let s = @session.Session::new()
   let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"files\":[{\"filename\":\"a.c\",\"source\":\"int main() { /* \\uD800 */ return 0; }\\n\"}]}}"
   let (r, _) = serve_handle(s, req)
   assert_true(
+    r.contains("非法 JSON 请求"),
+    msg="files 转义形态同款入口拒绝（B6 #429）",
+  )
+}
+
+///|
+/// #419 续·直排形态（B6 批 #429 补）：files[].source 含真孤代理码元 →
+/// 透传 + 清洗续跑（原 #419 files 形态语义，arm4 语料帧形态）。
+test "serve_compile_lone_surrogate_files_raw_b6" {
+  let s = @session.Session::new()
+  let sb = StringBuilder()
+  sb.write_string(
+    "{\"id\":1,\"method\":\"compile\",\"params\":{\"files\":[{\"filename\":\"a.c\",\"source\":\"int main() { /* ",
+  )
+  sb.write_char((0xD800).unsafe_to_char())
+  sb.write_string(" */ return 0; }\\n\"}]}}")
+  let (r, _) = serve_handle(s, sb.to_string())
+  assert_true(
     r.contains("\"ok\":true"),
-    msg="files[].source 孤立代理同样清洗后续跑",
+    msg="files 直排形态清洗续跑（#419 语义保留）",
   )
 }

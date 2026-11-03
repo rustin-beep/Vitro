@@ -1,29 +1,70 @@
 ## [Unreleased]
 
-### fix(engine): PR #474 审阅处置——P2 %Nc 流尽 EOF + P3 -nan 符号/nan( 未闭合（双壳，2026-11-04）
+### fix(engine+util): #429 审阅 v2 批 B6——json_parse 孤代理入口拒绝 + C 字节串「码元=字节」承载治本（2026-11-03）
 
-- **P2 首转换前输入失败 → EOF**（C11 §7.21.6.2 p16）：`scanf("%5c")` 输入 "ab"
-  → r=-1（clang 双派；修前返 0）——matched==0 且**流尽**中止（exhausted 而非
-  不匹配）时返 EOF；「仅空白 + %d」存量边角同批顺治；不匹配（字面失配/格式
-  错/nan( 未闭合）仍返 0 不变。sscanf 壳补 exhausted 位（五置位点）+ 尾部
-  同判定。锚 `scanf_c_width_partial_eof`（J9 stash 证红）。
-- **P3 -nan 符号位保留**：scanf_float_value NAN 分支 neg → 0xFFF8..0 符号位
-  NaN（clang 双派 signbit=1；修前静态 not_a_number 丢符号）。锚
-  `scanf_negnan_sign_and_unclosed`（J9 证红）。
-- **P3 nan( 未闭合/域外 = 匹配失败**：NAN 括号体扫描按 C11 6.4.2.3 的
-  n-char-sequence 域 [a-zA-Z0-9_] 判定——未闭合/域外 → 空 token 匹配失败
-  r=0（修前回退成合法 "nan" 误判成功 r=1）。**真值分叉登记**：UCRT 返 -1
-  （输入失败边）、glibc 返 0（匹配失败边）——择 glibc 边（速查表 S4b）。
-- **§四补枚**：`%hhd` 负超域窄档锚（LLONG_MIN 低 8 位 0x00，t9 探针双派）。
-- **P1 lexer digest 漏连坐**（首笔 CI 红）与 conv_specs J9 探针 e→p 见前笔；
-  本笔 README cargo test 历史快照复原 1209（W4 批 1235 误伤 + 本批 rebase
-  叠加 1240 的第三犯修正）。
-- **演化建议落盘**（审阅 §五，未过闸直接进 skill references）：D23「诊断面
-  认/执行面不认三面不一致」形态（j/z/t 长度修饰族存量缺口登记）/ safe-delete
-  上限坑 / 新语料五 digest 连坐清单。
-- 数字口径：moon test 1243（+3 处置锚）/ native 1292；vm_diff 817 SAME
-  零漂移（EOF 判定对既有语料无影响）。
-
+- **json_parse `\uXXXX` 孤立代理拒绝**（M38 A2 / M06 A1，serde_json / RFC 8259 §8.2
+  口径）：高代理 D800-DBFF 后必须紧跟 `\uDC00-DFFF` 转义（否则 JsonParseError）、
+  孤立低代理一律拒——原放行使 String 携带孤代理，下游 `utf8_len`/`utf8_bytes`
+  （@utf8.encode 薄包）panic "invalid surrogate pair"（abort 不可恢复）且 core
+  encode 三后端分叉（js U+FFFD / native panic / wasm trap）。本入口即全仓孤代理
+  唯一闸门（gateway protocol / cmd vitro_wasm invoke 不受信面全经此函数）——修后
+  M06 A1 三臂三形态分叉（api `"\uD800"` 载荷）**不可达**，三臂同回协议错
+  `{"kind":"protocol","message":"非法 JSON 请求"}`（82B 逐字节同）；#419 lexer
+  源码侧 lone surrogate 是同族另一面，归 W4 尾件批（边界在案）。
+- **json_parse 大指数线性 DoS 销案**（M38 A1）：`1e2147483647` 实测 js 臂 ~2.9s
+  （exp Int32 累积 wrap + 21 亿次乘法空转）——修复双件：指数**饱和累积**（|exp|>1e6
+  停止累加，wrap 错值 `1e4294967297`→10.0 一并治）+ 域边界 **break**（v 到
+  inf/±0 后继续乘除恒等空转）；循环 O(1)（≤~700 次达 Double 域边界），三臂
+  `{"method":…,"id":1e2147483647}` 载荷 236ms 三臂同回包；strtod 语义 ±inf/0、
+  repr 保真通道不受影响（stringify 恒输出原文）。
+- **C 字符串字面量「码元=字节」承载治本**（M22 A-1 / M07 A6 / M09 D1 四层定责
+  闭环）：StringLiteral.value 统一 Latin-1 双射承载——解码层（scanner/string.mbt）
+  非转义源字符按 UTF-8 **字节拆装**码元（转义路径产码元=字节值系 P4 既有形态），
+  `\xE4` 落单字节 E4、源内「你」按 UTF-8 落 3 字节——**两面同时对齐三方编译器**
+  （Win clang 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8；修前 `\xE4`→`C3 A4` 双
+  字节膨胀，sizeof("\xE4")=2 vs clang 1、strlen/strspn/strcmp 字节口径函数连带
+  错值）。口径史收束：P4 双分支（转义对/源字符错）→ #66 整串 UTF-8（源字符对/
+  转义错）→ B6 拆装（两面全对——「String 承载不区分来源」的时代性妥协终结）。
+- **四层消费侧同步换口径**（计长=码元数 `length()`）：typeck 三处
+  （resolve_string_literal 定型 / init W3008 判定 / char g[] 回写）+ parser 预定型
+  + bytecode cstring 单源（bytes 逐码元直出 / len=码元数）+ vm write_cstring——
+  「同实现两符号」等价约束延续；**argv 通道拆分**（write_cstring_utf8——宿主
+  Unicode 串按 UTF-8 写入，与 argv_region_footprint 计账同口径，中文 argv 无尾部
+  间隙回归）；host 层零改动（printf %s / puts / fputs 已字节直推——M22「错在
+  喂进来的字节」定责成立，装载修复后自动对齐）。
+- **A2 锚翻面**（B 批红锚清单销案）：锚 A9 `char_arr_deduce_size_writeback_utf8_ds`
+  （3→**2**）/ A10 `char_arr2d_substring_w3008_utf8_ds`（W3008 假警→**零警**）/
+  `string_literal_byte_len`（\xff 计 2→**1**）/ `cstring_bytes_utf8_passthrough_66`
+  （wbtest 改拆装形态，引擎行为不变）——KNOWN_DIVERGENCE 全部销案标注；A10 补
+  反向锚（真实超长 `"ab"` 进 char[1][2] 仍 W3008，防翻面过宽）。
+- **语料与基线连坐**：新语料 `corpus/baseline/string_escape_latin1_bytes.c`
+  （M22 p04 全形态：hex/八进制/源字符混装 + strspn/sizeof/char g[] 面，双臂 ==
+  clang 逐字节）；五家 digest 受控重冻（lexer 7 + parser 6 + typeck 6 + codegen 5
+  + vm 3，全部归因字面量 text 拆装 / array_size / 运行期字节，无未知漂移——knr/
+  leetcode/gap 三套件复跑零漂移）；clang_direct 全量 SAME=876 **DIFF=0**，known
+  白名单空转 2 条（string_escape_octal_hex / string_escape_nul_term）随销移除
+  （18→16，双向监控）；已知限制与差异 ③-14 销案改写 + C 真值速查表 §四 E1-E8
+  全族翻面（连坐更新，免重跑真值源）。
+- **叙事修正**（M38 A2 处方②）：util 头注「@utf8.encode 非法输入静默产空串 ⇒
+  长度 0」推翻——实测 panic（abort），S2/S5 时代 core 语义已变（三后端分叉，
+  M06 A1）；入口侧 json_parse 拒孤代理后协议面对该 panic 不可达，头注如实改写。
+- **W4（#466）三锚翻面**（2026-11-04 第三轮 rebase 裁定）：W4 尾件批的
+  `json_parse_lone_surrogate_transparent_466` / `serve_compile_lone_surrogate_
+  {no_abort,files_no_abort}` 三锚锁「\uD800 **转义形态**透传」——与 B6 拒绝
+  口径正面冲突，翻面为协议错期望；**#419 清洗续跑语义保留给码元直排形态**
+  （真孤代理码元不经 \u 转义、走普通字符路径透传 → protocol 层
+  `sanitize_source` 清洗 U+FFFD → 编译续跑）——补
+  `serve_compile_lone_surrogate_{raw,files_raw}_b6` 双直排锚实证（gateway
+  170/170）。两通道分工：**转义=json_parse 拒（#429，fail loud 优先）、
+  直排=透传+边界清洗（#419）**；「不 abort」不变量两形态均成立。翻面以
+  #429 任务授权为准（M38 A2 处方 + serde_json/RFC 8259 §8.2），主控终审
+  可覆议。
+- **锚与验证**：新增 10 测试（util json_parse 孤代理 2 + 代理对/回归 1 + 大指数
+  值锚 2、typeck 反向锚 1、bytecode cstring 1、scanner 拆装 1、gateway 直排
+  2），修前全红实录
+  （J9）；变异证锚 4 组（typeck 计长回退 ×2 / json_parse 校验短路 / cstring 回退
+  UTF-8）全红后还原全绿；moon check 0 err / moon test **1252**（裸）与
+  **1301**（native 全量）双口径 +10（基 B2 后 master 1242/1291；四轮 rebase 逐轮重采）；三臂探针（孤代理/hex escape/DoS）ALL-ARMS-SAME。
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 
 - **#418（dump 族深嵌套 abort）**：合法深 AST 的 dump JSON 深度可达数百层
@@ -119,34 +160,6 @@
 - 边界登记（不越界）：json_parse 的 `\uXXXX` 转义 write_char 对孤立代理在
   wasm-gc 后端 abort 是 #429 面（B6 批）；`input.feed`/argv 运行时字节域
   通道的 surrogate 形态另行登记。
-### fix(engine): 审阅 v2 批 B5——#428 scanf 族修复（%Nc 宽度 + 溢出 clamp + hexfloat/inf/nan + ungetc(EOF) + 缺臂 e/E/g/G/a/A/F/X）
-
-- **A-3 %Nc 宽度**（P1）：scanf/sscanf 双臂 %c 执行臂宽度未实现（只读 1 字节——#71 病 23 修漏 %c）→
-  `k = wopt 或 1` 逐字节 store_i8、不写 NUL（%c 无终止符语义）、中途流尽部分写入保留不计 matched；
-  %*Nc 抑制臂同吃宽度。clang 真值：`scanf("%3c")` 输入 abcdef → buf="abc" next='d'。
-- **A-9 溢出 clamp**（P2）：d/u 臂 parse_*_or_zero 族「溢出 catch→0」+ i/x/o 臂裸回绕 → 统一
-  `scan_int_clamp` 累加器（strtoll 语义 + 边界位模式 clamp，glibc+UCRT 双派真值 t2/t2b/t2c/t3/t8）：
-  有符号（d/i）负溢出 LLONG_MIN 全档 / 正溢出 ll 档 LLONG_MAX·其余档 ULLONG_MAX 截位（%d → -1）；
-  无符号（u/x/X/o）正负溢出 ULLONG_MAX（**负号吞**——clamp 压过回绕）；域内负号回绕与域内截断
-  现状对（防误翻锚锁定）。五个 parse_*_or_zero 死函数删除（病灶载体防复用）。
-- **A-10 hexfloat + inf/nan**（P2）：病 24 半修收口——token 收对、解析层丢（@string.parse_double
-  不认 hexfloat → 0.0）→ 值转换接 host_convert `parse_float_token` 单源；INF/INFINITY/NAN/NAN(n)
-  token 形态同批（read_float_token 收集〔INITY 尾段大小写不敏感〕+ `scanf_float_value` 值层，
-  带符号 -inf 支持）。atof/strtod 侧 inf/nan 缺口登记（host_convert 域，非本批）。
-- **A-11 ungetc(EOF)**（P3）：-1 被当回退字节缓存回吐（教学惯用法 `ungetc(getchar(),stdin)` 在
-  EOF 处吞流）→ ch==-1 早退无操作返 EOF（C11 §7.21.7.10 流不变）。
-- **缺臂扩面**（R1a-F3 / rules.json B 轮清账）：e/E/g/G/a/A/F 八转换符并 f 族臂（C11 §7.21.6.2 p12
-  浮点族输入语义全同 strtod——此前落「不消费不计数」else 兜底但消耗指针参数）；大写 X 并 i/x/o 臂
-  （%X ≡ %x——base 判定与 0x 前缀探三条件点双壳连坐）。typeck 面零改动（a/A 兜底放行零误报，
-  rules.json divergence 登记——printf 侧 a/A 同形态先例）。
-- **顺手**：scanf 壳 %f 臂死代码 lim 删（M20 B-2——read_float_token 自带 max 重算）。
-- **锚**：wbtest 5 锚红→绿（`scanf_c_width_field` / `scanf_overflow_clamp_bitpattern` /
-  `scanf_hexfloat_input` / `ungetc_eof_noop` / `scanf_missing_conv_arms`——真值全部双派亲采）；
-  corpus/baseline 4 例新语料（+3 .in）三臂=clang 逐字节；vm_diff golden 受控重冻纯增量 4 条
-  （814 全 SAME，既有语料零漂移）；clang_direct 945 全对拍零 DIFF。
-- **连坐**：conv_specs rules.json scanf 面 X/e/E/g/G/F 置 host:true 删 divergence、a/A 置
-  host:true + typeck divergence 登记（闸 PASS）；C 真值速查表 S1/S2/S4/S5 翻面 + S3 防误翻注。
-
 ### fix(corpus+scripts): PR #464 审阅处置批——P2×2 落地（fuzz 采样域 + facts 计数键）+ P3×7 连坐（2026-11-04）
 
 - **P2-1 fuzz 采样域**：`corpus_fuzz/rules.json` `suites` 加 `chibicc_port` + 一次 `-freeze`（纯增量

@@ -116,6 +116,11 @@ pub(all) enum Expr {
   Literal(Int32, @source.SourceLoc, Type) // value
   FloatLiteral(Double, @source.SourceLoc, Type) // value
   LongLiteral(Int64, @source.SourceLoc, Type) // value
+  // value 承载契约（B6 批 #429 起）：**码元=字节**（Latin-1 双射）——
+  // 解码层（scanner/string.mbt）产码元=字节值（hex/八进制转义）或按
+  // UTF-8 字节拆装（非转义源字符），码元数即 C 字节数（NUL 终止符
+  // 不含）；计长（typeck/parser）、装载（bytecode/cstring）、E1 dump
+  // 三层同口径消费。码元 > 0xFF 属越约定输入（引擎路径不可达）。
   StringLiteral(String, @source.SourceLoc, Type) // value
   Identifier(String, @source.SourceLoc, Type) // name
   Call(String, Array[Expr], @source.SourceLoc, Type) // name, args

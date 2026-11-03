@@ -141,9 +141,21 @@ fn Scanner::string_literal(
       ignore(self.advance())
       continue
     }
+    let old = self.pos
     let c = self.advance()
     if c >= 0 {
-      value <+ "\{char_from_code(c)}"
+      // B6 批（#429）：非转义源字符按 **UTF-8 字节拆装**入串（码元=字节，
+      // Latin-1 双射）——advance 消费的源字节区间 [old, self.pos) 原样
+      // 搬运（源文件即 UTF-8，无需重编码；ASCII 单字节与旧码点入串
+      // 等价）。旧「码点入串」（「你」单码元 U+4F60）与转义路径
+      // （\xE4 码元=字节值）口径分裂：下游按 Unicode 理解 value 再
+      // UTF-8 编码，把 \xNN ≥0x80 的码点膨胀成双字节（M22 A-1 /
+      // M07 A6：sizeof("\xE4")=2 vs clang 1，strlen/strspn/strcmp 等
+      // 字节口径函数连带错值）。拆装后 StringLiteral.value 的码元恒 =
+      // C 字节序列，typeck 计长 / cstring 装载 / E1 dump 三层同口径。
+      for i = old; i < self.pos; i = i + 1 {
+        value <+ "\{char_from_code(self.bytes[i].to_int())}"
+      }
     }
   }
   if self.at_end() || self.peek(0) != '"' {

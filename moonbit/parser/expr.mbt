@@ -811,9 +811,10 @@ fn Parser::parse_primary_inner(self : Parser, depth : Int32) -> @ast.Expr {
       ignore(self.advance())
       value = value + self.previous().text
     }
-    // M12：字节长度必须 UTF-8 编码计（Rust value.len()；String::length()
-    // 是 UTF-16 码元数——"中文" 会少 4）
-    let array_size = @util.utf8_len(value) + 1
+    // B6 批 #429：字节长度 = 码元数——解码层承载已统一「码元=字节」
+    // （转义产码元=字节值、源字符按 UTF-8 字节拆装），码元数即 C 字节数
+    // （typeck resolve_string_literal 同口径重定型，两处等价）
+    let array_size = value.length() + 1
     // including null terminator
     return @ast.Expr::StringLiteral(
       value,

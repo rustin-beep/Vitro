@@ -396,17 +396,13 @@ test "char_array_braced_string_init_issue196b" {
 ///|
 /// ds 审阅批 2026-10-31（PR #401 P2）：init.mbt 定型回写路径行为锚——
 /// `char g[] = {"\xff"}` 推导形态（空 dims ⇒ array_size 0）走
-/// check_array_init StringLiteral 臂的回写分支：array_size 必须 =
-/// utf8_len("\xff") + 1 = 3（字节层 C3 BF 双字节 + NUL）。红条件：
-/// 计长口径回退 Latin-1（\xff 计 1）⇒ 回写 2 ⇒ 本锚红（与
-/// expr_wbtest `string_literal_byte_len` 分别锁 init 回写/expr 定型
-/// 两条路径——ds 批 P1 修复的真实落点，修前此处零锚）。
-///
-/// KNOWN_DIVERGENCE（审阅 v2 批 A2 / M09 D1；#66 ③-14 已知限制）：clang
-/// 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8 三方对 hex escape `"\xff"` 按
-/// 字节值计 1 字节 ⇒ `char g[]` 定型尺寸 **2**（FF + NUL）；vitro 以 String
-/// 承载 C 字节串（expr.mbt:116）按 UTF-8 U+00FF 计 2 字节 ⇒ 3。本锚锁
-/// vitro 口径（防 Latin-1 回退回归），B 批修字面量承载层后翻面为 2。
+/// check_array_init StringLiteral 臂的回写分支。**B6 批（#429）翻面**：
+/// 字面量承载治本（解码层拆源字符字节 + 码元=字节口径）后 `\xff` 产
+/// 单码元 U+00FF ⇒ 计 1 字节 ⇒ 回写尺寸 **2**（FF + NUL）——与三方
+/// 编译器（Win clang 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8）对齐，
+/// 原 KNOWN_DIVERGENCE（UTF-8 U+00FF 计 2 ⇒ 3）销案。红条件：回退
+/// UTF-8 计长口径 ⇒ 回写 3 ⇒ 本锚红（与 expr_wbtest
+/// `string_literal_byte_len` 分别锁 init 回写/expr 定型两条路径）。
 test "char_arr_deduce_size_writeback_utf8_ds" {
   let loc = @source.SourceLoc::new(1, 1)
   let g : @ast.GlobalDecl = {
@@ -447,8 +443,8 @@ test "char_arr_deduce_size_writeback_utf8_ds" {
     Array(_, size, dims, _, _, _) => {
       assert_eq(
         size,
-        3,
-        msg="char g[] 回写尺寸须为 UTF-8 字节 2 + NUL（Latin-1 旧口径给 2 即红）",
+        2,
+        msg="char g[] 回写尺寸须为字节 1（\\xff 单码元）+ NUL（UTF-8 口径给 3 即红）",
       )
       assert_eq(
         dims.length(),
@@ -463,17 +459,13 @@ test "char_arr_deduce_size_writeback_utf8_ds" {
 ///|
 /// ds 审阅批 2026-10-31（PR #401 P2）：init.mbt 多维子数组 W3008 路径
 /// 行为锚——`char w[1][2] = {"\xff"}`：外层 InitList 单元素经
-/// check_array_elem_value 进 char[N] 子数组臂，W3008 判定须用 UTF-8
-/// 口径（utf8_len("\xff")=2，2+1>2 ⇒ 警告）。红条件：计长回退
-/// Latin-1（计 1，1+1>2 为假 ⇒ 零警）⇒ 本锚红。注：该形态 clang 口径
-/// （单字节 FF + NUL = 2 ≤ 2）零警——vitro 警告为 #66 值差连带（已知
-/// 限制 ③-14 显式恰满形态），本锚只锁 vitro 口径行为不锁跨侧一致。
-///
-/// KNOWN_DIVERGENCE（审阅 v2 批 A2 / M09 D1 P9a）：三方编译器（Win clang
-/// 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8）该形态**零警**（1+1 ≤ 2 恰满
-/// 合法）；vitro 报 W3008 为 `\xff` UTF-8 承载连带假阳性。B 批修字面量承载
-/// 层后本锚翻面为 `warns.length() == 0`。真实 UTF-8 多字节（`"中"`）面 vitro
-/// 与 clang 对齐（M09 D2），分叉仅 hex escape 口径。
+/// check_array_elem_value 进 char[N] 子数组臂。**B6 批（#429）翻面**：
+/// 字面量承载治本后 `\xff` 计 1 字节（1+1 ≤ 2 恰满合法）⇒ **零警**——
+/// 与三方编译器（Win clang 22.1.4 / WSL gcc 15.2 / WSL clang 21.1.8，
+/// M09 P9a 实测）对齐，原 KNOWN_DIVERGENCE（UTF-8 计 2 ⇒ 2+1>2 假警）
+/// 销案。红条件：回退 UTF-8 计长口径 ⇒ W3008 假警复活 ⇒ 本锚红。
+/// 真实超长形态（`"ab"` 进 char[1][2]：2+1>2）仍须 W3008——见下方
+/// 反向锚，防翻面过宽。
 test "char_arr2d_substring_w3008_utf8_ds" {
   let loc = @source.SourceLoc::new(1, 1)
   let w : @ast.GlobalDecl = {
@@ -514,9 +506,51 @@ test "char_arr2d_substring_w3008_utf8_ds" {
     0,
     msg="恰满形态合法不报错（C11 §6.7.9p14）",
   )
+  assert_eq(
+    warns.length(),
+    0,
+    msg="恰满 1+1 ≤ 2 零警（UTF-8 口径回退即 W3008 假警复活，红）",
+  )
+}
+
+///|
+/// B6 批（#429）A10 翻面的反向锚：真实超长形态（`"ab"` 两字节 + NUL = 3
+/// > 2）仍须 W3008——防翻面过宽把「字节口径计长」误收成「恒零警」。
+test "char_arr2d_substring_overlong_still_w3008_b6" {
+  let loc = @source.SourceLoc::new(1, 1)
+  let w : @ast.GlobalDecl = {
+    ..Default::default(),
+    loc,
+    ty: @ast.Type::array_of(@ast.Type::char(), [1, 2]), // char w[1][2]
+    name: "w",
+    init: Some(
+      @ast.Expr::InitList(
+        [
+          {
+            designators: [],
+            value: @ast.Expr::StringLiteral("ab", loc, @ast.Type::void_type()),
+          },
+        ],
+        loc,
+        @ast.Type::void_type(),
+      ),
+    ),
+    source_file: "t.c",
+  }
+  let tc = TypeChecker::new()
+  let (_, errs, warns, _) = tc.check({
+    structs: [],
+    unions: [],
+    globals: [w],
+    funcs: [],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  })
+  assert_eq(errs.length(), 0, msg="超长警告形态不报错")
   assert_true(
     warns.length() == 1 && warns[0].code == 3008,
-    msg="多维子数组 W3008 判定须用 UTF-8 口径（Latin-1 回退即零警红）",
+    msg="2 字节 + NUL > 2 须 W3008（恒零警即翻面过宽，红）",
   )
 }
 

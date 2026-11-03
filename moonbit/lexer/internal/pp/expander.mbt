@@ -371,7 +371,10 @@ fn expand_inner(
   }
   // U1#6：按累计字节计费
   for t in result {
-    ctx.emitted += utf8_text_len(t.text) + 1
+    // B6（#429 / PR #472 审阅 P3-3）：字面量 token text 码元=字节（码元数
+    // 即字节数）；旧 utf8_text_len 对 ≥0x80 码元按 2 计致 trace 预算 2×
+    // 提前截断（词法已拒中文标识符——非字面量 token 两口径等价）
+    ctx.emitted += t.text.length() + 1
   }
   result
 }
@@ -532,7 +535,8 @@ fn spelling(toks : Array[@token.Token]) -> String {
     parts.push(t.text)
   }
   let s = parts.join(" ")
-  if utf8_text_len(s) > TRACE_ENTRY_MAX_CHARS {
+  // B6（#429 / P3-3 同根）：trace 文本含字面量字节码元串，计长按码元数
+  if s.length() > TRACE_ENTRY_MAX_CHARS {
     truncate_utf8(s, TRACE_ENTRY_MAX_CHARS) + " …(截断)"
   } else {
     s

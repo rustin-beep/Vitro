@@ -1,17 +1,28 @@
 // release_preflight 单测（#273 .mts 四件套义务：node:test）——纯函数面：
-// parseDryRun / moonModVersion / parseZipListing / verdictFromListing。
+// parseDryRun / moonModVersion / parseZipListing / verdictFromListing；
+// A8 批（refs #438）追加：zipRecords/unzipTo 解压器往返与 zip slip 红、tagNameOf/judgeTag 三路。
 // 样本输出取自 2026-10-31 master 实测（Check passed + 409 双形态）。
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import zlib from "node:zlib";
 import {
+  TAG_PREFIX,
   ZIP_MIN_BYTES,
   ZIP_MIN_FILES,
   judgePackage,
+  judgeTag,
   latestPublishedVersion,
   moonModVersion,
   parseDryRun,
+  tagNameOf,
+  unsafeEntryName,
+  unzipTo,
   verdictFromListing,
   zipEntries,
+  zipRecords,
 } from "./main.mts";
 
 /** 拼最小合法 zip：local header 省略，central directory + EOCD（解析只读 CD）。 */
@@ -168,4 +179,107 @@ test("latestPublishedVersion：JSONL 尾行版本（CRLF/空行容忍·坏行 nu
   assert.equal(latestPublishedVersion("not-json"), null);
   // 尾行 version 非字符串（形态异常）→ null
   assert.equal(latestPublishedVersion('{"version":123}'), null);
+});
+
+// ── A8 批（refs #438）───────────────────────────────────────────────────────
+
+/** 拼完整可解压 zip：local header（真数据）+ central directory + EOCD；method 可选 store/deflate。CRC 写真值（P3-8 后解压器校验）。 */
+function mkZipFull(entries: ReadonlyArray<{ name: string; data: Buffer; deflate?: boolean }>): Buffer {
+  const parts: Buffer[] = [];
+  const cds: Buffer[] = [];
+  let offset = 0;
+  for (const e of entries) {
+    const name = Buffer.from(e.name, "utf8");
+    const comp = e.deflate ? zlib.deflateRawSync(e.data) : e.data;
+    const crc = zlib.crc32(e.data);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0);
+    lh.writeUInt16LE(e.deflate ? 8 : 0, 8);
+    lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(comp.length, 18);
+    lh.writeUInt32LE(e.data.length, 22);
+    lh.writeUInt16LE(name.length, 26);
+    parts.push(lh, name, comp);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0);
+    cd.writeUInt16LE(e.deflate ? 8 : 0, 10);
+    cd.writeUInt32LE(crc, 16);
+    cd.writeUInt32LE(comp.length, 20);
+    cd.writeUInt32LE(e.data.length, 24);
+    cd.writeUInt16LE(name.length, 28);
+    cd.writeUInt32LE(offset, 42);
+    cds.push(cd, name);
+    offset += 30 + name.length + comp.length;
+  }
+  const cdBuf = Buffer.concat(cds);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(cdBuf.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...parts, cdBuf, eocd]);
+}
+
+test("unzipTo：store/deflate 往返逐字节一致 + 目录条目建目录（件③解压器）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitro-unzip-"));
+  const payload = Buffer.from("fn main(){}\n// 中文内容 ✓\n".repeat(50), "utf8");
+  const zip = mkZipFull([
+    { name: "moon.mod", data: Buffer.from('version = "0.9.1"\n') },
+    { name: "pkg/", data: Buffer.alloc(0) },
+    { name: "pkg/a.mbt", data: payload },
+    { name: "pkg/b.mbt", data: payload, deflate: true },
+  ]);
+  const n = unzipTo(zip, dir);
+  assert.equal(n, 3, "目录条目不计文件数");
+  assert.deepEqual(fs.readFileSync(path.join(dir, "pkg", "a.mbt")), payload);
+  assert.deepEqual(fs.readFileSync(path.join(dir, "pkg", "b.mbt")), payload, "deflate 路径逐字节一致");
+  assert.ok(fs.statSync(path.join(dir, "pkg")).isDirectory());
+  // zipRecords：方法/尺寸/本地头偏移与拼装一致
+  const recs = zipRecords(zip);
+  assert.equal(recs.find((r) => r.name === "pkg/b.mbt")!.method, 8);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("unzipTo：zip slip 三形态拒绝（../ 段 / 绝对路径 / 盘符 / 反斜杠）", () => {
+  for (const name of ["../evil.mbt", "/etc/evil", "C:/evil.mbt", "a\\b.mbt", "pkg/../../evil.mbt"]) {
+    assert.equal(unsafeEntryName(name), true, name);
+    const zip = mkZipFull([{ name, data: Buffer.from("x") }]);
+    assert.throws(() => unzipTo(zip, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-slip-"))), /不安全/, name);
+  }
+  assert.equal(unsafeEntryName("pkg/ok.mbt"), false);
+});
+
+test("unzipTo：local header 签名错位 / 解压长度不符 / CRC32 不符 fail loud", () => {
+  const zip = mkZipFull([{ name: "a.mbt", data: Buffer.from("hello") }]);
+  // 篡改 LFH 签名（local header 起点在 0）
+  zip.writeUInt32LE(0xdeadbeef, 0);
+  assert.throws(() => unzipTo(zip, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-bad-"))), /local header/);
+  // 篡改 CDE 的 uncompSize → 解压长度与声明不等
+  const zip2 = mkZipFull([{ name: "a.mbt", data: Buffer.from("hello") }]);
+  const cdOff = zip2.length - 22 - (46 + 5);
+  zip2.writeUInt32LE(999, cdOff + 24);
+  assert.throws(() => unzipTo(zip2, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-bad-"))), /解压长度/);
+  // P3-8：篡改 CDE 的 CRC32（同长异码形态——长度校验抓不住，CRC 必须抓）
+  const zip3 = mkZipFull([{ name: "a.mbt", data: Buffer.from("hello"), deflate: true }]);
+  const cdOff3 = zip3.length - 22 - (46 + 5);
+  zip3.writeUInt32LE(zip3.readUInt32LE(cdOff3 + 16) ^ 0xffff, cdOff3 + 16);
+  assert.throws(() => unzipTo(zip3, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-bad-"))), /CRC32/);
+});
+
+test("tagNameOf + judgeTag：tag 名派生 / 三路判定（件② tag 防移动）", () => {
+  assert.equal(tagNameOf("0.9.1"), TAG_PREFIX + "0.9.1");
+  assert.equal(tagNameOf("0.10"), null, "非 semver 三段 → null（fatal 面）");
+  assert.equal(tagNameOf("v0.9.1"), null);
+  const H = "5233ad65926d80d542f9a49c6870b64f351904a5";
+  const T = "249ba70bc43dc7b8c61c86283fdf438d7626c144";
+  // tag 不存在 → 绿（playbook 人工打）
+  const miss = judgeTag("vitro-engine-9.9.9", null, H);
+  assert.equal(miss.ok, true);
+  // 已存在且指向 HEAD → 绿（重跑彩排不动 tag）
+  assert.equal(judgeTag("vitro-engine-0.9.1", H, H).ok, true);
+  // 已存在指向别的 commit → 红（真值形态：0.9.1 tag 实指 249ba70b，当前 HEAD 前进）
+  const moved = judgeTag("vitro-engine-0.9.1", T, H);
+  assert.equal(moved.ok, false);
+  assert.match((moved as { reason: string }).reason, /禁止移动/);
+  assert.match((moved as { reason: string }).reason, /249ba70b/);
 });

@@ -14,6 +14,10 @@
 //   ② 模块内依赖 D 满足 level(D) <= level(P)（同层允许，向上越层即红）
 //   ③ 跨包依赖图无环（DFS 回边即红）
 //   ④ 空集不得绿（0 包或 0 依赖 → 红）
+//   ⑤ 桥唯一性（审阅 v2 A8 批 refs #438，同业 pure-py boundary-check 规则 2b 对位）：
+//      全 workspace 出现 #export_name("…") 的 .mbt 文件集 + 各自导出名集 ==
+//      rules.json bridges 登记表——登记外文件（第二座桥）/ 登记文件缺席（桥没了）/
+//      导出名漂移（出口 ABI 未登记）/ 空表，四形态皆红
 //
 // cmd/* 为差分工具层，豁免方向检查（仍参与环检测）；外部分依赖不参与判定。
 import fs from "node:fs";
@@ -23,12 +27,21 @@ import { projectRoot } from "../../internal/capi.mts";
 
 export const RULES_PATH = "scripts/moonbit/pkg_deps/rules.json";
 
+export interface BridgesDoc {
+  /** 桥标记字面（当前 "#export_name"），扫描按 marker("name") 完整形态匹配，注释裸字样不算 */
+  marker: string;
+  /** 相对 root 的 .mbt 路径（正斜杠）→ 字节序导出名集 */
+  files: Record<string, string[]>;
+}
+
 export interface RulesDoc {
   schema: number;
   root: string;
   module: string;
   levels: Record<string, number>;
   exempt_prefixes: string[];
+  /** 判据⑤登记表；缺席 = 不判（fixture 兼容），真实 rules.json 必带（test 锚） */
+  bridges?: BridgesDoc;
 }
 
 export interface PkgInfo {
@@ -157,8 +170,77 @@ export function findCycle(pkgs: Map<string, PkgInfo>, order: string[]): string[]
   return [];
 }
 
-/** 三条判据全过才绿；不早退，一次暴露全部违规。 */
-export function verdict(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[]): boolean {
+/** 转义 marker 作正则字面；匹配 marker("name") 完整形态（注释里的裸 marker 字样不算）。 */
+function bridgeMarkerRe(marker: string): RegExp {
+  const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`${esc}\\(\\s*"([^"]+)"\\s*\\)`, "g");
+}
+
+/** 判据⑤扫描：root 下全部 .mbt（跳 _build/.mooncakes/.git），收集含 marker("…") 的文件 → 字节序导出名集。 */
+export function scanBridges(rd: RulesDoc): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  const b = rd.bridges;
+  if (b === undefined) return out;
+  const re = bridgeMarkerRe(b.marker);
+  const rootSlash = rd.root.replace(/\/+$/, "");
+  const walk = (rel: string): void => {
+    const dir = rel === "" ? rootSlash : `${rootSlash}/${rel}`;
+    let ents: fs.Dirent[];
+    try {
+      ents = fs.readdirSync(abs(dir), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of ents) {
+      const sub = rel === "" ? ent.name : `${rel}/${ent.name}`;
+      if (ent.isDirectory()) {
+        if (ent.name === "_build" || ent.name === ".mooncakes" || ent.name === ".git") continue;
+        walk(sub);
+        continue;
+      }
+      if (!ent.name.endsWith(".mbt")) continue;
+      const text = fs.readFileSync(abs(`${dir}/${ent.name}`), "utf8");
+      const names = new Set<string>();
+      for (const m of text.matchAll(re)) names.add(m[1] ?? "");
+      if (names.size > 0) out.set(sub, byteSort([...names]));
+    }
+  };
+  walk("");
+  return out;
+}
+
+/** 判据⑤判定：扫描集与登记表逐项相等。四红形态各报一行；登记表空亦红。 */
+export function verdictBridges(b: BridgesDoc, found: Map<string, string[]>): boolean {
+  let ok = true;
+  const registered = byteSort(Object.keys(b.files));
+  if (registered.length === 0) {
+    process.stdout.write("  [桥空表] rules.json bridges.files 为空——登记表失效，拒绝判定（空集不得绿）\n");
+    return false;
+  }
+  for (const f of byteSort([...found.keys()])) {
+    if (!(f in b.files)) {
+      ok = false;
+      process.stdout.write(`  [桥漂移] 未登记的 ${b.marker} 文件 ${f}（导出 ${found.get(f)!.join(", ")}）——第二座桥须显式登记 bridges\n`);
+    }
+  }
+  for (const f of registered) {
+    const want = byteSort(b.files[f] ?? []);
+    const got = found.get(f);
+    if (got === undefined) {
+      ok = false;
+      process.stdout.write(`  [桥缺席] 登记桥 ${f} 不存在或零 ${b.marker}——桥没了 = 宿主出口断供\n`);
+      continue;
+    }
+    if (want.length !== got.length || want.some((n, i) => n !== got[i])) {
+      ok = false;
+      process.stdout.write(`  [桥导出面漂移] ${f} 登记 [${want.join(", ")}] 实际 [${got.join(", ")}]——出口 ABI 变更须改 bridges 并连坐 consumer_smoke\n`);
+    }
+  }
+  return ok;
+}
+
+/** 五条判据全过才绿；不早退，一次暴露全部违规。bridges 缺省 = 判据⑤不参与（fixture 兼容；rd.bridges 在场时必须传入，否则 fatal 防静默跳过）。 */
+export function verdict(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[], bridges?: Map<string, string[]>): boolean {
   let ok = true;
   const unregistered: string[] = [];
   let totalDeps = 0;
@@ -200,10 +282,15 @@ export function verdict(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[
     ok = false;
     process.stdout.write(`  [成环] ${cycle.join(" → ")}\n`);
   }
+
+  if (rd.bridges !== undefined) {
+    if (bridges === undefined) fatal("rules.json 带 bridges 登记表但调用方未传扫描结果——判据⑤不得静默跳过");
+    if (!verdictBridges(rd.bridges, bridges)) ok = false;
+  }
   return ok;
 }
 
-export function report(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[]): void {
+export function report(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[], bridges?: Map<string, string[]>): void {
   process.stdout.write(`MoonBit 包依赖方向（${pkgs.size} 包；分层源 = 总计划 §4 L0–L9）\n`);
   for (const n of order) {
     const p = pkgs.get(n)!;
@@ -212,6 +299,10 @@ export function report(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[]
     else if (p.levelKey === "") tag = "未登记";
     const dep = p.deps.length > 0 ? p.deps.join(", ") : "(无)";
     process.stdout.write(`  ${n.padEnd(24)} ${tag.padEnd(14)} → ${dep}\n`);
+  }
+  if (rd.bridges !== undefined && bridges !== undefined) {
+    process.stdout.write(`出口桥（${rd.bridges.marker}；登记 ${Object.keys(rd.bridges.files).length} / 扫到 ${bridges.size}）\n`);
+    for (const f of byteSort([...bridges.keys()])) process.stdout.write(`  ${f.padEnd(34)} → ${bridges.get(f)!.join(", ")}\n`);
   }
 }
 
@@ -236,8 +327,8 @@ function lowestAndHighestExisting(pkgs: Map<string, PkgInfo>, order: string[]): 
 }
 
 /** J9：先确认基线绿，再注入一条必然越层的虚拟依赖（最低层 → 最高层）。 */
-export function selftestRun(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[]): number {
-  if (!verdict(rd, pkgs, order)) {
+export function selftestRun(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: string[], bridges?: Map<string, string[]>): number {
+  if (!verdict(rd, pkgs, order, bridges)) {
     process.stdout.write("pkg_deps: selftest ABORT——基线不绿，注入后的红无法归因\n");
     return 2;
   }
@@ -258,11 +349,37 @@ export function selftestRun(rd: RulesDoc, pkgs: Map<string, PkgInfo>, order: str
   }
   inj.get(lo)!.deps.push(hi);
   process.stdout.write(`pkg_deps: selftest 已注入越层边 ${lo}(L${loLv}) → ${hi}(L${hiLv})\n`);
-  if (verdict(rd, inj, order)) {
+  if (verdict(rd, inj, order, bridges)) {
     process.stdout.write("pkg_deps: selftest FAIL——注入越层边后仍判绿，闸门失效\n");
     return 1;
   }
   process.stdout.write("pkg_deps: selftest PASS——注入的越层边被捕获（红），J9 证红成立\n");
+
+  // 判据⑤ 三路桥注入（登记表在场时）：第二座桥 / 桥缺席 / 导出面漂移，各自必红。
+  if (rd.bridges !== undefined && bridges !== undefined) {
+    const first = byteSort([...bridges.keys()])[0];
+    if (first === undefined) {
+      process.stdout.write("pkg_deps: selftest ABORT——扫到 0 座桥，桥注入无基准\n");
+      return 2;
+    }
+    const probes: Array<[string, Map<string, string[]>]> = [];
+    const b1 = new Map(bridges);
+    b1.set("zz_selftest_probe/export.mbt", ["zz_probe"]);
+    probes.push(["第二座桥", b1]);
+    const b2 = new Map(bridges);
+    b2.delete(first);
+    probes.push([`桥缺席(${first})`, b2]);
+    const b3 = new Map(bridges);
+    b3.set(first, [...(bridges.get(first) ?? []), "zz_drift"]);
+    probes.push([`导出面漂移(${first})`, b3]);
+    for (const [label, probe] of probes) {
+      if (verdict(rd, pkgs, order, probe)) {
+        process.stdout.write(`pkg_deps: selftest FAIL——桥注入「${label}」后仍判绿，判据⑤失效\n`);
+        return 1;
+      }
+    }
+    process.stdout.write("pkg_deps: selftest PASS——桥三路注入（第二座桥/缺席/导出面漂移）全部被捕获（红）\n");
+  }
   return 0;
 }
 
@@ -293,10 +410,11 @@ export function main(argv: string[]): number {
   }
   const rd = loadRules();
   const { pkgs, order } = scan(rd);
-  if (!check) report(rd, pkgs, order);
-  if (selftest) return selftestRun(rd, pkgs, order);
-  if (verdict(rd, pkgs, order)) {
-    process.stdout.write(`pkg_deps: PASS（${pkgs.size} 包，分层方向与无环均成立）\n`);
+  const bridges = scanBridges(rd);
+  if (!check) report(rd, pkgs, order, bridges);
+  if (selftest) return selftestRun(rd, pkgs, order, bridges);
+  if (verdict(rd, pkgs, order, bridges)) {
+    process.stdout.write(`pkg_deps: PASS（${pkgs.size} 包，分层方向、无环与桥唯一性均成立）\n`);
     return 0;
   }
   process.stdout.write("pkg_deps: FAIL——依赖方向违规（详见上方）\n");

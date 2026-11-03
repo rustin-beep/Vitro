@@ -555,6 +555,22 @@ jobs:
           node scripts/wasm_gateway/host.mts
         shell: bash
 
+      # 消费侧冒烟闸（审阅 v2 A8 批 refs #438，同业 wax embed-smoke 对位）：
+      # 与 host.mts 分工——host 守 NDJSON 全链+trap+体积（includes 子集），
+      # 本闸守**精确集**：wasm 产物 import 模块集 ⊆ 允许集 + js-string 函数
+      # 集 == 基线 6 函数（宿主供给面最小性）+ export 集 == pkg_deps bridges
+      # 登记（源码↔产物双向）+ 最小供给真调用；js 桥 langpack 动态 import()
+      # 消费 + texts_json 载荷顶层键锚。改出口面须连坐 pkg_deps rules.json
+      # bridges 与 scripts/consumer_smoke/baseline.json。J9：--selftest 三路
+      # 篡改基线必红（本地实证）。
+      - name: Consumer-side smoke (both bridges, exact link surface)
+        if: matrix.slice == 'serve_channel'
+        run: |
+          cd moonbit && moon build --release --target js teaching/langpack && cd ..
+          node scripts/consumer_smoke/main.mts --selftest
+          node scripts/consumer_smoke/main.mts
+        shell: bash
+
       # serve 通道 wasm 臂（#49 批三段一）：三防线被测物切统一入口壳 serve
       # 子命令——replay 61 断言 / serve_smoke 68 断言（豁免面 wasm 段臂分
       # 家）/ protocol_frames 47 帧基线（48 序列 - capabilities 结构豁免；二轮审阅 P3 补 trap step 流 14 帧——#35 trap 帧冲刷发布 + is_trapped 守卫形态帧级锚）。前置 = gateway wasm 产物 + node + 工具链（壳自建）。
@@ -1331,40 +1347,78 @@ jobs:
         run: node scripts/moonbit/testcount/main.mts
         shell: bash
 
-  # ── coverage-sentinel（#338 批二，2026-10-27）────────────────────────────
-  # 行覆盖率记账观察面（首测基线 18171/30657 = 59.3%，默认 wasm 轮裸单测
-  # 域）：nightly 跑 moon coverage analyze + report -f summary 存 artifact。
-  # 按拍板只记账不判红——观察 1~2 周波动形态后再议阈值闸；facts 键
-  # moonbit_coverage_uncovered_lines（--run-slow 档）同批接线。仅 schedule
-  # 触发、无下游 needs——红不阻塞任何主线 job。coverage 仍属实验特性
+  # ── toolchain-prerelease-sentinel（审阅 v2 A8 批，refs #438，2026-11-02）──
+  # pre-release channel 前瞻门（官方 x 仓 check.yml「pre-release-version-check
+  # + pre-release-build」/core 仓信息轨的 Vitro 对位；R5d 件①处方）。缺口：
+  # toolchain-latest-sentinel 只追 stable channel 的 latest——0.9.0 断供事故的
+  # 完整时间线里，删 API 的 moonc 在 pre-release channel 期间 Vitro 零感知，
+  # stable 一发布即在架包被打死。本 job 把感知点前移到上游预发布期
+  # （pre-release → stable 通常有数天至数周差）。红 = 上游预发布有兼容面
+  # 变化，走 vitro-toolchain-upgrade 流程——信息轨语义与 stable 哨兵一致：
+  # 仅 schedule 触发、无下游 needs，红不阻塞任何主线 job。
+  # 形态裁定（R5d 件①适配点）：①ubuntu 省额度（非门禁面，x/core 同款定位）；
+  # ②步面 = check + test（不带 testcount——上游行为漂移零 rc 变化的感知通道
+  # 是 stable 轨的分工，pre-release 轨要的是「最早的暴露点」）；③安装走
+  # setup-moonbit version: pre-release——channel 名与 core 仓 pre-release-check
+  # 同款（官方双仓现役实证，安装器 MOONBIT_INSTALL_VERSION 直透
+  # binaries/pre-release/）；④Windows 兼容面不在本轨重复（stable 轨防线的事）。
+  # J9：步面判别力 = 0.9.0 断供形态本地复刻实证（time_travel import
+  # core/abort 注入 → moon check 即红 Cannot find import rc=127，还原绿）。
+  toolchain-prerelease-sentinel:
+    name: Toolchain pre-release sentinel (nightly, ahead-of-stable)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MoonBit toolchain (pre-release — sentinel deliberately unpinned)
+        uses: ./.github/actions/setup-moonbit
+        with:
+          version: pre-release
+      - name: Report channels (pin vs pre-release)
+        # 不判红的前置探针：两 channel 版本串并排落日志，首查红时先看
+        # 「上游动了什么」。pre-release 与 pin 同串 = 上游静默期，步面跑的
+        # 是已知绿面（零增量信息，正常现象非故障）。
+        run: |
+          echo "pin    : $(tr -d '[:space:]' < .moonbit-version)"
+          echo "pre-rel: $(cd moonbit && moonc -v)"
+        shell: bash
+      - name: moon check (pre-release compatibility probe)
+        run: cd moonbit && moon check
+        shell: bash
+      - name: moon test (pre-release compatibility probe)
+        run: cd moonbit && moon test
+        shell: bash
+
+  # ── coverage-sentinel（#338 批二，2026-10-27；A8 批 2026-11-02 升级逐包快照基线）──
+  # 行覆盖率记账观察面（默认 wasm 轮裸单测域）。A8 批（refs #438）起由
+  # scripts/coverage_snapshot 接管：full_summary 逐文件闭合聚合 → 逐包快照 +
+  # vs baseline.json 趋势报告（入库基线 scripts/coverage_snapshot/baseline.json，
+  # 首采 2026-11-02 @ 5233ad65：18480/30648 = 60.3%，29 包；重锚须显式
+  # --update-baseline）。按拍板**快照基线语义不设涨跌门**——B 轮修复进行中
+  # 先建测量基线，门限留后续批；趋势表经 $GITHUB_STEP_SUMMARY 直达 run 页。
+  # 仍 observe-only：仅 schedule 触发、无下游 needs——红不阻塞任何主线 job
+  # （红面只剩 fail loud：采集失败/解析不到 Total/逐文件之和与 Total 不闭合
+  # ——口径陷阱①的机判，防误用 summary 族聚合低估）。coverage 仍属实验特性
   # （MOON_COVE 双引擎并存），报告形态冻结在本 job 的产物上。
   coverage-sentinel:
-    name: Coverage sentinel (nightly, observe-only)
+    name: Coverage sentinel (nightly, snapshot baseline + trend)
     runs-on: windows-latest
     if: github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
       - name: Install MoonBit toolchain (pinned)
         uses: ./.github/actions/setup-moonbit
-      - name: Coverage analyze + summary report
-        # 冷态 instrumentation 全量重编（分钟级）+ 插桩跑全量裸单测；
-        # report 末行 Total: covered/total = facts 键同源口径（本地实测
-        # 热态 ~4s / 冷态数分钟）。归一 CRLF 后存 artifact 供逐日 diff。
-        # pipefail（#338 审阅批补）：管道 rc 是尾命令（纪律 9）——report
-        # 崩溃/超时不得被 tr 的 rc=0 吞成假绿（空 artifact 入库 = 记账
-        # 静默缺失，违背 fail loud）。
-        run: |
-          set -o pipefail
-          cd moonbit
-          moon coverage analyze
-          moon coverage report -f summary | tr -d '\r' > coverage_summary.txt
-          tail -3 coverage_summary.txt
+      - name: Coverage snapshot (collect + per-package aggregate + trend vs baseline)
+        # 冷态 instrumentation 全量重编（分钟级）+ 插桩跑全量裸单测
+        # （moon test --enable-coverage，R5g 实证链）+ full_summary 逐文件
+        # 解析（闭合校验内建于脚本——用错口径当场红）+ 逐包聚合 + 趋势。
+        run: node scripts/coverage_snapshot/main.mts --out tmp/coverage_snapshot
         shell: bash
-      - name: Upload coverage summary
+      - name: Upload coverage snapshot (full_summary / per_package / trend)
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-summary-${{ github.run_id }}
-          path: moonbit/coverage_summary.txt
+          name: coverage-snapshot-${{ github.run_id }}
+          path: tmp/coverage_snapshot
 
   demo:
     name: Demo front-end gates (tsc / smoke / TS tests)
@@ -1902,11 +1956,16 @@ jobs:
   # job 增量 = 发布件面（**模块目录被 .gitignore 覆盖时 22 字节空 zip rc=0
   # 静默成功实锤**——审阅批 2026-10-31 勘正归因：与是否 git 仓库无关〔无
   # git 目录打包正常〕，CI 在 checkout 树里跑，本闸 CI 可达形态 = 忽略规则
-  # 误伤 moonbit/）。**反刷量约束（用户拍板）**：全程零 mooncakes zip GET；
+  # 误伤 moonbit/）。**反刷量约束（用户拍板）**：零 vitro/engine zip GET；
   # 干净消费验收（moon add + build = 真实下载计数）不进 CI，人工步骤落
-  # vitro-release-playbook。
+  # vitro-release-playbook。A8 批（refs #438）起加**解压树 check**（件③，
+  # 0.9.0 断供的下游视角拦截）：moon package → 零依赖手写解压 → 解压树上
+  # moon check——解压树 deps 由 moon 解析（moonbitlang/core 族，缓存缺席会
+  # 拉依赖包——非 vitro/engine 计数面，R5d 件③适配点 3 诚实登记：本步非
+  # 「零网络」，与前置 moon update 同属 job 依赖面）。J9：解压树删
+  # time_travel/checkpoint.mbt → Error [4024]×3 rc=1（本地实证）。
   release-preflight:
-    name: Release preflight (package integrity, zero net)
+    name: Release preflight (package integrity + unzip consumer check)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -1917,8 +1976,8 @@ jobs:
         uses: ./.github/actions/setup-moonbit
       - name: Refresh MoonBit registry index
         run: cd moonbit && moon update
-      - name: Package integrity gate (non-degenerate zip + root files + version probe)
-        run: node scripts/release_preflight/main.mts
+      - name: Package integrity gate (non-degenerate zip + root files + version probe + unzip-tree check)
+        run: node scripts/release_preflight/main.mts --unzip-check
 
   # ── scripts-ts（#273 批一：四件套门，2026-10-22）────────────────────────
   # 判定型脚本默认 .mts 后的最小入库门：node 直跑（无发射）+ tsc 严格档 +

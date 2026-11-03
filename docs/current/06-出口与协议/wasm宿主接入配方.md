@@ -106,14 +106,20 @@ wasmtime 每次跨 wasm↔host 边界 ~51ns。
   vs node 响应文件逐位一致（opt 三 profile）+ raw 产物 5,580 帧零分叉；对抗合成集 57 语料
   + 25 行级对抗帧：DIFF=0。
 - **唯一真分叉 = 栈预算**（非语义）：嵌套 struct 定义链触发引擎递归路径（~400 B/层）——
-  wasmtime 默认 512KiB 栈 1000 层过 / 1500 溢出；**配 2MiB 后临界深度 (4000, 6000] 与 V8 默认
-  完全重合**，分叉消失（6000+ 两侧皆 TRAP_BOTH）。wasm-opt（binaryen 132）对分叉面零影响。
+  wasmtime 默认 512KiB 栈 1000 层过 / 1500 溢出；**配 2MiB 后临界区间与 V8 默认重叠**
+  （wasmtime ∈(5000,6000]；V8 4000 稳过 / 6000 稳溢 / 5000 落临界邻域随上下文翻转
+  ——V8 预算随 node 版本漂移，升级须复测），常规梯度分叉消失（6000+ 两侧皆 TRAP_BOTH；
+  PR #461 审阅 P1 勘正原「完全重合」表述——重叠非逐点重合）。wasm-opt（binaryen 132）
+  对分叉面零影响。
 - **独有诊断价值**：wasmtime 给**具名 backtrace**（V8 只报 `unreachable`）——W4 批靠它钉出
   dump 族深度上限 abort / lone surrogate abort / 会话态 note 泄漏三类引擎问题（§7 登记，非
   runtime 分叉）。
-- **过闸建议**（W4 §9）：spot 对拍——发版前置 / 产物重大变更时本地 `all --profile deep-nomem`
-  全量 + `--synth`，零 DIFF/零 TRAP_ONE 为过（44s 可挂 release_preflight）；任何 wasm 臂
-  `unreachable` 用 debug 产物取具名 backtrace。
+- **过闸形态**（arm4 全量批 2026-11-03 定档）：**CI 单档全量常驻**——`arm4-wasmtime` job
+  corpus `--all` 977 例 deep-nomem 严格 identical + `--expect-min` 下限锁 + synth 对抗集
+  verdict 级基线锁（`scripts/wasmtime_arm/synth_baseline.json`）；实测 391-404s（含冷编）
+  <8min。本地复跑：`node scripts/wasmtime_arm/main.mts all --profile deep-nomem --synth
+  --baseline scripts/wasmtime_arm/synth_baseline.json`。任何 wasm 臂 `unreachable` 用
+  debug 产物 + wasmtime 跑器取具名 backtrace。
 
 ## 嵌入纪律速查
 

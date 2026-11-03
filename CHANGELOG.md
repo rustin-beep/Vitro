@@ -254,18 +254,20 @@
 
 - **栈预算 2MiB 入跑器默认**（`scripts/wasmtime_arm/rs/src/main.rs`）：
   wasmtime 出厂 512KiB 在 struct 嵌套链（~400 B/层，#421）下临界 (1000,1500]，
-  比对照臂 V8 默认（node 26 ~1MB 原生栈，临界 ∈(4000,5000]）浅 3 倍——纯预算
+  比对照臂 V8 默认（~1MB 原生栈；其预算随 node 版本漂移——版本依赖面，CI 对照臂版本看仓根 .node-version）浅 3 倍——纯预算
   型差异混进 TRAP_ONE 桶（synth 基线 4 例常驻）。默认改 2MiB（临界
   ∈(5000,6000]）后 4 例 TRAP_ONE→AGREE，预算面对齐才谈「同预算对拍」；
   `W4_MAX_WASM_STACK` 旋钮保留（≤32MiB 安全，64MB 子线程栈约束），**非法值
-  fail loud**（原静默回落 512KiB）；汇总行加 stack=N MiB 可观测（顺手修参数
-  错位——typed/inline/stack 三位串行的既有显示 bug）。
+  fail loud**（原静默回落 512KiB）；汇总行加 stack=N KiB 可观测（顺手修参数
+  错位——typed/inline/stack 三位串行的既有显示 bug；KiB 粒度免非整 MiB 显示错）。
 - **边界断言 = 梯度锚定两侧稳定窗**（`lib.mts` 注释钉死 + 基线承载）：
   struct_nest_4000=AGREE / 6000=TRAP_BOTH(stack 类) 两档都在两侧各自临界的
-  稳定侧（V8∈(4000,5000]、wasmtime 2MiB∈(5000,6000] 均本批实测——补 W4
-  §6b.4「Poly 形态临界未复测」留白）；**5000 档勿加**：恰落两临界之间，两侧
-  必然 TRAP_ONE（本批实测实锤：wasmtime 过 / V8 RangeError），预算型差异变
-  CI 常红非语义信号。
+  稳定侧（wasmtime 2MiB 临界 ∈(5000,6000] 本批实测——补 W4 §6b.4「Poly 形态
+  临界未复测」留白；V8 4000 稳过/6000 稳溢）；**5000 档勿加——PR #461 审阅
+  P1 勘正**：5000 落 V8 临界**邻域**而非「两临界之间必 TRAP_ONE」——孤立 22
+  帧溢出、全量驱动上下文（同进程前置他例后）AGREE，3/3 稳定翻转 ⇒ verdict
+  随执行历史漂移，加档即不可复现的 flaky 红。门槛由对照臂 V8 栈预算决定
+  （node 版本依赖面，升级须复测）。
 - **synth 基线随配置重冻**（69 例 = AGREE 52 / TRAP_BOTH 17 / TRAP_ONE 0）：
   改善按 checkBaseline 设计先红（improved×4 指引）再 `--freeze-baseline`；
   note 记重冻理由与 5000 禁区。verdict 级基线非字节冻结面——产物随 master
@@ -286,6 +288,15 @@
   本批只引用不修——基线 17 例 TRAP_BOTH 即 #418/#419 的 CI 回归面。
 - 四件套：tsc 严格档 rc=0 / oxlint 0 warning / node:test 14/14 / node 直跑；
   ci_checklist 三向对账 PASS（wasmtime_arm 无例外、CI 活行在册）。
+- **PR #461 审阅处置（rustin-beep，全采纳）**：P1「5000 必 TRAP_ONE」定性被
+  证伪（全量上下文 AGREE/孤立 TRAP_ONE 稳定翻转——临界邻域 flaky），四处
+  表述统一勘正（lib.mts/main.rs/下游配方文档/本节）+「完全重合」降级「区间
+  重叠」+ 配方文档过闸建议连坐更新为 CI 全量常驻形态；P2 对照臂版本依赖
+  登记进注释（V8 预算随 node 版本漂移，CI 对照臂=.node-version，升级须复测）；
+  P3 三项——VarError 分形态（NotPresent 回落默认/NotUnicode 等其余 fail
+  loud）、W4_GC_HEAP_MB 同款收严（原静默回落）、假跑器护栏固化 node:test
+  两锚（超时杀/stdout 现场保全）+ stack 显示改 KiB。审阅侧已证基线有牙
+  （W4_MAX_WASM_STACK=524288 模拟回退 → 4 例 worsened rc=3 红）。
 
 ## [0.9.1] - 2026-10-31（在架事故修复版——moonc ≥0.10.18 删 core/abort 致 0.9.0 下游断供；版本号口径见 docs/current/08-发布档案/0.9.1.md）
 

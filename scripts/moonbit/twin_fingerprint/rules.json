@@ -73,16 +73,6 @@
       ],
       "divergences": [
         {
-          "item": "guard:upper_bound",
-          "only_in": "dump_compile",
-          "reason": "known 缺口（R1a-F5）：dump_ast/tokens/typeck 无参数过多门禁——2026-09-21 dump_compile 实踩 81 产物污染事故后只修了一家。B3 批（M36b 四家门禁）/B 轮修复批补齐后本条变僵尸即删"
-        },
-        {
-          "item": "guard:target_eq_out",
-          "only_in": "dump_compile",
-          "reason": "known 缺口（R1a-F5）：三家无 target==out_dir 拒写门禁——R1a 探针 3 实锤 dump_ast 同参数正常执行、a.c 与 a.c.ast.json 并存语料目录（污染成立）、dump_compile 对照 rc=4 拒写。同上批补齐后删"
-        },
-        {
           "item": "sort:lexical",
           "only_in": "dump_compile",
           "reason": "known 缺口（R1a-F9）：三家用内置 files.sort()（陷阱 #29 非字典序；dump_tokens:47 注释写「与 Rust 侧 sort 对齐」与实现矛盾）。ASCII 文件名域等价、非 ASCII 才分叉，低危——统一 sort_files_lex 后删"

@@ -312,16 +312,18 @@ export function selftestRun(rd: RulesDoc, fpsBySet: Record<string, Fingerprint[]
     process.stdout.write(`  注入③ 加僵尸 divergence 条目 → ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
-  // 注入④（审阅 P1 缺项向常驻锚）：四成员集 2 有 2 无——dump_compile/dump_ast 补
-  // upper_bound 而 tokens/typeck 仍缺 ⇒ 原独有登记变僵尸 + 两条缺项未登记，双红
+  // 注入④（审阅 P1 缺项向常驻锚）：四成员集 2 有 2 无。PR #450（B3/M36b）F5 销案后
+  // 四家恒有 guard:upper_bound——原「给两家 push 补项」注入手段失效（push 后仍全有、
+  // 无差分即假绿，2026-11-03 master CI 实锤），手段反转：删 tokens/typeck 两家的该项
+  // ⇒ compile/ast 2 有 + tokens/typeck 2 无中间态，缺项向差异未登记 ⇒ 红
   {
     const m2 = cloneFps(fpsBySet);
     const dump = m2["dump_four"];
     if (dump === undefined || dump.length < 4) return 2;
-    dump[0]!.items.push("guard:upper_bound");
-    dump[1]!.items.push("guard:upper_bound");
+    dump[2]!.items = dump[2]!.items.filter((it) => it !== "guard:upper_bound");
+    dump[3]!.items = dump[3]!.items.filter((it) => it !== "guard:upper_bound");
     const red = !quiet(() => verdict(rd, m2));
-    process.stdout.write(`  注入④ dump 四家 2 有 2 无中间态（F5 修一半）→ ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
+    process.stdout.write(`  注入④ dump 四家 2 有 2 无中间态（F5 回退一半——删项注入）→ ${red ? "红（捕获）" : "仍绿（闸失效）"}\n`);
     if (!red) fails++;
   }
   if (fails > 0) {

@@ -82,7 +82,7 @@ test "api_batch_行解析形态" {
   // B3 批（M35 C5）同款升级：旧形态只 inspect core `String::trim`。现真实
   // 走 --batch：CRLF 行尾 + 空白行 + 尾换行混合 NDJSON，空行跳过、每非空行
   // 一次 invoke——fake_channel 全 ok 帧 → rc=0；喂空 stdin → rc=4 用法错。
-  // （Bytes 字面量直写——不经 util 包的 utf8_bytes，免给 surface 边表添一条
+  // （Bytes 字面量直写——不经 util 包的字节转换器（免给 surface 边表与 host_shared_guard
   // wbtest 消费边；帧文本纯 ASCII，字节即文本。）
   let frames : Bytes = b"{\"id\":1,\"method\":\"ping\",\"params\":{}}\r\n\r\n  \t\n{\"id\":2,\"method\":\"ping\",\"params\":{}}\n"
   assert_eq(

@@ -1686,9 +1686,7 @@ jobs:
   # 引擎 publish 流程零涉及（零污染语义与依赖方向见 desktop/README.md）。
   # 本 job 红的含义 = 已发布 vitro/engine@pin 在下游独立 module 装不上/
   # 解析不过（0.9.0 core/abort 断供事故的事前哨兵形态——该事故当时零 CI
-  # 信号，靠下游报告才知）。不 needs 任何上游 job：不消费本仓产物。
-  # 本批 check-only（类型面 + fmt + 探针 TS 面，零 CEF 依赖、分钟级）；CEF
-  # 真窗口 CDP smoke 另批加（带 actions/cache 存 ~/.proton 164MB）。
+  # 信号，靠下游报告才知）。
   desktop:
     name: Desktop shell gates (check / build / CEF CDP smoke)
     # 全量批（2026-11-02 PR #417 CI 绿后升格，用户拍板「上全量测试防线」）：
@@ -1785,8 +1783,10 @@ jobs:
         shell: bash
         run: cd desktop && proton_cli build -- --release 2>&1 | tee /tmp/moon_pull_build.log
       # 断言集：CDP 就绪 / transport=ipc / demo 完整采集（golden ✓ 42 帧
-      # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3——tools/smoke.mts 头注。
-      # 基线数字漂移（帧数/版本）须连坐更新 smoke.mts 断言与 README 基线表。
+      # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3 / R3b 形态 C（debug=false
+      # 重建直跑 + env 钉端口 → CDP 可达 + proton.localhost 指纹 + 三虫）——
+      # tools/smoke.mts 头注。基线数字漂移（帧数/版本）须连坐更新 smoke.mts
+      # 断言与 README 基线表。
       - name: CDP smoke (real CEF window, pinned port)
         shell: bash
         run: cd desktop && node tools/smoke.mts 9335

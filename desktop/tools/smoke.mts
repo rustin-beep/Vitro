@@ -2,7 +2,7 @@
 // CDP 断言集 → 杀树。零第三方依赖；断言逻辑复用 cdp_probe/cdp_catch/page 资产
 // （spawnSync 自身 node——单源不复制）。
 //
-// 用法：node tools/smoke.mts [port]（缺省 9335；cwd 须为 desktop/）
+// 用法：node tools/smoke.mts [port] [formC-port]（缺省 9335 / 9336；cwd 须为 desktop/）
 // 前置（CI 步保证）：desktop 与 demo 的 npm ci、demo wasm.wasm + langpack 资产、
 //   proton_cli 在 PATH、~/.proton CEF runtime 就位。
 //
@@ -11,13 +11,22 @@
 //   ② page-ready：title 非空且非 about:blank（≤90s，冷 runner vite 首访慢）
 //   ③ demo_run.js 驱动完整采集：transport=ipc（读 window.__vitroTransport
 //      实际选择结果，非桥存在性）/ golden ✓ / 42 帧 / 引擎 0.9.1 / stdout
-//   ④ cdp_catch：注入虫精确锚（probe-boom-uncaught 异常带堆栈 /
+//   ④ 命令层矩阵（demo_matrix.js invokeOp 直调四命令）
+//   ⑤ cdp_catch：注入虫精确锚（probe-boom-uncaught 异常带堆栈 /
 //      probe-console-err / net::ERR 网络域失败——三域各一）
+//   ⑥ R3b 形态 C（release 捉虫通道）：临时改 app/main.mbt debug=false →
+//      release 重建 → 直跑 exe（四件套 env + PROTON_REMOTE_DEBUGGING_PORT 钉
+//      formC-port）→ CDP 可达（env 非空翻转 debug 的 facade 语义回归）→
+//      url=proton.localhost（打包 asset 形态指纹）/ title 含 Vitro（真实渲染）
+//      / 三虫捕获——关 F12 形态的捉虫通道断言；finally 还原 main.mbt
 // 退出码：0=全过；1=断言失败；2=用法/环境错。
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
 
 const PORT = process.argv[2] ?? "9335";
+const PORT_C = process.argv[3] ?? "9336";
 const DEV_TIMEOUT_MS = 120_000;
 const PROTON_CLI = process.env["PROTON_CLI"] ?? "proton_cli";
 
@@ -43,10 +52,15 @@ try {
 }
 
 // ── 起 dev：proton_cli dev（进程树归本探针，finally taskkill /T 收树） ──
+// TEMP 处方（README 坑表①）：沙箱约束会话里工作区 exe 建 %TEMP%\proton-cef-*
+// 会 ACCESS_DENIED(5)——指到工作区内目录；CI runner 的 TEMP 本可写，指过去
+// 无害（目录自建）。dev 与形态 C 两段同款。
+const tmpDirShared = path.resolve("_build/tmp");
+mkdirSync(tmpDirShared, { recursive: true });
 console.log(`[smoke] spawn: ${PROTON_CLI} dev（CDP 端口 ${PORT}）`);
 const dev = spawn(PROTON_CLI, ["dev"], {
   cwd: process.cwd(),
-  env: { ...process.env, PROTON_REMOTE_DEBUGGING_PORT: PORT },
+  env: { ...process.env, PROTON_REMOTE_DEBUGGING_PORT: PORT, TEMP: tmpDirShared, TMP: tmpDirShared },
   stdio: ["ignore", "pipe", "pipe"],
   shell: false,
 });
@@ -106,8 +120,8 @@ async function diagnoseNotReady(): Promise<void> {
 }
 
 /** 跑一个探针脚本（同 node），回其 stdout 解析出的 JSON（eval 字段原样字符串）。 */
-function runProbe(script: string, args: string[]): { rc: number; stdout: string } {
-  const r = spawnSync(process.execPath, [script, PORT, ...args], {
+function runProbe(script: string, args: string[], port: string = PORT): { rc: number; stdout: string } {
+  const r = spawnSync(process.execPath, [script, port, ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
     timeout: 120_000,
@@ -143,6 +157,33 @@ interface CaughtEvent {
   desc?: string;
   args?: string[];
   text?: string;
+}
+
+/** ⑤/⑥ 共用：跑 cdp_catch 并断言三虫精确锚（审阅 P3：caught_count>=N 在
+ *  页面有有机异常时也 PASS，须锚到注入的三枚具体虫）。prefix 区分断言名。 */
+function assertCatch(prefix: string, port: string): void {
+  const catchRun = runProbe("tools/cdp_catch.mts", [], port);
+  let caughtParsed: { caught_count?: number; caught?: CaughtEvent[] } | null = null;
+  if (catchRun.rc === 0) {
+    const start = catchRun.stdout.indexOf("{");
+    const end = catchRun.stdout.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        caughtParsed = JSON.parse(catchRun.stdout.slice(start, end + 1)) as { caught_count?: number; caught?: CaughtEvent[] };
+      } catch {
+        caughtParsed = null;
+      }
+    }
+  }
+  const caught = caughtParsed?.caught ?? [];
+  const hasBoom = caught.some((e) => e.kind === "exceptionThrown" && (e.desc ?? "").includes("probe-boom-uncaught"));
+  const hasConsoleErr = caught.some(
+    (e) => e.kind === "consoleAPICalled" && (e.args ?? []).some((a) => a.includes("probe-console-err")),
+  );
+  const hasNetErr = caught.some((e) => e.kind === "logEntry" && (e.text ?? "").includes("net::ERR"));
+  check(`${prefix}cdp-catch-boom`, catchRun.rc === 0 && hasBoom, hasBoom ? "exceptionThrown@probe-boom-uncaught 命中" : `未命中（共 ${caught.length} 事件）`);
+  check(`${prefix}cdp-catch-console`, catchRun.rc === 0 && hasConsoleErr, `consoleAPICalled@probe-console-err ${hasConsoleErr ? "命中" : "未命中"}`);
+  check(`${prefix}cdp-catch-neterr`, catchRun.rc === 0 && hasNetErr, `logEntry@net::ERR ${hasNetErr ? "命中" : "未命中"}`);
 }
 
 try {
@@ -202,30 +243,114 @@ try {
     }
   }
 
-  // ⑤ 无 DevTools 窗口捉虫——精确锚（审阅 P3：caught_count>=N 在页面有
-  //    有机异常时也 PASS，须锚到注入的三枚具体虫）
-  const catchRun = runProbe("tools/cdp_catch.mts", []);
-  let caughtParsed: { caught_count?: number; caught?: CaughtEvent[] } | null = null;
-  if (catchRun.rc === 0) {
-    const start = catchRun.stdout.indexOf("{");
-    const end = catchRun.stdout.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        caughtParsed = JSON.parse(catchRun.stdout.slice(start, end + 1)) as { caught_count?: number; caught?: CaughtEvent[] };
-      } catch {
-        caughtParsed = null;
+  // ⑤ 无 DevTools 窗口捉虫——精确锚（断言体在 assertCatch，与形态 C 共用）
+  assertCatch("", PORT);
+
+  // ── ⑥ R3b 形态 C：release 捉虫通道（builder debug=false + env 端口 → CDP）──
+  // facade 语义（desktop/README.md CDP 矩阵）：env PROTON_REMOTE_DEBUGGING_PORT
+  // 非空把 debug 0 翻转为 1——release 产物开 CDP 的唯一合法通道，也是「关 F12
+  // 形态下仍可捉虫」的通道语义。CI 化 = 钉住该翻转不随 proton 升级漂移。
+  // 形态模拟：临时改 app/main.mbt debug=false → release 重建（含 demo dist
+  // 生产构建）→ 直跑 exe（不经 proton_cli dev——dev 会强制 PROTON_MODE=dev）。
+  // 直跑三坑（本批实测）：asset 相对路径按 **cwd** 解析（spawn 须 cwd=desktop/，
+  // 锚错则 entry_load_error 且 page targets 空）；node spawn 直跑无 MSYS 伪加载
+  // 错（P 线坑系 MSYS bash 特有）；沙箱会话 %TEMP% 写围栏 → TEMP 指工作区内。
+  const srcPath = "app/main.mbt";
+  const originalMain = readFileSync(srcPath, "utf8");
+  let formCApp: ReturnType<typeof spawn> | null = null;
+  try {
+    // debug=true, 只在代码行出现（注释行为「debug=true 缺省」无逗号）——替换
+    // 计数≠1 即环境变了，fail loud 不猜
+    const patched = originalMain.replace("debug=true,", "debug=false,");
+    if (patched === originalMain) {
+      check("formC-patch", false, "app/main.mbt 中未找到 'debug=true,'（字面变了？连坐更新本探针）");
+    } else {
+      writeFileSync(srcPath, patched);
+      console.log(`[formC] rebuild with debug=false → port ${PORT_C}`);
+      const build = spawnSync(PROTON_CLI, ["build", "--", "--release"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        timeout: 300_000,
+      });
+      process.stdout.write((build.stdout ?? "") + (build.stderr ?? ""));
+      if (build.status !== 0) {
+        check("formC-build", false, `proton_cli build rc=${build.status ?? "signal-" + String(build.signal)}`);
+      } else {
+        check("formC-build", true, "release 重建绿（debug=false）");
+        const exe = "_build/native/release/build/app/app.exe";
+        if (!existsSync(exe)) {
+          check("formC-exe", false, `产物缺席：${exe}（构建布局变了？）`);
+        } else {
+          // CEF runtime 四件套：store 布局是内容寻址目录（cef-<hash>-layout-1），
+          // glob 发现且要求唯一（多个=fail loud，宁红勿猜错 runtime）
+          const storeDir = path.join(homedir(), ".proton", "store", "win32-x64");
+          const layouts = existsSync(storeDir)
+            ? readdirSync(storeDir).filter((d) => /^cef-.*-layout-1$/.test(d))
+            : [];
+          if (layouts.length !== 1) {
+            check("formC-runtime", false, `~/.proton/store 布局异常（${layouts.length} 个 cef layout：${layouts.join(", ") || "无"}）`);
+          } else {
+            const runtimeRoot = path.join(storeDir, layouts[0]!, "runtime");
+            const helper = path.join(homedir(), ".proton", "helpers", "win32-x64", "0.6.0", "cef_process.exe");
+            formCApp = spawn(exe, [], {
+              cwd: process.cwd(),
+              env: {
+                ...process.env,
+                PROTON_RUNTIME_ROOT: runtimeRoot,
+                PROTON_HELPER_PATH: helper,
+                PROTON_PROJECT_CONFIG: path.resolve("proton.project.json"),
+                PROTON_REMOTE_DEBUGGING_PORT: PORT_C,
+                TEMP: tmpDirShared,
+                TMP: tmpDirShared,
+                PATH: path.join(runtimeRoot, "bin") + ";" + (process.env["PATH"] ?? ""),
+              },
+              stdio: ["ignore", "pipe", "pipe"],
+            });
+            formCApp.stdout?.on("data", (d: Buffer) => process.stdout.write(`[formC-app] ${d}`));
+            formCApp.stderr?.on("data", (d: Buffer) => process.stderr.write(`[formC-app!] ${d}`));
+            // CDP 探活（轮询 60s——release 直跑实测秒级就绪，dev 段的 120s 是
+            // vite+dev server 链路开销，这里不背）
+            let formCReady = false;
+            const fc0 = Date.now();
+            while (Date.now() - fc0 < 60_000) {
+              try {
+                const r = await fetch(`http://127.0.0.1:${PORT_C}/json/version`, { signal: AbortSignal.timeout(1500) });
+                if (r.ok) {
+                  const v = (await r.json()) as { Browser?: string };
+                  if (v.Browser !== undefined) {
+                    formCReady = true;
+                    break;
+                  }
+                }
+              } catch {
+                // 未就绪
+              }
+              await sleep(1500);
+            }
+            check("formC-cdp-ready", formCReady, formCReady ? `ws://127.0.0.1:${PORT_C}（env 翻转 debug 语义在）` : "60s 内未就绪（release 形态 env 端口通道断？）");
+            if (formCReady) {
+              // release 形态指纹 + 真实渲染：url=proton.localhost（打包 asset 宿主
+              // scheme，与 dev 形态 vite URL 互斥）、title 为 demo 生产构建标题
+              const probe = runProbe("tools/cdp_probe.mts", [], PORT_C);
+              const pe = probe.rc === 0 ? evalField(probe.stdout) : null;
+              const url = pe === null ? "" : String(pe["url"] ?? "");
+              const title = pe === null ? "" : String(pe["title"] ?? "");
+              check("formC-url", url.includes("proton.localhost"), `url=${url}`);
+              check("formC-title", title.includes("Vitro"), `title=${title}`);
+              // 三虫捕获：关 F12 形态的捉虫通道断言（与 dev 段同锚不同端口）
+              assertCatch("formC-", PORT_C);
+            }
+          }
+        }
       }
     }
+  } finally {
+    if (formCApp !== null && formCApp.pid !== undefined && !formCApp.killed) {
+      spawnSync("taskkill", ["/PID", String(formCApp.pid), "/T", "/F"], { stdio: "ignore" });
+    }
+    writeFileSync(srcPath, originalMain); // 还原 debug=true（幂等：字节级写回原文）
+    console.log("[formC] main.mbt 已还原，树已收");
   }
-  const caught = caughtParsed?.caught ?? [];
-  const hasBoom = caught.some((e) => e.kind === "exceptionThrown" && (e.desc ?? "").includes("probe-boom-uncaught"));
-  const hasConsoleErr = caught.some(
-    (e) => e.kind === "consoleAPICalled" && (e.args ?? []).some((a) => a.includes("probe-console-err")),
-  );
-  const hasNetErr = caught.some((e) => e.kind === "logEntry" && (e.text ?? "").includes("net::ERR"));
-  check("cdp-catch-boom", catchRun.rc === 0 && hasBoom, hasBoom ? "exceptionThrown@probe-boom-uncaught 命中" : `未命中（共 ${caught.length} 事件）`);
-  check("cdp-catch-console", catchRun.rc === 0 && hasConsoleErr, `consoleAPICalled@probe-console-err ${hasConsoleErr ? "命中" : "未命中"}`);
-  check("cdp-catch-neterr", catchRun.rc === 0 && hasNetErr, `logEntry@net::ERR ${hasNetErr ? "命中" : "未命中"}`);
 } finally {
   killTree();
 }

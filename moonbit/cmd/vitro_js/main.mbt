@@ -28,7 +28,12 @@ fn main {
         channel=@engine_direct.direct_channel(),
       )
     "compile" =>
-      @cli.compile(rest, js_read_stdin, channel=@engine_direct.direct_channel())
+      @cli.compile(
+        rest,
+        js_read_stdin,
+        write_stdout=js_write_stdout,
+        channel=@engine_direct.direct_channel(),
+      )
     "step" =>
       @cli.step(
         rest,

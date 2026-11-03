@@ -19,9 +19,23 @@
 //   ——本仓消费面仅 cmd×5 的 7 函数（moonbit_surface 无主 pub 闸约束），
 //   四函数保留 priv 形态由白盒测试全量覆盖，上游跟进时 diff 仍可读；
 //   ② 文件头追加本标注。
-// 上游漂移监控：go run ./scripts/moonbit/vendor_drift（基线
+// 上游漂移监控：node scripts/moonbit/vendor_drift/main.mts（基线
 // scripts/moonbit/vendor_baseline.json；红 = 人工评估令，非自动同步令）。
 // 许可：本文件为 Apache-2.0 许可的 vendored 衍生，模块级说明见 THIRD_PARTY.md。
+//
+// ── 三后端行为分歧矩阵（B3 批 2026-11-02 登记，审阅 v2 M37 D 组三臂探针
+//    实测：js=node / wasm=moonrun host / native=本包 C stub；全部为 vendored
+//    上游形态，**登记不改行为**——本包消费面 cmd×5 的 CLI 路径只触 read/
+//    is_dir/read_dir/path_exists，分歧面实际暴露极窄）──
+//   create_dir 嵌套 a/b/c  | js OK(recursive) | wasm OK | native RAISE(No such file)
+//   create_dir 已存在目录  | js OK(幂等)      | wasm OK | native RAISE(File exists)
+//   remove_dir 非空目录    | js 递归删        | wasm 递归删 | native RAISE(Directory not empty)
+//   read_file(目录)        | js EISDIR        | wasm os error 5(拒绝访问) | native Permission denied
+//   错误消息形态           | node 英文码+绝对路径+syscall | Rust io::Error 系统 locale+相对路径 | strerror 英文无路径
+//   路径分隔符 fwd/back/mixed/./.. | 三臂 Windows 全兼容一致
+//   Linux 端 `#include "sub\inc1.h"` 反斜杠 = 普通文件名字符 → E1021（与 WSL clang 同形，OS 语义透传非缺陷）
+//   消费方若依赖「嵌套建目录 / 幂等建目录 / 递归删目录」须自行逐层处理；
+//   vitro 业务层诊断（E1021 等）不透传 fs 原文，双端同形。
 
 ///|
 pub(all) suberror IOError {
@@ -122,11 +136,13 @@ pub fn read_dir(path : String) -> ArrayView[String] raise IOError {
 ///|
 /// Creates a directory at the specified path.
 /// Note: nested directories are not supported for native backend
+///（三后端分歧全表见文件头矩阵——B3 批 2026-11-02：js 递归+幂等 /
+/// wasm 递归+幂等 / native 单层且已存在 RAISE）。
 ///
 /// # Parameters
 ///
 /// - `path` : The path where the directory should be created.
-/// - `mode~` : The mode of the directory. Default is `777`.
+///   （B3 批删 `mode~` 文档行——上游残留：签名无此参数，照读会误信有权限位。）
 pub fn create_dir(path : String) -> Unit raise IOError {
   create_dir_internal(path)
 }

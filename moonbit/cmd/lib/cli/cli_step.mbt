@@ -23,12 +23,35 @@ pub fn step(
       json_mode = true
     } else if args[i] == "--summary" {
       json_mode = false // 显式摘要模式（默认）
-    } else if args[i] == "--max-steps" && i + 1 < args.length() {
+    } else if args[i] == "--max-steps" {
+      // B3 批（2026-11-02，M35 A3）：尾置缺值先于「未知旗标」臂判——旧条件
+      // 把 `i + 1 < length` 揉进同一分支，尾置时落到未知旗标臂报「未知旗标：
+      // --max-steps」（已知旗标误报未知，run 同参数报「尾置缺值」——两子命令
+      // 文案分叉）。rc=4 不变，文案对齐 run。
+      if i + 1 >= args.length() {
+        say("用法错: --max-steps 尾置缺值（须跟正整数）")
+        say("用法: step <file.c> [--max-steps N] [--json|--summary]")
+        return 4
+      }
       i += 1
       // 非数字 = 用法错（2026-10-04 二轮审 P3：静默回落 100000 违反
       // 「禁止静默 default」纪律——对齐 Rust unified 的 eprintln+exit）
       match parse_int(args[i]) {
-        Some(v) => max_steps = v
+        Some(v) =>
+          // B3 批（M35 A2）：下界域检对齐 run——旧形态无下界，`--max-steps 0`
+          // 下发 config.set 后被 gateway #94 低下界钳成 1、钳制回包被 ignore 吞，
+          // 静默按 1 步跑（run 同参数 rc=4 拒绝——同参数两子命令行为分叉）。
+          // 上界由 parse_int 的 Int32 溢出预检承担（#133：超 2147483647 直接
+          // None 走「需要整数」臂）——此处只判下界，不写不可达的 `v > 2147483647`
+          //（PR #450 审阅 P3-1：旧写法把「1..=2147483647」说成域检面，实为夸大）。
+          if v < 1 {
+            say(
+              "用法错: --max-steps 须 ≥ 1，得到 '\{args[i]}'（上限 2147483647 由整数域钳制；更大负载用 serve/api 的 config.set preset:algo）",
+            )
+            return 4
+          } else {
+            max_steps = v
+          }
         None => {
           say("用法错: --max-steps 需要整数，得到 '\{args[i]}'")
           return 4
@@ -155,11 +178,16 @@ pub fn step(
   if trapped {
     // 退出码分档（契约 §2：3=步数超限 / 2=trap——与 run 同口径）。step 帧
     // 无结构化步数位（max_collected_step 超限时 None——2026-10-04 探针实测），
-    // 判 trap_message 的**引擎固定文案前缀**「程序执行步数超过限制」（比泛
-    // 「步数」收窄到零误命中面；该文案是引擎格式字符串，变更连坐此处——
-    // spec §2 限定句在案）
+    // 判 trap_message 的**引擎固定文案前缀**「程序执行步数达到预算上限」（比泛
+    // 「步数」收窄到零误命中面；该文案是引擎模板字符串——单源
+    // teaching/assets/trap_messages_gen.mbt 的 step-limit 模板，变更连坐此处
+    // 与 cli_wbtest m35_a2 锚；spec §2 限定句在案）。
+    // B3 批（2026-11-02，M35 A2'）：旧判定串「程序执行步数超过限制」是引擎
+    // 文案翻新前的形态，模板改为「达到预算上限」后此处未连坐——子串永不命
+    // 中，所有 step-limit 恒落 rc=2（契约 3 在 step 子命令上从不成立，教学
+    // 预算墙的 shell 判 `$? == 3` 全部失灵）。
     if extract_json_string_field(last, "trap_message").contains(
-        "程序执行步数超过限制",
+        "程序执行步数达到预算上限",
       ) {
       return 3
     }

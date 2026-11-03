@@ -6,7 +6,7 @@
 // 空输出/缺行恒绿突变实锤后补——恰好 10 行、ping 帧、版本行、compile+run
 // 帧全须在位）：
 //
-//   native   moon run --target native   （MOON_CC=clang——AGENTS 纪律 11）
+//   native   moon run --target native   （MOON_CC 平台分叉：win32=clang-cl / 其余 clang——AGENTS 纪律 11 + 陷阱 43）
 //   js       moon run --target js       （node）
 //   wasm-gc  moon run --target wasm-gc  （moonrun——moon 工具链自带）
 //
@@ -129,14 +129,17 @@ function firstDiffMsg(lx: string, x: Buffer, ly: string, y: Buffer): string {
   return `${lx} vs ${ly}: 长度差 ${x.length}B vs ${y.length}B（前 ${n}B 一致——单侧尾部增删）`;
 }
 
-/** moon run 单臂执行（cwd=moonbit/；MOON_CC=clang 按臂注入；字节域捕获）。 */
+/** moon run 单臂执行（cwd=moonbit/；native 臂 MOON_CC 按平台注入；字节域捕获）。 */
 function runArm(target: string, moonbitDir: string): ArmResult {
   const env = { ...process.env };
   // moon run --target js 内部起 node：显式用本进程的 node，防 PATH 抖动
   const nodeDir = path.dirname(process.execPath);
   env.PATH = `${nodeDir}${path.delimiter}${env.PATH ?? ""}`;
   if (target === "native") {
-    env.MOON_CC = "clang";
+    // B3 审阅 P2-2：moon run 的 Windows native 直连目标同样忽略裸 clang（moon
+    // 0.1.20261028 实测同款警告——见 moonbit/AGENTS.md 陷阱 43），须 cl 兼容驱动；
+    // 非 Windows 沿用 clang（纪律 11）。
+    env.MOON_CC = process.platform === "win32" ? "clang-cl" : "clang";
   }
   const r = spawnSync("moon", ["run", "--target", target, "cmd/backend_triage"], {
     cwd: moonbitDir,

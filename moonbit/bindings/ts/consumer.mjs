@@ -19,8 +19,9 @@
 //   2) **渲染**：把 payload 渲染成一行步骤摘要（最小内容层消费——不经 DOM，
 //      故可在纯 node 下跑）。
 //
-// 用法（仓库根）：
-//   node protocol/consumer.mjs [cmd/serve 路径]
+// 用法（仓库根；路径 B3 批 2026-11-02 勘正——旧写 `node protocol/consumer.mjs`
+// 系 bindings 迁入 moonbit/ 前的形态，CI ci.yml 实际调用面即下行）：
+//   node moonbit/bindings/ts/consumer.mjs [cmd/serve 路径]
 //   缺省 exe = moonbit/_build/native/debug/build/cmd/serve/serve.exe
 //   （debug 形态——与 protocol_frames / serve_smoke 同款；CI core job 的
 //   consumer 步自带 `moon build --target native cmd/serve` 前置构建）
@@ -135,7 +136,10 @@ const PROBE_SRC = `int main() {
 // 快照（只 step.begin 后调用会得到 0 个 payload）。故消费者必须靠 `step.next`
 // 逐步行进；请求是一次性写入 NDJSON（无法按响应动态追加），故预设上限步数，
 // finished 之后的请求返回空 payloads，无害。
-const MAX_STEPS = 400;
+// 上限 B3 批（2026-11-02，审阅 v2 V3-②-C3）400→800：PROBE_SRC 实测 399 步，旧值
+// 仅 1 步裕度——引擎步数口径微调（vis_events 合并/语义分档）即触发「步数达上限」
+// 假红；800 给一倍余量，finished 后多余请求返回空 payloads 无代价。
+const MAX_STEPS = 800;
 
 function fetchPayloads(exe) {
   const reqs = [

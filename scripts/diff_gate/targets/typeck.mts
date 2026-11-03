@@ -71,14 +71,17 @@ export { makeTypeckGolden };
 
 // ---- 差异面：dump 与归一 ----
 
-/** 单样本产物定位：`<stem>.c.typeck.json` 优先，退 `<stem>.typeck.json`。 */
+/**
+ * 单样本产物定位：`<stem>.c.typeck.json`（F11：stem 含 .c）。B3 批（2026-11-02，
+ * M36 A1）起 dump_typeck 的 basename 两模式同果恒保留 .c，旧退路
+ * `<stem>.typeck.json`（裸名丢 .c 分裂形态兜底）成死分支随之收口——本驱动
+ * 恒走目录模式，退路从未命中（parser.mts astRawOf 同款）。
+ */
 function typeckRawOf(moonDir: string, file: string, fail: Fail): Buffer {
   const base = path.basename(file);
   const stem = base.slice(0, base.length - path.extname(base).length);
-  for (const name of [`${stem}.c.typeck.json`, `${stem}.typeck.json`]) {
-    const p = path.join(moonDir, name);
-    if (fs.existsSync(p)) return fs.readFileSync(p);
-  }
+  const p = path.join(moonDir, `${stem}.c.typeck.json`);
+  if (fs.existsSync(p)) return fs.readFileSync(p);
   return fail(`MoonBit 侧输出缺失: ${stem}`);
 }
 

@@ -8,6 +8,7 @@ import {
   blockBody,
   fieldSetMismatch,
   genMeta,
+  genMetaDts,
   genTS,
   parseDocFields,
   parseMoonbitTypes,
@@ -28,6 +29,7 @@ function rd(types: TypeSpec[]): RulesDoc {
     types,
     out_ts: "out.d.ts",
     out_meta: "out.mjs",
+    out_meta_dts: "out.d.mts",
   };
 }
 
@@ -160,6 +162,29 @@ test("genTS：枚举字典序在前、struct 按 rules 声明序；genMeta 字�
   const meta = genMeta(r, types);
   assert.match(meta, /export const ENUMS = \{\n  AEnum: \["X", "Y"\],\n\};/);
   assert.match(meta, /export const FIELDS = \{\n  ZStruct: \["z"\],\n\};/);
+
+  // B3 批（V3-②-B2）：fields.d.ts 伴生——declare const + readonly 元组字面量，
+  // 与 fields.mjs 同序同键；SCHEMA_VERSION 为字符串字面量类型
+  const dts = genMetaDts(r, types);
+  assert.match(dts, /export declare const SCHEMA_VERSION: "0.1";/);
+  assert.match(dts, /export declare const ENUMS: \{\n  readonly AEnum: readonly \["X", "Y"\];\n\};/);
+  assert.match(dts, /export declare const FIELDS: \{\n  readonly ZStruct: readonly \["z"\];\n\};/);
+  // 两件键序一致（按 rd.types 声明序各自过滤 enum/struct）
+  const keysOf = (s: string, re: RegExp): string[] => [...s.matchAll(re)].map((m) => m[1] as string);
+  assert.deepEqual(keysOf(dts, /readonly ([A-Za-z]+): readonly/g), keysOf(meta, /\n  ([A-Za-z]+): \[/g));
+
+  // PR #450 审阅 P2-1：枚举常量值导出——fields.mjs 须发射纯 JS 对象（.mjs 不吃
+  // TS 语法——`as const` 初版即被下游探针 SyntaxError 抓住），运行时值与
+  // index.d.ts 的 as const 对象逐键一致；字面量类型面归 fields.d.ts 的 declare
+  assert.match(meta, /export const AEnum = \{\n  X: "X",\n  Y: "Y",\n\};/);
+  assert.doesNotMatch(meta, /as const/);
+  assert.match(dts, /export declare const AEnum: \{\n  readonly X: "X";\n  readonly Y: "Y";\n\};/);
+  assert.match(dts, /export type AEnum = "X" \| "Y";/);
+  // 值导出运行时完整断言的口径：index.d.ts 的 export const ⊆ fields.mjs
+  const constOf = (s: string): Set<string> =>
+    new Set([...s.matchAll(/^export (?:declare )?const ([A-Za-z_][A-Za-z0-9_]*)/gm)].map((m) => m[1] as string));
+  const missing = [...constOf(ts)].filter((n) => !constOf(meta).has(n));
+  assert.deepEqual(missing, []);
 });
 
 test("真实仓库：-check 通过（产物新鲜 + 双向对账）", () => {
@@ -171,12 +196,12 @@ test("真实仓库：-check 通过（产物新鲜 + 双向对账）", () => {
   assert.match(r.stdout, /PASS——产物新鲜/);
 });
 
-test("真实仓库：-selftest 三路注入全红", () => {
+test("真实仓库：-selftest 四路注入全红（B3 批起含 meta 两件同判）", () => {
   const r = spawnSync(
     process.execPath,
     [path.join(import.meta.dirname, "main.mts"), "-selftest"],
     { cwd: projectRoot(), encoding: "utf8" },
   );
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /selftest PASS——3 路注入全部判红/);
+  assert.match(r.stdout, /selftest PASS——4 路注入全部判红/);
 });

@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/gateway"
+
+// Values
+pub const ENGINE_VERSION : String = "0.9.1"
+
+pub fn engine_version() -> String
+
+pub fn invoke(String) -> String
+
+pub fn invoke_parsed(String) -> Json?
+
+pub fn protocol_version() -> String
+
+pub fn reset() -> Unit
+
+pub fn set_clock_source(() -> UInt64) -> Unit
+
+pub fn set_include_reader((String) -> String?) -> Unit
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

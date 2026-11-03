@@ -1,6 +1,7 @@
 // #378/#380 锚：目录段函数 + VFS 键拼装的根级 POSIX 全链路。
 // dump 包 native-only——裸 moon test 静默跳过本文件，
-// 验证口径 `MOON_CC=clang moon test --target native -p dump_typeck`。
+// 验证口径 `MOON_CC=clang-cl moon test --target native -p dump_typeck`（Windows——
+// test 面须 cl 兼容驱动，裸 clang 被忽略回落 MSVC，M37 D-6；Linux 用 clang）。
 
 ///|
 /// #378：唯一分隔符在 0 位 = POSIX 根级文件（"/x.c"），目录段须返回
@@ -47,4 +48,42 @@ test "根级链路：base_dir=/ + 键 /hd.h 可解析 include" {
     base_dir="/",
   )
   inspect(r.errors.length(), content="0")
+}
+
+///|
+/// B3 批（2026-11-02，M36 A1）basename 锚：产物名 stem 恒保留扩展名（F11
+/// 对拍键约定 = stem 含 .c）——裸名单文件与带目录段必须同果。旧
+/// basename_no_ext 点 arm 在「尚未遇分隔符」时截扩展名：目录模式
+/// `good.c.ast.json` / 裸名 `good.ast.json` 两形态（native exe 实测），
+/// 同函数两种行为、单文件模式违反头注 F11 规格；现与 dump_compile 同形。
+/// 四份 wbtest 此前均未锚 basename（M36 报告发现项）。
+test "basename_keep_ext 裸名与带目录同果（F11 stem 含 .c）" {
+  inspect(basename_keep_ext("good.c"), content="good.c")
+  inspect(basename_keep_ext("corpus/good.c"), content="good.c")
+  inspect(basename_keep_ext("a/b/good.c"), content="good.c")
+  inspect(basename_keep_ext("a\\b\\good.c"), content="good.c")
+  inspect(basename_keep_ext("/good.c"), content="good.c")
+  // 多点名与无扩展名：只剥目录段，不碰点
+  inspect(basename_keep_ext("x/good.min.c"), content="good.min.c")
+  inspect(basename_keep_ext("x/Makefile"), content="Makefile")
+}
+
+///|
+/// PR #450 审阅 P2-3 锚：out==target 门禁的归一比较——同义路径（./ 前缀、尾分隔符、
+/// 重复分隔符、.. 折返、反斜杠）必须判等；相对上溯（栈空 ..）保留不吞。旧裸字符串
+/// 相等形态下 `dump_ast corpus ./corpus` rc=0 且产物写进语料目录（审阅实测）。
+test "norm_path 同义路径归一（out==target 门禁不裸比）" {
+  inspect(norm_path("corpus"), content="corpus")
+  inspect(norm_path("./corpus"), content="corpus")
+  inspect(norm_path("corpus/"), content="corpus")
+  inspect(norm_path("corpus//"), content="corpus")
+  inspect(norm_path("a/../corpus"), content="corpus")
+  inspect(norm_path(".\\corpus\\"), content="corpus")
+  inspect(norm_path("sub/corpus"), content="sub/corpus")
+  inspect(norm_path("../out"), content="../out")
+  inspect(norm_path("../../out"), content="../../out")
+  inspect(norm_path("a/../../out"), content="../out")
+  // 门禁判据：两侧归一后相等即拒
+  assert_true(norm_path("corpus") == norm_path("./corpus/"))
+  assert_true(norm_path("corpus") != norm_path("corpus_out"))
 }

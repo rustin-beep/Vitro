@@ -7,22 +7,30 @@
   "types": "index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts"
+      "types": "./index.d.ts",
+      "import": "./fields.mjs"
     },
     "./fields": {
+      "types": "./fields.d.ts",
       "import": "./fields.mjs"
     }
   },
   "files": [
     "index.d.ts",
     "fields.mjs",
+    "fields.d.ts",
     "consumer.mjs",
     "README.md"
   ],
   "sideEffects": false,
   "_generated": [
-    "index.d.ts 与 fields.mjs 是 `node scripts/gen_protocol_ts/main.mts` 的生成物，禁手改。",
+    "index.d.ts / fields.mjs / fields.d.ts 是 `node scripts/gen_protocol_ts/main.mts` 的生成物，禁手改。",
     "包版本（0.1.0）跟 schema 版本（v0.1）走：schema 冻结后字段只增不改语义，",
-    "新增字段 = minor（消费方必须忽略未知字段），破坏性变更不被允许。"
+    "新增字段 = minor（消费方必须忽略未知字段），破坏性变更不被允许。",
+    "exports（B3 批 2026-11-02，审阅 v2 V3-②-B1/B2）：`.` 的 import 条件指向 fields.mjs——",
+    "index.d.ts 声明了值导出 SCHEMA_VERSION，无运行时入口时 `import { SCHEMA_VERSION } from",
+    "'@vitro/protocol'` 编译过、运行时 ERR_PACKAGE_PATH_NOT_EXPORTED（types-only 包声明值常量的",
+    "诱导陷阱）；`./fields` 补 types 条件（fields.d.ts 伴生）使 node16/bundler resolution 拿得到类型。",
+    "运行时面 = fields.mjs 全部导出（SCHEMA_VERSION/ENUMS/FIELDS）；index.d.ts 的 interface/枚举常量是纯类型面。"
   ]
 }

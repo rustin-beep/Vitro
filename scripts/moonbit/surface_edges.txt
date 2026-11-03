@@ -688,5 +688,11 @@ vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/teaching/assets trap_messages
 vitro/engine/vm vitro/engine/util render_template
 vitro/engine/vm vitro/engine/util utf8_len
-
 vitro/engine/time_travel vitro/engine/protocol classify
+. vitro/engine/codegen compile
+. vitro/engine/lexer tokenize
+. vitro/engine/parser parse
+. vitro/engine/typeck TypeChecker
+. vitro/engine/util utf8_text_partial
+. vitro/engine/vm VitroVM
+

@@ -8,9 +8,10 @@
 //         续跑等前置依赖序列自此全部可脚本化（与 serve 的区别：管道终止型
 //         ——脚本无逐行交互锁需求，cat frames | vitro api --batch 即全链）。
 //
-// 全部 21+4 协议方法（含 dump 族/memory/output.delta/session 族）可脚本化
-// ——比 21 个子命令镜像轻一个量级；长活会话（跨命令驻留/前端长连接）仍归
-// serve 长会话。
+// 全部协议方法（含 dump 族/memory/output.delta/session 族；方法数单源
+// = api_help_gen.mbt 生成清单——此处不背具体数字，曾写「21+4」与生成表
+// 32 漂移）可脚本化——比逐方法子命令镜像轻一个量级；长活会话（跨命令驻留/
+// 前端长连接）仍归 serve 长会话。
 //
 // 退出码：0=全部帧 ok:true / 1=任一帧 ok:false（协议内错误统一——api 是
 // 透传层不细分语义）/ 4=用法错。read_stdin 由薄壳注入（`-` 同款平台绑定）；
@@ -35,13 +36,24 @@ pub fn api(
   while i < args.length() {
     if args[i] == "--batch" {
       batch = true
-    } else if !args[i].has_prefix("-") && method_name == "" {
+    } else if args[i].has_prefix("-") {
+      // B3 批（2026-11-02，M35 A1）：未知旗标 fail loud——旧解析循环无此臂：
+      // 前置形态 `api --xyz ping` 旗标落空静默吞、照常执行 rc=0（病 87 形态
+      // ——用户以为旗标生效，零信号）；尾随形态 `api ping --bogus` 被抓进
+      // params 位再被下方前缀校验拦下 rc=4、文案却指责 params（旗标误报成
+      // params）。run/compile/step 三子命令 2026-10-13 方案 A 已 fail loud，
+      // api 独漏在此收口。api 只认 --batch 一个旗标（params 必为 `{` 开头的
+      // JSON 对象、方法名不以 `-` 起头——`-` 开头者无合法去处）。
+      say("vitro api: 未知旗标：\{args[i]}（api 仅认 --batch）")
+      say(
+        "用法: api <method> [params-json] | api --batch < frames.ndjson | api help [method]",
+      )
+      return 4
+    } else if method_name == "" {
       method_name = args[i]
-    } else if method_name == "help" &&
-      !args[i].has_prefix("-") &&
-      help_target == "" {
+    } else if method_name == "help" && help_target == "" {
       help_target = args[i]
-    } else if method_name != "" && params == "{}" && args[i] != "{}" {
+    } else if params == "{}" && args[i] != "{}" {
       // 第二个非旗标参数 = params JSON（缺省 "{}"）
       params = args[i]
     }

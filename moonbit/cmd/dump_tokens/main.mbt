@@ -3,8 +3,13 @@
 /// 与 Rust `vitro_cli dump-tokens` 逐字节同构，供 Go 差分驱动比对。
 ///
 /// 用法：moon run cmd/dump_tokens -- <corpus_dir|file.c> <out_dir> <raw|pp|both>
-/// 用法错（缺参/模式非法）= 用法行 + rc=4（#230 治理，2026-10-27——旧走
-/// 未捕获 Failure 的 PanicError 栈 + rc=127，对脚本与 IDE 都是噪声）。
+/// 用法错（缺参/模式非法/参数过多/输出目录与语料目录相同）= 原因行 + rc=4
+///（#230 治理，2026-10-27——旧走未捕获 Failure 的 PanicError 栈 + rc=127，
+/// 对脚本与 IDE 都是噪声；参数过多与 out==target 门禁 B3 批 2026-11-02
+/// 四家连坐补齐，模板 = dump_compile 既有防御形态，见 dump_ast 头注）。
+/// 产物名 `<name>.l1.tsv` / `<name>.l2.tsv`（stem **去扩展名**——两段式
+/// basename_no_ext，裸名与带目录同果；与 ast/typeck/compile 三家「stem 含
+/// .c」的 F11 口径不同，系本工具既定契约，B3 批 basename 正名面不含此处）。
 extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
@@ -14,9 +19,19 @@ fn main raise {
     println("用法: dump_tokens <corpus_dir|file.c> <out_dir> <raw|pp|both>")
     c_exit(4)
   }
+  if args.length() > 4 {
+    println(
+      "参数过多：期望 <corpus_dir|file.c> <out_dir> <raw|pp|both>（实测 \{args.length() - 1} 个位置参数）",
+    )
+    c_exit(4)
+  }
   let target = args[1]
   let out_dir = args[2]
   let mode = args[3]
+  if norm_path(target) == norm_path(out_dir) {
+    println("输出目录与语料目录相同——拒绝写入门禁")
+    c_exit(4)
+  }
   let want_raw = mode == "raw" || mode == "both"
   let want_pp = mode == "pp" || mode == "both"
   if !want_raw && !want_pp {
@@ -79,6 +94,40 @@ fn main raise {
     }
   }
   println("dump-tokens: \{files.length()} 个 .c 文件 -> \{out_dir}")
+}
+
+///|
+/// 路径归一（纯字符串域、零 fs 依赖——PR #450 审阅 P2-3，2026-11-02）：`\` 折叠为
+/// `/`、剥 `.` 与空段、`..` 弹栈（栈空或栈顶已是 `..` 则保留——相对上溯语义）、
+/// 尾分隔符忽略。out==target 门禁旧形态是裸字符串相等——`corpus` vs `./corpus` vs
+/// `corpus/` vs `a/../corpus` 同义路径全放行，实测产物仍写进语料目录（审阅亲踩）。
+/// **与 realpath 的差异**：不触盘、不解析符号链接/盘符大小写/当前目录——教学工具
+/// 本地调用域足够，真要绝对化需 fs 层 realpath（本包 vendored fs 无此 API）。
+/// dir_of 族同义复制件——修改须与其余 dump 三包同步。
+fn norm_path(p : String) -> String {
+  // 反斜杠折叠：String::replace 只替换首个（陷阱 #37），循环到不含为止——先例
+  // host_io.mbt from_stdin_text 的 CRLF 规整
+  let mut unified = p
+  while unified.contains("\\") {
+    unified = unified.replace(old="\\", new="/")
+  }
+  let segs : Array[String] = []
+  for seg in unified.split("/") {
+    let s : String = seg.to_owned()
+    if s == "" || s == "." {
+      continue
+    }
+    if s == ".." {
+      if segs.length() > 0 && segs[segs.length() - 1] != ".." {
+        ignore(segs.remove(segs.length() - 1))
+      } else {
+        segs.push("..")
+      }
+      continue
+    }
+    segs.push(s)
+  }
+  segs.join("/")
 }
 
 ///|

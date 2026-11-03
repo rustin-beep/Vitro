@@ -33,7 +33,12 @@ fn main {
         channel=@engine_direct.direct_channel(),
       )
     "compile" =>
-      @cli.compile(rest, make_stdin(), channel=@engine_direct.direct_channel())
+      @cli.compile(
+        rest,
+        make_stdin(),
+        write_stdout=write_stdout_stub,
+        channel=@engine_direct.direct_channel(),
+      )
     "step" =>
       @cli.step(
         rest,

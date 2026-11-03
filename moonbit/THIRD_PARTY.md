@@ -14,14 +14,25 @@
 | `fs/utf8_compat.mbt` | `unicode/utf8.mbt` + `unicode/basic.mbt`（四函数子集） |
 | `fs/fs_wbtest.mbt` | `fs/blackbox_test.mbt`（测试改写转正） |
 
-机械改造（各文件头有逐文件标注，逻辑逐字未动）：
+机械改造（各文件头有逐文件标注；除下节「本地逻辑修复」登记项外逻辑逐字未动）：
 
 1. C 符号前缀 `moonbitlang_x_fs_*` → `vitro_engine_fs_*`（防同时链接的符号撞名）；
 2. `unicode` 包的 `to_utf8_bytes` / `to_utf8_string` 等四函数内联为包内 priv 实现（vendor 边界闭合，模块零外部依赖）；
 3. pub 面收窄：`read_file_to_bytes` / `is_file` / `remove_dir` / `remove_file` 四函数改 priv（本仓消费面为 7 函数）；
 4. 文件头保留原 Apache-2.0 声明并追加来源标注。
 
-上游漂移由 `scripts/moonbit/vendor_drift` 监控（基线 `scripts/moonbit/vendor_baseline.json`，内容哈希口径）。
+上游漂移由 `scripts/moonbit/vendor_drift` 监控（基线 `scripts/moonbit/vendor_baseline.json`，内容哈希口径——比对**上游 main** 与基线，不比本仓 vendored 文件；本地逻辑修复不触该闸）。
+
+### 本地逻辑修复（Apache-2.0 §4(b) 修改声明；各文件头同步标注）
+
+| 文件 | 批次 | 修复 | 上游状态 |
+|:---|:---|:---|:---|
+| `fs/fs_native.mbt` | #71 病 44（2026-10-11） | `write_bytes_to_file_internal` 补回 `fopen` guard——0.5.5 锁定版原样存在、搬迁批单行丢失，补回=向锁定版收敛非偏离 | 上游本有 |
+| `fs/utf8_compat.mbt` | #363（2026-10-28） | `to_utf8_string` 非法 UTF-8 由「截断」改「U+FFFD 替换」（WHATWG 最大子部分对齐，16 例矩阵锚） | 上游 main 同向已迁 core/encoding/utf8 |
+| `fs/fs_native.c` | B3 批（2026-11-02，审阅 v2 M37 A-3） | `_WIN32` stat 族（`stat`/`is_dir`/`is_file`）走 `GetFileAttributesW` 失败不设 CRT errno，`get_error_message` 读到前序 CRT 残留（实测 `create_dir` 已存在后 `is_dir(不存在)` 报 "File exists"）——失败路径按 `GetLastError` 映射 errno；锚 `fs_wbtest.mbt::stat_族_errno_不被前序操作污染`（修前 native 红） | 上游同病，未上报（上游反馈政策：非必要不发） |
+| `fs/fs_native.c` | B3 批（2026-11-02，审阅 v2 V3-③-A1） | `read_dir` 两次遍历（先计数再填充）TOCTOU：两遍之间目录收缩 → 尾部 NULL 槽、增长 → 越界写——改单遍历倍增缓冲后一次性拷入定长 ref_array；锚 `fs_wbtest.mbt::read_dir_超初始容量_倍增路径全量返回`（钉倍增路径正确性；竞态窗口由单遍历结构消灭，不可单测复现） | 上游同病，未上报 |
+
+上游修复日按 vendor_drift 基线漂移评估合流；本地修复与上游修法不同时以上游为准重新对齐（本表随之更新）。
 
 ### Apache License 2.0 全文
 

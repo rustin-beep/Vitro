@@ -1,0 +1,17 @@
+// 形态 B：gateway NDJSON 协议链——与仓内 demo（浏览器 Worker）完全同源的通道。
+// 独占「会话语义」：帧流（step.next 批式）/ 断点 / input.feed 续跑 / 输出分页
+// 游标 / config 预设；代价是全 JSON 文本面（自己拼/解帧）。
+import {
+  "vitro/engine/gateway",
+  "vitro/engine/util",
+}
+
+pkgtype(kind: "executable")
+
+// 目标面收窄（R3 P1-3 踩坑）：0.9.1 发布包的 gateway 为 `+wasm-gc +native +js`
+// ——不含模块默认的 wasm。不声明本行则 `moon check` 报
+// 「Selected backend 'wasm' is incompatible ... requires 'cmd/protocol' whose
+// active dependency graph supports [js, native, wasm-gc]」（措辞像自环依赖，
+// 实为目标面不交）。运行须显式 `--target js`（或 native / wasm-gc）。
+
+supported_targets = "+js +native +wasm-gc"

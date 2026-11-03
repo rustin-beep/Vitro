@@ -62,7 +62,7 @@ fn main raise {
   }
   let target = positional[0]
   let out_dir = positional[1]
-  if target == out_dir {
+  if norm_path(target) == norm_path(out_dir) {
     println("输出目录与语料目录相同——拒绝写入门禁")
     c_exit(4)
   }
@@ -200,6 +200,40 @@ fn basename_keep_ext(path : String) -> String {
 }
 
 ///|
+/// 路径归一（纯字符串域、零 fs 依赖——PR #450 审阅 P2-3，2026-11-02）：`\` 折叠为
+/// `/`、剥 `.` 与空段、`..` 弹栈（栈空或栈顶已是 `..` 则保留——相对上溯语义）、
+/// 尾分隔符忽略。out==target 门禁旧形态是裸字符串相等——`corpus` vs `./corpus` vs
+/// `corpus/` vs `a/../corpus` 同义路径全放行，实测产物仍写进语料目录（审阅亲踩）。
+/// **与 realpath 的差异**：不触盘、不解析符号链接/盘符大小写/当前目录——教学工具
+/// 本地调用域足够，真要绝对化需 fs 层 realpath（本包 vendored fs 无此 API）。
+/// dir_of 族同义复制件——修改须与其余 dump 三包同步。
+fn norm_path(p : String) -> String {
+  // 反斜杠折叠：String::replace 只替换首个（陷阱 #37），循环到不含为止——先例
+  // host_io.mbt from_stdin_text 的 CRLF 规整
+  let mut unified = p
+  while unified.contains("\\") {
+    unified = unified.replace(old="\\", new="/")
+  }
+  let segs : Array[String] = []
+  for seg in unified.split("/") {
+    let s : String = seg.to_owned()
+    if s == "" || s == "." {
+      continue
+    }
+    if s == ".." {
+      if segs.length() > 0 && segs[segs.length() - 1] != ".." {
+        ignore(segs.remove(segs.length() - 1))
+      } else {
+        segs.push("..")
+      }
+      continue
+    }
+    segs.push(s)
+  }
+  segs.join("/")
+}
+
+///|
 /// 路径目录段（dir_of 族同义复制件——cmd 层互不可 import；唯一分隔符
 /// 在 0 位 = POSIX 根级文件（"/x.c"）返回 "/"——#378：旧 dirname_of 返回
 /// "" 作 base_dir ⇒ 根级主文件 quote-include 候选链失配；无分隔符返回
@@ -233,10 +267,15 @@ fn collect_files(dir : String, vfs : Map[String, String]) -> Unit raise {
     let sub_is_dir = @fs.is_dir(full) catch { _ => false }
     if sub_is_dir {
       collect_files(full, vfs)
-    } else if name.length() > 2 && name[name.length() - 2:] == ".h" {
-      // 目录级 vfs：同目录头文件供 quote-include 候选（S2 §7-5 教训：
-      // 两侧同无解析属偶然对齐，哨兵用例在 gap 监测）
-      vfs.set(full, @fs.read_file_to_string(full))
+    } else {
+      // 目录级 vfs：同目录文件供 quote-include 候选（S2 §7-5 教训：
+      // 两侧同无解析属偶然对齐，哨兵用例在 gap 监测）。B3 批（2026-11-02，
+      // M36 A2）：旧只收 `.h`——`#include "part.c"` 病态语料下 ast/typeck/
+      // tokens 三家解析 ok 而本家 lex 失败 E1021（part.c 不在 VFS），跨层
+      // 差分不可比；现与另三家同形收全部文件（VFS 只供 include 解析、不
+      // 影响 files 主列表，收 .c 无副作用）；不可读项跳过
+      let content = @fs.read_file_to_string(full) catch { _ => continue }
+      vfs.set(full, content)
     }
   }
 }

@@ -3,8 +3,8 @@
 //
 // 真值 = 本闸自跑 `moon test` 解析 Total tests（facts 制品只作参考打印，
 // 不参与判定——v1 的「复述」缺陷来源）。v3（2026-10-26）：双口径实跑——
-// 裸口径（`moon test`）+ native 全量口径（`MOON_CC=clang moon test
-// --target native`，纪律 11）各自对账两 README 的声明行；README 计数行
+// 裸口径（`moon test`）+ native 全量口径（`MOON_CC=<clang|clang-cl> moon test
+// --target native`——Windows 须 clang-cl，裸 clang 被 moon 忽略回落 MSVC：纪律 11 + moonbit/AGENTS.md 陷阱 43，runMoonTest 按平台分叉）各自对账两 README 的声明行；README 计数行
 // 已是「裸数 + facts 键标注」形态（#308——巨型批注链/分解式退场），分解
 // 式算术自洽检查随之条件化：锚行在则查（旧形态兼容）、不在则跳过；
 // native 全量声明行两形态都有，保留强约束（唯一 + 对实跑真值）。
@@ -125,7 +125,15 @@ function tailN(s: string, n: number): string {
 
 export function runMoonTest(target: "bare" | "native" = "bare"): number {
   const args = target === "native" ? ["test", "--target", "native"] : ["test"];
-  const env = target === "native" ? { ...process.env, MOON_CC: "clang" } : process.env;
+  // test 面 C 编译器（B3 批 2026-11-02，审阅 v2 M37 D-6）：moon 0.1.20261028 起
+  // Windows 的 `moon test --target native` 走「MSVC direct object」路径，
+  // `MOON_CC=clang` 被**忽略**（警告原文「MOON_CC is ignored for Windows MSVC
+  // direct object native target because it is not a cl-compatible driver」）回落
+  // MSVC 探测——须 cl 兼容驱动 `clang-cl` 才生效；build 面（moon build）不受
+  // 影响仍认 clang（本批亲验）。非 Windows 沿用 clang（纪律 11）。facts.mts
+  // 的 native 采集同款分叉。
+  const cc = process.platform === "win32" ? "clang-cl" : "clang";
+  const env = target === "native" ? { ...process.env, MOON_CC: cc } : process.env;
   const r = spawnSync("moon", args, {
     cwd: path.join(projectRoot(), "moonbit"),
     encoding: "utf8",

@@ -11,8 +11,12 @@
 ///   {"ok":bool,"parse_error_count":N,"ast":{...}|null,
 ///    "parse_errors":[{code,line,column,message},...],"stall_count":N}
 /// - 病态样本对齐：两侧崩溃即硬失败（E3 由 Go 驱动断言退出码）
-/// 用法错（缺参）= 用法行 + rc=4（#230 治理，2026-10-27——旧走未捕获
-/// Failure 的 PanicError 栈 + rc=127）。
+/// 用法错（缺参/参数过多/输出目录与语料目录相同）= 原因行 + rc=4
+///（#230 治理，2026-10-27——旧走未捕获 Failure 的 PanicError 栈 +
+/// rc=127；参数过多与 out==target 门禁 B3 批 2026-11-02 四家连坐补齐
+///〔M36 C2——dump_compile 2026-09-21「81 产物污染」实踩后既有防御形态
+/// 为模板，ast/typeck/tokens 三家漏装：参数过多静默忽略、out==target
+/// 直接把 .ast.json 写进语料目录，实测污染〕）。
 extern "C" fn c_exit(code : Int32) -> Unit = "exit"
 
 ///|
@@ -22,8 +26,18 @@ fn main raise {
     println("用法: dump_ast <corpus_dir|file.c> <out_dir>")
     c_exit(4)
   }
+  if args.length() > 3 {
+    println(
+      "参数过多：期望 <corpus_dir|file.c> <out_dir>（实测 \{args.length() - 1} 个位置参数）",
+    )
+    c_exit(4)
+  }
   let target = args[1]
   let out_dir = args[2]
+  if norm_path(target) == norm_path(out_dir) {
+    println("输出目录与语料目录相同——拒绝写入门禁")
+    c_exit(4)
+  }
   if !@fs.path_exists(out_dir) {
     @fs.create_dir(out_dir)
   }
@@ -49,7 +63,7 @@ fn main raise {
   }
   for path in files {
     let src = @fs.read_file_to_string(path)
-    let stem = basename_no_ext(path)
+    let stem = basename_keep_ext(path)
     let lexed = if target_is_dir {
       // BUG-C 修复（2026-10-05，S9 修复批批一后继）：补 base_dir——VFS 键
       // 带目录前缀而解析走裸名，include 恒 miss（"两侧同失败偶然对齐"
@@ -106,20 +120,20 @@ fn dump_one(lexed : @lexer.LexResult) -> String {
 // issue #55 六份收一；原本地副本语义一致——带引号包裹 + 全量控制字符转义）。
 
 ///|
-fn basename_no_ext(path : String) -> String {
+/// basename 保留扩展名（F11：对拍键约定 = stem 含 .c——产物名
+/// `<name>.c.ast.json` 与头注承诺同源）。B3 批（2026-11-02，M36 A1）：
+/// 旧 basename_no_ext 从尾扫、点 arm 在「尚未遇分隔符」时截扩展名——目录
+/// 模式/带目录段单文件保留 .c、**裸名单文件丢 .c**（实测 `good.c.ast.json`
+/// vs `good.ast.json`），同函数两种行为、单文件模式违反自身头注 F11 规格；
+/// 现与 dump_compile 同形恒保留（函数名即语义——四 dump 中 tokens 恒去扩展
+/// 是其既定两段式契约，不在本正名面）。
+fn basename_keep_ext(path : String) -> String {
   let mut name = path
   let mut i = path.length() - 1
   while i >= 0 {
-    let slash = '/'.to_int()
-    let bslash = 92 // '\'
-    let dot = '.'.to_int()
-    match path[i].to_int() {
-      c if c == slash || c == bslash => {
-        name = path[i + 1:].to_owned()
-        break
-      }
-      c if c == dot => if name == path { name = path[0:i].to_owned() }
-      _ => ()
+    if path[i] == '/' || path[i].to_int() == 92 {
+      name = path[i + 1:].to_owned()
+      break
     }
     i -= 1
   }
@@ -127,6 +141,40 @@ fn basename_no_ext(path : String) -> String {
 }
 
 ///|
+
+///|
+/// 路径归一（纯字符串域、零 fs 依赖——PR #450 审阅 P2-3，2026-11-02）：`\` 折叠为
+/// `/`、剥 `.` 与空段、`..` 弹栈（栈空或栈顶已是 `..` 则保留——相对上溯语义）、
+/// 尾分隔符忽略。out==target 门禁旧形态是裸字符串相等——`corpus` vs `./corpus` vs
+/// `corpus/` vs `a/../corpus` 同义路径全放行，实测产物仍写进语料目录（审阅亲踩）。
+/// **与 realpath 的差异**：不触盘、不解析符号链接/盘符大小写/当前目录——教学工具
+/// 本地调用域足够，真要绝对化需 fs 层 realpath（本包 vendored fs 无此 API）。
+/// dir_of 族同义复制件——修改须与其余 dump 三包同步。
+fn norm_path(p : String) -> String {
+  // 反斜杠折叠：String::replace 只替换首个（陷阱 #37），循环到不含为止——先例
+  // host_io.mbt from_stdin_text 的 CRLF 规整
+  let mut unified = p
+  while unified.contains("\\") {
+    unified = unified.replace(old="\\", new="/")
+  }
+  let segs : Array[String] = []
+  for seg in unified.split("/") {
+    let s : String = seg.to_owned()
+    if s == "" || s == "." {
+      continue
+    }
+    if s == ".." {
+      if segs.length() > 0 && segs[segs.length() - 1] != ".." {
+        ignore(segs.remove(segs.length() - 1))
+      } else {
+        segs.push("..")
+      }
+      continue
+    }
+    segs.push(s)
+  }
+  segs.join("/")
+}
 
 ///|
 /// 路径目录段（dir_of 族同义复制件——cmd 层互不可 import；唯一分隔符

@@ -1,0 +1,16 @@
+// 形态 A：五步库直连管线（lexer → parser → typeck → codegen → vm）。
+// 全类型安全——枚举/结构体直达，教学卡片一行 `ec.catalog()` 拿结构体；
+// 适合「任意阶段截停」（只 typeck 不跑 / 直接持有 VM 观测结构）的场景。
+import {
+  "vitro/engine/lexer",
+  "vitro/engine/parser",
+  "vitro/engine/typeck",
+  "vitro/engine/codegen",
+  "vitro/engine/vm",
+  "vitro/engine/host",
+  "vitro/engine/diag",
+  "vitro/engine/util",
+  "vitro/engine/teaching/content_data",
+}
+
+pkgtype(kind: "executable")

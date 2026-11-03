@@ -226,3 +226,140 @@ test "m08_s2_int_add_overflow_warns" {
     msg="应报 W3090 常量表达式整数溢出警告",
   )
 }
+
+///|
+/// PR #456 审阅 P2-1：字符串字面量下标是 C11 §6.6 合法常量表达式
+/// （clang `char c = "abc"[0];` 零诊断折 97）——批 1 的 A4 Index 诊断臂
+/// 无条件报错属误报。成对锚：合法界内折值 / 越界拒折报 E3075 /
+/// 数组裸用仍报（锁 A4 修复不回退）。
+test "p2_1_string_literal_index_folds" {
+  let loc = m08_loc()
+  fn stridx(s : String, i : Int32) -> @ast.Expr {
+    @ast.Expr::Index(
+      @ast.Expr::StringLiteral(s, loc, @ast.Type::char()),
+      m08_int(i),
+      loc,
+      @ast.Type::char(),
+    )
+  }
+  // 合法：折字节值零诊断（J9：现状红——E3075 误报 + 不折）
+  let tc = TypeChecker::new()
+  let (typed, errs, _, _) = tc.check(
+    gprog([
+      gdecl(@ast.Type::char(), "c0", Some(stridx("abc", 0))),
+      gdecl(@ast.Type::char(), "c2", Some(stridx("abc", 2))),
+    ]),
+  )
+  assert_eq(
+    errs.length(),
+    0,
+    msg="字符串下标界内零诊断（clang 同）",
+  )
+  assert_eq(
+    m08_folded(typed, 0),
+    Some(97L),
+    msg="\"abc\"[0] 应折 97（现状 E3075 误报）",
+  )
+  assert_eq(
+    m08_folded(typed, 1),
+    Some(99L),
+    msg="\"abc\"[2] 应折 99（右端界内）",
+  )
+  // 越界：拒折 + E3075（负/超长同）
+  let tc2 = TypeChecker::new()
+  let (_, errs2, _, _) = tc2.check(
+    gprog([
+      gdecl(@ast.Type::char(), "oob", Some(stridx("abc", 5))),
+      gdecl(@ast.Type::char(), "neg", Some(stridx("abc", -1))),
+    ]),
+  )
+  assert_eq(
+    errs2.filter(e => e.code == 3075).length(),
+    2,
+    msg="越界/负下标各报一条 E3075",
+  )
+  // 数组裸用仍报（A4 修复面锁回归）
+  let tc3 = TypeChecker::new()
+  let (_, errs3, _, _) = tc3.check(
+    gprog([
+      gdecl(@ast.Type::int(), "a", Some(m08_int(0))),
+      gdecl(
+        @ast.Type::int(),
+        "bad",
+        Some(
+          @ast.Expr::Index(
+            @ast.Expr::Literal(0, loc, @ast.Type::int()),
+            m08_int(0),
+            loc,
+            @ast.Type::int(),
+          ),
+        ),
+      ),
+    ]),
+  )
+  assert_true(
+    errs3.exists(e => e.code == 3075),
+    msg="数组元素裸用（折不掉）仍报 E3075",
+  )
+}
+
+///|
+/// PR #456 审阅 P3-1/P3-2：signed long long 四则溢出也应发 W3090（clang
+/// -Winteger-overflow 对 LL 同报；批 1 只覆盖 I32 域），且文案按域
+///（「int / long long」——审阅实测 -(-LLONG_MAX-1) 文案错说 int）。
+/// J9：溢出三态（Add/Sub/Mul）现状零警告红；INT64_MIN 特格与未溢对照锁防误报。
+test "p3_i64_overflow_warns_with_domain_message" {
+  let ll = @ast.Type::long_long()
+  fn llit(v : Int64) -> @ast.Expr {
+    @ast.Expr::LongLiteral(v, m08_loc(), ll)
+  }
+  fn lldecl(name : String, e : @ast.Expr) -> @ast.GlobalDecl {
+    gdecl(ll, name, Some(e))
+  }
+  let tc = TypeChecker::new()
+  let (typed, errs, warns, _) = tc.check(
+    gprog([
+      lldecl("a", m08_bin(Add, llit(9223372036854775807L), llit(1L), ll)),
+      lldecl("s", m08_bin(Sub, llit(-9223372036854775807L), llit(2L), ll)),
+      lldecl("m", m08_bin(Mul, llit(9223372036854775807L), llit(3L), ll)),
+      // 未溢对照：2^62-1 与 2 的积 = 9223372036854775804 < LLONG_MAX
+      lldecl("ok1", m08_bin(Mul, llit(4611686018427387903L), llit(2L), ll)),
+      // INT64_MIN * 1 = INT64_MIN 合法（|积|恰为 2^63）
+      lldecl("ok2", m08_bin(Mul, llit(-9223372036854775808L), llit(1L), ll)),
+      // INT64_MIN * -1 = 2^63 数学超界（回绕 INT64_MIN）——clang 警告
+      lldecl(
+        "w4",
+        m08_bin(Mul, llit(-9223372036854775808L), m08_neg(llit(1L), ll), ll),
+      ),
+    ]),
+  )
+  assert_eq(errs.length(), 0)
+  let w3090 = warns.filter(w => w.code == 3090)
+  assert_eq(
+    w3090.length(),
+    4,
+    msg="Add/Sub/Mul/INT64_MIN*-1 四条 W3090（现状零警告）",
+  )
+  let mut ll_msg = 0
+  for w in w3090 {
+    if w.message.contains("long long") {
+      ll_msg = ll_msg + 1
+    }
+  }
+  assert_eq(
+    ll_msg,
+    4,
+    msg="LL 域文案须说 long long（P3-2：现状错说 int）",
+  )
+  assert_eq(
+    m08_folded(typed, 0),
+    Some(-9223372036854775808L),
+    msg="LLONG_MAX+1 折回绕 LLONG_MIN（值与 clang 一致）",
+  )
+  // INT64_MIN*1（ok2 折 INT64_MIN）与未溢积零警告
+  assert_eq(
+    m08_folded(typed, 4),
+    Some(-9223372036854775808L),
+    msg="INT64_MIN*1 = INT64_MIN（零警告对照）",
+  )
+}

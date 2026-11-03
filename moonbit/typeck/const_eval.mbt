@@ -44,6 +44,9 @@ priv enum CEvalFrame {
   CE_LogiRhs(@ast.BinaryOp, @ast.Expr)
   /// &&/|| 第二阶段：左右两值在栈，合成 0/1
   CE_LogiFin(@ast.BinaryOp)
+  /// 字符串字面量下标（PR #456 审阅 P2-1）：下标值在栈，弹后判界产字节值
+  ///（C11 §6.6 合法常量表达式——clang "abc"[0] 零诊断折 97）
+  CE_StrIdx(String)
 }
 
 ///|
@@ -138,7 +141,7 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             match @arith.eval_int_unary(@arith.OpNeg, x, dom) {
               Ok(r) => vals.push(CI(r, ce_dom_unsigned(dom)))
               Err(@arith.NegOverflow) => {
-                self.report_const_overflow(loc)
+                self.report_const_overflow(loc, dom)
                 vals.push(CI(@arith.normalize(-x, dom), ce_dom_unsigned(dom)))
               }
               Err(_) => return None
@@ -209,22 +212,35 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
                 if is_cmp {
                   vals.push(CI(r, false)) // 比较结果恒 int 0/1
                 } else {
+                  // PR #456 审阅 P3-1：I64 域四则数学溢出补检（Q 族核契约
+                  // 回绕不产故障——i32 溢出走下方 Err 臂，此臂只补 I64）
+                  if dom is @arith.I64 {
+                    let wrapped = match aop {
+                      @arith.OpAdd => ce_i64_add_wrapped(xv, yv, r)
+                      @arith.OpSub => ce_i64_sub_wrapped(xv, yv, r)
+                      @arith.OpMul => ce_i64_mul_wrapped(xv, yv)
+                      _ => false
+                    }
+                    if wrapped {
+                      self.report_const_overflow(loc, dom)
+                    }
+                  }
                   vals.push(CI(r, ce_dom_unsigned(dom)))
                 }
               Err(@arith.AddOverflow) => {
-                self.report_const_overflow(loc)
+                self.report_const_overflow(loc, dom)
                 vals.push(
                   CI(@arith.normalize(xv + yv, dom), ce_dom_unsigned(dom)),
                 )
               }
               Err(@arith.SubOverflow) => {
-                self.report_const_overflow(loc)
+                self.report_const_overflow(loc, dom)
                 vals.push(
                   CI(@arith.normalize(xv - yv, dom), ce_dom_unsigned(dom)),
                 )
               }
               Err(@arith.MulOverflow) => {
-                self.report_const_overflow(loc)
+                self.report_const_overflow(loc, dom)
                 vals.push(
                   CI(@arith.normalize(xv * yv, dom), ce_dom_unsigned(dom)),
                 )
@@ -357,6 +373,20 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
         }
         vals.push(CI(if hit { 1L } else { 0L }, false))
       }
+      Some(CE_StrIdx(s)) => {
+        let i = match vals.pop() {
+          Some(CI(i, _)) => i
+          Some(CF(_)) => return None // 浮点下标非 C 合法常量形态
+          None => return None
+        }
+        // 界内按 UTF-16 码元取值（ASCII 域=字节；非 ASCII 字节语义面登记
+        // 渐进）；越界/负 → 拒折（由 diagnose 的 Index 臂报，文案分场景）
+        if i >= 0L && i < s.length().to_int64() {
+          vals.push(CI(s[i.to_int()].to_int64(), false))
+        } else {
+          return None
+        }
+      }
       Some(CE_E(e)) =>
         match e {
           Literal(v, _, _) => vals.push(CI(v.to_int64(), false))
@@ -382,6 +412,16 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             st.push(CE_TernSel(t, el))
             st.push(CE_E(c))
           }
+          // PR #456 审阅 P2-1：字符串字面量下标是合法常量（C11 §6.6）——
+          // 压 CE_StrIdx 帧折字节值；其余 Index 形态（数组裸用等）非常量
+          Index(base, idx, _, _) =>
+            match base {
+              StringLiteral(s, _, _) => {
+                st.push(CE_StrIdx(s))
+                st.push(CE_E(idx))
+              }
+              _ => return None
+            }
           Cast(inner, target, _, _) => {
             st.push(CE_Cast(target))
             st.push(CE_E(inner))
@@ -555,9 +595,11 @@ fn TypeChecker::fold_static_init(
 fn TypeChecker::report_const_overflow(
   self : TypeChecker,
   loc : @source.SourceLoc,
+  dom : @arith.IntDomain,
 ) -> Unit {
+  let what = if dom is @arith.I64 { "long long" } else { "int" }
   self.report_warning(
-    "常量表达式整数溢出：结果超出 int 能表示的范围，已按二补码回绕折叠（与 clang 一致）；同一运算若在函数体中执行将触发「整数溢出」运行时错误",
+    "常量表达式整数溢出：结果超出 \{what} 能表示的范围，已按二补码回绕折叠（与 clang 一致）；同一运算若在函数体中执行将触发「整数溢出」运行时错误",
     loc,
     W3090_ConstIntOverflow,
   )
@@ -567,6 +609,47 @@ fn TypeChecker::report_const_overflow(
 /// 纯常量树判定（A4）：只含字面量 / 一元（非取址）/ 二元 / 三元 / cast /
 /// 类型形态 sizeof——不含任何运行期引用。此类树交给 const_eval 折不出，
 /// 只可能是运算性失败。
+
+///|
+/// PR #456 审阅 P3-1：I64 四则回绕后的数学溢出检测（W3090 判定面）——
+/// 核语义表按 VM Q 族契约回绕不产故障（i32 教学 trap 与 Q 族回绕的既有
+/// 分划），折叠器对齐 clang -Winteger-overflow 的 signed 溢出警告在消费
+/// 侧补检；U 域回绕是 C 定义行为（clang 不警告），不检。
+fn ce_i64_add_wrapped(x : Int64, y : Int64, r : Int64) -> Bool {
+  // 同号相加结果异号 = 溢出（模 2^64 下数学等价判定）
+  (x >= 0L && y >= 0L && r < 0L) || (x < 0L && y < 0L && r >= 0L)
+}
+
+///|
+fn ce_i64_sub_wrapped(x : Int64, y : Int64, r : Int64) -> Bool {
+  // 异号相减结果与被减数反号 = 溢出（同号相减数学上不溢出）
+  (x >= 0L && y < 0L && r < 0L) || (x < 0L && y >= 0L && r >= 0L)
+}
+
+///|
+fn ce_i64_mul_wrapped(x : Int64, y : Int64) -> Bool {
+  // 绝对值 u64 域除法回验（数学可靠：回绕值恒小于真积，整除回验必失配）+
+  // 有符号界（2^63 ≤ |积| < 2^64：同号积超 LLONG_MAX 溢出；异号仅 |积|
+  // > 2^63 溢出——恰 2^63 = LLONG_MIN 合法，INT64_MIN*1 误报防线）
+  if x == 0L || y == 0L {
+    return false
+  }
+  // |INT64_MIN| = 2^63：-x 回绕后位模式恰为 2^63，u64 重解释即绝对值
+  let xu = (if x < 0L { -x } else { x }).reinterpret_as_uint64()
+  let yu = (if y < 0L { -y } else { y }).reinterpret_as_uint64()
+  let p = xu * yu
+  if p / xu != yu {
+    return true
+  }
+  let same_sign = (x >= 0L) == (y >= 0L)
+  if same_sign {
+    p >= 9223372036854775808UL
+  } else {
+    p > 9223372036854775808UL
+  }
+}
+
+///|
 fn ce_pure_const_tree(e : @ast.Expr) -> Bool {
   match e {
     Literal(_, _, _) | LongLiteral(_, _, _) | FloatLiteral(_, _, _) => true
@@ -788,12 +871,21 @@ fn TypeChecker::diagnose_static_init(
     // 形态——`&arr[i]`/`&s.x` 在上方 Addr 臂走地址常量豁免）是运行期读，
     // 静态初始化器恒非法（clang error）；旧落 `_ => ()` 零诊断 + codegen
     // 置 0 = 静默错值。
-    Index(_, _, _, _) =>
-      self.report_error(
-        "初始化器含数组元素读取，静态存储期对象的初始化器必须是编译期常量表达式（取元素地址 &arr[i] 合法，读元素值不合法）",
-        expr.loc(),
-        E3075_StaticInitNotConstant,
-      )
+    Index(base, _, _, _) =>
+      if base is StringLiteral(_, _, _) {
+        // 到此必是下标越界/负/非常量（界内已在 const_eval 折掉）
+        self.report_error(
+          "字符串字面量下标越界或不是编译期常量，无法求值",
+          expr.loc(),
+          E3075_StaticInitNotConstant,
+        )
+      } else {
+        self.report_error(
+          "初始化器含数组元素读取，静态存储期对象的初始化器必须是编译期常量表达式（取元素地址 &arr[i] 合法，读元素值不合法）",
+          expr.loc(),
+          E3075_StaticInitNotConstant,
+        )
+      }
     Member(_, _, _, _, _) =>
       self.report_error(
         "初始化器含结构体成员读取，静态存储期对象的初始化器必须是编译期常量表达式（取成员地址 &s.x 合法，读成员值不合法）",

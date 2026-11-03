@@ -146,7 +146,23 @@ export function loadRules(root: string): RulesDoc {
 export function frameLine(raw: string): string {
   // canonicalizeText 的产出可能是带空白的形态；Go 版还过一道 json.Compact，
   // 这里用 parse→stringify 复刻"压缩为单行"（JSON.parse 保留键序，不破坏归一结果）
-  const s0 = JSON.stringify(JSON.parse(canonicalizeText(raw)));
+  const parsed: unknown = JSON.parse(canonicalizeText(raw));
+  const s0 = JSON.stringify(parsed);
+  // PR #456 审阅 P3-3：error_catalog 帧（id=9）改 **JSON 级 mask**——正则
+  // 在带 \" 转义的 JSON 文本上做字段锚定本质脆弱（两处实锤：E2008 causes
+  // 含 ] 截断、E3007 文案含转义引号致非贪婪错位，均落非法基线行）。展示
+  // 字段（title/explanation/common_causes）逐条置掩码值，结构面（category/
+  // code/code_str/icon/lang）保留冻结——与原 regex 规则同语义、无截断面。
+  const obj = parsed as { id?: number };
+  if (obj?.id === 9) {
+    const cat = parsed as { result?: { catalog?: Array<Record<string, unknown>> } };
+    for (const entry of cat.result?.catalog ?? []) {
+      entry["title"] = "*";
+      entry["explanation"] = "*";
+      entry["common_causes"] = ["*"];
+    }
+    return JSON.stringify(parsed);
+  }
   let s = s0;
   for (const m of compiled) s = s.replace(m.re, m.replace);
   return s;
@@ -252,7 +268,22 @@ export function readBaseline(root: string): string[] {
     if (code === "ENOENT") fatal(`读基线失败: 基线不存在（${BASE_PATH}）——先 --update-baseline 生成并入库`);
     fatal(`读基线失败: ${e instanceof Error ? e.message : String(e)}`);
   }
-  return raw.replace(/\n+$/, "").split("\n").filter((l) => l !== "");
+  const lines = raw.replace(/\n+$/, "").split("\n").filter((l) => l !== "");
+  // PR #456 审阅 P3-3：基线行行合法 JSON 校验（fail loud）——既有缺陷
+  // 实锤：E2008 causes 文案含 ] 时旧掩码正则在文案内截断，基线落了 1 行
+  // 非法 JSON 而闸静默通过（文本比对不 parse）。掩码/基线再生缺陷从此即红。
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      JSON.parse(lines[i]!);
+    } catch (e) {
+      fatal(
+        `基线第 ${i + 1} 行非法 JSON（${(e as Error).message.slice(0, 60)}）` +
+          `——多为掩码正则截断（rules.json pattern 越过字段界），` +
+          `修规则后 --update-baseline 重冻`,
+      );
+    }
+  }
+  return lines;
 }
 
 export function writeBaseline(root: string, frames: string[]): void {

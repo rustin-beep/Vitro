@@ -338,3 +338,70 @@ test "f2i_saturate_family" {
     msg="(long long)1e19 → LLONG_MAX 饱和",
   )
 }
+
+///|
+/// PR #456 审阅 P2-2：核锚「16 算子逐格」实测有空洞——OpLe/OpBitAnd/
+/// OpBitOr/OpBitXor 在锚中出现 0 次（审阅者把 OpLe 等值格改坏后
+/// moon test 全绿实证）。本锚补四算子的判别力锚：OpLe 等值格（5<=5=1，
+/// 与 OpLt 判别）+ 位运算三算子两域（同位形/异位形/全 0/全 1）。
+test "p2_2_core_op_coverage_gap_le_bitops" {
+  // OpLe 等值格：5<=5 → 1（审阅改坏形态：判成 < 则此处得 0）
+  assert_eq(
+    eval_int_binary(OpLe, 5L, 5L, I32),
+    Ok(1L),
+    msg="5<=5 等值格 → 1（OpLe/OpLt 判别锚）",
+  )
+  assert_eq(eval_int_binary(OpLe, 4L, 5L, I32), Ok(1L), msg="4<=5 → 1")
+  assert_eq(eval_int_binary(OpLe, 6L, 5L, I32), Ok(0L), msg="6<=5 → 0")
+  assert_eq(
+    eval_int_binary(OpLe, normalize(-1L, U32), 0L, U32),
+    Ok(0L),
+    msg="U32 域 0xFFFFFFFF<=0 → 0（与 I32 域的 -1<=0 → 1 不同值——域判别）",
+  )
+  assert_eq(
+    eval_int_binary(OpLe, -9223372036854775808L, -1L, I64),
+    Ok(1L),
+    msg="I64 域 LLONG_MIN<=-1 → 1",
+  )
+  // BitAnd / BitOr / BitXor：I32 与 I64 两域、同位/异位/全 1 形
+  assert_eq(
+    eval_int_binary(OpBitAnd, 12L, 10L, I32),
+    Ok(8L),
+    msg="12&10=8（1100&1010）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitAnd, 12L, 10L, I64),
+    Ok(8L),
+    msg="I64 域同值（位模式域无关）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitAnd, 0L, -1L, I32),
+    Ok(0L),
+    msg="0&-1=0（全 1 掩码）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitOr, 12L, 10L, I32),
+    Ok(14L),
+    msg="12|10=14（1100|1010）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitOr, 0L, -1L, I64),
+    Ok(-1L),
+    msg="0|-1=-1（I64 位模式）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitXor, 12L, 10L, I32),
+    Ok(6L),
+    msg="12^10=6（1100^1010）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitXor, -1L, -1L, I32),
+    Ok(0L),
+    msg="-1^-1=0（自反）",
+  )
+  assert_eq(
+    eval_int_binary(OpBitXor, 5L, 0L, I64),
+    Ok(5L),
+    msg="5^0=5（幺元）",
+  )
+}

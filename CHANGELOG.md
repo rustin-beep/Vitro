@@ -45,9 +45,12 @@
   机判）；arm4：struct_nest_1500/2000/4000 TRAP_ONE→AGREE、6000
   TRAP_BOTH→AGREE——wasmtime 默认栈下全 synth 通过。
 - **语料与基线连坐**：corpus/baseline 新增 `paren_nest_legal_deep.c`（clang
-  直拍 exit=101 一致）与 `struct_nest_deep.c`（250 层，双侧编译失败等价）；
-  四 diff 闸 + vm_diff digest 入账（存量零漂移）；arm4 synth_baseline 受控
-  重冻（改善项逐条归因见 tmp/batch_W4tail_REPORT.md）。
+  直拍 exit=101 一致）；四 diff 闸 + vm_diff digest 入账（存量零漂移）；arm4
+  synth_baseline 受控重冻（改善项逐条归因见 tmp/batch_W4tail_REPORT.md）。
+  `struct_nest_deep.c` 首版曾入 baseline 后撤出（CI 首轮红：perf_budget 的
+  `struct_or_union_defs` max_per_file=8 是**真实语料规模前提**，250 层合成
+  对抗语料不属该域——#421 回归防护由三层锚承担：parser wbtest 20000 层 +
+  arm4 synth struct_nest 全梯度基线 + 四 digest 同构闸，corpus 副本冗余）。
 - 锚：新增 8 测试（深 ast/typeck 帧 + 扫描器口径 / surrogate 端到端×2 + pp
   单元字节级 / 跨会话 note 零残留×2 / 20000 层 parse），J9 全先证红
   （abort/泄漏/栈溢出原始形态实录）；变异抽样：#418 深路径阈值变异→双帧

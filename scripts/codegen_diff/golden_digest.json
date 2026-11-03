@@ -467,7 +467,6 @@
         "struct_dup_member_reject.c": "8f90f95b",
         "struct_member_array.c": "18213307",
         "struct_member_dup_specifier_reject.c": "d0cb430a",
-        "struct_nest_deep.c": "ccfded32",
         "struct_nested_2d_member_init.c": "f16d2ba5",
         "struct_nested_init.c": "54c201ca",
         "struct_pointer_access.c": "ae064328",
@@ -1955,10 +1954,6 @@
         "struct_member_dup_specifier_reject.c": {
           "fail": true,
           "fail_stage": "parse"
-        },
-        "struct_nest_deep.c": {
-          "fail": true,
-          "fail_stage": "type"
         },
         "struct_nested_2d_member_init.c": {
           "result_sha": "d99e5e262f672525"

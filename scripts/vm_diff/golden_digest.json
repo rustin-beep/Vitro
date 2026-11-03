@@ -2780,12 +2780,6 @@
       "stdout_sha": "e3b0c44298fc1c14",
       "compile_fail": true
     },
-    "baseline/struct_nest_deep.c": {
-      "src_sha": "ccfded32",
-      "exit_code": 0,
-      "stdout_sha": "e3b0c44298fc1c14",
-      "compile_fail": true
-    },
     "baseline/struct_nested_2d_member_init.c": {
       "src_sha": "f16d2ba5",
       "exit_code": 0,

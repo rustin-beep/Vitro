@@ -103,16 +103,17 @@ fn BytecodeGen::gen_assign_inner(
               }
             }
           }
-          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-          self.emit_compound(
-            op,
-            left_is_double,
-            left_ty.kind() is TK_Float,
-            left_is_long_long,
-            left_is_unsigned,
-            ptr_step,
+          // #425 B2：复合路径——左提升到运算域 + 右原样（不预收口）+
+          // 域运算 + 窄化回左类型（单源 emit_compound_rhs）
+          self.emit_compound_promote_left(
+            left_ty,
+            right.ty(),
             left_is_ptr,
+            is_ptr_compound,
             loc,
+          )
+          self.emit_compound_rhs(
+            right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, op, loc,
           )
         } else {
           self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
@@ -163,16 +164,17 @@ fn BytecodeGen::gen_assign_inner(
             } else {
               self.emit(@opcode.OpCode::LoadGlobal, static_offset, loc)
             }
-            self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-            self.emit_compound(
-              op,
-              left_is_double,
-              left_ty.kind() is TK_Float,
-              left_is_long_long,
-              left_is_unsigned,
-              ptr_step,
+            // #425 B2：复合路径——左提升到运算域 + 右原样（不预收口）+
+            // 域运算 + 窄化回左类型（单源 emit_compound_rhs）
+            self.emit_compound_promote_left(
+              left_ty,
+              right.ty(),
               left_is_ptr,
+              is_ptr_compound,
               loc,
+            )
+            self.emit_compound_rhs(
+              right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, op, loc,
             )
           } else {
             self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
@@ -220,16 +222,17 @@ fn BytecodeGen::gen_assign_inner(
           } else {
             self.emit(@opcode.OpCode::LoadGlobal, global_offset, loc)
           }
-          self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-          self.emit_compound(
-            op,
-            left_is_double,
-            left_ty.kind() is TK_Float,
-            left_is_long_long,
-            left_is_unsigned,
-            ptr_step,
+          // #425 B2：复合路径——左提升到运算域 + 右原样（不预收口）+
+          // 域运算 + 窄化回左类型（单源 emit_compound_rhs）
+          self.emit_compound_promote_left(
+            left_ty,
+            right.ty(),
             left_is_ptr,
+            is_ptr_compound,
             loc,
+          )
+          self.emit_compound_rhs(
+            right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, op, loc,
           )
         } else {
           self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
@@ -293,16 +296,16 @@ fn BytecodeGen::gen_assign_inner(
         self.emit(@opcode.OpCode::Swap, 0, loc)
         let addr_temp = self.get_assign_addr_slot()
         self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
-        self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-        self.emit_compound(
-          op,
-          left_is_double,
-          left_ty.kind() is TK_Float,
-          left_is_long_long,
-          left_is_unsigned,
-          ptr_step,
-          left_is_ptr,
+        // #425 B2：复合路径——左提升 + 右原样 + 域运算 + 窄化（单源）
+        self.emit_compound_promote_left(
+          left_ty,
+          right.ty(),
+          false,
+          is_ptr_compound,
           loc,
+        )
+        self.emit_compound_rhs(
+          right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, op, loc,
         )
         self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
         self.emit(@opcode.OpCode::Swap, 0, loc)
@@ -396,6 +399,159 @@ fn BytecodeGen::gen_assign_inner(
   self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
   self.emit(@opcode.OpCode::Pop, 0, loc)
   self.emit(@opcode.OpCode::PushConst, 0, loc)
+}
+
+///|
+/// #425 B2（2026-11-03，审阅 v2 / M12-A1）：复合赋值运算域（C11
+/// 6.5.16.2p3 常规算术转换——Vitro 无 2 字节整型，域序 int/char <
+/// long long < float < double）。返回 (is_double, is_float,
+/// is_long_long, is_unsigned)；unsigned 位取病 30/34 口径——char 级
+/// unsigned 不参与（提升 int 后消失），LL 域任一 ULL / int 域任一
+/// uint 即无符号。
+fn compound_domain(
+  left_ty : @ast.Type,
+  right_ty : @ast.Type,
+) -> (Bool, Bool, Bool, Bool) {
+  let lk = left_ty.kind()
+  let rk = right_ty.kind()
+  let d = lk is TK_Double || rk is TK_Double
+  let f = !d && (lk is TK_Float || rk is TK_Float)
+  let q = !d && !f && (lk is TK_LongLong || rk is TK_LongLong)
+  let u = if q {
+    (lk is TK_LongLong && left_ty.is_unsigned()) ||
+    (rk is TK_LongLong && right_ty.is_unsigned())
+  } else if !d && !f {
+    (lk is TK_Int && left_ty.is_unsigned()) ||
+    (rk is TK_Int && right_ty.is_unsigned())
+  } else {
+    false
+  }
+  (d, f, q, u)
+}
+
+///|
+/// #425 B2：栈顶值按源 kind 提升到复合赋值运算域（左 load 后 / 右
+/// gen_expr 后各调一次）。缺直连指令的两形态走双跳（CastQ2F/CastF2Q
+/// 不存在——Q→F 经 CastQ2D+CastD2F、F→Q 经 CastF2D+CastD2Q，与
+/// (float)ll 直转在尾数舍入上可差 1ulp——缺指令面登记 M12-A2 族）。
+fn BytecodeGen::emit_promote_to_compound_domain(
+  self : BytecodeGen,
+  from : @ast.TypeKind,
+  is_double : Bool,
+  is_float : Bool,
+  is_long_long : Bool,
+  loc : @source.SourceLoc,
+) -> Unit {
+  if is_double {
+    match from {
+      TK_Float => self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      TK_LongLong => self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+      TK_Int | TK_Char => self.emit(@opcode.OpCode::CastI2D, 0, loc)
+      _ => ()
+    }
+  } else if is_float {
+    match from {
+      TK_LongLong => {
+        self.emit(@opcode.OpCode::CastQ2D, 0, loc)
+        self.emit(@opcode.OpCode::CastD2F, 0, loc)
+      }
+      TK_Int | TK_Char => self.emit(@opcode.OpCode::CastI2F, 0, loc)
+      _ => ()
+    }
+  } else if is_long_long {
+    match from {
+      TK_Int | TK_Char => self.emit(@opcode.OpCode::CastI2Q, 0, loc)
+      _ => ()
+    }
+  }
+}
+
+///|
+/// #425 B2：运算域结果窄化回左类型（emit_compound 之后、store 之前）。
+/// char 目标的字节窄化不由本函数做（store 段 #198 Trunc 幂等接力——
+/// 本函数只负责域级回 int）。
+fn BytecodeGen::emit_compound_narrow(
+  self : BytecodeGen,
+  left_ty : @ast.Type,
+  is_double : Bool,
+  is_float : Bool,
+  is_long_long : Bool,
+  loc : @source.SourceLoc,
+) -> Unit {
+  let lk = left_ty.kind()
+  if is_double {
+    if lk is TK_LongLong {
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    } else if lk is TK_Float {
+      self.emit(@opcode.OpCode::CastD2F, 0, loc)
+    } else if lk is TK_Int || lk is TK_Char {
+      self.emit(@opcode.OpCode::CastD2I, 0, loc)
+    } else {
+      ()
+    }
+  } else if is_float {
+    if lk is TK_LongLong {
+      self.emit(@opcode.OpCode::CastF2D, 0, loc)
+      self.emit(@opcode.OpCode::CastD2Q, 0, loc)
+    } else if lk is TK_Int || lk is TK_Char {
+      self.emit(@opcode.OpCode::CastF2I, 0, loc)
+    } else {
+      ()
+    }
+  } else if is_long_long {
+    if lk is TK_LongLong {
+      ()
+    } else {
+      self.emit(@opcode.OpCode::CastQ2I, 0, loc)
+    }
+  }
+}
+
+///|
+/// #425 B2：复合路径右值发射 + 域提升 + 运算 + 窄化（五调用点单源——
+/// 替代旧「gen_right 预收口 + emit_compound 左域参」形态）。指针复合
+/// （左是指针的 +=/-=）不走域路径（右保持整型原样，步长由
+/// emit_compound 的 ptr 分支处理）。
+fn BytecodeGen::emit_compound_rhs(
+  self : BytecodeGen,
+  right : @ast.Expr,
+  left_ty : @ast.Type,
+  left_is_ptr : Bool,
+  is_ptr_compound : Bool,
+  ptr_step : Int32,
+  op : @ast.AssignOp,
+  loc : @source.SourceLoc,
+) -> Unit {
+  let (d, f, q, u) = if left_is_ptr && is_ptr_compound {
+    self.gen_expr(right)
+    (false, false, false, false)
+  } else {
+    self.gen_expr(right)
+    let (d, f, q, u) = compound_domain(left_ty, right.ty())
+    self.emit_promote_to_compound_domain(right.ty().kind(), d, f, q, loc)
+    (d, f, q, u)
+  }
+  self.emit_compound(op, d, f, q, u, ptr_step, left_is_ptr, loc)
+  self.emit_compound_narrow(left_ty, d, f, q, loc)
+}
+
+///|
+/// #425 B2：复合路径左值提升（load 段尾调用——栈顶=左值）。指针复合
+/// 不提升。
+fn BytecodeGen::emit_compound_promote_left(
+  self : BytecodeGen,
+  left_ty : @ast.Type,
+  right_ty : @ast.Type,
+  left_is_ptr : Bool,
+  is_ptr_compound : Bool,
+  loc : @source.SourceLoc,
+) -> Unit {
+  // is_ptr_compound 只表「op 是 +=/-=」，真指针复合还须左是指针
+  if left_is_ptr && is_ptr_compound {
+    return
+  }
+  let (d, f, q, _) = compound_domain(left_ty, right_ty)
+  self.emit_promote_to_compound_domain(left_ty.kind(), d, f, q, loc)
 }
 
 ///|
@@ -631,16 +787,16 @@ fn BytecodeGen::assign_mem_op(
     self.emit(@opcode.OpCode::Swap, 0, loc)
     let addr_temp = self.get_assign_addr_slot()
     self.emit(@opcode.OpCode::StoreLocal, addr_temp, loc)
-    self.gen_right(right, left_ty, left_is_ptr, is_ptr_compound, loc)
-    self.emit_compound(
-      op,
-      left_is_double,
-      left_ty.kind() is TK_Float,
-      left_is_long_long,
-      left_is_unsigned,
-      ptr_step,
-      left_is_ptr,
+    // #425 B2：复合路径——左提升 + 右原样 + 域运算 + 窄化（单源）
+    self.emit_compound_promote_left(
+      left_ty,
+      right.ty(),
+      false,
+      is_ptr_compound,
       loc,
+    )
+    self.emit_compound_rhs(
+      right, left_ty, left_is_ptr, is_ptr_compound, ptr_step, op, loc,
     )
     self.emit(@opcode.OpCode::LoadLocal, addr_temp, loc)
     self.emit(@opcode.OpCode::Swap, 0, loc)

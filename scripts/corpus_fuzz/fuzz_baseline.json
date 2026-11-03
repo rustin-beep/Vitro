@@ -110,6 +110,15 @@
     "baseline/invalid_void_var_reject.c|memset_zero": {
       "bucket": "AGREE"
     },
+    "baseline/logic_judge_zero.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "baseline/logic_judge_zero.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "baseline/logic_judge_zero.c|div2shift": {
+      "bucket": "AGREE"
+    },
     "baseline/p2a_host_semantics.c|char_escape": {
       "bucket": "CLANG_REJECT"
     },
@@ -118,15 +127,6 @@
     },
     "baseline/p2a_host_semantics.c|nested2flat": {
       "bucket": "CLANG_REJECT"
-    },
-    "baseline/p2g_enum_float_reject.c|brace_wrap": {
-      "bucket": "AGREE"
-    },
-    "baseline/p2g_enum_float_reject.c|init_partial": {
-      "bucket": "AGREE"
-    },
-    "baseline/p2g_enum_float_reject.c|nested2flat": {
-      "bucket": "AGREE"
     },
     "baseline/putchar_function.c|cast_strip": {
       "bucket": "CLANG_REJECT"

@@ -82,7 +82,27 @@ fn BytecodeGen::gen_unary(
     }
     Not => {
       self.gen_expr(operand)
-      self.emit(@opcode.OpCode::Not, 0, loc)
+      // #425 B2（2026-11-03，审阅 v2 / M13-A4）：Not 按操作数类型数值
+      // 零判——浮点/LL 禁裸 Not（VM 按 i32 位模式判：f32 位模式
+      // 0x80000000 非零判真致 !(-0.0f)=0、LL 只看低 32 位致
+      // !0x100000000LL=1）；int 家族 i32 全位判零正确照旧
+      match operand.ty().kind() {
+        TK_Float => {
+          self.emit(@opcode.OpCode::PushConstF, 0, loc)
+          self.emit(@opcode.OpCode::EqF, 0, loc)
+        }
+        TK_Double => {
+          let z = self.push_f64_constant(0.0)
+          self.emit(@opcode.OpCode::PushConstD, z, loc)
+          self.emit(@opcode.OpCode::EqD, 0, loc)
+        }
+        TK_LongLong => {
+          let z = self.push_i64_constant(0L)
+          self.emit(@opcode.OpCode::PushConstQ, z, loc)
+          self.emit(@opcode.OpCode::EqQ, 0, loc)
+        }
+        _ => self.emit(@opcode.OpCode::Not, 0, loc)
+      }
     }
     BitNot => {
       self.gen_expr(operand)

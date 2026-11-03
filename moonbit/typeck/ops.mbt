@@ -576,8 +576,16 @@ fn TypeChecker::resolve_assign(
       E3044_AssignTypeMismatch,
     )
     new_right_pre
-  } else {
+  } else if op is Assign {
     insert_implicit_cast(new_right_pre, left_type)
+  } else {
+    // #425 B2（2026-11-03，审阅 v2 / M12-A1）：复合赋值右值不预收口
+    // ——C11 6.5.16.2p3：E1 op= E2 ≡ E1 = (T)(E1 op E2)，op 按常规
+    // 算术转换、赋值时才窄化回左类型。旧形态与普通赋值共用右值收口
+    // （`x *= 0.5` ≡ `x *= (int)0.5`——右值先截断为 0 ⇒ 错值 +
+    // `x /= 0.5` 假除零 trap 误杀合法程序）。运算域提升与运算后窄化
+    // 由 codegen 复合路径发射（assign.mbt compound_domain 三单源）
+    new_right_pre
   }
   if !(op is Assign) {
     if ptr_compound_ok {

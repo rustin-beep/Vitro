@@ -632,3 +632,191 @@ test "mcp_capabilities_disclosure_section" {
     msg="初始态",
   )
 }
+
+///|
+/// PR #457 P1-1 红锚：run_to 全缺省推进到终局后 outputs 必须已回读
+///（全缺省分支提前 return 曾跳过 fetch_outputs——锚样本全显式参数掩盖）。
+test "mcp_run_to_default_fetches_outputs" {
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(
+      srv,
+      1,
+      "session_open",
+      ob()
+      .s(
+        "source", "#include <stdio.h>\nint main(){printf(\"P1-1\");printf(\"\\n\");return 0;}",
+      )
+      .done(),
+    ),
+  )
+  let d = tool_body(tool_call(srv, 2, "run_to", Json::object(Map([]))))
+  assert_eq(
+    jstr_or(jget(jget(d, "outputs"), "stdout"), ""),
+    "P1-1\n",
+    msg="全缺省 run_to 终局后 stdout 已回读",
+  )
+}
+
+///|
+/// PR #457 P1-1 红锚：step_next 推到终局后 frames_summary 的 outputs 必须非空
+///（step_next 从不 fetch、frames_summary 终态不重入 ⇒ 曾永久空）。
+test "mcp_step_next_terminal_then_outputs" {
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(
+      srv,
+      1,
+      "session_open",
+      ob()
+      .s("source", "#include <stdio.h>\nint main(){printf(\"SN\");return 0;}")
+      .done(),
+    ),
+  )
+  ignore(tool_call(srv, 2, "step_next", ob().n("n", 100).done()))
+  let s = tool_body(tool_call(srv, 3, "frames_summary", Json::object(Map([]))))
+  assert_eq(
+    jstr_or(jget(jget(s, "outputs"), "stdout"), ""),
+    "SN",
+    msg="step_next 终局后 outputs 已回读",
+  )
+}
+
+///|
+/// PR #457 审阅 P2-3 锚：annotations 的 call/return 区分必须有判别力
+///（突变「恒 call」曾在 12 锚全绿下存活）。
+test "mcp_annotations_call_return_kinds" {
+  let clock : Ref[Double] = Ref(0.0)
+  let srv = Server::new(host=fake_host(clock, None))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(srv, 1, "session_open", ob().s("source", bubble_src()).done()),
+  )
+  let calls = tool_body(
+    tool_call(srv, 2, "annotations", ob().s("kind", "call").done()),
+  )
+  let returns = tool_body(
+    tool_call(srv, 3, "annotations", ob().s("kind", "return").done()),
+  )
+  assert_true(
+    jint(jget(jget(calls, "annotations"), "total")) == Some(2),
+    msg="call 事件恰 2（main 入栈 + bubble_sort 调用）",
+  )
+  assert_true(
+    match jint(jget(jget(returns, "annotations"), "total")) {
+      Some(n) => n >= 2
+      None => false
+    },
+    msg="return 事件 >= 2（bubble_sort 与 main 返回）",
+  )
+  let kind0 = jstr_or(
+    jget(jarr(jget(jget(returns, "annotations"), "events"))[0], "kind"),
+    "",
+  )
+  assert_eq(kind0, "return", msg="return 过滤出的 kind 字段确为 return")
+}
+
+///|
+/// PR #457 审阅 P2-3 锚：render 的 to 区间必须有判别力（突变「忽略 to」存活）。
+test "mcp_render_range_to_anchor" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  ignore(
+    tool_call(srv, 1, "session_open", ob().s("source", bubble_src()).done()),
+  )
+  let r = tool_body(
+    tool_call(
+      srv,
+      2,
+      "render",
+      ob()
+      .n("from", 0)
+      .n("to", 50)
+      .n("budget", 4000)
+      .b("preview_png", false)
+      .done(),
+    ),
+  )
+  // 区间 [0,50)：raw_count=50（突变忽略 to 时为 1126）
+  assert_eq(
+    jint(jget(r, "raw_step_count")),
+    Some(50),
+    msg="render 区间右端生效",
+  )
+  assert_true(
+    match jint(jget(r, "frame_count")) {
+      Some(n) => n > 0 && n < 301
+      None => false
+    },
+    msg="区间内关键帧非空且少于全量",
+  )
+  assert_eq(
+    jint(jget(rendered.val, "raw_count")),
+    Some(50),
+    msg="钩子入参 raw_count 同锚",
+  )
+  // to <= from → fail loud（P3）
+  let bad = tool_call(srv, 3, "render", ob().n("from", 100).n("to", 50).done())
+  assert_eq(
+    jint(jget(jget(bad, "error"), "code")),
+    Some(-32602),
+    msg="render to<=from 协议错",
+  )
+}
+
+///|
+/// PR #457 审阅 P2-1 锚：files 多文件形态 overview/render 的源码面非退化
+///（旧形态 source 为空 → functions 空 + 渲染源码区空白）。
+test "mcp_files_mode_source_face" {
+  let clock : Ref[Double] = Ref(0.0)
+  let rendered : Ref[Json] = Ref(Json::null())
+  let srv = Server::new(host=fake_host(clock, Some(rendered)))
+  ignore(call(srv, "initialize", 1))
+  let util = ob()
+    .s("filename", "util.c")
+    .s("source", "int twice(int x){return x*2;}")
+    .done()
+  let mainf = ob()
+    .s("filename", "main.c")
+    .s(
+      "source", "#include <stdio.h>\nint twice(int x);\nint main(){printf(\"%d\", twice(21));return 0;}",
+    )
+    .done()
+  let opened = tool_body(
+    tool_call(srv, 1, "session_open", ob().a("files", [util, mainf]).done()),
+  )
+  assert_eq(
+    jbool(jget(opened, "compile_ok")),
+    Some(true),
+    msg="files 工程编译成功",
+  )
+  let fns = jarr(jget(jget(opened, "overview"), "functions"))
+  assert_true(
+    fns.length() >= 1,
+    msg="overview 函数表非空（主文件源）",
+  )
+  ignore(tool_call(srv, 2, "frames_summary", Json::object(Map([]))))
+  ignore(tool_call(srv, 3, "render", ob().b("preview_png", false).done()))
+  assert_true(
+    jstr_or(jget(rendered.val, "source"), "").contains("int main"),
+    msg="渲染源码面 = 主文件源（非空）",
+  )
+  // files 与 source 互斥 fail loud（P3）
+  let bad = tool_call(
+    srv,
+    4,
+    "session_open",
+    ob().s("source", "int main(){return 0;}").a("files", [util]).done(),
+  )
+  assert_eq(
+    jint(jget(jget(bad, "error"), "code")),
+    Some(-32602),
+    msg="files+source 互斥协议错",
+  )
+}

@@ -144,6 +144,12 @@ fn advance(
     e.phase = PHASE_CAPPED
   }
   e.paused_at = paused_at
+  // 收尾副作用单点（PR #457 审阅 P1-1）：终态即回读输出——此前 fetch 只挂在
+  // tool_run_to 的显式参数分支与 collect_all，全缺省提前 return 与 step_next
+  // 推到终局的两条路径永久漏采（锚样本全显式参数，掩盖面）
+  if phase_is_terminal(e.phase) {
+    fetch_outputs(e)
+  }
   Ok({ added, paused_at, event_step, })
 }
 

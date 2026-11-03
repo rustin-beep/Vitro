@@ -97,12 +97,14 @@ extern "js" fn js_render_hook(data_json : String) -> String =
   #| const args = ["--headless","--disable-gpu","--user-data-dir=" + outPng + ".prof","--window-size=1280,860","--screenshot=" + outPng,"--virtual-time-budget=" + budget, url];
   #| const ch = spawn(exe, args, { stdio: "ignore" });
   #| const t0 = Date.now();
+  #| let r = { ok: false, err: "png not written in 20s", bytes: 0 };
   #| while (Date.now() - t0 < 20000) {
   #| sleep(200);
-  #| try { const b = fs.statSync(outPng).size; if (b > 5000) { try { ch.kill(); } catch {} return { ok: true, bytes: b }; } } catch {}
+  #| try { const b = fs.statSync(outPng).size; if (b > 5000) { r = { ok: true, bytes: b }; break; } } catch {}
   #| }
   #| try { ch.kill(); } catch {}
-  #| return { ok: false, err: "png not written in 20s", bytes: 0 };
+  #| try { fs.rmSync(outPng + ".prof", { recursive: true, force: true }); } catch {}
+  #| return r;
   #| }
   #| const CSS = `
   #| :root{--bg:#0f1117;--fg:#e6e8ee;--panel:#171a23;--line:#262b38;--muted:#8b93a7;--accent:#5b9dff;--swap:#ff8a4c;--changed:#ffd166;--ok:#3ecf8e;--err:#ff5d73;--code-bg:#12141c;--code-cur:#1f2941;--code-err:#3a1c22}

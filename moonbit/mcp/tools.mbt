@@ -168,7 +168,7 @@ fn tool_table() -> Array[ToolDef] {
       name: "session_open",
       level: 0,
       read_only: false,
-      description: "打开有状态会话（只编译不运行）：返回 session_id、编译诊断、算法识别、程序概览（函数/符号/行数）。首个会话成功后解锁 L1 工具（frames_summary / frames_query / annotations / run_to / step_next / render / session_close），并发 tools/list_changed 通知——请重拉 tools/list。",
+      description: "打开有状态会话（只编译不运行）：返回 session_id、编译诊断、算法识别、程序概览（函数/符号/行数）。首个会话入池即解锁 L1 工具（frames_summary / frames_query / annotations / run_to / step_next / render / session_close——编译失败会话同样解锁：render 可出诊断卡；design §1.2「成功后解锁」按此收窄修正），并发 tools/list_changed 通知——请重拉 tools/list。",
       input_schema: schema(
         [
           ("source", p_str("C 源码字符串（必填，≤64KB）")),
@@ -231,7 +231,12 @@ fn tool_table() -> Array[ToolDef] {
               ("label_prefix", p_str("字幕前缀，如「交换」")),
               ("line", p_int("源码行号")),
               ("func", p_str("函数名")),
-              ("has_vis_event", p_bool("只要含可视事件的帧")),
+              (
+                "has_vis_event",
+                p_bool(
+                  "true=只要含可视事件的帧；false/缺省=不过滤（非「只要不含」）",
+                ),
+              ),
             ]),
           ),
         ],

@@ -178,7 +178,7 @@
 - **测试**：mcp 白盒 12 条三 target 全绿（native/js/wasm-gc——依赖 gateway 不含
   wasm 故裸口径不含；锁披露切换/LRU/TTL/投影分页/事件锚 1126 步·swap7=逆序对·
   compare54/首交换帧 93 行 8/run_to 断点/E2005 诊断/渲染钩子契约）；
-  `moonbit_test_passed_native` 1203→1215（+12），裸口径 1007 持平（双 README 连坐）。
+  裸 1175→1187 / native 1224→1236（各 +12；mcp 挂 `+wasm` 随 gateway B3 口径——无交付面仅测试/接口面，双 README 连坐）。
   黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
   每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
   interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖。

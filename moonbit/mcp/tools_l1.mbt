@@ -57,6 +57,16 @@ fn Server::tool_frames_query(
     None => 50
   }
   let from = max_int(0, jint_or(jget(args, "from"), 0))
+  // PR #457 审阅 P3：显式 to < from fail loud（旧形态静默空页 + has_more 假真）
+  match jint(jget(args, "to")) {
+    Some(t) =>
+      if t < from {
+        return Proto(
+          -32602, "参数 to 须 >= from（区间左闭右开：[from, to)）",
+        )
+      }
+    None => ()
+  }
   let filter = jget(args, "filter")
   guard filter is Object(_) || jis_null(filter) else {
     return Proto(
@@ -192,12 +202,7 @@ fn Server::tool_run_to(self : Server, args : Json, now : Double) -> ToolOut {
     CAP_FRAMES - e.frames.length()
   }
   match advance(e, budget, bp, ev) {
-    Ok(a) => {
-      if phase_is_terminal(e.phase) {
-        fetch_outputs(e)
-      }
-      Done(tool_text(run_to_body(e, a)))
-    }
+    Ok(a) => Done(tool_text(run_to_body(e, a)))
     Err(m) => return Fail("推进失败：\{m}")
   }
 }
@@ -369,6 +374,16 @@ fn Server::render_entry(
   }
   let total = e.frames.length()
   let from = max_int(0, jint_or(jget(args, "from"), 0))
+  // PR #457 审阅 P3：显式 to <= from fail loud（旧形态静默 0 帧）
+  match jint(jget(args, "to")) {
+    Some(t) =>
+      if t <= from {
+        return Proto(
+          -32602, "参数 to 须大于 from（渲染区间左闭右开：[from, to)；不传 to = 到末帧）",
+        )
+      }
+    None => ()
+  }
   let to = min_int(
     total,
     match jint(jget(args, "to")) {
@@ -535,24 +550,20 @@ fn Server::tool_session_close(
     return Fail("会话 \{id} 不存在或已过期")
   }
   self.entries.remove(id)
-  match true {
-    true =>
-      Done(
-        tool_text(
-          ob()
-          .s("closed", id)
-          .n("remaining", self.entries.length())
-          .s(
-            "next",
-            if self.entries.length() == 0 {
-              "已无活跃会话——L1 工具即将收回（tools/list_changed）"
-            } else {
-              "其余会话仍在（工具集不变）"
-            },
-          )
-          .done(),
-        ),
+  Done(
+    tool_text(
+      ob()
+      .s("closed", id)
+      .n("remaining", self.entries.length())
+      .s(
+        "next",
+        if self.entries.length() == 0 {
+          "已无活跃会话——L1 工具即将收回（tools/list_changed）"
+        } else {
+          "其余会话仍在（工具集不变）"
+        },
       )
-    false => Fail("会话 \{id} 不存在或已过期")
-  }
+      .done(),
+    ),
+  )
 }

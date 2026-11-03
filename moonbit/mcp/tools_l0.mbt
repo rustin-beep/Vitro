@@ -34,6 +34,14 @@ fn arg_source(
       )
     }
   }
+  // PR #457 审阅 P3：files 与 source 互斥 fail loud（旧形态 source 被静默忽略）
+  if files.length() > 0 && source.length() > 0 {
+    return Err(
+      Proto(
+        -32602, "参数 source 与 files 互斥——多文件工程只给 files（filename 含 \"main\" 者为主文件，缺省名 main.c）",
+      ),
+    )
+  }
   Ok((source, files))
 }
 
@@ -124,12 +132,27 @@ fn Server::tool_session_open(
   let argv = jstr_arr(jget(args, "argv"))
   self.seq += 1
   let id = "s_" + pad4(self.seq)
+  // PR #457 审阅 P2-1：files 多文件形态下 Entry.source 不能为空（overview
+  // 的函数表/行数与 render 的源码面板都吃它）——取主文件源（filename 含
+  // "main" 者优先，否则首个文件；与引擎 compile{files} 的 main.c 缺省名同源）
+  let source_display = if files.length() > 0 {
+    let mut pick = ""
+    for f in files {
+      let name = jstr_or(jget(f, "filename"), "main.c")
+      if pick.length() == 0 || name.contains("main") {
+        pick = jstr_or(jget(f, "source"), "")
+      }
+    }
+    pick
+  } else {
+    source
+  }
   let e : Entry = {
     id,
     session: @session.Session::new(),
     seq: 0,
     title: jstr_or(jget(args, "title"), ""),
-    source,
+    source: source_display,
     argv,
     compile_result: Json::null(),
     frames: [],
@@ -152,7 +175,7 @@ fn Server::tool_session_open(
   e.phase = if ok { PHASE_OPENED } else { PHASE_COMPILE_FAILED }
   let evicted = pool_insert(self.entries, e)
   let overview = if ok {
-    overview_json(e, source)
+    overview_json(e, source_display)
   } else {
     ob().n("line_count", line_count(source)).done()
   }

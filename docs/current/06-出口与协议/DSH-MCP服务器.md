@@ -44,7 +44,7 @@ DeepSeek Harness（DSH）插件的 **MCP server 核心**——stdio JSON-RPC 2.0
 
 - 白盒：`mcp/mcp_wbtest.mbt` 12 条（三 target 全绿；裸 moon test 不含——依赖 gateway 无 wasm 通道，计数走 native 口径）。
 - 黑盒：`D:/tmp/vitro-dsh-plugin/accept.mts` 28 断言对 js 产物跑全绿（TTL 过期黑盒不可假钟，白盒覆盖）。
-- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（native 1203→1215）。
+- 登记：pkg_deps L9 / surface 边表 10 条 / mbti_sync 豁免（同 gateway 病：canonical backend=wasm 而包不含 wasm）/ testcount 双 README（裸 1175→1187 / native 1224→1236——mcp 挂 +wasm 随 gateway B3 口径入裸计数）。
 
 ## 待拍板
 

@@ -345,9 +345,9 @@ test("runPrimitiveSelfcheck：九原语合成 fixture 全红（P2-3——接线�
 test("J9_ANCHORS/CASE_NAMES 与真实豁免表/cases 目录一致（P2-1——锚外置三处连坐）", () => {
   const root = projectRoot();
   const divs = loadDivergences(root);
-  const j9InRules = new Set(divs.entries.filter((e) => e.j9 === true).map((e) => e.case + " " + e.assertion));
+  const j9InRules = new Set(divs.entries.filter((e) => e.j9 === true).map((e) => e.case + "\u0000" + e.assertion));
   for (const a of J9_ANCHORS) {
-    assert.ok(j9InRules.has(a.case + " " + a.assertion), `常量条目不在豁免表: ${a.case}/${a.assertion}`);
+    assert.ok(j9InRules.has(a.case + "\u0000" + a.assertion), `常量条目不在豁免表: ${a.case}/${a.assertion}`);
   }
   assert.equal(j9InRules.size, J9_ANCHORS.length, "豁免表 j9 条目数与常量不一致");
   const dir = path.join(root, "scripts", "teaching_truth", "cases");

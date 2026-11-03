@@ -658,8 +658,12 @@ jobs:
     name: 4th-arm wasmtime parity (gateway wasm x Cranelift vs V8)
     needs: build-artifacts
     runs-on: windows-latest
-    # 冷编 wasmtime 50（release，~3-5min 慢机）+ corpus deep-nomem 双侧
-    #（本地 36s+13s，慢机 ~3x）+ synth 基线轮（本地 70s 含 55s GC 病态例）
+    # 冷编 wasmtime 50（release，cache 命中后秒级）+ corpus deep-nomem 双侧
+    #（本地 wasmtime 65s/node 21s）+ synth 基线轮——**CI 全量档实测 391s**
+    #（run 933，2026-11-03，含冷编）<8min 目标，单档全量不降双档。跑器 wasm 栈
+    # 默认 2MiB（arm4 全量批起，与 V8 预算面对齐——synth 梯度 4000=AGREE /
+    # 6000=TRAP_BOTH 锚定，#421 预算型 TRAP_ONE 消失）。驱动级单侧护栏
+    # --timeout-ms 默认 900s（挂死早红而非拖到 job 超时）。
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -713,7 +717,11 @@ jobs:
       # 对抗集（栈梯度/lone surrogate/大输入/fail-loud 帧域；deep-nomem 含 dump 族——
       # #418 回归面）——行为基线锁定（scripts/wasmtime_arm/synth_baseline.json；
       # DIFF 恒红、恶化/未登记/僵尸/改善红——重冻走 --freeze-baseline，J9 三形态
-      # 篡改证红）。每 case 首帧实例复位（两侧同起点，CASCADE 面归零——审阅 P2-3）。
+      # 篡改证红）。基线 2026-11-03 随跑器栈默认 2MiB 化重冻：struct_nest_1500/
+      # 2000/3000/4000 TRAP_ONE→AGREE（#421 预算型分叉消失），梯度锚 4000=AGREE /
+      # 6000=TRAP_BOTH（两侧临界不重合：V8∈(4000,5000]、wasmtime∈(5000,6000]，
+      # 5000 档勿加——必 TRAP_ONE）。每 case 首帧实例复位（两侧同起点，CASCADE
+      # 面归零——审阅 P2-3）。
       - name: 4th-arm synth adversarial (deep-nomem, baseline-locked)
         run: node scripts/wasmtime_arm/main.mts all --profile deep-nomem --synth --baseline scripts/wasmtime_arm/synth_baseline.json --out tmp/w4ci/synth
         shell: bash

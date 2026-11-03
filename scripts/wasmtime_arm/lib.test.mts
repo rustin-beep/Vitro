@@ -1,8 +1,14 @@
 // W4 第四臂对拍——纯函数库契约（#273 四件套：node:test）。
 // 核心义务 = 对比器「先证会红」（J9）：注入字节差 / 单侧 trap / 行数不等
 // 三形态都必须判红，恢复后判绿；其余为抽样确定性、include 键、帧序对齐。
+// 壳层护栏两锚（PR #461 审阅 P3-3 固化）：超时杀 / stdout 现场保全——后人改
+// runSide error 分支有人兜（突变证红实录见文件尾注）。
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import {
   RESET_ACK,
   RESET_LINE,
@@ -271,4 +277,60 @@ test("基线证红：DIFF/恶化/改善/未登记/僵尸 五类各自判出；�
   // DIFF 恒红（即使基线写了 DIFF）
   const withDiff: SynthBaseline = { ...base, cases: { c0: "AGREE", c1: "TRAP_BOTH", c2: "DIFF", c3: "TRAP_ONE" } };
   assert.deepEqual(checkBaseline(report, withDiff).map((p) => p.kind), ["diff"]);
+});
+
+// ── 驱动壳层护栏（PR #461 审阅 P3-3 固化）──────────────────────────────
+//
+// main.mts runSide 的超时与失败现场保全两分支，原只有手工 J9 一次性证红——
+// 固化成常驻锚：假跑器（node 子进程经 --exe 顶替 wasmtime 臂、--wasm 传入
+// 的 .mjs 即「跑器脚本」）分别制造「挂死等超时」「rc=3 + stdout 打字」两形态，
+// 断言 run 子命令 rc=1 且 stderr 带定位信息。突变证红实录（2026-11-03）：
+// 注释掉 main.mts 的 ETIMEDOUT 分支 → 超时锚红（err 落「启动失败」不匹配
+// 「超时 >」）；恢复 → 绿。
+
+const MAIN_MTS = resolve(import.meta.dirname, "main.mts");
+
+/** gen（synth 单 case，只造 requests/manifest 骨架）→ run（假跑器）。 */
+function driveRun(fakeWasm: string, outDir: string, timeoutMs: number): { rc: number | null; err: string } {
+  const g = spawnSync(
+    process.execPath,
+    [MAIN_MTS, "gen", "--synth", "--cases", "struct_nest_250", "--profile", "run", "--out", outDir, "--wasm", fakeWasm],
+    { encoding: "utf8" },
+  );
+  assert.equal(g.status, 0, "gen 前置失败：" + g.stderr);
+  const r = spawnSync(
+    process.execPath,
+    [MAIN_MTS, "run", "--out", outDir, "--wasm", fakeWasm, "--exe", process.execPath, "--timeout-ms", String(timeoutMs)],
+    { encoding: "utf8" },
+  );
+  return { rc: r.status, err: `${r.stderr ?? ""}${r.stdout ?? ""}` };
+}
+
+test("壳层护栏：挂死跑器超时被杀（--timeout-ms 早红，报定位指引）", () => {
+  const dir = mkdtempSync(join(tmpdir(), "w4-guard-hang-"));
+  try {
+    const fake = join(dir, "hang.mjs");
+    writeFileSync(fake, "setTimeout(() => {}, 60000);\n");
+    const { rc, err } = driveRun(fake, join(dir, "t"), 900);
+    assert.equal(rc, 1);
+    assert.match(err, /超时 >900ms/);
+    assert.match(err, /单侧挂死或病态语料/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("壳层护栏：非零 rc 时 stdout 尾部现场保全", () => {
+  const dir = mkdtempSync(join(tmpdir(), "w4-guard-fail-"));
+  try {
+    const fake = join(dir, "fail.mjs");
+    writeFileSync(fake, 'console.log("fake-runner-stdout-marker"); process.exit(3);\n');
+    const { rc, err } = driveRun(fake, join(dir, "t"), 10_000);
+    assert.equal(rc, 1);
+    assert.match(err, /stdout 尾部/);
+    assert.match(err, /fake-runner-stdout-marker/);
+    assert.match(err, /rc=3/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

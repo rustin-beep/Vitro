@@ -348,7 +348,17 @@ export function synthCases(): SynthCase[] {
     { name: "call_nest_5000", src: "int f(int x) { return x; }\nint main() { return " + rep("f(", 5000) + "1" + rep(")", 5000) + "; }" },
     { name: "if_nest_5000", src: "int main() { int x = 1;\n" + rep("if (x) {\n", 5000) + "x = 2;\n" + rep("}\n", 5000) + "return x; }" },
     { name: "struct_nest_2000", src: structNest(2000) },
-    // 栈预算临界梯度（wasmtime 默认 512KiB vs V8 默认 ~1MB——两侧各自临界深度）
+    // 栈预算临界梯度（跑器默认 2MiB vs V8 默认——门槛实际由对照臂 V8 栈预算
+    // 决定，随 node 版本与进程上下文漂移：版本依赖面，node 升级须复测，CI 对照
+    // 臂版本看仓根 .node-version）。2026-11-03 实测（CI node 24 / 本机 node 26）：
+    // wasmtime 2MiB 临界 ∈(5000,6000]；V8 4000 稳过、6000 稳溢、**5000 落在 V8
+    // 临界邻域**——孤立跑溢出 vs 同进程前置他例后不溢出（3/3 稳定复现，同日同
+    // 批帧只改前置帧数即翻转，PR #461 审阅实锤：全量驱动上下文 AGREE / 孤立
+    // 22 帧 TRAP_ONE）。梯度锚 4000（双侧稳过=AGREE）/ 6000（双侧稳溢=TRAP_BOTH
+    // stack 类）——两档都在两侧临界的稳定侧，断言语义=「预算窗对齐不被回退」。
+    // **勿加 5000 档**：临界邻域 ⇒ verdict 随同进程执行历史翻转 ⇒ 加档即不可
+    // 复现的 flaky 红（PR #461 审阅 P1 勘正原「必然 TRAP_ONE」定性——结论勿加
+    // 不变，理由改为 flaky）。
     ...[250, 500, 1000, 1500, 3000, 4000, 6000, 8000, 12000].map((n) => ({ name: `struct_nest_${n}`, src: structNest(n) })),
     { name: "comment_nest_deep", src: "int main() { return 0; }" + rep("/* ", 10000) + rep(" */", 10000) },
     { name: "macro_recursion", src: "#define A B\n#define B A\nint main() { return A; }" },

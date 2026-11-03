@@ -33,7 +33,9 @@
 //
 // 用法：wasmtime_arm <wasm.wasm> <requests.ndjson> <responses.ndjson>
 // 环境旋钮：W4_STRINGS=host | W4_TYPED=1 | W4_INLINE=0 | W4_COUNT=1（host-call
-// 计数）| W4_MAX_WASM_STACK=<bytes> | W4_INSPECT=1（打印导出/导入类型后退出）
+// 计数）| W4_MAX_WASM_STACK=<bytes>（默认 2 MiB——与 V8 默认栈预算面对齐，
+// 见 run() 内注释；512KiB 出厂默认在 #421 嵌套链下浅 3 倍，预算型 TRAP_ONE
+// 噪声源）| W4_INSPECT=1（打印导出/导入类型后退出）
 // 退出码：0 正常（含 trap 行）；2 用法错；1 装载/编译/IO 失败。
 
 use std::io::{BufRead, BufWriter, Write};
@@ -664,14 +666,29 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
     cfg.wasm_gc(true)
         .wasm_function_references(true)
         .wasm_reference_types(true);
-    // W4_MAX_WASM_STACK（字节）：wasm 栈预算（wasmtime 默认 512 KiB）——栈溢出类
-    // 分叉的定性旋钮：加大后分叉消失 ⇒ 预算差异而非语义差异。连坐
-    // async_stack_size（默认 2 MiB，wasmtime 要求 ≥ max_wasm_stack）。
-    // W4 实测：2 MiB 时 struct_nest 临界深度 (4000,6000] 与 V8 默认重合。
-    if let Some(v) = std::env::var("W4_MAX_WASM_STACK").ok().and_then(|s| s.parse::<usize>().ok()) {
-        cfg.max_wasm_stack(v);
-        cfg.async_stack_size(v + (1 << 20));
-    }
+    // W4_MAX_WASM_STACK（字节）：wasm 栈预算旋钮，**默认 2 MiB**（arm4 全量批
+    // 2026-11-03 起取代 wasmtime 出厂 512 KiB）。对拍的门槛实际由对照臂 V8 的
+    // 栈预算决定——V8 预算随 node 版本与进程上下文变（版本依赖面：node 升级
+    // 须复测临界，CI 对照臂版本看仓根 .node-version）。本批实测（CI node 24 /
+    // 本机 node 26 双环境）：struct 嵌套链（~400 B/层，#421）wasmtime 2MiB
+    // 临界 ∈(5000,6000]；V8 4000 稳过、6000 稳溢、**5000 落在 V8 临界邻域**
+    //（孤立跑溢出、同进程前置他例后不溢出——执行历史改变剩余栈，flaky 面，
+    // PR #461 审阅 3/3 实锤）。2MiB 使 wasm 栈预算**区间与 V8 重叠**（非逐点
+    // 重合）⇒ 纯预算型差异不再混进 TRAP_ONE 桶——「同预算对拍」是区间级对齐。
+    // 512KiB 出厂默认临界 (1000,1500] 浅 3 倍，故弃。旋钮保留作定性（≤32MiB
+    // 安全——跑器在 64MB 子线程栈内，更大会把可捕获 trap 变进程崩溃）；值缺
+    // 失回落默认，非 UTF-8 / 解析失败一律 fail loud 不静默。
+    // 连坐 async_stack_size（wasmtime 要求 ≥ max_wasm_stack）。
+    const DEFAULT_MAX_WASM_STACK: usize = 2 << 20;
+    let max_stack = match std::env::var("W4_MAX_WASM_STACK") {
+        Ok(s) => s.parse::<usize>().map_err(|_| {
+            wasmtime::format_err!("W4_MAX_WASM_STACK 须为十进制字节数，got {s:?}")
+        })?,
+        Err(std::env::VarError::NotPresent) => DEFAULT_MAX_WASM_STACK,
+        Err(e) => wasmtime::bail!("W4_MAX_WASM_STACK 读取失败：{e}"),
+    };
+    cfg.max_wasm_stack(max_stack);
+    cfg.async_stack_size(max_stack + (1 << 20));
     // 默认开 Cranelift 函数内联（wasmtime 50 默认 Inlining::No；W4_INLINE=0 关）——
     // 模块内小函数内联，实测 -11% 运行 / +85% 编译（≈+350ms 一次性）；跨模块
     // （polyfill import）不可内联。
@@ -680,8 +697,14 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
     }
     // GC 堆初始大小（wasmtime 默认 0——从零按需增长；copying collector 每次
     // 收集/增长整体拷活跃集，大字符串活跃集下抖动：src_500k_many_lines compile
-    // 8.7s vs node 0.17s 实锤）。内存惰性提交，调大无实际代价。W4_GC_HEAP_MB 覆盖。
-    let gc_mb: u64 = std::env::var("W4_GC_HEAP_MB").ok().and_then(|s| s.parse().ok()).unwrap_or(256);
+    // 8.7s vs node 0.17s 实锤）。内存惰性提交，调大无实际代价。W4_GC_HEAP_MB
+    // 覆盖（PR #461 审阅 P3：与 stack 旋钮同款收严——值缺失回落 256，非 UTF-8 /
+    // 解析失败 fail loud，不再静默吞）。
+    let gc_mb: u64 = match std::env::var("W4_GC_HEAP_MB") {
+        Ok(s) => s.parse::<u64>().map_err(|_| wasmtime::format_err!("W4_GC_HEAP_MB 须为十进制 MB 数，got {s:?}"))?,
+        Err(std::env::VarError::NotPresent) => 256,
+        Err(e) => wasmtime::bail!("W4_GC_HEAP_MB 读取失败：{e}"),
+    };
     cfg.gc_heap_initial_size(gc_mb << 20);
     // W4_COLLECTOR=drc|copying|null（默认 Auto=copying）——收集器对照旋钮
     match std::env::var("W4_COLLECTOR").as_deref() {
@@ -772,13 +795,14 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
     eprintln!("[wasmtime_arm] gc-heap grows={}", rt.store.data().grows);
     let top: Vec<String> = timings.iter().take(10).map(|(i, ms)| format!("#{i}:{ms}ms")).collect();
     eprintln!(
-        "[wasmtime_arm] lines={lines} traps={traps} compile={}ms instantiate={}ms run={}ms wasmtime=50.0.1 strings={} typed={} inline={} top10={}",
+        "[wasmtime_arm] lines={lines} traps={traps} compile={}ms instantiate={}ms run={}ms wasmtime=50.0.1 strings={} typed={} inline={} stack={}KiB top10={}",
         t_compile.as_millis(),
         t_inst.as_millis(),
         t_run.elapsed().as_millis(),
         if std::env::var("W4_STRINGS").map(|v| v != "host").unwrap_or(true) { "poly" } else { "host" },
         std::env::var_os("W4_TYPED").is_some(),
         std::env::var("W4_INLINE").map(|v| v != "0").unwrap_or(true),
+        max_stack >> 10,
         top.join(","),
     );
     if COUNT_ON.load(std::sync::atomic::Ordering::Relaxed) {

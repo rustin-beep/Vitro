@@ -5,7 +5,7 @@
 // identical + synth 对抗集 --baseline 锁定）。
 //
 //   node scripts/wasmtime_arm/main.mts gen  [--out D] [--seed N] [--profile P] [--all | --cases a.c,b.c | --quota s=N,...] [--synth] [--shared]
-//   node scripts/wasmtime_arm/main.mts run  [--out D] [--wasm P] [--exe P]
+//   node scripts/wasmtime_arm/main.mts run  [--out D] [--wasm P] [--exe P] [--timeout-ms N（默认 900000，0=关——单侧挂死护栏）]
 //   node scripts/wasmtime_arm/main.mts diff [--out D] [--json] [--baseline F | --freeze-baseline F] [--expect-min-cases N] [--expect-min-frames N]
 //   node scripts/wasmtime_arm/main.mts all  [上述全部]
 //
@@ -98,6 +98,7 @@ interface Opts {
   freezeBaseline: string | null;
   expectMinCases: number;
   expectMinFrames: number;
+  timeoutMs: number;
   json: boolean;
 }
 
@@ -118,6 +119,7 @@ function parseArgs(argv: string[]): Opts {
     freezeBaseline: null,
     expectMinCases: 0,
     expectMinFrames: 0,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
     json: false,
   };
   const posInt = (flag: string, v: string): number => {
@@ -155,6 +157,7 @@ function parseArgs(argv: string[]): Opts {
     else if (a === "--freeze-baseline") o.freezeBaseline = resolve(next());
     else if (a === "--expect-min-cases") o.expectMinCases = posInt(a, next());
     else if (a === "--expect-min-frames") o.expectMinFrames = posInt(a, next());
+    else if (a === "--timeout-ms") o.timeoutMs = posInt(a, next());
     else throw new Error(`未知参数 ${a}`);
   }
   return o;
@@ -320,13 +323,35 @@ function cmdGen(o: Opts): void {
   process.stderr.write(`[w4 gen] profile=${o.profile} cases=${cases.length}(含 static) frames=${lines.length} seed=${o.seed} out=${o.out}\n`);
 }
 
-function runSide(label: string, cmd: string, args: string[], cwd: string): void {
+/** 单侧跑器 wall 护栏默认（ms）——corpus 全量 wasmtime 侧 ~65s、synth 轮 ~90s
+ * （含 GC 病态例），CI 慢机 ~3x；900s 给足余量且远低于 CI job timeout 30min：
+ * 挂死（死循环/竞态卡死/病态语料）尽早红而非拖到 job 超时零信息。--timeout-ms 0 关。 */
+const DEFAULT_TIMEOUT_MS = 900_000;
+
+function runSide(label: string, cmd: string, args: string[], cwd: string, timeoutMs: number): void {
   const t0 = performance.now();
-  const r = spawnSync(cmd, args, { cwd, encoding: "buffer", maxBuffer: 1 << 30 });
+  const r = spawnSync(cmd, args, { cwd, encoding: "buffer", maxBuffer: 1 << 30, timeout: timeoutMs > 0 ? timeoutMs : undefined });
   const ms = (performance.now() - t0).toFixed(0);
   process.stderr.write(r.stderr.toString("utf8"));
-  if (r.error) throw new Error(`[w4 run:${label}] 启动失败：${r.error.message}`);
-  if (r.status !== 0) throw new Error(`[w4 run:${label}] rc=${r.status}（${ms}ms）`);
+  if (r.error) {
+    // spawnSync 超时走 error.code=ETIMEDOUT（status=null/signal=SIGTERM）——Node
+    // 类型只标 Error，运行时带 code（ErrnoException 形态）
+    if ((r.error as NodeJS.ErrnoException).code === "ETIMEDOUT") {
+      throw new Error(
+        `[w4 run:${label}] 超时 >${timeoutMs}ms（wall=${ms}ms 已杀）——单侧挂死或病态语料：该侧 stderr 已透传（top10 逐帧计时指向嫌疑帧），复跑加 --cases <name> 缩面定位`,
+      );
+    }
+    throw new Error(`[w4 run:${label}] 启动失败：${r.error.message}（wall=${ms}ms）`);
+  }
+  if (r.signal !== null) {
+    throw new Error(`[w4 run:${label}] 被信号 ${r.signal} 终止（rc=${r.status}，${ms}ms）`);
+  }
+  if (r.status !== 0) {
+    // 失败现场保全：stdout 尾部透传（诊断应走 stderr 已全量透传；防意外走 stdout 的输出被吞）
+    const tail = r.stdout.toString("utf8").slice(-2000);
+    if (tail.length > 0) process.stderr.write(`[w4 run:${label}] stdout 尾部：\n${tail}\n`);
+    throw new Error(`[w4 run:${label}] rc=${r.status}（${ms}ms）——上方为该侧 stderr 全量`);
+  }
   process.stderr.write(`[w4 run:${label}] rc=0 wall=${ms}ms\n`);
 }
 
@@ -343,12 +368,13 @@ function cmdRun(o: Opts): void {
   }
   manifest.wasm_sha256 = sha;
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
-  runSide("wasmtime", o.exe, [o.wasm, req, join(o.out, "responses.wasmtime.ndjson")], o.out);
+  runSide("wasmtime", o.exe, [o.wasm, req, join(o.out, "responses.wasmtime.ndjson")], o.out, o.timeoutMs);
   runSide(
     "node",
     process.execPath,
     [join(import.meta.dirname, "host_node.mts"), o.wasm, req, join(o.out, "responses.node.ndjson")],
     o.out,
+    o.timeoutMs,
   );
 }
 

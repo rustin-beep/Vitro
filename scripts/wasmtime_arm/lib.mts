@@ -348,7 +348,12 @@ export function synthCases(): SynthCase[] {
     { name: "call_nest_5000", src: "int f(int x) { return x; }\nint main() { return " + rep("f(", 5000) + "1" + rep(")", 5000) + "; }" },
     { name: "if_nest_5000", src: "int main() { int x = 1;\n" + rep("if (x) {\n", 5000) + "x = 2;\n" + rep("}\n", 5000) + "return x; }" },
     { name: "struct_nest_2000", src: structNest(2000) },
-    // 栈预算临界梯度（wasmtime 默认 512KiB vs V8 默认 ~1MB——两侧各自临界深度）
+    // 栈预算临界梯度（跑器默认 2MiB vs V8 默认 ~1MB——两侧临界不重合：V8 ∈
+    // (4000,5000]、wasmtime 2MiB ∈(5000,6000]，均为 2026-11-03 实测）。梯度锚
+    // 4000（双侧通过=AGREE）/ 6000（双侧溢出=TRAP_BOTH stack 类）——两档都在
+    // 两侧各自临界的稳定侧，断言语义=「预算窗对齐不被回退」。**勿加 5000 档**：
+    // 恰落在两临界之间，两侧必然 TRAP_ONE（wasmtime 过、V8 溢出）——预算型
+    // 差异变 CI 常红，非语义分叉信号（#421 面）。
     ...[250, 500, 1000, 1500, 3000, 4000, 6000, 8000, 12000].map((n) => ({ name: `struct_nest_${n}`, src: structNest(n) })),
     { name: "comment_nest_deep", src: "int main() { return 0; }" + rep("/* ", 10000) + rep(" */", 10000) },
     { name: "macro_recursion", src: "#define A B\n#define B A\nint main() { return A; }" },

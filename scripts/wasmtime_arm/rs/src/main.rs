@@ -33,7 +33,9 @@
 //
 // 用法：wasmtime_arm <wasm.wasm> <requests.ndjson> <responses.ndjson>
 // 环境旋钮：W4_STRINGS=host | W4_TYPED=1 | W4_INLINE=0 | W4_COUNT=1（host-call
-// 计数）| W4_MAX_WASM_STACK=<bytes> | W4_INSPECT=1（打印导出/导入类型后退出）
+// 计数）| W4_MAX_WASM_STACK=<bytes>（默认 2 MiB——与 V8 默认栈预算面对齐，
+// 见 run() 内注释；512KiB 出厂默认在 #421 嵌套链下浅 3 倍，预算型 TRAP_ONE
+// 噪声源）| W4_INSPECT=1（打印导出/导入类型后退出）
 // 退出码：0 正常（含 trap 行）；2 用法错；1 装载/编译/IO 失败。
 
 use std::io::{BufRead, BufWriter, Write};
@@ -664,14 +666,24 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
     cfg.wasm_gc(true)
         .wasm_function_references(true)
         .wasm_reference_types(true);
-    // W4_MAX_WASM_STACK（字节）：wasm 栈预算（wasmtime 默认 512 KiB）——栈溢出类
-    // 分叉的定性旋钮：加大后分叉消失 ⇒ 预算差异而非语义差异。连坐
-    // async_stack_size（默认 2 MiB，wasmtime 要求 ≥ max_wasm_stack）。
-    // W4 实测：2 MiB 时 struct_nest 临界深度 (4000,6000] 与 V8 默认重合。
-    if let Some(v) = std::env::var("W4_MAX_WASM_STACK").ok().and_then(|s| s.parse::<usize>().ok()) {
-        cfg.max_wasm_stack(v);
-        cfg.async_stack_size(v + (1 << 20));
-    }
+    // W4_MAX_WASM_STACK（字节）：wasm 栈预算旋钮，**默认 2 MiB**（arm4 全量批
+    // 2026-11-03 起取代 wasmtime 出厂 512 KiB）。理由：对拍的对照臂 V8 默认
+    //（node 26，~1MB 原生栈）下 struct 嵌套链（~400 B/层，#421）4000 层通过、
+    // 6000 层溢出；512 KiB 默认的临界在 (1000,1500]——浅 3 倍，把纯预算型差异
+    //（wasmtime 先溢出）混进 TRAP_ONE 桶。2 MiB 实测临界 (4000,6000] 与 V8
+    // 重合（W4 §4.1 host 形态 + 本批 Poly 形态复测）——栈预算面对齐后才谈
+    //「同预算对拍」。旋钮保留作定性（≤32MiB 安全——跑器在 64MB 子线程栈内，
+    // 更大会把可捕获 trap 变进程崩溃）；非法值 fail loud 不静默回落。
+    // 连坐 async_stack_size（wasmtime 要求 ≥ max_wasm_stack）。
+    const DEFAULT_MAX_WASM_STACK: usize = 2 << 20;
+    let max_stack = match std::env::var("W4_MAX_WASM_STACK") {
+        Ok(s) => s.parse::<usize>().map_err(|_| {
+            wasmtime::format_err!("W4_MAX_WASM_STACK 须为十进制字节数，got {s:?}")
+        })?,
+        Err(_) => DEFAULT_MAX_WASM_STACK,
+    };
+    cfg.max_wasm_stack(max_stack);
+    cfg.async_stack_size(max_stack + (1 << 20));
     // 默认开 Cranelift 函数内联（wasmtime 50 默认 Inlining::No；W4_INLINE=0 关）——
     // 模块内小函数内联，实测 -11% 运行 / +85% 编译（≈+350ms 一次性）；跨模块
     // （polyfill import）不可内联。
@@ -772,13 +784,14 @@ fn run(args: &[String]) -> wasmtime::Result<()> {
     eprintln!("[wasmtime_arm] gc-heap grows={}", rt.store.data().grows);
     let top: Vec<String> = timings.iter().take(10).map(|(i, ms)| format!("#{i}:{ms}ms")).collect();
     eprintln!(
-        "[wasmtime_arm] lines={lines} traps={traps} compile={}ms instantiate={}ms run={}ms wasmtime=50.0.1 strings={} typed={} inline={} top10={}",
+        "[wasmtime_arm] lines={lines} traps={traps} compile={}ms instantiate={}ms run={}ms wasmtime=50.0.1 strings={} typed={} inline={} stack={}MiB top10={}",
         t_compile.as_millis(),
         t_inst.as_millis(),
         t_run.elapsed().as_millis(),
         if std::env::var("W4_STRINGS").map(|v| v != "host").unwrap_or(true) { "poly" } else { "host" },
         std::env::var_os("W4_TYPED").is_some(),
         std::env::var("W4_INLINE").map(|v| v != "0").unwrap_or(true),
+        max_stack >> 20,
         top.join(","),
     );
     if COUNT_ON.load(std::sync::atomic::Ordering::Relaxed) {

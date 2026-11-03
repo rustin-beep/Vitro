@@ -4,7 +4,8 @@
 //
 // 用法：node tools/smoke.mts [port] [formC-port]（缺省 9335 / 9336；cwd 须为 desktop/）
 // 前置（CI 步保证）：desktop 与 demo 的 npm ci、demo wasm.wasm + langpack 资产、
-//   proton_cli 在 PATH、~/.proton CEF runtime 就位。
+//   proton_cli 在 PATH、~/.proton CEF runtime 就位；首跑冷树（此前未跑过
+//   proton_cli build）formC 段 build 可分钟级——其超时按 600s 设。
 //
 // 断言集（fail loud，逐条 stderr 标注后 rc=1）：
 //   ① CDP 就绪（120s 内 /json/version 协议指纹——vite+壳+桥全链）
@@ -19,9 +20,12 @@
 //      formC-port）→ CDP 可达（env 非空翻转 debug 的 facade 语义回归）→
 //      url=proton.localhost（打包 asset 形态指纹）/ title 含 Vitro（真实渲染）
 //      / 三虫捕获——关 F12 形态的捉虫通道断言；finally 还原 main.mbt
+//      ⑥b 负向对照（审阅 P2-1）：同产物不给 env 端口 ⇒ CDP 关（find_cdp
+//      扫零 + 窗口已起先证）——「patch 真把 debug=false 编进产物」的唯一
+//      判别锚（patch 失效时 debug=true 无 env 开临时随机端口即被扫到）
 // 退出码：0=全过；1=断言失败；2=用法/环境错。
-import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -32,6 +36,13 @@ const PROTON_CLI = process.env["PROTON_CLI"] ?? "proton_cli";
 
 if (!existsSync("proton.project.json")) {
   console.error("smoke: 须在 desktop/ 目录下运行（proton.project.json 缺席）");
+  process.exit(2);
+}
+// 脏态自检（审阅 P2-2 纵深）：main.mbt 只该有 debug=true,——debug=false, =
+// 上次 smoke 的 formC patch 残留（信号丢失/强杀/断电等 finally 与 handler
+// 都没兜住的形态）。fail loud 并给还原指引，不静默带病跑。
+if (readFileSync("app/main.mbt", "utf8").includes("debug=false,")) {
+  console.error("smoke: app/main.mbt 处于 debug=false 残留态（上次 smoke 未走完还原？）——先 `git checkout -- desktop/app/main.mbt` 再跑");
   process.exit(2);
 }
 
@@ -66,6 +77,30 @@ const dev = spawn(PROTON_CLI, ["dev"], {
 });
 dev.stdout.on("data", (d: Buffer) => process.stdout.write(`[dev] ${d}`));
 dev.stderr.on("data", (d: Buffer) => process.stderr.write(`[dev] ${d}`));
+
+// ── 中断还原（审阅 P2-2）：Node 默认 SIGINT/SIGTERM 直接终止不走 finally——
+// formC patch 生效期间 Ctrl-C / CI 取消会把 app/main.mbt 留在 debug=false
+// 脏态（源码与产物不一致 + 脏树）。finally 仍是主路径，此处只兜信号路径。
+let formCApp: ChildProcess | null = null;
+let formCNegApp: ChildProcess | null = null;
+let patchedRestore: (() => void) | null = null;
+function killTreesSync(): void {
+  for (const p of [dev, formCApp, formCNegApp]) {
+    if (p !== null && p.pid !== undefined && !p.killed) {
+      spawnSync("taskkill", ["/PID", String(p.pid), "/T", "/F"], { stdio: "ignore" });
+    }
+  }
+}
+process.on("SIGINT", () => {
+  patchedRestore?.();
+  killTreesSync();
+  process.exit(130);
+});
+process.on("SIGTERM", () => {
+  patchedRestore?.();
+  killTreesSync();
+  process.exit(143);
+});
 
 function killTree(): void {
   // 只收自己的树（taskkill /PID /T）——不做 /IM 全局兜底：同名进程在
@@ -257,20 +292,29 @@ try {
   // 错（P 线坑系 MSYS bash 特有）；沙箱会话 %TEMP% 写围栏 → TEMP 指工作区内。
   const srcPath = "app/main.mbt";
   const originalMain = readFileSync(srcPath, "utf8");
-  let formCApp: ReturnType<typeof spawn> | null = null;
+  patchedRestore = () => {
+    try {
+      writeFileSync(srcPath, originalMain);
+    } catch {
+      // 信号路径尽力而为（盘满等极端态无能为力，主路径 finally 兜底）
+    }
+  };
   try {
-    // debug=true, 只在代码行出现（注释行为「debug=true 缺省」无逗号）——替换
-    // 计数≠1 即环境变了，fail loud 不猜
-    const patched = originalMain.replace("debug=true,", "debug=false,");
-    if (patched === originalMain) {
-      check("formC-patch", false, "app/main.mbt 中未找到 'debug=true,'（字面变了？连坐更新本探针）");
+    // debug=true, 只在代码行出现（注释行为「debug=true 缺省」无逗号）。计数
+    // 校验（审阅 P3-1）：String.replace 只换**首个**——原文若两处会静默只改
+    // 一处，故必须显式数（≠1 fail loud）
+    const hits = originalMain.split("debug=true,").length - 1;
+    if (hits !== 1) {
+      check("formC-patch", false, `'debug=true,' 出现 ${hits} 次（预期 1）——字面变了？连坐更新本探针`);
     } else {
-      writeFileSync(srcPath, patched);
+      writeFileSync(srcPath, originalMain.replace("debug=true,", "debug=false,"));
       console.log(`[formC] rebuild with debug=false → port ${PORT_C}`);
+      // 600s 超时（审阅 P3-2）：冷树首跑（smoke 前未跑过 proton_cli build）
+      // build 可分钟级——实测 300s 不够；CI 有前置 release build 步恒暖
       const build = spawnSync(PROTON_CLI, ["build", "--", "--release"], {
         cwd: process.cwd(),
         encoding: "utf8",
-        timeout: 300_000,
+        timeout: 600_000,
       });
       process.stdout.write((build.stdout ?? "") + (build.stderr ?? ""));
       if (build.status !== 0) {
@@ -281,29 +325,43 @@ try {
         if (!existsSync(exe)) {
           check("formC-exe", false, `产物缺席：${exe}（构建布局变了？）`);
         } else {
-          // CEF runtime 四件套：store 布局是内容寻址目录（cef-<hash>-layout-1），
-          // glob 发现且要求唯一（多个=fail loud，宁红勿猜错 runtime）
+          // CEF runtime 四件套：store 布局是内容寻址目录（cef-<hash>-layout-1）。
+          // 升级后旧 layout 残留属正常环境态（审阅 P3-3）——多个时取 mtime
+          // 最新并列日志，零个才 fail loud
           const storeDir = path.join(homedir(), ".proton", "store", "win32-x64");
           const layouts = existsSync(storeDir)
             ? readdirSync(storeDir).filter((d) => /^cef-.*-layout-1$/.test(d))
             : [];
-          if (layouts.length !== 1) {
-            check("formC-runtime", false, `~/.proton/store 布局异常（${layouts.length} 个 cef layout：${layouts.join(", ") || "无"}）`);
+          if (layouts.length === 0) {
+            check("formC-runtime", false, "~/.proton/store 无 cef-*-layout-1（CEF runtime 未装配？先跑 proton_cli cef setup）");
           } else {
-            const runtimeRoot = path.join(storeDir, layouts[0]!, "runtime");
+            const layout = layouts
+              .map((d) => ({ d, m: statSync(path.join(storeDir, d)).mtimeMs }))
+              .sort((a, b) => b.m - a.m)[0]!.d;
+            if (layouts.length > 1) {
+              console.log(`[formC] store 有 ${layouts.length} 个 cef layout（升级残留，非错），取 mtime 最新：${layout}`);
+            }
+            const runtimeRoot = path.join(storeDir, layout, "runtime");
             const helper = path.join(homedir(), ".proton", "helpers", "win32-x64", "0.6.0", "cef_process.exe");
-            formCApp = spawn(exe, [], {
-              cwd: process.cwd(),
-              env: {
+            const formCEnv = (port?: string): NodeJS.ProcessEnv => {
+              const e: NodeJS.ProcessEnv = {
                 ...process.env,
                 PROTON_RUNTIME_ROOT: runtimeRoot,
                 PROTON_HELPER_PATH: helper,
                 PROTON_PROJECT_CONFIG: path.resolve("proton.project.json"),
-                PROTON_REMOTE_DEBUGGING_PORT: PORT_C,
                 TEMP: tmpDirShared,
                 TMP: tmpDirShared,
                 PATH: path.join(runtimeRoot, "bin") + ";" + (process.env["PATH"] ?? ""),
-              },
+              };
+              // 负向对照（⑥b）必须**删净** env 端口——残留即「debug 翻转」被
+              // 外部供给，对照失效
+              if (port === undefined) delete e["PROTON_REMOTE_DEBUGGING_PORT"];
+              else e["PROTON_REMOTE_DEBUGGING_PORT"] = port;
+              return e;
+            };
+            formCApp = spawn(exe, [], {
+              cwd: process.cwd(),
+              env: formCEnv(PORT_C),
               stdio: ["ignore", "pipe", "pipe"],
             });
             formCApp.stdout?.on("data", (d: Buffer) => process.stdout.write(`[formC-app] ${d}`));
@@ -339,16 +397,84 @@ try {
               check("formC-title", title.includes("Vitro"), `title=${title}`);
               // 三虫捕获：关 F12 形态的捉虫通道断言（与 dev 段同锚不同端口）
               assertCatch("formC-", PORT_C);
+
+              // ── ⑥b 负向对照（审阅 P2-1）——「patch 真把 debug=false 编进产物」
+              // 的唯一判别锚：同产物 **不给 env 端口** ⇒ CDP 关（README 矩阵
+              // 形态 B）。若 patch 未生效（产物实为 debug=true），无 env 会开
+              // **临时随机端口**，find_cdp 即扫到——正向七断言对此零判别力
+              //（debug=true + env 钉端口与 debug=false + env 钉端口结果面同形）。
+              if (formCApp.pid !== undefined && !formCApp.killed) {
+                spawnSync("taskkill", ["/PID", String(formCApp.pid), "/T", "/F"], { stdio: "ignore" });
+              }
+              let negStderr = "";
+              formCNegApp = spawn(exe, [], {
+                cwd: process.cwd(),
+                env: formCEnv(),
+                stdio: ["ignore", "pipe", "pipe"],
+              });
+              formCNegApp.stdout?.on("data", (d: Buffer) => process.stdout.write(`[formC-neg] ${d}`));
+              formCNegApp.stderr?.on("data", (d: Buffer) => {
+                negStderr += String(d);
+                process.stderr.write(`[formC-neg!] ${d}`);
+              });
+              // 窗口已起先证（挂起实例也零监听——find_cdp 假阴性坑，P 线实锤）：
+              // 等 stderr 的 window created 行
+              let windowUp = false;
+              const nw0 = Date.now();
+              while (Date.now() - nw0 < 60_000) {
+                if (negStderr.includes("window created")) {
+                  windowUp = true;
+                  break;
+                }
+                await sleep(1000);
+              }
+              check("formC-neg-window", windowUp, windowUp ? "窗口已建（可判零监听）" : `60s 未见 window created（stderr 尾：${negStderr.slice(-160)}）`);
+              if (windowUp) {
+                // find_cdp 扫进程树 LISTEN + /json/version 指纹：连续 3 轮零
+                // CDP 才判「关」（给 CEP 端口初始化留时序余量，非定长 sleep）
+                let offRounds = 0;
+                let sawCdp: string | null = null;
+                for (let i = 0; i < 6 && offRounds < 3 && sawCdp === null; i++) {
+                  const scan = spawnSync(process.execPath, ["tools/find_cdp.mts", String(formCNegApp.pid)], {
+                    cwd: process.cwd(),
+                    encoding: "utf8",
+                    timeout: 30_000,
+                  });
+                  const m = (scan.stdout ?? "").match(/\{[\s\S]*\}/);
+                  let cdpCount = -1;
+                  if (m !== null) {
+                    try {
+                      cdpCount = ((JSON.parse(m[0]) as { cdp?: unknown[] }).cdp ?? []).length;
+                    } catch {
+                      // 解析失败按 -1 处理（下轮重扫）
+                    }
+                  }
+                  if (cdpCount > 0) {
+                    sawCdp = String(m?.[0] ?? "").slice(0, 160);
+                  } else if (cdpCount === 0) {
+                    offRounds++;
+                  }
+                  await sleep(1500);
+                }
+                check(
+                  "formC-neg-cdp-off",
+                  sawCdp === null && offRounds >= 3,
+                  sawCdp === null ? `零 CDP×${offRounds} 轮（debug=false 无 env ⇒ CDP 关，形态 B 锚）` : `扫到 CDP：${sawCdp}`,
+                );
+              }
             }
           }
         }
       }
     }
   } finally {
-    if (formCApp !== null && formCApp.pid !== undefined && !formCApp.killed) {
-      spawnSync("taskkill", ["/PID", String(formCApp.pid), "/T", "/F"], { stdio: "ignore" });
+    for (const p of [formCApp, formCNegApp]) {
+      if (p !== null && p.pid !== undefined && !p.killed) {
+        spawnSync("taskkill", ["/PID", String(p.pid), "/T", "/F"], { stdio: "ignore" });
+      }
     }
     writeFileSync(srcPath, originalMain); // 还原 debug=true（幂等：字节级写回原文）
+    patchedRestore = null; // finally 已还原——信号路径不再重复写
     console.log("[formC] main.mbt 已还原，树已收");
   }
 } finally {

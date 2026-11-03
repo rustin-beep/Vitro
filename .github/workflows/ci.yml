@@ -1782,14 +1782,18 @@ jobs:
       - name: desktop release build (proton + vitro/engine in-process)
         shell: bash
         run: cd desktop && proton_cli build -- --release 2>&1 | tee /tmp/moon_pull_build.log
+      # 注意 smoke 的 formC 段会再构建一次 release（临时 debug=false 源）——
+      # 本步产物供 dev 形态起窗 + 给 formC 段预热构建缓存（冷树 formC build
+      # 可分钟级，600s 超时按冷树设）。
       # 断言集：CDP 就绪 / transport=ipc / demo 完整采集（golden ✓ 42 帧
       # 引擎 0.9.1 stdout）/ 无 DevTools 窗口捉虫 ≥3 / R3b 形态 C（debug=false
-      # 重建直跑 + env 钉端口 → CDP 可达 + proton.localhost 指纹 + 三虫）——
-      # tools/smoke.mts 头注。基线数字漂移（帧数/版本）须连坐更新 smoke.mts
-      # 断言与 README 基线表。
-      - name: CDP smoke (real CEF window, pinned port)
+      # 重建直跑 + env 钉端口 → CDP 可达 + proton.localhost 指纹 + 三虫）+
+      # 负向对照（同产物无 env ⇒ find_cdp 扫零 CDP——「patch 真生效」的判别
+      # 锚，审阅 P2-1）——tools/smoke.mts 头注。基线数字漂移（帧数/版本）须
+      # 连坐更新 smoke.mts 断言与 README 基线表。
+      - name: CDP smoke (real CEF window, pinned ports)
         shell: bash
-        run: cd desktop && node tools/smoke.mts 9335
+        run: cd desktop && node tools/smoke.mts 9335 9336
       # ── 零自拉断言（fail loud）：缓存命中轮全程不得出现 Downloading
       #    （zip GET=mooncakes 计数入账动作）。miss 轮=预热显形（warning +
       #    回填，post save 后下轮起严格）——绝不静默重下；驱逐/换 pin 同

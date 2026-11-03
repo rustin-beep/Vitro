@@ -32,6 +32,7 @@
 | `vitro/engine/teaching/steps` | L8 | **算法语义标注**（七族 43 算法全量收官，族级对拍 311/311 全覆盖）：判据（features 特征提取 + 误判收紧语义全量照搬）+ infer 步骤推断 + 43 文案全表；**serve 通道端到端接线**（compile 尾段 detect + collector infer——`AlgoInferCtx`）；分叉登记：CFG 四特征恒默认（L9 analysis 域裁定前维持）/ 判据族序按 oracle 次序排（B13） | ✅ |
 | `vitro/engine/teaching/assets` | L8 | **教学资产数据包**（issue #60 双出口架构，2026-10-10）：43 算法文案真源 `suggestions.json.mbt`（jsonmbt——moon check 即写作闸〔枚举拼错写时红〕+ 43 臂穷尽 match 即编译期名单闸）+ `suggestion_map` derive；**引擎消费 = steps 直接 import（零生成器/零 JSON 中转）**；教师面 = jsonmbt build 出同目录 `suggestions.json`（入仓，改后 `import --fill` 回真源——CI git diff 锁同步） | ✅ |
 | `vitro/engine/diagnostics` | L8 | **诊断教学域**：**数据层** A3–A7 四张表（`*_gen.mbt` 由 `scripts/moonbit/gen_diagnostics` 生成——真源 = `scripts/moonbit/diagnostics_data/` 四 JSON，-check 幂等 + 读写两阶段分离防 check 污染工作区）+ **机制层** M1–M5（generate_fix 字节域坐标 / apply_fix〔safe_byte_col 三级退化〕/ 误区滑窗 / 路径组装 / 图激活 DFS〔边声明序契约〕）；分叉登记：apply_fix 混合坐标语义照搬（随 CS 批）/ trimmed_len ASCII 简化 / intents 拍板不照搬挂 issue #32 | ✅ |
+| `vitro/engine/mcp` | L9 | **MCP 宿主层**（DSH mbt 化批 2026-11-03 建包）：JSON-RPC 2.0 + 12 工具（L0 5 永驻 + L1 7 随 session_open 渐进披露 + readOnlyHint）+ 会话池（独立 `@session.Session` 经 gateway `invoke_on`〔本批加法出口，零行为改动〕同进程隔离；LRU 8 / 空闲 5 分钟惰性逐出）+ 返回值投影（frames_query 默认 {i,l,f,s} 分页）；js 壳 `cmd/mcp_js`（+js，渲染落盘 extern 块承载 v1 render.mjs 移植——TS 仅限壳层）；wasm（非 gc）目标同 gateway B3 口径（无交付面，仅接口/测试面——裸口径含本包测试）；见 [DSH-MCP服务器](../docs/current/06-出口与协议/DSH-MCP服务器.md) | 🆕 待发版（随 0.10.0） |
 
 命名规则：module = `vitro/engine`（mooncakes owner `vitro`），包全名 `vitro/engine/<pkg>` 一律全名，代码与配置禁用简称。
 

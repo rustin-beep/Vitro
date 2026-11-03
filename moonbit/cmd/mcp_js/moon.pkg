@@ -1,0 +1,15 @@
+// DSH MCP server js 入口壳（DSH mbt 化批，2026-11-03）：stdio 行循环 +
+// 渲染落盘 + 墙钟全走 extern "js"（node）；协议层/12 工具/会话池/渐进披露
+// 全在 vitro/engine/mcp 单源（moon test 同源可测）。产物 = node 直跑单文件
+//（vitro_js 同款形态，纪律 12）。stdio 语义：stdin 每行一个 JSON-RPC 帧 →
+// 0..n 行输出（响应 + list_changed 通知）；EOF 即 exit(0)（writeSync 同步
+// 写出无竞态——探针①③ 2026-11-03 实证：行流事件驱动 / 198KB 帧逐字节）。
+import {
+  "vitro/engine/mcp",
+  "vitro/engine/teaching/content_data",
+  "vitro/engine/util",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+js"

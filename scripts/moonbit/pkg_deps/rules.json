@@ -27,6 +27,7 @@
     "protocol": 8,
     "session": 8,
     "analysis": 9,
+    "mcp": 9,
     "teaching": 9,
     "time_travel": 8,
     "gateway/wasm": 8,
@@ -40,6 +41,7 @@
   "exempt_prefixes": [
     "cmd"
   ],
+  "_mcp_note": "mcp = MCP（Model Context Protocol）宿主层（DSH mbt 化批 2026-11-03 建包）：JSON-RPC 2.0 + 12 工具 + 会话池，消费面 gateway/session/util 全 ≤L8，挂 L9（应用宿主，同层依赖合法；总计划 §4 收录随批补）。",
   "_exempt_note": "cmd/* 是差分工具层（dump_tokens / dump_ast / dump_typeck / dump_compile），按定义消费者，可依赖任意层。",
   "bridges": {
     "marker": "#export_name",

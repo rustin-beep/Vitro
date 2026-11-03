@@ -141,6 +141,56 @@
   建议（`(ULL)-2.5f` 为 UB 域非「域内」——WSL 副判实锤三方各异）。
 - **fuzz 零动**：新指纹 0/桶恶化 0/僵尸 0（PASS 与基线一致；修复前一度报桶恶化 2 条，根因 =
   cmd/vitro_js 产物陈旧〔重建后消失〕——非本批语料引入，教训：fuzz 判定面含 js 臂产物新鲜度）。
+### feat(moonbit): DSH 插件 v2——MCP server 核心 MoonBit 化（新包 vitro/engine/mcp + cmd/mcp_js 壳，随 0.10.0 节奏发，2026-11-03）
+
+- **新包 `vitro/engine/mcp`（L9，MCP 宿主层；消费面 gateway/session/util 全 ≤L8）**：
+  JSON-RPC 2.0 协议层 + **12 工具动词化**（L0 永驻 5：animate/diagnose/capabilities/
+  sessions/**session_open〔解锁触发器〕** + L1 会话解锁 7：frames_summary/frames_query/
+  annotations/run_to/step_next/render/session_close）+ 会话池（每会话独立
+  `@session.Session`，LRU 8 / 空闲 5 分钟惰性逐出）+ 渐进披露（tools/list 按会话态
+  过滤 + `notifications/tools/list_changed` 布尔级切换，翻转即通知）+ 返回值投影
+  （frames_query 默认 {i,l,f,s}、≤50 帧/页，fields 显式扩 r/v/c/e/a/h，filter
+  label_prefix/line/func/has_vis_event）+ readOnlyHint 元数据表（只读探查 6 工具标
+  true——DSH tools/pre-execute allow/deny/ask 门对接）。**design.md「11 工具 / L0 4」
+  勘误**：session_open 无会话时必须可见才能被调用（解锁触发器），L0 可见集 5、
+  总计 12；§3.3 的 available_now/unlocks 拆分（5+7）即权威口径。
+- **gateway 加法出口 `invoke_on(session, line)`（零行为改动）**：`serve_handle` 本就
+  Session 参数化纯函数，本出口把它暴露给包外——同进程多会话隔离（每会话独立引擎态）
+  无需起多 wasm 实例；全局单例 `invoke` 路径逐字不变（digest/golden 零漂移）。
+  探针结论（三项全通，批报告详）：①stdin 行流事件驱动（readline on line → mbt 闭包
+  回调，主函数返回后进程靠监听存活；EOF 后 writeSync 标记帧完整落盘再 exit）②wasm
+  实例 `#external` 句柄持有（同步 instantiate 2 实例 23ms + Map 持有 + 双实例状态
+  隔离成立——本批降为备选路径证据）③stdout 二进制安全（198,912 字节帧逐字节一致，
+  中文/emoji/控制字符转义保真）。
+- **cmd/mcp_js 壳（+js 单目标，vitro_js 同款形态）**：行循环/墙钟/渲染落盘全走
+  extern "js"，协议与工具零逻辑（壳核心分层纪律）；产物 = node 直跑单文件
+  （`moon build --release --target js cmd/mcp_js`）。渲染壳层 = v1 lib/render.mjs +
+  keyframes.mjs + build.mjs 落盘段整体移植入 extern 块（用户拍板「TS 仅限无法 mbt 化
+  的壳层」——HTML/播放器/PNG 截图是浏览器资产；帧数据逻辑〔关键帧判据/预算抽稀/
+  聚焦选择〕已在 mbt 侧单源）。interactive 模式经 `VITRO_MCP_WASM` /
+  `./engine/wasm.wasm` / `./wasm.wasm` 取 gateway wasm；**缺失自动回落 static**
+  （mbt 恒算关键帧——回落即用，响应 mode/frame_count 取壳层实测值，消双源分叉）。
+- **run_to 三停形态**：断点行（引擎 breakpoints.set——StepEvent 命中置 paused，
+  unpause 后从下一条指令续跑，同行重设须下次进入才触发）/ 首个可视事件（swap/
+  compare/any，逐帧精确推进）/ max_frames 上限；终局会话零推进 + 回看提示
+  （design §4.2 约束如实：终局不可回退推进）。step_next = n 个关键帧（权重判据
+  v1 keyWeight 逐条照搬，参照帧聚焦集 = 两帧出现过的全部数组）。
+- **测试**：mcp 白盒 12 条三 target 全绿（native/js/wasm-gc——依赖 gateway 不含
+  wasm 故裸口径不含；锁披露切换/LRU/TTL/投影分页/事件锚 1126 步·swap7=逆序对·
+  compare54/首交换帧 93 行 8/run_to 断点/E2005 诊断/渲染钩子契约）；
+  `moonbit_test_passed_native` 1203→1215（+12），裸口径 1007 持平（双 README 连坐）。
+  黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
+  每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
+  interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖。
+- **登记连坐**：pkg_deps rules.json（mcp=L9）+ surface 边表 10 条（cmd/mcp_js→
+  mcp/gateway/util×N、mcp→gateway/session/util×N）+ mcp pkg.generated.mbti（canonical=wasm
+  随 gateway B3 批的 +wasm 通道可达，无需豁免）+
+  moonbit/AGENTS.md 包清单行 + docs 说明文档（docs/current/06-出口与协议/DSH-MCP服务器.md）。
+  + **CI 接线**：scripts/moonbit/mcp_smoke（产物 stdio 冒烟闸 16 断言——协议/披露/
+  池/run_to 事件锚/投影/render 落盘/interactive 无 wasm 回落/EOF exit 0；锚值与
+  wbtest 同源）入 ci.yml cli_smoke slice + scripts-ts 四件套（package.json 三清单
+  + node:test 纯件 5 例）+ ci_checklist 活行对账。
+  发版动作（mooncakes 0.10.0 / npm publish）不在本批——待拍板。
 
 ### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
 

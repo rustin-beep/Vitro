@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vitro/engine/mcp"
+
+import {
+  "vitro/engine/session",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Entry {
+  id : String
+  session : @session.Session
+  mut seq : Int32
+  title : String
+  source : String
+  argv : Array[String]
+  mut compile_result : Json
+  frames : Array[Frame]
+  mut phase : Int32
+  mut run_result : Json
+  mut stdout : String
+  mut stderr : String
+  mut paused_at : Int32
+  mut trap_message : String
+  mut last_key : Int32
+  opened_at : Double
+  mut last_used : Double
+}
+
+pub struct Frame {
+  i : Int32
+  l : Int32
+  f : String
+  s : String
+  a : (String, String)?
+  v : Array[(String, String, String)]
+  c : Array[String]
+  e : Array[VisEv]
+  r : Map[String, Array[String]]
+  h : Json
+}
+
+pub(all) struct Host {
+  clock_ms : () -> Double
+  render : (Json) -> Json
+}
+
+pub struct Server {
+  host : Host
+  entries : Map[String, Entry]
+  mut initialized : Bool
+  mut l1_visible : Bool
+  mut seq : Int32
+}
+pub fn Server::handle_line(Self, String) -> Array[String]
+pub fn Server::new(host~ : Host) -> Self
+
+pub struct VisEv {
+  ty : Int32
+  line : Int32
+  e0 : Int32
+  e1 : Int32
+  e2 : Int32
+  ctx : String
+}
+
+// Type aliases
+
+// Traits

@@ -38,6 +38,24 @@ import { projectRoot } from "../internal/capi.mts";
 export const BASELINE_PATH = "scripts/coverage_snapshot/baseline.json";
 export const DEFAULT_OUT = "tmp/coverage_snapshot";
 
+/**
+ * 测量域缺席白名单（审阅 P3-1；写基线时随 --update-baseline 落 baseline.json，
+ * 趋势轮用它做差集断言——单源 = 基线文件，本常量只是首采/重锚时的初值）。
+ * 实测口径（2026-11-03，46 磁盘包 − 29 产物包 = 17）：
+ * cmd/* 14 个 executable 差分工具层（不进 moon test 默认 wasm 轮裸单测域）
+ * + gateway（library 本体无 wbtest/黑盒测试文件，实现行不进 wasm 轮 trace）
+ * + gateway/wasm、teaching/langpack（foreign_library 出口壳，零测试面）。
+ * 新包加入后差集断言红 = 知情登记（或补测量行后条目自然失效须删——僵尸形态同红）。
+ */
+export const MISSING_PACKAGES: Baseline["missing_packages"] = {
+  prefix: ["cmd"],
+  exact: {
+    gateway: "library 本体无 wbtest/黑盒测试文件——实现行不进默认 wasm 轮 trace",
+    "gateway/wasm": "foreign_library 出口壳（#export_name 转发，零测试面）",
+    "teaching/langpack": "foreign_library 出口壳（js 目标，零测试面）",
+  },
+};
+
 export interface Ratio {
   covered: number;
   total: number;
@@ -55,6 +73,8 @@ export interface Baseline {
   commit: string;
   total: Ratio;
   packages: Record<string, Ratio>;
+  /** 测量域缺席白名单（审阅 P3-1）：磁盘包集 − 产物包集 必须恰等于本段展开集 */
+  missing_packages: { prefix: string[]; exact: Record<string, string> };
 }
 
 function fatal(msg: string): never {
@@ -143,6 +163,7 @@ export function serializeBaseline(b: Baseline): string {
     commit: b.commit,
     total: { covered: b.total.covered, total: b.total.total },
     packages: pk,
+    missing_packages: b.missing_packages,
   };
   return JSON.stringify(ordered, null, 2) + "\n";
 }
@@ -159,7 +180,56 @@ export function parseBaseline(text: string): Baseline {
   if (typeof o.as_of !== "string" || typeof o.commit !== "string") throw new Error("baseline.json 缺 as_of/commit");
   if (!o.total || typeof o.total.covered !== "number" || typeof o.total.total !== "number") throw new Error("baseline.json 缺 total");
   if (!o.packages || typeof o.packages !== "object") throw new Error("baseline.json 缺 packages");
-  return { schema: 1, as_of: o.as_of, commit: o.commit, total: o.total, packages: o.packages };
+  if (!o.missing_packages || !Array.isArray(o.missing_packages.prefix) || typeof o.missing_packages.exact !== "object") {
+    throw new Error("baseline.json 缺 missing_packages（测量域缺席白名单——审阅 P3-1）");
+  }
+  return { schema: 1, as_of: o.as_of, commit: o.commit, total: o.total, packages: o.packages, missing_packages: o.missing_packages };
+}
+
+/** 磁盘 moon.pkg 目录集（moonbit/ 下，posix 相对；跳 _build/.mooncakes/.git）。 */
+export function scanPkgDirs(root: string): string[] {
+  const out: string[] = [];
+  const walk = (rel: string): void => {
+    let ents: fs.Dirent[];
+    try {
+      ents = fs.readdirSync(rel === "" ? path.join(root, "moonbit") : path.join(root, "moonbit", rel), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    let hasPkg = false;
+    for (const e of ents) {
+      if (e.isDirectory()) {
+        if (e.name === "_build" || e.name === ".mooncakes" || e.name === ".git") continue;
+        walk(rel === "" ? e.name : `${rel}/${e.name}`);
+      } else if (e.name === "moon.pkg") hasPkg = true;
+    }
+    if (hasPkg && rel !== "") out.push(rel);
+  };
+  walk("");
+  return byteSort(out);
+}
+
+export type DomainFinding = { kind: "unregistered-missing" | "zombie-whitelist"; detail: string };
+
+/**
+ * 测量域差集断言（审阅 P3-1）：磁盘包集 − 产物包集 必须恰等于白名单展开集。
+ * 白名单外缺席 = 新包零测量未登记（红——测量域悄悄缩水）；白名单失效（该包已进产物或磁盘消失）= 僵尸条目（红）。
+ */
+export function judgeMeasurementDomain(diskPkgs: readonly string[], productPkgs: readonly string[], wl: Baseline["missing_packages"]): DomainFinding[] {
+  const out: DomainFinding[] = [];
+  const inProduct = new Set(productPkgs);
+  const onDisk = new Set(diskPkgs);
+  const whitelisted = (p: string): boolean => wl.prefix.some((pre) => p === pre || p.startsWith(pre + "/")) || p in wl.exact;
+  for (const p of diskPkgs) {
+    if (!inProduct.has(p) && !whitelisted(p)) {
+      out.push({ kind: "unregistered-missing", detail: `${p} 在磁盘有包但产物零测量行且不在 missing_packages 白名单——测量域漂移：新包须登记（或确认其应有测量行）` });
+    }
+  }
+  for (const p of Object.keys(wl.exact)) {
+    if (inProduct.has(p)) out.push({ kind: "zombie-whitelist", detail: `白名单具名 ${p} 已进产物测量域——条目失效须删` });
+    else if (!onDisk.has(p)) out.push({ kind: "zombie-whitelist", detail: `白名单具名 ${p} 磁盘上已不存在——僵尸条目须删` });
+  }
+  return out;
 }
 
 export interface TrendRow {
@@ -205,9 +275,11 @@ export function renderTrend(base: Baseline, t: { rows: TrendRow[]; total: TrendR
   lines.push("");
   lines.push("| 包 | 基线 | 本次 | Δ |");
   lines.push("|---|---|---|---|");
-  // 变动行在前（按 |dPct| 降序），零变动在后字节序——读者先看到动了什么
-  const moved = t.rows.filter((r) => r.dCovered !== 0 || r.dPct === null);
-  const still = t.rows.filter((r) => r.dCovered === 0 && r.dPct !== null);
+  // 变动行在前（按 |dPct| 降序），零变动在后字节序——读者先看到动了什么。
+  // 分组维度 = 双差量任一非零即「变动」（审阅 P2-1：绝对量差 dCovered 单判会把
+  // 「分母增、分子不变」的覆盖下降（50/100 → 50/110，-4.5pt）错归「持平」并沉底）
+  const moved = t.rows.filter((r) => r.dPct === null || r.dPct !== 0 || r.dCovered !== 0);
+  const still = t.rows.filter((r) => r.dPct === 0 && r.dCovered === 0);
   moved.sort((a, b) => Math.abs(b.dPct ?? 999) - Math.abs(a.dPct ?? 999) || Buffer.compare(Buffer.from(a.pkg), Buffer.from(b.pkg)));
   for (const r of [...moved, ...still]) lines.push(`| ${r.pkg} | ${fmt(r.base)} | ${fmt(r.now)} | ${d(r)} |`);
   lines.push("");
@@ -261,15 +333,20 @@ export function main(argv: string[]): number {
   const outDir = path.isAbsolute(out) ? out : path.join(root, out);
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, "full_summary.txt"), text);
-  fs.writeFileSync(path.join(outDir, "per_package.json"), serializeBaseline({ schema: 1, as_of: new Date().toISOString().slice(0, 10), commit, total: snap.total, packages: pkgs }));
+  fs.writeFileSync(path.join(outDir, "per_package.json"), serializeBaseline({ schema: 1, as_of: new Date().toISOString().slice(0, 10), commit, total: snap.total, packages: pkgs, missing_packages: MISSING_PACKAGES }));
 
   const basePath = path.join(root, BASELINE_PATH);
   const baseExists = fs.existsSync(basePath);
-  if (update || !baseExists) {
-    const b: Baseline = { schema: 1, as_of: new Date().toISOString().slice(0, 10), commit, total: snap.total, packages: pkgs };
+  // P2-2（审阅）：写基线的唯一路径 = 显式 --update-baseline——基线缺席且未传旗标
+  // = fatal（环境破坏：CI checkout 树必有入库基线；缺席时静默重造会把「掉了 10
+  // 个点」改写成「首采无趋势可比」——反刷掉趋势的静默绿形态）
+  if (!baseExists && !update) {
+    fatal(`基线 ${BASELINE_PATH} 缺席——入库基线被移走/改名即环境破坏（须显式 --update-baseline 重锚，禁止静默重造）`);
+  }
+  if (update) {
+    const b: Baseline = { schema: 1, as_of: new Date().toISOString().slice(0, 10), commit, total: snap.total, packages: pkgs, missing_packages: MISSING_PACKAGES };
     fs.writeFileSync(basePath, serializeBaseline(b));
-    process.stdout.write(`coverage_snapshot: ${baseExists ? "基线已重锚" : "首采基线已写入"} ${BASELINE_PATH} —— ${snap.total.covered}/${snap.total.total} (${pct(snap.total)})，${Object.keys(pkgs).length} 包 / ${snap.files.size} 文件\n`);
-    if (!baseExists) process.stdout.write("coverage_snapshot: 首采无趋势可比；下次运行起输出 vs 基线趋势\n");
+    process.stdout.write(`coverage_snapshot: ${baseExists ? "基线已重锚" : "首采基线已写入"} ${BASELINE_PATH} —— ${snap.total.covered}/${snap.total.total} (${pct(snap.total)})，${Object.keys(pkgs).length} 包 / ${snap.files.size} 文件（连坐：main.test.mts 首采数字锚须同步改）\n`);
     return 0;
   }
   let base: Baseline;
@@ -277,6 +354,16 @@ export function main(argv: string[]): number {
     base = parseBaseline(fs.readFileSync(basePath, "utf8"));
   } catch (e) {
     fatal(e instanceof Error ? e.message : String(e));
+  }
+  // 测量域差集断言（审阅 P3-1）：磁盘 moon.pkg 集与产物测量域的差必须恰为白名单展开集。
+  // 仅真采集（无 --from）时执行——--from 是分步/对账模式（输入即被审对象，本就跳过
+  // moon test 采集，小 fixture 与磁盘全集必然不等），域完整性属采集面语义。
+  if (from === null) {
+    const domainFindings = judgeMeasurementDomain(scanPkgDirs(root), Object.keys(pkgs), base.missing_packages);
+    if (domainFindings.length > 0) {
+      for (const f of domainFindings) process.stderr.write(`coverage_snapshot: [${f.kind}] ${f.detail}\n`);
+      fatal(`测量域差集断言红（${domainFindings.length} 条，见上）——新包零测量须登记 missing_packages 并知情，白名单失效条目须删`);
+    }
   }
   const t = trend(base, pkgs, snap.total);
   const md = renderTrend(base, t, commit);

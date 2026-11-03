@@ -258,6 +258,9 @@ export function unzipTo(buf: Buffer, dir: string): number {
     else if (r.method === 8) data = zlib.inflateRawSync(comp);
     else throw new Error(`unzipTo: ${r.name} 压缩方法 ${r.method} 不支持（只认 store/deflate）`);
     if (data.length !== r.uncompSize) throw new Error(`unzipTo: ${r.name} 解压长度 ${data.length} ≠ 声明 ${r.uncompSize}`);
+    // CRC32 校验（PR #452 审阅 P3-8：此前读了 crc32 没用——store 路径只剩长度兜底，
+    // 同长异码的静默损坏只能靠下游 moon check 间接暴露）。zlib.crc32 需 node ≥20.15（本仓 .node-version 22+ 面）
+    if (zlib.crc32(data) !== r.crc32) throw new Error(`unzipTo: ${r.name} CRC32 不符（解压内容 ${zlib.crc32(data)} ≠ 声明 ${r.crc32}——zip 损坏/被篡改）`);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, data);
     files++;
@@ -295,10 +298,17 @@ export function judgePackage(zv: ZipVerdict): PkgGateFailure | null {
   return null;
 }
 
-function run(name: string, args: readonly string[], cwd?: string): { code: number; out: string } {
-  const r = spawnSync(name, args, { cwd, encoding: "buffer", maxBuffer: 64 * 1024 * 1024 });
+/**
+ * run（PR #452 审阅 P3-3 补超时与归因分流）：超时后 spawnSync 置 error=ETIMEDOUT /
+ * status=null——旧实现把它折叠成 code=-1 且 out 为空，moon 偶发挂死（审阅实锤 25 分钟
+ * 不动、空闲重跑 9s 全绿——moonc 挂死非包坏）会被误归因成「rc≠0 包内容坏」。
+ * timedOut=true 由调用方走 fatal（环境面）而非 fail（闸判定面）。
+ */
+function run(name: string, args: readonly string[], cwd?: string, timeoutMs = 10 * 60_000): { code: number; out: string; timedOut: boolean } {
+  const r = spawnSync(name, args, { cwd, encoding: "buffer", maxBuffer: 64 * 1024 * 1024, timeout: timeoutMs });
   const out = Buffer.concat([r.stdout ?? Buffer.alloc(0), r.stderr ?? Buffer.alloc(0)]).toString("utf8");
-  return { code: r.status ?? -1, out };
+  const timedOut = r.error !== undefined && (r.error as NodeJS.ErrnoException).code === "ETIMEDOUT";
+  return { code: r.status ?? -1, out, timedOut };
 }
 
 function main(): void {
@@ -316,7 +326,8 @@ function main(): void {
   // ── release 档前置①：dry-run 须 rc=0（本机有 moon login；CI 无登录会
   //    「Registry login is required」拦——故 dry-run 只进 release 档）──
   if (release) {
-    const dry = run("moon", ["publish", "--dry-run"], moonbit);
+    const dry = run("moon", ["publish", "--dry-run"], moonbit, 10 * 60_000);
+    if (dry.timedOut) fatal("moon publish --dry-run 超时（>10min）——registry/网络面环境异常，重跑");
     const v = parseDryRun(dry.out);
     if (dry.code !== 0) {
       if (v.versionConflict !== null) {
@@ -330,16 +341,18 @@ function main(): void {
     // ── release 档前置②：tag 指向校验（件②，refs #438）──
     const tag = tagNameOf(modVer);
     if (tag === null) fatal(`moon.mod version "${modVer}" 非 semver 三段——tag 派生形态破坏`);
-    const head = run("git", ["rev-parse", "HEAD"], root);
+    const head = run("git", ["rev-parse", "HEAD"], root, 30_000);
+    if (head.timedOut) fatal("git rev-parse HEAD 超时（>30s）——git 仓库状态异常");
     if (head.code !== 0) fatal(`git rev-parse HEAD rc=${head.code}：${head.out.slice(-300)}`);
-    const tc = run("git", ["rev-parse", "--verify", "-q", `refs/tags/${tag}^{commit}`], root);
+    const tc = run("git", ["rev-parse", "--verify", "-q", `refs/tags/${tag}^{commit}`], root, 30_000);
     const tv = judgeTag(tag, tc.code === 0 ? tc.out.trim() : null, head.out.trim());
     if (!tv.ok) fail(tv.reason);
     process.stdout.write(`release_preflight: ${tv.note}\n`);
   }
 
   // ── package 非退化闸（两档共用，零网络）──
-  const pkg = run("moon", ["package"], moonbit);
+  const pkg = run("moon", ["package"], moonbit, 10 * 60_000);
+  if (pkg.timedOut) fatal("moon package 超时（>10min）——moon 偶发挂死形态（环境面），重跑");
   if (pkg.code !== 0) fatal(`moon package rc=${pkg.code}：\n${pkg.out.slice(-800)}`);
   const zipMatch = /Package to (\S+)/.exec(pkg.out);
   if (zipMatch === null) fatal(`moon package 输出无产物路径：\n${pkg.out.slice(-400)}`);
@@ -370,9 +383,16 @@ function main(): void {
     }
     if (!fs.existsSync(path.join(tmpDir, "moon.mod"))) fatal(`解压树无 moon.mod（${written} 文件写出）——zip 布局与预期（平铺根）不符`);
     const t0 = Date.now();
-    const chk = run("moon", ["check"], tmpDir);
+    const chk = run("moon", ["check"], tmpDir, 10 * 60_000);
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (chk.timedOut) {
+      // P3-3 归因分流：moon 在全新临时模块目录偶发挂死（审阅实锤 25 分钟不动、空闲
+      // 重跑 9s 全绿）——环境面 fatal（rc=2），不得误报「包内容坏」（审阅 P3-3 实锤
+      // 旧形态把挂死归因成 0.9.0 断供同族）。超时被 kill 后 moonc 孙进程可能残留，
+      // 重跑前可核对（工具链踩坑 F13 三步判别法）。
+      fatal(`解压树 moon check 超时（>10min）——moon 偶发挂死形态（环境面非包坏；空闲重跑即绿），请重跑；若复现按 F13 判别法核对 moon/moonc 进程`);
+    }
     if (chk.code !== 0) {
       fail(`解压树 moon check rc=${chk.code}（下游 moon add 后 build 必红的 0.9.0 断供同族形态——zip 内容/依赖面坏）：\n${chk.out.slice(-1500)}`);
     }

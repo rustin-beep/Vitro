@@ -123,5 +123,15 @@
       "covered": 1500,
       "total": 2785
     }
+  },
+  "missing_packages": {
+    "prefix": [
+      "cmd"
+    ],
+    "exact": {
+      "gateway": "library 本体无 wbtest/黑盒测试文件——实现行不进默认 wasm 轮 trace",
+      "gateway/wasm": "foreign_library 出口壳（#export_name 转发，零测试面）",
+      "teaching/langpack": "foreign_library 出口壳（js 目标，零测试面）"
+    }
   }
 }

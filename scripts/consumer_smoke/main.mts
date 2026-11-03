@@ -22,9 +22,12 @@
 //     L1 动态 import() 导出键集 == bridges[teaching/langpack/export.mbt]
 //     L2 texts_json() 可解析且顶层键集 == baseline.payload_top_keys
 //
-// 口径陷阱：node ≥23 在带 builtins 编译选项下 Module.imports() 报空（内建化）——链接面枚举
-// 必须**裸编译**（`new WebAssembly.Module(buf)` 无选项）；实例化才用带选项编译。
-// rc：0 绿 / 1 判红（契约漂移） / 2 致命（产物缺席、基线损坏——先构建：
+// 口径陷阱：带 builtins 编译选项时 Module.imports() 的可见性随 node 版本漂移——实测
+// node 22.22.2 只报 `_`（js-string 已编译期内化）、node 26.12.1 报空（PR #452 审阅 P3-5
+// 复证；旧注释「≥23 报空」的版本主张已过期）。**任何版本都必须裸编译**
+// （`new WebAssembly.Module(buf)` 无选项）枚举链接面——裸编译在两版都报全量；实例化才用带选项编译。
+// rc：0 绿 / 1 判红（契约漂移） / 2 致命（产物缺席、基线损坏——产物只认 release：debug
+//   回落已删〔P3-4——拿 debug 产物判精确集/体积是静默弱化〕。先构建：
 //   `cd moonbit && moon build --release --target wasm-gc gateway/wasm && moon build --release --target js teaching/langpack`）。
 import fs from "node:fs";
 import path from "node:path";
@@ -136,10 +139,9 @@ export function judgeLangpack(exportKeys: readonly string[], payloadTopKeys: rea
   ];
 }
 
+/** 只认 release 产物（审阅 P3-4）：debug 回落已删——拿 debug 产物判精确集是静默弱化，缺席即 fatal。 */
 function defaultWasm(root: string): string {
-  const rel = path.join(root, "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm");
-  const dbg = path.join(root, "moonbit/_build/wasm-gc/debug/build/gateway/wasm/wasm.wasm");
-  return fs.existsSync(rel) ? rel : dbg;
+  return path.join(root, "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm");
 }
 
 function defaultLangpack(root: string): string {
@@ -186,24 +188,34 @@ function printFindings(fs_: Finding[]): boolean {
   return ok;
 }
 
-/** J9：真产物 + 篡改基线三路（js-string 少一 / 允许集去 js-string / bridges export 注入假名）各自必红。 */
-function selftest(surf: { imports: Map<string, string[]>; exports: string[] }, b: Baseline, bridges: Bridges): number {
-  if (!judgeWasmSurface(surf, b, bridges).every((f) => f.ok)) {
+/** J9（wasm 三路 + js 三路，PR #452 审阅 P3-2 补 js 桥）：真产物 + 篡改基线各路必红。 */
+function selftest(
+  surf: { imports: Map<string, string[]>; exports: string[] },
+  lp: { exportKeys: string[]; topKeys: string[]; err: string | null },
+  b: Baseline,
+  bridges: Bridges,
+): number {
+  const wasmGreen = judgeWasmSurface(surf, b, bridges).every((f) => f.ok);
+  const lpGreen = lp.err === null && judgeLangpack(lp.exportKeys, lp.topKeys, b, bridges).every((f) => f.ok);
+  if (!wasmGreen || !lpGreen) {
     process.stdout.write("consumer_smoke: selftest ABORT——基线不绿，注入后的红无法归因\n");
     return 2;
   }
-  const probes: Array<[string, Baseline, Bridges]> = [
-    ["js-string 少一函数", { ...b, wasm: { ...b.wasm, js_string_functions: b.wasm.js_string_functions.slice(1) } }, bridges],
-    ["允许集剔除 wasm:js-string", { ...b, wasm: { ...b.wasm, allowed_import_modules: ["_"] } }, bridges],
-    ["bridges export 注入假名", b, { files: { ...bridges.files, [WASM_BRIDGE_FILE]: [...(bridges.files[WASM_BRIDGE_FILE] ?? []), "zz_fake"] } }],
+  const probes: Array<[string, () => boolean]> = [
+    ["js-string 少一函数", () => judgeWasmSurface(surf, { ...b, wasm: { ...b.wasm, js_string_functions: b.wasm.js_string_functions.slice(1) } }, bridges).every((f) => f.ok)],
+    ["允许集剔除 wasm:js-string", () => judgeWasmSurface(surf, { ...b, wasm: { ...b.wasm, allowed_import_modules: ["_"] } }, bridges).every((f) => f.ok)],
+    ["bridges export 注入假名", () => judgeWasmSurface(surf, b, { files: { ...bridges.files, [WASM_BRIDGE_FILE]: [...(bridges.files[WASM_BRIDGE_FILE] ?? []), "zz_fake"] } } as Bridges).every((f) => f.ok)],
+    ["langpack 载荷顶层键漂移", () => judgeLangpack(lp.exportKeys, lp.topKeys, { ...b, langpack: { payload_top_keys: b.langpack.payload_top_keys.slice(1) } }, bridges).every((f) => f.ok)],
+    ["langpack bridges 注入假名", () => judgeLangpack(lp.exportKeys, lp.topKeys, b, { files: { ...bridges.files, [LANGPACK_BRIDGE_FILE]: [...(bridges.files[LANGPACK_BRIDGE_FILE] ?? []), "zz_fake"] } } as Bridges).every((f) => f.ok)],
+    ["langpack 导出键漂移（真产物缺席判定面注入）", () => judgeLangpack([...lp.exportKeys, "zz_drift"], lp.topKeys, b, bridges).every((f) => f.ok)],
   ];
-  for (const [label, pb, pbr] of probes) {
-    if (judgeWasmSurface(surf, pb, pbr).every((f) => f.ok)) {
+  for (const [label, stillGreen] of probes) {
+    if (stillGreen()) {
       process.stdout.write(`consumer_smoke: selftest FAIL——篡改「${label}」后仍判绿，闸门失效\n`);
       return 1;
     }
   }
-  process.stdout.write("consumer_smoke: selftest PASS——三路篡改（js-string 少一/允许集收窄/export 注入）全部被捕获（红）\n");
+  process.stdout.write("consumer_smoke: selftest PASS——六路篡改（wasm：js-string 少一/允许集收窄/export 注入；js：顶层键漂移/bridges 注假名/导出键漂移）全部被捕获（红）\n");
   return 0;
 }
 
@@ -233,7 +245,13 @@ export async function main(argv: string[]): Promise<number> {
   // 严格档：Buffer<ArrayBufferLike> 不可赋 BufferSource（SharedArrayBuffer 联合）——拷贝为 ArrayBuffer 支撑
   const buf = new Uint8Array(fs.readFileSync(wasmPath));
   const surf = linkSurface(buf);
-  if (self) return selftest(surf, b, bridges);
+  if (self) {
+    // js 桥真值先取（P3-2：selftest 须覆盖 js 面——产物缺席即 ABORT，不静默缩面）
+    if (!fs.existsSync(lpPath)) fatal(`--selftest 需要 langpack 产物在场（js 桥注入基准）：${lpPath}`);
+    const lp = await consumeLangpack(lpPath);
+    if (lp.err !== null) fatal(`--selftest 取 langpack 真值失败：${lp.err}`);
+    return selftest(surf, lp, b, bridges);
+  }
 
   process.stdout.write(`consumer_smoke: wasm 桥 ${path.relative(root, wasmPath)}（${buf.length} B）\n`);
   let ok = printFindings(judgeWasmSurface(surf, b, bridges));

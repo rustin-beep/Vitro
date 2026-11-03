@@ -183,7 +183,7 @@ test("latestPublishedVersion：JSONL 尾行版本（CRLF/空行容忍·坏行 nu
 
 // ── A8 批（refs #438）───────────────────────────────────────────────────────
 
-/** 拼完整可解压 zip：local header（真数据）+ central directory + EOCD；method 可选 store/deflate。 */
+/** 拼完整可解压 zip：local header（真数据）+ central directory + EOCD；method 可选 store/deflate。CRC 写真值（P3-8 后解压器校验）。 */
 function mkZipFull(entries: ReadonlyArray<{ name: string; data: Buffer; deflate?: boolean }>): Buffer {
   const parts: Buffer[] = [];
   const cds: Buffer[] = [];
@@ -191,9 +191,11 @@ function mkZipFull(entries: ReadonlyArray<{ name: string; data: Buffer; deflate?
   for (const e of entries) {
     const name = Buffer.from(e.name, "utf8");
     const comp = e.deflate ? zlib.deflateRawSync(e.data) : e.data;
+    const crc = zlib.crc32(e.data);
     const lh = Buffer.alloc(30);
     lh.writeUInt32LE(0x04034b50, 0);
     lh.writeUInt16LE(e.deflate ? 8 : 0, 8);
+    lh.writeUInt32LE(crc, 14);
     lh.writeUInt32LE(comp.length, 18);
     lh.writeUInt32LE(e.data.length, 22);
     lh.writeUInt16LE(name.length, 26);
@@ -201,6 +203,7 @@ function mkZipFull(entries: ReadonlyArray<{ name: string; data: Buffer; deflate?
     const cd = Buffer.alloc(46);
     cd.writeUInt32LE(0x02014b50, 0);
     cd.writeUInt16LE(e.deflate ? 8 : 0, 10);
+    cd.writeUInt32LE(crc, 16);
     cd.writeUInt32LE(comp.length, 20);
     cd.writeUInt32LE(e.data.length, 24);
     cd.writeUInt16LE(name.length, 28);
@@ -246,7 +249,7 @@ test("unzipTo：zip slip 三形态拒绝（../ 段 / 绝对路径 / 盘符 / 反
   assert.equal(unsafeEntryName("pkg/ok.mbt"), false);
 });
 
-test("unzipTo：local header 签名错位 / 解压长度不符 fail loud", () => {
+test("unzipTo：local header 签名错位 / 解压长度不符 / CRC32 不符 fail loud", () => {
   const zip = mkZipFull([{ name: "a.mbt", data: Buffer.from("hello") }]);
   // 篡改 LFH 签名（local header 起点在 0）
   zip.writeUInt32LE(0xdeadbeef, 0);
@@ -256,6 +259,11 @@ test("unzipTo：local header 签名错位 / 解压长度不符 fail loud", () =>
   const cdOff = zip2.length - 22 - (46 + 5);
   zip2.writeUInt32LE(999, cdOff + 24);
   assert.throws(() => unzipTo(zip2, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-bad-"))), /解压长度/);
+  // P3-8：篡改 CDE 的 CRC32（同长异码形态——长度校验抓不住，CRC 必须抓）
+  const zip3 = mkZipFull([{ name: "a.mbt", data: Buffer.from("hello"), deflate: true }]);
+  const cdOff3 = zip3.length - 22 - (46 + 5);
+  zip3.writeUInt32LE(zip3.readUInt32LE(cdOff3 + 16) ^ 0xffff, cdOff3 + 16);
+  assert.throws(() => unzipTo(zip3, fs.mkdtempSync(path.join(os.tmpdir(), "vitro-bad-"))), /CRC32/);
 });
 
 test("tagNameOf + judgeTag：tag 名派生 / 三路判定（件② tag 防移动）", () => {

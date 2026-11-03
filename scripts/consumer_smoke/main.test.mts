@@ -80,6 +80,9 @@ test("loadBaseline：真实基线可加载 + schema/空集 fail loud", () => {
 
 test("loadBridges：真实 pkg_deps rules.json 两桥在场（与 pkg_deps 判据⑤同源）", () => {
   const br = loadBridges(path.join(projectRoot(), BRIDGES_RULES_PATH));
+  // **改导出面连坐义务（PR #452 审阅 P3-7）**：本 test 的名集是硬编码真值锚（与
+  // rules.json bridges 互为对账，非「从 bridges 读」的空转）——改 bridges 时本锚必须
+  // 连坐改（同侧连坐链：rules.json bridges ↔ 本锚 ↔ consumer_smoke/baseline.json 注释互指）
   assert.deepEqual([...(br.files[WASM_BRIDGE_FILE] ?? [])].sort(), ["engine_version", "invoke", "protocol_version", "reset"]);
   assert.deepEqual(br.files[LANGPACK_BRIDGE_FILE], ["texts_json"]);
 });

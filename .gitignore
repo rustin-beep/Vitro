@@ -214,8 +214,10 @@ demo/dist-e08/
 # 课程叙述层生成物（#120 内容管线）：CI 现场发射，不入库（对齐 algorithms.js 形态）
 demo/src/data/lessons.ts
 
-# wasmopt 供给缓存（钉版本下载物——不入库）
+# wasmopt 供给缓存（钉版本下载物——不入库；moonbit/tools/ 面 = wasmopt 在
+# workspace 内运行时的落点——规则含斜杠只锚根目录，须双列）
 tools/cache/
+moonbit/tools/cache/
 .mcp.json
 # scripts/package-lock.json 入库（#273 依赖白名单锁版本；2026-10-23 摘除旧忽略）
 

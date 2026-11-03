@@ -119,7 +119,10 @@ pub fn[P : @token.SourceProvider] Pp::run_pp(
   span_file_line~ : Int32 = 1,
   emit_eof~ : Bool = false,
 ) -> Array[@token.Token] {
-  // BOM 剥离（修复 ⑥-8：Rust 把 BOM 当普通字符报 E1001；已知差异，L1 不剥保持可比）
+  // #419（2026-11-03）：孤立代理项清洗先行（合法 JSON source 可达形态，
+  // 下游全链 @utf8.encode 对其 abort）；BOM 剥离随后（修复 ⑥-8：Rust 把
+  // BOM 当普通字符报 E1001；已知差异，L1 不剥保持可比）
+  let src = sanitize_surrogates(src)
   let src = strip_bom(src)
   let physical = split_physical_lines(src, main_byte_base)
   let logical = splice_continuations(physical)
@@ -297,6 +300,53 @@ fn[P] Pp::parent_skipping(self : Pp[P]) -> Bool {
     }
   }
   false
+}
+
+///|
+/// UTF-16 合法性清洗（#419，2026-11-03）：孤立代理项（lone surrogate）
+/// → U+FFFD 替换（每个孤立码元一个，#363 的 WHATWG 口径），合法代理对
+/// 原样保留。pp 层全链 @utf8.encode（strip_bom / split_physical_lines /
+/// 条件求值 / 展开）对孤立代理项 abort（core 编码器无法编码为 UTF-8）
+/// ——协议 source 字段是合法 JSON 可达形态（`"\ud800"` 转义，json_parse
+/// 原样透传），入口一次清洗使下游全链安全。列号口径随替换后源码
+/// （UTF-8 字节偏移——U+FFFD 占 3 字节）。L1 raw 通道不经此函数
+/// （diff_gate 对拍通道，输入为语料文件无此形态）。
+pub fn sanitize_surrogates(src : String) -> String {
+  let n = src.length()
+  // 快路径：无代理区码元直接原串返回（绝大多数源码，零重写）
+  let mut i = 0
+  while i < n {
+    let c = src[i].to_int()
+    if c >= 0xD800 && c <= 0xDFFF {
+      break
+    }
+    i += 1
+  }
+  if i >= n {
+    return src
+  }
+  // 慢路径：合法对整码点重写 + 孤立代理各替换 U+FFFD
+  let buf = StringBuilder()
+  buf.write_string(src[0:i].to_owned())
+  while i < n {
+    let c = src[i].to_int()
+    if c >= 0xD800 && c <= 0xDBFF && i + 1 < n {
+      let lo = src[i + 1].to_int()
+      if lo >= 0xDC00 && lo <= 0xDFFF {
+        let cp = 0x10000 + ((c - 0xD800) << 10) + (lo - 0xDC00)
+        buf.write_char(cp.unsafe_to_char())
+        i += 2
+        continue
+      }
+    }
+    if c >= 0xD800 && c <= 0xDFFF {
+      buf.write_char('\u{FFFD}')
+    } else {
+      buf.write_char(c.unsafe_to_char())
+    }
+    i += 1
+  }
+  buf.to_string()
 }
 
 ///|

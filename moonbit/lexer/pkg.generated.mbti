@@ -10,6 +10,8 @@ pub fn dump_lex_tsv(@token.LexResult) -> String
 
 pub fn dump_raw_tsv(@token.RawResult) -> String
 
+pub fn sanitize_source(String) -> String
+
 pub fn tokenize(String, cpp_mode? : Bool) -> @token.LexResult
 
 pub fn tokenize_raw(String, cpp_mode? : Bool) -> @token.RawResult

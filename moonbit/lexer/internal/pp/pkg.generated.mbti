@@ -6,6 +6,7 @@ import {
 }
 
 // Values
+pub fn sanitize_surrogates(String) -> String
 
 // Errors
 

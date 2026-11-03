@@ -32,6 +32,77 @@ fn dump_parse_or_abort(s : String) -> Json {
 }
 
 ///|
+/// emitter 文本最大嵌套深度（O(n) 迭代、字符串感知——#418）：
+/// 返回 -1 = 结构坏（括号配平破 / 字符串未闭合），值级合法性不在此面
+/// （浅层同构 emitter 逻辑已被对拍锁定，深路径只须结构性保证）。
+fn json_structural_depth(text : String) -> Int32 {
+  let mut depth = 0
+  let mut max_depth = 0
+  let mut in_string = false
+  let mut escaped = false
+  for ch in text {
+    let c = ch.to_int()
+    if in_string {
+      if escaped {
+        escaped = false
+      } else if c == 92 {
+        escaped = true // '\'
+      } else if c == 34 {
+        in_string = false // '"'
+      }
+      continue
+    }
+    match c {
+      34 => in_string = true // '"'
+      123 | 91 => {
+        // '{' '['
+        depth += 1
+        if depth > max_depth {
+          max_depth = depth
+        }
+      }
+      125 | 93 => {
+        // '}' ']'
+        depth -= 1
+        if depth < 0 {
+          return -1
+        }
+      }
+      _ => ()
+    }
+  }
+  if in_string || depth != 0 {
+    return -1
+  }
+  max_depth
+}
+
+///|
+/// dump 族成功帧出口（#418，2026-11-03）：emitter 文本 → 响应帧串。
+/// 浅文本（结构深度 ≤ 128）：现行为——json_parse 自检后经 Json 值
+/// stringify（紧凑口径，emitter bug 真 fail loud）。
+/// 深文本（> 128）：**文本直拼**——合法深 AST 的 dump JSON 深度可达
+/// 数百层（unary_chain 十万层语料数十万层），Json 值中转两处递归
+/// （parse_value / core stringify）在 wasm 栈上不可持续；深路径以
+/// `json_structural_depth` 的结构校验（配平 + 字符串闭合）替代全量
+/// 自检，原文直拼进帧（帧内空白与浅路径的紧凑化形态分叉——JSON
+/// 语义等值，消费方一律经 JSON 解析）。结构坏 = 真 emitter bug，
+/// 深浅两路径一致 fail loud。
+fn dump_frame_ok(id : Json, emitter_text : String) -> String {
+  let d = json_structural_depth(emitter_text)
+  if d < 0 {
+    abort(
+      "dump JSON 拼装失败（emitter bug，结构不配平）：\{emitter_text[0:80].to_owned()}",
+    )
+  }
+  if d <= 128 {
+    serve_ok(id, dump_parse_or_abort(emitter_text)).stringify()
+  } else {
+    "{\"id\":\{id.stringify()},\"ok\":true,\"result\":\{emitter_text}}"
+  }
+}
+
+///|
 /// typeck 三段诊断数组段（cmd/dump_typeck 的 write_diag_array 复制件）。
 fn write_type_diag_array(
   buf : StringBuilder,
@@ -88,10 +159,7 @@ fn serve_ast_dump_frame(
     buf.write_string(
       "{\"ok\": false, \"lex_error_count\": \{lexed.errors.length()}, \"ast\": null, \"parse_errors\": [], \"stall_count\": 0}",
     )
-    return (
-      serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(),
-      false,
-    )
+    return (dump_frame_ok(id, buf.to_string()), false)
   }
   let r = @parser.parse(lexed.tokens)
   buf.write_string("{\"ok\": ")
@@ -104,7 +172,7 @@ fn serve_ast_dump_frame(
   buf.write_string(", \"parse_errors\": [")
   write_parse_diag_array(buf, r.errors)
   buf.write_string("], \"stall_count\": \{r.stall_count}}")
-  (serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(), false)
+  (dump_frame_ok(id, buf.to_string()), false)
 }
 
 ///|
@@ -131,10 +199,7 @@ fn serve_typeck_dump_frame(
     buf.write_string(
       "{\"ok\": false, \"lex_error_count\": \{lexed.errors.length()}, \"typed_ast\": null, \"parse_errors\": [], \"type_errors\": [], \"type_warnings\": [], \"type_hints\": []}",
     )
-    return (
-      serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(),
-      false,
-    )
+    return (dump_frame_ok(id, buf.to_string()), false)
   }
   let r = @parser.parse(lexed.tokens)
   // 管线语义：parse 错误非空（无论 program 是否带占位）→ typeck 不跑
@@ -146,10 +211,7 @@ fn serve_typeck_dump_frame(
     buf.write_string(
       "], \"type_errors\": [], \"type_warnings\": [], \"type_hints\": []}",
     )
-    return (
-      serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(),
-      false,
-    )
+    return (dump_frame_ok(id, buf.to_string()), false)
   }
   guard r.program is Some(p) else { abort("unreachable：None 已拦截") }
   let tc = @typeck.TypeChecker::new()
@@ -163,7 +225,7 @@ fn serve_typeck_dump_frame(
   buf.write_string("], \"type_hints\": [")
   write_type_diag_array(buf, type_hints)
   buf.write_string("]}")
-  (serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(), false)
+  (dump_frame_ok(id, buf.to_string()), false)
 }
 
 ///|
@@ -304,9 +366,11 @@ fn serve_codegen_dump_frame(
   match @codegen.compile(typed).0 {
     Some(output) => {
       let dump_text = @bytecode.compile_output_dump_json(output)
-      // emitter 文本 → Json（协议帧 result 须为 Json 对象；文本内容不变）
-      let dump_json = @util.json_parse(dump_text) catch { _ => Json::null() }
-      (serve_ok(id, dump_json).stringify(), false)
+      // #418（2026-11-03）：emitter 文本 → 帧出口统一走 dump_frame_ok
+      //（浅路径 json_parse 自检 fail loud——原 catch { Json::null() } 把
+      // emitter bug 静默吞成 null 帧，违反全域 fail loud 纪律；深产物
+      // 结构校验后直拼——原 parse 在深度 128 处把合法深产物降级 null）
+      (dump_frame_ok(id, dump_text), false)
     }
     None =>
       (

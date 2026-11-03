@@ -332,6 +332,7 @@
         "parametric_macro_nested.c": "398f17d7",
         "parametric_macro_square.c": "12d6615e",
         "parametric_macro_swap.c": "bdf2a2a9",
+        "paren_nest_legal_deep.c": "62ec219f",
         "parentheses_priority.c": "b8b9271b",
         "partial_array_init.c": "a7680cc9",
         "pointer_add_assign.c": "509a7dff",
@@ -466,6 +467,7 @@
         "struct_dup_member_reject.c": "8f90f95b",
         "struct_member_array.c": "18213307",
         "struct_member_dup_specifier_reject.c": "d0cb430a",
+        "struct_nest_deep.c": "ccfded32",
         "struct_nested_2d_member_init.c": "f16d2ba5",
         "struct_nested_init.c": "54c201ca",
         "struct_pointer_access.c": "ae064328",
@@ -1543,6 +1545,9 @@
         "parametric_macro_swap.c": {
           "result_sha": "9f99a0bf60eb370b"
         },
+        "paren_nest_legal_deep.c": {
+          "result_sha": "a24b952c7430e5ce"
+        },
         "parentheses_priority.c": {
           "result_sha": "90ea5b6b76717b1a"
         },
@@ -1950,6 +1955,10 @@
         "struct_member_dup_specifier_reject.c": {
           "fail": true,
           "fail_stage": "parse"
+        },
+        "struct_nest_deep.c": {
+          "fail": true,
+          "fail_stage": "type"
         },
         "struct_nested_2d_member_init.c": {
           "result_sha": "d99e5e262f672525"

@@ -431,3 +431,34 @@ test "issue350_parse_recovery_no_illegal_loc" {
     msg="#350 负行号诊断须被过滤",
   )
 }
+
+///|
+/// #419（W4 尾件批，2026-11-03）：源码含 lone surrogate（孤立代理项——
+/// 合法 JSON 输入 `\uD800`）的 compile 帧不杀实例。修前：lexer pp 层
+/// strip_bom 经 @utf8.encode 对孤立代理项 abort（core 编码器，W4 第四臂
+/// 钉出）；修后：UTF-16 合法性清洗（孤立代理 → U+FFFD，#363 口径）后续跑，
+/// 注释位代理项被替换后编译照常通过。
+test "serve_compile_lone_surrogate_no_abort" {
+  let s = @session.Session::new()
+  // JSON 转义 \uD800 → String 含孤立高代理项（json_parse 原样透传）
+  let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"source\":\"int main() { /* \\uD800 */ return 0; }\\n\"}}"
+  let (r, _) = serve_handle(s, req)
+  assert_true(
+    r.contains("\"ok\":true"),
+    msg="孤立代理项替换后续跑，编译通过",
+  )
+}
+
+///|
+/// #419 续（2026-11-03）：多文件承载形态 `params.files[].source` 的
+/// 孤立代理清洗——arm4 语料帧实锤（首修只洗顶层 source，files 形态
+/// compile 帧 trap 于 diagnostics.split_lines 的 @utf8.encode）。
+test "serve_compile_lone_surrogate_files_no_abort" {
+  let s = @session.Session::new()
+  let req = "{\"id\":1,\"method\":\"compile\",\"params\":{\"files\":[{\"filename\":\"a.c\",\"source\":\"int main() { /* \\uD800 */ return 0; }\\n\"}]}}"
+  let (r, _) = serve_handle(s, req)
+  assert_true(
+    r.contains("\"ok\":true"),
+    msg="files[].source 孤立代理同样清洗后续跑",
+  )
+}

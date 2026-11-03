@@ -135,6 +135,13 @@ fn reset_session_preserving_config(s : @session.Session) -> Unit {
   // vm/state.mbt 纪律，双保险语义同 Rust 的 mem::take 回放形态）
   s.compile = @session.CompileState::new()
   s.vm.reset()
+  // #420（2026-11-03）：输出通道一并清——create/reset/destroy 三方法的
+  // 协议文档均承诺清运行态（create_semantics=clear-and-rebuild / reset=
+  // 清空编译/运行状态），vm.reset 纪律性不碰 output（跨 run 存活语义，
+  // serve_execute_run 自清）⇒ 会话边界须在此显式清；修前前一会话的
+  // 「程序运行完成，返回值：N」note 附注跨会话泄漏（W4 §4.2）。
+  // OutputLog::clear 连坐清 note 预算环形计数与双 truncation 位。
+  s.vm.output.clear()
   // 旧引擎与 reset 后的 vm 不再自洽（检查点指向已重置状态）——一并作废
   //（step.begin 无条件新建实例，提前作废无行为差；分叉登记：Rust reset
   // 不显式清 unified，靠 step_begin 覆盖——本侧取保守作废语义）
@@ -186,6 +193,39 @@ fn dispatch(
   method_name : String,
   params : Json,
 ) -> (String, Bool) {
+  // #419（2026-11-03）：params.source 字段 UTF-16 合法化（孤立代理 →
+  // U+FFFD，#363 口径）——协议边界一次清洗，compile / dump 族 /
+  // diagnostics_probe 全下游帧与诊断坐标吃同一清洗版（否则 pp 层
+  // strip_bom 与 pipeline 的 diagnostics.split_lines 两处 @utf8.encode
+  // 对孤立代理项 abort 杀实例——合法 JSON `"\ud800"` 转义可达形态）。
+  // 两种源码承载形态都在此覆盖：顶层 `source` 与多文件 `files[].source`
+  //（arm4 语料帧实锤：files 形态首修漏洗，compile 帧 trap 于
+  // diagnostics.split_lines）。其余字段不动：input/argv 是运行时字节域
+  // 通道，另行登记不在此面。
+  match params {
+    Object(m) => {
+      match m.get("source") {
+        Some(String(src)) => m.set("source", Json(@lexer.sanitize_source(src)))
+        _ => ()
+      }
+      match m.get("files") {
+        Some(Array(files)) =>
+          for f in files {
+            match f {
+              Object(fm) =>
+                match fm.get("source") {
+                  Some(String(fsrc)) =>
+                    fm.set("source", Json(@lexer.sanitize_source(fsrc)))
+                  _ => ()
+                }
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    }
+    _ => ()
+  }
   match method_name {
     "ping" => {
       let m : Map[String, Json] = Map([])

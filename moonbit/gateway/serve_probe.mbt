@@ -225,5 +225,5 @@ fn serve_diagnostics_probe_frame(
     }
   }
   buf.write_string("]}")
-  (serve_ok(id, dump_parse_or_abort(buf.to_string())).stringify(), false)
+  (dump_frame_ok(id, buf.to_string()), false)
 }

@@ -138,6 +138,10 @@ fn serve_run_frame(
   // U1#1 二审 P0-A：run 重置发布缓冲（旧程序的滞留帧作废）
   s.unified_pending = None
   if !s.compile.compiled {
+    // #420（2026-11-03）：早退路径同清输出通道——「未编译」语义下输出
+    // 应为空（serve_execute_run 的非 resume 段在 compiled 检查前清，
+    // 本早退在此前不经过 clear ⇒ 上一程序的 note 附注残留泄漏）
+    s.vm.output.clear()
     return (serve_ok(id, not_compiled_json()).stringify(), false)
   }
   // ── 参数域（Rust run 臂顺序）──

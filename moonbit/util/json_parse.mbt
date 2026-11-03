@@ -24,12 +24,19 @@ priv struct JsonCursor {
   src : String
   mut pos : Int32
   mut depth : Int32
+  depth_limit : Int32
 }
 
 ///|
 /// 入口：一行请求 → Json 值（失败 raise JsonParseError）。
-pub fn json_parse(input : String) -> Json raise JsonParseError {
-  let c = { src: input, pos: 0, depth: 0, }
+/// `depth_limit~`：嵌套深度上限（默认 128 防 DoS，对齐 serde_json 默认）；
+/// 协议入口保持默认——#418（2026-11-03）起 dump 族自检通道用更高上限
+/// 覆盖合法深 AST（合法深嵌套源码的 dump JSON 深度可达数百层）。
+pub fn json_parse(
+  input : String,
+  depth_limit~ : Int32 = JSON_PARSE_DEPTH_LIMIT,
+) -> Json raise JsonParseError {
+  let c = { src: input, pos: 0, depth: 0, depth_limit, }
   skip_ws(c)
   let v = parse_value(c)
   skip_ws(c)
@@ -79,9 +86,9 @@ fn expect(c : JsonCursor, ch : Int32) -> Unit raise JsonParseError {
 ///|
 fn parse_value(c : JsonCursor) -> Json raise JsonParseError {
   c.depth += 1
-  if c.depth > JSON_PARSE_DEPTH_LIMIT {
+  if c.depth > c.depth_limit {
     raise JsonParseError::Fail(
-      message="嵌套深度超限（>\{JSON_PARSE_DEPTH_LIMIT}，对齐 serde_json 默认）",
+      message="嵌套深度超限（>\{c.depth_limit}，默认 128 对齐 serde_json）",
       offset=c.pos,
     )
   }

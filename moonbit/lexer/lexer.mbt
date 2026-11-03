@@ -25,6 +25,16 @@ pub fn tokenize_raw(src : String, cpp_mode~ : Bool = false) -> @token.RawResult 
 }
 
 ///|
+/// 源码字符串 UTF-16 合法化（#419，2026-11-03）：孤立代理项 → U+FFFD
+/// （#363 的 WHATWG 口径，合法代理对保留）——pp 管线内部同名清洗的
+/// pub 转发（gateway 等上层消费面：协议边界一次清洗，全下游帧与诊断
+/// 坐标吃同一清洗版）。L1 raw 通道不经此函数（diff_gate 对拍通道，
+/// 输入为语料文件无此形态）。
+pub fn sanitize_source(src : String) -> String {
+  @pp.sanitize_surrogates(src)
+}
+
+///|
 /// L2：完整管线（默认仅存根 provider——wasm-gc 单出口形态；自定义 include
 /// 显式报 `UnsupportedHost`，见 token 包 SourceProvider 注释）。
 pub fn tokenize(src : String, cpp_mode~ : Bool = false) -> @token.LexResult {

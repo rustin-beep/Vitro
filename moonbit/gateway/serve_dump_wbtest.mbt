@@ -129,3 +129,91 @@ test "serve_dump_readonly_contract" {
   assert_eq(s.compile.compiled, compiled_before)
   assert_true(s.compile.output is None, msg="symbols.dump 不落产物")
 }
+
+///|
+/// #418（W4 尾件批，2026-11-03）：合法深嵌套源码的 ast.dump 帧——
+/// legal_deep 反向锚 paren_30_add_100 同族（30 层括号 + 100 项加法，
+/// 仓内明文「合法深嵌套」）。修前：dump_parse_or_abort 自检上限 128
+/// < 合法 AST 可达 JSON 深度 → 整实例 abort（wasm unreachable，W4 第四
+/// 臂钉出）；修后：深路径文本直拼，帧出口完整可解析。
+test "serve_dump_deep_ast_complete_frame" {
+  // 源码自持构造（不依赖外部语料文件）
+  let mut inner = "1"
+  for i = 0; i < 100; i = i + 1 {
+    inner = inner + " + 1"
+  }
+  let mut src = "int main() { return "
+  for i = 0; i < 30; i = i + 1 {
+    src = src + "("
+  }
+  src = src + inner
+  for i = 0; i < 30; i = i + 1 {
+    src = src + ")"
+  }
+  src = src + "; }"
+  let s = @session.Session::new()
+  let req = "{\"id\":7,\"method\":\"ast.dump\",\"params\":{\"source\":\"\{src}\"}}"
+  let (r, _) = serve_handle(s, req)
+  assert_true(r.contains("\"ok\":true"))
+  // 深路径直拼 emitter 原文（带空格形态——浅路径紧凑化的分叉口径，#418 注）
+  assert_true(r.contains("\"parse_error_count\": 0"))
+  // 出口完整性：深路径文本直拼后的帧整体仍是合法 JSON（放宽深度上限
+  // 解析回来——json_parse 的 depth_limit~ 通道参数即本断言的消费面）
+  let frame = @util.json_parse(r, depth_limit=1000) catch {
+    _ => fail("ast.dump 深嵌套帧不可解析（#418 回归）")
+  }
+  let result = json_field(frame, "result")
+  assert_true(
+    json_field(result, "ast") is Object(_),
+    msg="result.ast 在场且为对象",
+  )
+}
+
+///|
+/// #418 续：typeck.dump 深嵌套帧同修（dump 族四帧同形——W4 §4.3(a)
+/// ast.dump 与 typeck.dump 两侧同 trap）；同一源码 typeck 干净路径。
+test "serve_dump_deep_typeck_complete_frame" {
+  let mut inner = "1"
+  for i = 0; i < 100; i = i + 1 {
+    inner = inner + " + 1"
+  }
+  let mut src = "int main() { return "
+  for i = 0; i < 30; i = i + 1 {
+    src = src + "("
+  }
+  src = src + inner
+  for i = 0; i < 30; i = i + 1 {
+    src = src + ")"
+  }
+  src = src + "; }"
+  let s = @session.Session::new()
+  let req = "{\"id\":8,\"method\":\"typeck.dump\",\"params\":{\"source\":\"\{src}\"}}"
+  let (r, _) = serve_handle(s, req)
+  assert_true(r.contains("\"ok\":true"))
+  let frame = @util.json_parse(r, depth_limit=1000) catch {
+    _ => fail("typeck.dump 深嵌套帧不可解析（#418 回归）")
+  }
+  let result = json_field(frame, "result")
+  assert_true(
+    json_field(result, "typed_ast") is Object(_),
+    msg="result.typed_ast 在场且为对象",
+  )
+}
+
+///|
+/// #418 单元锚：json_structural_depth 扫描器口径——配平/字符串感知/
+/// 转义感知（扫描器是深路径唯一的结构防线，独立白盒锁定）。
+test "json_structural_depth_scanner" {
+  assert_eq(json_structural_depth("{}"), 1)
+  assert_eq(json_structural_depth("[{}]"), 2)
+  assert_eq(json_structural_depth("{\"a\":[{\"b\":1}]}"), 3)
+  // 字符串内的括号不计
+  assert_eq(json_structural_depth("{\"a\":\"}{[\"}"), 1)
+  // 转义引号不闭合字符串
+  assert_eq(json_structural_depth("{\"a\":\"\\\"[\"}"), 1)
+  // 配平破 / 字符串未闭合 → -1
+  assert_eq(json_structural_depth("{"), -1)
+  assert_eq(json_structural_depth("}"), -1)
+  assert_eq(json_structural_depth("{\"a\":1"), -1)
+  assert_eq(json_structural_depth("{\"a\":\"x}"), -1)
+}

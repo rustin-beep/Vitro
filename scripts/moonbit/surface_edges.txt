@@ -234,6 +234,7 @@ vitro/engine/gateway vitro/engine/diagnostics split_lines
 vitro/engine/gateway vitro/engine/host InputState
 vitro/engine/gateway vitro/engine/host OutputKind
 vitro/engine/gateway vitro/engine/icons export_icons_json
+vitro/engine/gateway vitro/engine/lexer sanitize_source
 vitro/engine/gateway vitro/engine/lexer tokenize_with
 vitro/engine/gateway vitro/engine/lexer tokenize_with_vfs
 vitro/engine/gateway vitro/engine/lexer/token LexError
@@ -335,6 +336,7 @@ vitro/engine/lexer vitro/engine/lexer/internal/host VfsProvider
 vitro/engine/lexer vitro/engine/lexer/internal/host stubs_provider
 vitro/engine/lexer vitro/engine/lexer/internal/host vfs_provider
 vitro/engine/lexer vitro/engine/lexer/internal/pp Pp
+vitro/engine/lexer vitro/engine/lexer/internal/pp sanitize_surrogates
 vitro/engine/lexer vitro/engine/lexer/internal/scanner scan_raw
 vitro/engine/lexer vitro/engine/lexer/token LexResult
 vitro/engine/lexer vitro/engine/lexer/token RawResult

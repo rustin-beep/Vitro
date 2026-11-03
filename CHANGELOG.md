@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### feat(corpus): #437 语料扩充窗口入库批——chibicc_port 外部基准新桶 + 审阅探针即可入库批（2026-11-03）
+
+- **`corpus/chibicc_port/` 新桶 36 份**（chibicc/test MIT port，© 2019 Rui Ueyama 溯源行逐份头注）：
+  ASSERT→printf 基线改写、statement expression 拆变量、GNU 扩展/case range/computed goto 按六阶段
+  port 手册剔写、真值按 Win clang 22.1.4（LLP64）实跑重采（原集 LP64 期望只作线索）。预检三方对拍
+  （clang × vitro js+native 双臂）36/36 逐位一致；WSL 副判（gcc 15.2 + clang 21.1.8）除
+  `sizeof_types_llp64`（主题即 Win 口径锁值）外全 same；第三方 thirdparty（git.sh GPL v2 混居）零取用。
+- **`corpus/baseline/` +13 份**（审阅 v2「无发现面」绿锚：M12 地址族/自增/float 全链、M13 ++/-- 矩阵、
+  M21 格式化好面五份、M22 strncpy 矩阵、M23 fseek 二进制臂/EOF 同形面、M20 305KB 大输出）——
+  预检 13/13 三方一致实证后入桶锁防静默回归。
+- **新桶接线四处**：clang_direct `corporaDefault`、diff_gate/vm `DEFAULT_CORPORA`、ci.yml 四闸
+  suite 循环、perf_budget `corpus_dirs`（顶层档）。
+- **五家 digest**：四家（lexer/parser/typeck/codegen）新段 `chibicc_port` 首冻（`--freeze-mb` 对
+  新段无路径，按 13 号纪律 .json 手改预登记空段后入账——纯增量 559 行）+ vm 扁平键新增 49 例、
+  存量重算 761 例零漂移（freeze 前重建 cmd/run/vitro_js/wasm 三臂产物）。
+- **预检副产物（另行挂账不入库）**：27 份修复后入库红锚暂存 `tmp/corpus_staged/review_after_fix/`
+  （随 B1-B10 逐族解冻）；chibicc 对表挖出速查表外差异候选 ~30 条 + 速查表 C3 行 UB 域口径修正
+  建议（`(ULL)-2.5f` 为 UB 域非「域内」——WSL 副判实锤三方各异）。
+- **fuzz 零动**：新指纹 0/桶恶化 0/僵尸 0（PASS 与基线一致；修复前一度报桶恶化 2 条，根因 =
+  cmd/vitro_js 产物陈旧〔重建后消失〕——非本批语料引入，教训：fuzz 判定面含 js 臂产物新鲜度）。
+
 ### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
 
 - **#410 主案（clangOutcome 崩溃域失明）**：clang 运行段进程崩溃/超时一律

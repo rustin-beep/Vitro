@@ -8,13 +8,16 @@
     "gap",
     "codegen_skeleton",
     "llm_scale",
-    "llm_multifile"
+    "llm_multifile",
+    "chibicc_port"
   ],
   "file_ext": ".c",
   "_corpus_note": [
     "只统计 .c（C 子集路径）——cpp/ 是冻结的 C++ 语料，走 cpp_class_layout / expr/cpp 另一条路径，",
     "且 C++ 已裁定砍除（总计划 §9），不参与本预算。",
     "文件数 613 = 文档 600 口径（baseline 365 + knr 81 + leetcode 138 + gap 16）+ codegen_skeleton 13（骨架语料）。",
+    "chibicc_port（#437 语料扩充窗口 2026-11-03 入库批登记）：chibicc MIT port 外部基准桶（36 份，",
+    "顶层 max_per_file 档即够——小文件 printf 基线形态，无千行面）。",
     "语料真值口径见 脚本总清单 §1.3。"
   ],
   "metrics": [

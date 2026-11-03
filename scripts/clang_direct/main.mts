@@ -78,6 +78,9 @@ const corporaDefault = [
   // 千行单文件语料（#236 perf_budget 同名目录有 llm_scale 分档预算——
   // 两处目录名须一致，档位按该前缀匹配）
   "corpus/llm_scale",
+  // chibicc 外部基准 port（#437 语料扩充窗口 2026-11-03 入库批）：MIT port
+  // 形态（ASSERT→printf 基线、GNU 扩展拆写、真值 Win clang 重采）。
+  "corpus/chibicc_port",
 ];
 
 // projectCorpusDirs：启用工程模式扫描的语料目录（裸目录名集合——一级

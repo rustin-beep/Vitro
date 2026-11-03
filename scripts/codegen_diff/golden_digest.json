@@ -64,6 +64,7 @@
         "char_global_read_extents.c": "6f664292",
         "char_global_scalar_literal_byte.c": "5b551afd",
         "char_global_sscanf_fmt.c": "828744d2",
+        "char_init_neg_unsigned_domain.c": "3a6b1b5e",
         "char_init_no_false_positive.c": "c559bd1e",
         "char_literal.c": "66ec14b0",
         "char_local_narrow_matrix.c": "13f4aba5",
@@ -729,6 +730,9 @@
         },
         "char_global_sscanf_fmt.c": {
           "result_sha": "8664ab7ae0f234c2"
+        },
+        "char_init_neg_unsigned_domain.c": {
+          "result_sha": "2f2797f66a3bd755"
         },
         "char_init_no_false_positive.c": {
           "result_sha": "7a68f17130020183"

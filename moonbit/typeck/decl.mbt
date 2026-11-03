@@ -698,9 +698,10 @@ fn TypeChecker::process_var_decl(
           None => init_expr
         }
         // W0-4：char 变量的字符常量/值域内整常量初始化是 C 惯用写法，豁免窄化警告
+        //（#424 B1 遗留：域按目标符号性 + Neg 字面量臂）
         let (init_type, resolved) = self.resolve_expr_type(init_expr)
         let suppress = var_type_2.kind() is TK_Char &&
-          is_char_safe_initializer(resolved)
+          is_char_safe_initializer(resolved, var_type_2.is_unsigned())
         if suppress {
           self.char_narrow_suppress = true
         }

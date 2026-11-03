@@ -362,6 +362,12 @@
       "stdout_sha": "f192c9b0a8a607e2",
       "memory_sha": "a069bd42de4db9c8"
     },
+    "baseline/char_init_neg_unsigned_domain.c": {
+      "src_sha": "3a6b1b5e",
+      "exit_code": 0,
+      "stdout_sha": "650c7b343062cbf9",
+      "memory_sha": "0d3cdf50c885fc3f"
+    },
     "baseline/char_init_no_false_positive.c": {
       "src_sha": "c559bd1e",
       "exit_code": 0,

@@ -2,7 +2,7 @@
   "case": "bfs_std",
   "source": "templates/bfs/source.c",
   "note": "正例主干：标准 BFS 模板（visited 全局零初始化、无重置行）",
-  "step_budget": 1000,
+  "step_budget": 2500,
   "detect": [
     "bfs"
   ],

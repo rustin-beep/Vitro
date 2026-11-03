@@ -2,7 +2,7 @@
   "case": "bfs_reset_visited",
   "source": "./source.c",
   "note": "M34b A3 红例（BFS 侧）：visited 重置行/判断行命中宽判据 contains(visited)+contains(=)，文案节点值与行下标脱钩",
-  "step_budget": 1000,
+  "step_budget": 2500,
   "detect": [
     "bfs"
   ],

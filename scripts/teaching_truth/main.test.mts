@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   aggregateFailures,
+  CASE_NAMES,
   checkIndexBound,
   checkIndexClaimsGrounded,
   checkModArithmetic,
@@ -16,14 +17,19 @@ import {
   checkVarClaims,
   evalIndexExpr,
   extractIndexClaims,
+  failureShape,
   frameMatches,
+  J9_ANCHORS,
   judgeCase,
+  lineHasNegativeLiteral,
   loadCases,
   loadDivergences,
   parseArgs,
   reconcile,
+  runPrimitiveSelfcheck,
 } from "./main.mts";
 import type { DivergenceRules, Expectation, StepFrame } from "./main.mts";
+import { projectRoot } from "../internal/capi.mts";
 
 function mkFrame(over: Partial<StepFrame> = {}): StepFrame {
   return {
@@ -156,6 +162,7 @@ test("judgeCase：expect 未见红 / forbid 出现红 / detect 失真红 / 通�
       mkFrame({ step_index: 9, code_line: 3, local_vars: [{ name: "i", value: "1" }, { name: "j", value: "3" }],
         algorithm_step: { algorithm_name: "bubble_sort", display_name: "冒泡", phase: "compare", description: "比较 arr[1] 与 arr[2]" } }),
     ],
+    finished: true,
   };
   const failures = judgeCase(exp, srcLines, run);
   const keys = new Set(failures.map((f) => f.assertion));
@@ -170,6 +177,7 @@ test("judgeCase：root_cause 失真红（M31 形态）", () => {
   const run = {
     matches: [],
     frames: [mkFrame({ root_cause_hint: { category: "WrongInit", one_liner: "建议将初始值改为 0" } })],
+    finished: true,
   };
   const failures = judgeCase(exp, ["x"], run);
   const rc = failures.find((f) => f.assertion === "root_cause");
@@ -190,22 +198,33 @@ test("aggregateFailures：同形态聚合计数、异形态分开", () => {
   assert.ok(first !== undefined && first.detail.startsWith("step 1"));
 });
 
-test("reconcile：豁免命中 EXPECTED_RED / 未登记红 / 僵尸三态 + no-exempt 全红", () => {
+test("reconcile：三级键对账——同键新形态 RED（P1-1）/ shapes 部分消失 ZOMBIE / ranCases 限定（P2-2）", () => {
   const divs: DivergenceRules = {
-    as_of: "2026-11-02",
+    as_of: "2026-11-03",
     fix_batch: "#436",
     entries: [
-      { id: "D1", case: "c", assertion: "a", title: "t", source: "M34b A1" },
+      { id: "D1", case: "c", assertion: "a", shapes: ["L1: 形态甲", "L2: 形态乙"], title: "t", source: "M34b A1" },
       { id: "D2", case: "c", assertion: "gone", title: "t", source: "M30 A1" },
+      { id: "D3", case: "other", assertion: "x", title: "t", source: "M30 A1" },
     ],
   };
-  const failures = [{ case: "c", assertion: "a", detail: "x" }, { case: "c", assertion: "b", detail: "y" }];
-  const out = reconcile(failures as never, divs, false);
-  assert.equal(out.expectedRed, 1);
-  assert.deepEqual(out.reds.map((r) => r.failure.assertion), ["b"]); // 未登记红
-  assert.deepEqual(out.zombies.map((z) => z.id), ["D2"]); // 豁免未命中=僵尸
-  const out2 = reconcile(failures as never, divs, true);
-  assert.equal(out2.reds.length, 2); // no-exempt：全部按红报
+  function f(shape: string): never {
+    // detail 形态经 failureShape 归一须得回 shape——用可逆原像构造
+    return { case: "c", assertion: "a", detail: shape, count: 1, shape } as never;
+  }
+  // reconcile 消费**已聚合**的 Failure[]（聚合在 judgeCase/aggregateFailures 层）
+  const failures = [f("L1: 形态甲"), f("L9: 全新形态")] as never[];
+  const out = reconcile(failures, divs, false, new Set(["c"])); // ranCases 限定：other 的 D3 不判僵尸
+  assert.equal(out.expectedRed, 1); // L1×2 聚合后命中 1 形态
+  assert.deepEqual(out.reds.map((r) => (r.failure as { shape: string }).shape), ["L9: 全新形态"]); // 同键新形态不放行
+  const z1 = out.zombies.find((z) => z.entry.id === "D1");
+  assert.ok(z1 !== undefined && z1.missedShapes?.[0] === "L2: 形态乙"); // 部分形态消失=粒度级 ZOMBIE
+  assert.ok(out.zombies.some((z) => z.entry.id === "D2")); // 整条未命中
+  assert.ok(!out.zombies.some((z) => z.entry.id === "D3")); // 未跑到的 case 不判僵尸（P2-2）
+  const out2 = reconcile(failures, divs, true);
+  assert.equal(out2.reds.length, 2); // no-exempt：两条失败全按红报
+  const out3 = reconcile([f("L1: 形态甲"), f("L2: 形态乙")], divs, false, new Set(["c", "other"]));
+  assert.equal(out3.zombies.length, 2); // D2 + D3（ranCases 含 other）都未命中；D1 两形态全命中不进
 });
 
 // ── 规则加载校验 ─────────────────────────────────────────────────────
@@ -254,4 +273,84 @@ test("parseArgs：四 flag 全收；未知/缺参报用法错", () => {
   }
   assert.ok("usage" in parseArgs(["--nope"]));
   assert.ok("usage" in parseArgs(["--only"]));
+});
+
+// ── PR #453 审阅处置批新增锚 ─────────────────────────────────────────
+
+test("failureShape：行号保留（P3-2）+ 数字归一 + grounding 尾巴剥除", () => {
+  assert.equal(failureShape("step 20 L19: 下标声称 1 无出处：文案「交换 arr[0]↔arr[1]」；源码行「visited[i] = 0;」下标表达式 [i] 求值/字面集 = {0}"),
+    "L19: 下标声称 # 无出处：文案「交换 arr[#]↔arr[#]」");
+  assert.equal(failureShape("step 3 L7: 算式失真：计算 48 % 18 = 18（余数作为新的 b）（真值 48 % 18 = 12）"),
+    "L7: 算式失真：计算 # % # = #（余数作为新的 b）（真值 # % # = #）");
+});
+
+test("lineHasNegativeLiteral：词法判定（P2-4）——减法形态不算、负字面/负下标/return 算", () => {
+  assert.equal(lineHasNegativeLiteral("for (int j = 0; j < n-1; j++) {"), false);
+  assert.equal(lineHasNegativeLiteral("while (len - 1 > 0)"), false);
+  assert.equal(lineHasNegativeLiteral("next[0] = -1;"), true);
+  assert.equal(lineHasNegativeLiteral("k = -1;"), true);
+  assert.equal(lineHasNegativeLiteral("if (x) return -1;"), true);
+  assert.equal(lineHasNegativeLiteral("int a[-1];"), true);
+});
+
+test("checkNoSentinelMinusOne：n-1 窗口不再整族免疫（P2-4 回归锚）", () => {
+  assert.ok(checkNoSentinelMinusOne("交换 arr[-1]↔arr[0]", ["for (int j = 0; j < n-1; j++) {", "", "arr[j+1] = key;"]) !== null);
+  assert.equal(checkNoSentinelMinusOne("构建 next 数组，next[0]=-1", ["next[0] = -1;"]), null);
+});
+
+test("judgeCase：预算锚（P3-4）——finished=false 红 / budget_check=false 放行", () => {
+  const exp: Expectation = { case: "fx", source: "./s.c" };
+  const runUnfinished = { matches: [], frames: [], finished: false };
+  assert.ok(judgeCase(exp, ["x"], runUnfinished).some((f) => f.assertion === "step_budget_exhausted"));
+  const expOff: Expectation = { case: "fx", source: "./s.c", budget_check: false };
+  assert.ok(!judgeCase(expOff, ["x"], runUnfinished).some((f) => f.assertion === "step_budget_exhausted"));
+});
+
+test("judgeCase：forbid 行可达性锚（P3-3）——行零帧即「安慰性锚」红", () => {
+  const exp: Expectation = { case: "fx", source: "./s.c", frames: [{ id: "fz", kind: "forbid", phase: "swap", line: 9 }] };
+  const run = { matches: [], frames: [], finished: true };
+  const out = judgeCase(exp, ["int main() {"], run);
+  assert.ok(out.some((f) => f.assertion === "fz" && f.detail.includes("不可达")));
+});
+
+test("loadDivergences：invariant 类缺 shapes 拦截（P1-1 校验面）", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "tt-div2-"));
+  const p2 = path.join(root, "scripts", "teaching_truth", "known_divergences.json");
+  fs.mkdirSync(path.dirname(p2), { recursive: true });
+  fs.writeFileSync(p2, JSON.stringify({
+    as_of: "x", fix_batch: "#436",
+    entries: [{ id: "A", case: "c", assertion: "mod_arithmetic", title: "t", source: "s" }],
+  }));
+  assert.throws(() => loadDivergences(root), /必须带 shapes/);
+});
+
+test("loadCases：forbid 缺 line 拦截（P3-3 校验面）/ 缺 expect.json 的目录 fail loud（P2-1）", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "tt-root2-"));
+  fs.mkdirSync(path.join(root, "scripts", "teaching_truth", "cases", "f1"), { recursive: true });
+  fs.writeFileSync(path.join(root, "scripts", "teaching_truth", "cases", "f1", "source.c"), "int main(){return 0;}");
+  fs.writeFileSync(path.join(root, "scripts", "teaching_truth", "cases", "f1", "expect.json"),
+    JSON.stringify({ case: "f1", source: "./source.c", frames: [{ id: "x", kind: "forbid", phase: "swap" }] }));
+  assert.throws(() => loadCases(root, []), /缺 line/);
+  fs.mkdirSync(path.join(root, "scripts", "teaching_truth", "cases", "noexpect"), { recursive: true });
+  fs.writeFileSync(path.join(root, "scripts", "teaching_truth", "cases", "noexpect", "source.c"), "int main(){return 0;}");
+  fs.writeFileSync(path.join(root, "scripts", "teaching_truth", "cases", "f1", "expect.json"),
+    JSON.stringify({ case: "f1", source: "./source.c" }));
+  assert.throws(() => loadCases(root, []), /缺 expect.json/);
+});
+
+test("runPrimitiveSelfcheck：九原语合成 fixture 全红（P2-3——接线不由语料碰巧性背书）", () => {
+  assert.deepEqual(runPrimitiveSelfcheck(), []);
+});
+
+test("J9_ANCHORS/CASE_NAMES 与真实豁免表/cases 目录一致（P2-1——锚外置三处连坐）", () => {
+  const root = projectRoot();
+  const divs = loadDivergences(root);
+  const j9InRules = new Set(divs.entries.filter((e) => e.j9 === true).map((e) => e.case + " " + e.assertion));
+  for (const a of J9_ANCHORS) {
+    assert.ok(j9InRules.has(a.case + " " + a.assertion), `常量条目不在豁免表: ${a.case}/${a.assertion}`);
+  }
+  assert.equal(j9InRules.size, J9_ANCHORS.length, "豁免表 j9 条目数与常量不一致");
+  const dir = path.join(root, "scripts", "teaching_truth", "cases");
+  const onDisk = fs.readdirSync(dir).filter((n) => fs.statSync(path.join(dir, n)).isDirectory()).sort();
+  assert.deepEqual(onDisk, [...CASE_NAMES].sort());
 });

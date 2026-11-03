@@ -7,6 +7,6 @@
   "frames": [
     { "id": "reverse_std_swap_0_4", "kind": "expect", "phase": "swap", "desc": "交换位置 0 和 4" },
     { "id": "reverse_std_swap_1_3", "kind": "expect", "phase": "swap", "desc": "交换位置 1 和 3" },
-    { "id": "reverse_std_no_swap_2_2", "kind": "forbid", "phase": "swap", "desc": "交换位置 2 和 2", "note": "半长循环 i<2 不含 i=2 自交换" }
+    { "id": "reverse_std_no_swap_2_2", "kind": "forbid", "phase": "swap", "line": 12, "desc": "交换位置 2 和 2", "note": "半长循环 i<2 不含 i=2 自交换（L12 半长 for 头行——swap 帧所在行，可达）" }
   ]
 }

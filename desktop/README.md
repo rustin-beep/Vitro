@@ -14,6 +14,7 @@
 | mooncakes publish | 只发 `moonbit/`（`vitro/engine`）；`desktop/` 不在任何 publish 流程 |
 | CHANGELOG | 批次不写根 CHANGELOG（2026-11-02 拍板：记录=commit+PR）；`moonbit/CHANGELOG.md` 是发包面、与本区无关 |
 | 依赖方向 | `desktop → mooncakes vitro/engine@pin`（单向）；引擎 HEAD 变化不影响本壳，壳崩不影响引擎 |
+| **CI 零自拉** | desktop job 三层 `actions/cache`（registry/cache zip 层 + registry/index + cache/deps，key 锚 `desktop/moon.mod`+proton_cli 版本）离线化（2026-11-03 拍板）：缓存命中轮 **0 次 Downloading**（fail loud 断言，驱逐/缺包即红）、miss 轮预热显形（warning+回填）。mooncakes 下载计数只在发版彩排两次 + pin 变化人工预热时动——自家 CI 不再刷量（此前每轮 13 包，用户上站实证计数涨）。机制依据：moon 源码 `crates/mooncake/src/registry/client.rs` 缓存命中走 `Using cached` 零网络 |
 
 副作用=**发包哨兵**：本壳 `moon check` 红 ⇒ 已发布 `vitro/engine@pin` 在下游独立 module 里装不上/解析不过（0.9.0 core/abort 断供事故形态——见 `docs/current/08-发布档案/0.9.1.md`）。
 
@@ -101,6 +102,8 @@ node tools/smoke.mts 9335                          # CI 同款全链 smoke：起
 - **MSYS bash 直 spawn 本产物 exe** 会报伪加载错 `api-ms-win-shcore-scaling-l1-1-1.dll cannot open shared object file`（同 exe PowerShell 启动正常）——脚本化启动走 PowerShell / `proton_cli dev`。
 - **进程存活**：PowerShell `Start-Process` 带重定向句柄的实例随会话关闭被 `CTRL_CLOSE` 连坐杀树（renderer 死 `STATUS_CONTROL_C_EXIT`）；WMI 会话 0 建不了 GUI。跨工具调用存活的可靠形态=bash `(proton_cli dev &)`。
 - CEF CDN 首段可能停滞 ~2min 后冲完（`cef setup` 自带 `--retry 5`）。
+- **`moon --frozen` 不是离线化答案**：其语义=「不许动 modules 目录」（`.mooncakes` 须预先 sync 在位），runner 冷起 `.mooncakes` 空即 bail「new modules need to be installed」——本机验证红绿双态实锤；离线化走 registry cache 层 + 日志断言。
+- 引擎 stdin 残留（#451）：同网关会话 `input.feed` 过一次后，再 collect 同款 scanf 程序不再等待、直接消费旧文本（跨 `step.begin` 与 `session.create`，两臂同命中）——矩阵探针 feed 案只在全新进程首轮有效。
 
 ## 下批（拍板后）
 

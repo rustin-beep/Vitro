@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "_doc": [
+    "cli_symmetry 声明表（审阅 v2 批 A7 / R1a-R5，2026-11-02）。",
+    "声明 = 三臂现状快照：want=4 为 fail loud 契约硬锁面；want=0 带 reason 的分两类——",
+    "契约豁免（run argv 透传——合法设计）与 known gap（api F4——B3 批修复后 rc 变 4 必与声明分叉红，",
+    "显式改 want=4 并删 reason 即锁面升级）。",
+    "探针 argv 中 FILE 占位符替换为 corpus_file。"
+  ],
+  "corpus_file": "corpus/baseline/array_sum_loop.c",
+  "arms": {
+    "native": {
+      "kind": "exe",
+      "path": "moonbit/_build/native/release/build/cmd/vitro/vitro.exe"
+    },
+    "js": {
+      "kind": "node",
+      "path": "moonbit/_build/js/release/build/cmd/vitro_js/vitro_js.js"
+    },
+    "wasm": {
+      "kind": "node",
+      "path": "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js"
+    }
+  },
+  "probes": {
+    "unknown_flag": {
+      "argv": [
+        "--zz-bogus",
+        "FILE"
+      ],
+      "note": "未知旗标——DX P1 fail loud 契约（rc=4）"
+    },
+    "extra_positional": {
+      "argv": [
+        "FILE",
+        "FILE"
+      ],
+      "note": "多余位置参数（第二个 FILE 对 api 为第三位置参数占位）"
+    }
+  },
+  "commands": [
+    "run",
+    "compile",
+    "step",
+    "api"
+  ],
+  "matrix": {
+    "run|unknown_flag": {
+      "want": 4
+    },
+    "run|extra_positional": {
+      "want": 0,
+      "reason": "契约豁免：run 的多余位置参数 = argv 透传给被跑程序（Rust vitro_cli :1010 语义对齐，2026-10-04 用户实测抓旧形态后拍板）——不是缺口，禁改 rc"
+    },
+    "compile|unknown_flag": {
+      "want": 4
+    },
+    "compile|extra_positional": {
+      "want": 4
+    },
+    "step|unknown_flag": {
+      "want": 4
+    },
+    "step|extra_positional": {
+      "want": 4
+    },
+    "api|unknown_flag": {
+      "want": 0,
+      "reason": "known gap（R1a-F4 / M35b）：`vitro api --zz-bogus capabilities` 未知旗标被静默吞 rc=0（用户以为生效）；合法旗标仅 --batch。B3 批（api 旗标+域检+尾置）修复后 rc 变 4——届时改 want=4 删本 reason 即锁面升级",
+      "issue": "R1a-F4；B3 批（worktree vitro-w-b3 已修未合）",
+      "argv": [
+        "--zz-bogus",
+        "capabilities"
+      ]
+    },
+    "api|extra_positional": {
+      "want": 0,
+      "reason": "known gap（R1a-F4 同族）：`api help ping zz-extra` / `api capabilities {} {}` 多余位置参数静默吞 rc=0（实测 2026-11-02）；同上批修复后升级",
+      "issue": "R1a-F4",
+      "argv": [
+        "help",
+        "ping",
+        "zz-extra"
+      ]
+    }
+  }
+}

@@ -483,7 +483,12 @@ export function collectCargoTestFromOutput(out: string, code: number, source: st
 // （moon 工具链依赖）；解析失败记 unavailable 不兜底。
 export function collectMoonbit(root: string, facts: Record<string, Fact>): void {
   const how = "cd moonbit && moon test";
-  const r = runCmd(path.join(root, "moonbit"), 5 * 60_000, "moon", "test");
+  let r = runCmd(path.join(root, "moonbit"), 5 * 60_000, "moon", "test");
+  // PR #457 审阅 P3 处置：偶发一条失败先重跑一次再判（真 flaky 二连败则由
+  // 解析层记 unavailable——真值只采绿运行，flaky 红面在采集侧消解）
+  if (r.ok && /failed: [1-9]/.test(r.out)) {
+    r = runCmd(path.join(root, "moonbit"), 5 * 60_000, "moon", "test");
+  }
   if (!r.ok) {
     facts["moonbit_test_passed"] = unavail("用例", "moonbit/（moon test）", how, "超时或 moon 不可用");
   } else {
@@ -503,7 +508,11 @@ export function collectMoonbit(root: string, facts: Record<string, Fact>): void 
   // （原「Go 回退面不含本键」注随 Go 版双轨收口删除——2026-11 审阅 v2 A6 批。）
   const ccN = process.platform === "win32" ? "clang-cl" : "clang";
   const howN = `cd moonbit && MOON_CC=${ccN} moon test --target native`;
-  const rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
+  let rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
+  // 同裸口径：偶发失败先重跑一次（见上方注）
+  if (rN.ok && /failed: [1-9]/.test(rN.out)) {
+    rN = runCmdEnv(path.join(root, "moonbit"), 15 * 60_000, { MOON_CC: ccN }, "moon", "test", "--target", "native");
+  }
   if (!rN.ok) {
     facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）", howN, "超时或 moon 不可用");
     return;
@@ -521,6 +530,17 @@ export function collectMoonbitFromOutput(out: string, code: number, facts: Recor
   const total = Number.parseInt(m[1]!, 10);
   const passed = Number.parseInt(m[2]!, 10);
   const failed = Number.parseInt(m[3]!, 10);
+  // PR #457 审阅 P3 处置（2026-11-04，翻案「失败仍记 passed」旧裁）：真值只采
+  // 绿运行——偶发一条失败曾把 passed=真值-1 记成 ok 事实，strict 拿它对文档
+  // 即 flaky 红（审阅实锤：同命令首采 1186 复采 1187）。失败运行的真值形态 =
+  // unavailable（flaky 或真红均须重跑定位），失败量与首败测试名进 note 供诊断。
+  if (failed > 0 || code !== 0) {
+    const firstFail = out.split("\n").find((l) => l.includes(") failed")) ?? "";
+    facts["moonbit_test_passed"] = unavail("用例", "moonbit/（moon test）",
+      "cd moonbit && moon test",
+      `测试失败非计数漂移：total=${total} passed=${passed} failed=${failed} exit=${code}；首败：${firstFail.trim().slice(0, 140)}`);
+    return;
+  }
   const f = okFact(passed, "用例", "moonbit/（moon test）", "run", nowISO());
   f.note = `total=${total} failed=${failed} exit=${code}（裸 moon test 口径 = 默认目标后端，不含 native-only 包如 fs/gateway；逐包分解以 moon test -p 为准）`;
   facts["moonbit_test_passed"] = f;
@@ -538,6 +558,14 @@ export function collectMoonbitNativeFromOutput(out: string, code: number, facts:
   const total = Number.parseInt(m[1]!, 10);
   const passed = Number.parseInt(m[2]!, 10);
   const failed = Number.parseInt(m[3]!, 10);
+  // 同裸口径（PR #457 审阅 P3 处置）：失败运行不产真值——见 collectMoonbitFromOutput 注
+  if (failed > 0 || code !== 0) {
+    const firstFail = out.split("\n").find((l) => l.includes(") failed")) ?? "";
+    facts["moonbit_test_passed_native"] = unavail("用例", "moonbit/（moon test --target native）",
+      "cd moonbit && MOON_CC=<clang|clang-cl(Windows)> moon test --target native",
+      `测试失败非计数漂移：total=${total} passed=${passed} failed=${failed} exit=${code}；首败：${firstFail.trim().slice(0, 140)}`);
+    return;
+  }
   const f = okFact(passed, "用例", "moonbit/（moon test --target native）", "run", nowISO());
   f.note = `total=${total} failed=${failed} exit=${code}（--target native 全量口径 = 裸 moonbit_test_passed + native-only 包〔fs/gateway/cli〕；CI 门禁口径）`;
   facts["moonbit_test_passed_native"] = f;

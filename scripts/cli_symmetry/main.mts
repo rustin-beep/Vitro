@@ -187,12 +187,15 @@ export function selftestRun(rd: RulesDoc, cells: Record<string, ArmResult[]>): n
     return 2;
   }
   let fails = 0;
-  // 注入①：把 api|unknown_flag 的声明改成 rc4（现状 rc0=F4）→ 与真值分叉必红
+  // 注入①：把在册 gap 项的声明升 rc4（真值 rc0）→ 与真值分叉必红。
+  // 靶子沿革：原用 api|unknown_flag（F4 旗标位）——PR #450 锁面升级（want=4）后
+  // 注入失效（want4==真值4 仍绿，2026-11-03 master CI 实锤），换 api|extra_positional
+  //（F4 help 早退子面，gap 仍在册 want=0）；该 gap 升级时须再换在册 gap 或删本注入
   {
     const rd2 = JSON.parse(JSON.stringify(rd)) as RulesDoc;
-    rd2.matrix["api|unknown_flag"]!.want = 4;
+    rd2.matrix["api|extra_positional"]!.want = 4;
     const r = verdict(rd2, cells);
-    process.stdout.write(`  注入① api|unknown_flag 声明升 rc4（真值 rc0）→ ${!r.ok ? "红（捕获 F4 形态）" : "仍绿（闸失效）"}\n`);
+    process.stdout.write(`  注入① api|extra_positional 声明升 rc4（真值 rc0，在册 gap）→ ${!r.ok ? "红（捕获 F4 形态）" : "仍绿（闸失效）"}\n`);
     if (r.ok) fails++;
   }
   // 注入②：把 run|unknown_flag 的声明改成 rc0（真值 rc4）→ 倒退方向分叉红

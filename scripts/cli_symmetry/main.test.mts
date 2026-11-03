@@ -37,8 +37,8 @@ test("verdict：声明全绿形态过；声明 want 与真值分叉双向红；�
     cells[k] = Object.keys(rd.arms).map((arm) => ({ arm, rc: cell.want, out: cell.want === 4 ? "用法错: 未知旗标" : "ok" }));
   }
   assert.equal(verdict(rd, cells).ok, true);
-  // api F4 声明 rc0，真值 rc4（修复后忘改声明）→ 红
-  cells["api|unknown_flag"] = Object.keys(rd.arms).map((arm) => ({ arm, rc: 4, out: "用法错" }));
+  // api unknown_flag 已随 PR #450 锁面升级（want=4）；真值回退 rc0 → 分叉红（倒退防线）
+  cells["api|unknown_flag"] = Object.keys(rd.arms).map((arm) => ({ arm, rc: 0, out: "ok" }));
   assert.equal(verdict(rd, cells).ok, false);
   // run 硬锁 rc4，真值 rc0（倒退）→ 红
   const cells2 = fakeCells(rd, 0);
@@ -73,7 +73,7 @@ test("verdict：声明全绿形态过；声明 want 与真值分叉双向红；�
   assert.equal(verdict(rd2, fakeCells(rd2, 4)).ok, false);
 });
 
-test("真实仓库双分档：产物在位→三臂 24 探针全绿（含 F4 现状 rc0）；缺失→fail loud 前置产物缺失", () => {
+test("真实仓库双分档：产物在位→三臂 24 探针全绿（F4：unknown_flag 已锁面 rc4 / extra_positional 在册 rc0）；缺失→fail loud 前置产物缺失", () => {
   const rd = loadRules();
   if (!armsReady(rd)) {
     // 缺失档：契约 = 不静默、不假绿——resolveArms 必抛带构建指引的 fatal
@@ -85,11 +85,12 @@ test("真实仓库双分档：产物在位→三臂 24 探针全绿（含 F4 现
   assert.equal(Object.keys(cells).length, rd.commands.length * Object.keys(rd.probes).length);
   const r = verdict(rd, cells);
   assert.equal(r.ok, true, r.issues.join("; "));
-  // F4 现状锚：api 两探针 rc=0（known gap 声明在册）
-  for (const k of ["api|unknown_flag", "api|extra_positional"]) {
+  // F4 锚（PR #450 锁面后拆两半）：unknown_flag 已修 rc=4（三臂同）；
+  // extra_positional 的 help 早退子面 gap 仍在册 rc=0
+  for (const [k, want] of [["api|unknown_flag", 4], ["api|extra_positional", 0]] as const) {
     const rcs = new Set((cells[k] ?? []).map((x) => x.rc));
     assert.equal(rcs.size, 1);
-    assert.equal([...rcs][0], 0, `${k} F4 现状应 rc=0`);
+    assert.equal([...rcs][0], want, `${k} 现状应 rc=${want}`);
   }
 });
 

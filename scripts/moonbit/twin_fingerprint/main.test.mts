@@ -77,23 +77,24 @@ test("diffOf 缺项向（审阅 P1 回归锚）：四成员 2 有 2 无 → 缺�
   );
 });
 
-test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家门禁差 3 条（F5/F9）", () => {
+test("真实仓库：cast 两链指纹含 F1 相关臂；dump 四家现存差 2 条（F5 已随 PR #450 销案，余 F9 排序两面）", () => {
   const rd = loadRules();
   const fps = allFingerprints(rd);
   const cast = fps["cast_mbt"] ?? [];
   assert.equal(cast.length, 2);
   // 两份共有臂（孪生本体）：D←F 臂两侧都在
   for (const f of cast) assert.ok(f.items.some((it) => it.includes("T is TK_Double && S is TK_Float")), f.member);
-  // dump：compile 独有三谓词（F5 两门禁 + F9 排序）+ 缺项向的 F9 镜像面（compile 缺 sort:builtin）= 4 条
+  // dump：F5 两门禁差异已随 PR #450（M36b 四家连坐 + P2-3 归一比较）销案——现存仅
+  // F9 排序分叉的两面（三家 builtin sort 独有 sort:builtin 项 / compile 独有 sort:lexical 项）
   const dumpFps = fps["dump_four"] ?? [];
   assert.equal(dumpFps.length, 4);
   const diffs = diffOf(rd.twin_sets[1]!, dumpFps);
-  assert.equal(diffs.length, 4);
+  assert.equal(diffs.length, 2);
   assert.deepEqual(
     diffs.map((x) => x.item).sort(),
-    ["guard:target_eq_out", "guard:upper_bound", "sort:builtin", "sort:lexical"],
+    ["sort:builtin", "sort:lexical"],
   );
-  assert.ok(diffs.every((x) => x.only_in === "dump_compile"), "四条不一致方均为 dump_compile（独有三 + 缺项一）");
+  assert.ok(diffs.every((x) => x.only_in === "dump_compile"), "两条不一致方均为 dump_compile（F9 排序分叉——统一 sort_files_lex 后销案）");
   assert.equal(verdict(rd, fps), true);
 });
 
@@ -137,7 +138,9 @@ test("dumpGuardsFingerprint 谓词面：文件名长度检查不误命中 upper_
   // 回归锚①：谓词曾误把 `name.length() > 2`（.c 后缀判断）当参数上界门禁
   const rd = loadRules();
   const ast = dumpGuardsFingerprint(rd.twin_sets[1]!.members[1]!);
-  assert.ok(!ast.items.includes("guard:upper_bound"), "dump_ast 无参数上界门禁（F5 现状）——不得被文件名检查误报");
+  // PR #450（B3/M36b）后 dump_ast 已有参数上界门禁（args.length() > 3）——F5 销案翻转锚；
+  // 仍须防文件名长度检查（name.length() > 2）误命中：谓词限 positional/args 前缀
+  assert.ok(ast.items.includes("guard:upper_bound"), "dump_ast 有参数上界门禁（F5 已销案翻转）");
   assert.ok(ast.items.includes("guard:lower_bound") && ast.items.includes("rc:usage_4"));
   // 回归锚②（2026-11-03 rebase 实锤）：A7' 批把 dump_tokens 注释改成提及 sort_files_lex
   // （行为仍 files.sort()）——谓词须剥注释后匹配，否则假红

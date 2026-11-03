@@ -65,9 +65,8 @@
       "want": 4
     },
     "api|unknown_flag": {
-      "want": 0,
-      "reason": "known gap（R1a-F4 / M35b）：`vitro api --zz-bogus capabilities` 未知旗标被静默吞 rc=0（用户以为生效）；合法旗标仅 --batch。B3 批（api 旗标+域检+尾置）修复后 rc 变 4——届时改 want=4 删本 reason 即锁面升级",
-      "issue": "R1a-F4；B3 批（worktree vitro-w-b3 已修未合）",
+      "want": 4,
+      "issue": "R1a-F4 销案（PR #450 B3 批，2026-11-03）：M35 A1 修复——api 未知旗标 fail loud rc=4，与其他三子命令同形；登记 reason 按锁面升级指引清除",
       "argv": [
         "--zz-bogus",
         "capabilities"
@@ -75,7 +74,7 @@
     },
     "api|extra_positional": {
       "want": 0,
-      "reason": "known gap（R1a-F4 同族）：`api help ping zz-extra` / `api capabilities {} {}` 多余位置参数静默吞 rc=0（实测 2026-11-02）；同上批修复后升级",
+      "reason": "known gap（R1a-F4 同族·help 早退子面）：`api help ping zz-extra` 第三位置参被 help 路径吞——PR #450 修的是旗标位（unknown_flag 已升 want=4），help 双位后的多余位置参仍静默落 params 后被 help 早退遮蔽，rc=0 实测不变；help 路径收紧时升 want=4",
       "issue": "R1a-F4",
       "argv": [
         "help",

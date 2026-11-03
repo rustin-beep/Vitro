@@ -1,6 +1,9 @@
 // @category: chibicc_port
 // source: chibicc test/arith.c（MIT, © 2019 Rui Ueyama）— ASSERT 形态 port
 // topic: 位运算/取反/逻辑非/取模/移位常量边界 + 三元类型面
+// ID 域披露（审阅 P3-3）：`%d %lld` 行把 LLP64 的 long（4B）传给 %lld——Win ABI
+// 变参按 8 字节槽零扩展巧合成立；保持 chibicc 原形态（Win clang 同口径实跑锁值），
+// LP64 平台该行天然同值（long=8B），跨口径重跑时留意
 #include <stdio.h>
 int main(void) {
   printf("%d %d %d %d\n", !1, !2, !0, !(char)0);

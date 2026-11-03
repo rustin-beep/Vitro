@@ -176,6 +176,9 @@ function collectCaseDirs(root: string, facts: Record<string, Fact>): void {
     { key: "c_e2e_gap_cases", sub: "gap", ext: ".c" },
     { key: "c_e2e_knr_cases", sub: "knr", ext: ".c" },
     { key: "c_e2e_leetcode_cases", sub: "leetcode", ext: ".c" },
+    // chibicc_port（#437 入库批·审阅 P2-2 2026-11-04）：外部基准桶计数键——
+    // 桶被删/改名/截断的机判通道（llm_scale 缺键为既有缺口，本批不扩）
+    { key: "c_e2e_chibicc_port_cases", sub: "chibicc_port", ext: ".c" },
   ]) {
     const rel = "corpus/" + m.sub + "/";
     const d = path.join(root, "corpus", m.sub);

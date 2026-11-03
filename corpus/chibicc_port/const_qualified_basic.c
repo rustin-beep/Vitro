@@ -7,7 +7,7 @@ int main(void) {
   const int cx = 5; printf("%d\n", cx);
   int const cx2 = 8; printf("%d\n", cx2);
   const int const_c = 6; printf("%d\n", const_c);  // 重复限定符
-  { const int bq; (void)bq; }                       // 块内 const 声明
+  { const int bq; (void)bq; }                       // 块内 const 声明（仅解析面：未读值——读未初始化为 UB，不锁）
   const int pc = 8; int *const y = (int*)&pc; printf("%d\n", *y);
   printf("%lld\n", (long long)(-10 + (long)5));   // -5
   printf("%lld\n", (long long)(-10 - (long)5));

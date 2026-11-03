@@ -3171,13 +3171,13 @@
       "memory_sha": "0dad69f60e0fca6c"
     },
     "chibicc_port/alignof_nopad.c": {
-      "src_sha": "8de1ccca",
+      "src_sha": "c5d8f292",
       "exit_code": 0,
-      "stdout_sha": "8fcd20c017d2f628",
+      "stdout_sha": "13d072800342c8fc",
       "memory_sha": "93e4f911386633e3"
     },
     "chibicc_port/arith_bitwise_ternary.c": {
-      "src_sha": "795980ec",
+      "src_sha": "7e381cb1",
       "exit_code": 0,
       "stdout_sha": "23ac69766e99ecfa",
       "memory_sha": "bdd3d4479e246958"
@@ -3195,9 +3195,9 @@
       "memory_sha": "3726e654cf6167d2"
     },
     "chibicc_port/arith_ptr_diff_expr.c": {
-      "src_sha": "f91810a5",
+      "src_sha": "b1ab977a",
       "exit_code": 0,
-      "stdout_sha": "4a1bbd4925d1c762",
+      "stdout_sha": "2b974baba85af9aa",
       "memory_sha": "157e4f30cd2625a4"
     },
     "chibicc_port/cast_truncate_signedness.c": {
@@ -3219,7 +3219,7 @@
       "memory_sha": "1dbcf12e64bc87e7"
     },
     "chibicc_port/const_qualified_basic.c": {
-      "src_sha": "93bedea7",
+      "src_sha": "991bdb67",
       "exit_code": 0,
       "stdout_sha": "02ce28734b4c72b8",
       "memory_sha": "049d0ff622a0684b"
@@ -3297,7 +3297,7 @@
       "memory_sha": "20fac7f728c8c666"
     },
     "chibicc_port/initializer_globals.c": {
-      "src_sha": "89ef6241",
+      "src_sha": "71163b3c",
       "exit_code": 0,
       "stdout_sha": "74ad7ca2fa68674e",
       "memory_sha": "a7d3658c9027d19e"

@@ -7,6 +7,19 @@ description: Vitro 新增/修改 C 测试语料用例的完整义务链（clang 
 
 **适用场景**：往 `corpus/` 加（或改）C 用例；补/修 golden；加用例后 clang_direct / vm_diff / facts 红（原 `native/tests/cases/` 已随 2026-10-05 删区整体迁至 `corpus/`；shadow / e2e 驱动已随 Rust 区退役）。
 
+## 加**桶**接线清单（新增 corpus 子目录时逐项过——PR #464 审阅根因建档，2026-11-04）
+
+「加用例」义务链之上，新建 suite 目录另有**六处接线**，人肉枚举必漏（#464 实锤漏三）：
+
+1. `scripts/clang_direct/main.mts` `corporaDefault` 数组加 `"corpus/<suite>"`；
+2. `scripts/diff_gate/targets/vm.mts` `DEFAULT_CORPORA` 加裸 suite 名；
+3. `.github/workflows/ci.yml` 四闸 suite 循环 `for c in …` 加名（lexer/parser/typeck/codegen 共用）；
+4. **`scripts/corpus_fuzz/rules.json` `suites` 加名 + 一次 `-freeze`**（漏=新桶零对抗变异覆盖，且叙述易误读为「fuzz 已过」——#464 P2-1 实锤；freeze 是纯增量：pickSeeds 按 suite 独立 hash 序，他桶种子不动）；
+5. **`scripts/facts/facts.mts` 加 `c_e2e_<suite>_cases` 计数键** + 脚本总清单 §1.3 连坐（漏=桶删改无机判通道——#464 P2-2 实锤）；
+6. `scripts/perf_budget/rules.json` `corpus_dirs` 加名 + `_corpus_note` 计数行**亲跑校数**（勿抄旧数——#464 P3-5 实锤 613 滞留两批）。
+
+另：五家 golden digest 新段首冻无命令路径（`--freeze-mb` 对 `sec===null` 直接 fail）——按 13 号纪律 `.json` 手改预登记空段（lexer `sources.<s>={}`；parser/typeck `modes["corpus-<s>"]={sources:{},resp_hashes:{}}`；codegen `corpora.<s>={sources:{},cases:{}}`；vm 扁平键免）后 `--freeze-mb` 入账。文档连坐：脚本总清单 §1.3 与 diff_gate 行、Clang直拍门禁目录口径、（如有）README 计数。
+
 （2026-10-11 勘误：本段曾预写「一键串联器」——该脚本从未入库（CI skill_path_check 实锤悬空引用），段落回撤；编排器真入库时随件重写。）
 
 **参数语义陷阱**：vm_diff / clang_direct 的 `--corpus` 接 **suite 名**（如 `baseline`，内部自拼 `corpus/` 前缀）；codegen_diff 接**目录**（`corpus/baseline`）。手跑别混——串联器已内化此差异。

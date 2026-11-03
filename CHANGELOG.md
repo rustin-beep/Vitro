@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### fix(corpus+scripts): PR #464 审阅处置批——P2×2 落地（fuzz 采样域 + facts 计数键）+ P3×7 连坐（2026-11-04）
+
+- **P2-1 fuzz 采样域**：`corpus_fuzz/rules.json` `suites` 加 `chibicc_port` + 一次 `-freeze`（纯增量
+  +184 行；total 318→378，PASS 全绿、旧键零僵尸——pickSeeds 按 suite 独立 hash 序实锤他桶种子不动）；
+  freeze 显式报告两条 leetcode 桶值迁移（`CLANG_REJECT→AGREE`，上次 js 臂陈旧产物时代的误判桶值
+  修正为全量真跑值——#412「freeze 不得无声吸收」设计内）。
+- **P2-2 facts 计数键**：`c_e2e_chibicc_port_cases`（count_dir 扫 corpus/chibicc_port/）+ 脚本总清单
+  §1.3 四键段→五键连坐（llm_scale/llm_multifile 缺键为既有缺口，本批不扩）。
+- **P3-1 文档口径×4**：脚本总清单 lexer「四语料」→六语料（CI 循环同形）、codegen「骨架面+四语料」→
+  六语料、Clang直拍门禁.md 八目录→九目录（两处）。
+- **P3-2 口径矛盾**：`initializer_globals.c` main 内旧注（rebase 前的「运行期 NULL deref」结论）改为与
+  头注一致的 E3075 编译期拒绝口径（issue #465 台账指针）。
+- **P3-3 UB/ID 域披露统一**：`arith_ptr_diff_expr.c`（越界指针算术=UB 折叠值，头注披露）、
+  `arith_bitwise_ternary.c`（`%d %lld`×LLP64 long 的 ABI 零扩展巧合，ID 域披露）、
+  `const_qualified_basic.c`（`const int bq;` 仅解析面，读未初始化 UB 不锁）。
+- **P3-4**：`alignof_nopad.c` 删 `_Alignof(表达式)` 两行（GNU 扩展，与头注「剔写」口径对齐）。
+- **P3-5**：perf_budget `_corpus_note` 613 历史数→亲跑校数 823（分解列全）。
+- **P3-6/P3-7 挂号**：`@category` 头注无现役消费、corpus MIT 许可全文/THIRD_PARTY 缺位（与 knr/leetcode
+  同级先例）——登记 issue 台账，本批不处置。
+- **根因**：`vitro-baseline-corpus-workflow` SKILL.md 补「加桶接线清单」六条（fuzz/facts/文档三面即
+  本次人肉枚举漏项，PR #464 审阅建档）。
+- **未深审项①补做**：chibicc 上游 36 份忠实度对账（`tmp/corpus_staged/precheck/upstream_audit.mjs`）——
+  字面直接覆盖 336/deferred 登记 40/缺口 359（改写形态字面不命中的下界口径）；真遗漏 1 项
+  （builtin.c 未登记不 port——ASSESSMENT 已补）+ alignof 尺寸面补登记。
+- 语料 5 份注释/删行变更随五家 digest 重冻（重算 5、全绿：四家 rc=0 / vm 双臂 SAME=810）。
+
 ### feat(corpus): #437 语料扩充窗口入库批——chibicc_port 外部基准新桶 + 审阅探针即可入库批（2026-11-03）
 
 - **`corpus/chibicc_port/` 新桶 36 份**（chibicc/test MIT port，© 2019 Rui Ueyama 溯源行逐份头注）：

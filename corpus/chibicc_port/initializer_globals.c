@@ -30,8 +30,8 @@ int main(void) {
   printf("%d\n", memcmp(g18, "foobar\0\0\0", 10) == 0);
   printf("%d\n", memcmp(g19, "foo", 3) == 0);
   printf("%d %d\n", g24, *g25);
-  // 注：chibicc 原 *g27/*g28（全局指针静态算术初始化 g26+1 / &g11[1].a）——Vitro 运行期 NULL deref trap
-  //（静态初始化指针算术 gap 候选），移 deferred
-  // 注：chibicc 原 g31 族（嵌套 struct 成员数组静态取址 int *g31=g30.a.a）——同族 NULL deref（0x8），移 deferred
+  // 注：chibicc 原静态指针算术/成员链初始化族（int *g27=g26+1 / char *g28=&g11[1].a /
+  // int *g31=g30.a.a）——master B3'/B9 批起 Vitro 以 E3075 编译期显式拒绝（fail loud），
+  // 形态移差异台账（issue #465），与文件头注口径一致
   return 0;
 }

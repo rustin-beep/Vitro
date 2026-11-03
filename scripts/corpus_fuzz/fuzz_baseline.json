@@ -182,6 +182,186 @@
     "baseline/unsigned_lshr.c|div2shift": {
       "bucket": "CLANG_REJECT"
     },
+    "chibicc_port/alignof_nopad.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/alignof_nopad.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/alignof_nopad.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/arith_bitwise_ternary.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/arith_bitwise_ternary.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/arith_bitwise_ternary.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/cast_truncate_signedness.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/cast_truncate_signedness.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/cast_truncate_signedness.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/complit_local.c|brace_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/complit_local.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/complit_local.c|init_partial": {
+      "bucket": "WRONG_VALUE"
+    },
+    "chibicc_port/const_qualified_basic.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/const_qualified_basic.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/const_qualified_basic.c|static_inject": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/constexpr_array_dim.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/constexpr_array_dim.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/constexpr_array_dim.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/control_fp_cond.c|cast_strip": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/control_fp_cond.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/control_fp_cond.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_compare_arith.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_compare_arith.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_compare_arith.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_conv_matrix.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_conv_matrix.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/float_conv_matrix.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/generic_typeof_basic.c|div2shift": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/generic_typeof_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/generic_typeof_basic.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_designated.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_designated.c|char_escape": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_designated.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_globals.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_globals.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_globals.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_locals.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_locals.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/initializer_locals.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/literal_int_domain.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/literal_int_domain.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/literal_int_domain.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_conditional.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_conditional.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_conditional.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_define_args.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_define_args.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/macro_define_args.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/pointer_array_basic.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/pointer_array_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/pointer_array_basic.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/struct_sizeof_nopad.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/struct_sizeof_nopad.c|init_partial": {
+      "bucket": "VITRO_REJECT"
+    },
+    "chibicc_port/struct_sizeof_nopad.c|memset_zero": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/typedef_enum_basic.c|init_partial": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/typedef_enum_basic.c|nested2flat": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/typedef_enum_basic.c|paren_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/varargs_sum.c|brace_wrap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/varargs_sum.c|cmp_swap": {
+      "bucket": "AGREE"
+    },
+    "chibicc_port/varargs_sum.c|memset_zero": {
+      "bucket": "AGREE"
+    },
     "gap/complex_number.c|brace_strip": {
       "bucket": "AGREE"
     },
@@ -799,7 +979,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_17.c|static_inject": {
-      "bucket": "CLANG_REJECT"
+      "bucket": "AGREE"
     },
     "leetcode/lc_198.c|brace_wrap": {
       "bucket": "AGREE"
@@ -808,7 +988,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_198.c|static_inject": {
-      "bucket": "CLANG_REJECT"
+      "bucket": "AGREE"
     },
     "leetcode/lc_200.c|brace_wrap": {
       "bucket": "AGREE"
@@ -871,7 +1051,7 @@
       "bucket": "AGREE"
     },
     "leetcode/lc_35.c|static_inject": {
-      "bucket": "CLANG_REJECT"
+      "bucket": "AGREE"
     },
     "leetcode/lc_39.c|cmp_swap": {
       "bucket": "AGREE"
@@ -918,7 +1098,7 @@
       "note": "div2shift 优先级重绑定（同 lc_108）：mid=right\u003e\u003e1 不依赖 left，target 大于全部元素时 left 恒回摆——两侧等价死：vitro 步数耗尽 trap；clang 死循环，win32 侧 runCmd spawnSync 20s 超时哨兵 EXIT:-98（非进程退出码）、POSIX 侧 timeout 命令形态 rc=124（平台口径双注，PR #405 审阅 P2-3）；算子陷阱域非引擎病（#361 换键批定性）；超时一律记 OK 的判定面失真挂 #410"
     },
     "leetcode/lc_704.c|static_inject": {
-      "bucket": "CLANG_REJECT"
+      "bucket": "AGREE"
     },
     "leetcode/lc_75.c|cmp_swap": {
       "bucket": "AGREE"

@@ -20,6 +20,11 @@
 /// **Q 族回绕语义与 i32 族不同（对拍契约）**：AddQ/SubQ/MulQ 是
 /// `wrapping`（**不 trap**——Rust 同款；i32 族的 Add/Sub/Mul 才是 i64 中转
 /// + 教学 trap）；DivQ/ModQ 的 LLONG_MIN/-1 与除零检查照搬。
+///
+/// **#426 B3' 批 3（2026-11-02）**：Q 族整型算术/比较臂接共享算术核
+/// `vitro/engine/arith`（I64/U64 域）——值语义与故障判定由核产出，本文件
+/// 只保栈原语形态（位模式逐位不变）与教学 trap 文案；F/D 浮点族与 Cast 族
+/// 不接核（无域分叉面）。
 
 ///|
 fn VitroVM::execute_float(
@@ -210,58 +215,64 @@ fn VitroVM::execute_longlong(
       }
     AddQ | SubQ | MulQ => {
       // Q 族回绕（Rust wrapping——不 trap，与 i32 族的教学 trap 分口径）
+      // #426 批 3：接共享算术核 I64 域（核语义表镜像本分口径：I64 四则回绕
+      // 不产故障）
       let b = self.pop_i64()
       let a = self.pop_i64()
-      let r = match op {
-        AddQ => a + b
-        SubQ => a - b
-        MulQ => a * b
-        _ => a
+      let aop = match op {
+        AddQ => @arith.OpAdd
+        SubQ => @arith.OpSub
+        _ => @arith.OpMul
       }
-      self.push(r.reinterpret_as_uint64())
+      match @arith.eval_int_binary(aop, a, b, @arith.I64) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(_) => () // I64 四则无故障面（穷尽兜底）
+      }
     }
     DivQ => {
       let b = self.pop_i64()
       let a = self.pop_i64()
-      if b == 0L {
-        // 审阅 P2-1（2026-10-24）：裸文案改教学段（i64 符号渲染）+ 补结构化码
-        // ——同族 i32/u32/u64 六臂带码独漏此臂。
-        let msg = self.format_div_zero_error_i64(a)
-        self.trap(msg, line, column, code="E3088")
-      } else if a == -9223372036854775808L && b == -1L {
-        self.trap(
-          "long long 除法溢出。LLONG_MIN / -1 的结果超出了 long long 能表示的范围。",
-          line, column,
-        )
-      } else {
-        self.push((a / b).reinterpret_as_uint64())
+      match @arith.eval_int_binary(@arith.OpDiv, a, b, @arith.I64) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(@arith.DivByZero) => {
+          // 审阅 P2-1（2026-10-24）：裸文案改教学段（i64 符号渲染）+ 补结构化码
+          // ——同族 i32/u32/u64 六臂带码独漏此臂。
+          let msg = self.format_div_zero_error_i64(a)
+          self.trap(msg, line, column, code="E3088")
+        }
+        Err(_) =>
+          self.trap(
+            "long long 除法溢出。LLONG_MIN / -1 的结果超出了 long long 能表示的范围。",
+            line, column,
+          )
       }
     }
     ModQ => {
       let b = self.pop_i64()
       let a = self.pop_i64()
-      if b == 0L {
-        // 审阅 P2-1 同款：裸文案改教学段 + 补结构化码。
-        let msg = self.format_div_zero_error_i64(a)
-        self.trap(msg, line, column, code="E3088")
-      } else if a == -9223372036854775808L && b == -1L {
-        self.trap(
-          "long long 取模溢出。LLONG_MIN % -1 的结果未定义，超出了 long long 能表示的范围。",
-          line, column,
-        )
-      } else {
-        self.push((a % b).reinterpret_as_uint64())
+      match @arith.eval_int_binary(@arith.OpMod, a, b, @arith.I64) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(@arith.DivByZero) => {
+          // 审阅 P2-1 同款：裸文案改教学段 + 补结构化码。
+          let msg = self.format_div_zero_error_i64(a)
+          self.trap(msg, line, column, code="E3088")
+        }
+        Err(_) =>
+          self.trap(
+            "long long 取模溢出。LLONG_MIN % -1 的结果未定义，超出了 long long 能表示的范围。",
+            line, column,
+          )
       }
     }
     NegQ => {
       let a = self.pop_i64()
-      if a == -9223372036854775808L {
-        self.trap(
-          "long long 取反溢出。-LLONG_MIN 的结果超出了 long long 能表示的范围。",
-          line, column,
-        )
-      } else {
-        self.push((-a).reinterpret_as_uint64())
+      match @arith.eval_int_unary(@arith.OpNeg, a, @arith.I64) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(_) =>
+          self.trap(
+            "long long 取反溢出。-LLONG_MIN 的结果超出了 long long 能表示的范围。",
+            line, column,
+          )
       }
     }
     CastI2Q => {
@@ -277,30 +288,53 @@ fn VitroVM::execute_longlong(
     UDivQ => {
       // Q 族无符号除（病 34：ULL 走 DivQ 符号语义 2^63 域错值）；除零
       // 文案走 u64 版（被除数无符号渲染——病 93 同族预防）
+      // #426 批 3：接核 U64 域（位模式重解释做无符号除）
       let b = self.pop()
       let a = self.pop()
-      if b == 0UL {
-        let msg = self.format_div_zero_error_u64(a)
-        self.trap(msg, line, column, code="E3088")
-      } else {
-        self.push(a / b)
+      match
+        @arith.eval_int_binary(
+          @arith.OpDiv,
+          a.reinterpret_as_int64(),
+          b.reinterpret_as_int64(),
+          @arith.U64,
+        ) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(_) => {
+          let msg = self.format_div_zero_error_u64(a)
+          self.trap(msg, line, column, code="E3088")
+        }
       }
     }
     UModQ => {
       // Q 族无符号模（无 LLONG_MIN % -1 面——u64 域不存在该溢出）
       let b = self.pop()
       let a = self.pop()
-      if b == 0UL {
-        let msg = self.format_div_zero_error_u64(a)
-        self.trap(msg, line, column, code="E3088")
-      } else {
-        self.push(a % b)
+      match
+        @arith.eval_int_binary(
+          @arith.OpMod,
+          a.reinterpret_as_int64(),
+          b.reinterpret_as_int64(),
+          @arith.U64,
+        ) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(_) => {
+          let msg = self.format_div_zero_error_u64(a)
+          self.trap(msg, line, column, code="E3088")
+        }
       }
     }
     UNegQ => {
-      // 无符号取反 = 模 2^64 补码（回绕无 trap——对照 NegQ 的教学 trap）
+      // 无符号取反 = 模 2^64 补（回绕无 trap——对照 NegQ 的教学 trap）
       let a = self.pop()
-      self.push(0UL - a)
+      match
+        @arith.eval_int_unary(
+          @arith.OpNeg,
+          a.reinterpret_as_int64(),
+          @arith.U64,
+        ) {
+        Ok(r) => self.push(r.reinterpret_as_uint64())
+        Err(_) => ()
+      }
     }
     CastQ2I => {
       let a = self.pop_i64()
@@ -317,31 +351,43 @@ fn VitroVM::execute_longlong(
       self.push(a.to_int64().reinterpret_as_uint64())
     }
     EqQ | NeQ | LtQ | LeQ | GtQ | GeQ => {
+      // #426 批 3：接核 I64 域比较
       let b = self.pop_i64()
       let a = self.pop_i64()
-      let r : Bool = match op {
-        EqQ => a == b
-        NeQ => a != b
-        LtQ => a < b
-        LeQ => a <= b
-        GtQ => a > b
-        GeQ => a >= b
-        _ => false
+      let aop = match op {
+        EqQ => @arith.OpEq
+        NeQ => @arith.OpNe
+        LtQ => @arith.OpLt
+        LeQ => @arith.OpLe
+        GtQ => @arith.OpGt
+        _ => @arith.OpGe
       }
-      self.push(if r { 1UL } else { 0UL })
+      match @arith.eval_int_binary(aop, a, b, @arith.I64) {
+        Ok(v) => self.push(if v != 0L { 1UL } else { 0UL })
+        Err(_) => ()
+      }
     }
     ULtQ | ULeQ | UGtQ | UGeQ => {
       // Q 族无符号比较（病 34：2^63 > 0 走 LtQ 符号语义得 0）
+      // #426 批 3：接核 U64 域（位模式重解释比较）
       let b = self.pop()
       let a = self.pop()
-      let r : Bool = match op {
-        ULtQ => a < b
-        ULeQ => a <= b
-        UGtQ => a > b
-        UGeQ => a >= b
-        _ => false
+      let aop = match op {
+        ULtQ => @arith.OpLt
+        ULeQ => @arith.OpLe
+        UGtQ => @arith.OpGt
+        _ => @arith.OpGe
       }
-      self.push(if r { 1UL } else { 0UL })
+      match
+        @arith.eval_int_binary(
+          aop,
+          a.reinterpret_as_int64(),
+          b.reinterpret_as_int64(),
+          @arith.U64,
+        ) {
+        Ok(v) => self.push(if v != 0L { 1UL } else { 0UL })
+        Err(_) => ()
+      }
     }
     _ => ()
   }

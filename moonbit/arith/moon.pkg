@@ -1,0 +1,9 @@
+// L0 零依赖·共享算术核（#426 B3' 批 0，2026-11-02）：编译期常量折叠
+//（typeck/const_eval）与运行期解释器（vm executor）的 C 算术语义单源——
+// IntDomain 域描述 + integer_promote/common_domain 域判定 + eval_int_binary/
+// eval_int_unary 一表驱动求值（Result[值, ArithFault]，故障由消费方翻译：
+// VM→教学 trap 文案，折叠器→E3075 族诊断/拒折）。
+// 语义表 = VM 现状镜像（#426 设计单 §二·3——i32 溢出教学 trap 与 Q 族回绕
+// 的分口径系既有裁定，本核继承不裁）；核不 import ast（类型面用核内枚举，
+// AST→(值,域) 薄壳映射在消费方）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L0，总计划 §4）。

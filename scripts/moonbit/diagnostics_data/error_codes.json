@@ -476,6 +476,7 @@
     {
       "name": "W3085_ImplicitFuncDecl",
       "code": 3085
-    }
+    },
+    {"name": "W3090_ConstIntOverflow", "code": 3090}
   ]
 }

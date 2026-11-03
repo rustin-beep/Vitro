@@ -5,6 +5,7 @@
   "module": "vitro/engine",
   "levels": {
     "source": 0,
+    "arith": 0,
     "opcode": 0,
     "util": 0,
     "fs": 0,

@@ -14,7 +14,7 @@
 | `vitro/engine/opcode` | L0 | 153 条 opcode（0..137 照搬段：44–46 = C# 异常三件 reserved，47–49 空号；138..150 自扩 U 系对偶段——CastU2Q/U2D/U2F、LoadMemUByte、TruncByte/TruncUByte、UDivQ/UModQ/UNegQ、ULtQ~UGeQ，#61 病 31~34 批 2026-10-11；151..153 全局 char 字节粒度段，#177 批 2026-10-19；154..155 u64→fp 无符号对偶 CastUQ2D/CastUQ2F，#345 审阅批 2026-10-28）+ Instruction | ✅ 已发布 |
 | `vitro/engine/util` | L0 | 零语义机械件单源（G-1）：`utf8_len` / `str_cmp`（真字典序——陷阱 #29 唯一正解）/ `i64_to_i32_bits`（Rust `as i32` 位截断）/ `le_u32_at`·`le_u64_at`（FixedArray[Byte] 小端拼装读——陷阱 #35）/ `json_escape`·`json_escape_into`（serde_json 口径 JSON 字符串转义单源——issue #55 六份收一，U+0000–001F 全转义）；**只许零语义机械件，新件入包先登记 G 表** | ✅ |
 | `vitro/engine/fs` | L0 | native-only 文件系统件（**vendored 自 moonbitlang/x@0.5.5**——模块零外部依赖）：四文件搬迁，C 符号前缀 `vitro_engine_fs_*`；pub 面 7 函数+IOError（消费面 = cmd×5）；上游漂移由 `scripts/moonbit/vendor_drift` 监控（内容哈希主口径）；Apache-2.0 合规 = 文件头保留+来源标注+`THIRD_PARTY.md` | ✅ |
-| `vitro/engine/diag` | L1 | ErrorCode 119 臂（gen_diag 生成）+ catalog 115 + E4 出口 | ✅ 已发布 |
+| `vitro/engine/diag` | L1 | ErrorCode 120 臂（gen_diag 生成）+ catalog 116 + E4 出口 | ✅ 已发布 |
 | `vitro/engine/ast` | L2 | Type 17 / Expr 26 / Stmt 16 全族 + depth + E1 emitter + 谓词/compute_type_size | ✅ 已发布 |
 | `vitro/engine/lexer` | L4 | 独立预处理 pass + LineMap + 宿主 IO（token 契约面子包 `lexer/token`） | ✅ 已发布 0.3.0 |
 | `vitro/engine/parser` | L4 | token → AST：表达式瀑布/声明符螺旋/语句族/声明族/C++ 分支；depth 参数化防护；声明符自顶向下累加器（F3-v2）；Rollback 七字段全量快照；stall_count 活性观测 + 零推进熔断 | ✅ 已发布 |

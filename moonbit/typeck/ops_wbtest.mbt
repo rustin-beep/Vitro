@@ -62,6 +62,16 @@ test "resolve_binary_key_shapes" {
     loc,
   )
   assert_true(ty6 is Int(_, _))
+  // #426 批 2（M08 A7.1 锚盲区补断言）：unsigned char 左操作数提升
+  // **signed** int——旧断言只断 kind 不断 unsigned 位，错型在锚下隐形
+  let (ty6u, _) = tc.resolve_binary(
+    Shl,
+    @ast.Expr::Literal(1, loc, @ast.Type::Char(true, false)),
+    lit(1),
+    loc,
+  )
+  assert_true(ty6u is Int(_, _))
+  assert_false(ty6u.is_unsigned())
   assert_eq(tc.errors.length(), 0)
 }
 

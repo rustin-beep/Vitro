@@ -24,16 +24,29 @@ priv enum CVal {
 ///|
 /// 求值栈帧（迭代化——病 40 教训：递归版在 ~2 万层深链栈溢出，形态
 /// 对齐 parser const_int_of 的显式栈后序）。
+/// #426 B3' 批 1（2026-11-02）：值域运算接共享算术核 `vitro/engine/arith`
+/// ——帧携带**操作数类型**（AppU 取操作数而非结果类型：求值域 =
+/// integer_promote(操作数)，与 ops.mbt 定型面解耦）与 loc（W3090 溢出
+/// 警告定位）；&&/|| 短路两阶段帧（LogiRhs 左值定局即弃右树，LogiFin
+/// 双值合成）仿 codegen binary.mbt:62-92 短路结构，不再先算右侧。
 priv enum CEvalFrame {
   CE_E(@ast.Expr)
-  /// ty = 一元结果类型（P1-2：Neg/BitNot 后按类型归一）
-  CE_AppU(@ast.UnaryOp, @ast.Type)
-  /// lty/rty = 左右操作数类型（比较/除法/右移的符号域判定），
-  /// resty = 结果类型（算术后按宽度归一）——P1-2 符号性对偶
-  CE_AppB(@ast.BinaryOp, @ast.Type, @ast.Type, @ast.Type)
+  /// oty = 一元操作数类型（求值域由其整型提升决定）
+  CE_AppU(@ast.UnaryOp, @ast.Type, @source.SourceLoc)
+  /// lty/rty = 左右操作数类型（公共域 / 移位左操作数域判定），
+  /// resty = 结果类型（比较族恒 int；算术族应与公共域同构）
+  CE_AppB(@ast.BinaryOp, @ast.Type, @ast.Type, @ast.Type, @source.SourceLoc)
   /// Ternary 条件值已弹后按真值压选中分支
   CE_TernSel(@ast.Expr, @ast.Expr)
   CE_Cast(@ast.Type)
+  /// &&/|| 第一阶段：左值已弹——定局则直接产 0/1 弃右树，否则左值回栈
+  /// 并压右树 + LogiFin
+  CE_LogiRhs(@ast.BinaryOp, @ast.Expr)
+  /// &&/|| 第二阶段：左右两值在栈，合成 0/1
+  CE_LogiFin(@ast.BinaryOp)
+  /// 字符串字面量下标（PR #456 审阅 P2-1）：下标值在栈，弹后判界产字节值
+  ///（C11 §6.6 合法常量表达式——clang "abc"[0] 零诊断折 97）
+  CE_StrIdx(String)
 }
 
 ///|
@@ -46,9 +59,53 @@ fn ce_is_unsigned(ty : @ast.Type) -> Bool {
 }
 
 ///|
+/// 类型 → 核运算域（整型提升后；C11 §6.3.1.1）。非整型（指针/浮点/枚举外
+/// 的异常形态）回落 I32——到达此处的 CI 操作数只来自整型字面量/cast/
+/// sizeof，非整型实际不可达，回落值仅作穷尽兜底。
+fn ce_domain(ty : @ast.Type) -> @arith.IntDomain {
+  match ty.kind() {
+    TK_Char => @arith.integer_promote(@arith.KChar, ty.is_unsigned())
+    TK_Int => @arith.integer_promote(@arith.KInt, ty.is_unsigned())
+    TK_LongLong => @arith.integer_promote(@arith.KLongLong, ty.is_unsigned())
+    _ => @arith.I32
+  }
+}
+
+///|
+fn ce_dom_unsigned(d : @arith.IntDomain) -> Bool {
+  d is @arith.U32 || d is @arith.U64
+}
+
+///|
+/// AST 二元算子 → 核算子（And/Or/Comma 不在核内：短路帧与非常量形态）。
+fn ce_bin_op(op : @ast.BinaryOp) -> @arith.IntBinOp? {
+  match op {
+    Add => Some(@arith.OpAdd)
+    Sub => Some(@arith.OpSub)
+    Mul => Some(@arith.OpMul)
+    Div => Some(@arith.OpDiv)
+    Mod => Some(@arith.OpMod)
+    BitAnd => Some(@arith.OpBitAnd)
+    BitOr => Some(@arith.OpBitOr)
+    BitXor => Some(@arith.OpBitXor)
+    Shl => Some(@arith.OpShl)
+    Shr => Some(@arith.OpShr)
+    Lt => Some(@arith.OpLt)
+    Le => Some(@arith.OpLe)
+    Gt => Some(@arith.OpGt)
+    Ge => Some(@arith.OpGe)
+    Eq => Some(@arith.OpEq)
+    Ne => Some(@arith.OpNe)
+    And | Or | Comma => None
+  }
+}
+
+///|
 /// 值按类型宽度/符号性归一（P1-2）：u32 → 低 32 位零扩展（位模式语义
 /// 值 4294967295 域）、i32 → 32 位符号扩展、char 同款 8 位、64 位类型
 /// 不动。64 位容器内保持位模式一致是算术可先算后归一的依据。
+/// #426 批 1 起：二元/一元算术的域归一走核 `@arith.normalize`，本函数
+/// 保留给 **cast 目标面**（含核外的 char 8 位域）与折叠出口。
 fn ce_normalize(i : Int64, ty : @ast.Type) -> Int64 {
   match ty.kind() {
     TK_Char => if ty.is_unsigned() { i & 0xFFL } else { i << 56 >> 56 }
@@ -69,23 +126,46 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
   while st.length() > 0 {
     match st.pop() {
       None => break
-      Some(CE_AppU(op, ty)) => {
+      Some(CE_AppU(op, oty, loc)) => {
         let v = match vals.pop() {
           Some(v) => v
           None => return None
         }
         match (op, v) {
-          (Neg, CI(i, _)) =>
-            vals.push(CI(ce_normalize(i.neg(), ty), ce_is_unsigned(ty)))
+          (Neg, CI(i, _)) => {
+            // #426 批 1：求值域 = integer_promote(操作数)（uchar → I32，
+            // 与 ops.mbt A7.3 定型面解耦）；I32 域 -INT_MIN 溢出按拍板①
+            // W3090 照折回绕值（clang -Winteger-overflow 口径）
+            let dom = ce_domain(oty)
+            let x = @arith.normalize(i, dom)
+            match @arith.eval_int_unary(@arith.OpNeg, x, dom) {
+              Ok(r) => vals.push(CI(r, ce_dom_unsigned(dom)))
+              Err(@arith.NegOverflow) => {
+                self.report_const_overflow(loc, dom)
+                vals.push(CI(@arith.normalize(-x, dom), ce_dom_unsigned(dom)))
+              }
+              Err(_) => return None
+            }
+          }
           (Neg, CF(f)) => vals.push(CF(-f))
           (Pos, v) => vals.push(v) // 恒等（#71 病 39）
           (Not, CI(i, _)) => vals.push(CI(if i == 0 { 1L } else { 0L }, false))
-          (BitNot, CI(i, _)) =>
-            vals.push(CI(ce_normalize(-1L * (i + 1L), ty), ce_is_unsigned(ty))) // 二补码代数式
+          (BitNot, CI(i, _)) => {
+            let dom = ce_domain(oty)
+            match
+              @arith.eval_int_unary(
+                @arith.OpBitNot,
+                @arith.normalize(i, dom),
+                dom,
+              ) {
+              Ok(r) => vals.push(CI(r, ce_dom_unsigned(dom)))
+              Err(_) => return None // BitNot 无故障面（穷尽兜底）
+            }
+          }
           _ => return None // 位非/逻辑非的浮点操作数：教学域罕见，不折
         }
       }
-      Some(CE_AppB(op, lty, rty, resty)) => {
+      Some(CE_AppB(op, lty, rty, resty, loc)) => {
         let b = match vals.pop() {
           Some(v) => v
           None => return None
@@ -97,113 +177,77 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
         // 任一侧浮点 → double 域（C usual arithmetic promotions 简化）
         match (a, b) {
           (CI(x, _), CI(y, _)) => {
-            // P1-2：整型混合符号——usual conversions 任一侧 unsigned 即
-            // 升无符号域（位模式按 UInt64 重解释比较/除法/右移）
-            let u_domain = ce_is_unsigned(lty) || ce_is_unsigned(rty)
-            let xu = x.reinterpret_as_uint64()
-            let yu = y.reinterpret_as_uint64()
-            match op {
-              Add =>
-                vals.push(CI(ce_normalize(x + y, resty), ce_is_unsigned(resty)))
-              Sub =>
-                vals.push(CI(ce_normalize(x - y, resty), ce_is_unsigned(resty)))
-              Mul =>
-                vals.push(CI(ce_normalize(x * y, resty), ce_is_unsigned(resty)))
-              Div =>
-                if y != 0 {
-                  vals.push(
-                    CI(
-                      ce_normalize(
-                        if u_domain {
-                          (xu / yu).reinterpret_as_int64()
-                        } else {
-                          x / y
-                        },
-                        resty,
-                      ),
-                      ce_is_unsigned(resty),
-                    ),
-                  )
-                } else {
-                  return None
-                }
-              Mod =>
-                if y != 0 {
-                  vals.push(
-                    CI(
-                      ce_normalize(
-                        if u_domain {
-                          (xu % yu).reinterpret_as_int64()
-                        } else {
-                          x % y
-                        },
-                        resty,
-                      ),
-                      ce_is_unsigned(resty),
-                    ),
-                  )
-                } else {
-                  return None
-                }
-              BitAnd =>
-                vals.push(CI(ce_normalize(x & y, resty), ce_is_unsigned(resty)))
-              BitOr =>
-                vals.push(CI(ce_normalize(x | y, resty), ce_is_unsigned(resty)))
-              BitXor =>
-                vals.push(CI(ce_normalize(x ^ y, resty), ce_is_unsigned(resty)))
-              Shl =>
-                if y >= 0 && y <= 63 {
-                  vals.push(
-                    CI(
-                      ce_normalize(x << y.to_int(), resty),
-                      ce_is_unsigned(resty),
-                    ),
-                  )
-                } else {
-                  return None
-                }
-              Shr =>
-                if y >= 0 && y <= 63 {
-                  // 逻辑右移（u_domain）/ 算术右移（signed）
-                  vals.push(
-                    CI(
-                      ce_normalize(
-                        if u_domain {
-                          (xu >> y.to_int()).reinterpret_as_int64()
-                        } else {
-                          x >> y.to_int()
-                        },
-                        resty,
-                      ),
-                      ce_is_unsigned(resty),
-                    ),
-                  )
-                } else {
-                  return None
-                }
-              Lt => {
-                let hit = if u_domain { xu < yu } else { x < y }
-                vals.push(CI(if hit { 1L } else { 0L }, false))
-              }
-              Le => {
-                let hit = if u_domain { xu <= yu } else { x <= y }
-                vals.push(CI(if hit { 1L } else { 0L }, false))
-              }
-              Gt => {
-                let hit = if u_domain { xu > yu } else { x > y }
-                vals.push(CI(if hit { 1L } else { 0L }, false))
-              }
-              Ge => {
-                let hit = if u_domain { xu >= yu } else { x >= y }
-                vals.push(CI(if hit { 1L } else { 0L }, false))
-              }
-              Eq => vals.push(CI(if x == y { 1L } else { 0L }, false))
-              Ne => vals.push(CI(if x != y { 1L } else { 0L }, false))
-              And =>
-                vals.push(CI(if x != 0 && y != 0 { 1L } else { 0L }, false))
-              Or => vals.push(CI(if x != 0 || y != 0 { 1L } else { 0L }, false))
-              _ => return None
+            // #426 批 1：整型二元全部走共享算术核——域判定 = 两侧整型提升
+            // 后取公共域（C11 §6.3.1.8，promote_type 值域面孪生；旧「任一侧
+            // unsigned 即无符号域」M08 A1 病灶退役）；Shl/Shr 的域取**左操作
+            // 数提升后域**（§6.5.7，结果符号性随左操作数）；Eq/Ne 同域规范
+            // 后比位模式（M08 A2）。故障分流：Add/Sub/Mul 溢出（仅 I32 域产）
+            // 按拍板① W3090 照折回绕值；除零/移位越界/MIN÷-1 拒折（None），
+            // 由 fold_static_init 的 A4 诊断臂报 E3075。
+            let aop = match ce_bin_op(op) {
+              Some(o) => o
+              None => return None // And/Or 走 LogiRhs 帧不可达；Comma 非常量
             }
+            let ld = ce_domain(lty)
+            let dom = if op is Shl || op is Shr {
+              ld
+            } else {
+              @arith.common_domain(ld, ce_domain(rty))
+            }
+            let xv = @arith.normalize(x, dom)
+            // 移位量不归一到左域（宽度检查取原值，负数/越界原样进核判界）
+            let yv = if op is Shl || op is Shr {
+              y
+            } else {
+              @arith.normalize(y, dom)
+            }
+            let is_cmp = op is Lt ||
+              op is Le ||
+              op is Gt ||
+              op is Ge ||
+              op is Eq ||
+              op is Ne
+            match @arith.eval_int_binary(aop, xv, yv, dom) {
+              Ok(r) =>
+                if is_cmp {
+                  vals.push(CI(r, false)) // 比较结果恒 int 0/1
+                } else {
+                  // PR #456 审阅 P3-1：I64 域四则数学溢出补检（Q 族核契约
+                  // 回绕不产故障——i32 溢出走下方 Err 臂，此臂只补 I64）
+                  if dom is @arith.I64 {
+                    let wrapped = match aop {
+                      @arith.OpAdd => ce_i64_add_wrapped(xv, yv, r)
+                      @arith.OpSub => ce_i64_sub_wrapped(xv, yv, r)
+                      @arith.OpMul => ce_i64_mul_wrapped(xv, yv)
+                      _ => false
+                    }
+                    if wrapped {
+                      self.report_const_overflow(loc, dom)
+                    }
+                  }
+                  vals.push(CI(r, ce_dom_unsigned(dom)))
+                }
+              Err(@arith.AddOverflow) => {
+                self.report_const_overflow(loc, dom)
+                vals.push(
+                  CI(@arith.normalize(xv + yv, dom), ce_dom_unsigned(dom)),
+                )
+              }
+              Err(@arith.SubOverflow) => {
+                self.report_const_overflow(loc, dom)
+                vals.push(
+                  CI(@arith.normalize(xv - yv, dom), ce_dom_unsigned(dom)),
+                )
+              }
+              Err(@arith.MulOverflow) => {
+                self.report_const_overflow(loc, dom)
+                vals.push(
+                  CI(@arith.normalize(xv * yv, dom), ce_dom_unsigned(dom)),
+                )
+              }
+              Err(_) => return None
+            }
+            ignore(resty)
           }
           _ => {
             // 浮点域（至少一侧 CF）
@@ -255,12 +299,30 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             }
           _ =>
             match v {
-              // 截断语义（C 浮→整转换；超界环绕与 clang 常量折叠口径
-              // 差异由对拍暴露再登记）
-              CF(f) =>
-                vals.push(
-                  CI(ce_normalize(f.to_int64(), target), ce_is_unsigned(target)),
-                )
+              // #426 批 1（M08 A5）：浮→整按**目标域饱和**（与 VM CastD2I/
+              // CastD2Q 同源：(int)1e300 → 2147483647，旧 to_int64 饱和到
+              // INT64_MAX 再截低 32 位 = -1 错值）。有符号 int/char 走 i32
+              // 饱和、有符号 LL 走 i64 饱和；**无符号目标维持 to_int64 截断
+              // 路径**（(unsigned)3e9 现状经 u32 归一恰得 3000000000 正确，
+              // U 域饱和属 UB/C23 面——设计单 §五·4 登记不改）。
+              CF(f) => {
+                let raw = match target.kind() {
+                  TK_LongLong =>
+                    if target.is_unsigned() {
+                      f.to_int64()
+                    } else {
+                      @arith.f2i_saturate_i64(f)
+                    }
+                  TK_Int | TK_Char =>
+                    if target.is_unsigned() {
+                      f.to_int64()
+                    } else {
+                      @arith.f2i_saturate_i32(f)
+                    }
+                  _ => f.to_int64()
+                }
+                vals.push(CI(ce_normalize(raw, target), ce_is_unsigned(target)))
+              }
               // P1-2：整→整 cast 按目标宽度/符号性归一——旧恒等臂丢
               // unsigned 位（`(unsigned)-1` 值域该 4294967295）
               CI(i, _) =>
@@ -268,24 +330,98 @@ fn TypeChecker::const_eval(self : TypeChecker, expr : @ast.Expr) -> CVal? {
             }
         }
       }
+      Some(CE_LogiRhs(op, r)) => {
+        // #426 批 1（M08 A3）：&&/|| 短路——左值定局（And 左假 / Or 左真）
+        // 则产 0/1 并**弃右树**（右侧 1/0 等求值失败不再拖垮整体折叠——
+        // clang 零诊断值 1 口径）；未定局则左值回栈、压右树与 LogiFin。
+        let l = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        let l_true = match l {
+          CI(i, _) => i != 0
+          CF(f) => f != 0.0
+        }
+        let decided = if op is And { !l_true } else { l_true }
+        if decided {
+          vals.push(CI(if op is And { 0L } else { 1L }, false))
+        } else {
+          vals.push(l)
+          st.push(CE_LogiFin(op))
+          st.push(CE_E(r))
+        }
+      }
+      Some(CE_LogiFin(op)) => {
+        let b = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        let a = match vals.pop() {
+          Some(v) => v
+          None => return None
+        }
+        fn truthy(v : CVal) -> Bool {
+          match v {
+            CI(i, _) => i != 0
+            CF(f) => f != 0.0
+          }
+        }
+        let hit = if op is And {
+          truthy(a) && truthy(b)
+        } else {
+          truthy(a) || truthy(b)
+        }
+        vals.push(CI(if hit { 1L } else { 0L }, false))
+      }
+      Some(CE_StrIdx(s)) => {
+        let i = match vals.pop() {
+          Some(CI(i, _)) => i
+          Some(CF(_)) => return None // 浮点下标非 C 合法常量形态
+          None => return None
+        }
+        // 界内按 UTF-16 码元取值（ASCII 域=字节；非 ASCII 字节语义面登记
+        // 渐进）；越界/负 → 拒折（由 diagnose 的 Index 臂报，文案分场景）
+        if i >= 0L && i < s.length().to_int64() {
+          vals.push(CI(s[i.to_int()].to_int64(), false))
+        } else {
+          return None
+        }
+      }
       Some(CE_E(e)) =>
         match e {
           Literal(v, _, _) => vals.push(CI(v.to_int64(), false))
           LongLiteral(v, _, lty) => vals.push(CI(v, ce_is_unsigned(lty)))
           FloatLiteral(v, _, _) => vals.push(CF(v))
-          Unary(op, inner, _, ty) => {
-            st.push(CE_AppU(op, ty))
+          Unary(op, inner, loc, _) => {
+            // 帧携带**操作数类型**（求值域 = 其整型提升；结果类型由 ops.mbt
+            // 定型面另管——A7 定型病不传染值域面）
+            st.push(CE_AppU(op, inner.ty(), loc))
             st.push(CE_E(inner))
           }
-          Binary(op, l, r, _, ty) => {
-            st.push(CE_AppB(op, l.ty(), r.ty(), ty))
-            st.push(CE_E(r))
-            st.push(CE_E(l))
-          }
+          Binary(op, l, r, loc, ty) =>
+            if op is And || op is Or {
+              // 短路两阶段：先只算左树
+              st.push(CE_LogiRhs(op, r))
+              st.push(CE_E(l))
+            } else {
+              st.push(CE_AppB(op, l.ty(), r.ty(), ty, loc))
+              st.push(CE_E(r))
+              st.push(CE_E(l))
+            }
           Ternary(c, t, el, _, _) => {
             st.push(CE_TernSel(t, el))
             st.push(CE_E(c))
           }
+          // PR #456 审阅 P2-1：字符串字面量下标是合法常量（C11 §6.6）——
+          // 压 CE_StrIdx 帧折字节值；其余 Index 形态（数组裸用等）非常量
+          Index(base, idx, _, _) =>
+            match base {
+              StringLiteral(s, _, _) => {
+                st.push(CE_StrIdx(s))
+                st.push(CE_E(idx))
+              }
+              _ => return None
+            }
           Cast(inner, target, _, _) => {
             st.push(CE_Cast(target))
             st.push(CE_E(inner))
@@ -399,7 +535,34 @@ fn TypeChecker::fold_static_init(
           Some(@ast.Expr::Literal(@util.i64_to_i32_bits(i), loc, keep_ty))
         (CF(f), TK_Double | TK_Float) =>
           Some(@ast.Expr::FloatLiteral(f, loc, keep_ty))
-        (CF(f), _) => Some(@ast.Expr::LongLiteral(f.to_int64(), loc, keep_ty))
+        // #426 批 1（M08 A5 第二处）：浮值落整目标按目标域饱和（旧一律
+        // f.to_int64() 造 LongLiteral，int 目标经 codegen 截低 32 位 = -1）
+        (CF(f), TK_LongLong) =>
+          Some(
+            @ast.Expr::LongLiteral(
+              if target.is_unsigned() {
+                f.to_int64()
+              } else {
+                @arith.f2i_saturate_i64(f)
+              },
+              loc,
+              keep_ty,
+            ),
+          )
+        (CF(f), _) =>
+          Some(
+            @ast.Expr::Literal(
+              @util.i64_to_i32_bits(
+                if target.is_unsigned() {
+                  f.to_int64()
+                } else {
+                  @arith.f2i_saturate_i32(f)
+                },
+              ),
+              loc,
+              keep_ty,
+            ),
+          )
       }
     }
     None => None
@@ -408,8 +571,96 @@ fn TypeChecker::fold_static_init(
     Some(node) => node
     None => {
       self.diagnose_static_init(init)
+      // #426 批 1（M08 A4）：树中无任何运行期引用（Identifier/Call/Index/
+      // Member/取址/字符串）却折不出 → 必是运算性失败（除零 / 移位量越界 /
+      // INT_MIN÷-1 拒折）→ 报 E3075（旧零诊断 + codegen 置 0 = 静默错值；
+      // clang "initializer element is not a compile-time constant"）。
+      // diagnose_static_init 对纯常量树零报，故不双报。
+      if ce_pure_const_tree(init) {
+        self.report_error(
+          "初始化器含无法在编译期求值的常量运算（除以零、移位量越界或 INT_MIN / -1），静态存储期对象的初始化器必须是可求值的常量表达式",
+          init.loc(),
+          E3075_StaticInitNotConstant,
+        )
+      }
       init
     }
+  }
+}
+
+///|
+/// #426 批 1：常量表达式整数溢出警告单点（拍板①：W 级照折回绕值，对齐
+/// clang -Winteger-overflow；运行期教学 trap 口径不变——文案把两上下文
+/// 的分裂显式告诉学生）。
+fn TypeChecker::report_const_overflow(
+  self : TypeChecker,
+  loc : @source.SourceLoc,
+  dom : @arith.IntDomain,
+) -> Unit {
+  let what = if dom is @arith.I64 { "long long" } else { "int" }
+  self.report_warning(
+    "常量表达式整数溢出：结果超出 \{what} 能表示的范围，已按二补码回绕折叠（与 clang 一致）；同一运算若在函数体中执行将触发「整数溢出」运行时错误",
+    loc,
+    W3090_ConstIntOverflow,
+  )
+}
+
+///|
+/// 纯常量树判定（A4）：只含字面量 / 一元（非取址）/ 二元 / 三元 / cast /
+/// 类型形态 sizeof——不含任何运行期引用。此类树交给 const_eval 折不出，
+/// 只可能是运算性失败。
+
+///|
+/// PR #456 审阅 P3-1：I64 四则回绕后的数学溢出检测（W3090 判定面）——
+/// 核语义表按 VM Q 族契约回绕不产故障（i32 教学 trap 与 Q 族回绕的既有
+/// 分划），折叠器对齐 clang -Winteger-overflow 的 signed 溢出警告在消费
+/// 侧补检；U 域回绕是 C 定义行为（clang 不警告），不检。
+fn ce_i64_add_wrapped(x : Int64, y : Int64, r : Int64) -> Bool {
+  // 同号相加结果异号 = 溢出（模 2^64 下数学等价判定）
+  (x >= 0L && y >= 0L && r < 0L) || (x < 0L && y < 0L && r >= 0L)
+}
+
+///|
+fn ce_i64_sub_wrapped(x : Int64, y : Int64, r : Int64) -> Bool {
+  // 异号相减结果与被减数反号 = 溢出（同号相减数学上不溢出）
+  (x >= 0L && y < 0L && r < 0L) || (x < 0L && y >= 0L && r >= 0L)
+}
+
+///|
+fn ce_i64_mul_wrapped(x : Int64, y : Int64) -> Bool {
+  // 绝对值 u64 域除法回验（数学可靠：回绕值恒小于真积，整除回验必失配）+
+  // 有符号界（2^63 ≤ |积| < 2^64：同号积超 LLONG_MAX 溢出；异号仅 |积|
+  // > 2^63 溢出——恰 2^63 = LLONG_MIN 合法，INT64_MIN*1 误报防线）
+  if x == 0L || y == 0L {
+    return false
+  }
+  // |INT64_MIN| = 2^63：-x 回绕后位模式恰为 2^63，u64 重解释即绝对值
+  let xu = (if x < 0L { -x } else { x }).reinterpret_as_uint64()
+  let yu = (if y < 0L { -y } else { y }).reinterpret_as_uint64()
+  let p = xu * yu
+  if p / xu != yu {
+    return true
+  }
+  let same_sign = (x >= 0L) == (y >= 0L)
+  if same_sign {
+    p >= 9223372036854775808UL
+  } else {
+    p > 9223372036854775808UL
+  }
+}
+
+///|
+fn ce_pure_const_tree(e : @ast.Expr) -> Bool {
+  match e {
+    Literal(_, _, _) | LongLiteral(_, _, _) | FloatLiteral(_, _, _) => true
+    Unary(op, inner, _, _) =>
+      !(op is @ast.UnaryOp::Addr) && ce_pure_const_tree(inner)
+    Binary(_, l, r, _, _) => ce_pure_const_tree(l) && ce_pure_const_tree(r)
+    Ternary(c, t, el, _, _) =>
+      ce_pure_const_tree(c) && ce_pure_const_tree(t) && ce_pure_const_tree(el)
+    Cast(inner, _, _, _) => ce_pure_const_tree(inner)
+    Sizeof(Some(_), None, _, _) => true
+    _ => false
   }
 }
 
@@ -543,8 +794,9 @@ fn find_field_ty(
 /// - Unary(Addr, ..) 合法（地址常量族：`&g` / `f` / `&arr[i]`）——但
 ///   #331（2026-10-27）起 base 标识符做声明序守卫：前向引用（声明点
 ///   在后）报 E3023，对齐 clang use-before-declaration
-/// - Index/Member/Deref 裸用（`arr[0]` / `s.x`）与除零等求值失败：
-///   不报（保守，登记渐进）
+/// - Index/Member 裸用（`arr[0]` / `s.x`）→ 报（#426 批 1 起；旧「保守
+///   不报」实为静默错值——配合 codegen 置 0 路径）；除零等**运算性**求值
+///   失败由 fold_static_init 的纯常量树判定补报（ce_pure_const_tree）
 fn TypeChecker::diagnose_static_init(
   self : TypeChecker,
   expr : @ast.Expr,
@@ -615,6 +867,31 @@ fn TypeChecker::diagnose_static_init(
       for elem in elements {
         self.diagnose_static_init(elem.value)
       }
+    // #426 批 1（M08 A4）：数组元素 / 成员**裸用**（`arr[0]` / `s.x`，非取址
+    // 形态——`&arr[i]`/`&s.x` 在上方 Addr 臂走地址常量豁免）是运行期读，
+    // 静态初始化器恒非法（clang error）；旧落 `_ => ()` 零诊断 + codegen
+    // 置 0 = 静默错值。
+    Index(base, _, _, _) =>
+      if base is StringLiteral(_, _, _) {
+        // 到此必是下标越界/负/非常量（界内已在 const_eval 折掉）
+        self.report_error(
+          "字符串字面量下标越界或不是编译期常量，无法求值",
+          expr.loc(),
+          E3075_StaticInitNotConstant,
+        )
+      } else {
+        self.report_error(
+          "初始化器含数组元素读取，静态存储期对象的初始化器必须是编译期常量表达式（取元素地址 &arr[i] 合法，读元素值不合法）",
+          expr.loc(),
+          E3075_StaticInitNotConstant,
+        )
+      }
+    Member(_, _, _, _, _) =>
+      self.report_error(
+        "初始化器含结构体成员读取，静态存储期对象的初始化器必须是编译期常量表达式（取成员地址 &s.x 合法，读成员值不合法）",
+        expr.loc(),
+        E3075_StaticInitNotConstant,
+      )
     _ => ()
   }
 }
@@ -757,8 +1034,9 @@ fn collect_case_labels(
         Some(e) =>
           match tc.const_eval(e) {
             Some(CI(v, _)) => labels.push((v, e.loc()))
-            // 浮点 case 标签：E3046/E3047 已报，占位参与查重
-            Some(CF(_)) => labels.push((0L, e.loc()))
+            // 浮点 case 标签：E3047 已报；**不入查重表**（#426 批 2 修 M08 A8：
+            // 旧两个浮点 case 共占位 0 互撞多报假 E3074「重复的 case 值 0」）
+            Some(CF(_)) => ()
             None => ()
           }
         None => default_count = default_count + 1

@@ -1,0 +1,32 @@
+{
+  "case": "kmp_std",
+  "source": "templates/stringMatchKMP/source.c",
+  "note": "M34b A4 红例（标准模板即触发）：匹配阶段回溯行 j = next[j]（L30）被 build_next 判据吞，skip 词汇死分支",
+  "step_budget": 2000,
+  "detect": [
+    "string_match_kmp"
+  ],
+  "frames": [
+    {
+      "id": "kmp_backtrack_is_skip",
+      "kind": "expect",
+      "phase": "skip",
+      "line": 30,
+      "note": "j = next[j] 是回溯（skip）非建表"
+    },
+    {
+      "id": "kmp_backtrack_not_build_next",
+      "kind": "forbid",
+      "phase": "build_next",
+      "line": 30,
+      "note": "回溯行不得标 build_next（现文案「构建 next 数组，next[0]=-1」把回溯后 j 当下标）"
+    },
+    {
+      "id": "kmp_getnext_backtrack_not_build_next",
+      "kind": "forbid",
+      "phase": "build_next",
+      "line": 14,
+      "note": "getNext 体内 k = next[k] 是回溯非建表（现文案「构建 next 数组，next[1]=-1」把 j 当下标）"
+    }
+  ]
+}

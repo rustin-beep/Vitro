@@ -1,0 +1,7 @@
+{
+  "case": "is_prime_std",
+  "source": "templates/isPrime/source.c",
+  "note": "M33b A1 红例（标准模板即触发）：isPrime 含子串 prim 命中 graph 族 contains(\"prim\") 误标 Prim 最小生成树（confidence 85 + 完整错误文案 + vis_events）",
+  "step_budget": 400,
+  "detect": ["is_prime"]
+}

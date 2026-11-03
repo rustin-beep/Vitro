@@ -1,0 +1,35 @@
+{
+  "case": "bfs_std",
+  "source": "templates/bfs/source.c",
+  "note": "正例主干：标准 BFS 模板（visited 全局零初始化、无重置行）",
+  "step_budget": 2500,
+  "detect": [
+    "bfs"
+  ],
+  "frames": [
+    {
+      "id": "bfs_std_visit_start",
+      "kind": "expect",
+      "phase": "visit",
+      "line": 15,
+      "desc": "标记节点 0"
+    },
+    {
+      "id": "bfs_std_dequeue_u0",
+      "kind": "expect",
+      "phase": "dequeue",
+      "desc": "u=0"
+    },
+    {
+      "id": "bfs_std_visit_v1_node_value",
+      "kind": "expect",
+      "phase": "visit",
+      "line": 22,
+      "vars": {
+        "v": 1
+      },
+      "desc": "标记节点 1 ",
+      "note": "标准模板真标记行 visited[v]=1 节点值须为 v=1（现「节点 0」）"
+    }
+  ]
+}

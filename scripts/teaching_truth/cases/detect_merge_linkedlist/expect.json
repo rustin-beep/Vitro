@@ -1,0 +1,7 @@
+{
+  "case": "detect_merge_linkedlist",
+  "source": "./source.c",
+  "note": "M33b A4 红例：链表归并辅助函数命中 merge_sort 结构分支（无 sort 语境门槛）",
+  "step_budget": 300,
+  "detect": []
+}

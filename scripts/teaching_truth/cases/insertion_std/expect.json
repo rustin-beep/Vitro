@@ -1,0 +1,17 @@
+{
+  "case": "insertion_std",
+  "source": "templates/insertion/source.c",
+  "note": "正例主干：教科书插入排序（后移 arr[j+1]=arr[j] 非交换——M30 A1-3 插入移位形态的 collector 面）",
+  "step_budget": 1500,
+  "detect": [
+    "insertion_sort"
+  ],
+  "frames": [
+    {
+      "id": "insertion_std_insert_key11_pos0",
+      "kind": "expect",
+      "phase": "insert",
+      "desc": "将 key=11 插入到正确位置 0"
+    }
+  ]
+}

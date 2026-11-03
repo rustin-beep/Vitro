@@ -1,0 +1,21 @@
+{
+  "case": "selection_std",
+  "source": "templates/selection/source.c",
+  "note": "正例主干：教科书选择排序（minIdx 别名读侧完备——M34b C1 正面对照）",
+  "step_budget": 1500,
+  "detect": [
+    "selection_sort"
+  ],
+  "frames": [
+    {
+      "id": "selection_std_compare_j1",
+      "kind": "expect",
+      "phase": "compare",
+      "vars": {
+        "j": 1,
+        "minIdx": 0
+      },
+      "desc": "比较 arr\\[1\\] 与当前最小值 arr\\[0\\]"
+    }
+  ]
+}

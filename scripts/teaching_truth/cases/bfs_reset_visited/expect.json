@@ -1,0 +1,36 @@
+{
+  "case": "bfs_reset_visited",
+  "source": "./source.c",
+  "note": "M34b A3 红例（BFS 侧）：visited 重置行/判断行命中宽判据 contains(visited)+contains(=)，文案节点值与行下标脱钩",
+  "step_budget": 2500,
+  "detect": [
+    "bfs"
+  ],
+  "frames": [
+    {
+      "id": "bfs_reset_visit_no_false_node",
+      "kind": "forbid",
+      "phase": "visit",
+      "line": 19,
+      "note": "重置行 visited[i]=0 非访问语义，不得产 visit 帧（现误标「标记节点 0」）"
+    },
+    {
+      "id": "bfs_cond_line_no_visit",
+      "kind": "forbid",
+      "phase": "visit",
+      "line": 27,
+      "note": "判断行 graph[u][v]==1 && visited[v]==0 非标记动作，不得产 visit 帧"
+    },
+    {
+      "id": "bfs_reset_visit_v1_node_value",
+      "kind": "expect",
+      "phase": "visit",
+      "line": 28,
+      "vars": {
+        "v": 1
+      },
+      "desc": "标记节点 1 ",
+      "note": "真标记行 visited[v]=1 的节点值须为 v（现取 u/start 得「节点 0」——M34b A3 端到端形态：白盒 -1 直拼，端到端取错变量）"
+    }
+  ]
+}

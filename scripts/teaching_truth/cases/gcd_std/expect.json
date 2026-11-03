@@ -1,0 +1,11 @@
+{
+  "case": "gcd_std",
+  "source": "templates/gcd/source.c",
+  "note": "正例主干：b = a % b 单行形态（行末 b 恰是余数——mod 算式当前正确）",
+  "step_budget": 200,
+  "detect": ["gcd"],
+  "frames": [
+    { "id": "gcd_std_mod_48_18_12", "kind": "expect", "phase": "mod", "desc": "计算 48 % 18 = 12" },
+    { "id": "gcd_std_finish_6", "kind": "expect", "phase": "finish", "desc": "最大公约数为 6" }
+  ]
+}

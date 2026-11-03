@@ -1,0 +1,9 @@
+{
+  "case": "detect_quick_structural",
+  "source": "./source.c",
+  "note": "M33b A3 红例：结构分支快排形态 A（递归调 partition 无嵌套循环）——三特征同函数共存判据不可满足，双双漏检",
+  "step_budget": 1000,
+  "detect": [
+    "quick_sort"
+  ]
+}

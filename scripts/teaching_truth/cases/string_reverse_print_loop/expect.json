@@ -1,0 +1,9 @@
+{
+  "case": "string_reverse_print_loop",
+  "source": "./source.c",
+  "note": "M34b A6 红例：打印循环 for(i<len) 命中 for+len 判据被误标 swap（含「交换位置 2 和 2」荒谬帧）",
+  "step_budget": 500,
+  "frames": [
+    { "id": "reverse_print_no_swap", "kind": "forbid", "phase": "swap", "line": 17, "note": "打印循环无交换语义，不得产 swap 帧" }
+  ]
+}

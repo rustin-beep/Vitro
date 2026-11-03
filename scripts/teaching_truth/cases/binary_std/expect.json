@@ -1,0 +1,17 @@
+{
+  "case": "binary_std",
+  "source": "templates/binary/source.c",
+  "note": "正例主干：教科书二分（命名兜底命中）——mid/compare 文案数值与帧一致。not_found forbid 锚已删（PR #453 审阅 P3-3：模板找到目标走 return mid，not_found 场景帧流不可达=安慰性锚；M34b C2 b3 形态需未命中变体语料，登记 #436 追加）",
+  "step_budget": 300,
+  "detect": [
+    "binary_search"
+  ],
+  "frames": [
+    {
+      "id": "binary_std_mid2",
+      "kind": "expect",
+      "phase": "mid_calc",
+      "desc": "计算中点 mid=2"
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectRoot } from "../../internal/capi.mts";
+import { stripLineComments } from "../conv_specs/main.mts";
 
 export const RULES_PATH = "scripts/moonbit/host_shared_guard/rules.json";
 
@@ -172,8 +173,12 @@ export function actualConsumers(fnName: string, defFile: string): string[] {
       const rel = path.relative(abs("moonbit"), p).split(path.sep).join("/");
       if (rel === defFile) continue;
       const text = fs.readFileSync(p, "utf8");
-      // 消费 = 出现定义名（定义/调用/引用皆算——改共享函数时全部要对账）
-      if (new RegExp(`\\b${fnName}\\b`).test(text)) out.push(rel);
+      // 消费 = 出现定义名（定义/调用/引用皆算——改共享函数时全部要对账）。
+      // 2026-11-03 剥行注释后匹配（B3 批 cli_zero_anchor_wbtest 注释提及
+      // utf8_bytes 实锤误命中——「不经 util 包的 utf8_bytes，免给 surface
+      // 边表添一条消费边」的防登记说明文字反被当消费；与 twin_fingerprint
+      // 同款剥注释口径，A7 两闸自此一致）
+      if (new RegExp(`\\b${fnName}\\b`).test(stripLineComments(text))) out.push(rel);
     }
   };
   walk(root);

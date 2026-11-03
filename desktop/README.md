@@ -1,6 +1,6 @@
 # Vitro 桌面壳（desktop/）——proton 捉虫/测试壳
 
-> as_of 2026-11-02（P 线实测前进拍板；实测报告 `tmp/batch_P_proton_REPORT.md` 不入库，结论摘要见本文 §5）
+> as_of 2026-11-03（DCDP 批：CEF 真窗口 CDP smoke 形态 C 段入 CI；前史 2026-11-02 P 线实测前进拍板——实测报告 `tmp/batch_P_proton_REPORT.md` 不入库，结论摘要见本文 §5）
 
 ## 定位（一句话）
 
@@ -52,10 +52,10 @@ npm ci && npm run check:all                        # tsc 严档 + oxlint（CI �
 proton_cli build -- --release                      # 原生构建（~26s，app.exe ~4.9MB）
 PROTON_REMOTE_DEBUGGING_PORT=9335 proton_cli dev   # 起 ../demo 的 vite dev server + 壳窗口
                                                    #（dev_url=http://127.0.0.1:5173，首跑前 demo 需 npm ci）
-node tools/smoke.mts 9335                          # CI 同款全链 smoke：起 dev → 八断言 → 杀树（~10-20s 不含 build）
+node tools/smoke.mts 9335 9336                     # CI 同款全链 smoke：dev 形态 15 断言 + formC 段 9 断言（正向 7 + 负向对照 2）→ 杀树（本地暖态全链 ~60s，含 formC release 重建与负向实例）
 ```
 
-不经 `proton_cli` 直跑 `_build/.../app.exe` 需环境四件套：`PROTON_RUNTIME_ROOT=<store>/runtime`、`PROTON_HELPER_PATH=<helpers>/0.6.0/cef_process.exe`、`PROTON_PROJECT_CONFIG=<本目录>/proton.project.json`、`PATH` 前置 `<runtime>/bin`（缺 config 时 `load_config()` 直读 exe 同目录，缺即 abort）。`proton_cli package` 打包后内嵌元数据可免——打包形态验证列下批。
+不经 `proton_cli` 直跑 `_build/.../app.exe` 需环境四件套：`PROTON_RUNTIME_ROOT=<store>/win32-x64/cef-<hash>-layout-1/runtime`（内容寻址目录，glob 发现）、`PROTON_HELPER_PATH=<helpers>/win32-x64/0.6.0/cef_process.exe`、`PROTON_PROJECT_CONFIG=<本目录>/proton.project.json`、`PATH` 前置 `<runtime>/bin`（缺 config 时 `load_config()` 直读 exe 同目录，缺即 abort）；**且 spawn 的 cwd 必须是 desktop/**——asset 相对路径 `../demo/dist` 按 **cwd**（非 exe 位置）解析，锚错即 `entry_load_error` 且 CDP page targets 空（DCDP 批实锤，smoke 形态 C 段已按此固化）。`proton_cli package` 打包后内嵌元数据可免——打包形态验证列下批。
 
 ## CDP 开关矩阵（P 线四形态实测）
 
@@ -69,6 +69,8 @@ node tools/smoke.mts 9335                          # CI 同款全链 smoke：起
 | `false` | `1024..65535` | env 非空把 debug 翻为 1 ⇒ CDP 开钉死——release 产物开 CDP 的合法通道 |
 | 任意 | （`proton_cli dev`） | `PROTON_MODE=dev` 强制开 |
 
+CI 断言覆盖（`tools/smoke.mts`，DCDP 批起）：**dev 形态**（①–⑤ 段：CDP 就绪/page-ready/demo 采集/矩阵/三虫）与**形态 C**（⑥ 段：临时 debug=false 重建直跑 + env 钉 9336 → CDP 可达 + `proton.localhost` 指纹 + 三虫）双形态各断言——形态 C 钉住「env 非空翻转 debug」的 facade 语义不随 proton 升级漂移；**⑥b 负向对照**（PR #460 审阅 P2-1 起）以**形态 B** 锚入 CI：同产物不给 env ⇒ `find_cdp` 扫零 CDP（窗口已起先证）——这是「patch 真把 debug=false 编进产物」的唯一判别锚（若 patch 失效，debug=true 无 env 开临时随机端口即被扫到，正向断言面对此零判别力）。形态 A（临时端口发现）留在 P 线档案，不入 CI。失败路径断言名全集：`formC-patch`（`'debug=true,'` 计数≠1）/ `formC-build` / `formC-exe`（产物缺席）/ `formC-runtime`（store 零 layout——多 layout 取 mtime 最新非错）/ `formC-neg-window` / `formC-neg-cdp-off`；smoke 启动另有脏态自检（main.mbt 含 `debug=false,` 即 exit 2 带还原指引——上次中断残留的 fail loud 兜底）。
+
 ## 探针（`tools/`，node 直跑 .mts）
 
 | 脚本 | 作用 | 用法 |
@@ -76,7 +78,7 @@ node tools/smoke.mts 9335                          # CI 同款全链 smoke：起
 | `cdp_probe.mts` | 在 page 目标上 `Runtime.evaluate`（awaitPromise）；缺省表达式读 url/title/通道形态/引擎版本 | `node tools/cdp_probe.mts 9335 [expr \| @file]` |
 | `find_cdp.mts` | 按 PID 扫 LISTEN 端口 + `/json/version` 协议指纹 ⇒ 发现临时端口 | `node tools/find_cdp.mts <pid>` |
 | `cdp_catch.mts` | 不开 DevTools 窗口，订阅 exceptionThrown/consoleAPICalled/Log 三域并注入三枚虫 | `node tools/cdp_catch.mts 9335` ⇒ `caught_count ≥ 3` |
-| `smoke.mts` | CI 全量防线编排：spawn `proton_cli dev` → 等 CDP → 八断言（复用上三脚本 + page 资产为单源）→ `taskkill /T` 收树 | `node tools/smoke.mts 9335`（cwd=desktop/） |
+| `smoke.mts` | CI 全量防线编排：spawn `proton_cli dev` → 等 CDP → 15 断言（复用上三脚本 + page 资产为单源）→ 形态 C 段（debug=false 重建直跑 + env 钉端口 → 正向 7 + 负向对照 2 断言）→ `taskkill /T` 收树；finally 还原 `app/main.mbt`（SIGINT/SIGTERM 同步还原 + 启动脏态自检双兜底） | `node tools/smoke.mts 9335 9336`（cwd=desktop/） |
 | `page/demo_matrix.js` | 页内表达式：命令层矩阵（四命令 invokeOp 直调：argv 透传〔契约=数组含 argv[0〕/ feed 续跑 / 断点停采 / invoke 透传——#451 stdin 残留缺陷注意单轮语义） | `node tools/cdp_probe.mts 9335 @tools/page/demo_matrix.js` |
 | `page/demo_run.js` | 页内表达式：驱动 demo UI 完整采集（等按钮就绪→点运行→等采集与 golden 末帧→读 golden/stdout/帧数/版本） | `node tools/cdp_probe.mts 9335 @tools/page/demo_run.js` |
 | `page/fps_probe.js` | 页内表达式：CSS 动画 + rAF 计数 2s ⇒ fps/min/max 帧间隔（窗口须可见） | 同上 |
@@ -98,8 +100,9 @@ node tools/smoke.mts 9335                          # CI 同款全链 smoke：起
 
 ## 已知坑（agent 自测向）
 
-- **工具会话沙箱写围栏**：在受沙箱约束的 agent 会话里，**工作区内**的 `app.exe` 建 `%TEMP%\proton-cef-*` 会 `ERROR_ACCESS_DENIED(5)`（`failed to create temporary browser storage: 5`）——同一 exe 拷到工作区外即正常。处方：`TEMP`/`TMP` 指到工作区内目录（如 `_build/tmp`）再起。普通开发机/CI runner 无此现象。
-- **MSYS bash 直 spawn 本产物 exe** 会报伪加载错 `api-ms-win-shcore-scaling-l1-1-1.dll cannot open shared object file`（同 exe PowerShell 启动正常）——脚本化启动走 PowerShell / `proton_cli dev`。
+- **工具会话沙箱写围栏**：在受沙箱约束的 agent 会话里，**工作区内**的 `app.exe` 建 `%TEMP%\proton-cef-*` 会 `ERROR_ACCESS_DENIED(5)`（`failed to create temporary browser storage: 5`）——同一 exe 拷到工作区外即正常。处方：`TEMP`/`TMP` 指到工作区内目录（如 `_build/tmp`）再起；DCDP 批起 smoke 的 dev 与 formC 两段 spawn 均已内置该处方（CI runner TEMP 本可写，指过去无害）。普通开发机/CI runner 无此现象。
+- **MSYS bash 直 spawn 本产物 exe** 会报伪加载错 `api-ms-win-shcore-scaling-l1-1-1.dll cannot open shared object file`（同 exe PowerShell 启动正常）——脚本化启动走 PowerShell / `proton_cli dev`；**node `child_process.spawn` 直跑正常**（DCDP 批实锤，formC 段即此形态——伪错系 MSYS bash 的 spawn 路径特有）。
+- **asset 相对路径按 cwd 解析**（DCDP 批实锤）：`../demo/dist/index.html` 的锚是**进程 cwd** 而非 exe 位置或 config 位置——直跑 exe 若 cwd 不在 desktop/，即 `entry_load_error`（`fs.realpath` 报到错误盘符路径）且 CDP page targets 空（CDP 端口本身仍开，探活假绿）。
 - **进程存活**：PowerShell `Start-Process` 带重定向句柄的实例随会话关闭被 `CTRL_CLOSE` 连坐杀树（renderer 死 `STATUS_CONTROL_C_EXIT`）；WMI 会话 0 建不了 GUI。跨工具调用存活的可靠形态=bash `(proton_cli dev &)`。
 - CEF CDN 首段可能停滞 ~2min 后冲完（`cef setup` 自带 `--retry 5`）。
 - **`moon --frozen` 不是离线化答案**：其语义=「不许动 modules 目录」（`.mooncakes` 须预先 sync 在位），runner 冷起 `.mooncakes` 空即 bail「new modules need to be installed」——本机验证红绿双态实锤；离线化走 registry cache 层 + 日志断言。

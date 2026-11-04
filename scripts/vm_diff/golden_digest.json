@@ -500,6 +500,12 @@
       "stdout_sha": "d4735e3a265e16ee",
       "memory_sha": "da0c997e08f642b2"
     },
+    "baseline/compound_unsigned_promote.c": {
+      "src_sha": "8ce08a4b",
+      "exit_code": 0,
+      "stdout_sha": "a785c61dc5a9c787",
+      "memory_sha": "448c279bb4231008"
+    },
     "baseline/conditional_compile.c": {
       "src_sha": "6c65dc3e",
       "exit_code": 0,

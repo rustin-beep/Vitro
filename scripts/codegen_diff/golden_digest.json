@@ -87,6 +87,7 @@
         "compound_mod_var.c": "e36b3f92",
         "compound_mul_var.c": "b8fda662",
         "compound_sub_var.c": "4c3236cb",
+        "compound_unsigned_promote.c": "8ce08a4b",
         "conditional_compile.c": "6c65dc3e",
         "const.c": "b97fa1c4",
         "const_2d_array_param.c": "70d43963",
@@ -765,7 +766,7 @@
           "result_sha": "583900ed9409bb88"
         },
         "compound_assign_fp_rhs.c": {
-          "result_sha": "3d65dcc8547cf3cc"
+          "result_sha": "f4f85999f6a158b7"
         },
         "compound_assign_struct.c": {
           "result_sha": "02fc1b7a0b5998ff"
@@ -790,6 +791,9 @@
         },
         "compound_sub_var.c": {
           "result_sha": "34a2a22a1be6714e"
+        },
+        "compound_unsigned_promote.c": {
+          "result_sha": "651c4f47aad4f81b"
         },
         "conditional_compile.c": {
           "result_sha": "17aa1c99c03230f6"
@@ -1328,7 +1332,7 @@
           "result_sha": "0391a687d6dfe6f0"
         },
         "llm_struct_nested_2d_init.c": {
-          "result_sha": "c7645c312fba53a7"
+          "result_sha": "28061d76a5eb48c1"
         },
         "logic_judge_zero.c": {
           "result_sha": "a992ee23efb90e41"

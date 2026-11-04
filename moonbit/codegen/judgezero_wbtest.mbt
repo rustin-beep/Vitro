@@ -19,6 +19,9 @@
 
 ///|
 /// 辅助：函数体指令序里是否存在相邻 opcode 对。
+/// #467 P3-2（2026-11-04 审阅处置）：扫描窗口限定**本函数体**——从 ip
+/// 扫到首个 Ret/RetVoid（含）为止；旧形态扫到 code 末尾会跨进 wrapper/
+/// 其他函数段（跨函数匹配假绿面）。
 fn has_pair(
   code : Array[@opcode.Instruction],
   from : Int32,
@@ -30,6 +33,9 @@ fn has_pair(
   while i < end {
     if code[i].op == a && code[i + 1].op == b {
       return true
+    }
+    if code[i].op is Ret || code[i].op is RetVoid {
+      break
     }
     i += 1
   }
@@ -47,6 +53,9 @@ fn has_op(
   while i < code.length() {
     if code[i].op == a {
       return true
+    }
+    if code[i].op is Ret || code[i].op is RetVoid {
+      break
     }
     i += 1
   }
@@ -305,4 +314,86 @@ test "logical: 5&&3 normalization tail anchored (#425 / M11-B1)" {
     has_pair(o.code, ip, @opcode.OpCode::PushConst, @opcode.OpCode::Ne),
     msg="&& 结果须规范化 0/1（PushConst 0 + Ne 尾——T-P1-1；5&&3 得 1 非 3）",
   )
+}
+
+///|
+/// #467 P1（2026-11-04 审阅处置）：复合赋值域提升的无符号轴——
+/// `unsigned u; long long x; x += u` 左提升须 CastU2Q、`double d; d += u`
+/// 须 CastU2D（跨符号位取值 u=4294967295 的正确性由语料
+/// compound_unsigned_promote.c 直拍锁定；本锚锁指令族选型）。
+test "compound: unsigned promote uses U-casts (#467 P1)" {
+  let u_ty = @ast.Type::unsigned_int()
+  fn mk(
+    op : @ast.AssignOp,
+    lty : @ast.Type,
+    lname : String,
+    rty : @ast.Type,
+    rname : String,
+  ) -> @ast.Stmt {
+    @ast.Stmt::Expr(
+      @ast.Expr::Assign(
+        op,
+        @ast.Expr::Identifier(lname, loc(2), lty),
+        @ast.Expr::Identifier(rname, loc(2), rty),
+        loc(2),
+        lty,
+      ),
+      loc(2),
+    )
+  }
+  let x_ty = @ast.Type::long_long()
+  let d_ty = @ast.Type::double()
+  let program : @ast.ProgramNode = {
+    structs: [],
+    unions: [],
+    globals: [],
+    funcs: [
+      {
+        ..Default::default(),
+        loc: loc(1),
+        return_type: @ast.Type::int(),
+        name: "main",
+        params: [],
+        body: Some(
+          @ast.Stmt::Block(
+            [
+              @ast.Stmt::VarDecl(u_ty, "u", None, [], false, false, loc(2)),
+              @ast.Stmt::VarDecl(x_ty, "x", None, [], false, false, loc(2)),
+              @ast.Stmt::VarDecl(d_ty, "d", None, [], false, false, loc(2)),
+              mk(@ast.AssignOp::AddAssign, x_ty, "x", u_ty, "u"),
+              mk(@ast.AssignOp::AddAssign, d_ty, "d", u_ty, "u"),
+              @ast.Stmt::Return(
+                Some(@ast.Expr::Literal(0, loc(3), @ast.Type::int())),
+                loc(3),
+              ),
+            ],
+            loc(1),
+          ),
+        ),
+      },
+    ],
+    classes: [],
+    templates: [],
+    template_instantiations: [],
+  }
+  let gen = BytecodeGen::new()
+  let (output, errors) = gen.generate(program)
+  assert_eq(errors.length(), 0)
+  let o = output.unwrap()
+  let ip = o.func_table.get("main").unwrap().ip
+  assert_true(
+    has_op(o.code, ip, @opcode.OpCode::CastU2Q),
+    msg="x += u 的左提升须 CastU2Q（零扩展）——signed CastI2Q 在跨符号位取值下回绕成负数",
+  )
+  assert_true(
+    has_op(o.code, ip, @opcode.OpCode::CastU2D),
+    msg="d += u 的提升须 CastU2D（零扩展）——signed CastI2D 在跨符号位取值下得负浮点",
+  )
+  assert_false(
+    has_op(o.code, ip, @opcode.OpCode::CastI2Q),
+    msg="无符号源禁 signed CastI2Q（#467 P1 回归形态）",
+  )
+  // 注：CastI2D 全局禁断不成立——`double d;` 无初始化声明的零初始化路径
+  // 合法发 PushConst 0 + CastI2D + StoreLocalD（与复合段无关）；复合段的
+  // 选型由上方 CastU2D/CastU2Q 正断言锁定（LoadLocal 之后的提升）。
 }

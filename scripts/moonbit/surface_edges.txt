@@ -597,8 +597,14 @@ vitro/engine/typeck vitro/engine/teaching/assets builtin_notes
 vitro/engine/typeck vitro/engine/teaching/assets install_texts
 vitro/engine/typeck vitro/engine/util i64_to_i32_bits
 vitro/engine/typeck vitro/engine/util utf8_len
+# QC 属性批(2026-11-04):util 黑盒 _test.mbt 的 for "test" import 面——quickcheck 属性测试消费边(core 自带,moon.mod 零新增依赖)
+vitro/engine/util moonbitlang/core/debug Debug
 vitro/engine/util moonbitlang/core/encoding/utf8 decode
 vitro/engine/util moonbitlang/core/encoding/utf8 encode
+vitro/engine/util moonbitlang/core/quickcheck Arbitrary
+vitro/engine/util moonbitlang/core/quickcheck check
+vitro/engine/util moonbitlang/core/quickcheck/shrink Shrink
+vitro/engine/util moonbitlang/core/quickcheck/splitmix RandomState
 vitro/engine/vm moonbitlang/core/encoding/utf8 encode
 # #426 B3' 批 3（2026-11-02）：vm executor 整型算术臂接共享算术核——29 边
 vitro/engine/vm vitro/engine/arith ArithFault

@@ -63,6 +63,11 @@
 - **连坐**：测试数 1242→1259（裸 moon test）/1291→1308（native 全量
   MOON_CC=clang-cl，双口径亲测）；moon info 接口面零漂移（pub 面零变更）；
   moon fmt/check 全绿；util_wbtest 例锚与本批属性互补零重复。
+- **surface 边表连坐（CI 首轮红实锤）**：moonbit_surface 闸认 for "test"
+  import 的消费边——util→core/quickcheck×3 + quickcheck/shrink +
+  core/debug 共 5 边登记 surface_edges.txt（PR #476 首轮 contract +
+  scripts-ts 两 job 红，补登记后本地 surface -check 与
+  moonbit_surface.test.mts 双绿）。
 
 ### fix(engine): W4 尾件批——普查钉出的四缺陷修复（abort 族×2 + note 泄漏 + 栈迭代化，Closes #418 #419 #420 #421，2026-11-04）
 

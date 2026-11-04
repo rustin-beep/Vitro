@@ -44,7 +44,7 @@ const WASM_SHELL = "moonbit/_build/js/release/build/cmd/vitro_wasm/vitro_wasm.js
 const WASM_ENGINE = "moonbit/_build/wasm-gc/release/build/gateway/wasm/wasm.wasm";
 /** native 臂被测物：预编译 exe 直跑（Go 版同路径；CI 由 build artifact 保证存在）。 */
 const RUN_EXE = "moonbit/_build/native/release/build/cmd/run/run.exe";
-const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale"];
+const DEFAULT_CORPORA = ["baseline", "knr", "leetcode", "gap", "llm_scale", "chibicc_port"]; // chibicc_port：#437 语料扩充窗口 2026-11-03 接线
 
 /** argv 区脱敏窗（评审 P3 收窄：载荷实测 ~50B，4KB 余量 ~80×）。 */
 const ARGV_MASK_LO = 0xf000;

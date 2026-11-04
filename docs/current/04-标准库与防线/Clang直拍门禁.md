@@ -31,7 +31,7 @@
 ## 二、运行方法
 
 ```bash
-# 在仓库根目录执行（语料 = corpus/ 八目录全量——llm_multifile 为工程模式：一级子目录 = 一个多文件工程；llm_scale 为千行单文件规模压力面）
+# 在仓库根目录执行（语料 = corpus/ 九目录全量（chibicc_port 为 #437 入库的外部基准 port 桶）——llm_multifile 为工程模式：一级子目录 = 一个多文件工程；llm_scale 为千行单文件规模压力面）
 
 <!-- #237 工程模式（2026-10-21）：llm_multifile 的一级子目录视为一个工程——
 同目录全部 .c 一次编译链接（.h 只被 include 不上命令行，-I 指向工程目录）；
@@ -47,7 +47,7 @@ node scripts/clang_direct/main.mts
 
 | 选项 | 说明 |
 |:---|:---|
-| `--corpus dir` | 指定单个语料目录（默认 `corpus/` 下 baseline / knr / leetcode / gap / codegen_skeleton / template_generated / llm_multifile / llm_scale 八目录全量） |
+| `--corpus dir` | 指定单个语料目录（默认 `corpus/` 下 baseline / knr / leetcode / gap / codegen_skeleton / template_generated / llm_multifile / llm_scale / chibicc_port 九目录全量） |
 | `--cases f1.c,...` | 指定具体用例（调试用） |
 | `--sample N` | 仅跑前 N 例（调试用） |
 | `--jobs N` | Clang 并发数（默认 min(CPU,8)；Vitro 侧始终互斥串行） |

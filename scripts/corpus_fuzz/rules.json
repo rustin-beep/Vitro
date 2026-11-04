@@ -21,7 +21,8 @@
     "knr",
     "leetcode",
     "gap",
-    "llm_scale"
+    "llm_scale",
+    "chibicc_port"
   ],
   "generators": [
     {

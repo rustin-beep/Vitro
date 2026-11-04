@@ -304,7 +304,9 @@ jobs:
               # 文件引用对逐文件结构面无意义，其覆盖面归 clang_direct 工程
               # 模式（#237）。
               t="${{ matrix.driver }}"; t="${t%_diff}"
-              for c in baseline knr leetcode gap llm_scale; do
+              # chibicc_port（#437 语料扩充窗口 2026-11-03 入库批）：chibicc
+              # 外部基准 port 桶——同四闸结构面循环。
+              for c in baseline knr leetcode gap llm_scale chibicc_port; do
                 node scripts/diff_gate/main.mts "$t" "corpus/$c" || rc=1
               done
               # codegen_skeleton 节接线（2026-11-01 审阅 v2 S05-C4）：该语料只

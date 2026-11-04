@@ -321,9 +321,6 @@ vitro/engine/host moonbitlang/core/math tan
 vitro/engine/host moonbitlang/core/math tanh
 vitro/engine/host moonbitlang/core/string parse_double
 vitro/engine/host moonbitlang/core/string parse_int
-vitro/engine/host moonbitlang/core/string parse_int64
-vitro/engine/host moonbitlang/core/string parse_uint
-vitro/engine/host moonbitlang/core/string parse_uint64
 vitro/engine/host vitro/engine/bytecode CallRoute
 vitro/engine/host vitro/engine/bytecode MEM_SIZE
 vitro/engine/host vitro/engine/bytecode NULL_TRAP_SIZE

@@ -636,6 +636,32 @@ jobs:
         run: node scripts/cli_symmetry/main.mts -check
         shell: bash
 
+      # ── MCP server 产物冒烟（DSH mbt 化批，2026-11-03）────────────────────
+      # cmd/mcp_js（vitro/engine/mcp 核心的 js 产物）stdio 全链路 16 断言：
+      # 协议契约（initialize/listChanged）/ 渐进披露（L0 5→session_open→
+      # list_changed→L1 12→全关收回）/ readOnlyHint / L1 无会话守卫 / run_to
+      # 事件锚（首交换帧 93 行 8）/ frames_summary 锚（1126 步·swap 7）/
+      # 投影（默认 {i,l,f,s} 分页 + fields/filter）/ render 落盘（301 帧）/
+      # interactive 无 wasm 回落 static（CI 无 wasm 资产——恒走回落，恰锁该
+      # 路径；真 interactive 归实验目录 accept.mts）/ EOF exit(0)（探针①
+      # 产物级复核）。锚值与 mcp_wbtest 同源——引擎行为变更连坐红。
+      # 前置 = 本步自建 js 产物（release）；纯件四件套归 scripts-ts job
+      # （tsc/oxlint/node:test，package.json 三清单已列）。
+      - name: MCP server product smoke (cmd/mcp_js stdio——披露/池/投影/渲染/回落)
+        if: matrix.slice == 'cli_smoke'
+        run: |
+          cd moonbit && moon build --release --target js cmd/mcp_js && cd ..
+          node scripts/moonbit/mcp_smoke/main.mts
+        shell: bash
+
+      # MCP 黑盒验收（v1 samples 同源锚 27 断言；PNG 预览断言仅本地——CI 无
+      # Edge/Chrome 条件跳过）。PR #457 审阅 v2 P3-④ 销案：原 D:/tmp 仓外件
+      # 收编入仓（2026-11-04）——读者可核对，ci_checklist 活行引用。
+      - name: MCP accept (cmd/mcp_js stdio 黑盒——每工具 happy path/池/边界/错误帧)
+        if: matrix.slice == 'cli_smoke'
+        run: node scripts/moonbit/mcp_smoke/accept.mts
+        shell: bash
+
       # algorithms.catalog 对账（#36，2026-10-16 建；2026-10-31 收编批 D 路
       # 退役）：判据源码 build_match 提取物 ↔ 引擎导出（native vitro.exe +
       # js vitro_js.js 双臂互拍）↔ rules.json 43 族。D 路（生成器分组表对账）

@@ -31,6 +31,16 @@ pub fn invoke(line : String) -> String {
 }
 
 ///|
+/// 显式会话形态（DSH mbt 化批，2026-11-03）：同一 NDJSON 帧通道，但会话由
+/// 调用方持有——多会话宿主（MCP server 会话池：每会话一个
+/// `@session.Session`）在**同一进程/同一模块实例内**隔离状态，无需起多
+/// wasm 实例。serve_handle 本就是 Session 参数化纯函数，本函数只是把它
+/// 暴露给包外（零行为改动：全局单例 `invoke` 路径逐字不变）。
+pub fn invoke_on(s : @session.Session, line : String) -> String {
+  serve_handle(s, line).0
+}
+
+///|
 /// invoke 的结构化形态（#70 第二步，2026-10-11）：同一 NDJSON 帧通道，
 /// 返回解析后的 Json 树（响应由本包构造——json_parse 恒成功；解析失败
 /// 返回 None 供调用方 fail loud）。CLI 文本模式的帧→标记行渲染消费

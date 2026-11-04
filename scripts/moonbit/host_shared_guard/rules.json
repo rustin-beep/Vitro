@@ -100,6 +100,7 @@
         "cmd/lib/cli/cli_step.mbt",
         "cmd/lib/cli/cli_wbtest.mbt",
         "gateway/serve_io.mbt",
+        "mcp/engine.mbt",
         "util/util_wbtest.mbt"
       ]
     }

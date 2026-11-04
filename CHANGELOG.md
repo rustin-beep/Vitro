@@ -141,6 +141,60 @@
   建议（`(ULL)-2.5f` 为 UB 域非「域内」——WSL 副判实锤三方各异）。
 - **fuzz 零动**：新指纹 0/桶恶化 0/僵尸 0（PASS 与基线一致；修复前一度报桶恶化 2 条，根因 =
   cmd/vitro_js 产物陈旧〔重建后消失〕——非本批语料引入，教训：fuzz 判定面含 js 臂产物新鲜度）。
+### feat(moonbit): DSH 插件 v2——MCP server 核心 MoonBit 化（新包 vitro/engine/mcp + cmd/mcp_js 壳，随 0.10.0 节奏发，2026-11-03）
+
+- **新包 `vitro/engine/mcp`（L9，MCP 宿主层；消费面 gateway/session/util 全 ≤L8）**：
+  JSON-RPC 2.0 协议层 + **12 工具动词化**（L0 永驻 5：animate/diagnose/capabilities/
+  sessions/**session_open〔解锁触发器〕** + L1 会话解锁 7：frames_summary/frames_query/
+  annotations/run_to/step_next/render/session_close）+ 会话池（每会话独立
+  `@session.Session`，LRU 8 / 空闲 5 分钟惰性逐出）+ 渐进披露（tools/list 按会话态
+  过滤 + `notifications/tools/list_changed` 布尔级切换，翻转即通知）+ 返回值投影
+  （frames_query 默认 {i,l,f,s}、≤50 帧/页，fields 显式扩 r/v/c/e/a/h，filter
+  label_prefix/line/func/has_vis_event）+ readOnlyHint 元数据表（只读探查 6 工具标
+  true——DSH tools/pre-execute allow/deny/ask 门对接）。**design.md「11 工具 / L0 4」
+  勘误**：session_open 无会话时必须可见才能被调用（解锁触发器），L0 可见集 5、
+  总计 12；§3.3 的 available_now/unlocks 拆分（5+7）即权威口径。
+- **gateway 加法出口 `invoke_on(session, line)`（零行为改动）**：`serve_handle` 本就
+  Session 参数化纯函数，本出口把它暴露给包外——同进程多会话隔离（每会话独立引擎态）
+  无需起多 wasm 实例；全局单例 `invoke` 路径逐字不变（digest/golden 零漂移）。
+  探针结论（三项全通，批报告详）：①stdin 行流事件驱动（readline on line → mbt 闭包
+  回调，主函数返回后进程靠监听存活；EOF 后 writeSync 标记帧完整落盘再 exit）②wasm
+  实例 `#external` 句柄持有（同步 instantiate 2 实例 23ms + Map 持有 + 双实例状态
+  隔离成立——本批降为备选路径证据）③stdout 二进制安全（198,912 字节帧逐字节一致，
+  中文/emoji/控制字符转义保真）。
+- **cmd/mcp_js 壳（+js 单目标，vitro_js 同款形态）**：行循环/墙钟/渲染落盘全走
+  extern "js"，协议与工具零逻辑（壳核心分层纪律）；产物 = node 直跑单文件
+  （`moon build --release --target js cmd/mcp_js`）。渲染壳层 = v1 lib/render.mjs +
+  keyframes.mjs + build.mjs 落盘段整体移植入 extern 块（用户拍板「TS 仅限无法 mbt 化
+  的壳层」——HTML/播放器/PNG 截图是浏览器资产；帧数据逻辑〔关键帧判据/预算抽稀/
+  聚焦选择〕已在 mbt 侧单源）。interactive 模式经 `VITRO_MCP_WASM` /
+  `./engine/wasm.wasm` / `./wasm.wasm` 取 gateway wasm；**缺失自动回落 static**
+  （mbt 恒算关键帧——回落即用，响应 mode/frame_count 取壳层实测值，消双源分叉）。
+- **run_to 三停形态**：断点行（引擎 breakpoints.set——StepEvent 命中置 paused，
+  unpause 后从下一条指令续跑，同行重设须下次进入才触发）/ 首个可视事件（swap/
+  compare/any，逐帧精确推进）/ max_frames 上限；终局会话零推进 + 回看提示
+  （design §4.2 约束如实：终局不可回退推进）。step_next = n 个关键帧（权重判据
+  v1 keyWeight 逐条照搬，参照帧聚焦集 = 两帧出现过的全部数组）。
+- **测试**：mcp 白盒 22 条三 target 全绿（native/js/wasm-gc——**裸口径含 mcp**
+  （审阅 v2 实测注入必红断言后裸 1239 变 1238/1 failed）；锁披露切换/LRU/TTL/
+  投影分页/事件锚 1126 步·swap7=逆序对·compare54/首交换帧 93 行 8/run_to 断点/
+  E2005 诊断/渲染钩子契约 + 审阅批锚：P1-1 输出回采双锚 / 披露恒真四锚 /
+  P2-1 to 旁路 / P2-2 files 行号对齐 / P2-3 通知静默 / P2-4 schema /
+  P3-② 诊断卡可交付）；
+  裸/native 双口径各 +22（mcp 挂 `+wasm` 随 gateway B3 口径）；随 master 合流（#462/#464 后）批末终值 = 裸 1275 / native 1324（mcp 22 条全入〔随 #466/#467 基 1275/1324 重对〕，双 README 连坐）。
+  黑盒验收 accept.mts 28 断言全绿（对 js 产物跑：会话池建/复用/LRU 逐出/披露切换/
+  每工具 happy path/投影页边界/readOnlyHint/run_to 断点/错误帧形态/PNG image 块/
+  interactive 双形态/编译错诊断卡）——TTL 5 分钟黑盒不可假钟，白盒覆盖；
+  CI 产物闸 `mcp_smoke` 18 断言（含 #468/#469 语法门与 PLAYER 驱动对拍）。
+- **登记连坐**：pkg_deps rules.json（mcp=L9）+ surface 边表 10 条（cmd/mcp_js→
+  mcp/gateway/util×N、mcp→gateway/session/util×N）+ mcp pkg.generated.mbti（canonical=wasm
+  随 gateway B3 批的 +wasm 通道可达，无需豁免）+
+  moonbit/AGENTS.md 包清单行 + docs 说明文档（docs/current/06-出口与协议/DSH-MCP服务器.md）。
+  + **CI 接线**：scripts/moonbit/mcp_smoke（产物 stdio 冒烟闸 16 断言——协议/披露/
+  池/run_to 事件锚/投影/render 落盘/interactive 无 wasm 回落/EOF exit 0；锚值与
+  wbtest 同源）入 ci.yml cli_smoke slice + scripts-ts 四件套（package.json 三清单
+  + node:test 纯件 5 例）+ ci_checklist 活行对账。
+  发版动作（mooncakes 0.10.0 / npm publish）不在本批——待拍板。
 
 ### fix(scripts): #410+#412 corpus_fuzz 判定域语义批——clang 侧崩溃域识别（CLANG_CRASH）+ bucketOf 臂选择对称化 + freeze 恶化翻桶闸（2026-11-02）
 
@@ -5603,7 +5657,7 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 
 **P1 残余**：病 25（v 族 long 错位）**重建不复现销案**（vprintf 直调六形态三向全同——后续批已修）；病 26（未知转换符）三面修——计数器白名单（`parse_format_specs`）+ 弹参数数（`format_arg_count`）+ 输出侧（% 丢弃字母原样**不消耗实参**，clang `A%qB`→`AqB` 实测定形；旧锚「消耗实参」翻面）；病 28（round 边界）`floor(x±0.5)` 中间加法舍入域陷阱改 trunc+小数部判定（`round(0.5-1ulp)` 1.0→0.0）。
 
-**批A host 语义六病**：45 strcmp/strncmp/memcmp 无符号字节差（`& 0xFF` 还原；**strcmp 走预编译段系 oracle 冻结产物无法重产 → 改判 Host 第 6 名**——is_host_rerouted/SHADOWED 17→16/PURE 表摘 strcmp（快照+baselines 14→13）/三锚连坐）；47 strerror 表对齐 UCRT errnum（旧 1/2/3 连续自定义编号系 d1253f91 宏族批漏连坐）；48 time(&t) 写 *tloc（dispatch 弹参旧丢弃；deterministic 写 0，值域 #58 在案不锚）；49 perror=strerror(0)（"No error"）；50 fgetc 二进制模式不折叠 CR LF（is_text_mode 分流——fgets/fread 同族漏网）；51 fread/fwrite 乘 64 位防御（VFS 臂同款+1MB clamp）。
+**批A host 语义六病**：45 strcmp/strncmp/memcmp 无符号字节差（`& 0xFF` 还原；**strcmp 走预编译段系 oracle 冻结产物无法重产 → 改判 Host 第 6 名**——is_host_rerouted/SHADOWED 17→16/PURE 表摘 strcmp（快照+baselines 14→13）/三锚连坐）；47 strerror 表对齐 UCRT errnum（旧 1/2/3 连续自定义编号系 d1275f91 宏族批漏连坐）；48 time(&t) 写 *tloc（dispatch 弹参旧丢弃；deterministic 写 0，值域 #58 在案不锚）；49 perror=strerror(0)（"No error"）；50 fgetc 二进制模式不折叠 CR LF（is_text_mode 分流——fgets/fread 同族漏网）；51 fread/fwrite 乘 64 位防御（VFS 臂同款+1MB clamp）。
 
 **批B typeck 五病**：55 union 数组元素 E3006（**两层连动**：typeck check_array_elem_value 扩 TK_Union + codegen emit_local_array_init 嵌套臂同扩）；57 三目空指针常量豁免（C11 §6.5.15p5，赋值面 #56 同款）；58 `int x = x` 自引用零诊断；60 ll←double 窄化臂补（窄化矩阵独缺 LL 行，对齐 -Wliteral-conversion）；62 `1ULL<<63` TRAP——**真根因=词法 u+ll 丢 ll 分量**（`1ULL` fits_u32 发 UnsignedLiteral → 定型 uint → Shl 32 位域越界）：scanner u+ll 分支 text 带 "ull" 后缀 + parser 剥后缀恒定型 ULL（C11 后缀定死无值域适配）；scanner 锚翻面（text 含后缀）。
 
@@ -5615,7 +5669,7 @@ LLM 语料探针产物（#78 误拒 VLA / #80 误拒警告级），clang 22.1.4 
 
 - **病 44 定性修正后修复（用户指令上游亲证）**：上游探查三证——moonbitlang/x 的 v0.5.5 tag 与 main 的 `write_bytes_to_file_internal` **本有** `guard is_null`；vitro 文件头标注的 0.5.5 锁定 sha（29dbb4f9…）与上游实测一致；上游 guard 3 次 vs **搬迁提交 d29a3470 从第一天起 2 次**——**搬迁单行丢失**（原登记「vendored 0.5.5 原样」不实，非上游缺陷）。修复=补回该行（向锁定版收敛非偏离）；红锚 `write_to_unwritable_path_raises` 以**进程 0xC0000409 崩溃**最强形态证红（NULL fwrite fast-fail），修复后 IOError 透出；文件头标注补 ④Int32 化（f4dee085 扫及 vendored 面的披露债）与 ⑤guard 回补两项。CLI 真坏路径（目录名被文件占位）从崩进程变为带栈 IOError。vendor_drift 闸结构性盲区在案：只监控上游 main 漂移、不做本地↔锁定 tag 保真对账（病 44 即该盲区实例，改进登记不强推）。
 - **病 15 台账勘误销案（浓缩快照第三次漏收，与病 13/14/19 同笔 5a139d30）**：三层探针实证全销——编译层（FILE* 赋值/传参/比较零诊断，5a139d30 宏体 cast 收尾）/ 运行层（fputc 按句柄分流、fgets stdin 通）/ stderr 出口（`// STDERR` 协议标记行透出）。三个裁定点随实销失去对象。
-- **CI 红根除（d1253f91 push 后 lexer_diff knr 13 处 TSV 漂）**：errno 宏值族变更（1/2/3→22/34/33）改变引用宏语料的 token 流——d1253f91 时 lexer 只刷了 baseline（当时「无新例」红被误判跳过）；本批 lexer 四 corpus 补刷（TSV 重算 127/81/138/4）+ CI 口径四 corpus 复验零 FAIL。**freeze 义务清单再+1 家：lexer_diff 的 TSV 面也吃语料**（此前教训只列了 parser/typeck/codegen 的指纹面）。
+- **CI 红根除（d1275f91 push 后 lexer_diff knr 13 处 TSV 漂）**：errno 宏值族变更（1/2/3→22/34/33）改变引用宏语料的 token 流——d1275f91 时 lexer 只刷了 baseline（当时「无新例」红被误判跳过）；本批 lexer 四 corpus 补刷（TSV 重算 127/81/138/4）+ CI 口径四 corpus 复验零 FAIL。**freeze 义务清单再+1 家：lexer_diff 的 TSV 面也吃语料**（此前教训只列了 parser/typeck/codegen 的指纹面）。
 - 防线：moon test 751/751 · native 879（fs 10/gateway 104/cli 14 分解实勘）· drift PASS · testcount/facts --strict 0 漂移/smoke 全绿。
 
 ### Fixed（#76 两缺口：LLM 语料线第二批误拒——gpt-oss-120b 产出，2026-10-13）

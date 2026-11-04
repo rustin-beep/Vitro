@@ -22,11 +22,39 @@ test("moonbit 解析绿路径", () => {
   assert.ok(f !== undefined && f.status === "ok" && f.value === 58, `绿路径解析失败: ${JSON.stringify(f)}`);
 });
 
-test("moonbit 失败运行仍记 passed（诚实记录失败量）", () => {
+// PR #457 审阅 P3 处置（2026-11-04，翻案 2026-10 旧裁「失败仍记 passed」）：
+// 失败运行的 passed 不是计数真值——偶发一条失败曾被记成 ok 事实（value=真值-1），
+// strict 对文档即 flaky 红（审阅实锤 1186/1187）。新语义：失败运行 = unavailable
+// （真值只采绿运行），失败量与首败测试名进 note 供诊断。
+test("moonbit 失败运行不产真值：unavailable + note 带失败量与首败（翻案锚）", () => {
   const facts = factsOf();
-  collectMoonbitFromOutput("Total tests: 10, passed: 8, failed: 2", 1, facts);
+  const out = "[vitro/engine] test x/y_wbtest.mbt:12 (\"t_name\") failed: 断言不符\nTotal tests: 10, passed: 8, failed: 2";
+  collectMoonbitFromOutput(out, 1, facts);
   const f = facts["moonbit_test_passed"]!;
-  assert.ok(f.status === "ok" && f.value === 8, `失败形态应记 passed=8: ${JSON.stringify(f)}`);
+  assert.ok(f.status === "unavailable", `失败运行应 unavailable: ${JSON.stringify(f)}`);
+  assert.ok(f.value === null || f.value === undefined, "失败运行不得携带数值真值");
+  assert.ok((f.note ?? "").includes("failed=2"), `note 应带失败量: ${f.note}`);
+  assert.ok((f.note ?? "").includes("t_name") || (f.note ?? "").includes("failed:"), `note 应带首败线索: ${f.note}`);
+});
+
+test("moonbit 单条偶发失败同样 unavailable（flaky ±1 病根锚）", () => {
+  const facts = factsOf();
+  collectMoonbitFromOutput("Total tests: 1187, passed: 1186, failed: 1", 1, facts);
+  const f = facts["moonbit_test_passed"]!;
+  assert.ok(f.status === "unavailable", `passed=1186/failed=1 应 unavailable（防记成真值 1186 触发文档漂移假红）: ${JSON.stringify(f)}`);
+});
+
+test("moonbit 非零退出码零失败形态同样不产真值", () => {
+  const facts = factsOf();
+  collectMoonbitFromOutput("Total tests: 10, passed: 10, failed: 0", 1, facts);
+  assert.equal(facts["moonbit_test_passed"]!.status, "unavailable", "exit=1 且 failed=0（崩尾形态）应 unavailable");
+});
+
+test("moonbit native 口径同语义（失败不产真值）", () => {
+  const facts = factsOf();
+  collectMoonbitNativeFromOutput("Total tests: 10, passed: 9, failed: 1", 1, facts);
+  const f = facts["moonbit_test_passed_native"]!;
+  assert.ok(f.status === "unavailable", `native 失败运行应 unavailable: ${JSON.stringify(f)}`);
 });
 
 test("moonbit J9 埋雷：无 Total 行 unavailable 禁兜底 0", () => {

@@ -1,0 +1,25 @@
+// vitro/engine/mcp（DSH mbt 化批，2026-11-03 建包）：MCP（Model Context
+// Protocol）stdio server 的**引擎无关核心**——JSON-RPC 2.0 协议层 + 12 工具
+// 动词化（L0 永驻 5 / L1 会话解锁 7）+ 会话池（LRU 8 / 空闲 5 分钟）+
+// 渐进披露（tools/list 按会话态过滤 + listChanged 通知）+ 返回值投影
+// （frames_query 默认 {i,l,f,s} 分页）+ readOnlyHint 元数据表。
+// 设计单源：docs/current/06-出口与协议/DSH-MCP设计单源.md v2（Serena 形态；2026-11-04 收编入仓）。
+//
+// **宿主边界**（纯 mbt 核心 / 壳层分工）：本包零 IO——stdin 行循环、stdout
+// 写出、HTML 落盘/PNG 截图、墙钟全部经 `Host` 钩子由壳包（cmd/mcp_js）
+// 注入；`moon test` 下用桩钩子即可全量覆盖 12 工具（含 render/animate）。
+// **会话隔离**：每会话一个 `@session.Session` + `@gateway.invoke_on`
+// （探针 2026-11-03：gateway serve_handle 本就 Session 参数化——纯 mbt
+// 多会话零 wasm 实例依赖；wasm 实例 #external 句柄持有形态探针亦通，
+// 作备选路径登记于批报告）。
+// 分层登记：scripts/moonbit/pkg_deps rules.json（L9——消费 gateway L8）。
+import {
+  "vitro/engine/gateway",
+  "vitro/engine/session",
+  "vitro/engine/util",
+}
+
+// wasm（非 gc）目标无交付面（产物走 cmd/mcp_js 的 js 单文件）——与 gateway
+// B3 批同口径：仅服务接口面与测试面（裸 moon test 纳入本包测试）。
+
+supported_targets = "+wasm-gc +native +js +wasm"

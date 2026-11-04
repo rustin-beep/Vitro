@@ -1,4 +1,3 @@
-
 #   - core/第三方库记完整路径如 moonbitlang/core/string、moonbitlang/x/fs；
 #   - 工作区包如 vitro/engine/lexer、vitro/engine/lexer/internal/host；
 #   - 模块根 README（发布面文档承诺）的 consumer 记 "."。
@@ -10,8 +9,14 @@
 # 口径修复前记：旧末段口径下 "host" 同时承载 L7 host 与 lexer/internal/host
 # 新增边 = 对外面扩张——必须经人工审阅后登记（新边即红，防"新 pub +
 # 新消费"绕过无主 pub 对账的扩张通道——架构审阅 v2 待办①的完整闭环）。
+. vitro/engine/codegen compile
 . vitro/engine/diag ErrorCode
+. vitro/engine/lexer tokenize
+. vitro/engine/parser parse
 . vitro/engine/teaching/content_data install_baked
+. vitro/engine/typeck TypeChecker
+. vitro/engine/util utf8_text_partial
+. vitro/engine/vm VitroVM
 vitro/engine/ast moonbitlang/core/string parse_int
 vitro/engine/ast vitro/engine/source SourceLoc
 vitro/engine/ast vitro/engine/util json_escape
@@ -108,6 +113,10 @@ vitro/engine/cmd/lib/engine_direct vitro/engine/gateway reset
 vitro/engine/cmd/lib/engine_direct vitro/engine/gateway set_clock_source
 vitro/engine/cmd/lib/engine_direct vitro/engine/gateway set_include_reader
 vitro/engine/cmd/lib/engine_direct vitro/engine/util json_escape
+vitro/engine/cmd/mcp_js vitro/engine/mcp Host
+vitro/engine/cmd/mcp_js vitro/engine/mcp Server
+vitro/engine/cmd/mcp_js vitro/engine/teaching/content_data install_baked
+vitro/engine/cmd/mcp_js vitro/engine/util json_parse
 vitro/engine/cmd/run moonbitlang/core/env args
 vitro/engine/cmd/run vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/run vitro/engine/cmd/lib/engine_direct direct_channel
@@ -125,26 +134,26 @@ vitro/engine/cmd/step vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/vitro moonbitlang/core/env args
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro vitro/engine/cmd/lib/engine_direct direct_channel
 vitro/engine/cmd/vitro vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli step
+vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/engine_direct direct_channel
 vitro/engine/cmd/vitro_js vitro/engine/teaching/content_data install_baked
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli EngineChannel
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli api
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli compile
+vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli run
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli step
-vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli print_usage
-vitro/engine/cmd/vitro vitro/engine/cmd/lib/cli usage_err
-vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli print_usage
-vitro/engine/cmd/vitro_js vitro/engine/cmd/lib/cli usage_err
-vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli print_usage
 vitro/engine/cmd/vitro_wasm vitro/engine/cmd/lib/cli usage_err
 vitro/engine/cmd/vitro_wasm vitro/engine/fs read_file_to_string
 vitro/engine/cmd/vitro_wasm vitro/engine/teaching/content_data baked_payload_json
@@ -271,9 +280,9 @@ vitro/engine/gateway vitro/engine/teaching/assets texts_json
 vitro/engine/gateway vitro/engine/teaching/assets trap_messages
 vitro/engine/gateway vitro/engine/teaching/steps detect_algorithms
 vitro/engine/gateway vitro/engine/teaching/steps export_algorithms_catalog_json
+vitro/engine/gateway vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/gateway vitro/engine/time_travel SourceLineProvider
 vitro/engine/gateway vitro/engine/time_travel UnifiedEngine
-vitro/engine/gateway vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
 vitro/engine/gateway vitro/engine/typeck TypeChecker
 vitro/engine/gateway vitro/engine/typeck TypeError
 vitro/engine/gateway vitro/engine/util JsonParseError
@@ -373,6 +382,12 @@ vitro/engine/lexer/token moonbitlang/core/debug Debug
 vitro/engine/lexer/token vitro/engine/diag ErrorCode
 vitro/engine/lexer/token vitro/engine/source SourceLoc
 vitro/engine/libc vitro/engine/ast Type
+vitro/engine/mcp vitro/engine/gateway engine_version
+vitro/engine/mcp vitro/engine/gateway invoke_on
+vitro/engine/mcp vitro/engine/gateway protocol_version
+vitro/engine/mcp vitro/engine/session Session
+vitro/engine/mcp vitro/engine/util json_parse
+vitro/engine/mcp vitro/engine/util utf8_text_partial
 vitro/engine/memory moonbitlang/core/deque Deque
 vitro/engine/memory vitro/engine/bytecode HEAP_START
 vitro/engine/memory vitro/engine/bytecode MEM_SIZE
@@ -405,6 +420,7 @@ vitro/engine/parser vitro/engine/ast ProgramNode
 vitro/engine/parser vitro/engine/ast Stmt
 vitro/engine/parser vitro/engine/ast StructDecl
 vitro/engine/parser vitro/engine/ast StructField
+vitro/engine/parser vitro/engine/ast TK_Double
 vitro/engine/parser vitro/engine/ast TemplateArg
 vitro/engine/parser vitro/engine/ast TemplateDecl
 vitro/engine/parser vitro/engine/ast TemplateInstantiation
@@ -413,7 +429,6 @@ vitro/engine/parser vitro/engine/ast Templateable
 vitro/engine/parser vitro/engine/ast Type
 vitro/engine/parser vitro/engine/ast UnaryOp
 vitro/engine/parser vitro/engine/ast VarDeclExtra
-vitro/engine/parser vitro/engine/ast TK_Double
 vitro/engine/parser vitro/engine/ast compute_type_size
 vitro/engine/parser vitro/engine/ast expr_depth
 vitro/engine/parser vitro/engine/ast stmt_depth
@@ -434,8 +449,8 @@ vitro/engine/session vitro/engine/bytecode CompileOutput
 vitro/engine/session vitro/engine/protocol AlgorithmMatch
 vitro/engine/session vitro/engine/protocol ApiVariableSnapshot
 vitro/engine/session vitro/engine/protocol StepPayload
-vitro/engine/session vitro/engine/time_travel UnifiedEngine
 vitro/engine/session vitro/engine/time_travel DEFAULT_MAX_CHECKPOINTS
+vitro/engine/session vitro/engine/time_travel UnifiedEngine
 vitro/engine/session vitro/engine/vm DEFAULT_MAX_STEPS
 vitro/engine/session vitro/engine/vm MAX_STACK_DEPTH
 vitro/engine/session vitro/engine/vm VitroVM
@@ -456,14 +471,14 @@ vitro/engine/teaching/content_data vitro/engine/teaching/assets texts_json
 vitro/engine/teaching/content_data vitro/engine/util json_parse
 vitro/engine/teaching/content_data vitro/engine/util str_cmp
 vitro/engine/teaching/langpack vitro/engine/teaching/content_data baked_payload_json
-vitro/engine/teaching/steps vitro/engine/ast If
-vitro/engine/teaching/steps vitro/engine/ast Identifier
-vitro/engine/teaching/steps vitro/engine/ast Block
-vitro/engine/teaching/steps vitro/engine/ast Binary
 vitro/engine/teaching/steps vitro/engine/ast Assign
+vitro/engine/teaching/steps vitro/engine/ast Binary
 vitro/engine/teaching/steps vitro/engine/ast BinaryOp
+vitro/engine/teaching/steps vitro/engine/ast Block
 vitro/engine/teaching/steps vitro/engine/ast Expr
 vitro/engine/teaching/steps vitro/engine/ast FuncDecl
+vitro/engine/teaching/steps vitro/engine/ast Identifier
+vitro/engine/teaching/steps vitro/engine/ast If
 vitro/engine/teaching/steps vitro/engine/ast ProgramNode
 vitro/engine/teaching/steps vitro/engine/ast Stmt
 vitro/engine/teaching/steps vitro/engine/ast Type
@@ -501,14 +516,15 @@ vitro/engine/time_travel vitro/engine/protocol RootCauseHint
 vitro/engine/time_travel vitro/engine/protocol SeekResult
 vitro/engine/time_travel vitro/engine/protocol StepPayload
 vitro/engine/time_travel vitro/engine/protocol VisEvent
+vitro/engine/time_travel vitro/engine/protocol classify
 vitro/engine/time_travel vitro/engine/source SourceLoc
 vitro/engine/time_travel vitro/engine/teaching/assets trap_messages
-vitro/engine/time_travel vitro/engine/teaching/steps is_swap_assign_line
 vitro/engine/time_travel vitro/engine/teaching/steps InferEnv
 vitro/engine/time_travel vitro/engine/teaching/steps VarMap
 vitro/engine/time_travel vitro/engine/teaching/steps swap_index_pair
 vitro/engine/time_travel vitro/engine/teaching/steps VarSnapshot
 vitro/engine/time_travel vitro/engine/teaching/steps infer_algorithm_step
+vitro/engine/time_travel vitro/engine/teaching/steps is_swap_assign_line
 vitro/engine/time_travel vitro/engine/util render_template
 vitro/engine/time_travel vitro/engine/vm Delta
 vitro/engine/time_travel vitro/engine/vm Full
@@ -762,11 +778,3 @@ vitro/engine/vm vitro/engine/source SourceLoc
 vitro/engine/vm vitro/engine/teaching/assets trap_messages
 vitro/engine/vm vitro/engine/util render_template
 vitro/engine/vm vitro/engine/util utf8_len
-vitro/engine/time_travel vitro/engine/protocol classify
-. vitro/engine/codegen compile
-. vitro/engine/lexer tokenize
-. vitro/engine/parser parse
-. vitro/engine/typeck TypeChecker
-. vitro/engine/util utf8_text_partial
-. vitro/engine/vm VitroVM
-
